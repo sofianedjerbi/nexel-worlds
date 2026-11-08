@@ -64,25 +64,34 @@ function drawEmote(p, sx, sy, S) {
   ctx.globalAlpha = 1;
 }
 function floatText(x, y, text, color) { floats.push({x, y, text, color, t: performance.now() / 1000}); }
-// A felled tree falls over. Round trees use the pack's 13-frame felling sheet; young thin trees (the pack has no
-// sheet for them) tip over from the base away from whoever chopped them, gather speed, then burst into leaves.
-const THIN_FALL_MS = 650;
+// A felled tree falls over and leaves its stump. Round trees use the pack's 13-frame felling sheet (it ends on the
+// stump). Young thin trees have no sheet, so they follow the same beats: a slow tilt, the fall with a white swoosh,
+// then the crown breaks up into leaves on the ground.
+const THIN_FALL_MS = 950;
 function felled(x, y, who, now) {
   const spr = objectSprite("T", x, y, now / 1000);
-  if (spr && spr[0] !== IMG.trees) return falls.push({x, y, t0: now});           // round tree: the pack animation
-  const c = who && [...ents.values()].find((q) => q.e && q.e.name === who);
-  falls.push({x, y, t0: now, thin: spr, side: c && c.x > x ? -1 : 1});
+  const c = who && [...ents.values()].find((q) => q.e && q.e.name === who), side = c && c.x > x ? -1 : 1;  // away from the axe
+  if (spr && spr[0] !== IMG.trees) return falls.push({x, y, t0: now, side});    // round tree: the pack animation
+  falls.push({x, y, t0: now, thin: spr, side, puffs: 0});
 }
 function drawThinFall(f, sx, sy, now) {
   const k = (now - f.t0) / THIN_FALL_MS, z = zoom;
-  if (k >= 1) {                                   // it hit the ground: leaves scatter where the crown landed
-    if (!f.burst) { f.burst = true; debris(f.x + f.side * 1.1, f.y - .1, f.thin, 12, {dust: true}); }
-    return k < 1.15;
+  if (k >= 1) return false;
+  const [img, a, b, w, h, dx, dy] = f.thin, trunk = 5;                 // the bottom 5 px stay behind as the stump
+  // 0-.25 creaks over a little, .25-.6 falls (easing in), then lies there while the crown breaks up
+  const fall = k < .25 ? .08 * (k / .25) : k < .6 ? .08 + .92 * ((k - .25) / .35) ** 2 : 1;
+  const ang = f.side * (Math.PI / 2) * fall;
+  const bx = sx(f.x) + (dx + w / 2) * z, by = sy(f.y) + (dy + h - trunk) * z;   // pivot: the top of the stump
+  if (k > .3 && k < .7) {                                              // the swoosh traced by the crown
+    ctx.strokeStyle = `rgba(255,255,255,${(1 - Math.abs(k - .5) / .2) * .8})`; ctx.lineWidth = z;
+    ctx.beginPath(); ctx.arc(bx, by, (h - trunk - 2) * z, -Math.PI / 2, -Math.PI / 2 + ang, f.side < 0); ctx.stroke();
   }
-  const [img, a, b, w, h, dx, dy] = f.thin, ang = f.side * (Math.PI / 2) * k * k;   // eases in like a real fall
-  const bx = sx(f.x) + (dx + w / 2) * z, by = sy(f.y) + (dy + h - 4) * z;            // pivot: the foot of the trunk
-  ctx.save(); ctx.translate(Math.round(bx), Math.round(by)); ctx.rotate(ang);
-  ctx.drawImage(img, a, b, w, h, -w / 2 * z, -(h - 4) * z, w * z, h * z);
+  const crownX = f.x + .5 + f.side * (h - trunk) / 16 * .8, crownY = f.y + .55;
+  if (k >= .6 && f.puffs < 1) { f.puffs = 1; debris(crownX - .5, crownY - .5, f.thin, 10, {dust: true}); }
+  if (k >= .78 && f.puffs < 2) { f.puffs = 2; debris(crownX - .5 - f.side * .4, crownY - .5, f.thin, 8, {}); }
+  ctx.save(); ctx.globalAlpha = k < .6 ? 1 : Math.max(0, 1 - (k - .6) / .3);
+  ctx.translate(Math.round(bx), Math.round(by)); ctx.rotate(ang);
+  ctx.drawImage(img, a, b, w, h - trunk, -w / 2 * z, -(h - trunk) * z, w * z, (h - trunk) * z);
   ctx.restore();
   return true;
 }
@@ -143,7 +152,10 @@ function drawEffects(sx, sy, S, dt) {
     const f = falls[i], k = (now - f.t0) / 1000, fr = Math.floor(k * 14);
     if (fr >= 12) { falls.splice(i, 1); continue; }
     ctx.globalAlpha = fr >= 9 ? 1 - (fr - 9) / 3 : 1;
-    ctx.drawImage(IMG.tree_fall, fr * 64, 0, 64, 48, sx(f.x) - 32 * z, sy(f.y) - 28 * z, 64 * z, 48 * z);   // trunk at frame x 40
+    // the sheet falls to the left with the trunk at frame x 32-48; mirrored about the trunk when it should fall right
+    if (f.side > 0) { ctx.save(); ctx.translate(sx(f.x) + 8 * z, 0); ctx.scale(-1, 1); ctx.translate(-(sx(f.x) + 8 * z), 0); }
+    ctx.drawImage(IMG.tree_fall, fr * 64, 0, 64, 48, sx(f.x) - 32 * z, sy(f.y) - 28 * z, 64 * z, 48 * z);
+    if (f.side > 0) ctx.restore();
     ctx.globalAlpha = 1;
   }
 }

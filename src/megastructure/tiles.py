@@ -65,7 +65,7 @@ BLOCKS = [
     Block("fire", "x", solid=False),
     Block("crop", "\"", solid=False, flammable=True, hardness=2, drops={"seed": 1}),
     Block("ripe_crop", "w", solid=False, flammable=True, hardness=2, drops={"wheat": 3, "seed": 2}),
-    Block("stump", "t", solid=False, hardness=4, drops={"wood": 1}),
+    Block("stump", "t", hardness=8, drops={"wood": 1}, tool="axe"),   # what a felled tree leaves; a tree regrows from it
     Block("chest", "C", flammable=True, hardness=8, drops={"chest": 1}, tool="axe", wall=True),
     # appended (block ids are stored in saved chunks, so new blocks go at the end)
     Block("fruit_tree", "F", flammable=True, hardness=5, drops={"fruit": 3}, wall=True),  # picking: fruit regrows

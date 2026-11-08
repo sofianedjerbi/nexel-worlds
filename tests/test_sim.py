@@ -55,8 +55,10 @@ def test_dig_tree_and_ground(world):
     sim.world.set(a.x, a.y - 1, block="tree")
     r = run(sim, a, "dig", {"dir": "N"})
     assert r["ok"] and r["changed"]["inventory"] == {"wood": 3}
+    assert sim.world.block(a.x, a.y - 1) == "stump"                    # a felled tree leaves its stump
+    assert r["changed"]["tiles"][0]["block"] == "stump"
+    assert run(sim, a, "dig", {"dir": "N"})["changed"]["inventory"] == {"wood": 1}
     assert sim.world.block(a.x, a.y - 1) == "none"
-    assert r["changed"]["tiles"][0]["block"] == "none"
     assert run(sim, a, "dig", {"dir": "S"})["error"] == "need_tool"          # tilling needs a hoe in hand
     a.add("hoe", 1)
     r = run(sim, a, "dig", {"dir": "S", "with": "hoe"})

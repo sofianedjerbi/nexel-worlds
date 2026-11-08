@@ -83,9 +83,12 @@ class Building:
             self.timers[(x, y)] = [self.tick + sec(seconds), "fruit"]
             a.bump("dug")
             return {"got": drops}
-        self.clear_structure(x, y, by=a, cause="dig")  # a felled tree leaves clean ground; it regrows there later
         if block.name in ("tree", "bare_fruit_tree"):
+            # a felled tree leaves its stump (dig it up for a last bit of wood); a new tree grows there later
+            self.set_tile(x, y, block="stump", by=a, cause="dig")
             self.timers[(x, y)] = [self.tick + sec(1200), "regrow"]
+        else:
+            self.clear_structure(x, y, by=a, cause="dig")
         a.bump("dug")
         return {"got": drops}
 
@@ -127,8 +130,6 @@ class Building:
         block = PLACEABLE[item]
         if block in T.FOOTPRINT:
             return (yield from self._place_structure(a, item, block, x, y))
-        if b == "stump":
-            b = "none"  # debris is junk: building over it clears it
         if b != "none":
             raise ActionError("occupied", f"{args['dir']} has {b}")
         if block == "boat":
@@ -141,7 +142,7 @@ class Building:
         if BLOCKS[T.B[block]].solid and self.entity_at(x, y):
             raise ActionError("occupied", "someone is standing there")
         yield from self.wait(a, 0.3)
-        if self.world.block(x, y) not in ("none", "stump", "flower"):
+        if self.world.block(x, y) not in ("none", "flower"):
             raise ActionError("changed", "tile was taken")
         if self.world.block(x, y) == "flower":
             a.add("flower")
@@ -168,7 +169,7 @@ class Building:
             g = GROUNDS[self.world.get(tx, ty)[0]]
             if not g.walkable or g.liquid:
                 raise ActionError("bad_target", f"{block.replace('_', ' ')} needs dry land ({tx},{ty} is {g.name})")
-            if self.world.block(tx, ty) not in ("none", "flower", "stump"):
+            if self.world.block(tx, ty) not in ("none", "flower"):
                 raise ActionError("occupied", f"({tx},{ty}) has {self.world.block(tx, ty)}")
             if BLOCKS[T.B[block]].solid and self.entity_at(tx, ty):
                 raise ActionError("occupied", "something is standing in the way")

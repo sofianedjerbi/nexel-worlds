@@ -13,12 +13,12 @@ const FILLS = {dirt: {o: ",", u: ",", "~": ","}, path: {".": "_", ",": "_", "'":
 const FILL_TEXT = {",": "Fill with dirt", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
 const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
 const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C", well: "Y", coop: "J", picnic_blanket: "m", basket: "q", trough: "e", hay: "y"};
-const HARVEST = {U: "Chop tree (the fruit grows back if you wait)", v: "Cut the bush (fiber)", e: "Take down the trough (and what's in it)", y: "Pick up the hay bale", Y: "Take down the well", J: "Take down the coop", m: "Roll up the blanket", q: "Take the basket", X: "Take down mailbox", V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
+const HARVEST = {t: "Dig up the stump", U: "Chop tree (the fruit grows back if you wait)", v: "Cut the bush (fiber)", e: "Take down the trough (and what's in it)", y: "Pick up the hay bale", Y: "Take down the well", J: "Take down the coop", m: "Roll up the blanket", q: "Take the basket", X: "Take down mailbox", V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
 // which tool speeds up digging each block (tiles.py Block.tool); ore can only be mined with a pickaxe in hand
-const TOOL_FOR = {U: "axe", T: "axe", M: "pickaxe", "*": "pickaxe", H: "axe", "#": "axe", "%": "pickaxe", "+": "axe", "&": "axe", C: "axe", B: "axe", h: "axe",
+const TOOL_FOR = {t: "axe", U: "axe", T: "axe", M: "pickaxe", "*": "pickaxe", H: "axe", "#": "axe", "%": "pickaxe", "+": "axe", "&": "axe", C: "axe", B: "axe", h: "axe",
   L: "axe", K: "axe", g: "axe", W: "axe", V: "axe", X: "axe", Y: "pickaxe", J: "axe", e: "axe"};
 const WEAPON_DMG = {sword: 30, spear: 18, axe: 12, pickaxe: 10};
 const inHand = () => (selected && meObs && meObs.self.inventory[selected] ? selected : null);   // what's in your hand
@@ -77,7 +77,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     if (FOOT[block]) {
       const f = footprint(block, p.x, p.y, s.x, s.y);
       const bad = f.tiles.filter((q) => { const tq = tile(q.x, q.y);
-        return !tq || !(GROUND.has(tq[0]) || tq[0] === "f" || tq[0] === "t") || !WALKABLE_GROUND.has(tq[1]) || tq[1] === ":"
+        return !tq || !(GROUND.has(tq[0]) || tq[0] === "f") || !WALKABLE_GROUND.has(tq[1]) || tq[1] === ":"
           || (q.x === s.x && q.y === s.y) || (SOLID.has(block) && entityAt(q)); });
       const near = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy}))
         .filter((q) => !f.tiles.some((r) => r.x === q.x && r.y === q.y));

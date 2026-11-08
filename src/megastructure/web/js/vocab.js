@@ -30,7 +30,7 @@ function structAt(x, y) {                 // the anchor of the structure a Z/z t
 }
 const CHAR = Object.fromEntries(Object.entries(CH).map(([c, n]) => [n, c]));
 const GROUND = new Set("~:.,o_'=un");
-const SOLID = new Set("TFbM*H#%^&CBhLpKWXYJqZeyUv");
+const SOLID = new Set("TFbM*H#%^&CBhLpKWXYJqZeyUvt");
 const WALKABLE_GROUND = new Set(":.,o_'un");
 const LABEL = {wood_wall: "wooden wall", wet_tilled: "watered soil", watering_can: "watering can", fruit_tree: "fruit tree", berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
   cooked_meat: "cooked meat", deep_water: "deep water", picnic_blanket: "picnic blanket", hay_bale: "hay bale"};

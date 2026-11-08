@@ -100,7 +100,11 @@ function objectSprite(c, x, y, t) {
       doors.set(key, o);
       return [IMG.gates, Math.round(o * 3) * 16, 0, 16, 16, 0, -3];
     }
-    case "t": return [IMG.trees, h < .5 ? 0 : 16, 96, 16, 16, 0, 0];
+    case "t": {                                       // a stump: the felling sheet's own stump for round trees
+      const now = performance.now();   // hidden while the felling sheet still draws it (its last frames fade out)
+      if (falls.some((f) => f.x === x && f.y === y && !f.thin && now - f.t0 < 9 / 14 * 1000)) return null;
+      return h < .7 ? [IMG.tree_fall, 12 * 64 + 32, 28, 16, 16, 0, 0] : [IMG.trees, 0, 96, 16, 16, 0, 0];
+    }
     case "Y": return [IMG.well, 0, 0, 32, 32, 0, -16];                                   // 2x2, drawn from the bottom-left tile
     case "J": { const k = Math.floor(h * 6); return [IMG.coop, 160 + (k % 3) * 32, 80 + Math.floor(k / 3) * 48, 32, 44, 0, -28]; }
     case "m": return [IMG.blanket, 0, 8, 48, 32, 0, -16];

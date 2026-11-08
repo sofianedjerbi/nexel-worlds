@@ -98,7 +98,7 @@ class Environment:
                     self.set_tile(*pos, block=T.REGROWN[self.world.block(*pos)], cause="grew")
                 elif kind == "fruit" and self.world.block(*pos) == "tree":    # picked before bare trees existed
                     self.set_tile(*pos, block="fruit_tree", cause="grew")
-                elif kind == "regrow" and self.world.block(*pos) == "none" and self.entity_at(*pos) is None \
+                elif kind == "regrow" and self.world.block(*pos) in ("none", "stump") and self.entity_at(*pos) is None \
                         and self.world.ground(*pos) in ("grass", "dirt"):
                     self.set_tile(*pos, block="tree", cause="grew")
         if self.tick % sec(20) == 0:
