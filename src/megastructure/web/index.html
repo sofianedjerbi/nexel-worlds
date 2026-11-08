@@ -684,7 +684,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   } else if (e.kind === "chicken" || e.kind === "cow") {
     const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
     const big = e.kind === "cow", fw = big ? 32 : 16, img = big ? IMG.cow : IMG.chicken;
-    const f = moving ? Math.floor(now / 90) % 8 : Math.floor(now / 260 + e.id) % (big ? 3 : 4);
+    const f = moving ? Math.floor(now / 90) % (big ? 8 : 7) : Math.floor(now / 260 + e.id) % (big ? 3 : 4);  // chicken walk row has 7 frames
     const fl = flashes.get(e.kind + e.id), white = fl && now - fl < 120;
     const w = fw * z, dx = big ? x - S / 2 : x, dy = big ? y - S : y - 2 * z;
     ctx.save();
