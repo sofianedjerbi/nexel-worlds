@@ -19,7 +19,7 @@ from websockets.exceptions import ConnectionClosed
 from websockets.http11 import Response
 
 from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
-from .tiles import RECIPES
+from .tiles import GROUNDS, RECIPES
 
 log = logging.getLogger("megastructure")
 PROTOCOL = 1
@@ -65,7 +65,7 @@ class GameServer:
         world_dir.mkdir(parents=True, exist_ok=True)
         self.sim = Simulation(world_dir / "world.sqlite", seed=seed, event_log=world_dir / "events.jsonl")
         self.conns: dict[int, object] = {}  # agent id -> connection
-        self.spectators: set = set()
+        self.spectators: dict = {}  # queue -> watched rect (x, y, w, h) or None
         self.sim.listeners.append(self._broadcast)
         self.tick_ms = collections.deque(maxlen=250)
         self.started = time.time()
@@ -80,6 +80,7 @@ class GameServer:
             t0 = time.perf_counter()
             chunks0 = len(self.sim.world.chunks)
             self.sim.step()
+            self.push_ticks()
             t1 = time.perf_counter()
             if self.sim.tick % FLUSH_EVERY == 0:
                 self.sim.flush()
@@ -117,18 +118,33 @@ class GameServer:
             return
         msg = json.dumps({"type": "event", "ev": ev})
         for q in list(self.spectators):
-            if q.qsize() < 1000:
+            if q.qsize() < 2000:
                 q.put_nowait(msg)
 
-    def region(self, x, y, w, h) -> dict:
-        w, h = min(int(w), 256), min(int(h), 256)
-        rows = ["".join(self.sim.world.char(i, j) for i in range(x, x + w)) for j in range(y, y + h)]
+    def entities_in(self, x, y, w, h) -> list:
         ents = [{"kind": "agent", "name": a.name, "id": a.id, "x": a.x, "y": a.y, "hp": a.hp,
                  "doing": a.action.tool if a.action else None, "weapon": self.sim.best_weapon(a)}
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
         ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp} for c in self.sim.creatures.values()
                  if x <= c.x < x + w and y <= c.y < y + h]
-        return {"x": x, "y": y, "rows": rows, "entities": ents, "tick": self.sim.tick, "time": self.sim.clock(),
+        return ents
+
+    def push_ticks(self):
+        """Every tick, each spectator gets the entities inside the rect it watches."""
+        if not self.spectators:
+            return
+        head = {"type": "tick", "tick": self.sim.tick, "time": self.sim.clock(), "night": self.sim.is_night(),
+                "phase": round(self.sim.time_of_day(), 4)}
+        for q, rect in list(self.spectators.items()):
+            if rect is not None and q.qsize() < 2000:
+                q.put_nowait(json.dumps({**head, "entities": self.entities_in(*rect)}, separators=(",", ":")))
+
+    def region(self, x, y, w, h) -> dict:
+        w, h = min(int(w), 256), min(int(h), 256)
+        world = self.sim.world
+        rows = ["".join(world.char(i, j) for i in range(x, x + w)) for j in range(y, y + h)]
+        ground = ["".join(GROUNDS[world.get(i, j)[0]].char for i in range(x, x + w)) for j in range(y, y + h)]
+        return {"x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
                 "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}
 
     # ------------------------------------------------------------- handlers
@@ -144,7 +160,7 @@ class GameServer:
 
     async def spectate(self, ws):
         q: asyncio.Queue = asyncio.Queue()
-        self.spectators.add(q)
+        self.spectators[q] = None
 
         async def pump():
             while True:
@@ -156,6 +172,9 @@ class GameServer:
             async for raw in ws:
                 msg = json.loads(raw)
                 op = msg.get("op")
+                if op == "watch":
+                    self.spectators[q] = (int(msg["x"]), int(msg["y"]), min(int(msg["w"]), 200), min(int(msg["h"]), 200))
+                    continue
                 if op == "region":
                     out = self.region(int(msg["x"]), int(msg["y"]), msg.get("w", 64), msg.get("h", 48))
                 elif op == "metrics":
@@ -169,7 +188,7 @@ class GameServer:
                     out = {"error": "unknown op"}
                 await ws.send(json.dumps({"type": "reply", "id": msg.get("id"), **out}))
         finally:
-            self.spectators.discard(q)
+            self.spectators.pop(q, None)
             pumper.cancel()
 
     async def agent_session(self, ws):

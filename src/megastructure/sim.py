@@ -244,8 +244,9 @@ class Simulation:
         return walls >= 3
 
     def wait(self, a: Agent, n: int):
+        """Consume n ticks. The tick the action starts on counts, so a 1-tick action completes immediately."""
         n = n * 2 if a.energy <= 0 else n
-        for _ in range(max(1, n)):
+        for _ in range(max(1, n) - 1):
             yield
 
     def spend(self, a: Agent, energy: int):
@@ -904,7 +905,7 @@ class Simulation:
 
     def _tool_rest(self, a, args):
         bonus = self.near_block(a, "heater") or self.sheltered(a.x, a.y)
-        for _ in range(10):
+        for _ in range(9):
             yield
         gain = 25 if bonus else 15
         a.energy = min(100, a.energy + gain)

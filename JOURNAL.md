@@ -68,3 +68,31 @@ Also: bots now reconnect when the server restarts.
 
 **Result**: no console errors; join, walk, talk, feed and bubbles verified in a real browser.
 **Next**: M2 thinker (model benchmark, then one LLM agent surviving 30 min).
+
+## 2026-11-08 · Iteration 3 — real tileset, real responsiveness (user: "still ugly, latency is insane")
+
+**Diagnosis**
+- Latency: (1) a 1-tick action took 2 ticks (the generator yielded before acting) = 400 ms/step;
+  (2) the browser polled positions every 150 ms; (3) the player waited for the server before moving.
+- Ugliness: per-tile bevelled squares made a checkerboard grid, there was too much per-pixel noise, and
+  non-integer scaling (16 px art at 40 px) made uneven pixels.
+
+**Change**
+- Sim: `wait(n)` counts the starting tick, so a step completes in the tick it is picked up. Server pushes
+  `{"type":"tick", entities}` for each spectator's watched rect every tick; `region` also returns ground rows.
+- Client renderer rewritten: tiles are cached per 32×32 block in two canvases (floor, walls) produced by
+  **per-pixel shaders** (ImageData), patched live from `tile` events and periodically resynced.
+  - The structure autotiles into continuous slabs (outline and bevel only where a slab meets open floor),
+    with 64×48 px panel seams in world space so walls read as giant plates. 8 px front faces in a 3/4 view.
+  - Floors: 2×2-tile deck panels with rivets, rust wear and scuffs. Moss is blended bilinearly across tile
+    borders (no square edges). Grating over the abyss, ragged breaches, void shafts with depth falloff.
+  - AO: floors darken under front faces and beside walls.
+  - Hand-made 16×16 pixel sprites for objects, props, creatures and people (per-name colour, 4 facings,
+    walk frames). Integer zoom 1–6 (default 3×), so pixels stay square.
+- Input: client-side prediction (your character moves on keydown; the server confirms within a tick);
+  the camera is locked to the player; constant-speed interpolation.
+
+**Measured (real Chrome via Playwright)**: step round trip 200 ms (one tick, previously ~400 ms plus up to
+150 ms polling), with zero perceived delay thanks to prediction; holding a key walks at 5 tiles/s; no
+console errors. Tests: 19 passed.
+**Next**: M2 thinker.
