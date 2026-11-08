@@ -80,6 +80,7 @@ BLOCKS = [
     Block("gate", "g", solid=False, flammable=True, hardness=8, drops={"gate": 1}, tool="axe", wall=True),
     Block("wood_wall", "W", flammable=True, hardness=10, drops={"wood_wall": 1}, tool="axe", wall=True),
     Block("boat", "V", solid=False, flammable=True, hardness=6, drops={"boat": 1}, tool="axe"),  # moored on water
+    Block("mailbox", "X", flammable=True, hardness=6, drops={"mailbox": 1}, tool="axe"),
 ]
 
 # Crop species: which plant a sprout becomes is a pure function of its tile, shared with the web client
@@ -104,7 +105,7 @@ PLACEABLE = {
     "seed": "sprout",
     "chest": "chest",
     "flower": "flower",
-    "wood_wall": "wood_wall", "boat": "boat", "bed": "bed", "chair": "chair", "table": "table", "plant": "plant", "clock": "clock", "rug": "rug", "gate": "gate",
+    "wood_wall": "wood_wall", "boat": "boat", "mailbox": "mailbox", "bed": "bed", "chair": "chair", "table": "table", "plant": "plant", "clock": "clock", "rug": "rug", "gate": "gate",
 }
 # Items laid into the ground: item -> {ground it can go on: resulting ground}. One item, one obvious result
 # per surface; raw materials (wood, stone, fiber, ore) are never placeable themselves.
@@ -163,5 +164,6 @@ RECIPES = {
         Recipe("gate", {"wood": 3}, {"gate": 1}, 4),
         Recipe("wood_wall", {"wood": 3}, {"wood_wall": 2}, 5, "workbench"),
         Recipe("boat", {"wood": 8, "rope": 1}, {"boat": 1}, 10, "workbench"),
+        Recipe("mailbox", {"wood": 3}, {"mailbox": 1}, 4, "workbench"),
     ]
 }

@@ -405,3 +405,15 @@ def test_boats_launch_board_sail_and_moor(world):
     assert run(sim, a, "step", {"dir": "E"})["ok"] and a.sailing and sim.world.block(a.x, a.y) == "none"
     run(sim, a, "move_to", {"x": x0 + 6, "y": a.y})
     assert a.x == x0 + 6 and not a.sailing and sim.world.block(x0 + 5, a.y) == "boat"
+
+
+def test_mailbox_post_and_open(world):
+    sim, a = world
+    a.add("mailbox", 1)
+    run(sim, a, "place", {"dir": "N", "item": "mailbox"})
+    b = sim.login("Pen", "x")
+    b.x, b.y = a.x + 1, a.y - 1
+    assert run(sim, b, "post", {"dir": "W", "text": "meet me at the lake"})["owner"] == "Ash"
+    r = run(sim, a, "open_mail", {"dir": "N"})
+    assert r["letters"][0]["text"] == "meet me at the lake" and r["letters"][0]["from"] == "Pen"
+    assert run(sim, a, "open_mail", {"dir": "N"})["letters"] == []

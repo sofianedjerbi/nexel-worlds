@@ -48,6 +48,7 @@ COPY = {  # zip-internal path suffix -> output name
     "Objects/Tree animations/tree orange sprites.png": "tree_orange.png",
     "Objects/Water Objects.png": "water_objects.png",
     "Objects/Boats.png": "boats.png",
+    "Tilesets/Building parts/Mailbox Animation Frames.png": "mailbox.png",
     "emojis/Emoji spritesheet.png": "emoji.png",
     "Objects/Tree animations/tree_fall_animation_sprite_sheet.png": "tree_fall.png",
     "Animals/Chicken/chicken default.png": "chicken.png",

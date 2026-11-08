@@ -334,3 +334,15 @@ Tests: 28 pass.
 - `--dev` adds `dev_teleport`. QA in Chrome on a lake: launch → board (sailing: true) → sail 5 tiles → go ashore (boat
   moored on the last water tile).
 Tests: 29 pass.
+
+## 2026-11-08 · Iteration 17 — mail, goals, responsive hotbar
+
+- Mailboxes (3 wood at a workbench): placing one records you as owner. `post` leaves a letter (max 20); `open_mail`
+  takes all letters out, and anyone can do it, so letters can be stolen (the owner is told who opened it). Ticks carry
+  `mail` markers, so a mailbox with mail shows the pack's letter-bubble frame. Client: a mail panel (write/post, take
+  the letters out, read), and toasts for "X left you a letter" and "X opened your mailbox".
+- Goals card covers the whole progression (wood → workbench → berries → planting → stone → axe → campfire → watering →
+  eggs/milk → house → boat → mailbox), ticked off by observed results (sheltered, sailing, act results).
+- Hotbar slots scale with window width: one row and no overlap at 1200/1440/1920 px (measured).
+- QA with two browser players: B posts through the panel → A gets a toast and sees "Mailbox: there's mail!" → opening shows
+  the letter. Tests: 30 pass.

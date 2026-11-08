@@ -55,12 +55,12 @@
   .bar .b i { display:block; height:100%; transition:width .2s; }
   #where { color:var(--ink2); margin-bottom:3px; }
   #doing { color:#b0692a; min-height:16px; }
-  #hotbar { position:fixed; left:50%; bottom:12px; transform:translateX(-50%); display:none; gap:6px; flex-wrap:wrap; justify-content:center; max-width:calc(100vw - 600px);
+  #hotbar { position:fixed; left:50%; bottom:12px; transform:translateX(-50%); display:none; gap:clamp(2px, .4vw, 6px); flex-wrap:nowrap; justify-content:center;
     filter:drop-shadow(0 3px 0 rgba(60,40,30,.3)); }
-  .slot { width:60px; height:60px; border:10px solid transparent; border-image:url(assets/slot.png) 10 fill / 20px stretch;
+  .slot { width:clamp(44px, 4.3vw, 60px); height:clamp(44px, 4.3vw, 60px); border:10px solid transparent; border-image:url(assets/slot.png) 10 fill / 20px stretch;
     image-rendering:pixelated; position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .slot.sel { border-image-source:url(assets/slot_sel.png); }
-  .slot canvas { width:32px; height:32px; image-rendering:pixelated; }
+  .slot canvas { width:clamp(24px, 2.3vw, 32px); height:clamp(24px, 2.3vw, 32px); image-rendering:pixelated; }
   .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:18px; font-weight:800; color:#fff8e8; text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
   .slot .k { position:absolute; left:-6px; top:-9px; font-size:18px; font-weight:800; color:#f6e3bf; }
   .slot:hover .tip { display:block; }
@@ -96,6 +96,12 @@
   #bag { left:50%; bottom:92px; transform:translateX(-50%); display:none; max-width:560px; }
   #bagitems { display:flex; flex-wrap:wrap; gap:6px; }
   .bagslot .bagtxt { color:#fff8e8; text-shadow:1px 1px 0 var(--ink); }
+  #mail { left:50%; top:50%; transform:translate(-50%,-55%); width:min(520px, 92vw); display:none; z-index:4; }
+  #mail .close { position:absolute; right:-6px; top:-14px; cursor:pointer; color:var(--ink2); }
+  #mail .row { display:flex; gap:6px; margin-top:8px; } #mail input { flex:1; }
+  #letters { max-height:240px; overflow:auto; }
+  .letter { background:#fff6e2; border:2px solid #d9b98a; border-radius:5px; padding:6px 8px; margin:4px 0; }
+  .letter .from { color:var(--ink2); }
   #banner { left:50%; top:24%; transform:translateX(-50%); display:none; text-align:center; width:min(520px, 90vw); z-index:5; }
   #banner .t { font-size:36px; line-height:40px; color:var(--warn); margin-bottom:6px; }
   #toast { left:50%; top:10px; transform:translateX(-50%); display:none; max-width:70vw; }
@@ -138,6 +144,12 @@
 <div class="panel" id="craft"><div class="in"><h3>Crafting</h3><span class="close" id="craftclose">close (Esc)</span><div id="recipes"></div></div></div>
 <div class="panel" id="chat"><div class="in"><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout · /command)" maxlength="200" autocomplete="off"></div></div>
 <div id="hotbar"></div>
+<div class="panel" id="mail"><div class="in">
+  <h3 id="mailtitle">Mailbox</h3><span class="close" id="mailclose">close (Esc)</span>
+  <div id="letters"></div>
+  <div class="row"><input id="letter" maxlength="200" placeholder="Write a letter…" autocomplete="off"><button id="postbtn">Post</button></div>
+  <div style="margin-top:6px"><button class="ghost" id="openbtn">Take the letters out</button></div>
+</div></div>
 <div class="panel" id="banner"><div class="in"><div class="t" id="bannert"></div><div id="bannerd"></div></div></div>
 <div class="panel" id="toast"><div class="in" id="toastt"></div></div>
 
@@ -152,11 +164,11 @@ const CH = {
   "%": "stone_wall", "+": "door", "^": "campfire", "&": "workbench", "?": "sign", "!": "flag", "x": "fire",
   "\"": "crop", "w": "ripe_crop", "t": "stump", "C": "chest", "F": "fruit_tree", ";": "sprout",
   "u": "wet_tilled", "n": "floor", "f": "flower", "B": "bed", "h": "chair", "L": "table", "p": "plant", "K": "clock",
-  "r": "rug", "g": "gate", "W": "wood_wall", "V": "boat",
+  "r": "rug", "g": "gate", "W": "wood_wall", "V": "boat", "X": "mailbox",
 };
 const CHAR = Object.fromEntries(Object.entries(CH).map(([c, n]) => [n, c]));
 const GROUND = new Set("~:.,o_'=un");
-const SOLID = new Set("TFbM*H#%^&CBhLpKW");
+const SOLID = new Set("TFbM*H#%^&CBhLpKWX");
 const WALKABLE_GROUND = new Set(":.,o_'un");
 const LABEL = {wood_wall: "wooden wall", wet_tilled: "watered soil", watering_can: "watering can", fruit_tree: "fruit tree", berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
   cooked_meat: "cooked meat", deep_water: "deep water"};
@@ -168,7 +180,7 @@ const label = (n) => LABEL[n] || String(n).replace("_", " ");
 const IMG = {};
 const ANIMAL_SHEETS = ["chicken_brown", "chicken_red", "chicken_blue", "chicken_green", "cow_light", "cow_pink", "cow_purple", "cow_green",
   "chick", "chick_brown", "chick_red", "chick_blue", "chick_green", "calf", "calf_light", "calf_pink", "calf_purple", "calf_green"];
-const ASSETS = [...ANIMAL_SHEETS, "boats", "deep_mask", "house_walls", "house_roof", "gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
+const ASSETS = [...ANIMAL_SHEETS, "mailbox", "boats", "deep_mask", "house_walls", "house_roof", "gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
   "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen"];
 let GEN = {};
 function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
@@ -273,7 +285,7 @@ function onRegion(d) {
 //  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
 const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
-const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWV".includes(c) && !GROUND.has(c);
+const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVX".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
   const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1]); };
@@ -386,6 +398,8 @@ function objectSprite(c, x, y, t) {
     case "%": return [IMG.gen, ...genCell("stone_wall"), 16, 16, 0, -4];
     case "Q": return [IMG.nature, [0, 16, 48][Math.floor(h * 3)], 0, 16, 16, 0, 0];
     case "#": return fenceSprite(x, y);
+    case "X": return mailAt.has(x + "," + y)                                            // a letter pops up when mail waits
+      ? [IMG.mailbox, 64, 64 + (Math.floor(t * 2) % 2 ? 0 : -1), 16, 32, 0, -16] : [IMG.mailbox, 0, 16, 16, 32, 0, -16];
     case "V": return [IMG.boats, (Math.floor(t * 1.5 + h * 9) % 2) * 48, 32, 48, 32, -16, -10];   // moored, rocking
     case "W": {
       const room = (dx, dy) => roomOf.has((x + dx) + "," + (y + dy));
@@ -671,10 +685,11 @@ setInterval(() => {
 setInterval(() => { sendSpec({op: "agents"}); sendSpec({op: "metrics"}); }, 1500);
 
 let pred = null;
-let groundItems = [];
+let groundItems = [], mailAt = new Set();
 function onTick(d) {
   clock = d;
   groundItems = d.items || [];
+  mailAt = new Set((d.mail || []).map(([x, y]) => x + "," + y));
   $("clock").textContent = d.time.replace("(night)", "· night");
   const seen = new Set(), now = performance.now();
   for (const e of d.entities) {
@@ -727,6 +742,8 @@ function onEvent(e) {
   if (e.type === "milk") { burst(e.x, e.y, "spark", 4, {dy: -.2, g: 5}); emote(e.name, "happy"); }
   if (e.type === "love") emote(e.by, "love");
   if (e.type === "lay") burst(e.x, e.y, "dust", 5, {up: 1, spread: 1.5, g: 3});
+  if (e.type === "mail" && e.to === me && e.from !== me) toast(`${e.from} left you a letter (mailbox at ${e.x}, ${e.y}).`);
+  if (e.type === "mail_opened" && e.owner === me && e.by !== me) toast(`${e.by} opened your mailbox and took ${e.n} letter${e.n > 1 ? "s" : ""}!`, true);
   if (e.type === "board" || e.type === "moor") { burst(e.x, e.y, "water", 8, {up: 1.5, spread: 2}); sfx("water", e.x, e.y); }
   if (e.type === "hatch") { burst(e.x, e.y, "spark", 8, {dy: -.3, g: 4}); sfx("pick", e.x, e.y); }
   if (e.type === "born") burst(e.x, e.y, "food", 8, {dy: -.5, g: 3});
@@ -1163,7 +1180,9 @@ async function act(tool, args, quiet) {
     const p = ents.get("agent" + myId);
     if (Object.keys(gained).length && p) floats.push({x: p.tx, y: p.ty, text: "+" + fmt(gained), color: "#fff1a8", t: performance.now() / 1000});
     if (tool === "place") sfx("place");
-    if (tool === "place") markGoal({workbench: "placedBench", seed: "planted", campfire: "placedFire"}[args.item] || "placed");
+    if (tool === "place") markGoal({workbench: "placedBench", seed: "planted", campfire: "placedFire", mailbox: "placedMail"}[args.item] || "placed");
+    if (tool === "water") markGoal("watered");
+    if (tool === "milk") markGoal("milked");
     if (r.result.text !== undefined) toast(`The sign reads: “${r.result.text}”`);
     if (r.result.chest) toast(`Chest: ${fmt(r.result.chest) || "empty"}`);
     if (r.result.rows_near_to_far) toast(`You look into the distance: ${r.result.agents.length ? "someone is out there." : "nobody."}`);
@@ -1183,8 +1202,8 @@ function walkable(x, y) {
 const FILLS = {dirt: {o: ",", u: ",", "~": ","}, path: {".": "_", ",": "_", "'": "_"}, plank: {"~": ":", ".": "n", ",": "n", "'": "n"}};
 const FILL_TEXT = {",": "Fill with dirt", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
 const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
-const PLACEABLE_BLOCK = {boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C"};
-const HARVEST = {V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
+const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C"};
+const HARVEST = {X: "Take down mailbox", V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
@@ -1243,6 +1262,7 @@ function intent(p, shift) {
   if (hasBlock) {
     if (c === "C" && !shift) return {text: "Open chest", near: 1, run: (d) => act("take", {dir: d})};
     if ((c === "?" || c === "!") && !shift) return {text: "Read", near: 1, run: (d) => act("read_sign", {dir: d})};
+    if (c === "X" && !shift) return {text: mailAt.has(p.x + "," + p.y) ? "Mailbox: there's mail!" : "Mailbox", near: 1, run: (d) => openMailPanel(d)};
     if (c === "B" && !shift) return {text: "Sleep (wake up here after dying)", near: 1, run: (d) => act("sleep", {dir: d})};
     if ((c === "&" || c === "^") && !shift) return {text: c === "&" ? "Workbench: craft tools here" : "Campfire: cook here", near: 2, run: () => openCraft()};
     return {text: HARVEST[c] || label(CH[c]), near: 1, run: (d) => act("dig", {dir: d})};
@@ -1296,7 +1316,7 @@ const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in co
   wheat: ["items", 16, 128], pumpkin: ["items", 16, 144], cauliflower: ["items", 16, 48], lettuce: ["items", 16, 112],
   eggplant: ["items", 16, 80], carrot: ["items", 16, 32],
   flower: ["nature", 16, 48], workbench: ["gen", "workbench"], campfire: ["gen", "campfire0"], chest: ["chest", 16, 16],
-  boat: ["boats", 8, 36, 32, 24], fence: ["fences", 0, 48], gate: ["gates", 0, 0], wood_wall: ["house_walls", 16, 32], stone_wall: ["gen", "stone_wall"], door: ["house_walls", 48, 32],
+  boat: ["boats", 8, 36, 32, 24], mailbox: ["mailbox", 0, 16, 16, 32], fence: ["fences", 0, 48], gate: ["gates", 0, 0], wood_wall: ["house_walls", 16, 32], stone_wall: ["gen", "stone_wall"], door: ["house_walls", 48, 32],
   sign: ["signs", 0, 0], flag: ["gen", "flag"], bed: ["furniture", 0, 16, 16, 32], chair: ["furniture", 64, 32],
   table: ["furniture", 48, 48], plant: ["furniture", 48, 0, 16, 32], clock: ["furniture", 96, 48], rug: ["furniture", 0, 80],
 };
@@ -1369,11 +1389,16 @@ function useSelected(name = selected) {
 const GOALS = [
   ["Chop trees for 4 wood", (inv, d) => (inv.wood || 0) >= 4 || d.workbench],
   ["Craft a workbench and place it", (inv, d) => d.placedBench],
-  ["Pick berries (eat with E when hungry)", (inv) => (inv.berries || 0) > 0 || (inv.seed || 0) > 0],
+  ["Pick berries (eat with E when hungry)", (inv) => (inv.berries || 0) > 0],
   ["Plant a seed: select it, click soil", (inv, d) => d.planted],
   ["Mine 3 stone from a boulder", (inv) => (inv.stone || 0) >= 3],
   ["Craft an axe at the workbench", (inv) => inv.axe],
   ["Build a campfire before night", (inv, d) => d.placedFire],
+  ["Craft a watering can, water a crop", (inv, d) => d.watered],
+  ["Collect an egg or milk a cow", (inv, d) => inv.egg || inv.milk || d.milked],
+  ["Build a house: walls and a door", (inv, d) => d.sheltered],
+  ["Build a boat and go sailing", (inv, d) => d.sailed],
+  ["Put up a mailbox", (inv, d) => d.placedMail],
 ];
 function markGoal(key) { if (!me) return; const d = goalState(); d[key] = true; localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d)); }
 function goalState() { return JSON.parse(localStorage.getItem("megastructure-goals-" + me) || "{}"); }
@@ -1381,6 +1406,8 @@ function drawGoals() {
   if (!meObs) return;
   const inv = meObs.self.inventory, d = goalState();
   if (inv.workbench) d.workbench = true;
+  if (meObs.self.sheltered) d.sheltered = true;
+  if (meObs.self.sailing) d.sailed = true;
   const grid = meObs.grid.join("");
   GOALS.forEach(([, f], i) => { if (f(inv, d)) d["g" + i] = true; });
   localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d));
@@ -1394,7 +1421,7 @@ function drawGoals() {
 const RECIPE_GROUPS = [
   ["Getting started", ["workbench", "campfire", "torch", "rope", "plank", "path"]],
   ["Tools & weapons", ["axe", "pickaxe", "watering_can", "spear", "sword"]],
-  ["Travel", ["boat"]],
+  ["Travel & mail", ["boat", "mailbox"]],
   ["Building", ["wood_wall", "door", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
   ["Home", ["bed", "chair", "table", "plant", "clock", "rug"]],
   ["Cooking & smelting", ["cooked_meat", "bread", "ingot"]],
@@ -1436,6 +1463,23 @@ function drawRecipes() {
     }
   }
 }
+let mailDir = null;
+function openMailPanel(d) {
+  mailDir = d; $("mail").style.display = "block"; $("letters").innerHTML = `<span style="color:var(--ink2)">Write a letter, or take the letters out.</span>`;
+  $("mailtitle").textContent = "Mailbox"; setTimeout(() => $("letter").focus(), 50);
+}
+async function postLetter() {
+  const text = $("letter").value.trim(); if (!text || !mailDir) return;
+  const r = await act("post", {dir: mailDir, text});
+  if (r && r.ok) { $("letter").value = ""; toast(r.result.owner ? `Letter posted for ${r.result.owner}.` : "Letter posted."); }
+}
+async function takeLetters() {
+  const r = await act("open_mail", {dir: mailDir}); if (!r || !r.ok) return;
+  const {owner, letters} = r.result;
+  $("mailtitle").textContent = owner ? `Mailbox of ${owner}` : "Mailbox";
+  $("letters").innerHTML = letters.length ? letters.map((l) => `<div class="letter"><div class="from">from ${esc(l.from)}</div>${esc(l.text)}</div>`).join("")
+    : `<span style="color:var(--ink2)">It's empty.</span>`;
+}
 let bannerTimer;
 function banner(title, text) {
   $("bannert").textContent = title; $("bannerd").textContent = text; $("banner").style.display = "block";
@@ -1451,7 +1495,7 @@ addEventListener("keydown", (e) => {
   if (document.activeElement === $("say") || !me) return;
   const k = e.key.toLowerCase();
   if (k === "shift") keys.add("shift");
-  if (k === "escape") { $("bag").style.display = "none"; selected = null; $("hotbar").dataset.sig = ""; if (meObs) drawHotbar(meObs.self.inventory); $("craft").style.display = "none"; }
+  if (k === "escape") { $("bag").style.display = "none"; $("mail").style.display = "none"; selected = null; $("hotbar").dataset.sig = ""; if (meObs) drawHotbar(meObs.self.inventory); $("craft").style.display = "none"; }
   if (KEYDIR[k]) { e.preventDefault(); if (!e.repeat) { keys.delete(k); keys.add(k); } syncWalk(); return; }
   if (k === " ") { e.preventDefault(); interactFacing(); return; }
   if (k === "enter" || k === "t") { e.preventDefault(); openChat(); }
@@ -1534,6 +1578,9 @@ $("say").addEventListener("keydown", (e) => {
   } else if (line.startsWith("!")) act("shout", {text: line.slice(1).trim()});
   else act("say", {text: line});
 });
+$("postbtn").onclick = postLetter; $("openbtn").onclick = takeLetters;
+$("mailclose").onclick = () => { $("mail").style.display = "none"; };
+$("letter").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") postLetter(); if (e.key === "Escape") $("mail").style.display = "none"; });
 $("craftclose").onclick = () => { $("craft").style.display = "none"; drawGoals(); };
 $("craftbtn").onclick = () => { const c = $("craft"); c.style.display = c.style.display === "block" ? "none" : "block"; drawGoals(); };
 $("helpbtn").onclick = () => { const h = $("help"); const on = h.style.display !== "block"; h.style.display = on ? "block" : "none"; localStorage.setItem("megastructure-help", on ? "on" : "off"); };

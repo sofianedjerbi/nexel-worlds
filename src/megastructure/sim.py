@@ -901,6 +901,8 @@ class Simulation:
         self.set_tile(x, y, block=block, by=a, cause="place")
         if block == "sprout":
             self.timers[(x, y)] = [self.tick + sec(150), "ripen"]
+        if block == "mailbox":
+            self.world.set_meta(x, y, {"owner": a.name, "letters": []})
         if block == "flag":
             text = str(args.get("text") or f"claimed by {a.name}")[:MAX_TEXT]
             self.world.set_meta(x, y, {"text": text, "by": a.name})
@@ -1108,6 +1110,35 @@ class Simulation:
         a.spawn = [x, y]
         return {"spawn": [x, y]}
 
+    def _mailbox(self, a, args):
+        x, y = self.target(a, args)
+        if self.world.block(x, y) != "mailbox":
+            raise ActionError("no_mailbox", f"{args.get('dir')} is {self.describe(x, y)}, not a mailbox")
+        return x, y, dict(self.world.meta.get((x, y)) or {"owner": None, "letters": []})
+
+    def _tool_post(self, a, args):
+        """Put a letter in an adjacent mailbox (for its owner; anyone can open it, though)."""
+        x, y, m = self._mailbox(a, args)
+        text = self._text(args)
+        if len(m.get("letters", [])) >= 20:
+            raise ActionError("full", "this mailbox is full")
+        yield from self.wait(a, 0.5)
+        m["letters"] = m.get("letters", []) + [{"from": a.name, "text": text, "tick": self.tick}]
+        self.world.set_meta(x, y, m)
+        self.emit("mail", x, y, radius=SHOUT_R, **{"from": a.name}, to=m.get("owner"))
+        return {"owner": m.get("owner")}
+
+    def _tool_open_mail(self, a, args):
+        """Take every letter out of an adjacent mailbox (yours or not: anarchy)."""
+        x, y, m = self._mailbox(a, args)
+        yield from self.wait(a, 0.4)
+        letters = m.get("letters", [])
+        m["letters"] = []
+        self.world.set_meta(x, y, m)
+        if letters:
+            self.emit("mail_opened", x, y, by=a.name, owner=m.get("owner"), n=len(letters))
+        return {"owner": m.get("owner"), "letters": letters}
+
     def _tool_rest(self, a, args):
         bonus = self.near_block(a, "campfire") or self.sheltered(a.x, a.y)
         for _ in range(sec(2) - 1):
@@ -1281,6 +1312,8 @@ TOOL_SPECS = {
     "milk": {"args": {"target": "cow id"}, "desc": "milk an adjacent cow (every 2 minutes)"},
     "feed": {"args": {"target": "animal id", "item": "food"}, "desc": "feed an adjacent animal; fed chickens lay eggs"},
     "sleep": {"args": DIR_ARG, "desc": "sleep in an adjacent bed: restores energy, and you respawn there"},
+    "post": {"args": {**DIR_ARG, "text": "str"}, "desc": "post a letter in an adjacent mailbox"},
+    "open_mail": {"args": DIR_ARG, "desc": "take the letters out of an adjacent mailbox (anyone can)"},
     "store": {"args": {**DIR_ARG, "item": "str", "n": "int"}, "desc": "put items into an adjacent chest"},
     "take": {"args": {**DIR_ARG, "item": "str (omit to list)", "n": "int"}, "desc": "take items from an adjacent chest"},
 }

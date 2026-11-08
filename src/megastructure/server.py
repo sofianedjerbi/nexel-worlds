@@ -147,6 +147,10 @@ class GameServer:
                  for c in self.sim.creatures.values() if x <= c.x < x + w and y <= c.y < y + h]
         return ents
 
+    def mail_in(self, x, y, w, h) -> list:
+        return [[mx, my, len(m["letters"])] for (mx, my), m in self.sim.world.meta.items()
+                if m.get("letters") and x <= mx < x + w and y <= my < y + h]
+
     def items_in(self, x, y, w, h) -> list:
         return [[ix, iy, pile] for (ix, iy), pile in self.sim.items.items() if pile and x <= ix < x + w and y <= iy < y + h]
 
@@ -164,7 +168,8 @@ class GameServer:
                 "phase": round(self.sim.time_of_day(), 4)}
         for q, rect in list(self.spectators.items()):
             if rect is not None and q.qsize() < 2000:
-                q.put_nowait(json.dumps({**head, "entities": self.entities_in(*rect), "items": self.items_in(*rect)},
+                q.put_nowait(json.dumps({**head, "entities": self.entities_in(*rect), "items": self.items_in(*rect),
+                                         "mail": self.mail_in(*rect)},
                                         separators=(",", ":")))
 
     def region(self, x, y, w, h) -> dict:
