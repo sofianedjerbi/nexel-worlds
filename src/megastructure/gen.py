@@ -1,18 +1,14 @@
-"""Deterministic generation of the endless structure from a seed.
+"""Deterministic generation of an endless archipelago from a seed (pure Python value noise).
 
-The world is laid out on 8x8 cells. Each cell is a hall, a corridor junction, solid mass,
-a void shaft (crossed by grating bridges) or a coolant cistern. Cell borders are walls with
-doorways. Everything is a pure function of (seed, x, y), so chunks can be generated in any
-order and regenerated identically.
+Everything is a pure function of (seed, x, y), so chunks can be generated in any order and
+regenerated identically.
 """
 
 import math
-from functools import lru_cache
 
 from .tiles import B, G
 
 CHUNK = 32
-CELL = 8
 
 
 def _hash(seed: int, x: int, y: int, salt: int) -> float:
@@ -47,105 +43,36 @@ def fbm(seed: int, x: float, y: float, scale: float, salt: int, octaves: int = 3
     return total / norm
 
 
-@lru_cache(maxsize=65536)
-def cell_kind(seed: int, cx: int, cy: int) -> str:
-    if abs(cx) <= 2 and abs(cy) <= 2:
-        return "hall"  # friendly spawn district
-    density = fbm(seed, cx, cy, 6, 11)
-    shaft = fbm(seed, cx, cy, 9, 12)
-    r = _hash(seed, cx, cy, 13)
-    if shaft < 0.28:
-        return "void"
-    if density > 0.68:
-        return "mass"
-    if r < 0.05:
-        return "cistern"
-    if density < 0.42 or r < 0.35:
-        return "hall"
-    return "corridor"
-
-
-def _edge_gap(seed, cx, cy, side) -> tuple[float, int]:
-    """(openness roll, doorway offset) of the west ('W') or north ('N') edge of a cell."""
-    salt = 21 if side == "W" else 22
-    return _hash(seed, cx, cy, salt), 2 + int(_hash(seed, cx, cy, salt + 10) * 3)
-
-
-OPEN = ("hall", "corridor", "cistern")
-
-
-def _border(seed, kind, other, cx, cy, side, along) -> bool:
-    """True if this border tile is a wall."""
-    if kind == "void" and other == "void":
-        return False
-    if kind in OPEN and other in OPEN:
-        roll, gap = _edge_gap(seed, cx, cy, side)
-        if roll < 0.3:
-            return False  # fully open edge
-        return not (gap <= along <= gap + 1)
-    if "mass" in (kind, other):
-        return True
-    # void next to open: low railing of structure with a bridge gap
-    roll, gap = _edge_gap(seed, cx, cy, side)
-    return not (gap <= along <= gap + 1 and roll < 0.7)
-
-
 def gen_tile(seed: int, x: int, y: int) -> tuple[int, int]:
-    cx, cy = x // CELL, y // CELL
-    lx, ly = x - cx * CELL, y - cy * CELL
-    kind = cell_kind(seed, cx, cy)
+    # islands: elevation, lifted near the origin so everyone starts on land
+    d = math.hypot(x, y)
+    elev = fbm(seed, x, y, 56, 1) + max(0.0, 0.22 - d / 300)
+    if elev < 0.36:
+        return G["deep_water"], B["none"]
+    if elev < 0.44:
+        return G["water"], B["none"]
+    moist = fbm(seed, x, y, 40, 2)
+    rocky = fbm(seed, x, y, 22, 3)
     r = _hash(seed, x, y, 7)
-    damp = fbm(seed, x, y, 20, 2)
-
-    # walls on the west/north border of each cell (shared with the neighbour)
-    if lx == 0 or ly == 0:
-        if lx == 0 and ly == 0:
-            return G["deck"], B["structure"]  # pillars at every corner
-        if lx == 0:
-            other, side, along = cell_kind(seed, cx - 1, cy), "W", ly
-        else:
-            other, side, along = cell_kind(seed, cx, cy - 1), "N", lx
-        if _border(seed, kind, other, cx, cy, side, along):
-            if r < 0.12:
-                return G["deck"], B["conduit"]
-            return G["deck"], B["structure"]
-        if kind == "void" or other == "void":
-            return G["grating"], B["none"]
-        return (G["moss"] if damp > 0.6 else G["deck"]), B["none"]
-
-    if kind == "mass":
-        if r < 0.07:
-            return G["deck"], B["node"]
-        if r < 0.10:
-            return G["deck"], B["conduit"]
-        return G["deck"], B["structure"]
-    if kind == "void":
-        # bridges of grating cross the shaft through its middle
-        bridge_x = _hash(seed, cx, cy, 31) < 0.5
-        if (bridge_x and ly in (3, 4)) or (not bridge_x and lx in (3, 4)):
-            return G["grating"], B["none"]
-        return G["void"], B["none"]
-    if kind == "cistern":
-        if 2 <= lx <= 6 and 2 <= ly <= 6:
-            return G["coolant"], B["none"]
-        return G["grating"], B["none"]
-
-    ground = G["moss"] if damp > 0.55 else (G["grating"] if r > 0.93 else G["deck"])
-    if kind == "corridor":
-        # a cross-shaped junction; the rest is dense structure with conduits
-        if not (3 <= lx <= 5 or 3 <= ly <= 5):
-            return G["deck"], (B["conduit"] if r < 0.15 else B["structure"])
-    if lx == 4 and ly == 4 and kind == "hall" and _hash(seed, cx, cy, 41) < 0.4:
-        return G["deck"], B["structure"]  # central pillar
-    salvage = fbm(seed, x, y, 30, 3)
-    heap_p = max(0.0, salvage - 0.45) * 0.8
-    if r < heap_p:
-        return ground, B["scrap_heap"]
-    lichen_p = 0.12 if damp > 0.55 else 0.02
-    if r < heap_p + lichen_p:
-        return ground, B["lichen"]
-    if r < heap_p + lichen_p + 0.03 and (lx in (1, 7) or ly in (1, 7)):
-        return ground, B["terminal"]
+    beach = elev < 0.47
+    ground = G["dirt"] if beach or moist < 0.36 else G["grass"]
+    if beach:
+        return ground, (B["rock"] if r < 0.015 else B["none"])
+    if rocky > 0.66:  # rocky outcrops, with ore veins inside
+        if rocky > 0.72 and r < 0.12:
+            return G["dirt"], B["ore"]
+        return G["dirt"], (B["rock"] if r < 0.8 else B["none"])
+    forest = max(0.0, moist - 0.5) * 1.6
+    if r < forest:
+        return ground, B["tree"]
+    if r < forest + 0.025:
+        return ground, B["berry_bush"]
+    if r < forest + 0.035 + forest * 0.08:
+        return ground, B["thicket"]
+    if r < forest + 0.045 + forest * 0.1:
+        return ground, B["mushroom"] if moist > 0.5 else B["none"]
+    if r < forest + 0.05:
+        return ground, B["rock"]
     return ground, B["none"]
 
 

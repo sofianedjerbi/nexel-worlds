@@ -23,8 +23,9 @@ from .tiles import GROUNDS, RECIPES
 
 log = logging.getLogger("megastructure")
 PROTOCOL = 1
-LIMITS = {"act": (120, 60.0), "observe": (120, 60.0), "say": (6, 60.0), "shout": (1, 60.0)}
-FLUSH_EVERY = 50  # ticks (10 s)
+# Actions are already paced by game time (one in flight per agent), so these only stop floods.
+LIMITS = {"act": (900, 60.0), "observe": (900, 60.0), "say": (20, 60.0), "shout": (3, 60.0)}
+FLUSH_EVERY = 10 * TICK_HZ  # ticks (10 s)
 WEB = Path(__file__).parent / "web"
 
 

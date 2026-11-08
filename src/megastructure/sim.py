@@ -16,8 +16,16 @@ from .pathfind import astar
 from .tiles import BLOCKS, DIRS, GROUNDS, PLACEABLE, RECIPES
 from .world import Store, World
 
-TICK_HZ = 5
-DAY_TICKS = 3000
+TICK_HZ = 10
+
+
+def sec(seconds: float) -> int:
+    """Durations are specified in seconds and converted here, so the tick rate never changes game pace."""
+    return max(1, round(seconds * TICK_HZ))
+
+
+DAY_TICKS = sec(600)   # a 10-minute day
+STEP = sec(0.2)        # walking speed: 5 tiles per second
 VIEW_R = 10
 SAY_R = 12
 SHOUT_R = 48
@@ -73,23 +81,20 @@ class Agent:
 @dataclass
 class Creature:
     id: int
-    kind: str  # skitter | sentinel
+    kind: str  # chicken | cow | gloom
     x: int
     y: int
     hp: int
     cooldown: int = 0
-    heading: int = 0
-    built: int = 0
 
     def to_json(self):
-        return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "hp": self.hp,
-                "heading": self.heading, "built": self.built}
+        return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "hp": self.hp}
 
 
 CREATURES = {
-    "skitter": {"hp": 20, "drops": {"meat": 2, "hide": 1}, "char": "s"},
-    "sentinel": {"hp": 30, "drops": {"circuit": 1, "alloy": 1}, "char": "S", "damage": 7},
-    "accretor": {"hp": 200, "drops": {"core": 2, "cable": 3, "circuit": 2}, "char": "A"},
+    "chicken": {"hp": 10, "drops": {"meat": 1, "egg": 1}, "char": "c"},
+    "cow": {"hp": 30, "drops": {"meat": 3, "milk": 1}, "char": "k"},
+    "gloom": {"hp": 30, "drops": {"ore": 1}, "char": "G", "damage": 7},
 }
 
 
@@ -102,6 +107,7 @@ class Action:
         self.result = None
         self.tiles: list = []
         self.snapshot = (dict(agent.inventory), agent.hp, agent.hunger, agent.energy, agent.x, agent.y)
+        self.expected = 0  # ticks this action is expected to take (set by Simulation.wait)
         self.seen_events: list = []
 
     def finish(self, result: dict, sim: "Simulation"):
@@ -171,13 +177,13 @@ class Simulation:
         return (self.tick % DAY_TICKS) / DAY_TICKS
 
     def is_night(self) -> bool:
-        """'Lights-out': the last quarter of every cycle, when sentinels patrol."""
+        """'Lights-out': the last quarter of every cycle, when glooms patrol."""
         return self.time_of_day() >= 0.75
 
     def clock(self) -> str:
         day = self.tick // DAY_TICKS + 1
         minutes = int(self.time_of_day() * 24 * 60)
-        return f"day {day}, {minutes // 60:02d}:{minutes % 60:02d}" + (" (lights-out)" if self.is_night() else "")
+        return f"day {day}, {minutes // 60:02d}:{minutes % 60:02d}" + (" (night)" if self.is_night() else "")
 
     def emit(self, type_: str, x: int, y: int, radius: int = VIEW_R, **data):
         ev = {"tick": self.tick, "type": type_, "x": x, "y": y, **data}
@@ -200,11 +206,11 @@ class Simulation:
         self.world.set(x, y, ground=ground, block=block)
         self.stats["tiles_changed"] += 1
         g, b = self.world.ground(x, y), self.world.block(x, y)
-        if g == "breach":
+        if g == "tilled":
             self.pits.add((x, y))
-        if g in ("coolant", "void"):
+        if g in ("water", "deep_water"):
             for dx, dy in DIRS.values():
-                if self.world.ground(x + dx, y + dy) == "breach":
+                if self.world.ground(x + dx, y + dy) == "tilled":
                     self.pits.add((x + dx, y + dy))
         info = {"x": x, "y": y, "ground": g, "block": b}
         if by is not None and by.action is not None:
@@ -243,10 +249,12 @@ class Simulation:
         walls = sum(1 for dx, dy in DIRS.values() if BLOCKS[self.world.get(x + dx, y + dy)[1]].wall)
         return walls >= 3
 
-    def wait(self, a: Agent, n: int):
-        """Consume n ticks. The tick the action starts on counts, so a 1-tick action completes immediately."""
-        n = n * 2 if a.energy <= 0 else n
-        for _ in range(max(1, n) - 1):
+    def wait(self, a: Agent, seconds: float):
+        """Take `seconds` of game time (doubled when exhausted). The starting tick counts."""
+        n = sec(seconds * (2 if a.energy <= 0 else 1))
+        if a.action is not None:
+            a.action.expected = max(a.action.expected, a.action.ticks - 1 + n)
+        for _ in range(n - 1):
             yield
 
     def spend(self, a: Agent, energy: int):
@@ -288,7 +296,7 @@ class Simulation:
         for radius in (24, 48, 96, 192):
             for _ in range(200):
                 x, y = r.randint(-radius, radius), r.randint(-radius, radius)
-                if self.world.passable(x, y) and GROUNDS[self.world.get(x, y)[0]].name in ("deck", "moss", "grating"):
+                if self.world.passable(x, y) and GROUNDS[self.world.get(x, y)[0]].name in ("dirt", "grass", "bridge"):
                     return x, y
         return 0, 0
 
@@ -343,16 +351,16 @@ class Simulation:
         for a in self.agents.values():
             if not a.online:
                 continue
-            if t % 50 == 0 and a.hunger > 0:
+            if t % sec(10) == 0 and a.hunger > 0:
                 a.hunger -= 1
-            if t % 25 == 0:
+            if t % sec(5) == 0:
                 if a.hunger == 0:
                     self.damage(a, 1, "starvation")
                 elif a.hunger > 40 and a.hp < 100:
                     a.hp += 1
-            if t % 40 == 0 and a.action is None and a.energy < 100:
+            if t % sec(8) == 0 and a.action is None and a.energy < 100:
                 a.energy += 1
-            if (a.x, a.y) in self.fires and t % 5 == 0:
+            if (a.x, a.y) in self.fires and t % sec(1) == 0:
                 self.damage(a, 3, "fire")
 
     def damage(self, target, n: int, cause: str, by: Agent | None = None):
@@ -391,21 +399,17 @@ class Simulation:
     def step_creatures(self):
         online = [a for a in self.agents.values() if a.online]
         # spawning (deterministic via tick rng)
-        if self.tick % 50 == 0 and online:
-            skitters = sum(1 for c in self.creatures.values() if c.kind == "skitter")
-            if skitters < min(40, 3 * len(online)):
+        if self.tick % sec(10) == 0 and online:
+            animals = sum(1 for c in self.creatures.values() if c.kind in ("chicken", "cow"))
+            if animals < min(40, 3 * len(online)):
                 a = online[self.rng.randrange(len(online))]
-                self._spawn_creature("skitter", a, 12, 30)
-            accretors = sum(1 for c in self.creatures.values() if c.kind == "accretor")
-            if accretors < max(1, len(online) // 2):
+                self._spawn_creature("chicken" if self.rng.random() < 0.6 else "cow", a, 12, 30)
+            glooms = sum(1 for c in self.creatures.values() if c.kind == "gloom")
+            if self.is_night() and glooms < len(online):
                 a = online[self.rng.randrange(len(online))]
-                self._spawn_creature("accretor", a, 16, 30)
-            sentinels = sum(1 for c in self.creatures.values() if c.kind == "sentinel")
-            if self.is_night() and sentinels < len(online):
-                a = online[self.rng.randrange(len(online))]
-                self._spawn_creature("sentinel", a, 14, 24)
-        if not self.is_night() and self.tick % 25 == 0:
-            for c in [c for c in self.creatures.values() if c.kind == "sentinel"]:
+                self._spawn_creature("gloom", a, 14, 24)
+        if not self.is_night() and self.tick % sec(5) == 0:
+            for c in [c for c in self.creatures.values() if c.kind == "gloom"]:
                 if self.rng.random() < 0.2:
                     del self.creatures[c.id]
         for cid in sorted(self.creatures):
@@ -415,24 +419,22 @@ class Simulation:
             if c.cooldown > 0:
                 c.cooldown -= 1
                 continue
-            if c.kind == "accretor":
-                self._accrete(c)
-            elif c.kind == "skitter":
-                c.cooldown = 4 + self.rng.randrange(6)
+            if c.kind in ("chicken", "cow"):
+                c.cooldown = sec(0.8) + self.rng.randrange(sec(1.2))
                 d = list(DIRS.values())[self.rng.randrange(4)]
                 self._creature_move(c, c.x + d[0], c.y + d[1])
             else:
                 prey = min((a for a in online if abs(a.x - c.x) + abs(a.y - c.y) <= 10),
                            key=lambda a: (abs(a.x - c.x) + abs(a.y - c.y), a.id), default=None)
-                c.cooldown = 1
+                c.cooldown = sec(0.4) - 1
                 if prey is None:
                     d = list(DIRS.values())[self.rng.randrange(4)]
                     self._creature_move(c, c.x + d[0], c.y + d[1])
                 elif max(abs(prey.x - c.x), abs(prey.y - c.y)) <= 1:
-                    c.cooldown = 5
+                    c.cooldown = sec(1.2)
                     self.emit("attack", c.x, c.y, attacker=f"sentinel#{c.id}", target=prey.name,
-                              damage=CREATURES["sentinel"]["damage"])
-                    self.damage(prey, CREATURES["sentinel"]["damage"], "sentinel")
+                              damage=CREATURES["gloom"]["damage"])
+                    self.damage(prey, CREATURES["gloom"]["damage"], "gloom")
                 else:
                     sx = (prey.x > c.x) - (prey.x < c.x)
                     sy = (prey.y > c.y) - (prey.y < c.y)
@@ -441,34 +443,6 @@ class Simulation:
                             self._creature_move(c, c.x, c.y + sy)
                     elif not self._creature_move(c, c.x, c.y + sy):
                         self._creature_move(c, c.x + sx, c.y)
-
-    HEADINGS = [(0, -1), (1, 0), (0, 1), (-1, 0)]
-
-    def _accrete(self, c: Creature):
-        """Builder automaton: crawls along, extending walls on its left and patching the floor.
-
-        It never overwrites anything: it only builds into empty tiles nobody stands on.
-        """
-        c.cooldown = 6
-        hx, hy = self.HEADINGS[c.heading]
-        lx, ly = c.x + hy, c.y - hx  # tile on the left
-        if self.world.ground(c.x, c.y) == "breach":
-            self.set_tile(c.x, c.y, ground="deck", cause="accretor")
-        g, b = self.world.ground(lx, ly), self.world.block(lx, ly)
-        if (b == "none" and g in ("deck", "moss", "grating", "slag", "plating")
-                and self.entity_at(lx, ly) is None and (lx, ly) not in self.items
-                and self.rng.random() < 0.6):
-            c.built += 1
-            kind = "conduit" if c.built % 7 == 0 else ("scrap_heap" if c.built % 19 == 0 else "structure")
-            self.set_tile(lx, ly, block=kind, cause="accretor")
-            # keep the left side free of new walls for a few steps, leaving doorways
-            if c.built % 5 == 0:
-                c.heading = (c.heading + 1) % 4
-        if self._creature_move(c, c.x + hx, c.y + hy):
-            if self.rng.random() < 0.05:
-                c.heading = (c.heading + (1 if self.rng.random() < 0.5 else 3)) % 4
-        else:
-            c.heading = (c.heading + 1) % 4
 
     def _creature_move(self, c, x, y) -> bool:
         if self.world.passable(x, y) and self.entity_at(x, y) is None:
@@ -496,7 +470,7 @@ class Simulation:
         if (x, y) in self.fires or not ground.walkable:
             return False
         if block.flammable or (block.name == "none" and ground.flammable):
-            self.fires[(x, y)] = 25 + self.rng.randrange(50)
+            self.fires[(x, y)] = sec(5) + self.rng.randrange(sec(10))
             self.set_tile(x, y, block="fire", by=by, cause="fire")
             return True
         return False
@@ -507,45 +481,41 @@ class Simulation:
                 x, y = pos
                 self.fires[pos] -= 1
                 for dx, dy in DIRS.values():
-                    if self.rng.random() < 0.02:
+                    if self.rng.random() < 0.1 / TICK_HZ:
                         self.ignite(x + dx, y + dy)
                 if self.fires[pos] <= 0:
                     del self.fires[pos]
-                    self.set_tile(x, y, ground="slag", block="none", cause="burnt")
-        if self.pits and self.tick % 5 == 0:
+                    self.set_tile(x, y, ground="ash", block="none", cause="burnt")
+        if self.pits and self.tick % sec(1) == 0:
             for pos in sorted(self.pits):
                 x, y = pos
-                if self.world.ground(x, y) != "breach":
+                if self.world.ground(x, y) != "tilled":
                     self.pits.discard(pos)
                     continue
                 near = {self.world.ground(x + dx, y + dy) for dx, dy in DIRS.values()}
-                spill = "coolant" if "coolant" in near else ("void" if "void" in near else None)
-                if spill is None:
+                if not near & {"water", "deep_water"}:
                     self.pits.discard(pos)
-                elif self.rng.random() < 0.25:
-                    # coolant floods a breach; a breach at a shaft edge collapses into the void
+                elif self.rng.random() < 0.25 and self.entity_at(x, y) is None:
+                    # a hole dug next to water floods
                     self.pits.discard(pos)
-                    self.set_tile(x, y, ground=spill, cause="flood" if spill == "coolant" else "collapse")
-                    victim = self.entity_at(x, y)
-                    if spill == "void" and victim is not None:
-                        self.damage(victim, 999, "fell into the void")
-        if self.timers and self.tick % 10 == 0:
+                    self.set_tile(x, y, ground="water", cause="flood")
+        if self.timers and self.tick % sec(2) == 0:
             for pos in sorted(self.timers):
                 due, kind = self.timers[pos]
                 if self.tick < due:
                     continue
                 del self.timers[pos]
-                if kind == "ripen" and self.world.block(*pos) == "spore_bed":
-                    self.set_tile(*pos, block="ripe_bed", cause="grew")
-                elif kind == "regrow" and self.world.block(*pos) == "debris":
-                    self.set_tile(*pos, block="scrap_heap", cause="grew")
-        if self.tick % 100 == 0:
+                if kind == "ripen" and self.world.block(*pos) == "crop":
+                    self.set_tile(*pos, block="ripe_crop", cause="grew")
+                elif kind == "regrow" and self.world.block(*pos) == "stump":
+                    self.set_tile(*pos, block="tree", cause="grew")
+        if self.tick % sec(20) == 0:
             for key in sorted(self.world.chunks):
                 cx, cy = key
                 x = cx * 32 + self.rng.randrange(32)
                 y = cy * 32 + self.rng.randrange(32)
-                if self.rng.random() < 0.1 and self.world.ground(x, y) == "moss" and self.world.block(x, y) == "none":
-                    self.set_tile(x, y, block="lichen", cause="grew")
+                if self.rng.random() < 0.1 and self.world.ground(x, y) == "grass" and self.world.block(x, y) == "none":
+                    self.set_tile(x, y, block="berry_bush", cause="grew")
 
     # ------------------------------------------------------- persistence
     def flush(self):
@@ -646,7 +616,7 @@ class Simulation:
     # ============================================================== tools
     def _tool_step(self, a, args):
         x, y = self.target(a, args)
-        yield from self.wait(a, 1)
+        yield from self.wait(a, 0.2)
         if not self.world.passable(x, y):
             raise ActionError("blocked", f"{args['dir']} is {self.describe(x, y)}")
         a.x, a.y = x, y
@@ -665,7 +635,7 @@ class Simulation:
                               f"no walkable path to ({gx},{gy}) from ({a.x},{a.y})")
         steps = 0
         while path:
-            yield from self.wait(a, 1)
+            yield from self.wait(a, 0.2)
             nx, ny = path[0]
             if not self.world.passable(nx, ny):
                 replans += 1
@@ -687,36 +657,36 @@ class Simulation:
         g, b = self.world.get(x, y)
         block, ground = BLOCKS[b], GROUNDS[g]
         if block.name == "none":
-            if not ground.diggable or ground.name == "breach":
+            if not ground.diggable or ground.name == "tilled":
                 raise ActionError("cannot_dig", f"{ground.name} cannot be dug")
-            yield from self.wait(a, 6)
+            yield from self.wait(a, 0.6)
             if self.world.block(x, y) != "none":
                 raise ActionError("changed", "something was placed there")
             self.spend(a, 1)
-            item = "rubble"
+            item = "dirt"
             a.add(item)
-            self.set_tile(x, y, ground="breach", by=a, cause="dig")
+            self.set_tile(x, y, ground="tilled", by=a, cause="dig")
             return {"got": {item: 1}}
         if block.hardness <= 0:
             raise ActionError("cannot_dig", f"{block.name} cannot be dug")
         if block.needs_tool and not a.count(block.needs_tool):
             raise ActionError("need_tool", f"digging {block.name} needs a {block.needs_tool}")
-        ticks = block.hardness
+        seconds = block.hardness / 10
         if block.tool and a.count(block.tool):
-            ticks = max(1, ticks // 2)
-        yield from self.wait(a, ticks)
+            seconds /= 2
+        yield from self.wait(a, seconds)
         if self.world.get(x, y)[1] != b:
             raise ActionError("changed", "the block changed while digging")
         self.spend(a, 1)
         drops = dict(block.drops)
-        if block.name == "locker":
+        if block.name == "chest":
             drops = self._merge(drops, self.world.meta.get((x, y), {}).get("items", {}))
         for k, n in drops.items():
             a.add(k, n)
-        after = "debris" if block.name == "scrap_heap" else "none"
+        after = "stump" if block.name == "tree" else "none"
         self.set_tile(x, y, block=after, by=a, cause="dig")
-        if block.name == "scrap_heap":
-            self.timers[(x, y)] = [self.tick + 6000, "regrow"]
+        if block.name == "tree":
+            self.timers[(x, y)] = [self.tick + sec(1200), "regrow"]
         a.bump("dug")
         return {"got": drops}
 
@@ -739,7 +709,7 @@ class Simulation:
                 raise ActionError("occupied", f"{args['dir']} has {b}")
             if g not in covers:
                 raise ActionError("bad_target", f"{item} can cover {', '.join(sorted(covers))}, not {g}")
-            yield from self.wait(a, 2)
+            yield from self.wait(a, 0.3)
             if self.world.ground(x, y) != g or self.world.block(x, y) != "none":
                 raise ActionError("changed", "the tile changed")
             a.add(item, -1)
@@ -750,33 +720,33 @@ class Simulation:
             raise ActionError("not_placeable", f"{item} cannot be placed. Placeable: "
                               f"{', '.join(sorted(PLACEABLE) + sorted(T.FILLERS))}")
         block = PLACEABLE[item]
-        if b == "debris":
+        if b == "stump":
             b = "none"  # debris is junk: building over it clears it
         if b != "none":
             raise ActionError("occupied", f"{args['dir']} has {b}")
         if not GROUNDS[T.G[g]].walkable:
             raise ActionError("bad_target", f"cannot place on {g}")
-        if item == "spore" and g not in ("moss", "deck"):
-            raise ActionError("bad_target", "spores only take on moss or deck")
+        if item == "seed" and g not in T.SEED_GROUNDS:
+            raise ActionError("bad_target", "seeds only grow in tilled soil (dig the ground first)")
         if BLOCKS[T.B[block]].solid and self.entity_at(x, y):
             raise ActionError("occupied", "someone is standing there")
-        yield from self.wait(a, 2)
-        if self.world.block(x, y) not in ("none", "debris"):
+        yield from self.wait(a, 0.3)
+        if self.world.block(x, y) not in ("none", "stump"):
             raise ActionError("changed", "tile was taken")
         if BLOCKS[T.B[block]].solid and self.entity_at(x, y):
             raise ActionError("occupied", "someone stepped there")
         a.add(item, -1)
         self.set_tile(x, y, block=block, by=a, cause="place")
-        if block == "spore_bed":
-            self.timers[(x, y)] = [self.tick + 1500, "ripen"]
-        if block == "beacon":
+        if block == "crop":
+            self.timers[(x, y)] = [self.tick + sec(300), "ripen"]
+        if block == "flag":
             text = str(args.get("text") or f"claimed by {a.name}")[:MAX_TEXT]
             self.world.set_meta(x, y, {"text": text, "by": a.name})
         a.bump("placed")
         return {}
 
     def _tool_pick_up(self, a, args):
-        yield from self.wait(a, 1)
+        yield from self.wait(a, 0.1)
         pile = self.items.get((a.x, a.y))
         if not pile:
             raise ActionError("nothing_here", "no items on your tile")
@@ -799,7 +769,7 @@ class Simulation:
         item, n = str(args.get("item", "")), self._n(args)
         if a.count(item) < n:
             raise ActionError("missing_item", f"you have {a.count(item)} {item}")
-        yield from self.wait(a, 1)
+        yield from self.wait(a, 0.1)
         n = min(n, a.count(item))
         a.add(item, -n)
         self.add_items(a.x, a.y, {item: n})
@@ -824,7 +794,7 @@ class Simulation:
         missing = {k: v * n - a.count(k) for k, v in r.inputs.items() if a.count(k) < v * n}
         if missing:
             raise ActionError("missing_items", f"need {missing} more for {n}x {name}")
-        yield from self.wait(a, r.ticks * n)
+        yield from self.wait(a, r.ticks / 10 * n)
         if r.station and not self.near_block(a, r.station):
             raise ActionError("need_station", f"the {r.station} is gone")
         if any(a.count(k) < v * n for k, v in r.inputs.items()):
@@ -855,7 +825,7 @@ class Simulation:
             raise ActionError("bad_target", "you cannot attack yourself")
         if max(abs(t.x - a.x), abs(t.y - a.y)) > 1:
             raise ActionError("out_of_range", "target must be adjacent (including diagonals)")
-        yield from self.wait(a, 2)
+        yield from self.wait(a, 0.4)
         if max(abs(t.x - a.x), abs(t.y - a.y)) > 1 or t.hp <= 0:
             raise ActionError("missed", "target moved away")
         weapon = self.best_weapon(a)
@@ -880,7 +850,7 @@ class Simulation:
             raise ActionError("missing_item", f"you have {a.count(item)} {item}")
         if max(abs(t.x - a.x), abs(t.y - a.y)) > 2:
             raise ActionError("out_of_range", "target must be within 2 tiles")
-        yield from self.wait(a, 1)
+        yield from self.wait(a, 0.2)
         if a.count(item) < n or max(abs(t.x - a.x), abs(t.y - a.y)) > 2:
             raise ActionError("failed", "conditions changed")
         a.add(item, -n)
@@ -896,7 +866,7 @@ class Simulation:
             raise ActionError("not_food", f"food: {', '.join(T.FOOD)}")
         if not a.count(item):
             raise ActionError("missing_item", f"you have no {item}")
-        yield from self.wait(a, 2)
+        yield from self.wait(a, 0.3)
         if not a.count(item):
             raise ActionError("missing_item", "it's gone")
         a.add(item, -1)
@@ -904,8 +874,8 @@ class Simulation:
         return {}
 
     def _tool_rest(self, a, args):
-        bonus = self.near_block(a, "heater") or self.sheltered(a.x, a.y)
-        for _ in range(9):
+        bonus = self.near_block(a, "campfire") or self.sheltered(a.x, a.y)
+        for _ in range(sec(2) - 1):
             yield
         gain = 25 if bonus else 15
         a.energy = min(100, a.energy + gain)
@@ -919,7 +889,7 @@ class Simulation:
 
     def _tool_say(self, a, args):
         text = self._text(args)
-        yield from self.wait(a, 1)
+        yield from self.wait(a, 0.1)
         self.stats["chat"] += 1
         a.bump("said")
         self.emit("say", a.x, a.y, radius=SAY_R, **{"from": a.name}, text=text)
@@ -929,7 +899,7 @@ class Simulation:
         text = self._text(args)
         if a.energy < 10:
             raise ActionError("too_tired", "shouting needs 10 energy")
-        yield from self.wait(a, 1)
+        yield from self.wait(a, 0.1)
         self.spend(a, 10)
         self.stats["chat"] += 1
         a.bump("said")
@@ -939,10 +909,10 @@ class Simulation:
     def _tool_write_sign(self, a, args):
         x, y = self.target(a, args)
         text = self._text(args)
-        if self.world.block(x, y) not in ("sign", "beacon"):
+        if self.world.block(x, y) not in ("sign", "flag"):
             raise ActionError("no_sign", f"{args['dir']} is {self.describe(x, y)}, not a sign")
-        yield from self.wait(a, 3)
-        if self.world.block(x, y) not in ("sign", "beacon"):
+        yield from self.wait(a, 0.5)
+        if self.world.block(x, y) not in ("sign", "flag"):
             raise ActionError("no_sign", "the sign is gone")
         self.world.set_meta(x, y, {"text": text, "by": a.name})
         self.emit("sign", x, y, by=a.name, text=text)
@@ -950,9 +920,9 @@ class Simulation:
 
     def _tool_read_sign(self, a, args):
         x, y = self.target(a, args)
-        yield from self.wait(a, 1)
+        yield from self.wait(a, 0.1)
         m = self.world.meta.get((x, y))
-        if self.world.block(x, y) not in ("sign", "beacon") or not m:
+        if self.world.block(x, y) not in ("sign", "flag") or not m:
             raise ActionError("no_sign", f"no readable sign {args['dir']}")
         return {"text": m.get("text", ""), "by": m.get("by")}
 
@@ -960,7 +930,7 @@ class Simulation:
         d = str(args.get("dir", "")).upper()
         if d not in DIRS:
             raise ActionError("bad_args", "dir must be one of N, E, S, W")
-        yield from self.wait(a, 1)
+        yield from self.wait(a, 0.2)
         fx, fy = DIRS[d]
         px, py = -fy, fx  # perpendicular
         rows, seen = [], []
@@ -990,9 +960,9 @@ class Simulation:
     def _tool_ignite(self, a, args):
         x, y = self.target(a, args)
         has_torch = a.count("torch") > 0
-        if not has_torch and not self.near_block(a, "heater"):
+        if not has_torch and not self.near_block(a, "campfire"):
             raise ActionError("need_fire", "ignite needs a torch or a heater within 2 tiles")
-        yield from self.wait(a, 2)
+        yield from self.wait(a, 0.4)
         if not self.ignite(x, y, by=a):
             raise ActionError("wont_burn", f"{self.describe(x, y)} won't burn")
         if has_torch:
@@ -1000,52 +970,51 @@ class Simulation:
         a.bump("fires")
         return {}
 
-    def _locker(self, a, args):
+    def _chest(self, a, args):
         x, y = self.target(a, args)
-        if self.world.block(x, y) != "locker":
-            raise ActionError("no_locker", f"{args['dir']} is {self.describe(x, y)}")
+        if self.world.block(x, y) != "chest":
+            raise ActionError("no_chest", f"{args['dir']} is {self.describe(x, y)}")
         return x, y
 
     def _tool_store(self, a, args):
-        x, y = self._locker(a, args)
+        x, y = self._chest(a, args)
         item, n = str(args.get("item", "")), self._n(args)
         if a.count(item) < n:
             raise ActionError("missing_item", f"you have {a.count(item)} {item}")
-        yield from self.wait(a, 1)
-        self._locker(a, args)
+        yield from self.wait(a, 0.2)
+        self._chest(a, args)
         n = min(n, a.count(item))
         m = dict(self.world.meta.get((x, y), {}))
         m["items"] = self._merge(m.get("items", {}), {item: n})
         a.add(item, -n)
         self.world.set_meta(x, y, m)
-        self.emit("locker", x, y, radius=4, name=a.name, stored={item: n})
-        return {"locker": m["items"]}
+        self.emit("chest", x, y, radius=4, name=a.name, stored={item: n})
+        return {"chest": m["items"]}
 
     def _tool_take(self, a, args):
-        x, y = self._locker(a, args)
-        yield from self.wait(a, 1)
-        self._locker(a, args)
+        x, y = self._chest(a, args)
+        yield from self.wait(a, 0.2)
+        self._chest(a, args)
         m = dict(self.world.meta.get((x, y), {}))
         items = dict(m.get("items", {}))
         item = args.get("item")
         if not item:
-            return {"locker": items}
+            return {"chest": items}
         n = min(self._n(args), items.get(item, 0))
         if n <= 0:
-            raise ActionError("missing_item", f"locker has no {item}; contents: {items}")
+            raise ActionError("missing_item", f"chest has no {item}; contents: {items}")
         items[item] -= n
         if not items[item]:
             del items[item]
         m["items"] = items
         self.world.set_meta(x, y, m)
         a.add(item, n)
-        self.emit("locker", x, y, radius=4, name=a.name, took={item: n})
-        return {"locker": items}
+        self.emit("chest", x, y, radius=4, name=a.name, took={item: n})
+        return {"chest": items}
 
 
 LEGEND = {
-    "@": "you", "P": "agent", "s": "skitter (vermin, meat)", "S": "sentinel (hostile automaton, lights-out)",
-    "A": "accretor (builder automaton, extends the structure)",
+    "@": "you", "P": "person", "c": "chicken (food)", "k": "cow (food)", "G": "gloom (hostile, at night)",
     "$": "items on ground",
     **{g.char: g.name for g in GROUNDS},
     **{b.char: b.name for b in BLOCKS if b.name != "none"},
@@ -1055,9 +1024,9 @@ DIR_ARG = {"dir": "N|E|S|W"}
 TOOL_SPECS = {
     "step": {"args": DIR_ARG, "desc": "move one tile"},
     "move_to": {"args": {"x": "int", "y": "int"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
-    "dig": {"args": DIR_ARG, "desc": "dig the adjacent block (tree, rock, wall...) or the ground into a pit"},
-    "place": {"args": {**DIR_ARG, "item": "str", "text": "str (beacons only, optional)"},
-              "desc": "place a block item; rubble fills breaches/coolant; alloy lays plating"},
+    "dig": {"args": DIR_ARG, "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground"},
+    "place": {"args": {**DIR_ARG, "item": "str", "text": "str (flags only, optional)"},
+              "desc": "place a block item; dirt fills holes or water, stone lays cobble, planks make a bridge over water"},
     "pick_up": {"args": {"item": "str (optional)"}, "desc": "pick up items on your tile"},
     "drop": {"args": {"item": "str", "n": "int"}, "desc": "drop items on your tile"},
     "craft": {"args": {"recipe": "str", "n": "int (optional)"}, "desc": "craft from the recipe book"},
@@ -1070,7 +1039,7 @@ TOOL_SPECS = {
     "write_sign": {"args": {**DIR_ARG, "text": "str"}, "desc": "write on an adjacent sign or flag"},
     "read_sign": {"args": DIR_ARG, "desc": "read an adjacent sign or flag"},
     "look_far": {"args": DIR_ARG, "desc": "coarse view of the next 48 tiles in a direction"},
-    "ignite": {"args": DIR_ARG, "desc": "set an adjacent flammable tile on fire (needs torch or nearby heater)"},
-    "store": {"args": {**DIR_ARG, "item": "str", "n": "int"}, "desc": "put items into an adjacent locker"},
-    "take": {"args": {**DIR_ARG, "item": "str (omit to list)", "n": "int"}, "desc": "take items from an adjacent locker"},
+    "ignite": {"args": DIR_ARG, "desc": "set an adjacent flammable tile on fire (needs a torch or a nearby campfire)"},
+    "store": {"args": {**DIR_ARG, "item": "str", "n": "int"}, "desc": "put items into an adjacent chest"},
+    "take": {"args": {**DIR_ARG, "item": "str (omit to list)", "n": "int"}, "desc": "take items from an adjacent chest"},
 }

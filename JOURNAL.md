@@ -96,3 +96,27 @@ Also: bots now reconnect when the server restarts.
 150 ms polling), with zero perceived delay thanks to prediction; holding a key walks at 5 tiles/s; no
 console errors. Tests: 19 passed.
 **Next**: M2 thinker.
+
+## 2026-11-08 · Iteration 4 — speed fix + re-theme to Sprout Lands (in progress)
+
+**User**: "a single action can take whole seconds", then supplied the Sprout Lands art packs and asked for a
+less robotic theme with real building support.
+
+**Done**
+- Timing is now in seconds: `sec()` converts every duration, and the tick rate is 10 Hz, so actions take half
+  as long and future tick-rate changes never alter game pace. Actions record `expected` ticks for progress UI.
+- Rate limits raised (900 act/observe per min). The old 120/min cap was throttling human walking.
+- Measured the client stall: a full 32×32 per-pixel chunk re-render costs 40–50 ms, and frames freeze for up to 370 ms.
+- Re-theme (sim): archipelago world gen; trees, berry bushes, thickets, rocks with ore, mushrooms; chickens
+  and cows (food), glooms at night; accretors removed. Farming: dig to till, plant seeds, they ripen to wheat.
+  New items and recipes (wood, stone, fiber, ore, ingot, axe, pickaxe, spear, sword, fence, stone wall, door,
+  campfire, workbench, chest, planks to bridge water). Tests updated: 19 pass.
+- `tools/build_assets.py` copies only the used sheets from the user's zips into `web/assets/`, generates extras
+  in the pack palette (campfire, fire, flag, gloom, ore, tool and food icons, ash and deep-water recolours,
+  UI 9-slices) and writes CREDITS.md (credit: Cup Nooble; the pack itself must not be redistributed).
+
+**Next**: rewrite the client renderer on the atlas: animated water; soil, grass, tilled and stone layers
+autotiled with masks computed from the layer sheet's alpha (all sheets share one 11×7 blob layout); y-sorted
+sprite objects (trees, rocks, fences with N/E/S/W masks, chest, workbench, crops by growth stage); character
+4-dir walk; chickens and cows; UI with the pixel font, panel and slot 9-slices; action progress bars;
+incremental 3×3 tile redraws within a per-frame time budget.
