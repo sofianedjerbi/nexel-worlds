@@ -70,6 +70,30 @@ function drawHotbar(inv) {
   el.appendChild(bag);
   drawBag(inv, extra);
 }
+// Hearts and food sit on the hotbar (10 icons, 10 points each, halves allowed); energy is the line between them.
+function drawIcons(cv, icon, value) {
+  const N = 10, STEP = 12, SC = 2;
+  if (cv.width !== (STEP * (N - 1) + 16) * SC) { cv.width = (STEP * (N - 1) + 16) * SC; cv.height = 16 * SC; }
+  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, cv.width, cv.height);
+  const sx = GEN[icon] * 16;
+  for (let i = 0; i < N; i++) {
+    const x = i * STEP * SC, full = value >= (i + 1) * 10, half = !full && value >= i * 10 + 5;
+    g.filter = "brightness(.35) opacity(.55)"; g.drawImage(IMG.gen, sx, 0, 16, 16, x, 0, 16 * SC, 16 * SC);   // empty socket
+    g.filter = "none";
+    if (full) g.drawImage(IMG.gen, sx, 0, 16, 16, x, 0, 16 * SC, 16 * SC);
+    else if (half) { g.save(); g.beginPath(); g.rect(x, 0, 8 * SC, 16 * SC); g.clip(); g.drawImage(IMG.gen, sx, 0, 16, 16, x, 0, 16 * SC, 16 * SC); g.restore(); }
+  }
+  cv.classList.toggle("low", value <= 25);
+}
+function drawVitals(s) {
+  drawIcons($("hearts"), "heart", s.hp);
+  drawIcons($("foods"), "cooked_meat", s.hunger);
+  $("energy").firstChild.style.width = s.energy + "%";
+  $("energy").classList.toggle("low", s.energy < 25);
+  $("energy").title = `energy ${s.energy}`;
+  const status = s.hunger < 25 ? "Starving: eat something (E)" : s.energy < 15 ? "Exhausted: rest (R) or sleep in a bed" : "";
+  $("status").textContent = status; $("status").style.display = status ? "block" : "none";
+}
 let bagFocus = null;     // bag item highlighted for keyboard use
 function toggleBag() { const b = $("bag"); b.style.display = b.style.display === "block" ? "none" : "block"; }
 function drawBag(inv, extra) {

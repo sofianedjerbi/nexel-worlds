@@ -141,24 +141,16 @@ function onEvent(e) {
   if (e.type === "attack" && e.attacker !== me && e.target !== me) return;   // other people's fights: deaths still show
   let text;
   switch (e.type) {
-    case "say": text = `${e.from}: “${e.text}”`; break;
-    case "shout": text = `${e.from} shouts: “${e.text}”`; break;
+    case "say": text = e.text; break;
+    case "shout": text = e.text; break;
     case "death": text = `${e.name} died (${e.cause})`; break;
     case "attack": text = `${e.attacker} hits ${e.target} (−${e.damage})`; break;
-    case "give": text = `${e.from} gave ${e.to} ${fmt(e.items)}`; break;
-    case "craft": text = `${e.name} made ${fmt(e.made)}`; break;
+    case "give": if (e.from !== me && e.to !== me) return; text = `${e.from} gave ${e.to} ${fmt(e.items)}`; break;
     case "join": text = `${e.name} ${e.new ? "washed ashore" : "woke up"}`; break;
     case "leave": text = `${e.name} fell asleep`; break;
-    case "sign": text = `${e.by} wrote “${e.text}”`; break;
-    case "creature_died": text = `a ${e.kind} died${e.by ? " (" + e.by + ")" : ""}`; break;
+
     default: return;
   }
-  const feed = $("feed"), top = feed.firstChild;
-  if (top && top.dataset.text === text) {          // the same thing again: count it instead of repeating it
-    top.dataset.n = +(top.dataset.n || 1) + 1; top.querySelector(".n").textContent = ` ×${top.dataset.n}`; return;
-  }
-  const d = document.createElement("div"); d.dataset.text = text;
-  d.innerHTML = `<span class="k">${e.tick}</span><span class="${e.type}">${esc(text)}</span><span class="n k"></span>`;
-  d.onclick = () => { if (!me) { follow = null; camT.x = e.x; camT.y = e.y; } };
-  feed.prepend(d); while (feed.childElementCount > 150) feed.lastChild.remove();
+  chatLine(text, e.type === "say" ? "" : e.type === "shout" ? "shout" : e.type === "death" || e.type === "attack" ? "bad" : "sys",
+    e.type === "say" || e.type === "shout" ? e.from : null);
 }

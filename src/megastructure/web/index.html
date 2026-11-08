@@ -10,25 +10,14 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hover"></div>
-<div class="panel" id="brand"><div class="in"><div class="t">MEGASTRUCTURE</div><div class="s"><span id="clock">waking…</span> · <span id="mode">watching</span></div></div></div>
-<div class="panel" id="side"><div class="in">
-  <div><h3>People</h3><div id="agents"></div></div>
-  <div style="display:flex;flex-direction:column;min-height:0;flex:1"><h3>News</h3><div id="feed"></div></div>
-  <div id="stats"></div>
-</div></div>
+<div class="panel" id="brand"><div class="in"><div class="t">MEGASTRUCTURE</div><div class="s"><span id="clock">waking…</span> · <span id="mode">watching</span> · <span id="helpbtn" class="link">help (H)</span></div></div></div>
+<div class="panel" id="side"><div class="in"><h3>Awake</h3><div id="agents"></div></div></div>
+<div id="debug"></div>
 <div class="panel" id="joinbox"><div class="in">
   <div class="t">MEGASTRUCTURE</div>
   <p>Endless islands. No rules, no safe zones.<br>Pick a name to wake up on the shore.</p>
   <div class="row"><input id="name" placeholder="your name" maxlength="24" autocomplete="off"><button id="join">Wake up</button></div>
   <div class="watch"><button class="ghost" id="watch">just watch</button></div>
-</div></div>
-<div class="panel" id="vitals"><div class="in">
-  <div id="where"></div>
-  <div class="bar"><canvas class="ico" data-gen="heart"></canvas><span class="b"><i id="hp" style="background:#e0645a"></i></span><span class="v" id="hpv"></span></div>
-  <div class="bar"><canvas class="ico" data-gen="food"></canvas><span class="b"><i id="hu" style="background:#e8a94a"></i></span><span class="v" id="huv"></span></div>
-  <div class="bar"><canvas class="ico" data-gen="bolt"></canvas><span class="b"><i id="en" style="background:#6aa66f"></i></span><span class="v" id="env"></span></div>
-  <div id="doing"></div>
-  <div style="display:flex;gap:6px;margin-top:5px"><button class="ghost" id="craftbtn" style="flex:1">craft (C)</button><button class="ghost" id="helpbtn">?</button></div>
 </div></div>
 <div class="panel" id="help"><div class="in">
   <b>WASD</b> walk · <b>Shift</b> sprint · <b>Space</b> act on what's in front or around you (fight, chop, place) · <b>X</b> other use (milk, take down, till)<br>
@@ -39,9 +28,14 @@
 <div class="panel" id="goals"><div class="in"><h3>Goals</h3><div id="goallist"></div></div></div>
 <div class="panel" id="bag"><div class="in"><h3>Bag</h3><div id="bagitems"></div></div></div>
 <div class="panel" id="craft"><div class="in"><h3>Crafting</h3><span class="close" id="craftclose">arrows choose · Enter craft · Shift+Enter ×5 · Esc close</span><div id="recipes"></div></div></div>
-<div class="panel" id="chat"><div class="in"><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout · /command)" maxlength="200" autocomplete="off"></div></div>
-<div id="prompt"></div>
-<div id="hotbar"></div>
+<div id="chatbox"><div id="chatlog"></div><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout)" maxlength="200" autocomplete="off"></div>
+<div id="hud">
+  <div id="prompt"></div>
+  <div id="status"></div>
+  <div id="vitals"><canvas id="hearts"></canvas><canvas id="foods"></canvas></div>
+  <div id="energy" title="energy"><i></i></div>
+  <div class="hudrow"><div id="hotbar"></div><div class="slot tool" id="craftbtn" title="craft (C)"><canvas id="crafticon"></canvas><span class="k">C</span></div></div>
+</div>
 <div class="panel" id="mail"><div class="in">
   <h3 id="mailtitle">Mailbox</h3><span class="close" id="mailclose">close (Esc)</span>
   <div id="letters"></div>

@@ -98,6 +98,7 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   b: () => toggleBag(),
   m: () => { muted = !muted; localStorage.setItem("megastructure-muted", muted ? "1" : "0"); toast(muted ? "Sound off (M)" : "Sound on (M)"); },
   h: () => $("helpbtn").click(),
+  f3: () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; },
   t: () => openChat(),
   enter: () => openChat(),
   "/": () => openChat("/"),
