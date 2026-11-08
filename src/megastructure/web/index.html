@@ -78,6 +78,9 @@
   .goal .box { width:12px; height:12px; border:2px solid var(--ink); flex:none; position:relative; top:1px; }
   .goal.done { color:var(--ink2); text-decoration:line-through; }
   .goal.done .box { background:var(--accent); }
+  #bag { left:50%; bottom:92px; transform:translateX(-50%); display:none; max-width:560px; }
+  #bagitems { display:flex; flex-wrap:wrap; gap:6px; }
+  .bagslot .bagtxt { color:#fff8e8; text-shadow:1px 1px 0 var(--ink); }
   #toast { left:50%; top:10px; transform:translateX(-50%); display:none; max-width:70vw; }
   #help { right:10px; bottom:10px; display:none; max-width:300px; color:var(--ink2); font-size:18px; }
   #help b { color:var(--ink); font-weight:normal; }
@@ -114,6 +117,7 @@
   <b>Enter</b> talk · <b>!text</b> shout · <b>/tool k=v</b><br><b>C</b> craft · <b>wheel</b> zoom · <b>H</b> help
 </div></div>
 <div class="panel" id="goals"><div class="in"><h3>Goals</h3><div id="goallist"></div></div></div>
+<div class="panel" id="bag"><div class="in"><h3>Bag</h3><div id="bagitems"></div></div></div>
 <div class="panel" id="craft"><div class="in"><h3>Craft</h3><div id="recipes"></div></div></div>
 <div class="panel" id="chat"><div class="in"><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout · /command)" maxlength="200" autocomplete="off"></div></div>
 <div id="hotbar"></div>
@@ -129,12 +133,14 @@ const CH = {
   "T": "tree", "b": "berry_bush", "M": "rock", "*": "ore", "H": "thicket", "Q": "mushroom", "#": "fence",
   "%": "stone_wall", "+": "door", "^": "campfire", "&": "workbench", "?": "sign", "!": "flag", "x": "fire",
   "\"": "crop", "w": "ripe_crop", "t": "stump", "C": "chest", "F": "fruit_tree", ";": "sprout",
+  "u": "wet_tilled", "n": "floor", "f": "flower", "B": "bed", "h": "chair", "L": "table", "p": "plant", "K": "clock",
+  "r": "rug", "g": "gate",
 };
 const CHAR = Object.fromEntries(Object.entries(CH).map(([c, n]) => [n, c]));
-const GROUND = new Set("~:.,o_'=");
-const SOLID = new Set("TFbM*H#%^&C");
-const WALKABLE_GROUND = new Set(":.,o_'");
-const LABEL = {fruit_tree: "fruit tree", berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
+const GROUND = new Set("~:.,o_'=un");
+const SOLID = new Set("TFbM*H#%^&CBhLpK");
+const WALKABLE_GROUND = new Set(":.,o_'un");
+const LABEL = {wet_tilled: "watered soil", watering_can: "watering can", fruit_tree: "fruit tree", berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
   cooked_meat: "cooked meat", deep_water: "deep water"};
 const label = (n) => LABEL[n] || String(n).replace("_", " ");
 
@@ -142,7 +148,7 @@ const label = (n) => LABEL[n] || String(n).replace("_", " ");
 //  Assets
 // =====================================================================================
 const IMG = {};
-const ASSETS = ["tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
+const ASSETS = ["gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
   "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen"];
 let GEN = {};
 function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
@@ -246,7 +252,7 @@ function onRegion(d) {
 //  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
 const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
-const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;".includes(c) && !GROUND.has(c);
+const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrg".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
   const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1]); };
@@ -273,13 +279,18 @@ function drawTile(x, y) {
   const c = b.comb[i], gr = b.gnd[i];
   g.clearRect(ox, oy, 16, 16);
   if (gr === "=") { g.fillStyle = "rgba(20,50,90,.28)"; g.fillRect(ox, oy, 16, 16); }
-  if (gr === ":") g.drawImage(IMG.planks, 0, 16, 16, 16, ox, oy, 16, 16);
+  if (gr === ":") {                                  // bridge planks run across the direction of travel
+    const ew = [-1, 1].some((d) => { const q = gndAt(x + d, y); return q === ":" || isLand(q); });
+    g.drawImage(IMG.bridge, ew ? 0 : 32, 32, 16, 16, ox, oy, 16, 16);
+  }
   if (isLand(gr)) {
     drawBlobLayer(g, IMG.soil, x, y, (_, gg) => isLand(gg), ox, oy, .15);
     if (gr === "." || hasGrassNeighbour(x, y)) {
-      if (gr === ".") drawBlobLayer(g, IMG.grass, x, y, (_, gg) => gg === "." , ox, oy, .3);
+      if (gr === "." || gr === "_" || gr === "n") drawBlobLayer(g, IMG.grass, x, y, (_, gg) => gg === "." || gg === "_" || gg === "n", ox, oy, gr === "." ? .3 : 0);
     }
-    if (gr === "o") drawBlobLayer(g, IMG.tilled, x, y, (_, gg) => gg === "o", ox, oy, 0);
+    if (gr === "o" || gr === "u") drawBlobLayer(g, IMG.tilled, x, y, (_, gg) => gg === "o" || gg === "u", ox, oy, 0);
+    if (gr === "u") drawBlobLayer(g, IMG.tilled_wet, x, y, (_, gg) => gg === "u", ox, oy, 0);
+    if (gr === "n") g.drawImage(IMG.bridge, 0, 32, 16, 16, ox, oy, 16, 16);
     if (gr === "'") drawBlobLayer(g, IMG.ash, x, y, (_, gg) => gg === "'", ox, oy, 0);
     if (gr === "_") g.drawImage(IMG.cobble, [16, 32, 0][Math.floor(hash(x, y, 9) * 3)], [16, 32, 48][Math.floor(hash(x, y, 10) * 3)], 16, 16, ox, oy, 16, 16);
   }
@@ -292,9 +303,6 @@ function drawTile(x, y) {
       const pick = Math.floor(hash(x, y, 42) * 7), col = [8, 9, 10, 11, 6, 7, 0][pick];
       g.drawImage(IMG.water_objects, col * 16, 0, 16, 16, ox, oy, 16, 16);
     }
-  } else if (gr === "." && GROUND.has(c) && hd < .05 && hash(x >> 3, y >> 3, 43) < .35) {   // flowers grow in patches
-    const fx = Math.floor(hash(x, y, 44) * 12), fy = 3 + (hash(x, y, 45) < .5 ? 0 : 1);
-    g.drawImage(IMG.nature, fx * 16, fy * 16, 16, 16, ox, oy, 16, 16);
   }
 }
 const hasGrassNeighbour = () => true;
@@ -329,7 +337,7 @@ function characterSheet(tint, src = IMG.character) {   // recolour the cream bod
 }
 // premium character sheet: 8-frame rows, 4 directions each: down, up, right, left
 // (checked from the eye and collar-bell position; the pink spot is the inner ear, at the back)
-const ANIM = {idle: 0, walk: 4, run: 8, hoe: 12, axe: 16, water: 20};
+const ANIM = {idle: 0, walk: 4, run: 8, hoe: 12, axe: 16, water: 20};   // water = watering can
 const DIR_ROW = (p) => (p.fy < 0 ? 1 : p.fx > 0 ? 2 : p.fx < 0 ? 3 : 0);
 function genCell(name) { return [GEN[name] * 16, 0]; }
 // object sprite for a tile char: [img, sx, sy, sw, sh, dx (from tile left), dy (from tile top)]
@@ -369,9 +377,26 @@ function objectSprite(c, x, y, t) {
     case "&": return [IMG.gen, ...genCell("workbench"), 16, 16, 0, -3];
     case "?": return [IMG.signs, 0, 0, 16, 16, 0, -2];
     case "!": return [IMG.gen, ...genCell("flag"), 16, 16, 0, -6];
-    case ";": return [IMG.crops, 0, 128, 16, 16, 0, -2];
-    case "\"": return [IMG.crops, 32, 128, 16, 16, 0, -3];
-    case "w": return [IMG.crops, 48, 128, 16, 16, 0, -5];
+    case ";": return [IMG.crops, 0, CROP_ROW[cropSpecies(x, y)] * 16, 16, 16, 0, -2];
+    case "\"": return [IMG.crops, 32, CROP_ROW[cropSpecies(x, y)] * 16, 16, 16, 0, -3];
+    case "w": return [IMG.crops, 48, CROP_ROW[cropSpecies(x, y)] * 16, 16, 16, 0, -4];
+    case "f": {
+      if (h < .06) return [IMG.nature, 48, 48, 16, 32, 0, -16];                         // tall sunflower (both halves)
+      const [fx, fy] = FLOWERS[Math.floor(hash(x, y, 44) * FLOWERS.length)];
+      return [IMG.nature, fx * 16, fy * 16, 16, 16, 0, -1];
+    }
+    case "B": return [IMG.furniture, Math.floor(h * 3) * 16, 16, 16, 32, 0, -16];         // bed: foot on this tile
+    case "h": return [IMG.furniture, 64, 32, 16, 16, 0, -3];
+    case "L": return [IMG.furniture, 48, 48, 16, 16, 0, -3];
+    case "p": return [IMG.furniture, 48 + Math.floor(h * 3) * 16, 0, 16, 32, 0, -16];
+    case "K": return [IMG.furniture, 96, 48, 16, 16, 0, -3];
+    case "r": return [IMG.furniture, Math.floor(h * 3) * 16, 80, 16, 16, 0, 0];
+    case "g": {                                                                           // opens next to people
+      const key = x + "," + y, near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => occupied.has((x + dx) + "," + (y + dy)));
+      const o = Math.max(0, Math.min(1, (doors.get(key) || 0) + (near ? .12 : -.08)));
+      doors.set(key, o);
+      return [IMG.gates, Math.round(o * 3) * 16, 0, 16, 16, 0, -3];
+    }
     case "t": return [IMG.trees, h < .5 ? 0 : 16, 96, 16, 16, 0, 0];
     case "C": {                                                                           // lid opens when used
       const o = chestOpen.get(x + "," + y), k = o ? (performance.now() - o) / 1000 : 9;
@@ -446,6 +471,11 @@ function drawEffects(sx, sy, S, dt) {
   }
 }
 
+const CROPS = ["wheat", "pumpkin", "cauliflower", "lettuce", "eggplant", "carrot"];
+const CROP_ROW = {wheat: 8, pumpkin: 9, cauliflower: 3, lettuce: 7, eggplant: 5, carrot: 2};
+const cropSpecies = (x, y) => CROPS[((Math.imul(x, 73856093) ^ Math.imul(y, 19349663)) >>> 0) % CROPS.length];
+const FLOWERS = [[0, 3], [1, 3], [2, 3], [4, 3], [5, 3], [6, 3], [8, 3], [9, 3], [10, 3], [11, 3],
+  [0, 4], [1, 4], [4, 4], [5, 4], [6, 4], [8, 4], [9, 4], [10, 4], [11, 4]];
 const FRUITS = ["tree_apple", "tree_pear", "tree_peach", "tree_orange"];
 const fruitSheet = (x, y) => IMG[FRUITS[Math.floor(hash(x, y, 33) * 4)]];
 const dropping = new Map(), chestOpen = new Map(), doors = new Map();
@@ -519,8 +549,10 @@ setInterval(() => {
 setInterval(() => { sendSpec({op: "agents"}); sendSpec({op: "metrics"}); }, 1500);
 
 let pred = null;
+let groundItems = [];
 function onTick(d) {
   clock = d;
+  groundItems = d.items || [];
   $("clock").textContent = d.time.replace("(night)", "· night");
   const seen = new Set(), now = performance.now();
   for (const e of d.entities) {
@@ -563,6 +595,9 @@ function onEvent(e) {
   if (e.type === "death" || e.type === "creature_died") burst(e.x, e.y, "dust", 16, {dy: -.3, up: 2.5, spread: 4, g: 3, life: .7, size: 2});
   if (e.type === "pick_up") burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3});
   if (e.type === "chest") chestOpen.set(e.x + "," + e.y, performance.now());
+  if (e.type === "milk") { burst(e.x, e.y, "spark", 4, {dy: -.2, g: 5}); emote(e.name, "happy"); }
+  if (e.type === "love") emote(e.by, "love");
+  if (e.type === "lay") burst(e.x, e.y, "dust", 5, {up: 1, spread: 1.5, g: 3});
   if (e.type === "craft") burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4});
   if (["pick_up", "drop", "chest"].includes(e.type)) return;
   let text;
@@ -653,6 +688,7 @@ function frame(now) {
   }
   occupied = new Set([...ents.values()].filter((p) => p.e).map((p) => Math.round(p.x) + "," + Math.round(p.y)));
   for (const p of ents.values()) if (p.e) list.push({y: p.y + .01, p});
+  for (const [ix, iy, pile] of groundItems) list.push({y: iy - .01, x: ix, pile});
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const o of list) {
     if (o.spr) {
@@ -668,6 +704,12 @@ function frame(now) {
       if (sh !== undefined && o.spr[0] !== IMG.tree_anim) { const k = (now - sh) / 1000; if (k < .25) px += Math.round(Math.sin(k * 60) * (1 - k * 4) * 1.5) * zoom; }
       ctx.drawImage(img, a, b2, w, h, Math.round(px), Math.round(py), Math.round(ww), Math.round(hh));
     }
+    else if (o.pile) {
+      const names = Object.keys(o.pile), bob = Math.round(Math.sin(t * 3 + o.x + o.y) * 1.5) * zoom, sz = 10 * zoom;
+      const cx = sx(o.x) + S / 2, cy = sy(o.y) + S / 2;
+      ctx.fillStyle = "rgba(60,40,30,.25)"; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, 4 * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
+      names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom, cy - sz / 2 - bob, sz, sz));
+    }
     else drawEntity(o.p, sx, sy, S, t, now);
   }
   drawEffects(sx, sy, S, dt);
@@ -675,7 +717,12 @@ function frame(now) {
   if (mouse.in && me) {
     const p = tileAtScreen(mouse.x, mouse.y), it = intent(p, keys.has("shift"));
     if (it && it.ghost) {
-      ctx.globalAlpha = .65; ctx.drawImage(ghostIcon(it.ghost), sx(p.x), sy(p.y) - 3 * zoom, S, S); ctx.globalAlpha = 1;
+      ctx.globalAlpha = .7;
+      const spr = it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
+        : it.ghost === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(p.x, p.y)] * 16, 16, 16, 0, -2]
+        : objectSprite(PLACEABLE_BLOCK[it.ghost], p.x, p.y, t);
+      if (spr) { const [img, a2, b2, w2, h2, dx2, dy2] = spr; ctx.drawImage(img, a2, b2, w2, h2, sx(p.x) + dx2 * zoom, sy(p.y) + dy2 * zoom, w2 * zoom, h2 * zoom); }
+      ctx.globalAlpha = 1;
       ctx.fillStyle = it.ok ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)"; ctx.fillRect(sx(p.x), sy(p.y), S, S);
     }
     if (it && !it.info && !it.walk) {
@@ -745,6 +792,13 @@ function drawEntity(p, sx, sy, S, t, now) {
           burst(tx, ty, kind, 6, {dy: "TF".includes(target) ? -.6 : -.1}); shakes.set(tx + "," + ty, now);
         } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
       }
+    } else if (tool === "water") {
+      anim = "water"; const n = Math.floor(k * 10); frame = n % 8;
+      if (frame >= 3 && frame <= 6 && p.lastDrop !== n) { p.lastDrop = n; const tx = Math.round(p.tx) + p.fx, ty = Math.round(p.ty) + p.fy;
+        parts.push({x: tx + .3 + Math.random() * .4, y: ty - .1, vx: (Math.random() - .5) * .6, vy: 1.5, g: 9, life: .35, age: 0, c: "#8fd3f4", s: 1}); }
+    } else if (tool === "milk" || tool === "feed" || tool === "sleep") {
+      bob = tool === "sleep" ? 0 : Math.round(Math.abs(Math.sin(k * 8)) * 2) * z;
+      if (tool === "sleep" && !emotes.has(e.name)) emote(e.name, "sleep");
     } else if (tool === "eat") {
       bob = Math.round(Math.abs(Math.sin(k * 14)) * 2) * z;
       if (Math.floor(k * 7) !== p.lastCrumb) { p.lastCrumb = Math.floor(k * 7); burst(Math.round(p.tx), Math.round(p.ty), "food", 2, {dy: -.3, up: 1.5, spread: 1.5}); }
@@ -778,6 +832,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     // rows: chicken 0 idle(4) 1 walk(7) 2 peck(8) 8 sleep(4); cow 0 idle(3) 1 walk(8) 6 graze(4) 4 sleep(4)
     let row, n, ms;
     if (moving) [row, n, ms] = big ? [1, 8, 90] : [1, 7, 90];
+    else if (e.love) [row, n, ms] = big ? [7, 6, 160] : [26, 7, 140];
     else if (clock.night) [row, n, ms] = big ? [4, 4, 400] : [8, 4, 400];
     else {
       const mood = hash(e.id, Math.floor((now / 1000 + e.id) / 4), 7);   // a new whim every 4 s
@@ -790,6 +845,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     const blit = (ox) => { ctx.drawImage(img, f * fw, row * fw, fw, fw, ox, dy, w, w); if (white) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(img, f * fw, row * fw, fw, fw, ox, dy, w, w); } };
     if (p.fx < 0) { ctx.translate(dx + w, 0); ctx.scale(-1, 1); blit(0); } else blit(dx);
     ctx.restore();
+    if (e.love && !big) ctx.drawImage(img, (Math.floor(now / 140) % 7) * 16, 25 * 16, 16, 16, x, y - S + 2 * z, S, S);   // hearts
   } else if (e.kind === "gloom") {
     const [gx] = genCell(Math.floor(t * 3 + e.id) % 2 ? "gloom1" : "gloom0");
     const hop = Math.round(Math.abs(Math.sin(t * 5 + e.id)) * 2) * z;
@@ -916,7 +972,7 @@ function joinGame(name) {
     }
     const f = pending[d.id]; if (f) { delete pending[d.id]; f(d); }
   };
-  agentWs.onclose = () => { if (me) toast("Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "watching"; ["vitals", "hotbar", "craft", "help", "chat", "goals"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; };
+  agentWs.onclose = () => { if (me) toast("Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "watching"; ["vitals", "hotbar", "craft", "help", "chat", "goals", "bag"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; };
 }
 function rpc(op, extra) {
   return new Promise((res) => {
@@ -965,8 +1021,12 @@ function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
 function walkable(x, y) { const t = tile(x, y); return !!t && WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]); }
 // ---- what a click does, decided per tile (also shown as the cursor hint) ----------------
-const PLACEABLE_BLOCK = {fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C"};
-const HARVEST = {F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
+const FILLS = {dirt: {o: ",", u: ",", "~": ","}, path: {".": "_", ",": "_", "'": "_"}, plank: {"~": ":", ".": "n", ",": "n", "'": "n"}};
+const FILL_TEXT = {",": "Fill with dirt", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
+const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
+const PLACEABLE_BLOCK = {flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C"};
+const HARVEST = {f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
+  K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
 function entityAt(p) { return [...ents.values()].find((q) => q.e && q.tx === p.x && q.ty === p.y && !(q.e.kind === "agent" && q.e.id === myId)); }
@@ -975,9 +1035,15 @@ function intent(p, shift) {
   if (combAt(p.x, p.y + 1) === "T" && GROUND.has(combAt(p.x, p.y)) && !entityAt(p) && !(selected && !shift)) p = {x: p.x, y: p.y + 1};
   const t = tile(p.x, p.y), s = myPos();
   if (!t || !s) return null;
-  const [c, g] = t, hasBlock = !GROUND.has(c), ent = entityAt(p);
+  const [c, g] = t, flower = c === "f", ent = entityAt(p);
+  const hasBlock = !GROUND.has(c) && !(flower && selected && !shift);   // building over a flower picks it
   const isMe = p.x === s.x && p.y === s.y;
   if (ent) {
+    if ((ent.e.kind === "cow" || ent.e.kind === "chicken") && !shift) {
+      if (selected && FOODS.includes(selected)) return {text: `Feed ${label(selected)} to the ${ent.e.kind}`, near: 1, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
+      if (ent.e.kind === "cow") return {text: "Milk cow", near: 1, diag: true, run: () => act("milk", {target: ent.e.id})};
+      return {text: "Chicken (feed it to get eggs; shift-click attacks)", info: true};
+    }
     if (ent.e.kind === "agent" && !shift) return selected
       ? {text: `Give ${label(selected)} to ${ent.e.name}`, near: 2, run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})}
       : {text: `${ent.e.name}  (shift-click: attack)`, info: true};
@@ -991,25 +1057,32 @@ function intent(p, shift) {
     if (block) return free ? {text: `Place ${label(it)}`, ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
                            : {text: `Can't place ${label(it)} here`, ghost: it, ok: false};
     if (it === "seed") {
-      if (!hasBlock && g === "o") return {text: "Plant seed", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
-      if (!hasBlock && (g === "." || g === ",")) return {text: "Till & plant seed", ghost: it, ok: true, near: 1,
-        run: async (d) => { const r = await act("dig", {dir: d}); if (r && r.ok) return act("place", {dir: d, item: it}); }};
+      if (!hasBlock && (g === "o" || g === "u")) return {text: "Plant seed", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
+      if (!hasBlock && (g === "." || g === ",")) return {text: flower ? "Pick flower, till & plant" : "Till & plant seed", ghost: it, ok: true, near: 1,
+        run: async (d) => {
+          if (flower) { const r0 = await act("dig", {dir: d}); if (!r0 || !r0.ok) return; }
+          const r = await act("dig", {dir: d}); if (r && r.ok) return act("place", {dir: d, item: it});
+        }};
       return {text: "Seeds need soil", ghost: it, ok: false};
     }
-    if (it === "dirt") return !hasBlock && (g === "o" || g === "~") ? {text: g === "~" ? "Fill water with dirt" : "Fill hole", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
-                                                                    : {text: "Dirt fills holes and shallow water", ghost: it, ok: false};
-    if (it === "stone" && !hasBlock && ",.o':".includes(g)) return {text: "Lay cobblestone", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
-    if (it === "plank" && g === "~") return {text: "Build bridge", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
+    if (FILLS[it]) {
+      const res = !hasBlock && FILLS[it][g];
+      return res ? {text: FILL_TEXT[res], ghost: it, ghostGround: res, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
+                 : {text: FILL_HELP[it], ghost: it, ghostGround: Object.values(FILLS[it])[0], ok: false};
+    }
+    if (it === "watering_can" && (c === ";" || c === '"')) return g === "u" ? {text: "Already watered", ok: false}
+      : {text: "Water crop (grows 2x faster)", near: 1, run: (d) => act("water", {dir: d})};
     if (c === "C") return {text: `Store ${label(it)} in chest`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
   }
   if (hasBlock) {
     if (c === "C" && !shift) return {text: "Open chest", near: 1, run: (d) => act("take", {dir: d})};
     if ((c === "?" || c === "!") && !shift) return {text: "Read", near: 1, run: (d) => act("read_sign", {dir: d})};
+    if (c === "B" && !shift) return {text: "Sleep (wake up here after dying)", near: 1, run: (d) => act("sleep", {dir: d})};
     if ((c === "&" || c === "^") && !shift) return {text: c === "&" ? "Workbench: craft tools here" : "Campfire: cook here", near: 2, run: () => openCraft()};
     return {text: HARVEST[c] || label(CH[c]), near: 1, run: (d) => act("dig", {dir: d})};
   }
   if (g === "~" || g === "=") return {text: label(CH[g]), info: true};
-  if (shift) return {text: "Till soil", near: 1, run: (d) => act("dig", {dir: d})};
+  if (shift) return {text: {_: "Take up the path", n: "Take up the floor", ":": "Take up the bridge"}[g] || "Till soil", near: 1, run: (d) => act("dig", {dir: d})};
   return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
 }
 // walk next to the target (closest free side) if needed, then act facing it
@@ -1037,18 +1110,29 @@ function clickTile(p, shift) {
   if (combAt(p.x, p.y + 1) === "T" && GROUND.has(combAt(p.x, p.y)) && !entityAt(p) && !(selected && !shift)) p = {x: p.x, y: p.y + 1};
   perform(p, intent(p, shift));
 }
+function groundPreview(g, x, y) {
+  if (g === "_") return [IMG.cobble, 16, 16, 16, 16, 0, 0];
+  if (g === "n") return [IMG.bridge, 0, 32, 16, 16, 0, 0];
+  if (g === ":") return [IMG.bridge, 0, 32, 16, 16, 0, 0];
+  return [IMG.soil, 16, 16, 16, 16, 0, 0];
+}
 const ghosts = new Map();
 const ghostIcon = (n) => ghosts.get(n) || (ghosts.set(n, iconCanvas(n)), ghosts.get(n));
 function openCraft() { $("craft").style.display = "block"; }
 // item icons from the sheets: [image name, sx, sy]
-const ICONS = {
-  wood: ["items", 32, 48], plank: ["planks", 0, 16], stone: ["gen", "boulder"], fiber: ["gen", "fiber"], ore: ["gen", "ore"],
-  berries: ["trees", 16, 64], fruit: ["trees", 0, 32], mushroom: ["nature", 16, 0], seed: ["items", 0, 128], wheat: ["items", 16, 128],
-  egg: ["items", 48, 176], milk: ["items", 64, 0], meat: ["gen", "meat"], cooked_meat: ["gen", "cooked_meat"], bread: ["gen", "bread"],
-  torch: ["gen", "torch"], rope: ["gen", "rope"], sword: ["gen", "sword"], spear: ["gen", "spear"], axe: ["gen", "axe"],
-  pickaxe: ["gen", "pickaxe"], ingot: ["gen", "ingot"], flag: ["gen", "flag"], campfire: ["gen", "campfire0"],
-  fence: ["fences", 0, 48], stone_wall: ["gen", "stone_wall"], door: ["door", 0, 0, 16, 32], workbench: ["gen", "workbench"],
-  sign: ["signs", 0, 0], chest: ["chest", 16, 16], dirt: ["soil", 0, 80],
+const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in column 0, produce in column 1, materials in 2-3
+  wood: ["items", 32, 48], plank: ["items", 32, 64], stone: ["items", 32, 80], ingot: ["items", 48, 64], fiber: ["gen", "fiber"],
+  ore: ["gen", "ore"], path: ["cobble", 16, 16], dirt: ["soil", 0, 80], seed: ["items", 0, 128],
+  axe: ["items", 32, 0], pickaxe: ["items", 48, 0], watering_can: ["items", 32, 16], spear: ["gen", "spear"], sword: ["gen", "sword"],
+  torch: ["gen", "torch"], rope: ["gen", "rope"],
+  berries: ["items", 32, 160], fruit: ["items", 32, 96], mushroom: ["nature", 16, 0], egg: ["items", 48, 176], milk: ["items", 64, 0],
+  meat: ["gen", "meat"], cooked_meat: ["gen", "cooked_meat"], bread: ["gen", "bread"],
+  wheat: ["items", 16, 128], pumpkin: ["items", 16, 144], cauliflower: ["items", 16, 48], lettuce: ["items", 16, 112],
+  eggplant: ["items", 16, 80], carrot: ["items", 16, 32],
+  flower: ["nature", 16, 48], workbench: ["gen", "workbench"], campfire: ["gen", "campfire0"], chest: ["chest", 16, 16],
+  fence: ["fences", 0, 48], gate: ["gates", 0, 0], stone_wall: ["gen", "stone_wall"], door: ["door", 0, 0, 16, 32],
+  sign: ["signs", 0, 0], flag: ["gen", "flag"], bed: ["furniture", 0, 16, 16, 32], chair: ["furniture", 64, 32],
+  table: ["furniture", 48, 48], plant: ["furniture", 48, 0, 16, 32], clock: ["furniture", 96, 48], rug: ["furniture", 0, 80],
 };
 function iconCanvas(name) {
   const c = document.createElement("canvas"); c.width = 16; c.height = 16; const g = c.getContext("2d");
@@ -1070,14 +1154,16 @@ function slotOrder(inv) {               // items keep their slot; new items take
 function drawHotbar(inv) {
   const el = $("hotbar");
   if (selected && !inv[selected]) selected = null;
-  const order = slotOrder(inv);
+  const order = slotOrder(inv).slice(0, 9);
+  const extra = Object.keys(inv).filter((n) => !order.includes(n));
   const sig = JSON.stringify(inv) + order.join() + selected; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
   el.innerHTML = "";
   order.forEach((name, i) => {
     const d = document.createElement("div"); d.className = "slot" + (name && name === selected ? " sel" : "");
     if (name) {
       d.appendChild(iconCanvas(name));
-      const how = FOODS.includes(name) ? " · E to eat" : (PLACEABLE_BLOCK[name] || ["seed", "dirt", "stone", "plank"].includes(name)) ? " · select, click the ground" : "";
+      const how = FOODS.includes(name) ? " · E to eat, or feed animals" : name === "watering_can" ? " · select, click a crop"
+        : (PLACEABLE_BLOCK[name] || FILLS[name] || name === "seed") ? " · select, click the ground to place" : "";
       d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name) + how)}</span>`);
       d.onclick = () => { selected = selected === name ? null : name; el.dataset.sig = ""; drawHotbar(meObs.self.inventory); };
       d.ondblclick = () => useSelected(name);
@@ -1085,8 +1171,30 @@ function drawHotbar(inv) {
     if (i < 9) d.insertAdjacentHTML("beforeend", `<span class="k">${i + 1}</span>`);
     el.appendChild(d);
   });
+  const bag = document.createElement("div"); bag.className = "slot bagslot";   // everything beyond 9 lives in the bag
+  bag.innerHTML = `<span class="bagtxt">${extra.length ? "+" + extra.length : "bag"}</span><span class="k">B</span><span class="tip">bag (B)</span>`;
+  bag.onclick = () => toggleBag();
+  el.appendChild(bag);
+  drawBag(inv, extra);
 }
-const FOODS = ["fruit", "berries", "mushroom", "egg", "milk", "meat", "cooked_meat", "wheat", "bread"];
+function toggleBag() { const b = $("bag"); b.style.display = b.style.display === "block" ? "none" : "block"; }
+function drawBag(inv, extra) {
+  const el = $("bagitems"); if (!el) return;
+  el.innerHTML = extra.length ? "" : `<span style="color:var(--ink2)">Everything fits in your hotbar.</span>`;
+  for (const name of extra) {
+    const d = document.createElement("div"); d.className = "slot";
+    d.appendChild(iconCanvas(name));
+    d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name))}</span>`);
+    d.onclick = () => {                          // bring it into the hotbar (swapping with the selected slot or slot 9)
+      const i = selected && slots.indexOf(selected) >= 0 && slots.indexOf(selected) < 9 ? slots.indexOf(selected) : 8;
+      const j = slots.indexOf(name); if (j >= 0) slots[j] = slots[i]; else slots.push(slots[i]);
+      slots[i] = name; selected = name; localStorage.setItem("megastructure-slots", JSON.stringify(slots));
+      $("hotbar").dataset.sig = ""; drawHotbar(meObs.self.inventory);
+    };
+    el.appendChild(d);
+  }
+}
+const FOODS = ["pumpkin", "cauliflower", "lettuce", "eggplant", "carrot", "fruit", "berries", "mushroom", "egg", "milk", "meat", "cooked_meat", "wheat", "bread"];
 function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);
   if (FOODS.includes(name)) return act("eat", {item: name});
@@ -1150,6 +1258,7 @@ addEventListener("keydown", (e) => {
   else if (k === "r") act("rest", {});
   else if (k === "e") useSelected();
   else if (k === "c") $("craftbtn").click();
+  else if (k === "b") toggleBag();
   else if (k === "h") $("helpbtn").click();
   else if (/^[1-9]$/.test(k) && meObs) { const n = slots[+k - 1]; if (n) { selected = selected === n ? null : n; $("hotbar").dataset.sig = ""; drawHotbar(meObs.self.inventory); } }
 });

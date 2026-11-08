@@ -74,7 +74,8 @@ class RateLimiter:
 
 
 class GameServer:
-    def __init__(self, world_dir: Path, seed: int | None = None):
+    def __init__(self, world_dir: Path, seed: int | None = None, dev: bool = False):
+        self.dev = dev  # enables dev_give (QA only; never on a public server)
         world_dir.mkdir(parents=True, exist_ok=True)
         self.sim = Simulation(world_dir / "world.sqlite", seed=seed, event_log=world_dir / "events.jsonl")
         self.conns: dict[int, object] = {}  # agent id -> connection
@@ -142,9 +143,12 @@ class GameServer:
                  "tid": a.action.args.get("target") if a.action else None,
                  "run": bool(a.action.args.get("run")) if a.action else False}
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
-        ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp} for c in self.sim.creatures.values()
-                 if x <= c.x < x + w and y <= c.y < y + h]
+        ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp, "love": c.love > self.sim.tick}
+                 for c in self.sim.creatures.values() if x <= c.x < x + w and y <= c.y < y + h]
         return ents
+
+    def items_in(self, x, y, w, h) -> list:
+        return [[ix, iy, pile] for (ix, iy), pile in self.sim.items.items() if pile and x <= ix < x + w and y <= iy < y + h]
 
     def push_ticks(self):
         """Every tick, each spectator gets the entities inside the rect it watches; agents whose
@@ -160,7 +164,8 @@ class GameServer:
                 "phase": round(self.sim.time_of_day(), 4)}
         for q, rect in list(self.spectators.items()):
             if rect is not None and q.qsize() < 2000:
-                q.put_nowait(json.dumps({**head, "entities": self.entities_in(*rect)}, separators=(",", ":")))
+                q.put_nowait(json.dumps({**head, "entities": self.entities_in(*rect), "items": self.items_in(*rect)},
+                                        separators=(",", ":")))
 
     def region(self, x, y, w, h) -> dict:
         w, h = min(int(w), 256), min(int(h), 256)
@@ -282,6 +287,10 @@ class GameServer:
                             reply(mid, False, error=result.get("error"), detail=result.get("detail"), result=result)
 
                     self.sim.submit(agent, tool, args, on_done=done)
+                elif op == "dev_give" and self.dev:
+                    for k, n in dict(msg.get("items") or {}).items():
+                        agent.add(str(k), int(n))
+                    reply(mid, inventory=agent.inventory)
                 elif op == "tools":
                     reply(mid, tools=TOOL_SPECS)
                 elif op == "recipes":
@@ -322,9 +331,10 @@ def main():
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=7777)
     p.add_argument("--seed", type=int, default=None)
+    p.add_argument("--dev", action="store_true", help="enable dev_give for automated QA")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    gs = GameServer(Path(args.saves) / args.world, seed=args.seed)
+    gs = GameServer(Path(args.saves) / args.world, seed=args.seed, dev=args.dev)
     asyncio.run(gs.run(args.host, args.port))
 
 

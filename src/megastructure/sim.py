@@ -53,6 +53,7 @@ class Agent:
     inventory: dict = field(default_factory=dict)
     deaths: int = 0
     stats: dict = field(default_factory=dict)
+    spawn: list | None = None  # set by sleeping in a bed: you wake up there after dying
     # runtime only
     action: "Action | None" = field(default=None, repr=False)
     events: list = field(default_factory=list, repr=False)
@@ -60,7 +61,7 @@ class Agent:
 
     def to_json(self) -> dict:
         return {k: getattr(self, k) for k in
-                ("id", "name", "x", "y", "persona", "hp", "hunger", "energy", "inventory", "deaths", "stats")}
+                ("id", "name", "x", "y", "persona", "hp", "hunger", "energy", "inventory", "deaths", "stats", "spawn")}
 
     def count(self, item) -> int:
         return self.inventory.get(item, 0)
@@ -86,9 +87,13 @@ class Creature:
     y: int
     hp: int
     cooldown: int = 0
+    milked: int = 0     # tick of the last milking (cows)
+    love: int = 0       # fed: shows hearts and (chickens) lays an egg soon, until this tick
+    lay: int = 0        # next tick a chicken may lay an egg
 
     def to_json(self):
-        return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "hp": self.hp}
+        return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "hp": self.hp,
+                "milked": self.milked, "love": self.love, "lay": self.lay}
 
 
 CREATURES = {
@@ -383,7 +388,13 @@ class Simulation:
                   dropped=dropped)
         if a.action:
             self.interrupt(a, "you died")
-        a.x, a.y = self.find_spawn(a.id * 31 + a.deaths)
+        bed = a.spawn
+        if bed and self.world.block(*bed) == "bed":
+            spots = [(bed[0] + dx, bed[1] + dy) for dx, dy in DIRS.values() if self.world.passable(bed[0] + dx, bed[1] + dy)]
+            a.x, a.y = spots[0] if spots else self.find_spawn(a.id * 31 + a.deaths)
+        else:
+            a.spawn = None
+            a.x, a.y = self.find_spawn(a.id * 31 + a.deaths)
         a.hp, a.hunger, a.energy = 100, 70, 80
         a.events.append({"tick": self.tick, "type": "respawn", "cause": cause,
                          "by": by.name if by else None, "x": a.x, "y": a.y})
@@ -416,6 +427,13 @@ class Simulation:
             c = self.creatures.get(cid)
             if c is None:
                 continue
+            if c.kind == "chicken":
+                if not c.lay:
+                    c.lay = self.tick + sec(60) + self.rng.randrange(sec(60))
+                elif self.tick >= c.lay:
+                    c.lay = self.tick + sec(90) + self.rng.randrange(sec(90))
+                    self.add_items(c.x, c.y, {"egg": 1})
+                    self.emit("lay", c.x, c.y, id=c.id)
             if c.cooldown > 0:
                 c.cooldown -= 1
                 continue
@@ -505,11 +523,12 @@ class Simulation:
                 if self.tick < due:
                     continue
                 del self.timers[pos]
-                if kind == "ripen" and self.world.block(*pos) == "sprout":
-                    self.set_tile(*pos, block="crop", cause="grew")
-                    self.timers[pos] = [self.tick + sec(150), "ripen"]
-                elif kind == "ripen" and self.world.block(*pos) == "crop":
-                    self.set_tile(*pos, block="ripe_crop", cause="grew")
+                if kind == "ripen" and self.world.block(*pos) in ("sprout", "crop"):
+                    nxt = "crop" if self.world.block(*pos) == "sprout" else "ripe_crop"
+                    dry = "tilled" if self.world.ground(*pos) == "wet_tilled" else None  # water is used up
+                    self.set_tile(*pos, ground=dry, block=nxt, cause="grew")
+                    if nxt == "crop":
+                        self.timers[pos] = [self.tick + sec(150), "ripen"]
                 elif kind == "fruit" and self.world.block(*pos) == "tree":
                     self.set_tile(*pos, block="fruit_tree", cause="grew")
                 elif kind == "regrow" and self.world.block(*pos) == "none" and self.entity_at(*pos) is None \
@@ -620,6 +639,18 @@ class Simulation:
         return best
 
     # ============================================================== tools
+    def arrive(self, a: Agent):
+        """Called after every move: walking over items picks them up."""
+        pile = self.items.get((a.x, a.y))
+        if not pile:
+            return
+        got = dict(pile)
+        for k, n in got.items():
+            a.add(k, n)
+        del self.items[(a.x, a.y)]
+        self.dirty_items.add((a.x, a.y))
+        self.emit("pick_up", a.x, a.y, name=a.name, items=got)
+
     def stride(self, a: Agent, args) -> float:
         """Seconds per tile. Sprinting (`run: true`) is twice as fast and costs 1 energy per 4 tiles."""
         if args.get("run") and a.energy > 0:
@@ -635,6 +666,7 @@ class Simulation:
         if not self.world.passable(x, y):
             raise ActionError("blocked", f"{args['dir']} is {self.describe(x, y)}")
         a.x, a.y = x, y
+        self.arrive(a)
         return {}
 
     def _tool_walk(self, a, args):
@@ -650,6 +682,7 @@ class Simulation:
             if not self.world.passable(a.x + dx, a.y + dy):
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.describe(a.x + dx, a.y + dy)}
             a.x, a.y = a.x + dx, a.y + dy
+            self.arrive(a)
             steps += 1
             yield  # one tile per stride: the stride's first tick is spent here
         return {"steps": steps, "stopped": "limit"}
@@ -680,6 +713,7 @@ class Simulation:
                     raise ActionError("blocked", f"path blocked at ({nx},{ny}); stopped at ({a.x},{a.y})")
                 continue
             a.x, a.y = nx, ny
+            self.arrive(a)
             path.pop(0)
             steps += 1
         return {"steps": steps, "arrived": [a.x, a.y], "adjacent_only": (a.x, a.y) != (gx, gy)}
@@ -693,16 +727,23 @@ class Simulation:
         g, b = self.world.get(x, y)
         block, ground = BLOCKS[b], GROUNDS[g]
         if block.name == "none":
-            if not ground.diggable or ground.name == "tilled":
+            built = {"cobble": ("path", "dirt"), "floor": ("plank", "dirt"), "bridge": ("plank", "water")}
+            if ground.name in built:                       # what you lay, you can take up again
+                item, under = built[ground.name]
+                if under == "water" and self.entity_at(x, y):
+                    raise ActionError("occupied", "someone is standing on it")
+                yield from self.wait(a, 0.5)
+                a.add(item)
+                self.set_tile(x, y, ground=under, by=a, cause="dig")
+                return {"got": {item: 1}}
+            if not ground.diggable or ground.name in ("tilled", "wet_tilled"):
                 raise ActionError("cannot_dig", f"{ground.name} cannot be dug")
             yield from self.wait(a, 0.6)
             if self.world.block(x, y) != "none":
                 raise ActionError("changed", "something was placed there")
             self.spend(a, 1)
-            item = "dirt"
-            a.add(item)
             self.set_tile(x, y, ground="tilled", by=a, cause="dig")
-            return {"got": {item: 1}}
+            return {}
         if block.hardness <= 0:
             raise ActionError("cannot_dig", f"{block.name} cannot be dug")
         if block.needs_tool and not a.count(block.needs_tool):
@@ -715,6 +756,8 @@ class Simulation:
             raise ActionError("changed", "the block changed while digging")
         self.spend(a, 1)
         drops = dict(block.drops)
+        if block.name == "ripe_crop":
+            drops = {T.crop_species(x, y): 3, "seed": 2}
         if block.name == "chest":
             drops = self._merge(drops, self.world.meta.get((x, y), {}).get("items", {}))
         for k, n in drops.items():
@@ -745,17 +788,22 @@ class Simulation:
         if not a.count(item):
             raise ActionError("missing_item", f"you have no {item}")
         g, b = self.world.ground(x, y), self.world.block(x, y)
+        picked = b == "flower"   # flowers are decoration: building over one picks it for you
+        if picked:
+            b = "none"
         if item in T.FILLERS:
-            covers, new = T.FILLERS[item]
+            options = T.FILLERS[item]
             if b != "none":
                 raise ActionError("occupied", f"{args['dir']} has {b}")
-            if g not in covers:
-                raise ActionError("bad_target", f"{item} can cover {', '.join(sorted(covers))}, not {g}")
+            if g not in options:
+                raise ActionError("bad_target", f"{item} goes on {', '.join(sorted(options))}, not {g}")
             yield from self.wait(a, 0.3)
-            if self.world.ground(x, y) != g or self.world.block(x, y) != "none":
+            if self.world.ground(x, y) != g or self.world.block(x, y) not in ("none", "flower"):
                 raise ActionError("changed", "the tile changed")
+            if self.world.block(x, y) == "flower":
+                a.add("flower")
             a.add(item, -1)
-            self.set_tile(x, y, ground=new, by=a, cause="place")
+            self.set_tile(x, y, ground=options[g], by=a, cause="place")
             a.bump("placed")
             return {}
         if item not in PLACEABLE:
@@ -773,8 +821,10 @@ class Simulation:
         if BLOCKS[T.B[block]].solid and self.entity_at(x, y):
             raise ActionError("occupied", "someone is standing there")
         yield from self.wait(a, 0.3)
-        if self.world.block(x, y) not in ("none", "stump"):
+        if self.world.block(x, y) not in ("none", "stump", "flower"):
             raise ActionError("changed", "tile was taken")
+        if self.world.block(x, y) == "flower":
+            a.add("flower")
         if BLOCKS[T.B[block]].solid and self.entity_at(x, y):
             raise ActionError("occupied", "someone stepped there")
         a.add(item, -1)
@@ -914,6 +964,70 @@ class Simulation:
         a.add(item, -1)
         a.hunger = min(100, a.hunger + T.FOOD[item])
         return {}
+
+    def _tool_water(self, a, args):
+        """Water a planted tile with a watering can: it grows twice as fast until the next stage."""
+        x, y = self.target(a, args)
+        if not a.count("watering_can"):
+            raise ActionError("need_tool", "you need a watering can (craft one at a workbench)")
+        if self.world.block(x, y) not in ("sprout", "crop") or self.world.ground(x, y) not in ("tilled", "wet_tilled"):
+            raise ActionError("bad_target", "water a growing crop in tilled soil")
+        if self.world.ground(x, y) == "wet_tilled":
+            raise ActionError("already", "it's already watered")
+        yield from self.wait(a, 0.8)
+        timer = self.timers.get((x, y))
+        if timer and timer[1] == "ripen":
+            timer[0] = self.tick + max(1, (timer[0] - self.tick) // 2)
+        self.set_tile(x, y, ground="wet_tilled", by=a, cause="water")
+        a.bump("watered")
+        return {}
+
+    def _creature_target(self, a, args, kind=None):
+        t = self._find_target(args.get("target"))
+        if not isinstance(t, Creature) or (kind and t.kind != kind):
+            raise ActionError("bad_target", f"that is not a {kind or 'creature'}")
+        if max(abs(t.x - a.x), abs(t.y - a.y)) > 1:
+            raise ActionError("out_of_range", "stand next to it")
+        return t
+
+    def _tool_milk(self, a, args):
+        cow = self._creature_target(a, args, "cow")
+        if cow.milked and self.tick - cow.milked < sec(120):
+            raise ActionError("not_ready", "this cow was milked recently; try again in a while")
+        cow.cooldown = max(cow.cooldown, sec(1.5))  # stands still while being milked
+        yield from self.wait(a, 1.2)
+        cow.milked = self.tick
+        a.add("milk")
+        self.emit("milk", cow.x, cow.y, name=a.name, id=cow.id)
+        return {"got": {"milk": 1}}
+
+    def _tool_feed(self, a, args):
+        """Feed an animal: it loves you for a while; a fed chicken lays an egg soon."""
+        animal = self._creature_target(a, args)
+        item = str(args.get("item", ""))
+        if animal.kind == "gloom":
+            raise ActionError("bad_target", "glooms don't eat that")
+        if item not in T.FOOD or not a.count(item):
+            raise ActionError("missing_item", "feed it something edible you carry")
+        yield from self.wait(a, 0.5)
+        a.add(item, -1)
+        animal.love = self.tick + sec(8)
+        if animal.kind == "chicken":
+            animal.lay = min(animal.lay or self.tick + sec(3), self.tick + sec(3))
+        self.emit("love", animal.x, animal.y, by=a.name, id=animal.id, kind=animal.kind)
+        return {}
+
+    def _tool_sleep(self, a, args):
+        """Sleep in an adjacent bed: big energy and health gain, and you'll wake up here after dying."""
+        x, y = self.target(a, args)
+        if self.world.block(x, y) != "bed":
+            raise ActionError("no_bed", f"{args.get('dir')} is {self.describe(x, y)}, not a bed")
+        for _ in range(sec(3) - 1):
+            yield
+        a.energy = min(100, a.energy + 60)
+        a.hp = min(100, a.hp + 10)
+        a.spawn = [x, y]
+        return {"spawn": [x, y]}
 
     def _tool_rest(self, a, args):
         bonus = self.near_block(a, "campfire") or self.sheltered(a.x, a.y)
@@ -1070,7 +1184,7 @@ TOOL_SPECS = {
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
     "dig": {"args": DIR_ARG, "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground"},
     "place": {"args": {**DIR_ARG, "item": "str", "text": "str (flags only, optional)"},
-              "desc": "place a block item; dirt fills holes or water, stone lays cobble, planks make a bridge over water"},
+              "desc": "place an item: furniture/walls/etc. as blocks; dirt fills holes or water, path lays cobble, plank makes a bridge (water) or floor (land)"},
     "pick_up": {"args": {"item": "str (optional)"}, "desc": "pick up items on your tile"},
     "drop": {"args": {"item": "str", "n": "int"}, "desc": "drop items on your tile"},
     "craft": {"args": {"recipe": "str", "n": "int (optional)"}, "desc": "craft from the recipe book"},
@@ -1084,6 +1198,10 @@ TOOL_SPECS = {
     "read_sign": {"args": DIR_ARG, "desc": "read an adjacent sign or flag"},
     "look_far": {"args": DIR_ARG, "desc": "coarse view of the next 48 tiles in a direction"},
     "ignite": {"args": DIR_ARG, "desc": "set an adjacent flammable tile on fire (needs a torch or a nearby campfire)"},
+    "water": {"args": DIR_ARG, "desc": "water a growing crop (needs a watering can): grows twice as fast"},
+    "milk": {"args": {"target": "cow id"}, "desc": "milk an adjacent cow (every 2 minutes)"},
+    "feed": {"args": {"target": "animal id", "item": "food"}, "desc": "feed an adjacent animal; fed chickens lay eggs"},
+    "sleep": {"args": DIR_ARG, "desc": "sleep in an adjacent bed: restores energy, and you respawn there"},
     "store": {"args": {**DIR_ARG, "item": "str", "n": "int"}, "desc": "put items into an adjacent chest"},
     "take": {"args": {**DIR_ARG, "item": "str (omit to list)", "n": "int"}, "desc": "take items from an adjacent chest"},
 }

@@ -58,7 +58,7 @@ def test_dig_tree_and_ground(world):
     assert sim.world.block(a.x, a.y - 1) == "none"
     assert r["changed"]["tiles"][0]["block"] == "none"
     r = run(sim, a, "dig", {"dir": "S"})
-    assert r["ok"] and sim.world.ground(a.x, a.y + 1) == "tilled" and a.count("dirt") == 1
+    assert r["ok"] and sim.world.ground(a.x, a.y + 1) == "tilled" and not a.count("dirt")
 
 
 def test_node_needs_drill(world):
@@ -98,6 +98,7 @@ def test_fill_breach_and_flood(world):
         if sim.world.ground(a.x, a.y - 1) == "water":
             break
     assert sim.world.ground(a.x, a.y - 1) == "water"
+    a.add("dirt", 1)
     assert run(sim, a, "place", {"dir": "N", "item": "dirt"})["ok"]
     assert sim.world.ground(a.x, a.y - 1) == "dirt"
 
@@ -135,8 +136,8 @@ def test_combat_death_and_drop(world):
     assert r["ok"] and r["killed"]
     assert b.deaths == 1 and b.hp == 100 and not b.inventory
     assert sim.items[(a.x + 1, a.y)]["wood"] == 5
-    assert run(sim, a, "step", {"dir": "E"})["ok"]
-    assert run(sim, a, "pick_up")["changed"]["inventory"]["wood"] == 5
+    r = run(sim, a, "step", {"dir": "E"})          # walking onto the pile picks it up
+    assert r["ok"] and r["changed"]["inventory"]["wood"] == 5 and (a.x, a.y) not in sim.items
 
 
 def test_give_and_chat_events(world):
@@ -304,3 +305,63 @@ def test_walk_keeps_going_until_stopped(world):
     sim.world.set(a.x + 2, a.y, block="rock")
     r = run(sim, a, "walk", {"dir": "E"})
     assert r["stopped"] == "blocked" and r["steps"] == 1
+
+
+def test_crop_species_watering_and_harvest(world):
+    sim, a = world
+    from megastructure.sim import sec
+    from megastructure.tiles import crop_species
+    a.add("seed", 1)
+    a.add("watering_can", 1)
+    run(sim, a, "dig", {"dir": "N"})
+    run(sim, a, "place", {"dir": "N", "item": "seed"})
+    assert sim.world.block(a.x, a.y - 1) == "sprout"
+    assert run(sim, a, "water", {"dir": "N"})["ok"] and sim.world.ground(a.x, a.y - 1) == "wet_tilled"
+    for _ in range(sec(75) + sec(3)):            # watered: half of 150 s
+        sim.step()
+    assert sim.world.block(a.x, a.y - 1) == "crop" and sim.world.ground(a.x, a.y - 1) == "tilled"
+    for _ in range(sec(150) + sec(3)):
+        sim.step()
+    r = run(sim, a, "dig", {"dir": "N"})
+    assert r["changed"]["inventory"][crop_species(a.x, a.y - 1)] == 3
+
+
+def test_chickens_lay_cows_give_milk_and_beds_set_spawn(world):
+    sim, a = world
+    from megastructure.sim import Creature, sec
+    hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y, 10); sim.next_creature += 1
+    cow = Creature(sim.next_creature, "cow", a.x, a.y + 1, 30); sim.next_creature += 1
+    sim.creatures.update({hen.id: hen, cow.id: cow})
+    hen.cooldown = cow.cooldown = 10**6  # keep them in place for the test
+    a.add("berries", 1)
+    assert run(sim, a, "feed", {"target": hen.id, "item": "berries"})["ok"]
+    for _ in range(sec(5)):
+        sim.step()
+    assert any("egg" in pile for pile in sim.items.values())
+    assert run(sim, a, "milk", {"target": cow.id})["changed"]["inventory"] == {"milk": 1}
+    assert run(sim, a, "milk", {"target": cow.id})["error"] == "not_ready"
+    sim.world.set(a.x - 1, a.y, block="bed")
+    assert run(sim, a, "sleep", {"dir": "W"})["ok"] and a.spawn == [a.x - 1, a.y]
+    a.hp = 1
+    sim.kill_agent(a, "test", None)
+    assert abs(a.x - (a.spawn[0])) + abs(a.y - a.spawn[1]) == 1
+
+
+def test_placement_rules_are_one_item_one_result(world):
+    sim, a = world
+    a.add("stone", 1); a.add("path", 1); a.add("plank", 2)
+    assert run(sim, a, "place", {"dir": "N", "item": "stone"})["error"] == "not_placeable"
+    assert run(sim, a, "place", {"dir": "N", "item": "path"})["ok"] and sim.world.ground(a.x, a.y - 1) == "cobble"
+    assert run(sim, a, "place", {"dir": "E", "item": "plank"})["ok"] and sim.world.ground(a.x + 1, a.y) == "floor"
+    sim.world.set(a.x, a.y + 1, ground="water")
+    assert run(sim, a, "place", {"dir": "S", "item": "plank"})["ok"] and sim.world.ground(a.x, a.y + 1) == "bridge"
+
+
+def test_flowers_are_picked_when_building_and_floors_come_back_up(world):
+    sim, a = world
+    sim.world.set(a.x, a.y - 1, block="flower")
+    a.add("chair", 1); a.add("path", 1)
+    assert run(sim, a, "place", {"dir": "N", "item": "chair"})["ok"] and a.count("flower") == 1
+    assert run(sim, a, "place", {"dir": "E", "item": "path"})["ok"]
+    r = run(sim, a, "dig", {"dir": "E"})
+    assert r["changed"]["inventory"] == {"path": 1} and sim.world.ground(a.x + 1, a.y) == "dirt"

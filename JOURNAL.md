@@ -242,3 +242,32 @@ walk row has 7 frames, not 8, so it blinked.
 - **Lag**: water was a drawImage per tile per frame (thousands at zoom 1), now one pattern fill. The JS frame cost
   is ~6 ms per second of play; 60 fps at zoom 1 and 3.
 Tests: 22 pass (sprint, walk/stop, fruit regrowth added).
+
+## 2026-11-08 · Iteration 11 — real mechanics from the rest of the pack; one consistent placement rule (user: "dandelion top not removed", "placing stones is weird, make everything consistent, loop until it's high quality")
+
+**Bugs**: flower decor picked random halves of the two-tile sunflower per tile (a "top" floated alone) and was
+painted into the ground, so it could not be broken. Dropped items were never drawn at all.
+
+**Placement rule (sim + client)**: every placeable item has one result per kind of surface, and the ghost renders
+exactly that result: blocks render their real sprite, floors render the real tile. Raw materials are never placeable;
+`path` (2 stone → 2) lays cobble; `plank` builds a bridge on water or a floor on land; `dirt` fills holes and water.
+Anything laid can be taken up again (shift-click returns the item). Building over a flower picks it. Tilling yields
+nothing (no dirt clutter).
+
+**New mechanics**
+- Flowers are real objects (19 kinds plus the tall sunflower drawn whole): pick, place, gift, craft into potted plants.
+- Ground items are visible (bobbing, with a shadow) and picked up by walking over them.
+- Farming: 6 crop species (wheat, pumpkin, cauliflower, lettuce, eggplant, carrot), chosen by a tile hash shared by
+  server and client; sprout → young → ripe from the pack's growth columns; the watering can (premium watering
+  animation, drops) makes wet soil and halves the time to the next stage; harvest gives that species plus seeds.
+- Animals: chickens lay eggs (~every 1.5–3 min, sooner when fed); cows can be milked every 2 min; feeding plays the
+  pack's love-hearts animations.
+- Furniture from the pack: bed (sleep: +60 energy, +10 HP, and you respawn next to it), chair, table, potted plant, clock,
+  rug; fence gates that open next to people; oriented bridge planks; wooden floors.
+- UI: 9-slot hotbar plus a bag (B) for the rest; hints for everything ("Feed lettuce to the cow", "Water crop (grows 2x
+  faster)", "Pick flower, till & plant", "Take up the path"...).
+- `--dev` server flag enables `dev_give` for automated QA only.
+
+**QA in Chrome (Playwright, real clicks)**: built a homestead (bed, chair, table, plant, clock, rug over a flower, gate,
+chest, workbench, campfire, fences, path, floor) and planted and watered 6 seeds; every placement matched its hint and
+the resulting tile; screenshots reviewed. Tests: 26 pass.

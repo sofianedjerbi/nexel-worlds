@@ -42,6 +42,8 @@ GROUNDS = [
     Ground("cobble", "_", diggable=False),
     Ground("ash", "'"),
     Ground("deep_water", "=", walkable=False, diggable=False, liquid=True),
+    Ground("wet_tilled", "u"),  # watered soil: crops grow twice as fast; dries when the crop grows
+    Ground("floor", "n", diggable=False),  # wooden floor laid from planks
 ]
 G = {g.name: i for i, g in enumerate(GROUNDS)}
 
@@ -68,7 +70,24 @@ BLOCKS = [
     # appended (block ids are stored in saved chunks, so new blocks go at the end)
     Block("fruit_tree", "F", flammable=True, hardness=5, drops={"fruit": 3}, wall=True),  # picking: fruit regrows
     Block("sprout", ";", solid=False, flammable=True, hardness=2, drops={"seed": 1}),
+    Block("flower", "f", solid=False, flammable=True, hardness=1, drops={"flower": 1}),
+    Block("bed", "B", flammable=True, hardness=8, drops={"bed": 1}, tool="axe", wall=True),
+    Block("chair", "h", flammable=True, hardness=4, drops={"chair": 1}, tool="axe"),
+    Block("table", "L", flammable=True, hardness=6, drops={"table": 1}, tool="axe", wall=True),
+    Block("plant", "p", hardness=3, drops={"plant": 1}),
+    Block("clock", "K", flammable=True, hardness=4, drops={"clock": 1}, tool="axe", wall=True),
+    Block("rug", "r", solid=False, flammable=True, hardness=3, drops={"rug": 1}),
+    Block("gate", "g", solid=False, flammable=True, hardness=8, drops={"gate": 1}, tool="axe", wall=True),
 ]
+
+# Crop species: which plant a sprout becomes is a pure function of its tile, shared with the web client
+# (index.html cropSpecies) so both agree without sending extra state.
+CROPS = ["wheat", "pumpkin", "cauliflower", "lettuce", "eggplant", "carrot"]
+
+
+def crop_species(x: int, y: int) -> str:
+    h = (((x * 73856093) & 0xFFFFFFFF) ^ ((y * 19349663) & 0xFFFFFFFF)) & 0xFFFFFFFF
+    return CROPS[h % len(CROPS)]
 B = {b.name: i for i, b in enumerate(BLOCKS)}
 
 # items that place as a block (item name -> block name)
@@ -82,16 +101,20 @@ PLACEABLE = {
     "flag": "flag",
     "seed": "sprout",
     "chest": "chest",
+    "flower": "flower",
+    "bed": "bed", "chair": "chair", "table": "table", "plant": "plant", "clock": "clock", "rug": "rug", "gate": "gate",
 }
-# items laid on the ground: item -> (grounds it can cover, resulting ground)
+# Items laid into the ground: item -> {ground it can go on: resulting ground}. One item, one obvious result
+# per surface; raw materials (wood, stone, fiber, ore) are never placeable themselves.
+LAND = ("grass", "dirt", "ash")
 FILLERS = {
-    "dirt": ({"tilled", "water"}, "dirt"),
-    "stone": ({"dirt", "grass", "tilled", "ash", "bridge"}, "cobble"),
-    "plank": ({"water"}, "bridge"),
+    "dirt": {"tilled": "dirt", "wet_tilled": "dirt", "water": "dirt"},
+    "path": {g: "cobble" for g in LAND},
+    "plank": {"water": "bridge", **{g: "floor" for g in LAND}},
 }
-SEED_GROUNDS = {"tilled"}  # seeds only take on tilled soil
+SEED_GROUNDS = {"tilled", "wet_tilled"}  # seeds only take on tilled soil
 
-FOOD = {"fruit": 10, "berries": 8, "mushroom": 6, "egg": 10, "meat": 6, "cooked_meat": 25, "wheat": 4, "bread": 30, "milk": 12}
+FOOD = {"pumpkin": 14, "cauliflower": 10, "lettuce": 8, "eggplant": 10, "carrot": 9, "fruit": 10, "berries": 8, "mushroom": 6, "egg": 10, "meat": 6, "cooked_meat": 25, "wheat": 4, "bread": 30, "milk": 12}
 
 WEAPONS = {"sword": 30, "spear": 18, "axe": 12, "pickaxe": 10}
 FIST_DAMAGE = 5
@@ -111,6 +134,7 @@ RECIPES = {
     for r in [
         Recipe("workbench", {"wood": 4}, {"workbench": 1}, 6),
         Recipe("plank", {"wood": 1}, {"plank": 2}, 3),
+        Recipe("path", {"stone": 2}, {"path": 2}, 3),
         Recipe("fence", {"wood": 2}, {"fence": 1}, 3),
         Recipe("door", {"wood": 3}, {"door": 1}, 4),
         Recipe("sign", {"wood": 1}, {"sign": 1}, 2),
@@ -127,5 +151,13 @@ RECIPES = {
         Recipe("bread", {"wheat": 3}, {"bread": 1}, 5, "campfire"),
         Recipe("ingot", {"ore": 2}, {"ingot": 1}, 10, "campfire"),
         Recipe("sword", {"ingot": 2, "wood": 1}, {"sword": 1}, 8, "workbench"),
+        Recipe("watering_can", {"stone": 3, "wood": 1}, {"watering_can": 1}, 6, "workbench"),
+        Recipe("bed", {"wood": 6, "fiber": 3}, {"bed": 1}, 8, "workbench"),
+        Recipe("chair", {"wood": 2}, {"chair": 1}, 4, "workbench"),
+        Recipe("table", {"wood": 4}, {"table": 1}, 5, "workbench"),
+        Recipe("clock", {"wood": 2, "ingot": 1}, {"clock": 1}, 6, "workbench"),
+        Recipe("rug", {"fiber": 4}, {"rug": 1}, 4),
+        Recipe("plant", {"stone": 1, "flower": 1}, {"plant": 1}, 3),
+        Recipe("gate", {"wood": 3}, {"gate": 1}, 4),
     ]
 }

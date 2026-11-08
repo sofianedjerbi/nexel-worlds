@@ -85,6 +85,8 @@ def gen_tile(seed: int, x: int, y: int) -> tuple[int, int]:
     if stones > 0.76 and cand and roll < 0.6:
         return ground, (B["ore"] if _hash(seed, x, y, 19) < 0.18 else B["rock"])
     # lone features scattered over open meadow
+    if ground == G["grass"] and fbm(seed, x, y, 14, 6) > 0.66 and _hash(seed, x, y, 31) < 0.22:
+        return ground, B["flower"]
     cand11, roll11 = _picked(seed, x, y, 11, 23)
     if cand11:
         if roll11 < 0.18:

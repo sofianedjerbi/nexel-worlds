@@ -27,6 +27,9 @@ COPY = {  # zip-internal path suffix -> output name
     "Tilesets/Building parts/Stone_Path.png": "cobble.png",
     "Tilesets/Building parts/Paths.png": "planks.png",
     "Tilesets/Building parts/Fences.png": "fences.png",
+    "Tilesets/Building parts/Fence gates animation sprites .png": "gates.png",
+    "Tilesets/Building parts/Wooden_Bridge_v2.png": "bridge.png",
+    "Tilesets/Building parts/Basic_Furniture.png": "furniture.png",
     "Tilesets/Building parts/Chest.png": "chest.png",
     "Tilesets/Building parts/door animation sprites.png": "door.png",
     "Objects/Trees, stumps and bushes.png": "trees.png",
@@ -219,6 +222,7 @@ def build(downloads: Path):
         return (int(lum * 0.45 + r * 0.12), int(lum * 0.43 + g * 0.1), int(lum * 0.45 + b * 0.1))
     recolor(tilled, ashen).save(OUT / "ash.png")
     recolor(water, lambda r, g, b: (int(r * 0.62), int(g * 0.74), int(b * 0.86))).save(OUT / "water_deep.png")
+    recolor(tilled.copy(), lambda r, g, b: (int(r * 0.72), int(g * 0.62), int(b * 0.55))).save(OUT / "tilled_wet.png")
     # UI pieces used as CSS 9-slices
     paw.resize((32, 32), Image.NEAREST).save(OUT / "cursor.png")
     point.resize((32, 32), Image.NEAREST).save(OUT / "cursor_point.png")
