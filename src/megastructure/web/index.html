@@ -140,7 +140,7 @@ const label = (n) => LABEL[n] || String(n).replace("_", " ");
 //  Assets
 // =====================================================================================
 const IMG = {};
-const ASSETS = ["water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
+const ASSETS = ["actions", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
   "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen"];
 let GEN = {};
 function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
@@ -212,6 +212,11 @@ function setTile(x, y, comb, gnd) {
   if (!b) return;
   const i = (y - by * B) * B + (x - bx * B);
   if (b.comb[i] === comb && b.gnd[i] === gnd) return;
+  const old = b.comb[i], now = performance.now();
+  if (old === "T" && comb !== "T") falls.push({x, y, t0: now});
+  else if (old !== comb && isObject(comb) && comb !== "x") pops.set(x + "," + y, now);
+  if (old !== comb && !GROUND.has(old)) burst(x, y, old, 10);
+  if (gnd === "o" && b.gnd[i] !== "o") burst(x, y, "o", 8);
   b.comb[i] = comb; b.gnd[i] = gnd;
   b.objs.delete(i); if (isObject(comb)) b.objs.set(i, comb);
   touch(x, y);
@@ -292,10 +297,11 @@ function renderBlock(b) {
 const AGENT_TINTS = ["#f4b6b6", "#a9cdf2", "#b8e0a0", "#f2d58f", "#d3b6ef", "#9fdcd0", "#f3b7d6", "#e8c9a4", "#c9d0f5", "#f6c79a"];
 const agentTint = (name) => AGENT_TINTS[[...name].reduce((h, c) => h * 31 + c.charCodeAt(0) >>> 0, 7) % AGENT_TINTS.length];
 const tinted = new Map();
-function characterSheet(tint) {      // recolour the character's cream body to a per-person colour
-  if (tinted.has(tint)) return tinted.get(tint);
-  const c = document.createElement("canvas"); c.width = IMG.character.width; c.height = IMG.character.height;
-  const g = c.getContext("2d"); g.drawImage(IMG.character, 0, 0);
+function characterSheet(tint, src = IMG.character) {   // recolour the cream body to a per-person colour
+  const key = tint + (src === IMG.character ? "" : ":" + src.src);
+  if (tinted.has(key)) return tinted.get(key);
+  const c = document.createElement("canvas"); c.width = src.width; c.height = src.height;
+  const g = c.getContext("2d"); g.drawImage(src, 0, 0);
   const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
   const tr = parseInt(tint.slice(1, 3), 16), tg = parseInt(tint.slice(3, 5), 16), tb = parseInt(tint.slice(5, 7), 16);
   for (let i = 0; i < px.length; i += 4) {
@@ -305,15 +311,21 @@ function characterSheet(tint) {      // recolour the character's cream body to a
       px[i] = Math.min(255, tr * k); px[i + 1] = Math.min(255, tg * k); px[i + 2] = Math.min(255, tb * k);
     }
   }
-  g.putImageData(d, 0, 0); tinted.set(tint, c); return c;
+  g.putImageData(d, 0, 0); tinted.set(key, c); return c;
 }
+const actionSheet = (tint) => characterSheet(tint, IMG.actions);
 function genCell(name) { return [GEN[name] * 16, 0]; }
 // object sprite for a tile char: [img, sx, sy, sw, sh, dx (from tile left), dy (from tile top)]
 function objectSprite(c, x, y, t) {
   const h = hash(x, y, 21);
   switch (c) {
     case "T": {
-      if (h < .7) return [IMG.trees, 16, 0, 32, 32, -8, -18];                           // round tree
+      if (h < .7) {                                                                       // animated round tree
+        const hit = shakes.get(x + "," + y), k = hit ? (performance.now() - hit) / 1000 : 9;
+        if (k < .32) return [IMG.tree_anim, 48 * Math.min(3, Math.floor(k * 12.5)), 48, 48, 48, -16, -28];
+        const f = Math.floor(t * 6 + h * 60) % 12;
+        return [IMG.tree_anim, 48 * f, 144, 48, 48, -16, -28];
+      }
       if (h < .86) return [IMG.trees, 0, 0, 16, 32, 0, -18];                            // young tree
       const v = [[48, 0], [80, 0], [112, 0], [144, 0]][Math.floor((h - .86) / .14 * 4)]; // fruit trees
       return [IMG.trees, v[0], v[1], 32, 32, -8, -18];
@@ -337,6 +349,42 @@ function objectSprite(c, x, y, t) {
   }
   return null;
 }
+// ---- effects: particles, shakes, pops, falling trees ------------------------------------
+const parts = [], shakes = new Map(), pops = new Map(), falls = [], flashes = new Map();
+const PCOL = {T: ["#6b4b35", "#8f6a45", "#7fb069", "#5e8c4f"], H: ["#5e8c4f", "#7fb069"], b: ["#c0504a", "#7fb069", "#8a5aa0"],
+  M: ["#8a8f8c", "#b6bab1", "#5d6260"], "*": ["#8a8f8c", "#f5d77a", "#b6bab1"], Q: ["#c0504a", "#f4f0e6"],
+  w: ["#e0c35a", "#7fb069"], "\"": ["#7fb069"], "#": ["#a8775a", "#6b4a3a"], "%": ["#8a8f8c", "#b6bab1"], o: ["#b48b5c", "#8c6a44"],
+  C: ["#a8775a", "#c8a45c"], "&": ["#a8775a", "#6b4a3a"], dust: ["#e9d9b4", "#d8c59c"], spark: ["#fff1a8", "#ffd36a", "#ffffff"],
+  hit: ["#ffffff", "#ffd0cc"], food: ["#c0504a", "#e0c35a", "#fff1a8"], blood: ["#d9473a", "#ffffff"]};
+function burst(x, y, kind, n, opts = {}) {
+  const cols = PCOL[kind] || PCOL.dust;
+  for (let i = 0; i < n; i++) parts.push({
+    x: x + .5 + (Math.random() - .5) * .5, y: y + .5 + (opts.dy || 0) + (Math.random() - .5) * .4,
+    vx: (Math.random() - .5) * (opts.spread || 3), vy: -Math.random() * (opts.up || 3) - .5,
+    g: opts.g ?? 9, life: opts.life || (.4 + Math.random() * .4), age: 0, c: cols[i % cols.length], s: opts.size || (Math.random() < .3 ? 2 : 1)});
+}
+function floatText(x, y, text, color) { floats.push({x, y, text, color, t: performance.now() / 1000}); }
+function drawEffects(sx, sy, S, dt) {
+  const z = zoom;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i]; p.age += dt;
+    if (p.age > p.life) { parts.splice(i, 1); continue; }
+    p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    ctx.globalAlpha = Math.min(1, 2 * (1 - p.age / p.life));
+    ctx.fillStyle = p.c;
+    ctx.fillRect(Math.round(sx(p.x)), Math.round(sy(p.y)), p.s * z, p.s * z);
+  }
+  ctx.globalAlpha = 1;
+  const now = performance.now();
+  for (let i = falls.length - 1; i >= 0; i--) {     // the pack's tree-felling animation, then fade
+    const f = falls[i], k = (now - f.t0) / 1000, fr = Math.floor(k * 14);
+    if (fr >= 12) { falls.splice(i, 1); continue; }
+    ctx.globalAlpha = fr >= 9 ? 1 - (fr - 9) / 3 : 1;
+    ctx.drawImage(IMG.tree_fall, fr * 64, 0, 64, 48, sx(f.x) - 24 * z, sy(f.y) - 28 * z, 64 * z, 48 * z);
+    ctx.globalAlpha = 1;
+  }
+}
+
 function fenceSprite(x, y) {
   const f = (dx, dy) => { const c = combAt(x + dx, y + dy); return c === "#" || c === "+"; };
   const n = f(0, -1), s = f(0, 1), e = f(1, 0), w = f(-1, 0);
@@ -439,7 +487,15 @@ function onEvent(e) {
     const slot = bubbles.filter((b) => b.name === e.from && t - b.t < 7).length;
     bubbles.push({name: e.from, text: e.text, t, shout: e.type === "shout", slot: Math.min(slot, 2)});
   }
-  if (e.type === "attack") floats.push({x: e.x, y: e.y, text: "-" + e.damage, color: "#d9473a", t});
+  if (e.type === "attack") {
+    const tgt = [...ents.values()].find((q) => q.e && (q.e.name === e.target || `${q.e.kind}#${q.e.id}` === e.target));
+    const tx = tgt ? tgt.x : e.x, ty = tgt ? tgt.y : e.y;
+    if (tgt) flashes.set(tgt.e.kind === "agent" ? "agent" + tgt.e.id : tgt.e.kind + tgt.e.id, performance.now());
+    burst(tx, ty, "hit", 6, {dy: -.4}); floats.push({x: tx, y: ty, text: "-" + e.damage, color: "#ff8a7a", t});
+  }
+  if (e.type === "death" || e.type === "creature_died") burst(e.x, e.y, "dust", 16, {dy: -.3, up: 2.5, spread: 4, g: 3, life: .7, size: 2});
+  if (e.type === "pick_up") burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3});
+  if (e.type === "craft") burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4});
   if (["pick_up", "drop", "chest"].includes(e.type)) return;
   let text;
   switch (e.type) {
@@ -514,9 +570,22 @@ function frame(now) {
   for (const p of ents.values()) if (p.e) list.push({y: p.y + .01, p});
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const o of list) {
-    if (o.spr) { const [img, a, b2, w, h, dx, dy] = o.spr; ctx.drawImage(img, a, b2, w, h, sx(o.x) + dx * zoom, sy(o.y) + dy * zoom, w * zoom, h * zoom); }
+    if (o.spr) {
+      const [img, a, b2, w, h, dx, dy] = o.spr, key = o.x + "," + o.y;
+      let px = sx(o.x) + dx * zoom, py = sy(o.y) + dy * zoom, ww = w * zoom, hh = h * zoom;
+      const pop = pops.get(key);
+      if (pop !== undefined) {                       // newly placed: bounce in
+        const k = (now - pop) / 260;
+        if (k >= 1) pops.delete(key);
+        else { const sc = 1 + Math.sin(k * Math.PI) * .25 - (1 - k) * .3; const cx = px + ww / 2, by = py + hh; ww *= sc; hh *= sc; px = cx - ww / 2; py = by - hh; }
+      }
+      const sh = shakes.get(key);
+      if (sh !== undefined && o.spr[0] !== IMG.tree_anim) { const k = (now - sh) / 1000; if (k < .25) px += Math.round(Math.sin(k * 60) * (1 - k * 4) * 1.5) * zoom; }
+      ctx.drawImage(img, a, b2, w, h, Math.round(px), Math.round(py), Math.round(ww), Math.round(hh));
+    }
     else drawEntity(o.p, sx, sy, S, t, now);
   }
+  drawEffects(sx, sy, S, dt);
   drawNight(vis, sx, sy, S, t);
   if (mouse.in && me) {
     const p = tileAtScreen(mouse.x, mouse.y), it = intent(p, keys.has("shift"));
@@ -562,33 +631,72 @@ function drawEntity(p, sx, sy, S, t, now) {
   if (x < -S * 2 || x > W + S * 2 || y < -S * 2 || y > H + S * 2) return;
   const moving = now - p.moved < 300;
   if (e.kind === "agent") {
+    const mine = me && e.id === myId;
+    const action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, tid: e.tid, t0: p.doingSince || now} : null);
+    if (!mine) { if (e.doing && !p.doingSince) p.doingSince = now; if (!e.doing) p.doingSince = 0; }
+    // face the action's target
+    if (action && action.dir && DIRV[action.dir]) { [p.fx, p.fy] = DIRV[action.dir]; }
+    if (action && action.tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == action.tid); if (q) { p.fx = Math.sign(q.x - p.x); p.fy = p.fx ? 0 : Math.sign(q.y - p.y); } }
     const row = p.fy < 0 ? 1 : p.fx < 0 ? 2 : p.fx > 0 ? 3 : 0;
-    const frameI = moving ? Math.floor(t * 8) % 4 : (Math.floor(t * 2) % 2);
-    if ((me && e.name === me) || e.name === follow) {
-      ctx.fillStyle = me && e.name === me ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
+    const sheet = characterSheet(agentTint(e.name));
+    let bob = 0, sheetImg = sheet, sxx, syy;
+    const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
+    if (mine || e.name === follow) {
+      ctx.fillStyle = mine ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
       ctx.beginPath(); ctx.ellipse(x + S / 2, y + S - 2 * z, 6 * z, 2.5 * z, 0, 0, 7); ctx.fill();
     }
-    ctx.drawImage(characterSheet(agentTint(e.name)), frameI * 48, row * 48, 48, 48, x - 16 * z, y - 20 * z, 48 * z, 48 * z);
-    if (e.doing && ["dig", "craft", "attack"].includes(e.doing)) {
-      const k = Math.floor(t * 10) % 2;
-      ctx.fillStyle = "#fff6e2";
-      ctx.fillRect(x + S / 2 + p.fx * 9 * z + (k ? z : -z), y + 6 * z + p.fy * 6 * z - k * z, 2 * z, 2 * z);
+    if (tool === "dig" || tool === "attack" || tool === "craft") {
+      // swing: raise / strike, using the pack's tool animations (axe for wood, hoe for earth and stone)
+      const tx = Math.round(p.tx) + p.fx, ty = Math.round(p.ty) + p.fy, target = combAt(tx, ty);
+      const axe = tool === "attack" || "TH#+&!?C".includes(target || "");
+      const rate = tool === "attack" ? 8 : 4.5, phase = Math.floor(k * rate) % 2;
+      sheetImg = actionSheet(agentTint(e.name));
+      sxx = phase * 48; syy = ((axe ? 4 : 0) + (tool === "craft" ? 0 : row)) * 48;
+      const swing = Math.floor(k * rate);
+      if (phase === 1 && p.lastSwing !== swing) {   // the strike lands: debris and a shake on the target
+        p.lastSwing = swing;
+        if (tool === "dig" && target) {
+          const kind = GROUND.has(target) ? "o" : target;
+          burst(tx, ty, kind, 6, {dy: target === "T" ? -.6 : -.1}); shakes.set(tx + "," + ty, now);
+        } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
+      }
+    } else if (tool === "eat") {
+      bob = Math.round(Math.abs(Math.sin(k * 14)) * 2) * z;
+      if (Math.floor(k * 7) !== p.lastCrumb) { p.lastCrumb = Math.floor(k * 7); burst(Math.round(p.tx), Math.round(p.ty), "food", 2, {dy: -.3, up: 1.5, spread: 1.5}); }
+    } else if (tool === "place" || tool === "pick_up" || tool === "give" || tool === "store" || tool === "take" || tool === "drop") {
+      bob = Math.round(Math.sin(Math.min(1, k * 5) * Math.PI) * 3) * z;
+    } else if (tool === "rest") {
+      if (Math.floor(k * 1.5) !== p.lastZ) { p.lastZ = Math.floor(k * 1.5); floatText(p.x + .3, p.y - .3, "z", "#e8f0ff"); }
     }
-  } else if (e.kind === "chicken") {
-    const f = moving ? Math.floor(t * 8) % 4 : Math.floor(t * 1.5 + e.id) % 2;
+    if (sxx === undefined) {
+      const moving = now - p.moved < 260 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
+      if (moving) {                                   // walk: frames 2-3, a step every 0.12 s
+        const step = Math.floor(now / 120);
+        sxx = (2 + step % 2) * 48;
+        if (step !== p.lastStep && step % 2 === 0) { p.lastStep = step; burst(p.x, p.y + .35, "dust", 2, {up: .6, spread: 1.2, g: 2, life: .35}); }
+      } else sxx = (Math.floor(now / 520 + e.id) % 2) * 48;   // idle: gentle breathing
+      syy = row * 48;
+    }
+    const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
+    const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
+    ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z - p.fx * kb, y - 20 * z - bob - p.fy * kb, 48 * z, 48 * z);
+    if (hitK < .12) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .7; ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z, y - 20 * z, 48 * z, 48 * z); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+  } else if (e.kind === "chicken" || e.kind === "cow") {
+    const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
+    const big = e.kind === "cow", fw = big ? 32 : 16, img = big ? IMG.cow : IMG.chicken;
+    const f = moving ? Math.floor(now / 90) % 8 : Math.floor(now / 260 + e.id) % (big ? 3 : 4);
+    const fl = flashes.get(e.kind + e.id), white = fl && now - fl < 120;
+    const w = fw * z, dx = big ? x - S / 2 : x, dy = big ? y - S : y - 2 * z;
     ctx.save();
-    if (p.fx < 0) { ctx.translate(x + S, 0); ctx.scale(-1, 1); ctx.drawImage(IMG.chicken, f * 16, (moving ? 16 : 0), 16, 16, 0, y - 2 * z, S, S); }
-    else ctx.drawImage(IMG.chicken, f * 16, (moving ? 16 : 0), 16, 16, x, y - 2 * z, S, S);
-    ctx.restore();
-  } else if (e.kind === "cow") {
-    const f = moving ? Math.floor(t * 6) % 4 : Math.floor(t * 1.2 + e.id) % 3;
-    ctx.save();
-    if (p.fx < 0) { ctx.translate(x + S / 2, 0); ctx.scale(-1, 1); ctx.drawImage(IMG.cow, f * 32, moving ? 32 : 0, 32, 32, -S, y - S, S * 2, S * 2); }
-    else ctx.drawImage(IMG.cow, f * 32, moving ? 32 : 0, 32, 32, x - S / 2, y - S, S * 2, S * 2);
+    if (p.fx < 0) { ctx.translate(dx + w, 0); ctx.scale(-1, 1); ctx.drawImage(img, f * fw, moving ? fw : 0, fw, fw, 0, dy, w, w); if (white) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(img, f * fw, moving ? fw : 0, fw, fw, 0, dy, w, w); } }
+    else { ctx.drawImage(img, f * fw, moving ? fw : 0, fw, fw, dx, dy, w, w); if (white) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(img, f * fw, moving ? fw : 0, fw, fw, dx, dy, w, w); } }
     ctx.restore();
   } else if (e.kind === "gloom") {
     const [gx] = genCell(Math.floor(t * 3 + e.id) % 2 ? "gloom1" : "gloom0");
-    ctx.drawImage(IMG.gen, gx, 0, 16, 16, x, y - 2 * z, S, S);
+    const hop = Math.round(Math.abs(Math.sin(t * 5 + e.id)) * 2) * z;
+    ctx.drawImage(IMG.gen, gx, 0, 16, 16, x, y - 2 * z - hop, S, S);
+    const fl = flashes.get("gloom" + e.id);
+    if (fl && now - fl < 120) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(IMG.gen, gx, 0, 16, 16, x, y - 2 * z - hop, S, S); ctx.globalCompositeOperation = "source-over"; }
   }
 }
 function drawNameplate(p, sx, sy, S) {
@@ -727,10 +835,14 @@ async function refresh() {
   drawHotbar(s.inventory); drawRecipes(); drawGoals();
 }
 setInterval(refresh, 700);
+let myAction = null;
 async function act(tool, args, quiet) {
   if (!me) return null;
   busy = true;
+  const mine = {tool, dir: args.dir, tid: args.target, t0: performance.now()};
+  if (tool !== "step" && tool !== "move_to" && tool !== "say" && tool !== "shout") myAction = mine;
   const r = await rpc("act", {tool, args});
+  if (myAction === mine) myAction = null;
   busy = false; progress = null;
   if (!r.ok && !["interrupted", "offline"].includes(r.error) && !quiet) toast(`${label(tool)}: ${r.detail || r.error}`, true);
   if (r.ok) {

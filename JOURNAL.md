@@ -190,3 +190,24 @@ preview. Clicks gave no hint of what they would do. At zoom 1 the meadows were s
 **Verified in Chrome (Playwright)**: hover shows "Chop tree"; one click walks 15 tiles and chops (+3 wood, 2.8 s);
 a second tree works too; craft workbench; select it (key 2); hover shows "Place workbench" with the ghost; click places it.
 No page errors. 19 tests pass.
+
+## 2026-11-08 · Iteration 9 — animation (user: "the animation sequence isn't good; animate every action")
+
+**Diagnosis**: the walk cycled frames 0–3, but in the pack frames 0–1 are the idle breathing pose and 2–3 are the
+walk, so walking stuttered between standing and stepping. Actions had no animation at all.
+
+**Change**
+- Walk = frames 2–3 every 120 ms with footstep dust; idle = frames 0–1 slowly.
+- The pack's actions sheet (4 directions × hoe/axe/can, 2 frames) is recoloured per person like the walk sheet.
+  dig/attack/craft swing (axe for wood things and fights, hoe for earth and stone), facing the target (the
+  server now sends each agent's action `dir` and target `tid` per tick). On every strike: debris particles by
+  material (wood chips and leaves, stone chips, dirt clods, berries, sparks) and a shake on the target.
+- Trees: the pack's animated tree sways in the wind and plays its hit frames when struck; felling plays the pack's
+  13-frame falling animation, then fades (no stump).
+- Placed objects bounce in; removed objects burst into debris; tilling throws dirt.
+- Fights: the target flashes white with a knockback, plus hit sparks and a floating damage number; deaths and
+  creature kills puff into dust. Eating bobs with crumbs; resting floats "z"; place/pick up/give/store hop;
+  crafting throws sparks. Chickens and cows use their real idle (row 0) and 8-frame walk (row 1) cycles; glooms hop.
+- Your own action animates the instant you click (not after the server reply).
+
+**Verified**: a frame-by-frame capture in Chrome of walk → axe swings → shakes and chips → felling → +3 wood; no page errors.
