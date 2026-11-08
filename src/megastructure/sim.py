@@ -90,16 +90,19 @@ class Creature:
     milked: int = 0     # tick of the last milking (cows)
     love: int = 0       # fed: shows hearts and (chickens) lays an egg soon, until this tick
     lay: int = 0        # next tick a chicken may lay an egg
+    born: int = 0       # tick of birth (chicks and calves grow up)
 
     def to_json(self):
         return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "hp": self.hp,
-                "milked": self.milked, "love": self.love, "lay": self.lay}
+                "milked": self.milked, "love": self.love, "lay": self.lay, "born": self.born}
 
 
 CREATURES = {
     "chicken": {"hp": 10, "drops": {"meat": 1, "egg": 1}, "char": "c"},
     "cow": {"hp": 30, "drops": {"meat": 3, "milk": 1}, "char": "k"},
     "gloom": {"hp": 30, "drops": {"ore": 1}, "char": "G", "damage": 7},
+    "chick": {"hp": 4, "drops": {"meat": 1}, "char": "c", "grows": ("chicken", 300)},
+    "calf": {"hp": 12, "drops": {"meat": 1}, "char": "k", "grows": ("cow", 360)},
 }
 
 
@@ -229,6 +232,8 @@ class Simulation:
         for k, n in items.items():
             pile[k] = pile.get(k, 0) + n
         self.dirty_items.add((x, y))
+        if "egg" in items and (x, y) not in self.timers:   # an egg left on the ground hatches
+            self.timers[(x, y)] = [self.tick + sec(180), "hatch"]
 
     def entity_at(self, x, y):
         for a in self.agents.values():
@@ -428,7 +433,7 @@ class Simulation:
         online = [a for a in self.agents.values() if a.online]
         # spawning (deterministic via tick rng)
         if self.tick % sec(10) == 0 and online:
-            animals = sum(1 for c in self.creatures.values() if c.kind in ("chicken", "cow"))
+            animals = sum(1 for c in self.creatures.values() if c.kind in ("chicken", "cow", "chick", "calf"))
             if animals < min(40, 3 * len(online)):
                 a = online[self.rng.randrange(len(online))]
                 self._spawn_creature("chicken" if self.rng.random() < 0.6 else "cow", a, 12, 30)
@@ -450,11 +455,17 @@ class Simulation:
                 elif self.tick >= c.lay:
                     c.lay = self.tick + sec(90) + self.rng.randrange(sec(90))
                     self.add_items(c.x, c.y, {"egg": 1})
+                    self.timers[(c.x, c.y)] = [self.tick + sec(180), "hatch"]
                     self.emit("lay", c.x, c.y, id=c.id)
+            grows = CREATURES[c.kind].get("grows")
+            if grows and self.tick - c.born >= sec(grows[1]):
+                c.kind = grows[0]
+                c.hp = CREATURES[c.kind]["hp"]
+                self.emit("grew_up", c.x, c.y, id=c.id, kind=c.kind)
             if c.cooldown > 0:
                 c.cooldown -= 1
                 continue
-            if c.kind in ("chicken", "cow"):
+            if c.kind in ("chicken", "cow", "chick", "calf"):
                 c.cooldown = sec(0.8) + self.rng.randrange(sec(1.2))
                 d = list(DIRS.values())[self.rng.randrange(4)]
                 self._creature_move(c, c.x + d[0], c.y + d[1])
@@ -546,6 +557,18 @@ class Simulation:
                     self.set_tile(*pos, ground=dry, block=nxt, cause="grew")
                     if nxt == "crop":
                         self.timers[pos] = [self.tick + sec(150), "ripen"]
+                elif kind == "hatch" and self.items.get(pos, {}).get("egg"):
+                    pile = self.items[pos]
+                    pile["egg"] -= 1
+                    if not pile["egg"]:
+                        del pile["egg"]
+                    if not pile:
+                        del self.items[pos]
+                    self.dirty_items.add(pos)
+                    chick = Creature(self.next_creature, "chick", *pos, CREATURES["chick"]["hp"], born=self.tick)
+                    self.next_creature += 1
+                    self.creatures[chick.id] = chick
+                    self.emit("hatch", *pos, id=chick.id)
                 elif kind == "fruit" and self.world.block(*pos) == "tree":
                     self.set_tile(*pos, block="fruit_tree", cause="grew")
                 elif kind == "regrow" and self.world.block(*pos) == "none" and self.entity_at(*pos) is None \
@@ -1030,6 +1053,15 @@ class Simulation:
         yield from self.wait(a, 0.5)
         a.add(item, -1)
         animal.love = self.tick + sec(8)
+        if animal.kind == "cow":
+            mate = next((o for o in self.creatures.values() if o is not animal and o.kind == "cow" and o.love > self.tick
+                         and max(abs(o.x - animal.x), abs(o.y - animal.y)) <= 3), None)
+            if mate:
+                calf = Creature(self.next_creature, "calf", animal.x, animal.y, CREATURES["calf"]["hp"], born=self.tick)
+                self.next_creature += 1
+                self.creatures[calf.id] = calf
+                animal.love = mate.love = 0
+                self.emit("born", animal.x, animal.y, id=calf.id, kind="calf")
         if animal.kind == "chicken":
             animal.lay = min(animal.lay or self.tick + sec(3), self.tick + sec(3))
         self.emit("love", animal.x, animal.y, by=a.name, id=animal.id, kind=animal.kind)

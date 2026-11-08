@@ -292,6 +292,10 @@ class GameServer:
                     day = self.sim.tick // DAY_TICKS
                     self.sim.tick = day * DAY_TICKS + int(float(msg.get("phase", 0.8)) * DAY_TICKS)
                     reply(mid, tick=self.sim.tick)
+                elif op == "dev_skip" and self.dev:      # fast-forward the simulation (QA)
+                    for _ in range(min(int(float(msg.get("seconds", 10)) * TICK_HZ), 20000)):
+                        self.sim.step()
+                    reply(mid, tick=self.sim.tick)
                 elif op == "dev_damage" and self.dev:
                     self.sim.damage(agent, int(msg.get("n", 10)), "dev")
                     reply(mid, hp=agent.hp)

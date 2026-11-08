@@ -378,3 +378,17 @@ def test_a_walled_room_is_sheltered(world):
     assert sim.sheltered(a.x, a.y)
     sim.world.set(a.x + 2, a.y, block="none")      # an open doorway is not a room
     assert not sim.sheltered(a.x, a.y)
+
+
+def test_eggs_hatch_and_chicks_grow_up(world):
+    sim, a = world
+    from megastructure.sim import sec
+    sim.add_items(a.x + 3, a.y, {"egg": 1})
+    sim.timers[(a.x + 3, a.y)] = [sim.tick + sec(1), "hatch"]
+    for _ in range(sec(3)):
+        sim.step()
+    chicks = [c for c in sim.creatures.values() if c.kind == "chick"]
+    assert len(chicks) == 1 and (a.x + 3, a.y) not in sim.items
+    chicks[0].born -= sec(300)
+    sim.step()
+    assert chicks[0].kind == "chicken"

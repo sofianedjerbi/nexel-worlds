@@ -311,3 +311,13 @@ Tests: 27 pass (+ room shelter).
 - Sound: the pack has none, so short WebAudio effects are synthesized: footsteps, wood thunk (chop),
   stone clink (mine), soft dig, pickup and place blips, craft arpeggio, hit, munch, watering, death. Others' sounds
   fade with distance (silent beyond 12 tiles). M toggles sound.
+
+## 2026-11-08 · Iteration 15 — animal life cycle and variety
+
+- Eggs left on the ground (laid, dropped or spilled on death) hatch after 3 min into chicks; chicks grow into chickens
+  in 5 min. Feeding two cows standing within 3 tiles of each other makes a calf, which grows into a cow in 6 min.
+- Colour variants from the pack, chosen per animal: chickens and chicks (default, brown, red, blue, green), cows and
+  calves (brown, light, pink, purple, green). All four kinds share one animation table (row, frames, ms per behaviour:
+  idle, walk, peck/graze, sleep at night, love with hearts) measured from the sheets.
+- `--dev` adds `dev_skip` (fast-forward) for QA. Verified in Chrome: 3 dropped eggs → 3 chicks after a skip.
+Tests: 28 pass.
