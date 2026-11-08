@@ -131,7 +131,7 @@
 <div class="panel" id="help"><div class="in">
   <b>WASD</b> walk · <b>Shift</b> sprint · <b>Space</b> use what you face<br><b>click</b> walk / harvest / hit · <b>shift-click</b> attack<br>
   <b>right-click</b> place selected · <b>1-9</b> select<br><b>E</b> eat · <b>F</b> pick up · <b>R</b> rest<br>
-  <b>Enter</b> talk · <b>!text</b> shout · <b>/tool k=v</b><br><b>C</b> craft · <b>wheel</b> zoom · <b>H</b> help
+  <b>Enter</b> talk · <b>!text</b> shout · <b>/tool k=v</b><br><b>C</b> craft · <b>B</b> bag · <b>M</b> sound · <b>wheel</b> zoom · <b>H</b> help
 </div></div>
 <div class="panel" id="goals"><div class="in"><h3>Goals</h3><div id="goallist"></div></div></div>
 <div class="panel" id="bag"><div class="in"><h3>Bag</h3><div id="bagitems"></div></div></div>
@@ -426,6 +426,43 @@ function objectSprite(c, x, y, t) {
   }
   return null;
 }
+// ---- sound: short procedural effects through WebAudio; M mutes ---------------------------
+let audio = null, muted = localStorage.getItem("megastructure-muted") === "1";
+function ac() { if (!audio) { audio = new (window.AudioContext || window.webkitAudioContext)(); } return audio; }
+function tone(freq, dur, type = "sine", vol = .2, slide = 0, delay = 0) {
+  const a = ac(), t0 = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t0); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t0 + dur);
+  g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + dur + .02);
+}
+function noise(dur, vol = .2, hp = 800, lp = 6000, delay = 0) {
+  const a = ac(), t0 = a.currentTime + delay, n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const src = a.createBufferSource(), g = a.createGain(), h = a.createBiquadFilter(), l = a.createBiquadFilter();
+  h.type = "highpass"; h.frequency.value = hp; l.type = "lowpass"; l.frequency.value = lp;
+  g.gain.value = vol; src.buffer = buf; src.connect(h).connect(l).connect(g).connect(a.destination); src.start(t0);
+}
+const SFX = {
+  step: (v) => noise(.05, .05 * v, 300, 1800),
+  chop: (v) => { tone(150, .12, "triangle", .32 * v, .6); noise(.07, .16 * v, 400, 2500); },
+  mine: (v) => { tone(880, .09, "square", .07 * v, .7); tone(1320, .12, "triangle", .1 * v, .8, .01); noise(.05, .1 * v, 2000, 8000); },
+  dig: (v) => noise(.12, .14 * v, 150, 1200),
+  pick: (v) => { tone(660, .07, "sine", .14 * v); tone(990, .1, "sine", .12 * v, 1, .06); },
+  place: (v) => { tone(110, .1, "sine", .3 * v, .7); noise(.05, .08 * v, 200, 1500); },
+  craft: (v) => [523, 659, 784, 1046].forEach((f, i) => tone(f, .12, "triangle", .08 * v, 1, i * .06)),
+  hit: (v) => { noise(.09, .28 * v, 300, 3000); tone(220, .1, "sawtooth", .08 * v, .5); },
+  eat: (v) => { noise(.05, .12 * v, 600, 3000); noise(.05, .12 * v, 600, 3000, .12); },
+  water: (v) => noise(.18, .08 * v, 1500, 7000),
+  die: (v) => tone(440, .7, "triangle", .15 * v, .3),
+  ui: (v) => tone(1200, .03, "sine", .06 * v),
+};
+function sfx(name, x, y) {
+  if (muted || !SFX[name]) return;
+  let v = 1;
+  if (x !== undefined) { const s = myPos(); if (!s) return; const d = Math.hypot(x - s.x, y - s.y); if (d > 12) return; v = Math.max(.15, 1 - d / 12); }
+  try { SFX[name](v); } catch (e) { /* audio not available yet (needs a user gesture) */ }
+}
+
 // ---- effects: particles, shakes, pops, falling trees ------------------------------------
 const parts = [], shakes = new Map(), pops = new Map(), falls = [], flashes = new Map();
 const PCOL = {T: ["#6b4b35", "#8f6a45", "#7fb069", "#5e8c4f"], H: ["#5e8c4f", "#7fb069"], b: ["#c0504a", "#7fb069", "#8a5aa0"],
@@ -662,20 +699,22 @@ function onEvent(e) {
     const tgt = [...ents.values()].find((q) => q.e && (q.e.name === e.target || `${q.e.kind}#${q.e.id}` === e.target));
     const tx = tgt ? tgt.x : e.x, ty = tgt ? tgt.y : e.y;
     if (tgt) flashes.set(tgt.e.kind === "agent" ? "agent" + tgt.e.id : tgt.e.kind + tgt.e.id, performance.now());
-    burst(tx, ty, "hit", 6, {dy: -.4}); floats.push({x: tx, y: ty, text: "-" + e.damage, color: "#ff8a7a", t});
+    burst(tx, ty, "hit", 6, {dy: -.4}); sfx("hit", tx, ty); floats.push({x: tx, y: ty, text: "-" + e.damage, color: "#ff8a7a", t});
   }
   if (e.type === "death" && e.name === me) {
+    sfx("die");
     const lost = fmt(e.dropped);
     banner("You died", `${e.cause}.${lost ? " Everything you carried (" + lost + ") lies where you fell, at " + e.x + ", " + e.y + "." : ""} ${meObs && meObs.self.spawn ? "You wake up by your bed." : "You wake up somewhere else. Sleep in a bed to choose where."}`);
   }
   if (e.type === "death" || e.type === "creature_died") burst(e.x, e.y, "dust", 16, {dy: -.3, up: 2.5, spread: 4, g: 3, life: .7, size: 2});
-  if (e.type === "pick_up") burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3});
+  if (e.type === "pick_up") { burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3}); sfx("pick", e.x, e.y); }
   if (e.type === "chest") chestOpen.set(e.x + "," + e.y, performance.now());
   if (e.type === "milk") { burst(e.x, e.y, "spark", 4, {dy: -.2, g: 5}); emote(e.name, "happy"); }
   if (e.type === "love") emote(e.by, "love");
   if (e.type === "lay") burst(e.x, e.y, "dust", 5, {up: 1, spread: 1.5, g: 3});
-  if (e.type === "craft") burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4});
-  if (["pick_up", "drop", "chest"].includes(e.type)) return;
+  if (e.type === "craft") { burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4}); sfx("craft", e.x, e.y); }
+  if (["pick_up", "drop", "chest", "milk", "love", "lay"].includes(e.type)) return;
+  if (e.type === "attack" && e.attacker !== me && e.target !== me) return;   // other people's fights: deaths still show
   let text;
   switch (e.type) {
     case "say": text = `${e.from}: “${e.text}”`; break;
@@ -868,18 +907,20 @@ function drawEntity(p, sx, sy, S, t, now) {
         if (tool === "dig" && target) {
           const kind = GROUND.has(target) ? "o" : target;
           burst(tx, ty, kind, 6, {dy: "TF".includes(target) ? -.6 : -.1}); shakes.set(tx + "," + ty, now);
+          sfx("TFH#+&!?CBhLKgW".includes(target) ? "chop" : "M*%".includes(target) ? "mine" : "dig", tx, ty);
         } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
       }
     } else if (tool === "water") {
       anim = "water"; const n = Math.floor(k * 10); frame = n % 8;
       if (frame >= 3 && frame <= 6 && p.lastDrop !== n) { p.lastDrop = n; const tx = Math.round(p.tx) + p.fx, ty = Math.round(p.ty) + p.fy;
-        parts.push({x: tx + .3 + Math.random() * .4, y: ty - .1, vx: (Math.random() - .5) * .6, vy: 1.5, g: 9, life: .35, age: 0, c: "#8fd3f4", s: 1}); }
+        parts.push({x: tx + .3 + Math.random() * .4, y: ty - .1, vx: (Math.random() - .5) * .6, vy: 1.5, g: 9, life: .35, age: 0, c: "#8fd3f4", s: 1});
+        if (n % 3 === 0) sfx("water", tx, ty); }
     } else if (tool === "milk" || tool === "feed" || tool === "sleep") {
       bob = tool === "sleep" ? 0 : Math.round(Math.abs(Math.sin(k * 8)) * 2) * z;
       if (tool === "sleep" && !emotes.has(e.name)) emote(e.name, "sleep");
     } else if (tool === "eat") {
       bob = Math.round(Math.abs(Math.sin(k * 14)) * 2) * z;
-      if (Math.floor(k * 7) !== p.lastCrumb) { p.lastCrumb = Math.floor(k * 7); burst(Math.round(p.tx), Math.round(p.ty), "food", 2, {dy: -.3, up: 1.5, spread: 1.5}); }
+      if (Math.floor(k * 7) !== p.lastCrumb) { p.lastCrumb = Math.floor(k * 7); if (p.lastCrumb % 2 === 0) sfx("eat", p.x, p.y); burst(Math.round(p.tx), Math.round(p.ty), "food", 2, {dy: -.3, up: 1.5, spread: 1.5}); }
     } else if (tool === "place" || tool === "pick_up" || tool === "give" || tool === "store" || tool === "take" || tool === "drop") {
       bob = Math.round(Math.sin(Math.min(1, k * 5) * Math.PI) * 3) * z;
     } else if (tool === "rest") {
@@ -896,6 +937,7 @@ function drawEntity(p, sx, sy, S, t, now) {
         if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms)) {
           p.lastStep = Math.floor(now / ms);
           burst(p.x, p.y + .35, "dust", running ? 3 : 2, {up: .6, spread: running ? 2 : 1.2, g: 2, life: .35});
+          if (mine) sfx("step");
         }
       } else frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
     }
@@ -1096,6 +1138,7 @@ async function act(tool, args, quiet) {
     const gained = Object.fromEntries(Object.entries(c.inventory || {}).filter(([, v]) => v > 0));
     const p = ents.get("agent" + myId);
     if (Object.keys(gained).length && p) floats.push({x: p.tx, y: p.ty, text: "+" + fmt(gained), color: "#fff1a8", t: performance.now() / 1000});
+    if (tool === "place") sfx("place");
     if (tool === "place") markGoal({workbench: "placedBench", seed: "planted", campfire: "placedFire"}[args.item] || "placed");
     if (r.result.text !== undefined) toast(`The sign reads: “${r.result.text}”`);
     if (r.result.chest) toast(`Chest: ${fmt(r.result.chest) || "empty"}`);
@@ -1383,6 +1426,7 @@ addEventListener("keydown", (e) => {
   else if (k === "e") useSelected();
   else if (k === "c") $("craftbtn").click();
   else if (k === "b") toggleBag();
+  else if (k === "m") { muted = !muted; localStorage.setItem("megastructure-muted", muted ? "1" : "0"); toast(muted ? "Sound off (M)" : "Sound on (M)"); }
   else if (k === "h") $("helpbtn").click();
   else if (/^[1-9]$/.test(k) && meObs) { const n = slots[+k - 1]; if (n) { selected = selected === n ? null : n; $("hotbar").dataset.sig = ""; drawHotbar(meObs.self.inventory); } }
 });

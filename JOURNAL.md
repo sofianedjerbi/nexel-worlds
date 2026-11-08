@@ -300,3 +300,14 @@ Tests: 27 pass (+ room shelter).
   now includes `spawn`).
 - Night: verified the campfire glow and darkening in Chrome; fruit picking verified (+3 fruit).
 - `--dev` adds `dev_time` and `dev_damage` for QA of night and death.
+
+## 2026-11-08 · Iteration 14 — others, night, sound
+
+- QA now runs on a separate server (port 7790, world `qa`) so test characters stop cluttering the play world.
+- Others' animations verified (scripted bots: walk, axe swings with arcs, tree shakes and falls); 60 fps
+  (p95 16.8 ms) with 4 bots working nearby.
+- Night: glooms hunt and kill (one killed a passive bot; 7 dmg every 1.2 s). The news panel was flooded by other
+  people's fights, so attacks now only show when they involve you; deaths still show for everyone.
+- Sound: the pack has none, so short WebAudio effects are synthesized: footsteps, wood thunk (chop),
+  stone clink (mine), soft dig, pickup and place blips, craft arpeggio, hit, munch, watering, death. Others' sounds
+  fade with distance (silent beyond 12 tiles). M toggles sound.
