@@ -5,7 +5,7 @@ import sqlite3
 import zlib
 from pathlib import Path
 
-from .gen import CHUNK, gen_chunk
+from .gen import CHUNK, gen_chunk, gen_tile
 from .tiles import BLOCKS, GROUNDS, B, G
 
 SCHEMA = """
@@ -90,6 +90,8 @@ class World:
         c = self.chunks.get((cx, cy))
         if c is None:
             c = self.store.load_chunk(cx, cy)
+            if c is not None:
+                self._tidy(c)
             if c is None:
                 g, b = gen_chunk(self.seed, cx, cy)
                 c = Chunk(cx, cy, g, b)
@@ -97,6 +99,17 @@ class World:
             self.chunks[(cx, cy)] = c
         c.touched = self.tick
         return c
+
+    def _tidy(self, c: Chunk):
+        """Older worlds spread berry bushes at random until meadows filled up. Nobody can plant a bush, so a
+        bush where the generator never put one came from that: clear it."""
+        bush = B["berry_bush"]
+        for i, blk in enumerate(c.block):
+            if blk == bush:
+                x, y = c.cx * CHUNK + i % CHUNK, c.cy * CHUNK + i // CHUNK
+                if gen_tile(self.seed, x, y)[1] != bush:
+                    c.block[i] = B["none"]
+                    c.dirty = True
 
     def flush(self):
         for c in self.chunks.values():

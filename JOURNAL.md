@@ -433,3 +433,26 @@ barn sheet's feeding box and hay bales part of play.
 Tests: 39 pass.
 Next: agents. The world now has enough systems (farms, animals, houses, boats, mail) for M2/M3 runs to be interesting;
 re-run the agent harness against it and measure what agents actually do.
+
+## 2026-11-08 · Iteration 24 — fast taps snapping back, an overloaded map, ugly bush removal
+
+User reports: "when i press briefly to walk ... (very fast pushing) it gets reset", "the map is overloaded",
+"destruction of bush is ugly", "eggs everywhere".
+- Taps: reproduced in Chrome (6 taps of 50 ms, 70 ms apart: the player glided 3 tiles, then snapped back to the start).
+  Cause on the server: every move waited a full stride *before* stepping, and each new tap interrupted the previous
+  move during that wait, so the server never moved. Movement is now step-first with a stride cooldown (`Agent.ready`):
+  same top speed, but interrupted moves keep their progress. Result: worst backward correction 0.04 tile (was a full
+  reset), display and server agree after every sequence. Tests: sprint now measured over 8 strides; rapid-tap test added.
+- Eggs: the play world had 883 egg piles left from the chicken explosion (crowded eggs were kept forever). Now an
+  uncollected egg that can't hatch rots away; hens lay half as often; limits are 6 animals per neighbourhood and 80 in
+  the world; leftover egg piles are cleared on load. Play world: 883 → 2 piles, 200 → 80 hens.
+- Bushes: every 20 s each loaded chunk had a 10% chance to grow a berry bush on any grass, without limit, which filled
+  the meadows over hours. Nature now only grows back what the generator put there (bushes, flowers, mushrooms), and
+  bushes the old rule spread are cleared when their chunk loads (nobody can plant a bush). Spawn view: 162 → 21 bushes.
+  Backups: saves/islands/world.before-egg-cleanup.sqlite.
+- Removal: a dug object (bush, rock, furniture...) used to vanish in one frame in a burst of red/purple squares. It now
+  squashes into the ground and fades over 0.24 s, shedding debris sampled from its own sprite's colours.
+- Scripted policy (in progress, interrupted for the above): needs-based rewrite (home/bed/chest/farm). 3-minute run vs
+  baseline: repeats 633 → 17, bots now craft, place, sleep, store and farm; still to fix: duplicate bed placement,
+  unreachable explore/flee targets (in-view reachability planned).
+Tests: 41 pass.

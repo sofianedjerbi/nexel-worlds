@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import tiles as T
+from .gen import gen_tile
 from .pathfind import astar
 from .tiles import BLOCKS, DIRS, GROUNDS, PLACEABLE, RECIPES
 from .world import Store, World
@@ -35,8 +36,8 @@ CAN_SIZE = 12        # waterings per fill
 COOP_R = 6           # chickens this close to a coop lay there, twice as often
 PICNIC = 1.5         # food is worth more eaten on a picnic blanket
 FARM = ("chicken", "cow", "chick", "calf")
-CROWD_R, CROWD_N = 6, 10   # this many animals this close: hens stop laying, eggs stay eggs, cows don't breed
-ANIMAL_MAX = 200           # and never more than this many farm animals in the world
+CROWD_R, CROWD_N = 6, 6   # this many animals this close: hens stop laying, eggs stay eggs, cows don't breed
+ANIMAL_MAX = 80            # and never more than this many farm animals in the world
 TROUGH_R = 5               # animals this close to a filled trough feed themselves...
 TROUGH_EVERY = 30          # ...about this often (seconds)
 CREATURE_ID0 = 1_000_000
@@ -66,6 +67,7 @@ class Agent:
     can: int = 12              # waterings left in the watering can; refill at a well or any water
     # runtime only
     action: "Action | None" = field(default=None, repr=False)
+    ready: int = field(default=0, repr=False)   # first tick the next stride may start (movement cooldown)
     events: list = field(default_factory=list, repr=False)
     online: bool = False
 
@@ -186,6 +188,10 @@ class Simulation:
         self.fires: dict[tuple, int] = {tuple(k): v for k, v in store.get_meta("fires", [])}
         self.timers: dict[tuple, list] = {(x, y): [t, kind] for x, y, t, kind in store.get_meta("timers", [])}
         self.pits: set = {tuple(p) for p in store.get_meta("pits", [])}
+        for pos, pile in list(self.items.items()):   # eggs from old worlds that will never hatch: gone
+            if set(pile) == {"egg"} and self.timers.get(pos, [0, ""])[1] != "hatch":
+                del self.items[pos]
+                self.dirty_items.add(pos)
         self.listeners: list = []  # callables(event) for spectators / logs
         self.event_log = open(event_log, "a") if event_log else None
         self.rng = random.Random()
@@ -294,6 +300,14 @@ class Simulation:
             a.action.expected = max(a.action.expected, a.action.ticks - 1 + n)
         for _ in range(n - 1):
             yield
+
+    def pace(self, a: Agent, args):
+        """Step first, then cool down: wait only until the previous stride is over, then claim this one.
+        A movement interrupted by another (rapid key taps) keeps the progress it made instead of starting a
+        fresh wait, while the speed limit stays exactly one tile per stride."""
+        while self.tick < a.ready:
+            yield
+        a.ready = self.tick + sec(self.stride(a, args) * (2 if a.energy <= 0 else 1))
 
     def spend(self, a: Agent, energy: int):
         a.energy = max(0, a.energy - energy)
@@ -466,12 +480,12 @@ class Simulation:
                 continue
             if c.kind == "chicken":
                 if not c.lay:
-                    c.lay = self.tick + sec(60) + self.rng.randrange(sec(60))
+                    c.lay = self.tick + sec(120) + self.rng.randrange(sec(120))
                 elif self.tick >= c.lay and self.crowded(c.x, c.y):
                     c.lay = self.tick + sec(90)            # no room for more: try again later
                 elif self.tick >= c.lay:
                     coop = self.coop_near(c.x, c.y)
-                    c.lay = self.tick + (sec(90) + self.rng.randrange(sec(90))) // (2 if coop else 1)
+                    c.lay = self.tick + (sec(180) + self.rng.randrange(sec(180))) // (2 if coop else 1)
                     ex, ey = coop or (c.x, c.y)     # eggs go into the nest box at the coop's door
                     self.add_items(ex, ey, {"egg": 1})
                     self.emit("lay", ex, ey, id=c.id, coop=bool(coop))
@@ -519,6 +533,17 @@ class Simulation:
             c.x, c.y = x, y
             return True
         return False
+
+    def _take_items(self, pos, item, n=1):
+        pile = self.items.get(pos)
+        if not pile or not pile.get(item):
+            return
+        pile[item] -= n
+        if pile[item] <= 0:
+            del pile[item]
+        if not pile:
+            del self.items[pos]
+        self.dirty_items.add(pos)
 
     def crowded(self, x, y) -> bool:
         """Too many farm animals here (or in the world) for another one to be born."""
@@ -631,15 +656,10 @@ class Simulation:
                     if nxt == "crop":
                         self.timers[pos] = [self.tick + sec(150), "ripen"]
                 elif kind == "hatch" and self.items.get(pos, {}).get("egg") and self.crowded(*pos):
-                    pass                                    # crowded: it stays an egg (food)
+                    self._take_items(pos, "egg")            # crowded: nobody came for it, it rots away
+                    self.emit("fade", *pos, item="egg")
                 elif kind == "hatch" and self.items.get(pos, {}).get("egg"):
-                    pile = self.items[pos]
-                    pile["egg"] -= 1
-                    if not pile["egg"]:
-                        del pile["egg"]
-                    if not pile:
-                        del self.items[pos]
-                    self.dirty_items.add(pos)
+                    self._take_items(pos, "egg")
                     chick = Creature(self.next_creature, "chick", *pos, CREATURES["chick"]["hp"], born=self.tick)
                     self.next_creature += 1
                     self.creatures[chick.id] = chick
@@ -656,8 +676,12 @@ class Simulation:
                 cx, cy = key
                 x = cx * 32 + self.rng.randrange(32)
                 y = cy * 32 + self.rng.randrange(32)
-                if self.rng.random() < 0.1 and self.world.ground(x, y) == "grass" and self.world.block(x, y) == "none":
-                    self.set_tile(x, y, block="berry_bush", cause="grew")
+                # nature grows back what was there at the start (bushes, flowers, mushrooms), never more
+                if self.rng.random() < 0.1 and self.world.block(x, y) == "none" and self.entity_at(x, y) is None \
+                        and self.world.ground(x, y) in ("grass", "dirt") and (x, y) not in self.items:
+                    orig = BLOCKS[gen_tile(self.world.seed, x, y)[1]].name
+                    if orig in ("berry_bush", "flower", "mushroom"):
+                        self.set_tile(x, y, block=orig, cause="grew")
 
     # ------------------------------------------------------- persistence
     def flush(self):
@@ -806,7 +830,9 @@ class Simulation:
 
     def _tool_step(self, a, args):
         x, y = self.target(a, args)
-        yield from self.wait(a, self.stride(a, args))
+        if not self.can_enter(a, x, y):
+            raise ActionError("blocked", f"{args['dir']} is {self.describe(x, y)}")
+        yield from self.pace(a, args)
         if not self.can_enter(a, x, y):
             raise ActionError("blocked", f"{args['dir']} is {self.describe(x, y)}")
         self.move(a, x, y)
@@ -821,12 +847,13 @@ class Simulation:
         dx, dy = DIRS[d]
         steps = 0
         while steps < 600:
-            yield from self.wait(a, self.stride(a, args))
+            if not self.can_enter(a, a.x + dx, a.y + dy):
+                return {"steps": steps, "stopped": "blocked", "blocked_by": self.describe(a.x + dx, a.y + dy)}
+            yield from self.pace(a, args)
             if not self.can_enter(a, a.x + dx, a.y + dy):
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.describe(a.x + dx, a.y + dy)}
             self.move(a, a.x + dx, a.y + dy)
             steps += 1
-            yield  # one tile per stride: the stride's first tick is spent here
         return {"steps": steps, "stopped": "limit"}
 
     def _tool_stop(self, a, args):
@@ -847,7 +874,7 @@ class Simulation:
                               f"no walkable path to ({gx},{gy}) from ({a.x},{a.y})")
         steps = 0
         while path:
-            yield from self.wait(a, self.stride(a, args))
+            yield from self.pace(a, args)
             nx, ny = path[0]
             if not self.can_enter(a, nx, ny):
                 replans += 1

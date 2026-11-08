@@ -286,10 +286,26 @@ def test_fruit_tree_regrows_fruit(world):
 
 def test_sprint_is_faster_and_tiring(world):
     sim, a = world
-    walk = run(sim, a, "step", {"dir": "E"})["ticks"]
+    def pace(run_):          # ticks for 8 strides back and forth (the cooldown is what limits speed)
+        t0 = sim.tick
+        for i in range(8):
+            run(sim, a, "step", {"dir": "E" if i % 2 else "W", "run": run_})
+        return sim.tick - t0
+    walk = pace(False)
     e0 = a.energy
-    sprint = [run(sim, a, "step", {"dir": "E" if i % 2 else "W", "run": True})["ticks"] for i in range(8)]
-    assert max(sprint) < walk and a.energy < e0
+    assert pace(True) < walk and a.energy < e0
+
+
+def test_rapid_taps_keep_their_progress(world):
+    """Interrupting a walk with another movement (fast key taps) must not throw the stride away."""
+    sim, a = world
+    x0 = a.x
+    for _ in range(6):
+        sim.submit(a, "walk", {"dir": "E"})
+        sim.step()
+        sim.submit(a, "move_to", {"x": a.x + 1, "y": a.y})
+        sim.step()
+    assert a.x - x0 >= 5
 
 
 def test_walk_keeps_going_until_stopped(world):
@@ -511,7 +527,7 @@ def test_chickens_lay_into_the_coop(world):
     assert sim.items.get((a.x, a.y), {}).get("egg") == 1   # the coop's door tile is where we stand
 
 
-def test_crowded_eggs_dont_hatch_and_old_herds_thin(world, tmp_path):
+def test_crowded_eggs_rot_and_old_herds_thin(world, tmp_path):
     sim, a = world
     from megastructure.sim import Creature, sec, CROWD_N
     for i in range(CROWD_N):
@@ -521,7 +537,7 @@ def test_crowded_eggs_dont_hatch_and_old_herds_thin(world, tmp_path):
     sim.add_items(a.x - 2, a.y, {"egg": 1})
     for _ in range(sec(181)):
         sim.step()
-    assert sim.items[(a.x - 2, a.y)]["egg"] == 1
+    assert (a.x - 2, a.y) not in sim.items                 # nobody collected it and there's no room: it rotted
     assert sum(c.kind == "chick" for c in sim.creatures.values()) == 0
     for i in range(50):                                    # an old world's chicken explosion
         sim.creatures[sim.next_creature] = Creature(sim.next_creature, "chicken", a.x, a.y, 10)
@@ -546,3 +562,14 @@ def test_trough_feeds_animals_and_hay_lasts(world):
             meals += 1
     assert meals == 3                                      # one bale, three meals
     assert not sim.world.meta[(a.x + 1, a.y)]["items"]
+
+
+def test_spread_bushes_are_tidied_on_load(world):
+    sim, a = world
+    from megastructure.gen import gen_tile
+    from megastructure.tiles import B
+    x, y = next((x, a.y) for x in range(a.x, a.x + 200) if gen_tile(sim.world.seed, x, a.y)[1] != B["berry_bush"])
+    sim.world.set(x, y, block="berry_bush")
+    sim.world.flush()
+    del sim.world.chunks[(x >> 5, y >> 5)]
+    assert sim.world.block(x, y) == "none"
