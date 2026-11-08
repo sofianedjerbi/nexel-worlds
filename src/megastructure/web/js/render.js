@@ -50,7 +50,7 @@ function frame(now) {
   const S = TS();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.imageSmoothingEnabled = false;
-  const ox = Math.round(W / 2 - (cam.x + .5) * S), oy = Math.round(H / 2 - (cam.y + .5) * S);
+  const [ox, oy] = screenOrigin(S);
   const sx = (x) => ox + x * S, sy = (y) => oy + y * S;
   // animated water underneath everything
   if (!waterPatterns) waterPatterns = [0, 1, 2, 3].map((f) => { const c = document.createElement("canvas"); c.width = c.height = 16; c.getContext("2d").drawImage(IMG.water, f * 16, 0, 16, 16, 0, 0, 16, 16); return ctx.createPattern(c, "repeat"); });

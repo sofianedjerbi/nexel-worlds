@@ -6,7 +6,7 @@
 const mouse = {x: 0, y: 0, in: false};
 let drag = null;
 function tileAtScreen(mx, my) {
-  const S = TS(), ox = Math.round(W / 2 - (cam.x + .5) * S), oy = Math.round(H / 2 - (cam.y + .5) * S);
+  const S = TS(), [ox, oy] = screenOrigin(S);
   return {x: Math.floor((mx - ox) / S), y: Math.floor((my - oy) / S)};
 }
 cv.addEventListener("mousemove", (e) => {

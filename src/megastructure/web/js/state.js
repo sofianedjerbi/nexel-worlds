@@ -12,6 +12,12 @@ function resize() {
 addEventListener("resize", resize); resize();
 let zoom = 3;
 const TS = () => P * zoom;
+// Screen position of world tile (0, 0). The screen centre and the camera are rounded separately, so whatever sits at
+// the camera (you) lands on the same pixel every frame; rounding them together made you wobble 1 px against the
+// scrolling ground at odd window sizes, which read as stutter when sprinting.
+function screenOrigin(S = TS()) {
+  return [Math.round(W / 2 - S / 2) - Math.round(cam.x * S), Math.round(H / 2 - S / 2) - Math.round(cam.y * S)];
+}
 let cam = {x: 0, y: 0}, camT = {x: 0, y: 0};
 let follow = null, me = null, myId = null, meObs = null, agents = [], metrics = {}, recipes = {}, clock = {night: false, phase: .3};
 let selected = null, progress = null;
