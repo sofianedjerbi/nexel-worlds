@@ -151,8 +151,8 @@ class GameServer:
         multi-tick action just started get a progress notice (so clients can show a bar at once)."""
         for aid, push in list(self.notify.items()):
             act = self.sim.agents[aid].action
-            if (act is not None and act.started_tick == self.sim.tick and act.tool not in ("step", "move_to")
-                    and act.expected >= sec(0.35)):
+            if (act is not None and act.started_tick == self.sim.tick and act.tool not in ("step", "move_to", "walk")
+                    and act.expected >= 2):
                 push({"type": "progress", "tool": act.tool, "ticks": act.expected, "tick_hz": TICK_HZ})
         if not self.spectators:
             return

@@ -12,7 +12,9 @@
   html, body { margin:0; height:100%; background:#9bd4c3; overflow:hidden; color:var(--ink);
     font:18px/22px SproutPixel, monospace; font-synthesis:none; user-select:none; }
   * { font-weight:normal !important; }
-  canvas#c { position:fixed; inset:0; display:block; image-rendering:pixelated; }
+  canvas#c { position:fixed; inset:0; display:block; image-rendering:pixelated; cursor:url(assets/cursor.png) 4 2, auto; }
+  canvas#c.act { cursor:url(assets/cursor_point.png) 10 2, pointer; }
+  body, button, .slot, .rc, .ag { cursor:url(assets/cursor.png) 4 2, auto; }
   .panel { position:fixed; border:24px solid transparent; border-image:url(assets/panel.png) 9 fill / 27px stretch;
     image-rendering:pixelated; padding:0; filter:drop-shadow(0 3px 0 rgba(60,40,30,.25)); }
   .panel > .in { margin:-10px -8px -12px; }
@@ -126,13 +128,13 @@ const CH = {
   "~": "water", ":": "bridge", ".": "grass", ",": "dirt", "o": "tilled", "_": "cobble", "'": "ash", "=": "deep_water",
   "T": "tree", "b": "berry_bush", "M": "rock", "*": "ore", "H": "thicket", "Q": "mushroom", "#": "fence",
   "%": "stone_wall", "+": "door", "^": "campfire", "&": "workbench", "?": "sign", "!": "flag", "x": "fire",
-  "\"": "crop", "w": "ripe_crop", "t": "stump", "C": "chest",
+  "\"": "crop", "w": "ripe_crop", "t": "stump", "C": "chest", "F": "fruit_tree", ";": "sprout",
 };
 const CHAR = Object.fromEntries(Object.entries(CH).map(([c, n]) => [n, c]));
 const GROUND = new Set("~:.,o_'=");
-const SOLID = new Set("TbM*H#%^&C");
+const SOLID = new Set("TFbM*H#%^&C");
 const WALKABLE_GROUND = new Set(":.,o_'");
-const LABEL = {berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
+const LABEL = {fruit_tree: "fruit tree", berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
   cooked_meat: "cooked meat", deep_water: "deep water"};
 const label = (n) => LABEL[n] || String(n).replace("_", " ");
 
@@ -140,7 +142,7 @@ const label = (n) => LABEL[n] || String(n).replace("_", " ");
 //  Assets
 // =====================================================================================
 const IMG = {};
-const ASSETS = ["tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
+const ASSETS = ["tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
   "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen"];
 let GEN = {};
 function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
@@ -213,7 +215,8 @@ function setTile(x, y, comb, gnd) {
   const i = (y - by * B) * B + (x - bx * B);
   if (b.comb[i] === comb && b.gnd[i] === gnd) return;
   const old = b.comb[i], now = performance.now();
-  if (old === "T" && comb !== "T") falls.push({x, y, t0: now});
+  if (old === "F" && comb === "T") dropping.set(x + "," + y, now);
+  else if (old === "T" && comb !== "T") falls.push({x, y, t0: now});
   else if (old !== comb && isObject(comb) && comb !== "x") pops.set(x + "," + y, now);
   if (old !== comb && !GROUND.has(old)) burst(x, y, old, 10);
   if (gnd === "o" && b.gnd[i] !== "o") burst(x, y, "o", 8);
@@ -243,7 +246,7 @@ function onRegion(d) {
 //  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
 const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
-const isObject = (c) => "TbM*#%+^&?!x\"wtCQ".includes(c) && !GROUND.has(c);
+const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
   const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1]); };
@@ -282,6 +285,17 @@ function drawTile(x, y) {
   }
   // flat things that live in the ground layer
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
+  const hd = hash(x, y, 41);
+  if (gr === "~" && hd < .09) {                      // shore water: lily pads, reeds, little rocks
+    const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isLand(gndAt(x + dx, y + dy)));
+    if (shore || hd < .015) {
+      const pick = Math.floor(hash(x, y, 42) * 7), col = [8, 9, 10, 11, 6, 7, 0][pick];
+      g.drawImage(IMG.water_objects, col * 16, 0, 16, 16, ox, oy, 16, 16);
+    }
+  } else if (gr === "." && GROUND.has(c) && hd < .05 && hash(x >> 3, y >> 3, 43) < .35) {   // flowers grow in patches
+    const fx = Math.floor(hash(x, y, 44) * 12), fy = 3 + (hash(x, y, 45) < .5 ? 0 : 1);
+    g.drawImage(IMG.nature, fx * 16, fy * 16, 16, 16, ox, oy, 16, 16);
+  }
 }
 const hasGrassNeighbour = () => true;
 function renderBlock(b) {
@@ -326,12 +340,16 @@ function objectSprite(c, x, y, t) {
       if (h < .7) {                                                                       // animated round tree
         const hit = shakes.get(x + "," + y), k = hit ? (performance.now() - hit) / 1000 : 9;
         if (k < .32) return [IMG.tree_anim, 48 * Math.min(3, Math.floor(k * 12.5)), 48, 48, 48, -16, -28];
+        if (dropping.has(x + "," + y)) return null;     // its fruit-drop animation is playing
         const f = Math.floor(t * 6 + h * 60) % 12;
         return [IMG.tree_anim, 48 * f, 144, 48, 48, -16, -28];
       }
-      if (h < .86) return [IMG.trees, 0, 0, 16, 32, 0, -18];                            // young tree
-      const v = [[48, 0], [80, 0], [112, 0], [144, 0]][Math.floor((h - .86) / .14 * 4)]; // fruit trees
-      return [IMG.trees, v[0], v[1], 32, 32, -8, -18];
+      return [IMG.trees, 0, 0, 16, 32, 0, -13];                                         // young tree (base at y 28)
+    }
+    case "F": {                                                                           // fruit tree, 4 species
+      const img = fruitSheet(x, y), hit = shakes.get(x + "," + y), k = hit ? (performance.now() - hit) / 1000 : 9;
+      if (k < .32) return [img, 48 * Math.min(3, Math.floor(k * 12.5)), 48, 48, 48, -16, -28];
+      return [img, 48 * (Math.floor(t * 5 + h * 30) % 6), 96, 48, 48, -16, -28];
     }
     case "b": return [IMG.trees, [32, 48, 64][Math.floor(h * 3)], 48, 16, 16, 0, -3];
     case "*": return [IMG.gen, ...genCell("ore"), 16, 16, 0, -3];
@@ -339,16 +357,27 @@ function objectSprite(c, x, y, t) {
     case "%": return [IMG.gen, ...genCell("stone_wall"), 16, 16, 0, -4];
     case "Q": return [IMG.nature, [0, 16, 48][Math.floor(h * 3)], 0, 16, 16, 0, 0];
     case "#": return fenceSprite(x, y);
-    case "+": return [IMG.door, 0, 0, 16, 32, 0, -16];
+    case "+": {                                                                           // swings open near people
+      const key = x + "," + y, near = occupied.has(key) || occupied.has((x + 1) + "," + y) || occupied.has((x - 1) + "," + y)
+        || occupied.has(x + "," + (y + 1)) || occupied.has(x + "," + (y - 1));
+      const o = Math.max(0, Math.min(1, (doors.get(key) || 0) + (near ? .12 : -.08)));
+      doors.set(key, o);
+      return [IMG.door, Math.round(o * 5) * 16, 0, 16, 32, 0, -16];
+    }
     case "^": return [IMG.gen, ...genCell(Math.floor(t * 6 + x) % 2 ? "campfire1" : "campfire0"), 16, 16, 0, -2];
     case "x": return [IMG.gen, ...genCell(Math.floor(t * 8 + x + y) % 2 ? "fire1" : "fire0"), 16, 16, 0, -3];
     case "&": return [IMG.gen, ...genCell("workbench"), 16, 16, 0, -3];
     case "?": return [IMG.signs, 0, 0, 16, 16, 0, -2];
     case "!": return [IMG.gen, ...genCell("flag"), 16, 16, 0, -6];
-    case "\"": return [IMG.crops, 16, 128, 16, 16, 0, -3];
+    case ";": return [IMG.crops, 0, 128, 16, 16, 0, -2];
+    case "\"": return [IMG.crops, 32, 128, 16, 16, 0, -3];
     case "w": return [IMG.crops, 48, 128, 16, 16, 0, -5];
     case "t": return [IMG.trees, h < .5 ? 0 : 16, 96, 16, 16, 0, 0];
-    case "C": return [IMG.chest, 16, 16, 16, 16, 0, -2];
+    case "C": {                                                                           // lid opens when used
+      const o = chestOpen.get(x + "," + y), k = o ? (performance.now() - o) / 1000 : 9;
+      const f = k < .2 ? Math.floor(k / .2 * 4) : k < 1.2 ? 4 : k < 1.4 ? 4 - Math.floor((k - 1.2) / .2 * 4) : 0;
+      return [IMG.chest, f * 48 + 16, 16, 16, 16, 0, -2];
+    }
   }
   return null;
 }
@@ -366,6 +395,30 @@ function burst(x, y, kind, n, opts = {}) {
     vx: (Math.random() - .5) * (opts.spread || 3), vy: -Math.random() * (opts.up || 3) - .5,
     g: opts.g ?? 9, life: opts.life || (.4 + Math.random() * .4), age: 0, c: cols[i % cols.length], s: opts.size || (Math.random() < .3 ? 2 : 1)});
 }
+const EMOTE = {happy: [0, 2], laugh: [1, 2], love: [0, 9], star: [0, 10], bang: [5, 8], what: [6, 8], music: [7, 8],
+  sleep: [9, 8], skull: [7, 0], ok: [0, 8], no: [2, 8]};
+const emotes = new Map();   // agent name -> {kind, t0}
+function emote(name, kind) { if (name && EMOTE[kind]) emotes.set(name, {kind, t0: performance.now()}); }
+function emoteFor(text) {
+  const t = text.toLowerCase();
+  if (/<3|love|thank|merci/.test(t)) return "love";
+  if (/haha|lol|:\)|:d|\^\^/.test(t)) return "laugh";
+  if (/\?$/.test(t)) return "what";
+  if (/!$/.test(t)) return "bang";
+  if (/♪|la la|sing/.test(t)) return "music";
+  if (/\b(no|nope|non)\b/.test(t)) return "no";
+  if (/\b(ok|yes|sure|oui|deal)\b/.test(t)) return "ok";
+  return null;
+}
+function drawEmote(p, sx, sy, S) {
+  const em = emotes.get(p.e.name); if (!em) return;
+  const k = (performance.now() - em.t0) / 1000; if (k > 1.8) { emotes.delete(p.e.name); return; }
+  const [c, rr] = EMOTE[em.kind], pop = k < .15 ? .6 + k / .15 * .5 : k < .25 ? 1.1 - (k - .15) : 1;
+  const size = Math.round(16 * zoom * .75 * pop), x = Math.round(sx(p.x) + S / 2 - size / 2), y = Math.round(sy(p.y) - 9 * zoom - 18 - size);
+  ctx.globalAlpha = k > 1.5 ? (1.8 - k) / .3 : 1;
+  ctx.drawImage(IMG.emoji, c * 32, rr * 32, 32, 32, x, y, size, size);
+  ctx.globalAlpha = 1;
+}
 function floatText(x, y, text, color) { floats.push({x, y, text, color, t: performance.now() / 1000}); }
 function drawEffects(sx, sy, S, dt) {
   const z = zoom;
@@ -379,14 +432,24 @@ function drawEffects(sx, sy, S, dt) {
   }
   ctx.globalAlpha = 1;
   const now = performance.now();
+  for (const [key, t0] of dropping) {               // a picked fruit tree drops its fruit (12 frames)
+    const fr = Math.floor((now - t0) / 1000 * 12), [x, y] = key.split(",").map(Number);
+    if (fr >= 12) { dropping.delete(key); continue; }
+    ctx.drawImage(fruitSheet(x, y), fr * 48, 144, 48, 48, sx(x) - 16 * z, sy(y) - 28 * z, 48 * z, 48 * z);
+  }
   for (let i = falls.length - 1; i >= 0; i--) {     // the pack's tree-felling animation, then fade
     const f = falls[i], k = (now - f.t0) / 1000, fr = Math.floor(k * 14);
     if (fr >= 12) { falls.splice(i, 1); continue; }
     ctx.globalAlpha = fr >= 9 ? 1 - (fr - 9) / 3 : 1;
-    ctx.drawImage(IMG.tree_fall, fr * 64, 0, 64, 48, sx(f.x) - 24 * z, sy(f.y) - 28 * z, 64 * z, 48 * z);
+    ctx.drawImage(IMG.tree_fall, fr * 64, 0, 64, 48, sx(f.x) - 32 * z, sy(f.y) - 28 * z, 64 * z, 48 * z);   // trunk at frame x 40
     ctx.globalAlpha = 1;
   }
 }
+
+const FRUITS = ["tree_apple", "tree_pear", "tree_peach", "tree_orange"];
+const fruitSheet = (x, y) => IMG[FRUITS[Math.floor(hash(x, y, 33) * 4)]];
+const dropping = new Map(), chestOpen = new Map(), doors = new Map();
+let occupied = new Set();
 
 function fenceSprite(x, y) {
   const f = (dx, dy) => { const c = combAt(x + dx, y + dy); return c === "#" || c === "+"; };
@@ -465,11 +528,7 @@ function onTick(d) {
     let p = ents.get(key);
     if (!p) { p = {x: e.x, y: e.y, tx: e.x, ty: e.y, fx: 0, fy: 1, moved: 0}; ents.set(key, p); }
     p.e = e;
-    if (e.kind === "agent" && e.id === myId && pred) {
-      if (e.x === pred.x && e.y === pred.y) pred = null;
-      else if (now < pred.until) continue;
-      else pred = null;
-    }
+    if (e.kind === "agent" && e.id === myId) pred = null;
     if (p.tx !== e.x || p.ty !== e.y) {
       const dx = Math.sign(e.x - p.tx), dy = Math.sign(e.y - p.ty);
       if (dx || dy) { p.fx = dx; p.fy = dy; }
@@ -486,6 +545,11 @@ function onEvent(e) {
     if (g && blk) setTile(e.x, e.y, blk, g);
     return;
   }
+  if (e.type === "say" || e.type === "shout") { const em = emoteFor(e.text); if (em) setTimeout(() => emote(e.from, em), 2500); }
+  if (e.type === "give") { emote(e.to, "love"); emote(e.from, "happy"); }
+  if (e.type === "craft") emote(e.name, "star");
+  if (e.type === "attack") emote(e.target, "bang");
+  if (e.type === "death") emote(e.name, "skull");
   if (e.type === "say" || e.type === "shout") {
     const slot = bubbles.filter((b) => b.name === e.from && t - b.t < 7).length;
     bubbles.push({name: e.from, text: e.text, t, shout: e.type === "shout", slot: Math.min(slot, 2)});
@@ -498,6 +562,7 @@ function onEvent(e) {
   }
   if (e.type === "death" || e.type === "creature_died") burst(e.x, e.y, "dust", 16, {dy: -.3, up: 2.5, spread: 4, g: 3, life: .7, size: 2});
   if (e.type === "pick_up") burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3});
+  if (e.type === "chest") chestOpen.set(e.x + "," + e.y, performance.now());
   if (e.type === "craft") burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4});
   if (["pick_up", "drop", "chest"].includes(e.type)) return;
   let text;
@@ -523,13 +588,27 @@ function onEvent(e) {
 // =====================================================================================
 //  Frame
 // =====================================================================================
-let lastT = performance.now();
+let lastT = performance.now(), waterPatterns = null;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.1, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
   for (const p of ents.values()) {
-    const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), step = Math.max(5.5, d * 9) * dt;
+    if (p.e && p.e.kind === "agent" && p.e.id === myId && walking && p.walking) {
+      // your own walk: glide at exactly the stride speed, never more than a tile ahead of the server
+      const [wx, wy] = DIRV[walking.dir], spd = walking.run ? 10 : 5;
+      const nx = p.x + wx * spd * dt, ny = p.y + wy * spd * dt;
+      const ahead = (nx - p.tx) * wx + (ny - p.ty) * wy;
+      const edge = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
+      const limit = walkable(edge.x, edge.y) ? 1 : 0;
+      if (ahead <= limit) { p.x = nx; p.y = ny; }
+      const off = wx ? p.y - p.ty : p.x - p.tx;               // drift sideways back onto the server's row/column
+      if (wx) p.y -= off * Math.min(1, dt * 12); else p.x -= off * Math.min(1, dt * 12);
+      continue;
+    }
+    const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
+    const pace = p.running || (p.e && p.e.run) ? 10 : 5;
+    const step = (d > 1.5 ? d * 8 : pace * 1.05) * dt;
     if (d <= step) { p.x = p.tx; p.y = p.ty; } else { p.x += dx / d * step; p.y += dy / d * step; }
   }
   if (me && myId !== null) {
@@ -559,9 +638,11 @@ function frame(now) {
   const ox = Math.round(W / 2 - (cam.x + .5) * S), oy = Math.round(H / 2 - (cam.y + .5) * S);
   const sx = (x) => ox + x * S, sy = (y) => oy + y * S;
   // animated water underneath everything
-  const wf = Math.floor(t * 3) % 4;
-  const tx0 = Math.floor(-ox / S) - 1, ty0 = Math.floor(-oy / S) - 1, tw = Math.ceil(W / S) + 2, th = Math.ceil(H / S) + 2;
-  for (let j = 0; j < th; j++) for (let i = 0; i < tw; i++) ctx.drawImage(IMG.water, wf * 16, 0, 16, 16, sx(tx0 + i), sy(ty0 + j), S, S);
+  if (!waterPatterns) waterPatterns = [0, 1, 2, 3].map((f) => { const c = document.createElement("canvas"); c.width = c.height = 16; c.getContext("2d").drawImage(IMG.water, f * 16, 0, 16, 16, 0, 0, 16, 16); return ctx.createPattern(c, "repeat"); });
+  ctx.save(); ctx.translate(ox, oy); ctx.scale(zoom, zoom);
+  ctx.fillStyle = waterPatterns[Math.floor(t * 3) % 4];
+  ctx.fillRect(-ox / zoom - 16, -oy / zoom - 16, W / zoom + 32, H / zoom + 32);
+  ctx.restore();
   for (const b of vis) if (b.canvas) ctx.drawImage(b.canvas, sx(b.bx * B), sy(b.by * B), B * S, B * S);
   // y-sorted sprites: objects and creatures
   const list = [];
@@ -570,6 +651,7 @@ function frame(now) {
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y, x, spr});
   }
+  occupied = new Set([...ents.values()].filter((p) => p.e).map((p) => Math.round(p.x) + "," + Math.round(p.y)));
   for (const p of ents.values()) if (p.e) list.push({y: p.y + .01, p});
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const o of list) {
@@ -601,7 +683,7 @@ function frame(now) {
       ctx.strokeRect(sx(p.x) + zoom / 2, sy(p.y) + zoom / 2, S - zoom, S - zoom);
     }
   }
-  for (const o of list) if (o.p && o.p.e.kind === "agent") drawNameplate(o.p, sx, sy, S);
+  for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
   drawProgress(sx, sy, S);
   floats = floats.filter((f) => t - f.t < 1.4);
   ctx.textAlign = "center"; ctx.font = "18px SproutPixel";
@@ -636,7 +718,9 @@ function drawEntity(p, sx, sy, S, t, now) {
   if (e.kind === "agent") {
     const mine = me && e.id === myId;
     const action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, tid: e.tid, t0: p.doingSince || now} : null);
-    if (!mine) { if (e.doing && !p.doingSince) p.doingSince = now; if (!e.doing) p.doingSince = 0; p.running = !!e.run; }
+    if (e.doing && !p.doingSince) p.doingSince = now;
+    if (!e.doing) p.doingSince = 0;
+    if (!mine) p.running = !!e.run;
     // face the action's target
     if (action && action.dir && DIRV[action.dir]) { [p.fx, p.fy] = DIRV[action.dir]; }
     if (action && action.tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == action.tid); if (q) { p.fx = Math.sign(q.x - p.x); p.fy = p.fx ? 0 : Math.sign(q.y - p.y); } }
@@ -667,10 +751,11 @@ function drawEntity(p, sx, sy, S, t, now) {
     } else if (tool === "place" || tool === "pick_up" || tool === "give" || tool === "store" || tool === "take" || tool === "drop") {
       bob = Math.round(Math.sin(Math.min(1, k * 5) * Math.PI) * 3) * z;
     } else if (tool === "rest") {
+      if (!emotes.has(e.name)) emote(e.name, "sleep");
       if (Math.floor(k * 1.5) !== p.lastZ) { p.lastZ = Math.floor(k * 1.5); floatText(p.x + .3, p.y - .3, "z", "#e8f0ff"); }
     }
     if (frame === undefined) {
-      const moving = now - p.moved < 220 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
+      const moving = p.walking || (e.doing === "walk" && !mine) || now - p.moved < 220 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
       const running = moving && (p.running || (mine && runKey));
       if (moving) {
         anim = running ? "run" : "walk";
@@ -685,17 +770,25 @@ function drawEntity(p, sx, sy, S, t, now) {
     const sxx = frame * 48, syy = (ANIM[anim] + DIR_ROW(p)) * 48;
     const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
     const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
-    ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z - p.fx * kb, y - 20 * z - bob - p.fy * kb, 48 * z, 48 * z);
-    if (hitK < .12) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .7; ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z, y - 20 * z, 48 * z, 48 * z); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+    ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z - p.fx * kb, y - 18 * z - bob - p.fy * kb, 48 * z, 48 * z);   // feet at frame y 32
+    if (hitK < .12) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .7; ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z, y - 18 * z, 48 * z, 48 * z); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
   } else if (e.kind === "chicken" || e.kind === "cow") {
     const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
     const big = e.kind === "cow", fw = big ? 32 : 16, img = big ? IMG.cow : IMG.chicken;
-    const f = moving ? Math.floor(now / 90) % (big ? 8 : 7) : Math.floor(now / 260 + e.id) % (big ? 3 : 4);  // chicken walk row has 7 frames
+    // rows: chicken 0 idle(4) 1 walk(7) 2 peck(8) 8 sleep(4); cow 0 idle(3) 1 walk(8) 6 graze(4) 4 sleep(4)
+    let row, n, ms;
+    if (moving) [row, n, ms] = big ? [1, 8, 90] : [1, 7, 90];
+    else if (clock.night) [row, n, ms] = big ? [4, 4, 400] : [8, 4, 400];
+    else {
+      const mood = hash(e.id, Math.floor((now / 1000 + e.id) / 4), 7);   // a new whim every 4 s
+      [row, n, ms] = mood < .45 ? (big ? [0, 3, 260] : [0, 4, 220]) : (big ? [6, 4, 220] : [2, 8, 110]);
+    }
+    const f = Math.floor(now / ms + e.id) % n;
     const fl = flashes.get(e.kind + e.id), white = fl && now - fl < 120;
-    const w = fw * z, dx = big ? x - S / 2 : x, dy = big ? y - S : y - 2 * z;
+    const w = fw * z, dx = big ? x - S / 2 : x, dy = big ? y - S : y;   // feet: chicken frame y 14, cow 29
     ctx.save();
-    if (p.fx < 0) { ctx.translate(dx + w, 0); ctx.scale(-1, 1); ctx.drawImage(img, f * fw, moving ? fw : 0, fw, fw, 0, dy, w, w); if (white) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(img, f * fw, moving ? fw : 0, fw, fw, 0, dy, w, w); } }
-    else { ctx.drawImage(img, f * fw, moving ? fw : 0, fw, fw, dx, dy, w, w); if (white) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(img, f * fw, moving ? fw : 0, fw, fw, dx, dy, w, w); } }
+    const blit = (ox) => { ctx.drawImage(img, f * fw, row * fw, fw, fw, ox, dy, w, w); if (white) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(img, f * fw, row * fw, fw, fw, ox, dy, w, w); } };
+    if (p.fx < 0) { ctx.translate(dx + w, 0); ctx.scale(-1, 1); blit(0); } else blit(dx);
     ctx.restore();
   } else if (e.kind === "gloom") {
     const [gx] = genCell(Math.floor(t * 3 + e.id) % 2 ? "gloom1" : "gloom0");
@@ -782,7 +875,7 @@ cv.addEventListener("mousemove", (e) => {
   const p = tileAtScreen(e.clientX, e.clientY), t = tile(p.x, p.y), tip = $("hover");
   if (!t) { tip.style.display = "none"; return; }
   let text;
-  if (me) { const it = intent(p, e.shiftKey); text = it ? it.text : ""; tip.className = it && it.ok === false ? "bad" : ""; }
+  if (me) { const it = intent(p, e.shiftKey); text = it ? it.text : ""; tip.className = it && it.ok === false ? "bad" : ""; cv.classList.toggle("act", !!(it && !it.walk && !it.info && it.ok !== false)); }
   else {
     const here = entityAt(p);
     text = here ? (here.e.name || here.e.kind) : GROUND.has(t[0]) ? label(CH[t[1]]) : label(CH[t[0]]);
@@ -816,7 +909,11 @@ function joinGame(name) {
   };
   agentWs.onmessage = (m) => {
     const d = JSON.parse(m.data);
-    if (d.type === "progress") { if (d.tool !== "step" && d.tool !== "move_to" && d.ticks / d.tick_hz >= .35) progress = {t0: performance.now(), ms: d.ticks / d.tick_hz * 1000, tool: d.tool}; return; }
+    if (d.type === "progress") {
+      if (pendingAct && pendingAct.tool === d.tool) myAction = {...pendingAct, t0: performance.now()};
+      if (d.ticks / d.tick_hz >= .35) progress = {t0: performance.now(), ms: d.ticks / d.tick_hz * 1000, tool: d.tool};
+      return;
+    }
     const f = pending[d.id]; if (f) { delete pending[d.id]; f(d); }
   };
   agentWs.onclose = () => { if (me) toast("Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "watching"; ["vitals", "hotbar", "craft", "help", "chat", "goals"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; };
@@ -841,14 +938,13 @@ async function refresh() {
   drawHotbar(s.inventory); drawRecipes(); drawGoals();
 }
 setInterval(refresh, 700);
-let myAction = null;
+let myAction = null, pendingAct = null;   // myAction is set only once the server confirms the action started
 async function act(tool, args, quiet) {
   if (!me) return null;
   busy = true;
-  const mine = {tool, dir: args.dir, tid: args.target, t0: performance.now()};
-  if (tool !== "step" && tool !== "move_to" && tool !== "say" && tool !== "shout") myAction = mine;
+  pendingAct = {tool, dir: args.dir, tid: args.target};
   const r = await rpc("act", {tool, args});
-  if (myAction === mine) myAction = null;
+  pendingAct = null; myAction = null;
   busy = false; progress = null;
   if (!r.ok && !["interrupted", "offline"].includes(r.error) && !quiet) toast(`${label(tool)}: ${r.detail || r.error}`, true);
   if (r.ok) {
@@ -868,21 +964,9 @@ const DIRV = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
 function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p.ty} : meObs ? meObs.self : null; }
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
 function walkable(x, y) { const t = tile(x, y); return !!t && WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]); }
-async function stepDir(dir) {
-  const s = myPos(), p = ents.get("agent" + myId); if (!s) return null;
-  const [dx, dy] = DIRV[dir], nx = s.x + dx, ny = s.y + dy;
-  if (p) { p.fx = dx; p.fy = dy; }
-  if (walkable(nx, ny) && p) { pred = {x: nx, y: ny, until: performance.now() + 800}; p.tx = nx; p.ty = ny; p.moved = performance.now(); p.running = runKey; }
-  const r = await act("step", runKey ? {dir, run: true} : {dir}, true);
-  if (r && !r.ok) {
-    pred = null; if (p) { p.tx = s.x; p.ty = s.y; }
-    if (r.error === "blocked") toast("Something's in the way. Press Space to use it, or click it.", true);
-  }
-  return r;
-}
 // ---- what a click does, decided per tile (also shown as the cursor hint) ----------------
 const PLACEABLE_BLOCK = {fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C"};
-const HARVEST = {T: "Chop tree", b: "Pick berries", M: "Mine rock", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
+const HARVEST = {F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
 function entityAt(p) { return [...ents.values()].find((q) => q.e && q.tx === p.x && q.ty === p.y && !(q.e.kind === "agent" && q.e.id === myId)); }
@@ -959,7 +1043,7 @@ function openCraft() { $("craft").style.display = "block"; }
 // item icons from the sheets: [image name, sx, sy]
 const ICONS = {
   wood: ["items", 32, 48], plank: ["planks", 0, 16], stone: ["gen", "boulder"], fiber: ["gen", "fiber"], ore: ["gen", "ore"],
-  berries: ["trees", 16, 64], mushroom: ["nature", 16, 0], seed: ["items", 0, 128], wheat: ["items", 16, 128],
+  berries: ["trees", 16, 64], fruit: ["trees", 0, 32], mushroom: ["nature", 16, 0], seed: ["items", 0, 128], wheat: ["items", 16, 128],
   egg: ["items", 48, 176], milk: ["items", 64, 0], meat: ["gen", "meat"], cooked_meat: ["gen", "cooked_meat"], bread: ["gen", "bread"],
   torch: ["gen", "torch"], rope: ["gen", "rope"], sword: ["gen", "sword"], spear: ["gen", "spear"], axe: ["gen", "axe"],
   pickaxe: ["gen", "pickaxe"], ingot: ["gen", "ingot"], flag: ["gen", "flag"], campfire: ["gen", "campfire0"],
@@ -1002,7 +1086,7 @@ function drawHotbar(inv) {
     el.appendChild(d);
   });
 }
-const FOODS = ["berries", "mushroom", "egg", "milk", "meat", "cooked_meat", "wheat", "bread"];
+const FOODS = ["fruit", "berries", "mushroom", "egg", "milk", "meat", "cooked_meat", "wheat", "bread"];
 function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);
   if (FOODS.includes(name)) return act("eat", {item: name});
@@ -1058,7 +1142,7 @@ addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (k === "shift") keys.add("shift");
   if (k === "escape") { selected = null; $("hotbar").dataset.sig = ""; if (meObs) drawHotbar(meObs.self.inventory); $("craft").style.display = "none"; }
-  if (KEYDIR[k]) { e.preventDefault(); keys.add(k); held = {dir: KEYDIR[k]}; pump(); return; }
+  if (KEYDIR[k]) { e.preventDefault(); if (!e.repeat) { keys.delete(k); keys.add(k); } syncWalk(); return; }
   if (k === " ") { e.preventDefault(); interactFacing(); return; }
   if (k === "enter" || k === "t") { e.preventDefault(); openChat(); }
   else if (k === "/") { e.preventDefault(); openChat("/"); }
@@ -1072,12 +1156,12 @@ addEventListener("keydown", (e) => {
 addEventListener("keyup", (e) => {
   keys.delete(e.key.toLowerCase()); if (e.key === "Shift") keys.delete("shift");
   const k = [...keys].find((k) => KEYDIR[k]);
-  held = k ? {dir: KEYDIR[k]} : null;
+  syncWalk();
 });
 let runKey = false;
-addEventListener("keydown", (e) => { if (e.key === "Shift") runKey = true; });
-addEventListener("keyup", (e) => { if (e.key === "Shift") runKey = false; });
-addEventListener("blur", () => { runKey = false; keys.clear(); held = null; });
+addEventListener("keydown", (e) => { if (e.key === "Shift") { runKey = true; syncWalk(); } });
+addEventListener("keyup", (e) => { if (e.key === "Shift") { runKey = false; syncWalk(); } });
+addEventListener("blur", () => { runKey = false; keys.clear(); syncWalk(); });
 function interactFacing() {                      // Space: do the obvious thing to the tile in front of you
   const p = ents.get("agent" + myId), s = myPos(); if (!p || !s) return;
   const q = {x: s.x + (p.fx || 0), y: s.y + (p.fy || (p.fx ? 0 : 1))};
@@ -1085,11 +1169,28 @@ function interactFacing() {                      // Space: do the obvious thing 
   if (it && it.walk) it = {text: "Dig", near: 1, run: (d) => act("dig", {dir: d})};
   perform(q, it);
 }
-async function pump() {
-  if (busy || !held) return;
-  const h = held;
-  const r = await stepDir(h.dir);
-  if (held && r && r.ok) pump(); else if (held) setTimeout(pump, 120);
+// held keys walk continuously on the server: one message when the direction or sprint changes, one to stop
+let walking = null;   // {dir, run}
+function syncWalk() {
+  const k = [...keys].reverse().find((k) => KEYDIR[k]);
+  const want = k && me ? {dir: KEYDIR[k], run: runKey} : null;
+  if (want && walking && want.dir === walking.dir && want.run === walking.run) return;
+  if (!want && !walking) return;
+  walking = want;
+  const p = ents.get("agent" + myId);
+  if (!want) { rpc("act", {tool: "stop", args: {}}); if (p) p.walking = false; return; }
+  const [dx, dy] = DIRV[want.dir];
+  if (p) {
+    p.fx = dx; p.fy = dy; p.walking = true; p.running = want.run;
+    p.moved = performance.now();
+  }
+  myAction = null;
+  const mine = want;
+  rpc("act", {tool: "walk", args: want.run ? {dir: want.dir, run: true} : {dir: want.dir}}).then((r) => {
+    if (walking !== mine) return;              // replaced by a newer walk / stop
+    walking = null; if (p) p.walking = false;
+    if (r.ok && r.result.stopped === "blocked") { pred = null; const q = ents.get("agent" + myId); if (q) { q.fx = dx; q.fy = dy; } }
+  });
 }
 function openChat(prefix = "") { $("chat").style.display = "block"; const i = $("say"); i.value = prefix; i.focus(); }
 $("say").addEventListener("keydown", (e) => {

@@ -37,12 +37,16 @@ COPY = {  # zip-internal path suffix -> output name
     "Objects/Items/All items.png": "items.png",
     "Characters/Premium Charakter Spritesheet.png": "character.png",
     "Objects/Tree animations/tree_sprites.png": "tree_anim.png",
+    "Objects/Tree animations/tree apple sprites.png": "tree_apple.png",
+    "Objects/Tree animations/tree pear sprites.png": "tree_pear.png",
+    "Objects/Tree animations/tree peach sprites.png": "tree_peach.png",
+    "Objects/Tree animations/tree orange sprites.png": "tree_orange.png",
+    "Objects/Water Objects.png": "water_objects.png",
+    "emojis/Emoji spritesheet.png": "emoji.png",
     "Objects/Tree animations/tree_fall_animation_sprite_sheet.png": "tree_fall.png",
     "Animals/Chicken/chicken default.png": "chicken.png",
     "Animals/Cow/Brown cow animations.png": "cow.png",
     "UI Sprites/ALL UI ASSETS on one sheet.png": "ui.png",
-    "fonts/Font files TTF/pixelFont-4-7x7-sproutLands.ttf": "font_title.ttf",
-    "fonts/Font files TTF/pixelFont-3-7x5-sproutLands.ttf": "font_label.ttf",
 }
 
 
@@ -201,11 +205,13 @@ def build(downloads: Path):
     OUT.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(downloads / SPRITES) as zs, zipfile.ZipFile(downloads / UI) as zu:
         for suffix, name in COPY.items():
-            z = zu if suffix.startswith(("UI Sprites", "fonts")) else zs
+            z = zu if suffix.startswith(("UI Sprites", "fonts", "emojis")) else zs
             (OUT / name).write_bytes(read_member(z, suffix))
         tilled = Image.open(io.BytesIO(read_member(zs, "Tilesets/ground tiles/Old tiles/Tilled_Dirt_v2.png")))
         water = Image.open(io.BytesIO(read_member(zs, "Tilesets/ground tiles/Water.png")))
         ui = Image.open(io.BytesIO(read_member(zu, "UI Sprites/ALL UI ASSETS on one sheet.png"))).convert("RGBA")
+        paw = Image.open(io.BytesIO(read_member(zu, "UI Sprites/Mouse sprites/Catpaw Mouse icon.png"))).convert("RGBA")
+        point = Image.open(io.BytesIO(read_member(zu, "UI Sprites/Mouse sprites/Catpaw pointing Mouse icon.png"))).convert("RGBA")
 
     # burnt ground: the tilled-soil layer, darkened and desaturated toward ash grey
     def ashen(r, g, b):
@@ -214,6 +220,8 @@ def build(downloads: Path):
     recolor(tilled, ashen).save(OUT / "ash.png")
     recolor(water, lambda r, g, b: (int(r * 0.62), int(g * 0.74), int(b * 0.86))).save(OUT / "water_deep.png")
     # UI pieces used as CSS 9-slices
+    paw.resize((32, 32), Image.NEAREST).save(OUT / "cursor.png")
+    point.resize((32, 32), Image.NEAREST).save(OUT / "cursor_point.png")
     ui.crop((11, 59, 37, 87)).save(OUT / "panel.png")
     ui.crop((345, 9, 375, 39)).save(OUT / "slot.png")
     ui.crop((345, 57, 375, 87)).save(OUT / "slot_sel.png")

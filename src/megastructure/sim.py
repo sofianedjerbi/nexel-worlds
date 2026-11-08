@@ -637,6 +637,27 @@ class Simulation:
         a.x, a.y = x, y
         return {}
 
+    def _tool_walk(self, a, args):
+        """Keep walking in a direction at a steady stride until blocked or replaced by another action
+        (e.g. `stop`). Lets a held key move smoothly without a round trip per tile."""
+        d = str(args.get("dir", "")).upper()
+        if d not in DIRS:
+            raise ActionError("bad_args", "dir must be one of N, E, S, W")
+        dx, dy = DIRS[d]
+        steps = 0
+        while steps < 600:
+            yield from self.wait(a, self.stride(a, args))
+            if not self.world.passable(a.x + dx, a.y + dy):
+                return {"steps": steps, "stopped": "blocked", "blocked_by": self.describe(a.x + dx, a.y + dy)}
+            a.x, a.y = a.x + dx, a.y + dy
+            steps += 1
+            yield  # one tile per stride: the stride's first tick is spent here
+        return {"steps": steps, "stopped": "limit"}
+
+    def _tool_stop(self, a, args):
+        yield from ()  # completes at once; submitting it interrupts whatever was running
+        return {}
+
     def _tool_move_to(self, a, args):
         try:
             gx, gy = int(args["x"]), int(args["y"])
@@ -1044,6 +1065,8 @@ LEGEND = {
 DIR_ARG = {"dir": "N|E|S|W"}
 TOOL_SPECS = {
     "step": {"args": {**DIR_ARG, "run": "bool (optional, sprint: 2x speed, costs energy)"}, "desc": "move one tile"},
+    "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped"},
+    "stop": {"args": {}, "desc": "stop the current action"},
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
     "dig": {"args": DIR_ARG, "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground"},
     "place": {"args": {**DIR_ARG, "item": "str", "text": "str (flags only, optional)"},

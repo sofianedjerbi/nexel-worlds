@@ -211,3 +211,34 @@ walk, so walking stuttered between standing and stepping. Actions had no animati
 - Your own action animates the instant you click (not after the server reply).
 
 **Verified**: a frame-by-frame capture in Chrome of walk → axe swings → shakes and chips → felling → +3 wood; no page errors.
+
+## 2026-11-08 · Iteration 10 — use the whole premium pack; sprinting; honest animation (user feedback, several rounds)
+
+**Audit** (frames in the pack vs used): premium character 0/192, chicken 11/115, cow 11/42, chest 1/10, door 1/18,
+fruit trees 0/~100, crops 2/59, water objects 0/18; emoji, cursors and flowers unused. Also a real bug: the chicken
+walk row has 7 frames, not 8, so it blinked.
+
+**Change**
+- **Premium character** (8-frame rows): idle, walk, run, hoe, axe. Swings strike on frame 4 (with the
+  pack's arc), where debris and the target shake fire. Left/right rows were swapped twice; settled by measuring the
+  eye and collar-bell position (the pink spot is the inner ear, at the back): rows go down, up, right, left.
+- **Sprinting**: Shift doubles speed (0.1 s/tile) and costs 1 energy per 4 tiles (sim `stride()`); Space uses the
+  faced tile; the run animation shows for everyone (`run` is in the tick).
+- **Continuous walking**: a held key sends one `walk` (server walks at an exact stride until blocked or `stop`)
+  instead of a step per round trip. Your own position glides at the exact stride speed, never more than a tile ahead of the
+  server; others move at their pace. Measured in Chrome: walk 10.0 tiles/2 s, speed p10=p50=p90=5.0, 0 stalled
+  frames (was 22), first motion 27 ms; sprint 19.8 tiles/2 s at 10.0, 0 stalls.
+- **Action animations only on confirmation**: the server pushes `progress` when any timed action actually starts; the
+  client animates only then, so refused actions (no tool, blocked...) show nothing (was 1 frame).
+- **Anchors audited** against each sheet's measured base: the falling tree was 8 px off (−24 → −32), the young tree
+  floated (−18 → −13), the character sat 2 px high, the chicken 2 px high. Fixed.
+- **Fruit trees** (apple, pear, peach, orange; 15% of grove trees): sway; picking plays the 12-frame fruit drop,
+  gives 3 fruit, and the fruit regrows in 4 min. **Crops** grow sprout → young → ripe.
+- **Chests** open and close when used; **doors** swing open when someone is next to them.
+- **Animals**: chickens walk (7 frames), peck and sleep at night; cows walk, graze and sleep; whims change every 4 s.
+- **Decor** baked into the ground layer: lily pads, reeds and rocks on shore water; flower patches in meadows.
+- **Emotes** from the pack's emoji sheet (cat faces, hearts, stars, !, ?, zZ, skull) for chat moods, gifts,
+  crafting, being hit, resting and death. The **cat-paw cursor** points when hovering something actionable.
+- **Lag**: water was a drawImage per tile per frame (thousands at zoom 1), now one pattern fill. The JS frame cost
+  is ~6 ms per second of play; 60 fps at zoom 1 and 3.
+Tests: 22 pass (sprint, walk/stop, fruit regrowth added).

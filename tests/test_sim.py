@@ -289,3 +289,18 @@ def test_sprint_is_faster_and_tiring(world):
     e0 = a.energy
     sprint = [run(sim, a, "step", {"dir": "E" if i % 2 else "W", "run": True})["ticks"] for i in range(8)]
     assert max(sprint) < walk and a.energy < e0
+
+
+def test_walk_keeps_going_until_stopped(world):
+    sim, a = world
+    x0 = a.x
+    act = sim.submit(a, "walk", {"dir": "E"})
+    for _ in range(20):
+        sim.step()
+    assert a.x - x0 >= 4 and act.result is None
+    sim.submit(a, "stop", {})
+    sim.step()
+    assert act.result["status"] == "interrupted"
+    sim.world.set(a.x + 2, a.y, block="rock")
+    r = run(sim, a, "walk", {"dir": "E"})
+    assert r["stopped"] == "blocked" and r["steps"] == 1
