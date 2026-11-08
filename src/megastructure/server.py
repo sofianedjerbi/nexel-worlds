@@ -36,15 +36,18 @@ def serve_http(connection, request):
     path = request.path.split("?")[0]
     if path in ("/", "/index.html"):
         return _file(WEB / "index.html", "text/html; charset=utf-8")
-    if path.startswith("/assets/"):
-        name = path[len("/assets/"):]
-        f = (WEB / "assets" / name).resolve()
-        if f.parent == (WEB / "assets").resolve() and f.is_file() and f.suffix in CONTENT_TYPES:
-            return _file(f, CONTENT_TYPES[f.suffix], cache="max-age=3600")
+    folder, _, name = path.lstrip("/").partition("/")
+    if folder in STATIC:
+        root = (WEB / folder).resolve()
+        f = (root / name).resolve()
+        if f.parent == root and f.is_file() and f.suffix in CONTENT_TYPES:   # no subfolders, no "..": only our files
+            return _file(f, CONTENT_TYPES[f.suffix], cache=STATIC[folder])
     return connection.respond(404, "not found\n")
 
 
-CONTENT_TYPES = {".png": "image/png", ".ttf": "font/ttf", ".txt": "text/plain"}
+STATIC = {"assets": "max-age=3600", "js": "no-cache", "css": "no-cache"}   # folder -> Cache-Control
+CONTENT_TYPES = {".png": "image/png", ".ttf": "font/ttf", ".txt": "text/plain",
+                 ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
 
 
 def _file(path: Path, ctype: str, cache: str = "no-cache") -> Response:
