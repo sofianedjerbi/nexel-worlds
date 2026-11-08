@@ -1,0 +1,173 @@
+"""Chunked tile world with lazy load/unload and SQLite persistence."""
+
+import json
+import sqlite3
+import zlib
+from pathlib import Path
+
+from .gen import CHUNK, gen_chunk
+from .tiles import BLOCKS, GROUNDS, B, G
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS chunks(cx INTEGER, cy INTEGER, data BLOB, PRIMARY KEY(cx, cy));
+CREATE TABLE IF NOT EXISTS tile_meta(x INTEGER, y INTEGER, json TEXT, PRIMARY KEY(x, y));
+CREATE TABLE IF NOT EXISTS agents(id INTEGER PRIMARY KEY, name TEXT UNIQUE, token_hash TEXT, json TEXT);
+CREATE TABLE IF NOT EXISTS ground_items(x INTEGER, y INTEGER, json TEXT, PRIMARY KEY(x, y));
+CREATE TABLE IF NOT EXISTS creatures(id INTEGER PRIMARY KEY, json TEXT);
+"""
+
+
+class Chunk:
+    __slots__ = ("cx", "cy", "ground", "block", "dirty", "touched")
+
+    def __init__(self, cx, cy, ground, block):
+        self.cx, self.cy = cx, cy
+        self.ground, self.block = ground, block
+        self.dirty = False
+        self.touched = 0
+
+    def pack(self) -> bytes:
+        return zlib.compress(bytes(self.ground) + bytes(self.block), 6)
+
+    @classmethod
+    def unpack(cls, cx, cy, data: bytes) -> "Chunk":
+        raw = zlib.decompress(data)
+        n = CHUNK * CHUNK
+        return cls(cx, cy, bytearray(raw[:n]), bytearray(raw[n:]))
+
+
+class Store:
+    """Thin SQLite wrapper. One connection, owned by the server thread."""
+
+    def __init__(self, path: Path | str):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.db = sqlite3.connect(self.path)
+        self.db.executescript(SCHEMA)
+        self.db.execute("PRAGMA journal_mode=WAL")
+
+    def get_meta(self, key, default=None):
+        row = self.db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        return json.loads(row[0]) if row else default
+
+    def set_meta(self, key, value):
+        self.db.execute("INSERT OR REPLACE INTO meta VALUES(?,?)", (key, json.dumps(value)))
+
+    def load_chunk(self, cx, cy) -> Chunk | None:
+        row = self.db.execute("SELECT data FROM chunks WHERE cx=? AND cy=?", (cx, cy)).fetchone()
+        return Chunk.unpack(cx, cy, row[0]) if row else None
+
+    def save_chunk(self, c: Chunk):
+        self.db.execute("INSERT OR REPLACE INTO chunks VALUES(?,?,?)", (c.cx, c.cy, c.pack()))
+
+    def commit(self):
+        self.db.commit()
+
+    def close(self):
+        self.db.commit()
+        self.db.close()
+
+
+class World:
+    def __init__(self, store: Store, seed: int | None = None):
+        self.store = store
+        stored = store.get_meta("seed")
+        if stored is None:
+            stored = seed if seed is not None else 1337
+            store.set_meta("seed", stored)
+            store.commit()
+        self.seed = stored
+        self.chunks: dict[tuple[int, int], Chunk] = {}
+        self.tick = 0  # set by the simulation; used for "touched"
+        self.meta: dict[tuple[int, int], dict] = {
+            (x, y): json.loads(j) for x, y, j in store.db.execute("SELECT x, y, json FROM tile_meta")
+        }
+        self.dirty_meta: set[tuple[int, int]] = set()
+
+    # ---- chunk management -------------------------------------------------
+    def chunk(self, cx: int, cy: int) -> Chunk:
+        c = self.chunks.get((cx, cy))
+        if c is None:
+            c = self.store.load_chunk(cx, cy)
+            if c is None:
+                g, b = gen_chunk(self.seed, cx, cy)
+                c = Chunk(cx, cy, g, b)
+                c.dirty = True
+            self.chunks[(cx, cy)] = c
+        c.touched = self.tick
+        return c
+
+    def flush(self):
+        for c in self.chunks.values():
+            if c.dirty:
+                self.store.save_chunk(c)
+                c.dirty = False
+        for pos in self.dirty_meta:
+            m = self.meta.get(pos)
+            if m:
+                self.store.db.execute("INSERT OR REPLACE INTO tile_meta VALUES(?,?,?)", (*pos, json.dumps(m)))
+            else:
+                self.store.db.execute("DELETE FROM tile_meta WHERE x=? AND y=?", pos)
+        self.dirty_meta.clear()
+        self.store.commit()
+
+    def unload_far(self, anchors: list[tuple[int, int]], radius: int = 3, idle_ticks: int = 150):
+        """Save and drop chunks far from every anchor (agent position) and idle."""
+        keep = set()
+        for x, y in anchors:
+            acx, acy = x >> 5, y >> 5
+            for dy in range(-radius, radius + 1):
+                for dx in range(-radius, radius + 1):
+                    keep.add((acx + dx, acy + dy))
+        dropped = 0
+        for key in list(self.chunks):
+            c = self.chunks[key]
+            if key not in keep and self.tick - c.touched > idle_ticks:
+                if c.dirty:
+                    self.store.save_chunk(c)
+                del self.chunks[key]
+                dropped += 1
+        if dropped:
+            self.store.commit()
+        return dropped
+
+    # ---- tile access ------------------------------------------------------
+    def get(self, x: int, y: int) -> tuple[int, int]:
+        c = self.chunk(x >> 5, y >> 5)
+        i = (y & 31) * CHUNK + (x & 31)
+        return c.ground[i], c.block[i]
+
+    def ground(self, x, y) -> str:
+        return GROUNDS[self.get(x, y)[0]].name
+
+    def block(self, x, y) -> str:
+        return BLOCKS[self.get(x, y)[1]].name
+
+    def set(self, x: int, y: int, ground: str | None = None, block: str | None = None):
+        c = self.chunk(x >> 5, y >> 5)
+        i = (y & 31) * CHUNK + (x & 31)
+        if ground is not None:
+            c.ground[i] = G[ground]
+        if block is not None:
+            b_before = c.block[i]
+            c.block[i] = B[block]
+            if (x, y) in self.meta and c.block[i] != b_before:
+                del self.meta[(x, y)]
+                self.dirty_meta.add((x, y))
+        c.dirty = True
+
+    def passable(self, x: int, y: int) -> bool:
+        g, b = self.get(x, y)
+        return GROUNDS[g].walkable and not BLOCKS[b].solid
+
+    def set_meta(self, x, y, data: dict | None):
+        if data:
+            self.meta[(x, y)] = data
+        else:
+            self.meta.pop((x, y), None)
+        self.dirty_meta.add((x, y))
+
+    def char(self, x, y) -> str:
+        g, b = self.get(x, y)
+        return BLOCKS[b].char if b else GROUNDS[g].char

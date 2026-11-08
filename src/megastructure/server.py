@@ -1,0 +1,283 @@
+"""Authoritative game server: fixed-rate tick loop + WebSocket Agent API.
+
+    uv run python -m megastructure.server --world default --port 7777
+"""
+
+import argparse
+import asyncio
+import collections
+import json
+import logging
+import resource
+import signal
+import time
+from pathlib import Path
+
+from websockets.asyncio.server import serve
+from websockets.datastructures import Headers
+from websockets.exceptions import ConnectionClosed
+from websockets.http11 import Response
+
+from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
+from .tiles import RECIPES
+
+log = logging.getLogger("megastructure")
+PROTOCOL = 1
+LIMITS = {"act": (120, 60.0), "observe": (120, 60.0), "say": (6, 60.0), "shout": (1, 60.0)}
+FLUSH_EVERY = 50  # ticks (10 s)
+WEB = Path(__file__).parent / "web"
+
+
+def serve_http(connection, request):
+    """Plain HTTP GETs (no websocket upgrade) get the browser client."""
+    if request.headers.get("Upgrade", "").lower() == "websocket":
+        return None
+    path = request.path.split("?")[0]
+    if path in ("/", "/index.html"):
+        body = (WEB / "index.html").read_bytes()
+        return Response(200, "OK", Headers([("Content-Type", "text/html; charset=utf-8"),
+                                            ("Content-Length", str(len(body))), ("Cache-Control", "no-cache")]), body)
+    return connection.respond(404, "not found\n")
+
+
+def rss_mb() -> float:
+    # macOS reports ru_maxrss in bytes (peak resident set)
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6
+
+
+class RateLimiter:
+    def __init__(self):
+        self.hits = collections.defaultdict(collections.deque)
+
+    def allow(self, key: str) -> bool:
+        n, window = LIMITS[key]
+        q, now = self.hits[key], time.monotonic()
+        while q and now - q[0] > window:
+            q.popleft()
+        if len(q) >= n:
+            return False
+        q.append(now)
+        return True
+
+
+class GameServer:
+    def __init__(self, world_dir: Path, seed: int | None = None):
+        world_dir.mkdir(parents=True, exist_ok=True)
+        self.sim = Simulation(world_dir / "world.sqlite", seed=seed, event_log=world_dir / "events.jsonl")
+        self.conns: dict[int, object] = {}  # agent id -> connection
+        self.spectators: set = set()
+        self.sim.listeners.append(self._broadcast)
+        self.tick_ms = collections.deque(maxlen=250)
+        self.started = time.time()
+        self.stopping = asyncio.Event()
+
+    # ---------------------------------------------------------------- tick
+    async def tick_loop(self):
+        loop = asyncio.get_running_loop()
+        period = 1.0 / TICK_HZ
+        nxt = loop.time()
+        while not self.stopping.is_set():
+            t0 = time.perf_counter()
+            chunks0 = len(self.sim.world.chunks)
+            self.sim.step()
+            t1 = time.perf_counter()
+            if self.sim.tick % FLUSH_EVERY == 0:
+                self.sim.flush()
+                self.sim.maintain()
+            dt = (time.perf_counter() - t0) * 1000
+            self.tick_ms.append(dt)
+            if dt > 50:
+                log.warning("slow tick %d: %.0f ms (step %.0f ms, chunks %d -> %d)", self.sim.tick, dt,
+                            (t1 - t0) * 1000, chunks0, len(self.sim.world.chunks))
+            nxt += period
+            delay = nxt - loop.time()
+            if delay < -1.0:  # fell far behind (e.g. laptop sleep): don't try to catch up
+                nxt = loop.time()
+                delay = 0
+            await asyncio.sleep(max(0.0, delay))
+
+    def metrics(self) -> dict:
+        ms = sorted(self.tick_ms) or [0.0]
+        return {
+            "tick": self.sim.tick,
+            "uptime_s": round(time.time() - self.started),
+            "agents_online": sum(1 for a in self.sim.agents.values() if a.online),
+            "agents_total": len(self.sim.agents),
+            "creatures": collections.Counter(c.kind for c in self.sim.creatures.values()),
+            "chunks_loaded": len(self.sim.world.chunks),
+            "tick_ms_p50": round(ms[len(ms) // 2], 2),
+            "tick_ms_max": round(ms[-1], 2),
+            "rss_peak_mb": round(rss_mb(), 1),
+            **self.sim.stats,
+        }
+
+    # ----------------------------------------------------------- spectators
+    def _broadcast(self, ev):
+        if not self.spectators:
+            return
+        msg = json.dumps({"type": "event", **ev})
+        for q in list(self.spectators):
+            if q.qsize() < 1000:
+                q.put_nowait(msg)
+
+    def region(self, x, y, w, h) -> dict:
+        w, h = min(int(w), 256), min(int(h), 256)
+        rows = ["".join(self.sim.world.char(i, j) for i in range(x, x + w)) for j in range(y, y + h)]
+        ents = [{"kind": "agent", "name": a.name, "id": a.id, "x": a.x, "y": a.y, "hp": a.hp}
+                for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
+        ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y} for c in self.sim.creatures.values()
+                 if x <= c.x < x + w and y <= c.y < y + h]
+        return {"x": x, "y": y, "rows": rows, "entities": ents, "tick": self.sim.tick}
+
+    # ------------------------------------------------------------- handlers
+    async def handler(self, ws):
+        path = ws.request.path if ws.request else "/agent"
+        try:
+            if path.startswith("/spectate"):
+                await self.spectate(ws)
+            else:
+                await self.agent_session(ws)
+        except ConnectionClosed:
+            pass
+
+    async def spectate(self, ws):
+        q: asyncio.Queue = asyncio.Queue()
+        self.spectators.add(q)
+
+        async def pump():
+            while True:
+                await ws.send(await q.get())
+
+        pumper = asyncio.create_task(pump())
+        try:
+            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL}))
+            async for raw in ws:
+                msg = json.loads(raw)
+                op = msg.get("op")
+                if op == "region":
+                    out = self.region(int(msg["x"]), int(msg["y"]), msg.get("w", 64), msg.get("h", 48))
+                elif op == "metrics":
+                    out = self.metrics()
+                elif op == "agents":
+                    out = {"agents": [dict(a.to_json(), online=a.online) for a in self.sim.agents.values()]}
+                else:
+                    out = {"error": "unknown op"}
+                await ws.send(json.dumps({"type": "reply", "id": msg.get("id"), **out}))
+        finally:
+            self.spectators.discard(q)
+            pumper.cancel()
+
+    async def agent_session(self, ws):
+        out: asyncio.Queue = asyncio.Queue()
+
+        def reply(mid, ok=True, **kw):
+            out.put_nowait(json.dumps({"id": mid, "ok": ok, **kw}, separators=(",", ":")))
+
+        async def writer():
+            while True:
+                await ws.send(await out.get())
+
+        wtask = asyncio.create_task(writer())
+        agent = None
+        limits = RateLimiter()
+        try:
+            async for raw in ws:
+                try:
+                    msg = json.loads(raw)
+                    mid, op = msg.get("id"), msg.get("op")
+                except (json.JSONDecodeError, AttributeError):
+                    reply(None, False, error="bad_json")
+                    continue
+                if op == "ping":
+                    reply(mid, tick=self.sim.tick)
+                    continue
+                if op == "metrics":
+                    reply(mid, metrics=self.metrics())
+                    continue
+                if agent is None:
+                    if op != "hello":
+                        reply(mid, False, error="hello_first")
+                        continue
+                    try:
+                        agent = self.sim.login(str(msg.get("name", "")), str(msg.get("token", "")),
+                                               str(msg.get("persona", "")))
+                    except ActionError as e:
+                        reply(mid, False, error=e.code, detail=e.detail)
+                        continue
+                    old = self.conns.get(agent.id)
+                    if old is not None and old is not ws:
+                        await old.close(4000, "logged in elsewhere")
+                        agent.online = True
+                    self.conns[agent.id] = ws
+                    log.info("agent %s (#%d) connected from %s", agent.name, agent.id, ws.remote_address)
+                    reply(mid, agent=agent.to_json(), tick=self.sim.tick, protocol=PROTOCOL, tick_hz=TICK_HZ)
+                    continue
+                if op == "observe":
+                    if not limits.allow("observe"):
+                        reply(mid, False, error="rate_limited", detail="observe: 120/min")
+                        continue
+                    reply(mid, obs=self.sim.observe(agent))
+                elif op == "act":
+                    tool, args = str(msg.get("tool", "")), msg.get("args") or {}
+                    if not isinstance(args, dict):
+                        reply(mid, False, error="bad_args", detail="args must be an object")
+                        continue
+                    if not limits.allow("act") or (tool in ("say", "shout") and not limits.allow(tool)):
+                        reply(mid, False, error="rate_limited", detail=f"limits: {LIMITS}")
+                        continue
+
+                    def done(result, mid=mid):
+                        ok = result.pop("ok", True)
+                        if ok:
+                            reply(mid, result=result)
+                        else:
+                            reply(mid, False, error=result.get("error"), detail=result.get("detail"), result=result)
+
+                    self.sim.submit(agent, tool, args, on_done=done)
+                elif op == "tools":
+                    reply(mid, tools=TOOL_SPECS)
+                elif op == "recipes":
+                    reply(mid, recipes={k: {"inputs": r.inputs, "output": r.output, "station": r.station,
+                                            "ticks": r.ticks} for k, r in RECIPES.items()})
+                else:
+                    reply(mid, False, error="unknown_op",
+                          detail="ops: hello, observe, act, tools, recipes, metrics, ping")
+        finally:
+            if agent is not None and self.conns.get(agent.id) is ws:
+                del self.conns[agent.id]
+                self.sim.logout(agent)
+                log.info("agent %s disconnected", agent.name)
+            await asyncio.sleep(0.05)  # let queued replies drain
+            wtask.cancel()
+
+    async def run(self, host: str, port: int):
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, self.stopping.set)
+        ticker = asyncio.create_task(self.tick_loop())
+        async with serve(self.handler, host, port, max_size=2**20, process_request=serve_http) as server:
+            log.info("megastructure listening on ws://%s:%d (seed %d, tick %d) - open http://%s:%d/ to watch",
+                     host, port, self.sim.seed, self.sim.tick, host, port)
+            await self.stopping.wait()
+            log.info("shutting down")
+            server.close()
+        ticker.cancel()
+        self.sim.close()
+        log.info("saved at tick %d", self.sim.tick)
+
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--world", default="default")
+    p.add_argument("--saves", default="saves")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=7777)
+    p.add_argument("--seed", type=int, default=None)
+    args = p.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    gs = GameServer(Path(args.saves) / args.world, seed=args.seed)
+    asyncio.run(gs.run(args.host, args.port))
+
+
+if __name__ == "__main__":
+    main()
