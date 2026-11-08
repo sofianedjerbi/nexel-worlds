@@ -43,20 +43,28 @@ function aimedTile() {
   const p = tileAtScreen(mouse.x, mouse.y);
   return {p, it: intent(p, keys.has("shift"))};
 }
-// The keyboard prompt above the hotbar: what Space and X would do right now.
-let promptText = "";
-function updatePrompt() {
-  let text = "";
-  if (me && inputMode === "keys") {
-    const main = facingIntent(false), alt = facingIntent(true);
-    const parts = [];
-    if (main) parts.push(`<b>Space</b> ${esc(main.it.text)}`);
-    if (alt && (!main || alt.it.text !== main.it.text)) parts.push(`<b>X</b> ${esc(alt.it.text)}`);
-    text = parts.join("<i>·</i>");
-  }
-  if (text === promptText) return;
-  promptText = text;
-  const el = $("prompt"); el.innerHTML = text; el.style.display = text ? "block" : "none";
+// Bottom right: what you can do right now, each with its key. Rebuilt every frame, written only when it changes.
+let actionsHtml = "";
+function availableActions() {
+  if (!me || !meObs) return [];
+  const inv = meObs.self.inventory, s = myPos(), rows = [];
+  const main = facingIntent(false), alt = facingIntent(true);
+  if (main && !main.it.info) rows.push(["Space", main.it.text]);
+  if (alt && !alt.it.info && (!main || alt.it.text !== main.it.text)) rows.push(["X", alt.it.text]);
+  if (selected && FOODS.includes(selected)) rows.push(["E", `Eat ${label(selected)}`]);
+  else { const food = FOODS.find((f) => inv[f]); if (food && meObs.self.hunger < 80) rows.push(["E", `Eat (select ${label(food)})`]); }
+  if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push(["F", "Pick up"]);
+  if (meObs.self.energy < 50) rows.push(["R", "Rest"]);
+  if (Object.keys(inv).length) rows.push(["Q", selected ? `In hand: ${label(selected)} · next` : "Take an item in hand"]);
+  if (selected) rows.push(["0", "Empty hands"]);
+  rows.push(["C", "Craft"], ["B", "Bag"], ["Enter", "Chat"], ["H", "All controls"]);
+  return rows;
+}
+function updateActions() {
+  const html = availableActions().map(([k, t]) => `<div><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
+  if (html === actionsHtml) return;
+  actionsHtml = html;
+  const el = $("actions"); el.innerHTML = html; el.style.display = html ? "block" : "none";
 }
 function useFacing(alt) {
   const f = facingIntent(alt);

@@ -112,7 +112,7 @@ function frame(now) {
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawRoofs(sx, sy, S, dt);
   drawNight(vis, sx, sy, S, t);
-  updatePrompt();
+  updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   if (aim) drawIntent(aim.p, aim.it, sx, sy, S, t);
   for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }

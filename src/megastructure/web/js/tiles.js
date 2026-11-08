@@ -25,7 +25,7 @@ function setTile(x, y, comb, gnd, who = null) {
   if (b.comb[i] === comb && b.gnd[i] === gnd) return;
   const old = b.comb[i], now = performance.now();
   if (PICK[old] === comb) picked(x, y, old, who, now);
-  else if (old === "T" && comb !== "T") falls.push({x, y, t0: now});
+  else if (old === "T" && comb !== "T") felled(x, y, who, now);
   else if (old !== comb && isObject(comb) && comb !== "x" && PICK[old] !== comb) pops.set(x + "," + y, now);
   const spr = old !== comb && old !== "T" && PICK[old] !== comb && isObject(old) && !isObject(comb) ? objectSprite(old, x, y, now / 1000) : null;
   if (spr) {                                   // taken away: it squashes down and fades, shedding its own colours

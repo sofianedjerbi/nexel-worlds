@@ -64,6 +64,28 @@ function drawEmote(p, sx, sy, S) {
   ctx.globalAlpha = 1;
 }
 function floatText(x, y, text, color) { floats.push({x, y, text, color, t: performance.now() / 1000}); }
+// A felled tree falls over. Round trees use the pack's 13-frame felling sheet; young thin trees (the pack has no
+// sheet for them) tip over from the base away from whoever chopped them, gather speed, then burst into leaves.
+const THIN_FALL_MS = 650;
+function felled(x, y, who, now) {
+  const spr = objectSprite("T", x, y, now / 1000);
+  if (spr && spr[0] !== IMG.trees) return falls.push({x, y, t0: now});           // round tree: the pack animation
+  const c = who && [...ents.values()].find((q) => q.e && q.e.name === who);
+  falls.push({x, y, t0: now, thin: spr, side: c && c.x > x ? -1 : 1});
+}
+function drawThinFall(f, sx, sy, now) {
+  const k = (now - f.t0) / THIN_FALL_MS, z = zoom;
+  if (k >= 1) {                                   // it hit the ground: leaves scatter where the crown landed
+    if (!f.burst) { f.burst = true; debris(f.x + f.side * 1.1, f.y - .1, f.thin, 12, {dust: true}); }
+    return k < 1.15;
+  }
+  const [img, a, b, w, h, dx, dy] = f.thin, ang = f.side * (Math.PI / 2) * k * k;   // eases in like a real fall
+  const bx = sx(f.x) + (dx + w / 2) * z, by = sy(f.y) + (dy + h - 4) * z;            // pivot: the foot of the trunk
+  ctx.save(); ctx.translate(Math.round(bx), Math.round(by)); ctx.rotate(ang);
+  ctx.drawImage(img, a, b, w, h, -w / 2 * z, -(h - 4) * z, w * z, h * z);
+  ctx.restore();
+  return true;
+}
 // Picking fruit or berries: the plant shakes, the fruit pops out and arcs into the picker's hands.
 const flyers = [];
 const FLY_MS = 420;
@@ -117,6 +139,7 @@ function drawEffects(sx, sy, S, dt) {
   }
   drawFlyers(sx, sy, S, now);
   for (let i = falls.length - 1; i >= 0; i--) {     // the pack's tree-felling animation, then fade
+    if (falls[i].thin) { if (!drawThinFall(falls[i], sx, sy, now)) falls.splice(i, 1); continue; }
     const f = falls[i], k = (now - f.t0) / 1000, fr = Math.floor(k * 14);
     if (fr >= 12) { falls.splice(i, 1); continue; }
     ctx.globalAlpha = fr >= 9 ? 1 - (fr - 9) / 3 : 1;

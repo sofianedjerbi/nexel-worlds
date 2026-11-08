@@ -93,7 +93,7 @@
   #hover { position:fixed; pointer-events:none; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; display:none; z-index:5; }
   .rcard.kfocus, .slot.kfocus { outline:3px solid #6aa66f; outline-offset:1px; }
 
-  /* ---- HUD: hearts and food on the hotbar, the energy line between, the keyboard prompt above ---- */
+  /* ---- HUD: hearts and food on the hotbar, the energy line between ---- */
   #hud { position:fixed; left:50%; bottom:10px; transform:translateX(-50%); display:none; flex-direction:column; align-items:stretch;
     gap:3px; z-index:3; filter:drop-shadow(0 3px 0 rgba(60,40,30,.3)); pointer-events:none; }
   #hud .hudrow { display:flex; gap:clamp(2px, .4vw, 6px); align-items:center; pointer-events:auto; }
@@ -102,9 +102,8 @@
   #energy { height:8px; margin:0 6px 2px; border:2px solid var(--ink); border-radius:3px; background:#4a3a33; overflow:hidden; }
   #energy i { display:block; height:100%; background:linear-gradient(#9fd37a, #6aa66f); transition:width .3s; }
   #energy.low i { background:linear-gradient(#f0c45c, #d98e3a); }
-  #prompt, #status { align-self:center; text-align:center; white-space:nowrap; color:#fff8e8; font-size:18px; display:none;
+  #status { align-self:center; text-align:center; white-space:nowrap; color:#fff8e8; font-size:18px; display:none;
     text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
-  #prompt b { color:#ffe6a8; font-weight:normal; margin-right:4px; } #prompt i { font-style:normal; margin:0 10px; opacity:.7; }
   #status { color:#ffd0b8; }
   .slot.tool canvas { opacity:.95; }
   .link { cursor:pointer; text-decoration:underline dotted; }
@@ -121,3 +120,10 @@
   #debug { position:fixed; right:12px; bottom:12px; display:none; color:#fff8e8; background:rgba(40,28,24,.6); padding:4px 8px; font-size:18px; z-index:3; }
   #vitals canvas.low { animation:jiggle .45s steps(2) infinite; }
   @keyframes jiggle { 0% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
+  /* ---- what you can do right now, bottom right ---- */
+  #actions { position:fixed; right:12px; bottom:12px; display:none; z-index:3; pointer-events:none; color:#fff8e8; font-size:18px; line-height:26px;
+    text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+  #actions div { display:flex; align-items:center; justify-content:flex-end; }
+  #actions .key { order:2; display:inline-block; min-width:28px; padding:0 6px; margin-left:8px; text-align:center; line-height:18px; color:var(--ink);
+    background:#f7e7c6; border:2px solid var(--ink); border-bottom-width:4px; border-radius:4px; text-shadow:none; }
+  #debug { bottom:auto; top:120px; }
