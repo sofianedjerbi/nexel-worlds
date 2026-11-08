@@ -1,0 +1,292 @@
+"""Authoritative, deterministic tick simulation.
+
+The simulation is synchronous and has no asyncio dependency: callers `submit()` an action
+for an agent and call `step()` once per tick. Each action is a generator that yields once
+per tick it consumes and returns a result dict; failures raise `ActionError`."""
+
+import json
+import random
+from pathlib import Path
+
+from ..tiles import BLOCKS, DIRS, GROUNDS
+from ..world import Store, World
+from .animals import Animals
+from .building import Building
+from .combat import Combat
+from .constants import CREATURE_ID0, DAY_TICKS, EVENT_QUEUE, SHOUT_R, VIEW_R, sec
+from .entities import Action, ActionError, Agent, Creature, _hash_token
+from .environment import Environment
+from .items import Items
+from .movement import Movement
+from .needs import Needs
+from .observe import Observation
+from .social import Social
+from .specs import TOOL_SPECS
+
+
+class Simulation(Movement, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
+    """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
+
+    ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
+
+    def __init__(self, store: Store | str | Path, seed: int | None = None, event_log: Path | str | None = None):
+        if not isinstance(store, Store):
+            store = Store(store)
+        self.store = store
+        self.world = World(store, seed)
+        self.seed = self.world.seed
+        self.tick = store.get_meta("tick", 0)
+        self.world.tick = self.tick
+        self.agents: dict[int, Agent] = {}
+        self.tokens: dict[int, str] = {}
+        for aid, name, th, js in store.db.execute("SELECT id, name, token_hash, json FROM agents"):
+            self.agents[aid] = Agent(**json.loads(js))
+            self.tokens[aid] = th
+        self.by_name = {a.name: a for a in self.agents.values()}
+        self.items: dict[tuple[int, int], dict] = {
+            (x, y): json.loads(j) for x, y, j in store.db.execute("SELECT x, y, json FROM ground_items")}
+        self.dirty_items: set = set()
+        self.creatures: dict[int, Creature] = {}
+        for cid, js in store.db.execute("SELECT id, json FROM creatures"):
+            self.creatures[cid] = Creature(**json.loads(js))
+        self.next_creature = max(self.creatures, default=CREATURE_ID0) + 1
+        self._thin_herds()
+        self.fires: dict[tuple, int] = {tuple(k): v for k, v in store.get_meta("fires", [])}
+        self.timers: dict[tuple, list] = {(x, y): [t, kind] for x, y, t, kind in store.get_meta("timers", [])}
+        self.pits: set = {tuple(p) for p in store.get_meta("pits", [])}
+        for pos, pile in list(self.items.items()):   # eggs from old worlds that will never hatch: gone
+            if set(pile) == {"egg"} and self.timers.get(pos, [0, ""])[1] != "hatch":
+                del self.items[pos]
+                self.dirty_items.add(pos)
+        self.listeners: list = []  # callables(event) for spectators / logs
+        self.event_log = open(event_log, "a") if event_log else None
+        self.rng = random.Random()
+        self.stats = {"tiles_changed": 0, "actions": 0, "deaths": 0, "chat": 0, "trades": 0, "crafts": 0}
+
+    # ------------------------------------------------------------------ util
+
+    def time_of_day(self) -> float:
+        return (self.tick % DAY_TICKS) / DAY_TICKS
+
+    def is_night(self) -> bool:
+        """'Lights-out': the last quarter of every cycle, when glooms patrol."""
+        return self.time_of_day() >= 0.75
+
+    def clock(self) -> str:
+        day = self.tick // DAY_TICKS + 1
+        minutes = int(self.time_of_day() * 24 * 60)
+        return f"day {day}, {minutes // 60:02d}:{minutes % 60:02d}" + (" (night)" if self.is_night() else "")
+
+    def emit(self, type_: str, x: int, y: int, radius: int = VIEW_R, **data):
+        ev = {"tick": self.tick, "type": type_, "x": x, "y": y, **data}
+        for a in self.agents.values():
+            if a.online and abs(a.x - x) <= radius and abs(a.y - y) <= radius:
+                rel = dict(ev, dx=x - a.x, dy=y - a.y)
+                del rel["x"], rel["y"]
+                a.events.append(rel)
+                if len(a.events) > EVENT_QUEUE:
+                    del a.events[: len(a.events) - EVENT_QUEUE]
+                if a.action is not None:
+                    a.action.seen_events.append(rel)
+        if self.event_log:
+            self.event_log.write(json.dumps(ev, separators=(",", ":")) + "\n")
+        for fn in self.listeners:
+            fn(ev)
+        return ev
+
+    def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None):
+        self.world.set(x, y, ground=ground, block=block)
+        self.stats["tiles_changed"] += 1
+        g, b = self.world.ground(x, y), self.world.block(x, y)
+        if g == "tilled":
+            self.pits.add((x, y))
+        if g in ("water", "deep_water"):
+            for dx, dy in DIRS.values():
+                if self.world.ground(x + dx, y + dy) == "tilled":
+                    self.pits.add((x + dx, y + dy))
+        info = {"x": x, "y": y, "ground": g, "block": b}
+        if by is not None and by.action is not None:
+            by.action.tiles.append(info)
+        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause)
+
+    def add_items(self, x, y, items: dict):
+        if not items:
+            return
+        pile = self.items.setdefault((x, y), {})
+        for k, n in items.items():
+            pile[k] = pile.get(k, 0) + n
+        self.dirty_items.add((x, y))
+        if "egg" in items and (x, y) not in self.timers:   # an egg left on the ground hatches
+            self.timers[(x, y)] = [self.tick + sec(180), "hatch"]
+
+    def entity_at(self, x, y):
+        for a in self.agents.values():
+            if a.online and a.hp > 0 and (a.x, a.y) == (x, y):
+                return a
+        for c in self.creatures.values():
+            if (c.x, c.y) == (x, y):
+                return c
+        return None
+
+    def target(self, a: Agent, args) -> tuple[int, int]:
+        d = str(args.get("dir", "")).upper()
+        if d not in DIRS:
+            raise ActionError("bad_args", "dir must be one of N, E, S, W")
+        dx, dy = DIRS[d]
+        return a.x + dx, a.y + dy
+
+    def near_block(self, a: Agent, block: str, r: int = 2) -> bool:
+        return any(self.world.block(a.x + dx, a.y + dy) == block
+                   for dy in range(-r, r + 1) for dx in range(-r, r + 1))
+
+    def sheltered(self, x, y) -> bool:
+        """Inside a room: the area around (x, y) is closed off by walls/doors/gates within 160 tiles
+        (same rule the client uses to draw roofs). Next to 3+ walls also counts, as before."""
+        if sum(1 for dx, dy in DIRS.values() if BLOCKS[self.world.get(x + dx, y + dy)[1]].wall) >= 3:
+            return True
+        seen, stack = {(x, y)}, [(x, y)]
+        while stack:
+            cx, cy = stack.pop()
+            if len(seen) > 160:
+                return False
+            for dx, dy in DIRS.values():
+                n = (cx + dx, cy + dy)
+                if n not in seen and self.world.block(*n) not in self.ENCLOSE:
+                    seen.add(n)
+                    stack.append(n)
+        xs, ys = [p[0] for p in seen], [p[1] for p in seen]
+        w, h = max(xs) - min(xs) + 1, max(ys) - min(ys) + 1
+        return w <= 14 and h <= 14 and len(seen) >= 0.6 * w * h   # same compactness rule as the client's roofs
+
+    def wait(self, a: Agent, seconds: float):
+        """Take `seconds` of game time (doubled when exhausted). The starting tick counts."""
+        n = sec(seconds * (2 if a.energy <= 0 else 1))
+        if a.action is not None:
+            a.action.expected = max(a.action.expected, a.action.ticks - 1 + n)
+        for _ in range(n - 1):
+            yield
+
+    def spend(self, a: Agent, energy: int):
+        a.energy = max(0, a.energy - energy)
+
+    # ------------------------------------------------------------- agents
+
+    def login(self, name: str, token: str, persona: str = "") -> Agent:
+        name = name.strip()[:24]
+        if not name or not name.replace("_", "").replace("-", "").isalnum():
+            raise ActionError("bad_name", "name must be 1-24 letters/digits/-/_")
+        a = self.by_name.get(name)
+        th = _hash_token(token)
+        if a is None:
+            aid = max(self.agents, default=0) + 1
+            x, y = self.find_spawn(aid)
+            a = Agent(aid, name, x, y, persona=persona[:200])
+            self.agents[aid] = a
+            self.by_name[name] = a
+            self.tokens[aid] = th
+            self.store.db.execute("INSERT INTO agents VALUES(?,?,?,?)", (aid, name, th, json.dumps(a.to_json())))
+            self.emit("join", x, y, radius=SHOUT_R, name=name, new=True)
+        elif self.tokens[a.id] != th:
+            raise ActionError("bad_token", "name is taken and the token does not match")
+        else:
+            if persona:
+                a.persona = persona[:200]
+            self.emit("join", a.x, a.y, radius=SHOUT_R, name=name, new=False)
+        a.online = True
+        return a
+
+    def logout(self, a: Agent):
+        if a.action:
+            self.interrupt(a, "disconnected")
+        a.online = False
+        self.emit("leave", a.x, a.y, radius=SHOUT_R, name=a.name)
+
+    def find_spawn(self, salt: int) -> tuple[int, int]:
+        r = random.Random(self.seed * 7919 + salt * 104729 + self.tick)
+        for radius in (24, 48, 96, 192):
+            for _ in range(200):
+                x, y = r.randint(-radius, radius), r.randint(-radius, radius)
+                if self.world.passable(x, y) and GROUNDS[self.world.get(x, y)[0]].name in ("dirt", "grass", "bridge"):
+                    return x, y
+        return 0, 0
+
+    def interrupt(self, a: Agent, why="interrupted"):
+        act = a.action
+        if act is not None:
+            a.action = None
+            act.gen.close()
+            act.finish({"ok": False, "status": "interrupted", "error": "interrupted", "detail": why}, self)
+
+    def submit(self, a: Agent, tool: str, args: dict | None = None, on_done=None) -> Action:
+        args = args or {}
+        fn = getattr(self, f"_tool_{tool}", None)
+        if fn is None or tool not in TOOL_SPECS:
+            act = Action(a, tool, args, iter(()), on_done)
+            act.finish({"ok": False, "status": "failed", "error": "unknown_tool",
+                        "detail": f"tools: {', '.join(TOOL_SPECS)}"}, self)
+            return act
+        if a.action is not None:
+            self.interrupt(a, f"replaced by {tool}")
+        act = Action(a, tool, args, fn(a, args), on_done)
+        a.action = act
+        return act
+
+    # ------------------------------------------------------------- tick
+
+    def step(self):
+        self.tick += 1
+        self.world.tick = self.tick
+        self.rng.seed(self.seed * 1_000_003 + self.tick)
+        for aid in sorted(self.agents):
+            a = self.agents[aid]
+            act = a.action
+            if act is None or not a.online:
+                continue
+            if act.started_tick is None:
+                act.started_tick = self.tick
+            act.ticks += 1
+            try:
+                next(act.gen)
+            except StopIteration as stop:
+                self.stats["actions"] += 1
+                act.finish({"ok": True, "status": "done", **(stop.value or {})}, self)
+            except ActionError as e:
+                self.stats["actions"] += 1
+                act.finish({"ok": False, "status": "failed", "error": e.code, "detail": e.detail}, self)
+        self.step_creatures()
+        self.step_environment()
+        self.step_needs()
+
+    # ------------------------------------------------------- persistence
+
+    def flush(self):
+        db = self.store.db
+        for a in self.agents.values():
+            db.execute("UPDATE agents SET json=? WHERE id=?", (json.dumps(a.to_json()), a.id))
+        for pos in self.dirty_items:
+            pile = self.items.get(pos)
+            if pile:
+                db.execute("INSERT OR REPLACE INTO ground_items VALUES(?,?,?)", (*pos, json.dumps(pile)))
+            else:
+                db.execute("DELETE FROM ground_items WHERE x=? AND y=?", pos)
+        self.dirty_items.clear()
+        db.execute("DELETE FROM creatures")
+        db.executemany("INSERT INTO creatures VALUES(?,?)",
+                       [(c.id, json.dumps(c.to_json())) for c in self.creatures.values()])
+        self.store.set_meta("tick", self.tick)
+        self.store.set_meta("fires", [[list(k), v] for k, v in self.fires.items()])
+        self.store.set_meta("timers", [[x, y, t, k] for (x, y), (t, k) in self.timers.items()])
+        self.store.set_meta("pits", [list(p) for p in self.pits])
+        self.world.flush()
+        if self.event_log:
+            self.event_log.flush()
+
+    def maintain(self):
+        anchors = [(a.x, a.y) for a in self.agents.values() if a.online]
+        return self.world.unload_far(anchors)
+
+    def close(self):
+        self.flush()
+        if self.event_log:
+            self.event_log.close()
+        self.store.close()

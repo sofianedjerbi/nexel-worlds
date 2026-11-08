@@ -18,7 +18,7 @@ from websockets.datastructures import Headers
 from websockets.exceptions import ConnectionClosed
 from websockets.http11 import Response
 
-from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation, sec
+from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
 from .tiles import GROUNDS, RECIPES
 
 log = logging.getLogger("megastructure")

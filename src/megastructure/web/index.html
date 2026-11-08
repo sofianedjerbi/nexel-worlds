@@ -608,8 +608,9 @@ const FLOWERS = [[0, 3], [1, 3], [2, 3], [4, 3], [5, 3], [6, 3], [8, 3], [9, 3],
   [0, 4], [1, 4], [4, 4], [5, 4], [6, 4], [8, 4], [9, 4], [10, 4], [11, 4]];
 // animal sheets: [row, frames, ms per frame] per behaviour, measured from the pack
 const ANIMALS = {
-  chicken: {fw: 16, idle: [0, 4, 220], walk: [1, 7, 90], alt: [2, 8, 110], sleep: [8, 4, 400], love: [26, 7, 140], hearts: [25, 7]},
-  chick: {fw: 16, idle: [0, 4, 220], walk: [1, 7, 80], alt: [2, 8, 110], sleep: [8, 4, 400], love: [14, 7, 140], hearts: [13, 7]},
+  // the sheets' row 2 (peck) bobs like walking in place: birds idle on row 0 only
+  chicken: {fw: 16, idle: [0, 4, 220], walk: [1, 7, 90], alt: [0, 4, 260], sleep: [8, 4, 400], love: [26, 7, 140], hearts: [25, 7]},
+  chick: {fw: 16, idle: [0, 4, 220], walk: [1, 7, 80], alt: [0, 4, 260], sleep: [8, 4, 400], love: [14, 7, 140], hearts: [13, 7]},
   cow: {fw: 32, idle: [0, 3, 260], walk: [1, 8, 90], alt: [6, 4, 220], sleep: [4, 4, 400], love: [7, 6, 160]},
   calf: {fw: 32, idle: [0, 2, 300], walk: [6, 8, 90], alt: [7, 4, 220], sleep: [4, 4, 400], love: [8, 6, 160]},
 };
@@ -1210,7 +1211,7 @@ cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.move
 cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (me) clickTile(tileAtScreen(e.clientX, e.clientY), false); });
 cv.addEventListener("wheel", (e) => { e.preventDefault(); zoom = Math.max(1, Math.min(6, zoom + (e.deltaY < 0 ? 1 : -1))); }, {passive: false});
 
-let agentWs = null, aid = 0, pending = {}, busy = false, held = null;
+let agentWs = null, aid = 0, pending = {}, busy = false;
 function joinGame(name) {
   if (agentWs && agentWs.readyState <= 1) return;
   const key = "megastructure-token-" + name;
@@ -1304,7 +1305,7 @@ const HARVEST = {e: "Take down the trough (and what's in it)", y: "Pick up the h
 const TOOL_FOR = {T: "axe", M: "pickaxe", "*": "pickaxe", H: "axe", "#": "axe", "%": "pickaxe", "+": "axe", "&": "axe", C: "axe", B: "axe", h: "axe",
   L: "axe", K: "axe", g: "axe", W: "axe", V: "axe", X: "axe", Y: "pickaxe", J: "axe", e: "axe"};
 const WEAPON_DMG = {sword: 30, spear: 18, axe: 12, pickaxe: 10};
-const held = () => (selected && meObs && meObs.self.inventory[selected] ? selected : null);   // what's in your hand
+const inHand = () => (selected && meObs && meObs.self.inventory[selected] ? selected : null);   // what's in your hand
 function entityAt(p) { return [...ents.values()].find((q) => q.e && q.tx === p.x && q.ty === p.y && !(q.e.kind === "agent" && q.e.id === myId)); }
 function intent(p, shift) {
   // the canopy of a tree covers the tile above its trunk: pointing at it means the tree
@@ -1328,7 +1329,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   const hasBlock = !GROUND.has(c) && !(flower && placing);   // building over a flower picks it
   const isMe = p.x === s.x && p.y === s.y;
   if (ent) {
-    const who = ent.e.name || ent.e.kind, w = held(), weapon = w && WEAPON_DMG[w] ? w : null;
+    const who = ent.e.name || ent.e.kind, w = inHand(), weapon = w && WEAPON_DMG[w] ? w : null;
     if (ANIMALS[ent.e.kind] && selected && (FOODS.includes(selected) || selected === "hay") && !shift)
       return {text: `Feed ${label(selected)} to the ${ent.e.kind}`, near: 1, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
     if (ent.e.kind === "agent" && selected && !weapon && !shift)
@@ -1408,7 +1409,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     if ((c === "&" || c === "^") && !shift) return {text: c === "&" ? "Workbench: craft tools here" : "Campfire: cook here", near: 2, run: () => openCraft()};
     const crop = cropSpecies(p.x, p.y);
     const text = c === "w" ? `Harvest ${crop}` : c === '"' ? `Young ${crop} (uproot)` : c === ";" ? `${crop} sprout (uproot)` : HARVEST[c] || label(CH[c]);
-    const tool = TOOL_FOR[c], w = held();
+    const tool = TOOL_FOR[c], w = inHand();
     if (c === "*" && w !== "pickaxe")
       return {text: meObs && meObs.self.inventory.pickaxe ? "Ore: hold your pickaxe (select it) to mine it" : "Ore: you need a pickaxe to mine it", ok: false};
     const how = tool ? (w === tool ? ` with ${tool}` : " by hand") : "";
@@ -1693,7 +1694,7 @@ function interactFacing() {                      // Space: do the obvious thing 
   const p = ents.get("agent" + myId), s = myPos(); if (!p || !s) return;
   const q = {x: s.x + (p.fx || 0), y: s.y + (p.fy || (p.fx ? 0 : 1))};
   let it = intent(q, false);
-  if (it && it.walk) it = {text: "Dig", near: 1, run: (d) => act("dig", held() ? {dir: d, with: held()} : {dir: d})};
+  if (it && it.walk) it = {text: "Dig", near: 1, run: (d) => act("dig", inHand() ? {dir: d, with: inHand()} : {dir: d})};
   perform(q, it);
 }
 // held keys walk continuously on the server: one message when the direction or sprint changes, one to stop

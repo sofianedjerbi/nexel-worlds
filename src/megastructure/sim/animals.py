@@ -1,0 +1,233 @@
+"""Creatures: wandering, laying, breeding limits, coops, troughs, milking and feeding."""
+
+from .. import tiles as T
+from ..tiles import DIRS
+from .constants import (
+    ANIMAL_MAX,
+    COOP_R,
+    CROWD_N,
+    CROWD_R,
+    FARM,
+    TICK_HZ,
+    TROUGH_EVERY,
+    TROUGH_R,
+    sec,
+)
+from .entities import CREATURES, ActionError, Agent, Creature
+
+
+class Animals:
+    """Simulation mixin: creatures: wandering, laying, breeding limits, coops, troughs, milking and feeding."""
+
+    # ---------------------------------------------------------- creatures
+
+    def step_creatures(self):
+        online = [a for a in self.agents.values() if a.online]
+        # spawning (deterministic via tick rng)
+        if self.tick % sec(10) == 0 and online:
+            animals = sum(1 for c in self.creatures.values() if c.kind in ("chicken", "cow", "chick", "calf"))
+            if animals < min(40, 3 * len(online)):
+                a = online[self.rng.randrange(len(online))]
+                self._spawn_creature("chicken" if self.rng.random() < 0.6 else "cow", a, 12, 30)
+            glooms = sum(1 for c in self.creatures.values() if c.kind == "gloom")
+            if self.is_night() and glooms < len(online):
+                a = online[self.rng.randrange(len(online))]
+                self._spawn_creature("gloom", a, 14, 24)
+        if not self.is_night():            # daylight: glooms fade away within a couple of seconds
+            for c in [c for c in self.creatures.values() if c.kind == "gloom"]:
+                if self.rng.random() < 0.6 / TICK_HZ:
+                    del self.creatures[c.id]
+                    self.emit("fade", c.x, c.y, id=c.id)
+        for cid in sorted(self.creatures):
+            c = self.creatures.get(cid)
+            if c is None:
+                continue
+            if c.kind == "chicken":
+                if not c.lay:
+                    c.lay = self.tick + sec(120) + self.rng.randrange(sec(120))
+                elif self.tick >= c.lay and self.crowded(c.x, c.y):
+                    c.lay = self.tick + sec(90)            # no room for more: try again later
+                elif self.tick >= c.lay:
+                    coop = self.coop_near(c.x, c.y)
+                    c.lay = self.tick + (sec(180) + self.rng.randrange(sec(180))) // (2 if coop else 1)
+                    ex, ey = coop or (c.x, c.y)     # eggs go into the nest box at the coop's door
+                    self.add_items(ex, ey, {"egg": 1})
+                    self.emit("lay", ex, ey, id=c.id, coop=bool(coop))
+            if (c.kind in ("chicken", "cow") and (self.tick + c.id) % sec(TROUGH_EVERY) == 0
+                    and c.love <= self.tick and not self.crowded(c.x, c.y)):
+                self.trough_feed(c)
+            grows = CREATURES[c.kind].get("grows")
+            if grows and self.tick - c.born >= sec(grows[1]):
+                c.kind = grows[0]
+                c.hp = CREATURES[c.kind]["hp"]
+                self.emit("grew_up", c.x, c.y, id=c.id, kind=c.kind)
+            if c.cooldown > 0:
+                c.cooldown -= 1
+                continue
+            if c.kind in ("chicken", "cow", "chick", "calf"):
+                c.cooldown = sec(0.8) + self.rng.randrange(sec(1.2))
+                d = list(DIRS.values())[self.rng.randrange(4)]
+                self._creature_move(c, c.x + d[0], c.y + d[1])
+            else:
+                prey = min((a for a in online if abs(a.x - c.x) + abs(a.y - c.y) <= 10),
+                           key=lambda a: (abs(a.x - c.x) + abs(a.y - c.y), a.id), default=None)
+                c.cooldown = sec(0.4) - 1
+                if prey is None:
+                    d = list(DIRS.values())[self.rng.randrange(4)]
+                    self._creature_move(c, c.x + d[0], c.y + d[1])
+                elif max(abs(prey.x - c.x), abs(prey.y - c.y)) <= 1 and self.is_night():
+                    c.cooldown = sec(1.2)
+                    self.emit("attack", c.x, c.y, attacker="a gloom", target=prey.name,
+                              damage=CREATURES["gloom"]["damage"])
+                    self.damage(prey, CREATURES["gloom"]["damage"], "gloom")
+                else:
+                    sx = (prey.x > c.x) - (prey.x < c.x)
+                    sy = (prey.y > c.y) - (prey.y < c.y)
+                    if sx and (not sy or self.rng.random() < 0.5):
+                        if not self._creature_move(c, c.x + sx, c.y):
+                            self._creature_move(c, c.x, c.y + sy)
+                    elif not self._creature_move(c, c.x, c.y + sy):
+                        self._creature_move(c, c.x + sx, c.y)
+
+    def _creature_move(self, c, x, y) -> bool:
+        # animals and glooms can't work doors or gates: houses keep glooms out, fenced pens keep animals in
+        if self.world.block(x, y) in ("door", "gate"):
+            return False
+        if self.world.passable(x, y) and self.entity_at(x, y) is None:
+            c.x, c.y = x, y
+            return True
+        return False
+
+    def _take_items(self, pos, item, n=1):
+        pile = self.items.get(pos)
+        if not pile or not pile.get(item):
+            return
+        pile[item] -= n
+        if pile[item] <= 0:
+            del pile[item]
+        if not pile:
+            del self.items[pos]
+        self.dirty_items.add(pos)
+
+    def crowded(self, x, y) -> bool:
+        """Too many farm animals here (or in the world) for another one to be born."""
+        n_all = n_near = 0
+        for c in self.creatures.values():
+            if c.kind in FARM:
+                n_all += 1
+                if abs(c.x - x) <= CROWD_R and abs(c.y - y) <= CROWD_R:
+                    n_near += 1
+        return n_near >= CROWD_N or n_all >= ANIMAL_MAX
+
+    def _thin_herds(self):
+        """Older worlds bred without limits (thousands of chickens): keep at most CROWD_N per neighbourhood,
+        ANIMAL_MAX in all, oldest first."""
+        kept, cells = 0, {}
+        for cid in sorted(self.creatures):
+            c = self.creatures[cid]
+            if c.kind not in FARM:
+                continue
+            cell = (c.x // (2 * CROWD_R + 1), c.y // (2 * CROWD_R + 1))
+            if kept >= ANIMAL_MAX or cells.get(cell, 0) >= CROWD_N:
+                del self.creatures[cid]
+                continue
+            cells[cell] = cells.get(cell, 0) + 1
+            kept += 1
+
+    def coop_near(self, x, y):
+        """The door tile (just in front of the coop) of the closest coop within COOP_R, or None."""
+        best = None
+        for dy in range(-COOP_R, COOP_R + 1):
+            for dx in range(-COOP_R, COOP_R + 1):
+                if self.world.block(x + dx, y + dy) == "coop":
+                    d = abs(dx) + abs(dy)
+                    if best is None or d < best[0]:
+                        best = (d, x + dx, y + dy + 1)
+        if best and self.world.passable(best[1], best[2]):
+            return best[1], best[2]
+        return None
+
+    def _spawn_creature(self, kind, near: Agent, rmin, rmax):
+        for _ in range(10):
+            x = near.x + self.rng.randint(-rmax, rmax)
+            y = near.y + self.rng.randint(-rmax, rmax)
+            if max(abs(x - near.x), abs(y - near.y)) < rmin:
+                continue
+            if self.world.passable(x, y) and self.entity_at(x, y) is None:
+                c = Creature(self.next_creature, kind, x, y, CREATURES[kind]["hp"])
+                self.next_creature += 1
+                self.creatures[c.id] = c
+                return c
+        return None
+
+    def _creature_target(self, a, args, kind=None):
+        t = self._find_target(args.get("target"))
+        if not isinstance(t, Creature) or (kind and t.kind != kind):
+            raise ActionError("bad_target", f"that is not a {kind or 'creature'}")
+        if max(abs(t.x - a.x), abs(t.y - a.y)) > 1:
+            raise ActionError("out_of_range", "stand next to it")
+        return t
+
+    def _tool_milk(self, a, args):
+        cow = self._creature_target(a, args, "cow")
+        if cow.milked and self.tick - cow.milked < sec(120):
+            raise ActionError("not_ready", "this cow was milked recently; try again in a while")
+        cow.cooldown = max(cow.cooldown, sec(1.5))  # stands still while being milked
+        yield from self.wait(a, 1.2)
+        cow.milked = self.tick
+        a.add("milk")
+        self.emit("milk", cow.x, cow.y, name=a.name, id=cow.id)
+        return {"got": {"milk": 1}}
+
+    def _tool_feed(self, a, args):
+        """Feed an animal: it loves you for a while; a fed chicken lays an egg soon."""
+        animal = self._creature_target(a, args)
+        item = str(args.get("item", ""))
+        if animal.kind == "gloom":
+            raise ActionError("bad_target", "glooms don't eat that")
+        if item not in T.FEED or not a.count(item):
+            raise ActionError("missing_item", "feed it something edible you carry (or hay)")
+        yield from self.wait(a, 0.5)
+        a.add(item, -1)
+        self._fed(animal)
+        self.emit("love", animal.x, animal.y, by=a.name, id=animal.id, kind=animal.kind)
+        return {}
+
+    def _fed(self, animal):
+        """A fed animal is in love for a while: hens lay soon, two cows in love nearby make a calf."""
+        animal.love = self.tick + sec(8)
+        if animal.kind == "cow":
+            mate = next((o for o in self.creatures.values() if o is not animal and o.kind == "cow" and o.love > self.tick
+                         and max(abs(o.x - animal.x), abs(o.y - animal.y)) <= 3), None)
+            if mate and not self.crowded(animal.x, animal.y):
+                calf = Creature(self.next_creature, "calf", animal.x, animal.y, CREATURES["calf"]["hp"], born=self.tick)
+                self.next_creature += 1
+                self.creatures[calf.id] = calf
+                animal.love = mate.love = 0
+                self.emit("born", animal.x, animal.y, id=calf.id, kind="calf")
+        if animal.kind == "chicken":
+            animal.lay = min(animal.lay or self.tick + sec(3), self.tick + sec(3))
+
+    def trough_feed(self, c):
+        """Every so often an animal near a filled trough eats from it by itself."""
+        for dy in range(-TROUGH_R, TROUGH_R + 1):
+            for dx in range(-TROUGH_R, TROUGH_R + 1):
+                x, y = c.x + dx, c.y + dy
+                if self.world.block(x, y) != "trough":
+                    continue
+                m = self.world.meta.get((x, y)) or {}
+                items = dict(m.get("items") or {})
+                if not items:
+                    continue
+                food = sorted(items)[0]
+                bites = int(m.get("bites", 0)) + 1          # a bale of hay lasts T.FEED["hay"] meals
+                if bites >= T.FEED.get(food, 1):
+                    bites = 0
+                    items[food] -= 1
+                    if not items[food]:
+                        del items[food]
+                self.world.set_meta(x, y, {**m, "items": items, "bites": bites})
+                self._fed(c)
+                self.emit("trough", x, y, id=c.id, kind=c.kind, radius=6)
+                return True
+        return False
