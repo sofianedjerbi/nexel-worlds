@@ -271,3 +271,22 @@ nothing (no dirt clutter).
 **QA in Chrome (Playwright, real clicks)**: built a homestead (bed, chair, table, plant, clock, rug over a flower, gate,
 chest, workbench, campfire, fences, path, floor) and planted and watered 6 seeds; every placement matched its hint and
 the resulting tile; screenshots reviewed. Tests: 26 pass.
+
+## 2026-11-08 · Iteration 12 — houses, sleeping, taps (QA-driven loop)
+
+- **Taps** (user: "a quick press resets"): a tap sent walk then stop before the first stride, while the
+  client had already glided into the next tile, so it snapped back. On release the client now finishes the
+  tile you visibly entered (move_to that tile, kept as a prediction until the server agrees). Measured taps of
+  30/60/140 ms: +1 tile each, 260 ms: +2; largest backward jump 0.000; display always equals the server.
+- **Placing on your own tile** said "Pick up"; with a placeable selected it now steps aside and places.
+- **Sleeping** draws you tucked into the bed (head on the pillow, the bed's blanket over you) with zZ.
+- **Houses**: `wood_wall` (3 wood → 2 at a workbench). Walls pick their piece from the pack's house tileset by
+  where the room is (top, bottom, sides, corners). The client finds rooms (areas closed by walls/doors/gates,
+  ≥1 wooden wall, compact: ≤14×14 and ≥60% filled) and draws the pack's shingled roof, ridge band and chimney;
+  the eave hangs over the front wall so the facade and doorway stay visible; the roof fades while you are
+  inside. The server uses the same rule for `sheltered` (rest bonus). Doors use the tileset's doorway piece.
+- Bugs found by QA: the room flood fill shared a global `seen` set, so a fill reaching an area explored by an
+  earlier open fill stopped early and called a meadow strip a room (fixed: touching another fill = open);
+  corridors between old walls became roofs (fixed by the compactness rule); the roof's raised offset and the
+  eave's transparent edge let the interior peek through (fixed: solid shingles plus an overhanging eave).
+Tests: 27 pass (+ room shelter).

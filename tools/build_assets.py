@@ -30,6 +30,8 @@ COPY = {  # zip-internal path suffix -> output name
     "Tilesets/Building parts/Fence gates animation sprites .png": "gates.png",
     "Tilesets/Building parts/Wooden_Bridge_v2.png": "bridge.png",
     "Tilesets/Building parts/Basic_Furniture.png": "furniture.png",
+    "Tilesets/Building parts/Wooden_House_Walls_Tilset.png": "house_walls.png",
+    "Tilesets/Building parts/Wooden_House_Roof_Tilset.png": "house_roof.png",
     "Tilesets/Building parts/Chest.png": "chest.png",
     "Tilesets/Building parts/door animation sprites.png": "door.png",
     "Objects/Trees, stumps and bushes.png": "trees.png",

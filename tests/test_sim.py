@@ -365,3 +365,16 @@ def test_flowers_are_picked_when_building_and_floors_come_back_up(world):
     assert run(sim, a, "place", {"dir": "E", "item": "path"})["ok"]
     r = run(sim, a, "dig", {"dir": "E"})
     assert r["changed"]["inventory"] == {"path": 1} and sim.world.ground(a.x + 1, a.y) == "dirt"
+
+
+def test_a_walled_room_is_sheltered(world):
+    sim, a = world
+    for dx in range(-2, 3):
+        for dy in (-2, 2):
+            sim.world.set(a.x + dx, a.y + dy, block="wood_wall")
+    for dy in range(-1, 2):
+        sim.world.set(a.x - 2, a.y + dy, block="wood_wall")
+        sim.world.set(a.x + 2, a.y + dy, block="door" if dy == 0 else "wood_wall")
+    assert sim.sheltered(a.x, a.y)
+    sim.world.set(a.x + 2, a.y, block="none")      # an open doorway is not a room
+    assert not sim.sheltered(a.x, a.y)

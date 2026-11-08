@@ -250,9 +250,26 @@ class Simulation:
         return any(self.world.block(a.x + dx, a.y + dy) == block
                    for dy in range(-r, r + 1) for dx in range(-r, r + 1))
 
+    ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")
+
     def sheltered(self, x, y) -> bool:
-        walls = sum(1 for dx, dy in DIRS.values() if BLOCKS[self.world.get(x + dx, y + dy)[1]].wall)
-        return walls >= 3
+        """Inside a room: the area around (x, y) is closed off by walls/doors/gates within 160 tiles
+        (same rule the client uses to draw roofs). Next to 3+ walls also counts, as before."""
+        if sum(1 for dx, dy in DIRS.values() if BLOCKS[self.world.get(x + dx, y + dy)[1]].wall) >= 3:
+            return True
+        seen, stack = {(x, y)}, [(x, y)]
+        while stack:
+            cx, cy = stack.pop()
+            if len(seen) > 160:
+                return False
+            for dx, dy in DIRS.values():
+                n = (cx + dx, cy + dy)
+                if n not in seen and self.world.block(*n) not in self.ENCLOSE:
+                    seen.add(n)
+                    stack.append(n)
+        xs, ys = [p[0] for p in seen], [p[1] for p in seen]
+        w, h = max(xs) - min(xs) + 1, max(ys) - min(ys) + 1
+        return w <= 14 and h <= 14 and len(seen) >= 0.6 * w * h   # same compactness rule as the client's roofs
 
     def wait(self, a: Agent, seconds: float):
         """Take `seconds` of game time (doubled when exhausted). The starting tick counts."""
