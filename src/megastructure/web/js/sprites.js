@@ -42,7 +42,6 @@ function objectSprite(c, x, y, t) {
       if (h < .7) {                                                                       // animated round tree
         const hit = shakes.get(x + "," + y), k = hit ? (performance.now() - hit) / 1000 : 9;
         if (k < .32) return [IMG.tree_anim, 48 * Math.min(3, Math.floor(k * 12.5)), 48, 48, 48, -16, -28];
-        if (dropping.has(x + "," + y)) return null;     // its fruit-drop animation is playing
         const f = Math.floor(t * 6 + h * 60) % 12;
         return [IMG.tree_anim, 48 * f, 144, 48, 48, -16, -28];
       }
@@ -56,7 +55,8 @@ function objectSprite(c, x, y, t) {
     case "b": return [IMG.trees, BERRY_BUSH[Math.floor(h * 3)], 48, 16, 16, 0, -3];
     case "v": return [IMG.trees, 16, 48, 16, 16, 0, -3];                                 // picked bush: leaves only
     case "U": {                                                                           // picked fruit tree: the same tree, bare
-      if (dropping.has(x + "," + y)) return null;     // its fruit-drop animation is playing
+      const drop = dropping.get(x + "," + y), fr = drop ? Math.floor((performance.now() - drop) / 1000 * 12) : 99;
+      if (fr < DROP_FRAMES) return [fruitSheet(x, y), fr * 48, 144, 48, 48, -16, -28];   // the fruit falls (sorted by depth)
       return [IMG.fruit_bare, fruitKind(x, y) * 48, 0, 48, 48, -16, -28];
     }
     case "*": return [IMG.gen, ...genCell("ore"), 16, 16, 0, -3];

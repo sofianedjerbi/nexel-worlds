@@ -64,49 +64,27 @@ function drawEmote(p, sx, sy, S) {
   ctx.globalAlpha = 1;
 }
 function floatText(x, y, text, color) { floats.push({x, y, text, color, t: performance.now() / 1000}); }
-// A felled tree falls over and leaves its stump. Round trees use the pack's 13-frame felling sheet (it ends on the
-// stump). Young thin trees have no sheet, so they follow the same beats: a slow tilt, the fall with a white swoosh,
-// then the crown breaks up into leaves on the ground.
-const THIN_FALL_MS = 950;
+// A felled tree falls over and leaves its stump. Round trees use the pack's 13-frame felling sheet; young thin trees
+// use thin_fall.png, derived from it frame by frame at build time (same wobble, swoosh, landing and leaf burst).
+// Both fall away from whoever chopped them (the sheets fall left; mirrored about the trunk to fall right).
 function felled(x, y, who, now) {
-  const spr = objectSprite("T", x, y, now / 1000);
-  const c = who && [...ents.values()].find((q) => q.e && q.e.name === who), side = c && c.x > x ? -1 : 1;  // away from the axe
+  const spr = objectSprite("T", x, y, now / 1000), thin = !!spr && spr[0] === IMG.trees;
+  const c = who && [...ents.values()].find((q) => q.e && q.e.name === who), side = c && c.x > x ? -1 : 1;
   sfx("creak", x, y);
-  setTimeout(() => { sfx("fallthud", x, y); sfx("rustle", x, y); }, spr && spr[0] !== IMG.trees ? 430 : 570);   // it lands
-  if (spr && spr[0] !== IMG.trees) return falls.push({x, y, t0: now, side});    // round tree: the pack animation
-  falls.push({x, y, t0: now, thin: spr, side, puffs: 0});
-}
-function drawThinFall(f, sx, sy, now) {
-  const k = (now - f.t0) / THIN_FALL_MS, z = zoom;
-  if (k >= 1) return false;
-  const [img, a, b, w, h, dx, dy] = f.thin, trunk = 5;                 // the bottom 5 px stay behind as the stump
-  // 0-.25 creaks over a little, .25-.6 falls (easing in), then lies there while the crown breaks up
-  const fall = k < .25 ? .08 * (k / .25) : k < .6 ? .08 + .92 * ((k - .25) / .35) ** 2 : 1;
-  const ang = f.side * (Math.PI / 2) * fall;
-  const bx = sx(f.x) + (dx + w / 2) * z, by = sy(f.y) + (dy + h - trunk) * z;   // pivot: the top of the stump
-  if (k > .3 && k < .7) {                                              // the swoosh traced by the crown
-    ctx.strokeStyle = `rgba(255,255,255,${(1 - Math.abs(k - .5) / .2) * .8})`; ctx.lineWidth = z;
-    ctx.beginPath(); ctx.arc(bx, by, (h - trunk - 2) * z, -Math.PI / 2, -Math.PI / 2 + ang, f.side < 0); ctx.stroke();
-  }
-  const crownX = f.x + .5 + f.side * (h - trunk) / 16 * .8, crownY = f.y + .55;
-  if (k >= .6 && f.puffs < 1) { f.puffs = 1; debris(crownX - .5, crownY - .5, f.thin, 10, {dust: true}); }
-  if (k >= .78 && f.puffs < 2) { f.puffs = 2; debris(crownX - .5 - f.side * .4, crownY - .5, f.thin, 8, {}); }
-  ctx.save(); ctx.globalAlpha = k < .6 ? 1 : Math.max(0, 1 - (k - .6) / .3);
-  ctx.translate(Math.round(bx), Math.round(by)); ctx.rotate(ang);
-  ctx.drawImage(img, a, b, w, h - trunk, -w / 2 * z, -(h - trunk) * z, w * z, (h - trunk) * z);
-  ctx.restore();
-  return true;
+  setTimeout(() => { sfx("fallthud", x, y); sfx("rustle", x, y); }, 5 / 14 * 1000);   // frame 5: it lands
+  falls.push({x, y, t0: now, side, thin});
 }
 // Picking fruit or berries: the plant shakes, the fruit pops out and arcs into the picker's hands.
 const flyers = [];
+const DROP_FRAMES = 7;   // the fruit-drop row: the fruit has landed by frame 7 (12 fps); then it hops to the picker
 const FLY_MS = 420;
 function picked(x, y, old, by, now) {
   const key = x + "," + y, tree = old === "F";
   shakes.set(key, now);
-  if (tree) dropping.set(key, now);                // the sheet's fruit-drop animation first (1 s)
+  if (tree) dropping.set(key, now);                // the sheet's fruit-drop animation first, until the fruit lands
   const [ix, iy] = tree ? FRUIT_ICON[fruitKind(x, y)] : BERRY_ICON[Math.floor(hash(x, y, 21) * 3)];
-  const from = tree ? [[-.55, .55], [.75, .45], [1.15, .65]] : [[.2, .1], [.75, .2]];   // where fruit lands / berries hang
-  from.forEach(([dx, dy], i) => flyers.push({x: x + dx, y: y + dy, ix, iy, by, t0: now + (tree ? 1000 : 80) + i * 90, hop: !tree}));
+  const from = tree ? [[-.45, .55], [1.05, .5]] : [[.2, .1], [.75, .2]];   // where the fruit lands / berries hang
+  from.forEach(([dx, dy], i) => flyers.push({x: x + dx, y: y + dy, ix, iy, by, t0: now + (tree ? DROP_FRAMES / 12 * 1000 : 80) + i * 90}));
 }
 function drawFlyers(sx, sy, S, now) {
   const z = zoom;
@@ -115,8 +93,8 @@ function drawFlyers(sx, sy, S, now) {
     if (k >= 1) { flyers.splice(i, 1); continue; }
     const who = f.by && [...ents.values()].find((q) => q.e && q.e.name === f.by);
     let x = f.x, y = f.y, sc = 1;
-    if (k < 0) { if (f.hop) continue; }            // fruit waits on the ground until the drop animation ends
-    else if (who) {                                 // arc into the picker's hands, shrinking as it is caught
+    if (k < 0) continue;                            // not yet: the sheet is still showing the fruit falling
+    if (who) {                                 // arc into the picker's hands, shrinking as it is caught
       const tx = who.x + .5, ty = who.y + .1, e = k * k * (3 - 2 * k);
       x = f.x + (tx - f.x) * e; y = f.y + (ty - f.y) * e - Math.sin(k * Math.PI) * 1.1; sc = 1 - k * .45;
     } else { y -= k * .8; sc = 1 - k; }
@@ -178,20 +156,15 @@ function drawEffects(sx, sy, S, dt) {
   }
   ctx.globalAlpha = 1;
   const now = performance.now();
-  for (const [key, t0] of dropping) {               // a picked fruit tree drops its fruit (12 frames)
-    const fr = Math.floor((now - t0) / 1000 * 12), [x, y] = key.split(",").map(Number);
-    if (fr >= 12) { dropping.delete(key); continue; }
-    ctx.drawImage(fruitSheet(x, y), fr * 48, 144, 48, 48, sx(x) - 16 * z, sy(y) - 28 * z, 48 * z, 48 * z);
-  }
+  for (const [key, t0] of dropping) if (now - t0 > DROP_FRAMES / 12 * 1000) dropping.delete(key);
   drawFlyers(sx, sy, S, now);
   for (let i = falls.length - 1; i >= 0; i--) {     // the pack's tree-felling animation, then fade
-    if (falls[i].thin) { if (!drawThinFall(falls[i], sx, sy, now)) falls.splice(i, 1); continue; }
     const f = falls[i], k = (now - f.t0) / 1000, fr = Math.floor(k * 14);
     if (fr >= 12) { falls.splice(i, 1); continue; }
     ctx.globalAlpha = fr >= 9 ? 1 - (fr - 9) / 3 : 1;
     // the sheet falls to the left with the trunk at frame x 32-48; mirrored about the trunk when it should fall right
     if (f.side > 0) { ctx.save(); ctx.translate(sx(f.x) + 8 * z, 0); ctx.scale(-1, 1); ctx.translate(-(sx(f.x) + 8 * z), 0); }
-    ctx.drawImage(IMG.tree_fall, fr * 64, 0, 64, 48, sx(f.x) - 32 * z, sy(f.y) - 28 * z, 64 * z, 48 * z);
+    ctx.drawImage(f.thin ? IMG.thin_fall : IMG.tree_fall, fr * 64, 0, 64, 48, sx(f.x) - 32 * z, sy(f.y) - 28 * z, 64 * z, 48 * z);
     if (f.side > 0) ctx.restore();
     ctx.globalAlpha = 1;
   }
