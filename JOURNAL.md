@@ -140,3 +140,18 @@ incremental 3×3 tile redraws within a per-frame time budget.
 **Measured (real Chrome)**: chunk draw 1–2 ms (was 40–50 ms); 10 s of frames: p50 17 ms, p99 17 ms, max 17 ms,
 0 frames over 100 ms (was max 367 ms). No console errors. Tests: 19 pass.
 **Next**: M2 thinker on the local model.
+
+## 2026-11-08 · Iteration 6 — beauty and honest collisions (user: "collisions are weird", "spawns everywhere", "font ugly", "loading on every action")
+
+- **Progress bar on walking**: a step lasts 2 ticks, so it qualified for the bar. Now only real work
+  (≥ 0.35 s, never step/move_to) gets one, filtered on both the server and the client.
+- **Collisions**: rock outcrops were flat grey ground that blocked invisibly; the workbench was drawn 2 tiles
+  wide but blocked 1; stone walls looked like floor. Now every solid thing is a sprite exactly on its tile
+  (new generated boulder, stone wall and workbench sprites), and nothing non-solid looks solid.
+- **World generation**: rewritten as a greenfield: big calm islands with thin beaches, an empty meadow
+  around spawn, groves on a 2×2 jittered grid (spaced, denser at the centre), berry bushes and the odd hedge
+  on grove edges, mushrooms under trees, small boulder fields with some ore, sparse lone features on 7×7 cells.
+- **Font**: the pack's pixel fonts are caps-only and the 8×14 one was rendered off its native size (only crisp
+  at 18/36 px). Switched all UI and canvas text to a rounded sans (ui-rounded).
+- **UI**: vitals with heart, food and energy icons; a 9-slot hotbar where items keep their slot (1–9 select);
+  free-floating wooden slots; help is opt-in.

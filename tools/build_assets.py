@@ -39,7 +39,8 @@ COPY = {  # zip-internal path suffix -> output name
     "Animals/Chicken/chicken default.png": "chicken.png",
     "Animals/Cow/Brown cow animations.png": "cow.png",
     "UI Sprites/ALL UI ASSETS on one sheet.png": "ui.png",
-    "fonts/Font files TTF/pixelFont-7-8x14-sproutLands.ttf": "font.ttf",
+    "fonts/Font files TTF/pixelFont-4-7x7-sproutLands.ttf": "font_title.ttf",
+    "fonts/Font files TTF/pixelFont-3-7x5-sproutLands.ttf": "font_label.ttf",
 }
 
 
@@ -163,6 +164,30 @@ GEN = {
         "                ", "                ", "                ", "                ", "      hhhhhh    ", "    hHHHHHHHh   ",
         "   hHHSSHHHhh   ", "  hhhhhhhhhhd   ", "  hHHHHHHHHd    ", "  hhhhhhhhd     ", "                ", "                ",
         "                ", "                ", "                ", "                "],
+    "boulder": [
+        "                ", "                ", "                ", "      dddd      ", "    ddSSSsdd    ", "   dSSHSSsssd   ",
+        "  dsSHHSSssssd  ", "  dsSSSSsssssd  ", "  dssSSssssssd  ", "  dsssssssshsd  ", "  ddssssssssdd  ", "   dddsssssdd   ",
+        "    xddddddxx   ", "     xxxxxx     ", "                ", "                "],
+    "stone_wall": [
+        "dddddddddddddddd", "dSSSSSdSSSSSSSdd", "dSHHSSdSSHSSSSsd", "dSSSSsdSSSSSsssd", "ddddddddddddddd ", "dSSsdSSSSSSdSSsd",
+        "dSSsdSSHSSsdSSsd", "dsssdsssssdssssd", "dddddddddddddddd", "dhhhhdhhhhhhdhhd", "dhhhhdhhhhhhdhhd", "ddddddddddddddd ",
+        "dhhhhhhdhhhhhhhd", "dhhhhhhdhhhhhhhd", "dddddddddddddddd", "xxxxxxxxxxxxxxxx"],
+    "workbench": [
+        "                ", "                ", "     H  hh      ", "    HhH hh  s   ", "  oooooooooooo  ", " oWWWWWWWWWWWWo ",
+        " oWWbWWWWWWbWWo ", " oWWWWWWWWWWWWo ", " oooooooooooooo ", " owwwwwwwwwwwwo ", " o oo      oo o ", " o oo      oo o ",
+        " o oo      oo o ", " ooo        ooo ", "  xxxxxxxxxxxx  ", "                "],
+    "heart": [
+        "                ", "                ", "                ", "   ffff  ffff   ", "  fMMMMffMMMMf  ", "  fMeMMMMMMMMf  ",
+        "  fMMMMMMMMMMf  ", "  fMMMMMMMMMMf  ", "   fMMMMMMMMf   ", "    fMMMMMMf    ", "     fMMMMf     ", "      fMMf      ",
+        "       ff       ", "                ", "                ", "                "],
+    "food": [
+        "                ", "                ", "        T       ", "       Tt       ", "    ffffTfff    ", "   fMMMMMMMMf   ",
+        "  fMeMMMMMMMMf  ", "  fMMMMMMMMMMf  ", "  fMMMMMMMMMMf  ", "  fMMMMMMMMMMf  ", "   fMMMMMMMMf   ", "    fMMffMMf    ",
+        "     ff  ff     ", "                ", "                ", "                "],
+    "bolt": [
+        "                ", "                ", "        ooooo   ", "       oyyyyo   ", "      oyyyyo    ", "     oyyyyo     ",
+        "    oyyyyyooo   ", "   oyyyyyyyyo   ", "   oooyyyyyo    ", "     oyyyyo     ", "    oyyyyo      ", "   oyyyo        ",
+        "   oyyo         ", "   ooo          ", "                ", "                "],
     "stone_item": [
         "                ", "                ", "                ", "                ", "      dddd      ", "    ddsSSsd     ",
         "   dsSSSsssd    ", "   dsSsssssd    ", "   dssssssdd    ", "    ddssddd     ", "      ddd       ", "                ",

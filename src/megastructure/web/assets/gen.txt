@@ -17,4 +17,10 @@ spear
 pickaxe
 axe
 ingot
+boulder
+stone_wall
+workbench
+heart
+food
+bolt
 stone_item

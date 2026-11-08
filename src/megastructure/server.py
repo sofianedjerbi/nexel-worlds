@@ -18,7 +18,7 @@ from websockets.datastructures import Headers
 from websockets.exceptions import ConnectionClosed
 from websockets.http11 import Response
 
-from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
+from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation, sec
 from .tiles import GROUNDS, RECIPES
 
 log = logging.getLogger("megastructure")
@@ -148,7 +148,8 @@ class GameServer:
         multi-tick action just started get a progress notice (so clients can show a bar at once)."""
         for aid, push in list(self.notify.items()):
             act = self.sim.agents[aid].action
-            if act is not None and act.started_tick == self.sim.tick and act.expected > 1:
+            if (act is not None and act.started_tick == self.sim.tick and act.tool not in ("step", "move_to")
+                    and act.expected >= sec(0.35)):
                 push({"type": "progress", "tool": act.tool, "ticks": act.expected, "tick_hz": TICK_HZ})
         if not self.spectators:
             return

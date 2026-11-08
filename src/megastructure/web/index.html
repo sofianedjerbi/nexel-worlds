@@ -6,18 +6,17 @@
 <link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  @font-face { font-family: Sprout; src: url(assets/font.ttf); }
   :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#f3dfba; --accent:#4f9a6a; --warn:#c0503c; }
   * { box-sizing:border-box; }
   html, body { margin:0; height:100%; background:#9bd4c3; overflow:hidden; color:var(--ink);
-    font:16px/1.15 Sprout, ui-monospace, monospace; user-select:none; -webkit-font-smoothing:none; }
+    font:600 14px/1.3 ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif; user-select:none; }
   canvas#c { position:fixed; inset:0; display:block; image-rendering:pixelated; }
   .panel { position:fixed; border:24px solid transparent; border-image:url(assets/panel.png) 9 fill / 27px stretch;
     image-rendering:pixelated; padding:0; filter:drop-shadow(0 3px 0 rgba(60,40,30,.25)); }
   .panel > .in { margin:-10px -8px -12px; }
-  h3 { margin:0 0 4px; font-size:16px; color:var(--ink2); font-weight:normal; letter-spacing:.05em; }
+  h3 { margin:0 0 4px; font-size:12px; color:var(--ink2); font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
   #brand { left:10px; top:10px; }
-  #brand .t { font-size:20px; letter-spacing:.12em; }
+  #brand .t { font-size:17px; font-weight:800; letter-spacing:.14em; }
   #brand .s { color:var(--ink2); margin-top:2px; }
   #side { right:10px; top:10px; width:300px; max-height:calc(100vh - 150px); display:flex; flex-direction:column; }
   #side .in { display:flex; flex-direction:column; gap:8px; min-height:0; max-height:calc(100vh - 190px); }
@@ -35,7 +34,7 @@
   .craft{color:#7b5aa6}.join,.leave,.creature_died{color:var(--ink2)}.sign{color:#8a6a2a}
   #stats { color:var(--ink2); font-size:13px; }
   #joinbox { left:50%; top:50%; transform:translate(-50%,-50%); width:420px; text-align:center; }
-  #joinbox .t { font-size:30px; letter-spacing:.12em; margin:4px 0; }
+  #joinbox .t { font-size:28px; font-weight:800; letter-spacing:.14em; margin:4px 0; }
   #joinbox p { color:var(--ink2); margin:6px 0 14px; }
   input { font:inherit; color:var(--ink); background:#fff6e2; border:3px solid #c9a27a; border-radius:4px; padding:6px 9px; outline:none; }
   input:focus { border-color:var(--accent); }
@@ -46,18 +45,20 @@
   #joinbox .watch { margin-top:10px; }
   #vitals { left:10px; bottom:10px; width:260px; display:none; }
   .bar { display:flex; align-items:center; gap:7px; margin:3px 0; }
-  .bar .l { width:56px; color:var(--ink2); } .bar .v { width:28px; text-align:right; }
-  .bar .b { flex:1; height:10px; background:#d8bd92; border:2px solid var(--ink); overflow:hidden; }
+  .bar .v { width:28px; text-align:right; color:var(--ink2); }
+  .bar .ico { width:24px; height:24px; image-rendering:pixelated; flex:none; }
+  .bar .b { flex:1; height:12px; background:#d8bd92; border:2px solid var(--ink); border-radius:3px; overflow:hidden; }
   .bar .b i { display:block; height:100%; transition:width .2s; }
   #where { color:var(--ink2); margin-bottom:3px; }
   #doing { color:#b0692a; min-height:16px; }
-  #hotbar { left:50%; bottom:6px; transform:translateX(-50%); display:none; gap:2px; flex-wrap:wrap; justify-content:center; max-width:calc(100vw - 620px); padding:4px; }
-  .slot { width:54px; height:54px; border:9px solid transparent; border-image:url(assets/slot.png) 9 fill / 18px stretch;
+  #hotbar { position:fixed; left:50%; bottom:12px; transform:translateX(-50%); display:none; gap:6px; flex-wrap:wrap; justify-content:center; max-width:calc(100vw - 600px);
+    filter:drop-shadow(0 3px 0 rgba(60,40,30,.3)); }
+  .slot { width:60px; height:60px; border:10px solid transparent; border-image:url(assets/slot.png) 10 fill / 20px stretch;
     image-rendering:pixelated; position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .slot.sel { border-image-source:url(assets/slot_sel.png); }
   .slot canvas { width:32px; height:32px; image-rendering:pixelated; }
-  .slot .c { position:absolute; right:-4px; bottom:-6px; color:#fff8e8; text-shadow:1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
-  .slot .k { position:absolute; left:-4px; top:-7px; font-size:13px; color:#fff1d6; text-shadow:1px 1px 0 var(--ink); }
+  .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:13px; font-weight:800; color:#fff8e8; text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+  .slot .k { position:absolute; left:-6px; top:-9px; font-size:11px; font-weight:800; color:#f6e3bf; }
   .slot:hover .tip { display:block; }
   .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
   #chat { left:50%; bottom:82px; transform:translateX(-50%); width:min(560px, calc(100vw - 620px)); display:none; }
@@ -91,9 +92,9 @@
 </div></div>
 <div class="panel" id="vitals"><div class="in">
   <div id="where"></div>
-  <div class="bar"><span class="l">health</span><span class="b"><i id="hp" style="background:#e0645a"></i></span><span class="v" id="hpv"></span></div>
-  <div class="bar"><span class="l">food</span><span class="b"><i id="hu" style="background:#e8a94a"></i></span><span class="v" id="huv"></span></div>
-  <div class="bar"><span class="l">energy</span><span class="b"><i id="en" style="background:#6aa66f"></i></span><span class="v" id="env"></span></div>
+  <div class="bar"><canvas class="ico" data-gen="heart"></canvas><span class="b"><i id="hp" style="background:#e0645a"></i></span><span class="v" id="hpv"></span></div>
+  <div class="bar"><canvas class="ico" data-gen="food"></canvas><span class="b"><i id="hu" style="background:#e8a94a"></i></span><span class="v" id="huv"></span></div>
+  <div class="bar"><canvas class="ico" data-gen="bolt"></canvas><span class="b"><i id="en" style="background:#6aa66f"></i></span><span class="v" id="env"></span></div>
   <div id="doing"></div>
   <div style="display:flex;gap:6px;margin-top:5px"><button class="ghost" id="craftbtn" style="flex:1">craft (C)</button><button class="ghost" id="helpbtn">?</button></div>
 </div></div>
@@ -104,7 +105,7 @@
 </div></div>
 <div class="panel" id="craft"><div class="in"><h3>Craft</h3><div id="recipes"></div></div></div>
 <div class="panel" id="chat"><div class="in"><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout · /command)" maxlength="200" autocomplete="off"></div></div>
-<div id="hotbar" class="panel"></div>
+<div id="hotbar"></div>
 <div class="panel" id="toast"><div class="in" id="toastt"></div></div>
 
 <script>
@@ -136,7 +137,7 @@ let GEN = {};
 function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
 const ready = Promise.all([...ASSETS.map(loadImg),
   fetch("assets/gen.txt").then((r) => r.text()).then((t) => t.trim().split("\n").forEach((n, i) => GEN[n] = i)),
-  document.fonts.load("16px Sprout")]);
+  document.fonts.ready]);
 
 // The ground sheets share one 11x5 "blob" layout. Work out which neighbours each cell connects to from
 // the alpha of the grass layer, then look tiles up by the neighbour mask of the world tile.
@@ -228,7 +229,7 @@ function onRegion(d) {
 //  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
 const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
-const isObject = (c) => "TbM*H#%+^&?!x\"wtCQ".includes(c) && !GROUND.has(c);
+const isObject = (c) => "TbM*#%+^&?!x\"wtCQ".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
   const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1]); };
@@ -266,8 +267,6 @@ function drawTile(x, y) {
     if (gr === "_") g.drawImage(IMG.cobble, [16, 32, 0][Math.floor(hash(x, y, 9) * 3)], [16, 32, 48][Math.floor(hash(x, y, 10) * 3)], 16, 16, ox, oy, 16, 16);
   }
   // flat things that live in the ground layer
-  if (c === "M" || c === "*") drawBlobLayer(g, IMG.stone, x, y, (cc) => cc === "M" || cc === "*", ox, oy, .2);
-  if (c === "%") drawBlobLayer(g, IMG.stone, x, y, (cc) => cc === "%", ox, oy, 0);
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
 }
 const hasGrassNeighbour = () => true;
@@ -312,13 +311,14 @@ function objectSprite(c, x, y, t) {
     }
     case "b": return [IMG.trees, [32, 48, 64][Math.floor(h * 3)], 48, 16, 16, 0, -3];
     case "*": return [IMG.gen, ...genCell("ore"), 16, 16, 0, -3];
-    case "M": return h < .6 ? [IMG.nature, [16, 32, 48][Math.floor(h / .6 * 3)], 16, 16, 16, 0, -2] : null;
+    case "M": return [IMG.gen, ...genCell("boulder"), 16, 16, 0, -3];
+    case "%": return [IMG.gen, ...genCell("stone_wall"), 16, 16, 0, -4];
     case "Q": return [IMG.nature, [0, 16, 48][Math.floor(h * 3)], 0, 16, 16, 0, 0];
     case "#": return fenceSprite(x, y);
     case "+": return [IMG.door, 0, 0, 16, 32, 0, -16];
     case "^": return [IMG.gen, ...genCell(Math.floor(t * 6 + x) % 2 ? "campfire1" : "campfire0"), 16, 16, 0, -2];
     case "x": return [IMG.gen, ...genCell(Math.floor(t * 8 + x + y) % 2 ? "fire1" : "fire0"), 16, 16, 0, -3];
-    case "&": return [IMG.workbench, 0, 0, 32, 32, -8, -16];
+    case "&": return [IMG.gen, ...genCell("workbench"), 16, 16, 0, -3];
     case "?": return [IMG.signs, 0, 0, 16, 16, 0, -2];
     case "!": return [IMG.gen, ...genCell("flag"), 16, 16, 0, -6];
     case "\"": return [IMG.crops, 16, 128, 16, 16, 0, -3];
@@ -518,10 +518,11 @@ function frame(now) {
   for (const o of list) if (o.p && o.p.e.kind === "agent") drawNameplate(o.p, sx, sy, S);
   drawProgress(sx, sy, S);
   floats = floats.filter((f) => t - f.t < 1.4);
-  ctx.textAlign = "center"; ctx.font = `16px Sprout`;
+  ctx.textAlign = "center"; ctx.font = "800 14px ui-rounded, system-ui, sans-serif";
   for (const f of floats) { ctx.globalAlpha = 1 - (t - f.t) / 1.4; outlined(f.text, sx(f.x) + S / 2, sy(f.y) - (t - f.t) * S * .7, f.color); }
   ctx.globalAlpha = 1;
   bubbles = bubbles.filter((b) => t - b.t < 7);
+  ctx.font = "600 13px ui-rounded, system-ui, sans-serif";
   for (const b of bubbles) {
     const p = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === b.name); if (!p) continue;
     const text = b.text.length > 60 ? b.text.slice(0, 58) + "…" : b.text, w = ctx.measureText(text).width;
@@ -579,7 +580,7 @@ function drawEntity(p, sx, sy, S, t, now) {
 function drawNameplate(p, sx, sy, S) {
   const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(sy(p.y) - 9 * zoom);
   if (x < -S || x > W + S || y < -S || y > H + S) return;
-  ctx.font = "16px Sprout"; ctx.textAlign = "center";
+  ctx.font = "800 13px ui-rounded, system-ui, sans-serif"; ctx.textAlign = "center";
   outlined(e.name, x, y, me && e.name === me ? "#fff1a8" : "#fff8e8");
   if (e.hp < 100) { ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 16, y + 4, 32, 5); ctx.fillStyle = e.hp > 40 ? "#6aa66f" : "#d9473a"; ctx.fillRect(x - 15, y + 5, 30 * e.hp / 100, 3); }
   ctx.textAlign = "start";
@@ -673,14 +674,14 @@ function joinGame(name) {
     me = r.agent.name; myId = r.agent.id; follow = null; localStorage.setItem("megastructure-name", me);
     camT.x = cam.x = r.agent.x; camT.y = cam.y = r.agent.y;
     $("joinbox").style.display = "none"; $("vitals").style.display = "block"; $("hotbar").style.display = "flex";
-    $("help").style.display = localStorage.getItem("megastructure-help") === "off" ? "none" : "block";
+    $("help").style.display = localStorage.getItem("megastructure-help") === "on" ? "block" : "none";
     $("mode").textContent = "playing as " + me;
     toast("You wake up on the shore. WASD to walk, Enter to talk.");
     refresh();
   };
   agentWs.onmessage = (m) => {
     const d = JSON.parse(m.data);
-    if (d.type === "progress") { progress = {t0: performance.now(), ms: d.ticks / d.tick_hz * 1000, tool: d.tool}; return; }
+    if (d.type === "progress") { if (d.tool !== "step" && d.tool !== "move_to" && d.ticks / d.tick_hz >= .35) progress = {t0: performance.now(), ms: d.ticks / d.tick_hz * 1000, tool: d.tool}; return; }
     const f = pending[d.id]; if (f) { delete pending[d.id]; f(d); }
   };
   agentWs.onclose = () => { if (me) toast("Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "watching"; ["vitals", "hotbar", "craft", "help", "chat"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; };
@@ -701,7 +702,7 @@ async function refresh() {
   meObs = r.obs; const s = meObs.self;
   $("where").textContent = `${s.name} · ${s.x}, ${s.y}${s.sheltered ? " · sheltered" : ""}`;
   for (const [id, v] of [["hp", s.hp], ["hu", s.hunger], ["en", s.energy]]) { $(id).style.width = v + "%"; $(id + "v").textContent = v; }
-  $("doing").textContent = s.action ? `${label(s.action)}…` : (s.hunger < 25 ? "starving! select food, press E" : "");
+  $("doing").textContent = s.hunger < 25 ? "Starving: select food and press E" : s.energy < 15 ? "Exhausted: press R to rest" : "";
   drawHotbar(s.inventory); drawRecipes();
 }
 setInterval(refresh, 700);
@@ -762,12 +763,12 @@ function placeAt(p) {
 }
 // item icons from the sheets: [image name, sx, sy]
 const ICONS = {
-  wood: ["items", 32, 48], plank: ["planks", 0, 16], stone: ["gen", "stone_item"], fiber: ["gen", "fiber"], ore: ["gen", "ore"],
+  wood: ["items", 32, 48], plank: ["planks", 0, 16], stone: ["gen", "boulder"], fiber: ["gen", "fiber"], ore: ["gen", "ore"],
   berries: ["trees", 16, 64], mushroom: ["nature", 16, 0], seed: ["items", 0, 128], wheat: ["items", 16, 128],
   egg: ["items", 48, 176], milk: ["items", 64, 0], meat: ["gen", "meat"], cooked_meat: ["gen", "cooked_meat"], bread: ["gen", "bread"],
   torch: ["gen", "torch"], rope: ["gen", "rope"], sword: ["gen", "sword"], spear: ["gen", "spear"], axe: ["gen", "axe"],
   pickaxe: ["gen", "pickaxe"], ingot: ["gen", "ingot"], flag: ["gen", "flag"], campfire: ["gen", "campfire0"],
-  fence: ["fences", 0, 48], stone_wall: ["stone", 16, 16], door: ["door", 0, 0], workbench: ["workbench", 0, 0, 32, 32],
+  fence: ["fences", 0, 48], stone_wall: ["gen", "stone_wall"], door: ["door", 0, 0, 16, 32], workbench: ["gen", "workbench"],
   sign: ["signs", 0, 0], chest: ["chest", 16, 16], dirt: ["soil", 0, 80],
 };
 function iconCanvas(name) {
@@ -779,18 +780,29 @@ function iconCanvas(name) {
   g.drawImage(IMG[img], x, y, w, h, 0, 0, 16, 16);
   return c;
 }
+let slots = JSON.parse(localStorage.getItem("megastructure-slots") || "[]");
+function slotOrder(inv) {               // items keep their slot; new items take the first free one
+  slots = slots.map((n) => (n && inv[n] ? n : null));
+  for (const n of Object.keys(inv)) if (!slots.includes(n)) { const i = slots.indexOf(null); if (i >= 0) slots[i] = n; else slots.push(n); }
+  while (slots.length < 9) slots.push(null);
+  localStorage.setItem("megastructure-slots", JSON.stringify(slots));
+  return slots;
+}
 function drawHotbar(inv) {
-  const el = $("hotbar"); const items = Object.entries(inv);
+  const el = $("hotbar");
   if (selected && !inv[selected]) selected = null;
-  const sig = JSON.stringify(items) + selected; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
+  const order = slotOrder(inv);
+  const sig = JSON.stringify(inv) + order.join() + selected; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
   el.innerHTML = "";
-  if (!items.length) { el.innerHTML = `<span style="padding:12px 12px">empty pockets: chop trees, pick berries</span>`; return; }
-  items.forEach(([name, n], i) => {
-    const d = document.createElement("div"); d.className = "slot" + (name === selected ? " sel" : "");
-    d.appendChild(iconCanvas(name));
-    d.insertAdjacentHTML("beforeend", `<span class="k">${i < 9 ? i + 1 : ""}</span><span class="c">${n}</span><span class="tip">${esc(label(name))}</span>`);
-    d.onclick = () => { selected = selected === name ? null : name; el.dataset.sig = ""; drawHotbar(meObs.self.inventory); };
-    d.ondblclick = () => useSelected(name);
+  order.forEach((name, i) => {
+    const d = document.createElement("div"); d.className = "slot" + (name && name === selected ? " sel" : "");
+    if (name) {
+      d.appendChild(iconCanvas(name));
+      d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name))}</span>`);
+      d.onclick = () => { selected = selected === name ? null : name; el.dataset.sig = ""; drawHotbar(meObs.self.inventory); };
+      d.ondblclick = () => useSelected(name);
+    }
+    if (i < 9) d.insertAdjacentHTML("beforeend", `<span class="k">${i + 1}</span>`);
     el.appendChild(d);
   });
 }
@@ -831,7 +843,7 @@ addEventListener("keydown", (e) => {
   else if (k === "e") useSelected();
   else if (k === "c") $("craftbtn").click();
   else if (k === "h") $("helpbtn").click();
-  else if (/^[1-9]$/.test(k) && meObs) { const n = Object.keys(meObs.self.inventory)[+k - 1]; if (n) { selected = n; $("hotbar").dataset.sig = ""; drawHotbar(meObs.self.inventory); } }
+  else if (/^[1-9]$/.test(k) && meObs) { const n = slots[+k - 1]; if (n) { selected = selected === n ? null : n; $("hotbar").dataset.sig = ""; drawHotbar(meObs.self.inventory); } }
 });
 addEventListener("keyup", (e) => {
   keys.delete(e.key.toLowerCase());
@@ -868,7 +880,11 @@ $("name").value = localStorage.getItem("megastructure-name") || "";
 const qs = new URLSearchParams(location.search);
 if (qs.get("follow")) { follow = qs.get("follow"); $("joinbox").style.display = "none"; }
 if (qs.get("zoom")) zoom = +qs.get("zoom");
-ready.then(() => { buildBlob(); connectSpec(); requestAnimationFrame(frame); });
+ready.then(() => {
+  buildBlob();
+  document.querySelectorAll("canvas.ico").forEach((c) => { c.width = c.height = 16; c.getContext("2d").drawImage(IMG.gen, GEN[c.dataset.gen] * 16, 0, 16, 16, 0, 0, 16, 16); });
+  connectSpec(); requestAnimationFrame(frame);
+});
 </script>
 </body>
 </html>

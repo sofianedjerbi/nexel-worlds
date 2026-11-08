@@ -43,36 +43,56 @@ def fbm(seed: int, x: float, y: float, scale: float, salt: int, octaves: int = 3
     return total / norm
 
 
+def _picked(seed: int, x: int, y: int, cell: int, salt: int) -> tuple[bool, float]:
+    """Jittered grid: exactly one tile per `cell`×`cell` square is a candidate, so features keep their
+    distance from each other (no clumps, no tree touching tree). Returns (is candidate, roll)."""
+    cx, cy = x // cell, y // cell
+    k = int(_hash(seed, cx, cy, salt) * cell * cell)
+    return (x - cx * cell) + (y - cy * cell) * cell == k, _hash(seed, cx, cy, salt + 1)
+
+
 def gen_tile(seed: int, x: int, y: int) -> tuple[int, int]:
-    # islands: elevation, lifted near the origin so everyone starts on land
+    # big calm islands; the spawn area around the origin is lifted into an open meadow
     d = math.hypot(x, y)
-    elev = fbm(seed, x, y, 56, 1) + max(0.0, 0.22 - d / 300)
-    if elev < 0.36:
+    elev = fbm(seed, x, y, 90, 1) + max(0.0, 0.25 - d / 400)
+    if elev < 0.34:
         return G["deep_water"], B["none"]
-    if elev < 0.44:
+    if elev < 0.41:
         return G["water"], B["none"]
-    moist = fbm(seed, x, y, 40, 2)
-    rocky = fbm(seed, x, y, 22, 3)
-    r = _hash(seed, x, y, 7)
-    beach = elev < 0.47
-    ground = G["dirt"] if beach or moist < 0.36 else G["grass"]
-    if beach:
-        return ground, (B["rock"] if r < 0.015 else B["none"])
-    if rocky > 0.66:  # rocky outcrops, with ore veins inside
-        if rocky > 0.72 and r < 0.12:
-            return G["dirt"], B["ore"]
-        return G["dirt"], (B["rock"] if r < 0.8 else B["none"])
-    forest = max(0.0, moist - 0.55) * 1.1
-    if r < forest:
-        return ground, B["tree"]
-    if r < forest + 0.025:
-        return ground, B["berry_bush"]
-    if r < forest + 0.035 + forest * 0.08:
-        return ground, B["thicket"]
-    if r < forest + 0.045 + forest * 0.1:
-        return ground, B["mushroom"] if moist > 0.5 else B["none"]
-    if r < forest + 0.05:
-        return ground, B["rock"]
+    if elev < 0.425:
+        return G["dirt"], B["none"]  # thin sandy shore
+    meadow = d < 18  # keep the spawn clearing empty
+    ground = G["grass"] if fbm(seed, x, y, 30, 2) > 0.3 else G["dirt"]
+    if meadow:
+        return G["grass"], B["none"]
+
+    grove = fbm(seed, x, y, 48, 4)
+    stones = fbm(seed, x, y, 34, 5)
+    # groves: trees on a 2x2 jittered grid, denser toward the grove centre
+    cand, roll = _picked(seed, x, y, 2, 11)
+    if grove > 0.6 and cand and roll < min(0.95, (grove - 0.6) * 6):
+        return G["grass"], B["tree"]
+    # grove edges: berry bushes and the odd hedge, sparse
+    cand3, roll3 = _picked(seed, x, y, 3, 13)
+    if 0.54 < grove <= 0.62 and cand3:
+        if roll3 < 0.3:
+            return G["grass"], B["berry_bush"]
+        if roll3 < 0.36:
+            return G["grass"], B["thicket"]
+    if grove > 0.6 and _hash(seed, x, y, 17) < 0.025:
+        return G["grass"], B["mushroom"]
+    # small boulder fields, a few with ore
+    if stones > 0.72 and cand and roll < 0.7:
+        return ground, (B["ore"] if _hash(seed, x, y, 19) < 0.18 else B["rock"])
+    # lone features scattered over open meadow
+    cand7, roll7 = _picked(seed, x, y, 7, 23)
+    if cand7:
+        if roll7 < 0.10:
+            return ground, B["tree"]
+        if roll7 < 0.14:
+            return ground, B["rock"]
+        if roll7 < 0.17:
+            return ground, B["berry_bush"]
     return ground, B["none"]
 
 
