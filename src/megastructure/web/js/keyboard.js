@@ -47,18 +47,14 @@ function aimedTile() {
 let actionsHtml = "";
 function availableActions() {
   if (!me || !meObs) return [];
-  const inv = meObs.self.inventory, s = myPos(), rows = [];
+  const s = myPos(), rows = [];
   const main = facingIntent(false), alt = facingIntent(true);
-  if (main && !main.it.info) rows.push(["Space", main.it.text]);
-  if (alt && !alt.it.info && (!main || alt.it.text !== main.it.text)) rows.push(["X", alt.it.text]);
+  if (main && !main.it.info && main.it.ok !== false) rows.push(["Space", main.it.text]);
+  if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push(["X", alt.it.text]);
   if (selected && FOODS.includes(selected)) rows.push(["E", `Eat ${label(selected)}`]);
-  else { const food = FOODS.find((f) => inv[f]); if (food && meObs.self.hunger < 80) rows.push(["E", `Eat (select ${label(food)})`]); }
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push(["F", "Pick up"]);
-  if (meObs.self.energy < 50) rows.push(["R", "Rest"]);
-  if (Object.keys(inv).length) rows.push(["Q", selected ? `In hand: ${label(selected)} · next` : "Take an item in hand"]);
-  if (selected) rows.push(["0", "Empty hands"]);
-  rows.push(["C", "Craft"], ["B", "Bag"], ["Enter", "Chat"], ["H", "All controls"]);
-  return rows;
+  if (meObs.self.energy < 25) rows.push(["R", "Rest"]);
+  return rows;   // only what you can do right here, right now (all the other keys are in the help, H)
 }
 function updateActions() {
   const html = availableActions().map(([k, t]) => `<div><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
