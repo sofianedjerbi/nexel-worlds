@@ -34,7 +34,7 @@ $("mailclose").onclick = () => { $("mail").style.display = "none"; };
 $("letter").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") postLetter(); if (e.key === "Escape") $("mail").style.display = "none"; });
 $("craftclose").onclick = () => { $("craft").style.display = "none"; drawGoals(); };
 $("say").addEventListener("blur", closeChat);
-$("craftbtn").onclick = () => { const c = $("craft"); c.style.display = c.style.display === "block" ? "none" : "block"; drawGoals(); };
+$("craftbtn").onclick = () => { sfx("ui"); const c = $("craft"); c.style.display = c.style.display === "block" ? "none" : "block"; drawGoals(); };
 $("helpbtn").onclick = () => { const h = $("help"); const on = h.style.display !== "block"; h.style.display = on ? "block" : "none"; localStorage.setItem("megastructure-help", on ? "on" : "off"); };
 $("join").onclick = () => { const n = $("name").value.trim(); if (n) joinGame(n); };
 $("watch").onclick = () => { $("joinbox").style.display = "none"; };

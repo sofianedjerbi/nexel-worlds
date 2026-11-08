@@ -71,6 +71,8 @@ const THIN_FALL_MS = 950;
 function felled(x, y, who, now) {
   const spr = objectSprite("T", x, y, now / 1000);
   const c = who && [...ents.values()].find((q) => q.e && q.e.name === who), side = c && c.x > x ? -1 : 1;  // away from the axe
+  sfx("creak", x, y);
+  setTimeout(() => { sfx("fallthud", x, y); sfx("rustle", x, y); }, spr && spr[0] !== IMG.trees ? 430 : 570);   // it lands
   if (spr && spr[0] !== IMG.trees) return falls.push({x, y, t0: now, side});    // round tree: the pack animation
   falls.push({x, y, t0: now, thin: spr, side, puffs: 0});
 }
@@ -123,6 +125,41 @@ function drawFlyers(sx, sy, S, now) {
     ctx.drawImage(IMG.trees, f.ix, f.iy, 16, 16, Math.round(sx(x) - w / 2), Math.round(sy(y) - w / 2), Math.round(w), Math.round(w));
   }
   ctx.globalAlpha = 1;
+}
+// Dying: the creature's own sprite flashes white, lifts a little and fades inside a puff of smoke.
+const dying = [], puffs = [];
+const DIE_MS = 480;
+function dyingPoof(p, now) {
+  dying.push({p: {...p, e: {...p.e, love: false, doing: null}, moved: 0}, y0: p.y, t0: now});
+  smoke(p.x, p.y, 8);
+}
+function smoke(x, y, n) {
+  for (let i = 0; i < n; i++) puffs.push({x: x + .5 + (Math.random() - .5) * .7, y: y + .35 + (Math.random() - .5) * .35,
+    vx: (Math.random() - .5) * .7, vy: -.35 - Math.random() * .45, r: 1.5 + Math.random() * 1.5, grow: 4 + Math.random() * 4,
+    life: .65 + Math.random() * .45, age: -i * .025});
+}
+function drawDying(sx, sy, S, t, now) {
+  for (let i = dying.length - 1; i >= 0; i--) {
+    const d = dying[i], k = (now - d.t0) / DIE_MS;
+    if (k >= 1) { dying.splice(i, 1); continue; }
+    d.p.y = d.y0 - k * .35;
+    ctx.save(); ctx.globalAlpha = 1 - k * k; ctx.filter = k < .3 ? "brightness(2.4) saturate(.4)" : "brightness(1.4)";
+    drawEntity(d.p, sx, sy, S, t, now);
+    ctx.restore();
+  }
+}
+function drawPuffs(sx, sy, dt) {
+  const z = zoom;
+  for (let i = puffs.length - 1; i >= 0; i--) {
+    const p = puffs[i]; p.age += dt;
+    if (p.age > p.life) { puffs.splice(i, 1); continue; }
+    if (p.age < 0) continue;
+    const k = p.age / p.life, r = Math.round((p.r + p.grow * k) * z / 2) * 2;
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97;
+    const cx = Math.round(sx(p.x)), cy = Math.round(sy(p.y)), a = (1 - k) * .85;
+    ctx.fillStyle = `rgba(246,240,228,${a})`; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = `rgba(150,128,116,${a * .6})`; ctx.lineWidth = z; ctx.stroke();
+  }
 }
 function drawEffects(sx, sy, S, dt) {
   const z = zoom;

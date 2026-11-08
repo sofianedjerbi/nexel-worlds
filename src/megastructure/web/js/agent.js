@@ -60,8 +60,8 @@ async function act(tool, args, quiet) {
     const c = r.result.changed || {};
     const gained = Object.fromEntries(Object.entries(c.inventory || {}).filter(([, v]) => v > 0));
     const p = ents.get("agent" + myId);
+    if (Object.keys(gained).length) sfx("collect");
     if (Object.keys(gained).length && p) floats.push({x: p.tx, y: p.ty, text: "+" + fmt(gained), color: "#fff1a8", t: performance.now() / 1000});
-    if (tool === "place") sfx("place");
     if (tool === "place") markGoal({workbench: "placedBench", seed: "planted", campfire: "placedFire", mailbox: "placedMail"}[args.item] || "placed");
     if (tool === "water") markGoal("watered");
     if (tool === "milk") markGoal("milked");

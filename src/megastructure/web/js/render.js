@@ -108,7 +108,9 @@ function frame(now) {
     if (tall) { drawFire(px - S * .3, py - S * .9, S, t + 1, f.x + 7, f.y); drawFire(px + S * .3, py - S * 1.4, S, t + 2, f.x, f.y + 5); }
     if (Math.random() < dt * 6) parts.push({x: f.x + .2 + Math.random() * .6, y: f.y - (tall ? 1.6 : .3), vx: (Math.random() - .5) * .4, vy: -1.2, g: -.5, life: 1.2, age: 0, c: Math.random() < .5 ? "#6b6f73" : "#ffb454", s: 1});
   }
+  drawDying(sx, sy, S, t, now);
   drawEffects(sx, sy, S, dt);
+  drawPuffs(sx, sy, dt);
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawRoofs(sx, sy, S, dt);
   drawNight(vis, sx, sy, S, t);
@@ -204,7 +206,8 @@ function drawEntity(p, sx, sy, S, t, now) {
           const spr = GROUND.has(target) ? null : objectSprite(target, tx, ty, now / 1000);
           debris(tx, ty, spr, GROUND.has(target) ? 5 : 4, {kind: "o", dy: "TFU".includes(target) ? -.5 : 0, dust: "M*%Y".includes(target) || GROUND.has(target)});
           shakes.set(tx + "," + ty, now);
-          sfx("TFH#+&!?CBhLKgW".includes(target) ? "chop" : "M*%".includes(target) ? "mine" : "dig", tx, ty);
+          const mat = GROUND.has(target) ? "soil" : material(target);
+          sfx(!held && (mat === "wood" || mat === "stone") ? "thud" : STRIKE[mat], tx, ty);
         } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
       }
     } else if (tool === "water") {
@@ -234,7 +237,7 @@ function drawEntity(p, sx, sy, S, t, now) {
         if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms)) {
           p.lastStep = Math.floor(now / ms);
           burst(p.x, p.y + .35, "dust", running ? 3 : 2, {up: .6, spread: running ? 2 : 1.2, g: 2, life: .35});
-          if (mine) sfx("step");
+          if (mine) { const gr = gndAt(Math.round(p.x), Math.round(p.y)); sfx(gr === "n" || gr === ":" ? "tock" : gr === "_" ? "click" : "step"); }
         }
       } else frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
     }

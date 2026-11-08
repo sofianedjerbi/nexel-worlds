@@ -506,3 +506,17 @@ Rules now, server-side, the same for people and agents:
   hand. Watering needs the can in hand, setting fire a torch in hand (or a campfire nearby).
 - Hints say "by hand (slow)"; with the hoe in hand, Space on grass tills; bots craft and hold a hoe to farm.
 Tests: 62 pass (hand-speed test added; tilling/watering/fire tests now hold their tools).
+
+## 2026-11-09 · Iteration 27 — stumps, deaths, sound, fight priority
+
+- Felled trees leave a solid stump (axe-type, 1 wood; a tree regrows from it; you must dig it before building there).
+  Round trees end the pack's felling sheet on that very stump; thin trees (no sheet) creak, fall with a swoosh and
+  break into leaves; both fall away from the chopper (the sheet is mirrored when needed).
+- Deaths: the creature's own sprite flashes white, lifts and fades inside a puff of smoke (also glooms at dawn,
+  smoke where a person falls). Recently removed entities are remembered 2 s so a late death event still finds them.
+- Sound review: everything that happens now sounds, chosen by material (wood/stone/plant/soil): strikes, breaks
+  (snap/crumble/rustle), tree creak + landing thud, collect blip whenever something enters your bag, place sounds for
+  anyone nearby, footsteps by ground (grass/wood/cobble), poof, hurt, animals (cluck/moo/chirp), fire, gate, chest,
+  mail chime, UI click and error buzz. Verified by logging sfx calls per action in Chrome.
+- Space puts the fight first: the one you're fighting (hit or hit by, 8 s), then glooms in reach, then the faced tile.
+Tests: 62 pass.

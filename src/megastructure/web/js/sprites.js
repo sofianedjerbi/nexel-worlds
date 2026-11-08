@@ -96,7 +96,8 @@ function objectSprite(c, x, y, t) {
     case "r": return [IMG.furniture, Math.floor(h * 3) * 16, 80, 16, 16, 0, 0];
     case "g": {                                                                           // opens next to people
       const key = x + "," + y, near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => occupied.has((x + dx) + "," + (y + dy)));
-      const o = Math.max(0, Math.min(1, (doors.get(key) || 0) + (near ? .12 : -.08)));
+      const was = doors.get(key) || 0, o = Math.max(0, Math.min(1, was + (near ? .12 : -.08)));
+      if (!was && o) sfx("gate", x, y);                                                     // it starts to swing open
       doors.set(key, o);
       return [IMG.gates, Math.round(o * 3) * 16, 0, 16, 16, 0, -3];
     }

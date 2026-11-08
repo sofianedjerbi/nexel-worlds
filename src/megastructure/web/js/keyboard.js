@@ -14,19 +14,37 @@ function facingTile() {
   return {x: s.x + (p.fx || 0), y: s.y + (p.fy || (p.fx ? 0 : 1))};
 }
 const useful = (it) => it && !it.walk && !it.info && it.ok !== false;
-// What Space (alt = false) or X (alt = true) does, without having to turn first. In order: the tile you face,
-// then the nearest creature or person within reach (fighting is the default), then anything next to you,
-// preferring the direction you last walked. Falls back to a hint about the faced tile.
+// Who you're fighting: set when you hit someone or someone hits you, so Space keeps hitting them, not the tree beside.
+let foe = null;   // {key: entity key, until: ms}
+const FOE_MS = 8000;
+function entKey(name) {               // an attack event names agents by name and creatures as "kind#id"
+  const m = /^(\w+)#(\d+)$/.exec(name || "");
+  if (m) return m[1] + m[2];
+  const a = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === name);
+  return a ? "agent" + a.e.id : null;
+}
+function noteFight(e) {
+  if (e.attacker === me) foe = {key: entKey(e.target), until: performance.now() + FOE_MS};
+  else if (e.target === me) foe = {key: entKey(e.attacker), until: performance.now() + FOE_MS};
+}
+// What Space (alt = false) or X (alt = true) does, without having to turn first. Fighting comes first: the one
+// you're fighting, then any gloom within reach; then the tile you face; then other creatures within reach; then
+// anything next to you, preferring the direction you last walked. Falls back to a hint about the faced tile.
 function facingIntent(alt) {
   const q = facingTile(), s = myPos(); if (!q || !s) return null;
+  const reach = reachOf(inHand()), dist = (o) => Math.abs(o.tx - s.x) + Math.abs(o.ty - s.y);
+  const near = alt ? [] : [...ents.values()]
+    .filter((o) => o.e && !(o.e.kind === "agent" && o.e.id === myId) && Math.max(Math.abs(o.tx - s.x), Math.abs(o.ty - s.y)) <= reach)
+    .sort((a, b) => dist(a) - dist(b));
+  const hit = (o) => { const p = {x: o.tx, y: o.ty}, it = intent(p, false); return useful(it) && it.attack ? {p, it} : null; };
+  if (foe && performance.now() < foe.until) {
+    const o = ents.get(foe.key), r = o && near.includes(o) && hit(o);
+    if (r) return r;
+  }
+  for (const o of near) if (o.e.kind === "gloom") { const r = hit(o); if (r) return r; }
   const faced = intent(q, alt);
   if (useful(faced)) return {p: q, it: faced};
-  if (!alt) {
-    const reach = reachOf(inHand()), near = [...ents.values()]
-      .filter((o) => o.e && !(o.e.kind === "agent" && o.e.id === myId) && Math.max(Math.abs(o.tx - s.x), Math.abs(o.ty - s.y)) <= reach)
-      .sort((a, b) => (b.e.kind === "gloom") - (a.e.kind === "gloom") || (Math.abs(a.tx - s.x) + Math.abs(a.ty - s.y)) - (Math.abs(b.tx - s.x) + Math.abs(b.ty - s.y)));
-    for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it)) return {p, it}; }
-  }
+  for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it)) return {p, it}; }
   const p0 = ents.get("agent" + myId), dirs = [[p0.fx, p0.fy], [-p0.fx, -p0.fy], [p0.fy, p0.fx], [-p0.fy, -p0.fx]];
   for (const [dx, dy] of dirs) {
     if (!dx && !dy) continue;
@@ -72,6 +90,7 @@ function turn(dir) {
   [p.fx, p.fy] = DIRV[dir];
 }
 function selectItem(name) {
+  if (name !== selected) sfx("ui");
   selected = name; $("hotbar").dataset.sig = "";
   if (meObs) drawHotbar(meObs.self.inventory);
 }

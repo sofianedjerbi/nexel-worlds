@@ -67,6 +67,7 @@ setInterval(() => {
 setInterval(() => { sendSpec({op: "agents"}); sendSpec({op: "metrics"}); }, 1500);
 
 let pred = null;
+const recentlyGone = new Map();   // entities that just left the view (a death event may arrive after the tick)
 let groundItems = [], mailAt = new Set(), fireAt = [], troughAt = new Set();
 function onTick(d) {
   clock = d;
@@ -91,14 +92,27 @@ function onTick(d) {
       if (Math.abs(p.x - e.x) + Math.abs(p.y - e.y) > 4) { p.x = e.x; p.y = e.y; }
     }
   }
-  for (const k of ents.keys()) if (!seen.has(k)) ents.delete(k);
+  for (const [k, p] of ents) if (!seen.has(k)) { recentlyGone.set(k, {p, t: now}); ents.delete(k); }
+  for (const [k, g] of recentlyGone) if (now - g.t > 2000) recentlyGone.delete(k);
+}
+// The sound of a tile changing: what broke, what was placed, what was picked.
+function tileSound(old, now, cause, x, y) {
+  if (old === now) return;
+  const oldBlock = !GROUND.has(old), newBlock = !GROUND.has(now);
+  if (cause === "pick") return sfx("rustle", x, y);
+  if (cause === "dig") {
+    if (old === "T" || old === "U") return;                                   // felling has its own creak and thud
+    return sfx(oldBlock ? BREAK[material(old)] : "dig", x, y);
+  }
+  if (cause === "place") return sfx(newBlock ? PLACE[material(now)] : now === "_" ? "clack" : now === "n" || now === ":" ? "tock" : "dig", x, y);
+  if (cause === "burnt") return sfx("crackle", x, y);
 }
 function onEvent(e) {
   const t = performance.now() / 1000;
   if (e.type === "tile") {
-    const g = CHAR[e.ground], blk = e.block === "none" ? g : CHAR[e.block];
+    const g = CHAR[e.ground], blk = e.block === "none" ? g : CHAR[e.block], old = combAt(e.x, e.y);
     if (g && blk) setTile(e.x, e.y, blk, g, e.by);
-    if (e.cause === "fire") sfx("hit", e.x, e.y);
+    if (old && blk) tileSound(old, blk, e.cause, e.x, e.y);
     return;
   }
   if (e.type === "say" || e.type === "shout") { const em = emoteFor(e.text); if (em) setTimeout(() => emote(e.from, em), 2500); }
@@ -111,30 +125,38 @@ function onEvent(e) {
     bubbles.push({name: e.from, text: e.text, t, shout: e.type === "shout", slot: Math.min(slot, 2)});
   }
   if (e.type === "attack") {
+    noteFight(e);
     const tgt = [...ents.values()].find((q) => q.e && (q.e.name === e.target || `${q.e.kind}#${q.e.id}` === e.target));
     const tx = tgt ? tgt.x : e.x, ty = tgt ? tgt.y : e.y;
     if (tgt) flashes.set(tgt.e.kind === "agent" ? "agent" + tgt.e.id : tgt.e.kind + tgt.e.id, performance.now());
-    burst(tx, ty, "hit", 6, {dy: -.4}); sfx("hit", tx, ty); floats.push({x: tx, y: ty, text: "-" + e.damage, color: "#ff8a7a", t});
+    burst(tx, ty, "hit", 6, {dy: -.4}); sfx("hit", tx, ty); if (e.target === me) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + e.damage, color: "#ff8a7a", t});
   }
   if (e.type === "death" && e.name === me) {
     sfx("die");
     const lost = fmt(e.dropped);
     banner("You died", `${e.cause}.${lost ? " Everything you carried (" + lost + ") lies where you fell, at " + e.x + ", " + e.y + "." : ""} ${meObs && meObs.self.spawn ? "You wake up by your bed." : "You wake up somewhere else. Sleep in a bed to choose where."}`);
   }
-  if (e.type === "fade") burst(e.x, e.y, "dust", 10, {up: 2, spread: 2, g: -1, life: .8});
-  if (e.type === "death" || e.type === "creature_died") burst(e.x, e.y, "dust", 16, {dy: -.3, up: 2.5, spread: 4, g: 3, life: .7, size: 2});
-  if (e.type === "pick_up") { burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3}); sfx("pick", e.x, e.y); }
-  if (e.type === "chest") chestOpen.set(e.x + "," + e.y, performance.now());
-  if (e.type === "milk") { burst(e.x, e.y, "spark", 4, {dy: -.2, g: 5}); emote(e.name, "happy"); }
-  if (e.type === "love") emote(e.by, "love");
-  if (e.type === "lay") burst(e.x, e.y, "dust", 5, {up: 1, spread: 1.5, g: 3});
+  if (e.type === "creature_died" || e.type === "fade") {   // it flashes, lifts and fades away in a puff of smoke
+    const key = (e.kind || "gloom") + e.id, p = ents.get(key) || (recentlyGone.get(key) || {}).p;
+    if (p && p.e) dyingPoof(p, performance.now()); else smoke(e.x, e.y, 8);
+    ents.delete(key);
+    sfx("poof", e.x, e.y);
+  }
+  if (e.type === "death") { smoke(e.x, e.y, 10); sfx("poof", e.x, e.y); }
+  if (e.type === "pick_up") { burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3}); sfx("collect", e.x, e.y); }
+  if (e.type === "chest") { chestOpen.set(e.x + "," + e.y, performance.now()); sfx("clack", e.x, e.y); }
+  if (e.type === "milk") { burst(e.x, e.y, "spark", 4, {dy: -.2, g: 5}); emote(e.name, "happy"); sfx("moo", e.x, e.y); }
+  if (e.type === "love") { emote(e.by, "love"); sfx(e.kind === "cow" || e.kind === "calf" ? "moo" : "cluck", e.x, e.y); }
+  if (e.type === "lay") { burst(e.x, e.y, "dust", 5, {up: 1, spread: 1.5, g: 3}); sfx("cluck", e.x, e.y); }
+  if (e.type === "ignite") { sfx("whoosh", e.x, e.y); sfx("crackle", e.x, e.y); }
   if (e.type === "fill") { burst(e.x, e.y, "water", 8, {up: 1.5, spread: 1.5}); sfx("water", e.x, e.y); }
-  if (e.type === "trough") burst(e.x, e.y, "food", 3, {dy: -.4, g: 3});
+  if (e.type === "trough") { burst(e.x, e.y, "food", 3, {dy: -.4, g: 3}); sfx(e.kind === "cow" ? "moo" : "cluck", e.x, e.y); }
   if (e.type === "picnic") { emote(e.name, "love"); burst(e.x, e.y, "food", 6, {dy: -.6, g: 3}); }
+  if (e.type === "mail" && e.to === me && e.from !== me) sfx("chime");
   if (e.type === "mail" && e.to === me && e.from !== me) toast(`${e.from} left you a letter (mailbox at ${e.x}, ${e.y}).`);
   if (e.type === "mail_opened" && e.owner === me && e.by !== me) toast(`${e.by} opened your mailbox and took ${e.n} letter${e.n > 1 ? "s" : ""}!`, true);
   if (e.type === "board" || e.type === "moor") { burst(e.x, e.y, "water", 8, {up: 1.5, spread: 2}); sfx("water", e.x, e.y); }
-  if (e.type === "hatch") { burst(e.x, e.y, "spark", 8, {dy: -.3, g: 4}); sfx("pick", e.x, e.y); }
+  if (e.type === "hatch") { burst(e.x, e.y, "spark", 8, {dy: -.3, g: 4}); sfx("chirp", e.x, e.y); }
   if (e.type === "born") burst(e.x, e.y, "food", 8, {dy: -.5, g: 3});
   if (e.type === "craft") { burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4}); sfx("craft", e.x, e.y); }
   if (["pick_up", "drop", "chest", "milk", "love", "lay", "fill", "picnic", "trough"].includes(e.type)) return;
