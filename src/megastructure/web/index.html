@@ -1266,7 +1266,9 @@ function intent(p, shift) {
     if (c === "X" && !shift) return {text: mailAt.has(p.x + "," + p.y) ? "Mailbox: there's mail!" : "Mailbox", near: 1, run: (d) => openMailPanel(d)};
     if (c === "B" && !shift) return {text: "Sleep (wake up here after dying)", near: 1, run: (d) => act("sleep", {dir: d})};
     if ((c === "&" || c === "^") && !shift) return {text: c === "&" ? "Workbench: craft tools here" : "Campfire: cook here", near: 2, run: () => openCraft()};
-    return {text: HARVEST[c] || label(CH[c]), near: 1, run: (d) => act("dig", {dir: d})};
+    const crop = cropSpecies(p.x, p.y);
+    const text = c === "w" ? `Harvest ${crop}` : c === '"' ? `Young ${crop} (uproot)` : c === ";" ? `${crop} sprout (uproot)` : HARVEST[c] || label(CH[c]);
+    return {text, near: 1, run: (d) => act("dig", {dir: d})};
   }
   if (g === "~" || g === "=") return {text: label(CH[g]), info: true};
   if (shift) return {text: {_: "Take up the path", n: "Take up the floor", ":": "Take up the bridge"}[g] || "Till soil", near: 1, run: (d) => act("dig", {dir: d})};

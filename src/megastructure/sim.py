@@ -495,6 +495,9 @@ class Simulation:
                         self._creature_move(c, c.x + sx, c.y)
 
     def _creature_move(self, c, x, y) -> bool:
+        # animals and glooms can't work doors or gates: houses keep glooms out, fenced pens keep animals in
+        if self.world.block(x, y) in ("door", "gate"):
+            return False
         if self.world.passable(x, y) and self.entity_at(x, y) is None:
             c.x, c.y = x, y
             return True

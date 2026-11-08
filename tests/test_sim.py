@@ -417,3 +417,13 @@ def test_mailbox_post_and_open(world):
     r = run(sim, a, "open_mail", {"dir": "N"})
     assert r["letters"][0]["text"] == "meet me at the lake" and r["letters"][0]["from"] == "Pen"
     assert run(sim, a, "open_mail", {"dir": "N"})["letters"] == []
+
+
+def test_doors_and_gates_stop_creatures(world):
+    sim, a = world
+    from megastructure.sim import Creature
+    hen = Creature(sim.next_creature, "chicken", a.x + 2, a.y, 10); sim.next_creature += 1
+    sim.creatures[hen.id] = hen
+    sim.world.set(a.x + 3, a.y, block="gate")
+    assert not sim._creature_move(hen, a.x + 3, a.y) and (hen.x, hen.y) == (a.x + 2, a.y)
+    assert run(sim, a, "move_to", {"x": a.x + 4, "y": a.y})["ok"]     # people walk through

@@ -359,3 +359,12 @@ Scripted a fresh player (no granted items, only intents/clicks) through the earl
 - Playthrough: 3 trees, workbench placed, 2 bushes, 2 boulders, axe crafted via the card, in ~30 s with no errors.
 - Welcome toast fixed ("meadow", not "shore"); flower patches slightly sparser.
 Note: generation changes only apply to newly generated chunks; the existing play world keeps its first chunks.
+
+## 2026-11-08 · Iteration 19 — mid-game audit
+
+- Glooms walked through doors, so a house gave no safety at night, and animals walked through gates, so pens were
+  impossible. Creatures can no longer enter door or gate tiles (people still can). Test added.
+- Crop growth verified in Chrome over fast-forwarded stages: sprout → young → ripe for all 6 species. Found the hint
+  hard-coded "Harvest wheat" while the plot was an eggplant (the server correctly gave eggplant): hints are now
+  species-aware ("Harvest lettuce", "Young pumpkin (uproot)", "carrot sprout (uproot)").
+Tests: 31 pass.
