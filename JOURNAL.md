@@ -346,3 +346,16 @@ Tests: 29 pass.
 - Hotbar slots scale with window width: one row and no overlap at 1200/1440/1920 px (measured).
 - QA with two browser players: B posts through the panel → A gets a toast and sees "Mailbox: there's mail!" → opening shows
   the letter. Tests: 30 pass.
+
+## 2026-11-08 · Iteration 18 — new-player audit
+
+Scripted a fresh player (no granted items, only intents/clicks) through the early goals.
+- All early resources lie within ~30 tiles of spawn on both seeds (measured), but the 18-tile empty clearing meant
+  nothing was on screen at spawn: now 6 tiles, so trees/bushes/flowers are in view immediately.
+- Fiber (axe, pickaxe, torch, rope) only came from rare thickets: berry bushes now also drop 1 fiber.
+- The player wandered 29 tiles from the workbench and the axe card was dead ("need station"). Station recipes you
+  have the materials for now show a dashed card, "Click to walk to the workbench and craft", and do exactly that
+  (nearest station within 60 tiles).
+- Playthrough: 3 trees, workbench placed, 2 bushes, 2 boulders, axe crafted via the card, in ~30 s with no errors.
+- Welcome toast fixed ("meadow", not "shore"); flower patches slightly sparser.
+Note: generation changes only apply to newly generated chunks; the existing play world keeps its first chunks.

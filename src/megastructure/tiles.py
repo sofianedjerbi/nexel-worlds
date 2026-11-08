@@ -50,7 +50,7 @@ G = {g.name: i for i, g in enumerate(GROUNDS)}
 BLOCKS = [
     Block("none", " ", solid=False),
     Block("tree", "T", flammable=True, hardness=12, drops={"wood": 3}, tool="axe", wall=True),
-    Block("berry_bush", "b", flammable=True, hardness=3, drops={"berries": 2, "seed": 1}),
+    Block("berry_bush", "b", flammable=True, hardness=3, drops={"berries": 2, "seed": 1, "fiber": 1}),
     Block("rock", "M", hardness=18, drops={"stone": 2}, tool="pickaxe", wall=True),
     Block("ore", "*", hardness=24, drops={"ore": 1, "stone": 1}, needs_tool="pickaxe", wall=True),
     Block("thicket", "H", flammable=True, hardness=5, drops={"fiber": 2}, tool="axe", wall=True),

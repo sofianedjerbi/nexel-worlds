@@ -74,6 +74,7 @@
   .rgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(176px, 1fr)); gap:6px; }
   .rcard { display:flex; gap:8px; align-items:center; padding:5px 6px; border:2px solid #d9b98a; border-radius:5px; background:#f7e7c6; cursor:pointer; position:relative; }
   .rcard:hover { border-color:#6aa66f; background:#fbf0d8; }
+  .rcard.walk { border-style:dashed; }
   .rcard.no { opacity:.45; cursor:default; } .rcard.no:hover { border-color:#d9b98a; background:#f7e7c6; }
   .rcard canvas.big { width:32px; height:32px; image-rendering:pixelated; flex:none; }
   .rcard .nm { line-height:20px; }
@@ -1131,7 +1132,7 @@ function joinGame(name) {
     $("joinbox").style.display = "none"; $("vitals").style.display = "block"; $("hotbar").style.display = "flex";
     $("help").style.display = localStorage.getItem("megastructure-help") === "on" ? "block" : "none";
     $("mode").textContent = "playing as " + me;
-    toast("You wake up on the shore. WASD to walk, Enter to talk.");
+    toast("You wake up in a meadow. WASD to walk, click things to use them, Enter to talk.");
     refresh();
   };
   agentWs.onmessage = (m) => {
@@ -1426,6 +1427,14 @@ const RECIPE_GROUPS = [
   ["Home", ["bed", "chair", "table", "plant", "clock", "rug"]],
   ["Cooking & smelting", ["cooked_meat", "bread", "ingot"]],
 ];
+function nearestObject(ch, maxD) {
+  const s = myPos(); if (!s) return null; let best = null;
+  for (const b of blocks.values()) for (const [i, c] of b.objs) if (c === ch) {
+    const x = b.bx * B + i % B, y = b.by * B + (i / B | 0), d = Math.abs(x - s.x) + Math.abs(y - s.y);
+    if (d <= maxD && (!best || d < best.d)) best = {x, y, d};
+  }
+  return best;
+}
 function drawRecipes() {
   const el = $("recipes"); if (!el || !Object.keys(recipes).length) return;
   const inv = meObs ? meObs.self.inventory : {};
@@ -1457,8 +1466,13 @@ function drawRecipes() {
         st.appendChild(iconCanvas(rc.station)); st.insertAdjacentText("beforeend", `at ${label(rc.station)}`);
         body.appendChild(st);
       }
-      card.title = !atStation ? `Stand next to a ${label(rc.station)} to craft this` : !haveAll ? "Missing materials" : "Click to craft";
+      const station = !atStation && haveAll ? nearestObject(CHAR[rc.station], 60) : null;
+      card.title = !haveAll ? "Missing materials" : atStation ? "Click to craft" : station ? `Click to walk to the ${label(rc.station)} and craft` : `Build a ${label(rc.station)} first`;
       if (haveAll && atStation) card.onclick = () => act("craft", {recipe: name});
+      else if (station) {                            // walk to the nearest station, then craft there
+        card.classList.remove("no"); card.classList.add("walk");
+        card.onclick = () => { $("craft").style.display = "none"; perform(station, {text: "craft", near: 1, run: () => act("craft", {recipe: name})}); };
+      }
       grid.appendChild(card);
     }
   }

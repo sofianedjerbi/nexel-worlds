@@ -61,7 +61,7 @@ def gen_tile(seed: int, x: int, y: int) -> tuple[int, int]:
         return G["water"], B["none"]
     if elev < 0.425:
         return G["dirt"], B["none"]  # thin sandy shore
-    meadow = d < 18  # keep the spawn clearing empty
+    meadow = d < 6  # a small clearing at spawn; trees and bushes are in view from the start
     ground = G["grass"] if fbm(seed, x, y, 30, 2) > 0.3 else G["dirt"]
     if meadow:
         return G["grass"], B["none"]
@@ -85,7 +85,7 @@ def gen_tile(seed: int, x: int, y: int) -> tuple[int, int]:
     if stones > 0.76 and cand and roll < 0.6:
         return ground, (B["ore"] if _hash(seed, x, y, 19) < 0.18 else B["rock"])
     # lone features scattered over open meadow
-    if ground == G["grass"] and fbm(seed, x, y, 14, 6) > 0.66 and _hash(seed, x, y, 31) < 0.22:
+    if ground == G["grass"] and fbm(seed, x, y, 14, 6) > 0.68 and _hash(seed, x, y, 31) < 0.16:
         return ground, B["flower"]
     cand11, roll11 = _picked(seed, x, y, 11, 23)
     if cand11:
