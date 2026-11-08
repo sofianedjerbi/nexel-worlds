@@ -368,3 +368,18 @@ Note: generation changes only apply to newly generated chunks; the existing play
   hard-coded "Harvest wheat" while the plot was an eggplant (the server correctly gave eggplant): hints are now
   species-aware ("Harvest lettuce", "Young pumpkin (uproot)", "carrot sprout (uproot)").
 Tests: 31 pass.
+
+## 2026-11-08 · Iteration 20 — fire, glooms by day, news spam
+
+- Torches had no UI: selecting one now offers "Set on fire" on anything flammable (and "That won't burn").
+- Fire is an overlay: the burning tree, wall or crop stays visible with flames (taller over trees, smoke and ember
+  particles, warm light at night) until it burns out to ash. Ticks carry `fires`. Fire jumps readily through
+  wooden things but only creeps across bare grass (0.03/s vs 0.1/s), so one spark doesn't burn a whole meadow.
+- Ash looked like a stone slab with a hole (recoloured tilled sheet); it is now the grass layer's soft shapes recoloured
+  to charcoal, and grows back into grass after 4 min.
+- QA found a player killed by a gloom in daylight (glooms lingered ~25 s after dawn and kept biting): glooms never
+  attack by day and fade within ~2 s of dawn (poof). Test added.
+- News: identical consecutive lines collapse into one with ×N.
+- Bug caught by QA: the flame helper had been lost in the Sprout rewrite (`drawFire is not defined`); restored on the
+  generated flame sprites.
+Tests: 33 pass.

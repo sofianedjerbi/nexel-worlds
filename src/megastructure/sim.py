@@ -445,10 +445,11 @@ class Simulation:
             if self.is_night() and glooms < len(online):
                 a = online[self.rng.randrange(len(online))]
                 self._spawn_creature("gloom", a, 14, 24)
-        if not self.is_night() and self.tick % sec(5) == 0:
+        if not self.is_night():            # daylight: glooms fade away within a couple of seconds
             for c in [c for c in self.creatures.values() if c.kind == "gloom"]:
-                if self.rng.random() < 0.2:
+                if self.rng.random() < 0.6 / TICK_HZ:
                     del self.creatures[c.id]
+                    self.emit("fade", c.x, c.y, id=c.id)
         for cid in sorted(self.creatures):
             c = self.creatures.get(cid)
             if c is None:
@@ -480,7 +481,7 @@ class Simulation:
                 if prey is None:
                     d = list(DIRS.values())[self.rng.randrange(4)]
                     self._creature_move(c, c.x + d[0], c.y + d[1])
-                elif max(abs(prey.x - c.x), abs(prey.y - c.y)) <= 1:
+                elif max(abs(prey.x - c.x), abs(prey.y - c.y)) <= 1 and self.is_night():
                     c.cooldown = sec(1.2)
                     self.emit("attack", c.x, c.y, attacker="a gloom", target=prey.name,
                               damage=CREATURES["gloom"]["damage"])
@@ -523,8 +524,11 @@ class Simulation:
         if (x, y) in self.fires or not ground.walkable:
             return False
         if block.flammable or (block.name == "none" and ground.flammable):
+            # the tile keeps its block while it burns (flames are an overlay); it turns to ash when the fire dies
             self.fires[(x, y)] = sec(5) + self.rng.randrange(sec(10))
-            self.set_tile(x, y, block="fire", by=by, cause="fire")
+            self.emit("ignite", x, y, by=by.name if by else None)
+            if by is not None and by.action is not None:
+                by.action.tiles.append({"x": x, "y": y, "burning": True})
             return True
         return False
 
@@ -534,11 +538,14 @@ class Simulation:
                 x, y = pos
                 self.fires[pos] -= 1
                 for dx, dy in DIRS.values():
-                    if self.rng.random() < 0.1 / TICK_HZ:
+                    # fire jumps readily between trees and wooden things, but only creeps across bare grass
+                    nb = self.world.block(x + dx, y + dy)
+                    if self.rng.random() < (0.1 if nb != "none" else 0.03) / TICK_HZ:
                         self.ignite(x + dx, y + dy)
                 if self.fires[pos] <= 0:
                     del self.fires[pos]
                     self.set_tile(x, y, ground="ash", block="none", cause="burnt")
+                    self.timers[(x, y)] = [self.tick + sec(240), "regrass"]   # the scar heals
         if self.pits and self.tick % sec(1) == 0:
             for pos in sorted(self.pits):
                 x, y = pos
@@ -576,6 +583,8 @@ class Simulation:
                     self.next_creature += 1
                     self.creatures[chick.id] = chick
                     self.emit("hatch", *pos, id=chick.id)
+                elif kind == "regrass" and self.world.ground(*pos) == "ash":
+                    self.set_tile(*pos, ground="grass", cause="grew")
                 elif kind == "fruit" and self.world.block(*pos) == "tree":
                     self.set_tile(*pos, block="fruit_tree", cause="grew")
                 elif kind == "regrow" and self.world.block(*pos) == "none" and self.entity_at(*pos) is None \

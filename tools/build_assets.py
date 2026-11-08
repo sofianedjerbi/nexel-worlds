@@ -242,7 +242,12 @@ def build(downloads: Path):
     def ashen(r, g, b):
         lum = (r * 0.3 + g * 0.59 + b * 0.11)
         return (int(lum * 0.45 + r * 0.12), int(lum * 0.43 + g * 0.1), int(lum * 0.45 + b * 0.1))
-    recolor(tilled, ashen).save(OUT / "ash.png")
+    with zipfile.ZipFile(downloads / SPRITES) as zs3:
+        layers = Image.open(io.BytesIO(read_member(zs3, "Tilesets/ground tiles/New tiles/Grass_Tile_Layers.png"))).convert("RGBA")
+    def charred(r, g, b):  # green → warm charcoal, keeping the light/dark structure
+        v = (r + g + b) / 3
+        return (int(v * 0.42 + 18), int(v * 0.36 + 14), int(v * 0.33 + 12))
+    recolor(layers, charred).save(OUT / "ash.png")
     recolor(water, lambda r, g, b: (int(r * 0.62), int(g * 0.74), int(b * 0.86))).save(OUT / "water_deep.png")
     recolor(tilled.copy(), lambda r, g, b: (int(r * 0.72), int(g * 0.62), int(b * 0.55))).save(OUT / "tilled_wet.png")
     # deep water: the grass layer's rounded blob shapes as a translucent dark-blue overlay

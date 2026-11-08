@@ -169,7 +169,9 @@ class GameServer:
         for q, rect in list(self.spectators.items()):
             if rect is not None and q.qsize() < 2000:
                 q.put_nowait(json.dumps({**head, "entities": self.entities_in(*rect), "items": self.items_in(*rect),
-                                         "mail": self.mail_in(*rect)},
+                                         "mail": self.mail_in(*rect),
+                                         "fires": [[fx, fy] for fx, fy in self.sim.fires
+                                                   if rect[0] <= fx < rect[0] + rect[2] and rect[1] <= fy < rect[1] + rect[3]]},
                                         separators=(",", ":")))
 
     def region(self, x, y, w, h) -> dict:

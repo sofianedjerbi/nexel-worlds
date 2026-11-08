@@ -109,7 +109,7 @@ def test_fire_spreads_and_burns_out(world):
         sim.world.set(a.x + dx, a.y, block="fence")
     a.add("torch", 1)
     assert run(sim, a, "ignite", {"dir": "E"})["ok"]
-    assert sim.world.block(a.x + 1, a.y) == "fire"
+    assert (a.x + 1, a.y) in sim.fires and sim.world.block(a.x + 1, a.y) == "fence"   # burning, still standing
     for _ in range(600):
         sim.step()
     assert not sim.fires
@@ -427,3 +427,28 @@ def test_doors_and_gates_stop_creatures(world):
     sim.world.set(a.x + 3, a.y, block="gate")
     assert not sim._creature_move(hen, a.x + 3, a.y) and (hen.x, hen.y) == (a.x + 2, a.y)
     assert run(sim, a, "move_to", {"x": a.x + 4, "y": a.y})["ok"]     # people walk through
+
+
+def test_ash_grows_back_into_grass(world):
+    sim, a = world
+    from megastructure.sim import sec
+    sim.world.set(a.x + 1, a.y, ground="grass")
+    assert sim.ignite(a.x + 1, a.y)
+    for _ in range(sec(16)):
+        sim.step()
+    assert sim.world.ground(a.x + 1, a.y) == "ash"
+    for _ in range(sec(244)):
+        sim.step()
+    assert sim.world.ground(a.x + 1, a.y) == "grass"
+
+
+def test_glooms_fade_and_never_bite_by_day(world):
+    sim, a = world
+    from megastructure.sim import Creature, sec, DAY_TICKS
+    sim.tick = (sim.tick // DAY_TICKS) * DAY_TICKS + DAY_TICKS // 3       # mid-morning
+    g = Creature(sim.next_creature, "gloom", a.x + 1, a.y, 30); sim.next_creature += 1
+    sim.creatures[g.id] = g
+    hp = a.hp
+    for _ in range(sec(8)):
+        sim.step()
+    assert a.hp == hp and g.id not in sim.creatures

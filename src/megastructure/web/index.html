@@ -618,6 +618,11 @@ function drawRoofs(sx, sy, S, dt) {
   }
 }
 
+function drawFire(px, py, S, t, x, y) {            // the generated two-frame flame sprite, flickering per tile
+  const f = Math.floor(t * 8 + x * 3 + y) % 2 ? "fire1" : "fire0";
+  ctx.drawImage(IMG.gen, GEN[f] * 16, 0, 16, 16, Math.round(px), Math.round(py - 3 * zoom), S, S);
+}
+
 function fenceSprite(x, y) {
   const f = (dx, dy) => { const c = combAt(x + dx, y + dy); return c === "#" || c === "+"; };
   const n = f(0, -1), s = f(0, 1), e = f(1, 0), w = f(-1, 0);
@@ -686,11 +691,12 @@ setInterval(() => {
 setInterval(() => { sendSpec({op: "agents"}); sendSpec({op: "metrics"}); }, 1500);
 
 let pred = null;
-let groundItems = [], mailAt = new Set();
+let groundItems = [], mailAt = new Set(), fireAt = [];
 function onTick(d) {
   clock = d;
   groundItems = d.items || [];
   mailAt = new Set((d.mail || []).map(([x, y]) => x + "," + y));
+  fireAt = (d.fires || []).map(([x, y]) => ({x, y}));
   $("clock").textContent = d.time.replace("(night)", "· night");
   const seen = new Set(), now = performance.now();
   for (const e of d.entities) {
@@ -715,6 +721,7 @@ function onEvent(e) {
   if (e.type === "tile") {
     const g = CHAR[e.ground], blk = e.block === "none" ? g : CHAR[e.block];
     if (g && blk) setTile(e.x, e.y, blk, g);
+    if (e.cause === "fire") sfx("hit", e.x, e.y);
     return;
   }
   if (e.type === "say" || e.type === "shout") { const em = emoteFor(e.text); if (em) setTimeout(() => emote(e.from, em), 2500); }
@@ -737,6 +744,7 @@ function onEvent(e) {
     const lost = fmt(e.dropped);
     banner("You died", `${e.cause}.${lost ? " Everything you carried (" + lost + ") lies where you fell, at " + e.x + ", " + e.y + "." : ""} ${meObs && meObs.self.spawn ? "You wake up by your bed." : "You wake up somewhere else. Sleep in a bed to choose where."}`);
   }
+  if (e.type === "fade") burst(e.x, e.y, "dust", 10, {up: 2, spread: 2, g: -1, life: .8});
   if (e.type === "death" || e.type === "creature_died") burst(e.x, e.y, "dust", 16, {dy: -.3, up: 2.5, spread: 4, g: 3, life: .7, size: 2});
   if (e.type === "pick_up") { burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3}); sfx("pick", e.x, e.y); }
   if (e.type === "chest") chestOpen.set(e.x + "," + e.y, performance.now());
@@ -765,10 +773,14 @@ function onEvent(e) {
     case "creature_died": text = `a ${e.kind} died${e.by ? " (" + e.by + ")" : ""}`; break;
     default: return;
   }
-  const d = document.createElement("div");
-  d.innerHTML = `<span class="k">${e.tick}</span><span class="${e.type}">${esc(text)}</span>`;
+  const feed = $("feed"), top = feed.firstChild;
+  if (top && top.dataset.text === text) {          // the same thing again: count it instead of repeating it
+    top.dataset.n = +(top.dataset.n || 1) + 1; top.querySelector(".n").textContent = ` ×${top.dataset.n}`; return;
+  }
+  const d = document.createElement("div"); d.dataset.text = text;
+  d.innerHTML = `<span class="k">${e.tick}</span><span class="${e.type}">${esc(text)}</span><span class="n k"></span>`;
   d.onclick = () => { if (!me) { follow = null; camT.x = e.x; camT.y = e.y; } };
-  const feed = $("feed"); feed.prepend(d); while (feed.childElementCount > 150) feed.lastChild.remove();
+  feed.prepend(d); while (feed.childElementCount > 150) feed.lastChild.remove();
 }
 
 // =====================================================================================
@@ -862,6 +874,13 @@ function frame(now) {
       names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom, cy - sz / 2 - bob, sz, sz));
     }
     else drawEntity(o.p, sx, sy, S, t, now);
+  }
+  for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
+    const px = sx(f.x), py = sy(f.y), tall = "TF".includes(combAt(f.x, f.y) || "");
+    if (px < -S * 2 || py < -S * 3 || px > W + S || py > H + S) continue;
+    drawFire(px, py, S, t, f.x, f.y);
+    if (tall) { drawFire(px - S * .3, py - S * .9, S, t + 1, f.x + 7, f.y); drawFire(px + S * .3, py - S * 1.4, S, t + 2, f.x, f.y + 5); }
+    if (Math.random() < dt * 6) parts.push({x: f.x + .2 + Math.random() * .6, y: f.y - (tall ? 1.6 : .3), vx: (Math.random() - .5) * .4, vy: -1.2, g: -.5, life: 1.2, age: 0, c: Math.random() < .5 ? "#6b6f73" : "#ffb454", s: 1});
   }
   drawEffects(sx, sy, S, dt);
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
@@ -1056,10 +1075,9 @@ function drawNight(vis, sx, sy, S, t) {
   ctx.globalCompositeOperation = "lighter";
   const glow = (x, y, r, c, a) => { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); };
   for (const p of ents.values()) if (p.e && p.e.kind === "agent") glow(sx(p.x) + S / 2, sy(p.y) + S / 2, S * 3, "255,214,150", .22 * dark);
-  for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") {
-    const x = b.bx * B + i % B, y = b.by * B + (i / B | 0), f = .9 + .1 * Math.sin(t * 13 + x);
-    glow(sx(x) + S / 2, sy(y) + S / 2, S * 4.5 * f, "255,160,70", .45 * dark);
-  }
+  const lights = [...fireAt];
+  for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") lights.push({x: b.bx * B + i % B, y: b.by * B + (i / B | 0)});
+  for (const {x, y} of lights) { const f = .9 + .1 * Math.sin(t * 13 + x); glow(sx(x) + S / 2, sy(y) + S / 2, S * 4.5 * f, "255,160,70", .45 * dark); }
   ctx.restore();
 }
 
@@ -1251,6 +1269,11 @@ function intent(p, shift) {
       const res = !hasBlock && FILLS[it][g];
       return res ? {text: FILL_TEXT[res], ghost: it, ghostGround: res, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
                  : {text: FILL_HELP[it], ghost: it, ghostGround: Object.values(FILLS[it])[0], ok: false};
+    }
+    if (it === "torch") {
+      const burnable = (!GROUND.has(c) && "TFbH#+&?!\";wCBhLrgWVX".includes(c)) || (GROUND.has(c) && g === ".");
+      return burnable ? {text: "Set on fire (uses the torch)", ok: true, near: 1, run: (d) => act("ignite", {dir: d})}
+                      : {text: "That won't burn", ok: false};
     }
     if (it === "watering_can" && (c === ";" || c === '"')) return g === "u" ? {text: "Already watered", ok: false}
       : {text: "Water crop (grows 2x faster)", near: 1, run: (d) => act("water", {dir: d})};
