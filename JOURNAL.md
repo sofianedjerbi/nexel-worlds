@@ -456,3 +456,40 @@ User reports: "when i press briefly to walk ... (very fast pushing) it gets rese
   baseline: repeats 633 → 17, bots now craft, place, sleep, store and farm; still to fix: duplicate bed placement,
   unreachable explore/flee targets (in-view reachability planned).
 Tests: 41 pass.
+
+## 2026-11-09 · Iteration 25 — a pile of player feedback: hands, keyboard, refactor, HUD, nature
+
+User feedback, in order: bare hands by default with tools only when held; full keyboard play; birds walking in place;
+"spaghetti, refactor with best practices"; lag when sprinting; chickens hop instead of walking; act in any direction
+without turning ("Alt+direction isn't natural"); attack range too small, attacking not the default; "a tool without a
+tool"; the news panel is too much, wants Minecraft-like chat and vitals on the hotbar; unnatural break particles; picked
+fruit trees turn thinner; bushes vanish when picked.
+
+- Hands: dig/attack only use a tool or weapon named in `with` (the item in hand); ore needs a held pickaxe. Plain
+  click/Space fights, shift-click/X is the peaceful use (milk, take down, till). Bare hands now animate as a reach
+  (the sheet's swings show an axe/hoe, which was the "tool without tool"). Melee reach 2 tiles, spear 3.
+- Keyboard: Space acts, X is the alternative; no turning needed: it targets the faced tile, then the nearest creature
+  or person in reach, then any neighbour (last direction first). A prompt above the hotbar says what Space/X will do.
+  Q/1-9/0 choose what's in hand; C crafting and B bag navigate with arrows and Enter (Shift+Enter crafts 5).
+  Big structures extend away from the placer (facing south puts the well south). QA: chop, craft, place, take down,
+  all keyboard-only in Chrome.
+- Refactor: sim.py (1.5k lines) → sim/ package: constants, entities, specs, core (tick loop) + mixins movement,
+  building, items, combat, animals, needs, social, environment, observe. Done with an AST script: every method body
+  byte-identical (verified), imports per module computed, ruff F/I clean. Client index.html (1.7k lines) → markup +
+  css/style.css + 16 scripts by concern; server serves /js and /css with the same path-escape guard.
+  A duplicate `held` declaration had broken the whole client for a while; tests/test_web.py now syntax-checks every
+  script and the bundle with node.
+- Animals: the chicken sheet's row 1 is a hop and row 2 the walk; we had them backwards (walk-in-place idle, hopping
+  movement). Fixed and verified on a frame strip.
+- Sprint: could not reproduce stalls (0 stalled frames at 10 tiles/s, DPR 1 and 2, new terrain, a copy of the play
+  world; 120 fps, ~0.5 ms JS/frame). Found a real judder source: the camera offset and the player were rounded to
+  pixels separately, so you wobbled 1 px against the ground at odd window widths. Fixed with screenOrigin().
+- Nature: picking a fruit tree leaves the same tree, bare (fruit_bare.png is generated from the pack's last drop frame
+  minus the fallen fruit); picking a bush leaves a bare bush; both bear again (4 / 3 min) and the fruit arcs into the
+  picker's hands. Cutting the bare bush gives fiber. Debris now takes the struck block's colours, lands, bounces,
+  settles and fades, with a dust puff from stone.
+- HUD: hearts (left) and drumsticks (right) on the hotbar, energy line between, status line for starving/exhausted;
+  chat bottom-left fades after 10 s, Enter opens the history; only chat, deaths, arrivals and things involving you;
+  people panel is just who's awake; server stats on F3.
+Tests: 61 pass (43 sim + 18 web).
+Next: unfinished bot policy fixes; audit remaining info texts that still say "shift-click"; ES-module migration.
