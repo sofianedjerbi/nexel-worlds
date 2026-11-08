@@ -112,28 +112,9 @@ function frame(now) {
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawRoofs(sx, sy, S, dt);
   drawNight(vis, sx, sy, S, t);
-  if (mouse.in && me) {
-    const p = tileAtScreen(mouse.x, mouse.y), it = intent(p, keys.has("shift"));
-    if (it && it.ghost) {
-      ctx.globalAlpha = .7;
-      const spr = it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
-        : it.ghost === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(p.x, p.y)] * 16, 16, 16, 0, -2]
-        : objectSprite(PLACEABLE_BLOCK[it.ghost], it.anchor ? it.anchor.x : p.x, it.anchor ? it.anchor.y : p.y, t);
-      const gx = it.anchor ? it.anchor.x : p.x, gy = it.anchor ? it.anchor.y : p.y;
-      if (spr) { const [img, a2, b2, w2, h2, dx2, dy2] = spr; ctx.drawImage(img, a2, b2, w2, h2, sx(gx) + dx2 * zoom, sy(gy) + dy2 * zoom, w2 * zoom, h2 * zoom); }
-      ctx.globalAlpha = 1;
-      for (const q of it.foot || [p]) {
-        ctx.fillStyle = it.ok && !(it.bad || []).some((b) => b.x === q.x && b.y === q.y) ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)";
-        ctx.fillRect(sx(q.x), sy(q.y), S, S);
-      }
-    }
-    if (it && !it.info && !it.walk) {
-      ctx.strokeStyle = it.ok === false ? "rgba(230,80,70,.9)" : "rgba(255,248,232,.95)"; ctx.lineWidth = zoom;
-      const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y);
-      const x0 = Math.min(...xs), y0 = Math.min(...ys), x1 = Math.max(...xs) + 1, y1 = Math.max(...ys) + 1;
-      ctx.strokeRect(sx(x0) + zoom / 2, sy(y0) + zoom / 2, (x1 - x0) * S - zoom, (y1 - y0) * S - zoom);
-    }
-  }
+  updatePrompt();
+  const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
+  if (aim) drawIntent(aim.p, aim.it, sx, sy, S, t);
   for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
   drawProgress(sx, sy, S);
   floats = floats.filter((f) => t - f.t < 1.4);
@@ -156,6 +137,29 @@ function frame(now) {
   }
   ctx.textAlign = "start";
 }
+// Highlight what an action would hit: a ghost of what gets placed, tinted footprint, and an outline.
+function drawIntent(p, it, sx, sy, S, t) {
+  if (it && it.ghost) {
+    ctx.globalAlpha = .7;
+    const spr = it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
+      : it.ghost === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(p.x, p.y)] * 16, 16, 16, 0, -2]
+      : objectSprite(PLACEABLE_BLOCK[it.ghost], it.anchor ? it.anchor.x : p.x, it.anchor ? it.anchor.y : p.y, t);
+    const gx = it.anchor ? it.anchor.x : p.x, gy = it.anchor ? it.anchor.y : p.y;
+    if (spr) { const [img, a2, b2, w2, h2, dx2, dy2] = spr; ctx.drawImage(img, a2, b2, w2, h2, sx(gx) + dx2 * zoom, sy(gy) + dy2 * zoom, w2 * zoom, h2 * zoom); }
+    ctx.globalAlpha = 1;
+    for (const q of it.foot || [p]) {
+      ctx.fillStyle = it.ok && !(it.bad || []).some((b) => b.x === q.x && b.y === q.y) ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)";
+      ctx.fillRect(sx(q.x), sy(q.y), S, S);
+    }
+  }
+  if (it && !it.info && !it.walk) {
+    ctx.strokeStyle = it.ok === false ? "rgba(230,80,70,.9)" : "rgba(255,248,232,.95)"; ctx.lineWidth = zoom;
+    const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y);
+    const x0 = Math.min(...xs), y0 = Math.min(...ys), x1 = Math.max(...xs) + 1, y1 = Math.max(...ys) + 1;
+    ctx.strokeRect(sx(x0) + zoom / 2, sy(y0) + zoom / 2, (x1 - x0) * S - zoom, (y1 - y0) * S - zoom);
+  }
+}
+
 function outlined(text, x, y, color) {
   ctx.fillStyle = "#5b3f36";
   for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) ctx.fillText(text, x + a, y + b);

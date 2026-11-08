@@ -10,6 +10,7 @@ function tileAtScreen(mx, my) {
   return {x: Math.floor((mx - ox) / S), y: Math.floor((my - oy) / S)};
 }
 cv.addEventListener("mousemove", (e) => {
+  if (Math.abs(e.clientX - mouse.x) + Math.abs(e.clientY - mouse.y) > 4) inputMode = "mouse";   // the mouse is back
   mouse.x = e.clientX; mouse.y = e.clientY; mouse.in = true;
   if (drag) {
     const dx = (e.clientX - drag.x) / TS(), dy = (e.clientY - drag.y) / TS();

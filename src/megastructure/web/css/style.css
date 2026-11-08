@@ -104,3 +104,8 @@
   #help b { color:var(--ink); font-weight:normal; }
   #hover.bad { color:var(--warn); }
   #hover { position:fixed; pointer-events:none; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; display:none; z-index:5; }
+  #prompt { position:fixed; left:50%; bottom:calc(clamp(40px, 4vw, 56px) + 52px); transform:translateX(-50%); display:none; z-index:3;
+    color:#fff8e8; font-size:18px; white-space:nowrap; pointer-events:none;
+    text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+  #prompt b { color:#ffe6a8; font-weight:normal; margin-right:4px; } #prompt i { font-style:normal; margin:0 10px; opacity:.7; }
+  .rcard.kfocus, .slot.kfocus { outline:3px solid #6aa66f; outline-offset:1px; }

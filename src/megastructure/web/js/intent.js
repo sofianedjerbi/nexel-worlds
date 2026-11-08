@@ -70,7 +70,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     if ((c === "C" || c === "q") && it !== "torch") return {text: `Store ${label(it)} in ${c === "q" ? "basket" : "chest"}`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
     const free = !hasBlock && WALKABLE_GROUND.has(g);
     if (FOOT[block]) {
-      const f = footprint(block, p.x, p.y);
+      const f = footprint(block, p.x, p.y, s.x, s.y);
       const bad = f.tiles.filter((q) => { const tq = tile(q.x, q.y);
         return !tq || !(GROUND.has(tq[0]) || tq[0] === "f" || tq[0] === "t") || !WALKABLE_GROUND.has(tq[1]) || tq[1] === ":"
           || (q.x === s.x && q.y === s.y) || (SOLID.has(block) && entityAt(q)); });

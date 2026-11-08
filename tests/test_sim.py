@@ -578,3 +578,10 @@ def test_spread_bushes_are_tidied_on_load(world):
     sim.world.flush()
     del sim.world.chunks[(x >> 5, y >> 5)]
     assert sim.world.block(x, y) == "none"
+
+
+def test_structures_extend_away_from_the_placer(world):
+    sim, a = world
+    a.add("well", 2)
+    assert run(sim, a, "place", {"dir": "S", "item": "well"})["at"] == [a.x, a.y + 2]   # facing south: grows south
+    assert run(sim, a, "place", {"dir": "W", "item": "well"})["at"] == [a.x - 2, a.y]   # facing west: grows west

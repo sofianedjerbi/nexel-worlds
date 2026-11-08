@@ -15,10 +15,12 @@ const CH = {
 };
 // structures bigger than a tile (tiles.py FOOTPRINT): stored on the bottom-left tile, the rest is Z/z
 const FOOT = {Y: [2, 2], J: [2, 2], m: [3, 2]};
-function footprint(c, x, y) {             // placing at (x, y): the anchor and every covered tile
-  const [w, h] = FOOT[c], x0 = x - ((w - 1) >> 1), tiles = [];
-  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) tiles.push({x: x0 + i, y: y - j});
-  return {ax: x0, ay: y, tiles};
+function footprint(c, x, y, px, py) {     // placing at (x, y) from (px, py): the anchor and every covered tile
+  const [w, h] = FOOT[c];                 // same rule as tiles.py footprint: extend away from the placer
+  let x0 = x - ((w - 1) >> 1);
+  if (px === x - 1 && py === y) x0 = x; else if (px === x + 1 && py === y) x0 = x - w + 1;
+  const ay = px === x && py === y - 1 ? y + h - 1 : y;
+  return {ax: x0, ay, tiles: footOf(c, x0, ay)};
 }
 function footOf(c, ax, ay) { const [w, h] = FOOT[c], tiles = []; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) tiles.push({x: ax + i, y: ay - j}); return tiles; }
 function structAt(x, y) {                 // the anchor of the structure a Z/z tile belongs to

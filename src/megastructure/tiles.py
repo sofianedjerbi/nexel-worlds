@@ -102,16 +102,25 @@ def crop_species(x: int, y: int) -> str:
     return CROPS[h % len(CROPS)]
 B = {b.name: i for i, b in enumerate(BLOCKS)}
 
-# Multi-tile structures: (width, height). Placing at target (x, y) covers columns x0..x0+w-1 with
-# x0 = x - (w-1)//2, and rows y-h+1..y (the target is on the front row; the structure extends away
-# from the viewer). The block itself is stored on the bottom-left tile; the web client uses the same rule.
+# Multi-tile structures: (width, height). The block itself is stored on the bottom-left tile, the rest of the
+# footprint holds parts. The web client (vocab.js footprint) uses the same placement rule.
 FOOTPRINT = {"well": (2, 2), "coop": (2, 2), "picnic_blanket": (3, 2)}
 
 
-def footprint(block: str, x: int, y: int) -> tuple[tuple[int, int], list[tuple[int, int]]]:
+def footprint(block: str, x: int, y: int, px: int | None = None, py: int | None = None):
+    """Tiles a structure placed at target (x, y) covers: ((anchor x, anchor y), tiles).
+
+    It covers the target and extends away from the placer at (px, py) when they stand right next to it
+    (north of it: it grows south; west/east of it: it grows the other way); otherwise it is centred on the
+    target column and grows north (the target is its front row)."""
     w, h = FOOTPRINT[block]
     x0 = x - (w - 1) // 2
-    return (x0, y), [(x0 + i, y - j) for j in range(h) for i in range(w)]
+    if (px, py) == (x - 1, y):
+        x0 = x
+    elif (px, py) == (x + 1, y):
+        x0 = x - w + 1
+    bottom = y + h - 1 if (px, py) == (x, y - 1) else y
+    return (x0, bottom), [(x0 + i, bottom - j) for j in range(h) for i in range(w)]
 
 
 def structure_at(block_at, x: int, y: int):

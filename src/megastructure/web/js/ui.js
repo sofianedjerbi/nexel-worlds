@@ -70,6 +70,7 @@ function drawHotbar(inv) {
   el.appendChild(bag);
   drawBag(inv, extra);
 }
+let bagFocus = null;     // bag item highlighted for keyboard use
 function toggleBag() { const b = $("bag"); b.style.display = b.style.display === "block" ? "none" : "block"; }
 function drawBag(inv, extra) {
   const el = $("bagitems"); if (!el) return;
@@ -78,6 +79,7 @@ function drawBag(inv, extra) {
     const d = document.createElement("div"); d.className = "slot";
     d.appendChild(iconCanvas(name));
     d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name))}</span>`);
+    d.dataset.name = name; if (name === bagFocus) d.classList.add("kfocus");
     d.onclick = () => {                          // bring it into the hotbar (swapping with the selected slot or slot 9)
       const i = selected && slots.indexOf(selected) >= 0 && slots.indexOf(selected) < 9 ? slots.indexOf(selected) : 8;
       const j = slots.indexOf(name); if (j >= 0) slots[j] = slots[i]; else slots.push(slots[i]);
@@ -91,7 +93,7 @@ const FOODS = ["pumpkin", "cauliflower", "lettuce", "eggplant", "carrot", "fruit
 function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);
   if (FOODS.includes(name)) return act("eat", {item: name});
-  toast(`Right-click a tile next to you to place the ${label(name)}.`);
+  toast(`Face a tile and press Space (or click it) to use the ${label(name)}.`);
 }
 const GOALS = [
   ["Chop trees for 4 wood", (inv, d) => (inv.wood || 0) >= 4 || d.workbench],
@@ -142,6 +144,7 @@ function nearestObject(ch, maxD) {
   }
   return best;
 }
+let craftFocus = null;   // recipe name highlighted for keyboard use
 function drawRecipes() {
   const el = $("recipes"); if (!el || !Object.keys(recipes).length) return;
   const inv = meObs ? meObs.self.inventory : {};
@@ -157,6 +160,7 @@ function drawRecipes() {
     for (const name of items) {
       const rc = recipes[name], haveAll = Object.entries(rc.inputs).every(([k, v]) => (inv[k] || 0) >= v), atStation = near(rc.station);
       const card = document.createElement("div"); card.className = "rcard" + (haveAll && atStation ? "" : " no");
+      card.dataset.name = name; if (name === craftFocus) card.classList.add("kfocus");
       const big = iconCanvas(name); big.className = "big"; card.appendChild(big);
       const out = Object.values(rc.output)[0];
       const body = document.createElement("div");
@@ -209,5 +213,40 @@ function banner(title, text) {
 let toastTimer;
 function toast(msg, bad) { $("toastt").textContent = msg; const t = $("toast"); t.style.display = "block"; $("toastt").style.color = bad ? "var(--warn)" : "var(--ink)"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3200); }
 
-const KEYDIR = {w: "N", arrowup: "N", s: "S", arrowdown: "S", a: "W", arrowleft: "W", d: "E", arrowright: "E"};
-const keys = new Set();
+
+// ------------------------------------------------------------------ keyboard navigation inside panels
+// Arrow keys (or WASD) move a highlight over the cards of an open panel; Enter/Space uses the highlighted card.
+const isOpen = (id) => $(id).style.display === "block";
+function nearestCard(cards, cur, dir) {
+  if (cur < 0) return 0;
+  const r = cards[cur].getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  let best = -1, bestD = Infinity;
+  cards.forEach((c, i) => {
+    if (i === cur) return;
+    const q = c.getBoundingClientRect(), dx = q.left + q.width / 2 - cx, dy = q.top + q.height / 2 - cy;
+    const along = {N: -dy, S: dy, W: -dx, E: dx}[dir], across = dir === "N" || dir === "S" ? Math.abs(dx) : Math.abs(dy);
+    if (along <= 2) return;                                  // only cards that lie in that direction
+    const d = along + across * 3;                            // prefer staying in the same row/column
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best < 0 ? cur : best;
+}
+function panelKey(id, cardSel, getFocus, setFocus, k, e) {
+  const cards = [...$(id).querySelectorAll(cardSel)]; if (!cards.length) return false;
+  let cur = cards.findIndex((c) => c.dataset.name === getFocus());
+  const dir = KEYDIR[k];
+  if (dir) cur = nearestCard(cards, cur, dir);
+  else if (k === "enter" || k === " ") {
+    const card = cards[Math.max(0, cur)];
+    if (e.shiftKey && id === "craft" && !card.classList.contains("no")) act("craft", {recipe: card.dataset.name, n: 5});
+    else if (card.onclick) card.onclick();
+    else toast(card.title || "Can't use that now.", true);
+    return true;
+  } else return false;
+  cards.forEach((c) => c.classList.remove("kfocus"));
+  cards[cur].classList.add("kfocus"); cards[cur].scrollIntoView({block: "nearest"});
+  setFocus(cards[cur].dataset.name);
+  return true;
+}
+const craftKey = (k, e) => panelKey("craft", ".rcard", () => craftFocus, (n) => craftFocus = n, k, e);
+const bagKey = (k, e) => panelKey("bag", ".slot[data-name]", () => bagFocus, (n) => bagFocus = n, k, e);

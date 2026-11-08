@@ -156,7 +156,7 @@ class Building:
         return {}
 
     def _structure_spot(self, a, block, x, y):
-        anchor, tiles = T.footprint(block, x, y)
+        anchor, tiles = T.footprint(block, x, y, a.x, a.y)
         for tx, ty in tiles:
             if (tx, ty) == (a.x, a.y):
                 raise ActionError("occupied", f"stand outside the {block.replace('_', ' ')}'s spot (it covers "
