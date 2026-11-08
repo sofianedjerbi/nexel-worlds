@@ -38,3 +38,33 @@ fast (−60 per 10 min day); revisit when LLM agents are slower decision-makers.
 
 **Next**: M2. Benchmark Qwen3-8B vs Qwen3-30B-A3B via mlx_lm.server, then build the thinker harness
 (ReAct, notepad, outcome-grounded lessons, scripted fallback) and keep one agent alive for 30 min.
+
+## 2026-11-08 · Iteration 2 — the client becomes a game (user feedback: "ugly", "how do I play/talk?")
+
+**Hypothesis**: the flat-colour debug viewer hid how the world works and made playing a chore.
+That matters for the project too: humans are how we'll judge whether agent behaviour looks alive.
+
+**Change** (`web/index.html`, served by the game server at `/`)
+- Procedural 16 px pixel-art textures (4 variants per tile, hashed by position). 3/4 view: solid blocks get
+  a raised top and a front face, drawn back to front with entities, so walls occlude correctly. Agents hidden
+  behind walls show as an x-ray silhouette.
+- Lighting buffer: ambient gloom by day, near-black at lights-out with dusk/dawn ramps. Light around agents;
+  warm glows from heaters and fire, cyan from terminals and accretors, red sentinel eyes. Vignette.
+- Sprites for people (per-name colour, facing, bob), skitters, sentinels, accretors. Smooth interpolation.
+- Play UX: join screen, Enter-to-talk chat bar (`!` shout, `/tool k=v` raw commands), speech bubbles,
+  hotbar with icons (1–9 select, E eat), crafting panel (shows what you can craft right now), context clicks
+  (walk / dig / attack / read sign / open locker; right-click to place; select an item and click someone to
+  give it), hold WASD to keep walking, damage and loot floaters, toasts with hints.
+- Server: the region reply carries time and night phase; spectators can fetch recipes.
+
+**Bugs found by testing in real Chrome (Playwright, channel=chrome)**
+1. The spectator event envelope `{"type":"event", **ev}` was overwritten by the event's own `type`, so the feed and
+   bubbles were silently dead since M1. → `{"type":"event","ev":ev}`.
+2. The light buffer accumulated alpha each frame and went black. → clearRect each frame.
+3. Following or spawning off-screen never moved the camera (the camera only knew entities inside the region).
+   → fall back to the agent list or self position.
+4. A taken name gave a cryptic error; RPC calls were sent on a CONNECTING socket. → Clear message, guarded rpc.
+Also: bots now reconnect when the server restarts.
+
+**Result**: no console errors; join, walk, talk, feed and bubbles verified in a real browser.
+**Next**: M2 thinker (model benchmark, then one LLM agent surviving 30 min).

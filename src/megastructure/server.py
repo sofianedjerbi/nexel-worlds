@@ -115,7 +115,7 @@ class GameServer:
     def _broadcast(self, ev):
         if not self.spectators:
             return
-        msg = json.dumps({"type": "event", **ev})
+        msg = json.dumps({"type": "event", "ev": ev})
         for q in list(self.spectators):
             if q.qsize() < 1000:
                 q.put_nowait(msg)
@@ -123,11 +123,13 @@ class GameServer:
     def region(self, x, y, w, h) -> dict:
         w, h = min(int(w), 256), min(int(h), 256)
         rows = ["".join(self.sim.world.char(i, j) for i in range(x, x + w)) for j in range(y, y + h)]
-        ents = [{"kind": "agent", "name": a.name, "id": a.id, "x": a.x, "y": a.y, "hp": a.hp}
+        ents = [{"kind": "agent", "name": a.name, "id": a.id, "x": a.x, "y": a.y, "hp": a.hp,
+                 "doing": a.action.tool if a.action else None, "weapon": self.sim.best_weapon(a)}
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
-        ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y} for c in self.sim.creatures.values()
+        ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp} for c in self.sim.creatures.values()
                  if x <= c.x < x + w and y <= c.y < y + h]
-        return {"x": x, "y": y, "rows": rows, "entities": ents, "tick": self.sim.tick}
+        return {"x": x, "y": y, "rows": rows, "entities": ents, "tick": self.sim.tick, "time": self.sim.clock(),
+                "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}
 
     # ------------------------------------------------------------- handlers
     async def handler(self, ws):
@@ -158,6 +160,9 @@ class GameServer:
                     out = self.region(int(msg["x"]), int(msg["y"]), msg.get("w", 64), msg.get("h", 48))
                 elif op == "metrics":
                     out = self.metrics()
+                elif op == "recipes":
+                    out = {"recipes": {k: {"inputs": r.inputs, "output": r.output, "station": r.station}
+                                       for k, r in RECIPES.items()}}
                 elif op == "agents":
                     out = {"agents": [dict(a.to_json(), online=a.online) for a in self.sim.agents.values()]}
                 else:
