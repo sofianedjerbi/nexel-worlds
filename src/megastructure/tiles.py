@@ -81,6 +81,13 @@ BLOCKS = [
     Block("wood_wall", "W", flammable=True, hardness=10, drops={"wood_wall": 1}, tool="axe", wall=True),
     Block("boat", "V", solid=False, flammable=True, hardness=6, drops={"boat": 1}, tool="axe"),  # moored on water
     Block("mailbox", "X", flammable=True, hardness=6, drops={"mailbox": 1}, tool="axe"),
+    # structures bigger than one tile: the block sits on the bottom-left tile, the rest of the footprint is "part"
+    Block("well", "Y", hardness=20, drops={"well": 1}, tool="pickaxe"),            # fills watering cans
+    Block("coop", "J", flammable=True, hardness=12, drops={"coop": 1}, tool="axe"),  # chickens nearby lay here
+    Block("picnic_blanket", "m", solid=False, flammable=True, hardness=3, drops={"picnic_blanket": 1}),
+    Block("basket", "q", flammable=True, hardness=3, drops={"basket": 1}),            # a small chest
+    Block("part", "Z"),                       # solid rest of a structure's footprint
+    Block("flat_part", "z", solid=False),     # walkable rest of a flat structure (blanket)
 ]
 
 # Crop species: which plant a sprout becomes is a pure function of its tile, shared with the web client
@@ -92,6 +99,27 @@ def crop_species(x: int, y: int) -> str:
     h = (((x * 73856093) & 0xFFFFFFFF) ^ ((y * 19349663) & 0xFFFFFFFF)) & 0xFFFFFFFF
     return CROPS[h % len(CROPS)]
 B = {b.name: i for i, b in enumerate(BLOCKS)}
+
+# Multi-tile structures: (width, height). Placing at target (x, y) covers columns x0..x0+w-1 with
+# x0 = x - (w-1)//2, and rows y-h+1..y (the target is on the front row; the structure extends away
+# from the viewer). The block itself is stored on the bottom-left tile; the web client uses the same rule.
+FOOTPRINT = {"well": (2, 2), "coop": (2, 2), "picnic_blanket": (3, 2)}
+
+
+def footprint(block: str, x: int, y: int) -> tuple[tuple[int, int], list[tuple[int, int]]]:
+    w, h = FOOTPRINT[block]
+    x0 = x - (w - 1) // 2
+    return (x0, y), [(x0 + i, y - j) for j in range(h) for i in range(w)]
+
+
+def structure_at(block_at, x: int, y: int):
+    """The (anchor x, anchor y, block name) of the structure covering a part tile, or None."""
+    for name, (w, h) in FOOTPRINT.items():
+        for i in range(w):
+            for j in range(h):
+                if block_at(x - i, y + j) == name:
+                    return x - i, y + j, name
+    return None
 
 # items that place as a block (item name -> block name)
 PLACEABLE = {
@@ -105,6 +133,7 @@ PLACEABLE = {
     "seed": "sprout",
     "chest": "chest",
     "flower": "flower",
+    "well": "well", "coop": "coop", "picnic_blanket": "picnic_blanket", "basket": "basket",
     "wood_wall": "wood_wall", "boat": "boat", "mailbox": "mailbox", "bed": "bed", "chair": "chair", "table": "table", "plant": "plant", "clock": "clock", "rug": "rug", "gate": "gate",
 }
 # Items laid into the ground: item -> {ground it can go on: resulting ground}. One item, one obvious result
@@ -165,5 +194,9 @@ RECIPES = {
         Recipe("wood_wall", {"wood": 3}, {"wood_wall": 2}, 5, "workbench"),
         Recipe("boat", {"wood": 8, "rope": 1}, {"boat": 1}, 10, "workbench"),
         Recipe("mailbox", {"wood": 3}, {"mailbox": 1}, 4, "workbench"),
+        Recipe("well", {"stone": 8, "wood": 2, "rope": 1}, {"well": 1}, 10, "workbench"),
+        Recipe("coop", {"wood": 8, "fiber": 2}, {"coop": 1}, 8, "workbench"),
+        Recipe("picnic_blanket", {"fiber": 6}, {"picnic_blanket": 1}, 4),
+        Recipe("basket", {"fiber": 3}, {"basket": 1}, 3),
     ]
 }

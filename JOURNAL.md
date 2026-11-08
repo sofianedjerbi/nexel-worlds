@@ -383,3 +383,22 @@ Tests: 31 pass.
 - Bug caught by QA: the flame helper had been lost in the Sprout rewrite (`drawFire is not defined`); restored on the
   generated flame sprites.
 Tests: 33 pass.
+
+## 2026-11-08 · Iteration 21 — structures bigger than a tile: well, coop, picnic
+
+Hypothesis: the pack's well, chicken coops, picnic blanket and basket can become useful, collision-honest objects
+if the world supports multi-tile structures without changing the chunk format.
+- Multi-tile structures: the block sits on the bottom-left tile and the rest of the footprint holds `part` (solid) or
+  `flat_part` (walkable). One rule, shared by server (tiles.footprint/structure_at) and client (footprint/structAt):
+  placing at a target covers the w×h spot centred on it and extending away from you; any part tile means the whole
+  structure (dig, burn, water, describe, the agents' ASCII view). You can't place one over yourself; the ghost tints
+  every covered tile and names what is in the way ("Wait, something is standing there").
+- Well (2×2, 8 stone + 2 wood + rope): watering cans now hold 12 waterings (bar on the hotbar slot) and refill at a
+  well or any water. Coop (2×2, 8 wood + 2 fiber): hens within 6 tiles lay twice as often, into the coop's door tile.
+  Picnic blanket (3×2, walkable, 6 fiber): food eaten on it fills 50% more (hearts). Basket (3 fiber): a small chest.
+- Item icons keep their aspect ratio (the boat and new structures were squashed).
+- QA in Chrome: all four placed exactly where previewed, can filled from the well's right half, picnic bonus applied,
+  the well taken down from a part tile clears all 4 tiles. Bug caught: the client's object whitelist didn't list the
+  new chars, so nothing drew.
+Tests: 37 pass (4 new).
+Next: hay bales/feeding boxes from the barn sheet (feed animals in bulk), performance check on a big built area.

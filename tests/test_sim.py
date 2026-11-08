@@ -452,3 +452,60 @@ def test_glooms_fade_and_never_bite_by_day(world):
     for _ in range(sec(8)):
         sim.step()
     assert a.hp == hp and g.id not in sim.creatures
+
+
+def test_well_is_two_by_two_and_fills_the_can(world):
+    sim, a = world
+    a.add("well", 1)
+    r = run(sim, a, "place", {"dir": "N", "item": "well"})
+    assert r["ok"] and r["at"] == [a.x, a.y - 1]
+    assert {sim.world.block(a.x + i, a.y - 1 - j) for i in (0, 1) for j in (0, 1)} == {"well", "part"}
+    assert not sim.world.passable(a.x + 1, a.y - 2)
+    a.add("watering_can", 1)
+    a.can = 0
+    sim.world.set(a.x, a.y + 1, ground="tilled", block="sprout")
+    assert run(sim, a, "water", {"dir": "S"})["error"] == "empty"
+    a.x += 1   # the well's right half is the well too
+    assert run(sim, a, "water", {"dir": "N"})["can"] == 12
+    a.x -= 1
+    assert run(sim, a, "water", {"dir": "S"})["can"] == 11
+    a.add("pickaxe", 1)
+    a.x += 1
+    assert run(sim, a, "dig", {"dir": "N"})["ok"] and a.count("well") == 1
+    assert all(sim.world.block(a.x - 1 + i, a.y - 1 - j) == "none" for i in (0, 1) for j in (0, 1))
+
+
+def test_structure_needs_room_and_you_outside(world):
+    sim, a = world
+    a.add("picnic_blanket", 1)
+    sim.world.set(a.x + 1, a.y - 2, block="rock")       # blanket 3x2 centred on the N tile hits it
+    assert run(sim, a, "place", {"dir": "N", "item": "picnic_blanket"})["error"] == "occupied"
+    sim.world.set(a.x + 1, a.y - 2, block="none")
+    assert run(sim, a, "place", {"dir": "N", "item": "picnic_blanket"})["ok"]
+    assert sim.world.block(a.x - 1, a.y - 1) == "picnic_blanket" and sim.world.passable(a.x + 1, a.y - 2)
+
+
+def test_picnic_and_basket(world):
+    sim, a = world
+    a.add("picnic_blanket", 1)
+    run(sim, a, "place", {"dir": "N", "item": "picnic_blanket"})
+    a.y -= 2                                              # sit on the back row (a part tile)
+    a.hunger, a.inventory["bread"] = 10, 1
+    assert run(sim, a, "eat", {"item": "bread"})["picnic"] and a.hunger == 10 + 45
+    a.y += 2
+    a.add("basket", 1); a.add("fiber", 2)
+    run(sim, a, "place", {"dir": "S", "item": "basket"})
+    assert run(sim, a, "store", {"dir": "S", "item": "fiber", "n": 2})["ok"]
+    assert run(sim, a, "dig", {"dir": "S"})["ok"] and a.count("fiber") == 2 and a.count("basket") == 1
+
+
+def test_chickens_lay_into_the_coop(world):
+    sim, a = world
+    from megastructure.sim import Creature
+    a.add("coop", 1)
+    run(sim, a, "place", {"dir": "N", "item": "coop"})
+    hen = Creature(sim.next_creature, "chicken", a.x + 3, a.y + 2, 10); sim.next_creature += 1
+    hen.lay, hen.cooldown = sim.tick + 1, 10**6
+    sim.creatures[hen.id] = hen
+    sim.step(); sim.step()
+    assert sim.items.get((a.x, a.y), {}).get("egg") == 1   # the coop's door tile is where we stand

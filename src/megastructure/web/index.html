@@ -62,6 +62,8 @@
   .slot.sel { border-image-source:url(assets/slot_sel.png); }
   .slot canvas { width:clamp(24px, 2.3vw, 32px); height:clamp(24px, 2.3vw, 32px); image-rendering:pixelated; }
   .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:18px; font-weight:800; color:#fff8e8; text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+  .slot .lvl { position:absolute; left:8px; right:8px; bottom:5px; height:4px; background:#5b4038; border-radius:2px; overflow:hidden; }
+  .slot .lvl i { display:block; height:100%; background:#7fd3e6; }
   .slot .k { position:absolute; left:-6px; top:-9px; font-size:18px; font-weight:800; color:#f6e3bf; }
   .slot:hover .tip { display:block; }
   .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
@@ -166,13 +168,27 @@ const CH = {
   "\"": "crop", "w": "ripe_crop", "t": "stump", "C": "chest", "F": "fruit_tree", ";": "sprout",
   "u": "wet_tilled", "n": "floor", "f": "flower", "B": "bed", "h": "chair", "L": "table", "p": "plant", "K": "clock",
   "r": "rug", "g": "gate", "W": "wood_wall", "V": "boat", "X": "mailbox",
+  "Y": "well", "J": "coop", "m": "picnic_blanket", "q": "basket", "Z": "part", "z": "flat_part",
 };
+// structures bigger than a tile (tiles.py FOOTPRINT): stored on the bottom-left tile, the rest is Z/z
+const FOOT = {Y: [2, 2], J: [2, 2], m: [3, 2]};
+function footprint(c, x, y) {             // placing at (x, y): the anchor and every covered tile
+  const [w, h] = FOOT[c], x0 = x - ((w - 1) >> 1), tiles = [];
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) tiles.push({x: x0 + i, y: y - j});
+  return {ax: x0, ay: y, tiles};
+}
+function footOf(c, ax, ay) { const [w, h] = FOOT[c], tiles = []; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) tiles.push({x: ax + i, y: ay - j}); return tiles; }
+function structAt(x, y) {                 // the anchor of the structure a Z/z tile belongs to
+  for (const [c, [w, h]] of Object.entries(FOOT)) for (let i = 0; i < w; i++) for (let j = 0; j < h; j++)
+    if (combAt(x - i, y + j) === c) return {x: x - i, y: y + j, c};
+  return null;
+}
 const CHAR = Object.fromEntries(Object.entries(CH).map(([c, n]) => [n, c]));
 const GROUND = new Set("~:.,o_'=un");
-const SOLID = new Set("TFbM*H#%^&CBhLpKWX");
+const SOLID = new Set("TFbM*H#%^&CBhLpKWXYJqZ");
 const WALKABLE_GROUND = new Set(":.,o_'un");
 const LABEL = {wood_wall: "wooden wall", wet_tilled: "watered soil", watering_can: "watering can", fruit_tree: "fruit tree", berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
-  cooked_meat: "cooked meat", deep_water: "deep water"};
+  cooked_meat: "cooked meat", deep_water: "deep water", picnic_blanket: "picnic blanket"};
 const label = (n) => LABEL[n] || String(n).replace("_", " ");
 
 // =====================================================================================
@@ -181,7 +197,7 @@ const label = (n) => LABEL[n] || String(n).replace("_", " ");
 const IMG = {};
 const ANIMAL_SHEETS = ["chicken_brown", "chicken_red", "chicken_blue", "chicken_green", "cow_light", "cow_pink", "cow_purple", "cow_green",
   "chick", "chick_brown", "chick_red", "chick_blue", "chick_green", "calf", "calf_light", "calf_pink", "calf_purple", "calf_green"];
-const ASSETS = [...ANIMAL_SHEETS, "mailbox", "boats", "deep_mask", "house_walls", "house_roof", "gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
+const ASSETS = [...ANIMAL_SHEETS, "well", "coop", "blanket", "basket", "mailbox", "boats", "deep_mask", "house_walls", "house_roof", "gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
   "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen"];
 let GEN = {};
 function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
@@ -286,7 +302,7 @@ function onRegion(d) {
 //  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
 const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
-const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVX".includes(c) && !GROUND.has(c);
+const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVXYJmq".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
   const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1]); };
@@ -436,6 +452,11 @@ function objectSprite(c, x, y, t) {
       return [IMG.gates, Math.round(o * 3) * 16, 0, 16, 16, 0, -3];
     }
     case "t": return [IMG.trees, h < .5 ? 0 : 16, 96, 16, 16, 0, 0];
+    case "Y": return [IMG.well, 0, 0, 32, 32, 0, -16];                                   // 2x2, drawn from the bottom-left tile
+    case "J": { const k = Math.floor(h * 6); return [IMG.coop, 160 + (k % 3) * 32, 80 + Math.floor(k / 3) * 48, 32, 44, 0, -28]; }
+    case "m": return [IMG.blanket, 0, 8, 48, 32, 0, -16];
+    case "q": return [IMG.basket, 0, 0, 16, 16, 0, -3];
+    case "Z": case "z": return null;                                                       // drawn by the structure itself
     case "C": {                                                                           // lid opens when used
       const o = chestOpen.get(x + "," + y), k = o ? (performance.now() - o) / 1000 : 9;
       const f = k < .2 ? Math.floor(k / .2 * 4) : k < 1.2 ? 4 : k < 1.4 ? 4 - Math.floor((k - 1.2) / .2 * 4) : 0;
@@ -751,13 +772,15 @@ function onEvent(e) {
   if (e.type === "milk") { burst(e.x, e.y, "spark", 4, {dy: -.2, g: 5}); emote(e.name, "happy"); }
   if (e.type === "love") emote(e.by, "love");
   if (e.type === "lay") burst(e.x, e.y, "dust", 5, {up: 1, spread: 1.5, g: 3});
+  if (e.type === "fill") { burst(e.x, e.y, "water", 8, {up: 1.5, spread: 1.5}); sfx("water", e.x, e.y); }
+  if (e.type === "picnic") { emote(e.name, "love"); burst(e.x, e.y, "food", 6, {dy: -.6, g: 3}); }
   if (e.type === "mail" && e.to === me && e.from !== me) toast(`${e.from} left you a letter (mailbox at ${e.x}, ${e.y}).`);
   if (e.type === "mail_opened" && e.owner === me && e.by !== me) toast(`${e.by} opened your mailbox and took ${e.n} letter${e.n > 1 ? "s" : ""}!`, true);
   if (e.type === "board" || e.type === "moor") { burst(e.x, e.y, "water", 8, {up: 1.5, spread: 2}); sfx("water", e.x, e.y); }
   if (e.type === "hatch") { burst(e.x, e.y, "spark", 8, {dy: -.3, g: 4}); sfx("pick", e.x, e.y); }
   if (e.type === "born") burst(e.x, e.y, "food", 8, {dy: -.5, g: 3});
   if (e.type === "craft") { burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4}); sfx("craft", e.x, e.y); }
-  if (["pick_up", "drop", "chest", "milk", "love", "lay"].includes(e.type)) return;
+  if (["pick_up", "drop", "chest", "milk", "love", "lay", "fill", "picnic"].includes(e.type)) return;
   if (e.type === "attack" && e.attacker !== me && e.target !== me) return;   // other people's fights: deaths still show
   let text;
   switch (e.type) {
@@ -847,7 +870,7 @@ function frame(now) {
   for (const b of vis) for (const [i, c] of b.objs) {
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
-    const spr = objectSprite(c, x, y, t); if (spr) list.push({y, x, spr});
+    const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
   }
   occupied = new Set([...ents.values()].filter((p) => p.e).map((p) => Math.round(p.x) + "," + Math.round(p.y)));
   for (const p of ents.values()) if (p.e) list.push({y: p.y + .01, p});
@@ -855,8 +878,8 @@ function frame(now) {
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const o of list) {
     if (o.spr) {
-      const [img, a, b2, w, h, dx, dy] = o.spr, key = o.x + "," + o.y;
-      let px = sx(o.x) + dx * zoom, py = sy(o.y) + dy * zoom, ww = w * zoom, hh = h * zoom;
+      const [img, a, b2, w, h, dx, dy] = o.spr, key = o.x + "," + o.ty;
+      let px = sx(o.x) + dx * zoom, py = sy(o.ty) + dy * zoom, ww = w * zoom, hh = h * zoom;
       const pop = pops.get(key);
       if (pop !== undefined) {                       // newly placed: bounce in
         const k = (now - pop) / 260;
@@ -892,14 +915,20 @@ function frame(now) {
       ctx.globalAlpha = .7;
       const spr = it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
         : it.ghost === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(p.x, p.y)] * 16, 16, 16, 0, -2]
-        : objectSprite(PLACEABLE_BLOCK[it.ghost], p.x, p.y, t);
-      if (spr) { const [img, a2, b2, w2, h2, dx2, dy2] = spr; ctx.drawImage(img, a2, b2, w2, h2, sx(p.x) + dx2 * zoom, sy(p.y) + dy2 * zoom, w2 * zoom, h2 * zoom); }
+        : objectSprite(PLACEABLE_BLOCK[it.ghost], it.anchor ? it.anchor.x : p.x, it.anchor ? it.anchor.y : p.y, t);
+      const gx = it.anchor ? it.anchor.x : p.x, gy = it.anchor ? it.anchor.y : p.y;
+      if (spr) { const [img, a2, b2, w2, h2, dx2, dy2] = spr; ctx.drawImage(img, a2, b2, w2, h2, sx(gx) + dx2 * zoom, sy(gy) + dy2 * zoom, w2 * zoom, h2 * zoom); }
       ctx.globalAlpha = 1;
-      ctx.fillStyle = it.ok ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)"; ctx.fillRect(sx(p.x), sy(p.y), S, S);
+      for (const q of it.foot || [p]) {
+        ctx.fillStyle = it.ok && !(it.bad || []).some((b) => b.x === q.x && b.y === q.y) ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)";
+        ctx.fillRect(sx(q.x), sy(q.y), S, S);
+      }
     }
     if (it && !it.info && !it.walk) {
       ctx.strokeStyle = it.ok === false ? "rgba(230,80,70,.9)" : "rgba(255,248,232,.95)"; ctx.lineWidth = zoom;
-      ctx.strokeRect(sx(p.x) + zoom / 2, sy(p.y) + zoom / 2, S - zoom, S - zoom);
+      const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y);
+      const x0 = Math.min(...xs), y0 = Math.min(...ys), x1 = Math.max(...xs) + 1, y1 = Math.max(...ys) + 1;
+      ctx.strokeRect(sx(x0) + zoom / 2, sy(y0) + zoom / 2, (x1 - x0) * S - zoom, (y1 - y0) * S - zoom);
     }
   }
   for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
@@ -1221,8 +1250,8 @@ function walkable(x, y) {
 const FILLS = {dirt: {o: ",", u: ",", "~": ","}, path: {".": "_", ",": "_", "'": "_"}, plank: {"~": ":", ".": "n", ",": "n", "'": "n"}};
 const FILL_TEXT = {",": "Fill with dirt", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
 const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
-const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C"};
-const HARVEST = {X: "Take down mailbox", V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
+const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C", well: "Y", coop: "J", picnic_blanket: "m", basket: "q"};
+const HARVEST = {Y: "Take down the well", J: "Take down the coop", m: "Roll up the blanket", q: "Take the basket", X: "Take down mailbox", V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
@@ -1230,9 +1259,21 @@ function entityAt(p) { return [...ents.values()].find((q) => q.e && q.tx === p.x
 function intent(p, shift) {
   // the canopy of a tree covers the tile above its trunk: pointing at it means the tree
   if (combAt(p.x, p.y + 1) === "T" && GROUND.has(combAt(p.x, p.y)) && !entityAt(p) && !(selected && !shift)) p = {x: p.x, y: p.y + 1};
-  const t = tile(p.x, p.y), s = myPos();
+  let t = tile(p.x, p.y), s = myPos(), foot = null;
   if (!t || !s) return null;
+  if (t[0] === "Z" || t[0] === "z") {          // part of a bigger structure: it means the whole thing
+    const st = structAt(p.x, p.y);
+    if (st && !(t[0] === "z" && selected && !shift && !FOODS.includes(selected))) {
+      foot = footOf(st.c, st.x, st.y); t = [st.c, t[1]];
+    }
+  }
   const [c, g] = t, flower = c === "f", ent = entityAt(p);
+  const res = intent0(p, shift, t, c, g, flower, ent, s);
+  if (res && foot && !res.foot && !res.walk && !res.here) res.foot = foot;
+  return res;
+}
+const CAN_SIZE = 12;
+function intent0(p, shift, t, c, g, flower, ent, s) {
   const hasBlock = !GROUND.has(c) && !(flower && selected && !shift);   // building over a flower picks it
   const isMe = p.x === s.x && p.y === s.y;
   if (ent) {
@@ -1252,6 +1293,16 @@ function intent(p, shift) {
   if (selected && !shift) {
     const it = selected, block = PLACEABLE_BLOCK[it];
     const free = !hasBlock && WALKABLE_GROUND.has(g);
+    if (FOOT[block]) {
+      const f = footprint(block, p.x, p.y);
+      const bad = f.tiles.filter((q) => { const tq = tile(q.x, q.y);
+        return !tq || !(GROUND.has(tq[0]) || tq[0] === "f" || tq[0] === "t") || !WALKABLE_GROUND.has(tq[1]) || tq[1] === ":"
+          || (q.x === s.x && q.y === s.y) || (SOLID.has(block) && entityAt(q)); });
+      const near = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy}))
+        .filter((q) => !f.tiles.some((r) => r.x === q.x && r.y === q.y));
+      return {text: bad.length ? (bad.some((q) => q.x === s.x && q.y === s.y) ? `Step out of the way to place the ${label(it)}` : bad.some((q) => entityAt(q)) ? "Wait, something is standing there" : `The ${label(it)} needs a clear ${FOOT[block].join("×")} spot of dry land`) : `Place ${label(it)}`,
+        ghost: it, ok: !bad.length, bad, foot: f.tiles, anchor: {x: f.ax, y: f.ay}, from: near, near: 1, run: (d) => act("place", {dir: d, item: it})};
+    }
     if (block === "V") return !hasBlock && g === "~" ? {text: "Launch boat", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
                                                      : {text: "Boats go on shallow water", ghost: it, ok: false};
     if (block) return free ? {text: `Place ${label(it)}`, ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
@@ -1275,16 +1326,22 @@ function intent(p, shift) {
       return burnable ? {text: "Set on fire (uses the torch)", ok: true, near: 1, run: (d) => act("ignite", {dir: d})}
                       : {text: "That won't burn", ok: false};
     }
+    if (it === "watering_can" && (c === "Y" || ((g === "~" || g === "=") && GROUND.has(c))))
+      return {text: `Fill the watering can (${meObs ? meObs.self.can ?? CAN_SIZE : "?"}/${CAN_SIZE})`, near: 1, run: (d) => act("water", {dir: d})};
+    if (it === "watering_can" && (c === ";" || c === '"') && meObs && meObs.self.can === 0) return {text: "The can is empty: fill it at a well or water", ok: false};
     if (it === "watering_can" && (c === ";" || c === '"')) return g === "u" ? {text: "Already watered", ok: false}
       : {text: "Water crop (grows 2x faster)", near: 1, run: (d) => act("water", {dir: d})};
-    if (c === "C") return {text: `Store ${label(it)} in chest`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
+    if (c === "C" || c === "q") return {text: `Store ${label(it)} in ${c === "q" ? "basket" : "chest"}`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
   }
   const sailing = !!(meObs && meObs.self.sailing);
   if (c === "V" && !shift && !sailing) return {text: "Board the boat", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && (g === "~" || g === "=")) return {text: "Sail here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && WALKABLE_GROUND.has(g)) return {text: "Go ashore", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (hasBlock) {
-    if (c === "C" && !shift) return {text: "Open chest", near: 1, run: (d) => act("take", {dir: d})};
+    if ((c === "C" || c === "q") && !shift) return {text: c === "q" ? "Open basket" : "Open chest", near: 1, run: (d) => act("take", {dir: d})};
+    if (c === "Y" && !shift) return {text: "Well (fills watering cans) · shift-click takes it down", info: true};
+    if (c === "J" && !shift) return {text: "Chicken coop: hens nearby lay here, twice as often · shift: take down", info: true};
+    if (c === "m" && !shift) return {text: "Picnic blanket: food eaten here fills you 50% more · shift: roll up", info: true};
     if ((c === "?" || c === "!") && !shift) return {text: "Read", near: 1, run: (d) => act("read_sign", {dir: d})};
     if (c === "X" && !shift) return {text: mailAt.has(p.x + "," + p.y) ? "Mailbox: there's mail!" : "Mailbox", near: 1, run: (d) => openMailPanel(d)};
     if (c === "B" && !shift) return {text: "Sleep (wake up here after dying)", near: 1, run: (d) => act("sleep", {dir: d})};
@@ -1303,11 +1360,18 @@ async function perform(p, it) {
   if (it.ok === false) return toast(it.text, true);
   if (it.walk || it.here) return it.run();
   const s = myPos(); if (!s) return;
+  if (it.foot && !it.from) {                       // a structure: any of its tiles will do
+    const adj = it.foot.find((q) => Math.abs(q.x - s.x) + Math.abs(q.y - s.y) === 1);
+    if (adj) return it.run(dirTo(adj));
+    const onIt = it.foot.some((q) => q.x === s.x && q.y === s.y);
+    if (!onIt) p = it.foot.slice().sort((a, b) => (Math.abs(a.x - s.x) + Math.abs(a.y - s.y)) - (Math.abs(b.x - s.x) + Math.abs(b.y - s.y)))[0];
+  }
   const dist = Math.abs(p.x - s.x) + Math.abs(p.y - s.y), cheb = Math.max(Math.abs(p.x - s.x), Math.abs(p.y - s.y));
-  const close = dist > 0 && (it.diag ? cheb <= (it.near || 1) : dist <= (it.near || 1));
+  const inside = it.foot && it.from && it.foot.some((q) => q.x === s.x && q.y === s.y);
+  const close = dist > 0 && !inside && (it.diag ? cheb <= (it.near || 1) : dist <= (it.near || 1));
   if (!close) {
-    const sides = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy}))
-      .filter((q) => walkable(q.x, q.y) && !entityAt(q)).sort((a, b) => (Math.abs(a.x - s.x) + Math.abs(a.y - s.y)) - (Math.abs(b.x - s.x) + Math.abs(b.y - s.y)));
+    const sides = (it.from || [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy})))
+      .filter((q) => walkable(q.x, q.y) && !entityAt(q) && !(it.foot && it.foot.some((r) => r.x === q.x && r.y === q.y))).sort((a, b) => (Math.abs(a.x - s.x) + Math.abs(a.y - s.y)) - (Math.abs(b.x - s.x) + Math.abs(b.y - s.y)));
     if (!sides.length) return toast("Can't reach that.", true);
     const r = await act("move_to", {x: sides[0].x, y: sides[0].y}, true);
     if (!r || !r.ok) return toast("Can't get there.", true);
@@ -1344,7 +1408,7 @@ const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in co
   flower: ["nature", 16, 48], workbench: ["gen", "workbench"], campfire: ["gen", "campfire0"], chest: ["chest", 16, 16],
   boat: ["boats", 8, 36, 32, 24], mailbox: ["mailbox", 0, 16, 16, 32], fence: ["fences", 0, 48], gate: ["gates", 0, 0], wood_wall: ["house_walls", 16, 32], stone_wall: ["gen", "stone_wall"], door: ["house_walls", 48, 32],
   sign: ["signs", 0, 0], flag: ["gen", "flag"], bed: ["furniture", 0, 16, 16, 32], chair: ["furniture", 64, 32],
-  table: ["furniture", 48, 48], plant: ["furniture", 48, 0, 16, 32], clock: ["furniture", 96, 48], rug: ["furniture", 0, 80],
+  table: ["furniture", 48, 48], plant: ["furniture", 48, 0, 16, 32], clock: ["furniture", 96, 48], rug: ["furniture", 0, 80], well: ["well", 0, 0, 32, 32], coop: ["coop", 160, 80, 32, 44], picnic_blanket: ["blanket", 2, 8, 44, 32], basket: ["basket", 0, 0],
 };
 function iconCanvas(name) {
   const c = document.createElement("canvas"); c.width = 16; c.height = 16; const g = c.getContext("2d");
@@ -1352,7 +1416,8 @@ function iconCanvas(name) {
   if (!ic) { g.fillStyle = "#8a6a55"; g.fillRect(4, 4, 8, 8); return c; }
   if (ic[0] === "gen") { g.drawImage(IMG.gen, GEN[ic[1]] * 16, 0, 16, 16, 0, 0, 16, 16); return c; }
   const [img, x, y, w = 16, h = 16] = ic;
-  g.drawImage(IMG[img], x, y, w, h, 0, 0, 16, 16);
+  const k = 16 / Math.max(w, h), dw = Math.round(w * k), dh = Math.round(h * k);   // keep the shape
+  g.drawImage(IMG[img], x, y, w, h, (16 - dw) >> 1, (16 - dh) >> 1, dw, dh);
   return c;
 }
 let slots = JSON.parse(localStorage.getItem("megastructure-slots") || "[]");
@@ -1368,15 +1433,17 @@ function drawHotbar(inv) {
   if (selected && !inv[selected]) selected = null;
   const order = slotOrder(inv).slice(0, 9);
   const extra = Object.keys(inv).filter((n) => !order.includes(n));
-  const sig = JSON.stringify(inv) + order.join() + selected; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
+  const can = meObs ? meObs.self.can ?? CAN_SIZE : CAN_SIZE;
+  const sig = JSON.stringify(inv) + order.join() + selected + can; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
   el.innerHTML = "";
   order.forEach((name, i) => {
     const d = document.createElement("div"); d.className = "slot" + (name && name === selected ? " sel" : "");
     if (name) {
       d.appendChild(iconCanvas(name));
-      const how = FOODS.includes(name) ? " · E to eat, or feed animals" : name === "watering_can" ? " · select, click a crop"
+      const how = FOODS.includes(name) ? " · E to eat, or feed animals" : name === "watering_can" ? ` · ${can}/${CAN_SIZE} water · click a crop; refill at a well or water`
         : (PLACEABLE_BLOCK[name] || FILLS[name] || name === "seed") ? " · select, click the ground to place" : "";
       d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name) + how)}</span>`);
+      if (name === "watering_can") d.insertAdjacentHTML("beforeend", `<span class="lvl"><i style="width:${Math.round(can / CAN_SIZE * 100)}%"></i></span>`);
       d.onclick = () => { selected = selected === name ? null : name; el.dataset.sig = ""; drawHotbar(meObs.self.inventory); };
       d.ondblclick = () => useSelected(name);
     }
@@ -1450,6 +1517,7 @@ const RECIPE_GROUPS = [
   ["Travel & mail", ["boat", "mailbox"]],
   ["Building", ["wood_wall", "door", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
   ["Home", ["bed", "chair", "table", "plant", "clock", "rug"]],
+  ["Farm & picnic", ["well", "coop", "picnic_blanket", "basket"]],
   ["Cooking & smelting", ["cooked_meat", "bread", "ingot"]],
 ];
 function nearestObject(ch, maxD) {
