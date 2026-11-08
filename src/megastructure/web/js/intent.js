@@ -90,12 +90,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
                            : {text: `Can't place ${label(it)} here`, ghost: it, ok: false};
     if (it === "seed") {
       if (!hasBlock && (g === "o" || g === "u")) return {text: "Plant seed", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
-      if (!hasBlock && (g === "." || g === ",")) return {text: flower ? "Pick flower, till & plant" : "Till & plant seed", ghost: it, ok: true, near: 1,
-        run: async (d) => {
-          if (flower) { const r0 = await act("dig", {dir: d}); if (!r0 || !r0.ok) return; }
-          const r = await act("dig", {dir: d}); if (r && r.ok) return act("place", {dir: d, item: it});
-        }};
-      return {text: "Seeds need soil", ghost: it, ok: false};
+      return {text: "Seeds grow in tilled soil: till it with a hoe first", ghost: it, ok: false};
     }
     if (FILLS[it]) {
       const res = !hasBlock && FILLS[it][g];
@@ -104,14 +99,16 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     }
     if (it === "torch") {
       const burnable = (!GROUND.has(c) && "TFbH#+&?!\";wCBhLrgWVXJmqeyUv".includes(c)) || (GROUND.has(c) && g === ".");
-      return burnable ? {text: "Set on fire (uses the torch)", ok: true, near: 1, run: (d) => act("ignite", {dir: d})}
+      return burnable ? {text: "Set on fire (uses the torch)", ok: true, near: 1, run: (d) => act("ignite", {dir: d, with: "torch"})}
                       : {text: "That won't burn", ok: false};
     }
+    if (it === "hoe" && !hasBlock && (g === "." || g === ","))                  // the hoe in hand: Space/click tills
+      return {text: "Till soil", near: 1, run: (d) => act("dig", {dir: d, with: "hoe"})};
     if (it === "watering_can" && (c === "Y" || ((g === "~" || g === "=") && GROUND.has(c))))
-      return {text: `Fill the watering can (${meObs ? meObs.self.can ?? CAN_SIZE : "?"}/${CAN_SIZE})`, near: 1, run: (d) => act("water", {dir: d})};
+      return {text: `Fill the watering can (${meObs ? meObs.self.can ?? CAN_SIZE : "?"}/${CAN_SIZE})`, near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
     if (it === "watering_can" && (c === ";" || c === '"') && meObs && meObs.self.can === 0) return {text: "The can is empty: fill it at a well or water", ok: false};
     if (it === "watering_can" && (c === ";" || c === '"')) return g === "u" ? {text: "Already watered", ok: false}
-      : {text: "Water crop (grows 2x faster)", near: 1, run: (d) => act("water", {dir: d})};
+      : {text: "Water crop (grows 2x faster)", near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
   }
   const sailing = !!(meObs && meObs.self.sailing);
   if (c === "V" && !shift && !sailing) return {text: "Board the boat", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
@@ -133,11 +130,17 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     const tool = TOOL_FOR[c], w = inHand();
     if (c === "*" && w !== "pickaxe")
       return {text: meObs && meObs.self.inventory.pickaxe ? "Ore: hold your pickaxe (select it) to mine it" : "Ore: you need a pickaxe to mine it", ok: false};
-    const how = tool ? (w === tool ? ` with ${tool}` : " by hand") : "";
+    const how = tool ? (w === tool ? ` with ${tool}` : " by hand (slow)") : "";
     return {text: text + how, near: 1, run: (d) => act("dig", w ? {dir: d, with: w} : {dir: d})};
   }
   if (g === "~" || g === "=") return {text: label(CH[g]), info: true};
-  if (shift) return {text: {_: "Take up the path", n: "Take up the floor", ":": "Take up the bridge"}[g] || "Till soil", near: 1, run: (d) => act("dig", {dir: d})};
+  if (shift) {
+    const takeUp = {_: "Take up the path", n: "Take up the floor", ":": "Take up the bridge"}[g];
+    if (takeUp) return {text: takeUp, near: 1, run: (d) => act("dig", {dir: d})};
+    if (g !== "." && g !== ",") return {text: label(CH[g]), info: true};
+    return inHand() === "hoe" ? {text: "Till soil", near: 1, run: (d) => act("dig", {dir: d, with: "hoe"})}
+                              : {text: "Tilling needs a hoe in hand", ok: false};
+  }
   return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
 }
 // walk next to the target (closest free side) if needed, then act facing it

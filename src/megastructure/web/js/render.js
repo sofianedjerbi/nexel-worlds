@@ -139,7 +139,7 @@ function frame(now) {
 }
 // Highlight what an action would hit: a ghost of what gets placed, tinted footprint, and an outline.
 // which swing of the character sheet each tool in hand uses (the sheet has an axe and a hoe swing)
-const SWING_ROW = {axe: "axe", sword: "axe", spear: "axe", pickaxe: "hoe", watering_can: "water"};
+const SWING_ROW = {axe: "axe", sword: "axe", spear: "axe", pickaxe: "axe", hoe: "hoe", watering_can: "water"};
 function drawIntent(p, it, sx, sy, S, t) {
   if (it && it.ghost) {
     ctx.globalAlpha = .7;

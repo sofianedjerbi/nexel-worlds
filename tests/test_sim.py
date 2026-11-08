@@ -57,7 +57,9 @@ def test_dig_tree_and_ground(world):
     assert r["ok"] and r["changed"]["inventory"] == {"wood": 3}
     assert sim.world.block(a.x, a.y - 1) == "none"
     assert r["changed"]["tiles"][0]["block"] == "none"
-    r = run(sim, a, "dig", {"dir": "S"})
+    assert run(sim, a, "dig", {"dir": "S"})["error"] == "need_tool"          # tilling needs a hoe in hand
+    a.add("hoe", 1)
+    r = run(sim, a, "dig", {"dir": "S", "with": "hoe"})
     assert r["ok"] and sim.world.ground(a.x, a.y + 1) == "tilled" and not a.count("dirt")
 
 
@@ -95,7 +97,8 @@ def test_fill_breach_and_flood(world):
     sim, a = world
     # coolant to the north-north; dig the tile between -> it floods
     sim.world.set(a.x, a.y - 2, ground="water")
-    assert run(sim, a, "dig", {"dir": "N"})["ok"]
+    a.add("hoe", 1)
+    assert run(sim, a, "dig", {"dir": "N", "with": "hoe"})["ok"]
     for _ in range(400):
         sim.step()
         if sim.world.ground(a.x, a.y - 1) == "water":
@@ -111,7 +114,7 @@ def test_fire_spreads_and_burns_out(world):
     for dx in range(1, 4):
         sim.world.set(a.x + dx, a.y, block="fence")
     a.add("torch", 1)
-    assert run(sim, a, "ignite", {"dir": "E"})["ok"]
+    assert run(sim, a, "ignite", {"dir": "E", "with": "torch"})["ok"]
     assert (a.x + 1, a.y) in sim.fires and sim.world.block(a.x + 1, a.y) == "fence"   # burning, still standing
     for _ in range(600):
         sim.step()
@@ -263,8 +266,8 @@ def test_animals_spawn_and_seeds_grow(world):
         sim.step()
     assert any(c.kind in ("chicken", "cow") for c in sim.creatures.values())
     # farming: till, plant, wait, harvest
-    a.add("seed", 1)
-    assert run(sim, a, "dig", {"dir": "N"})["ok"] and sim.world.ground(a.x, a.y - 1) == "tilled"
+    a.add("seed", 1); a.add("hoe", 1)
+    assert run(sim, a, "dig", {"dir": "N", "with": "hoe"})["ok"] and sim.world.ground(a.x, a.y - 1) == "tilled"
     assert run(sim, a, "place", {"dir": "N", "item": "seed"})["ok"]
     for _ in range(sim_ripen_ticks() + 40):
         sim.step()
@@ -348,10 +351,11 @@ def test_crop_species_watering_and_harvest(world):
     from megastructure.tiles import crop_species
     a.add("seed", 1)
     a.add("watering_can", 1)
-    run(sim, a, "dig", {"dir": "N"})
+    a.add("hoe", 1)
+    run(sim, a, "dig", {"dir": "N", "with": "hoe"})
     run(sim, a, "place", {"dir": "N", "item": "seed"})
     assert sim.world.block(a.x, a.y - 1) == "sprout"
-    assert run(sim, a, "water", {"dir": "N"})["ok"] and sim.world.ground(a.x, a.y - 1) == "wet_tilled"
+    assert run(sim, a, "water", {"dir": "N", "with": "watering_can"})["ok"] and sim.world.ground(a.x, a.y - 1) == "wet_tilled"
     for _ in range(sec(75) + sec(3)):            # watered: half of 150 s
         sim.step()
     assert sim.world.block(a.x, a.y - 1) == "crop" and sim.world.ground(a.x, a.y - 1) == "tilled"
@@ -499,11 +503,11 @@ def test_well_is_two_by_two_and_fills_the_can(world):
     a.add("watering_can", 1)
     a.can = 0
     sim.world.set(a.x, a.y + 1, ground="tilled", block="sprout")
-    assert run(sim, a, "water", {"dir": "S"})["error"] == "empty"
+    assert run(sim, a, "water", {"dir": "S", "with": "watering_can"})["error"] == "empty"
     a.x += 1   # the well's right half is the well too
-    assert run(sim, a, "water", {"dir": "N"})["can"] == 12
+    assert run(sim, a, "water", {"dir": "N", "with": "watering_can"})["can"] == 12
     a.x -= 1
-    assert run(sim, a, "water", {"dir": "S"})["can"] == 11
+    assert run(sim, a, "water", {"dir": "S", "with": "watering_can"})["can"] == 11
     a.add("pickaxe", 1)
     a.x += 1
     assert run(sim, a, "dig", {"dir": "N"})["ok"] and a.count("well") == 1
@@ -599,3 +603,14 @@ def test_structures_extend_away_from_the_placer(world):
     a.add("well", 2)
     assert run(sim, a, "place", {"dir": "S", "item": "well"})["at"] == [a.x, a.y + 2]   # facing south: grows south
     assert run(sim, a, "place", {"dir": "W", "item": "well"})["at"] == [a.x - 2, a.y]   # facing west: grows west
+
+
+def test_bare_hands_are_slow_on_wood_and_stone(world):
+    sim, a = world
+    a.add("axe", 1); a.add("pickaxe", 1)
+    def time(block, **args):
+        sim.world.set(a.x + 1, a.y, block=block)
+        return run(sim, a, "dig", {"dir": "E", **args})["ticks"]
+    assert time("tree", **{"with": "axe"}) * 3 < time("tree")            # 4x by hand
+    assert time("rock", **{"with": "pickaxe"}) * 5 < time("rock")        # 6x by hand
+    assert time("berry_bush") <= 4                                      # soft things stay quick

@@ -47,6 +47,9 @@ class Building:
                 return {"got": {item: 1}}
             if not ground.diggable or ground.name in ("tilled", "wet_tilled"):
                 raise ActionError("cannot_dig", f"{ground.name} cannot be dug")
+            if self.held(a, args) != T.TILL_TOOL:
+                raise ActionError("need_tool", f"tilling needs a {T.TILL_TOOL} in hand (with: {T.TILL_TOOL})"
+                                  + ("" if a.count(T.TILL_TOOL) else "; craft one at a workbench"))
             yield from self.wait(a, 0.6)
             if self.world.block(x, y) != "none":
                 raise ActionError("changed", "something was placed there")
@@ -59,9 +62,9 @@ class Building:
         if block.needs_tool and tool != block.needs_tool:
             raise ActionError("need_tool", f"digging {block.name} needs a {block.needs_tool} in hand "
                               f"(with: {block.needs_tool})" + ("" if a.count(block.needs_tool) else "; you have none"))
-        seconds = block.hardness / 10
-        if block.tool and tool == block.tool:
-            seconds /= 2
+        seconds = block.hardness / 20                       # with the right tool in hand
+        if block.tool and tool != block.tool:
+            seconds *= T.BY_HAND[block.tool]
         yield from self.wait(a, seconds)
         if self.world.get(x, y)[1] != b:
             raise ActionError("changed", "the block changed while digging")

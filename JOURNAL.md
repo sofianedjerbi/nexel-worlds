@@ -493,3 +493,16 @@ fruit trees turn thinner; bushes vanish when picked.
   people panel is just who's awake; server stats on F3.
 Tests: 61 pass (43 sim + 18 web).
 Next: unfinished bot policy fixes; audit remaining info texts that still say "shift-click"; ES-module migration.
+
+## 2026-11-09 · Iteration 26 — interaction rules review
+
+User: punching stone should be slower, trees too; tilling should need a tool; review the interaction logic.
+Rules now, server-side, the same for people and agents:
+- Hardness is the time with the right tool in hand; by hand wooden things take 4x, stone 6x (rock: 0.9 s with a
+  pickaxe, 5.4 s by hand, measured in Chrome); soft things (bushes, fruit, crops, flowers, paths) stay quick by hand.
+  Ore needs a pickaxe in hand.
+- Tilling needs a hoe in hand (new item, workbench: 2 wood + 1 stone; the pack's hoe icon, which we had been showing
+  as the pickaxe; the pickaxe now uses its generated icon). Seeds still need tilled soil, so no more "till & plant" by
+  hand. Watering needs the can in hand, setting fire a torch in hand (or a campfire nearby).
+- Hints say "by hand (slow)"; with the hoe in hand, Space on grass tills; bots craft and hold a hoe to farm.
+Tests: 62 pass (hand-speed test added; tilling/watering/fire tests now hold their tools).

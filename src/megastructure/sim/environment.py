@@ -29,9 +29,9 @@ class Environment:
 
     def _tool_ignite(self, a, args):
         x, y = self.target(a, args)
-        has_torch = a.count("torch") > 0
+        has_torch = self.held(a, args) == "torch"
         if not has_torch and not self.near_block(a, "campfire"):
-            raise ActionError("need_fire", "ignite needs a torch or a heater within 2 tiles")
+            raise ActionError("need_fire", "ignite needs a torch in hand (with: torch) or a campfire within 2 tiles")
         yield from self.wait(a, 0.4)
         if not self.ignite(x, y, by=a):
             raise ActionError("wont_burn", f"{self.describe(x, y)} won't burn")

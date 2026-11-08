@@ -65,8 +65,9 @@ class Needs:
     def _tool_water(self, a, args):
         """Water a planted tile with a watering can: it grows twice as fast until the next stage."""
         x, y = self.resolve(*self.target(a, args))
-        if not a.count("watering_can"):
-            raise ActionError("need_tool", "you need a watering can (craft one at a workbench)")
+        if self.held(a, args) != "watering_can":
+            raise ActionError("need_tool", "watering needs the watering can in hand (with: watering_can)"
+                              + ("" if a.count("watering_can") else "; craft one at a workbench"))
         if self.world.block(x, y) == "well" or (self.world.block(x, y) == "none" and self.world.ground(x, y) in ("water", "deep_water")):
             yield from self.wait(a, 0.6)
             a.can = CAN_SIZE

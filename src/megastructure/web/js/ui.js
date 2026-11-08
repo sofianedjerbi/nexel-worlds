@@ -13,7 +13,7 @@ function openCraft() { $("craft").style.display = "block"; }
 const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in column 0, produce in column 1, materials in 2-3
   wood: ["items", 32, 48], plank: ["items", 32, 64], stone: ["items", 32, 80], ingot: ["items", 48, 64], fiber: ["gen", "fiber"],
   ore: ["gen", "ore"], path: ["cobble", 16, 16], dirt: ["soil", 0, 80], seed: ["items", 0, 128],
-  axe: ["items", 32, 0], pickaxe: ["items", 48, 0], watering_can: ["items", 32, 16], spear: ["gen", "spear"], sword: ["gen", "sword"],
+  axe: ["items", 32, 0], pickaxe: ["gen", "pickaxe"], hoe: ["items", 48, 0], watering_can: ["items", 32, 16], spear: ["gen", "spear"], sword: ["gen", "sword"],
   torch: ["gen", "torch"], rope: ["gen", "rope"],
   berries: ["items", 32, 160], fruit: ["items", 32, 96], mushroom: ["nature", 16, 0], egg: ["items", 48, 176], milk: ["items", 64, 0],
   meat: ["gen", "meat"], cooked_meat: ["gen", "cooked_meat"], bread: ["gen", "bread"],
@@ -123,7 +123,7 @@ const GOALS = [
   ["Chop trees for 4 wood", (inv, d) => (inv.wood || 0) >= 4 || d.workbench],
   ["Craft a workbench and place it", (inv, d) => d.placedBench],
   ["Pick berries (eat with E when hungry)", (inv) => (inv.berries || 0) > 0],
-  ["Plant a seed: select it, click soil", (inv, d) => d.planted],
+  ["Make a hoe, till soil, plant a seed", (inv, d) => d.planted],
   ["Mine 3 stone from a boulder", (inv) => (inv.stone || 0) >= 3],
   ["Craft an axe at the workbench", (inv) => inv.axe],
   ["Build a campfire before night", (inv, d) => d.placedFire],
@@ -153,7 +153,7 @@ function drawGoals() {
 }
 const RECIPE_GROUPS = [
   ["Getting started", ["workbench", "campfire", "torch", "rope", "plank", "path"]],
-  ["Tools & weapons", ["axe", "pickaxe", "watering_can", "spear", "sword"]],
+  ["Tools & weapons", ["axe", "pickaxe", "hoe", "watering_can", "spear", "sword"]],
   ["Travel & mail", ["boat", "mailbox"]],
   ["Building", ["wood_wall", "door", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
   ["Home", ["bed", "chair", "table", "plant", "clock", "rug"]],

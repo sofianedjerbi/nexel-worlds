@@ -170,7 +170,11 @@ FEED = {**{k: 1 for k in FOOD}, "hay": 3}
 
 WEAPONS = {"sword": 30, "spear": 18, "axe": 12, "pickaxe": 10}
 FIST_DAMAGE = 5
-REACH = {None: 2, "spear": 3}   # melee reach in tiles (Chebyshev): fists and most weapons 2, a spear 3
+REACH = {None: 2, "spear": 3}
+# Digging time: a block's hardness (tenths of a second) is the time with its tool in hand; without it, wooden
+# things (axe) take 4x as long and stone things (pickaxe) 6x. Soft things (no tool) are quick by hand.
+BY_HAND = {"axe": 4, "pickaxe": 6}
+TILL_TOOL = "hoe"   # tilling ground needs a hoe in hand   # melee reach in tiles (Chebyshev): fists and most weapons 2, a spear 3
 
 
 @dataclass(frozen=True)
@@ -197,6 +201,7 @@ RECIPES = {
         Recipe("rope", {"fiber": 3}, {"rope": 1}, 3),
         Recipe("axe", {"wood": 2, "stone": 2, "fiber": 1}, {"axe": 1}, 6, "workbench"),
         Recipe("pickaxe", {"wood": 2, "stone": 3, "fiber": 1}, {"pickaxe": 1}, 6, "workbench"),
+        Recipe("hoe", {"wood": 2, "stone": 1}, {"hoe": 1}, 5, "workbench"),
         Recipe("spear", {"wood": 2, "stone": 1, "fiber": 1}, {"spear": 1}, 5, "workbench"),
         Recipe("stone_wall", {"stone": 3}, {"stone_wall": 1}, 5, "workbench"),
         Recipe("chest", {"wood": 6}, {"chest": 1}, 6, "workbench"),
