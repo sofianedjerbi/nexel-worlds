@@ -47,6 +47,7 @@ COPY = {  # zip-internal path suffix -> output name
     "Objects/Tree animations/tree peach sprites.png": "tree_peach.png",
     "Objects/Tree animations/tree orange sprites.png": "tree_orange.png",
     "Objects/Water Objects.png": "water_objects.png",
+    "Objects/Boats.png": "boats.png",
     "emojis/Emoji spritesheet.png": "emoji.png",
     "Objects/Tree animations/tree_fall_animation_sprite_sheet.png": "tree_fall.png",
     "Animals/Chicken/chicken default.png": "chicken.png",
@@ -243,6 +244,16 @@ def build(downloads: Path):
     recolor(tilled, ashen).save(OUT / "ash.png")
     recolor(water, lambda r, g, b: (int(r * 0.62), int(g * 0.74), int(b * 0.86))).save(OUT / "water_deep.png")
     recolor(tilled.copy(), lambda r, g, b: (int(r * 0.72), int(g * 0.62), int(b * 0.55))).save(OUT / "tilled_wet.png")
+    # deep water: the grass layer's rounded blob shapes as a translucent dark-blue overlay
+    with zipfile.ZipFile(downloads / SPRITES) as zs2:
+        grass = Image.open(io.BytesIO(read_member(zs2, "Tilesets/ground tiles/New tiles/Grass_Tile_Layers.png"))).convert("RGBA")
+    deep = Image.new("RGBA", grass.size)
+    gp, dp = grass.load(), deep.load()
+    for y in range(grass.height):
+        for x in range(grass.width):
+            if gp[x, y][3] > 128:
+                dp[x, y] = (18, 52, 92, 80)
+    deep.save(OUT / "deep_mask.png")
     # UI pieces used as CSS 9-slices
     paw.resize((32, 32), Image.NEAREST).save(OUT / "cursor.png")
     point.resize((32, 32), Image.NEAREST).save(OUT / "cursor_point.png")

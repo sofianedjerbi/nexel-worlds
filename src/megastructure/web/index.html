@@ -152,7 +152,7 @@ const CH = {
   "%": "stone_wall", "+": "door", "^": "campfire", "&": "workbench", "?": "sign", "!": "flag", "x": "fire",
   "\"": "crop", "w": "ripe_crop", "t": "stump", "C": "chest", "F": "fruit_tree", ";": "sprout",
   "u": "wet_tilled", "n": "floor", "f": "flower", "B": "bed", "h": "chair", "L": "table", "p": "plant", "K": "clock",
-  "r": "rug", "g": "gate", "W": "wood_wall",
+  "r": "rug", "g": "gate", "W": "wood_wall", "V": "boat",
 };
 const CHAR = Object.fromEntries(Object.entries(CH).map(([c, n]) => [n, c]));
 const GROUND = new Set("~:.,o_'=un");
@@ -168,7 +168,7 @@ const label = (n) => LABEL[n] || String(n).replace("_", " ");
 const IMG = {};
 const ANIMAL_SHEETS = ["chicken_brown", "chicken_red", "chicken_blue", "chicken_green", "cow_light", "cow_pink", "cow_purple", "cow_green",
   "chick", "chick_brown", "chick_red", "chick_blue", "chick_green", "calf", "calf_light", "calf_pink", "calf_purple", "calf_green"];
-const ASSETS = [...ANIMAL_SHEETS, "house_walls", "house_roof", "gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
+const ASSETS = [...ANIMAL_SHEETS, "boats", "deep_mask", "house_walls", "house_roof", "gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
   "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen"];
 let GEN = {};
 function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
@@ -273,7 +273,7 @@ function onRegion(d) {
 //  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
 const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
-const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgW".includes(c) && !GROUND.has(c);
+const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWV".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
   const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1]); };
@@ -299,7 +299,7 @@ function drawTile(x, y) {
   const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, g = b.ctx, ox = lx * 16, oy = ly * 16;
   const c = b.comb[i], gr = b.gnd[i];
   g.clearRect(ox, oy, 16, 16);
-  if (gr === "=") { g.fillStyle = "rgba(20,50,90,.28)"; g.fillRect(ox, oy, 16, 16); }
+  if (gr === "=") drawBlobLayer(g, IMG.deep_mask, x, y, (_, gg) => gg === "=", ox, oy, 0);   // rounded deep areas
   if (gr === ":") {                                  // bridge planks run across the direction of travel
     const ew = [-1, 1].some((d) => { const q = gndAt(x + d, y); return q === ":" || isLand(q); });
     g.drawImage(IMG.bridge, ew ? 0 : 32, 32, 16, 16, ox, oy, 16, 16);
@@ -386,6 +386,7 @@ function objectSprite(c, x, y, t) {
     case "%": return [IMG.gen, ...genCell("stone_wall"), 16, 16, 0, -4];
     case "Q": return [IMG.nature, [0, 16, 48][Math.floor(h * 3)], 0, 16, 16, 0, 0];
     case "#": return fenceSprite(x, y);
+    case "V": return [IMG.boats, (Math.floor(t * 1.5 + h * 9) % 2) * 48, 32, 48, 32, -16, -10];   // moored, rocking
     case "W": {
       const room = (dx, dy) => roomOf.has((x + dx) + "," + (y + dy));
       let c = [3, 1];                                   // a lone wall: a small plank block
@@ -470,7 +471,7 @@ const parts = [], shakes = new Map(), pops = new Map(), falls = [], flashes = ne
 const PCOL = {T: ["#6b4b35", "#8f6a45", "#7fb069", "#5e8c4f"], H: ["#5e8c4f", "#7fb069"], b: ["#c0504a", "#7fb069", "#8a5aa0"],
   M: ["#8a8f8c", "#b6bab1", "#5d6260"], "*": ["#8a8f8c", "#f5d77a", "#b6bab1"], Q: ["#c0504a", "#f4f0e6"],
   w: ["#e0c35a", "#7fb069"], "\"": ["#7fb069"], "#": ["#a8775a", "#6b4a3a"], "%": ["#8a8f8c", "#b6bab1"], o: ["#b48b5c", "#8c6a44"],
-  C: ["#a8775a", "#c8a45c"], "&": ["#a8775a", "#6b4a3a"], dust: ["#e9d9b4", "#d8c59c"], spark: ["#fff1a8", "#ffd36a", "#ffffff"],
+  C: ["#a8775a", "#c8a45c"], "&": ["#a8775a", "#6b4a3a"], dust: ["#e9d9b4", "#d8c59c"], water: ["#bfe9f7", "#8fd3f4", "#ffffff"], spark: ["#fff1a8", "#ffd36a", "#ffffff"],
   hit: ["#ffffff", "#ffd0cc"], food: ["#c0504a", "#e0c35a", "#fff1a8"], blood: ["#d9473a", "#ffffff"]};
 function burst(x, y, kind, n, opts = {}) {
   const cols = PCOL[kind] || PCOL.dust;
@@ -726,6 +727,7 @@ function onEvent(e) {
   if (e.type === "milk") { burst(e.x, e.y, "spark", 4, {dy: -.2, g: 5}); emote(e.name, "happy"); }
   if (e.type === "love") emote(e.by, "love");
   if (e.type === "lay") burst(e.x, e.y, "dust", 5, {up: 1, spread: 1.5, g: 3});
+  if (e.type === "board" || e.type === "moor") { burst(e.x, e.y, "water", 8, {up: 1.5, spread: 2}); sfx("water", e.x, e.y); }
   if (e.type === "hatch") { burst(e.x, e.y, "spark", 8, {dy: -.3, g: 4}); sfx("pick", e.x, e.y); }
   if (e.type === "born") burst(e.x, e.y, "food", 8, {dy: -.5, g: 3});
   if (e.type === "craft") { burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4}); sfx("craft", e.x, e.y); }
@@ -967,6 +969,16 @@ function drawEntity(p, sx, sy, S, t, now) {
         return;
       }
     }
+    if (e.sail) {                                     // in a boat: the hull, a wake when moving, and the sailor sitting in it
+      const movingB = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
+      const bf = movingB ? Math.floor(now / 140) % 3 : Math.floor(now / 600) % 2, brow = movingB ? 64 : 32;
+      ctx.save();
+      if (p.fx < 0) { ctx.translate(x + S / 2, 0); ctx.scale(-1, 1); ctx.translate(-(x + S / 2), 0); }
+      ctx.drawImage(IMG.boats, bf * 48, brow, 48, 32, x - 16 * z, y - 10 * z, 48 * z, 32 * z);
+      ctx.restore();
+      ctx.drawImage(sheetImg, (Math.floor(now / 500) % 2) * 48, DIR_ROW(p) * 48, 48, 28, x - 16 * z, y - 22 * z, 48 * z, 28 * z);
+      return;
+    }
     const sxx = frame * 48, syy = (ANIM[anim] + DIR_ROW(p)) * 48;
     const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
     const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
@@ -1162,13 +1174,17 @@ async function act(tool, args, quiet) {
 const DIRV = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
 function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p.ty} : meObs ? meObs.self : null; }
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
-function walkable(x, y) { const t = tile(x, y); return !!t && WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]); }
+function walkable(x, y) {
+  const t = tile(x, y); if (!t) return false;
+  if (t[1] === "~" || t[1] === "=") return !!(meObs && meObs.self.sailing) || t[0] === "V";   // water: only by boat
+  return WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
+}
 // ---- what a click does, decided per tile (also shown as the cursor hint) ----------------
 const FILLS = {dirt: {o: ",", u: ",", "~": ","}, path: {".": "_", ",": "_", "'": "_"}, plank: {"~": ":", ".": "n", ",": "n", "'": "n"}};
 const FILL_TEXT = {",": "Fill with dirt", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
 const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
-const PLACEABLE_BLOCK = {wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C"};
-const HARVEST = {W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
+const PLACEABLE_BLOCK = {boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C"};
+const HARVEST = {V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
@@ -1198,6 +1214,8 @@ function intent(p, shift) {
   if (selected && !shift) {
     const it = selected, block = PLACEABLE_BLOCK[it];
     const free = !hasBlock && WALKABLE_GROUND.has(g);
+    if (block === "V") return !hasBlock && g === "~" ? {text: "Launch boat", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
+                                                     : {text: "Boats go on shallow water", ghost: it, ok: false};
     if (block) return free ? {text: `Place ${label(it)}`, ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
                            : {text: `Can't place ${label(it)} here`, ghost: it, ok: false};
     if (it === "seed") {
@@ -1218,6 +1236,10 @@ function intent(p, shift) {
       : {text: "Water crop (grows 2x faster)", near: 1, run: (d) => act("water", {dir: d})};
     if (c === "C") return {text: `Store ${label(it)} in chest`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
   }
+  const sailing = !!(meObs && meObs.self.sailing);
+  if (c === "V" && !shift && !sailing) return {text: "Board the boat", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
+  if (sailing && !hasBlock && (g === "~" || g === "=")) return {text: "Sail here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
+  if (sailing && !hasBlock && WALKABLE_GROUND.has(g)) return {text: "Go ashore", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (hasBlock) {
     if (c === "C" && !shift) return {text: "Open chest", near: 1, run: (d) => act("take", {dir: d})};
     if ((c === "?" || c === "!") && !shift) return {text: "Read", near: 1, run: (d) => act("read_sign", {dir: d})};
@@ -1274,7 +1296,7 @@ const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in co
   wheat: ["items", 16, 128], pumpkin: ["items", 16, 144], cauliflower: ["items", 16, 48], lettuce: ["items", 16, 112],
   eggplant: ["items", 16, 80], carrot: ["items", 16, 32],
   flower: ["nature", 16, 48], workbench: ["gen", "workbench"], campfire: ["gen", "campfire0"], chest: ["chest", 16, 16],
-  fence: ["fences", 0, 48], gate: ["gates", 0, 0], wood_wall: ["house_walls", 16, 32], stone_wall: ["gen", "stone_wall"], door: ["house_walls", 48, 32],
+  boat: ["boats", 8, 36, 32, 24], fence: ["fences", 0, 48], gate: ["gates", 0, 0], wood_wall: ["house_walls", 16, 32], stone_wall: ["gen", "stone_wall"], door: ["house_walls", 48, 32],
   sign: ["signs", 0, 0], flag: ["gen", "flag"], bed: ["furniture", 0, 16, 16, 32], chair: ["furniture", 64, 32],
   table: ["furniture", 48, 48], plant: ["furniture", 48, 0, 16, 32], clock: ["furniture", 96, 48], rug: ["furniture", 0, 80],
 };
@@ -1372,6 +1394,7 @@ function drawGoals() {
 const RECIPE_GROUPS = [
   ["Getting started", ["workbench", "campfire", "torch", "rope", "plank", "path"]],
   ["Tools & weapons", ["axe", "pickaxe", "watering_can", "spear", "sword"]],
+  ["Travel", ["boat"]],
   ["Building", ["wood_wall", "door", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
   ["Home", ["bed", "chair", "table", "plant", "clock", "rug"]],
   ["Cooking & smelting", ["cooked_meat", "bread", "ingot"]],

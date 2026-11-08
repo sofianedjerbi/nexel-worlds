@@ -392,3 +392,16 @@ def test_eggs_hatch_and_chicks_grow_up(world):
     chicks[0].born -= sec(300)
     sim.step()
     assert chicks[0].kind == "chicken"
+
+
+def test_boats_launch_board_sail_and_moor(world):
+    sim, a = world
+    for dx in range(1, 6):
+        sim.world.set(a.x + dx, a.y, ground="water")
+    sim.world.set(a.x + 6, a.y, ground="grass")
+    a.add("boat", 1)
+    assert run(sim, a, "place", {"dir": "E", "item": "boat"})["ok"] and sim.world.block(a.x + 1, a.y) == "boat"
+    x0 = a.x
+    assert run(sim, a, "step", {"dir": "E"})["ok"] and a.sailing and sim.world.block(a.x, a.y) == "none"
+    run(sim, a, "move_to", {"x": x0 + 6, "y": a.y})
+    assert a.x == x0 + 6 and not a.sailing and sim.world.block(x0 + 5, a.y) == "boat"

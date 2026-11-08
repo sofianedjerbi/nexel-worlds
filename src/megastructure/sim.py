@@ -54,6 +54,7 @@ class Agent:
     deaths: int = 0
     stats: dict = field(default_factory=dict)
     spawn: list | None = None  # set by sleeping in a bed: you wake up there after dying
+    sailing: bool = False      # in a boat: water is passable, land ends the trip
     # runtime only
     action: "Action | None" = field(default=None, repr=False)
     events: list = field(default_factory=list, repr=False)
@@ -61,7 +62,7 @@ class Agent:
 
     def to_json(self) -> dict:
         return {k: getattr(self, k) for k in
-                ("id", "name", "x", "y", "persona", "hp", "hunger", "energy", "inventory", "deaths", "stats", "spawn")}
+                ("id", "name", "x", "y", "persona", "hp", "hunger", "energy", "inventory", "deaths", "stats", "spawn", "sailing")}
 
     def count(self, item) -> int:
         return self.inventory.get(item, 0)
@@ -410,6 +411,9 @@ class Simulation:
                   dropped=dropped)
         if a.action:
             self.interrupt(a, "you died")
+        if a.sailing:
+            self.world.set(a.x, a.y, block="boat")
+            a.sailing = False
         bed = a.spawn
         if bed and self.world.block(*bed) == "bed":
             spots = [(bed[0] + dx, bed[1] + dy) for dx, dy in DIRS.values() if self.world.passable(bed[0] + dx, bed[1] + dy)]
@@ -664,7 +668,7 @@ class Simulation:
             "self": {"id": a.id, "name": a.name, "x": a.x, "y": a.y, "hp": a.hp, "hunger": a.hunger,
                      "energy": a.energy, "inventory": dict(sorted(a.inventory.items())), "deaths": a.deaths,
                      "action": a.action.tool if a.action else None,
-                     "spawn": a.spawn,
+                     "spawn": a.spawn, "sailing": a.sailing,
                      "standing_on": here_g if here_b == "none" else f"{here_g}+{here_b}",
                      "sheltered": self.sheltered(a.x, a.y)},
             "grid": grid,
@@ -680,6 +684,27 @@ class Simulation:
         return best
 
     # ============================================================== tools
+    def can_enter(self, a: Agent, x: int, y: int) -> bool:
+        """Walkers stay on land; a moored boat can be boarded; sailors move over water and may step ashore."""
+        g, b = self.world.get(x, y)
+        ground, block = GROUNDS[g], BLOCKS[b]
+        if ground.liquid:
+            return a.sailing or block.name == "boat"
+        return ground.walkable and not block.solid
+
+    def move(self, a: Agent, x: int, y: int):
+        """Move to an adjacent tile, boarding or leaving a boat when crossing the shoreline."""
+        if not a.sailing and self.world.block(x, y) == "boat":
+            self.set_tile(x, y, block="none", by=a, cause="board")
+            a.sailing = True
+            self.emit("board", x, y, name=a.name)
+        elif a.sailing and not GROUNDS[self.world.get(x, y)[0]].liquid:
+            self.set_tile(a.x, a.y, block="boat", by=a, cause="moor")   # leave the boat where you got off
+            a.sailing = False
+            self.emit("moor", a.x, a.y, name=a.name)
+        a.x, a.y = x, y
+        self.arrive(a)
+
     def arrive(self, a: Agent):
         """Called after every move: walking over items picks them up."""
         pile = self.items.get((a.x, a.y))
@@ -693,7 +718,10 @@ class Simulation:
         self.emit("pick_up", a.x, a.y, name=a.name, items=got)
 
     def stride(self, a: Agent, args) -> float:
-        """Seconds per tile. Sprinting (`run: true`) is twice as fast and costs 1 energy per 4 tiles."""
+        """Seconds per tile. Sprinting (`run: true`) is twice as fast and costs 1 energy per 4 tiles.
+        Sailing is a steady 0.15 s per tile."""
+        if a.sailing:
+            return 0.15
         if args.get("run") and a.energy > 0:
             a.stats["run_tiles"] = a.stats.get("run_tiles", 0) + 1
             if a.stats["run_tiles"] % 4 == 0:
@@ -704,10 +732,9 @@ class Simulation:
     def _tool_step(self, a, args):
         x, y = self.target(a, args)
         yield from self.wait(a, self.stride(a, args))
-        if not self.world.passable(x, y):
+        if not self.can_enter(a, x, y):
             raise ActionError("blocked", f"{args['dir']} is {self.describe(x, y)}")
-        a.x, a.y = x, y
-        self.arrive(a)
+        self.move(a, x, y)
         return {}
 
     def _tool_walk(self, a, args):
@@ -720,10 +747,9 @@ class Simulation:
         steps = 0
         while steps < 600:
             yield from self.wait(a, self.stride(a, args))
-            if not self.world.passable(a.x + dx, a.y + dy):
+            if not self.can_enter(a, a.x + dx, a.y + dy):
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.describe(a.x + dx, a.y + dy)}
-            a.x, a.y = a.x + dx, a.y + dy
-            self.arrive(a)
+            self.move(a, a.x + dx, a.y + dy)
             steps += 1
             yield  # one tile per stride: the stride's first tick is spent here
         return {"steps": steps, "stopped": "limit"}
@@ -738,7 +764,8 @@ class Simulation:
         except (KeyError, TypeError, ValueError):
             raise ActionError("bad_args", "move_to needs integer x and y")
         replans = 0
-        path = astar(self.world.passable, (a.x, a.y), (gx, gy))
+        ok = lambda x, y: self.can_enter(a, x, y) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
+        path = astar(ok, (a.x, a.y), (gx, gy))
         if path is None:
             far = abs(gx - a.x) + abs(gy - a.y) > 64
             raise ActionError("no_path", "target further than 64 tiles" if far else
@@ -747,14 +774,13 @@ class Simulation:
         while path:
             yield from self.wait(a, self.stride(a, args))
             nx, ny = path[0]
-            if not self.world.passable(nx, ny):
+            if not self.can_enter(a, nx, ny):
                 replans += 1
-                path = astar(self.world.passable, (a.x, a.y), (gx, gy)) if replans <= 2 else None
+                path = astar(ok, (a.x, a.y), (gx, gy)) if replans <= 2 else None
                 if path is None:
                     raise ActionError("blocked", f"path blocked at ({nx},{ny}); stopped at ({a.x},{a.y})")
                 continue
-            a.x, a.y = nx, ny
-            self.arrive(a)
+            self.move(a, nx, ny)
             path.pop(0)
             steps += 1
         return {"steps": steps, "arrived": [a.x, a.y], "adjacent_only": (a.x, a.y) != (gx, gy)}
@@ -855,7 +881,10 @@ class Simulation:
             b = "none"  # debris is junk: building over it clears it
         if b != "none":
             raise ActionError("occupied", f"{args['dir']} has {b}")
-        if not GROUNDS[T.G[g]].walkable:
+        if block == "boat":
+            if g != "water":
+                raise ActionError("bad_target", "boats go on shallow water next to you")
+        elif not GROUNDS[T.G[g]].walkable:
             raise ActionError("bad_target", f"cannot place on {g}")
         if item == "seed" and g not in T.SEED_GROUNDS:
             raise ActionError("bad_target", "seeds only grow in tilled soil (dig the ground first)")

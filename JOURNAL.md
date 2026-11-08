@@ -321,3 +321,16 @@ Tests: 27 pass (+ room shelter).
   idle, walk, peck/graze, sleep at night, love with hearts) measured from the sheets.
 - `--dev` adds `dev_skip` (fast-forward) for QA. Verified in Chrome: 3 dropped eggs → 3 chicks after a skip.
 Tests: 28 pass.
+
+## 2026-11-08 · Iteration 16 — boats
+
+- `boat` (8 wood + rope at a workbench). Launch it on shallow water next to you, walk onto it to board, sail over
+  water (shallow and deep, 0.15 s/tile), and step onto land to get off; the boat is left moored where you
+  disembarked. Dying at sea leaves the boat floating. The sim gained `can_enter`/`move` (boarding and mooring at the
+  shoreline) used by step, walk and move_to; pathfinding lets you path onto your boat as the last step.
+- Client: moored boats rock (pack frames); sailors are drawn sitting in the hull with the moving frames' wake, flipped
+  by heading; hints "Launch boat", "Board the boat", "Sail here", "Go ashore"; splash particles and sound.
+- Deep water uses rounded blob edges (a dark-blue copy of the grass layer's shapes) instead of hard rectangles.
+- `--dev` adds `dev_teleport`. QA in Chrome on a lake: launch → board (sailing: true) → sail 5 tiles → go ashore (boat
+  moored on the last water tile).
+Tests: 29 pass.
