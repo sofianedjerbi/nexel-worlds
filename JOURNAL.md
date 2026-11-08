@@ -163,3 +163,30 @@ punctuation and a few symbols (♥ ☠ · …), and compiles it to TTF with font
 contour, 100 units with unitsPerEm 900, so it is pixel-exact at 9/18/27/36 px. Spacing is proportional
 (glyphs are trimmed to their ink, plus 1 px). All CSS and canvas text uses it at 18 px (2×) with
 27/36 px titles; synthetic bold is disabled. Also fixed a leftover "sentinel#…" attacker name.
+
+## 2026-11-08 · Iteration 8 — intuitive play (user: "I can walk through tree things, they're everywhere, nothing is intuitive")
+
+**Diagnosis**: the "tree things" were walkable stumps left by the 8 scripted bots' chopping; the bots also
+littered workbenches and fences. Placing needed select plus right-click on an adjacent tile, with no
+preview. Clicks gave no hint of what they would do. At zoom 1 the meadows were still peppered with bushes and boulders.
+
+**Change**
+- Felled trees leave clean ground and regrow later on the same spot; no stumps. Scripted bots stopped (they
+  only cluttered the world; agents come back as RL). Fresh world.
+- Sparser generation: lone meadow features on 11×11 cells, grove-edge bushes on 4×4 cells in a narrower band,
+  boulder fields rarer but still enough stone.
+- **Intents**: every hovered tile resolves to one action, shown as the cursor hint ("Chop tree", "Pick
+  berries", "Mine ore", "Plant seed", "Till & plant seed", "Fill hole", "Build bridge", "Open chest",
+  "Give wheat to X", "Attack chicken"...). Clicking walks to the nearest free side and does it (using the
+  server's arrival position, not the last tick, for the facing direction). Pointing at a tree's canopy
+  targets the tree.
+- **Placing**: select a placeable item and a ghost of it follows the cursor, tinted green or red with a
+  reason ("Can't place workbench here"); click to walk over and place. Esc deselects. Hotbar tooltips say
+  how to use each item. Workbench and campfire clicks open the craft panel.
+- **Goals card** (top left) for new players: wood, workbench, berries, planting, stone, axe, campfire;
+  completed goals drop off.
+- People list shows only who's awake (+N asleep).
+
+**Verified in Chrome (Playwright)**: hover shows "Chop tree"; one click walks 15 tiles and chops (+3 wood, 2.8 s);
+a second tree works too; craft workbench; select it (key 2); hover shows "Place workbench" with the ghost; click places it.
+No page errors. 19 tests pass.

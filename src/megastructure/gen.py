@@ -73,25 +73,25 @@ def gen_tile(seed: int, x: int, y: int) -> tuple[int, int]:
     if grove > 0.6 and cand and roll < min(0.95, (grove - 0.6) * 6):
         return G["grass"], B["tree"]
     # grove edges: berry bushes and the odd hedge, sparse
-    cand3, roll3 = _picked(seed, x, y, 3, 13)
-    if 0.54 < grove <= 0.62 and cand3:
-        if roll3 < 0.3:
+    cand4, roll4 = _picked(seed, x, y, 4, 13)
+    if 0.56 < grove <= 0.61 and cand4:
+        if roll4 < 0.35:
             return G["grass"], B["berry_bush"]
-        if roll3 < 0.36:
+        if roll4 < 0.42:
             return G["grass"], B["thicket"]
     if grove > 0.6 and _hash(seed, x, y, 17) < 0.025:
         return G["grass"], B["mushroom"]
     # small boulder fields, a few with ore
-    if stones > 0.72 and cand and roll < 0.7:
+    if stones > 0.76 and cand and roll < 0.6:
         return ground, (B["ore"] if _hash(seed, x, y, 19) < 0.18 else B["rock"])
     # lone features scattered over open meadow
-    cand7, roll7 = _picked(seed, x, y, 7, 23)
-    if cand7:
-        if roll7 < 0.10:
+    cand11, roll11 = _picked(seed, x, y, 11, 23)
+    if cand11:
+        if roll11 < 0.18:
             return ground, B["tree"]
-        if roll7 < 0.14:
+        if roll11 < 0.22:
             return ground, B["rock"]
-        if roll7 < 0.17:
+        if roll11 < 0.26:
             return ground, B["berry_bush"]
     return ground, B["none"]
 

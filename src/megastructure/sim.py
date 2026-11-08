@@ -507,7 +507,8 @@ class Simulation:
                 del self.timers[pos]
                 if kind == "ripen" and self.world.block(*pos) == "crop":
                     self.set_tile(*pos, block="ripe_crop", cause="grew")
-                elif kind == "regrow" and self.world.block(*pos) == "stump":
+                elif kind == "regrow" and self.world.block(*pos) == "none" and self.entity_at(*pos) is None \
+                        and self.world.ground(*pos) in ("grass", "dirt"):
                     self.set_tile(*pos, block="tree", cause="grew")
         if self.tick % sec(20) == 0:
             for key in sorted(self.world.chunks):
@@ -683,7 +684,7 @@ class Simulation:
             drops = self._merge(drops, self.world.meta.get((x, y), {}).get("items", {}))
         for k, n in drops.items():
             a.add(k, n)
-        after = "stump" if block.name == "tree" else "none"
+        after = "none"  # a felled tree leaves clean ground; it regrows there later
         self.set_tile(x, y, block=after, by=a, cause="dig")
         if block.name == "tree":
             self.timers[(x, y)] = [self.tick + sec(1200), "regrow"]

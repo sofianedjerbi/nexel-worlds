@@ -71,9 +71,15 @@
   .rc:hover { background:rgba(91,63,54,.1); }
   .rc .in2 { color:var(--ink2); font-size:18px; text-align:right; }
   .rc.no { opacity:.38; cursor:default; } .rc.no:hover { background:none; }
+  #goals { left:10px; top:110px; width:300px; display:none; }
+  .goal { display:flex; gap:8px; align-items:baseline; }
+  .goal .box { width:12px; height:12px; border:2px solid var(--ink); flex:none; position:relative; top:1px; }
+  .goal.done { color:var(--ink2); text-decoration:line-through; }
+  .goal.done .box { background:var(--accent); }
   #toast { left:50%; top:10px; transform:translateX(-50%); display:none; max-width:70vw; }
   #help { right:10px; bottom:10px; display:none; max-width:300px; color:var(--ink2); font-size:18px; }
   #help b { color:var(--ink); font-weight:normal; }
+  #hover.bad { color:var(--warn); }
   #hover { position:fixed; pointer-events:none; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; display:none; z-index:5; }
 </style>
 </head>
@@ -105,6 +111,7 @@
   <b>right-click</b> place selected · <b>1-9</b> select<br><b>E</b> eat · <b>F</b> pick up · <b>R</b> rest<br>
   <b>Enter</b> talk · <b>!text</b> shout · <b>/tool k=v</b><br><b>C</b> craft · <b>wheel</b> zoom · <b>H</b> help
 </div></div>
+<div class="panel" id="goals"><div class="in"><h3>Goals</h3><div id="goallist"></div></div></div>
 <div class="panel" id="craft"><div class="in"><h3>Craft</h3><div id="recipes"></div></div></div>
 <div class="panel" id="chat"><div class="in"><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout · /command)" maxlength="200" autocomplete="off"></div></div>
 <div id="hotbar"></div>
@@ -512,10 +519,15 @@ function frame(now) {
   }
   drawNight(vis, sx, sy, S, t);
   if (mouse.in && me) {
-    const p = tileAtScreen(mouse.x, mouse.y), s = myPos();
-    const adj = s && Math.abs(p.x - s.x) + Math.abs(p.y - s.y) === 1;
-    ctx.strokeStyle = adj ? "rgba(255,248,232,.95)" : "rgba(255,248,232,.4)"; ctx.lineWidth = zoom;
-    ctx.strokeRect(sx(p.x) + zoom / 2, sy(p.y) + zoom / 2, S - zoom, S - zoom);
+    const p = tileAtScreen(mouse.x, mouse.y), it = intent(p, keys.has("shift"));
+    if (it && it.ghost) {
+      ctx.globalAlpha = .65; ctx.drawImage(ghostIcon(it.ghost), sx(p.x), sy(p.y) - 3 * zoom, S, S); ctx.globalAlpha = 1;
+      ctx.fillStyle = it.ok ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)"; ctx.fillRect(sx(p.x), sy(p.y), S, S);
+    }
+    if (it && !it.info && !it.walk) {
+      ctx.strokeStyle = it.ok === false ? "rgba(230,80,70,.9)" : "rgba(255,248,232,.95)"; ctx.lineWidth = zoom;
+      ctx.strokeRect(sx(p.x) + zoom / 2, sy(p.y) + zoom / 2, S - zoom, S - zoom);
+    }
   }
   for (const o of list) if (o.p && o.p.e.kind === "agent") drawNameplate(o.p, sx, sy, S);
   drawProgress(sx, sy, S);
@@ -621,7 +633,8 @@ function drawNight(vis, sx, sy, S, t) {
 // =====================================================================================
 function drawAgents() {
   const el = $("agents"); el.innerHTML = "";
-  agents.sort((a, b) => (b.online - a.online) || a.name.localeCompare(b.name)).forEach((a) => {
+  const asleep = agents.filter((a) => !a.online).length;
+  agents.filter((a) => a.online).sort((a, b) => (b.name === me) - (a.name === me) || a.name.localeCompare(b.name)).forEach((a) => {
     const d = document.createElement("div");
     d.className = "ag" + (a.name === follow ? " sel" : "") + (a.online ? "" : " off");
     const inv = Object.values(a.inventory).reduce((s, n) => s + n, 0);
@@ -629,6 +642,7 @@ function drawAgents() {
     d.onclick = () => { if (me) return; follow = follow === a.name ? null : a.name; drawAgents(); };
     el.appendChild(d);
   });
+  if (asleep) el.insertAdjacentHTML("beforeend", `<div class="ag off"><span class="n">+ ${asleep} asleep</span></div>`);
 }
 function drawStats() {
   const m = metrics;
@@ -653,15 +667,20 @@ cv.addEventListener("mousemove", (e) => {
   }
   const p = tileAtScreen(e.clientX, e.clientY), t = tile(p.x, p.y), tip = $("hover");
   if (!t) { tip.style.display = "none"; return; }
-  const here = [...ents.values()].filter((q) => q.e && q.tx === p.x && q.ty === p.y).map((q) => q.e.name || q.e.kind);
-  const what = GROUND.has(t[0]) ? label(CH[t[1]]) : `${label(CH[t[0]])} on ${label(CH[t[1]])}`;
-  tip.innerHTML = `${esc(what)}${here.length ? " · " + esc(here.join(", ")) : ""}`;
+  let text;
+  if (me) { const it = intent(p, e.shiftKey); text = it ? it.text : ""; tip.className = it && it.ok === false ? "bad" : ""; }
+  else {
+    const here = entityAt(p);
+    text = here ? (here.e.name || here.e.kind) : GROUND.has(t[0]) ? label(CH[t[1]]) : label(CH[t[0]]);
+  }
+  if (!text || (me && text === "Walk here")) { tip.style.display = "none"; return; }
+  tip.textContent = text;
   tip.style.display = "block"; tip.style.left = e.clientX + 16 + "px"; tip.style.top = e.clientY + 14 + "px";
 });
 cv.addEventListener("mouseleave", () => { mouse.in = false; $("hover").style.display = "none"; });
 cv.addEventListener("mousedown", (e) => { if (e.button === 0) drag = {x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false}; });
 cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.moved && me) clickTile(tileAtScreen(e.clientX, e.clientY), e.shiftKey); drag = null; });
-cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (me) placeAt(tileAtScreen(e.clientX, e.clientY)); });
+cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (me) clickTile(tileAtScreen(e.clientX, e.clientY), false); });
 cv.addEventListener("wheel", (e) => { e.preventDefault(); zoom = Math.max(1, Math.min(6, zoom + (e.deltaY < 0 ? 1 : -1))); }, {passive: false});
 
 let agentWs = null, aid = 0, pending = {}, busy = false, held = null;
@@ -686,7 +705,7 @@ function joinGame(name) {
     if (d.type === "progress") { if (d.tool !== "step" && d.tool !== "move_to" && d.ticks / d.tick_hz >= .35) progress = {t0: performance.now(), ms: d.ticks / d.tick_hz * 1000, tool: d.tool}; return; }
     const f = pending[d.id]; if (f) { delete pending[d.id]; f(d); }
   };
-  agentWs.onclose = () => { if (me) toast("Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "watching"; ["vitals", "hotbar", "craft", "help", "chat"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; };
+  agentWs.onclose = () => { if (me) toast("Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "watching"; ["vitals", "hotbar", "craft", "help", "chat", "goals"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; };
 }
 function rpc(op, extra) {
   return new Promise((res) => {
@@ -705,7 +724,7 @@ async function refresh() {
   $("where").textContent = `${s.name} · ${s.x}, ${s.y}${s.sheltered ? " · sheltered" : ""}`;
   for (const [id, v] of [["hp", s.hp], ["hu", s.hunger], ["en", s.energy]]) { $(id).style.width = v + "%"; $(id + "v").textContent = v; }
   $("doing").textContent = s.hunger < 25 ? "Starving: select food and press E" : s.energy < 15 ? "Exhausted: press R to rest" : "";
-  drawHotbar(s.inventory); drawRecipes();
+  drawHotbar(s.inventory); drawRecipes(); drawGoals();
 }
 setInterval(refresh, 700);
 async function act(tool, args, quiet) {
@@ -719,6 +738,7 @@ async function act(tool, args, quiet) {
     const gained = Object.fromEntries(Object.entries(c.inventory || {}).filter(([, v]) => v > 0));
     const p = ents.get("agent" + myId);
     if (Object.keys(gained).length && p) floats.push({x: p.tx, y: p.ty, text: "+" + fmt(gained), color: "#fff1a8", t: performance.now() / 1000});
+    if (tool === "place") markGoal({workbench: "placedBench", seed: "planted", campfire: "placedFire"}[args.item] || "placed");
     if (r.result.text !== undefined) toast(`The sign reads: “${r.result.text}”`);
     if (r.result.chest) toast(`Chest: ${fmt(r.result.chest) || "empty"}`);
     if (r.result.rows_near_to_far) toast(`You look into the distance: ${r.result.agents.length ? "someone is out there." : "nobody."}`);
@@ -742,27 +762,82 @@ async function stepDir(dir) {
   }
   return r;
 }
-function clickTile(p, shift) {
-  const d = dirTo(p), c = combAt(p.x, p.y), name = c && CH[c], s = myPos();
-  const ent = [...ents.values()].find((q) => q.e && q.tx === p.x && q.ty === p.y && !(q.e.kind === "agent" && q.e.id === myId));
-  if (ent && s && Math.max(Math.abs(p.x - s.x), Math.abs(p.y - s.y)) <= 1) {
-    if (ent.e.kind === "agent" && !shift) { if (selected) act("give", {target: ent.e.id, item: selected, n: 1}); else toast(`Select an item and click ${ent.e.name} to give it. Shift+click attacks.`); return; }
-    return act("attack", {target: ent.e.id});
+// ---- what a click does, decided per tile (also shown as the cursor hint) ----------------
+const PLACEABLE_BLOCK = {fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C"};
+const HARVEST = {T: "Chop tree", b: "Pick berries", M: "Mine rock", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
+  w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
+  "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
+function entityAt(p) { return [...ents.values()].find((q) => q.e && q.tx === p.x && q.ty === p.y && !(q.e.kind === "agent" && q.e.id === myId)); }
+function intent(p, shift) {
+  // the canopy of a tree covers the tile above its trunk: pointing at it means the tree
+  if (combAt(p.x, p.y + 1) === "T" && GROUND.has(combAt(p.x, p.y)) && !entityAt(p) && !(selected && !shift)) p = {x: p.x, y: p.y + 1};
+  const t = tile(p.x, p.y), s = myPos();
+  if (!t || !s) return null;
+  const [c, g] = t, hasBlock = !GROUND.has(c), ent = entityAt(p);
+  const isMe = p.x === s.x && p.y === s.y;
+  if (ent) {
+    if (ent.e.kind === "agent" && !shift) return selected
+      ? {text: `Give ${label(selected)} to ${ent.e.name}`, near: 2, run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})}
+      : {text: `${ent.e.name}  (shift-click: attack)`, info: true};
+    return {text: `Attack ${ent.e.name || ent.e.kind}`, near: 1, diag: true, run: () => act("attack", {target: ent.e.id})};
   }
-  if (d && (name === "sign" || name === "flag") && !shift) return act("read_sign", {dir: d});
-  if (d && name === "chest" && !shift) return act("take", {dir: d});
-  if (d && selected && ((name === "tilled" && selected === "seed") || (["tilled", "water"].includes(name) && selected === "dirt"))) return act("place", {dir: d, item: selected});
-  if (d && c && !GROUND.has(c)) return act("dig", {dir: d});
-  if (s && p.x === s.x && p.y === s.y) return act("pick_up", {});
-  act("move_to", {x: p.x, y: p.y});
+  if (isMe) return {text: "Pick up", run: () => act("pick_up", {}), here: true};
+  // placing the selected item
+  if (selected && !shift) {
+    const it = selected, block = PLACEABLE_BLOCK[it];
+    const free = !hasBlock && WALKABLE_GROUND.has(g);
+    if (block) return free ? {text: `Place ${label(it)}`, ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
+                           : {text: `Can't place ${label(it)} here`, ghost: it, ok: false};
+    if (it === "seed") {
+      if (!hasBlock && g === "o") return {text: "Plant seed", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
+      if (!hasBlock && (g === "." || g === ",")) return {text: "Till & plant seed", ghost: it, ok: true, near: 1,
+        run: async (d) => { const r = await act("dig", {dir: d}); if (r && r.ok) return act("place", {dir: d, item: it}); }};
+      return {text: "Seeds need soil", ghost: it, ok: false};
+    }
+    if (it === "dirt") return !hasBlock && (g === "o" || g === "~") ? {text: g === "~" ? "Fill water with dirt" : "Fill hole", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
+                                                                    : {text: "Dirt fills holes and shallow water", ghost: it, ok: false};
+    if (it === "stone" && !hasBlock && ",.o':".includes(g)) return {text: "Lay cobblestone", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
+    if (it === "plank" && g === "~") return {text: "Build bridge", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
+    if (c === "C") return {text: `Store ${label(it)} in chest`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
+  }
+  if (hasBlock) {
+    if (c === "C" && !shift) return {text: "Open chest", near: 1, run: (d) => act("take", {dir: d})};
+    if ((c === "?" || c === "!") && !shift) return {text: "Read", near: 1, run: (d) => act("read_sign", {dir: d})};
+    if ((c === "&" || c === "^") && !shift) return {text: c === "&" ? "Workbench: craft tools here" : "Campfire: cook here", near: 2, run: () => openCraft()};
+    return {text: HARVEST[c] || label(CH[c]), near: 1, run: (d) => act("dig", {dir: d})};
+  }
+  if (g === "~" || g === "=") return {text: label(CH[g]), info: true};
+  if (shift) return {text: "Dig / till soil", near: 1, run: (d) => act("dig", {dir: d})};
+  return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
 }
-function placeAt(p) {
-  const d = dirTo(p);
-  if (!d) return toast("Stand next to a tile to place something there.", true);
-  if (!selected) return toast("Select an item first (1-9 or click the hotbar).", true);
-  if (CH[combAt(p.x, p.y)] === "chest") return act("store", {dir: d, item: selected, n: meObs.self.inventory[selected] || 1});
-  act("place", {dir: d, item: selected});
+// walk next to the target (closest free side) if needed, then act facing it
+async function perform(p, it) {
+  if (!it || it.info || !it.run) return;
+  if (it.ok === false) return toast(it.text, true);
+  if (it.walk || it.here) return it.run();
+  const s = myPos(); if (!s) return;
+  const dist = Math.abs(p.x - s.x) + Math.abs(p.y - s.y), cheb = Math.max(Math.abs(p.x - s.x), Math.abs(p.y - s.y));
+  const close = it.diag ? cheb <= (it.near || 1) : dist <= (it.near || 1) && dist > 0;
+  if (!close) {
+    const sides = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy}))
+      .filter((q) => walkable(q.x, q.y) && !entityAt(q)).sort((a, b) => (Math.abs(a.x - s.x) + Math.abs(a.y - s.y)) - (Math.abs(b.x - s.x) + Math.abs(b.y - s.y)));
+    if (!sides.length) return toast("Can't reach that.", true);
+    const r = await act("move_to", {x: sides[0].x, y: sides[0].y}, true);
+    if (!r || !r.ok) return toast("Can't get there.", true);
+    const [ax, ay] = r.result.arrived;                     // trust the server's position, not the last tick
+    const me_ = ents.get("agent" + myId); if (me_) { me_.tx = ax; me_.ty = ay; }
+    const d = Object.entries(DIRV).find(([, [dx, dy]]) => ax + dx === p.x && ay + dy === p.y);
+    return it.run(d ? d[0] : dirTo(p));
+  }
+  return it.run(dirTo(p));
 }
+function clickTile(p, shift) {
+  if (combAt(p.x, p.y + 1) === "T" && GROUND.has(combAt(p.x, p.y)) && !entityAt(p) && !(selected && !shift)) p = {x: p.x, y: p.y + 1};
+  perform(p, intent(p, shift));
+}
+const ghosts = new Map();
+const ghostIcon = (n) => ghosts.get(n) || (ghosts.set(n, iconCanvas(n)), ghosts.get(n));
+function openCraft() { $("craft").style.display = "block"; }
 // item icons from the sheets: [image name, sx, sy]
 const ICONS = {
   wood: ["items", 32, 48], plank: ["planks", 0, 16], stone: ["gen", "boulder"], fiber: ["gen", "fiber"], ore: ["gen", "ore"],
@@ -800,7 +875,8 @@ function drawHotbar(inv) {
     const d = document.createElement("div"); d.className = "slot" + (name && name === selected ? " sel" : "");
     if (name) {
       d.appendChild(iconCanvas(name));
-      d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name))}</span>`);
+      const how = FOODS.includes(name) ? " · E to eat" : (PLACEABLE_BLOCK[name] || ["seed", "dirt", "stone", "plank"].includes(name)) ? " · select, click the ground" : "";
+      d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name) + how)}</span>`);
       d.onclick = () => { selected = selected === name ? null : name; el.dataset.sig = ""; drawHotbar(meObs.self.inventory); };
       d.ondblclick = () => useSelected(name);
     }
@@ -813,6 +889,31 @@ function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);
   if (FOODS.includes(name)) return act("eat", {item: name});
   toast(`Right-click a tile next to you to place the ${label(name)}.`);
+}
+const GOALS = [
+  ["Chop trees for 4 wood", (inv, d) => (inv.wood || 0) >= 4 || d.workbench],
+  ["Craft a workbench and place it", (inv, d) => d.placedBench],
+  ["Pick berries (eat with E when hungry)", (inv) => (inv.berries || 0) > 0 || (inv.seed || 0) > 0],
+  ["Plant a seed: select it, click soil", (inv, d) => d.planted],
+  ["Mine 3 stone from a boulder", (inv) => (inv.stone || 0) >= 3],
+  ["Craft an axe at the workbench", (inv) => inv.axe],
+  ["Build a campfire before night", (inv, d) => d.placedFire],
+];
+function markGoal(key) { if (!me) return; const d = goalState(); d[key] = true; localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d)); }
+function goalState() { return JSON.parse(localStorage.getItem("megastructure-goals-" + me) || "{}"); }
+function drawGoals() {
+  if (!meObs) return;
+  const inv = meObs.self.inventory, d = goalState();
+  if (inv.workbench) d.workbench = true;
+  const grid = meObs.grid.join("");
+  GOALS.forEach(([, f], i) => { if (f(inv, d)) d["g" + i] = true; });
+  localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d));
+  const open = GOALS.map(([t], i) => [t, !!d["g" + i]]);
+  const shown = open.filter(([, done]) => !done).slice(0, 3);
+  const el = $("goals");
+  if (!shown.length) { el.style.display = "none"; return; }
+  el.style.display = $("craft").style.display === "block" ? "none" : "block";
+  $("goallist").innerHTML = shown.map(([t]) => `<div class="goal"><span class="box"></span><span>${esc(t)}</span></div>`).join("");
 }
 function drawRecipes() {
   const el = $("recipes"); if (!el || !Object.keys(recipes).length) return;
@@ -837,6 +938,8 @@ addEventListener("keydown", (e) => {
   if (document.activeElement === $("name")) { if (e.key === "Enter") $("join").click(); return; }
   if (document.activeElement === $("say") || !me) return;
   const k = e.key.toLowerCase();
+  if (k === "shift") keys.add("shift");
+  if (k === "escape") { selected = null; $("hotbar").dataset.sig = ""; if (meObs) drawHotbar(meObs.self.inventory); $("craft").style.display = "none"; }
   if (KEYDIR[k]) { e.preventDefault(); keys.add(k); held = {dir: KEYDIR[k], dig: e.shiftKey}; pump(); return; }
   if (k === "enter" || k === "t") { e.preventDefault(); openChat(); }
   else if (k === "/") { e.preventDefault(); openChat("/"); }
@@ -848,7 +951,7 @@ addEventListener("keydown", (e) => {
   else if (/^[1-9]$/.test(k) && meObs) { const n = slots[+k - 1]; if (n) { selected = selected === n ? null : n; $("hotbar").dataset.sig = ""; drawHotbar(meObs.self.inventory); } }
 });
 addEventListener("keyup", (e) => {
-  keys.delete(e.key.toLowerCase());
+  keys.delete(e.key.toLowerCase()); if (e.key === "Shift") keys.delete("shift");
   const k = [...keys].find((k) => KEYDIR[k]);
   held = k ? {dir: KEYDIR[k], dig: e.shiftKey} : null;
 });
@@ -873,7 +976,7 @@ $("say").addEventListener("keydown", (e) => {
   } else if (line.startsWith("!")) act("shout", {text: line.slice(1).trim()});
   else act("say", {text: line});
 });
-$("craftbtn").onclick = () => { const c = $("craft"); c.style.display = c.style.display === "block" ? "none" : "block"; };
+$("craftbtn").onclick = () => { const c = $("craft"); c.style.display = c.style.display === "block" ? "none" : "block"; drawGoals(); };
 $("helpbtn").onclick = () => { const h = $("help"); const on = h.style.display !== "block"; h.style.display = on ? "block" : "none"; localStorage.setItem("megastructure-help", on ? "on" : "off"); };
 $("join").onclick = () => { const n = $("name").value.trim(); if (n) joinGame(n); };
 $("watch").onclick = () => { $("joinbox").style.display = "none"; };
