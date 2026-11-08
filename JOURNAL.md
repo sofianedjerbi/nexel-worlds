@@ -402,3 +402,19 @@ if the world supports multi-tile structures without changing the chunk format.
   new chars, so nothing drew.
 Tests: 37 pass (4 new).
 Next: hay bales/feeding boxes from the barn sheet (feed animals in bulk), performance check on a big built area.
+
+## 2026-11-08 · Iteration 22 — performance audit on a big built-up area
+
+Hypothesis: a dense town (houses, fields, pens, paths) will show any client or server cost that the open meadow hides.
+- Tool: `dev_stamp` (dev only) paints ASCII rows of tile chars; the QA script stamps an 80×60 town of houses, crop
+  fields and fenced pens, then measures rAF gaps and JS time per frame (idle, walking, sprinting, zoom 1 and 2).
+- Found a population explosion: eggs hatched without limit, so chicks became hens that laid more eggs. QA had 3.5k
+  chickens, the play world 7k, and the server ran at **70 ms/tick** (100 ms budget). Now hens don't lay, eggs don't hatch
+  and cows don't breed when 10+ farm animals are within 6 tiles or 200 exist in the world; on load, old worlds are
+  thinned to that density (oldest kept). Result: **1.4 ms/tick p50** (7 ms max), 199 hens in QA, 200 in the play world
+  (backup kept in saves/islands/world.before-thinning.sqlite). Test added.
+- Client: a 96–129 ms hitch on the first steps, all inside drawEntity: the first footstep sound created the
+  AudioContext mid-frame. Audio now starts on the first click or keypress. Sheets are also decoded at load. Result in
+  the dense town at zoom 1: 120 fps, JS p50 2–3 ms, p99 10–14 ms, worst frame 24 ms (was 98–129).
+Tests: 38 pass.
+Next: hay and feeding boxes (barn sheet) for feeding animals in bulk; then revisit agents (M2/M3 harness on the new world).

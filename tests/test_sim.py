@@ -509,3 +509,22 @@ def test_chickens_lay_into_the_coop(world):
     sim.creatures[hen.id] = hen
     sim.step(); sim.step()
     assert sim.items.get((a.x, a.y), {}).get("egg") == 1   # the coop's door tile is where we stand
+
+
+def test_crowded_eggs_dont_hatch_and_old_herds_thin(world, tmp_path):
+    sim, a = world
+    from megastructure.sim import Creature, sec, CROWD_N
+    for i in range(CROWD_N):
+        hen = Creature(sim.next_creature, "chicken", a.x + 2 + i % 3, a.y + i // 3, 10, cooldown=10**6)
+        sim.next_creature += 1
+        sim.creatures[hen.id] = hen
+    sim.add_items(a.x - 2, a.y, {"egg": 1})
+    for _ in range(sec(181)):
+        sim.step()
+    assert sim.items[(a.x - 2, a.y)]["egg"] == 1
+    assert sum(c.kind == "chick" for c in sim.creatures.values()) == 0
+    for i in range(50):                                    # an old world's chicken explosion
+        sim.creatures[sim.next_creature] = Creature(sim.next_creature, "chicken", a.x, a.y, 10)
+        sim.next_creature += 1
+    sim._thin_herds()
+    assert len(sim.creatures) <= 2 * CROWD_N

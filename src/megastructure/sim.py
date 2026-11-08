@@ -34,6 +34,9 @@ MAX_TEXT = 200
 CAN_SIZE = 12        # waterings per fill
 COOP_R = 6           # chickens this close to a coop lay there, twice as often
 PICNIC = 1.5         # food is worth more eaten on a picnic blanket
+FARM = ("chicken", "cow", "chick", "calf")
+CROWD_R, CROWD_N = 6, 10   # this many animals this close: hens stop laying, eggs stay eggs, cows don't breed
+ANIMAL_MAX = 200           # and never more than this many farm animals in the world
 CREATURE_ID0 = 1_000_000
 
 
@@ -177,6 +180,7 @@ class Simulation:
         for cid, js in store.db.execute("SELECT id, json FROM creatures"):
             self.creatures[cid] = Creature(**json.loads(js))
         self.next_creature = max(self.creatures, default=CREATURE_ID0) + 1
+        self._thin_herds()
         self.fires: dict[tuple, int] = {tuple(k): v for k, v in store.get_meta("fires", [])}
         self.timers: dict[tuple, list] = {(x, y): [t, kind] for x, y, t, kind in store.get_meta("timers", [])}
         self.pits: set = {tuple(p) for p in store.get_meta("pits", [])}
@@ -461,6 +465,8 @@ class Simulation:
             if c.kind == "chicken":
                 if not c.lay:
                     c.lay = self.tick + sec(60) + self.rng.randrange(sec(60))
+                elif self.tick >= c.lay and self.crowded(c.x, c.y):
+                    c.lay = self.tick + sec(90)            # no room for more: try again later
                 elif self.tick >= c.lay:
                     coop = self.coop_near(c.x, c.y)
                     c.lay = self.tick + (sec(90) + self.rng.randrange(sec(90))) // (2 if coop else 1)
@@ -508,6 +514,31 @@ class Simulation:
             c.x, c.y = x, y
             return True
         return False
+
+    def crowded(self, x, y) -> bool:
+        """Too many farm animals here (or in the world) for another one to be born."""
+        n_all = n_near = 0
+        for c in self.creatures.values():
+            if c.kind in FARM:
+                n_all += 1
+                if abs(c.x - x) <= CROWD_R and abs(c.y - y) <= CROWD_R:
+                    n_near += 1
+        return n_near >= CROWD_N or n_all >= ANIMAL_MAX
+
+    def _thin_herds(self):
+        """Older worlds bred without limits (thousands of chickens): keep at most CROWD_N per neighbourhood,
+        ANIMAL_MAX in all, oldest first."""
+        kept, cells = 0, {}
+        for cid in sorted(self.creatures):
+            c = self.creatures[cid]
+            if c.kind not in FARM:
+                continue
+            cell = (c.x // (2 * CROWD_R + 1), c.y // (2 * CROWD_R + 1))
+            if kept >= ANIMAL_MAX or cells.get(cell, 0) >= CROWD_N:
+                del self.creatures[cid]
+                continue
+            cells[cell] = cells.get(cell, 0) + 1
+            kept += 1
 
     def coop_near(self, x, y):
         """The door tile (just in front of the coop) of the closest coop within COOP_R, or None."""
@@ -594,6 +625,8 @@ class Simulation:
                     self.set_tile(*pos, ground=dry, block=nxt, cause="grew")
                     if nxt == "crop":
                         self.timers[pos] = [self.tick + sec(150), "ripen"]
+                elif kind == "hatch" and self.items.get(pos, {}).get("egg") and self.crowded(*pos):
+                    pass                                    # crowded: it stays an egg (food)
                 elif kind == "hatch" and self.items.get(pos, {}).get("egg"):
                     pile = self.items[pos]
                     pile["egg"] -= 1
@@ -1183,7 +1216,7 @@ class Simulation:
         if animal.kind == "cow":
             mate = next((o for o in self.creatures.values() if o is not animal and o.kind == "cow" and o.love > self.tick
                          and max(abs(o.x - animal.x), abs(o.y - animal.y)) <= 3), None)
-            if mate:
+            if mate and not self.crowded(animal.x, animal.y):
                 calf = Creature(self.next_creature, "calf", animal.x, animal.y, CREATURES["calf"]["hp"], born=self.tick)
                 self.next_creature += 1
                 self.creatures[calf.id] = calf

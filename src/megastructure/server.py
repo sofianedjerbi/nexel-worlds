@@ -309,6 +309,17 @@ class GameServer:
                 elif op == "dev_damage" and self.dev:
                     self.sim.damage(agent, int(msg.get("n", 10)), "dev")
                     reply(mid, hp=agent.hp)
+                elif op == "dev_stamp" and self.dev:     # paint ASCII rows (tile chars) at x, y (QA builds)
+                    from .tiles import BLOCKS as _BL, GROUNDS as _GR
+                    bch, gch = {b.char: b.name for b in _BL}, {g.char: g.name for g in _GR}
+                    x0, y0 = int(msg["x"]), int(msg["y"])
+                    for j, row in enumerate(list(msg.get("rows") or [])[:200]):
+                        for i, ch in enumerate(str(row)[:200]):
+                            if ch in gch:
+                                self.sim.set_tile(x0 + i, y0 + j, ground=gch[ch], block="none")
+                            elif ch in bch:
+                                self.sim.set_tile(x0 + i, y0 + j, ground="grass", block=bch[ch])
+                    reply(mid)
                 elif op == "dev_give" and self.dev:
                     for k, n in dict(msg.get("items") or {}).items():
                         agent.add(str(k), int(n))

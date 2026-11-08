@@ -200,7 +200,9 @@ const ANIMAL_SHEETS = ["chicken_brown", "chicken_red", "chicken_blue", "chicken_
 const ASSETS = [...ANIMAL_SHEETS, "well", "coop", "blanket", "basket", "mailbox", "boats", "deep_mask", "house_walls", "house_roof", "gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
   "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen"];
 let GEN = {};
-function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
+function loadImg(n) {   // decoded up front: a sheet decoded lazily on first draw stalls that frame (~100 ms)
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => res(i)); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; });
+}
 const ready = Promise.all([...ASSETS.map(loadImg),
   fetch("assets/gen.txt").then((r) => r.text()).then((t) => t.trim().split("\n").forEach((n, i) => GEN[n] = i)),
   document.fonts.load("18px SproutPixel")]);
@@ -468,6 +470,8 @@ function objectSprite(c, x, y, t) {
 // ---- sound: short procedural effects through WebAudio; M mutes ---------------------------
 let audio = null, muted = localStorage.getItem("megastructure-muted") === "1";
 function ac() { if (!audio) { audio = new (window.AudioContext || window.webkitAudioContext)(); } return audio; }
+// start audio on the first gesture, not inside the first frame that plays a sound (creating it stalls ~100 ms)
+for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!muted) ac(); }, {once: true, capture: true});
 function tone(freq, dur, type = "sine", vol = .2, slide = 0, delay = 0) {
   const a = ac(), t0 = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
   o.type = type; o.frequency.setValueAtTime(freq, t0); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t0 + dur);
