@@ -290,3 +290,13 @@ the resulting tile; screenshots reviewed. Tests: 26 pass.
   corridors between old walls became roofs (fixed by the compactness rule); the roof's raised offset and the
   eave's transparent edge let the interior peek through (fixed: solid shingles plus an overhanging eave).
 Tests: 27 pass (+ room shelter).
+
+## 2026-11-08 · Iteration 13 — audit round: crafting, night, death
+
+- Crafting is now a centred window: recipes grouped (Getting started, Tools & weapons, Building, Home, Cooking & smelting),
+  each a card with the item's icon, ×N output, cost chips (icon + amount, red when short, tooltip with what you
+  have) and an "at workbench" line that turns red when you're not at one. Esc closes it.
+- Death shows a banner: the cause, what you dropped and where, and whether you'll wake by your bed (the observation
+  now includes `spawn`).
+- Night: verified the campfire glow and darkening in Chrome; fruit picking verified (+3 fruit).
+- `--dev` adds `dev_time` and `dev_damage` for QA of night and death.

@@ -287,6 +287,14 @@ class GameServer:
                             reply(mid, False, error=result.get("error"), detail=result.get("detail"), result=result)
 
                     self.sim.submit(agent, tool, args, on_done=done)
+                elif op == "dev_time" and self.dev:      # jump to a time of day (0..1, 0.75+ is night)
+                    from .sim import DAY_TICKS
+                    day = self.sim.tick // DAY_TICKS
+                    self.sim.tick = day * DAY_TICKS + int(float(msg.get("phase", 0.8)) * DAY_TICKS)
+                    reply(mid, tick=self.sim.tick)
+                elif op == "dev_damage" and self.dev:
+                    self.sim.damage(agent, int(msg.get("n", 10)), "dev")
+                    reply(mid, hp=agent.hp)
                 elif op == "dev_give" and self.dev:
                     for k, n in dict(msg.get("items") or {}).items():
                         agent.add(str(k), int(n))

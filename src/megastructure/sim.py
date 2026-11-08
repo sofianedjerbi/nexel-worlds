@@ -641,6 +641,7 @@ class Simulation:
             "self": {"id": a.id, "name": a.name, "x": a.x, "y": a.y, "hp": a.hp, "hunger": a.hunger,
                      "energy": a.energy, "inventory": dict(sorted(a.inventory.items())), "deaths": a.deaths,
                      "action": a.action.tool if a.action else None,
+                     "spawn": a.spawn,
                      "standing_on": here_g if here_b == "none" else f"{here_g}+{here_b}",
                      "sheltered": self.sheltered(a.x, a.y)},
             "grid": grid,

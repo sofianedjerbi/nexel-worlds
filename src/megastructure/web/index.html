@@ -67,8 +67,23 @@
   .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
   #chat { left:50%; bottom:82px; transform:translateX(-50%); width:min(560px, calc(100vw - 620px)); display:none; }
   #chat input { width:100%; }
-  #craft { left:10px; top:110px; width:320px; display:none; max-height:calc(100vh - 330px); }
-  #craft .in { overflow:auto; max-height:calc(100vh - 370px); }
+  #craft { left:50%; top:50%; transform:translate(-50%,-55%); width:min(760px, calc(100vw - 40px)); display:none; z-index:4; }
+  #craft .in { overflow:auto; max-height:min(560px, calc(100vh - 220px)); }
+  #craft .close { position:absolute; right:-6px; top:-14px; cursor:pointer; color:var(--ink2); }
+  .rgroup { margin:6px 0 2px; color:var(--ink2); }
+  .rgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(176px, 1fr)); gap:6px; }
+  .rcard { display:flex; gap:8px; align-items:center; padding:5px 6px; border:2px solid #d9b98a; border-radius:5px; background:#f7e7c6; cursor:pointer; position:relative; }
+  .rcard:hover { border-color:#6aa66f; background:#fbf0d8; }
+  .rcard.no { opacity:.45; cursor:default; } .rcard.no:hover { border-color:#d9b98a; background:#f7e7c6; }
+  .rcard canvas.big { width:32px; height:32px; image-rendering:pixelated; flex:none; }
+  .rcard .nm { line-height:20px; }
+  .rcard .cost { display:flex; flex-wrap:wrap; gap:3px 8px; color:var(--ink2); }
+  .rcard .cost span { display:inline-flex; align-items:center; gap:1px; }
+  .rcard .cost span.miss { color:var(--warn); }
+  .rcard .cost canvas { width:16px; height:16px; image-rendering:pixelated; }
+  .rcard .stn { display:flex; align-items:center; gap:3px; color:var(--ink2); white-space:nowrap; }
+  .rcard .stn.miss { color:var(--warn); }
+  .rcard .stn canvas { width:16px; height:16px; image-rendering:pixelated; }
   .rc { display:flex; justify-content:space-between; gap:6px; padding:2px 4px; cursor:pointer; border-radius:3px; }
   .rc:hover { background:rgba(91,63,54,.1); }
   .rc .in2 { color:var(--ink2); font-size:18px; text-align:right; }
@@ -81,6 +96,8 @@
   #bag { left:50%; bottom:92px; transform:translateX(-50%); display:none; max-width:560px; }
   #bagitems { display:flex; flex-wrap:wrap; gap:6px; }
   .bagslot .bagtxt { color:#fff8e8; text-shadow:1px 1px 0 var(--ink); }
+  #banner { left:50%; top:24%; transform:translateX(-50%); display:none; text-align:center; width:min(520px, 90vw); z-index:5; }
+  #banner .t { font-size:36px; line-height:40px; color:var(--warn); margin-bottom:6px; }
   #toast { left:50%; top:10px; transform:translateX(-50%); display:none; max-width:70vw; }
   #help { right:10px; bottom:10px; display:none; max-width:300px; color:var(--ink2); font-size:18px; }
   #help b { color:var(--ink); font-weight:normal; }
@@ -118,9 +135,10 @@
 </div></div>
 <div class="panel" id="goals"><div class="in"><h3>Goals</h3><div id="goallist"></div></div></div>
 <div class="panel" id="bag"><div class="in"><h3>Bag</h3><div id="bagitems"></div></div></div>
-<div class="panel" id="craft"><div class="in"><h3>Craft</h3><div id="recipes"></div></div></div>
+<div class="panel" id="craft"><div class="in"><h3>Crafting</h3><span class="close" id="craftclose">close (Esc)</span><div id="recipes"></div></div></div>
 <div class="panel" id="chat"><div class="in"><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout · /command)" maxlength="200" autocomplete="off"></div></div>
 <div id="hotbar"></div>
+<div class="panel" id="banner"><div class="in"><div class="t" id="bannert"></div><div id="bannerd"></div></div></div>
 <div class="panel" id="toast"><div class="in" id="toastt"></div></div>
 
 <script>
@@ -645,6 +663,10 @@ function onEvent(e) {
     const tx = tgt ? tgt.x : e.x, ty = tgt ? tgt.y : e.y;
     if (tgt) flashes.set(tgt.e.kind === "agent" ? "agent" + tgt.e.id : tgt.e.kind + tgt.e.id, performance.now());
     burst(tx, ty, "hit", 6, {dy: -.4}); floats.push({x: tx, y: ty, text: "-" + e.damage, color: "#ff8a7a", t});
+  }
+  if (e.type === "death" && e.name === me) {
+    const lost = fmt(e.dropped);
+    banner("You died", `${e.cause}.${lost ? " Everything you carried (" + lost + ") lies where you fell, at " + e.x + ", " + e.y + "." : ""} ${meObs && meObs.self.spawn ? "You wake up by your bed." : "You wake up somewhere else. Sleep in a bed to choose where."}`);
   }
   if (e.type === "death" || e.type === "creature_died") burst(e.x, e.y, "dust", 16, {dy: -.3, up: 2.5, spread: 4, g: 3, life: .7, size: 2});
   if (e.type === "pick_up") burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3});
@@ -1292,19 +1314,54 @@ function drawGoals() {
   el.style.display = $("craft").style.display === "block" ? "none" : "block";
   $("goallist").innerHTML = shown.map(([t]) => `<div class="goal"><span class="box"></span><span>${esc(t)}</span></div>`).join("");
 }
+const RECIPE_GROUPS = [
+  ["Getting started", ["workbench", "campfire", "torch", "rope", "plank", "path"]],
+  ["Tools & weapons", ["axe", "pickaxe", "watering_can", "spear", "sword"]],
+  ["Building", ["wood_wall", "door", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
+  ["Home", ["bed", "chair", "table", "plant", "clock", "rug"]],
+  ["Cooking & smelting", ["cooked_meat", "bread", "ingot"]],
+];
 function drawRecipes() {
   const el = $("recipes"); if (!el || !Object.keys(recipes).length) return;
   const inv = meObs ? meObs.self.inventory : {};
   const near = (st) => !st || (meObs && meObs.grid.some((row, j) => [...row].some((ch, i) => Math.abs(i - 10) <= 2 && Math.abs(j - 10) <= 2 && CH[ch] === st)));
   const sig = JSON.stringify(inv) + (meObs ? meObs.grid.join("") : ""); if (el.dataset.sig === sig) return; el.dataset.sig = sig;
   el.innerHTML = "";
-  for (const [name, r] of Object.entries(recipes)) {
-    const can = Object.entries(r.inputs).every(([k, v]) => (inv[k] || 0) >= v) && near(r.station);
-    const d = document.createElement("div"); d.className = "rc" + (can ? "" : " no");
-    d.innerHTML = `<span>${esc(label(name))}</span><span class="in2">${esc(fmt(r.inputs))}${r.station ? "<br>at " + esc(r.station) : ""}</span>`;
-    if (can) d.onclick = () => act("craft", {recipe: name});
-    el.appendChild(d);
+  const listed = new Set(RECIPE_GROUPS.flatMap(([, n]) => n));
+  const groups = [...RECIPE_GROUPS, ["Other", Object.keys(recipes).filter((n) => !listed.has(n))]];
+  for (const [title, names] of groups) {
+    const items = names.filter((n) => recipes[n]); if (!items.length) continue;
+    el.insertAdjacentHTML("beforeend", `<div class="rgroup">${esc(title)}</div>`);
+    const grid = document.createElement("div"); grid.className = "rgrid"; el.appendChild(grid);
+    for (const name of items) {
+      const rc = recipes[name], haveAll = Object.entries(rc.inputs).every(([k, v]) => (inv[k] || 0) >= v), atStation = near(rc.station);
+      const card = document.createElement("div"); card.className = "rcard" + (haveAll && atStation ? "" : " no");
+      const big = iconCanvas(name); big.className = "big"; card.appendChild(big);
+      const out = Object.values(rc.output)[0];
+      const body = document.createElement("div");
+      body.innerHTML = `<div class="nm">${esc(label(name))}${out > 1 ? " ×" + out : ""}</div><div class="cost"></div>`;
+      for (const [k, v] of Object.entries(rc.inputs)) {
+        const chip = document.createElement("span"); if ((inv[k] || 0) < v) chip.className = "miss";
+        chip.appendChild(iconCanvas(k)); chip.insertAdjacentText("beforeend", `${v}`);
+        chip.title = `${label(k)}: need ${v}, you have ${inv[k] || 0}`;
+        body.querySelector(".cost").appendChild(chip);
+      }
+      card.appendChild(body);
+      if (rc.station) {
+        const st = document.createElement("div"); st.className = "stn" + (atStation ? "" : " miss");
+        st.appendChild(iconCanvas(rc.station)); st.insertAdjacentText("beforeend", `at ${label(rc.station)}`);
+        body.appendChild(st);
+      }
+      card.title = !atStation ? `Stand next to a ${label(rc.station)} to craft this` : !haveAll ? "Missing materials" : "Click to craft";
+      if (haveAll && atStation) card.onclick = () => act("craft", {recipe: name});
+      grid.appendChild(card);
+    }
   }
+}
+let bannerTimer;
+function banner(title, text) {
+  $("bannert").textContent = title; $("bannerd").textContent = text; $("banner").style.display = "block";
+  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => $("banner").style.display = "none", 7000);
 }
 let toastTimer;
 function toast(msg, bad) { $("toastt").textContent = msg; const t = $("toast"); t.style.display = "block"; $("toastt").style.color = bad ? "var(--warn)" : "var(--ink)"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3200); }
@@ -1316,7 +1373,7 @@ addEventListener("keydown", (e) => {
   if (document.activeElement === $("say") || !me) return;
   const k = e.key.toLowerCase();
   if (k === "shift") keys.add("shift");
-  if (k === "escape") { selected = null; $("hotbar").dataset.sig = ""; if (meObs) drawHotbar(meObs.self.inventory); $("craft").style.display = "none"; }
+  if (k === "escape") { $("bag").style.display = "none"; selected = null; $("hotbar").dataset.sig = ""; if (meObs) drawHotbar(meObs.self.inventory); $("craft").style.display = "none"; }
   if (KEYDIR[k]) { e.preventDefault(); if (!e.repeat) { keys.delete(k); keys.add(k); } syncWalk(); return; }
   if (k === " ") { e.preventDefault(); interactFacing(); return; }
   if (k === "enter" || k === "t") { e.preventDefault(); openChat(); }
@@ -1398,6 +1455,7 @@ $("say").addEventListener("keydown", (e) => {
   } else if (line.startsWith("!")) act("shout", {text: line.slice(1).trim()});
   else act("say", {text: line});
 });
+$("craftclose").onclick = () => { $("craft").style.display = "none"; drawGoals(); };
 $("craftbtn").onclick = () => { const c = $("craft"); c.style.display = c.style.display === "block" ? "none" : "block"; drawGoals(); };
 $("helpbtn").onclick = () => { const h = $("help"); const on = h.style.display !== "block"; h.style.display = on ? "block" : "none"; localStorage.setItem("megastructure-help", on ? "on" : "off"); };
 $("join").onclick = () => { const n = $("name").value.trim(); if (n) joinGame(n); };
