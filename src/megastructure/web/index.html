@@ -6,149 +6,186 @@
 <link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root { --glass:rgba(8,11,13,.78); --line:rgba(150,180,190,.13); --text:#d3dadd; --dim:#77848c;
-          --cyan:#6ff0e2; --amber:#ffb454; --red:#ff5d57; --green:#8fe388; }
+  @font-face { font-family: Sprout; src: url(assets/font.ttf); }
+  :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#f3dfba; --accent:#4f9a6a; --warn:#c0503c; }
   * { box-sizing:border-box; }
-  html, body { margin:0; height:100%; background:#000; color:var(--text); overflow:hidden;
-    font:12.5px/1.45 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; user-select:none; }
+  html, body { margin:0; height:100%; background:#9bd4c3; overflow:hidden; color:var(--ink);
+    font:16px/1.15 Sprout, ui-monospace, monospace; user-select:none; -webkit-font-smoothing:none; }
   canvas#c { position:fixed; inset:0; display:block; image-rendering:pixelated; }
-  .panel { position:fixed; background:var(--glass); border:1px solid var(--line); border-radius:8px;
-    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 8px 30px #0009; }
-  h3 { margin:0 0 7px; font-size:9.5px; letter-spacing:.24em; color:var(--dim); font-weight:700; text-transform:uppercase; }
-  #brand { left:14px; top:12px; padding:9px 13px; cursor:pointer; }
-  #brand .t { letter-spacing:.45em; font-weight:800; color:#eef6f7; font-size:13px; }
-  #brand .s { color:var(--dim); font-size:11px; margin-top:2px; }
-  #clock { color:var(--cyan); } #clock.night { color:var(--red); }
-  #side { right:14px; top:12px; width:290px; max-height:calc(100vh - 160px); display:flex; flex-direction:column; padding:11px; gap:11px; }
-  #agents { max-height:28vh; overflow:auto; }
-  .ag { display:flex; align-items:center; gap:8px; padding:3px 6px; border-radius:5px; cursor:pointer; }
-  .ag:hover, .ag.sel { background:rgba(111,240,226,.08); }
-  .ag .dot { width:8px; height:8px; border-radius:2px; flex:none; }
+  .panel { position:fixed; border:24px solid transparent; border-image:url(assets/panel.png) 9 fill / 27px stretch;
+    image-rendering:pixelated; padding:0; filter:drop-shadow(0 3px 0 rgba(60,40,30,.25)); }
+  .panel > .in { margin:-10px -8px -12px; }
+  h3 { margin:0 0 4px; font-size:16px; color:var(--ink2); font-weight:normal; letter-spacing:.05em; }
+  #brand { left:10px; top:10px; }
+  #brand .t { font-size:20px; letter-spacing:.12em; }
+  #brand .s { color:var(--ink2); margin-top:2px; }
+  #side { right:10px; top:10px; width:300px; max-height:calc(100vh - 150px); display:flex; flex-direction:column; }
+  #side .in { display:flex; flex-direction:column; gap:8px; min-height:0; max-height:calc(100vh - 190px); }
+  #agents { max-height:24vh; overflow:auto; }
+  .ag { display:flex; align-items:center; gap:7px; padding:1px 4px; cursor:pointer; border-radius:3px; }
+  .ag:hover, .ag.sel { background:rgba(91,63,54,.1); }
+  .ag .dot { width:9px; height:9px; flex:none; border:2px solid var(--ink); }
   .ag .n { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .ag .m { color:var(--dim); font-size:10.5px; }
-  .ag.off { opacity:.4; }
-  #feed { overflow:auto; flex:1; min-height:100px; font-size:11.5px; }
-  #feed div { padding:2px 0; cursor:pointer; }
-  #feed .k { color:#4d575d; margin-right:6px; font-size:10px; }
-  .say{color:#b3dcff}.shout{color:var(--amber)}.death{color:var(--red)}.attack{color:#ff9a76}.give{color:var(--green)}
-  .craft{color:#c9b9ff}.join,.leave,.creature_died{color:var(--dim)}.sign{color:#ecd9a8}
-  #stats { color:var(--dim); font-size:10px; line-height:1.6; }
-  #joinbox { left:50%; top:50%; transform:translate(-50%,-50%); padding:26px 28px; width:380px; text-align:center; }
-  #joinbox .t { letter-spacing:.5em; font-weight:800; font-size:19px; color:#eef7f8; margin-bottom:4px; }
-  #joinbox p { color:var(--dim); margin:6px 0 18px; font-size:12px; }
-  input { font:inherit; color:var(--text); background:rgba(0,0,0,.5); border:1px solid var(--line); border-radius:6px; padding:9px 11px; outline:none; }
-  input:focus { border-color:var(--cyan); }
-  button { font:inherit; color:#061012; background:var(--cyan); border:0; border-radius:6px; padding:9px 14px; font-weight:700; cursor:pointer; }
-  button.ghost { background:transparent; color:var(--dim); border:1px solid var(--line); font-weight:400; }
+  .ag .m { color:var(--ink2); font-size:14px; }
+  .ag.off { opacity:.45; }
+  #feed { overflow:auto; flex:1; min-height:80px; font-size:15px; }
+  #feed div { padding:1px 0; cursor:pointer; }
+  #feed .k { color:#b39a7c; margin-right:5px; font-size:13px; }
+  .say{color:#3d6f9e}.shout{color:#b0692a}.death{color:var(--warn)}.attack{color:#b5532f}.give{color:#3f8a4f}
+  .craft{color:#7b5aa6}.join,.leave,.creature_died{color:var(--ink2)}.sign{color:#8a6a2a}
+  #stats { color:var(--ink2); font-size:13px; }
+  #joinbox { left:50%; top:50%; transform:translate(-50%,-50%); width:420px; text-align:center; }
+  #joinbox .t { font-size:30px; letter-spacing:.12em; margin:4px 0; }
+  #joinbox p { color:var(--ink2); margin:6px 0 14px; }
+  input { font:inherit; color:var(--ink); background:#fff6e2; border:3px solid #c9a27a; border-radius:4px; padding:6px 9px; outline:none; }
+  input:focus { border-color:var(--accent); }
+  button { font:inherit; color:#fff8e8; background:#6aa66f; border:3px solid #3f7a4f; border-radius:4px; padding:5px 12px; cursor:pointer; }
+  button:hover { filter:brightness(1.08); }
+  button.ghost { background:#e9cfa2; color:var(--ink); border-color:#c9a27a; }
   #joinbox .row { display:flex; gap:8px; } #joinbox input { flex:1; }
-  #joinbox .watch { margin-top:12px; }
-  #vitals { left:14px; bottom:14px; padding:11px 13px; width:240px; display:none; }
-  .bar { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:10.5px; }
-  .bar .l { width:46px; color:var(--dim); } .bar .v { width:24px; text-align:right; }
-  .bar .b { flex:1; height:6px; background:rgba(255,255,255,.06); border-radius:3px; overflow:hidden; }
-  .bar .b i { display:block; height:100%; transition:width .25s; }
-  #where { color:var(--dim); font-size:10.5px; margin-bottom:5px; }
-  #doing { color:var(--amber); font-size:10.5px; min-height:15px; }
-  #hotbar { left:50%; bottom:14px; transform:translateX(-50%); padding:7px; display:none; gap:5px; max-width:calc(100vw - 600px); flex-wrap:wrap; justify-content:center; }
-  .slot { width:48px; height:48px; border-radius:6px; background:rgba(0,0,0,.4); border:1px solid var(--line); position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  #joinbox .watch { margin-top:10px; }
+  #vitals { left:10px; bottom:10px; width:260px; display:none; }
+  .bar { display:flex; align-items:center; gap:7px; margin:3px 0; }
+  .bar .l { width:56px; color:var(--ink2); } .bar .v { width:28px; text-align:right; }
+  .bar .b { flex:1; height:10px; background:#d8bd92; border:2px solid var(--ink); overflow:hidden; }
+  .bar .b i { display:block; height:100%; transition:width .2s; }
+  #where { color:var(--ink2); margin-bottom:3px; }
+  #doing { color:#b0692a; min-height:16px; }
+  #hotbar { left:50%; bottom:6px; transform:translateX(-50%); display:none; gap:2px; flex-wrap:wrap; justify-content:center; max-width:calc(100vw - 620px); padding:4px; }
+  .slot { width:54px; height:54px; border:9px solid transparent; border-image:url(assets/slot.png) 9 fill / 18px stretch;
+    image-rendering:pixelated; position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .slot.sel { border-image-source:url(assets/slot_sel.png); }
   .slot canvas { width:32px; height:32px; image-rendering:pixelated; }
-  .slot .c { position:absolute; right:4px; bottom:2px; font-size:10.5px; font-weight:700; text-shadow:0 1px 2px #000; }
-  .slot .k { position:absolute; left:4px; top:2px; font-size:9px; color:var(--dim); }
-  .slot.sel { border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan) inset, 0 0 16px rgba(111,240,226,.25); }
+  .slot .c { position:absolute; right:-4px; bottom:-6px; color:#fff8e8; text-shadow:1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+  .slot .k { position:absolute; left:-4px; top:-7px; font-size:13px; color:#fff1d6; text-shadow:1px 1px 0 var(--ink); }
   .slot:hover .tip { display:block; }
-  .tip { display:none; position:absolute; bottom:56px; left:50%; transform:translateX(-50%); white-space:nowrap; background:#000e; padding:3px 8px; border-radius:4px; font-size:11px; pointer-events:none; }
-  #chat { left:50%; bottom:84px; transform:translateX(-50%); width:min(540px, calc(100vw - 620px)); padding:5px; display:none; }
-  #chat input { width:100%; border:0; background:transparent; }
-  #craft { left:14px; top:84px; width:240px; padding:11px; display:none; max-height:calc(100vh - 290px); overflow:auto; }
-  .rc { display:flex; justify-content:space-between; gap:6px; padding:4px 6px; border-radius:5px; cursor:pointer; font-size:11px; }
-  .rc:hover { background:rgba(111,240,226,.08); }
-  .rc .in { color:var(--dim); font-size:10px; text-align:right; }
-  .rc.no { opacity:.32; cursor:default; } .rc.no:hover { background:none; }
-  #toast { left:50%; top:14px; transform:translateX(-50%); padding:7px 13px; display:none; font-size:12px; }
-  #help { right:14px; bottom:14px; padding:9px 11px; color:var(--dim); font-size:10.5px; display:none; line-height:1.7; max-width:290px; }
-  #help b { color:var(--text); font-weight:600; }
-  #hover { position:fixed; pointer-events:none; background:#000d; border:1px solid var(--line); border-radius:5px; padding:3px 8px; font-size:11px; display:none; z-index:5; }
+  .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
+  #chat { left:50%; bottom:82px; transform:translateX(-50%); width:min(560px, calc(100vw - 620px)); display:none; }
+  #chat input { width:100%; }
+  #craft { left:10px; top:96px; width:270px; display:none; max-height:calc(100vh - 330px); }
+  #craft .in { overflow:auto; max-height:calc(100vh - 370px); }
+  .rc { display:flex; justify-content:space-between; gap:6px; padding:2px 4px; cursor:pointer; border-radius:3px; }
+  .rc:hover { background:rgba(91,63,54,.1); }
+  .rc .in2 { color:var(--ink2); font-size:14px; text-align:right; }
+  .rc.no { opacity:.38; cursor:default; } .rc.no:hover { background:none; }
+  #toast { left:50%; top:10px; transform:translateX(-50%); display:none; max-width:70vw; }
+  #help { right:10px; bottom:10px; display:none; max-width:300px; color:var(--ink2); font-size:15px; }
+  #help b { color:var(--ink); font-weight:normal; }
+  #hover { position:fixed; pointer-events:none; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; display:none; z-index:5; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="hover"></div>
-<div class="panel" id="brand"><div class="t">MEGASTRUCTURE</div><div class="s"><span id="clock">connecting…</span> · <span id="mode">spectating</span></div></div>
-<div class="panel" id="side">
-  <div><h3>Inhabitants</h3><div id="agents"></div></div>
-  <div style="display:flex;flex-direction:column;min-height:0;flex:1"><h3>Happenings</h3><div id="feed"></div></div>
+<div class="panel" id="brand"><div class="in"><div class="t">MEGASTRUCTURE</div><div class="s"><span id="clock">waking…</span> · <span id="mode">watching</span></div></div></div>
+<div class="panel" id="side"><div class="in">
+  <div><h3>People</h3><div id="agents"></div></div>
+  <div style="display:flex;flex-direction:column;min-height:0;flex:1"><h3>News</h3><div id="feed"></div></div>
   <div id="stats"></div>
-</div>
-<div class="panel" id="joinbox">
+</div></div>
+<div class="panel" id="joinbox"><div class="in">
   <div class="t">MEGASTRUCTURE</div>
-  <p>An endless structure that builds itself. No rules, no safe zones.<br>Pick a name to wake up inside it.</p>
+  <p>Endless islands. No rules, no safe zones.<br>Pick a name to wake up on the shore.</p>
   <div class="row"><input id="name" placeholder="your name" maxlength="24" autocomplete="off"><button id="join">Wake up</button></div>
   <div class="watch"><button class="ghost" id="watch">just watch</button></div>
-</div>
-<div class="panel" id="vitals">
+</div></div>
+<div class="panel" id="vitals"><div class="in">
   <div id="where"></div>
-  <div class="bar"><span class="l">health</span><span class="b"><i id="hp" style="background:#ff6a5e"></i></span><span class="v" id="hpv"></span></div>
-  <div class="bar"><span class="l">food</span><span class="b"><i id="hu" style="background:#ffbe63"></i></span><span class="v" id="huv"></span></div>
-  <div class="bar"><span class="l">energy</span><span class="b"><i id="en" style="background:#57e0d2"></i></span><span class="v" id="env"></span></div>
+  <div class="bar"><span class="l">health</span><span class="b"><i id="hp" style="background:#e0645a"></i></span><span class="v" id="hpv"></span></div>
+  <div class="bar"><span class="l">food</span><span class="b"><i id="hu" style="background:#e8a94a"></i></span><span class="v" id="huv"></span></div>
+  <div class="bar"><span class="l">energy</span><span class="b"><i id="en" style="background:#6aa66f"></i></span><span class="v" id="env"></span></div>
   <div id="doing"></div>
-  <div style="display:flex;gap:6px;margin-top:6px"><button class="ghost" id="craftbtn" style="flex:1;padding:5px">craft (C)</button><button class="ghost" id="helpbtn" style="padding:5px 10px">?</button></div>
-</div>
-<div class="panel" id="help">
-  <b>WASD</b> move · <b>Shift+WASD</b> dig · <b>click</b> walk / dig / hit<br>
-  <b>right-click</b> place selected · <b>1-9</b> select · <b>E</b> eat<br>
-  <b>Enter</b> talk · <b>!text</b> shout · <b>/tool k=v</b> command<br>
-  <b>F</b> pick up · <b>R</b> rest · <b>C</b> craft · <b>wheel</b> zoom · <b>H</b> help
-</div>
-<div class="panel" id="craft"><h3>Craft</h3><div id="recipes"></div></div>
-<div class="panel" id="chat"><input id="say" placeholder="Say something…  (Enter send · Esc cancel · !shout · /command)" maxlength="200" autocomplete="off"></div>
-<div class="panel" id="hotbar"></div>
-<div class="panel" id="toast"></div>
+  <div style="display:flex;gap:6px;margin-top:5px"><button class="ghost" id="craftbtn" style="flex:1">craft (C)</button><button class="ghost" id="helpbtn">?</button></div>
+</div></div>
+<div class="panel" id="help"><div class="in">
+  <b>WASD</b> walk · <b>Shift+WASD</b> dig/chop<br><b>click</b> walk / harvest / hit<br>
+  <b>right-click</b> place selected · <b>1-9</b> select<br><b>E</b> eat · <b>F</b> pick up · <b>R</b> rest<br>
+  <b>Enter</b> talk · <b>!text</b> shout · <b>/tool k=v</b><br><b>C</b> craft · <b>wheel</b> zoom · <b>H</b> help
+</div></div>
+<div class="panel" id="craft"><div class="in"><h3>Craft</h3><div id="recipes"></div></div></div>
+<div class="panel" id="chat"><div class="in"><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout · /command)" maxlength="200" autocomplete="off"></div></div>
+<div id="hotbar" class="panel"></div>
+<div class="panel" id="toast"><div class="in" id="toastt"></div></div>
 
 <script>
 "use strict";
 // =====================================================================================
-//  Tile vocabulary (must match tiles.py)
+//  Vocabulary (must match tiles.py)
 // =====================================================================================
 const CH = {
-  "~": "coolant", ":": "grating", ".": "moss", ",": "deck", "o": "breach", "_": "plating", "'": "slag", "=": "void",
-  "T": "scrap_heap", "b": "lichen", "M": "structure", "*": "node", "H": "conduit", "Q": "terminal", "#": "scrap_wall",
-  "%": "alloy_wall", "+": "hatch", "^": "heater", "&": "bench", "?": "sign", "!": "beacon", "x": "fire",
-  "\"": "spore_bed", "w": "ripe_bed", "t": "debris", "C": "locker",
+  "~": "water", ":": "bridge", ".": "grass", ",": "dirt", "o": "tilled", "_": "cobble", "'": "ash", "=": "deep_water",
+  "T": "tree", "b": "berry_bush", "M": "rock", "*": "ore", "H": "thicket", "Q": "mushroom", "#": "fence",
+  "%": "stone_wall", "+": "door", "^": "campfire", "&": "workbench", "?": "sign", "!": "flag", "x": "fire",
+  "\"": "crop", "w": "ripe_crop", "t": "stump", "C": "chest",
 };
 const CHAR = Object.fromEntries(Object.entries(CH).map(([c, n]) => [n, c]));
-const GROUND_CHARS = new Set("~:.,o_'=");
-const MASS = new Set("M*HQ");                 // the structure itself: merges into continuous slabs
-const SOLID = new Set("M*HQ#%&CT");           // blocks you cannot walk through
+const GROUND = new Set("~:.,o_'=");
+const SOLID = new Set("TbM*H#%^&C");
 const WALKABLE_GROUND = new Set(":.,o_'");
-const famOf = (c) => MASS.has(c) ? "M" : c;   // autotile family
-const LABEL = {scrap_heap: "scrap heap", node: "core node", spore_bed: "spore bed", ripe_bed: "ripe spore bed",
-  scrap_wall: "scrap wall", alloy_wall: "alloy wall", cooked_meat: "cooked meat", arc_blade: "arc blade"};
-const label = (n) => LABEL[n] || n;
+const LABEL = {berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
+  cooked_meat: "cooked meat", deep_water: "deep water"};
+const label = (n) => LABEL[n] || String(n).replace("_", " ");
 
 // =====================================================================================
-//  Noise + colour helpers
+//  Assets
 // =====================================================================================
-function h2(x, y, s = 0) {
-  let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(s, 2246822519)) >>> 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+const IMG = {};
+const ASSETS = ["water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
+  "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen"];
+let GEN = {};
+function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
+const ready = Promise.all([...ASSETS.map(loadImg),
+  fetch("assets/gen.txt").then((r) => r.text()).then((t) => t.trim().split("\n").forEach((n, i) => GEN[n] = i)),
+  document.fonts.load("16px Sprout")]);
+
+// The ground sheets share one 11x5 "blob" layout. Work out which neighbours each cell connects to from
+// the alpha of the grass layer, then look tiles up by the neighbour mask of the world tile.
+const N_ = 1, E_ = 2, S_ = 4, W_ = 8, NE = 16, SE = 32, SW = 64, NW = 128;
+let BLOB = new Map();
+function reduce(m) {
+  if (!(m & N_ && m & E_)) m &= ~NE; if (!(m & S_ && m & E_)) m &= ~SE;
+  if (!(m & S_ && m & W_)) m &= ~SW; if (!(m & N_ && m & W_)) m &= ~NW;
+  return m;
 }
-function vn(x, y, s = 0) {   // smooth value noise
-  const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
-  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-  const a = h2(x0, y0, s), b = h2(x0 + 1, y0, s), c = h2(x0, y0 + 1, s), d = h2(x0 + 1, y0 + 1, s);
-  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+function buildBlob() {
+  const c = document.createElement("canvas"); c.width = IMG.grass.width; c.height = IMG.grass.height;
+  const g = c.getContext("2d"); g.drawImage(IMG.grass, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height).data;
+  const op = (x, y) => d[(y * c.width + x) * 4 + 3] > 128;
+  for (let cy = 0; cy < 5; cy++) for (let cx = 0; cx < 11; cx++) {
+    const X = cx * 16, Y = cy * 16;
+    if (!op(X + 8, Y + 8)) continue;
+    let m = 0;
+    if (op(X + 8, Y)) m |= N_; if (op(X + 15, Y + 8)) m |= E_; if (op(X + 8, Y + 15)) m |= S_; if (op(X, Y + 8)) m |= W_;
+    if (op(X + 15, Y)) m |= NE; if (op(X + 15, Y + 15)) m |= SE; if (op(X, Y + 15)) m |= SW; if (op(X, Y)) m |= NW;
+    m = reduce(m);
+    if (!BLOB.has(m)) BLOB.set(m, [cx, cy]);
+  }
 }
-const clamp = (v) => v < 0 ? 0 : v > 255 ? 255 : v | 0;
-const pack = (r, g, b) => (255 << 24) | (clamp(b) << 16) | (clamp(g) << 8) | clamp(r);
-const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-const mul = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+const blobCache = new Map();
+function blobCell(mask) {
+  mask = reduce(mask);
+  let hit = blobCache.get(mask);
+  if (hit) return hit;
+  hit = BLOB.get(mask);
+  if (!hit) {   // nearest available: same edges, as many of the wanted corners as possible
+    let best = null, bs = -1;
+    for (const [m, cell] of BLOB) {
+      if ((m & 15) !== (mask & 15)) continue;
+      const s = 8 - popcount((m ^ mask) & 0xf0);
+      if (s > bs) { bs = s; best = cell; }
+    }
+    hit = best || BLOB.get(15) || [1, 1];
+  }
+  blobCache.set(mask, hit); return hit;
+}
+const popcount = (v) => { let c = 0; while (v) { c += v & 1; v >>= 1; } return c; };
 
 // =====================================================================================
-//  World tile store: 32x32 blocks, filled from the server and patched by tile events
+//  Tile store: 32x32 blocks, filled from the server and patched by tile events
 // =====================================================================================
 const B = 32, P = 16;
-const blocks = new Map();   // "bx,by" -> {comb, gnd, floor canvas, wall canvas, dirty, specials}
+const blocks = new Map();
 const bkey = (bx, by) => bx + "," + by;
 function tile(x, y) {
   const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B)));
@@ -157,386 +194,169 @@ function tile(x, y) {
   return [b.comb[i], b.gnd[i]];
 }
 const combAt = (x, y) => { const t = tile(x, y); return t ? t[0] : null; };
+const gndAt = (x, y) => { const t = tile(x, y); return t ? t[1] : null; };
+const dirtyTiles = [];                 // tiles to redraw (x, y), processed within a per-frame budget
+function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }
 function setTile(x, y, comb, gnd) {
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
   if (!b) return;
   const i = (y - by * B) * B + (x - bx * B);
-  b.comb[i] = comb; b.gnd[i] = gnd; b.dirty = true;
-  const lx = x - bx * B, ly = y - by * B;           // neighbours that share an edge need re-autotiling
-  if (lx === 0) markDirty(bx - 1, by); if (lx === B - 1) markDirty(bx + 1, by);
-  if (ly === 0) markDirty(bx, by - 1); if (ly === B - 1) markDirty(bx, by + 1);
+  if (b.comb[i] === comb && b.gnd[i] === gnd) return;
+  b.comb[i] = comb; b.gnd[i] = gnd;
+  b.objs.delete(i); if (isObject(comb)) b.objs.set(i, comb);
+  touch(x, y);
 }
-function markDirty(bx, by) { const b = blocks.get(bkey(bx, by)); if (b) b.dirty = true; }
 function onRegion(d) {
   if (d.w !== B || d.h !== B || d.x % B || d.y % B) return;
-  const bx = d.x / B, by = d.y / B;
+  const bx = d.x / B, by = d.y / B, k = bkey(bx, by);
   const comb = [], gnd = [];
   for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) { comb.push(d.rows[j][i]); gnd.push(d.ground[j][i]); }
-  const old = blocks.get(bkey(bx, by));
-  blocks.set(bkey(bx, by), {bx, by, comb, gnd, dirty: true, floor: old && old.floor, wall: old && old.wall, specials: old ? old.specials : [], at: performance.now()});
-  requested.delete(bkey(bx, by));
-  markDirty(bx - 1, by); markDirty(bx + 1, by); markDirty(bx, by - 1); markDirty(bx, by + 1);
+  requested.delete(k);
+  const old = blocks.get(k);
+  if (old && old.drawn) {             // resync: only redraw what actually changed
+    for (let i = 0; i < B * B; i++) if (old.comb[i] !== comb[i] || old.gnd[i] !== gnd[i]) setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i]);
+    old.at = performance.now(); return;
+  }
+  const b = {bx, by, comb, gnd, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
+  comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
+  blocks.set(k, b);
+  // neighbours' edge tiles depend on this block for autotiling
+  for (let i = 0; i < B; i++) { dirtyTiles.push(bx * B - 1, by * B + i, bx * B + B, by * B + i, bx * B + i, by * B - 1, bx * B + i, by * B + B); }
 }
 
 // =====================================================================================
-//  The tileset: per-pixel shaders rendered once per block into cached canvases
+//  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
-const PAL = {
-  deck: [44, 49, 53], deckSeam: [27, 30, 33], deckLip: [60, 66, 71], rivet: [86, 94, 99],
-  rust: [74, 46, 32], moss1: [33, 46, 37], moss2: [45, 66, 47], moss3: [74, 102, 66],
-  grate: [62, 70, 76], grateHi: [92, 102, 108], pit: [6, 8, 9],
-  plate: [70, 77, 82], slag: [31, 26, 24], ember: [140, 62, 30],
-  coolant: [12, 54, 60], coolant2: [20, 82, 88],
-  mass: [80, 88, 94], massDark: [58, 64, 69], massHi: [118, 128, 134], outline: [18, 20, 22],
-  front: [50, 56, 61], frontDark: [32, 36, 39],
-  wood: [118, 82, 52], woodDark: [78, 52, 33], steel: [146, 156, 162],
-};
-function mossiness(x, y) { const t = tile(x, y); return t && t[1] === "." ? 1 : 0; }
-
-function floorPixel(g, u, v, px, py, nb) {
-  let c;
-  if (g === "=") {                                   // the void: a shaft wall fading into black
-    if (nb.nVoid) return pack(0, 0, 0);
-    const t = Math.min(1, v / 13), k = (1 - t) * (1 - t), band = ((px >> 2) % 3 === 0) ? .8 : 1;
-    return pack(36 * k * band, 40 * k * band, 44 * k * band);
+const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
+const isObject = (c) => "TbM*H#%+^&?!x\"wtCQ".includes(c) && !GROUND.has(c);
+function maskOf(x, y, pred) {
+  let m = 0;
+  const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1]); };
+  if (p(0, -1)) m |= N_; if (p(1, 0)) m |= E_; if (p(0, 1)) m |= S_; if (p(-1, 0)) m |= W_;
+  if (p(1, -1)) m |= NE; if (p(1, 1)) m |= SE; if (p(-1, 1)) m |= SW; if (p(-1, -1)) m |= NW;
+  return m;
+}
+function hash(x, y, s = 0) {
+  let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(s, 2246822519)) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function drawBlobLayer(g, sheet, x, y, pred, ox, oy, decor) {
+  const m = maskOf(x, y, pred), [cx, cy] = blobCell(m);
+  let sx = cx * 16, sy = cy * 16;
+  if (decor && reduce(m) === 255 && hash(x, y, 3) < decor) {       // plain interior: sprinkle decor variants
+    sx = Math.floor(hash(x, y, 4) * (sheet === IMG.grass ? 6 : 5)) * 16; sy = (5 + (hash(x, y, 5) < .5 ? 0 : 1)) * 16;
   }
-  if (g === "~") {
-    const w = Math.sin(px * .35 + Math.sin(py * .2) * 2) * .5 + .5;
-    c = mix(PAL.coolant, PAL.coolant2, w * .5 + vn(px / 9, py / 9, 3) * .4);
-  } else if (g === ":") {                            // grating: bars over a deep dark
-    const bar = (px & 3) < 2, cross = (py & 7) === 0;
-    if (bar || cross) c = (px & 3) === 0 ? PAL.grateHi : PAL.grate;
-    else c = mul(PAL.pit, 1 + vn(px / 4, py / 4) * .6);
-    if (nb.sVoid || nb.nVoid) c = mul(c, .85);
-  } else if (g === "_") {
-    const pu = px & 15, pv = py & 15;
-    c = PAL.plate;
-    if (pu === 0 || pv === 0) c = PAL.deckSeam; else if (pu === 1 || pv === 1) c = mul(PAL.plate, 1.18);
-    else if ((pu === 3 || pu === 13) && (pv === 3 || pv === 13)) c = PAL.rivet;
-    c = mul(c, .96 + h2(px >> 3, py >> 3, 5) * .08);
-  } else if (g === "'") {
-    c = mul(PAL.slag, .8 + vn(px / 3, py / 3, 9) * .5);
-    if (h2(px, py, 11) > .985) c = PAL.ember;
-  } else {                                           // deck (also under moss, breaches, props)
-    const pu = ((px % 32) + 32) % 32, pv = ((py % 32) + 32) % 32;
-    c = PAL.deck;
-    if (pu === 0 || pv === 0) c = PAL.deckSeam;
-    else if (pu === 1 || pv === 1) c = PAL.deckLip;
-    else if ((pu === 4 || pu === 28) && (pv === 4 || pv === 28)) c = PAL.rivet;
-    else {
-      const wear = vn(px / 26, py / 26, 1);
-      c = mul(c, .93 + vn(px / 3, py / 3, 2) * .07 + (wear - .5) * .12);
-      if (wear > .72) c = mix(c, PAL.rust, (wear - .72) * 1.8);
-      if (h2(px >> 1, py >> 1, 4) > .992) c = mul(c, .75);
+  g.drawImage(sheet, sx, sy, 16, 16, ox, oy, 16, 16);
+}
+function drawTile(x, y) {
+  const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B)));
+  if (!b || !b.canvas) return;
+  const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, g = b.ctx, ox = lx * 16, oy = ly * 16;
+  const c = b.comb[i], gr = b.gnd[i];
+  g.clearRect(ox, oy, 16, 16);
+  if (gr === "=") { g.fillStyle = "rgba(20,50,90,.28)"; g.fillRect(ox, oy, 16, 16); }
+  if (gr === ":") g.drawImage(IMG.planks, 0, 16, 16, 16, ox, oy, 16, 16);
+  if (isLand(gr)) {
+    drawBlobLayer(g, IMG.soil, x, y, (_, gg) => isLand(gg), ox, oy, .15);
+    if (gr === "." || hasGrassNeighbour(x, y)) {
+      if (gr === ".") drawBlobLayer(g, IMG.grass, x, y, (_, gg) => gg === "." , ox, oy, .3);
     }
-    if (nb.moss) {                                   // moss blends smoothly across tile borders
-      const fx = (u + .5) / 16 - .5, fy = (v + .5) / 16 - .5;
-      const ox = fx < 0 ? -1 : 1, oy = fy < 0 ? -1 : 1, ax = Math.abs(fx), ay = Math.abs(fy);
-      const m = (nb.m0 * (1 - ax) + nb.mx(ox) * ax) * (1 - ay) + (nb.my(oy) * (1 - ax) + nb.mxy(ox, oy) * ax) * ay;
-      const n = vn(px / 5, py / 5, 7) * .7 + vn(px / 2, py / 2, 8) * .3;
-      const cover = m * .78;
-      if (n < cover) {
-        const d = cover - n;
-        c = mix(c, mul(d > .3 ? PAL.moss3 : d > .12 ? PAL.moss2 : PAL.moss1, .92 + h2(px >> 1, py >> 1, 12) * .16), Math.min(1, .55 + d * 2));
-      }
-    }
-    if (g === "o") {                                 // breach: a ragged hole
-      const dx = u - 7.5, dy = v - 8, r = Math.hypot(dx, dy * 1.1) + (vn(px / 2, py / 2, 13) - .5) * 2.2;
-      if (r < 5.6) c = dy < -2 && r > 3.6 ? [26, 28, 30] : PAL.pit;
-      else if (r < 6.6) c = mul(c, .55);
-    }
+    if (gr === "o") drawBlobLayer(g, IMG.tilled, x, y, (_, gg) => gg === "o", ox, oy, 0);
+    if (gr === "'") drawBlobLayer(g, IMG.ash, x, y, (_, gg) => gg === "'", ox, oy, 0);
+    if (gr === "_") g.drawImage(IMG.cobble, [16, 32, 0][Math.floor(hash(x, y, 9) * 3)], [16, 32, 48][Math.floor(hash(x, y, 10) * 3)], 16, 16, ox, oy, 16, 16);
   }
-  // ambient occlusion from walls (3/4 view: the front face shades the floor to its south)
-  let ao = 1;
-  if (nb.nSolid && v < 6) ao *= .45 + .55 * (v / 6);
-  if (nb.wSolid && u < 3) ao *= .7 + .1 * u;
-  if (nb.eSolid && u > 12) ao *= .7 + .1 * (15 - u);
-  if (nb.nwSolid && !nb.nSolid && !nb.wSolid && u + v < 5) ao *= .75;
-  return pack(c[0] * ao, c[1] * ao, c[2] * ao);
+  // flat things that live in the ground layer
+  if (c === "M" || c === "*") drawBlobLayer(g, IMG.stone, x, y, (cc) => cc === "M" || cc === "*", ox, oy, .2);
+  if (c === "%") drawBlobLayer(g, IMG.stone, x, y, (cc) => cc === "%", ox, oy, 0);
+  if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
 }
-
-// top face of a solid block (16 px) and its front face (8 px)
-function topPixel(cc, u, v, px, py, e) {
-  let c;
-  if (famOf(cc) === "M") {
-    c = PAL.mass;
-    const su = ((px % 64) + 64) % 64, sv = ((py % 48) + 48) % 48;
-    if (su === 0 || sv === 0) c = PAL.massDark; else if (su === 1 || sv === 1) c = mul(PAL.mass, 1.1);
-    c = mul(c, .9 + vn(px / 22, py / 22, 21) * .16 + vn(px / 2, py / 2, 22) * .04);
-    if (((px >> 1) % 9 === 0) && vn(px / 3, py / 30, 23) > .7) c = mul(c, .85);   // drip streaks
-    if (cc === "*") {
-      const d = Math.abs(u - 7.5) + Math.abs(v - 7.5);
-      if (d < 4.5) c = d < 2 ? [255, 236, 150] : d < 3.2 ? [226, 184, 70] : [140, 104, 40];
-    } else if (cc === "H") {
-      for (const r0 of [3, 10]) if (v >= r0 && v <= r0 + 2) c = v === r0 ? [150, 176, 188] : v === r0 + 2 ? [56, 70, 78] : [100, 124, 136];
-      if ((px & 7) === 0 && ((v >= 2 && v <= 6) || (v >= 9 && v <= 13))) c = [70, 86, 94];
-    } else if (cc === "Q") {
-      if (u >= 3 && u <= 12 && v >= 3 && v <= 10) {
-        c = [6, 24, 24];
-        if (v % 2 === 0 && v > 3 && u > 3 && u < 4 + Math.floor(h2(px >> 4, py + v, 30) * 8)) c = [111, 240, 226];
-      } else if (u >= 2 && u <= 13 && v >= 2 && v <= 11) c = [30, 36, 40];
-    }
-  } else if (cc === "#") {                           // scrap wall: salvaged planks
-    const plank = Math.floor(py / 4);
-    c = mul(PAL.wood, .8 + h2(plank, px >> 3, 31) * .35);
-    if ((py & 3) === 0) c = PAL.woodDark;
-    if ((px & 7) === 3 && (py & 3) === 2 && h2(px, py, 32) > .4) c = [170, 150, 120];
-  } else {                                           // alloy wall
-    c = PAL.steel;
-    const su = px & 15, sv = py & 15;
-    if (su === 0 || sv === 0) c = [96, 104, 110]; else if (su === 1 || sv === 1) c = [180, 190, 196];
-    else if ((su === 3 || su === 12) && (sv === 3 || sv === 12)) c = [200, 208, 212];
-    c = mul(c, .94 + vn(px / 10, py / 10, 33) * .1);
-  }
-  // outline + bevel where the slab meets the open floor
-  if ((!e.n && v === 0) || (!e.w && u === 0) || (!e.e && u === 15)) return pack(...PAL.outline);
-  if (!e.n && v === 1) c = mix(c, PAL.massHi, .6);
-  if (!e.w && u === 1) c = mix(c, PAL.massHi, .35);
-  if (!e.e && u === 14) c = mul(c, .78);
-  if (!e.s && v === 15) c = mix(c, PAL.massHi, .3);
-  return pack(c[0], c[1], c[2]);
-}
-function frontPixel(cc, u, f, px) {
-  let c;
-  if (famOf(cc) === "M") {
-    c = PAL.front;
-    const rib = ((px % 16) + 16) % 16;
-    if (rib === 0) c = PAL.frontDark; else if (rib === 1) c = mul(PAL.front, 1.2);
-    if (cc === "Q" && f === 3 && (u === 4 || u === 7)) c = u === 4 ? [111, 240, 226] : [255, 93, 87];
-    if (cc === "H" && f >= 2 && f <= 4) c = [84, 104, 114];
-  } else if (cc === "#") {
-    c = mul(PAL.woodDark, .85 + h2(px >> 2, 0, 34) * .3);
-    if ((px & 3) === 0) c = [52, 34, 22];
-  } else c = [110, 118, 124];
-  c = mul(c, 1 - f * .05);
-  if (f === 0) c = mix(c, [150, 160, 166], .35);
-  if (f === 7) c = [14, 15, 16];
-  return pack(c[0], c[1], c[2]);
-}
-
-// small objects and props are hand-made 16x16 pixel sprites
-function sprite(rows, pal) {
-  const c = document.createElement("canvas"); c.width = 16; c.height = rows.length;
-  const g = c.getContext("2d");
-  rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== " " && pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x, y, 1, 1); } }));
-  return c;
-}
-const SPR = {
-  scrap_heap: sprite([
-    "                ", "                ", "      aa        ", "     abbc  d    ", "   eebbccddd    ", "  efgbbccdddc   ",
-    "  ffggbcceddcc  ", " hffggbbeeeccdd ", " hhffgggeeeccdd ", "hhhffggeeebccddd", "hhhhfggeeebbcddd", " hhhhggeeebbccd ",
-    "  ssssssssssss  ", "   ssssssssss   ", "                ", "                "],
-    {a: "#b7bcc0", b: "#7c8288", c: "#5a3a28", d: "#8f6a45", e: "#6b4b35", f: "#4d5358", g: "#9a6a3a", h: "#3a3f43", s: "rgba(0,0,0,.45)"}),
-  bench: sprite([
-    "                ", "                ", " aaaaaaaaaaaaaa ", " abbbbbbbbbbbba ", " bbccbbbbdddbbb ", " bbccbbbbdeddbb ",
-    " bbbbbbbbdddbbb ", " bbbbffbbbbbbbb ", " bbbbbbbbbbbbbb ", " gggggggggggggg ", " h hhhhhhhhhh h ", " h h        h h ",
-    " h h        h h ", " h            h ", " ssssssssssssss ", "                "],
-    {a: "#b08a5a", b: "#8a6a42", c: "#c0c8cc", d: "#6f7a80", e: "#ffd38a", f: "#5a4024", g: "#5a4024", h: "#3a2a18", s: "rgba(0,0,0,.4)"}),
-  locker: sprite([
-    "                ", "  aaaaaaaaaaaa  ", "  abbbbbbbbbba  ", "  bbbbbbbbbbbb  ", "  bbbbbbbbbbbb  ", "  cccccccccccc  ",
-    "  dddddeeddddd  ", "  ddddefffdddd  ", "  dddddeeddddd  ", "  dddddddddddd  ", "  dddddddddddd  ", "  gggggggggggg  ",
-    "  ssssssssssss  ", "                ", "                ", "                "],
-    {a: "#a8885a", b: "#8a6a42", c: "#4a3420", d: "#6e5236", e: "#c8a45c", f: "#fff0b0", g: "#2a1d10", s: "rgba(0,0,0,.4)"}),
-  lichen: sprite([
-    "                ", "   a     b      ", "  aca   bcb   a ", "   a     b   aca", "       a      a ", "  b   aca  b    ",
-    " bcb   a  bcb   ", "  b  b     b  a ", "    bcb  a   aca", "     b  aca   a ", " a       a  b   ", "aca  a      bcb ",
-    " a  aca   b  b  ", "     a   bcb    ", "          b     ", "                "],
-    {a: "#4fbf6a", b: "#3a9a58", c: "#c8ffb8"}),
-  spore_bed: sprite([
-    "                ", "                ", " aaaaaaaaaaaaaa ", " abbbbbbbbbbbba ", " abcbbcbbcbbcba ", " abcbbcbbcbbcba ",
-    " abbbbbbbbbbbba ", " abcbbcbbcbbcba ", " abcbbcbbcbbcba ", " abbbbbbbbbbbba ", " aaaaaaaaaaaaaa ", " dddddddddddddd ",
-    "                ", "                ", "                ", "                "],
-    {a: "#5a4024", b: "#2e2018", c: "#7fbf6a", d: "rgba(0,0,0,.35)"}),
-  ripe_bed: sprite([
-    "                ", "  ee  ee  ee  ee", " affeaffeaffeaff", " aeeaaeeaaeeaaee", " abcbbcbbcbbcba ", " abcbbcbbcbbcba ",
-    " abbbbbbbbbbbba ", " affeaffeaffeaf ", " aeebbeebbeebba ", " abcbbcbbcbbcba ", " aaaaaaaaaaaaaa ", " dddddddddddddd ",
-    "                ", "                ", "                ", "                "],
-    {a: "#5a4024", b: "#2e2018", c: "#7fbf6a", d: "rgba(0,0,0,.35)", e: "#e0c35a", f: "#fff0a0"}),
-  debris: sprite([
-    "                ", "                ", "                ", "     a          ", "    ab     c    ", "          cd    ",
-    "  e             ", "        a       ", "   ff    b    e ", "   f            ", "           aa   ", "      c    a    ",
-    "     cc         ", "                ", "                ", "                "],
-    {a: "#6b6f73", b: "#3a3f43", c: "#5a3a28", d: "#8f6a45", e: "#4a4f53", f: "#7c5a3a"}),
-  hatch: sprite([
-    "                ", "                ", "                ", " aaaaaaaaaaaaaa ", " abbbbbbbbbbbba ", " bcbcbcbcbcbcbb ",
-    " bbbbbbbbbbbbdb ", " bcbcbcbcbcbcbb ", " bbbbbbbbbbbbbb ", " eeeeeeeeeeeeee ", " ssssssssssssss ", "                ",
-    "                ", "                ", "                ", "                "],
-    {a: "#b08a5a", b: "#7a5a36", c: "#ffb454", d: "#e8e0c0", e: "#3a2a18", s: "rgba(0,0,0,.4)"}),
-  heater: sprite([
-    "                ", "                ", "                ", "                ", "     aaaaaa     ", "    abbbbbba    ",
-    "    bcdddcbb    ", "    bdeeedbb    ", "    bcdddcbb    ", "    abbbbbba    ", "    f f  f f    ", "    ssssssss    ",
-    "                ", "                ", "                ", "                "],
-    {a: "#5a6066", b: "#3a3f43", c: "#ff8a3d", d: "#ffb454", e: "#fff0b0", f: "#2a2d30", s: "rgba(0,0,0,.4)"}),
-  sign: sprite([
-    "                ", "                ", "  aaaaaaaaaaaa  ", "  abbbbbbbbbba  ", "  bccccccbcccb  ", "  bbbbbbbbbbbb  ",
-    "  bcccbccccccb  ", "  abbbbbbbbbba  ", "       dd       ", "       dd       ", "       dd       ", "       dd       ",
-    "      ssss      ", "                ", "                ", "                "],
-    {a: "#8a7450", b: "#d8c49a", c: "#6a5a40", d: "#5a4630", s: "rgba(0,0,0,.4)"}),
-  beacon: sprite([
-    "       ab       ", "      abbc      ", "       dd       ", "       ddeeeee  ", "       ddeffee  ", "       ddeeeee  ",
-    "       dd       ", "       dd       ", "       dd       ", "       dd       ", "       dd       ", "      gddg      ",
-    "      ssss      ", "                ", "                ", "                "],
-    {a: "#ffb0a8", b: "#ff5d57", c: "#a02a24", d: "#6b7075", e: "#ff5d57", f: "#ffd0cc", g: "#3a3f43", s: "rgba(0,0,0,.4)"}),
-};
-
+const hasGrassNeighbour = () => true;
 function renderBlock(b) {
-  const W0 = B * P;
-  if (!b.floor) {
-    b.floor = document.createElement("canvas"); b.floor.width = W0; b.floor.height = W0;
-    b.wall = document.createElement("canvas"); b.wall.width = W0; b.wall.height = W0 + 8;
-  }
-  const fctx = b.floor.getContext("2d"), wctx = b.wall.getContext("2d");
-  const fimg = fctx.createImageData(W0, W0), wimg = wctx.createImageData(W0, W0 + 8);
-  const F = new Uint32Array(fimg.data.buffer), Wl = new Uint32Array(wimg.data.buffer);
-  const specials = [], props = [];
-  const solidAt = (x, y) => { const c = combAt(x, y); return c !== null && SOLID.has(c); };
-  for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) {
-    const x = b.bx * B + lx, y = b.by * B + ly, i = ly * B + lx;
-    const cc = b.comb[i], g = b.gnd[i];
-    const isSolid = SOLID.has(cc);
-    const nb = {
-      nSolid: solidAt(x, y - 1) && combAt(x, y - 1) !== "T", wSolid: solidAt(x - 1, y), eSolid: solidAt(x + 1, y), nwSolid: solidAt(x - 1, y - 1),
-      nVoid: (tile(x, y - 1) || [0, "="])[1] === "=", sVoid: (tile(x, y + 1) || [0, ","])[1] === "=",
-      m0: mossiness(x, y), mx: (o) => mossiness(x + o, y), my: (o) => mossiness(x, y + o), mxy: (ox, oy) => mossiness(x + ox, y + oy),
-    };
-    nb.moss = nb.m0 || mossiness(x - 1, y) || mossiness(x + 1, y) || mossiness(x, y - 1) || mossiness(x, y + 1)
-      || mossiness(x - 1, y - 1) || mossiness(x + 1, y - 1) || mossiness(x - 1, y + 1) || mossiness(x + 1, y + 1);
-    for (let v = 0; v < P; v++) {
-      const row = (ly * P + v) * W0 + lx * P;
-      for (let u = 0; u < P; u++) F[row + u] = floorPixel(g, u, v, x * P + u, y * P + v, nb);
-    }
-    if (!GROUND_CHARS.has(cc) && !isSolid && SPR[CH[cc]]) props.push([CH[cc], lx, ly, false]);
-    if ("^x~Q*b".includes(cc)) specials.push([cc, x, y]);
-    if (!isSolid) continue;
-    if (cc === "T" || cc === "&" || cc === "C") { props.push([CH[cc], lx, ly, true]); continue; }
-    const fam = famOf(cc);
-    const same = (dx, dy) => { const c = combAt(x + dx, y + dy); return c === null ? true : famOf(c) === fam; };
-    const e = {n: same(0, -1), s: same(0, 1), w: same(-1, 0), e: same(1, 0)};
-    for (let v = 0; v < P; v++) {
-      const row = (ly * P + v) * W0 + lx * P;     // wall canvas has 8 px of top padding = the raised top
-      for (let u = 0; u < P; u++) Wl[row + u] = topPixel(cc, u, v, x * P + u, y * P + v, e);
-    }
-    if (!e.s || combAt(x, y + 1) === "T") {
-      for (let f = 0; f < 8; f++) {
-        const row = (ly * P + P + f) * W0 + lx * P;
-        for (let u = 0; u < P; u++) Wl[row + u] = frontPixel(cc, u, f, x * P + u);
-      }
-    }
-  }
-  fctx.putImageData(fimg, 0, 0);
-  wctx.putImageData(wimg, 0, 0);
-  for (const [name, lx, ly, raised] of props) {
-    if (raised) wctx.drawImage(SPR[name], lx * P, ly * P + 8 - 3);
-    else fctx.drawImage(SPR[name], lx * P, ly * P);
-  }
-  b.specials = specials; b.dirty = false;
+  b.canvas = document.createElement("canvas"); b.canvas.width = B * 16; b.canvas.height = B * 16;
+  b.ctx = b.canvas.getContext("2d");
+  for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) drawTile(b.bx * B + lx, b.by * B + ly);
+  b.drawn = true;
 }
 
 // =====================================================================================
-//  Entity sprites (pixel art, per colour / facing / frame)
+//  Sprites drawn every frame (y-sorted with characters)
 // =====================================================================================
-function shade(hex, k) { const n = parseInt(hex.slice(1), 16); const f = (v) => clamp(v * k).toString(16).padStart(2, "0"); return "#" + f(n >> 16) + f((n >> 8) & 255) + f(n & 255); }
-const spriteCache = new Map();
-function personSprite(color, facing, frame) {
-  const key = color + facing + frame;
-  if (spriteCache.has(key)) return spriteCache.get(key);
-  const rows = [
-    "                ",
-    "      hhhh      ",
-    "     hHHHHh     ",
-    "    hHffffHh    ",
-    "    hfEffEfh    ",
-    "    hffffffh    ",
-    "   cchffffhcc   ",
-    "  cCCCCCCCCCCc  ",
-    "  cCCCLLLLCCCc  ",
-    "  cCCCLLLLCCCc  ",
-    "  cCCCCCCCCCCc  ",
-    "   cCCCCCCCCc   ",
-    "   cCCCCCCCCc   ",
-    frame ? "    kk    kk    " : "     kk  kk     ",
-    frame ? "   kk      kk   " : "     kk  kk     ",
-    "   ssssssssss   ",
-  ];
-  if (facing === "N") for (const r of [3, 4, 5, 6]) rows[r] = rows[r].replace(/[fE]/g, "H");
-  if (facing === "E") rows[4] = "    hffffEfE    ";
-  if (facing === "W") rows[4] = "    EfEffffh    ";
-  const pal = {h: "#15181a", H: shade(color, .55), f: "#0b0d0e", E: "#d8fbff", c: "#0c0e10", C: color, L: shade(color, 1.25), k: "#121416", s: "rgba(0,0,0,.4)"};
-  const spr = sprite(rows, pal); spriteCache.set(key, spr); return spr;
-}
-const CREATURE_SPR = {
-  skitter: [0, 1].map((f) => sprite([
-    "                ", "                ", "                ", "                ", "                ", f ? "    a  a  a     " : "   a  a  a      ",
-    "    a a a  bb   ", "   ccccccccbeb  ", "  cdddddddcbbb  ", "   ccccccccb    ", f ? "     a a a      " : "    a a a       ", f ? "    a  a  a     " : "   a  a  a      ",
-    "    ssssssss    ", "                ", "                ", "                "],
-    {a: "#5a4a36", b: "#b09a74", c: "#8a7454", d: "#c7b28b", e: "#ff5d4a", s: "rgba(0,0,0,.35)"})),
-  sentinel: [sprite([
-    "       aa       ", "      abba      ", "     abbbba     ", "    abbbbbba    ", "   abbbccbbba   ", "  abbbcddcbbba  ",
-    "  abbbcddcbbba  ", "   abbbccbbba   ", "    abbbbbba    ", "     abbbba     ", "      abba      ", "       aa       ",
-    "                ", "                ", "    ssssssss    ", "                "],
-    {a: "#3a4045", b: "#15181b", c: "#ff3b30", d: "#ffe0dc", s: "rgba(0,0,0,.4)"})],
-  accretor: [0, 1].map((f) => sprite([
-    "                ", "                ", "a     bbbb     a", " a  bbccccbb  a ", "  abccddddccba  ", "  bccdeeeedccb  ",
-    "aabccddddddccbaa", "  bccccccccccb  ", "  abbbbbbbbbba  ", f ? "  a  a  a  a  a " : " a  a  a  a  a  ", f ? " a  a   a   a  a" : "a  a   a   a  a ", f ? "   a    a    a  " : "  a    a    a   ",
-    " ssssssssssssss ", "                ", "                ", "                "],
-    {a: "#4a565c", b: "#2c3439", c: "#59656c", d: "#79868d", e: "#6ff0e2", s: "rgba(0,0,0,.45)"})),
-};
-const AGENT_COLORS = ["#c26a45", "#4f86d0", "#86b350", "#c9a246", "#9d68cc", "#3fb3a2", "#cc5a75", "#8796a2", "#d08a3c", "#5aa0b8"];
-const agentColor = (name) => AGENT_COLORS[[...name].reduce((h, c) => h * 31 + c.charCodeAt(0) >>> 0, 7) % AGENT_COLORS.length];
-const ICON_COLORS = {scrap: "#8f6a45", alloy: "#a0acb3", cable: "#6f8b98", core: "#e2c35a", circuit: "#6ff0e2", lichen: "#5fd07a",
-  spore: "#9bd47a", meat: "#c8645a", cooked_meat: "#a8553a", cap: "#e0c35a", ration: "#d8b37a", hide: "#9b7a5a", rubble: "#6a6f73",
-  ingot: "#c9d2d8", torch: "#ffb454", cutter: "#c0c8cc", drill: "#c0c8cc", pike: "#c0c8cc", arc_blade: "#6ff0e2"};
-const iconCache = new Map();
-function itemIcon(name) {
-  if (SPR[name]) return SPR[name];
-  if (name === "spore") return SPR.spore_bed;
-  if (iconCache.has(name)) return iconCache.get(name);
-  const c = document.createElement("canvas"); c.width = c.height = 16; const g = c.getContext("2d");
-  if (name === "scrap_wall" || name === "alloy_wall") {
-    const img = g.createImageData(16, 16), D = new Uint32Array(img.data.buffer), cc = name === "scrap_wall" ? "#" : "%";
-    for (let v = 0; v < 11; v++) for (let u = 0; u < 16; u++) D[(v + 1) * 16 + u] = topPixel(cc, u, v, u, v, {n: false, s: true, w: false, e: false});
-    for (let f = 0; f < 4; f++) for (let u = 0; u < 16; u++) D[(12 + f) * 16 + u] = frontPixel(cc, u, f * 2, u);
-    g.putImageData(img, 0, 0);
-  } else if (["cutter", "drill", "pike", "arc_blade", "torch"].includes(name)) {
-    const col = ICON_COLORS[name];
-    g.fillStyle = "#6b4b35"; for (let k = 0; k < 8; k++) g.fillRect(3 + k, 12 - k, 2, 2);
-    g.fillStyle = col;
-    if (name === "drill") { g.fillRect(9, 2, 4, 6); g.fillRect(10, 8, 2, 2); }
-    else if (name === "torch") { g.fillRect(10, 1, 4, 4); g.fillStyle = "#fff0b0"; g.fillRect(11, 2, 2, 2); }
-    else if (name === "cutter") g.fillRect(9, 2, 5, 3);
-    else for (let k = 0; k < 4; k++) g.fillRect(10 + k, 4 - k, 2, 2);
-  } else {
-    const col = ICON_COLORS[name] || "#aaa";
-    for (let k = 0; k < 9; k++) { g.fillStyle = shade(col, .7 + h2(k, name.length, 77) * .6); g.fillRect(3 + (h2(k, 1, 78) * 8 | 0), 4 + (h2(k, 2, 79) * 7 | 0), 4, 3); }
+const AGENT_TINTS = ["#f4b6b6", "#a9cdf2", "#b8e0a0", "#f2d58f", "#d3b6ef", "#9fdcd0", "#f3b7d6", "#e8c9a4", "#c9d0f5", "#f6c79a"];
+const agentTint = (name) => AGENT_TINTS[[...name].reduce((h, c) => h * 31 + c.charCodeAt(0) >>> 0, 7) % AGENT_TINTS.length];
+const tinted = new Map();
+function characterSheet(tint) {      // recolour the character's cream body to a per-person colour
+  if (tinted.has(tint)) return tinted.get(tint);
+  const c = document.createElement("canvas"); c.width = IMG.character.width; c.height = IMG.character.height;
+  const g = c.getContext("2d"); g.drawImage(IMG.character, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
+  const tr = parseInt(tint.slice(1, 3), 16), tg = parseInt(tint.slice(3, 5), 16), tb = parseInt(tint.slice(5, 7), 16);
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i], gg = px[i + 1], bb = px[i + 2];
+    if (px[i + 3] && r > 200 && gg > 190 && bb > 150 && r - bb < 90) {   // cream / white body pixels
+      const k = (r + gg + bb) / (243 + 242 + 192);   // 1.0 for the main body colour, keeps shading
+      px[i] = Math.min(255, tr * k); px[i + 1] = Math.min(255, tg * k); px[i + 2] = Math.min(255, tb * k);
+    }
   }
-  iconCache.set(name, c); return c;
+  g.putImageData(d, 0, 0); tinted.set(tint, c); return c;
+}
+function genCell(name) { return [GEN[name] * 16, 0]; }
+// object sprite for a tile char: [img, sx, sy, sw, sh, dx (from tile left), dy (from tile top)]
+function objectSprite(c, x, y, t) {
+  const h = hash(x, y, 21);
+  switch (c) {
+    case "T": {
+      if (h < .7) return [IMG.trees, 16, 0, 32, 32, -8, -18];                           // round tree
+      if (h < .86) return [IMG.trees, 0, 0, 16, 32, 0, -18];                            // young tree
+      const v = [[48, 0], [80, 0], [112, 0], [144, 0]][Math.floor((h - .86) / .14 * 4)]; // fruit trees
+      return [IMG.trees, v[0], v[1], 32, 32, -8, -18];
+    }
+    case "b": return [IMG.trees, [32, 48, 64][Math.floor(h * 3)], 48, 16, 16, 0, -3];
+    case "*": return [IMG.gen, ...genCell("ore"), 16, 16, 0, -3];
+    case "M": return h < .6 ? [IMG.nature, [16, 32, 48][Math.floor(h / .6 * 3)], 16, 16, 16, 0, -2] : null;
+    case "Q": return [IMG.nature, [0, 16, 48][Math.floor(h * 3)], 0, 16, 16, 0, 0];
+    case "#": return fenceSprite(x, y);
+    case "+": return [IMG.door, 0, 0, 16, 32, 0, -16];
+    case "^": return [IMG.gen, ...genCell(Math.floor(t * 6 + x) % 2 ? "campfire1" : "campfire0"), 16, 16, 0, -2];
+    case "x": return [IMG.gen, ...genCell(Math.floor(t * 8 + x + y) % 2 ? "fire1" : "fire0"), 16, 16, 0, -3];
+    case "&": return [IMG.workbench, 0, 0, 32, 32, -8, -16];
+    case "?": return [IMG.signs, 0, 0, 16, 16, 0, -2];
+    case "!": return [IMG.gen, ...genCell("flag"), 16, 16, 0, -6];
+    case "\"": return [IMG.crops, 16, 128, 16, 16, 0, -3];
+    case "w": return [IMG.crops, 48, 128, 16, 16, 0, -5];
+    case "t": return [IMG.trees, h < .5 ? 0 : 16, 96, 16, 16, 0, 0];
+    case "C": return [IMG.chest, 16, 16, 16, 16, 0, -2];
+  }
+  return null;
+}
+function fenceSprite(x, y) {
+  const f = (dx, dy) => { const c = combAt(x + dx, y + dy); return c === "#" || c === "+"; };
+  const n = f(0, -1), s = f(0, 1), e = f(1, 0), w = f(-1, 0);
+  const col = e && w ? 2 : e ? 1 : w ? 3 : 0, row = n && s ? 1 : s ? 0 : n ? 2 : 3;
+  return [IMG.fences, col * 16, row * 16, 16, 16, 0, -4];
 }
 
 // =====================================================================================
-//  Networking: spectator socket (tiles, ticks, events) + agent socket (when playing)
+//  Networking
 // =====================================================================================
 const cv = document.getElementById("c"), ctx = cv.getContext("2d");
-const light = document.createElement("canvas"), lctx = light.getContext("2d");
 let DPR = 1, W = 0, H = 0;
 function resize() {
   DPR = window.devicePixelRatio || 1; W = innerWidth; H = innerHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + "px"; cv.style.height = H + "px";
-  light.width = Math.ceil(W / 3); light.height = Math.ceil(H / 3);
 }
 addEventListener("resize", resize); resize();
-
-let zoom = 3;                                  // integer pixel scale keeps pixels square and crisp
+let zoom = 3;
 const TS = () => P * zoom;
 let cam = {x: 0, y: 0}, camT = {x: 0, y: 0};
 let follow = null, me = null, myId = null, meObs = null, agents = [], metrics = {}, recipes = {}, clock = {night: false, phase: .3};
-let selected = null;
-const ents = new Map();                        // key -> {x, y, tx, ty, fx, fy, e, moved}
+let selected = null, progress = null;
+const ents = new Map();
 let bubbles = [], floats = [];
 const requested = new Map();
 const wsBase = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]));
-const fmt = (o) => Object.entries(o || {}).map(([k, v]) => `${v} ${label(k).replace("_", " ")}`).join(", ");
+const fmt = (o) => Object.entries(o || {}).map(([k, v]) => `${v} ${label(k)}`).join(", ");
 
 let spec, sid = 0, lastWatch = "";
 function connectSpec() {
@@ -555,13 +375,12 @@ function connectSpec() {
   };
   spec.onclose = () => setTimeout(connectSpec, 1000);
 }
-connectSpec();
 const sendSpec = (o) => spec && spec.readyState === 1 && spec.send(JSON.stringify({...o, id: ++sid}));
 function viewRect(margin) {
   const w = Math.ceil(W / TS()) + margin * 2, h = Math.ceil(H / TS()) + margin * 2;
   return [Math.floor(cam.x - w / 2), Math.floor(cam.y - h / 2), w, h];
 }
-setInterval(() => {                             // keep the watched rect and the loaded blocks around the camera
+setInterval(() => {
   if (!spec || spec.readyState !== 1) return;
   const [x, y, w, h] = viewRect(6);
   const key = [Math.round(x / 4), Math.round(y / 4), w, h].join();
@@ -570,16 +389,16 @@ setInterval(() => {                             // keep the watched rect and the
   for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++)
     for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) {
       const k = bkey(bx, by), b = blocks.get(k);
-      const stale = b && now - b.at > 20000;       // periodic resync, in case an event was missed
+      const stale = b && now - b.at > 30000;
       if ((!b || stale) && !(requested.get(k) > now - 3000)) { requested.set(k, now); if (b) b.at = now; sendSpec({op: "region", x: bx * B, y: by * B, w: B, h: B}); }
     }
 }, 100);
 setInterval(() => { sendSpec({op: "agents"}); sendSpec({op: "metrics"}); }, 1500);
 
-let pred = null;                                // client-side prediction of our own step
+let pred = null;
 function onTick(d) {
   clock = d;
-  const c = $("clock"); c.textContent = d.time; c.className = d.night ? "night" : "";
+  $("clock").textContent = d.time.replace("(night)", "· night");
   const seen = new Set(), now = performance.now();
   for (const e of d.entities) {
     const key = e.kind + e.id; seen.add(key);
@@ -587,8 +406,8 @@ function onTick(d) {
     if (!p) { p = {x: e.x, y: e.y, tx: e.x, ty: e.y, fx: 0, fy: 1, moved: 0}; ents.set(key, p); }
     p.e = e;
     if (e.kind === "agent" && e.id === myId && pred) {
-      if (e.x === pred.x && e.y === pred.y) pred = null;           // server caught up
-      else if (now < pred.until) continue;                         // still in flight: keep the prediction
+      if (e.x === pred.x && e.y === pred.y) pred = null;
+      else if (now < pred.until) continue;
       else pred = null;
     }
     if (p.tx !== e.x || p.ty !== e.y) {
@@ -611,26 +430,26 @@ function onEvent(e) {
     const slot = bubbles.filter((b) => b.name === e.from && t - b.t < 7).length;
     bubbles.push({name: e.from, text: e.text, t, shout: e.type === "shout", slot: Math.min(slot, 2)});
   }
-  if (e.type === "attack") floats.push({x: e.x, y: e.y, text: "-" + e.damage, color: "255,93,87", t});
+  if (e.type === "attack") floats.push({x: e.x, y: e.y, text: "-" + e.damage, color: "#d9473a", t});
   if (["pick_up", "drop", "chest"].includes(e.type)) return;
   let text;
   switch (e.type) {
     case "say": text = `${e.from}: “${e.text}”`; break;
     case "shout": text = `${e.from} shouts: “${e.text}”`; break;
-    case "death": text = `${e.name} died — ${e.cause}`; break;
+    case "death": text = `${e.name} died (${e.cause})`; break;
     case "attack": text = `${e.attacker} hits ${e.target} (−${e.damage})`; break;
     case "give": text = `${e.from} gave ${e.to} ${fmt(e.items)}`; break;
     case "craft": text = `${e.name} made ${fmt(e.made)}`; break;
-    case "join": text = `${e.name} ${e.new ? "woke up for the first time" : "woke up"}`; break;
-    case "leave": text = `${e.name} fell dormant`; break;
+    case "join": text = `${e.name} ${e.new ? "washed ashore" : "woke up"}`; break;
+    case "leave": text = `${e.name} fell asleep`; break;
     case "sign": text = `${e.by} wrote “${e.text}”`; break;
-    case "creature_died": text = `a ${e.kind} was destroyed${e.by ? " by " + e.by : ""}`; break;
+    case "creature_died": text = `a ${e.kind} died${e.by ? " (" + e.by + ")" : ""}`; break;
     default: return;
   }
   const d = document.createElement("div");
   d.innerHTML = `<span class="k">${e.tick}</span><span class="${e.type}">${esc(text)}</span>`;
   d.onclick = () => { if (!me) { follow = null; camT.x = e.x; camT.y = e.y; } };
-  const feed = $("feed"); feed.prepend(d); while (feed.childElementCount > 200) feed.lastChild.remove();
+  const feed = $("feed"); feed.prepend(d); while (feed.childElementCount > 150) feed.lastChild.remove();
 }
 
 // =====================================================================================
@@ -641,8 +460,8 @@ function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.1, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
-  for (const p of ents.values()) {             // constant-speed movement toward the server/predicted tile
-    const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), step = 7.5 * dt;
+  for (const p of ents.values()) {
+    const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), step = 5.5 * dt;
     if (d <= step) { p.x = p.tx; p.y = p.ty; } else { p.x += dx / d * step; p.y += dy / d * step; }
   }
   if (me && myId !== null) {
@@ -657,135 +476,141 @@ function frame(now) {
     }
     const k = 1 - Math.pow(.002, dt); cam.x += (camT.x - cam.x) * k; cam.y += (camT.y - cam.y) * k;
   }
+  // bounded work per frame: at most one fresh block, plus incremental tile redraws within ~4 ms
   const [vx, vy, vw, vh] = viewRect(2);
   const vis = [];
   for (let by = Math.floor(vy / B); by <= Math.floor((vy + vh) / B); by++)
     for (let bx = Math.floor(vx / B); bx <= Math.floor((vx + vw) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) vis.push(b); }
-  vis.filter((b) => b.dirty).sort((a, b) => Math.hypot(a.bx * B + 16 - cam.x, a.by * B + 16 - cam.y) - Math.hypot(b.bx * B + 16 - cam.x, b.by * B + 16 - cam.y)).slice(0, 2).forEach(renderBlock);
+  const fresh = vis.find((b) => !b.drawn); if (fresh) renderBlock(fresh);
+  const t0 = performance.now();
+  while (dirtyTiles.length && performance.now() - t0 < 4) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
 
   const S = TS();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
   const ox = Math.round(W / 2 - (cam.x + .5) * S), oy = Math.round(H / 2 - (cam.y + .5) * S);
   const sx = (x) => ox + x * S, sy = (y) => oy + y * S;
-  for (const b of vis) if (b.floor) ctx.drawImage(b.floor, sx(b.bx * B), sy(b.by * B), B * S, B * S);
-  for (const b of vis) for (const [c, x, y] of b.specials) {
-    const px = sx(x), py = sy(y); if (px < -S || py < -S || px > W || py > H) continue;
-    if (c === "x") drawFire(px, py, S, t, x, y);
-    else if (c === "^") { const f = .6 + .4 * Math.sin(t * 12 + x); ctx.fillStyle = `rgba(255,${150 + 60 * f | 0},60,${.35 * f})`; ctx.fillRect(px + 5 * zoom, py + 6 * zoom, 6 * zoom, 3 * zoom); }
-    else if (c === "b") { ctx.fillStyle = `rgba(160,255,170,${.04 + .035 * Math.sin(t * 1.3 + x * 2 + y)})`; ctx.fillRect(px, py, S, S); }
+  // animated water underneath everything
+  const wf = Math.floor(t * 3) % 4;
+  const tx0 = Math.floor(-ox / S) - 1, ty0 = Math.floor(-oy / S) - 1, tw = Math.ceil(W / S) + 2, th = Math.ceil(H / S) + 2;
+  for (let j = 0; j < th; j++) for (let i = 0; i < tw; i++) ctx.drawImage(IMG.water, wf * 16, 0, 16, 16, sx(tx0 + i), sy(ty0 + j), S, S);
+  for (const b of vis) if (b.canvas) ctx.drawImage(b.canvas, sx(b.bx * B), sy(b.by * B), B * S, B * S);
+  // y-sorted sprites: objects and creatures
+  const list = [];
+  for (const b of vis) for (const [i, c] of b.objs) {
+    const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
+    if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
+    const spr = objectSprite(c, x, y, t); if (spr) list.push({y, x, spr});
   }
-  const list = [...ents.values()].filter((p) => p.e).sort((a, b) => a.y - b.y);
-  for (const p of list) drawEntity(p, sx, sy, S, t, now);
-  for (const b of vis) if (b.wall) ctx.drawImage(b.wall, sx(b.bx * B), sy(b.by * B) - 8 * zoom, B * S, (B * P + 8) * zoom);
-  ctx.globalAlpha = .28;                       // x-ray silhouettes for agents behind walls
-  for (const p of list) if (p.e.kind === "agent") drawEntity(p, sx, sy, S, t, now, true);
-  ctx.globalAlpha = 1;
-  drawLighting(vis, sx, sy, S, t);
+  for (const p of ents.values()) if (p.e) list.push({y: p.y + .01, p});
+  list.sort((a, b) => a.y - b.y || a.x - b.x);
+  for (const o of list) {
+    if (o.spr) { const [img, a, b2, w, h, dx, dy] = o.spr; ctx.drawImage(img, a, b2, w, h, sx(o.x) + dx * zoom, sy(o.y) + dy * zoom, w * zoom, h * zoom); }
+    else drawEntity(o.p, sx, sy, S, t, now);
+  }
+  drawNight(vis, sx, sy, S, t);
   if (mouse.in && me) {
     const p = tileAtScreen(mouse.x, mouse.y), s = myPos();
     const adj = s && Math.abs(p.x - s.x) + Math.abs(p.y - s.y) === 1;
-    ctx.strokeStyle = adj ? "rgba(111,240,226,.9)" : "rgba(255,255,255,.22)"; ctx.lineWidth = 2;
-    ctx.strokeRect(sx(p.x) + 1, sy(p.y) + 1, S - 2, S - 2);
+    ctx.strokeStyle = adj ? "rgba(255,248,232,.95)" : "rgba(255,248,232,.4)"; ctx.lineWidth = zoom;
+    ctx.strokeRect(sx(p.x) + zoom / 2, sy(p.y) + zoom / 2, S - zoom, S - zoom);
   }
-  for (const p of list) if (p.e.kind === "agent") drawNameplate(p, sx, sy, S);
+  for (const o of list) if (o.p && o.p.e.kind === "agent") drawNameplate(o.p, sx, sy, S);
+  drawProgress(sx, sy, S);
   floats = floats.filter((f) => t - f.t < 1.4);
-  ctx.textAlign = "center"; ctx.font = `700 13px ui-monospace, monospace`;
-  for (const f of floats) { ctx.fillStyle = `rgba(${f.color},${(1 - (t - f.t) / 1.4).toFixed(2)})`; ctx.fillText(f.text, sx(f.x) + S / 2, sy(f.y) - (t - f.t) * S * .7); }
+  ctx.textAlign = "center"; ctx.font = `16px Sprout`;
+  for (const f of floats) { ctx.globalAlpha = 1 - (t - f.t) / 1.4; outlined(f.text, sx(f.x) + S / 2, sy(f.y) - (t - f.t) * S * .7, f.color); }
+  ctx.globalAlpha = 1;
   bubbles = bubbles.filter((b) => t - b.t < 7);
-  ctx.font = `13px ui-monospace, monospace`;
   for (const b of bubbles) {
     const p = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === b.name); if (!p) continue;
-    const text = b.text.length > 64 ? b.text.slice(0, 62) + "…" : b.text, w = ctx.measureText(text).width;
-    const bx = Math.round(sx(p.x) + S / 2), by = Math.round(sy(p.y) - S * .5 - 14 - b.slot * 24);
+    const text = b.text.length > 60 ? b.text.slice(0, 58) + "…" : b.text, w = ctx.measureText(text).width;
+    const bx = Math.round(sx(p.x) + S / 2), by = Math.round(sy(p.y) - 26 * zoom / 3 - 22 - b.slot * 26);
     ctx.globalAlpha = Math.min(1, (7 - (t - b.t)) * 2);
-    ctx.fillStyle = b.shout ? "rgba(58,40,10,.94)" : "rgba(12,20,26,.94)";
-    roundRect(bx - w / 2 - 9, by - 17, w + 18, 24, 6); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(bx - 5, by + 7); ctx.lineTo(bx + 5, by + 7); ctx.lineTo(bx, by + 12); ctx.fill();
-    ctx.fillStyle = b.shout ? "#ffd38a" : "#d6ecff"; ctx.fillText(text, bx, by);
+    ctx.fillStyle = b.shout ? "#ffe3a3" : "#fff6e2"; ctx.strokeStyle = "#5b3f36"; ctx.lineWidth = 2;
+    roundRect(bx - w / 2 - 9, by - 16, w + 18, 23, 4); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx - 5, by + 7); ctx.lineTo(bx + 5, by + 7); ctx.lineTo(bx, by + 13); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillRect(bx - 4, by + 5, 8, 3);
+    ctx.fillStyle = "#5b3f36"; ctx.fillText(text, bx, by + 1);
     ctx.globalAlpha = 1;
   }
   ctx.textAlign = "start";
 }
-requestAnimationFrame(frame);
-function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
-function drawFire(px, py, S, t, x, y) {
-  const z = S / 16;
-  for (let k = 0; k < 6; k++) {
-    const fx = Math.round(px + (3 + h2(x, y, k) * 10) * z), hgt = Math.round((5 + 4 * Math.sin(t * 10 + k * 1.7 + x)) * z);
-    ctx.fillStyle = "#ff7a2a"; ctx.fillRect(fx, py + S - hgt - 2 * z, 2 * z, hgt);
-    ctx.fillStyle = "#ffd36a"; ctx.fillRect(fx, py + S - hgt * .6 - 2 * z, 2 * z, hgt * .5);
-  }
+function outlined(text, x, y, color) {
+  ctx.fillStyle = "#5b3f36";
+  for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) ctx.fillText(text, x + a, y + b);
+  ctx.fillStyle = color; ctx.fillText(text, x, y);
 }
-function drawEntity(p, sx, sy, S, t, now, ghost) {
-  const e = p.e, x = Math.round(sx(p.x)), y = Math.round(sy(p.y));
-  if (x < -S || x > W + S || y < -S * 2 || y > H + S) return;
+function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function drawEntity(p, sx, sy, S, t, now) {
+  const e = p.e, x = Math.round(sx(p.x)), y = Math.round(sy(p.y)), z = zoom;
+  if (x < -S * 2 || x > W + S * 2 || y < -S * 2 || y > H + S * 2) return;
+  const moving = now - p.moved < 300;
   if (e.kind === "agent") {
-    const moving = now - p.moved < 260;
-    const facing = p.fy < 0 ? "N" : p.fx > 0 ? "E" : p.fx < 0 ? "W" : "S";
-    const spr = personSprite(agentColor(e.name), facing, moving ? Math.floor(t * 8) % 2 : 0);
-    if (!ghost && ((me && e.name === me) || e.name === follow)) {
-      ctx.strokeStyle = me && e.name === me ? "rgba(111,240,226,.75)" : "rgba(255,180,84,.75)"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(x + S / 2, y + S * .7, S * .34, S * .12, 0, 0, 7); ctx.stroke();
+    const row = p.fy < 0 ? 1 : p.fx < 0 ? 2 : p.fx > 0 ? 3 : 0;
+    const frameI = moving ? Math.floor(t * 8) % 4 : (Math.floor(t * 2) % 2);
+    if ((me && e.name === me) || e.name === follow) {
+      ctx.fillStyle = me && e.name === me ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
+      ctx.beginPath(); ctx.ellipse(x + S / 2, y + S - 2 * z, 6 * z, 2.5 * z, 0, 0, 7); ctx.fill();
     }
-    ctx.drawImage(spr, x, y - 5 * zoom, S, S);
-    if (!ghost && e.doing && ["dig", "craft", "attack"].includes(e.doing)) {
-      ctx.fillStyle = e.doing === "attack" ? "#ff5d57" : "#ffd38a";
-      for (let k = 0; k < 3; k++) { const a = t * 10 + k * 2.1; ctx.fillRect(x + S / 2 + p.fx * S * .45 + Math.cos(a) * S * .12, y + p.fy * S * .35 + Math.sin(a) * S * .12, zoom, zoom); }
+    ctx.drawImage(characterSheet(agentTint(e.name)), frameI * 48, row * 48, 48, 48, x - 16 * z, y - 20 * z, 48 * z, 48 * z);
+    if (e.doing && ["dig", "craft", "attack"].includes(e.doing)) {
+      const k = Math.floor(t * 10) % 2;
+      ctx.fillStyle = "#fff6e2";
+      ctx.fillRect(x + S / 2 + p.fx * 9 * z + (k ? z : -z), y + 6 * z + p.fy * 6 * z - k * z, 2 * z, 2 * z);
     }
-  } else {
-    const frames = CREATURE_SPR[e.kind]; if (!frames) return;
-    const spr = frames[Math.floor(t * 6 + e.id) % frames.length];
-    const hov = e.kind === "sentinel" ? Math.round(Math.sin(t * 3 + e.id) * 1.5) * zoom : 0;
-    ctx.drawImage(spr, x, y - 3 * zoom + hov, S, S);
+  } else if (e.kind === "chicken") {
+    const f = moving ? Math.floor(t * 8) % 4 : Math.floor(t * 1.5 + e.id) % 2;
+    ctx.save();
+    if (p.fx < 0) { ctx.translate(x + S, 0); ctx.scale(-1, 1); ctx.drawImage(IMG.chicken, f * 16, (moving ? 16 : 0), 16, 16, 0, y - 2 * z, S, S); }
+    else ctx.drawImage(IMG.chicken, f * 16, (moving ? 16 : 0), 16, 16, x, y - 2 * z, S, S);
+    ctx.restore();
+  } else if (e.kind === "cow") {
+    const f = moving ? Math.floor(t * 6) % 4 : Math.floor(t * 1.2 + e.id) % 3;
+    ctx.save();
+    if (p.fx < 0) { ctx.translate(x + S / 2, 0); ctx.scale(-1, 1); ctx.drawImage(IMG.cow, f * 32, moving ? 32 : 0, 32, 32, -S, y - S, S * 2, S * 2); }
+    else ctx.drawImage(IMG.cow, f * 32, moving ? 32 : 0, 32, 32, x - S / 2, y - S, S * 2, S * 2);
+    ctx.restore();
+  } else if (e.kind === "gloom") {
+    const [gx] = genCell(Math.floor(t * 3 + e.id) % 2 ? "gloom1" : "gloom0");
+    ctx.drawImage(IMG.gen, gx, 0, 16, 16, x, y - 2 * z, S, S);
   }
 }
 function drawNameplate(p, sx, sy, S) {
-  const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(sy(p.y) - 6 * zoom);
+  const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(sy(p.y) - 9 * zoom);
   if (x < -S || x > W + S || y < -S || y > H + S) return;
-  const mine = me && e.name === me;
-  ctx.font = `600 11px ui-monospace, monospace`; ctx.textAlign = "center";
-  const w = ctx.measureText(e.name).width;
-  ctx.fillStyle = "rgba(0,0,0,.6)"; roundRect(x - w / 2 - 5, y - 11, w + 10, 15, 4); ctx.fill();
-  ctx.fillStyle = mine ? "#6ff0e2" : "#e8eef1"; ctx.fillText(e.name, x, y);
-  if (e.hp < 100) { ctx.fillStyle = "rgba(0,0,0,.7)"; ctx.fillRect(x - 15, y + 5, 30, 3); ctx.fillStyle = e.hp > 40 ? "#8fe388" : "#ff5d57"; ctx.fillRect(x - 15, y + 5, 30 * e.hp / 100, 3); }
+  ctx.font = "16px Sprout"; ctx.textAlign = "center";
+  outlined(e.name, x, y, me && e.name === me ? "#fff1a8" : "#fff8e8");
+  if (e.hp < 100) { ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 16, y + 4, 32, 5); ctx.fillStyle = e.hp > 40 ? "#6aa66f" : "#d9473a"; ctx.fillRect(x - 15, y + 5, 30 * e.hp / 100, 3); }
   ctx.textAlign = "start";
 }
-function drawLighting(vis, sx, sy, S, t) {
+function drawProgress(sx, sy, S) {
+  if (!progress || !me) return;
+  const p = ents.get("agent" + myId); if (!p) return;
+  const k = Math.min(1, (performance.now() - progress.t0) / progress.ms);
+  if (k >= 1) { progress = null; return; }
+  const x = Math.round(sx(p.x) + S / 2 - 18), y = Math.round(sy(p.y) + S + 2);
+  ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 2, y - 2, 40, 9);
+  ctx.fillStyle = "#e9cfa2"; ctx.fillRect(x, y, 36, 5);
+  ctx.fillStyle = "#6aa66f"; ctx.fillRect(x, y, Math.round(36 * k), 5);
+}
+function drawNight(vis, sx, sy, S, t) {
   const phase = clock.phase || 0;
   const dusk = Math.max(0, Math.min(1, (phase - .70) / .05)), dawn = phase < .03 ? 1 - phase / .03 : 0;
-  const dark = .1 + .62 * Math.max(dusk, dawn);
-  const L = lctx, sc = light.width / W;
-  L.globalCompositeOperation = "source-over"; L.clearRect(0, 0, light.width, light.height);
-  L.fillStyle = `rgba(3,6,12,${dark})`; L.fillRect(0, 0, light.width, light.height);
-  L.globalCompositeOperation = "destination-out";
-  const hole = (x, y, r, a) => { const g = L.createRadialGradient(x * sc, y * sc, 0, x * sc, y * sc, r * sc); g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, "rgba(0,0,0,0)"); L.fillStyle = g; L.fillRect((x - r) * sc, (y - r) * sc, r * 2 * sc, r * 2 * sc); };
-  const glows = [];
-  for (const p of ents.values()) {
-    if (!p.e) continue;
-    const x = sx(p.x) + S / 2, y = sy(p.y) + S / 2;
-    if (p.e.kind === "agent") hole(x, y, S * (me && p.e.name === me ? 7 : 5), .95);
-    else if (p.e.kind === "sentinel") glows.push([x, y - S * .2, S * 1.4, "255,59,48", .4]);
-    else if (p.e.kind === "accretor") { hole(x, y, S * 2.5, .6); glows.push([x, y, S * 1.3, "111,240,226", .2]); }
-  }
-  for (const b of vis) for (const [c, tx, ty] of b.specials) {
-    const x = sx(tx) + S / 2, y = sy(ty) + S / 2;
-    if (x < -S * 6 || x > W + S * 6 || y < -S * 6 || y > H + S * 6) continue;
-    const fl = .88 + .12 * Math.sin(t * 13 + tx * 3 + ty);
-    if (c === "^") { hole(x, y, S * 6 * fl, .95); glows.push([x, y, S * 3.6 * fl, "255,140,60", .26]); }
-    else if (c === "x") { hole(x, y, S * 4 * fl, .9); glows.push([x, y, S * 2.4 * fl, "255,150,50", .32]); }
-    else if (c === "Q") { hole(x, y - S * .5, S * 2.4, .6); glows.push([x, y - S * .5, S * 1.3, "111,240,226", .16]); }
-    else if (c === "*") glows.push([x, y - S * .5, S * .9, "255,220,110", .2]);
-    else if (c === "b") glows.push([x, y, S * .8, "120,255,150", .06]);
-  }
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(light, 0, 0, cv.width, cv.height); ctx.restore();
+  const dark = .58 * Math.max(dusk, dawn);
+  if (dark <= 0.01) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = `rgba(${Math.round(255 - 170 * dark)},${Math.round(255 - 150 * dark)},${Math.round(255 - 70 * dark)},1)`;
+  ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = "lighter";
-  for (const [x, y, r, c, a] of glows) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); }
-  ctx.globalCompositeOperation = "source-over";
-  const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .4, W / 2, H / 2, Math.max(W, H) * .78);
-  v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.55)"); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const glow = (x, y, r, c, a) => { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); };
+  for (const p of ents.values()) if (p.e && p.e.kind === "agent") glow(sx(p.x) + S / 2, sy(p.y) + S / 2, S * 3, "255,214,150", .22 * dark);
+  for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") {
+    const x = b.bx * B + i % B, y = b.by * B + (i / B | 0), f = .9 + .1 * Math.sin(t * 13 + x);
+    glow(sx(x) + S / 2, sy(y) + S / 2, S * 4.5 * f, "255,160,70", .45 * dark);
+  }
+  ctx.restore();
 }
 
 // =====================================================================================
@@ -797,14 +622,14 @@ function drawAgents() {
     const d = document.createElement("div");
     d.className = "ag" + (a.name === follow ? " sel" : "") + (a.online ? "" : " off");
     const inv = Object.values(a.inventory).reduce((s, n) => s + n, 0);
-    d.innerHTML = `<span class="dot" style="background:${agentColor(a.name)}"></span><span class="n">${esc(a.name)}${a.name === me ? " (you)" : ""}</span><span class="m">${esc((a.persona || "").split(" ")[0])} · ${inv} · ${a.deaths ? "☠" + a.deaths : "♥" + a.hp}</span>`;
+    d.innerHTML = `<span class="dot" style="background:${agentTint(a.name)}"></span><span class="n">${esc(a.name)}${a.name === me ? " (you)" : ""}</span><span class="m">${inv} items · ${a.deaths ? "☠" + a.deaths : "♥" + a.hp}</span>`;
     d.onclick = () => { if (me) return; follow = follow === a.name ? null : a.name; drawAgents(); };
     el.appendChild(d);
   });
 }
 function drawStats() {
   const m = metrics;
-  $("stats").innerHTML = `${m.agents_online} awake / ${m.agents_total} known · ${m.tiles_changed} tiles reshaped · ${m.crafts} crafts · ${m.trades} gifts · ${m.chat} words · ${m.deaths} deaths<br>${fmt(m.creatures)} · tick ${m.tick} · ${m.tick_ms_p50} ms/tick`;
+  $("stats").textContent = `${m.agents_online} awake / ${m.agents_total} · ${m.tiles_changed} tiles changed · ${m.crafts} crafts · ${m.trades} gifts · ${m.deaths} deaths · ${m.tick_ms_p50} ms/tick`;
 }
 
 // =====================================================================================
@@ -823,10 +648,11 @@ cv.addEventListener("mousemove", (e) => {
     if (Math.abs(dx) + Math.abs(dy) > .3) drag.moved = true;
     if (drag.moved && !me) { follow = null; camT.x = cam.x = drag.cx - dx; camT.y = cam.y = drag.cy - dy; }
   }
-  const p = tileAtScreen(e.clientX, e.clientY), c = combAt(p.x, p.y), tip = $("hover");
-  if (c === null) { tip.style.display = "none"; return; }
+  const p = tileAtScreen(e.clientX, e.clientY), t = tile(p.x, p.y), tip = $("hover");
+  if (!t) { tip.style.display = "none"; return; }
   const here = [...ents.values()].filter((q) => q.e && q.tx === p.x && q.ty === p.y).map((q) => q.e.name || q.e.kind);
-  tip.innerHTML = `${esc(label(CH[c] || "?"))}${here.length ? " · <b>" + esc(here.join(", ")) + "</b>" : ""} <span style="color:var(--dim)">${p.x}, ${p.y}</span>`;
+  const what = GROUND.has(t[0]) ? label(CH[t[1]]) : `${label(CH[t[0]])} on ${label(CH[t[1]])}`;
+  tip.innerHTML = `${esc(what)}${here.length ? " · " + esc(here.join(", ")) : ""}`;
   tip.style.display = "block"; tip.style.left = e.clientX + 16 + "px"; tip.style.top = e.clientY + 14 + "px";
 });
 cv.addEventListener("mouseleave", () => { mouse.in = false; $("hover").style.display = "none"; });
@@ -849,11 +675,15 @@ function joinGame(name) {
     $("joinbox").style.display = "none"; $("vitals").style.display = "block"; $("hotbar").style.display = "flex";
     $("help").style.display = localStorage.getItem("megastructure-help") === "off" ? "none" : "block";
     $("mode").textContent = "playing as " + me;
-    toast("You wake up. WASD to move, Enter to talk.");
+    toast("You wake up on the shore. WASD to walk, Enter to talk.");
     refresh();
   };
-  agentWs.onmessage = (m) => { const d = JSON.parse(m.data); const f = pending[d.id]; if (f) { delete pending[d.id]; f(d); } };
-  agentWs.onclose = () => { if (me) toast("Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "spectating"; ["vitals", "hotbar", "craft", "help", "chat"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; };
+  agentWs.onmessage = (m) => {
+    const d = JSON.parse(m.data);
+    if (d.type === "progress") { progress = {t0: performance.now(), ms: d.ticks / d.tick_hz * 1000, tool: d.tool}; return; }
+    const f = pending[d.id]; if (f) { delete pending[d.id]; f(d); }
+  };
+  agentWs.onclose = () => { if (me) toast("Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "watching"; ["vitals", "hotbar", "craft", "help", "chat"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; };
 }
 function rpc(op, extra) {
   return new Promise((res) => {
@@ -869,28 +699,28 @@ async function refresh() {
   refreshing = false;
   if (!r.ok) return;
   meObs = r.obs; const s = meObs.self;
-  $("where").innerHTML = `<b style="color:var(--text)">${esc(s.name)}</b> · ${s.x}, ${s.y} · ${esc(s.standing_on.replace("+", " with "))}${s.sheltered ? " · sheltered" : ""}`;
+  $("where").textContent = `${s.name} · ${s.x}, ${s.y}${s.sheltered ? " · sheltered" : ""}`;
   for (const [id, v] of [["hp", s.hp], ["hu", s.hunger], ["en", s.energy]]) { $(id).style.width = v + "%"; $(id + "v").textContent = v; }
-  $("doing").textContent = s.action ? `${s.action}…` : (s.hunger < 25 ? "starving: select food and press E" : "");
+  $("doing").textContent = s.action ? `${label(s.action)}…` : (s.hunger < 25 ? "starving! select food, press E" : "");
   drawHotbar(s.inventory); drawRecipes();
 }
-setInterval(refresh, 800);
+setInterval(refresh, 700);
 async function act(tool, args, quiet) {
   if (!me) return null;
   busy = true;
   const r = await rpc("act", {tool, args});
-  busy = false;
-  if (!r.ok && !["interrupted", "offline"].includes(r.error) && !quiet) toast(`${tool}: ${r.detail || r.error}`, true);
+  busy = false; progress = null;
+  if (!r.ok && !["interrupted", "offline"].includes(r.error) && !quiet) toast(`${label(tool)}: ${r.detail || r.error}`, true);
   if (r.ok) {
     const c = r.result.changed || {};
     const gained = Object.fromEntries(Object.entries(c.inventory || {}).filter(([, v]) => v > 0));
     const p = ents.get("agent" + myId);
-    if (Object.keys(gained).length && p) floats.push({x: p.tx, y: p.ty, text: "+" + fmt(gained), color: "143,227,136", t: performance.now() / 1000});
+    if (Object.keys(gained).length && p) floats.push({x: p.tx, y: p.ty, text: "+" + fmt(gained), color: "#fff1a8", t: performance.now() / 1000});
     if (r.result.text !== undefined) toast(`The sign reads: “${r.result.text}”`);
-    if (r.result.chest) toast(`Locker: ${fmt(r.result.chest) || "empty"}`);
-    if (r.result.rows_near_to_far) toast(`You squint into the distance: ${r.result.agents.length ? "someone is out there." : "nothing moves."}`);
+    if (r.result.chest) toast(`Chest: ${fmt(r.result.chest) || "empty"}`);
+    if (r.result.rows_near_to_far) toast(`You look into the distance: ${r.result.agents.length ? "someone is out there." : "nobody."}`);
   }
-  if (tool !== "step") refresh();
+  if (tool !== "step" || (r.ok && r.result.changed && r.result.changed.inventory)) refresh();
   return r;
 }
 const DIRV = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
@@ -901,60 +731,74 @@ async function stepDir(dir) {
   const s = myPos(), p = ents.get("agent" + myId); if (!s) return null;
   const [dx, dy] = DIRV[dir], nx = s.x + dx, ny = s.y + dy;
   if (p) { p.fx = dx; p.fy = dy; }
-  if (walkable(nx, ny) && p) {                    // move now; the server confirms within a tick
-    pred = {x: nx, y: ny, until: performance.now() + 800};
-    p.tx = nx; p.ty = ny; p.moved = performance.now();
-  }
+  if (walkable(nx, ny) && p) { pred = {x: nx, y: ny, until: performance.now() + 800}; p.tx = nx; p.ty = ny; p.moved = performance.now(); }
   const r = await act("step", {dir}, true);
   if (r && !r.ok) {
-    pred = null;
-    if (p) { p.tx = s.x; p.ty = s.y; }
-    if (r.error === "blocked") toast(`Blocked. Shift+${({N: "W", S: "S", E: "D", W: "A"})[dir]} digs through.`, true);
+    pred = null; if (p) { p.tx = s.x; p.ty = s.y; }
+    if (r.error === "blocked") toast(`Blocked. Shift+${({N: "W", S: "S", E: "D", W: "A"})[dir]} to dig or chop.`, true);
   }
   return r;
 }
 function clickTile(p, shift) {
-  const d = dirTo(p), name = CH[combAt(p.x, p.y)], s = myPos();
+  const d = dirTo(p), c = combAt(p.x, p.y), name = c && CH[c], s = myPos();
   const ent = [...ents.values()].find((q) => q.e && q.tx === p.x && q.ty === p.y && !(q.e.kind === "agent" && q.e.id === myId));
   if (ent && s && Math.max(Math.abs(p.x - s.x), Math.abs(p.y - s.y)) <= 1) {
     if (ent.e.kind === "agent" && !shift) { if (selected) act("give", {target: ent.e.id, item: selected, n: 1}); else toast(`Select an item and click ${ent.e.name} to give it. Shift+click attacks.`); return; }
     return act("attack", {target: ent.e.id});
   }
-  if (d && (name === "sign" || name === "beacon") && !shift) return act("read_sign", {dir: d});
-  if (d && name === "locker" && !shift) return act("take", {dir: d});
-  if (d && name === "breach" && selected === "rubble") return act("place", {dir: d, item: "rubble"});
-  if (d && name && (SOLID.has(CHAR[name]) || ["lichen", "ripe_bed", "spore_bed", "debris", "hatch", "heater", "sign", "beacon"].includes(name))) return act("dig", {dir: d});
+  if (d && (name === "sign" || name === "flag") && !shift) return act("read_sign", {dir: d});
+  if (d && name === "chest" && !shift) return act("take", {dir: d});
+  if (d && selected && ((name === "tilled" && selected === "seed") || (["tilled", "water"].includes(name) && selected === "dirt"))) return act("place", {dir: d, item: selected});
+  if (d && c && !GROUND.has(c)) return act("dig", {dir: d});
   if (s && p.x === s.x && p.y === s.y) return act("pick_up", {});
   act("move_to", {x: p.x, y: p.y});
 }
 function placeAt(p) {
   const d = dirTo(p);
-  if (!d) return toast("Stand next to a tile to place something on it.", true);
+  if (!d) return toast("Stand next to a tile to place something there.", true);
   if (!selected) return toast("Select an item first (1-9 or click the hotbar).", true);
-  if (CH[combAt(p.x, p.y)] === "locker") return act("store", {dir: d, item: selected, n: meObs.self.inventory[selected] || 1});
+  if (CH[combAt(p.x, p.y)] === "chest") return act("store", {dir: d, item: selected, n: meObs.self.inventory[selected] || 1});
   act("place", {dir: d, item: selected});
+}
+// item icons from the sheets: [image name, sx, sy]
+const ICONS = {
+  wood: ["items", 32, 48], plank: ["planks", 0, 16], stone: ["gen", "stone_item"], fiber: ["gen", "fiber"], ore: ["gen", "ore"],
+  berries: ["trees", 16, 64], mushroom: ["nature", 16, 0], seed: ["items", 0, 128], wheat: ["items", 16, 128],
+  egg: ["items", 48, 176], milk: ["items", 64, 0], meat: ["gen", "meat"], cooked_meat: ["gen", "cooked_meat"], bread: ["gen", "bread"],
+  torch: ["gen", "torch"], rope: ["gen", "rope"], sword: ["gen", "sword"], spear: ["gen", "spear"], axe: ["gen", "axe"],
+  pickaxe: ["gen", "pickaxe"], ingot: ["gen", "ingot"], flag: ["gen", "flag"], campfire: ["gen", "campfire0"],
+  fence: ["fences", 0, 48], stone_wall: ["stone", 16, 16], door: ["door", 0, 0], workbench: ["workbench", 0, 0, 32, 32],
+  sign: ["signs", 0, 0], chest: ["chest", 16, 16], dirt: ["soil", 0, 80],
+};
+function iconCanvas(name) {
+  const c = document.createElement("canvas"); c.width = 16; c.height = 16; const g = c.getContext("2d");
+  const ic = ICONS[name];
+  if (!ic) { g.fillStyle = "#8a6a55"; g.fillRect(4, 4, 8, 8); return c; }
+  if (ic[0] === "gen") { g.drawImage(IMG.gen, GEN[ic[1]] * 16, 0, 16, 16, 0, 0, 16, 16); return c; }
+  const [img, x, y, w = 16, h = 16] = ic;
+  g.drawImage(IMG[img], x, y, w, h, 0, 0, 16, 16);
+  return c;
 }
 function drawHotbar(inv) {
   const el = $("hotbar"); const items = Object.entries(inv);
   if (selected && !inv[selected]) selected = null;
   const sig = JSON.stringify(items) + selected; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
   el.innerHTML = "";
-  if (!items.length) { el.innerHTML = `<span style="color:var(--dim);padding:13px 10px">empty hands: dig scrap heaps and lichen</span>`; return; }
+  if (!items.length) { el.innerHTML = `<span style="padding:12px 12px">empty pockets: chop trees, pick berries</span>`; return; }
   items.forEach(([name, n], i) => {
     const d = document.createElement("div"); d.className = "slot" + (name === selected ? " sel" : "");
-    const c = document.createElement("canvas"); c.width = 16; c.height = 16; c.getContext("2d").drawImage(itemIcon(name), 0, 0);
-    d.appendChild(c);
-    d.insertAdjacentHTML("beforeend", `<span class="k">${i < 9 ? i + 1 : ""}</span><span class="c">${n}</span><span class="tip">${esc(label(name).replace("_", " "))}</span>`);
+    d.appendChild(iconCanvas(name));
+    d.insertAdjacentHTML("beforeend", `<span class="k">${i < 9 ? i + 1 : ""}</span><span class="c">${n}</span><span class="tip">${esc(label(name))}</span>`);
     d.onclick = () => { selected = selected === name ? null : name; el.dataset.sig = ""; drawHotbar(meObs.self.inventory); };
     d.ondblclick = () => useSelected(name);
     el.appendChild(d);
   });
 }
-const FOODS = ["lichen", "meat", "cooked_meat", "cap", "ration"];
+const FOODS = ["berries", "mushroom", "egg", "milk", "meat", "cooked_meat", "wheat", "bread"];
 function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);
   if (FOODS.includes(name)) return act("eat", {item: name});
-  toast(`Right-click a tile next to you to place ${label(name)}.`);
+  toast(`Right-click a tile next to you to place the ${label(name)}.`);
 }
 function drawRecipes() {
   const el = $("recipes"); if (!el || !Object.keys(recipes).length) return;
@@ -965,13 +809,13 @@ function drawRecipes() {
   for (const [name, r] of Object.entries(recipes)) {
     const can = Object.entries(r.inputs).every(([k, v]) => (inv[k] || 0) >= v) && near(r.station);
     const d = document.createElement("div"); d.className = "rc" + (can ? "" : " no");
-    d.innerHTML = `<span>${esc(label(name).replace("_", " "))}</span><span class="in">${esc(fmt(r.inputs))}${r.station ? "<br>at " + esc(r.station) : ""}</span>`;
+    d.innerHTML = `<span>${esc(label(name))}</span><span class="in2">${esc(fmt(r.inputs))}${r.station ? "<br>at " + esc(r.station) : ""}</span>`;
     if (can) d.onclick = () => act("craft", {recipe: name});
     el.appendChild(d);
   }
 }
 let toastTimer;
-function toast(msg, bad) { const t = $("toast"); t.textContent = msg; t.style.display = "block"; t.style.color = bad ? "var(--amber)" : "var(--text)"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3200); }
+function toast(msg, bad) { $("toastt").textContent = msg; const t = $("toast"); t.style.display = "block"; $("toastt").style.color = bad ? "var(--warn)" : "var(--ink)"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3200); }
 
 const KEYDIR = {w: "N", arrowup: "N", s: "S", arrowdown: "S", a: "W", arrowleft: "W", d: "E", arrowright: "E"};
 const keys = new Set();
@@ -994,7 +838,7 @@ addEventListener("keyup", (e) => {
   const k = [...keys].find((k) => KEYDIR[k]);
   held = k ? {dir: KEYDIR[k], dig: e.shiftKey} : null;
 });
-async function pump() {                          // holding a key keeps walking; one step in flight at a time
+async function pump() {
   if (busy || !held) return;
   const h = held;
   if (h.dig) { await act("dig", {dir: h.dir}); return; }
@@ -1024,6 +868,7 @@ $("name").value = localStorage.getItem("megastructure-name") || "";
 const qs = new URLSearchParams(location.search);
 if (qs.get("follow")) { follow = qs.get("follow"); $("joinbox").style.display = "none"; }
 if (qs.get("zoom")) zoom = +qs.get("zoom");
+ready.then(() => { buildBlob(); connectSpec(); requestAnimationFrame(frame); });
 </script>
 </body>
 </html>

@@ -120,3 +120,23 @@ autotiled with masks computed from the layer sheet's alpha (all sheets share one
 sprite objects (trees, rocks, fences with N/E/S/W masks, chest, workbench, crops by growth stage); character
 4-dir walk; chickens and cows; UI with the pixel font, panel and slot 9-slices; action progress bars;
 incremental 3×3 tile redraws within a per-frame time budget.
+
+## 2026-11-08 · Iteration 5 — the client on Sprout Lands art
+
+**Change**
+- Client rewritten on the atlas. Ground is layered: animated water, then soil islands (beach rim),
+  grass, tilled soil, ash, cobble, planks, then rock and hedge masses. All are autotiled from a neighbour-mask
+  table computed at load from the grass layer's alpha, since every sheet shares the 11×7 blob layout; plain
+  interiors get decor variants. Trees, bushes, boulders, fences (N/E/S/W-connected), workbench, chest, door,
+  campfire, crops, signs and flags are y-sorted sprites with characters, so canopies overlap people
+  correctly. 4-direction animated character, recoloured per person; animated chickens, cows and glooms.
+- UI uses the pack: pixel font, 9-slice panels and inventory slots, sprite icons per item.
+- Night: multiply tint plus warm light from campfires, fires and people.
+- Speed: a tile change redraws only its 3×3 neighbourhood; at most one fresh chunk is drawn per frame and
+  dirty tiles get a 4 ms budget; resyncs diff instead of redrawing. The server pushes a `progress` message
+  when a multi-tick action starts, and the client shows a bar instantly.
+- Server serves `/assets/*` (whitelisted extensions, no path traversal; checked with `/assets/../server.py`: 404).
+
+**Measured (real Chrome)**: chunk draw 1–2 ms (was 40–50 ms); 10 s of frames: p50 17 ms, p99 17 ms, max 17 ms,
+0 frames over 100 ms (was max 367 ms). No console errors. Tests: 19 pass.
+**Next**: M2 thinker on the local model.

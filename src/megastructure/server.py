@@ -35,10 +35,22 @@ def serve_http(connection, request):
         return None
     path = request.path.split("?")[0]
     if path in ("/", "/index.html"):
-        body = (WEB / "index.html").read_bytes()
-        return Response(200, "OK", Headers([("Content-Type", "text/html; charset=utf-8"),
-                                            ("Content-Length", str(len(body))), ("Cache-Control", "no-cache")]), body)
+        return _file(WEB / "index.html", "text/html; charset=utf-8")
+    if path.startswith("/assets/"):
+        name = path[len("/assets/"):]
+        f = (WEB / "assets" / name).resolve()
+        if f.parent == (WEB / "assets").resolve() and f.is_file() and f.suffix in CONTENT_TYPES:
+            return _file(f, CONTENT_TYPES[f.suffix], cache="max-age=3600")
     return connection.respond(404, "not found\n")
+
+
+CONTENT_TYPES = {".png": "image/png", ".ttf": "font/ttf", ".txt": "text/plain"}
+
+
+def _file(path: Path, ctype: str, cache: str = "no-cache") -> Response:
+    body = path.read_bytes()
+    return Response(200, "OK", Headers([("Content-Type", ctype), ("Content-Length", str(len(body))),
+                                        ("Cache-Control", cache)]), body)
 
 
 def rss_mb() -> float:
@@ -66,6 +78,7 @@ class GameServer:
         world_dir.mkdir(parents=True, exist_ok=True)
         self.sim = Simulation(world_dir / "world.sqlite", seed=seed, event_log=world_dir / "events.jsonl")
         self.conns: dict[int, object] = {}  # agent id -> connection
+        self.notify: dict[int, object] = {}  # agent id -> callable(dict) pushing a message to that agent
         self.spectators: dict = {}  # queue -> watched rect (x, y, w, h) or None
         self.sim.listeners.append(self._broadcast)
         self.tick_ms = collections.deque(maxlen=250)
@@ -131,7 +144,12 @@ class GameServer:
         return ents
 
     def push_ticks(self):
-        """Every tick, each spectator gets the entities inside the rect it watches."""
+        """Every tick, each spectator gets the entities inside the rect it watches; agents whose
+        multi-tick action just started get a progress notice (so clients can show a bar at once)."""
+        for aid, push in list(self.notify.items()):
+            act = self.sim.agents[aid].action
+            if act is not None and act.started_tick == self.sim.tick and act.expected > 1:
+                push({"type": "progress", "tool": act.tool, "ticks": act.expected, "tick_hz": TICK_HZ})
         if not self.spectators:
             return
         head = {"type": "tick", "tick": self.sim.tick, "time": self.sim.clock(), "night": self.sim.is_night(),
@@ -234,6 +252,7 @@ class GameServer:
                         await old.close(4000, "logged in elsewhere")
                         agent.online = True
                     self.conns[agent.id] = ws
+                    self.notify[agent.id] = lambda m: out.put_nowait(json.dumps(m, separators=(",", ":")))
                     log.info("agent %s (#%d) connected from %s", agent.name, agent.id, ws.remote_address)
                     reply(mid, agent=agent.to_json(), tick=self.sim.tick, protocol=PROTOCOL, tick_hz=TICK_HZ)
                     continue
@@ -270,6 +289,7 @@ class GameServer:
         finally:
             if agent is not None and self.conns.get(agent.id) is ws:
                 del self.conns[agent.id]
+                self.notify.pop(agent.id, None)
                 self.sim.logout(agent)
                 log.info("agent %s disconnected", agent.name)
             await asyncio.sleep(0.05)  # let queued replies drain

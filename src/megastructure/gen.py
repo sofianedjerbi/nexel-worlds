@@ -62,7 +62,7 @@ def gen_tile(seed: int, x: int, y: int) -> tuple[int, int]:
         if rocky > 0.72 and r < 0.12:
             return G["dirt"], B["ore"]
         return G["dirt"], (B["rock"] if r < 0.8 else B["none"])
-    forest = max(0.0, moist - 0.5) * 1.6
+    forest = max(0.0, moist - 0.55) * 1.1
     if r < forest:
         return ground, B["tree"]
     if r < forest + 0.025:
