@@ -269,4 +269,23 @@ def test_animals_spawn_and_seeds_grow(world):
 
 def sim_ripen_ticks():
     from megastructure.sim import sec
-    return sec(300)
+    return 2 * sec(150) + sec(4)
+
+
+def test_fruit_tree_regrows_fruit(world):
+    sim, a = world
+    from megastructure.sim import sec
+    sim.world.set(a.x + 1, a.y, block="fruit_tree")
+    r = run(sim, a, "dig", {"dir": "E"})
+    assert r["changed"]["inventory"] == {"fruit": 3} and sim.world.block(a.x + 1, a.y) == "tree"
+    for _ in range(sec(240) + sec(4)):
+        sim.step()
+    assert sim.world.block(a.x + 1, a.y) == "fruit_tree"
+
+
+def test_sprint_is_faster_and_tiring(world):
+    sim, a = world
+    walk = run(sim, a, "step", {"dir": "E"})["ticks"]
+    e0 = a.energy
+    sprint = [run(sim, a, "step", {"dir": "E" if i % 2 else "W", "run": True})["ticks"] for i in range(8)]
+    assert max(sprint) < walk and a.energy < e0

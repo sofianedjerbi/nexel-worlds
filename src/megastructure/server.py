@@ -139,7 +139,8 @@ class GameServer:
         ents = [{"kind": "agent", "name": a.name, "id": a.id, "x": a.x, "y": a.y, "hp": a.hp,
                  "doing": a.action.tool if a.action else None, "weapon": self.sim.best_weapon(a),
                  "dir": a.action.args.get("dir") if a.action else None,
-                 "tid": a.action.args.get("target") if a.action else None}
+                 "tid": a.action.args.get("target") if a.action else None,
+                 "run": bool(a.action.args.get("run")) if a.action else False}
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
         ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp} for c in self.sim.creatures.values()
                  if x <= c.x < x + w and y <= c.y < y + h]

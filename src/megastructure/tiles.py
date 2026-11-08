@@ -65,6 +65,9 @@ BLOCKS = [
     Block("ripe_crop", "w", solid=False, flammable=True, hardness=2, drops={"wheat": 3, "seed": 2}),
     Block("stump", "t", solid=False, hardness=4, drops={"wood": 1}),
     Block("chest", "C", flammable=True, hardness=8, drops={"chest": 1}, tool="axe", wall=True),
+    # appended (block ids are stored in saved chunks, so new blocks go at the end)
+    Block("fruit_tree", "F", flammable=True, hardness=5, drops={"fruit": 3}, wall=True),  # picking: fruit regrows
+    Block("sprout", ";", solid=False, flammable=True, hardness=2, drops={"seed": 1}),
 ]
 B = {b.name: i for i, b in enumerate(BLOCKS)}
 
@@ -77,7 +80,7 @@ PLACEABLE = {
     "workbench": "workbench",
     "sign": "sign",
     "flag": "flag",
-    "seed": "crop",
+    "seed": "sprout",
     "chest": "chest",
 }
 # items laid on the ground: item -> (grounds it can cover, resulting ground)
@@ -88,7 +91,7 @@ FILLERS = {
 }
 SEED_GROUNDS = {"tilled"}  # seeds only take on tilled soil
 
-FOOD = {"berries": 8, "mushroom": 6, "egg": 10, "meat": 6, "cooked_meat": 25, "wheat": 4, "bread": 30, "milk": 12}
+FOOD = {"fruit": 10, "berries": 8, "mushroom": 6, "egg": 10, "meat": 6, "cooked_meat": 25, "wheat": 4, "bread": 30, "milk": 12}
 
 WEAPONS = {"sword": 30, "spear": 18, "axe": 12, "pickaxe": 10}
 FIST_DAMAGE = 5

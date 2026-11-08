@@ -71,7 +71,7 @@ def gen_tile(seed: int, x: int, y: int) -> tuple[int, int]:
     # groves: trees on a 2x2 jittered grid, denser toward the grove centre
     cand, roll = _picked(seed, x, y, 2, 11)
     if grove > 0.6 and cand and roll < min(0.95, (grove - 0.6) * 6):
-        return G["grass"], B["tree"]
+        return G["grass"], (B["fruit_tree"] if _hash(seed, x, y, 29) < 0.15 else B["tree"])
     # grove edges: berry bushes and the odd hedge, sparse
     cand4, roll4 = _picked(seed, x, y, 4, 13)
     if 0.56 < grove <= 0.61 and cand4:

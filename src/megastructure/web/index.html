@@ -107,7 +107,7 @@
   <div style="display:flex;gap:6px;margin-top:5px"><button class="ghost" id="craftbtn" style="flex:1">craft (C)</button><button class="ghost" id="helpbtn">?</button></div>
 </div></div>
 <div class="panel" id="help"><div class="in">
-  <b>WASD</b> walk · <b>Shift+WASD</b> dig/chop<br><b>click</b> walk / harvest / hit<br>
+  <b>WASD</b> walk · <b>Shift</b> sprint · <b>Space</b> use what you face<br><b>click</b> walk / harvest / hit · <b>shift-click</b> attack<br>
   <b>right-click</b> place selected · <b>1-9</b> select<br><b>E</b> eat · <b>F</b> pick up · <b>R</b> rest<br>
   <b>Enter</b> talk · <b>!text</b> shout · <b>/tool k=v</b><br><b>C</b> craft · <b>wheel</b> zoom · <b>H</b> help
 </div></div>
@@ -140,7 +140,7 @@ const label = (n) => LABEL[n] || String(n).replace("_", " ");
 //  Assets
 // =====================================================================================
 const IMG = {};
-const ASSETS = ["actions", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
+const ASSETS = ["tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
   "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen"];
 let GEN = {};
 function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
@@ -313,7 +313,10 @@ function characterSheet(tint, src = IMG.character) {   // recolour the cream bod
   }
   g.putImageData(d, 0, 0); tinted.set(key, c); return c;
 }
-const actionSheet = (tint) => characterSheet(tint, IMG.actions);
+// premium character sheet: 8-frame rows, 4 directions each: down, up, right, left
+// (checked from the eye and collar-bell position; the pink spot is the inner ear, at the back)
+const ANIM = {idle: 0, walk: 4, run: 8, hoe: 12, axe: 16, water: 20};
+const DIR_ROW = (p) => (p.fy < 0 ? 1 : p.fx > 0 ? 2 : p.fx < 0 ? 3 : 0);
 function genCell(name) { return [GEN[name] * 16, 0]; }
 // object sprite for a tile char: [img, sx, sy, sw, sh, dx (from tile left), dy (from tile top)]
 function objectSprite(c, x, y, t) {
@@ -526,7 +529,7 @@ function frame(now) {
   const dt = Math.min(.1, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
   for (const p of ents.values()) {
-    const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), step = 5.5 * dt;
+    const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), step = Math.max(5.5, d * 9) * dt;
     if (d <= step) { p.x = p.tx; p.y = p.ty; } else { p.x += dx / d * step; p.y += dy / d * step; }
   }
   if (me && myId !== null) {
@@ -633,31 +636,29 @@ function drawEntity(p, sx, sy, S, t, now) {
   if (e.kind === "agent") {
     const mine = me && e.id === myId;
     const action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, tid: e.tid, t0: p.doingSince || now} : null);
-    if (!mine) { if (e.doing && !p.doingSince) p.doingSince = now; if (!e.doing) p.doingSince = 0; }
+    if (!mine) { if (e.doing && !p.doingSince) p.doingSince = now; if (!e.doing) p.doingSince = 0; p.running = !!e.run; }
     // face the action's target
     if (action && action.dir && DIRV[action.dir]) { [p.fx, p.fy] = DIRV[action.dir]; }
     if (action && action.tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == action.tid); if (q) { p.fx = Math.sign(q.x - p.x); p.fy = p.fx ? 0 : Math.sign(q.y - p.y); } }
-    const row = p.fy < 0 ? 1 : p.fx < 0 ? 2 : p.fx > 0 ? 3 : 0;
-    const sheet = characterSheet(agentTint(e.name));
-    let bob = 0, sheetImg = sheet, sxx, syy;
+    const sheetImg = characterSheet(agentTint(e.name));
+    let bob = 0, anim = "idle", frame;
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
     if (mine || e.name === follow) {
       ctx.fillStyle = mine ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
       ctx.beginPath(); ctx.ellipse(x + S / 2, y + S - 2 * z, 6 * z, 2.5 * z, 0, 0, 7); ctx.fill();
     }
     if (tool === "dig" || tool === "attack" || tool === "craft") {
-      // swing: raise / strike, using the pack's tool animations (axe for wood, hoe for earth and stone)
+      // full 8-frame tool swings: wind-up, strike (frame 4, with the arc), follow-through
       const tx = Math.round(p.tx) + p.fx, ty = Math.round(p.ty) + p.fy, target = combAt(tx, ty);
-      const axe = tool === "attack" || "TH#+&!?C".includes(target || "");
-      const rate = tool === "attack" ? 8 : 4.5, phase = Math.floor(k * rate) % 2;
-      sheetImg = actionSheet(agentTint(e.name));
-      sxx = phase * 48; syy = ((axe ? 4 : 0) + (tool === "craft" ? 0 : row)) * 48;
-      const swing = Math.floor(k * rate);
-      if (phase === 1 && p.lastSwing !== swing) {   // the strike lands: debris and a shake on the target
+      anim = tool === "attack" || "TFH#+&!?C".includes(target || "") ? "axe" : "hoe";
+      const fps = tool === "attack" ? 20 : 13, n = Math.floor(k * fps);
+      frame = n % 8;
+      const swing = Math.floor(n / 8);
+      if (frame >= 4 && p.lastSwing !== swing) {     // the strike lands: debris and a shake on the target
         p.lastSwing = swing;
         if (tool === "dig" && target) {
           const kind = GROUND.has(target) ? "o" : target;
-          burst(tx, ty, kind, 6, {dy: target === "T" ? -.6 : -.1}); shakes.set(tx + "," + ty, now);
+          burst(tx, ty, kind, 6, {dy: "TF".includes(target) ? -.6 : -.1}); shakes.set(tx + "," + ty, now);
         } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
       }
     } else if (tool === "eat") {
@@ -668,15 +669,20 @@ function drawEntity(p, sx, sy, S, t, now) {
     } else if (tool === "rest") {
       if (Math.floor(k * 1.5) !== p.lastZ) { p.lastZ = Math.floor(k * 1.5); floatText(p.x + .3, p.y - .3, "z", "#e8f0ff"); }
     }
-    if (sxx === undefined) {
-      const moving = now - p.moved < 260 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
-      if (moving) {                                   // walk: frames 2-3, a step every 0.12 s
-        const step = Math.floor(now / 120);
-        sxx = (2 + step % 2) * 48;
-        if (step !== p.lastStep && step % 2 === 0) { p.lastStep = step; burst(p.x, p.y + .35, "dust", 2, {up: .6, spread: 1.2, g: 2, life: .35}); }
-      } else sxx = (Math.floor(now / 520 + e.id) % 2) * 48;   // idle: gentle breathing
-      syy = row * 48;
+    if (frame === undefined) {
+      const moving = now - p.moved < 220 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
+      const running = moving && (p.running || (mine && runKey));
+      if (moving) {
+        anim = running ? "run" : "walk";
+        const ms = running ? 60 : 85;                 // 8-frame cycles
+        frame = Math.floor(now / ms) % 8;
+        if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms)) {
+          p.lastStep = Math.floor(now / ms);
+          burst(p.x, p.y + .35, "dust", running ? 3 : 2, {up: .6, spread: running ? 2 : 1.2, g: 2, life: .35});
+        }
+      } else frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
     }
+    const sxx = frame * 48, syy = (ANIM[anim] + DIR_ROW(p)) * 48;
     const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
     const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
     ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z - p.fx * kb, y - 20 * z - bob - p.fy * kb, 48 * z, 48 * z);
@@ -866,11 +872,11 @@ async function stepDir(dir) {
   const s = myPos(), p = ents.get("agent" + myId); if (!s) return null;
   const [dx, dy] = DIRV[dir], nx = s.x + dx, ny = s.y + dy;
   if (p) { p.fx = dx; p.fy = dy; }
-  if (walkable(nx, ny) && p) { pred = {x: nx, y: ny, until: performance.now() + 800}; p.tx = nx; p.ty = ny; p.moved = performance.now(); }
-  const r = await act("step", {dir}, true);
+  if (walkable(nx, ny) && p) { pred = {x: nx, y: ny, until: performance.now() + 800}; p.tx = nx; p.ty = ny; p.moved = performance.now(); p.running = runKey; }
+  const r = await act("step", runKey ? {dir, run: true} : {dir}, true);
   if (r && !r.ok) {
     pred = null; if (p) { p.tx = s.x; p.ty = s.y; }
-    if (r.error === "blocked") toast(`Blocked. Shift+${({N: "W", S: "S", E: "D", W: "A"})[dir]} to dig or chop.`, true);
+    if (r.error === "blocked") toast("Something's in the way. Press Space to use it, or click it.", true);
   }
   return r;
 }
@@ -919,7 +925,7 @@ function intent(p, shift) {
     return {text: HARVEST[c] || label(CH[c]), near: 1, run: (d) => act("dig", {dir: d})};
   }
   if (g === "~" || g === "=") return {text: label(CH[g]), info: true};
-  if (shift) return {text: "Dig / till soil", near: 1, run: (d) => act("dig", {dir: d})};
+  if (shift) return {text: "Till soil", near: 1, run: (d) => act("dig", {dir: d})};
   return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
 }
 // walk next to the target (closest free side) if needed, then act facing it
@@ -1052,7 +1058,8 @@ addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (k === "shift") keys.add("shift");
   if (k === "escape") { selected = null; $("hotbar").dataset.sig = ""; if (meObs) drawHotbar(meObs.self.inventory); $("craft").style.display = "none"; }
-  if (KEYDIR[k]) { e.preventDefault(); keys.add(k); held = {dir: KEYDIR[k], dig: e.shiftKey}; pump(); return; }
+  if (KEYDIR[k]) { e.preventDefault(); keys.add(k); held = {dir: KEYDIR[k]}; pump(); return; }
+  if (k === " ") { e.preventDefault(); interactFacing(); return; }
   if (k === "enter" || k === "t") { e.preventDefault(); openChat(); }
   else if (k === "/") { e.preventDefault(); openChat("/"); }
   else if (k === "f") act("pick_up", {});
@@ -1065,12 +1072,22 @@ addEventListener("keydown", (e) => {
 addEventListener("keyup", (e) => {
   keys.delete(e.key.toLowerCase()); if (e.key === "Shift") keys.delete("shift");
   const k = [...keys].find((k) => KEYDIR[k]);
-  held = k ? {dir: KEYDIR[k], dig: e.shiftKey} : null;
+  held = k ? {dir: KEYDIR[k]} : null;
 });
+let runKey = false;
+addEventListener("keydown", (e) => { if (e.key === "Shift") runKey = true; });
+addEventListener("keyup", (e) => { if (e.key === "Shift") runKey = false; });
+addEventListener("blur", () => { runKey = false; keys.clear(); held = null; });
+function interactFacing() {                      // Space: do the obvious thing to the tile in front of you
+  const p = ents.get("agent" + myId), s = myPos(); if (!p || !s) return;
+  const q = {x: s.x + (p.fx || 0), y: s.y + (p.fy || (p.fx ? 0 : 1))};
+  let it = intent(q, false);
+  if (it && it.walk) it = {text: "Dig", near: 1, run: (d) => act("dig", {dir: d})};
+  perform(q, it);
+}
 async function pump() {
   if (busy || !held) return;
   const h = held;
-  if (h.dig) { await act("dig", {dir: h.dir}); return; }
   const r = await stepDir(h.dir);
   if (held && r && r.ok) pump(); else if (held) setTimeout(pump, 120);
 }

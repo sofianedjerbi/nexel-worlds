@@ -505,8 +505,13 @@ class Simulation:
                 if self.tick < due:
                     continue
                 del self.timers[pos]
-                if kind == "ripen" and self.world.block(*pos) == "crop":
+                if kind == "ripen" and self.world.block(*pos) == "sprout":
+                    self.set_tile(*pos, block="crop", cause="grew")
+                    self.timers[pos] = [self.tick + sec(150), "ripen"]
+                elif kind == "ripen" and self.world.block(*pos) == "crop":
                     self.set_tile(*pos, block="ripe_crop", cause="grew")
+                elif kind == "fruit" and self.world.block(*pos) == "tree":
+                    self.set_tile(*pos, block="fruit_tree", cause="grew")
                 elif kind == "regrow" and self.world.block(*pos) == "none" and self.entity_at(*pos) is None \
                         and self.world.ground(*pos) in ("grass", "dirt"):
                     self.set_tile(*pos, block="tree", cause="grew")
@@ -615,9 +620,18 @@ class Simulation:
         return best
 
     # ============================================================== tools
+    def stride(self, a: Agent, args) -> float:
+        """Seconds per tile. Sprinting (`run: true`) is twice as fast and costs 1 energy per 4 tiles."""
+        if args.get("run") and a.energy > 0:
+            a.stats["run_tiles"] = a.stats.get("run_tiles", 0) + 1
+            if a.stats["run_tiles"] % 4 == 0:
+                self.spend(a, 1)
+            return 0.1
+        return 0.2
+
     def _tool_step(self, a, args):
         x, y = self.target(a, args)
-        yield from self.wait(a, 0.2)
+        yield from self.wait(a, self.stride(a, args))
         if not self.world.passable(x, y):
             raise ActionError("blocked", f"{args['dir']} is {self.describe(x, y)}")
         a.x, a.y = x, y
@@ -636,7 +650,7 @@ class Simulation:
                               f"no walkable path to ({gx},{gy}) from ({a.x},{a.y})")
         steps = 0
         while path:
-            yield from self.wait(a, 0.2)
+            yield from self.wait(a, self.stride(a, args))
             nx, ny = path[0]
             if not self.world.passable(nx, ny):
                 replans += 1
@@ -684,6 +698,12 @@ class Simulation:
             drops = self._merge(drops, self.world.meta.get((x, y), {}).get("items", {}))
         for k, n in drops.items():
             a.add(k, n)
+        if block.name == "fruit_tree":
+            # picking a fruit tree takes its fruit; the tree stays and fruits again later
+            self.set_tile(x, y, block="tree", by=a, cause="pick")
+            self.timers[(x, y)] = [self.tick + sec(240), "fruit"]
+            a.bump("dug")
+            return {"got": drops}
         after = "none"  # a felled tree leaves clean ground; it regrows there later
         self.set_tile(x, y, block=after, by=a, cause="dig")
         if block.name == "tree":
@@ -738,8 +758,8 @@ class Simulation:
             raise ActionError("occupied", "someone stepped there")
         a.add(item, -1)
         self.set_tile(x, y, block=block, by=a, cause="place")
-        if block == "crop":
-            self.timers[(x, y)] = [self.tick + sec(300), "ripen"]
+        if block == "sprout":
+            self.timers[(x, y)] = [self.tick + sec(150), "ripen"]
         if block == "flag":
             text = str(args.get("text") or f"claimed by {a.name}")[:MAX_TEXT]
             self.world.set_meta(x, y, {"text": text, "by": a.name})
@@ -1023,8 +1043,8 @@ LEGEND = {
 
 DIR_ARG = {"dir": "N|E|S|W"}
 TOOL_SPECS = {
-    "step": {"args": DIR_ARG, "desc": "move one tile"},
-    "move_to": {"args": {"x": "int", "y": "int"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
+    "step": {"args": {**DIR_ARG, "run": "bool (optional, sprint: 2x speed, costs energy)"}, "desc": "move one tile"},
+    "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
     "dig": {"args": DIR_ARG, "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground"},
     "place": {"args": {**DIR_ARG, "item": "str", "text": "str (flags only, optional)"},
               "desc": "place a block item; dirt fills holes or water, stone lays cobble, planks make a bridge over water"},
