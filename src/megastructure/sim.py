@@ -432,7 +432,7 @@ class Simulation:
                     self._creature_move(c, c.x + d[0], c.y + d[1])
                 elif max(abs(prey.x - c.x), abs(prey.y - c.y)) <= 1:
                     c.cooldown = sec(1.2)
-                    self.emit("attack", c.x, c.y, attacker=f"sentinel#{c.id}", target=prey.name,
+                    self.emit("attack", c.x, c.y, attacker="a gloom", target=prey.name,
                               damage=CREATURES["gloom"]["damage"])
                     self.damage(prey, CREATURES["gloom"]["damage"], "gloom")
                 else:

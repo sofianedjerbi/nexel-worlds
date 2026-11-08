@@ -155,3 +155,11 @@ incremental 3×3 tile redraws within a per-frame time budget.
   at 18/36 px). Switched all UI and canvas text to a rounded sans (ui-rounded).
 - **UI**: vitals with heart, food and energy icons; a 9-slot hotbar where items keep their slot (1–9 select);
   free-floating wooden slots; help is opt-in.
+
+## 2026-11-08 · Iteration 7 — our own pixel font (user: "use a pixelated font everywhere")
+
+The pack's fonts are caps-only. `tools/build_font.py` draws a 5×7 pixel font with lowercase, descenders,
+punctuation and a few symbols (♥ ☠ · …), and compiles it to TTF with fontTools: each pixel is a square
+contour, 100 units with unitsPerEm 900, so it is pixel-exact at 9/18/27/36 px. Spacing is proportional
+(glyphs are trimmed to their ink, plus 1 px). All CSS and canvas text uses it at 18 px (2×) with
+27/36 px titles; synthetic bold is disabled. Also fixed a leftover "sentinel#…" attacker name.

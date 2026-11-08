@@ -6,35 +6,37 @@
 <link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+  @font-face { font-family: SproutPixel; src: url(assets/sprout-pixel.ttf); }
   :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#f3dfba; --accent:#4f9a6a; --warn:#c0503c; }
   * { box-sizing:border-box; }
   html, body { margin:0; height:100%; background:#9bd4c3; overflow:hidden; color:var(--ink);
-    font:600 14px/1.3 ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif; user-select:none; }
+    font:18px/22px SproutPixel, monospace; font-synthesis:none; user-select:none; }
+  * { font-weight:normal !important; }
   canvas#c { position:fixed; inset:0; display:block; image-rendering:pixelated; }
   .panel { position:fixed; border:24px solid transparent; border-image:url(assets/panel.png) 9 fill / 27px stretch;
     image-rendering:pixelated; padding:0; filter:drop-shadow(0 3px 0 rgba(60,40,30,.25)); }
   .panel > .in { margin:-10px -8px -12px; }
-  h3 { margin:0 0 4px; font-size:12px; color:var(--ink2); font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+  h3 { margin:0 0 4px; font-size:18px; color:var(--ink2); font-weight:800; letter-spacing:0; text-transform:uppercase; }
   #brand { left:10px; top:10px; }
-  #brand .t { font-size:17px; font-weight:800; letter-spacing:.14em; }
+  #brand .t { font-size:27px; font-weight:800; letter-spacing:0; }
   #brand .s { color:var(--ink2); margin-top:2px; }
-  #side { right:10px; top:10px; width:300px; max-height:calc(100vh - 150px); display:flex; flex-direction:column; }
+  #side { right:10px; top:10px; width:340px; max-height:calc(100vh - 150px); display:flex; flex-direction:column; }
   #side .in { display:flex; flex-direction:column; gap:8px; min-height:0; max-height:calc(100vh - 190px); }
   #agents { max-height:24vh; overflow:auto; }
   .ag { display:flex; align-items:center; gap:7px; padding:1px 4px; cursor:pointer; border-radius:3px; }
   .ag:hover, .ag.sel { background:rgba(91,63,54,.1); }
   .ag .dot { width:9px; height:9px; flex:none; border:2px solid var(--ink); }
   .ag .n { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .ag .m { color:var(--ink2); font-size:14px; }
+  .ag .m { color:var(--ink2); font-size:18px; }
   .ag.off { opacity:.45; }
-  #feed { overflow:auto; flex:1; min-height:80px; font-size:15px; }
+  #feed { overflow:auto; flex:1; min-height:80px; font-size:18px; }
   #feed div { padding:1px 0; cursor:pointer; }
-  #feed .k { color:#b39a7c; margin-right:5px; font-size:13px; }
+  #feed .k { color:#b39a7c; margin-right:5px; font-size:18px; }
   .say{color:#3d6f9e}.shout{color:#b0692a}.death{color:var(--warn)}.attack{color:#b5532f}.give{color:#3f8a4f}
   .craft{color:#7b5aa6}.join,.leave,.creature_died{color:var(--ink2)}.sign{color:#8a6a2a}
-  #stats { color:var(--ink2); font-size:13px; }
+  #stats { color:var(--ink2); font-size:18px; }
   #joinbox { left:50%; top:50%; transform:translate(-50%,-50%); width:420px; text-align:center; }
-  #joinbox .t { font-size:28px; font-weight:800; letter-spacing:.14em; margin:4px 0; }
+  #joinbox .t { font-size:36px; font-weight:800; letter-spacing:0; margin:4px 0; }
   #joinbox p { color:var(--ink2); margin:6px 0 14px; }
   input { font:inherit; color:var(--ink); background:#fff6e2; border:3px solid #c9a27a; border-radius:4px; padding:6px 9px; outline:none; }
   input:focus { border-color:var(--accent); }
@@ -43,7 +45,7 @@
   button.ghost { background:#e9cfa2; color:var(--ink); border-color:#c9a27a; }
   #joinbox .row { display:flex; gap:8px; } #joinbox input { flex:1; }
   #joinbox .watch { margin-top:10px; }
-  #vitals { left:10px; bottom:10px; width:260px; display:none; }
+  #vitals { left:10px; bottom:10px; width:280px; display:none; }
   .bar { display:flex; align-items:center; gap:7px; margin:3px 0; }
   .bar .v { width:28px; text-align:right; color:var(--ink2); }
   .bar .ico { width:24px; height:24px; image-rendering:pixelated; flex:none; }
@@ -57,20 +59,20 @@
     image-rendering:pixelated; position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .slot.sel { border-image-source:url(assets/slot_sel.png); }
   .slot canvas { width:32px; height:32px; image-rendering:pixelated; }
-  .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:13px; font-weight:800; color:#fff8e8; text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
-  .slot .k { position:absolute; left:-6px; top:-9px; font-size:11px; font-weight:800; color:#f6e3bf; }
+  .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:18px; font-weight:800; color:#fff8e8; text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+  .slot .k { position:absolute; left:-6px; top:-9px; font-size:18px; font-weight:800; color:#f6e3bf; }
   .slot:hover .tip { display:block; }
   .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
   #chat { left:50%; bottom:82px; transform:translateX(-50%); width:min(560px, calc(100vw - 620px)); display:none; }
   #chat input { width:100%; }
-  #craft { left:10px; top:96px; width:270px; display:none; max-height:calc(100vh - 330px); }
+  #craft { left:10px; top:110px; width:320px; display:none; max-height:calc(100vh - 330px); }
   #craft .in { overflow:auto; max-height:calc(100vh - 370px); }
   .rc { display:flex; justify-content:space-between; gap:6px; padding:2px 4px; cursor:pointer; border-radius:3px; }
   .rc:hover { background:rgba(91,63,54,.1); }
-  .rc .in2 { color:var(--ink2); font-size:14px; text-align:right; }
+  .rc .in2 { color:var(--ink2); font-size:18px; text-align:right; }
   .rc.no { opacity:.38; cursor:default; } .rc.no:hover { background:none; }
   #toast { left:50%; top:10px; transform:translateX(-50%); display:none; max-width:70vw; }
-  #help { right:10px; bottom:10px; display:none; max-width:300px; color:var(--ink2); font-size:15px; }
+  #help { right:10px; bottom:10px; display:none; max-width:300px; color:var(--ink2); font-size:18px; }
   #help b { color:var(--ink); font-weight:normal; }
   #hover { position:fixed; pointer-events:none; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; display:none; z-index:5; }
 </style>
@@ -137,7 +139,7 @@ let GEN = {};
 function loadImg(n) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; }); }
 const ready = Promise.all([...ASSETS.map(loadImg),
   fetch("assets/gen.txt").then((r) => r.text()).then((t) => t.trim().split("\n").forEach((n, i) => GEN[n] = i)),
-  document.fonts.ready]);
+  document.fonts.load("18px SproutPixel")]);
 
 // The ground sheets share one 11x5 "blob" layout. Work out which neighbours each cell connects to from
 // the alpha of the grass layer, then look tiles up by the neighbour mask of the world tile.
@@ -518,11 +520,11 @@ function frame(now) {
   for (const o of list) if (o.p && o.p.e.kind === "agent") drawNameplate(o.p, sx, sy, S);
   drawProgress(sx, sy, S);
   floats = floats.filter((f) => t - f.t < 1.4);
-  ctx.textAlign = "center"; ctx.font = "800 14px ui-rounded, system-ui, sans-serif";
-  for (const f of floats) { ctx.globalAlpha = 1 - (t - f.t) / 1.4; outlined(f.text, sx(f.x) + S / 2, sy(f.y) - (t - f.t) * S * .7, f.color); }
+  ctx.textAlign = "center"; ctx.font = "18px SproutPixel";
+  for (const f of floats) { ctx.globalAlpha = 1 - (t - f.t) / 1.4; outlined(f.text, Math.round(sx(f.x) + S / 2), Math.round(sy(f.y) - (t - f.t) * S * .7), f.color); }
   ctx.globalAlpha = 1;
   bubbles = bubbles.filter((b) => t - b.t < 7);
-  ctx.font = "600 13px ui-rounded, system-ui, sans-serif";
+  ctx.font = "18px SproutPixel";
   for (const b of bubbles) {
     const p = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === b.name); if (!p) continue;
     const text = b.text.length > 60 ? b.text.slice(0, 58) + "…" : b.text, w = ctx.measureText(text).width;
@@ -580,7 +582,7 @@ function drawEntity(p, sx, sy, S, t, now) {
 function drawNameplate(p, sx, sy, S) {
   const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(sy(p.y) - 9 * zoom);
   if (x < -S || x > W + S || y < -S || y > H + S) return;
-  ctx.font = "800 13px ui-rounded, system-ui, sans-serif"; ctx.textAlign = "center";
+  ctx.font = "18px SproutPixel"; ctx.textAlign = "center";
   outlined(e.name, x, y, me && e.name === me ? "#fff1a8" : "#fff8e8");
   if (e.hp < 100) { ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 16, y + 4, 32, 5); ctx.fillStyle = e.hp > 40 ? "#6aa66f" : "#d9473a"; ctx.fillRect(x - 15, y + 5, 30 * e.hp / 100, 3); }
   ctx.textAlign = "start";
