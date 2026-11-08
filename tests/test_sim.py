@@ -66,6 +66,9 @@ def test_node_needs_drill(world):
     sim.world.set(a.x + 1, a.y, block="ore")
     r = run(sim, a, "dig", {"dir": "E"})
     assert r["error"] == "need_tool"
+    a.add("pickaxe", 1)
+    assert run(sim, a, "dig", {"dir": "E"})["error"] == "need_tool"      # in the bag is not in hand
+    assert run(sim, a, "dig", {"dir": "E", "with": "pickaxe"})["ok"]
 
 
 def test_craft_and_place(world):
@@ -132,7 +135,9 @@ def test_combat_death_and_drop(world):
     b.add("wood", 5)
     a.add("spear", 1)
     b.hp = 18
-    r = run(sim, a, "attack", {"target": b.id})
+    r = run(sim, a, "attack", {"target": b.id})              # bare fists: the spear stays in the bag
+    assert r["ok"] and r["damage"] == 5 and not r["killed"]
+    r = run(sim, a, "attack", {"target": b.id, "with": "spear"})
     assert r["ok"] and r["killed"]
     assert b.deaths == 1 and b.hp == 100 and not b.inventory
     assert sim.items[(a.x + 1, a.y)]["wood"] == 5

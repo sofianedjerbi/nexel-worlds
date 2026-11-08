@@ -778,6 +778,12 @@ class Simulation:
             "events": events,
         }
 
+    @staticmethod
+    def held(a: Agent, args) -> str | None:
+        """The item the action is done with (`with`), if the agent carries it; None means bare hands."""
+        item = args.get("with")
+        return item if item and a.count(item) else None
+
     def best_weapon(self, a: Agent):
         best = max((w for w in T.WEAPONS if a.count(w)), key=lambda w: T.WEAPONS[w], default=None)
         return best
@@ -933,10 +939,12 @@ class Simulation:
             return {}
         if block.hardness <= 0:
             raise ActionError("cannot_dig", f"{block.name} cannot be dug")
-        if block.needs_tool and not a.count(block.needs_tool):
-            raise ActionError("need_tool", f"digging {block.name} needs a {block.needs_tool}")
+        tool = self.held(a, args)
+        if block.needs_tool and tool != block.needs_tool:
+            raise ActionError("need_tool", f"digging {block.name} needs a {block.needs_tool} in hand "
+                              f"(with: {block.needs_tool})" + ("" if a.count(block.needs_tool) else "; you have none"))
         seconds = block.hardness / 10
-        if block.tool and a.count(block.tool):
+        if block.tool and tool == block.tool:
             seconds /= 2
         yield from self.wait(a, seconds)
         if self.world.get(x, y)[1] != b:
@@ -1141,7 +1149,7 @@ class Simulation:
         yield from self.wait(a, 0.4)
         if max(abs(t.x - a.x), abs(t.y - a.y)) > 1 or t.hp <= 0:
             raise ActionError("missed", "target moved away")
-        weapon = self.best_weapon(a)
+        weapon = self.held(a, args)
         dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)
         self.spend(a, 2)
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"
@@ -1483,13 +1491,15 @@ TOOL_SPECS = {
     "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped"},
     "stop": {"args": {}, "desc": "stop the current action"},
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
-    "dig": {"args": DIR_ARG, "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground"},
+    "dig": {"args": {**DIR_ARG, "with": "tool to use (optional, e.g. axe, pickaxe; default bare hands)"},
+            "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground. The right tool in hand halves the time; ore needs a pickaxe"},
     "place": {"args": {**DIR_ARG, "item": "str", "text": "str (flags only, optional)"},
               "desc": "place an item: furniture/walls/etc. as blocks; dirt fills holes or water, path lays cobble, plank makes a bridge (water) or floor (land)"},
     "pick_up": {"args": {"item": "str (optional)"}, "desc": "pick up items on your tile"},
     "drop": {"args": {"item": "str", "n": "int"}, "desc": "drop items on your tile"},
     "craft": {"args": {"recipe": "str", "n": "int (optional)"}, "desc": "craft from the recipe book"},
-    "attack": {"args": {"target": "entity id"}, "desc": "hit an adjacent agent or creature"},
+    "attack": {"args": {"target": "entity id", "with": "weapon (optional, e.g. sword, spear, axe; default fists)"},
+               "desc": "hit an adjacent agent or creature"},
     "give": {"args": {"target": "agent id", "item": "str", "n": "int"}, "desc": "hand items to an agent within 2 tiles"},
     "eat": {"args": {"item": "str"}, "desc": "eat food"},
     "rest": {"args": {}, "desc": "recover energy (better by a heater or under shelter)"},

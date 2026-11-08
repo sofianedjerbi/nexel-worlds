@@ -138,7 +138,7 @@
   <div style="display:flex;gap:6px;margin-top:5px"><button class="ghost" id="craftbtn" style="flex:1">craft (C)</button><button class="ghost" id="helpbtn">?</button></div>
 </div></div>
 <div class="panel" id="help"><div class="in">
-  <b>WASD</b> walk · <b>Shift</b> sprint · <b>Space</b> use what you face<br><b>click</b> walk / harvest / hit · <b>shift-click</b> attack<br>
+  <b>WASD</b> walk · <b>Shift</b> sprint · <b>Space</b> use what you face<br><b>click</b> walk / dig / fight with what's in hand (nothing = bare hands) · <b>shift-click</b> milk, take down, talk<br>
   <b>right-click</b> place selected · <b>1-9</b> select<br><b>E</b> eat · <b>F</b> pick up · <b>R</b> rest<br>
   <b>Enter</b> talk · <b>!text</b> shout · <b>/tool k=v</b><br><b>C</b> craft · <b>B</b> bag · <b>M</b> sound · <b>wheel</b> zoom · <b>H</b> help
 </div></div>
@@ -1300,6 +1300,11 @@ const HARVEST = {e: "Take down the trough (and what's in it)", y: "Pick up the h
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
+// which tool speeds up digging each block (tiles.py Block.tool); ore can only be mined with a pickaxe in hand
+const TOOL_FOR = {T: "axe", M: "pickaxe", "*": "pickaxe", H: "axe", "#": "axe", "%": "pickaxe", "+": "axe", "&": "axe", C: "axe", B: "axe", h: "axe",
+  L: "axe", K: "axe", g: "axe", W: "axe", V: "axe", X: "axe", Y: "pickaxe", J: "axe", e: "axe"};
+const WEAPON_DMG = {sword: 30, spear: 18, axe: 12, pickaxe: 10};
+const held = () => (selected && meObs && meObs.self.inventory[selected] ? selected : null);   // what's in your hand
 function entityAt(p) { return [...ents.values()].find((q) => q.e && q.tx === p.x && q.ty === p.y && !(q.e.kind === "agent" && q.e.id === myId)); }
 function intent(p, shift) {
   // the canopy of a tree covers the tile above its trunk: pointing at it means the tree
@@ -1319,18 +1324,23 @@ function intent(p, shift) {
 }
 const CAN_SIZE = 12;
 function intent0(p, shift, t, c, g, flower, ent, s) {
-  const hasBlock = !GROUND.has(c) && !(flower && selected && !shift);   // building over a flower picks it
+  const placing = selected && !shift && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed");
+  const hasBlock = !GROUND.has(c) && !(flower && placing);   // building over a flower picks it
   const isMe = p.x === s.x && p.y === s.y;
   if (ent) {
-    if (ANIMALS[ent.e.kind] && !shift) {
-      if (selected && (FOODS.includes(selected) || selected === "hay")) return {text: `Feed ${label(selected)} to the ${ent.e.kind}`, near: 1, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
+    const who = ent.e.name || ent.e.kind, w = held(), weapon = w && WEAPON_DMG[w] ? w : null;
+    if (ANIMALS[ent.e.kind] && selected && (FOODS.includes(selected) || selected === "hay") && !shift)
+      return {text: `Feed ${label(selected)} to the ${ent.e.kind}`, near: 1, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
+    if (ent.e.kind === "agent" && selected && !weapon && !shift)
+      return {text: `Give ${label(selected)} to ${ent.e.name}`, near: 2, run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})};
+    if (shift) {                                       // shift: the peaceful thing
       if (ent.e.kind === "cow") return {text: "Milk cow", near: 1, diag: true, run: () => act("milk", {target: ent.e.id})};
-      return {text: {chicken: "Chicken (feed it for eggs)", chick: "A chick (it grows into a chicken)", calf: "A calf (it grows into a cow)"}[ent.e.kind] + " · shift-click attacks", info: true};
+      if (ent.e.kind === "agent") return {text: `${ent.e.name} · select an item and click to give it`, info: true};
+      return {text: {chicken: "Chicken: feed it (select food) for eggs", chick: "A chick: it grows into a chicken", calf: "A calf: it grows into a cow", gloom: "A gloom: it bites at night"}[ent.e.kind] || who, info: true};
     }
-    if (ent.e.kind === "agent" && !shift) return selected
-      ? {text: `Give ${label(selected)} to ${ent.e.name}`, near: 2, run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})}
-      : {text: `${ent.e.name}  (shift-click: attack)`, info: true};
-    return {text: `Attack ${ent.e.name || ent.e.kind}`, near: 1, diag: true, run: () => act("attack", {target: ent.e.id})};
+    const tail = ent.e.kind === "cow" ? " · shift: milk" : ent.e.kind === "agent" ? " · shift: talk" : "";
+    return {text: weapon ? `Attack ${who} with ${label(weapon)}${tail}` : `Punch ${who}${tail}`, near: 1, diag: true,
+      run: () => act("attack", weapon ? {target: ent.e.id, with: weapon} : {target: ent.e.id})};
   }
   if (isMe && !(selected && !shift && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed")))
     return {text: "Pick up", run: () => act("pick_up", {}), here: true};
@@ -1398,7 +1408,11 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     if ((c === "&" || c === "^") && !shift) return {text: c === "&" ? "Workbench: craft tools here" : "Campfire: cook here", near: 2, run: () => openCraft()};
     const crop = cropSpecies(p.x, p.y);
     const text = c === "w" ? `Harvest ${crop}` : c === '"' ? `Young ${crop} (uproot)` : c === ";" ? `${crop} sprout (uproot)` : HARVEST[c] || label(CH[c]);
-    return {text, near: 1, run: (d) => act("dig", {dir: d})};
+    const tool = TOOL_FOR[c], w = held();
+    if (c === "*" && w !== "pickaxe")
+      return {text: meObs && meObs.self.inventory.pickaxe ? "Ore: hold your pickaxe (select it) to mine it" : "Ore: you need a pickaxe to mine it", ok: false};
+    const how = tool ? (w === tool ? ` with ${tool}` : " by hand") : "";
+    return {text: text + how, near: 1, run: (d) => act("dig", w ? {dir: d, with: w} : {dir: d})};
   }
   if (g === "~" || g === "=") return {text: label(CH[g]), info: true};
   if (shift) return {text: {_: "Take up the path", n: "Take up the floor", ":": "Take up the bridge"}[g] || "Till soil", near: 1, run: (d) => act("dig", {dir: d})};
@@ -1679,7 +1693,7 @@ function interactFacing() {                      // Space: do the obvious thing 
   const p = ents.get("agent" + myId), s = myPos(); if (!p || !s) return;
   const q = {x: s.x + (p.fx || 0), y: s.y + (p.fy || (p.fx ? 0 : 1))};
   let it = intent(q, false);
-  if (it && it.walk) it = {text: "Dig", near: 1, run: (d) => act("dig", {dir: d})};
+  if (it && it.walk) it = {text: "Dig", near: 1, run: (d) => act("dig", held() ? {dir: d, with: held()} : {dir: d})};
   perform(q, it);
 }
 // held keys walk continuously on the server: one message when the direction or sprint changes, one to stop
