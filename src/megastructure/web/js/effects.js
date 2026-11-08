@@ -21,6 +21,17 @@ const PCOL = {T: ["#6b4b35", "#8f6a45", "#7fb069", "#5e8c4f"], H: ["#5e8c4f", "#
   w: ["#e0c35a", "#7fb069"], "\"": ["#7fb069"], "#": ["#a8775a", "#6b4a3a"], "%": ["#8a8f8c", "#b6bab1"], o: ["#b48b5c", "#8c6a44"],
   C: ["#a8775a", "#c8a45c"], "&": ["#a8775a", "#6b4a3a"], dust: ["#e9d9b4", "#d8c59c"], water: ["#bfe9f7", "#8fd3f4", "#ffffff"], spark: ["#fff1a8", "#ffd36a", "#ffffff"],
   hit: ["#ffffff", "#ffd0cc"], food: ["#c0504a", "#e0c35a", "#fff1a8"], blood: ["#d9473a", "#ffffff"]};
+// Chips knocked off a block: its own colours, popping out low, landing around its foot and settling.
+function debris(x, y, spr, n, opts = {}) {
+  const cols = spr ? spriteColors(spr) : PCOL[opts.kind] || PCOL.dust;
+  for (let i = 0; i < n; i++) parts.push({
+    x: x + .5 + (Math.random() - .5) * .5, y: y + .45 + (opts.dy || 0) + (Math.random() - .5) * .2,
+    vx: (Math.random() - .5) * 2.4, vy: -1.2 - Math.random() * 1.6, g: 11,
+    floor: y + .62 + Math.random() * .3, life: .9 + Math.random() * .5, age: 0, c: cols[i % cols.length], s: 1});
+  if (opts.dust) for (let i = 0; i < 3; i++) parts.push({   // a soft puff that drifts up
+    x: x + .3 + Math.random() * .4, y: y + .6, vx: (Math.random() - .5) * .6, vy: -.5 - Math.random() * .4, g: -.2,
+    life: .5 + Math.random() * .3, age: 0, c: "rgba(236,226,206,.7)", s: 2});
+}
 function burst(x, y, kind, n, opts = {}) {
   const cols = PCOL[kind] || PCOL.dust;
   for (let i = 0; i < n; i++) parts.push({
@@ -53,13 +64,47 @@ function drawEmote(p, sx, sy, S) {
   ctx.globalAlpha = 1;
 }
 function floatText(x, y, text, color) { floats.push({x, y, text, color, t: performance.now() / 1000}); }
+// Picking fruit or berries: the plant shakes, the fruit pops out and arcs into the picker's hands.
+const flyers = [];
+const FLY_MS = 420;
+function picked(x, y, old, by, now) {
+  const key = x + "," + y, tree = old === "F";
+  shakes.set(key, now);
+  if (tree) dropping.set(key, now);                // the sheet's fruit-drop animation first (1 s)
+  const [ix, iy] = tree ? FRUIT_ICON[fruitKind(x, y)] : BERRY_ICON[Math.floor(hash(x, y, 21) * 3)];
+  const from = tree ? [[-.55, .55], [.75, .45], [1.15, .65]] : [[.2, .1], [.75, .2]];   // where fruit lands / berries hang
+  from.forEach(([dx, dy], i) => flyers.push({x: x + dx, y: y + dy, ix, iy, by, t0: now + (tree ? 1000 : 80) + i * 90, hop: !tree}));
+}
+function drawFlyers(sx, sy, S, now) {
+  const z = zoom;
+  for (let i = flyers.length - 1; i >= 0; i--) {
+    const f = flyers[i], k = (now - f.t0) / FLY_MS;
+    if (k >= 1) { flyers.splice(i, 1); continue; }
+    const who = f.by && [...ents.values()].find((q) => q.e && q.e.name === f.by);
+    let x = f.x, y = f.y, sc = 1;
+    if (k < 0) { if (f.hop) continue; }            // fruit waits on the ground until the drop animation ends
+    else if (who) {                                 // arc into the picker's hands, shrinking as it is caught
+      const tx = who.x + .5, ty = who.y + .1, e = k * k * (3 - 2 * k);
+      x = f.x + (tx - f.x) * e; y = f.y + (ty - f.y) * e - Math.sin(k * Math.PI) * 1.1; sc = 1 - k * .45;
+    } else { y -= k * .8; sc = 1 - k; }
+    ctx.globalAlpha = k > .85 ? (1 - k) / .15 : 1;
+    const w = 16 * z * sc;
+    ctx.drawImage(IMG.trees, f.ix, f.iy, 16, 16, Math.round(sx(x) - w / 2), Math.round(sy(y) - w / 2), Math.round(w), Math.round(w));
+  }
+  ctx.globalAlpha = 1;
+}
 function drawEffects(sx, sy, S, dt) {
   const z = zoom;
   for (let i = parts.length - 1; i >= 0; i--) {
     const p = parts[i]; p.age += dt;
     if (p.age > p.life) { parts.splice(i, 1); continue; }
     p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
-    ctx.globalAlpha = Math.min(1, 2 * (1 - p.age / p.life));
+    if (p.floor !== undefined && p.y > p.floor) {   // debris lands: a small bounce, then it rests and fades
+      p.y = p.floor; p.vx *= .5;
+      p.vy = Math.abs(p.vy) > 1.2 ? -p.vy * .3 : 0;
+      if (!p.vy) { p.g = 0; p.vx *= .6; }
+    }
+    ctx.globalAlpha = Math.min(1, 3.3 * (1 - p.age / p.life));
     ctx.fillStyle = p.c;
     ctx.fillRect(Math.round(sx(p.x)), Math.round(sy(p.y)), p.s * z, p.s * z);
   }
@@ -70,6 +115,7 @@ function drawEffects(sx, sy, S, dt) {
     if (fr >= 12) { dropping.delete(key); continue; }
     ctx.drawImage(fruitSheet(x, y), fr * 48, 144, 48, 48, sx(x) - 16 * z, sy(y) - 28 * z, 48 * z, 48 * z);
   }
+  drawFlyers(sx, sy, S, now);
   for (let i = falls.length - 1; i >= 0; i--) {     // the pack's tree-felling animation, then fade
     const f = falls[i], k = (now - f.t0) / 1000, fr = Math.floor(k * 14);
     if (fr >= 12) { falls.splice(i, 1); continue; }

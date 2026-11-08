@@ -53,7 +53,12 @@ function objectSprite(c, x, y, t) {
       if (k < .32) return [img, 48 * Math.min(3, Math.floor(k * 12.5)), 48, 48, 48, -16, -28];
       return [img, 48 * (Math.floor(t * 5 + h * 30) % 6), 96, 48, 48, -16, -28];
     }
-    case "b": return [IMG.trees, [32, 48, 64][Math.floor(h * 3)], 48, 16, 16, 0, -3];
+    case "b": return [IMG.trees, BERRY_BUSH[Math.floor(h * 3)], 48, 16, 16, 0, -3];
+    case "v": return [IMG.trees, 16, 48, 16, 16, 0, -3];                                 // picked bush: leaves only
+    case "U": {                                                                           // picked fruit tree: the same tree, bare
+      if (dropping.has(x + "," + y)) return null;     // its fruit-drop animation is playing
+      return [IMG.fruit_bare, fruitKind(x, y) * 48, 0, 48, 48, -16, -28];
+    }
     case "*": return [IMG.gen, ...genCell("ore"), 16, 16, 0, -3];
     case "M": return [IMG.gen, ...genCell("boulder"), 16, 16, 0, -3];
     case "%": return [IMG.gen, ...genCell("stone_wall"), 16, 16, 0, -4];

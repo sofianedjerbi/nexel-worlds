@@ -34,12 +34,13 @@ class Combat:
         t = self._find_target(args.get("target"))
         if t is a:
             raise ActionError("bad_target", "you cannot attack yourself")
-        if max(abs(t.x - a.x), abs(t.y - a.y)) > 1:
-            raise ActionError("out_of_range", "target must be adjacent (including diagonals)")
-        yield from self.wait(a, 0.4)
-        if max(abs(t.x - a.x), abs(t.y - a.y)) > 1 or t.hp <= 0:
-            raise ActionError("missed", "target moved away")
         weapon = self.held(a, args)
+        reach = T.REACH.get(weapon, T.REACH[None])
+        if max(abs(t.x - a.x), abs(t.y - a.y)) > reach:
+            raise ActionError("out_of_range", f"target must be within {reach} tiles (including diagonals)")
+        yield from self.wait(a, 0.4)
+        if max(abs(t.x - a.x), abs(t.y - a.y)) > reach or t.hp <= 0:
+            raise ActionError("missed", "target moved away")
         dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)
         self.spend(a, 2)
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"

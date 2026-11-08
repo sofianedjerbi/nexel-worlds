@@ -138,6 +138,8 @@ function frame(now) {
   ctx.textAlign = "start";
 }
 // Highlight what an action would hit: a ghost of what gets placed, tinted footprint, and an outline.
+// which swing of the character sheet each tool in hand uses (the sheet has an axe and a hoe swing)
+const SWING_ROW = {axe: "axe", sword: "axe", spear: "axe", pickaxe: "hoe", watering_can: "water"};
 function drawIntent(p, it, sx, sy, S, t) {
   if (it && it.ghost) {
     ctx.globalAlpha = .7;
@@ -172,7 +174,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   const moving = now - p.moved < 300;
   if (e.kind === "agent") {
     const mine = me && e.id === myId;
-    const action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, tid: e.tid, t0: p.doingSince || now} : null);
+    const action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, tid: e.tid, with: e.with, t0: p.doingSince || now} : null);
     if (e.doing && !p.doingSince) p.doingSince = now;
     if (!e.doing) p.doingSince = 0;
     if (!mine) p.running = !!e.run;
@@ -180,7 +182,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     if (action && action.dir && DIRV[action.dir]) { [p.fx, p.fy] = DIRV[action.dir]; }
     if (action && action.tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == action.tid); if (q) { p.fx = Math.sign(q.x - p.x); p.fy = p.fx ? 0 : Math.sign(q.y - p.y); } }
     const sheetImg = characterSheet(agentTint(e.name));
-    let bob = 0, anim = "idle", frame;
+    let bob = 0, anim = "idle", frame, lunge = 0;
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
     if (mine || e.name === follow) {
       ctx.fillStyle = mine ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
@@ -189,15 +191,19 @@ function drawEntity(p, sx, sy, S, t, now) {
     if (tool === "dig" || tool === "attack" || tool === "craft") {
       // full 8-frame tool swings: wind-up, strike (frame 4, with the arc), follow-through
       const tx = Math.round(p.tx) + p.fx, ty = Math.round(p.ty) + p.fy, target = combAt(tx, ty);
-      anim = tool === "attack" || "TFH#+&!?C".includes(target || "") ? "axe" : "hoe";
+      // the sheet's swings show a tool: only use them when one is in hand; bare hands reach out and back
+      const held = action.with && SWING_ROW[action.with];
+      anim = held || "idle";
       const fps = tool === "attack" ? 20 : 13, n = Math.floor(k * fps);
       frame = n % 8;
+      if (!held) lunge = Math.round(Math.sin(Math.min(1, frame / 6) * Math.PI) * 3) * z;
       const swing = Math.floor(n / 8);
       if (frame >= 4 && p.lastSwing !== swing) {     // the strike lands: debris and a shake on the target
         p.lastSwing = swing;
         if (tool === "dig" && target) {
-          const kind = GROUND.has(target) ? "o" : target;
-          burst(tx, ty, kind, 6, {dy: "TF".includes(target) ? -.6 : -.1}); shakes.set(tx + "," + ty, now);
+          const spr = GROUND.has(target) ? null : objectSprite(target, tx, ty, now / 1000);
+          debris(tx, ty, spr, GROUND.has(target) ? 5 : 4, {kind: "o", dy: "TFU".includes(target) ? -.5 : 0, dust: "M*%Y".includes(target) || GROUND.has(target)});
+          shakes.set(tx + "," + ty, now);
           sfx("TFH#+&!?CBhLKgW".includes(target) ? "chop" : "M*%".includes(target) ? "mine" : "dig", tx, ty);
         } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
       }
@@ -255,7 +261,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     const sxx = frame * 48, syy = (ANIM[anim] + DIR_ROW(p)) * 48;
     const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
     const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
-    ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z - p.fx * kb, y - 18 * z - bob - p.fy * kb, 48 * z, 48 * z);   // feet at frame y 32
+    ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z - p.fx * (kb - lunge), y - 18 * z - bob - p.fy * (kb - lunge), 48 * z, 48 * z);   // feet at frame y 32
     if (hitK < .12) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .7; ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z, y - 18 * z, 48 * z, 48 * z); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
   } else if (ANIMALS[e.kind]) {
     const A = ANIMALS[e.kind], img = animalSheet(e.kind, e.id), fw = A.fw, big = fw === 32;

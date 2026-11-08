@@ -50,7 +50,7 @@ G = {g.name: i for i, g in enumerate(GROUNDS)}
 BLOCKS = [
     Block("none", " ", solid=False),
     Block("tree", "T", flammable=True, hardness=12, drops={"wood": 3}, tool="axe", wall=True),
-    Block("berry_bush", "b", flammable=True, hardness=3, drops={"berries": 2, "seed": 1, "fiber": 1}),
+    Block("berry_bush", "b", flammable=True, hardness=3, drops={"berries": 2, "seed": 1}),   # picking leaves it bare
     Block("rock", "M", hardness=18, drops={"stone": 2}, tool="pickaxe", wall=True),
     Block("ore", "*", hardness=24, drops={"ore": 1, "stone": 1}, needs_tool="pickaxe", wall=True),
     Block("thicket", "H", flammable=True, hardness=5, drops={"fiber": 2}, tool="axe", wall=True),
@@ -90,7 +90,13 @@ BLOCKS = [
     Block("flat_part", "z", solid=False),     # walkable rest of a flat structure (blanket)
     Block("trough", "e", flammable=True, hardness=6, drops={"trough": 1}, tool="axe"),  # feeds animals nearby
     Block("hay_bale", "y", flammable=True, hardness=3, drops={"hay": 1}),
+    Block("bare_bush", "v", flammable=True, hardness=4, drops={"fiber": 2}),            # picked: berries grow back
+    Block("bare_fruit_tree", "U", flammable=True, hardness=12, drops={"wood": 3}, tool="axe", wall=True),  # picked
 ]
+
+# Picking these leaves them bare (block, seconds until the fruit is back); digging the bare one removes it.
+PICKED = {"berry_bush": ("bare_bush", 180), "fruit_tree": ("bare_fruit_tree", 240)}
+REGROWN = {bare: full for full, (bare, _) in PICKED.items()}
 
 # Crop species: which plant a sprout becomes is a pure function of its tile, shared with the web client
 # (index.html cropSpecies) so both agree without sending extra state.
@@ -164,6 +170,7 @@ FEED = {**{k: 1 for k in FOOD}, "hay": 3}
 
 WEAPONS = {"sword": 30, "spear": 18, "axe": 12, "pickaxe": 10}
 FIST_DAMAGE = 5
+REACH = {None: 2, "spear": 3}   # melee reach in tiles (Chebyshev): fists and most weapons 2, a spear 3
 
 
 @dataclass(frozen=True)

@@ -283,10 +283,24 @@ def test_fruit_tree_regrows_fruit(world):
     from megastructure.sim import sec
     sim.world.set(a.x + 1, a.y, block="fruit_tree")
     r = run(sim, a, "dig", {"dir": "E"})
-    assert r["changed"]["inventory"] == {"fruit": 3} and sim.world.block(a.x + 1, a.y) == "tree"
+    assert r["changed"]["inventory"] == {"fruit": 3} and sim.world.block(a.x + 1, a.y) == "bare_fruit_tree"
     for _ in range(sec(240) + sec(4)):
         sim.step()
     assert sim.world.block(a.x + 1, a.y) == "fruit_tree"
+
+
+def test_picked_bush_stays_and_grows_berries_back(world):
+    sim, a = world
+    from megastructure.sim import sec
+    sim.world.set(a.x + 1, a.y, block="berry_bush")
+    r = run(sim, a, "dig", {"dir": "E"})
+    assert r["changed"]["inventory"] == {"berries": 2, "seed": 1} and sim.world.block(a.x + 1, a.y) == "bare_bush"
+    for _ in range(sec(184)):
+        sim.step()
+    assert sim.world.block(a.x + 1, a.y) == "berry_bush"
+    run(sim, a, "dig", {"dir": "E"})
+    assert run(sim, a, "dig", {"dir": "E"})["changed"]["inventory"] == {"fiber": 2}   # cutting the bare bush
+    assert sim.world.block(a.x + 1, a.y) == "none"
 
 
 def test_sprint_is_faster_and_tiring(world):

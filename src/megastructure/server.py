@@ -144,6 +144,7 @@ class GameServer:
                  "doing": a.action.tool if a.action else None, "weapon": self.sim.best_weapon(a),
                  "dir": a.action.args.get("dir") if a.action else None,
                  "tid": a.action.args.get("target") if a.action else None,
+                 "with": a.action.args.get("with") if a.action else None,
                  "run": bool(a.action.args.get("run")) if a.action else False, "sail": a.sailing}
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
         ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp, "love": c.love > self.sim.tick}

@@ -16,23 +16,23 @@ const combAt = (x, y) => { const t = tile(x, y); return t ? t[0] : null; };
 const gndAt = (x, y) => { const t = tile(x, y); return t ? t[1] : null; };
 const dirtyTiles = [];                 // tiles to redraw (x, y), processed within a per-frame budget
 function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }
-function setTile(x, y, comb, gnd) {
+// picked plants: full -> bare (fruit flies to the picker); bare -> full when it grows back
+const PICK = {F: "U", b: "v"};
+function setTile(x, y, comb, gnd, who = null) {
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
   if (!b) return;
   const i = (y - by * B) * B + (x - bx * B);
   if (b.comb[i] === comb && b.gnd[i] === gnd) return;
   const old = b.comb[i], now = performance.now();
-  if (old === "F" && comb === "T") dropping.set(x + "," + y, now);
+  if (PICK[old] === comb) picked(x, y, old, who, now);
   else if (old === "T" && comb !== "T") falls.push({x, y, t0: now});
-  else if (old !== comb && isObject(comb) && comb !== "x") pops.set(x + "," + y, now);
-  const spr = old !== comb && old !== "T" && isObject(old) && !isObject(comb) ? objectSprite(old, x, y, now / 1000) : null;
+  else if (old !== comb && isObject(comb) && comb !== "x" && PICK[old] !== comb) pops.set(x + "," + y, now);
+  const spr = old !== comb && old !== "T" && PICK[old] !== comb && isObject(old) && !isObject(comb) ? objectSprite(old, x, y, now / 1000) : null;
   if (spr) {                                   // taken away: it squashes down and fades, shedding its own colours
     gones.push({x, y, spr, t0: now});
-    const cols = spriteColors(spr);
-    for (let k = 0; k < 9; k++) parts.push({x: x + .2 + Math.random() * .6, y: y + .2 + Math.random() * .5, vx: (Math.random() - .5) * 2.2,
-      vy: -Math.random() * 2.2 - .4, g: 7, life: .35 + Math.random() * .3, age: 0, c: cols[k % cols.length], s: 1});
+    debris(x, y, spr, 8, {dust: "M*%Y".includes(old)});
   } else if (old !== comb && !GROUND.has(old)) burst(x, y, old, 10);
-  if (gnd === "o" && b.gnd[i] !== "o") burst(x, y, "o", 8);
+  if (gnd === "o" && b.gnd[i] !== "o") debris(x, y, null, 6, {kind: "o", dust: true});
   b.comb[i] = comb; b.gnd[i] = gnd;
   b.objs.delete(i); if (isObject(comb)) b.objs.set(i, comb);
   if (ENCLOSE.has(old) || ENCLOSE.has(comb)) roomsDirty = true;
@@ -60,7 +60,7 @@ function onRegion(d) {
 //  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
 const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
-const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVXYJmqey".includes(c) && !GROUND.has(c);
+const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVXYJmqeyUv".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
   const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1]); };

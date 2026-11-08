@@ -94,7 +94,9 @@ class Environment:
                     self.emit("hatch", *pos, id=chick.id)
                 elif kind == "regrass" and self.world.ground(*pos) == "ash":
                     self.set_tile(*pos, ground="grass", cause="grew")
-                elif kind == "fruit" and self.world.block(*pos) == "tree":
+                elif kind == "fruit" and self.world.block(*pos) in T.REGROWN:
+                    self.set_tile(*pos, block=T.REGROWN[self.world.block(*pos)], cause="grew")
+                elif kind == "fruit" and self.world.block(*pos) == "tree":    # picked before bare trees existed
                     self.set_tile(*pos, block="fruit_tree", cause="grew")
                 elif kind == "regrow" and self.world.block(*pos) == "none" and self.entity_at(*pos) is None \
                         and self.world.ground(*pos) in ("grass", "dirt"):

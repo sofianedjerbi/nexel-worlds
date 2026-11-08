@@ -25,7 +25,7 @@ TOOL_SPECS = {
     "drop": {"args": {"item": "str", "n": "int"}, "desc": "drop items on your tile"},
     "craft": {"args": {"recipe": "str", "n": "int (optional)"}, "desc": "craft from the recipe book"},
     "attack": {"args": {"target": "entity id", "with": "weapon (optional, e.g. sword, spear, axe; default fists)"},
-               "desc": "hit an adjacent agent or creature"},
+               "desc": "hit an agent or creature within reach (2 tiles, 3 with a spear in hand)"},
     "give": {"args": {"target": "agent id", "item": "str", "n": "int"}, "desc": "hand items to an agent within 2 tiles"},
     "eat": {"args": {"item": "str"}, "desc": "eat food"},
     "rest": {"args": {}, "desc": "recover energy (better by a heater or under shelter)"},

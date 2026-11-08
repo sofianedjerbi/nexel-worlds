@@ -11,7 +11,7 @@ const CH = {
   "\"": "crop", "w": "ripe_crop", "t": "stump", "C": "chest", "F": "fruit_tree", ";": "sprout",
   "u": "wet_tilled", "n": "floor", "f": "flower", "B": "bed", "h": "chair", "L": "table", "p": "plant", "K": "clock",
   "r": "rug", "g": "gate", "W": "wood_wall", "V": "boat", "X": "mailbox",
-  "Y": "well", "J": "coop", "m": "picnic_blanket", "q": "basket", "Z": "part", "z": "flat_part", "e": "trough", "y": "hay_bale",
+  "Y": "well", "J": "coop", "m": "picnic_blanket", "q": "basket", "Z": "part", "z": "flat_part", "e": "trough", "y": "hay_bale", "U": "bare_fruit_tree", "v": "bare_bush",
 };
 // structures bigger than a tile (tiles.py FOOTPRINT): stored on the bottom-left tile, the rest is Z/z
 const FOOT = {Y: [2, 2], J: [2, 2], m: [3, 2]};
@@ -30,7 +30,7 @@ function structAt(x, y) {                 // the anchor of the structure a Z/z t
 }
 const CHAR = Object.fromEntries(Object.entries(CH).map(([c, n]) => [n, c]));
 const GROUND = new Set("~:.,o_'=un");
-const SOLID = new Set("TFbM*H#%^&CBhLpKWXYJqZey");
+const SOLID = new Set("TFbM*H#%^&CBhLpKWXYJqZeyUv");
 const WALKABLE_GROUND = new Set(":.,o_'un");
 const LABEL = {wood_wall: "wooden wall", wet_tilled: "watered soil", watering_can: "watering can", fruit_tree: "fruit tree", berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
   cooked_meat: "cooked meat", deep_water: "deep water", picnic_blanket: "picnic blanket", hay_bale: "hay bale"};

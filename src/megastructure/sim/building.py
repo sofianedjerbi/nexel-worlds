@@ -73,14 +73,15 @@ class Building:
             drops = self._merge(drops, self.world.meta.get((x, y), {}).get("items", {}))
         for k, n in drops.items():
             a.add(k, n)
-        if block.name == "fruit_tree":
-            # picking a fruit tree takes its fruit; the tree stays and fruits again later
-            self.set_tile(x, y, block="tree", by=a, cause="pick")
-            self.timers[(x, y)] = [self.tick + sec(240), "fruit"]
+        if block.name in T.PICKED:
+            # picking takes the fruit or berries; the plant stays, bare, and bears again later
+            bare, seconds = T.PICKED[block.name]
+            self.set_tile(x, y, block=bare, by=a, cause="pick")
+            self.timers[(x, y)] = [self.tick + sec(seconds), "fruit"]
             a.bump("dug")
             return {"got": drops}
         self.clear_structure(x, y, by=a, cause="dig")  # a felled tree leaves clean ground; it regrows there later
-        if block.name == "tree":
+        if block.name in ("tree", "bare_fruit_tree"):
             self.timers[(x, y)] = [self.tick + sec(1200), "regrow"]
         a.bump("dug")
         return {"got": drops}

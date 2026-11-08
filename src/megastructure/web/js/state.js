@@ -97,7 +97,7 @@ function onEvent(e) {
   const t = performance.now() / 1000;
   if (e.type === "tile") {
     const g = CHAR[e.ground], blk = e.block === "none" ? g : CHAR[e.block];
-    if (g && blk) setTile(e.x, e.y, blk, g);
+    if (g && blk) setTile(e.x, e.y, blk, g, e.by);
     if (e.cause === "fire") sfx("hit", e.x, e.y);
     return;
   }

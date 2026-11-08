@@ -13,11 +13,27 @@ function facingTile() {
   const p = ents.get("agent" + myId), s = myPos(); if (!p || !s) return null;
   return {x: s.x + (p.fx || 0), y: s.y + (p.fy || (p.fx ? 0 : 1))};
 }
-// What Space (alt = false) or X (alt = true) would do on the tile you face; nothing for plain walkable ground.
+const useful = (it) => it && !it.walk && !it.info && it.ok !== false;
+// What Space (alt = false) or X (alt = true) does, without having to turn first. In order: the tile you face,
+// then the nearest creature or person within reach (fighting is the default), then anything next to you,
+// preferring the direction you last walked. Falls back to a hint about the faced tile.
 function facingIntent(alt) {
-  const q = facingTile(); if (!q) return null;
-  const it = intent(q, alt);
-  return it && !it.walk ? {p: q, it} : null;
+  const q = facingTile(), s = myPos(); if (!q || !s) return null;
+  const faced = intent(q, alt);
+  if (useful(faced)) return {p: q, it: faced};
+  if (!alt) {
+    const reach = reachOf(inHand()), near = [...ents.values()]
+      .filter((o) => o.e && !(o.e.kind === "agent" && o.e.id === myId) && Math.max(Math.abs(o.tx - s.x), Math.abs(o.ty - s.y)) <= reach)
+      .sort((a, b) => (b.e.kind === "gloom") - (a.e.kind === "gloom") || (Math.abs(a.tx - s.x) + Math.abs(a.ty - s.y)) - (Math.abs(b.tx - s.x) + Math.abs(b.ty - s.y)));
+    for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it)) return {p, it}; }
+  }
+  const p0 = ents.get("agent" + myId), dirs = [[p0.fx, p0.fy], [-p0.fx, -p0.fy], [p0.fy, p0.fx], [-p0.fy, -p0.fx]];
+  for (const [dx, dy] of dirs) {
+    if (!dx && !dy) continue;
+    const p = {x: s.x + dx, y: s.y + dy}, it = intent(p, alt);
+    if (useful(it)) return {p, it};
+  }
+  return faced && !faced.walk ? {p: q, it: faced} : null;
 }
 // The tile hints are drawn for: where the mouse points, or the tile you face when playing by keyboard.
 function aimedTile() {
@@ -44,7 +60,7 @@ function updatePrompt() {
 }
 function useFacing(alt) {
   const f = facingIntent(alt);
-  if (!f) return toast(alt ? "Nothing to do there." : "Nothing there. Face something (Alt+direction turns).", true);
+  if (!f || f.it.info) return toast(f ? f.it.text : "Nothing within reach.", !f);
   perform(f.p, f.it);
 }
 function turn(dir) {

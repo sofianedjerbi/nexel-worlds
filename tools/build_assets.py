@@ -108,6 +108,30 @@ def art(rows: list[str], pal: dict) -> Image.Image:
     return img
 
 
+def largest_shape(img: Image.Image) -> Image.Image:
+    """Only the largest 4-connected group of non-transparent pixels of `img` (drops loose bits around it)."""
+    px, (w, h) = img.load(), img.size
+    seen, best = set(), []
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] and (x, y) not in seen:
+                group, stack = [], [(x, y)]
+                seen.add((x, y))
+                while stack:
+                    cx, cy = stack.pop()
+                    group.append((cx, cy))
+                    for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+                        if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in seen and px[nx, ny][3]:
+                            seen.add((nx, ny))
+                            stack.append((nx, ny))
+                best = max(best, group, key=len)
+    out = Image.new("RGBA", img.size)
+    op = out.load()
+    for x, y in best:
+        op[x, y] = px[x, y]
+    return out
+
+
 def hexc(h: str, a: int = 255):
     h = h.lstrip("#")
     return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), a)
@@ -272,6 +296,14 @@ def build(downloads: Path):
     ui.crop((345, 9, 375, 39)).save(OUT / "slot.png")
     ui.crop((345, 57, 375, 87)).save(OUT / "slot_sel.png")
 
+    # picked fruit trees: each sheet's last fruit-drop frame (row 3, frame 11) is the bare tree with the fruit on
+    # the ground beside it; keep only the tree (the largest opaque shape) so the bare tree is the same tree
+    bare = Image.new("RGBA", (48 * 4, 48))
+    for i, fruit in enumerate(["tree_apple", "tree_pear", "tree_peach", "tree_orange"]):
+        frame = Image.open(OUT / f"{fruit}.png").convert("RGBA").crop((11 * 48, 3 * 48, 12 * 48, 4 * 48))
+        bare.alpha_composite(largest_shape(frame), (48 * i, 0))
+    bare.save(OUT / "fruit_bare.png")
+
     names = list(GEN)
     sheet = Image.new("RGBA", (16 * len(names), 16))
     for i, n in enumerate(names):
@@ -286,7 +318,7 @@ def build(downloads: Path):
         "License summary: modification allowed; use in commercial and non-commercial projects allowed;\n"
         "the asset pack itself may not be redistributed or resold, even modified; no NFTs or AI training;\n"
         "credit required. Only the sheets this game uses are included here.\n\n"
-        "`gen.png`, `ash.png` and `water_deep.png` are extra tiles made for this game in the pack's style.\n")
+        "`gen.png`, `ash.png`, `water_deep.png` and `fruit_bare.png` are extra tiles made for this game from the pack.\n")
     print("wrote", sorted(p.name for p in OUT.iterdir()))
 
 

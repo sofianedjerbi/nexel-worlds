@@ -7,4 +7,4 @@ License summary: modification allowed; use in commercial and non-commercial proj
 the asset pack itself may not be redistributed or resold, even modified; no NFTs or AI training;
 credit required. Only the sheets this game uses are included here.
 
-`gen.png`, `ash.png` and `water_deep.png` are extra tiles made for this game in the pack's style.
+`gen.png`, `ash.png`, `water_deep.png` and `fruit_bare.png` are extra tiles made for this game from the pack.

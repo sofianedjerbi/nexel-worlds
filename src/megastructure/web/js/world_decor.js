@@ -19,7 +19,11 @@ const VARIANTS = {chicken: ["chicken", "chicken", "chicken_brown", "chicken_red"
   calf: ["calf", "calf", "calf_light", "calf_pink", "calf_purple", "calf_green"]};
 const animalSheet = (kind, id) => IMG[VARIANTS[kind][Math.floor(hash(id, 3, 91) * VARIANTS[kind].length)]];
 const FRUITS = ["tree_apple", "tree_pear", "tree_peach", "tree_orange"];
-const fruitSheet = (x, y) => IMG[FRUITS[Math.floor(hash(x, y, 33) * 4)]];
+const fruitKind = (x, y) => Math.floor(hash(x, y, 33) * 4);   // index into FRUITS (and fruit_bare.png)
+const fruitSheet = (x, y) => IMG[FRUITS[fruitKind(x, y)]];
+const FRUIT_ICON = [[16, 32], [80, 32], [112, 32], [48, 32]];   // trees.png: apple, pear, peach, orange
+const BERRY_BUSH = [32, 48, 64];                                // trees.png x of the red, purple, blue bushes (row 48)
+const BERRY_ICON = [[16, 64], [48, 64], [64, 64]];              // matching single berries (row 64)
 const dropping = new Map(), chestOpen = new Map(), doors = new Map();
 let occupied = new Set();
 
