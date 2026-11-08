@@ -37,6 +37,8 @@ PICNIC = 1.5         # food is worth more eaten on a picnic blanket
 FARM = ("chicken", "cow", "chick", "calf")
 CROWD_R, CROWD_N = 6, 10   # this many animals this close: hens stop laying, eggs stay eggs, cows don't breed
 ANIMAL_MAX = 200           # and never more than this many farm animals in the world
+TROUGH_R = 5               # animals this close to a filled trough feed themselves...
+TROUGH_EVERY = 30          # ...about this often (seconds)
 CREATURE_ID0 = 1_000_000
 
 
@@ -473,6 +475,9 @@ class Simulation:
                     ex, ey = coop or (c.x, c.y)     # eggs go into the nest box at the coop's door
                     self.add_items(ex, ey, {"egg": 1})
                     self.emit("lay", ex, ey, id=c.id, coop=bool(coop))
+            if (c.kind in ("chicken", "cow") and (self.tick + c.id) % sec(TROUGH_EVERY) == 0
+                    and c.love <= self.tick and not self.crowded(c.x, c.y)):
+                self.trough_feed(c)
             grows = CREATURES[c.kind].get("grows")
             if grows and self.tick - c.born >= sec(grows[1]):
                 c.kind = grows[0]
@@ -913,7 +918,7 @@ class Simulation:
         drops = dict(block.drops)
         if block.name == "ripe_crop":
             drops = {T.crop_species(x, y): 3, "seed": 2}
-        if block.name in ("chest", "basket"):
+        if block.name in ("chest", "basket", "trough"):
             drops = self._merge(drops, self.world.meta.get((x, y), {}).get("items", {}))
         for k, n in drops.items():
             a.add(k, n)
@@ -1208,10 +1213,16 @@ class Simulation:
         item = str(args.get("item", ""))
         if animal.kind == "gloom":
             raise ActionError("bad_target", "glooms don't eat that")
-        if item not in T.FOOD or not a.count(item):
-            raise ActionError("missing_item", "feed it something edible you carry")
+        if item not in T.FEED or not a.count(item):
+            raise ActionError("missing_item", "feed it something edible you carry (or hay)")
         yield from self.wait(a, 0.5)
         a.add(item, -1)
+        self._fed(animal)
+        self.emit("love", animal.x, animal.y, by=a.name, id=animal.id, kind=animal.kind)
+        return {}
+
+    def _fed(self, animal):
+        """A fed animal is in love for a while: hens lay soon, two cows in love nearby make a calf."""
         animal.love = self.tick + sec(8)
         if animal.kind == "cow":
             mate = next((o for o in self.creatures.values() if o is not animal and o.kind == "cow" and o.love > self.tick
@@ -1224,8 +1235,30 @@ class Simulation:
                 self.emit("born", animal.x, animal.y, id=calf.id, kind="calf")
         if animal.kind == "chicken":
             animal.lay = min(animal.lay or self.tick + sec(3), self.tick + sec(3))
-        self.emit("love", animal.x, animal.y, by=a.name, id=animal.id, kind=animal.kind)
-        return {}
+
+    def trough_feed(self, c):
+        """Every so often an animal near a filled trough eats from it by itself."""
+        for dy in range(-TROUGH_R, TROUGH_R + 1):
+            for dx in range(-TROUGH_R, TROUGH_R + 1):
+                x, y = c.x + dx, c.y + dy
+                if self.world.block(x, y) != "trough":
+                    continue
+                m = self.world.meta.get((x, y)) or {}
+                items = dict(m.get("items") or {})
+                if not items:
+                    continue
+                food = sorted(items)[0]
+                bites = int(m.get("bites", 0)) + 1          # a bale of hay lasts T.FEED["hay"] meals
+                if bites >= T.FEED.get(food, 1):
+                    bites = 0
+                    items[food] -= 1
+                    if not items[food]:
+                        del items[food]
+                self.world.set_meta(x, y, {**m, "items": items, "bites": bites})
+                self._fed(c)
+                self.emit("trough", x, y, id=c.id, kind=c.kind, radius=6)
+                return True
+        return False
 
     def _tool_sleep(self, a, args):
         """Sleep in an adjacent bed: big energy and health gain, and you'll wake up here after dying."""
@@ -1367,7 +1400,7 @@ class Simulation:
 
     def _chest(self, a, args):
         x, y = self.target(a, args)
-        if self.world.block(x, y) not in ("chest", "basket"):
+        if self.world.block(x, y) not in ("chest", "basket", "trough"):
             raise ActionError("no_chest", f"{args['dir']} is {self.describe(x, y)}")
         return x, y
 
@@ -1376,6 +1409,8 @@ class Simulation:
         item, n = str(args.get("item", "")), self._n(args)
         if a.count(item) < n:
             raise ActionError("missing_item", f"you have {a.count(item)} {item}")
+        if self.world.block(x, y) == "trough" and item not in T.FEED:
+            raise ActionError("bad_item", "troughs take animal feed: hay or food")
         yield from self.wait(a, 0.2)
         self._chest(a, args)
         n = min(n, a.count(item))
@@ -1443,6 +1478,6 @@ TOOL_SPECS = {
     "sleep": {"args": DIR_ARG, "desc": "sleep in an adjacent bed: restores energy, and you respawn there"},
     "post": {"args": {**DIR_ARG, "text": "str"}, "desc": "post a letter in an adjacent mailbox"},
     "open_mail": {"args": DIR_ARG, "desc": "take the letters out of an adjacent mailbox (anyone can)"},
-    "store": {"args": {**DIR_ARG, "item": "str", "n": "int"}, "desc": "put items into an adjacent chest"},
+    "store": {"args": {**DIR_ARG, "item": "str", "n": "int"}, "desc": "put items into an adjacent chest or basket, or feed (hay, food) into a trough: animals nearby then feed themselves"},
     "take": {"args": {**DIR_ARG, "item": "str (omit to list)", "n": "int"}, "desc": "take items from an adjacent chest"},
 }

@@ -418,3 +418,18 @@ Hypothesis: a dense town (houses, fields, pens, paths) will show any client or s
   the dense town at zoom 1: 120 fps, JS p50 2–3 ms, p99 10–14 ms, worst frame 24 ms (was 98–129).
 Tests: 38 pass.
 Next: hay and feeding boxes (barn sheet) for feeding animals in bulk; then revisit agents (M2/M3 harness on the new world).
+
+## 2026-11-08 · Iteration 23 — troughs and hay
+
+Hypothesis: feeding animals one by one doesn't scale to a farm; a trough that animals use by themselves makes the
+barn sheet's feeding box and hay bales part of play.
+- Hay (3 wheat, no station): feeds animals (one bale = three meals from a trough) and places as a hay bale.
+- Trough (4 wood, workbench): put hay or any food in it (only feed is accepted); every ~30 s each hen or cow within
+  5 tiles that isn't already in love eats from it: hens lay, pairs of cows make calves (crowding limits still apply).
+  The box shows hay heaped in it while it holds feed (ticks carry `troughs`). Clicking it empty-handed takes the feed out.
+- Click order fix: with an item selected, clicking a chest/basket/trough now stores it instead of trying to place it
+  next to it ("Store fence in chest" used to say "Can't place fence here"); torches still set containers alight.
+- QA in Chrome: trough + bale placed, trough filled by click (hay drawn in the box), fence stored in a chest, hay crafted.
+Tests: 39 pass.
+Next: agents. The world now has enough systems (farms, animals, houses, boats, mail) for M2/M3 runs to be interesting;
+re-run the agent harness against it and measure what agents actually do.

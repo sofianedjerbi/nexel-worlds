@@ -88,6 +88,8 @@ BLOCKS = [
     Block("basket", "q", flammable=True, hardness=3, drops={"basket": 1}),            # a small chest
     Block("part", "Z"),                       # solid rest of a structure's footprint
     Block("flat_part", "z", solid=False),     # walkable rest of a flat structure (blanket)
+    Block("trough", "e", flammable=True, hardness=6, drops={"trough": 1}, tool="axe"),  # feeds animals nearby
+    Block("hay_bale", "y", flammable=True, hardness=3, drops={"hay": 1}),
 ]
 
 # Crop species: which plant a sprout becomes is a pure function of its tile, shared with the web client
@@ -133,7 +135,7 @@ PLACEABLE = {
     "seed": "sprout",
     "chest": "chest",
     "flower": "flower",
-    "well": "well", "coop": "coop", "picnic_blanket": "picnic_blanket", "basket": "basket",
+    "well": "well", "coop": "coop", "picnic_blanket": "picnic_blanket", "basket": "basket", "trough": "trough", "hay": "hay_bale",
     "wood_wall": "wood_wall", "boat": "boat", "mailbox": "mailbox", "bed": "bed", "chair": "chair", "table": "table", "plant": "plant", "clock": "clock", "rug": "rug", "gate": "gate",
 }
 # Items laid into the ground: item -> {ground it can go on: resulting ground}. One item, one obvious result
@@ -147,6 +149,9 @@ FILLERS = {
 SEED_GROUNDS = {"tilled", "wet_tilled"}  # seeds only take on tilled soil
 
 FOOD = {"pumpkin": 14, "cauliflower": 10, "lettuce": 8, "eggplant": 10, "carrot": 9, "fruit": 10, "berries": 8, "mushroom": 6, "egg": 10, "meat": 6, "cooked_meat": 25, "wheat": 4, "bread": 30, "milk": 12}
+
+# what animals eat: any food, and hay (one bale feeds three times from a trough)
+FEED = {**{k: 1 for k in FOOD}, "hay": 3}
 
 WEAPONS = {"sword": 30, "spear": 18, "axe": 12, "pickaxe": 10}
 FIST_DAMAGE = 5
@@ -198,5 +203,7 @@ RECIPES = {
         Recipe("coop", {"wood": 8, "fiber": 2}, {"coop": 1}, 8, "workbench"),
         Recipe("picnic_blanket", {"fiber": 6}, {"picnic_blanket": 1}, 4),
         Recipe("basket", {"fiber": 3}, {"basket": 1}, 3),
+        Recipe("hay", {"wheat": 3}, {"hay": 1}, 3),
+        Recipe("trough", {"wood": 4}, {"trough": 1}, 5, "workbench"),
     ]
 }

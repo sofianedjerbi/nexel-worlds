@@ -528,3 +528,21 @@ def test_crowded_eggs_dont_hatch_and_old_herds_thin(world, tmp_path):
         sim.next_creature += 1
     sim._thin_herds()
     assert len(sim.creatures) <= 2 * CROWD_N
+
+
+def test_trough_feeds_animals_and_hay_lasts(world):
+    sim, a = world
+    from megastructure.sim import Creature, sec
+    a.add("trough", 1); a.add("hay", 1); a.add("wood", 1)
+    run(sim, a, "place", {"dir": "E", "item": "trough"})
+    assert run(sim, a, "store", {"dir": "E", "item": "wood", "n": 1})["error"] == "bad_item"
+    assert run(sim, a, "store", {"dir": "E", "item": "hay", "n": 1})["ok"]
+    cow = Creature(sim.next_creature, "cow", a.x + 3, a.y, 30, cooldown=10**6); sim.next_creature += 1
+    sim.creatures[cow.id] = cow
+    meals = 0
+    for _ in range(sec(200)):
+        sim.step()
+        if cow.love == sim.tick + sec(8):
+            meals += 1
+    assert meals == 3                                      # one bale, three meals
+    assert not sim.world.meta[(a.x + 1, a.y)]["items"]

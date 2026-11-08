@@ -151,6 +151,11 @@ class GameServer:
         return [[mx, my, len(m["letters"])] for (mx, my), m in self.sim.world.meta.items()
                 if m.get("letters") and x <= mx < x + w and y <= my < y + h]
 
+    def troughs_in(self, x, y, w, h) -> list:
+        """Troughs with feed in them (the client draws hay in the box)."""
+        return [[tx, ty] for (tx, ty), m in self.sim.world.meta.items()
+                if m.get("items") and x <= tx < x + w and y <= ty < y + h and self.sim.world.block(tx, ty) == "trough"]
+
     def items_in(self, x, y, w, h) -> list:
         return [[ix, iy, pile] for (ix, iy), pile in self.sim.items.items() if pile and x <= ix < x + w and y <= iy < y + h]
 
@@ -169,7 +174,7 @@ class GameServer:
         for q, rect in list(self.spectators.items()):
             if rect is not None and q.qsize() < 2000:
                 q.put_nowait(json.dumps({**head, "entities": self.entities_in(*rect), "items": self.items_in(*rect),
-                                         "mail": self.mail_in(*rect),
+                                         "mail": self.mail_in(*rect), "troughs": self.troughs_in(*rect),
                                          "fires": [[fx, fy] for fx, fy in self.sim.fires
                                                    if rect[0] <= fx < rect[0] + rect[2] and rect[1] <= fy < rect[1] + rect[3]]},
                                         separators=(",", ":")))
