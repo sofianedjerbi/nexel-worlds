@@ -70,29 +70,39 @@ function drawHotbar(inv) {
   el.appendChild(bag);
   drawBag(inv, extra);
 }
-// Hearts and food sit on the hotbar, 10 points an icon, halves allowed, at the art's own pixel size: hearts are the
-// UI pack's wooden heart badges (full, half, empty); food is a drumstick, dark when that part of you is empty.
-const BADGE = [5, 6, 21, 19];                    // where a heart badge sits in its 32 px cell
+// Hearts and food sit on the hotbar, 10 points an icon, halves allowed. Hearts are the UI pack's small hearts (full,
+// half, empty); food is a drumstick drawn here in the same style (outline, fill, glint; empty is the bare outline
+// colour). Pixel-exact: every art pixel is a whole number of device pixels.
+const HEART = [4, 84, 9, 8];                     // full; half and empty are the next 16 px cells along
+const FOOD = ["..aaaa...", ".abbbba..", "abccbbba.", "abcbbbba.", "abbbbbba.", ".abbbbaa.", "..aaaawwa", "......awa", ".......a."];
+const FOOD_COL = {a: "#6b4430", b: "#c98a57", c: "#f0c48e", w: "#f6ead2"};
+function pixelCanvas(cv, w, h, k = 1.5) {        // sizes a canvas for art w x h at about k CSS px an art pixel
+  const SC = Math.max(1, Math.round(k * (window.devicePixelRatio || 1)));
+  if (cv.width !== w * SC || cv.height !== h * SC) {
+    cv.width = w * SC; cv.height = h * SC;
+    cv.style.width = w * SC / (window.devicePixelRatio || 1) + "px"; cv.style.height = h * SC / (window.devicePixelRatio || 1) + "px";
+  }
+  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, cv.width, cv.height);
+  return [g, SC];
+}
 function drawIcons(cv, icon, value) {
-  const N = 10, SC = 2, hearts = icon === "heart";
-  // food: the icon's drawn part (its sheet cell is mostly empty), at twice its pixels: as tall as a heart
-  const fb = hearts ? null : spriteBounds(IMG.gen, GEN[icon] * 16, 0, 16, 16) || [0, 0, 16, 16];
-  const cw = hearts ? BADGE[2] : (fb[2] - fb[0]) * 2, step = hearts ? 19 : cw + 1, h = BADGE[3];
-  const w = step * (N - 1) + cw, sig = icon + value;
+  const N = 10, hearts = icon === "heart", iw = hearts ? HEART[2] : FOOD[0].length, ih = hearts ? HEART[3] : FOOD.length;
+  const step = iw + 1, sig = icon + value + (window.devicePixelRatio || 1);
   if (cv.dataset.sig === sig) return;
   cv.dataset.sig = sig;
-  if (cv.width !== w * SC) { cv.width = w * SC; cv.height = h * SC; cv.style.width = w + "px"; cv.style.height = h + "px"; }
-  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, cv.width, cv.height);
+  const [g, SC] = pixelCanvas(cv, step * (N - 1) + iw, 9);
   for (let i = 0; i < N; i++) {
-    const x = i * step * SC, full = value >= (i + 1) * 10, half = !full && value >= i * 10 + 5;
+    const x = i * step, full = value >= (i + 1) * 10, half = !full && value >= i * 10 + 5, top = 9 - ih;
     if (hearts) {
-      g.drawImage(IMG.hearts_wood, (full ? 0 : half ? 1 : 2) * 32 + BADGE[0], BADGE[1], BADGE[2], BADGE[3], x, 0, BADGE[2] * SC, BADGE[3] * SC);
+      g.drawImage(IMG.hearts, (full ? 0 : half ? 1 : 2) * 16 + HEART[0], HEART[1], iw, ih, x * SC, top * SC, iw * SC, ih * SC);
       continue;
     }
-    const fw = fb[2] - fb[0], fh = fb[3] - fb[1], top = Math.round((h - fh * 2) / 2) * SC;
-    const food = (part) => g.drawImage(IMG.gen, GEN[icon] * 16 + fb[0], fb[1], Math.ceil(fw * part), fh, x, top, Math.ceil(fw * part) * 2 * SC, fh * 2 * SC);
-    g.filter = "brightness(.3) opacity(.45)"; food(1); g.filter = "none";   // the empty socket
-    if (full) food(1); else if (half) food(.5);
+    FOOD.forEach((row, j) => [...row].forEach((c, k) => {
+      if (c === ".") return;
+      const lit = full || (half && k < 5);
+      g.fillStyle = lit ? FOOD_COL[c] : FOOD_COL.a;
+      g.fillRect((x + k) * SC, (top + j) * SC, SC, SC);
+    }));
   }
   cv.classList.toggle("low", value <= 25);
 }

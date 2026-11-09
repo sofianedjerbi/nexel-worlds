@@ -79,7 +79,7 @@ COPY = {  # zip-internal path suffix -> output name
     "Animals/Cow_Baby/baby purple cow animations sprites.png": "calf_purple.png",
     "Animals/Cow_Baby/baby green cow animations sprites.png": "calf_green.png",
     "UI Sprites/ALL UI ASSETS on one sheet.png": "ui.png",
-    "UI Sprites/Icons/special icons/Hearts in wood.png": "hearts_wood.png",
+    "UI Sprites/Icons/special icons/Hearts.png": "hearts.png",
     "UI Sprites/Other UI sprites/Sliders/Sliders.png": "sliders.png",
 }
 

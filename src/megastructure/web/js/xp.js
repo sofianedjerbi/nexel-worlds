@@ -91,16 +91,19 @@ function drawXp() {
   drawXpBar(into / need, level);
 }
 
-// The bar: the UI pack's wooden slider track, a green fill inside it, and the level on a cream knob in the middle.
-const TRACK = [36, 36, 40, 7], KNOB = [6, 1, 20, 12];   // in sliders.png
+// The bar: the UI pack's wooden slider track with a green fill; the level above its middle in pixel digits, green
+// with a drop shadow (only once you have one).
+const TRACK = [36, 36, 40, 7];   // in sliders.png
+const DIGITS = ["111101101101111", "010110010010111", "111001111100111", "111001111001111", "101101111001001",
+  "111100111001111", "111100111101111", "111001001001001", "111101111101111", "111101111001111"];   // 3x5 each
 function drawXpBar(k, level) {
-  const cv = $("xpbar"), SC = 2, w = Math.max(40, Math.round(cv.parentElement.clientWidth / SC) - 4), h = 13;
-  const sig = [w, Math.round(k * w), level].join();
+  const cv = $("xpbar"), dpr = window.devicePixelRatio || 1;
+  const SC0 = Math.max(1, Math.round(1.5 * dpr)), w = Math.max(40, Math.floor(cv.parentElement.clientWidth * dpr / SC0) - 4), h = 18;
+  const sig = [w, Math.round(k * w), level, dpr].join();
   if (cv.dataset.sig === sig) return;
   cv.dataset.sig = sig;
-  cv.width = w * SC; cv.height = h * SC; cv.style.width = w * SC + "px";
-  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false;
-  const [tx, ty, tw, th] = TRACK, top = 3, cap = 4;
+  const [g, SC] = pixelCanvas(cv, w, h);
+  const [tx, ty, tw, th] = TRACK, top = h - th, cap = 4;
   const part = (sx, sw, dx, dw) => g.drawImage(IMG.sliders, sx, ty, sw, th, dx * SC, top * SC, dw * SC, th * SC);
   part(tx, cap, 0, cap); part(tx + cap, tw - 2 * cap, cap, w - 2 * cap); part(tx + tw - cap, cap, w - cap, cap);
   const fill = Math.round(k * (w - 4));
@@ -109,8 +112,10 @@ function drawXpBar(k, level) {
     g.fillStyle = "#c8ea5a"; g.fillRect(2 * SC, (top + 2) * SC, fill * SC, SC);
   }
   if (!level) return;
-  const [kx, ky, kw, kh] = KNOB, kxd = Math.round(w / 2 - kw / 2);
-  g.drawImage(IMG.sliders, kx, ky, kw, kh, kxd * SC, 0, kw * SC, kh * SC);
-  g.font = `${8 * SC}px SproutPixel`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = "#5b3f36";
-  g.fillText(String(level), (kxd + kw / 2) * SC, (kh / 2 + .5) * SC);
+  const D = 2, text = String(level), tw2 = (text.length * 4 - 1) * D, x0 = Math.floor((w - tw2) / 2), y0 = 1;   // D: art px a digit pixel
+  const px = (on) => [...text].forEach((d, i) => [...DIGITS[+d]].forEach((b, j) => {
+    if (b === "1") on(x0 + (i * 4 + j % 3) * D, y0 + Math.floor(j / 3) * D);
+  }));
+  g.fillStyle = "#2f3d1c"; px((x, y) => g.fillRect((x + 1) * SC, (y + 1) * SC, D * SC, D * SC));   // drop shadow
+  g.fillStyle = "#b8f05a"; px((x, y) => g.fillRect(x * SC, y * SC, D * SC, D * SC));
 }
