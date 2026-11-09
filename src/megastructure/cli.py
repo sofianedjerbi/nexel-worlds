@@ -19,7 +19,7 @@ SHORT = {"n": "N", "e": "E", "s": "S", "w": "W"}
 def show(obs):
     me = obs["self"]
     print("\n".join(obs["grid"]))
-    print(f"{obs['time']}  ({me['x']},{me['y']})  hp {me['hp']}  hunger {me['hunger']}  energy {me['energy']}"
+    print(f"{obs['time']}  ({me['x']},{me['y']})  hp {me['hp']}  hunger {me['hunger']}"
           f"  on {me['standing_on']}")
     print("inventory:", me["inventory"] or "empty")
     print("legend:", "  ".join(f"{k}={v}" for k, v in obs["legend"].items()))

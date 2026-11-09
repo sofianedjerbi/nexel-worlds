@@ -21,7 +21,9 @@ EVENT_QUEUE = 60
 
 MAX_TEXT = 200
 
-EAT_SECONDS = 1.6    # eating takes a moment (and can be interrupted)
+TARGET_R = 3         # actions aimed at x, y: tiles.USE_R plus one, to absorb a walking client's lead
+MOVES = ("walk", "move_to", "step")   # movement: quick actions happen alongside it instead of stopping it
+EAT_SECONDS = 0.9    # eating takes a moment (three bites; it can be interrupted)
 CAN_SIZE = 12        # waterings per fill
 
 COOP_R = 6           # chickens this close to a coop lay there, twice as often

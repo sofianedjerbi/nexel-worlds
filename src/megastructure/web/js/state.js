@@ -87,7 +87,8 @@ function onTick(d) {
     }
     if (p.tx !== e.x || p.ty !== e.y) {
       const dx = Math.sign(e.x - p.tx), dy = Math.sign(e.y - p.ty);
-      if (dx || dy) { p.fx = dx; p.fy = dy; }
+      // animal sheets only walk sideways: going up or down they keep facing the way they last went
+      if (ANIMALS[e.kind]) { if (dx) p.fx = dx; } else if (dx || dy) { p.fx = dx; p.fy = dy; }
       p.moved = now; p.tx = e.x; p.ty = e.y;
       if (Math.abs(p.x - e.x) + Math.abs(p.y - e.y) > 4) { p.x = e.x; p.y = e.y; }
     }

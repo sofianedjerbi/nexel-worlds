@@ -48,13 +48,24 @@ async function refresh() {
 }
 setInterval(refresh, 700);
 let myAction = null, pendingAct = null;   // myAction is set only once the server confirms the action started
+let actTarget = null;   // the exact tile perform() aims at: sent as x, y instead of a direction
+function facingTo(p) {  // the direction to look when working on p (the bigger axis wins)
+  const s = myPos(); if (!s) return null;
+  const dx = p.x - s.x, dy = p.y - s.y;
+  return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "E" : dx < 0 ? "W" : null) : dy > 0 ? "S" : "N";
+}
 async function act(tool, args, quiet) {
   if (!me) return null;
+  if (actTarget && "dir" in args) { args = {...args, x: actTarget.x, y: actTarget.y}; delete args.dir; }
+  const look = actTarget ? facingTo(actTarget) : args.dir;
+  actTarget = null;
   busy = true;
-  pendingAct = {tool, dir: args.dir, tid: args.target, with: args.with, item: args.item};
+  // the facing only shows once the server says the action takes time (instant things don't turn you or stop you)
+  pendingAct = {tool, dir: look, tid: args.target, with: args.with, item: args.item};
   const r = await rpc("act", {tool, args});
   pendingAct = null; myAction = null;
   busy = false; progress = null;
+  if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk();   // still holding a direction: walk on
   if (!r.ok && !["interrupted", "offline"].includes(r.error) && !quiet) toast(`${label(tool)}: ${r.detail || r.error}`, true);
   if (r.ok) {
     const c = r.result.changed || {};

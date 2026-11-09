@@ -170,7 +170,8 @@ FEED = {**{k: 1 for k in FOOD}, "hay": 3}
 
 WEAPONS = {"sword": 30, "spear": 18, "axe": 12, "pickaxe": 10}
 FIST_DAMAGE = 5
-REACH = {None: 2, "spear": 3}
+REACH = {None: 3, "spear": 4}   # melee reach in tiles (Chebyshev): fists and most weapons 3, a spear 4
+USE_R = 2                       # tiles (Chebyshev) within which you can dig, pick, place and use things
 # Digging time: a block's hardness (tenths of a second) is the time with its tool in hand; without it, wooden
 # things (axe) take 4x as long and stone things (pickaxe) 6x. Soft things (no tool) are quick by hand.
 BY_HAND = {"axe": 4, "pickaxe": 6}

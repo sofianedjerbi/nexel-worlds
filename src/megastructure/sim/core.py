@@ -6,6 +6,7 @@ per tick it consumes and returns a result dict; failures raise `ActionError`."""
 
 import json
 import random
+from dataclasses import fields
 from pathlib import Path
 
 from ..tiles import BLOCKS, DIRS, GROUNDS
@@ -13,7 +14,16 @@ from ..world import Store, World
 from .animals import Animals
 from .building import Building
 from .combat import Combat
-from .constants import CREATURE_ID0, DAY_TICKS, EVENT_QUEUE, SHOUT_R, VIEW_R, sec
+from .constants import (
+    CREATURE_ID0,
+    DAY_TICKS,
+    EVENT_QUEUE,
+    MOVES,
+    SHOUT_R,
+    TARGET_R,
+    VIEW_R,
+    sec,
+)
 from .entities import Action, ActionError, Agent, Creature, _hash_token
 from .environment import Environment
 from .items import Items
@@ -40,7 +50,8 @@ class Simulation(Movement, Building, Items, Combat, Animals, Needs, Social, Envi
         self.agents: dict[int, Agent] = {}
         self.tokens: dict[int, str] = {}
         for aid, name, th, js in store.db.execute("SELECT id, name, token_hash, json FROM agents"):
-            self.agents[aid] = Agent(**json.loads(js))
+            known = {f.name for f in fields(Agent)}            # saves from older versions may carry dropped fields
+            self.agents[aid] = Agent(**{k: v for k, v in json.loads(js).items() if k in known})
             self.tokens[aid] = th
         self.by_name = {a.name: a for a in self.agents.values()}
         self.items: dict[tuple[int, int], dict] = {
@@ -129,9 +140,19 @@ class Simulation(Movement, Building, Items, Combat, Animals, Needs, Social, Envi
         return None
 
     def target(self, a: Agent, args) -> tuple[int, int]:
+        """The tile an action is aimed at: `dir` (the adjacent tile that way), or an absolute `x`, `y` within
+        TARGET_R (a walking player's client may be up to a tile ahead of the server)."""
+        if "x" in args and "y" in args and args.get("dir") is None:
+            try:
+                x, y = int(args["x"]), int(args["y"])
+            except (TypeError, ValueError):
+                raise ActionError("bad_args", "x and y must be integers")
+            if (x, y) == (a.x, a.y) or max(abs(x - a.x), abs(y - a.y)) > TARGET_R:
+                raise ActionError("out_of_range", f"({x},{y}) is not within {TARGET_R} tiles of you")
+            return x, y
         d = str(args.get("dir", "")).upper()
         if d not in DIRS:
-            raise ActionError("bad_args", "dir must be one of N, E, S, W")
+            raise ActionError("bad_args", "dir must be one of N, E, S, W (or give x and y)")
         dx, dy = DIRS[d]
         return a.x + dx, a.y + dy
 
@@ -160,14 +181,12 @@ class Simulation(Movement, Building, Items, Combat, Animals, Needs, Social, Envi
 
     def wait(self, a: Agent, seconds: float):
         """Take `seconds` of game time (doubled when exhausted). The starting tick counts."""
-        n = sec(seconds * (2 if a.energy <= 0 else 1))
+        n = sec(seconds)
         if a.action is not None:
             a.action.expected = max(a.action.expected, a.action.ticks - 1 + n)
         for _ in range(n - 1):
             yield
 
-    def spend(self, a: Agent, energy: int):
-        a.energy = max(0, a.energy - energy)
 
     # ------------------------------------------------------------- agents
 
@@ -225,9 +244,30 @@ class Simulation(Movement, Building, Items, Combat, Animals, Needs, Social, Envi
             act.finish({"ok": False, "status": "failed", "error": "unknown_tool",
                         "detail": f"tools: {', '.join(TOOL_SPECS)}"}, self)
             return act
+        act = Action(a, tool, args, fn(a, args), on_done)
+        moving = a.action is not None and a.action.tool in MOVES
+        if moving and tool not in MOVES and tool != "stop":
+            # walking or running: try it right away; if it takes no time (picking a flower, picking up), it happens
+            # on the move and the walk goes on. If it needs time (chopping), it replaces the walk as usual.
+            walk, a.action = a.action, act
+            act.started_tick, act.ticks = self.tick, 1
+            try:
+                next(act.gen)
+            except StopIteration as stop:
+                a.action = walk
+                self.stats["actions"] += 1
+                act.finish({"ok": True, "status": "done", **(stop.value or {})}, self)
+                return act
+            except ActionError as e:
+                a.action = walk
+                act.finish({"ok": False, "status": "failed", "error": e.code, "detail": e.detail}, self)
+                return act
+            a.action = walk                           # it needs time: stop walking, then carry on with it
+            self.interrupt(a, f"replaced by {tool}")
+            a.action = act
+            return act
         if a.action is not None:
             self.interrupt(a, f"replaced by {tool}")
-        act = Action(a, tool, args, fn(a, args), on_done)
         a.action = act
         return act
 

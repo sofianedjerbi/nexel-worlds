@@ -45,12 +45,14 @@ function facingIntent(alt) {
   const faced = intent(q, alt);
   if (useful(faced)) return {p: q, it: faced};
   for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it)) return {p, it}; }
-  const p0 = ents.get("agent" + myId), dirs = [[p0.fx, p0.fy], [-p0.fx, -p0.fy], [p0.fy, p0.fx], [-p0.fy, -p0.fx]];
-  for (const [dx, dy] of dirs) {
+  // then anything within reach (USE_R): nearest first, in front of you before behind
+  const p0 = ents.get("agent" + myId), ring = [];
+  for (let dy = -USE_R; dy <= USE_R; dy++) for (let dx = -USE_R; dx <= USE_R; dx++) {
     if (!dx && !dy) continue;
-    const p = {x: s.x + dx, y: s.y + dy}, it = intent(p, alt);
-    if (useful(it)) return {p, it};
+    ring.push({x: s.x + dx, y: s.y + dy, d: Math.max(Math.abs(dx), Math.abs(dy)) + Math.abs(dx) * .01 + Math.abs(dy) * .01 - (dx * p0.fx + dy * p0.fy) * .1});
   }
+  ring.sort((a, b) => a.d - b.d);
+  for (const q of ring) { const p = {x: q.x, y: q.y}, it = intent(p, alt); if (useful(it)) return {p, it}; }
   return faced && !faced.walk ? {p: q, it: faced} : null;
 }
 // The tile hints are drawn for: where the mouse points, or the tile you face when playing by keyboard.
@@ -71,7 +73,6 @@ function availableActions() {
   if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push(["X", alt.it.text]);
   if (selected && FOODS.includes(selected)) rows.push(["E", `Eat ${label(selected)}`]);
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push(["F", "Pick up"]);
-  if (meObs.self.energy < 25) rows.push(["R", "Rest"]);
   return rows;   // only what you can do right here, right now (all the other keys are in the help, H)
 }
 function updateActions() {
@@ -112,7 +113,6 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   " ": () => useFacing(false),
   x: () => useFacing(true),
   f: () => act("pick_up", {}),
-  r: () => act("rest", {}),
   e: () => useSelected(),
   q: () => cycleHand(1),
   0: () => { selectItem(null); toast("Empty hands"); },
@@ -139,8 +139,13 @@ addEventListener("keydown", (e) => {
   if (isOpen("craft") && craftKey(k, e)) { e.preventDefault(); return; }
   if (isOpen("bag") && bagKey(k, e)) { e.preventDefault(); return; }
   if (e.altKey && CODEDIR[e.code]) { e.preventDefault(); turn(CODEDIR[e.code]); return; }
-  if (KEYDIR[k]) { e.preventDefault(); if (!e.repeat) { keys.delete(k); keys.add(k); } syncWalk(); return; }
+  if (KEYDIR[k]) {   // only a real press counts: a held key's auto-repeat must not cancel a chop in progress
+    e.preventDefault();
+    if (!e.repeat) { keys.delete(k); keys.add(k); syncWalk(); }
+    return;
+  }
   if (/^[1-9]$/.test(k) && meObs) { const n = slots[+k - 1]; if (n) selectItem(selected === n ? null : n); return; }
+  if (k === " " && !e.repeat) { keys.add(" "); syncWalk(); }   // Space stops you where you are, then acts
   const fn = SHORTCUTS[k];
   if (fn) { e.preventDefault(); if (!(e.repeat && k !== " " && k !== "x")) fn(); }
 });
@@ -156,7 +161,7 @@ addEventListener("blur", () => { runKey = false; keys.clear(); syncWalk(); });
 let walking = null;   // {dir, run}
 function syncWalk() {
   const k = [...keys].reverse().find((k) => KEYDIR[k]);
-  const want = k && me ? {dir: KEYDIR[k], run: runKey} : null;
+  const want = k && me && !keys.has(" ") ? {dir: KEYDIR[k], run: runKey} : null;   // holding Space: stand and work
   if (want && walking && want.dir === walking.dir && want.run === walking.run) return;
   if (!want && !walking) return;
   const prev = walking;

@@ -1,4 +1,4 @@
-"""Hunger and energy: eating, resting, sleeping, watering crops."""
+"""Hunger (the one need): eating; beds (where you wake up); watering crops."""
 
 from .. import tiles as T
 from .constants import CAN_SIZE, EAT_SECONDS, PICNIC, sec
@@ -6,7 +6,7 @@ from .entities import ActionError
 
 
 class Needs:
-    """Simulation mixin: hunger and energy: eating, resting, sleeping, watering crops."""
+    """Simulation mixin: hunger (the one need): eating; beds (where you wake up); watering crops."""
 
     def step_needs(self):
         t = self.tick
@@ -20,8 +20,6 @@ class Needs:
                     self.damage(a, 1, "starvation")
                 elif a.hunger > 40 and a.hp < 100:
                     a.hp += 1
-            if t % sec(8) == 0 and a.action is None and a.energy < 100:
-                a.energy += 1
             if (a.x, a.y) in self.fires and t % sec(1) == 0:
                 self.damage(a, 3, "fire")
 
@@ -44,22 +42,12 @@ class Needs:
             self.emit("picnic", a.x, a.y, name=a.name)
         return {"picnic": picnic} if picnic else {}
 
-    def _tool_rest(self, a, args):
-        bonus = self.near_block(a, "campfire") or self.sheltered(a.x, a.y)
-        for _ in range(sec(2) - 1):
-            yield
-        gain = 25 if bonus else 15
-        a.energy = min(100, a.energy + gain)
-        return {"bonus": bool(bonus)}
-
     def _tool_sleep(self, a, args):
-        """Sleep in an adjacent bed: big energy and health gain, and you'll wake up here after dying."""
+        """Lie down in a bed nearby: you'll wake up there after dying (and it heals a little)."""
         x, y = self.target(a, args)
         if self.world.block(x, y) != "bed":
             raise ActionError("no_bed", f"{args.get('dir')} is {self.describe(x, y)}, not a bed")
-        for _ in range(sec(3) - 1):
-            yield
-        a.energy = min(100, a.energy + 60)
+        yield from self.wait(a, 1)
         a.hp = min(100, a.hp + 10)
         a.spawn = [x, y]
         return {"spawn": [x, y]}

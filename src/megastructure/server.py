@@ -320,7 +320,8 @@ class GameServer:
                     self.sim.damage(agent, int(msg.get("n", 10)), "dev")
                     reply(mid, hp=agent.hp)
                 elif op == "dev_stamp" and self.dev:     # paint ASCII rows (tile chars) at x, y (QA builds)
-                    from .tiles import BLOCKS as _BL, GROUNDS as _GR
+                    from .tiles import BLOCKS as _BL
+                    from .tiles import GROUNDS as _GR
                     bch, gch = {b.char: b.name for b in _BL}, {g.char: g.name for g in _GR}
                     x0, y0 = int(msg["x"]), int(msg["y"])
                     for j, row in enumerate(list(msg.get("rows") or [])[:200]):

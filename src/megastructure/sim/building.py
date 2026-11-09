@@ -53,7 +53,6 @@ class Building:
             yield from self.wait(a, 0.6)
             if self.world.block(x, y) != "none":
                 raise ActionError("changed", "something was placed there")
-            self.spend(a, 1)
             self.set_tile(x, y, ground="tilled", by=a, cause="dig")
             return {}
         if block.hardness <= 0:
@@ -65,10 +64,11 @@ class Building:
         seconds = block.hardness / 20                       # with the right tool in hand
         if block.tool and tool != block.tool:
             seconds *= T.BY_HAND[block.tool]
+        if block.name in T.PICKED or (not block.tool and block.hardness <= 3):
+            seconds = 0                                     # picking and plucking: instant, even on the run
         yield from self.wait(a, seconds)
         if self.world.get(x, y)[1] != b:
             raise ActionError("changed", "the block changed while digging")
-        self.spend(a, 1)
         drops = dict(block.drops)
         if block.name == "ripe_crop":
             drops = {T.crop_species(x, y): 3, "seed": 2}
@@ -208,7 +208,6 @@ class Building:
             a.add(k, -v * n)
         for k, v in r.output.items():
             a.add(k, v * n)
-        self.spend(a, 1)
         self.stats["crafts"] += 1
         a.bump("crafted", n)
         self.emit("craft", a.x, a.y, radius=4, name=a.name, made={k: v * n for k, v in r.output.items()})

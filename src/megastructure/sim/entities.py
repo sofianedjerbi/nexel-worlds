@@ -23,7 +23,6 @@ class Agent:
     persona: str = ""
     hp: int = 100
     hunger: int = 80
-    energy: int = 100
     inventory: dict = field(default_factory=dict)
     deaths: int = 0
     stats: dict = field(default_factory=dict)
@@ -38,7 +37,7 @@ class Agent:
 
     def to_json(self) -> dict:
         return {k: getattr(self, k) for k in
-                ("id", "name", "x", "y", "persona", "hp", "hunger", "energy", "inventory", "deaths", "stats", "spawn", "sailing", "can")}
+                ("id", "name", "x", "y", "persona", "hp", "hunger", "inventory", "deaths", "stats", "spawn", "sailing", "can")}
 
     def count(self, item) -> int:
         return self.inventory.get(item, 0)
@@ -92,13 +91,13 @@ class Action:
         self.ticks = 0
         self.result = None
         self.tiles: list = []
-        self.snapshot = (dict(agent.inventory), agent.hp, agent.hunger, agent.energy, agent.x, agent.y)
+        self.snapshot = (dict(agent.inventory), agent.hp, agent.hunger, agent.x, agent.y)
         self.expected = 0  # ticks this action is expected to take (set by Simulation.wait)
         self.seen_events: list = []
 
     def finish(self, result: dict, sim: "Simulation"):
         a = self.agent
-        inv0, hp0, hu0, en0, x0, y0 = self.snapshot
+        inv0, hp0, hu0, x0, y0 = self.snapshot
         inv = {}
         for k in set(inv0) | set(a.inventory):
             d = a.inventory.get(k, 0) - inv0.get(k, 0)
@@ -107,7 +106,7 @@ class Action:
         changed = {}
         if inv:
             changed["inventory"] = inv
-        for key, before, now in (("hp", hp0, a.hp), ("hunger", hu0, a.hunger), ("energy", en0, a.energy)):
+        for key, before, now in (("hp", hp0, a.hp), ("hunger", hu0, a.hunger)):
             if now != before:
                 changed[key] = now - before
         if (a.x, a.y) != (x0, y0):

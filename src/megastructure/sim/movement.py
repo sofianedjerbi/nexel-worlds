@@ -45,16 +45,10 @@ class Movement:
         self.emit("pick_up", a.x, a.y, name=a.name, items=got)
 
     def stride(self, a: Agent, args) -> float:
-        """Seconds per tile. Sprinting (`run: true`) is twice as fast and costs 1 energy per 4 tiles.
-        Sailing is a steady 0.15 s per tile."""
+        """Seconds per tile: walking 0.2, sprinting (`run: true`) 0.1, sailing 0.15."""
         if a.sailing:
             return 0.15
-        if args.get("run") and a.energy > 0:
-            a.stats["run_tiles"] = a.stats.get("run_tiles", 0) + 1
-            if a.stats["run_tiles"] % 4 == 0:
-                self.spend(a, 1)
-            return 0.1
-        return 0.2
+        return 0.1 if args.get("run") else 0.2
 
     def pace(self, a: Agent, args):
         """Step first, then cool down: wait only until the previous stride is over, then claim this one.
@@ -62,7 +56,7 @@ class Movement:
         fresh wait, while the speed limit stays exactly one tile per stride."""
         while self.tick < a.ready:
             yield
-        a.ready = self.tick + sec(self.stride(a, args) * (2 if a.energy <= 0 else 1))
+        a.ready = self.tick + sec(self.stride(a, args))
 
     def _tool_step(self, a, args):
         x, y = self.target(a, args)

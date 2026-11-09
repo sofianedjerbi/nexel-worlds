@@ -58,7 +58,7 @@ class Observation:
             "tick": self.tick,
             "time": self.clock(),
             "self": {"id": a.id, "name": a.name, "x": a.x, "y": a.y, "hp": a.hp, "hunger": a.hunger,
-                     "energy": a.energy, "inventory": dict(sorted(a.inventory.items())), "deaths": a.deaths,
+                     "inventory": dict(sorted(a.inventory.items())), "deaths": a.deaths,
                      "action": a.action.tool if a.action else None,
                      "spawn": a.spawn, "sailing": a.sailing, "can": a.can,
                      "standing_on": here_g if here_b == "none" else f"{here_g}+{here_b}",

@@ -308,7 +308,7 @@ def test_picked_bush_stays_and_grows_berries_back(world):
     assert sim.world.block(a.x + 1, a.y) == "none"
 
 
-def test_sprint_is_faster_and_tiring(world):
+def test_sprint_is_faster(world):
     sim, a = world
     def pace(run_):          # ticks for 8 strides back and forth (the cooldown is what limits speed)
         t0 = sim.tick
@@ -316,8 +316,7 @@ def test_sprint_is_faster_and_tiring(world):
             run(sim, a, "step", {"dir": "E" if i % 2 else "W", "run": run_})
         return sim.tick - t0
     walk = pace(False)
-    e0 = a.energy
-    assert pace(True) < walk and a.energy < e0
+    assert pace(True) < walk
 
 
 def test_rapid_taps_keep_their_progress(world):
@@ -627,3 +626,17 @@ def test_hit_animals_run_away(world):
     for _ in range(sec(2)):
         sim.step()
     assert abs(hen.x - a.x) + abs(hen.y - a.y) >= 4                     # it ran, it didn't stay to be hit again
+
+
+def test_quick_actions_happen_on_the_move(world):
+    sim, a = world
+    walk = sim.submit(a, "walk", {"dir": "E"})
+    for _ in range(4):
+        sim.step()
+    sim.world.set(a.x, a.y - 1, block="flower")                         # a flower right beside us now
+    pick = sim.submit(a, "dig", {"x": a.x, "y": a.y - 1})
+    assert pick.result["ok"] and a.count("flower") == 1 and a.action is walk   # picked instantly, still walking
+    sim.world.set(a.x + 1, a.y - 1, block="tree")
+    chop = sim.submit(a, "dig", {"x": a.x + 1, "y": a.y - 1})
+    assert a.action is chop and walk.result["status"] == "interrupted"  # chopping takes time: it stops the walk
+    assert run(sim, a, "dig", {"x": a.x + 5, "y": a.y})["error"] == "out_of_range"

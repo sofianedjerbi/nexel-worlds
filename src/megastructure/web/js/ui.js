@@ -70,7 +70,7 @@ function drawHotbar(inv) {
   el.appendChild(bag);
   drawBag(inv, extra);
 }
-// Hearts and food sit on the hotbar (10 icons, 10 points each, halves allowed); energy is the line between them.
+// Hearts and food sit on the hotbar (10 icons, 10 points each, halves allowed).
 function drawIcons(cv, icon, value) {
   const N = 10, STEP = 12, SC = 2;
   if (cv.width !== (STEP * (N - 1) + 16) * SC) { cv.width = (STEP * (N - 1) + 16) * SC; cv.height = 16 * SC; }
@@ -88,10 +88,7 @@ function drawIcons(cv, icon, value) {
 function drawVitals(s) {
   drawIcons($("hearts"), "heart", s.hp);
   drawIcons($("foods"), "cooked_meat", s.hunger);
-  $("energy").firstChild.style.width = s.energy + "%";
-  $("energy").classList.toggle("low", s.energy < 25);
-  $("energy").title = `energy ${s.energy}`;
-  const status = s.hunger < 25 ? "Starving: eat something (E)" : s.energy < 15 ? "Exhausted: rest (R) or sleep in a bed" : "";
+  const status = s.hunger < 25 ? "Starving: eat something (E)" : "";
   $("status").textContent = status; $("status").style.display = status ? "block" : "none";
 }
 let bagFocus = null;     // bag item highlighted for keyboard use

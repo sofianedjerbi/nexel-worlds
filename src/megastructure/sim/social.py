@@ -24,10 +24,7 @@ class Social:
 
     def _tool_shout(self, a, args):
         text = self._text(args)
-        if a.energy < 10:
-            raise ActionError("too_tired", "shouting needs 10 energy")
         yield from self.wait(a, 0.1)
-        self.spend(a, 10)
         self.stats["chat"] += 1
         a.bump("said")
         self.emit("shout", a.x, a.y, radius=SHOUT_R, **{"from": a.name}, text=text)

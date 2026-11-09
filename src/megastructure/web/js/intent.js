@@ -65,11 +65,11 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   if (ent) {
     const who = ent.e.name || ent.e.kind, w = inHand(), weapon = w && WEAPON_DMG[w] ? w : null;
     if (ANIMALS[ent.e.kind] && selected && (FOODS.includes(selected) || selected === "hay") && !shift)
-      return {text: `Feed ${label(selected)} to the ${ent.e.kind}`, near: 1, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
+      return {text: `Feed ${label(selected)} to the ${ent.e.kind}`, near: USE_R, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
     if (ent.e.kind === "agent" && selected && !weapon && !shift)
       return {text: `Give ${label(selected)} to ${ent.e.name}`, near: 2, run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})};
     if (shift) {                                       // shift: the peaceful thing
-      if (ent.e.kind === "cow") return {text: "Milk cow", near: 1, diag: true, run: () => act("milk", {target: ent.e.id})};
+      if (ent.e.kind === "cow") return {text: "Milk cow", near: USE_R, diag: true, run: () => act("milk", {target: ent.e.id})};
       if (ent.e.kind === "agent") return {text: `${ent.e.name} · select an item and click to give it`, info: true};
       return {text: {chicken: "Chicken: feed it (select food) for eggs", chick: "A chick: it grows into a chicken", calf: "A calf: it grows into a cow", gloom: "A gloom: it bites at night"}[ent.e.kind] || who, info: true};
     }
@@ -157,31 +157,26 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
 }
 // walk next to the target (closest free side) if needed, then act facing it
+// Do it, right here: no walking to the target (getting close is up to you). Tile actions reach USE_R tiles, fights
+// the weapon's reach. The exact tile goes to the server, so it also works while you are walking or running.
+const USE_R = 2;   // tiles.py USE_R
+function inReach(p, it) {
+  const s = myPos(); if (!s) return false;
+  const tiles = it.foot && !it.from ? it.foot : [p];            // a structure: any of its tiles will do
+  const reach = it.attack ? it.near : USE_R;
+  return tiles.some((q) => Math.max(Math.abs(q.x - s.x), Math.abs(q.y - s.y)) <= reach)
+    && !(it.foot && it.from && it.foot.some((q) => q.x === s.x && q.y === s.y));   // not standing in a new structure's spot
+}
 async function perform(p, it) {
   if (!it || it.info || !it.run) return;
   if (it.ok === false) return toast(it.text, true);
   if (it.walk || it.here) return it.run();
-  const s = myPos(); if (!s) return;
-  if (it.foot && !it.from) {                       // a structure: any of its tiles will do
-    const adj = it.foot.find((q) => Math.abs(q.x - s.x) + Math.abs(q.y - s.y) === 1);
-    if (adj) return it.run(dirTo(adj));
-    const onIt = it.foot.some((q) => q.x === s.x && q.y === s.y);
-    if (!onIt) p = it.foot.slice().sort((a, b) => (Math.abs(a.x - s.x) + Math.abs(a.y - s.y)) - (Math.abs(b.x - s.x) + Math.abs(b.y - s.y)))[0];
+  if (!inReach(p, it)) return toast("Too far: get closer.", true);
+  if (it.foot && !it.from) {                       // a structure: aim at its nearest tile
+    const s = myPos();
+    p = it.foot.slice().sort((a, b) => Math.max(Math.abs(a.x - s.x), Math.abs(a.y - s.y)) - Math.max(Math.abs(b.x - s.x), Math.abs(b.y - s.y)))[0];
   }
-  const dist = Math.abs(p.x - s.x) + Math.abs(p.y - s.y), cheb = Math.max(Math.abs(p.x - s.x), Math.abs(p.y - s.y));
-  const inside = it.foot && it.from && it.foot.some((q) => q.x === s.x && q.y === s.y);
-  const close = dist > 0 && !inside && (it.diag ? cheb <= (it.near || 1) : dist <= (it.near || 1));
-  if (!close) {
-    const sides = (it.from || [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy})))
-      .filter((q) => walkable(q.x, q.y) && !entityAt(q) && !(it.foot && it.foot.some((r) => r.x === q.x && r.y === q.y))).sort((a, b) => (Math.abs(a.x - s.x) + Math.abs(a.y - s.y)) - (Math.abs(b.x - s.x) + Math.abs(b.y - s.y)));
-    if (!sides.length) return toast("Can't reach that.", true);
-    const r = await act("move_to", {x: sides[0].x, y: sides[0].y}, true);
-    if (!r || !r.ok) return toast("Can't get there.", true);
-    const [ax, ay] = r.result.arrived;                     // trust the server's position, not the last tick
-    const me_ = ents.get("agent" + myId); if (me_) { me_.tx = ax; me_.ty = ay; }
-    const d = Object.entries(DIRV).find(([, [dx, dy]]) => ax + dx === p.x && ay + dy === p.y);
-    return it.run(d ? d[0] : dirTo(p));
-  }
+  actTarget = p;
   return it.run(dirTo(p));
 }
 function clickTile(p, shift) {

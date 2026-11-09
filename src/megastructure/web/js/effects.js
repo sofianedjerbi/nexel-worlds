@@ -118,6 +118,29 @@ function drawFlyers(sx, sy, S, now) {
   }
   ctx.globalAlpha = 1;
 }
+// Cutting a bush: the sprite bursts into 2x2 clumps of its own pixels that fly out, land, bounce and fade.
+const SHATTER = "bvH";
+const clumpCache = new Map();
+function clumpsOf(spr) {
+  const [img, a, b, w, h] = spr, key = (img.src || "c") + a + "," + b;
+  if (clumpCache.has(key)) return clumpCache.get(key);
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d");
+  g.drawImage(img, a, b, w, h, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data, out = [];
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+    const i = (y * w + x) * 4;
+    if (d[i + 3] > 200) out.push({x, y, c: `rgb(${d[i]},${d[i + 1]},${d[i + 2]})`});
+  }
+  clumpCache.set(key, out); return out;
+}
+function shatter(x, y, spr) {
+  const [, , , w, h, dx, dy] = spr, cx = (dx + w / 2) / 16, cy = (dy + h / 2) / 16;
+  for (const q of clumpsOf(spr)) {
+    const px = (dx + q.x + 1) / 16, py = (dy + q.y + 1) / 16, ox = px - cx, oy = py - cy;
+    parts.push({x: x + px, y: y + py, vx: ox * 2.2 + (Math.random() - .5) * .5, vy: -.4 - Math.random() * .7, g: 9,
+      floor: y + .62 + Math.random() * .3, life: .45 + Math.random() * .35, age: 0, c: q.c, s: 2});   // collapses, drifts a little
+  }
+}
 // Plucking a small plant (mushroom, flower, crop, sprout): a tug up out of the soil, then it arcs into the picker's
 // hands, shrinking as it is caught (or just lifts and fades if we can't see who picked it).
 const PLUCKED = "Qf;\"w";

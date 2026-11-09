@@ -93,15 +93,12 @@
   #hover { position:fixed; pointer-events:none; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; display:none; z-index:5; }
   .rcard.kfocus, .slot.kfocus { outline:3px solid #6aa66f; outline-offset:1px; }
 
-  /* ---- HUD: hearts and food on the hotbar, the energy line between ---- */
+  /* ---- HUD: hearts and food on the hotbar ---- */
   #hud { position:fixed; left:50%; bottom:10px; transform:translateX(-50%); display:none; flex-direction:column; align-items:stretch;
     gap:3px; z-index:3; filter:drop-shadow(0 3px 0 rgba(60,40,30,.3)); pointer-events:none; }
   #hud .hudrow { display:flex; gap:clamp(2px, .4vw, 6px); align-items:center; pointer-events:auto; }
   #vitals { display:flex; justify-content:space-between; align-items:flex-end; padding:0 4px; }
   #vitals canvas { image-rendering:pixelated; }
-  #energy { height:8px; margin:0 6px 2px; border:2px solid var(--ink); border-radius:3px; background:#4a3a33; overflow:hidden; }
-  #energy i { display:block; height:100%; background:linear-gradient(#9fd37a, #6aa66f); transition:width .3s; }
-  #energy.low i { background:linear-gradient(#f0c45c, #d98e3a); }
   #status { align-self:center; text-align:center; white-space:nowrap; color:#fff8e8; font-size:18px; display:none;
     text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
   #status { color:#ffd0b8; }

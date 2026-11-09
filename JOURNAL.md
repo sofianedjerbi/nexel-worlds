@@ -535,3 +535,16 @@ Tests: 62 pass.
 - Two keys at once: turning first finishes the tile being entered in a straight line (as the server does), so no
   diagonal slide; 0 diagonal frames in Chrome over three turn patterns, display = server at the end.
 Tests: 62 pass.
+
+## 2026-11-09 · Iteration 29 — simpler needs, acting on the move, reach
+
+- No more energy: no bar, no tiredness, no rest, no sprint cost; food is the only need. Beds stay as where you wake
+  up after dying. Old saves load (unknown agent fields are dropped). Bots and the thinker updated.
+- Quick actions (picking flowers, mushrooms, berries, fruit, small things; picking up) happen alongside walking or
+  sprinting on the server: submit() tries them at once and the walk continues; timed ones (chopping) stop you, face
+  the target, and a still-held direction walks on afterwards. Clients send the exact tile (x, y) so a walking
+  client's lead doesn't miss. Held keys' auto-repeat no longer cancels a chop. Space stands you still while held.
+- Reach +1: fights 3 tiles (spear 4), digging/using/feeding/milking 2 tiles; no auto-walking to targets ("too far").
+- Hit animals flee for 4 s; bushes collapse into their own leaves; eating is three bites in 0.9 s with the food at
+  the mouth (measured from the sheet: mouth at frame row 22), getting smaller.
+Tests: 64 pass.

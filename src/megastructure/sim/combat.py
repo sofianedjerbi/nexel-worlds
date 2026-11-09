@@ -42,7 +42,6 @@ class Combat:
         if max(abs(t.x - a.x), abs(t.y - a.y)) > reach or t.hp <= 0:
             raise ActionError("missed", "target moved away")
         dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)
-        self.spend(a, 2)
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"
         self.emit("attack", a.x, a.y, attacker=a.name, target=name, damage=dmg, weapon=weapon or "fists")
         a.bump("attacks")
@@ -85,7 +84,7 @@ class Combat:
         else:
             a.spawn = None
             a.x, a.y = self.find_spawn(a.id * 31 + a.deaths)
-        a.hp, a.hunger, a.energy = 100, 70, 80
+        a.hp, a.hunger = 100, 70
         a.events.append({"tick": self.tick, "type": "respawn", "cause": cause,
                          "by": by.name if by else None, "x": a.x, "y": a.y})
 

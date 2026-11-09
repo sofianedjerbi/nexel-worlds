@@ -13,7 +13,7 @@ LEGEND = {
 DIR_ARG = {"dir": "N|E|S|W"}
 
 TOOL_SPECS = {
-    "step": {"args": {**DIR_ARG, "run": "bool (optional, sprint: 2x speed, costs energy)"}, "desc": "move one tile"},
+    "step": {"args": {**DIR_ARG, "run": "bool (optional, sprint: 2x speed)"}, "desc": "move one tile"},
     "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped"},
     "stop": {"args": {}, "desc": "stop the current action"},
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
@@ -26,12 +26,11 @@ TOOL_SPECS = {
     "drop": {"args": {"item": "str", "n": "int"}, "desc": "drop items on your tile"},
     "craft": {"args": {"recipe": "str", "n": "int (optional)"}, "desc": "craft from the recipe book"},
     "attack": {"args": {"target": "entity id", "with": "weapon (optional, e.g. sword, spear, axe; default fists)"},
-               "desc": "hit an agent or creature within reach (2 tiles, 3 with a spear in hand)"},
+               "desc": "hit an agent or creature within reach (3 tiles, 4 with a spear in hand)"},
     "give": {"args": {"target": "agent id", "item": "str", "n": "int"}, "desc": "hand items to an agent within 2 tiles"},
     "eat": {"args": {"item": "str"}, "desc": "eat food"},
-    "rest": {"args": {}, "desc": "recover energy (better by a heater or under shelter)"},
     "say": {"args": {"text": "str"}, "desc": f"local chat, heard within {SAY_R} tiles"},
-    "shout": {"args": {"text": "str"}, "desc": f"heard within {SHOUT_R} tiles, costs 10 energy"},
+    "shout": {"args": {"text": "str"}, "desc": f"heard within {SHOUT_R} tiles (3 per minute)"},
     "write_sign": {"args": {**DIR_ARG, "text": "str"}, "desc": "write on an adjacent sign or flag"},
     "read_sign": {"args": DIR_ARG, "desc": "read an adjacent sign or flag"},
     "look_far": {"args": DIR_ARG, "desc": "coarse view of the next 48 tiles in a direction"},
@@ -41,7 +40,7 @@ TOOL_SPECS = {
               "desc": "water a growing crop with the can in hand: grows twice as fast; aim at a well or water to refill"},
     "milk": {"args": {"target": "cow id"}, "desc": "milk an adjacent cow (every 2 minutes)"},
     "feed": {"args": {"target": "animal id", "item": "food"}, "desc": "feed an adjacent animal; fed chickens lay eggs"},
-    "sleep": {"args": DIR_ARG, "desc": "sleep in an adjacent bed: restores energy, and you respawn there"},
+    "sleep": {"args": DIR_ARG, "desc": "lie down in a bed nearby: you wake up there after dying"},
     "post": {"args": {**DIR_ARG, "text": "str"}, "desc": "post a letter in an adjacent mailbox"},
     "open_mail": {"args": DIR_ARG, "desc": "take the letters out of an adjacent mailbox (anyone can)"},
     "store": {"args": {**DIR_ARG, "item": "str", "n": "int"}, "desc": "put items into an adjacent chest or basket, or feed (hay, food) into a trough: animals nearby then feed themselves"},
