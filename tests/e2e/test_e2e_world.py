@@ -101,4 +101,4 @@ def test_food_tastes_better_on_a_picnic_blanket(game):
     before = game.server()["hunger"]
     game.hold_item("bread")
     game.press("e", 1400)
-    assert game.server()["hunger"] - before >= 40            # bread is 30, x1.5 on the blanket
+    assert game.server()["hunger"] - before > 50             # bread is 50, x1.5 on the blanket

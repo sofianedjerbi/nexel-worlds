@@ -91,33 +91,26 @@ function drawXp() {
   drawXpBar(into / need, level);
 }
 
-// The bar: the UI pack's wooden slider track with a green fill; the level above its middle in pixel digits, green
-// with a drop shadow (only once you have one).
-const TRACK = [36, 36, 40, 7];   // in sliders.png
-const DIGITS = ["111101101101111", "010110010010111", "111001111100111", "111001111001111", "101101111001001",
-  "111100111001111", "111100111101111", "111001001001001", "111101111101111", "111101111001111"];   // 3x5 each
+// The bar: the UI pack's wooden slider track with a green fill; the level sits on its middle in the game's font
+// (#xplevel, only once you have one).
+const TRACK = [36, 36, 40, 7], XP_K = 2;   // the track in sliders.png; CSS px an art pixel
 function drawXpBar(k, level) {
   // as wide as the whole item row (the hotbar and the craft slot), vitals likewise
   const cv = $("xpbar"), dpr = window.devicePixelRatio || 1, bar = $("hotbar").parentElement.getBoundingClientRect().width;
   if ($("vitals").style.width !== bar + "px") $("vitals").style.width = bar + "px";
-  const SC0 = Math.max(1, Math.round(HUD_K * dpr)), w = Math.max(40, Math.round(bar * dpr / SC0)), h = 11;   // the level digits sit over the track's top
-  const sig = [w, Math.round(k * w), level, dpr].join();
+  const SC0 = Math.max(1, Math.round(XP_K * dpr)), w = Math.max(40, Math.round(bar * dpr / SC0)), h = TRACK[3];
+  const lv = level ? String(level) : "";
+  if ($("xplevel").textContent !== lv) $("xplevel").textContent = lv;
+  const sig = [w, Math.round(k * w), dpr].join();
   if (cv.dataset.sig === sig) return;
   cv.dataset.sig = sig;
-  const [g, SC] = pixelCanvas(cv, w, h);
-  const [tx, ty, tw, th] = TRACK, top = h - th, cap = 4;
-  const part = (sx, sw, dx, dw) => g.drawImage(IMG.sliders, sx, ty, sw, th, dx * SC, top * SC, dw * SC, th * SC);
+  const [g, SC] = pixelCanvas(cv, w, h, XP_K);
+  const [tx, ty, tw, th] = TRACK, cap = 4;
+  const part = (sx, sw, dx, dw) => g.drawImage(IMG.sliders, sx, ty, sw, th, dx * SC, 0, dw * SC, th * SC);
   part(tx, cap, 0, cap); part(tx + cap, tw - 2 * cap, cap, w - 2 * cap); part(tx + tw - cap, cap, w - cap, cap);
   const fill = Math.round(k * (w - 4));
   if (fill > 0) {
-    g.fillStyle = "#86bb3a"; g.fillRect(2 * SC, (top + 2) * SC, fill * SC, 3 * SC);
-    g.fillStyle = "#c8ea5a"; g.fillRect(2 * SC, (top + 2) * SC, fill * SC, SC);
+    g.fillStyle = "#86bb3a"; g.fillRect(2 * SC, 2 * SC, fill * SC, 3 * SC);
+    g.fillStyle = "#c8ea5a"; g.fillRect(2 * SC, 2 * SC, fill * SC, SC);
   }
-  if (!level) return;
-  const D = 2, text = String(level), tw2 = (text.length * 4 - 1) * D, x0 = Math.floor((w - tw2) / 2), y0 = 0;   // D: art px a digit pixel
-  const px = (on) => [...text].forEach((d, i) => [...DIGITS[+d]].forEach((b, j) => {
-    if (b === "1") on(x0 + (i * 4 + j % 3) * D, y0 + Math.floor(j / 3) * D);
-  }));
-  g.fillStyle = "#2f3d1c"; px((x, y) => g.fillRect((x + 1) * SC, (y + 1) * SC, D * SC, D * SC));   // drop shadow
-  g.fillStyle = "#b8f05a"; px((x, y) => g.fillRect(x * SC, y * SC, D * SC, D * SC));
 }

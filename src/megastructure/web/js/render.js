@@ -120,6 +120,7 @@ function frame(now) {
   drawEffects(sx, sy, S, dt);
   drawPuffs(sx, sy, dt);
   drawXp();
+  foodPreview();
   drawPlucks(sx, sy, S, now);
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawHouses(sx, sy, S, dt, now);

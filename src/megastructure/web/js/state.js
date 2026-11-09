@@ -20,7 +20,7 @@ function screenOrigin(S = TS()) {
 }
 let cam = {x: 0, y: 0}, camT = {x: 0, y: 0};
 let follow = null, me = null, myId = null, meObs = null, agents = [], metrics = {}, recipes = {}, clock = {night: false, phase: .3};
-let selected = null, progress = null;
+let selected = null, progress = null, foodValue = {};   // foodValue: hunger points each food gives (from the server)
 const ents = new Map();
 let bubbles = [], floats = [];
 const requested = new Map();
@@ -42,7 +42,7 @@ function connectSpec() {
     else if (d.type === "reply") {
       if (d.rows) onRegion(d);
       else if (d.agents) { agents = d.agents; drawAgents(); }
-      else if (d.recipes) { recipes = d.recipes; drawRecipes(); }
+      else if (d.recipes) { recipes = d.recipes; foodValue = d.food || {}; drawRecipes(); }
       else if (d.tick_ms_p50 !== undefined) { metrics = d; drawStats(); }
     }
   };

@@ -18,7 +18,7 @@ from websockets.exceptions import ConnectionClosed
 
 from .devtools import dev_op
 from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
-from .tiles import RECIPES
+from .tiles import FOOD, RECIPES
 from .views import Views
 from .web_static import serve_http
 
@@ -167,7 +167,7 @@ class GameServer(Views):
                     out = self.metrics()
                 elif op == "recipes":
                     out = {"recipes": {k: {"inputs": r.inputs, "output": r.output, "station": r.station}
-                                       for k, r in RECIPES.items()}}
+                                       for k, r in RECIPES.items()}, "food": FOOD}
                 elif op == "agents":
                     out = {"agents": [dict(a.to_json(), online=a.online) for a in self.sim.agents.values()]}
                 else:

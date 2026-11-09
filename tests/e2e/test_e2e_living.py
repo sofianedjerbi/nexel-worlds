@@ -10,7 +10,7 @@ def test_eating_takes_three_bites_and_stops_when_full(game):
     game.sleep(450)
     assert game.js("myAction && myAction.tool") == "eat" and game.js("biteIcon('bread', 1) !== null")
     game.sleep(900)
-    assert game.server()["hunger"] == hunger0 + 30            # one bread
+    assert game.server()["hunger"] == hunger0 + 50            # one bread
     game.rpc("dev_needs", hunger=100)
     while game.server()["hunger"] < 100 and game.inv("bread"):
         game.press("e", 1300)

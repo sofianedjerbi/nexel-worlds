@@ -163,7 +163,10 @@ FILLERS = {
 }
 SEED_GROUNDS = {"tilled", "wet_tilled"}  # seeds only take on tilled soil
 
-FOOD = {"pumpkin": 14, "cauliflower": 10, "lettuce": 8, "eggplant": 10, "carrot": 9, "fruit": 10, "berries": 8, "mushroom": 6, "egg": 10, "meat": 6, "cooked_meat": 25, "wheat": 4, "bread": 30, "milk": 12}
+# hunger points each food gives back (100 is full; you lose 1 every 10 s; one apple on the bar is 10): snacks are an
+# apple or so, a cooked meal half the bar
+FOOD = {"wheat": 5, "berries": 10, "mushroom": 10, "lettuce": 15, "meat": 15, "egg": 15, "fruit": 20, "carrot": 20,
+        "milk": 20, "cauliflower": 25, "eggplant": 25, "pumpkin": 30, "cooked_meat": 40, "bread": 50}
 
 # what animals eat: any food, and hay (one bale feeds three times from a trough)
 FEED = {**{k: 1 for k in FOOD}, "hay": 3}

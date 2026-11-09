@@ -74,8 +74,8 @@ function drawHotbar(inv) {
 // half, empty); food is an apple drawn here in the hearts' own palette (plum outline, rose, glint, a leaf; empty is
 // the bare outline colour, like an empty heart). Pixel-exact: every art pixel is a whole number of device pixels.
 const HEART = [4, 84, 9, 8];                     // full; half and empty are the next 16 px cells along
-const FOOD = ["....sg...", "...sgg...", ".aa.s.aa.", "abbabbbba", "abcbbbbba", "abbbbbbba", "abbbbbbda", ".abbbbda.", "..aaaaa.."];
-const FOOD_COL = {a: "#664165", b: "#c87c86", c: "#e8b5ac", d: "#a8606e", s: "#7a5236", g: "#7fae5a"};
+const APPLE = ["....sg...", "...sgg...", ".aa.s.aa.", "abbabbbba", "abcbbbbba", "abbbbbbba", "abbbbbbda", ".abbbbda.", "..aaaaa.."];
+const APPLE_COL = {a: "#664165", b: "#c87c86", c: "#e8b5ac", d: "#a8606e", s: "#7a5236", g: "#7fae5a"};
 const HUD_K = 2.5;                               // CSS px an art pixel in the vitals and the xp bar
 function pixelCanvas(cv, w, h, k = HUD_K) {      // sizes a canvas for art w x h at about k CSS px an art pixel
   const SC = Math.max(1, Math.round(k * (window.devicePixelRatio || 1)));
@@ -86,9 +86,9 @@ function pixelCanvas(cv, w, h, k = HUD_K) {      // sizes a canvas for art w x h
   const g = cv.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, cv.width, cv.height);
   return [g, SC];
 }
-function drawIcons(cv, icon, value) {
-  const N = 10, hearts = icon === "heart", iw = hearts ? HEART[2] : FOOD[0].length, ih = hearts ? HEART[3] : FOOD.length;
-  const step = iw + 1, sig = icon + value + (window.devicePixelRatio || 1);
+function drawIcons(cv, icon, value, gain = 0) {   // gain: food points to preview (what eating would give back)
+  const N = 10, hearts = icon === "heart", iw = hearts ? HEART[2] : APPLE[0].length, ih = hearts ? HEART[3] : APPLE.length;
+  const step = iw + 1, sig = [icon, value, gain, window.devicePixelRatio || 1].join();
   if (cv.dataset.sig === sig) return;
   cv.dataset.sig = sig;
   const [g, SC] = pixelCanvas(cv, step * (N - 1) + iw, 9);
@@ -98,18 +98,26 @@ function drawIcons(cv, icon, value) {
       g.drawImage(IMG.hearts, (full ? 0 : half ? 1 : 2) * 16 + HEART[0], HEART[1], iw, ih, x * SC, top * SC, iw * SC, ih * SC);
       continue;
     }
-    FOOD.forEach((row, j) => [...row].forEach((c, k) => {
+    const after = value + gain, fullA = after >= (i + 1) * 10, halfA = !fullA && after >= i * 10 + 5;
+    APPLE.forEach((row, j) => [...row].forEach((c, k) => {
       if (c === ".") return;
-      const lit = full || (half && k < 5);
-      g.fillStyle = lit ? FOOD_COL[c] : FOOD_COL.a;
+      const lit = full || (half && k < 5), soon = !lit && (fullA || (halfA && k < 5));
+      g.fillStyle = lit ? APPLE_COL[c] : APPLE_COL.a;
       g.fillRect((x + k) * SC, (top + j) * SC, SC, SC);
+      if (soon) { g.globalAlpha = .55; g.fillStyle = APPLE_COL[c]; g.fillRect((x + k) * SC, (top + j) * SC, SC, SC); g.globalAlpha = 1; }
     }));
   }
   cv.classList.toggle("low", value <= 25);
 }
+// Holding food: the apples it would give back blink on the bar (every frame, from render; redrawn only on change).
+function foodPreview() {
+  if (!meObs) return;
+  const h = meObs.self.hunger, gain = selected && foodValue[selected] && h < 100 ? foodValue[selected] : 0;
+  drawIcons($("foods"), "food", h, gain && Math.floor(performance.now() / 450) % 2 === 0 ? gain : 0);
+}
 function drawVitals(s) {
   drawIcons($("hearts"), "heart", s.hp);
-  drawIcons($("foods"), "meat", s.hunger);
+  foodPreview();
   const status = s.hunger < 25 ? "Starving: eat something (E)" : "";
   $("status").textContent = status; $("status").style.display = status ? "block" : "none";
 }
