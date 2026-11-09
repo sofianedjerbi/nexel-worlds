@@ -58,10 +58,12 @@ async function act(tool, args, quiet) {
   if (!me) return null;
   if (actTarget && "dir" in args) { args = {...args, x: actTarget.x, y: actTarget.y}; delete args.dir; }
   const look = actTarget ? facingTo(actTarget) : args.dir;
+  const s0 = myPos(), dv = args.dir && DIRV[args.dir];
+  const at = "x" in args && "y" in args && tool !== "move_to" ? [args.x, args.y] : dv && s0 ? [s0.x + dv[0], s0.y + dv[1]] : null;
   actTarget = null;
   busy = true;
   // the facing only shows once the server says the action takes time (instant things don't turn you or stop you)
-  pendingAct = {tool, dir: look, tid: args.target, with: args.with, item: args.item};
+  pendingAct = {tool, dir: look, at, tid: args.target, with: args.with, item: args.item};
   const r = await rpc("act", {tool, args});
   pendingAct = null; myAction = null;
   busy = false; progress = null;

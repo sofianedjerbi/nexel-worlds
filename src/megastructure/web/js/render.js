@@ -191,7 +191,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   const moving = now - p.moved < 300;
   if (e.kind === "agent") {
     const mine = me && e.id === myId;
-    const action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null);
+    const action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, at: e.at, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null);
     if (e.doing && !p.doingSince) p.doingSince = now;
     if (!e.doing) p.doingSince = 0;
     if (!mine) p.running = !!e.run;
@@ -207,7 +207,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     }
     if (tool === "dig" || tool === "attack" || tool === "craft") {
       // full 8-frame tool swings: wind-up, strike (frame 4, with the arc), follow-through
-      const tx = Math.round(p.tx) + p.fx, ty = Math.round(p.ty) + p.fy, target = combAt(tx, ty);
+      const [tx, ty] = action.at || [Math.round(p.tx) + p.fx, Math.round(p.ty) + p.fy], target = combAt(tx, ty);   // the tile worked on
       // the sheet's swings show a tool: only use them when one is in hand; bare hands reach out and back
       const held = action.with && SWING_ROW[action.with];
       anim = held || "idle";
@@ -227,7 +227,7 @@ function drawEntity(p, sx, sy, S, t, now) {
       }
     } else if (tool === "water") {
       anim = "water"; const n = Math.floor(k * 10); frame = n % 8;
-      if (frame >= 3 && frame <= 6 && p.lastDrop !== n) { p.lastDrop = n; const tx = Math.round(p.tx) + p.fx, ty = Math.round(p.ty) + p.fy;
+      if (frame >= 3 && frame <= 6 && p.lastDrop !== n) { p.lastDrop = n; const [tx, ty] = action.at || [Math.round(p.tx) + p.fx, Math.round(p.ty) + p.fy];
         parts.push({x: tx + .3 + Math.random() * .4, y: ty - .1, vx: (Math.random() - .5) * .6, vy: 1.5, g: 9, life: .35, age: 0, c: "#8fd3f4", s: 1});
         if (n % 3 === 0) sfx("water", tx, ty); }
     } else if (tool === "milk" || tool === "feed" || tool === "sleep") {

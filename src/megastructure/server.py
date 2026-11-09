@@ -19,7 +19,7 @@ from websockets.exceptions import ConnectionClosed
 from websockets.http11 import Response
 
 from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
-from .tiles import GROUNDS, RECIPES
+from .tiles import DIRS, GROUNDS, RECIPES
 
 log = logging.getLogger("megastructure")
 PROTOCOL = 1
@@ -144,6 +144,7 @@ class GameServer:
                  "doing": a.action.tool if a.action else None, "weapon": self.sim.best_weapon(a),
                  "dir": a.action.args.get("dir") if a.action else None,
                  "tid": a.action.args.get("target") if a.action else None,
+                 "at": self.aimed(a),
                  "with": a.action.args.get("with") if a.action else None,
                  "item": a.action.args.get("item") if a.action else None,
                  "run": bool(a.action.args.get("run")) if a.action else False, "sail": a.sailing}
@@ -155,6 +156,14 @@ class GameServer:
     def mail_in(self, x, y, w, h) -> list:
         return [[mx, my, len(m["letters"])] for (mx, my), m in self.sim.world.meta.items()
                 if m.get("letters") and x <= mx < x + w and y <= my < y + h]
+
+    def aimed(self, a) -> list | None:
+        """The tile an agent's current action works on (for the strike effects other players see)."""
+        args = a.action.args if a.action else {}
+        if "x" in args and "y" in args and args.get("dir") is None:
+            return [args["x"], args["y"]]
+        d = DIRS.get(str(args.get("dir", "")).upper())
+        return [a.x + d[0], a.y + d[1]] if d else None
 
     def troughs_in(self, x, y, w, h) -> list:
         """Troughs with feed in them (the client draws hay in the box)."""
