@@ -110,8 +110,8 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Building, 
             fn(ev)
         return ev
 
-    def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None):
-        self.world.set(x, y, ground=ground, block=block)
+    def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None, level=None):
+        self.world.set(x, y, ground=ground, block=block, level=level)
         self.stats["tiles_changed"] += 1
         g, b = self.world.ground(x, y), self.world.block(x, y)
         if g == "tilled":
@@ -123,7 +123,7 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Building, 
         info = {"x": x, "y": y, "ground": g, "block": b}
         if by is not None and by.action is not None:
             by.action.tiles.append(info)
-        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause)
+        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause, lv=self.world.level_raw(x, y))
 
     def add_items(self, x, y, items: dict):
         if not items:

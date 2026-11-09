@@ -1,6 +1,7 @@
 """Developer tools for QA (only with --dev): time travel, teleport, items, damage, painting tiles."""
 
 from .sim import DAY_TICKS, TICK_HZ
+from .gen import RAMP
 from .tiles import BLOCKS, GROUNDS
 
 
@@ -20,15 +21,18 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
     if op == "dev_damage":
         sim.damage(agent, int(msg.get("n", 10)), "dev")
         return {"hp": agent.hp}
-    if op == "dev_stamp":                        # paint ASCII rows of tile chars at x, y (QA builds)
+    if op == "dev_stamp":                        # paint ASCII rows of tile chars at x, y (QA builds), on flat land
         bch, gch = {b.char: b.name for b in BLOCKS}, {g.char: g.name for g in GROUNDS}
         x0, y0 = int(msg["x"]), int(msg["y"])
+        levels = list(msg.get("levels") or [])  # optional rows of heights: digits, a capital letter for stairs
         for j, row in enumerate(list(msg.get("rows") or [])[:200]):
             for i, ch in enumerate(str(row)[:200]):
+                lc = levels[j][i] if j < len(levels) and i < len(levels[j]) else "0"
+                lv = ord(lc) - 65 | RAMP if lc.isupper() else int(lc)
                 if ch in gch:
-                    sim.set_tile(x0 + i, y0 + j, ground=gch[ch], block="none")
+                    sim.set_tile(x0 + i, y0 + j, ground=gch[ch], block="none", level=lv)
                 elif ch in bch:
-                    sim.set_tile(x0 + i, y0 + j, ground="grass", block=bch[ch])
+                    sim.set_tile(x0 + i, y0 + j, ground="grass", block=bch[ch], level=lv)
         return {}
     if op == "dev_creatures":                    # clear creatures within `clear` tiles; spawn {"kind", "dx", "dy"}
         from .sim import CREATURES, Creature

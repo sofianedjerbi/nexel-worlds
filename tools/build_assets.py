@@ -11,7 +11,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-from derived_art import largest_shape, thin_fall_sheet, thin_stump
+from derived_art import largest_shape, stairs_cutout, thin_fall_sheet, thin_stump
 from PIL import Image
 from pixel_art import GEN, P, art
 
@@ -26,6 +26,11 @@ COPY = {  # zip-internal path suffix -> output name
     "Tilesets/ground tiles/Old tiles/Tilled_Dirt_v2.png": "tilled.png",
     "Tilesets/ground tiles/New tiles/Stone_Ground_Tiles.png": "stone.png",
     "Tilesets/ground tiles/New tiles/Bush_Tiles.png": "hedge.png",
+    "Tilesets/ground tiles/New tiles/Grass_Hill_Tiles_v2.png": "hill1.png",          # relief: one sheet a level
+    "Tilesets/ground tiles/New tiles/Darker_Grass_Hills_Tiles_v2.png": "hill2.png",
+    "Tilesets/ground tiles/New tiles/Stone_Ground_Hills_Tiles.png": "hill3.png",
+    "Tilesets/ground tiles/New tiles/Grass_Hill_Tiles_Slopes v.2.png": "stairs1.png",
+    "Tilesets/ground tiles/New tiles/Darker_Grass_Hill_Tiles_Slopes_v2.png": "stairs2.png",
     "Tilesets/Building parts/Stone_Path.png": "cobble.png",
     "Tilesets/Building parts/Paths.png": "planks.png",
     "Tilesets/Building parts/Fences.png": "fences.png",
@@ -156,6 +161,9 @@ def build(downloads: Path):
 
     thin_fall_sheet(OUT).save(OUT / "thin_fall.png")
     thin_stump(OUT).save(OUT / "stump_thin.png")
+    # stairs up to level 1 (light hill grass) and to level 2 (darker), their grass background see-through
+    stairs_cutout(OUT / "stairs1.png", ("#c0d470", "#b7cd69")).save(OUT / "stairs1.png")
+    stairs_cutout(OUT / "stairs2.png", ("#aed499", "#a8ca9a")).save(OUT / "stairs2.png")
 
     names = list(GEN)
     sheet = Image.new("RGBA", (16 * len(names), 16))
@@ -171,7 +179,8 @@ def build(downloads: Path):
         "License summary: modification allowed; use in commercial and non-commercial projects allowed;\n"
         "the asset pack itself may not be redistributed or resold, even modified; no NFTs or AI training;\n"
         "credit required. Only the sheets this game uses are included here.\n\n"
-        "`gen.png`, `ash.png`, `water_deep.png` and `fruit_bare.png` are extra tiles made for this game from the pack.\n")
+        "`gen.png`, `ash.png`, `water_deep.png` and `fruit_bare.png` are extra tiles made for this game from the pack;\n"
+        "`stairs1.png` and `stairs2.png` are the pack's slope pieces with their background cut out.\n")
     print("wrote", sorted(p.name for p in OUT.iterdir()))
 
 

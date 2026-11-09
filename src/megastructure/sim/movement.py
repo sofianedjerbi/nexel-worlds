@@ -19,6 +19,15 @@ class Movement:
             return a.sailing or block.name == "boat"
         return ground.walkable and not block.solid
 
+    def can_go(self, a: Agent, x: int, y: int) -> bool:
+        """From where `a` stands to the neighbouring (x, y): the tile can be entered, and no cliff is in the way."""
+        return self.can_enter(a, x, y) and self.world.can_step(a.x, a.y, x, y)
+
+    def why_not(self, a: Agent, x: int, y: int) -> str:
+        if self.can_enter(a, x, y) and not self.world.can_step(a.x, a.y, x, y):
+            return "a cliff (find stairs)" if self.world.level(x, y) > self.world.level(a.x, a.y) else "a drop (find stairs)"
+        return self.describe(x, y)
+
     def move(self, a: Agent, x: int, y: int):
         """Move to an adjacent tile, boarding or leaving a boat when crossing the shoreline."""
         if not a.sailing and self.world.block(x, y) == "boat":
@@ -60,11 +69,11 @@ class Movement:
 
     def _tool_step(self, a, args):
         x, y = self.target(a, args)
-        if not self.can_enter(a, x, y):
-            raise ActionError("blocked", f"{args['dir']} is {self.describe(x, y)}")
+        if not self.can_go(a, x, y):
+            raise ActionError("blocked", f"{args['dir']} is {self.why_not(a, x, y)}")
         yield from self.pace(a, args)
-        if not self.can_enter(a, x, y):
-            raise ActionError("blocked", f"{args['dir']} is {self.describe(x, y)}")
+        if not self.can_go(a, x, y):
+            raise ActionError("blocked", f"{args['dir']} is {self.why_not(a, x, y)}")
         self.move(a, x, y)
         return {}
 
@@ -77,11 +86,11 @@ class Movement:
         dx, dy = DIRS[d]
         steps = 0
         while steps < 600:
-            if not self.can_enter(a, a.x + dx, a.y + dy):
-                return {"steps": steps, "stopped": "blocked", "blocked_by": self.describe(a.x + dx, a.y + dy)}
+            if not self.can_go(a, a.x + dx, a.y + dy):
+                return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
             yield from self.pace(a, args)
-            if not self.can_enter(a, a.x + dx, a.y + dy):
-                return {"steps": steps, "stopped": "blocked", "blocked_by": self.describe(a.x + dx, a.y + dy)}
+            if not self.can_go(a, a.x + dx, a.y + dy):
+                return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
             self.move(a, a.x + dx, a.y + dy)
             steps += 1
         return {"steps": steps, "stopped": "limit"}
@@ -97,7 +106,8 @@ class Movement:
             raise ActionError("bad_args", "move_to needs integer x and y")
         replans = 0
         ok = lambda x, y: self.can_enter(a, x, y) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
-        path = astar(ok, (a.x, a.y), (gx, gy))
+        step = lambda p, q: self.world.can_step(*p, *q)
+        path = astar(ok, (a.x, a.y), (gx, gy), step=step)
         if path is None:
             far = abs(gx - a.x) + abs(gy - a.y) > 64
             raise ActionError("no_path", "target further than 64 tiles" if far else
@@ -106,9 +116,9 @@ class Movement:
         while path:
             yield from self.pace(a, args)
             nx, ny = path[0]
-            if not self.can_enter(a, nx, ny):
+            if not self.can_go(a, nx, ny):
                 replans += 1
-                path = astar(ok, (a.x, a.y), (gx, gy)) if replans <= 2 else None
+                path = astar(ok, (a.x, a.y), (gx, gy), step=step) if replans <= 2 else None
                 if path is None:
                     raise ActionError("blocked", f"path blocked at ({nx},{ny}); stopped at ({a.x},{a.y})")
                 continue

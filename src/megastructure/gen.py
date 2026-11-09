@@ -51,18 +51,64 @@ def _picked(seed: int, x: int, y: int, cell: int, salt: int) -> tuple[bool, floa
     return (x - cx * cell) + (y - cy * cell) * cell == k, _hash(seed, cx, cy, salt + 1)
 
 
-def gen_tile(seed: int, x: int, y: int) -> tuple[int, int]:
+RAMP = 0x10          # in a level byte: stairs down to the south from this tile (with its east or west twin)
+PEAK = 3             # the highest level: bare stone, no stairs up
+
+
+def _elev(seed: int, x: int, y: int) -> float:
+    return fbm(seed, x, y, 90, 1) + max(0.0, 0.25 - math.hypot(x, y) / 400)
+
+
+def gen_level(seed: int, x: int, y: int) -> int:
+    """Height, 0-3: terraced hills inland, rising to stone peaks; shores, water and the spawn meadow stay low."""
+    d = math.hypot(x, y)
+    elev = _elev(seed, x, y)
+    if d < 14 or elev < 0.46:
+        return 0
+    h = fbm(seed, x, y, 56, 61, octaves=2) + (elev - 0.46) * 0.6     # two octaves: long, straight-ish cliffs
+    return 0 if h < 0.65 else 1 if h < 0.73 else 2 if h < 0.81 else PEAK    # ~65% low, 15% / 12% terraces, 8% peaks
+
+
+def _ramp_fits(seed: int, x: int, y: int, lv) -> bool:
+    up = lv(x, y)
+    if not 1 <= up < PEAK or any(lv(x + i, y) != up for i in (-1, 1, 2)) or any(lv(x + i, y + 1) != up - 1 for i in (0, 1)):
+        return False
+    return all(gen_tile(seed, x + i, y + 1, up - 1)[1] == B["none"] for i in (0, 1))
+
+
+def _is_ramp(seed: int, x: int, y: int, lv) -> bool:
+    """Stairs: a pair of tiles (x, x+1) along a south cliff that goes on either side (the stairs are cut into it),
+    the landing below clear. Along each row, every stretch of 6 gets the first place that fits, from a hashed start;
+    (x, x+1) stays inside its stretch, so pairs never touch. `lv(x, y)` gives levels."""
+    cell = x // 6
+    start = int(_hash(seed, cell, y, 71) * 5)
+    for k in range(5):
+        cx = cell * 6 + (start + k) % 5
+        if _ramp_fits(seed, cx, y, lv):
+            return cx == x
+    return False
+
+
+def ramp_at(seed: int, x: int, y: int, lv) -> bool:
+    """This tile is either half of a pair of stairs."""
+    return _is_ramp(seed, x, y, lv) or _is_ramp(seed, x - 1, y, lv)
+
+
+def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
     # big calm islands; the spawn area around the origin is lifted into an open meadow
     d = math.hypot(x, y)
-    elev = fbm(seed, x, y, 90, 1) + max(0.0, 0.25 - d / 400)
+    elev = _elev(seed, x, y)
     if elev < 0.34:
         return G["deep_water"], B["none"]
     if elev < 0.41:
         return G["water"], B["none"]
     if elev < 0.425:
         return G["dirt"], B["none"]  # thin sandy shore
+    if level >= PEAK:                # stone peaks: boulders and ore, nothing grows
+        cand, roll = _picked(seed, x, y, 3, 81)
+        return G["grass"], (B["ore"] if roll < 0.25 else B["rock"]) if cand and roll < 0.55 else B["none"]
     meadow = d < 6  # a small clearing at spawn; trees and bushes are in view from the start
-    ground = G["grass"] if fbm(seed, x, y, 30, 2) > 0.3 else G["dirt"]
+    ground = G["grass"] if level or fbm(seed, x, y, 30, 2) > 0.3 else G["dirt"]   # hills are grassy
     if meadow:
         return G["grass"], B["none"]
 
@@ -95,14 +141,25 @@ def gen_tile(seed: int, x: int, y: int) -> tuple[int, int]:
     return ground, B["none"]
 
 
-def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray]:
+def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, bytearray]:
+    """Ground, blocks and levels (with the RAMP flag) of one chunk."""
     ground = bytearray(CHUNK * CHUNK)
     block = bytearray(CHUNK * CHUNK)
+    level = bytearray(CHUNK * CHUNK)
     bx, by = cx * CHUNK, cy * CHUNK
+    memo = {}
+
+    def lv(x, y):                    # levels, including a margin around the chunk (stairs look at their neighbours)
+        v = memo.get((x, y))
+        if v is None:
+            v = memo[(x, y)] = gen_level(seed, x, y)
+        return v
+
     for ly in range(CHUNK):
         for lx in range(CHUNK):
-            g, b = gen_tile(seed, bx + lx, by + ly)
-            i = ly * CHUNK + lx
-            ground[i] = g
-            block[i] = b
-    return ground, block
+            x, y, i = bx + lx, by + ly, ly * CHUNK + lx
+            ramp = ramp_at(seed, x, y, lv)
+            g, b = gen_tile(seed, x, y, lv(x, y))
+            ground[i], block[i] = g, B["none"] if ramp else b
+            level[i] = lv(x, y) | (RAMP if ramp else 0)
+    return ground, block, level

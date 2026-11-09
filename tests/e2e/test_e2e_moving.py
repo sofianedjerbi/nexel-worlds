@@ -70,3 +70,21 @@ def test_walls_stop_you_and_turn_you(game):
     game.sleep(300)
     assert game.pos() == (x0, y0)                         # blocked: you stay
     assert game.js("ents.get('agent' + myId).fx") == 1    # but you now face it
+
+
+def test_cliffs_stop_you_and_stairs_take_you_up(game):
+    # a hill two rows north: 7 wide, 3 deep, stairs (B: level 1, going down south) in the middle of its south edge
+    game.stamp(-3, -4, ["......."] * 3, levels=["1111111", "1111111", "11BB111"])
+    x, y = game.pos()
+    game.js(f"act('move_to', {{x: {x + 2}, y: {y}}})")          # under the cliff, beside the stairs
+    game.sleep(700)
+    game.hold(["w"], 700)                                       # walk north: one tile, then the cliff
+    game.sleep(400)
+    assert game.pos() == (x + 2, y - 1) == (game.server()["x"], game.server()["y"])
+    game.js(f"act('move_to', {{x: {x}, y: {y - 1}}})")          # to the stairs' landing
+    game.sleep(800)
+    game.hold(["w"], 900)                                       # up the stairs and onto the hill
+    game.sleep(400)
+    s = game.server()
+    assert s["y"] <= y - 3 and game.pos() == (s["x"], s["y"])
+    assert game.js(f"levelAt({s['x']}, {s['y']})") == 1

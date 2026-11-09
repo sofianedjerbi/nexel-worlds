@@ -13,16 +13,32 @@ function tile(x, y) {
   return [b.comb[i], b.gnd[i]];
 }
 const combAt = (x, y) => { const t = tile(x, y); return t ? t[0] : null; };
+// Relief: a level char per tile, a digit (the height) or a capital letter where stairs lead down to the south.
+function lvChar(x, y) {
+  const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B)));
+  return b ? b.lv[(y - b.by * B) * B + (x - b.bx * B)] : null;
+}
+const levelAt = (x, y) => { const c = lvChar(x, y); return c === null ? 0 : c >= "A" ? c.charCodeAt(0) - 65 : c.charCodeAt(0) - 48; };
+const rampAt = (x, y) => { const c = lvChar(x, y); return c !== null && c >= "A"; };
+function canStep(x0, y0, x1, y1) {          // as World.can_step: on the level, or up and down stairs; cliffs can't be climbed
+  const l0 = levelAt(x0, y0), l1 = levelAt(x1, y1);
+  if (l0 === l1) return true;
+  if (x0 !== x1 || Math.abs(l0 - l1) !== 1) return false;
+  const [ux, uy] = l0 > l1 ? [x0, y0] : [x1, y1];
+  return rampAt(ux, uy) && Math.max(y0, y1) === uy + 1;
+}
 const gndAt = (x, y) => { const t = tile(x, y); return t ? t[1] : null; };
 const dirtyTiles = [];                 // tiles to redraw (x, y), processed within a per-frame budget
 function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }
 // picked plants: full -> bare (fruit flies to the picker); bare -> full when it grows back
 const PICK = {F: "U", b: "v"};
-function setTile(x, y, comb, gnd, who = null) {
+function setTile(x, y, comb, gnd, who = null, lv = null) {
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
   if (!b) return;
   const i = (y - by * B) * B + (x - bx * B);
-  if (b.comb[i] === comb && b.gnd[i] === gnd) return;
+  const lc = lv === null ? b.lv[i] : String.fromCharCode(((lv & 16) ? 65 : 48) + (lv & 15));
+  if (b.comb[i] === comb && b.gnd[i] === gnd && b.lv[i] === lc) return;
+  if (b.lv[i] !== lc) { b.lv[i] = lc; for (let d = -2; d <= 2; d++) touch(x + d, y); }   // relief changed: edges around redraw
   const old = b.comb[i], now = performance.now();
   if (PICK[old] === comb) picked(x, y, old, who, now);
   else if (old === "T" && comb !== "T") felled(x, y, who, now);
@@ -42,15 +58,19 @@ function setTile(x, y, comb, gnd, who = null) {
 function onRegion(d) {
   if (d.w !== B || d.h !== B || d.x % B || d.y % B) return;
   const bx = d.x / B, by = d.y / B, k = bkey(bx, by);
-  const comb = [], gnd = [];
-  for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) { comb.push(d.rows[j][i]); gnd.push(d.ground[j][i]); }
+  const comb = [], gnd = [], lv = [];
+  for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) { comb.push(d.rows[j][i]); gnd.push(d.ground[j][i]); lv.push(d.levels ? d.levels[j][i] : "0"); }
   requested.delete(k);
   const old = blocks.get(k);
   if (old && old.drawn) {             // resync: only redraw what actually changed
-    for (let i = 0; i < B * B; i++) if (old.comb[i] !== comb[i] || old.gnd[i] !== gnd[i]) setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i]);
+    for (let i = 0; i < B * B; i++) {
+      if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && old.lv[i] === lv[i]) continue;
+      const c = lv[i].charCodeAt(0), raw = c >= 65 ? (c - 65) | 16 : c - 48;
+      setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, raw);
+    }
     old.at = performance.now(); return;
   }
-  const b = {bx, by, comb, gnd, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
+  const b = {bx, by, comb, gnd, lv, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
   comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
   blocks.set(k, b);
   // neighbours' edge tiles depend on this block for autotiling
@@ -64,7 +84,7 @@ const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
 const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVXYJmqeyUv".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
-  const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1]); };
+  const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1], x + dx, y + dy); };
   if (p(0, -1)) m |= N_; if (p(1, 0)) m |= E_; if (p(0, 1)) m |= S_; if (p(-1, 0)) m |= W_;
   if (p(1, -1)) m |= NE; if (p(1, 1)) m |= SE; if (p(-1, 1)) m |= SW; if (p(-1, -1)) m |= NW;
   return m;
@@ -97,12 +117,16 @@ function drawTile(x, y) {
     if (gr === "." || hasGrassNeighbour(x, y)) {
       if (gr === "." || gr === "_" || gr === "n") drawBlobLayer(g, IMG.grass, x, y, (_, gg) => gg === "." || gg === "_" || gg === "n", ox, oy, gr === "." ? .3 : 0);
     }
-    if (gr === "o" || gr === "u") drawBlobLayer(g, IMG.tilled, x, y, (_, gg) => gg === "o" || gg === "u", ox, oy, 0);
-    if (gr === "u") drawBlobLayer(g, IMG.tilled_wet, x, y, (_, gg) => gg === "u", ox, oy, 0);
-    if (gr === "n") g.drawImage(IMG.bridge, 0, 32, 16, 16, ox, oy, 16, 16);
-    if (gr === "'") drawBlobLayer(g, IMG.ash, x, y, (_, gg) => gg === "'", ox, oy, 0);
-    if (gr === "_") g.drawImage(IMG.cobble, [16, 32, 0][Math.floor(hash(x, y, 9) * 3)], [16, 32, 48][Math.floor(hash(x, y, 10) * 3)], 16, 16, ox, oy, 16, 16);
+    groundMarks(g, x, y, gr, ox, oy);
   }
+  // relief: each level lays its hill sheet (grass, darker grass, stone peaks) over the tiles at least that high; the
+  // sheets' edge tiles carry the cliff face, so a plateau shows its south cliff and a soft rim round the rest
+  const lv = levelAt(x, y);
+  // (stairs: the tile below a stair counts as up there too, so no cliff face is drawn where the steps are cut in)
+  const high = (k) => (c, gg, tx, ty) => levelAt(tx, ty) >= k || (ty === y + 1 && tx === x && rampAt(x, y));
+  for (let k = 1; k <= lv; k++) drawBlobLayer(g, IMG["hill" + k], x, y, high(k), ox, oy, k < 3 ? .25 : .1);
+  if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
+  drawStairs(g, x, y, ox, oy);
   // flat things that live in the ground layer
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
   const hd = hash(x, y, 41);
@@ -115,6 +139,24 @@ function drawTile(x, y) {
   }
 }
 const hasGrassNeighbour = () => true;
+// what's laid on the ground: tilled soil (wet or not), floors, ash, cobble
+function groundMarks(g, x, y, gr, ox, oy) {
+  if (gr === "o" || gr === "u") drawBlobLayer(g, IMG.tilled, x, y, (_, gg) => gg === "o" || gg === "u", ox, oy, 0);
+  if (gr === "u") drawBlobLayer(g, IMG.tilled_wet, x, y, (_, gg) => gg === "u", ox, oy, 0);
+  if (gr === "n") g.drawImage(IMG.bridge, 0, 32, 16, 16, ox, oy, 16, 16);
+  if (gr === "'") drawBlobLayer(g, IMG.ash, x, y, (_, gg) => gg === "'", ox, oy, 0);
+  if (gr === "_") g.drawImage(IMG.cobble, [16, 32, 0][Math.floor(hash(x, y, 9) * 3)], [16, 32, 48][Math.floor(hash(x, y, 10) * 3)], 16, 16, ox, oy, 16, 16);
+}
+// Stairs: the pack's 2x2 slope piece, cut into a south cliff: its top half on the pair of stair tiles, its bottom
+// half on the landing below them. Drawn a quarter per tile, so redrawing any one tile keeps it whole.
+function drawStairs(g, x, y, ox, oy) {
+  const up = rampAt(x, y), ry = up ? y : y - 1;
+  if (!up && !rampAt(x, ry)) return;
+  const west = rampAt(x + 1, ry), x0 = west ? x : x - 1;          // the pair's west tile
+  const variant = Math.floor(hash(x0, ry, 77) * 3) * 32;            // planks, stepping stones, wide planks
+  const sheet = levelAt(x, ry) >= 2 ? IMG.stairs2 : IMG.stairs1;    // the darker terrace has darker grass shading
+  g.drawImage(sheet, variant + (west ? 0 : 16), up ? 0 : 16, 16, 16, ox, oy, 16, 16);
+}
 function renderBlock(b) {
   b.canvas = document.createElement("canvas"); b.canvas.width = B * 16; b.canvas.height = B * 16;
   b.ctx = b.canvas.getContext("2d");

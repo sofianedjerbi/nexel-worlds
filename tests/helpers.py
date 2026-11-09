@@ -8,10 +8,13 @@ def make(tmp_path, name="w"):
 
 
 def clear(sim, a, r=6):
-    """Flat empty deck around the agent, and no creatures, for predictable tests."""
+    """Flat empty deck around the agent (flat in height too, out to 3r), and no creatures, for predictable tests."""
+    for y in range(a.y - 3 * r, a.y + 3 * r + 1):
+        for x in range(a.x - 3 * r, a.x + 3 * r + 1):
+            sim.world.set(x, y, level=0)
     for y in range(a.y - r, a.y + r + 1):
         for x in range(a.x - r, a.x + r + 1):
-            sim.world.set(x, y, ground="dirt", block="none")
+            sim.world.set(x, y, ground="dirt", block="none", level=0)
     sim.creatures.clear()
 
 

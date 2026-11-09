@@ -5,10 +5,11 @@ import heapq
 NEIGHBOURS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 
 
-def astar(passable, start, goal, max_nodes=2500, max_dist=64, occupied=frozenset()):
+def astar(passable, start, goal, max_nodes=2500, max_dist=64, occupied=frozenset(), step=None):
     """Return a list of tiles from start (exclusive) to goal (inclusive), or None.
 
-    If the goal itself is impassable, path to an adjacent tile instead.
+    If the goal itself is impassable, path to an adjacent tile instead. `step(a, b)`, if given, says whether you
+    can go from tile a to its neighbour b (cliffs and stairs).
     Ties are broken deterministically by insertion order.
     """
     sx, sy = start
@@ -49,7 +50,7 @@ def astar(passable, start, goal, max_nodes=2500, max_dist=64, occupied=frozenset
         c1 = cost[cur] + 1
         for dx, dy in NEIGHBOURS:
             nxt = (cx + dx, cy + dy)
-            if nxt in cost or not ok(nxt):
+            if nxt in cost or not ok(nxt) or (step is not None and not step(cur, nxt)):
                 continue
             if abs(nxt[0] - sx) + abs(nxt[1] - sy) > max_dist:
                 continue

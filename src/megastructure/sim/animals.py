@@ -92,7 +92,7 @@ class Animals:
         # animals and glooms can't work doors or gates: houses keep glooms out, fenced pens keep animals in
         if self.world.block(x, y) in ("door", "gate"):
             return False
-        if self.world.passable(x, y) and self.entity_at(x, y) is None:
+        if self.world.passable(x, y) and self.world.can_step(c.x, c.y, x, y) and self.entity_at(x, y) is None:
             c.x, c.y = x, y
             return True
         return False

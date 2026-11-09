@@ -3,8 +3,9 @@
 const DIRV = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
 function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p.ty} : meObs ? meObs.self : null; }
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
-function walkable(x, y) {
+function walkable(x, y, fx, fy) {               // (fx, fy): where you come from, for cliffs and stairs
   const t = tile(x, y); if (!t) return false;
+  if (fx !== undefined && !canStep(fx, fy, x, y)) return false;
   if (t[1] === "~" || t[1] === "=") return !!(meObs && meObs.self.sailing) || t[0] === "V";   // water: only by boat
   return WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
 }

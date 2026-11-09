@@ -1,5 +1,6 @@
 """What an agent perceives: the observation dict of the agent API."""
 
+from ..gen import RAMP
 from .constants import VIEW_R
 from .entities import CREATURES, Agent
 from .progress import level_of
@@ -43,6 +44,12 @@ class Observation:
                 used.add(ch)
                 row.append(ch)
             grid.append("".join(row))
+        # heights, same window: a digit per tile (0 is low ground), a capital letter (B = 1...) for stairs going south;
+        # only sent when there is any relief in view
+        heights = ["".join(chr((65 if v & RAMP else 48) + (v & 15)) for v in (self.world.level_raw(x, y)
+                   for x in range(a.x - R, a.x + R + 1))) for y in range(a.y - R, a.y + R + 1)]
+        if all(set(h) <= {"0"} for h in heights):
+            heights = None
         items, signs = [], []
         for (x, y), pile in self.items.items():
             if abs(x - a.x) <= R and abs(y - a.y) <= R and pile:
@@ -65,6 +72,7 @@ class Observation:
                      "standing_on": here_g if here_b == "none" else f"{here_g}+{here_b}",
                      "sheltered": self.sheltered(a.x, a.y)},
             "grid": grid,
+            **({"heights": heights} if heights else {}),
             "legend": {ch: LEGEND[ch] for ch in sorted(used) if ch in LEGEND},
             "entities": out_ents[:20],
             "items": items[:15],

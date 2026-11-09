@@ -7,7 +7,7 @@ import zlib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .gen import CHUNK, gen_chunk, gen_tile
+from .gen import CHUNK, RAMP, gen_chunk, gen_tile
 from .tiles import BLOCKS, GROUNDS, B, G
 
 THREADS = sys.platform != "emscripten"   # the in-browser demo has no threads: it generates land inline
@@ -24,22 +24,24 @@ CREATE TABLE IF NOT EXISTS creatures(id INTEGER PRIMARY KEY, json TEXT);
 
 
 class Chunk:
-    __slots__ = ("cx", "cy", "ground", "block", "dirty", "touched")
+    __slots__ = ("cx", "cy", "ground", "block", "level", "dirty", "touched")
 
-    def __init__(self, cx, cy, ground, block):
+    def __init__(self, cx, cy, ground, block, level=None):
         self.cx, self.cy = cx, cy
         self.ground, self.block = ground, block
+        self.level = level if level is not None else bytearray(CHUNK * CHUNK)   # heights (gen.RAMP flags stairs)
         self.dirty = False
         self.touched = 0
 
     def pack(self) -> bytes:
-        return zlib.compress(bytes(self.ground) + bytes(self.block), 6)
+        return zlib.compress(bytes(self.ground) + bytes(self.block) + bytes(self.level), 6)
 
     @classmethod
     def unpack(cls, cx, cy, data: bytes) -> "Chunk":
         raw = zlib.decompress(data)
         n = CHUNK * CHUNK
-        return cls(cx, cy, bytearray(raw[:n]), bytearray(raw[n:]))
+        # chunks saved before the land had relief carry no levels: they stay flat (nothing built on them moves)
+        return cls(cx, cy, bytearray(raw[:n]), bytearray(raw[n:2 * n]), bytearray(raw[2 * n:3 * n]) if len(raw) >= 3 * n else None)
 
 
 class Store:
@@ -109,8 +111,8 @@ class World:
         c.touched = self.tick
         return c
 
-    def _install(self, cx, cy, g, b) -> Chunk:
-        c = Chunk(cx, cy, g, b)
+    def _install(self, cx, cy, g, b, lv) -> Chunk:
+        c = Chunk(cx, cy, g, b, lv)
         c.dirty = True
         self.chunks[(cx, cy)] = c
         self.fresh.append((cx, cy))                     # new land: the simulation may put animals on it
@@ -193,15 +195,38 @@ class World:
         i = (y & 31) * CHUNK + (x & 31)
         return c.ground[i], c.block[i]
 
+    def level_raw(self, x: int, y: int) -> int:
+        return self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)]
+
+    def level(self, x: int, y: int) -> int:
+        """Height of the land here, 0-3."""
+        return self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] & 0x0F
+
+    def ramp(self, x: int, y: int) -> bool:
+        """Stairs: from here you can go down to the tile south of you (and come up from it)."""
+        return bool(self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] & RAMP)
+
+    def can_step(self, x0: int, y0: int, x1: int, y1: int) -> bool:
+        """Between neighbouring tiles: on the level, or up and down stairs. Cliffs can't be climbed."""
+        l0, l1 = self.level(x0, y0), self.level(x1, y1)
+        if l0 == l1:
+            return True
+        if x0 != x1 or abs(l0 - l1) != 1:
+            return False
+        upper = (x0, y0) if l0 > l1 else (x1, y1)
+        return self.ramp(*upper) and max(y0, y1) == upper[1] + 1      # the stairs lead south, down to the landing
+
     def ground(self, x, y) -> str:
         return GROUNDS[self.get(x, y)[0]].name
 
     def block(self, x, y) -> str:
         return BLOCKS[self.get(x, y)[1]].name
 
-    def set(self, x: int, y: int, ground: str | None = None, block: str | None = None):
+    def set(self, x: int, y: int, ground: str | None = None, block: str | None = None, level: int | None = None):
         c = self.chunk(x >> 5, y >> 5)
         i = (y & 31) * CHUNK + (x & 31)
+        if level is not None:                    # the raw level byte (height, with gen.RAMP for stairs)
+            c.level[i] = level
         if ground is not None:
             c.ground[i] = G[ground]
         if block is not None:

@@ -193,7 +193,7 @@ function syncWalk() {
       const [dx, dy] = DIRV[prev.dir];
       const nx = dx > 0 ? Math.ceil(p.x - .05) : dx < 0 ? Math.floor(p.x + .05) : Math.round(p.x);
       const ny = dy > 0 ? Math.ceil(p.y - .05) : dy < 0 ? Math.floor(p.y + .05) : Math.round(p.y);
-      if ((nx !== p.tx || ny !== p.ty) && walkable(nx, ny)) {
+      if ((nx !== p.tx || ny !== p.ty) && walkable(nx, ny, p.tx, p.ty)) {
         p.tx = nx; p.ty = ny; pred = {x: nx, y: ny, until: performance.now() + 600};
         rpc("act", {tool: "move_to", args: {x: nx, y: ny}});
         return;

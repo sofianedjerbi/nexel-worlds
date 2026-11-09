@@ -110,3 +110,16 @@ def largest_shape(img: Image.Image) -> Image.Image:
     for x, y in best:
         op[x, y] = px[x, y]
     return out
+
+
+def stairs_cutout(sheet: Path, background: tuple[str, ...]) -> Image.Image:
+    """The pack's stairs (slope pieces) with their grass background made see-through: what's left (the steps, the
+    cliff ends either side, their shading) goes over whatever ground is there, any shade of grass, any level."""
+    img = Image.open(sheet).convert("RGBA")
+    clear = {tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in background}
+    px = img.load()
+    for y in range(img.height):
+        for x in range(img.width):
+            if px[x, y][:3] in clear:
+                px[x, y] = (0, 0, 0, 0)
+    return img
