@@ -79,6 +79,8 @@ function frame(now) {
   occupied = new Set([...ents.values()].filter((p) => p.e).map((p) => Math.round(p.x) + "," + Math.round(p.y)));
   for (const p of ents.values()) if (p.e) list.push({y: p.y + .01, p});
   for (const [ix, iy, pile] of groundItems) list.push({y: iy - .01, x: ix, pile});
+  drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)
+  drawOrbs(sx, sy, S, dt, list);
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const o of list) {
     selMeasure(o);
@@ -96,12 +98,14 @@ function frame(now) {
       ctx.drawImage(img, a, b2, w, h, Math.round(px), Math.round(py), Math.round(ww), Math.round(hh));
       ctx.globalAlpha = 1;
     }
-    else if (o.pile && !lootAt(o.x, o.y)) {
+    else if (o.pile) {
+      if (lootAt(o.x, o.y)) continue;                // its loot is still hopping in: the pile shows once it lands
       const names = Object.keys(o.pile), bob = Math.round(Math.sin(t * 3 + o.x + o.y) * 1.5) * zoom, sz = 10 * zoom;
       const cx = sx(o.x) + S / 2, cy = sy(o.y) + S / 2;
       ctx.fillStyle = "rgba(60,40,30,.25)"; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, 4 * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
       names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom, cy - sz / 2 - bob, sz, sz));
     }
+    else if (o.fx) o.fx();
     else drawEntity(o.p, sx, sy, S, t, now);
   }
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
@@ -115,8 +119,6 @@ function frame(now) {
   drawDying(sx, sy, S, t, now);
   drawEffects(sx, sy, S, dt);
   drawPuffs(sx, sy, dt);
-  drawLoot(sx, sy, S, now);
-  drawOrbs(sx, sy, S, dt);
   drawXp();
   drawPlucks(sx, sy, S, now);
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }

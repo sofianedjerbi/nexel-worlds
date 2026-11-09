@@ -70,33 +70,35 @@ function drawHotbar(inv) {
   el.appendChild(bag);
   drawBag(inv, extra);
 }
-// Hearts and food sit on the hotbar: 10 wooden badges each (the UI pack's hearts in wood: full, half, empty), food as
-// a meat on the same badge. 10 points a badge, halves allowed.
-const BADGE = [5, 6, 21, 19], BADGE_STEP = 19;   // where a badge sits in its 32 px cell; badges just touch
+// Hearts and food sit on the hotbar, 10 points an icon, halves allowed, at the art's own pixel size: hearts are the
+// UI pack's wooden heart badges (full, half, empty); food is a drumstick, dark when that part of you is empty.
+const BADGE = [5, 6, 21, 19];                    // where a heart badge sits in its 32 px cell
 function drawIcons(cv, icon, value) {
-  const N = 10, SC = 2, w = (BADGE_STEP * (N - 1) + BADGE[2]) * SC, h = BADGE[3] * SC;
-  const sig = icon + value;
+  const N = 10, SC = 2, hearts = icon === "heart";
+  // food: the icon's drawn part (its sheet cell is mostly empty), at twice its pixels: as tall as a heart
+  const fb = hearts ? null : spriteBounds(IMG.gen, GEN[icon] * 16, 0, 16, 16) || [0, 0, 16, 16];
+  const cw = hearts ? BADGE[2] : (fb[2] - fb[0]) * 2, step = hearts ? 19 : cw + 1, h = BADGE[3];
+  const w = step * (N - 1) + cw, sig = icon + value;
   if (cv.dataset.sig === sig) return;
   cv.dataset.sig = sig;
-  if (cv.width !== w) { cv.width = w; cv.height = h; }
-  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, w, h);
-  const badge = (cell, x) => g.drawImage(IMG.hearts_wood, cell * 32 + BADGE[0], BADGE[1], BADGE[2], BADGE[3], x, 0, BADGE[2] * SC, BADGE[3] * SC);
+  if (cv.width !== w * SC) { cv.width = w * SC; cv.height = h * SC; cv.style.width = w + "px"; cv.style.height = h + "px"; }
+  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, cv.width, cv.height);
   for (let i = 0; i < N; i++) {
-    const x = i * BADGE_STEP * SC, full = value >= (i + 1) * 10, half = !full && value >= i * 10 + 5;
-    if (icon === "heart") { badge(full ? 0 : half ? 1 : 2, x); continue; }
-    badge(2, x);                                                         // the wooden socket: empty
-    if (!full && !half) continue;
-    g.save();
-    if (half) { g.beginPath(); g.rect(x, 0, Math.round(BADGE[2] / 2) * SC, h); g.clip(); }
-    g.filter = "sepia(.35) brightness(1.75) saturate(.8)"; badge(2, x); g.filter = "none";   // filled: a light face
-    g.drawImage(IMG.gen, GEN[icon] * 16, 0, 16, 16, x + 1 * SC, 0, 19 * SC, 19 * SC);
-    g.restore();
+    const x = i * step * SC, full = value >= (i + 1) * 10, half = !full && value >= i * 10 + 5;
+    if (hearts) {
+      g.drawImage(IMG.hearts_wood, (full ? 0 : half ? 1 : 2) * 32 + BADGE[0], BADGE[1], BADGE[2], BADGE[3], x, 0, BADGE[2] * SC, BADGE[3] * SC);
+      continue;
+    }
+    const fw = fb[2] - fb[0], fh = fb[3] - fb[1], top = Math.round((h - fh * 2) / 2) * SC;
+    const food = (part) => g.drawImage(IMG.gen, GEN[icon] * 16 + fb[0], fb[1], Math.ceil(fw * part), fh, x, top, Math.ceil(fw * part) * 2 * SC, fh * 2 * SC);
+    g.filter = "brightness(.3) opacity(.45)"; food(1); g.filter = "none";   // the empty socket
+    if (full) food(1); else if (half) food(.5);
   }
   cv.classList.toggle("low", value <= 25);
 }
 function drawVitals(s) {
   drawIcons($("hearts"), "heart", s.hp);
-  drawIcons($("foods"), "cooked_meat", s.hunger);
+  drawIcons($("foods"), "meat", s.hunger);
   const status = s.hunger < 25 ? "Starving: eat something (E)" : "";
   $("status").textContent = status; $("status").style.display = status ? "block" : "none";
 }

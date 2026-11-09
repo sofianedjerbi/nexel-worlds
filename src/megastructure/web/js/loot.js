@@ -14,7 +14,7 @@ function dropLoot(x, y, items, now) {
 }
 const lootAt = (x, y) => loot.some((l) => l.x === x && l.y === y);
 
-function drawLoot(sx, sy, S, now) {
+function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list, like everything on the ground
   const z = zoom, sz = 10 * z;
   for (let i = loot.length - 1; i >= 0; i--) {
     const l = loot[i], s = (now - l.t0) / 1000;
@@ -33,8 +33,10 @@ function drawLoot(sx, sy, S, now) {
     }
     const cx = sx(l.x) + S / 2 + l.slot * dxk * S, ground = sy(l.y) + S / 2;
     const squash = h < .02 && s > l.flight ? 1 : 0;                 // a pixel flatter as it touches down
-    ctx.fillStyle = "rgba(60,40,30,.25)";
-    ctx.beginPath(); ctx.ellipse(cx, ground + 5 * z, Math.max(1, 4 - h * 4) * z, 1.5 * z, 0, 0, 7); ctx.fill();
-    ctx.drawImage(ghostIcon(l.name), Math.round(cx - sz / 2), Math.round(ground - sz / 2 - h * S + squash * z), sz, sz - squash * z);
+    list.push({y: l.y - .01, x: l.x, fx: () => {
+      ctx.fillStyle = "rgba(60,40,30,.25)";
+      ctx.beginPath(); ctx.ellipse(cx, ground + 5 * z, Math.max(1, 4 - h * 4) * z, 1.5 * z, 0, 0, 7); ctx.fill();
+      ctx.drawImage(ghostIcon(l.name), Math.round(cx - sz / 2), Math.round(ground - sz / 2 - h * S + squash * z), sz, sz - squash * z);
+    }});
   }
 }

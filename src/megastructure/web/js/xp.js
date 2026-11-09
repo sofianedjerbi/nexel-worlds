@@ -27,7 +27,9 @@ function magnetItems(e) {
 }
 const playerNamed = (name) => [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === name);
 
-function drawOrbs(sx, sy, S, dt) {
+// Moves the orbs and the loot flying to people, and queues their drawing into the frame's depth-sorted list (`list`),
+// so a tree in front still hides them.
+function drawOrbs(sx, sy, S, dt, list) {
   const z = zoom;
   for (let i = orbs.length - 1; i >= 0; i--) {
     const o = orbs[i]; o.age += dt;
@@ -45,7 +47,8 @@ function drawOrbs(sx, sy, S, dt) {
       o.x += dx / d * Math.min(d, sp * dt); o.y += dy / d * Math.min(d, sp * dt); o.h *= .85;
     }
     const cx = Math.round(sx(o.x) / z) * z, cy = Math.round((sy(o.y) - o.h * S * .5) / z) * z;
-    drawOrb(cx, cy, o.big ? ORB_BIG : ORB, Math.sin(o.age * 14 + o.seed) > 0);
+    const shape = o.big ? ORB_BIG : ORB, flick = Math.sin(o.age * 14 + o.seed) > 0;
+    list.push({y: o.y - .45, x: o.x, fx: () => drawOrb(cx, cy, shape, flick)});
   }
   for (let i = magnets.length - 1; i >= 0; i--) {           // loot sliding up into someone's hands
     const m = magnets[i]; m.age += dt;
@@ -55,7 +58,7 @@ function drawOrbs(sx, sy, S, dt) {
     if (!p || k >= 1) { magnets.splice(i, 1); if (p) sfx("collect", p.tx, p.ty); continue; }
     const e = k * k, x = m.x + (p.x + .5 - m.x) * e, y = m.y + (p.y + .3 - m.y) * e - Math.sin(k * Math.PI) * .35;
     const sz = Math.round(10 * (1 - .4 * e)) * z;
-    ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(sy(y) - sz / 2), sz, sz);
+    list.push({y: y - .45, x, fx: () => ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(sy(y) - sz / 2), sz, sz)});
   }
 }
 

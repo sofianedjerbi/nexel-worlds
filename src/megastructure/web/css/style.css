@@ -97,7 +97,7 @@
     gap:3px; z-index:3; filter:drop-shadow(0 3px 0 rgba(60,40,30,.3)); pointer-events:none; }
   #hud .hudrow { display:flex; gap:clamp(2px, .4vw, 6px); align-items:center; pointer-events:auto; }
   #vitals { display:flex; justify-content:space-between; align-items:flex-end; padding:0 4px; }
-  #vitals canvas { image-rendering:pixelated; width:calc(50% - 8px); max-width:384px; height:auto; }
+  #vitals canvas { image-rendering:pixelated; }
   /* experience: the wooden track between the vitals and the hotbar (drawn on a canvas by xp.js) */
   #xpbar { display:block; align-self:center; image-rendering:pixelated; }
   #status { align-self:center; text-align:center; white-space:nowrap; color:#fff8e8; font-size:18px; display:none;
