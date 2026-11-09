@@ -70,18 +70,27 @@ function drawHotbar(inv) {
   el.appendChild(bag);
   drawBag(inv, extra);
 }
-// Hearts and food sit on the hotbar (10 icons, 10 points each, halves allowed).
+// Hearts and food sit on the hotbar: 10 wooden badges each (the UI pack's hearts in wood: full, half, empty), food as
+// a meat on the same badge. 10 points a badge, halves allowed.
+const BADGE = [5, 6, 21, 19], BADGE_STEP = 19;   // where a badge sits in its 32 px cell; badges just touch
 function drawIcons(cv, icon, value) {
-  const N = 10, STEP = 12, SC = 2;
-  if (cv.width !== (STEP * (N - 1) + 16) * SC) { cv.width = (STEP * (N - 1) + 16) * SC; cv.height = 16 * SC; }
-  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, cv.width, cv.height);
-  const sx = GEN[icon] * 16;
+  const N = 10, SC = 2, w = (BADGE_STEP * (N - 1) + BADGE[2]) * SC, h = BADGE[3] * SC;
+  const sig = icon + value;
+  if (cv.dataset.sig === sig) return;
+  cv.dataset.sig = sig;
+  if (cv.width !== w) { cv.width = w; cv.height = h; }
+  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, w, h);
+  const badge = (cell, x) => g.drawImage(IMG.hearts_wood, cell * 32 + BADGE[0], BADGE[1], BADGE[2], BADGE[3], x, 0, BADGE[2] * SC, BADGE[3] * SC);
   for (let i = 0; i < N; i++) {
-    const x = i * STEP * SC, full = value >= (i + 1) * 10, half = !full && value >= i * 10 + 5;
-    g.filter = "brightness(.35) opacity(.55)"; g.drawImage(IMG.gen, sx, 0, 16, 16, x, 0, 16 * SC, 16 * SC);   // empty socket
-    g.filter = "none";
-    if (full) g.drawImage(IMG.gen, sx, 0, 16, 16, x, 0, 16 * SC, 16 * SC);
-    else if (half) { g.save(); g.beginPath(); g.rect(x, 0, 8 * SC, 16 * SC); g.clip(); g.drawImage(IMG.gen, sx, 0, 16, 16, x, 0, 16 * SC, 16 * SC); g.restore(); }
+    const x = i * BADGE_STEP * SC, full = value >= (i + 1) * 10, half = !full && value >= i * 10 + 5;
+    if (icon === "heart") { badge(full ? 0 : half ? 1 : 2, x); continue; }
+    badge(2, x);                                                         // the wooden socket: empty
+    if (!full && !half) continue;
+    g.save();
+    if (half) { g.beginPath(); g.rect(x, 0, Math.round(BADGE[2] / 2) * SC, h); g.clip(); }
+    g.filter = "sepia(.35) brightness(1.75) saturate(.8)"; badge(2, x); g.filter = "none";   // filled: a light face
+    g.drawImage(IMG.gen, GEN[icon] * 16, 0, 16, 16, x + 1 * SC, 0, 19 * SC, 19 * SC);
+    g.restore();
   }
   cv.classList.toggle("low", value <= 25);
 }

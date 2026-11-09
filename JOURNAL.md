@@ -602,3 +602,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Client (`js/xp.js`): pixel orbs burst from the source, hop, then home in on whoever earned them with a pitch-varied blip; the bar under the vitals leaves out orbs still flying, so it fills as they land; level-up arpeggio, sparks and a "Level n!" float. Magnet loot slides up into the player.
 - Tests: unit (levels, xp sources, magnet delay and range) and e2e (ore -> orbs -> bar; a kill's loot comes to you). Coop test accepts the egg in the bag. 158 unit + 49 e2e green.
 - Next: give levels a use (e.g. faster work per level, or recipes unlocked by level).
+
+## Iteration 36: vitals in the pack's style; more animals
+- Vitals: health uses the UI pack's wooden heart badges (full, half, empty); food is a meat on the same badge with a light face when filled; experience is the pack's wooden slider track with a green fill and the level on a cream knob. Both are drawn on canvases and only redrawn when they change.
+- Wildlife (`sim/wildlife.py`, out of animals.py): the old rule kept 3 animals per online player in the whole world, one spawn every 10 s. Now about 16 farm animals are kept within 20 tiles of each player, arriving as herds of 2-4 just out of view; up to 3 glooms per player at night. When the world cap (80) is reached, the farthest animal outside everyone's area that nobody keeps (fed, milked, near a coop/trough/fence) leaves to make room.
+- Result: QA world 4 -> 18 animals near the player after 90 s. 160 unit + 49 e2e green.

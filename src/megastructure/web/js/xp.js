@@ -85,7 +85,29 @@ function drawXp() {
     if (p) { burst(p.x, p.y, "spark", 18, {dy: -.6, g: 2, spread: 1.4}); floats.push({x: p.tx, y: p.ty - .4, text: `Level ${level}!`, color: "#d8f070", t: performance.now() / 1000}); }
   }
   xpLevelShown = level;
-  const w = (into / need * 100).toFixed(1) + "%", lv = level ? String(level) : "";
-  if ($("xpfill").style.width !== w) $("xpfill").style.width = w;          // only touch the page when it changes
-  if ($("xplevel").textContent !== lv) $("xplevel").textContent = lv;
+  drawXpBar(into / need, level);
+}
+
+// The bar: the UI pack's wooden slider track, a green fill inside it, and the level on a cream knob in the middle.
+const TRACK = [36, 36, 40, 7], KNOB = [6, 1, 20, 12];   // in sliders.png
+function drawXpBar(k, level) {
+  const cv = $("xpbar"), SC = 2, w = Math.max(40, Math.round(cv.parentElement.clientWidth / SC) - 4), h = 13;
+  const sig = [w, Math.round(k * w), level].join();
+  if (cv.dataset.sig === sig) return;
+  cv.dataset.sig = sig;
+  cv.width = w * SC; cv.height = h * SC; cv.style.width = w * SC + "px";
+  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false;
+  const [tx, ty, tw, th] = TRACK, top = 3, cap = 4;
+  const part = (sx, sw, dx, dw) => g.drawImage(IMG.sliders, sx, ty, sw, th, dx * SC, top * SC, dw * SC, th * SC);
+  part(tx, cap, 0, cap); part(tx + cap, tw - 2 * cap, cap, w - 2 * cap); part(tx + tw - cap, cap, w - cap, cap);
+  const fill = Math.round(k * (w - 4));
+  if (fill > 0) {
+    g.fillStyle = "#86bb3a"; g.fillRect(2 * SC, (top + 2) * SC, fill * SC, 3 * SC);
+    g.fillStyle = "#c8ea5a"; g.fillRect(2 * SC, (top + 2) * SC, fill * SC, SC);
+  }
+  if (!level) return;
+  const [kx, ky, kw, kh] = KNOB, kxd = Math.round(w / 2 - kw / 2);
+  g.drawImage(IMG.sliders, kx, ky, kw, kh, kxd * SC, 0, kw * SC, kh * SC);
+  g.font = `${8 * SC}px SproutPixel`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = "#5b3f36";
+  g.fillText(String(level), (kxd + kw / 2) * SC, (kh / 2 + .5) * SC);
 }

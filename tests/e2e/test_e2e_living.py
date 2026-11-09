@@ -103,7 +103,8 @@ def test_mining_ore_sends_orbs_and_fills_the_bar(game):
     game.wait("orbs.length === 0", 6000)                      # ...and fly into you
     game.sleep(800)
     assert game.server()["xp"] == 4
-    assert float(game.js("parseFloat($('xpfill').style.width)")) > 50     # 4 of 7 to the first level
+    w, fill, _ = game.js("$('xpbar').dataset.sig").split(",")
+    assert int(fill) / int(w) > .5                           # 4 of 7 to the first level
 
 
 def test_loot_next_to_you_comes_to_you(game):

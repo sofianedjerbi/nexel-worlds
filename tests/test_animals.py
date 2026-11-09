@@ -99,7 +99,8 @@ def test_crowded_eggs_rot_and_old_herds_thin(world, tmp_path):
         sim.creatures[sim.next_creature] = Creature(sim.next_creature, "chicken", a.x, a.y, 10)
         sim.next_creature += 1
     sim._thin_herds()
-    assert len(sim.creatures) <= 2 * CROWD_N
+    here = [c for c in sim.creatures.values() if abs(c.x - a.x) <= 4 and abs(c.y - a.y) <= 4]   # (wild herds roam further out)
+    assert len(here) <= 2 * CROWD_N
 
 def test_trough_feeds_animals_and_hay_lasts(world):
     sim, a = world
@@ -127,3 +128,23 @@ def test_hit_animals_run_away(world):
     for _ in range(sec(2)):
         sim.step()
     assert abs(hen.x - a.x) + abs(hen.y - a.y) >= 4                     # it ran, it didn't stay to be hit again
+
+
+def test_herds_roam_around_players_and_glooms_come_at_night(world):
+    sim, a = world
+    from megastructure.sim import sec
+    from megastructure.sim.wildlife import GLOOMS_NEAR, HERD_NEAR, HERD_R
+    sim.creatures.clear()
+    for _ in range(sec(60)):
+        sim.step()
+    near = [c for c in sim.creatures.values() if c.kind != "gloom" and max(abs(c.x - a.x), abs(c.y - a.y)) <= HERD_R + 4]
+    assert HERD_NEAR <= len(near) <= HERD_NEAR + 4             # about ten, arriving a few at a time
+    kinds = {c.kind for c in near}
+    assert kinds & {"chicken", "cow"}
+    from megastructure.sim import DAY_TICKS
+    sim.tick = (sim.tick // DAY_TICKS + 1) * DAY_TICKS - sec(60)   # a minute before the day turns: night
+    assert sim.is_night()
+    for _ in range(sec(30)):
+        sim.step()
+    glooms = [c for c in sim.creatures.values() if c.kind == "gloom"]
+    assert 1 <= len(glooms) <= GLOOMS_NEAR

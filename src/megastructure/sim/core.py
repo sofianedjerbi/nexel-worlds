@@ -28,6 +28,7 @@ from .environment import Environment
 from .items import Items
 from .movement import Movement
 from .progress import Progress
+from .wildlife import Wildlife
 from .needs import Needs
 from .observe import Observation
 from .persistence import Persistence
@@ -36,7 +37,7 @@ from .social import Social
 from .specs import TOOL_SPECS
 
 
-class Simulation(Persistence, Sessions, Movement, Progress, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
+class Simulation(Persistence, Sessions, Movement, Progress, Wildlife, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)

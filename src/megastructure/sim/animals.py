@@ -24,16 +24,7 @@ class Animals:
 
     def step_creatures(self):
         online = [a for a in self.agents.values() if a.online]
-        # spawning (deterministic via tick rng)
-        if self.tick % sec(10) == 0 and online:
-            animals = sum(1 for c in self.creatures.values() if c.kind in ("chicken", "cow", "chick", "calf"))
-            if animals < min(40, 3 * len(online)):
-                a = online[self.rng.randrange(len(online))]
-                self._spawn_creature("chicken" if self.rng.random() < 0.6 else "cow", a, 12, 30)
-            glooms = sum(1 for c in self.creatures.values() if c.kind == "gloom")
-            if self.is_night() and glooms < len(online):
-                a = online[self.rng.randrange(len(online))]
-                self._spawn_creature("gloom", a, 14, 24)
+        self.step_wildlife(online)            # herds and glooms appear around players (wildlife.py)
         if not self.is_night():            # daylight: glooms fade away within a couple of seconds
             for c in [c for c in self.creatures.values() if c.kind == "gloom"]:
                 if self.rng.random() < 0.6 / TICK_HZ:
