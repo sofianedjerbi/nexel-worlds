@@ -207,7 +207,9 @@ function drawEntity(p, sx, sy, S, t, now) {
   const moving = now - p.moved < 300;
   if (e.kind === "agent") {
     const mine = me && e.id === myId;
-    const action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, at: e.at, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null);
+    let action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, at: e.at, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null);
+    if ((!action || action.tool === "walk" || action.tool === "move_to") && p.swing && now - p.swing.t0 < 320)
+      action = {tool: "attack", t0: p.swing.t0, with: p.swing.with};   // a swing, even on the move
     if (e.doing && !p.doingSince) p.doingSince = now;
     if (!e.doing) p.doingSince = 0;
     if (!mine) p.running = !!e.run;

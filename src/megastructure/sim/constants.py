@@ -23,6 +23,7 @@ MAX_TEXT = 200
 
 TARGET_R = 3         # actions aimed at x, y: tiles.USE_R plus one, to absorb a walking client's lead
 MOVES = ("walk", "move_to", "step")   # movement: quick actions happen alongside it instead of stopping it
+ATTACK_COOLDOWN = 0.4    # seconds between two swings
 EAT_SECONDS = 0.9    # eating takes a moment (three bites; it can be interrupted)
 CAN_SIZE = 12        # waterings per fill
 

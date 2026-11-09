@@ -32,6 +32,7 @@ class Agent:
     # runtime only
     action: "Action | None" = field(default=None, repr=False)
     ready: int = field(default=0, repr=False)   # first tick the next stride may start (movement cooldown)
+    swing_ready: int = field(default=0, repr=False)   # first tick the next attack may land
     events: list = field(default_factory=list, repr=False)
     online: bool = False
 

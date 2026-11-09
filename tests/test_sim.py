@@ -640,3 +640,14 @@ def test_quick_actions_happen_on_the_move(world):
     chop = sim.submit(a, "dig", {"x": a.x + 1, "y": a.y - 1})
     assert a.action is chop and walk.result["status"] == "interrupted"  # chopping takes time: it stops the walk
     assert run(sim, a, "dig", {"x": a.x + 5, "y": a.y})["error"] == "out_of_range"
+
+
+def test_hitting_while_walking(world):
+    sim, a = world
+    from megastructure.sim import Creature
+    walk = sim.submit(a, "walk", {"dir": "E"})
+    sim.step()
+    hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y - 1, 10); sim.next_creature += 1
+    sim.creatures[hen.id] = hen
+    hit = sim.submit(a, "attack", {"target": hen.id})
+    assert hit.result["ok"] and a.action is walk                       # the punch lands, the walk goes on

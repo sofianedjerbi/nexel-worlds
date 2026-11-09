@@ -127,6 +127,8 @@ function onEvent(e) {
   }
   if (e.type === "attack") {
     noteFight(e);
+    const who = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === e.attacker);
+    if (who && e.attacker !== me) who.swing = {t0: performance.now(), with: e.weapon !== "fists" ? e.weapon : null};
     const tgt = [...ents.values()].find((q) => q.e && (q.e.name === e.target || `${q.e.kind}#${q.e.id}` === e.target));
     const tx = tgt ? tgt.x : e.x, ty = tgt ? tgt.y : e.y;
     if (tgt) flashes.set(tgt.e.kind === "agent" ? "agent" + tgt.e.id : tgt.e.kind + tgt.e.id, performance.now());

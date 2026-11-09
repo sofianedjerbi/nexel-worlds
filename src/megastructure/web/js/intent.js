@@ -162,6 +162,8 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
 // Do it, right here: no walking to the target (getting close is up to you). Tile actions reach USE_R tiles, fights
 // the weapon's reach. The exact tile goes to the server, so it also works while you are walking or running.
 const USE_R = 2;   // tiles.py USE_R
+const SWING_MS = 420;
+let lastSwing = 0;
 function inReach(p, it) {
   const s = myPos(); if (!s) return false;
   const tiles = it.foot && !it.from ? it.foot : [p];            // a structure: any of its tiles will do
@@ -174,6 +176,11 @@ async function perform(p, it) {
   if (it.ok === false) return toast(it.text, true);
   if (it.walk || it.here) return it.run();
   if (!inReach(p, it)) return toast("Too far: get closer.", true);
+  if (it.attack) {                                  // one swing per cooldown (sim ATTACK_COOLDOWN): no queued swings
+    const now = performance.now(), me_ = ents.get("agent" + myId);
+    if (now - lastSwing < SWING_MS) return;
+    lastSwing = now; if (me_) me_.swing = {t0: now, with: inHand()};   // swing at once, the hit follows
+  }
   if (it.foot && !it.from) {                       // a structure: aim at its nearest tile
     const s = myPos();
     p = it.foot.slice().sort((a, b) => Math.max(Math.abs(a.x - s.x), Math.abs(a.y - s.y)) - Math.max(Math.abs(b.x - s.x), Math.abs(b.y - s.y)))[0];

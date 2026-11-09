@@ -156,7 +156,10 @@ addEventListener("keydown", (e) => {
     return;
   }
   if (/^[1-9]$/.test(k) && meObs) { const n = slots[+k - 1]; if (n) selectItem(selected === n ? null : n); return; }
-  if (k === " " && !e.repeat) { keys.add(" "); syncWalk(); }   // Space stops you where you are, then acts
+  if (k === " " && !e.repeat) {                    // Space stops you where you are, then acts; a hit doesn't stop you
+    const f = facingIntent(false);
+    if (!(f && f.it.attack)) { keys.add(" "); syncWalk(); }
+  }
   const fn = SHORTCUTS[k];
   if (fn) { e.preventDefault(); if (!(e.repeat && k !== " " && k !== "x")) fn(); }
 });

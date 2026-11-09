@@ -2,7 +2,7 @@
 
 from .. import tiles as T
 from ..tiles import DIRS
-from .constants import FARM, FLEE_SECONDS, SHOUT_R, sec
+from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, SHOUT_R, sec
 from .entities import CREATURES, ActionError, Agent, Creature
 
 
@@ -38,9 +38,13 @@ class Combat:
         reach = T.REACH.get(weapon, T.REACH[None])
         if max(abs(t.x - a.x), abs(t.y - a.y)) > reach:
             raise ActionError("out_of_range", f"target must be within {reach} tiles (including diagonals)")
-        yield from self.wait(a, 0.4)
+        # the hit lands at once, then the arm needs ATTACK_COOLDOWN before the next swing: a ready swing takes no
+        # time, so you can fight while walking; one sent too soon waits for the cooldown (and so stops a walk)
+        while self.tick < a.swing_ready:
+            yield
         if max(abs(t.x - a.x), abs(t.y - a.y)) > reach or t.hp <= 0:
             raise ActionError("missed", "target moved away")
+        a.swing_ready = self.tick + sec(ATTACK_COOLDOWN)
         dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"
         self.emit("attack", a.x, a.y, attacker=a.name, target=name, damage=dmg, weapon=weapon or "fists")
