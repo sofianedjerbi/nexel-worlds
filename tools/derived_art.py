@@ -1,5 +1,6 @@
 """Sprites derived from the pack's own sheets at build time (bare fruit trees, the thin tree's stump and felling)."""
 
+import math
 from pathlib import Path
 
 from PIL import Image
@@ -127,7 +128,7 @@ def ramp_art(hill: Path, below: tuple) -> Image.Image:
     sheet = Image.open(hill).convert("RGBA")
     col = [sheet.getpixel((1 * 16 + 8, 2 * 16 + y)) for y in range(16)]     # a south-edge column: top to cliff foot
     top, rim, line, dark, light = col[0], col[9], col[11], col[12], col[13]
-    plane = _mix(top, (255, 255, 230), .1)           # the slope faces the light a little more than flat ground
+    plane = _mix(top, (255, 255, 230), .13)          # the slope faces the light a little more than flat ground
     out = Image.new("RGBA", (32 * RAMP_VARIANTS, 32))
     for v in range(RAMP_VARIANTS):
         img = Image.new("RGBA", (32, 32))
@@ -139,7 +140,16 @@ def ramp_art(hill: Path, below: tuple) -> Image.Image:
             right = 31 - left
             for x in range(left, right + 1):
                 f = _foot(k, x, left, right)
-                c = _mix(plane if y > y0 else _mix(top, plane, .5), below, f)
+                # light: it grows as the ground tilts away from the crest (no edge where the hilltop ends), fades with
+                # the foot, and is dimmed close to the walls (they shade it); stepped to 4 tones with an ordered
+                # dither, as pixel art does, instead of smooth bands
+                t = _ease(min(1, k / .4)) * (1 - f)
+                gap = min(x - left, right - x)
+                t *= 1 - .6 * max(0, 1 - gap / 3) * (1 - k)
+                t = math.floor(t * 3 + BAYER[y % 4][x % 4]) / 3
+                c = _mix(_mix(top, below, f), plane, t)
+                if gap < 2 and k < .6:
+                    c = _mix(c, rim, .2 * (1 - gap / 2))             # a touch of shade along the wall's foot
                 mark = _mark(v, x, y, y0, y1, left, right)
                 if mark:                             # contours and steps: shade below a line, light on its lip
                     c = _mix(c, rim if mark < 0 else (255, 255, 230), (.45 if mark < 0 else .22) * (1 - f))
@@ -179,6 +189,13 @@ def _mark(v, x, y, y0, y1, left, right) -> int:
 
 def _mix(a, b, t):
     return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3)) + (255,)
+
+
+BAYER = [[v / 16 for v in row] for row in ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))]
+
+
+def _ease(t):
+    return t * t * (3 - 2 * t)
 
 
 def _foot(k, x, left, right):
