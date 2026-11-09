@@ -80,12 +80,14 @@ def _ramp_fits(seed: int, x: int, y: int, lv) -> bool:
 
 def _is_ramp(seed: int, x: int, y: int, lv) -> bool:
     """Stairs: a pair of tiles (x, x+1) along a south cliff that goes on either side (the stairs are cut into it),
-    the landing below clear. Along each row, every stretch of 10 gets the first place that fits, from a hashed start;
+    the landing below clear. Rare: one cliff row in five, one slope per 24 tiles of it, the first place that fits from a hashed start;
     (x, x+1) stays inside its stretch, so pairs never touch. `lv(x, y)` gives levels."""
-    cell = x // 10
-    start = int(_hash(seed, cell, y, 71) * 8)
-    for k in range(8):                           # (x, x+1) within the stretch's first 9 tiles: pairs never touch
-        cx = cell * 10 + (start + k) % 8
+    if (y + int(_hash(seed, x // 24, 0, 73) * 5)) % 5:
+        return False                             # rare: only one cliff row in five may have slopes...
+    cell = x // 24
+    start = int(_hash(seed, cell, y, 71) * 22)
+    for k in range(22):                          # ...and one per 24 tiles of it ((x, x+1) never touch the next)
+        cx = cell * 24 + (start + k) % 22
         if _ramp_fits(seed, cx, y, lv):
             return cx == x
     return False

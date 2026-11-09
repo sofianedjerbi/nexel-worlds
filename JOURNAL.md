@@ -644,3 +644,7 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Slopes on the north and side edges broke the 3/4 view (height only shows through the south cliff face), so instead people hop down one level off any edge they can stand on (Pokemon-style ledges); up still only by the south slopes. Animals keep to their level. Path-finding uses hops.
 - Client: the same rule in prediction; the sprite arcs ~7 px over the edge, its shadow staying on the ground, a puff and a thud on landing.
 - 176 unit + 51 e2e green.
+
+## Iteration 42: fewer animals, rare slopes
+- Too many animals (827 in the play world, mostly hatched chicks). Spawning: herds on 20% of new chunks (was 80%), 2-3 hens or 1-2 cows; top-up to 6 within 40 tiles every 45 s (was 18 / 20 s); glooms up to 3, in ones or twos. Breeding stops at 3 animals within 6 tiles (was 6). Play world thinned to at most 2 per 32x32 (125 left; backup kept).
+- Slopes rare: one cliff row in five, one per 24 tiles of it (10 in 256x256, was ~75). Hopping down covers going down; up needs a slope.

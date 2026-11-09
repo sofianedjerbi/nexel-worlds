@@ -36,7 +36,7 @@ FARM = ("chicken", "cow", "chick", "calf")
 
 CROWD_R = 6                # this many farm animals (CROWD_N) this close: hens stop laying,
 
-CROWD_N = 6                # eggs rot instead of hatching, cows don't breed
+CROWD_N = 3                # eggs rot instead of hatching, cows don't breed
 
 FLEE_SECONDS = 4           # a hit farm animal runs from its attacker this long, a tile every FLEE_STRIDE seconds
 FLEE_STRIDE = 0.3

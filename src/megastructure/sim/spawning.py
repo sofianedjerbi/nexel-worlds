@@ -20,11 +20,11 @@ SIM_R = 48                       # creatures tick within this many tiles of some
 CAP_R = 40                       # caps count the creatures this close to a player
 SPAWN_MIN, SPAWN_MAX = 16, 40    # spawns land at least this far from everyone, at most this far from the player
 PASSIVE = ("chicken", "cow", "chick", "calf")
-PASSIVE_CAP, PASSIVE_EVERY = 18, sec(20)
-HOSTILE_CAP = 5
-HERD = {"chicken": (2, 5), "cow": (2, 4)}
-PACK = (1, 3)                    # glooms come in ones to threes
-CHUNK_HERD = 0.8                 # the chance a newly generated chunk gets a herd (if it has a meadow for it)
+PASSIVE_CAP, PASSIVE_EVERY = 6, sec(45)
+HOSTILE_CAP = 3
+HERD = {"chicken": (2, 3), "cow": (1, 2)}
+PACK = (1, 2)                    # glooms come alone or in twos
+CHUNK_HERD = 0.2                 # the chance a newly generated chunk gets a herd (if it has a meadow for it)
 DESPAWN_NEAR, DESPAWN_FAR = 32, 64
 LIGHT, LIGHT_R = ("campfire", "fire"), 6
 
