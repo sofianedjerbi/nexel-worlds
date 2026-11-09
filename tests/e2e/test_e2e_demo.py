@@ -36,7 +36,7 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     tick = page.evaluate("rpc('ping').then(r => r.tick)")
     page.wait_for_timeout(1000)
     assert page.evaluate("rpc('ping').then(r => r.tick)") >= tick + 8      # the world ticks at 10 Hz in the tab
-    page.wait_for_timeout(15500)                                    # past a save (every 15 s)
+    page.evaluate("saveWorld()")                                    # what the 15 s autosave does
     page.reload()
     page.wait_for_function("blocks.size > 0", timeout=90000)
     page.wait_for_function("agents.some((a) => a.name === 'visitor')", timeout=5000)   # saved, asleep

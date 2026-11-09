@@ -102,10 +102,14 @@ class World:
 
     def _tidy(self, c: Chunk):
         """Older worlds spread berry bushes at random until meadows filled up. Nobody can plant a bush, so a
-        bush where the generator never put one came from that: clear it."""
-        bush = B["berry_bush"]
+        bush where the generator never put one came from that: clear it. Lone thickets (hedge balls) aren't
+        generated any more and nobody can make one: clear those too."""
+        bush, thicket = B["berry_bush"], B["thicket"]
         for i, blk in enumerate(c.block):
-            if blk == bush:
+            if blk == thicket:
+                c.block[i] = B["none"]
+                c.dirty = True
+            elif blk == bush:
                 x, y = c.cx * CHUNK + i % CHUNK, c.cy * CHUNK + i // CHUNK
                 if gen_tile(self.seed, x, y)[1] != bush:
                     c.block[i] = B["none"]

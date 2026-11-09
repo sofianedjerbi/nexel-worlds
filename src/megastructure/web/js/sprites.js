@@ -123,20 +123,25 @@ function objectSprite(c, x, y, t) {
 }
 // ---- sound: short procedural effects through WebAudio; M mutes ---------------------------
 // The opaque part of a sprite frame (in its own pixels): the white aiming box hugs the thing, not its tile.
+let boundsIds = 0;
 const boundsCache = new Map(), boundsCv = document.createElement("canvas");
 function spriteBounds(img, a, b, w, h) {
-  const key = `${img.src}|${a},${b},${w},${h}`;
+  if (!img.bid) img.bid = ++boundsIds;          // canvases have no src: give every image its own id
+  const key = `${img.bid}|${a},${b},${w},${h}`;
   if (boundsCache.has(key)) return boundsCache.get(key);
   boundsCv.width = w; boundsCv.height = h;
   const g = boundsCv.getContext("2d", {willReadFrequently: true});
   g.clearRect(0, 0, w, h); g.drawImage(img, a, b, w, h, 0, 0, w, h);
   const d = g.getImageData(0, 0, w, h).data;
-  let x0 = w, y0 = h, x1 = -1, y1 = -1;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (d[(y * w + x) * 4 + 3] < 40) continue;
-    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
-  }
-  const r = x1 < 0 ? null : [x0, y0, x1 + 1, y1 + 1];
-  if (img.complete && img.naturalWidth) boundsCache.set(key, r);
+  // count solid pixels per row and column, then trim edges with fewer than 2: stray specks (a leaf, a chip) don't count
+  const cols = new Array(w).fill(0), rows = new Array(h).fill(0);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] >= 120) { cols[x]++; rows[y]++; }
+  let x0 = 0, y0 = 0, x1 = w - 1, y1 = h - 1;
+  while (x0 <= x1 && cols[x0] < 2) x0++;
+  while (x1 >= x0 && cols[x1] < 2) x1--;
+  while (y0 <= y1 && rows[y0] < 2) y0++;
+  while (y1 >= y0 && rows[y1] < 2) y1--;
+  const r = x1 < x0 || y1 < y0 ? null : [x0, y0, x1 + 1, y1 + 1];
+  if (!(img instanceof HTMLImageElement) || (img.complete && img.naturalWidth)) boundsCache.set(key, r);
   return r;
 }

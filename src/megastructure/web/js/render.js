@@ -81,6 +81,7 @@ function frame(now) {
   for (const [ix, iy, pile] of groundItems) list.push({y: iy - .01, x: ix, pile});
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const o of list) {
+    selMeasure(o);
     if (o.spr) {
       const [img, a, b2, w, h, dx, dy] = o.spr, key = o.x + "," + o.ty;
       let px = sx(o.x) + dx * zoom, py = sy(o.ty) + dy * zoom, ww = w * zoom, hh = h * zoom;
@@ -95,7 +96,7 @@ function frame(now) {
       ctx.drawImage(img, a, b2, w, h, Math.round(px), Math.round(py), Math.round(ww), Math.round(hh));
       ctx.globalAlpha = 1;
     }
-    else if (o.pile) {
+    else if (o.pile && !lootAt(o.x, o.y)) {
       const names = Object.keys(o.pile), bob = Math.round(Math.sin(t * 3 + o.x + o.y) * 1.5) * zoom, sz = 10 * zoom;
       const cx = sx(o.x) + S / 2, cy = sy(o.y) + S / 2;
       ctx.fillStyle = "rgba(60,40,30,.25)"; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, 4 * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
@@ -110,16 +111,18 @@ function frame(now) {
     if (tall) { drawFire(px - S * .3, py - S * .9, S, t + 1, f.x + 7, f.y); drawFire(px + S * .3, py - S * 1.4, S, t + 2, f.x, f.y + 5); }
     if (Math.random() < dt * 6) parts.push({x: f.x + .2 + Math.random() * .6, y: f.y - (tall ? 1.6 : .3), vx: (Math.random() - .5) * .4, vy: -1.2, g: -.5, life: 1.2, age: 0, c: Math.random() < .5 ? "#6b6f73" : "#ffb454", s: 1});
   }
+  selMeasure(null);
   drawDying(sx, sy, S, t, now);
   drawEffects(sx, sy, S, dt);
   drawPuffs(sx, sy, dt);
+  drawLoot(sx, sy, S, now);
   drawPlucks(sx, sy, S, now);
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawHouses(sx, sy, S, dt, now);
   drawNight(vis, sx, sy, S, t);
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
-  if (aim) drawIntent(aim.p, aim.it, sx, sy, S, t);
+  drawSelector(aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null, sx, sy, now);
   for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
   for (const o of list) if (o.p && ANIMALS[o.p.e.kind]) drawEmote(o.p, sx, sy, S);
   drawProgress(sx, sy, S);
@@ -144,7 +147,7 @@ function frame(now) {
   ctx.textAlign = "start";
 }
 // Highlight what an action would hit: a ghost of what gets placed, tinted footprint, and an outline.
-function drawIntent(p, it, sx, sy, S, t) {
+function drawIntent(p, it, sx, sy, S, t, ox, oy) {
   if (it && it.ghost) {
     ctx.globalAlpha = .7;
     const spr = it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
@@ -158,26 +161,15 @@ function drawIntent(p, it, sx, sy, S, t) {
       ctx.fillRect(sx(q.x), sy(q.y), S, S);
     }
   }
-  if (it && it.ent && !it.walk) {                 // a creature or person: the box follows it as it moves
-    const e = it.ent, big = ANIMALS[e.e.kind] && ANIMALS[e.e.kind].fw === 32, n = big ? 2 : 1;
-    ctx.strokeStyle = it.ok === false ? "rgba(230,80,70,.9)" : "rgba(255,248,232,.95)"; ctx.lineWidth = zoom;
-    ctx.strokeRect(Math.round(sx(e.x - (big ? .5 : 0))) + zoom / 2, Math.round(sy(e.y - (big ? 1 : 0))) + zoom / 2, n * S - zoom, n * S - zoom);
-    return;
-  }
-  if (it && !it.info && !it.walk) {
-    ctx.strokeStyle = it.ok === false ? "rgba(230,80,70,.9)" : "rgba(255,248,232,.95)"; ctx.lineWidth = zoom;
-    const c = !it.ghost && !(it.foot && it.foot.length > 1) && combAt(p.x, p.y), spr = c && objectSprite(c, p.x, p.y, t);
-    const bb = spr && spriteBounds(...spr.slice(0, 5));
-    if (bb) {                                     // one thing (a tree, a rock, a mushroom): a box around the thing itself
-      const [, , , , , dx, dy] = spr, pad = 1;
-      const l = sx(p.x) + (dx + bb[0] - pad) * zoom, tp = sy(p.y) + (dy + bb[1] - pad) * zoom;
-      ctx.strokeRect(l + zoom / 2, tp + zoom / 2, (bb[2] - bb[0] + 2 * pad - 1) * zoom, (bb[3] - bb[1] + 2 * pad - 1) * zoom);
-      return;
-    }
-    const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y);
-    const x0 = Math.min(...xs), y0 = Math.min(...ys), x1 = Math.max(...xs) + 1, y1 = Math.max(...ys) + 1;
-    ctx.strokeRect(sx(x0) + zoom / 2, sy(y0) + zoom / 2, (x1 - x0) * S - zoom, (y1 - y0) * S - zoom);
-  }
+  // what the selector goes around, in tiles: the aimed creature, person or thing as it was just drawn (selector.js),
+  // or a structure's whole footprint
+  if (!it || it.info || it.walk) return null;
+  const bad = it.ok === false;
+  const drawn = selTarget(p, it, ox, oy, S);
+  if (drawn) return {...drawn, bad};
+  if (it.ent) return {x0: it.ent.x, y0: it.ent.y, x1: it.ent.x + 1, y1: it.ent.y + 1, bad};   // until it's been drawn once
+  const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y);
+  return {x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs) + 1, y1: Math.max(...ys) + 1, bad};
 }
 
 function outlined(text, x, y, color) {

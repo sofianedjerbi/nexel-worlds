@@ -30,6 +30,7 @@ function bootLocal() {
     let saving = false;
     const save = async () => { if (saving) return; saving = true; game.save(); await sync(false); saving = false; };
     setInterval(save, 15000);
+    window.saveWorld = save;
     addEventListener("pagehide", save);
     addEventListener("visibilitychange", () => document.visibilityState === "hidden" && save());
     return game;

@@ -99,4 +99,5 @@ class Combat:
         self.add_items(c.x, c.y, CREATURES[c.kind]["drops"])
         if by:
             by.bump(f"killed_{c.kind}")
-        self.emit("creature_died", c.x, c.y, kind=c.kind, id=c.id, by=by.name if by else None)
+        self.emit("creature_died", c.x, c.y, kind=c.kind, id=c.id, by=by.name if by else None,
+                  drops=CREATURES[c.kind]["drops"])

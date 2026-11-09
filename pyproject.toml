@@ -19,10 +19,11 @@ dev = [
     "playwright>=1.64.1",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1.post1",
+    "pytest-xdist>=3.8.0",
 ]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 # the end-to-end suite drives real Chrome against a fresh server and takes minutes: run it with `pytest -m e2e`
 markers = ["e2e: plays the game in Chrome against a fresh server"]
-addopts = "-m 'not e2e'"
+addopts = "-m 'not e2e' -n 6"

@@ -590,3 +590,9 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Change: `browser.py` runs `GameServer` under Pyodide with in-page sockets (websockets/resource stubbed); `js/local.js` boots it and exposes a `LocalSocket` that `openSocket()` uses when present; the world is a SQLite file on IDBFS, synced every 15 s and on hide. `tools/build_pages.py` builds `dist/` (client + py.zip, local.js injected); `tools/publish_demo.sh` pushes it to a public repo (Pages isn't available for the private repo on this plan).
 - Result: in headless Chrome the world is up ~2 s after load (Pyodide cached), tick p50 0.2 ms; the saved player is there after a reload. New e2e test `test_e2e_demo.py`; 147 unit tests green.
 - Next: run publish_demo.sh once the public demo repo is approved.
+
+## Iteration 34: selector, loot, quieter chat, faster tests
+- The selector is four pixel brackets that glide between targets. Its box comes from the opaque pixels actually drawn for the aimed thing (drawImage is measured through flips and bounces), so trees, stumps, rocks, mushrooms and every mob are hugged with no per-type numbers.
+- Chat no longer reports hits, only deaths. Lone thickets (a hedge tile that only reads well in groups) are no longer generated and are cleared on load; fiber comes from cutting picked bushes.
+- Drops (creature and player deaths) hop out of the poof and bounce into the pile's own slots.
+- Tests: pytest-xdist (`-n 6` in addopts). e2e 3m40s -> 47s, unit 3.8s -> 1.7s; the demo test saves directly instead of waiting 15 s.

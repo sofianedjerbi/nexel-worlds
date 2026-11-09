@@ -150,10 +150,11 @@ function onEvent(e) {
   if (e.type === "creature_died" || e.type === "fade") {   // it flashes, lifts and fades away in a puff of smoke
     const key = (e.kind || "gloom") + e.id, p = ents.get(key) || (recentlyGone.get(key) || {}).p;
     if (p && p.e) dyingPoof(p, performance.now()); else smoke(e.x, e.y, 8);
+    if (e.drops) dropLoot(e.x, e.y, e.drops, performance.now());
     ents.delete(key);
     sfx("poof", e.x, e.y);
   }
-  if (e.type === "death") { smoke(e.x, e.y, 10); sfx("poof", e.x, e.y); }
+  if (e.type === "death") { smoke(e.x, e.y, 10); sfx("poof", e.x, e.y); dropLoot(e.x, e.y, e.dropped, performance.now()); }
   if (e.type === "pick_up") { burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3}); sfx("collect", e.x, e.y); }
   if (e.type === "chest") { chestOpen.set(e.x + "," + e.y, performance.now()); sfx("clack", e.x, e.y); }
   if (e.type === "milk") { burst(e.x, e.y, "spark", 4, {dy: -.2, g: 5}); emote(e.name, "happy"); sfx("moo", e.x, e.y); }
@@ -171,19 +172,18 @@ function onEvent(e) {
   if (e.type === "born") burst(e.x, e.y, "food", 8, {dy: -.5, g: 3});
   if (e.type === "craft") { burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4}); sfx("craft", e.x, e.y); }
   if (["pick_up", "drop", "chest", "milk", "love", "lay", "fill", "picnic", "trough"].includes(e.type)) return;
-  if (e.type === "attack" && e.attacker !== me && e.target !== me) return;   // other people's fights: deaths still show
+  if (e.type === "attack") return;                     // hits show on screen; the chat only tells of deaths
   let text;
   switch (e.type) {
     case "say": text = e.text; break;
     case "shout": text = e.text; break;
     case "death": text = `${e.name} died (${e.cause})`; break;
-    case "attack": text = `${e.attacker} hits ${e.target} (−${e.damage})`; break;
     case "give": if (e.from !== me && e.to !== me) return; text = `${e.from} gave ${e.to} ${fmt(e.items)}`; break;
     case "join": text = `${e.name} ${e.new ? "washed ashore" : "woke up"}`; break;
     case "leave": text = `${e.name} fell asleep`; break;
 
     default: return;
   }
-  chatLine(text, e.type === "say" ? "" : e.type === "shout" ? "shout" : e.type === "death" || e.type === "attack" ? "bad" : "sys",
+  chatLine(text, e.type === "say" ? "" : e.type === "shout" ? "shout" : e.type === "death" ? "bad" : "sys",
     e.type === "say" || e.type === "shout" ? e.from : null);
 }
