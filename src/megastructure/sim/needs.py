@@ -1,7 +1,7 @@
 """Hunger and energy: eating, resting, sleeping, watering crops."""
 
 from .. import tiles as T
-from .constants import CAN_SIZE, PICNIC, sec
+from .constants import CAN_SIZE, EAT_SECONDS, PICNIC, sec
 from .entities import ActionError
 
 
@@ -31,7 +31,9 @@ class Needs:
             raise ActionError("not_food", f"food: {', '.join(T.FOOD)}")
         if not a.count(item):
             raise ActionError("missing_item", f"you have no {item}")
-        yield from self.wait(a, 0.3)
+        if a.hunger >= 100:
+            raise ActionError("full", "you're full")
+        yield from self.wait(a, EAT_SECONDS)       # a proper bite: moving or doing something else stops it
         if not a.count(item):
             raise ActionError("missing_item", "it's gone")
         a.add(item, -1)

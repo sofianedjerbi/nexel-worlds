@@ -21,6 +21,7 @@ EVENT_QUEUE = 60
 
 MAX_TEXT = 200
 
+EAT_SECONDS = 1.6    # eating takes a moment (and can be interrupted)
 CAN_SIZE = 12        # waterings per fill
 
 COOP_R = 6           # chickens this close to a coop lay there, twice as often

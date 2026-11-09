@@ -10,19 +10,25 @@ function frame(now) {
   const t = now / 1000;
   for (const p of ents.values()) {
     if (p.e && p.e.kind === "agent" && p.e.id === myId && walking && p.walking) {
-      // your own walk: glide at exactly the stride speed, never more than a tile ahead of the server
-      const [wx, wy] = DIRV[walking.dir], spd = walking.run ? 10 : 5;
-      const nx = p.x + wx * spd * dt, ny = p.y + wy * spd * dt;
-      const ahead = (nx - p.tx) * wx + (ny - p.ty) * wy;
+      // your own walk: glide at exactly the stride speed, never more than a tile ahead of the server. Turning
+      // mid-step first finishes the tile you were walking into, in a straight line (like the server does), then
+      // turns: no diagonal slide when two keys are held.
+      const [wx, wy] = DIRV[walking.dir], spd = walking.run ? 10 : 5, step = spd * dt;
+      const side = wx ? "y" : "x", along = wx ? "x" : "y", cur = p[side], was = (p.lastDir || {})[side] || 0;
+      const lane = Math.abs(cur - Math.round(cur)) < .03 ? Math.round(cur) : was > 0 ? Math.ceil(cur) : was < 0 ? Math.floor(cur) : Math.round(cur);
+      if (Math.abs(cur - lane) > 1e-3) {
+        p[side] = cur + Math.sign(lane - cur) * Math.min(step, Math.abs(lane - cur));
+        continue;
+      }
+      p[side] = lane;
+      const next = p[along] + (wx || wy) * step, ahead = (next - (wx ? p.tx : p.ty)) * (wx || wy);
       const edge = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
-      const limit = walkable(edge.x, edge.y) ? 1 : 0;
-      if (ahead <= limit) { p.x = nx; p.y = ny; }
-      const off = wx ? p.y - p.ty : p.x - p.tx;               // drift sideways back onto the server's row/column
-      if (wx) p.y -= off * Math.min(1, dt * 12); else p.x -= off * Math.min(1, dt * 12);
+      if (ahead <= (walkable(edge.x, edge.y) ? 1 : 0)) { p[along] = next; p.lastDir = {[along]: wx || wy, [side]: 0}; }
       continue;
     }
     const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
-    const pace = p.running || (p.e && p.e.run) ? 10 : 5;
+    // people walk 5 tiles/s (10 sprinting); animals amble, so each of their steps takes most of the pause between them
+    const pace = p.running || (p.e && p.e.run) ? 10 : (p.e && AMBLE[p.e.kind]) || 5;
     const step = (d > 1.5 ? d * 8 : pace * 1.05) * dt;
     if (d <= step) { p.x = p.tx; p.y = p.ty; } else { p.x += dx / d * step; p.y += dy / d * step; }
   }
@@ -176,7 +182,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   const moving = now - p.moved < 300;
   if (e.kind === "agent") {
     const mine = me && e.id === myId;
-    const action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, tid: e.tid, with: e.with, t0: p.doingSince || now} : null);
+    const action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null);
     if (e.doing && !p.doingSince) p.doingSince = now;
     if (!e.doing) p.doingSince = 0;
     if (!mine) p.running = !!e.run;
@@ -265,6 +271,10 @@ function drawEntity(p, sx, sy, S, t, now) {
     const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
     const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
     ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z - p.fx * (kb - lunge), y - 18 * z - bob - p.fy * (kb - lunge), 48 * z, 48 * z);   // feet at frame y 32
+    if (tool === "eat" && action.item) {          // the food at your mouth, bobbing with each bite
+      const fs = 10 * z, fx = x + S / 2 - fs / 2 + p.fx * 5 * z, fy = y - 9 * z - bob + (p.fy < 0 ? -2 * z : 0);
+      if (p.fy >= 0) ctx.drawImage(ghostIcon(action.item), Math.round(fx), Math.round(fy), fs, fs);
+    }
     if (hitK < .12) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .7; ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z, y - 18 * z, 48 * z, 48 * z); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
   } else if (ANIMALS[e.kind]) {
     const A = ANIMALS[e.kind], img = animalSheet(e.kind, e.id), fw = A.fw, big = fw === 32;
@@ -298,6 +308,7 @@ function drawNameplate(p, sx, sy, S) {
   if (e.hp < 100) { ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 16, y + 4, 32, 5); ctx.fillStyle = e.hp > 40 ? "#6aa66f" : "#d9473a"; ctx.fillRect(x - 15, y + 5, 30 * e.hp / 100, 3); }
   ctx.textAlign = "start";
 }
+const AMBLE = {chicken: 1.6, chick: 1.4, cow: 1.2, calf: 1.3, gloom: 2.6};   // tiles per second
 function drawProgress(sx, sy, S) {
   if (!progress || !me) return;
   const p = ents.get("agent" + myId); if (!p) return;

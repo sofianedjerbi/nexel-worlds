@@ -51,7 +51,7 @@ let myAction = null, pendingAct = null;   // myAction is set only once the serve
 async function act(tool, args, quiet) {
   if (!me) return null;
   busy = true;
-  pendingAct = {tool, dir: args.dir, tid: args.target, with: args.with};
+  pendingAct = {tool, dir: args.dir, tid: args.target, with: args.with, item: args.item};
   const r = await rpc("act", {tool, args});
   pendingAct = null; myAction = null;
   busy = false; progress = null;
