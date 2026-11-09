@@ -150,6 +150,30 @@ function frame(now) {
 // Highlight what an action would hit: a ghost of what gets placed, tinted footprint, and an outline.
 // which swing of the character sheet each tool in hand uses (the sheet has an axe and a hoe swing)
 const BITES = 3, EAT_S = .9;   // sim constants EAT_SECONDS
+// Eating, per bite: the food comes up from the hand (40%), is bitten (30%), goes back down (30%).
+function eatPose(k) {
+  const t = k * BITES / EAT_S, n = Math.min(BITES - 1, Math.floor(t)), ph = Math.min(1, t - n);
+  const lift = ph < .4 ? ph / .4 : ph < .7 ? 1 : 1 - (ph - .7) / .3;
+  return {n, lift: lift * lift * (3 - 2 * lift), biting: ph >= .4 && ph < .7, bites: n + (ph >= .55 ? 1 : 0)};
+}
+// A crisp 8x8 version of an item icon (each 2x2 block becomes one pixel), with round bites taken out of it.
+const biteIcons = new Map();
+const BITE_AT = [[6, 1, 2.6], [3, 0, 3.2], [4, 4, 9]];   // each bite: centre x, y and radius in the 8x8 icon
+function biteIcon(name, bites) {
+  const key = name + bites;
+  if (biteIcons.has(key)) return biteIcons.get(key);
+  const big = ghostIcon(name).getContext("2d").getImageData(0, 0, 16, 16).data;
+  const c = document.createElement("canvas"); c.width = c.height = 8; const g = c.getContext("2d"), img = g.createImageData(8, 8);
+  let left = 0;
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+    let best = -1;
+    for (const [dx, dy] of [[1, 1], [0, 0], [1, 0], [0, 1]]) { const i = ((y * 2 + dy) * 16 + x * 2 + dx) * 4; if (big[i + 3] > 128) { best = i; break; } }
+    if (best < 0 || BITE_AT.slice(0, bites).some(([bx, by, r]) => (x - bx) ** 2 + (y - by) ** 2 < r * r)) continue;
+    img.data.set(big.slice(best, best + 4), (y * 8 + x) * 4); left++;
+  }
+  g.putImageData(img, 0, 0);
+  biteIcons.set(key, left ? c : null); return left ? c : null;
+}
 const SWING_ROW = {axe: "axe", sword: "axe", spear: "axe", pickaxe: "axe", hoe: "hoe", watering_can: "water"};
 function drawIntent(p, it, sx, sy, S, t) {
   if (it && it.ghost) {
@@ -233,12 +257,15 @@ function drawEntity(p, sx, sy, S, t, now) {
     } else if (tool === "milk" || tool === "feed" || tool === "sleep") {
       bob = tool === "sleep" ? 0 : Math.round(Math.abs(Math.sin(k * 8)) * 2) * z;
       if (tool === "sleep" && !emotes.has(e.name)) emote(e.name, "sleep");
-    } else if (tool === "eat") {                      // three bites: food up to the mouth, a nod, crumbs
-      const bite = k * BITES / EAT_S, n = Math.floor(bite), ph = bite - n;
-      bob = Math.round(Math.max(0, Math.sin(ph * Math.PI)) * 1.5) * z;
-      if (n !== p.lastBite && ph > .45) {
-        p.lastBite = n; sfx("eat", p.x, p.y);
-        burst(p.x + (p.fx || 0) * .3, p.y, "food", 3, {dy: -.15, up: .7, spread: 1, g: 9, life: .3});   // crumbs at the mouth
+    } else if (tool === "eat") {                      // three bites (see eatPose): a small nod on each, crumbs fall
+      const pose = eatPose(k);
+      if (k < .05) p.lastBite = -1;                  // a new meal
+      bob = pose.biting ? z : 0;
+      if (pose.biting && p.lastBite !== pose.n) {
+        p.lastBite = pose.n; sfx("eat", p.x, p.y);
+        const mx = p.x + .5 + (p.fx || 0) * .28, cols = spriteColors([ghostIcon(action.item), 0, 0, 16, 16]);
+        for (let i = 0; i < 4; i++) parts.push({x: mx + (Math.random() - .5) * .25, y: p.y + .35, vx: (Math.random() - .5) * .8,
+          vy: -.3 - Math.random() * .6, g: 9, floor: p.y + .85 + Math.random() * .1, life: .5 + Math.random() * .3, age: 0, c: cols[i % cols.length], s: 1});
       }
     } else if (tool === "place" || tool === "pick_up" || tool === "give" || tool === "store" || tool === "take" || tool === "drop") {
       bob = Math.round(Math.sin(Math.min(1, k * 5) * Math.PI) * 3) * z;
@@ -281,12 +308,14 @@ function drawEntity(p, sx, sy, S, t, now) {
     const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
     const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
     ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z - p.fx * (kb - lunge), y - 18 * z - bob - p.fy * (kb - lunge), 48 * z, 48 * z);   // feet at frame y 32
-    if (tool === "eat" && action.item && p.fy >= 0) {   // the food: from your hand up to your mouth on each bite
-      const bite = k * BITES / EAT_S, ph = bite - Math.floor(bite), lift = Math.sin(Math.min(1, ph / .5) * Math.PI / 2);
-      const left = 1 - Math.min(BITES, bite) / BITES * .45, fs = Math.round(12 * z * left);          // smaller after each bite
-      const mx = x + S / 2 + (p.fx || 0) * 4.5 * z, my = y + 5 * z;           // the mouth: frame row 22, beside it when side-on
-      const fx = mx - fs / 2 + (p.fx || 0) * 2 * z * (1 - lift), fy = my - fs / 2 + 5 * z * (1 - lift);   // from the hand
-      ctx.drawImage(ghostIcon(action.item), Math.round(fx), Math.round(fy - bob), fs, fs);
+    if (tool === "eat" && action.item && p.fy >= 0) {   // the food, half size and crisp, held up to the mouth
+      const pose = eatPose(k), food = biteIcon(action.item, pose.bites);
+      if (food) {
+        // the mouth is at frame row 22 (screen y + 4z); side-on it is at the edge of the face
+        const mx = Math.round(x + S / 2 + (p.fx || 0) * 4 * z), my = Math.round(y + 5 * z);
+        const fx = mx - 4 * z + (p.fx || 0) * z * Math.round(2 * (1 - pose.lift)), fy = my - 3 * z + z * Math.round(5 * (1 - pose.lift));
+        ctx.drawImage(food, fx, fy - bob, 8 * z, 8 * z);
+      }
     }
     if (hitK < .12) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .7; ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z, y - 18 * z, 48 * z, 48 * z); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
   } else if (ANIMALS[e.kind]) {
