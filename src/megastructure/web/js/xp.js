@@ -97,10 +97,10 @@ const TRACK = [36, 36, 40, 7];   // in sliders.png
 const DIGITS = ["111101101101111", "010110010010111", "111001111100111", "111001111001111", "101101111001001",
   "111100111001111", "111100111101111", "111001001001001", "111101111101111", "111101111001111"];   // 3x5 each
 function drawXpBar(k, level) {
-  // as wide as the hotbar and centred on it (not on the hotbar and the craft button together), vitals likewise
-  const cv = $("xpbar"), dpr = window.devicePixelRatio || 1, bar = $("hotbar").clientWidth;
+  // as wide as the whole item row (the hotbar and the craft slot), vitals likewise
+  const cv = $("xpbar"), dpr = window.devicePixelRatio || 1, bar = $("hotbar").parentElement.getBoundingClientRect().width;
   if ($("vitals").style.width !== bar + "px") $("vitals").style.width = bar + "px";
-  const SC0 = Math.max(1, Math.round(HUD_K * dpr)), w = Math.max(40, Math.floor(bar * dpr / SC0)), h = 11;   // the level digits sit over the track's top
+  const SC0 = Math.max(1, Math.round(HUD_K * dpr)), w = Math.max(40, Math.round(bar * dpr / SC0)), h = 11;   // the level digits sit over the track's top
   const sig = [w, Math.round(k * w), level, dpr].join();
   if (cv.dataset.sig === sig) return;
   cv.dataset.sig = sig;
