@@ -166,6 +166,14 @@ function drawIntent(p, it, sx, sy, S, t) {
   }
   if (it && !it.info && !it.walk) {
     ctx.strokeStyle = it.ok === false ? "rgba(230,80,70,.9)" : "rgba(255,248,232,.95)"; ctx.lineWidth = zoom;
+    const c = !it.ghost && !(it.foot && it.foot.length > 1) && combAt(p.x, p.y), spr = c && objectSprite(c, p.x, p.y, t);
+    const bb = spr && spriteBounds(...spr.slice(0, 5));
+    if (bb) {                                     // one thing (a tree, a rock, a mushroom): a box around the thing itself
+      const [, , , , , dx, dy] = spr, pad = 1;
+      const l = sx(p.x) + (dx + bb[0] - pad) * zoom, tp = sy(p.y) + (dy + bb[1] - pad) * zoom;
+      ctx.strokeRect(l + zoom / 2, tp + zoom / 2, (bb[2] - bb[0] + 2 * pad - 1) * zoom, (bb[3] - bb[1] + 2 * pad - 1) * zoom);
+      return;
+    }
     const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y);
     const x0 = Math.min(...xs), y0 = Math.min(...ys), x1 = Math.max(...xs) + 1, y1 = Math.max(...ys) + 1;
     ctx.strokeRect(sx(x0) + zoom / 2, sy(y0) + zoom / 2, (x1 - x0) * S - zoom, (y1 - y0) * S - zoom);

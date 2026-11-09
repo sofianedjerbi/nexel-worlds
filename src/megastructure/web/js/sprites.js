@@ -122,3 +122,21 @@ function objectSprite(c, x, y, t) {
   return null;
 }
 // ---- sound: short procedural effects through WebAudio; M mutes ---------------------------
+// The opaque part of a sprite frame (in its own pixels): the white aiming box hugs the thing, not its tile.
+const boundsCache = new Map(), boundsCv = document.createElement("canvas");
+function spriteBounds(img, a, b, w, h) {
+  const key = `${img.src}|${a},${b},${w},${h}`;
+  if (boundsCache.has(key)) return boundsCache.get(key);
+  boundsCv.width = w; boundsCv.height = h;
+  const g = boundsCv.getContext("2d", {willReadFrequently: true});
+  g.clearRect(0, 0, w, h); g.drawImage(img, a, b, w, h, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (d[(y * w + x) * 4 + 3] < 40) continue;
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  const r = x1 < 0 ? null : [x0, y0, x1 + 1, y1 + 1];
+  if (img.complete && img.naturalWidth) boundsCache.set(key, r);
+  return r;
+}
