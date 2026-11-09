@@ -13,7 +13,10 @@ function frame(now) {
       // your own walk: glide at exactly the stride speed, never more than a tile ahead of the server. Turning
       // mid-step first finishes the tile you were walking into, in a straight line (like the server does), then
       // turns: no diagonal slide when two keys are held.
-      const [wx, wy] = DIRV[walking.dir], spd = walking.run ? 10 : 5, step = spd * dt;
+      const [wx, wy] = DIRV[walking.dir], ahead0 = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
+      // up a slope is hard going (60% longer a step), down it careful (20%): as the server paces it (SLOPE_UP/DOWN)
+      const climb = levelAt(ahead0.x, ahead0.y) - levelAt(Math.round(p.tx), Math.round(p.ty));
+      const spd = (walking.run ? 10 : 5) / (climb > 0 ? 1.6 : climb < 0 ? 1.2 : 1), step = spd * dt;
       const side = wx ? "y" : "x", along = wx ? "x" : "y", cur = p[side], was = (p.lastDir || {})[side] || 0;
       const lane = Math.abs(cur - Math.round(cur)) < .03 ? Math.round(cur) : was > 0 ? Math.ceil(cur) : was < 0 ? Math.floor(cur) : Math.round(cur);
       if (Math.abs(cur - lane) > 1e-3) {

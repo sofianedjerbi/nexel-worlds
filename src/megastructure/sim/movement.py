@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from .constants import sec
+from .constants import SLOPE_DOWN, SLOPE_UP, sec
 from .entities import ActionError, Agent
 
 
@@ -38,7 +38,10 @@ class Movement:
             self.set_tile(a.x, a.y, block="boat", by=a, cause="moor")   # leave the boat where you got off
             a.sailing = False
             self.emit("moor", a.x, a.y, name=a.name)
+        climb = self.world.level(x, y) - self.world.level(a.x, a.y)
         a.x, a.y = x, y
+        if climb and a.ready > self.tick:            # up a slope is hard going, down it a little careful
+            a.ready += round((a.ready - self.tick) * (SLOPE_UP if climb > 0 else SLOPE_DOWN))
         self.arrive(a)
 
     def arrive(self, a: Agent):

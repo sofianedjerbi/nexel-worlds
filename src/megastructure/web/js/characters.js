@@ -33,6 +33,9 @@ function drawEntity(p, sx, sy, S, t, now) {
   if (x < -S * 2 || x > W + S * 2 || y < -S * 2 || y > H + S * 2) return;
   const moving = now - p.moved < 300;
   if (e.kind === "agent") {
+    const lv = levelAt(Math.round(p.x), Math.round(p.y));    // stepping up a slope: a little puff of effort
+    if (p.lastLv !== undefined && lv > p.lastLv) { smoke(p.x, p.y + .3, 3, .35); sfx("step", Math.round(p.x), Math.round(p.y)); }
+    p.lastLv = lv;
     const mine = me && e.id === myId;
     let action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, at: e.at, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null);
     if ((!action || action.tool === "walk" || action.tool === "move_to") && p.swing && now - p.swing.t0 < 320)

@@ -86,3 +86,14 @@ def test_nothing_generates_on_a_rim():
                 x, y = cx * CHUNK + i % CHUNK, cy * CHUNK + i // CHUNK
                 if v & 15 and not v & RAMP and any(gen_level(7, x + dx, y + dy) < v & 15 for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
                     assert block[i] == 0, (x, y)
+
+
+def test_going_up_a_slope_is_slower_than_walking_on_the_level(world):
+    sim, a = world
+    plateau(sim, a)
+    a.y -= 1                                                 # at the stairs' landing
+    assert run(sim, a, "step", {"dir": "N"})["ok"]           # up onto the slope
+    up = a.ready - sim.tick                                  # how long until the next step may start
+    assert run(sim, a, "step", {"dir": "N"})["ok"]           # on along the level
+    level = a.ready - sim.tick
+    assert up > level

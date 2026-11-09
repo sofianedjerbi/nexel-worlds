@@ -114,35 +114,49 @@ def largest_shape(img: Image.Image) -> Image.Image:
 
 def ramp_art(hill: Path, below: tuple) -> Image.Image:
     """A grassy slope down a hill's south cliff, 32x32: the west and east halves sit on the pair of slope tiles
-    (top 16 rows) and the landing below them (bottom 16). The hill's grass runs out through a gap in the cliff and
-    fans out onto the ground below, as land coming down towards you does: lit, catching more light lower down, with
-    soft contour dashes across it; along each side the cliff face turns and runs diagonally down beside it, tapering
-    to nothing at the foot. Colours are the hill sheet's own (sampled from a south-edge tile), so it matches each
-    terrace; `below` is the colour of the ground it comes down onto, which its foot fades into."""
+    (top 16 rows) and the landing below them (bottom 16). Drawn to read as ground rising away from you:
+    - a bright crest where the hilltop breaks into the slope;
+    - the surface fanning out as it comes down, lit, its foot fading into the ground below (`below`);
+    - contour lines packed close near the top (further away) and opening out lower down, each with a lit lip, so
+      the eye reads steps of rising ground;
+    - the cliff face turning down each side as a wall that tapers to nothing at the foot, with grass tufts on it.
+    Colours are the hill sheet's own (sampled from a south-edge tile), so it matches each terrace."""
     sheet = Image.open(hill).convert("RGBA")
     col = [sheet.getpixel((1 * 16 + 8, 2 * 16 + y)) for y in range(16)]     # a south-edge column: top to cliff foot
     top, rim, line, dark, light = col[0], col[9], col[11], col[12], col[13]
-    lit = _mix(top, (255, 255, 230), .18)
+    mid = _mix(dark, light, .5)
+    lit = _mix(top, (255, 255, 230), .2)
+    crest = _mix(top, (255, 255, 235), .45)
     img = Image.new("RGBA", (32, 32))
     px = img.load()
-    y0, y1 = 9, 26                                   # the slope: from where the hill's rim was, down onto the landing
+    y0, y1 = 9, 27                                   # the slope: from where the hill's rim was, down onto the landing
+    contours = [y0 + round((y1 - y0 - 3) * (i / 4) ** 1.4) for i in (1, 2, 3)]   # close at the top, open below
+    bulge = lambda x: 1 if 9 <= x <= 22 else 0                                  # each a soft curve, rounded rise
     for y in range(y0, y1 + 1):
-        k = (y - y0) / (y1 - y0)                     # 0 at the top, 1 at the foot
-        left = round(3 - 3 * k)                      # it fans out as it comes down
+        k = (y - y0) / (y1 - y0)                     # 0 at the crest, 1 at the foot
+        left = round(3.5 - 3.5 * k ** .8)            # it fans out as it comes down
         right = 31 - left
         for x in range(left, right + 1):
-            c = _mix(_mix(top, lit, min(1, k * 2)), below, max(0, k - .45) / .55)   # lit, then into the ground
-            if (y - y0) % 4 == 2 and left + 3 <= x <= right - 3 and (x + y // 4) % 7 < 5:
-                c = _mix(c, rim, .45)                # contour dashes: the slope steps down
+            c = _mix(_mix(top, lit, min(1, k * 2)), below, max(0, k - .5) / .5)
+            inside = left + 2 <= x <= right - 2
+            if y == y0 and left < x < right:
+                c = crest
+            elif inside and any(y == cy + bulge(x) for cy in contours):
+                c = _mix(c, rim, .55)                # a contour...
+            elif inside and any(y == cy + bulge(x) + 1 for cy in contours):
+                c = _mix(c, (255, 255, 235), .3)     # ...and the light catching its lip
             px[x, y] = c
-        wall = round(4 * max(0, 1 - k * 1.6))        # the cliff face beside it, turning down the side and tapering
+        wall = round(4 * max(0, 1 - k * 1.5))        # the cliff face turning down each side, tapering away
         for i in range(wall):
             for x in (left - 1 - i, right + 1 + i):
                 if 0 <= x < 32:
-                    px[x, y] = (line, dark, light, light)[i]
-        if y == y1:                                  # the foot melts into the ground: the faintest shade under the lip
-            for x in range(left + 2, right - 1):
-                px[x, y] = _mix(below, rim, .25)
+                    px[x, y] = (line, dark, mid, light)[i]
+        if wall and y % 5 == 1:                      # grass tufts hanging over the side walls
+            for x in (left - 1, right + 1):
+                if 0 <= x < 32:
+                    px[x, y] = rim
+    for x in range(4, 28):                           # the faintest shade under the foot
+        px[x, y1 + 1] = _mix(below, rim, .2)
     return img
 
 
