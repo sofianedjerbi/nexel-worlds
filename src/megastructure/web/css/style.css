@@ -96,10 +96,10 @@
   #hud { position:fixed; left:50%; bottom:10px; transform:translateX(-50%); display:none; flex-direction:column; align-items:stretch;
     gap:3px; z-index:3; filter:drop-shadow(0 3px 0 rgba(60,40,30,.3)); pointer-events:none; }
   #hud .hudrow { display:flex; gap:clamp(2px, .4vw, 6px); align-items:center; pointer-events:auto; }
-  #vitals { display:flex; justify-content:space-between; align-items:flex-end; padding:0 4px; }
+  #vitals { display:flex; justify-content:space-between; align-items:flex-end; padding:0 4px; box-sizing:border-box; }
   #vitals canvas { image-rendering:pixelated; }
   /* experience: the wooden track between the vitals and the hotbar (drawn on a canvas by xp.js) */
-  #xpbar { display:block; align-self:center; image-rendering:pixelated; }
+  #xpbar { display:block; align-self:flex-start; image-rendering:pixelated; }
   #status { align-self:center; text-align:center; white-space:nowrap; color:#fff8e8; font-size:18px; display:none;
     text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
   #status { color:#ffd0b8; }

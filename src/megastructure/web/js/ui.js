@@ -71,12 +71,13 @@ function drawHotbar(inv) {
   drawBag(inv, extra);
 }
 // Hearts and food sit on the hotbar, 10 points an icon, halves allowed. Hearts are the UI pack's small hearts (full,
-// half, empty); food is a drumstick drawn here in the same style (outline, fill, glint; empty is the bare outline
-// colour). Pixel-exact: every art pixel is a whole number of device pixels.
+// half, empty); food is an apple drawn here in the hearts' own palette (plum outline, rose, glint, a leaf; empty is
+// the bare outline colour, like an empty heart). Pixel-exact: every art pixel is a whole number of device pixels.
 const HEART = [4, 84, 9, 8];                     // full; half and empty are the next 16 px cells along
-const FOOD = ["..aaaa...", ".abbbba..", "abccbbba.", "abcbbbba.", "abbbbbba.", ".abbbbaa.", "..aaaawwa", "......awa", ".......a."];
-const FOOD_COL = {a: "#6b4430", b: "#c98a57", c: "#f0c48e", w: "#f6ead2"};
-function pixelCanvas(cv, w, h, k = 1.5) {        // sizes a canvas for art w x h at about k CSS px an art pixel
+const FOOD = ["....sg...", "...sgg...", ".aa.s.aa.", "abbabbbba", "abcbbbbba", "abbbbbbba", "abbbbbbda", ".abbbbda.", "..aaaaa.."];
+const FOOD_COL = {a: "#664165", b: "#c87c86", c: "#e8b5ac", d: "#a8606e", s: "#7a5236", g: "#7fae5a"};
+const HUD_K = 2.5;                               // CSS px an art pixel in the vitals and the xp bar
+function pixelCanvas(cv, w, h, k = HUD_K) {      // sizes a canvas for art w x h at about k CSS px an art pixel
   const SC = Math.max(1, Math.round(k * (window.devicePixelRatio || 1)));
   if (cv.width !== w * SC || cv.height !== h * SC) {
     cv.width = w * SC; cv.height = h * SC;

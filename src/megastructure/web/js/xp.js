@@ -97,8 +97,10 @@ const TRACK = [36, 36, 40, 7];   // in sliders.png
 const DIGITS = ["111101101101111", "010110010010111", "111001111100111", "111001111001111", "101101111001001",
   "111100111001111", "111100111101111", "111001001001001", "111101111101111", "111101111001111"];   // 3x5 each
 function drawXpBar(k, level) {
-  const cv = $("xpbar"), dpr = window.devicePixelRatio || 1;
-  const SC0 = Math.max(1, Math.round(1.5 * dpr)), w = Math.max(40, Math.floor(cv.parentElement.clientWidth * dpr / SC0) - 4), h = 18;
+  // as wide as the hotbar and centred on it (not on the hotbar and the craft button together), vitals likewise
+  const cv = $("xpbar"), dpr = window.devicePixelRatio || 1, bar = $("hotbar").clientWidth;
+  if ($("vitals").style.width !== bar + "px") $("vitals").style.width = bar + "px";
+  const SC0 = Math.max(1, Math.round(HUD_K * dpr)), w = Math.max(40, Math.floor(bar * dpr / SC0)), h = 11;   // the level digits sit over the track's top
   const sig = [w, Math.round(k * w), level, dpr].join();
   if (cv.dataset.sig === sig) return;
   cv.dataset.sig = sig;
@@ -112,7 +114,7 @@ function drawXpBar(k, level) {
     g.fillStyle = "#c8ea5a"; g.fillRect(2 * SC, (top + 2) * SC, fill * SC, SC);
   }
   if (!level) return;
-  const D = 2, text = String(level), tw2 = (text.length * 4 - 1) * D, x0 = Math.floor((w - tw2) / 2), y0 = 1;   // D: art px a digit pixel
+  const D = 2, text = String(level), tw2 = (text.length * 4 - 1) * D, x0 = Math.floor((w - tw2) / 2), y0 = 0;   // D: art px a digit pixel
   const px = (on) => [...text].forEach((d, i) => [...DIGITS[+d]].forEach((b, j) => {
     if (b === "1") on(x0 + (i * 4 + j % 3) * D, y0 + Math.floor(j / 3) * D);
   }));
