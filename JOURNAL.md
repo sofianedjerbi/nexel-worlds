@@ -626,3 +626,10 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - The pack's stairs (cliff caps with holes, floating planks) are replaced by a slope drawn at build time (`ramp_art`) in each hill sheet's colours: the hill's grass runs out through the cliff and fans onto the ground, lit, with contour dashes, the cliff face turning down its sides and tapering; its foot fades into the ground below (meadow for level 1, the lower terrace for level 2). Slopes every ~10 tiles of cliff (was 6), and only where the hilltop behind is walkable.
 - Rims: a hill tile with any lower neighbour (diagonals too) is its rim, where the cliff or edge is drawn: not walkable (`World.edge` in passable/can_enter, client `edgeAt`), nothing generated there, nothing placed there; structures must stand on one level clear of rims. Slopes are the way through.
 - Tests: rim rules, nothing generated on rims; 171 unit + 50 e2e green.
+
+## Iteration 40: slopes as passes, four ways up; animals' diet
+- A slope no longer juts out onto the land below (it read as a bump). It's a pass through the cliff: on the hill tiles beside it (and diagonally above), the slope counts as low ground, so the cliff ends in the hill sheet's own rounded corners and the rim curves in to meet the hilltop; the slope's ground runs from the hilltop's colour down to the land below inside the gap.
+- Variants (per pair, by hash): soft grass with contours, a worn earth path winding up, stone steps, log steps. Pairs never touch (each 10-tile stretch keeps its last tile free).
+- Climbing: a step up takes 60% longer, down 20% (server pace and client prediction), with a puff on each step up.
+- Animals eat what grows and hay, not eggs, meat or milk.
+- 174 unit + 50 e2e green.

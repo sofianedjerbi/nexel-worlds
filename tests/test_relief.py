@@ -97,3 +97,14 @@ def test_going_up_a_slope_is_slower_than_walking_on_the_level(world):
     assert run(sim, a, "step", {"dir": "N"})["ok"]           # on along the level
     level = a.ready - sim.tick
     assert up > level
+
+
+def test_slopes_come_in_separate_pairs():
+    ramps = set()
+    for cx in range(-3, 3):
+        for cy in range(-2, 3):
+            _, _, lv = gen_chunk(11, cx, cy)
+            ramps |= {(cx * CHUNK + i % CHUNK, cy * CHUNK + i // CHUNK) for i, v in enumerate(lv) if v & RAMP}
+    for x, y in ramps:                                       # every slope tile has exactly one twin beside it
+        twins = [(x + d, y) in ramps for d in (-1, 1)]
+        assert sum(twins) == 1, (x, y)

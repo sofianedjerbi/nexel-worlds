@@ -128,10 +128,12 @@ function drawTile(x, y) {
   // relief: each level lays its hill sheet (grass, darker grass, stone peaks) over the tiles at least that high; the
   // sheets' edge tiles carry the cliff face, so a plateau shows its south cliff and a soft rim round the rest
   const lv = levelAt(x, y);
-  // (on a slope tile, every tile under the slope's pair counts as up there too, diagonals included, so no cliff face
-  // or corner is drawn where the slope goes through; the slope piece draws its own sides)
+  // slopes: on a slope tile, the tiles under its pair count as up there too (no cliff where it goes through); on the
+  // hill tiles beside it (and diagonally above it), the slope counts as low ground, so the cliff ends there in the
+  // sheet's own rounded corners and its rim curves in to meet the hilltop
   const onSlope = rampAt(x, y);
-  const high = (k) => (c, gg, tx, ty) => levelAt(tx, ty) >= k || (onSlope && ty === y + 1 && rampAt(tx, y));
+  const high = (k) => (c, gg, tx, ty) => onSlope ? levelAt(tx, ty) >= k || (ty === y + 1 && rampAt(tx, y))
+                                                 : levelAt(tx, ty) >= k && !(rampAt(tx, ty) && (ty === y || (ty === y + 1 && tx !== x && !rampAt(x, y + 1))));
   for (let k = 1; k <= lv; k++) drawBlobLayer(g, IMG["hill" + k], x, y, high(k), ox, oy, k < 3 ? .25 : .1);
   if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
   drawStairs(g, x, y, ox, oy);
@@ -160,9 +162,10 @@ function groundMarks(g, x, y, gr, ox, oy) {
 function drawStairs(g, x, y, ox, oy) {
   const up = rampAt(x, y), ry = up ? y : y - 1;
   if (!up && !rampAt(x, ry)) return;
-  const west = rampAt(x + 1, ry);                                    // this column is the pair's west half
+  const west = rampAt(x + 1, ry), x0 = west ? x : x - 1;             // this column is the pair's west half or east
   const sheet = levelAt(x, ry) >= 2 ? IMG.ramp2 : IMG.ramp1;        // each terrace its own grass
-  g.drawImage(sheet, west ? 0 : 16, up ? 0 : 16, 16, 16, ox, oy, 16, 16);
+  const variant = Math.floor(hash(x0, ry, 77) * 4) * 32;            // grass, earth path, stone steps, log steps
+  g.drawImage(sheet, variant + (west ? 0 : 16), up ? 0 : 16, 16, 16, ox, oy, 16, 16);
 }
 function renderBlock(b) {
   b.canvas = document.createElement("canvas"); b.canvas.width = B * 16; b.canvas.height = B * 16;

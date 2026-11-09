@@ -112,52 +112,80 @@ def largest_shape(img: Image.Image) -> Image.Image:
     return out
 
 
+RAMP_VARIANTS = 4
+
+
 def ramp_art(hill: Path, below: tuple) -> Image.Image:
-    """A grassy slope down a hill's south cliff, 32x32: the west and east halves sit on the pair of slope tiles
-    (top 16 rows) and the landing below them (bottom 16). Drawn to read as ground rising away from you:
-    - a bright crest where the hilltop breaks into the slope;
-    - the surface fanning out as it comes down, lit, its foot fading into the ground below (`below`);
-    - contour lines packed close near the top (further away) and opening out lower down, each with a lit lip, so
-      the eye reads steps of rising ground;
-    - the cliff face turning down each side as a wall that tapers to nothing at the foot, with grass tufts on it.
-    Colours are the hill sheet's own (sampled from a south-edge tile), so it matches each terrace."""
+    """Slopes down a hill's south cliff: RAMP_VARIANTS pieces of 32x32 side by side. The west and east halves of a
+    piece sit on the pair of slope tiles (top 16 rows) and the landing below them (bottom 16). The cliff either side
+    ends in the hill sheet's own rounded corners (the client treats the slope tiles as low ground for their
+    neighbours), so the slope is a pass between two hill ends: its ground runs from the hilltop's colour down to the
+    ground below (`below`), staying within the gap (nothing juts out onto the land below). Each variant dresses it differently: soft grass with contours, a worn earth path winding up, stone steps,
+    log steps. Colours come from the hill sheet (and the cliff's browns for earth and logs)."""
     sheet = Image.open(hill).convert("RGBA")
     col = [sheet.getpixel((1 * 16 + 8, 2 * 16 + y)) for y in range(16)]     # a south-edge column: top to cliff foot
     top, rim, line, dark, light = col[0], col[9], col[11], col[12], col[13]
-    mid = _mix(dark, light, .5)
-    lit = _mix(top, (255, 255, 230), .2)
-    crest = _mix(top, (255, 255, 235), .45)
-    img = Image.new("RGBA", (32, 32))
-    px = img.load()
-    y0, y1 = 9, 27                                   # the slope: from where the hill's rim was, down onto the landing
-    contours = [y0 + round((y1 - y0 - 3) * (i / 4) ** 1.4) for i in (1, 2, 3)]   # close at the top, open below
-    bulge = lambda x: 1 if 9 <= x <= 22 else 0                                  # each a soft curve, rounded rise
-    for y in range(y0, y1 + 1):
-        k = (y - y0) / (y1 - y0)                     # 0 at the crest, 1 at the foot
-        left = round(3.5 - 3.5 * k ** .8)            # it fans out as it comes down
-        right = 31 - left
-        for x in range(left, right + 1):
-            c = _mix(_mix(top, lit, min(1, k * 2)), below, max(0, k - .5) / .5)
-            inside = left + 2 <= x <= right - 2
-            if y == y0 and left < x < right:
-                c = crest
-            elif inside and any(y == cy + bulge(x) for cy in contours):
-                c = _mix(c, rim, .55)                # a contour...
-            elif inside and any(y == cy + bulge(x) + 1 for cy in contours):
-                c = _mix(c, (255, 255, 235), .3)     # ...and the light catching its lip
-            px[x, y] = c
-        wall = round(4 * max(0, 1 - k * 1.5))        # the cliff face turning down each side, tapering away
-        for i in range(wall):
-            for x in (left - 1 - i, right + 1 + i):
-                if 0 <= x < 32:
-                    px[x, y] = (line, dark, mid, light)[i]
-        if wall and y % 5 == 1:                      # grass tufts hanging over the side walls
-            for x in (left - 1, right + 1):
-                if 0 <= x < 32:
-                    px[x, y] = rim
-    for x in range(4, 28):                           # the faintest shade under the foot
-        px[x, y1 + 1] = _mix(below, rim, .2)
-    return img
+    out = Image.new("RGBA", (32 * RAMP_VARIANTS, 32))
+    for v in range(RAMP_VARIANTS):
+        img = Image.new("RGBA", (32, 32))
+        px = img.load()
+        y0, y1 = 4, 20                               # from the hilltop down to just past the cliff's foot
+        for y in range(y0, y1 + 1):
+            k = (y - y0) / (y1 - y0)
+            k = k * k * (3 - 2 * k)                  # eased: it rolls over at the top and settles at the bottom
+            for x in range(32):
+                c = _mix(top, below, k)
+                if y == y1:
+                    c = _mix(c, below, .5)
+                px[x, y] = c
+        _ramp_dress(px, v, y0, y1, top=top, rim=rim, line=line, dark=dark, light=light, below=below)
+        out.alpha_composite(img, (32 * v, 0))
+    return out
+
+
+def _ramp_dress(px, v, y0, y1, top, rim, line, dark, light, below):
+    """What's on the slope: 0 soft grass and contours, 1 an earth path, 2 stone steps, 3 log steps."""
+    shade = lambda c, t: _mix(c, (60, 40, 30), t)
+    glow = lambda c, t: _mix(c, (255, 252, 230), t)
+    if v == 0:                                       # grass: two soft contours, the upper one tighter
+        for cy, w in ((y0 + 4, 9), (y0 + 9, 11)):
+            for x in range(16 - w, 16 + w):
+                dy = 1 if abs(x - 16) < w - 4 else 0
+                px[x, cy + dy] = shade(px[x, cy + dy], .12)
+                px[x, cy + dy + 1] = glow(px[x, cy + dy + 1], .18)
+        for x, y in ((6, y0 + 6), (24, y0 + 3), (21, y0 + 12), (9, y0 + 13)):   # tufts
+            px[x, y], px[x + 1, y - 1] = rim, rim
+    elif v == 1:                                     # a worn path of earth winding down the middle
+        earth, earth_dark = light, _mix(light, dark, .45)
+        for y in range(y0, y1):
+            cx = 16 + round(3 * __import__("math").sin((y - y0) * .45))
+            half = 3 + (y - y0) // 6
+            for x in range(cx - half, cx + half + 1):
+                edge = x in (cx - half, cx + half)
+                px[x, y] = _mix(px[x, y], earth_dark if edge else earth, .55 if edge else .85)
+            if (y - y0) % 4 == 1:
+                px[cx + 1, y] = glow(earth, .3)
+    elif v == 2:                                     # stone steps set into the grass
+        stone, stone_dark, stone_light = (193, 200, 185, 255), (128, 134, 128, 255), (226, 230, 218, 255)
+        for i, sy in enumerate((y0 + 2, y0 + 7, y0 + 12)):
+            w = 7 + i                                # wider as they come towards you
+            for x in range(16 - w, 16 + w):
+                px[x, sy] = stone_light
+                px[x, sy + 1] = stone
+                px[x, sy + 2] = stone_dark
+                px[x, sy + 3] = shade(px[x, sy + 3], .15)   # its shadow on the grass
+            px[16 - w, sy + 1] = px[16 + w - 1, sy + 1] = stone_dark
+    else:                                            # log steps: round ends, bark lines
+        bark, bark_dark, cut = dark, line, light
+        for i, sy in enumerate((y0 + 2, y0 + 7, y0 + 12)):
+            w = 7 + i
+            for x in range(16 - w, 16 + w):
+                px[x, sy] = _mix(bark, (255, 240, 210), .25)
+                px[x, sy + 1] = bark
+                px[x, sy + 2] = bark_dark
+                px[x, sy + 3] = shade(px[x, sy + 3], .15)
+            for x in (16 - w, 16 + w - 1):           # the cut ends of the log
+                px[x, sy], px[x, sy + 1], px[x, sy + 2] = cut, cut, bark_dark
 
 
 def _mix(a, b, t):

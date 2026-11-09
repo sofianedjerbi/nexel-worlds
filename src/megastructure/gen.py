@@ -83,9 +83,9 @@ def _is_ramp(seed: int, x: int, y: int, lv) -> bool:
     the landing below clear. Along each row, every stretch of 10 gets the first place that fits, from a hashed start;
     (x, x+1) stays inside its stretch, so pairs never touch. `lv(x, y)` gives levels."""
     cell = x // 10
-    start = int(_hash(seed, cell, y, 71) * 9)
-    for k in range(9):
-        cx = cell * 10 + (start + k) % 9
+    start = int(_hash(seed, cell, y, 71) * 8)
+    for k in range(8):                           # (x, x+1) within the stretch's first 9 tiles: pairs never touch
+        cx = cell * 10 + (start + k) % 8
         if _ramp_fits(seed, cx, y, lv):
             return cx == x
     return False
