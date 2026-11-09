@@ -9,7 +9,7 @@ import random
 from dataclasses import fields
 from pathlib import Path
 
-from ..tiles import BLOCKS, DIRS, GROUNDS
+from ..tiles import BLOCKS, DIRS
 from ..world import Store, World
 from .animals import Animals
 from .building import Building
@@ -19,22 +19,23 @@ from .constants import (
     DAY_TICKS,
     EVENT_QUEUE,
     MOVES,
-    SHOUT_R,
     TARGET_R,
     VIEW_R,
     sec,
 )
-from .entities import Action, ActionError, Agent, Creature, _hash_token
+from .entities import Action, ActionError, Agent, Creature
 from .environment import Environment
 from .items import Items
 from .movement import Movement
 from .needs import Needs
 from .observe import Observation
+from .persistence import Persistence
+from .sessions import Sessions
 from .social import Social
 from .specs import TOOL_SPECS
 
 
-class Simulation(Movement, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
+class Simulation(Persistence, Sessions, Movement, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
@@ -190,45 +191,6 @@ class Simulation(Movement, Building, Items, Combat, Animals, Needs, Social, Envi
 
     # ------------------------------------------------------------- agents
 
-    def login(self, name: str, token: str, persona: str = "") -> Agent:
-        name = name.strip()[:24]
-        if not name or not name.replace("_", "").replace("-", "").isalnum():
-            raise ActionError("bad_name", "name must be 1-24 letters/digits/-/_")
-        a = self.by_name.get(name)
-        th = _hash_token(token)
-        if a is None:
-            aid = max(self.agents, default=0) + 1
-            x, y = self.find_spawn(aid)
-            a = Agent(aid, name, x, y, persona=persona[:200])
-            self.agents[aid] = a
-            self.by_name[name] = a
-            self.tokens[aid] = th
-            self.store.db.execute("INSERT INTO agents VALUES(?,?,?,?)", (aid, name, th, json.dumps(a.to_json())))
-            self.emit("join", x, y, radius=SHOUT_R, name=name, new=True)
-        elif self.tokens[a.id] != th:
-            raise ActionError("bad_token", "name is taken and the token does not match")
-        else:
-            if persona:
-                a.persona = persona[:200]
-            self.emit("join", a.x, a.y, radius=SHOUT_R, name=name, new=False)
-        a.online = True
-        return a
-
-    def logout(self, a: Agent):
-        if a.action:
-            self.interrupt(a, "disconnected")
-        a.online = False
-        self.emit("leave", a.x, a.y, radius=SHOUT_R, name=a.name)
-
-    def find_spawn(self, salt: int) -> tuple[int, int]:
-        r = random.Random(self.seed * 7919 + salt * 104729 + self.tick)
-        for radius in (24, 48, 96, 192):
-            for _ in range(200):
-                x, y = r.randint(-radius, radius), r.randint(-radius, radius)
-                if self.world.passable(x, y) and GROUNDS[self.world.get(x, y)[0]].name in ("dirt", "grass", "bridge"):
-                    return x, y
-        return 0, 0
-
     def interrupt(self, a: Agent, why="interrupted"):
         act = a.action
         if act is not None:
@@ -299,34 +261,4 @@ class Simulation(Movement, Building, Items, Combat, Animals, Needs, Social, Envi
 
     # ------------------------------------------------------- persistence
 
-    def flush(self):
-        db = self.store.db
-        for a in self.agents.values():
-            db.execute("UPDATE agents SET json=? WHERE id=?", (json.dumps(a.to_json()), a.id))
-        for pos in self.dirty_items:
-            pile = self.items.get(pos)
-            if pile:
-                db.execute("INSERT OR REPLACE INTO ground_items VALUES(?,?,?)", (*pos, json.dumps(pile)))
-            else:
-                db.execute("DELETE FROM ground_items WHERE x=? AND y=?", pos)
-        self.dirty_items.clear()
-        db.execute("DELETE FROM creatures")
-        db.executemany("INSERT INTO creatures VALUES(?,?)",
-                       [(c.id, json.dumps(c.to_json())) for c in self.creatures.values()])
-        self.store.set_meta("tick", self.tick)
-        self.store.set_meta("fires", [[list(k), v] for k, v in self.fires.items()])
-        self.store.set_meta("timers", [[x, y, t, k] for (x, y), (t, k) in self.timers.items()])
-        self.store.set_meta("pits", [list(p) for p in self.pits])
-        self.world.flush()
-        if self.event_log:
-            self.event_log.flush()
 
-    def maintain(self):
-        anchors = [(a.x, a.y) for a in self.agents.values() if a.online]
-        return self.world.unload_far(anchors)
-
-    def close(self):
-        self.flush()
-        if self.event_log:
-            self.event_log.close()
-        self.store.close()

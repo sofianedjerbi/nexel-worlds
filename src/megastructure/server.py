@@ -14,46 +14,19 @@ import time
 from pathlib import Path
 
 from websockets.asyncio.server import serve
-from websockets.datastructures import Headers
 from websockets.exceptions import ConnectionClosed
-from websockets.http11 import Response
 
+from .devtools import dev_op
 from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
-from .tiles import DIRS, GROUNDS, RECIPES
+from .tiles import RECIPES
+from .views import Views
+from .web_static import serve_http
 
 log = logging.getLogger("megastructure")
 PROTOCOL = 1
 # Actions are already paced by game time (one in flight per agent), so these only stop floods.
 LIMITS = {"act": (900, 60.0), "observe": (900, 60.0), "say": (20, 60.0), "shout": (3, 60.0)}
 FLUSH_EVERY = 10 * TICK_HZ  # ticks (10 s)
-WEB = Path(__file__).parent / "web"
-
-
-def serve_http(connection, request):
-    """Plain HTTP GETs (no websocket upgrade) get the browser client."""
-    if request.headers.get("Upgrade", "").lower() == "websocket":
-        return None
-    path = request.path.split("?")[0]
-    if path in ("/", "/index.html"):
-        return _file(WEB / "index.html", "text/html; charset=utf-8")
-    folder, _, name = path.lstrip("/").partition("/")
-    if folder in STATIC:
-        root = (WEB / folder).resolve()
-        f = (root / name).resolve()
-        if f.parent == root and f.is_file() and f.suffix in CONTENT_TYPES:   # no subfolders, no "..": only our files
-            return _file(f, CONTENT_TYPES[f.suffix], cache=STATIC[folder])
-    return connection.respond(404, "not found\n")
-
-
-STATIC = {"assets": "max-age=3600", "js": "no-cache", "css": "no-cache"}   # folder -> Cache-Control
-CONTENT_TYPES = {".png": "image/png", ".ttf": "font/ttf", ".txt": "text/plain",
-                 ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
-
-
-def _file(path: Path, ctype: str, cache: str = "no-cache") -> Response:
-    body = path.read_bytes()
-    return Response(200, "OK", Headers([("Content-Type", ctype), ("Content-Length", str(len(body))),
-                                        ("Cache-Control", cache)]), body)
 
 
 def rss_mb() -> float:
@@ -76,7 +49,7 @@ class RateLimiter:
         return True
 
 
-class GameServer:
+class GameServer(Views):
     def __init__(self, world_dir: Path, seed: int | None = None, dev: bool = False):
         self.dev = dev  # enables dev_give (QA only; never on a public server)
         world_dir.mkdir(parents=True, exist_ok=True)
@@ -139,40 +112,6 @@ class GameServer:
             if q.qsize() < 2000:
                 q.put_nowait(msg)
 
-    def entities_in(self, x, y, w, h) -> list:
-        ents = [{"kind": "agent", "name": a.name, "id": a.id, "x": a.x, "y": a.y, "hp": a.hp,
-                 "doing": a.action.tool if a.action else None, "weapon": self.sim.best_weapon(a),
-                 "dir": a.action.args.get("dir") if a.action else None,
-                 "tid": a.action.args.get("target") if a.action else None,
-                 "at": self.aimed(a),
-                 "with": a.action.args.get("with") if a.action else None,
-                 "item": a.action.args.get("item") if a.action else None,
-                 "run": bool(a.action.args.get("run")) if a.action else False, "sail": a.sailing}
-                for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
-        ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp, "love": c.love > self.sim.tick, "scared": c.scared > self.sim.tick}
-                 for c in self.sim.creatures.values() if x <= c.x < x + w and y <= c.y < y + h]
-        return ents
-
-    def mail_in(self, x, y, w, h) -> list:
-        return [[mx, my, len(m["letters"])] for (mx, my), m in self.sim.world.meta.items()
-                if m.get("letters") and x <= mx < x + w and y <= my < y + h]
-
-    def aimed(self, a) -> list | None:
-        """The tile an agent's current action works on (for the strike effects other players see)."""
-        args = a.action.args if a.action else {}
-        if "x" in args and "y" in args and args.get("dir") is None:
-            return [args["x"], args["y"]]
-        d = DIRS.get(str(args.get("dir", "")).upper())
-        return [a.x + d[0], a.y + d[1]] if d else None
-
-    def troughs_in(self, x, y, w, h) -> list:
-        """Troughs with feed in them (the client draws hay in the box)."""
-        return [[tx, ty] for (tx, ty), m in self.sim.world.meta.items()
-                if m.get("items") and x <= tx < x + w and y <= ty < y + h and self.sim.world.block(tx, ty) == "trough"]
-
-    def items_in(self, x, y, w, h) -> list:
-        return [[ix, iy, pile] for (ix, iy), pile in self.sim.items.items() if pile and x <= ix < x + w and y <= iy < y + h]
-
     def push_ticks(self):
         """Every tick, each spectator gets the entities inside the rect it watches; agents whose
         multi-tick action just started get a progress notice (so clients can show a bar at once)."""
@@ -193,13 +132,6 @@ class GameServer:
                                                    if rect[0] <= fx < rect[0] + rect[2] and rect[1] <= fy < rect[1] + rect[3]]},
                                         separators=(",", ":")))
 
-    def region(self, x, y, w, h) -> dict:
-        w, h = min(int(w), 256), min(int(h), 256)
-        world = self.sim.world
-        rows = ["".join(world.char(i, j) for i in range(x, x + w)) for j in range(y, y + h)]
-        ground = ["".join(GROUNDS[world.get(i, j)[0]].char for i in range(x, x + w)) for j in range(y, y + h)]
-        return {"x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
-                "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}
 
     # ------------------------------------------------------------- handlers
     async def handler(self, ws):
@@ -313,37 +245,8 @@ class GameServer:
                             reply(mid, False, error=result.get("error"), detail=result.get("detail"), result=result)
 
                     self.sim.submit(agent, tool, args, on_done=done)
-                elif op == "dev_time" and self.dev:      # jump to a time of day (0..1, 0.75+ is night)
-                    from .sim import DAY_TICKS
-                    day = self.sim.tick // DAY_TICKS
-                    self.sim.tick = day * DAY_TICKS + int(float(msg.get("phase", 0.8)) * DAY_TICKS)
-                    reply(mid, tick=self.sim.tick)
-                elif op == "dev_skip" and self.dev:      # fast-forward the simulation (QA)
-                    for _ in range(min(int(float(msg.get("seconds", 10)) * TICK_HZ), 20000)):
-                        self.sim.step()
-                    reply(mid, tick=self.sim.tick)
-                elif op == "dev_teleport" and self.dev:
-                    agent.x, agent.y = int(msg["x"]), int(msg["y"])
-                    reply(mid, x=agent.x, y=agent.y)
-                elif op == "dev_damage" and self.dev:
-                    self.sim.damage(agent, int(msg.get("n", 10)), "dev")
-                    reply(mid, hp=agent.hp)
-                elif op == "dev_stamp" and self.dev:     # paint ASCII rows (tile chars) at x, y (QA builds)
-                    from .tiles import BLOCKS as _BL
-                    from .tiles import GROUNDS as _GR
-                    bch, gch = {b.char: b.name for b in _BL}, {g.char: g.name for g in _GR}
-                    x0, y0 = int(msg["x"]), int(msg["y"])
-                    for j, row in enumerate(list(msg.get("rows") or [])[:200]):
-                        for i, ch in enumerate(str(row)[:200]):
-                            if ch in gch:
-                                self.sim.set_tile(x0 + i, y0 + j, ground=gch[ch], block="none")
-                            elif ch in bch:
-                                self.sim.set_tile(x0 + i, y0 + j, ground="grass", block=bch[ch])
-                    reply(mid)
-                elif op == "dev_give" and self.dev:
-                    for k, n in dict(msg.get("items") or {}).items():
-                        agent.add(str(k), int(n))
-                    reply(mid, inventory=agent.inventory)
+                elif op.startswith("dev_") and self.dev:  # QA tools, only with --dev
+                    reply(mid, **dev_op(self.sim, agent, op, msg))
                 elif op == "tools":
                     reply(mid, tools=TOOL_SPECS)
                 elif op == "recipes":

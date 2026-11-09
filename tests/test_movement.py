@@ -1,0 +1,91 @@
+"""Walking, sprinting, pathfinding, boats, and acting on the move."""
+
+from helpers import run
+
+
+def test_step_and_blocked(world):
+    sim, a = world
+    x, y = a.x, a.y
+    assert run(sim, a, "step", {"dir": "E"})["ok"]
+    assert (a.x, a.y) == (x + 1, y)
+    sim.world.set(a.x + 1, a.y, block="rock")
+    r = run(sim, a, "step", {"dir": "E"})
+    assert not r["ok"] and r["error"] == "blocked"
+
+def test_move_to_pathfinds_around_wall(world):
+    sim, a = world
+    for dy in range(-3, 4):
+        sim.world.set(a.x + 2, a.y + dy, block="rock")
+    gx, gy = a.x + 4, a.y
+    r = run(sim, a, "move_to", {"x": gx, "y": gy})
+    assert r["ok"] and (a.x, a.y) == (gx, gy) and r["steps"] > 4
+
+def test_sprint_is_faster(world):
+    sim, a = world
+    def pace(run_):          # ticks for 8 strides back and forth (the cooldown is what limits speed)
+        t0 = sim.tick
+        for i in range(8):
+            run(sim, a, "step", {"dir": "E" if i % 2 else "W", "run": run_})
+        return sim.tick - t0
+    walk = pace(False)
+    assert pace(True) < walk
+
+def test_rapid_taps_keep_their_progress(world):
+    """Interrupting a walk with another movement (fast key taps) must not throw the stride away."""
+    sim, a = world
+    x0 = a.x
+    for _ in range(6):
+        sim.submit(a, "walk", {"dir": "E"})
+        sim.step()
+        sim.submit(a, "move_to", {"x": a.x + 1, "y": a.y})
+        sim.step()
+    assert a.x - x0 >= 5
+
+def test_walk_keeps_going_until_stopped(world):
+    sim, a = world
+    x0 = a.x
+    act = sim.submit(a, "walk", {"dir": "E"})
+    for _ in range(20):
+        sim.step()
+    assert a.x - x0 >= 4 and act.result is None
+    sim.submit(a, "stop", {})
+    sim.step()
+    assert act.result["status"] == "interrupted"
+    sim.world.set(a.x + 2, a.y, block="rock")
+    r = run(sim, a, "walk", {"dir": "E"})
+    assert r["stopped"] == "blocked" and r["steps"] == 1
+
+def test_boats_launch_board_sail_and_moor(world):
+    sim, a = world
+    for dx in range(1, 6):
+        sim.world.set(a.x + dx, a.y, ground="water")
+    sim.world.set(a.x + 6, a.y, ground="grass")
+    a.add("boat", 1)
+    assert run(sim, a, "place", {"dir": "E", "item": "boat"})["ok"] and sim.world.block(a.x + 1, a.y) == "boat"
+    x0 = a.x
+    assert run(sim, a, "step", {"dir": "E"})["ok"] and a.sailing and sim.world.block(a.x, a.y) == "none"
+    run(sim, a, "move_to", {"x": x0 + 6, "y": a.y})
+    assert a.x == x0 + 6 and not a.sailing and sim.world.block(x0 + 5, a.y) == "boat"
+
+def test_quick_actions_happen_on_the_move(world):
+    sim, a = world
+    walk = sim.submit(a, "walk", {"dir": "E"})
+    for _ in range(4):
+        sim.step()
+    sim.world.set(a.x, a.y - 1, block="flower")                         # a flower right beside us now
+    pick = sim.submit(a, "dig", {"x": a.x, "y": a.y - 1})
+    assert pick.result["ok"] and a.count("flower") == 1 and a.action is walk   # picked instantly, still walking
+    sim.world.set(a.x + 1, a.y - 1, block="tree")
+    chop = sim.submit(a, "dig", {"x": a.x + 1, "y": a.y - 1})
+    assert a.action is chop and walk.result["status"] == "interrupted"  # chopping takes time: it stops the walk
+    assert run(sim, a, "dig", {"x": a.x + 5, "y": a.y})["error"] == "out_of_range"
+
+def test_hitting_while_walking(world):
+    sim, a = world
+    from megastructure.sim import Creature
+    walk = sim.submit(a, "walk", {"dir": "E"})
+    sim.step()
+    hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y - 1, 10); sim.next_creature += 1
+    sim.creatures[hen.id] = hen
+    hit = sim.submit(a, "attack", {"target": hen.id})
+    assert hit.result["ok"] and a.action is walk                       # the punch lands, the walk goes on
