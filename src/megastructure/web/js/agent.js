@@ -5,7 +5,7 @@ function joinGame(name) {
   if (agentWs && agentWs.readyState <= 1) return;
   const key = "megastructure-token-" + name;
   let token = localStorage.getItem(key); if (!token) { token = crypto.randomUUID(); localStorage.setItem(key, token); }
-  agentWs = new WebSocket(wsBase + "/agent");
+  agentWs = openSocket("/agent");
   agentWs.onopen = async () => {
     const r = await rpc("hello", {name, token, persona: "human"});
     if (!r.ok) { toast(r.error === "bad_token" ? `“${name}” is already someone else. Pick another name.` : (r.detail || r.error), true); agentWs.close(); return; }

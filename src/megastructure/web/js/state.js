@@ -25,13 +25,15 @@ const ents = new Map();
 let bubbles = [], floats = [];
 const requested = new Map();
 const wsBase = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
+// the demo build has no server: the game runs in the page (local.js) behind the same socket interface
+const openSocket = (path) => typeof LocalSocket !== "undefined" ? new LocalSocket(path) : new WebSocket(wsBase + path);
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]));
 const fmt = (o) => Object.entries(o || {}).map(([k, v]) => `${v} ${label(k)}`).join(", ");
 
 let spec, sid = 0, lastWatch = "";
 function connectSpec() {
-  spec = new WebSocket(wsBase + "/spectate");
+  spec = openSocket("/spectate");
   spec.onopen = () => { lastWatch = ""; requested.clear(); sendSpec({op: "recipes"}); sendSpec({op: "agents"}); };
   spec.onmessage = (m) => {
     const d = JSON.parse(m.data);

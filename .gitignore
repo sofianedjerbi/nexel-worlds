@@ -12,3 +12,4 @@ models/
 *.safetensors
 *.sqlite
 *.db
+dist/

@@ -584,3 +584,9 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Change: Space no longer halts walking. On the move it only does what's instant (hits, picks, pick-ups); chopping/mining/placing wait until you stand. Server: a swing sent on the move before the arm is ready is dropped (`too_soon`) instead of waiting and stopping the walk. Houses got a pack-exact roof, plank facade, windows, an opening door and chimney smoke (iteration 31's commit).
 - Result: 143 unit + 46 e2e green (`test_space_never_stops_you` replaces the stop-to-chop test).
 - Next: other structures from outside; keep looping e2e.
+
+## Iteration 33: a playable demo on GitHub Pages
+- Hypothesis: the server is pure stdlib Python, so Pyodide can run it unchanged in a browser tab and a static host can serve the game.
+- Change: `browser.py` runs `GameServer` under Pyodide with in-page sockets (websockets/resource stubbed); `js/local.js` boots it and exposes a `LocalSocket` that `openSocket()` uses when present; the world is a SQLite file on IDBFS, synced every 15 s and on hide. `tools/build_pages.py` builds `dist/` (client + py.zip, local.js injected); `tools/publish_demo.sh` pushes it to a public repo (Pages isn't available for the private repo on this plan).
+- Result: in headless Chrome the world is up ~2 s after load (Pyodide cached), tick p50 0.2 ms; the saved player is there after a reload. New e2e test `test_e2e_demo.py`; 147 unit tests green.
+- Next: run publish_demo.sh once the public demo repo is approved.
