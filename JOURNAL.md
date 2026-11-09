@@ -639,3 +639,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Slope light: grows from the crest (no edge where the hilltop ends), dimmed along the walls, fading at the foot; 4 tones with a 4x4 ordered dither instead of smooth bands.
 - Slope variant 5: contour dashes with lit lips.
 - Borders: only the cliff face (lower ground straight south) is off-limits; north and side rims are walkable right up to the edge (nothing built there still). Walking lines up on the server's row/column, not the drawn position.
+
+## Iteration 41: hop down off any edge
+- Slopes on the north and side edges broke the 3/4 view (height only shows through the south cliff face), so instead people hop down one level off any edge they can stand on (Pokemon-style ledges); up still only by the south slopes. Animals keep to their level. Path-finding uses hops.
+- Client: the same rule in prediction; the sprite arcs ~7 px over the edge, its shadow staying on the ground, a puff and a thud on landing.
+- 176 unit + 51 e2e green.

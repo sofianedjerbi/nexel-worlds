@@ -21,10 +21,10 @@ class Movement:
 
     def can_go(self, a: Agent, x: int, y: int) -> bool:
         """From where `a` stands to the neighbouring (x, y): the tile can be entered, and no cliff is in the way."""
-        return self.can_enter(a, x, y) and self.world.can_step(a.x, a.y, x, y)
+        return self.can_enter(a, x, y) and self.world.can_step(a.x, a.y, x, y, hop=True)
 
     def why_not(self, a: Agent, x: int, y: int) -> str:
-        if self.world.edge(x, y) or (self.can_enter(a, x, y) and not self.world.can_step(a.x, a.y, x, y)):
+        if self.world.edge(x, y) or (self.can_enter(a, x, y) and not self.world.can_step(a.x, a.y, x, y, hop=True)):
             return "a cliff (find stairs)" if self.world.level(x, y) > self.world.level(a.x, a.y) else "a drop (find stairs)"
         return self.describe(x, y)
 
@@ -109,7 +109,7 @@ class Movement:
             raise ActionError("bad_args", "move_to needs integer x and y")
         replans = 0
         ok = lambda x, y: self.can_enter(a, x, y) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
-        step = lambda p, q: self.world.can_step(*p, *q)
+        step = lambda p, q: self.world.can_step(*p, *q, hop=True)
         path = astar(ok, (a.x, a.y), (gx, gy), step=step)
         if path is None:
             far = abs(gx - a.x) + abs(gy - a.y) > 64

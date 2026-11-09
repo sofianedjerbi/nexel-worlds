@@ -28,9 +28,10 @@ function rimAt(x, y) {                      // as World.rim: a hill tile with lo
 }
 // as World.edge: where the cliff face is drawn (lower ground straight south): nobody stands there
 const edgeAt = (x, y) => { const lv = levelAt(x, y); return lv > 0 && !rampAt(x, y) && levelAt(x, y + 1) < lv; };
-function canStep(x0, y0, x1, y1) {          // as World.can_step: on the level, or up and down stairs; cliffs can't be climbed
+// as World.can_step for people: on the level, up and down stairs, or a hop down one level off an edge
+function canStep(x0, y0, x1, y1) {
   const l0 = levelAt(x0, y0), l1 = levelAt(x1, y1);
-  if (l0 === l1) return true;
+  if (l0 === l1 || l0 - l1 === 1) return true;
   if (x0 !== x1 || Math.abs(l0 - l1) !== 1) return false;
   const [ux, uy] = l0 > l1 ? [x0, y0] : [x1, y1];
   return rampAt(ux, uy) && Math.max(y0, y1) === uy + 1;

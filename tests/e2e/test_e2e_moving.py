@@ -73,8 +73,8 @@ def test_walls_stop_you_and_turn_you(game):
 
 
 def test_cliffs_stop_you_and_stairs_take_you_up(game):
-    # a hill two rows north: 7 wide, 3 deep, stairs (B: level 1, going down south) in the middle of its south edge
-    game.stamp(-3, -4, ["......."] * 3, levels=["1111111", "1111111", "11BB111"])
+    # a hill two rows north: 7 wide, 6 deep, stairs (B: level 1, going down south) in the middle of its south edge
+    game.stamp(-3, -7, ["......."] * 6, levels=["1111111"] * 5 + ["11BB111"])
     x, y = game.pos()
     game.js(f"act('move_to', {{x: {x + 2}, y: {y}}})")          # under the cliff, beside the stairs
     game.sleep(700)
@@ -88,3 +88,17 @@ def test_cliffs_stop_you_and_stairs_take_you_up(game):
     s = game.server()
     assert s["y"] <= y - 3 and game.pos() == (s["x"], s["y"])
     assert game.js(f"levelAt({s['x']}, {s['y']})") == 1
+
+
+def test_hop_down_off_a_hill_edge(game):
+    # you stand on a hill (level 1) two tiles in from its west edge: walk west and hop down
+    game.stamp(-3, -2, ["......."] * 5, levels=["0111110"] * 4 + ["0000000"])
+    x, y = game.pos()
+    assert game.js(f"levelAt({x}, {y})") == 1
+    game.hold(["a"], 900)
+    game.sleep(500)
+    s = game.server()
+    assert s["x"] <= x - 3 and game.js(f"levelAt({s['x']}, {s['y']})") == 0 and game.pos() == (s["x"], s["y"])
+    game.hold(["d"], 600)                                       # and no climbing back up the same edge
+    game.sleep(400)
+    assert game.server()["x"] == x - 3

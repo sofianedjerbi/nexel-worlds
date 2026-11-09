@@ -28,6 +28,15 @@ function biteIcon(name, bites) {
 }
 // which swing of the character sheet each tool in hand uses (the sheet has an axe and a hoe swing)
 const SWING_ROW = {axe: "axe", sword: "axe", spear: "axe", pickaxe: "axe", hoe: "hoe", watering_can: "water"};
+// Between a tile and a lower neighbour with no stairs between them: a hop. Lift (art px) along a quick arc.
+function hopLift(p) {
+  const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
+  if (ax === bx && ay === by) return 0;
+  const la = levelAt(ax, ay), lb = levelAt(bx, by);
+  if (la === lb || (ax === bx && (rampAt(ax, Math.min(ay, by))))) return 0;   // level, or stairs
+  const f = ax === bx ? p.y - ay : p.x - ax, k = la > lb ? f : 1 - f;          // 0 at the top, 1 landed
+  return Math.sin(k * Math.PI) * 7 + (1 - k) * 2;
+}
 function drawEntity(p, sx, sy, S, t, now) {
   const e = p.e, x = Math.round(sx(p.x)), y = Math.round(sy(p.y)), z = zoom;
   if (x < -S * 2 || x > W + S * 2 || y < -S * 2 || y > H + S * 2) return;
@@ -35,6 +44,9 @@ function drawEntity(p, sx, sy, S, t, now) {
   if (e.kind === "agent") {
     const lv = levelAt(Math.round(p.x), Math.round(p.y));    // stepping up a slope: a little puff of effort
     if (p.lastLv !== undefined && lv > p.lastLv) { smoke(p.x, p.y + .3, 3, .35); sfx("step", Math.round(p.x), Math.round(p.y)); }
+    const hop = hopLift(p);                                     // hopping down off an edge: an arc, then a soft landing
+    if (p.lastHop > 0 && hop === 0) { smoke(p.x, p.y + .35, 4, .4); sfx("thud", Math.round(p.x), Math.round(p.y)); }
+    p.lastHop = hop;
     p.lastLv = lv;
     const mine = me && e.id === myId;
     let action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, at: e.at, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null);
@@ -47,7 +59,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     if (action && action.dir && DIRV[action.dir]) { [p.fx, p.fy] = DIRV[action.dir]; }
     if (action && action.tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == action.tid); if (q) { p.fx = Math.sign(q.x - p.x); p.fy = p.fx ? 0 : Math.sign(q.y - p.y); } }
     const sheetImg = characterSheet(agentTint(e.name));
-    let bob = 0, anim = "idle", frame, lunge = 0;
+    let bob = Math.round(hop * z), anim = "idle", frame, lunge = 0;
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
     if (mine || e.name === follow) {
       ctx.fillStyle = mine ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";

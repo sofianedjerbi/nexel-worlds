@@ -31,12 +31,16 @@ def test_cliffs_block_and_stairs_go_up_and_down(world):
     assert run(sim, a, "step", {"dir": "S"})["ok"] and sim.world.level(a.x, a.y) == 0      # and back down
 
 
-def test_walking_off_an_edge_is_blocked_too(world):
+def test_you_hop_down_off_an_edge_but_cannot_climb_back(world):
     sim, a = world
     plateau(sim, a)
     a.x, a.y = a.x - 3, a.y - 4                              # inside the plateau, next to its west rim
-    r = run(sim, a, "walk", {"dir": "W"})                    # onto the rim (right up to the edge), then no further
-    assert r["steps"] == 1 and r["stopped"] == "blocked" and "drop" in r["blocked_by"]
+    assert run(sim, a, "step", {"dir": "W"})["ok"]           # onto the rim, right up to the edge
+    assert run(sim, a, "step", {"dir": "W"})["ok"] and sim.world.level(a.x, a.y) == 0   # and hop down
+    r = run(sim, a, "step", {"dir": "E"})                    # back up the same way: no
+    assert not r["ok"] and "cliff" in r["detail"]
+    c = sim.world                                            # animals don't hop: they keep to their level
+    assert not c.can_step(a.x + 1, a.y, a.x, a.y) and c.can_step(a.x + 1, a.y, a.x, a.y, hop=True)
 
 
 def test_move_to_finds_the_stairs(world):

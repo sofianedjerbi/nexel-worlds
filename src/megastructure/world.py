@@ -222,10 +222,11 @@ class World:
         lv = raw & 0x0F
         return bool(lv) and not raw & RAMP and self.level(x, y + 1) < lv
 
-    def can_step(self, x0: int, y0: int, x1: int, y1: int) -> bool:
-        """Between neighbouring tiles: on the level, or up and down stairs. Cliffs can't be climbed."""
+    def can_step(self, x0: int, y0: int, x1: int, y1: int, hop: bool = False) -> bool:
+        """Between neighbouring tiles: on the level, or up and down stairs. Cliffs can't be climbed. With `hop`
+        (people), you can also jump down one level off any edge you can stand on."""
         l0, l1 = self.level(x0, y0), self.level(x1, y1)
-        if l0 == l1:
+        if l0 == l1 or (hop and l0 - l1 == 1):
             return True
         if x0 != x1 or abs(l0 - l1) != 1:
             return False
