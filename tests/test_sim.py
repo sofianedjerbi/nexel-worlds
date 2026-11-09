@@ -616,3 +616,14 @@ def test_bare_hands_are_slow_on_wood_and_stone(world):
     assert time("tree", **{"with": "axe"}) * 3 < time("tree")            # 4x by hand
     assert time("rock", **{"with": "pickaxe"}) * 5 < time("rock")        # 6x by hand
     assert time("berry_bush") <= 4                                      # soft things stay quick
+
+
+def test_hit_animals_run_away(world):
+    sim, a = world
+    from megastructure.sim import Creature, sec
+    hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y, 10); sim.next_creature += 1
+    sim.creatures[hen.id] = hen
+    assert run(sim, a, "attack", {"target": hen.id})["ok"]
+    for _ in range(sec(2)):
+        sim.step()
+    assert abs(hen.x - a.x) + abs(hen.y - a.y) >= 4                     # it ran, it didn't stay to be hit again

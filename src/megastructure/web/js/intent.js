@@ -28,9 +28,22 @@ function entityAt(p) {
   return others.find((q) => q.tx === p.x && q.ty === p.y) || others.find((q) => Math.round(q.x) === p.x && Math.round(q.y) === p.y);
 }
 const reachOf = (weapon) => (weapon === "spear" ? 3 : 2);   // tiles.py REACH
+// What the pointer means at a tile. A tree's crown hangs over the tiles above its trunk (a round tree's almost two
+// tiles, a thin one's one): pointing there means the tree, unless you hold something meant for that ground tile.
+const TALL = "TFU";
+function aimAt(p, shift) {
+  if (!GROUND.has(combAt(p.x, p.y)) || entityAt(p)) return p;
+  const forGround = selected && !shift && (PLACEABLE_BLOCK[selected] || FILLS[selected] || ["seed", "hoe", "watering_can"].includes(selected));
+  if (forGround) return p;
+  for (const dy of [1, 2]) {
+    const c = combAt(p.x, p.y + dy);
+    if (!c || !TALL.includes(c)) continue;
+    const spr = objectSprite(c, p.x, p.y + dy, 0), above = spr ? -spr[6] : 0;   // how far the sprite reaches up (px)
+    if (above > (dy - 1) * 16 + 3) return {x: p.x, y: p.y + dy};
+  }
+  return p;
+}
 function intent(p, shift) {
-  // the canopy of a tree covers the tile above its trunk: pointing at it means the tree
-  if (combAt(p.x, p.y + 1) === "T" && GROUND.has(combAt(p.x, p.y)) && !entityAt(p) && !(selected && !shift)) p = {x: p.x, y: p.y + 1};
   let t = tile(p.x, p.y), s = myPos(), foot = null;
   if (!t || !s) return null;
   if (t[0] === "Z" || t[0] === "z") {          // part of a bigger structure: it means the whole thing
@@ -172,6 +185,6 @@ async function perform(p, it) {
   return it.run(dirTo(p));
 }
 function clickTile(p, shift) {
-  if (combAt(p.x, p.y + 1) === "T" && GROUND.has(combAt(p.x, p.y)) && !entityAt(p) && !(selected && !shift)) p = {x: p.x, y: p.y + 1};
+  p = aimAt(p, shift);
   perform(p, intent(p, shift));
 }

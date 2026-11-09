@@ -68,6 +68,8 @@ class Creature:
     love: int = 0       # fed: shows hearts and (chickens) lays an egg soon, until this tick
     lay: int = 0        # next tick a chicken may lay an egg
     born: int = 0       # tick of birth (chicks and calves grow up)
+    scared: int = 0     # hit: runs away from `threat` until this tick (runtime only)
+    threat: tuple = (0, 0)
 
     def to_json(self):
         return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "hp": self.hp,

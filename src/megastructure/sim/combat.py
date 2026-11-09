@@ -2,7 +2,7 @@
 
 from .. import tiles as T
 from ..tiles import DIRS
-from .constants import SHOUT_R
+from .constants import FARM, FLEE_SECONDS, SHOUT_R, sec
 from .entities import CREATURES, ActionError, Agent, Creature
 
 
@@ -48,6 +48,8 @@ class Combat:
         a.bump("attacks")
         if isinstance(t, Creature):
             t.cooldown = 0
+            if t.kind in FARM:                      # farm animals don't stand there and take it: they run
+                t.scared, t.threat = self.tick + sec(FLEE_SECONDS), (a.x, a.y)
         before = t.deaths if isinstance(t, Agent) else 0
         self.damage(t, dmg, f"killed by {a.name}", by=a)
         killed = t.deaths > before if isinstance(t, Agent) else t.id not in self.creatures

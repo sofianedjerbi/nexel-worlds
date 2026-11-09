@@ -129,6 +129,12 @@ function onEvent(e) {
     const tgt = [...ents.values()].find((q) => q.e && (q.e.name === e.target || `${q.e.kind}#${q.e.id}` === e.target));
     const tx = tgt ? tgt.x : e.x, ty = tgt ? tgt.y : e.y;
     if (tgt) flashes.set(tgt.e.kind === "agent" ? "agent" + tgt.e.id : tgt.e.kind + tgt.e.id, performance.now());
+    if (tgt && ANIMALS[tgt.e.kind]) {             // a hit animal: a startled "!" and a few feathers or tufts of its own colour
+      emote(tgt.e.kind + tgt.e.id, "bang");
+      const fw = ANIMALS[tgt.e.kind].fw;
+      debris(tgt.x, tgt.y - .2, [animalSheet(tgt.e.kind, tgt.e.id), 0, 0, fw, fw], 6, {});
+      sfx(tgt.e.kind === "cow" || tgt.e.kind === "calf" ? "moo" : "cluck", tx, ty);
+    }
     burst(tx, ty, "hit", 6, {dy: -.4}); sfx("hit", tx, ty); if (e.target === me) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + e.damage, color: "#ff8a7a", t});
   }
   if (e.type === "death" && e.name === me) {

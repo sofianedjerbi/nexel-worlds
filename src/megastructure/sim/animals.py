@@ -8,6 +8,7 @@ from .constants import (
     CROWD_N,
     CROWD_R,
     FARM,
+    FLEE_STRIDE,
     TICK_HZ,
     TROUGH_EVERY,
     TROUGH_R,
@@ -64,7 +65,15 @@ class Animals:
             if c.cooldown > 0:
                 c.cooldown -= 1
                 continue
-            if c.kind in ("chicken", "cow", "chick", "calf"):
+            if c.kind in FARM and c.scared > self.tick:          # running from whoever hit it
+                c.cooldown = sec(FLEE_STRIDE) - 1
+                tx, ty = c.threat
+                away = sorted(DIRS.values(), key=lambda d: (-(abs(c.x + d[0] - tx) + abs(c.y + d[1] - ty)), self.rng.random()))
+                for d in away[:3]:                                 # the best way out that isn't toward the threat
+                    if abs(c.x + d[0] - tx) + abs(c.y + d[1] - ty) >= abs(c.x - tx) + abs(c.y - ty) \
+                            and self._creature_move(c, c.x + d[0], c.y + d[1]):
+                        break
+            elif c.kind in FARM:
                 c.cooldown = sec(0.8) + self.rng.randrange(sec(1.2))
                 d = list(DIRS.values())[self.rng.randrange(4)]
                 self._creature_move(c, c.x + d[0], c.y + d[1])

@@ -28,7 +28,7 @@ function frame(now) {
     }
     const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
     // people walk 5 tiles/s (10 sprinting); animals amble, so each of their steps takes most of the pause between them
-    const pace = p.running || (p.e && p.e.run) ? 10 : (p.e && AMBLE[p.e.kind]) || 5;
+    const pace = p.running || (p.e && p.e.run) ? 10 : p.e && AMBLE[p.e.kind] ? AMBLE[p.e.kind] * (p.e.scared ? FLEE : 1) : 5;
     const step = (d > 1.5 ? d * 8 : pace * 1.05) * dt;
     if (d <= step) { p.x = p.tx; p.y = p.ty; } else { p.x += dx / d * step; p.y += dy / d * step; }
   }
@@ -125,6 +125,7 @@ function frame(now) {
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   if (aim) drawIntent(aim.p, aim.it, sx, sy, S, t);
   for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
+  for (const o of list) if (o.p && ANIMALS[o.p.e.kind]) drawEmote(o.p, sx, sy, S);
   drawProgress(sx, sy, S);
   floats = floats.filter((f) => t - f.t < 1.4);
   ctx.textAlign = "center"; ctx.font = "18px SproutPixel";
@@ -285,7 +286,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     else if (e.love) st = A.love;
     else if (clock.night) st = A.sleep;
     else st = hash(e.id, Math.floor((now / 1000 + e.id) / 4), 7) < .45 ? A.idle : A.alt;   // a new whim every 4 s
-    const [row, n, ms] = st, f = Math.floor(now / ms + e.id) % n;
+    const [row, n, ms] = st, f = Math.floor(now / (e.scared ? ms / 2 : ms) + e.id) % n;   // running scared: quick steps
     const fl = flashes.get(e.kind + e.id), white = fl && now - fl < 120;
     const w = fw * z, dx = big ? x - S / 2 : x, dy = big ? y - S : y;
     ctx.save();
@@ -310,6 +311,7 @@ function drawNameplate(p, sx, sy, S) {
   ctx.textAlign = "start";
 }
 const AMBLE = {chicken: 1.6, chick: 1.4, cow: 1.2, calf: 1.3, gloom: 2.6};   // tiles per second
+const FLEE = 2.2;   // a scared animal runs this much faster (the server moves it a tile every 0.3 s)
 function drawProgress(sx, sy, S) {
   if (!progress || !me) return;
   const p = ents.get("agent" + myId); if (!p) return;

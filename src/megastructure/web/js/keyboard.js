@@ -58,7 +58,7 @@ function aimedTile() {
   if (!me) return null;
   if (inputMode === "keys") return facingIntent(false);
   if (!mouse.in) return null;
-  const p = tileAtScreen(mouse.x, mouse.y);
+  const p = aimAt(tileAtScreen(mouse.x, mouse.y), keys.has("shift"));
   return {p, it: intent(p, keys.has("shift"))};
 }
 // Bottom right: what you can do right now, each with its key. Rebuilt every frame, written only when it changes.

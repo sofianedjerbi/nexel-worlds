@@ -148,7 +148,7 @@ class GameServer:
                  "item": a.action.args.get("item") if a.action else None,
                  "run": bool(a.action.args.get("run")) if a.action else False, "sail": a.sailing}
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
-        ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp, "love": c.love > self.sim.tick}
+        ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp, "love": c.love > self.sim.tick, "scared": c.scared > self.sim.tick}
                  for c in self.sim.creatures.values() if x <= c.x < x + w and y <= c.y < y + h]
         return ents
 
