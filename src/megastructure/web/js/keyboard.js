@@ -42,6 +42,8 @@ function facingIntent(alt) {
     if (r) return r;
   }
   for (const o of near) if (o.e.kind === "gloom") { const r = hit(o); if (r) return r; }
+  const here = {x: s.x, y: s.y}, under = combAt(s.x, s.y);           // something growing under your feet
+  if (!alt && under && !GROUND.has(under) && !SOLID.has(under)) { const it = intent(here, false); if (useful(it)) return {p: here, it}; }
   const faced = intent(q, alt);
   if (useful(faced)) return {p: q, it: faced};
   for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it)) return {p, it}; }

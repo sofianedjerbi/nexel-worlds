@@ -165,6 +165,12 @@ function drawIntent(p, it, sx, sy, S, t) {
       ctx.fillRect(sx(q.x), sy(q.y), S, S);
     }
   }
+  if (it && it.ent && !it.walk) {                 // a creature or person: the box follows it as it moves
+    const e = it.ent, big = ANIMALS[e.e.kind] && ANIMALS[e.e.kind].fw === 32, n = big ? 2 : 1;
+    ctx.strokeStyle = it.ok === false ? "rgba(230,80,70,.9)" : "rgba(255,248,232,.95)"; ctx.lineWidth = zoom;
+    ctx.strokeRect(Math.round(sx(e.x - (big ? .5 : 0))) + zoom / 2, Math.round(sy(e.y - (big ? 1 : 0))) + zoom / 2, n * S - zoom, n * S - zoom);
+    return;
+  }
   if (it && !it.info && !it.walk) {
     ctx.strokeStyle = it.ok === false ? "rgba(230,80,70,.9)" : "rgba(255,248,232,.95)"; ctx.lineWidth = zoom;
     const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y);

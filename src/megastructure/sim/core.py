@@ -147,12 +147,12 @@ class Simulation(Movement, Building, Items, Combat, Animals, Needs, Social, Envi
                 x, y = int(args["x"]), int(args["y"])
             except (TypeError, ValueError):
                 raise ActionError("bad_args", "x and y must be integers")
-            if (x, y) == (a.x, a.y) or max(abs(x - a.x), abs(y - a.y)) > TARGET_R:
+            if max(abs(x - a.x), abs(y - a.y)) > TARGET_R:            # your own tile too (a flower underfoot)
                 raise ActionError("out_of_range", f"({x},{y}) is not within {TARGET_R} tiles of you")
             return x, y
         d = str(args.get("dir", "")).upper()
         if d not in DIRS:
-            raise ActionError("bad_args", "dir must be one of N, E, S, W (or give x and y)")
+            raise ActionError("bad_args", "aim with dir (N, E, S or W) or with x and y")
         dx, dy = DIRS[d]
         return a.x + dx, a.y + dy
 

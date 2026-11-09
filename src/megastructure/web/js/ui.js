@@ -209,18 +209,19 @@ function drawRecipes() {
     }
   }
 }
-let mailDir = null;
-function openMailPanel(d) {
-  mailDir = d; $("mail").style.display = "block"; $("letters").innerHTML = `<span style="color:var(--ink2)">Write a letter, or take the letters out.</span>`;
+let mailAtTile = null;   // the mailbox the panel is open on (posting and taking aim at it exactly)
+function openMailPanel(p) {
+  mailAtTile = p ? {x: p.x, y: p.y} : null; $("mail").style.display = "block"; $("letters").innerHTML = `<span style="color:var(--ink2)">Write a letter, or take the letters out.</span>`;
   $("mailtitle").textContent = "Mailbox"; setTimeout(() => $("letter").focus(), 50);
 }
 async function postLetter() {
-  const text = $("letter").value.trim(); if (!text || !mailDir) return;
-  const r = await act("post", {dir: mailDir, text});
+  const text = $("letter").value.trim(); if (!text || !mailAtTile) return;
+  const r = await act("post", {...mailAtTile, text});
   if (r && r.ok) { $("letter").value = ""; toast(r.result.owner ? `Letter posted for ${r.result.owner}.` : "Letter posted."); }
 }
 async function takeLetters() {
-  const r = await act("open_mail", {dir: mailDir}); if (!r || !r.ok) return;
+  if (!mailAtTile) return;
+  const r = await act("open_mail", {...mailAtTile}); if (!r || !r.ok) return;
   const {owner, letters} = r.result;
   $("mailtitle").textContent = owner ? `Mailbox of ${owner}` : "Mailbox";
   $("letters").innerHTML = letters.length ? letters.map((l) => `<div class="letter"><div class="from">from ${esc(l.from)}</div>${esc(l.text)}</div>`).join("")
