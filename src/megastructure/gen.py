@@ -73,17 +73,19 @@ def _ramp_fits(seed: int, x: int, y: int, lv) -> bool:
     up = lv(x, y)
     if not 1 <= up < PEAK or any(lv(x + i, y) != up for i in (-1, 1, 2)) or any(lv(x + i, y + 1) != up - 1 for i in (0, 1)):
         return False
+    if any(lv(x + i, y - j) != up for i in (-1, 0, 1, 2) for j in (1, 2)):
+        return False                 # the hilltop behind the slope is clear of the rim, so you can walk on from it
     return all(gen_tile(seed, x + i, y + 1, up - 1)[1] == B["none"] for i in (0, 1))
 
 
 def _is_ramp(seed: int, x: int, y: int, lv) -> bool:
     """Stairs: a pair of tiles (x, x+1) along a south cliff that goes on either side (the stairs are cut into it),
-    the landing below clear. Along each row, every stretch of 6 gets the first place that fits, from a hashed start;
+    the landing below clear. Along each row, every stretch of 10 gets the first place that fits, from a hashed start;
     (x, x+1) stays inside its stretch, so pairs never touch. `lv(x, y)` gives levels."""
-    cell = x // 6
-    start = int(_hash(seed, cell, y, 71) * 5)
-    for k in range(5):
-        cx = cell * 6 + (start + k) % 5
+    cell = x // 10
+    start = int(_hash(seed, cell, y, 71) * 9)
+    for k in range(9):
+        cx = cell * 10 + (start + k) % 9
         if _ramp_fits(seed, cx, y, lv):
             return cx == x
     return False
@@ -160,6 +162,7 @@ def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, bytear
             x, y, i = bx + lx, by + ly, ly * CHUNK + lx
             ramp = ramp_at(seed, x, y, lv)
             g, b = gen_tile(seed, x, y, lv(x, y))
-            ground[i], block[i] = g, B["none"] if ramp else b
+            rim = lv(x, y) and any(lv(x + dx, y + dy) < lv(x, y) for dx in (-1, 0, 1) for dy in (-1, 0, 1))
+            ground[i], block[i] = g, B["none"] if ramp or rim else b     # nothing grows on a slope or a hill's rim
             level[i] = lv(x, y) | (RAMP if ramp else 0)
     return ground, block, level

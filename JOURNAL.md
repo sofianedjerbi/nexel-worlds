@@ -621,3 +621,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Client: each level lays the pack's hill sheet (grass, darker grass, stone) as a blob layer over the tiles at least that high (edge tiles carry the cliff face); paths/tilled soil/floors redrawn on top; stairs are the pack's slope pieces with their grass background cut out at build time (stairs1/stairs2), drawn a quarter per tile; cliffs under stairs suppressed. Walking prediction respects cliffs (`canStep`).
 - Also: dropped items hover smoothly (device pixels).
 - Tests: unit (cliffs, drops, stairs both ways, move_to via stairs, generation has terraces/stairs/peaks deterministically, old saves flat) and e2e (keys: stopped by a cliff, up the stairs, screen and server agree). 169 unit + 50 e2e green.
+
+## Iteration 39: natural slopes, and nothing on a hill's rim
+- The pack's stairs (cliff caps with holes, floating planks) are replaced by a slope drawn at build time (`ramp_art`) in each hill sheet's colours: the hill's grass runs out through the cliff and fans onto the ground, lit, with contour dashes, the cliff face turning down its sides and tapering; its foot fades into the ground below (meadow for level 1, the lower terrace for level 2). Slopes every ~10 tiles of cliff (was 6), and only where the hilltop behind is walkable.
+- Rims: a hill tile with any lower neighbour (diagonals too) is its rim, where the cliff or edge is drawn: not walkable (`World.edge` in passable/can_enter, client `edgeAt`), nothing generated there, nothing placed there; structures must stand on one level clear of rims. Slopes are the way through.
+- Tests: rim rules, nothing generated on rims; 171 unit + 50 e2e green.

@@ -206,6 +206,15 @@ class World:
         """Stairs: from here you can go down to the tile south of you (and come up from it)."""
         return bool(self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] & RAMP)
 
+    def edge(self, x: int, y: int) -> bool:
+        """On a hill's rim (a lower tile next to it, diagonals too), where its cliff or slope is drawn: nobody stands
+        there and nothing is built or grows there. Stairs are the way through, so they're not an edge."""
+        raw = self.level_raw(x, y)
+        lv = raw & 0x0F
+        if not lv or raw & RAMP:
+            return False
+        return any(self.level(x + dx, y + dy) < lv for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy)
+
     def can_step(self, x0: int, y0: int, x1: int, y1: int) -> bool:
         """Between neighbouring tiles: on the level, or up and down stairs. Cliffs can't be climbed."""
         l0, l1 = self.level(x0, y0), self.level(x1, y1)
@@ -239,7 +248,7 @@ class World:
 
     def passable(self, x: int, y: int) -> bool:
         g, b = self.get(x, y)
-        return GROUNDS[g].walkable and not BLOCKS[b].solid
+        return GROUNDS[g].walkable and not BLOCKS[b].solid and not self.edge(x, y)
 
     def set_meta(self, x, y, data: dict | None):
         if data:

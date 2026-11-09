@@ -5,7 +5,7 @@ function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
 function walkable(x, y, fx, fy) {               // (fx, fy): where you come from, for cliffs and stairs
   const t = tile(x, y); if (!t) return false;
-  if (fx !== undefined && !canStep(fx, fy, x, y)) return false;
+  if (edgeAt(x, y) || (fx !== undefined && !canStep(fx, fy, x, y))) return false;
   if (t[1] === "~" || t[1] === "=") return !!(meObs && meObs.self.sailing) || t[0] === "V";   // water: only by boat
   return WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
 }
@@ -85,6 +85,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   // placing the selected item
   if (selected && !shift) {
     const it = selected, block = PLACEABLE_BLOCK[it];
+    if ((block || FILLS[it] || it === "seed") && edgeAt(p.x, p.y)) return {text: "Nothing stays on the edge of a hill", ghost: it, ok: false};
     // containers first: clicking a chest, basket or trough with anything selected puts it in
     if (c === "e" && it !== "torch") return FOODS.includes(it) || it === "hay" ? {text: `Put ${label(it)} in the trough`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
                                                      : {text: "Troughs take hay or food", ok: false};
@@ -94,7 +95,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
       const f = footprint(block, p.x, p.y, s.x, s.y);
       const bad = f.tiles.filter((q) => { const tq = tile(q.x, q.y);
         return !tq || !(GROUND.has(tq[0]) || tq[0] === "f") || !WALKABLE_GROUND.has(tq[1]) || tq[1] === ":"
-          || (q.x === s.x && q.y === s.y) || (SOLID.has(block) && entityAt(q)); });
+          || (q.x === s.x && q.y === s.y) || (SOLID.has(block) && entityAt(q)) || edgeAt(q.x, q.y) || levelAt(q.x, q.y) !== levelAt(p.x, p.y); });
       const near = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy}))
         .filter((q) => !f.tiles.some((r) => r.x === q.x && r.y === q.y));
       return {text: bad.length ? (bad.some((q) => q.x === s.x && q.y === s.y) ? `Step out of the way to place the ${label(it)}` : bad.some((q) => entityAt(q)) ? "Wait, something is standing there" : `The ${label(it)} needs a clear ${FOOT[block].join("×")} spot of dry land`) : `Place ${label(it)}`,

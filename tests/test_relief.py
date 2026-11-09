@@ -8,9 +8,10 @@ from megastructure.world import Chunk
 
 
 def plateau(sim, a):
-    """A 6x3 plateau (level 1) two tiles north of you, with stairs in the middle of its south edge."""
-    for y in range(a.y - 4, a.y - 1):
-        for x in range(a.x - 3, a.x + 3):
+    """A 9x5 plateau (level 1) two tiles north of you, with stairs in the middle of its south edge; its rim (the
+    outer ring) is off-limits, the 7x3 inside walkable."""
+    for y in range(a.y - 6, a.y - 1):
+        for x in range(a.x - 4, a.x + 5):
             sim.world.set(x, y, level=1)
     for x in (a.x - 1, a.x):
         sim.world.set(x, a.y - 2, level=1 | RAMP)            # the south edge row: stairs down to a.y - 1
@@ -33,7 +34,7 @@ def test_cliffs_block_and_stairs_go_up_and_down(world):
 def test_walking_off_an_edge_is_blocked_too(world):
     sim, a = world
     plateau(sim, a)
-    a.x, a.y = a.x - 3, a.y - 3                              # on the plateau's west edge
+    a.x, a.y = a.x - 3, a.y - 4                              # inside the plateau, next to its west rim
     r = run(sim, a, "walk", {"dir": "W"})
     assert r["stopped"] == "blocked" and "drop" in r["blocked_by"]
 
@@ -41,7 +42,7 @@ def test_walking_off_an_edge_is_blocked_too(world):
 def test_move_to_finds_the_stairs(world):
     sim, a = world
     plateau(sim, a)
-    top = (a.x + 2, a.y - 4)
+    top = (a.x + 3, a.y - 5)
     r = run(sim, a, "move_to", {"x": top[0], "y": top[1]}, limit=800)
     assert r["ok"] and (a.x, a.y) == top
 
@@ -64,3 +65,24 @@ def test_land_saved_before_relief_stays_flat():
     c = Chunk.unpack(0, 0, old)
     assert len(c.level) == n and not any(c.level)
     assert Chunk.unpack(0, 0, c.pack()).level == c.level
+
+
+def test_nobody_stands_or_builds_on_a_hills_rim(world):
+    sim, a = world
+    plateau(sim, a)
+    assert sim.world.edge(a.x + 4, a.y - 4) and sim.world.edge(a.x + 2, a.y - 2)       # east rim, south cliff
+    assert not sim.world.edge(a.x, a.y - 2) and not sim.world.edge(a.x + 3, a.y - 4)   # the stairs, the inside
+    a.add("chest", 1)
+    a.x, a.y = a.x + 2, a.y - 1                              # under the cliff: placing on it is refused
+    assert run(sim, a, "place", {"dir": "N", "item": "chest"})["error"] == "cliff_edge"
+
+
+def test_nothing_generates_on_a_rim():
+    from megastructure.gen import gen_level
+    for cx in range(4, 9):
+        for cy in range(-3, 3):
+            _, block, lv = gen_chunk(7, cx, cy)
+            for i, v in enumerate(lv):
+                x, y = cx * CHUNK + i % CHUNK, cy * CHUNK + i // CHUNK
+                if v & 15 and not v & RAMP and any(gen_level(7, x + dx, y + dy) < v & 15 for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
+                    assert block[i] == 0, (x, y)

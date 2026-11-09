@@ -20,6 +20,12 @@ function lvChar(x, y) {
 }
 const levelAt = (x, y) => { const c = lvChar(x, y); return c === null ? 0 : c >= "A" ? c.charCodeAt(0) - 65 : c.charCodeAt(0) - 48; };
 const rampAt = (x, y) => { const c = lvChar(x, y); return c !== null && c >= "A"; };
+function edgeAt(x, y) {                     // as World.edge: a hill's rim (a lower tile around it), stairs excepted
+  const lv = levelAt(x, y);
+  if (!lv || rampAt(x, y)) return false;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && levelAt(x + dx, y + dy) < lv) return true;
+  return false;
+}
 function canStep(x0, y0, x1, y1) {          // as World.can_step: on the level, or up and down stairs; cliffs can't be climbed
   const l0 = levelAt(x0, y0), l1 = levelAt(x1, y1);
   if (l0 === l1) return true;
@@ -147,15 +153,14 @@ function groundMarks(g, x, y, gr, ox, oy) {
   if (gr === "'") drawBlobLayer(g, IMG.ash, x, y, (_, gg) => gg === "'", ox, oy, 0);
   if (gr === "_") g.drawImage(IMG.cobble, [16, 32, 0][Math.floor(hash(x, y, 9) * 3)], [16, 32, 48][Math.floor(hash(x, y, 10) * 3)], 16, 16, ox, oy, 16, 16);
 }
-// Stairs: the pack's 2x2 slope piece, cut into a south cliff: its top half on the pair of stair tiles, its bottom
-// half on the landing below them. Drawn a quarter per tile, so redrawing any one tile keeps it whole.
+// Slopes: a 32x32 piece (tools/derived_art.py ramp_art) through a south cliff: its top half on the pair of slope
+// tiles, its bottom half on the landing below them. Drawn a quarter per tile, so redrawing any one tile keeps it whole.
 function drawStairs(g, x, y, ox, oy) {
   const up = rampAt(x, y), ry = up ? y : y - 1;
   if (!up && !rampAt(x, ry)) return;
-  const west = rampAt(x + 1, ry), x0 = west ? x : x - 1;          // the pair's west tile
-  const variant = Math.floor(hash(x0, ry, 77) * 3) * 32;            // planks, stepping stones, wide planks
-  const sheet = levelAt(x, ry) >= 2 ? IMG.stairs2 : IMG.stairs1;    // the darker terrace has darker grass shading
-  g.drawImage(sheet, variant + (west ? 0 : 16), up ? 0 : 16, 16, 16, ox, oy, 16, 16);
+  const west = rampAt(x + 1, ry);                                    // this column is the pair's west half
+  const sheet = levelAt(x, ry) >= 2 ? IMG.ramp2 : IMG.ramp1;        // each terrace its own grass
+  g.drawImage(sheet, west ? 0 : 16, up ? 0 : 16, 16, 16, ox, oy, 16, 16);
 }
 function renderBlock(b) {
   b.canvas = document.createElement("canvas"); b.canvas.width = B * 16; b.canvas.height = B * 16;

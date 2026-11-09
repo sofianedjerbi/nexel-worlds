@@ -17,14 +17,14 @@ class Movement:
         ground, block = GROUNDS[g], BLOCKS[b]
         if ground.liquid:
             return a.sailing or block.name == "boat"
-        return ground.walkable and not block.solid
+        return ground.walkable and not block.solid and not self.world.edge(x, y)
 
     def can_go(self, a: Agent, x: int, y: int) -> bool:
         """From where `a` stands to the neighbouring (x, y): the tile can be entered, and no cliff is in the way."""
         return self.can_enter(a, x, y) and self.world.can_step(a.x, a.y, x, y)
 
     def why_not(self, a: Agent, x: int, y: int) -> str:
-        if self.can_enter(a, x, y) and not self.world.can_step(a.x, a.y, x, y):
+        if self.world.edge(x, y) or (self.can_enter(a, x, y) and not self.world.can_step(a.x, a.y, x, y)):
             return "a cliff (find stairs)" if self.world.level(x, y) > self.world.level(a.x, a.y) else "a drop (find stairs)"
         return self.describe(x, y)
 

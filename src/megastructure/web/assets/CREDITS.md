@@ -8,4 +8,4 @@ the asset pack itself may not be redistributed or resold, even modified; no NFTs
 credit required. Only the sheets this game uses are included here.
 
 `gen.png`, `ash.png`, `water_deep.png` and `fruit_bare.png` are extra tiles made for this game from the pack;
-`stairs1.png` and `stairs2.png` are the pack's slope pieces with their background cut out.
+`ramp1.png` and `ramp2.png` (slopes) are drawn for this game in the hill sheets' colours.

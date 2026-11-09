@@ -112,14 +112,39 @@ def largest_shape(img: Image.Image) -> Image.Image:
     return out
 
 
-def stairs_cutout(sheet: Path, background: tuple[str, ...]) -> Image.Image:
-    """The pack's stairs (slope pieces) with their grass background made see-through: what's left (the steps, the
-    cliff ends either side, their shading) goes over whatever ground is there, any shade of grass, any level."""
-    img = Image.open(sheet).convert("RGBA")
-    clear = {tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in background}
+def ramp_art(hill: Path, below: tuple) -> Image.Image:
+    """A grassy slope down a hill's south cliff, 32x32: the west and east halves sit on the pair of slope tiles
+    (top 16 rows) and the landing below them (bottom 16). The hill's grass runs out through a gap in the cliff and
+    fans out onto the ground below, as land coming down towards you does: lit, catching more light lower down, with
+    soft contour dashes across it; along each side the cliff face turns and runs diagonally down beside it, tapering
+    to nothing at the foot. Colours are the hill sheet's own (sampled from a south-edge tile), so it matches each
+    terrace; `below` is the colour of the ground it comes down onto, which its foot fades into."""
+    sheet = Image.open(hill).convert("RGBA")
+    col = [sheet.getpixel((1 * 16 + 8, 2 * 16 + y)) for y in range(16)]     # a south-edge column: top to cliff foot
+    top, rim, line, dark, light = col[0], col[9], col[11], col[12], col[13]
+    lit = _mix(top, (255, 255, 230), .18)
+    img = Image.new("RGBA", (32, 32))
     px = img.load()
-    for y in range(img.height):
-        for x in range(img.width):
-            if px[x, y][:3] in clear:
-                px[x, y] = (0, 0, 0, 0)
+    y0, y1 = 9, 26                                   # the slope: from where the hill's rim was, down onto the landing
+    for y in range(y0, y1 + 1):
+        k = (y - y0) / (y1 - y0)                     # 0 at the top, 1 at the foot
+        left = round(3 - 3 * k)                      # it fans out as it comes down
+        right = 31 - left
+        for x in range(left, right + 1):
+            c = _mix(_mix(top, lit, min(1, k * 2)), below, max(0, k - .45) / .55)   # lit, then into the ground
+            if (y - y0) % 4 == 2 and left + 3 <= x <= right - 3 and (x + y // 4) % 7 < 5:
+                c = _mix(c, rim, .45)                # contour dashes: the slope steps down
+            px[x, y] = c
+        wall = round(4 * max(0, 1 - k * 1.6))        # the cliff face beside it, turning down the side and tapering
+        for i in range(wall):
+            for x in (left - 1 - i, right + 1 + i):
+                if 0 <= x < 32:
+                    px[x, y] = (line, dark, light, light)[i]
+        if y == y1:                                  # the foot melts into the ground: the faintest shade under the lip
+            for x in range(left + 2, right - 1):
+                px[x, y] = _mix(below, rim, .25)
     return img
+
+
+def _mix(a, b, t):
+    return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3)) + (255,)
