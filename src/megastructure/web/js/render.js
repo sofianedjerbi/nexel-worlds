@@ -100,10 +100,11 @@ function frame(now) {
     }
     else if (o.pile) {
       if (lootAt(o.x, o.y)) continue;                // its loot is still hopping in: the pile shows once it lands
-      const names = Object.keys(o.pile), bob = Math.round(Math.sin(t * 3 + o.x + o.y) * 1.5) * zoom, sz = 10 * zoom;
-      const cx = sx(o.x) + S / 2, cy = sy(o.y) + S / 2;
-      ctx.fillStyle = "rgba(60,40,30,.25)"; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, 4 * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
-      names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom, cy - sz / 2 - bob, sz, sz));
+      // a gentle hover, smooth to the screen pixel (whole art pixels made it tick between three heights)
+      const names = Object.keys(o.pile), lift = (Math.sin(t * 2.4 + o.x * 1.3 + o.y) + 1) / 2, sz = 10 * zoom;
+      const cx = sx(o.x) + S / 2, cy = sy(o.y) + S / 2, bob = lift * 2 * zoom;
+      ctx.fillStyle = `rgba(60,40,30,${.28 - lift * .1})`; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, (4 - lift * .8) * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
+      names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), Math.round(cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom), Math.round((cy - sz / 2 - bob) * DPR) / DPR, sz, sz));
     }
     else if (o.fx) o.fx();
     else drawEntity(o.p, sx, sy, S, t, now);
