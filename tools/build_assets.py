@@ -108,6 +108,27 @@ def art(rows: list[str], pal: dict) -> Image.Image:
     return img
 
 
+# The thin tree is cut at sprite row 23 (just under its crown): the crown above falls, the stump below stays.
+THIN_CUT = 23
+
+
+def thin_stump() -> Image.Image:
+    """The young thin tree's stump, cut flat like the felling sheet's stump: dark rim, light cut wood with a
+    highlight, then the tree's own trunk and roots. 16x16, drawn on the tree's tile (sprite row r -> tile y r-13)."""
+    thin = Image.open(OUT / "trees.png").convert("RGBA").crop((0, 0, 16, 32))
+    rim, cut, light, bark = (0x90, 0x62, 0x5d, 255), (0xdc, 0xb9, 0x8a, 255), (0xe8, 0xcf, 0xa6, 255), (0xb6, 0x89, 0x62, 255)
+    out = Image.new("RGBA", (16, 16))
+    out.alpha_composite(thin.crop((0, THIN_CUT + 3, 16, 32)), (0, THIN_CUT + 3 - 13))   # trunk foot and roots
+    px, y = out.load(), THIN_CUT - 13                                                      # the cut, rows y..y+2
+    for x in range(6, 10):
+        px[x, y] = rim
+    px[5, y + 1], px[10, y + 1], px[5, y + 2], px[10, y + 2] = rim, rim, rim, rim
+    for x in range(6, 10):
+        px[x, y + 1] = light if x in (6, 9) else cut
+        px[x, y + 2] = bark if x in (6, 9) else light
+    return out
+
+
 def thin_fall_sheet() -> Image.Image:
     """A felling animation for the young thin tree, derived frame by frame from the pack's round-tree sheet.
 
@@ -118,9 +139,11 @@ def thin_fall_sheet() -> Image.Image:
     following the round crown's burst (BURST). The stump is left out: the game draws the stump tile underneath."""
     fall = Image.open(OUT / "tree_fall.png").convert("RGBA")
     thin = Image.open(OUT / "trees.png").convert("RGBA").crop((0, 0, 16, 32))
-    STUMP_ROWS, PIVOT = 5, (40, 42)                 # thin sprite drawn at tile (0, -13): its foot is frame y 43
+    PIVOT = (40, 15 + THIN_CUT)                     # thin sprite drawn at tile (0, -13) = frame (32, 15); the cut line
+    whole = Image.new("RGBA", (64, 48))
+    whole.alpha_composite(thin, (32, 15))
     crown = Image.new("RGBA", (64, 48))
-    crown.alpha_composite(thin.crop((0, 0, 16, 32 - STUMP_ROWS)), (32, 15))
+    crown.alpha_composite(thin.crop((0, 0, 16, THIN_CUT)), (32, 15))
     angles = [-2, -4, -5, -32, -64, -90]            # frames 0-5, measured on the round crown (frame 5: it lands)
     lying = crown.rotate(90, resample=Image.NEAREST, center=PIVOT)   # PIL turns counter-clockwise: falls left
     out = Image.new("RGBA", (64 * 13, 48))
@@ -128,7 +151,9 @@ def thin_fall_sheet() -> Image.Image:
         frame = fall.crop((f * 64, 0, f * 64 + 64, 48))
         fpx = frame.load()
         new = Image.new("RGBA", (64, 48))
-        if f < len(angles):
+        if f < 3:                                   # still standing (only wobbling): the whole tree, stump included
+            new.alpha_composite(whole.rotate(-angles[f], resample=Image.NEAREST, center=(40, 15 + 28)))
+        elif f < len(angles):                       # cut: the crown tips over about the cut, the stump stays
             new.alpha_composite(crown.rotate(-angles[f], resample=Image.NEAREST, center=PIVOT))
         elif f - 6 < len(BURST):
             burst_frame(new, lying, *BURST[f - 6])
@@ -369,6 +394,7 @@ def build(downloads: Path):
     bare.save(OUT / "fruit_bare.png")
 
     thin_fall_sheet().save(OUT / "thin_fall.png")
+    thin_stump().save(OUT / "stump_thin.png")
 
     names = list(GEN)
     sheet = Image.new("RGBA", (16 * len(names), 16))

@@ -24,7 +24,7 @@ const fruitSheet = (x, y) => IMG[FRUITS[fruitKind(x, y)]];
 const FRUIT_ICON = [[16, 32], [80, 32], [112, 32], [48, 32]];   // trees.png: apple, pear, peach, orange
 const BERRY_BUSH = [32, 48, 64];                                // trees.png x of the red, purple, blue bushes (row 48)
 const BERRY_ICON = [[16, 64], [48, 64], [64, 64]];              // matching single berries (row 64)
-const dropping = new Map(), chestOpen = new Map(), doors = new Map();
+const chestOpen = new Map(), doors = new Map();
 let occupied = new Set();
 
 let roomOf = new Map(), rooms = [], roomsAt = 0, roomsDirty = true;

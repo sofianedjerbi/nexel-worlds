@@ -520,3 +520,18 @@ Tests: 62 pass (hand-speed test added; tilling/watering/fire tests now hold thei
   mail chime, UI click and error buzz. Verified by logging sfx calls per action in Chrome.
 - Space puts the fight first: the one you're fighting (hit or hit by, 8 s), then glooms in reach, then the faced tile.
 Tests: 62 pass.
+
+## 2026-11-09 · Iteration 28 — felling, fruit, eating, movement polish
+
+- thin_fall.png is now derived at build time from the pack's round felling sheet: per-frame crown angle measured on
+  the round crown (-2, -4, -5, -32, -64, landed), the thin crown rotated about its cut, the swoosh pixels kept, and
+  the burst made from the thin crown's own leaves following the round burst's profile. The thin tree is cut just
+  under its crown and leaves stump_thin.png, a cut stump in the round stump's palette (rim, cut wood, highlight).
+- Fruit from a tree falls with real gravity from the crown's edge (smooth at any frame rate; the pack's drop row was
+  too sparse), bounces once, rests, then hops to the picker; the tree turns bare at once.
+- Eating takes 1.6 s (progress bar, the food bobbing at your mouth), not possible when full.
+- Animals amble at their own speed (chicken 1.6, cow 1.2, gloom 2.6 tiles/s): each step lasts most of the pause
+  between steps instead of a 0.2 s hop.
+- Two keys at once: turning first finishes the tile being entered in a straight line (as the server does), so no
+  diagonal slide; 0 diagonal frames in Chrome over three turn patterns, display = server at the end.
+Tests: 62 pass.

@@ -55,8 +55,6 @@ function objectSprite(c, x, y, t) {
     case "b": return [IMG.trees, BERRY_BUSH[Math.floor(h * 3)], 48, 16, 16, 0, -3];
     case "v": return [IMG.trees, 16, 48, 16, 16, 0, -3];                                 // picked bush: leaves only
     case "U": {                                                                           // picked fruit tree: the same tree, bare
-      const drop = dropping.get(x + "," + y), fr = drop ? Math.floor((performance.now() - drop) / 1000 * 12) : 99;
-      if (fr < DROP_FRAMES) return [fruitSheet(x, y), fr * 48, 144, 48, 48, -16, -28];   // the fruit falls (sorted by depth)
       return [IMG.fruit_bare, fruitKind(x, y) * 48, 0, 48, 48, -16, -28];
     }
     case "*": return [IMG.gen, ...genCell("ore"), 16, 16, 0, -3];
@@ -101,10 +99,12 @@ function objectSprite(c, x, y, t) {
       doors.set(key, o);
       return [IMG.gates, Math.round(o * 3) * 16, 0, 16, 16, 0, -3];
     }
-    case "t": {                                       // a stump: the felling sheet's own stump for round trees
-      const now = performance.now();   // hidden while the felling sheet still draws it (its last frames fade out)
-      if (falls.some((f) => f.x === x && f.y === y && !f.thin && now - f.t0 < 9 / 14 * 1000)) return null;
-      return h < .7 ? [IMG.tree_fall, 12 * 64 + 32, 28, 16, 16, 0, 0] : [IMG.trees, 0, 96, 16, 16, 0, 0];
+    case "t": {                                       // a stump, cut flat: the felling sheet's own, or the thin tree's
+      // hidden while the fall animation still draws the tree there: the round sheet draws its stump until its fade
+      // (frame 9); the thin one stands whole for frames 0-2, then it is cut and the stump tile shows
+      const now = performance.now();
+      if (falls.some((f) => f.x === x && f.y === y && now - f.t0 < (f.thin ? 3 : 9) / 14 * 1000)) return null;
+      return h < .7 ? [IMG.tree_fall, 12 * 64 + 32, 28, 16, 16, 0, 0] : [IMG.stump_thin, 0, 0, 16, 16, 0, 0];
     }
     case "Y": return [IMG.well, 0, 0, 32, 32, 0, -16];                                   // 2x2, drawn from the bottom-left tile
     case "J": { const k = Math.floor(h * 6); return [IMG.coop, 160 + (k % 3) * 32, 80 + Math.floor(k / 3) * 48, 32, 44, 0, -28]; }

@@ -76,15 +76,21 @@ function felled(x, y, who, now) {
 }
 // Picking fruit or berries: the plant shakes, the fruit pops out and arcs into the picker's hands.
 const flyers = [];
-const DROP_FRAMES = 7;   // the fruit-drop row: the fruit has landed by frame 7 (12 fps); then it hops to the picker
+const FRUIT_G = 30, BOUNCE_MS = 150, REST_MS = 160;   // fruit falling from a tree: gravity (tiles/s²), bounce, rest
 const FLY_MS = 420;
 function picked(x, y, old, by, now) {
   const key = x + "," + y, tree = old === "F";
   shakes.set(key, now);
-  if (tree) dropping.set(key, now);                // the sheet's fruit-drop animation first, until the fruit lands
   const [ix, iy] = tree ? FRUIT_ICON[fruitKind(x, y)] : BERRY_ICON[Math.floor(hash(x, y, 21) * 3)];
-  const from = tree ? [[-.45, .55], [1.05, .5]] : [[.2, .1], [.75, .2]];   // where the fruit lands / berries hang
-  from.forEach(([dx, dy], i) => flyers.push({x: x + dx, y: y + dy, ix, iy, by, t0: now + (tree ? DROP_FRAMES / 12 * 1000 : 80) + i * 90}));
+  if (!tree) {                                     // berries pop straight off the bush into your hands
+    [[.2, .1], [.75, .2]].forEach(([dx, dy], i) => flyers.push({x: x + dx, y: y + dy, ix, iy, by, t0: now + 80 + i * 90}));
+    return;
+  }
+  // fruit falls from the edge of the crown (smooth gravity, so it never skips), bounces once, rests, then hops to you
+  [[-.1, -1.3, .55], [1.05, -1.1, .6]].forEach(([dx, top, ground], i) => {
+    const start = now + 60 + i * 110, fall = Math.sqrt(2 * (ground - top) / FRUIT_G) * 1000;
+    flyers.push({x: x + dx, y: y + ground, ix, iy, by, drop: {top: y + top, t0: start, fall}, t0: start + fall + BOUNCE_MS + REST_MS});
+  });
 }
 function drawFlyers(sx, sy, S, now) {
   const z = zoom;
@@ -93,8 +99,14 @@ function drawFlyers(sx, sy, S, now) {
     if (k >= 1) { flyers.splice(i, 1); continue; }
     const who = f.by && [...ents.values()].find((q) => q.e && q.e.name === f.by);
     let x = f.x, y = f.y, sc = 1;
-    if (k < 0) continue;                            // not yet: the sheet is still showing the fruit falling
-    if (who) {                                 // arc into the picker's hands, shrinking as it is caught
+    if (k < 0 && !f.drop) continue;
+    if (k < 0) {                                    // falling from the tree, then one small bounce, then resting
+      const tf = (now - f.drop.t0) / 1000;
+      if (tf < 0) continue;
+      if (tf * 1000 < f.drop.fall) y = f.drop.top + .5 * FRUIT_G * tf * tf;
+      else { const b = (tf * 1000 - f.drop.fall) / BOUNCE_MS; if (b < 1) y = f.y - Math.sin(b * Math.PI) * .14; }
+      if (tf * 1000 - f.drop.fall > 0 && !f.landed) { f.landed = true; sfx("plant", f.x, f.y); }
+    } else if (who) {                                 // arc into the picker's hands, shrinking as it is caught
       const tx = who.x + .5, ty = who.y + .1, e = k * k * (3 - 2 * k);
       x = f.x + (tx - f.x) * e; y = f.y + (ty - f.y) * e - Math.sin(k * Math.PI) * 1.1; sc = 1 - k * .45;
     } else { y -= k * .8; sc = 1 - k; }
@@ -156,7 +168,6 @@ function drawEffects(sx, sy, S, dt) {
   }
   ctx.globalAlpha = 1;
   const now = performance.now();
-  for (const [key, t0] of dropping) if (now - t0 > DROP_FRAMES / 12 * 1000) dropping.delete(key);
   drawFlyers(sx, sy, S, now);
   for (let i = falls.length - 1; i >= 0; i--) {     // the pack's tree-felling animation, then fade
     const f = falls[i], k = (now - f.t0) / 1000, fr = Math.floor(k * 14);
