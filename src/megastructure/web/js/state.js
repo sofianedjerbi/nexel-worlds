@@ -95,7 +95,10 @@ function onTick(d) {
       if (Math.abs(p.x - e.x) + Math.abs(p.y - e.y) > 4) { p.x = e.x; p.y = e.y; }
     }
   }
-  for (const [k, p] of ents) if (!seen.has(k)) { recentlyGone.set(k, {p, t: now}); ents.delete(k); }
+  for (const [k, p] of ents) if (!seen.has(k)) {
+    if (k === "agent" + myId) { refresh(); continue; }       // you're never out of your own view: you just moved far (a level)
+    recentlyGone.set(k, {p, t: now}); ents.delete(k);
+  }
   for (const [k, g] of recentlyGone) if (now - g.t > 2000) recentlyGone.delete(k);
 }
 // The sound of a tile changing: what broke, what was placed, what was picked.

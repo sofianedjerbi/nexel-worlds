@@ -42,6 +42,10 @@ async function refresh() {
   refreshing = false;
   if (!r.ok) return;
   meObs = r.obs; const s = meObs.self;
+  const p = ents.get("agent" + myId);                          // far from where the server has you (another level,
+  if (p && !pred && Math.abs(p.tx - s.x) + Math.abs(p.ty - s.y) > 4) {   // a teleport): be there
+    p.x = p.tx = s.x; p.y = p.ty = s.y; cam.x = camT.x = s.x; cam.y = camT.y = s.y;
+  }
   $("mode").textContent = `${s.name} · ${s.x}, ${s.y}${s.sheltered ? " · sheltered" : ""}`;
   drawVitals(s);
   drawHotbar(s.inventory); drawRecipes(); drawGoals();
@@ -77,7 +81,7 @@ async function act(tool, args, quiet) {
     if (Object.keys(gained).length && p) floats.push({x: p.tx, y: p.ty, text: "+" + fmt(gained), color: "#fff1a8", t: performance.now() / 1000});
     if (tool === "place") markGoal({workbench: "placedBench", seed: "planted", campfire: "placedFire", mailbox: "placedMail"}[args.item] || "placed");
     if (tool === "water") markGoal("watered");
-    if (tool === "dig_down" || tool === "climb") { const d = r.result.depth; toast(d ? `Underground · depth ${d}` : "Back on the surface"); sfx(d ? "crumble" : "step"); }
+    if (tool === "dig_down") { toast("A cave mouth: walk down it (south)"); sfx("crumble"); }
     if (tool === "milk") markGoal("milked");
     if (r.result.text !== undefined) toast(`The sign reads: “${r.result.text}”`);
     if (r.result.took) { if (!Object.keys(r.result.took).length) toast("It's empty."); }   // took it all (the +items float shows)

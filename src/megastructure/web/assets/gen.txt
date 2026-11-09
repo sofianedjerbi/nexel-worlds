@@ -21,8 +21,10 @@ boulder
 stone_wall
 workbench
 window
-hole
-ladder
+mouth_top
+mouth_deep
+ramp_top
+ramp_low
 heart
 food
 bolt

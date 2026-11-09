@@ -104,15 +104,22 @@ def test_food_tastes_better_on_a_picnic_blanket(game):
     assert game.server()["hunger"] - before > 50             # bread is 50, x1.5 on the blanket
 
 
-def test_dig_down_into_the_caves_and_climb_back(game):
+def test_a_cave_mouth_you_walk_down_and_back_up(game):
     game.give(pickaxe=1)
     game.hold_item("pickaxe")
     x, y = game.pos()
     game.face(1, 0)                                          # (nothing in front: X digs down)
     assert "Dig down" in game.actions()
-    game.press("x", 3800)                                    # X: dig down where you stand
+    game.press("x", 3800)                                    # X: a cave mouth from where you stand, sloping south
+    assert game.js(f"combAt({x}, {y})") == "O" and game.js(f"combAt({x}, {y + 1})") == "O"
+    game.js("selectItem(null)")
+    game.hold(["s"], 450)                                    # walk down it: the cave shows around you, then you're below
+    game.sleep(800)
     s = game.server()
-    assert s["depth"] == 1 and game.js("depthOf(cam.x)") == 1 and "Climb up" in game.actions()
-    game.press("Space", 1200)                                # up the ladder
+    assert s["depth"] == 1 and game.js("depthOf(cam.x)") == 1 and game.pos() == (s["x"], s["y"])
+    game.js(f"act('move_to', {{x: {s['x']}, y: {y + 1}}})")    # to the ramp's foot...
+    game.sleep(900)
+    game.hold(["w"], 260)                                    # ...and up it, out into the daylight
+    game.sleep(900)
     s = game.server()
-    assert s["depth"] == 0 and (s["x"], s["y"]) == (x, y) and game.js(f"combAt({x}, {y})") == "O"
+    assert s["depth"] == 0 and s["x"] == x and s["y"] <= y and game.pos() == (s["x"], s["y"])

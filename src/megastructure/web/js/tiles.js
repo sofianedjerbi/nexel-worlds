@@ -90,7 +90,7 @@ function onRegion(d) {
 //  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
 const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
-const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVXYJmqeyUvOl".includes(c) && !GROUND.has(c);
+const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVXYJmqeyUv".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
   const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1], x + dx, y + dy); };
@@ -142,7 +142,8 @@ function drawTile(x, y) {
   // stone hill sheet), ore showing through it
   if (gr === "-") drawBlobLayer(g, IMG.soil, x, y, (_, gg) => gg === "-", ox, oy, .15);     // an earth floor
   if (c === "R" || (c === "*" && gr === "-")) drawBlobLayer(g, IMG.hill3, x, y, (cc) => cc === "R" || cc === "*", ox, oy, .15);
-  // flat things that live in the ground layer
+  // flat things that live in the ground layer: cave mouths and the ramps below them, hedges
+  if (c === "O" || c === "l") { const s = objectSprite(c, x, y, 0); g.drawImage(s[0], s[1], s[2], 16, 16, ox, oy, 16, 16); }
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
   const hd = hash(x, y, 41);
   if (gr === "~" && hd < .09) {                      // shore water: lily pads, reeds, little rocks

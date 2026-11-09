@@ -29,6 +29,7 @@ function frame(now) {
       const next = p[along] + (wx || wy) * step, ahead = (next - (wx ? p.tx : p.ty)) * (wx || wy);
       const edge = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
       if (ahead <= (walkable(edge.x, edge.y, Math.round(p.tx), Math.round(p.ty)) ? 1 : 0)) p[along] = next;
+      throughMouth(p, walking.dir);
       continue;
     }
     const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);

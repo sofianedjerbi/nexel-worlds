@@ -3,9 +3,16 @@
 const DIRV = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
 function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p.ty} : meObs ? meObs.self : null; }
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
+// as Underground.mouth_ok: a cave mouth's deep end is entered from its top only, a ramp's top from its foot only
+function mouthOk(x0, y0, x1, y1) {
+  const c = combAt(x1, y1);
+  if (c === "O" && combAt(x1, y1 - 1) === "O") return x0 === x1 && y0 === y1 - 1;
+  if (c === "l" && combAt(x1, y1 + 1) === "l") return x0 === x1 && y0 === y1 + 1;
+  return true;
+}
 function walkable(x, y, fx, fy) {               // (fx, fy): where you come from, for cliffs and stairs
   const t = tile(x, y); if (!t) return false;
-  if (edgeAt(x, y) || (fx !== undefined && !canStep(fx, fy, x, y))) return false;
+  if (edgeAt(x, y) || (fx !== undefined && (!canStep(fx, fy, x, y) || !mouthOk(fx, fy, x, y)))) return false;
   if (t[1] === "~" || t[1] === "=") return !!(meObs && meObs.self.sailing) || t[0] === "V";   // water: only by boat
   return WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
 }
@@ -78,9 +85,6 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     return {ent, text: weapon ? `Attack ${who} with ${label(weapon)}${tail}` : `Punch ${who}${tail}`, near: reachOf(weapon), diag: true, attack: true,
       run: () => act("attack", weapon ? {target: ent.e.id, with: weapon} : {target: ent.e.id})};
   }
-  // a hole under your feet goes down it, a ladder climbs up
-  if (isMe && c === "O") return {text: "Go down the hole", run: () => act("climb", {}), here: true};
-  if (isMe && c === "l") return {text: "Climb up the ladder", run: () => act("climb", {}), here: true};
   // your own tile: something growing under your feet (a flower, a mushroom, a crop) is picked; otherwise pick up items
   const underfoot = isMe && hasBlock && !SOLID.has(c);
   if (isMe && !underfoot && !(selected && !shift && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed")))

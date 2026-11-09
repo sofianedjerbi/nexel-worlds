@@ -21,7 +21,7 @@ class Movement:
 
     def can_go(self, a: Agent, x: int, y: int) -> bool:
         """From where `a` stands to the neighbouring (x, y): the tile can be entered, and no cliff is in the way."""
-        return self.can_enter(a, x, y) and self.world.can_step(a.x, a.y, x, y, hop=True)
+        return self.can_enter(a, x, y) and self.world.can_step(a.x, a.y, x, y, hop=True) and self.mouth_ok(a.x, a.y, x, y)
 
     def why_not(self, a: Agent, x: int, y: int) -> str:
         if self.world.edge(x, y) or (self.can_enter(a, x, y) and not self.world.can_step(a.x, a.y, x, y, hop=True)):
@@ -40,6 +40,7 @@ class Movement:
             self.emit("moor", a.x, a.y, name=a.name)
         climb = self.world.level(x, y) - self.world.level(a.x, a.y)
         a.x, a.y = x, y
+        self.through_mouth(a)                         # a cave mouth: on down to the level below (or back up)
         if climb and a.ready > self.tick:            # up a slope is hard going, down it a little careful
             a.ready += round((a.ready - self.tick) * (SLOPE_UP if climb > 0 else SLOPE_DOWN))
         self.arrive(a)
@@ -109,7 +110,7 @@ class Movement:
             raise ActionError("bad_args", "move_to needs integer x and y")
         replans = 0
         ok = lambda x, y: self.can_enter(a, x, y) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
-        step = lambda p, q: self.world.can_step(*p, *q, hop=True)
+        step = lambda p, q: self.world.can_step(*p, *q, hop=True) and self.mouth_ok(*p, *q)
         path = astar(ok, (a.x, a.y), (gx, gy), step=step)
         if path is None:
             far = abs(gx - a.x) + abs(gy - a.y) > 64

@@ -119,14 +119,22 @@ GEN = {
         "                ", "                ", "   uuuuuuuuuu   ", "   uUUUUUUUUu   ", "   uUllulLlUu   ", "   uUlLulllUu   ",
         "   uUuuuuuuUu   ", "   uUllullLUu   ", "   uULlulllUu   ", "   uUUUUUUUUu   ", "  uuuuuuuuuuuu  ", "  uUUUUUUUUUUu  ",
         "   uuuuuuuuuu   ", "                ", "                ", "                "],
-    "hole": [  # dug down: a dark pit with an earth rim, deeper in the middle
-        "                ", "                ", "                ", "     cccccc     ", "   ccBBBBBBcc   ", "  cBBooooooBBc  ",
-        "  cBokkkkkkoBc  ", " cBokkkkkkkkoBc ", " cBokkkkkkkkoBc ", " cBokkkkkkkkoBc ", "  cBokkkkkkoBc  ", "  cBBooooooBBc  ",
-        "   ccBBBBBBcc   ", "     cccccc     ", "                ", "                "],
-    "ladder": [  # climbing up: rails and rungs going up into a hole of light
-        "    YYYYYYYY    ", "   YYNNNNNNYY   ", "    oo    oo    ", "    ow    wo    ", "    owwwwwwo    ", "    oWWWWWWo    ",
-        "    ow    wo    ", "    owwwwwwo    ", "    oWWWWWWo    ", "    ow    wo    ", "    owwwwwwo    ", "    oWWWWWWo    ",
-        "    ow    wo    ", "    ow    wo    ", "    oo    oo    ", "                "],
+    "mouth_top": [  # a cave mouth's top: the ground breaks off into earth steps going down into the dark (south)
+        "                ", "                ", "  cccccccccccc  ", " cBBBBBBBBBBBBc ", " cBbbbbbbbbbbBc ", " cBccccccccccBc ",
+        " cBoooooooooo Bc", " cBcBBBBBBBBcBc ", " cBoccccccccoBc ", " cBokkooookkoBc ", " cBokcccccckoBc ", " cBokkkkkkkkoBc ",
+        " cBokkookkookoBc", " cBokkkkkkkkoBc ", " cBokkkkkkkkoBc ", " cBokkkkkkkkoBc "],
+    "mouth_deep": [  # its deep end: the last steps, swallowed by the dark
+        " cBokkkkkkkkoBc ", " cBokkkkkkkkoBc ", " cBokkkkkkkkoBc ", " cBkkkkkkkkkkBc ", " cBkkkkkkkkkkBc ", " cBkkkkkkkkkkBc ",
+        " cBkkkkkkkkkkBc ", " cBkkkkkkkkkkBc ", " cBkkkkkkkkkkBc ", " ccBkkkkkkkkBcc ", "  ccBBkkkkBBcc  ", "   ccccccccc    ",
+        "                ", "                ", "                ", "                "],
+    "ramp_top": [  # below: the ramp's top, daylight falling down it from the mouth
+        "  NNNNNNNNNNNN  ", " cNYYYYYYYYYYNc ", " cNYYYYYYYYYYNc ", " cBNNNNNNNNNNBc ", " cBbbbbbbbbbbBc ", " cBccccccccccBc ",
+        " cBBBBBBBBBBBBc ", " cBbbbbbbbbbbBc ", " cBccccccccccBc ", " cBBBBBBBBBBBBc ", " cBbbbbbbbbbbBc ", " cBccccccccccBc ",
+        " cBBBBBBBBBBBBc ", " cBbbbbbbbbbbBc ", " cBccccccccccBc ", " cBBBBBBBBBBBBc "],
+    "ramp_low": [  # its foot, earth steps meeting the cave floor
+        " cBbbbbbbbbbbBc ", " cBccccccccccBc ", " cBBBBBBBBBBBBc ", " cBbbbbbbbbbbBc ", " cBccccccccccBc ", " cBBBBBBBBBBBBc ",
+        " cBbbbbbbbbbbBc ", " cBccccccccccBc ", "  cBBBBBBBBBBc  ", "   cccccccccc   ", "                ", "                ",
+        "                ", "                ", "                ", "                "],
     "heart": [
         "                ", "                ", "                ", "   ffff  ffff   ", "  fMMMMffMMMMf  ", "  fMeMMMMMMMMf  ",
         "  fMMMMMMMMMMf  ", "  fMMMMMMMMMMf  ", "   fMMMMMMMMf   ", "    fMMMMMMf    ", "     fMMMMf     ", "      fMMf      ",

@@ -199,6 +199,8 @@ function syncWalk() {
       if ((nx !== p.tx || ny !== p.ty) && walkable(nx, ny, p.tx, p.ty)) {
         p.tx = nx; p.ty = ny; pred = {x: nx, y: ny, until: performance.now() + 600};
         rpc("act", {tool: "move_to", args: {x: nx, y: ny}});
+        const shift = mouthShift(nx, ny, prev.dir);             // finishing the step through a cave mouth
+        if (shift) { p.x += shift; p.tx += shift; cam.x += shift; camT.x += shift; pred = {x: p.tx, y: ny, until: performance.now() + 1500}; }
         return;
       }
     }
