@@ -157,14 +157,6 @@ const RECIPE_GROUPS = [
   ["Farm & picnic", ["well", "coop", "trough", "hay", "picnic_blanket", "basket"]],
   ["Cooking & smelting", ["cooked_meat", "bread", "ingot"]],
 ];
-function nearestObject(ch, maxD) {
-  const s = myPos(); if (!s) return null; let best = null;
-  for (const b of blocks.values()) for (const [i, c] of b.objs) if (c === ch) {
-    const x = b.bx * B + i % B, y = b.by * B + (i / B | 0), d = Math.abs(x - s.x) + Math.abs(y - s.y);
-    if (d <= maxD && (!best || d < best.d)) best = {x, y, d};
-  }
-  return best;
-}
 let craftFocus = null;   // recipe name highlighted for keyboard use
 function drawRecipes() {
   const el = $("recipes"); if (!el || !Object.keys(recipes).length) return;
@@ -198,13 +190,9 @@ function drawRecipes() {
         st.appendChild(iconCanvas(rc.station)); st.insertAdjacentText("beforeend", `at ${label(rc.station)}`);
         body.appendChild(st);
       }
-      const station = !atStation && haveAll ? nearestObject(CHAR[rc.station], 60) : null;
-      card.title = !haveAll ? "Missing materials" : atStation ? "Click to craft" : station ? `Click to walk to the ${label(rc.station)} and craft` : `Build a ${label(rc.station)} first`;
+      card.title = !haveAll ? "Missing materials" : atStation ? "Click to craft"
+        : `Go within 2 tiles of a ${label(rc.station)} to make it`;   // getting there is up to you
       if (haveAll && atStation) card.onclick = () => act("craft", {recipe: name});
-      else if (station) {                            // walk to the nearest station, then craft there
-        card.classList.remove("no"); card.classList.add("walk");
-        card.onclick = () => { $("craft").style.display = "none"; perform(station, {text: "craft", near: 1, run: () => act("craft", {recipe: name})}); };
-      }
       grid.appendChild(card);
     }
   }

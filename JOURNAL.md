@@ -574,3 +574,7 @@ Tests: 64 pass.
   to look); a catch-up slide could cut a corner (own and others' catch-up moves one axis at a time).
   Test-side issues fixed too (reading hints before a frame redrew; clicking a tile relative to a moving player).
 Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
+- More end-to-end coverage (45 scenarios): houses/doors/shelter, glooms at night, wells, campfire cooking, signs,
+  milking and feeding, coops, picnic bonus, hotbar/Q/bag/crafting by keys, zoom/help/F3, hover hints, sounds per action.
+  Fixed: crafting cards still promised "walk to the workbench" though nothing walks you any more (now: "go within 2
+  tiles of a workbench"). Added dev_needs for tests that need hunger. Two full runs green (3.7 min each).

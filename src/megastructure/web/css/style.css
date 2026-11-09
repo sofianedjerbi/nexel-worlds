@@ -55,7 +55,6 @@
   .rgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(176px, 1fr)); gap:6px; }
   .rcard { display:flex; gap:8px; align-items:center; padding:5px 6px; border:2px solid #d9b98a; border-radius:5px; background:#f7e7c6; cursor:pointer; position:relative; }
   .rcard:hover { border-color:#6aa66f; background:#fbf0d8; }
-  .rcard.walk { border-style:dashed; }
   .rcard.no { opacity:.45; cursor:default; } .rcard.no:hover { border-color:#d9b98a; background:#f7e7c6; }
   .rcard canvas.big { width:32px; height:32px; image-rendering:pixelated; flex:none; }
   .rcard .nm { line-height:20px; }
