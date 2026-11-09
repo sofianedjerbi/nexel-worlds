@@ -30,8 +30,15 @@ function noteFight(e) {
 // What Space (alt = false) or X (alt = true) does, without having to turn first. Fighting comes first: the one
 // you're fighting, then any gloom within reach; then the tile you face; then other creatures within reach; then
 // anything next to you, preferring the direction you last walked. Falls back to a hint about the faced tile.
+// Holding something to place (a block, path, planks, dirt, seeds): Space puts it on the tile in front of you, and
+// only there (the ghost shows it, green or red). Walk to aim: a tap turns you and moves you a tile.
+const placingItem = () => selected && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed");
 function facingIntent(alt) {
   const q = facingTile(), s = myPos(); if (!q || !s) return null;
+  if (!alt && placingItem()) {
+    if (entityAt(q)) return {p: q, it: {text: `Can't place the ${label(selected)}: something is in the way`, ok: false, ghost: selected}};
+    const it = intent(q, false); return it ? {p: q, it} : null;
+  }
   const reach = reachOf(inHand()), dist = (o) => Math.abs(o.tx - s.x) + Math.abs(o.ty - s.y);
   const near = alt ? [] : [...ents.values()]
     .filter((o) => o.e && !(o.e.kind === "agent" && o.e.id === myId) && Math.max(Math.abs(o.tx - s.x), Math.abs(o.ty - s.y)) <= reach)
@@ -72,13 +79,14 @@ function availableActions() {
   const s = myPos(), rows = [];
   const main = facingIntent(false), alt = facingIntent(true);
   if (main && !main.it.info && main.it.ok !== false) rows.push(["Space", main.it.text]);
+  else if (main && placingItem()) rows.push(["Space", main.it.text, "bad"]);           // why it can't go there
   if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push(["X", alt.it.text]);
   if (selected && FOODS.includes(selected)) rows.push(["E", `Eat ${label(selected)}`]);
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push(["F", "Pick up"]);
   return rows;   // only what you can do right here, right now (all the other keys are in the help, H)
 }
 function updateActions() {
-  const html = availableActions().map(([k, t]) => `<div><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
+  const html = availableActions().map(([k, t, cls]) => `<div class="${cls || ""}"><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
   if (html === actionsHtml) return;
   actionsHtml = html;
   const el = $("actions"); el.innerHTML = html; el.style.display = html ? "block" : "none";
@@ -86,6 +94,7 @@ function updateActions() {
 function useFacing(alt) {
   const f = facingIntent(alt);
   if (!f || f.it.info) return toast(f ? f.it.text : "Nothing within reach.", !f);
+  if (f.it.ok === false) return toast(f.it.text, true);
   perform(f.p, f.it);
 }
 function turn(dir) {

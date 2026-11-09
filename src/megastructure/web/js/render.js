@@ -72,10 +72,6 @@ function frame(now) {
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
   }
-  for (let i = gones.length - 1; i >= 0; i--) {
-    const k = (now - gones[i].t0) / 240;
-    if (k >= 1) gones.splice(i, 1); else list.push({y: gones[i].y, ty: gones[i].y, x: gones[i].x, spr: gones[i].spr, gone: k});
-  }
   occupied = new Set([...ents.values()].filter((p) => p.e).map((p) => Math.round(p.x) + "," + Math.round(p.y)));
   for (const p of ents.values()) if (p.e) list.push({y: p.y + .01, p});
   for (const [ix, iy, pile] of groundItems) list.push({y: iy - .01, x: ix, pile});
@@ -84,11 +80,7 @@ function frame(now) {
     if (o.spr) {
       const [img, a, b2, w, h, dx, dy] = o.spr, key = o.x + "," + o.ty;
       let px = sx(o.x) + dx * zoom, py = sy(o.ty) + dy * zoom, ww = w * zoom, hh = h * zoom;
-      const pop = o.gone === undefined ? pops.get(key) : undefined;
-      if (o.gone !== undefined) {                      // squash toward the ground and fade
-        const k = o.gone, cx = px + ww / 2, by = py + hh; ww *= 1 + k * .25; hh *= 1 - k * .85; px = cx - ww / 2; py = by - hh;
-        ctx.globalAlpha = 1 - k * k;
-      }
+      const pop = pops.get(key);
       if (pop !== undefined) {                       // newly placed: bounce in
         const k = (now - pop) / 260;
         if (k >= 1) pops.delete(key);

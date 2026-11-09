@@ -29,11 +29,10 @@ function setTile(x, y, comb, gnd, who = null) {
   else if (old !== comb && isObject(comb) && comb !== "x" && PICK[old] !== comb) pops.set(x + "," + y, now);
   const spr = old !== comb && old !== "T" && PICK[old] !== comb && isObject(old) && !isObject(comb) ? objectSprite(old, x, y, now / 1000) : null;
   if (spr && PLUCKED.includes(old)) plucked(x, y, spr, who, now);   // small plants come up and go to the picker
-  else if (spr && SHATTER.includes(old)) shatter(x, y, spr);         // bushes burst into their own leaves
-  else if (spr) {                              // taken away: it squashes down and fades, shedding its own colours
-    gones.push({x, y, spr, t0: now});
-    debris(x, y, spr, 8, {dust: "M*%Y".includes(old)});
-  } else if (old !== comb && !GROUND.has(old)) burst(x, y, old, 10);
+  else if (spr) {                              // anything else taken away falls apart into its own pixels
+    shatter(x, y, spr);
+    if ("M*%Y^".includes(old)) smoke(x, y + .25, 3, .3);   // stone kicks up a little dust
+  } else if (old !== comb && !GROUND.has(old) && old !== "Z" && old !== "z") burst(x, y, old, 10);
   if (gnd === "o" && b.gnd[i] !== "o") debris(x, y, null, 6, {kind: "o", dust: true});
   b.comb[i] = comb; b.gnd[i] = gnd;
   b.objs.delete(i); if (isObject(comb)) b.objs.set(i, comb);

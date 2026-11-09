@@ -548,3 +548,15 @@ Tests: 62 pass.
 - Hit animals flee for 4 s; bushes collapse into their own leaves; eating is three bites in 0.9 s with the food at
   the mouth (measured from the sheet: mouth at frame row 22), getting smaller.
 Tests: 64 pass.
+
+## 2026-11-09 · Iteration 30 — breaking, eating, placing by keyboard
+
+- One breaking animation for everything (rocks, ore, fences, walls, furniture, structures): the sprite falls apart
+  into 2x2 clumps of its own pixels that drift, land, bounce and fade (stone adds a little dust). The old squash is
+  gone. Trees keep their felling sheets; small plants keep the pluck.
+- Strike effects land on the tile actually worked on (the server reports each agent's target, `at`).
+- Eating: a crisp 8x8 version of the food (2x2 → 1 px), raised to the mouth for three bites that take round chunks
+  out of it, a small nod, crumbs of its colours falling to your feet.
+- Keyboard placement: with a placeable item in hand, Space places on the tile in front of you and only there; the
+  ghost shows it (green/red) and the panel says why it can't go there (red). A creature in the spot blocks it.
+Tests: 64 pass.

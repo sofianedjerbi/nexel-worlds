@@ -1,6 +1,6 @@
 // Particles, shakes, pops, falls, removals, emotes and floating text.
 
-const parts = [], shakes = new Map(), pops = new Map(), falls = [], flashes = new Map(), gones = [];
+const parts = [], shakes = new Map(), pops = new Map(), falls = [], flashes = new Map();
 const sprCols = new Map();
 function spriteColors(spr) {                  // the main colours of a sprite, for debris that matches it
   const [img, sx0, sy0, w, h] = spr, key = (img.src || "c") + sx0 + "," + sy0;
@@ -118,8 +118,8 @@ function drawFlyers(sx, sy, S, now) {
   }
   ctx.globalAlpha = 1;
 }
-// Cutting a bush: the sprite bursts into 2x2 clumps of its own pixels that fly out, land, bounce and fade.
-const SHATTER = "bvH";
+// Breaking anything (a bush, a rock, a fence, a table...): its sprite falls apart into 2x2 clumps of its own pixels
+// that drift out a little, land, bounce and fade.
 const clumpCache = new Map();
 function clumpsOf(spr) {
   const [img, a, b, w, h] = spr, key = (img.src || "c") + a + "," + b;
@@ -179,9 +179,9 @@ function dyingPoof(p, now) {
   dying.push({p: {...p, e: {...p.e, love: false, doing: null}, moved: 0}, y0: p.y, t0: now});
   smoke(p.x, p.y, 8);
 }
-function smoke(x, y, n) {
+function smoke(x, y, n, size = 1) {   // size 1: a creature's poof; smaller for a little dust
   for (let i = 0; i < n; i++) puffs.push({x: x + .5 + (Math.random() - .5) * .7, y: y + .35 + (Math.random() - .5) * .35,
-    vx: (Math.random() - .5) * .7, vy: -.35 - Math.random() * .45, r: 1.5 + Math.random() * 1.5, grow: 4 + Math.random() * 4,
+    vx: (Math.random() - .5) * .7, vy: -.35 - Math.random() * .45, r: (1.5 + Math.random() * 1.5) * size, grow: (4 + Math.random() * 4) * size,
     life: .65 + Math.random() * .45, age: -i * .025});
 }
 function drawDying(sx, sy, S, t, now) {
