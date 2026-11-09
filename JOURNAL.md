@@ -633,3 +633,4 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Climbing: a step up takes 60% longer, down 20% (server pace and client prediction), with a puff on each step up.
 - Animals eat what grows and hay, not eggs, meat or milk.
 - 174 unit + 50 e2e green.
+- Reverted the slope art to iteration 39's (the user preferred it); kept: pairs never touch, slower climbing with a puff, animals' diet.
