@@ -112,22 +112,22 @@ def largest_shape(img: Image.Image) -> Image.Image:
     return out
 
 
-RAMP_VARIANTS = 2
+RAMP_VARIANTS = 4
 
 
 def ramp_art(hill: Path, below: tuple) -> Image.Image:
     """Grassy slopes down a hill's south cliff: RAMP_VARIANTS pieces of 32x32 side by side. The west and east halves
     of a piece sit on the pair of slope tiles (top 16 rows) and the landing below them (bottom 16). The hill's grass
-    runs out through a gap in the cliff and fans out onto the ground below, as land coming down towards you does:
-    lit, catching more light lower down; along each side the cliff face turns and runs diagonally down beside it,
-    tapering to nothing at the foot. Colours are the hill sheet's own (sampled from a south-edge tile), so it matches
-    each terrace; `below` is the colour of the ground it comes down onto, which its foot fades into.
-    The variants share all that and differ only in what's on the grass: 0 soft contour dashes; 1 the dashes
-    staggered otherwise, with tufts."""
+    runs out through a gap in the cliff and fans out onto the ground below: one evenly lit plane (no brighter patch
+    in the middle), its foot fading into the ground below (`below`) with no edge; along each side the cliff face
+    turns and runs diagonally down beside it, tapering to nothing. Colours are the hill sheet's own (sampled from a
+    south-edge tile), so it matches each terrace.
+    Variants, differing only in what's on the grass: 0 soft contour dashes; 1 the dashes staggered, with tufts;
+    2 two shallow grass steps; 3 curved contours (a rounded rise)."""
     sheet = Image.open(hill).convert("RGBA")
     col = [sheet.getpixel((1 * 16 + 8, 2 * 16 + y)) for y in range(16)]     # a south-edge column: top to cliff foot
     top, rim, line, dark, light = col[0], col[9], col[11], col[12], col[13]
-    lit = _mix(top, (255, 255, 230), .18)
+    plane = _mix(top, (255, 255, 230), .1)           # the slope faces the light a little more than flat ground
     out = Image.new("RGBA", (32 * RAMP_VARIANTS, 32))
     for v in range(RAMP_VARIANTS):
         img = Image.new("RGBA", (32, 32))
@@ -139,32 +139,42 @@ def ramp_art(hill: Path, below: tuple) -> Image.Image:
             right = 31 - left
             for x in range(left, right + 1):
                 f = _foot(k, x, left, right)
-                c = _mix(_mix(top, lit, min(1, k * 2)), below, f)   # lit, then into the ground
-                if _contour(v, x, y, y0, left, right):
-                    c = _mix(c, rim, .45 * (1 - f))  # contour dashes: the slope steps down (fading out at the foot)
+                c = _mix(plane if y > y0 else _mix(top, plane, .5), below, f)
+                mark = _mark(v, x, y, y0, y1, left, right)
+                if mark:                             # contours and steps: shade below a line, light on its lip
+                    c = _mix(c, rim if mark < 0 else (255, 255, 230), (.45 if mark < 0 else .22) * (1 - f))
                 px[x, y] = c
             wall = round(4 * max(0, 1 - k * 1.6))    # the cliff face beside it, turning down the side and tapering
             for i in range(wall):
                 for x in (left - 1 - i, right + 1 + i):
                     if 0 <= x < 32:
                         px[x, y] = (line, dark, light, light)[i]
-        _ramp_details(px, v, y0, y1, rim=rim)
+        if v == 1:                                   # tufts of grass
+            for x, y in ((7, y0 + 4), (23, y0 + 7), (13, y0 + 12), (25, y0 + 13)):
+                px[x, y], px[x + 1, y - 1], px[x + 2, y] = rim, rim, rim
         out.alpha_composite(img, (32 * v, 0))
     return out
 
 
-def _contour(v, x, y, y0, left, right) -> bool:
+def _mark(v, x, y, y0, y1, left, right) -> int:
+    """-1 a shade line on the grass here, +1 a lit lip, 0 nothing."""
+    if v == 2:                                       # two shallow steps: a soft drop with a lit lip, edge to edge
+        if not left + 1 < x < right - 1:
+            return 0
+        for yb in (y0 + 5, y0 + 11):
+            if y == yb:
+                return -1
+            if y == yb - 1:
+                return 1
+        return 0
     if not left + 3 <= x <= right - 3:
-        return False
+        return 0
+    if v == 3:                                       # curved: each line bows down in the middle, a rounded rise
+        cy = y - y0 - round(1.5 * (1 - ((x - 15.5) / 12) ** 2))
+        return -1 if cy % 4 == 2 and (x + y // 4) % 7 < 5 else 0
     if v == 1:                                       # staggered the other way, a little wider apart
-        return (y - y0) % 5 == 2 and (x - y // 5 * 2) % 8 < 5
-    return (y - y0) % 4 == 2 and (x + y // 4) % 7 < 5
-
-
-def _ramp_details(px, v, y0, y1, rim):
-    if v == 1:                                       # tufts of grass
-        for x, y in ((7, y0 + 4), (23, y0 + 7), (13, y0 + 12), (25, y0 + 13)):
-            px[x, y], px[x + 1, y - 1], px[x + 2, y] = rim, rim, rim
+        return -1 if (y - y0) % 5 == 2 and (x - y // 5 * 2) % 8 < 5 else 0
+    return -1 if (y - y0) % 4 == 2 and (x + y // 4) % 7 < 5 else 0
 
 
 def _mix(a, b, t):

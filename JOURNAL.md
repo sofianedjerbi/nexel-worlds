@@ -635,3 +635,4 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - 174 unit + 50 e2e green.
 - Reverted the slope art to iteration 39's (the user preferred it); kept: pairs never touch, slower climbing with a puff, animals' diet.
 - Slopes: two variants (contour dashes; staggered with tufts). The foot has no border any more: base and dashes fade into the ground from halfway down, sooner at the sides.
+- Slopes: one evenly lit plane (no bright patch mid-slope), fading only at the foot; variants: dashes, tufts, two grass steps, curved contours.

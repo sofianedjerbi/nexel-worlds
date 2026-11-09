@@ -162,7 +162,7 @@ function drawStairs(g, x, y, ox, oy) {
   if (!up && !rampAt(x, ry)) return;
   const west = rampAt(x + 1, ry), x0 = west ? x : x - 1;             // this column is the pair's west half or east
   const sheet = levelAt(x, ry) >= 2 ? IMG.ramp2 : IMG.ramp1;        // each terrace its own grass
-  const variant = Math.floor(hash(x0, ry, 77) * 2) * 32;            // contour dashes, or staggered with tufts
+  const variant = Math.floor(hash(x0, ry, 77) * 4) * 32;            // dashes, tufts, two grass steps, curved
   g.drawImage(sheet, variant + (west ? 0 : 16), up ? 0 : 16, 16, 16, ox, oy, 16, 16);
 }
 function renderBlock(b) {
