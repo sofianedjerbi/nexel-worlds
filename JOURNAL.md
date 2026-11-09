@@ -578,3 +578,9 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   milking and feeding, coops, picnic bonus, hotbar/Q/bag/crafting by keys, zoom/help/F3, hover hints, sounds per action.
   Fixed: crafting cards still promised "walk to the workbench" though nothing walks you any more (now: "go within 2
   tiles of a workbench"). Added dev_needs for tests that need hunger. Two full runs green (3.7 min each).
+
+## Iteration 32 — Space never stops you
+- Hypothesis: holding Space to stand still (and slow work replacing the walk) feels like the game grabbing your sprite.
+- Change: Space no longer halts walking. On the move it only does what's instant (hits, picks, pick-ups); chopping/mining/placing wait until you stand. Server: a swing sent on the move before the arm is ready is dropped (`too_soon`) instead of waiting and stopping the walk. Houses got a pack-exact roof, plank facade, windows, an opening door and chimney smoke (iteration 31's commit).
+- Result: 143 unit + 46 e2e green (`test_space_never_stops_you` replaces the stop-to-chop test).
+- Next: other structures from outside; keep looping e2e.

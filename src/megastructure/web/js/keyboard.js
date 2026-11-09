@@ -103,6 +103,7 @@ function useFacing(alt) {
   const f = facingIntent(alt);
   if (!f || f.it.info) return toast(f ? f.it.text : "Nothing within reach.", !f);
   if (f.it.ok === false) return toast(f.it.text, true);
+  if (walking && !isQuick(f)) return;             // Space never stops you: work that takes time waits until you stand
   perform(f.p, f.it);
 }
 function turn(dir) {
@@ -164,10 +165,6 @@ addEventListener("keydown", (e) => {
     return;
   }
   if (/^[1-9]$/.test(k) && meObs) { const n = slots[+k - 1]; if (n) selectItem(selected === n ? null : n); return; }
-  if (k === " " && !e.repeat) {                    // Space stops you for work that takes time; quick things don't
-    const f = facingIntent(false);
-    if (!(f && isQuick(f))) { keys.add(" "); syncWalk(); }
-  }
   const fn = SHORTCUTS[k];
   if (fn) { e.preventDefault(); if (!(e.repeat && k !== " " && k !== "x")) fn(); }
 });
@@ -183,7 +180,7 @@ addEventListener("blur", () => { runKey = false; keys.clear(); syncWalk(); });
 let walking = null;   // {dir, run}
 function syncWalk() {
   const k = [...keys].reverse().find((k) => KEYDIR[k]);
-  const want = k && me && !keys.has(" ") ? {dir: KEYDIR[k], run: runKey} : null;   // holding Space: stand and work
+  const want = k && me ? {dir: KEYDIR[k], run: runKey} : null;
   if (want && walking && want.dir === walking.dir && want.run === walking.run) return;
   if (!want && !walking) return;
   const prev = walking;

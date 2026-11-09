@@ -39,7 +39,9 @@ class Combat:
         if max(abs(t.x - a.x), abs(t.y - a.y)) > reach:
             raise ActionError("out_of_range", f"target must be within {reach} tiles (including diagonals)")
         # the hit lands at once, then the arm needs ATTACK_COOLDOWN before the next swing: a ready swing takes no
-        # time, so you can fight while walking; one sent too soon waits for the cooldown (and so stops a walk)
+        # time, so you can fight while walking; one sent too soon waits for the cooldown, or on the move is dropped
+        if self.tick < a.swing_ready and getattr(self, "passing", None) is a:
+            raise ActionError("too_soon", "your arm is still swinging")
         while self.tick < a.swing_ready:
             yield
         if max(abs(t.x - a.x), abs(t.y - a.y)) > reach or t.hp <= 0:

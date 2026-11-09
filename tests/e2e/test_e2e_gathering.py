@@ -26,22 +26,23 @@ def test_flowers_around_and_under_you(game):
     assert game.actions() == ""                              # nothing left to do here
 
 
-def test_picking_never_stops_you_but_chopping_does(game):
+def test_space_never_stops_you(game):
     game.stamp(2, -1, ["f"])
-    game.stamp(6, -1, ["T"])
+    game.stamp(4, -1, ["T"])
     game.page.keyboard.down("d")
     game.sleep(150)
     game.press(" ", 250)                                     # Space on the flower: picked in passing
     moving = game.js("walking !== null")
-    game.sleep(500)
+    game.sleep(300)
     assert moving and game.inv("flower") == 1
     x0, _ = game.pos()
-    game.page.keyboard.down(" ")                             # Space on the tree: you stop and chop
-    game.sleep(400)
+    game.page.keyboard.down(" ")                             # Space by the tree: chopping waits, you walk on
+    game.sleep(500)
     x1, _ = game.pos()
+    moving = game.js("walking !== null")
     game.page.keyboard.up(" ")
     game.page.keyboard.up("d")
-    assert x1 <= x0 + 1 and game.js("walking === null || keys.has(' ') === false")
+    assert moving and x1 >= x0 + 2 and game.server()["x"] >= x0 + 2
 
 
 def test_a_click_picks_on_the_move(game):

@@ -213,6 +213,7 @@ class Simulation(Persistence, Sessions, Movement, Building, Items, Combat, Anima
             # on the move and the walk goes on. If it needs time (chopping), it replaces the walk as usual.
             walk, a.action = a.action, act
             act.started_tick, act.ticks = self.tick, 1
+            self.passing = a
             try:
                 next(act.gen)
             except StopIteration as stop:
@@ -224,6 +225,8 @@ class Simulation(Persistence, Sessions, Movement, Building, Items, Combat, Anima
                 a.action = walk
                 act.finish({"ok": False, "status": "failed", "error": e.code, "detail": e.detail}, self)
                 return act
+            finally:
+                self.passing = None
             a.action = walk                           # it needs time: stop walking, then carry on with it
             self.interrupt(a, f"replaced by {tool}")
             a.action = act

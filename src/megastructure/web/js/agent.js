@@ -68,7 +68,7 @@ async function act(tool, args, quiet) {
   pendingAct = null; myAction = null;
   busy = false; progress = null;
   if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk();   // still holding a direction: walk on
-  if (!r.ok && !["interrupted", "offline"].includes(r.error) && !quiet) toast(`${label(tool)}: ${r.detail || r.error}`, true);
+  if (!r.ok && !["interrupted", "offline", "too_soon"].includes(r.error) && !quiet) toast(`${label(tool)}: ${r.detail || r.error}`, true);
   if (r.ok) {
     const c = r.result.changed || {};
     const gained = Object.fromEntries(Object.entries(c.inventory || {}).filter(([, v]) => v > 0));
