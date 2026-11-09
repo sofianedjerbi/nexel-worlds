@@ -69,11 +69,22 @@
   .rc:hover { background:rgba(91,63,54,.1); }
   .rc .in2 { color:var(--ink2); font-size:18px; text-align:right; }
   .rc.no { opacity:.38; cursor:default; } .rc.no:hover { background:none; }
-  #goals { left:10px; top:110px; width:300px; display:none; }
-  .goal { display:flex; gap:8px; align-items:baseline; }
-  .goal .box { width:12px; height:12px; border:2px solid var(--ink); flex:none; position:relative; top:1px; }
-  .goal.done { color:var(--ink2); text-decoration:line-through; }
-  .goal.done .box { background:var(--accent); }
+  /* playing: the title and the "awake" list give way; goals sit alone in the top left */
+  body.playing #brand, body.playing #side { display:none; }
+  #goals { left:10px; top:10px; width:230px; display:none; }
+  #goals .gh { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
+  #goals h3 { margin:0; }
+  #goalcount { color:var(--ink2); font-size:18px; }
+  .goal { display:flex; gap:8px; align-items:center; padding:3px 0; line-height:20px; animation:goalin .35s steps(4); }
+  .goal + .goal { border-top:2px dotted rgba(91,63,54,.25); }
+  .goal .gi { width:24px; height:24px; flex:none; image-rendering:pixelated; }
+  .goal .gt { flex:1; }
+  .goal .tick { width:14px; height:14px; flex:none; border:2px solid var(--ink2); border-radius:2px; }
+  .goal.done .gt { color:var(--ink2); text-decoration:line-through; }
+  .goal.done .tick { background:var(--accent); border-color:var(--accent); box-shadow:inset 0 0 0 2px #fff8e8; }
+  .goal.done { animation:goaldone 1.6s steps(8) forwards; }
+  @keyframes goalin { from { opacity:0; transform:translateX(-12px); } }
+  @keyframes goaldone { 0%, 70% { opacity:1; } 100% { opacity:0; transform:translateX(-12px); } }
   #bag { left:50%; bottom:92px; transform:translateX(-50%); display:none; max-width:560px; }
   #bagitems { display:flex; flex-wrap:wrap; gap:6px; }
   .bagslot .bagtxt { color:#fff8e8; text-shadow:1px 1px 0 var(--ink); }

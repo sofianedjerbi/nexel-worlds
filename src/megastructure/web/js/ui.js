@@ -1,4 +1,4 @@
-// HUD: item icons, hotbar, bag, goals, crafting, mail, toasts.
+// HUD: item icons, hotbar, bag, crafting, mail, toasts.
 
 function groundPreview(g, x, y) {
   if (g === "_") return [IMG.cobble, 16, 16, 16, 16, 0, 0];
@@ -147,38 +147,6 @@ function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);
   if (FOODS.includes(name)) return act("eat", {item: name});
   toast(`Face a tile and press Space (or click it) to use the ${label(name)}.`);
-}
-const GOALS = [
-  ["Chop trees for 4 wood", (inv, d) => (inv.wood || 0) >= 4 || d.workbench],
-  ["Craft a workbench and place it", (inv, d) => d.placedBench],
-  ["Pick berries (eat with E when hungry)", (inv) => (inv.berries || 0) > 0],
-  ["Make a hoe, till soil, plant a seed", (inv, d) => d.planted],
-  ["Mine 3 stone from a boulder", (inv) => (inv.stone || 0) >= 3],
-  ["Craft an axe at the workbench", (inv) => inv.axe],
-  ["Build a campfire before night", (inv, d) => d.placedFire],
-  ["Craft a watering can, water a crop", (inv, d) => d.watered],
-  ["Collect an egg or milk a cow", (inv, d) => inv.egg || inv.milk || d.milked],
-  ["Build a house: walls and a door", (inv, d) => d.sheltered],
-  ["Build a boat and go sailing", (inv, d) => d.sailed],
-  ["Put up a mailbox", (inv, d) => d.placedMail],
-];
-function markGoal(key) { if (!me) return; const d = goalState(); d[key] = true; localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d)); }
-function goalState() { return JSON.parse(localStorage.getItem("megastructure-goals-" + me) || "{}"); }
-function drawGoals() {
-  if (!meObs) return;
-  const inv = meObs.self.inventory, d = goalState();
-  if (inv.workbench) d.workbench = true;
-  if (meObs.self.sheltered) d.sheltered = true;
-  if (meObs.self.sailing) d.sailed = true;
-  const grid = meObs.grid.join("");
-  GOALS.forEach(([, f], i) => { if (f(inv, d)) d["g" + i] = true; });
-  localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d));
-  const open = GOALS.map(([t], i) => [t, !!d["g" + i]]);
-  const shown = open.filter(([, done]) => !done).slice(0, 3);
-  const el = $("goals");
-  if (!shown.length) { el.style.display = "none"; return; }
-  el.style.display = $("craft").style.display === "block" ? "none" : "block";
-  $("goallist").innerHTML = shown.map(([t]) => `<div class="goal"><span class="box"></span><span>${esc(t)}</span></div>`).join("");
 }
 const RECIPE_GROUPS = [
   ["Getting started", ["workbench", "campfire", "torch", "rope", "plank", "path"]],
