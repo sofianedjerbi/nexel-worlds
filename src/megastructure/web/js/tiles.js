@@ -28,7 +28,8 @@ function setTile(x, y, comb, gnd, who = null) {
   else if (old === "T" && comb !== "T") felled(x, y, who, now);
   else if (old !== comb && isObject(comb) && comb !== "x" && PICK[old] !== comb) pops.set(x + "," + y, now);
   const spr = old !== comb && old !== "T" && PICK[old] !== comb && isObject(old) && !isObject(comb) ? objectSprite(old, x, y, now / 1000) : null;
-  if (spr) {                                   // taken away: it squashes down and fades, shedding its own colours
+  if (spr && PLUCKED.includes(old)) plucked(x, y, spr, who, now);   // small plants come up and go to the picker
+  else if (spr) {                              // taken away: it squashes down and fades, shedding its own colours
     gones.push({x, y, spr, t0: now});
     debris(x, y, spr, 8, {dust: "M*%Y".includes(old)});
   } else if (old !== comb && !GROUND.has(old)) burst(x, y, old, 10);

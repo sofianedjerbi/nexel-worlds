@@ -117,6 +117,7 @@ function frame(now) {
   drawDying(sx, sy, S, t, now);
   drawEffects(sx, sy, S, dt);
   drawPuffs(sx, sy, dt);
+  drawPlucks(sx, sy, S, now);
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawRoofs(sx, sy, S, dt);
   drawNight(vis, sx, sy, S, t);

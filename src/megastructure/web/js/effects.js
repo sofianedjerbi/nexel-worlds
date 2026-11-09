@@ -116,6 +116,37 @@ function drawFlyers(sx, sy, S, now) {
   }
   ctx.globalAlpha = 1;
 }
+// Plucking a small plant (mushroom, flower, crop, sprout): a tug up out of the soil, then it arcs into the picker's
+// hands, shrinking as it is caught (or just lifts and fades if we can't see who picked it).
+const PLUCKED = "Qf;\"w";
+const plucks = [];
+const TUG_MS = 140, PLUCK_MS = 420;
+function plucked(x, y, spr, who, now) {
+  plucks.push({x, y, spr, by: who, t0: now});
+  debris(x, y, null, 4, {kind: "o"});            // a little soil comes up with it (the rustle is the tile's sound)
+}
+function drawPlucks(sx, sy, S, now) {
+  const z = zoom;
+  for (let i = plucks.length - 1; i >= 0; i--) {
+    const f = plucks[i], ms = now - f.t0;
+    if (ms > TUG_MS + PLUCK_MS) { plucks.splice(i, 1); continue; }
+    const [img, a, b, w, h, dx, dy] = f.spr;
+    let ox = 0, oy = 0, sc = 1, stretch = 1, alpha = 1;
+    if (ms < TUG_MS) { const k = ms / TUG_MS; oy = -Math.sin(k * Math.PI / 2) * .25; stretch = 1 + Math.sin(k * Math.PI) * .18; }
+    else {
+      const k = (ms - TUG_MS) / PLUCK_MS, e = k * k * (3 - 2 * k);
+      const who = f.by && [...ents.values()].find((q) => q.e && q.e.name === f.by);
+      if (who) { ox = (who.x - f.x) * e; oy = -.25 + (who.y - .3 - f.y + .25) * e - Math.sin(k * Math.PI) * .8; sc = 1 - k * .55; }
+      else { oy = -.25 - k * .6; alpha = 1 - k; }
+      if (k > .8) alpha = Math.min(alpha, (1 - k) / .2);
+    }
+    const ww = w * z * sc, hh = h * z * sc * stretch;
+    const cx = sx(f.x + ox) + (dx + w / 2) * z, by = sy(f.y + oy) + (dy + h) * z;   // anchored at its base
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, a, b, w, h, Math.round(cx - ww / 2), Math.round(by - hh), Math.round(ww), Math.round(hh));
+  }
+  ctx.globalAlpha = 1;
+}
 // Dying: the creature's own sprite flashes white, lifts a little and fades inside a puff of smoke.
 const dying = [], puffs = [];
 const DIE_MS = 480;
