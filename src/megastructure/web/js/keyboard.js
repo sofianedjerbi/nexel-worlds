@@ -13,6 +13,14 @@ function facingTile() {
   const p = ents.get("agent" + myId), s = myPos(); if (!p || !s) return null;
   return {x: s.x + (p.fx || 0), y: s.y + (p.fy || (p.fx ? 0 : 1))};
 }
+// Things done in passing, without stopping: hits, picking flowers, mushrooms, berries, fruit and crops, small
+// decorations (the server makes these instant: no tool and hardness <= 3, or picking), picking up items.
+const INSTANT_DIG = "bFQf;\"w?!rmqyp";
+function isQuick(f) {
+  if (f.it.attack || f.it.here) return true;
+  const c = combAt(f.p.x, f.p.y);
+  return !placingItem() && !!c && INSTANT_DIG.includes(c);
+}
 const useful = (it) => it && !it.walk && !it.info && it.ok !== false;
 // Who you're fighting: set when you hit someone or someone hits you, so Space keeps hitting them, not the tree beside.
 let foe = null;   // {key: entity key, until: ms}
@@ -156,9 +164,9 @@ addEventListener("keydown", (e) => {
     return;
   }
   if (/^[1-9]$/.test(k) && meObs) { const n = slots[+k - 1]; if (n) selectItem(selected === n ? null : n); return; }
-  if (k === " " && !e.repeat) {                    // Space stops you where you are, then acts; a hit doesn't stop you
+  if (k === " " && !e.repeat) {                    // Space stops you for work that takes time; quick things don't
     const f = facingIntent(false);
-    if (!(f && f.it.attack)) { keys.add(" "); syncWalk(); }
+    if (!(f && isQuick(f))) { keys.add(" "); syncWalk(); }
   }
   const fn = SHORTCUTS[k];
   if (fn) { e.preventDefault(); if (!(e.repeat && k !== " " && k !== "x")) fn(); }

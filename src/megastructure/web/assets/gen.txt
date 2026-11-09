@@ -20,6 +20,7 @@ ingot
 boulder
 stone_wall
 workbench
+window
 heart
 food
 bolt

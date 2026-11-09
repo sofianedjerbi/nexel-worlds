@@ -23,6 +23,7 @@ P = {k: hexc(v) for k, v in {
     "g": "4a3a5e", "G": "6a5687", "e": "f4f0e6", "k": "2b2236",
     "n": "d9a441", "N": "f5d77a", "m": "b25b4c", "M": "e08a6f", "c": "8c5a3c", "b": "e8c48c", "B": "c79a5c",
     "t": "9db86a", "T": "6f8f4a", "h": "7a7d81", "H": "c9ced1",
+    "u": "90625d", "U": "c49a6c", "l": "cfeaf2", "L": "8cc4d8",   # house wood (the wall sheet's outline and plank) and glass
 }.items()}
 
 GEN = {
@@ -114,6 +115,10 @@ GEN = {
         "                ", "                ", "     H  hh      ", "    HhH hh  s   ", "  oooooooooooo  ", " oWWWWWWWWWWWWo ",
         " oWWbWWWWWWbWWo ", " oWWWWWWWWWWWWo ", " oooooooooooooo ", " owwwwwwwwwwwwo ", " o oo      oo o ", " o oo      oo o ",
         " o oo      oo o ", " ooo        ooo ", "  xxxxxxxxxxxx  ", "                "],
+    "window": [  # for house fronts: wooden frame and sill, four glass panes
+        "                ", "                ", "   uuuuuuuuuu   ", "   uUUUUUUUUu   ", "   uUllulLlUu   ", "   uUlLulllUu   ",
+        "   uUuuuuuuUu   ", "   uUllullLUu   ", "   uULlulllUu   ", "   uUUUUUUUUu   ", "  uuuuuuuuuuuu  ", "  uUUUUUUUUUUu  ",
+        "   uuuuuuuuuu   ", "                ", "                ", "                "],
     "heart": [
         "                ", "                ", "                ", "   ffff  ffff   ", "  fMMMMffMMMMf  ", "  fMeMMMMMMMMf  ",
         "  fMMMMMMMMMMf  ", "  fMMMMMMMMMMf  ", "   fMMMMMMMMf   ", "    fMMMMMMf    ", "     fMMMMf     ", "      fMMf      ",

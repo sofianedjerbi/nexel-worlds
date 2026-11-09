@@ -115,7 +115,7 @@ function frame(now) {
   drawPuffs(sx, sy, dt);
   drawPlucks(sx, sy, S, now);
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
-  drawRoofs(sx, sy, S, dt);
+  drawHouses(sx, sy, S, dt, now);
   drawNight(vis, sx, sy, S, t);
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard

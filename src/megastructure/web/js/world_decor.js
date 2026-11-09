@@ -1,4 +1,4 @@
-// Crops, animals, fruit trees, rooms and roofs, fire and fences.
+// Crops, animals, fruit trees, fire and fences.
 
 const CROPS = ["wheat", "pumpkin", "cauliflower", "lettuce", "eggplant", "carrot"];
 const CROP_ROW = {wheat: 8, pumpkin: 9, cauliflower: 3, lettuce: 7, eggplant: 5, carrot: 2};
@@ -26,56 +26,6 @@ const BERRY_BUSH = [32, 48, 64];                                // trees.png x o
 const BERRY_ICON = [[16, 64], [48, 64], [64, 64]];              // matching single berries (row 64)
 const chestOpen = new Map(), doors = new Map();
 let occupied = new Set();
-
-let roomOf = new Map(), rooms = [], roomsAt = 0, roomsDirty = true;
-const ENCLOSE = new Set("W%+g");
-function findRooms(vx, vy, vw, vh) {
-  const seen = new Set(), found = [], of = new Map();
-  for (let y = vy; y < vy + vh; y++) for (let x = vx; x < vx + vw; x++) {
-    const k0 = x + "," + y, c = combAt(x, y);
-    if (seen.has(k0) || c === null || ENCLOSE.has(c)) continue;
-    const q = [[x, y]], cells = [], walls = new Set(), mine = new Set([k0]); seen.add(k0);
-    let open = false;
-    while (q.length) {
-      const [cx, cy] = q.pop(); cells.push([cx, cy]);
-      if (cells.length > 160) { open = true; break; }
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = cx + dx, ny = cy + dy, k = nx + "," + ny, cc = combAt(nx, ny);
-        if (cc === null) { open = true; continue; }
-        if (ENCLOSE.has(cc)) { walls.add(cc); continue; }
-        if (!seen.has(k)) { seen.add(k); mine.add(k); q.push([nx, ny]); }
-        else if (!mine.has(k)) open = true;        // touches an area already found to be outside: not a room
-      }
-    }
-    if (open || !walls.has("W")) continue;
-    const xs = cells.map((c) => c[0]), ys = cells.map((c) => c[1]);
-    const w = Math.max(...xs) - Math.min(...xs) + 1, h = Math.max(...ys) - Math.min(...ys) + 1;
-    if (w > 14 || h > 14 || cells.length < .6 * w * h) continue;   // houses are compact; long corridors are not rooms
-    const room = {cells, x0: Math.min(...xs) - 1, x1: Math.max(...xs) + 1, y0: Math.min(...ys) - 1, y1: Math.max(...ys) + 1, fade: 1, id: Math.min(...xs) + "," + Math.min(...ys)};
-    const old = rooms.find((r) => r.id === room.id); if (old) room.fade = old.fade;
-    found.push(room); for (const [cx, cy] of cells) of.set(cx + "," + cy, room);
-  }
-  rooms = found; roomOf = of;
-}
-function drawRoofs(sx, sy, S, dt) {
-  const s0 = myPos(), z = zoom;
-  for (const rm of rooms) {
-    const inside = s0 && (roomOf.get(s0.x + "," + s0.y) === rm);
-    rm.fade += ((inside ? .15 : 1) - rm.fade) * Math.min(1, dt * 8);
-    ctx.globalAlpha = rm.fade;
-    // the roof stops above the front wall, so the facade and its door stay visible from outside
-    const last = rm.y1 - 1, mid = Math.round((rm.y0 + last) / 2);
-    for (let y = rm.y0; y <= last; y++) for (let x = rm.x0; x <= rm.x1; x++) {
-      const col = x === rm.x0 ? 0 : x === rm.x1 ? 2 : 1;
-      const row = y === rm.y0 ? 0 : y === mid ? 2 : (y - rm.y0) % 2 ? 1 : 3;   // solid shingles all the way down
-      ctx.drawImage(IMG.house_roof, col * 16, row * 16, 16, 16, sx(x), sy(y), S, S);
-    }
-    for (let x = rm.x0; x <= rm.x1; x++)                                       // eave hangs over the facade's top edge
-      ctx.drawImage(IMG.house_roof, (x === rm.x0 ? 0 : x === rm.x1 ? 2 : 1) * 16, 64, 16, 8, sx(x), sy(rm.y1) - 2 * z, S, 8 * z);
-    ctx.drawImage(IMG.house_roof, 80, 0, 16, 16, sx(rm.x1 - 1), sy(rm.y0) - 9 * z, S, S);   // chimney
-    ctx.globalAlpha = 1;
-  }
-}
 
 function drawFire(px, py, S, t, x, y) {            // the generated two-frame flame sprite, flickering per tile
   const f = Math.floor(t * 8 + x * 3 + y) % 2 ? "fire1" : "fire0";
