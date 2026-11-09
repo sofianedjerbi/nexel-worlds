@@ -28,7 +28,7 @@ from .environment import Environment
 from .items import Items
 from .movement import Movement
 from .progress import Progress
-from .wildlife import Wildlife
+from .spawning import Spawning
 from .needs import Needs
 from .observe import Observation
 from .persistence import Persistence
@@ -37,7 +37,7 @@ from .social import Social
 from .specs import TOOL_SPECS
 
 
-class Simulation(Persistence, Sessions, Movement, Progress, Wildlife, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
+class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
@@ -57,6 +57,7 @@ class Simulation(Persistence, Sessions, Movement, Progress, Wildlife, Building, 
             self.agents[aid] = Agent(**{k: v for k, v in json.loads(js).items() if k in known})
             self.tokens[aid] = th
         self.by_name = {a.name: a for a in self.agents.values()}
+        self.ticking: set[tuple[int, int]] = set()        # chunks where creatures live this tick (spawning.py)
         self.item_since: dict[tuple[int, int], int] = {}   # when each pile last grew (the magnet waits a moment)
         self.items: dict[tuple[int, int], dict] = {
             (x, y): json.loads(j) for x, y, j in store.db.execute("SELECT x, y, json FROM ground_items")}

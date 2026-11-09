@@ -39,7 +39,6 @@ CROWD_N = 6                # eggs rot instead of hatching, cows don't breed
 
 FLEE_SECONDS = 4           # a hit farm animal runs from its attacker this long, a tile every FLEE_STRIDE seconds
 FLEE_STRIDE = 0.3
-ANIMAL_MAX = 80            # and never more than this many farm animals in the world
 
 TROUGH_R = 5               # animals this close to a filled trough feed themselves...
 

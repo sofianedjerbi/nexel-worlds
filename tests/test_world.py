@@ -87,3 +87,15 @@ def test_interrupt(world):
     sim.step()
     sim.submit(a, "say", {"text": "never mind"})
     assert first.result["status"] == "interrupted"
+
+
+def test_land_is_generated_off_the_tick_then_installed(tmp_path):
+    import time
+    from megastructure.world import Store, World
+    w = World(Store(tmp_path / "w.sqlite"), seed=3)
+    assert w.prefetch(9, 9) is False                         # started in the background...
+    for _ in range(200):
+        if w.prefetch(9, 9):
+            break
+        time.sleep(.01)
+    assert (9, 9) in w.chunks and (9, 9) in w.fresh          # ...then in memory, and new land for the animals

@@ -130,21 +130,47 @@ def test_hit_animals_run_away(world):
     assert abs(hen.x - a.x) + abs(hen.y - a.y) >= 4                     # it ran, it didn't stay to be hit again
 
 
-def test_herds_roam_around_players_and_glooms_come_at_night(world):
+def test_new_land_comes_with_herds_and_only_land_near_players_lives(world):
     sim, a = world
+    from megastructure.gen import CHUNK
     from megastructure.sim import sec
-    from megastructure.sim.wildlife import GLOOMS_NEAR, HERD_NEAR, HERD_R
-    sim.creatures.clear()
-    for _ in range(sec(60)):
+    from megastructure.sim.spawning import SIM_R
+    before = len(sim.creatures)
+    for i in range(12):                                      # explore: a row of new chunks far away
+        sim.world.block((i + 10) * CHUNK, 40 * CHUNK)
+    sim.step()
+    far = [c for c in sim.creatures.values() if c.y // CHUNK == 40]
+    assert len(sim.creatures) > before and far              # some of them got a herd...
+    assert len({c.kind for c in far} - {"chicken", "cow"}) == 0
+    spot = {c.id: (c.x, c.y) for c in far}
+    for _ in range(sec(20)):
         sim.step()
-    near = [c for c in sim.creatures.values() if c.kind != "gloom" and max(abs(c.x - a.x), abs(c.y - a.y)) <= HERD_R + 4]
-    assert HERD_NEAR <= len(near) <= HERD_NEAR + 4             # about ten, arriving a few at a time
-    kinds = {c.kind for c in near}
-    assert kinds & {"chicken", "cow"}
+    assert all((c.x, c.y) == spot[c.id] for c in far if c.id in sim.creatures)   # ...frozen: nobody is there
+    assert not sim.ticks(far[0]) and max(abs(far[0].x - a.x), abs(far[0].y - a.y)) > SIM_R
+
+
+def test_glooms_come_at_night_in_the_dark_up_to_a_cap(world):
+    sim, a = world
     from megastructure.sim import DAY_TICKS
+    from megastructure.sim import sec
+    from megastructure.sim.spawning import HOSTILE_CAP
     sim.tick = (sim.tick // DAY_TICKS + 1) * DAY_TICKS - sec(60)   # a minute before the day turns: night
     assert sim.is_night()
-    for _ in range(sec(30)):
+    for _ in range(sec(40)):
         sim.step()
     glooms = [c for c in sim.creatures.values() if c.kind == "gloom"]
-    assert 1 <= len(glooms) <= GLOOMS_NEAR
+    assert 1 <= len(glooms) <= HOSTILE_CAP + 2              # (a pack may overshoot the cap a little)
+
+
+def test_a_campfire_keeps_the_dark_away(world):
+    sim, a = world
+    from megastructure.gen import CHUNK
+    for cx in range(a.x // CHUNK - 2, a.x // CHUNK + 3):     # the land around you, in memory
+        for cy in range(a.y // CHUNK - 2, a.y // CHUNK + 3):
+            sim.world.chunk(cx, cy)
+    sim.creatures.clear()                                    # (the new land brought herds: none in the way)
+    sim.world.set(a.x + 20, a.y, block="campfire")
+    sim.world.set(a.x + 22, a.y, ground="grass", block="none")
+    sim.world.set(a.x + 30, a.y, ground="grass", block="none")
+    assert not sim.spawn_spot_ok("gloom", a.x + 22, a.y)     # in the firelight
+    assert sim.spawn_spot_ok("gloom", a.x + 30, a.y)         # out in the dark

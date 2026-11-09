@@ -81,6 +81,7 @@ def test_a_coop_collects_the_eggs(game):
     game.face(0, -1)
     game.press("Space", 900)
     game.spawn("chicken", 3, 0, still=10 ** 6)               # a hen nearby: it lays at the coop's door
+    game.rpc("dev_time", phase=.05)                          # all day ahead: no glooms to eat the hen
     game.rpc("dev_skip", seconds=400)
     game.sleep(800)
     x, y = game.pos()

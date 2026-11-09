@@ -3,7 +3,6 @@
 from .. import tiles as T
 from ..tiles import DIRS
 from .constants import (
-    ANIMAL_MAX,
     COOP_R,
     CROWD_N,
     CROWD_R,
@@ -24,7 +23,7 @@ class Animals:
 
     def step_creatures(self):
         online = [a for a in self.agents.values() if a.online]
-        self.step_wildlife(online)            # herds and glooms appear around players (wildlife.py)
+        self.step_spawning(online)            # which chunks tick; herds and glooms come and go (spawning.py)
         if not self.is_night():            # daylight: glooms fade away within a couple of seconds
             for c in [c for c in self.creatures.values() if c.kind == "gloom"]:
                 if self.rng.random() < 0.6 / TICK_HZ:
@@ -32,7 +31,7 @@ class Animals:
                     self.emit("fade", c.x, c.y, id=c.id)
         for cid in sorted(self.creatures):
             c = self.creatures.get(cid)
-            if c is None:
+            if c is None or not self.ticks(c):          # far from everyone: frozen until someone comes back
                 continue
             if c.kind == "chicken":
                 if not c.lay:
@@ -110,29 +109,23 @@ class Animals:
         self.dirty_items.add(pos)
 
     def crowded(self, x, y) -> bool:
-        """Too many farm animals here (or in the world) for another one to be born."""
-        n_all = n_near = 0
-        for c in self.creatures.values():
-            if c.kind in FARM:
-                n_all += 1
-                if abs(c.x - x) <= CROWD_R and abs(c.y - y) <= CROWD_R:
-                    n_near += 1
-        return n_near >= CROWD_N or n_all >= ANIMAL_MAX
+        """Too many farm animals here for another one to be born."""
+        return sum(1 for c in self.creatures.values()
+                   if c.kind in FARM and abs(c.x - x) <= CROWD_R and abs(c.y - y) <= CROWD_R) >= CROWD_N
 
     def _thin_herds(self):
         """Older worlds bred without limits (thousands of chickens): keep at most CROWD_N per neighbourhood,
-        ANIMAL_MAX in all, oldest first."""
-        kept, cells = 0, {}
+        oldest first."""
+        cells = {}
         for cid in sorted(self.creatures):
             c = self.creatures[cid]
             if c.kind not in FARM:
                 continue
             cell = (c.x // (2 * CROWD_R + 1), c.y // (2 * CROWD_R + 1))
-            if kept >= ANIMAL_MAX or cells.get(cell, 0) >= CROWD_N:
+            if cells.get(cell, 0) >= CROWD_N:
                 del self.creatures[cid]
                 continue
             cells[cell] = cells.get(cell, 0) + 1
-            kept += 1
 
     def coop_near(self, x, y):
         """The door tile (just in front of the coop) of the closest coop within COOP_R, or None."""
@@ -145,19 +138,6 @@ class Animals:
                         best = (d, x + dx, y + dy + 1)
         if best and self.world.passable(best[1], best[2]):
             return best[1], best[2]
-        return None
-
-    def _spawn_creature(self, kind, near: Agent, rmin, rmax):
-        for _ in range(10):
-            x = near.x + self.rng.randint(-rmax, rmax)
-            y = near.y + self.rng.randint(-rmax, rmax)
-            if max(abs(x - near.x), abs(y - near.y)) < rmin:
-                continue
-            if self.world.passable(x, y) and self.entity_at(x, y) is None:
-                c = Creature(self.next_creature, kind, x, y, CREATURES[kind]["hp"])
-                self.next_creature += 1
-                self.creatures[c.id] = c
-                return c
         return None
 
     def _creature_target(self, a, args, kind=None):

@@ -2,11 +2,15 @@
 
 import json
 import sqlite3
+import sys
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .gen import CHUNK, gen_chunk, gen_tile
 from .tiles import BLOCKS, GROUNDS, B, G
+
+THREADS = sys.platform != "emscripten"   # the in-browser demo has no threads: it generates land inline
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
@@ -58,6 +62,9 @@ class Store:
         row = self.db.execute("SELECT data FROM chunks WHERE cx=? AND cy=?", (cx, cy)).fetchone()
         return Chunk.unpack(cx, cy, row[0]) if row else None
 
+    def has_chunk(self, cx, cy) -> bool:
+        return self.db.execute("SELECT 1 FROM chunks WHERE cx=? AND cy=?", (cx, cy)).fetchone() is not None
+
     def save_chunk(self, c: Chunk):
         self.db.execute("INSERT OR REPLACE INTO chunks VALUES(?,?,?)", (c.cx, c.cy, c.pack()))
 
@@ -84,6 +91,8 @@ class World:
             (x, y): json.loads(j) for x, y, j in store.db.execute("SELECT x, y, json FROM tile_meta")
         }
         self.dirty_meta: set[tuple[int, int]] = set()
+        self._gen, self._pending = None, {}             # background world generation (prefetch)
+        self.fresh: list[tuple[int, int]] = []         # chunks generated (not loaded) since the simulation last looked
 
     # ---- chunk management -------------------------------------------------
     def chunk(self, cx: int, cy: int) -> Chunk:
@@ -92,13 +101,39 @@ class World:
             c = self.store.load_chunk(cx, cy)
             if c is not None:
                 self._tidy(c)
-            if c is None:
-                g, b = gen_chunk(self.seed, cx, cy)
-                c = Chunk(cx, cy, g, b)
-                c.dirty = True
-            self.chunks[(cx, cy)] = c
+                self.chunks[(cx, cy)] = c
+            else:
+                pending = self._pending.pop((cx, cy), None)   # (being generated in the background: take it now)
+                c = self._install(cx, cy, *(pending.result() if pending else gen_chunk(self.seed, cx, cy)))
         c.touched = self.tick
         return c
+
+    def _install(self, cx, cy, g, b) -> Chunk:
+        c = Chunk(cx, cy, g, b)
+        c.dirty = True
+        self.chunks[(cx, cy)] = c
+        self.fresh.append((cx, cy))                     # new land: the simulation may put animals on it
+        return c
+
+    def prefetch(self, cx: int, cy: int) -> bool:
+        """Bring a chunk into memory without stalling the tick: from disk at once, or generated on a background
+        thread (generating costs ~30 ms). True once it's in memory; call again later until then."""
+        if (cx, cy) in self.chunks:
+            return True
+        job = self._pending.get((cx, cy))
+        if job is None:
+            if self.store.has_chunk(cx, cy) or not THREADS:
+                self.chunk(cx, cy)
+                return True
+            if self._gen is None:
+                self._gen = ThreadPoolExecutor(1, thread_name_prefix="worldgen")
+            self._pending[(cx, cy)] = self._gen.submit(gen_chunk, self.seed, cx, cy)
+            return False
+        if not job.done():
+            return False
+        del self._pending[(cx, cy)]
+        self._install(cx, cy, *job.result()).touched = self.tick
+        return True
 
     def _tidy(self, c: Chunk):
         """Older worlds spread berry bushes at random until meadows filled up. Nobody can plant a bush, so a

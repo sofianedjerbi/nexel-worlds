@@ -46,7 +46,8 @@ def test_killing_leaves_a_poof_and_drops(game):
     game.sleep(200)
     assert game.js(f"!ents.has('chicken{hen}')") and game.js("puffs.length + dying.length > 0")
     game.sleep(800)
-    assert game.js("groundItems.length") >= 1                 # meat (and an egg) on the ground
+    game.sleep(1200)
+    assert game.inv("meat") >= 1                              # meat (and an egg) dropped, then drawn into your bag
 
 
 def test_dying_wakes_you_by_your_bed(game):
