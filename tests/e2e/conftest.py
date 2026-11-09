@@ -1,0 +1,77 @@
+"""End-to-end fixtures: a fresh server on a temporary world, Chrome, and a player who has just woken up.
+
+Run with `uv run pytest -m e2e` (needs Google Chrome). Every test fails on any page error.
+"""
+
+import random
+import socket
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import pytest
+from game import Game
+
+ROOT = Path(__file__).parents[2]
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:                                    # everything in this folder is end-to-end
+        if "e2e" in item.path.parts:
+            item.add_marker(pytest.mark.e2e)
+
+
+def free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+@pytest.fixture(scope="session")
+def server(tmp_path_factory):
+    """A fresh world (fixed seed) with dev tools on; stopped at the end."""
+    port, saves = free_port(), tmp_path_factory.mktemp("saves")
+    proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", str(saves), "--world", "e2e",
+                             "--port", str(port), "--seed", "7", "--dev"], cwd=ROOT,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(100):
+        try:
+            socket.create_connection(("127.0.0.1", port), timeout=.2).close()
+            break
+        except OSError:
+            time.sleep(.1)
+    yield f"http://127.0.0.1:{port}"
+    proc.terminate()
+    proc.wait(10)
+
+
+@pytest.fixture(scope="session")
+def browser():
+    pw = pytest.importorskip("playwright.sync_api").sync_playwright().start()
+    try:
+        b = pw.chromium.launch(channel="chrome", headless=True)
+    except Exception as e:  # noqa: BLE001 - no Chrome here: skip the suite rather than fail it
+        pw.stop()
+        pytest.skip(f"Chrome is needed for the end-to-end suite: {e}")
+    yield b
+    b.close()
+    pw.stop()
+
+
+def open_game(browser, server, name=None, zoom=4) -> Game:
+    page = browser.new_page(viewport={"width": 1200, "height": 800})
+    g = Game(page, server)
+    g.join(name or f"e2e{random.randint(1000, 9999)}", zoom)
+    return g
+
+
+@pytest.fixture
+def game(browser, server):
+    """A new player, daytime, standing in the middle of a cleared 21x21 meadow with no animals nearby."""
+    g = open_game(browser, server)
+    g.clear_area()
+    yield g
+    errors = g.errors
+    g.page.close()
+    assert not errors, f"page errors: {errors}"

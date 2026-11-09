@@ -79,7 +79,8 @@ async function act(tool, args, quiet) {
     if (tool === "water") markGoal("watered");
     if (tool === "milk") markGoal("milked");
     if (r.result.text !== undefined) toast(`The sign reads: “${r.result.text}”`);
-    if (r.result.chest) toast(`Chest: ${fmt(r.result.chest) || "empty"}`);
+    if (r.result.took) { if (!Object.keys(r.result.took).length) toast("It's empty."); }   // took it all (the +items float shows)
+    else if (r.result.chest) toast(`Chest: ${fmt(r.result.chest) || "empty"}`);
     if (r.result.rows_near_to_far) toast(`You look into the distance: ${r.result.agents.length ? "someone is out there." : "nobody."}`);
   }
   if (tool !== "step" || (r.ok && r.result.changed && r.result.changed.inventory)) refresh();

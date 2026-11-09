@@ -30,8 +30,21 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
                 elif ch in bch:
                     sim.set_tile(x0 + i, y0 + j, ground="grass", block=bch[ch])
         return {}
+    if op == "dev_creatures":                    # clear creatures within `clear` tiles; spawn {"kind", "dx", "dy"}
+        from .sim import CREATURES, Creature
+        r = int(msg.get("clear", 0))
+        for cid in [c.id for c in sim.creatures.values() if max(abs(c.x - agent.x), abs(c.y - agent.y)) <= r]:
+            del sim.creatures[cid]
+        spawned = None
+        if msg.get("kind") in CREATURES:
+            c = Creature(sim.next_creature, msg["kind"], agent.x + int(msg.get("dx", 1)), agent.y + int(msg.get("dy", 0)),
+                         CREATURES[msg["kind"]]["hp"], cooldown=int(msg.get("still", 0)))
+            sim.next_creature += 1
+            sim.creatures[c.id] = c
+            spawned = c.id
+        return {"spawned": spawned}
     if op == "dev_give":
         for k, n in dict(msg.get("items") or {}).items():
             agent.add(str(k), int(n))
         return {"inventory": agent.inventory}
-    return {"ok": False, "error": "unknown_op", "detail": "dev ops: dev_time, dev_skip, dev_teleport, dev_damage, dev_stamp, dev_give"}
+    return {"ok": False, "error": "unknown_op", "detail": "dev ops: dev_time, dev_skip, dev_teleport, dev_damage, dev_stamp, dev_give, dev_creatures"}

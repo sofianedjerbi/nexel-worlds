@@ -96,8 +96,16 @@ class Items:
         m = dict(self.world.meta.get((x, y), {}))
         items = dict(m.get("items", {}))
         item = args.get("item")
-        if not item:
+        if args.get("list"):
             return {"chest": items}
+        if not item:                                  # no item named: take everything (opening a chest)
+            for k, n in items.items():
+                a.add(k, n)
+            m["items"] = {}
+            self.world.set_meta(x, y, m)
+            if items:
+                self.emit("chest", x, y, radius=4, name=a.name, took=items)
+            return {"chest": {}, "took": items}
         n = min(self._n(args), items.get(item, 0))
         if n <= 0:
             raise ActionError("missing_item", f"chest has no {item}; contents: {items}")

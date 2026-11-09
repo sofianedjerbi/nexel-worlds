@@ -560,3 +560,17 @@ Tests: 64 pass.
 - Keyboard placement: with a placeable item in hand, Space places on the tile in front of you and only there; the
   ghost shows it (green/red) and the panel says why it can't go there (red). A creature in the spot blocks it.
 Tests: 64 pass.
+
+## 2026-11-09 · Iteration 31 — small files, and an end-to-end suite
+
+- Every source file under 300 lines (a test enforces it): sim tests by domain with shared helpers, asset tooling
+  (pixel_art, derived_art), server (web_static, views, devtools), characters.js out of render.js, thinker (prompts,
+  lessons), sim core (persistence, sessions).
+- Hits land at once with a 0.4 s cooldown, so you can fight while walking; Space doesn't stop you when it hits.
+- End-to-end suite (`uv run pytest -m e2e`, ~3 min): a fresh server on a temporary world, real Chrome, 31 scenarios in
+  moving, gathering, building, living, social (two players, spectator, boat) and a random-input monkey; every test
+  also fails on any page error. Checks both the screen and the server's truth.
+- Found and fixed by it: "open chest" with empty hands only listed the contents (now takes everything; `list: true`
+  to look); a catch-up slide could cut a corner (own and others' catch-up moves one axis at a time).
+  Test-side issues fixed too (reading hints before a frame redrew; clicking a tile relative to a moving player).
+Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.

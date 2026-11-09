@@ -30,7 +30,11 @@ function frame(now) {
     // people walk 5 tiles/s (10 sprinting); animals amble, so each of their steps takes most of the pause between them
     const pace = p.running || (p.e && p.e.run) ? 10 : p.e && AMBLE[p.e.kind] ? AMBLE[p.e.kind] * (p.e.scared ? FLEE : 1) : 5;
     const step = (d > 1.5 ? d * 8 : pace * 1.05) * dt;
-    if (d <= step) { p.x = p.tx; p.y = p.ty; } else { p.x += dx / d * step; p.y += dy / d * step; }
+    if (d <= step) { p.x = p.tx; p.y = p.ty; }
+    else if (d > 1.5) { p.x += dx / d * step; p.y += dy / d * step; }    // far behind (lag, teleport): straight there
+    else if (Math.abs(dx) > 1e-3 && Math.abs(dy) > 1e-3) {              // on the grid, one axis at a time: line up first
+      if (Math.abs(dx) < Math.abs(dy)) p.x += Math.sign(dx) * Math.min(step, Math.abs(dx)); else p.y += Math.sign(dy) * Math.min(step, Math.abs(dy));
+    } else { p.x += dx / d * step; p.y += dy / d * step; }
   }
   if (me && myId !== null) {
     const p = ents.get("agent" + myId);

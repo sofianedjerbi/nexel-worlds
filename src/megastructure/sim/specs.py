@@ -44,5 +44,6 @@ TOOL_SPECS = {
     "post": {"args": {**DIR_ARG, "text": "str"}, "desc": "post a letter in an adjacent mailbox"},
     "open_mail": {"args": DIR_ARG, "desc": "take the letters out of an adjacent mailbox (anyone can)"},
     "store": {"args": {**DIR_ARG, "item": "str", "n": "int"}, "desc": "put items into an adjacent chest or basket, or feed (hay, food) into a trough: animals nearby then feed themselves"},
-    "take": {"args": {**DIR_ARG, "item": "str (omit to list)", "n": "int"}, "desc": "take items from an adjacent chest"},
+    "take": {"args": {**DIR_ARG, "item": "str (omit: take everything)", "n": "int", "list": "bool (only look inside)"},
+             "desc": "take items from a chest, basket or trough nearby"},
 }
