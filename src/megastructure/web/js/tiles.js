@@ -128,8 +128,10 @@ function drawTile(x, y) {
   // relief: each level lays its hill sheet (grass, darker grass, stone peaks) over the tiles at least that high; the
   // sheets' edge tiles carry the cliff face, so a plateau shows its south cliff and a soft rim round the rest
   const lv = levelAt(x, y);
-  // (stairs: the tile below a stair counts as up there too, so no cliff face is drawn where the steps are cut in)
-  const high = (k) => (c, gg, tx, ty) => levelAt(tx, ty) >= k || (ty === y + 1 && tx === x && rampAt(x, y));
+  // (on a slope tile, every tile under the slope's pair counts as up there too, diagonals included, so no cliff face
+  // or corner is drawn where the slope goes through; the slope piece draws its own sides)
+  const onSlope = rampAt(x, y);
+  const high = (k) => (c, gg, tx, ty) => levelAt(tx, ty) >= k || (onSlope && ty === y + 1 && rampAt(tx, y));
   for (let k = 1; k <= lv; k++) drawBlobLayer(g, IMG["hill" + k], x, y, high(k), ox, oy, k < 3 ? .25 : .1);
   if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
   drawStairs(g, x, y, ox, oy);
