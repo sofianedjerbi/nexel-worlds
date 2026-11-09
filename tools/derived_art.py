@@ -113,7 +113,7 @@ def largest_shape(img: Image.Image) -> Image.Image:
     return out
 
 
-RAMP_VARIANTS = 4
+RAMP_VARIANTS = 5
 
 
 def ramp_art(hill: Path, below: tuple) -> Image.Image:
@@ -124,7 +124,7 @@ def ramp_art(hill: Path, below: tuple) -> Image.Image:
     turns and runs diagonally down beside it, tapering to nothing. Colours are the hill sheet's own (sampled from a
     south-edge tile), so it matches each terrace.
     Variants, differing only in what's on the grass: 0 soft contour dashes; 1 the dashes staggered, with tufts;
-    2 two shallow grass steps; 3 curved contours (a rounded rise)."""
+    2 two shallow grass steps; 3 curved contours (a rounded rise); 4 contour dashes with a lit lip above each."""
     sheet = Image.open(hill).convert("RGBA")
     col = [sheet.getpixel((1 * 16 + 8, 2 * 16 + y)) for y in range(16)]     # a south-edge column: top to cliff foot
     top, rim, line, dark, light = col[0], col[9], col[11], col[12], col[13]
@@ -182,6 +182,11 @@ def _mark(v, x, y, y0, y1, left, right) -> int:
     if v == 3:                                       # curved: each line bows down in the middle, a rounded rise
         cy = y - y0 - round(1.5 * (1 - ((x - 15.5) / 12) ** 2))
         return -1 if cy % 4 == 2 and (x + y // 4) % 7 < 5 else 0
+    if v == 4:                                       # dashes, each with the light catching its upper lip
+        dash = (x + y // 4) % 7 < 5
+        if (y - y0) % 4 == 2 and dash:
+            return -1
+        return 1 if (y - y0) % 4 == 1 and (x + (y + 1) // 4) % 7 < 5 else 0
     if v == 1:                                       # staggered the other way, a little wider apart
         return -1 if (y - y0) % 5 == 2 and (x - y // 5 * 2) % 8 < 5 else 0
     return -1 if (y - y0) % 4 == 2 and (x + y // 4) % 7 < 5 else 0
