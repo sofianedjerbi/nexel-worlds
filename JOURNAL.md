@@ -648,3 +648,9 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 ## Iteration 42: fewer animals, rare slopes
 - Too many animals (827 in the play world, mostly hatched chicks). Spawning: herds on 20% of new chunks (was 80%), 2-3 hens or 1-2 cows; top-up to 6 within 40 tiles every 45 s (was 18 / 20 s); glooms up to 3, in ones or twos. Breeding stops at 3 animals within 6 tiles (was 6). Play world thinned to at most 2 per 32x32 (125 left; backup kept).
 - Slopes rare: one cliff row in five, one per 24 tiles of it (10 in 256x256, was ~75). Hopping down covers going down; up needs a slope.
+
+## Iteration 43: underground
+- Each level below is a region of the same world, 1,000,000 tiles east per level (layers.py): digging, building, items, saving work unchanged, and people on other levels are out of sight and earshot. Pickaxe in hand, X (dig_down, 3 s) digs a hole where you stand and takes you down onto a ladder in a small chamber; Space on a ladder climbs up, on a hole goes down. As deep as you like.
+- Generation: rock (cave_wall) with caves whose noise scale grows with depth (bigger caves deeper), ore 3% -> 15%, rare mushrooms.
+- Client: earth floor (soil sheet), rock as the pack's stone-hill sheet (faces to the south), dark with light around people, fires and under ladders (daylight from the hole), darker deeper; a fade through black when changing level; depth toast.
+- Tests: unit (dig down/climb, levels, others out of sight), e2e (X down, Space up). 187 unit + 52 e2e green.

@@ -44,6 +44,7 @@ GROUNDS = [
     Ground("deep_water", "=", walkable=False, diggable=False, liquid=True),
     Ground("wet_tilled", "u"),  # watered soil: crops grow twice as fast; dries when the crop grows
     Ground("floor", "n", diggable=False),  # wooden floor laid from planks
+    Ground("cave_floor", "-", diggable=False),  # underground (layers.py)
 ]
 G = {g.name: i for i, g in enumerate(GROUNDS)}
 
@@ -92,6 +93,9 @@ BLOCKS = [
     Block("hay_bale", "y", flammable=True, hardness=3, drops={"hay": 1}),
     Block("bare_bush", "v", flammable=True, hardness=4, drops={"fiber": 2}),            # picked: berries grow back
     Block("bare_fruit_tree", "U", flammable=True, hardness=12, drops={"wood": 3}, tool="axe", wall=True),  # picked
+    Block("cave_wall", "R", hardness=14, drops={"stone": 1}, tool="pickaxe", wall=True),   # underground rock
+    Block("hole", "O", solid=False),          # dug down through the ground: go down here (to a ladder below)
+    Block("ladder", "l", solid=False),        # under a hole: climb back up here
 ]
 
 # Picking these leaves them bare (block, seconds until the fruit is back); digging the bare one removes it.

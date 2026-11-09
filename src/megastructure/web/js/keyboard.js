@@ -61,6 +61,9 @@ function facingIntent(alt) {
   if (!alt && under && !GROUND.has(under) && !SOLID.has(under)) { const it = intent(here, false); if (useful(it)) return {p: here, it}; }
   const faced = intent(q, alt);
   if (useful(faced)) return {p: q, it: faced};
+  // X with a pickaxe and nothing else to use it on: dig down where you stand
+  if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !"~=:n".includes(under))
+    return {p: here, it: {text: "Dig down", here: true, run: () => act("dig_down", {with: "pickaxe"})}};
   for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it)) return {p, it}; }
   // then anything within reach (USE_R): nearest first, in front of you before behind
   const p0 = ents.get("agent" + myId), ring = [];

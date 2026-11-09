@@ -21,6 +21,8 @@ boulder
 stone_wall
 workbench
 window
+hole
+ladder
 heart
 food
 bolt

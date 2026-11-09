@@ -9,6 +9,7 @@ import random
 from dataclasses import fields
 from pathlib import Path
 
+from ..layers import depth
 from ..tiles import BLOCKS, DIRS
 from ..world import Store, World
 from .animals import Animals
@@ -29,6 +30,7 @@ from .items import Items
 from .movement import Movement
 from .progress import Progress
 from .spawning import Spawning
+from .underground import Underground
 from .needs import Needs
 from .observe import Observation
 from .persistence import Persistence
@@ -37,7 +39,7 @@ from .social import Social
 from .specs import TOOL_SPECS
 
 
-class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
+class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Underground, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
@@ -168,7 +170,9 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Building, 
 
     def sheltered(self, x, y) -> bool:
         """Inside a room: the area around (x, y) is closed off by walls/doors/gates within 160 tiles
-        (same rule the client uses to draw roofs). Next to 3+ walls also counts, as before."""
+        (same rule the client uses to draw roofs). Next to 3+ walls also counts, as before. Underground always does."""
+        if depth(x):
+            return True
         if sum(1 for dx, dy in DIRS.values() if BLOCKS[self.world.get(x + dx, y + dy)[1]].wall) >= 3:
             return True
         seen, stack = {(x, y)}, [(x, y)]

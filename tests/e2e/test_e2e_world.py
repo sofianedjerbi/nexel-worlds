@@ -102,3 +102,17 @@ def test_food_tastes_better_on_a_picnic_blanket(game):
     game.hold_item("bread")
     game.press("e", 1400)
     assert game.server()["hunger"] - before > 50             # bread is 50, x1.5 on the blanket
+
+
+def test_dig_down_into_the_caves_and_climb_back(game):
+    game.give(pickaxe=1)
+    game.hold_item("pickaxe")
+    x, y = game.pos()
+    game.face(1, 0)                                          # (nothing in front: X digs down)
+    assert "Dig down" in game.actions()
+    game.press("x", 3800)                                    # X: dig down where you stand
+    s = game.server()
+    assert s["depth"] == 1 and game.js("depthOf(cam.x)") == 1 and "Climb up" in game.actions()
+    game.press("Space", 1200)                                # up the ladder
+    s = game.server()
+    assert s["depth"] == 0 and (s["x"], s["y"]) == (x, y) and game.js(f"combAt({x}, {y})") == "O"

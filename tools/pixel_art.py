@@ -119,6 +119,14 @@ GEN = {
         "                ", "                ", "   uuuuuuuuuu   ", "   uUUUUUUUUu   ", "   uUllulLlUu   ", "   uUlLulllUu   ",
         "   uUuuuuuuUu   ", "   uUllullLUu   ", "   uULlulllUu   ", "   uUUUUUUUUu   ", "  uuuuuuuuuuuu  ", "  uUUUUUUUUUUu  ",
         "   uuuuuuuuuu   ", "                ", "                ", "                "],
+    "hole": [  # dug down: a dark pit with an earth rim, deeper in the middle
+        "                ", "                ", "                ", "     cccccc     ", "   ccBBBBBBcc   ", "  cBBooooooBBc  ",
+        "  cBokkkkkkoBc  ", " cBokkkkkkkkoBc ", " cBokkkkkkkkoBc ", " cBokkkkkkkkoBc ", "  cBokkkkkkoBc  ", "  cBBooooooBBc  ",
+        "   ccBBBBBBcc   ", "     cccccc     ", "                ", "                "],
+    "ladder": [  # climbing up: rails and rungs going up into a hole of light
+        "    YYYYYYYY    ", "   YYNNNNNNYY   ", "    oo    oo    ", "    ow    wo    ", "    owwwwwwo    ", "    oWWWWWWo    ",
+        "    ow    wo    ", "    owwwwwwo    ", "    oWWWWWWo    ", "    ow    wo    ", "    owwwwwwo    ", "    oWWWWWWo    ",
+        "    ow    wo    ", "    ow    wo    ", "    oo    oo    ", "                "],
     "heart": [
         "                ", "                ", "                ", "   ffff  ffff   ", "  fMMMMffMMMMf  ", "  fMeMMMMMMMMf  ",
         "  fMMMMMMMMMMf  ", "  fMMMMMMMMMMf  ", "   fMMMMMMMMf   ", "    fMMMMMMf    ", "     fMMMMf     ", "      fMMf      ",

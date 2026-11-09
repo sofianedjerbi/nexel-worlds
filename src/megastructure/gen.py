@@ -6,6 +6,7 @@ regenerated identically.
 
 import math
 
+from .layers import LAYER, depth
 from .tiles import B, G
 
 CHUNK = 32
@@ -61,6 +62,8 @@ def _elev(seed: int, x: int, y: int) -> float:
 
 def gen_level(seed: int, x: int, y: int) -> int:
     """Height, 0-3: terraced hills inland, rising to stone peaks; shores, water and the spawn meadow stay low."""
+    if depth(x):
+        return 0                     # underground is flat (its walls are cave rock)
     d = math.hypot(x, y)
     elev = _elev(seed, x, y)
     if d < 14 or elev < 0.46:
@@ -98,7 +101,20 @@ def ramp_at(seed: int, x: int, y: int, lv) -> bool:
     return _is_ramp(seed, x, y, lv) or _is_ramp(seed, x - 1, y, lv)
 
 
+def gen_cave(seed: int, x: int, y: int, d: int) -> tuple[int, int]:
+    """Underground, `d` levels down: solid rock with caves, larger the deeper you go, ore richer too, the odd
+    mushroom on a cave floor."""
+    lx, s = x - d * LAYER, seed + 7919 * d
+    open_ = fbm(s, lx, y, 7 + 4 * min(d, 8), 91) > 0.63 - 0.004 * min(d, 8)
+    if open_:
+        return G["cave_floor"], B["mushroom"] if _hash(s, lx, y, 93) < .005 else B["none"]
+    return G["cave_floor"], B["ore"] if _hash(s, lx, y, 92) < .03 + .015 * min(d, 10) else B["cave_wall"]
+
+
 def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
+    d0 = depth(x)
+    if d0:
+        return gen_cave(seed, x, y, d0)
     # big calm islands; the spawn area around the origin is lifted into an open meadow
     d = math.hypot(x, y)
     elev = _elev(seed, x, y)

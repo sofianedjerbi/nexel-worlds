@@ -90,7 +90,7 @@ function onRegion(d) {
 //  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
 const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
-const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVXYJmqeyUv".includes(c) && !GROUND.has(c);
+const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVXYJmqeyUvOl".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
   const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1], x + dx, y + dy); };
@@ -138,6 +138,10 @@ function drawTile(x, y) {
   for (let k = 1; k <= lv; k++) drawBlobLayer(g, IMG["hill" + k], x, y, high(k), ox, oy, k < 3 ? .25 : .1);
   if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
   drawStairs(g, x, y, ox, oy);
+  // underground: an earth floor, and the rock around the caves as a mass of stone with its face to the south (the pack's
+  // stone hill sheet), ore showing through it
+  if (gr === "-") drawBlobLayer(g, IMG.soil, x, y, (_, gg) => gg === "-", ox, oy, .15);     // an earth floor
+  if (c === "R" || (c === "*" && gr === "-")) drawBlobLayer(g, IMG.hill3, x, y, (cc) => cc === "R" || cc === "*", ox, oy, .15);
   // flat things that live in the ground layer
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
   const hd = hash(x, y, 41);
