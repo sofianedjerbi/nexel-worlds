@@ -174,3 +174,15 @@ def test_a_campfire_keeps_the_dark_away(world):
     sim.world.set(a.x + 30, a.y, ground="grass", block="none")
     assert not sim.spawn_spot_ok("gloom", a.x + 22, a.y)     # in the firelight
     assert sim.spawn_spot_ok("gloom", a.x + 30, a.y)         # out in the dark
+
+
+def test_animals_eat_what_grows_not_eggs_or_meat(world):
+    sim, a = world
+    from megastructure.sim import Creature
+    hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y, 10, cooldown=10**6); sim.next_creature += 1
+    sim.creatures[hen.id] = hen
+    for food in ("egg", "meat", "cooked_meat", "milk"):
+        a.add(food, 1)
+        assert run(sim, a, "feed", {"target": hen.id, "item": food})["ok"] is False
+    a.add("wheat", 1)
+    assert run(sim, a, "feed", {"target": hen.id, "item": "wheat"})["ok"]

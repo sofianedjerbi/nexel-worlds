@@ -168,8 +168,8 @@ SEED_GROUNDS = {"tilled", "wet_tilled"}  # seeds only take on tilled soil
 FOOD = {"wheat": 5, "berries": 10, "mushroom": 10, "lettuce": 15, "meat": 15, "egg": 15, "fruit": 20, "carrot": 20,
         "milk": 20, "cauliflower": 25, "eggplant": 25, "pumpkin": 30, "cooked_meat": 40, "bread": 50}
 
-# what animals eat: any food, and hay (one bale feeds three times from a trough)
-FEED = {**{k: 1 for k in FOOD}, "hay": 3}
+# what animals eat: food that grows (not eggs, meat or milk), and hay (one bale feeds three times from a trough)
+FEED = {**{k: 1 for k in FOOD if k not in ("egg", "meat", "cooked_meat", "milk")}, "hay": 3}
 
 WEAPONS = {"sword": 30, "spear": 18, "axe": 12, "pickaxe": 10}
 FIST_DAMAGE = 5

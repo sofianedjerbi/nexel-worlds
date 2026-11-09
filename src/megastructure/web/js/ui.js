@@ -140,6 +140,8 @@ function drawBag(inv, extra) {
     el.appendChild(d);
   }
 }
+// what animals eat: what grows (no eggs, meat or milk), and hay (tiles.FEED)
+const FEEDS = ["pumpkin", "cauliflower", "lettuce", "eggplant", "carrot", "fruit", "berries", "mushroom", "wheat", "bread", "hay"];
 const FOODS = ["pumpkin", "cauliflower", "lettuce", "eggplant", "carrot", "fruit", "berries", "mushroom", "egg", "milk", "meat", "cooked_meat", "wheat", "bread"];
 function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);

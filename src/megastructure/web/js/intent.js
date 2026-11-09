@@ -65,7 +65,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   const isMe = p.x === s.x && p.y === s.y;
   if (ent) {
     const who = ent.e.name || ent.e.kind, w = inHand(), weapon = w && WEAPON_DMG[w] ? w : null;
-    if (ANIMALS[ent.e.kind] && selected && (FOODS.includes(selected) || selected === "hay") && !shift)
+    if (ANIMALS[ent.e.kind] && selected && FEEDS.includes(selected) && !shift)
       return {ent, text: `Feed ${label(selected)} to the ${ent.e.kind}`, near: USE_R, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
     if (ent.e.kind === "agent" && selected && !weapon && !shift)
       return {ent, text: `Give ${label(selected)} to ${ent.e.name}`, near: 2, run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})};
@@ -87,8 +87,8 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     const it = selected, block = PLACEABLE_BLOCK[it];
     if ((block || FILLS[it] || it === "seed") && edgeAt(p.x, p.y)) return {text: "Nothing stays on the edge of a hill", ghost: it, ok: false};
     // containers first: clicking a chest, basket or trough with anything selected puts it in
-    if (c === "e" && it !== "torch") return FOODS.includes(it) || it === "hay" ? {text: `Put ${label(it)} in the trough`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
-                                                     : {text: "Troughs take hay or food", ok: false};
+    if (c === "e" && it !== "torch") return FEEDS.includes(it) ? {text: `Put ${label(it)} in the trough`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
+                                                     : {text: "Troughs take hay, grain or greens (not eggs, meat or milk)", ok: false};
     if ((c === "C" || c === "q") && it !== "torch") return {text: `Store ${label(it)} in ${c === "q" ? "basket" : "chest"}`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
     const free = !hasBlock && WALKABLE_GROUND.has(g);
     if (FOOT[block]) {
