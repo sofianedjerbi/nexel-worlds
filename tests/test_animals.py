@@ -30,7 +30,7 @@ def test_chickens_lay_cows_give_milk_and_beds_set_spawn(world):
     assert run(sim, a, "feed", {"target": hen.id, "item": "berries"})["ok"]
     for _ in range(sec(5)):
         sim.step()
-    assert any("egg" in pile for pile in sim.items.values())
+    assert any("egg" in pile for pile in sim.items.values()) or a.count("egg")   # laid (the magnet may bring it)
     assert run(sim, a, "milk", {"target": cow.id})["changed"]["inventory"] == {"milk": 1}
     assert run(sim, a, "milk", {"target": cow.id})["error"] == "not_ready"
     sim.world.set(a.x - 1, a.y, block="bed")

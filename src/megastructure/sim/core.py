@@ -27,6 +27,7 @@ from .entities import Action, ActionError, Agent, Creature
 from .environment import Environment
 from .items import Items
 from .movement import Movement
+from .progress import Progress
 from .needs import Needs
 from .observe import Observation
 from .persistence import Persistence
@@ -35,7 +36,7 @@ from .social import Social
 from .specs import TOOL_SPECS
 
 
-class Simulation(Persistence, Sessions, Movement, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
+class Simulation(Persistence, Sessions, Movement, Progress, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
@@ -55,6 +56,7 @@ class Simulation(Persistence, Sessions, Movement, Building, Items, Combat, Anima
             self.agents[aid] = Agent(**{k: v for k, v in json.loads(js).items() if k in known})
             self.tokens[aid] = th
         self.by_name = {a.name: a for a in self.agents.values()}
+        self.item_since: dict[tuple[int, int], int] = {}   # when each pile last grew (the magnet waits a moment)
         self.items: dict[tuple[int, int], dict] = {
             (x, y): json.loads(j) for x, y, j in store.db.execute("SELECT x, y, json FROM ground_items")}
         self.dirty_items: set = set()
@@ -128,6 +130,7 @@ class Simulation(Persistence, Sessions, Movement, Building, Items, Combat, Anima
         for k, n in items.items():
             pile[k] = pile.get(k, 0) + n
         self.dirty_items.add((x, y))
+        self.item_since[(x, y)] = self.tick
         if "egg" in items and (x, y) not in self.timers:   # an egg left on the ground hatches
             self.timers[(x, y)] = [self.tick + sec(180), "hatch"]
 
@@ -261,6 +264,7 @@ class Simulation(Persistence, Sessions, Movement, Building, Items, Combat, Anima
         self.step_creatures()
         self.step_environment()
         self.step_needs()
+        self.attract_items()
 
     # ------------------------------------------------------- persistence
 

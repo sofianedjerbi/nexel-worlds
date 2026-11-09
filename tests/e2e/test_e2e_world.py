@@ -84,7 +84,8 @@ def test_a_coop_collects_the_eggs(game):
     game.rpc("dev_skip", seconds=400)
     game.sleep(800)
     x, y = game.pos()
-    assert game.js(f"groundItems.some(([ix, iy, p]) => p.egg && ix === {x} && iy === {y})")   # at the coop's door
+    at_door = game.js(f"groundItems.some(([ix, iy, p]) => p.egg && ix === {x} && iy === {y})")
+    assert at_door or game.inv("egg") >= 1                   # at the coop's door (where you stand: so it's yours)
 
 
 def test_food_tastes_better_on_a_picnic_blanket(game):

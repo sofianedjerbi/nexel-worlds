@@ -596,3 +596,9 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Chat no longer reports hits, only deaths. Lone thickets (a hedge tile that only reads well in groups) are no longer generated and are cleared on load; fiber comes from cutting picked bushes.
 - Drops (creature and player deaths) hop out of the poof and bounce into the pile's own slots.
 - Tests: pytest-xdist (`-n 6` in addopts). e2e 3m40s -> 47s, unit 3.8s -> 1.7s; the demo test saves directly instead of waiting 15 s.
+
+## Iteration 35: item magnet and experience
+- Server (`sim/progress.py`): piles within 1 tile of a living player fly into their bag once they've been on the ground for 1.2 s (`item_since`), as a `pick_up` event with `magnet`. Experience for felling (2), mining rock/ore (1/4), harvesting (2), crafting (1 each), hunting (chicken 2, cow 4, gloom 6); level n needs 7 + 3n; `xp` is saved and shown as `xp` and `level` in observations; an `xp` event carries where it was earned.
+- Client (`js/xp.js`): pixel orbs burst from the source, hop, then home in on whoever earned them with a pitch-varied blip; the bar under the vitals leaves out orbs still flying, so it fills as they land; level-up arpeggio, sparks and a "Level n!" float. Magnet loot slides up into the player.
+- Tests: unit (levels, xp sources, magnet delay and range) and e2e (ore -> orbs -> bar; a kill's loot comes to you). Coop test accepts the egg in the bag. 158 unit + 49 e2e green.
+- Next: give levels a use (e.g. faster work per level, or recipes unlocked by level).

@@ -1,0 +1,40 @@
+"""Experience (felling, mining, crafting, hunting) and the item magnet."""
+
+from helpers import run
+from megastructure.sim import Creature
+from megastructure.sim.constants import sec
+from megastructure.sim.progress import MAGNET_DELAY, level_of
+
+
+def test_levels_get_longer():
+    assert level_of(0) == (0, 0, 7)
+    assert level_of(7) == (1, 0, 10)
+    assert level_of(16) == (1, 9, 10)
+    assert level_of(17)[0] == 2
+
+
+def test_work_and_hunting_give_experience(world):
+    sim, a = world
+    sim.world.set(a.x + 1, a.y, block="ore")
+    a.add("pickaxe")
+    assert run(sim, a, "dig", {"dir": "E", "with": "pickaxe"})["ok"]
+    assert a.xp == 4
+    hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y, 10); sim.next_creature += 1
+    sim.creatures[hen.id] = hen
+    sim.kill_creature(hen, a)
+    assert a.xp == 6
+    assert sim.observe(a)["self"]["level"] == 0
+
+
+def test_items_next_to_you_come_to_you_after_a_moment(world):
+    sim, a = world
+    sim.add_items(a.x + 1, a.y + 1, {"stone": 2})
+    sim.add_items(a.x + 3, a.y, {"wood": 1})                 # too far
+    sim.step()
+    assert a.count("stone") == 0                             # it has to land first
+    for _ in range(MAGNET_DELAY + 2):
+        sim.step()
+    assert a.count("stone") == 2 and (a.x + 1, a.y + 1) not in sim.items
+    for _ in range(sec(3)):
+        sim.step()
+    assert a.count("wood") == 0 and (a.x + 3, a.y) in sim.items

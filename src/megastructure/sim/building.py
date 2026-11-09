@@ -4,6 +4,7 @@ from .. import tiles as T
 from ..tiles import BLOCKS, GROUNDS, PLACEABLE, RECIPES
 from .constants import MAX_TEXT, sec
 from .entities import ActionError
+from .progress import XP_CRAFT, XP_DIG
 
 
 class Building:
@@ -76,6 +77,7 @@ class Building:
             drops = self._merge(drops, self.world.meta.get((x, y), {}).get("items", {}))
         for k, n in drops.items():
             a.add(k, n)
+        self.gain_xp(a, XP_DIG.get(block.name, 0), x, y)
         if block.name in T.PICKED:
             # picking takes the fruit or berries; the plant stays, bare, and bears again later
             bare, seconds = T.PICKED[block.name]
@@ -210,5 +212,6 @@ class Building:
             a.add(k, v * n)
         self.stats["crafts"] += 1
         a.bump("crafted", n)
+        self.gain_xp(a, XP_CRAFT * n, a.x, a.y)
         self.emit("craft", a.x, a.y, radius=4, name=a.name, made={k: v * n for k, v in r.output.items()})
         return {"made": {k: v * n for k, v in r.output.items()}}

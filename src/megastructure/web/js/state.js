@@ -155,7 +155,9 @@ function onEvent(e) {
     sfx("poof", e.x, e.y);
   }
   if (e.type === "death") { smoke(e.x, e.y, 10); sfx("poof", e.x, e.y); dropLoot(e.x, e.y, e.dropped, performance.now()); }
-  if (e.type === "pick_up") { burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3}); sfx("collect", e.x, e.y); }
+  if (e.type === "xp") spawnOrbs(e);
+  if (e.type === "pick_up" && e.magnet) magnetItems(e);
+  else if (e.type === "pick_up") { burst(e.x, e.y, "spark", 6, {dy: -.5, g: 3}); sfx("collect", e.x, e.y); }
   if (e.type === "chest") { chestOpen.set(e.x + "," + e.y, performance.now()); sfx("clack", e.x, e.y); }
   if (e.type === "milk") { burst(e.x, e.y, "spark", 4, {dy: -.2, g: 5}); emote(e.name, "happy"); sfx("moo", e.x, e.y); }
   if (e.type === "love") { emote(e.by, "love"); sfx(e.kind === "cow" || e.kind === "calf" ? "moo" : "cluck", e.x, e.y); }
@@ -171,7 +173,7 @@ function onEvent(e) {
   if (e.type === "hatch") { burst(e.x, e.y, "spark", 8, {dy: -.3, g: 4}); sfx("chirp", e.x, e.y); }
   if (e.type === "born") burst(e.x, e.y, "food", 8, {dy: -.5, g: 3});
   if (e.type === "craft") { burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4}); sfx("craft", e.x, e.y); }
-  if (["pick_up", "drop", "chest", "milk", "love", "lay", "fill", "picnic", "trough"].includes(e.type)) return;
+  if (["xp", "pick_up", "drop", "chest", "milk", "love", "lay", "fill", "picnic", "trough"].includes(e.type)) return;
   if (e.type === "attack") return;                     // hits show on screen; the chat only tells of deaths
   let text;
   switch (e.type) {

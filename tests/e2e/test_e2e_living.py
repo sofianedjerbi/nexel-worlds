@@ -91,3 +91,29 @@ def test_glooms_vanish_by_day(game):
     game.sleep(600)
     assert game.js(f"!ents.has('gloom{gloom}')")
     assert game.server()["hp"] == 100
+
+
+def test_mining_ore_sends_orbs_and_fills_the_bar(game):
+    game.give(pickaxe=1)
+    game.stamp(1, 0, ["*"])
+    game.hold_item("pickaxe")
+    game.face(1, 0)
+    game.press("Space", 0)
+    game.wait("orbs.length > 0", 6000)                        # orbs burst out of the rock...
+    game.wait("orbs.length === 0", 6000)                      # ...and fly into you
+    game.sleep(800)
+    assert game.server()["xp"] == 4
+    assert float(game.js("parseFloat($('xpfill').style.width)")) > 50     # 4 of 7 to the first level
+
+
+def test_loot_next_to_you_comes_to_you(game):
+    game.rpc("dev_creatures", clear=6)
+    hen = game.spawn("chicken", 1, 1, still=10 ** 6)
+    game.give(sword=1)
+    game.hold_item("sword")
+    game.sleep(400)
+    x, y = game.pos()
+    game.js(f"act('attack', {{target: {hen}, with: 'sword'}})")
+    game.wait("magnets.length > 0", 4000)                     # the meat and egg slide over
+    game.sleep(600)
+    assert game.inv("meat") == 1 and game.pos() == (x, y)

@@ -56,6 +56,8 @@ const SFX = {
   whoosh: (v) => noise(.35, .14 * v, 300, 2500),
   crackle: (v) => { for (let i = 0; i < 6; i++) noise(.02, .1 * v, 2000, 8000, Math.random() * .4); },
   gate: (v) => { tone(300, .2, "sawtooth", .025 * v, 1.3); tone(240, .15, "triangle", .04 * v, 1.2); },
+  orb: (v) => tone(1250 + Math.random() * 700, .09, "sine", .07 * v, 1.25),               // pitch varies, like a sparkle
+  levelup: (v) => [523, 659, 784, 1046, 1319].forEach((f, i) => tone(f, .3, "triangle", .07 * v, 1, i * .07)),
   chime: (v) => [880, 1109, 1319].forEach((f, i) => tone(f, .25, "sine", .07 * v, 1, i * .09)),
   // interface
   ui: (v) => tone(1200, .03, "sine", .06 * v),
