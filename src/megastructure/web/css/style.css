@@ -101,8 +101,11 @@
   /* experience: the wooden track between the vitals and the hotbar (drawn on a canvas by xp.js) */
   #xpwrap { position:relative; align-self:flex-start; margin:3px 0 7px; }
   #xpbar { display:block; image-rendering:pixelated; }
-  #xplevel { position:absolute; left:50%; top:50%; transform:translate(-50%, -58%); font-size:22px; line-height:22px; color:#c8f07a;
-    text-shadow:0 0 2px var(--ink), 2px 2px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink), 2px 0 0 var(--ink), 0 2px 0 var(--ink); }
+  /* the level: the pixel font at 2x its 9 px grid (crisp), bright green with a hard one-font-pixel outline, centred,
+     resting on the bar's top edge */
+  #xplevel { position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:18px; line-height:18px; color:#c2f066;
+    text-shadow:2px 0 0 #2b4417, -2px 0 0 #2b4417, 0 2px 0 #2b4417, 0 -2px 0 #2b4417,
+      2px 2px 0 #2b4417, -2px 2px 0 #2b4417, 2px -2px 0 #2b4417, -2px -2px 0 #2b4417; }
   #xplevel:empty { display:none; }
   #status { align-self:center; text-align:center; white-space:nowrap; color:#fff8e8; font-size:18px; display:none;
     text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }

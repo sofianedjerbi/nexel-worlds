@@ -46,7 +46,14 @@ class Spawning:
             self.world.prefetch(*min(missing, key=gap))     # (generated off the tick; in next time round)
 
     def ticks(self, c: Creature) -> bool:
-        return (c.x // CHUNK, c.y // CHUNK) in self.ticking
+        """Lives this tick: in the ticking area, with all its neighbouring chunks in memory (what it looks at around
+        itself, a trough or a coop a few tiles off, must never make the world load or generate land mid-tick)."""
+        cx, cy = c.x // CHUNK, c.y // CHUNK
+        if (cx, cy) not in self.ticking:
+            return False
+        if not self.keep_loaded:                          # (unit tests: nobody keeps land loaded, so don't ask)
+            return True
+        return all((cx + dx, cy + dy) in self.world.chunks for dx in (-1, 0, 1) for dy in (-1, 0, 1))
 
     def step_spawning(self, online: list[Agent]):
         self.ticking = self.ticking_chunks(online)
