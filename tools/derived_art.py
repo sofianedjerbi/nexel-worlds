@@ -112,39 +112,69 @@ def largest_shape(img: Image.Image) -> Image.Image:
     return out
 
 
+RAMP_VARIANTS = 2
+
+
 def ramp_art(hill: Path, below: tuple) -> Image.Image:
-    """A grassy slope down a hill's south cliff, 32x32: the west and east halves sit on the pair of slope tiles
-    (top 16 rows) and the landing below them (bottom 16). The hill's grass runs out through a gap in the cliff and
-    fans out onto the ground below, as land coming down towards you does: lit, catching more light lower down, with
-    soft contour dashes across it; along each side the cliff face turns and runs diagonally down beside it, tapering
-    to nothing at the foot. Colours are the hill sheet's own (sampled from a south-edge tile), so it matches each
-    terrace; `below` is the colour of the ground it comes down onto, which its foot fades into."""
+    """Grassy slopes down a hill's south cliff: RAMP_VARIANTS pieces of 32x32 side by side. The west and east halves
+    of a piece sit on the pair of slope tiles (top 16 rows) and the landing below them (bottom 16). The hill's grass
+    runs out through a gap in the cliff and fans out onto the ground below, as land coming down towards you does:
+    lit, catching more light lower down; along each side the cliff face turns and runs diagonally down beside it,
+    tapering to nothing at the foot. Colours are the hill sheet's own (sampled from a south-edge tile), so it matches
+    each terrace; `below` is the colour of the ground it comes down onto, which its foot fades into.
+    The variants share all that and differ only in what's on the grass: 0 soft contour dashes; 1 the dashes
+    staggered otherwise, with tufts."""
     sheet = Image.open(hill).convert("RGBA")
     col = [sheet.getpixel((1 * 16 + 8, 2 * 16 + y)) for y in range(16)]     # a south-edge column: top to cliff foot
     top, rim, line, dark, light = col[0], col[9], col[11], col[12], col[13]
     lit = _mix(top, (255, 255, 230), .18)
-    img = Image.new("RGBA", (32, 32))
-    px = img.load()
-    y0, y1 = 9, 26                                   # the slope: from where the hill's rim was, down onto the landing
-    for y in range(y0, y1 + 1):
-        k = (y - y0) / (y1 - y0)                     # 0 at the top, 1 at the foot
-        left = round(3 - 3 * k)                      # it fans out as it comes down
-        right = 31 - left
-        for x in range(left, right + 1):
-            c = _mix(_mix(top, lit, min(1, k * 2)), below, max(0, k - .45) / .55)   # lit, then into the ground
-            if (y - y0) % 4 == 2 and left + 3 <= x <= right - 3 and (x + y // 4) % 7 < 5:
-                c = _mix(c, rim, .45)                # contour dashes: the slope steps down
-            px[x, y] = c
-        wall = round(4 * max(0, 1 - k * 1.6))        # the cliff face beside it, turning down the side and tapering
-        for i in range(wall):
-            for x in (left - 1 - i, right + 1 + i):
-                if 0 <= x < 32:
-                    px[x, y] = (line, dark, light, light)[i]
-        if y == y1:                                  # the foot melts into the ground: the faintest shade under the lip
-            for x in range(left + 2, right - 1):
-                px[x, y] = _mix(below, rim, .25)
-    return img
+    out = Image.new("RGBA", (32 * RAMP_VARIANTS, 32))
+    for v in range(RAMP_VARIANTS):
+        img = Image.new("RGBA", (32, 32))
+        px = img.load()
+        y0, y1 = 9, 26                               # the slope: from where the hill's rim was, down onto the landing
+        for y in range(y0, y1 + 1):
+            k = (y - y0) / (y1 - y0)                 # 0 at the top, 1 at the foot
+            left = round(3 - 3 * k)                  # it fans out as it comes down
+            right = 31 - left
+            for x in range(left, right + 1):
+                f = _foot(k, x, left, right)
+                c = _mix(_mix(top, lit, min(1, k * 2)), below, f)   # lit, then into the ground
+                if _contour(v, x, y, y0, left, right):
+                    c = _mix(c, rim, .45 * (1 - f))  # contour dashes: the slope steps down (fading out at the foot)
+                px[x, y] = c
+            wall = round(4 * max(0, 1 - k * 1.6))    # the cliff face beside it, turning down the side and tapering
+            for i in range(wall):
+                for x in (left - 1 - i, right + 1 + i):
+                    if 0 <= x < 32:
+                        px[x, y] = (line, dark, light, light)[i]
+        _ramp_details(px, v, y0, y1, rim=rim)
+        out.alpha_composite(img, (32 * v, 0))
+    return out
+
+
+def _contour(v, x, y, y0, left, right) -> bool:
+    if not left + 3 <= x <= right - 3:
+        return False
+    if v == 1:                                       # staggered the other way, a little wider apart
+        return (y - y0) % 5 == 2 and (x - y // 5 * 2) % 8 < 5
+    return (y - y0) % 4 == 2 and (x + y // 4) % 7 < 5
+
+
+def _ramp_details(px, v, y0, y1, rim):
+    if v == 1:                                       # tufts of grass
+        for x, y in ((7, y0 + 4), (23, y0 + 7), (13, y0 + 12), (25, y0 + 13)):
+            px[x, y], px[x + 1, y - 1], px[x + 2, y] = rim, rim, rim
 
 
 def _mix(a, b, t):
     return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3)) + (255,)
+
+
+def _foot(k, x, left, right):
+    """How far the slope has faded into the ground below: from halfway down, eased, and sooner at its sides, so its
+    foot has no edge (no line, no rectangle)."""
+    side = min(x - left, right - x) / 6
+    t = max(0, k - .3 - .25 * (1 - min(1, side))) / .55
+    t = min(1, t)
+    return t * t * (3 - 2 * t)

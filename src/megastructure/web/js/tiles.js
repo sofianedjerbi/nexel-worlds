@@ -160,9 +160,10 @@ function groundMarks(g, x, y, gr, ox, oy) {
 function drawStairs(g, x, y, ox, oy) {
   const up = rampAt(x, y), ry = up ? y : y - 1;
   if (!up && !rampAt(x, ry)) return;
-  const west = rampAt(x + 1, ry);                                    // this column is the pair's west half
+  const west = rampAt(x + 1, ry), x0 = west ? x : x - 1;             // this column is the pair's west half or east
   const sheet = levelAt(x, ry) >= 2 ? IMG.ramp2 : IMG.ramp1;        // each terrace its own grass
-  g.drawImage(sheet, west ? 0 : 16, up ? 0 : 16, 16, 16, ox, oy, 16, 16);
+  const variant = Math.floor(hash(x0, ry, 77) * 2) * 32;            // contour dashes, or staggered with tufts
+  g.drawImage(sheet, variant + (west ? 0 : 16), up ? 0 : 16, 16, 16, ox, oy, 16, 16);
 }
 function renderBlock(b) {
   b.canvas = document.createElement("canvas"); b.canvas.width = B * 16; b.canvas.height = B * 16;
