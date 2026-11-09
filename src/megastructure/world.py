@@ -11,6 +11,7 @@ from .gen import CHUNK, gen_chunk, gen_tile
 from .tiles import BLOCKS, GROUNDS, B, G
 
 THREADS = sys.platform != "emscripten"   # the in-browser demo has no threads: it generates land inline
+GEN_TICKS = 3                            # land generated in the background arrives this many ticks after it's asked for
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
@@ -104,7 +105,7 @@ class World:
                 self.chunks[(cx, cy)] = c
             else:
                 pending = self._pending.pop((cx, cy), None)   # (being generated in the background: take it now)
-                c = self._install(cx, cy, *(pending.result() if pending else gen_chunk(self.seed, cx, cy)))
+                c = self._install(cx, cy, *(pending[0].result() if pending else gen_chunk(self.seed, cx, cy)))
         c.touched = self.tick
         return c
 
@@ -117,7 +118,8 @@ class World:
 
     def prefetch(self, cx: int, cy: int) -> bool:
         """Bring a chunk into memory without stalling the tick: from disk at once, or generated on a background
-        thread (generating costs ~30 ms). True once it's in memory; call again later until then."""
+        thread (generating costs ~30 ms) and installed exactly GEN_TICKS later (waiting, rarely, if it isn't done),
+        so the simulation stays deterministic. True once it's in memory; call again later until then."""
         if (cx, cy) in self.chunks:
             return True
         job = self._pending.get((cx, cy))
@@ -127,12 +129,13 @@ class World:
                 return True
             if self._gen is None:
                 self._gen = ThreadPoolExecutor(1, thread_name_prefix="worldgen")
-            self._pending[(cx, cy)] = self._gen.submit(gen_chunk, self.seed, cx, cy)
+            self._pending[(cx, cy)] = (self._gen.submit(gen_chunk, self.seed, cx, cy), self.tick + GEN_TICKS)
             return False
-        if not job.done():
+        future, due = job
+        if self.tick < due:
             return False
         del self._pending[(cx, cy)]
-        self._install(cx, cy, *job.result()).touched = self.tick
+        self._install(cx, cy, *future.result()).touched = self.tick
         return True
 
     def _tidy(self, c: Chunk):

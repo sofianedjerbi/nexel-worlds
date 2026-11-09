@@ -92,10 +92,11 @@ def test_interrupt(world):
 def test_land_is_generated_off_the_tick_then_installed(tmp_path):
     import time
     from megastructure.world import Store, World
+    from megastructure.world import GEN_TICKS
     w = World(Store(tmp_path / "w.sqlite"), seed=3)
     assert w.prefetch(9, 9) is False                         # started in the background...
-    for _ in range(200):
-        if w.prefetch(9, 9):
-            break
-        time.sleep(.01)
-    assert (9, 9) in w.chunks and (9, 9) in w.fresh          # ...then in memory, and new land for the animals
+    time.sleep(.2)
+    w.tick += GEN_TICKS - 1
+    assert w.prefetch(9, 9) is False                         # ...done, but it arrives on a set tick (determinism)
+    w.tick += 1
+    assert w.prefetch(9, 9) and (9, 9) in w.fresh            # ...then in memory, and new land for the animals
