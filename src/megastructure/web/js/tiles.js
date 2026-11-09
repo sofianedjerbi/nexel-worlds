@@ -20,12 +20,14 @@ function lvChar(x, y) {
 }
 const levelAt = (x, y) => { const c = lvChar(x, y); return c === null ? 0 : c >= "A" ? c.charCodeAt(0) - 65 : c.charCodeAt(0) - 48; };
 const rampAt = (x, y) => { const c = lvChar(x, y); return c !== null && c >= "A"; };
-function edgeAt(x, y) {                     // as World.edge: a hill's rim (a lower tile around it), stairs excepted
+function rimAt(x, y) {                      // as World.rim: a hill tile with lower ground around it (nothing built)
   const lv = levelAt(x, y);
   if (!lv || rampAt(x, y)) return false;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && levelAt(x + dx, y + dy) < lv) return true;
   return false;
 }
+// as World.edge: where the cliff face is drawn (lower ground straight south): nobody stands there
+const edgeAt = (x, y) => { const lv = levelAt(x, y); return lv > 0 && !rampAt(x, y) && levelAt(x, y + 1) < lv; };
 function canStep(x0, y0, x1, y1) {          // as World.can_step: on the level, or up and down stairs; cliffs can't be climbed
   const l0 = levelAt(x0, y0), l1 = levelAt(x1, y1);
   if (l0 === l1) return true;

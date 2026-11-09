@@ -206,14 +206,21 @@ class World:
         """Stairs: from here you can go down to the tile south of you (and come up from it)."""
         return bool(self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] & RAMP)
 
-    def edge(self, x: int, y: int) -> bool:
-        """On a hill's rim (a lower tile next to it, diagonals too), where its cliff or slope is drawn: nobody stands
-        there and nothing is built or grows there. Stairs are the way through, so they're not an edge."""
+    def rim(self, x: int, y: int) -> bool:
+        """On a hill's rim (a lower tile next to it, diagonals too), where its edge is drawn: nothing is built or
+        grows there. Stairs are the way through, so they're not a rim."""
         raw = self.level_raw(x, y)
         lv = raw & 0x0F
         if not lv or raw & RAMP:
             return False
         return any(self.level(x + dx, y + dy) < lv for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy)
+
+    def edge(self, x: int, y: int) -> bool:
+        """Where the cliff face is drawn: a hill tile with lower ground straight south of it. Nobody stands there.
+        (North and side rims only carry an outline at the tile's border: you can walk right up to it.)"""
+        raw = self.level_raw(x, y)
+        lv = raw & 0x0F
+        return bool(lv) and not raw & RAMP and self.level(x, y + 1) < lv
 
     def can_step(self, x0: int, y0: int, x1: int, y1: int) -> bool:
         """Between neighbouring tiles: on the level, or up and down stairs. Cliffs can't be climbed."""

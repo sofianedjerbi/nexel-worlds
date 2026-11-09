@@ -105,7 +105,7 @@ class Building:
     def _tool_place(self, a, args):
         x, y = self.target(a, args)
         item = str(args.get("item", ""))
-        if self.world.edge(x, y):
+        if self.world.rim(x, y):
             raise ActionError("cliff_edge", "nothing stays on the edge of a hill: build further in")
         if not a.count(item):
             raise ActionError("missing_item", f"you have no {item}")
@@ -170,7 +170,7 @@ class Building:
             if (tx, ty) == (a.x, a.y):
                 raise ActionError("occupied", f"stand outside the {block.replace('_', ' ')}'s spot (it covers "
                                   f"{T.FOOTPRINT[block][0]}x{T.FOOTPRINT[block][1]} tiles in front of you)")
-            if self.world.edge(tx, ty) or self.world.level(tx, ty) != self.world.level(x, y):
+            if self.world.rim(tx, ty) or self.world.level(tx, ty) != self.world.level(x, y):
                 raise ActionError("cliff_edge", f"the {block.replace('_', ' ')} has to stand on one level, clear of the edge")
             g = GROUNDS[self.world.get(tx, ty)[0]]
             if not g.walkable or g.liquid:

@@ -85,7 +85,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   // placing the selected item
   if (selected && !shift) {
     const it = selected, block = PLACEABLE_BLOCK[it];
-    if ((block || FILLS[it] || it === "seed") && edgeAt(p.x, p.y)) return {text: "Nothing stays on the edge of a hill", ghost: it, ok: false};
+    if ((block || FILLS[it] || it === "seed") && rimAt(p.x, p.y)) return {text: "Nothing stays on the edge of a hill", ghost: it, ok: false};
     // containers first: clicking a chest, basket or trough with anything selected puts it in
     if (c === "e" && it !== "torch") return FEEDS.includes(it) ? {text: `Put ${label(it)} in the trough`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
                                                      : {text: "Troughs take hay, grain or greens (not eggs, meat or milk)", ok: false};
@@ -95,7 +95,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
       const f = footprint(block, p.x, p.y, s.x, s.y);
       const bad = f.tiles.filter((q) => { const tq = tile(q.x, q.y);
         return !tq || !(GROUND.has(tq[0]) || tq[0] === "f") || !WALKABLE_GROUND.has(tq[1]) || tq[1] === ":"
-          || (q.x === s.x && q.y === s.y) || (SOLID.has(block) && entityAt(q)) || edgeAt(q.x, q.y) || levelAt(q.x, q.y) !== levelAt(p.x, p.y); });
+          || (q.x === s.x && q.y === s.y) || (SOLID.has(block) && entityAt(q)) || rimAt(q.x, q.y) || levelAt(q.x, q.y) !== levelAt(p.x, p.y); });
       const near = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy}))
         .filter((q) => !f.tiles.some((r) => r.x === q.x && r.y === q.y));
       return {text: bad.length ? (bad.some((q) => q.x === s.x && q.y === s.y) ? `Step out of the way to place the ${label(it)}` : bad.some((q) => entityAt(q)) ? "Wait, something is standing there" : `The ${label(it)} needs a clear ${FOOT[block].join("×")} spot of dry land`) : `Place ${label(it)}`,

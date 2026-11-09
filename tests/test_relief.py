@@ -35,8 +35,8 @@ def test_walking_off_an_edge_is_blocked_too(world):
     sim, a = world
     plateau(sim, a)
     a.x, a.y = a.x - 3, a.y - 4                              # inside the plateau, next to its west rim
-    r = run(sim, a, "walk", {"dir": "W"})
-    assert r["stopped"] == "blocked" and "drop" in r["blocked_by"]
+    r = run(sim, a, "walk", {"dir": "W"})                    # onto the rim (right up to the edge), then no further
+    assert r["steps"] == 1 and r["stopped"] == "blocked" and "drop" in r["blocked_by"]
 
 
 def test_move_to_finds_the_stairs(world):
@@ -70,8 +70,9 @@ def test_land_saved_before_relief_stays_flat():
 def test_nobody_stands_or_builds_on_a_hills_rim(world):
     sim, a = world
     plateau(sim, a)
-    assert sim.world.edge(a.x + 4, a.y - 4) and sim.world.edge(a.x + 2, a.y - 2)       # east rim, south cliff
-    assert not sim.world.edge(a.x, a.y - 2) and not sim.world.edge(a.x + 3, a.y - 4)   # the stairs, the inside
+    assert sim.world.edge(a.x + 2, a.y - 2) and not sim.world.edge(a.x + 4, a.y - 4)   # the south cliff: off-limits;
+    assert sim.world.rim(a.x + 4, a.y - 4)                   # the east rim is walkable, but nothing's built there
+    assert not sim.world.edge(a.x, a.y - 2) and not sim.world.rim(a.x + 3, a.y - 4)    # the stairs, the inside
     a.add("chest", 1)
     a.x, a.y = a.x + 2, a.y - 1                              # under the cliff: placing on it is refused
     assert run(sim, a, "place", {"dir": "N", "item": "chest"})["error"] == "cliff_edge"

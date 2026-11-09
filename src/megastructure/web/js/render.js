@@ -17,8 +17,10 @@ function frame(now) {
       // up a slope is hard going (60% longer a step), down it careful (20%): as the server paces it (SLOPE_UP/DOWN)
       const climb = levelAt(ahead0.x, ahead0.y) - levelAt(Math.round(p.tx), Math.round(p.ty));
       const spd = (walking.run ? 10 : 5) / (climb > 0 ? 1.6 : climb < 0 ? 1.2 : 1), step = spd * dt;
-      const side = wx ? "y" : "x", along = wx ? "x" : "y", cur = p[side], was = (p.lastDir || {})[side] || 0;
-      const lane = Math.abs(cur - Math.round(cur)) < .03 ? Math.round(cur) : was > 0 ? Math.ceil(cur) : was < 0 ? Math.floor(cur) : Math.round(cur);
+      const side = wx ? "y" : "x", along = wx ? "x" : "y", cur = p[side];
+      // the lane is the server's own row (column): its walk starts from the tile it is on, so lining up anywhere
+      // else (say, the tile you were bumping into) would walk you along between two rows
+      const lane = Math.round(wx ? p.ty : p.tx);
       if (Math.abs(cur - lane) > 1e-3) {
         p[side] = cur + Math.sign(lane - cur) * Math.min(step, Math.abs(lane - cur));
         continue;
@@ -26,7 +28,7 @@ function frame(now) {
       p[side] = lane;
       const next = p[along] + (wx || wy) * step, ahead = (next - (wx ? p.tx : p.ty)) * (wx || wy);
       const edge = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
-      if (ahead <= (walkable(edge.x, edge.y, Math.round(p.tx), Math.round(p.ty)) ? 1 : 0)) { p[along] = next; p.lastDir = {[along]: wx || wy, [side]: 0}; }
+      if (ahead <= (walkable(edge.x, edge.y, Math.round(p.tx), Math.round(p.ty)) ? 1 : 0)) p[along] = next;
       continue;
     }
     const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
