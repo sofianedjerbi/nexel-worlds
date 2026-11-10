@@ -1,8 +1,8 @@
-// Layers: the level below is always there, down every cave mouth. Through a mouth you see the pit of cave under it
-// (its floor and the rock walls around it), a shade darker, its top edge in shadow and sunk a little lower on the
-// screen (in this 3/4 view, lower is further down); through that pit's own mouths the level below that, darker and
-// lower again; and so on, DEEP levels down. Walking down a mouth is going one layer deeper: its pit lights up and
-// rises into place as you go.
+// Layers: the level below shows through every hole, and only there: down a cave mouth you see what's under its two
+// tiles, a shade darker, its top edge in shadow and sunk a little lower on the screen (in this 3/4 view, lower is
+// further down); if a hole down there lines up, the level below that, darker and lower again; and so on, DEEP levels
+// down. Solid ground is solid: nothing shows under it. Walking down a mouth, what's under it lights up and rises
+// into place as you go.
 
 const DEEP = 4, SHADE = .3, DROP = .3;               // a level down: this much darker, this many tiles lower
 const layerCv = [], holeCv = [];
@@ -39,16 +39,10 @@ function drawHoles(g, k, sx, sy, S, near) {
   const px = (x) => Math.round(sx(x - off)), py = (y) => Math.round(sy(y));
   const rooms = ms.map(([x, y]) => {
     const mine = near && k === 0 && x === near.x && y === near.y, f = mine ? 1 - near.cut : 1;   // (the one you're in)
-    // the pit: the room below, but only where this level's floor is bare (its mouth, ground with nothing on it):
-    // this level's ramps, rock and things stay, so each level keeps its landmarks over the ones below
-    const room = new Set();
-    for (const t of caveRoom(x + LAYER, y)) {
-      const [tx, ty] = t.split(",").map(Number), c = combAt(tx - LAYER, ty);
-      if (c === "O" || (c !== null && GROUND.has(c) && !"~=:n".includes(c))) room.add(t);
-    }
+    const room = mouthHole(x + LAYER, y);                      // only the hole itself: never under solid ground
     return {room, shade: SHADE * f, drop: Math.round(DROP * S * f)};
   });
-  // each pit: the level below sunk by its drop, cut to the pit's shape (in this level's place)
+  // each hole: the level below sunk by its drop, cut to the hole (in this level's place)
   const hole = layerCanvas(k, holeCv), hg = hole.getContext("2d");
   hg.globalCompositeOperation = "source-over"; hg.clearRect(0, 0, W, H);
   const all = new Set(); for (const r of rooms) for (const t of r.room) all.add(t);

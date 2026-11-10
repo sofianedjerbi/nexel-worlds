@@ -676,3 +676,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Change (js/layers.js): down every cave mouth in view, the pit of the level below is drawn: the room under the mouth (round, ~7 tiles across), a shade darker (SHADE .3), sunk DROP .3 tile lower, its top edge and sides in shadow, outlined. Recursively 4 levels deep. A level is only cut where its own floor is bare, so its ramps, rock and things stay over the levels below. Walking down a mouth, its pit loses its shade and drop as you go (the level switch on the slope stays invisible). Also fixed: descents below level 1 had no transition (mouthNear only looked for ramps up there).
 - Showcase: 4 mouths dug as a stairway (each a tile east and south of the last) in a QA world; clip walks meadow -> level 4 -> meadow. First tries were unreadable (stamped open boxes, deeper pits covering the ramps); cutting only bare floor fixed it.
 - Result: 192 unit green; e2e 52/53, the one failure (building) passes 3/3 alone: flaky under load, not this change.
+
+## Iteration 48: the level below only through holes
+- User: hard to read; don't show the layer under the player unless there's a hole.
+- Change: the level below shows only through a mouth's two tiles (darker, sunk, shadowed), never under solid ground; from below, the level above covers everything but the ramp's hole until you walk 2 tiles in, then fades. The cave-room pit (caveRoom) is gone.
+- Result: each level reads at a glance: a bright ramp up, and a darker hole down showing the next ramp. 192 unit + 53 e2e green. Showcase clip and stills redone, demo republished.

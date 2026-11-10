@@ -1,8 +1,8 @@
 // Underground (layers.py): each level below the surface is a region far east of the one above. Down there it's
 // dark: you see a little way around you, around fires and torches, and where daylight falls down a ramp.
-// The level below is always in view down every mouth (layers.js). Walking down one, its room is lit more and more
-// (it's where you're going) and you change level on the slope, where both look the same; walking on into the cave,
-// the land around the room fades away and the dark closes in. Coming up, the same backwards.
+// The level below shows only through holes: down every mouth (layers.js), never under solid ground. Walking down
+// one, what's under it is lit more and more (it's where you're going) and you change level on the slope, where both
+// look the same; walking on into the cave, the land above fades away and the dark closes in. Coming up, backwards.
 
 const LAYER = 1000000, LAYER_B = LAYER / B;
 const depthOf = (x) => Math.max(0, Math.floor((x + LAYER / 2) / LAYER));
@@ -25,23 +25,8 @@ function mouthNear(p, d) {
   }
   return null;
 }
-// The cave room under a mouth: its open tiles joined to the ramp (a few tiles around), and the rock walls around
-// them (a round pit, about 7 tiles across, centred just below the mouth), as "x,y" keys on the cave's level (cx: the cave level's x of the mouth)
-function caveRoom(cx, y) {
-  const open = new Set(), q = [[cx, y], [cx, y + 1]], room = new Set();
-  const isOpen = (c) => c !== null && c !== "R" && c !== "*";
-  while (q.length && open.size < 60) {
-    const [x, yy] = q.shift(), k = x + "," + yy;
-    if (open.has(k) || ((x - cx) / 3.6) ** 2 + ((yy - y - 2) / 3.6) ** 2 > 1 || !isOpen(combAt(x, yy))) continue;
-    open.add(k);
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) q.push([x + dx, yy + dy]);
-  }
-  for (const k of open) {
-    const [x, yy] = k.split(",").map(Number);
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) room.add(x + dx + "," + (yy + dy));
-  }
-  return room;
-}
+// The hole a mouth makes: its two tiles, as "x,y" keys (x: on whichever level you want them)
+const mouthHole = (x, y) => new Set([x + "," + y, x + "," + (y + 1)]);
 // The other level's blocks over the whole view: asked for, and drawn once they come
 function otherBlocks(shift, S) {
   const out = [], now = performance.now(), hw = W / S / 2 + 2, hh = H / S / 2 + 3;
@@ -54,7 +39,7 @@ function otherBlocks(shift, S) {
     }
   return out;
 }
-// From below: the level above drawn over this one around the ramp's room, `a` opaque
+// From below: the level above drawn over this one, all but the hole the ramp comes up through, `a` opaque
 function drawAbove(m, a, sx, sy, S) {
   if (a <= 0.01) return;
   if (!thru) thru = document.createElement("canvas");
@@ -66,7 +51,7 @@ function drawAbove(m, a, sx, sy, S) {
   const px = (x) => Math.round(sx(x)), py = (y) => Math.round(sy(y));
   g.globalCompositeOperation = "destination-out";
   g.fillStyle = "#000"; g.beginPath();
-  for (const k of caveRoom(m.x, m.y)) { const [x, y] = k.split(",").map(Number); g.rect(px(x), py(y), px(x + 1) - px(x), py(y + 1) - py(y)); }
+  for (const k of mouthHole(m.x, m.y)) { const [x, y] = k.split(",").map(Number); g.rect(px(x), py(y), px(x + 1) - px(x), py(y + 1) - py(y)); }
   g.fill();
   ctx.globalAlpha = a; ctx.drawImage(thru, 0, 0); ctx.globalAlpha = 1;
 }
