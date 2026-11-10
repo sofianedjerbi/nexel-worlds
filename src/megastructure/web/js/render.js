@@ -66,6 +66,7 @@ function frame(now) {
   const t0 = performance.now();
   while (dirtyTiles.length && performance.now() - t0 < 4) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
 
+  levelFadeStart();
   const S = TS();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.imageSmoothingEnabled = false;
@@ -78,6 +79,7 @@ function frame(now) {
   ctx.fillRect(-ox / zoom - 16, -oy / zoom - 16, W / zoom + 32, H / zoom + 32);
   ctx.restore();
   for (const b of vis) if (b.canvas) ctx.drawImage(b.canvas, sx(b.bx * B), sy(b.by * B), B * S, B * S);
+  drawHoles(ctx, 0, sx, sy, S, mouthNear(ents.get("agent" + myId)));   // the level below, down every hole (under all that stands)
   // y-sorted sprites: objects and creatures
   const list = [];
   for (const b of vis) for (const [i, c] of b.objs) {
@@ -135,6 +137,7 @@ function frame(now) {
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawHouses(sx, sy, S, dt, now);
   if (!drawCave(vis, sx, sy, S, t, now)) drawNight(vis, sx, sy, S, t);
+  levelFadeEnd(now);
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   drawSelector(aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null, sx, sy, now);

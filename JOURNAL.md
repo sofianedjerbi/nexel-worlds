@@ -681,3 +681,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - User: hard to read; don't show the layer under the player unless there's a hole.
 - Change: the level below shows only through a mouth's two tiles (darker, sunk, shadowed), never under solid ground; from below, the level above covers everything but the ramp's hole until you walk 2 tiles in, then fades. The cave-room pit (caveRoom) is gone.
 - Result: each level reads at a glance: a bright ramp up, and a darker hole down showing the next ramp. 192 unit + 53 e2e green. Showcase clip and stills redone, demo republished.
+
+## Iteration 49: always the level you're on; holes under what stands
+- User: weird not to show the level the player is on; the player showed above trees.
+- Change: no more land-above overlay underground: you see your own level, with a 0.45 s crossfade of the last frame when you change level. Holes are drawn right after the ground, before the y-sorted sprites (trees, people), so nothing is redrawn on top any more.
+- Result: 192 unit green; e2e 52/53, the failure (test_a_click_picks_on_the_move) also fails on the code before this change, and passes 3/3 alone: flaky.
