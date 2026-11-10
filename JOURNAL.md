@@ -665,3 +665,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Touch (js/touch.js, only on touch screens): a floating joystick for the left thumb (four ways, sprint when pushed far), A/B buttons on the right labelled with what they'll do (A held keeps going, but never restarts work in progress: re-sending cut every chop short), Eat/Pick up when possible, Bag/Craft/Talk at the top, pinch to zoom, zoom 2 on small screens. HUD scales to fit; controls move above it when the screen is narrow; no page zoom/scroll/selection.
 - Measured in emulated phones (390x844, 844x390): joystick walks, A chops a tree, HUD inside the screen. New e2e test_e2e_touch.
 - Published the in-browser (Pyodide) build to GitHub Pages: sofianedjerbi/megastructure-demo.
+
+## Iteration 46: a house-like step before the real underground
+- User idea: an intermediate step where the underground shows at the same time as the surface, like walking into a house, then the real (dark) underground.
+- Change (cave.js): approaching a mouth, the cave room below (its open tiles joined to the ramp, up to 5 tiles around, plus the rock walls around them) appears cut out of the land, outlined in the pack's ink, with daylight around it. On the slope both levels show at once (the level switch happens here, where both look the same). Walking on into the cave, the land around fades out and the darkness fades in. The pool-of-light tunnel step is gone.
+- Result: per-frame values are continuous both ways, and the level switches only where both levels are fully shown. 190 unit + 53 e2e green. Showcase clip and text updated, demo republished.

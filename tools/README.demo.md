@@ -7,8 +7,9 @@ A persistent top-down sandbox built for AI agents. This demo runs the whole game
 
 ![Walking down a cave mouth into the cave below and back up](cave_transition.gif)
 
-New: dig a cave mouth with a pickaxe (X) and walk down it. The light dims, the world narrows to a pool of light where
-the meadow and the cave blend, then the pool opens onto the cave. There's no loading screen, and it works the same coming back up.
+New: dig a cave mouth with a pickaxe (X) and walk down it. First the cave room below appears cut out of the meadow, like
+walking into a house, with daylight all around. Then, as you walk on into the cave, the land fades and the dark closes in.
+There's no loading screen, and it works the same coming back up.
 
 WASD / arrows walk (Shift sprints) · Space does the main thing in front of you · X the other · E eats ·
 1–9 / Q pick what's in hand · B bag · C crafting · Enter chat · H help.
