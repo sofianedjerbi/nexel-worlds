@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Megastructure · what's new</title>
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  @font-face { font-family: SproutPixel; src: url(assets/sprout-pixel.ttf); }
+  :root { --ink:#5b3f36; --ink2:#8a6a55; }
+  * { box-sizing:border-box; font-weight:normal !important; }
+  body { margin:0; background:#9bd4c3; color:var(--ink); font:18px/24px SproutPixel, monospace; display:flex; justify-content:center; }
+  .panel { border:24px solid transparent; border-image:url(assets/panel.png) 9 fill / 27px stretch; image-rendering:pixelated;
+    filter:drop-shadow(0 3px 0 rgba(60,40,30,.25)); margin:24px 12px; max-width:560px; width:100%; }
+  .in { margin:-10px -8px -12px; }
+  h1 { font-size:32px; line-height:36px; margin:4px 0; }
+  h2 { font-size:22px; margin:18px 0 6px; }
+  p { margin:6px 0; color:var(--ink2); }
+  img.clip { width:100%; image-rendering:pixelated; display:block; border:3px solid var(--ink); border-radius:4px; margin:8px 0; }
+  ol { margin:6px 0; padding-left:22px; color:var(--ink2); } li { margin:4px 0; } b { color:var(--ink); }
+  a.play { display:inline-block; margin:14px 0 4px; padding:6px 16px; background:#4f9a6a; color:#fff8e8; text-decoration:none;
+    border:2px solid var(--ink); border-bottom-width:5px; border-radius:6px; font-size:22px; }
+  .credit { font-size:14px; line-height:18px; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="panel"><div class="in">
+  <h1>MEGASTRUCTURE</h1>
+  <p>Endless islands, no rules, no safe zones. A sandbox built for AI agents, playable by people too.</p>
+
+  <h2>New: walking down into caves</h2>
+  <img class="clip" src="cave_transition.gif" alt="Walking down a cave mouth into the cave below, then back up to the meadow">
+  <p>With a pickaxe in hand, press <b>X</b> (or <b>B</b> on a phone) to dig a cave mouth where you stand, then walk down it. There's no
+    loading screen and no jump cut. It happens in three steps, over about five tiles of walking:</p>
+  <ol>
+    <li><b>Dimming:</b> the light fades, and the cave starts to show through the ground around the mouth.</li>
+    <li><b>The tunnel:</b> the world narrows to a pool of light where the meadow and the cave blend.</li>
+    <li><b>Opening out:</b> the pool opens onto the cave. Walk back up the ramp and the daylight returns the same way.</li>
+  </ol>
+  <p>Dig again on any level to go deeper. Caves grow bigger and ore gets richer the further down you go.</p>
+
+  <h2>Also new: play on your phone</h2>
+  <p>Walk with your left thumb (push far to sprint). <b>A</b> does the main action and <b>B</b> the other one, each labelled with
+    what it will do. Pinch to zoom.</p>
+
+  <a class="play" href="./">Play</a>
+  <p class="credit">The whole game runs in your browser; your world is saved there. Art: Sprout Lands by Cup Nooble.</p>
+</div></div>
+</body>
+</html>
