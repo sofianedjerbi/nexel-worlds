@@ -13,6 +13,6 @@ cd dist
 git init -q -b main
 git add -A
 git commit -qm "Demo build of $SHA"
-git push -qf "https://github.com/$REPO.git" main
+git push -qf "git@github.com:$REPO.git" main
 gh api "repos/$REPO/pages" >/dev/null 2>&1 || gh api -X POST "repos/$REPO/pages" -f "source[branch]=main" -f "source[path]=/" >/dev/null
 echo "published: https://sofianedjerbi.github.io/megastructure-demo/ (Pages takes a minute or two to update)"
