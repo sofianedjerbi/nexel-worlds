@@ -144,3 +144,37 @@
     background:#f7e7c6; border:2px solid var(--ink); border-bottom-width:4px; border-radius:4px; text-shadow:none; }
   #debug { bottom:auto; top:120px; }
   #actions div.bad { color:#ffb0a0; }
+  /* ---- touch screens (touch.js): a joystick on the left, two buttons on the right, a few at the top ---- */
+  body.touch { touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; }
+  body.touch #joinbox { width:min(420px, 92vw); box-sizing:border-box; }
+  body.touch #joinbox input { font-size:18px; }  /* (16px+ or iOS zooms in on focus) */
+  body.touch #actions, body.touch #help, body.touch #helpbtn { display:none !important; }
+  body.touch #hud { transform-origin:bottom center; bottom:calc(8px + env(safe-area-inset-bottom)); }
+  body.touch #goals { transform:scale(.8); transform-origin:top left; }
+  @media (max-width:600px) { body.touch #side { display:none; } }
+  body.touch #vitals { min-width:max-content; gap:10px; } body.touch #hud .hudrow { justify-content:center; }
+  body.touch #chatbox { width:min(460px, 60vw); bottom:calc(var(--tbot, 12px) + 150px); }
+  #pad, #tbtns, #tctx, #ttop { display:none; }
+  body.touch.playing #pad, body.touch.playing #tbtns, body.touch.playing #tctx, body.touch.playing #ttop { display:block; }
+  #pad { position:fixed; left:0; top:25vh; width:45vw; bottom:0; z-index:2; touch-action:none; }
+  #stickbase, #stickknob { position:fixed; display:none; transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; }
+  #pad.on #stickbase, #pad.on #stickknob { display:block; }
+  #stickbase { width:150px; height:150px; background:rgba(40,28,24,.25); border:3px solid rgba(255,248,232,.45); box-sizing:border-box; }
+  #stickknob { width:62px; height:62px; background:#f7e7c6; border:3px solid var(--ink); border-bottom-width:6px; box-sizing:border-box; opacity:.9; }
+  #tbtns { position:fixed; right:calc(14px + env(safe-area-inset-right)); bottom:var(--tbot, 12px); width:170px; height:150px; z-index:4; }
+  #tA, #tB { position:absolute; border-radius:50%; background:#f7e7c6; border:3px solid var(--ink); border-bottom-width:7px; box-sizing:border-box;
+    display:flex; align-items:center; justify-content:center; touch-action:none; filter:drop-shadow(0 3px 0 rgba(60,40,30,.3)); }
+  #tA { width:84px; height:84px; right:0; bottom:8px; } #tB { width:62px; height:62px; right:96px; bottom:0; background:#e3d3b8; }
+  #tA.down, #tB.down, #tctx div.down, #ttop div.down { border-bottom-width:3px; transform:translateY(3px); }
+  #tA.idle, #tB.idle { opacity:.55; } #tA.bad { background:#f3c7b8; }
+  #tA .lbl, #tB .lbl { font-size:26px; color:var(--ink); } #tB .lbl { font-size:20px; }
+  #tA .cap, #tB .cap { position:absolute; bottom:100%; margin-bottom:6px; right:-4px; white-space:nowrap; color:#fff8e8; font-size:16px; pointer-events:none;
+    text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+  #tB .cap { bottom:auto; right:100%; margin:0 8px 0 0; }   /* (to its left: the main button's is above) */
+  #tctx { position:fixed; right:calc(14px + env(safe-area-inset-right)); bottom:calc(var(--tbot, 12px) + 190px); z-index:4; flex-direction:column; gap:8px; align-items:flex-end; }
+  #ttop { position:fixed; right:calc(10px + env(safe-area-inset-right)); top:calc(10px + env(safe-area-inset-top)); z-index:4; gap:8px; }
+  @media (max-width:600px) { body.touch.playing #ttop { flex-direction:column; align-items:flex-end; } body.touch #toast { top:auto; bottom:45vh; max-width:86vw; } }
+  body.touch.playing #ttop { display:flex; } body.touch.playing #tctx { display:flex; }
+  #tctx div, #ttop div { display:none; padding:6px 12px; background:#f7e7c6; color:var(--ink); border:2px solid var(--ink); border-bottom-width:5px;
+    border-radius:8px; font-size:18px; touch-action:none; }
+  #ttop div { display:block; }

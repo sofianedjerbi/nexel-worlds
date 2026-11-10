@@ -96,7 +96,7 @@ function drawXp() {
 const TRACK = [36, 36, 40, 7], XP_K = 2;   // the track in sliders.png; CSS px an art pixel
 function drawXpBar(k, level) {
   // as wide as the whole item row (the hotbar and the craft slot), vitals likewise
-  const cv = $("xpbar"), dpr = window.devicePixelRatio || 1, bar = $("hotbar").parentElement.getBoundingClientRect().width;
+  const cv = $("xpbar"), dpr = window.devicePixelRatio || 1, bar = $("hotbar").parentElement.offsetWidth;   // (its layout width: the HUD may be scaled)
   if ($("vitals").style.width !== bar + "px") $("vitals").style.width = bar + "px";
   const SC0 = Math.max(1, Math.round(XP_K * dpr)), w = Math.max(40, Math.round(bar * dpr / SC0)), h = TRACK[3];
   const lv = level ? String(level) : "";

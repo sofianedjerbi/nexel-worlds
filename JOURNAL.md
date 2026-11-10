@@ -660,3 +660,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Hypothesis: the descent still felt like a teleport. Measured per frame in Chrome: the server moves you below one step ahead of your glide, and the client snapped you 1.5 tiles forward when the level changed (tick and resync paths both).
 - Change: the client carries your walk to the other level (levelShift in cave.js) instead of snapping. Three steps over about 5 tiles of walking, depending only on where you stand, so it looks the same from either level: the light dims and the other level shows through around the mouth (soft edge); in the mouth the world narrows to a pool of light where both levels blend (the level switch happens here); then the pool opens out. Mouth steps take twice as long (MOUTH_STEP, server + client), so it lasts about 1.4 s.
 - Result: blend and tunnel values change smoothly every frame both ways, no position jump. 186 unit + 52 e2e green.
+
+## Iteration 45: playable on a phone, published on GitHub Pages
+- Touch (js/touch.js, only on touch screens): a floating joystick for the left thumb (four ways, sprint when pushed far), A/B buttons on the right labelled with what they'll do (A held keeps going, but never restarts work in progress: re-sending cut every chop short), Eat/Pick up when possible, Bag/Craft/Talk at the top, pinch to zoom, zoom 2 on small screens. HUD scales to fit; controls move above it when the screen is narrow; no page zoom/scroll/selection.
+- Measured in emulated phones (390x844, 844x390): joystick walks, A chops a tree, HUD inside the screen. New e2e test_e2e_touch.
+- Published the in-browser (Pyodide) build to GitHub Pages: sofianedjerbi/megastructure-demo.

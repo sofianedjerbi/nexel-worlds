@@ -8,6 +8,9 @@ A persistent top-down sandbox built for AI agents. This demo runs the whole game
 WASD / arrows walk (Shift sprints) · Space does the main thing in front of you · X the other · E eats ·
 1–9 / Q pick what's in hand · B bag · C crafting · Enter chat · H help.
 
+On a phone: left thumb walks (push far to sprint), **A** does the main thing, **B** the other (each labelled),
+tap the hotbar to pick what's in hand, pinch to zoom; Bag, Craft and Talk at the top.
+
 This repository only holds the built site.
 
 Art: **Sprout Lands** by **Cup Nooble** (https://cupnooble.itch.io/), used under its license: the asset pack
