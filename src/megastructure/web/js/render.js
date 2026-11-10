@@ -16,7 +16,10 @@ function frame(now) {
       const [wx, wy] = DIRV[walking.dir], ahead0 = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
       // up a slope is hard going (60% longer a step), down it careful (20%): as the server paces it (SLOPE_UP/DOWN)
       const climb = levelAt(ahead0.x, ahead0.y) - levelAt(Math.round(p.tx), Math.round(p.ty));
-      const spd = (walking.run ? 10 : 5) / (climb > 0 ? 1.6 : climb < 0 ? 1.2 : 1), step = spd * dt;
+      // a cave mouth's steps (the tile you're stepping onto): twice as long, as the server paces them (MOUTH_STEP)
+      const into = (v, d) => Math.round(v) === v ? v + d : d > 0 ? Math.ceil(v) : Math.floor(v);
+      const stairs = "Ol".includes(combAt(wx ? into(p.x, wx) : Math.round(p.x), wy ? into(p.y, wy) : Math.round(p.y)) || "-");
+      const spd = (walking.run ? 10 : 5) / (climb > 0 ? 1.6 : climb < 0 ? 1.2 : stairs ? 2 : 1), step = spd * dt;
       const side = wx ? "y" : "x", along = wx ? "x" : "y", cur = p[side];
       // the lane is the server's own row (column): its walk starts from the tile it is on, so lining up anywhere
       // else (say, the tile you were bumping into) would walk you along between two rows

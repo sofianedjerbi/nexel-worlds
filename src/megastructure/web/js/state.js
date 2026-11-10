@@ -87,6 +87,7 @@ function onTick(d) {
     if (e.kind === "agent" && e.id === myId && pred) {
       if ((e.x === pred.x && e.y === pred.y) || now > pred.until) pred = null; else { p.e = e; continue; }
     }
+    levelShift(p, e.x, e.y, key === "agent" + myId);
     if (p.tx !== e.x || p.ty !== e.y) {
       const dx = Math.sign(e.x - p.tx), dy = Math.sign(e.y - p.ty);
       // animal sheets only walk sideways: going up or down they keep facing the way they last went

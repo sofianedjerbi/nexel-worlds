@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from .constants import SLOPE_DOWN, SLOPE_UP, sec
+from .constants import MOUTH_STEP, SLOPE_DOWN, SLOPE_UP, sec
 from .entities import ActionError, Agent
 
 
@@ -39,10 +39,13 @@ class Movement:
             a.sailing = False
             self.emit("moor", a.x, a.y, name=a.name)
         climb = self.world.level(x, y) - self.world.level(a.x, a.y)
+        stairs = self.world.block(x, y) in ("hole", "ladder")   # a cave mouth's earth steps: slow, careful going
         a.x, a.y = x, y
         self.through_mouth(a)                         # a cave mouth: on down to the level below (or back up)
         if climb and a.ready > self.tick:            # up a slope is hard going, down it a little careful
             a.ready += round((a.ready - self.tick) * (SLOPE_UP if climb > 0 else SLOPE_DOWN))
+        elif stairs and a.ready > self.tick:
+            a.ready += round((a.ready - self.tick) * MOUTH_STEP)
         self.arrive(a)
 
     def arrive(self, a: Agent):

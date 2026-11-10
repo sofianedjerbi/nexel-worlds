@@ -53,3 +53,15 @@ def test_people_on_other_levels_dont_see_each_other(world):
     run(sim, a, "dig_down", {"with": "pickaxe"})
     run(sim, a, "step", {"dir": "S"})
     assert not any(e.get("name") == "Bo" for e in sim.observe(a)["entities"])
+
+
+def test_steps_in_a_mouth_are_slow_going(world):
+    sim, a = world
+    a.add("pickaxe")
+    x0, y0 = a.x, a.y
+    run(sim, a, "dig_down", {"with": "pickaxe"})
+    a.x, a.y = x0, y0 - 2
+    run(sim, a, "step", {"dir": "S"})
+    flat = a.ready - sim.tick                                  # onto plain ground
+    run(sim, a, "step", {"dir": "S"})
+    assert a.ready - sim.tick == 2 * flat                      # onto the mouth's top: twice as long

@@ -11,6 +11,7 @@ DAY_TICKS = sec(600)   # a 10-minute day
 
 STEP = sec(0.2)        # walking speed: 5 tiles per second
 SLOPE_UP, SLOPE_DOWN = 0.6, 0.2   # a step up a slope takes 60% longer, down it 20% (client: render.js)
+MOUTH_STEP = 1.0                  # a step onto a cave mouth's slope (or its ramp below) takes twice as long
 
 VIEW_R = 10
 
