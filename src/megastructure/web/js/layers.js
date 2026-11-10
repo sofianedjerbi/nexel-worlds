@@ -33,7 +33,7 @@ function renderLevel(k, sx, sy, S) {
 // Onto g (level k below this one; 0: this one) the level under it, down each of its mouths. `near`: the mouth
 // you're walking down, whose room is lit more the further in you are (as it will be when you're there).
 function drawHoles(g, k, sx, sy, S, near) {
-  const ms = mouthsOn(k, S);
+  const ms = mouthsOn(k, S).filter(([x, y]) => k || !depthOf(cam.x) || inRegion(x, y));   // (underground: in your part)
   if (!ms.length) return;
   const below = renderLevel(k + 1, sx, sy, S), off = (k + 1) * LAYER;
   const px = (x) => Math.round(sx(x - off)), py = (y) => Math.round(sy(y));

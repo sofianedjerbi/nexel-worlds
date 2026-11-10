@@ -66,7 +66,6 @@ function frame(now) {
   const t0 = performance.now();
   while (dirtyTiles.length && performance.now() - t0 < 4) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
 
-  levelFadeStart();
   const S = TS();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.imageSmoothingEnabled = false;
@@ -79,6 +78,7 @@ function frame(now) {
   ctx.fillRect(-ox / zoom - 16, -oy / zoom - 16, W / zoom + 32, H / zoom + 32);
   ctx.restore();
   for (const b of vis) if (b.canvas) ctx.drawImage(b.canvas, sx(b.bx * B), sy(b.by * B), B * S, B * S);
+  drawCaveGround(sx, sy, S, t, now);                 // underground: the level above, and the part of the cave you're in
   drawHoles(ctx, 0, sx, sy, S, mouthNear(ents.get("agent" + myId)));   // the level below, down every hole (under all that stands)
   // y-sorted sprites: objects and creatures
   const list = [];
@@ -93,7 +93,9 @@ function frame(now) {
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)
   drawOrbs(sx, sy, S, dt, list);
   list.sort((a, b) => a.y - b.y || a.x - b.x);
+  const under = depthOf(cam.x) > 0;
   for (const o of list) {
+    if (under && !(o.p && o.p.e && o.p.e.id === myId && o.p.e.kind === "agent") && !inRegion(o.p ? o.p.x : o.x, o.p ? o.p.y : o.y)) continue;   // (only the part of the cave you're in)
     selMeasure(o);
     if (o.spr) {
       const [img, a, b2, w, h, dx, dy] = o.spr, key = o.x + "," + o.ty;
@@ -121,6 +123,7 @@ function frame(now) {
     else drawEntity(o.p, sx, sy, S, t, now);
   }
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
+    if (under && !inRegion(f.x, f.y)) continue;
     const px = sx(f.x), py = sy(f.y), tall = "TF".includes(combAt(f.x, f.y) || "");
     if (px < -S * 2 || py < -S * 3 || px > W + S || py > H + S) continue;
     drawFire(px, py, S, t, f.x, f.y);
@@ -137,7 +140,6 @@ function frame(now) {
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawHouses(sx, sy, S, dt, now);
   if (!drawCave(vis, sx, sy, S, t, now)) drawNight(vis, sx, sy, S, t);
-  levelFadeEnd(now);
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   drawSelector(aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null, sx, sy, now);

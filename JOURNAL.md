@@ -686,3 +686,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - User: weird not to show the level the player is on; the player showed above trees.
 - Change: no more land-above overlay underground: you see your own level, with a 0.45 s crossfade of the last frame when you change level. Holes are drawn right after the ground, before the y-sorted sprites (trees, people), so nothing is redrawn on top any more.
 - Result: 192 unit green; e2e 52/53, the failure (test_a_click_picks_on_the_move) also fails on the code before this change, and passes 3/3 alone: flaky.
+
+## Iteration 50: underground like a house
+- User: looked wrong; lost; couldn't see the top layer; use border/corner tiles instead of cropping.
+- Model: underground, the level above stays on screen, dimmed (a cave above is in its dark), and the part of the cave you're in (the open tiles joined to you within 7, plus the rock round them) is drawn over it with the soil sheet's and the stone sheet's own edge and corner tiles (caveview.js). The cave's dark covers only that part. Arriving it fades in (0.4 s); leaving it fades out over the new view. Only your part's sprites, people and fires show; the level below only through holes in it. The crossfade snapshot is gone.
+- Result: each level reads at a glance in screenshots and the 5-level walk. 194 unit + 53 e2e green.

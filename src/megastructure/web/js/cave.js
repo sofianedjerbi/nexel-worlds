@@ -1,12 +1,12 @@
 // Underground (layers.py): each level below the surface is a region far east of the one above. Down there it's
 // dark: you see a little way around you, around fires and torches, and where daylight falls down a ramp.
-// You always see the level you're on; the one below shows only through holes (layers.js). Walking down a mouth,
-// what's under it lights up and rises into place; you change level at its foot, with a short crossfade.
+// Underground you see the part of the cave you're in, set in the level above (caveview.js); the level below shows
+// only through holes (layers.js). Walking down a mouth, what's under it lights up and rises into place.
 
-const LAYER = 1000000, LAYER_B = LAYER / B, FADE_MS = 450;
+const LAYER = 1000000, LAYER_B = LAYER / B;
 const depthOf = (x) => Math.max(0, Math.floor((x + LAYER / 2) / LAYER));
 const clamp01 = (v) => Math.max(0, Math.min(1, v)), smooth = (v) => { v = clamp01(v); return v * v * (3 - 2 * v); };
-let caveDark = null, lastDepth = null, frameDepth = null, fadeShot = null, fadeAt = 0;
+let caveDark = null, lastDepth = null;
 
 // The cave mouth down from here (its top tile) you're walking into, and how far: `cut` 0 a tile and a half before
 // it .. 1 from its top on (how lit what's down it is)
@@ -20,21 +20,6 @@ function mouthNear(p) {
     if (k > 0) return {x, y, cut: smooth((p.y - (y - 1.5)) / 1.5) * k};
   }
   return null;
-}
-// Changing level: the last frame of the old one, fading out over the first frames of the new
-function levelFadeStart() {
-  const d = depthOf(cam.x);
-  if (frameDepth !== null && d !== frameDepth) {
-    if (!fadeShot) fadeShot = document.createElement("canvas");
-    fadeShot.width = cv.width; fadeShot.height = cv.height;
-    fadeShot.getContext("2d").drawImage(cv, 0, 0); fadeAt = performance.now();
-  }
-  frameDepth = d;
-}
-function levelFadeEnd(now) {
-  const a = 1 - (now - fadeAt) / FADE_MS;
-  if (!fadeShot || a <= 0) return;
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = smooth(a); ctx.drawImage(fadeShot, 0, 0); ctx.restore();
 }
 // The hole a mouth makes: its two tiles, as "x,y" keys (x: on whichever level you want them)
 const mouthHole = (x, y) => new Set([x + "," + y, x + "," + (y + 1)]);
@@ -61,7 +46,7 @@ function drawCave(vis, sx, sy, S, t, now) {
   const g = caveDark.getContext("2d");
   g.globalCompositeOperation = "source-over";
   g.clearRect(0, 0, W, H);
-  g.fillStyle = `rgba(14,10,18,${Math.min(.94, .82 + Math.max(1, d) * .02) * dark})`;   // darker deeper down
+  g.fillStyle = `rgba(14,10,18,${Math.min(.75, .55 + d * .04) * dark})`;   // the cave's own dark: darker deeper down
   g.fillRect(0, 0, W, H);
   g.globalCompositeOperation = "destination-out";
   const light = (x, y, r) => {
@@ -78,7 +63,11 @@ function drawCave(vis, sx, sy, S, t, now) {
     if (c === "l") light(sx(b.bx * B + i % B) + S / 2, sy(b.by * B + (i / B | 0)) + S / 2, S * 2.2);
   });
   for (const f of fireAt) light(sx(f.x) + S / 2, sy(f.y) + S / 2, S * 4);
-  ctx.drawImage(caveDark, 0, 0, W, H);
+  if (region && regionCv) {                                        // (only over the part of the cave you're in)
+    g.globalCompositeOperation = "destination-in"; g.imageSmoothingEnabled = false;
+    g.drawImage(regionCv, sx(region.x0), sy(region.y0), (region.x1 - region.x0 + 1) * S, (region.y1 - region.y0 + 1) * S);
+  }
+  ctx.globalAlpha = smooth((now - revealAt) / REVEAL_MS); ctx.drawImage(caveDark, 0, 0, W, H); ctx.globalAlpha = 1;
   return d;
 }
 
