@@ -5,11 +5,11 @@ A persistent top-down sandbox built for AI agents. This demo runs the whole game
 
 **Play:** https://sofianedjerbi.github.io/megastructure-demo/ · **What's new:** https://sofianedjerbi.github.io/megastructure-demo/showcase.html
 
-![Walking down a cave mouth into the cave below and back up](cave_transition.gif)
+![Walking down four cave mouths, from the meadow to level 4, and back up](five_levels.gif)
 
-New: dig a cave mouth with a pickaxe (X) and walk down it. First the cave room below appears cut out of the meadow, like
-walking into a house, with daylight all around. Then, as you walk on into the cave, the land fades and the dark closes in.
-There's no loading screen, and it works the same coming back up.
+New: layers. The level below is always visible down every cave mouth, a shade darker and sunk a little lower, and so on
+four levels deep. Dig a mouth with a pickaxe (X) and walk down it. The room below lights up and rises into place, then the
+dark closes in.
 
 WASD / arrows walk (Shift sprints) · Space does the main thing in front of you · X the other · E eats ·
 1–9 / Q pick what's in hand · B bag · C crafting · Enter chat · H help.

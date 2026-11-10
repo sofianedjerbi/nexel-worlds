@@ -1,43 +1,38 @@
 // Underground (layers.py): each level below the surface is a region far east of the one above. Down there it's
 // dark: you see a little way around you, around fires and torches, and where daylight falls down a ramp.
-// Through a cave mouth it's gradual, like walking into a house, then on into the dark:
-//   1. approaching the mouth, the cave room under it appears, cut out of the land like a house seen from inside
-//      (the room and its rock walls), the land around it still in daylight;
-//   2. on the mouth's slope you see both at once: the room below, the land around it (here you change level);
-//   3. walking on into the cave, the land around fades away and the dark closes in: the real underground.
-// Every step depends only on where you stand, and step 2 looks the same from either level, so the change of level
-// can't be seen. Coming up, the same backwards.
+// The level below is always in view down every mouth (layers.js). Walking down one, its room is lit more and more
+// (it's where you're going) and you change level on the slope, where both look the same; walking on into the cave,
+// the land around the room fades away and the dark closes in. Coming up, the same backwards.
 
 const LAYER = 1000000, LAYER_B = LAYER / B;
 const depthOf = (x) => Math.max(0, Math.floor((x + LAYER / 2) / LAYER));
 const clamp01 = (v) => Math.max(0, Math.min(1, v)), smooth = (v) => { v = clamp01(v); return v * v * (3 - 2 * v); };
 let caveDark = null, lastDepth = null, thru = null;
 
-// The cave mouth (its top tile) you're near, on either level, and where along the way through it you are:
-// `cut` how much the room below shows through the land (1 from the mouth's top on), `sky` how much of the land
-// around is still there (1 down to the mouth's foot, gone 2 tiles into the cave)
+// The cave mouth (its top tile) you're near and where along the way through it you are: a mouth down from this
+// level (`down`; `cut`: how lit its room is, 1 from the mouth's top on) or a ramp up from it (`sky`: how much of
+// the level above still shows around its room: 1 down to the ramp's foot, gone 2 tiles into the cave)
 function mouthNear(p, d) {
-  const want = d ? "l" : "O", rx = Math.round(p.x), ry = Math.round(p.y);
+  const rx = Math.round(p.x), ry = Math.round(p.y);
   for (let dy = -3; dy <= 3; dy++) for (let dx = -2; dx <= 2; dx++) {
-    const x = rx + dx, y = ry + dy;
-    if (combAt(x, y) !== want || combAt(x, y + 1) !== want || combAt(x, y - 1) === want) continue;
-    if (!d && p.y > y + 1.01) return null;                       // south of a mouth, on the surface: not in it
-    if (d && p.y < y - .01) return null;                         // behind a ramp, below: not on it
+    const x = rx + dx, y = ry + dy, c = combAt(x, y), down = c === "O";
+    if (!(down || (c === "l" && d)) || combAt(x, y + 1) !== c || combAt(x, y - 1) === c) continue;
+    if (down ? p.y > y + 1.01 : p.y < y - .01) continue;        // south of a mouth, or behind a ramp: not in it
     const k = smooth((2 - Math.abs(p.x - x)) / 1.3);             // fading out sideways, away from its lane
-    if (k <= 0) return null;
-    const cut = smooth((p.y - (y - 1.5)) / 1.5), sky = 1 - smooth((p.y - (y + 1)) / 2);
-    return {x, y, cut: d ? 1 : cut * k, sky: d ? sky * k : 1};
+    if (k <= 0) continue;
+    return down ? {x, y, down, cut: smooth((p.y - (y - 1.5)) / 1.5) * k, sky: 1}
+      : {x, y, down, cut: 1, sky: (1 - smooth((p.y - (y + 1)) / 2)) * k};
   }
   return null;
 }
 // The cave room under a mouth: its open tiles joined to the ramp (a few tiles around), and the rock walls around
-// them, as "x,y" keys on the cave's level (cx: the cave level's x of the mouth)
+// them (a round pit, about 7 tiles across, centred just below the mouth), as "x,y" keys on the cave's level (cx: the cave level's x of the mouth)
 function caveRoom(cx, y) {
   const open = new Set(), q = [[cx, y], [cx, y + 1]], room = new Set();
   const isOpen = (c) => c !== null && c !== "R" && c !== "*";
-  while (q.length && open.size < 70) {
+  while (q.length && open.size < 60) {
     const [x, yy] = q.shift(), k = x + "," + yy;
-    if (open.has(k) || Math.abs(x - cx) > 5 || yy < y - 1 || yy > y + 6 || !isOpen(combAt(x, yy))) continue;
+    if (open.has(k) || ((x - cx) / 3.6) ** 2 + ((yy - y - 2) / 3.6) ** 2 > 1 || !isOpen(combAt(x, yy))) continue;
     open.add(k);
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) q.push([x + dx, yy + dy]);
   }
@@ -59,48 +54,33 @@ function otherBlocks(shift, S) {
     }
   return out;
 }
-// The other level drawn over this one, `a` opaque: inside the cave room (from above) or outside it (from below)
-function drawThrough(m, shift, a, inside, sx, sy, S) {
+// From below: the level above drawn over this one around the ramp's room, `a` opaque
+function drawAbove(m, a, sx, sy, S) {
   if (a <= 0.01) return;
   if (!thru) thru = document.createElement("canvas");
   if (thru.width !== W || thru.height !== H) { thru.width = W; thru.height = H; }
   const g = thru.getContext("2d");
   g.globalCompositeOperation = "source-over"; g.imageSmoothingEnabled = false;
   g.clearRect(0, 0, W, H);
-  for (const b of otherBlocks(shift, S)) g.drawImage(b.canvas, sx(b.bx * B - shift * B), sy(b.by * B), B * S, B * S);
-  const cx = shift > 0 ? m.x + LAYER : m.x, off = shift > 0 ? LAYER : 0;    // the room is found on the cave's level
-  g.globalCompositeOperation = inside ? "destination-in" : "destination-out";
-  const room = caveRoom(cx, m.y), px = (x) => Math.round(sx(x - off)), py = (y) => Math.round(sy(y));
+  for (const b of otherBlocks(-LAYER_B, S)) g.drawImage(b.canvas, sx(b.bx * B + LAYER), sy(b.by * B), B * S, B * S);
+  const px = (x) => Math.round(sx(x)), py = (y) => Math.round(sy(y));
+  g.globalCompositeOperation = "destination-out";
   g.fillStyle = "#000"; g.beginPath();
-  for (const k of room) { const [x, y] = k.split(",").map(Number); g.rect(px(x), py(y), px(x + 1) - px(x), py(y + 1) - py(y)); }
+  for (const k of caveRoom(m.x, m.y)) { const [x, y] = k.split(",").map(Number); g.rect(px(x), py(y), px(x + 1) - px(x), py(y + 1) - py(y)); }
   g.fill();
-  ctx.globalAlpha = a; ctx.drawImage(thru, 0, 0);
-  // the cut's edge: a one-art-pixel outline in the pack's ink, just inside the room, like the edge of a wall
-  const lw = Math.max(2, Math.round(S / 16));
-  ctx.fillStyle = "#4a3530";
-  for (const k of room) {
-    const [x, y] = k.split(",").map(Number), x0 = px(x), x1 = px(x + 1), y0 = py(y), y1 = py(y + 1);
-    if (!room.has(x + "," + (y - 1))) ctx.fillRect(x0, y0, x1 - x0, lw);
-    if (!room.has(x + "," + (y + 1))) ctx.fillRect(x0, y1 - lw, x1 - x0, lw);
-    if (!room.has(x - 1 + "," + y)) ctx.fillRect(x0, y0, lw, y1 - y0);
-    if (!room.has(x + 1 + "," + y)) ctx.fillRect(x1 - lw, y0, lw, y1 - y0);
-  }
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = a; ctx.drawImage(thru, 0, 0); ctx.globalAlpha = 1;
 }
 
 function drawCave(vis, sx, sy, S, t, now) {
   const d = depthOf(cam.x), me_ = ents.get("agent" + myId);
   if (lastDepth !== null && d !== lastDepth) toast(d ? `Underground · depth ${d}` : "Back on the surface");
   lastDepth = d;
-  // how dark it is here: 1 underground, 0 above; near a cave mouth, as much as the land outside has faded
+  // how dark it is here: 1 underground, 0 above; coming up a ramp to the surface, as much as the land has come back
   let dark = d ? 1 : 0;
   const m = me_ && mouthNear(me_, d);
-  if (m) {
-    if (!d) drawThrough(m, LAYER_B, m.cut, true, sx, sy, S);       // above: the room below, cut out of the land
-    else drawThrough(m, -LAYER_B, m.sky, false, sx, sy, S);       // below: the land around the room
-    drawEntity(me_, sx, sy, S, t, now);                           // (you, over it)
-    if (d) dark = 1 - m.sky;
-  }
+  drawHoles(ctx, 0, sx, sy, S, m && m.down ? m : null);          // the levels below, down every mouth in view
+  if (m && !m.down) { drawAbove(m, m.sky, sx, sy, S); if (d === 1) dark = 1 - m.sky; }
+  if (me_) drawEntity(me_, sx, sy, S, t, now);                    // (you, over it)
   if (dark <= 0.01) return d;
   if (!caveDark) caveDark = document.createElement("canvas");
   if (caveDark.width !== W || caveDark.height !== H) { caveDark.width = W; caveDark.height = H; }
