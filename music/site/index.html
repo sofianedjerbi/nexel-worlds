@@ -52,7 +52,7 @@
     font-size:13px; margin-top:6px; font-variant-numeric:tabular-nums; }
   h2 { margin:0 0 12px; font-size:18px; font-weight:900; }
   h2 small { color:var(--ink2); font-weight:700; font-size:13px; margin-left:6px; }
-  #stems { display:grid; grid-template-columns:repeat(7, 1fr); gap:10px; }
+  #stems { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; }
   .stem { border:2px solid var(--line); border-radius:12px; padding:10px; background:#fffaf0;
     display:flex; flex-direction:column; gap:8px; align-items:center; transition:opacity .15s; }
   .stem.off { opacity:.45; }
@@ -98,28 +98,27 @@
   <section class="card">
     <h2>How it's made</h2>
     <div class="notes">
-      <div><b>Hook:</b> climb D, A, high D, then fall C, G, E. Up on D major, down on a borrowed C major: the "setting out" colour.</div>
-      <div><b>Shape:</b> the climb and the fall come back on Bm and G. It ends C# to D, a leading tone that pulls you home into the loop.</div>
-      <div><b>Distinct voices:</b> breathy ocarina, nasal chip square, plucked harp, bowed strings, pizzicato bass, metal glockenspiel, felt piano.</div>
-      <div><b>Sections:</b> theme, march (frame drum), a quiet piano breather, the chip theme, all together, fragments on glockenspiel.</div>
-      <div><b>Long play:</b> 80 BPM, the theme from bar 1, a breather every lap. Seamless 144 s loop. <a href="audio/master.wav" download>Download</a></div>
-      <div><b>Checks:</b> one key plus one borrowed chord, registers never overlap, no clashing notes, every section balanced by measurement.</div>
+      <div><b>Form:</b> about 4.8 minutes. The theme (A) six times, each on a new voice. A contrasting B in B minor three times, and three rests with no melody.</div>
+      <div><b>Theme:</b> rises to the 9th and hangs there, then sighs down onto the 9th of B minor. The melody rests on chord colours rather than spelling out triads.</div>
+      <div><b>B section:</b> long, yearning notes over Bm, G, D, Em, then C major 7, a borrowed chord that opens the road, and back home.</div>
+      <div><b>Voices:</b> concert flute, felt piano, nylon guitar, string ensemble, solo violins, pizzicato bass, frame drum, wind. No chip.</div>
+      <div><b>Long play:</b> 80 BPM, theme from bar 1, a rest every few minutes. Seamless 288 s loop. <a href="audio/master.wav" download>Download</a></div>
+      <div><b>Checks:</b> registers never overlap, no clashing notes, loudness measured per section.</div>
     </div>
   </section>
 </main>
 
 <script>
 const STEM_INFO = {
-  lead:    { what: "ocarina: breathy, singing vibrato",   color: "#e48a7a" },
-  chip:    { what: "12.5% chip square: nasal, slides in", color: "#e6b44f" },
-  harp:    { what: "plucked harp ostinato",               color: "#d99bc4" },
-  strings: { what: "bowed string ensemble",               color: "#8fb3e0" },
-  bass:    { what: "pizzicato upright bass",              color: "#8d6bb5" },
-  keys:    { what: "glockenspiel accents, felt piano",    color: "#5fb8b0" },
-  perc:    { what: "frame drum march, shaker, wind",      color: "#6fae78" },
+  flute:   { what: "concert flute: airy, blooming vibrato", color: "#e48a7a" },
+  piano:   { what: "felt piano: theme, slow chords",        color: "#e6b44f" },
+  guitar:  { what: "nylon guitar ostinato",                 color: "#d99bc4" },
+  strings: { what: "string pad, solo violins on the theme", color: "#8fb3e0" },
+  bass:    { what: "pizzicato upright bass",                color: "#8d6bb5" },
+  perc:    { what: "frame drum march, shaker, wind",        color: "#6fae78" },
 };
-const SEC_COLORS = { 1: "#d9e8d0", 2: "#f7e0a3", 3: "#f4c6b6", 4: "#cfe0f0", 5: "#f7e0a3", 6: "#e3d6ef" };
-const SEC_RGB = { 1: [217,232,208], 2: [247,224,163], 3: [244,198,182], 4: [207,224,240], 5: [247,224,163], 6: [227,214,239] };
+const KIND_COLORS = { A: "#f7e0a3", B: "#cfe0f0", rest: "#d9e8d0" };
+const KIND_RGB = { A: [247,224,163], B: [207,224,240], rest: [217,232,208] };
 
 let ctx, meta, buffers = {}, nodes = {}, sources = [], master, analyser;
 let playing = false, startAt = 0, offset = 0, muted = {}, solo = null;
@@ -134,8 +133,9 @@ async function load() {
   const secs = $("sections");
   meta.sections.forEach((s, i) => {
     const d = document.createElement("div");
-    d.style.background = SEC_COLORS[s.id];
-    d.innerHTML = `<b>${s.id}</b>${s.name}`;
+    d.style.background = KIND_COLORS[s.kind];
+    d.innerHTML = `<b>${s.kind === 'rest' ? '~' : s.kind}</b>`;
+    d.title = s.name;
     d.dataset.i = i;
     secs.appendChild(d);
   });
@@ -251,7 +251,7 @@ function draw() {
   const beat = t / beatLen;
   const phase = beat % 1;
   const sec = sectionAt(t);
-  const [r, gg, b] = SEC_RGB[sec.id];
+  const [r, gg, b] = KIND_RGB[sec.kind];
 
   // soft section-colored sun
   const pulse = playing ? 0.5 + 0.5 * Math.sin(t * 0.4) : 0;

@@ -1,24 +1,20 @@
-"""Adventurous cozy loop to play under the game for 10-20 minutes. Cozy village x blocky meadow x setting out.
+"""Meadow Road: an adventurous, cozy loop to play under the game. About 4.8 minutes, seamless.
 
-Pure numpy, 48 kHz, 80 BPM, 48 bars = 144 s, seamless. The theme starts in bar 1.
+Pure numpy, 48 kHz, 80 BPM, 96 bars = 288 s. The theme starts in bar 1.
 
-The theme (8 bars, D major with a borrowed C chord for the "setting out" colour):
-    D    D5 A5 D6~~~~      climb to the octave: short-short-long
-    C    C6~~ G5 E5~~      fall through the C chord: long-short-long (the mirror)
-    G    G5 A5 B5~~~~      step up
-    D    A5~~~~~~          breathe
-    Bm   D5 A5 D6~~~~      climb again
-    G    D6~~ B5 G5~~      fall again
-    Em   G5 F#5 E5~~~~     step down (mirror of bar 3)
-    A    E5~~ B4 C#5~~~~   leading tone, pulls home to D
+Form, in 8-bar blocks (A = theme, B = contrast in B minor, rest = no melody):
+    A piano | A flute | B piano | A flute+strings, march | rest piano | B flute
+    A solo strings | rest guitar | A flute, march | B solo strings | A piano | rest
+The theme comes back six times, each time on a different voice; the B section gives it a story.
 
-Every part has its own timbre family, so the ear can tell them apart:
-    ocarina (breathy lead), chip square (nasal, buzzy), harp (plucked ostinato), strings (bowed),
-    pizzicato upright bass, glockenspiel (metal accents), felt piano (only in the breathers),
-    soft frame drum + shaker, wind.
+Harmony: D major with 9ths, 7ths and sus chords; B borrows C major 7 for the "road ahead" colour.
+The melody rests on chord colours (9ths, 7ths) instead of spelling out triads.
 
-Checks: registers never overlap (bass < harp/strings < melody < glock), no clashing notes.
-All effects are circular, so the loop has no seam.
+Voices, each from its own family: concert flute, felt piano, nylon guitar (ostinato),
+string ensemble, solo strings, pizzicato upright bass, frame drum + shaker, wind.
+
+Checks: registers never overlap (bass < guitar/strings pad < melody), no clashing notes,
+per-section loudness printed. All effects circular, so the loop has no seam.
 
     uv run python music/compose.py      # writes music/site/audio/*.wav + track.json
 """
@@ -32,12 +28,12 @@ import numpy as np
 SR = 48000
 BPM = 80
 BEAT = 60 / BPM
-BARS = 48
+BARS = 96
 LOOP_S = BARS * 4 * BEAT
 LOOP_N = int(round(LOOP_S * SR))
 TAIL = 6 * SR
 OUT = Path(__file__).with_name("site") / "audio"
-rng = np.random.default_rng(8)
+rng = np.random.default_rng(21)
 
 PC = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 
@@ -81,13 +77,11 @@ def bp(lo, hi):
 
 
 def peak(fc, q, gain):
-    """A resonant bump (body / formant), as a gain curve."""
     return lambda f: 1 + gain / (1 + ((f - fc) / (fc / q)) ** 2)
 
 
 def wobble(t_abs, depth=1.0):
-    """Gentle tape wow in semitones; whole cycles per loop, so seamless."""
-    return depth * (0.03 * np.sin(2 * np.pi * 41 / LOOP_S * t_abs) + 0.02 * np.sin(2 * np.pi * 13 / LOOP_S * t_abs + 1))
+    return depth * (0.03 * np.sin(2 * np.pi * 61 / LOOP_S * t_abs) + 0.02 * np.sin(2 * np.pi * 23 / LOOP_S * t_abs + 1))
 
 
 def phase(f, n, t0, semis=0.0, wob=1.0):
@@ -96,8 +90,7 @@ def phase(f, n, t0, semis=0.0, wob=1.0):
 
 def vibrato(n, depth, rate, delay, jitter=0.0):
     t = tt(n)
-    ramp = np.clip((t - delay) / 0.35, 0, 1)
-    return depth * ramp * np.sin(2 * np.pi * rate * t + jitter)
+    return depth * np.clip((t - delay) / 0.4, 0, 1) * np.sin(2 * np.pi * rate * t + jitter)
 
 
 def release(t, dur, r):
@@ -106,102 +99,91 @@ def release(t, dur, r):
 
 # ------------------------------------------------------------------ instruments (f, dur, vel, t0)
 
-def ocarina(f, dur, vel, t0):
-    """Breathy vessel flute: nearly pure tone, a chiff of air on the attack, singing vibrato."""
+def flute(f, dur, vel, t0):
+    """Concert flute: airy but full, a soft chiff, vibrato that blooms on long notes."""
     n = int((dur + 0.5) * SR)
     t = tt(n)
-    ph = phase(f, n, t0, -0.25 * np.exp(-t / 0.03) + vibrato(n, 0.2, 5.4, 0.25), wob=0.3)
-    tone = np.sin(ph) + 0.07 * np.sin(2 * ph) + 0.12 * np.sin(3 * ph)
-    breath = fft_filter(rng.standard_normal(n), bp(f * 0.8, f * 3)) * (0.05 + 0.25 * np.exp(-t / 0.04))
-    env = np.clip(t / 0.05, 0, 1) * release(t, dur, 0.12) * (0.9 + 0.1 * np.exp(-t / 0.2))
-    return 0.36 * vel * (tone + breath) * env
+    ph = phase(f, n, t0, -0.12 * np.exp(-t / 0.04) + vibrato(n, 0.16, 5.0, 0.3), wob=0.3)
+    tone = np.sin(ph) + 0.32 * np.sin(2 * ph) + 0.12 * np.sin(3 * ph) + 0.05 * np.sin(4 * ph)
+    air = fft_filter(rng.standard_normal(n), bp(f * 1.5, 9000)) * (0.035 + 0.18 * np.exp(-t / 0.05))
+    swell = 0.85 + 0.15 * np.clip(t / 0.8, 0, 1)
+    env = np.clip(t / 0.07, 0, 1) * release(t, dur, 0.15) * swell
+    return 0.3 * vel * (tone + air) * env
 
 
-def chip_square(f, dur, vel, t0):
-    """Nasal 12.5% pulse, slides in from below, quick vibrato: unmistakably a chip."""
-    n = int((dur + 0.25) * SR)
+def felt_piano(f, dur, vel, t0):
+    """Felt piano: warm, slightly inharmonic, long ring, tiny stereo detune."""
+    n = int((dur + 3.0) * SR)
     t = tt(n)
-    ph = phase(f, n, t0, -0.6 * np.exp(-t / 0.018) + vibrato(n, 0.15, 6.2, 0.2), wob=0.2)
-    y = np.zeros(n)
-    for k in range(1, 50):
-        if k * f > 9000:
-            break
-        y += np.sin(np.pi * k * 0.125) / k * np.sin(k * ph) / (1 + (k * f / 5500) ** 2)
-    env = np.clip(t / 0.004, 0, 1) * (0.7 + 0.3 * np.exp(-t / 0.15)) * release(t, dur, 0.06)
-    return 0.3 * vel * y * env
+    bright = 900 + 1800 * vel
+    out = []
+    for det in (-1.5, 1.5):
+        ph = phase(f, n, t0, det / 100, wob=1.0)
+        y = np.zeros(n)
+        for k in range(1, 14):
+            fk = k * np.sqrt(1 + 0.0003 * k * k)
+            if f * fk > 8000:
+                break
+            tau = 4.0 / k ** 0.7 * (220 / max(f, 110)) ** 0.35
+            y += (1 / k ** 1.15) / (1 + (f * fk / bright) ** 2) * np.sin(fk * ph) * (0.6 * np.exp(-t / (tau * 0.3)) + 0.4 * np.exp(-t / tau))
+        out.append(y)
+    thump = fft_filter(rng.standard_normal(n), lp(600)) * np.exp(-t / 0.015) * 0.08
+    env = np.clip(t / 0.004, 0, 1) * release(t, dur, 0.35)
+    return 0.34 * vel * np.stack([out[0] + thump, out[1] + thump]) * env
 
 
-def harp(f, dur, vel, t0):
-    """Plucked string: plucked near the end (bright), upper partials die fast, a small wooden body."""
-    n = int(2.6 * SR)
+def guitar(f, dur, vel, t0):
+    """Nylon string: plucked in the middle (round), warm body, short sweet ring."""
+    n = int(2.2 * SR)
     t = tt(n)
     ph = phase(f, n, t0, wob=0.3)
     y = np.zeros(n)
-    for k in range(1, 24):
-        fk = k * np.sqrt(1 + 0.0001 * k * k)
-        if f * fk > 9000:
+    for k in range(1, 20):
+        fk = k * np.sqrt(1 + 0.00008 * k * k)
+        if f * fk > 7000:
             break
-        y += np.sin(np.pi * k * 0.18) / k * np.sin(fk * ph) * np.exp(-t * (0.9 + 0.55 * k * k ** 0.5))
-    y += fft_filter(rng.standard_normal(n), bp(2000, 7000)) * np.exp(-t / 0.004) * 0.15
-    y = fft_filter(y, peak(260, 2.0, 0.8))
-    return 0.3 * vel * y * np.clip(t / 0.0015, 0, 1)
+        y += np.sin(np.pi * k * 0.13) / k * np.sin(fk * ph) * np.exp(-t * (1.3 + 0.9 * k ** 1.3))
+    y += fft_filter(rng.standard_normal(n), bp(1500, 5000)) * np.exp(-t / 0.003) * 0.08
+    y = fft_filter(y, lambda fr: peak(110, 1.5, 1.2)(fr) * peak(220, 2.0, 0.6)(fr) * lp(4500, 1)(fr))
+    env = np.clip(t / 0.002, 0, 1) * release(t, dur + 0.3, 0.25)
+    return 0.32 * vel * y * env
+
+
+def _bowed(f, n, t0, players, bright, vib_depth):
+    out = np.zeros((2, n))
+    for j, (det, pan) in enumerate(players):
+        ph = phase(f, n, t0, det / 100 + vibrato(n, vib_depth, 5.0 + 0.35 * j, 0.12, j * 2.1))
+        y = sum(np.sin(k * ph) / k / (1 + (k * f / bright) ** 2) for k in range(1, 28) if k * f < 9000)
+        out[0] += np.cos(pan * np.pi / 2) * y
+        out[1] += np.sin(pan * np.pi / 2) * y
+    return np.stack([fft_filter(c, lambda fr: peak(1000, 1.4, 1.0)(fr) * peak(2900, 2.5, 0.5)(fr) * hp(180, 1)(fr)) for c in out])
 
 
 def strings(f, dur, vel, t0):
-    """Bowed ensemble: three players with their own vibrato, a bright bow, a slow bow-in."""
+    """String ensemble pad: three players, slow bow."""
     n = int((dur + 1.0) * SR)
     t = tt(n)
-    out = np.zeros((2, n))
-    for j, (det, pan) in enumerate(((-8, 0.15), (0, 0.5), (9, 0.85))):
-        ph = phase(f, n, t0, det / 100 + vibrato(n, 0.12, 5.0 + 0.4 * j, 0.15, j * 2.1))
-        y = sum(np.sin(k * ph) / k / (1 + (k * f / 2600) ** 2) for k in range(1, 26) if k * f < 9000)
-        out[0] += np.cos(pan * np.pi / 2) * y
-        out[1] += np.sin(pan * np.pi / 2) * y
-    out = np.stack([fft_filter(c, lambda fr: peak(1100, 1.5, 1.2)(fr) * peak(2800, 2.5, 0.6)(fr)) for c in out])
-    env = np.clip(t / 0.45, 0, 1) ** 1.5 * release(t, dur, 0.45)
-    return 0.035 * vel * out * env
+    out = _bowed(f, n, t0, ((-8, 0.15), (0, 0.5), (9, 0.85)), 2400, 0.12)
+    return 0.03 * vel * out * np.clip(t / 0.5, 0, 1) ** 1.5 * release(t, dur, 0.5)
+
+
+def solo_strings(f, dur, vel, t0):
+    """A small violin section carrying the melody: brighter, expressive vibrato, quicker bow."""
+    n = int((dur + 0.8) * SR)
+    t = tt(n)
+    out = _bowed(f, n, t0, ((-4, 0.4), (5, 0.6)), 3400, 0.2)
+    bow = np.clip(t / 0.12, 0, 1) * (0.85 + 0.15 * np.clip(t / 1.0, 0, 1)) * release(t, dur, 0.25)
+    return 0.14 * vel * out * bow
 
 
 def pizz_bass(f, dur, vel, t0):
-    """Upright bass pizzicato: a woody thump, round fundamental, short."""
     n = int((dur + 0.5) * SR)
     t = tt(n)
     ph = phase(f, n, t0, wob=0.2)
     y = sum(np.sin(np.pi * k * 0.25) / k * np.sin(k * ph) * np.exp(-t * (3 + 6 * k)) for k in range(1, 12))
     y += 0.6 * np.sin(ph) * np.exp(-t / 0.6)
     thump = fft_filter(rng.standard_normal(n), lp(400)) * np.exp(-t / 0.012) * 0.3
-    env = np.clip(t / 0.003, 0, 1) * release(t, dur, 0.1)
-    return 0.5 * vel * (y + thump) * env
-
-
-def glock(f, dur, vel, t0):
-    n = int(2.4 * SR)
-    t = tt(n)
-    y = (np.sin(2 * np.pi * f * t) * np.exp(-t / 0.9)
-         + 0.45 * np.sin(2 * np.pi * f * 2.76 * t) * np.exp(-t / 0.3)
-         + 0.2 * np.sin(2 * np.pi * f * 5.40 * t) * np.exp(-t / 0.1)
-         + 0.08 * np.sin(2 * np.pi * f * 8.93 * t) * np.exp(-t / 0.04))
-    return 0.13 * vel * y * np.clip(t / 0.0008, 0, 1)
-
-
-def felt_piano(f, dur, vel, t0):
-    """Muffled felt piano for the quiet breathers."""
-    n = int((dur + 3.0) * SR)
-    t = tt(n)
-    bright = 800 + 1400 * vel
-    out = []
-    for det in (-1.5, 1.5):
-        ph = phase(f, n, t0, det / 100, wob=1.2)
-        y = np.zeros(n)
-        for k in range(1, 12):
-            fk = k * np.sqrt(1 + 0.0003 * k * k)
-            if f * fk > 7000:
-                break
-            tau = 4.0 / k ** 0.7 * (220 / max(f, 110)) ** 0.35
-            y += (1 / k ** 1.2) / (1 + (f * fk / bright) ** 2) * np.sin(fk * ph) * (0.6 * np.exp(-t / (tau * 0.3)) + 0.4 * np.exp(-t / tau))
-        out.append(y)
-    env = np.clip(t / 0.005, 0, 1) * release(t, dur, 0.4)
-    return 0.34 * vel * np.stack(out) * env
+    return 0.5 * vel * (y + thump) * np.clip(t / 0.003, 0, 1) * release(t, dur, 0.1)
 
 
 def _frame_drum():
@@ -215,7 +197,7 @@ def _frame_drum():
 def _shaker():
     n = int(0.1 * SR)
     t = tt(n)
-    return fft_filter(rng.standard_normal(n), bp(4500, 10000)) * np.clip(t / 0.012, 0, 1) * np.exp(-t / 0.03) * 0.2
+    return fft_filter(rng.standard_normal(n), bp(4500, 10000)) * np.clip(t / 0.012, 0, 1) * np.exp(-t / 0.03) * 0.4
 
 
 HITS = {"drum": [_frame_drum() for _ in range(3)], "shaker": [_shaker() for _ in range(8)]}
@@ -231,15 +213,63 @@ def hit(kind):
 
 DRUM, SHAKER = hit("drum"), hit("shaker")
 
-# ------------------------------------------------------------------ harmony: one 8-bar cycle
+# ------------------------------------------------------------------ harmony
 
-CHORDS = {"Dadd9": "D F# A E", "Cadd9": "C E G D", "Gadd9": "G B D A", "Bm7": "B D F# A",
-          "Em9": "E G B D F#", "Aadd9": "A C# E B"}
-PROG = ["Dadd9", "Cadd9", "Gadd9", "Dadd9", "Bm7", "Gadd9", "Em9", "Aadd9"]
+CHORDS = {
+    "Dmaj9": "D F# A C# E", "Dadd9": "D F# A E", "Bm9": "B D F# A C#", "Gmaj9": "G B D F# A",
+    "Gmaj7": "G B D F#", "F#m7": "F# A C# E", "Em9": "E G B D F#", "A7sus": "A D E G", "A7": "A C# E G",
+    "Cmaj7": "C E G B",
+}
+# a bar is one chord, or two (first half, second half)
+PROG = {
+    "A": ["Dmaj9", "Bm9", "Gmaj9", ("A7sus", "A7"), "Dmaj9", "F#m7", "Gmaj9", ("Em9", "A7sus")],
+    "B": ["Bm9", "Gmaj7", "Dadd9", "Em9", "Bm9", "Gmaj7", "Cmaj7", ("A7sus", "A7")],
+}
 
+THEME = {
+    "A": [
+        [(0, 2, "A4"), (2, 1, "D5"), (3, 5, "E5")],                 # rises to the 9th and hangs there
+        [(0, 2, "F#5"), (2, 1, "E5"), (3, 1, "D5"), (4, 4, "C#5")], # falls to the 9th of Bm
+        [(0, 2, "B4"), (2, 1, "E5"), (3, 5, "F#5")],                # same rise, a step higher: maj7 of G
+        [(0, 2, "E5"), (2, 2, "D5"), (4, 4, "C#5")],                # sus to its resolution
+        [(0, 2, "A4"), (2, 1, "D5"), (3, 3, "E5"), (6, 1, "F#5"), (7, 1, "A5")],
+        [(0, 3, "C#6"), (3, 1, "B5"), (4, 4, "A5")],                # the one high point
+        [(0, 3, "B5"), (3, 1, "A5"), (4, 4, "F#5")],
+        [(0, 4, "E5"), (4, 4, "D5")],                               # D over the sus: home, open
+    ],
+    "B": [
+        [(0, 6, "F#5"), (6, 1, "E5"), (7, 1, "F#5")],
+        [(0, 6, "B5"), (6, 2, "A5")],
+        [(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "D5")],
+        [(0, 6, "G5"), (6, 2, "F#5")],
+        [(0, 3, "F#5"), (3, 1, "A5"), (4, 4, "B5")],
+        [(0, 3, "D6"), (3, 1, "B5"), (4, 4, "A5")],
+        [(0, 4, "G5"), (4, 2, "E5"), (6, 2, "G5")],                 # over C major 7: the road opens
+        [(0, 4, "A5"), (4, 4, "E5")],
+    ],
+}
 
-def chord_at_bar(bar):
-    return PROG[bar % 8]
+# (part, melody voice, accompaniment, extras)
+FORM = [
+    ("A", "piano", "guitar", ""),
+    ("A", "flute", "guitar", "shaker"),
+    ("B", "piano", "guitar-light", ""),
+    ("A", "flute+strings", "guitar", "march"),
+    ("A", None, "piano", "rest"),
+    ("B", "flute", "guitar", "shaker"),
+    ("A", "solo strings", "piano", ""),
+    ("B", None, "guitar", "rest"),
+    ("A", "flute", "guitar", "march"),
+    ("B", "solo strings", "guitar-light", ""),
+    ("A", "piano", "guitar", ""),
+    ("A", None, "piano", "rest"),
+]
+SECTION_NAMES = ["theme · piano", "theme · flute", "B · piano", "theme · march", "rest", "B · flute",
+                 "theme · strings", "rest · guitar", "theme · march", "B · strings", "theme · piano", "rest"]
+KINDS = ["A", "A", "B", "A", "rest", "B", "A", "rest", "A", "B", "A", "rest"]
+
+OSTINATO = [(0, "r", 1.0), (1, "fifth", 0.7), (2, "color", 0.65), (3, "third", 0.85),
+            (4, "color", 0.6), (5, "fifth", 0.6), (6, "third", 0.8), (7, "color", 0.55)]
 
 
 def pcs(ch):
@@ -250,41 +280,40 @@ def place(pc, lo):
     return lo + (pc - lo) % 12
 
 
+def colour(ch):
+    p = pcs(ch)
+    major = (p[1] - p[0]) % 12 == 4
+    return p[4] if major and len(p) == 5 else p[3]
+
+
 def lh_notes(ch):
-    """root, fifth, colour (add9 / 7th), third an octave up: G2..G4."""
+    """root, fifth, colour (9th on major chords, else the 7th), third an octave up: E2..G4."""
     p = pcs(ch)
-    r = place(p[0], 43)
+    r = place(p[0], 40)
     fifth = place(p[2], r + 1)
-    color = place(p[3], fifth + 1)
-    third = place(p[1], color + 1)
-    return r, fifth, color, third
+    c = place(colour(ch), fifth + 1)
+    return r, fifth, c, place(p[1], c + 1)
 
 
-def string_voicing(ch):
+def pad_voicing(ch):
     p = pcs(ch)
-    return sorted(place(x, 57) for x in (p[1], p[2], p[3]))   # rootless, A3..G#4
+    return sorted(place(x, 57) for x in (p[1], p[2], colour(ch)))   # rootless, A3..G#4
 
 
-# ------------------------------------------------------------------ the theme
+def segments(entry):
+    return [(entry, 0, 8)] if isinstance(entry, str) else [(entry[0], 0, 4), (entry[1], 4, 4)]
 
-THEME = [
-    [(0, 2, "D5"), (2, 1, "A5"), (3, 5, "D6")],
-    [(0, 3, "C6"), (3, 1, "G5"), (4, 4, "E5")],
-    [(0, 2, "G5"), (2, 2, "A5"), (4, 4, "B5")],
-    [(0, 6, "A5")],
-    [(0, 2, "D5"), (2, 1, "A5"), (3, 5, "D6")],
-    [(0, 3, "D6"), (3, 1, "B5"), (4, 4, "G5")],
-    [(0, 2, "G5"), (2, 2, "F#5"), (4, 4, "E5")],
-    [(0, 3, "E5"), (3, 1, "B4"), (4, 4, "C#5")],
-]
-OSTINATO = [(0, "r", 1.0), (1, "fifth", 0.7), (2, "color", 0.65), (3, "third", 0.85),
-            (4, "color", 0.6), (5, "fifth", 0.6), (6, "third", 0.8), (7, "color", 0.55)]
-GLOCK = {1: (4, "E6"), 3: (2, "F#6"), 5: (4, "G6"), 7: (4, "A6")}   # accents echoing each phrase end
 
-PLAN = ["theme", "theme+march", "breather", "chip", "full", "fragments"]
-SECTION_NAMES = ["theme", "march", "breather", "chip theme", "all together", "fragments"]
+def chord_at(bar, slot):
+    part = FORM[bar // 8][0]
+    for ch, start, length in segments(PROG[part][bar % 8]):
+        if start <= slot < start + length:
+            return ch
 
-STEMS = ["lead", "chip", "harp", "strings", "bass", "keys", "perc"]
+
+# ------------------------------------------------------------------ arrangement
+
+STEMS = ["flute", "piano", "guitar", "strings", "bass", "perc"]
 events = []  # (t, dur, midi, vel, inst, pan, stem, rev, echo)
 
 
@@ -297,110 +326,102 @@ def note(slot, length, m, vel, inst, stem, pan=0.0, rev=0.25, echo=0.0, human=Tr
 
 
 for bar in range(BARS):
-    cyc, i = bar // 8, bar % 8
-    ch = chord_at_bar(bar)
+    blk, i = bar // 8, bar % 8
+    part, voice, accomp, extra = FORM[blk]
     s0 = bar * 8
-    plan = PLAN[cyc]
-    lh = dict(zip(("r", "fifth", "color", "third"), lh_notes(ch)))
-    root = place(pcs(ch)[0], 33)
+    segs = segments(PROG[part][i])
 
     # --- melody
-    for slot, ln, n in THEME[i]:
+    for slot, ln, n in THEME[part][i]:
         m = midi(n)
-        if plan in ("theme", "theme+march", "full"):
-            note(s0 + slot, ln, m, 0.9, ocarina, "lead", 0.0, rev=0.25, echo=0.1)
-        if plan == "chip":
-            note(s0 + slot, ln, m, 0.9, chip_square, "chip", 0.0, rev=0.2, echo=0.25)
-        if plan == "full":
-            note(s0 + slot, ln, m, 0.45, chip_square, "chip", 0.3, rev=0.2, echo=0.15)
-        if plan == "fragments" and i in (0, 1, 4, 5):
-            note(s0 + slot, ln + (2 if slot >= 3 else 0), m, 1.3, glock, "keys", 0.2, rev=0.4, echo=0.35)
-    if plan in ("theme+march", "full", "chip") and i in GLOCK:
-        slot, n = GLOCK[i]
-        note(s0 + slot, 2, midi(n), 0.7, glock, "keys", 0.45, rev=0.4, echo=0.3)
+        if voice == "piano":
+            note(s0 + slot, ln, m, 0.82, felt_piano, "piano", 0.1, rev=0.25, echo=0.08)
+        elif voice in ("flute", "flute+strings"):
+            note(s0 + slot, ln, m, 0.9, flute, "flute", 0.0, rev=0.25, echo=0.12)
+            if voice == "flute+strings":
+                note(s0 + slot, ln, m, 0.45, solo_strings, "strings", 0.15, rev=0.35)
+        elif voice == "solo strings":
+            note(s0 + slot, ln, m, 0.9, solo_strings, "strings", 0.0, rev=0.3, echo=0.06)
+    if voice is None and i in (0, 4):   # in the rests, the piano remembers the opening bar of the tune
+        for slot, ln, n in THEME[part][i]:
+            note(s0 + slot, ln, midi(n), 0.42, felt_piano, "piano", 0.15, rev=0.45, echo=0.2)
 
-    # --- accompaniment: harp ostinato, or slow felt piano in the breather
-    if plan == "breather":
-        note(s0, 8, lh["r"], 0.42, felt_piano, "keys", -0.3, rev=0.45)
-        note(s0 + 0.2, 8, lh["fifth"], 0.32, felt_piano, "keys", -0.2, rev=0.45)
-        note(s0 + 3, 5, lh["color"], 0.28, felt_piano, "keys", 0.0, rev=0.5)
-        note(s0 + 5, 3, lh["third"], 0.26, felt_piano, "keys", 0.15, rev=0.5)
-        if i in (1, 5):   # the hook, remembered, on the piano, once in a while
-            for slot, ln, n in THEME[i - 1]:
-                note(s0 + slot, ln, midi(n), 0.45, felt_piano, "keys", 0.1, rev=0.5, echo=0.2)
-    else:
-        for slot, which, acc in OSTINATO:
-            if plan == "fragments" and slot % 2:
-                continue
-            note(s0 + slot, 8 - slot, lh[which], 0.75 * acc, harp, "harp", -0.4 + 0.1 * slot, rev=0.28)
+    # --- accompaniment
+    for ch, start, length in segs:
+        lh = dict(zip(("r", "fifth", "color", "third"), lh_notes(ch)))
+        if accomp.startswith("guitar"):
+            for slot, which, acc in OSTINATO:
+                if not (start <= slot < start + length):
+                    continue
+                if accomp == "guitar-light" and slot % 2:
+                    continue
+                v = 0.7 * acc * (0.85 if extra == "rest" else 1.0)
+                note(s0 + slot, start + length - slot, lh[which], v, guitar, "guitar", -0.35 + 0.08 * slot, rev=0.28)
+        else:   # felt piano chords, slow and spread
+            note(s0 + start, length, lh["r"], 0.42, felt_piano, "piano", -0.3, rev=0.4)
+            note(s0 + start + 0.2, length - 0.2, lh["fifth"], 0.32, felt_piano, "piano", -0.2, rev=0.4)
+            note(s0 + start + min(3, length - 1), length - min(3, length - 1), lh["color"], 0.27, felt_piano, "piano", 0.0, rev=0.45)
+            if length == 8:
+                note(s0 + 5, 3, lh["third"], 0.25, felt_piano, "piano", 0.15, rev=0.45)
 
-    # --- strings: bowed chord each bar; louder in the march and the finale
-    if plan != "fragments" or i < 4:
-        sv = {"theme": 0.6, "theme+march": 0.9, "breather": 0.55, "chip": 0.5, "full": 1.0, "fragments": 0.5}[plan]
-        for m in string_voicing(ch):
-            note(s0, 8, m, sv, strings, "strings", 0.0, rev=0.45, human=False)
+        # string pad
+        sv = {"": 0.6, "shaker": 0.6, "march": 0.9, "rest": 0.55}[extra]
+        for m in pad_voicing(ch):
+            note(s0 + start, length, m, sv, strings, "strings", 0.0, rev=0.45, human=False)
 
-    # --- pizzicato bass on 1 and 3
-    note(s0, 3, root, 0.85, pizz_bass, "bass", 0.0, rev=0.08)
-    if plan != "breather":
-        note(s0 + 4, 3, root + 7 if i % 2 else root, 0.65, pizz_bass, "bass", 0.0, rev=0.08)
+        # pizzicato bass: root on the chord, fifth on beat 3 when the chord lasts the bar
+        root = place(pcs(ch)[0], 33)
+        note(s0 + start, 3, root, 0.85, pizz_bass, "bass", 0.0, rev=0.08)
+        if length == 8 and extra != "rest":
+            note(s0 + 4, 3, root + 7 if i % 2 else root, 0.62, pizz_bass, "bass", 0.0, rev=0.08)
 
-    # --- percussion: a gentle march (boom . . b boom . b .) in march and finale, shaker under any theme
-    if plan in ("theme+march", "full"):
+    # --- percussion
+    if extra == "march":
         for slot, v in ((0, 1.0), (3, 0.55), (4, 0.8), (6, 0.5)):
             note(s0 + slot, 1, 60, v, DRUM, "perc", 0.0, rev=0.15)
-    if plan in ("theme", "theme+march", "chip", "full"):
+    if extra in ("shaker", "march"):
         for slot in (1, 3, 5, 7):
             note(s0 + slot, 1, 60, 0.9 if slot in (3, 7) else 0.6, SHAKER, "perc", 0.35, rev=0.1)
 
 
 # ------------------------------------------------------------------ checks
 
-def held_notes():
-    return [(t, t + d, m) for t, d, m, v, inst, *_ in events
-            if inst in (harp, strings, pizz_bass) or (inst is felt_piano and m < 69)]
-
-
 def clash_report():
     """Melody voices vs sounding accompaniment: minor 9ths always, off-chord semitones / tritones."""
-    held = held_notes()
+    held = [(t, t + d, m) for t, d, m, v, inst, *_ in events
+            if inst in (guitar, strings, pizz_bass) or (inst is felt_piano and m < 69)]
     bad = []
     for t, d, m, v, inst, *_ in events:
-        if getattr(inst, "unpitched", False) or (t, t + d, m) in held:
+        if getattr(inst, "unpitched", False) or m < 69:
             continue
-        ch = chord_at_bar(int(t / (4 * BEAT)))
+        bar = int(t / (4 * BEAT))
+        ch = chord_at(bar, int((t - bar * 4 * BEAT) / (BEAT / 2)))
         for a, b, h in held:
-            if a <= t < b - 0.05 and h != m:
+            if a <= t < b - 0.05:
                 iv = (m - h) % 12
                 if iv == 1 or (iv in (11, 6) and m % 12 not in pcs(ch)):
-                    bad.append((round(t, 2), m, h, iv))
+                    bad.append((round(t, 2), ch, m, h, iv))
     return bad
 
 
 def accomp_clashes():
     out = []
-    for ch in set(PROG):
-        v = sorted(set(lh_notes(ch) + tuple(string_voicing(ch))))
+    for ch in CHORDS:
+        v = sorted(set(lh_notes(ch) + tuple(pad_voicing(ch))))
         out += [(ch, a, b) for a, b in zip(v, v[1:]) if b - a == 1]
     return out
 
 
 def registers():
-    return {"lowest melody": min(midi(n) for bar in THEME for *_, n in bar),
-            "highest accompaniment": max(max(lh_notes(c)) for c in PROG),
-            "highest strings": max(max(string_voicing(c)) for c in PROG)}
+    return {"lowest melody": min(midi(n) for part in THEME.values() for bar in part for *_, n in bar),
+            "highest accompaniment": max(max(lh_notes(c)) for c in CHORDS),
+            "highest pad": max(max(pad_voicing(c)) for c in CHORDS)}
 
 
-# ------------------------------------------------------------------ render
-
-def fold(x):
-    out = x[:, :LOOP_N].copy()
-    out[:, :TAIL] += x[:, LOOP_N:LOOP_N + TAIL]
-    return out
-
+# ------------------------------------------------------------------ render (one stem at a time, to save memory)
 
 def circ(x, resp):
-    return np.fft.irfft(np.fft.rfft(x, axis=-1) * resp(np.fft.rfftfreq(LOOP_N, 1 / SR)), LOOP_N, axis=-1)
+    return np.fft.irfft(np.fft.rfft(x, axis=-1) * resp(np.fft.rfftfreq(x.shape[-1], 1 / SR)), x.shape[-1], axis=-1)
 
 
 def echo_fx(mono, beats=0.75, fb=0.4):
@@ -431,8 +452,8 @@ def make_ir(seconds=4.5, tau_dark=0.5, tau_bright=0.2, predelay=0.022):
 def wind_bed():
     t = np.arange(LOOP_N) / SR
     air = circ(rng.standard_normal((2, LOOP_N)), lambda f: bp(150, 1100)(f) / np.sqrt(np.maximum(f, 20) / 150))
-    breathe = 0.5 + 0.5 * np.sin(2 * np.pi * 4 / LOOP_S * t) * np.sin(2 * np.pi * 9 / LOOP_S * t + 0.7)
-    return 0.01 * air / np.abs(air).max() * breathe
+    breathe = 0.5 + 0.5 * np.sin(2 * np.pi * 7 / LOOP_S * t) * np.sin(2 * np.pi * 17 / LOOP_S * t + 0.7)
+    return 0.012 * air / np.abs(air).max() * breathe
 
 
 def limiter_gain(x, ceil=0.9, block=48):
@@ -444,13 +465,20 @@ def limiter_gain(x, ceil=0.9, block=48):
     gm = np.min([np.roll(g, s) for s in range(-w, w + 1)], axis=0)
     gs = np.mean([np.roll(gm, s) for s in range(-w // 2, w // 2 + 1)], axis=0)
     full = np.repeat(gs, block)
-    return np.concatenate([full, np.full(LOOP_N - len(full), full[-1])])
+    return np.concatenate([full, np.full(LOOP_N - len(full), full[-1])]).astype(np.float32)
 
 
-def render():
+PLANE = {"flute": (1.0, 10000), "piano": (1.0, 9000), "guitar": (0.9, 8000), "strings": (0.8, 7000),
+         "bass": (1.0, 3000), "perc": (0.95, 9000)}
+GAINS = {"flute": 1.0, "piano": 1.0, "guitar": 0.85, "strings": 0.9, "bass": 0.85, "perc": 0.9}
+
+
+def render_stem(stem, irs):
     n = LOOP_N + TAIL
-    buses = {s: {k: np.zeros((2, n)) for k in ("dry", "rev", "echo")} for s in STEMS}
-    for t, dur, m, vel, inst, pan, stem, rs, es in events:
+    dry, rev, ech = np.zeros((2, n)), np.zeros((2, n)), np.zeros(n)
+    for t, dur, m, vel, inst, pan, s, rs, es in events:
+        if s != stem:
+            continue
         y = np.atleast_2d(inst(hz(m), dur, vel, t))
         if y.shape[0] == 1:
             y = np.vstack([y, y])
@@ -458,38 +486,40 @@ def render():
         y = y[:, : n - i]
         a = (pan + 1) * np.pi / 4
         y = y * np.array([[np.cos(a)], [np.sin(a)]]) * np.sqrt(2)
-        b = buses[stem]
-        b["dry"][:, i:i + y.shape[1]] += y
-        b["rev"][:, i:i + y.shape[1]] += rs * y
+        dry[:, i:i + y.shape[1]] += y
+        rev[:, i:i + y.shape[1]] += rs * y
         if es:
-            b["echo"][:, i:i + y.shape[1]] += es * y
+            ech[i:i + y.shape[1]] += es * y.mean(axis=0)
 
+    def fold(x):
+        out = x[..., :LOOP_N].copy()
+        out[..., :TAIL] += x[..., LOOP_N:LOOP_N + TAIL]
+        return out
+
+    dry, rev, ech = fold(dry), fold(rev), fold(ech)
+    echo = echo_fx(ech) if ech.any() else 0.0
+    send = circ(rev + 0.4 * echo, hp(200, 1))
+    wet = np.stack([np.fft.irfft(np.fft.rfft(send[c]) * irs[c], LOOP_N) for c in range(2)])
+    dry_amt, dark = PLANE[stem]
+    out = dry_amt * circ(dry, lp(dark, 1)) + echo + 0.75 * wet
+    if stem == "perc":
+        out = out + wind_bed()
+    out = circ(out, hp(35, 2) if stem == "bass" else hp(120, 1))
+    out = circ(out * GAINS[stem], lambda f: hp(25, 2)(f) * lp(16000, 2)(f))
+    return out.astype(np.float32)
+
+
+def render():
     irs = make_ir()
-    # (dry amount, dry darkness): lead and chip up front, harp middle, strings and keys a step back
-    plane = {"lead": (1.0, 9000), "chip": (1.0, 10000), "harp": (0.9, 8000), "strings": (0.75, 5000),
-             "bass": (1.0, 3000), "keys": (0.8, 8000), "perc": (0.95, 9000)}
     stems = {}
     for s in STEMS:
-        b = {k: fold(v) for k, v in buses[s].items()}
-        echo = echo_fx(b["echo"].mean(axis=0))
-        send = circ(b["rev"] + 0.4 * echo, hp(200, 1))
-        wet = np.stack([np.fft.irfft(np.fft.rfft(send[c]) * irs[c], LOOP_N) for c in range(2)])
-        dry_amt, dark = plane[s]
-        stems[s] = dry_amt * circ(b["dry"], lp(dark, 1)) + echo + 0.75 * wet
-    stems["perc"] = stems["perc"] + wind_bed()
-
-    stems["bass"] = circ(stems["bass"], lambda f: hp(35, 2)(f))
-    for s in ("lead", "chip", "harp", "strings", "keys"):
-        stems[s] = circ(stems[s], hp(120, 1))
-    gains = {"lead": 1.0, "chip": 1.7, "harp": 0.8, "strings": 0.8, "bass": 0.85, "keys": 0.9, "perc": 0.9}
-    for s in STEMS:
-        stems[s] = circ(stems[s] * gains[s], lambda f: hp(25, 2)(f) * lp(16000, 2)(f))
-
+        stems[s] = render_stem(s, irs)
+        print(f"  rendered {s}", flush=True)
     pre = sum(stems.values())
-    norm = 10 ** (-18 / 20) / np.sqrt(np.mean(pre ** 2))
+    norm = np.float32(10 ** (-18 / 20) / np.sqrt(np.mean(pre.astype(np.float64) ** 2)))
     g = limiter_gain(pre * norm)
     for s in STEMS:
-        stems[s] = stems[s] * norm * g
+        stems[s] *= norm * g
     return sum(stems.values()), stems
 
 
@@ -516,10 +546,14 @@ if __name__ == "__main__":
         write_wav(OUT / f"stem_{s}.wav", x)
     meta = {"title": "Meadow Road", "bpm": BPM, "key": "D major", "mood": "cozy adventure", "bars": BARS,
             "seconds": LOOP_S, "beats_per_hop": 1,
-            "sections": [{"id": str(k + 1), "name": nm, "bar": k * 8, "t": k * 32 * BEAT} for k, nm in enumerate(SECTION_NAMES)],
+            "sections": [{"id": str(k + 1), "name": nm, "kind": KINDS[k], "bar": k * 8, "t": k * 32 * BEAT}
+                         for k, nm in enumerate(SECTION_NAMES)],
             "stems": STEMS}
     (OUT / "track.json").write_text(json.dumps(meta, indent=1))
-    rms = np.sqrt(np.mean(master ** 2))
+    rms = np.sqrt(np.mean(master.astype(np.float64) ** 2))
     print(f"{len(events)} notes, {LOOP_S:.0f}s loop, peak {np.abs(master).max():.3f}, rms {20 * np.log10(rms):.1f} dBFS")
-    for s, x in stems.items():
-        print(f"  {s:8s} rms {20 * np.log10(np.sqrt(np.mean(x ** 2)) + 1e-12):6.1f} dBFS")
+    blk = 8 * 4 * BEAT
+    for s, x in list(stems.items()) + [("master", master)]:
+        per = [20 * np.log10(np.sqrt(np.mean(x[:, int(k * blk * SR):int((k + 1) * blk * SR)].astype(np.float64) ** 2)) + 1e-9)
+               for k in range(BARS // 8)]
+        print(f"  {s:8s}", " ".join(f"{v:6.1f}" for v in per))
