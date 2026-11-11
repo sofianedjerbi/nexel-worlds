@@ -17,7 +17,10 @@ function frame(now) {
       // a jump up is hard going (60% longer a step), a drop careful (20%): as the server paces it (SLOPE_UP/DOWN)
       const climb = levelAt(ahead0.x, ahead0.y) - levelAt(Math.round(p.tx), Math.round(p.ty));
       const jump = climb > 0 || jumpUp(Math.round(p.tx), Math.round(p.ty), ahead0.x, ahead0.y);
-      const spd = (walking.run ? 10 : 5) / (jump ? 1.6 : climb < 0 ? 1.2 : 1), step = spd * dt;
+      // exactly as the server paces it, in its 0.1 s ticks: a stride of 1 tick (running) or 2 (walking), and a jump up
+      // or a drop that many more, rounded (SLOPE_UP/DOWN): so you never run ahead of yourself and wait
+      const base = walking.run ? 1 : 2, ticks = base + (jump ? Math.round(base * .6) : climb < 0 ? Math.round(base * .2) : 0);
+      const spd = 10 / ticks, step = spd * dt;
       const side = wx ? "y" : "x", along = wx ? "x" : "y", cur = p[side];
       // the lane is the server's own row (column): its walk starts from the tile it is on, so lining up anywhere
       // else (say, the tile you were bumping into) would walk you along between two rows
@@ -91,7 +94,8 @@ function frame(now) {
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
   }
   occupied = new Set([...ents.values()].filter((p) => p.e).map((p) => Math.round(p.x) + "," + Math.round(p.y)));
-  for (const p of ents.values()) if (p.e) list.push({y: p.y + .01, p});
+  // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
+  for (const p of ents.values()) if (p.e && (tile(Math.round(p.x), Math.round(p.y)) || (p.e.kind === "agent" && p.e.id === myId))) list.push({y: p.y + .01, p});
   for (const [ix, iy, pile] of groundItems) list.push({y: iy - .01, x: ix, pile});
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)
   drawOrbs(sx, sy, S, dt, list);
