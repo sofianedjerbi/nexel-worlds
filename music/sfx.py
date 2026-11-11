@@ -898,15 +898,18 @@ def _(c):
     return fft_filter(puff + 0.2 * dust, hp(350))                                                                  # nothing low: lows are what made it an explosion
 
 
-@sfx("gloom", "Fights", "a gloom attacks at night: a breathy, low growl", 2, 0.4)
+@sfx("gloom", "Fights", "a gloom attacks at night: a ghostly, breathy sigh", 2, 0.34)
 def _(c):
-    dur = [0.9, 1.15][c.v % 2]
+    dur = [0.55, 0.7][c.v % 2]
     n = N(dur)
     t = tt(n)
-    f0 = [55, 46][c.v % 2] + 12 * np.sin(2 * np.pi * c.u(2.5, 3.5) * t) * np.exp(-t / 0.4) + c.u(-3, 3)
-    growl = norm(voice(n, f0, lambda t: [(450, 1.0), (900, 0.5)], 180, 60, c)) * (0.7 + 0.3 * np.sin(2 * np.pi * c.u(19, 27) * t))
-    breath = texture(c, n, 200, 1400, 5, 8)
-    return fft_filter(growl + 0.5 * breath, lp(1800)) * np.clip(t / 0.03, 0, 1) * np.clip((dur - t) / 0.3, 0, 1) ** 0.6
+    k = [1.0, 0.85][c.v % 2] * c.u(0.95, 1.05)
+    fall = np.clip(t / dur, 0, 1) ** 0.7                                                  # the mouth closing: "haaa-ooo", all air, no buzz
+    mouth = sweep(c, n, 1100 * k, 600 * k, 0.3, curve=fall)
+    throat = sweep(c, n, 2600 * k, 1500 * k, 0.3, curve=fall)
+    waver = 1 + 0.25 * np.sin(2 * np.pi * c.u(6, 8) * t)                                  # a slight shiver
+    env = np.clip(t / 0.04, 0, 1) * np.clip((dur - t) / (0.6 * dur), 0, 1) ** 1.3
+    return fft_filter(mouth + 0.35 * throat, hp(250)) * waver * env
 
 
 # ================================================================== animals
