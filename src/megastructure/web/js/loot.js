@@ -31,7 +31,7 @@ function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list
       const up = LOOT_G * hops[n] / 2;
       h = up * t - LOOT_G * t * t / 2; dxk = 1;
     }
-    const cx = sx(l.x) + S / 2 + l.slot * dxk * S, ground = sy(l.y) + S / 2;
+    const cx = sx(l.x) + S / 2 + l.slot * dxk * S, ground = sy(l.y, l.x) + S / 2;
     const squash = h < .02 && s > l.flight ? 1 : 0;                 // a pixel flatter as it touches down
     list.push({y: l.y - .01, x: l.x, fx: () => {
       ctx.fillStyle = "rgba(60,40,30,.25)";

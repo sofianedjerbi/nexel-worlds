@@ -60,7 +60,7 @@ function drawEmote(p, sx, sy, S) {
   const [c, rr] = EMOTE[em.kind], pop = k < .15 ? .6 + k / .15 * .5 : k < .25 ? 1.1 - (k - .15) : 1;
   const size = Math.round(16 * zoom * .75 * pop), x = Math.round(sx(p.x) + S / 2 - size / 2);
   const head = p.e.kind === "agent" ? 9 * zoom + 18 : ANIMALS[p.e.kind] && ANIMALS[p.e.kind].fw === 32 ? 12 * zoom : 2 * zoom;   // above the head
-  const y = Math.round(sy(p.y) - head - size);
+  const y = Math.round(sy(p.y, p.x) - head - size);
   ctx.globalAlpha = k > 1.5 ? (1.8 - k) / .3 : 1;
   ctx.drawImage(IMG.emoji, c * 32, rr * 32, 32, 32, x, y, size, size);
   ctx.globalAlpha = 1;
@@ -114,7 +114,7 @@ function drawFlyers(sx, sy, S, now) {
     } else { y -= k * .8; sc = 1 - k; }
     ctx.globalAlpha = k > .85 ? (1 - k) / .15 : 1;
     const w = 16 * z * sc;
-    ctx.drawImage(IMG.trees, f.ix, f.iy, 16, 16, Math.round(sx(x) - w / 2), Math.round(sy(y) - w / 2), Math.round(w), Math.round(w));
+    ctx.drawImage(IMG.trees, f.ix, f.iy, 16, 16, Math.round(sx(x) - w / 2), Math.round(sy(y, x) - w / 2), Math.round(w), Math.round(w));
   }
   ctx.globalAlpha = 1;
 }
@@ -166,7 +166,7 @@ function drawPlucks(sx, sy, S, now) {
       if (k > .8) alpha = Math.min(alpha, (1 - k) / .2);
     }
     const ww = w * z * sc, hh = h * z * sc * stretch;
-    const cx = sx(f.x + ox) + (dx + w / 2) * z, by = sy(f.y + oy) + (dy + h) * z;   // anchored at its base
+    const cx = sx(f.x + ox) + (dx + w / 2) * z, by = sy(f.y + oy, f.x + ox) + (dy + h) * z;   // anchored at its base
     ctx.globalAlpha = alpha;
     ctx.drawImage(img, a, b, w, h, Math.round(cx - ww / 2), Math.round(by - hh), Math.round(ww), Math.round(hh));
   }
@@ -202,7 +202,7 @@ function drawPuffs(sx, sy, dt) {
     if (p.age < 0) continue;
     const k = p.age / p.life, r = Math.round((p.r + p.grow * k) * z / 2) * 2;
     p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97;
-    const cx = Math.round(sx(p.x)), cy = Math.round(sy(p.y)), a = (1 - k) * .85;
+    const cx = Math.round(sx(p.x)), cy = Math.round(sy(p.y, p.x)), a = (1 - k) * .85;
     ctx.fillStyle = `rgba(246,240,228,${a})`; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
     ctx.strokeStyle = `rgba(150,128,116,${a * .6})`; ctx.lineWidth = z; ctx.stroke();
   }
@@ -220,7 +220,7 @@ function drawEffects(sx, sy, S, dt) {
     }
     ctx.globalAlpha = Math.min(1, 3.3 * (1 - p.age / p.life));
     ctx.fillStyle = p.c;
-    ctx.fillRect(Math.round(sx(p.x)), Math.round(sy(p.y)), p.s * z, p.s * z);
+    ctx.fillRect(Math.round(sx(p.x)), Math.round(sy(p.y, p.x)), p.s * z, p.s * z);
   }
   ctx.globalAlpha = 1;
   const now = performance.now();
@@ -231,7 +231,7 @@ function drawEffects(sx, sy, S, dt) {
     ctx.globalAlpha = fr >= 9 ? 1 - (fr - 9) / 3 : 1;
     // the sheet falls to the left with the trunk at frame x 32-48; mirrored about the trunk when it should fall right
     if (f.side > 0) { ctx.save(); ctx.translate(sx(f.x) + 8 * z, 0); ctx.scale(-1, 1); ctx.translate(-(sx(f.x) + 8 * z), 0); }
-    ctx.drawImage(f.thin ? IMG.thin_fall : IMG.tree_fall, fr * 64, 0, 64, 48, sx(f.x) - 32 * z, sy(f.y) - 28 * z, 64 * z, 48 * z);
+    ctx.drawImage(f.thin ? IMG.thin_fall : IMG.tree_fall, fr * 64, 0, 64, 48, sx(f.x) - 32 * z, sy(f.y, f.x) - 28 * z, 64 * z, 48 * z);
     if (f.side > 0) ctx.restore();
     ctx.globalAlpha = 1;
   }

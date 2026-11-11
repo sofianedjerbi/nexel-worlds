@@ -34,6 +34,24 @@ function colsOf(sheet) {
   sheetCols.set(sheet, out); return out;
 }
 
+// A sheet cell's shape: 1 where its pixel is drawn (16x16)
+const cellAlphas = new Map();
+function cellAlpha(sheet, cx, cy) {
+  let m = cellAlphas.get(sheet);
+  if (!m) {
+    const c = document.createElement("canvas"); c.width = sheet.width; c.height = sheet.height;
+    const g = c.getContext("2d"); g.drawImage(sheet, 0, 0);
+    m = {data: g.getImageData(0, 0, c.width, c.height).data, w: c.width, cells: new Map()}; cellAlphas.set(sheet, m);
+  }
+  const key = cx * 100 + cy;
+  if (!m.cells.has(key)) {
+    const a = new Uint8Array(256);
+    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) a[j * 16 + i] = m.data[((cy * 16 + j) * m.w + cx * 16 + i) * 4 + 3] > 128 ? 1 : 0;
+    m.cells.set(key, a);
+  }
+  return m.cells.get(key);
+}
+
 // Grow a shape (0/1 per px, w x h) n px to the left and right
 function dilateH(m, w, h, n) {
   const out = new Uint8Array(w * h);
@@ -51,58 +69,79 @@ function dilateH(m, w, h, n) {
 // a +3 shows three edges on every side), then its own tiles on top, where you stand. Worked out over the block and a
 // tile round it, so ledges cross block borders.
 const LEDGE = 3;
-function buildRelief(b) {
+function* reliefSteps(b) {                             // (a step a level, so no frame waits on a whole block)
   const M = 16, Wb = B * 16, Wm = Wb + 2 * M, Hb = Wb + WALL_M;
   let maxLv = 0;
   for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) maxLv = Math.max(maxLv, levelAt(b.bx * B + tx, b.by * B + ty));
   const layers = [], shape = {};
   let above = null;
   for (let k = maxLv; k >= 1; k--) {                    // the shapes, from the top down: each grows round the one above
-    const oc = document.createElement("canvas"); oc.width = oc.height = Wm;
-    const og = oc.getContext("2d");
-    for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {
+    const own = new Uint8Array(Wm * Wm), sheet = hillSheet(k);
+    for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {    // its own tiles' shape, from the sheet's cells
       const x = b.bx * B + tx, y = b.by * B + ty;
-      if (levelAt(x, y) >= k) drawBlobLayer(og, hillSheet(k), x, y, (cc, gg, ux, uy) => levelAt(ux, uy) >= k, (tx + 1) * 16, (ty + 1) * 16, 0);
+      if (levelAt(x, y) < k) continue;
+      const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, ux, uy) => levelAt(ux, uy) >= k)), a = cellAlpha(sheet, cx, cy);
+      const ox = (tx + 1) * 16, oy = (ty + 1) * 16;
+      for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) if (a[j * 16 + i]) own[(oy + j) * Wm + ox + i] = 1;
     }
-    const od = og.getImageData(0, 0, Wm, Wm).data, own = new Uint8Array(Wm * Wm);
-    for (let i = 0; i < own.length; i++) own[i] = od[i * 4 + 3] > 128 ? 1 : 0;
     const sh = above ? dilateH(above, Wm, Wm, LEDGE) : new Uint8Array(Wm * Wm);
     for (let i = 0; i < own.length; i++) sh[i] = sh[i] || own[i];
-    shape[k] = {own, sh, oc}; above = sh;
+    shape[k] = {own, sh}; above = sh;
+    yield;
   }
   for (let k = 1; k <= maxLv; k++) {
-    const {own, sh, oc} = shape[k], cols = colsOf(hillSheet(k)), img = new ImageData(Wb, Hb), d = img.data;
-    const put = (x, y, c) => { const i = (y * Wb + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; };
-    for (let s = 0; s < STEP; s++) {                    // the body: its wall, a band, below every px of the shape
-      const c = s === STEP - 1 ? cols.bands[0] : s === 0 ? cols.bands[2] : cols.bands[1], dy = STEP - s;
-      for (let y = 0; y < Wb; y++) for (let x = 0; x < Wb; x++) if (sh[(y + M) * Wm + x + M]) put(x, y + dy, c);
-    }
-    for (let y = 0; y < Wb; y++) for (let x = 0; x < Wb; x++) {       // the ledge, where the shape is not its own tiles
-      const i = (y + M) * Wm + x + M;
-      if (!sh[i] || own[i]) continue;
+    const {own, sh} = shape[k], cols = colsOf(hillSheet(k));
+    const mask = new ImageData(Wb, Wb), md = mask.data, ledge = new ImageData(Wb, Wb), ld = ledge.data, ownM = new ImageData(Wb, Wb), od = ownM.data;
+    for (let y = 0; y < Wb; y++) for (let x = 0; x < Wb; x++) {
+      const i = (y + M) * Wm + x + M, o = (y * Wb + x) * 4;
+      if (!sh[i]) continue;
+      md[o + 3] = 255;
+      if (own[i]) { od[o + 3] = 255; continue; }                              // the ledge, where the shape is not its own tiles
       let ownL = false, ownR = false;
       for (let j = 1; j <= LEDGE; j++) { if (own[i - j]) ownL = true; if (own[i + j]) ownR = true; }
-      if (ownL && ownR) { put(x, y, cols.top); continue; }   // (a sliver between two of its own edges: its top)
-      let dd = 0;                                        // how far in from the ledge's outer side
-      while (dd < 3 && sh[i - dd - 1] && sh[i + dd + 1]) dd++;
-      put(x, y, cols.side[dd]);
+      let c;
+      if (ownL && ownR) c = cols.top;                    // (a sliver between two of its own edges: its top)
+      else { let dd = 0; while (dd < 3 && sh[i - dd - 1] && sh[i + dd + 1]) dd++; c = cols.side[dd]; }
+      ld[o] = c[0]; ld[o + 1] = c[1]; ld[o + 2] = c[2]; ld[o + 3] = 255;
     }
+    const mc = document.createElement("canvas"); mc.width = mc.height = Wb; mc.getContext("2d").putImageData(mask, 0, 0);
     const c = document.createElement("canvas"); c.width = Wb; c.height = Hb;
     const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
-    g.putImageData(img, 0, 0);
-    const t = document.createElement("canvas"); t.width = Wb; t.height = Wb;   // its own tiles: the ground as drawn, cut
-    const tg = t.getContext("2d"); tg.drawImage(oc, M, M, Wb, Wb, 0, 0, Wb, Wb);  //  to the level's own shape
+    const tint = document.createElement("canvas"); tint.width = tint.height = Wb; const tg0 = tint.getContext("2d");
+    for (let s = 0; s < STEP; s++) {                    // the body: its wall, a band, under the whole shape
+      const col = s === STEP - 1 ? cols.bands[0] : s === 0 ? cols.bands[2] : cols.bands[1];
+      tg0.globalCompositeOperation = "source-over"; tg0.clearRect(0, 0, Wb, Wb);
+      tg0.fillStyle = `rgb(${col[0] | 0},${col[1] | 0},${col[2] | 0})`; tg0.fillRect(0, 0, Wb, Wb);
+      tg0.globalCompositeOperation = "destination-in"; tg0.drawImage(mc, 0, 0);
+      g.drawImage(tint, 0, STEP - s);
+    }
+    const lc = document.createElement("canvas"); lc.width = lc.height = Wb; lc.getContext("2d").putImageData(ledge, 0, 0);
+    g.drawImage(lc, 0, 0);
+    const t = document.createElement("canvas"); t.width = t.height = Wb;   // its own tiles: the ground as drawn, cut to
+    const tg = t.getContext("2d"); tg.putImageData(ownM, 0, 0);                   //  the level's own shape
     tg.globalCompositeOperation = "source-in"; tg.drawImage(b.canvas, 0, 0);
     g.drawImage(t, 0, 0);
     layers[k] = c;
+    yield;
   }
-  b.relief = {layers, maxLv}; b.reliefDirty = false;
+  b.relief = {layers, maxLv};
 }
+let reliefBudgetAt = 0, reliefSpent = 0, freshThisFrame = false;
+function buildRelief(b) { for (const _ of reliefSteps(b)); b.reliefDirty = false; }   // (all at once: tests, tools)
 // A block's ground, with its levels stacked
 function drawBlockRelief(b, sx, sy, S) {
   const X = sx(b.bx * B), Y = sy(b.by * B);
   ctx.drawImage(b.canvas, X, Y, B * S, B * S);
-  if (!b.relief || b.reliefDirty) buildRelief(b);
+  // (re)built in steps, within a few ms a frame across all blocks; until done, what was there stays on screen
+  if (b.reliefDirty || !b.relief) { if (!b.reliefGen || b.reliefDirty) { b.reliefGen = reliefSteps(b); b.reliefDirty = false; } }
+  const now = performance.now();
+  if (now - reliefBudgetAt > 8) { reliefBudgetAt = now; reliefSpent = 0; }
+  while (b.reliefGen && reliefSpent < 4 && !freshThisFrame) {
+    const t0 = performance.now(), r = b.reliefGen.next();
+    reliefSpent += performance.now() - t0;
+    if (r.done) b.reliefGen = null;
+  }
+  if (!b.relief) return;
   for (let k = 1; k <= b.relief.maxLv; k++) {
     const c = b.relief.layers[k];
     if (c) ctx.drawImage(c, X, Y - shOf(k) * zoom, B * S, (B * 16 + WALL_M) * zoom);

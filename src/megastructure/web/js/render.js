@@ -60,7 +60,9 @@ function frame(now) {
   const vis = [];
   for (let by = Math.floor(vy / B); by <= Math.floor((vy + vh) / B); by++)
     for (let bx = Math.floor(vx / B); bx <= Math.floor((vx + vw) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) vis.push(b); }
-  const fresh = vis.find((b) => !b.drawn); if (fresh) renderBlock(fresh);
+  // a block coming into view: its canvas now, its tiles a few at a time within the frame's budget (below)
+  const fresh = vis.find((b) => !b.drawn); if (fresh) startBlock(fresh);
+  freshThisFrame = !!fresh;                        // (then no relief work this frame: relief.js)
   const t0 = performance.now();
   while (dirtyTiles.length && performance.now() - t0 < 4) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
 
@@ -68,7 +70,9 @@ function frame(now) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.imageSmoothingEnabled = false;
   const [ox, oy] = screenOrigin(S);
-  const sx = (x) => ox + x * S, sy = (y) => oy + y * S;
+  // world to screen. sy(y, x): give the x too and the point is lifted with the ground there (relief.js): everything
+  // standing in the world goes through this, so on high ground it is drawn, picked up, killed... where you see it
+  const sx = (x) => ox + x * S, sy = (y, x) => oy + y * S - (x === undefined ? 0 : liftOf({x, y}));
   // animated water underneath everything
   if (!waterPatterns) waterPatterns = [0, 1, 2, 3].map((f) => { const c = document.createElement("canvas"); c.width = c.height = 16; c.getContext("2d").drawImage(IMG.water, f * 16, 0, 16, 16, 0, 0, 16, 16); return ctx.createPattern(c, "repeat"); });
   ctx.save(); ctx.translate(ox, oy); ctx.scale(zoom, zoom);
@@ -93,11 +97,9 @@ function frame(now) {
   const under = depthOf(cam.x) > 0;
   for (const o of list) {
     selMeasure(o);
-    const lift = o.p ? liftOf(o.p) : liftAt(Math.round(o.x), Math.round(o.ty !== undefined ? o.ty : o.y));   // (up on its level)
-    const syL = lift ? (v) => sy(v) - lift : sy;
     if (o.spr) {
       const [img, a, b2, w, h, dx, dy] = o.spr, key = o.x + "," + o.ty;
-      let px = sx(o.x) + dx * zoom, py = syL(o.ty) + dy * zoom, ww = w * zoom, hh = h * zoom;
+      let px = sx(o.x) + dx * zoom, py = sy(o.ty, o.x) + dy * zoom, ww = w * zoom, hh = h * zoom;
       const pop = pops.get(key);
       if (pop !== undefined) {                       // newly placed: bounce in
         const k = (now - pop) / 260;
@@ -113,15 +115,15 @@ function frame(now) {
       if (lootAt(o.x, o.y)) continue;                // its loot is still hopping in: the pile shows once it lands
       // a gentle hover, smooth to the screen pixel (whole art pixels made it tick between three heights)
       const names = Object.keys(o.pile), lift = (Math.sin(t * 2.4 + o.x * 1.3 + o.y) + 1) / 2, sz = 10 * zoom;
-      const cx = sx(o.x) + S / 2, cy = syL(o.y) + S / 2, bob = lift * 2 * zoom;
+      const cx = sx(o.x) + S / 2, cy = sy(o.y, o.x) + S / 2, bob = lift * 2 * zoom;
       ctx.fillStyle = `rgba(60,40,30,${.28 - lift * .1})`; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, (4 - lift * .8) * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
       names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), Math.round(cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom), Math.round((cy - sz / 2 - bob) * DPR) / DPR, sz, sz));
     }
     else if (o.fx) o.fx();
-    else drawEntity(o.p, sx, syL, S, t, now);
+    else drawEntity(o.p, sx, sy, S, t, now);
   }
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
-    const px = sx(f.x), py = sy(f.y) - liftAt(f.x, f.y), tall = "TF".includes(combAt(f.x, f.y) || "");
+    const px = sx(f.x), py = sy(f.y, f.x), tall = "TF".includes(combAt(f.x, f.y) || "");
     if (px < -S * 2 || py < -S * 3 || px > W + S || py > H + S) continue;
     drawFire(px, py, S, t, f.x, f.y);
     if (tall) { drawFire(px - S * .3, py - S * .9, S, t + 1, f.x + 7, f.y); drawFire(px + S * .3, py - S * 1.4, S, t + 2, f.x, f.y + 5); }
@@ -140,20 +142,19 @@ function frame(now) {
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   drawSelector(aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null, sx, sy, now);
-  const syOf = (p) => { const l = liftOf(p); return l ? (v) => sy(v) - l : sy; };
-  for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, syOf(o.p), S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, syOf(o.p), S); }
-  for (const o of list) if (o.p && ANIMALS[o.p.e.kind]) drawEmote(o.p, sx, syOf(o.p), S);
+  for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
+  for (const o of list) if (o.p && ANIMALS[o.p.e.kind]) drawEmote(o.p, sx, sy, S);
   drawProgress(sx, sy, S);
   floats = floats.filter((f) => t - f.t < 1.4);
   ctx.textAlign = "center"; ctx.font = "18px SproutPixel";
-  for (const f of floats) { ctx.globalAlpha = 1 - (t - f.t) / 1.4; outlined(f.text, Math.round(sx(f.x) + S / 2), Math.round(sy(f.y) - (t - f.t) * S * .7), f.color); }
+  for (const f of floats) { ctx.globalAlpha = 1 - (t - f.t) / 1.4; outlined(f.text, Math.round(sx(f.x) + S / 2), Math.round(sy(f.y, f.x) - (t - f.t) * S * .7), f.color); }
   ctx.globalAlpha = 1;
   bubbles = bubbles.filter((b) => t - b.t < 7);
   ctx.font = "18px SproutPixel";
   for (const b of bubbles) {
     const p = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === b.name); if (!p) continue;
     const text = b.text.length > 60 ? b.text.slice(0, 58) + "…" : b.text, w = ctx.measureText(text).width;
-    const bx = Math.round(sx(p.x) + S / 2), by = Math.round(sy(p.y) - 26 * zoom / 3 - 22 - b.slot * 26);
+    const bx = Math.round(sx(p.x) + S / 2), by = Math.round(sy(p.y, p.x) - 26 * zoom / 3 - 22 - b.slot * 26);
     ctx.globalAlpha = Math.min(1, (7 - (t - b.t)) * 2);
     ctx.fillStyle = b.shout ? "#ffe3a3" : "#fff6e2"; ctx.strokeStyle = "#5b3f36"; ctx.lineWidth = 2;
     roundRect(bx - w / 2 - 9, by - 16, w + 18, 23, 4); ctx.fill(); ctx.stroke();
@@ -176,7 +177,7 @@ function drawIntent(p, it, sx, sy, S, t, ox, oy) {
     ctx.globalAlpha = 1;
     for (const q of it.foot || [p]) {
       ctx.fillStyle = it.ok && !(it.bad || []).some((b) => b.x === q.x && b.y === q.y) ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)";
-      ctx.fillRect(sx(q.x), sy(q.y), S, S);
+      ctx.fillRect(sx(q.x), sy(q.y, q.x), S, S);
     }
   }
   // what the selector goes around, in tiles: the aimed creature, person or thing as it was just drawn (selector.js),
@@ -207,7 +208,7 @@ function drawNight(vis, sx, sy, S, t) {
   ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = "lighter";
   const glow = (x, y, r, c, a) => { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); };
-  for (const p of ents.values()) if (p.e && p.e.kind === "agent") glow(sx(p.x) + S / 2, sy(p.y) + S / 2, S * 3, "255,214,150", .22 * dark);
+  for (const p of ents.values()) if (p.e && p.e.kind === "agent") glow(sx(p.x) + S / 2, sy(p.y, p.x) + S / 2, S * 3, "255,214,150", .22 * dark);
   const lights = [...fireAt];
   for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") lights.push({x: b.bx * B + i % B, y: b.by * B + (i / B | 0)});
   for (const {x, y} of lights) { const f = .9 + .1 * Math.sin(t * 13 + x); glow(sx(x) + S / 2, sy(y) + S / 2, S * 4.5 * f, "255,160,70", .45 * dark); }

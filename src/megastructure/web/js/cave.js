@@ -37,7 +37,7 @@ function drawCave(vis, sx, sy, S, t, now) {
     gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(.55, "rgba(0,0,0,.75)"); gr.addColorStop(1, "rgba(0,0,0,0)");
     g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
   };
-  for (const p of ents.values()) if (p.e && p.e.kind === "agent") light(sx(p.x) + S / 2, sy(p.y) + S / 2, S * 6);
+  for (const p of ents.values()) if (p.e && p.e.kind === "agent") light(sx(p.x) + S / 2, sy(p.y, p.x) + S / 2, S * 6);
   for (const b of vis) for (const [i, c] of b.objs) {
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (c === "^" || c === "x") light(sx(x) + S / 2, sy(y) + S / 2, S * (5 + .3 * Math.sin(t * 13 + x)));
@@ -46,7 +46,7 @@ function drawCave(vis, sx, sy, S, t, now) {
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (combAt(x - LAYER, y) === "O") light(sx(x) + S / 2, sy(y) + S / 2, S * 2.4);
   });
-  for (const f of fireAt) light(sx(f.x) + S / 2, sy(f.y) + S / 2, S * 4);
+  for (const f of fireAt) light(sx(f.x) + S / 2, sy(f.y, f.x) + S / 2, S * 4);
   if (!caveMask) caveMask = document.createElement("canvas");          // (only over this level's caves: all its blocks
   if (caveMask.width !== W || caveMask.height !== H) { caveMask.width = W; caveMask.height = H; }   //  as one mask)
   const m = caveMask.getContext("2d"); m.clearRect(0, 0, W, H); m.imageSmoothingEnabled = false;

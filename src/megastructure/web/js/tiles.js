@@ -140,8 +140,10 @@ function drawTile(x, y) {
   // shows through (caveview.js), as if the rock between were cut away
   if (gr === "-" && c !== "O") drawBlobLayer(g, IMG.soil, x, y, (cc, gg) => gg === "-" && cc !== "R" && cc !== "*", ox, oy, .15);
   if (c === "R" || (c === "*" && gr === "-")) {
-    g.clearRect(ox, oy, 16, 16);
-    drawBlobLayer(g, edgeSheet("hill3"), x, y, (cc) => cc === "R" || cc === "*", ox, oy, 0);
+    const rock = (cc) => cc === "R" || cc === "*";
+    if (CAVE_STYLE === "stone") drawBlobLayer(g, IMG.hill3, x, y, rock, ox, oy, .1);          // solid stone, the pack's
+    else if (CAVE_STYLE === "dark") { g.fillStyle = "#2b2328"; g.fillRect(ox, oy, 16, 16); drawBlobLayer(g, edgeSheet("rock"), x, y, rock, ox, oy, 0); }
+    else { g.clearRect(ox, oy, 16, 16); drawBlobLayer(g, edgeSheet("hill3"), x, y, rock, ox, oy, 0); }
   }
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
   const hd = hash(x, y, 41);
@@ -165,6 +167,8 @@ function groundMarks(g, x, y, gr, ox, oy) {
 
 // Level k's sheet: grass (1-2), darker grass (3-4), stone above; each layer up a touch brighter, so terraces of the
 // same sheet still read as steps
+// how the rock round the caves is drawn (?cave=xray|stone|dark): xray shows the level above through it
+const CAVE_STYLE = new URLSearchParams(location.search).get("cave") || "xray";
 const hillSheets = {};
 function hillSheet(k) {
   if (hillSheets[k]) return hillSheets[k];
@@ -196,6 +200,11 @@ function edgeSheet(name) {
   }
   g.putImageData(d, 0, 0);
   return edgeSheets[name] = c;
+}
+function startBlock(b) {
+  b.canvas = document.createElement("canvas"); b.canvas.width = B * 16; b.canvas.height = B * 16;
+  b.ctx = b.canvas.getContext("2d"); b.drawn = true;
+  for (let ly = B - 1; ly >= 0; ly--) for (let lx = B - 1; lx >= 0; lx--) dirtyTiles.push(b.bx * B + lx, b.by * B + ly);
 }
 function renderBlock(b) {
   b.canvas = document.createElement("canvas"); b.canvas.width = B * 16; b.canvas.height = B * 16;

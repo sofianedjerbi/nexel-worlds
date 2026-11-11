@@ -46,7 +46,7 @@ function drawOrbs(sx, sy, S, dt, list) {
       if (d < .25) { orbs.splice(i, 1); orbLanded(o); continue; }
       o.x += dx / d * Math.min(d, sp * dt); o.y += dy / d * Math.min(d, sp * dt); o.h *= .85;
     }
-    const cx = Math.round(sx(o.x) / z) * z, cy = Math.round((sy(o.y) - o.h * S * .5) / z) * z;
+    const cx = Math.round(sx(o.x) / z) * z, cy = Math.round((sy(o.y, o.x) - o.h * S * .5) / z) * z;
     const shape = o.big ? ORB_BIG : ORB, flick = Math.sin(o.age * 14 + o.seed) > 0;
     list.push({y: o.y - .45, x: o.x, fx: () => drawOrb(cx, cy, shape, flick)});
   }
@@ -58,7 +58,7 @@ function drawOrbs(sx, sy, S, dt, list) {
     if (!p || k >= 1) { magnets.splice(i, 1); if (p) sfx("collect", p.tx, p.ty); continue; }
     const e = k * k, x = m.x + (p.x + .5 - m.x) * e, y = m.y + (p.y + .3 - m.y) * e - Math.sin(k * Math.PI) * .35;
     const sz = Math.round(10 * (1 - .4 * e)) * z;
-    list.push({y: y - .45, x, fx: () => ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(sy(y) - sz / 2), sz, sz)});
+    list.push({y: y - .45, x, fx: () => ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(sy(y, x) - sz / 2), sz, sz)});
   }
 }
 

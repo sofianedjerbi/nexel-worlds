@@ -38,7 +38,7 @@ function hopLift(p) {
   return Math.sin(k * Math.PI) * 7 + (1 - k) * 2;
 }
 function drawEntity(p, sx, sy, S, t, now) {
-  const e = p.e, x = Math.round(sx(p.x)), y = Math.round(sy(p.y)), z = zoom;
+  const e = p.e, x = Math.round(sx(p.x)), y = Math.round(sy(p.y, p.x)), z = zoom;
   if (x < -S * 2 || x > W + S * 2 || y < -S * 2 || y > H + S * 2) return;
   const moving = now - p.moved < 300;
   if (e.kind === "agent") {
@@ -124,7 +124,7 @@ function drawEntity(p, sx, sy, S, t, now) {
       // tucked into the bed: head on the pillow, the bed's blanket drawn over the body
       const bx = Math.round(p.tx) + DIRV[action.dir][0], by = Math.round(p.ty) + DIRV[action.dir][1];
       if (combAt(bx, by) === "B") {
-        const bed = objectSprite("B", bx, by, t), px0 = sx(bx), py0 = sy(by);
+        const bed = objectSprite("B", bx, by, t), px0 = sx(bx), py0 = sy(by, bx);
         ctx.drawImage(sheetImg, (Math.floor(now / 400) % 2) * 48, 0, 48, 48, px0 - 16 * z, py0 - 26 * z, 48 * z, 48 * z);
         ctx.drawImage(bed[0], bed[1], bed[2] + 14, 16, 18, px0, py0 + (bed[6] + 14) * z, 16 * z, 18 * z);
         return;
@@ -179,7 +179,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   }
 }
 function drawNameplate(p, sx, sy, S) {
-  const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(sy(p.y) - 9 * zoom);
+  const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(sy(p.y, p.x) - 9 * zoom);
   if (x < -S || x > W + S || y < -S || y > H + S) return;
   ctx.font = "18px SproutPixel"; ctx.textAlign = "center";
   outlined(e.name, x, y, me && e.name === me ? "#fff1a8" : "#fff8e8");
@@ -193,7 +193,7 @@ function drawProgress(sx, sy, S) {
   const p = ents.get("agent" + myId); if (!p) return;
   const k = Math.min(1, (performance.now() - progress.t0) / progress.ms);
   if (k >= 1) { progress = null; return; }
-  const x = Math.round(sx(p.x) + S / 2 - 18), y = Math.round(sy(p.y) + S + 2);
+  const x = Math.round(sx(p.x) + S / 2 - 18), y = Math.round(sy(p.y, p.x) + S + 2);
   ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 2, y - 2, 40, 9);
   ctx.fillStyle = "#e9cfa2"; ctx.fillRect(x, y, 36, 5);
   ctx.fillStyle = "#6aa66f"; ctx.fillRect(x, y, Math.round(36 * k), 5);
