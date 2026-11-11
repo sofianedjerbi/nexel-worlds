@@ -164,11 +164,12 @@ function drawBlockRelief(b, sx, sy, S) {
 // you're in: that one is seen through the hill.)
 function drawInFront(p, sx, sy, S) {
   const x = Math.round(p.x), y = Math.round(p.y);
-  if (inOpenCave(x, y)) return;
+  if (inOpenCave(x, y) || (caveOpen && p.e.kind === "agent" && p.e.id === myId)) return;   // (you, going in or out: no flicker)
   const L = standAt(x, y);
   for (let dy = 1; dy <= 6; dy++) for (let dx = -1; dx <= 1; dx++) {
     const tx = x + dx, ty = y + dy, lv = levelAt(tx, ty);
     if ((lv - L) * RELIEF_STEP <= (dy - 1) * 16) continue;          // (not high enough to reach them)
+    if (inOpenCave(tx, ty)) continue;                               // (the cave you're in stays seen)
     const b = blocks.get(bkey(Math.floor(tx / B), Math.floor(ty / B)));
     if (!b || !b.relief) continue;
     for (let k = Math.max(L + 1, b.relief.minLv + 1); k <= lv; k++) {
