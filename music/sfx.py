@@ -961,14 +961,19 @@ def _(c):
 
 @sfx("milk", "Animals", "milking a cow into a pail", 2, 0.35)
 def _(c):
-    n = N(0.85)
+    n = N(0.95)
     y = np.zeros(n)
-    pail = c.u(0.85, 1.15)
-    for k in range(3):                                                                    # each squirt rings the tin pail
-        sn = N(0.14)
-        jet = texture(c, sn, 1200, 5000, 5, 60) * env_exp(sn, 0.045, 0.004)
-        ring = sum(fft_filter(jet, lambda f, F=F: 1 / (1 + ((f - F) / (F / 14)) ** 2)) for F in (620 * pail, 1450 * pail, 2300 * pail))
-        place(y, norm(jet) * 0.6 + norm(ring) * 0.5, k * c.u(0.2, 0.25))
+    at = 0.0
+    for k in range(4):                                                                    # two hands in turn: psh-psh, psh-psh
+        sn = N(c.u(0.11, 0.15))
+        hand = 1.0 if k % 2 == 0 else 0.85
+        jet = sweep(c, sn, 4200 * hand, 2200 * hand, 0.6) * env_exp(sn, 0.05, 0.006)      # a thin stream hitting the milk
+        froth = np.zeros(sn)
+        for _ in range(10):                                                               # a little foam
+            place(froth, bubble(c, c.u(0.5, 1.4), amp=c.u(0.05, 0.15)), c.u(0.01, 0.09))
+        body = norm(fft_filter(c.noise(sn), bp(500, 1300, 1)) * env_exp(sn, 0.03, 0.004)) # the pail, dull because it is part full
+        place(y, norm(jet) + froth + 0.25 * body, at)
+        at += c.u(0.19, 0.23) if k % 2 == 0 else c.u(0.24, 0.28)
     return y
 
 
@@ -1056,10 +1061,15 @@ def _(c):
 
 @sfx("flood", "World", "water spreads over the ground", 1, 0.35)
 def _(c):
-    n = N(1.4)
+    n = N(1.3)
     t = tt(n)
-    rush = texture(c, n, 300, 3500, 7, 10, 0.9) * np.clip(t / 0.03, 0, 1) * np.clip((1.4 - t) / 0.6, 0, 1)
-    return bubbles(c, 0.5 * rush, 30, 1.2, 8, 1.2, start=0.05)
+    env = np.clip(t / 0.08, 0, 1) * np.exp(-np.clip(t - 0.08, 0, None) / 0.45)             # it arrives, then runs out
+    rush = norm(fft_filter(c.noise(n), bp(350, 4500, 1))) * env                           # a sheet of water over the ground
+    y = 0.7 * rush
+    for _ in range(70):                                                                   # the trickle: many small bubbles, thinning out
+        at = c.u(0.02, 1.1)
+        place(y, bubble(c, min(3.5, 0.6 * c.u(0.04, 1) ** (-1 / 2.0)), amp=c.u(0.06, 0.22) * env[int(at * SR)]), at)
+    return y
 
 
 @sfx("grow", "World", "a crop or a sapling grows a stage", 2, 0.18, tuned=True)
