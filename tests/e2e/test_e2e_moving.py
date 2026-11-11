@@ -97,3 +97,17 @@ def test_hop_down_off_a_hill_edge(game):
     game.sleep(500)
     s = game.server()
     assert s["x"] > low and s["x"] >= x - 2 and game.js(f"levelAt({s['x']}, {s['y']})") == 1 and game.pos() == (s["x"], s["y"])
+
+
+def test_higher_ground_is_drawn_higher_and_clicks_find_it(game):
+    # a terrace three layers up just north of you: drawn 12 art px higher (relief.js), you on it too
+    game.stamp(-2, -4, ["....."] * 3, levels=["33333"] * 3)
+    x, y = game.pos()
+    z = game.js("zoom")
+    assert game.js(f"liftAt({x}, {y - 3})") == 12 * z and game.js(f"liftAt({x}, {y})") == 0
+    # a click on where the terrace's tile is drawn finds that tile, not the one under it on the screen
+    S, ox, oy = game.js("TS()"), *game.js("screenOrigin()")
+    mx, my = ox + x * S + S / 2, oy + (y - 2) * S + S - 12 * z + 2
+    assert game.js(f"tileAtScreen({mx}, {my})") == {"x": x, "y": y - 2}
+    game.js(f"ents.get('agent' + myId).y = {y - 3}")             # someone up there is lifted with it
+    assert game.js("liftOf(ents.get('agent' + myId))") == 12 * z

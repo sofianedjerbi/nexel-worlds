@@ -76,7 +76,7 @@ function frame(now) {
   ctx.fillRect(-ox / zoom - 16, -oy / zoom - 16, W / zoom + 32, H / zoom + 32);
   ctx.restore();
   drawLevelsAbove(sx, sy, S, t);                     // underground: the levels over you, seen through the rock
-  for (const b of vis) if (b.canvas) ctx.drawImage(b.canvas, sx(b.bx * B), sy(b.by * B), B * S, B * S);
+  for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
   // y-sorted sprites: objects and creatures
   const list = [];
   for (const b of vis) for (const [i, c] of b.objs) {
@@ -93,9 +93,11 @@ function frame(now) {
   const under = depthOf(cam.x) > 0;
   for (const o of list) {
     selMeasure(o);
+    const lift = o.p ? liftOf(o.p) : liftAt(Math.round(o.x), Math.round(o.ty !== undefined ? o.ty : o.y));   // (up on its level)
+    const syL = lift ? (v) => sy(v) - lift : sy;
     if (o.spr) {
       const [img, a, b2, w, h, dx, dy] = o.spr, key = o.x + "," + o.ty;
-      let px = sx(o.x) + dx * zoom, py = sy(o.ty) + dy * zoom, ww = w * zoom, hh = h * zoom;
+      let px = sx(o.x) + dx * zoom, py = syL(o.ty) + dy * zoom, ww = w * zoom, hh = h * zoom;
       const pop = pops.get(key);
       if (pop !== undefined) {                       // newly placed: bounce in
         const k = (now - pop) / 260;
@@ -111,15 +113,15 @@ function frame(now) {
       if (lootAt(o.x, o.y)) continue;                // its loot is still hopping in: the pile shows once it lands
       // a gentle hover, smooth to the screen pixel (whole art pixels made it tick between three heights)
       const names = Object.keys(o.pile), lift = (Math.sin(t * 2.4 + o.x * 1.3 + o.y) + 1) / 2, sz = 10 * zoom;
-      const cx = sx(o.x) + S / 2, cy = sy(o.y) + S / 2, bob = lift * 2 * zoom;
+      const cx = sx(o.x) + S / 2, cy = syL(o.y) + S / 2, bob = lift * 2 * zoom;
       ctx.fillStyle = `rgba(60,40,30,${.28 - lift * .1})`; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, (4 - lift * .8) * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
       names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), Math.round(cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom), Math.round((cy - sz / 2 - bob) * DPR) / DPR, sz, sz));
     }
     else if (o.fx) o.fx();
-    else drawEntity(o.p, sx, sy, S, t, now);
+    else drawEntity(o.p, sx, syL, S, t, now);
   }
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
-    const px = sx(f.x), py = sy(f.y), tall = "TF".includes(combAt(f.x, f.y) || "");
+    const px = sx(f.x), py = sy(f.y) - liftAt(f.x, f.y), tall = "TF".includes(combAt(f.x, f.y) || "");
     if (px < -S * 2 || py < -S * 3 || px > W + S || py > H + S) continue;
     drawFire(px, py, S, t, f.x, f.y);
     if (tall) { drawFire(px - S * .3, py - S * .9, S, t + 1, f.x + 7, f.y); drawFire(px + S * .3, py - S * 1.4, S, t + 2, f.x, f.y + 5); }
@@ -138,8 +140,9 @@ function frame(now) {
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   drawSelector(aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null, sx, sy, now);
-  for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
-  for (const o of list) if (o.p && ANIMALS[o.p.e.kind]) drawEmote(o.p, sx, sy, S);
+  const syOf = (p) => { const l = liftOf(p); return l ? (v) => sy(v) - l : sy; };
+  for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, syOf(o.p), S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, syOf(o.p), S); }
+  for (const o of list) if (o.p && ANIMALS[o.p.e.kind]) drawEmote(o.p, sx, syOf(o.p), S);
   drawProgress(sx, sy, S);
   floats = floats.filter((f) => t - f.t < 1.4);
   ctx.textAlign = "center"; ctx.font = "18px SproutPixel";
@@ -183,8 +186,8 @@ function drawIntent(p, it, sx, sy, S, t, ox, oy) {
   const drawn = selTarget(p, it, ox, oy, S);
   if (drawn) return {...drawn, bad};
   if (it.ent) return {x0: it.ent.x, y0: it.ent.y, x1: it.ent.x + 1, y1: it.ent.y + 1, bad};   // until it's been drawn once
-  const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y);
-  return {x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs) + 1, y1: Math.max(...ys) + 1, bad};
+  const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y), up = liftAt(p.x, p.y) / S;   // (as drawn)
+  return {x0: Math.min(...xs), y0: Math.min(...ys) - up, x1: Math.max(...xs) + 1, y1: Math.max(...ys) + 1 - up, bad};
 }
 
 function outlined(text, x, y, color) {

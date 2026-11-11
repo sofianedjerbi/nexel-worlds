@@ -705,3 +705,10 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Measured: 40 ms per chunk (28 before). Map of 800x800 tiles: all six biomes, lakes, rivers. Screenshots: mountain terraces readable, forests dense, spawn green.
 - Result: 193 unit + 53 e2e green.
 - Known: worlds saved before this keep their explored land; new land around it is generated the new way (seams at the edge of what was explored). Rivers sometimes loop (contours of one noise).
+
+## Iteration 53: higher ground drawn higher (stacked levels, solid banded walls)
+- User: going from layer 0 to layer 2 at once looks the same as one layer. Mockups (scratchpad slopes/cliffs.html, one page updated in place): stacked layers best; then "A2 solid"; then its variants: "A2a strata" chosen.
+- Change (js/relief.js): each level k >= 2 is drawn 6 px higher per level (levels 0 and 1 in place, as approved): a copy of the block's ground cut to the tiles at least that high, lifted. Where a lifted level ends over lower ground its wall is painted down to the ground below: a band per layer (lit top row, mid, dark foot row) in that layer's own sheet colours (found by reading each sheet's south face: the grass sheets' face and the stone one sit on different rows), the sheet's ink at the foot. Everything on a tile is lifted with it (objects, people while walking between levels, items, fires, nameplates, the selector), and a click finds the lifted tile drawn under the pointer. Layers are rebuilt from the block canvas when a tile of it is redrawn.
+- Measured: 60 fps on plains and over mountains (1400x900, zoom 2). Screenshots: terraces 1/2/3 layers up read as three heights; mountain terraces show stone walls.
+- Result: 195 unit + 54 e2e green (test_a_click_picks_on_the_move failed once in the full run, passes 3/3 alone: the known flaky one). New e2e: higher ground drawn higher, clicks find it.
+- Known: a sprite standing just north of a much higher tile is drawn over that tile's raised top (sprites are drawn after all the ground); a one-layer drop from level 1 to 0 is still the sheet's thin face while higher ones get a 6 px wall each.

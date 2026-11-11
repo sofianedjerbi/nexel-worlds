@@ -109,6 +109,7 @@ function drawTile(x, y) {
   const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, g = b.ctx, ox = lx * 16, oy = ly * 16;
   const c = b.comb[i], gr = b.gnd[i];
   g.clearRect(ox, oy, 16, 16);
+  b.reliefDirty = true;                              // (its stacked levels are rebuilt from this canvas: relief.js)
   if (gr === "=") drawBlobLayer(g, IMG.deep_mask, x, y, (_, gg) => gg === "=", ox, oy, 0);   // rounded deep areas
   if (gr === ":") {                                  // bridge planks run across the direction of travel
     const ew = [-1, 1].some((d) => { const q = gndAt(x + d, y); return q === ":" || isLand(q); });
