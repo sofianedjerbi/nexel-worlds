@@ -1,10 +1,10 @@
 """Strawman: a scarecrow that gets off its pole. The only one shaped like a person: hat, sack head, arms straight out.
 
-Animation: a stiff shamble. Seen from the front, one foot lifts and the whole upper body leans over the other, then straightens.
-The arms never swing: that is what makes it wrong. At rest it only twitches its head. The grab: both arms go up and
-hold, then come down as it drops forward, hold, and it straightens.
+Animation: an 8-frame walk like the player's, but the arms never swing: that is what makes it wrong. Side-on the legs
+are generated (art.leg). At rest it stands dead still and now and then its head tips. The grab: the arm goes up and
+holds, then comes down as it drops forward, holds, and it straightens.
 """
-from art import G, edit, pad, nudge, squat, shift
+from art import G, edit, pad, nudge, squat, shift, leg
 
 PAL = {"o": "5b3f36", "h": "b98a5e", "H": "8e3f3c", "c": "e8d9b0", "C": "cdb98a", "r": "b5544a", "R": "8e3f3c",
        "b": "5f6f9a", "B": "47557a", "y": "e8cf7a", "g": "97bb8e", "e": "2b1f2a"}
@@ -48,61 +48,61 @@ ARMS_DOWN_BACK = ARMS_DOWN | {13: "..oroorrrrrrooro", 14: ".oro.orrrrRo.oro"}
 
 
 def facing(g, up_arms, down_arms):
-    low = lambda f: squat(f, len(f) - 6)                         # both feet down: the legs lose a row, the body sinks
+    """Front or back. Like the player: a foot lifts as the body rises a pixel, then both are down and it sinks."""
     tall = lambda f: pad(f, top=1, left=1, right=1)
-    return dict(idle=[tall(g), nudge(tall(g), range(1, 7), 1)],
-                walk=[nudge(tall(edit(g, LIFT_R)), range(1, 19), -1), tall(g), nudge(tall(edit(g, LIFT_L)), range(1, 19), 1), tall(g)],
-                act=[tall(edit(g, up_arms)), low(tall(edit(g, down_arms))), low(tall(edit(g, down_arms))), tall(g)])
+    low = lambda f: squat(tall(f), len(f) - 5)                   # both feet down: the legs lose a row, the body sinks
+    twitch = nudge(tall(g), range(1, 13), 1)                     # the whole head tips to one side
+    return dict(idle=[tall(g), tall(g), tall(g), twitch],
+                walk=[tall(edit(g, LIFT_R)), tall(edit(g, LIFT_R)), low(g), low(g), tall(edit(g, LIFT_L)), tall(edit(g, LIFT_L)), low(g), low(g)],
+                act=[tall(edit(g, up_arms)), low(edit(g, down_arms)), low(edit(g, down_arms)), tall(g)])
 
 
-LEFT = pad(G("""
-...oooooo...
-..ohhhhhho..
-..ohhhhhho..
-oooHHHHHhooo
-ohhhhhhhhhho
-.oooooooooo.
-..occccccCo.
-..oecccccCo.
-..occccCCCo.
-..ooocccCCo.
-...occcCCo..
-....ooooo...
-yoooorrrro..
-yorrrrrrRo..
-yooooorrRo..
-....orrRRo..
-....orrRRo..
-....oyoyyo..
-....obbBBo..
-....obbBBo..
-....obbBBo..
-....ooooo...
-...oyyyyo...
-...oooooo...
-..sssssssss.
-"""), left=1, right=1)
-STRIDE = {-6: "....obboBBo...", -5: "...obbo.oBBo..", -4: "...oooo.oooo..", -3: "..oyyo..oyyo..", -2: "..oooo..oooo.."}
-STRIDE2 = {k: v.replace("bb", "xx").replace("BB", "bb").replace("xx", "BB") for k, v in STRIDE.items()}   # the other leg leads
-ARM_UP = {10: ".yo.occcCCo...", 11: "..oo.ooooo....", 12: "...ooorrrro...", 13: "....orrrrRo...", 14: ".....orrrRo..."}
-ARM_DOWN = {12: ".....orrrro...", 13: "...ooorrrRo...", 14: ".yorrrorrRo...", 15: ".yoooorrRRo..."}
+TOP = G("""
+....oooooo....
+...ohhhhhho...
+...ohhhhhho...
+.oooHHHHHHooo.
+.ohhhhhhhhhho.
+..oooooooooo..
+...occccccCo..
+...oecccccCo..
+...occccCCCo..
+...ooocccCCo..
+....occcCCo...
+.....ooooo....
+....orrrrRo...
+....oroorRo...
+....ororoRo...
+....ororoRo...
+....oroyoRo...
+....oyyoyyo...
+""")
+ARM_UP = {10: ".yo.occcCCo...", 11: "..oo.ooooo....", 12: "...ooorrrRo...", 13: "....orrrrRo...", 14: "....orrrrRo...",
+          15: "....orrrrRo...", 16: "....orrrrRo..."}
+ARM_DOWN = {13: ".oooorrrrRo...", 14: "yorrrrrrrRo...", 15: "yoooorrrrRo...", 16: "....orrrrRo..."}
 
 
-def side(g):
-    tall = lambda f: pad(f, top=1)
-    low = lambda f: squat(tall(f), len(f) - 6)
-    grab = shift(low(edit(g, ARM_DOWN)), -1, 0, keep=1)          # it drops forward as the arm comes down
-    return dict(idle=[tall(g), tall(nudge(g, range(0, 6), -1))],
-                walk=[low(edit(g, STRIDE)), tall(g), low(edit(g, STRIDE2)), tall(g)],
-                act=[tall(edit(g, ARM_UP)), grab, grab, tall(g)])
+def side(step=None, top=TOP, lean=0):
+    """Facing left, upright, the near arm hanging. The legs are generated: the far one (darker) a half step behind the near."""
+    g = pad(top, top=1, left=2, right=2) + ["." * 18] * 5 + ["...sssssssssss...."]
+    g = leg(g, 9, 19, 3, (0, 0) if step is None else step + 4, w=2, fill="B", boot="y")
+    g = leg(g, 7, 19, 3, (0, 0) if step is None else step, w=2, fill="b", boot="y")
+    return shift(g, lean, 0, keep=1) if lean else g
+
+
+def side_frames():
+    grab = side(top=edit(TOP, ARM_DOWN), lean=-1)                # it drops forward as the arm comes down
+    return dict(idle=[side(), side(), side(), side(top=nudge(TOP, range(0, 12), -1))],
+                walk=[side(i) for i in range(8)],
+                act=[side(top=edit(TOP, ARM_UP)), grab, grab, side()])
 
 
 ENEMY = dict(
     key="strawman", name="Strawman", pal=PAL, role="stalker", cell=(32, 32), act="grab", stride=.9,
-    ms=dict(idle=[2200, 160], walk=180, act=[520, 90, 260, 300]),
+    ms=dict(idle=[900, 900, 500, 180], walk=110, act=[520, 90, 260, 300]),
     where="crop fields and old farms", when="night",
     behaviour="By day it is a scarecrow on a pole and does nothing. At night it steps down and walks, slowly, toward whoever is "
               "nearest, and only while nobody is looking at it. Look at it and it freezes. It tramples crops on its way. Fire ends it.",
     stats=dict(hp=8, damage=2, speed="slow, never stops", drops="straw, cloth, hat"),
-    dirs={"left": side(LEFT), "down": facing(DOWN, ARMS_UP, ARMS_DOWN), "up": facing(UP, ARMS_UP_BACK, ARMS_DOWN_BACK)},
+    dirs={"left": side_frames(), "down": facing(DOWN, ARMS_UP, ARMS_DOWN), "up": facing(UP, ARMS_UP_BACK, ARMS_DOWN_BACK)},
 )

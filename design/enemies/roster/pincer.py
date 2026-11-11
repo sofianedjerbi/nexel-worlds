@@ -1,67 +1,73 @@
-"""Pincer: a shore crab. Wide and flat, two raised claws, eyes on stalks; it walks sideways.
+"""Pincer: a shore crab. A flat, pointed shell, two raised claws, eyes on stalks, six jointed legs.
 
-Animation: the shell stays level and the legs ripple through three positions, fast. At rest one claw clicks, then the other.
-The snap: it rears up with both claws open and holds, then drops and shuts them, holds, and settles.
+A crab walks sideways, so it always shows its face (or its back): going left or right it is the same crab, looking and
+reaching that way. Animation: the shell stays level and the legs ripple through three positions, fast. At rest one claw
+clicks, then the other. The snap: it rears up with both claws open and holds, then drops and shuts them, holds, settles.
 """
 from art import G, edit, shift, pad
 
 PAL = {"o": "7a3340", "r": "e0664a", "R": "b94a3f", "h": "f2906a", "c": "f3d8c5", "e": "2b1f2a", "w": "f4f0e6", "y": "fff1a8"}
 
-DOWN = pad(G("""
-.o.o..............o.o.
-oroho..oo....oo..ohoro
-orrro.oweo..oweo.orrro
-.oRo...oooooooo...oRo.
-..oo.oohhhhhhhhoo.oo..
-..oroorrrrrrrrrrooro..
-...oorrrrrrrrrrrroo...
-...orrrrrrrrrrrrrro...
-...oRrrrrroorrrrrRo...
-..o.oRRccccccccRRo.o..
-.o.o.oooooooooooo.o.o.
-.o.o..o........o..o.o.
-...ssssssssssssssss...
-"""), top=1)
-UP = edit(DOWN, {
-    3: "orrro.oRRo..oRRo.orrro",
-    7: "...oorrrhrrrrhrrroo...",
-    8: "...orrrrrrRRrrrrrro...",
-    9: "...oRrrhrrrrrrhrrRo...",
-    10: "..o.oRRRRRRRRRRRRo.o..",
+
+def both(text):
+    """The crab is symmetric: draw the left half, get the whole."""
+    return pad([r + r[::-1] for r in G(text)], top=1)
+
+
+FRONT = both("""
+.o.o......oo..
+oroho....oweo.
+orrro.....oo..
+.oRo...ooooooo
+..oo..ohhhhhhh
+...ooorrrrrrrr
+..ooorrrrrrrrr
+.o..ooRrrrrrrr
+.o.o.ooRRrrrro
+o..o.o.ooccccc
+..o..o...ooooo
+....o.........
+...sssssssssss
+""")
+BACK = edit(FRONT, {
+    2: "oroho....oRRo..oRRo....ohoro",
+    7: "..ooorrhrrrrrrrrrrrrhrrooo..",
+    8: ".o..ooRrrrrhrrrrhrrrrRoo..o.",
+    9: ".o.o.ooRRrrrrrrrrrrRRoo.o.o.",
+    10: "o..o.o.ooRRRRRRRRRRoo.o.o..o",
 })
-LEGS = [{}, {-3: "o..o.oooooooooooo.o..o", -2: "o.o...o........o...o.o"}, {-3: "..oo.oooooooooooo.oo..", -2: ".o..o..o......o..o..o."}]
-SHUT_L = {1: ".ooo..............o.o.", 2: "orrro..oo....oo..ohoro"}
-SHUT_R = {1: ".o.o..............ooo.", 2: "oroho..oo....oo..orrro"}
-SHUT = {1: ".ooo..............ooo.", 2: "orrro..oo....oo..orrro"}
-SPARK = {0: "y.y................y.y"}
-
-LEFT = pad(G("""
-.o.o............
-oroho..oo.......
-orrro.oweo......
-.oRo...oooooo...
-..oo.oohhhhhho..
-..oroorrrrrrrro.
-...oorrrrrrrrro.
-....orrrrrrrrRo.
-....oRrrrrrrRRo.
-....oRccccRRRo..
-...o.oooooooo.o.
-...o..o..o...o..
-..ssssssssssss..
-"""), top=1, left=1)
-L_LEGS = [{}, {-3: "...o..oooooooo..o", -2: "...o.o...o.....o."}, {-3: "....oooooooooo.o.", -2: "...o...o..o....o."}]
-L_SHUT = {1: "..ooo............", 2: ".orrro..oo......."}
-L_SPARK = {0: "y.y.............."}
+LEGS = [{},
+        {10: None, 11: "...o.o...oooooooooo...o.o...", 12: ".....o................o....."},
+        {10: None, 11: ".o...o...oooooooooo...o...o.", 12: "....o..................o...."}]
+SHUT_L, SHUT_R = (".ooo......", "orrro....."), ("......ooo.", ".....orrro")
 
 
-def frames(g, legs, shut, shut_l, shut_r, spark, lunge):
-    rear = shift(g, 0, -1, keep=3)                       # up on its legs, claws open
-    rear = edit(rear, {-4: g[-4], -3: g[-3], -2: g[-2]})   # the belly row again: the shell stands a pixel taller
-    strike = shift(edit(g, shut), *lunge, keep=1)
-    return dict(idle=[g, edit(g, shut_l), g, edit(g, shut_r)],
-                walk=[edit(g, legs[1]), edit(g, legs[2]), edit(g, legs[1]), g],
-                act=[rear, edit(strike, spark), strike, g])
+def crab(g, legs=0, shut="", look=0, spark=False):
+    rows = {}
+    if legs:
+        a = g[10]
+        left = [".o.o.o.", "o.o..o."][legs - 1]
+        rows[10] = left + a[7:-7] + left[::-1]
+        rows |= {k: v for k, v in LEGS[legs].items() if v}
+    if "l" in shut:
+        rows |= {1: SHUT_L[0] + g[1][10:], 2: SHUT_L[1] + g[2][10:]}
+    if "r" in shut:
+        rows |= {1: rows.get(1, g[1])[:-10] + SHUT_R[0], 2: rows.get(2, g[2])[:-10] + SHUT_R[1]}
+    out = edit(g, rows)
+    if look:                                             # both pupils to the left
+        out = edit(out, {2: out[2].replace("oewo", "oweo")})
+    if spark:
+        out = edit(out, {0: "y.y" + out[0][3:-3] + "y.y"})
+    return out
+
+
+def frames(g, look=0):
+    c = lambda **kw: crab(g, look=look, **kw)
+    rear = shift(c(), 0, -1, keep=3)                     # up on its legs, claws open
+    rear = edit(rear, {-4: c()[-4], -3: c()[-3], -2: c()[-2]})
+    return dict(idle=[c(), c(shut="l"), c(), c(shut="r")],
+                walk=[c(legs=1), c(legs=2), c(legs=1), c()],
+                act=[rear, c(shut="lr", spark=True), c(shut="lr"), c()])
 
 
 ENEMY = dict(
@@ -71,7 +77,5 @@ ENEMY = dict(
     behaviour="Walks sideways only, so it must turn its flank to chase you. Hits from the front bounce off its claws; "
               "hit it from the side or from behind. It buries itself in sand when hurt and comes back later.",
     stats=dict(hp=5, damage=2, speed="quick sideways, slow forward", drops="shell, claw meat"),
-    dirs={"left": frames(LEFT, L_LEGS, L_SHUT, L_SHUT, {}, L_SPARK, (-1, 0)),
-          "down": frames(DOWN, LEGS, SHUT, SHUT_L, SHUT_R, SPARK, (0, 0)),
-          "up": frames(UP, LEGS, SHUT, SHUT_L, SHUT_R, SPARK, (0, 0))},
+    dirs={"left": frames(FRONT, look=1), "down": frames(FRONT), "up": frames(BACK)},
 )

@@ -69,7 +69,7 @@ def vertical(phase, down, **kw):
     return body + ["." + "s" * (H - 2) + "."]
 
 
-PH = [0, math.pi / 2, math.pi, 3 * math.pi / 2]
+PH = [i * math.pi / 4 for i in range(8)]               # 8 frames, like the game's own walks
 COIL = dict(amp=2.3, length=9.0, head_x=6)
 LUNGE = dict(straight=.75, head_x=1)
 
@@ -82,7 +82,7 @@ def frames(make):
 
 ENEMY = dict(
     key="adder", name="Adder", pal=PAL, role="ambusher", cell=(32, 32), act="strike", stride=1.4,
-    ms=dict(idle=[1500, 140], walk=110, act=[450, 80, 200, 250]),
+    ms=dict(idle=[1500, 140], walk=80, act=[450, 80, 200, 250]),
     where="tall grass, crop fields", when="day",
     behaviour="Lies in tall grass where you cannot see it, and only the grass moves. Step next to it and it strikes once, "
               "then slides away. The bite does little, but it poisons: you lose health slowly until you eat. Mown grass has no adders.",

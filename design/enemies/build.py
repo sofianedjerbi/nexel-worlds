@@ -23,7 +23,7 @@ ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
 ORDER = ["tusker", "stilt", "pincer", "adder", "lampwing", "strawman", "snapjaw"]
 DIRS = ["down", "up", "left", "right"]
 ANIMS = ["idle", "walk", "act"]
-SHADOW = (60, 40, 30, 70)
+SHADOW = (80, 64, 134, 46)        # the cow's and chicken's shadow colour, a touch stronger for the lighter page grass
 FOOT = 2                       # empty pixels under the sprite in its cell
 
 
@@ -45,10 +45,17 @@ def cell_image(g, pal, cell, name):
     for y, row in enumerate(g):
         assert len(row) == w, f"{name} row {y}: {len(row)} wide, expected {w}"
         for x, ch in enumerate(row):
-            if ch == ".":
+            if ch in ".s":
                 continue
             assert ch in pal, f"{name} row {y}: unknown colour {ch!r}"
             px[x0 + x, y0 + y] = pal[ch]
+    for y, row in enumerate(g):                               # a row of 's' marks the ground under the feet: paint the game's
+        if "s" in row:                                        # soft oval there, three rows deep, behind the sprite
+            a, b = row.index("s"), row.rindex("s")
+            for dy, inset in ((-2, 1), (-1, 0), (0, 1)):
+                for x in range(a + inset, b + 1 - inset):
+                    if 0 <= y0 + y + dy < chh and px[x0 + x, y0 + y + dy][3] == 0:
+                        px[x0 + x, y0 + y + dy] = SHADOW
     return img
 
 

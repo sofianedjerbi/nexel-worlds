@@ -95,3 +95,40 @@ def outline(fill, ink="o"):
                                          for i, j in ((1, 0), (-1, 0), (0, 1), (0, -1))):
                 out[y][x] = ink
     return ["".join(r) for r in out]
+
+
+# One step in eight frames, the count the game's cow, chicken and player use. Facing left: the foot lands in front,
+# slides back under the body while it carries weight, then lifts and swings forward again.
+STEP_DX = [-2, -1, 0, 1, 2, 1, 0, -1]
+STEP_UP = [0, 0, 0, 0, 0, 1, 1, 1]
+
+
+def leg(g, x, y, rows, phase, w=3, fill="d", boot=None, reach=1.0, ink="o"):
+    """Draw one chunky leg onto g: `rows` of fill `w` wide hanging from (x, y), then a sole (or a boot and a sole).
+
+    phase is a frame of the step (0-7), or (dx, up) for a pose of your own. The top of the leg stays at the hip;
+    the foot is `dx` pixels ahead or behind, and a lifted leg is `up` rows shorter.
+    """
+    dx, up = phase if isinstance(phase, tuple) else (round(STEP_DX[phase % 8] * reach), STEP_UP[phase % 8])
+    rows -= up
+    out = [list(r) for r in g]
+
+    def put(px, py, ch):
+        if 0 <= py < len(out) and 0 <= px < len(out[0]):
+            out[py][px] = ch
+    for r in range(rows):
+        off = round(dx * r / max(1, rows - 1)) if rows > 1 else dx
+        put(x + off - 1, y + r, ink)
+        for i in range(w):
+            put(x + off + i, y + r, fill)
+        put(x + off + w, y + r, ink)
+    yy = y + rows
+    if boot:
+        put(x + dx - 2, yy, ink)
+        for i in range(-1, w):
+            put(x + dx + i, yy, boot)
+        put(x + dx + w, yy, ink)
+        yy += 1
+    for i in range(-2 if boot else -1, w + 1):
+        put(x + dx + i, yy, ink)
+    return ["".join(r) for r in out]
