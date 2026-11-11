@@ -141,7 +141,7 @@ function frame(now) {
       names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), Math.round(cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom), Math.round((cy - sz / 2 - bob) * DPR) / DPR, sz, sz));
     }
     else if (o.fx) o.fx();
-    else drawEntity(o.p, sx, sy, S, t, now);
+    else { drawEntity(o.p, sx, sy, S, t, now); drawInFront(o.p, sx, sy, S); }
   }
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
     const px = sx(f.x), py = sy(f.y, f.x), tall = "TF".includes(combAt(f.x, f.y) || "");

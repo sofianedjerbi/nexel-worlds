@@ -159,3 +159,21 @@ function drawBlockRelief(b, sx, sy, S) {
     if (c) ctx.drawImage(c, X, Y - shOf(k) * zoom, B * S, (B * 16 + WALL_M) * zoom);
   }
 }
+// Someone standing behind higher ground (it is south of them, drawn up over where they stand) is behind it: the
+// ground in front of them is drawn again over them, a tile at a time, from its own lifted layers. (Not in the cave
+// you're in: that one is seen through the hill.)
+function drawInFront(p, sx, sy, S) {
+  const x = Math.round(p.x), y = Math.round(p.y);
+  if (inOpenCave(x, y)) return;
+  const L = standAt(x, y);
+  for (let dy = 1; dy <= 6; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const tx = x + dx, ty = y + dy, lv = levelAt(tx, ty);
+    if ((lv - L) * RELIEF_STEP <= (dy - 1) * 16) continue;          // (not high enough to reach them)
+    const b = blocks.get(bkey(Math.floor(tx / B), Math.floor(ty / B)));
+    if (!b || !b.relief) continue;
+    for (let k = Math.max(L + 1, b.relief.minLv + 1); k <= lv; k++) {
+      const c = b.relief.layers[k];
+      if (c) ctx.drawImage(c, (tx - b.bx * B) * 16, (ty - b.by * B) * 16, 16, 16 + RELIEF_STEP, sx(tx), sy(ty) - shOf(k) * zoom, S, (16 + RELIEF_STEP) * zoom);
+    }
+  }
+}
