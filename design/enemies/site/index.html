@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Megastructure · new enemies</title>
+<style>
+  :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#fff6e2; --paper2:#f3dfba; --line:#c9a27a; --grass:#9bc984; --grass2:#8dbd76; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif; color:var(--ink);
+    background:#9bd4c3; display:flex; justify-content:center; padding:32px 16px 60px; }
+  main { width:min(1080px, 100%); }
+  header { text-align:center; margin-bottom:18px; }
+  h1 { margin:0; font-size:32px; font-weight:900; }
+  .sub { color:var(--ink2); font-weight:700; margin-top:6px; }
+  .card { background:var(--paper); border:3px solid var(--line); border-radius:18px; padding:18px; margin-bottom:18px;
+    box-shadow:0 5px 0 #b48a62, 0 14px 30px rgba(60,40,30,.15); }
+  h2 { margin:0 0 10px; font-size:18px; font-weight:900; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  h2 small { color:var(--ink2); font-weight:700; font-size:13px; }
+  button.t { font:inherit; font-size:12px; font-weight:800; border:2px solid var(--ink); border-radius:8px; padding:2px 10px;
+    background:var(--paper2); color:var(--ink); cursor:pointer; }
+  button.t.on { background:var(--ink); color:var(--paper); }
+  canvas { image-rendering:pixelated; display:block; }
+  #lineup { margin:0 auto; border-radius:12px; border:2px solid #ead1a8; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:14px; }
+  .enemy { border:2px solid var(--line); border-radius:14px; background:#fffaf0; padding:12px; }
+  .enemy.boss { grid-column:1 / -1; }
+  .top { display:flex; gap:12px; align-items:flex-start; margin-top:8px; }
+  .stage { border-radius:10px; border:2px solid #ead1a8; overflow:hidden; flex:none; }
+  .name { font-size:20px; font-weight:900; }
+  .tag { display:inline-block; font-size:11px; font-weight:900; border-radius:6px; padding:1px 7px; background:#ffe2a6; margin-left:6px; vertical-align:middle; }
+  .where { font-size:13px; color:var(--ink2); margin-top:3px; }
+  .beh { font-size:14px; margin:10px 0 8px; line-height:1.35; }
+  .stats { display:flex; flex-wrap:wrap; gap:6px; font-size:12px; }
+  .stats span { background:var(--paper2); border-radius:7px; padding:2px 8px; }
+  .stats b { font-weight:900; }
+  .frames { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:flex-end; }
+  .frames figure { margin:0; text-align:center; font-size:10px; color:var(--ink2); }
+  .frames canvas { border-radius:6px; border:1px solid #ead1a8; }
+  .labels { display:flex; justify-content:space-between; font-size:11px; color:var(--ink2); margin-top:4px; }
+  .notes { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; color:var(--ink2); font-size:14px; }
+  .notes b { color:var(--ink); }
+  .sw { display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-2px; margin-right:2px; border:1px solid rgba(0,0,0,.15); }
+  @media (max-width:700px) { .notes { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>New enemies</h1>
+    <div class="sub" id="sub">designs for Megastructure, drawn in the game's own style</div>
+  </header>
+
+  <section class="card">
+    <h2>In the world, at game size <small>next to the player, a cow, a chicken and the gloom, today's only enemy</small>
+      <button class="t on" data-time="day">day</button><button class="t" data-time="night">night</button></h2>
+    <canvas id="lineup"></canvas>
+  </section>
+
+  <section class="card">
+    <h2>The roster <small>left: resting. right: what it does to you</small></h2>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="card">
+    <h2>How they are made</h2>
+    <div class="notes">
+      <div><b>Style:</b> the Sprout Lands look the game already uses: 16 px sprites, one mauve-brown outline, flat fills with a single shade, dot eyes, a soft ground shadow. The boss is 32 px, like the cow.</div>
+      <div><b>Palette:</b> <span id="pal"></span><br>taken from the game's own sheets, plus stone, moss and fire tones already used by its generated tiles.</div>
+      <div><b>One idea each:</b> every enemy has one silhouette and one behaviour a player can learn: it rolls, it hides, it swoops, it lashes, it steals, it burns. None is just "a thing that walks at you".</div>
+      <div><b>Fits the sandbox:</b> they act on the world, not only on health: the Pilfer robs chests, the Emberling burns what you built, Cairn breaks blocks. Fences, light, water and doors are the answers.</div>
+      <div><b>Source:</b> hand-placed pixels in <code>design/enemies/sprites.py</code>, one character per pixel. <code>build.py</code> makes the sheet (<a href="enemies.png">enemies.png</a>) and this page's data.</div>
+      <div><b>Not in the game yet:</b> these are designs. Tell me which to keep, change or drop, and I will animate them further and wire them in.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+const GRASS = ["#9bc984", "#8dbd76"], NIGHT = "rgba(30, 28, 70, .55)";
+let meta, sheet, refs, refBoxes, time = "day";
+const $ = (id) => document.getElementById(id);
+const load = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src; });
+
+function ground(g, w, h, z) {                       // a checker of 16 px grass tiles, like the game's meadow
+  for (let y = 0; y < h; y += 16 * z) for (let x = 0; x < w; x += 16 * z) {
+    g.fillStyle = GRASS[((x + y) / (16 * z)) % 2];
+    g.fillRect(x, y, 16 * z, 16 * z);
+  }
+}
+function frame(g, key, name, x, y, z) {
+  const [sx, sy, w, h] = meta[key].frames[name];
+  g.imageSmoothingEnabled = false;
+  g.drawImage(sheet, sx, sy, w, h, x, y, w * z, h * z);
+}
+const speed = (key, mode) => (mode === "idle" ? (key === "emberling" ? 180 : 420) : key === "flit" ? 90 : key === "cairn" ? 260 : 150);
+function current(key, mode, t) {
+  const list = meta[key].anim[mode];
+  return list[Math.floor(t / speed(key, mode)) % list.length];
+}
+
+function build() {
+  $("sub").textContent = `${Object.keys(meta).length} designs for Megastructure, drawn in the game's own style`;
+  const grid = $("grid");
+  for (const [key, e] of Object.entries(meta)) {
+    const z = e.size === 32 ? 5 : 7, side = e.size * z;
+    const el = document.createElement("div");
+    el.className = "enemy" + (e.role === "boss" ? " boss" : "");
+    el.innerHTML = `<div class="name">${e.name}<span class="tag">${e.role}</span></div>
+      <div class="top">
+        <div><div class="stage"><canvas width="${side * 2}" height="${side}" data-key="${key}" data-z="${z}"></canvas></div>
+          <div class="labels"><span>resting</span><span>${e.anim.act_name}</span></div></div>
+      </div>
+      <div class="where"><b>Where:</b> ${e.where} &nbsp; <b>When:</b> ${e.when}</div>
+      <div class="beh">${e.behaviour}</div>
+      <div class="stats">${Object.entries(e.stats).map(([k, v]) => `<span><b>${k}</b> ${v}</span>`).join("")}</div>
+      <div class="frames">${Object.keys(e.frames).map((f) => `<figure><canvas width="${e.size * 3}" height="${e.size * 3}" data-frame="${key}/${f}"></canvas>${f}</figure>`).join("")}</div>`;
+    grid.appendChild(el);
+  }
+  document.querySelectorAll("[data-frame]").forEach((c) => {
+    const [key, f] = c.dataset.frame.split("/"), g = c.getContext("2d");
+    g.fillStyle = GRASS[0]; g.fillRect(0, 0, c.width, c.height);
+    frame(g, key, f, 0, 0, 3);
+  });
+  $("pal").innerHTML = ["754c60", "f3f2c0", "e8b5ac", "c49a6c", "97bb8e", "6e967c", "b6bab1", "8a8f8c", "766daa", "5c4e92", "e8613a", "f6c45a", "818b83"]
+    .map((c) => `<span class="sw" style="background:#${c}"></span>`).join("");
+  document.querySelectorAll("[data-time]").forEach((b) => b.onclick = () => {
+    time = b.dataset.time;
+    document.querySelectorAll("[data-time]").forEach((x) => x.classList.toggle("on", x === b));
+  });
+}
+
+function draw(t) {
+  requestAnimationFrame(draw);
+  const c0 = $("lineup");
+  // the roster stages
+  document.querySelectorAll("canvas[data-key]").forEach((c) => {
+    const key = c.dataset.key, z = +c.dataset.z, g = c.getContext("2d"), s = meta[key].size * z;
+    ground(g, c.width, c.height, z);
+    frame(g, key, current(key, "idle", t), 0, 0, z);
+    frame(g, key, current(key, "act", t), s, 0, z);
+    if (time === "night") { g.fillStyle = NIGHT; g.fillRect(0, 0, c.width, c.height); }
+  });
+  // the lineup, at the game's zoom
+  const gap = 11, need = 12 + refBoxes.reduce((a, r) => a + r.box[2] + gap, 0) + Object.values(meta).reduce((a, e) => a + e.size + gap, 0);
+  const z = Math.max(2, Math.min(4, Math.floor((c0.parentElement.clientWidth - 8) / need)));           // the game's zoom when it fits
+  const c = c0, W = need * z, H = 60 * z;
+  if (c.width !== W) { c.width = W; c.height = H; }
+  const g = c.getContext("2d");
+  ground(g, W, H, z);
+  const base = 48 * z;                               // feet line
+  g.imageSmoothingEnabled = false;
+  let x = 6 * z;
+  const put = (img, sx, sy, w, h, label) => {
+    g.drawImage(img, sx, sy, w, h, x, base - h * z, w * z, h * z);
+    g.fillStyle = "rgba(91,63,54,.85)"; g.font = `800 ${z >= 4 ? 12 : 10}px ui-rounded, system-ui`; g.textAlign = "center";
+    g.fillText(label, x + w * z / 2, base + 7 * z);
+    x += (w + gap) * z;
+  };
+  for (const r of refBoxes) put(refs, ...r.box, r.label);
+  for (const [key, e] of Object.entries(meta)) {
+    const [sx, sy, w, h] = e.frames[current(key, Math.floor(t / 2400) % 2 ? "act" : "idle", t)];
+    put(sheet, sx, sy, w, h, e.name);
+  }
+  if (time === "night") { g.fillStyle = NIGHT; g.fillRect(0, 0, W, H); }
+}
+
+Promise.all([fetch("enemies.json").then((r) => r.json()), load("enemies.png"), load("refs.png"), fetch("refs.json").then((r) => r.json())])
+  .then(([m, s, r, rb]) => { meta = m; sheet = s; refs = r; refBoxes = rb; build(); requestAnimationFrame(draw); });
+</script>
+</body>
+</html>
