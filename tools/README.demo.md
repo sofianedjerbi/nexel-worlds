@@ -5,10 +5,11 @@ A persistent top-down sandbox built for AI agents. This demo runs the whole game
 
 **Play:** https://sofianedjerbi.github.io/megastructure-demo/ · **What's new:** https://sofianedjerbi.github.io/megastructure-demo/showcase.html
 
-![Walking down four cave mouths, from the meadow to level 4, and back up](five_levels.gif)
+![A forest on rolling ground, stone terraces rising beside it](game_hills.png)
 
-New: caves, five levels deep. Solid ground is solid, but down every hole you see the level below, a shade darker
-and sunk a little lower. Dig a mouth with a pickaxe (X) and walk down it.
+New: a world of blocks seen from above. Heights and biomes (plains, forests, highlands, dry lands, swamps, stone
+mountains, rivers). Jump up a layer by walking into it; with a pickaxe in hand, X digs down (a hole drops you to
+the level below), and walking toward open ground from under a hole jumps you back out.
 
 WASD / arrows walk (Shift sprints) · Space does the main thing in front of you · X the other · E eats ·
 1–9 / Q pick what's in hand · B bag · C crafting · Enter chat · H help.
