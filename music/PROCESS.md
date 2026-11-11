@@ -39,3 +39,6 @@ The game music is rendered by `music/compose.py` (pure numpy) into `music/site/a
   with a per-material loss factor and a contact brightness (dirt and flesh dull, stone and metal bright).
 - long sine sweeps under a thump = a drum-machine kick, not a body or a log. Use damped "body" and "dirt" materials.
 - animal voices need pitch jitter and amplitude shimmer; perfectly steady harmonics sound synthetic.
+- context matters more than polish: the game used to give 21 different placeable things one "wood knock", so a rug, a bed or a pot
+  sounded like knocking on a door. Building now has one sound per object family (post, planks, stone, furniture, soft, pot, fire,
+  boat, floor, path, earth); `music/sfx_map.json` says which object plays which sound, and the page has a "by object" panel to check it.

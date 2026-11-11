@@ -79,6 +79,12 @@
   .pill b { display:block; font-weight:900; }
   .pill span { display:block; font-size:12px; color:var(--ink2); line-height:1.25; margin-top:2px; }
   .pill i { font-style:normal; font-size:11px; color:var(--ink2); float:right; }
+  .objmap { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:6px; margin-bottom:16px; }
+  .obj { font:inherit; text-align:left; border:2px solid var(--line); border-radius:9px; background:#f6fbef; color:var(--ink);
+    padding:5px 9px; cursor:pointer; }
+  .obj b { display:block; font-weight:900; font-size:13px; }
+  .obj span { font-size:11px; color:var(--ink2); }
+  .obj:active, .obj.hit { background:#e2f2cf; transform:translateY(2px); }
   @media (max-width:700px) { #stems { grid-template-columns:repeat(3, 1fr); } .notes { grid-template-columns:1fr; } }
 </style>
 </head>
@@ -382,7 +388,7 @@ async function playSfx(name, el) {
   g.gain.value = 0.9;
   src.connect(g).connect(pan).connect(master);
   src.start();
-  if (el) { el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 120); el.querySelector("i").textContent = `${k + 1}/${bufs.length}`; }
+  if (el) { el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 120); const i = el.querySelector("i"); if (i) i.textContent = `${k + 1}/${bufs.length}`; }
 }
 async function buildSfx() {
   sfxMeta = await (await fetch("sfx/sfx.json")).json();
@@ -409,7 +415,22 @@ async function buildSfx() {
   Object.keys(sfxMeta).forEach(sfxLoad);   // decode everything in the background
 }
 
-load().then(() => { draw(); buildSfx(); });
+
+async function buildObjMap() {
+  const map = await (await fetch("sfx/map.json")).json();
+  const box = $("sfx");
+  const wrap = document.createElement("div");
+  wrap.className = "sfxcat";
+  let html = '<h3>By object: what you hear when you build or use it</h3>';
+  for (const [verb, items] of Object.entries(map)) {
+    html += `<div class="objmap">` + Object.entries(items).map(([obj, snd]) =>
+      `<button class="obj" data-s="${snd}"><b>${verb === "place" ? obj.replaceAll("_", " ") : obj}</b><span>${snd}</span></button>`).join("") + `</div>`;
+  }
+  wrap.innerHTML = html;
+  wrap.querySelectorAll(".obj").forEach((b) => b.onclick = () => { playSfx(b.dataset.s); b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 120); });
+  box.prepend(wrap);
+}
+load().then(async () => { draw(); await buildSfx(); buildObjMap(); });
 </script>
 </body>
 </html>

@@ -120,18 +120,20 @@ MATERIALS = {   # (lowest mode, highest mode, modes, loss factor eta, contact ms
     "metal": (1400, 8500, 12, 0.0015, 0.2, 14000),
     "body": (55, 650, 24, 0.14, 4.0, 2500),       # flesh, fur, a sack: heavily damped, dull contact
     "dirt": (60, 700, 16, 0.3, 6.0, 1800),
+    "ceramic": (480, 6500, 24, 0.006, 0.4, 9000),  # a clay pot: rings a little longer than stone
 }
 
 
-def impact(c, n, material, size=1.0, hardness=1.0, brightness=1.0):
+def impact(c, n, material, size=1.0, hardness=1.0, brightness=1.0, damp=1.0):
     """A strike: a short noise contact excites ~30 damped resonances spread over the material's range.
-    Decay per mode follows the loss factor: tau = 1 / (pi f eta), so highs die first, as in real objects."""
+    Decay per mode follows the loss factor: tau = 1 / (pi f eta), so highs die first, as in real objects.
+    damp > 1 for something resting on the ground or held: the contact soaks up the ring."""
     lo, hi, count, eta, contact, bright_hz = MATERIALS[material]
     t = tt(n)
     ir = np.zeros(n)
     for _ in range(count):
         f = np.exp(c.u(np.log(lo), np.log(hi))) / size
-        tau = min(1.2, 1 / (np.pi * f * eta * c.u(0.7, 1.4)))
+        tau = min(1.2, 1 / (np.pi * f * eta * damp * c.u(0.7, 1.4)))
         amp = c.u(0.3, 1.0) * (f / lo) ** (-0.5 / brightness)
         ir += amp * np.sin(2 * np.pi * f * t + c.u(0, 6.28)) * np.exp(-t / tau)
     cn = max(8, int(contact / hardness * SR / 1000))
@@ -388,19 +390,19 @@ def _(c):
 
 # --- building ----------------------------------------------------------------------------------
 
-@sfx("place", "Building", "placing a wooden block, a wall, a fence", 3, 0.45)
+@sfx("place", "Building", "fallback: any other wooden thing is set down", 3, 0.4)
 def _(c):
     n = N(0.3)
-    knock = impact(c, n, "wood", size=c.u(1.3, 1.7), hardness=1.0)
-    settle = fft_filter(c.noise(n), bp(300, 2500)) * env_exp(n, 0.02, 0.002)
+    knock = impact(c, n, "wood", size=c.u(1.3, 1.7), hardness=0.9)
+    settle = fft_filter(c.noise(n), bp(300, 2000)) * env_exp(n, 0.02, 0.002)
     return knock + 0.35 * settle
 
 
-@sfx("clack", "Building", "placing stone or cobble; a chest lid", 3, 0.4)
+@sfx("clack", "Building", "fallback: any other stone thing is set down", 3, 0.38)
 def _(c):
     n = N(0.28)
-    y = impact(c, n, "stone", size=c.u(0.9, 1.2), hardness=1.2)
-    place(y, impact(c, N(0.1), "stone", size=c.u(1.0, 1.3)) * 0.45, c.u(0.025, 0.045))   # it rocks and settles
+    y = impact(c, n, "stone", size=c.u(1.3, 1.7), hardness=1.0)
+    place(y, impact(c, N(0.1), "stone", size=c.u(1.4, 1.8)) * 0.4, c.u(0.025, 0.045))   # it rocks and settles
     return y
 
 
@@ -411,6 +413,115 @@ def _(c):
     place(y, grains(c, N(0.2), 25, 6, 300, 2500, decay=0.05) * 0.6, 0.0)
     place(y, impact(c, N(0.2), "dirt", size=1.0) * 0.5, c.u(0.12, 0.18))   # a second pat
     return y
+
+
+@sfx("place_post", "Building", "fence, gate, sign or flag: a wooden post is tapped into the ground", 3, 0.42)
+def _(c):
+    n = N(0.45)
+    y = impact(c, n, "dirt", size=1.1) * 0.8                                   # the post bites into the soil
+    place(y, impact(c, N(0.15), "wood", size=c.u(0.6, 0.75), hardness=2.0) * 0.9, 0.0)    # tap
+    place(y, impact(c, N(0.15), "wood", size=c.u(0.6, 0.75), hardness=2.0) * 0.6, c.u(0.15, 0.19))   # tap
+    return y + 0.4 * grains(c, n, 20, 6, 250, 2000, decay=0.06)
+
+
+@sfx("place_planks", "Building", "a wooden wall or a door goes up: boards set, one nail", 3, 0.45)
+def _(c):
+    n = N(0.5)
+    y = impact(c, n, "hollow", size=c.u(1.5, 1.8), hardness=0.8)               # boards land against the frame
+    scrape = fft_filter(c.noise(N(0.07)), bp(400, 2500)) * np.sin(np.linspace(0, np.pi, N(0.07)))
+    place(y, scrape * 0.25, 0.05)
+    nail = impact(c, N(0.15), "wood", size=0.6, hardness=2.2) + 0.06 * impact(c, N(0.15), "metal", size=1.4, hardness=2)
+    place(y, nail * 0.6, c.u(0.2, 0.24))
+    return y
+
+
+@sfx("place_stone", "Building", "a stone wall or a well: a heavy stone is set on stone", 3, 0.45)
+def _(c):
+    n = N(0.45)
+    y = impact(c, n, "stone", size=c.u(2.2, 2.8), hardness=0.7, damp=3.5)      # big, low, dense, resting on stone
+    grind = fft_filter(c.noise(N(0.12)), bp(500, 4000)) * np.sin(np.linspace(0, np.pi, N(0.12)))
+    place(y, grind * 0.2, 0.03)
+    for _ in range(3):                                                           # loose grit settles
+        place(y, impact(c, N(0.05), "stone", size=c.u(0.4, 0.6), hardness=1.5) * c.u(0.08, 0.18), c.u(0.06, 0.2))
+    return y
+
+
+@sfx("place_furniture", "Building", "a workbench, table, chair, chest, mailbox, clock, coop or trough is set down on its legs", 3, 0.4)
+def _(c):
+    n = N(0.45)
+    y = impact(c, n, "hollow", size=c.u(1.1, 1.35), hardness=0.9)              # first legs touch down
+    place(y, impact(c, N(0.25), "hollow", size=c.u(1.15, 1.4), hardness=0.9) * c.u(0.55, 0.75), c.u(0.03, 0.05))
+    scoot = fft_filter(c.noise(N(0.1)), bp(250, 1400)) * np.sin(np.linspace(0, np.pi, N(0.1)))
+    place(y, scoot * 0.18, 0.09)                                                 # a little nudge into place
+    return y
+
+
+@sfx("place_soft", "Building", "a rug, picnic blanket, bed, hay bale or basket: something soft is laid down", 3, 0.3)
+def _(c):
+    n = N(0.45)
+    whump = fft_filter(c.noise(n), lp(350)) * env_exp(n, 0.06, 0.012)           # air pushed out from under it
+    cloth = swept_noise(c, n, 900, 2600, 0.45) * env_exp(n, 0.09, 0.02)
+    fibres = grains(c, n, 40, 5, 1200, 5000, decay=0.08)                          # straw, wicker, a crease of fabric
+    return whump * 1.2 + cloth * 0.35 + fibres * 0.25
+
+
+@sfx("place_pot", "Building", "a potted plant is set down", 2, 0.35)
+def _(c):
+    n = N(0.4)
+    y = impact(c, n, "ceramic", size=c.u(1.0, 1.2), hardness=1.0)
+    place(y, grains(c, N(0.2), 20, 6, 300, 2500, decay=0.05) * 0.35, 0.02)      # soil shifts inside
+    return y
+
+
+@sfx("place_fire", "Building", "a campfire is built: logs and stones are stacked", 2, 0.4)
+def _(c):
+    n = N(0.6)
+    y = np.zeros(n)
+    at = 0.0
+    for k in range(4):                                                           # logs tumble into the ring
+        place(y, impact(c, N(0.15), "wood", size=c.u(1.4, 2.2), hardness=0.9) * c.u(0.5, 1.0), at)
+        at += c.u(0.05, 0.11)
+    for _ in range(2):
+        place(y, impact(c, N(0.08), "stone", size=c.u(1.0, 1.4), hardness=1.2) * 0.4, c.u(0.0, 0.3))
+    return y
+
+
+@sfx("place_boat", "Building", "a boat is put on the water", 2, 0.45)
+def _(c):
+    n = N(0.9)
+    hull = impact(c, n, "hollow", size=c.u(2.4, 2.9), hardness=0.6, damp=1.5)   # a big hollow body, the water damps it
+    y = fft_filter(hull, hp(55)) * 0.8
+    place(y, S["water"](c) * 0.6, 0.01)
+    lap = fft_filter(c.noise(N(0.3)), bp(300, 1500)) * np.sin(np.linspace(0, np.pi, N(0.3)))
+    place(y, lap * 0.15, 0.35)                                                   # water laps against the hull
+    return y
+
+
+@sfx("place_floor", "Building", "planks laid as a floor or a bridge", 3, 0.35)
+def _(c):
+    n = N(0.4)
+    y = impact(c, n, "hollow", size=c.u(1.6, 2.0), hardness=1.1)                # a board falls flat
+    place(y, impact(c, N(0.2), "hollow", size=c.u(1.7, 2.1), hardness=1.1) * 0.5, c.u(0.07, 0.1))   # and the next
+    return y
+
+
+@sfx("place_path", "Building", "cobbles are set into a path", 3, 0.35)
+def _(c):
+    n = N(0.35)
+    y = np.zeros(n)
+    at = 0.0
+    for k in range(3):
+        place(y, impact(c, N(0.1), "stone", size=c.u(0.9, 1.3), hardness=1.0) * c.u(0.6, 1.0), at)
+        at += c.u(0.035, 0.07)
+    return y + 0.35 * grains(c, n, 25, 4, 400, 3000, decay=0.06)
+
+
+@sfx("fill_dirt", "Building", "earth is shovelled into a hole, a field or the water", 2, 0.35)
+def _(c):
+    n = N(0.5)
+    pour = grains(c, n, 120, 8, 200, 1800, spread=0.3) * np.sin(np.pi * np.clip(tt(n) / 0.35, 0, 1))
+    thump = fft_filter(c.noise(n), lp(250)) * env_exp(n, 0.05, 0.01)
+    return pour + 0.8 * thump
 
 
 @sfx("gate", "Building", "a gate or a door swings open", 2, 0.35)
@@ -843,4 +954,5 @@ if __name__ == "__main__":
         manifest[name] = {"category": m["cat"], "when": m["when"], "files": files}
         print(f"  {name:9s} {m['cat']:10s} x{m['variants']}  {len(y) / SR:.2f}s")
     (OUT / "sfx.json").write_text(json.dumps(manifest, indent=1))
+    (OUT / "map.json").write_text(Path(__file__).with_name("sfx_map.json").read_text())
     print(f"{len(manifest)} sounds, {sum(len(v['files']) for v in manifest.values())} files")
