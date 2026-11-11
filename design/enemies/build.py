@@ -9,6 +9,7 @@ A sheet is laid out like the game's character.png: one row per direction (down, 
 
 import importlib
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -23,6 +24,7 @@ ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
 ORDER = ["tusker", "stilt", "pincer", "adder", "lampwing", "strawman", "snapjaw"]
 DIRS = ["down", "up", "left", "right"]
 ANIMS = ["idle", "walk", "act"]
+IN_GAME = ["tusker", "pincer", "strawman"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
 SHADOW = (80, 64, 134, 46)        # the cow's and chicken's shadow colour, a touch stronger for the lighter page grass
 FOOT = 2                       # empty pixels under the sprite in its cell
 
@@ -116,6 +118,8 @@ def build():
             "frames": img.width // e["cell"][0], "tall": box[3] - box[1]})
     (SITE / "enemies.json").write_text(json.dumps(meta, indent=1))
     references()
+    for key in IN_GAME:                                       # the ones the game uses: their sheets go to its assets
+        shutil.copyfile(SITE / "sheets" / f"{key}.png", ASSETS / f"{key}.png")
     print(f"{len(meta)} enemies, {sum(m['frames'] * 4 for m in meta)} frames -> {SITE}")
 
 

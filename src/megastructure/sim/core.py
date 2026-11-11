@@ -30,6 +30,7 @@ from .movement import Movement
 from .progress import Progress
 from .spawning import Spawning
 from .underground import Underground
+from .wild import Wild
 from .needs import Needs
 from .observe import Observation
 from .persistence import Persistence
@@ -38,7 +39,7 @@ from .social import Social
 from .specs import TOOL_SPECS
 
 
-class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Underground, Building, Items, Combat, Animals, Needs, Social, Environment, Observation):
+class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Underground, Building, Items, Combat, Animals, Wild, Needs, Social, Environment, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
@@ -70,6 +71,7 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
             self.creatures[cid] = Creature(**json.loads(js))
         self.next_creature = max(self.creatures, default=CREATURE_ID0) + 1
         self._thin_herds()
+        self.thin_wild(store)                              # (spawning.py: once, when a world meets the rarer-mobs rules)
         self.fires: dict[tuple, int] = {tuple(k): v for k, v in store.get_meta("fires", [])}
         self.timers: dict[tuple, list] = {(x, y): [t, kind] for x, y, t, kind in store.get_meta("timers", [])}
         self.pits: set = {tuple(p) for p in store.get_meta("pits", [])}

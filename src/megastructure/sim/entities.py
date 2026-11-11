@@ -61,7 +61,7 @@ class Agent:
 @dataclass
 class Creature:
     id: int
-    kind: str  # chicken | cow | gloom
+    kind: str  # chicken | cow | chick | calf | gloom | tusker | pincer | strawman
     x: int
     y: int
     hp: int
@@ -72,6 +72,11 @@ class Creature:
     born: int = 0       # tick of birth (chicks and calves grow up)
     scared: int = 0     # hit: runs away from `threat` until this tick (runtime only)
     threat: tuple = (0, 0)
+    mode: str = ""      # wild enemies (wild.py): "windup", "charge", "stun" (runtime only, like the next four)
+    until: int = 0      # the tick the current mode ends
+    dir: tuple = (0, 1)   # the way it faces, or charges
+    rest: int = 0       # no new attack before this tick
+    left: int = 0       # tiles left in a charge
 
     def to_json(self):
         return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "hp": self.hp,
@@ -83,6 +88,9 @@ CREATURES = {
     "gloom": {"hp": 30, "drops": {"ore": 1}, "char": "G", "damage": 7},
     "chick": {"hp": 4, "drops": {"meat": 1}, "char": "c", "grows": ("chicken", 300)},
     "calf": {"hp": 12, "drops": {"meat": 1}, "char": "k", "grows": ("cow", 360)},
+    "tusker": {"hp": 40, "drops": {"meat": 2}, "char": "D", "damage": 14},
+    "pincer": {"hp": 14, "drops": {"meat": 1}, "char": "I", "damage": 5},
+    "strawman": {"hp": 50, "drops": {"hay": 2}, "char": "S", "damage": 10},
 }
 
 

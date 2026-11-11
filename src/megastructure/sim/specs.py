@@ -5,6 +5,8 @@ from .constants import SAY_R, SHOUT_R
 
 LEGEND = {
     "@": "you", "P": "person", "c": "chicken (food)", "k": "cow (food)", "G": "gloom (hostile, at night)",
+    "D": "tusker (a boar: charges in a straight line, step aside)", "I": "pincer (a shore crab: snaps if you stand next to it)",
+    "S": "strawman (a scarecrow: walks toward you at night, fears firelight)",
     "$": "items on ground",
     **{g.char: g.name for g in GROUNDS},
     **{b.char: b.name for b in BLOCKS if b.name != "none"},

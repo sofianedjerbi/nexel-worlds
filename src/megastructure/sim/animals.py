@@ -14,6 +14,7 @@ from .constants import (
     sec,
 )
 from .entities import CREATURES, ActionError, Agent, Creature
+from .wild import WILD
 
 
 class Animals:
@@ -63,6 +64,8 @@ class Animals:
                     if abs(c.x + d[0] - tx) + abs(c.y + d[1] - ty) >= abs(c.x - tx) + abs(c.y - ty) \
                             and self._creature_move(c, c.x + d[0], c.y + d[1]):
                         break
+            elif c.kind in WILD:
+                self.step_wild(c, online)
             elif c.kind in FARM:
                 c.cooldown = sec(0.8) + self.rng.randrange(sec(1.2))
                 d = list(DIRS.values())[self.rng.randrange(4)]
@@ -163,8 +166,8 @@ class Animals:
         """Feed an animal: it loves you for a while; a fed chicken lays an egg soon."""
         animal = self._creature_target(a, args)
         item = str(args.get("item", ""))
-        if animal.kind == "gloom":
-            raise ActionError("bad_target", "glooms don't eat that")
+        if animal.kind not in FARM:
+            raise ActionError("bad_target", f"a {animal.kind} doesn't eat that")
         if item not in T.FEED or not a.count(item):
             raise ActionError("missing_item", "feed it something edible you carry (or hay)")
         yield from self.wait(a, 0.5)

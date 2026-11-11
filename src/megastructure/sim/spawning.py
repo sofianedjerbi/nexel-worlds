@@ -2,15 +2,20 @@
 
 - Ticking: creatures only live (move, lay, breed, hunt) in chunks within SIM_R tiles of someone awake; elsewhere
   the world waits, frozen, until a player comes back. Those chunks are kept loaded, loading one every other tick.
-- Animals belong to the land: when a chunk is generated, a meadow may get a herd (persistent; they never despawn).
-  Every PASSIVE_EVERY, a player whose surroundings hold fewer than PASSIVE_CAP animals may get one more herd.
-- Glooms are spawned every second at night, in packs, in the dark (not near fire, not indoors), up to HOSTILE_CAP
-  around each player; they despawn when far from everyone (at once past DESPAWN_FAR, by chance past DESPAWN_NEAR).
+- Meeting a creature is meant to be rare: an event, not scenery.
+- Animals belong to the land: when a chunk is generated, a meadow may get a herd (persistent; they never despawn),
+  about one chunk in twenty. Every PASSIVE_EVERY, a player with fewer than PASSIVE_CAP animals around may get one more.
+- Glooms are tried every HOSTILE_EVERY at night, one at a time, in the dark (not near fire, not indoors), up to
+  HOSTILE_CAP around each player.
+- Wild enemies (WILD_SPAWNS): a tusker now and then by day on a meadow, a pincer on a shore; one at a time per player.
+  The strawman never spawns by itself.
+- Glooms, tuskers and pincers despawn when far from everyone (at once past DESPAWN_FAR, by chance past DESPAWN_NEAR).
 - Every spawn is out of sight (SPAWN_MIN tiles from everyone) and inside a ticking chunk; caps are per player,
   counted around that player, so a crowd in one place never starves another.
 """
 
 import random
+import sqlite3
 
 from ..gen import CHUNK
 from .constants import sec
@@ -20,11 +25,16 @@ SIM_R = 48                       # creatures tick within this many tiles of some
 CAP_R = 40                       # caps count the creatures this close to a player
 SPAWN_MIN, SPAWN_MAX = 16, 40    # spawns land at least this far from everyone, at most this far from the player
 PASSIVE = ("chicken", "cow", "chick", "calf")
-PASSIVE_CAP, PASSIVE_EVERY = 6, sec(45)
-HOSTILE_CAP = 3
+PASSIVE_CAP, PASSIVE_EVERY = 2, sec(240)
+HOSTILE_CAP, HOSTILE_EVERY = 2, sec(8)
 HERD = {"chicken": (2, 3), "cow": (1, 2)}
-PACK = (1, 2)                    # glooms come alone or in twos
-CHUNK_HERD = 0.2                 # the chance a newly generated chunk gets a herd (if it has a meadow for it)
+PACK = (1, 1)                    # glooms come alone
+CHUNK_HERD = 0.05                # the chance a newly generated chunk gets a herd (if it has a meadow for it)
+# kind: how often it is tried, how many may be around a player, by day only, how many spots one try looks at
+WILD_SPAWNS = {"tusker": dict(every=sec(120), cap=1, day=True, tries=1), "pincer": dict(every=sec(90), cap=1, day=False, tries=40)}
+ROAMING = ("gloom", "tusker", "pincer")      # these come and go; farm animals and strawmen stay where they are
+RULES = 2                        # the spawn rules' version: a world saved under older ones is thinned once (thin_wild)
+HOME_R, KEEP_ONE_IN = 24, 5      # ...sparing animals this close to anyone or their bed, and one in five of the rest
 DESPAWN_NEAR, DESPAWN_FAR = 32, 64
 LIGHT, LIGHT_R = ("campfire", "fire"), 6
 
@@ -68,10 +78,17 @@ class Spawning:
             for a in online:
                 if self.count_near(a, PASSIVE) < PASSIVE_CAP:
                     self.spawn_pack(self.rng.choice(("chicken", "chicken", "cow")), a)
-        if self.tick % sec(1) == 0 and self.is_night():
-            a = online[(self.tick // sec(1)) % len(online)]
+        if self.tick % HOSTILE_EVERY == 0 and self.is_night():
+            a = online[(self.tick // HOSTILE_EVERY) % len(online)]
             if self.count_near(a, ("gloom",)) < HOSTILE_CAP:
                 self.spawn_pack("gloom", a)
+        for kind, w in WILD_SPAWNS.items():
+            if self.tick % w["every"] == 0 and not (w["day"] and self.is_night()):
+                a = online[(self.tick // w["every"]) % len(online)]
+                if self.count_near(a, (kind,)) < w["cap"]:
+                    for _ in range(w["tries"]):
+                        if self.spawn_pack(kind, a):
+                            break
         if self.tick % sec(1) == 0:
             self.despawn_far(online)
 
@@ -90,17 +107,19 @@ class Spawning:
         if kind == "gloom":                                  # glooms keep to the dark
             return not any(self.world.block(x + dx, y + dy) in LIGHT
                            for dx in range(-LIGHT_R, LIGHT_R + 1) for dy in range(-LIGHT_R, LIGHT_R + 1))
+        if kind == "pincer":
+            return self.shore(x, y)
         return self.world.ground(x, y) == "grass" and self.world.block(x, y) == "none"
 
-    def spawn_pack(self, kind: str, near: Agent):
+    def spawn_pack(self, kind: str, near: Agent) -> int:
         """One attempt, as the classics do it: a random spot in the ring around a player, then a pack around it."""
         x, y = near.x + self.rng.randint(-SPAWN_MAX, SPAWN_MAX), near.y + self.rng.randint(-SPAWN_MAX, SPAWN_MAX)
         if (x // CHUNK, y // CHUNK) not in self.ticking:
-            return
+            return 0
         if any(max(abs(x - a.x), abs(y - a.y)) < SPAWN_MIN for a in self.agents.values() if a.online):
-            return
-        lo, hi = PACK if kind == "gloom" else HERD[kind]
-        self.place_pack(kind, x, y, self.rng.randint(lo, hi))
+            return 0
+        lo, hi = HERD.get(kind, PACK)
+        return self.place_pack(kind, x, y, self.rng.randint(lo, hi))
 
     def place_pack(self, kind: str, x: int, y: int, n: int, chunk=None) -> int:
         """Up to n of a kind around (x, y); with `chunk`, only inside that (freshly generated) chunk, so placing
@@ -134,7 +153,25 @@ class Spawning:
                 return
 
     def despawn_far(self, online: list[Agent]):
-        for c in [c for c in self.creatures.values() if c.kind == "gloom"]:
+        for c in [c for c in self.creatures.values() if c.kind in ROAMING]:
             d = min(max(abs(c.x - a.x), abs(c.y - a.y)) for a in online)
             if d > DESPAWN_FAR or (d > DESPAWN_NEAR and self.rng.random() < 1 / 40):
                 del self.creatures[c.id]
+
+    def thin_wild(self, store):
+        """Once, when a world saved under the old rules (animals everywhere) is first opened under these: most wild
+        animals go. Those near anyone, or near anyone's bed, are taken for somebody's and stay; so does one in
+        KEEP_ONE_IN of the rest. The world file is copied aside first (world.before-rare-mobs.sqlite)."""
+        if store.get_meta("spawn_rules", 1) >= RULES:
+            return
+        homes = [p for a in self.agents.values() for p in ((a.x, a.y), tuple(a.spawn) if a.spawn else None) if p]
+        gone = [c.id for c in self.creatures.values() if c.kind in PASSIVE and c.id % KEEP_ONE_IN
+                and not any(max(abs(c.x - hx), abs(c.y - hy)) <= HOME_R for hx, hy in homes)]
+        if gone:
+            store.commit()
+            copy = sqlite3.connect(store.path.with_name(store.path.stem + ".before-rare-mobs.sqlite"))
+            store.db.backup(copy)
+            copy.close()
+            for cid in gone:
+                del self.creatures[cid]
+        store.set_meta("spawn_rules", RULES)

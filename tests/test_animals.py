@@ -5,9 +5,12 @@ from helpers import clear, run, sim_ripen_ticks
 
 def test_animals_spawn_and_seeds_grow(world):
     sim, a = world
+    from megastructure.sim.spawning import PASSIVE_EVERY
     clear(sim, a, r=30)
-    for _ in range(600):
+    for _ in range(PASSIVE_EVERY * 12):                      # animals are rare: a herd turns up now and then, not at once
         sim.step()
+        if any(c.kind in ("chicken", "cow") for c in sim.creatures.values()):
+            break
     assert any(c.kind in ("chicken", "cow") for c in sim.creatures.values())
     # farming: till, plant, wait, harvest
     a.add("seed", 1); a.add("hoe", 1)
@@ -130,11 +133,12 @@ def test_hit_animals_run_away(world):
     assert abs(hen.x - a.x) + abs(hen.y - a.y) >= 4                     # it ran, it didn't stay to be hit again
 
 
-def test_new_land_comes_with_herds_and_only_land_near_players_lives(world):
+def test_new_land_comes_with_herds_and_only_land_near_players_lives(world, monkeypatch):
     sim, a = world
     from megastructure.gen import CHUNK
-    from megastructure.sim import sec
+    from megastructure.sim import sec, spawning
     from megastructure.sim.spawning import SIM_R
+    monkeypatch.setattr(spawning, "CHUNK_HERD", 0.5)         # (herds are rare: make them common enough to find in a dozen chunks)
     before = len(sim.creatures)
     for i in range(12):                                      # explore: a row of new chunks far away
         sim.world.block((i + 10) * CHUNK, 40 * CHUNK)
@@ -154,12 +158,12 @@ def test_glooms_come_at_night_in_the_dark_up_to_a_cap(world):
     from megastructure.sim import DAY_TICKS
     from megastructure.sim import sec
     from megastructure.sim.spawning import HOSTILE_CAP
-    sim.tick = (sim.tick // DAY_TICKS + 1) * DAY_TICKS - sec(60)   # a minute before the day turns: night
+    sim.tick = (sim.tick // DAY_TICKS + 1) * DAY_TICKS - sec(140)  # early in the night
     assert sim.is_night()
-    for _ in range(sec(40)):
+    for _ in range(sec(130)):
         sim.step()
     glooms = [c for c in sim.creatures.values() if c.kind == "gloom"]
-    assert 1 <= len(glooms) <= HOSTILE_CAP + 2              # (a pack may overshoot the cap a little)
+    assert 1 <= len(glooms) <= HOSTILE_CAP                  # they come one at a time, and few
 
 
 def test_a_campfire_keeps_the_dark_away(world):

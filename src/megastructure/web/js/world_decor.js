@@ -13,6 +13,39 @@ const ANIMALS = {
   cow: {fw: 32, idle: [0, 3, 260], walk: [1, 8, 90], alt: [6, 4, 220], sleep: [4, 4, 400], love: [7, 6, 160]},
   calf: {fw: 32, idle: [0, 2, 300], walk: [6, 8, 90], alt: [7, 4, 220], sleep: [4, 4, 400], love: [8, 6, 160]},
 };
+// Wild enemies (sim/wild.py): one sheet each, drawn in design/enemies; rows are down, up, left, right. Each animation is
+// [first column, frames, ms a frame (or one per frame)]. The tusker warns (paws the ground) and runs for as long as the
+// server says; the others play their whole action once from the moment the warning starts, so the blow lands on its strike frame.
+const WILD = {
+  tusker: {cw: 32, ch: 32, idle: [0, 8, 260], walk: [8, 8, 90], warn: [16, 4, 170], run: [20, 8, 55]},
+  pincer: {cw: 24, ch: 16, idle: [0, 8, [800, 300, 300, 600, 140, 500, 140, 600]], walk: [8, 8, 80], act: [16, 5, [140, 420, 80, 220, 220]]},
+  strawman: {cw: 32, ch: 32, idle: [0, 4, [900, 900, 500, 180]], walk: [4, 8, 110], act: [12, 4, [520, 90, 260, 300]]},
+};
+function wildFrame([col, n, ms], t, loop) {
+  if (!Array.isArray(ms)) return col + (loop ? Math.floor(t / ms) % n : Math.min(n - 1, Math.floor(t / ms)));
+  const all = ms.reduce((a, b) => a + b, 0);
+  t = loop ? t % all : Math.min(t, all - 1);
+  let i = 0;
+  while (t >= ms[i]) t -= ms[i++];
+  return col + i;
+}
+function drawWild(p, x, y, now) {
+  const e = p.e, A = WILD[e.kind], z = zoom;
+  const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
+  if (e.act === "windup" && p.act !== "windup") p.windAt = now;      // the warning starts: play it from its first frame
+  p.act = e.act;
+  const [fx, fy] = e.act && e.dir ? e.dir : [p.fx, p.fy], row = fy > 0 ? 0 : fy < 0 ? 1 : fx < 0 ? 2 : 3;
+  const since = now - (p.windAt || -1e9), calm = () => wildFrame(moving ? A.walk : A.idle, now + e.id * 137, true);
+  let col, shake = 0;
+  if (A.warn) {
+    col = e.act === "windup" ? wildFrame(A.warn, since, true) : e.act === "charge" ? wildFrame(A.run, now, true) : calm();
+    if (e.act === "stun") shake = Math.round(Math.sin(now / 45)) * z;       // dazed: it rammed something
+  } else col = since < A.act[2].reduce((a, b) => a + b, 0) ? wildFrame(A.act, since, false) : calm();
+  const blit = () => ctx.drawImage(IMG[e.kind], col * A.cw, row * A.ch, A.cw, A.ch, x - (A.cw - 16) / 2 * z + shake, y - (A.ch - 16) * z, A.cw * z, A.ch * z);
+  blit();
+  const fl = flashes.get(e.kind + e.id);
+  if (fl && now - fl < 120) { ctx.globalCompositeOperation = "lighter"; blit(); ctx.globalCompositeOperation = "source-over"; }
+}
 const VARIANTS = {chicken: ["chicken", "chicken", "chicken_brown", "chicken_red", "chicken_blue", "chicken_green"],
   cow: ["cow", "cow", "cow_light", "cow_pink", "cow_purple", "cow_green"],
   chick: ["chick", "chick", "chick_brown", "chick_red", "chick_blue", "chick_green"],
