@@ -2,7 +2,8 @@
 
 Only the heads are drawn by hand. The body is computed from a phase, 8 frames to a cycle, so it moves as smoothly as
 the player: side-on, a wave whose crests rise out of the water (with a spine along each and foam where it enters);
-from above, a thick ribbon swimming, with a fin down its back.
+coming at you or swimming away, the head stands out of the water and the coils break the surface behind it one
+after another, sliding from side to side and shrinking toward the tail.
   the lunge   the head rears up and back (held: the warning), then snaps forward with its jaws open, holds, and returns
 """
 import math
@@ -47,17 +48,48 @@ otctcogggGo.
 .....oggGGo.
 """)
 BOB = [0, 0, 1, 1, 1, 0, 0, 0]
-FACE = G("""
-...ofo...
-..ogfgo..
-.ogggggo.
-ogkgggkgo
-ogggggggo
-.ogcccgo.
-..occco..
-...ooo...
+
+
+def both(text):
+    """A face is symmetric: draw the left half, get the whole."""
+    return [r + r[::-1] for r in G(text)]
+
+
+FACE = both("""
+.o....of
+ofo..off
+offoooog
+offggggg
+.ogggggg
+.ogykggg
+.ogggggg
+..oggggc
+..oGgccc
+..oGckcc
+...oGccc
+...ooooo
 """)
-NAPE = [r.replace("k", "g").replace("c", "g") for r in FACE[::-1]]      # the back of the head, pointing up the screen
+FACE_OPEN = FACE[:10] + both("""
+...otttt
+...ommmm
+...otttt
+....oooo
+""")
+NAPE = both("""
+.o....of
+ofo..off
+offoooof
+offggggf
+.oggggGf
+.oggggGf
+.ogggGGf
+..ogGGGg
+..oGGGGG
+...oGGGG
+...oGGGG
+...oGGGG
+...oGGGG
+""")
 
 
 def side(i, head=HEAD, hx=1, hy=0):
@@ -90,30 +122,48 @@ def side(i, head=HEAD, hx=1, hy=0):
     return ["".join(r) for r in g]
 
 
-def above(i, down, pull=0, jaws=False):
-    """Seen from above, swimming up the screen (or down, with its face showing)."""
+def hump(w, h):
+    """One coil of the body breaking the surface, seen end-on: a rounded mound with a spine, standing in its own foam."""
+    half = w // 2
+    rows = [["."] * (w + 4) for _ in range(h + 2)]
+    for r in range(h):
+        reach = max(1, round(half * math.sqrt(1 - ((h - 1 - r) / h) ** 2)))
+        for x in range(half + 2 - reach, half + 2 + reach):
+            rows[1 + r][x] = "g" if r < max(1, h // 2) else "G"
+    g = [list(r) for r in outline(["".join(r) for r in rows])]
+    if h >= 3:
+        g[0][half + 1] = g[0][half + 2] = "f"
+    g[h + 1] = list("W" + "w" * (w + 2) + "W")                    # the water line: foam under it, a ripple either side
+    return ["".join(r) for r in g]
+
+
+def above(i, down, lift=0, head=None):
+    """Coming at you (down) or swimming away (up): the head stands out of the water and the coils of the body break the
+    surface one after another behind it, sliding from side to side and shrinking toward the tail as the wave runs down."""
     i %= 8
-    w, n = 16, 20
-    fill = [["."] * w for _ in range(n + 10)]
-    for r in range(n):
-        t = r / n
-        cx = 8 + round(3 * min(1, r / 5) * math.sin(2 * math.pi * r / 13 - 2 * math.pi * i / 8))
-        half = 2 if t < .6 else 1 if t < .85 else 0
-        for x in range(cx - half, cx + half + 1):
-            fill[10 + r][x] = "G" if half == 2 and abs(x - cx) == 2 else "g"
-        if half == 2 and r % 3 == 1:
-            fill[10 + r][cx] = "f"
-    g = outline(["".join(r) for r in fill])
-    g = over(g, NAPE if not down else FACE[::-1], 3, 3 + pull)       # (drawn head-up; the whole picture is flipped for "down")
-    if jaws and down:
-        g = over(g, ["ttt", "omo"], 6, 2 + pull)
-    for k in range(4):                                               # a little wake beside the bends
-        y = 12 + k * 5 + (i % 4)
-        if y < n + 9:
-            for x in (1, 14):
-                if g[y][x] == ".":
-                    g = over(g, ["W"], x, y)
-    return g[::-1] if down else g
+    w, h = 26, 30
+    g = ["." * w] * h
+    head_y = (14 if down else 2) + BOB[i] + lift
+    coils = []
+    for j in range(-1, 4):
+        s = j + i / 8                                              # how far down the body this crest is, in coils
+        if not 0.15 < s < 3.0:
+            continue
+        size = min(1, s / 0.7) * (1 - 0.16 * s)                    # it rises out of the water behind the head, then tapers
+        hh, ww = round(6.6 * size), 2 * round(6.6 * size * (1 - 0.06 * s))
+        if hh < 1 or ww < 4:
+            continue
+        cx = w // 2 + round(4 * math.sin(math.pi * s + 0.6))
+        base = round(16 - 4.3 * s) if down else round(13 + 4.3 * s)
+        coils.append((base, cx, hump(ww, hh)))
+    for base, cx, m in sorted(coils, key=lambda c: c[0]):          # far ones first, near ones over them
+        g = over(g, m, cx - len(m[0]) // 2, base - len(m) + 1)
+    stamp = head or (FACE if down else NAPE)
+    g = over(g, stamp, (w - 16) // 2, head_y)
+    if down:                                                        # the chin in its foam
+        y = head_y + len(stamp)
+        g = over(g, ["W" + ("w" * 12 if i % 2 else "ww.wwwwww.ww") + "W", ("..W......W.." if i % 4 < 2 else ".W........W.")], (w - 14) // 2, y)
+    return g
 
 
 def frames(make_idle, windup, strike):
@@ -130,6 +180,6 @@ ENEMY = dict(
               "comes into the shallows, so the shore is safe.",
     stats=dict(hp=60, damage=18, speed="fast in deep water", drops="scales, a great fish"),
     dirs={"left": frames(side, side(0, hx=3, hy=-3), side(0, head=HEAD_OPEN, hx=0, hy=2)),
-          "down": frames(lambda i: above(i, True), above(0, True, pull=2), above(0, True, pull=-2, jaws=True)),
-          "up": frames(lambda i: above(i, False), above(0, False, pull=2), above(0, False, pull=-2))},
+          "down": frames(lambda i: above(i, True), above(0, True, lift=-2), above(0, True, lift=1, head=FACE_OPEN)),
+          "up": frames(lambda i: above(i, False), above(0, False, lift=2), above(0, False, lift=-2))},
 )
