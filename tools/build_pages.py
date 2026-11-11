@@ -33,7 +33,7 @@ def build(out: Path):
     box = '<div class="watch"><button class="ghost" id="watch">just watch</button></div>'
     assert box in page, "the join box changed"
     (out / "index.html").write_text(page.replace(box, box + '\n  <div class="watch"><a href="showcase.html" '
-                                    'style="color:var(--ink2)">New: caves, five levels deep</a></div>'))
+                                    'style="color:var(--ink2)">New: caves, and a 3D preview</a></div>'))
     (out / ".nojekyll").write_text("")
     print(f"built {out} ({sum(f.stat().st_size for f in out.rglob('*') if f.is_file()) // 1024} KB)")
 
