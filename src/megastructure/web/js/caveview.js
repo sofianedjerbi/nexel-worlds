@@ -25,16 +25,41 @@ function drawLevelAbove(k, sx, sy, S, t) {
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const o of list) {
     const [img, a, b2, w, h, dx, dy] = o.spr;
-    ctx.drawImage(img, a, b2, w, h, Math.round(sx(o.x + k * LAYER) + dx * zoom), Math.round(sy(o.y) + dy * zoom), w * zoom, h * zoom);
+    ctx.drawImage(img, a, b2, w, h, Math.round(sx(o.x + k * LAYER) + dx * zoom), Math.round(sy(o.y, o.x) + dy * zoom), w * zoom, h * zoom);
   }
 }
 
 // Called before this level's ground is drawn: underground, every level above it, from the top down
 function drawLevelsAbove(sx, sy, S, t) {
   const d = depthOf(cam.x);
-  if (!d) return;
+  if (!d || CAVE_STYLE !== "xray") return;
   for (let k = d; k >= 1; k--) {
     drawLevelAbove(k, sx, sy, S, t);
     ctx.fillStyle = `rgba(28,22,34,${ABOVE_DIM})`; ctx.fillRect(0, 0, W, H);
   }
+}
+
+// Going down, the roof comes off: the ground you were standing on stays on screen for a moment over the cave, then
+// lifts away and fades, like the roof of a house popping off as you walk in. Coming up, the cave's dark lifts the
+// same way off the daylight.
+const ROOF_MS = 700;
+let roof = {d: null, at: -1e9, dir: 0};
+function drawRoof(sx, sy, S, t, now) {
+  const d = depthOf(cam.x);
+  if (roof.d !== null && d !== roof.d) { roof.at = now; roof.dir = d > roof.d ? 1 : -1; }
+  roof.d = d;
+  const p = (now - roof.at) / ROOF_MS;
+  if (p >= 1 || !roof.dir) return;
+  const e = smooth(p), s = 1 + .14 * e, lift = H * .1 * e;
+  ctx.save();
+  ctx.globalAlpha = 1 - e;
+  ctx.translate(W / 2, H / 2); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2 - lift);
+  if (roof.dir > 0) {                                      // the level above, lifting off
+    ctx.fillStyle = "rgba(20,14,22,.25)"; ctx.fillRect(0, H, W, H * .2);   // (its shadow, under its edge)
+    drawLevelAbove(1, sx, sy, S, t);
+  } else {                                                 // the cave's dark, lifting off the day
+    if (p > .6) { ctx.restore(); return; }                // (shorter: daylight comes back quickly)
+    ctx.fillStyle = "rgb(30,24,32)"; ctx.globalAlpha = (1 - p / .6) * .45; ctx.fillRect(-W, -H, W * 3, H * 3);
+  }
+  ctx.restore();
 }

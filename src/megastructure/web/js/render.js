@@ -139,6 +139,7 @@ function frame(now) {
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawHouses(sx, sy, S, dt, now);
   if (!drawCave(vis, sx, sy, S, t, now)) drawNight(vis, sx, sy, S, t);
+  drawRoof(sx, sy, S, t, now);                       // (changing level: the roof popping off, caveview.js)
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   drawSelector(aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null, sx, sy, now);

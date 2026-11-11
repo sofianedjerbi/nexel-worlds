@@ -69,7 +69,7 @@ function levelShift(p, x, y, mine) {
   const lv = Math.round((x - p.tx) / LAYER) * LAYER;
   if (!lv || Math.abs(x - lv - p.tx) + Math.abs(y - p.ty) > 2) return false;
   p.x += lv; p.tx += lv;
-  if (mine) { cam.x += lv; camT.x += lv; }
+  if (mine) { cam.x += lv; camT.x += lv; if (lv > 0) { walking = null; p.walking = false; keys.clear(); } }   // (landed)
   return true;
 }
 // Called as your walk glides: on reaching the middle of a tile, through a hole or up out of one
@@ -81,4 +81,5 @@ function throughMouth(p, dir) {
   if (shift < 0 && combAt(x, y) !== null && plainWalk(x, y)) return;          // (a jump only where it's rock here)
   p.x += shift; p.tx = x + shift; p.ty = y; cam.x += shift; camT.x += shift;
   pred = {x: p.tx, y: p.ty, until: performance.now() + 1500};
+  if (shift > 0) { walking = null; p.walking = false; keys.clear(); }   // (a drop: you land; press a key again to set off)
 }

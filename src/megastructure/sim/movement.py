@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from ..layers import LAYER
+from ..layers import LAYER, depth
 from .constants import SLOPE_DOWN, SLOPE_UP, sec
 from .entities import ActionError, Agent
 
@@ -102,8 +102,11 @@ class Movement:
             yield from self.pace(a, args)
             if not self.can_go(a, a.x + dx, a.y + dy):
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
+            d0 = depth(a.x)
             self.move(a, a.x + dx, a.y + dy)
             steps += 1
+            if depth(a.x) > d0:                       # dropped through a hole: you land, the walk ends there
+                return {"steps": steps, "stopped": "fell", "depth": depth(a.x)}
         return {"steps": steps, "stopped": "limit"}
 
     def _tool_stop(self, a, args):
