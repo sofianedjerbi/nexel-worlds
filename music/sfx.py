@@ -496,10 +496,11 @@ def _(c):
 @sfx("mine", "Work", "a pickaxe strike on stone", 4, 0.45)
 def _(c):
     n = N(0.4)
-    y = strike(c, n, "stone", size=c.u(0.7, 1.0), hard=2.5) + 0.12 * strike(c, n, "metal", size=c.u(0.9, 1.1), damp=3.0)
-    y += 0.35 * phism(c, n, env_exp(n, 0.05, 0.001), 1500, 3500, 0.0008)                   # dust and chips
+    y = strike(c, n, "stone", size=c.u(0.9, 1.3), hard=1.4)                               # rock answering: a dry tchak, no ring
+    y += 0.5 * norm(fft_filter(c.noise(n), bp(500, 3500)) * env_exp(n, 0.012, 0.0004))    # the weight behind the pick
+    y += 0.4 * phism(c, n, env_exp(n, 0.05, 0.001), 1500, 3000, 0.0008)                   # dust and chips
     for _ in range(3):                                                                    # shards landing
-        place(y, strike(c, N(0.06), "stone", size=c.u(0.5, 0.8)) * c.u(0.1, 0.2), c.u(0.05, 0.2))
+        place(y, strike(c, N(0.06), "stone", size=c.u(0.6, 0.9)) * c.u(0.1, 0.2), c.u(0.05, 0.2))
     return y
 
 
@@ -507,26 +508,33 @@ def _(c):
 def _(c):
     n = N(0.42)
     t = tt(n)
-    push = np.exp(-((t - 0.035) / 0.03) ** 2)                                             # the blade sliding in
-    scrape = sweep(c, n, 900, 2200, 0.5) * push + 0.5 * phism(c, n, push, 2500, 2500, 0.0008)
-    lift = np.clip((t - 0.1) / 0.02, 0, 1) * np.exp(-(t - 0.1) / 0.1)                     # soil falling off it
-    return strike(c, n, "dirt", size=c.u(1.0, 1.3)) + 0.7 * norm(scrape) + 0.6 * phism(c, n, lift, 800, 700, 0.004)
+    bite = np.clip(t / 0.003, 0, 1) * np.exp(-t / 0.06)                                   # the blade cutting in: gritty, not soft
+    crunch = phism(c, n, bite, 4000, 2400, 0.0008, 0.5) + 0.5 * phism(c, n, bite, 900, 900, 0.002)
+    blade = norm(fft_filter(c.noise(n), bp(1500, 6000)) * env_exp(n, 0.02, 0.001))        # steel against grit
+    toss = np.clip((t - 0.13) / 0.02, 0, 1) * np.exp(-(t - 0.13) / 0.09)                  # the soil thrown aside, landing
+    return crunch + 0.4 * blade + 0.3 * strike(c, n, "dirt", size=1.0, hard=1.5) + 0.55 * phism(c, n, toss, 900, 1200, 0.003)
 
 
 @sfx("rustle", "Work", "cutting grass, picking flowers and plants, leaves", 4, 0.3)
 def _(c):
-    n = N(0.4)
-    lo = c.u(1200, 1900)
-    swish = texture(c, n, lo, lo * 4.5, 8, 40) * env_exp(n, c.u(0.07, 0.11), 0.004)
-    return norm(swish) + 0.4 * phism(c, n, env_exp(n, 0.03, 0.001), 500, c.u(1800, 2600), 0.0015)   # stalks snapping
+    n = N(0.36)
+    t = tt(n)
+    lo = c.u(1800, 2600)
+    y = np.zeros(n)
+    for at, amp in ((0.0, 1.0), (c.u(0.06, 0.09), c.u(0.5, 0.8)), (c.u(0.14, 0.19), c.u(0.3, 0.5))):   # a few soft brushes, no snap
+        x = np.clip(t - at, 0, None)
+        y += amp * norm(fft_filter(c.noise(n), bp(lo, lo * 3.5, 1))) * np.clip(x / 0.015, 0, 1) * np.exp(-x / 0.05) * (t >= at)
+    return y * (1 + 0.45 * norm(fft_filter(c.noise(n), lp(35))))                          # leaves flutter
 
 
 @sfx("swing", "Work", "swinging a tool or a weapon", 3, 0.25)
 def _(c):
-    n = N(0.28)
-    arc = np.sin(np.linspace(0, np.pi, n))
+    n = N(0.2)
+    arc = np.sin(np.linspace(0, np.pi, n)) ** 2
     k = c.u(0.85, 1.2)
-    return sweep(c, n, 400 * k, 2600 * k, 0.4, curve=arc) * arc ** 0.4 * np.clip(tt(n) / 0.006, 0, 1)   # fastest, so highest, mid-swing
+    low = norm(fft_filter(c.noise(n), bp(250 * k, 1500 * k, 1)))                          # plain moving air, no tuned sweep
+    high = norm(fft_filter(c.noise(n), bp(1200 * k, 5000 * k, 1)))
+    return (low * arc + 0.6 * high * arc ** 3) * np.clip(tt(n) / 0.004, 0, 1)             # the highs only at the fastest moment
 
 
 @sfx("punch", "Work", "hitting a tree or a rock with bare hands", 3, 0.3, change="new")
@@ -779,15 +787,18 @@ def _(c):
     return strike(c, n, "dirt", size=0.7, hard=1.5) + 0.4 * phism(c, n, env_exp(n, 0.03, 0.002), 1200, 2800, 0.0012)   # it lands in the grass
 
 
-@sfx("eat", "Items", "eating: two crunchy bites", 3, 0.3, kind="out", change="new")
+@sfx("eat", "Items", "eating: three chomps", 3, 0.3, kind="out", change="new")
 def _(c):
-    n = N(0.5)
+    n = N(0.6)
     y = np.zeros(n)
-    for k in range(2):
-        bn = N(c.u(0.07, 0.1))
-        crunch = _crack(c, bn, int(c.u(14, 22)), 0.05)
-        mouth = norm(fft_filter(c.noise(bn), bp(300, 1400)) * env_exp(bn, 0.03, 0.004))   # through a closed mouth
-        place(y, crunch + 0.5 * mouth, k * c.u(0.17, 0.22))
+    at = 0.0
+    for k in range(3):
+        bn = N(0.1)
+        bite = np.clip(tt(bn) / 0.003, 0, 1) * np.exp(-tt(bn) / c.u(0.03, 0.04))
+        crunch = phism(c, bn, bite, 2500, 1800, 0.0012, 0.6)                              # the food breaking between teeth
+        jaw = strike(c, bn, "body", size=c.u(0.55, 0.7), hard=1.2)                        # the jaw closing
+        place(y, (crunch + 0.35 * jaw) * (1.0, 0.75, 0.6)[k], at)
+        at += c.u(0.15, 0.18)
     return y
 
 
@@ -1063,12 +1074,11 @@ def _(c):
 def _(c):
     n = N(1.3)
     t = tt(n)
-    env = np.clip(t / 0.08, 0, 1) * np.exp(-np.clip(t - 0.08, 0, None) / 0.45)             # it arrives, then runs out
-    rush = norm(fft_filter(c.noise(n), bp(350, 4500, 1))) * env                           # a sheet of water over the ground
-    y = 0.7 * rush
-    for _ in range(70):                                                                   # the trickle: many small bubbles, thinning out
+    env = np.clip(t / 0.08, 0, 1) * np.exp(-np.clip(t - 0.08, 0, None) / 0.45)
+    y = 0.35 * norm(fft_filter(c.noise(n), bp(150, 1100))) * env                          # a low wash only: any hiss reads as steam on a fire
+    for _ in range(90):                                                                   # mostly liquid: bubbles of all sizes, thinning out
         at = c.u(0.02, 1.1)
-        place(y, bubble(c, min(3.5, 0.6 * c.u(0.04, 1) ** (-1 / 2.0)), amp=c.u(0.06, 0.22) * env[int(at * SR)]), at)
+        place(y, bubble(c, min(8, 1.6 * c.u(0.05, 1) ** (-1 / 1.6)), amp=c.u(0.08, 0.3) * env[int(at * SR)]), at)
     return y
 
 
