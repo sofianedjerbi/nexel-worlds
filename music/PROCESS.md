@@ -74,3 +74,6 @@ A remaster is not an improvement the user can hear. `music/sfx.py` was rewritten
 `strike()` (per-material mode structure + noisy contact + chatter; dense irregular modes so knocks do not ring like bars),
 `space()` (dry outdoors with a ground reflection; rooms only where there is one), `texture()` (bands swelling independently),
 rewards and UI on the soundtrack's felt piano and synth pluck. Files are stereo. Lesson: when asked to improve a sound, change what makes the sound.
+- Sine pings are water. Debris (grit, chips, pebbles, soil) must be tiny NOISE bursts; short decaying sines read as drops and bubbles
+  ("cobblestone and chopping sound like water"). Stone gets a crowd of very short modes, never a few.
+- Deep, slow, independent band swells (texture depth > 0.6) gurgle or creak ("crumble sounds like an old door"): use them only for water and fire.

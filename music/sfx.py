@@ -159,9 +159,9 @@ def mat_plank(c, size):       # boards over air: floors, furniture, chests, hull
 
 
 def mat_stone(c, size):       # dense and resting on the ground: almost no ring, mostly contact
-    fs = [c.u(1500, 6000) / size ** 0.5 for _ in range(8)]
-    ts = [c.u(0.0015, 0.004) for _ in fs]
-    return fs, ts, [0.25] * 8, [(900 / size ** 0.5, 9000, 0.003, 1.0), (250 / size ** 0.5, 1800, 0.010, 0.5)]
+    k = size ** 0.5                 # no pings: a crowd of very short modes under a noisy contact
+    fs, ts, am = _dense(c, [], [], [], 700 / k, 7000 / k, 40, 0.09, 0.2)
+    return fs, ts, am, [(900 / k, 9000, 0.003, 1.0), (250 / k, 1800, 0.010, 0.6)]
 
 
 def mat_body(c, size):        # flesh, a sack, a bale
@@ -228,17 +228,18 @@ def grf(n, toe=0.075, toe_amp=0.6, soft=1.0, c=None):
 
 
 def phism(c, n, energy, rate, freq, decay, jitter=0.35):
-    """Cook's stochastic particle model: Poisson collisions whose rate follows the energy; each one a very short resonance."""
+    """Cook's stochastic particle model: Poisson collisions whose rate follows the energy.
+    Each collision is a tiny burst of NOISE, band-limited around freq. (Sine pings here sound like water drops.)"""
     e = energy / (energy.max() + 1e-9)
     hits = np.nonzero(c.rng.uniform(size=n) < np.clip(rate * e / SR, 0, 1))[0]
     y = np.zeros(n)
-    g = N(decay * 6)
-    tg = tt(g)
+    g = max(8, N(decay * 6))
+    env = np.exp(-tt(g) / decay)
     for h in hits:
-        f = freq * np.exp(jitter * c.rng.standard_normal())
         m = min(g, n - h)
-        y[h:h + m] += e[h] * c.u(0.2, 1) * (np.sin(2 * np.pi * f * tg + c.u(0, 6.28)) * np.exp(-tg / decay))[:m]
-    return norm(y)
+        y[h:h + m] += e[h] * c.u(0.2, 1) * (c.noise(g) * env)[:m]
+    spread = 1.7 + jitter
+    return norm(fft_filter(y, bp(freq / spread, freq * spread)))
 
 
 def bubble(c, r_mm, amp=1.0):
@@ -257,8 +258,9 @@ def bubbles(c, y, count, scale, rmax, span, alpha=1.6, amp=(0.08, 0.3), start=0.
     return y
 
 
-def texture(c, n, lo, hi, bands=8, rate=20, depth=0.8, tilt=-0.25):
-    """Living noise: each band swells on its own (leaves, cloth, water wash, fire, air)."""
+def texture(c, n, lo, hi, bands=8, rate=20, depth=0.4, tilt=-0.25):
+    """Living noise: each band swells on its own. Keep depth low for dry things (leaves, cloth, paper):
+    deep independent swells gurgle like a brook, which is right only for water and fire (depth 0.8+)."""
     white = c.noise(n)
     edges = np.geomspace(lo, hi, bands + 1)
     y = np.zeros(n)
@@ -468,7 +470,7 @@ def _(c):
     n = N(0.5)
     f = grf(n, soft=2.5, toe=0.1, c=c)
     push = norm(fft_filter(c.noise(n), lp(1800)) * f)                      # the leg pushing water aside
-    wash = texture(c, n, 500, 4000, 6, 12) * env_exp(n, 0.12, 0.03)       # it closing behind
+    wash = texture(c, n, 500, 4000, 6, 12, 0.9) * env_exp(n, 0.12, 0.03)       # it closing behind
     return bubbles(c, 0.6 * push + 0.35 * wash, int(c.u(12, 20)), 1.0, 8, 0.32, amp=(0.05, 0.25), start=0.01)
 
 
@@ -555,13 +557,17 @@ def _(c):
 @sfx("crumble", "Breaking", "stone breaks; digging down into a cave", 3, 0.55)
 def _(c):
     n = N(0.85)
-    y = np.zeros(n)
-    at = 0.0
-    for k in range(12):                                                                   # stones of all sizes, slowing down
-        place(y, strike(c, N(0.12), "stone", size=c.u(0.5, 2.0), hard=c.u(0.8, 2)) * c.u(0.4, 1) * (1 - k * 0.05), at)
-        at += c.u(0.015, 0.06) * (1 + k * 0.08)
-    dust = texture(c, n, 300, 3000, 6, 15) * env_exp(n, 0.25, 0.02)
-    return y + 0.25 * norm(dust) + 0.6 * strike(c, n, "dirt", size=2.5)
+    t = tt(n)
+    y = 0.9 * norm(fft_filter(c.noise(n), bp(600, 8000)) * env_exp(n, 0.006, 0.0003))     # the rock cracks: one sharp report
+    at = 0.01
+    for k in range(int(c.u(14, 20))):                                                     # pieces knocking as they fall apart
+        place(y, strike(c, N(0.1), "stone", size=c.u(0.6, 2.2), hard=c.u(0.8, 1.6)) * c.u(0.35, 1) * (1 - k * 0.04), at)
+        at += c.u(0.012, 0.045) * (1 + k * 0.07)
+    fall = np.clip(t / 0.03, 0, 1) * np.exp(-t / 0.22)
+    pebbles = phism(c, n, fall, 1400, 2200, 0.0012, 0.6)                                  # gravel pouring down
+    dust = phism(c, n, fall, 3000, 5500, 0.0005, 0.3)
+    rumble = norm(fft_filter(c.noise(n), bp(60, 220)) * env_exp(n, 0.2, 0.01))            # the weight of it
+    return y + 0.6 * pebbles + 0.2 * dust + 0.6 * rumble
 
 
 @sfx("creak", "Breaking", "a tree starts to fall", 2, 0.4)
@@ -676,7 +682,7 @@ def _(c):
 def _splash(c, n, big=1.0):
     slap = norm(fft_filter(c.noise(n), bp(400, 5000)) * env_exp(n, 0.035, 0.002))          # the surface is hit
     crown = sweep(c, n, 3000, 900, 0.5) * env_exp(n, 0.14, 0.02)                           # water thrown up, falling back
-    wash = texture(c, n, 400, 3500, 6, 10) * env_exp(n, 0.2, 0.05)
+    wash = texture(c, n, 400, 3500, 6, 10, 0.9) * env_exp(n, 0.2, 0.05)
     return bubbles(c, 0.8 * slap + 0.6 * crown + 0.3 * wash, int(c.u(22, 34) * big), 1.0, 9, min(0.45, n / SR - 0.1))
 
 
@@ -684,7 +690,7 @@ def _splash(c, n, big=1.0):
 def _(c):
     n = N(0.95)
     y = 0.8 * strike(c, n, "plank", size=c.u(2.5, 3.0), hard=0.6, damp=1.5) + 0.6 * _splash(c, n)
-    place(y, norm(texture(c, N(0.3), 300, 1500, 4, 8) * np.sin(np.linspace(0, np.pi, N(0.3)))) * 0.15, 0.4)   # water lapping the hull
+    place(y, norm(texture(c, N(0.3), 300, 1500, 4, 8, 0.9) * np.sin(np.linspace(0, np.pi, N(0.3)))) * 0.15, 0.4)   # water lapping the hull
     return y
 
 
@@ -1031,7 +1037,7 @@ def _(c):
     n = N(0.8)
     t = tt(n)
     swell = sweep(c, n, c.u(180, 260), c.u(1500, 2200), 0.45, curve=np.clip(t / c.u(0.25, 0.4), 0, 1) ** 0.6)
-    flame = texture(c, n, 150, 1200, 6, 14)
+    flame = texture(c, n, 150, 1200, 6, 14, 0.8)
     return (swell + 0.4 * flame) * np.clip(t / 0.03, 0, 1) * np.clip((0.8 - t) / 0.45, 0, 1) ** 0.8
 
 
@@ -1039,7 +1045,7 @@ def _(c):
 def _(c):
     n = N(1.2)
     t = tt(n)
-    lap = texture(c, n, 70, 500, 5, 9)                                                    # flames lapping
+    lap = texture(c, n, 70, 500, 5, 9, 0.8)                                                    # flames lapping
     hiss = texture(c, n, 3000, 10000, 4, 6) * 0.05                                        # sap and steam
     pops = np.zeros(n)
     for _ in range(int(c.u(18, 32))):
@@ -1051,7 +1057,7 @@ def _(c):
 def _(c):
     n = N(1.4)
     t = tt(n)
-    rush = texture(c, n, 300, 3500, 7, 10) * np.clip(t / 0.03, 0, 1) * np.clip((1.4 - t) / 0.6, 0, 1)
+    rush = texture(c, n, 300, 3500, 7, 10, 0.9) * np.clip(t / 0.03, 0, 1) * np.clip((1.4 - t) / 0.6, 0, 1)
     return bubbles(c, 0.5 * rush, 30, 1.2, 8, 1.2, start=0.05)
 
 
