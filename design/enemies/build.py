@@ -4,7 +4,7 @@
     uv run --with pillow python design/enemies/build.py tusker out.png     a big preview of one enemy (for drawing)
 
 A sheet is laid out like the game's character.png: one row per direction (down, up, left, right), one column per frame
-(the walk frames, then the action frames). Right is left mirrored. Sprites stand on the bottom centre of their cell.
+(idle, then walk, then the action). Right is left mirrored. Sprites stand on the bottom centre of their cell.
 """
 
 import importlib
@@ -22,6 +22,7 @@ SITE = HERE / "site"
 ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
 ORDER = ["tusker", "stilt", "pincer", "adder", "lampwing", "strawman", "snapjaw"]
 DIRS = ["down", "up", "left", "right"]
+ANIMS = ["idle", "walk", "act"]
 SHADOW = (60, 40, 30, 70)
 FOOT = 2                       # empty pixels under the sprite in its cell
 
@@ -55,18 +56,23 @@ def sheet(e):
     pal = {k: rgba(v) for k, v in e["pal"].items()} | {"s": SHADOW}
     dirs = dict(e["dirs"])
     dirs.setdefault("right", {k: [mirror(g) for g in v] for k, v in dirs["left"].items()})
-    names = [(a, i) for a in ("walk", "act") for i in range(len(dirs["down"][a]))]
+    names = [(a, i) for a in ANIMS for i in range(len(dirs["down"][a]))]
+    for d in DIRS:
+        assert [len(dirs[d][a]) for a in ANIMS] == [len(dirs["down"][a]) for a in ANIMS], f"{e['key']}.{d}: frame counts differ"
     cw, chh = e["cell"]
     img = Image.new("RGBA", (cw * len(names), chh * 4))
     for r, d in enumerate(DIRS):
         for c, (a, i) in enumerate(names):
             img.alpha_composite(cell_image(dirs[d][a][i], pal, e["cell"], f"{e['key']}.{d}.{a}{i}"), (c * cw, r * chh))
-    anims = {a: [c for c, (b, _) in enumerate(names) if b == a] for a in ("walk", "act")}
-    return img, anims
+    anims = {a: [c for c, (b, _) in enumerate(names) if b == a] for a in ANIMS}
+    ms = {a: (e["ms"][a] if isinstance(e["ms"][a], list) else [e["ms"][a]] * len(anims[a])) for a in ANIMS}
+    for a in ANIMS:
+        assert len(ms[a]) == len(anims[a]), f"{e['key']}.{a}: {len(anims[a])} frames, {len(ms[a])} durations"
+    return img, anims, ms
 
 
-def preview(key, out, k=10):
-    img, _ = sheet(load(key))
+def preview(key, out, k=6):
+    img, _, _ = sheet(load(key))
     bg = Image.new("RGBA", img.size, (155, 201, 132, 255))
     bg.alpha_composite(img)
     bg.resize((img.width * k, img.height * k), Image.NEAREST).save(out)
@@ -95,11 +101,11 @@ def build():
     meta = []
     for key in ORDER:
         e = load(key)
-        img, anims = sheet(e)
+        img, anims, ms = sheet(e)
         img.save(SITE / "sheets" / f"{key}.png")
         box = img.getbbox()
         meta.append({k: v for k, v in e.items() if k not in ("pal", "dirs")} | {
-            "sheet": f"sheets/{key}.png", "anims": anims, "palette": [v for v in e["pal"].values() if len(v) == 6],
+            "sheet": f"sheets/{key}.png", "anims": anims, "ms": ms, "palette": [v for v in e["pal"].values() if len(v) == 6],
             "frames": img.width // e["cell"][0], "tall": box[3] - box[1]})
     (SITE / "enemies.json").write_text(json.dumps(meta, indent=1))
     references()

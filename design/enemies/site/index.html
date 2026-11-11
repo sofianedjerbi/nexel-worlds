@@ -50,7 +50,7 @@
   </header>
 
   <section class="card">
-    <h2>In the world, at game size <small>each one walks a loop, so you see it turn through all four directions</small>
+    <h2>In the world, at game size <small>each one walks a loop, stops, does its action, and walks on</small>
       <button class="t on" data-time="day">day</button><button class="t" data-time="night">night</button></h2>
     <canvas id="world"></canvas>
   </section>
@@ -61,10 +61,12 @@
     <h2>How they are made</h2>
     <div class="notes">
       <div><b>Different bodies:</b> no two share a shape. A long four-legged boar, a tall two-legged bird, a wide crab, a legless snake, a winged moth seen from above, a person-shaped scarecrow, and a fish that is only a fin.</div>
-      <div><b>Four directions:</b> each sheet is laid out like the game's <code>character.png</code>: rows are down, up, left, right; columns are the walk frames, then the action frames. Right is left mirrored.</div>
-      <div><b>Style:</b> the game's Sprout Lands look: a dark outline in the creature's own colour, flat fills with one shade, tiny dark eyes, a ground shadow. Animals are drawn in profile when seen from the side, like the cow.</div>
-      <div><b>One idea each:</b> it charges, stabs, guards, poisons, puts out your lights, walks when unwatched, or waits in the water. Each has an answer a player can learn.</div>
-      <div><b>Source:</b> hand-placed pixels, one character per pixel, one file per enemy in <code>design/enemies/roster/</code>. <code>build.py</code> makes the sheets and this page.</div>
+      <div><b>Four directions:</b> each sheet is laid out like the game's <code>character.png</code>: rows are down, up, left, right; columns are idle, walk, then the action. Right is left mirrored.</div>
+      <div><b>Walks:</b> four poses per step, not two. Feet land (body low), pass (body high), land, pass. The boar copies the game's cow: the body stays level and the legs move in diagonal pairs. Steps follow the distance covered, so feet do not slide.</div>
+      <div><b>Attacks warn first:</b> every action is wind-up, strike, hold, recover, each with its own length. The wind-up is held for about half a second so a player can read it; the strike is one fast frame.</div>
+      <div><b>Idle is small:</b> a blink, a tail flick, a claw click, a head twitch, on a long pause. Nothing bounces in place.</div>
+      <div><b>The snake is computed:</b> its body is a wave drawn from a phase, so the bends travel smoothly from head to tail.</div>
+      <div><b>Source:</b> one file per enemy in <code>design/enemies/roster/</code>, one character per pixel; frames are built from parts (body, legs, head). <code>build.py</code> makes the sheets and this page.</div>
       <div><b>Not in the game yet:</b> these are designs. Say which to keep, change or drop.</div>
     </div>
   </section>
@@ -77,6 +79,7 @@ let meta, refs, refBoxes, time = "day";
 const sheets = {};
 const $ = (id) => document.getElementById(id);
 const load = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src; });
+const total = (list) => list.reduce((a, b) => a + b, 0);
 
 function tiles(g, kind, x0, y0, w, h, z) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -84,11 +87,19 @@ function tiles(g, kind, x0, y0, w, h, z) {
     g.fillRect((x0 + x) * 16 * z, (y0 + y) * 16 * z, 16 * z, 16 * z);
   }
 }
-// one frame of an enemy, feet at (x, y) in canvas pixels
-function sprite(g, e, dir, mode, t, x, y, z) {
-  const [cw, ch] = e.cell, list = e.anims[mode], col = list[Math.floor(t * e.fps[mode] / 1000) % list.length];
+// which frame of an animation is showing after t ms: each frame has its own duration (a held wind-up, a quick strike)
+function frameAt(e, mode, t, loop = true) {
+  const ms = e.ms[mode], all = total(ms);
+  t = loop ? t % all : Math.min(t, all - 1);
+  let i = 0;
+  while (t >= ms[i]) t -= ms[i++];
+  return i;
+}
+// draw frame i of an animation, feet at (x, y) in canvas pixels
+function sprite(g, e, dir, mode, i, x, y, z) {
+  const [cw, ch] = e.cell;
   g.imageSmoothingEnabled = false;
-  g.drawImage(sheets[e.key], col * cw, DIRS.indexOf(dir) * ch, cw, ch, Math.round(x - cw * z / 2), Math.round(y - ch * z), cw * z, ch * z);
+  g.drawImage(sheets[e.key], e.anims[mode][i] * cw, DIRS.indexOf(dir) * ch, cw, ch, Math.round(x - cw * z / 2), Math.round(y - ch * z), cw * z, ch * z);
 }
 
 function build() {
@@ -98,6 +109,7 @@ function build() {
     el.className = "card enemy";
     const row = (mode, label) => `<div class="r">${label}</div>` + DIRS.map((d) =>
       `<canvas width="${cw * z}" height="${ch * z}" data-key="${e.key}" data-dir="${d}" data-mode="${mode}"></canvas>`).join("");
+    const moving = e.ground === "water" ? "swim" : e.key === "lampwing" ? "fly" : "walk";
     el.innerHTML = `<div>
         <div class="name">${e.name}<span class="tag">${e.role}</span></div>
         <div class="where"><b>Where:</b> ${e.where} &nbsp; <b>When:</b> ${e.when}</div>
@@ -106,7 +118,7 @@ function build() {
         <div class="pal">${e.palette.map((c) => `<span class="sw" style="background:#${c}"></span>`).join("")}
           &nbsp; <a href="${e.sheet}">sheet</a>, ${e.cell[0]}×${e.cell[1]} px cells, ${e.frames * 4} frames</div>
       </div>
-      <div class="views"><div></div>${DIRS.map((d) => `<div class="h">${d}</div>`).join("")}${row("walk", e.ground === "water" ? "swim" : e.key === "lampwing" ? "fly" : "walk")}${row("act", e.act)}</div>`;
+      <div class="views"><div></div>${DIRS.map((d) => `<div class="h">${d}</div>`).join("")}${row("idle", "idle")}${row("walk", moving)}${row("act", e.act)}</div>`;
     $("roster").appendChild(el);
   }
   document.querySelectorAll("[data-time]").forEach((b) => b.onclick = () => {
@@ -117,9 +129,9 @@ function build() {
 
 // The world strip: W x H tiles. Each enemy walks round its own rectangle (in tiles): [x, y, w, h].
 const W = 34, H = 11, POND = [25, 1, 8, 9], BEACH = [21, 0, 4, 11];
-const LOOPS = {tusker: [1, 1, 6, 3], stilt: [20.5, 6.2, 3.6, 3.2], pincer: [21.4, 1.4, 2.6, 3], adder: [9, 1.2, 4, 2.6],
-  lampwing: [14, 1, 5, 3.4], strawman: [1.5, 6.6, 5, 3], snapjaw: [26.2, 2.6, 5.6, 5.4]};
-const SPEED = {tusker: 1.3, stilt: .9, pincer: 1.5, adder: 1.8, lampwing: 2.4, strawman: .8, snapjaw: 2.2};      // tiles per second
+const LOOPS = {tusker: [1, 1.4, 6, 2.8], stilt: [20.5, 6.2, 3.6, 3.2], pincer: [21.4, 1.4, 2.6, 3], adder: [9.5, 1.6, 4, 2.6],
+  lampwing: [15, 1.6, 4.4, 3], strawman: [1.5, 6.6, 5, 3], snapjaw: [26.2, 2.6, 5.6, 5.4]};
+const SPEED = {tusker: 1.1, stilt: .9, pincer: 1.4, adder: 1.7, lampwing: 2.4, strawman: .7, snapjaw: 2.0};      // tiles per second
 function along([x, y, w, h], d) {                       // where on the rectangle after d tiles, and which way it faces
   d %= 2 * (w + h);
   if (d < w) return [x + d, y, "right"];
@@ -127,13 +139,34 @@ function along([x, y, w, h], d) {                       // where on the rectangl
   if ((d -= h) < w) return [x + w - d, y + h, "left"];
   return [x, y + h - (d - w), "up"];
 }
+// Each one walks, stops, does its action, rests, and walks on. The walk frames follow the distance covered, so feet do not slide.
+const actors = {};
+function step(e, dt) {
+  const a = actors[e.key] || (actors[e.key] = {d: e.key.length * 1.7, mode: "walk", t: e.key.length * 600});
+  a.t += dt;
+  const actMs = total(e.ms.act), plan = {walk: 4200, idle: 1100, act: actMs, rest: 700};
+  if (a.t >= plan[a.mode]) { a.t = 0; a.mode = {walk: "idle", idle: "act", act: "rest", rest: "walk"}[a.mode]; }
+  if (a.mode === "walk") a.d += SPEED[e.key] * dt / 1000;
+  if (e.key === "tusker" && a.mode === "act" && a.t > 680) a.d += 4.5 * dt / 1000;      // the charge itself covers ground
+  const [x, y, dir] = along(LOOPS[e.key], a.d), n = e.anims.walk.length;
+  if (a.mode === "walk") return [x, y, dir, "walk", Math.floor(a.d / e.stride * n) % n];
+  if (a.mode === "act") return [x, y, dir, "act", frameAt(e, "act", a.t, false)];
+  return [x, y, dir, "idle", frameAt(e, "idle", a.t)];
+}
 
+let last = 0;
 function draw(t) {
   requestAnimationFrame(draw);
+  const dt = Math.min(50, t - last); last = t;
   document.querySelectorAll("canvas[data-key]").forEach((c) => {
-    const e = meta.find((m) => m.key === c.dataset.key), g = c.getContext("2d"), z = 4;
+    const e = meta.find((m) => m.key === c.dataset.key), g = c.getContext("2d"), z = 4, mode = c.dataset.mode;
     tiles(g, e.ground || "grass", 0, 0, Math.ceil(c.width / 64), Math.ceil(c.height / 64), z);
-    sprite(g, e, c.dataset.dir, c.dataset.mode, t, c.width / 2, c.height, z);
+    let m = mode, i;
+    if (mode === "act") {                            // the action once, then a rest, so the wind-up is easy to see
+      const cycle = total(e.ms.act) + 900, at = t % cycle;
+      if (at < cycle - 900) i = frameAt(e, "act", at, false); else { m = "idle"; i = 0; }
+    } else i = frameAt(e, mode, t);
+    sprite(g, e, c.dataset.dir, m, i, c.width / 2, c.height, z);
     if (time === "night") { g.fillStyle = NIGHT; g.fillRect(0, 0, c.width, c.height); }
   });
 
@@ -147,10 +180,8 @@ function draw(t) {
     g.drawImage(refs, ...r.box, Math.round(px - r.box[2] * z / 2), py - r.box[3] * z, r.box[2] * z, r.box[3] * z);
   }}));
   for (const e of meta) {
-    const cycle = (t + e.key.length * 900) % 6500, acting = cycle > 5200;            // every few seconds it stops and shows its action
-    const walked = (Math.floor((t + e.key.length * 900) / 6500) * 5200 + Math.min(cycle, 5200)) / 1000 * SPEED[e.key];
-    const [x, y, dir] = along(LOOPS[e.key], walked);
-    things.push({x, y, label: e.name, paint: (px, py) => sprite(g, e, dir, acting ? "act" : "walk", t, px, py + 2 * z, z)});
+    const [x, y, dir, mode, i] = step(e, dt);
+    things.push({x, y, label: e.name, paint: (px, py) => sprite(g, e, dir, mode, i, px, py + 2 * z, z)});
   }
   things.sort((a, b) => a.y - b.y);
   g.font = "800 10px ui-rounded, system-ui"; g.textAlign = "center";
@@ -165,7 +196,7 @@ function draw(t) {
 Promise.all([fetch("enemies.json").then((r) => r.json()), load("refs.png"), fetch("refs.json").then((r) => r.json())])
   .then(async ([m, r, rb]) => {
     meta = m; refs = r; refBoxes = rb;
-    await Promise.all(m.map(async (e) => { sheets[e.key] = await load(e.sheet); }));
+    await Promise.all(m.map(async (e) => { sheets[e.key] = await load(e.sheet + "?v=" + Date.now()); }));
     build(); requestAnimationFrame(draw);
   });
 </script>

@@ -7,11 +7,30 @@
    32,
    32
   ],
-  "fps": {
-   "walk": 5,
-   "act": 9
-  },
   "act": "charge",
+  "stride": 1.6,
+  "ms": {
+   "idle": [
+    1400,
+    160
+   ],
+   "walk": [
+    150,
+    150,
+    150,
+    150
+   ],
+   "act": [
+    170,
+    170,
+    170,
+    170,
+    90,
+    90,
+    90,
+    90
+   ]
+  },
   "where": "forest and meadow",
   "when": "day",
   "behaviour": "Grazes and ignores you until you come within four tiles. Then it paws the ground and charges in a straight line. It cannot turn: step aside and it rams the next tree or wall and is stunned.",
@@ -23,13 +42,25 @@
   },
   "sheet": "sheets/tusker.png",
   "anims": {
-   "walk": [
+   "idle": [
     0,
     1
    ],
-   "act": [
+   "walk": [
     2,
-    3
+    3,
+    4,
+    5
+   ],
+   "act": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
    ]
   },
   "palette": [
@@ -44,7 +75,7 @@
    "2b1f2a",
    "ece6cc"
   ],
-  "frames": 4,
+  "frames": 14,
   "tall": 111
  },
  {
@@ -55,11 +86,26 @@
    32,
    32
   ],
-  "fps": {
-   "walk": 4,
-   "act": 5
-  },
   "act": "peck",
+  "stride": 1.0,
+  "ms": {
+   "idle": [
+    1800,
+    140
+   ],
+   "walk": [
+    170,
+    170,
+    170,
+    170
+   ],
+   "act": [
+    480,
+    90,
+    220,
+    260
+   ]
+  },
   "where": "shallow water, reeds, shores",
   "when": "day",
   "behaviour": "Stands dead still in the shallows and watches. Its beak reaches two tiles: it pulls its neck back, then stabs. The stab is slow to come and easy to read; walk in after it lands. It steals the fish you catch nearby.",
@@ -71,13 +117,21 @@
   },
   "sheet": "sheets/stilt.png",
   "anims": {
-   "walk": [
+   "idle": [
     0,
     1
    ],
-   "act": [
+   "walk": [
     2,
-    3
+    3,
+    4,
+    5
+   ],
+   "act": [
+    6,
+    7,
+    8,
+    9
    ]
   },
   "palette": [
@@ -91,8 +145,8 @@
    "c98a3a",
    "2b2236"
   ],
-  "frames": 4,
-  "tall": 120
+  "frames": 10,
+  "tall": 121
  },
  {
   "key": "pincer",
@@ -103,11 +157,28 @@
    32,
    16
   ],
-  "fps": {
-   "walk": 7,
-   "act": 5
-  },
   "act": "snap",
+  "stride": 0.8,
+  "ms": {
+   "idle": [
+    900,
+    130,
+    700,
+    130
+   ],
+   "walk": [
+    80,
+    80,
+    80,
+    80
+   ],
+   "act": [
+    420,
+    80,
+    220,
+    220
+   ]
+  },
   "where": "beaches and river banks",
   "when": "day and night",
   "behaviour": "Walks sideways only, so it must turn its flank to chase you. Hits from the front bounce off its claws; hit it from the side or from behind. It buries itself in sand when hurt and comes back later.",
@@ -119,13 +190,23 @@
   },
   "sheet": "sheets/pincer.png",
   "anims": {
-   "walk": [
+   "idle": [
     0,
-    1
-   ],
-   "act": [
+    1,
     2,
     3
+   ],
+   "walk": [
+    4,
+    5,
+    6,
+    7
+   ],
+   "act": [
+    8,
+    9,
+    10,
+    11
    ]
   },
   "palette": [
@@ -135,10 +216,11 @@
    "f2906a",
    "f3d8c5",
    "2b1f2a",
-   "f4f0e6"
+   "f4f0e6",
+   "fff1a8"
   ],
-  "frames": 4,
-  "tall": 61
+  "frames": 12,
+  "tall": 62
  },
  {
   "key": "adder",
@@ -146,13 +228,28 @@
   "role": "ambusher",
   "cell": [
    32,
-   24
+   32
   ],
-  "fps": {
-   "walk": 5,
-   "act": 4
-  },
   "act": "strike",
+  "stride": 1.4,
+  "ms": {
+   "idle": [
+    1500,
+    140
+   ],
+   "walk": [
+    110,
+    110,
+    110,
+    110
+   ],
+   "act": [
+    450,
+    80,
+    200,
+    250
+   ]
+  },
   "where": "tall grass, crop fields",
   "when": "day",
   "behaviour": "Lies in tall grass where you cannot see it, and only the grass moves. Step next to it and it strikes once, then slides away. The bite does little, but it poisons: you lose health slowly until you eat. Mown grass has no adders.",
@@ -164,13 +261,21 @@
   },
   "sheet": "sheets/adder.png",
   "anims": {
-   "walk": [
+   "idle": [
     0,
     1
    ],
-   "act": [
+   "walk": [
     2,
-    3
+    3,
+    4,
+    5
+   ],
+   "act": [
+    6,
+    7,
+    8,
+    9
    ]
   },
   "palette": [
@@ -182,8 +287,8 @@
    "e0504a",
    "f4f0e6"
   ],
-  "frames": 4,
-  "tall": 92
+  "frames": 10,
+  "tall": 123
  },
  {
   "key": "lampwing",
@@ -193,11 +298,32 @@
    32,
    32
   ],
-  "fps": {
-   "walk": 8,
-   "act": 8
-  },
   "act": "dust",
+  "stride": 1.2,
+  "ms": {
+   "idle": [
+    130,
+    80,
+    130,
+    80
+   ],
+   "walk": [
+    90,
+    60,
+    90,
+    60
+   ],
+   "act": [
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60
+   ]
+  },
   "where": "anywhere there is a light",
   "when": "night",
   "behaviour": "Harmless to you, bad for your camp. It flies to the nearest torch or campfire and beats it out with its wings, and in the dark the glooms come. Its wing dust makes you slow for a moment. One hit kills it; it flies over fences.",
@@ -209,13 +335,27 @@
   },
   "sheet": "sheets/lampwing.png",
   "anims": {
-   "walk": [
+   "idle": [
     0,
-    1
-   ],
-   "act": [
+    1,
     2,
     3
+   ],
+   "walk": [
+    4,
+    5,
+    6,
+    7
+   ],
+   "act": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
    ]
   },
   "palette": [
@@ -228,7 +368,7 @@
    "d9c9a8",
    "2b2236"
   ],
-  "frames": 4,
+  "frames": 16,
   "tall": 114
  },
  {
@@ -239,11 +379,26 @@
    32,
    32
   ],
-  "fps": {
-   "walk": 3,
-   "act": 3
-  },
   "act": "grab",
+  "stride": 0.9,
+  "ms": {
+   "idle": [
+    2200,
+    160
+   ],
+   "walk": [
+    230,
+    230,
+    230,
+    230
+   ],
+   "act": [
+    520,
+    90,
+    260,
+    300
+   ]
+  },
   "where": "crop fields and old farms",
   "when": "night",
   "behaviour": "By day it is a scarecrow on a pole and does nothing. At night it steps down and walks, slowly, toward whoever is nearest, and only while nobody is looking at it. Look at it and it freezes. It tramples crops on its way. Fire ends it.",
@@ -255,13 +410,21 @@
   },
   "sheet": "sheets/strawman.png",
   "anims": {
-   "walk": [
+   "idle": [
     0,
     1
    ],
-   "act": [
+   "walk": [
     2,
-    3
+    3,
+    4,
+    5
+   ],
+   "act": [
+    6,
+    7,
+    8,
+    9
    ]
   },
   "palette": [
@@ -278,7 +441,7 @@
    "97bb8e",
    "2b1f2a"
   ],
-  "frames": 4,
+  "frames": 10,
   "tall": 121
  },
  {
@@ -290,11 +453,29 @@
    32,
    16
   ],
-  "fps": {
-   "walk": 4,
-   "act": 4
-  },
   "act": "leap",
+  "stride": 1.6,
+  "ms": {
+   "idle": [
+    260,
+    260,
+    260,
+    260
+   ],
+   "walk": [
+    160,
+    160,
+    160,
+    160
+   ],
+   "act": [
+    480,
+    80,
+    240,
+    90,
+    320
+   ]
+  },
   "where": "deep water, rivers",
   "when": "day and night",
   "behaviour": "A fin that circles in deep water. It cannot leave the water, but it jumps at anything on the tile beside it: a swimmer, a boat, someone fishing from the bank. Bridges two tiles wide are safe. Bait pulls it away.",
@@ -306,13 +487,24 @@
   },
   "sheet": "sheets/snapjaw.png",
   "anims": {
-   "walk": [
+   "idle": [
     0,
-    1
-   ],
-   "act": [
+    1,
     2,
     3
+   ],
+   "walk": [
+    4,
+    5,
+    6,
+    7
+   ],
+   "act": [
+    8,
+    9,
+    10,
+    11,
+    12
    ]
   },
   "palette": [
@@ -328,7 +520,7 @@
    "f4f0e6",
    "a03c4a"
   ],
-  "frames": 4,
-  "tall": 60
+  "frames": 13,
+  "tall": 62
  }
 ]
