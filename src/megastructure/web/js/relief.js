@@ -141,8 +141,7 @@ function drawBlockRelief(b, sx, sy, S) {
   b.reliefDirty = false;
   const now = performance.now();
   if (now - reliefBudgetAt > 8) { reliefBudgetAt = now; reliefSpent = 0; }
-  const here = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B))), loading = !here || !here.relief;
-  while (b.reliefGen && reliefSpent < (loading ? 40 : 6) && (loading || !freshThisFrame)) {   // (loading: nothing on screen yet, so more)
+  while (b.reliefGen && reliefSpent < 6 && !freshThisFrame) {
     const t0 = performance.now(), r = b.reliefGen.next();
     reliefSpent += performance.now() - t0;
     if (r.done) b.reliefGen = null;
