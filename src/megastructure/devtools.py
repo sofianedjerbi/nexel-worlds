@@ -7,8 +7,10 @@ from .tiles import BLOCKS, GROUNDS
 def dev_op(sim, agent, op: str, msg: dict) -> dict:
     """Run one dev op for `agent`; returns the reply fields."""
     if op == "dev_time":                         # jump to a time of day (0..1, 0.75+ is night)
-        day = sim.tick // DAY_TICKS
-        sim.tick = day * DAY_TICKS + int(float(msg.get("phase", 0.8)) * DAY_TICKS)
+        # forward only (tomorrow if that hour is past): the clock going back left everyone waiting on cooldowns
+        # stamped in what was now the future (nobody could walk for minutes)
+        t = sim.tick // DAY_TICKS * DAY_TICKS + int(float(msg.get("phase", 0.8)) * DAY_TICKS)
+        sim.tick = t if t >= sim.tick else t + DAY_TICKS
         return {"tick": sim.tick}
     if op == "dev_skip":                         # fast-forward the simulation
         for _ in range(min(int(float(msg.get("seconds", 10)) * TICK_HZ), 20000)):
