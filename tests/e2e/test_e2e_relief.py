@@ -14,7 +14,7 @@ def test_every_layer_is_the_same_step_up(game):
     game.stamp(-2, -4, ["....."] * 3, levels=["11111", "22222", "33333"])
     z = game.js("zoom")
     lifts = [game.js(f"liftAt({x}, {y + dy})") for dy in (-2, -3, -4)]
-    assert lifts == [18 * z, 12 * z, 6 * z] and game.js(f"liftAt({x}, {y})") == 0
+    assert lifts == [24 * z, 16 * z, 8 * z] and game.js(f"liftAt({x}, {y})") == 0
 
 
 def test_the_camera_centres_on_you_as_drawn(game):
@@ -140,3 +140,39 @@ def test_a_pit_below_sea_level_is_drawn_like_any_hole(game):
     game.hold(["d"], 200)                                    # two layers up: a wall
     game.sleep(600)
     assert game.server()["x"] == x
+
+
+def test_walking_off_a_cliff_you_fall_and_a_long_fall_hurts(game):
+    """Off an edge you come down on the ground below, on screen as on the server; 6 layers cost 15 hp."""
+    game.clear_area(6)
+    x, y = game.pos()
+    game.stamp(-2, -6, ["....."] * 3, levels=["66666"] * 3)
+    game.rpc("dev_teleport", x=x, y=y - 4)                   # up on it (dev_teleport: on top)
+    game.sleep(900)
+    assert game.server()["z"] == 6 and game.js("myAt.z") == 6
+    hp = game.server()["hp"]
+    game.hold(["s"], 420)                                    # off its south edge
+    game.sleep(900)
+    s = game.server()
+    assert s["z"] == 0 and s["hp"] == hp - 15 and (s["x"], s["y"]) == game.pos() and s["y"] >= y - 3
+    assert game.js("myAt.z") == 0 and game.js("liftOf(ents.get('agent' + myId))") == 0
+
+
+def test_a_pickaxe_cuts_a_tunnel_into_a_wall(game):
+    """Digging toward a wall takes out the block in front of you: under a hill two layers high or more, a tunnel
+    you walk into, which opens at once and shows on the hill's face from outside."""
+    game.give(pickaxe=1)
+    game.hold_item("pickaxe")
+    game.clear_area(4)
+    x, y = game.pos()
+    game.stamp(-2, -3, ["....."] * 3, levels=["33333"] * 3)  # a hill 3 high, its south face in front of you
+    game.sleep(600)
+    game.face(0, -1)
+    assert "Dig into the hill" in game.actions()
+    game.press(" ", 1500)
+    assert game.js(f"surfacesAt({x}, {y - 1})") == [0, 3] and game.js(f"shownVoids({x}, {y - 1}, 0, 1)") == [[1, 1]]
+    game.js("selectItem(null)")
+    game.hold(["w"], 300)
+    game.sleep(600)
+    s = game.server()
+    assert s["in_cave"] and s["z"] == 0 and (s["x"], s["y"]) == (x, y - 1) and game.js("caveOpen")

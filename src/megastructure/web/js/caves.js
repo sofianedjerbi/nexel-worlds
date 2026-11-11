@@ -1,96 +1,131 @@
-// Caves (client): a cave is drawn as the hill over it, like a house's roof; the one you walk into is opened. Its
-// mouths show from outside. (Heights and roofs: tiles.js; the lifted ground: relief.js.)
+// Caves (client). The land is cells (cells.js); a cave is empty cells under solid ones, and nothing more. From outside
+// it is the hill over it; where its empty cells meet a face of the hill you can see, they show (an entry is only
+// that). The cave you walk into is seen through the hill, like a house with its roof off. (The lifted ground: relief.js.)
 
-// The cave you're in: its roofed tiles joined to yours (up to a few thousand)
-function caveOf(x0, y0) {
-  const seen = new Set([x0 + "," + y0]), stack = [[x0, y0]];
+// The cave you're in: from your tile, the tiles beside it you'd walk (or drop) onto under solid cells, and on from
+// there (up to a few thousand). "x,y" -> the height of its floor there.
+function caveOf(at) {
+  const seen = new Map([[at.x + "," + at.y, at.z]]), stack = [[at.x, at.y, at.z]];
   while (stack.length && seen.size < 4000) {
-    const [x, y] = stack.pop();
+    const [x, y, z] = stack.pop();
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const k = (x + dx) + "," + (y + dy);
-      if (!seen.has(k) && roofAt(x + dx, y + dy) > 0) { seen.add(k); stack.push([x + dx, y + dy]); }
+      if (seen.has(k)) continue;
+      const z2 = landAt(z, x + dx, y + dy);
+      if (z2 !== null && coveredAt(x + dx, y + dy, z2)) { seen.set(k, z2); stack.push([x + dx, y + dy, z2]); }
     }
   }
   return seen;
 }
-// Walking into a cave (or out): that cave is shown through its roof (or not) at once. Nothing of the land is redrawn:
+// Walking into a cave (or out): that cave is shown through the hill (or not) at once. Nothing of the land is redrawn:
 // the open cave is an overlay, a canvas a block, drawn once (below).
 let caveStamp = 0;                        // (goes up when the open cave changes: the overlays are redrawn)
-let myAt = null;                          // your tile and height: in a cave, or up on its roof (as Movement.landing)
-function landZ(from, x, y) {             // as Movement.landing: the height a step from `from` {x, y, z} onto (x, y) lands at
-  const f = floorAt(x, y), r = roofAt(x, y), inside = roofAt(from.x, from.y) > 0 && from.z === floorAt(from.x, from.y);
-  const c = !r ? [f] : inside ? [f, f + r] : [f + r, f];
-  return c.sort((p, q) => Math.abs(p - from.z) - Math.abs(q - from.z)).find((h) => Math.abs(h - from.z) <= 1);
-}
 function setCaveOpen() {
   const me = ents.get("agent" + myId);
   let into = null;                        // the cave tile you're stepping into: its cave opens as you set off, not half way
   if (me) {
     const x = Math.round(me.x), y = Math.round(me.y);        // (where you're seen, which runs ahead of the server's tile)
-    if (!myAt || myAt.x !== x || myAt.y !== y) {
-      let z = floorAt(x, y) + (meObs && meObs.self.atop ? roofAt(x, y) : 0);
-      if (myAt && Math.abs(myAt.x - x) + Math.abs(myAt.y - y) === 1) { const pick = landZ(myAt, x, y); if (pick !== undefined) z = pick; }
+    if (!myAt || myAt.x !== x || myAt.y !== y) {             // your height, kept as the server keeps it (Movement.landing)
+      let z = myAt && Math.abs(myAt.x - x) + Math.abs(myAt.y - y) === 1 ? landAt(myAt.z, x, y) : null;
+      if (z === null) z = settleAt(x, y, meObs && meObs.self.z !== undefined ? meObs.self.z : 99);   // (woken, moved: where the server has you)
       myAt = {x, y, z};
-    }
+    } else myAt.z = settleAt(x, y, myAt.z);                  // (the ground dug from under you: down you come)
     const ox = x + (me.x > x + .001 ? 1 : me.x < x - .001 ? -1 : 0), oy = y + (me.y > y + .001 ? 1 : me.y < y - .001 ? -1 : 0);
-    if ((ox !== x) !== (oy !== y) && roofAt(ox, oy) > 0 && landZ(myAt, ox, oy) === floorAt(ox, oy)) into = {x: ox, y: oy};
+    if ((ox !== x) !== (oy !== y)) { const z = landAt(myAt.z, ox, oy); if (z !== null && coveredAt(ox, oy, z)) into = {x: ox, y: oy, z}; }
   }
   showXYZ();
-  const here = myAt && roofAt(myAt.x, myAt.y) > 0 && myAt.z === floorAt(myAt.x, myAt.y) ? myAt : into;
-  if (!here === !caveOpen && (!here || openCave.has(here.x + "," + here.y))) return;
-  caveOpen = !!here; openCave = here ? caveOf(here.x, here.y) : new Set(); caveStamp++;
+  const here = myAt && coveredAt(myAt.x, myAt.y, myAt.z) ? myAt : into;
+  if (!here === !caveOpen && (!here || openCave.get(here.x + "," + here.y) === here.z)) return;
+  caveOpen = !!here; openCave = here ? caveOf(here) : new Map(); caveStamp++;
+}
+// Someone under a hill you're not in: not seen. (You: by the height you're at; the others, by the server's.)
+function unseen(p) {
+  const x = Math.round(p.x), y = Math.round(p.y);
+  if (!roofAt(x, y) || inOpenCave(x, y)) return false;
+  return coveredAt(x, y, p.e.kind === "agent" && p.e.id === myId && myAt ? settleNear(x, y, myAt.z) : p.e.z !== undefined ? p.e.z : floorAt(x, y));
 }
 
 // A block's caves as seen now, on one canvas in art px (with OV_M px round it), or null when there's nothing to see:
-// the mouths of its closed caves, and the open cave's floor with its rock rim and the wall at its back.
-// MOUTH (for now, while the look is being chosen): "A" the hole alone, "C" with a shadow on the ground before it,
-// "D" with the ground before it going dark, "E" framed in stone.
-let MOUTH = new URLSearchParams(location.search).get("mouth") || "A";
-const OV_M = 96, HOLE = "#2a1d28", HOLE_DEEP = "#1d141c", HOLE_RIM = "rgba(48,30,34,.55)";
+// where the empty cells of its hills show on their faces, and the open cave's floor with its rock rim and the wall
+// at its back.
+const OV_M = 128, HOLE = "#2a1d28", HOLE_DEEP = "#1d141c", HOLE_RIM = "rgba(48,30,34,.55)", SHADE = "30,20,28";
+// The empty cells of the hill on (x, y) that show on its face toward (dx, dy): runs [lowest, highest] of cells above
+// the ground in front of it and under its top. (None where that side isn't lower, or for the cave you're in.)
+function shownVoids(x, y, dx, dy) {
+  const c = colAt(x, y), top = colTop(c), front = topAt(x + dx, y + dy), out = [];
+  if (front >= top || inOpenCave(x, y)) return out;
+  for (let z = front + 1; z < top; z++) {
+    if (c >>> (z - LOW) & 1) continue;
+    const lo = z; while (z + 1 < top && !(c >>> (z + 1 - LOW) & 1)) z++;
+    out.push([lo, z]);
+  }
+  return out;
+}
+// One opening: `W` tiles wide from (x, y) along the face, its cells lo..hi empty. (X, Y): the first tile's corner at
+// sea level, in art px. Always in the hill's wall: facing south a hole a layer high a cell, down the wall; facing east
+// or west a hole in the side's wall (a layer of it a cell), open outward; where it opens at ground level (you can walk
+// in) its shadow spills out. Facing north it is behind the hill: only that shadow, a square on the ground from under
+// the hill's edge, fading.
+function drawOpening(g, X, Y, x, y, dx, dy, W, lo, hi) {
+  const top = topAt(x, y), front = topAt(x + dx, y + dy), walkIn = lo === front + 1, L = 16 * W, cols = colsOf(hillSheet(Math.max(1, top)));
+  const rows = (y0, spans, col) => { g.fillStyle = col; spans.forEach(([a, e], k) => g.fillRect(X + a, Y + y0 + k, e - a, 1)); };
+  const round = (n) => Array.from({length: n}, (_, k) => Math.max(0, 2 - Math.min(k, n - 1 - k)));   // 2, 1, 0... 0, 1, 2: a rounded end
+  const spill = (wide, at) => {                           // its shadow out on the ground: rounded, in steps (at(k, half): a px line)
+    for (const [d, al] of [[9, .17], [5, .17]]) {
+      g.fillStyle = `rgba(${SHADE},${al})`;
+      for (let k = 0; k < d; k++) at(k, Math.round(wide / 2 * Math.sqrt(1 - ((k + .5) / d) ** 2)));
+    }
+  };
+  if (dy < 0) {                                           // north: its shadow only, cut to the edge tiles' own shape
+    if (!walkIn) return;
+    const low = cols.north - shOf(top) + 4;
+    [.4, .28, .18, .09].forEach((al, k) => rows(low - 3 * (k + 1), [[1, L - 1], [1, L - 1], [1, L - 1]], `rgba(${SHADE},${al})`));
+    for (let t = 0; t < W; t++) {
+      const [cx, cy] = blobCell(maskOf(x + t, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= top)), shape = cellAlpha(hillSheet(Math.max(1, top)), cx, cy);
+      for (let j = 0; j < cols.north + 4; j++) for (let q = 0; q < 16; q++) if (shape[j * 16 + q]) g.clearRect(X + t * 16 + q, Y - shOf(top) + j, 1, 1);
+    }
+  } else if (dy > 0) {                                    // south: the wall's layers lo..hi (layer k: the RELIEF_STEP px under foot - shOf(k - 1))
+    const foot = colsOf(hillSheet(Math.max(1, lo))).foot - shOf(lo - 1), h = shOf(hi - lo + 1) - 1, y0 = foot - h;
+    const hole = Array.from({length: h}, (_, k) => [2 + Math.max(0, 2 - k), L - 2 - Math.max(0, 2 - k)]);   // (its top corners rounded)
+    rows(y0 - 1, [hole[0], ...hole].map(([a, e]) => [a - 1, e + 1]), HOLE_RIM);
+    rows(y0, hole, HOLE);
+    rows(y0 + 1, hole.slice(1, Math.ceil(h / 2)).map(([a, e]) => [a + 1, e - 1]), HOLE_DEEP);
+    if (walkIn) spill(L - 2, (k, half) => g.fillRect(X + L / 2 - half, Y + foot + k, 2 * half, 1));
+  } else {                                                // east, west: the side wall's layers lo..hi (LEDGE px each, the lowest outermost)
+    // (worked out for the west side, mirrored for the east) the side's wall runs from its foot in to the top's edge
+    const m = ([a, e]) => (dx > 0 ? [16 - e, 16 - a] : [a, e]), Yg = -shOf(lo - 1);
+    const out = cols.inset - LEDGE * (top - lo), w = LEDGE * (hi - lo + 1), hole = round(L - 4).map((q) => [out, out + Math.max(1, w - q)]);
+    rows(Yg + 2, [m(hole[0])], HOLE_RIM); rows(Yg + L - 1, [m(hole[0])], HOLE_RIM);
+    rows(Yg + 3, hole.map(m), HOLE);
+    rows(Yg + 5, hole.slice(2, -2).map(([a, e]) => m([a + Math.ceil(w / 2), e])), HOLE_DEEP);
+    if (walkIn) spill(L - 4, (k, half) => g.fillRect(X + (dx > 0 ? 16 - out + k : out - 1 - k), Y + Yg + 1 + L / 2 - half, 1, 2 * half));
+  }
+}
 function buildCaveOverlay(b) {
   let c = null, g = null;
   const need = () => { if (!c) { c = document.createElement("canvas"); c.width = c.height = B * 16 + 2 * OV_M; g = c.getContext("2d"); } };
-  for (let i = 0; i < B * B; i++) {
-    if (!b.rf[i]) continue;
-    const x = b.bx * B + i % B, y = b.by * B + (i / B | 0), f = floorAt(x, y), r = b.rf[i];
-    const X = OV_M + (i % B) * 16, Y = OV_M + (i / B | 0) * 16 - shOf(f);       // the tile's corner at its floor's height
-    if (inOpenCave(x, y)) {
+  for (const key in b.col) {                              // (only its hollow tiles)
+    const i = +key, x = b.bx * B + i % B, y = b.by * B + (i / B | 0), X = OV_M + (i % B) * 16, Y = OV_M + (i / B | 0) * 16;
+    if (inOpenCave(x, y)) {                               // the cave you're in: its floor here, seen through the hill
       need();
+      const z = openCave.get(x + "," + y), Yz = Y - shOf(z);
       if (!inOpenCave(x, y - 1)) {                        // the wall at its back, in the hill's own colours
-        const bands = colsOf(hillSheet(Math.max(1, f + r))).bands, h = Math.min(shOf(r), 12);
-        for (let j = 0; j < h; j++) { const col = bands[j === 0 ? 0 : j >= h - 2 ? 2 : 1]; g.fillStyle = `rgb(${col[0] * .8 | 0},${col[1] * .8 | 0},${col[2] * .8 | 0})`; g.fillRect(X, Y - h + j, 16, 1); }
+        const bands = colsOf(hillSheet(Math.max(1, topAt(x, y)))).bands, h = Math.min(shOf(topAt(x, y) - z), 12);
+        for (let j = 0; j < h; j++) { const col = bands[j === 0 ? 0 : j >= h - 2 ? 2 : 1]; g.fillStyle = `rgb(${col[0] * .8 | 0},${col[1] * .8 | 0},${col[2] * .8 | 0})`; g.fillRect(X, Yz - h + j, 16, 1); }
       }
-      peekFloors = true; drawTile(x, y, {g, ox: X, oy: Y}); peekFloors = false;
-      const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, tx, ty) => inOpenCave(tx, ty) || (!roofAt(tx, ty) && Math.abs(floorAt(tx, ty) - f) <= 1)));
-      g.drawImage(edgeSheet("hill3"), cx * 16, cy * 16, 16, 16, X, Y, 16, 16);     // its rock rim
+      peekFloors = true; drawTile(x, y, {g, ox: X, oy: Yz}); peekFloors = false;
+      const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, tx, ty) => inOpenCave(tx, ty) || (!roofAt(tx, ty) && Math.abs(topAt(tx, ty) - z) <= 1)));
+      g.drawImage(edgeSheet("hill3"), cx * 16, cy * 16, 16, 16, X, Yz, 16, 16);     // its rock rim
       continue;
     }
     for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-      if (roofAt(x + dx, y + dy) || Math.abs(floorAt(x + dx, y + dy) - f) > 1) continue;
-      need();
-      // a mouth: a hole in whole art px. rows of [x0, x1) spans, top to bottom, from the tile's corner
-      const side = LEDGE * (r - 1), up = shOf(r);
-      const rows = (y0, spans, col) => { g.fillStyle = col; spans.forEach(([a, e], j) => g.fillRect(X + a, Y + y0 + j, e - a, 1)); };
-      const grown = (spans, e) => [...Array(e).fill(spans[0]), ...spans, ...Array(e).fill(spans[spans.length - 1])].map(([a, q]) => [a - e, q + e]);
-      const hole = (y0, spans) => {                       // its rim (a px round it; "E": a frame of stone), the hole, darker deeper in
-        if (MOUTH === "E") { rows(y0 - 2, grown(spans, 2), "#7d7468"); rows(y0 - 1, grown(spans, 1), "#b8ae9e"); }
-        else rows(y0 - 1, grown(spans, 1), HOLE_RIM);
-        rows(y0, spans, HOLE);
-        rows(y0 + 1, spans.slice(1, Math.ceil(spans.length / 2)).map(([a, e]) => [a + 1, e - 1]), HOLE_DEEP);
-      };
-      const n = (len, full, first = []) => [...first, ...Array(Math.max(0, len - first.length)).fill(full)];
-      if (dy > 0) hole(16 - up + 2, n(up - 2, [2, 14], [[4, 12], [3, 13]]));                        // south: an arch in its face
-      else if (dy < 0) hole(-up - 1, [[4, 12], [3, 13], [3, 13], [3, 13], [4, 12]]);                // north: on its rim
-      else if (dx > 0) hole(3, [[15, 15 + side], ...n(10, [15, 16 + side]), [15, 15 + side]]);      // east: in its side
-      else hole(3, [[1 - side, 1], ...n(10, [-side, 1]), [1 - side, 1]]);                           // west
-      if (MOUTH !== "C" && MOUTH !== "D") continue;
-      for (const [d, al] of MOUTH === "D" ? [[14, .28], [9, .24], [5, .24]] : [[9, .17], [5, .17]]) {   // the ground before it, in its shadow
-        g.fillStyle = `rgba(30,20,28,${al})`;
-        for (let k = 0; k < d; k++) {
-          const half = Math.round((dx ? 6 : 7) * Math.sqrt(1 - ((k + .5) / d) ** 2));
-          if (dy) g.fillRect(X + 8 - half, Y + (dy > 0 ? 16 + k : -up - 3 - k), 2 * half, 1);
-          else g.fillRect(X + (dx > 0 ? 17 + side + k : -2 - side - k), Y + 9 - half, 1, 2 * half);
-        }
+      const px = dy ? 1 : 0, py = dy ? 0 : 1, top = topAt(x, y), front = topAt(x + dx, y + dy);
+      for (const [lo, hi] of shownVoids(x, y, dx, dy)) {  // an opening: the same empty cells side by side along the face
+        const same = (u, v) => topAt(u, v) === top && topAt(u + dx, v + dy) === front && shownVoids(u, v, dx, dy).some((r) => r[0] === lo && r[1] === hi);
+        let back = 0; while (back < 60 && same(x - (back + 1) * px, y - (back + 1) * py)) back++;
+        if (back % 6) continue;                           // (drawn from its first tile; a very long one, in lengths of 6)
+        let W = 1; while (W < 6 && same(x + W * px, y + W * py)) W++;
+        need(); drawOpening(g, X, Y, x, y, dx, dy, W, lo, hi);
       }
     }
   }
@@ -99,13 +134,13 @@ function buildCaveOverlay(b) {
 // Called each frame after the ground: each block's caves, a picture a block (redrawn only when it changed)
 function drawCaves(vis, sx, sy) {
   for (const b of vis) {
-    if (!b.rf || !b.relief) continue;
-    const key = (b.ver || 0) + ":" + caveStamp + ":" + MOUTH;
+    if (!b.col || !b.relief) continue;
+    const key = (b.ver || 0) + ":" + caveStamp;
     if (b.caveKey !== key) { b.caveKey = key; b.caveOv = buildCaveOverlay(b); }
     if (b.caveOv) ctx.drawImage(b.caveOv, sx(b.bx * B) - OV_M * zoom, sy(b.by * B) - OV_M * zoom, b.caveOv.width * zoom, b.caveOv.height * zoom);
   }
 }
-// Where you are, on screen: X, Y (the tile) and Z (the height you stand at: in a cave its floor, on it its roof)
+// Where you are, on screen: X, Y (the tile) and Z (the height you stand at)
 let xyzText = "";
 function showXYZ() {
   const t = myAt ? `X ${myAt.x}  Y ${myAt.y}  Z ${myAt.z}` : "";

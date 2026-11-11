@@ -14,41 +14,23 @@ function tile(x, y) {
   return [b.comb[i], b.gnd[i]];
 }
 const combAt = (x, y) => { const t = tile(x, y); return t ? t[0] : null; };
-// Relief: a char per tile, 64 + its floor's height ("@" sea level, below it dug pits); and in caves the rock over each
-// tile, in layers. A cave is drawn as the hill over it (its roof), like a house: levelAt is the height drawn, floorAt
-// the cave's floor. The cave you walk into is shown through its roof (caves.js), what's in it at its floor's height.
-const SEA = 64;
-function tileIdx(x, y) { const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B))); return b ? [b, (y - b.by * B) * B + (x - b.bx * B)] : null; }
-const floorAt = (x, y) => { const t = tileIdx(x, y); return t ? t[0].lv[t[1]].charCodeAt(0) - SEA : 0; };
-const roofAt = (x, y) => { const t = tileIdx(x, y); return t && t[0].rf ? t[0].rf[t[1]] : 0; };
-let caveOpen = false, openCave = new Set();  // you're in a cave: that cave (its tiles, "x,y") is drawn without its roof
-const inOpenCave = (x, y) => caveOpen && openCave.has(x + "," + y);
-let peekFloors = false;                     // (while the open cave's floor is being drawn: caves.js)
-const levelAt = (x, y) => { const t = tileIdx(x, y); if (!t) return 0; const f = t[0].lv[t[1]].charCodeAt(0) - SEA; return !t[0].rf || (peekFloors && inOpenCave(x, y)) ? f : f + t[0].rf[t[1]]; };
-const standAt = (x, y) => (inOpenCave(x, y) ? floorAt(x, y) : levelAt(x, y));   // the height what's on a tile is drawn at
-const hiddenAt = (x, y) => roofAt(x, y) > 0 && !inOpenCave(x, y);  // under a closed cave's roof: not seen
-function rimAt(x, y) {                      // as World.rim: lower ground around it (nothing built)
-  const lv = floorAt(x, y);
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && floorAt(x + dx, y + dy) < lv) return true;
-  return false;
-}
-// as Movement.landing, roughly, for people: on the level, a layer down or a jump a layer up (over a cave: on its
-// roof or in it)
-const heightsAt = (x, y) => { const f = floorAt(x, y), r = roofAt(x, y); return r ? [f, f + r] : [f]; };
-const canStep = (x0, y0, x1, y1) => heightsAt(x0, y0).some((a) => heightsAt(x1, y1).some((b) => Math.abs(a - b) <= 1));
 const gndAt = (x, y) => { const t = tile(x, y); return t ? t[1] : null; };
 const dirtyTiles = [];                 // tiles to redraw (x, y), processed within a per-frame budget
 function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }
 // picked plants: full -> bare (fruit flies to the picker); bare -> full when it grows back
 const PICK = {F: "U", b: "v"};
-function setTile(x, y, comb, gnd, who = null, lv = null) {
+function setTile(x, y, comb, gnd, who = null, col = null) {    // (col: its column of cells, when sent: cells.js)
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
   if (!b) return;
   const i = (y - by * B) * B + (x - bx * B);
-  const lc = lv === null ? b.lv[i] : String.fromCharCode(48 + (lv & 31)), rf = lv === null ? roofAt(x, y) : lv >> 5;
-  if (b.comb[i] === comb && b.gnd[i] === gnd && b.lv[i] === lc && roofAt(x, y) === rf) return;
-  if (rf !== roofAt(x, y)) { if (!b.rf) b.rf = new Array(B * B).fill(0); b.rf[i] = rf; }
-  if (b.lv[i] !== lc || rf !== roofAt(x, y)) { b.lv[i] = lc; for (let d = -2; d <= 2; d++) touch(x + d, y); }   // relief changed: edges around redraw
+  const relief = col !== null && col >>> 0 !== colAt(x, y);
+  if (b.comb[i] === comb && b.gnd[i] === gnd && !relief) return;
+  if (relief) {                              // the land changed: edges around redraw
+    const c = col >>> 0, f = colFloor(c);
+    b.lv[i] = String.fromCharCode(SEA + f);
+    if (c !== colSolid(f)) (b.col || (b.col = {}))[i] = c; else if (b.col) delete b.col[i];
+    for (let d = -2; d <= 2; d++) touch(x + d, y);
+  }
   const old = b.comb[i], now = performance.now();
   if (PICK[old] === comb) picked(x, y, old, who, now);
   else if (old === "T" && comb !== "T") felled(x, y, who, now);
@@ -68,20 +50,19 @@ function setTile(x, y, comb, gnd, who = null, lv = null) {
 function onRegion(d) {
   if (d.w !== B || d.h !== B || d.x % B || d.y % B) return;
   const bx = d.x / B, by = d.y / B, k = bkey(bx, by);
-  const comb = [], gnd = [], lv = [], rf = d.roofs ? [] : null;
-  for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) { comb.push(d.rows[j][i]); gnd.push(d.ground[j][i]); lv.push(d.levels ? d.levels[j][i] : "@"); if (rf) rf.push(d.roofs[j].charCodeAt(i) - 48); }
+  const comb = [], gnd = [], lv = [], col = d.cols || null;     // (col: the hollow tiles' columns, by index)
+  for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) { comb.push(d.rows[j][i]); gnd.push(d.ground[j][i]); lv.push(d.levels ? d.levels[j][i] : "@"); }
   requested.delete(k);
   const old = blocks.get(k);
   if (old && old.drawn) {             // resync: only redraw what actually changed
     for (let i = 0; i < B * B; i++) {
-      const r = rf ? rf[i] : 0;
-      if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && old.lv[i] === lv[i] && (old.rf ? old.rf[i] : 0) === r) continue;
-      const raw = (lv[i].charCodeAt(0) - 48) | (r << 5);
-      setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, raw);
+      const c = col && col[i] !== undefined ? col[i] : colSolid(lv[i].charCodeAt(0) - SEA);
+      if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && c === colAt(bx * B + i % B, by * B + (i / B | 0))) continue;
+      setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, c);
     }
     old.at = performance.now(); return;
   }
-  const b = {bx, by, comb, gnd, lv, rf, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
+  const b = {bx, by, comb, gnd, lv, col, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
   comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
   blocks.set(k, b);
   // neighbours' edge tiles depend on this block for autotiling
@@ -139,8 +120,6 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
   const lv = levelAt(x, y);
   for (let k = 1; k <= lv; k++) drawBlobLayer(g, hillSheet(k), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, ox, oy, k < 3 ? .25 : .1);
   if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
-  if (gr === "-") drawBlobLayer(g, IMG.soil, x, y, (cc, gg) => gg === "-" && cc !== "R", ox, oy, .15);   // (old worlds)
-  if (c === "R") drawBlobLayer(g, IMG.hill3, x, y, (cc) => cc === "R", ox, oy, .1);
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
   const hd = hash(x, y, 41);
   if (gr === "~" && hd < .09) {                      // shore water: lily pads, reeds, little rocks

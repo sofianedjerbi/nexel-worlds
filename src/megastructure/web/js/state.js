@@ -119,7 +119,7 @@ function onEvent(e) {
   const t = performance.now() / 1000;
   if (e.type === "tile") {
     const g = CHAR[e.ground], blk = e.block === "none" ? g : CHAR[e.block], old = combAt(e.x, e.y);
-    if (g && blk) setTile(e.x, e.y, blk, g, e.by, e.lv === undefined ? null : e.lv);
+    if (g && blk) setTile(e.x, e.y, blk, g, e.by, e.col === undefined ? null : e.col);
     if (old && blk) tileSound(old, blk, e);
     return;
   }

@@ -16,7 +16,7 @@ function frame(now) {
       // turns: no diagonal slide when two keys are held.
       const [wx, wy] = DIRV[walking.dir], ahead0 = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
       // a jump up is hard going (60% longer a step), a drop careful (20%): as the server paces it (SLOPE_UP/DOWN)
-      const climb = floorAt(ahead0.x, ahead0.y) - floorAt(Math.round(p.tx), Math.round(p.ty)), jump = climb > 0;
+      const h0 = myZ(Math.round(p.tx), Math.round(p.ty)), h1 = landAt(h0, ahead0.x, ahead0.y), climb = h1 === null ? 0 : h1 - h0, jump = climb > 0;
       // exactly as the server paces it, in its 0.1 s ticks: a stride of 1 tick (running) or 2 (walking), and a jump up
       // or a drop that many more, rounded (SLOPE_UP/DOWN): so you never run ahead of yourself and wait
       const base = walking.run ? 1 : 2, ticks = base + (jump ? Math.round(base * .6) : climb < 0 ? Math.round(base * .2) : 0);
@@ -107,7 +107,7 @@ function frame(now) {
   occupied = new Set([...ents.values()].filter((p) => p.e).map((p) => Math.round(p.x) + "," + Math.round(p.y)));
   const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && b.relief); };
   // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
-  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !hiddenAt(Math.round(p.x), Math.round(p.y))) list.push({y: p.y + .01, p});
+  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p)) list.push({y: p.y + .01, p});
   for (const [ix, iy, pile] of groundItems) if (!hiddenAt(ix, iy)) list.push({y: iy - .01, x: ix, ty: iy, pile});   // (ty: its tile; y sorts)
   if (pileSince.size) { const here = new Set(groundItems.map(([ix, iy]) => ix + "," + iy)); for (const k of pileSince.keys()) if (!here.has(k) || lootAt(...k.split(",").map(Number))) pileSince.delete(k); }
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)

@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from .constants import SLOPE_DOWN, SLOPE_UP, sec
+from .constants import FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, sec
 from .entities import ActionError, Agent
 
 
@@ -20,30 +20,42 @@ class Movement:
         return ground.walkable and not block.solid
 
     def height(self, a: Agent) -> int:
-        """The height `a` stands at: the ground, or the top of a cave's roof."""
-        return self.world.level(a.x, a.y) + (self.world.roof(a.x, a.y) if a.atop else 0)
+        """The height `a` stands at: the ground here at or under where they were (the lowest ground, if none is)."""
+        s = self.world.surfaces(a.x, a.y)
+        a.z = max((z for z in s if z <= a.z), default=s[0])
+        return a.z
 
     def in_cave(self, a: Agent) -> bool:
-        return bool(self.world.roof(a.x, a.y)) and not a.atop
+        """Something solid over your head."""
+        return self.world.covered(a.x, a.y, self.height(a))
 
-    def landing(self, a: Agent, x: int, y: int):
-        """Where a step to the neighbouring (x, y) lands: (height, on its roof) within a layer of you, or None. Over
-        a cave you walk on its roof, in it under it (the one nearest your height; a tie: where you are, in or on top)."""
-        h, f, r = self.height(a), self.world.level(x, y), self.world.roof(x, y)
-        cands = [(f, False)] if not r else [(f, False), (f + r, True)] if self.in_cave(a) else [(f + r, True), (f, False)]
-        cands = sorted(cands, key=lambda c: abs(c[0] - h))     # (the nearest; level with you before a hop)
-        return next((c for c in cands if abs(c[0] - h) <= 1), None)
+    def landing(self, a: Agent, x: int, y: int) -> int | None:
+        """The height a step to the neighbouring (x, y) lands at, or None (a wall). The world is cells: where the
+        cell at your body's height is solid there you jump up onto it if it is ground (nothing over it); where it is
+        empty you step in at your own height and come down on whatever ground is under you there (a fall, however
+        far: Movement.fell)."""
+        h = self.height(a)
+        if self.world.solid(x, y, h + 1):
+            return None if self.world.solid(x, y, h + 2) else h + 1
+        return max(z for z in self.world.surfaces(x, y) if z <= h)
 
     def can_go(self, a: Agent, x: int, y: int) -> bool:
-        """From where `a` stands to the neighbouring (x, y): the tile can be entered and is at most a layer up or
-        down (a jump)."""
+        """From where `a` stands to the neighbouring (x, y): the tile can be entered, and isn't a wall."""
         return self.can_enter(a, x, y) and self.landing(a, x, y) is not None
 
     def why_not(self, a: Agent, x: int, y: int) -> str:
         if self.can_enter(a, x, y) and self.landing(a, x, y) is None:
-            up = self.world.level(x, y) + self.world.roof(x, y) > self.height(a)
-            return "a cliff, too high to jump (dig into it: dig with a pickaxe)" if up else "a drop of more than a layer"
+            return "a wall, too high to jump (dig into it: dig with a pickaxe)"
         return self.describe(x, y)
+
+    def fell(self, a: Agent, layers: int) -> dict:
+        """Coming down `layers` at once: up to FALL_SAFE is nothing, each layer more hurts."""
+        if layers <= FALL_SAFE:
+            return {}
+        hurt = (layers - FALL_SAFE) * FALL_HP
+        self.emit("fall", a.x, a.y, name=a.name, layers=layers, damage=hurt)
+        self.damage(a, hurt, "fell")
+        return {"fell": layers, "damage": hurt}
 
     def move(self, a: Agent, x: int, y: int):
         """Move to an adjacent tile, boarding or leaving a boat when crossing the shoreline."""
@@ -57,12 +69,13 @@ class Movement:
             self.emit("moor", a.x, a.y, name=a.name)
         h0, land = self.height(a), self.landing(a, x, y)
         a.x, a.y = x, y
-        if land:
-            a.atop = land[1]
+        if land is not None:
+            a.z = land
         climb = self.height(a) - h0
         if climb and a.ready > self.tick:            # a jump up is hard going, a drop a little careful
             a.ready += round((a.ready - self.tick) * (SLOPE_UP if climb > 0 else SLOPE_DOWN))
         self.arrive(a)
+        return self.fell(a, -climb)                  # (what the fall did to you, if it was one)
 
     def arrive(self, a: Agent):
         """Called after every move: walking over items picks them up."""
@@ -114,8 +127,10 @@ class Movement:
             yield from self.pace(a, args)
             if not self.can_go(a, a.x + dx, a.y + dy):
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
-            self.move(a, a.x + dx, a.y + dy)
+            fall = self.move(a, a.x + dx, a.y + dy)
             steps += 1
+            if fall:                                 # a fall that hurt: the walk ends where you landed
+                return {"steps": steps, "stopped": "fell", **fall}
         return {"steps": steps, "stopped": "limit"}
 
     def _tool_stop(self, a, args):
@@ -129,8 +144,10 @@ class Movement:
             raise ActionError("bad_args", "move_to needs integer x and y")
         replans = 0
         ok = lambda x, y: self.can_enter(a, x, y) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
-        tops = lambda p: (self.world.level(*p), self.world.level(*p) + self.world.roof(*p))   # (on a cave, or in it)
-        step = lambda p, q: any(abs(i - j) <= 1 for i in set(tops(p)) for j in set(tops(q)))
+        # the way goes up a layer at a time and never down a fall that hurts (except a single step you ask for: the
+        # tile beside you, off an edge)
+        drop = 99 if abs(gx - a.x) + abs(gy - a.y) == 1 else FALL_SAFE
+        step = lambda p, q: any(-drop <= j - i <= 1 for i in self.world.surfaces(*p) for j in self.world.surfaces(*q))
         path = astar(ok, (a.x, a.y), (gx, gy), step=step)
         if path is None:
             far = abs(gx - a.x) + abs(gy - a.y) > 64
@@ -140,7 +157,8 @@ class Movement:
         while path:
             yield from self.pace(a, args)
             nx, ny = path[0]
-            if not self.can_go(a, nx, ny):
+            land = self.landing(a, nx, ny) if self.can_enter(a, nx, ny) else None
+            if land is None or self.height(a) - land > drop:
                 replans += 1
                 path = astar(ok, (a.x, a.y), (gx, gy), step=step) if replans <= 2 else None
                 if path is None:

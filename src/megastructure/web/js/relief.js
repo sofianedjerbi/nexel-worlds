@@ -4,7 +4,8 @@
 // over lower ground its wall is painted down to the ground below: solid earth, a band per layer (lit along its top,
 // darker at its foot), in the colours of that layer's own sheet, the pack's ink at the very foot.
 
-const RELIEF_STEP = 6;                                       // art px a level
+// A layer is half a tile high: two layers, one tile (a cave two blocks high is as tall as you are)
+const RELIEF_STEP = 8;                                       // art px a level
 const shOf = (L) => RELIEF_STEP * L;                          // how far up a level is drawn (a pit's, down): every layer the same step
 const WALL_M = RELIEF_STEP * 14 + 16;                        // room under a layer canvas for its walls
 
@@ -33,7 +34,10 @@ function colsOf(sheet) {
   const l = at(ex * 16 + 8, ey * 16 + ink - 1), d = at(ex * 16 + 8, ey * 16 + ink - 2);
   let w0 = 0; while (w0 < 15 && at(wx * 16 + w0, wy * 16 + 8)[3] < 128) w0++;
   const side = [0, 1, 2, 3].map((i) => at(wx * 16 + w0 + i, wy * 16 + 8));
-  const out = {bands: [l, [(d[0] + l[0]) / 2, (d[1] + l[1]) / 2, (d[2] + l[2]) / 2], d], side, top: at(ix * 16 + 8, iy * 16 + 8)};
+  const [nx, ny] = blobCell(S_ | E_ | W_ | SE | SW);
+  let n0 = 0; while (n0 < 15 && at(nx * 16 + 8, ny * 16 + n0)[3] < 128) n0++;
+  const out = {bands: [l, [(d[0] + l[0]) / 2, (d[1] + l[1]) / 2, (d[2] + l[2]) / 2], d], side, top: at(ix * 16 + 8, iy * 16 + 8),
+               foot: ink + 1, inset: w0, north: n0};   // (in the tile: where its south face ends, its side edge and its far edge start)
   sheetCols.set(sheet, out); return out;
 }
 
@@ -67,11 +71,11 @@ function dilateH(m, w, h, n) {
   return out;
 }
 
-// The lifted levels of a block, built when its ground canvas changed. Each level k: its body (a 6 px wall band, lit
+// The lifted levels of a block, built when its ground canvas changed. Each level k: its body (a wall band a layer high, lit
 // at its top, dark at its foot), the ledge round the level above it (LEDGE px, in the sheet's own side-edge colours:
 // a +3 shows three edges on every side), then its own tiles on top, where you stand. Worked out over the block and a
 // tile round it, so ledges cross block borders.
-const LEDGE = 3;
+const LEDGE = 4;
 function* reliefSteps(b) {                             // (a step a level, so no frame waits on a whole block)
   const M = 16, Wb = B * 16, Wm = Wb + 2 * M, Hb = Wb + WALL_M;
   let maxLv = -99, minLv = 0;                          // (the block's ground canvas is drawn at its lowest level)

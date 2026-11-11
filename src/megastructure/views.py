@@ -1,5 +1,6 @@
 """What spectators are sent about the part of the world they watch."""
 
+from .gen import col_floor
 from .sim.wild import WILD
 from .tiles import DIRS, GROUNDS
 
@@ -15,7 +16,7 @@ class Views:
                  "at": self.aimed(a),
                  "with": a.action.args.get("with") if a.action else None,
                  "item": a.action.args.get("item") if a.action else None,
-                 "run": bool(a.action.args.get("run")) if a.action else False, "sail": a.sailing}
+                 "run": bool(a.action.args.get("run")) if a.action else False, "sail": a.sailing, "z": self.sim.height(a)}
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
         ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp, "love": c.love > self.sim.tick, "scared": c.scared > self.sim.tick,
                   **({"act": c.mode, "dir": list(c.dir), "run": c.mode == "charge"} if c.kind in WILD else {})}
@@ -47,10 +48,10 @@ class Views:
         world = self.sim.world
         rows = ["".join(world.char(i, j) for i in range(x, x + w)) for j in range(y, y + h)]
         ground = ["".join(GROUNDS[world.get(i, j)[0]].char for i in range(x, x + w)) for j in range(y, y + h)]
-        # heights: a char per tile, 48 + 16 + level (sea level "@"); and where there are caves, the rock over each
-        # tile in layers ("0" open sky)
-        raw = [[world.level_raw(i, j) for i in range(x, x + w)] for j in range(y, y + h)]
-        levels = ["".join(chr(48 + (v & 31)) for v in r) for r in raw]
-        roofs = ["".join(chr(48 + (v >> 5)) for v in r) for r in raw] if any(v >> 5 for r in raw for v in r) else None
-        return {**({"roofs": roofs} if roofs else {}), "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
+        # the land: a char per tile, 64 + its lowest ground's height (sea level "@"); and for the tiles where that
+        # isn't all (a cave under a hill), their whole column of cells, by index in the region (gen.col_solid...)
+        raw = [world.col(i, j) for j in range(y, y + h) for i in range(x, x + w)]
+        levels = ["".join(chr(64 + col_floor(v)) for v in raw[j * w:(j + 1) * w]) for j in range(h)]
+        cols = {str(i): v for i, v in enumerate(raw) if v & (v + 1)}
+        return {**({"cols": cols} if cols else {}), "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
                 "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}

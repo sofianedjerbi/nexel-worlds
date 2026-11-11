@@ -56,9 +56,7 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
         self.tokens: dict[int, str] = {}
         for aid, name, th, js in store.db.execute("SELECT id, name, token_hash, json FROM agents"):
             known = {f.name for f in fields(Agent)}            # saves from older versions may carry dropped fields
-            a = self.agents[aid] = Agent(**{k: v for k, v in json.loads(js).items() if k in known})
-            if a.x > 500_000:                                  # (down an old underground level: back up top)
-                a.x -= (a.x + 500_000) // 1_000_000 * 1_000_000
+            self.agents[aid] = Agent(**{k: v for k, v in json.loads(js).items() if k in known})
             self.tokens[aid] = th
         self.by_name = {a.name: a for a in self.agents.values()}
         self.ticking: set[tuple[int, int]] = set()        # chunks where creatures live this tick (spawning.py)
@@ -115,8 +113,13 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
             fn(ev)
         return ev
 
-    def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None, level=None, roof=None):
-        self.world.set(x, y, ground=ground, block=block, level=level, roof=roof)
+    def set_cell(self, x, y, z, solid: bool, by: Agent | None = None, cause=None):
+        """Fill or empty one cell of the land (digging, building up)."""
+        self.world.set_cell(x, y, z, solid)
+        self.set_tile(x, y, by=by, cause=cause)
+
+    def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None, level=None, roof=None, head=None):
+        self.world.set(x, y, ground=ground, block=block, level=level, roof=roof, head=head)
         self.stats["tiles_changed"] += 1
         g, b = self.world.ground(x, y), self.world.block(x, y)
         if g == "tilled":
@@ -128,7 +131,7 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
         info = {"x": x, "y": y, "ground": g, "block": b}
         if by is not None and by.action is not None:
             by.action.tiles.append(info)
-        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause, lv=self.world.level_raw(x, y))
+        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause, col=self.world.col(x, y))
 
     def add_items(self, x, y, items: dict):
         if not items:

@@ -17,7 +17,7 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
             sim.step()
         return {"tick": sim.tick}
     if op == "dev_teleport":
-        agent.x, agent.y = int(msg["x"]), int(msg["y"])
+        agent.x, agent.y, agent.z = int(msg["x"]), int(msg["y"]), int(msg.get("z", 99))   # (z: up top unless given)
         return {"x": agent.x, "y": agent.y}
     if op == "dev_damage":
         sim.damage(agent, int(msg.get("n", 10)), "dev")
@@ -27,15 +27,17 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
         x0, y0 = int(msg["x"]), int(msg["y"])
         levels = list(msg.get("levels") or [])  # optional rows of heights: as the agents see them (0-9, A-C, a-l below)
         roofs = list(msg.get("roofs") or [])    # optional rows of the rock over each tile (a cave), digits
+        heads = list(msg.get("heads") or [])    # ...and of how many cells of that are empty over the floor, digits
         for j, row in enumerate(list(msg.get("rows") or [])[:200]):
             for i, ch in enumerate(str(row)[:200]):
                 lc = levels[j][i] if j < len(levels) and i < len(levels[j]) else "0"
                 lv = int(lc) if lc.isdigit() else ord(lc) - 55 if lc.isupper() else 96 - ord(lc)
                 rf = int(roofs[j][i]) if j < len(roofs) and i < len(roofs[j]) else 0
+                hd = int(heads[j][i]) if j < len(heads) and i < len(heads[j]) else None
                 if ch in gch:
-                    sim.set_tile(x0 + i, y0 + j, ground=gch[ch], block="none", level=lv, roof=rf)
+                    sim.set_tile(x0 + i, y0 + j, ground=gch[ch], block="none", level=lv, roof=rf, head=hd)
                 elif ch in bch:
-                    sim.set_tile(x0 + i, y0 + j, ground="grass", block=bch[ch], level=lv, roof=rf)
+                    sim.set_tile(x0 + i, y0 + j, ground="grass", block=bch[ch], level=lv, roof=rf, head=hd)
         return {}
     if op == "dev_creatures":                    # clear creatures within `clear` tiles; spawn {"kind", "dx", "dy"}
         from .sim import CREATURES, Creature

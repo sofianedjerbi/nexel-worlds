@@ -5,16 +5,40 @@ regenerated identically.
 """
 
 import math
+from array import array
 
 from .tiles import B, G
 
-# Heights: a byte a tile. Its low 5 bits are the floor, SEA (0) being sea level, down to -16 (dug pits) and up to 15;
-# its top 3 bits the rock over it, in layers (a cave: walk in under the mountain); 0 for the open sky.
-SEA = 16
+# The world is cells, solid or empty. A tile's column is its 32 cells from the bottom (LOW) up, a bit each, set
+# where the cell is solid; cell z is the block whose top is at height z, so land h high is solid up to cell h (0: sea
+# level). Nothing else is kept about relief: a cave is empty cells with solid ones over them, a pit a column dug low.
+LOW, HIGH = -16, 15
 
 
-def height_byte(level: int, roof: int = 0) -> int:
-    return max(0, min(31, level + SEA)) | (max(0, min(7, roof)) << 5)
+def col_solid(level: int) -> int:
+    """A plain column: solid up to `level`."""
+    return (1 << (max(LOW, min(HIGH, level)) - LOW + 1)) - 1
+
+
+def col_cave(floor: int, head: int, top: int) -> int:
+    """Land `top` high with `head` cells empty over a floor at `floor`."""
+    return col_solid(top) & ~(col_solid(min(floor + head, top - 1)) ^ col_solid(floor)) if top > floor + 1 and head > 0 else col_solid(floor)
+
+
+def col_top(col: int) -> int:
+    """The highest solid cell: the land as seen from above."""
+    return col.bit_length() - 1 + LOW
+
+
+def col_floor(col: int) -> int:
+    """The lowest ground: the top of the solid cells standing on the bottom."""
+    return (~col & (col + 1)).bit_length() - 2 + LOW
+
+
+def col_surfaces(col: int) -> list[int]:
+    """Every height you can stand at in this column: a solid cell with an empty one over it. Lowest first."""
+    tops = col & ~(col >> 1)
+    return [z + LOW for z in range(tops.bit_length()) if tops >> z & 1]
 
 CHUNK = 32
 
@@ -193,11 +217,11 @@ def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
     return ground, B["none"]
 
 
-def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, bytearray]:
-    """Ground, blocks and levels of one chunk."""
+def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, array]:
+    """Ground, blocks and columns (the cells, solid or empty) of one chunk."""
     ground = bytearray(CHUNK * CHUNK)
     block = bytearray(CHUNK * CHUNK)
-    level = bytearray(CHUNK * CHUNK)
+    cols = array("I", bytes(4 * CHUNK * CHUNK))        # (a column of cells a tile, 32 bits: col_solid...)
     bx, by = cx * CHUNK, cy * CHUNK
     memo = {}
 
@@ -219,5 +243,5 @@ def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, bytear
                 g, b = G["dirt"], B["mushroom"] if _hash(seed, x, y, 93) < .01 else B["none"]   # a cave's floor
             rim = lv(x, y) and any(lv(x + dx, y + dy) < lv(x, y) for dx in (-1, 0, 1) for dy in (-1, 0, 1))
             ground[i], block[i] = g, B["none"] if rim else b     # nothing grows on a hill's rim
-            level[i] = height_byte(floor, roof)
-    return ground, block, level
+            cols[i] = col_cave(floor, 2 if roof >= 3 else 1, floor + roof) if roof else col_solid(floor)
+    return ground, block, cols

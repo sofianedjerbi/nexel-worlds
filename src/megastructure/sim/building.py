@@ -36,19 +36,15 @@ class Building:
         x, y = self.resolve(*self.target(a, args))
         g, b = self.world.get(x, y)
         block, ground = BLOCKS[b], GROUNDS[g]
-        roof = self.world.roof(x, y) if not self.in_cave(a) else 0      # (outside a cave: its roof is the ground)
-        if block.name == "none" and self.world.level(x, y) + roof > self.height(a) and self.held(a, args) == "pickaxe":
-            yield from self.wait(a, 1.0)                   # into higher ground: it comes down a layer
-            lv = self.world.level(x, y) + roof
-            if self.world.block(x, y) != "none":
+        z = self.height(a) + 1                             # the cell in front of you, at your body's height
+        if block.name == "none" and self.world.solid(x, y, z) and self.held(a, args) == "pickaxe":
+            yield from self.wait(a, 1.0)                   # into a wall: that cell goes (a step cut down, or a tunnel)
+            if not self.world.solid(x, y, z) or self.height(a) + 1 != z:
                 raise ActionError("changed", "something changed there")
-            got = "stone" if lv > 1 else "dirt"
+            got = "stone" if z > 1 or z < 0 else "dirt"
             a.add(got)
-            if roof:
-                self.set_tile(x, y, roof=roof - 1, by=a, cause="dig")
-            else:
-                self.set_tile(x, y, level=lv - 1, by=a, cause="dig")
-            return {"got": {got: 1}, "level": lv - 1}
+            self.set_cell(x, y, z, False, by=a, cause="dig")
+            return {"got": {got: 1}, "cell": [x, y, z]}
         if block.name == "none":
             built ={"cobble": ("path", "dirt"), "floor": ("plank", "dirt"), "bridge": ("plank", "water")}
             if ground.name in built:                       # what you lay, you can take up again

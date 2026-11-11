@@ -3,11 +3,11 @@
 import json
 import sqlite3
 import sys
-import zlib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .gen import CHUNK, SEA, gen_chunk, gen_tile, height_byte
+from .chunks import Chunk
+from .gen import CHUNK, LOW, col_cave, col_floor, col_surfaces, col_top, gen_chunk, gen_tile
 from .tiles import BLOCKS, GROUNDS, B, G
 
 THREADS = sys.platform != "emscripten"   # the in-browser demo has no threads: it generates land inline
@@ -21,39 +21,6 @@ CREATE TABLE IF NOT EXISTS agents(id INTEGER PRIMARY KEY, name TEXT UNIQUE, toke
 CREATE TABLE IF NOT EXISTS ground_items(x INTEGER, y INTEGER, json TEXT, PRIMARY KEY(x, y));
 CREATE TABLE IF NOT EXISTS creatures(id INTEGER PRIMARY KEY, json TEXT);
 """
-FORMAT = 2                               # chunk format: heights below sea level, caves
-
-
-class Chunk:
-    __slots__ = ("cx", "cy", "ground", "block", "level", "dirty", "touched")
-
-    def __init__(self, cx, cy, ground, block, level=None):
-        self.cx, self.cy = cx, cy
-        self.ground, self.block = ground, block
-        self.level = level if level is not None else bytearray([SEA] * (CHUNK * CHUNK))   # heights (raw: gen.height_byte)
-        self.dirty = False
-        self.touched = 0
-
-    def pack(self) -> bytes:
-        return zlib.compress(bytes(self.ground) + bytes(self.block) + bytes(self.level) + bytes([FORMAT]), 6)
-
-    @classmethod
-    def unpack(cls, cx, cy, data: bytes) -> "Chunk":
-        raw = zlib.decompress(data)
-        n = CHUNK * CHUNK
-        # chunks saved before the land had relief carry no levels: they stay flat (nothing built on them moves)
-        ground, block = bytearray(raw[:n]), bytearray(raw[n:2 * n])
-        if len(raw) > 3 * n and raw[3 * n] == FORMAT:
-            return cls(cx, cy, ground, block, bytearray(raw[2 * n:3 * n]))
-        # saved before heights went below sea level: 0-12 (bit 4: old stairs); old holes and ladders filled in
-        old = raw[2 * n:3 * n] if len(raw) >= 3 * n else bytes(n)
-        level = bytearray(SEA + (v & 0x0F) for v in old)
-        for i in range(n):
-            if block[i] in (B["hole"], B["ladder"]):
-                block[i] = B["none"]
-        return cls(cx, cy, ground, block, level)
-
-
 class Store:
     """Thin SQLite wrapper. One connection, owned by the server thread."""
 
@@ -121,8 +88,8 @@ class World:
         c.touched = self.tick
         return c
 
-    def _install(self, cx, cy, g, b, lv) -> Chunk:
-        c = Chunk(cx, cy, g, b, lv)
+    def _install(self, cx, cy, g, b, cols) -> Chunk:
+        c = Chunk(cx, cy, g, b, cols)
         c.dirty = True
         self.chunks[(cx, cy)] = c
         self.fresh.append((cx, cy))                     # new land: the simulation may put animals on it
@@ -205,16 +172,43 @@ class World:
         i = (y & 31) * CHUNK + (x & 31)
         return c.ground[i], c.block[i]
 
-    def level_raw(self, x: int, y: int) -> int:
-        return self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)]
+    def col(self, x: int, y: int) -> int:
+        """The tile's column of cells, a bit each from the bottom, set where solid (gen.col_solid...)."""
+        return self.chunk(x >> 5, y >> 5).cols[(y & 31) * CHUNK + (x & 31)]
 
     def level(self, x: int, y: int) -> int:
-        """Height of the ground you stand on here: 0 at sea level, below in dug pits, up to 12 in the mountains."""
-        return (self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] & 0x1F) - SEA
+        """Height of the lowest ground here (a cave's floor, under a hill): 0 at sea level, below in dug pits, up to
+        12 in the mountains."""
+        return col_floor(self.col(x, y))
+
+    def top(self, x: int, y: int) -> int:
+        """Height of the land as seen from above (over a cave: the hill)."""
+        return col_top(self.col(x, y))
 
     def roof(self, x: int, y: int) -> int:
-        """In a cave: the layers of rock over you (0 under the sky)."""
-        return self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] >> 5
+        """Over the lowest ground: how far up the land goes (0 under the sky; a cave when not)."""
+        c = self.col(x, y)
+        return col_top(c) - col_floor(c)
+
+    def surfaces(self, x: int, y: int) -> list[int]:
+        """Every height you can stand at here, lowest first."""
+        return col_surfaces(self.col(x, y))
+
+    def solid(self, x: int, y: int, z: int) -> bool:
+        """Is the cell whose top is at height z solid? (Everything under the bottom is; nothing over the top.)"""
+        return z < LOW or (z - LOW < 32 and bool(self.col(x, y) >> (z - LOW) & 1))
+
+    def covered(self, x: int, y: int, z: int) -> bool:
+        """Standing at height z here: is there anything solid over you (a cave)?"""
+        return bool(self.col(x, y) >> (z - LOW + 1))
+
+    def set_cell(self, x: int, y: int, z: int, solid: bool):
+        """Fill or empty one cell (never the bottom one)."""
+        if LOW < z < LOW + 32:
+            c = self.chunk(x >> 5, y >> 5)
+            i = (y & 31) * CHUNK + (x & 31)
+            c.cols[i] = c.cols[i] | 1 << (z - LOW) if solid else c.cols[i] & ~(1 << (z - LOW))
+            c.dirty = True
 
     def rim(self, x: int, y: int) -> bool:
         """On a hill's rim (a lower tile next to it, diagonals too), where its edge is drawn: nothing is built or
@@ -240,11 +234,15 @@ class World:
         return BLOCKS[self.get(x, y)[1]].name
 
     def set(self, x: int, y: int, ground: str | None = None, block: str | None = None, level: int | None = None,
-            roof: int | None = None):
+            roof: int | None = None, head: int | None = None):
         c = self.chunk(x >> 5, y >> 5)
         i = (y & 31) * CHUNK + (x & 31)
-        if level is not None or roof is not None:   # the floor, the rock over it (each kept unless given)
-            c.level[i] = height_byte((c.level[i] & 31) - SEA if level is None else level, c.level[i] >> 5 if roof is None else roof)
+        if level is not None or roof is not None or head is not None:
+            # (a shorthand for laying land out: solid up to `level`; with `roof`, the land goes that much higher over
+            # a cave on that floor, `head` cells high: two by default, one under a roof of two)
+            f = col_floor(c.cols[i]) if level is None else level
+            r = col_top(c.cols[i]) - col_floor(c.cols[i]) if roof is None else roof
+            c.cols[i] = col_cave(f, head or (2 if r >= 3 else 1), f + r)
         if ground is not None:
             c.ground[i] = G[ground]
         if block is not None:

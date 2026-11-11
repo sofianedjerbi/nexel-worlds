@@ -1,10 +1,10 @@
-"""Relief: heights; a step down or a jump up a layer, no higher; digging into higher ground; old worlds."""
+"""Relief: the land is cells, solid or empty. Heights; a jump up a layer, no higher; falling; digging cells out
+(a step cut down, a tunnel, a pit); caves."""
 
 import zlib
 
 from helpers import run
-from megastructure.gen import CHUNK, PEAK, gen_chunk
-from megastructure.tiles import B
+from megastructure.gen import CHUNK, PEAK, col_cave, col_floor, col_solid, col_surfaces, col_top, gen_chunk
 from megastructure.world import Chunk
 
 
@@ -32,11 +32,13 @@ def test_two_layers_up_is_a_wall_until_you_dig_into_it(world):
     plateau(sim, a, h=2)
     run(sim, a, "step", {"dir": "N"})
     r = run(sim, a, "step", {"dir": "N"})
-    assert not r["ok"] and "cliff" in r["detail"]
+    assert not r["ok"] and "wall" in r["detail"]
     a.add("pickaxe")
-    r = run(sim, a, "dig", {"dir": "N", "with": "pickaxe"})
-    assert r["ok"] and sim.world.level(a.x, a.y - 1) == 1 and a.count("stone") == 1
-    assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.world.level(a.x, a.y) == 1
+    r = run(sim, a, "dig", {"dir": "N", "with": "pickaxe"})          # the cell in front of you goes: a tunnel
+    assert r["ok"] and sim.world.surfaces(a.x, a.y - 1) == [0, 2] and a.count("dirt") == 1
+    assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.height(a) == 0 and sim.in_cave(a)
+    r = run(sim, a, "dig", {"dir": "N", "with": "pickaxe"})          # and on in, a cell at a time
+    assert r["ok"] and run(sim, a, "step", {"dir": "N"})["ok"] and sim.in_cave(a)
 
 
 def test_move_to_climbs_a_layer_at_a_time(world):
@@ -65,20 +67,10 @@ def test_generated_land_has_hills_and_peaks():
     for cx in range(4, 12):
         for cy in range(-4, 4):
             _, _, lv = gen_chunk(7, cx, cy)
-            levels |= {(v & 31) - 16 for v in lv}
-            peaks += sum(1 for v in lv if (v & 31) - 16 >= PEAK)
+            levels |= {col_top(v) for v in lv}
+            peaks += sum(1 for v in lv if col_top(v) >= PEAK)
     assert {0, 1, 2} <= levels and peaks > 0 and max(levels) < 16
     assert gen_chunk(7, 5, 1) == gen_chunk(7, 5, 1)          # deterministic
-
-
-def test_land_saved_before_relief_stays_flat_and_old_stairs_are_ground():
-    n = CHUNK * CHUNK
-    c = Chunk.unpack(0, 0, zlib.compress(bytes(n) + bytes(n)))     # ground and blocks only
-    assert len(c.level) == n and set(c.level) == {16}              # all at sea level
-    assert Chunk.unpack(0, 0, c.pack()).level == c.level
-    old = zlib.compress(bytes(n) + bytes([B["hole"], B["ladder"]]) + bytes(n - 2) + bytes([0x11]) + bytes(n - 1))
-    c = Chunk.unpack(0, 0, old)         # level 1 with the old stairs flag, and an old hole: filled in
-    assert c.level[0] == 17 and c.level[1] == 16 and c.block[0] == c.block[1] == 0
 
 
 def test_nothing_is_built_on_a_hills_rim(world):
@@ -96,7 +88,7 @@ def test_nothing_generates_on_a_rim():
         for cy in range(-3, 3):
             _, block, lv = gen_chunk(7, cx, cy)
             for i, v in enumerate(lv):
-                x, y, v = cx * CHUNK + i % CHUNK, cy * CHUNK + i // CHUNK, (v & 31) - 16
+                x, y, v = cx * CHUNK + i % CHUNK, cy * CHUNK + i // CHUNK, col_floor(v)
                 if v and any(gen_cave(7, x + dx, y + dy, gen_level(7, x + dx, y + dy))[0] < v for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
                     assert block[i] == 0, (x, y)
 
@@ -117,16 +109,72 @@ def test_the_land_has_biomes_mountains_rivers_and_caves():
     assert biome(7, 10, 10, gen_level(7, 10, 10)) == "plains"                      # spawn: plains
 
 
-def test_you_walk_on_a_caves_roof_or_in_the_cave(world):
-    """Over a cave you walk on its roof (level with the hill round it); from its mouth you walk in under it."""
+def test_you_walk_on_a_cave_or_in_under_it(world):
+    """A cave is empty cells under solid ones: from its mouth you walk in under the hill; up on the hill you walk
+    over it, and step off its end (a short drop: nothing)."""
     sim, a = world
     x, y = a.x, a.y
-    for i in range(1, 4):                                    # east of you: a hill at 1 with a cave floor at 0 under it
-        sim.world.set(x + i, y, level=0, roof=1)
+    for i in range(1, 4):                                    # east of you: a hill 2 high, hollow at the ground
+        sim.world.set(x + i, y, level=0, roof=2)
         sim.world.set(x + i, y - 1, level=1)
     sim.world.set(x, y - 1, level=1)
-    assert run(sim, a, "step", {"dir": "E"})["ok"] and sim.in_cave(a)               # in at its mouth
-    assert run(sim, a, "step", {"dir": "N"})["ok"]                                   # (a jump out, onto the hill)
-    assert sim.height(a) == 1
-    assert run(sim, a, "step", {"dir": "S"})["ok"] and a.atop and sim.height(a) == 1  # onto its roof
-    assert run(sim, a, "step", {"dir": "E"})["ok"] and a.atop                        # along it
+    assert sim.world.surfaces(x + 1, y) == [0, 2] and not sim.world.solid(x + 1, y, 1) and sim.world.solid(x + 1, y, 2)
+    assert run(sim, a, "step", {"dir": "E"})["ok"] and sim.in_cave(a) and sim.height(a) == 0     # in at its mouth
+    assert run(sim, a, "step", {"dir": "W"})["ok"] and not sim.in_cave(a)                         # and out
+    assert run(sim, a, "step", {"dir": "N"})["ok"] and run(sim, a, "step", {"dir": "E"})["ok"] and sim.height(a) == 1
+    assert run(sim, a, "step", {"dir": "S"})["ok"] and sim.height(a) == 2 and not sim.in_cave(a)  # up onto the hill, over it
+    assert run(sim, a, "step", {"dir": "E"})["ok"] and sim.height(a) == 2                         # along it
+    assert run(sim, a, "step", {"dir": "E"})["ok"] and run(sim, a, "step", {"dir": "E"})["ok"]    # and off its end
+    assert sim.height(a) == 0 and a.hp == 100
+
+
+def test_you_fall_off_an_edge_and_a_long_fall_hurts(world):
+    """Stepping off an edge you come down on the ground below, however far. Up to 3 layers is nothing; each layer
+    more costs half a heart. A walk ends where a fall hurt; move_to never takes a fall that hurts, unless you ask
+    for that one step."""
+    sim, a = world
+    x, y = a.x, a.y
+    plateau(sim, a, h=3)
+    a.x, a.y, a.z = x, y - 2, 3                              # on its south edge
+    r = run(sim, a, "step", {"dir": "S"})
+    assert r["ok"] and sim.height(a) == 0 and a.hp == 100 and "fell" not in r      # 3 layers: nothing
+    a.x, a.y = x, y
+    plateau(sim, a, h=6)
+    a.x, a.y, a.z = x, y - 2, 6
+    r = run(sim, a, "walk", {"dir": "S"})
+    assert r["ok"] and r["stopped"] == "fell" and r["fell"] == 6 and r["damage"] == 15 and a.hp == 85
+    assert (a.x, a.y) == (x, y - 1) and sim.height(a) == 0
+    a.x, a.y, a.z = x, y - 2, 6
+    r = run(sim, a, "move_to", {"x": x, "y": y})             # a way down that doesn't hurt: there is none
+    assert not r["ok"] and (a.x, a.y) == (x, y - 2) and a.hp == 85
+    assert run(sim, a, "move_to", {"x": x, "y": y - 4})["ok"] and run(sim, a, "move_to", {"x": x, "y": y - 2})["ok"]   # (along the top: fine)
+    assert run(sim, a, "move_to", {"x": x, "y": y - 1})["ok"] and a.hp == 70       # the one step, asked for
+
+
+def test_digging_down_into_a_hollow_drops_you_in(world):
+    sim, a = world
+    x, y = a.x, a.y
+    sim.world.set(x, y, level=-6, roof=6, head=5)            # under your feet: a layer of ground over a deep hollow
+    a.z = 0
+    a.add("pickaxe")
+    r = run(sim, a, "dig_down", {"with": "pickaxe"})
+    assert r["ok"] and sim.height(a) == -6 and r["fell"] == 6 and a.hp == 85
+
+
+def test_the_land_is_cells_and_is_saved_as_cells(world):
+    """A column is its cells, solid or empty: nothing else is kept."""
+    sim, a = world
+    x, y = a.x + 2, a.y
+    sim.world.set(x, y, level=0, roof=4)                     # (shorthand: a hill 4 high, hollow 2 cells over the ground)
+    assert sim.world.col(x, y) == col_cave(0, 2, 4) and sim.world.surfaces(x, y) == [0, 4]
+    assert [sim.world.solid(x, y, z) for z in range(-1, 6)] == [True, True, False, False, True, True, False]
+    assert sim.world.covered(x, y, 0) and not sim.world.covered(x, y, 4) and sim.world.roof(x, y) == 4
+    sim.world.set_cell(x, y, 3, False)                       # a cell more dug out of it
+    assert sim.world.surfaces(x, y) == [0, 4] and not sim.world.solid(x, y, 3)
+    sim.world.set_cell(x, y, 2, True)                        # one filled in: a ledge in the hollow
+    assert sim.world.surfaces(x, y) == [0, 2, 4]
+    sim.world.set_cell(x, y, 4, False)                       # its top taken off
+    assert sim.world.top(x, y) == 2 and sim.world.level(x, y) == 0
+    c = sim.world.chunk(x >> 5, y >> 5)
+    assert Chunk.unpack(c.cx, c.cy, c.pack()).cols == c.cols
+    assert Chunk.unpack(0, 0, zlib.compress(bytes(3 * CHUNK * CHUNK))) is None       # a save from before: made anew
