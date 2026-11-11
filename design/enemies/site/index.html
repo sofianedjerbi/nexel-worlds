@@ -36,6 +36,9 @@
   .views .h { font-size:11px; font-weight:900; color:var(--ink2); text-align:center; }
   .views .r { font-size:11px; font-weight:900; color:var(--ink2); text-align:right; }
   .views canvas { border-radius:8px; border:2px solid #ead1a8; }
+  .oldrow { display:flex; flex-wrap:wrap; gap:10px; }
+  .oldrow figure { margin:0; text-align:center; font-size:11px; font-weight:900; color:var(--ink2); }
+  .oldrow canvas { border-radius:8px; border:2px solid #ead1a8; margin-bottom:3px; }
   .notes { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; color:var(--ink2); font-size:14px; }
   .notes b { color:var(--ink); }
   a { color:inherit; }
@@ -50,9 +53,14 @@
   </header>
 
   <section class="card">
-    <h2>In the world, at game size <small>each one walks a loop, stops, does its action, and walks on</small>
+    <h2>In the world, at game size <small>new ones (dark labels) and the game's own (white labels), all moving together</small>
       <button class="t on" data-time="day">day</button><button class="t" data-time="night">night</button></h2>
     <canvas id="world"></canvas>
+  </section>
+
+<section class="card">
+    <h2>The game's own, for comparison <small>its sheets, its timings: the player, the cow, the chicken, the gloom</small></h2>
+    <div class="oldrow" id="old"></div>
   </section>
 
   <div id="roster"></div>
@@ -61,12 +69,11 @@
     <h2>How they are made</h2>
     <div class="notes">
       <div><b>The newest three move like the player:</b> the wisp and the wyrm are computed frame by frame (nothing drawn by hand but the wyrm's heads), and the stag walks on generated legs with its head nodding once a step.</div>
-      <div><b>Different bodies:</b> no two share a shape. A long four-legged boar, a tall two-legged bird, a wide crab, a legless snake, a winged moth seen from above, a person-shaped scarecrow, and a fish that is only a fin.</div>
+      <div><b>On this page:</b> the three in the game (tusker, pincer, strawman), the three newest designs (wisp, wyrm, stag), and the game's own player, cow, chicken and gloom drawn from the game's sheets at the game's speeds. The earlier designs (stilt, adder, lampwing, snapjaw) are off the page; their files are still in <code>roster/</code>.</div>
       <div><b>Four directions:</b> each sheet is laid out like the game's <code>character.png</code>: rows are down, up, left, right; columns are idle, walk, then the action. Right is left mirrored.</div>
       <div><b>Walks match the game:</b> the boar, heron, scarecrow and snake walk in 8 frames at about 90 ms, like the game's cow, chicken and player. The boar's body stays level like the cow's; seen from the front, bodies rise a pixel as a foot lifts, like the player. Side-view legs are generated, so every frame is consistent.</div>
       <div><b>Attacks warn first:</b> every action is wind-up, strike, hold, recover, each with its own length. The wind-up is held for about half a second so a player can read it; the strike is one fast frame.</div>
       <div><b>Idle and shadows match too:</b> a slow one-pixel breath and a blink, and the same soft purple oval under the feet as the cow and chicken. The scarecrow alone stands dead still.</div>
-      <div><b>The snake is computed:</b> its body is a wave drawn from a phase, so the bends travel smoothly from head to tail.</div>
       <div><b>Source:</b> one file per enemy in <code>design/enemies/roster/</code>, one character per pixel; frames are built from parts (body, legs, head). <code>build.py</code> makes the sheets and this page.</div>
       <div><b>Not in the game yet:</b> these are designs. Say which to keep, change or drop.</div>
     </div>
@@ -76,7 +83,7 @@
 <script>
 const DIRS = ["down", "up", "left", "right"], NIGHT = "rgba(30, 28, 70, .55)";
 const GROUND = {grass: ["#9bc984", "#8dbd76"], sand: ["#ecd9a4", "#e3cd95"], water: ["#86cbd6", "#7cc2cf"]};
-let meta, refs, refBoxes, time = "day";
+let meta, time = "day";
 const sheets = {};
 const $ = (id) => document.getElementById(id);
 const load = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src; });
@@ -104,7 +111,7 @@ function sprite(g, e, dir, mode, i, x, y, z) {
 }
 
 function build() {
-  $("sub").textContent = `${meta.length} designs for Megastructure, each drawn facing down, up, left and right`;
+  $("sub").textContent = `${meta.length} new mobs beside the game's own, to see if they blend`;
   for (const e of meta) {
     const [cw, ch] = e.cell, z = cw > 32 ? 3 : 4, el = document.createElement("section");
     el.className = "card enemy";
@@ -122,18 +129,47 @@ function build() {
       <div class="views"><div></div>${DIRS.map((d) => `<div class="h">${d}</div>`).join("")}${row("idle", "idle")}${row("walk", moving)}${row("act", e.act)}</div>`;
     $("roster").appendChild(el);
   }
+  const olds = [["player", "down", "idle"], ["player", "down", "walk"], ["player", "left", "walk"], ["player", "up", "walk"], ["cow", "right", "idle"], ["cow", "left", "walk"],
+    ["chicken", "right", "idle"], ["chicken", "left", "walk"], ["gloom", "down", "walk"]];
+  $("old").innerHTML = olds.map(([k, d, m]) => `<figure><canvas width="128" height="${k === "chicken" || k === "gloom" ? 96 : 128}" data-old="${k}/${d}/${m}"></canvas>${k} · ${k === "gloom" ? "hop" : m + " " + d}</figure>`).join("");
   document.querySelectorAll("[data-time]").forEach((b) => b.onclick = () => {
     time = b.dataset.time;
     document.querySelectorAll("[data-time]").forEach((x) => x.classList.toggle("on", x === b));
   });
 }
 
-// The world strip: W x H tiles. Each enemy walks round its own rectangle (in tiles): [x, y, w, h].
-const W = 34, H = 11, POND = [25, 1, 8, 9], BEACH = [21, 0, 4, 11];
-const LOOPS = {tusker: [1, 1.4, 6, 2.8], stilt: [20.5, 6.2, 3.6, 3.2], pincer: [21.4, 1.4, 2.6, 3], adder: [9.5, 1.6, 4, 2.6],
-  lampwing: [15, 1.6, 4.4, 3], strawman: [1.5, 6.6, 5, 3], snapjaw: [26.6, 3.4, 4.6, 3.6],
-  wisp: [15.5, 6.4, 3.6, 2.6], wyrm: [26, 2.2, 6, 6.2], stag: [5, 5.2, 4.6, 1.2]};
-const SPEED = {tusker: 1.2, stilt: 1.6, pincer: 1.6, adder: 1.8, lampwing: 2.6, strawman: 1.0, snapjaw: 2.2, wisp: 1.6, wyrm: 1.8, stag: 1.4};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the gloom at 2.6
+// The game's own creatures, from the game's own sheets and timings (web/js/world_decor.js, characters.js), so the new
+// ones can be judged beside them. anim: [row, frames, ms]. The cow and chicken only face sideways and are flipped.
+const OLD = {
+  player: {name: "player", img: "character", cw: 48, ch: 48, up: 34, idle: [0, 8, 140], walk: [4, 8, 85], rows: {down: 0, up: 1, right: 2, left: 3}, speed: 2.4},
+  cow: {name: "cow", img: "cow", cw: 32, ch: 32, up: 32, idle: [0, 3, 260], walk: [1, 8, 90], speed: 1.2},
+  chicken: {name: "chicken", img: "chicken", cw: 16, ch: 16, up: 16, idle: [0, 4, 220], walk: [2, 8, 90], speed: 1.6},
+  gloom: {name: "gloom", img: "gen", cw: 16, ch: 16, up: 18, speed: 2.6},
+};
+const old = {};                          // sheets
+function drawOld(g, key, dir, moving, t, x, y, z, memo) {
+  const o = OLD[key], img = old[o.img];
+  g.imageSmoothingEnabled = false;
+  if (key === "gloom") {                 // two frames and a hop, as the game draws it
+    const hop = Math.round(Math.abs(Math.sin(t / 1000 * 5)) * 2) * z;
+    g.drawImage(img, (3 + Math.floor(t / 1000 * 3) % 2) * 16, 0, 16, 16, Math.round(x - 8 * z), Math.round(y - o.up * z - hop), 16 * z, 16 * z);
+    return;
+  }
+  const [row, n, ms] = moving ? o.walk : o.idle, f = Math.floor(t / ms) % n;
+  const left = Math.round(x - o.cw * z / 2), top = Math.round(y - o.up * z);
+  if (o.rows) { g.drawImage(img, f * o.cw, (row + o.rows[dir]) * o.ch, o.cw, o.ch, left, top, o.cw * z, o.ch * z); return; }
+  if (dir === "left" || dir === "right") memo.flip = dir === "left";
+  g.save();
+  if (memo.flip) { g.translate(left + o.cw * z, 0); g.scale(-1, 1); g.drawImage(img, f * o.cw, row * o.ch, o.cw, o.ch, 0, top, o.cw * z, o.ch * z); }
+  else g.drawImage(img, f * o.cw, row * o.ch, o.cw, o.ch, left, top, o.cw * z, o.ch * z);
+  g.restore();
+}
+
+// The world strip: W x H tiles. Everyone walks round their own rectangle (in tiles): [x, y, w, h].
+const W = 22, H = 9, POND = [17, 1, 5, 7], BEACH = [15, 0, 2, 9];
+const LOOPS = {tusker: [.8, 1.3, 3.6, 1.5], stag: [5.6, 1.5, 3.8, 1.3], gloom: [10.8, 1.2, 3, 1.5], player: [.8, 4.5, 3, 1.3], cow: [5.2, 4.5, 3.6, 1.3],
+  wisp: [10.4, 4.3, 3.2, 1.5], strawman: [1, 7.2, 3.4, 1], chicken: [6.2, 7.3, 3, .9], pincer: [15.4, 1.3, 1, 6.4], wyrm: [18, 2.4, 3, 4.4]};
+const SPEED = {tusker: 1.2, pincer: 1.6, strawman: 1.0, wisp: 1.6, wyrm: 1.8, stag: 1.4};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the gloom at 2.6
 function along([x, y, w, h], d) {                       // where on the rectangle after d tiles, and which way it faces
   d %= 2 * (w + h);
   if (d < w) return [x + d, y, "right"];
@@ -141,7 +177,7 @@ function along([x, y, w, h], d) {                       // where on the rectangl
   if ((d -= h) < w) return [x + w - d, y + h, "left"];
   return [x, y + h - (d - w), "up"];
 }
-// Each one walks, stops, does its action, rests, and walks on. Each walk plays at its own step rate.
+// Each one walks, stops, does its action, rests, and walks on.
 const actors = {};
 function step(e, dt) {
   const a = actors[e.key] || (actors[e.key] = {d: e.key.length * 1.7, mode: "walk", t: e.key.length * 600});
@@ -154,6 +190,13 @@ function step(e, dt) {
   if (a.mode === "walk") return [x, y, dir, "walk", frameAt(e, "walk", a.t)];
   if (a.mode === "act") return [x, y, dir, "act", frameAt(e, "act", a.t, false)];
   return [x, y, dir, "idle", frameAt(e, "idle", a.t)];
+}
+function stepOld(key, dt) {                              // the old ones only walk and stand
+  const a = actors[key] || (actors[key] = {d: key.length * 2.3, moving: true, t: key.length * 500, memo: {}});
+  a.t += dt;
+  if (a.t >= (a.moving ? 4200 : 1500)) { a.t = 0; a.moving = !a.moving || key === "gloom"; }
+  if (a.moving) a.d += OLD[key].speed * dt / 1000;
+  return [...along(LOOPS[key], a.d), a];
 }
 
 let last = 0;
@@ -172,32 +215,39 @@ function draw(t) {
     if (time === "night") { g.fillStyle = NIGHT; g.fillRect(0, 0, c.width, c.height); }
   });
 
-  const c = $("world"), z = 2, T = 16 * z;
+  document.querySelectorAll("canvas[data-old]").forEach((c) => {
+    const [key, dir, moving] = c.dataset.old.split("/"), g = c.getContext("2d"), z = 4;
+    tiles(g, "grass", 0, 0, Math.ceil(c.width / 64), Math.ceil(c.height / 64), z);
+    drawOld(g, key, dir, moving === "walk", t, c.width / 2, c.height - 2 * z, z, c.memo || (c.memo = {}));
+    if (time === "night") { g.fillStyle = NIGHT; g.fillRect(0, 0, c.width, c.height); }
+  });
+
+  const c = $("world"), z = 3, T = 16 * z;
   if (c.width !== W * T) { c.width = W * T; c.height = H * T; }
   const g = c.getContext("2d");
-  tiles(g, "grass", 0, 0, W, H, z); tiles(g, "sand", ...BEACH, z); tiles(g, "sand", 25, 0, 9, 11, z); tiles(g, "water", ...POND, z);
+  tiles(g, "grass", 0, 0, W, H, z); tiles(g, "sand", ...BEACH, z); tiles(g, "sand", 17, 0, 5, 9, z); tiles(g, "water", ...POND, z);
   const things = [];
-  refBoxes.forEach((r, i) => things.push({y: 9.6, x: 9.5 + i * 2.6, label: r.label, paint: (px, py) => {
-    g.imageSmoothingEnabled = false;
-    g.drawImage(refs, ...r.box, Math.round(px - r.box[2] * z / 2), py - r.box[3] * z, r.box[2] * z, r.box[3] * z);
-  }}));
+  for (const key of Object.keys(OLD)) {
+    const [x, y, dir, a] = stepOld(key, dt);
+    things.push({x, y, label: OLD[key].name, old: true, paint: (px, py) => drawOld(g, key, dir, a.moving, t, px, py, z, a.memo)});
+  }
   for (const e of meta) {
     const [x, y, dir, mode, i] = step(e, dt);
     things.push({x, y, label: e.name, paint: (px, py) => sprite(g, e, dir, mode, i, px, py + 2 * z, z)});
   }
   things.sort((a, b) => a.y - b.y);
-  g.font = "800 10px ui-rounded, system-ui"; g.textAlign = "center";
+  g.font = "800 11px ui-rounded, system-ui"; g.textAlign = "center";
   for (const th of things) {
     const px = th.x * T, py = Math.round(th.y * T);
     th.paint(px, py);
-    g.fillStyle = "rgba(60,40,30,.75)"; g.fillText(th.label, px, py + 12);
+    g.fillStyle = th.old ? "rgba(255,255,255,.85)" : "rgba(60,40,30,.8)"; g.fillText(th.label, px, py + 13);
   }
   if (time === "night") { g.fillStyle = NIGHT; g.fillRect(0, 0, c.width, c.height); }
 }
 
-Promise.all([fetch("enemies.json").then((r) => r.json()), load("refs.png"), fetch("refs.json").then((r) => r.json())])
-  .then(async ([m, r, rb]) => {
-    meta = m; refs = r; refBoxes = rb;
+Promise.all([fetch("enemies.json").then((r) => r.json()), ...["character", "cow", "chicken", "gen"].map((n) => load(`game/${n}.png`).then((i) => old[n] = i))])
+  .then(async ([m]) => {
+    meta = m;
     await Promise.all(m.map(async (e) => { sheets[e.key] = await load(e.sheet + "?v=" + Date.now()); }));
     build(); requestAnimationFrame(draw);
   });

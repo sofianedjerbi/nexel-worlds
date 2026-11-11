@@ -21,7 +21,7 @@ from art import mirror  # noqa: E402
 
 SITE = HERE / "site"
 ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
-ORDER = ["tusker", "stilt", "pincer", "adder", "lampwing", "strawman", "snapjaw", "wisp", "wyrm", "stag"]
+ORDER = ["tusker", "pincer", "strawman", "wisp", "wyrm", "stag"]       # on the page (stilt, adder, lampwing, snapjaw are kept in roster/, off it)
 DIRS = ["down", "up", "left", "right"]
 ANIMS = ["idle", "walk", "act"]
 IN_GAME = ["tusker", "pincer", "strawman"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
@@ -89,20 +89,10 @@ def preview(key, out, k=6):
 
 
 def references():
-    sources = [("player", "character.png", (0, 0, 48, 48)), ("cow", "cow.png", (0, 0, 32, 32)),
-               ("chicken", "chicken.png", (0, 0, 16, 16)), ("gloom", "gen.png", (48, 0, 64, 16))]
-    crops = []
-    for label, f, box in sources:                             # trimmed to their pixels, so they stand on one ground line
-        im = Image.open(ASSETS / f).convert("RGBA").crop(box)
-        crops.append((label, im.crop(im.getbbox())))
-    refs = Image.new("RGBA", (sum(c.width for _, c in crops), max(c.height for _, c in crops)))
-    boxes, x = [], 0
-    for label, c in crops:
-        refs.alpha_composite(c, (x, refs.height - c.height))
-        boxes.append({"label": label, "box": [x, 0, c.width, refs.height]})
-        x += c.width
-    refs.save(SITE / "refs.png")
-    (SITE / "refs.json").write_text(json.dumps(boxes))
+    """The game's own sheets, copied beside the page so it can animate the player, cow, chicken and gloom for comparison."""
+    (SITE / "game").mkdir(exist_ok=True)
+    for name in ("character", "cow", "chicken", "gen"):
+        shutil.copyfile(ASSETS / f"{name}.png", SITE / "game" / f"{name}.png")
 
 
 def build():
