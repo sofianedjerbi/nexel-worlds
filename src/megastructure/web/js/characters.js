@@ -82,14 +82,14 @@ function drawEntity(p, sx, sy, S, t, now) {
           debris(tx, ty, spr, GROUND.has(target) ? 5 : 4, {kind: "o", dy: "TFU".includes(target) ? -.5 : 0, dust: "M*%Y".includes(target) || GROUND.has(target)});
           shakes.set(tx + "," + ty, now);
           const mat = GROUND.has(target) ? "soil" : material(target);
-          sfx(!held && (mat === "wood" || mat === "stone") ? "thud" : STRIKE[mat], tx, ty);
+          sfx(!held && (mat === "wood" || mat === "stone") ? "punch" : STRIKE[mat], tx, ty);
         } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
       }
     } else if (tool === "water") {
       anim = "water"; const n = Math.floor(k * 10); frame = n % 8;
       if (frame >= 3 && frame <= 6 && p.lastDrop !== n) { p.lastDrop = n; const [tx, ty] = action.at || [Math.round(p.tx) + p.fx, Math.round(p.ty) + p.fy];
         parts.push({x: tx + .3 + Math.random() * .4, y: ty - .1, vx: (Math.random() - .5) * .6, vy: 1.5, g: 9, life: .35, age: 0, c: "#8fd3f4", s: 1});
-        if (n % 3 === 0) sfx("water", tx, ty); }
+        if (n % 3 === 0) sfx("pour", tx, ty); }
     } else if (tool === "milk" || tool === "feed" || tool === "sleep") {
       bob = tool === "sleep" ? 0 : Math.round(Math.abs(Math.sin(k * 8)) * 2) * z;
       if (tool === "sleep" && !emotes.has(e.name)) emote(e.name, "sleep");
@@ -116,7 +116,7 @@ function drawEntity(p, sx, sy, S, t, now) {
         if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms)) {
           p.lastStep = Math.floor(now / ms);
           burst(p.x, p.y + .35, "dust", running ? 3 : 2, {up: .6, spread: running ? 2 : 1.2, g: 2, life: .35});
-          if (mine) { const gr = gndAt(Math.round(p.x), Math.round(p.y)); sfx(gr === "n" || gr === ":" ? "tock" : gr === "_" ? "click" : "step"); }
+          if (mine) sfx(STEP[gndAt(Math.round(p.x), Math.round(p.y))] || "step");
         }
       } else frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
     }

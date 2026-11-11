@@ -42,5 +42,11 @@
   "hit a tree bare-handed": "punch",
   "hit a chicken": "squawk",
   "talk": "say"
+ },
+ "ground": {
+  "cobble": "place_path",
+  "floor": "place_floor",
+  "bridge": "place_floor",
+  "dirt": "fill_dirt"
  }
 }

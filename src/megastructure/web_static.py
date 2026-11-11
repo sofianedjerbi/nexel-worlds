@@ -1,5 +1,6 @@
 """Plain HTTP for the browser client: the page, its scripts and styles, and the art."""
 
+import logging
 from pathlib import Path
 
 from websockets.datastructures import Headers
@@ -20,12 +21,15 @@ def serve_http(connection, request):
         root = (WEB / folder).resolve()
         f = (root / name).resolve()
         if f.parent == root and f.is_file() and f.suffix in CONTENT_TYPES:   # no subfolders, no "..": only our files
-            return _file(f, CONTENT_TYPES[f.suffix], cache=STATIC[folder])
+            return _file(f, CONTENT_TYPES[f.suffix], cache="no-cache" if f.suffix == ".json" else STATIC[folder])
+        if folder == "audio" and name == "sfx.json":
+            logging.getLogger(__name__).warning("no sound effects built: run `uv run python tools/build_audio.py`")
     return connection.respond(404, "not found\n")
 
-STATIC = {"assets": "max-age=3600", "js": "no-cache", "css": "no-cache"}   # folder -> Cache-Control
+STATIC = {"assets": "max-age=3600", "js": "no-cache", "css": "no-cache",   # folder -> Cache-Control
+          "audio": "max-age=3600"}       # built by tools/build_audio.py; the client asks for files as name?v=<build>
 
-CONTENT_TYPES = {".png": "image/png", ".ttf": "font/ttf", ".txt": "text/plain",
+CONTENT_TYPES = {".png": "image/png", ".ttf": "font/ttf", ".txt": "text/plain", ".wav": "audio/wav", ".json": "application/json",
                  ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
 
 def _file(path: Path, ctype: str, cache: str = "no-cache") -> Response:

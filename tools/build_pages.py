@@ -18,6 +18,10 @@ WEB = PKG / "web"
 def build(out: Path):
     if out.exists():
         shutil.rmtree(out)
+    if not (WEB / "audio" / "sfx.json").exists():            # the sound effects are built, not committed
+        sys.path.insert(0, str(ROOT / "tools"))
+        import build_audio
+        build_audio.build()
     shutil.copytree(WEB, out, ignore=shutil.ignore_patterns(".DS_Store"))
     page = (out / "index.html").read_text()
     hook = '<script src="js/state.js"></script>'

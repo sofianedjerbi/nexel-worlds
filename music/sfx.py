@@ -1221,6 +1221,17 @@ def loudness(st):
     return 10 * np.log10(np.max(c[w:] - c[:-w]) / w + 1e-12)
 
 
+def render(name, v):
+    """One finished variant of one sound: stereo float array at SR, levelled and ready to write."""
+    m = META[name]
+    raw = S[name](Ctx(name, v))
+    if m["vary"]:
+        raw = resize(raw, SIZES[v % len(SIZES)])
+    st = finish(raw, m["kind"])
+    st *= 10 ** ((20 * np.log10(m["loud"]) - 9 - loudness(st)) / 20)     # perceived level, per sound; every variant matches
+    return st * min(1, 0.95 / np.abs(st).max())
+
+
 def write_wav(path, st):
     pcm = (np.clip(st, -1, 1) * 32767).round().astype("<i2").T.copy()
     with wave.open(str(path), "wb") as w:
@@ -1235,16 +1246,11 @@ if __name__ == "__main__":
     for old in OUT.glob("*.wav"):
         old.unlink()
     manifest = {}
-    for name, fn in S.items():
+    for name in S:
         m = META[name]
         files = []
         for v in range(m["variants"]):
-            raw = fn(Ctx(name, v))
-            if m["vary"]:
-                raw = resize(raw, SIZES[v % len(SIZES)])
-            st = finish(raw, m["kind"])
-            st *= 10 ** ((20 * np.log10(m["loud"]) - 9 - loudness(st)) / 20)     # perceived level, per sound; every variant matches
-            st *= min(1, 0.95 / np.abs(st).max())
+            st = render(name, v)
             f = f"{name}_{v}.wav"
             write_wav(OUT / f, st)
             files.append(f)

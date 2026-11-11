@@ -23,7 +23,7 @@ function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list
     let h, dxk;
     if (s < l.flight) { h = -(l.vy * s + LOOT_G * s * s / 2); dxk = s / l.flight; }
     else {
-      if (!l.landed) { l.landed = true; sfx("tock", l.x, l.y); }
+      if (!l.landed) { l.landed = true; sfx("loot", l.x, l.y); }
       const b = s - l.flight, hops = [.16, .08];
       let t = b, n = 0;
       while (n < hops.length && t > hops[n]) t -= hops[n++];

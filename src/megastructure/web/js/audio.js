@@ -1,81 +1,120 @@
-// Procedural sound effects (WebAudio), started on the first gesture.
+// Sound effects: samples rendered by music/sfx.py, built into audio/ by tools/build_audio.py, played through WebAudio.
+//
+// How to change things:
+//   a sound itself            edit its generator in music/sfx.py, then `uv run python tools/build_audio.py`
+//   what an object sounds like when placed    edit music/sfx_map.json, then rebuild
+//   how loud a family is, how far sounds carry, how often one may repeat    edit SOUND below
+//   when a sound plays        the call sites: sfx(name, x, y) for something in the world, sfx(name) for the player or the interface
+// A name that the build does not know is reported once in the console and stays silent (tests/test_audio.py catches it earlier).
 
-let audio = null, muted = localStorage.getItem("megastructure-muted") === "1";
-function ac() { if (!audio) { audio = new (window.AudioContext || window.webkitAudioContext)(); } return audio; }
-// start audio on the first gesture, not inside the first frame that plays a sound (creating it stalls ~100 ms)
-for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!muted) ac(); }, {once: true, capture: true});
-function tone(freq, dur, type = "sine", vol = .2, slide = 0, delay = 0) {
-  const a = ac(), t0 = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
-  o.type = type; o.frequency.setValueAtTime(freq, t0); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t0 + dur);
-  g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
-  o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + dur + .02);
-}
-function noise(dur, vol = .2, hp = 800, lp = 6000, delay = 0) {
-  const a = ac(), t0 = a.currentTime + delay, n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
-  const src = a.createBufferSource(), g = a.createGain(), h = a.createBiquadFilter(), l = a.createBiquadFilter();
-  h.type = "highpass"; h.frequency.value = hp; l.type = "lowpass"; l.frequency.value = lp;
-  g.gain.value = vol; src.buffer = buf; src.connect(h).connect(l).connect(g).connect(a.destination); src.start(t0);
-}
-// Every sound is made here from tones and filtered noise. v is the volume for the listener's distance (0..1).
-const SFX = {
-  // footsteps, by ground
-  step: (v) => noise(.05, .05 * v, 300, 1800),
-  tock: (v) => { tone(260, .05, "triangle", .08 * v, .8); noise(.03, .04 * v, 800, 3000); },        // wooden floor, bridge
-  click: (v) => { tone(900, .03, "square", .025 * v, .7); noise(.03, .05 * v, 1500, 6000); },       // cobble
-  // strikes while digging, by material
-  chop: (v) => { tone(150, .12, "triangle", .32 * v, .6); noise(.07, .16 * v, 400, 2500); },
-  mine: (v) => { tone(880, .09, "square", .07 * v, .7); tone(1320, .12, "triangle", .1 * v, .8, .01); noise(.05, .1 * v, 2000, 8000); },
-  dig: (v) => noise(.12, .14 * v, 150, 1200),
-  thud: (v) => { tone(90, .1, "sine", .25 * v, .6); noise(.05, .08 * v, 100, 900); },                // bare hands
-  rustle: (v) => { noise(.16, .1 * v, 1800, 7000); noise(.1, .06 * v, 2500, 8000, .07); },
-  // something breaks / falls
-  snap: (v) => { noise(.06, .3 * v, 600, 4000); tone(180, .18, "triangle", .2 * v, .5, .02); },
-  crumble: (v) => { for (let i = 0; i < 5; i++) noise(.05, .14 * v, 300, 2500, i * .045); tone(120, .2, "sine", .12 * v, .6); },
-  creak: (v) => { tone(210, .45, "sawtooth", .035 * v, .55); tone(150, .4, "triangle", .05 * v, .7, .05); },
-  fallthud: (v) => { tone(70, .3, "sine", .4 * v, .5); noise(.25, .14 * v, 80, 900); noise(.3, .07 * v, 1800, 7000, .05); },
-  // getting, placing, making
-  collect: (v) => { tone(784, .07, "sine", .16 * v); tone(1175, .12, "sine", .14 * v, 1, .06); },
-  place: (v) => { tone(110, .1, "sine", .3 * v, .7); noise(.05, .08 * v, 200, 1500); },
-  clack: (v) => { tone(520, .05, "square", .05 * v, .6); noise(.05, .12 * v, 900, 5000); },          // stone, chest lid
-  plant: (v) => { noise(.07, .07 * v, 1200, 5000); tone(620, .06, "sine", .06 * v, 1.3, .03); },
-  craft: (v) => [523, 659, 784, 1046].forEach((f, i) => tone(f, .12, "triangle", .08 * v, 1, i * .06)),
-  // bodies
-  hit: (v) => { noise(.09, .28 * v, 300, 3000); tone(220, .1, "sawtooth", .08 * v, .5); },
-  hurt: (v) => { tone(330, .18, "square", .06 * v, .55); noise(.08, .12 * v, 400, 2500); },
-  swing: (v) => noise(.1, .07 * v, 900, 4000),
-  poof: (v) => { noise(.3, .12 * v, 500, 3000); tone(700, .25, "sine", .07 * v, .4, .02); },
-  eat: (v) => { noise(.05, .12 * v, 600, 3000); noise(.05, .12 * v, 600, 3000, .12); },
-  die: (v) => tone(440, .7, "triangle", .15 * v, .3),
-  // animals
-  cluck: (v) => { tone(700, .05, "square", .04 * v, .8); tone(820, .06, "square", .04 * v, .7, .08); },
-  chirp: (v) => { tone(1800, .05, "sine", .06 * v, 1.3); tone(2000, .05, "sine", .05 * v, 1.2, .08); },
-  moo: (v) => { tone(160, .55, "sawtooth", .05 * v, .75); tone(165, .5, "triangle", .07 * v, .8); },
-  // world
-  water: (v) => noise(.18, .08 * v, 1500, 7000),
-  whoosh: (v) => noise(.35, .14 * v, 300, 2500),
-  crackle: (v) => { for (let i = 0; i < 6; i++) noise(.02, .1 * v, 2000, 8000, Math.random() * .4); },
-  gate: (v) => { tone(300, .2, "sawtooth", .025 * v, 1.3); tone(240, .15, "triangle", .04 * v, 1.2); },
-  orb: (v) => tone(1250 + Math.random() * 700, .09, "sine", .07 * v, 1.25),               // pitch varies, like a sparkle
-  levelup: (v) => [523, 659, 784, 1046, 1319].forEach((f, i) => tone(f, .3, "triangle", .07 * v, 1, i * .07)),
-  chime: (v) => [880, 1109, 1319].forEach((f, i) => tone(f, .25, "sine", .07 * v, 1, i * .09)),
-  // interface
-  ui: (v) => tone(1200, .03, "sine", .06 * v),
-  buzz: (v) => tone(140, .12, "square", .04 * v, .9),
+const SOUND = {
+  master: .8,
+  mix: {Footsteps: .9, Work: 1, Breaking: 1, Building: 1, Items: .9, Progress: 1, Fights: 1, Animals: .9, World: .9, People: .8, Interface: .8},
+  hearing: 12,        // tiles: a sound in the world further than this is not heard
+  quietest: .15,      // volume at the edge of hearing (it fades linearly from 1)
+  panWidth: 9,        // tiles to the side at which a sound is fully left or right
+  panAmount: .8,
+  pitch: .04,         // random pitch spread on physical sounds, so repeats never sound stamped (tuned sounds keep their pitch)
+  minGap: {default: 45, step: 110, tock: 110, click: 110, wade: 130, orb: 30, crackle: 400, grow: 800, say: 150, rustle: 90},   // ms between plays of one sound
+  maxVoices: 20,      // sounds playing at once; beyond this new ones are dropped
+  loaders: 4,         // parallel downloads while warming the cache after the first gesture
 };
-// The material a tile char is made of: picks the strike, break and place sounds.
+
+let audio = null, soundOut = null, muted = localStorage.getItem("megastructure-muted") === "1";
+const sounds = {manifest: null, loading: null, buffers: new Map(), lastVariant: {}, lastAt: {}, voices: 0, warned: new Set()};
+
+function ac() {
+  if (!audio) {
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+    soundOut = audio.createGain();
+    soundOut.gain.value = SOUND.master;
+    const limiter = audio.createDynamicsCompressor();      // a safety net when many sounds land together
+    limiter.threshold.value = -6; limiter.ratio.value = 12; limiter.attack.value = .002; limiter.release.value = .15;
+    soundOut.connect(limiter).connect(audio.destination);
+  }
+  return audio;
+}
+// start audio on the first gesture, not inside the first frame that plays a sound (creating it stalls ~100 ms)
+for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!muted) { ac(); loadSounds(); } }, {once: true, capture: true});
+
+// The manifest (what exists, which file, which family), then every file in the background.
+function loadSounds() {
+  if (!sounds.loading) sounds.loading = fetch("audio/sfx.json", {cache: "no-cache"})
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then((m) => { sounds.manifest = m; warmSounds(); })
+    .catch(() => { console.info("no sound effects: run `uv run python tools/build_audio.py`"); setTimeout(() => sounds.loading = null, 15000); });
+  return sounds.loading;
+}
+function loadSoundFile(file) {
+  let entry = sounds.buffers.get(file);
+  if (!entry) {
+    entry = fetch(`audio/${file}?v=${sounds.manifest.version}`)
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then((raw) => ac().decodeAudioData(raw))
+      .then((buf) => { sounds.buffers.set(file, buf); return buf; })
+      .catch(() => { sounds.buffers.delete(file); return null; });      // try again the next time it is wanted
+    sounds.buffers.set(file, entry);
+  }
+  return entry;
+}
+async function warmSounds() {
+  const files = Object.values(sounds.manifest.sounds).flatMap((s) => s.files);
+  const worker = async () => { while (files.length) await loadSoundFile(files.shift()); };
+  await Promise.all(Array.from({length: SOUND.loaders}, worker));
+}
+
+// Play a sound. With x, y it is in the world: quieter with distance, panned to its side, silent beyond SOUND.hearing
+// (or beyond `reach` tiles when given). Without, it is the player's own or the interface's.
+function sfx(name, x, y, reach) {
+  if (muted) return;
+  const m = sounds.manifest;
+  if (!m) { loadSounds(); return; }
+  const s = m.sounds[name];
+  if (!s) { if (!sounds.warned.has(name)) { sounds.warned.add(name); console.warn(`sfx: unknown sound "${name}"`); } return; }
+  let vol = 1, pan = 0;
+  if (x !== undefined) {
+    const me = myPos();
+    if (!me) return;
+    const dx = x - me.x, d = Math.hypot(dx, y - me.y), far = reach || SOUND.hearing;
+    if (d > far) return;
+    vol = Math.max(SOUND.quietest, 1 - d / far);
+    pan = Math.max(-1, Math.min(1, dx / SOUND.panWidth)) * SOUND.panAmount;
+  }
+  const now = performance.now(), gap = SOUND.minGap[name] ?? SOUND.minGap.default;
+  if (now - (sounds.lastAt[name] || -1e9) < gap || sounds.voices >= SOUND.maxVoices) return;
+  let k = Math.floor(Math.random() * s.files.length);
+  if (s.files.length > 1 && k === sounds.lastVariant[name]) k = (k + 1) % s.files.length;       // never the same variant twice running
+  const buf = sounds.buffers.get(s.files[k]);
+  if (!(buf instanceof AudioBuffer)) { loadSoundFile(s.files[k]); return; }                    // still downloading: skip this once
+  sounds.lastVariant[name] = k;
+  sounds.lastAt[name] = now;
+  try {
+    const a = ac(), src = a.createBufferSource(), g = a.createGain(), p = a.createStereoPanner();
+    src.buffer = buf;
+    if (s.pitch) src.playbackRate.value = 1 + (Math.random() * 2 - 1) * SOUND.pitch;
+    g.gain.value = vol * (SOUND.mix[s.category] ?? 1);
+    p.pan.value = pan;
+    src.connect(g).connect(p).connect(soundOut);
+    sounds.voices++;
+    src.onended = () => { sounds.voices--; };
+    src.start();
+  } catch (e) { /* audio not available yet (needs a user gesture) */ }
+}
+
+// Something was put down: each kind of block or ground has its own sound (music/sfx_map.json).
+function sfxPlaced(block, ground, x, y) {
+  const m = sounds.manifest;
+  if (!m) { loadSounds(); return; }
+  sfx(m.place[block] || m.ground[ground] || "place", x, y);
+}
+
+// The material a tile char is made of: picks the strike and break sounds.
 const WOOD_CHARS = "TUtH#+&CBhLKgWVXJeqy?!rmFpz", STONE_CHARS = "M*%Y^Z", PLANT_CHARS = "bvfQ;\"wo";
 function material(c) {
   return WOOD_CHARS.includes(c) ? "wood" : STONE_CHARS.includes(c) ? "stone" : PLANT_CHARS.includes(c) ? "plant" : "soil";
 }
-const STRIKE = {wood: "chop", stone: "mine", plant: "rustle", soil: "dig"};
-const BREAK = {wood: "snap", stone: "crumble", plant: "rustle", soil: "dig"};
-const PLACE = {wood: "place", stone: "clack", plant: "plant", soil: "dig"};
-function sfx(name, x, y) {
-  if (muted || !SFX[name]) return;
-  let v = 1;
-  if (x !== undefined) { const s = myPos(); if (!s) return; const d = Math.hypot(x - s.x, y - s.y); if (d > 12) return; v = Math.max(.15, 1 - d / 12); }
-  try { SFX[name](v); } catch (e) { /* audio not available yet (needs a user gesture) */ }
-}
-
-// ---- effects: particles, shakes, pops, falling trees ------------------------------------
+const STRIKE = {wood: "chop", stone: "mine", plant: "rustle", soil: "dig"};      // a tool hits it
+const BREAK = {wood: "snap", stone: "crumble", plant: "rustle", soil: "dig"};    // it gives way
+const STEP = {n: "tock", ":": "tock", _: "click", "~": "wade"};                  // ground char under the feet -> footstep (default: step)
+const VOICE = {cow: "moo", calf: "moo", chicken: "cluck", chick: "chirp"};       // an animal's ordinary voice
+const animalVoice = (kind) => VOICE[kind] || "cluck";

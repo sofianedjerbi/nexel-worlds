@@ -19,3 +19,5 @@ music/site/audio/
 music/*.wav
 music/site/sfx/
 music/site/opus/
+# game sound effects: built by tools/build_audio.py
+src/megastructure/web/audio/

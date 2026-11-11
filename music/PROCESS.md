@@ -77,3 +77,12 @@ rewards and UI on the soundtrack's felt piano and synth pluck. Files are stereo.
 - Sine pings are water. Debris (grit, chips, pebbles, soil) must be tiny NOISE bursts; short decaying sines read as drops and bubbles
   ("cobblestone and chopping sound like water"). Stone gets a crowd of very short modes, never a few.
 - Deep, slow, independent band swells (texture depth > 0.6) gurgle or creak ("crumble sounds like an old door"): use them only for water and fire.
+
+## Sounds in the game (2026-11-11)
+
+`uv run python tools/build_audio.py` renders `music/sfx.py` into `src/megastructure/web/audio/` (32 kHz stereo WAV + `sfx.json`; not committed).
+The client (`web/js/audio.js`) loads the manifest on the first gesture, warms every file in the background, and plays samples with distance
+volume, left/right pan, variant rotation, light pitch spread on physical sounds, per-sound throttles and a limiter. One table (`SOUND`) holds the mix.
+`music/sfx_map.json` decides what each placed block or ground sounds like; the build fails if an item has none.
+`tests/test_audio.py` fails if the client asks for a sound that does not exist; `tests/e2e/test_e2e_sound.py` plays the game in Chrome.
+After changing the server's Python (e.g. `web_static.py`), restart the game server: a running one keeps the old code.
