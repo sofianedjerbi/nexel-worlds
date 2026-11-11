@@ -366,7 +366,7 @@ _IRS = {}
 def _ir(kind):
     if kind not in _IRS:
         length, tau, pre, lo, hi = {"out": (0.09, 0.03, 0.015, 400, 5000), "in": (0.3, 0.07, 0.006, 150, 4500),
-                                    "hall": (0.9, 0.22, 0.02, 200, 5000), "cave": (1.3, 0.32, 0.03, 120, 3500)}[kind]
+                                    "hall": (0.45, 0.1, 0.008, 200, 5000), "cave": (0.9, 0.22, 0.02, 120, 3500)}[kind]
         r = np.random.default_rng(len(kind) * 7 + 3)
         n = N(length)
         irs = []
@@ -378,7 +378,7 @@ def _ir(kind):
     return _IRS[kind]
 
 
-WET = {"out": 0.05, "in": 0.16, "hall": 0.2, "cave": 0.3}
+WET = {"out": 0.03, "in": 0.07, "hall": 0.07, "cave": 0.18}     # a touch of air, never an audible echo
 
 
 def space(y, kind):
@@ -868,13 +868,14 @@ def _(c):
     return strike(c, n, "body", size=c.u(1.3, 1.6), hard=1.2) + 0.25 * norm(oof)
 
 
-@sfx("die", "Fights", "you die (gentle, not scary)", 1, 0.4, tuned=True)
+@sfx("die", "Fights", "you die: a slow fall in B minor, sad but gentle", 1, 0.4, tuned=True)
 def _(c):
-    n = N(3.4)
+    n = N(4.0)
     y = np.zeros(n)
-    for k, note in enumerate(("A4", "F#4", "D4", "A3")):
-        place(y, felt(note, 1.6, 0.5 - 0.05 * k), k * 0.36)
-    return fft_filter(y, lp(2500))
+    for k, (note, v) in enumerate((("F#4", 0.5), ("D4", 0.42), ("B3", 0.36))):            # a falling minor chord, each note softer and later
+        place(y, felt(note, 2.2, v), k * 0.5 + 0.04 * k * k)
+    place(y, felt("B2", 2.6, 0.3), 1.2)                                                    # it settles on the low root and stays there
+    return fft_filter(y, lp(1800))
 
 
 @sfx("poof", "Fights", "a creature vanishes in a puff of smoke", 2, 0.35)
