@@ -7,7 +7,7 @@
 <style>
   :root {
     --ink:#5b3f36; --ink2:#8a6a55; --paper:#fff6e2; --paper2:#f3dfba; --line:#c9a27a;
-    --sky:#9bd4c3; --A:#f4b6a8; --B:#f7d488; --C:#a9c8ec; --D:#b9e0a5;
+    --sky:#9bd4c3; --A:#f7d488; --B:#b9e0a5; --C:#a9c8ec; --D:#f4b6a8;
   }
   * { box-sizing:border-box; }
   html, body { margin:0; min-height:100%; }
@@ -18,7 +18,7 @@
       radial-gradient(circle at 85% 80%, #bfe3f2 0, transparent 45%), var(--sky);
     display:flex; justify-content:center; padding:36px 16px 60px;
   }
-  main { width:min(860px, 100%); }
+  main { width:min(960px, 100%); }
   header { text-align:center; margin-bottom:18px; }
   h1 { margin:0; font-size:34px; font-weight:900; letter-spacing:.2px; }
   .sub { color:var(--ink2); margin-top:6px; font-weight:700; }
@@ -52,7 +52,7 @@
     font-size:13px; margin-top:6px; font-variant-numeric:tabular-nums; }
   h2 { margin:0 0 12px; font-size:18px; font-weight:900; }
   h2 small { color:var(--ink2); font-weight:700; font-size:13px; margin-left:6px; }
-  #stems { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; }
+  #stems { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; }
   .stem { border:2px solid var(--line); border-radius:12px; padding:10px; background:#fffaf0;
     display:flex; flex-direction:column; gap:8px; align-items:center; transition:opacity .15s; }
   .stem.off { opacity:.45; }
@@ -67,7 +67,7 @@
   .notes { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; color:var(--ink2); font-size:14px; }
   .notes b { color:var(--ink); }
   a { color:var(--ink); font-weight:800; }
-  @media (max-width:700px) { #stems { grid-template-columns:repeat(2, 1fr); } .notes { grid-template-columns:1fr; } }
+  @media (max-width:700px) { #stems { grid-template-columns:repeat(3, 1fr); } .notes { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -98,26 +98,27 @@
   <section class="card">
     <h2>How it's made</h2>
     <div class="notes">
-      <div><b>Synth:</b> pure numpy, 48 kHz, in <code>music/compose.py</code>. Run it again to re-render.</div>
-      <div><b>Harmony:</b> jazzy 9ths and borrowed chords in F major, a minor bridge in D minor.</div>
-      <div><b>Lead:</b> two detuned pulse waves panned wide, slide-in and delayed vibrato.</div>
-      <div><b>Low end:</b> sine sub plus a plucky pulse bass, sidechained to the kick.</div>
-      <div><b>Space:</b> ping-pong echo and a stereo room, computed circularly so the tails wrap.</div>
-      <div><b>Master:</b> look-ahead limiter, -14 dBFS RMS. <a href="audio/master.wav" download>Download master.wav</a></div>
+      <div><b>Idea:</b> chill background music for playing. One key, one 8-bar progression, one 2-bar motif that repeats.</div>
+      <div><b>Harmony:</b> D major only: Dmaj9, Gmaj9, Bm, Gmaj7, Em, Asus. Pentatonic melody, so no sour notes.</div>
+      <div><b>Registers:</b> bass, piano chords, pad, melody and twinkles each have their own octave. A script checks for clashes.</div>
+      <div><b>Depth:</b> near piano, middle pad and bass, far music box (dark, wet, wide). 6 s hall, ping-pong echo, wind bed.</div>
+      <div><b>Warmth:</b> slow tape wobble, felt-piano hammers, soft attacks. Pure numpy, <code>music/compose.py</code>.</div>
+      <div><b>Master:</b> -18 dBFS RMS, room to breathe, seamless 96 s loop. <a href="audio/master.wav" download>Download master.wav</a></div>
     </div>
   </section>
 </main>
 
 <script>
 const STEM_INFO = {
-  melody:  { what: "chip lead, kalimba, ocarina, harmony", color: "#e48a7a" },
-  keys:    { what: "FM electric piano, warm pads",           color: "#e6b44f" },
-  sparkle: { what: "chip arps, glockenspiel, kalimba",       color: "#8fb3e0" },
-  bass:    { what: "sub + plucky pulse bass",                color: "#8d6bb5" },
-  drums:   { what: "kick, snare, clap, hats, shaker",        color: "#6fae78" },
+  piano:    { what: "felt piano: melody and broken chords", color: "#e48a7a" },
+  lead:     { what: "soft chip flute (breeze section)",     color: "#e6b44f" },
+  pad:      { what: "warm wide pad",                        color: "#8fb3e0" },
+  bass:     { what: "deep sine bass",                       color: "#8d6bb5" },
+  twinkles: { what: "far-away music box, echo",             color: "#5fb8b0" },
+  texture:  { what: "wind, shaker, heartbeat kick",         color: "#6fae78" },
 };
-const SEC_COLORS = { A: "var(--A)", B: "var(--B)", C: "var(--C)", D: "var(--D)" };
-const SEC_RGB = { A: [244,182,168], B: [247,212,136], C: [169,200,236], D: [185,224,165] };
+const SEC_COLORS = { 1: "var(--A)", 2: "var(--B)", 3: "var(--C)", 4: "var(--D)" };
+const SEC_RGB = { 1: [247,212,136], 2: [185,224,165], 3: [169,200,236], 4: [244,182,168] };
 
 let ctx, meta, buffers = {}, nodes = {}, sources = [], master, analyser;
 let playing = false, startAt = 0, offset = 0, muted = {}, solo = null;
@@ -127,7 +128,7 @@ const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(
 async function load() {
   meta = await (await fetch("audio/track.json")).json();
   $("title").textContent = meta.title;
-  $("meta").textContent = `cozy chiptune · ${meta.bpm} BPM · F major · ${meta.bars} bars · ${meta.seconds.toFixed(0)} s seamless loop`;
+  $("meta").textContent = `${meta.mood} · ${meta.bpm} BPM · ${meta.key} · ${meta.bars} bars · ${meta.seconds.toFixed(0)} s seamless loop`;
   $("len").textContent = fmt(meta.seconds);
   const secs = $("sections");
   meta.sections.forEach((s, i) => {
@@ -252,7 +253,7 @@ function draw() {
   const [r, gg, b] = SEC_RGB[sec.id];
 
   // soft section-colored sun
-  const pulse = playing ? Math.exp(-phase * 5) : 0;
+  const pulse = playing ? 0.5 + 0.5 * Math.sin(t * 0.8) : 0;
   const grad = g2.createRadialGradient(W / 2, H * 0.62, 10, W / 2, H * 0.62, 220 + 30 * pulse);
   grad.addColorStop(0, `rgba(${r},${gg},${b},0.75)`);
   grad.addColorStop(1, `rgba(${r},${gg},${b},0)`);
@@ -282,18 +283,19 @@ function draw() {
   for (let x = ((-t * 40) % 24); x < W; x += 24) g2.fillRect(x, base, 12, 4);
 
   // the chick hops on every beat
-  const hop = playing ? Math.sin(Math.PI * Math.min(phase / 0.55, 1)) * 26 : 0;
-  const frame = playing ? Math.floor(beat * 2) % 4 : 0;
+  const hp = (beat / (meta.beats_per_hop || 1)) % 1;
+  const hop = playing ? Math.sin(Math.PI * Math.min(hp / 0.6, 1)) * 14 : 0;
+  const frame = playing ? Math.floor(beat) % 4 : 0;
   const S = 5;
   g2.imageSmoothingEnabled = false;
   if (chick.complete) g2.drawImage(chick, frame * 16, 0, 16, 16, W / 2 - 8 * S, base - 16 * S + 12 - hop, 16 * S, 16 * S);
 
   // a note or heart pops out each beat
   const whole = Math.floor(beat);
-  if (playing && whole !== lastBeat) {
+  if (playing && whole !== lastBeat && whole % 2 === 0) {
     lastBeat = whole;
     particles.push({ x: W / 2 + (Math.random() - 0.5) * 40, y: base - 70, vx: (Math.random() - 0.5) * 60,
-      vy: -60 - Math.random() * 40, life: 1.6, k: whole % 4 === 0 ? "♥" : "♪", c: `hsl(${(whole * 47) % 360} 65% 60%)` });
+      vy: -60 - Math.random() * 40, life: 1.6, k: whole % 8 === 0 ? "♥" : "♪", c: `hsl(${(whole * 47) % 360} 65% 60%)` });
   }
   g2.font = "900 22px ui-rounded, system-ui";
   g2.textAlign = "center";
