@@ -227,3 +227,6 @@
   #death .dbar i { display:block; height:100%; width:0; background:linear-gradient(#f2d98a,#d8a94e); }
   #death .dhint { color:var(--ink2); font-size:15px; opacity:.8; }
   body.touch #death .dhint { display:none; }
+
+#death .dhint { animation: deathhint 1.6s ease-in-out infinite; }
+@keyframes deathhint { 50% { opacity: .45; } }

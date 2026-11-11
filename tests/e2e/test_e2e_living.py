@@ -66,6 +66,10 @@ def test_dying_wakes_you_by_your_bed(game):
     s = game.server()
     assert s["deaths"] == 1 and abs(s["x"] - bed[0]) + abs(s["y"] - bed[1]) <= 3
     assert game.js("$('death').style.display") == "block" and "bed" in game.js("$('deathwake').textContent")   # the death screen
+    game.sleep(3000)                                         # it waits for you...
+    assert game.js("$('death').style.display") == "block"
+    game.press("q", 700)                                     # ...until a key
+    assert game.js("$('death').style.display") == "none"
 
 
 def test_fire_burns_to_ash_and_ash_grows_back(game):

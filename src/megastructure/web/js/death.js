@@ -1,8 +1,9 @@
 // The death screen: the world drains to grey under a dark red edge, and a panel drops in with the skull, how it
 // happened, what you left behind (where you fell) and where you'll wake. A bar fills as you come to; any key or
-// click closes it sooner.
+// click closes it (once the bar has filled: a key held from before doesn't skip it).
 
-const DEATH_MS = 6000;
+const DEATH_MS = 1200;                     // the bar fills, then it waits for you: any key or a click
+let deathReadyAt = Infinity;
 let deathTimer = null;
 function showDeath(e) {
   const v = $("deathveil"), p = $("death");
@@ -23,11 +24,15 @@ function showDeath(e) {
   for (const el of [v, p]) { el.style.display = "block"; el.classList.remove("on"); void el.offsetWidth; el.classList.add("on"); }
   const bar = $("deathbar"); bar.style.transition = "none"; bar.style.width = "0"; void bar.offsetWidth;
   bar.style.transition = `width ${DEATH_MS}ms linear`; bar.style.width = "100%";
-  clearTimeout(deathTimer); deathTimer = setTimeout(hideDeath, DEATH_MS);
+  clearTimeout(deathTimer); deathReadyAt = performance.now() + DEATH_MS;
+  const hint = document.querySelector("#death .dhint");
+  hint.style.visibility = "hidden"; hint.textContent = TOUCH ? "tap to get up" : "any key to get up";
+  deathTimer = setTimeout(() => { hint.style.visibility = "visible"; }, DEATH_MS);
 }
 function hideDeath() {
   clearTimeout(deathTimer);
   for (const id of ["deathveil", "death"]) { const el = $(id); if (el.style.display === "block") { el.classList.remove("on"); el.classList.add("off"); setTimeout(() => { el.style.display = "none"; el.classList.remove("off"); }, 450); } }
 }
-addEventListener("keydown", () => { if ($("death") && $("death").classList.contains("on")) hideDeath(); }, true);
-addEventListener("pointerdown", () => { if ($("death") && $("death").classList.contains("on")) hideDeath(); }, true);
+const deathOpen = () => $("death") && $("death").classList.contains("on");
+addEventListener("keydown", (e) => { if (deathOpen() && performance.now() >= deathReadyAt && !e.repeat) hideDeath(); }, true);
+addEventListener("pointerdown", () => { if (deathOpen() && performance.now() >= deathReadyAt) hideDeath(); }, true);
