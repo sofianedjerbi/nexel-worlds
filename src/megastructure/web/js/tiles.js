@@ -21,9 +21,10 @@ const SEA = 64;
 function tileIdx(x, y) { const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B))); return b ? [b, (y - b.by * B) * B + (x - b.bx * B)] : null; }
 const floorAt = (x, y) => { const t = tileIdx(x, y); return t ? t[0].lv[t[1]].charCodeAt(0) - SEA : 0; };
 const roofAt = (x, y) => { const t = tileIdx(x, y); return t && t[0].rf ? t[0].rf[t[1]] : 0; };
-let caveOpen = false;                       // you're in a cave: caves are drawn without their roof
-const levelAt = (x, y) => { const t = tileIdx(x, y); if (!t) return 0; const f = t[0].lv[t[1]].charCodeAt(0) - SEA; return caveOpen || !t[0].rf ? f : f + t[0].rf[t[1]]; };
-const hiddenAt = (x, y) => !caveOpen && roofAt(x, y) > 0;     // under a closed cave's roof: not seen
+let caveOpen = false, openCave = new Set();  // you're in a cave: that cave (its tiles, "x,y") is drawn without its roof
+const inOpenCave = (x, y) => caveOpen && openCave.has(x + "," + y);
+const levelAt = (x, y) => { const t = tileIdx(x, y); if (!t) return 0; const f = t[0].lv[t[1]].charCodeAt(0) - SEA; return !t[0].rf || inOpenCave(x, y) ? f : f + t[0].rf[t[1]]; };
+const hiddenAt = (x, y) => roofAt(x, y) > 0 && !inOpenCave(x, y);  // under a closed cave's roof: not seen
 function rimAt(x, y) {                      // as World.rim: lower ground around it (nothing built)
   const lv = floorAt(x, y);
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && floorAt(x + dx, y + dy) < lv) return true;

@@ -89,6 +89,7 @@ function frame(now) {
   for (const b of vis) if (b.relief) ctx.fillRect(b.bx * B * 16, b.by * B * 16, B * 16, B * 16);
   ctx.restore();
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
+  drawCaveMouths(vis, sx, sy, S);                     // (caves seen from outside: their openings)
   if (caveOpen) drawCaveFloors(vis, sx, sy, S);   // (in a cave: its floor over the rock drawn up in front of it)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B)));

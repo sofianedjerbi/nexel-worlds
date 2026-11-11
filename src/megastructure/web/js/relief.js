@@ -156,7 +156,19 @@ function drawBlockRelief(b, sx, sy, S) {
   }
 }
 
-// Walking into a cave (or out): every cave's roof comes off (goes back on) at once, like a house's. The blocks with
+// The cave you're in: its roofed tiles joined to yours (up to a few thousand)
+function caveOf(x0, y0) {
+  const seen = new Set([x0 + "," + y0]), stack = [[x0, y0]];
+  while (stack.length && seen.size < 4000) {
+    const [x, y] = stack.pop();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const k = (x + dx) + "," + (y + dy);
+      if (!seen.has(k) && roofAt(x + dx, y + dy) > 0) { seen.add(k); stack.push([x + dx, y + dy]); }
+    }
+  }
+  return seen;
+}
+// Walking into a cave (or out): that cave's roof comes off (goes back on) at once, like a house's. The blocks with
 // caves, and those beside them (their edges), are redrawn there and then: on screen in full, the rest as they come.
 let myAt = null;                          // your tile and height: in a cave, or up on its roof (as Movement.landing)
 function setCaveOpen(vis) {
@@ -175,12 +187,14 @@ function setCaveOpen(vis) {
     }
   }
   const open = !!myAt && roofAt(myAt.x, myAt.y) > 0 && myAt.z === floorAt(myAt.x, myAt.y);
-  if (open === caveOpen) return;
-  caveOpen = open;
-  const near = (b) => [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const n = blocks.get(bkey(b.bx + dx, b.by + dy)); return n && n.rf; });
+  if (open === caveOpen && (!open || openCave.has(myAt.x + "," + myAt.y))) return;
+  const key = open ? caveOf(myAt.x, myAt.y) : null;
+  const was = openCave;
+  caveOpen = open; openCave = open ? key : new Set();
+  const touched = new Set([...was, ...openCave].map((k) => { const [x, y] = k.split(",").map(Number); return bkey(Math.floor(x / B), Math.floor(y / B)); }));
   const shown = new Set(vis);
   for (const b of blocks.values()) {
-    if (!b.drawn || !near(b)) continue;
+    if (!b.drawn || ![[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => touched.has(bkey(b.bx + dx, b.by + dy)))) continue;
     if (shown.has(b)) { renderBlock(b); buildRelief(b); b.reliefGen = null; }
     else { b.drawn = false; b.reliefDirty = true; }
   }
@@ -193,10 +207,30 @@ function drawCaveFloors(vis, sx, sy, S) {
     for (let i = 0; i < B * B; i++) {
       if (!b.rf[i]) continue;
       const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
+      if (!openCave.has(x + "," + y)) continue;
       const f = floorAt(x, y), Y = sy(y) - shOf(f) * zoom;
       ctx.drawImage(b.canvas, (i % B) * 16, (i / B | 0) * 16, 16, 16, sx(x), Y, S, S);
-      const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, tx, ty) => roofAt(tx, ty) > 0 || Math.abs(floorAt(tx, ty) - f) <= 1));
+      const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, tx, ty) => openCave.has(tx + "," + ty) || Math.abs(floorAt(tx, ty) - f) <= 1));
       ctx.drawImage(edgeSheet("hill3"), cx * 16, cy * 16, 16, 16, sx(x), Y, S, S);     // (its rock rim)
+    }
+  }
+}
+// A cave seen from outside: a dark opening in the hill's face where it meets the ground (its mouth)
+function drawCaveMouths(vis, sx, sy, S) {
+  ctx.fillStyle = "#2b2328";
+  for (const b of vis) {
+    if (!b.rf || !b.relief) continue;
+    for (let i = 0; i < B * B; i++) {
+      if (!b.rf[i]) continue;
+      const x = b.bx * B + i % B, y = b.by * B + (i / B | 0), f = floorAt(x, y);
+      if (inOpenCave(x, y) || roofAt(x, y + 1) || Math.abs(floorAt(x, y + 1) - f) > 1) continue;   // (opening south)
+      const mouth = (u) => roofAt(u, y) && !roofAt(u, y + 1) && Math.abs(floorAt(u, y + 1) - floorAt(u, y)) <= 1;
+      const L = mouth(x - 1) ? 0 : 1, R = mouth(x + 1) ? 0 : 1;          // (a wide mouth: one opening)
+      const top = sy(y + 1) - shOf(f + roofAt(x, y)) * zoom, bot = sy(y + 1) - shOf(f) * zoom, r = 3 * zoom;
+      const x0 = sx(x) + L * zoom, x1 = sx(x + 1) - R * zoom;
+      ctx.beginPath(); ctx.moveTo(x0, bot); ctx.lineTo(x0, top + r * L);
+      ctx.quadraticCurveTo(x0, top, x0 + r * L, top); ctx.lineTo(x1 - r * R, top);
+      ctx.quadraticCurveTo(x1, top, x1, top + r * R); ctx.lineTo(x1, bot); ctx.fill();
     }
   }
 }

@@ -121,7 +121,7 @@ def gen_cave(seed: int, x: int, y: int, level: int) -> tuple[int, int]:
     """Caves: tunnels winding through the ranges. Their floor keeps low (level 1 where they open onto the land, then
     up a layer at a time, 4 under the ground over them); where more than a layer of rock is left over the floor it
     is roofed. (floor, rock over it); (level, 0) where there is no cave."""
-    if level < 1 or _mount(seed, x, y) < 0.5 or abs(fbm(seed, x, y, 22, 97, octaves=2) - 0.5) > 0.03:
+    if level < 1 or _mount(seed, x, y) < 0.55 or abs(fbm(seed, x, y, 40, 97, octaves=1) - 0.5) > 0.045:
         return level, 0
     floor = max(1, level - 4)
     cut = level - floor
