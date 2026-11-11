@@ -1,4 +1,4 @@
-// HUD: item icons, hotbar, bag, crafting, mail, toasts.
+// HUD: item icons, hotbar, bag, mail, toasts. (Crafting: craft.js)
 
 function groundPreview(g, x, y) {
   if (g === "_") return [IMG.cobble, 16, 16, 16, 16, 0, 0];
@@ -148,55 +148,6 @@ function useSelected(name = selected) {
   if (FOODS.includes(name)) return act("eat", {item: name});
   toast(`Face a tile and press Space (or click it) to use the ${label(name)}.`);
 }
-const RECIPE_GROUPS = [
-  ["Getting started", ["workbench", "campfire", "torch", "rope", "plank", "path"]],
-  ["Tools & weapons", ["axe", "pickaxe", "hoe", "watering_can", "spear", "sword"]],
-  ["Travel & mail", ["boat", "mailbox"]],
-  ["Building", ["wood_wall", "door", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
-  ["Home", ["bed", "chair", "table", "plant", "clock", "rug"]],
-  ["Farm & picnic", ["well", "coop", "trough", "hay", "picnic_blanket", "basket"]],
-  ["Cooking & smelting", ["cooked_meat", "bread", "ingot"]],
-];
-let craftFocus = null;   // recipe name highlighted for keyboard use
-function drawRecipes() {
-  const el = $("recipes"); if (!el || !Object.keys(recipes).length) return;
-  const inv = meObs ? meObs.self.inventory : {};
-  const near = (st) => !st || (meObs && meObs.grid.some((row, j) => [...row].some((ch, i) => Math.abs(i - 10) <= 2 && Math.abs(j - 10) <= 2 && CH[ch] === st)));
-  const sig = JSON.stringify(inv) + (meObs ? meObs.grid.join("") : ""); if (el.dataset.sig === sig) return; el.dataset.sig = sig;
-  el.innerHTML = "";
-  const listed = new Set(RECIPE_GROUPS.flatMap(([, n]) => n));
-  const groups = [...RECIPE_GROUPS, ["Other", Object.keys(recipes).filter((n) => !listed.has(n))]];
-  for (const [title, names] of groups) {
-    const items = names.filter((n) => recipes[n]); if (!items.length) continue;
-    el.insertAdjacentHTML("beforeend", `<div class="rgroup">${esc(title)}</div>`);
-    const grid = document.createElement("div"); grid.className = "rgrid"; el.appendChild(grid);
-    for (const name of items) {
-      const rc = recipes[name], haveAll = Object.entries(rc.inputs).every(([k, v]) => (inv[k] || 0) >= v), atStation = near(rc.station);
-      const card = document.createElement("div"); card.className = "rcard" + (haveAll && atStation ? "" : " no");
-      card.dataset.name = name; if (name === craftFocus) card.classList.add("kfocus");
-      const big = iconCanvas(name); big.className = "big"; card.appendChild(big);
-      const out = Object.values(rc.output)[0];
-      const body = document.createElement("div");
-      body.innerHTML = `<div class="nm">${esc(label(name))}${out > 1 ? " ×" + out : ""}</div><div class="cost"></div>`;
-      for (const [k, v] of Object.entries(rc.inputs)) {
-        const chip = document.createElement("span"); if ((inv[k] || 0) < v) chip.className = "miss";
-        chip.appendChild(iconCanvas(k)); chip.insertAdjacentText("beforeend", `${v}`);
-        chip.title = `${label(k)}: need ${v}, you have ${inv[k] || 0}`;
-        body.querySelector(".cost").appendChild(chip);
-      }
-      card.appendChild(body);
-      if (rc.station) {
-        const st = document.createElement("div"); st.className = "stn" + (atStation ? "" : " miss");
-        st.appendChild(iconCanvas(rc.station)); st.insertAdjacentText("beforeend", `at ${label(rc.station)}`);
-        body.appendChild(st);
-      }
-      card.title = !haveAll ? "Missing materials" : atStation ? "Click to craft"
-        : `Go within 2 tiles of a ${label(rc.station)} to make it`;   // getting there is up to you
-      if (haveAll && atStation) card.onclick = () => act("craft", {recipe: name});
-      grid.appendChild(card);
-    }
-  }
-}
 let mailAtTile = null;   // the mailbox the panel is open on (posting and taking aim at it exactly)
 function openMailPanel(p) {
   mailAtTile = p ? {x: p.x, y: p.y} : null; $("mail").style.display = "block"; $("letters").innerHTML = `<span style="color:var(--ink2)">Write a letter, or take the letters out.</span>`;
@@ -250,7 +201,7 @@ function panelKey(id, cardSel, getFocus, setFocus, k, e) {
   else if (k === "enter" || k === " ") {
     const card = cards[Math.max(0, cur)];
     if (e.shiftKey && id === "craft" && !card.classList.contains("no")) act("craft", {recipe: card.dataset.name, n: 5});
-    else if (card.onclick) card.onclick();
+    else if (card.onclick && !card.classList.contains("no")) card.onclick();
     else toast(card.title || "Can't use that now.", true);
     return true;
   } else return false;
@@ -259,5 +210,4 @@ function panelKey(id, cardSel, getFocus, setFocus, k, e) {
   setFocus(cards[cur].dataset.name);
   return true;
 }
-const craftKey = (k, e) => panelKey("craft", ".rcard", () => craftFocus, (n) => craftFocus = n, k, e);
 const bagKey = (k, e) => panelKey("bag", ".slot[data-name]", () => bagFocus, (n) => bagFocus = n, k, e);

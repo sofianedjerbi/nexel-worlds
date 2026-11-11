@@ -30,7 +30,12 @@
 </div></div>
 <div class="panel" id="goals"><div class="in"><div class="gh"><h3>Goals</h3><span id="goalcount"></span></div><div id="goallist"></div></div></div>
 <div class="panel" id="bag"><div class="in"><h3>Bag</h3><div id="bagitems"></div></div></div>
-<div class="panel" id="craft"><div class="in"><h3>Crafting</h3><span class="close" id="craftclose">arrows choose · Enter craft · Shift+Enter ×5 · Esc close</span><div id="recipes"></div></div></div>
+<div class="panel" id="craft"><div class="in">
+  <div class="ctop"><h3>Crafting</h3><span class="close" id="craftclose" title="Esc">✕</span></div>
+  <div id="crafttabs"></div>
+  <div class="cbody"><div id="recipes"></div><div id="craftdetail"></div></div>
+  <div class="chint">Enter craft · Shift+Enter ×5 · Tab category · Esc close</div>
+</div></div>
 <div id="chatbox"><div id="chatlog"></div><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout)" maxlength="200" autocomplete="off"></div>
 <div id="hud">
   <div id="status"></div>
@@ -69,6 +74,7 @@
 <script src="js/agent.js"></script>
 <script src="js/intent.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/craft.js"></script>
 <script src="js/goals.js"></script>
 <script src="js/keyboard.js"></script>
 <script src="js/touch.js"></script>

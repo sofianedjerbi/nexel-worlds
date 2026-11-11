@@ -35,6 +35,23 @@ def test_crafting_cards_say_what_is_missing(game):
     game.press("Escape", 200)
 
 
+def test_crafting_tabs_detail_and_button(game):
+    game.give(wood=4)
+    game.press("c", 400)
+    assert game.js("craftTab") == "All" and game.js("craftFocus") == "workbench"     # what you can make, first
+    assert game.js("$('craftdetail').querySelector('.cbtn').textContent") == "Craft"
+    game.press("Tab", 200)
+    assert game.js("craftTab") == "Start"
+    game.press("Tab", 200)                                                             # tools: you can't make them yet
+    assert game.js("craftTab") == "Tools" and game.js("craftFocus") == "axe"
+    assert game.js("$('craftdetail').querySelector('.cbtn').textContent") == "Missing materials"
+    game.js("craftTab = 'Start'; craftFocus = 'workbench'; drawRecipes()")
+    game.js("$('craftdetail').querySelector('.cbtn').click()")
+    game.sleep(1200)
+    assert game.inv("workbench") == 1
+    game.press("Escape", 200)
+
+
 def test_zoom_help_and_debug_keys(game):
     z0 = game.js("zoom")
     game.press("+", 100)
