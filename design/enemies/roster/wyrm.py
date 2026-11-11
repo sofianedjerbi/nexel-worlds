@@ -87,8 +87,6 @@ ofgggf
 ..oGGG
 ..oGGG
 ..oGGG
-..oGGG
-..oGGG
 """)
 
 
@@ -154,14 +152,16 @@ def above(i, down, lift=0, head=None):
         if hh < 1 or ww < 4:
             continue
         cx = w // 2 + round(3 * math.sin(math.pi * s + 0.6))
-        base = round(16 - 4.3 * s) if down else round(13 + 4.3 * s)
+        base = round(16 - 4.3 * s) if down else round(18 + 4.0 * s)      # (going up: clear of the neck, so the body trails behind the head)
         coils.append((base, cx, hump(ww, hh)))
     for base, cx, m in sorted(coils, key=lambda c: c[0]):          # far ones first, near ones over them
         g = over(g, m, cx - len(m[0]) // 2, base - len(m) + 1)
     stamp = head or (FACE if down else NAPE)
     g = over(g, stamp, (w - 12) // 2, head_y)
+    y = head_y + len(stamp)
+    if not down:                                                    # the neck goes into the water: foam round it, and a gap before the first coil
+        g = over(g, ["W" + ("wwwwww" if i % 2 else "w.ww.w") + "W"], (w - 8) // 2, y)
     if down:                                                        # the chin in its foam
-        y = head_y + len(stamp)
         g = over(g, ["W" + ("w" * 8 if i % 2 else "w.wwww.w") + "W", ("..W....W.." if i % 4 < 2 else ".W......W.")], (w - 10) // 2, y)
     return g
 
