@@ -45,7 +45,7 @@ function frame(now) {
   }
   if (me && myId !== null) {
     const p = ents.get("agent" + myId);
-    if (p) { cam.x = camT.x = p.x; cam.y = camT.y = p.y; }
+    if (p) { cam.x = camT.x = p.x; cam.y = camT.y = p.y - liftOf(p) / TS(); }   // (you are drawn lifted on high ground: centre that)
     else if (meObs) { cam.x = camT.x = meObs.self.x; cam.y = camT.y = meObs.self.y; }
   } else {
     if (follow) {
