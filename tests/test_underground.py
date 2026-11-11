@@ -67,3 +67,20 @@ def test_people_on_other_levels_dont_see_each_other(world):
     a.add("pickaxe")
     run(sim, a, "dig_down", {"with": "pickaxe"})
     assert not any(e.get("name") == "Bo" for e in sim.observe(a)["entities"])
+
+
+def test_move_to_jumps_out_of_a_hole_and_onto_one(world):
+    """Releasing a key mid-step finishes it with move_to: it must jump up out of a hole and drop into one."""
+    sim, a = world
+    a.add("pickaxe")
+    x0, y0 = a.x, a.y
+    run(sim, a, "dig_down", {"with": "pickaxe"})
+    sim.set_tile(a.x, a.y - 1, ground="cave_floor", block="cave_wall")
+    assert run(sim, a, "move_to", {"x": a.x, "y": a.y - 1})["ok"] and depth(a.x) == 0 and (a.x, a.y) == (x0, y0 - 1)
+    assert run(sim, a, "move_to", {"x": x0, "y": y0})["ok"] and depth(a.x) == 1
+
+
+def test_two_layers_is_never_a_jump(world):
+    sim, a = world
+    sim.world.set(a.x, a.y - 1, level=2)
+    assert not run(sim, a, "step", {"dir": "N"})["ok"] and not run(sim, a, "move_to", {"x": a.x, "y": a.y - 1})["ok"]
