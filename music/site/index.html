@@ -52,7 +52,7 @@
     font-size:13px; margin-top:6px; font-variant-numeric:tabular-nums; }
   h2 { margin:0 0 12px; font-size:18px; font-weight:900; }
   h2 small { color:var(--ink2); font-weight:700; font-size:13px; margin-left:6px; }
-  #stems { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; }
+  #stems { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; }
   .stem { border:2px solid var(--line); border-radius:12px; padding:10px; background:#fffaf0;
     display:flex; flex-direction:column; gap:8px; align-items:center; transition:opacity .15s; }
   .stem.off { opacity:.45; }
@@ -98,23 +98,24 @@
   <section class="card">
     <h2>How it's made</h2>
     <div class="notes">
-      <div><b>Idea:</b> quiet music to leave on for 10 to 20 minutes while playing. 60 BPM, no drums, lots of silence.</div>
-      <div><b>Theme:</b> ten piano notes in a narrow range, mostly steps, long holds. It plays in half the cycles only.</div>
-      <div><b>Harmony:</b> D major, four chords, two bars each: Dmaj9, Gmaj7, Bm7, Gmaj9. Same cycle the whole time.</div>
-      <div><b>Phasing:</b> the melody repeats every 8 bars, the music box every 12, the glass swell every 16, so each pass sounds a little different.</div>
-      <div><b>Depth:</b> piano near, pad and bass middle, music box far (dark, wet). 9 s hall, slow echo, wind, tape wobble.</div>
-      <div><b>Checks:</b> registers never overlap, no clashing notes. -20 dBFS RMS, seamless 192 s loop. <a href="audio/master.wav" download>Download</a></div>
+      <div><b>Hook:</b> a rising fifth, D up to A, in a short-long-short rhythm. Three times per phrase, so it sticks.</div>
+      <div><b>Shape:</b> call and answer. The first answer goes low, the second reaches once to B, then it rests on a sus chord that pulls home.</div>
+      <div><b>Ostinato:</b> a rolling left-hand figure, accents in 3+3+2. It carries the identity even when the theme is resting.</div>
+      <div><b>Chiptune:</b> a soft filtered pulse bell doubles the theme in cycle 3. Far music box, glass swells, wind.</div>
+      <div><b>Long play:</b> 64 BPM, no drums, theme in half the cycles. Layers on 8/12/16-bar cycles, so each pass differs a little.</div>
+      <div><b>Checks:</b> one key, registers never overlap, no clashing notes. Seamless 180 s loop. <a href="audio/master.wav" download>Download</a></div>
     </div>
   </section>
 </main>
 
 <script>
 const STEM_INFO = {
-  piano:    { what: "felt piano: ten-note theme, slow chords", color: "#e48a7a" },
-  pad:      { what: "warm dark pad",                          color: "#8fb3e0" },
-  bass:     { what: "deep soft sine",                         color: "#8d6bb5" },
-  musicbox: { what: "far music box, 12-bar cycle",            color: "#5fb8b0" },
-  air:      { what: "wind bed, high glass swells",            color: "#6fae78" },
+  piano:    { what: "felt piano: the theme and the rolling left hand", color: "#e48a7a" },
+  chip:     { what: "soft chiptune bell, doubles the theme once",      color: "#e6b44f" },
+  pad:      { what: "warm dark pad",                                   color: "#8fb3e0" },
+  bass:     { what: "deep soft sine",                                  color: "#8d6bb5" },
+  musicbox: { what: "far music box, 12-bar cycle",                     color: "#5fb8b0" },
+  air:      { what: "wind bed, high glass swells",                     color: "#6fae78" },
 };
 const SEC_COLORS = { 1: "#d9e8d0", 2: "#f7e0a3", 3: "#f4c6b6", 4: "#cfe0f0", 5: "#f7e0a3", 6: "#e3d6ef" };
 const SEC_RGB = { 1: [217,232,208], 2: [247,224,163], 3: [244,198,182], 4: [207,224,240], 5: [247,224,163], 6: [227,214,239] };
