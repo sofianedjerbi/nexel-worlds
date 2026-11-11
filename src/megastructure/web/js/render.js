@@ -14,12 +14,10 @@ function frame(now) {
       // mid-step first finishes the tile you were walking into, in a straight line (like the server does), then
       // turns: no diagonal slide when two keys are held.
       const [wx, wy] = DIRV[walking.dir], ahead0 = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
-      // up a slope is hard going (60% longer a step), down it careful (20%): as the server paces it (SLOPE_UP/DOWN)
+      // a jump up is hard going (60% longer a step), a drop careful (20%): as the server paces it (SLOPE_UP/DOWN)
       const climb = levelAt(ahead0.x, ahead0.y) - levelAt(Math.round(p.tx), Math.round(p.ty));
-      // a cave mouth's steps (the tile you're stepping onto): twice as long, as the server paces them (MOUTH_STEP)
-      const into = (v, d) => Math.round(v) === v ? v + d : d > 0 ? Math.ceil(v) : Math.floor(v);
-      const stairs = "Ol".includes(combAt(wx ? into(p.x, wx) : Math.round(p.x), wy ? into(p.y, wy) : Math.round(p.y)) || "-");
-      const spd = (walking.run ? 10 : 5) / (climb > 0 ? 1.6 : climb < 0 ? 1.2 : stairs ? 2 : 1), step = spd * dt;
+      const jump = climb > 0 || jumpUp(Math.round(p.tx), Math.round(p.ty), ahead0.x, ahead0.y);
+      const spd = (walking.run ? 10 : 5) / (jump ? 1.6 : climb < 0 ? 1.2 : 1), step = spd * dt;
       const side = wx ? "y" : "x", along = wx ? "x" : "y", cur = p[side];
       // the lane is the server's own row (column): its walk starts from the tile it is on, so lining up anywhere
       // else (say, the tile you were bumping into) would walk you along between two rows
@@ -77,9 +75,8 @@ function frame(now) {
   ctx.fillStyle = depthOf(cam.x) ? "#1c161a" : waterPatterns[Math.floor(t * 3) % 4];   // underground: rock, not sea
   ctx.fillRect(-ox / zoom - 16, -oy / zoom - 16, W / zoom + 32, H / zoom + 32);
   ctx.restore();
+  drawLevelsAbove(sx, sy, S, t);                     // underground: the levels over you, seen through the rock
   for (const b of vis) if (b.canvas) ctx.drawImage(b.canvas, sx(b.bx * B), sy(b.by * B), B * S, B * S);
-  drawCaveGround(sx, sy, S, t, now);                 // underground: the level above, and the part of the cave you're in
-  drawHoles(ctx, 0, sx, sy, S, mouthNear(ents.get("agent" + myId)));   // the level below, down every hole (under all that stands)
   // y-sorted sprites: objects and creatures
   const list = [];
   for (const b of vis) for (const [i, c] of b.objs) {
@@ -95,7 +92,6 @@ function frame(now) {
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   const under = depthOf(cam.x) > 0;
   for (const o of list) {
-    if (under && !(o.p && o.p.e && o.p.e.id === myId && o.p.e.kind === "agent") && !inRegion(o.p ? o.p.x : o.x, o.p ? o.p.y : o.y)) continue;   // (only the part of the cave you're in)
     selMeasure(o);
     if (o.spr) {
       const [img, a, b2, w, h, dx, dy] = o.spr, key = o.x + "," + o.ty;
@@ -123,7 +119,6 @@ function frame(now) {
     else drawEntity(o.p, sx, sy, S, t, now);
   }
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
-    if (under && !inRegion(f.x, f.y)) continue;
     const px = sx(f.x), py = sy(f.y), tall = "TF".includes(combAt(f.x, f.y) || "");
     if (px < -S * 2 || py < -S * 3 || px > W + S || py > H + S) continue;
     drawFire(px, py, S, t, f.x, f.y);

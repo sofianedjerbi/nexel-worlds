@@ -113,59 +113,6 @@ def largest_shape(img: Image.Image) -> Image.Image:
     return out
 
 
-RAMP_VARIANTS = 5
-
-
-def ramp_art(hill: Path, below: tuple) -> Image.Image:
-    """Grassy slopes down a hill's south cliff: RAMP_VARIANTS pieces of 32x32 side by side. The west and east halves
-    of a piece sit on the pair of slope tiles (top 16 rows) and the landing below them (bottom 16). The hill's grass
-    runs out through a gap in the cliff and fans out onto the ground below: one evenly lit plane (no brighter patch
-    in the middle), its foot fading into the ground below (`below`) with no edge; along each side the cliff face
-    turns and runs diagonally down beside it, tapering to nothing. Colours are the hill sheet's own (sampled from a
-    south-edge tile), so it matches each terrace.
-    Variants, differing only in what's on the grass: 0 soft contour dashes; 1 the dashes staggered, with tufts;
-    2 two shallow grass steps; 3 curved contours (a rounded rise); 4 contour dashes with a lit lip above each."""
-    sheet = Image.open(hill).convert("RGBA")
-    col = [sheet.getpixel((1 * 16 + 8, 2 * 16 + y)) for y in range(16)]     # a south-edge column: top to cliff foot
-    top, rim, line, dark, light = col[0], col[9], col[11], col[12], col[13]
-    plane = _mix(top, (255, 255, 230), .13)          # the slope faces the light a little more than flat ground
-    out = Image.new("RGBA", (32 * RAMP_VARIANTS, 32))
-    for v in range(RAMP_VARIANTS):
-        img = Image.new("RGBA", (32, 32))
-        px = img.load()
-        y0, y1 = 9, 26                               # the slope: from where the hill's rim was, down onto the landing
-        for y in range(y0, y1 + 1):
-            k = (y - y0) / (y1 - y0)                 # 0 at the top, 1 at the foot
-            left = round(3 - 3 * k)                  # it fans out as it comes down
-            right = 31 - left
-            for x in range(left, right + 1):
-                f = _foot(k, x, left, right)
-                # light: it grows as the ground tilts away from the crest (no edge where the hilltop ends), fades with
-                # the foot, and is dimmed close to the walls (they shade it); stepped to 4 tones with an ordered
-                # dither, as pixel art does, instead of smooth bands
-                t = _ease(min(1, k / .4)) * (1 - f)
-                gap = min(x - left, right - x)
-                t *= 1 - .6 * max(0, 1 - gap / 3) * (1 - k)
-                t = math.floor(t * 3 + BAYER[y % 4][x % 4]) / 3
-                c = _mix(_mix(top, below, f), plane, t)
-                if gap < 2 and k < .6:
-                    c = _mix(c, rim, .2 * (1 - gap / 2))             # a touch of shade along the wall's foot
-                mark = _mark(v, x, y, y0, y1, left, right)
-                if mark:                             # contours and steps: shade below a line, light on its lip
-                    c = _mix(c, rim if mark < 0 else (255, 255, 230), (.45 if mark < 0 else .22) * (1 - f))
-                px[x, y] = c
-            wall = round(4 * max(0, 1 - k * 1.6))    # the cliff face beside it, turning down the side and tapering
-            for i in range(wall):
-                for x in (left - 1 - i, right + 1 + i):
-                    if 0 <= x < 32:
-                        px[x, y] = (line, dark, light, light)[i]
-        if v == 1:                                   # tufts of grass
-            for x, y in ((7, y0 + 4), (23, y0 + 7), (13, y0 + 12), (25, y0 + 13)):
-                px[x, y], px[x + 1, y - 1], px[x + 2, y] = rim, rim, rim
-        out.alpha_composite(img, (32 * v, 0))
-    return out
-
-
 def _mark(v, x, y, y0, y1, left, right) -> int:
     """-1 a shade line on the grass here, +1 a lit lip, 0 nothing."""
     if v == 2:                                       # two shallow steps: a soft drop with a lit lip, edge to edge

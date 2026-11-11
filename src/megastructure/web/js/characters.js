@@ -28,12 +28,12 @@ function biteIcon(name, bites) {
 }
 // which swing of the character sheet each tool in hand uses (the sheet has an axe and a hoe swing)
 const SWING_ROW = {axe: "axe", sword: "axe", spear: "axe", pickaxe: "axe", hoe: "hoe", watering_can: "water"};
-// Between a tile and a lower neighbour with no stairs between them: a hop. Lift (art px) along a quick arc.
+// Between a tile and one a layer up or down: a jump (or a hop down). Lift (art px) along a quick arc.
 function hopLift(p) {
   const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
   if (ax === bx && ay === by) return 0;
   const la = levelAt(ax, ay), lb = levelAt(bx, by);
-  if (la === lb || (ax === bx && (rampAt(ax, Math.min(ay, by))))) return 0;   // level, or stairs
+  if (la === lb) return 0;
   const f = ax === bx ? p.y - ay : p.x - ax, k = la > lb ? f : 1 - f;          // 0 at the top, 1 landed
   return Math.sin(k * Math.PI) * 7 + (1 - k) * 2;
 }

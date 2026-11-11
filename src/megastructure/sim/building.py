@@ -36,8 +36,17 @@ class Building:
         x, y = self.resolve(*self.target(a, args))
         g, b = self.world.get(x, y)
         block, ground = BLOCKS[b], GROUNDS[g]
+        if block.name == "none" and self.world.level(x, y) > self.world.level(a.x, a.y) and self.held(a, args) == "pickaxe":
+            yield from self.wait(a, 1.0)                   # into higher ground: it comes down a layer
+            lv = self.world.level(x, y)
+            if not lv or self.world.block(x, y) != "none":
+                raise ActionError("changed", "something changed there")
+            got = "stone" if lv > 1 else "dirt"
+            a.add(got)
+            self.set_tile(x, y, level=lv - 1, by=a, cause="dig")
+            return {"got": {got: 1}, "level": lv - 1}
         if block.name == "none":
-            built = {"cobble": ("path", "dirt"), "floor": ("plank", "dirt"), "bridge": ("plank", "water")}
+            built ={"cobble": ("path", "dirt"), "floor": ("plank", "dirt"), "bridge": ("plank", "water")}
             if ground.name in built:                       # what you lay, you can take up again
                 item, under = built[ground.name]
                 if under == "water" and self.entity_at(x, y):

@@ -3,18 +3,19 @@
 const DIRV = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
 function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p.ty} : meObs ? meObs.self : null; }
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
-// as Underground.mouth_ok: a cave mouth's deep end is entered from its top only, a ramp's top from its foot only
-function mouthOk(x0, y0, x1, y1) {
-  const c = combAt(x1, y1);
-  if (c === "O" && combAt(x1, y1 - 1) === "O") return x0 === x1 && y0 === y1 - 1;
-  if (c === "l" && combAt(x1, y1 + 1) === "l") return x0 === x1 && y0 === y1 + 1;
-  return true;
+// as Underground.jump_up: underground, under a hole, onto open ground beside it on the level above
+function jumpUp(fx, fy, x, y) {
+  return depthOf(fx) > 0 && Math.abs(x - fx) + Math.abs(y - fy) === 1 && combAt(fx - LAYER, fy) === "O"
+    && combAt(x - LAYER, y) !== "O" && plainWalk(x - LAYER, y) && (depthOf(x - LAYER) > 0 || levelAt(x - LAYER, y) === 0);
 }
-function walkable(x, y, fx, fy) {               // (fx, fy): where you come from, for cliffs and stairs
+function plainWalk(x, y) {
   const t = tile(x, y); if (!t) return false;
-  if (edgeAt(x, y) || (fx !== undefined && (!canStep(fx, fy, x, y) || !mouthOk(fx, fy, x, y)))) return false;
   if (t[1] === "~" || t[1] === "=") return !!(meObs && meObs.self.sailing) || t[0] === "V";   // water: only by boat
   return WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
+}
+function walkable(x, y, fx, fy) {               // (fx, fy): where you come from: a layer up or down at most
+  if (fx !== undefined && jumpUp(fx, fy, x, y)) return true;
+  return plainWalk(x, y) && (fx === undefined || canStep(fx, fy, x, y));
 }
 // ---- what a click does, decided per tile (also shown as the cursor hint) ----------------
 const FILLS = {dirt: {o: ",", u: ",", "~": ","}, path: {".": "_", ",": "_", "'": "_"}, plank: {"~": ":", ".": "n", ",": "n", "'": "n"}};

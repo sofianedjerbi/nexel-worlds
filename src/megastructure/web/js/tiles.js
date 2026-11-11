@@ -13,29 +13,22 @@ function tile(x, y) {
   return [b.comb[i], b.gnd[i]];
 }
 const combAt = (x, y) => { const t = tile(x, y); return t ? t[0] : null; };
-// Relief: a level char per tile, a digit (the height) or a capital letter where stairs lead down to the south.
+// Relief: a level char per tile, a digit-like char (48 + height). (A capital letter: old stairs, now plain ground.)
 function lvChar(x, y) {
   const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B)));
   return b ? b.lv[(y - b.by * B) * B + (x - b.bx * B)] : null;
 }
 const levelAt = (x, y) => { const c = lvChar(x, y); return c === null ? 0 : c >= "A" ? c.charCodeAt(0) - 65 : c.charCodeAt(0) - 48; };
-const rampAt = (x, y) => { const c = lvChar(x, y); return c !== null && c >= "A"; };
 function rimAt(x, y) {                      // as World.rim: a hill tile with lower ground around it (nothing built)
   const lv = levelAt(x, y);
-  if (!lv || rampAt(x, y)) return false;
+  if (!lv) return false;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && levelAt(x + dx, y + dy) < lv) return true;
   return false;
 }
-// as World.edge: where the cliff face is drawn (lower ground straight south): nobody stands there
-const edgeAt = (x, y) => { const lv = levelAt(x, y); return lv > 0 && !rampAt(x, y) && levelAt(x, y + 1) < lv; };
-// as World.can_step for people: on the level, up and down stairs, or a hop down one level off an edge
-function canStep(x0, y0, x1, y1) {
-  const l0 = levelAt(x0, y0), l1 = levelAt(x1, y1);
-  if (l0 === l1 || l0 - l1 === 1) return true;
-  if (x0 !== x1 || Math.abs(l0 - l1) !== 1) return false;
-  const [ux, uy] = l0 > l1 ? [x0, y0] : [x1, y1];
-  return rampAt(ux, uy) && Math.max(y0, y1) === uy + 1;
-}
+// as World.edge: where a cliff face is drawn (lower ground straight south); you stand on its top
+const edgeAt = (x, y) => { const lv = levelAt(x, y); return lv > 0 && levelAt(x, y + 1) < lv; };
+// as World.can_step for people: on the level, a layer down, or a jump a layer up
+const canStep = (x0, y0, x1, y1) => Math.abs(levelAt(x0, y0) - levelAt(x1, y1)) <= 1;
 const gndAt = (x, y) => { const t = tile(x, y); return t ? t[1] : null; };
 const dirtyTiles = [];                 // tiles to redraw (x, y), processed within a per-frame budget
 function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }
@@ -45,7 +38,7 @@ function setTile(x, y, comb, gnd, who = null, lv = null) {
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
   if (!b) return;
   const i = (y - by * B) * B + (x - bx * B);
-  const lc = lv === null ? b.lv[i] : String.fromCharCode(((lv & 16) ? 65 : 48) + (lv & 15));
+  const lc = lv === null ? b.lv[i] : String.fromCharCode(48 + (lv & 15));
   if (b.comb[i] === comb && b.gnd[i] === gnd && b.lv[i] === lc) return;
   if (b.lv[i] !== lc) { b.lv[i] = lc; for (let d = -2; d <= 2; d++) touch(x + d, y); }   // relief changed: edges around redraw
   const old = b.comb[i], now = performance.now();
@@ -74,7 +67,7 @@ function onRegion(d) {
   if (old && old.drawn) {             // resync: only redraw what actually changed
     for (let i = 0; i < B * B; i++) {
       if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && old.lv[i] === lv[i]) continue;
-      const c = lv[i].charCodeAt(0), raw = c >= 65 ? (c - 65) | 16 : c - 48;
+      const c = lv[i].charCodeAt(0), raw = c >= 65 ? c - 65 : c - 48;
       setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, raw);
     }
     old.at = performance.now(); return;
@@ -128,22 +121,23 @@ function drawTile(x, y) {
     }
     groundMarks(g, x, y, gr, ox, oy);
   }
-  // relief: each level lays its hill sheet (grass, darker grass, stone peaks) over the tiles at least that high; the
+  // relief: each level lays its hill sheet (grass, darker grass, then stone) over the tiles at least that high; the
   // sheets' edge tiles carry the cliff face, so a plateau shows its south cliff and a soft rim round the rest
   const lv = levelAt(x, y);
-  // (on a slope tile, every tile under the slope's pair counts as up there too, diagonals included, so no cliff face
-  // or corner is drawn where the slope goes through; the slope piece draws its own sides)
-  const onSlope = rampAt(x, y);
-  const high = (k) => (c, gg, tx, ty) => levelAt(tx, ty) >= k || (onSlope && ty === y + 1 && rampAt(tx, y));
-  for (let k = 1; k <= lv; k++) drawBlobLayer(g, IMG["hill" + k], x, y, high(k), ox, oy, k < 3 ? .25 : .1);
+  for (let k = 1; k <= lv; k++) drawBlobLayer(g, hillSheet(k), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, ox, oy, k < 3 ? .25 : .1);
   if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
-  drawStairs(g, x, y, ox, oy);
-  // underground: an earth floor, and the rock around the caves as a mass of stone with its face to the south (the pack's
-  // stone hill sheet), ore showing through it
-  if (gr === "-") drawBlobLayer(g, IMG.soil, x, y, (_, gg) => gg === "-", ox, oy, .15);     // an earth floor
-  if (c === "R" || (c === "*" && gr === "-")) drawBlobLayer(g, IMG.hill3, x, y, (cc) => cc === "R" || cc === "*", ox, oy, .15);
-  // flat things that live in the ground layer: cave mouths and the ramps below them, hedges
-  if (c === "O" || c === "l") { const s = objectSprite(c, x, y, 0); g.drawImage(s[0], s[1], s[2], 16, 16, ox, oy, 16, 16); }
+  const under = depthOf(x) > 0;
+  // a hole: the floor of the level below, and round it the edges of the ground it goes through (the pack's own:
+  // the cliff face on its north side, the soft rim elsewhere), drawn on the tiles beside it
+  if (c === "O") { g.clearRect(ox, oy, 16, 16); drawBlobLayer(g, IMG.soil, x, y, () => true, ox, oy, .15); }
+  else if (nearHole(x, y)) drawBlobLayer(g, edgeSheet(under ? "hill3" : "hill1"), x, y, (cc) => cc !== "O", ox, oy, 0);
+  // underground: an earth floor, and the rock round the caves only as its stone edges: inside them, the level above
+  // shows through (caveview.js), as if the rock between were cut away
+  if (gr === "-" && c !== "O") drawBlobLayer(g, IMG.soil, x, y, (cc, gg) => gg === "-", ox, oy, .15);
+  if (c === "R" || (c === "*" && gr === "-")) {
+    g.clearRect(ox, oy, 16, 16);
+    drawBlobLayer(g, edgeSheet("hill3"), x, y, (cc) => cc === "R" || cc === "*", ox, oy, 0);
+  }
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
   const hd = hash(x, y, 41);
   if (gr === "~" && hd < .09) {                      // shore water: lily pads, reeds, little rocks
@@ -163,15 +157,22 @@ function groundMarks(g, x, y, gr, ox, oy) {
   if (gr === "'") drawBlobLayer(g, IMG.ash, x, y, (_, gg) => gg === "'", ox, oy, 0);
   if (gr === "_") g.drawImage(IMG.cobble, [16, 32, 0][Math.floor(hash(x, y, 9) * 3)], [16, 32, 48][Math.floor(hash(x, y, 10) * 3)], 16, 16, ox, oy, 16, 16);
 }
-// Slopes: a 32x32 piece (tools/derived_art.py ramp_art) through a south cliff: its top half on the pair of slope
-// tiles, its bottom half on the landing below them. Drawn a quarter per tile, so redrawing any one tile keeps it whole.
-function drawStairs(g, x, y, ox, oy) {
-  const up = rampAt(x, y), ry = up ? y : y - 1;
-  if (!up && !rampAt(x, ry)) return;
-  const west = rampAt(x + 1, ry), x0 = west ? x : x - 1;             // this column is the pair's west half or east
-  const sheet = levelAt(x, ry) >= 2 ? IMG.ramp2 : IMG.ramp1;        // each terrace its own grass
-  const variant = Math.floor(hash(x0, ry, 77) * 5) * 32;            // dashes, tufts, grass steps, curved, lit lips
-  g.drawImage(sheet, variant + (west ? 0 : 16), up ? 0 : 16, 16, 16, ox, oy, 16, 16);
+
+const hillSheet = (k) => IMG["hill" + Math.min(3, k)];
+function nearHole(x, y) {
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && combAt(x + dx, y + dy) === "O") return true;
+  return false;
+}
+// A hill sheet with its top cleared: only its edges, rims and cliff faces (for holes, and the rock round caves)
+const EDGE_TOP = {hill1: [192, 212, 112], hill3: [193, 200, 185]}, edgeSheets = {};
+function edgeSheet(name) {
+  if (edgeSheets[name]) return edgeSheets[name];
+  const img = IMG[name], c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+  const g = c.getContext("2d"); g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), px = d.data, [r, gg, b] = EDGE_TOP[name];
+  for (let i = 0; i < px.length; i += 4) if (Math.abs(px[i] - r) + Math.abs(px[i + 1] - gg) + Math.abs(px[i + 2] - b) < 30) px[i + 3] = 0;
+  g.putImageData(d, 0, 0);
+  return edgeSheets[name] = c;
 }
 function renderBlock(b) {
   b.canvas = document.createElement("canvas"); b.canvas.width = B * 16; b.canvas.height = B * 16;

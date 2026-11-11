@@ -7,5 +7,4 @@ License summary: modification allowed; use in commercial and non-commercial proj
 the asset pack itself may not be redistributed or resold, even modified; no NFTs or AI training;
 credit required. Only the sheets this game uses are included here.
 
-`gen.png`, `ash.png`, `water_deep.png` and `fruit_bare.png` are extra tiles made for this game from the pack;
-`ramp1.png` and `ramp2.png` (slopes) are drawn for this game in the hill sheets' colours.
+`gen.png`, `ash.png`, `water_deep.png` and `fruit_bare.png` are extra tiles made for this game from the pack.

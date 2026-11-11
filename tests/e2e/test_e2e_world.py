@@ -104,22 +104,26 @@ def test_food_tastes_better_on_a_picnic_blanket(game):
     assert game.server()["hunger"] - before > 50             # bread is 50, x1.5 on the blanket
 
 
-def test_a_cave_mouth_you_walk_down_and_back_up(game):
+def test_dig_down_drop_through_and_jump_back_up(game):
     game.give(pickaxe=1)
     game.hold_item("pickaxe")
+    game.clear_area(3)
     x, y = game.pos()
     game.face(1, 0)                                          # (nothing in front: X digs down)
     assert "Dig down" in game.actions()
-    game.press("x", 3800)                                    # X: a cave mouth from where you stand, sloping south
-    assert game.js(f"combAt({x}, {y})") == "O" and game.js(f"combAt({x}, {y + 1})") == "O"
+    game.press("x", 2600)                                    # X: a hole where you stand, and you drop through it
+    s = game.server()
+    assert game.js(f"combAt({x}, {y})") == "O" and s["depth"] == 1 and game.js("depthOf(cam.x)") == 1
+    assert game.pos() == (s["x"], s["y"])
     game.js("selectItem(null)")
-    game.hold(["s"], 450)                                    # walk down it: the cave shows around you, then you're below
-    game.sleep(800)
-    s = game.server()
-    assert s["depth"] == 1 and game.js("depthOf(cam.x)") == 1 and game.pos() == (s["x"], s["y"])
-    game.js(f"act('move_to', {{x: {s['x']}, y: {y + 1}}})")    # to the ramp's foot...
-    game.sleep(900)
-    game.hold(["w"], 260)                                    # ...and up it, out into the daylight
+    game.stamp(0, -1, ["R"])                                 # (rock north of you down here: no cave to walk into)
+    game.sleep(200)
+    game.hold(["w"], 260)                                    # a jump up, north, out of the hole
     game.sleep(900)
     s = game.server()
-    assert s["depth"] == 0 and s["x"] == x and s["y"] <= y and game.pos() == (s["x"], s["y"])
+    assert s["depth"] == 0 and s["x"] == x and s["y"] < y and game.pos() == (s["x"], s["y"])
+    game.js(f"act('move_to', {{x: {x}, y: {y - 1}}})")     # beside the hole...
+    game.sleep(700)
+    game.hold(["s"], 150)                                    # ...and back onto it: down again
+    game.sleep(900)
+    assert game.server()["depth"] == 1

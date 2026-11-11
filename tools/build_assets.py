@@ -11,7 +11,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-from derived_art import largest_shape, ramp_art, thin_fall_sheet, thin_stump
+from derived_art import largest_shape, thin_fall_sheet, thin_stump
 from PIL import Image
 from pixel_art import GEN, P, art
 
@@ -159,11 +159,6 @@ def build(downloads: Path):
 
     thin_fall_sheet(OUT).save(OUT / "thin_fall.png")
     thin_stump(OUT).save(OUT / "stump_thin.png")
-    # slopes up to level 1 (light hill grass) and level 2 (darker), drawn from each hill sheet's colours
-    meadow = Image.open(OUT / "grass.png").convert("RGBA").getpixel((1 * 16 + 8, 1 * 16 + 8))   # plain grass
-    hill_top = Image.open(OUT / "hill1.png").convert("RGBA").getpixel((1 * 16 + 8, 1 * 16 + 8))
-    ramp_art(OUT / "hill1.png", meadow).save(OUT / "ramp1.png")
-    ramp_art(OUT / "hill2.png", hill_top).save(OUT / "ramp2.png")
 
     names = list(GEN)
     sheet = Image.new("RGBA", (16 * len(names), 16))
@@ -179,8 +174,7 @@ def build(downloads: Path):
         "License summary: modification allowed; use in commercial and non-commercial projects allowed;\n"
         "the asset pack itself may not be redistributed or resold, even modified; no NFTs or AI training;\n"
         "credit required. Only the sheets this game uses are included here.\n\n"
-        "`gen.png`, `ash.png`, `water_deep.png` and `fruit_bare.png` are extra tiles made for this game from the pack;\n"
-        "`ramp1.png` and `ramp2.png` (slopes) are drawn for this game in the hill sheets' colours.\n")
+        "`gen.png`, `ash.png`, `water_deep.png` and `fruit_bare.png` are extra tiles made for this game from the pack.\n")
     print("wrote", sorted(p.name for p in OUT.iterdir()))
 
 

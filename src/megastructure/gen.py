@@ -52,8 +52,7 @@ def _picked(seed: int, x: int, y: int, cell: int, salt: int) -> tuple[bool, floa
     return (x - cx * cell) + (y - cy * cell) * cell == k, _hash(seed, cx, cy, salt + 1)
 
 
-RAMP = 0x10          # in a level byte: stairs down to the south from this tile (with its east or west twin)
-PEAK = 3             # the highest level: bare stone, no stairs up
+PEAK = 3             # the highest level: bare stone
 
 
 def _elev(seed: int, x: int, y: int) -> float:
@@ -70,35 +69,6 @@ def gen_level(seed: int, x: int, y: int) -> int:
         return 0
     h = fbm(seed, x, y, 56, 61, octaves=2) + (elev - 0.46) * 0.6     # two octaves: long, straight-ish cliffs
     return 0 if h < 0.65 else 1 if h < 0.73 else 2 if h < 0.81 else PEAK    # ~65% low, 15% / 12% terraces, 8% peaks
-
-
-def _ramp_fits(seed: int, x: int, y: int, lv) -> bool:
-    up = lv(x, y)
-    if not 1 <= up < PEAK or any(lv(x + i, y) != up for i in (-1, 1, 2)) or any(lv(x + i, y + 1) != up - 1 for i in (0, 1)):
-        return False
-    if any(lv(x + i, y - j) != up for i in (-1, 0, 1, 2) for j in (1, 2)):
-        return False                 # the hilltop behind the slope is clear of the rim, so you can walk on from it
-    return all(gen_tile(seed, x + i, y + 1, up - 1)[1] == B["none"] for i in (0, 1))
-
-
-def _is_ramp(seed: int, x: int, y: int, lv) -> bool:
-    """Stairs: a pair of tiles (x, x+1) along a south cliff that goes on either side (the stairs are cut into it),
-    the landing below clear. Rare: one cliff row in five, one slope per 24 tiles of it, the first place that fits from a hashed start;
-    (x, x+1) stays inside its stretch, so pairs never touch. `lv(x, y)` gives levels."""
-    if (y + int(_hash(seed, x // 24, 0, 73) * 5)) % 5:
-        return False                             # rare: only one cliff row in five may have slopes...
-    cell = x // 24
-    start = int(_hash(seed, cell, y, 71) * 22)
-    for k in range(22):                          # ...and one per 24 tiles of it ((x, x+1) never touch the next)
-        cx = cell * 24 + (start + k) % 22
-        if _ramp_fits(seed, cx, y, lv):
-            return cx == x
-    return False
-
-
-def ramp_at(seed: int, x: int, y: int, lv) -> bool:
-    """This tile is either half of a pair of stairs."""
-    return _is_ramp(seed, x, y, lv) or _is_ramp(seed, x - 1, y, lv)
 
 
 def gen_cave(seed: int, x: int, y: int, d: int) -> tuple[int, int]:
@@ -162,14 +132,14 @@ def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
 
 
 def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, bytearray]:
-    """Ground, blocks and levels (with the RAMP flag) of one chunk."""
+    """Ground, blocks and levels of one chunk."""
     ground = bytearray(CHUNK * CHUNK)
     block = bytearray(CHUNK * CHUNK)
     level = bytearray(CHUNK * CHUNK)
     bx, by = cx * CHUNK, cy * CHUNK
     memo = {}
 
-    def lv(x, y):                    # levels, including a margin around the chunk (stairs look at their neighbours)
+    def lv(x, y):                    # levels, including a margin around the chunk (rims look at their neighbours)
         v = memo.get((x, y))
         if v is None:
             v = memo[(x, y)] = gen_level(seed, x, y)
@@ -178,9 +148,8 @@ def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, bytear
     for ly in range(CHUNK):
         for lx in range(CHUNK):
             x, y, i = bx + lx, by + ly, ly * CHUNK + lx
-            ramp = ramp_at(seed, x, y, lv)
             g, b = gen_tile(seed, x, y, lv(x, y))
             rim = lv(x, y) and any(lv(x + dx, y + dy) < lv(x, y) for dx in (-1, 0, 1) for dy in (-1, 0, 1))
-            ground[i], block[i] = g, B["none"] if ramp or rim else b     # nothing grows on a slope or a hill's rim
-            level[i] = lv(x, y) | (RAMP if ramp else 0)
+            ground[i], block[i] = g, B["none"] if rim else b     # nothing grows on a hill's rim
+            level[i] = lv(x, y)
     return ground, block, level

@@ -2,7 +2,8 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from .constants import MOUTH_STEP, SLOPE_DOWN, SLOPE_UP, sec
+from ..layers import LAYER
+from .constants import SLOPE_DOWN, SLOPE_UP, sec
 from .entities import ActionError, Agent
 
 
@@ -17,15 +18,17 @@ class Movement:
         ground, block = GROUNDS[g], BLOCKS[b]
         if ground.liquid:
             return a.sailing or block.name == "boat"
-        return ground.walkable and not block.solid and not self.world.edge(x, y)
+        return ground.walkable and not block.solid
 
     def can_go(self, a: Agent, x: int, y: int) -> bool:
-        """From where `a` stands to the neighbouring (x, y): the tile can be entered, and no cliff is in the way."""
-        return self.can_enter(a, x, y) and self.world.can_step(a.x, a.y, x, y, hop=True) and self.mouth_ok(a.x, a.y, x, y)
+        """From where `a` stands to the neighbouring (x, y): the tile can be entered and is at most a layer up or
+        down; or, underground under a hole, there's open ground beside it on the level above (a jump up)."""
+        return (self.can_enter(a, x, y) and self.world.can_step(a.x, a.y, x, y, hop=True)) or self.jump_up(a, x, y)
 
     def why_not(self, a: Agent, x: int, y: int) -> str:
-        if self.world.edge(x, y) or (self.can_enter(a, x, y) and not self.world.can_step(a.x, a.y, x, y, hop=True)):
-            return "a cliff (find stairs)" if self.world.level(x, y) > self.world.level(a.x, a.y) else "a drop (find stairs)"
+        if self.can_enter(a, x, y) and not self.world.can_step(a.x, a.y, x, y, hop=True):
+            up = self.world.level(x, y) > self.world.level(a.x, a.y)
+            return "a cliff, too high to jump (dig into it: dig with a pickaxe)" if up else "a drop of more than a layer"
         return self.describe(x, y)
 
     def move(self, a: Agent, x: int, y: int):
@@ -38,14 +41,15 @@ class Movement:
             self.set_tile(a.x, a.y, block="boat", by=a, cause="moor")   # leave the boat where you got off
             a.sailing = False
             self.emit("moor", a.x, a.y, name=a.name)
-        climb = self.world.level(x, y) - self.world.level(a.x, a.y)
-        stairs = self.world.block(x, y) in ("hole", "ladder")   # a cave mouth's earth steps: slow, careful going
+        jump = not self.can_enter(a, x, y) and self.jump_up(a, x, y)
+        climb = 1 if jump else self.world.level(x, y) - self.world.level(a.x, a.y)
+        if jump:
+            self._change_level(a, a.x - LAYER)       # (out of the hole, onto the level above)
+            x -= LAYER
         a.x, a.y = x, y
-        self.through_mouth(a)                         # a cave mouth: on down to the level below (or back up)
-        if climb and a.ready > self.tick:            # up a slope is hard going, down it a little careful
+        self.drop(a)                                  # onto a hole: down through it
+        if climb and a.ready > self.tick:            # a jump up is hard going, a drop a little careful
             a.ready += round((a.ready - self.tick) * (SLOPE_UP if climb > 0 else SLOPE_DOWN))
-        elif stairs and a.ready > self.tick:
-            a.ready += round((a.ready - self.tick) * MOUTH_STEP)
         self.arrive(a)
 
     def arrive(self, a: Agent):
@@ -111,9 +115,15 @@ class Movement:
             gx, gy = int(args["x"]), int(args["y"])
         except (KeyError, TypeError, ValueError):
             raise ActionError("bad_args", "move_to needs integer x and y")
+        if abs(gx - a.x) + abs(gy - a.y) == 1 and self.jump_up(a, gx, gy):      # the tile beside you: a jump up
+            yield from self.pace(a, args)
+            if not self.can_go(a, gx, gy):
+                raise ActionError("blocked", f"({gx},{gy}) is {self.why_not(a, gx, gy)}")
+            self.move(a, gx, gy)
+            return {"steps": 1, "arrived": [a.x, a.y], "adjacent_only": False}
         replans = 0
         ok = lambda x, y: self.can_enter(a, x, y) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
-        step = lambda p, q: self.world.can_step(*p, *q, hop=True) and self.mouth_ok(*p, *q)
+        step = lambda p, q: self.world.can_step(*p, *q, hop=True) and (self.world.block(*q) != "hole" or q == (gx, gy))
         path = astar(ok, (a.x, a.y), (gx, gy), step=step)
         if path is None:
             far = abs(gx - a.x) + abs(gy - a.y) > 64

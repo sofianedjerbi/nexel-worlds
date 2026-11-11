@@ -99,8 +99,6 @@ function objectSprite(c, x, y, t) {
       doors.set(key, o);
       return [IMG.gates, Math.round(o * 3) * 16, 0, 16, 16, 0, -3];
     }
-    case "O": return [IMG.gen, GEN[combAt(x, y - 1) === "O" ? "mouth_deep" : "mouth_top"] * 16, 0, 16, 16, 0, 0];   // a cave mouth
-    case "l": return [IMG.gen, GEN[combAt(x, y + 1) === "l" ? "ramp_top" : "ramp_low"] * 16, 0, 16, 16, 0, 0];    // the ramp up, below
     case "t": {                                       // a stump, cut flat: the felling sheet's own, or the thin tree's
       // hidden while the fall animation still draws the tree there: the round sheet draws its stump until its fade
       // (frame 9); the thin one stands whole for frames 0-2, then it is cut and the stump tile shows

@@ -82,7 +82,7 @@ async function act(tool, args, quiet) {
     if (Object.keys(gained).length && p) floats.push({x: p.tx, y: p.ty, text: "+" + fmt(gained), color: "#fff1a8", t: performance.now() / 1000});
     if (tool === "place") markGoal({workbench: "placedBench", seed: "planted", campfire: "placedFire", mailbox: "placedMail"}[args.item] || "placed");
     if (tool === "water") markGoal("watered");
-    if (tool === "dig_down") { toast("A cave mouth: walk down it (south)"); sfx("crumble"); }
+    if (tool === "dig_down") sfx("crumble");
     if (tool === "milk") markGoal("milked");
     if (r.result.text !== undefined) toast(`The sign reads: “${r.result.text}”`);
     if (r.result.took) { if (!Object.keys(r.result.took).length) toast("It's empty."); }   // took it all (the +items float shows)

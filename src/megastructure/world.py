@@ -7,7 +7,7 @@ import zlib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .gen import CHUNK, RAMP, gen_chunk, gen_tile
+from .gen import CHUNK, gen_chunk, gen_tile
 from .tiles import BLOCKS, GROUNDS, B, G
 
 THREADS = sys.platform != "emscripten"   # the in-browser demo has no threads: it generates land inline
@@ -29,7 +29,10 @@ class Chunk:
     def __init__(self, cx, cy, ground, block, level=None):
         self.cx, self.cy = cx, cy
         self.ground, self.block = ground, block
-        self.level = level if level is not None else bytearray(CHUNK * CHUNK)   # heights (gen.RAMP flags stairs)
+        self.level = level if level is not None else bytearray(CHUNK * CHUNK)   # heights
+        for i, v in enumerate(self.level):
+            if v & 0x10:                         # (stairs, from before you could jump: just ground now)
+                self.level[i] = v & 0x0F
         self.dirty = False
         self.touched = 0
 
@@ -202,36 +205,22 @@ class World:
         """Height of the land here, 0-3."""
         return self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] & 0x0F
 
-    def ramp(self, x: int, y: int) -> bool:
-        """Stairs: from here you can go down to the tile south of you (and come up from it)."""
-        return bool(self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] & RAMP)
-
     def rim(self, x: int, y: int) -> bool:
         """On a hill's rim (a lower tile next to it, diagonals too), where its edge is drawn: nothing is built or
-        grows there. Stairs are the way through, so they're not a rim."""
-        raw = self.level_raw(x, y)
-        lv = raw & 0x0F
-        if not lv or raw & RAMP:
-            return False
-        return any(self.level(x + dx, y + dy) < lv for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy)
+        grows there."""
+        lv = self.level(x, y)
+        return bool(lv) and any(self.level(x + dx, y + dy) < lv for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy)
 
     def edge(self, x: int, y: int) -> bool:
-        """Where the cliff face is drawn: a hill tile with lower ground straight south of it. Nobody stands there.
-        (North and side rims only carry an outline at the tile's border: you can walk right up to it.)"""
-        raw = self.level_raw(x, y)
-        lv = raw & 0x0F
-        return bool(lv) and not raw & RAMP and self.level(x, y + 1) < lv
+        """Where a cliff face is drawn: a hill tile with lower ground straight south of it (you stand on its top)."""
+        lv = self.level(x, y)
+        return bool(lv) and self.level(x, y + 1) < lv
 
     def can_step(self, x0: int, y0: int, x1: int, y1: int, hop: bool = False) -> bool:
-        """Between neighbouring tiles: on the level, or up and down stairs. Cliffs can't be climbed. With `hop`
-        (people), you can also jump down one level off any edge you can stand on."""
+        """Between neighbouring tiles: on the level; with `hop` (people), down a layer or a jump up one, as in a
+        world of blocks. Two layers or more is a wall (or a fall nobody takes)."""
         l0, l1 = self.level(x0, y0), self.level(x1, y1)
-        if l0 == l1 or (hop and l0 - l1 == 1):
-            return True
-        if x0 != x1 or abs(l0 - l1) != 1:
-            return False
-        upper = (x0, y0) if l0 > l1 else (x1, y1)
-        return self.ramp(*upper) and max(y0, y1) == upper[1] + 1      # the stairs lead south, down to the landing
+        return l0 == l1 or (hop and abs(l0 - l1) == 1)
 
     def ground(self, x, y) -> str:
         return GROUNDS[self.get(x, y)[0]].name
@@ -242,7 +231,7 @@ class World:
     def set(self, x: int, y: int, ground: str | None = None, block: str | None = None, level: int | None = None):
         c = self.chunk(x >> 5, y >> 5)
         i = (y & 31) * CHUNK + (x & 31)
-        if level is not None:                    # the raw level byte (height, with gen.RAMP for stairs)
+        if level is not None:                    # the height byte
             c.level[i] = level
         if ground is not None:
             c.ground[i] = G[ground]
@@ -256,7 +245,7 @@ class World:
 
     def passable(self, x: int, y: int) -> bool:
         g, b = self.get(x, y)
-        return GROUNDS[g].walkable and not BLOCKS[b].solid and not self.edge(x, y)
+        return GROUNDS[g].walkable and not BLOCKS[b].solid
 
     def set_meta(self, x, y, data: dict | None):
         if data:

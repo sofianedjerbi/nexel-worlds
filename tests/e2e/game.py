@@ -47,7 +47,7 @@ class Game:
         return self.js(f"combAt({x + dx}, {y + dy})")
 
     def stamp(self, dx, dy, rows, levels=None):
-        """Paint tiles relative to us; `levels`: optional rows of heights (a capital letter: stairs going south)."""
+        """Paint tiles relative to us; `levels`: optional rows of heights (digits)."""
         x, y = self.pos()
         self.rpc("dev_stamp", x=x + dx, y=y + dy, rows=rows, levels=levels or [])
         self.sleep(400)

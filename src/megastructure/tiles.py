@@ -94,8 +94,8 @@ BLOCKS = [
     Block("bare_bush", "v", flammable=True, hardness=4, drops={"fiber": 2}),            # picked: berries grow back
     Block("bare_fruit_tree", "U", flammable=True, hardness=12, drops={"wood": 3}, tool="axe", wall=True),  # picked
     Block("cave_wall", "R", hardness=14, drops={"stone": 1}, tool="pickaxe", wall=True),   # underground rock
-    Block("hole", "O", solid=False),          # dug down through the ground: go down here (to a ladder below)
-    Block("ladder", "l", solid=False),        # under a hole: climb back up here
+    Block("hole", "O", solid=False),          # dug down through the ground: walk onto it, you drop to the level below
+    Block("ladder", "l", solid=False),        # (old worlds: under a hole; just floor now)
 ]
 
 # Picking these leaves them bare (block, seconds until the fruit is back); digging the bare one removes it.

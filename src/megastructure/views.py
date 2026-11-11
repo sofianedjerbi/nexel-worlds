@@ -1,6 +1,5 @@
 """What spectators are sent about the part of the world they watch."""
 
-from .gen import RAMP
 from .tiles import DIRS, GROUNDS
 
 
@@ -47,7 +46,7 @@ class Views:
         rows = ["".join(world.char(i, j) for i in range(x, x + w)) for j in range(y, y + h)]
         ground = ["".join(GROUNDS[world.get(i, j)[0]].char for i in range(x, x + w)) for j in range(y, y + h)]
         # heights: a digit per tile, or a capital letter (A = 0, B = 1...) where stairs lead down to the south
-        levels = ["".join(chr((65 if v & RAMP else 48) + (v & 15)) for v in (world.level_raw(i, j) for i in range(x, x + w)))
+        levels = ["".join(chr(48 + (v & 15)) for v in (world.level_raw(i, j) for i in range(x, x + w)))
                   for j in range(y, y + h)]
         return {"x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
                 "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}

@@ -72,21 +72,14 @@ def test_walls_stop_you_and_turn_you(game):
     assert game.js("ents.get('agent' + myId).fx") == 1    # but you now face it
 
 
-def test_cliffs_stop_you_and_stairs_take_you_up(game):
-    # a hill two rows north: 7 wide, 6 deep, stairs (B: level 1, going down south) in the middle of its south edge
-    game.stamp(-3, -7, ["......."] * 6, levels=["1111111"] * 5 + ["11BB111"])
+def test_you_jump_up_a_layer_but_not_two(game):
+    # north of you: a ledge one layer up (2 rows), then ground three layers up
+    game.stamp(-3, -6, ["......."] * 5, levels=["3333333"] * 3 + ["1111111"] * 2)
     x, y = game.pos()
-    game.js(f"act('move_to', {{x: {x + 2}, y: {y}}})")          # under the cliff, beside the stairs
-    game.sleep(700)
-    game.hold(["w"], 700)                                       # walk north: one tile, then the cliff
-    game.sleep(400)
-    assert game.pos() == (x + 2, y - 1) == (game.server()["x"], game.server()["y"])
-    game.js(f"act('move_to', {{x: {x}, y: {y - 1}}})")          # to the stairs' landing
-    game.sleep(800)
-    game.hold(["w"], 900)                                       # up the stairs and onto the hill
-    game.sleep(400)
+    game.hold(["w"], 1100)                                      # one tile, a jump up, along the ledge, then the wall
+    game.sleep(500)
     s = game.server()
-    assert s["y"] <= y - 3 and game.pos() == (s["x"], s["y"])
+    assert (s["x"], s["y"]) == (x, y - 3) and game.pos() == (s["x"], s["y"])
     assert game.js(f"levelAt({s['x']}, {s['y']})") == 1
 
 
@@ -99,6 +92,8 @@ def test_hop_down_off_a_hill_edge(game):
     game.sleep(500)
     s = game.server()
     assert s["x"] <= x - 3 and game.js(f"levelAt({s['x']}, {s['y']})") == 0 and game.pos() == (s["x"], s["y"])
-    game.hold(["d"], 600)                                       # and no climbing back up the same edge
-    game.sleep(400)
-    assert game.server()["x"] == x - 3
+    low = s["x"]
+    game.hold(["d"], 700)                                       # and a jump back up the same edge
+    game.sleep(500)
+    s = game.server()
+    assert s["x"] > low and s["x"] >= x - 2 and game.js(f"levelAt({s['x']}, {s['y']})") == 1 and game.pos() == (s["x"], s["y"])

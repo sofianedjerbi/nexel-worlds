@@ -17,9 +17,11 @@ TOOL_SPECS = {
     "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped"},
     "stop": {"args": {}, "desc": "stop the current action"},
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
-    "dig_down": {"args": {"with": "pickaxe"}, "desc": "dig a cave mouth (pickaxe in hand): two tiles sloping down to the "
-                 "south, from where you stand. Walk south down it to go one level underground; walk north up the ramp "
-                 "below to come back. Caves are bigger and ore richer deeper down"},
+    "dig_down": {"args": {"with": "pickaxe"}, "desc": "dig down where you stand (pickaxe in hand). On a hill the ground "
+                 "comes down a layer with you; on the lowest ground you dig a hole and drop to the level below "
+                 "(depth in your stats). Walking onto any hole drops you too. To come back up, step toward open ground "
+                 "beside the hole above you: you jump up a layer. Up top you can jump onto ground one layer higher; "
+                 "higher than that, dig into it (dig with a pickaxe). Caves are bigger and ore richer deeper down"},
     "dig": {"args": {**DIR_ARG, "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)"},
             "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground (needs a hoe). By hand, "
                     "wood takes 4x and stone 6x as long as with an axe / pickaxe; ore needs a pickaxe"},
