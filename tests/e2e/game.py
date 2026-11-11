@@ -46,11 +46,11 @@ class Game:
         x, y = self.pos()
         return self.js(f"combAt({x + dx}, {y + dy})")
 
-    def stamp(self, dx, dy, rows, levels=None, roofs=None):
-        """Paint tiles relative to us; `levels`: optional rows of heights (digits, a-l below sea level); `roofs`:
-        the rock over each (a cave)."""
+    def stamp(self, dx, dy, rows, levels=None, roofs=None, heads=None):
+        """Paint tiles relative to us; `levels`: optional rows of heights (digits, a-l below sea level); `roofs`: how
+        much higher the land goes over a cave on that ground; `heads`: how many cells of that are empty (2 if not said)."""
         x, y = self.pos()
-        self.rpc("dev_stamp", x=x + dx, y=y + dy, rows=rows, levels=levels or [], roofs=roofs or [])
+        self.rpc("dev_stamp", x=x + dx, y=y + dy, rows=rows, levels=levels or [], roofs=roofs or [], heads=heads or [])
         self.sleep(400)
 
     def clear_area(self, r=10):
