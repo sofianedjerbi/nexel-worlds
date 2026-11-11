@@ -717,3 +717,10 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - User (fell into a hole on the islands world): "the screen is so ugly i don't understand a thing". Watched via ?follow=ben: the meadow above showed through the rock almost at full brightness (looked like where you are), while the caves you can walk in were darkened into brown pits: inverted.
 - Change: what's above is faded (saturate .35) and veiled (.6) so it reads as over you; your level's cave dark is lighter (.36 + .03/level, max .55) and your light reaches 6 tiles. Now the lit earth is where you are, the faded dark is rock.
 - Result: screenshot of ben's view reads at a glance (caves lit, rock dark, the hole beside him). World e2e green.
+
+## Iteration 55: lag, borders, and back to the approved look underground
+- User: "LAGGING", "weird borders", "the cave effect is totally absent", then "that dark view is so ugly, why does the whole surface turn into night, why don't I see the cave entrances we designed?"
+- Measured (a copy of the islands world, headed Chrome, Retina): underground 23 fps (43 ms median, 200 ms worst) vs 120 on the surface. Toggling parts: the canvas filter (saturate) used to fade the level above cost it all (23 -> 114 fps). JS time was ~1 ms a frame: the cost was GPU-side.
+- Change: no filter. The look underground back to the approved mockup: the meadow above in daylight, a shade dimmer (no night veil); your caves shaded a little (.45, deeper down a touch more), lit around you. Cave floors now round off along the rock (they counted rock tiles as floor: hard squares), the gap colour under the stack is the rock's, not black.
+- The cave entrances from the design were never in the game: now a hole on the surface shows the tunnels leaving it below (js/entrances.js): an opening cut into the wall behind it (its top drawn on the wall's tile, through the cliff face), shade under the edge to the sides and front. The level below is fetched for holes in view; holes redraw when it arrives.
+- Result: 121 fps underground (was 23). e2e green.

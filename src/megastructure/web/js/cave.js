@@ -29,7 +29,7 @@ function drawCave(vis, sx, sy, S, t, now) {
   const g = caveDark.getContext("2d");
   g.globalCompositeOperation = "source-over";
   g.clearRect(0, 0, W, H);
-  g.fillStyle = `rgba(14,10,18,${Math.min(.55, .36 + d * .03)})`;   // the cave's own dark: you still see its shape
+  g.fillStyle = `rgba(14,10,18,${Math.min(.6, .45 + d * .03)})`;   // the cave's own shade, deeper down a little darker
   g.fillRect(0, 0, W, H);
   g.globalCompositeOperation = "destination-out";
   const light = (x, y, r) => {

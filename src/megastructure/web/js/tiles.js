@@ -75,6 +75,8 @@ function onRegion(d) {
   const b = {bx, by, comb, gnd, lv, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
   comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
   blocks.set(k, b);
+  if (depthOf(bx * B) > 0)                             // (the holes above it show its tunnels: redraw them)
+    for (let i = 0; i < B * B; i++) { const x = bx * B + i % B - LAYER, y = by * B + (i / B | 0); if (combAt(x, y) === "O") { touch(x, y); touch(x, y - 1); } }
   // neighbours' edge tiles depend on this block for autotiling
   for (let i = 0; i < B; i++) { dirtyTiles.push(bx * B - 1, by * B + i, bx * B + B, by * B + i, bx * B + i, by * B - 1, bx * B + i, by * B + B); }
 }
@@ -130,11 +132,13 @@ function drawTile(x, y) {
   const under = depthOf(x) > 0;
   // a hole: the floor of the level below, and round it the edges of the ground it goes through (the pack's own:
   // the cliff face on its north side, the soft rim elsewhere), drawn on the tiles beside it
-  if (c === "O") { g.clearRect(ox, oy, 16, 16); drawBlobLayer(g, IMG.soil, x, y, () => true, ox, oy, .15); }
-  else if (nearHole(x, y)) drawBlobLayer(g, edgeSheet(under ? "hill3" : "hill1"), x, y, (cc) => cc !== "O", ox, oy, 0);
+  const floorish = (cc, gg) => cc !== "R" && cc !== "*" && (gg !== "-" || cc !== null);   // (underground: not the rock)
+  if (c === "O") { g.clearRect(ox, oy, 16, 16); drawBlobLayer(g, IMG.soil, x, y, under ? floorish : () => true, ox, oy, .15); }
+  if (c === "O") drawEntrances(g, x, y, ox, oy);
+  else if (nearHole(x, y)) { drawBlobLayer(g, edgeSheet(under ? "hill3" : "hill1"), x, y, (cc) => cc !== "O", ox, oy, 0); drawOpeningTop(g, x, y, ox, oy); }
   // underground: an earth floor, and the rock round the caves only as its stone edges: inside them, the level above
   // shows through (caveview.js), as if the rock between were cut away
-  if (gr === "-" && c !== "O") drawBlobLayer(g, IMG.soil, x, y, (cc, gg) => gg === "-", ox, oy, .15);
+  if (gr === "-" && c !== "O") drawBlobLayer(g, IMG.soil, x, y, (cc, gg) => gg === "-" && cc !== "R" && cc !== "*", ox, oy, .15);
   if (c === "R" || (c === "*" && gr === "-")) {
     g.clearRect(ox, oy, 16, 16);
     drawBlobLayer(g, edgeSheet("hill3"), x, y, (cc) => cc === "R" || cc === "*", ox, oy, 0);
@@ -178,13 +182,18 @@ function nearHole(x, y) {
   return false;
 }
 // A hill sheet with its top cleared: only its edges, rims and cliff faces (for holes, and the rock round caves)
-const EDGE_TOP = {hill1: [192, 212, 112], hill3: [193, 200, 185]}, edgeSheets = {};
+// (the rock's own, underground: "rock", the stone sheet's edges a good deal darker, so a cave's rim reads as rock,
+// not as a pale frame on the dark)
+const EDGE_TOP = {hill1: [192, 212, 112], hill3: [193, 200, 185], rock: [193, 200, 185]}, edgeSheets = {};
 function edgeSheet(name) {
   if (edgeSheets[name]) return edgeSheets[name];
-  const img = IMG[name], c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+  const img = IMG[name === "rock" ? "hill3" : name], c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
   const g = c.getContext("2d"); g.drawImage(img, 0, 0);
   const d = g.getImageData(0, 0, c.width, c.height), px = d.data, [r, gg, b] = EDGE_TOP[name];
-  for (let i = 0; i < px.length; i += 4) if (Math.abs(px[i] - r) + Math.abs(px[i + 1] - gg) + Math.abs(px[i + 2] - b) < 30) px[i + 3] = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    if (Math.abs(px[i] - r) + Math.abs(px[i + 1] - gg) + Math.abs(px[i + 2] - b) < 30) px[i + 3] = 0;
+    else if (name === "rock") { px[i] *= .52; px[i + 1] *= .5; px[i + 2] *= .5; }
+  }
   g.putImageData(d, 0, 0);
   return edgeSheets[name] = c;
 }

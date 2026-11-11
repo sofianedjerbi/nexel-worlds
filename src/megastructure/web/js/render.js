@@ -72,7 +72,7 @@ function frame(now) {
   // animated water underneath everything
   if (!waterPatterns) waterPatterns = [0, 1, 2, 3].map((f) => { const c = document.createElement("canvas"); c.width = c.height = 16; c.getContext("2d").drawImage(IMG.water, f * 16, 0, 16, 16, 0, 0, 16, 16); return ctx.createPattern(c, "repeat"); });
   ctx.save(); ctx.translate(ox, oy); ctx.scale(zoom, zoom);
-  ctx.fillStyle = depthOf(cam.x) ? "#1c161a" : waterPatterns[Math.floor(t * 3) % 4];   // underground: rock, not sea
+  ctx.fillStyle = depthOf(cam.x) ? "#9a9a7c" : waterPatterns[Math.floor(t * 3) % 4];   // underground: rock, not sea
   ctx.fillRect(-ox / zoom - 16, -oy / zoom - 16, W / zoom + 32, H / zoom + 32);
   ctx.restore();
   drawLevelsAbove(sx, sy, S, t);                     // underground: the levels over you, seen through the rock
