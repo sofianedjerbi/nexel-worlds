@@ -97,3 +97,21 @@ def test_nothing_generates_on_a_rim():
                 x, y = cx * CHUNK + i % CHUNK, cy * CHUNK + i // CHUNK
                 if v and any(gen_level(7, x + dx, y + dy) < v for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
                     assert block[i] == 0, (x, y)
+
+
+def test_the_land_has_biomes_mountains_rivers_and_sinkholes_into_caves():
+    from megastructure.gen import biome, gen_cave_open, gen_level, gen_tile, river
+    from megastructure.layers import LAYER
+    from megastructure.tiles import B
+    kinds, holes, rivers, top = set(), [], 0, 0
+    for y in range(-400, 400, 6):
+        for x in range(-400, 400, 6):
+            lv = gen_level(7, x, y)
+            top = max(top, lv)
+            kinds.add(biome(7, x, y, lv))
+            rivers += river(7, x, y)
+            if gen_tile(7, x, y, lv)[1] == B["hole"]:
+                holes.append((x, y))
+    assert kinds == {"plains", "forest", "highlands", "dry", "swamp", "mountain"} and top >= 8 and rivers
+    assert holes and all(gen_cave_open(7, x + LAYER, y, 1) for x, y in holes)     # a sinkhole: a cave right under it
+    assert biome(7, 10, 10, gen_level(7, 10, 10)) == "plains"                      # spawn: plains

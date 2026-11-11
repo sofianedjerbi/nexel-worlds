@@ -158,7 +158,20 @@ function groundMarks(g, x, y, gr, ox, oy) {
   if (gr === "_") g.drawImage(IMG.cobble, [16, 32, 0][Math.floor(hash(x, y, 9) * 3)], [16, 32, 48][Math.floor(hash(x, y, 10) * 3)], 16, 16, ox, oy, 16, 16);
 }
 
-const hillSheet = (k) => IMG["hill" + Math.min(3, k)];
+// Level k's sheet: grass (1-2), darker grass (3-4), stone above; each layer up a touch brighter, so terraces of the
+// same sheet still read as steps
+const hillSheets = {};
+function hillSheet(k) {
+  if (hillSheets[k]) return hillSheets[k];
+  const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 4 ? 1 + .04 * ((k - 1) % 2) : .92 + .024 * (k - 5);
+  if (f === 1) return hillSheets[k] = img;
+  const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+  const g = c.getContext("2d"); g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
+  for (let i = 0; i < px.length; i += 4) for (let j = 0; j < 3; j++) px[i + j] = Math.min(255, px[i + j] * f);
+  g.putImageData(d, 0, 0);
+  return hillSheets[k] = c;
+}
 function nearHole(x, y) {
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && combAt(x + dx, y + dy) === "O") return true;
   return false;

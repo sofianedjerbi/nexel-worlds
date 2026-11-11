@@ -52,31 +52,76 @@ def _picked(seed: int, x: int, y: int, cell: int, salt: int) -> tuple[bool, floa
     return (x - cx * cell) + (y - cy * cell) * cell == k, _hash(seed, cx, cy, salt + 1)
 
 
-PEAK = 3             # the highest level: bare stone
+PEAK = 5             # from this level up: bare stone (the mountains)
+TOP = 12             # the highest level
 
 
 def _elev(seed: int, x: int, y: int) -> float:
     return fbm(seed, x, y, 90, 1) + max(0.0, 0.25 - math.hypot(x, y) / 400)
 
 
+def _mount(seed: int, x: int, y: int) -> float:
+    """Where the mountain ranges are: long ridges (two octaves, then sharpened), only well inland."""
+    return fbm(seed, x, y, 150, 401, octaves=2)
+
+
+def river(seed: int, x: int, y: int) -> bool:
+    """Rivers: a winding line where a broad noise crosses its middle, two or three tiles wide, from the hills to the
+    sea; they cut canyons through the high ground."""
+    if math.hypot(x, y) < 18:
+        return False
+    v = fbm(seed, x, y, 170, 501, octaves=2)
+    return abs(v - 0.5) < 0.011 and _elev(seed, x, y) > 0.43
+
+
+def biome(seed: int, x: int, y: int, level: int) -> str:
+    """plains, forest, highlands, dry, swamp or mountain: from moisture, ruggedness and height."""
+    if level >= PEAK:
+        return "mountain"
+    moist = fbm(seed, x, y, 230, 301, octaves=2)
+    near = max(0.0, 1 - math.hypot(x, y) / 90)                  # round spawn: plains, a forest's edge
+    moist = moist * (1 - near) + min(0.53, max(0.44, moist)) * near
+    if moist > 0.6 and level == 0 and _elev(seed, x, y) < 0.5:
+        return "swamp"
+    if moist > 0.54:
+        return "forest"
+    if moist < 0.37:
+        return "dry"
+    if fbm(seed, x, y, 180, 311, octaves=2) > 0.56:
+        return "highlands"
+    return "plains"
+
+
 def gen_level(seed: int, x: int, y: int) -> int:
-    """Height, 0-3: terraced hills inland, rising to stone peaks; shores, water and the spawn meadow stay low."""
+    """Height, 0-12. The sea, shores and the spawn meadow stay low; inland the land rolls up in steps of one layer
+    (you jump them), steeper in the highlands, and the mountain ranges rise in stone terraces to 12 with cliffs you
+    have to dig through. Rivers cut down to the water."""
     if depth(x):
         return 0                     # underground is flat (its walls are cave rock)
     d = math.hypot(x, y)
     elev = _elev(seed, x, y)
-    if d < 14 or elev < 0.46:
+    if d < 14 or elev < 0.43 or river(seed, x, y):
         return 0
-    h = fbm(seed, x, y, 56, 61, octaves=2) + (elev - 0.46) * 0.6     # two octaves: long, straight-ish cliffs
-    return 0 if h < 0.65 else 1 if h < 0.73 else 2 if h < 0.81 else PEAK    # ~65% low, 15% / 12% terraces, 8% peaks
+    inland = min(1.0, (elev - 0.43) / 0.12) * min(1.0, (d - 14) / 30)       # (rising from the shore, and from spawn)
+    rugged = fbm(seed, x, y, 180, 311, octaves=2)
+    roll = fbm(seed, x, y, 40, 61, octaves=3)                                 # rolling ground
+    h = max(0.0, roll - 0.42) * (5 + 10 * max(0.0, rugged - 0.45))
+    m = _mount(seed, x, y)
+    if m > 0.58:                                                              # a range: up to the peaks
+        h += (m - 0.58) * 70 + fbm(seed, x, y, 16, 71, octaves=2) * 2
+    return max(0, min(TOP, int(h * inland)))
+
+
+def gen_cave_open(seed: int, x: int, y: int, d: int) -> bool:
+    lx, s = x - d * LAYER, seed + 7919 * d
+    return fbm(s, lx, y, 7 + 4 * min(d, 8), 91) > 0.63 - 0.004 * min(d, 8)
 
 
 def gen_cave(seed: int, x: int, y: int, d: int) -> tuple[int, int]:
     """Underground, `d` levels down: solid rock with caves, larger the deeper you go, ore richer too, the odd
     mushroom on a cave floor."""
     lx, s = x - d * LAYER, seed + 7919 * d
-    open_ = fbm(s, lx, y, 7 + 4 * min(d, 8), 91) > 0.63 - 0.004 * min(d, 8)
-    if open_:
+    if gen_cave_open(seed, x, y, d):
         return G["cave_floor"], B["mushroom"] if _hash(s, lx, y, 93) < .005 else B["none"]
     return G["cave_floor"], B["ore"] if _hash(s, lx, y, 92) < .03 + .015 * min(d, 10) else B["cave_wall"]
 
@@ -85,42 +130,63 @@ def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
     d0 = depth(x)
     if d0:
         return gen_cave(seed, x, y, d0)
-    # big calm islands; the spawn area around the origin is lifted into an open meadow
     d = math.hypot(x, y)
     elev = _elev(seed, x, y)
     if elev < 0.34:
         return G["deep_water"], B["none"]
-    if elev < 0.41:
+    if elev < 0.41 or (level == 0 and river(seed, x, y)):
         return G["water"], B["none"]
     if elev < 0.425:
         return G["dirt"], B["none"]  # thin sandy shore
-    if level >= PEAK:                # stone peaks: boulders and ore, nothing grows
-        cand, roll = _picked(seed, x, y, 3, 81)
-        return G["grass"], (B["ore"] if roll < 0.25 else B["rock"]) if cand and roll < 0.55 else B["none"]
-    meadow = d < 6  # a small clearing at spawn; trees and bushes are in view from the start
-    ground = G["grass"] if level or fbm(seed, x, y, 30, 2) > 0.3 else G["dirt"]   # hills are grassy
-    if meadow:
-        return G["grass"], B["none"]
-
-    grove = fbm(seed, x, y, 48, 4)
-    stones = fbm(seed, x, y, 34, 5)
-    # groves: trees on a 2x2 jittered grid, denser toward the grove centre
+    if d < 6:
+        return G["grass"], B["none"]  # a small clearing at spawn; trees and bushes are in view from the start
+    kind = biome(seed, x, y, level)
     cand, roll = _picked(seed, x, y, 2, 11)
-    if grove > 0.6 and cand and roll < min(0.95, (grove - 0.6) * 6):
-        return G["grass"], (B["fruit_tree"] if _hash(seed, x, y, 29) < 0.15 else B["tree"])
-    # grove edges: berry bushes, sparse
+    cand3, roll3 = _picked(seed, x, y, 3, 81)
     cand4, roll4 = _picked(seed, x, y, 4, 13)
-    if 0.56 < grove <= 0.61 and cand4 and roll4 < 0.35:
-        return G["grass"], B["berry_bush"]
-    if grove > 0.6 and _hash(seed, x, y, 17) < 0.025:
-        return G["grass"], B["mushroom"]
-    # small boulder fields, a few with ore
-    if stones > 0.76 and cand and roll < 0.6:
-        return ground, (B["ore"] if _hash(seed, x, y, 19) < 0.18 else B["rock"])
-    # lone features scattered over open meadow
-    if ground == G["grass"] and fbm(seed, x, y, 14, 6) > 0.68 and _hash(seed, x, y, 31) < 0.16:
-        return ground, B["flower"]
     cand11, roll11 = _picked(seed, x, y, 11, 23)
+    grove = fbm(seed, x, y, 48, 4)
+    if kind == "mountain":            # stone: boulders and ore here and there, nothing grows
+        cand5, roll5 = _picked(seed, x, y, 5, 83)
+        if cand5 and roll5 < 0.45 and fbm(seed, x, y, 12, 84) > 0.45:
+            return G["grass"], B["ore"] if roll5 < 0.15 else B["rock"]
+        return G["grass"], B["none"]
+    if level == 0 and d > 24 and gen_cave_open(seed, x + LAYER, y, 1) and _hash(seed, x // 9, y // 9, 37) < 0.25 \
+            and _hash(seed, x, y, 38) < 0.08:
+        return G["grass"], B["hole"]  # a sinkhole: a cave right under it
+    if kind == "swamp":               # pools, thickets, mushrooms
+        if fbm(seed, x, y, 9, 41) > 0.6:
+            return G["water"], B["none"]
+        if cand4 and roll4 < 0.5:
+            return G["grass"], B["thicket"] if roll4 < 0.3 else B["mushroom"]
+        if cand11 and roll11 < 0.3:
+            return G["grass"], B["tree"]
+        return G["grass"], B["none"]
+    if kind == "forest":              # trees close together, fruit, berries and mushrooms under them
+        if cand and roll < 0.55 + 0.4 * max(0.0, grove - 0.5):
+            return G["grass"], (B["fruit_tree"] if _hash(seed, x, y, 29) < 0.12 else B["tree"])
+        if cand4 and roll4 < 0.3:
+            return G["grass"], B["berry_bush"] if roll4 < 0.18 else B["mushroom"]
+        return G["grass"], B["none"]
+    if kind == "dry":                 # bare earth with patches of grass, stones, the odd lone tree
+        ground = G["dirt"] if fbm(seed, x, y, 20, 2) > 0.5 else G["grass"]
+        if cand4 and roll4 < 0.22:
+            return ground, B["rock"] if roll4 < 0.16 else B["ore"]
+        if cand11 and roll11 < 0.2:
+            return ground, B["tree"] if roll11 < 0.12 else B["berry_bush"]
+        return ground, B["none"]
+    # plains and highlands: meadows, flowers, groves here and there, boulders up high
+    ground = G["grass"] if level or fbm(seed, x, y, 30, 2) > 0.3 else G["dirt"]
+    if grove > 0.62 and cand and roll < min(0.9, (grove - 0.62) * 6):
+        return G["grass"], (B["fruit_tree"] if _hash(seed, x, y, 29) < 0.15 else B["tree"])
+    if 0.58 < grove <= 0.63 and cand4 and roll4 < 0.35:
+        return G["grass"], B["berry_bush"]
+    if kind == "highlands" and cand3 and roll3 < 0.08:
+        return ground, B["rock"]
+    if fbm(seed, x, y, 34, 5) > 0.76 and cand and roll < 0.6:
+        return ground, (B["ore"] if _hash(seed, x, y, 19) < 0.18 else B["rock"])
+    if ground == G["grass"] and fbm(seed, x, y, 14, 6) > 0.66 and _hash(seed, x, y, 31) < 0.2:
+        return ground, B["flower"]
     if cand11:
         if roll11 < 0.18:
             return ground, B["tree"]
