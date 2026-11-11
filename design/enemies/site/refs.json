@@ -1,1 +1,1 @@
-[{"label": "player", "box": [0, 0, 14, 16]}, {"label": "cow", "box": [14, 0, 27, 18]}, {"label": "chicken", "box": [41, 0, 11, 12]}, {"label": "gloom", "box": [52, 0, 15, 11]}]
+[{"label": "player", "box": [0, 0, 14, 18]}, {"label": "cow", "box": [14, 0, 27, 18]}, {"label": "chicken", "box": [41, 0, 11, 18]}, {"label": "gloom", "box": [52, 0, 15, 18]}]

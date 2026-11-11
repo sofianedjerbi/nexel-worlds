@@ -1,11 +1,13 @@
-"""Build the enemy sheet and the showcase data from sprites.py.
+"""Build one sheet per enemy and the showcase data.
 
-    uv run --with pillow python design/enemies/build.py
+    uv run --with pillow python design/enemies/build.py            everything -> design/enemies/site/
+    uv run --with pillow python design/enemies/build.py tusker out.png     a big preview of one enemy (for drawing)
 
-Writes design/enemies/site/: enemies.png (every frame, one row per enemy), enemies.json (names, text, frame boxes, animations),
-refs.png (the player, a cow, a chicken and the gloom from the game's own art, for scale).
+A sheet is laid out like the game's character.png: one row per direction (down, up, left, right), one column per frame
+(the walk frames, then the action frames). Right is left mirrored. Sprites stand on the bottom centre of their cell.
 """
 
+import importlib
 import json
 import sys
 from pathlib import Path
@@ -14,47 +16,64 @@ from PIL import Image
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-import sprites  # noqa: E402
+from art import mirror  # noqa: E402
 
 SITE = HERE / "site"
 ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
+ORDER = ["tusker", "stilt", "pincer", "adder", "lampwing", "strawman", "snapjaw"]
+DIRS = ["down", "up", "left", "right"]
+SHADOW = (60, 40, 30, 70)
+FOOT = 2                       # empty pixels under the sprite in its cell
 
 
 def rgba(h):
     return tuple(int(h[i:i + 2], 16) for i in range(0, len(h), 2)) + ((255,) if len(h) == 6 else ())
 
 
-PAL = {k: rgba(v) for k, v in sprites.PAL.items()}
+def load(key):
+    return importlib.import_module(f"roster.{key}").ENEMY
 
 
-def draw(rows, size, name):
-    img = Image.new("RGBA", (size, size))
+def cell_image(g, pal, cell, name):
+    cw, chh = cell
+    h, w = len(g), len(g[0])
+    assert w <= cw and h + FOOT <= chh, f"{name}: {w}x{h} does not fit a {cw}x{chh} cell"
+    img = Image.new("RGBA", cell)
     px = img.load()
-    assert len(rows) <= size, f"{name}: {len(rows)} rows in a {size}px frame"
-    for y, row in enumerate(rows):
-        assert len(row) <= size, f"{name} row {y}: {len(row)} wide in a {size}px frame: {row!r}"
+    x0, y0 = (cw - w) // 2, chh - FOOT - h
+    for y, row in enumerate(g):
+        assert len(row) == w, f"{name} row {y}: {len(row)} wide, expected {w}"
         for x, ch in enumerate(row):
-            if ch != " ":
-                assert ch in PAL, f"{name} row {y}: unknown colour {ch!r}"
-                px[x, y] = PAL[ch]
+            if ch == ".":
+                continue
+            assert ch in pal, f"{name} row {y}: unknown colour {ch!r}"
+            px[x0 + x, y0 + y] = pal[ch]
     return img
 
 
-def build():
-    SITE.mkdir(exist_ok=True)
-    cell = max(e["size"] for e in sprites.ENEMIES.values())
-    cols = max(len(e["frames"]) for e in sprites.ENEMIES.values())
-    sheet = Image.new("RGBA", (cols * cell, len(sprites.ENEMIES) * cell))
-    meta = {}
-    for r, (key, e) in enumerate(sprites.ENEMIES.items()):
-        boxes = {}
-        for c, (fname, rows) in enumerate(e["frames"].items()):
-            sheet.alpha_composite(draw(rows, e["size"], f"{key}.{fname}"), (c * cell, r * cell))
-            boxes[fname] = [c * cell, r * cell, e["size"], e["size"]]
-        meta[key] = {k: e[k] for k in ("name", "size", "where", "when", "role", "behaviour", "stats", "anim")} | {"frames": boxes}
-    sheet.save(SITE / "enemies.png")
-    (SITE / "enemies.json").write_text(json.dumps(meta, indent=1))
+def sheet(e):
+    pal = {k: rgba(v) for k, v in e["pal"].items()} | {"s": SHADOW}
+    dirs = dict(e["dirs"])
+    dirs.setdefault("right", {k: [mirror(g) for g in v] for k, v in dirs["left"].items()})
+    names = [(a, i) for a in ("walk", "act") for i in range(len(dirs["down"][a]))]
+    cw, chh = e["cell"]
+    img = Image.new("RGBA", (cw * len(names), chh * 4))
+    for r, d in enumerate(DIRS):
+        for c, (a, i) in enumerate(names):
+            img.alpha_composite(cell_image(dirs[d][a][i], pal, e["cell"], f"{e['key']}.{d}.{a}{i}"), (c * cw, r * chh))
+    anims = {a: [c for c, (b, _) in enumerate(names) if b == a] for a in ("walk", "act")}
+    return img, anims
 
+
+def preview(key, out, k=10):
+    img, _ = sheet(load(key))
+    bg = Image.new("RGBA", img.size, (155, 201, 132, 255))
+    bg.alpha_composite(img)
+    bg.resize((img.width * k, img.height * k), Image.NEAREST).save(out)
+    print(out, img.size)
+
+
+def references():
     sources = [("player", "character.png", (0, 0, 48, 48)), ("cow", "cow.png", (0, 0, 32, 32)),
                ("chicken", "chicken.png", (0, 0, 16, 16)), ("gloom", "gen.png", (48, 0, 64, 16))]
     crops = []
@@ -64,14 +83,31 @@ def build():
     refs = Image.new("RGBA", (sum(c.width for _, c in crops), max(c.height for _, c in crops)))
     boxes, x = [], 0
     for label, c in crops:
-        refs.alpha_composite(c, (x, 0))
-        boxes.append({"label": label, "box": [x, 0, c.width, c.height]})
+        refs.alpha_composite(c, (x, refs.height - c.height))
+        boxes.append({"label": label, "box": [x, 0, c.width, refs.height]})
         x += c.width
     refs.save(SITE / "refs.png")
     (SITE / "refs.json").write_text(json.dumps(boxes))
 
-    print(f"{len(meta)} enemies, {sum(len(m['frames']) for m in meta.values())} frames -> {SITE}")
+
+def build():
+    (SITE / "sheets").mkdir(parents=True, exist_ok=True)
+    meta = []
+    for key in ORDER:
+        e = load(key)
+        img, anims = sheet(e)
+        img.save(SITE / "sheets" / f"{key}.png")
+        box = img.getbbox()
+        meta.append({k: v for k, v in e.items() if k not in ("pal", "dirs")} | {
+            "sheet": f"sheets/{key}.png", "anims": anims, "palette": [v for v in e["pal"].values() if len(v) == 6],
+            "frames": img.width // e["cell"][0], "tall": box[3] - box[1]})
+    (SITE / "enemies.json").write_text(json.dumps(meta, indent=1))
+    references()
+    print(f"{len(meta)} enemies, {sum(m['frames'] * 4 for m in meta)} frames -> {SITE}")
 
 
 if __name__ == "__main__":
-    build()
+    if len(sys.argv) == 3:
+        preview(sys.argv[1], sys.argv[2])
+    else:
+        build()
