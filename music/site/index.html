@@ -18,7 +18,7 @@
       radial-gradient(circle at 85% 80%, #bfe3f2 0, transparent 45%), var(--sky);
     display:flex; justify-content:center; padding:36px 16px 60px;
   }
-  main { width:min(960px, 100%); }
+  main { width:min(1040px, 100%); }
   header { text-align:center; margin-bottom:18px; }
   h1 { margin:0; font-size:34px; font-weight:900; letter-spacing:.2px; }
   .sub { color:var(--ink2); margin-top:6px; font-weight:700; }
@@ -52,7 +52,7 @@
     font-size:13px; margin-top:6px; font-variant-numeric:tabular-nums; }
   h2 { margin:0 0 12px; font-size:18px; font-weight:900; }
   h2 small { color:var(--ink2); font-weight:700; font-size:13px; margin-left:6px; }
-  #stems { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; }
+  #stems { display:grid; grid-template-columns:repeat(7, 1fr); gap:10px; }
   .stem { border:2px solid var(--line); border-radius:12px; padding:10px; background:#fffaf0;
     display:flex; flex-direction:column; gap:8px; align-items:center; transition:opacity .15s; }
   .stem.off { opacity:.45; }
@@ -98,24 +98,25 @@
   <section class="card">
     <h2>How it's made</h2>
     <div class="notes">
-      <div><b>Hook first:</b> the theme starts in bar 1 and comes back every 30 to 40 s. A rising fifth, D up to A, short-long-short.</div>
-      <div><b>Shape:</b> call and answer. The first answer goes low, the second reaches once to B, then rests on a sus chord that pulls home.</div>
-      <div><b>Awake, not sleepy:</b> 75 BPM, a shorter, drier room, piano up front, a light pad, a plucked bass pulse, a soft off-beat shaker.</div>
-      <div><b>Chiptune:</b> a soft pulse bell doubles the theme in section 2 and leads alone in section 5.</div>
-      <div><b>Long play:</b> two breathers without the theme. Music box on a 12-bar cycle, so each pass differs a little.</div>
-      <div><b>Checks:</b> one key, registers never overlap, no clashing notes. Seamless 154 s loop. <a href="audio/master.wav" download>Download</a></div>
+      <div><b>Hook:</b> climb D, A, high D, then fall C, G, E. Up on D major, down on a borrowed C major: the "setting out" colour.</div>
+      <div><b>Shape:</b> the climb and the fall come back on Bm and G. It ends C# to D, a leading tone that pulls you home into the loop.</div>
+      <div><b>Distinct voices:</b> breathy ocarina, nasal chip square, plucked harp, bowed strings, pizzicato bass, metal glockenspiel, felt piano.</div>
+      <div><b>Sections:</b> theme, march (frame drum), a quiet piano breather, the chip theme, all together, fragments on glockenspiel.</div>
+      <div><b>Long play:</b> 80 BPM, the theme from bar 1, a breather every lap. Seamless 144 s loop. <a href="audio/master.wav" download>Download</a></div>
+      <div><b>Checks:</b> one key plus one borrowed chord, registers never overlap, no clashing notes, every section balanced by measurement.</div>
     </div>
   </section>
 </main>
 
 <script>
 const STEM_INFO = {
-  piano:    { what: "felt piano: the theme and the rolling left hand", color: "#e48a7a" },
-  chip:     { what: "soft chiptune bell, doubles then leads",          color: "#e6b44f" },
-  pad:      { what: "light warm pad",                                  color: "#8fb3e0" },
-  bass:     { what: "round plucked bass, beats 1 and 3",               color: "#8d6bb5" },
-  musicbox: { what: "far music box, 12-bar cycle",                     color: "#5fb8b0" },
-  texture:  { what: "off-beat shaker, wind, glass swells",             color: "#6fae78" },
+  lead:    { what: "ocarina: breathy, singing vibrato",   color: "#e48a7a" },
+  chip:    { what: "12.5% chip square: nasal, slides in", color: "#e6b44f" },
+  harp:    { what: "plucked harp ostinato",               color: "#d99bc4" },
+  strings: { what: "bowed string ensemble",               color: "#8fb3e0" },
+  bass:    { what: "pizzicato upright bass",              color: "#8d6bb5" },
+  keys:    { what: "glockenspiel accents, felt piano",    color: "#5fb8b0" },
+  perc:    { what: "frame drum march, shaker, wind",      color: "#6fae78" },
 };
 const SEC_COLORS = { 1: "#d9e8d0", 2: "#f7e0a3", 3: "#f4c6b6", 4: "#cfe0f0", 5: "#f7e0a3", 6: "#e3d6ef" };
 const SEC_RGB = { 1: [217,232,208], 2: [247,224,163], 3: [244,198,182], 4: [207,224,240], 5: [247,224,163], 6: [227,214,239] };
