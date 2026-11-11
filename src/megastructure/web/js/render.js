@@ -4,6 +4,7 @@
 //  Frame
 // =====================================================================================
 let lastT = performance.now(), waterPatterns = null, arrivingNow = true;
+const pileSince = new Map();   // when each pile on the ground was first shown (its hover starts from rest)
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.1, (now - lastT) / 1000); lastT = now;
@@ -108,6 +109,7 @@ function frame(now) {
   // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
   for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y)) list.push({y: p.y + .01, p});
   for (const [ix, iy, pile] of groundItems) list.push({y: iy - .01, x: ix, ty: iy, pile});   // (ty: its tile; y sorts)
+  if (pileSince.size) { const here = new Set(groundItems.map(([ix, iy]) => ix + "," + iy)); for (const k of pileSince.keys()) if (!here.has(k) || lootAt(...k.split(",").map(Number))) pileSince.delete(k); }
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)
   drawOrbs(sx, sy, S, dt, list);
   list.sort((a, b) => a.y - b.y || a.x - b.x);
@@ -131,9 +133,12 @@ function frame(now) {
     else if (o.pile) {
       if (lootAt(o.x, o.ty)) continue;                // its loot is still hopping in: the pile shows once it lands
       // a gentle hover, smooth to the screen pixel (whole art pixels made it tick between three heights)
-      const names = Object.keys(o.pile), lift = (Math.sin(t * 2.4 + o.x * 1.3 + o.y) + 1) / 2, sz = 10 * zoom;
-      const cx = sx(o.x) + S / 2, cy = sy(o.y, o.x) + S / 2, bob = lift * 2 * zoom;
-      ctx.fillStyle = `rgba(60,40,30,${.28 - lift * .1})`; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, (4 - lift * .8) * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
+      // (just landed: it starts from rest, where the drop came down, and eases into its hover: no jump)
+      const key = o.x + "," + o.ty; if (!pileSince.has(key)) pileSince.set(key, now);
+      const settle = smooth((now - pileSince.get(key)) / 700);
+      const names = Object.keys(o.pile), lift = settle * (Math.sin((now - pileSince.get(key)) / 1000 * 2.4 - Math.PI / 2) + 1) / 2, sz = 10 * zoom;
+      const cx = sx(o.x) + S / 2, cy = sy(o.ty, o.x) + S / 2, bob = lift * 2 * zoom;
+      ctx.fillStyle = `rgba(60,40,30,${.25 - lift * .1})`; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, (4 - lift * .8) * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
       names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), Math.round(cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom), Math.round((cy - sz / 2 - bob) * DPR) / DPR, sz, sz));
     }
     else if (o.fx) o.fx();

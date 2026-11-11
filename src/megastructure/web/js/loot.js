@@ -27,12 +27,18 @@ function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list
       const b = s - l.flight, hops = [.16, .08];
       let t = b, n = 0;
       while (n < hops.length && t > hops[n]) t -= hops[n++];
-      if (n >= hops.length) { loot.splice(i, 1); continue; }
-      const up = LOOT_G * hops[n] / 2;
-      h = up * t - LOOT_G * t * t / 2; dxk = 1;
+      if (n >= hops.length) {                                     // landed: it rests there until all that dropped with it
+        l.done = true;                                             // have too, then they all hand over to the pile at once
+        if (loot.every((m) => m.x !== l.x || m.y !== l.y || m.done)) { for (let j = loot.length - 1; j >= 0; j--) if (loot[j].x === l.x && loot[j].y === l.y) loot.splice(j, 1); i = Math.min(i, loot.length); continue; }
+        h = 0; dxk = 1; l.since = 1;
+      } else {
+        const up = LOOT_G * hops[n] / 2;
+        h = up * t - LOOT_G * t * t / 2; dxk = 1; l.since = t;
+      }
     }
     const cx = sx(l.x) + S / 2 + l.slot * dxk * S, ground = sy(l.y, l.x) + S / 2;
-    const squash = h < .02 && s > l.flight ? 1 : 0;                 // a pixel flatter as it touches down
+    const squash = s > l.flight && l.since < .05 ? 1 : 0;           // a pixel flatter just as it touches down (only then:
+                                                                    //  it ends at rest, exactly as the pile then shows)
     list.push({y: l.y - .01, x: l.x, fx: () => {
       ctx.fillStyle = "rgba(60,40,30,.25)";
       ctx.beginPath(); ctx.ellipse(cx, ground + 5 * z, Math.max(1, 4 - h * 4) * z, 1.5 * z, 0, 0, 7); ctx.fill();
