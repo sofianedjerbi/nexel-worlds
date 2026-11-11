@@ -134,17 +134,21 @@ function buildRelief(b) { for (const _ of reliefSteps(b)); b.reliefDirty = false
 // A block's ground, with its levels stacked
 function drawBlockRelief(b, sx, sy, S) {
   const X = sx(b.bx * B), Y = sy(b.by * B);
-  ctx.drawImage(b.canvas, X, Y, B * S, B * S);
-  // (re)built in steps, within a few ms a frame across all blocks; until done, what was there stays on screen
-  if (b.reliefDirty || !b.relief) { if (!b.reliefGen || b.reliefDirty) { b.reliefGen = reliefSteps(b); b.reliefDirty = false; } }
+  // built in steps, within a few ms a frame across all blocks. A block never built isn't shown until it is (never its
+  // flat ground, which would then jump up); one rebuilt keeps showing what it was until the new one is ready.
+  if (!b.relief && !b.reliefGen) b.reliefGen = reliefSteps(b);
+  else if (b.relief && b.reliefDirty) { b.reliefGen = reliefSteps(b); }
+  b.reliefDirty = false;
   const now = performance.now();
   if (now - reliefBudgetAt > 8) { reliefBudgetAt = now; reliefSpent = 0; }
-  while (b.reliefGen && reliefSpent < 4 && !freshThisFrame) {
+  const here = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B))), loading = !here || !here.relief;
+  while (b.reliefGen && reliefSpent < (loading ? 40 : 6) && (loading || !freshThisFrame)) {   // (loading: nothing on screen yet, so more)
     const t0 = performance.now(), r = b.reliefGen.next();
     reliefSpent += performance.now() - t0;
     if (r.done) b.reliefGen = null;
   }
   if (!b.relief) return;
+  ctx.drawImage(b.canvas, X, Y, B * S, B * S);
   for (let k = 1; k <= b.relief.maxLv; k++) {
     const c = b.relief.layers[k];
     if (c) ctx.drawImage(c, X, Y - shOf(k) * zoom, B * S, (B * 16 + WALL_M) * zoom);

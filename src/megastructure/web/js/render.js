@@ -80,9 +80,12 @@ function frame(now) {
   const sx = (x) => ox + x * S, sy = (y, x) => oy + y * S - (x === undefined ? 0 : liftOf({x, y}));
   // animated water underneath everything
   if (!waterPatterns) waterPatterns = [0, 1, 2, 3].map((f) => { const c = document.createElement("canvas"); c.width = c.height = 16; c.getContext("2d").drawImage(IMG.water, f * 16, 0, 16, 16, 0, 0, 16, 16); return ctx.createPattern(c, "repeat"); });
+  // underneath: plain dark (what hasn't come yet is not the sea); under each block that's ready, its water (or, down
+  // there, its rock), so the sea shows only where there is sea
+  ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H);
   ctx.save(); ctx.translate(ox, oy); ctx.scale(zoom, zoom);
-  ctx.fillStyle = depthOf(cam.x) ? "#9a9a7c" : waterPatterns[Math.floor(t * 3) % 4];   // underground: rock, not sea
-  ctx.fillRect(-ox / zoom - 16, -oy / zoom - 16, W / zoom + 32, H / zoom + 32);
+  ctx.fillStyle = depthOf(cam.x) ? "#9a9a7c" : waterPatterns[Math.floor(t * 3) % 4];
+  for (const b of vis) if (b.relief) ctx.fillRect(b.bx * B * 16, b.by * B * 16, B * 16, B * 16);
   ctx.restore();
   drawLevelsAbove(sx, sy, S, t);                     // underground: the levels over you, seen through the rock
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
