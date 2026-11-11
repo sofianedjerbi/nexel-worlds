@@ -3,7 +3,7 @@
 // sheet's own edges round its caves (tiles.js), so through it you see what's above: the caves over you, the meadow
 // and its holes. Only your own level's caves are dark (cave.js), lit by you and torches.
 
-const ABOVE_DIM = .22;                     // each level up, this much dimmer
+const ABOVE_DIM = .12, ABOVE_VEIL = .6;    // each level up this much dimmer; then all of it veiled, faded: it's over you
 
 // A level `k` above this one (k >= 1): its ground, then its things in depth order
 function drawLevelAbove(k, sx, sy, S, t) {
@@ -32,8 +32,12 @@ function drawLevelAbove(k, sx, sy, S, t) {
 // Called before this level's ground is drawn: underground, every level above it, from the top down
 function drawLevelsAbove(sx, sy, S, t) {
   const d = depthOf(cam.x);
+  if (!d) return;
+  ctx.filter = "saturate(.35)";                            // (faded: what's above is not where you are)
   for (let k = d; k >= 1; k--) {
     drawLevelAbove(k, sx, sy, S, t);
     ctx.fillStyle = `rgba(28,22,34,${ABOVE_DIM})`; ctx.fillRect(0, 0, W, H);
   }
+  ctx.filter = "none";
+  ctx.fillStyle = `rgba(22,18,30,${ABOVE_VEIL})`; ctx.fillRect(0, 0, W, H);
 }

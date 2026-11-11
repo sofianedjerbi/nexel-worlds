@@ -29,7 +29,7 @@ function drawCave(vis, sx, sy, S, t, now) {
   const g = caveDark.getContext("2d");
   g.globalCompositeOperation = "source-over";
   g.clearRect(0, 0, W, H);
-  g.fillStyle = `rgba(14,10,18,${Math.min(.75, .55 + d * .04)})`;   // the cave's own dark: darker deeper down
+  g.fillStyle = `rgba(14,10,18,${Math.min(.55, .36 + d * .03)})`;   // the cave's own dark: you still see its shape
   g.fillRect(0, 0, W, H);
   g.globalCompositeOperation = "destination-out";
   const light = (x, y, r) => {
@@ -37,7 +37,7 @@ function drawCave(vis, sx, sy, S, t, now) {
     gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(.55, "rgba(0,0,0,.75)"); gr.addColorStop(1, "rgba(0,0,0,0)");
     g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
   };
-  for (const p of ents.values()) if (p.e && p.e.kind === "agent") light(sx(p.x) + S / 2, sy(p.y) + S / 2, S * 4.5);
+  for (const p of ents.values()) if (p.e && p.e.kind === "agent") light(sx(p.x) + S / 2, sy(p.y) + S / 2, S * 6);
   for (const b of vis) for (const [i, c] of b.objs) {
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (c === "^" || c === "x") light(sx(x) + S / 2, sy(y) + S / 2, S * (5 + .3 * Math.sin(t * 13 + x)));

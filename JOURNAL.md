@@ -712,3 +712,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Measured: 60 fps on plains and over mountains (1400x900, zoom 2). Screenshots: terraces 1/2/3 layers up read as three heights; mountain terraces show stone walls.
 - Result: 195 unit + 54 e2e green (test_a_click_picks_on_the_move failed once in the full run, passes 3/3 alone: the known flaky one). New e2e: higher ground drawn higher, clicks find it.
 - Known: a sprite standing just north of a much higher tile is drawn over that tile's raised top (sprites are drawn after all the ground); a one-layer drop from level 1 to 0 is still the sheet's thin face while higher ones get a 6 px wall each.
+
+## Iteration 54: underground you could not tell where you were
+- User (fell into a hole on the islands world): "the screen is so ugly i don't understand a thing". Watched via ?follow=ben: the meadow above showed through the rock almost at full brightness (looked like where you are), while the caves you can walk in were darkened into brown pits: inverted.
+- Change: what's above is faded (saturate .35) and veiled (.6) so it reads as over you; your level's cave dark is lighter (.36 + .03/level, max .55) and your light reaches 6 tiles. Now the lit earth is where you are, the faded dark is rock.
+- Result: screenshot of ben's view reads at a glance (caves lit, rock dark, the hole beside him). World e2e green.
