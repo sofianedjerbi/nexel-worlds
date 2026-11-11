@@ -18,3 +18,4 @@ dist/
 music/site/audio/
 music/*.wav
 music/site/sfx/
+music/site/opus/

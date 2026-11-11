@@ -1,0 +1,39 @@
+{
+ "place": {
+  "fence": "place_post",
+  "gate": "place_post",
+  "sign": "place_post",
+  "flag": "place_post",
+  "wood_wall": "place_planks",
+  "door": "place_planks",
+  "stone_wall": "place_stone",
+  "well": "place_stone",
+  "workbench": "place_furniture",
+  "table": "place_furniture",
+  "chair": "place_furniture",
+  "chest": "place_furniture",
+  "mailbox": "place_furniture",
+  "clock": "place_furniture",
+  "coop": "place_furniture",
+  "trough": "place_furniture",
+  "rug": "place_soft",
+  "picnic_blanket": "place_soft",
+  "bed": "place_soft",
+  "hay": "place_soft",
+  "basket": "place_soft",
+  "plant": "place_pot",
+  "seed": "plant",
+  "flower": "plant",
+  "campfire": "place_fire",
+  "boat": "place_boat",
+  "plank (floor, bridge)": "place_floor",
+  "path (cobble)": "place_path",
+  "dirt (fill)": "fill_dirt"
+ },
+ "use": {
+  "open a chest": "chest",
+  "open a door or gate": "gate",
+  "write a sign": "write",
+  "light a campfire": "whoosh"
+ }
+}

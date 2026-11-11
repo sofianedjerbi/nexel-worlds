@@ -34,6 +34,13 @@
   "open a chest": "chest",
   "open a door or gate": "gate",
   "write a sign": "write",
-  "light a campfire": "whoosh"
+  "light a campfire": "whoosh",
+  "eat": "eat",
+  "water the crops": "pour",
+  "fill a bucket": "fill",
+  "board or moor a boat": "water",
+  "hit a tree bare-handed": "punch",
+  "hit a chicken": "squawk",
+  "talk": "say"
  }
 }

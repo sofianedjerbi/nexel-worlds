@@ -1,5 +1,11 @@
 """Meadow Road: calm, neutral background music in the spirit of early sandbox-game ambient. ~4.9 min, seamless.
 
+Fable 5.2 pass over the Opus 5.5 version (frozen in music/opus/). Same notes, same form. What changed:
+  * touch: the melody is phrased (weight on arrivals, lighter passing notes, long notes placed a hair late)
+  * tone: brighter felt piano with an audible hammer, two "mics" for real stereo, a more open pad, a +4 dB air shelf
+  * motion: the arpeggio drifts in and out over two bars; the left hand answers softly under the melody's long notes
+  * rests: about 3 dB louder, so they do not vanish at game volume
+
 What the research on that style says, and how this file applies it:
   * music that "doesn't explain anything": no story sections, no marches, no climax
       -> one texture that slowly changes; layers enter and leave, the material never changes
@@ -97,23 +103,24 @@ def saw(ph, f, cutoff, kmax=40):
 # ------------------------------------------------------------------ instruments (f, dur, vel, t0)
 
 def lofi_piano(f, dur, vel, t0):
-    """Felt piano heard through a cheap microphone: no deep lows, no air, a little grit, a little wow."""
+    """Felt piano through two cheap microphones: warm and a little gritty, but with the hammer and upper partials audible."""
     n = int((dur + 3.0) * SR)
     t = tt(n)
-    bright = 1200 + 1600 * vel
+    bright = 2000 + 2600 * vel
     cents = rng.normal(0, 2.5)
     y = np.zeros(n)
-    for k in range(1, 14):
+    for k in range(1, 16):
         fk = k * np.sqrt(1 + 0.0004 * k * k)
-        if f * fk > 8000:
+        if f * fk > 9000:
             break
         tau = 4.5 / k ** 0.7 * (220 / max(f, 110)) ** 0.35
-        y += (1 / k ** 1.1) / (1 + (f * fk / bright) ** 2) * np.sin(fk * phase(f, n, t0, cents / 100, wob=1.6)) \
+        y += (1 / k ** 1.1) / (1 + (f * fk / bright) ** 2) * np.sin(fk * phase(f, n, t0, cents / 100, wob=1.4)) \
             * (0.55 * np.exp(-t / (tau * 0.3)) + 0.45 * np.exp(-t / tau))
-    y += fft_filter(rng.standard_normal(n), lp(700)) * np.exp(-t / 0.012) * 0.1   # hammer
+    y += fft_filter(rng.standard_normal(n), bp(250, 2500, 1)) * np.exp(-t / 0.01) * 0.07 * (0.5 + vel)   # felt hammer
     y = np.tanh(1.8 * y) / 1.8
-    y = fft_filter(y, lambda fr: bp(160, 4200, 1)(fr) * (1 + 0.6 / (1 + ((fr - 900) / 500) ** 2)))   # the cheap mic
-    return 0.42 * vel * y * np.clip(t / 0.004, 0, 1) * release(t, dur, 0.5)
+    mic = lambda centre: (lambda fr: bp(110, 7000, 1)(fr) * (1 + 0.3 / (1 + ((fr - centre) / 500) ** 2)))
+    left, right = fft_filter(y, mic(800)), np.roll(fft_filter(y, mic(1150)), 12)
+    return 0.42 * vel * np.stack([left, right]) * np.clip(t / 0.004, 0, 1) * release(t, dur, 0.5)
 
 
 def analog_pad(f, dur, vel, t0):
@@ -123,7 +130,7 @@ def analog_pad(f, dur, vel, t0):
     out = np.zeros((2, n))
     for j, d in enumerate((-9, -3, 4, 10)):
         ph = phase(f, n, t0, d / 100, wob=0.8)
-        dark, bright = saw(ph, f, 500), saw(ph, f, 1900)
+        dark, bright = saw(ph, f, 650), saw(ph, f, 2600)
         w = loop_lfo(t0 + t, 3, 0.4)
         y = (1 - w) * dark + w * bright
         out[j % 2] += y
@@ -158,7 +165,7 @@ def glide_lead(f, dur, vel, t0):
     t = tt(n)
     vib = 0.1 * np.clip((t - 0.4) / 0.6, 0, 1) * np.sin(2 * np.pi * 4.2 * t)
     ph = phase(f, n, t0, -0.5 * np.exp(-t / 0.06) + vib, wob=0.5)
-    y = 0.55 * saw(ph, f, 1100) + 0.6 * np.sin(ph)
+    y = 0.55 * saw(ph, f, 1700) + 0.6 * np.sin(ph)
     env = np.clip(t / 0.06, 0, 1) * release(t, dur, 0.25)
     return 0.22 * vel * y * env
 
@@ -173,6 +180,12 @@ ASK = [[(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "F#5")], [(0, 7, "A5")]]
 SETTLE_OPEN = [[(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "D5")], [(0, 7, "E5")]]
 SETTLE_HOME = [[(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "D5")], [(0, 7, "D5")]]
 MELODY = ASK + SETTLE_OPEN + ASK + SETTLE_HOME   # 8 bars
+PHRASE = [   # per bar, per note: (velocity x, seconds late). The notes never change; only the touch does.
+    [(1.00, 0.0), (0.78, 0.004), (0.90, 0.0)], [(1.06, 0.022)],
+    [(0.95, 0.0), (0.75, 0.004), (0.84, 0.006)], [(0.82, 0.030)],
+    [(1.04, 0.0), (0.80, 0.004), (0.94, 0.0)], [(1.10, 0.022)],
+    [(0.92, 0.0), (0.74, 0.004), (0.80, 0.008)], [(0.78, 0.040)],
+]
 
 
 def pcs(ch):
@@ -227,12 +240,22 @@ STEMS = ["piano", "lead", "pad", "arp", "bass", "texture"]
 events = []  # (t, dur, midi, vel, inst, pan, stem, rev, echo)
 
 
-def note(slot, length, m, vel, inst, stem, pan=0.0, rev=0.25, echo=0.0, human=True):
-    t0, dur = t_of(slot), t_of(slot + length) - t_of(slot)
+def note(slot, length, m, vel, inst, stem, pan=0.0, rev=0.25, echo=0.0, human=True, late=0.0):
+    t0, dur = t_of(slot) + late, t_of(slot + length) - t_of(slot)
     if human:
         t0 += abs(rng.normal(0, 0.01))
         vel *= 1 + rng.normal(0, 0.06)
     events.append((t0, dur, m, vel, inst, pan, stem, rev, echo))
+
+
+def edge_fade(blk, i, slot, key):
+    """Layers drift in and out over two bars instead of switching on at a block edge."""
+    f = 1.0
+    if not PLAN[(blk - 1) % len(PLAN)][key] and i < 2:
+        f *= 0.35 + 0.65 * (i * 8 + slot) / 16
+    if not PLAN[(blk + 1) % len(PLAN)][key] and i >= 6:
+        f *= 0.35 + 0.65 * ((8 - i) * 8 - slot) / 16
+    return f
 
 
 for bar in range(BARS):
@@ -244,29 +267,34 @@ for bar in range(BARS):
 
     # melody: always the same eight bars
     mel = plan["mel"]
-    for slot, ln, n in MELODY[i]:
+    for (slot, ln, n), (touch, late) in zip(MELODY[i], PHRASE[i]):
         m = midi(n)
         if mel in ("piano", "both") or (mel == "fragments" and i in (0, 1, 4, 5)):
-            note(s0 + slot, ln, m, 0.62, lofi_piano, "piano", 0.1, rev=0.3, echo=0.1)
+            note(s0 + slot, ln, m, 0.62 * touch, lofi_piano, "piano", 0.1, rev=0.3, echo=0.1, late=late)
         if mel in ("lead", "both"):
-            note(s0 + slot, ln, m, 0.9 if mel == "lead" else 0.55, glide_lead, "lead", -0.1, rev=0.3, echo=0.25)
+            note(s0 + slot, ln, m, (0.9 if mel == "lead" else 0.55) * touch, glide_lead, "lead", -0.1, rev=0.3, echo=0.25, late=late)
 
     # piano chords, struck softly and rolled, held two bars
     if plan["chords"] and chord_start:
+        base = 0.38 if mel else 0.46          # a little more piano when it is alone, so the rests do not vanish
         for j, m in enumerate(piano_chord(ch)):
-            note(s0 + j * 0.25, 16 - j * 0.25, m, 0.38 - 0.04 * j, lofi_piano, "piano", -0.3 + 0.15 * j, rev=0.35)
+            note(s0 + j * 0.25, 16 - j * 0.25, m, base - 0.04 * j, lofi_piano, "piano", -0.3 + 0.15 * j, rev=0.35)
+    if plan["chords"] and mel and i in (3, 7):   # under the melody's long note, the left hand answers softly
+        top = piano_chord(ch)[2:]
+        note(s0 + 4, 4, top[0], 0.2, lofi_piano, "piano", -0.05, rev=0.4)
+        note(s0 + 4.3, 3.7, top[1], 0.18, lofi_piano, "piano", 0.1, rev=0.4)
 
     # pad: one triad per chord
     if chord_start:
         for m in pad_voicing(ch):
-            note(s0, 16, m, plan["pad"], analog_pad, "pad", 0.0, rev=0.4, human=False)
+            note(s0, 16, m, plan["pad"] * (1.0 if mel else 1.25), analog_pad, "pad", 0.0, rev=0.4, human=False)
 
     # arpeggio: up and down the chord in eighths, quiet, through a dotted-eighth echo
     if plan["arp"]:
         a = arp_notes(ch)
         order = [0, 1, 2, 3, 2, 1, 2, 3]
         for slot in range(8):
-            note(s0 + slot, 1, a[order[slot]], 0.55 if slot % 4 == 0 else 0.38, synth_arp, "arp",
+            note(s0 + slot, 1, a[order[slot]], (0.55 if slot % 4 == 0 else 0.38) * edge_fade(blk, i, slot, "arp"), synth_arp, "arp",
                  -0.45 if slot % 2 else 0.45, rev=0.25, echo=0.4)
 
     # bass: one long root per chord
@@ -344,7 +372,7 @@ def texture_bed():
     t = np.arange(LOOP_N) / SR
     hiss = circ(rng.standard_normal((2, LOOP_N)), lambda f: bp(2000, 12000, 1)(f))
     wind = circ(rng.standard_normal((2, LOOP_N)), lambda f: bp(150, 900)(f) / np.sqrt(np.maximum(f, 20) / 150))
-    return (0.004 * hiss / np.abs(hiss).max() + 0.012 * wind / np.abs(wind).max() * loop_lfo(t, 5)).astype(np.float32)
+    return (0.006 * hiss / np.abs(hiss).max() + 0.012 * wind / np.abs(wind).max() * loop_lfo(t, 5)).astype(np.float32)
 
 
 def limiter_gain(x, ceil=0.9, block=48):
@@ -396,7 +424,8 @@ def render_stem(stem, irs):
     if stem == "texture":
         out = out + texture_bed()
     out = circ(out, hp(35, 2) if stem == "bass" else hp(90, 1))
-    out = circ(out * GAINS[stem], lambda f: hp(25, 2)(f) * lp(15000, 2)(f))
+    air = lambda f: 1 + (10 ** (4 / 20) - 1) / (1 + (2500 / np.maximum(f, 1)) ** 2)   # +4 dB shelf above 2.5 kHz: lifts the blanket
+    out = circ(out * GAINS[stem], lambda f: hp(25, 2)(f) * lp(15000, 2)(f) * air(f))
     return out.astype(np.float32)
 
 
@@ -435,7 +464,7 @@ if __name__ == "__main__":
     write_wav(OUT / "master.wav", master)
     for s, x in stems.items():
         write_wav(OUT / f"stem_{s}.wav", x)
-    meta = {"title": "Meadow Road", "bpm": BPM, "key": "D major", "mood": "calm ambient", "bars": BARS,
+    meta = {"title": "Meadow Road", "by": "Fable 5.2", "bpm": BPM, "key": "D major", "mood": "calm ambient", "bars": BARS,
             "seconds": LOOP_S, "beats_per_hop": 2,
             "sections": [{"id": str(k + 1), "name": p["name"], "kind": "A" if p["mel"] else "rest",
                           "bar": k * 8, "t": k * 32 * BEAT} for k, p in enumerate(PLAN)],
@@ -443,6 +472,12 @@ if __name__ == "__main__":
     (OUT / "track.json").write_text(json.dumps(meta, indent=1))
     rms = np.sqrt(np.mean(master.astype(np.float64) ** 2))
     print(f"{len(events)} notes, {LOOP_S:.0f}s loop, peak {np.abs(master).max():.3f}, rms {20 * np.log10(rms):.1f} dBFS")
+    mono = master.mean(axis=0).astype(np.float64)
+    nfft = 1 << 16
+    fr = np.fft.rfftfreq(nfft, 1 / SR)
+    P = sum(np.abs(np.fft.rfft(mono[k:k + nfft] * np.hanning(nfft))) ** 2 for k in range(0, len(mono) - nfft, nfft))
+    print("  octave bands (dB of total):", "  ".join(f"{lo}:{10 * np.log10(P[(fr >= lo / 1.414) & (fr < lo * 1.414)].sum() / P.sum()):.0f}"
+                                                       for lo in (63, 125, 250, 500, 1000, 2000, 4000, 8000)))
     blk = 8 * 4 * BEAT
     for s, x in list(stems.items()) + [("master", master)]:
         per = [20 * np.log10(np.sqrt(np.mean(x[:, int(k * blk * SR):int((k + 1) * blk * SR)].astype(np.float64) ** 2)) + 1e-9)

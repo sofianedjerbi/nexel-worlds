@@ -57,3 +57,14 @@ A. Farnell, "Marching onwards: procedural synthetic footsteps". What they agree 
 - stones and pots rest on something that soaks the ring up: high loss factor or `damp`.
 - `uv run python music/ringcheck.py` flags any realistic sound whose energy after 30 ms sits in narrow peaks (a "xylophone" score).
   It must stay near 0 for footsteps, work, breaking and building; only chimes, voices, bubbles and hinges may be tonal.
+
+## Fable 5.2 review of the Opus 5.5 work (2026-11-11)
+
+The Opus versions are frozen in `music/opus/` (scripts) and rendered to `music/site/opus/`. The page plays both: A/B rows for the music
+(same position, 40 ms crossfade, keys A and B) and two rows per sound effect. `uv run python music/review.py` measures both sets and
+writes the "What the review found" card. Tools: `music/audit.py` (latency, K-weighted loudness, rumble, variant similarity), `music/ringcheck.py`.
+- Music: same notes and form. Phrased melody (velocity and lateness per note), brighter stereo piano, +4 dB air shelf,
+  arpeggio fades at block edges, soft left-hand answers, louder rests.
+- Sounds: 55 Hz high-pass, trimmed lead-in, K-weighted levels, real variants (resize per variant plus random parameters),
+  new eat / pour / fill / punch / squawk, reworked moo, talk babble, splash, fire.
+- To re-render the Opus set: `uv run python music/opus/sfx.py` and `uv run python music/opus/compose.py`.

@@ -1,0 +1,42 @@
+[
+ [
+  "Music, tone",
+  "Opus had almost nothing above 2 kHz (4 kHz at -33 dB, 8 kHz at -50 dB of the total): a very dark mix. Fable: -27 dB and -42 dB. Still warm, with a little more hammer and air."
+ ],
+ [
+  "Music, touch",
+  "In Opus every melody note had the same weight and exact timing. Fable keeps the notes and shapes them: arrivals heavier, passing notes lighter, long notes placed 20 to 40 ms late."
+ ],
+ [
+  "Music, levels",
+  "The quietest block sat 9 dB under the loudest in Opus, which risks being lost at game volume. Fable: 7 dB."
+ ],
+ [
+  "Music, motion",
+  "Layers switched on and off at block edges; now the arpeggio drifts in and out over two bars, and the left hand answers softly under the melody's long notes."
+ ],
+ [
+  "Sounds, rumble",
+  "In Opus, 7 sounds had over 6% of their energy under 40 Hz, where it is inaudible and eats headroom (step, tock, click, thud, fallthud, place_path, hurt). Fable: 1 (fallthud; a falling tree may)."
+ ],
+ [
+  "Sounds, latency",
+  "10 Opus sounds took 12 to 58 ms to start (whoosh, flood, crackle, creak, rustle, open, gloom, give, mail, close). Fable: 0. Everything starts within about a millisecond."
+ ],
+ [
+  "Sounds, variants",
+  "7 Opus sounds had variants that were the same sound (rustle, creak, gate, write, gloom, whoosh, shout). Fable: 1 (write: strokes differ in rhythm, not in tone)."
+ ],
+ [
+  "Sounds, loudness",
+  "Opus set levels by raw RMS, so variants of one sound differed by up to 3.3 dB to the ear. Fable sets levels with the ear's weighting (BS.1770): 1.5 dB."
+ ],
+ [
+  "Sounds, context",
+  "Opus: 66 sounds, 165 files. Fable: 71 sounds, 178 files. New: eating (the game asked for it and had none), watering, filling a bucket, a bare-hand hit, a startled chicken."
+ ],
+ [
+  "Honest limit",
+  "This review is by measurement and by reading the generators. Neither model can hear. Your ears decide: use the rows below."
+ ]
+]

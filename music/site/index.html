@@ -69,16 +69,36 @@
   a { color:var(--ink); font-weight:800; }
   .sfxcat { margin-bottom:14px; }
   .sfxcat h3 { margin:0 0 8px; font-size:15px; font-weight:900; display:flex; align-items:center; gap:8px; }
+  .sfxcat h3 button + button { border-color:var(--ink); background:#fff3d0; }
   .sfxcat h3 button { font:inherit; font-size:11px; font-weight:800; border:2px solid var(--ink); border-radius:7px;
     padding:1px 7px; background:var(--paper2); color:var(--ink); cursor:pointer; }
   .pills { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:8px; }
   .pill { text-align:left; font:inherit; color:var(--ink); background:#fffaf0; border:2px solid var(--line);
-    border-radius:10px; padding:7px 10px; cursor:pointer; transition:transform .05s, background .15s; }
-  .pill:hover { background:#fff3d8; }
-  .pill:active, .pill.hit { transform:translateY(2px); background:#ffe7a8; }
+    border-radius:10px; padding:7px 10px; display:flex; flex-direction:column; }
   .pill b { display:block; font-weight:900; }
   .pill span { display:block; font-size:12px; color:var(--ink2); line-height:1.25; margin-top:2px; }
-  .pill i { font-style:normal; font-size:11px; color:var(--ink2); float:right; }
+  .pill span { flex:1; }
+  .pill em { font-style:normal; font-size:10px; font-weight:900; float:right; border-radius:6px; padding:0 6px; margin-left:6px; }
+  .pill em.new { background:#cfe9c4; } .pill em.reworked { background:#ffe2a6; } .pill em.remastered { background:#e6e0f3; }
+  .rows { display:grid; gap:4px; margin-top:7px; }
+  .rows button { font:inherit; font-size:12px; font-weight:800; text-align:left; color:var(--ink); cursor:pointer;
+    border:2px solid var(--line); border-radius:8px; padding:3px 8px; background:#fff; display:flex; justify-content:space-between; }
+  .rows button[data-set="fable"] { border-color:var(--ink); background:#fff3d0; }
+  .rows button:active, .rows button.hit { transform:translateY(2px); background:#ffd36e; }
+  .rows button[disabled] { opacity:.45; cursor:default; border-style:dashed; }
+  .rows button i { font-style:normal; font-weight:700; color:var(--ink2); }
+  #ab { display:grid; gap:8px; margin-top:14px; }
+  .abrow { font:inherit; color:var(--ink); text-align:left; display:flex; align-items:center; gap:12px; cursor:pointer;
+    border:2px solid var(--line); border-radius:12px; padding:9px 12px; background:#fffaf0; }
+  .abrow b { font-weight:900; min-width:84px; }
+  .abrow span { flex:1; font-size:13px; color:var(--ink2); }
+  .abrow kbd { font:inherit; font-size:11px; font-weight:900; border:2px solid var(--line); border-radius:6px; padding:0 6px; }
+  .abrow.on { border-color:var(--ink); background:#ffe9b0; box-shadow:0 3px 0 var(--ink); }
+  .abrow.on b::before { content:"▶ "; }
+  #stemcard.dim #stems { opacity:.35; pointer-events:none; }
+  .review { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; font-size:14px; color:var(--ink2); }
+  .review b { color:var(--ink); }
+  @media (max-width:700px) { .review { grid-template-columns:1fr; } }
   .objmap { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:6px; margin-bottom:16px; }
   .obj { font:inherit; text-align:left; border:2px solid var(--line); border-radius:9px; background:#f6fbef; color:var(--ink);
     padding:5px 9px; cursor:pointer; }
@@ -106,21 +126,28 @@
         <div class="times"><span id="now">0:00</span><span id="loops">seamless loop</span><span id="len">1:04</span></div>
       </div>
     </div>
+    <div id="ab">
+      <button class="abrow" data-v="opus"><b>Opus 5.5</b><span>the original version: every note with the same touch, a darker mono piano, layers switch on and off</span><kbd>A</kbd></button>
+      <button class="abrow on" data-v="fable"><b>Fable 5.2</b><span>same notes and form: phrased melody, brighter stereo piano, layers drift in and out, rests 3 dB louder</span><kbd>B</kbd></button>
+    </div>
+  </section>
+
+  <section class="card" id="stemcard">
+    <h2>Stems <small id="stemsub">mute or solo the layers of the Fable version</small></h2>
+    <div id="stems"></div>
   </section>
 
   <section class="card">
-    <h2>Stems <small>mute or solo the layers, the sum is the master</small></h2>
-    <div id="stems"></div>
+    <h2>What the review found <small>Fable 5.2 reviewing the Opus 5.5 work, by measurement (music/audit.py, music/ringcheck.py)</small></h2>
+    <div class="review" id="review"></div>
   </section>
 
   <section class="card">
     <h2>Sound effects <small id="sfxsub">every interaction in the game. Click to play a random variant; it plays over the music if the music is on</small></h2>
     <div id="sfx"></div>
     <div class="notes" style="margin-top:6px">
-      <div><b>In tune:</b> tonal sounds (rewards, UI, chimes, talk blips) use the music's notes, D major pentatonic. The goal chime is the music's own melody cell.</div>
-      <div><b>Real models, not beeps:</b> wood and stone ring with their own resonances, gravel and leaves are made of grains, the cow and chicken are shaped voices.</div>
-      <div><b>Never the same twice:</b> frequent sounds have 3 to 6 variants. The game can also nudge pitch and pan by where the sound happens.</div>
-      <div><b>Levels:</b> loudness is set per category: footsteps quiet, work clear, rewards bright but soft, interface subtle. Made by <code>music/sfx.py</code>.</div>
+      <div><b>Tags:</b> <i>new</i> did not exist in the Opus set. <i>reworked</i> has a rewritten generator. <i>remastered</i> keeps the Opus generator, with the level, start and rumble fixes.</div>
+      <div><b>Fair comparison:</b> on this page both rows play with no random pitch or pan. Both sets are in the repo: <code>music/opus/sfx.py</code> (frozen) and <code>music/sfx.py</code>.</div>
     </div>
   </section>
 
@@ -132,7 +159,7 @@
       <div><b>Melody:</b> two tiny cells in the range of a fifth, repeated exactly. It asks (F#, E, F#, A), then settles (F#, E, D). Nothing new is ever added.</div>
       <div><b>Variation:</b> only who plays it, and what is around it: piano, synth lead, arpeggio, open space. The melody rests in 4 of 11 blocks.</div>
       <div><b>Sound:</b> felt piano through a "cheap mic", detuned analog pad with a slowly breathing filter, Moog-style bass, tape hiss.</div>
-      <div><b>Checks:</b> registers never overlap, no clashing notes, loudness per block. Seamless 293 s loop. <a href="audio/master.wav" download>Download</a></div>
+      <div><b>Checks:</b> registers never overlap, no clashing notes, loudness per block. Seamless 293 s loop. Download: <a href="audio/master.wav" download="meadow-road-fable.wav">Fable</a>, <a href="opus/audio/master.wav" download="meadow-road-opus.wav">Opus</a></div>
     </div>
   </section>
 </main>
@@ -149,7 +176,7 @@ const STEM_INFO = {
 const KIND_COLORS = { A: "#f7e0a3", B: "#cfe0f0", rest: "#d9e8d0" };
 const KIND_RGB = { A: [247,224,163], B: [207,224,240], rest: [217,232,208] };
 
-let ctx, meta, buffers = {}, nodes = {}, sources = [], master, analyser;
+let ctx, meta, buffers = {}, nodes = {}, sources = [], master, analyser, fableBus, opusBus, opusBuf, version = "fable";
 let playing = false, startAt = 0, offset = 0, muted = {}, solo = null;
 const $ = (id) => document.getElementById(id);
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -191,6 +218,9 @@ async function load() {
   analyser.fftSize = 4096;
   analyser.smoothingTimeConstant = 0.78;
   master.connect(analyser).connect(ctx.destination);
+  fableBus = ctx.createGain(); fableBus.connect(master);
+  opusBus = ctx.createGain(); opusBus.gain.value = 0; opusBus.connect(master);
+  const loadOpus = fetch("opus/audio/master.wav").then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b)).then((b) => { opusBuf = b; });
   await Promise.all(meta.stems.map(async (s) => {
     const raw = await (await fetch(`audio/stem_${s}.wav`)).arrayBuffer();
     buffers[s] = await ctx.decodeAudioData(raw);
@@ -198,11 +228,23 @@ async function load() {
     const a = ctx.createAnalyser();
     a.fftSize = 1024;
     g.connect(a);
-    g.connect(master);
+    g.connect(fableBus);
     nodes[s] = { g, a, data: new Float32Array(1024) };
   }));
+  await loadOpus;
   $("play").disabled = false;
-  
+  document.querySelectorAll(".abrow").forEach((b) => b.onclick = () => setVersion(b.dataset.v));
+}
+
+// A/B: both versions run in sync; switching is a 40 ms crossfade at the same position
+function setVersion(v) {
+  version = v;
+  const t = ctx.currentTime;
+  fableBus.gain.setTargetAtTime(v === "fable" ? 1 : 0, t, 0.012);
+  opusBus.gain.setTargetAtTime(v === "opus" ? 1 : 0, t, 0.012);
+  document.querySelectorAll(".abrow").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+  $("stemcard").classList.toggle("dim", v === "opus");
+  $("stemsub").textContent = v === "opus" ? "stems exist for the Fable version only: switch back to B to use them" : "mute or solo the layers of the Fable version";
 }
 
 function applyGains() {
@@ -229,6 +271,9 @@ function start(at) {
     src.start(when, at);
     return src;
   });
+  const o = ctx.createBufferSource();
+  o.buffer = opusBuf; o.loop = true; o.connect(opusBus); o.start(when, at);
+  sources.push(o);
   startAt = when;
   offset = at;
   playing = true;
@@ -250,6 +295,7 @@ $("play").onclick = async () => {
   if (playing) stop(); else start(offset);
   $("icon").innerHTML = playing ? '<path d="M6 4h4.5v16H6zM13.5 4H18v16h-4.5z"/>' : '<path d="M7 4.5v15l13-7.5z"/>';
 };
+document.addEventListener("keydown", (e) => { if (ctx && e.code === "KeyA") setVersion("opus"); if (ctx && e.code === "KeyB") setVersion("fable"); });
 document.addEventListener("keydown", (e) => { if (e.code === "Space" && !$("play").disabled) { e.preventDefault(); $("play").click(); } });
 
 // ------------------------------------------------------------ visualizer
@@ -367,52 +413,67 @@ function roundRect(x, y, w, h, r) {
 }
 
 
-// ------------------------------------------------------------ sound effects showcase
+// ------------------------------------------------------------ sound effects showcase: Opus row vs Fable row
+const SETS = { opus: { dir: "opus/sfx/", label: "Opus 5.5" }, fable: { dir: "sfx/", label: "Fable 5.2" } };
 const sfxBuf = {}, sfxLast = {};
-let sfxMeta = null;
-async function sfxLoad(name) {
-  if (!sfxBuf[name]) sfxBuf[name] = Promise.all(sfxMeta[name].files.map(async (f) =>
-    ctx.decodeAudioData(await (await fetch("sfx/" + f)).arrayBuffer())));
-  return sfxBuf[name];
+let sfxMeta = null, sfxOpus = null;
+const metaOf = (set) => (set === "opus" ? sfxOpus : sfxMeta);
+async function sfxLoad(name, set = "fable") {
+  const key = set + "/" + name;
+  if (!sfxBuf[key]) sfxBuf[key] = Promise.all(metaOf(set)[name].files.map(async (f) =>
+    ctx.decodeAudioData(await (await fetch(SETS[set].dir + f)).arrayBuffer())));
+  return sfxBuf[key];
 }
-async function playSfx(name, el) {
+async function playSfx(name, el, set = "fable") {
+  if (!metaOf(set)[name]) return;
   await ctx.resume();
-  const bufs = await sfxLoad(name);
+  const bufs = await sfxLoad(name, set), key = set + "/" + name;
   let k = Math.floor(Math.random() * bufs.length);
-  if (bufs.length > 1 && k === sfxLast[name]) k = (k + 1) % bufs.length;
-  sfxLast[name] = k;
-  const src = ctx.createBufferSource(), g = ctx.createGain(), pan = ctx.createStereoPanner();
+  if (bufs.length > 1 && k === sfxLast[key]) k = (k + 1) % bufs.length;
+  sfxLast[key] = k;
+  const src = ctx.createBufferSource(), g = ctx.createGain();
   src.buffer = bufs[k];
-  src.playbackRate.value = 1 + (Math.random() - 0.5) * 0.04;   // the game nudges pitch a little too
-  pan.pan.value = (Math.random() - 0.5) * 0.3;
-  g.gain.value = 0.9;
-  src.connect(g).connect(pan).connect(master);
+  g.gain.value = 0.9;                    // no random pitch or pan here: the comparison stays fair
+  src.connect(g).connect(master);
   src.start();
   if (el) { el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 120); const i = el.querySelector("i"); if (i) i.textContent = `${k + 1}/${bufs.length}`; }
 }
 async function buildSfx() {
-  sfxMeta = await (await fetch("sfx/sfx.json")).json();
+  [sfxMeta, sfxOpus] = await Promise.all([fetch("sfx/sfx.json").then((r) => r.json()), fetch("opus/sfx/sfx.json").then((r) => r.json())]);
   const cats = {};
   for (const [name, m] of Object.entries(sfxMeta)) (cats[m.category] ||= []).push(name);
   const box = $("sfx");
   for (const [cat, names] of Object.entries(cats)) {
     const sec = document.createElement("div");
     sec.className = "sfxcat";
-    sec.innerHTML = `<h3>${cat}<button>play all</button></h3><div class="pills"></div>`;
+    sec.innerHTML = `<h3>${cat}<button data-set="opus">play all · Opus</button><button data-set="fable">play all · Fable</button></h3><div class="pills"></div>`;
     const pills = sec.querySelector(".pills");
     for (const name of names) {
-      const b = document.createElement("button");
-      b.className = "pill";
-      b.innerHTML = `<i>${sfxMeta[name].files.length} var</i><b>${name}</b><span>${sfxMeta[name].when}</span>`;
-      b.onclick = () => playSfx(name, b);
-      pills.appendChild(b);
+      const m = sfxMeta[name], o = sfxOpus[name];
+      const d = document.createElement("div");
+      d.className = "pill";
+      d.innerHTML = `<div><em class="${m.change}">${m.change}</em><b>${name}</b></div><span>${m.when}</span>
+        <div class="rows">
+          <button data-set="opus" ${o ? "" : "disabled"}>Opus 5.5 <i>${o ? o.files.length + " var" : "did not exist"}</i></button>
+          <button data-set="fable">Fable 5.2 <i>${m.files.length} var</i></button>
+        </div>`;
+      d.querySelectorAll(".rows button").forEach((b) => b.onclick = () => playSfx(name, b, b.dataset.set));
+      pills.appendChild(d);
     }
-    sec.querySelector("h3 button").onclick = () => names.forEach((n, i) => setTimeout(() => playSfx(n, pills.children[i]), i * 650));
+    sec.querySelectorAll("h3 button").forEach((hb) => hb.onclick = () => {
+      const list = names.filter((n) => metaOf(hb.dataset.set)[n]);
+      list.forEach((n, i) => setTimeout(() => playSfx(n, pills.children[names.indexOf(n)].querySelector(`.rows [data-set="${hb.dataset.set}"]`), hb.dataset.set), i * 700));
+    });
     box.appendChild(sec);
   }
-  const total = Object.values(sfxMeta).reduce((a, m) => a + m.files.length, 0);
-  $("sfxsub").textContent = `${Object.keys(sfxMeta).length} sounds, ${total} variants, every interaction in the game. Click to play; it plays over the music if the music is on`;
-  Object.keys(sfxMeta).forEach(sfxLoad);   // decode everything in the background
+  const count = (mm) => Object.values(mm).reduce((a, m) => a + m.files.length, 0);
+  const tally = {};
+  Object.values(sfxMeta).forEach((m) => tally[m.change] = (tally[m.change] || 0) + 1);
+  $("sfxsub").textContent = `two rows per sound. Opus: ${Object.keys(sfxOpus).length} sounds, ${count(sfxOpus)} variants. Fable: ${Object.keys(sfxMeta).length} sounds, ${count(sfxMeta)} variants (${tally.new || 0} new, ${tally.reworked || 0} reworked, ${tally.remastered || 0} remastered)`;
+  for (const n of Object.keys(sfxMeta)) sfxLoad(n, "fable");      // decode everything in the background
+  for (const n of Object.keys(sfxOpus)) sfxLoad(n, "opus");
+  const rv = await fetch("review.json").then((r) => r.json()).catch(() => null);
+  if (rv) $("review").innerHTML = rv.map((x) => `<div><b>${x[0]}:</b> ${x[1]}</div>`).join("");
 }
 
 
@@ -421,13 +482,13 @@ async function buildObjMap() {
   const box = $("sfx");
   const wrap = document.createElement("div");
   wrap.className = "sfxcat";
-  let html = '<h3>By object: what you hear when you build or use it</h3>';
+  let html = '<h3>By object: what you hear when you build or use it (Fable set)</h3>';
   for (const [verb, items] of Object.entries(map)) {
     html += `<div class="objmap">` + Object.entries(items).map(([obj, snd]) =>
       `<button class="obj" data-s="${snd}"><b>${verb === "place" ? obj.replaceAll("_", " ") : obj}</b><span>${snd}</span></button>`).join("") + `</div>`;
   }
   wrap.innerHTML = html;
-  wrap.querySelectorAll(".obj").forEach((b) => b.onclick = () => { playSfx(b.dataset.s); b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 120); });
+  wrap.querySelectorAll(".obj").forEach((b) => b.onclick = () => { playSfx(b.dataset.s, null, "fable"); b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 120); });
   box.prepend(wrap);
 }
 load().then(async () => { draw(); await buildSfx(); buildObjMap(); });

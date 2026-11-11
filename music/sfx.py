@@ -1,12 +1,16 @@
-"""Sound effects for every game interaction, made to sit with the background music.
+"""Sound effects for every game interaction, made to sit with the background music. (Fable 5.2 pass.)
 
-Same family as music/compose.py: pure numpy, warm and soft, a touch of lo-fi.
-  * anything tonal (rewards, UI, chimes) uses the music's notes: D major pentatonic (D E F# A B),
-    so effects never clash with the loop; the goal chime is the music's own melody cell
-  * physical models instead of beeps: resonant modes for wood and stone, granular noise for
-    gravel and leaves, formant voices for animals, swept filters for air and fire
-  * several variants of each frequent sound, so repeats never sound identical
-  * loudness normalised per category (footsteps quiet, rewards clear, UI subtle)
+Pure numpy. What this pass fixed, all measured by music/audit.py against the frozen Opus set in music/opus/:
+  * rumble: footsteps and thuds had most of their energy under 40 Hz (inaudible, and it made the audible part quiet);
+    everything is now high-passed at 45 Hz
+  * latency: every sound starts within about a millisecond (leading silence and slow swells are trimmed)
+  * loudness: levels are set with the ear's weighting (ITU-R BS.1770 K-weighting), not raw RMS,
+    so sounds in one family are equally loud and every variant of a sound matches
+  * variants: sounds whose variants were identical now really differ (size / pitch / timing per variant)
+  * context: eating, watering, filling a bucket, bare-hand hits and a startled chicken have their own sounds
+  * voices: the cow has a closed-mouth start, a pitch arc and a rough onset; talk is a soft babble of vowels
+
+Tonal sounds use the music's notes (D major pentatonic); the goal chime is the music's melody cell.
 
     uv run python music/sfx.py      # writes music/site/sfx/*.wav + sfx.json
 """
@@ -151,7 +155,8 @@ def grf(n, heel=0.0, toe=0.075, toe_amp=0.6, soft=1.0, c=None):
     out = np.zeros(n)
     for at, amp, tau in ((heel, 1.0, 0.006 * soft), (toe, toe_amp, 0.008 * soft)):
         if c is not None:
-            at += c.u(-0.008, 0.008)
+            if at > 0:
+                at = max(0.0, at + c.u(-0.008, 0.008))   # only the toe wanders; the heel lands at t = 0
             amp *= c.u(0.85, 1.1)
         x = np.clip(t - at, 0, None) / tau
         out += amp * x ** 2 * np.exp(2 - 2 * x) * (t >= at)   # peaks at 1 when t = at + tau
@@ -289,7 +294,7 @@ def voice(n, f0, formants, bw, harmonics=40, breath=0.0, c=None):
 
 def finish(y, warmth=11000, room=0.1):
     """Shared finish: gentle low-pass, soft saturation, a small room, de-click edges."""
-    y = tail(fft_filter(y, lp(warmth, 1)), 10)
+    y = tail(fft_filter(y, lambda f: lp(warmth, 1)(f) * hp(55, 3)(f)), 10)   # no inaudible rumble eating the headroom
     y = np.tanh(1.2 * y / (np.abs(y).max() + 1e-9)) / np.tanh(1.2)
     if room:
         n = N(0.35)
@@ -301,7 +306,10 @@ def finish(y, warmth=11000, room=0.1):
         y = np.concatenate([y, np.zeros(n)]) + room * wet
     fade = min(N(0.01), len(y) // 4)
     y[-fade:] *= np.linspace(1, 0, fade)
-    y[: N(0.0005)] *= np.linspace(0, 1, N(0.0005))
+    start = max(0, int(np.argmax(np.abs(y) > 0.05 * np.abs(y).max())) - N(0.001))   # instant: drop the lead-in
+    y = y[start:].copy()
+    k = N(0.0015 if start else 0.0005)
+    y[:k] *= np.linspace(0, 1, k)
     # trim trailing silence
     a = np.abs(y)
     last = np.nonzero(a > 1e-4 * a.max())[0]
@@ -315,24 +323,37 @@ S = {}
 META = {}
 
 
-def sfx(name, cat, when, variants=1, loud=0.5):
+PHYSICAL = {"Footsteps", "Work", "Breaking", "Building", "Fights", "World", "Animals"}
+IN_TUNE = {"die", "grow", "love", "collect", "orb", "craft"}      # these carry notes: never re-pitched
+SIZES = [1.0, 0.93, 1.06, 0.97, 1.03, 0.9]                        # variant k is this much smaller / larger
+
+
+def sfx(name, cat, when, variants=1, loud=0.5, change="remastered"):
     def deco(fn):
         S[name] = fn
-        META[name] = {"cat": cat, "when": when, "variants": variants, "loud": loud}
+        META[name] = {"cat": cat, "when": when, "variants": variants, "loud": loud, "change": change,
+                      "vary": cat in PHYSICAL and name not in IN_TUNE}
         return fn
     return deco
 
 
+def resize(y, factor):
+    """A slightly bigger or smaller object: every resonance and the timing scale together."""
+    if factor == 1.0:
+        return y
+    return np.interp(np.arange(0, len(y) - 1, factor), np.arange(len(y)), y)
+
+
 # --- footsteps --------------------------------------------------------------------------------
 
-@sfx("step", "Footsteps", "walking on grass and soil", 4, 0.14)
+@sfx("step", "Footsteps", "walking on grass and soil", 4, 0.14, "reworked")
 def _(c):
     n = N(0.22)
     force = grf(n, soft=1.6, c=c)
     blades = phism(c, n, force, rate=2500, freq=3200, decay=0.0012, jitter=0.5)   # grass blades bending, snapping
     crumbs = phism(c, n, force, rate=500, freq=900, decay=0.003)                 # crumbs of soil
-    earth = fft_filter(np.diff(force, prepend=0) * 60, lp(220))                # the soft earth gives a little
-    return 0.55 * blades + 0.45 * crumbs + 0.6 * earth / (np.abs(earth).max() + 1e-9)
+    earth = fft_filter(np.diff(force, prepend=0), bp(60, 240))                 # the soft earth gives a little (audible band only)
+    return 0.55 * blades + 0.45 * crumbs + 0.5 * earth / (np.abs(earth).max() + 1e-9)
 
 
 @sfx("tock", "Footsteps", "walking on wooden floors, bridges and boats", 4, 0.16)
@@ -367,11 +388,11 @@ def _(c):
     return y
 
 
-@sfx("thud", "Footsteps", "landing after a hop down a level; striking wood or stone bare-handed", 3, 0.3)
+@sfx("thud", "Footsteps", "landing after a hop down a level", 3, 0.3, "reworked")
 def _(c):
     n = N(0.25)
     force = grf(n, toe=0.012, toe_amp=0.9, soft=1.4, c=c)                       # a jump: heel and toe land together
-    earth = fft_filter(np.diff(force, prepend=0), lp(180))
+    earth = fft_filter(np.diff(force, prepend=0), bp(55, 200))
     body = impact(c, n, "body", size=c.u(1.0, 1.3))
     crunch = phism(c, n, force, rate=1500, freq=1500, decay=0.002)
     return earth / (np.abs(earth).max() + 1e-9) + 0.5 * body + 0.35 * crunch
@@ -405,18 +426,29 @@ def _(c):
     return thunk * 1.3 + soil * 0.9
 
 
-@sfx("rustle", "Work", "cutting grass, picking flowers and plants, leaves", 4, 0.3)
+@sfx("rustle", "Work", "cutting grass, picking flowers and plants, leaves", 4, 0.3, "reworked")
 def _(c):
     n = N(0.4)
-    leaves = grains(c, n, 90, 5, 1500, 6000, spread=0.3) * np.sin(np.pi * np.clip(tt(n) / 0.32, 0, 1))
-    return leaves
+    lo = c.u(1200, 1900)
+    swish = grains(c, n, int(c.u(90, 140)), 5, lo, lo * 4, decay=c.u(0.07, 0.11))     # densest at the cut, then thinning
+    stems = phism(c, n, env_exp(n, 0.03, 0.001), rate=500, freq=c.u(1800, 2600), decay=0.0015)   # stalks snapping
+    return swish + 0.35 * stems
 
 
 @sfx("swing", "Work", "swinging a tool or a weapon", 3, 0.25)
 def _(c):
     n = N(0.28)
     curve = np.sin(np.linspace(0, np.pi, n)) ** 0.7
-    return swept_noise(c, n, 500, 2400, 0.35, curve=np.linspace(0, 1, n)) * curve
+    k = c.u(0.85, 1.2)                                                        # a heavier or a lighter tool
+    return swept_noise(c, n, 500 * k, 2400 * k, 0.35, curve=np.linspace(0, 1, n)) * curve
+
+
+@sfx("punch", "Work", "hitting a tree or a rock with bare hands", 3, 0.3, "new")
+def _(c):
+    n = N(0.22)
+    hand = impact(c, n, "body", size=c.u(0.7, 0.9), hardness=1.3)
+    trunk = impact(c, n, "wood", size=c.u(1.6, 2.0), hardness=0.5, damp=3.0)   # the thing barely answers
+    return hand + 0.45 * trunk
 
 
 # --- things break ------------------------------------------------------------------------------
@@ -443,18 +475,21 @@ def _(c):
     return y + 0.7 * rumble + 0.4 * grains(c, n, 70, 4, 1500, 6000, decay=0.2)
 
 
-@sfx("creak", "Breaking", "a tree starts to fall", 2, 0.4)
+@sfx("creak", "Breaking", "a tree starts to fall", 2, 0.4, "reworked")
 def _(c):
-    n = N(0.9)
+    dur = c.u(0.8, 1.0)
+    n = N(dur)
     t = tt(n)
-    rate = 30 + 40 * np.sin(np.pi * t / 0.9) + 8 * np.sin(2 * np.pi * 7 * t)   # stick-slip
+    rate = c.u(22, 34) + c.u(35, 55) * np.sin(np.pi * t / dur) + 8 * np.sin(2 * np.pi * c.u(5, 9) * t)   # stick-slip
     ph = np.cumsum(rate) / SR
     pulses = (np.diff(np.floor(ph), prepend=0) > 0).astype(float)
-    wood = sum(fft_filter(pulses, lambda f, F=F: 1 / (1 + ((f - F) / (F / 9)) ** 2)) for F in (380, 760, 1250))
-    return wood * np.sin(np.pi * np.clip(t / 0.9, 0, 1)) ** 0.5
+    k = c.u(0.85, 1.2)                                                        # each trunk has its own voice
+    wood = sum(fft_filter(pulses, lambda f, F=F: 1 / (1 + ((f - F) / (F / 9)) ** 2)) for F in (380 * k, 760 * k, 1250 * k))
+    fibres = grains(c, n, 30, 2, 900, 5000, spread=dur) * 0.15               # fibres tearing
+    return (wood / (np.abs(wood).max() + 1e-9) + fibres) * np.clip(t / 0.02, 0, 1) * np.clip((dur - t) / 0.25, 0, 1) ** 0.5
 
 
-@sfx("fallthud", "Breaking", "a tree hits the ground", 2, 0.75)
+@sfx("fallthud", "Breaking", "a tree hits the ground", 2, 0.48)
 def _(c):
     n = N(1.0)
     trunk = impact(c, n, "wood", size=3.5, hardness=0.6)                # a big, low log
@@ -582,13 +617,13 @@ def _(c):
     return y
 
 
-@sfx("place_path", "Building", "cobbles are set into a path", 3, 0.35)
+@sfx("place_path", "Building", "cobbles are set into a path", 3, 0.35, "reworked")
 def _(c):
     n = N(0.4)
-    energy = np.exp(-((tt(n) - 0.08) / 0.06) ** 2)
+    energy = np.clip(tt(n) / 0.004, 0, 1) * np.exp(-tt(n) / 0.07)             # starts on the first stone
     clatter = phism(c, n, energy, rate=120, freq=1800, decay=0.002, jitter=0.5)   # stones knocking each other
     grit = phism(c, n, energy, rate=900, freq=4000, decay=0.0007)
-    bed = fft_filter(c.noise(n), lp(300)) * energy                              # bedded into sand
+    bed = fft_filter(c.noise(n), bp(70, 300)) * energy                          # bedded into sand
     return clatter + 0.35 * grit + 0.5 * bed / (np.abs(bed).max() + 1e-9)
 
 
@@ -600,14 +635,14 @@ def _(c):
     return pour + 0.8 * thump
 
 
-@sfx("gate", "Building", "a gate or a door swings open", 2, 0.35)
+@sfx("gate", "Building", "a gate or a door swings open", 2, 0.35, "reworked")
 def _(c):
     n = N(0.55)
     t = tt(n)
-    rate = 55 + 60 * t / 0.55
+    rate = c.u(45, 65) + c.u(45, 75) * t / 0.55                             # each hinge squeaks its own way
     ph = np.cumsum(rate) / SR
     pulses = (np.diff(np.floor(ph), prepend=0) > 0).astype(float)
-    hinge = sum(fft_filter(pulses, lambda f, F=F: 1 / (1 + ((f - F) / (F / 12)) ** 2)) for F in (900, 1800, 2600))
+    hinge = sum(fft_filter(pulses, lambda f, F=F: 1 / (1 + ((f - F) / (F / 12)) ** 2)) for F in np.array([900, 1800, 2600]) * c.u(0.85, 1.2))
     hinge *= np.sin(np.pi * np.clip(t / 0.4, 0, 1))
     latch = np.roll(modes(n, [1600, 3300], [0.01, 0.006], [0.6, 0.3]), N(0.0))
     return hinge * 0.8 + latch
@@ -622,14 +657,15 @@ def _(c):
     return y
 
 
-@sfx("write", "Building", "writing on a sign or a letter", 2, 0.25)
+@sfx("write", "Building", "writing on a sign or a letter", 2, 0.25, "reworked")
 def _(c):
     n = N(0.7)
     y = np.zeros(n)
     at = 0.0
-    while at < 0.6:   # pencil strokes
+    k = c.u(0.7, 1.35)                                    # a pencil, a quill, a piece of chalk
+    while at < 0.6:   # strokes
         sn = N(c.u(0.05, 0.12))
-        stroke = fft_filter(c.noise(sn), bp(1800, 6000)) * np.sin(np.linspace(0, np.pi, sn))
+        stroke = fft_filter(c.noise(sn), bp(1800 * k, 6000 * k)) * np.sin(np.linspace(0, np.pi, sn))
         place(y, stroke * c.u(0.5, 1), at)
         at += c.u(0.07, 0.15)
     return y
@@ -637,7 +673,7 @@ def _(c):
 
 # --- getting things -------------------------------------------------------------------------
 
-@sfx("collect", "Items", "picking up an item", 3, 0.38)
+@sfx("collect", "Items", "picking up an item", 3, 0.34)
 def _(c):
     lo, hi = c.pick([("A5", "D6"), ("F#5", "A5"), ("D6", "F#6")])
     n = N(1.2)
@@ -659,6 +695,18 @@ def _(c):
     return impact(c, n, "dirt", size=0.7, hardness=1.5) + 0.5 * grains(c, n, 15, 4, 800, 4000, decay=0.03)
 
 
+@sfx("eat", "Items", "eating: two crunchy bites", 3, 0.3, "new")
+def _(c):
+    n = N(0.5)
+    y = np.zeros(n)
+    for k in range(2):
+        bn = N(c.u(0.07, 0.1))
+        crunch = grains(c, bn, int(c.u(25, 40)), 2, 900, 6500, decay=0.02)       # the food fractures
+        mouth = fft_filter(c.noise(bn), bp(300, 1400)) * env_exp(bn, 0.03, 0.004)   # heard through a closed mouth
+        place(y, crunch + 0.5 * mouth, k * c.u(0.17, 0.22))
+    return y
+
+
 @sfx("loot", "Items", "a dropped item lands and bounces", 3, 0.25)
 def _(c):
     n = N(0.4)
@@ -673,7 +721,7 @@ def _(c):
     return y
 
 
-@sfx("craft", "Items", "crafting something at a workbench", 2, 0.45)
+@sfx("craft", "Items", "crafting something at a workbench", 2, 0.4)
 def _(c):
     n = N(1.9)
     y = np.zeros(n)
@@ -752,15 +800,17 @@ def _(c):
     return puff + np.pad(pop, (0, n - len(pop)))
 
 
-@sfx("gloom", "Fights", "a gloom attacks at night: a breathy, low growl", 2, 0.4)
+@sfx("gloom", "Fights", "a gloom attacks at night: a breathy, low growl", 2, 0.4, "reworked")
 def _(c):
-    n = N(0.9)
+    dur = [0.9, 1.15][c.v % 2]
+    n = N(dur)
     t = tt(n)
-    f0 = 55 + 12 * np.sin(2 * np.pi * 3 * t) * np.exp(-t / 0.4) + c.u(-4, 4)
+    f0 = [55, 46][c.v % 2] + 12 * np.sin(2 * np.pi * c.u(2.5, 3.5) * t) * np.exp(-t / 0.4) + c.u(-3, 3)
     growl = voice(n, f0, lambda t: [(450, 1.0), (900, 0.5)], 180, harmonics=60, c=c)
     breath = fft_filter(c.noise(n), bp(200, 1400)) * 0.3
-    am = 0.7 + 0.3 * np.sin(2 * np.pi * 23 * t)
-    return fft_filter(growl * 0.35 * am + breath, lp(1800)) * np.sin(np.pi * np.clip(t / 0.9, 0, 1)) ** 0.6
+    am = 0.7 + 0.3 * np.sin(2 * np.pi * c.u(19, 27) * t)
+    env = np.clip(t / 0.03, 0, 1) * np.clip((dur - t) / 0.3, 0, 1) ** 0.6
+    return fft_filter(growl * 0.35 * am + breath, lp(1800)) * env
 
 
 # --- animals -----------------------------------------------------------------------------------
@@ -779,6 +829,18 @@ def _(c):
     return y
 
 
+@sfx("squawk", "Animals", "a chicken is hit or startled", 3, 0.32, "new")
+def _(c):
+    dur = c.u(0.2, 0.28)
+    n = N(dur)
+    t = tt(n)
+    x = t / dur
+    f0 = c.u(780, 900) * (1 + 0.25 * np.sin(np.pi * x)) * (1 - 0.25 * x)
+    y = voice(n, f0, lambda t: [(1500, 1.0), (2900, 0.7)], 400, harmonics=12, c=c)
+    y *= 1 - 0.5 * (0.5 + 0.5 * np.sin(2 * np.pi * c.u(60, 80) * t))          # raspy
+    return y * np.sin(np.pi * np.clip(x, 0, 1)) ** 0.6
+
+
 @sfx("chirp", "Animals", "a chick peeps; an egg hatches", 4, 0.25)
 def _(c):
     n = N(0.35)
@@ -792,15 +854,23 @@ def _(c):
     return y
 
 
-@sfx("moo", "Animals", "a cow moos (petted, milked, fed, hit)", 3, 0.4)
+@sfx("moo", "Animals", "a cow moos (petted, milked, fed, hit)", 3, 0.4, "reworked")
 def _(c):
-    n = N(1.2)
+    dur = [1.25, 0.95, 1.45][c.v % 3]
+    n = N(dur)
     t = tt(n)
-    base = c.u(95, 120)
-    f0 = base * (1 + 0.25 * np.sin(np.pi * np.clip(t / 1.1, 0, 1)) - 0.1 * t)
-    vowel = lambda t: [(300 + 350 * np.clip(t / 0.6, 0, 1), 1.0), (800 + 300 * np.clip(t / 0.6, 0, 1), 0.5), (2500, 0.1)]  # "mm" -> "oo"
-    y = voice(n, f0, vowel, 150, harmonics=50, breath=0.04, c=c)
-    return y * np.sin(np.pi * np.clip(t / 1.15, 0, 1)) ** 0.7
+    x = t / dur
+    base = [105, 125, 92][c.v % 3] * c.u(0.97, 1.03)
+    f0 = base * (0.82 + 0.38 * np.sin(np.pi * np.clip(x * 1.15, 0, 1)) ** 1.5 - 0.12 * x)   # scoops up, sags at the end
+    mouth = np.clip((x - 0.12) / 0.25, 0, 1) * (1 - 0.5 * np.clip((x - 0.8) / 0.2, 0, 1))   # "mm" -> "ooo" -> closing
+    vowel = lambda t: [(250 + 230 * mouth, 1.0), (650 + 350 * mouth, 0.25 + 0.45 * mouth), (2300, 0.03 + 0.1 * mouth)]
+    y = voice(n, f0, vowel, 120, harmonics=60, c=c)
+    ph = 2 * np.pi * np.cumsum(f0) / SR
+    fry = (1 - np.clip(x / 0.18, 0, 1)) + np.clip((x - 0.85) / 0.15, 0, 1)   # rough at the start and the very end
+    y *= 1 - 0.45 * fry * (0.5 + 0.5 * np.sin(ph / 2))                       # every other pulse weaker
+    breath = fft_filter(c.noise(n), bp(500, 3000)) * (0.02 + 0.1 * np.clip((x - 0.75) / 0.25, 0, 1))
+    env = np.clip(t / 0.06, 0, 1) * np.clip((dur - t) / 0.18, 0, 1) ** 0.7
+    return (y / (np.abs(y).max() + 1e-9) + breath) * env
 
 
 @sfx("milk", "Animals", "milking a cow into a pail", 2, 0.35)
@@ -847,44 +917,75 @@ def _(c):
 
 # --- world -----------------------------------------------------------------------------------
 
-@sfx("water", "World", "filling a bucket, watering, a splash, boarding a boat", 3, 0.4)
+@sfx("water", "World", "a splash: boarding or mooring a boat, something falls in", 3, 0.4, "reworked")
 def _(c):
-    n = N(0.6)
-    splash = swept_noise(c, n, 3000, 900, 0.5) * env_exp(n, 0.12, 0.004)
-    y = splash
-    for _ in range(7):
-        bn = N(c.u(0.02, 0.06))
-        f = c.u(400, 1400)
-        bub = np.sin(2 * np.pi * np.cumsum(f * (1 + 3 * tt(bn) / (bn / SR))) / SR) * np.exp(-tt(bn) / 0.02)
-        place(y, 0.35 * bub, c.u(0.02, 0.35))
+    n = N(0.7)
+    slap = fft_filter(c.noise(n), bp(400, 5000)) * env_exp(n, 0.035, 0.002)           # the surface is hit
+    crown = swept_noise(c, n, 3000, 900, 0.5) * env_exp(n, 0.14, 0.02)               # water thrown up, falling back
+    y = 0.8 * slap + 0.6 * crown
+    for _ in range(int(c.u(22, 34))):                                               # bubbles, radii by a power law
+        r = min(9, 1.0 * c.u(0.04, 1) ** (-1 / 1.6))
+        place(y, bubble(c, r, amp=c.u(0.08, 0.3)), c.u(0.03, 0.45))
     return y
 
 
-@sfx("whoosh", "World", "lighting a fire: the flame catches", 2, 0.4)
+@sfx("pour", "World", "watering crops: a gentle stream from the can", 2, 0.3, "new")
 def _(c):
     n = N(0.8)
-    curve = np.clip(tt(n) / 0.35, 0, 1) ** 0.6
-    swell = swept_noise(c, n, 200, 1800, 0.45, curve=curve)
-    return swell * np.sin(np.pi * np.clip(tt(n) / 0.8, 0, 1)) ** 0.8
+    t = tt(n)
+    env = np.clip(t / 0.05, 0, 1) * np.clip((0.8 - t) / 0.25, 0, 1)
+    y = np.zeros(n)
+    for _ in range(int(c.u(110, 150))):
+        r = min(3.0, 0.5 * c.u(0.03, 1) ** (-1 / 2.2))                               # mostly tiny bubbles
+        at = c.u(0, 0.7)
+        place(y, bubble(c, r, amp=c.u(0.1, 0.5) * env[int(at * SR)]), at)
+    spray = fft_filter(c.noise(n), bp(2500, 9000)) * env * 0.08
+    patter = phism(c, n, env, rate=400, freq=700, decay=0.004) * 0.25               # drops landing on soil
+    return y / (np.abs(y).max() + 1e-9) + spray + patter
 
 
-@sfx("crackle", "World", "fire burning, something burns", 3, 0.3)
+@sfx("fill", "World", "filling a bucket at the water", 2, 0.4, "new")
+def _(c):
+    n = N(0.9)
+    y = np.zeros(n)
+    dunk = swept_noise(c, N(0.25), 2500, 800, 0.5) * env_exp(N(0.25), 0.07, 0.004)
+    place(y, dunk * 0.5, 0)
+    at = 0.08
+    for k in range(int(c.u(4, 6))):                                                 # glug, glug: big bubbles, higher as it fills
+        place(y, bubble(c, c.u(7, 10) * (1 - 0.08 * k), amp=0.9 - 0.1 * k), at)
+        at += c.u(0.09, 0.14)
+    for _ in range(25):
+        place(y, bubble(c, min(4, 0.8 * c.u(0.05, 1) ** (-1 / 1.8)), amp=c.u(0.05, 0.2)), c.u(0.02, 0.7))
+    return y
+
+
+@sfx("whoosh", "World", "lighting a fire: the flame catches", 2, 0.4, "reworked")
+def _(c):
+    n = N(0.8)
+    curve = np.clip(tt(n) / c.u(0.25, 0.4), 0, 1) ** 0.6
+    swell = swept_noise(c, n, c.u(180, 260), c.u(1500, 2200), 0.45, curve=curve)
+    return swell * np.clip(tt(n) / 0.03, 0, 1) * np.clip((0.8 - tt(n)) / 0.45, 0, 1) ** 0.8
+
+
+@sfx("crackle", "World", "fire burning, something burns", 3, 0.3, "reworked")
 def _(c):
     n = N(1.2)
-    roar = fft_filter(c.noise(n), bp(120, 700)) * 0.25
-    pops = grains(c, n, 25, 2, 1500, 9000, spread=1.1, amp_jitter=0.9)
-    return (roar + pops) * np.sin(np.pi * np.clip(tt(n) / 1.2, 0, 1)) ** 0.3
+    t = tt(n)
+    flick = fft_filter(c.noise(n), lp(8))
+    lap = fft_filter(c.noise(n), bp(70, 450)) * (0.6 + 0.4 * flick / (np.abs(flick).max() + 1e-9))   # flames lapping
+    hiss = fft_filter(c.noise(n), bp(3000, 10000)) * 0.04                                           # sap and steam
+    pops = grains(c, n, int(c.u(18, 32)), 2, 1200, 9000, spread=1.1, amp_jitter=0.9)
+    env = np.clip(t / 0.01, 0, 1) * np.clip((1.2 - t) / 0.3, 0, 1)
+    return (0.3 * lap / (np.abs(lap).max() + 1e-9) + hiss + pops) * env
 
 
-@sfx("flood", "World", "water spreads over the ground", 1, 0.35)
+@sfx("flood", "World", "water spreads over the ground", 1, 0.35, "reworked")
 def _(c):
     n = N(1.4)
-    rush = fft_filter(c.noise(n), bp(300, 3000)) * np.sin(np.pi * np.clip(tt(n) / 1.4, 0, 1))
+    rush = fft_filter(c.noise(n), bp(300, 3000)) * np.clip(tt(n) / 0.03, 0, 1) * np.clip((1.4 - tt(n)) / 0.6, 0, 1)
     y = rush * 0.5
-    for _ in range(14):
-        bn = N(c.u(0.02, 0.05))
-        bub = np.sin(2 * np.pi * np.cumsum(c.u(500, 1200) * (1 + 2 * tt(bn) / (bn / SR))) / SR) * np.exp(-tt(bn) / 0.015)
-        place(y, 0.3 * bub, c.u(0.05, 1.2))
+    for _ in range(30):
+        place(y, bubble(c, min(8, 1.2 * c.u(0.05, 1) ** (-1 / 1.6)), amp=c.u(0.08, 0.3)), c.u(0.05, 1.2))
     return y
 
 
@@ -907,24 +1008,33 @@ def _(c):
 
 # --- people and interface -----------------------------------------------------------------------
 
-@sfx("say", "People", "someone nearby says something (a soft talk blip)", 5, 0.18)
+@sfx("say", "People", "someone nearby talks: a soft babble of two to four syllables", 5, 0.18, "reworked")
 def _(c):
-    note = ["D5", "E5", "F#5", "A5", "B5"][c.v % 5]
-    n = N(0.12)
-    t = tt(n)
-    y = voice(n, np.full(n, hz(note)), lambda t: [(900, 1.0), (1800, 0.4)], 400, harmonics=10)
-    return y * np.sin(np.pi * np.clip(t / 0.12, 0, 1))
-
-
-@sfx("shout", "People", "someone shouts", 2, 0.3)
-def _(c):
-    n = N(0.35)
-    y = np.zeros(n)
-    for k, note in enumerate(("A5", "D6")):
-        bn = N(0.14)
+    vowels = {"a": (850, 1400), "e": (500, 1900), "i": (320, 2300), "o": (480, 900), "u": (350, 800)}
+    notes = ["D4", "E4", "F#4", "A4", "B4"]                                     # the music's notes, at speaking pitch
+    y = np.zeros(N(0.6))
+    at = 0.0
+    for k in range([3, 2, 4, 3, 2][c.v % 5]):
+        bn = N(c.u(0.055, 0.08))
         t = tt(bn)
-        f0 = np.full(bn, hz(note)) * (1 + 0.03 * np.sin(2 * np.pi * 9 * t))
-        place(y, voice(bn, f0, lambda t: [(1100, 1.0), (2400, 0.6)], 500, harmonics=14) * np.sin(np.pi * t / 0.14), k * 0.13)
+        f1, f2 = vowels[c.pick("aeiou")]
+        f0 = np.full(bn, hz(c.pick(notes))) * (1 + 0.04 * np.sin(np.pi * t / (bn / SR)))
+        syl = voice(bn, f0, lambda t, f1=f1, f2=f2: [(f1, 1.0), (f2, 0.5)], 220, harmonics=24, c=c)
+        place(y, syl * np.sin(np.pi * t / (bn / SR)) ** 0.8, at)
+        at += bn / SR + c.u(0.005, 0.02)
+    return y
+
+
+@sfx("shout", "People", "someone shouts", 2, 0.3, "reworked")
+def _(c):
+    n = N(0.4)
+    y = np.zeros(n)
+    for k, note in enumerate([("A4", "D5"), ("F#4", "B4")][c.v % 2]):           # a call: two rising syllables
+        bn = N(c.u(0.13, 0.16))
+        t = tt(bn)
+        f0 = np.full(bn, hz(note)) * (1 + 0.05 * t / (bn / SR))
+        syl = voice(bn, f0, lambda t: [(800, 1.0), (1300, 0.6), (2600, 0.25)], 300, harmonics=30, c=c)
+        place(y, syl * np.sin(np.pi * t / (bn / SR)) ** 0.6, k * c.u(0.13, 0.16))
     return y
 
 
@@ -964,23 +1074,23 @@ def _(c):
     return modes(n, [f, f * 2.7], [0.03, 0.01], [1, 0.3]) + 0.15 * fft_filter(c.noise(n), bp(2000, 8000)) * env_exp(n, 0.003)
 
 
-@sfx("open", "Interface", "opening a panel (crafting, mailbox, chest view)", 1, 0.25)
+@sfx("open", "Interface", "opening a panel (crafting, mailbox, chest view)", 1, 0.25, "reworked")
 def _(c):
     n = N(0.9)
-    slide = swept_noise(c, n, 1500, 4000, 0.5) * np.sin(np.pi * np.clip(tt(n) / 0.25, 0, 1)) * (tt(n) < 0.25) * 0.4
+    slide = swept_noise(c, n, 1500, 4000, 0.5) * np.sin(np.pi * np.clip(tt(n) / 0.25, 0, 1)) * (tt(n) < 0.25) * 0.3
     y = slide
-    place(y, mallet("A5", 0.4, n=N(0.35)) * 0.6, 0.05)
-    place(y, mallet("D6", 0.4, n=N(0.35)) * 0.6, 0.12)
+    place(y, mallet("A5", 0.4, n=N(0.35)) * 0.6, 0.0)                          # the note lands with the click
+    place(y, mallet("D6", 0.4, n=N(0.35)) * 0.6, 0.07)
     return y
 
 
-@sfx("close", "Interface", "closing a panel", 1, 0.22)
+@sfx("close", "Interface", "closing a panel", 1, 0.22, "reworked")
 def _(c):
     n = N(0.9)
-    slide = swept_noise(c, n, 4000, 1500, 0.5) * np.sin(np.pi * np.clip(tt(n) / 0.25, 0, 1)) * (tt(n) < 0.25) * 0.4
+    slide = swept_noise(c, n, 4000, 1500, 0.5) * np.sin(np.pi * np.clip(tt(n) / 0.25, 0, 1)) * (tt(n) < 0.25) * 0.3
     y = slide
-    place(y, mallet("D6", 0.4, n=N(0.35)) * 0.6, 0.03)
-    place(y, mallet("A5", 0.4, n=N(0.35)) * 0.6, 0.1)
+    place(y, mallet("D6", 0.4, n=N(0.35)) * 0.6, 0.0)
+    place(y, mallet("A5", 0.4, n=N(0.35)) * 0.6, 0.07)
     return y
 
 
@@ -996,13 +1106,21 @@ def _(c):
 # ------------------------------------------------------------------ render all
 
 
+def kweight(x):
+    """ITU-R BS.1770 K-weighting in the frequency domain: +4 dB shelf above ~1.5 kHz, high-pass at 38 Hz."""
+    n = len(x)
+    f = np.fft.rfftfreq(n, 1 / SR)
+    shelf = 1 + (10 ** (4 / 20) - 1) / (1 + (1681 / np.maximum(f, 1)) ** 2)
+    low = 1 / np.sqrt(1 + (38 / np.maximum(f, 1e-3)) ** 4)
+    return np.fft.irfft(np.fft.rfft(x) * shelf * low, n)
+
+
 def loudness(y):
-    """Loudest 50 ms RMS: the part you actually hear."""
-    w = N(0.05)
-    if len(y) <= w:
-        return np.sqrt(np.mean(y ** 2))
-    c = np.cumsum(np.concatenate([[0], y ** 2]))
-    return np.sqrt(np.max(c[w:] - c[:-w]) / w)
+    """Loudest 100 ms as the ear weighs it, in dB."""
+    k = kweight(y)
+    w = min(len(k), N(0.1))
+    c = np.cumsum(np.concatenate([[0], k ** 2]))
+    return 10 * np.log10(np.max(c[w:] - c[:-w]) / w + 1e-12)
 
 
 def write_wav(path, y):
@@ -1023,13 +1141,17 @@ if __name__ == "__main__":
         m = META[name]
         files = []
         for v in range(m["variants"]):
-            y = finish(fn(Ctx(name, v)))
-            y *= m["loud"] * 0.5 / loudness(y)          # same perceived level within a category
+            raw = fn(Ctx(name, v))
+            if m["vary"]:
+                raw = resize(raw, SIZES[v % len(SIZES)])
+            y = finish(raw)
+            target = 20 * np.log10(m["loud"]) - 9         # perceived level, set per sound; every variant matches
+            y *= 10 ** ((target - loudness(y)) / 20)
             y *= min(1, 0.95 / np.abs(y).max())
             f = f"{name}_{v}.wav"
             write_wav(OUT / f, y)
             files.append(f)
-        manifest[name] = {"category": m["cat"], "when": m["when"], "files": files}
+        manifest[name] = {"category": m["cat"], "when": m["when"], "files": files, "change": m["change"]}
         print(f"  {name:9s} {m['cat']:10s} x{m['variants']}  {len(y) / SR:.2f}s")
     (OUT / "sfx.json").write_text(json.dumps(manifest, indent=1))
     (OUT / "map.json").write_text(Path(__file__).with_name("sfx_map.json").read_text())

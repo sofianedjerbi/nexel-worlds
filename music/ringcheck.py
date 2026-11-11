@@ -6,7 +6,7 @@ import numpy as np
 
 D = sys.argv[1] if len(sys.argv) > 1 else "music/site/sfx"
 TONAL_OK = {"Progress", "People", "Interface"}
-TONAL_NAMES = {"wade",  # bubbles are real tones (Minnaert)
+TONAL_NAMES = {"wade", "fill", "pour",  # bubbles are real tones (Minnaert)
                "collect", "orb", "craft", "chirp", "cluck", "moo", "gloom", "love", "grow", "creak", "gate", "chest", "die", "lay", "hatch", "milk"}
 
 
