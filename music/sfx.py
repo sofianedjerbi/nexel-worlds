@@ -578,15 +578,16 @@ def _(c):
     return y + 0.6 * pebbles + 0.2 * dust + 0.6 * rumble
 
 
-@sfx("creak", "Breaking", "a tree starts to fall", 2, 0.4)
+@sfx("creak", "Breaking", "a tree starts to fall: the trunk cracks and tips (the thud follows 0.36 s later)", 2, 0.4)
 def _(c):
-    dur = c.u(0.8, 1.0)
+    dur = c.u(0.3, 0.34)                                                                  # over before the tree lands
     n = N(dur)
     t = tt(n)
-    rate = c.u(22, 34) + c.u(35, 55) * np.sin(np.pi * t / dur) + 8 * np.sin(2 * np.pi * c.u(5, 9) * t)
     k = c.u(0.85, 1.2)
-    wood = stickslip(c, n, rate, (380 * k, 760 * k, 1250 * k), 9)
-    return (wood + 0.2 * _crack(c, n, 14, dur)) * np.clip(t / 0.02, 0, 1) * np.clip((dur - t) / 0.25, 0, 1) ** 0.5
+    strain = stickslip(c, n, c.u(22, 30) + c.u(60, 80) * (t / dur) ** 2, (300 * k, 650 * k, 1100 * k), 5)   # the hinge of wood giving way, faster and faster
+    y = _crack(c, n, int(c.u(9, 13)), dur * 1.6) + 0.45 * strain                          # mostly fibres snapping, not a long groan
+    place(y, 0.7 * strike(c, N(0.1), "wood", size=c.u(1.5, 1.9), hard=1.5), 0)            # the first crack of the trunk
+    return y * np.clip(t / 0.004, 0, 1) * np.clip((dur - t) / 0.05, 0, 1)
 
 
 @sfx("fallthud", "Breaking", "a tree hits the ground", 2, 0.48)
