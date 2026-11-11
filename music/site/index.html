@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Megastructure · town theme</title>
+<style>
+  :root {
+    --ink:#5b3f36; --ink2:#8a6a55; --paper:#fff6e2; --paper2:#f3dfba; --line:#c9a27a;
+    --sky:#9bd4c3; --A:#f4b6a8; --B:#f7d488; --C:#a9c8ec; --D:#b9e0a5;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; min-height:100%; }
+  body {
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif;
+    color:var(--ink); background:
+      radial-gradient(circle at 20% 10%, #c4ece0 0, transparent 40%),
+      radial-gradient(circle at 85% 80%, #bfe3f2 0, transparent 45%), var(--sky);
+    display:flex; justify-content:center; padding:36px 16px 60px;
+  }
+  main { width:min(860px, 100%); }
+  header { text-align:center; margin-bottom:18px; }
+  h1 { margin:0; font-size:34px; font-weight:900; letter-spacing:.2px; }
+  .sub { color:var(--ink2); margin-top:6px; font-weight:700; }
+  .card {
+    background:var(--paper); border:3px solid var(--line); border-radius:18px;
+    box-shadow:0 5px 0 #b48a62, 0 14px 30px rgba(60,40,30,.15); padding:18px; margin-bottom:18px;
+  }
+  #stage { position:relative; height:280px; border-radius:12px; overflow:hidden;
+    background:linear-gradient(#fff9ec, #f8e8c8); border:2px solid #ead1a8; }
+  #viz { position:absolute; inset:0; width:100%; height:100%; }
+  .controls { display:flex; align-items:center; gap:16px; margin-top:16px; }
+  #play {
+    width:64px; height:64px; border-radius:50%; border:3px solid var(--ink); cursor:pointer;
+    background:#ffd36e; box-shadow:0 4px 0 var(--ink); display:grid; place-items:center; flex:none;
+    transition:transform .06s;
+  }
+  #play:active { transform:translateY(3px); box-shadow:0 1px 0 var(--ink); }
+  #play[disabled] { opacity:.5; cursor:wait; }
+  #play svg { width:26px; height:26px; fill:var(--ink); }
+  .timeline { flex:1; }
+  #sections { position:relative; display:flex; height:40px; border-radius:10px; overflow:hidden;
+    border:2px solid var(--ink); cursor:pointer; }
+  #sections div { flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+    font-weight:800; font-size:14px; border-right:2px solid rgba(91,63,54,.25); transition:filter .2s; }
+  #sections div:last-child { border-right:0; }
+  #sections div.on { filter:saturate(1.5) brightness(1.03); }
+  #sections div b { background:var(--ink); color:var(--paper); border-radius:6px; padding:0 6px; font-size:12px; }
+  #head { position:absolute; top:-3px; bottom:-3px; width:4px; background:var(--ink); border-radius:2px;
+    pointer-events:none; left:0; z-index:2; box-shadow:0 0 0 2px var(--paper); }
+  .times { display:flex; justify-content:space-between; color:var(--ink2); font-weight:700;
+    font-size:13px; margin-top:6px; font-variant-numeric:tabular-nums; }
+  h2 { margin:0 0 12px; font-size:18px; font-weight:900; }
+  h2 small { color:var(--ink2); font-weight:700; font-size:13px; margin-left:6px; }
+  #stems { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; }
+  .stem { border:2px solid var(--line); border-radius:12px; padding:10px; background:#fffaf0;
+    display:flex; flex-direction:column; gap:8px; align-items:center; transition:opacity .15s; }
+  .stem.off { opacity:.45; }
+  .stem .name { font-weight:900; }
+  .stem .what { font-size:12px; color:var(--ink2); text-align:center; min-height:30px; }
+  .meter { width:100%; height:8px; border-radius:4px; background:#eedcbc; overflow:hidden; }
+  .meter i { display:block; height:100%; width:0; border-radius:4px; }
+  .btns { display:flex; gap:6px; }
+  .btns button { font:inherit; font-weight:800; font-size:12px; border:2px solid var(--ink);
+    border-radius:8px; padding:3px 9px; cursor:pointer; background:var(--paper2); color:var(--ink); }
+  .btns button.lit { background:var(--ink); color:var(--paper); }
+  .notes { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; color:var(--ink2); font-size:14px; }
+  .notes b { color:var(--ink); }
+  a { color:var(--ink); font-weight:800; }
+  @media (max-width:700px) { #stems { grid-template-columns:repeat(2, 1fr); } .notes { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="title">town theme</h1>
+    <div class="sub" id="meta">loading…</div>
+  </header>
+
+  <section class="card">
+    <div id="stage"><canvas id="viz"></canvas></div>
+    <div class="controls">
+      <button id="play" disabled aria-label="play">
+        <svg viewBox="0 0 24 24" id="icon"><path d="M7 4.5v15l13-7.5z"/></svg>
+      </button>
+      <div class="timeline">
+        <div id="sections"><span id="head"></span></div>
+        <div class="times"><span id="now">0:00</span><span id="loops">seamless loop</span><span id="len">1:04</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Stems <small>mute or solo the layers, the sum is the master</small></h2>
+    <div id="stems"></div>
+  </section>
+
+  <section class="card">
+    <h2>How it's made</h2>
+    <div class="notes">
+      <div><b>Synth:</b> pure numpy, 48 kHz, in <code>music/compose.py</code>. Run it again to re-render.</div>
+      <div><b>Harmony:</b> jazzy 9ths and borrowed chords in F major, a minor bridge in D minor.</div>
+      <div><b>Lead:</b> two detuned pulse waves panned wide, slide-in and delayed vibrato.</div>
+      <div><b>Low end:</b> sine sub plus a plucky pulse bass, sidechained to the kick.</div>
+      <div><b>Space:</b> ping-pong echo and a stereo room, computed circularly so the tails wrap.</div>
+      <div><b>Master:</b> look-ahead limiter, -14 dBFS RMS. <a href="audio/master.wav" download>Download master.wav</a></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const STEM_INFO = {
+  melody:  { what: "chip lead, kalimba, ocarina, harmony", color: "#e48a7a" },
+  keys:    { what: "FM electric piano, warm pads",           color: "#e6b44f" },
+  sparkle: { what: "chip arps, glockenspiel, kalimba",       color: "#8fb3e0" },
+  bass:    { what: "sub + plucky pulse bass",                color: "#8d6bb5" },
+  drums:   { what: "kick, snare, clap, hats, shaker",        color: "#6fae78" },
+};
+const SEC_COLORS = { A: "var(--A)", B: "var(--B)", C: "var(--C)", D: "var(--D)" };
+const SEC_RGB = { A: [244,182,168], B: [247,212,136], C: [169,200,236], D: [185,224,165] };
+
+let ctx, meta, buffers = {}, nodes = {}, sources = [], master, analyser;
+let playing = false, startAt = 0, offset = 0, muted = {}, solo = null;
+const $ = (id) => document.getElementById(id);
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+async function load() {
+  meta = await (await fetch("audio/track.json")).json();
+  $("title").textContent = meta.title;
+  $("meta").textContent = `cozy chiptune · ${meta.bpm} BPM · F major · ${meta.bars} bars · ${meta.seconds.toFixed(0)} s seamless loop`;
+  $("len").textContent = fmt(meta.seconds);
+  const secs = $("sections");
+  meta.sections.forEach((s, i) => {
+    const d = document.createElement("div");
+    d.style.background = SEC_COLORS[s.id];
+    d.innerHTML = `<b>${s.id}</b>${s.name}`;
+    d.dataset.i = i;
+    secs.appendChild(d);
+  });
+  secs.addEventListener("click", (e) => {
+    const r = secs.getBoundingClientRect();
+    seek(((e.clientX - r.left) / r.width) * meta.seconds);
+  });
+  const box = $("stems");
+  for (const s of meta.stems) {
+    const el = document.createElement("div");
+    el.className = "stem";
+    el.innerHTML = `<div class="name">${s}</div><div class="what">${STEM_INFO[s].what}</div>
+      <div class="meter"><i style="background:${STEM_INFO[s].color}"></i></div>
+      <div class="btns"><button data-a="mute">mute</button><button data-a="solo">solo</button></div>`;
+    el.querySelector('[data-a="mute"]').onclick = () => { muted[s] = !muted[s]; applyGains(); };
+    el.querySelector('[data-a="solo"]').onclick = () => { solo = solo === s ? null : s; applyGains(); };
+    box.appendChild(el);
+    STEM_INFO[s].el = el;
+  }
+
+  ctx = new AudioContext({ sampleRate: 48000 });
+  master = ctx.createGain();
+  analyser = ctx.createAnalyser();
+  analyser.fftSize = 4096;
+  analyser.smoothingTimeConstant = 0.78;
+  master.connect(analyser).connect(ctx.destination);
+  await Promise.all(meta.stems.map(async (s) => {
+    const raw = await (await fetch(`audio/stem_${s}.wav`)).arrayBuffer();
+    buffers[s] = await ctx.decodeAudioData(raw);
+    const g = ctx.createGain();
+    const a = ctx.createAnalyser();
+    a.fftSize = 1024;
+    g.connect(a);
+    g.connect(master);
+    nodes[s] = { g, a, data: new Float32Array(1024) };
+  }));
+  $("play").disabled = false;
+  
+}
+
+function applyGains() {
+  for (const s of meta.stems) {
+    const on = solo ? s === solo : !muted[s];
+    nodes[s].g.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, 0.015);
+    STEM_INFO[s].el.classList.toggle("off", !on);
+    STEM_INFO[s].el.querySelector('[data-a="mute"]').classList.toggle("lit", !!muted[s]);
+    STEM_INFO[s].el.querySelector('[data-a="solo"]').classList.toggle("lit", solo === s);
+  }
+}
+
+function position() {
+  return playing ? (ctx.currentTime - startAt + offset) % meta.seconds : offset;
+}
+
+function start(at) {
+  const when = ctx.currentTime + 0.03;
+  sources = meta.stems.map((s) => {
+    const src = ctx.createBufferSource();
+    src.buffer = buffers[s];
+    src.loop = true;                       // sample-exact, gapless
+    src.connect(nodes[s].g);
+    src.start(when, at);
+    return src;
+  });
+  startAt = when;
+  offset = at;
+  playing = true;
+}
+
+function stop() {
+  offset = position();
+  sources.forEach((s) => s.stop());
+  sources = [];
+  playing = false;
+}
+
+function seek(t) {
+  if (playing) { stop(); start(t); } else offset = t;
+}
+
+$("play").onclick = async () => {
+  await ctx.resume();
+  if (playing) stop(); else start(offset);
+  $("icon").innerHTML = playing ? '<path d="M6 4h4.5v16H6zM13.5 4H18v16h-4.5z"/>' : '<path d="M7 4.5v15l13-7.5z"/>';
+};
+document.addEventListener("keydown", (e) => { if (e.code === "Space" && !$("play").disabled) { e.preventDefault(); $("play").click(); } });
+
+// ------------------------------------------------------------ visualizer
+const cv = $("viz"), g2 = cv.getContext("2d");
+const chick = new Image();
+chick.src = "chick.png";
+const particles = [];
+let lastBeat = -1;
+const freq = new Uint8Array(2048);
+
+function sectionAt(t) {
+  let cur = meta.sections[0];
+  for (const s of meta.sections) if (t >= s.t) cur = s;
+  return cur;
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+  const dpr = devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g2.clearRect(0, 0, W, H);
+  if (!meta) return;
+
+  const t = position();
+  const beatLen = 60 / meta.bpm;
+  const beat = t / beatLen;
+  const phase = beat % 1;
+  const sec = sectionAt(t);
+  const [r, gg, b] = SEC_RGB[sec.id];
+
+  // soft section-colored sun
+  const pulse = playing ? Math.exp(-phase * 5) : 0;
+  const grad = g2.createRadialGradient(W / 2, H * 0.62, 10, W / 2, H * 0.62, 220 + 30 * pulse);
+  grad.addColorStop(0, `rgba(${r},${gg},${b},0.75)`);
+  grad.addColorStop(1, `rgba(${r},${gg},${b},0)`);
+  g2.fillStyle = grad;
+  g2.fillRect(0, 0, W, H);
+
+  // log-spaced spectrum bars, mirrored from the center
+  analyser.getByteFrequencyData(freq);
+  const n = 28, base = H - 34;
+  const bw = (W / 2 - 20) / n;
+  for (let i = 0; i < n; i++) {
+    const lo = Math.floor(3 * Math.pow(340, i / n)), hi = Math.max(lo + 1, Math.floor(3 * Math.pow(340, (i + 1) / n)));
+    let v = 0;
+    for (let k = lo; k < hi && k < freq.length; k++) v = Math.max(v, freq[k]);
+    const h = Math.max(4, (v / 255) ** 1.6 * (H - 90));
+    const hue = 12 + i * 7;
+    g2.fillStyle = `hsl(${hue} 70% 72%)`;
+    for (const side of [-1, 1]) {
+      const x = W / 2 + side * (i * bw + 26) - (side < 0 ? bw - 3 : 0);
+      roundRect(x, base - h, bw - 3, h, 4);
+    }
+  }
+  // ground
+  g2.fillStyle = "#b9dd96";
+  g2.fillRect(0, base, W, H - base);
+  g2.fillStyle = "#9cc97a";
+  for (let x = ((-t * 40) % 24); x < W; x += 24) g2.fillRect(x, base, 12, 4);
+
+  // the chick hops on every beat
+  const hop = playing ? Math.sin(Math.PI * Math.min(phase / 0.55, 1)) * 26 : 0;
+  const frame = playing ? Math.floor(beat * 2) % 4 : 0;
+  const S = 5;
+  g2.imageSmoothingEnabled = false;
+  if (chick.complete) g2.drawImage(chick, frame * 16, 0, 16, 16, W / 2 - 8 * S, base - 16 * S + 12 - hop, 16 * S, 16 * S);
+
+  // a note or heart pops out each beat
+  const whole = Math.floor(beat);
+  if (playing && whole !== lastBeat) {
+    lastBeat = whole;
+    particles.push({ x: W / 2 + (Math.random() - 0.5) * 40, y: base - 70, vx: (Math.random() - 0.5) * 60,
+      vy: -60 - Math.random() * 40, life: 1.6, k: whole % 4 === 0 ? "♥" : "♪", c: `hsl(${(whole * 47) % 360} 65% 60%)` });
+  }
+  g2.font = "900 22px ui-rounded, system-ui";
+  g2.textAlign = "center";
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= 1 / 60; p.x += p.vx / 60; p.y += p.vy / 60;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    g2.globalAlpha = Math.min(1, p.life);
+    g2.fillStyle = p.c;
+    g2.fillText(p.k, p.x, p.y);
+  }
+  g2.globalAlpha = 1;
+
+  // bar.beat readout
+  g2.fillStyle = "rgba(91,63,54,.75)";
+  g2.font = "800 13px ui-rounded, system-ui";
+  g2.textAlign = "left";
+  g2.fillText(`bar ${Math.floor(beat / 4) + 1} · beat ${(whole % 4) + 1} · ${sec.name}`, 12, 22);
+
+  // ui: playhead, time, current section, meters
+  $("head").style.left = `calc(${(t / meta.seconds) * 100}% - 2px)`;
+  $("now").textContent = fmt(t);
+  document.querySelectorAll("#sections div").forEach((d) => d.classList.toggle("on", meta.sections[d.dataset.i] === sec));
+  if (playing) $("loops").textContent = `loop ${Math.floor((ctx.currentTime - startAt + offset) / meta.seconds) + 1}, seamless`;
+  for (const s of meta.stems) {
+    const nd = nodes[s];
+    if (!nd) continue;
+    nd.a.getFloatTimeDomainData(nd.data);
+    let pk = 0;
+    for (const v of nd.data) pk = Math.max(pk, Math.abs(v));
+    STEM_INFO[s].el.querySelector(".meter i").style.width = `${Math.min(100, Math.sqrt(pk) * 110)}%`;
+  }
+}
+
+function roundRect(x, y, w, h, r) {
+  g2.beginPath();
+  g2.roundRect(x, y, w, h, r);
+  g2.fill();
+}
+
+load().then(draw);
+</script>
+</body>
+</html>

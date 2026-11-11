@@ -13,3 +13,7 @@ models/
 *.sqlite
 *.db
 dist/
+
+# rendered music (regenerate with: uv run python music/compose.py)
+music/site/audio/
+music/*.wav
