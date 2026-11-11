@@ -172,12 +172,6 @@ function drawEntity(p, sx, sy, S, t, now) {
     if (e.love && A.hearts) ctx.drawImage(img, (Math.floor(now / 140) % A.hearts[1]) * 16, A.hearts[0] * 16, 16, 16, x, y - S + 2 * z, S, S);
   } else if (WILD[e.kind]) {
     drawWild(p, x, y, now);                           // (world_decor.js)
-  } else if (e.kind === "gloom") {
-    const [gx] = genCell(Math.floor(t * 3 + e.id) % 2 ? "gloom1" : "gloom0");
-    const hop = Math.round(Math.abs(Math.sin(t * 5 + e.id)) * 2) * z;
-    ctx.drawImage(IMG.gen, gx, 0, 16, 16, x, y - 2 * z - hop, S, S);
-    const fl = flashes.get("gloom" + e.id);
-    if (fl && now - fl < 120) { ctx.globalCompositeOperation = "lighter"; ctx.drawImage(IMG.gen, gx, 0, 16, 16, x, y - 2 * z - hop, S, S); ctx.globalCompositeOperation = "source-over"; }
   }
 }
 function drawNameplate(p, sx, sy, S) {
@@ -188,7 +182,7 @@ function drawNameplate(p, sx, sy, S) {
   if (e.hp < 100) { ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 16, y + 4, 32, 5); ctx.fillStyle = e.hp > 40 ? "#6aa66f" : "#d9473a"; ctx.fillRect(x - 15, y + 5, 30 * e.hp / 100, 3); }
   ctx.textAlign = "start";
 }
-const AMBLE = {chicken: 1.6, chick: 1.4, cow: 1.2, calf: 1.3, gloom: 2.6, tusker: 1.2, pincer: 4, strawman: 1.2};   // tiles per second
+const AMBLE = {chicken: 1.6, chick: 1.4, cow: 1.2, calf: 1.3, tusker: 1.2, pincer: 4, strawman: 1.2, wisp: 3.3, wyrm: 2.5};   // tiles per second
 const FLEE_STRIDE = .3;   // a scared animal runs a tile every this many seconds (sim/constants.py FLEE_STRIDE)
 function drawProgress(sx, sy, S) {
   if (!progress || !me) return;

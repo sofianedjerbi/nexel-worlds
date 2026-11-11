@@ -61,7 +61,7 @@ class Agent:
 @dataclass
 class Creature:
     id: int
-    kind: str  # chicken | cow | chick | calf | gloom | tusker | pincer | strawman
+    kind: str  # chicken | cow | chick | calf | tusker | pincer | strawman | wisp | wyrm
     x: int
     y: int
     hp: int
@@ -85,12 +85,13 @@ class Creature:
 CREATURES = {
     "chicken": {"hp": 10, "drops": {"meat": 1, "egg": 1}, "char": "c"},
     "cow": {"hp": 30, "drops": {"meat": 3, "milk": 1}, "char": "k"},
-    "gloom": {"hp": 30, "drops": {"ore": 1}, "char": "G", "damage": 7},
     "chick": {"hp": 4, "drops": {"meat": 1}, "char": "c", "grows": ("chicken", 300)},
     "calf": {"hp": 12, "drops": {"meat": 1}, "char": "k", "grows": ("cow", 360)},
     "tusker": {"hp": 40, "drops": {"meat": 2}, "char": "D", "damage": 14},
     "pincer": {"hp": 14, "drops": {"meat": 1}, "char": "I", "damage": 5},
     "strawman": {"hp": 50, "drops": {"hay": 2}, "char": "S", "damage": 10},
+    "wisp": {"hp": 1, "drops": {}, "char": "i"},
+    "wyrm": {"hp": 60, "drops": {"meat": 4}, "char": "E", "damage": 18},
 }
 
 

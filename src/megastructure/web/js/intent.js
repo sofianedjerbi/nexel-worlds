@@ -74,9 +74,10 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     if (shift) {                                       // shift: the peaceful thing
       if (ent.e.kind === "cow") return {ent, text: "Milk cow", near: USE_R, diag: true, run: () => act("milk", {target: ent.e.id})};
       if (ent.e.kind === "agent") return {ent, text: `${ent.e.name} · select an item and click to give it`, info: true};
-      return {ent, text: {chicken: "Chicken: feed it (select food) for eggs", chick: "A chick: it grows into a chicken", calf: "A calf: it grows into a cow", gloom: "A gloom: it bites at night",
+      return {ent, text: {chicken: "Chicken: feed it (select food) for eggs", chick: "A chick: it grows into a chicken", calf: "A calf: it grows into a cow",
         tusker: "A tusker: it charges in a straight line, step aside", pincer: "A pincer: it snaps if you stand next to it",
-        strawman: "A strawman: it walks at night, and fears firelight"}[ent.e.kind] || who, info: true};
+        strawman: "A strawman: it walks at night, and fears firelight", wisp: "A wisp: a light that leads you on at night",
+        wyrm: "A wyrm: it lunges along its line, stay out of it"}[ent.e.kind] || who, info: true};
     }
     const tail = ent.e.kind === "cow" ? " · shift: milk" : ent.e.kind === "agent" ? " · shift: talk" : "";
     return {ent, text: weapon ? `Attack ${who} with ${label(weapon)}${tail}` : `Punch ${who}${tail}`, near: reachOf(weapon), diag: true, attack: true,

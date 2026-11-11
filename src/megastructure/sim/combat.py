@@ -35,6 +35,8 @@ class Combat:
         t = self._find_target(args.get("target"))
         if t is a:
             raise ActionError("bad_target", "you cannot attack yourself")
+        if isinstance(t, Creature) and t.kind == "wisp":
+            raise ActionError("bad_target", "your hand goes through it")
         weapon = self.held(a, args)
         reach = T.REACH.get(weapon, T.REACH[None])
         if max(abs(t.x - a.x), abs(t.y - a.y)) > reach:

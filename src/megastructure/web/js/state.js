@@ -145,7 +145,6 @@ function onEvent(e) {
       debris(tgt.x, tgt.y - .2, [animalSheet(tgt.e.kind, tgt.e.id), 0, 0, fw, fw], 6, {});
       sfx(tgt.e.kind === "chicken" || tgt.e.kind === "chick" ? "squawk" : animalVoice(tgt.e.kind), tx, ty);
     }
-    if (e.attacker === "a gloom") sfx("gloom", e.x, e.y);
     if (WILD[String(e.attacker).slice(2)]) sfx("punch", e.x, e.y);
     burst(tx, ty, "hit", 6, {dy: -.4}); sfx("hit", tx, ty); if (e.target === me) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + e.damage, color: "#ff8a7a", t});
   }
@@ -154,14 +153,14 @@ function onEvent(e) {
     showDeath(e);                                     // (death.js)
   }
   if (e.type === "creature_died" || e.type === "fade") {   // it flashes, lifts and fades away in a puff of smoke
-    const key = (e.kind || "gloom") + e.id, p = ents.get(key) || (recentlyGone.get(key) || {}).p;
+    const key = e.kind + e.id, p = ents.get(key) || (recentlyGone.get(key) || {}).p;
     if (p && p.e) dyingPoof(p, performance.now()); else smoke(e.x, e.y, 8);
     if (e.drops) dropLoot(e.x, e.y, e.drops, performance.now());
     ents.delete(key);
     sfx("poof", e.x, e.y);
   }
   if (e.type === "death") { smoke(e.x, e.y, 10); sfx("poof", e.x, e.y); dropLoot(e.x, e.y, e.dropped, performance.now()); }
-  if (e.type === "windup") sfx({tusker: "rustle", pincer: "click", strawman: "creak"}[e.kind], e.x, e.y);   // a wild enemy warns
+  if (e.type === "windup") sfx({tusker: "rustle", pincer: "click", strawman: "creak", wisp: "gloom", wyrm: "water"}[e.kind], e.x, e.y);   // a wild creature warns (the wisp's call is a sigh)
   if (e.type === "bonk") { burst(e.x, e.y, "dust", 8, {up: 1, spread: 2, g: 3}); sfx("thud", e.x, e.y); }          // a tusker rams something
   if (e.type === "xp") spawnOrbs(e);
   if (e.type === "pick_up" && e.magnet) magnetItems(e);

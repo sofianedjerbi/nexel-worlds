@@ -36,7 +36,7 @@ function noteFight(e) {
   else if (e.target === me) foe = {key: entKey(e.attacker), until: performance.now() + FOE_MS};
 }
 // What Space (alt = false) or X (alt = true) does, without having to turn first. Fighting comes first: the one
-// you're fighting, then any gloom within reach; then the tile you face; then other creatures within reach; then
+// you're fighting, then any wild enemy within reach; then the tile you face; then other creatures within reach; then
 // anything next to you, preferring the direction you last walked. Falls back to a hint about the faced tile.
 // Holding something to place (a block, path, planks, dirt, seeds): Space puts it on the tile in front of you, and
 // only there (the ghost shows it, green or red). Walk to aim: a tap turns you and moves you a tile.
@@ -56,13 +56,13 @@ function facingIntent(alt) {
     const o = ents.get(foe.key), r = o && near.includes(o) && hit(o);
     if (r) return r;
   }
-  for (const o of near) if (o.e.kind === "gloom" || WILD[o.e.kind]) { const r = hit(o); if (r) return r; }
+  for (const o of near) if (WILD[o.e.kind] && o.e.kind !== "wisp") { const r = hit(o); if (r) return r; }
   const here = {x: s.x, y: s.y}, under = combAt(s.x, s.y);           // something growing under your feet
   if (!alt && under && !GROUND.has(under) && !SOLID.has(under)) { const it = intent(here, false); if (useful(it)) return {p: here, it}; }
   const faced = intent(q, alt);
   if (useful(faced)) return {p: q, it: faced};
   // a pickaxe in hand, facing higher ground with nothing on it: cut into it (it comes down a layer)
-  if (inHand() === "pickaxe" && floorAt(q.x, q.y) > floorAt(s.x, s.y) && GROUND.has(combAt(q.x, q.y)))
+  if (inHand() === "pickaxe" && solidAt(q.x, q.y, myZ(s.x, s.y) + 1) && GROUND.has(combAt(q.x, q.y)))
     return {p: q, it: {text: "Dig into the hill", run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
   // X with a pickaxe and nothing else to use it on: dig down where you stand
   if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !"~=:n".includes(under))

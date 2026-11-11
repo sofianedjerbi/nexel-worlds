@@ -1,4 +1,4 @@
-"""Wild enemies (tusker, pincer, strawman) and how rarely creatures turn up."""
+"""Wild creatures (tusker, pincer, strawman, wisp, wyrm) and how rarely creatures turn up."""
 
 from helpers import clear
 
@@ -81,7 +81,51 @@ def test_strawman_is_a_scarecrow_by_day_and_walks_at_night_but_not_into_fireligh
     assert (straw.x, straw.y) == (a.x + 6, a.y)                   # in the firelight it is only a scarecrow
 
 
-def test_strawmen_never_spawn_by_themselves_and_creatures_stay_rare(world):
+def test_wisp_keeps_ahead_of_you_at_night_calls_and_cannot_be_hit(world):
+    sim, a = world
+    from helpers import run
+    night(sim)
+    wisp = put(sim, "wisp", a.x + 2, a.y)
+    for _ in range(sec(2)):
+        sim.step()
+    assert max(abs(wisp.x - a.x), abs(wisp.y - a.y)) >= 4         # you were close: it slipped away
+    calls = 0
+    for _ in range(sec(8)):
+        sim.step()
+        calls += wisp.mode == "windup"
+    assert calls                                                  # you hung back: it called
+    hp = a.hp
+    wisp.x, wisp.y, wisp.cooldown = a.x + 1, a.y, 10 ** 6
+    assert run(sim, a, "attack", {"target": wisp.id})["error"] == "bad_target"
+    assert a.hp >= hp and wisp.id in sim.creatures
+
+
+def test_wyrm_stays_in_deep_water_and_lunges_along_its_line(world):
+    sim, a = world
+    for dx in range(1, 7):                                        # a channel of deep water running east from the shore
+        sim.world.set(a.x + dx, a.y, ground="deep_water", block="none")
+    wyrm = put(sim, "wyrm", a.x + 5, a.y)
+    hp = a.hp
+    for _ in range(sec(6)):
+        sim.step()
+    assert sim.world.ground(wyrm.x, wyrm.y) == "deep_water"        # it came up the channel, never onto land
+    assert a.hp <= hp - CREATURES["wyrm"]["damage"] + 4            # we stood on its line, within reach
+    a.y -= 3                                                       # off the line, away from the water
+    hp = a.hp
+    for _ in range(sec(6)):
+        sim.step()
+    assert a.hp >= hp
+
+
+def test_saved_glooms_are_gone_when_a_world_is_opened(world):
+    sim, a = world
+    ghost = put(sim, "tusker", a.x + 30, a.y)
+    ghost.kind = "gloom"                                           # as an old save would have it
+    sim.thin_wild(sim.world.store)
+    assert ghost.id not in sim.creatures
+
+
+def test_only_tuskers_and_pincers_spawn_by_themselves_and_creatures_stay_rare(world):
     sim, a = world
     clear(sim, a, r=45)
     seen = set()
@@ -92,7 +136,7 @@ def test_strawmen_never_spawn_by_themselves_and_creatures_stay_rare(world):
         assert sum(c.kind in PASSIVE for c in near) <= PASSIVE_CAP + 3      # (a herd may overshoot the cap a little)
         assert sum(c.kind not in PASSIVE for c in near) <= 4
         a.hp = 100
-    assert "strawman" not in seen
+    assert seen <= {"chicken", "cow", "chick", "calf", "tusker", "pincer"}      # no strawman, wisp or wyrm (and no gloom)
 
 
 def test_a_world_from_before_is_thinned_once_and_copied_first(world):
@@ -119,7 +163,7 @@ def test_the_client_table_matches_the_sheets():
     root = Path(__file__).parent.parent
     js = (root / "src/megastructure/web/js/world_decor.js").read_text()
     design = {e["key"]: e for e in json.loads((root / "design/enemies/site/enemies.json").read_text())}
-    for kind in ("tusker", "pincer", "strawman"):
+    for kind in ("tusker", "pincer", "strawman", "wisp", "wyrm"):
         line = re.search(rf"^  {kind}: {{(.*)}},$", js, re.M).group(1)
         cw, ch = (int(re.search(rf"{k}: (\d+)", line).group(1)) for k in ("cw", "ch"))
         spans = [(int(a), int(b)) for a, b in re.findall(r"[a-z]+: \[(\d+), (\d+), ", line)]

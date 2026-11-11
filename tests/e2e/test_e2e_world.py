@@ -1,4 +1,4 @@
-"""The world: houses and doors, glooms at night, wells, cooking, signs, animals and their structures, picnics."""
+"""The world: houses and doors, wells, cooking, signs, animals and their structures, picnics."""
 
 
 def test_a_house_shelters_you_and_doors_keep_animals_out(game):
@@ -17,14 +17,6 @@ def test_a_house_shelters_you_and_doors_keep_animals_out(game):
     game.sleep(600)
     q = game.js(f"(() => {{ const q = ents.get('chicken{hen}'); return q ? [q.tx - {x}, q.ty - {y}] : null; }})()")
     assert q is None or not (abs(q[0]) <= 1 and abs(q[1]) <= 1)   # it never came in
-
-
-def test_glooms_bite_at_night(game):
-    game.rpc("dev_time", phase=.85)
-    game.spawn("gloom", 1, 0)
-    game.sleep(4000)
-    assert game.server()["hp"] < 100
-    game.rpc("dev_time", phase=.3)
 
 
 def test_refill_the_can_at_a_well(game):
@@ -81,7 +73,7 @@ def test_a_coop_collects_the_eggs(game):
     game.face(0, -1)
     game.press("Space", 900)
     game.spawn("chicken", 3, 0, still=10 ** 6)               # a hen nearby: it lays at the coop's door
-    game.rpc("dev_time", phase=.05)                          # all day ahead: no glooms to eat the hen
+    game.rpc("dev_time", phase=.05)                          # all day ahead
     game.rpc("dev_skip", seconds=400)
     game.sleep(800)
     x, y = game.pos()

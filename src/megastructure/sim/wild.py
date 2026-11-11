@@ -1,4 +1,5 @@
-"""Wild enemies: the tusker (a boar that charges), the pincer (a shore crab that snaps), the strawman (a scarecrow that walks).
+"""Wild creatures: the tusker (a boar that charges), the pincer (a shore crab that snaps), the strawman (a scarecrow that
+walks), the wisp (a light that leads you on) and the wyrm (a sea serpent that lunges).
 
 Each one warns before it hurts: `mode` goes "windup" for a moment (the client plays the wind-up), then the blow lands
 only if you are still there. The tusker's blow is a charge in a straight line: step aside and it runs past, or into
@@ -9,11 +10,13 @@ from ..tiles import DIRS
 from .constants import sec
 from .entities import CREATURES
 
-WILD = ("tusker", "pincer", "strawman")
+WILD = ("tusker", "pincer", "strawman", "wisp", "wyrm")
 TUSKER_SEES, TUSKER_WINDUP, TUSKER_RUN = 4, 0.7, 8        # tiles; seconds pawing the ground; tiles it charges
 TUSKER_STUN, TUSKER_REST = 2.5, 3.0                       # seconds stunned after ramming something; between charges
 PINCER_SEES, PINCER_WINDUP, PINCER_REST = 3, 0.6, 1.2
 STRAW_SEES, STRAW_WINDUP, STRAW_REST, STRAW_STEP = 14, 0.5, 1.5, 0.9
+WISP_SEES, WISP_LEAD, WISP_CALL = 9, 4, 6.0               # tiles; it keeps this far ahead of you; seconds between calls
+WYRM_SEES, WYRM_REACH, WYRM_WINDUP, WYRM_REST = 7, 2, 0.5, 2.0
 LIGHT, LIGHT_R = ("campfire", "fire"), 6
 
 
@@ -140,6 +143,68 @@ class Wild:
             if step != (0, 0) and self._creature_move(c, c.x + step[0], c.y + step[1]):
                 c.dir = step
                 break
+
+    # ------------------------------------------------------------- wisp: a light that keeps just ahead of you
+
+    def _step_wisp(self, c, online):
+        if c.mode == "windup":                                # calling: it flares (the client plays it), nothing more
+            if self.tick >= c.until:
+                c.mode, c.rest = "", self.tick + sec(WISP_CALL)
+            return
+        prey = self.nearest(c, online, WISP_SEES) if self.is_night() else None
+        if prey is None:                                      # by day, or alone: it drifts about
+            c.cooldown = sec(1.0) + self.rng.randrange(sec(1.5))
+            d = list(DIRS.values())[self.rng.randrange(4)]
+            self.float_to(c, c.x + d[0], c.y + d[1])
+        elif cheb(prey, c) < WISP_LEAD:                       # you are coming: it slips away, the way you were heading
+            c.cooldown = sec(0.3) - 1
+            back = toward(c, prey)
+            self.float_to(c, c.x - back[0], c.y - back[1])
+        elif self.tick >= c.rest:                             # you hang back: it calls
+            self.wind_up(c, toward(c, prey), 0.5)
+
+    def float_to(self, c, x, y) -> bool:
+        """It flies: over water, fences and walls alike. Only another body stops it."""
+        if self.entity_at(x, y) is not None:
+            return False
+        c.dir, c.x, c.y = (x - c.x, y - c.y), x, y
+        return True
+
+    # ------------------------------------------------------------- wyrm: deep water only; lunges along its line
+
+    def _step_wyrm(self, c, online):
+        if c.mode == "windup":
+            if self.tick >= c.until:
+                c.mode, c.rest = "", self.tick + sec(WYRM_REST)
+                reach = [(c.x + c.dir[0] * k, c.y + c.dir[1] * k) for k in range(1, WYRM_REACH + 1)]
+                prey = next((a for a in online if (a.x, a.y) in reach), None)
+                if prey:
+                    self.bite(c, prey)
+            return
+        prey = self.nearest(c, online, WYRM_SEES)
+        if prey is None:
+            c.cooldown = sec(0.6) + self.rng.randrange(sec(1.0))
+            d = list(DIRS.values())[self.rng.randrange(4)]
+            self.swim_to(c, c.x + d[0], c.y + d[1])
+            return
+        dx, dy = prey.x - c.x, prey.y - c.y
+        if (dx == 0 or dy == 0) and cheb(prey, c) <= WYRM_REACH:        # you are on its line, in reach: it rears back
+            if self.tick >= c.rest:
+                self.wind_up(c, toward(c, prey), WYRM_WINDUP)
+            return
+        c.cooldown = sec(0.4) - 1
+        d = toward(c, prey)
+        other = (0, (dy > 0) - (dy < 0)) if d[0] else ((dx > 0) - (dx < 0), 0)
+        for step in (d, other):
+            if step != (0, 0) and self.swim_to(c, c.x + step[0], c.y + step[1]):
+                break
+
+    def swim_to(self, c, x, y) -> bool:
+        """It never comes into the shallows: the shore is safe."""
+        if self.world.ground(x, y) != "deep_water" or self.world.block(x, y) != "none" or self.entity_at(x, y) is not None:
+            return False
+        c.dir, c.x, c.y = (x - c.x, y - c.y), x, y
+        return True
 
     def lit(self, x, y) -> bool:
         return any(self.world.block(x + dx, y + dy) in LIGHT

@@ -24,7 +24,7 @@ ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
 ORDER = ["tusker", "pincer", "strawman", "wisp", "wyrm", "stag"]       # on the page (stilt, adder, lampwing, snapjaw are kept in roster/, off it)
 DIRS = ["down", "up", "left", "right"]
 ANIMS = ["idle", "walk", "act"]
-IN_GAME = ["tusker", "pincer", "strawman"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
+IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
 SHADOW = (80, 64, 134, 46)        # the cow's and chicken's shadow colour, a touch stronger for the lighter page grass
 FOOT = 2                       # empty pixels under the sprite in its cell
 
@@ -89,9 +89,9 @@ def preview(key, out, k=6):
 
 
 def references():
-    """The game's own sheets, copied beside the page so it can animate the player, cow, chicken and gloom for comparison."""
+    """The game's own sheets, copied beside the page so it can animate the player, cow and chicken for comparison."""
     (SITE / "game").mkdir(exist_ok=True)
-    for name in ("character", "cow", "chicken", "gen"):
+    for name in ("character", "cow", "chicken"):
         shutil.copyfile(ASSETS / f"{name}.png", SITE / "game" / f"{name}.png")
 
 

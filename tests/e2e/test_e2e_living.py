@@ -1,4 +1,4 @@
-"""Living: eating, fighting animals (on the move), deaths, beds, fire, and glooms by day."""
+"""Living: eating, fighting animals (on the move), deaths, beds, fire."""
 
 
 def test_eating_takes_three_bites_and_stops_when_full(game):
@@ -87,15 +87,6 @@ def test_fire_burns_to_ash_and_ash_grows_back(game):
     game.rpc("dev_skip", seconds=250)
     game.sleep(800)
     assert game.js(f"gndAt({x + 1}, {y})") == "."
-
-
-def test_glooms_vanish_by_day(game):
-    gloom = game.spawn("gloom", 2, 0)
-    game.sleep(300)
-    game.rpc("dev_skip", seconds=8)
-    game.sleep(600)
-    assert game.js(f"!ents.has('gloom{gloom}')")
-    assert game.server()["hp"] == 100
 
 
 def test_mining_ore_sends_orbs_and_fills_the_bar(game):

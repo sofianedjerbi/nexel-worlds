@@ -59,7 +59,7 @@
   </section>
 
 <section class="card">
-    <h2>The game's own, for comparison <small>its sheets, its timings: the player, the cow, the chicken, the gloom</small></h2>
+    <h2>The game's own, for comparison <small>its sheets, its timings: the player, the cow, the chicken</small></h2>
     <div class="oldrow" id="old"></div>
   </section>
 
@@ -69,7 +69,7 @@
     <h2>How they are made</h2>
     <div class="notes">
       <div><b>The newest three move like the player:</b> the wisp and the wyrm are computed frame by frame (nothing drawn by hand but the wyrm's heads), and the stag walks on generated legs with its head nodding once a step.</div>
-      <div><b>On this page:</b> the three in the game (tusker, pincer, strawman), the three newest designs (wisp, wyrm, stag), and the game's own player, cow, chicken and gloom drawn from the game's sheets at the game's speeds. The earlier designs (stilt, adder, lampwing, snapjaw) are off the page; their files are still in <code>roster/</code>.</div>
+      <div><b>On this page:</b> the five in the game (tusker, pincer, strawman, wisp, wyrm), the stag (a design only), and the game's own player, cow and chicken drawn from the game's sheets at the game's speeds. The earlier designs (stilt, adder, lampwing, snapjaw) are off the page; their files are still in <code>roster/</code>.</div>
       <div><b>Four directions:</b> each sheet is laid out like the game's <code>character.png</code>: rows are down, up, left, right; columns are idle, walk, then the action. Right is left mirrored.</div>
       <div><b>Walks match the game:</b> the boar, heron, scarecrow and snake walk in 8 frames at about 90 ms, like the game's cow, chicken and player. The boar's body stays level like the cow's; seen from the front, bodies rise a pixel as a foot lifts, like the player. Side-view legs are generated, so every frame is consistent.</div>
       <div><b>Attacks warn first:</b> every action is wind-up, strike, hold, recover, each with its own length. The wind-up is held for about half a second so a player can read it; the strike is one fast frame.</div>
@@ -130,8 +130,8 @@ function build() {
     $("roster").appendChild(el);
   }
   const olds = [["player", "down", "idle"], ["player", "down", "walk"], ["player", "left", "walk"], ["player", "up", "walk"], ["cow", "right", "idle"], ["cow", "left", "walk"],
-    ["chicken", "right", "idle"], ["chicken", "left", "walk"], ["gloom", "down", "walk"]];
-  $("old").innerHTML = olds.map(([k, d, m]) => `<figure><canvas width="128" height="${k === "chicken" || k === "gloom" ? 96 : 128}" data-old="${k}/${d}/${m}"></canvas>${k} · ${k === "gloom" ? "hop" : m + " " + d}</figure>`).join("");
+    ["chicken", "right", "idle"], ["chicken", "left", "walk"]];
+  $("old").innerHTML = olds.map(([k, d, m]) => `<figure><canvas width="128" height="${k === "chicken" ? 96 : 128}" data-old="${k}/${d}/${m}"></canvas>${k} · ${m} ${d}</figure>`).join("");
   document.querySelectorAll("[data-time]").forEach((b) => b.onclick = () => {
     time = b.dataset.time;
     document.querySelectorAll("[data-time]").forEach((x) => x.classList.toggle("on", x === b));
@@ -144,17 +144,11 @@ const OLD = {
   player: {name: "player", img: "character", cw: 48, ch: 48, up: 34, idle: [0, 8, 140], walk: [4, 8, 85], rows: {down: 0, up: 1, right: 2, left: 3}, speed: 2.4},
   cow: {name: "cow", img: "cow", cw: 32, ch: 32, up: 32, idle: [0, 3, 260], walk: [1, 8, 90], speed: 1.2},
   chicken: {name: "chicken", img: "chicken", cw: 16, ch: 16, up: 16, idle: [0, 4, 220], walk: [2, 8, 90], speed: 1.6},
-  gloom: {name: "gloom", img: "gen", cw: 16, ch: 16, up: 18, speed: 2.6},
 };
 const old = {};                          // sheets
 function drawOld(g, key, dir, moving, t, x, y, z, memo) {
   const o = OLD[key], img = old[o.img];
   g.imageSmoothingEnabled = false;
-  if (key === "gloom") {                 // two frames and a hop, as the game draws it
-    const hop = Math.round(Math.abs(Math.sin(t / 1000 * 5)) * 2) * z;
-    g.drawImage(img, (3 + Math.floor(t / 1000 * 3) % 2) * 16, 0, 16, 16, Math.round(x - 8 * z), Math.round(y - o.up * z - hop), 16 * z, 16 * z);
-    return;
-  }
   const [row, n, ms] = moving ? o.walk : o.idle, f = Math.floor(t / ms) % n;
   const left = Math.round(x - o.cw * z / 2), top = Math.round(y - o.up * z);
   if (o.rows) { g.drawImage(img, f * o.cw, (row + o.rows[dir]) * o.ch, o.cw, o.ch, left, top, o.cw * z, o.ch * z); return; }
@@ -167,8 +161,8 @@ function drawOld(g, key, dir, moving, t, x, y, z, memo) {
 
 // The world strip: W x H tiles. Everyone walks round their own rectangle (in tiles): [x, y, w, h].
 const W = 22, H = 9, POND = [17, 1, 5, 7], BEACH = [15, 0, 2, 9];
-const LOOPS = {tusker: [.8, 1.3, 3.6, 1.5], stag: [5.6, 1.5, 3.8, 1.3], gloom: [10.8, 1.2, 3, 1.5], player: [.8, 4.5, 3, 1.3], cow: [5.2, 4.5, 3.6, 1.3],
-  wisp: [10.4, 4.3, 3.2, 1.5], strawman: [1, 7.2, 3.4, 1], chicken: [6.2, 7.3, 3, .9], pincer: [15.4, 1.3, 1, 6.4], wyrm: [18, 2.4, 3, 4.4]};
+const LOOPS = {tusker: [.8, 1.3, 3.6, 1.5], stag: [5.6, 1.5, 3.8, 1.3], player: [.8, 4.5, 3, 1.3], cow: [5.2, 4.5, 3.6, 1.3],
+  wisp: [10.6, 2.6, 3.2, 2.6], strawman: [1, 7.2, 3.4, 1], chicken: [6.2, 7.3, 3, .9], pincer: [15.4, 1.3, 1, 6.4], wyrm: [18, 2.4, 3, 4.4]};
 const SPEED = {tusker: 1.2, pincer: 1.6, strawman: 1.0, wisp: 1.6, wyrm: 1.8, stag: 1.4};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the gloom at 2.6
 function along([x, y, w, h], d) {                       // where on the rectangle after d tiles, and which way it faces
   d %= 2 * (w + h);
@@ -194,7 +188,7 @@ function step(e, dt) {
 function stepOld(key, dt) {                              // the old ones only walk and stand
   const a = actors[key] || (actors[key] = {d: key.length * 2.3, moving: true, t: key.length * 500, memo: {}});
   a.t += dt;
-  if (a.t >= (a.moving ? 4200 : 1500)) { a.t = 0; a.moving = !a.moving || key === "gloom"; }
+  if (a.t >= (a.moving ? 4200 : 1500)) { a.t = 0; a.moving = !a.moving; }
   if (a.moving) a.d += OLD[key].speed * dt / 1000;
   return [...along(LOOPS[key], a.d), a];
 }
@@ -245,7 +239,7 @@ function draw(t) {
   if (time === "night") { g.fillStyle = NIGHT; g.fillRect(0, 0, c.width, c.height); }
 }
 
-Promise.all([fetch("enemies.json").then((r) => r.json()), ...["character", "cow", "chicken", "gen"].map((n) => load(`game/${n}.png`).then((i) => old[n] = i))])
+Promise.all([fetch("enemies.json").then((r) => r.json()), ...["character", "cow", "chicken"].map((n) => load(`game/${n}.png`).then((i) => old[n] = i))])
   .then(async ([m]) => {
     meta = m;
     await Promise.all(m.map(async (e) => { sheets[e.key] = await load(e.sheet + "?v=" + Date.now()); }));

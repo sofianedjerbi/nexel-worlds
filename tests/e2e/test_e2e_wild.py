@@ -47,3 +47,19 @@ def test_the_pincer_and_the_strawman_are_drawn_in_every_direction(game):
     assert all(all(rows) for rows in drawn.values()), drawn
     shot(game, "three")
     assert not game.errors
+
+
+def test_the_wisp_and_the_wyrm_are_in_the_game(game):
+    game.clear_area(8)
+    game.rpc("dev_needs", hp=100, hunger=100)
+    game.stamp(2, -2, ["=====", "=====", "=====", "=====", "====="])      # a pool of deep water to the east
+    game.spawn("wyrm", 4, 0)
+    game.spawn("wisp", -3, -2, still=10 ** 6)
+    game.sleep(900)
+    assert kind(game, "wyrm") and kind(game, "wisp")
+    shot(game, "wisp_wyrm")
+    game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'wyrm' && q.e.act === 'windup')", 8000)   # it lines up on us and rears
+    game.sleep(1500)
+    assert game.server()["hp"] < 100                           # we stood on the shore, on its line
+    shot(game, "wyrm_lunge")
+    assert not game.errors

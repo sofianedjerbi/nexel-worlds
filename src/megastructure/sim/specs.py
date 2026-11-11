@@ -4,9 +4,10 @@ from ..tiles import BLOCKS, GROUNDS
 from .constants import SAY_R, SHOUT_R
 
 LEGEND = {
-    "@": "you", "P": "person", "c": "chicken (food)", "k": "cow (food)", "G": "gloom (hostile, at night)",
+    "@": "you", "P": "person", "c": "chicken (food)", "k": "cow (food)",
     "D": "tusker (a boar: charges in a straight line, step aside)", "I": "pincer (a shore crab: snaps if you stand next to it)",
     "S": "strawman (a scarecrow: walks toward you at night, fears firelight)",
+    "i": "wisp (a light at night: harmless, it leads you on)", "E": "wyrm (a sea serpent in deep water: keep off its line)",
     "$": "items on ground",
     **{g.char: g.name for g in GROUNDS},
     **{b.char: b.name for b in BLOCKS if b.name != "none"},

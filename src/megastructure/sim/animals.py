@@ -8,7 +8,6 @@ from .constants import (
     CROWD_R,
     FARM,
     FLEE_STRIDE,
-    TICK_HZ,
     TROUGH_EVERY,
     TROUGH_R,
     sec,
@@ -24,12 +23,7 @@ class Animals:
 
     def step_creatures(self):
         online = [a for a in self.agents.values() if a.online]
-        self.step_spawning(online)            # which chunks tick; herds and glooms come and go (spawning.py)
-        if not self.is_night():            # daylight: glooms fade away within a couple of seconds
-            for c in [c for c in self.creatures.values() if c.kind == "gloom"]:
-                if self.rng.random() < 0.6 / TICK_HZ:
-                    del self.creatures[c.id]
-                    self.emit("fade", c.x, c.y, id=c.id)
+        self.step_spawning(online)            # which chunks tick; herds and wild creatures come and go (spawning.py)
         for cid in sorted(self.creatures):
             c = self.creatures.get(cid)
             if c is None or not self.ticks(c):          # far from everyone: frozen until someone comes back
@@ -70,29 +64,9 @@ class Animals:
                 c.cooldown = sec(0.8) + self.rng.randrange(sec(1.2))
                 d = list(DIRS.values())[self.rng.randrange(4)]
                 self._creature_move(c, c.x + d[0], c.y + d[1])
-            else:
-                prey = min((a for a in online if abs(a.x - c.x) + abs(a.y - c.y) <= 10),
-                           key=lambda a: (abs(a.x - c.x) + abs(a.y - c.y), a.id), default=None)
-                c.cooldown = sec(0.4) - 1
-                if prey is None:
-                    d = list(DIRS.values())[self.rng.randrange(4)]
-                    self._creature_move(c, c.x + d[0], c.y + d[1])
-                elif max(abs(prey.x - c.x), abs(prey.y - c.y)) <= 1 and self.is_night():
-                    c.cooldown = sec(1.2)
-                    self.emit("attack", c.x, c.y, attacker="a gloom", target=prey.name,
-                              damage=CREATURES["gloom"]["damage"])
-                    self.damage(prey, CREATURES["gloom"]["damage"], "gloom")
-                else:
-                    sx = (prey.x > c.x) - (prey.x < c.x)
-                    sy = (prey.y > c.y) - (prey.y < c.y)
-                    if sx and (not sy or self.rng.random() < 0.5):
-                        if not self._creature_move(c, c.x + sx, c.y):
-                            self._creature_move(c, c.x, c.y + sy)
-                    elif not self._creature_move(c, c.x, c.y + sy):
-                        self._creature_move(c, c.x + sx, c.y)
 
     def _creature_move(self, c, x, y) -> bool:
-        # animals and glooms can't work doors or gates: houses keep glooms out, fenced pens keep animals in
+        # creatures can't work doors or gates: houses keep them out, fenced pens keep animals in
         if self.world.block(x, y) in ("door", "gate"):
             return False
         if self.world.passable(x, y) and self.world.can_step(c.x, c.y, x, y) and self.entity_at(x, y) is None:

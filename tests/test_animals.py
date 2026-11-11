@@ -1,4 +1,4 @@
-"""Animals and glooms: spawning, laying, breeding limits, coops, troughs, fleeing."""
+"""Animals: spawning, laying, breeding limits, coops, troughs, fleeing."""
 
 from helpers import clear, run, sim_ripen_ticks
 
@@ -63,17 +63,6 @@ def test_doors_and_gates_stop_creatures(world):
     sim.world.set(a.x + 3, a.y, block="gate")
     assert not sim._creature_move(hen, a.x + 3, a.y) and (hen.x, hen.y) == (a.x + 2, a.y)
     assert run(sim, a, "move_to", {"x": a.x + 4, "y": a.y})["ok"]     # people walk through
-
-def test_glooms_fade_and_never_bite_by_day(world):
-    sim, a = world
-    from megastructure.sim import DAY_TICKS, Creature, sec
-    sim.tick = (sim.tick // DAY_TICKS) * DAY_TICKS + DAY_TICKS // 3       # mid-morning
-    g = Creature(sim.next_creature, "gloom", a.x + 1, a.y, 30); sim.next_creature += 1
-    sim.creatures[g.id] = g
-    hp = a.hp
-    for _ in range(sec(8)):
-        sim.step()
-    assert a.hp == hp and g.id not in sim.creatures
 
 def test_chickens_lay_into_the_coop(world):
     sim, a = world
@@ -151,33 +140,6 @@ def test_new_land_comes_with_herds_and_only_land_near_players_lives(world, monke
         sim.step()
     assert all((c.x, c.y) == spot[c.id] for c in far if c.id in sim.creatures)   # ...frozen: nobody is there
     assert not sim.ticks(far[0]) and max(abs(far[0].x - a.x), abs(far[0].y - a.y)) > SIM_R
-
-
-def test_glooms_come_at_night_in_the_dark_up_to_a_cap(world):
-    sim, a = world
-    from megastructure.sim import DAY_TICKS
-    from megastructure.sim import sec
-    from megastructure.sim.spawning import HOSTILE_CAP
-    sim.tick = (sim.tick // DAY_TICKS + 1) * DAY_TICKS - sec(140)  # early in the night
-    assert sim.is_night()
-    for _ in range(sec(130)):
-        sim.step()
-    glooms = [c for c in sim.creatures.values() if c.kind == "gloom"]
-    assert 1 <= len(glooms) <= HOSTILE_CAP                  # they come one at a time, and few
-
-
-def test_a_campfire_keeps_the_dark_away(world):
-    sim, a = world
-    from megastructure.gen import CHUNK
-    for cx in range(a.x // CHUNK - 2, a.x // CHUNK + 3):     # the land around you, in memory
-        for cy in range(a.y // CHUNK - 2, a.y // CHUNK + 3):
-            sim.world.chunk(cx, cy)
-    sim.creatures.clear()                                    # (the new land brought herds: none in the way)
-    sim.world.set(a.x + 20, a.y, block="campfire")
-    sim.world.set(a.x + 22, a.y, ground="grass", block="none")
-    sim.world.set(a.x + 30, a.y, ground="grass", block="none")
-    assert not sim.spawn_spot_ok("gloom", a.x + 22, a.y)     # in the firelight
-    assert sim.spawn_spot_ok("gloom", a.x + 30, a.y)         # out in the dark
 
 
 def test_animals_eat_what_grows_not_eggs_or_meat(world):
