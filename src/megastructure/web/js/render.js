@@ -56,12 +56,14 @@ function frame(now) {
     const k = 1 - Math.pow(.002, dt); cam.x += (camT.x - cam.x) * k; cam.y += (camT.y - cam.y) * k;
   }
   // bounded work per frame: at most one fresh block, plus incremental tile redraws within ~4 ms
-  const [vx, vy, vw, vh] = viewRect(2);
+  const [vx, vy, vw, vh0] = viewRect(2), vh = vh0 + 6;   // (+6 rows south: high ground there is drawn up into view)
   const vis = [];
   for (let by = Math.floor(vy / B); by <= Math.floor((vy + vh) / B); by++)
     for (let bx = Math.floor(vx / B); bx <= Math.floor((vx + vw) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) vis.push(b); }
   // a block coming into view: its canvas now, its tiles a few at a time within the frame's budget (below)
-  const fresh = vis.find((b) => !b.drawn); if (fresh) startBlock(fresh);
+  const [qx, qy, qw, qh] = viewRect(0), onScreen = (b) => b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh + 6 && (b.by + 1) * B > qy;
+  const fresh = vis.find((b) => !b.drawn && onScreen(b)) || vis.find((b) => !b.drawn);
+  if (fresh) { if (onScreen(fresh)) renderBlock(fresh); else startBlock(fresh); }   // (on screen: whole, at once)
   freshThisFrame = !!fresh;                        // (then no relief work this frame: relief.js)
   const t0 = performance.now();
   while (dirtyTiles.length && performance.now() - t0 < 4) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
