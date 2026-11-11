@@ -123,3 +123,22 @@ def test_loot_next_to_you_comes_to_you(game):
     game.wait("magnets.length > 0", 4000)                     # the meat and egg slide over
     game.sleep(600)
     assert game.inv("meat") == 1 and game.pos() == (x, y)
+
+
+def test_a_drop_shows_once_not_twice(game):
+    """What a creature drops hops out, lands, and only then shows as the pile: never the pile and the hopping drop at
+    once (the pile was matched by its sort position, not its tile, so both were drawn)."""
+    game.give(sword=1)
+    game.hold_item("sword")
+    game.clear_area(5)
+    game.spawn("chicken", 1, 0, still=10 ** 6)
+    game.sleep(500)
+    game.face(1, 0)
+    game.js("""(() => {                                     // count the meat icons drawn, frame by frame
+      window._meat = []; let n = 0; const icon = ghostIcon('meat');
+      const d0 = ctx.drawImage; ctx.drawImage = function (img, ...r) { if (img === icon) n++; return d0.call(this, img, ...r); };
+      (function f() { window._meat.push(n); n = 0; if (window._meat.length < 240) requestAnimationFrame(f); })(); })()""")
+    game.press("Space", 300)
+    game.sleep(2500)
+    counts = game.js("window._meat")
+    assert max(counts) >= 1 and max(counts) == 1, counts      # it shows, and never twice in one frame

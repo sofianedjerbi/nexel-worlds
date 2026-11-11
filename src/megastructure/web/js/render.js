@@ -3,7 +3,7 @@
 // =====================================================================================
 //  Frame
 // =====================================================================================
-let lastT = performance.now(), waterPatterns = null;
+let lastT = performance.now(), waterPatterns = null, arrivingNow = true;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.1, (now - lastT) / 1000); lastT = now;
@@ -89,17 +89,24 @@ function frame(now) {
   ctx.restore();
   drawLevelsAbove(sx, sy, S, t);                     // underground: the levels over you, seen through the rock
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
+  // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
+  const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B)));
+  const allShown = vis.every((b) => !onScreen(b) || b.relief);
+  arrivingNow = (arrivingNow || !hereBlock || !hereBlock.relief) && !allShown;   // (from arriving until all of it is ready)
+  const worldReady = !arrivingNow;
+  if (!worldReady) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }
   // y-sorted sprites: objects and creatures
   const list = [];
-  for (const b of vis) for (const [i, c] of b.objs) {
+  for (const b of vis) if (b.relief && worldReady) for (const [i, c] of b.objs) {   // (things show with their ground, not before)
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
   }
   occupied = new Set([...ents.values()].filter((p) => p.e).map((p) => Math.round(p.x) + "," + Math.round(p.y)));
+  const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && b.relief); };
   // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
-  for (const p of ents.values()) if (p.e && (tile(Math.round(p.x), Math.round(p.y)) || (p.e.kind === "agent" && p.e.id === myId))) list.push({y: p.y + .01, p});
-  for (const [ix, iy, pile] of groundItems) list.push({y: iy - .01, x: ix, pile});
+  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y)) list.push({y: p.y + .01, p});
+  for (const [ix, iy, pile] of groundItems) list.push({y: iy - .01, x: ix, ty: iy, pile});   // (ty: its tile; y sorts)
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)
   drawOrbs(sx, sy, S, dt, list);
   list.sort((a, b) => a.y - b.y || a.x - b.x);
@@ -121,7 +128,7 @@ function frame(now) {
       ctx.globalAlpha = 1;
     }
     else if (o.pile) {
-      if (lootAt(o.x, o.y)) continue;                // its loot is still hopping in: the pile shows once it lands
+      if (lootAt(o.x, o.ty)) continue;                // its loot is still hopping in: the pile shows once it lands
       // a gentle hover, smooth to the screen pixel (whole art pixels made it tick between three heights)
       const names = Object.keys(o.pile), lift = (Math.sin(t * 2.4 + o.x * 1.3 + o.y) + 1) / 2, sz = 10 * zoom;
       const cx = sx(o.x) + S / 2, cy = sy(o.y, o.x) + S / 2, bob = lift * 2 * zoom;

@@ -23,6 +23,7 @@ function spawnOrbs(e) {
   }
 }
 function magnetItems(e) {
+  groundItems = groundItems.filter(([x, y]) => x !== e.x || y !== e.y);   // (off the ground now: not there and flying)
   Object.keys(e.items || {}).slice(0, 3).forEach((name, i) =>
     magnets.push({x: e.x + .5 + (i - 1) * .2, y: e.y + .5, name, who: e.name, age: -i * .05, lift: liftAt(e.x, e.y)}));
 }
