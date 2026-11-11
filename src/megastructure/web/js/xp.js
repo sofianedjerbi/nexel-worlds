@@ -18,12 +18,13 @@ function spawnOrbs(e) {
   for (let i = 0; i < k; i++) {
     const a = Math.random() * Math.PI * 2, sp = 1.2 + Math.random() * 1.6;
     orbs.push({x: e.x + .5, y: e.y + .5, h: .2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * .6, vh: 3 + Math.random() * 2.5,
-      who: e.name, value: e.n / k, age: -i * .04, homing: .35 + Math.random() * .25, big: e.n / k >= 2, seed: Math.random() * 9});
+      who: e.name, value: e.n / k, age: -i * .04, homing: .35 + Math.random() * .25, big: e.n / k >= 2, seed: Math.random() * 9,
+      lift: liftAt(e.x, e.y)});
   }
 }
 function magnetItems(e) {
   Object.keys(e.items || {}).slice(0, 3).forEach((name, i) =>
-    magnets.push({x: e.x + .5 + (i - 1) * .2, y: e.y + .5, name, who: e.name, age: -i * .05}));
+    magnets.push({x: e.x + .5 + (i - 1) * .2, y: e.y + .5, name, who: e.name, age: -i * .05, lift: liftAt(e.x, e.y)}));
 }
 const playerNamed = (name) => [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === name);
 
@@ -45,8 +46,9 @@ function drawOrbs(sx, sy, S, dt, list) {
       const sp = Math.min(14, 3 + (o.age - o.homing) * 18);
       if (d < .25) { orbs.splice(i, 1); orbLanded(o); continue; }
       o.x += dx / d * Math.min(d, sp * dt); o.y += dy / d * Math.min(d, sp * dt); o.h *= .85;
+      o.lift += (liftOf(p) - o.lift) * Math.min(1, dt * 12);   // (up or down to the height you're drawn at, smoothly)
     }
-    const cx = Math.round(sx(o.x) / z) * z, cy = Math.round((sy(o.y, o.x) - o.h * S * .5) / z) * z;
+    const cx = Math.round(sx(o.x) / z) * z, cy = Math.round((sy(o.y) - o.lift - o.h * S * .5) / z) * z;
     const shape = o.big ? ORB_BIG : ORB, flick = Math.sin(o.age * 14 + o.seed) > 0;
     list.push({y: o.y - .45, x: o.x, fx: () => drawOrb(cx, cy, shape, flick)});
   }
@@ -57,8 +59,8 @@ function drawOrbs(sx, sy, S, dt, list) {
     const k = Math.min(1, m.age / .28);
     if (!p || k >= 1) { magnets.splice(i, 1); if (p) sfx("collect", p.tx, p.ty); continue; }
     const e = k * k, x = m.x + (p.x + .5 - m.x) * e, y = m.y + (p.y + .3 - m.y) * e - Math.sin(k * Math.PI) * .35;
-    const sz = Math.round(10 * (1 - .4 * e)) * z;
-    list.push({y: y - .45, x, fx: () => ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(sy(y, x) - sz / 2), sz, sz)});
+    const sz = 10 * (1 - .4 * e) * z, lift = m.lift + (liftOf(p) - m.lift) * e;   // (shrinks and rises smoothly)
+    list.push({y: y - .45, x, fx: () => ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(sy(y) - lift - sz / 2), sz, sz)});
   }
 }
 
