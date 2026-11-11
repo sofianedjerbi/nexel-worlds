@@ -1,11 +1,11 @@
-// Relief, stacked: each level is drawn STEP px higher than the one under it, with everything standing on it, so a
+// Relief, stacked: each level is drawn STEP px higher than the one under it (level 1 too: every +1 looks alike), with everything standing on it, so a
 // two-layer drop looks taller than a one-layer one. A block's ground canvas is drawn as it is (level 1 in place),
-// then for each level k >= 2 a copy of it cut to the tiles at least that high, lifted. Where a lifted level ends
+// then for each level k >= 1 a copy of it cut to the tiles at least that high, lifted. Where a lifted level ends
 // over lower ground its wall is painted down to the ground below: solid earth, a band per layer (lit along its top,
 // darker at its foot), in the colours of that layer's own sheet, the pack's ink at the very foot.
 
 const STEP = 6;                                       // art px a level
-const shOf = (L) => (L > 1 ? STEP * (L - 1) : 0);     // how far up a level is drawn (levels 0 and 1: in place)
+const shOf = (L) => (L > 0 ? STEP * L : 0);           // how far up a level is drawn: every layer the same step
 const WALL_M = STEP * 14 + 16;                        // room under a layer canvas for its walls
 
 // Screen px something on tile (x, y) is drawn higher by
@@ -46,11 +46,10 @@ function faceOf(sheet) {
 }
 
 // A wall's colour `r` px above its foot (dropping from level k to `low`): a band per layer counted from the ground up
-// lit along its top row, dark along its foot row; the ink at the very foot. `light` < 1: in shade.
+// lit along its top row, dark along its foot row (no ink line at the foot). `light` < 1: in shade.
 function wallColour(r, low, k, light) {
-  const j = Math.floor(Math.max(0, r - 1) / STEP), lay = Math.min(k, low + 1 + j), [lit, mid, dark, ink] = faceOf(hillSheet(lay)).cols;
-  if (r === 0) return ink;
-  const pos = (r - 1) % STEP, c = pos === STEP - 1 ? lit : pos === 0 ? dark : mid;
+  const j = Math.floor(r / STEP), lay = Math.min(k, low + 1 + j), [lit, mid, dark] = faceOf(hillSheet(lay)).cols;
+  const pos = r % STEP, c = pos === STEP - 1 ? lit : pos === 0 ? dark : mid;
   return light < 1 ? shade(c, light) : c;
 }
 const shadeMemo = new Map();
@@ -65,7 +64,7 @@ function buildRelief(b) {
   let maxLv = 0;
   for (const c of b.lv) { const v = c >= "A" ? c.charCodeAt(0) - 65 : c.charCodeAt(0) - 48; if (v > maxLv) maxLv = v; }
   const layers = [];
-  for (let k = 2; k <= maxLv; k++) {
+  for (let k = 1; k <= maxLv; k++) {
     const c = document.createElement("canvas"); c.width = B * 16; c.height = B * 16 + WALL_M;
     const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
     for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) {      // its shape: the level's own sheet, edges and all
@@ -97,7 +96,7 @@ function drawBlockRelief(b, sx, sy, S) {
   const X = sx(b.bx * B), Y = sy(b.by * B);
   ctx.drawImage(b.canvas, X, Y, B * S, B * S);
   if (!b.relief || b.reliefDirty) buildRelief(b);
-  for (let k = 2; k <= b.relief.maxLv; k++) {
+  for (let k = 1; k <= b.relief.maxLv; k++) {
     const c = b.relief.layers[k];
     if (c) ctx.drawImage(c, X, Y - shOf(k) * zoom, B * S, (B * 16 + WALL_M) * zoom);
   }
