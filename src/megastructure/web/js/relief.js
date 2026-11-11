@@ -8,6 +8,9 @@ const STEP = 6;                                       // art px a level
 const shOf = (L) => (L > 0 ? STEP * L : 0);           // how far up a level is drawn: every layer the same step
 const WALL_M = STEP * 14 + 16;                        // room under a layer canvas for its walls
 
+// Something flying off from a spot (a puff, a spark, debris): it keeps the height of where it started, however it
+// drifts (it doesn't step up and down with the tiles it passes over)
+function liftFrom(o) { if (o.lift === undefined) o.lift = liftOf({x: o.x, y: o.y}); return o.lift; }
 // Screen px something on tile (x, y) is drawn higher by
 const liftAt = (x, y) => shOf(levelAt(x, y)) * zoom;
 // ...and someone between two tiles: in proportion to how far along they are

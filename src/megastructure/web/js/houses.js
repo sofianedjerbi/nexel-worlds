@@ -51,7 +51,7 @@ function drawRoof(rm, sx, sy, S, z) {
   // pixel-exact, never stretched: the scalloped top edge (7 px of its tile), whole shingle rows with the ridge band in
   // the middle, and the eave (7 px) overhanging the front wall's trim
   ctx.globalAlpha = rm.fade;
-  const top = sy(rm.y0) - 8 * z, bottom = sy(rm.y1) - 6 * z, inner = Math.max(0, Math.round((bottom - top) / z) - 14);
+  const top = sy(rm.y0, rm.x0) - 8 * z, bottom = sy(rm.y1, rm.x0) - 6 * z, inner = Math.max(0, Math.round((bottom - top) / z) - 14);
   const strip = (row, srcY, h, y) => {
     for (let x = rm.x0; x <= rm.x1; x++) ctx.drawImage(IMG.house_roof, 16, row * 16 + srcY, 16, h, sx(x), y, S, h * z);
     ctx.drawImage(IMG.house_roof, 0, row * 16 + srcY, 16, h, sx(rm.x0) - 11 * z, y, S, h * z);   // edges overhang the walls
@@ -70,14 +70,14 @@ function drawFront(rm, sx, sy, S, z, now) {
   for (let x = rm.x0; x <= rm.x1; x++) {
     const [fx, fy] = FRONT[x === rm.x0 ? 0 : x === rm.x1 ? 2 : 1];
     ctx.globalAlpha = rm.fade;                                               // the upper half (over the room) fades inside
-    ctx.drawImage(IMG.house_walls, fx, fy, 16, 8, sx(x), sy(y) - 8 * z, S, 8 * z);
+    ctx.drawImage(IMG.house_walls, fx, fy, 16, 8, sx(x), sy(y, x) - 8 * z, S, 8 * z);
     ctx.globalAlpha = 1;
-    ctx.drawImage(IMG.house_walls, fx, fy + 8, 16, 8, sx(x), sy(y), S, 8 * z);
-    ctx.drawImage(IMG.house_walls, fx, fy + 8, 16, 8, sx(x), sy(y) + 8 * z, S, 8 * z);
-    ctx.fillStyle = "rgba(60,40,30,.25)"; ctx.fillRect(sx(x), sy(y) - 8 * z, S, 2 * z);   // shadow under the eave
+    ctx.drawImage(IMG.house_walls, fx, fy + 8, 16, 8, sx(x), sy(y, x), S, 8 * z);
+    ctx.drawImage(IMG.house_walls, fx, fy + 8, 16, 8, sx(x), sy(y, x) + 8 * z, S, 8 * z);
+    ctx.fillStyle = "rgba(60,40,30,.25)"; ctx.fillRect(sx(x), sy(y, x) - 8 * z, S, 2 * z);   // shadow under the eave
     if (doorsAt.includes(x)) drawDoor(x, y, sx, sy, S, z, now);
     else if (x > rm.x0 && x < rm.x1 && (x - rm.x0) % 3 === 1 && !doorsAt.some((d) => Math.abs(d - x) <= 1))
-      ctx.drawImage(IMG.gen, GEN.window * 16, 0, 16, 16, sx(x), sy(y) - 5 * z, S, S);
+      ctx.drawImage(IMG.gen, GEN.window * 16, 0, 16, 16, sx(x), sy(y, x) - 5 * z, S, S);
   }
 }
 function drawDoor(x, y, sx, sy, S, z, now) {
@@ -85,7 +85,7 @@ function drawDoor(x, y, sx, sy, S, z, now) {
   const o = Math.max(0, Math.min(1, (doors.get(key) || 0) + (near ? .15 : -.1)));
   if (!(doors.get(key) || 0) && o) sfx("gate", x, y);
   doors.set(key, o);
-  ctx.fillStyle = "#4a3530"; ctx.fillRect(sx(x) + 2 * z, sy(y) - 6 * z, S - 4 * z, S + 6 * z);   // the dark doorway
+  ctx.fillStyle = "#4a3530"; ctx.fillRect(sx(x) + 2 * z, sy(y, x) - 6 * z, S - 4 * z, S + 6 * z);   // the dark doorway
   const f = 5 - Math.round(o * 5);                                           // door.png row 0: open (0) .. closed (5)
-  ctx.drawImage(IMG.door, f * 16, 0, 16, 16, sx(x), sy(y) - 6 * z, S, S + 6 * z);
+  ctx.drawImage(IMG.door, f * 16, 0, 16, 16, sx(x), sy(y, x) - 6 * z, S, S + 6 * z);
 }

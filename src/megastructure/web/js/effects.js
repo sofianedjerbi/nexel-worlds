@@ -202,7 +202,7 @@ function drawPuffs(sx, sy, dt) {
     if (p.age < 0) continue;
     const k = p.age / p.life, r = Math.round((p.r + p.grow * k) * z / 2) * 2;
     p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97;
-    const cx = Math.round(sx(p.x)), cy = Math.round(sy(p.y, p.x)), a = (1 - k) * .85;
+    const cx = Math.round(sx(p.x)), cy = Math.round(sy(p.y) - liftFrom(p)), a = (1 - k) * .85;
     ctx.fillStyle = `rgba(246,240,228,${a})`; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
     ctx.strokeStyle = `rgba(150,128,116,${a * .6})`; ctx.lineWidth = z; ctx.stroke();
   }
@@ -220,7 +220,7 @@ function drawEffects(sx, sy, S, dt) {
     }
     ctx.globalAlpha = Math.min(1, 3.3 * (1 - p.age / p.life));
     ctx.fillStyle = p.c;
-    ctx.fillRect(Math.round(sx(p.x)), Math.round(sy(p.y, p.x)), p.s * z, p.s * z);
+    ctx.fillRect(Math.round(sx(p.x)), Math.round(sy(p.y) - liftFrom(p)), p.s * z, p.s * z);
   }
   ctx.globalAlpha = 1;
   const now = performance.now();
