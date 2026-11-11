@@ -1,7 +1,9 @@
 """Sporecap: a walking mushroom of the forest floor. Small, round-capped, harmless until crowded.
 
-Every frame is computed. It waddles: the cap sways over the foot that carries it and settles a pixel when both feet
-are down. At rest the cap breathes. Crowded, it squats (the warning, held), then pops tall and throws a ring of spores.
+Every frame is computed, and the cap never changes shape (a pulsing dome is the wisp's move, not this one's).
+It walks on two short legs: the cap leans over the foot that carries it and the body rises a pixel as the other
+swings, like the player. At rest it is a mushroom: dead still, with eyes that glance about and blink.
+Crowded, it ducks under its cap and shivers (the warning, held), then jumps up and throws a ring of spores.
 """
 import math
 
@@ -13,31 +15,45 @@ W, H, CX, BASE = 28, 24, 14, 22
 SPOTS = {"down": ((-6, -1), (-1, -4), (3, -2)), "left": ((-4, -2), (1, -4), (5, -1)), "up": ((4, -1), (-1, -4), (-5, -2))}
 
 
-def frame(facing, sq=0, lean=0, lift=None, blink=False, ring=0):
-    fx = -1 if facing == "left" else 0
+STEP = [-2, -1, 0, 1, 2, 1, 0, -1]                  # a foot's reach through one step, seen from the side
+UP = [0, 0, 0, 0, 0, 1, 1, 1]                       # it is off the ground while it swings forward
+
+
+def frame(facing, tip=0, lift=None, step=None, up=0, look=0, blink=False, hide=0, shake=0, ring=0):
+    """tip: the cap leans a pixel left (-1) or right (1). lift: 'l'/'r' foot raised (front and back views).
+    step: frame of the side walk. up: legs stretched by this much. hide: ducked under the cap by this much."""
+    side = facing == "left"
     st = canvas(W, H)
-    for y in range(BASE - 8, BASE):                                    # the stem, a shade on its right side
+    low = BASE - 2 - up
+    for y in range(BASE - 9 - up + hide, low + 1):                    # the stem, a shade on its right side
         for x in range(CX - 3, CX + 3):
-            st[y][x] = "k" if x == CX + 2 else "c"
-    for foot, xs in (("l", (CX - 3, CX - 2)), ("r", (CX + 1, CX + 2))):  # two small feet; a lifted one tucks into the stem
-        if lift != foot:
-            for x in xs:
-                st[BASE][x] = "k"
-    cp, cy = canvas(W, H), BASE - 7 + sq
-    ell(cp, CX + lean, cy, 8 + sq, 6 - sq, "r", clip=(0, cy + 2))      # the cap: a dome, flat underneath
-    for x in range(W):
-        if cp[cy + 1][x] == "r":
-            cp[cy + 1][x] = "u"
-    ell(cp, CX + lean - 3, cy - 4.3 + sq, 2.2, .8, "h", on="r")
-    for dx, dy in SPOTS[facing]:
-        for i, j in ((0, 0), (1, 0), (0, 1), (1, 1)):
-            dot(cp, CX + lean + dx + i, cy + dy + j + (sq if dy < -2 else 0), "w", on="rh")
+            st[y][x + shake] = "k" if x == CX + 2 else "c"
+    feet = []
+    if not hide:
+        if side and step is not None:
+            feet = [(CX - 1 + STEP[(step + 4) % 8], UP[(step + 4) % 8]), (CX - 1 + STEP[step], UP[step])]      # far foot, near foot
+        else:
+            feet = [(CX - 3, lift == "l"), (CX + 1, lift == "r")]
+    for x, raised in feet:
+        for y in range(low + 1, BASE + (0 if raised else 1)):
+            st[y][x] = st[y][x + 1] = "k"
+    cp, cy = canvas(W, H), BASE - 8 - up + hide * 2
+    for y in range(H):                                                # the cap: a dome, flat underneath, always the same shape;
+        for x in range(W):                                            # it slides a pixel over the foot that carries it
+            lx, ly = x + .5 - CX - shake - tip, y + .5 - cy
+            if (lx / 8) ** 2 + (ly / 6) ** 2 > 1 or ly > 2:
+                continue
+            spot = any(sx <= lx - .5 < sx + 2 and sy <= ly - .5 < sy + 2 for sx, sy in SPOTS[facing])
+            shine = ((lx + 3) / 2.2) ** 2 + ((ly + 4.3) / .8) ** 2 <= 1
+            cp[y][x] = "u" if ly > 1 else "w" if spot else "h" if shine else "r"
     g = [list(r) for r in over(part(st), part(cp, "O"))]
-    if facing != "up":
-        for x in ((CX - 2, CX + 1) if not fx else (CX - 3, CX - 1)):
-            g[cy + 4][x] = "k" if blink else "e"
-        for x in ((CX - 3, CX + 2) if not fx else (CX - 2,)):
-            g[cy + 5][x] = "p"
+    ey = cy + 4
+    if facing != "up" and hide < 2:
+        for x in ((CX - 2, CX + 1) if not side else (CX - 3, CX - 1)):
+            g[ey][x + look] = "k" if blink else "e"
+        if not hide:
+            for x in ((CX - 3, CX + 2) if not side else (CX - 2,)):
+                g[ey + 1][x] = "p"
     for k in range(14 if ring else 0):                                 # the spores, in a widening ring
         a = k * math.pi / 7 + ring * .5
         x, y = CX + (7 + 2.5 * ring) * math.cos(a), cy - 2 + (5 + 2 * ring) * math.sin(a)
@@ -46,22 +62,24 @@ def frame(facing, sq=0, lean=0, lift=None, blink=False, ring=0):
     return ground(g, CX, 12)
 
 
-LEAN = [-1, -1, 0, 0, 1, 1, 0, 0]
-LIFT = ["r", "r", None, None, "l", "l", None, None]
-
-
 def frames(d):
-    return dict(idle=[frame(d, sq=s, blink=b) for s, b in ((0, 0), (0, 0), (1, 0), (1, 0), (0, 0), (0, 1), (1, 0), (1, 0))],
-                walk=[frame(d, sq=i // 2 % 2, lean=LEAN[i], lift=LIFT[i]) for i in range(8)],
-                act=[frame(d, sq=2, blink=True), frame(d, sq=-1, ring=1), frame(d, sq=-1, ring=2), frame(d, ring=3), frame(d)])
+    if d == "left":                                                    # it nods forward as each foot lands
+        walk = [frame(d, step=i, tip=(-1, -1, 0, 0)[i % 4], up=(0, 0, 1, 1)[i % 4]) for i in range(8)]
+    else:
+        walk = [frame(d, tip=t, lift=f, up=u) for t, f, u in ((-1, "r", 1), (-1, "r", 1), (0, None, 0), (0, None, 0),
+                                                              (1, "l", 1), (1, "l", 1), (0, None, 0), (0, None, 0))]
+    idle = [frame(d), frame(d), frame(d, look=-1), frame(d, look=-1), frame(d), frame(d, blink=True), frame(d, look=1), frame(d)]
+    return dict(idle=idle, walk=walk,
+                act=[frame(d, hide=2, shake=-1), frame(d, hide=2, shake=1), frame(d, hide=2, shake=-1), frame(d, up=2, ring=1),
+                     frame(d, up=1, ring=2), frame(d, ring=3), frame(d, hide=1), frame(d)])
 
 
 ENEMY = dict(
     key="sporecap", name="Sporecap", pal=PAL, role="nuisance", cell=(32, 32), act="puff", move="waddle",
-    ms=dict(idle=240, walk=90, act=[450, 90, 140, 180, 200]),
+    ms=dict(idle=280, walk=90, act=[160, 160, 160, 90, 140, 160, 120, 160]),
     where="forest shade, near old stumps", when="day and night",
     behaviour="Stands still among the trees and looks like any mushroom, then gets up and waddles off. Harmless at a distance. "
-              "Stand next to it and it squats, then pops a ring of spores: no damage, but you walk slowly for a few seconds. "
+              "Stand next to it and it ducks under its cap, shivers, then jumps and throws a ring of spores: no damage, but you walk slowly for a few seconds. "
               "Agents learn to harvest it from two tiles away, or to wait until it has puffed.",
     stats=dict(hp=8, damage=0, speed="slower than you", drops="mushroom, spores (plant them to grow more)"),
     dirs={d: frames(d) for d in ("left", "down", "up")},
