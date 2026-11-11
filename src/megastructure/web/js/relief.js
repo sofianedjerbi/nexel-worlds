@@ -17,76 +17,83 @@ function liftOf(p) {
   return a + (b - a) * f;
 }
 
-// A sheet's south face, from its plain south-edge tile: the row it starts on, its colours [lit, mid, dark, ink], and
-// for each blob cell which columns carry it (a rounded corner carries fewer)
-const faces = new Map();
-function faceOf(sheet) {
-  if (faces.has(sheet)) return faces.get(sheet);
+// A sheet's colours, read off its own tiles: its wall bands [lit, mid, dark] (its south face) and its side edge from
+// the outside in (its west edge tile), which the ledges are drawn in; and its plain top
+const sheetCols = new Map();
+function colsOf(sheet) {
+  if (sheetCols.has(sheet)) return sheetCols.get(sheet);
   const c = document.createElement("canvas"); c.width = sheet.width; c.height = sheet.height;
   const g = c.getContext("2d"); g.drawImage(sheet, 0, 0);
-  const data = g.getImageData(0, 0, c.width, c.height).data, at = (x, y) => data.slice((y * c.width + x) * 4, (y * c.width + x) * 4 + 4);
-  const [ex, ey] = blobCell(N_ | E_ | W_ | NE | NW), [ix, iy] = blobCell(255);
+  const data = g.getImageData(0, 0, c.width, c.height).data, at = (x, y) => Array.from(data.slice((y * c.width + x) * 4, (y * c.width + x) * 4 + 4));
+  const [ex, ey] = blobCell(N_ | E_ | W_ | NE | NW), [wx, wy] = blobCell(N_ | S_ | E_ | NE | SE), [ix, iy] = blobCell(255);
   let ink = 15; while (ink > 0 && at(ex * 16 + 8, ey * 16 + ink)[3] === 0) ink--;
-  const top = at(ix * 16 + 8, iy * 16 + 8), l = at(ex * 16 + 8, ey * 16 + ink - 1), d = at(ex * 16 + 8, ey * 16 + ink - 2), k = at(ex * 16 + 8, ey * 16 + ink);
-  const css = (a) => `rgb(${a[0] | 0},${a[1] | 0},${a[2] | 0})`;
-  const f = {row: ink - 2, cols: [css(l), css([(d[0] + l[0]) / 2, (d[1] + l[1]) / 2, (d[2] + l[2]) / 2]), css(d), css(k)], masks: new Map(),
-    columns(cx, cy) {
-      const key = cx + "," + cy;
-      if (!this.masks.has(key)) {
-        const out = [];
-        for (let i = 0; i < 16; i++) {
-          const q = at(cx * 16 + i, cy * 16 + ink - 1);
-          if (q[3] > 0 && Math.abs(q[0] - top[0]) + Math.abs(q[1] - top[1]) + Math.abs(q[2] - top[2]) > 24) out.push(i);
-        }
-        this.masks.set(key, out);
-      }
-      return this.masks.get(key);
-    }};
-  faces.set(sheet, f); return f;
+  const l = at(ex * 16 + 8, ey * 16 + ink - 1), d = at(ex * 16 + 8, ey * 16 + ink - 2);
+  let w0 = 0; while (w0 < 15 && at(wx * 16 + w0, wy * 16 + 8)[3] < 128) w0++;
+  const side = [0, 1, 2, 3].map((i) => at(wx * 16 + w0 + i, wy * 16 + 8));
+  const out = {bands: [l, [(d[0] + l[0]) / 2, (d[1] + l[1]) / 2, (d[2] + l[2]) / 2], d], side, top: at(ix * 16 + 8, iy * 16 + 8)};
+  sheetCols.set(sheet, out); return out;
 }
 
-// A wall's colour `r` px above its foot (dropping from level k to `low`): a band per layer counted from the ground up
-// lit along its top row, dark along its foot row (no ink line at the foot). `light` < 1: in shade.
-function wallColour(r, low, k, light) {
-  const j = Math.floor(r / STEP), lay = Math.min(k, low + 1 + j), [lit, mid, dark] = faceOf(hillSheet(lay)).cols;
-  const pos = r % STEP, c = pos === STEP - 1 ? lit : pos === 0 ? dark : mid;
-  return light < 1 ? shade(c, light) : c;
-}
-const shadeMemo = new Map();
-function shade(css, f) {
-  const key = css + f;
-  if (!shadeMemo.has(key)) { const [r, g, b] = css.match(/\d+/g).map(Number); shadeMemo.set(key, `rgb(${r * f | 0},${g * f | 0},${b * f | 0})`); }
-  return shadeMemo.get(key);
+// Grow a shape (0/1 per px, w x h) n px to the left and right
+function dilateH(m, w, h, n) {
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    let last = -1e9;
+    for (let x = 0; x < w; x++) { if (m[y * w + x]) last = x; if (x - last <= n) out[y * w + x] = 1; }
+    last = 1e9;
+    for (let x = w - 1; x >= 0; x--) { if (m[y * w + x]) last = x; if (last - x <= n) out[y * w + x] = 1; }
+  }
+  return out;
 }
 
-// The lifted levels of a block, built when its ground canvas changed
+// The lifted levels of a block, built when its ground canvas changed. Each level k: its body (a 6 px wall band, lit
+// at its top, dark at its foot), the ledge round the level above it (LEDGE px, in the sheet's own side-edge colours:
+// a +3 shows three edges on every side), then its own tiles on top, where you stand. Worked out over the block and a
+// tile round it, so ledges cross block borders.
+const LEDGE = 3;
 function buildRelief(b) {
+  const M = 16, Wb = B * 16, Wm = Wb + 2 * M, Hb = Wb + WALL_M;
   let maxLv = 0;
-  for (const c of b.lv) { const v = c >= "A" ? c.charCodeAt(0) - 65 : c.charCodeAt(0) - 48; if (v > maxLv) maxLv = v; }
-  const layers = [];
+  for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) maxLv = Math.max(maxLv, levelAt(b.bx * B + tx, b.by * B + ty));
+  const layers = [], shape = {};
+  let above = null;
+  for (let k = maxLv; k >= 1; k--) {                    // the shapes, from the top down: each grows round the one above
+    const oc = document.createElement("canvas"); oc.width = oc.height = Wm;
+    const og = oc.getContext("2d");
+    for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {
+      const x = b.bx * B + tx, y = b.by * B + ty;
+      if (levelAt(x, y) >= k) drawBlobLayer(og, hillSheet(k), x, y, (cc, gg, ux, uy) => levelAt(ux, uy) >= k, (tx + 1) * 16, (ty + 1) * 16, 0);
+    }
+    const od = og.getImageData(0, 0, Wm, Wm).data, own = new Uint8Array(Wm * Wm);
+    for (let i = 0; i < own.length; i++) own[i] = od[i * 4 + 3] > 128 ? 1 : 0;
+    const sh = above ? dilateH(above, Wm, Wm, LEDGE) : new Uint8Array(Wm * Wm);
+    for (let i = 0; i < own.length; i++) sh[i] = sh[i] || own[i];
+    shape[k] = {own, sh, oc}; above = sh;
+  }
   for (let k = 1; k <= maxLv; k++) {
-    const c = document.createElement("canvas"); c.width = B * 16; c.height = B * 16 + WALL_M;
+    const {own, sh, oc} = shape[k], cols = colsOf(hillSheet(k)), img = new ImageData(Wb, Hb), d = img.data;
+    const put = (x, y, c) => { const i = (y * Wb + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; };
+    for (let s = 0; s < STEP; s++) {                    // the body: its wall, a band, below every px of the shape
+      const c = s === STEP - 1 ? cols.bands[0] : s === 0 ? cols.bands[2] : cols.bands[1], dy = STEP - s;
+      for (let y = 0; y < Wb; y++) for (let x = 0; x < Wb; x++) if (sh[(y + M) * Wm + x + M]) put(x, y + dy, c);
+    }
+    for (let y = 0; y < Wb; y++) for (let x = 0; x < Wb; x++) {       // the ledge, where the shape is not its own tiles
+      const i = (y + M) * Wm + x + M;
+      if (!sh[i] || own[i]) continue;
+      let ownL = false, ownR = false;
+      for (let j = 1; j <= LEDGE; j++) { if (own[i - j]) ownL = true; if (own[i + j]) ownR = true; }
+      if (ownL && ownR) { put(x, y, cols.top); continue; }   // (a sliver between two of its own edges: its top)
+      let dd = 0;                                        // how far in from the ledge's outer side
+      while (dd < 3 && sh[i - dd - 1] && sh[i + dd + 1]) dd++;
+      put(x, y, cols.side[dd]);
+    }
+    const c = document.createElement("canvas"); c.width = Wb; c.height = Hb;
     const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
-    for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) {      // its shape: the level's own sheet, edges and all
-      const x = b.bx * B + lx, y = b.by * B + ly;
-      if (levelAt(x, y) >= k) drawBlobLayer(g, hillSheet(k), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, lx * 16, ly * 16, 0);
-    }
-    g.globalCompositeOperation = "source-in"; g.drawImage(b.canvas, 0, 0); g.globalCompositeOperation = "source-over";
-    for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) {      // the walls of the tiles this high exactly
-      const x = b.bx * B + lx, y = b.by * B + ly;
-      if (levelAt(x, y) !== k) continue;
-      const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k)), f = faceOf(hillSheet(k));
-      const low = levelAt(x, y + 1);                   // the front: under every column of the edge as drawn
-      if (shOf(k) <= shOf(low)) continue;
-      const d = shOf(k) - shOf(low), px = g.getImageData(lx * 16, ly * 16, 16, 16).data;
-      for (let col = 0; col < 16; col++) {
-        let last = -1;
-        for (let r = 15; r >= 0; r--) if (px[(r * 16 + col) * 4 + 3] > 0) { last = r; break; }
-        if (last < 8) continue;                        // (a rounded corner's far side: nothing over the drop there)
-        const top = Math.max(f.row, last - 2), foot = last + d;   // the sheet's own face, then down to the ground
-        for (let Y = top; Y <= foot; Y++) { g.fillStyle = wallColour(foot - Y, low, k, 1); g.fillRect(lx * 16 + col, ly * 16 + Y, 1, 1); }
-      }
-    }
+    g.putImageData(img, 0, 0);
+    const t = document.createElement("canvas"); t.width = Wb; t.height = Wb;   // its own tiles: the ground as drawn, cut
+    const tg = t.getContext("2d"); tg.drawImage(oc, M, M, Wb, Wb, 0, 0, Wb, Wb);  //  to the level's own shape
+    tg.globalCompositeOperation = "source-in"; tg.drawImage(b.canvas, 0, 0);
+    g.drawImage(t, 0, 0);
     layers[k] = c;
   }
   b.relief = {layers, maxLv}; b.reliefDirty = false;
