@@ -67,6 +67,18 @@
   .notes { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; color:var(--ink2); font-size:14px; }
   .notes b { color:var(--ink); }
   a { color:var(--ink); font-weight:800; }
+  .sfxcat { margin-bottom:14px; }
+  .sfxcat h3 { margin:0 0 8px; font-size:15px; font-weight:900; display:flex; align-items:center; gap:8px; }
+  .sfxcat h3 button { font:inherit; font-size:11px; font-weight:800; border:2px solid var(--ink); border-radius:7px;
+    padding:1px 7px; background:var(--paper2); color:var(--ink); cursor:pointer; }
+  .pills { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:8px; }
+  .pill { text-align:left; font:inherit; color:var(--ink); background:#fffaf0; border:2px solid var(--line);
+    border-radius:10px; padding:7px 10px; cursor:pointer; transition:transform .05s, background .15s; }
+  .pill:hover { background:#fff3d8; }
+  .pill:active, .pill.hit { transform:translateY(2px); background:#ffe7a8; }
+  .pill b { display:block; font-weight:900; }
+  .pill span { display:block; font-size:12px; color:var(--ink2); line-height:1.25; margin-top:2px; }
+  .pill i { font-style:normal; font-size:11px; color:var(--ink2); float:right; }
   @media (max-width:700px) { #stems { grid-template-columns:repeat(3, 1fr); } .notes { grid-template-columns:1fr; } }
 </style>
 </head>
@@ -93,6 +105,17 @@
   <section class="card">
     <h2>Stems <small>mute or solo the layers, the sum is the master</small></h2>
     <div id="stems"></div>
+  </section>
+
+  <section class="card">
+    <h2>Sound effects <small id="sfxsub">every interaction in the game. Click to play a random variant; it plays over the music if the music is on</small></h2>
+    <div id="sfx"></div>
+    <div class="notes" style="margin-top:6px">
+      <div><b>In tune:</b> tonal sounds (rewards, UI, chimes, talk blips) use the music's notes, D major pentatonic. The goal chime is the music's own melody cell.</div>
+      <div><b>Real models, not beeps:</b> wood and stone ring with their own resonances, gravel and leaves are made of grains, the cow and chicken are shaped voices.</div>
+      <div><b>Never the same twice:</b> frequent sounds have 3 to 6 variants. The game can also nudge pitch and pan by where the sound happens.</div>
+      <div><b>Levels:</b> loudness is set per category: footsteps quiet, work clear, rewards bright but soft, interface subtle. Made by <code>music/sfx.py</code>.</div>
+    </div>
   </section>
 
   <section class="card">
@@ -337,7 +360,56 @@ function roundRect(x, y, w, h, r) {
   g2.fill();
 }
 
-load().then(draw);
+
+// ------------------------------------------------------------ sound effects showcase
+const sfxBuf = {}, sfxLast = {};
+let sfxMeta = null;
+async function sfxLoad(name) {
+  if (!sfxBuf[name]) sfxBuf[name] = Promise.all(sfxMeta[name].files.map(async (f) =>
+    ctx.decodeAudioData(await (await fetch("sfx/" + f)).arrayBuffer())));
+  return sfxBuf[name];
+}
+async function playSfx(name, el) {
+  await ctx.resume();
+  const bufs = await sfxLoad(name);
+  let k = Math.floor(Math.random() * bufs.length);
+  if (bufs.length > 1 && k === sfxLast[name]) k = (k + 1) % bufs.length;
+  sfxLast[name] = k;
+  const src = ctx.createBufferSource(), g = ctx.createGain(), pan = ctx.createStereoPanner();
+  src.buffer = bufs[k];
+  src.playbackRate.value = 1 + (Math.random() - 0.5) * 0.04;   // the game nudges pitch a little too
+  pan.pan.value = (Math.random() - 0.5) * 0.3;
+  g.gain.value = 0.9;
+  src.connect(g).connect(pan).connect(master);
+  src.start();
+  if (el) { el.classList.add("hit"); setTimeout(() => el.classList.remove("hit"), 120); el.querySelector("i").textContent = `${k + 1}/${bufs.length}`; }
+}
+async function buildSfx() {
+  sfxMeta = await (await fetch("sfx/sfx.json")).json();
+  const cats = {};
+  for (const [name, m] of Object.entries(sfxMeta)) (cats[m.category] ||= []).push(name);
+  const box = $("sfx");
+  for (const [cat, names] of Object.entries(cats)) {
+    const sec = document.createElement("div");
+    sec.className = "sfxcat";
+    sec.innerHTML = `<h3>${cat}<button>play all</button></h3><div class="pills"></div>`;
+    const pills = sec.querySelector(".pills");
+    for (const name of names) {
+      const b = document.createElement("button");
+      b.className = "pill";
+      b.innerHTML = `<i>${sfxMeta[name].files.length} var</i><b>${name}</b><span>${sfxMeta[name].when}</span>`;
+      b.onclick = () => playSfx(name, b);
+      pills.appendChild(b);
+    }
+    sec.querySelector("h3 button").onclick = () => names.forEach((n, i) => setTimeout(() => playSfx(n, pills.children[i]), i * 650));
+    box.appendChild(sec);
+  }
+  const total = Object.values(sfxMeta).reduce((a, m) => a + m.files.length, 0);
+  $("sfxsub").textContent = `${Object.keys(sfxMeta).length} sounds, ${total} variants, every interaction in the game. Click to play; it plays over the music if the music is on`;
+  Object.keys(sfxMeta).forEach(sfxLoad);   // decode everything in the background
+}
+
+load().then(() => { draw(); buildSfx(); });
 </script>
 </body>
 </html>
