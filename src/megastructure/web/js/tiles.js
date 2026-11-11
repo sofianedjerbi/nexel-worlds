@@ -29,8 +29,10 @@ function rimAt(x, y) {                      // as World.rim: lower ground around
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && floorAt(x + dx, y + dy) < lv) return true;
   return false;
 }
-// as World.can_step for people: on the level, a layer down, or a jump a layer up
-const canStep = (x0, y0, x1, y1) => Math.abs(floorAt(x0, y0) - floorAt(x1, y1)) <= 1;
+// as Movement.landing, roughly, for people: on the level, a layer down or a jump a layer up (over a cave: on its
+// roof or in it)
+const heightsAt = (x, y) => { const f = floorAt(x, y), r = roofAt(x, y); return r ? [f, f + r] : [f]; };
+const canStep = (x0, y0, x1, y1) => heightsAt(x0, y0).some((a) => heightsAt(x1, y1).some((b) => Math.abs(a - b) <= 1));
 const gndAt = (x, y) => { const t = tile(x, y); return t ? t[1] : null; };
 const dirtyTiles = [];                 // tiles to redraw (x, y), processed within a per-frame budget
 function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }

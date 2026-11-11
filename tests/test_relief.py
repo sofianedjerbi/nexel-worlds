@@ -115,3 +115,18 @@ def test_the_land_has_biomes_mountains_rivers_and_caves():
             assert floor + roof <= lv and floor >= min(lv, 1)
     assert kinds == {"plains", "forest", "highlands", "dry", "swamp", "mountain"} and top >= 8 and rivers and caves
     assert biome(7, 10, 10, gen_level(7, 10, 10)) == "plains"                      # spawn: plains
+
+
+def test_you_walk_on_a_caves_roof_or_in_the_cave(world):
+    """Over a cave you walk on its roof (level with the hill round it); from its mouth you walk in under it."""
+    sim, a = world
+    x, y = a.x, a.y
+    for i in range(1, 4):                                    # east of you: a hill at 1 with a cave floor at 0 under it
+        sim.world.set(x + i, y, level=0, roof=1)
+        sim.world.set(x + i, y - 1, level=1)
+    sim.world.set(x, y - 1, level=1)
+    assert run(sim, a, "step", {"dir": "E"})["ok"] and sim.in_cave(a)               # in at its mouth
+    assert run(sim, a, "step", {"dir": "N"})["ok"]                                   # (a jump out, onto the hill)
+    assert sim.height(a) == 1
+    assert run(sim, a, "step", {"dir": "S"})["ok"] and a.atop and sim.height(a) == 1  # onto its roof
+    assert run(sim, a, "step", {"dir": "E"})["ok"] and a.atop                        # along it

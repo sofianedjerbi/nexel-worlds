@@ -158,8 +158,23 @@ function drawBlockRelief(b, sx, sy, S) {
 
 // Walking into a cave (or out): every cave's roof comes off (goes back on) at once, like a house's. The blocks with
 // caves, and those beside them (their edges), are redrawn there and then: on screen in full, the rest as they come.
+let myAt = null;                          // your tile and height: in a cave, or up on its roof (as Movement.landing)
 function setCaveOpen(vis) {
-  const me = ents.get("agent" + myId), open = !!me && roofAt(Math.round(me.tx), Math.round(me.ty)) > 0;
+  const me = ents.get("agent" + myId);
+  if (me) {
+    const x = Math.round(me.tx), y = Math.round(me.ty);
+    if (!myAt || myAt.x !== x || myAt.y !== y) {
+      const f = floorAt(x, y), r = roofAt(x, y);
+      let z = f + (meObs && meObs.self.atop ? r : 0);
+      if (myAt && Math.abs(myAt.x - x) + Math.abs(myAt.y - y) === 1) {
+        const inside = roofAt(myAt.x, myAt.y) > 0 && myAt.z === floorAt(myAt.x, myAt.y);
+        const c = !r ? [f] : inside ? [f, f + r] : [f + r, f], pick = c.sort((p, q) => Math.abs(p - myAt.z) - Math.abs(q - myAt.z)).find((h) => Math.abs(h - myAt.z) <= 1);
+        if (pick !== undefined) z = pick;
+      }
+      myAt = {x, y, z};
+    }
+  }
+  const open = !!myAt && roofAt(myAt.x, myAt.y) > 0 && myAt.z === floorAt(myAt.x, myAt.y);
   if (open === caveOpen) return;
   caveOpen = open;
   const near = (b) => [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const n = blocks.get(bkey(b.bx + dx, b.by + dy)); return n && n.rf; });

@@ -28,6 +28,7 @@ class Agent:
     stats: dict = field(default_factory=dict)
     spawn: list | None = None  # set by sleeping in a bed: you wake up there after dying
     sailing: bool = False      # in a boat: water is passable, land ends the trip
+    atop: bool = False         # on top of a cave's roof (not in the cave under it)
     xp: int = 0                # experience (sim/progress.py)
     can: int = 12              # waterings left in the watering can; refill at a well or any water
     # runtime only
