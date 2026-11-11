@@ -63,7 +63,7 @@ function frame(now) {
   const vis = [];
   for (let by = Math.floor(vy / B); by <= Math.floor((vy + vh) / B); by++)
     for (let bx = Math.floor(vx / B); bx <= Math.floor((vx + vw) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) vis.push(b); }
-  setCaveOpen(vis);
+  setCaveOpen();
   // a block coming into view: its canvas now, its tiles a few at a time within the frame's budget (below)
   const [qx, qy, qw, qh] = viewRect(0), onScreen = (b) => b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh + 6 && (b.by + 1) * B > qy;
   const fresh = vis.find((b) => !b.drawn && onScreen(b)) || vis.find((b) => !b.drawn);
@@ -89,8 +89,7 @@ function frame(now) {
   for (const b of vis) if (b.relief) ctx.fillRect(b.bx * B * 16, b.by * B * 16, B * 16, B * 16);
   ctx.restore();
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
-  drawCaveMouths(vis, sx, sy, S);                     // (caves seen from outside: their openings)
-  if (caveOpen) drawCaveFloors(vis, sx, sy, S);   // (in a cave: its floor over the rock drawn up in front of it)
+  drawCaves(vis, sx, sy);                            // (their mouths; the one you're in, seen through its roof)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B)));
   const allShown = vis.every((b) => !onScreen(b) || b.relief);

@@ -108,14 +108,19 @@ def test_a_cave_is_its_mountain_from_outside_and_a_hole_in_it_inside(game):
     game.spawn("chicken", 0, -5, still=1)
     game.sleep(1200)
     assert game.js(f"levelAt({x}, {y - 3})") == 4 and game.js(f"hiddenAt({x}, {y - 3})")     # outside: its roof
+    game.js("""window.seen = []; (function f() { const p = ents.get('agent' + myId);
+      window.seen.push([liftOf(p), hiddenAt(Math.round(p.x), Math.round(p.y))]); requestAnimationFrame(f); })()""")
     game.hold(["w"], 900)                                    # in through the mouth
     game.sleep(500)
     assert game.server()["in_cave"] and game.js("caveOpen")
-    assert game.js(f"levelAt({x}, {y - 3})") == 1 and game.js(f"levelAt({x - 1}, {y - 3})") == 4   # a hole in the hill
+    # ...and all the way in you stayed on the ground, in sight (never drawn climbing its roof, or under it)
+    assert game.js("Math.max(...window.seen.map((s) => s[0])) - Math.min(...window.seen.map((s) => s[0]))") < .5 and not game.js("window.seen.some((s) => s[1])")
+    assert game.js(f"standAt({x}, {y - 3})") == 1 and game.js(f"standAt({x - 1}, {y - 3})") == 4   # shown through the hill
     assert game.js(f"!hiddenAt({x}, {y - 5})")
     assert game.js("ctx.filter") in ("none", "") and not game.js("typeof drawCave !== 'undefined'")
     game.hold(["s"], 900)                                    # and out: its roof is back
     game.sleep(500)
+    assert game.js("Math.max(...window.seen.map((s) => s[0])) - Math.min(...window.seen.map((s) => s[0]))") < .5 and not game.js("window.seen.some((s) => s[1])")
     assert not game.js("caveOpen") and game.js(f"levelAt({x}, {y - 3})") == 4
 
 

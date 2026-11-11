@@ -15,15 +15,17 @@ function tile(x, y) {
 }
 const combAt = (x, y) => { const t = tile(x, y); return t ? t[0] : null; };
 // Relief: a char per tile, 64 + its floor's height ("@" sea level, below it dug pits); and in caves the rock over each
-// tile, in layers. A cave is drawn as the mountain over it (its roof), like a house: walk in and every cave's roof
-// is off (you see the cave as a hole in the mountain). levelAt is the height drawn; floorAt the one you stand on.
+// tile, in layers. A cave is drawn as the hill over it (its roof), like a house: levelAt is the height drawn, floorAt
+// the cave's floor. The cave you walk into is shown through its roof (caves.js), what's in it at its floor's height.
 const SEA = 64;
 function tileIdx(x, y) { const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B))); return b ? [b, (y - b.by * B) * B + (x - b.bx * B)] : null; }
 const floorAt = (x, y) => { const t = tileIdx(x, y); return t ? t[0].lv[t[1]].charCodeAt(0) - SEA : 0; };
 const roofAt = (x, y) => { const t = tileIdx(x, y); return t && t[0].rf ? t[0].rf[t[1]] : 0; };
 let caveOpen = false, openCave = new Set();  // you're in a cave: that cave (its tiles, "x,y") is drawn without its roof
 const inOpenCave = (x, y) => caveOpen && openCave.has(x + "," + y);
-const levelAt = (x, y) => { const t = tileIdx(x, y); if (!t) return 0; const f = t[0].lv[t[1]].charCodeAt(0) - SEA; return !t[0].rf || inOpenCave(x, y) ? f : f + t[0].rf[t[1]]; };
+let peekFloors = false;                     // (while the open cave's floor is being drawn: caves.js)
+const levelAt = (x, y) => { const t = tileIdx(x, y); if (!t) return 0; const f = t[0].lv[t[1]].charCodeAt(0) - SEA; return !t[0].rf || (peekFloors && inOpenCave(x, y)) ? f : f + t[0].rf[t[1]]; };
+const standAt = (x, y) => (inOpenCave(x, y) ? floorAt(x, y) : levelAt(x, y));   // the height what's on a tile is drawn at
 const hiddenAt = (x, y) => roofAt(x, y) > 0 && !inOpenCave(x, y);  // under a closed cave's roof: not seen
 function rimAt(x, y) {                      // as World.rim: lower ground around it (nothing built)
   const lv = floorAt(x, y);
@@ -110,13 +112,16 @@ function drawBlobLayer(g, sheet, x, y, pred, ox, oy, decor) {
   }
   g.drawImage(sheet, sx, sy, 16, 16, ox, oy, 16, 16);
 }
-function drawTile(x, y) {
+function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewhere else than its block's canvas)
   const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B)));
-  if (!b || !b.canvas) return;
-  const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, g = b.ctx, ox = lx * 16, oy = ly * 16;
+  if (!b || !(to || b.canvas)) return;
+  const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, g = to ? to.g : b.ctx, ox = to ? to.ox : lx * 16, oy = to ? to.oy : ly * 16;
   const c = b.comb[i], gr = b.gnd[i];
-  g.clearRect(ox, oy, 16, 16);
-  b.reliefDirty = true;                              // (its stacked levels are rebuilt from this canvas: relief.js)
+  if (!to) {
+    g.clearRect(ox, oy, 16, 16);
+    b.reliefDirty = true;                            // (its stacked levels are rebuilt from this canvas: relief.js)
+    b.ver = (b.ver || 0) + 1;
+  }
   if (gr === "=") drawBlobLayer(g, IMG.deep_mask, x, y, (_, gg) => gg === "=", ox, oy, 0);   // rounded deep areas
   if (gr === ":") {                                  // bridge planks run across the direction of travel
     const ew = [-1, 1].some((d) => { const q = gndAt(x + d, y); return q === ":" || isLand(q); });

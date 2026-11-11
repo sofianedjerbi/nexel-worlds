@@ -32,7 +32,7 @@ const SWING_ROW = {axe: "axe", sword: "axe", spear: "axe", pickaxe: "axe", hoe: 
 function hopLift(p) {
   const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
   if (ax === bx && ay === by) return 0;
-  const la = levelAt(ax, ay), lb = levelAt(bx, by);
+  const la = standAt(ax, ay), lb = standAt(bx, by);
   if (la === lb) return 0;
   const f = ax === bx ? p.y - ay : p.x - ax, k = la > lb ? f : 1 - f;          // 0 at the top, 1 landed
   return Math.sin(k * Math.PI) * 7 + (1 - k) * 2;
@@ -42,7 +42,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   if (x < -S * 2 || x > W + S * 2 || y < -S * 2 || y > H + S * 2) return;
   const moving = now - p.moved < 300;
   if (e.kind === "agent") {
-    const lv = levelAt(Math.round(p.x), Math.round(p.y));    // stepping up a slope: a little puff of effort
+    const lv = standAt(Math.round(p.x), Math.round(p.y));    // stepping up a slope: a little puff of effort
     if (p.lastLv !== undefined && lv > p.lastLv) { smoke(p.x, p.y + .3, 3, .35); sfx("step", Math.round(p.x), Math.round(p.y)); }
     const hop = hopLift(p);                                     // hopping down off an edge: an arc, then a soft landing
     if (p.lastHop > 0 && hop === 0) { smoke(p.x, p.y + .35, 4, .4); sfx("thud", Math.round(p.x), Math.round(p.y)); }
@@ -170,6 +170,8 @@ function drawEntity(p, sx, sy, S, t, now) {
     if (p.fx < 0) { ctx.translate(dx + w, 0); ctx.scale(-1, 1); blit(0); } else blit(dx);
     ctx.restore();
     if (e.love && A.hearts) ctx.drawImage(img, (Math.floor(now / 140) % A.hearts[1]) * 16, A.hearts[0] * 16, 16, 16, x, y - S + 2 * z, S, S);
+  } else if (WILD[e.kind]) {
+    drawWild(p, x, y, now);                           // (world_decor.js)
   } else if (e.kind === "gloom") {
     const [gx] = genCell(Math.floor(t * 3 + e.id) % 2 ? "gloom1" : "gloom0");
     const hop = Math.round(Math.abs(Math.sin(t * 5 + e.id)) * 2) * z;
@@ -186,7 +188,7 @@ function drawNameplate(p, sx, sy, S) {
   if (e.hp < 100) { ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 16, y + 4, 32, 5); ctx.fillStyle = e.hp > 40 ? "#6aa66f" : "#d9473a"; ctx.fillRect(x - 15, y + 5, 30 * e.hp / 100, 3); }
   ctx.textAlign = "start";
 }
-const AMBLE = {chicken: 1.6, chick: 1.4, cow: 1.2, calf: 1.3, gloom: 2.6};   // tiles per second
+const AMBLE = {chicken: 1.6, chick: 1.4, cow: 1.2, calf: 1.3, gloom: 2.6, tusker: 1.2, pincer: 4, strawman: 1.2};   // tiles per second
 const FLEE_STRIDE = .3;   // a scared animal runs a tile every this many seconds (sim/constants.py FLEE_STRIDE)
 function drawProgress(sx, sy, S) {
   if (!progress || !me) return;
