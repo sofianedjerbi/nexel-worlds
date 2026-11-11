@@ -889,14 +889,13 @@ def _(c):
     return fft_filter(y, lp(1800))
 
 
-@sfx("poof", "Fights", "a creature vanishes in a puff of smoke", 2, 0.35)
+@sfx("poof", "Fights", "a creature vanishes in a small puff of smoke", 2, 0.28)
 def _(c):
-    n = N(0.6)
-    puff = sweep(c, n, 2500, 350, 0.5) * env_exp(n, 0.15, 0.008)
-    air = texture(c, n, 300, 2500, 6, 12) * env_exp(n, 0.2, 0.03)
-    y = puff + 0.4 * norm(air)
-    place(y, strike(c, N(0.08), "body", size=0.5) * 0.4, 0)
-    return y
+    n = N(0.32)
+    t = tt(n)
+    puff = norm(fft_filter(c.noise(n), bp(c.u(700, 900), 4500, 1))) * np.clip(t / 0.008, 0, 1) * np.exp(-t / 0.07)   # a soft breath of air: no boom, no sweep
+    dust = phism(c, n, np.clip(t / 0.02, 0, 1) * np.exp(-t / 0.1), 600, 5000, 0.0006, 0.3)                          # a little dust settling
+    return fft_filter(puff + 0.2 * dust, hp(350))                                                                  # nothing low: lows are what made it an explosion
 
 
 @sfx("gloom", "Fights", "a gloom attacks at night: a breathy, low growl", 2, 0.4)
