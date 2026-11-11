@@ -56,39 +56,39 @@ def both(text):
 
 
 FACE = both("""
-.o....of
-ofo..off
-offoooog
-offggggg
-.ogggggg
-.ogykggg
-.ogggggg
-..oggggc
-..oGgccc
-..oGckcc
-...oGccc
-...ooooo
+....of
+o..off
+foooog
+ofgggg
+.ogggg
+.oykgg
+.ogggg
+..oggc
+..oGcc
+..ockc
+..oGcc
+..oooo
 """)
 FACE_OPEN = FACE[:10] + both("""
-...otttt
-...ommmm
-...otttt
-....oooo
+..ottt
+..ommm
+..ottt
+...ooo
 """)
 NAPE = both("""
-.o....of
-ofo..off
-offoooof
-offggggf
-.oggggGf
-.oggggGf
-.ogggGGf
-..ogGGGg
-..oGGGGG
-...oGGGG
-...oGGGG
-...oGGGG
-...oGGGG
+....of
+o..off
+foooof
+ofgggf
+.ogggf
+.oggGf
+.ogGGf
+..oGGg
+..oGGG
+..oGGG
+..oGGG
+..oGGG
+..oGGG
 """)
 
 
@@ -141,7 +141,7 @@ def above(i, down, lift=0, head=None):
     """Coming at you (down) or swimming away (up): the head stands out of the water and the coils of the body break the
     surface one after another behind it, sliding from side to side and shrinking toward the tail as the wave runs down."""
     i %= 8
-    w, h = 26, 30
+    w, h = 20, 30
     g = ["." * w] * h
     head_y = (14 if down else 2) + BOB[i] + lift
     coils = []
@@ -150,19 +150,19 @@ def above(i, down, lift=0, head=None):
         if not 0.15 < s < 3.0:
             continue
         size = min(1, s / 0.7) * (1 - 0.16 * s)                    # it rises out of the water behind the head, then tapers
-        hh, ww = round(6.6 * size), 2 * round(6.6 * size * (1 - 0.06 * s))
+        hh, ww = round(5 * size), 2 * round(4.2 * size * (1 - 0.06 * s))        # slim: about as wide as its head
         if hh < 1 or ww < 4:
             continue
-        cx = w // 2 + round(4 * math.sin(math.pi * s + 0.6))
+        cx = w // 2 + round(3 * math.sin(math.pi * s + 0.6))
         base = round(16 - 4.3 * s) if down else round(13 + 4.3 * s)
         coils.append((base, cx, hump(ww, hh)))
     for base, cx, m in sorted(coils, key=lambda c: c[0]):          # far ones first, near ones over them
         g = over(g, m, cx - len(m[0]) // 2, base - len(m) + 1)
     stamp = head or (FACE if down else NAPE)
-    g = over(g, stamp, (w - 16) // 2, head_y)
+    g = over(g, stamp, (w - 12) // 2, head_y)
     if down:                                                        # the chin in its foam
         y = head_y + len(stamp)
-        g = over(g, ["W" + ("w" * 12 if i % 2 else "ww.wwwwww.ww") + "W", ("..W......W.." if i % 4 < 2 else ".W........W.")], (w - 14) // 2, y)
+        g = over(g, ["W" + ("w" * 8 if i % 2 else "w.wwww.w") + "W", ("..W....W.." if i % 4 < 2 else ".W......W.")], (w - 10) // 2, y)
     return g
 
 
