@@ -3,18 +3,12 @@
 const DIRV = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
 function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p.ty} : meObs ? meObs.self : null; }
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
-// as Underground.jump_up: underground, under a hole, onto open ground beside it on the level above
-function jumpUp(fx, fy, x, y) {
-  return depthOf(fx) > 0 && Math.abs(x - fx) + Math.abs(y - fy) === 1 && combAt(fx - LAYER, fy) === "O"
-    && combAt(x - LAYER, y) !== "O" && plainWalk(x - LAYER, y) && (depthOf(x - LAYER) > 0 || levelAt(x - LAYER, y) === 0);
-}
 function plainWalk(x, y) {
   const t = tile(x, y); if (!t) return false;
   if (t[1] === "~" || t[1] === "=") return !!(meObs && meObs.self.sailing) || t[0] === "V";   // water: only by boat
   return WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
 }
 function walkable(x, y, fx, fy) {               // (fx, fy): where you come from: a layer up or down at most
-  if (fx !== undefined && jumpUp(fx, fy, x, y)) return true;
   return plainWalk(x, y) && (fx === undefined || canStep(fx, fy, x, y));
 }
 // ---- what a click does, decided per tile (also shown as the cursor hint) ----------------
@@ -103,7 +97,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
       const f = footprint(block, p.x, p.y, s.x, s.y);
       const bad = f.tiles.filter((q) => { const tq = tile(q.x, q.y);
         return !tq || !(GROUND.has(tq[0]) || tq[0] === "f") || !WALKABLE_GROUND.has(tq[1]) || tq[1] === ":"
-          || (q.x === s.x && q.y === s.y) || (SOLID.has(block) && entityAt(q)) || rimAt(q.x, q.y) || levelAt(q.x, q.y) !== levelAt(p.x, p.y); });
+          || (q.x === s.x && q.y === s.y) || (SOLID.has(block) && entityAt(q)) || rimAt(q.x, q.y) || floorAt(q.x, q.y) !== floorAt(p.x, p.y); });
       const near = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy}))
         .filter((q) => !f.tiles.some((r) => r.x === q.x && r.y === q.y));
       return {text: bad.length ? (bad.some((q) => q.x === s.x && q.y === s.y) ? `Step out of the way to place the ${label(it)}` : bad.some((q) => entityAt(q)) ? "Wait, something is standing there" : `The ${label(it)} needs a clear ${FOOT[block].join("×")} spot of dry land`) : `Place ${label(it)}`,

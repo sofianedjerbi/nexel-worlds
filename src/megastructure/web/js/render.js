@@ -16,8 +16,7 @@ function frame(now) {
       // turns: no diagonal slide when two keys are held.
       const [wx, wy] = DIRV[walking.dir], ahead0 = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
       // a jump up is hard going (60% longer a step), a drop careful (20%): as the server paces it (SLOPE_UP/DOWN)
-      const climb = levelAt(ahead0.x, ahead0.y) - levelAt(Math.round(p.tx), Math.round(p.ty));
-      const jump = climb > 0 || jumpUp(Math.round(p.tx), Math.round(p.ty), ahead0.x, ahead0.y);
+      const climb = floorAt(ahead0.x, ahead0.y) - floorAt(Math.round(p.tx), Math.round(p.ty)), jump = climb > 0;
       // exactly as the server paces it, in its 0.1 s ticks: a stride of 1 tick (running) or 2 (walking), and a jump up
       // or a drop that many more, rounded (SLOPE_UP/DOWN): so you never run ahead of yourself and wait
       const base = walking.run ? 1 : 2, ticks = base + (jump ? Math.round(base * .6) : climb < 0 ? Math.round(base * .2) : 0);
@@ -34,7 +33,6 @@ function frame(now) {
       const next = p[along] + (wx || wy) * step, ahead = (next - (wx ? p.tx : p.ty)) * (wx || wy);
       const edge = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
       if (ahead <= (walkable(edge.x, edge.y, Math.round(p.tx), Math.round(p.ty)) ? 1 : 0)) p[along] = next;
-      throughMouth(p, walking.dir);
       continue;
     }
     const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
@@ -65,6 +63,7 @@ function frame(now) {
   const vis = [];
   for (let by = Math.floor(vy / B); by <= Math.floor((vy + vh) / B); by++)
     for (let bx = Math.floor(vx / B); bx <= Math.floor((vx + vw) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) vis.push(b); }
+  setCaveOpen(vis);
   // a block coming into view: its canvas now, its tiles a few at a time within the frame's budget (below)
   const [qx, qy, qw, qh] = viewRect(0), onScreen = (b) => b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh + 6 && (b.by + 1) * B > qy;
   const fresh = vis.find((b) => !b.drawn && onScreen(b)) || vis.find((b) => !b.drawn);
@@ -86,11 +85,11 @@ function frame(now) {
   // there, its rock), so the sea shows only where there is sea
   ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H);
   ctx.save(); ctx.translate(ox, oy); ctx.scale(zoom, zoom);
-  ctx.fillStyle = depthOf(cam.x) ? "#9a9a7c" : waterPatterns[Math.floor(t * 3) % 4];
+  ctx.fillStyle = waterPatterns[Math.floor(t * 3) % 4];
   for (const b of vis) if (b.relief) ctx.fillRect(b.bx * B * 16, b.by * B * 16, B * 16, B * 16);
   ctx.restore();
-  drawLevelsAbove(sx, sy, S, t);                     // underground: the levels over you, seen through the rock
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
+  if (caveOpen) drawCaveFloors(vis, sx, sy, S);   // (in a cave: its floor over the rock drawn up in front of it)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B)));
   const allShown = vis.every((b) => !onScreen(b) || b.relief);
@@ -101,19 +100,19 @@ function frame(now) {
   const list = [];
   for (const b of vis) if (b.relief && worldReady) for (const [i, c] of b.objs) {   // (things show with their ground, not before)
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
+    if (hiddenAt(x, y)) continue;                     // (in a cave, seen from outside: under its roof)
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
   }
   occupied = new Set([...ents.values()].filter((p) => p.e).map((p) => Math.round(p.x) + "," + Math.round(p.y)));
   const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && b.relief); };
   // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
-  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y)) list.push({y: p.y + .01, p});
-  for (const [ix, iy, pile] of groundItems) list.push({y: iy - .01, x: ix, ty: iy, pile});   // (ty: its tile; y sorts)
+  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !hiddenAt(Math.round(p.x), Math.round(p.y))) list.push({y: p.y + .01, p});
+  for (const [ix, iy, pile] of groundItems) if (!hiddenAt(ix, iy)) list.push({y: iy - .01, x: ix, ty: iy, pile});   // (ty: its tile; y sorts)
   if (pileSince.size) { const here = new Set(groundItems.map(([ix, iy]) => ix + "," + iy)); for (const k of pileSince.keys()) if (!here.has(k) || lootAt(...k.split(",").map(Number))) pileSince.delete(k); }
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)
   drawOrbs(sx, sy, S, dt, list);
   list.sort((a, b) => a.y - b.y || a.x - b.x);
-  const under = depthOf(cam.x) > 0;
   for (const o of list) {
     selMeasure(o);
     if (o.spr) {
@@ -160,8 +159,7 @@ function frame(now) {
   drawPlucks(sx, sy, S, now);
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawHouses(sx, sy, S, dt, now);
-  if (!drawCave(vis, sx, sy, S, t, now)) drawNight(vis, sx, sy, S, t);
-  drawRoof(sx, sy, S, t, now);                       // (changing level: the roof popping off, caveview.js)
+  drawNight(vis, sx, sy, S, t);
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   drawSelector(aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null, sx, sy, now);

@@ -4,6 +4,7 @@
 //  Tile store: 32x32 blocks, filled from the server and patched by tile events
 // =====================================================================================
 const B = 32, P = 16;
+const smooth = (v) => { v = Math.max(0, Math.min(1, v)); return v * v * (3 - 2 * v); };   // 0..1, eased
 const blocks = new Map();
 const bkey = (bx, by) => bx + "," + by;
 function tile(x, y) {
@@ -13,22 +14,23 @@ function tile(x, y) {
   return [b.comb[i], b.gnd[i]];
 }
 const combAt = (x, y) => { const t = tile(x, y); return t ? t[0] : null; };
-// Relief: a level char per tile, a digit-like char (48 + height). (A capital letter: old stairs, now plain ground.)
-function lvChar(x, y) {
-  const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B)));
-  return b ? b.lv[(y - b.by * B) * B + (x - b.bx * B)] : null;
-}
-const levelAt = (x, y) => { const c = lvChar(x, y); return c === null ? 0 : c >= "A" ? c.charCodeAt(0) - 65 : c.charCodeAt(0) - 48; };
-function rimAt(x, y) {                      // as World.rim: a hill tile with lower ground around it (nothing built)
-  const lv = levelAt(x, y);
-  if (!lv) return false;
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && levelAt(x + dx, y + dy) < lv) return true;
+// Relief: a char per tile, 64 + its floor's height ("@" sea level, below it dug pits); and in caves the rock over each
+// tile, in layers. A cave is drawn as the mountain over it (its roof), like a house: walk in and every cave's roof
+// is off (you see the cave as a hole in the mountain). levelAt is the height drawn; floorAt the one you stand on.
+const SEA = 64;
+function tileIdx(x, y) { const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B))); return b ? [b, (y - b.by * B) * B + (x - b.bx * B)] : null; }
+const floorAt = (x, y) => { const t = tileIdx(x, y); return t ? t[0].lv[t[1]].charCodeAt(0) - SEA : 0; };
+const roofAt = (x, y) => { const t = tileIdx(x, y); return t && t[0].rf ? t[0].rf[t[1]] : 0; };
+let caveOpen = false;                       // you're in a cave: caves are drawn without their roof
+const levelAt = (x, y) => { const t = tileIdx(x, y); if (!t) return 0; const f = t[0].lv[t[1]].charCodeAt(0) - SEA; return caveOpen || !t[0].rf ? f : f + t[0].rf[t[1]]; };
+const hiddenAt = (x, y) => !caveOpen && roofAt(x, y) > 0;     // under a closed cave's roof: not seen
+function rimAt(x, y) {                      // as World.rim: lower ground around it (nothing built)
+  const lv = floorAt(x, y);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && floorAt(x + dx, y + dy) < lv) return true;
   return false;
 }
-// as World.edge: where a cliff face is drawn (lower ground straight south); you stand on its top
-const edgeAt = (x, y) => { const lv = levelAt(x, y); return lv > 0 && levelAt(x, y + 1) < lv; };
 // as World.can_step for people: on the level, a layer down, or a jump a layer up
-const canStep = (x0, y0, x1, y1) => Math.abs(levelAt(x0, y0) - levelAt(x1, y1)) <= 1;
+const canStep = (x0, y0, x1, y1) => Math.abs(floorAt(x0, y0) - floorAt(x1, y1)) <= 1;
 const gndAt = (x, y) => { const t = tile(x, y); return t ? t[1] : null; };
 const dirtyTiles = [];                 // tiles to redraw (x, y), processed within a per-frame budget
 function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }
@@ -38,9 +40,10 @@ function setTile(x, y, comb, gnd, who = null, lv = null) {
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
   if (!b) return;
   const i = (y - by * B) * B + (x - bx * B);
-  const lc = lv === null ? b.lv[i] : String.fromCharCode(48 + (lv & 15));
-  if (b.comb[i] === comb && b.gnd[i] === gnd && b.lv[i] === lc) return;
-  if (b.lv[i] !== lc) { b.lv[i] = lc; for (let d = -2; d <= 2; d++) touch(x + d, y); }   // relief changed: edges around redraw
+  const lc = lv === null ? b.lv[i] : String.fromCharCode(48 + (lv & 31)), rf = lv === null ? roofAt(x, y) : lv >> 5;
+  if (b.comb[i] === comb && b.gnd[i] === gnd && b.lv[i] === lc && roofAt(x, y) === rf) return;
+  if (rf !== roofAt(x, y)) { if (!b.rf) b.rf = new Array(B * B).fill(0); b.rf[i] = rf; }
+  if (b.lv[i] !== lc || rf !== roofAt(x, y)) { b.lv[i] = lc; for (let d = -2; d <= 2; d++) touch(x + d, y); }   // relief changed: edges around redraw
   const old = b.comb[i], now = performance.now();
   if (PICK[old] === comb) picked(x, y, old, who, now);
   else if (old === "T" && comb !== "T") felled(x, y, who, now);
@@ -60,23 +63,22 @@ function setTile(x, y, comb, gnd, who = null, lv = null) {
 function onRegion(d) {
   if (d.w !== B || d.h !== B || d.x % B || d.y % B) return;
   const bx = d.x / B, by = d.y / B, k = bkey(bx, by);
-  const comb = [], gnd = [], lv = [];
-  for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) { comb.push(d.rows[j][i]); gnd.push(d.ground[j][i]); lv.push(d.levels ? d.levels[j][i] : "0"); }
+  const comb = [], gnd = [], lv = [], rf = d.roofs ? [] : null;
+  for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) { comb.push(d.rows[j][i]); gnd.push(d.ground[j][i]); lv.push(d.levels ? d.levels[j][i] : "@"); if (rf) rf.push(d.roofs[j].charCodeAt(i) - 48); }
   requested.delete(k);
   const old = blocks.get(k);
   if (old && old.drawn) {             // resync: only redraw what actually changed
     for (let i = 0; i < B * B; i++) {
-      if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && old.lv[i] === lv[i]) continue;
-      const c = lv[i].charCodeAt(0), raw = c >= 65 ? c - 65 : c - 48;
+      const r = rf ? rf[i] : 0;
+      if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && old.lv[i] === lv[i] && (old.rf ? old.rf[i] : 0) === r) continue;
+      const raw = (lv[i].charCodeAt(0) - 48) | (r << 5);
       setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, raw);
     }
     old.at = performance.now(); return;
   }
-  const b = {bx, by, comb, gnd, lv, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
+  const b = {bx, by, comb, gnd, lv, rf, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
   comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
   blocks.set(k, b);
-  if (depthOf(bx * B) > 0)                             // (the holes above it show its tunnels: redraw them)
-    for (let i = 0; i < B * B; i++) { const x = bx * B + i % B - LAYER, y = by * B + (i / B | 0); if (combAt(x, y) === "O") { touch(x, y); touch(x, y - 1); } }
   // neighbours' edge tiles depend on this block for autotiling
   for (let i = 0; i < B; i++) { dirtyTiles.push(bx * B - 1, by * B + i, bx * B + B, by * B + i, bx * B + i, by * B - 1, bx * B + i, by * B + B); }
 }
@@ -126,25 +128,15 @@ function drawTile(x, y) {
   }
   // relief: each level lays its hill sheet (grass, darker grass, then stone) over the tiles at least that high; the
   // sheets' edge tiles carry the cliff face, so a plateau shows its south cliff and a soft rim round the rest
+  // (below sea level, round a pit: the same sheet's edges only, so the ground at sea level stays as it is)
   const lv = levelAt(x, y);
+  let low = lv;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) low = Math.min(low, levelAt(x + dx, y + dy));
+  for (let k = Math.min(1, low + 1); k <= 0; k++) drawBlobLayer(g, edgeSheet("hill1"), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, ox, oy, 0);
   for (let k = 1; k <= lv; k++) drawBlobLayer(g, hillSheet(k), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, ox, oy, k < 3 ? .25 : .1);
   if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
-  const under = depthOf(x) > 0;
-  // a hole: the floor of the level below, and round it the edges of the ground it goes through (the pack's own:
-  // the cliff face on its north side, the soft rim elsewhere), drawn on the tiles beside it
-  const floorish = (cc, gg) => cc !== "R" && cc !== "*" && (gg !== "-" || cc !== null);   // (underground: not the rock)
-  if (c === "O") { g.clearRect(ox, oy, 16, 16); drawBlobLayer(g, IMG.soil, x, y, under ? floorish : () => true, ox, oy, .15); }
-  if (c === "O") drawEntrances(g, x, y, ox, oy);
-  else if (nearHole(x, y)) { drawBlobLayer(g, edgeSheet(under ? "hill3" : "hill1"), x, y, (cc) => cc !== "O", ox, oy, 0); drawOpeningTop(g, x, y, ox, oy); }
-  // underground: an earth floor, and the rock round the caves only as its stone edges: inside them, the level above
-  // shows through (caveview.js), as if the rock between were cut away
-  if (gr === "-" && c !== "O") drawBlobLayer(g, IMG.soil, x, y, (cc, gg) => gg === "-" && cc !== "R" && cc !== "*", ox, oy, .15);
-  if (c === "R" || (c === "*" && gr === "-")) {
-    const rock = (cc) => cc === "R" || cc === "*";
-    if (CAVE_STYLE === "stone") drawBlobLayer(g, IMG.hill3, x, y, rock, ox, oy, .1);          // solid stone, the pack's
-    else if (CAVE_STYLE === "dark") { g.fillStyle = "#2b2328"; g.fillRect(ox, oy, 16, 16); drawBlobLayer(g, edgeSheet("rock"), x, y, rock, ox, oy, 0); }
-    else { g.clearRect(ox, oy, 16, 16); drawBlobLayer(g, edgeSheet("hill3"), x, y, rock, ox, oy, 0); }
-  }
+  if (gr === "-") drawBlobLayer(g, IMG.soil, x, y, (cc, gg) => gg === "-" && cc !== "R", ox, oy, .15);   // (old worlds)
+  if (c === "R") drawBlobLayer(g, IMG.hill3, x, y, (cc) => cc === "R", ox, oy, .1);
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
   const hd = hash(x, y, 41);
   if (gr === "~" && hd < .09) {                      // shore water: lily pads, reeds, little rocks
@@ -167,12 +159,10 @@ function groundMarks(g, x, y, gr, ox, oy) {
 
 // Level k's sheet: grass (1-2), darker grass (3-4), stone above; each layer up a touch brighter, so terraces of the
 // same sheet still read as steps
-// how the rock round the caves is drawn (?cave=xray|stone|dark): xray shows the level above through it
-const CAVE_STYLE = new URLSearchParams(location.search).get("cave") || "xray";
 const hillSheets = {};
 function hillSheet(k) {
   if (hillSheets[k]) return hillSheets[k];
-  const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 4 ? 1 + .04 * ((k - 1) % 2) : .92 + .024 * (k - 5);
+  const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 0 ? 1 : k <= 4 ? 1 + .04 * ((k - 1) % 2) : .92 + .024 * (k - 5);
   if (f === 1) return hillSheets[k] = img;
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
   const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -180,10 +170,6 @@ function hillSheet(k) {
   for (let i = 0; i < px.length; i += 4) for (let j = 0; j < 3; j++) px[i + j] = Math.min(255, px[i + j] * f);
   g.putImageData(d, 0, 0);
   return hillSheets[k] = c;
-}
-function nearHole(x, y) {
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && combAt(x + dx, y + dy) === "O") return true;
-  return false;
 }
 // A hill sheet with its top cleared: only its edges, rims and cliff faces (for holes, and the rock round caves)
 // (the rock's own, underground: "rock", the stone sheet's edges a good deal darker, so a cave's rim reads as rock,

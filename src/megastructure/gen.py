@@ -6,8 +6,15 @@ regenerated identically.
 
 import math
 
-from .layers import LAYER, depth
 from .tiles import B, G
+
+# Heights: a byte a tile. Its low 5 bits are the floor, SEA (0) being sea level, down to -16 (dug pits) and up to 15;
+# its top 3 bits the rock over it, in layers (a cave: walk in under the mountain); 0 for the open sky.
+SEA = 16
+
+
+def height_byte(level: int, roof: int = 0) -> int:
+    return max(0, min(31, level + SEA)) | (max(0, min(7, roof)) << 5)
 
 CHUNK = 32
 
@@ -96,8 +103,6 @@ def gen_level(seed: int, x: int, y: int) -> int:
     """Height, 0-12. The sea, shores and the spawn meadow stay low; inland the land rolls up in steps of one layer
     (you jump them), steeper in the highlands, and the mountain ranges rise in stone terraces to 12 with cliffs you
     have to dig through. Rivers cut down to the water."""
-    if depth(x):
-        return 0                     # underground is flat (its walls are cave rock)
     d = math.hypot(x, y)
     elev = _elev(seed, x, y)
     if d < 14 or elev < 0.43 or river(seed, x, y):
@@ -112,24 +117,18 @@ def gen_level(seed: int, x: int, y: int) -> int:
     return max(0, min(TOP, int(h * inland)))
 
 
-def gen_cave_open(seed: int, x: int, y: int, d: int) -> bool:
-    lx, s = x - d * LAYER, seed + 7919 * d
-    return fbm(s, lx, y, 7 + 4 * min(d, 8), 91) > 0.63 - 0.004 * min(d, 8)
-
-
-def gen_cave(seed: int, x: int, y: int, d: int) -> tuple[int, int]:
-    """Underground, `d` levels down: solid rock with caves, larger the deeper you go, ore richer too, the odd
-    mushroom on a cave floor."""
-    lx, s = x - d * LAYER, seed + 7919 * d
-    if gen_cave_open(seed, x, y, d):
-        return G["cave_floor"], B["mushroom"] if _hash(s, lx, y, 93) < .005 else B["none"]
-    return G["cave_floor"], B["ore"] if _hash(s, lx, y, 92) < .03 + .015 * min(d, 10) else B["cave_wall"]
+def gen_cave(seed: int, x: int, y: int, level: int) -> tuple[int, int]:
+    """Caves: tunnels winding through the ranges. Their floor keeps low (level 1 where they open onto the land, then
+    up a layer at a time, 4 under the ground over them); where more than a layer of rock is left over the floor it
+    is roofed. (floor, rock over it); (level, 0) where there is no cave."""
+    if level < 1 or _mount(seed, x, y) < 0.5 or abs(fbm(seed, x, y, 22, 97, octaves=2) - 0.5) > 0.03:
+        return level, 0
+    floor = max(1, level - 4)
+    cut = level - floor
+    return floor, (cut if cut >= 2 else 0)
 
 
 def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
-    d0 = depth(x)
-    if d0:
-        return gen_cave(seed, x, y, d0)
     d = math.hypot(x, y)
     elev = _elev(seed, x, y)
     if elev < 0.34:
@@ -151,9 +150,6 @@ def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
         if cand5 and roll5 < 0.45 and fbm(seed, x, y, 12, 84) > 0.45:
             return G["grass"], B["ore"] if roll5 < 0.15 else B["rock"]
         return G["grass"], B["none"]
-    if level == 0 and d > 24 and gen_cave_open(seed, x + LAYER, y, 1) and _hash(seed, x // 9, y // 9, 37) < 0.25 \
-            and _hash(seed, x, y, 38) < 0.08:
-        return G["grass"], B["hole"]  # a sinkhole: a cave right under it
     if kind == "swamp":               # pools, thickets, mushrooms
         if fbm(seed, x, y, 9, 41) > 0.6:
             return G["water"], B["none"]
@@ -205,17 +201,23 @@ def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, bytear
     bx, by = cx * CHUNK, cy * CHUNK
     memo = {}
 
-    def lv(x, y):                    # levels, including a margin around the chunk (rims look at their neighbours)
+    def cave(x, y):                  # (floor, rock over it), with a margin round the chunk (rims look at neighbours)
         v = memo.get((x, y))
         if v is None:
-            v = memo[(x, y)] = gen_level(seed, x, y)
+            v = memo[(x, y)] = gen_cave(seed, x, y, gen_level(seed, x, y))
         return v
+
+    def lv(x, y):
+        return cave(x, y)[0]
 
     for ly in range(CHUNK):
         for lx in range(CHUNK):
             x, y, i = bx + lx, by + ly, ly * CHUNK + lx
-            g, b = gen_tile(seed, x, y, lv(x, y))
+            floor, roof = cave(x, y)
+            g, b = gen_tile(seed, x, y, floor + roof)
+            if roof or floor != gen_level(seed, x, y):
+                g, b = G["dirt"], B["mushroom"] if _hash(seed, x, y, 93) < .01 else B["none"]   # a cave's floor
             rim = lv(x, y) and any(lv(x + dx, y + dy) < lv(x, y) for dx in (-1, 0, 1) for dy in (-1, 0, 1))
             ground[i], block[i] = g, B["none"] if rim else b     # nothing grows on a hill's rim
-            level[i] = lv(x, y)
+            level[i] = height_byte(floor, roof)
     return ground, block, level

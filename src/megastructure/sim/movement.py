@@ -2,7 +2,6 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from ..layers import LAYER, depth
 from .constants import SLOPE_DOWN, SLOPE_UP, sec
 from .entities import ActionError, Agent
 
@@ -22,8 +21,8 @@ class Movement:
 
     def can_go(self, a: Agent, x: int, y: int) -> bool:
         """From where `a` stands to the neighbouring (x, y): the tile can be entered and is at most a layer up or
-        down; or, underground under a hole, there's open ground beside it on the level above (a jump up)."""
-        return (self.can_enter(a, x, y) and self.world.can_step(a.x, a.y, x, y, hop=True)) or self.jump_up(a, x, y)
+        down (a jump)."""
+        return self.can_enter(a, x, y) and self.world.can_step(a.x, a.y, x, y, hop=True)
 
     def why_not(self, a: Agent, x: int, y: int) -> str:
         if self.can_enter(a, x, y) and not self.world.can_step(a.x, a.y, x, y, hop=True):
@@ -41,13 +40,8 @@ class Movement:
             self.set_tile(a.x, a.y, block="boat", by=a, cause="moor")   # leave the boat where you got off
             a.sailing = False
             self.emit("moor", a.x, a.y, name=a.name)
-        jump = not self.can_enter(a, x, y) and self.jump_up(a, x, y)
-        climb = 1 if jump else self.world.level(x, y) - self.world.level(a.x, a.y)
-        if jump:
-            self._change_level(a, a.x - LAYER)       # (out of the hole, onto the level above)
-            x -= LAYER
+        climb = self.world.level(x, y) - self.world.level(a.x, a.y)
         a.x, a.y = x, y
-        self.drop(a)                                  # onto a hole: down through it
         if climb and a.ready > self.tick:            # a jump up is hard going, a drop a little careful
             a.ready += round((a.ready - self.tick) * (SLOPE_UP if climb > 0 else SLOPE_DOWN))
         self.arrive(a)
@@ -102,11 +96,8 @@ class Movement:
             yield from self.pace(a, args)
             if not self.can_go(a, a.x + dx, a.y + dy):
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
-            d0 = depth(a.x)
             self.move(a, a.x + dx, a.y + dy)
             steps += 1
-            if depth(a.x) > d0:                       # dropped through a hole: you land, the walk ends there
-                return {"steps": steps, "stopped": "fell", "depth": depth(a.x)}
         return {"steps": steps, "stopped": "limit"}
 
     def _tool_stop(self, a, args):
@@ -118,15 +109,9 @@ class Movement:
             gx, gy = int(args["x"]), int(args["y"])
         except (KeyError, TypeError, ValueError):
             raise ActionError("bad_args", "move_to needs integer x and y")
-        if abs(gx - a.x) + abs(gy - a.y) == 1 and self.jump_up(a, gx, gy):      # the tile beside you: a jump up
-            yield from self.pace(a, args)
-            if not self.can_go(a, gx, gy):
-                raise ActionError("blocked", f"({gx},{gy}) is {self.why_not(a, gx, gy)}")
-            self.move(a, gx, gy)
-            return {"steps": 1, "arrived": [a.x, a.y], "adjacent_only": False}
         replans = 0
         ok = lambda x, y: self.can_enter(a, x, y) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
-        step = lambda p, q: self.world.can_step(*p, *q, hop=True) and (self.world.block(*q) != "hole" or q == (gx, gy))
+        step = lambda p, q: self.world.can_step(*p, *q, hop=True)
         path = astar(ok, (a.x, a.y), (gx, gy), step=step)
         if path is None:
             far = abs(gx - a.x) + abs(gy - a.y) > 64

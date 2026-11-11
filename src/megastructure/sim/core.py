@@ -9,7 +9,6 @@ import random
 from dataclasses import fields
 from pathlib import Path
 
-from ..layers import depth
 from ..tiles import BLOCKS, DIRS
 from ..world import Store, World
 from .animals import Animals
@@ -56,7 +55,9 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
         self.tokens: dict[int, str] = {}
         for aid, name, th, js in store.db.execute("SELECT id, name, token_hash, json FROM agents"):
             known = {f.name for f in fields(Agent)}            # saves from older versions may carry dropped fields
-            self.agents[aid] = Agent(**{k: v for k, v in json.loads(js).items() if k in known})
+            a = self.agents[aid] = Agent(**{k: v for k, v in json.loads(js).items() if k in known})
+            if a.x > 500_000:                                  # (down an old underground level: back up top)
+                a.x -= (a.x + 500_000) // 1_000_000 * 1_000_000
             self.tokens[aid] = th
         self.by_name = {a.name: a for a in self.agents.values()}
         self.ticking: set[tuple[int, int]] = set()        # chunks where creatures live this tick (spawning.py)
@@ -112,8 +113,8 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
             fn(ev)
         return ev
 
-    def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None, level=None):
-        self.world.set(x, y, ground=ground, block=block, level=level)
+    def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None, level=None, roof=None):
+        self.world.set(x, y, ground=ground, block=block, level=level, roof=roof)
         self.stats["tiles_changed"] += 1
         g, b = self.world.ground(x, y), self.world.block(x, y)
         if g == "tilled":
@@ -170,8 +171,8 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
 
     def sheltered(self, x, y) -> bool:
         """Inside a room: the area around (x, y) is closed off by walls/doors/gates within 160 tiles
-        (same rule the client uses to draw roofs). Next to 3+ walls also counts, as before. Underground always does."""
-        if depth(x):
+        (same rule the client uses to draw roofs). Next to 3+ walls also counts, as before. In a cave too."""
+        if self.world.roof(x, y):
             return True
         if sum(1 for dx, dy in DIRS.values() if BLOCKS[self.world.get(x + dx, y + dy)[1]].wall) >= 3:
             return True

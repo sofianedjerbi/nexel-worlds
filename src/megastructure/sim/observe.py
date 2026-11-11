@@ -1,7 +1,13 @@
 """What an agent perceives: the observation dict of the agent API."""
 
-from ..layers import depth
 from .constants import VIEW_R
+
+
+def height_char(lv: int) -> str:
+    """A height for the agents: 0-9 and A, B, C (10-12) up; a, b, c... (-1, -2, -3...) down in pits."""
+    return str(lv) if 0 <= lv <= 9 else chr(55 + lv) if lv > 9 else chr(96 - lv)
+
+
 from .entities import CREATURES, Agent
 from .progress import level_of
 from .specs import LEGEND
@@ -46,8 +52,8 @@ class Observation:
             grid.append("".join(row))
         # heights, same window: a digit per tile (0 is low ground), a capital letter (B = 1...) for stairs going south;
         # only sent when there is any relief in view
-        heights = ["".join(chr(48 + (v & 15)) for v in (self.world.level_raw(x, y)
-                   for x in range(a.x - R, a.x + R + 1))) for y in range(a.y - R, a.y + R + 1)]
+        heights = ["".join(height_char(self.world.level(x, y)) for x in range(a.x - R, a.x + R + 1))
+                   for y in range(a.y - R, a.y + R + 1)]
         if all(set(h) <= {"0"} for h in heights):
             heights = None
         items, signs = [], []
@@ -68,7 +74,7 @@ class Observation:
             "self": {"id": a.id, "name": a.name, "x": a.x, "y": a.y, "hp": a.hp, "hunger": a.hunger,
                      "inventory": dict(sorted(a.inventory.items())), "deaths": a.deaths,
                      "action": a.action.tool if a.action else None,
-                     "spawn": a.spawn, "sailing": a.sailing, "can": a.can, "xp": a.xp, "level": level_of(a.xp)[0], "depth": depth(a.x),
+                     "spawn": a.spawn, "sailing": a.sailing, "can": a.can, "xp": a.xp, "level": level_of(a.xp)[0], "in_cave": bool(self.world.roof(a.x, a.y)),
                      "standing_on": here_g if here_b == "none" else f"{here_g}+{here_b}",
                      "sheltered": self.sheltered(a.x, a.y)},
             "grid": grid,

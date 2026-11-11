@@ -4,6 +4,7 @@ import zlib
 
 from helpers import run
 from megastructure.gen import CHUNK, PEAK, gen_chunk
+from megastructure.tiles import B
 from megastructure.world import Chunk
 
 
@@ -64,8 +65,8 @@ def test_generated_land_has_hills_and_peaks():
     for cx in range(4, 12):
         for cy in range(-4, 4):
             _, _, lv = gen_chunk(7, cx, cy)
-            levels |= set(lv)
-            peaks += sum(1 for v in lv if v >= PEAK)
+            levels |= {(v & 31) - 16 for v in lv}
+            peaks += sum(1 for v in lv if (v & 31) - 16 >= PEAK)
     assert {0, 1, 2} <= levels and peaks > 0 and max(levels) < 16
     assert gen_chunk(7, 5, 1) == gen_chunk(7, 5, 1)          # deterministic
 
@@ -73,10 +74,11 @@ def test_generated_land_has_hills_and_peaks():
 def test_land_saved_before_relief_stays_flat_and_old_stairs_are_ground():
     n = CHUNK * CHUNK
     c = Chunk.unpack(0, 0, zlib.compress(bytes(n) + bytes(n)))     # ground and blocks only
-    assert len(c.level) == n and not any(c.level)
+    assert len(c.level) == n and set(c.level) == {16}              # all at sea level
     assert Chunk.unpack(0, 0, c.pack()).level == c.level
-    old = zlib.compress(bytes(n) + bytes(n) + bytes([0x11]) + bytes(n - 1))   # level 1 with the old stairs flag
-    assert Chunk.unpack(0, 0, old).level[0] == 1
+    old = zlib.compress(bytes(n) + bytes([B["hole"], B["ladder"]]) + bytes(n - 2) + bytes([0x11]) + bytes(n - 1))
+    c = Chunk.unpack(0, 0, old)         # level 1 with the old stairs flag, and an old hole: a pit a layer deep
+    assert c.level[0] == 16 and c.level[1] == 16 and c.block[0] == c.block[1] == 0
 
 
 def test_nothing_is_built_on_a_hills_rim(world):
@@ -89,29 +91,27 @@ def test_nothing_is_built_on_a_hills_rim(world):
 
 
 def test_nothing_generates_on_a_rim():
-    from megastructure.gen import gen_level
+    from megastructure.gen import gen_cave, gen_level
     for cx in range(4, 9):
         for cy in range(-3, 3):
             _, block, lv = gen_chunk(7, cx, cy)
             for i, v in enumerate(lv):
-                x, y = cx * CHUNK + i % CHUNK, cy * CHUNK + i // CHUNK
-                if v and any(gen_level(7, x + dx, y + dy) < v for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
+                x, y, v = cx * CHUNK + i % CHUNK, cy * CHUNK + i // CHUNK, (v & 31) - 16
+                if v and any(gen_cave(7, x + dx, y + dy, gen_level(7, x + dx, y + dy))[0] < v for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
                     assert block[i] == 0, (x, y)
 
 
-def test_the_land_has_biomes_mountains_rivers_and_sinkholes_into_caves():
-    from megastructure.gen import biome, gen_cave_open, gen_level, gen_tile, river
-    from megastructure.layers import LAYER
-    from megastructure.tiles import B
-    kinds, holes, rivers, top = set(), [], 0, 0
+def test_the_land_has_biomes_mountains_rivers_and_caves():
+    from megastructure.gen import biome, gen_cave, gen_level, river
+    kinds, caves, rivers, top = set(), 0, 0, 0
     for y in range(-400, 400, 6):
         for x in range(-400, 400, 6):
             lv = gen_level(7, x, y)
             top = max(top, lv)
             kinds.add(biome(7, x, y, lv))
             rivers += river(7, x, y)
-            if gen_tile(7, x, y, lv)[1] == B["hole"]:
-                holes.append((x, y))
-    assert kinds == {"plains", "forest", "highlands", "dry", "swamp", "mountain"} and top >= 8 and rivers
-    assert holes and all(gen_cave_open(7, x + LAYER, y, 1) for x, y in holes)     # a sinkhole: a cave right under it
+            floor, roof = gen_cave(7, x, y, lv)
+            caves += roof > 0
+            assert floor + roof <= lv and floor >= min(lv, 1)
+    assert kinds == {"plains", "forest", "highlands", "dry", "swamp", "mountain"} and top >= 8 and rivers and caves
     assert biome(7, 10, 10, gen_level(7, 10, 10)) == "plains"                      # spawn: plains

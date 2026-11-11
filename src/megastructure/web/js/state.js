@@ -87,7 +87,6 @@ function onTick(d) {
     if (e.kind === "agent" && e.id === myId && pred) {
       if ((e.x === pred.x && e.y === pred.y) || now > pred.until) pred = null; else { p.e = e; continue; }
     }
-    levelShift(p, e.x, e.y, key === "agent" + myId);
     if (p.tx !== e.x || p.ty !== e.y) {
       const dx = Math.sign(e.x - p.tx), dy = Math.sign(e.y - p.ty);
       // animal sheets only walk sideways: going up or down they keep facing the way they last went
@@ -177,7 +176,6 @@ function onEvent(e) {
   if (e.type === "give" && e.to === me) sfx("give");
   if ((e.type === "join" || e.type === "leave") && e.name !== me) sfx(e.type);
   if (e.type === "sign") sfx("write", e.x, e.y);
-  if (e.type === "level" && e.arrived && e.name === me && e.depth > e.was) sfx("descend");
   if (e.type === "mail" && e.to === me && e.from !== me) toast(`${e.from} left you a letter (mailbox at ${e.x}, ${e.y}).`);
   if (e.type === "mail_opened" && e.owner === me && e.by !== me) toast(`${e.by} opened your mailbox and took ${e.n} letter${e.n > 1 ? "s" : ""}!`, true);
   if (e.type === "board" || e.type === "moor") { burst(e.x, e.y, "water", 8, {up: 1.5, spread: 2}); sfx("water", e.x, e.y); }

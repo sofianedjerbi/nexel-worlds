@@ -7,7 +7,7 @@ import zlib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .gen import CHUNK, gen_chunk, gen_tile
+from .gen import CHUNK, SEA, gen_chunk, gen_tile, height_byte
 from .tiles import BLOCKS, GROUNDS, B, G
 
 THREADS = sys.platform != "emscripten"   # the in-browser demo has no threads: it generates land inline
@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS agents(id INTEGER PRIMARY KEY, name TEXT UNIQUE, toke
 CREATE TABLE IF NOT EXISTS ground_items(x INTEGER, y INTEGER, json TEXT, PRIMARY KEY(x, y));
 CREATE TABLE IF NOT EXISTS creatures(id INTEGER PRIMARY KEY, json TEXT);
 """
+FORMAT = 2                               # chunk format: heights below sea level, caves
 
 
 class Chunk:
@@ -29,22 +30,30 @@ class Chunk:
     def __init__(self, cx, cy, ground, block, level=None):
         self.cx, self.cy = cx, cy
         self.ground, self.block = ground, block
-        self.level = level if level is not None else bytearray(CHUNK * CHUNK)   # heights
-        for i, v in enumerate(self.level):
-            if v & 0x10:                         # (stairs, from before you could jump: just ground now)
-                self.level[i] = v & 0x0F
+        self.level = level if level is not None else bytearray([SEA] * (CHUNK * CHUNK))   # heights (raw: gen.height_byte)
         self.dirty = False
         self.touched = 0
 
     def pack(self) -> bytes:
-        return zlib.compress(bytes(self.ground) + bytes(self.block) + bytes(self.level), 6)
+        return zlib.compress(bytes(self.ground) + bytes(self.block) + bytes(self.level) + bytes([FORMAT]), 6)
 
     @classmethod
     def unpack(cls, cx, cy, data: bytes) -> "Chunk":
         raw = zlib.decompress(data)
         n = CHUNK * CHUNK
         # chunks saved before the land had relief carry no levels: they stay flat (nothing built on them moves)
-        return cls(cx, cy, bytearray(raw[:n]), bytearray(raw[n:2 * n]), bytearray(raw[2 * n:3 * n]) if len(raw) >= 3 * n else None)
+        ground, block = bytearray(raw[:n]), bytearray(raw[n:2 * n])
+        if len(raw) > 3 * n and raw[3 * n] == FORMAT:
+            return cls(cx, cy, ground, block, bytearray(raw[2 * n:3 * n]))
+        # saved before heights went below sea level: 0-12 (bit 4: old stairs), and dug holes (now a pit one deep)
+        old = raw[2 * n:3 * n] if len(raw) >= 3 * n else bytes(n)
+        level = bytearray(SEA + (v & 0x0F) for v in old)
+        for i in range(n):
+            if block[i] == B["hole"]:
+                block[i], level[i] = B["none"], level[i] - 1
+            elif block[i] == B["ladder"]:
+                block[i] = B["none"]
+        return cls(cx, cy, ground, block, level)
 
 
 class Store:
@@ -202,19 +211,23 @@ class World:
         return self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)]
 
     def level(self, x: int, y: int) -> int:
-        """Height of the land here, 0-3."""
-        return self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] & 0x0F
+        """Height of the ground you stand on here: 0 at sea level, below in dug pits, up to 12 in the mountains."""
+        return (self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] & 0x1F) - SEA
+
+    def roof(self, x: int, y: int) -> int:
+        """In a cave: the layers of rock over you (0 under the sky)."""
+        return self.chunk(x >> 5, y >> 5).level[(y & 31) * CHUNK + (x & 31)] >> 5
 
     def rim(self, x: int, y: int) -> bool:
         """On a hill's rim (a lower tile next to it, diagonals too), where its edge is drawn: nothing is built or
         grows there."""
         lv = self.level(x, y)
-        return bool(lv) and any(self.level(x + dx, y + dy) < lv for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy)
+        return any(self.level(x + dx, y + dy) < lv for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy)
 
     def edge(self, x: int, y: int) -> bool:
         """Where a cliff face is drawn: a hill tile with lower ground straight south of it (you stand on its top)."""
         lv = self.level(x, y)
-        return bool(lv) and self.level(x, y + 1) < lv
+        return self.level(x, y + 1) < lv
 
     def can_step(self, x0: int, y0: int, x1: int, y1: int, hop: bool = False) -> bool:
         """Between neighbouring tiles: on the level; with `hop` (people), down a layer or a jump up one, as in a
@@ -228,11 +241,12 @@ class World:
     def block(self, x, y) -> str:
         return BLOCKS[self.get(x, y)[1]].name
 
-    def set(self, x: int, y: int, ground: str | None = None, block: str | None = None, level: int | None = None):
+    def set(self, x: int, y: int, ground: str | None = None, block: str | None = None, level: int | None = None,
+            roof: int | None = None):
         c = self.chunk(x >> 5, y >> 5)
         i = (y & 31) * CHUNK + (x & 31)
-        if level is not None:                    # the height byte
-            c.level[i] = level
+        if level is not None or roof is not None:   # the floor, the rock over it (each kept unless given)
+            c.level[i] = height_byte((c.level[i] & 31) - SEA if level is None else level, c.level[i] >> 5 if roof is None else roof)
         if ground is not None:
             c.ground[i] = G[ground]
         if block is not None:

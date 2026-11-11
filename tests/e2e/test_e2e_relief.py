@@ -1,5 +1,5 @@
 """Regressions for higher ground drawn higher (relief.js), the world-to-screen lift, smooth fly-ins, no frame waiting
-on drawing new ground, cave entrances, and the underground view staying cheap."""
+on drawing new ground, caves (a roof like a house's) and pits."""
 
 import json
 
@@ -97,26 +97,41 @@ def test_running_into_new_ground_never_stalls_a_frame(game):
     assert t < 12, t                                            # a step is small: it fits the frame's budget
 
 
-def test_a_hole_shows_the_tunnels_leaving_it(game):
-    """Surface holes show where the floor below goes on under the ground: shade toward that side."""
+def test_a_cave_is_its_mountain_from_outside_and_a_hole_in_it_inside(game):
+    """A cave is drawn as the mountain over it, like a house's roof: what's in it is not seen. Walk in and its roof is
+    off at once (no fade, no shade over the world): the cave is a hole in the mountain, the mountain stays round it."""
+    game.clear_area(6)
     x, y = game.pos()
-    L = 1000000
-    game.clear_area(4)
-    game.rpc("dev_stamp", x=x + 2 + L, y=y - 2, rows=["R", "R", "R"])    # below first: the tunnel going east...
-    game.rpc("dev_stamp", x=x + 2 + L, y=y, rows=["-"])
-    game.rpc("dev_stamp", x=x + 3 + L, y=y, rows=["---"])
-    game.stamp(2, 0, ["O"])                                            # ...then the hole over its west end
-    game.sleep(1500)
-    dark = game.js(f"""(() => {{ const b = blocks.get(bkey(Math.floor({x + 2} / B), Math.floor({y} / B))), lx = ({x + 2} - b.bx * B) * 16, ly = ({y} - b.by * B) * 16;
-      const d = b.ctx.getImageData(lx + 13, ly + 8, 3, 1).data; return (d[0] + d[1] + d[2]) / 3; }})()""")
-    assert dark < 140                                           # the east edge of the hole is in shade
+    game.stamp(-3, -6, [".......", "......."] * 3, levels=["4441444", "4441444", "4441444", "4441444", "4441444", "4441444"],
+               roofs=["0003000"] * 5 + ["0000000"])           # a tunnel running north into the hill, its mouth at the south
+    game.stamp(-3, 0, ["......."], levels=["1111111"])
+    game.spawn("chicken", 0, -5, still=1)
+    game.sleep(1200)
+    assert game.js(f"levelAt({x}, {y - 3})") == 4 and game.js(f"hiddenAt({x}, {y - 3})")     # outside: its roof
+    game.hold(["w"], 900)                                    # in through the mouth
+    game.sleep(500)
+    assert game.server()["in_cave"] and game.js("caveOpen")
+    assert game.js(f"levelAt({x}, {y - 3})") == 1 and game.js(f"levelAt({x - 1}, {y - 3})") == 4   # a hole in the hill
+    assert game.js(f"!hiddenAt({x}, {y - 5})")
+    assert game.js("ctx.filter") in ("none", "") and not game.js("typeof drawCave !== 'undefined'")
+    game.hold(["s"], 900)                                    # and out: its roof is back
+    game.sleep(500)
+    assert not game.js("caveOpen") and game.js(f"levelAt({x}, {y - 3})") == 4
 
 
-def test_underground_draws_without_canvas_filters(game):
-    """The level above was faded with a canvas filter: 5x slower. No filter in the frame."""
+def test_a_pit_below_sea_level_is_drawn_like_any_hole(game):
+    """Digging down at sea level: a pit, drawn lower like any lower ground, the ground round it as it was."""
     game.give(pickaxe=1)
     game.hold_item("pickaxe")
-    game.press("x", 2600)
-    assert game.server()["depth"] == 1
-    game.sleep(500)
-    assert game.js("ctx.filter") in ("none", "")
+    game.clear_area(3)
+    x, y = game.pos()
+    game.face(1, 0)
+    game.press("x", 2600)                                    # X: down a layer where you stand
+    assert game.js(f"floorAt({x}, {y})") == -1 and game.js(f"liftAt({x}, {y})") < 0
+    game.act("dig_down", **{"with": "pickaxe"})             # (X now faces the pit's side: it would cut into that)
+    game.sleep(2200)
+    assert game.js(f"floorAt({x}, {y})") == -2
+    game.js("selectItem(null)")
+    game.hold(["d"], 200)                                    # two layers up: a wall
+    game.sleep(600)
+    assert game.server()["x"] == x

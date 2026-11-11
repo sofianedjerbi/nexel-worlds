@@ -62,7 +62,7 @@ function facingIntent(alt) {
   const faced = intent(q, alt);
   if (useful(faced)) return {p: q, it: faced};
   // a pickaxe in hand, facing higher ground with nothing on it: cut into it (it comes down a layer)
-  if (inHand() === "pickaxe" && !depthOf(q.x) && levelAt(q.x, q.y) > levelAt(s.x, s.y) && GROUND.has(combAt(q.x, q.y)))
+  if (inHand() === "pickaxe" && floorAt(q.x, q.y) > floorAt(s.x, s.y) && GROUND.has(combAt(q.x, q.y)))
     return {p: q, it: {text: "Dig into the hill", run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
   // X with a pickaxe and nothing else to use it on: dig down where you stand
   if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !"~=:n".includes(under))
@@ -200,10 +200,8 @@ function syncWalk() {
       const nx = dx > 0 ? Math.ceil(p.x - .05) : dx < 0 ? Math.floor(p.x + .05) : Math.round(p.x);
       const ny = dy > 0 ? Math.ceil(p.y - .05) : dy < 0 ? Math.floor(p.y + .05) : Math.round(p.y);
       if ((nx !== p.tx || ny !== p.ty) && walkable(nx, ny, p.tx, p.ty)) {
-        const shift = levelStep(nx, ny, p.tx, p.ty);            // finishing a step onto a hole, or out of one
         p.tx = nx; p.ty = ny; pred = {x: nx, y: ny, until: performance.now() + 600};
         rpc("act", {tool: "move_to", args: {x: nx, y: ny}});
-        if (shift) { p.x += shift; p.tx += shift; cam.x += shift; camT.x += shift; pred = {x: p.tx, y: ny, until: performance.now() + 1500}; }
         return;
       }
     }

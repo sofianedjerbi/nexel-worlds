@@ -1,11 +1,11 @@
-// Relief, stacked: each level is drawn RELIEF_STEP px higher than the one under it (level 1 too: every +1 looks alike), with everything standing on it, so a
-// two-layer drop looks taller than a one-layer one. A block's ground canvas is drawn as it is (level 1 in place),
-// then for each level k >= 1 a copy of it cut to the tiles at least that high, lifted. Where a lifted level ends
+// Relief, stacked: each level is drawn RELIEF_STEP px higher than the one under it (sea level in place, a pit's floor
+// lower), with everything standing on it, so a two-layer drop looks taller than a one-layer one. A block's ground
+// canvas is drawn at its lowest level, then for each level above a copy of it cut to the tiles at least that high. Where a lifted level ends
 // over lower ground its wall is painted down to the ground below: solid earth, a band per layer (lit along its top,
 // darker at its foot), in the colours of that layer's own sheet, the pack's ink at the very foot.
 
 const RELIEF_STEP = 6;                                       // art px a level
-const shOf = (L) => (L > 0 ? RELIEF_STEP * L : 0);           // how far up a level is drawn: every layer the same step
+const shOf = (L) => RELIEF_STEP * L;                          // how far up a level is drawn (a pit's, down): every layer the same step
 const WALL_M = RELIEF_STEP * 14 + 16;                        // room under a layer canvas for its walls
 
 // Something flying off from a spot (a puff, a spark, debris): it keeps the height of where it started, however it
@@ -74,11 +74,13 @@ function dilateH(m, w, h, n) {
 const LEDGE = 3;
 function* reliefSteps(b) {                             // (a step a level, so no frame waits on a whole block)
   const M = 16, Wb = B * 16, Wm = Wb + 2 * M, Hb = Wb + WALL_M;
-  let maxLv = 0;
-  for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) maxLv = Math.max(maxLv, levelAt(b.bx * B + tx, b.by * B + ty));
-  const layers = [], shape = {};
+  let maxLv = -99, minLv = 0;                          // (the block's ground canvas is drawn at its lowest level)
+  for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {
+    const l = levelAt(b.bx * B + tx, b.by * B + ty); maxLv = Math.max(maxLv, l); minLv = Math.min(minLv, l);
+  }
+  const layers = {}, shape = {};
   let above = null;
-  for (let k = maxLv; k >= 1; k--) {                    // the shapes, from the top down: each grows round the one above
+  for (let k = maxLv; k > minLv; k--) {                    // the shapes, from the top down: each grows round the one above
     const own = new Uint8Array(Wm * Wm), sheet = hillSheet(k);
     for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {    // its own tiles' shape, from the sheet's cells
       const x = b.bx * B + tx, y = b.by * B + ty;
@@ -92,7 +94,7 @@ function* reliefSteps(b) {                             // (a step a level, so no
     shape[k] = {own, sh}; above = sh;
     yield;
   }
-  for (let k = 1; k <= maxLv; k++) {
+  for (let k = minLv + 1; k <= maxLv; k++) {
     const {own, sh} = shape[k], cols = colsOf(hillSheet(k));
     const mask = new ImageData(Wb, Wb), md = mask.data, ledge = new ImageData(Wb, Wb), ld = ledge.data, ownM = new ImageData(Wb, Wb), od = ownM.data;
     for (let y = 0; y < Wb; y++) for (let x = 0; x < Wb; x++) {
@@ -127,7 +129,7 @@ function* reliefSteps(b) {                             // (a step a level, so no
     layers[k] = c;
     yield;
   }
-  b.relief = {layers, maxLv};
+  b.relief = {layers, maxLv, minLv};
 }
 let reliefBudgetAt = 0, reliefSpent = 0, freshThisFrame = false;
 function buildRelief(b) { for (const _ of reliefSteps(b)); b.reliefDirty = false; }   // (all at once: tests, tools)
@@ -147,9 +149,39 @@ function drawBlockRelief(b, sx, sy, S) {
     if (r.done) b.reliefGen = null;
   }
   if (!b.relief) return;
-  ctx.drawImage(b.canvas, X, Y, B * S, B * S);
-  for (let k = 1; k <= b.relief.maxLv; k++) {
+  ctx.drawImage(b.canvas, X, Y - shOf(b.relief.minLv) * zoom, B * S, B * S);
+  for (let k = b.relief.minLv + 1; k <= b.relief.maxLv; k++) {
     const c = b.relief.layers[k];
     if (c) ctx.drawImage(c, X, Y - shOf(k) * zoom, B * S, (B * 16 + WALL_M) * zoom);
+  }
+}
+
+// Walking into a cave (or out): every cave's roof comes off (goes back on) at once, like a house's. The blocks with
+// caves, and those beside them (their edges), are redrawn there and then: on screen in full, the rest as they come.
+function setCaveOpen(vis) {
+  const me = ents.get("agent" + myId), open = !!me && roofAt(Math.round(me.tx), Math.round(me.ty)) > 0;
+  if (open === caveOpen) return;
+  caveOpen = open;
+  const near = (b) => [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const n = blocks.get(bkey(b.bx + dx, b.by + dy)); return n && n.rf; });
+  const shown = new Set(vis);
+  for (const b of blocks.values()) {
+    if (!b.drawn || !near(b)) continue;
+    if (shown.has(b)) { renderBlock(b); buildRelief(b); b.reliefGen = null; }
+    else { b.drawn = false; b.reliefDirty = true; }
+  }
+}
+// In a cave, the high ground south of a tunnel is drawn up over it: its floor is drawn again on top, so the whole
+// cave shows through the rock in front of it (and nothing else changes)
+function drawCaveFloors(vis, sx, sy, S) {
+  for (const b of vis) {
+    if (!b.rf || !b.relief) continue;
+    for (let i = 0; i < B * B; i++) {
+      if (!b.rf[i]) continue;
+      const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
+      const f = floorAt(x, y), Y = sy(y) - shOf(f) * zoom;
+      ctx.drawImage(b.canvas, (i % B) * 16, (i / B | 0) * 16, 16, 16, sx(x), Y, S, S);
+      const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, tx, ty) => roofAt(tx, ty) > 0 || Math.abs(floorAt(tx, ty) - f) <= 1));
+      ctx.drawImage(edgeSheet("hill3"), cx * 16, cy * 16, 16, 16, sx(x), Y, S, S);     // (its rock rim)
+    }
   }
 }
