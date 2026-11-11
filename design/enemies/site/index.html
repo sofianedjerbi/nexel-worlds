@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Megastructure · new enemies</title>
+<title>Megastructure · new mobs</title>
 <style>
   :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#fff6e2; --paper2:#f3dfba; --line:#c9a27a; }
   * { box-sizing:border-box; }
@@ -48,12 +48,12 @@
 <body>
 <main>
   <header>
-    <h1>New enemies</h1>
+    <h1>New mobs</h1>
     <div class="sub" id="sub">designs for Megastructure</div>
   </header>
 
   <section class="card">
-    <h2>In the world, at game size <small>new ones (dark labels) and the game's own (white labels), all moving together</small>
+    <h2>In the world, at game size <small>the suggestions (dark labels) and the game's own (white labels), all moving together</small>
       <button class="t on" data-time="day">day</button><button class="t" data-time="night">night</button></h2>
     <canvas id="world"></canvas>
   </section>
@@ -68,14 +68,14 @@
   <section class="card">
     <h2>How they are made</h2>
     <div class="notes">
-      <div><b>The newest three move like the player:</b> the wisp and the wyrm are computed frame by frame (nothing drawn by hand but the wyrm's heads), and the stag walks on generated legs with its head nodding once a step.</div>
-      <div><b>On this page:</b> the five in the game (tusker, pincer, strawman, wisp, wyrm), the stag (a design only), and the game's own player, cow and chicken drawn from the game's sheets at the game's speeds. The earlier designs (stilt, adder, lampwing, snapjaw) are off the page; their files are still in <code>roster/</code>.</div>
-      <div><b>Four directions:</b> each sheet is laid out like the game's <code>character.png</code>: rows are down, up, left, right; columns are idle, walk, then the action. Right is left mirrored.</div>
-      <div><b>Walks match the game:</b> the boar, heron, scarecrow and snake walk in 8 frames at about 90 ms, like the game's cow, chicken and player. The boar's body stays level like the cow's; seen from the front, bodies rise a pixel as a foot lifts, like the player. Side-view legs are generated, so every frame is consistent.</div>
-      <div><b>Attacks warn first:</b> every action is wind-up, strike, hold, recover, each with its own length. The wind-up is held for about half a second so a player can read it; the strike is one fast frame.</div>
-      <div><b>Idle and shadows match too:</b> a slow one-pixel breath and a blink, and the same soft purple oval under the feet as the cow and chicken. The scarecrow alone stands dead still.</div>
-      <div><b>Source:</b> one file per enemy in <code>design/enemies/roster/</code>, one character per pixel; frames are built from parts (body, legs, head). <code>build.py</code> makes the sheets and this page.</div>
-      <div><b>Not in the game yet:</b> these are designs. Say which to keep, change or drop.</div>
+      <div><b>Every frame is computed.</b> Nothing is drawn by hand: each mob is a few shapes moved by a formula, so its 8 frames flow like the player's. That was what worked for the wisp and the wyrm.</div>
+      <div><b>Five ways of moving.</b> One waddles, one hops, one tunnels, one flies, one trudges. No two share a body plan, a size or a colour family, so each is known by its outline alone.</div>
+      <div><b>Built like the game's own.</b> Small, round, flat colours with one shade, an outline in a darker tone of the body (never black), the same soft purple shadow, 8-frame moves at 80 to 110 ms, a slow breath at rest.</div>
+      <div><b>Every action warns first.</b> A held pose of about half a second (squat, open mouth, trembling mound, wings held high, fists up), then one fast frame, a hold, a recovery. The bigger the hit, the longer the warning.</div>
+      <div><b>Each one asks for a different answer.</b> Keep your distance, chase it, pave your floor, roof your coop, wait for the opening. Only the cairn does real damage, and only if you mine beside it.</div>
+      <div><b>Rare by design.</b> One sporecap in a forest, one hush per night, one cairn per mountain. None would spawn until you say so.</div>
+      <div><b>Off this page.</b> The tusker, pincer, strawman, wisp and wyrm are still in the game; only this page dropped them. The stag and the earlier designs stay in <code>design/enemies/roster/</code>.</div>
+      <div><b>Source:</b> one file per mob in <code>design/enemies/roster/</code>; <code>build.py</code> makes the sheets (rows down, up, left, right; columns idle, move, action) and this page. These are designs: say which to keep, change or drop.</div>
     </div>
   </section>
 </main>
@@ -111,13 +111,13 @@ function sprite(g, e, dir, mode, i, x, y, z) {
 }
 
 function build() {
-  $("sub").textContent = `${meta.length} new mobs beside the game's own, to see if they blend`;
+  $("sub").textContent = `${meta.length} suggestions beside the game's own player, cow and chicken`;
   for (const e of meta) {
     const [cw, ch] = e.cell, z = cw > 32 ? 3 : 4, el = document.createElement("section");
     el.className = "card enemy";
     const row = (mode, label) => `<div class="r">${label}</div>` + DIRS.map((d) =>
       `<canvas width="${cw * z}" height="${ch * z}" data-key="${e.key}" data-dir="${d}" data-mode="${mode}"></canvas>`).join("");
-    const moving = e.move || (e.ground === "water" ? "swim" : e.key === "lampwing" ? "fly" : "walk");
+    const moving = e.move || "walk";
     el.innerHTML = `<div>
         <div class="name">${e.name}<span class="tag">${e.role}</span></div>
         <div class="where"><b>Where:</b> ${e.where} &nbsp; <b>When:</b> ${e.when}</div>
@@ -161,9 +161,9 @@ function drawOld(g, key, dir, moving, t, x, y, z, memo) {
 
 // The world strip: W x H tiles. Everyone walks round their own rectangle (in tiles): [x, y, w, h].
 const W = 22, H = 9, POND = [17, 1, 5, 7], BEACH = [15, 0, 2, 9];
-const LOOPS = {tusker: [.8, 1.3, 3.6, 1.5], stag: [5.6, 1.5, 3.8, 1.3], player: [.8, 4.5, 3, 1.3], cow: [5.2, 4.5, 3.6, 1.3],
-  wisp: [10.6, 2.6, 3.2, 2.6], strawman: [1, 7.2, 3.4, 1], chicken: [6.2, 7.3, 3, .9], pincer: [15.4, 1.3, 1, 6.4], wyrm: [18, 2.4, 3, 4.4]};
-const SPEED = {tusker: 1.2, pincer: 1.6, strawman: 1.0, wisp: 1.6, wyrm: 1.8, stag: 1.4};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the gloom at 2.6
+const LOOPS = {sporecap: [.8, 1.3, 3.4, 1.4], cairn: [5.8, 1.6, 3.6, 1.6], player: [.8, 4.6, 3, 1.3], cow: [5.2, 4.9, 3.6, 1.2],
+  hush: [10.4, 1.6, 3.4, 2.6], burrow: [1, 7.4, 3.6, 1], chicken: [6.2, 7.4, 3, .9], hopper: [14.6, 1.3, 1.6, 6.4]};
+const SPEED = {sporecap: .8, hopper: 2.2, burrow: 1.6, hush: 2.6, cairn: .7};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the player walks at 2.4
 function along([x, y, w, h], d) {                       // where on the rectangle after d tiles, and which way it faces
   d %= 2 * (w + h);
   if (d < w) return [x + d, y, "right"];
@@ -179,7 +179,6 @@ function step(e, dt) {
   const actMs = total(e.ms.act), plan = {walk: 4200, idle: 1100, act: actMs, rest: 700};
   if (a.t >= plan[a.mode]) { a.t = 0; a.mode = {walk: "idle", idle: "act", act: "rest", rest: "walk"}[a.mode]; }
   if (a.mode === "walk") a.d += SPEED[e.key] * dt / 1000;
-  if ((e.key === "tusker" || e.key === "stag") && a.mode === "act" && a.t > 700) a.d += 4.5 * dt / 1000;      // the charge itself covers ground
   const [x, y, dir] = along(LOOPS[e.key], a.d);
   if (a.mode === "walk") return [x, y, dir, "walk", frameAt(e, "walk", a.t)];
   if (a.mode === "act") return [x, y, dir, "act", frameAt(e, "act", a.t, false)];
@@ -219,7 +218,7 @@ function draw(t) {
   const c = $("world"), z = 3, T = 16 * z;
   if (c.width !== W * T) { c.width = W * T; c.height = H * T; }
   const g = c.getContext("2d");
-  tiles(g, "grass", 0, 0, W, H, z); tiles(g, "sand", ...BEACH, z); tiles(g, "sand", 17, 0, 5, 9, z); tiles(g, "water", ...POND, z);
+  tiles(g, "grass", 0, 0, W, H, z); tiles(g, "sand", 17, 0, 5, 9, z); tiles(g, "water", ...POND, z);
   const things = [];
   for (const key of Object.keys(OLD)) {
     const [x, y, dir, a] = stepOld(key, dt);

@@ -141,3 +141,41 @@ def stamp(g, patch, x=0, y=0):
         for i, ch in enumerate(row):
             out[y + j][x + i] = ch
     return ["".join(r) for r in out]
+
+
+# Computed sprites: shapes are rasterised onto a canvas (a list of lists), outlined part by part, and stacked with over().
+def canvas(w, h):
+    return [["."] * w for _ in range(h)]
+
+
+def ell(c, cx, cy, rx, ry, ch, on=None, clip=None):
+    """Fill an ellipse. on: only repaint these characters. clip: (y0, y1), only these rows (y1 excluded)."""
+    y0, y1 = (round(v) for v in (clip or (0, len(c))))
+    for y in range(max(0, y0), min(len(c), y1)):
+        for x in range(len(c[0])):
+            if ((x + .5 - cx) / rx) ** 2 + ((y + .5 - cy) / ry) ** 2 <= 1 and (on is None or c[y][x] in on):
+                c[y][x] = ch
+
+
+def dot(c, x, y, ch, on=None):
+    x, y = round(x), round(y)
+    if 0 <= y < len(c) and 0 <= x < len(c[0]) and (on is None or c[y][x] in on):
+        c[y][x] = ch
+
+
+def rows(c):
+    return ["".join(r) for r in c]
+
+
+def part(c, ink="o"):
+    """A finished part: the canvas as rows, with its outline."""
+    return outline(rows(c), ink)
+
+
+def ground(g, cx, w, row=-1):
+    """Mark the ground shadow, w pixels wide, on one row (the builder paints the soft oval there)."""
+    out = [list(r) for r in g]
+    for x in range(round(cx - w / 2), round(cx - w / 2) + w):
+        if out[row][x] == ".":
+            out[row][x] = "s"
+    return rows(out)

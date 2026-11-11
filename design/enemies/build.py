@@ -21,7 +21,7 @@ from art import mirror  # noqa: E402
 
 SITE = HERE / "site"
 ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
-ORDER = ["tusker", "pincer", "strawman", "wisp", "wyrm", "stag"]       # on the page (stilt, adder, lampwing, snapjaw are kept in roster/, off it)
+ORDER = ["sporecap", "hopper", "burrow", "hush", "cairn"]      # on the page: the new suggestions (older designs stay in roster/, off it)
 DIRS = ["down", "up", "left", "right"]
 ANIMS = ["idle", "walk", "act"]
 IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
@@ -108,8 +108,11 @@ def build():
             "frames": img.width // e["cell"][0], "tall": box[3] - box[1]})
     (SITE / "enemies.json").write_text(json.dumps(meta, indent=1))
     references()
-    for key in IN_GAME:                                       # the ones the game uses: their sheets go to its assets
-        shutil.copyfile(SITE / "sheets" / f"{key}.png", ASSETS / f"{key}.png")
+    for old in (SITE / "sheets").glob("*.png"):               # sheets of mobs no longer on the page
+        if old.stem not in ORDER:
+            old.unlink()
+    for key in IN_GAME:                                       # the ones the game uses: their sheets go straight to its assets
+        sheet(load(key))[0].save(ASSETS / f"{key}.png")
     print(f"{len(meta)} enemies, {sum(m['frames'] * 4 for m in meta)} frames -> {SITE}")
 
 
