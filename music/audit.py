@@ -9,7 +9,7 @@ SR = 48000
 
 def load(f):
     w = wave.open(f)
-    return np.frombuffer(w.readframes(w.getnframes()), "<i2") / 32767
+    return (np.frombuffer(w.readframes(w.getnframes()), "<i2") / 32767).reshape(-1, w.getnchannels()).mean(axis=1)
 
 
 def kweight(x):

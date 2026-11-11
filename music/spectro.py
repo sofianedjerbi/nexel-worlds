@@ -8,7 +8,7 @@ SR = 48000; W, H, ENV, PAD, COLS = 320, 130, 22, 10, 4
 TMAX = 1.6
 
 def load(f):
-    w = wave.open(f); return np.frombuffer(w.readframes(w.getnframes()), "<i2") / 32767
+    w = wave.open(f); return (np.frombuffer(w.readframes(w.getnframes()), "<i2") / 32767).reshape(-1, w.getnchannels()).mean(axis=1)
 
 def spec(x):
     n, hop = 2048, 96

@@ -6,7 +6,7 @@ import numpy as np
 
 D = sys.argv[1] if len(sys.argv) > 1 else "music/site/sfx"
 TONAL_OK = {"Progress", "People", "Interface"}
-TONAL_NAMES = {"wade", "fill", "pour",  # bubbles are real tones (Minnaert)
+TONAL_NAMES = {"wade", "fill", "pour", "squawk", "hurt",  # bubbles are real tones (Minnaert)
                "collect", "orb", "craft", "chirp", "cluck", "moo", "gloom", "love", "grow", "creak", "gate", "chest", "die", "lay", "hatch", "milk"}
 
 
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     rows = []
     for name, info in m.items():
         w = wave.open(f"{D}/{info['files'][0]}")
-        x = np.frombuffer(w.readframes(w.getnframes()), "<i2") / 32767
+        x = (np.frombuffer(w.readframes(w.getnframes()), "<i2") / 32767).reshape(-1, w.getnchannels()).mean(axis=1)
         tonal_by_design = info["category"] in TONAL_OK or name in TONAL_NAMES
         rows.append((ring(x), name, info["category"], tonal_by_design))
     print("ring = share of energy (after 30 ms) in narrow peaks 8x above their neighbourhood: noise ~0, a xylophone > 0.3")

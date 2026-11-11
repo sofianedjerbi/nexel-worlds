@@ -60,8 +60,15 @@ if __name__ == "__main__":
                           f"Fable: {mf['loud'] - mf['quiet']:.0f} dB."],
         ["Music, motion", "Layers switched on and off at block edges; now the arpeggio drifts in and out over two bars, "
                           "and the left hand answers softly under the melody's long notes."],
+        ["Sounds, the sound itself", "Every generator is rewritten; none is shared with Opus. Strikes use a mode structure per material (log, hollow boards, "
+                                     "stone, flesh, soil, clay, iron) plus the noisy contact, and hard things chatter when set down. "
+                                     "Leaves, cloth, water and fire are noise whose bands swell independently, not steady hiss."],
+        ["Sounds, space", "Opus put every sound in the same small room, though the game is outdoors. Fable: outdoor sounds are dry with a ground reflection "
+                          "and a faint stereo scatter; only the chest, the cave and the tonal sounds get a room. Files are stereo."],
+        ["Sounds, palette", "Opus used generic marimba and bell tones for rewards and interface. Fable plays them on the soundtrack's own felt piano and "
+                            "soft synth pluck, in the music's notes."],
         ["Sounds, rumble", f"In Opus, {len(so['rumble'])} sounds had over 6% of their energy under 40 Hz, where it is inaudible and eats headroom "
-                           f"({names(so['rumble'])}). Fable: {len(sf['rumble'])} ({names(sf['rumble'])}; a falling tree may)."],
+                           f"({names(so['rumble'])}). Fable: {len(sf['rumble'])}."],
         ["Sounds, latency", f"{len(so['late'])} Opus sounds took 12 to {so['late'][0][0]:.0f} ms to start ({names([n for _, n in so['late']])}). "
                             f"Fable: {len(sf['late'])}. Everything starts within about a millisecond."],
         ["Sounds, variants", f"{len(so['samey'])} Opus sounds had variants that were the same sound ({names(so['samey'])}). "

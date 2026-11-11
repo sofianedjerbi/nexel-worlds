@@ -68,3 +68,9 @@ writes the "What the review found" card. Tools: `music/audit.py` (latency, K-wei
 - Sounds: 55 Hz high-pass, trimmed lead-in, K-weighted levels, real variants (resize per variant plus random parameters),
   new eat / pour / fill / punch / squawk, reworked moo, talk babble, splash, fire.
 - To re-render the Opus set: `uv run python music/opus/sfx.py` and `uv run python music/opus/compose.py`.
+
+### Second Fable pass: the generators themselves (after "you fixed the dB and the start, not the sound")
+A remaster is not an improvement the user can hear. `music/sfx.py` was rewritten from scratch:
+`strike()` (per-material mode structure + noisy contact + chatter; dense irregular modes so knocks do not ring like bars),
+`space()` (dry outdoors with a ground reflection; rooms only where there is one), `texture()` (bands swelling independently),
+rewards and UI on the soundtrack's felt piano and synth pluck. Files are stereo. Lesson: when asked to improve a sound, change what makes the sound.
