@@ -2,7 +2,8 @@
 
 Animation, after the game's cow: an 8-frame walk at 90 ms, the body level, the legs generated (art.leg) and moving in
 diagonal pairs (near front with far hind). Idle is a slow breath, a blink and a tail flick.
-The charge has a warning (it paws the ground and snorts, twice), then a gallop: legs flung out, legs gathered under.
+The charge has a warning (it paws the ground and snorts, twice), then the same step run fast with dust behind
+(a gallop with the legs flung out made them look as if they stretched).
 """
 from art import G, edit, shift, mirror, pad, leg
 
@@ -45,9 +46,7 @@ def side(body=BODY, step=None, pose=None, puff="", dust="", breathe=False):
     return g
 
 
-PAW = dict(nf=(-3, 1))
-OUT = dict(nf=(-3, 0), ff=(-2, 0), fh=(2, 0), nh=(3, 0))            # gallop: flung out
-UNDER = dict(nf=(2, 1), ff=(1, 2), fh=(-1, 2), nh=(-2, 1))          # gallop: gathered under the body
+PAW = dict(nf=(-2, 1))
 
 FRONT = G("""
 ......o.o.o......
@@ -95,12 +94,13 @@ def facing(g):
     dust = {-2: "w" + g[-2][1:-1] + "w"}
     return dict(idle=[g, g, low, low, g, blink, low, low],
                 walk=[step, step, low, low, mirror(step), mirror(step), low, low],
-                act=[low, edit(low, dust), low, edit(low, dust), edit(step, dust), low, edit(mirror(step), dust), low])
+                act=[low, edit(low, dust), low, edit(low, dust)] + [edit(f, dust) if i % 2 == 0 else f for i, f in enumerate(
+                    [step, step, low, low, mirror(step), mirror(step), low, low])])
 
 
 ENEMY = dict(
     key="tusker", name="Tusker", pal=PAL, role="charger", cell=(32, 32), act="charge", stride=1.6,
-    ms=dict(idle=260, walk=90, act=[170, 170, 170, 170, 90, 90, 90, 90]),
+    ms=dict(idle=260, walk=90, act=[170, 170, 170, 170] + [55] * 8),
     where="forest and meadow", when="day",
     behaviour="Grazes and ignores you until you come within four tiles. Then it paws the ground and charges in a straight line. "
               "It cannot turn: step aside and it rams the next tree or wall and is stunned.",
@@ -108,7 +108,7 @@ ENEMY = dict(
     dirs={"left": dict(idle=[side(), side(), side(breathe=True), side(breathe=True),
                              side(TAIL_DOWN), side(BLINK), side(breathe=True), side(breathe=True)],
                        walk=[side(step=i) for i in range(8)],
-                       act=[side(pose=PAW, puff="w"), side(puff="ww"), side(pose=PAW, puff="w"), side(puff="ww"),
-                            side(pose=OUT, dust=".w"), side(pose=UNDER, dust="ww"), side(pose=OUT, dust="w."), side(pose=UNDER, dust=".w")]),
+                       act=[side(pose=PAW, puff="w"), side(puff="ww"), side(pose=PAW, puff="w"), side(puff="ww")]
+                           + [side(step=i, dust=[".w", "ww", "w.", ".."][i % 4]) for i in range(8)]),     # the charge is the walk, run fast
           "down": facing(FRONT), "up": facing(BACK)},
 )

@@ -132,3 +132,12 @@ def leg(g, x, y, rows, phase, w=3, fill="d", boot=None, reach=1.0, ink="o"):
     for i in range(-2 if boot else -1, w + 1):
         put(x + dx + i, yy, ink)
     return ["".join(r) for r in out]
+
+
+def stamp(g, patch, x=0, y=0):
+    """Replace a rectangle of g with `patch`, empty pixels included (unlike over)."""
+    out = [list(r) for r in g]
+    for j, row in enumerate(patch):
+        for i, ch in enumerate(row):
+            out[y + j][x + i] = ch
+    return ["".join(r) for r in out]
