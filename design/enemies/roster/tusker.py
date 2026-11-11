@@ -25,6 +25,8 @@ oppotbbbddddbbbbbbbbbbbddo.
 """)
 TAIL_DOWN = edit(BODY, {4: "...obbboobbbbbbbbbbbbbbbo..", 6: ".obbebbbbbbbbbbbbbbbbbbbboo"})
 BLINK = edit(BODY, {6: ".obbbbbbbbbbbbbbbbbbbbbbbo."})
+# A short stride, one pixel either way, so the legs stay under the body (a wider one made them spread and close like scissors)
+STRIDE = [(-1, 0), (-1, 0), (0, 0), (0, 0), (1, 0), (1, 1), (0, 1), (-1, 1)]
 HIPS = dict(nf=(8, 3, "d"), ff=(13, 2, "m"), fh=(20, 2, "m"), nh=(24, 3, "d"))     # each leg: x, width, colour (far legs darker)
 
 
@@ -34,7 +36,7 @@ def side(body=BODY, step=None, pose=None, puff="", dust="", breathe=False):
     g = pad(rows, left=3, right=2) + ["." * 7 + "o" * 21 + "." * 4] + ["." * 32] * 3 + ["." * 6 + "s" * 22 + "." * 4]
     for name in ("ff", "fh", "nf", "nh"):                                                # far legs first, near legs over them
         x, w, fill = HIPS[name]
-        ph = (0, 0) if step is None else step + (0 if name in ("nf", "fh") else 4)
+        ph = (0, 0) if step is None else STRIDE[(step + (0 if name in ("nf", "fh") else 4)) % 8]
         g = leg(g, x, 13, 3, (pose or {}).get(name, ph), w=w, fill=fill)
     if puff:
         g = edit(g, {9: puff + g[9][len(puff):], 10: ".w" + g[10][2:]})

@@ -1,81 +1,69 @@
-"""Pincer: a shore crab. A flat, pointed shell, two raised claws, eyes on stalks, six jointed legs.
+"""Pincer: a small shore crab, about the size of the game's chicken. A flat pointed shell, two raised claws, eyes on stalks.
 
-A crab walks sideways, so it always shows its face (or its back): going left or right it is the same crab, looking and
-reaching that way. Animation: the shell stays level and the legs ripple through three positions, fast. At rest one claw
-clicks, then the other. The snap: it rears up with both claws open and holds, then drops and shuts them, holds, settles.
+A crab walks sideways, so it always shows its face (or its back): going left or right it is the same crab, looking that way.
+It is drawn as two halves, so each side can do its own thing:
+  idle   the eyes look left, then right; one claw clicks, then the other
+  walk   8 frames: on each side the upper leg lifts, then the lower, the two sides half a step apart, and the claws rock
+  snap   it crouches, rears up with both claws high (held: the warning), slams them shut with a spark as it lunges, holds, settles
 """
-from art import G, edit, shift, pad
+from art import G, shift, pad
 
 PAL = {"o": "7a3340", "r": "e0664a", "R": "b94a3f", "h": "f2906a", "c": "f3d8c5", "e": "2b1f2a", "w": "f4f0e6", "y": "fff1a8"}
 
-
-def both(text):
-    """The crab is symmetric: draw the left half, get the whole."""
-    return pad([r + r[::-1] for r in G(text)], top=1)
-
-
-FRONT = both("""
-.o.o......oo..
-oroho....oweo.
-orrro.....oo..
-.oRo...ooooooo
-..oo..ohhhhhhh
-...ooorrrrrrrr
-..ooorrrrrrrrr
-.o..ooRrrrrrrr
-.o.o.ooRRrrrro
-o..o.o.ooccccc
-..o..o...ooooo
-....o.........
-...sssssssssss
-""")
-BACK = edit(FRONT, {
-    2: "oroho....oRRo..oRRo....ohoro",
-    7: "..ooorrhrrrrrrrrrrrrhrrooo..",
-    8: ".o..ooRrrrrhrrrrhrrrrRoo..o.",
-    9: ".o.o.ooRRrrrrrrrrrrRRoo.o.o.",
-    10: "o..o.o.ooRRRRRRRRRRoo.o.o..o",
-})
-LEGS = [{},
-        {10: None, 11: "...o.o...oooooooooo...o.o...", 12: ".....o................o....."},
-        {10: None, 11: ".o...o...oooooooooo...o...o.", 12: "....o..................o...."}]
-SHUT_L, SHUT_R = (".ooo......", "orrro....."), ("......ooo.", ".....orrro")
+CLAW = dict(open=["....", "o.o.", "oro.", ".oo."], shut=["....", ".o..", "oro.", ".oo."], up=["o.o.", "oro.", ".o..", ".oo."])
+# the four leg pixels' columns for rows 6-9: both legs down, upper leg lifted, both down, lower leg lifted
+LEGS = [["o.", "o.o", "..o", ".o."], ["o.", "..o", "..o", ".o."], ["o.", "o.o", "..o", ".o."], ["o.", "o.o", ".oo", "..."]]
+UPPER_LIFT = "o"          # a lifted upper leg shows its knee one row higher
 
 
-def crab(g, legs=0, shut="", look=0, spark=False):
-    rows = {}
-    if legs:
-        a = g[10]
-        left = [".o.o.o.", "o.o..o."][legs - 1]
-        rows[10] = left + a[7:-7] + left[::-1]
-        rows |= {k: v for k, v in LEGS[legs].items() if v}
-    if "l" in shut:
-        rows |= {1: SHUT_L[0] + g[1][10:], 2: SHUT_L[1] + g[2][10:]}
-    if "r" in shut:
-        rows |= {1: rows.get(1, g[1])[:-10] + SHUT_R[0], 2: rows.get(2, g[2])[:-10] + SHUT_R[1]}
-    out = edit(g, rows)
-    if look:                                             # both pupils to the left
-        out = edit(out, {2: out[2].replace("oewo", "oweo")})
+def half(claw="open", legs=0, look_out=False, back=False):
+    """The crab's left half, 8 pixels wide; the right half is this mirrored (with its own claw, legs and eyes)."""
+    c, lg = CLAW[claw], LEGS[legs % 4]
+    eye = "oRR" if back else ("oew" if look_out else "owe")
+    rows = [
+        c[0] + "....",
+        c[1] + eye + ".",                 # a gap between the two eyes, so they do not merge
+        c[2] + ".o..",
+        c[3] + "oooo",
+        "..ooo" + ("rhr" if back else "hhh"),
+        (UPPER_LIFT if legs % 4 == 1 else ".") + "orrrrrr",
+        lg[0] + "oRrrrr" if not back else lg[0] + "oRrhrr",
+        lg[1] + ("oRRRR" if back else "oRcco"),
+        lg[2] + ".oooo",
+        lg[3] + ".....",
+    ]
+    return [r.ljust(8, ".")[:8] for r in rows]
+
+
+def crab(left=None, right=None, back=False, dx=0, dy=0, spark=False):
+    l, r = half(back=back, **(left or {})), half(back=back, **(right or {}))
+    g = pad([a + b[::-1] for a, b in zip(l, r)], left=2, right=2)
     if spark:
-        out = edit(out, {0: "y.y" + out[0][3:-3] + "y.y"})
-    return out
+        g = ["y" + g[0][1:-1] + "y"] + [g[1][:1] + "y" + g[1][2:-2] + "y" + g[1][-1:]] + g[2:]
+    if dx or dy:
+        g = shift(g, dx, dy)
+    return g + ["...ssssssssssssss..."]
 
 
-def frames(g, look=0):
-    c = lambda **kw: crab(g, look=look, **kw)
-    rear = shift(c(), 0, -1, keep=3)                     # up on its legs, claws open
-    rear = edit(rear, {-4: c()[-4], -3: c()[-3], -2: c()[-2]})
-    return dict(idle=[c(), c(shut="l"), c(), c(shut="r")],
-                walk=[c(legs=1), c(legs=2), c(legs=1), c()],
-                act=[rear, c(shut="lr", spark=True), c(shut="lr"), c()])
+def frames(back=False, lunge=(0, 1), look=None):
+    """look: None for facing the camera, "l" when it is heading left (both pupils left; mirrored for right)."""
+    eyes = lambda side: dict(look_out=(look == "l" and side == "l"))
+    c = lambda l=None, r=None, **kw: crab(dict(eyes("l"), **(l or {})), dict(eyes("r"), **(r or {})), back=back, **kw)
+    out, inn = dict(look_out=True), dict(look_out=False)
+    idle = [c(), c(l=out), c(l=dict(out, claw="shut")), c(l=out), c(), c(r=out), c(r=dict(out, claw="shut")), c(r=out)]
+    walk = [c(l=dict(legs=i, claw="up" if i < 4 else "open"), r=dict(legs=i + 2, claw="open" if i < 4 else "up")) for i in range(8)]
+    both = lambda claw: (dict(claw=claw), dict(claw=claw))
+    act = [c(*both("shut"), dy=1), c(*both("up"), dy=-1), c(*both("shut"), dx=lunge[0], dy=lunge[1], spark=True),
+           c(*both("shut"), dx=lunge[0], dy=lunge[1]), c()]
+    return dict(idle=idle, walk=walk, act=act)
 
 
 ENEMY = dict(
-    key="pincer", name="Pincer", pal=PAL, ground="sand", role="guard", cell=(32, 16), act="snap", stride=.8,
-    ms=dict(idle=[900, 130, 700, 130], walk=80, act=[420, 80, 220, 220]),
+    key="pincer", name="Pincer", pal=PAL, ground="sand", role="guard", cell=(24, 16), act="snap", stride=.8,
+    ms=dict(idle=[700, 260, 130, 260, 700, 260, 130, 260], walk=70, act=[140, 420, 80, 220, 220]),
     where="beaches and river banks", when="day and night",
-    behaviour="Walks sideways only, so it must turn its flank to chase you. Hits from the front bounce off its claws; "
-              "hit it from the side or from behind. It buries itself in sand when hurt and comes back later.",
-    stats=dict(hp=5, damage=2, speed="quick sideways, slow forward", drops="shell, claw meat"),
-    dirs={"left": frames(FRONT, look=1), "down": frames(FRONT), "up": frames(BACK)},
+    behaviour="Small and quick. It walks sideways only, so it must turn its flank to chase you. Hits from the front bounce off its "
+              "claws; hit it from the side or from behind. It buries itself in sand when hurt and comes back later.",
+    stats=dict(hp=4, damage=2, speed="quick sideways, slow forward", drops="shell, claw meat"),
+    dirs={"left": frames(lunge=(-2, 0), look="l"), "down": frames(), "up": frames(back=True, lunge=(0, -1))},
 )

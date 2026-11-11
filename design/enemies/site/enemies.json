@@ -194,25 +194,34 @@
   "ground": "sand",
   "role": "guard",
   "cell": [
-   32,
+   24,
    16
   ],
   "act": "snap",
   "stride": 0.8,
   "ms": {
    "idle": [
-    900,
-    130,
     700,
-    130
+    260,
+    130,
+    260,
+    700,
+    260,
+    130,
+    260
    ],
    "walk": [
-    80,
-    80,
-    80,
-    80
+    70,
+    70,
+    70,
+    70,
+    70,
+    70,
+    70,
+    70
    ],
    "act": [
+    140,
     420,
     80,
     220,
@@ -221,9 +230,9 @@
   },
   "where": "beaches and river banks",
   "when": "day and night",
-  "behaviour": "Walks sideways only, so it must turn its flank to chase you. Hits from the front bounce off its claws; hit it from the side or from behind. It buries itself in sand when hurt and comes back later.",
+  "behaviour": "Small and quick. It walks sideways only, so it must turn its flank to chase you. Hits from the front bounce off its claws; hit it from the side or from behind. It buries itself in sand when hurt and comes back later.",
   "stats": {
-   "hp": 5,
+   "hp": 4,
    "damage": 2,
    "speed": "quick sideways, slow forward",
    "drops": "shell, claw meat"
@@ -234,19 +243,28 @@
     0,
     1,
     2,
-    3
-   ],
-   "walk": [
+    3,
     4,
     5,
     6,
     7
    ],
-   "act": [
+   "walk": [
     8,
     9,
     10,
-    11
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "act": [
+    16,
+    17,
+    18,
+    19,
+    20
    ]
   },
   "palette": [
@@ -259,8 +277,8 @@
    "f4f0e6",
    "fff1a8"
   ],
-  "frames": 12,
-  "tall": 62
+  "frames": 21,
+  "tall": 59
  },
  {
   "key": "adder",
