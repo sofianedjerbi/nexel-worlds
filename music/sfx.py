@@ -66,12 +66,21 @@ def bp(lo, hi, order=2):
     return lambda f: hp(lo, order)(f) * lp(hi, order)(f)
 
 
+def tail(y, ms=8):
+    """Smooth the last few ms so nothing ever stops on a click."""
+    k = min(int(ms * SR / 1000), len(y) // 2)
+    if k > 1:
+        y = y.copy()
+        y[-k:] *= 0.5 + 0.5 * np.cos(np.linspace(0, np.pi, k))
+    return y
+
+
 def place(dst, src, at):
     i = int(at * SR)
     if i >= len(dst):
         return dst
     m = min(len(src), len(dst) - i)
-    dst[i:i + m] += src[:m]
+    dst[i:i + m] += tail(src[:m])
     return dst
 
 
@@ -101,7 +110,36 @@ def modes(n, freqs, taus, amps, attack=0.0005):
     """A struck object: decaying sinusoids (wood, stone, metal, glass)."""
     t = tt(n)
     y = sum(a * np.sin(2 * np.pi * f * t) * np.exp(-t / d) for f, d, a in zip(freqs, taus, amps))
-    return y * np.clip(t / attack, 0, 1)
+    return tail(y * np.clip(t / attack, 0, 1))
+
+
+MATERIALS = {   # (lowest mode, highest mode, modes, loss factor eta, contact ms, contact brightness Hz)
+    "wood": (110, 3200, 32, 0.035, 1.2, 6000),
+    "hollow": (90, 2400, 32, 0.03, 1.5, 5000),     # boards over air: floors, chests, boats
+    "stone": (380, 7500, 32, 0.012, 0.35, 12000),
+    "metal": (1400, 8500, 12, 0.0015, 0.2, 14000),
+    "body": (55, 650, 24, 0.14, 4.0, 2500),       # flesh, fur, a sack: heavily damped, dull contact
+    "dirt": (60, 700, 16, 0.3, 6.0, 1800),
+}
+
+
+def impact(c, n, material, size=1.0, hardness=1.0, brightness=1.0):
+    """A strike: a short noise contact excites ~30 damped resonances spread over the material's range.
+    Decay per mode follows the loss factor: tau = 1 / (pi f eta), so highs die first, as in real objects."""
+    lo, hi, count, eta, contact, bright_hz = MATERIALS[material]
+    t = tt(n)
+    ir = np.zeros(n)
+    for _ in range(count):
+        f = np.exp(c.u(np.log(lo), np.log(hi))) / size
+        tau = min(1.2, 1 / (np.pi * f * eta * c.u(0.7, 1.4)))
+        amp = c.u(0.3, 1.0) * (f / lo) ** (-0.5 / brightness)
+        ir += amp * np.sin(2 * np.pi * f * t + c.u(0, 6.28)) * np.exp(-t / tau)
+    cn = max(8, int(contact / hardness * SR / 1000))
+    excite = c.noise(cn) * np.sin(np.linspace(0, np.pi, cn))
+    excite = fft_filter(excite, lp(min(16000, bright_hz * hardness * brightness)))
+    y = np.convolve(excite, ir)[:n]
+    y += 0.25 * np.pad(excite, (0, max(0, n - cn)))[:n]          # the contact itself
+    return tail(y / (np.abs(y).max() + 1e-9))
 
 
 def grains(c, n, count, dur_ms, lo, hi, spread=None, decay=None, amp_jitter=0.6):
@@ -137,7 +175,7 @@ def swept_noise(c, n, f_start, f_end, width=0.35, bands=28, curve=None):
 def mallet(note, dur=1.0, bright=1.0, n=None):
     """Warm marimba-like bar: fundamental + tuned 4th and 10th partials, the 'reward' voice."""
     f = hz(note)
-    n = n or N(dur)
+    n = max(n or 0, N(0.45 * dur * 7))
     t = tt(n)
     y = (np.sin(2 * np.pi * f * t) * np.exp(-t / (0.45 * dur))
          + 0.3 * bright * np.sin(2 * np.pi * f * 4.0 * t) * np.exp(-t / 0.06)
@@ -148,7 +186,7 @@ def mallet(note, dur=1.0, bright=1.0, n=None):
 def bell(note, dur=1.6, n=None):
     """Soft bell / celesta: inharmonic but sweet, long tail."""
     f = hz(note)
-    n = n or N(dur)
+    n = max(n or 0, N(0.5 * dur * 7))
     t = tt(n)
     y = (np.sin(2 * np.pi * f * t) * np.exp(-t / (0.5 * dur))
          + 0.35 * np.sin(2 * np.pi * f * 2.0 * t) * np.exp(-t / (0.25 * dur))
@@ -160,12 +198,18 @@ def bell(note, dur=1.6, n=None):
 def voice(n, f0, formants, bw, harmonics=40, breath=0.0, c=None):
     """Additive voice: harmonics of a moving f0, shaped by moving formants (animals)."""
     t = tt(n)
+    if c is not None:   # real voices are never perfectly steady: slow pitch jitter, a little shimmer
+        drift = fft_filter(c.noise(n), lp(12))
+        f0 = f0 * (1 + 0.012 * drift / (np.abs(drift).max() + 1e-9))
     ph = 2 * np.pi * np.cumsum(f0) / SR
     y = np.zeros(n)
     for k in range(1, harmonics):
         fk = k * f0
         g = sum(a / (1 + ((fk - F) / bw) ** 2) for F, a in formants(t))
         y += g / k ** 0.6 * np.sin(k * ph) * (fk < 10000)
+    if c is not None:
+        sh = fft_filter(c.noise(n), lp(30))
+        y *= 1 + 0.12 * sh / (np.abs(sh).max() + 1e-9)
     if breath and c is not None:
         y += breath * fft_filter(c.noise(n), bp(600, 4000))
     return y
@@ -173,7 +217,7 @@ def voice(n, f0, formants, bw, harmonics=40, breath=0.0, c=None):
 
 def finish(y, warmth=11000, room=0.1):
     """Shared finish: gentle low-pass, soft saturation, a small room, de-click edges."""
-    y = fft_filter(y, lp(warmth, 1))
+    y = tail(fft_filter(y, lp(warmth, 1)), 10)
     y = np.tanh(1.2 * y / (np.abs(y).max() + 1e-9)) / np.tanh(1.2)
     if room:
         n = N(0.35)
@@ -219,18 +263,18 @@ def _(c):
 
 @sfx("tock", "Footsteps", "walking on wooden floors, bridges and boats", 4, 0.16)
 def _(c):
-    n = N(0.2)
-    s = c.u(0.92, 1.08)
-    knock = modes(n, [190 * s, 470 * s, 980 * s], [0.05, 0.025, 0.012], [1, 0.5, 0.25])
-    return knock + 0.3 * fft_filter(c.noise(n), bp(800, 4000)) * env_exp(n, 0.006)
+    n = N(0.18)
+    heel = impact(c, n, "hollow", size=c.u(0.9, 1.15), hardness=0.8)
+    scuff = fft_filter(c.noise(n), bp(500, 3000)) * env_exp(n, 0.012, 0.002)
+    return heel + 0.25 * scuff
 
 
 @sfx("click", "Footsteps", "walking on cobblestone", 4, 0.14)
 def _(c):
     n = N(0.14)
-    s = c.u(0.9, 1.1)
-    tap = modes(n, [1250 * s, 2650 * s, 4100 * s], [0.015, 0.009, 0.005], [1, 0.6, 0.3])
-    return tap * 0.7 + grains(c, n, 8, 4, 2000, 8000, spread=0.03) * np.exp(-tt(n) / 0.03) * 0.8
+    tap = impact(c, n, "stone", size=c.u(1.2, 1.6), hardness=0.7)
+    grit = grains(c, n, 10, 4, 1500, 7000, spread=0.035) * np.exp(-tt(n) / 0.03)
+    return 0.8 * tap + 0.6 * grit
 
 
 @sfx("wade", "Footsteps", "wading through shallow water", 4, 0.16)
@@ -248,31 +292,30 @@ def _(c):
 
 @sfx("thud", "Footsteps", "landing after a hop down a level; striking wood or stone bare-handed", 3, 0.3)
 def _(c):
-    n = N(0.3)
-    t = tt(n)
-    body = np.sin(2 * np.pi * np.cumsum(70 + 60 * np.exp(-t / 0.02)) / SR) * env_exp(n, 0.08, 0.002)
-    return body + 0.4 * fft_filter(c.noise(n), lp(900)) * env_exp(n, 0.03)
+    n = N(0.22)
+    body = impact(c, n, "body", size=c.u(0.9, 1.2))
+    ground = impact(c, n, "dirt", size=1.3)
+    return body + 0.7 * ground
 
 
 # --- working the land ------------------------------------------------------------------------
 
 @sfx("chop", "Work", "an axe strike on a tree or wooden block", 4, 0.5)
 def _(c):
-    n = N(0.4)
-    s = c.u(0.9, 1.1)
-    wood = modes(n, [160 * s, 380 * s, 820 * s, 1500 * s], [0.12, 0.06, 0.03, 0.012], [1, 0.7, 0.4, 0.2])
-    bite = fft_filter(c.noise(n), bp(1200, 6000)) * env_exp(n, 0.008)
-    return wood + 0.7 * bite
+    n = N(0.32)
+    wood = impact(c, n, "wood", size=c.u(0.8, 1.1), hardness=2.0)
+    bite = fft_filter(c.noise(n), bp(1500, 7000)) * env_exp(n, 0.006, 0.0005)
+    split = grains(c, n, 12, 2, 1200, 6000, decay=0.02)
+    return wood + 0.6 * bite + 0.4 * split
 
 
 @sfx("mine", "Work", "a pickaxe strike on stone", 4, 0.45)
 def _(c):
-    n = N(0.5)
-    s = c.u(0.95, 1.05)
-    ping = modes(n, [1870 * s, 2930 * s, 4480 * s], [0.12, 0.07, 0.04], [0.6, 0.4, 0.2])
-    rock = modes(n, [420 * s, 760 * s], [0.03, 0.02], [0.8, 0.5])
-    grit = grains(c, n, 20, 5, 1500, 7000, spread=0.04) * np.exp(-tt(n) / 0.05)
-    return ping * 0.7 + rock + grit * 0.8
+    n = N(0.45)
+    rock = impact(c, n, "stone", size=c.u(0.7, 1.0), hardness=2.5)
+    ring = impact(c, n, "metal", size=c.u(0.9, 1.1), hardness=2.0) * env_exp(n, 0.12)   # the pick head rings briefly
+    grit = grains(c, n, 25, 4, 1500, 7000, decay=0.05)
+    return rock + 0.22 * ring + 0.45 * grit
 
 
 @sfx("dig", "Work", "a shovel in soil, digging a hole", 4, 0.4)
@@ -302,21 +345,23 @@ def _(c):
 @sfx("snap", "Breaking", "a wooden block or fence breaks", 3, 0.55)
 def _(c):
     n = N(0.5)
-    crack = grains(c, n, 70, 2, 800, 6000, decay=0.06)
-    body = modes(n, [140, 330, 700], [0.1, 0.05, 0.02], [1, 0.6, 0.3])
-    return crack * 1.2 + body * 0.8
+    crack = grains(c, n, 80, 2, 700, 6000, decay=0.05)
+    body = impact(c, n, "wood", size=c.u(1.2, 1.6), hardness=1.5)
+    y = crack * 1.2 + body * 0.8
+    place(y, impact(c, N(0.2), "wood", size=2.0) * 0.5, c.u(0.12, 0.2))   # a piece lands
+    return y
 
 
 @sfx("crumble", "Breaking", "stone breaks; digging down into a cave", 3, 0.55)
 def _(c):
     n = N(0.8)
     y = np.zeros(n)
-    for k in range(9):   # a little cascade of rocks, each lower and later
-        at = 0.02 + k * c.u(0.03, 0.07)
-        f = c.u(300, 900) * (1 - k * 0.05)
-        place(y, modes(N(0.15), [f, f * 1.9, f * 3.1], [0.03, 0.02, 0.01], [1, 0.5, 0.3]) * (1 - k * 0.07), at)
-    rumble = fft_filter(c.noise(n), lp(200)) * env_exp(n, 0.25, 0.02)
-    return y + 0.8 * rumble + 0.5 * grains(c, n, 60, 4, 1500, 6000, decay=0.2)
+    at = 0.0
+    for k in range(12):   # a cascade of stones of all sizes, slowing down
+        place(y, impact(c, N(0.12), "stone", size=c.u(0.5, 1.8), hardness=c.u(0.8, 2)) * c.u(0.4, 1) * (1 - k * 0.05), at)
+        at += c.u(0.015, 0.06) * (1 + k * 0.08)
+    rumble = fft_filter(c.noise(n), lp(180)) * env_exp(n, 0.2, 0.02)
+    return y + 0.7 * rumble + 0.4 * grains(c, n, 70, 4, 1500, 6000, decay=0.2)
 
 
 @sfx("creak", "Breaking", "a tree starts to fall", 2, 0.4)
@@ -333,40 +378,39 @@ def _(c):
 @sfx("fallthud", "Breaking", "a tree hits the ground", 2, 0.75)
 def _(c):
     n = N(1.0)
-    t = tt(n)
-    boom = np.sin(2 * np.pi * np.cumsum(48 + 50 * np.exp(-t / 0.05)) / SR) * env_exp(n, 0.22, 0.004)
-    crash = fft_filter(c.noise(n), bp(100, 900)) * env_exp(n, 0.12)
-    leaves = grains(c, n, 160, 5, 1800, 6000, decay=0.25)
-    return boom * 1.6 + crash * 0.6 + leaves * 0.18
+    trunk = impact(c, n, "wood", size=3.5, hardness=0.6)                # a big, low log
+    ground = impact(c, n, "dirt", size=2.5) * 1.2
+    shake = fft_filter(c.noise(n), bp(80, 700)) * env_exp(n, 0.09, 0.003)
+    y = trunk + ground + 0.6 * shake
+    place(y, impact(c, N(0.3), "wood", size=2.5, hardness=0.5) * 0.35, 0.16)   # a small bounce
+    return fft_filter(y + 0.14 * grains(c, n, 160, 5, 1800, 6000, decay=0.25), hp(45))
 
 
 # --- building ----------------------------------------------------------------------------------
 
 @sfx("place", "Building", "placing a wooden block, a wall, a fence", 3, 0.45)
 def _(c):
-    n = N(0.35)
-    s = c.u(0.95, 1.05)
-    knock = modes(n, [130 * s, 310 * s, 690 * s], [0.08, 0.04, 0.02], [1, 0.6, 0.3])
-    settle = fft_filter(c.noise(n), bp(300, 2500)) * env_exp(n, 0.02)
-    return knock + 0.5 * settle
+    n = N(0.3)
+    knock = impact(c, n, "wood", size=c.u(1.3, 1.7), hardness=1.0)
+    settle = fft_filter(c.noise(n), bp(300, 2500)) * env_exp(n, 0.02, 0.002)
+    return knock + 0.35 * settle
 
 
 @sfx("clack", "Building", "placing stone or cobble; a chest lid", 3, 0.4)
 def _(c):
-    n = N(0.3)
-    s = c.u(0.95, 1.05)
-    a = modes(n, [620 * s, 1500 * s, 2600 * s], [0.03, 0.015, 0.008], [1, 0.5, 0.3])
-    b = np.roll(modes(n, [700 * s, 1700 * s], [0.02, 0.01], [0.6, 0.3]), N(0.035))
-    return a + b + 0.3 * fft_filter(c.noise(n), bp(1500, 7000)) * env_exp(n, 0.006)
+    n = N(0.28)
+    y = impact(c, n, "stone", size=c.u(0.9, 1.2), hardness=1.2)
+    place(y, impact(c, N(0.1), "stone", size=c.u(1.0, 1.3)) * 0.45, c.u(0.025, 0.045))   # it rocks and settles
+    return y
 
 
 @sfx("plant", "Building", "planting a seed or a sapling", 2, 0.35)
 def _(c):
-    n = N(0.45)
-    pat = fft_filter(c.noise(n), lp(500)) * env_exp(n, 0.03, 0.003)
-    t = tt(n)
-    sprout = np.sin(2 * np.pi * np.cumsum(hz("A5") * (1 + 0.19 * np.clip(t / 0.08, 0, 1))) / SR) * np.exp(-t / 0.12)
-    return pat + 0.35 * np.roll(sprout, N(0.05))
+    n = N(0.4)
+    y = impact(c, n, "dirt", size=0.8) * 0.9                       # pressing soil
+    place(y, grains(c, N(0.2), 25, 6, 300, 2500, decay=0.05) * 0.6, 0.0)
+    place(y, impact(c, N(0.2), "dirt", size=1.0) * 0.5, c.u(0.12, 0.18))   # a second pat
+    return y
 
 
 @sfx("gate", "Building", "a gate or a door swings open", 2, 0.35)
@@ -384,11 +428,11 @@ def _(c):
 
 @sfx("chest", "Building", "opening a chest", 2, 0.4)
 def _(c):
-    n = N(0.6)
-    lid = S["gate"](c)[: n]
-    lid = np.pad(lid, (0, max(0, n - len(lid))))
-    thunk = np.roll(modes(n, [150, 360, 800], [0.08, 0.04, 0.02], [1, 0.5, 0.25]), N(0.35))
-    return lid * 0.5 + thunk
+    n = N(0.7)
+    y = np.zeros(n)
+    place(y, S["gate"](c)[: N(0.4)] * 0.45, 0)
+    place(y, impact(c, N(0.3), "hollow", size=1.3, hardness=0.9), 0.36)   # the lid falls open on its hinge
+    return y
 
 
 @sfx("write", "Building", "writing on a sign or a letter", 2, 0.25)
@@ -409,7 +453,7 @@ def _(c):
 @sfx("collect", "Items", "picking up an item", 3, 0.38)
 def _(c):
     lo, hi = c.pick([("A5", "D6"), ("F#5", "A5"), ("D6", "F#6")])
-    n = N(0.6)
+    n = N(1.2)
     y = np.zeros(n)
     place(y, mallet(lo, 0.5, n=N(0.5)), 0)
     place(y, mallet(hi, 0.6, n=N(0.55)), 0.065)
@@ -425,26 +469,27 @@ def _(c):
 @sfx("drop", "Items", "dropping an item", 2, 0.3)
 def _(c):
     n = N(0.25)
-    t = tt(n)
-    pop = np.sin(2 * np.pi * np.cumsum(hz("A5") * np.exp(-t / 0.08)) / SR) * env_exp(n, 0.06, 0.002)
-    return pop + 0.3 * fft_filter(c.noise(n), lp(500)) * env_exp(n, 0.02)
+    return impact(c, n, "dirt", size=0.7, hardness=1.5) + 0.5 * grains(c, n, 15, 4, 800, 4000, decay=0.03)
 
 
 @sfx("loot", "Items", "a dropped item lands and bounces", 3, 0.25)
 def _(c):
-    n = N(0.4)
+    n = N(0.45)
     y = np.zeros(n)
-    for k, (at, v) in enumerate(((0, 1), (0.13, 0.45), (0.21, 0.2))):
-        place(y, modes(N(0.08), [700, 1600], [0.015, 0.008], [1, 0.4]) * v, at)
+    at, v = 0.0, 1.0
+    for k in range(3):   # each bounce lower and sooner
+        place(y, impact(c, N(0.08), "wood", size=0.45, hardness=1.5) * v, at)
+        at += 0.12 * (0.6 ** k)
+        v *= 0.45
     return y
 
 
 @sfx("craft", "Items", "crafting something at a workbench", 2, 0.45)
 def _(c):
-    n = N(1.1)
+    n = N(1.9)
     y = np.zeros(n)
     for k in range(3):   # tap tap tap of tools
-        place(y, modes(N(0.1), [300, 750, 1600], [0.03, 0.015, 0.008], [1, 0.5, 0.2]) * 0.6, k * 0.09)
+        place(y, impact(c, N(0.1), "wood", size=0.8, hardness=1.6) * 0.6, k * 0.09)
     for k, note in enumerate(("D5", "A5", "D6")):
         place(y, mallet(note, 0.7, n=N(0.7)) * (0.7 + 0.15 * k), 0.3 + k * 0.08)
     return y + 0.06 * grains(c, n, 25, 3, 6000, 12000, spread=0.6)
@@ -454,7 +499,7 @@ def _(c):
 
 @sfx("chime", "Progress", "a goal completed (it plays the music's own melody cell)", 1, 0.4)
 def _(c):
-    n = N(1.8)
+    n = N(2.8)
     y = np.zeros(n)
     for at, note, v in ((0, "F#6", 0.9), (0.14, "E6", 0.7), (0.28, "F#6", 0.8), (0.42, "A6", 1.0)):
         place(y, bell(note, 1.3, n=N(1.3)) * v, at)
@@ -463,7 +508,7 @@ def _(c):
 
 @sfx("levelup", "Progress", "you reach a new level", 1, 0.5)
 def _(c):
-    n = N(2.4)
+    n = N(3.4)
     y = np.zeros(n)
     for k, note in enumerate(("D5", "F#5", "A5", "D6", "E6", "F#6")):
         place(y, mallet(note, 0.9, n=N(0.9)) * 0.8, k * 0.075)
@@ -474,7 +519,7 @@ def _(c):
 
 @sfx("mail", "Progress", "a letter arrives in your mailbox", 1, 0.35)
 def _(c):
-    n = N(1.2)
+    n = N(2.2)
     paper = swept_noise(c, N(0.25), 2000, 5000, 0.5) * np.sin(np.linspace(0, np.pi, N(0.25)))
     y = np.zeros(n)
     place(y, paper * 0.4, 0)
@@ -487,25 +532,23 @@ def _(c):
 
 @sfx("hit", "Fights", "landing a blow", 3, 0.5)
 def _(c):
-    n = N(0.3)
-    t = tt(n)
-    body = np.sin(2 * np.pi * np.cumsum(110 + 80 * np.exp(-t / 0.015)) / SR) * env_exp(n, 0.06, 0.001)
-    slap = fft_filter(c.noise(n), bp(700, 4500)) * env_exp(n, 0.015)
-    return body + 0.8 * slap
+    n = N(0.25)
+    body = impact(c, n, "body", size=c.u(0.8, 1.1), hardness=1.5)
+    slap = fft_filter(c.noise(n), bp(700, 4500)) * env_exp(n, 0.012, 0.0005)
+    return body + 0.7 * slap
 
 
 @sfx("hurt", "Fights", "you take damage", 2, 0.45)
 def _(c):
-    n = N(0.45)
-    t = tt(n)
-    thump = np.sin(2 * np.pi * np.cumsum(90 * np.exp(-t / 0.3)) / SR) * env_exp(n, 0.1, 0.002)
-    muffle = fft_filter(c.noise(n), bp(200, 1200)) * env_exp(n, 0.05)
-    return thump + 0.6 * muffle
+    n = N(0.35)
+    body = impact(c, n, "body", size=1.4, hardness=1.2)
+    muffle = fft_filter(c.noise(n), bp(150, 900)) * env_exp(n, 0.05, 0.002)
+    return body + 0.5 * muffle
 
 
 @sfx("die", "Fights", "you die (gentle, not scary)", 1, 0.4)
 def _(c):
-    n = N(2.4)
+    n = N(3.6)
     y = np.zeros(n)
     for k, note in enumerate(("A5", "F#5", "D5", "A4")):
         place(y, bell(note, 1.6, n=N(1.6)) * (0.9 - 0.12 * k), k * 0.32)
@@ -515,10 +558,9 @@ def _(c):
 @sfx("poof", "Fights", "a creature vanishes in a puff of smoke", 2, 0.35)
 def _(c):
     n = N(0.6)
-    t = tt(n)
-    puff = swept_noise(c, n, 2500, 400, 0.5) * env_exp(n, 0.15, 0.01)
-    bwoop = np.sin(2 * np.pi * np.cumsum(hz("D6") * np.exp(-t / 0.15)) / SR) * env_exp(n, 0.12, 0.005)
-    return puff + 0.25 * bwoop
+    puff = swept_noise(c, n, 2500, 350, 0.5) * env_exp(n, 0.15, 0.008)
+    pop = impact(c, N(0.08), "body", size=0.5) * 0.4
+    return puff + np.pad(pop, (0, n - len(pop)))
 
 
 @sfx("gloom", "Fights", "a gloom attacks at night: a breathy, low growl", 2, 0.4)
@@ -526,7 +568,7 @@ def _(c):
     n = N(0.9)
     t = tt(n)
     f0 = 55 + 12 * np.sin(2 * np.pi * 3 * t) * np.exp(-t / 0.4) + c.u(-4, 4)
-    growl = voice(n, f0, lambda t: [(450, 1.0), (900, 0.5)], 180, harmonics=60)
+    growl = voice(n, f0, lambda t: [(450, 1.0), (900, 0.5)], 180, harmonics=60, c=c)
     breath = fft_filter(c.noise(n), bp(200, 1400)) * 0.3
     am = 0.7 + 0.3 * np.sin(2 * np.pi * 23 * t)
     return fft_filter(growl * 0.35 * am + breath, lp(1800)) * np.sin(np.pi * np.clip(t / 0.9, 0, 1)) ** 0.6
@@ -543,7 +585,7 @@ def _(c):
         bn = N(0.07)
         t = tt(bn)
         f0 = c.u(650, 850) * np.exp(-t / 0.12)
-        buk = voice(bn, f0, lambda t: [(1300, 1.0), (2600, 0.6)], 350, harmonics=14)
+        buk = voice(bn, f0, lambda t: [(1300, 1.0), (2600, 0.6)], 350, harmonics=14, c=c)
         place(y, buk * np.sin(np.pi * np.clip(t / 0.07, 0, 1)), k * c.u(0.1, 0.14))
     return y
 
@@ -555,8 +597,9 @@ def _(c):
     for k in range(2):
         bn = N(0.06)
         t = tt(bn)
-        f = c.u(3000, 3800) * (1 + 0.25 * t / 0.06)
-        place(y, np.sin(2 * np.pi * np.cumsum(f) / SR) * np.sin(np.pi * t / 0.06), k * 0.11)
+        f = c.u(3200, 4000) * (1 - 0.12 * np.sin(np.pi * t / 0.06))
+        ph = 2 * np.pi * np.cumsum(f) / SR
+        place(y, (np.sin(ph) + 0.15 * np.sin(2 * ph)) * np.sin(np.pi * t / 0.06) ** 1.5, k * c.u(0.1, 0.13))
     return y
 
 
@@ -606,7 +649,7 @@ def _(c):
 
 @sfx("love", "Animals", "an animal is happy: petting, love hearts, a calf is born", 2, 0.3)
 def _(c):
-    n = N(0.8)
+    n = N(1.4)
     y = np.zeros(n)
     for k, note in enumerate(("A5", "D6") if c.v == 0 else ("F#5", "B5")):
         place(y, bell(note, 0.7, n=N(0.7)) * 0.8, k * 0.09)
@@ -698,7 +741,7 @@ def _(c):
 
 @sfx("give", "People", "someone gives you something", 1, 0.35)
 def _(c):
-    n = N(1.0)
+    n = N(1.7)
     paper = swept_noise(c, N(0.2), 3000, 6000, 0.5) * np.sin(np.linspace(0, np.pi, N(0.2)))
     y = np.zeros(n)
     place(y, paper * 0.4, 0)
@@ -709,7 +752,7 @@ def _(c):
 
 @sfx("join", "People", "someone arrives in the world (a wind chime)", 1, 0.25)
 def _(c):
-    n = N(2.2)
+    n = N(3.2)
     y = np.zeros(n)
     for k in range(6):
         place(y, bell(c.pick(PENTA_HIGH), 1.4, n=N(1.4)) * c.u(0.4, 0.8), k * c.u(0.08, 0.16))
@@ -718,7 +761,7 @@ def _(c):
 
 @sfx("leave", "People", "someone falls asleep (leaves)", 1, 0.22)
 def _(c):
-    n = N(1.6)
+    n = N(2.6)
     y = np.zeros(n)
     for k, note in enumerate(("A6", "F#6", "D6")):
         place(y, bell(note, 1.2, n=N(1.2)) * (0.7 - 0.12 * k), k * 0.18)
@@ -734,8 +777,8 @@ def _(c):
 
 @sfx("open", "Interface", "opening a panel (crafting, mailbox, chest view)", 1, 0.25)
 def _(c):
-    n = N(0.4)
-    slide = swept_noise(c, n, 1500, 4000, 0.5) * np.sin(np.pi * np.clip(tt(n) / 0.25, 0, 1)) * 0.4
+    n = N(0.9)
+    slide = swept_noise(c, n, 1500, 4000, 0.5) * np.sin(np.pi * np.clip(tt(n) / 0.25, 0, 1)) * (tt(n) < 0.25) * 0.4
     y = slide
     place(y, mallet("A5", 0.4, n=N(0.35)) * 0.6, 0.05)
     place(y, mallet("D6", 0.4, n=N(0.35)) * 0.6, 0.12)
@@ -744,8 +787,8 @@ def _(c):
 
 @sfx("close", "Interface", "closing a panel", 1, 0.22)
 def _(c):
-    n = N(0.4)
-    slide = swept_noise(c, n, 4000, 1500, 0.5) * np.sin(np.pi * np.clip(tt(n) / 0.25, 0, 1)) * 0.4
+    n = N(0.9)
+    slide = swept_noise(c, n, 4000, 1500, 0.5) * np.sin(np.pi * np.clip(tt(n) / 0.25, 0, 1)) * (tt(n) < 0.25) * 0.4
     y = slide
     place(y, mallet("D6", 0.4, n=N(0.35)) * 0.6, 0.03)
     place(y, mallet("A5", 0.4, n=N(0.35)) * 0.6, 0.1)

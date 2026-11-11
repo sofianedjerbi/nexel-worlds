@@ -29,3 +29,13 @@ The game music is rendered by `music/compose.py` (pure numpy) into `music/site/a
 - Bring the theme in from bar 1. Leave rests where the melody sits out.
 - Measure loudness per section and per stem; fix balance from numbers, then by ear.
 - Everything circular (FFT reverb and echo, LFOs with whole cycles per loop), so the loop is seamless.
+
+## Sound effects review (how to check them without trusting your ears alone)
+
+`uv run python music/spectro.py music/site/sfx sheet.png` draws a spectrogram per sound. What to look for:
+- thin vertical lines in the middle of a sound = a click (a tail cut mid-decay). Every component now ends on a smooth tail.
+- 2-3 clean horizontal lines ringing for 0.3 s on a knock = it sounds like a xylophone, not wood or stone.
+  Impacts use modal synthesis instead: a short noise contact exciting ~30 resonances, each decaying as tau = 1/(pi f eta),
+  with a per-material loss factor and a contact brightness (dirt and flesh dull, stone and metal bright).
+- long sine sweeps under a thump = a drum-machine kick, not a body or a log. Use damped "body" and "dirt" materials.
+- animal voices need pitch jitter and amplitude shimmer; perfectly steady harmonics sound synthetic.
