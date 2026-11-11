@@ -46,7 +46,7 @@ function unseen(p) {
 }
 
 // A block's caves as seen now, on one canvas in art px (with OV_M px round it), or null when there's nothing to see:
-// where the empty cells of its hills show on their faces, and the open cave's floor with its rock rim and the wall
+// where the empty cells of its hills show on their faces, and the open cave's floor, shadowed along its edges, with the wall
 // at its back.
 const OV_M = 128, HOLE = "#2a1d28", HOLE_DEEP = "#1d141c", HOLE_RIM = "rgba(48,30,34,.55)", SHADE = "30,20,28";
 // The empty cells of the hill on (x, y) that show on its face toward (dx, dy): runs [lowest, highest] of cells above
@@ -101,34 +101,17 @@ function drawOpening(g, X, Y, x, y, dx, dy, W, lo, hi) {
     if (walkIn) spill(L - 4, (k, half) => g.fillRect(X + (dx > 0 ? 16 - out + k : out - 1 - k), Y + Yg + 1 + L / 2 - half, 1, 2 * half));
   }
 }
-// The edge of the open cave's edge tiles (while the look is being chosen: CAVE_EDGE). "A": the stone sheet's rim, the
-// hill's grass showing outside it; "B": the same rim, dark rock outside it; "C": the floor right to the tile's edge,
-// walls on it (thin at the sides, a lip in front); "D": the floor to the edge, a shadow along it.
-let CAVE_EDGE = "A";
-const ROCK = "#4b434b", ROCK_LIT = "#8d8690", ROCK_DARK = "#2e282e";
+// The edge of the open cave's edge tiles: its floor right to the tile's edge, a soft shadow along it where the rock is
 function caveEdge(g, x, y, z, X, Y) {
   const inCave = (tx, ty) => inOpenCave(tx, ty) || (!roofAt(tx, ty) && Math.abs(topAt(tx, ty) - z) <= 1);
-  const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, tx, ty) => inCave(tx, ty)));
-  if (CAVE_EDGE === "A") return g.drawImage(edgeSheet("hill3"), cx * 16, cy * 16, 16, 16, X, Y, 16, 16);
-  if (CAVE_EDGE === "B") {                                // the tile's shape (the soil sheet's own): rock outside it, the rim on it
-    const shape = cellAlpha(IMG.soil, cx, cy);
-    g.fillStyle = ROCK;
-    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) if (!shape[j * 16 + i]) g.fillRect(X + i, Y + j, 1, 1);
-    return g.drawImage(edgeSheet("hill3"), cx * 16, cy * 16, 16, 16, X, Y, 16, 16);
-  }
   const W = !inCave(x - 1, y), E = !inCave(x + 1, y), N = !inCave(x, y - 1), S = !inCave(x, y + 1);
-  if (CAVE_EDGE === "C") {
-    if (W) { g.fillStyle = ROCK; g.fillRect(X, Y, 3, 16); g.fillStyle = ROCK_DARK; g.fillRect(X + 3, Y, 1, 16); }
-    if (E) { g.fillStyle = ROCK; g.fillRect(X + 13, Y, 3, 16); g.fillStyle = ROCK_DARK; g.fillRect(X + 12, Y, 1, 16); }
-    if (S) { g.fillStyle = ROCK; g.fillRect(X, Y + 13, 16, 3); g.fillStyle = ROCK_LIT; g.fillRect(X, Y + 13, 16, 1); }
-    if (N) { g.fillStyle = ROCK_DARK; g.fillRect(X, Y, 16, 1); }
-  } else if (CAVE_EDGE === "D") {
-    [.34, .24, .15, .08].forEach((al, k) => {
-      g.fillStyle = `rgba(${SHADE},${al})`;
-      if (W) g.fillRect(X + k, Y, 1, 16); if (E) g.fillRect(X + 15 - k, Y, 1, 16);
-      if (N) g.fillRect(X, Y + k, 16, 1); if (S) g.fillRect(X, Y + 15 - k, 16, 1);
-    });
-  }
+  [.34, .24, .15, .08].forEach((al, k) => {
+    g.fillStyle = `rgba(${SHADE},${al})`;
+    if (W) g.fillRect(X + k, Y, 1, 16);
+    if (E) g.fillRect(X + 15 - k, Y, 1, 16);
+    if (N) g.fillRect(X, Y + k, 16, 1);
+    if (S) g.fillRect(X, Y + 15 - k, 16, 1);
+  });
 }
 function buildCaveOverlay(b) {
   let c = null, g = null;
@@ -168,7 +151,7 @@ function buildCaveOverlay(b) {
 function drawCaves(vis, sx, sy) {
   for (const b of vis) {
     if (!b.col || !b.relief) continue;
-    const key = (b.ver || 0) + ":" + caveStamp + CAVE_EDGE;
+    const key = (b.ver || 0) + ":" + caveStamp;
     if (b.caveKey !== key) { b.caveKey = key; b.caveOv = buildCaveOverlay(b); }
     if (b.caveOv) ctx.drawImage(b.caveOv, sx(b.bx * B) - OV_M * zoom, sy(b.by * B) - OV_M * zoom, b.caveOv.width * zoom, b.caveOv.height * zoom);
   }
