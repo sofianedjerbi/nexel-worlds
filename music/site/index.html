@@ -52,7 +52,7 @@
     font-size:13px; margin-top:6px; font-variant-numeric:tabular-nums; }
   h2 { margin:0 0 12px; font-size:18px; font-weight:900; }
   h2 small { color:var(--ink2); font-weight:700; font-size:13px; margin-left:6px; }
-  #stems { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; }
+  #stems { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; }
   .stem { border:2px solid var(--line); border-radius:12px; padding:10px; background:#fffaf0;
     display:flex; flex-direction:column; gap:8px; align-items:center; transition:opacity .15s; }
   .stem.off { opacity:.45; }
@@ -98,27 +98,26 @@
   <section class="card">
     <h2>How it's made</h2>
     <div class="notes">
-      <div><b>Idea:</b> chill background music for playing. One key, one 8-bar progression, one 2-bar motif that repeats.</div>
-      <div><b>Harmony:</b> D major only: Dmaj9, Gmaj9, Bm, Gmaj7, Em, Asus. Pentatonic melody, so no sour notes.</div>
-      <div><b>Registers:</b> bass, piano chords, pad, melody and twinkles each have their own octave. A script checks for clashes.</div>
-      <div><b>Depth:</b> near piano, middle pad and bass, far music box (dark, wet, wide). 6 s hall, ping-pong echo, wind bed.</div>
-      <div><b>Warmth:</b> slow tape wobble, felt-piano hammers, soft attacks. Pure numpy, <code>music/compose.py</code>.</div>
-      <div><b>Master:</b> -18 dBFS RMS, room to breathe, seamless 96 s loop. <a href="audio/master.wav" download>Download master.wav</a></div>
+      <div><b>Idea:</b> quiet music to leave on for 10 to 20 minutes while playing. 60 BPM, no drums, lots of silence.</div>
+      <div><b>Theme:</b> ten piano notes in a narrow range, mostly steps, long holds. It plays in half the cycles only.</div>
+      <div><b>Harmony:</b> D major, four chords, two bars each: Dmaj9, Gmaj7, Bm7, Gmaj9. Same cycle the whole time.</div>
+      <div><b>Phasing:</b> the melody repeats every 8 bars, the music box every 12, the glass swell every 16, so each pass sounds a little different.</div>
+      <div><b>Depth:</b> piano near, pad and bass middle, music box far (dark, wet). 9 s hall, slow echo, wind, tape wobble.</div>
+      <div><b>Checks:</b> registers never overlap, no clashing notes. -20 dBFS RMS, seamless 192 s loop. <a href="audio/master.wav" download>Download</a></div>
     </div>
   </section>
 </main>
 
 <script>
 const STEM_INFO = {
-  piano:    { what: "felt piano: melody and broken chords", color: "#e48a7a" },
-  lead:     { what: "soft chip flute (breeze section)",     color: "#e6b44f" },
-  pad:      { what: "warm wide pad",                        color: "#8fb3e0" },
-  bass:     { what: "deep sine bass",                       color: "#8d6bb5" },
-  twinkles: { what: "far-away music box, echo",             color: "#5fb8b0" },
-  texture:  { what: "wind, shaker, heartbeat kick",         color: "#6fae78" },
+  piano:    { what: "felt piano: ten-note theme, slow chords", color: "#e48a7a" },
+  pad:      { what: "warm dark pad",                          color: "#8fb3e0" },
+  bass:     { what: "deep soft sine",                         color: "#8d6bb5" },
+  musicbox: { what: "far music box, 12-bar cycle",            color: "#5fb8b0" },
+  air:      { what: "wind bed, high glass swells",            color: "#6fae78" },
 };
-const SEC_COLORS = { 1: "var(--A)", 2: "var(--B)", 3: "var(--C)", 4: "var(--D)" };
-const SEC_RGB = { 1: [247,212,136], 2: [185,224,165], 3: [169,200,236], 4: [244,182,168] };
+const SEC_COLORS = { 1: "#d9e8d0", 2: "#f7e0a3", 3: "#f4c6b6", 4: "#cfe0f0", 5: "#f7e0a3", 6: "#e3d6ef" };
+const SEC_RGB = { 1: [217,232,208], 2: [247,224,163], 3: [244,198,182], 4: [207,224,240], 5: [247,224,163], 6: [227,214,239] };
 
 let ctx, meta, buffers = {}, nodes = {}, sources = [], master, analyser;
 let playing = false, startAt = 0, offset = 0, muted = {}, solo = null;
@@ -253,7 +252,7 @@ function draw() {
   const [r, gg, b] = SEC_RGB[sec.id];
 
   // soft section-colored sun
-  const pulse = playing ? 0.5 + 0.5 * Math.sin(t * 0.8) : 0;
+  const pulse = playing ? 0.5 + 0.5 * Math.sin(t * 0.4) : 0;
   const grad = g2.createRadialGradient(W / 2, H * 0.62, 10, W / 2, H * 0.62, 220 + 30 * pulse);
   grad.addColorStop(0, `rgba(${r},${gg},${b},0.75)`);
   grad.addColorStop(1, `rgba(${r},${gg},${b},0)`);
@@ -292,7 +291,7 @@ function draw() {
 
   // a note or heart pops out each beat
   const whole = Math.floor(beat);
-  if (playing && whole !== lastBeat && whole % 2 === 0) {
+  if (playing && whole !== lastBeat && whole % 4 === 0) {
     lastBeat = whole;
     particles.push({ x: W / 2 + (Math.random() - 0.5) * 40, y: base - 70, vx: (Math.random() - 0.5) * 60,
       vy: -60 - Math.random() * 40, life: 1.6, k: whole % 8 === 0 ? "♥" : "♪", c: `hsl(${(whole * 47) % 360} 65% 60%)` });

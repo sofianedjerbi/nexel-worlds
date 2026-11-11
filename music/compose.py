@@ -239,7 +239,7 @@ for bar in range(BARS):
         note(s0, 15, place(pcs(ch)[0], 33), 0.8, sub_bass, "bass", 0.0, rev=0.05, human=False)
 
 # music box: a 12-bar cycle against the 8-bar harmony; only notes that sit well on every chord
-BOX = [(0, 3, "A5"), (3, 5, "F#6"), (5, 1, "D6"), (8, 6, "F#6"), (10, 2, "A5")]   # (bar in 12, slot, note)
+BOX = [(0, 3, "A5"), (3, 5, "F#6"), (5, 1, "B5"), (8, 6, "F#6"), (10, 2, "A5")]   # (bar in 12, slot, note)
 for rep in range(BARS // 12):
     for b, slot, n in BOX:
         note((rep * 12 + b) * 8 + slot, 2, midi(n), 0.55, music_box, "musicbox", rng.uniform(-0.8, 0.8), rev=0.8, echo=0.5)
