@@ -1,6 +1,6 @@
 """Strawman: a scarecrow that gets off its pole. The only one shaped like a person: hat, sack head, arms straight out.
 
-Animation: a stiff shamble. One foot lifts while the body is at full height, then both are down and the body sinks a pixel.
+Animation: a stiff shamble. Seen from the front, one foot lifts and the whole upper body leans over the other, then straightens.
 The arms never swing: that is what makes it wrong. At rest it only twitches its head. The grab: both arms go up and
 hold, then come down as it drops forward, hold, and it straightens.
 """
@@ -51,7 +51,7 @@ def facing(g, up_arms, down_arms):
     low = lambda f: squat(f, len(f) - 6)                         # both feet down: the legs lose a row, the body sinks
     tall = lambda f: pad(f, top=1, left=1, right=1)
     return dict(idle=[tall(g), nudge(tall(g), range(1, 7), 1)],
-                walk=[tall(edit(g, LIFT_R)), low(tall(g)), tall(edit(g, LIFT_L)), low(tall(g))],
+                walk=[nudge(tall(edit(g, LIFT_R)), range(1, 19), -1), tall(g), nudge(tall(edit(g, LIFT_L)), range(1, 19), 1), tall(g)],
                 act=[tall(edit(g, up_arms)), low(tall(edit(g, down_arms))), low(tall(edit(g, down_arms))), tall(g)])
 
 
@@ -99,7 +99,7 @@ def side(g):
 
 ENEMY = dict(
     key="strawman", name="Strawman", pal=PAL, role="stalker", cell=(32, 32), act="grab", stride=.9,
-    ms=dict(idle=[2200, 160], walk=230, act=[520, 90, 260, 300]),
+    ms=dict(idle=[2200, 160], walk=180, act=[520, 90, 260, 300]),
     where="crop fields and old farms", when="night",
     behaviour="By day it is a scarecrow on a pole and does nothing. At night it steps down and walks, slowly, toward whoever is "
               "nearest, and only while nobody is looking at it. Look at it and it freezes. It tramples crops on its way. Fire ends it.",

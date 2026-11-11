@@ -147,7 +147,7 @@ BACK = G("""
 F_SHADOW = G(".sssssssss.")
 F_LEGS = dict(
     stand=G("...l...l...\n...l...l...\n...l...l...\n...l...l...\n...l...l...\n..ll...ll.."),
-    lift=G("...l...l...\n..l....l...\n...l...l...\n...ll..l...\n.......l...\n.......ll.."),
+    lift=G("...l...l...\n...l...l...\n...l...l...\n..ll...l...\n.......l...\n.......ll.."),     # one leg drawn up, straight
 )
 
 
@@ -161,13 +161,13 @@ def facing(body):
     down = stack(["." * 11] * 3, body[1:7], body[10:], ["." * 11])  # the neck is gone: the head is on the body
     down = down[:len(body)]
     blink = [r.replace("e", "w") for r in body]
-    return dict(idle=[f(body), f(blink)], walk=[lift, f(body, low=True), f(body, mirror(F_LEGS["lift"])), f(body, low=True)],
+    return dict(idle=[f(body), f(blink)], walk=[lift, f(body), f(body, mirror(F_LEGS["lift"])), f(body)],
                 act=[f(up), f(down), f(down), f(body)])
 
 
 ENEMY = dict(
     key="stilt", name="Stilt", pal=PAL, role="spear", cell=(32, 32), act="peck", stride=1.0,
-    ms=dict(idle=[1800, 140], walk=170, act=[480, 90, 220, 260]),
+    ms=dict(idle=[1800, 140], walk=95, act=[480, 90, 220, 260]),
     where="shallow water, reeds, shores", when="day",
     behaviour="Stands dead still in the shallows and watches. Its beak reaches two tiles: it pulls its neck back, then stabs. "
               "The stab is slow to come and easy to read; walk in after it lands. It steals the fish you catch nearby.",
