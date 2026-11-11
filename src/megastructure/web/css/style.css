@@ -199,3 +199,31 @@
   #tctx div, #ttop div { display:none; padding:6px 12px; background:#f7e7c6; color:var(--ink); border:2px solid var(--ink); border-bottom-width:5px;
     border-radius:8px; font-size:18px; touch-action:none; }
   #ttop div { display:block; }
+
+  /* the death screen (death.js): the world drained and edged dark red, a panel dropping in */
+  #deathveil { position:fixed; inset:0; display:none; z-index:6; pointer-events:none; opacity:0;
+    background:radial-gradient(ellipse at center, rgba(40,10,20,0) 35%, rgba(70,14,26,.55) 100%);
+    backdrop-filter:grayscale(.85) brightness(.8); -webkit-backdrop-filter:grayscale(.85) brightness(.8); transition:opacity .6s; }
+  #deathveil.on { opacity:1; } #deathveil.off { opacity:0; transition:opacity .45s; }
+  #death { left:50%; top:46%; transform:translate(-50%,-50%) scale(.92); display:none; z-index:7; text-align:center;
+    width:min(440px, 90vw); opacity:0; transition:opacity .35s .25s, transform .45s .25s cubic-bezier(.2,1.6,.4,1); }
+  #death.on { opacity:1; transform:translate(-50%,-50%) scale(1); } #death.off { opacity:0; transform:translate(-50%,-46%) scale(.96); transition:all .4s; }
+  #deathskull { width:64px; height:64px; image-rendering:pixelated; display:block; margin:-46px auto 0; animation:skullbob 1.6s steps(4) infinite; }
+  @keyframes skullbob { 50% { transform:translateY(-4px); } }
+  #death .dt { font-size:40px; line-height:44px; color:var(--warn); margin:2px 0 4px; text-shadow:2px 2px 0 rgba(91,63,54,.25); }
+  #deathcause { font-size:22px; color:var(--ink); margin-bottom:10px; }
+  #deathloot { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:6px 0 4px; }
+  #deathloot .dslot { position:relative; width:40px; height:40px; background:#e9d3ab; border:2px solid #c9a676; border-radius:5px;
+    box-shadow:inset 0 -3px 0 rgba(91,63,54,.15); animation:dslotin .4s steps(4) backwards; }
+  #deathloot .dslot:nth-child(2) { animation-delay:.07s } #deathloot .dslot:nth-child(3) { animation-delay:.14s }
+  #deathloot .dslot:nth-child(4) { animation-delay:.21s } #deathloot .dslot:nth-child(n+5) { animation-delay:.28s }
+  @keyframes dslotin { from { opacity:0; transform:translateY(-8px); } }
+  #deathloot .dicon { width:32px; height:32px; image-rendering:pixelated; margin:4px; }
+  #deathloot span { position:absolute; right:1px; bottom:-4px; color:#fff8e8; font-size:16px;
+    text-shadow:2px 0 0 var(--ink),-2px 0 0 var(--ink),0 2px 0 var(--ink),0 -2px 0 var(--ink),2px 2px 0 var(--ink),-2px 2px 0 var(--ink),2px -2px 0 var(--ink),-2px -2px 0 var(--ink); }
+  #deathleft, #deathwake { color:var(--ink2); font-size:18px; line-height:22px; }
+  #deathwake { margin-top:4px; color:var(--ink); }
+  #death .dbar { height:8px; margin:12px 10px 4px; background:#d9bf94; border:2px solid var(--ink); border-radius:4px; overflow:hidden; }
+  #death .dbar i { display:block; height:100%; width:0; background:linear-gradient(#f2d98a,#d8a94e); }
+  #death .dhint { color:var(--ink2); font-size:15px; opacity:.8; }
+  body.touch #death .dhint { display:none; }

@@ -148,8 +148,7 @@ function onEvent(e) {
   }
   if (e.type === "death" && e.name === me) {
     sfx("die");
-    const lost = fmt(e.dropped);
-    banner("You died", `${e.cause}.${lost ? " Everything you carried (" + lost + ") lies where you fell, at " + e.x + ", " + e.y + "." : ""} ${meObs && meObs.self.spawn ? "You wake up by your bed." : "You wake up somewhere else. Sleep in a bed to choose where."}`);
+    showDeath(e);                                     // (death.js)
   }
   if (e.type === "creature_died" || e.type === "fade") {   // it flashes, lifts and fades away in a puff of smoke
     const key = (e.kind || "gloom") + e.id, p = ents.get(key) || (recentlyGone.get(key) || {}).p;
