@@ -55,7 +55,7 @@ function viewRect(margin) {
 }
 setInterval(() => {
   if (!spec || spec.readyState !== 1) return;
-  const [x, y, w, h] = viewRect(6);
+  const [x, y, w, h0] = viewRect(6), h = h0 + 6;   // (+6 rows south: high ground there is drawn up into view, with what's on it)
   const key = [Math.round(x / 4), Math.round(y / 4), w, h].join();
   if (key !== lastWatch) { lastWatch = key; sendSpec({op: "watch", x, y, w, h}); }
   const now = performance.now();
