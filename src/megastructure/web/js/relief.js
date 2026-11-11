@@ -1,12 +1,12 @@
-// Relief, stacked: each level is drawn STEP px higher than the one under it (level 1 too: every +1 looks alike), with everything standing on it, so a
+// Relief, stacked: each level is drawn RELIEF_STEP px higher than the one under it (level 1 too: every +1 looks alike), with everything standing on it, so a
 // two-layer drop looks taller than a one-layer one. A block's ground canvas is drawn as it is (level 1 in place),
 // then for each level k >= 1 a copy of it cut to the tiles at least that high, lifted. Where a lifted level ends
 // over lower ground its wall is painted down to the ground below: solid earth, a band per layer (lit along its top,
 // darker at its foot), in the colours of that layer's own sheet, the pack's ink at the very foot.
 
-const STEP = 6;                                       // art px a level
-const shOf = (L) => (L > 0 ? STEP * L : 0);           // how far up a level is drawn: every layer the same step
-const WALL_M = STEP * 14 + 16;                        // room under a layer canvas for its walls
+const RELIEF_STEP = 6;                                       // art px a level
+const shOf = (L) => (L > 0 ? RELIEF_STEP * L : 0);           // how far up a level is drawn: every layer the same step
+const WALL_M = RELIEF_STEP * 14 + 16;                        // room under a layer canvas for its walls
 
 // Something flying off from a spot (a puff, a spark, debris): it keeps the height of where it started, however it
 // drifts (it doesn't step up and down with the tiles it passes over)
@@ -111,12 +111,12 @@ function* reliefSteps(b) {                             // (a step a level, so no
     const c = document.createElement("canvas"); c.width = Wb; c.height = Hb;
     const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
     const tint = document.createElement("canvas"); tint.width = tint.height = Wb; const tg0 = tint.getContext("2d");
-    for (let s = 0; s < STEP; s++) {                    // the body: its wall, a band, under the whole shape
-      const col = s === STEP - 1 ? cols.bands[0] : s === 0 ? cols.bands[2] : cols.bands[1];
+    for (let s = 0; s < RELIEF_STEP; s++) {                    // the body: its wall, a band, under the whole shape
+      const col = s === RELIEF_STEP - 1 ? cols.bands[0] : s === 0 ? cols.bands[2] : cols.bands[1];
       tg0.globalCompositeOperation = "source-over"; tg0.clearRect(0, 0, Wb, Wb);
       tg0.fillStyle = `rgb(${col[0] | 0},${col[1] | 0},${col[2] | 0})`; tg0.fillRect(0, 0, Wb, Wb);
       tg0.globalCompositeOperation = "destination-in"; tg0.drawImage(mc, 0, 0);
-      g.drawImage(tint, 0, STEP - s);
+      g.drawImage(tint, 0, RELIEF_STEP - s);
     }
     const lc = document.createElement("canvas"); lc.width = lc.height = Wb; lc.getContext("2d").putImageData(ledge, 0, 0);
     g.drawImage(lc, 0, 0);

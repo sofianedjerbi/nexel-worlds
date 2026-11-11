@@ -187,7 +187,7 @@ function drawNameplate(p, sx, sy, S) {
   ctx.textAlign = "start";
 }
 const AMBLE = {chicken: 1.6, chick: 1.4, cow: 1.2, calf: 1.3, gloom: 2.6};   // tiles per second
-const FLEE = 2.2;   // a scared animal runs this much faster (the server moves it a tile every 0.3 s)
+const FLEE_STRIDE = .3;   // a scared animal runs a tile every this many seconds (sim/constants.py FLEE_STRIDE)
 function drawProgress(sx, sy, S) {
   if (!progress || !me) return;
   const p = ents.get("agent" + myId); if (!p) return;
