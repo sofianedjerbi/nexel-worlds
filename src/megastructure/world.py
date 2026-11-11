@@ -45,13 +45,11 @@ class Chunk:
         ground, block = bytearray(raw[:n]), bytearray(raw[n:2 * n])
         if len(raw) > 3 * n and raw[3 * n] == FORMAT:
             return cls(cx, cy, ground, block, bytearray(raw[2 * n:3 * n]))
-        # saved before heights went below sea level: 0-12 (bit 4: old stairs), and dug holes (now a pit one deep)
+        # saved before heights went below sea level: 0-12 (bit 4: old stairs); old holes and ladders filled in
         old = raw[2 * n:3 * n] if len(raw) >= 3 * n else bytes(n)
         level = bytearray(SEA + (v & 0x0F) for v in old)
         for i in range(n):
-            if block[i] == B["hole"]:
-                block[i], level[i] = B["none"], level[i] - 1
-            elif block[i] == B["ladder"]:
+            if block[i] in (B["hole"], B["ladder"]):
                 block[i] = B["none"]
         return cls(cx, cy, ground, block, level)
 

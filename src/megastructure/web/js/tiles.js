@@ -129,7 +129,6 @@ function drawTile(x, y) {
   // relief: each level lays its hill sheet (grass, darker grass, then stone) over the tiles at least that high; the
   // sheets' edge tiles carry the cliff face, so a plateau shows its south cliff and a soft rim round the rest
   const lv = levelAt(x, y);
-  if (lv < 0 && isLand(gr)) { g.clearRect(ox, oy, 16, 16); drawBlobLayer(g, IMG.soil, x, y, () => true, ox, oy, .15); }   // a pit: dug earth
   for (let k = 1; k <= lv; k++) drawBlobLayer(g, hillSheet(k), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, ox, oy, k < 3 ? .25 : .1);
   if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
   if (gr === "-") drawBlobLayer(g, IMG.soil, x, y, (cc, gg) => gg === "-" && cc !== "R", ox, oy, .15);   // (old worlds)

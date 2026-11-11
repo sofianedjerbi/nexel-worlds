@@ -77,8 +77,8 @@ def test_land_saved_before_relief_stays_flat_and_old_stairs_are_ground():
     assert len(c.level) == n and set(c.level) == {16}              # all at sea level
     assert Chunk.unpack(0, 0, c.pack()).level == c.level
     old = zlib.compress(bytes(n) + bytes([B["hole"], B["ladder"]]) + bytes(n - 2) + bytes([0x11]) + bytes(n - 1))
-    c = Chunk.unpack(0, 0, old)         # level 1 with the old stairs flag, and an old hole: a pit a layer deep
-    assert c.level[0] == 16 and c.level[1] == 16 and c.block[0] == c.block[1] == 0
+    c = Chunk.unpack(0, 0, old)         # level 1 with the old stairs flag, and an old hole: filled in
+    assert c.level[0] == 17 and c.level[1] == 16 and c.block[0] == c.block[1] == 0
 
 
 def test_nothing_is_built_on_a_hills_rim(world):
