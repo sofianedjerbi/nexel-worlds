@@ -45,6 +45,21 @@ function faceOf(sheet) {
   faces.set(sheet, f); return f;
 }
 
+// A wall's colour `r` px above its foot (dropping from level k to `low`): a band per layer counted from the ground up
+// lit along its top row, dark along its foot row; the ink at the very foot. `light` < 1: in shade.
+function wallColour(r, low, k, light) {
+  const j = Math.floor(Math.max(0, r - 1) / STEP), lay = Math.min(k, low + 1 + j), [lit, mid, dark, ink] = faceOf(hillSheet(lay)).cols;
+  if (r === 0) return ink;
+  const pos = (r - 1) % STEP, c = pos === STEP - 1 ? lit : pos === 0 ? dark : mid;
+  return light < 1 ? shade(c, light) : c;
+}
+const shadeMemo = new Map();
+function shade(css, f) {
+  const key = css + f;
+  if (!shadeMemo.has(key)) { const [r, g, b] = css.match(/\d+/g).map(Number); shadeMemo.set(key, `rgb(${r * f | 0},${g * f | 0},${b * f | 0})`); }
+  return shadeMemo.get(key);
+}
+
 // The lifted levels of a block, built when its ground canvas changed
 function buildRelief(b) {
   let maxLv = 0;
@@ -53,19 +68,24 @@ function buildRelief(b) {
   for (let k = 2; k <= maxLv; k++) {
     const c = document.createElement("canvas"); c.width = B * 16; c.height = B * 16 + WALL_M;
     const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
-    g.fillStyle = "#000";
-    for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) if (levelAt(b.bx * B + lx, b.by * B + ly) >= k) g.fillRect(lx * 16, ly * 16, 16, 16);
+    for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) {      // its shape: the level's own sheet, edges and all
+      const x = b.bx * B + lx, y = b.by * B + ly;
+      if (levelAt(x, y) >= k) drawBlobLayer(g, hillSheet(k), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, lx * 16, ly * 16, 0);
+    }
     g.globalCompositeOperation = "source-in"; g.drawImage(b.canvas, 0, 0); g.globalCompositeOperation = "source-over";
     for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) {      // the walls of the tiles this high exactly
       const x = b.bx * B + lx, y = b.by * B + ly;
       if (levelAt(x, y) !== k) continue;
-      const low = levelAt(x, y + 1), tall = 3 + shOf(k) - shOf(low);
-      if (shOf(k) <= shOf(low)) continue;
       const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k)), f = faceOf(hillSheet(k));
-      for (const col of f.columns(cx, cy)) for (let r = 0; r < tall; r++) {
-        const lay = Math.max(low + 1, k - Math.floor(r / STEP)), [lit, mid, dark, ink] = faceOf(hillSheet(lay)).cols;
-        g.fillStyle = r === tall - 1 ? ink : r % STEP === 0 ? lit : r % STEP === STEP - 1 ? dark : mid;
-        g.fillRect(lx * 16 + col, ly * 16 + f.row + r, 1, 1);
+      const low = levelAt(x, y + 1);                   // the front: under every column of the edge as drawn
+      if (shOf(k) <= shOf(low)) continue;
+      const d = shOf(k) - shOf(low), px = g.getImageData(lx * 16, ly * 16, 16, 16).data;
+      for (let col = 0; col < 16; col++) {
+        let last = -1;
+        for (let r = 15; r >= 0; r--) if (px[(r * 16 + col) * 4 + 3] > 0) { last = r; break; }
+        if (last < 8) continue;                        // (a rounded corner's far side: nothing over the drop there)
+        const top = Math.max(f.row, last - 2), foot = last + d;   // the sheet's own face, then down to the ground
+        for (let Y = top; Y <= foot; Y++) { g.fillStyle = wallColour(foot - Y, low, k, 1); g.fillRect(lx * 16 + col, ly * 16 + Y, 1, 1); }
       }
     }
     layers[k] = c;
