@@ -107,14 +107,14 @@ def leg(g, x, y, rows, phase, w=3, fill="d", boot=None, reach=1.0, ink="o"):
     """Draw one chunky leg onto g: `rows` of fill `w` wide hanging from (x, y), then a sole (or a boot and a sole).
 
     phase is a frame of the step (0-7), or (dx, up) for a pose of your own. The top of the leg stays at the hip;
-    the foot is `dx` pixels ahead or behind, and a lifted leg is `up` rows shorter.
+    the foot is `dx` pixels ahead or behind, and a lifted leg is `up` rows shorter. ink=None draws no outline (a far leg).
     """
     dx, up = phase if isinstance(phase, tuple) else (round(STEP_DX[phase % 8] * reach), STEP_UP[phase % 8])
     rows -= up
     out = [list(r) for r in g]
 
     def put(px, py, ch):
-        if 0 <= py < len(out) and 0 <= px < len(out[0]):
+        if ch and 0 <= py < len(out) and 0 <= px < len(out[0]):
             out[py][px] = ch
     for r in range(rows):
         off = round(dx * r / max(1, rows - 1)) if rows > 1 else dx

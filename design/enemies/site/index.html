@@ -60,6 +60,7 @@
   <section class="card">
     <h2>How they are made</h2>
     <div class="notes">
+      <div><b>The newest three move like the player:</b> the wisp and the wyrm are computed frame by frame (nothing drawn by hand but the wyrm's heads), and the stag walks on generated legs with its head nodding once a step.</div>
       <div><b>Different bodies:</b> no two share a shape. A long four-legged boar, a tall two-legged bird, a wide crab, a legless snake, a winged moth seen from above, a person-shaped scarecrow, and a fish that is only a fin.</div>
       <div><b>Four directions:</b> each sheet is laid out like the game's <code>character.png</code>: rows are down, up, left, right; columns are idle, walk, then the action. Right is left mirrored.</div>
       <div><b>Walks match the game:</b> the boar, heron, scarecrow and snake walk in 8 frames at about 90 ms, like the game's cow, chicken and player. The boar's body stays level like the cow's; seen from the front, bodies rise a pixel as a foot lifts, like the player. Side-view legs are generated, so every frame is consistent.</div>
@@ -105,11 +106,11 @@ function sprite(g, e, dir, mode, i, x, y, z) {
 function build() {
   $("sub").textContent = `${meta.length} designs for Megastructure, each drawn facing down, up, left and right`;
   for (const e of meta) {
-    const [cw, ch] = e.cell, z = 4, el = document.createElement("section");
+    const [cw, ch] = e.cell, z = cw > 32 ? 3 : 4, el = document.createElement("section");
     el.className = "card enemy";
     const row = (mode, label) => `<div class="r">${label}</div>` + DIRS.map((d) =>
       `<canvas width="${cw * z}" height="${ch * z}" data-key="${e.key}" data-dir="${d}" data-mode="${mode}"></canvas>`).join("");
-    const moving = e.ground === "water" ? "swim" : e.key === "lampwing" ? "fly" : "walk";
+    const moving = e.move || (e.ground === "water" ? "swim" : e.key === "lampwing" ? "fly" : "walk");
     el.innerHTML = `<div>
         <div class="name">${e.name}<span class="tag">${e.role}</span></div>
         <div class="where"><b>Where:</b> ${e.where} &nbsp; <b>When:</b> ${e.when}</div>
@@ -130,8 +131,9 @@ function build() {
 // The world strip: W x H tiles. Each enemy walks round its own rectangle (in tiles): [x, y, w, h].
 const W = 34, H = 11, POND = [25, 1, 8, 9], BEACH = [21, 0, 4, 11];
 const LOOPS = {tusker: [1, 1.4, 6, 2.8], stilt: [20.5, 6.2, 3.6, 3.2], pincer: [21.4, 1.4, 2.6, 3], adder: [9.5, 1.6, 4, 2.6],
-  lampwing: [15, 1.6, 4.4, 3], strawman: [1.5, 6.6, 5, 3], snapjaw: [26.2, 2.6, 5.6, 5.4]};
-const SPEED = {tusker: 1.2, stilt: 1.6, pincer: 1.6, adder: 1.8, lampwing: 2.6, strawman: 1.0, snapjaw: 2.2};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the gloom at 2.6
+  lampwing: [15, 1.6, 4.4, 3], strawman: [1.5, 6.6, 5, 3], snapjaw: [26.6, 3.4, 4.6, 3.6],
+  wisp: [15.5, 6.4, 3.6, 2.6], wyrm: [26, 2.2, 6, 6.2], stag: [5, 5.2, 4.6, 1.2]};
+const SPEED = {tusker: 1.2, stilt: 1.6, pincer: 1.6, adder: 1.8, lampwing: 2.6, strawman: 1.0, snapjaw: 2.2, wisp: 1.6, wyrm: 1.8, stag: 1.4};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the gloom at 2.6
 function along([x, y, w, h], d) {                       // where on the rectangle after d tiles, and which way it faces
   d %= 2 * (w + h);
   if (d < w) return [x + d, y, "right"];
@@ -147,7 +149,7 @@ function step(e, dt) {
   const actMs = total(e.ms.act), plan = {walk: 4200, idle: 1100, act: actMs, rest: 700};
   if (a.t >= plan[a.mode]) { a.t = 0; a.mode = {walk: "idle", idle: "act", act: "rest", rest: "walk"}[a.mode]; }
   if (a.mode === "walk") a.d += SPEED[e.key] * dt / 1000;
-  if (e.key === "tusker" && a.mode === "act" && a.t > 680) a.d += 4.5 * dt / 1000;      // the charge itself covers ground
+  if ((e.key === "tusker" || e.key === "stag") && a.mode === "act" && a.t > 700) a.d += 4.5 * dt / 1000;      // the charge itself covers ground
   const [x, y, dir] = along(LOOPS[e.key], a.d);
   if (a.mode === "walk") return [x, y, dir, "walk", frameAt(e, "walk", a.t)];
   if (a.mode === "act") return [x, y, dir, "act", frameAt(e, "act", a.t, false)];
@@ -159,8 +161,8 @@ function draw(t) {
   requestAnimationFrame(draw);
   const dt = Math.min(50, t - last); last = t;
   document.querySelectorAll("canvas[data-key]").forEach((c) => {
-    const e = meta.find((m) => m.key === c.dataset.key), g = c.getContext("2d"), z = 4, mode = c.dataset.mode;
-    tiles(g, e.ground || "grass", 0, 0, Math.ceil(c.width / 64), Math.ceil(c.height / 64), z);
+    const e = meta.find((m) => m.key === c.dataset.key), g = c.getContext("2d"), z = e.cell[0] > 32 ? 3 : 4, mode = c.dataset.mode;
+    tiles(g, e.ground || "grass", 0, 0, Math.ceil(c.width / (16 * z)), Math.ceil(c.height / (16 * z)), z);
     let m = mode, i;
     if (mode === "act") {                            // the action once, then a rest, so the wind-up is easy to see
       const cycle = total(e.ms.act) + 900, at = t % cycle;

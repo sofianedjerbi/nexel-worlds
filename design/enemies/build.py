@@ -21,7 +21,7 @@ from art import mirror  # noqa: E402
 
 SITE = HERE / "site"
 ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
-ORDER = ["tusker", "stilt", "pincer", "adder", "lampwing", "strawman", "snapjaw"]
+ORDER = ["tusker", "stilt", "pincer", "adder", "lampwing", "strawman", "snapjaw", "wisp", "wyrm", "stag"]
 DIRS = ["down", "up", "left", "right"]
 ANIMS = ["idle", "walk", "act"]
 IN_GAME = ["tusker", "pincer", "strawman"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
