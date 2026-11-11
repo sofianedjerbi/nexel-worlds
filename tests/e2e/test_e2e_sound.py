@@ -7,8 +7,8 @@ import pytest
 AUDIO = Path(__file__).parents[2] / "src" / "megastructure" / "web" / "audio" / "sfx.json"
 pytestmark = pytest.mark.skipif(not AUDIO.exists(), reason="no sounds built: uv run python tools/build_audio.py")
 
-ALL_LOADED = """sounds.manifest && [...sounds.buffers.values()].filter((b) => b instanceof AudioBuffer).length
-                === Object.values(sounds.manifest.sounds).flatMap((s) => s.files).length"""
+ALL_LOADED = """sounds.manifest && Object.values(sounds.manifest.sounds).flatMap((s) => s.files)
+                .every((f) => sounds.buffers.get(f) instanceof AudioBuffer)"""
 
 
 def played(game) -> set:
@@ -48,3 +48,19 @@ def test_muting_stops_new_sounds(game):
     game.hold(["d"], 600)
     assert game.js("sounds.voices + Object.keys(sounds.lastAt).length") == before
     game.press("m")
+
+
+def test_the_music_loops_in_the_background_and_m_silences_it(game):
+    if not game.js("sounds.manifest ? !!sounds.manifest.music : null"):
+        game.wait("sounds.manifest", 20000)
+    if not game.js("!!sounds.manifest.music"):
+        pytest.skip("no music rendered: uv run python music/compose.py, then tools/build_audio.py")
+    game.wait("music.node && music.node.loop && music.node.buffer.duration > 60", 90000)
+    game.sleep(1500)
+    assert game.js("music.gain.gain.value") > 0.05             # fading in
+    game.press("m")
+    game.sleep(1500)
+    assert game.js("music.gain.gain.value") < 0.02             # faded out, still running
+    game.press("m")
+    game.sleep(1500)
+    assert game.js("music.gain.gain.value") > 0.05

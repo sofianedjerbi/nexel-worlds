@@ -4,11 +4,14 @@
 //   a sound itself            edit its generator in music/sfx.py, then `uv run python tools/build_audio.py`
 //   what an object sounds like when placed    edit music/sfx_map.json, then rebuild
 //   how loud a family is, how far sounds carry, how often one may repeat    edit SOUND below
+//   the music                 music/compose.py renders it; rebuild; its volume is SOUND.music
 //   when a sound plays        the call sites: sfx(name, x, y) for something in the world, sfx(name) for the player or the interface
 // A name that the build does not know is reported once in the console and stays silent (tests/test_audio.py catches it earlier).
 
 const SOUND = {
   master: .8,
+  music: .45,         // the background loop's volume (0 to turn it off); it fades in over musicFade seconds
+  musicFade: 4,
   mix: {Footsteps: .9, Work: 1, Breaking: 1, Building: 1, Items: .9, Progress: 1, Fights: 1, Animals: .9, World: .9, People: .8, Interface: .8},
   hearing: 12,        // tiles: a sound in the world further than this is not heard
   quietest: .15,      // volume at the edge of hearing (it fades linearly from 1)
@@ -41,7 +44,8 @@ for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!m
 function loadSounds() {
   if (!sounds.loading) sounds.loading = fetch("audio/sfx.json", {cache: "no-cache"})
     .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then((m) => { sounds.manifest = m; warmSounds(); })
+    .then((m) => { sounds.manifest = m; return warmSounds(); })
+    .then(startMusic)
     .catch(() => { console.info("no sound effects: run `uv run python tools/build_audio.py`"); setTimeout(() => sounds.loading = null, 15000); });
   return sounds.loading;
 }
@@ -61,6 +65,31 @@ async function warmSounds() {
   const files = Object.values(sounds.manifest.sounds).flatMap((s) => s.files);
   const worker = async () => { while (files.length) await loadSoundFile(files.shift()); };
   await Promise.all(Array.from({length: SOUND.loaders}, worker));
+}
+
+// The background loop: one buffer, looping sample-exact, on its own gain (the effects' limiter never pumps it).
+const music = {node: null, gain: null};
+async function startMusic() {
+  const m = sounds.manifest && sounds.manifest.music;
+  if (!m || music.node || muted || !SOUND.music) return;
+  const buf = await loadSoundFile(m.file);
+  if (!buf || music.node || muted) return;
+  const a = ac();
+  music.gain = a.createGain();
+  music.gain.gain.value = 0;
+  music.gain.gain.setTargetAtTime(SOUND.music, a.currentTime, SOUND.musicFade / 3);
+  music.node = a.createBufferSource();
+  music.node.buffer = buf;
+  music.node.loop = true;
+  music.node.connect(music.gain).connect(a.destination);
+  music.node.start();
+}
+// M: everything off or on. The music fades instead of stopping, so it comes back where it was.
+function setMuted(on) {
+  muted = on;
+  localStorage.setItem("megastructure-muted", on ? "1" : "0");
+  if (music.gain) music.gain.gain.setTargetAtTime(on ? 0 : SOUND.music, audio.currentTime, .3);
+  if (!on) { ac(); (sounds.loading || loadSounds()).then(startMusic); }
 }
 
 // Play a sound. With x, y it is in the world: quieter with distance, panned to its side, silent beyond SOUND.hearing

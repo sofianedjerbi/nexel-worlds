@@ -145,7 +145,7 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   "`": () => { selectItem(null); toast("Empty hands"); },
   c: () => { $("craftbtn").click(); if (isOpen("craft") && !craftFocus) craftKey("arrowright", {}); },
   b: () => toggleBag(),
-  m: () => { muted = !muted; localStorage.setItem("megastructure-muted", muted ? "1" : "0"); toast(muted ? "Sound off (M)" : "Sound on (M)"); },
+  m: () => { setMuted(!muted); toast(muted ? "Sound off (M)" : "Sound on (M)"); },
   h: () => $("helpbtn").click(),
   f3: () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; },
   t: () => openChat(),

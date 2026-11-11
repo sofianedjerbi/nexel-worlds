@@ -7,7 +7,8 @@ Sources of truth:
   music/sfx_map.json   which sound an item makes when placed ("place") and a ground when laid ("ground")
 Output (not committed: rebuild after changing either source):
   audio/<name>_<variant>.wav   16-bit stereo, 32 kHz
-  audio/sfx.json               the manifest the client reads: sounds, place (by block name), ground, version
+  audio/music.wav              the background loop, from music/site/audio/master.wav (render it with music/compose.py)
+  audio/sfx.json               the manifest the client reads: sounds, place (by block name), ground, music, version
 The build fails if a placeable item or a fillable ground has no sound, or the map names a sound that does not exist.
 """
 
@@ -79,11 +80,29 @@ def write_wav(path: Path, st: np.ndarray, rate: int):
         w.writeframes(pcm.tobytes())
 
 
+MASTER = MUSIC / "site" / "audio" / "master.wav"      # the rendered soundtrack (music/compose.py)
+
+
 def version() -> str:
     h = hashlib.sha1()
     for f in ("sfx.py", "sfx_map.json"):
         h.update((MUSIC / f).read_bytes())
+    if MASTER.exists():
+        h.update(f"{MASTER.stat().st_size}:{MASTER.stat().st_mtime_ns}".encode())
     return h.hexdigest()[:10]
+
+
+def build_music(out: Path) -> dict | None:
+    """The background loop, resampled like the effects. None (and a note) when it has not been rendered."""
+    if not MASTER.exists():
+        print("no music: render it first with `uv run python music/compose.py` (about 4 minutes)")
+        return None
+    with wave.open(str(MASTER)) as w:
+        sr, ch = w.getframerate(), w.getnchannels()
+        st = (np.frombuffer(w.readframes(w.getnframes()), "<i2").reshape(-1, ch).T / 32768).astype(np.float64)
+    st = resample(st, sr, RATE)
+    write_wav(out / "music.wav", st, RATE)
+    return {"file": "music.wav", "seconds": st.shape[1] / RATE}
 
 
 def build(out: Path = OUT) -> dict:
@@ -101,10 +120,12 @@ def build(out: Path = OUT) -> dict:
             write_wav(out / f, resample(sfx.render(name, v), sfx.SR, RATE), RATE)
             files.append(f)
         sounds[name] = {"files": files, "category": m["cat"], "pitch": bool(m["vary"])}   # tuned sounds are never re-pitched
-    manifest = {"version": version(), "rate": RATE, "sounds": sounds, "place": blocks, "ground": grounds}
+    manifest = {"version": version(), "rate": RATE, "sounds": sounds, "place": blocks, "ground": grounds,
+                "music": build_music(out)}
     (out / "sfx.json").write_text(json.dumps(manifest, indent=1))
-    size = sum(f.stat().st_size for f in out.glob("*.wav")) / 1e6
-    print(f"built {out.relative_to(ROOT)}: {len(sounds)} sounds, {sum(len(s['files']) for s in sounds.values())} files, {size:.1f} MB")
+    size = sum(f.stat().st_size for f in out.glob("*.wav") if f.name != "music.wav") / 1e6
+    music = f", music {(out / 'music.wav').stat().st_size / 1e6:.0f} MB" if manifest["music"] else ""
+    print(f"built {out.relative_to(ROOT)}: {len(sounds)} sounds, {sum(len(s['files']) for s in sounds.values())} files, {size:.1f} MB{music}")
     return manifest
 
 
