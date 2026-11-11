@@ -1,6 +1,6 @@
 """Quiet ambient loop to play under the game for 10-20 minutes. Cozy village x blocky meadow.
 
-Pure numpy, 48 kHz, 64 BPM, 48 bars = 180 s, seamless.
+Pure numpy, 48 kHz, 75 BPM, 48 bars = 154 s, seamless. The theme starts in bar 1.
 
   * one key (D major), one 8-bar progression, a chord per bar, never changes
   * a recognisable theme: a rising-fifth hook (D5 -> A5, short-long-short) heard three times per phrase,
@@ -8,7 +8,7 @@ Pure numpy, 48 kHz, 64 BPM, 48 bars = 180 s, seamless.
   * a rolling left-hand ostinato (3+3+2 accents) that carries the identity even without the theme
   * the theme plays in half the cycles; once doubled by a soft chiptune bell
   * layers on different cycle lengths (theme 8 bars, music box 12, glass swell 16): each pass differs a little
-  * no drums; -20 dBFS RMS; registers never overlap; clash check; all FX circular (no seam)
+  * no drums, just a soft off-beat shaker and a plucked bass pulse under the theme; moderate reverb, piano up front; registers never overlap; clash check; all FX circular (no seam)
 
     uv run python music/compose.py      # writes music/site/audio/*.wav + track.json
 """
@@ -20,7 +20,7 @@ import wave
 import numpy as np
 
 SR = 48000
-BPM = 64
+BPM = 75
 BEAT = 60 / BPM
 BARS = 48
 LOOP_S = BARS * 4 * BEAT
@@ -85,7 +85,7 @@ def felt_piano(f, dur, vel, t0):
     """Muffled felt piano: dark, slightly inharmonic, long natural ring, tiny stereo detune."""
     n = int((dur + 3.5) * SR)
     t = tt(n)
-    bright = 700 + 1100 * vel
+    bright = 1100 + 1800 * vel
     out = []
     for det in (-1.5, 1.5):
         ph = phase(f, n, t0, det / 100, wob=1.2)
@@ -99,7 +99,7 @@ def felt_piano(f, dur, vel, t0):
             y += amp * np.sin(fk * ph) * (0.6 * np.exp(-t / (tau * 0.3)) + 0.4 * np.exp(-t / tau))
         out.append(y)
     thump = fft_filter(rng.standard_normal(n), lp(500)) * np.exp(-t / 0.02) * 0.08
-    env = np.clip(t / 0.006, 0, 1) * np.where(t > dur, np.exp(-(t - dur) / 0.6), 1.0)
+    env = np.clip(t / 0.004, 0, 1) * np.where(t > dur, np.exp(-(t - dur) / 0.35), 1.0)
     return 0.34 * vel * np.stack([out[0] + thump, out[1] + thump]) * env
 
 
@@ -110,11 +110,11 @@ def pad(f, dur, vel, t0):
     voices = []
     for d in (-6, 0, 6):
         ph = phase(f, n, t0, d / 100)
-        voices.append(sum(np.sin(k * ph) / k / (1 + (k * f / 650) ** 2) for k in range(1, 10) if k * f < 4000))
+        voices.append(sum(np.sin(k * ph) / k / (1 + (k * f / 1000) ** 2) for k in range(1, 10) if k * f < 4000))
     l, r = voices[0] + 0.5 * voices[1], voices[2] + 0.5 * voices[1]
     r = np.roll(r, int(0.015 * SR))
-    env = np.clip(t / 3.0, 0, 1) ** 2 * np.where(t > dur, np.exp(-(t - dur) / 2.0), 1.0)
-    return 0.06 * vel * np.stack([l, r]) * env
+    env = np.clip(t / 0.9, 0, 1) ** 2 * np.where(t > dur, np.exp(-(t - dur) / 0.7), 1.0)
+    return 0.045 * vel * np.stack([l, r]) * env
 
 
 def swell(f, dur, vel, t0):
@@ -127,12 +127,26 @@ def swell(f, dur, vel, t0):
 
 
 def sub_bass(f, dur, vel, t0):
-    n = int((dur + 2.0) * SR)
+    """Round plucked bass: sine body plus a little 2nd/3rd harmonic so it reads on small speakers."""
+    n = int((dur + 0.6) * SR)
     t = tt(n)
     ph = phase(f, n, t0, wob=0.3)
-    y = np.sin(ph) + 0.1 * np.sin(2 * ph)
-    env = np.clip(t / 0.6, 0, 1) * np.where(t > dur, np.exp(-(t - dur) / 0.9), 1.0)
-    return 0.32 * vel * y * env
+    y = np.sin(ph) + 0.28 * np.sin(2 * ph) * np.exp(-t / 0.25) + 0.1 * np.sin(3 * ph) * np.exp(-t / 0.12)
+    env = np.clip(t / 0.01, 0, 1) * np.exp(-t / 1.1) * np.where(t > dur, np.exp(-(t - dur) / 0.12), 1.0)
+    return 0.4 * vel * y * env
+
+
+def _shaker():
+    n = int(0.1 * SR)
+    t = tt(n)
+    return fft_filter(rng.standard_normal(n), bp(4500, 10000)) * np.clip(t / 0.012, 0, 1) * np.exp(-t / 0.03) * 0.06
+
+
+SHAKERS = [_shaker() for _ in range(8)]
+
+
+def shaker(f, dur, vel, t0):
+    return vel * SHAKERS[rng.integers(len(SHAKERS))]
 
 
 def music_box(f, dur, vel, t0):
@@ -214,12 +228,12 @@ THEME = [  # per bar: (slot, length in eighths, note)
 OSTINATO = [(0, "r", 1.0), (1, "fifth", 0.7), (2, "color", 0.65), (3, "third", 0.85),
             (4, "color", 0.6), (5, "fifth", 0.6), (6, "third", 0.8), (7, "color", 0.55)]
 
-PLAN = ["ostinato", "theme", "theme+chip", "open", "theme", "fragments"]   # one entry per 8-bar cycle
-SECTION_NAMES = ["ostinato", "theme", "theme + chip", "open space", "theme", "fragments"]
+PLAN = ["theme", "theme+chip", "open", "theme", "chip solo", "fragments"]   # one entry per 8-bar cycle
+SECTION_NAMES = ["theme", "theme + chip", "breather", "theme", "chip solo", "fragments"]
 
 # ------------------------------------------------------------------ arrangement
 
-STEMS = ["piano", "chip", "pad", "bass", "musicbox", "air"]
+STEMS = ["piano", "chip", "pad", "bass", "musicbox", "texture"]
 events = []  # (t, dur, midi, vel, inst, pan, stem, rev, echo)
 
 
@@ -238,42 +252,55 @@ for bar in range(BARS):
     plan = PLAN[cyc]
 
     # theme
-    if plan in ("theme", "theme+chip") or (plan == "fragments" and i in (0, 2, 4)):
+    themed = plan in ("theme", "theme+chip", "chip solo")
+    if themed or (plan == "fragments" and i in (0, 2, 4)):
         for slot, ln, n in THEME[i]:
             if plan == "fragments" and slot > 2:
                 ln = ln + 2   # let the hook ring out, then nothing
-            note(s0 + slot, ln, midi(n), 0.55 if plan != "fragments" else 0.45, felt_piano, "piano", 0.1,
-                 rev=0.4, echo=0.18 if cyc == 4 else 0.1)
-            if plan == "theme+chip":
-                note(s0 + slot, ln, midi(n), 0.75, chip_bell, "chip", 0.25, rev=0.4, echo=0.35)
+            if plan != "chip solo":
+                note(s0 + slot, ln, midi(n), 0.7 if plan != "fragments" else 0.5, felt_piano, "piano", 0.1,
+                     rev=0.22, echo=0.08)
+            if plan in ("theme+chip", "chip solo"):
+                note(s0 + slot, ln, midi(n), 0.75 if plan == "theme+chip" else 1.0, chip_bell, "chip", 0.2,
+                     rev=0.25, echo=0.22)
             if plan == "fragments" and slot > 2:
                 break
 
     # left-hand ostinato, pedal held through the bar; softer under the theme and in the open section
     lh = dict(zip(("r", "fifth", "color", "third"), lh_notes(ch)))
-    level = {"ostinato": 0.36, "theme": 0.28, "theme+chip": 0.27, "open": 0.3, "fragments": 0.3}[plan]
+    level = {"theme": 0.27, "theme+chip": 0.26, "chip solo": 0.3, "open": 0.32, "fragments": 0.3}[plan]
     for slot, which, acc in OSTINATO:
         if plan == "open" and slot % 2:
             continue   # half the notes: the figure breathes
-        note(s0 + slot, 8 - slot, lh[which], level * acc, felt_piano, "piano", -0.35 + 0.08 * slot, rev=0.42)
+        note(s0 + slot, 8 - slot, lh[which], level * acc, felt_piano, "piano", -0.35 + 0.08 * slot, rev=0.25)
 
     for m in pad_voicing(ch):
-        note(s0, 8, m, 0.8, pad, "pad", 0.0, rev=0.55, human=False)
-    note(s0, 7.5, place(pcs(ch)[0], 33), 0.75, sub_bass, "bass", 0.0, rev=0.05, human=False)
+        note(s0, 8, m, 0.8, pad, "pad", 0.0, rev=0.35, human=False)
+
+    # bass: a gentle pulse on beats 1 and 3 (root, then fifth on the chord's way out)
+    root = place(pcs(ch)[0], 33)
+    note(s0, 3, root, 0.8, sub_bass, "bass", 0.0, rev=0.05, human=False)
+    if plan != "open":
+        note(s0 + 4, 2, root + 7 if i % 2 else root, 0.6, sub_bass, "bass", 0.0, rev=0.05, human=False)
+
+    # a soft off-beat shaker while the theme plays: a little bounce, nothing more
+    if themed:
+        for slot in (1, 3, 5, 7):
+            note(s0 + slot, 1, 60, 0.9 if slot in (3, 7) else 0.6, shaker, "texture", 0.35, rev=0.1)
 
 # music box: a 12-bar cycle against the 8-bar harmony, answering the hook from far away
 BOX = [(1, 4, "A5"), (1, 6, "D6"), (5, 4, "A5"), (9, 2, "D6"), (9, 4, "B5")]   # (bar in 12, slot, note)
 for rep in range(BARS // 12):
     for b, slot, n in BOX:
         bar = rep * 12 + b
-        if PLAN[bar // 8] in ("theme", "theme+chip") and slot >= 4:
+        if PLAN[bar // 8] in ("theme", "theme+chip", "chip solo") and slot >= 4:
             continue   # keep out of the theme's way
         note(bar * 8 + slot, 2, midi(n), 0.55, music_box, "musicbox", rng.uniform(-0.8, 0.8), rev=0.8, echo=0.5)
 
-# high swell: a 16-bar cycle, floating very far away
-for rep in range(BARS // 16):
-    note(rep * 128 + 24 * 8, 40, midi("F#5"), 0.9, swell, "air", -0.4, rev=0.9, human=False)
-    note(rep * 128 + 24 * 8 + 4, 36, midi("A5"), 0.7, swell, "air", 0.4, rev=0.9, human=False)
+# high glass swell, far away
+for start in (16, 40):   # only in the breathers
+    note(start * 8, 40, midi("F#5"), 0.9, swell, "texture", -0.4, rev=0.7, human=False)
+    note(start * 8 + 4, 36, midi("A5"), 0.7, swell, "texture", 0.4, rev=0.7, human=False)
 
 
 # ------------------------------------------------------------------ checks
@@ -283,7 +310,7 @@ def clash_report():
     held = [(t, t + d, m) for t, d, m, v, inst, *_ in events if inst in (pad, felt_piano, sub_bass) and m < 69]
     bad = []
     for t, d, m, v, inst, pan, stem, *_ in events:
-        if not (stem in ("musicbox", "air", "chip") or (inst is felt_piano and m >= 69)):
+        if inst is shaker or not (stem in ("musicbox", "texture", "chip") or (inst is felt_piano and m >= 69)):
             continue
         in_chord = m % 12 in pcs(chord_at_bar(int(t / (4 * BEAT))))
         for a, b, h in held:
@@ -321,7 +348,7 @@ def echo_fx(mono, beats=1.5, fb=0.5):
     return 0.5 * np.stack([np.fft.irfft(x * z / (1 - z ** 2), LOOP_N), np.fft.irfft(x * z ** 2 / (1 - z ** 2), LOOP_N)])
 
 
-def make_ir(seconds=9.0, tau_dark=1.3, tau_bright=0.4, predelay=0.04):
+def make_ir(seconds=5.0, tau_dark=0.55, tau_bright=0.22, predelay=0.025):
     n = int(seconds * SR)
     t = tt(n)
     irs = []
@@ -341,7 +368,7 @@ def wind_bed():
     t = np.arange(LOOP_N) / SR
     air = circ(rng.standard_normal((2, LOOP_N)), lambda f: bp(150, 1100)(f) / np.sqrt(np.maximum(f, 20) / 150))
     breathe = 0.5 + 0.5 * np.sin(2 * np.pi * 4 / LOOP_S * t) * np.sin(2 * np.pi * 9 / LOOP_S * t + 0.7)
-    return 0.025 * air / np.abs(air).max() * breathe
+    return 0.012 * air / np.abs(air).max() * breathe
 
 
 def limiter_gain(x, ceil=0.9, block=48):
@@ -374,7 +401,7 @@ def render():
             b["echo"][:, i:i + y.shape[1]] += es * y
 
     irs = make_ir()
-    plane = {"piano": (1.0, 7000), "chip": (0.85, 6000), "pad": (0.75, 2500), "bass": (1.0, 1200), "musicbox": (0.3, 3800), "air": (0.4, 5000)}
+    plane = {"piano": (1.0, 7000), "chip": (0.85, 6000), "pad": (0.75, 3500), "bass": (1.0, 1200), "musicbox": (0.45, 4500), "texture": (0.9, 10000)}
     stems = {}
     for s in STEMS:
         b = {k: fold(v) for k, v in buses[s].items()}
@@ -382,18 +409,18 @@ def render():
         send = circ(b["rev"] + 0.5 * echo, hp(180, 1))
         wet = np.stack([np.fft.irfft(np.fft.rfft(send[c]) * irs[c], LOOP_N) for c in range(2)])
         dry_amt, dark = plane[s]
-        stems[s] = dry_amt * circ(b["dry"], lp(dark, 1)) + echo + 1.15 * wet
-    stems["air"] = stems["air"] + wind_bed()
+        stems[s] = dry_amt * circ(b["dry"], lp(dark, 1)) + echo + 0.7 * wet
+    stems["texture"] = stems["texture"] + wind_bed()
 
     stems["bass"] = circ(stems["bass"], lambda f: hp(30, 2)(f) * lp(900, 2)(f))
     for s in ("piano", "chip", "pad", "musicbox"):
-        stems[s] = circ(stems[s], hp(80, 1))
-    gains = {"piano": 1.0, "chip": 0.9, "pad": 0.8, "bass": 0.7, "musicbox": 0.85, "air": 0.9}
+        stems[s] = circ(stems[s], hp(110, 1))
+    gains = {"piano": 1.0, "chip": 1.3, "pad": 0.8, "bass": 0.7, "musicbox": 0.8, "texture": 0.9}
     for s in STEMS:
         stems[s] = circ(stems[s] * gains[s], lambda f: hp(25, 2)(f) * lp(13000, 2)(f))
 
     pre = sum(stems.values())
-    norm = 10 ** (-20 / 20) / np.sqrt(np.mean(pre ** 2))
+    norm = 10 ** (-19 / 20) / np.sqrt(np.mean(pre ** 2))
     g = limiter_gain(pre * norm)
     for s in STEMS:
         stems[s] = stems[s] * norm * g
@@ -420,7 +447,7 @@ if __name__ == "__main__":
     write_wav(OUT / "master.wav", master)
     for s, x in stems.items():
         write_wav(OUT / f"stem_{s}.wav", x)
-    meta = {"title": "Meadow Afternoon", "bpm": BPM, "key": "D major", "mood": "quiet ambient", "bars": BARS,
+    meta = {"title": "Meadow Afternoon", "bpm": BPM, "key": "D major", "mood": "cozy ambient", "bars": BARS,
             "seconds": LOOP_S, "beats_per_hop": 2,
             "sections": [{"id": str(k + 1), "name": nm, "bar": k * 8, "t": k * 32 * BEAT} for k, nm in enumerate(SECTION_NAMES)],
             "stems": STEMS}

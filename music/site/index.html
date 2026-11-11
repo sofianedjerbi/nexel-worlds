@@ -98,12 +98,12 @@
   <section class="card">
     <h2>How it's made</h2>
     <div class="notes">
-      <div><b>Hook:</b> a rising fifth, D up to A, in a short-long-short rhythm. Three times per phrase, so it sticks.</div>
-      <div><b>Shape:</b> call and answer. The first answer goes low, the second reaches once to B, then it rests on a sus chord that pulls home.</div>
-      <div><b>Ostinato:</b> a rolling left-hand figure, accents in 3+3+2. It carries the identity even when the theme is resting.</div>
-      <div><b>Chiptune:</b> a soft filtered pulse bell doubles the theme in cycle 3. Far music box, glass swells, wind.</div>
-      <div><b>Long play:</b> 64 BPM, no drums, theme in half the cycles. Layers on 8/12/16-bar cycles, so each pass differs a little.</div>
-      <div><b>Checks:</b> one key, registers never overlap, no clashing notes. Seamless 180 s loop. <a href="audio/master.wav" download>Download</a></div>
+      <div><b>Hook first:</b> the theme starts in bar 1 and comes back every 30 to 40 s. A rising fifth, D up to A, short-long-short.</div>
+      <div><b>Shape:</b> call and answer. The first answer goes low, the second reaches once to B, then rests on a sus chord that pulls home.</div>
+      <div><b>Awake, not sleepy:</b> 75 BPM, a shorter, drier room, piano up front, a light pad, a plucked bass pulse, a soft off-beat shaker.</div>
+      <div><b>Chiptune:</b> a soft pulse bell doubles the theme in section 2 and leads alone in section 5.</div>
+      <div><b>Long play:</b> two breathers without the theme. Music box on a 12-bar cycle, so each pass differs a little.</div>
+      <div><b>Checks:</b> one key, registers never overlap, no clashing notes. Seamless 154 s loop. <a href="audio/master.wav" download>Download</a></div>
     </div>
   </section>
 </main>
@@ -111,11 +111,11 @@
 <script>
 const STEM_INFO = {
   piano:    { what: "felt piano: the theme and the rolling left hand", color: "#e48a7a" },
-  chip:     { what: "soft chiptune bell, doubles the theme once",      color: "#e6b44f" },
-  pad:      { what: "warm dark pad",                                   color: "#8fb3e0" },
-  bass:     { what: "deep soft sine",                                  color: "#8d6bb5" },
+  chip:     { what: "soft chiptune bell, doubles then leads",          color: "#e6b44f" },
+  pad:      { what: "light warm pad",                                  color: "#8fb3e0" },
+  bass:     { what: "round plucked bass, beats 1 and 3",               color: "#8d6bb5" },
   musicbox: { what: "far music box, 12-bar cycle",                     color: "#5fb8b0" },
-  air:      { what: "wind bed, high glass swells",                     color: "#6fae78" },
+  texture:  { what: "off-beat shaker, wind, glass swells",             color: "#6fae78" },
 };
 const SEC_COLORS = { 1: "#d9e8d0", 2: "#f7e0a3", 3: "#f4c6b6", 4: "#cfe0f0", 5: "#f7e0a3", 6: "#e3d6ef" };
 const SEC_RGB = { 1: [217,232,208], 2: [247,224,163], 3: [244,198,182], 4: [207,224,240], 5: [247,224,163], 6: [227,214,239] };
