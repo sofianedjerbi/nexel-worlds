@@ -42,3 +42,18 @@ The game music is rendered by `music/compose.py` (pure numpy) into `music/site/a
 - context matters more than polish: the game used to give 21 different placeable things one "wood knock", so a rug, a bed or a pot
   sounded like knocking on a door. Building now has one sound per object family (post, planks, stone, furniture, soft, pot, fire,
   boat, floor, path, earth); `music/sfx_map.json` says which object plays which sound, and the page has a "by object" panel to check it.
+
+## Footsteps and ground impacts (after "cobblestone sounds like a xylophone")
+
+Research: L. Turchet, "Footstep sounds synthesis", Applied Acoustics 107 (2016); P. Cook's PhISM (physically informed stochastic models);
+A. Farnell, "Marching onwards: procedural synthetic footsteps". What they agree on, and what `sfx.py` now does:
+- a step is driven by the ground reaction force: a smooth heel bump, then a smaller toe bump 60-100 ms later (`grf`).
+  Soft soles mean a smooth attack. Never hit the ground with a sub-millisecond impulse: that is a mallet, and it rings like a xylophone.
+- solid floors (wood, cobble): about 6 heavily damped modes driven by the force (`force_modes`), plus a white-noise burst at heel and toe,
+  proportional to the force (`contact_noise`). On cobble, the noise and the grit carry the sound; the stones barely ring.
+- loose ground (grass, soil, gravel, a path being laid): no resonating body; Poisson particle collisions whose rate follows the force,
+  each a very short resonance (`phism`), in two or three layers for different grain sizes.
+- water: the force times low-passed noise, plus bubbles at f0 = 3/r rising as they decay, radii from a power law (`bubble`).
+- stones and pots rest on something that soaks the ring up: high loss factor or `damp`.
+- `uv run python music/ringcheck.py` flags any realistic sound whose energy after 30 ms sits in narrow peaks (a "xylophone" score).
+  It must stay near 0 for footsteps, work, breaking and building; only chimes, voices, bubbles and hinges may be tonal.

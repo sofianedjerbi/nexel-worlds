@@ -116,11 +116,11 @@ def modes(n, freqs, taus, amps, attack=0.0005):
 MATERIALS = {   # (lowest mode, highest mode, modes, loss factor eta, contact ms, contact brightness Hz)
     "wood": (110, 3200, 32, 0.035, 1.2, 6000),
     "hollow": (90, 2400, 32, 0.03, 1.5, 5000),     # boards over air: floors, chests, boats
-    "stone": (380, 7500, 32, 0.012, 0.35, 12000),
+    "stone": (380, 7500, 40, 0.07, 0.5, 9000),        # rocks rest on the ground: rings only a few ms
     "metal": (1400, 8500, 12, 0.0015, 0.2, 14000),
     "body": (55, 650, 24, 0.14, 4.0, 2500),       # flesh, fur, a sack: heavily damped, dull contact
     "dirt": (60, 700, 16, 0.3, 6.0, 1800),
-    "ceramic": (480, 6500, 24, 0.006, 0.4, 9000),  # a clay pot: rings a little longer than stone
+    "ceramic": (480, 6500, 32, 0.025, 0.5, 8000),  # a clay pot full of soil: a short, dull clink
 }
 
 
@@ -142,6 +142,76 @@ def impact(c, n, material, size=1.0, hardness=1.0, brightness=1.0, damp=1.0):
     y = np.convolve(excite, ir)[:n]
     y += 0.25 * np.pad(excite, (0, max(0, n - cn)))[:n]          # the contact itself
     return tail(y / (np.abs(y).max() + 1e-9))
+
+
+def grf(n, heel=0.0, toe=0.075, toe_amp=0.6, soft=1.0, c=None):
+    """Ground reaction force of one step: a smooth heel bump, then a smaller toe bump.
+    soft > 1 = softer sole (slower, rounder attack). Values follow Turchet 2016, fig. 2 (walking steps ~0.1-0.18 s)."""
+    t = tt(n)
+    out = np.zeros(n)
+    for at, amp, tau in ((heel, 1.0, 0.006 * soft), (toe, toe_amp, 0.008 * soft)):
+        if c is not None:
+            at += c.u(-0.008, 0.008)
+            amp *= c.u(0.85, 1.1)
+        x = np.clip(t - at, 0, None) / tau
+        out += amp * x ** 2 * np.exp(2 - 2 * x) * (t >= at)   # peaks at 1 when t = at + tau
+    return out
+
+
+def force_modes(c, n, force, lo, hi, count=6, tau=(0.004, 0.02)):
+    """Impact model driven 'in force': a few damped modes of the floor, excited by the foot's force curve.
+    A smooth force excites only the low modes, which is what keeps a step from sounding like a mallet."""
+    t = tt(N(0.25))
+    ir = np.zeros(len(t))
+    for _ in range(count):
+        f = np.exp(c.u(np.log(lo), np.log(hi)))
+        ir += c.u(0.4, 1) * np.sin(2 * np.pi * f * t + c.u(0, 6.28)) * np.exp(-t / c.u(*tau))
+    y = np.convolve(np.diff(force, prepend=0), ir)[:n]   # the floor answers to changes of force
+    return y / (np.abs(y).max() + 1e-9)
+
+
+def contact_noise(c, n, force, lo, hi):
+    """The white-noise burst at heel and toe strikes, proportional to the exciter (Turchet 2016, 3.2.2)."""
+    drive = np.clip(np.diff(force, prepend=0), 0, None)
+    drive = np.convolve(drive, np.exp(-tt(N(0.02)) / 0.004))[:n]
+    y = fft_filter(c.noise(n), bp(lo, hi)) * drive
+    return y / (np.abs(y).max() + 1e-9)
+
+
+def phism(c, n, energy, rate, freq, decay, jitter=0.35):
+    """Cook's physically informed stochastic model: particle collisions as a Poisson process whose rate follows
+    the input energy; each collision rings a very short resonance near freq (gravel, soil, grass, leaves)."""
+    e = energy / (energy.max() + 1e-9)
+    p = np.clip(rate * e / SR, 0, 1)
+    hits = np.nonzero(c.rng.uniform(size=n) < p)[0]
+    y = np.zeros(n)
+    g = N(decay * 6)
+    tg = tt(g)
+    for h in hits:
+        f = freq * np.exp(jitter * c.rng.standard_normal())
+        grain = np.sin(2 * np.pi * f * tg + c.u(0, 6.28)) * np.exp(-tg / decay)
+        m = min(g, n - h)
+        y[h:h + m] += e[h] * c.u(0.2, 1) * grain[:m]
+    return y / (np.abs(y).max() + 1e-9)
+
+
+def fractal_noise(c, n, beta=1.0):
+    """1/f^beta noise: rubbing and brushing textures (roughness)."""
+    spec = np.fft.rfft(c.noise(n))
+    f = np.fft.rfftfreq(n, 1 / SR)
+    spec *= 1 / np.maximum(f, 40) ** (beta / 2)
+    y = np.fft.irfft(spec, n)
+    return y / (np.abs(y).max() + 1e-9)
+
+
+def bubble(c, r_mm, amp=1.0):
+    """One bubble: Minnaert f0 = 3/r, rising as it decays: f(t) = f0 (1 + 0.1 d t), d = 0.13/r + 0.0072 r^-1.5."""
+    r = r_mm / 1000
+    f0 = 3 / r
+    d = 0.13 / r + 0.0072 * r ** -1.5
+    n = N(min(0.2, 6 / d))
+    t = tt(n)
+    return amp * np.sin(2 * np.pi * np.cumsum(f0 * (1 + 0.1 * d * t)) / SR) * np.exp(-d * t)
 
 
 def grains(c, n, count, dur_ms, lo, hi, spread=None, decay=None, amp_jitter=0.6):
@@ -257,47 +327,54 @@ def sfx(name, cat, when, variants=1, loud=0.5):
 
 @sfx("step", "Footsteps", "walking on grass and soil", 4, 0.14)
 def _(c):
-    n = N(0.16)
-    thump = fft_filter(c.noise(n), lp(260)) * env_exp(n, 0.025, 0.004)
-    crunch = grains(c, n, 14, 6, 600, 3200, spread=0.05) * np.exp(-tt(n) / 0.05)
-    return thump * 1.4 + crunch * 0.7
+    n = N(0.22)
+    force = grf(n, soft=1.6, c=c)
+    blades = phism(c, n, force, rate=2500, freq=3200, decay=0.0012, jitter=0.5)   # grass blades bending, snapping
+    crumbs = phism(c, n, force, rate=500, freq=900, decay=0.003)                 # crumbs of soil
+    earth = fft_filter(np.diff(force, prepend=0) * 60, lp(220))                # the soft earth gives a little
+    return 0.55 * blades + 0.45 * crumbs + 0.6 * earth / (np.abs(earth).max() + 1e-9)
 
 
 @sfx("tock", "Footsteps", "walking on wooden floors, bridges and boats", 4, 0.16)
 def _(c):
-    n = N(0.18)
-    heel = impact(c, n, "hollow", size=c.u(0.9, 1.15), hardness=0.8)
-    scuff = fft_filter(c.noise(n), bp(500, 3000)) * env_exp(n, 0.012, 0.002)
-    return heel + 0.25 * scuff
+    n = N(0.24)
+    force = grf(n, soft=1.3, c=c)
+    boards = force_modes(c, n, force, 140, 900, count=6, tau=(0.012, 0.035))   # a plank floor: low, short
+    noise = contact_noise(c, n, force, 500, 4000)
+    return boards + 0.5 * noise
 
 
 @sfx("click", "Footsteps", "walking on cobblestone", 4, 0.14)
 def _(c):
-    n = N(0.14)
-    tap = impact(c, n, "stone", size=c.u(1.2, 1.6), hardness=0.7)
-    grit = grains(c, n, 10, 4, 1500, 7000, spread=0.035) * np.exp(-tt(n) / 0.03)
-    return 0.8 * tap + 0.6 * grit
+    n = N(0.22)
+    force = grf(n, soft=1.1, c=c)
+    stone = force_modes(c, n, force, 500, 2500, count=6, tau=(0.002, 0.006))   # set stones barely ring
+    noise = contact_noise(c, n, force, 900, 7000)                                # the sole meeting hard stone
+    grit = phism(c, n, force, rate=900, freq=4500, decay=0.0007, jitter=0.4)    # sand between the cobbles
+    scuff = fractal_noise(c, n, 1.0) * np.exp(-((tt(n) - 0.11) / 0.02) ** 2)    # a little brush at toe-off
+    return 0.45 * stone + 0.8 * noise + 0.35 * grit + 0.2 * fft_filter(scuff, bp(500, 6000))
 
 
 @sfx("wade", "Footsteps", "wading through shallow water", 4, 0.16)
 def _(c):
-    n = N(0.32)
-    sw = swept_noise(c, n, 700, 2500, 0.5) * env_exp(n, 0.08, 0.02)
-    y = sw
-    for _ in range(4):   # bubbles: tiny rising sines
-        bn = N(c.u(0.02, 0.05))
-        f = c.u(500, 1300)
-        bub = np.sin(2 * np.pi * np.cumsum(f * (1 + 2.5 * tt(bn) / (bn / SR))) / SR) * np.exp(-tt(bn) / 0.015)
-        place(y, 0.4 * bub, c.u(0.03, 0.2))
+    n = N(0.45)
+    force = grf(n, soft=2.5, toe=0.1, c=c)
+    push = fft_filter(c.noise(n), lp(1800)) * force                              # exciter x low-passed noise
+    y = 0.6 * push
+    for _ in range(int(c.u(10, 18))):                                            # bubbles, radii by a power law
+        r = 1.0 * c.u(0.05, 1) ** (-1 / 1.6)
+        place(y, bubble(c, min(r, 8), amp=c.u(0.05, 0.25)), c.u(0.01, 0.3))
     return y
 
 
 @sfx("thud", "Footsteps", "landing after a hop down a level; striking wood or stone bare-handed", 3, 0.3)
 def _(c):
-    n = N(0.22)
-    body = impact(c, n, "body", size=c.u(0.9, 1.2))
-    ground = impact(c, n, "dirt", size=1.3)
-    return body + 0.7 * ground
+    n = N(0.25)
+    force = grf(n, toe=0.012, toe_amp=0.9, soft=1.4, c=c)                       # a jump: heel and toe land together
+    earth = fft_filter(np.diff(force, prepend=0), lp(180))
+    body = impact(c, n, "body", size=c.u(1.0, 1.3))
+    crunch = phism(c, n, force, rate=1500, freq=1500, decay=0.002)
+    return earth / (np.abs(earth).max() + 1e-9) + 0.5 * body + 0.35 * crunch
 
 
 # --- working the land ------------------------------------------------------------------------
@@ -315,9 +392,9 @@ def _(c):
 def _(c):
     n = N(0.45)
     rock = impact(c, n, "stone", size=c.u(0.7, 1.0), hardness=2.5)
-    ring = impact(c, n, "metal", size=c.u(0.9, 1.1), hardness=2.0) * env_exp(n, 0.12)   # the pick head rings briefly
-    grit = grains(c, n, 25, 4, 1500, 7000, decay=0.05)
-    return rock + 0.22 * ring + 0.45 * grit
+    ring = impact(c, n, "metal", size=c.u(0.9, 1.1), hardness=2.0) * env_exp(n, 0.04)   # the pick head rings briefly
+    grit = phism(c, n, env_exp(n, 0.05, 0.001), rate=1500, freq=3500, decay=0.0008)      # chips fly
+    return rock + 0.08 * ring + 0.45 * grit
 
 
 @sfx("dig", "Work", "a shovel in soil, digging a hole", 4, 0.4)
@@ -401,9 +478,9 @@ def _(c):
 @sfx("clack", "Building", "fallback: any other stone thing is set down", 3, 0.38)
 def _(c):
     n = N(0.28)
-    y = impact(c, n, "stone", size=c.u(1.3, 1.7), hardness=1.0)
-    place(y, impact(c, N(0.1), "stone", size=c.u(1.4, 1.8)) * 0.4, c.u(0.025, 0.045))   # it rocks and settles
-    return y
+    y = impact(c, n, "stone", size=c.u(1.3, 1.7), hardness=1.0, damp=6.0)
+    place(y, impact(c, N(0.1), "stone", size=c.u(1.4, 1.8), damp=6.0) * 0.4, c.u(0.025, 0.045))   # it rocks and settles
+    return y + 0.3 * phism(c, n, env_exp(n, 0.03, 0.001), rate=600, freq=3500, decay=0.0008)   # grit underneath
 
 
 @sfx("plant", "Building", "planting a seed or a sapling", 2, 0.35)
@@ -419,8 +496,8 @@ def _(c):
 def _(c):
     n = N(0.45)
     y = impact(c, n, "dirt", size=1.1) * 0.8                                   # the post bites into the soil
-    place(y, impact(c, N(0.15), "wood", size=c.u(0.6, 0.75), hardness=2.0) * 0.9, 0.0)    # tap
-    place(y, impact(c, N(0.15), "wood", size=c.u(0.6, 0.75), hardness=2.0) * 0.6, c.u(0.15, 0.19))   # tap
+    place(y, impact(c, N(0.15), "wood", size=c.u(1.2, 1.5), hardness=0.8, damp=2.5) * 0.9, 0.0)    # tap
+    place(y, impact(c, N(0.15), "wood", size=c.u(1.2, 1.5), hardness=0.8, damp=2.5) * 0.6, c.u(0.15, 0.19))   # tap
     return y + 0.4 * grains(c, n, 20, 6, 250, 2000, decay=0.06)
 
 
@@ -507,13 +584,12 @@ def _(c):
 
 @sfx("place_path", "Building", "cobbles are set into a path", 3, 0.35)
 def _(c):
-    n = N(0.35)
-    y = np.zeros(n)
-    at = 0.0
-    for k in range(3):
-        place(y, impact(c, N(0.1), "stone", size=c.u(0.9, 1.3), hardness=1.0) * c.u(0.6, 1.0), at)
-        at += c.u(0.035, 0.07)
-    return y + 0.35 * grains(c, n, 25, 4, 400, 3000, decay=0.06)
+    n = N(0.4)
+    energy = np.exp(-((tt(n) - 0.08) / 0.06) ** 2)
+    clatter = phism(c, n, energy, rate=120, freq=1800, decay=0.002, jitter=0.5)   # stones knocking each other
+    grit = phism(c, n, energy, rate=900, freq=4000, decay=0.0007)
+    bed = fft_filter(c.noise(n), lp(300)) * energy                              # bedded into sand
+    return clatter + 0.35 * grit + 0.5 * bed / (np.abs(bed).max() + 1e-9)
 
 
 @sfx("fill_dirt", "Building", "earth is shovelled into a hole, a field or the water", 2, 0.35)
@@ -585,12 +661,14 @@ def _(c):
 
 @sfx("loot", "Items", "a dropped item lands and bounces", 3, 0.25)
 def _(c):
-    n = N(0.45)
+    n = N(0.4)
     y = np.zeros(n)
     at, v = 0.0, 1.0
-    for k in range(3):   # each bounce lower and sooner
-        place(y, impact(c, N(0.08), "wood", size=0.45, hardness=1.5) * v, at)
-        at += 0.12 * (0.6 ** k)
+    for k in range(3):
+        sn = N(0.06)
+        hitf = np.exp(-((tt(sn) - 0.004) / 0.003) ** 2)
+        place(y, (impact(c, sn, "dirt", size=0.6, hardness=1.5) + 0.4 * phism(c, sn, hitf, 1500, 3000, 0.001)) * v, at)
+        at += 0.11 * (0.6 ** k)
         v *= 0.45
     return y
 
