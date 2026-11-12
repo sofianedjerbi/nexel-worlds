@@ -18,7 +18,7 @@ def test_you_swim_across_water_of_every_depth_and_leave_a_wake(game):
     game.rpc("dev_race", race="bunny")
     game.act("wear", item="straw_hat"); game.sleep(900)
     assert not mine(game, "swimsAt(p, p.e)")
-    layer = game.js("(() => { const b = [...blocks.values()].find((b) => b.water && b.water.any); return b ? [b.water.canvas.width, b.water.foam.length > 0] : null; })()")
+    layer = game.js("(() => { const b = [...blocks.values()].find((b) => b.water && b.water.any && b.water.foam.length > 0); return b ? [b.water.canvas.width, true] : null; })()")   # (the block the pond is in, not any block with water)
     assert layer == [512, True]                                # the water layer is built, with foam along the shore
     assert game.js("[depthAt(%d, %d), depthAt(%d, %d), depthAt(%d, %d)]" % (s["x"] + 2, s["y"], s["x"] + 5, s["y"], s["x"] + 9, s["y"])) == [1, 2, 4]
     if SHOT:
@@ -56,6 +56,7 @@ def test_swimming_sounds_like_swimming_not_like_walking(game):
     game.hold(["d"], 800)                                      # swimming on
     heard = set(game.js("Object.keys(sounds.lastAt)"))
     assert "swim" in heard and not heard & {"step", "wade", "water"}, sorted(heard)
+    game.sleep(600)                                            # (the stroke that carries you onto the tile you were entering)
     game.js("sounds.lastAt = {}")
     game.sleep(1200)                                           # treading water: nothing
     assert not set(game.js("Object.keys(sounds.lastAt)")) & {"swim", "step", "wade", "water"}

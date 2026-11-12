@@ -24,7 +24,7 @@ class Views:
                  "run": bool(a.action.args.get("run")) if a.action else False, "sail": a.sailing, "z": self.sim.height(a),
                  **({"worn": a.worn} if a.worn else {}), **({"race": a.race} if a.race != "cat" else {}), **({"swim": True} if self.sim.swimming(a) else {}), **({"vn": a.via_done} if a.via_done else {})}
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
-        ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "hp": c.hp, "love": c.love > self.sim.tick, "scared": c.scared > self.sim.tick,
+        ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "z": self.sim.height(c), "hp": c.hp, "love": c.love > self.sim.tick, "scared": c.scared > self.sim.tick,
                   **({"act": c.mode, "dir": list(c.dir), "run": c.mode == "charge"} if c.kind in WILD else {})}
                  for c in self.sim.creatures.values() if x <= c.x < x + w and y <= c.y < y + h]
         return ents

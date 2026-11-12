@@ -48,7 +48,7 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
         spawned = None
         if msg.get("kind") in CREATURES:
             c = Creature(sim.next_creature, msg["kind"], agent.x + int(msg.get("dx", 1)), agent.y + int(msg.get("dy", 0)),
-                         CREATURES[msg["kind"]]["hp"], cooldown=int(msg.get("still", 0)))
+                         CREATURES[msg["kind"]]["hp"], z=sim.height(agent), cooldown=int(msg.get("still", 0)))   # (at your height, or the ground under it)
             sim.next_creature += 1
             sim.creatures[c.id] = c
             spawned = c.id

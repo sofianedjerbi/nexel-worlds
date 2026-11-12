@@ -38,16 +38,19 @@ function hopLift(p) {
   return Math.sin(k * Math.PI) * 7 + (1 - k) * 2;
 }
 function drawEntity(p, sx, sy, S, t, now) {
-  const e = p.e, x = Math.round(sx(p.x)), y = Math.round(sy(p.y, p.x)), z = zoom;
+  const e = p.e, x = Math.round(sx(p.x)), z = zoom;
+  let y = Math.round(sy(p.y, p.x));
   if (x < -S * 2 || x > W + S * 2 || y < -S * 2 || y > H + S * 2) return;
   const moving = now - p.moved < 300;
+  // Up or down a layer, a person or a creature alike (sim/bodies.py): stepping up, a little puff of effort; hopping
+  // down off an edge, an arc, then a soft landing
+  const lv = standAt(Math.round(p.x), Math.round(p.y)), hop = hopLift(p);
+  if (p.lastLv !== undefined && lv > p.lastLv) { smoke(p.x, p.y + .3, 3, .35); sfx("step", Math.round(p.x), Math.round(p.y)); }
+  if (p.lastHop > 0 && hop === 0) { smoke(p.x, p.y + .35, 4, .4); sfx("thud", Math.round(p.x), Math.round(p.y)); }
+  p.lastHop = hop;
+  p.lastLv = lv;
+  if (e.kind !== "agent") y -= Math.round(hop * z);            // (a person's hop goes with their other bobbing, below)
   if (e.kind === "agent") {
-    const lv = standAt(Math.round(p.x), Math.round(p.y));    // stepping up a slope: a little puff of effort
-    if (p.lastLv !== undefined && lv > p.lastLv) { smoke(p.x, p.y + .3, 3, .35); sfx("step", Math.round(p.x), Math.round(p.y)); }
-    const hop = hopLift(p);                                     // hopping down off an edge: an arc, then a soft landing
-    if (p.lastHop > 0 && hop === 0) { smoke(p.x, p.y + .35, 4, .4); sfx("thud", Math.round(p.x), Math.round(p.y)); }
-    p.lastHop = hop;
-    p.lastLv = lv;
     const mine = me && e.id === myId;
     let action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, at: e.at, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null);
     if ((!action || action.tool === "walk" || action.tool === "move_to") && p.swing && now - p.swing.t0 < 320)

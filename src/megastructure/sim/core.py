@@ -12,6 +12,7 @@ from pathlib import Path
 from ..tiles import BLOCKS, DEPTH, DIRS
 from ..world import Store, World
 from .animals import Animals
+from .bodies import Bodies
 from .building import Building
 from .combat import Combat
 from .constants import (
@@ -40,7 +41,7 @@ from .social import Social
 from .specs import TOOL_SPECS
 
 
-class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Underground, Building, Items, Combat, Animals, Wild, Wear, Needs, Social, Environment, Observation):
+class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Underground, Building, Items, Combat, Animals, Wild, Wear, Needs, Social, Environment, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)

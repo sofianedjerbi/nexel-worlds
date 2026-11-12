@@ -7,7 +7,7 @@ def test_old_mossback_sleeps_wakes_and_fights(game):
     game.clear_area(10)
     game.rpc("dev_needs", hp=100, hunger=100)
     game.spawn("mossback", 4, 0)
-    game.sleep(900)
+    game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'mossback' && q.e.act === 'sleep')", 6000)   # (its first step may be a moment coming)
     boss = kind(game, "mossback")
     assert boss and boss["act"] == "sleep"                     # a hill with a tree on it
     drawn = game.js("""(() => { const out = {};        // both sheets loaded, at the size the table says

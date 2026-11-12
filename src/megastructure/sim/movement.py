@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from .constants import FALL_HP, FALL_SAFE, LAYER, SLOPE_DOWN, SLOPE_UP, TARGET_R, VIA_FAR, VIA_MAX, sec
+from .constants import FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
 
@@ -24,27 +24,6 @@ class Movement:
         """In the water without a boat."""
         return not a.sailing and GROUNDS[self.world.get(a.x, a.y)[0]].liquid
 
-    def height(self, a: Agent) -> int:
-        """The height `a` stands at: the ground here at or under where they were (the lowest ground, if none is)."""
-        s = self.world.surfaces(a.x, a.y)
-        a.z = max((z for z in s if z <= a.z), default=s[0])
-        return a.z
-
-    def in_cave(self, a: Agent) -> bool:
-        """Something solid over your head."""
-        return self.world.covered(a.x, a.y, self.height(a))
-
-    def landing(self, a: Agent, x: int, y: int) -> int | None:
-        """The height a step to the neighbouring (x, y) lands at, or None (a wall). The world is cells: where the
-        cell at your body's height is solid there you jump up onto it if it is ground (nothing over it, nor over your
-        own head: under a low ceiling there is no jumping out through it); where it is
-        empty you step in at your own height and come down on whatever ground is under you there (a fall, however
-        far: Movement.fell)."""
-        h = self.height(a)
-        if self.world.solid(x, y, h + 1):                # (a jump: room over it, and over your own head to make it)
-            return None if self.world.solid(x, y, h + 2) or self.world.solid(a.x, a.y, h + 2) else h + 1
-        return max(z for z in self.world.surfaces(x, y) if z <= h)
-
     def can_go(self, a: Agent, x: int, y: int) -> bool:
         """From where `a` stands to the neighbouring (x, y): the tile can be entered, and isn't a wall."""
         return self.can_enter(a, x, y) and self.landing(a, x, y) is not None
@@ -53,26 +32,6 @@ class Movement:
         if self.can_enter(a, x, y) and self.landing(a, x, y) is None:
             return "a wall, too high to jump (dig into it: dig with a pickaxe)"
         return self.describe(x, y)
-
-    # ============================================================== reach
-
-    def stands(self, t) -> int:
-        """The height someone stands at: a person's own; a creature's, the lowest ground under it."""
-        return self.height(t) if isinstance(t, Agent) else self.world.level(t.x, t.y)
-
-    def near(self, a: Agent, x: int, y: int, r: float, z: int | None = None) -> bool:
-        """Is (x, y) within reach r of `a`? Reach is a circle round you, as the crow flies: r tiles, and the half tile
-        to the far tile's edge. Height is distance too, a layer half a tile: what is too far up or down is out of
-        reach, however near on the map. z: the height of what is there (a tile's: its ground nearest your own)."""
-        h = self.height(a)
-        if z is None:
-            z = min(self.world.surfaces(x, y), key=lambda s: abs(s - h))
-        return (x - a.x) ** 2 + (y - a.y) ** 2 + ((z - h) * LAYER) ** 2 <= (r + .5) ** 2
-
-    def reach(self, a: Agent, x: int, y: int, r: float = TARGET_R, z: int | None = None):
-        if not self.near(a, x, y, r, z):
-            raise ActionError("out_of_range", f"({x},{y}) is out of reach: {r} tiles round you, height counted "
-                                              "(a layer is half a tile)")
 
     def fell(self, a: Agent, layers: int) -> dict:
         """Coming down `layers` at once: up to FALL_SAFE is nothing, each layer more hurts."""
@@ -93,11 +52,7 @@ class Movement:
             self.set_tile(a.x, a.y, block="boat", by=a, cause="moor")   # leave the boat where you got off
             a.sailing = False
             self.emit("moor", a.x, a.y, name=a.name)
-        h0, land = self.height(a), self.landing(a, x, y)
-        a.x, a.y = x, y
-        if land is not None:
-            a.z = land
-        climb = self.height(a) - h0
+        climb = -self.step_onto(a, x, y)             # (Bodies: where you land there)
         if climb and a.ready > self.tick:            # a jump up is hard going, a drop a little careful
             a.ready += round((a.ready - self.tick) * (SLOPE_UP if climb > 0 else SLOPE_DOWN))
         self.arrive(a)

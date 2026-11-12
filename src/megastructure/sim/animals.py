@@ -66,13 +66,16 @@ class Animals:
                 self._creature_move(c, c.x + d[0], c.y + d[1])
 
     def _creature_move(self, c, x, y) -> bool:
-        # creatures can't work doors or gates: houses keep them out, fenced pens keep animals in
-        if self.world.block(x, y) in ("door", "gate"):
+        """A creature's step to the neighbouring (x, y): as a person's (Bodies: a jump up a layer, down onto the
+        ground under it, in under a hill at its own height), where it is let. Creatures can't work doors or gates
+        (houses keep them out, fenced pens keep animals in), don't walk onto someone, and take no fall that would
+        hurt them."""
+        if self.world.block(x, y) in ("door", "gate") or not self.world.passable(x, y) or self.entity_at(x, y) is not None:
             return False
-        if self.world.passable(x, y) and self.world.can_step(c.x, c.y, x, y) and self.entity_at(x, y) is None:
-            c.x, c.y = x, y
-            return True
-        return False
+        if not self.safe_step(c, x, y):
+            return False
+        self.step_onto(c, x, y)
+        return True
 
     def _take_items(self, pos, item, n=1):
         pile = self.items.get(pos)
@@ -121,7 +124,7 @@ class Animals:
         t = self._find_target(args.get("target"))
         if not isinstance(t, Creature) or (kind and t.kind != kind):
             raise ActionError("bad_target", f"that is not a {kind or 'creature'}")
-        if not self.near(a, t.x, t.y, T.USE_R, self.stands(t)):
+        if not self.near(a, t.x, t.y, T.USE_R, self.height(t)):
             raise ActionError("out_of_range", f"get within {T.USE_R} tiles of it")
         return t
 
@@ -157,7 +160,7 @@ class Animals:
             mate = next((o for o in self.creatures.values() if o is not animal and o.kind == "cow" and o.love > self.tick
                          and max(abs(o.x - animal.x), abs(o.y - animal.y)) <= 3), None)
             if mate and not self.crowded(animal.x, animal.y):
-                calf = Creature(self.next_creature, "calf", animal.x, animal.y, CREATURES["calf"]["hp"], born=self.tick)
+                calf = Creature(self.next_creature, "calf", animal.x, animal.y, CREATURES["calf"]["hp"], z=animal.z, born=self.tick)
                 self.next_creature += 1
                 self.creatures[calf.id] = calf
                 animal.love = mate.love = 0

@@ -44,7 +44,7 @@ class Wild(Boss):
         return min((a for a in online if cheb(a, c) <= r), key=lambda a: (cheb(a, c), a.id), default=None)
 
     def bite(self, c, prey, dmg=None):
-        if abs(self.height(prey) - self.world.level(c.x, c.y)) > BITE_HIGH:
+        if abs(self.height(prey) - self.height(c)) > BITE_HIGH:
             return                                             # (up on a ledge, down a drop: out of its reach, as it is out of yours)
         dmg = self.guarded(prey, dmg or CREATURES[c.kind]["damage"])     # (armor: wear.py)
         self.emit("attack", c.x, c.y, attacker=f"a {c.kind}", target=prey.name, damage=dmg, id=c.id)
@@ -173,7 +173,7 @@ class Wild(Boss):
         """It flies: over water, fences and walls alike. Only another body stops it."""
         if self.entity_at(x, y) is not None:
             return False
-        c.dir, c.x, c.y = (x - c.x, y - c.y), x, y
+        c.dir, c.x, c.y, c.z = (x - c.x, y - c.y), x, y, self.world.top(x, y)     # (over the top of whatever is there)
         return True
 
     # ------------------------------------------------------------- wyrm: deep water only; lunges along its line
@@ -209,7 +209,7 @@ class Wild(Boss):
         """It never comes into the shallows: the shore is safe."""
         if DEPTH.get(self.world.ground(x, y), 0) < 3 or self.world.block(x, y) != "none" or self.entity_at(x, y) is not None:
             return False
-        c.dir, c.x, c.y = (x - c.x, y - c.y), x, y
+        c.dir, c.x, c.y, c.z = (x - c.x, y - c.y), x, y, self.world.top(x, y)
         return True
 
     def lit(self, x, y) -> bool:

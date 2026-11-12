@@ -23,8 +23,6 @@ def test_you_jump_up_a_layer_and_step_down(world):
     assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.world.level(a.x, a.y) == 1   # along the top
     assert run(sim, a, "step", {"dir": "S"})["ok"] and run(sim, a, "step", {"dir": "S"})["ok"]
     assert sim.world.level(a.x, a.y) == 0                                            # and back down
-    c = sim.world                                            # animals don't jump: they keep to their level
-    assert not c.can_step(a.x, a.y, a.x, a.y - 2) and c.can_step(a.x, a.y - 1, a.x, a.y - 2, hop=True)
 
 
 def test_two_layers_up_is_a_wall_until_you_dig_into_it(world):

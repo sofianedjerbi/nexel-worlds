@@ -44,7 +44,7 @@ class Agent:
 
     def to_json(self) -> dict:
         return {k: getattr(self, k) for k in
-                ("id", "name", "x", "y", "persona", "hp", "hunger", "inventory", "deaths", "stats", "spawn", "sailing", "can", "xp", "worn", "race")}
+                ("id", "name", "x", "y", "z", "persona", "hp", "hunger", "inventory", "deaths", "stats", "spawn", "sailing", "can", "xp", "worn", "race")}
 
     def count(self, item) -> int:
         return self.inventory.get(item, 0)
@@ -69,6 +69,7 @@ class Creature:
     x: int
     y: int
     hp: int
+    z: int = -99        # the height it stands at, as a person's (sim/bodies.py); -99: nobody has said: the lowest ground
     cooldown: int = 0
     milked: int = 0     # tick of the last milking (cows)
     love: int = 0       # fed: shows hearts and (chickens) lays an egg soon, until this tick
@@ -84,7 +85,7 @@ class Creature:
     awake: int = 0      # Old Mossback: it stays up until this tick
 
     def to_json(self):
-        return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "hp": self.hp,
+        return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "z": self.z, "hp": self.hp,
                 "milked": self.milked, "love": self.love, "lay": self.lay, "born": self.born}
 
 CREATURES = {

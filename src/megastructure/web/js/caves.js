@@ -43,11 +43,13 @@ function setCaveOpen() {
   caveOpen = !!here; openCave = here ? caveOf(here) : new Map(); caveStamp++;
   caveDepth = caveDepths();
 }
-// Someone under a hill you're not in: not seen. (You: by the height you're at; the others, by the server's.)
+// Someone under a hill you're not in: not seen. Nor someone up on the hill over the cave you are in (its roof isn't
+// drawn: you look in). (You: by the height you're at; the others, people and creatures, by the server's.)
 function unseen(p) {
   const x = Math.round(p.x), y = Math.round(p.y);
-  if (!roofAt(x, y) || inOpenCave(x, y)) return false;
-  return coveredAt(x, y, p.e.kind === "agent" && p.e.id === myId && myAt ? settleNear(x, y, myAt.z) : p.e.z !== undefined ? p.e.z : floorAt(x, y));
+  if (!roofAt(x, y)) return false;
+  const mine = p.e.kind === "agent" && p.e.id === myId, z = mine && myAt ? settleNear(x, y, myAt.z) : p.e.z !== undefined ? p.e.z : floorAt(x, y);
+  return inOpenCave(x, y) ? !mine && z > openCave.get(x + "," + y) : coveredAt(x, y, z);
 }
 
 // A block's caves as seen now, on one canvas in art px (with OV_M px round it), or null when there's nothing to see:
