@@ -122,8 +122,9 @@ function waterLayer(b) {
 // All of it is art pixels (the patterns slide by whole ones), so it is put together small, a pixel an art pixel, on a
 // canvas the size of the view (and only where a block has water), then blown up onto the screen in one go: painting
 // each layer at the screen's size was seven screens of paint a frame wherever a block in view held a puddle.
-let waterCv = null;
+let waterCv = null, waterView = null;                             // (waterView: where waterCv's corner is, in art px, this frame; null: no water in view)
 function drawWater(vis, ox, oy, t) {
+  waterView = null;
   if (!causticPat) { causticPat = causticPattern(); wavePat = wavePattern(); }
   const vx = Math.floor(-ox / zoom) - 1, vy = Math.floor(-oy / zoom) - 1, vw = Math.ceil(W / zoom) + 3, vh = Math.ceil(H / zoom) + 3;   // the view, in art px
   let g = null, ux0 = 1e9, uy0 = 1e9, ux1 = -1e9, uy1 = -1e9;       // (and the part of it with water in it)
@@ -184,6 +185,7 @@ function drawWater(vis, ox, oy, t) {
     g.restore();
   }
   if (!g) return;
+  waterView = {x: vx, y: vy};
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(waterCv, ux0 - vx, uy0 - vy, ux1 - ux0, uy1 - uy0, ox + ux0 * zoom, oy + uy0 * zoom, (ux1 - ux0) * zoom, (uy1 - uy0) * zoom);
 }

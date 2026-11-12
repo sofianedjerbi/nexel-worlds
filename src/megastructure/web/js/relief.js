@@ -162,8 +162,10 @@ function drawBlockRelief(b, sx, sy, S) {
   const X = sx(b.bx * B), Y = sy(b.by * B);
   // built in steps, within a few ms a frame across all blocks. A block never built isn't shown until it is (never its
   // flat ground, which would then jump up); one rebuilt keeps showing what it was until the new one is ready.
-  if (!b.relief && !b.reliefGen) b.reliefGen = reliefSteps(b);
-  else if (b.relief && b.reliefDirty) { b.reliefGen = reliefSteps(b); }
+  // (Its ground redrawn while it is being built, the first time too: the block beside it arriving changes its edge.
+  // It is built again from the start, what it had read being out of date: dropped, that left a column of flat
+  // ground along the edge.)
+  if (b.reliefDirty || (!b.relief && !b.reliefGen)) b.reliefGen = reliefSteps(b);
   b.reliefDirty = false;
   const now = performance.now();
   if (now - reliefBudgetAt > 8) { reliefBudgetAt = now; reliefSpent = 0; }

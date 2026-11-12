@@ -17,6 +17,7 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
             sim.step()
         return {"tick": sim.tick}
     if op == "dev_teleport":
+        sim.interrupt(agent, "moved")            # (whatever they were doing, walking somewhere: not from here)
         agent.x, agent.y, agent.z = int(msg["x"]), int(msg["y"]), int(msg.get("z", 99))   # (z: up top unless given)
         return {"x": agent.x, "y": agent.y}
     if op == "dev_damage":

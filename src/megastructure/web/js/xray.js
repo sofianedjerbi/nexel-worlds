@@ -4,8 +4,12 @@
 // toward its edge, and comes and goes softly. Only where the hill really is in the way (the rest of the screen is
 // the land as drawn), and only for you. Painted small (art px, a few tiles), every frame: nothing is rebuilt or kept.
 
-const XRAY = {r: 3.1, core: .42, from: 8, full: 14};   // tiles: its radius, the part of it that's clear; art px of you covered: where it starts, and is whole
-const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null};   // how strong, the height and row it cuts from, its centre (tiles)
+// r, core: its radius (tiles) and the part of it that's clear. It comes when you're really hidden, not for an edge
+// that hides your feet or a post you walk past: body: your height (art px); from, full: the share of you that's
+// hidden where it starts and where it is whole (a wall two layers high in front of you leaves your head: nothing; three
+// hides you: the circle); wait: seconds hidden before it comes
+const XRAY = {r: 3.1, core: .42, body: 22, from: .75, full: .95, wait: .15, far: 12};   // (far: tiles south to look for ground drawn up over you)
+const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, t: 0};   // how strong, the height and row it cuts from, its centre (tiles), how long you've been hidden
 
 // The ground in front of you that is in the way: south of your row, higher than you stand
 const xrayCut = (tx, ty) => xray.a > .01 && ty > xray.row && levelAt(tx, ty) > xray.L;
@@ -29,10 +33,16 @@ function xrayLook(dt) {
   let want = 0;
   if (p && p.e && !caveOpen) {
     const L = Math.min(standAt(Math.floor(p.x), Math.floor(p.y)), standAt(Math.ceil(p.x), Math.ceil(p.y))), row = Math.floor(p.y + .001);
-    let cover = 0;                                         // art px of you under the top edge of the ground in front
-    for (const tx of new Set([Math.floor(p.x + .2), Math.ceil(p.x - .2)]))
-      for (let ty = row + 1; ty <= row + 8; ty++) cover = Math.max(cover, (levelAt(tx, ty) - L) * RELIEF_STEP - (ty - p.y - 1) * 16);
-    want = Math.max(0, Math.min(1, (cover - XRAY.from) / (XRAY.full - XRAY.from)));
+    let hidden = 0;                                        // the share of you under the top edge of the ground in front: the two
+    const f = p.x - Math.floor(p.x);                       //  columns you stand across, each for the part of you in it
+    for (const [tx, part] of [[Math.floor(p.x), 1 - f], [Math.floor(p.x) + 1, f]]) {
+      let cover = 0;
+      if (part > .001) for (let ty = row + 1; ty <= row + XRAY.far; ty++) cover = Math.max(cover, (levelAt(tx, ty) - L) * RELIEF_STEP - (ty - p.y - 1) * 16);
+      hidden += part * Math.min(1, cover / XRAY.body);
+    }
+    want = Math.max(0, Math.min(1, (hidden - XRAY.from) / (XRAY.full - XRAY.from)));
+    xray.t = want > 0 ? xray.t + dt : 0;
+    if (xray.t < XRAY.wait && xray.a <= .01) want = 0;      // (a moment behind something: not yet)
     if (want > 0 || xray.a > .01) { xray.L = L; xray.row = row; xray.x = p.x; xray.y = p.y - shOf(L) / 16 - .5; }   // (its centre: your body, where it is drawn)
   }
   xray.a += (want - xray.a) * (1 - Math.exp(-dt / .09));
@@ -50,8 +60,10 @@ function drawXray(sx, sy) {
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.clearRect(0, 0, D, D);
   g.save(); g.beginPath();                                                    // only where the hill is drawn over what's behind it
   let any = false;
-  for (let ty = xray.row + 1; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (xrayCut(tx, ty)) {
+  // (as far south as high ground is drawn up into the circle: a plateau 12 layers high is, from 6 tiles further on)
+  for (let ty = xray.row + 1; ty <= y1 + XRAY.far; ty++) for (let tx = x0; tx <= x1; tx++) if (xrayCut(tx, ty)) {
     const top = ty * 16 - shOf(levelAt(tx, ty)) - ay;
+    if (top >= D) continue;
     g.rect(tx * 16 - ax - 8, top, 32, ty * 16 + 16 - lift - ay - top); any = true;
   }
   if (!any) { g.restore(); return; }
@@ -59,6 +71,10 @@ function drawXray(sx, sy) {
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {     // from the back: each tile at its height, its wall under it
     const t = tileIdx(tx, ty); if (!t || !t[0].canvas) continue;
     const lv = lvOf(tx, ty), X = tx * 16 - ax, Y = ty * 16 - shOf(lv) - ay, i = t[1];
+    if (waterView && lv === 0) {                                              // water there, and under a shore's edge (water.js: as it is on screen)
+      const wx = tx * 16 - waterView.x, wy = ty * 16 - waterView.y;
+      if (wx >= 0 && wy >= 0 && wx + 16 <= waterCv.width && wy + 16 <= waterCv.height) g.drawImage(waterCv, wx, wy, 16, 16, X, Y, 16, 16);
+    }
     g.drawImage(t[0].canvas, (i % B) * 16, (i / B | 0) * 16, 16, 16, X, Y, 16, 16);
     for (let k = lv, below = lvOf(tx, ty + 1); k > below; k--) {              // (a band a layer, as relief.js paints them)
       const c = colsOf(hillSheet(k)).bands, yk = Y + 16 + (lv - k) * RELIEF_STEP;

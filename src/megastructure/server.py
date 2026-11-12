@@ -57,6 +57,7 @@ class GameServer(Views):
         self.conns: dict[int, object] = {}  # agent id -> connection
         self.notify: dict[int, object] = {}  # agent id -> callable(dict) pushing a message to that agent
         self.spectators: dict = {}  # queue -> watched rect (x, y, w, h) or None
+        self.behind: set = set()    # spectators that missed events (Views._broadcast)
         self.sim.listeners.append(self._broadcast)
         self.tick_ms = collections.deque(maxlen=250)
         self.started = time.time()
@@ -103,36 +104,6 @@ class GameServer(Views):
             "rss_peak_mb": round(rss_mb(), 1),
             **self.sim.stats,
         }
-
-    # ----------------------------------------------------------- spectators
-    def _broadcast(self, ev):
-        if not self.spectators:
-            return
-        msg = json.dumps({"type": "event", "ev": ev})
-        for q in list(self.spectators):
-            if q.qsize() < 2000:
-                q.put_nowait(msg)
-
-    def push_ticks(self):
-        """Every tick, each spectator gets the entities inside the rect it watches; agents whose
-        multi-tick action just started get a progress notice (so clients can show a bar at once)."""
-        for aid, push in list(self.notify.items()):
-            act = self.sim.agents[aid].action
-            if (act is not None and act.started_tick == self.sim.tick and act.tool not in ("step", "move_to", "walk")
-                    and act.expected >= 2):
-                push({"type": "progress", "tool": act.tool, "ticks": act.expected, "tick_hz": TICK_HZ})
-        if not self.spectators:
-            return
-        head = {"type": "tick", "tick": self.sim.tick, "time": self.sim.clock(), "night": self.sim.is_night(),
-                "phase": round(self.sim.time_of_day(), 4)}
-        for q, rect in list(self.spectators.items()):
-            if rect is not None and q.qsize() < 2000:
-                q.put_nowait(json.dumps({**head, "entities": self.entities_in(*rect), "items": self.items_in(*rect),
-                                         "mail": self.mail_in(*rect), "troughs": self.troughs_in(*rect),
-                                         "fires": [[fx, fy] for fx, fy in self.sim.fires
-                                                   if rect[0] <= fx < rect[0] + rect[2] and rect[1] <= fy < rect[1] + rect[3]]},
-                                        separators=(",", ":")))
-
 
     # ------------------------------------------------------------- handlers
     async def handler(self, ws):

@@ -93,4 +93,28 @@ def test_resampling_keeps_length_and_level():
 def test_static_server_serves_audio():
     from megastructure import web_static
     assert "audio" in web_static.STATIC and web_static.CONTENT_TYPES[".wav"] == "audio/wav"
+    assert web_static.CONTENT_TYPES[".flac"] == "audio/flac"   # (the music's pieces)
     assert web_static.CONTENT_TYPES[".json"] == "application/json"
+
+
+def test_a_music_loop_is_cut_into_lossless_pieces_that_join_exactly(tmp_path):
+    """The player streams the loop (audio.js): the build cuts it into pieces, the same samples as the one long file
+    they replace, each with a little of its neighbours at both ends (round the loop for the first and the last)."""
+    import wave
+
+    import numpy as np
+    import soundfile
+    rate, n = build_audio.RATE, int(build_audio.RATE * 19.3)
+    t = np.arange(n) / rate
+    build_audio.write_wav(tmp_path / "master.wav", np.stack([np.sin(2 * np.pi * 220 * t) * .4, np.sin(2 * np.pi * 331 * t) * .3]), rate)
+    with wave.open(str(tmp_path / "master.wav")) as w:
+        whole = build_audio.pcm16((np.frombuffer(w.readframes(n), "<i2").reshape(-1, 2).T / 32768).astype(np.float64))
+    m = build_audio.build_music(tmp_path, tmp_path / "master.wav", "music")
+    pad = round(m["pad"] * rate)
+    parts = [soundfile.read(str(tmp_path / f), dtype="int16")[0] for f in m["files"]]
+    assert len(parts) == 3 and np.array_equal(np.concatenate([p[pad:-pad] for p in parts]), whole)
+    assert np.array_equal(parts[0][:pad], whole[-pad:]) and np.array_equal(parts[-1][-pad:], whole[:pad])
+    assert abs(m["seconds"] - n / rate) < 1e-9 and abs(m["last"] - (n / rate - 2 * m["seg"])) < 1e-9
+    for secs in (m["seg"], m["pad"]):                        # whole samples at every rate a browser plays at
+        assert all(abs(secs * r - round(secs * r)) < 1e-9 for r in (32000, 44100, 48000))
+

@@ -53,6 +53,7 @@ function connectSpec() {
       webStamp = d.web || webStamp;
     } else if (d.type === "tick") onTick(d);
     else if (d.type === "event") onEvent(d.ev);
+    else if (d.type === "resync") { for (const b of blocks.values()) b.at = -1e9; }   // we missed events (too many at once): ask for our land again
     else if (d.type === "reply") {
       if (d.rows) onRegion(d);
       else if (d.agents) { agents = d.agents; drawAgents(); }

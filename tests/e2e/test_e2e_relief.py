@@ -193,7 +193,7 @@ def test_behind_a_mountain_you_are_seen_through_it(game):
     assert game.js("xray.a") == 0
     hidden = game.js(look)
     assert sum(1 for a, b in zip(seen[::4], hidden[::4]) if abs(a - b) > 24) > len(seen) / 4 * .3
-    game.js("(() => { XRAY.from = 8; XRAY.full = 14; return 1; })()")
+    game.js("(() => { XRAY.from = .75; XRAY.full = .95; return 1; })()")
     game.hold(["w"], 900)                                              # out from behind it
     game.sleep(600)
     assert game.js("xray.a") == 0
@@ -219,3 +219,33 @@ def test_a_frame_paints_the_screen_a_few_times_over_not_ten(game):
       return px / scr; })()""")
     assert 1.5 < screens < 4.5, screens                      # (it was 9.8 over the sea)
     assert not game.errors
+
+
+def test_ground_redrawn_while_a_block_is_first_built_builds_it_again(game):
+    """A block's raised ground is built in steps over a few frames. Its ground redrawn meanwhile (the block beside
+    it arriving changes its edge) was only noted for a block that had been built before: on a first build the note
+    was dropped, and the block kept land worked out without its neighbour (a column of flat ground along that edge)."""
+    game.clear_area(8)
+    game.stamp(2, -3, ["....."] * 5, levels=["33333"] * 5)
+    game.sleep(900)
+    x, y = game.pos()
+    game.js(f"""(() => {{ const t = tileIdx({x + 7}, {y - 1}), b = t[0];
+      b.relief = null; b.reliefGen = reliefSteps(b); b.reliefGen.next();      // as if just arrived: its first build under way
+      b.lv[t[1]] = String.fromCharCode(SEA + 3); drawTile({x + 7}, {y - 1});   // ...and its land turns out higher here
+      window.__b = b; return 1; }})()""")
+    game.sleep(900)
+    sig = "(() => { const c = __b.relief.flat; return c ? Array.from(c.getContext('2d').getImageData(0, 0, c.width, c.height).data).reduce((h, v) => (h * 31 + v) | 0, 7) : 0; })()"
+    shown = game.js(sig)
+    game.js("(() => { buildRelief(__b); return 1; })()")
+    assert shown == game.js(sig) and shown != 0
+
+
+def test_told_it_missed_events_the_page_asks_for_its_land_again(game):
+    """(The server says `resync` to a page whose queue overflowed: a flood of tile changes.)"""
+    game.clear_area(6)
+    x, y = game.pos()
+    game.js(f"(() => {{ const t = tileIdx({x + 2}, {y}); t[0].comb[t[1]] = 'T'; return 1; }})()")     # as if we'd missed a change
+    assert game.tile(2, 0) == "T"
+    game.js("""(() => { spec.onmessage({data: '{"type":"resync"}'}); return 1; })()""")
+    game.sleep(1200)
+    assert game.tile(2, 0) != "T"

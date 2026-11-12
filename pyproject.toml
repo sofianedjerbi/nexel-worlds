@@ -20,6 +20,7 @@ dev = [
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1.post1",
     "pytest-xdist>=3.8.0",
+    "soundfile>=0.14.0",
 ]
 
 [tool.pytest.ini_options]

@@ -7,8 +7,10 @@ Sources of truth:
   music/sfx_map.json   which sound an item makes when placed ("place") and a ground when laid ("ground")
 Output (not committed: rebuild after changing either source):
   audio/<name>_<variant>.wav   16-bit stereo, 32 kHz
-  audio/music.wav              the background loop, from music/site/audio/master.wav (render it with music/compose.py)
-  audio/boss.wav               the boss fight's loop, from music/site/audio/boss.wav (music/boss.py)
+  audio/music_NNN.flac         the background loop, from music/site/audio/master.wav (render it with music/compose.py),
+                               in pieces of SEG seconds, lossless: the player streams them (audio.js) instead of
+                               fetching 37 MB and holding all of it decoded (75 MB and more)
+  audio/boss_NNN.flac          the boss fight's loop, from music/site/audio/boss.wav (music/boss.py), the same way
   audio/sfx.json               the manifest the client reads: sounds, place (by block name), ground, music, version
 The build fails if a placeable item or a fillable ground has no sound, or the map names a sound that does not exist.
 """
@@ -26,6 +28,9 @@ ROOT = Path(__file__).resolve().parent.parent
 MUSIC = ROOT / "music"
 OUT = ROOT / "src" / "megastructure" / "web" / "audio"
 RATE = 32000          # the sounds are low-passed at 12 kHz, so nothing audible is lost and files are a third smaller
+SEG, PAD = 8.0, 0.05  # a music loop's pieces, seconds: each piece, and how much of its neighbours it carries at both ends
+                      # (the browser resamples each piece on its own: with the sound around a join in both pieces, the
+                      # join is exact). Both a whole number of samples at 32, 44.1 and 48 kHz.
 
 
 def load_sfx():
@@ -73,7 +78,7 @@ def resample(st: np.ndarray, sr: int, to: int) -> np.ndarray:
 
 
 def write_wav(path: Path, st: np.ndarray, rate: int):
-    pcm = (np.clip(st, -1, 1) * 32767).round().astype("<i2").T.copy()
+    pcm = pcm16(st)
     with wave.open(str(path), "wb") as w:
         w.setnchannels(2)
         w.setsampwidth(2)
@@ -95,9 +100,16 @@ def version() -> str:
     return h.hexdigest()[:10]
 
 
-def build_music(out: Path, src: Path = None, name: str = "music.wav") -> dict | None:
-    """A music loop (the background one, or the boss fight's), resampled like the effects. None (and a note) when it
-    has not been rendered."""
+def pcm16(st: np.ndarray) -> np.ndarray:
+    """[channels, frames] in -1..1 -> [frames, channels] 16-bit, as the files hold it."""
+    return (np.clip(st, -1, 1) * 32767).round().astype("<i2").T.copy()
+
+
+def build_music(out: Path, src: Path = None, name: str = "music") -> dict | None:
+    """A music loop (the background one, or the boss fight's), resampled like the effects and cut into pieces, each a
+    lossless file: the same samples as one long wav. A piece carries PAD seconds of what comes before and after it
+    (the loop's other end, for the first and the last). None (and a note) when it has not been rendered."""
+    import soundfile
     src = src or MASTER
     if not src.exists():
         print(f"no {name}: render it first with `uv run python music/{'boss' if src == BOSS else 'compose'}.py`")
@@ -105,16 +117,21 @@ def build_music(out: Path, src: Path = None, name: str = "music.wav") -> dict | 
     with wave.open(str(src)) as w:
         sr, ch = w.getframerate(), w.getnchannels()
         st = (np.frombuffer(w.readframes(w.getnframes()), "<i2").reshape(-1, ch).T / 32768).astype(np.float64)
-    st = resample(st, sr, RATE)
-    write_wav(out / name, st, RATE)
-    return {"file": name, "seconds": st.shape[1] / RATE}
+    pcm = pcm16(resample(st, sr, RATE))
+    n, seg, pad = len(pcm), round(SEG * RATE), round(PAD * RATE)
+    files = []
+    for k, at in enumerate(range(0, n, seg)):
+        frames = np.arange(at - pad, min(at + seg, n) + pad) % n          # (round the loop at both ends)
+        files.append(f"{name}_{k:03d}.flac")
+        soundfile.write(str(out / files[-1]), pcm[frames], RATE, format="FLAC", subtype="PCM_16")
+    return {"files": files, "seconds": n / RATE, "seg": SEG, "pad": PAD, "last": (n - (len(files) - 1) * seg) / RATE}
 
 
 def build(out: Path = OUT) -> dict:
     blocks, grounds = place_maps(sound_names())       # fail before the slow part
     sfx = load_sfx()
     out.mkdir(parents=True, exist_ok=True)
-    for old in list(out.glob("*.wav")) + list(out.glob("sfx.json")):
+    for old in list(out.glob("*.wav")) + list(out.glob("*.flac")) + list(out.glob("sfx.json")):
         old.unlink()
     sounds = {}
     for name in sfx.S:
@@ -126,10 +143,10 @@ def build(out: Path = OUT) -> dict:
             files.append(f)
         sounds[name] = {"files": files, "category": m["cat"], "pitch": bool(m["vary"])}   # tuned sounds are never re-pitched
     manifest = {"version": version(), "rate": RATE, "sounds": sounds, "place": blocks, "ground": grounds,
-                "music": build_music(out), "boss": build_music(out, BOSS, "boss.wav")}
+                "music": build_music(out), "boss": build_music(out, BOSS, "boss")}
     (out / "sfx.json").write_text(json.dumps(manifest, indent=1))
-    size = sum(f.stat().st_size for f in out.glob("*.wav") if f.name not in ("music.wav", "boss.wav")) / 1e6
-    music = f", music {(out / 'music.wav').stat().st_size / 1e6:.0f} MB" if manifest["music"] else ""
+    size = sum(f.stat().st_size for f in out.glob("*.wav")) / 1e6
+    music = f", music {sum(f.stat().st_size for f in out.glob('music_*.flac')) / 1e6:.0f} MB in {len(manifest['music']['files'])} pieces" if manifest["music"] else ""
     print(f"built {out.relative_to(ROOT)}: {len(sounds)} sounds, {sum(len(s['files']) for s in sounds.values())} files, {size:.1f} MB{music}")
     return manifest
 

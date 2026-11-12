@@ -1,8 +1,13 @@
 """What spectators are sent about the part of the world they watch."""
 
+import json
+
 from .gen import col_floor
+from .sim.constants import TICK_HZ
 from .sim.wild import WILD
 from .tiles import DIRS, GROUNDS
+
+QUEUE_MAX = 2000        # messages a spectator may have waiting: past that, new ones are dropped (Views._broadcast)
 
 
 class Views:
@@ -56,3 +61,42 @@ class Views:
         cols = {str(i): v for i, v in enumerate(raw) if v & (v + 1)}
         return {**({"cols": cols} if cols else {}), "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
                 "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}
+
+    # ----------------------------------------------------------- what they are sent, as it happens
+
+    def _broadcast(self, ev):
+        """Every spectator hears every event. One whose queue is full (thousands of tiles changing at once: a flood)
+        misses some: once it has caught up it is told to ask for its land again (`resync`: push_ticks), so its
+        picture of the world never stays wrong."""
+        if not self.spectators:
+            return
+        msg = json.dumps({"type": "event", "ev": ev})
+        for q in list(self.spectators):
+            if q.qsize() < QUEUE_MAX:
+                q.put_nowait(msg)
+            else:
+                self.behind.add(q)
+
+    def push_ticks(self):
+        """Every tick, each spectator gets the entities inside the rect it watches; agents whose
+        multi-tick action just started get a progress notice (so clients can show a bar at once)."""
+        for aid, push in list(self.notify.items()):
+            act = self.sim.agents[aid].action
+            if (act is not None and act.started_tick == self.sim.tick and act.tool not in ("step", "move_to", "walk")
+                    and act.expected >= 2):
+                push({"type": "progress", "tool": act.tool, "ticks": act.expected, "tick_hz": TICK_HZ})
+        for q in [q for q in self.behind if q.qsize() < QUEUE_MAX // 2]:
+            self.behind.discard(q)
+            if q in self.spectators:
+                q.put_nowait('{"type":"resync"}')
+        if not self.spectators:
+            return
+        head = {"type": "tick", "tick": self.sim.tick, "time": self.sim.clock(), "night": self.sim.is_night(),
+                "phase": round(self.sim.time_of_day(), 4)}
+        for q, rect in list(self.spectators.items()):
+            if rect is not None and q.qsize() < QUEUE_MAX:
+                q.put_nowait(json.dumps({**head, "entities": self.entities_in(*rect), "items": self.items_in(*rect),
+                                         "mail": self.mail_in(*rect), "troughs": self.troughs_in(*rect),
+                                         "fires": [[fx, fy] for fx, fy in self.sim.fires
+                                                   if rect[0] <= fx < rect[0] + rect[2] and rect[1] <= fy < rect[1] + rect[3]]},
+                                        separators=(",", ":")))

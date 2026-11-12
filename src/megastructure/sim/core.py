@@ -207,12 +207,16 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
 
     # ------------------------------------------------------------- agents
 
-    def interrupt(self, a: Agent, why="interrupted"):
+    def interrupt(self, a: Agent, why="interrupted", way=False):
+        """(way: walking on. Otherwise the way a player's screen had walked (Movement.follow) is forgotten: dead,
+        moved, doing something else, they are not going there any more.)"""
         act = a.action
         if act is not None:
             a.action = None
             act.gen.close()
             act.finish({"ok": False, "status": "interrupted", "error": "interrupted", "detail": why}, self)
+        if not way:
+            self.via_drop(a)
 
     def submit(self, a: Agent, tool: str, args: dict | None = None, on_done=None) -> Action:
         args = args or {}
@@ -249,13 +253,9 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
                 self.passing = None
             a.action = walk                           # it needs time: stop walking, then carry on with it
             self.interrupt(a, f"replaced by {tool}")
-            self.via_drop(a)
             a.action = act
             return act
-        if a.action is not None:
-            self.interrupt(a, f"replaced by {tool}")
-        if tool not in ("walk", "stop"):
-            self.via_drop(a)                          # (the way a screen had walked: only walking on makes it)
+        self.interrupt(a, f"replaced by {tool}", way=tool in ("walk", "stop"))
         a.action = act
         return act
 

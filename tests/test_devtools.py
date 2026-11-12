@@ -18,3 +18,26 @@ def test_setting_the_hour_never_turns_the_clock_back(world):
     assert run(sim, a, "step", {"dir": "E"}, limit=5)["ok"] and a.x == x + 1     # ...and you walk on at once
     dev_op(sim, a, "dev_time", {"phase": .8})                # later today: today's
     assert sim.tick // DAY_TICKS == before // DAY_TICKS + 1
+
+
+def test_a_spectator_that_missed_events_is_told_to_ask_for_its_land_again(tmp_path):
+    """Every spectator hears every event, but only so many may wait in its queue: thousands of tiles changing at once
+    and the rest were dropped, without a word (its picture of that land stayed wrong until its next routine refresh)."""
+    import asyncio
+
+    from megastructure import views
+    from megastructure.server import GameServer
+    gs = GameServer(tmp_path / "w", seed=3)
+    q = asyncio.Queue()
+    gs.spectators[q] = None
+    for i in range(views.QUEUE_MAX + 50):
+        gs._broadcast({"type": "tile", "x": i, "y": 0})
+    assert q.qsize() == views.QUEUE_MAX and q in gs.behind
+    gs.push_ticks()
+    assert q in gs.behind                                    # still far behind: not yet
+    while q.qsize() > 10:
+        q.get_nowait()
+    gs.push_ticks()
+    rest = [q.get_nowait() for _ in range(q.qsize())]
+    assert '{"type":"resync"}' in rest and q not in gs.behind
+    gs.sim.close()

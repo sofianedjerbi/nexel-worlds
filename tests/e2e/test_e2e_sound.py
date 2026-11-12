@@ -44,23 +44,29 @@ def test_an_unknown_sound_is_reported_once_and_does_not_break(game):
 def test_muting_stops_new_sounds(game):
     game.wait(ALL_LOADED, 60000)
     game.press("m")
-    before = game.js("sounds.voices + Object.keys(sounds.lastAt).length")
+    before = game.js("JSON.stringify(sounds.lastAt)")         # (when each sound last started: one ending changes nothing)
     game.hold(["d"], 600)
-    assert game.js("sounds.voices + Object.keys(sounds.lastAt).length") == before
+    assert game.js("JSON.stringify(sounds.lastAt)") == before
     game.press("m")
 
 
-def test_the_music_loops_in_the_background_and_m_silences_it(game):
+def test_the_music_is_streamed_in_pieces_and_m_silences_it(game):
+    """The loop is fetched and held a few seconds at a time (whole, it was 37 MB before the first note and 75 MB and
+    more decoded). Muted, it stops (nothing is fetched while it isn't heard) and comes back at the piece it was in."""
     if not game.js("sounds.manifest ? !!sounds.manifest.music : null"):
         game.wait("sounds.manifest", 20000)
     if not game.js("!!sounds.manifest.music"):
         pytest.skip("no music rendered: uv run python music/compose.py, then tools/build_audio.py")
-    game.wait("music.node && music.node.loop && music.node.buffer.duration > 60", 90000)
+    game.wait("music.on && music.nodes.size > 0", 30000)
     game.sleep(1500)
     assert game.js("music.gain.gain.value") > 0.05             # fading in
+    assert game.js("music.nodes.size") <= 2 and game.js("sounds.manifest.music.files.length") > 10
+    piece = game.js("Math.min(...[...music.nodes.values()].map((n) => n.i))")
     game.press("m")
-    game.sleep(1500)
-    assert game.js("music.gain.gain.value") < 0.02             # faded out, still running
+    game.sleep(2600)
+    assert game.js("music.gain.gain.value") < 0.02 and not game.js("music.on") and game.js("music.nodes.size") == 0
     game.press("m")
+    game.wait("music.on && music.nodes.size > 0", 10000)
     game.sleep(1500)
     assert game.js("music.gain.gain.value") > 0.05
+    assert game.js("Math.min(...[...music.nodes.values()].map((n) => n.i))") == piece
