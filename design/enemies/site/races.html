@@ -80,11 +80,11 @@ const RACES = [
   {key: "cat", name: "Cat", tag: "in the game", col: {}, perk: "none: the one everybody is now",
     text: "The player as it is today: pointed ears with pink inside, whiskers, a collar with a bell.", head() {}},
   {key: "bunny", name: "Bunny", tag: "suggestion", col: {a: "#8a6f8f", b: "#fbf3ee", d: "#e6d9dc", c: "#f2a9b4", e: "#f6cfd0"}, perk: "hops down a ledge without the landing pause",
-    text: "Two long, straight ears with rounded tips, pink inside. Side on, the far ear shows as a shaded edge behind the near one. From behind, a white tuft of a tail. It keeps the whiskers.",
+    text: "Two long, straight ears with rounded tips, pink inside, the same width down to the head and joined to it with no line across the foot. Side on, the far ear shows as a shaded edge behind the near one. From behind, a white tuft of a tail. It keeps the whiskers.",
     head(H, A) {
       H.round();
       // An ear: nine rows, straight, a rounded tip, pink down the inside. `out` says which side the pink is on (-1 left, 1 right).
-      const SHAPE = [".aa.", "abba", "abca", "abca", "abca", "abca", "abca", ".aba", ".aba"];
+      const SHAPE = [".aa.", "abba", "abca", "abca", "abca", "abca", "abca", "abca", "abba"];      // the same width all the way down
       const ear = (x0, out, fill = "b", pink = true, dy = 0) => SHAPE.forEach((row, i) => {
         [...(out > 0 ? row : [...row].reverse().join(""))].forEach((ch, j) => {
           if (ch !== ".") H.put(x0 + j, A.sy - 9 + i + 1 + dy, ch === "c" ? (pink ? "c" : fill) : ch === "b" ? fill : "a"); });
@@ -92,8 +92,11 @@ const RACES = [
       if (A.side) {                              // side on they lean back; the far ear shows behind the near one, in shade
         const back = A.facing === "right" ? -1 : 1;
         ear(A.cx - 2 + back, back, "d", false, 1); ear(A.cx - 2, back, "b", true);       // the far one a pixel back and lower: only its edge shows
-      } else { ear(A.cx - 6, -1, "b", A.facing !== "up"); ear(A.cx + 2, 1, "b", A.facing !== "up"); }
-      for (let x = A.cx - 5; x <= A.cx + 4; x++) if (!A.side && H.get(x, A.sy) === "a" && H.get(x, A.sy - 1)) H.put(x, A.sy, "b");      // open the ears into the head
+        H.put(A.cx - 1, A.sy, "b"); H.put(A.cx, A.sy, "b");                              // the near ear runs into the head: no line across its foot
+      } else for (const [x0, out] of [[A.cx - 5, -1], [A.cx + 1, 1]]) {
+        ear(x0, out, "b", A.facing !== "up");
+        H.put(x0 + 1, A.sy, "b"); H.put(x0 + 2, A.sy, "b");
+      }
       if (A.facing === "up") for (const [x, y] of [[-1, 0], [0, 0], [-1, 1], [0, 1]]) H.put(A.cx + x, A.k + 3 + y, "w");
     }},
   {key: "bear", name: "Bear", tag: "suggestion", col: {a: "#6b4a3a", b: "#d6a878", d: "#b98958", c: "#b98958", e: "#e0b58c"}, perk: "carries one more stack in its bag",
@@ -107,15 +110,31 @@ const RACES = [
       if (A.side) { const f = A.facing === "right" ? A.hmax - 1 : A.hmin + 1, s = A.facing === "right" ? -1 : 1;
         for (let y = 6; y <= 7; y++) for (let x = 0; x < 2; x++) H.put(f + s * x, A.sy + y, "m", "bde"); H.put(f, A.sy + 6, "n"); }
     }},
-  {key: "frog", name: "Frog", tag: "suggestion", col: {a: "#3f7a52", b: "#a9dd86", d: "#86c06c", c: "#a9dd86", e: "#c4e89c"}, perk: "wades through shallow water at walking speed",
-    text: "No ears: two eyes sit on top of the head instead, a wide mouth, and a pale belly. No whiskers.",
+  {key: "frog", name: "Frog", tag: "suggestion", col: {a: "#2a6a5a", b: "#6fcf9a", d: "#4fb083", c: "#6fcf9a", e: "#6fcf9a"}, perk: "wades through shallow water at walking speed",
+    text: "No ears: two big eyes bulge from the top of the head. A wide flat mouth, two nostrils, a pale chin and belly, darker spots down its back. A bluer green than the grass, so it stands out on it.",
     head(H, A) {
-      H.round(); H.whiskers(); H.eyes();
-      const bump = (x0, pupil) => { H.put(x0, A.sy - 2, "a"); H.put(x0 + 1, A.sy - 2, "a"); H.put(x0 - 1, A.sy - 1, "a"); H.put(x0 + 2, A.sy - 1, "a");
-        H.put(x0, A.sy - 1, A.facing === "up" ? "b" : pupil ? "n" : "w"); H.put(x0 + 1, A.sy - 1, A.facing === "up" ? "b" : pupil ? "w" : "n"); H.put(x0, A.sy, "b"); H.put(x0 + 1, A.sy, "b"); };
-      if (A.side) bump(A.facing === "right" ? A.hmax - 4 : A.hmin + 3, A.facing === "left"); else { bump(A.hmin + 2, true); bump(A.hmax - 3, false); }
-      if (A.facing === "down") for (let x = -3; x <= 2; x++) H.put(A.cx + x, A.sy + 6, "a", "bde");
-      if (A.side) { const f = A.facing === "right" ? A.hmax - 1 : A.hmin + 1, s = A.facing === "right" ? -1 : 1; for (let x = 0; x < 4; x++) H.put(f + s * x, A.sy + 6, "a", "bde"); }
+      H.round(); H.whiskers(); H.eyes(); H.plain();
+      // An eye: a bump four wide and three tall on top of the head, white with a dark pupil on the side it looks to.
+      const eye = (x0, pupil) => {               // pupil: 0 on the left of the eye, 1 on the right
+        H.put(x0 + 1, A.sy - 3, "a"); H.put(x0 + 2, A.sy - 3, "a");
+        for (const y of [-2, -1]) { H.put(x0, A.sy + y, "a"); H.put(x0 + 3, A.sy + y, "a");
+          for (const j of [0, 1]) H.put(x0 + 1 + j, A.sy + y, A.facing === "up" ? (y === -2 && j === 0 ? "d" : "b") : j === pupil ? "n" : "w"); }
+        H.put(x0, A.sy, "a", "a"); H.put(x0 + 1, A.sy, "b"); H.put(x0 + 2, A.sy, "b");
+      };
+      if (A.facing === "down" || A.facing === "up") {
+        eye(A.hmin + 1, 1); eye(A.hmax - 4, 0);
+        if (A.facing === "down") {
+          for (let x = A.hmin + 3; x <= A.hmax - 3; x++) H.put(x, A.sy + 6, "a", "bde");                       // the mouth
+          H.put(A.cx - 2, A.sy + 4, "d", "b"); H.put(A.cx + 1, A.sy + 4, "d", "b");                             // nostrils
+          for (let y = A.sy + 7; y < A.k; y++) for (let x = A.hmin + 2; x <= A.hmax - 2; x++) H.put(x, y, "y", "b");   // the chin
+        } else for (const [x, y] of [[-3, 3], [-2, 3], [1, 5], [2, 5], [-1, 7], [3, 2]]) H.put(A.cx + x, A.sy + y, "d", "b");   // spots
+      } else {
+        const right = A.facing === "right", f = right ? A.hmax - 1 : A.hmin + 1, s = right ? -1 : 1;           // f: the front of the face
+        eye(right ? A.hmax - 4 : A.hmin + 1, right ? 1 : 0);
+        for (let x = 0; x < 5; x++) { H.put(f + s * x, A.sy + 6, "a", "bde"); for (let y = A.sy + 7; y < A.k; y++) H.put(f + s * x, y, "y", "b"); }
+        H.put(f, A.sy + 4, "d", "b");
+        for (const [x, y] of [[1, 3], [2, 3], [1, 6]]) H.put((right ? A.hmin : A.hmax) - s * x, A.sy + y, "d", "b");   // spots at the back
+      }
       H.belly();
     }},
 ];
@@ -171,6 +190,7 @@ function remake(d, A, race) {                    // d: the frame's pixels, rewri
       if (a < ua && a < da) g[y * CELL + a] = null; if (b > ub && b > db) g[y * CELL + b] = null; } },
     eyes() { for (let y = A.sy + 3; y < A.k - 1; y++) for (let x = 0; x < CELL; x++)           // outline pixels inside the face are the eyes
       if (get(x, y) === "a" && get(x - 1, y) && get(x + 1, y) && get(x, y - 1) && get(x, y + 1) && get(x - 1, y) !== "a" && get(x + 1, y) !== "a") g[y * CELL + x] = "b"; },
+    plain() { for (let y = A.sy; y < A.k; y++) for (let x = 0; x < CELL; x++) if (get(x, y) === "d") g[y * CELL + x] = "b"; },    // no forehead patch
     belly() { if (A.facing !== "up") for (let y = A.k + 2; y < A.bottom - 1; y++) for (let x = 0; x < CELL; x++) if (get(x, y) === "b") g[y * CELL + x] = "y"; },
   };
   race.head(H, A);
