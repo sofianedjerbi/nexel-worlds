@@ -80,14 +80,23 @@ const RACES = [
   {key: "cat", name: "Cat", tag: "in the game", col: {}, perk: "none: the one everybody is now",
     text: "The player as it is today: pointed ears with pink inside, whiskers, a collar with a bell.", head() {}},
   {key: "bunny", name: "Bunny", tag: "suggestion", col: {a: "#8a6f8f", b: "#fbf3ee", d: "#e6d9dc", c: "#f2a9b4", e: "#f6cfd0"}, perk: "hops down a ledge without the landing pause",
-    text: "Two tall ears, pink inside, that stand well above the head and follow every bob. From behind, a white tuft of a tail. It keeps the whiskers.",
+    text: "Two long ears with rounded tips, pink inside, leaning apart; their tips swing a pixel behind each step. Side on they lean back, one behind the other. From behind, a white tuft of a tail. It keeps the whiskers.",
     head(H, A) {
       H.round();
-      const ear = (x0) => { for (let y = -7; y <= 0; y++) for (let x = 0; x < 3; x++) {
-        const edge = x !== 1 || y === -7;
-        H.put(x0 + x, A.sy + y, y === -7 && x !== 1 ? null : edge ? "a" : (A.facing !== "up" && y > -6 && y < 0 ? "c" : "b")); } H.put(x0 + 1, A.sy, "b"); };
-      if (A.side) { ear(A.cx - (A.facing === "right" ? 3 : 0)); ear(A.cx - (A.facing === "right" ? 0 : 3)); }
-      else { ear(A.cx - 5); ear(A.cx + 2); }
+      // An ear: nine rows, a rounded tip, pink down the inside. `out` is the way it leans (-1 left, 1 right): its top three rows
+      // lean a pixel that way, and as the bunny walks the tip straightens and leans again (it trails the bob).
+      const SHAPE = [".aa.", "abba", "abca", "abca", "abca", "abca", "abca", ".aba", ".aba"];
+      const swing = A.walk ? [0, 1, 1, 0, 0, -1, -1, 0][A.col] : A.col === 5 ? 1 : 0;
+      const ear = (x0, out, fill = "b", pink = true, dy = 0) => SHAPE.forEach((row, i) => {
+        const lean = Math.max(-1, Math.min(1, (i < 3 ? out : 0) + (i < 2 ? swing : 0)));      // never more than a pixel: no kink
+        [...(out > 0 ? row : [...row].reverse().join(""))].forEach((ch, j) => {
+          if (ch !== ".") H.put(x0 + j + lean, A.sy - 9 + i + 1 + dy, ch === "c" ? (pink ? "c" : fill) : ch === "b" ? fill : "a"); });
+      });
+      if (A.side) {                              // side on they lean back; the far ear shows behind the near one, in shade
+        const back = A.facing === "right" ? -1 : 1;
+        ear(A.cx - 2 + back, back, "d", false, 1); ear(A.cx - 2, back, "b", true);       // the far one a pixel back and lower: only its edge shows
+      } else { ear(A.cx - 6, -1, "b", A.facing !== "up"); ear(A.cx + 2, 1, "b", A.facing !== "up"); }
+      for (let x = A.cx - 5; x <= A.cx + 4; x++) if (!A.side && H.get(x, A.sy) === "a" && H.get(x, A.sy - 1)) H.put(x, A.sy, "b");      // open the ears into the head
       if (A.facing === "up") for (const [x, y] of [[-1, 0], [0, 0], [-1, 1], [0, 1]]) H.put(A.cx + x, A.k + 3 + y, "w");
     }},
   {key: "bear", name: "Bear", tag: "suggestion", col: {a: "#6b4a3a", b: "#d6a878", d: "#b98958", c: "#b98958", e: "#e0b58c"}, perk: "carries one more stack in its bag",
@@ -117,7 +126,7 @@ const EXTRA = {w: "#fffdf4", m: "#f1dfbd", n: "#3a2a30", y: "#f4f3c4"};        /
 
 // ---------------------------------------------------------------- reading the cat's frames, and rebuilding the head
 let base, sheets = {}, analysis = [];
-function analyse(d, row) {
+function analyse(d, row, col) {
   const at = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL && d[(y * CELL + x) * 4 + 3] ? CLASS[[d[(y * CELL + x) * 4], d[(y * CELL + x) * 4 + 1], d[(y * CELL + x) * 4 + 2]].join()] || "?" : null;
   let top = CELL, bottom = 0, k = null, sy = null;
   for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (at(x, y)) { top = Math.min(top, y); bottom = Math.max(bottom, y); if (k === null && at(x, y) === "f") k = y; }
@@ -130,8 +139,14 @@ function analyse(d, row) {
   if (sy === null) sy = top + 1;
   let hmin = CELL, hmax = 0;
   for (let x = 0; x < CELL; x++) if (at(x, sy + 3)) { hmin = Math.min(hmin, x); hmax = Math.max(hmax, x); }
-  const facing = DIRS[row % 4];
-  return {top, bottom, k, sy, hmin, hmax, cx: Math.round((hmin + hmax + 1) / 2), facing, side: facing === "left" || facing === "right", at};
+  const facing = DIRS[row % 4], side = facing === "left" || facing === "right";
+  if (side) {                                    // side on, the cat's ear flops as it walks: measure the head lower down, where it
+    hmin = CELL; hmax = 0;                       // never changes, and find the top of the skull above the face, not above the ear
+    for (let x = 0; x < CELL; x++) if (at(x, k - 3)) { hmin = Math.min(hmin, x); hmax = Math.max(hmax, x); }
+    const xf = facing === "right" ? hmax - 2 : hmin + 2;
+    sy = top; while (sy < k && !at(xf, sy)) sy++;
+  }
+  return {top, bottom, k, sy, hmin, hmax, cx: Math.round((hmin + hmax + 1) / 2), facing, side, at, walk: row >= 4 && row < 8, col};
 }
 function remake(d, A, race) {                    // d: the frame's pixels, rewritten in place
   const g = [];                                  // the frame as colour classes; null is empty
@@ -139,12 +154,20 @@ function remake(d, A, race) {                    // d: the frame's pixels, rewri
   const get = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL ? g[y * CELL + x] : null;
   const span = (y) => { let a = CELL, b = -1; for (let x = 0; x < CELL; x++) if (get(x, y)) { a = Math.min(a, x); b = x; } return [a, b]; };
   const H = {
+    get,
     put(x, y, c, over) { if (x < 0 || y < 0 || x >= CELL || y >= CELL) return; if (!over || (get(x, y) && over.includes(get(x, y)))) g[y * CELL + x] = c; },
     round() {                                    // take the cat's ears off and close the top of the head in a curve
       for (let y = A.top; y < A.sy; y++) for (let x = 0; x < CELL; x++) g[y * CELL + x] = null;
-      const [a, b] = span(A.sy), inset = A.side ? 1 : 2;
+      if (A.side) {                              // side on: the top three rows of the head are built new, a plain dome,
+        for (let i = 0; i < 3; i++) {            // so nothing of the cat's ear (which moves) is left
+          const y = A.sy + i, a = A.hmin + 2 - i, b = A.hmax - 2 + i;
+          for (let x = A.hmin - 3; x <= A.hmax + 3; x++) g[y * CELL + x] = x < a || x > b ? null : x === a || x === b || i === 0 ? "a" : "b";
+        }
+        return;
+      }
+      const [a, b] = span(A.sy), inset = 2;
       for (let x = a; x <= b; x++) g[A.sy * CELL + x] = x < a + inset || x > b - inset ? null : "a";
-      for (const [x, s] of [[a, 1], [b, -1]]) { const one = A.side ? "a" : null; if (get(x, A.sy + 1)) { g[(A.sy + 1) * CELL + x] = one; if (!one) g[(A.sy + 1) * CELL + x + s] = "a"; } }
+      for (const [x, s] of [[a, 1], [b, -1]]) if (get(x, A.sy + 1)) { g[(A.sy + 1) * CELL + x] = null; g[(A.sy + 1) * CELL + x + s] = "a"; }
       for (let y = A.sy; y < A.k; y++) for (let x = 0; x < CELL; x++) if (get(x, y) === "c") g[y * CELL + x] = "b";
     },
     whiskers() { for (let y = A.sy + 2; y < A.k; y++) { const [a, b] = span(y), [ua, ub] = span(y - 1), [da, db] = span(y + 1);
@@ -164,7 +187,7 @@ function buildSheets() {
   const W = base.width, H = base.height, data = base.getContext("2d").getImageData(0, 0, W, H);
   const frame = (r, c) => { const d = new Uint8ClampedArray(CELL * CELL * 4);
     for (let y = 0; y < CELL; y++) d.set(data.data.subarray(((r * CELL + y) * W + c * CELL) * 4, ((r * CELL + y) * W + c * CELL + CELL) * 4), y * CELL * 4); return d; };
-  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) analysis.push(analyse(frame(r, c), r));
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) analysis.push(analyse(frame(r, c), r, c));
   for (const race of RACES) {
     const cv = document.createElement("canvas"); cv.width = W; cv.height = 8 * CELL;
     const img = new ImageData(W, 8 * CELL);
