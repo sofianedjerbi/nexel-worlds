@@ -113,7 +113,7 @@ function drawEntity(p, sx, sy, S, t, now) {
         anim = running ? "run" : "walk";
         const ms = running ? 60 : 85;                 // 8-frame cycles
         frame = Math.floor(now / ms) % 8;
-        if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms)) {
+        if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms) && !swimsAt(p, e)) {     // (a swimmer has no footsteps: swim.js)
           p.lastStep = Math.floor(now / ms);
           burst(p.x, p.y + .35, "dust", running ? 3 : 2, {up: .6, spread: running ? 2 : 1.2, g: 2, life: .35});
           if (mine) sfx(STEP[gndAt(Math.round(p.x), Math.round(p.y))] || "step");

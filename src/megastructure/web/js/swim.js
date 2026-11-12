@@ -17,7 +17,7 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   if (!p.swam) {                                             // going in: a splash
     p.swam = true; p.wake = [];
     burst(p.x, p.y + .3, "water", 10, {up: 2.6, spread: 3, g: 7, life: .5});
-    sfx("wade", Math.round(p.x), Math.round(p.y));
+    sfx("water", Math.round(p.x), Math.round(p.y));          // one splash going in; after that only the strokes are heard
   }
   // the wake: a mark dropped every few steps of the way, each one two flecks of foam drifting apart and fading
   if (moving && (!p.wake.length || now - p.wake[p.wake.length - 1].t > SWIM.wakeEvery)) p.wake.push({x: p.x, y: p.y, t: now, across: !!p.fy});
@@ -37,7 +37,7 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   if (moving && stroke !== p.lastStroke) {                   // a stroke: a splash beside them, a side each time
     const side = stroke % 2 ? .35 : -.35;
     burst(p.x + (p.fy ? side : -p.fx * .2), p.y + .35 + (p.fx ? side * .4 : 0), "water", 3, {up: 1.4, spread: 1.6, g: 6, life: .35});
-    sfx("wade", Math.round(p.x), Math.round(p.y));
+    if (stroke % 2) sfx("swim", Math.round(p.x), Math.round(p.y));      // a soft pull, every second stroke; treading water is silent
   }
   p.lastStroke = stroke;
   const row = DIR_ROW(p), col = Math.floor(now / 140) % 8, cellX = x - 16 * z, cellY = y - 18 * z + SWIM.sink * z + bob, wl = y + 14 * z;

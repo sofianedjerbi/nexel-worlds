@@ -19,7 +19,7 @@ const SOUND = {
   panWidth: 9,        // tiles to the side at which a sound is fully left or right
   panAmount: .8,
   pitch: .04,         // random pitch spread on physical sounds, so repeats never sound stamped (tuned sounds keep their pitch)
-  minGap: {default: 45, step: 110, tock: 110, click: 110, wade: 130, orb: 30, crackle: 400, grow: 800, say: 150, rustle: 90},   // ms between plays of one sound
+  minGap: {default: 45, step: 110, tock: 110, click: 110, wade: 130, swim: 450, water: 300, orb: 30, crackle: 400, grow: 800, say: 150, rustle: 90},   // ms between plays of one sound
   maxVoices: 20,      // sounds playing at once; beyond this new ones are dropped
   loaders: 4,         // parallel downloads while warming the cache after the first gesture
 };

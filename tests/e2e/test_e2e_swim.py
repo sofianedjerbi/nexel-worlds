@@ -43,3 +43,20 @@ def test_a_page_older_than_the_servers_code_reloads_itself(game):
     assert game.js("myId") is not None                         # the same code: nothing happens
     with game.page.expect_navigation():                        # newer code after a reconnect: the page loads it
         game.js("spec.onmessage({data: JSON.stringify({type: 'hello', web: webStamp + 1})})")
+
+
+def test_swimming_sounds_like_swimming_not_like_walking(game):
+    game.clear_area(8)
+    s = game.server()
+    game.rpc("dev_stamp", x=s["x"] + 1, y=s["y"] - 2, rows=["~~((==))"] * 5)
+    game.sleep(600)
+    game.wait("sounds.manifest && Object.values(sounds.manifest.sounds).flatMap((s) => s.files).every((f) => sounds.buffers.get(f) instanceof AudioBuffer)", 20000)
+    game.hold(["d"], 400)                                      # in: one splash
+    game.js("sounds.lastAt = {}")
+    game.hold(["d"], 800)                                      # swimming on
+    heard = set(game.js("Object.keys(sounds.lastAt)"))
+    assert "swim" in heard and not heard & {"step", "wade", "water"}, sorted(heard)
+    game.js("sounds.lastAt = {}")
+    game.sleep(1200)                                           # treading water: nothing
+    assert not set(game.js("Object.keys(sounds.lastAt)")) & {"swim", "step", "wade", "water"}
+    assert not game.errors

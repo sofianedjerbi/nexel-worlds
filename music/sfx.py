@@ -474,6 +474,16 @@ def _(c):
     return bubbles(c, 0.6 * push + 0.35 * wash, int(c.u(12, 20)), 1.0, 8, 0.32, amp=(0.05, 0.25), start=0.01)
 
 
+@sfx("swim", "Footsteps", "a swimming stroke: an arm pulls through the water", 5, 0.09, change="new")
+def _(c):
+    n = N(0.6)
+    t = tt(n)
+    pull = np.sin(np.pi * np.clip(t / c.u(0.36, 0.44), 0, 1)) ** 2             # no attack: the arm slides in, pulls, and lets go
+    push = norm(fft_filter(c.noise(n), bp(120, c.u(700, 1000))) * pull)          # the water moved aside: low and soft
+    wash = texture(c, n, 500, 3200, 6, 9, 0.8) * np.exp(-((t - c.u(0.26, 0.32)) / 0.11) ** 2)   # it closing behind the hand
+    return bubbles(c, 0.7 * push + 0.3 * wash, int(c.u(3, 7)), 0.8, 5, 0.4, amp=(0.02, 0.08), start=0.12)
+
+
 @sfx("thud", "Footsteps", "landing after a hop down a level", 3, 0.3)
 def _(c):
     n = N(0.28)
