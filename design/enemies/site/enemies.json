@@ -1,5 +1,172 @@
 [
  {
+  "key": "mossback",
+  "name": "Old Mossback",
+  "role": "first boss",
+  "cell": [
+   80,
+   64
+  ],
+  "move": "walk",
+  "ms": {
+   "sleep": [
+    320,
+    320,
+    320,
+    320,
+    320,
+    320,
+    320,
+    320
+   ],
+   "idle": [
+    240,
+    240,
+    240,
+    240,
+    240,
+    240,
+    240,
+    240
+   ],
+   "walk": [
+    120,
+    120,
+    120,
+    120,
+    120,
+    120,
+    120,
+    120
+   ],
+   "stomp": [
+    160,
+    300,
+    220,
+    80,
+    180,
+    220,
+    200
+   ],
+   "snap": [
+    180,
+    200,
+    200,
+    70,
+    260,
+    140,
+    180
+   ],
+   "shake": [
+    110,
+    110,
+    110,
+    110,
+    130,
+    130,
+    160,
+    200
+   ]
+  },
+  "where": "one, on the meadow of the biggest island",
+  "when": "asleep until its tree is cut or its apples are picked",
+  "behaviour": "A hill with an apple tree on it, until someone swings an axe at the tree. Then the hill stands up. It is slow and turns slowly. <b>Stomp</b>: it rises and hangs, then drops: step two tiles back or be thrown. <b>Snap</b>: the head pulls in, then shoots two tiles straight ahead: step sideways, then hit the stretched neck, its only soft spot. <b>Shake</b>: sporecaps fall off its back and waddle at you. Below half health it does two in a row. Beaten, it does not die: it lies down, and the island on its back becomes yours to plant. It wakes again in a season.",
+  "stats": {
+   "hp": 400,
+   "stomp": "25, two tiles round",
+   "snap": "30, two tiles ahead",
+   "speed": "a third of yours",
+   "drops": "shell plate (first armour), apple sapling, a heart"
+  },
+  "sheet": "sheets/mossback.png",
+  "anims": {
+   "sleep": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "idle": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "walk": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23
+   ],
+   "stomp": [
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30
+   ],
+   "snap": [
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37
+   ],
+   "shake": [
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45
+   ]
+  },
+  "palette": [
+   "5a4048",
+   "d3a970",
+   "a97c55",
+   "8c6446",
+   "6fbb62",
+   "9ada7c",
+   "4c9556",
+   "ead79c",
+   "cbb27c",
+   "f0a39a",
+   "2b2a3a",
+   "fff6de",
+   "8a3a4a",
+   "9a6b4a",
+   "58a868",
+   "86cc7a",
+   "3a7350",
+   "ec6f5f",
+   "ec7a66",
+   "a8434f",
+   "ffe07a",
+   "fff6de"
+  ],
+  "frames": 46,
+  "tall": 246
+ },
+ {
   "key": "sporecap",
   "name": "Sporecap",
   "role": "nuisance",
@@ -297,196 +464,5 @@
   ],
   "frames": 28,
   "tall": 115
- },
- {
-  "key": "hush",
-  "name": "Hush",
-  "role": "raider",
-  "cell": [
-   32,
-   32
-  ],
-  "act": "swoop",
-  "move": "fly",
-  "ms": {
-   "idle": [
-    95,
-    95,
-    95,
-    95,
-    95,
-    95,
-    95,
-    95
-   ],
-   "walk": [
-    85,
-    85,
-    85,
-    85,
-    85,
-    85,
-    85,
-    85
-   ],
-   "act": [
-    230,
-    230,
-    70,
-    260,
-    130,
-    130
-   ]
-  },
-  "where": "perches in tall trees at the forest edge",
-  "when": "night",
-  "behaviour": "By day it sleeps in a tree and is only a pair of eyes. At night it glides over fences and water, silent, and goes for small animals left outside: a chicken or chick in the open is carried off. It holds still in the air before it drops, so a player or agent standing by the coop can hit it then. It never attacks people; a roof or a lit torch near the coop keeps it away.",
-  "stats": {
-   "hp": 10,
-   "damage": "takes a chicken",
-   "speed": "faster than you",
-   "drops": "feathers (arrows, pillows)"
-  },
-  "sheet": "sheets/hush.png",
-  "anims": {
-   "idle": [
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7
-   ],
-   "walk": [
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15
-   ],
-   "act": [
-    16,
-    17,
-    18,
-    19,
-    20,
-    21
-   ]
-  },
-  "palette": [
-   "5e4350",
-   "c79a72",
-   "9d7458",
-   "a98063",
-   "f6e7c8",
-   "ffd866",
-   "2b2a3a",
-   "f0a04a",
-   "e9d2ac"
-  ],
-  "frames": 22,
-  "tall": 122
- },
- {
-  "key": "cairn",
-  "name": "Cairn",
-  "role": "guardian",
-  "cell": [
-   32,
-   32
-  ],
-  "act": "slam",
-  "move": "trudge",
-  "ms": {
-   "idle": [
-    260,
-    260,
-    260,
-    260,
-    260,
-    260,
-    260,
-    260
-   ],
-   "walk": [
-    110,
-    110,
-    110,
-    110,
-    110,
-    110,
-    110,
-    110
-   ],
-   "act": [
-    300,
-    300,
-    80,
-    200,
-    400,
-    180,
-    160
-   ]
-  },
-  "where": "mountains, cave mouths, old ruins",
-  "when": "always there, asleep until disturbed",
-  "behaviour": "Sleeps as a pile of mossy stones beside the ore it guards. Mine next to it and it stands up. It is slow and easy to outwalk, but tools barely scratch it. It raises both fists for more than half a second, then slams: everything within one tile is hurt and thrown back. While its fists are down it takes full damage. Leave its ore alone and it sits back down. One per mountain, never more.",
-  "stats": {
-   "hp": 120,
-   "damage": 20,
-   "speed": "half yours",
-   "drops": "stone, ore, a moss heart (rare)"
-  },
-  "sheet": "sheets/cairn.png",
-  "anims": {
-   "idle": [
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7
-   ],
-   "walk": [
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15
-   ],
-   "act": [
-    16,
-    17,
-    18,
-    19,
-    20,
-    21,
-    22
-   ]
-  },
-  "palette": [
-   "5a5560",
-   "b9b3a8",
-   "938c88",
-   "d9d4c6",
-   "86c06c",
-   "5f9a58",
-   "7ff0e0",
-   "d8fff6",
-   "f4eeda",
-   "a8dc74"
-  ],
-  "frames": 23,
-  "tall": 126
  }
 ]

@@ -4,7 +4,7 @@
     uv run --with pillow python design/enemies/build.py tusker out.png     a big preview of one enemy (for drawing)
 
 A sheet is laid out like the game's character.png: one row per direction (down, up, left, right), one column per frame
-(idle, then walk, then the action). Right is left mirrored. Sprites stand on the bottom centre of their cell.
+(idle, then walk, then each action). Right is left mirrored. Sprites stand on the bottom centre of their cell.
 """
 
 import importlib
@@ -21,9 +21,8 @@ from art import mirror  # noqa: E402
 
 SITE = HERE / "site"
 ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
-ORDER = ["sporecap", "hopper", "burrow", "hush", "cairn"]      # on the page: the new suggestions (older designs stay in roster/, off it)
+ORDER = ["mossback", "sporecap", "hopper", "burrow"]      # on the page: the boss and the three kept mobs (older designs stay in roster/, off it)
 DIRS = ["down", "up", "left", "right"]
-ANIMS = ["idle", "walk", "act"]
 IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
 SHADOW = (80, 64, 134, 46)        # the cow's and chicken's shadow colour, a touch stronger for the lighter page grass
 FOOT = 2                       # empty pixels under the sprite in its cell
@@ -65,17 +64,18 @@ def sheet(e):
     pal = {k: rgba(v) for k, v in e["pal"].items()} | {"s": SHADOW}
     dirs = dict(e["dirs"])
     dirs.setdefault("right", {k: [mirror(g) for g in v] for k, v in dirs["left"].items()})
-    names = [(a, i) for a in ANIMS for i in range(len(dirs["down"][a]))]
+    kinds = list(dirs["down"])                                 # idle, walk, then its actions, in the order the file gives them
+    names = [(a, i) for a in kinds for i in range(len(dirs["down"][a]))]
     for d in DIRS:
-        assert [len(dirs[d][a]) for a in ANIMS] == [len(dirs["down"][a]) for a in ANIMS], f"{e['key']}.{d}: frame counts differ"
+        assert [len(dirs[d][a]) for a in kinds] == [len(dirs["down"][a]) for a in kinds], f"{e['key']}.{d}: frame counts differ"
     cw, chh = e["cell"]
     img = Image.new("RGBA", (cw * len(names), chh * 4))
     for r, d in enumerate(DIRS):
         for c, (a, i) in enumerate(names):
             img.alpha_composite(cell_image(dirs[d][a][i], pal, e["cell"], f"{e['key']}.{d}.{a}{i}"), (c * cw, r * chh))
-    anims = {a: [c for c, (b, _) in enumerate(names) if b == a] for a in ANIMS}
-    ms = {a: (e["ms"][a] if isinstance(e["ms"][a], list) else [e["ms"][a]] * len(anims[a])) for a in ANIMS}
-    for a in ANIMS:
+    anims = {a: [c for c, (b, _) in enumerate(names) if b == a] for a in kinds}
+    ms = {a: (e["ms"][a] if isinstance(e["ms"][a], list) else [e["ms"][a]] * len(anims[a])) for a in kinds}
+    for a in kinds:
         assert len(ms[a]) == len(anims[a]), f"{e['key']}.{a}: {len(anims[a])} frames, {len(ms[a])} durations"
     return img, anims, ms
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Megastructure · new mobs</title>
+<title>Megastructure · first boss and new mobs</title>
 <style>
   :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#fff6e2; --paper2:#f3dfba; --line:#c9a27a; }
   * { box-sizing:border-box; }
@@ -23,6 +23,7 @@
   canvas { image-rendering:pixelated; display:block; }
   #world { width:100%; border-radius:12px; border:2px solid #ead1a8; }
   .enemy { display:grid; grid-template-columns:minmax(240px, 1fr) auto; gap:18px; align-items:start; }
+  .enemy.wide { grid-template-columns:1fr; } .enemy.wide .views { justify-content:start; }
   .name { font-size:24px; font-weight:900; }
   .tag { display:inline-block; font-size:11px; font-weight:900; border-radius:6px; padding:1px 7px; background:#ffe2a6; margin-left:8px; vertical-align:middle; }
   .where { font-size:13px; color:var(--ink2); margin-top:4px; }
@@ -48,12 +49,12 @@
 <body>
 <main>
   <header>
-    <h1>New mobs</h1>
+    <h1>First boss and new mobs</h1>
     <div class="sub" id="sub">designs for Megastructure</div>
   </header>
 
   <section class="card">
-    <h2>In the world, at game size <small>the suggestions (dark labels) and the game's own (white labels), all moving together</small>
+    <h2>In the world, at game size <small>the boss and the kept mobs (dark labels) beside the game's own (white labels)</small>
       <button class="t on" data-time="day">day</button><button class="t" data-time="night">night</button></h2>
     <canvas id="world"></canvas>
   </section>
@@ -68,20 +69,20 @@
   <section class="card">
     <h2>How they are made</h2>
     <div class="notes">
-      <div><b>Every frame is computed.</b> Nothing is drawn by hand: each mob is a few shapes moved by a formula, so its 8 frames flow like the player's. That was what worked for the wisp and the wyrm.</div>
-      <div><b>Five ways of moving.</b> One waddles, one hops, one tunnels, one flies, one trudges. No two share a body plan, a size or a colour family, so each is known by its outline alone.</div>
-      <div><b>Built like the game's own.</b> Small, round, flat colours with one shade, an outline in a darker tone of the body (never black), the same soft purple shadow, 8-frame moves at 80 to 110 ms, a slow breath at rest.</div>
-      <div><b>Every action warns first.</b> A held pose of about half a second (squat, open mouth, trembling mound, wings held high, fists up), then one fast frame, a hold, a recovery. The bigger the hit, the longer the warning.</div>
-      <div><b>Each one asks for a different answer.</b> Keep your distance, chase it, pave your floor, roof your coop, wait for the opening. Only the cairn does real damage, and only if you mine beside it.</div>
-      <div><b>Rare by design.</b> One sporecap in a forest, one hush per night, one cairn per mountain. None would spawn until you say so.</div>
-      <div><b>Off this page.</b> The tusker, pincer, strawman, wisp and wyrm are still in the game; only this page dropped them. The stag and the earlier designs stay in <code>design/enemies/roster/</code>.</div>
-      <div><b>Source:</b> one file per mob in <code>design/enemies/roster/</code>; <code>build.py</code> makes the sheets (rows down, up, left, right; columns idle, move, action) and this page. These are designs: say which to keep, change or drop.</div>
+      <div><b>Every frame is computed.</b> Nothing is drawn by hand: each one is a few shapes moved by a formula, so its 8 frames flow like the player's.</div>
+      <div><b>The boss is made of parts.</b> Shell, garden, head, neck and four legs move against each other: the shell sinks on each footfall, the head follows, the tree sways a frame late. That lag is what makes something read as heavy.</div>
+      <div><b>Big, not busy.</b> Old Mossback is about four players wide, in the same flat colours and darker-tone outlines as the cow, so it belongs to the same world.</div>
+      <div><b>Three attacks, three warnings.</b> Each has its own held pose (risen on its legs, head pulled in, shell shuddering), so the answer can be read before the hit: back off, sidestep, deal with the sporecaps.</div>
+      <div><b>A first boss teaches.</b> It is slow, every warning is long (about half a second), and it has one soft spot, the stretched neck, that rewards waiting.</div>
+      <div><b>It uses the small mobs.</b> The sporecaps it shakes off are the same sporecap as below; hoppers and burrows stay ordinary, rare creatures.</div>
+      <div><b>Off this page.</b> The owl and the stone golem are dropped. The tusker, pincer, strawman, wisp and wyrm are still in the game.</div>
+      <div><b>Source:</b> one file per creature in <code>design/enemies/roster/</code>; <code>build.py</code> makes the sheets (rows down, up, left, right; columns idle, move, then each action) and this page. Designs only: nothing here is in the game yet.</div>
     </div>
   </section>
 </main>
 
 <script>
-const DIRS = ["down", "up", "left", "right"], NIGHT = "rgba(30, 28, 70, .55)";
+const LOOPING = ["sleep", "idle", "walk"], DIRS = ["down", "up", "left", "right"], NIGHT = "rgba(30, 28, 70, .55)";
 const GROUND = {grass: ["#9bc984", "#8dbd76"], sand: ["#ecd9a4", "#e3cd95"], water: ["#86cbd6", "#7cc2cf"]};
 let meta, time = "day";
 const sheets = {};
@@ -111,10 +112,10 @@ function sprite(g, e, dir, mode, i, x, y, z) {
 }
 
 function build() {
-  $("sub").textContent = `${meta.length} suggestions beside the game's own player, cow and chicken`;
+  $("sub").textContent = `Old Mossback and three small mobs, beside the game's own player, cow and chicken`;
   for (const e of meta) {
     const [cw, ch] = e.cell, z = cw > 32 ? 3 : 4, el = document.createElement("section");
-    el.className = "card enemy";
+    el.className = "card enemy" + (cw > 48 ? " wide" : "");
     const row = (mode, label) => `<div class="r">${label}</div>` + DIRS.map((d) =>
       `<canvas width="${cw * z}" height="${ch * z}" data-key="${e.key}" data-dir="${d}" data-mode="${mode}"></canvas>`).join("");
     const moving = e.move || "walk";
@@ -126,7 +127,7 @@ function build() {
         <div class="pal">${e.palette.map((c) => `<span class="sw" style="background:#${c}"></span>`).join("")}
           &nbsp; <a href="${e.sheet}">sheet</a>, ${e.cell[0]}×${e.cell[1]} px cells, ${e.frames * 4} frames</div>
       </div>
-      <div class="views"><div></div>${DIRS.map((d) => `<div class="h">${d}</div>`).join("")}${row("idle", "idle")}${row("walk", moving)}${row("act", e.act)}</div>`;
+      <div class="views"><div></div>${DIRS.map((d) => `<div class="h">${d}</div>`).join("")}${Object.keys(e.anims).map((a) => row(a, a === "walk" ? moving : a === "act" ? e.act : a)).join("")}</div>`;
     $("roster").appendChild(el);
   }
   const olds = [["player", "down", "idle"], ["player", "down", "walk"], ["player", "left", "walk"], ["player", "up", "walk"], ["cow", "right", "idle"], ["cow", "left", "walk"],
@@ -161,9 +162,9 @@ function drawOld(g, key, dir, moving, t, x, y, z, memo) {
 
 // The world strip: W x H tiles. Everyone walks round their own rectangle (in tiles): [x, y, w, h].
 const W = 22, H = 9, POND = [17, 1, 5, 7], BEACH = [15, 0, 2, 9];
-const LOOPS = {sporecap: [.8, 1.3, 3.4, 1.4], cairn: [5.8, 1.6, 3.6, 1.6], player: [.8, 4.6, 3, 1.3], cow: [5.2, 4.9, 3.6, 1.2],
-  hush: [10.4, 1.6, 3.4, 2.6], burrow: [1, 7.4, 3.6, 1], chicken: [6.2, 7.4, 3, .9], hopper: [14.6, 1.3, 1.6, 6.4]};
-const SPEED = {sporecap: .8, hopper: 2.2, burrow: 1.6, hush: 2.6, cairn: .7};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the player walks at 2.4
+const LOOPS = {sporecap: [.8, 1.3, 3.4, 1.4], mossback: [7.5, 2.6, 5.5, 2.2], player: [.8, 4.6, 3, 1.3], cow: [4.6, 7.4, 3.6, .9],
+  burrow: [1, 7.4, 2.6, 1], chicken: [10, 7.6, 3, .8], hopper: [14.6, 1.3, 1.6, 6.4]};
+const SPEED = {sporecap: .8, hopper: 2.2, burrow: 1.6, mossback: .8};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the player walks at 2.4
 function along([x, y, w, h], d) {                       // where on the rectangle after d tiles, and which way it faces
   d %= 2 * (w + h);
   if (d < w) return [x + d, y, "right"];
@@ -176,12 +177,13 @@ const actors = {};
 function step(e, dt) {
   const a = actors[e.key] || (actors[e.key] = {d: e.key.length * 1.7, mode: "walk", t: e.key.length * 600});
   a.t += dt;
-  const actMs = total(e.ms.act), plan = {walk: 4200, idle: 1100, act: actMs, rest: 700};
-  if (a.t >= plan[a.mode]) { a.t = 0; a.mode = {walk: "idle", idle: "act", act: "rest", rest: "walk"}[a.mode]; }
+  const acts = Object.keys(e.anims).filter((k) => !LOOPING.includes(k)), act = acts[(a.n || 0) % acts.length];     // its actions, in turn
+  const plan = {walk: 4200, idle: 1100, act: total(e.ms[act]), rest: 700};
+  if (a.t >= plan[a.mode]) { a.t = 0; if (a.mode === "act") a.n = (a.n || 0) + 1; a.mode = {walk: "idle", idle: "act", act: "rest", rest: "walk"}[a.mode]; }
   if (a.mode === "walk") a.d += SPEED[e.key] * dt / 1000;
   const [x, y, dir] = along(LOOPS[e.key], a.d);
   if (a.mode === "walk") return [x, y, dir, "walk", frameAt(e, "walk", a.t)];
-  if (a.mode === "act") return [x, y, dir, "act", frameAt(e, "act", a.t, false)];
+  if (a.mode === "act") return [x, y, dir, act, frameAt(e, act, a.t, false)];
   return [x, y, dir, "idle", frameAt(e, "idle", a.t)];
 }
 function stepOld(key, dt) {                              // the old ones only walk and stand
@@ -200,9 +202,9 @@ function draw(t) {
     const e = meta.find((m) => m.key === c.dataset.key), g = c.getContext("2d"), z = e.cell[0] > 32 ? 3 : 4, mode = c.dataset.mode;
     tiles(g, e.ground || "grass", 0, 0, Math.ceil(c.width / (16 * z)), Math.ceil(c.height / (16 * z)), z);
     let m = mode, i;
-    if (mode === "act") {                            // the action once, then a rest, so the wind-up is easy to see
-      const cycle = total(e.ms.act) + 900, at = t % cycle;
-      if (at < cycle - 900) i = frameAt(e, "act", at, false); else { m = "idle"; i = 0; }
+    if (!LOOPING.includes(mode)) {                   // an action once, then a rest, so the wind-up is easy to see
+      const cycle = total(e.ms[mode]) + 900, at = t % cycle;
+      if (at < cycle - 900) i = frameAt(e, mode, at, false); else { m = "idle"; i = 0; }
     } else i = frameAt(e, mode, t);
     sprite(g, e, c.dataset.dir, m, i, c.width / 2, c.height, z);
     if (time === "night") { g.fillStyle = NIGHT; g.fillRect(0, 0, c.width, c.height); }
