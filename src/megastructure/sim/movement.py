@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from .constants import FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, VIA_FAR, VIA_MAX, sec
+from .constants import FALL_HP, FALL_SAFE, LAYER, SLOPE_DOWN, SLOPE_UP, TARGET_R, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
 
@@ -53,6 +53,26 @@ class Movement:
         if self.can_enter(a, x, y) and self.landing(a, x, y) is None:
             return "a wall, too high to jump (dig into it: dig with a pickaxe)"
         return self.describe(x, y)
+
+    # ============================================================== reach
+
+    def stands(self, t) -> int:
+        """The height someone stands at: a person's own; a creature's, the lowest ground under it."""
+        return self.height(t) if isinstance(t, Agent) else self.world.level(t.x, t.y)
+
+    def near(self, a: Agent, x: int, y: int, r: float, z: int | None = None) -> bool:
+        """Is (x, y) within reach r of `a`? Reach is a circle round you, as the crow flies: r tiles, and the half tile
+        to the far tile's edge. Height is distance too, a layer half a tile: what is too far up or down is out of
+        reach, however near on the map. z: the height of what is there (a tile's: its ground nearest your own)."""
+        h = self.height(a)
+        if z is None:
+            z = min(self.world.surfaces(x, y), key=lambda s: abs(s - h))
+        return (x - a.x) ** 2 + (y - a.y) ** 2 + ((z - h) * LAYER) ** 2 <= (r + .5) ** 2
+
+    def reach(self, a: Agent, x: int, y: int, r: float = TARGET_R, z: int | None = None):
+        if not self.near(a, x, y, r, z):
+            raise ActionError("out_of_range", f"({x},{y}) is out of reach: {r} tiles round you, height counted "
+                                              "(a layer is half a tile)")
 
     def fell(self, a: Agent, layers: int) -> dict:
         """Coming down `layers` at once: up to FALL_SAFE is nothing, each layer more hurts."""
@@ -112,7 +132,7 @@ class Movement:
         a.ready = self.tick + sec(self.stride(a, args))
 
     def _tool_step(self, a, args):
-        x, y = self.target(a, args)
+        x, y = self.target(a, args, flat=True)
         if not self.can_go(a, x, y):
             raise ActionError("blocked", f"{args['dir']} is {self.why_not(a, x, y)}")
         yield from self.pace(a, args)

@@ -7,7 +7,7 @@ from .entities import Agent
 XP_DIG = {"tree": 2, "bare_fruit_tree": 2, "stump": 1, "rock": 1, "ore": 4, "ripe_crop": 2}
 XP_KILL = {"chicken": 2, "calf": 1, "cow": 4, "tusker": 8, "pincer": 3, "strawman": 10, "wyrm": 20, "mossback": 100, "sporeling": 1}
 XP_CRAFT = 1
-MAGNET_R = 1                 # items within this many tiles (diagonals too) come to you...
+MAGNET_R = 1                 # items within this reach (Movement.near: a circle, height counted) come to you...
 MAGNET_DELAY = sec(1.2)      # ...once they've been on the ground this long (time to land, or to walk off a drop)
 
 
@@ -45,8 +45,8 @@ class Progress:
                 for dx in range(-MAGNET_R, MAGNET_R + 1):
                     pos = (a.x + dx, a.y + dy)
                     pile = self.items.get(pos)
-                    if not pile or self.tick - self.item_since.get(pos, 0) < MAGNET_DELAY:
-                        continue
+                    if not pile or self.tick - self.item_since.get(pos, 0) < MAGNET_DELAY or not self.near(a, *pos, MAGNET_R):
+                        continue                             # (not there, just dropped, or out of reach: up on a ledge, down a drop)
                     got = dict(pile)
                     for k, n in got.items():
                         a.add(k, n)

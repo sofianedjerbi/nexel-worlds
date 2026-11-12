@@ -121,7 +121,7 @@ class Animals:
         t = self._find_target(args.get("target"))
         if not isinstance(t, Creature) or (kind and t.kind != kind):
             raise ActionError("bad_target", f"that is not a {kind or 'creature'}")
-        if max(abs(t.x - a.x), abs(t.y - a.y)) > T.USE_R:
+        if not self.near(a, t.x, t.y, T.USE_R, self.stands(t)):
             raise ActionError("out_of_range", f"get within {T.USE_R} tiles of it")
         return t
 

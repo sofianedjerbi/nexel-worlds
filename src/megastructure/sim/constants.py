@@ -24,6 +24,7 @@ EVENT_QUEUE = 60
 MAX_TEXT = 200
 
 TARGET_R = 3         # actions aimed at x, y: tiles.USE_R plus one, to absorb a walking client's lead
+LAYER = 0.5          # a layer of height is half a tile: in what you can reach, height is distance too (Movement.near)
 MOVES = ("walk", "move_to", "step", "stop")   # movement (stop: walking to where the player's screen stopped): quick actions happen alongside it instead of stopping it
 VIA_FAR, VIA_MAX = 8, 8               # a tile a screen walked to: how far it may be from the last, and how many are kept (Movement.follow)
 ATTACK_COOLDOWN = 0.4    # seconds between two swings

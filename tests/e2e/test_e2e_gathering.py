@@ -109,14 +109,14 @@ def test_bushes_and_fruit_trees_stay_and_bear_again(game):
 
 
 def test_clicking_a_tree_crown_means_the_tree(game):
-    game.stamp(2, 2, ["T"])
+    game.stamp(2, 1, ["T"])                                  # (within reach: a circle of two tiles and a half round you)
     x, y = game.pos()
-    sx, sy = game.js(SCREEN, [x + 2, y + 1])                 # the tile above the trunk, under the crown
+    sx, sy = game.js(SCREEN, [x + 2, y])                     # the tile above the trunk, under the crown
     game.page.mouse.move(sx, sy)
     game.sleep(200)
     assert "Chop tree" in game.js("$('hover').innerText")
     game.page.mouse.click(sx, sy)
-    game.wait(f"combAt({x + 2}, {y + 2}) === 't'", 9000)
+    game.wait(f"combAt({x + 2}, {y + 1}) === 't'", 9000)
 
 
 def test_too_far_is_too_far(game):
@@ -125,3 +125,24 @@ def test_too_far_is_too_far(game):
     game.sleep(300)
     assert "Too far" in game.toast() and game.tile(4, 0) == "M"
     assert game.pos() == (game.server()["x"], game.server()["y"])   # and nothing walked you there
+
+
+def test_what_is_up_a_cliff_is_out_of_reach(game):
+    """Reach is a circle round you and height is distance too (a layer is half a tile): a flower on a pillar in front
+    of you, six layers up, is three tiles above you. It is not offered, Space says why, and nothing happens; two
+    layers up, you pick it. A flower two tiles off and one across is within the circle; two and two is its corner."""
+    game.clear_area(8)
+    game.stamp(0, -1, ["f"], levels=["6"])
+    game.face(0, -1)
+    game.sleep(500)
+    assert not any("flower" in r[1].lower() for r in game.js("availableActions()"))
+    game.press("Space", 400)
+    assert game.tile(0, -1) == "f" and "Out of reach" in game.js("$('toastt').textContent")
+    game.stamp(0, -1, ["f"], levels=["2"])
+    game.sleep(300)
+    assert any("flower" in r[1].lower() for r in game.js("availableActions()"))
+    game.press("Space", 500)
+    assert game.tile(0, -1) != "f" and game.inv("flower") == 1
+    x, y = game.pos()
+    assert game.js(f"[reaches({x + 2}, {y + 1}, USE_R), reaches({x + 2}, {y + 2}, USE_R), reaches({x + 1}, {y}, USE_R, myZ({x}, {y}) + 5)]") == [True, False, False]
+    assert not game.errors

@@ -45,11 +45,12 @@ function facingIntent(alt) {
   const q = facingTile(), s = myPos(); if (!q || !s) return null;
   if (!alt && placingItem()) {
     if (entityAt(q)) return {p: q, it: {text: `Can't place the ${label(selected)}: something is in the way`, ok: false, ghost: selected}};
-    const it = intent(q, false); return it ? {p: q, it} : null;
+    const it = intent(q, false);
+    return it ? {p: q, it: it.ok === false || inReach(q, it) ? it : {...it, ok: false, text: TOO_HIGH}} : null;
   }
   const reach = reachOf(inHand()), dist = (o) => Math.abs(o.tx - s.x) + Math.abs(o.ty - s.y);
-  const near = alt ? [] : [...ents.values()]
-    .filter((o) => o.e && !(o.e.kind === "agent" && o.e.id === myId) && Math.max(Math.abs(o.tx - s.x), Math.abs(o.ty - s.y)) <= reach)
+  const near = alt ? [] : [...ents.values()]                // (within reach: a circle, height counted: intent.js reaches)
+    .filter((o) => o.e && !(o.e.kind === "agent" && o.e.id === myId) && reaches(o.tx, o.ty, reach, standsAt(o)))
     .sort((a, b) => dist(a) - dist(b));
   const hit = (o) => { const p = {x: o.tx, y: o.ty}, it = intent(p, false); return useful(it) && it.attack ? {p, it} : null; };
   if (foe && performance.now() < foe.until) {
@@ -60,23 +61,23 @@ function facingIntent(alt) {
   const here = {x: s.x, y: s.y}, under = combAt(s.x, s.y);           // something growing under your feet
   if (!alt && under && !GROUND.has(under) && !SOLID.has(under)) { const it = intent(here, false); if (useful(it)) return {p: here, it}; }
   const faced = intent(q, alt);
-  if (useful(faced)) return {p: q, it: faced};
+  if (useful(faced) && inReach(q, faced)) return {p: q, it: faced};
   // a pickaxe in hand, facing higher ground with nothing on it: cut into it (it comes down a layer)
   if (inHand() === "pickaxe" && solidAt(q.x, q.y, myZ(s.x, s.y) + 1) && GROUND.has(combAt(q.x, q.y)))
-    return {p: q, it: {text: "Dig into the hill", run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
+    return {p: q, it: {text: "Dig into the hill", flat: true, run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
   // X with a pickaxe and nothing else to use it on: dig down where you stand
   if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !":n".includes(under))
     return {p: here, it: {text: "Dig down", here: true, run: () => act("dig_down", {with: "pickaxe"})}};
-  for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it)) return {p, it}; }
+  for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it) && inReach(p, it)) return {p, it}; }
   // then anything within reach (USE_R): nearest first, in front of you before behind
   const p0 = ents.get("agent" + myId), ring = [];
   for (let dy = -USE_R; dy <= USE_R; dy++) for (let dx = -USE_R; dx <= USE_R; dx++) {
-    if (!dx && !dy) continue;
+    if ((!dx && !dy) || !reaches(s.x + dx, s.y + dy, USE_R)) continue;
     ring.push({x: s.x + dx, y: s.y + dy, d: Math.max(Math.abs(dx), Math.abs(dy)) + Math.abs(dx) * .01 + Math.abs(dy) * .01 - (dx * p0.fx + dy * p0.fy) * .1});
   }
   ring.sort((a, b) => a.d - b.d);
   for (const q of ring) { const p = {x: q.x, y: q.y}, it = intent(p, alt); if (useful(it)) return {p, it}; }
-  return faced && !faced.walk ? {p: q, it: faced} : null;
+  return faced && !faced.walk ? {p: q, it: useful(faced) ? {...faced, ok: false, text: TOO_HIGH} : faced} : null;   // (in front of you, but up a cliff or down one)
 }
 // The tile hints are drawn for: where the mouse points, or the tile you face when playing by keyboard.
 function aimedTile() {

@@ -33,7 +33,7 @@ class Building:
         return g if b == "none" else f"{b} on {g}"
 
     def _tool_dig(self, a, args):
-        x, y = self.resolve(*self.target(a, args))
+        x, y = self.resolve(*self.target(a, args, flat=True))   # (flat: a wall is dug at your own height, whatever is on top of it)
         g, b = self.world.get(x, y)
         block, ground = BLOCKS[b], GROUNDS[g]
         z = self.height(a) + 1                             # the cell in front of you, at your body's height
@@ -45,6 +45,7 @@ class Building:
             a.add(got)
             self.set_cell(x, y, z, False, by=a, cause="dig")
             return {"got": {got: 1}, "cell": [x, y, z]}
+        self.reach(a, x, y)                                # (anything else is on the tile's ground: too high up, or down, is out of reach)
         if block.name == "none" and ground.liquid:           # the bottom of the water: a layer deeper
             return (yield from self.deepen(a, x, y))
         if block.name == "none":

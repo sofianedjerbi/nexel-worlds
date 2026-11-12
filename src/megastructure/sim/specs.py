@@ -36,7 +36,7 @@ TOOL_SPECS = {
     "drop": {"args": {"item": "str", "n": "int"}, "desc": "drop items on your tile"},
     "craft": {"args": {"recipe": "str", "n": "int (optional)"}, "desc": "craft from the recipe book"},
     "attack": {"args": {"target": "entity id", "with": "weapon (optional, e.g. sword, spear, axe; default fists)"},
-               "desc": "hit an agent or creature within reach (3 tiles, 4 with a spear in hand)"},
+               "desc": "hit an agent or creature within reach (3 tiles, 4 with a spear in hand; a circle round you, and height counts: a layer is half a tile, so not up a cliff or down one)"},
     "give": {"args": {"target": "agent id", "item": "str", "n": "int"}, "desc": "hand items to an agent within 2 tiles"},
     "eat": {"args": {"item": "str"}, "desc": "eat food"},
     "wear": {"args": {"item": "str"}, "desc": "put on a hat, top, pants, shoes or charm you carry (iron, gold, leather and mossback pieces are armor)"},

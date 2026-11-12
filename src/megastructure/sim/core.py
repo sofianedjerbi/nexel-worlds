@@ -154,22 +154,22 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
                 return c
         return None
 
-    def target(self, a: Agent, args) -> tuple[int, int]:
-        """The tile an action is aimed at: `dir` (the adjacent tile that way), or an absolute `x`, `y` within
-        TARGET_R (a walking player's client may be up to a tile ahead of the server)."""
+    def target(self, a: Agent, args, flat=False) -> tuple[int, int]:
+        """The tile an action is aimed at: `dir` (the adjacent tile that way), or an absolute `x`, `y`. Within reach
+        (Movement.near: TARGET_R round you, a walking player's client being up to a tile ahead of the server; height
+        counted, unless `flat`: a step, a wall you face)."""
         if "x" in args and "y" in args and args.get("dir") is None:
             try:
-                x, y = int(args["x"]), int(args["y"])
+                x, y = int(args["x"]), int(args["y"])                 # (your own tile too: a flower underfoot)
             except (TypeError, ValueError):
                 raise ActionError("bad_args", "x and y must be integers")
-            if max(abs(x - a.x), abs(y - a.y)) > TARGET_R:            # your own tile too (a flower underfoot)
-                raise ActionError("out_of_range", f"({x},{y}) is not within {TARGET_R} tiles of you")
-            return x, y
-        d = str(args.get("dir", "")).upper()
-        if d not in DIRS:
-            raise ActionError("bad_args", "aim with dir (N, E, S or W) or with x and y")
-        dx, dy = DIRS[d]
-        return a.x + dx, a.y + dy
+        else:
+            d = str(args.get("dir", "")).upper()
+            if d not in DIRS:
+                raise ActionError("bad_args", "aim with dir (N, E, S or W) or with x and y")
+            x, y = a.x + DIRS[d][0], a.y + DIRS[d][1]
+        self.reach(a, x, y, z=self.height(a) if flat else None)
+        return x, y
 
     def near_block(self, a: Agent, block: str, r: int = 2) -> bool:
         return any(self.world.block(a.x + dx, a.y + dy) == block

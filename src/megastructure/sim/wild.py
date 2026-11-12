@@ -21,6 +21,9 @@ WYRM_SEES, WYRM_REACH, WYRM_WINDUP, WYRM_REST = 7, 2, 0.5, 2.0
 LIGHT, LIGHT_R = ("campfire", "fire"), 6
 
 
+BITE_HIGH = 4            # layers: how far up or down a bite reaches (two tiles: as far as your own hand, next to it)
+
+
 def cheb(a, c) -> int:
     return max(abs(a.x - c.x), abs(a.y - c.y))
 
@@ -41,6 +44,8 @@ class Wild(Boss):
         return min((a for a in online if cheb(a, c) <= r), key=lambda a: (cheb(a, c), a.id), default=None)
 
     def bite(self, c, prey, dmg=None):
+        if abs(self.height(prey) - self.world.level(c.x, c.y)) > BITE_HIGH:
+            return                                             # (up on a ledge, down a drop: out of its reach, as it is out of yours)
         dmg = self.guarded(prey, dmg or CREATURES[c.kind]["damage"])     # (armor: wear.py)
         self.emit("attack", c.x, c.y, attacker=f"a {c.kind}", target=prey.name, damage=dmg, id=c.id)
         self.damage(prey, dmg, c.kind)

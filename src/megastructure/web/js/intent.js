@@ -30,7 +30,7 @@ function entityAt(p) {
   const others = [...ents.values()].filter((q) => q.e && !(q.e.kind === "agent" && q.e.id === myId));
   return others.find((q) => q.tx === p.x && q.ty === p.y) || others.find((q) => Math.round(q.x) === p.x && Math.round(q.y) === p.y);
 }
-const reachOf = (weapon) => (weapon === "spear" ? 3 : 2);   // tiles.py REACH
+const reachOf = (weapon) => (weapon === "spear" ? 3 : 2);   // tiles.py REACH, less the tile the server allows for your lead (reaches, below: a circle, height counted)
 // What the pointer means at a tile. A tree's crown hangs over the tiles above its trunk (a round tree's almost two
 // tiles, a thin one's one): pointing there means the tree, unless you hold something meant for that ground tile.
 const TALL = "TFU";
@@ -174,18 +174,30 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
 const USE_R = 2;   // tiles.py USE_R
 const SWING_MS = 420;
 let lastSwing = 0;
-function inReach(p, it) {
+// What you can reach: a circle round you, as the crow flies (r tiles, and the half tile to the far tile's edge), and
+// height is distance too, a layer half a tile: up a cliff or down one is out of reach, however near on the map (the
+// server's rule: sim/movement.py near). z: the height of what is there (someone's own; a tile's: its ground nearest
+// your own height); flat: height left out.
+const LAYER = .5;
+function reaches(x, y, r, z, flat) {
+  const s = myPos(); if (!s) return false;
+  const h = myZ(s.x, s.y), dz = flat ? 0 : ((z === undefined ? settleNear(x, y, h) : z) - h) * LAYER;
+  return (x - s.x) ** 2 + (y - s.y) ** 2 + dz * dz <= (r + .5) ** 2;
+}
+const standsAt = (o) => (o.e && o.e.z !== undefined ? o.e.z : floorAt(o.tx, o.ty));   // someone's height: a person's own; a creature's, the lowest ground under it
+function inReach(p, it, flat = it.flat) {                       // (it.flat: a wall you dig into is at your own height, whatever is on top of it)
   const s = myPos(); if (!s) return false;
   const tiles = it.foot && !it.from ? it.foot : [p];            // a structure: any of its tiles will do
-  const reach = it.attack ? it.near : USE_R;
-  return tiles.some((q) => Math.max(Math.abs(q.x - s.x), Math.abs(q.y - s.y)) <= reach)
+  const reach = it.attack ? it.near : USE_R, z = it.ent ? standsAt(it.ent) : undefined;
+  return tiles.some((q) => reaches(q.x, q.y, reach, z, flat))
     && !(it.foot && it.from && it.foot.some((q) => q.x === s.x && q.y === s.y));   // not standing in a new structure's spot
 }
+const TOO_HIGH = "Out of reach: too high up, or too far down.";
 async function perform(p, it) {
   if (!it || it.info || !it.run) return;
   if (it.ok === false) return toast(it.text, true);
   if (it.walk || it.here) return it.run();
-  if (!inReach(p, it)) return toast("Too far: get closer.", true);
+  if (!inReach(p, it)) return toast(inReach(p, it, true) ? TOO_HIGH : "Too far: get closer.", true);
   if (it.attack) {                                  // one swing per cooldown (sim ATTACK_COOLDOWN): no queued swings
     const now = performance.now(), me_ = ents.get("agent" + myId);
     if (now - lastSwing < SWING_MS) return;
