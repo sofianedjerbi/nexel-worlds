@@ -1,21 +1,19 @@
 // Behind a wall or a mountain you'd be hidden (relief.js: clipBehind). Instead, a circle round you is seen through it:
-// inside it the land is sliced at the height you stand at. Everything higher, on every side of you, is cut down to
-// that height and shown as its footprint, in the colour of its earth, outlined (it is still a wall); what is at your
-// height or lower shows as it is: you, the ground and the water you move on, who and what is there. (Every side: cut
-// only in front of you, the walls beside and behind you stood in the circle with a tall face down to the cut, walls
-// that are not there.) It fades out toward its edge, and comes and goes softly. Only where something higher is drawn
-// (the rest of the screen is the land as it is), and only for you. Painted small (art px, a few tiles), every frame:
-// nothing is rebuilt or kept.
+// where rock is drawn over ground you could be on (your height, a step up, or lower), that ground shows instead, with
+// its water, you, and who and what is there. Nothing else changes: rock that hides no such ground stays as it is drawn
+// (no cut hill, no wall that isn't there: the circle is only the hidden ground), and so does everything outside the
+// circle. It fades out toward its edge, comes and goes softly, and is only for you. Painted small (art px, a few
+// tiles), every frame: nothing is rebuilt or kept.
 
 // r, core: its radius (tiles) and the part of it that's clear. It comes when you're really hidden, not for an edge
 // that hides your feet or a post you walk past: body: your height (art px); from, full: the share of you that's
 // hidden where it starts and where it is whole (a wall two layers high in front of you leaves your head: nothing; three
 // hides you: the circle); wait: seconds hidden before it comes
-const XRAY = {r: 3.1, core: .42, body: 22, from: .75, full: .95, wait: .15, far: 12};   // (far: tiles south to look for ground drawn up over you)
+const XRAY = {r: 3.1, core: .42, body: 22, from: .75, full: .95, wait: .15, far: 12, rim: [.7, .26, .12]};   // (far: tiles south to look for ground drawn up over you; rim: the edge of hidden ground at rock, a px each)
 const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, t: 0};   // how strong, the height it cuts at, your row, its centre (tiles), how long you've been hidden
 
-// The ground the circle cuts down: higher than you stand
-const xrayCut = (tx, ty) => xray.a > .01 && levelAt(tx, ty) > xray.L;
+// Ground you could be on, from where you stand: your height, a step up (a jump), anything lower. The rest is rock.
+const xrayOpen = (tx, ty) => levelAt(tx, ty) <= xray.L + 1;
 // How clear the circle is at a spot as drawn (tiles, lifted with its ground): 0 the land as it is, 1 seen through
 function xrayAt(x, y) {
   if (xray.a <= .01) return 0;
@@ -23,11 +21,19 @@ function xrayAt(x, y) {
   return xray.a * smooth(Math.max(0, Math.min(1, (1 - d) / (1 - XRAY.core))));
 }
 const xrayOn = (tx, ty) => xrayAt(tx, ty - shOf(levelAt(tx, ty)) / 16);      // ...at what stands on a tile
-// Someone in the circle: 1 behind the hill with you (drawn whole, not cut at its edge), -1 standing on the ground
-// that's seen through (not drawn), 0 neither
+// What stands on a tile is in the way: on rock in front of you (south), drawn up over ground the circle shows.
+// -> how much it fades (0: it stays: nothing is hidden behind it)
+function xrayOver(tx, ty) {
+  if (xray.a <= .01 || ty <= xray.row || xrayOpen(tx, ty)) return 0;
+  const r = Math.round(ty - (levelAt(tx, ty) - xray.L) / 2);                 // the row, at your height, that it is drawn over
+  return xrayOpen(tx, r) || xrayOpen(tx, r - 1) ? xrayOn(tx, ty) : 0;
+}
+// Someone in the circle: 1 on the hidden ground with you (drawn whole, not cut at the hill's edge), -1 standing in
+// the way (not drawn), 0 neither
 function xraySees(p) {
   const tx = Math.round(p.x), ty = Math.round(p.y);
-  return xrayOn(tx, ty) < .3 ? 0 : xrayCut(tx, ty) ? -1 : 1;
+  if (xray.a <= .01) return 0;
+  return xrayOver(tx, ty) >= .3 ? -1 : xrayOpen(tx, ty) && xrayOn(tx, ty) >= .3 ? 1 : 0;
 }
 
 // Once a frame, before anything of it is drawn: are you behind something, and how much of you
@@ -59,41 +65,36 @@ function drawXray(sx, sy) {
   if (!xray.c) { xray.c = document.createElement("canvas"); xray.c.width = xray.c.height = D; }
   const g = xray.c.getContext("2d"), cx = xray.x * 16 + 8, cy = xray.y * 16 + 8, ax = Math.round(cx - D / 2), ay = Math.round(cy - D / 2);
   const x0 = Math.floor(ax / 16) - 1, x1 = Math.floor((ax + D) / 16) + 1, top = Math.floor((ay + lift) / 16) - 1, y0 = top - 5, y1 = Math.floor((ay + D + lift) / 16) + 1;   // (top, y1: the rows of your height the circle spans)
-  const lvOf = (tx, ty) => (xrayCut(tx, ty) ? L : levelAt(tx, ty));          // the land with what's in the way cut down
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.clearRect(0, 0, D, D);
-  g.save(); g.beginPath();                                                    // only where the hill is drawn over what's behind it
+  g.save(); g.beginPath();                                                    // only where rock is drawn: from its top, as drawn, down to your height
   let any = false;
   // (as far south as high ground is drawn up into the circle: a plateau 12 layers high is, from 6 tiles further on)
-  for (let ty = top; ty <= y1 + XRAY.far; ty++) for (let tx = x0; tx <= x1; tx++) if (xrayCut(tx, ty)) {
-    const up = ty * 16 - shOf(levelAt(tx, ty)) - ay, foot = ty * 16 + 16 - lift - ay;     // as it is drawn, down to where it is cut
+  for (let ty = top; ty <= y1 + XRAY.far; ty++) for (let tx = x0; tx <= x1; tx++) if (!xrayOpen(tx, ty)) {
+    const up = ty * 16 - shOf(levelAt(tx, ty)) - ay, foot = ty * 16 + 16 - lift - ay;
     if (up >= D || foot <= 0) continue;
     g.rect(tx * 16 - ax - 8, up, 32, foot - up); any = true;
   }
   if (!any) { g.restore(); return; }
   g.clip(); g.imageSmoothingEnabled = false;
-  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {     // from the back: each tile at its height, its wall under it
-    const t = tileIdx(tx, ty); if (!t || !t[0].canvas) continue;
-    const lv = lvOf(tx, ty), X = tx * 16 - ax, Y = ty * 16 - shOf(lv) - ay, i = t[1];
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {     // the ground under it, from the back: each tile at its height
+    const t = tileIdx(tx, ty); if (!t || !t[0].canvas || !xrayOpen(tx, ty)) continue;
+    const lv = levelAt(tx, ty), X = tx * 16 - ax, Y = ty * 16 - shOf(lv) - ay, i = t[1];
     if (waterView && lv === 0) {                                              // water there, and under a shore's edge (water.js: as it is on screen)
       const wx = tx * 16 - waterView.x, wy = ty * 16 - waterView.y;
       if (wx >= 0 && wy >= 0 && wx + 16 <= waterCv.width && wy + 16 <= waterCv.height) g.drawImage(waterCv, wx, wy, 16, 16, X, Y, 16, 16);
     }
     g.drawImage(t[0].canvas, (i % B) * 16, (i / B | 0) * 16, 16, 16, X, Y, 16, 16);
-    for (let k = lv, below = lvOf(tx, ty + 1); k > below; k--) {              // (a band a layer, as relief.js paints them)
+    for (let k = lv, below = xrayOpen(tx, ty + 1) ? levelAt(tx, ty + 1) : lv; k > below; k--) {   // its wall down to lower ground in front (a band a layer, as relief.js paints them)
       const c = colsOf(hillSheet(k)).bands, yk = Y + 16 + (lv - k) * RELIEF_STEP;
       g.fillStyle = `rgb(${c[1].map(Math.round)})`; g.fillRect(X, yk, 16, RELIEF_STEP);
       g.fillStyle = `rgb(${c[0].slice(0, 3).map(Math.round)})`; g.fillRect(X, yk, 16, 1);
       g.fillStyle = `rgb(${c[2].slice(0, 3).map(Math.round)})`; g.fillRect(X, yk + RELIEF_STEP - 1, 16, 1);
     }
-    if (!xrayCut(tx, ty)) continue;
-    // the hill, cut: its earth (the colour of its own walls); a layer up (a step you can jump) is only shaded
-    const high = levelAt(tx, ty) > L + 1, e = colsOf(hillSheet(L + 2)).bands[1];
-    g.fillStyle = high ? `rgba(${e.map(Math.round)},.9)` : "rgba(60,40,30,.28)"; g.fillRect(X, Y, 16, 16);
-    g.fillStyle = high ? "rgba(46,28,24,.9)" : "rgba(46,28,24,.5)";           // its outline, where the ground beside it is open
-    if (!xrayCut(tx, ty - 1)) g.fillRect(X, Y, 16, 1);
-    if (!xrayCut(tx - 1, ty)) g.fillRect(X, Y, 1, 16);
-    if (!xrayCut(tx + 1, ty)) g.fillRect(X + 15, Y, 1, 16);
-    if (!xrayCut(tx, ty + 1)) g.fillRect(X, Y + 15, 16, 1);
+    // where it ends at rock: a dark edge and a little shade along it (the rock itself stays as it is drawn)
+    for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1]]) if (!xrayOpen(tx + dx, ty + dy)) XRAY.rim.forEach((al, k) => {
+      g.fillStyle = `rgba(40,26,30,${al})`;
+      g.fillRect(dx ? X + (dx > 0 ? 15 - k : k) : X, dy ? Y + (dy > 0 ? 15 - k : k) : Y, dx ? 1 : 16, dy ? 1 : 16);
+    });
   }
   g.restore();
   const R = XRAY.r * 16, fade = g.createRadialGradient(cx - ax, cy - ay, R * XRAY.core, cx - ax, cy - ay, R);

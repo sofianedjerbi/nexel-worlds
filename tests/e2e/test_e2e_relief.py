@@ -251,18 +251,22 @@ def test_told_it_missed_events_the_page_asks_for_its_land_again(game):
     assert game.tile(2, 0) != "T"
 
 
-def test_the_circle_cuts_the_walls_beside_you_too(game):
-    """Only the ground in front of you was cut: the walls beside and behind you then stood in the circle with a tall
-    face down to the cut (a wall that isn't there, banded layer by layer). Everything higher than you is cut, on
-    every side: a wall beside you is its plain footprint."""
+def test_the_circle_shows_only_the_hidden_ground(game):
+    """The circle is the ground that rock hides (your height, a step up, or lower), and nothing else: rock that hides
+    none stays as it is drawn. (It had painted the rock too: first the walls beside you with a tall face down to the
+    cut, walls that are not there; then all of it as a brown footprint, wherever the circle reached.)"""
     game.clear_area(10)
     game.stamp(-4, -3, ["." * 9] * 7, levels=["666606666"] * 4 + ["666666666"] * 3)   # a nook, open to the north: walls west, east and south
     game.sleep(1200)
     x, y = game.pos()
+    look = lambda dx, dy: game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), out = [];
+      for (let k = 3; k <= 12; k++) out.push(...ctx.getImageData(Math.round((ox + ({x + dx} + .5) * S) * DPR), Math.round((oy + ({y + dy}) * S + k * zoom) * DPR), 1, 1).data.slice(0, 3));
+      return out; }})()""")
     assert game.js("xray.a") > .95
-    line = game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), out = new Set();
-      for (let k = 3; k <= 12; k++) {{ const d = ctx.getImageData(Math.round((ox + ({x - 1} + .5) * S) * DPR), Math.round((oy + {y} * S + k * zoom) * DPR), 1, 1).data; out.add(d[0] + ',' + d[1] + ',' + d[2]); }}
-      return [...out]; }})()""")
-    px = [[int(v) for v in c.split(",")] for c in line]
-    assert max(max(p[k] for p in px) - min(p[k] for p in px) for k in range(3)) <= 8, line   # one colour (the ground shows faintly through it); a face would be bands, lit on top, dark at the foot
+    rock, ground = look(-1, 0), look(0, -2)                   # where the wall beside you stands; the channel behind you
+    game.js("(() => { XRAY.from = 9; XRAY.full = 10; return 1; })()")
+    game.sleep(700)
+    assert game.js("xray.a") == 0
+    assert rock == look(-1, 0)                                # rock: the same, circle or not
+    assert ground != look(0, -2)                              # hidden ground: the circle showed it
     assert not game.errors

@@ -99,7 +99,7 @@ function frame(now) {
       }
       const sh = shakes.get(key);
       if (sh !== undefined && o.spr[0] !== IMG.tree_anim) { const k = (now - sh) / 1000; if (k < .25) px += Math.round(Math.sin(k * 60) * (1 - k * 4) * 1.5) * zoom; }
-      if (xrayCut(o.x, o.ty)) ctx.globalAlpha = 1 - xrayOn(o.x, o.ty);       // (on the ground you're seen through: it fades too)
+      const over = xrayOver(o.x, o.ty); if (over) ctx.globalAlpha = 1 - over;   // (standing in the way of what the circle shows: it fades)
       ctx.drawImage(img, a, b2, w, h, Math.round(px), Math.round(py), Math.round(ww), Math.round(hh));
       ctx.globalAlpha = 1;
     }

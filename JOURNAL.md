@@ -802,3 +802,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Change (js/xray.js): inside the circle the land is sliced at your height on every side. Everything higher is its plain earth footprint with an outline along the open ground; what is at your height or lower is as it is. No face of higher ground is ever drawn in it.
 - Result: the channel corner, its middle and its east arm show the water and plain footprints (screenshots before and after). A test samples the wall tile beside you: one colour (it fails on the old code: bands). 279 unit; browser suite 90/92 in the full run: the new test's first, too strict colour check (fixed, 21/21 of relief and caves after), and the hit-cow test, green alone.
 
+## Iteration 67: the x-ray circle is only the hidden ground
+- User, after iteration 66: "the xray circle shouldn't be visible where area isn't hidden also". Slicing every side had turned the whole circle into a brown footprint wherever rock stood, hiding nothing or not.
+- Change (js/xray.js): no rock is painted at all. The circle shows the ground that rock is drawn over, where you could be on it (your height, a step up, or lower), with its water, and a dark edge with a little shade where that ground meets rock. Rock that hides no such ground, beside you, behind you or in front, stays exactly as drawn. A tree or a creature fades only where it stands in the way of ground the circle shows.
+- Result: in the 12-layer channel and at the user's plateau spot the circle is the channel alone. Test: the wall tile beside you is the same pixels with the circle on or off, the hidden channel behind you is not. Relief and cave browser tests 21/21.
+
