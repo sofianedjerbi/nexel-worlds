@@ -229,7 +229,7 @@ function cellTop(sheet, cx, cy) {
 function clipBehind(p, sx, sy, S) {
   const x = Math.round(p.x), y = Math.round(p.y);
   if (inOpenCave(x, y) || (caveOpen && p.e.kind === "agent" && p.e.id === myId)) return false;   // (you, going in or out: no flicker)
-  const L = Math.min(standAt(Math.floor(p.x), Math.floor(p.y)), standAt(Math.ceil(p.x), Math.ceil(p.y)));
+  const L = standAt(x, y);                                // (between two tiles: the ground they are over: past its edge, a jump is on the higher one)
   const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, feet = sy(p.y + 1) - shOf(L) * zoom + 4 * zoom, cols = [];
   let any = false;
   for (let tx = x0; tx <= x1; tx++) {

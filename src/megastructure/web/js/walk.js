@@ -80,8 +80,10 @@ function leadOf(p, now) {
 const onWater = (x, y, p) => { const t = tile(x, y); return (!!t && wet(t[1])) || !!(p.e && p.e.sail); };   // swimming, sailing: nobody sprints
 
 // A frame of your walk (render.js). A turn first finishes the tile you were walking into, in a straight line, then
-// turns: no diagonal slide. Each step exactly as the server paces it, in its 0.1 s ticks: a stride of 1 tick
-// (sprinting) or 2 (walking, swimming: nobody sprints in water), a jump up 60% longer, a drop 20% (SLOPE_UP/DOWN).
+// turns: no diagonal slide. Each step as the server paces it, in its 0.1 s ticks: a stride of 1 tick (sprinting) or
+// 2 (walking, swimming: nobody sprints in water). Up a layer the server takes a tick more (SLOPE_UP: hard going); you
+// don't, on screen: a hop at the pace of a step (slowed for it, you hung in the air: jump.js). It catches up when
+// you stop, and on a long climb you slow down smoothly, by how far ahead of it you are (LEAD).
 function walkOn(p, dt, now) {
   const [wx, wy] = DIRV[walking.dir], s = wx || wy, side = wx ? "y" : "x", along = wx ? "x" : "y", lead = leadOf(p, now);
   let t = dt * (lead < -1 ? 1.25 : lead <= LEAD[0] ? 1 : Math.max(0, (LEAD[1] - lead) / (LEAD[1] - LEAD[0])));   // the time you walk in
@@ -96,8 +98,7 @@ function walkOn(p, dt, now) {
     const a0 = s > 0 ? Math.floor(p[along] + 1e-6) : Math.ceil(p[along] - 1e-6);      // the tile you're leaving, and the next
     const fx = wx ? a0 : walking.lane, fy = wx ? walking.lane : a0, nx = fx + wx, ny = fy + wy;
     if (!walkable(nx, ny, fx, fy)) { p[along] -= s * Math.min((p[along] - a0) * s, 10 * t); p.tx = fx; p.ty = fy; break; }   // a wall: you stay
-    const base = walking.run && !onWater(fx, fy, p) ? 1 : 2, climb = landAt(myZ(fx, fy), nx, ny, fx, fy) - myZ(fx, fy);
-    const v = 10 / (base + (climb > 0 ? Math.round(base * .6) : climb < 0 ? Math.round(base * .2) : 0));
+    const v = walking.run && !onWater(fx, fy, p) ? 10 : 5;
     const go = Math.min((a0 + s - p[along]) * s, v * t);
     p[along] += s * go; t -= go / v; p.tx = nx; p.ty = ny; p.moved = now;
   }
