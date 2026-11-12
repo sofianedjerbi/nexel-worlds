@@ -118,6 +118,11 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
   // relief: each level lays its hill sheet (grass, darker grass, then stone) over the tiles at least that high; the
   // sheets' edge tiles carry the cliff face, so a plateau shows its south cliff and a soft rim round the rest
   const lv = levelAt(x, y);
+  // (round a pit, at sea level and below: the same sheet's edge alone, the regular border of raised ground, so every
+  // side of a hole shows; the ground's own look inside it stays)
+  let low = lv;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) low = Math.min(low, levelAt(x + dx, y + dy));
+  for (let k = low + 1; k <= Math.min(0, lv); k++) drawBlobLayer(g, edgeSheet("hill1"), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, ox, oy, 0);
   for (let k = 1; k <= lv; k++) drawBlobLayer(g, hillSheet(k), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, ox, oy, k < 3 ? .25 : .1);
   if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);

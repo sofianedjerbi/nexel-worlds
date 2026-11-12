@@ -21,10 +21,10 @@ def hill(game, x0, y0, w, h, caves, top=4):
 
 
 def drawn(game):
-    """Wait until every block with caves has been drawn with them (the overlay is made as the frame draws)."""
-    game.sleep(600)
-    game.wait("!dirtyTiles.length && [...blocks.values()].every((b) => !b.col || !b.drawn || !b.canvas || (b.relief && !b.reliefGen && (b.caveKey === undefined || b.caveKey === (b.ver || 0) + ':' + caveStamp)))", 8000)
-    game.sleep(200)
+    """Give the frame time to draw the caves as they are now (the overlay is made as the frame draws)."""
+    game.sleep(500)
+    game.wait("!dirtyTiles.length", 8000)
+    game.sleep(900)
 
 
 def test_an_opening_is_as_wide_and_as_high_as_the_empty_cells_on_each_side(game):
@@ -43,7 +43,7 @@ def test_an_opening_is_as_wide_and_as_high_as_the_empty_cells_on_each_side(game)
     assert px(0, -3, 8, foot - 20)[3] == 0 and px(1, -3, 8, foot - 4)[3] == 0
     assert 0 < px(0, -3, 0, foot + 2)[3] < 255
     # east and west: a hole in the side's wall (outside the tile's top), its shadow beyond; nothing on the hill's top
-    inset, side = game.js("colsOf(hillSheet(4)).inset"), 4 * 3
+    inset, side = game.js("colsOf(hillSheet(4)).inset"), 4 * 2      # (the side wall shows two layers at the most)
     assert px(3, -6, 16 - inset + side - 2, 8)[:3] == HOLE and px(-3, -6, inset - side + 1, 8)[:3] == HOLE
     assert 0 < px(3, -6, 16 - inset + side + 3, 8)[3] < 255 and px(3, -6, 8, 8 - 32)[3] == 0
     # north: no hole, only a shadow on the ground from under the hill's edge

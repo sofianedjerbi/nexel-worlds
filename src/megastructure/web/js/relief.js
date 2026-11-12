@@ -75,7 +75,7 @@ function dilateH(m, w, h, n) {
 // at its top, dark at its foot), the ledge round the level above it (LEDGE px, in the sheet's own side-edge colours:
 // a +3 shows three edges on every side), then its own tiles on top, where you stand. Worked out over the block and a
 // tile round it, so ledges cross block borders.
-const LEDGE = 4;
+const LEDGE = 4, SIDE_MAX = 2;
 function* reliefSteps(b) {                             // (a step a level, so no frame waits on a whole block)
   const M = 16, Wb = B * 16, Wm = Wb + 2 * M, Hb = Wb + WALL_M;
   let maxLv = -99, minLv = 0;                          // (the block's ground canvas is drawn at its lowest level)
@@ -83,7 +83,6 @@ function* reliefSteps(b) {                             // (a step a level, so no
     const l = levelAt(b.bx * B + tx, b.by * B + ty); maxLv = Math.max(maxLv, l); minLv = Math.min(minLv, l);
   }
   const layers = {}, shape = {};
-  let above = null;
   for (let k = maxLv; k > minLv; k--) {                    // the shapes, from the top down: each grows round the one above
     const own = new Uint8Array(Wm * Wm), sheet = hillSheet(k);
     for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {    // its own tiles' shape, from the sheet's cells
@@ -93,9 +92,11 @@ function* reliefSteps(b) {                             // (a step a level, so no
       const ox = (tx + 1) * 16, oy = (ty + 1) * 16;
       for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) if (a[j * 16 + i]) own[(oy + j) * Wm + ox + i] = 1;
     }
-    const sh = above ? dilateH(above, Wm, Wm, LEDGE) : new Uint8Array(Wm * Wm);
-    for (let i = 0; i < own.length; i++) sh[i] = sh[i] || own[i];
-    shape[k] = {own, sh}; above = sh;
+    // (round it, the layers over it stick out a ledge each: SIDE_MAX of them at the most, so a cliff's side never
+    // reaches further than half a tile onto the ground beside it, where people stand)
+    const sh = new Uint8Array(own);
+    for (let n = 1; n <= SIDE_MAX; n++) if (shape[k + n]) { const d = dilateH(shape[k + n].own, Wm, Wm, LEDGE * n); for (let i = 0; i < sh.length; i++) sh[i] = sh[i] || d[i]; }
+    shape[k] = {own, sh};
     yield;
   }
   for (let k = minLv + 1; k <= maxLv; k++) {
@@ -165,10 +166,11 @@ function drawBlockRelief(b, sx, sy, S) {
 function drawInFront(p, sx, sy, S) {
   const x = Math.round(p.x), y = Math.round(p.y);
   if (inOpenCave(x, y) || (caveOpen && p.e.kind === "agent" && p.e.id === myId)) return;   // (you, going in or out: no flicker)
-  const L = standAt(x, y);
-  for (let dy = 1; dy <= 6; dy++) for (let dx = -1; dx <= 1; dx++) {
-    const tx = x + dx, ty = y + dy, lv = levelAt(tx, ty);
-    if ((lv - L) * RELIEF_STEP <= (dy - 1) * 16) continue;          // (not high enough to reach them)
+  // (from where they are between two tiles, not the nearer tile: the hill doesn't pop over them half way through a step)
+  const L = Math.min(standAt(Math.floor(p.x), Math.floor(p.y)), standAt(Math.ceil(p.x), Math.ceil(p.y)));
+  for (let ty = Math.floor(p.y) + 1; ty <= Math.floor(p.y) + 7; ty++) for (let tx = Math.floor(p.x) - 1; tx <= Math.ceil(p.x) + 1; tx++) {
+    const lv = levelAt(tx, ty);
+    if ((lv - L) * RELIEF_STEP <= (ty - p.y - 1) * 16) continue;    // (not high enough to reach them)
     if (inOpenCave(tx, ty)) continue;                               // (the cave you're in stays seen)
     const b = blocks.get(bkey(Math.floor(tx / B), Math.floor(ty / B)));
     if (!b || !b.relief) continue;
