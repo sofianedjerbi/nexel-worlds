@@ -130,6 +130,8 @@ function drawEntity(p, sx, sy, S, t, now) {
         return;
       }
     }
+    if (swimsAt(p, e)) { drawSwimmer(p, e, sheetImg, x, y, z, now, sx, sy); return; }      // (swim.js)
+    p.swam = false;
     if (e.sail) {                                     // in a boat: the hull, a wake when moving, and the sailor sitting in it
       const movingB = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
       const bf = movingB ? Math.floor(now / 140) % 3 : Math.floor(now / 600) % 2, brow = movingB ? 64 : 32;

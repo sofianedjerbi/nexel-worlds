@@ -12,12 +12,17 @@ class Movement:
     # ============================================================== tools
 
     def can_enter(self, a: Agent, x: int, y: int) -> bool:
-        """Walkers stay on land; a moored boat can be boarded; sailors move over water and may step ashore."""
+        """Walkers stay on land or swim in shallow water; a moored boat can be boarded; sailors move over any water and
+        may step ashore. Deep water takes a boat."""
         g, b = self.world.get(x, y)
         ground, block = GROUNDS[g], BLOCKS[b]
         if ground.liquid:
-            return a.sailing or block.name == "boat"
+            return a.sailing or block.name == "boat" or (ground.name == "water" and not block.solid)
         return ground.walkable and not block.solid
+
+    def swimming(self, a: Agent) -> bool:
+        """In shallow water without a boat."""
+        return not a.sailing and self.world.ground(a.x, a.y) == "water"
 
     def height(self, a: Agent) -> int:
         """The height `a` stands at: the ground here at or under where they were (the lowest ground, if none is)."""
@@ -91,9 +96,11 @@ class Movement:
         self.emit("pick_up", a.x, a.y, name=a.name, items=got)
 
     def stride(self, a: Agent, args) -> float:
-        """Seconds per tile: walking 0.2, sprinting (`run: true`) 0.1, sailing 0.15."""
+        """Seconds per tile: walking 0.2, sprinting (`run: true`) 0.1, sailing 0.15, swimming 0.2 (no sprinting in water)."""
         if a.sailing:
             return 0.15
+        if self.swimming(a):
+            return 0.2
         return 0.1 if args.get("run") else 0.2
 
     def pace(self, a: Agent, args):

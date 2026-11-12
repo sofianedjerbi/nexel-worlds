@@ -5,7 +5,8 @@ function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
 function plainWalk(x, y) {
   const t = tile(x, y); if (!t) return false;
-  if (t[1] === "~" || t[1] === "=") return !!(meObs && meObs.self.sailing) || t[0] === "V";   // water: only by boat
+  if (t[1] === "~" && !(meObs && meObs.self.sailing)) return t[0] === "V" || !SOLID.has(t[0]);   // shallow water: you swim (swim.js)
+  if (t[1] === "~" || t[1] === "=") return !!(meObs && meObs.self.sailing) || t[0] === "V";   // deep water: only by boat
   return WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
 }
 function walkable(x, y, fx, fy) {               // (fx, fy): where you come from: a layer up or down at most
@@ -136,6 +137,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   const sailing = !!(meObs && meObs.self.sailing);
   if (c === "V" && !shift && !sailing) return {text: "Board the boat", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && (g === "~" || g === "=")) return {text: "Sail here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
+  if (!sailing && !hasBlock && g === "~" && !placingItem()) return {text: "Swim here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && WALKABLE_GROUND.has(g)) return {text: "Go ashore", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (hasBlock) {
     if ((c === "C" || c === "q") && !shift) return {text: c === "q" ? "Open basket" : "Open chest", near: 1, run: (d) => act("take", {dir: d})};
