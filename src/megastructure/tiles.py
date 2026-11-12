@@ -236,3 +236,62 @@ RECIPES = {
         Recipe("trough", {"wood": 4}, {"trough": 1}, 5, "workbench"),
     ]
 }
+
+
+# Clothes and armor (sim/wear.py): the slot each piece goes in, and the percent of a blow each armor piece turns.
+# How they look is the client's (web/js/wear.js); a test keeps the two lists the same.
+WEAR = {
+    "straw_hat": "head", "sporecap_hat": "head", "wizard_hat": "head", "gold_crown": "head", "iron_helmet": "head", "mossback_helm": "head", "wool_beanie": "head", "flower_crown": "head", "bandana": "head", "sprout": "head",
+    "linen_shirt": "top", "red_scarf": "top", "wool_sweater": "top", "overalls": "top", "leather_vest": "top", "wizard_robe": "top", "iron_chestplate": "top", "gold_chestplate": "top", "mossback_plate": "top",
+    "linen_shorts": "pants", "denim": "pants", "red_trousers": "pants", "leather_chaps": "pants", "robe_skirt": "pants", "iron_greaves": "pants", "gold_greaves": "pants", "moss_kilt": "pants",
+    "leather_boots": "shoes", "red_sneakers": "shoes", "rain_boots": "shoes", "blue_slippers": "shoes", "iron_boots": "shoes", "gold_boots": "shoes", "moss_slippers": "shoes",
+    "sparkle_charm": "effect", "firefly_charm": "effect", "leaf_charm": "effect", "heart_charm": "effect", "flame_charm": "effect", "frost_charm": "effect", "halo_charm": "effect", "spore_charm": "effect", "flower_charm": "effect",
+}
+ARMOR = {**{k: 5 for k in WEAR if k.startswith("leather")}, **{k: 10 for k in WEAR if k.startswith("iron")},
+         **{k: 8 for k in WEAR if k.startswith("gold")}, **{k: 12 for k in WEAR if k.startswith("moss")}}
+WEAR_RECIPES = {
+    "straw_hat": {"wheat": 4},
+    "sporecap_hat": {"mushroom": 4},
+    "wizard_hat": {"fiber": 3, "flower": 1},
+    "gold_crown": {"ingot": 2, "ore": 2},
+    "iron_helmet": {"ingot": 3},
+    "mossback_helm": {"shell_plate": 1, "fiber": 1},
+    "wool_beanie": {"fiber": 3},
+    "flower_crown": {"flower": 4},
+    "bandana": {"fiber": 2},
+    "sprout": {"seed": 2},
+    "linen_shirt": {"fiber": 4},
+    "red_scarf": {"fiber": 2, "berries": 1},
+    "wool_sweater": {"fiber": 6},
+    "overalls": {"fiber": 5},
+    "leather_vest": {"fiber": 3, "rope": 1},
+    "wizard_robe": {"fiber": 5, "flower": 2},
+    "iron_chestplate": {"ingot": 5},
+    "gold_chestplate": {"ingot": 4, "ore": 4},
+    "mossback_plate": {"shell_plate": 2},
+    "linen_shorts": {"fiber": 3},
+    "denim": {"fiber": 4, "berries": 1},
+    "red_trousers": {"fiber": 4, "berries": 2},
+    "leather_chaps": {"fiber": 3, "rope": 1},
+    "robe_skirt": {"fiber": 4, "flower": 1},
+    "iron_greaves": {"ingot": 4},
+    "gold_greaves": {"ingot": 3, "ore": 3},
+    "moss_kilt": {"shell_plate": 1, "fiber": 2},
+    "leather_boots": {"fiber": 2, "rope": 1},
+    "red_sneakers": {"fiber": 2, "berries": 1},
+    "rain_boots": {"fiber": 2, "wheat": 1},
+    "blue_slippers": {"fiber": 2, "flower": 1},
+    "iron_boots": {"ingot": 2},
+    "gold_boots": {"ingot": 2, "ore": 2},
+    "moss_slippers": {"shell_plate": 1},
+    "sparkle_charm": {"rope": 1, "ingot": 1},
+    "firefly_charm": {"rope": 1, "torch": 1},
+    "leaf_charm": {"rope": 1, "seed": 3},
+    "heart_charm": {"rope": 1, "egg": 2},
+    "flame_charm": {"rope": 1, "torch": 2, "ore": 1},
+    "frost_charm": {"rope": 1, "stone": 3, "milk": 1},
+    "halo_charm": {"rope": 1, "ingot": 2, "flower": 2},
+    "spore_charm": {"rope": 1, "mushroom": 3},
+    "flower_charm": {"rope": 1, "flower": 3},
+}
+RECIPES.update({name: Recipe(name, inputs, {name: 1}, 6, "workbench") for name, inputs in WEAR_RECIPES.items()})

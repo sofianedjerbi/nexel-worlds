@@ -27,6 +27,7 @@ const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in co
 function iconCanvas(name) {
   const c = document.createElement("canvas"); c.width = 16; c.height = 16; const g = c.getContext("2d");
   const ic = ICONS[name];
+  if (!ic && WEAR[name]) return wearIcon(name);          // clothes and armor draw their own (wear_items.js)
   if (!ic) { g.fillStyle = "#8a6a55"; g.fillRect(4, 4, 8, 8); return c; }
   if (ic[0] === "gen") { g.drawImage(IMG.gen, GEN[ic[1]] * 16, 0, 16, 16, 0, 0, 16, 16); return c; }
   const [img, x, y, w = 16, h = 16] = ic;
@@ -54,7 +55,7 @@ function drawHotbar(inv) {
     const d = document.createElement("div"); d.className = "slot" + (name && name === selected ? " sel" : "");
     if (name) {
       d.appendChild(iconCanvas(name));
-      const how = FOODS.includes(name) ? " · E to eat, or feed animals" : name === "watering_can" ? ` · ${can}/${CAN_SIZE} water · click a crop; refill at a well or water`
+      const how = WEAR[name] ? " · E to wear" : FOODS.includes(name) ? " · E to eat, or feed animals" : name === "watering_can" ? ` · ${can}/${CAN_SIZE} water · click a crop; refill at a well or water`
         : (PLACEABLE_BLOCK[name] || FILLS[name] || name === "seed") ? " · select, click the ground to place" : "";
       d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name) + how)}</span>`);
       if (name === "watering_can") d.insertAdjacentHTML("beforeend", `<span class="lvl"><i style="width:${Math.round(can / CAN_SIZE * 100)}%"></i></span>`);
@@ -146,6 +147,7 @@ const FOODS = ["pumpkin", "cauliflower", "lettuce", "eggplant", "carrot", "fruit
 function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);
   if (FOODS.includes(name)) return act("eat", {item: name});
+  if (WEAR[name]) return act("wear", {item: name});
   toast(`Face a tile and press Space (or click it) to use the ${label(name)}.`);
 }
 let mailAtTile = null;   // the mailbox the panel is open on (posting and taking aim at it exactly)

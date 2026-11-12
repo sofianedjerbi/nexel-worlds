@@ -163,6 +163,7 @@ function onEvent(e) {
   const warn = e.type === "windup" && {tusker: "rustle", pincer: "click", strawman: "creak", wisp: "gloom", wyrm: "water", mossback: "boss_groan"}[e.kind];
   if (warn) sfx(warn, e.x, e.y);                       // a wild creature warns (the wisp's call is a sigh)
   if (e.type === "boss") bossEvent(e);                 // (boss.js)
+  if (e.type === "wear") sfx("rustle", e.x, e.y);      // someone puts something on, or takes it off
   if (e.type === "bonk") { burst(e.x, e.y, "dust", 8, {up: 1, spread: 2, g: 3}); sfx("thud", e.x, e.y); }          // a tusker rams something
   if (e.type === "xp") spawnOrbs(e);
   if (e.type === "pick_up" && e.magnet) magnetItems(e);

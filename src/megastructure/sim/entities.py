@@ -31,6 +31,7 @@ class Agent:
     z: int = 0                 # the height you stand at (over a cave: on the hill, or in under it)
     xp: int = 0                # experience (sim/progress.py)
     can: int = 12              # waterings left in the watering can; refill at a well or any water
+    worn: dict = field(default_factory=dict)   # what you wear: slot -> item (sim/wear.py)
     # runtime only
     action: "Action | None" = field(default=None, repr=False)
     ready: int = field(default=0, repr=False)   # first tick the next stride may start (movement cooldown)
@@ -40,7 +41,7 @@ class Agent:
 
     def to_json(self) -> dict:
         return {k: getattr(self, k) for k in
-                ("id", "name", "x", "y", "persona", "hp", "hunger", "inventory", "deaths", "stats", "spawn", "sailing", "can", "xp")}
+                ("id", "name", "x", "y", "persona", "hp", "hunger", "inventory", "deaths", "stats", "spawn", "sailing", "can", "xp", "worn")}
 
     def count(self, item) -> int:
         return self.inventory.get(item, 0)
@@ -93,7 +94,7 @@ CREATURES = {
     "strawman": {"hp": 50, "drops": {"hay": 2}, "char": "S", "damage": 10},
     "wisp": {"hp": 1, "drops": {}, "char": "i"},
     "wyrm": {"hp": 60, "drops": {"meat": 4}, "char": "E", "damage": 18},
-    "mossback": {"hp": 300, "drops": {"meat": 6, "fruit": 4, "mushroom": 3}, "char": "G", "damage": 22, "snap": 28},   # the first boss (boss.py)
+    "mossback": {"hp": 300, "drops": {"shell_plate": 5, "meat": 6, "fruit": 4, "mushroom": 3}, "char": "G", "damage": 22, "snap": 28},   # the first boss (boss.py)
     "sporeling": {"hp": 1, "drops": {}, "char": "s", "damage": 3},
 }
 

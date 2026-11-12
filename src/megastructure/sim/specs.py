@@ -39,6 +39,8 @@ TOOL_SPECS = {
                "desc": "hit an agent or creature within reach (3 tiles, 4 with a spear in hand)"},
     "give": {"args": {"target": "agent id", "item": "str", "n": "int"}, "desc": "hand items to an agent within 2 tiles"},
     "eat": {"args": {"item": "str"}, "desc": "eat food"},
+    "wear": {"args": {"item": "str"}, "desc": "put on a hat, top, pants, shoes or charm you carry (iron, gold, leather and mossback pieces are armor)"},
+    "unwear": {"args": {"slot": "head|top|pants|shoes|effect"}, "desc": "take off what you wear there"},
     "say": {"args": {"text": "str"}, "desc": f"local chat, heard within {SAY_R} tiles"},
     "shout": {"args": {"text": "str"}, "desc": f"heard within {SHOUT_R} tiles (3 per minute)"},
     "write_sign": {"args": {**DIR_ARG, "text": "str"}, "desc": "write on an adjacent sign or flag"},

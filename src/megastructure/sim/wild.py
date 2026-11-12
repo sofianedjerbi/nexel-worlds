@@ -41,7 +41,7 @@ class Wild(Boss):
         return min((a for a in online if cheb(a, c) <= r), key=lambda a: (cheb(a, c), a.id), default=None)
 
     def bite(self, c, prey, dmg=None):
-        dmg = dmg or CREATURES[c.kind]["damage"]
+        dmg = self.guarded(prey, dmg or CREATURES[c.kind]["damage"])     # (armor: wear.py)
         self.emit("attack", c.x, c.y, attacker=f"a {c.kind}", target=prey.name, damage=dmg, id=c.id)
         self.damage(prey, dmg, c.kind)
 

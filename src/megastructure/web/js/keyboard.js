@@ -96,6 +96,7 @@ function availableActions() {
   else if (main && placingItem()) rows.push(["Space", main.it.text, "bad"]);           // why it can't go there
   if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push(["X", alt.it.text]);
   if (selected && FOODS.includes(selected)) rows.push(["E", `Eat ${label(selected)}`]);
+  if (selected && WEAR[selected]) rows.push(["E", `Wear ${label(selected)}`]);
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push(["F", "Pick up"]);
   return rows;   // only what you can do right here, right now (all the other keys are in the help, H)
 }

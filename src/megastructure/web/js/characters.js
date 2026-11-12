@@ -58,7 +58,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     // face the action's target
     if (action && action.dir && DIRV[action.dir]) { [p.fx, p.fy] = DIRV[action.dir]; }
     if (action && action.tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == action.tid); if (q) { p.fx = Math.sign(q.x - p.x); p.fy = p.fx ? 0 : Math.sign(q.y - p.y); } }
-    const sheetImg = characterSheet(agentTint(e.name));
+    const sheetImg = wornSheet(agentTint(e.name), e.worn);        // (wear.js: their sheet, dressed)
     let bob = Math.round(hop * z), anim = "idle", frame, lunge = 0;
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
     if (mine || e.name === follow) {
@@ -143,7 +143,10 @@ function drawEntity(p, sx, sy, S, t, now) {
     const sxx = frame * 48, syy = (ANIM[anim] + DIR_ROW(p)) * 48;
     const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
     const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
-    ctx.drawImage(sheetImg, sxx, syy, 48, 48, x - 16 * z - p.fx * (kb - lunge), y - 18 * z - bob - p.fy * (kb - lunge), 48 * z, 48 * z);   // feet at frame y 32
+    const cellX = x - 16 * z - p.fx * (kb - lunge), cellY = y - 18 * z - bob - p.fy * (kb - lunge), fi = syy / 48 * 8 + frame;
+    wearFx("back", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);      // a charm's effect (wear_items.js)
+    ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
+    wearFx("front", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);
     if (tool === "eat" && action.item && p.fy >= 0) {   // the food, half size and crisp, held up to the mouth
       const pose = eatPose(k), food = biteIcon(action.item, pose.bites);
       if (food) {

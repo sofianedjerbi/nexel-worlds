@@ -51,8 +51,7 @@ class Combat:
             raise ActionError("missed", "target moved away")
         a.swing_ready = self.tick + sec(ATTACK_COOLDOWN)
         dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)
-        if isinstance(t, Creature):
-            dmg = self.shell(t, dmg)                # Old Mossback's shell (boss.py)
+        dmg = self.shell(t, dmg) if isinstance(t, Creature) else self.guarded(t, dmg)     # Old Mossback's shell (boss.py), or armor (wear.py)
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"
         self.emit("attack", a.x, a.y, attacker=a.name, target=name, damage=dmg, weapon=weapon or "fists")
         a.bump("attacks")
@@ -74,6 +73,9 @@ class Combat:
                 self.kill_creature(target, by)
 
     def kill_agent(self, a: Agent, cause: str, by: Agent | None):
+        for item in a.worn.values():             # what you wore falls with the rest
+            a.add(item)
+        a.worn = {}
         self.add_items(a.x, a.y, dict(a.inventory))
         dropped = dict(a.inventory)
         a.inventory.clear()
