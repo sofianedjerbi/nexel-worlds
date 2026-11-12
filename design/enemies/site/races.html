@@ -42,11 +42,11 @@
 <main>
   <header>
     <h1>Player races</h1>
-    <div class="sub">the cat, and three more to choose from · <a href="index.html">boss and mobs</a> · <a href="clothes.html">clothes and armor</a></div>
+    <div class="sub">the cat, and four more to choose from · <a href="index.html">boss and mobs</a> · <a href="clothes.html">clothes and armor</a></div>
   </header>
 
   <section class="card">
-    <h2>Together, at game size <small>all four walking the same ground, at the player's own speed</small>
+    <h2>Together, at game size <small>all five walking the same ground, at the player's own speed</small>
       <button class="t on" data-move="walk">walking</button><button class="t" data-move="idle">standing</button>
       <button class="t on" data-tint="0">own colours</button><button class="t" data-tint="1">with the game's per-player tints</button></h2>
     <canvas id="world"></canvas>
@@ -58,7 +58,7 @@
     <h2>How they are made</h2>
     <div class="notes">
       <div><b>Same body, same frames.</b> Each race is the cat's own sheet with its head rebuilt: the ears come off, the top is rounded, and the race's own ears, eyes or muzzle go on, frame by frame. So every race already has every animation the cat has.</div>
-      <div><b>Known by the outline.</b> Tall ears, round ears, eyes on top: each reads from its silhouette alone at game size, from the front, the side and behind.</div>
+      <div><b>Known by the outline.</b> Tall ears, round ears, eyes on top, a bill: each reads from its silhouette alone at game size, from the front, the side and behind.</div>
       <div><b>Same style.</b> Flat colours with one shade, and an outline in a darker tone of the body rather than the cat's purple.</div>
       <div><b>Clothes still fit.</b> The collar, chest and feet are untouched, so tops, pants, shoes and charms work as they are. Hats sit on the skull; the bunny's ears would need to poke through them.</div>
       <div><b>Tints still work.</b> The game gives each player a body colour. The second button shows the races under those tints: the shape, not the colour, tells them apart.</div>
@@ -133,8 +133,26 @@ const RACES = [
       }
       H.belly();
     }},
+  {key: "duck", name: "Duck", tag: "suggestion", col: {a: "#9a6a2e", b: "#f9dd6e", d: "#e6c355", c: "#f9dd6e", e: "#f7c98a"}, perk: "paddles across water without a boat, at half speed",
+    text: "A yellow duckling: a round head with one curl of down on top, an orange bill that sticks out in front when seen from the side, and orange feet. No ears, no whiskers.",
+    head(H, A) {
+      H.round(); H.whiskers(); H.plain();
+      const curl = (x) => { H.put(x, A.sy - 2, "a"); H.put(x + 1, A.sy - 3, "a"); H.put(x - 1, A.sy - 1, "a"); H.put(x, A.sy - 1, "b"); H.put(x + 1, A.sy - 2, "b"); H.put(x + 2, A.sy - 2, "a"); H.put(x + 1, A.sy - 1, "a"); H.put(x, A.sy, "b"); };
+      if (!A.side) {
+        curl(A.cx - 1);
+        if (A.facing === "down") for (let x = -2; x <= 1; x++) { H.put(A.cx + x, A.sy + 6, "o"); H.put(A.cx + x, A.sy + 7, x === -2 || x === 1 ? "B" : "O"); }     // the bill, from the front
+      } else {
+        const right = A.facing === "right", f = right ? A.hmax : A.hmin, out = right ? 1 : -1;            // f: the front edge of the face
+        curl(A.cx - 1 - out);
+        for (let j = 0; j <= 2; j++) H.put(f + out * j, A.sy + 6, "o");                                    // the bill sticks out past the face
+        for (let j = 0; j <= 1; j++) H.put(f + out * j, A.sy + 7, "O");
+        H.put(f + out * 3, A.sy + 6, "B"); H.put(f + out * 2, A.sy + 7, "B");
+        for (let j = 1; j <= 2; j++) H.put(f + out * j, A.sy + 5, "B"); H.put(f + out, A.sy + 8, "B");
+      }
+      H.feet();
+    }},
 ];
-const EXTRA = {w: "#fffdf4", m: "#f1dfbd", n: "#3a2a30", y: "#f4f3c4", p: "#f2a9b4"};        // white, muzzle, nose and pupil, belly
+const EXTRA = {w: "#fffdf4", m: "#f1dfbd", n: "#3a2a30", y: "#f4f3c4", p: "#f2a9b4", o: "#f59a4a", O: "#e07f38", B: "#a85a2a"};     // ... and the bill and feet        // white, muzzle, nose and pupil, belly
 
 // ---------------------------------------------------------------- reading the cat's frames, and rebuilding the head
 let base, sheets = {}, analysis = [];
@@ -187,6 +205,7 @@ function remake(d, A, race) {                    // d: the frame's pixels, rewri
     eyes() { for (let y = A.sy + 3; y < A.k - 1; y++) for (let x = 0; x < CELL; x++)           // outline pixels inside the face are the eyes
       if (get(x, y) === "a" && get(x - 1, y) && get(x + 1, y) && get(x, y - 1) && get(x, y + 1) && get(x - 1, y) !== "a" && get(x + 1, y) !== "a") g[y * CELL + x] = "b"; },
     plain() { for (let y = A.sy; y < A.k; y++) for (let x = 0; x < CELL; x++) if (get(x, y) === "d") g[y * CELL + x] = "b"; },    // no forehead patch
+    feet() { for (let y = A.bottom - 1; y <= A.bottom; y++) for (let x = 0; x < CELL; x++) if ("bd".includes(get(x, y) || "?")) g[y * CELL + x] = "o"; },
     belly() { if (A.facing !== "up") for (let y = A.k + 2; y < A.bottom - 1; y++) for (let x = 0; x < CELL; x++) if (get(x, y) === "b") g[y * CELL + x] = "y"; },
   };
   race.head(H, A);
@@ -214,7 +233,7 @@ function buildSheets() {
   }
 }
 // The game's per-player tint (web/js/sprites.js): the body colour is replaced, its shading kept.
-const TINTS = ["#f4b6b6", "#a9cdf2", "#f2d58f", "#d3b6ef"];
+const TINTS = ["#f4b6b6", "#a9cdf2", "#f2d58f", "#d3b6ef", "#9fdcd0"];
 function tinted(src, race, tint) {
   const c = document.createElement("canvas"); c.width = src.width; c.height = src.height;
   const g = c.getContext("2d"); g.drawImage(src, 0, 0);
@@ -255,7 +274,7 @@ function build() {
 }
 const WT = 22, WH = 6;
 function along(i, d) {                            // each race walks its own rectangle
-  const x = 1 + i * 5.2, y = 1.6, w = 3.6, h = 2.8;
+  const x = .9 + i * 4.3, y = 1.6, w = 2.8, h = 2.8;
   d %= 2 * (w + h);
   if (d < w) return [x + d, y, "right"];
   if ((d -= w) < h) return [x + w, y + d, "down"];
