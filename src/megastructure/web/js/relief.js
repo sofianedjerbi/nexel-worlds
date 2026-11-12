@@ -172,9 +172,7 @@ function drawInFront(p, sx, sy, S) {
     if (inOpenCave(tx, ty)) continue;                               // (the cave you're in stays seen)
     const b = blocks.get(bkey(Math.floor(tx / B), Math.floor(ty / B)));
     if (!b || !b.relief) continue;
-    for (let k = Math.max(L + 1, b.relief.minLv + 1); k <= lv; k++) {
-      const c = b.relief.layers[k];
-      if (c) ctx.drawImage(c, (tx - b.bx * B) * 16, (ty - b.by * B) * 16, 16, 16 + RELIEF_STEP, sx(tx), sy(ty) - shOf(k) * zoom, S, (16 + RELIEF_STEP) * zoom);
-    }
+    const c = b.relief.layers[lv];                                  // (its top only: seen from behind, a hill shows no wall)
+    if (c) ctx.drawImage(c, (tx - b.bx * B) * 16, (ty - b.by * B) * 16, 16, 16, sx(tx), sy(ty) - shOf(lv) * zoom, S, S);
   }
 }

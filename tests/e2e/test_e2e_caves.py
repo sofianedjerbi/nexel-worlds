@@ -14,7 +14,14 @@ def hill(game, x0, y0, w, h, caves, top=4):
     game.stamp(x0, y0, ["." * w] * h, levels=["".join("0" if c in caves else str(top) for c in r) for r in cells],
                roofs=["".join(str(top) if c in caves else "0" for c in r) for r in cells],
                heads=["".join(str(caves.get(c, 0)) for c in r) for r in cells])
-    game.sleep(900)
+    drawn(game)
+
+
+def drawn(game):
+    """Wait until every block with caves has been drawn with them (the overlay is made as the frame draws)."""
+    game.sleep(600)
+    game.wait("!dirtyTiles.length && [...blocks.values()].every((b) => !b.col || (b.relief && !b.reliefGen && b.caveKey === (b.ver || 0) + ':' + caveStamp))", 8000)
+    game.sleep(200)
 
 
 def test_an_opening_is_as_wide_and_as_high_as_the_empty_cells_on_each_side(game):
@@ -81,11 +88,25 @@ def test_standing_behind_a_hill_it_hides_you(game):
     game.sleep(900)
     game.rpc("dev_time", phase=.4)
     # where your body is on screen, the hill's top is drawn (as beside you), not you
-    at = lambda dx: game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), c = document.querySelector('canvas');
-      const px = Math.round((ox + ({x + dx} + .5) * S) * DPR), py = Math.round((oy + ({y} + .6) * S) * DPR);
+    at = lambda dx, dy=.6: game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), c = document.querySelector('canvas');
+      const px = Math.round((ox + ({x + dx} + .5) * S) * DPR), py = Math.round((oy + ({y} + {dy}) * S) * DPR);
       return Array.from(c.getContext('2d').getImageData(px, py, 1, 1).data).slice(0, 3); }})()""")
     assert game.js(f"(4 - standAt({x}, {y})) * RELIEF_STEP > 0") and max(abs(a - b) for a, b in zip(at(0), at(2))) < 12
+    for dy in (1.2, 1.8, 2.4, 3.0):                          # ...and nothing but its top further down it (no wall painted on it)
+        assert max(abs(a - b) for a, b in zip(at(0, dy), at(2, dy))) < 12, dy
     game.hold(["w"], 500)                                    # two tiles north: out from behind it
     game.sleep(400)
     x2, y2 = game.pos()
     assert y2 < y - 1
+
+
+def test_an_opening_higher_up_a_south_wall_still_casts_its_shadow(game):
+    """A cave whose floor is a layer above the ground in front: its opening is up the wall, its shadow under it."""
+    game.clear_area(9)
+    x, y = game.pos()
+    game.stamp(-2, -6, ["....."] * 4, levels=["44444", "44144", "44144", "44144"], roofs=["00000", "00300", "00300", "00300"])
+    drawn(game)
+    px = lambda ax, ay: game.js(PX, [x, y - 3, ax, ay])
+    assert game.js(f"shownVoids({x}, {y - 3}, 0, 1)") == [[2, 3]]
+    foot = game.js("colsOf(hillSheet(2)).foot") - 8          # the hole's foot: a layer up the wall
+    assert px(8, foot - 4)[:3] == HOLE and 0 < px(8, foot + 2)[3] < 255 and px(8, foot + 12)[3] == 0

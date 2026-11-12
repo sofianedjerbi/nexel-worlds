@@ -90,7 +90,7 @@ function drawOpening(g, X, Y, x, y, dx, dy, W, lo, hi) {
     rows(y0 - 1, [hole[0], ...hole].map(([a, e]) => [a - 1, e + 1]), HOLE_RIM);
     rows(y0, hole, HOLE);
     rows(y0 + 1, hole.slice(1, Math.ceil(h / 2)).map(([a, e]) => [a + 1, e - 1]), HOLE_DEEP);
-    if (walkIn) spill(L - 2, (k, half) => g.fillRect(X + L / 2 - half, Y + foot + k, 2 * half, 1));
+    spill(L - 2, (k, half) => g.fillRect(X + L / 2 - half, Y + foot + k, 2 * half, 1));   // (under it: on the ground, or down the wall when it opens higher up)
   } else {                                                // east, west: the side wall's layers lo..hi (LEDGE px each, the lowest outermost)
     // (worked out for the west side, mirrored for the east) the side's wall runs from its foot in to the top's edge
     const m = ([a, e]) => (dx > 0 ? [16 - e, 16 - a] : [a, e]), Yg = -shOf(lo - 1);
