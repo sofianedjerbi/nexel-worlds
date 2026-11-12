@@ -170,11 +170,19 @@ function drawInFront(p, sx, sy, S) {
   const L = Math.min(standAt(Math.floor(p.x), Math.floor(p.y)), standAt(Math.ceil(p.x), Math.ceil(p.y)));
   for (let ty = Math.floor(p.y) + 1; ty <= Math.floor(p.y) + 7; ty++) for (let tx = Math.floor(p.x) - 1; tx <= Math.ceil(p.x) + 1; tx++) {
     const lv = levelAt(tx, ty);
-    if ((lv - L) * RELIEF_STEP <= (ty - p.y - 1) * 16) continue;    // (not high enough to reach them)
+    if (lv <= L || (lv - L) * RELIEF_STEP <= (ty - p.y - 2) * 16) continue;   // (not high enough to reach them, feet and shadow included)
     if (inOpenCave(tx, ty)) continue;                               // (the cave you're in stays seen)
     const b = blocks.get(bkey(Math.floor(tx / B), Math.floor(ty / B)));
     if (!b || !b.relief) continue;
     const c = b.relief.layers[lv];                                  // (its top only: seen from behind, a hill shows no wall)
     if (c) ctx.drawImage(c, (tx - b.bx * B) * 16, (ty - b.by * B) * 16, 16, 16, sx(tx), sy(ty) - shOf(lv) * zoom, S, S);
   }
+}
+// Is the spot (x, y: tiles, with fractions) behind higher ground drawn up over it? (Dust and sparks there aren't shown.)
+function behindHill(x, y) {
+  const tx = Math.floor(x), fy = Math.floor(y);
+  if (inOpenCave(tx, fy)) return false;
+  const L = standAt(tx, fy);
+  for (let ty = fy + 1; ty <= fy + 7; ty++) if ((levelAt(tx, ty) - L) * RELIEF_STEP > (ty - y - 1) * 16) return true;
+  return false;
 }
