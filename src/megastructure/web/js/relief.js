@@ -160,23 +160,30 @@ function drawBlockRelief(b, sx, sy, S) {
     if (c) ctx.drawImage(c, X, Y - shOf(k) * zoom, B * S, (B * 16 + WALL_M) * zoom);
   }
 }
-// Someone standing behind higher ground (it is south of them, drawn up over where they stand) is behind it: the
-// ground in front of them is drawn again over them, a tile at a time, from its own lifted layers. (Not in the cave
-// you're in: that one is seen through the hill.)
-function drawInFront(p, sx, sy, S) {
+// Someone standing behind higher ground (it is south of them, drawn up over where they stand) is behind it: what of
+// them is under its top edge isn't drawn. Called before drawing them: clips the canvas, a strip a tile column, down to
+// that edge, and returns true (restore after); false when nothing hides them. Nothing of the land is redrawn.
+// (Not in the cave you're in: that one is seen through the hill.)
+function clipBehind(p, sx, sy, S) {
   const x = Math.round(p.x), y = Math.round(p.y);
-  if (inOpenCave(x, y) || (caveOpen && p.e.kind === "agent" && p.e.id === myId)) return;   // (you, going in or out: no flicker)
-  // (from where they are between two tiles, not the nearer tile: the hill doesn't pop over them half way through a step)
+  if (inOpenCave(x, y) || (caveOpen && p.e.kind === "agent" && p.e.id === myId)) return false;   // (you, going in or out: no flicker)
   const L = Math.min(standAt(Math.floor(p.x), Math.floor(p.y)), standAt(Math.ceil(p.x), Math.ceil(p.y)));
-  for (let ty = Math.floor(p.y) + 1; ty <= Math.floor(p.y) + 7; ty++) for (let tx = Math.floor(p.x) - 1; tx <= Math.ceil(p.x) + 1; tx++) {
-    const lv = levelAt(tx, ty);
-    if (lv <= L || (lv - L) * RELIEF_STEP <= (ty - p.y - 2) * 16) continue;   // (not high enough to reach them, feet and shadow included)
-    if (inOpenCave(tx, ty)) continue;                               // (the cave you're in stays seen)
-    const b = blocks.get(bkey(Math.floor(tx / B), Math.floor(ty / B)));
-    if (!b || !b.relief) continue;
-    const c = b.relief.layers[lv];                                  // (its top only: seen from behind, a hill shows no wall)
-    if (c) ctx.drawImage(c, (tx - b.bx * B) * 16, (ty - b.by * B) * 16, 16, 16, sx(tx), sy(ty) - shOf(lv) * zoom, S, S);
+  const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, edges = [];
+  let any = false;
+  for (let tx = x0; tx <= x1; tx++) {
+    let edge = Infinity;                                  // the highest hill top in front of them, in this column
+    for (let ty = Math.floor(p.y) + 1; ty <= Math.floor(p.y) + 8; ty++) {
+      const lv = levelAt(tx, ty);
+      if (lv > L && !inOpenCave(tx, ty)) edge = Math.min(edge, sy(ty) - shOf(lv) * zoom + zoom);
+    }
+    edges.push(edge); any = any || edge < sy(p.y + 1) - shOf(L) * zoom + 4 * zoom;      // (reaching up to their feet, or their shadow)
   }
+  if (!any) return false;
+  ctx.save(); ctx.beginPath();
+  ctx.rect(-1e4, -1e4, sx(x0) + 1e4, 2e4); ctx.rect(sx(x1 + 1), -1e4, 1e4, 2e4);
+  edges.forEach((edge, k) => ctx.rect(sx(x0 + k), -1e4, S, (edge === Infinity ? 1e4 : edge) + 1e4));
+  ctx.clip();
+  return true;
 }
 // Is the spot (x, y: tiles, with fractions) behind higher ground drawn up over it? (Dust and sparks there aren't shown.)
 function behindHill(x, y) {
