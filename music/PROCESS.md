@@ -110,3 +110,11 @@ that is itself recognisable (Undertale's overworld ostinato: a tonic-chord group
 - **A piano dulled to nearly a sine with a clean attack is a chime too.** Soft must still be a piano: two strings beating, stretched partials, a felt thump.
 - **No decorative nature sounds in the music**: crickets and high plucked "fireflies" in the night theme were "very very very bad".
 - The assistant cannot hear. When a melody is a guess, put a second candidate on the page so the user can choose by ear.
+
+### The staircase (same day)
+The second melody and four sketches were rejected too: "you go slowly up note by note then slowly down note by note: it makes me SICK,
+sounds like pharmacy entering". That was every arpeggio (the left hand going up a chord and back, a chord rolled a note a beat) and every
+melody moving by step in one direction and then back.
+- **No arpeggios, no chords played a note at a time.** Chords are struck together and held.
+- **The melody never takes two steps in the same direction**: repeated notes, thirds, a fifth, long holds. `compose.staircases()` checks it.
+- `music/sketches.py` (four sketches) was removed; the main, night and boss tracks all use `compose.MELODY`.

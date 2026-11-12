@@ -3,10 +3,9 @@
     uv run python music/night.py
 
 It is Meadow Road after dark: the same melody, note for note (compose.MELODY), and nothing added to it. What changes:
-  the harmony    the day's notes over minor chords: E minor, B minor, G, A (no third), and it ends on B minor, not on D
-  the register   an octave lower (A3-E4)
+  the harmony    the day's notes over minor chords: E minor, B minor, G, A (no third), and it ends on B minor
   the tempo      60 BPM instead of 72, and about 4 dB quieter
-  the left hand  the day's rolling figure at half speed: four notes a bar instead of eight
+  the left hand  one held chord a bar, struck together (never a note at a time: see compose.py)
   the air        a breath of wind; no drums; a short, dry room, so it stays awake and does not turn into a lullaby
 Form (48 bars, a 192 s seamless loop): the melody alone (8) / the left hand (8) / pad and bass (8) / the piano rests,
 a far whistle carries the melody (8) / everything (8) / thinning out (8).
@@ -31,15 +30,15 @@ rng = np.random.default_rng(11)
 
 CYCLE = ["Em", "Bm", "G", "Asus", "Em", "Bm", "G", "Bm"]            # 8 bars, a chord a bar
 ROOT = {"Em": "E2", "Bm": "B1", "G": "G1", "Asus": "A1"}
-ROLL = {"Em": ["E2", "B2", "E3", "G3"], "Bm": ["B2", "D3", "F#3", "D3"], "G": ["G2", "D3", "G3", "D3"], "Asus": ["A2", "E3", "A3", "E3"]}
+HAND = {"Em": ["E2", "B2", "G3"], "Bm": ["B2", "F#3"], "G": ["G2", "D3", "B3"], "Asus": ["A2", "E3", "B3"]}      # struck together, held
 PAD = {"Em": ["E3", "B3"], "Bm": ["B2", "F#3"], "G": ["G3", "D3"], "Asus": ["A2", "E3"]}       # root and fifth only: nothing to rub
-MELODY = [[(s, n, nm[:-1] + str(int(nm[-1]) - 1)) for s, n, nm in bar] for bar in C.MELODY]      # the day's, an octave down
+MELODY = C.MELODY                                                   # the day's, as it is
 SECTIONS = [("the melody alone", 8), ("the left hand", 8), ("pad and bass", 8), ("the piano rests: a far whistle", 8), ("everything", 8), ("thinning out", 8)]
 
 
 def whistle(f, dur, vel, t0):
-    """The day's lead, heard from far off: an octave up, softer."""
-    return 0.6 * glide_lead(2 * f, dur, vel, t0)
+    """The day's lead, heard from far off: softer."""
+    return 0.6 * glide_lead(f, dur, vel, t0)
 
 
 events = []      # (seconds, instrument, note, seconds long, velocity, pan, reverb send, stem)
@@ -57,8 +56,8 @@ def block(first, piano=1.0, roll=0.0, pad=0.0, bass=False, far=False):
                 add(bar, s, lofi_piano, nm, length, piano * (0.8 if s else 0.7), "piano", pan=0.08, rev=0.3)
             if far:
                 add(bar, s, whistle, nm, length, 0.75, "whistle", pan=0.2, rev=0.45)
-        for j, nm in enumerate(ROLL[ch]) if roll else ():
-            add(bar, 2 * j, lofi_piano, nm, 4, roll * (0.5, 0.36, 0.42, 0.34)[j], "piano", pan=-0.3 + 0.1 * j, rev=0.3)
+        for j, nm in enumerate(HAND[ch]) if roll else ():
+            add(bar, 0, lofi_piano, nm, 8, roll * (0.46 - 0.04 * j), "piano", pan=-0.3 + 0.2 * j, rev=0.3)
         for i, nm in enumerate(PAD[ch]) if pad else ():
             add(bar, 0, analog_pad, nm, 8, pad, "pad", pan=(-0.4, 0.4)[i], rev=0.35)
         if bass:
@@ -131,7 +130,7 @@ def clashes():
     """Melody notes a semitone or a minor 9th from a note sounding with them."""
     bad = []
     for k in range(8):
-        chord = {midi(nm) for nm in PAD[CYCLE[k]] + ROLL[CYCLE[k]]} | {midi(ROOT[CYCLE[k]])}
+        chord = {midi(nm) for nm in PAD[CYCLE[k]] + HAND[CYCLE[k]]} | {midi(ROOT[CYCLE[k]])}
         bad += [(k, nm) for _, _, nm in MELODY[k] if any((max(midi(nm), c) - min(midi(nm), c)) % 12 == 1 for c in chord)]
     return bad
 
