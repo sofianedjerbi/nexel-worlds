@@ -54,6 +54,7 @@ function unseen(p) {
 // where the empty cells of its hills show on their faces, and the open cave's floor, shadowed along its edges, with the wall
 // at its back.
 const OV_M = 128, HOLE = "#2a1d28", HOLE_DEEP = "#1d141c", HOLE_RIM = "rgba(48,30,34,.55)", SHADE = "30,20,28";
+const SPILL = [[9, 1], [5, 2]], SPILL_AL = [0, .17, .31];   // an opening's shadow: how far out, and how dark, in two steps
 // The empty cells of the hill on (x, y) that show on its face toward (dx, dy): runs [lowest, highest] of cells above
 // the ground in front of it and under its top. (None where that side isn't lower, or for the cave you're in.)
 function shownVoids(x, y, dx, dy) {
@@ -70,42 +71,79 @@ const shownCell = (x, y, z, dx, dy) => !inOpenCave(x, y) && z > topAt(x + dx, y 
 // The openings on one face of a hill tile, a cell at a time: an opening is only the empty cells that show there, so
 // cells side by side or one over the other (on this tile or the next along the face) run together into one hole of
 // whatever shape they make. (X, Y): the tile's corner at sea level, in art px. Always in the hill's wall: facing south
-// a layer of the wall a cell; facing east or west a layer of the side's wall a cell (the lowest outermost), open
-// outward; under the lowest its shadow spills out (on the ground, or down the wall). Facing north it is behind the
-// hill: only that shadow, on the ground from under the hill's edge, fading.
-function drawFace(g, X, Y, x, y, dx, dy) {
+// a layer of the wall a cell; facing east or west the same opening turned on its side, in the side's wall (LEDGE px
+// a cell: the lowest outermost, the next one in from it; rimmed and darker in under the hill, open outward); under
+// the lowest its shadow spills out (on the ground, or down the wall). Facing north it is behind the hill: only that
+// shadow, on the ground from under the hill's edge, fading.
+// Round a corner they are one opening too: at a corner of the hill, where a cell shows on its south wall and on its
+// side, the hole in the wall runs to the one in the side; in a corner between two walls, the side's runs up to the
+// wall's. Their shadows join the same way (m: the block's shadow px, W wide, each shaded once however many reach it).
+// Higher ground in front of it (south) is drawn over it: from that ground's far edge down, nothing of it shows.
+function drawFace(g, m, W, X, Y, x, y, dx, dy) {
   const top = topAt(x, y), front = topAt(x + dx, y + dy), cols = colsOf(hillSheet(Math.max(1, top))), px = dy ? 1 : 0, py = dy ? 0 : 1;
   const open = (z, side) => shownCell(x + side * px, y + side * py, z, dx, dy);      // the same cell, a tile along the face
-  const fill = (col, ax, ay, w, h) => { if (w > 0 && h > 0) { g.fillStyle = col; g.fillRect(X + ax, Y + ay, w, h); } };
-  const spill = (z, at) => {                              // its shadow: in steps, rounded off where the opening ends
-    const ends = [open(z, -1) ? 1 : 0, open(z, 1) ? 1 : 0];
-    for (const [d, al] of [[9, .17], [5, .17]]) for (let a = 0; a < 16; a++) {
-      const f = a < 8 ? (ends[0] ? 1 : (a + .5) / 8) : ends[1] ? 1 : (15.5 - a) / 8;
-      at(a, Math.round(d * Math.sqrt(1 - (1 - f) ** 2)), `rgba(${SHADE},${al})`);
+  let lim = 1e9;
+  if (dy >= 0) for (let ty = y + dy + 1; ty <= y + 9; ty++) { const l = topAt(x + dx, ty); if (l > front) lim = Math.min(lim, Y + (ty - y) * 16 - shOf(l) + 1); }
+  const fill = (col, ax, ay, w, h) => { h = Math.min(h, lim - Y - ay); if (w > 0 && h > 0) { g.fillStyle = col; g.fillRect(X + ax, Y + ay, w, h); } };
+  const clear = (ax, ay, w, h) => { h = Math.min(h, lim - Y - ay); if (h > 0) g.clearRect(X + ax, Y + ay, w, h); };
+  const mark = (ax, ay, v) => { const k = (Y + ay) * W + X + ax; if (Y + ay < lim && m[k] < v) m[k] = v; };
+  // a side wall's layer z (on the side sdx of tile tx, ty): how far in from the tile's edge it starts (under 0: out
+  // over the ground). The side's wall shows SIDE_MAX layers at the most: the lowest outermost, the rest in from it
+  const sideOut = (tx, ty, sdx, z) => { const f = topAt(tx + sdx, ty), n = Math.min(topAt(tx, ty) - f - 1, SIDE_MAX); return cols.inset - LEDGE * Math.max(1, n - (z - f - 1)); };
+  const footOf = (z) => colsOf(hillSheet(Math.max(1, z))).foot - shOf(z - 1);      // where the south wall's layer z ends, down the tile
+  const spill = (n, r0, r1, at) => {                      // its shadow, n px along: in steps, rounded off at an end where the opening ends
+    for (const [d, v] of SPILL) for (let a = 0; a < n; a++) {
+      const f = Math.min(1, r0 ? (a + .5) / 8 : 1, r1 ? (n - a - .5) / 8 : 1), len = Math.round(d * Math.sqrt(1 - (1 - f) ** 2));
+      for (let q = 0; q < len; q++) at(a, q, v);
     }
   };
   for (let z = front + 1; z < top; z++) {
     if (!shownCell(x, y, z, dx, dy)) continue;
-    const a = open(z, -1) ? 0 : 2, e = open(z, 1) ? 0 : 2, roofed = !shownCell(x, y, z + 1, dx, dy), low = !shownCell(x, y, z - 1, dx, dy);
+    const roofed = !shownCell(x, y, z + 1, dx, dy), low = !shownCell(x, y, z - 1, dx, dy);
     if (dy < 0) {                                         // north: its shadow only, cut to the edge tile's own shape
       if (z !== front + 1) continue;
-      const y0 = cols.north - shOf(top) + 4;
-      [.4, .28, .18, .09].forEach((al, k) => fill(`rgba(${SHADE},${al})`, a ? 1 : 0, y0 - 3 * (k + 1), 16 - (a ? 1 : 0) - (e ? 1 : 0), 3));
+      const a = open(z, -1) ? 0 : 1, e = open(z, 1) ? 0 : 1, y0 = cols.north - shOf(top) + 4;
+      [.4, .28, .18, .09].forEach((al, k) => fill(`rgba(${SHADE},${al})`, a, y0 - 3 * (k + 1), 16 - a - e, 3));
       const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= top)), shape = cellAlpha(hillSheet(Math.max(1, top)), cx, cy);
       for (let j = 0; j < cols.north + 4; j++) for (let q = 0; q < 16; q++) if (shape[j * 16 + q]) g.clearRect(X + q, Y - shOf(top) + j, 1, 1);
     } else if (dy > 0) {                                  // south: the wall's layer z, the RELIEF_STEP px over foot - shOf(z - 1)
-      const foot = colsOf(hillSheet(Math.max(1, z))).foot - shOf(z - 1), y0 = foot - RELIEF_STEP + (roofed ? 1 : 0);
-      fill(HOLE_RIM, a - (a ? 1 : 0), y0 - (roofed ? 1 : 0), 16 - a - e + (a ? 1 : 0) + (e ? 1 : 0), foot - y0 + (roofed ? 1 : 0));    // its rim: a px round it, where it ends
-      fill(HOLE, a, y0, 16 - a - e, foot - y0);
-      if (roofed) { fill(HOLE_DEEP, a + (a ? 1 : 0), y0 + 1, 16 - a - e - (a ? 1 : 0) - (e ? 1 : 0), 3); for (const [q, n] of [[a, a && 2], [16 - e - 2, e && 2]]) if (n) { g.clearRect(X + q + (q === a ? -1 : 1), Y + y0 - 1, 2, 2); fill(HOLE_RIM, q + (q === a ? 0 : 1), y0, 1, 1); } }
-      if (low) spill(z, (ax, d, col) => fill(col, ax, foot, 1, d));
-    } else {                                              // east, west: the side wall's layer z (LEDGE px, the lowest outermost)
-      const m = (ax, w) => (dx > 0 ? 16 - ax - w : ax), out = cols.inset - LEDGE * Math.min(top - z, SIDE_MAX), Yg = -shOf(front);   // (the side's wall shows SIDE_MAX layers at the most)
-      fill(HOLE, m(out, LEDGE), Yg + 1 + a, LEDGE, 16 - a - e);
-      if (a) fill(HOLE_RIM, m(out, LEDGE), Yg + a, LEDGE, 1);
-      if (e) fill(HOLE_RIM, m(out, LEDGE), Yg + 17 - e, LEDGE, 1);
-      if (roofed) fill(HOLE_DEEP, m(out + LEDGE - 1, 1), Yg + 2 + a, 1, 14 - a - e);
-      if (low) spill(z, (ay, d, col) => fill(col, dx > 0 ? 16 - out : out - d, Yg + 1 + ay, d, 1));
+      const foot = footOf(z), y0 = foot - RELIEF_STEP + (roofed ? 1 : 0);
+      // its two ends (at: how far in from the tile's edge the hole ends; to: its shadow): it runs on along the face,
+      // or to the opening in the side at this corner of the hill, or to the one in the next wall's side, or it ends
+      const [A, E] = [-1, 1].map((s) => {
+        if (open(z, s)) return {at: 0, to: 0, rim: 0, end: 0};
+        if (shownCell(x, y, z, s, 0)) return {at: sideOut(x, y, s, z) + LEDGE, to: sideOut(x, y, s, topAt(x + s, y) + 1), rim: 0, end: 0};
+        if (!shownCell(x + s, y + 1, z, -s, 0)) return {at: 2, to: 0, rim: 1, end: 1};
+        let zc = z; while (shownCell(x + s, y + 1, zc + 1, -s, 0)) zc++;             // (its rim runs on down that side's)
+        return {at: 1 - sideOut(x + s, y + 1, -s, zc) - LEDGE, to: -sideOut(x + s, y + 1, -s, front + 1), rim: 1, end: 0};
+      }), L = A.at, R = 16 - E.at;
+      fill(HOLE_RIM, L - A.rim, y0 - (roofed ? 1 : 0), R - L + A.rim + E.rim, foot - y0 + (roofed ? 1 : 0));    // its rim: a px round it, where it ends
+      fill(HOLE, L, y0, R - L, foot - y0);
+      if (roofed) {
+        fill(HOLE_DEEP, L + A.rim, y0, R - L - A.rim - E.rim, 3);
+        for (const [q, s, on] of [[L, -1, A.rim], [R - 2, 1, E.rim]]) if (on) { clear(q + s, y0 - 1, 2, 2); fill(HOLE_RIM, q + (s < 0 ? 0 : 1), y0, 1, 1); }
+      }
+      if (low) spill(16 - E.to - A.to, A.end, E.end, (a, q, v) => mark(A.to + a, foot + q, v));
+    } else {                                              // east, west: the side wall's layer for z
+      const mx = (ax, w) => (dx > 0 ? 16 - ax - w : ax), out = sideOut(x, y, dx, z), Yg = -shOf(front);
+      const inner = !open(z, -1) && shownCell(x + dx, y - 1, z, 0, 1), outer = !open(z, 1) && shownCell(x, y, z, 0, 1);   // (a wall's opening to run up to; one to run down to)
+      const a = open(z, -1) || inner ? 0 : 2, e = open(z, 1) || outer ? 0 : 2;
+      const r0 = inner ? footOf(front + 1) - 16 : Yg + 1 + a, r1 = outer ? footOf(front + 1) : Yg + 17 - e;
+      let wall = front + 1; while (outer && shownCell(x, y, wall + 1, 0, 1)) wall++;
+      const h = out + LEDGE - 1, t = !roofed ? r0 : outer ? footOf(wall) - RELIEF_STEP + 1 : r1;   // (h: its far side, in under the hill, rimmed down to t: where the wall's opening it runs into starts)
+      fill(HOLE, mx(out, LEDGE - 1), r0, LEDGE - 1, r1 - r0); fill(HOLE, mx(h, 1), t, 1, r1 - t);
+      if (a) fill(HOLE_RIM, mx(out, LEDGE), r0 - 1, LEDGE, 1);
+      if (e) fill(HOLE_RIM, mx(out, LEDGE), r1, LEDGE, 1);
+      if (roofed) {
+        const dw = z > front + 1 ? 3 : 1;
+        fill(HOLE_RIM, mx(h, 1), r0, 1, t - r0); fill(HOLE_DEEP, mx(h - dw, dw), r0, dw, (outer ? t + 3 : r1) - r0); if (outer) fill(HOLE_DEEP, mx(h, 1), t, 1, 3);
+        if (a) { clear(mx(h - 1, 2), r0 - 1, 2, 2); fill(HOLE_RIM, mx(h - 1, 1), r0, 1, 1); }      // its corners, rounded off
+        if (e) { clear(mx(h - 1, 2), r1 - 1, 2, 2); fill(HOLE_RIM, mx(h - 1, 1), r1 - 1, 1, 1); }
+      }
+      if (!low) continue;
+      const side = (q) => (dx > 0 ? 16 - out + q : out - 1 - q);
+      spill(r1 - r0, a, e, (ay, q, v) => mark(side(q), r0 + ay, v));
+      if (outer) for (const [d, v] of SPILL) for (let j = 0; j < d; j++) for (let q = 0; q < d; q++) if (Math.hypot(q + .5, j + .5) < d) mark(side(q), r1 + j, v);   // round the corner
     }
   }
 }
@@ -131,7 +169,7 @@ function caveShade(f, o, size) {
   }
 }
 function buildCaveOverlay(b) {
-  let c = null, g = null;
+  let c = null, g = null, sm = null;                      // (sm: the openings' shadows, a px each)
   let fc = null, f = null, o = null;                      // (the open cave's floor, on its own: its shadow is worked out from its shape)
   const need = () => { if (!c) { c = document.createElement("canvas"); c.width = c.height = B * 16 + 2 * OV_M; g = c.getContext("2d"); } };
   const needFloor = () => { need(); if (!fc) { fc = document.createElement("canvas"); fc.width = fc.height = c.width; f = fc.getContext("2d", {willReadFrequently: true}); const oc = document.createElement("canvas"); oc.width = oc.height = c.width; o = oc.getContext("2d", {willReadFrequently: true}); } };
@@ -171,7 +209,12 @@ function buildCaveOverlay(b) {
       }
       continue;
     }
-    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) if (shownVoids(x, y, dx, dy).length) { need(); drawFace(g, X, Y, x, y, dx, dy); }
+    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) if (shownVoids(x, y, dx, dy).length) { need(); sm = sm || new Uint8Array(c.width * c.width); drawFace(g, sm, c.width, X, Y, x, y, dx, dy); }
+  }
+  if (sm) {                                               // the shadows, under the openings
+    g.globalCompositeOperation = "destination-over";
+    for (let k = 0; k < sm.length; k++) if (sm[k]) { g.fillStyle = `rgba(${SHADE},${SPILL_AL[sm[k]]})`; g.fillRect(k % c.width, k / c.width | 0, 1, 1); }
+    g.globalCompositeOperation = "source-over";
   }
   if (fc) { caveShade(f, o, fc.width); g.drawImage(fc, 0, 0); }
   return c;
