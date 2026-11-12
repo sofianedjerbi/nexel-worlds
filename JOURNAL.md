@@ -796,3 +796,9 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Tests: 279 unit, 91/91 browser (the mute test that failed one run in three counted a sound that ended: it now compares when each sound last started). New: pieces are the same samples and wrap the loop; streaming and mute; water in the circle is covered by the frozen screenshots only; the lost rebuild; resync on both sides.
 - Not done: the sound effects are still 14.5 MB of wav fetched on the first tap (FLAC would halve the download, not the memory). A lossy codec would take the music to about 5 MB, but it would no longer be the same samples.
 
+## Iteration 66: the x-ray circle slices every side (no wall faces inside it)
+- User (a screenshot, swimming at the corner of a channel): "inner walls are sometimes reappearing".
+- Reproduced on the test server (a channel of water with 12-layer rock on every side): the circle cut only the ground south of you. A wall beside or behind you, still at its full height in the circle's picture, was then drawn with its face all the way down to the cut ground south of it: twelve bands of wall where there is none, as soon as a tile beside you was high and the one south of it was cut.
+- Change (js/xray.js): inside the circle the land is sliced at your height on every side. Everything higher is its plain earth footprint with an outline along the open ground; what is at your height or lower is as it is. No face of higher ground is ever drawn in it.
+- Result: the channel corner, its middle and its east arm show the water and plain footprints (screenshots before and after). A test samples the wall tile beside you: one colour (it fails on the old code: bands). 279 unit; browser suite 90/92 in the full run: the new test's first, too strict colour check (fixed, 21/21 of relief and caves after), and the hit-cow test, green alone.
+

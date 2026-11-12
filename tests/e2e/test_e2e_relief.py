@@ -249,3 +249,20 @@ def test_told_it_missed_events_the_page_asks_for_its_land_again(game):
     game.js("""(() => { spec.onmessage({data: '{"type":"resync"}'}); return 1; })()""")
     game.sleep(1200)
     assert game.tile(2, 0) != "T"
+
+
+def test_the_circle_cuts_the_walls_beside_you_too(game):
+    """Only the ground in front of you was cut: the walls beside and behind you then stood in the circle with a tall
+    face down to the cut (a wall that isn't there, banded layer by layer). Everything higher than you is cut, on
+    every side: a wall beside you is its plain footprint."""
+    game.clear_area(10)
+    game.stamp(-4, -3, ["." * 9] * 7, levels=["666606666"] * 4 + ["666666666"] * 3)   # a nook, open to the north: walls west, east and south
+    game.sleep(1200)
+    x, y = game.pos()
+    assert game.js("xray.a") > .95
+    line = game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), out = new Set();
+      for (let k = 3; k <= 12; k++) {{ const d = ctx.getImageData(Math.round((ox + ({x - 1} + .5) * S) * DPR), Math.round((oy + {y} * S + k * zoom) * DPR), 1, 1).data; out.add(d[0] + ',' + d[1] + ',' + d[2]); }}
+      return [...out]; }})()""")
+    px = [[int(v) for v in c.split(",")] for c in line]
+    assert max(max(p[k] for p in px) - min(p[k] for p in px) for k in range(3)) <= 8, line   # one colour (the ground shows faintly through it); a face would be bands, lit on top, dark at the foot
+    assert not game.errors

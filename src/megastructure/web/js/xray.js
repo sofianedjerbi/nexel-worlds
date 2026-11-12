@@ -1,18 +1,21 @@
 // Behind a wall or a mountain you'd be hidden (relief.js: clipBehind). Instead, a circle round you is seen through it:
-// the higher ground in front of you (south) is cut down to the height you stand at, its footprint dimmed and outlined
-// (it is still a wall), and what is behind shows: you, the ground you walk on, who and what is there. It fades out
-// toward its edge, and comes and goes softly. Only where the hill really is in the way (the rest of the screen is
-// the land as drawn), and only for you. Painted small (art px, a few tiles), every frame: nothing is rebuilt or kept.
+// inside it the land is sliced at the height you stand at. Everything higher, on every side of you, is cut down to
+// that height and shown as its footprint, in the colour of its earth, outlined (it is still a wall); what is at your
+// height or lower shows as it is: you, the ground and the water you move on, who and what is there. (Every side: cut
+// only in front of you, the walls beside and behind you stood in the circle with a tall face down to the cut, walls
+// that are not there.) It fades out toward its edge, and comes and goes softly. Only where something higher is drawn
+// (the rest of the screen is the land as it is), and only for you. Painted small (art px, a few tiles), every frame:
+// nothing is rebuilt or kept.
 
 // r, core: its radius (tiles) and the part of it that's clear. It comes when you're really hidden, not for an edge
 // that hides your feet or a post you walk past: body: your height (art px); from, full: the share of you that's
 // hidden where it starts and where it is whole (a wall two layers high in front of you leaves your head: nothing; three
 // hides you: the circle); wait: seconds hidden before it comes
 const XRAY = {r: 3.1, core: .42, body: 22, from: .75, full: .95, wait: .15, far: 12};   // (far: tiles south to look for ground drawn up over you)
-const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, t: 0};   // how strong, the height and row it cuts from, its centre (tiles), how long you've been hidden
+const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, t: 0};   // how strong, the height it cuts at, your row, its centre (tiles), how long you've been hidden
 
-// The ground in front of you that is in the way: south of your row, higher than you stand
-const xrayCut = (tx, ty) => xray.a > .01 && ty > xray.row && levelAt(tx, ty) > xray.L;
+// The ground the circle cuts down: higher than you stand
+const xrayCut = (tx, ty) => xray.a > .01 && levelAt(tx, ty) > xray.L;
 // How clear the circle is at a spot as drawn (tiles, lifted with its ground): 0 the land as it is, 1 seen through
 function xrayAt(x, y) {
   if (xray.a <= .01) return 0;
@@ -55,16 +58,16 @@ function drawXray(sx, sy) {
   const D = Math.ceil(XRAY.r * 32) + 2, L = xray.L, lift = shOf(L);
   if (!xray.c) { xray.c = document.createElement("canvas"); xray.c.width = xray.c.height = D; }
   const g = xray.c.getContext("2d"), cx = xray.x * 16 + 8, cy = xray.y * 16 + 8, ax = Math.round(cx - D / 2), ay = Math.round(cy - D / 2);
-  const x0 = Math.floor(ax / 16) - 1, x1 = Math.floor((ax + D) / 16) + 1, y0 = xray.row - 6, y1 = Math.floor((ay + D + lift) / 16) + 1;
+  const x0 = Math.floor(ax / 16) - 1, x1 = Math.floor((ax + D) / 16) + 1, top = Math.floor((ay + lift) / 16) - 1, y0 = top - 5, y1 = Math.floor((ay + D + lift) / 16) + 1;   // (top, y1: the rows of your height the circle spans)
   const lvOf = (tx, ty) => (xrayCut(tx, ty) ? L : levelAt(tx, ty));          // the land with what's in the way cut down
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.clearRect(0, 0, D, D);
   g.save(); g.beginPath();                                                    // only where the hill is drawn over what's behind it
   let any = false;
   // (as far south as high ground is drawn up into the circle: a plateau 12 layers high is, from 6 tiles further on)
-  for (let ty = xray.row + 1; ty <= y1 + XRAY.far; ty++) for (let tx = x0; tx <= x1; tx++) if (xrayCut(tx, ty)) {
-    const top = ty * 16 - shOf(levelAt(tx, ty)) - ay;
-    if (top >= D) continue;
-    g.rect(tx * 16 - ax - 8, top, 32, ty * 16 + 16 - lift - ay - top); any = true;
+  for (let ty = top; ty <= y1 + XRAY.far; ty++) for (let tx = x0; tx <= x1; tx++) if (xrayCut(tx, ty)) {
+    const up = ty * 16 - shOf(levelAt(tx, ty)) - ay, foot = ty * 16 + 16 - lift - ay;     // as it is drawn, down to where it is cut
+    if (up >= D || foot <= 0) continue;
+    g.rect(tx * 16 - ax - 8, up, 32, foot - up); any = true;
   }
   if (!any) { g.restore(); return; }
   g.clip(); g.imageSmoothingEnabled = false;
