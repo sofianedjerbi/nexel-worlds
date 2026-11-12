@@ -30,13 +30,13 @@
     background:linear-gradient(#fff9ec, #f8e8c8); border:2px solid #ead1a8; }
   #viz { position:absolute; inset:0; width:100%; height:100%; }
   .controls { display:flex; align-items:center; gap:16px; margin-top:16px; }
-  #bossplay { font:inherit; font-weight:900; font-size:15px; border:3px solid var(--ink); border-radius:14px; padding:10px 20px; min-width:84px;
+  #theme_bplay, #nightplay, #bossplay { font:inherit; font-weight:900; font-size:15px; border:3px solid var(--ink); border-radius:14px; padding:10px 20px; min-width:84px;
     background:#f7c9a3; color:var(--ink); cursor:pointer; box-shadow:0 4px 0 var(--ink); }
-  #bossplay:active { transform:translateY(3px); box-shadow:0 1px 0 var(--ink); }
-  #bossplay[disabled] { opacity:.5; cursor:wait; }
-  #bosssections { position:relative; display:flex; height:22px; border-radius:8px; overflow:hidden; border:2px solid var(--ink); cursor:pointer; }
-  #bosssections div { height:100%; font-size:10px; font-weight:800; line-height:18px; padding-left:5px; white-space:nowrap; overflow:hidden; border-right:1px solid rgba(0,0,0,.25); }
-  #bosshead { position:absolute; top:0; bottom:0; width:3px; background:var(--ink); left:0; pointer-events:none; }
+  #theme_bplay:active, #nightplay:active, #bossplay:active { transform:translateY(3px); box-shadow:0 1px 0 var(--ink); }
+  #theme_bplay[disabled], #nightplay[disabled], #bossplay[disabled] { opacity:.5; cursor:wait; }
+  #theme_bsections, #nightsections, #bosssections { position:relative; display:flex; height:22px; border-radius:8px; overflow:hidden; border:2px solid var(--ink); cursor:pointer; }
+  #theme_bsections div, #nightsections div, #bosssections div { height:100%; font-size:10px; font-weight:800; line-height:18px; padding-left:5px; white-space:nowrap; overflow:hidden; border-right:1px solid rgba(0,0,0,.25); }
+  #theme_bhead, #nighthead, #bosshead { position:absolute; top:0; bottom:0; width:3px; background:var(--ink); left:0; pointer-events:none; }
   #play {
     width:64px; height:64px; border-radius:50%; border:3px solid var(--ink); cursor:pointer;
     background:#ffd36e; box-shadow:0 4px 0 var(--ink); display:grid; place-items:center; flex:none;
@@ -135,7 +135,39 @@
     </div>
     <div id="ab">
       <button class="abrow" data-v="opus"><b>Opus 5.5</b><span>the original version: every note with the same touch, a darker mono piano, layers switch on and off</span><kbd>A</kbd></button>
-      <button class="abrow on" data-v="fable"><b>Fable 5.2</b><span>same notes and form: phrased melody, brighter stereo piano, layers drift in and out, rests 3 dB louder</span><kbd>B</kbd></button>
+      <button class="abrow on" data-v="fable"><b>Fable 5.2</b><span>the new theme: a falling eight-bar line over a rolling left hand, on a softer, lower piano</span><kbd>B</kbd></button>
+    </div>
+  </section>
+
+  <section class="card" id="theme_bcard">
+    <h2>Another melody to compare <small>same chords, left hand and form as the main theme above</small></h2>
+    <div class="controls">
+      <button id="theme_bplay" disabled>play</button>
+      <div class="timeline">
+        <div id="theme_bsections"><span id="theme_bhead"></span></div>
+        <div class="times"><span id="theme_bnow">0:00</span><span id="theme_bwhere">candidate B</span><span>4:53</span></div>
+      </div>
+    </div>
+    <div class="notes" style="margin-top:10px">
+      <div><b>Candidate B:</b> slower, two notes a bar, stepping down (E, D, then A; B, D, then E). Closer to a piano piece that barely moves. If you prefer it to the main theme above, say so and every track switches to it (<code>THEME=b</code> in <code>music/compose.py</code>).</div>
+    </div>
+  </section>
+
+  <section class="card" id="nightcard">
+    <h2>Night theme: Lantern Road <small>60 BPM · E minor (the day's notes) · 48 bars · 3:12 seamless loop</small></h2>
+    <div class="controls">
+      <button id="nightplay" disabled>play</button>
+      <div class="timeline">
+        <div id="nightsections"><span id="nighthead"></span></div>
+        <div class="times"><span id="nightnow">0:00</span><span id="nightwhere">plays at night</span><span>3:12</span></div>
+      </div>
+    </div>
+    <div class="notes" style="margin-top:10px">
+      <div><b>Meadow Road after dark:</b> the same melody, note for note, an octave lower, on the same soft piano. Nothing is added to it.</div>
+      <div><b>What makes it night:</b> the day's notes over minor chords (E minor, B minor, G, A), ending on B minor instead of home. 60 BPM instead of 72, about 4 dB quieter. The left hand plays the day's rolling figure at half speed.</div>
+      <div><b>Form:</b> the melody alone (8 bars) · the left hand (8) · pad and bass (8) · the piano rests and a far whistle carries the melody (8) · everything (8) · thinning out (8).</div>
+      <div><b>Nothing decorative:</b> the first version had crickets and plucked "fireflies"; both are gone. Only a faint breath of wind is left.</div>
+      <div><b>Source:</b> <code>music/night.py</code>. A mockup: the game does not play it yet. <a href="audio/night.wav" download="lantern-road.wav">Download</a></div>
     </div>
   </section>
 
@@ -149,11 +181,11 @@
       </div>
     </div>
     <div class="notes" style="margin-top:10px">
-      <div><b>Meadow Road, turned to face you:</b> the same scale (B minor is D major's own notes), the same melody (F#, E, F#, then a leap up; F#, E, D, then a step home), only its resting notes moved to B, on the same felt piano and Moog bass.</div>
+      <div><b>Meadow Road, turned to face you:</b> the same melody, note for note (its notes belong to B minor as much as to D major), on the same soft piano, with only its last note moved from D to B.</div>
       <div><b>Weight, not speed:</b> 96 BPM instead of 72. A heavy thud on beats 1 and 3 is its feet; a dull knock on 2 and 4 is its shell.</div>
       <div><b>Its voice:</b> a low horn climbs one step at a time under everything (F#, G, A, B), over a bass that repeats the root.</div>
       <div><b>Form:</b> it stands up (4 bars) · the fight (8) · everything in (8) · it braces: feet and bass drop out, then stomp back on every beat (8) · everything in again (8).</div>
-      <div><b>Rules kept:</b> one key, three chords (B minor, G, A), nothing new in the melody, each part in its own register, no toy sounds.</div>
+      <div><b>Rules kept:</b> one key, three chords (B minor, G, A without its third), nothing new in the melody, each part in its own register, no toy sounds.</div>
       <div><b>Source:</b> <code>music/boss.py</code>. Its sounds (wake, groan, stomp, snap, shake, sporelings) are under "Boss" in the sound effects below. <a href="audio/boss.wav" download="old-mossback.wav">Download</a></div>
     </div>
   </section>
@@ -181,9 +213,9 @@
     <h2>How it's made</h2>
     <div class="notes">
       <div><b>Approach:</b> music that "doesn't explain anything" (C418's words): no story, no climax, one texture that slowly changes.</div>
-      <div><b>Harmony:</b> three chords, two bars each: D, G, B minor, G. The same 8 bars for the whole 4.9 minutes.</div>
-      <div><b>Melody:</b> two tiny cells in the range of a fifth, repeated exactly. It asks (F#, E, F#, A), then settles (F#, E, D). Nothing new is ever added.</div>
-      <div><b>Variation:</b> only who plays it, and what is around it: piano, synth lead, arpeggio, open space. The melody rests in 4 of 11 blocks.</div>
+      <div><b>Harmony:</b> a chord a bar: G, D over F#, E minor, A (no third), then G, D over F#, E minor, D. The bass steps down G, F#, E. The same 8 bars for the whole 4.9 minutes.</div>
+      <div><b>Melody:</b> one line of eight bars around A4 to E5. It lifts long-short-long (B, D, E), falls back (E, D, B, A), settles (B, G, A, B); the second half starts the same and comes home to D. Nothing new is ever added.</div>
+      <div><b>Variation:</b> only who plays it, and what is around it: the piano or a synth lead for the melody, the piano's left hand or a soft synth for the rolling figure, open space. The melody rests in 4 of 11 blocks.</div>
       <div><b>Sound:</b> felt piano through a "cheap mic", detuned analog pad with a slowly breathing filter, Moog-style bass, tape hiss.</div>
       <div><b>Checks:</b> registers never overlap, no clashing notes, loudness per block. Seamless 293 s loop. Download: <a href="audio/master.wav" download="meadow-road-fable.wav">Fable</a>, <a href="opus/audio/master.wav" download="meadow-road-opus.wav">Opus</a></div>
     </div>
@@ -192,10 +224,10 @@
 
 <script>
 const STEM_INFO = {
-  piano:   { what: "lo-fi felt piano: the melody, rolled chords", color: "#e6b44f" },
+  piano:   { what: "soft felt piano: the melody, the rolling left hand", color: "#e6b44f" },
   lead:    { what: "warm glide synth lead",                     color: "#e48a7a" },
   pad:     { what: "analog pad, filter breathing over minutes", color: "#8fb3e0" },
-  arp:     { what: "soft synth arpeggio through an echo",       color: "#d99bc4" },
+  arp:     { what: "the rolling figure on a soft synth, through an echo",       color: "#d99bc4" },
   bass:    { what: "round Moog-style bass",                     color: "#8d6bb5" },
   texture: { what: "tape hiss, a breath of wind",               color: "#6fae78" },
 };
@@ -316,46 +348,51 @@ function seek(t) {
   if (playing) { stop(); start(t); } else offset = t;
 }
 
-// The boss mockup: one looping buffer. It and the main track never play together.
-const boss = {meta: null, buf: null, src: null, at: 0, from: 0};
-const bossPos = () => boss.src ? (ctx.currentTime - boss.at + boss.from) % boss.meta.seconds : boss.from;
-function bossStop() { if (boss.src) { boss.from = bossPos(); boss.src.stop(); boss.src = null; } $("bossplay").textContent = "play"; }
-async function bossStart(from) {
+// The other tracks (boss fight, night): one looping buffer each. Only one thing plays at a time.
+const loops = {};
+function loopStop(id) { const L = loops[id]; if (L.src) { L.from = L.pos(); L.src.stop(); L.src = null; } $(id + "play").textContent = "play"; }
+async function loopStart(id, from) {
+  const L = loops[id];
   await ctx.resume();
   if (playing) $("play").click();
-  if (boss.src) boss.src.stop();
-  boss.buf ||= await ctx.decodeAudioData(await (await fetch("audio/boss.wav")).arrayBuffer());
-  boss.src = ctx.createBufferSource();
-  boss.src.buffer = boss.buf; boss.src.loop = true; boss.src.connect(master);
-  boss.at = ctx.currentTime + 0.03; boss.from = from;
-  boss.src.start(boss.at, from);
-  $("bossplay").textContent = "stop";
+  for (const other in loops) if (other !== id) loopStop(other);
+  if (L.src) L.src.stop();
+  L.buf ||= await ctx.decodeAudioData(await (await fetch(`audio/${id}.wav`)).arrayBuffer());
+  L.src = ctx.createBufferSource();
+  L.src.buffer = L.buf; L.src.loop = true; L.src.connect(master);
+  L.at = ctx.currentTime + 0.03; L.from = from;
+  L.src.start(L.at, from);
+  $(id + "play").textContent = "stop";
 }
-async function loadBoss() {
-  boss.meta = await (await fetch("audio/boss.json")).json();
-  const bar = $("bosssections"), tint = ["#d9e8d0", "#f7e0a3", "#f7c9a3", "#cfe0f0", "#f7c9a3"];
-  boss.meta.sections.forEach((sec, i) => {
+async function loadLoop(id, tint) {
+  const L = loops[id] = {meta: await (await fetch(`audio/${id}.json`)).json(), buf: null, src: null, at: 0, from: 0};
+  L.pos = () => L.src ? (ctx.currentTime - L.at + L.from) % L.meta.seconds : L.from;
+  const bar = $(id + "sections");
+  L.meta.sections.forEach((sec, i) => {
     const d = document.createElement("div");
     d.style.flex = sec.bars; d.style.background = tint[i % tint.length]; d.textContent = sec.name; d.title = sec.name;
     bar.appendChild(d);
   });
   bar.addEventListener("click", (e) => {
-    const r = bar.getBoundingClientRect(), t = ((e.clientX - r.left) / r.width) * boss.meta.seconds;
-    if (boss.src) bossStart(t); else boss.from = t;
+    const r = bar.getBoundingClientRect(), t = ((e.clientX - r.left) / r.width) * L.meta.seconds;
+    if (L.src) loopStart(id, t); else L.from = t;
   });
-  $("bossplay").onclick = () => boss.src ? bossStop() : bossStart(boss.from);
-  $("bossplay").disabled = false;
+  $(id + "play").onclick = () => L.src ? loopStop(id) : loopStart(id, L.from);
+  $(id + "play").disabled = false;
   setInterval(() => {
-    const t = bossPos(), sec = boss.meta.sections.filter((x) => x.t <= t).pop();
-    $("bosshead").style.left = `${100 * t / boss.meta.seconds}%`;
-    $("bossnow").textContent = fmt(t);
-    $("bosswhere").textContent = sec ? sec.name : "";
+    const t = L.pos(), sec = L.meta.sections.filter((x) => x.t <= t).pop();
+    $(id + "head").style.left = `${100 * t / L.meta.seconds}%`;
+    $(id + "now").textContent = fmt(t);
+    $(id + "where").textContent = sec ? sec.name : "";
   }, 100);
 }
+const loadBoss = () => Promise.all([loadLoop("boss", ["#d9e8d0", "#f7e0a3", "#f7c9a3", "#cfe0f0", "#f7c9a3"]),
+                                    loadLoop("night", ["#cfd6ee", "#bcc6e6", "#d9d2f0", "#c2d8e8", "#b4bfe2", "#cfd6ee"]),
+                                    loadLoop("theme_b", ["#f7e0a3", "#f3d7b0", "#d9e8d0", "#f7e0a3", "#f7c9a3", "#cfe0f0"])]);
 
 $("play").onclick = async () => {
   await ctx.resume();
-  if (!playing) bossStop();
+  if (!playing) for (const id in loops) loopStop(id);
   if (playing) stop(); else start(offset);
   $("icon").innerHTML = playing ? '<path d="M6 4h4.5v16H6zM13.5 4H18v16h-4.5z"/>' : '<path d="M7 4.5v15l13-7.5z"/>';
 };

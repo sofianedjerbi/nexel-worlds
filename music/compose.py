@@ -1,21 +1,19 @@
-"""Meadow Road: calm, neutral background music in the spirit of early sandbox-game ambient. ~4.9 min, seamless.
+"""Meadow Road: the main theme. Calm background music, ~4.9 min, seamless.
 
-Fable 5.2 pass over the Opus 5.5 version (frozen in music/opus/). Same notes, same form. What changed:
-  * touch: the melody is phrased (weight on arrivals, lighter passing notes, long notes placed a hair late)
-  * tone: brighter felt piano with an audible hammer, two "mics" for real stereo, a more open pad, a +4 dB air shelf
-  * motion: the arpeggio drifts in and out over two bars; the left hand answers softly under the melody's long notes
-  * rests: about 3 dB louder, so they do not vanish at game volume
-
-What the research on that style says, and how this file applies it:
-  * music that "doesn't explain anything": no story sections, no marches, no climax
-      -> one texture that slowly changes; layers enter and leave, the material never changes
-  * very few chords on a soft synth pad, a simple melody that resolves and loops back
-      -> three chords, two bars each (D, G, Bm, G); one melody of two 2-bar cells in a fifth (D5..A5),
-         repeated exactly; variation only from instrument, register and presence
-  * mostly electronic, piano recorded through a poor mic and heavily processed, analog synths
-      -> lo-fi felt piano (band-limited, saturated, wobbly), detuned analog pad with a slowly breathing
-         filter, a round Moog-style bass, a soft delayed synth arpeggio, a warm glide lead, tape hiss
-  * silence and space matter -> the melody sits out regularly; no drums
+Third theme (2026-11-12). The user asked for a new main theme, after research on what makes game themes stick, on
+C418's Minecraft music and on Undertale's background music. What that says, and what this file does with it:
+  * the first seconds decide it: an opening interval you can sing back
+      -> the line opens long-short-long (B, D, E) and falls back (E, D, B, A); both halves start with it
+  * one theme, heard everywhere, changed by tempo, instrument and harmony, not by new notes (Undertale)
+      -> the night theme (night.py) and the boss fight (boss.py) are this melody, note for note, over other chords
+  * the accompaniment is itself a figure you recognise: a tonic-chord group and a rising 1-2-3 (Undertale's overworld
+    ostinato); a rolling left hand under a sparse right hand (C418's piano pieces)
+      -> the left hand rolls up and down each chord in eighths, and climbs D, E, F# when it comes home
+  * few chords, a bass that walks down, a melody that resolves and loops back; silence matters; no drums
+      -> G, D over F#, E minor, A (no third): the bass steps down G, F#, E. Eight bars, ending on D.
+  * nothing may rub: the melody uses five notes (G, A, B, D, E), and the checks below find no semitone under any of them
+The main instrument is a soft, dark felt piano, and the melody sits around A4-E5: the earlier one was heard as
+"too aggressive, too high". Layers enter and leave; the material never changes. The Opus 5.5 version is frozen in music/opus/.
 
 Pure numpy, 48 kHz, 72 BPM, 88 bars = 293 s. Melody from bar 1. Checks: registers, clashes, loudness.
 
@@ -24,6 +22,7 @@ Pure numpy, 48 kHz, 72 BPM, 88 bars = 293 s. Melody from bar 1. Checks: register
 
 from pathlib import Path
 import json
+import os
 import wave
 
 import numpy as np
@@ -103,24 +102,27 @@ def saw(ph, f, cutoff, kmax=40):
 # ------------------------------------------------------------------ instruments (f, dur, vel, t0)
 
 def lofi_piano(f, dur, vel, t0):
-    """Felt piano through two cheap microphones: warm and a little gritty, but with the hammer and upper partials audible."""
+    """The main instrument: a felt piano played softly. Two strings a hair apart (they beat slowly), stretched partials
+    that die at their own rates, a soft thump of felt. Darker and rounder than the first one (heard as "aggressive"),
+    but not a pure tone: the second try was close to a sine with a clean attack, and sounded like a door chime."""
     n = int((dur + 3.0) * SR)
     t = tt(n)
-    bright = 2000 + 2600 * vel
+    bright = 1700 + 1900 * vel
     cents = rng.normal(0, 2.5)
     y = np.zeros(n)
-    for k in range(1, 16):
-        fk = k * np.sqrt(1 + 0.0004 * k * k)
-        if f * fk > 9000:
-            break
-        tau = 4.5 / k ** 0.7 * (220 / max(f, 110)) ** 0.35
-        y += (1 / k ** 1.1) / (1 + (f * fk / bright) ** 2) * np.sin(fk * phase(f, n, t0, cents / 100, wob=1.4)) \
-            * (0.55 * np.exp(-t / (tau * 0.3)) + 0.45 * np.exp(-t / tau))
-    y += fft_filter(rng.standard_normal(n), bp(250, 2500, 1)) * np.exp(-t / 0.01) * 0.07 * (0.5 + vel)   # felt hammer
-    y = np.tanh(1.8 * y) / 1.8
-    mic = lambda centre: (lambda fr: bp(110, 7000, 1)(fr) * (1 + 0.3 / (1 + ((fr - centre) / 500) ** 2)))
-    left, right = fft_filter(y, mic(800)), np.roll(fft_filter(y, mic(1150)), 12)
-    return 0.42 * vel * np.stack([left, right]) * np.clip(t / 0.004, 0, 1) * release(t, dur, 0.5)
+    for string in (-1.6, 1.9):
+        ph = phase(f, n, t0, (cents + string) / 100, wob=1.2)
+        for k in range(1, 14):
+            fk = k * np.sqrt(1 + 0.0005 * k * k)
+            if f * fk > 7500:
+                break
+            tau = 4.0 / k ** 0.75 * (220 / max(f, 110)) ** 0.35
+            y += 0.5 * (1 / k ** 1.25) / (1 + (f * fk / bright) ** 2) * np.sin(fk * ph) * (0.5 * np.exp(-t / (tau * 0.25)) + 0.5 * np.exp(-t / tau))
+    y += fft_filter(rng.standard_normal(n), bp(180, 1400, 1)) * np.exp(-t / 0.012) * 0.05 * (0.5 + vel)   # the felt on the strings
+    y = np.tanh(1.2 * y) / 1.2
+    mic = lambda centre: (lambda fr: bp(90, 6000, 1)(fr) * (1 + 0.15 / (1 + ((fr - centre) / 600) ** 2)))
+    left, right = fft_filter(y, mic(500)), np.roll(fft_filter(y, mic(700)), 10)
+    return 0.46 * vel * np.stack([left, right]) * np.clip(t / 0.007, 0, 1) * release(t, dur, 0.55)
 
 
 def analog_pad(f, dur, vel, t0):
@@ -172,20 +174,27 @@ def glide_lead(f, dur, vel, t0):
 
 # ------------------------------------------------------------------ material
 
-CHORDS = {"Dmaj9": "D F# A C# E", "Gmaj9": "G B D F# A", "Bm7": "B D F# A"}
-CYCLE = ["Dmaj9", "Dmaj9", "Gmaj9", "Gmaj9", "Bm7", "Bm7", "Gmaj9", "Gmaj9"]   # 8 bars, 3 chords
+CHORDS = {"G": "G B D", "D/F#": "F# A D", "Em7": "E G B D", "Asus": "A B E", "D": "D F# A"}     # (first note: the bass)
+CYCLE = ["G", "D/F#", "Em7", "Asus", "G", "D/F#", "Em7", "D"]       # 8 bars; the bass walks down G, F#, E
 
-# the whole melody: two 2-bar cells. "ask" over D (and Bm), "settle" over G.
-ASK = [[(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "F#5")], [(0, 7, "A5")]]
-SETTLE_OPEN = [[(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "D5")], [(0, 7, "E5")]]
-SETTLE_HOME = [[(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "D5")], [(0, 7, "D5")]]
-MELODY = ASK + SETTLE_OPEN + ASK + SETTLE_HOME   # 8 bars
-PHRASE = [   # per bar, per note: (velocity x, seconds late). The notes never change; only the touch does.
-    [(1.00, 0.0), (0.78, 0.004), (0.90, 0.0)], [(1.06, 0.022)],
-    [(0.95, 0.0), (0.75, 0.004), (0.84, 0.006)], [(0.82, 0.030)],
-    [(1.04, 0.0), (0.80, 0.004), (0.94, 0.0)], [(1.10, 0.022)],
-    [(0.92, 0.0), (0.74, 0.004), (0.80, 0.008)], [(0.78, 0.040)],
-]
+# The melody, per bar: (eighth slot, length in eighths, note). One line of eight bars, in two halves that start alike.
+# (The first try was a hook of three even notes rising to a held one, every second bar: the user heard a shop's door
+# chime, a notification. So: long-short-long, lines that fall, phrases that run on over the bar, no call sitting alone.)
+THEMES = {
+    "a": [[(0, 3, "B4"), (3, 1, "D5"), (4, 4, "E5")], [(0, 3, "E5"), (3, 1, "D5"), (4, 2, "B4"), (6, 2, "A4")],     # it lifts, and falls back
+          [(0, 4, "B4"), (4, 2, "G4"), (6, 2, "A4")], [(0, 6, "B4")],                                               # it settles, not yet home
+          [(0, 3, "B4"), (3, 1, "D5"), (4, 4, "E5")], [(0, 3, "E5"), (3, 1, "D5"), (4, 2, "B4"), (6, 2, "A4")],
+          [(0, 4, "B4"), (4, 2, "G4"), (6, 2, "A4")], [(0, 7, "D5")]],                                              # home
+    "b": [[(0, 4, "E5"), (4, 4, "D5")], [(0, 7, "A4")], [(0, 4, "B4"), (4, 4, "D5")], [(0, 7, "E5")],              # slower: two notes a bar, stepping down
+          [(0, 4, "E5"), (4, 4, "D5")], [(0, 7, "A4")], [(0, 4, "B4"), (4, 4, "G4")], [(0, 7, "A4")]],
+}
+THEME = os.environ.get("THEME", "a")              # THEME=b uv run python music/compose.py renders a candidate (audio/theme_b.wav) instead
+MELODY = THEMES[THEME]
+PHRASE = [[(1.0 if s == 0 else 0.8 if n == 1 else 0.9, 0.012 if n >= 4 else 0.0) for s, n, _ in bar] for bar in MELODY]   # (velocity x, seconds late)
+# The left hand: eight eighths a bar, up the chord and back; coming home it climbs D, E, F# (the "rising three").
+ROLL = {"G": "G2 D3 G3 B3 D4 B3 G3 D3", "D/F#": "F#2 D3 F#3 A3 D4 A3 F#3 D3", "Em7": "E2 B2 E3 G3 D4 G3 E3 B2",
+        "Asus": "A2 E3 A3 B3 E4 B3 A3 E3", "D": "D3 A3 D4 E4 F#4 E4 D4 A3"}
+ROLL_TOUCH = [0.9, 0.62, 0.7, 0.66, 0.8, 0.6, 0.64, 0.56]
 
 
 def pcs(ch):
@@ -196,43 +205,29 @@ def place(pc, lo):
     return lo + (pc - lo) % 12
 
 
-def piano_chord(ch):
-    """Open voicing under the melody: low root, fifth, then 3rd and colour (9th, or 7th on minor)."""
-    p = pcs(ch)
-    major = (p[1] - p[0]) % 12 == 4
-    r = place(p[0], 38)                  # D2..C#3
-    fifth = place(p[2], r + 1)
-    third = place(p[1], 57)              # A3..G#4
-    colour = place(p[4] if major and len(p) == 5 else p[3], 57)
-    return [r, fifth] + sorted([third, colour])
+def roll_notes(ch):
+    return [midi(n) for n in ROLL[ch].split()]
 
 
 def pad_voicing(ch):
     p = pcs(ch)
-    return sorted(place(x, 59) for x in (p[0], p[1], p[2]))   # a plain triad, B3..A#4
-
-
-def arp_notes(ch):
-    p = pcs(ch)
-    major = (p[1] - p[0]) % 12 == 4
-    tones = [place(p[0], 50), place(p[2], 55), place(p[4] if major and len(p) == 5 else p[3], 60), place(p[1], 62)]
-    return sorted(tones)
+    return sorted(place(x, 50) for x in p[:3])   # three notes of the chord, D3..C#4: under the melody
 
 
 # ------------------------------------------------------------------ the plan (11 blocks of 8 bars)
-# keys: melody voice, piano chords, pad, arp, bass
+# keys: who plays the melody, who plays the rolling figure, pad level, bass
 PLAN = [
-    dict(name="piano", mel="piano", chords=True, pad=0.7, arp=0, bass=0),
-    dict(name="piano + bass", mel="piano", chords=True, pad=0.8, arp=0, bass=1),
-    dict(name="arpeggio", mel=None, chords=False, pad=0.9, arp=1, bass=1),
-    dict(name="arpeggio + piano", mel="piano", chords=False, pad=0.8, arp=1, bass=1),
-    dict(name="synth lead", mel="lead", chords=True, pad=0.8, arp=1, bass=1),
-    dict(name="space", mel=None, chords=True, pad=0.9, arp=0, bass=0),
-    dict(name="piano, close", mel="piano", chords=True, pad=0.5, arp=0, bass=1),
-    dict(name="arpeggio", mel=None, chords=False, pad=0.9, arp=1, bass=1),
-    dict(name="piano + lead", mel="both", chords=False, pad=0.8, arp=1, bass=1),
-    dict(name="fragments", mel="fragments", chords=True, pad=0.8, arp=0, bass=1),
-    dict(name="space", mel=None, chords=True, pad=0.9, arp=0, bass=0),
+    dict(name="the theme", mel="piano", roll="piano", pad=0.6, bass=0),
+    dict(name="piano + bass", mel="piano", roll="piano", pad=0.8, bass=1),
+    dict(name="the figure alone", mel=None, roll="synth", pad=0.9, bass=1),
+    dict(name="piano over synth", mel="piano", roll="synth", pad=0.8, bass=1),
+    dict(name="synth lead", mel="lead", roll="piano", pad=0.8, bass=1),
+    dict(name="space", mel=None, roll=None, pad=0.9, bass=0),
+    dict(name="piano, close", mel="piano", roll="piano", pad=0.5, bass=1),
+    dict(name="the figure alone", mel=None, roll="synth", pad=0.9, bass=1),
+    dict(name="piano + lead", mel="both", roll="synth", pad=0.8, bass=1),
+    dict(name="fragments", mel="fragments", roll="piano", pad=0.8, bass=1),
+    dict(name="space", mel=None, roll=None, pad=0.9, bass=0),
 ]
 assert len(PLAN) * 8 == BARS
 
@@ -248,12 +243,12 @@ def note(slot, length, m, vel, inst, stem, pan=0.0, rev=0.25, echo=0.0, human=Tr
     events.append((t0, dur, m, vel, inst, pan, stem, rev, echo))
 
 
-def edge_fade(blk, i, slot, key):
+def edge_fade(blk, i, slot, key, want):
     """Layers drift in and out over two bars instead of switching on at a block edge."""
     f = 1.0
-    if not PLAN[(blk - 1) % len(PLAN)][key] and i < 2:
+    if PLAN[(blk - 1) % len(PLAN)][key] != want and i < 2:
         f *= 0.35 + 0.65 * (i * 8 + slot) / 16
-    if not PLAN[(blk + 1) % len(PLAN)][key] and i >= 6:
+    if PLAN[(blk + 1) % len(PLAN)][key] != want and i >= 6:
         f *= 0.35 + 0.65 * ((8 - i) * 8 - slot) / 16
     return f
 
@@ -263,43 +258,35 @@ for bar in range(BARS):
     plan = PLAN[blk]
     ch = CYCLE[i]
     s0 = bar * 8
-    chord_start = i % 2 == 0
 
     # melody: always the same eight bars
     mel = plan["mel"]
     for (slot, ln, n), (touch, late) in zip(MELODY[i], PHRASE[i]):
         m = midi(n)
         if mel in ("piano", "both") or (mel == "fragments" and i in (0, 1, 4, 5)):
-            note(s0 + slot, ln, m, 0.62 * touch, lofi_piano, "piano", 0.1, rev=0.3, echo=0.1, late=late)
+            note(s0 + slot, ln, m, 0.66 * touch, lofi_piano, "piano", 0.1, rev=0.3, echo=0.1, late=late)
         if mel in ("lead", "both"):
             note(s0 + slot, ln, m, (0.9 if mel == "lead" else 0.55) * touch, glide_lead, "lead", -0.1, rev=0.3, echo=0.25, late=late)
 
-    # piano chords, struck softly and rolled, held two bars
-    if plan["chords"] and chord_start:
-        base = 0.38 if mel else 0.46          # a little more piano when it is alone, so the rests do not vanish
-        for j, m in enumerate(piano_chord(ch)):
-            note(s0 + j * 0.25, 16 - j * 0.25, m, base - 0.04 * j, lofi_piano, "piano", -0.3 + 0.15 * j, rev=0.35)
-    if plan["chords"] and mel and i in (3, 7):   # under the melody's long note, the left hand answers softly
-        top = piano_chord(ch)[2:]
-        note(s0 + 4, 4, top[0], 0.2, lofi_piano, "piano", -0.05, rev=0.4)
-        note(s0 + 4.3, 3.7, top[1], 0.18, lofi_piano, "piano", 0.1, rev=0.4)
+    # the rolling figure: the piano's left hand, or the soft synth through a dotted-eighth echo
+    roll = plan["roll"]
+    for slot, m in enumerate(roll_notes(ch)) if roll else ():
+        v = ROLL_TOUCH[slot] * edge_fade(blk, i, slot, "roll", roll)
+        if roll == "piano":
+            note(s0 + slot, 3, m, (0.36 if mel else 0.44) * v, lofi_piano, "piano", -0.25 + 0.05 * slot, rev=0.3)
+        else:
+            note(s0 + slot, 1, m + 12 if m < 50 else m, 0.5 * v, synth_arp, "arp", -0.45 if slot % 2 else 0.45, rev=0.25, echo=0.4)
+    if not roll:                                # space: the chord once, rolled, and left to ring
+        for j, m in enumerate(roll_notes(ch)[:5]):
+            note(s0 + j * 0.3, 8 - j * 0.3, m, 0.4 - 0.03 * j, lofi_piano, "piano", -0.3 + 0.15 * j, rev=0.4)
 
-    # pad: one triad per chord
-    if chord_start:
-        for m in pad_voicing(ch):
-            note(s0, 16, m, plan["pad"] * (1.0 if mel else 1.25), analog_pad, "pad", 0.0, rev=0.4, human=False)
+    # pad: three notes per chord
+    for m in pad_voicing(ch):
+        note(s0, 8, m, plan["pad"] * (1.0 if mel else 1.25), analog_pad, "pad", 0.0, rev=0.4, human=False)
 
-    # arpeggio: up and down the chord in eighths, quiet, through a dotted-eighth echo
-    if plan["arp"]:
-        a = arp_notes(ch)
-        order = [0, 1, 2, 3, 2, 1, 2, 3]
-        for slot in range(8):
-            note(s0 + slot, 1, a[order[slot]], (0.55 if slot % 4 == 0 else 0.38) * edge_fade(blk, i, slot, "arp"), synth_arp, "arp",
-                 -0.45 if slot % 2 else 0.45, rev=0.25, echo=0.4)
-
-    # bass: one long root per chord
-    if plan["bass"] and chord_start:
-        note(s0, 15.5, place(pcs(ch)[0], 33), 0.85, moog_bass, "bass", 0.0, rev=0.05, human=False)
+    # bass: one long note per bar, walking down
+    if plan["bass"]:
+        note(s0, 7.5, place(pcs(ch)[0], 33), 0.85, moog_bass, "bass", 0.0, rev=0.05, human=False)
 
 
 # ------------------------------------------------------------------ checks
@@ -309,10 +296,12 @@ def chord_at_time(t):
 
 
 def clash_report():
-    held = [(t, t + d, m) for t, d, m, v, inst, *_ in events if m < 72]
+    """Melody notes against everything held under them: a semitone or a minor 9th, or a tritone or major 7th that is not in the chord."""
+    low = min(midi(n) for bar in MELODY for *_, n in bar)
+    held = [(t, t + d, m) for t, d, m, v, inst, *_ in events if m < low]
     bad = []
     for t, d, m, v, inst, *_ in events:
-        if m < 72:
+        if m < low:
             continue
         ch = chord_at_time(t)
         for a, b, h in held:
@@ -326,14 +315,14 @@ def clash_report():
 def accomp_clashes():
     out = []
     for ch in CHORDS:
-        v = sorted(set(piano_chord(ch) + pad_voicing(ch) + arp_notes(ch)))
+        v = sorted(set(roll_notes(ch) + pad_voicing(ch)))
         out += [(ch, a, b) for a, b in zip(v, v[1:]) if b - a == 1]
     return out
 
 
 def registers():
     return {"lowest melody": min(midi(n) for bar in MELODY for *_, n in bar),
-            "highest accompaniment": max(max(piano_chord(c) + pad_voicing(c) + arp_notes(c)) for c in CHORDS)}
+            "highest accompaniment": max(max(roll_notes(c) + pad_voicing(c)) for c in CHORDS)}
 
 
 # ------------------------------------------------------------------ render, one stem at a time
@@ -424,7 +413,7 @@ def render_stem(stem, irs):
     if stem == "texture":
         out = out + texture_bed()
     out = circ(out, hp(35, 2) if stem == "bass" else hp(90, 1))
-    air = lambda f: 1 + (10 ** (4 / 20) - 1) / (1 + (2500 / np.maximum(f, 1)) ** 2)   # +4 dB shelf above 2.5 kHz: lifts the blanket
+    air = lambda f: 1 + (10 ** (2 / 20) - 1) / (1 + (2500 / np.maximum(f, 1)) ** 2)   # +2 dB shelf above 2.5 kHz (4 was harsh)
     out = circ(out * GAINS[stem], lambda f: hp(25, 2)(f) * lp(15000, 2)(f) * air(f))
     return out.astype(np.float32)
 
@@ -459,6 +448,10 @@ if __name__ == "__main__":
     print(f"clash check: {len(bad)}", bad[:12])
     master, stems = render()
     OUT.mkdir(parents=True, exist_ok=True)
+    if THEME != "a":                                    # a candidate: only its mix, for the page's "another melody" card
+        write_wav(OUT / f"theme_{THEME}.wav", master)
+        (OUT / f"theme_{THEME}.json").write_text(json.dumps({"seconds": LOOP_S, "sections": [{"name": p["name"], "t": k * 32 * BEAT, "bars": 8} for k, p in enumerate(PLAN)]}))
+        raise SystemExit
     for old in OUT.glob("stem_*.wav"):
         old.unlink()
     write_wav(OUT / "master.wav", master)

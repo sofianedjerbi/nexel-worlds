@@ -96,3 +96,17 @@ Research note: a first boss in a calm game gets its tension from the bass, the r
 - Eating was three bursts of hiss with a thud. A bite is a burst of millisecond fracture pulses, dense then thinning, bright above 2 kHz,
   heard through a mouth that closes (a resonance sliding from about 1500 to 700 Hz): `_chomp`. The first bite is crisp, the two chews duller.
 - A slow pulse train (20-110 per second) through low, wide resonances sounds like a raspberry: the falling tree's creak used one. Use separate cracks instead.
+
+## New main theme, night theme (2026-11-12)
+
+The user disliked the main instrument in every track ("too aggressive, too high, weird"), then asked for a new main theme, after research
+on iconic game themes, C418 and Undertale. What the research gave (principles, hardly any note-level analysis): the first seconds decide a
+theme; one theme reused everywhere, changed by tempo, instrument and harmony rather than by new notes (Undertale); an accompaniment figure
+that is itself recognisable (Undertale's overworld ostinato: a tonic-chord group and a rising 1-2-3); few chords, a rolling left hand, space (C418).
+- Theme: one eight-bar line around A4-E5 over G, D/F#, Em7, A (no third), ..., D; the bass walks down. `compose.THEMES`, `THEME=b` renders a candidate.
+- The night theme (`music/night.py`, "Lantern Road") and the boss fight use `compose.MELODY` note for note, over other chords, at other tempos.
+- **A hook of three even notes rising to a held note, repeated every two bars, on a pure tone, is a door chime** ("the noise a pharmacy makes
+  when someone enters", "a notification", "a phone call theme"). Use long-short-long rhythms, lines that fall, phrases that run over the bar.
+- **A piano dulled to nearly a sine with a clean attack is a chime too.** Soft must still be a piano: two strings beating, stretched partials, a felt thump.
+- **No decorative nature sounds in the music**: crickets and high plucked "fireflies" in the night theme were "very very very bad".
+- The assistant cannot hear. When a melody is a guess, put a second candidate on the page so the user can choose by ear.

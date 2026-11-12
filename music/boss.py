@@ -2,8 +2,9 @@
 
     uv run python music/boss.py
 
-It is Meadow Road turned to face you: the same notes (B minor is D major's own scale), the same eight-bar melody with only
-its resting notes moved to B, on the same lo-fi piano, the same Moog bass. What changes is underneath it:
+It is Meadow Road turned to face you: the same melody, note for note (compose.MELODY: its four notes belong to B minor
+as much as to D major), on the same soft piano, with only its last note moved from D to B. What changes is underneath it:
+  the harmony   B minor, G and A (no third) instead of the day's chords
   the tempo     96 BPM instead of 72, but no faster than a tortoise needs: weight, not speed
   the stomp     a heavy thud on beats 1 and 3 (its feet), a dull knock on 2 and 4 (its shell)
   the bass      an eighth-note ostinato on the root, climbing into each bar
@@ -31,11 +32,10 @@ rng = np.random.default_rng(7)
 
 CYCLE = ["Bm", "Bm", "G", "A", "Bm", "Bm", "G", "GA"]            # the eighth bar turns on two chords
 ROOT = {"Bm": ("B1", "F#2"), "G": ("G1", "D2"), "A": ("A1", "E2")}
-PIZZ = {"Bm": ["B3", "F#4", "D4", "F#4"], "G": ["G3", "D4", "B3", "D4"], "A": ["A3", "E4", "C#4", "E4"]}
-PAD = {"Bm": ["B3", "D4", "F#4"], "G": ["G3", "B3", "D4"], "A": ["A3", "C#4", "E4"]}
-MELODY = [[(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "F#5")], [(0, 7, "B5")], [(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "D5")], [(0, 7, "E5")],
-          [(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "F#5")], [(0, 7, "B5")], [(0, 4, "F#5"), (4, 2, "E5"), (6, 2, "D5")], [(0, 7, "B4")]]
-HORN = [(0, 2, "F#3"), (2, 1, "G3"), (3, 1, "A3"), (4, 2, "B3"), (6, 2, "G3")]      # bar, bars long, note: one slow climb
+PIZZ = {"Bm": ["B2", "F#3", "D3", "F#3"], "G": ["G2", "D3", "B2", "D3"], "A": ["A2", "E3", "B2", "E3"]}       # under the melody; A has no third
+PAD = {"Bm": ["B2", "D3", "F#3"], "G": ["G2", "B2", "D3"], "A": ["A2", "B2", "E3"]}
+MELODY = C.MELODY[:7] + [[(0, 7, "B4")]]                         # the day's melody; it ends on B, not on D
+HORN = [(0, 2, "F#2"), (2, 1, "G2"), (3, 1, "A2"), (4, 2, "B2"), (6, 2, "G2")]      # bar, bars long, note: one slow climb
 SECTIONS = [("it stands up", 4), ("the fight", 8), ("everything in", 8), ("it braces, then stomps back", 8), ("everything in again", 8)]
 
 
@@ -134,7 +134,7 @@ for bar in range(4):                                               # it stands u
     if bar == 3:
         for s in (2, 6, 7):
             add(bar, s, knock, "B1", 1, 0.8, "drums", pan=0.25)
-add(2, 0, horn, "F#3", 15.5, 0.9, "horn", pan=-0.2, rev=0.35)
+add(2, 0, horn, "F#2", 15.5, 0.9, "horn", pan=-0.2, rev=0.35)
 block(4, strings=1)
 block(12, strings=2, horn_on=True, lead=True, shake=True)
 block(20, drums=False, bass=False, horn_on=True, pad=True, mel=0.8)     # it braces: no feet, no bass; then, from bar 24, every beat
