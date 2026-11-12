@@ -1,13 +1,14 @@
 // Relief, stacked: each level is drawn RELIEF_STEP px higher than the one under it (sea level in place, a pit's floor
 // lower), with everything standing on it, so a two-layer drop looks taller than a one-layer one. A block's ground
-// canvas is drawn at its lowest level, then for each level above a copy of it cut to the tiles at least that high. Where a lifted level ends
-// over lower ground its wall is painted down to the ground below: solid earth, a band per layer (lit along its top,
-// darker at its foot), in the colours of that layer's own sheet, the pack's ink at the very foot.
+// canvas is drawn at its lowest level; over it goes one more picture, its raised levels: for each level above, a
+// copy of the ground cut to the tiles at least that high, painted one over the other when the block is built (not
+// each frame: a level a canvas was ten canvases a block, and eight screens of paint a frame). Where a lifted level
+// ends over lower ground its wall is painted down to the ground below: solid earth, a band per layer (lit along its
+// top, darker at its foot), in the colours of that layer's own sheet, the pack's ink at the very foot.
 
 // A layer is half a tile high: two layers, one tile (a cave two blocks high is as tall as you are)
 const RELIEF_STEP = 8;                                       // art px a level
 const shOf = (L) => RELIEF_STEP * L;                          // how far up a level is drawn (a pit's, down): every layer the same step
-const WALL_M = RELIEF_STEP * 14 + 16;                        // room under a layer canvas for its walls
 
 // Something flying off from a spot (a puff, a spark, debris): it keeps the height of where it started, however it
 // drifts (it doesn't step up and down with the tiles it passes over)
@@ -77,12 +78,12 @@ function dilateH(m, w, h, n) {
 // tile round it, so ledges cross block borders.
 const LEDGE = 4, SIDE_MAX = 2;
 function* reliefSteps(b) {                             // (a step a level, so no frame waits on a whole block)
-  const M = 16, Wb = B * 16, Wm = Wb + 2 * M, Hb = Wb + WALL_M;
+  const M = 16, Wb = B * 16, Wm = Wb + 2 * M;
   let maxLv = -99, minLv = 0;                          // (the block's ground canvas is drawn at its lowest level)
   for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {
     const l = levelAt(b.bx * B + tx, b.by * B + ty); maxLv = Math.max(maxLv, l); minLv = Math.min(minLv, l);
   }
-  const layers = {}, shape = {};
+  const shape = {};
   for (let k = maxLv; k > minLv; k--) {                    // the shapes, from the top down: each grows round the one above
     const own = new Uint8Array(Wm * Wm), sheet = hillSheet(k);
     for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {    // its own tiles' shape, from the sheet's cells
@@ -99,8 +100,13 @@ function* reliefSteps(b) {                             // (a step a level, so no
     shape[k] = {own, sh};
     yield;
   }
+  // the raised levels, painted lowest first into one picture: `up` px taller than the block at its top (the highest
+  // level's lift), the lowest level's worth at its foot
+  const up = shOf(maxLv), flat = maxLv > minLv ? document.createElement("canvas") : null, fg = flat && flat.getContext("2d");
+  if (flat) { flat.width = Wb; flat.height = Wb + up - shOf(minLv); fg.imageSmoothingEnabled = false; }
+  const [mc, tint, lc, t] = reliefScratch(Wb), tg0 = tint.getContext("2d"), tg = t.getContext("2d");
   for (let k = minLv + 1; k <= maxLv; k++) {
-    const {own, sh} = shape[k], cols = colsOf(hillSheet(k));
+    const {own, sh} = shape[k], cols = colsOf(hillSheet(k)), off = up - shOf(k);
     const mask = new ImageData(Wb, Wb), md = mask.data, ledge = new ImageData(Wb, Wb), ld = ledge.data, ownM = new ImageData(Wb, Wb), od = ownM.data;
     for (let y = 0; y < Wb; y++) for (let x = 0; x < Wb; x++) {
       const i = (y + M) * Wm + x + M, o = (y * Wb + x) * 4;
@@ -114,27 +120,27 @@ function* reliefSteps(b) {                             // (a step a level, so no
       else { let dd = 0; while (dd < 3 && sh[i - dd - 1] && sh[i + dd + 1]) dd++; c = cols.side[dd]; }
       ld[o] = c[0]; ld[o + 1] = c[1]; ld[o + 2] = c[2]; ld[o + 3] = 255;
     }
-    const mc = document.createElement("canvas"); mc.width = mc.height = Wb; mc.getContext("2d").putImageData(mask, 0, 0);
-    const c = document.createElement("canvas"); c.width = Wb; c.height = Hb;
-    const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
-    const tint = document.createElement("canvas"); tint.width = tint.height = Wb; const tg0 = tint.getContext("2d");
+    mc.getContext("2d").putImageData(mask, 0, 0);
     for (let s = 0; s < RELIEF_STEP; s++) {                    // the body: its wall, a band, under the whole shape
       const col = s === RELIEF_STEP - 1 ? cols.bands[0] : s === 0 ? cols.bands[2] : cols.bands[1];
       tg0.globalCompositeOperation = "source-over"; tg0.clearRect(0, 0, Wb, Wb);
       tg0.fillStyle = `rgb(${col[0] | 0},${col[1] | 0},${col[2] | 0})`; tg0.fillRect(0, 0, Wb, Wb);
       tg0.globalCompositeOperation = "destination-in"; tg0.drawImage(mc, 0, 0);
-      g.drawImage(tint, 0, RELIEF_STEP - s);
+      fg.drawImage(tint, 0, off + RELIEF_STEP - s);
     }
-    const lc = document.createElement("canvas"); lc.width = lc.height = Wb; lc.getContext("2d").putImageData(ledge, 0, 0);
-    g.drawImage(lc, 0, 0);
-    const t = document.createElement("canvas"); t.width = t.height = Wb;   // its own tiles: the ground as drawn, cut to
-    const tg = t.getContext("2d"); tg.putImageData(ownM, 0, 0);                   //  the level's own shape
-    tg.globalCompositeOperation = "source-in"; tg.drawImage(b.canvas, 0, 0);
-    g.drawImage(t, 0, 0);
-    layers[k] = c;
+    lc.getContext("2d").putImageData(ledge, 0, 0);
+    fg.drawImage(lc, 0, off);
+    tg.globalCompositeOperation = "source-over"; tg.putImageData(ownM, 0, 0);   // its own tiles: the ground as drawn, cut to
+    tg.globalCompositeOperation = "source-in"; tg.drawImage(b.canvas, 0, 0);    //  the level's own shape
+    fg.drawImage(t, 0, off);
     yield;
   }
-  b.relief = {layers, maxLv, minLv};
+  b.relief = {flat, up, maxLv, minLv};
+}
+let scratch = null;                                    // (canvases to build a level on, kept: one set for every block)
+function reliefScratch(Wb) {
+  if (!scratch) scratch = [0, 1, 2, 3].map(() => { const c = document.createElement("canvas"); c.width = c.height = Wb; return c; });
+  return scratch;
 }
 let reliefBudgetAt = 0, reliefSpent = 0, freshThisFrame = false;
 function buildRelief(b) { for (const _ of reliefSteps(b)); b.reliefDirty = false; }   // (all at once: tests, tools)
@@ -155,10 +161,8 @@ function drawBlockRelief(b, sx, sy, S) {
   }
   if (!b.relief) return;
   ctx.drawImage(b.canvas, X, Y - shOf(b.relief.minLv) * zoom, B * S, B * S);
-  for (let k = b.relief.minLv + 1; k <= b.relief.maxLv; k++) {
-    const c = b.relief.layers[k];
-    if (c) ctx.drawImage(c, X, Y - shOf(k) * zoom, B * S, (B * 16 + WALL_M) * zoom);
-  }
+  const f = b.relief.flat;
+  if (f) ctx.drawImage(f, X, Y - b.relief.up * zoom, B * S, f.height * zoom);
 }
 // Someone standing behind higher ground (it is south of them, drawn up over where they stand) is behind it: what of
 // them is under its top edge isn't drawn. Called before drawing them: clips the canvas, a strip a tile column, down to

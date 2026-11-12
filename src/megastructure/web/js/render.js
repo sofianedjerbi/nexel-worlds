@@ -96,6 +96,7 @@ function frame(now) {
   const allShown = vis.every((b) => !onScreen(b) || b.relief);
   arrivingNow = (arrivingNow || !hereBlock || !hereBlock.relief) && !allShown;   // (from arriving until all of it is ready)
   const worldReady = !arrivingNow;
+  slowFrame(dt, worldReady && !fresh);
   if (!worldReady) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }
   // y-sorted sprites: objects and creatures
   const list = [];

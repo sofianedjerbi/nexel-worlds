@@ -4,12 +4,23 @@
 //  Networking
 // =====================================================================================
 const cv = document.getElementById("c"), ctx = cv.getContext("2d");
-let DPR = 1, W = 0, H = 0;
+// The canvas is drawn with at most DPR_MAX device px a CSS px: pixel art gains nothing past 2, and a 3x phone
+// screen is nine times the paint of a plain one. A machine that still can't keep up (slowFrame, below) draws at 1.
+let DPR = 1, W = 0, H = 0, DPR_MAX = 2, frameMs = 16, paceFrom = 0;
 function resize() {
-  DPR = window.devicePixelRatio || 1; W = innerWidth; H = innerHeight;
+  DPR = Math.min(window.devicePixelRatio || 1, DPR_MAX); W = innerWidth; H = innerHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + "px"; cv.style.height = H + "px";
 }
 addEventListener("resize", resize); resize();
+// Called each frame with its length: when frames have been long for a good while on a dense screen, draw at 1 px a
+// CSS px from then on (a quarter of the paint; the art is as sharp, only the lettering loses a little)
+function slowFrame(dt, settled) {
+  const now = performance.now();
+  if (!settled || document.hidden || DPR <= 1) { paceFrom = now; return; }   // (loading, in the background: says nothing)
+  frameMs += (Math.min(dt, .1) * 1000 - frameMs) * .02;
+  if (frameMs < 30) paceFrom = now;
+  else if (now - paceFrom > 4000) { DPR_MAX = 1; frameMs = 16; resize(); }
+}
 let zoom = 3;
 const TS = () => P * zoom;
 // Screen position of world tile (0, 0). The screen centre and the camera are rounded separately, so whatever sits at
@@ -68,6 +79,9 @@ setInterval(() => {
       const stale = b && now - b.at > 30000;
       if ((!b || stale) && !(requested.get(k) > now - 3000)) { requested.set(k, now); if (b) b.at = now; sendSpec({op: "region", x: bx * B, y: by * B, w: B, h: B}); }
     }
+  // land left well behind is forgotten, with its pictures (it comes again if you go back): a long walk kept it all
+  const bx0 = Math.floor(x / B) - 1, bx1 = Math.floor((x + w) / B) + 1, by0 = Math.floor(y / B) - 1, by1 = Math.floor((y + h) / B) + 1;
+  for (const [k, b] of blocks) if (b.bx < bx0 || b.bx > bx1 || b.by < by0 || b.by > by1) blocks.delete(k);
 }, 100);
 setInterval(() => { sendSpec({op: "agents"}); sendSpec({op: "metrics"}); }, 1500);
 

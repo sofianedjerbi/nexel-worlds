@@ -7,6 +7,9 @@ let roomOf = new Map(), rooms = [], roomsAt = 0, roomsDirty = true;
 const ENCLOSE = new Set("W%+g");
 function findRooms(vx, vy, vw, vh) {
   const seen = new Set(), found = [], of = new Map();
+  let anyWall = false;                               // (no wall in sight, no room: nothing to look for)
+  for (const b of blocks.values()) if (b.bx * B < vx + vw && (b.bx + 1) * B > vx && b.by * B < vy + vh && (b.by + 1) * B > vy && b.comb.includes("W")) { anyWall = true; break; }
+  if (!anyWall) { rooms = found; roomOf = of; return; }
   for (let y = vy; y < vy + vh; y++) for (let x = vx; x < vx + vw; x++) {
     const k0 = x + "," + y, c = combAt(x, y);
     if (seen.has(k0) || c === null || ENCLOSE.has(c)) continue;

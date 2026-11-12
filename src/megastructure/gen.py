@@ -52,6 +52,13 @@ def _hash(seed: int, x: int, y: int, salt: int) -> float:
     return h / 0xFFFFFFFF
 
 
+@lru_cache(maxsize=1 << 15)
+def _corner(seed: int, x: int, y: int, salt: int) -> float:
+    """A noise lattice point's value: every tile of the cell round it asks for the same four (kept: the hashing was
+    most of what making land cost)."""
+    return _hash(seed, x, y, salt)
+
+
 def _smooth(t: float) -> float:
     return t * t * (3 - 2 * t)
 
@@ -59,15 +66,17 @@ def _smooth(t: float) -> float:
 def value_noise(seed: int, x: float, y: float, scale: float, salt: int) -> float:
     fx, fy = x / scale, y / scale
     x0, y0 = math.floor(fx), math.floor(fy)
-    tx, ty = _smooth(fx - x0), _smooth(fy - y0)
-    a = _hash(seed, x0, y0, salt)
-    b = _hash(seed, x0 + 1, y0, salt)
-    c = _hash(seed, x0, y0 + 1, salt)
-    d = _hash(seed, x0 + 1, y0 + 1, salt)
+    tx, ty = fx - x0, fy - y0
+    tx, ty = tx * tx * (3 - 2 * tx), ty * ty * (3 - 2 * ty)        # (_smooth, in line: this runs fifteen times a tile)
+    a = _corner(seed, x0, y0, salt)
+    b = _corner(seed, x0 + 1, y0, salt)
+    c = _corner(seed, x0, y0 + 1, salt)
+    d = _corner(seed, x0 + 1, y0 + 1, salt)
     top = a + (b - a) * tx
     return top + ((c + (d - c) * tx) - top) * ty
 
 
+@lru_cache(maxsize=1 << 16)
 def fbm(seed: int, x: float, y: float, scale: float, salt: int, octaves: int = 3) -> float:
     total, amp, norm = 0.0, 1.0, 0.0
     for o in range(octaves):
