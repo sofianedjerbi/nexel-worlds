@@ -8,9 +8,10 @@ a tree, and stands stunned.
 
 from ..tiles import DIRS
 from .constants import sec
+from .boss import Boss
 from .entities import CREATURES
 
-WILD = ("tusker", "pincer", "strawman", "wisp", "wyrm")
+WILD = ("tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling")       # (the last two: boss.py)
 TUSKER_SEES, TUSKER_WINDUP, TUSKER_RUN = 4, 0.7, 8        # tiles; seconds pawing the ground; tiles it charges
 TUSKER_STUN, TUSKER_REST = 2.5, 3.0                       # seconds stunned after ramming something; between charges
 PINCER_SEES, PINCER_WINDUP, PINCER_REST = 3, 0.6, 1.2
@@ -30,8 +31,8 @@ def toward(c, a) -> tuple:
     return ((dx > 0) - (dx < 0), 0) if abs(dx) >= abs(dy) else (0, (dy > 0) - (dy < 0))
 
 
-class Wild:
-    """Simulation mixin: how the wild enemies behave."""
+class Wild(Boss):
+    """Simulation mixin: how the wild enemies behave (and, from Boss, Old Mossback and its sporelings)."""
 
     def step_wild(self, c, online):
         getattr(self, "_step_" + c.kind)(c, online)
@@ -39,8 +40,8 @@ class Wild:
     def nearest(self, c, online, r):
         return min((a for a in online if cheb(a, c) <= r), key=lambda a: (cheb(a, c), a.id), default=None)
 
-    def bite(self, c, prey):
-        dmg = CREATURES[c.kind]["damage"]
+    def bite(self, c, prey, dmg=None):
+        dmg = dmg or CREATURES[c.kind]["damage"]
         self.emit("attack", c.x, c.y, attacker=f"a {c.kind}", target=prey.name, damage=dmg, id=c.id)
         self.damage(prey, dmg, c.kind)
 

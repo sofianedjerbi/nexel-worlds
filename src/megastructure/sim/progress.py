@@ -5,7 +5,7 @@ from .entities import Agent
 
 # experience for felling, mining, harvesting, crafting and hunting
 XP_DIG = {"tree": 2, "bare_fruit_tree": 2, "stump": 1, "rock": 1, "ore": 4, "ripe_crop": 2}
-XP_KILL = {"chicken": 2, "calf": 1, "cow": 4, "tusker": 8, "pincer": 3, "strawman": 10, "wyrm": 20}
+XP_KILL = {"chicken": 2, "calf": 1, "cow": 4, "tusker": 8, "pincer": 3, "strawman": 10, "wyrm": 20, "mossback": 100, "sporeling": 1}
 XP_CRAFT = 1
 MAGNET_R = 1                 # items within this many tiles (diagonals too) come to you...
 MAGNET_DELAY = sec(1.2)      # ...once they've been on the ground this long (time to land, or to walk off a drop)

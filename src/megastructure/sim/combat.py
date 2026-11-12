@@ -38,7 +38,7 @@ class Combat:
         if isinstance(t, Creature) and t.kind == "wisp":
             raise ActionError("bad_target", "your hand goes through it")
         weapon = self.held(a, args)
-        reach = T.REACH.get(weapon, T.REACH[None])
+        reach = T.REACH.get(weapon, T.REACH[None]) + (isinstance(t, Creature) and t.kind == "mossback")   # (it is three tiles wide)
         if max(abs(t.x - a.x), abs(t.y - a.y)) > reach:
             raise ActionError("out_of_range", f"target must be within {reach} tiles (including diagonals)")
         # the hit lands at once, then the arm needs ATTACK_COOLDOWN before the next swing: a ready swing takes no
@@ -51,6 +51,8 @@ class Combat:
             raise ActionError("missed", "target moved away")
         a.swing_ready = self.tick + sec(ATTACK_COOLDOWN)
         dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)
+        if isinstance(t, Creature):
+            dmg = self.shell(t, dmg)                # Old Mossback's shell (boss.py)
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"
         self.emit("attack", a.x, a.y, attacker=a.name, target=name, damage=dmg, weapon=weapon or "fists")
         a.bump("attacks")

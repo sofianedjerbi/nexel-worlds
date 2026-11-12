@@ -77,7 +77,8 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
       return {ent, text: {chicken: "Chicken: feed it (select food) for eggs", chick: "A chick: it grows into a chicken", calf: "A calf: it grows into a cow",
         tusker: "A tusker: it charges in a straight line, step aside", pincer: "A pincer: it snaps if you stand next to it",
         strawman: "A strawman: it walks at night, and fears firelight", wisp: "A wisp: a light that leads you on at night",
-        wyrm: "A wyrm: it lunges along its line, stay out of it"}[ent.e.kind] || who, info: true};
+        wyrm: "A wyrm: it lunges along its line, stay out of it",
+        mossback: "Old Mossback: back off when it rises, step aside when its head pulls in, hit the neck", sporeling: "A sporeling: one hit"}[ent.e.kind] || who, info: true};
     }
     const tail = ent.e.kind === "cow" ? " · shift: milk" : ent.e.kind === "agent" ? " · shift: talk" : "";
     return {ent, text: weapon ? `Attack ${who} with ${label(weapon)}${tail}` : `Punch ${who}${tail}`, near: reachOf(weapon), diag: true, attack: true,

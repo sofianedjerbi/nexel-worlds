@@ -61,7 +61,7 @@ class Agent:
 @dataclass
 class Creature:
     id: int
-    kind: str  # chicken | cow | chick | calf | tusker | pincer | strawman | wisp | wyrm
+    kind: str  # chicken | cow | chick | calf | tusker | pincer | strawman | wisp | wyrm | mossback | sporeling
     x: int
     y: int
     hp: int
@@ -76,7 +76,8 @@ class Creature:
     until: int = 0      # the tick the current mode ends
     dir: tuple = (0, 1)   # the way it faces, or charges
     rest: int = 0       # no new attack before this tick
-    left: int = 0       # tiles left in a charge
+    left: int = 0       # tiles left in a charge (Old Mossback: the tick until which its neck is out)
+    awake: int = 0      # Old Mossback: it stays up until this tick
 
     def to_json(self):
         return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "hp": self.hp,
@@ -92,6 +93,8 @@ CREATURES = {
     "strawman": {"hp": 50, "drops": {"hay": 2}, "char": "S", "damage": 10},
     "wisp": {"hp": 1, "drops": {}, "char": "i"},
     "wyrm": {"hp": 60, "drops": {"meat": 4}, "char": "E", "damage": 18},
+    "mossback": {"hp": 300, "drops": {"meat": 6, "fruit": 4, "mushroom": 3}, "char": "G", "damage": 22, "snap": 28},   # the first boss (boss.py)
+    "sporeling": {"hp": 1, "drops": {}, "char": "s", "damage": 3},
 }
 
 

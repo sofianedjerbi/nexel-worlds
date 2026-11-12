@@ -8,6 +8,8 @@ LEGEND = {
     "D": "tusker (a boar: charges in a straight line, step aside)", "I": "pincer (a shore crab: snaps if you stand next to it)",
     "S": "strawman (a scarecrow: walks toward you at night, fears firelight)",
     "i": "wisp (a light at night: harmless, it leads you on)", "E": "wyrm (a sea serpent in deep water: keep off its line)",
+    "G": "Old Mossback (a giant tortoise, three tiles wide, asleep until hit: back off when it rises, step aside when its head pulls in)",
+    "s": "sporeling (a small walking mushroom: one hit kills it)",
     "$": "items on ground",
     **{g.char: g.name for g in GROUNDS},
     **{b.char: b.name for b in BLOCKS if b.name != "none"},

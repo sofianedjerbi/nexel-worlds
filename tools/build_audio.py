@@ -8,6 +8,7 @@ Sources of truth:
 Output (not committed: rebuild after changing either source):
   audio/<name>_<variant>.wav   16-bit stereo, 32 kHz
   audio/music.wav              the background loop, from music/site/audio/master.wav (render it with music/compose.py)
+  audio/boss.wav               the boss fight's loop, from music/site/audio/boss.wav (music/boss.py)
   audio/sfx.json               the manifest the client reads: sounds, place (by block name), ground, music, version
 The build fails if a placeable item or a fillable ground has no sound, or the map names a sound that does not exist.
 """
@@ -81,28 +82,32 @@ def write_wav(path: Path, st: np.ndarray, rate: int):
 
 
 MASTER = MUSIC / "site" / "audio" / "master.wav"      # the rendered soundtrack (music/compose.py)
+BOSS = MUSIC / "site" / "audio" / "boss.wav"          # the boss fight's loop (music/boss.py)
 
 
 def version() -> str:
     h = hashlib.sha1()
     for f in ("sfx.py", "sfx_map.json"):
         h.update((MUSIC / f).read_bytes())
-    if MASTER.exists():
-        h.update(f"{MASTER.stat().st_size}:{MASTER.stat().st_mtime_ns}".encode())
+    for f in (MASTER, BOSS):
+        if f.exists():
+            h.update(f"{f.stat().st_size}:{f.stat().st_mtime_ns}".encode())
     return h.hexdigest()[:10]
 
 
-def build_music(out: Path) -> dict | None:
-    """The background loop, resampled like the effects. None (and a note) when it has not been rendered."""
-    if not MASTER.exists():
-        print("no music: render it first with `uv run python music/compose.py` (about 4 minutes)")
+def build_music(out: Path, src: Path = None, name: str = "music.wav") -> dict | None:
+    """A music loop (the background one, or the boss fight's), resampled like the effects. None (and a note) when it
+    has not been rendered."""
+    src = src or MASTER
+    if not src.exists():
+        print(f"no {name}: render it first with `uv run python music/{'boss' if src == BOSS else 'compose'}.py`")
         return None
-    with wave.open(str(MASTER)) as w:
+    with wave.open(str(src)) as w:
         sr, ch = w.getframerate(), w.getnchannels()
         st = (np.frombuffer(w.readframes(w.getnframes()), "<i2").reshape(-1, ch).T / 32768).astype(np.float64)
     st = resample(st, sr, RATE)
-    write_wav(out / "music.wav", st, RATE)
-    return {"file": "music.wav", "seconds": st.shape[1] / RATE}
+    write_wav(out / name, st, RATE)
+    return {"file": name, "seconds": st.shape[1] / RATE}
 
 
 def build(out: Path = OUT) -> dict:
@@ -121,9 +126,9 @@ def build(out: Path = OUT) -> dict:
             files.append(f)
         sounds[name] = {"files": files, "category": m["cat"], "pitch": bool(m["vary"])}   # tuned sounds are never re-pitched
     manifest = {"version": version(), "rate": RATE, "sounds": sounds, "place": blocks, "ground": grounds,
-                "music": build_music(out)}
+                "music": build_music(out), "boss": build_music(out, BOSS, "boss.wav")}
     (out / "sfx.json").write_text(json.dumps(manifest, indent=1))
-    size = sum(f.stat().st_size for f in out.glob("*.wav") if f.name != "music.wav") / 1e6
+    size = sum(f.stat().st_size for f in out.glob("*.wav") if f.name not in ("music.wav", "boss.wav")) / 1e6
     music = f", music {(out / 'music.wav').stat().st_size / 1e6:.0f} MB" if manifest["music"] else ""
     print(f"built {out.relative_to(ROOT)}: {len(sounds)} sounds, {sum(len(s['files']) for s in sounds.values())} files, {size:.1f} MB{music}")
     return manifest

@@ -6,7 +6,7 @@
 - Animals belong to the land: when a chunk is generated, a meadow may get a herd (persistent; they never despawn),
   about one chunk in twenty. Every PASSIVE_EVERY, a player with fewer than PASSIVE_CAP animals around may get one more.
 - Wild enemies (WILD_SPAWNS): a tusker now and then by day on a meadow, a pincer on a shore; one at a time per player.
-  The strawman, the wisp and the wyrm never spawn by themselves (for now).
+  The strawman, the wisp, the wyrm and Old Mossback (with its sporelings) never spawn by themselves (for now).
 - Tuskers and pincers despawn when far from everyone (at once past DESPAWN_FAR, by chance past DESPAWN_NEAR).
 - Every spawn is out of sight (SPAWN_MIN tiles from everyone) and inside a ticking chunk; caps are per player,
   counted around that player, so a crowd in one place never starves another.

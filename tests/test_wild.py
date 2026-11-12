@@ -163,12 +163,13 @@ def test_the_client_table_matches_the_sheets():
     root = Path(__file__).parent.parent
     js = (root / "src/megastructure/web/js/world_decor.js").read_text()
     design = {e["key"]: e for e in json.loads((root / "design/enemies/site/enemies.json").read_text())}
-    for kind in ("tusker", "pincer", "strawman", "wisp", "wyrm"):
+    for kind in ("tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling"):
         line = re.search(rf"^  {kind}: {{(.*)}},$", js, re.M).group(1)
         cw, ch = (int(re.search(rf"{k}: (\d+)", line).group(1)) for k in ("cw", "ch"))
         spans = [(int(a), int(b)) for a, b in re.findall(r"[a-z]+: \[(\d+), (\d+), ", line)]
         png = (root / f"src/megastructure/web/assets/{kind}.png").read_bytes()
         w, h = struct.unpack(">II", png[16:24])
         assert (w, h) == (max(a + b for a, b in spans) * cw, 4 * ch), kind
-        assert [cw, ch] == design[kind]["cell"] and w == design[kind]["frames"] * cw
+        if kind in design:                                             # (the ones still on the design page)
+            assert [cw, ch] == design[kind]["cell"] and w == design[kind]["frames"] * cw
         assert kind in CREATURES

@@ -149,7 +149,7 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
             if a.online and a.hp > 0 and (a.x, a.y) == (x, y):
                 return a
         for c in self.creatures.values():
-            if (c.x, c.y) == (x, y):
+            if (c.x, c.y) == (x, y) or (c.kind == "mossback" and c.y == y and abs(c.x - x) <= 1):     # it is three tiles wide
                 return c
         return None
 

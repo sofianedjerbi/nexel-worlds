@@ -1,0 +1,27 @@
+"""Old Mossback in Chrome: asleep it is a hill, a blow wakes it, it attacks with a warning, its sporelings fall."""
+
+from test_e2e_wild import kind, shot
+
+
+def test_old_mossback_sleeps_wakes_and_fights(game):
+    game.clear_area(10)
+    game.rpc("dev_needs", hp=100, hunger=100)
+    game.spawn("mossback", 4, 0)
+    game.sleep(900)
+    boss = kind(game, "mossback")
+    assert boss and boss["act"] == "sleep"                     # a hill with a tree on it
+    drawn = game.js("""(() => { const out = {};        // both sheets loaded, at the size the table says
+      for (const k of ['mossback', 'sporeling']) out[k] = IMG[k].width % WILD[k].cw === 0 && IMG[k].height === 4 * WILD[k].ch;
+      return out; })()""")
+    assert drawn == {"mossback": True, "sporeling": True}
+    shot(game, "boss_asleep")
+    assert game.server()["hp"] == 100                          # asleep, it hurts nobody
+    game.act("attack", target=boss["id"])
+    game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'mossback' && q.e.act !== 'sleep')", 4000)
+    shot(game, "boss_awake")
+    game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'mossback' && ['stomp', 'snap', 'shake'].includes(q.e.act))", 8000)
+    shot(game, "boss_warning")
+    game.sleep(3500)
+    shot(game, "boss_after")
+    assert game.server()["hp"] < 100 or kind(game, "sporeling")      # we stood there: it hit us, or shook its brood loose
+    assert not game.errors

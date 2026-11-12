@@ -16,12 +16,15 @@ const ANIMALS = {
 // Wild enemies (sim/wild.py): one sheet each, drawn in design/enemies; rows are down, up, left, right. Each animation is
 // [first column, frames, ms a frame (or one per frame)]. The tusker warns (paws the ground) and runs for as long as the
 // server says; the others play their whole action once from the moment the warning starts, so the blow lands on its strike frame.
+// Old Mossback and its sporelings have several actions (`once`), named as the server names them, and the boss a health bar (`hp`).
 const WILD = {
   tusker: {cw: 32, ch: 32, idle: [0, 8, 260], walk: [8, 8, 90], warn: [16, 4, 170], run: [20, 8, 55]},
   pincer: {cw: 24, ch: 16, idle: [0, 8, [800, 300, 300, 600, 140, 500, 140, 600]], walk: [8, 8, 80], act: [16, 5, [140, 420, 80, 220, 220]]},
   strawman: {cw: 32, ch: 32, idle: [0, 4, [900, 900, 500, 180]], walk: [4, 8, 110], act: [12, 4, [520, 90, 260, 300]]},
   wisp: {cw: 32, ch: 32, idle: [0, 8, 140], walk: [8, 8, 90], act: [16, 6, [220, 300, 90, 160, 160, 160]]},
   wyrm: {cw: 48, ch: 32, idle: [0, 8, 150], walk: [8, 8, 95], act: [16, 4, [480, 90, 240, 280]]},
+  mossback: {cw: 80, ch: 64, hp: 300, sleep: [0, 8, 320], idle: [8, 8, 240], walk: [16, 8, 120], stomp: [24, 7, [160, 300, 220, 80, 180, 220, 200]], snap: [31, 7, [180, 200, 200, 70, 260, 140, 180]], shake: [38, 11, [180, 150, 150, 90, 90, 90, 90, 100, 110, 180, 200]], once: ["stomp", "snap", "shake"]},
+  sporeling: {cw: 24, ch: 24, idle: [0, 8, 240], walk: [8, 8, 75], land: [16, 6, [80, 80, 160, 120, 90, 140]], puff: [22, 6, [150, 150, 90, 130, 150, 140]], once: ["land", "puff"]},
 };
 function wildFrame([col, n, ms], t, loop) {
   if (!Array.isArray(ms)) return col + (loop ? Math.floor(t / ms) % n : Math.min(n - 1, Math.floor(t / ms)));
@@ -34,19 +37,27 @@ function wildFrame([col, n, ms], t, loop) {
 function drawWild(p, x, y, now) {
   const e = p.e, A = WILD[e.kind], z = zoom;
   const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
-  if (e.act === "windup" && p.act !== "windup") p.windAt = now;      // the warning starts: play it from its first frame
+  if (A.once ? e.act !== p.act && A.once.includes(e.act) : e.act === "windup" && p.act !== "windup") {      // the warning starts:
+    p.windAt = now; p.anim = e.act; p.animDir = e.dir;                                                    // play it from its first frame
+  }
   p.act = e.act;
-  const [fx, fy] = e.act && e.dir ? e.dir : [p.fx, p.fy], row = fy > 0 ? 0 : fy < 0 ? 1 : fx < 0 ? 2 : 3;
-  const since = now - (p.windAt || -1e9), calm = () => wildFrame(moving ? A.walk : A.idle, now + e.id * 137, true);
+  const since = now - (p.windAt || -1e9), once = A.once ? A[p.anim] : A.act, acting = once && since < once[2].reduce((a, b) => a + b, 0);
+  const [fx, fy] = acting && p.animDir ? p.animDir : e.act && e.dir ? e.dir : [p.fx, p.fy], row = fy > 0 ? 0 : fy < 0 ? 1 : fx < 0 ? 2 : 3;
+  const calm = () => wildFrame(e.act === "sleep" ? A.sleep : moving ? A.walk : A.idle, now + e.id * 137, true);
   let col, shake = 0;
   if (A.warn) {
     col = e.act === "windup" ? wildFrame(A.warn, since, true) : e.act === "charge" ? wildFrame(A.run, now, true) : calm();
     if (e.act === "stun") shake = Math.round(Math.sin(now / 45)) * z;       // dazed: it rammed something
-  } else col = since < A.act[2].reduce((a, b) => a + b, 0) ? wildFrame(A.act, since, false) : calm();
+  } else col = acting ? wildFrame(once, since, false) : calm();
   const blit = () => ctx.drawImage(IMG[e.kind], col * A.cw, row * A.ch, A.cw, A.ch, x - (A.cw - 16) / 2 * z + shake, y - (A.ch - 16) * z, A.cw * z, A.ch * z);
   blit();
   const fl = flashes.get(e.kind + e.id);
   if (fl && now - fl < 120) { ctx.globalCompositeOperation = "lighter"; blit(); ctx.globalCompositeOperation = "source-over"; }
+  if (A.hp && e.act !== "sleep" && e.hp < A.hp) {                    // the boss's health, over its tree
+    const w = 40 * z, bx = Math.round(x + 8 * z - w / 2), by = y - (A.ch - 12) * z;
+    ctx.fillStyle = "#5b3f36"; ctx.fillRect(bx - z, by - z, w + 2 * z, 4 * z);
+    ctx.fillStyle = e.hp * 2 > A.hp ? "#6aa66f" : "#d9473a"; ctx.fillRect(bx, by, Math.max(0, w * e.hp / A.hp), 2 * z);
+  }
 }
 const VARIANTS = {chicken: ["chicken", "chicken", "chicken_brown", "chicken_red", "chicken_blue", "chicken_green"],
   cow: ["cow", "cow", "cow_light", "cow_pink", "cow_purple", "cow_green"],

@@ -12,7 +12,8 @@ const SOUND = {
   master: .8,
   music: .45,         // the background loop's volume (0 to turn it off); it fades in over musicFade seconds
   musicFade: 4,
-  mix: {Footsteps: .9, Work: 1, Breaking: 1, Building: 1, Items: .9, Progress: 1, Fights: 1, Animals: .9, World: .9, People: .8, Interface: .8},
+  bossMusic: 1.2,     // the boss fight's loop, as a multiple of `music`
+  mix: {Footsteps: .9, Work: 1, Breaking: 1, Building: 1, Items: .9, Progress: 1, Fights: 1, Animals: .9, World: .9, People: .8, Interface: .8, Boss: 1},
   hearing: 12,        // tiles: a sound in the world further than this is not heard
   quietest: .15,      // volume at the edge of hearing (it fades linearly from 1)
   panWidth: 9,        // tiles to the side at which a sound is fully left or right
@@ -84,11 +85,33 @@ async function startMusic() {
   music.node.connect(music.gain).connect(a.destination);
   music.node.start();
 }
+// The boss's own loop (music/boss.py) takes over from the background one while a fight is on, and hands back after.
+const bossTrack = {node: null, gain: null, on: false};
+async function bossMusic(on) {
+  const m = sounds.manifest && sounds.manifest.boss;
+  if (on === bossTrack.on || !audio || !m || !SOUND.music) return;
+  bossTrack.on = on;
+  if (on && !bossTrack.node) {
+    const buf = await loadSoundFile(m.file);
+    if (!buf || bossTrack.node || !bossTrack.on) return;
+    bossTrack.gain = audio.createGain();
+    bossTrack.gain.gain.value = 0;
+    bossTrack.node = audio.createBufferSource();
+    bossTrack.node.buffer = buf; bossTrack.node.loop = true;
+    bossTrack.node.connect(bossTrack.gain).connect(audio.destination);
+    bossTrack.node.start();
+  }
+  const t = audio.currentTime;
+  if (bossTrack.gain) bossTrack.gain.gain.setTargetAtTime(on && !muted ? SOUND.music * SOUND.bossMusic : 0, t, on ? .3 : 1.2);
+  if (music.gain) music.gain.gain.setTargetAtTime(on || muted ? 0 : SOUND.music, t, on ? .3 : 1.5);
+  if (!on && bossTrack.node) { bossTrack.node.stop(t + 6); bossTrack.node = null; }      // the next fight starts from its first bar
+}
 // M: everything off or on. The music fades instead of stopping, so it comes back where it was.
 function setMuted(on) {
   muted = on;
   localStorage.setItem("megastructure-muted", on ? "1" : "0");
-  if (music.gain) music.gain.gain.setTargetAtTime(on ? 0 : SOUND.music, audio.currentTime, .3);
+  if (bossTrack.gain) bossTrack.gain.gain.setTargetAtTime(on || !bossTrack.on ? 0 : SOUND.music * SOUND.bossMusic, audio.currentTime, .3);
+  if (music.gain) music.gain.gain.setTargetAtTime(on || bossTrack.on ? 0 : SOUND.music, audio.currentTime, .3);
   if (!on) { ac(); (sounds.loading || loadSounds()).then(startMusic); }
 }
 
