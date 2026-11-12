@@ -58,7 +58,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     // face the action's target
     if (action && action.dir && DIRV[action.dir]) { [p.fx, p.fy] = DIRV[action.dir]; }
     if (action && action.tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == action.tid); if (q) { p.fx = Math.sign(q.x - p.x); p.fy = p.fx ? 0 : Math.sign(q.y - p.y); } }
-    const sheetImg = wornSheet(agentTint(e.name), e.worn);        // (wear.js: their sheet, dressed)
+    const sheetImg = wornSheet(agentTint(e.name), e.worn, e.race);        // (wear.js: their sheet, dressed)
     let bob = Math.round(hop * z), anim = "idle", frame, lunge = 0;
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
     if (mine || e.name === follow) {

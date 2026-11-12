@@ -238,6 +238,8 @@ RECIPES = {
 }
 
 
+RACES = ("cat", "bunny", "bear", "frog", "duck")     # who a player can be (looks only; drawn by web/js/races.js)
+
 # Clothes and armor (sim/wear.py): the slot each piece goes in, and the percent of a blow each armor piece turns.
 # How they look is the client's (web/js/wear.js); a test keeps the two lists the same.
 WEAR = {

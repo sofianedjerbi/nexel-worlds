@@ -210,7 +210,7 @@ class GameServer(Views):
                         continue
                     try:
                         agent = self.sim.login(str(msg.get("name", "")), str(msg.get("token", "")),
-                                               str(msg.get("persona", "")))
+                                               str(msg.get("persona", "")), str(msg.get("race", "")))
                     except ActionError as e:
                         reply(mid, False, error=e.code, detail=e.detail)
                         continue

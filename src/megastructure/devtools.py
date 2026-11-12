@@ -52,6 +52,11 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
             sim.creatures[c.id] = c
             spawned = c.id
         return {"spawned": spawned}
+    if op == "dev_race":                         # become another race (looks only)
+        from .tiles import RACES
+        if msg.get("race") in RACES:
+            agent.race = msg["race"]
+        return {"race": agent.race}
     if op == "dev_needs":                        # set hunger (and hp)
         agent.hunger = max(0, min(100, int(msg.get("hunger", agent.hunger))))
         agent.hp = max(1, min(100, int(msg.get("hp", agent.hp))))
@@ -60,4 +65,4 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
         for k, n in dict(msg.get("items") or {}).items():
             agent.add(str(k), int(n))
         return {"inventory": agent.inventory}
-    return {"ok": False, "error": "unknown_op", "detail": "dev ops: dev_time, dev_skip, dev_teleport, dev_damage, dev_stamp, dev_give, dev_creatures, dev_needs"}
+    return {"ok": False, "error": "unknown_op", "detail": "dev ops: dev_time, dev_skip, dev_teleport, dev_damage, dev_stamp, dev_give, dev_creatures, dev_needs, dev_race"}

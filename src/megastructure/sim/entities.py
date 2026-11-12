@@ -32,6 +32,7 @@ class Agent:
     xp: int = 0                # experience (sim/progress.py)
     can: int = 12              # waterings left in the watering can; refill at a well or any water
     worn: dict = field(default_factory=dict)   # what you wear: slot -> item (sim/wear.py)
+    race: str = "cat"          # cat, bunny, bear, frog or duck (tiles.RACES): looks only
     # runtime only
     action: "Action | None" = field(default=None, repr=False)
     ready: int = field(default=0, repr=False)   # first tick the next stride may start (movement cooldown)
@@ -41,7 +42,7 @@ class Agent:
 
     def to_json(self) -> dict:
         return {k: getattr(self, k) for k in
-                ("id", "name", "x", "y", "persona", "hp", "hunger", "inventory", "deaths", "stats", "spawn", "sailing", "can", "xp", "worn")}
+                ("id", "name", "x", "y", "persona", "hp", "hunger", "inventory", "deaths", "stats", "spawn", "sailing", "can", "xp", "worn", "race")}
 
     def count(self, item) -> int:
         return self.inventory.get(item, 0)

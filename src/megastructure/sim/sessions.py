@@ -2,8 +2,9 @@
 
 import json
 import random
+import zlib
 
-from ..tiles import GROUNDS
+from ..tiles import GROUNDS, RACES
 from .constants import SHOUT_R
 from .entities import ActionError, Agent, _hash_token
 
@@ -11,7 +12,7 @@ from .entities import ActionError, Agent, _hash_token
 class Sessions:
     """Simulation mixin: who is in the world: logging in (new or returning), logging out, finding a place to wake up."""
 
-    def login(self, name: str, token: str, persona: str = "") -> Agent:
+    def login(self, name: str, token: str, persona: str = "", race: str = "") -> Agent:
         name = name.strip()[:24]
         if not name or not name.replace("_", "").replace("-", "").isalnum():
             raise ActionError("bad_name", "name must be 1-24 letters/digits/-/_")
@@ -21,6 +22,8 @@ class Sessions:
             aid = max(self.agents, default=0) + 1
             x, y = self.find_spawn(aid)
             a = Agent(aid, name, x, y, persona=persona[:200])
+            if persona and persona != "human":             # the AI players are not all cats: each name has its own race
+                a.race = RACES[zlib.crc32(name.encode()) % len(RACES)]
             self.agents[aid] = a
             self.by_name[name] = a
             self.tokens[aid] = th
@@ -32,6 +35,8 @@ class Sessions:
             if persona:
                 a.persona = persona[:200]
             self.emit("join", a.x, a.y, radius=SHOUT_R, name=name, new=False)
+        if race in RACES:                                # asked for one: that is who you are, new or returning
+            a.race = race
         a.online = True
         return a
 

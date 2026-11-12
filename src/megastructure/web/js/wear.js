@@ -114,17 +114,19 @@ const WearParts = (() => {
     const facing = DIRS[row % 4];
     return {top, bottom, k, sy, hmin, hmax, cx: Math.round((hmin + hmax + 1) / 2), facing, side: facing === "left" || facing === "right", at};
   }
-  function dress(d, A, o) {
+  // grid: the frame's colour classes when it is not the cat's own (a race: races.js). tall: its ears stand above a hat.
+  function dress(d, A, o, grid, tall) {
     const set = (x, y, hex) => { if (x < 0 || y < 0 || x >= CELL || y >= CELL) return; const c = rgb(hex), i = (y * CELL + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; };
     const cls = [];                                                // the player's own classes, before anything is painted
-    for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) cls.push(A.at(x, y));
-    const paint = (y0, y1, map) => { for (let y = y0; y <= y1; y++) for (let x = 0; x < CELL; x++) { const c = cls[y * CELL + x]; if (c && map(c, y)) set(x, y, map(c, y)); } };
+    for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) cls.push(grid ? grid[y * CELL + x] : A.at(x, y));
+    const BODY = {y: "b", o: "b", O: "d"};       // a race's belly and feet take cloth like the body does
+    const paint = (y0, y1, map, body = true) => { for (let y = y0; y <= y1; y++) for (let x = 0; x < CELL; x++) { const raw = cls[y * CELL + x], c = body && BODY[raw] || raw; if (c && map(c, y)) set(x, y, map(c, y)); } };
     const top = TOPS.find((t) => t.id === o.top), pants = PANTS.find((t) => t.id === o.pants), shoes = SHOES.find((t) => t.id === o.shoes), head = HEADS.find((t) => t.id === o.head);
     const feet = A.bottom - 1;
     if (top.id !== "none") paint(A.k, Math.min(A.k + 2, feet - 1), (c, y) => c === "f" && top.stripe && y === A.k + 1 ? top.stripe : top[c]);
     if (pants.id !== "none") paint(A.k + 3, feet - 1, (c) => pants[c]);
     if (shoes.id !== "none") paint(feet, A.bottom, (c) => c === "a" ? shoes.a : shoes.m);
-    if (head.recolour) paint(A.top, A.sy + head.recolour.rows - 1, (c) => head.recolour[c]);
+    if (head.recolour) paint(grid ? A.sy - (tall ? 0 : 3) : A.top, A.sy + head.recolour.rows - 1, (c) => head.recolour[c], false);
     if (head.draw) {
       const layer = new Map(), P = {put: (x, y, c) => layer.set(Math.round(y) * CELL + Math.round(x), c)};
       head.draw(P, A);
@@ -137,12 +139,12 @@ const WearParts = (() => {
   // It carries, per frame, the pixels just outside the dressed player (for the auras) and the top of the head.
   const sheets = new Map();
   let analysis = null;
-  function wornSheet(tint, worn) {
-    const plain = characterSheet(tint);
+  function wornSheet(tint, worn, race = "cat") {
+    const plain = raceSheet(race, tint);              // (races.js; the cat's is sprites.js characterSheet)
     if (!worn) return plain;
     const o = {head: "none", top: "none", pants: "none", shoes: "none"};
     for (const [slot, item] of Object.entries(worn)) if (WEAR[item] && slot in o) o[slot] = WEAR[item][1];
-    const key = tint + Object.values(o).join();
+    const key = tint + race + Object.values(o).join();
     if (sheets.has(key)) return sheets.get(key);
     const W = plain.width, H = plain.height, cols = W / CELL, rows = H / CELL;
     const frame = (data, r, c) => { const d = new Uint8ClampedArray(CELL * CELL * 4);
@@ -160,8 +162,8 @@ const WearParts = (() => {
     const img = g.getImageData(0, 0, W, H);
     out.edges = []; out.tops = [];
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-      const d = frame(img.data, r, c), A = analysis[r * cols + c];
-      dress(d, A, o);
+      const i = r * cols + c, d = frame(img.data, r, c), A = plain.an ? plain.an[i] : analysis[i];
+      dress(d, A, o, plain.grids && plain.grids[i], race === "bunny");
       for (let y = 0; y < CELL; y++) img.data.set(d.subarray(y * CELL * 4, (y + 1) * CELL * 4), ((r * CELL + y) * W + c * CELL) * 4);
       const edge = [], solid = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL && d[(y * CELL + x) * 4 + 3];
       for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++)
