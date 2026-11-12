@@ -5,16 +5,15 @@ function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
 function plainWalk(x, y) {
   const t = tile(x, y); if (!t) return false;
-  if (t[1] === "~" && !(meObs && meObs.self.sailing)) return t[0] === "V" || !SOLID.has(t[0]);   // shallow water: you swim (swim.js)
-  if (t[1] === "~" || t[1] === "=") return !!(meObs && meObs.self.sailing) || t[0] === "V";   // deep water: only by boat
+  if (wet(t[1])) return t[0] === "V" || !SOLID.has(t[0]);   // water, whatever its depth: you swim on it (swim.js), or sail
   return WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
 }
 function walkable(x, y, fx, fy) {               // (fx, fy): where you come from: a layer up or down at most
   return plainWalk(x, y) && (fx === undefined || canStep(fx, fy, x, y));
 }
 // ---- what a click does, decided per tile (also shown as the cursor hint) ----------------
-const FILLS = {dirt: {o: ",", u: ",", "~": ","}, path: {".": "_", ",": "_", "'": "_"}, plank: {"~": ":", ".": "n", ",": "n", "'": "n"}};
-const FILL_TEXT = {",": "Fill with dirt", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
+const FILLS = {dirt: {o: ",", u: ",", "~": ",", "(": "~", "=": "(", ")": "="}, path: {".": "_", ",": "_", "'": "_"}, plank: {"~": ":", ".": "n", ",": "n", "'": "n"}};
+const FILL_TEXT = {",": "Fill with dirt", "~": "Raise the bottom", "(": "Raise the bottom", "=": "Raise the bottom", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
 const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
 const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C", well: "Y", coop: "J", picnic_blanket: "m", basket: "q", trough: "e", hay: "y"};
 const HARVEST = {t: "Dig up the stump", U: "Chop tree (the fruit grows back if you wait)", v: "Cut the bush (fiber)", e: "Take down the trough (and what's in it)", y: "Pick up the hay bale", Y: "Take down the well", J: "Take down the coop", m: "Roll up the blanket", q: "Take the basket", X: "Take down mailbox", V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
@@ -108,7 +107,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
       return {text: bad.length ? (bad.some((q) => q.x === s.x && q.y === s.y) ? `Step out of the way to place the ${label(it)}` : bad.some((q) => entityAt(q)) ? "Wait, something is standing there" : `The ${label(it)} needs a clear ${FOOT[block].join("×")} spot of dry land`) : `Place ${label(it)}`,
         ghost: it, ok: !bad.length, bad, foot: f.tiles, anchor: {x: f.ax, y: f.ay}, from: near, near: 1, run: (d) => act("place", {dir: d, item: it})};
     }
-    if (block === "V") return !hasBlock && g === "~" ? {text: "Launch boat", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
+    if (block === "V") return !hasBlock && wet(g) ? {text: "Launch boat", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
                                                      : {text: "Boats go on shallow water", ghost: it, ok: false};
     if (block) return free ? {text: `Place ${label(it === "hay" ? "hay_bale" : it)}`, ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
                            : {text: `Can't place ${label(it)} here`, ghost: it, ok: false};
@@ -128,7 +127,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     }
     if (it === "hoe" && !hasBlock && (g === "." || g === ","))                  // the hoe in hand: Space/click tills
       return {text: "Till soil", near: 1, run: (d) => act("dig", {dir: d, with: "hoe"})};
-    if (it === "watering_can" && (c === "Y" || ((g === "~" || g === "=") && GROUND.has(c))))
+    if (it === "watering_can" && (c === "Y" || (wet(g) && GROUND.has(c))))
       return {text: `Fill the watering can (${meObs ? meObs.self.can ?? CAN_SIZE : "?"}/${CAN_SIZE})`, near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
     if (it === "watering_can" && (c === ";" || c === '"') && meObs && meObs.self.can === 0) return {text: "The can is empty: fill it at a well or water", ok: false};
     if (it === "watering_can" && (c === ";" || c === '"')) return g === "u" ? {text: "Already watered", ok: false}
@@ -136,8 +135,9 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   }
   const sailing = !!(meObs && meObs.self.sailing);
   if (c === "V" && !shift && !sailing) return {text: "Board the boat", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
-  if (sailing && !hasBlock && (g === "~" || g === "=")) return {text: "Sail here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
-  if (!sailing && !hasBlock && g === "~" && !placingItem()) return {text: "Swim here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
+  if (sailing && !hasBlock && wet(g)) return {text: "Sail here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
+  if (!hasBlock && wet(g) && selected === "pickaxe" && !shift && g !== ")") return {text: "Dig the bottom deeper", near: 1, run: (d) => act("dig", {dir: d, with: "pickaxe"})};
+  if (!sailing && !hasBlock && wet(g) && !placingItem()) return {text: "Swim here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && WALKABLE_GROUND.has(g)) return {text: "Go ashore", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (hasBlock) {
     if ((c === "C" || c === "q") && !shift) return {text: c === "q" ? "Open basket" : "Open chest", near: 1, run: (d) => act("take", {dir: d})};
@@ -158,7 +158,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     const how = tool ? (w === tool ? ` with ${tool}` : " by hand (slow)") : "";
     return {text: text + how, near: 1, run: (d) => act("dig", w ? {dir: d, with: w} : {dir: d})};
   }
-  if (g === "~" || g === "=") return {text: label(CH[g]), info: true};
+  if (wet(g)) return {text: label(CH[g]), info: true};
   if (shift) {
     const takeUp = {_: "Take up the path", n: "Take up the floor", ":": "Take up the bridge"}[g];
     if (takeUp) return {text: takeUp, near: 1, run: (d) => act("dig", {dir: d})};

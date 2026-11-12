@@ -167,10 +167,10 @@ def _land(seed: int, x: int, y: int) -> int:
 def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
     d = math.hypot(x, y)
     elev = _elev(seed, x, y)
-    if elev < 0.34:
-        return G["deep_water"], B["none"]
+    if elev < 0.34:                   # the sea, deeper the further out
+        return G["abyss" if elev < 0.27 else "deep_water"], B["none"]
     if elev < 0.41 or (level == 0 and river(seed, x, y)):
-        return G["water"], B["none"]
+        return G["mid_water" if elev < 0.375 else "water"], B["none"]
     if elev < 0.425:
         return G["dirt"], B["none"]  # thin sandy shore
     if d < 6:

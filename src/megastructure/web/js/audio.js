@@ -167,6 +167,6 @@ function material(c) {
 }
 const STRIKE = {wood: "chop", stone: "mine", plant: "rustle", soil: "dig"};      // a tool hits it
 const BREAK = {wood: "snap", stone: "crumble", plant: "rustle", soil: "dig"};    // it gives way
-const STEP = {n: "tock", ":": "tock", _: "click", "~": "wade"};                  // ground char under the feet -> footstep (default: step)
+const STEP = {n: "tock", ":": "tock", _: "click", "~": "wade", "(": "wade", "=": "wade", ")": "wade"};                  // ground char under the feet -> footstep (default: step)
 const VOICE = {cow: "moo", calf: "moo", chicken: "cluck", chick: "chirp"};       // an animal's ordinary voice
 const animalVoice = (kind) => VOICE[kind] || "cluck";

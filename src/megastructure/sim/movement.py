@@ -12,17 +12,17 @@ class Movement:
     # ============================================================== tools
 
     def can_enter(self, a: Agent, x: int, y: int) -> bool:
-        """Walkers stay on land or swim in shallow water; a moored boat can be boarded; sailors move over any water and
-        may step ashore. Deep water takes a boat."""
+        """Walkers stay on land or swim (on top of the water, whatever its depth); a moored boat can be boarded; sailors
+        move over the water faster and may step ashore."""
         g, b = self.world.get(x, y)
         ground, block = GROUNDS[g], BLOCKS[b]
         if ground.liquid:
-            return a.sailing or block.name == "boat" or (ground.name == "water" and not block.solid)
+            return a.sailing or block.name == "boat" or not block.solid
         return ground.walkable and not block.solid
 
     def swimming(self, a: Agent) -> bool:
-        """In shallow water without a boat."""
-        return not a.sailing and self.world.ground(a.x, a.y) == "water"
+        """In the water without a boat."""
+        return not a.sailing and GROUNDS[self.world.get(a.x, a.y)[0]].liquid
 
     def height(self, a: Agent) -> int:
         """The height `a` stands at: the ground here at or under where they were (the lowest ground, if none is)."""

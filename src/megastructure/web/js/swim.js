@@ -7,7 +7,7 @@ const SWIM = {sink: 5, line: 27, stroke: 260, tread: 700, wakeEvery: 110, wakeLi
 function swimsAt(p, e) {
   if (e.sail) return false;
   const t = tile(Math.round(p.x), Math.round(p.y));
-  return t ? t[1] === "~" && t[0] !== "V" : !!e.swim;
+  return t ? wet(t[1]) && t[0] !== "V" : !!e.swim;
 }
 function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   const moving = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;

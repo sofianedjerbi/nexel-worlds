@@ -2,7 +2,7 @@
 
 from .. import tiles as T
 from ..gen import gen_tile
-from ..tiles import BLOCKS, DIRS, GROUNDS
+from ..tiles import BLOCKS, DEPTH, DIRS, GROUNDS
 from .constants import TICK_HZ, sec
 from .entities import CREATURES, ActionError, Creature
 
@@ -65,7 +65,7 @@ class Environment:
                     self.pits.discard(pos)
                     continue
                 near = {self.world.ground(x + dx, y + dy) for dx, dy in DIRS.values()}
-                if not near & {"water", "deep_water"}:
+                if not near & set(DEPTH):
                     self.pits.discard(pos)
                 elif self.rng.random() < 0.25 and self.entity_at(x, y) is None:
                     # a hole dug next to water floods

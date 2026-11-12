@@ -72,7 +72,7 @@ function onRegion(d) {
 // =====================================================================================
 //  Drawing one tile's ground layers into its block canvas (16 px cell)
 // =====================================================================================
-const isLand = (g) => g !== null && g !== "~" && g !== "=" && g !== ":";
+const isLand = (g) => g !== null && !wet(g) && g !== ":";
 const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVXYJmqeyUv".includes(c) && !GROUND.has(c);
 function maskOf(x, y, pred) {
   let m = 0;
@@ -103,7 +103,7 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
     b.reliefDirty = true;                            // (its stacked levels are rebuilt from this canvas: relief.js)
     b.ver = (b.ver || 0) + 1;
   }
-  if (gr === "=") drawBlobLayer(g, IMG.deep_mask, x, y, (_, gg) => gg === "=", ox, oy, 0);   // rounded deep areas
+                                                     // (water tiles stay clear: water.js draws the sea under the land)
   if (gr === ":") {                                  // bridge planks run across the direction of travel
     const ew = [-1, 1].some((d) => { const q = gndAt(x + d, y); return q === ":" || isLand(q); });
     g.drawImage(IMG.bridge, ew ? 0 : 32, 32, 16, 16, ox, oy, 16, 16);

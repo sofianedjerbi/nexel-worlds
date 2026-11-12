@@ -47,6 +47,9 @@
   "cobble": "place_path",
   "floor": "place_floor",
   "bridge": "place_floor",
-  "dirt": "fill_dirt"
+  "dirt": "fill_dirt",
+  "water": "fill_dirt",
+  "mid_water": "fill_dirt",
+  "deep_water": "fill_dirt"
  }
 }

@@ -6,7 +6,7 @@ only if you are still there. The tusker's blow is a charge in a straight line: s
 a tree, and stands stunned.
 """
 
-from ..tiles import DIRS
+from ..tiles import DEPTH, DIRS
 from .constants import sec
 from .boss import Boss
 from .entities import CREATURES
@@ -116,7 +116,7 @@ class Wild(Boss):
     def shore(self, x, y) -> bool:
         """Bare earth right beside water."""
         return (self.world.ground(x, y) == "dirt" and self.world.block(x, y) == "none"
-                and any(self.world.ground(x + dx, y + dy) in ("water", "deep_water") for dx, dy in DIRS.values()))
+                and any(self.world.ground(x + dx, y + dy) in DEPTH for dx, dy in DIRS.values()))
 
     # ------------------------------------------------------------- strawman: a scarecrow by day, walks in the dark
 
@@ -202,7 +202,7 @@ class Wild(Boss):
 
     def swim_to(self, c, x, y) -> bool:
         """It never comes into the shallows: the shore is safe."""
-        if self.world.ground(x, y) != "deep_water" or self.world.block(x, y) != "none" or self.entity_at(x, y) is not None:
+        if DEPTH.get(self.world.ground(x, y), 0) < 3 or self.world.block(x, y) != "none" or self.entity_at(x, y) is not None:
             return False
         c.dir, c.x, c.y = (x - c.x, y - c.y), x, y
         return True

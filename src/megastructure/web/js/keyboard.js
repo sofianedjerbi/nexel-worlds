@@ -65,7 +65,7 @@ function facingIntent(alt) {
   if (inHand() === "pickaxe" && solidAt(q.x, q.y, myZ(s.x, s.y) + 1) && GROUND.has(combAt(q.x, q.y)))
     return {p: q, it: {text: "Dig into the hill", run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
   // X with a pickaxe and nothing else to use it on: dig down where you stand
-  if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !"~=:n".includes(under))
+  if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !":n".includes(under))
     return {p: here, it: {text: "Dig down", here: true, run: () => act("dig_down", {with: "pickaxe"})}};
   for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it)) return {p, it}; }
   // then anything within reach (USE_R): nearest first, in front of you before behind

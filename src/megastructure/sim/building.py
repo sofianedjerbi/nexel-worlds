@@ -45,6 +45,8 @@ class Building:
             a.add(got)
             self.set_cell(x, y, z, False, by=a, cause="dig")
             return {"got": {got: 1}, "cell": [x, y, z]}
+        if block.name == "none" and ground.liquid:           # the bottom of the water: a layer deeper
+            return (yield from self.deepen(a, x, y))
         if block.name == "none":
             built ={"cobble": ("path", "dirt"), "floor": ("plank", "dirt"), "bridge": ("plank", "water")}
             if ground.name in built:                       # what you lay, you can take up again
@@ -146,8 +148,8 @@ class Building:
         if b != "none":
             raise ActionError("occupied", f"{args['dir']} has {b}")
         if block == "boat":
-            if g != "water":
-                raise ActionError("bad_target", "boats go on shallow water next to you")
+            if g not in T.DEPTH:
+                raise ActionError("bad_target", "boats go on water next to you")
         elif not GROUNDS[T.G[g]].walkable:
             raise ActionError("bad_target", f"cannot place on {g}")
         if item == "seed" and g not in T.SEED_GROUNDS:

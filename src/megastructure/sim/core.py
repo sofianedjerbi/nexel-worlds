@@ -9,7 +9,7 @@ import random
 from dataclasses import fields
 from pathlib import Path
 
-from ..tiles import BLOCKS, DIRS
+from ..tiles import BLOCKS, DEPTH, DIRS
 from ..world import Store, World
 from .animals import Animals
 from .building import Building
@@ -125,7 +125,7 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
         g, b = self.world.ground(x, y), self.world.block(x, y)
         if g == "tilled":
             self.pits.add((x, y))
-        if g in ("water", "deep_water"):
+        if g in DEPTH:
             for dx, dy in DIRS.values():
                 if self.world.ground(x + dx, y + dy) == "tilled":
                     self.pits.add((x + dx, y + dy))
