@@ -201,7 +201,7 @@ function syncWalk() {
       const nx = dx > 0 ? Math.ceil(p.x - .05) : dx < 0 ? Math.floor(p.x + .05) : Math.round(p.x);
       const ny = dy > 0 ? Math.ceil(p.y - .05) : dy < 0 ? Math.floor(p.y + .05) : Math.round(p.y);
       if ((nx !== p.tx || ny !== p.ty) && walkable(nx, ny, p.tx, p.ty)) {
-        p.tx = nx; p.ty = ny; pred = {x: nx, y: ny, until: performance.now() + 600};
+        pred = {x: nx, y: ny, until: performance.now() + 600, back: {x: p.tx, y: p.ty}}; p.tx = nx; p.ty = ny;
         rpc("act", {tool: "move_to", args: {x: nx, y: ny}});
         return;
       }
@@ -215,8 +215,16 @@ function syncWalk() {
     p.moved = performance.now();
   }
   myAction = null;
-  const mine = want;
-  rpc("act", {tool: "walk", args: want.run ? {dir: want.dir, run: true} : {dir: want.dir}}).then((r) => {
+  const mine = want, args = want.run ? {dir: want.dir, run: true} : {dir: want.dir};
+  // turning right after letting go: the tile you were finishing (pred, above) hasn't been made on the server yet,
+  // and this walk replaces it: the server makes that step first (walk's `from`), so you both end in the same column
+  // (turning right round: that step isn't made after all, you go back from where the server has you)
+  if (pred && performance.now() < pred.until) {
+    const b = pred.back;
+    if (b && dx === Math.sign(b.x - pred.x) && dy === Math.sign(b.y - pred.y)) { if (p) { p.tx = b.x; p.ty = b.y; } pred = null; }
+    else { args.from = [pred.x, pred.y]; pred.until = performance.now() + 600; }
+  }
+  rpc("act", {tool: "walk", args}).then((r) => {
     if (walking !== mine) return;              // replaced by a newer walk / stop
     walking = null; if (p) p.walking = false;
     if (r.ok && r.result.stopped === "blocked") { pred = null; const q = ents.get("agent" + myId); if (q) { q.fx = dx; q.fy = dy; } }

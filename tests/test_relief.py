@@ -192,3 +192,21 @@ def test_no_jumping_up_out_through_a_low_ceiling(world):
     assert not r["ok"] and (a.x, a.y) == (x, y - 1)          # the rock over your head: no jump
     sim.world.set_cell(x, y - 1, 2, False)                   # its roof taken off: now you can
     assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.height(a) == 1
+
+
+def test_a_walk_first_makes_the_step_you_were_finishing(world):
+    """A player who lets go of a key mid-step and presses another: the walk says which tile they were stepping into
+    (`from`), and that step is made first (it was dropped: their screen had them a column away from where they were)."""
+    sim, a = world
+    x, y = a.x, a.y
+    sim.submit(a, "walk", {"dir": "S", "from": [x + 1, y]})
+    for _ in range(7):
+        sim.step()
+    assert a.x == x + 1 and a.y > y                                              # east one, then south
+    sim.submit(a, "stop", {})
+    sim.step()
+    x, y = a.x, a.y
+    sim.submit(a, "walk", {"dir": "S", "from": [x + 3, y]})
+    for _ in range(5):
+        sim.step()
+    assert a.x == x and a.y > y                                                  # not beside you: ignored

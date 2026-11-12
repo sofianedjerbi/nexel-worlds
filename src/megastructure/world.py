@@ -3,11 +3,12 @@
 import json
 import sqlite3
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .chunks import Chunk
-from .gen import CHUNK, LOW, col_cave, col_floor, col_surfaces, col_top, gen_chunk, gen_tile
+from .gen import CHUNK, LOW, col_cave, col_floor, col_surfaces, col_top, gen_chunk, gen_chunk_steps, gen_tile
 from .tiles import BLOCKS, GROUNDS, B, G
 
 THREADS = sys.platform != "emscripten"   # the in-browser demo has no threads: it generates land inline
@@ -21,6 +22,27 @@ CREATE TABLE IF NOT EXISTS agents(id INTEGER PRIMARY KEY, name TEXT UNIQUE, toke
 CREATE TABLE IF NOT EXISTS ground_items(x INTEGER, y INTEGER, json TEXT, PRIMARY KEY(x, y));
 CREATE TABLE IF NOT EXISTS creatures(id INTEGER PRIMARY KEY, json TEXT);
 """
+class Steps:
+    """Land being made a row at a time, where there is no thread for it (the in-browser demo): a future of sorts.
+    World.work moves it on in the time left over between two ticks, so no tick waits on a whole chunk."""
+
+    def __init__(self, steps):
+        self.steps, self.out = steps, None
+
+    def work(self, until: float) -> bool:
+        """Go on until the clock (time.perf_counter) reads `until`; True once the chunk is made."""
+        try:
+            while self.out is None and time.perf_counter() < until:
+                next(self.steps)
+        except StopIteration as done:
+            self.out = done.value
+        return self.out is not None
+
+    def result(self):
+        self.work(float("inf"))
+        return self.out
+
+
 class Store:
     """Thin SQLite wrapper. One connection, owned by the server thread."""
 
@@ -103,19 +125,28 @@ class World:
             return True
         job = self._pending.get((cx, cy))
         if job is None:
-            if self.store.has_chunk(cx, cy) or not THREADS:
+            if self.store.has_chunk(cx, cy):
                 self.chunk(cx, cy)
                 return True
+            if not THREADS:                              # (no thread: a row at a time, between ticks: work, below)
+                self._pending[(cx, cy)] = (Steps(gen_chunk_steps(self.seed, cx, cy)), self.tick + GEN_TICKS)
+                return False
             if self._gen is None:
                 self._gen = ThreadPoolExecutor(1, thread_name_prefix="worldgen")
             self._pending[(cx, cy)] = (self._gen.submit(gen_chunk, self.seed, cx, cy), self.tick + GEN_TICKS)
             return False
         future, due = job
-        if self.tick < due:
+        if self.tick < due or (isinstance(future, Steps) and future.out is None):
             return False
         del self._pending[(cx, cy)]
         self._install(cx, cy, *future.result()).touched = self.tick
         return True
+
+    def work(self, until: float):
+        """Without threads: go on making the land that was asked for (prefetch) until the clock reads `until`."""
+        for future, _ in self._pending.values():
+            if isinstance(future, Steps) and not future.work(until):
+                return
 
     def _tidy(self, c: Chunk):
         """Older worlds spread berry bushes at random until meadows filled up. Nobody can plant a bush, so a

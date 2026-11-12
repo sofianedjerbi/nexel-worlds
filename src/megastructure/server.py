@@ -82,6 +82,7 @@ class GameServer(Views):
                 log.warning("slow tick %d: %.0f ms (step %.0f ms, chunks %d -> %d)", self.sim.tick, dt,
                             (t1 - t0) * 1000, chunks0, len(self.sim.world.chunks))
             nxt += period
+            self.sim.world.work(time.perf_counter() + nxt - loop.time() - 0.03)   # (in the browser, no threads: land is made in the time to spare)
             delay = nxt - loop.time()
             if delay < -1.0:  # fell far behind (e.g. laptop sleep): don't try to catch up
                 nxt = loop.time()

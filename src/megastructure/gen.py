@@ -240,6 +240,17 @@ def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
 
 def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, array]:
     """Ground, blocks and columns (the cells, solid or empty) of one chunk."""
+    steps = gen_chunk_steps(seed, cx, cy)
+    try:
+        while True:
+            next(steps)
+    except StopIteration as done:
+        return done.value
+
+
+def gen_chunk_steps(seed: int, cx: int, cy: int):
+    """gen_chunk a row at a time (a generator: its return value is the chunk), for where there is no thread to make
+    land on (the in-browser demo: World.work does a little between ticks)."""
     ground = bytearray(CHUNK * CHUNK)
     block = bytearray(CHUNK * CHUNK)
     cols = array("I", bytes(4 * CHUNK * CHUNK))        # (a column of cells a tile, 32 bits: col_solid...)
@@ -265,4 +276,5 @@ def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, array]
             rim = lv(x, y) and any(lv(x + dx, y + dy) < lv(x, y) for dx in (-1, 0, 1) for dy in (-1, 0, 1))
             ground[i], block[i] = g, B["none"] if rim else b     # nothing grows on a hill's rim
             cols[i] = col_cave(floor, 2 if roof >= 3 else 1, floor + roof) if roof else col_solid(floor)
+        yield
     return ground, block, cols

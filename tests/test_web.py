@@ -20,7 +20,7 @@ def scripts() -> list[Path]:
 
 
 def test_every_script_is_loaded_and_exists():
-    loaded = {p.name for p in scripts()} | {"local.js"}           # local.js: only the Pages build loads it
+    loaded = {p.name for p in scripts()} | {"local.js", "local_worker.js"}   # (only the Pages build loads them)
     assert loaded == {p.name for p in (WEB / "js").glob("*.js")}
 
 

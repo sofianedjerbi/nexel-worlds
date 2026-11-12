@@ -45,6 +45,33 @@ def test_taps_move_one_tile_and_never_snap_back(game):
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
+def test_letting_go_and_pressing_another_key_never_stalls(game):
+    """Turning by releasing one key and pressing the next (not rolling onto it): the step under way is made first,
+    on the server too, so you keep your pace (each such turn froze you 170-280 ms: sprinting round corners went at
+    half speed), and turning right round goes straight back."""
+    game.clear_area(14)
+    page = game.page
+
+    def turns(keys):
+        game.start_recording()
+        page.keyboard.down("Shift")
+        for i in range(8):
+            page.keyboard.down(keys[i % 2])
+            game.sleep(300)
+            page.keyboard.up(keys[i % 2])
+        page.keyboard.up("Shift")
+        rec = game.recording()
+        return sum(abs(b[1] - a[1]) + abs(b[2] - a[2]) for a, b in zip(rec, rec[1:])) / ((rec[-1][0] - rec[0][0]) / 1000)
+
+    corner = turns("ds")
+    game.sleep(600)
+    assert game.pos() == (game.server()["x"], game.server()["y"])
+    back = turns("da")
+    game.sleep(600)
+    assert game.pos() == (game.server()["x"], game.server()["y"])
+    assert corner > 7.5 and back > 6.5, (corner, back)        # (sprinting is 10 a second; it was 5.4 and 3)
+
+
 def test_two_keys_never_slide_diagonally(game):
     for first, second in (("d", "w"), ("s", "a")):
         game.start_recording()

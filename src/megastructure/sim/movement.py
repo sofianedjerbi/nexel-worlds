@@ -129,6 +129,18 @@ class Movement:
             raise ActionError("bad_args", "dir must be one of N, E, S, W")
         dx, dy = DIRS[d]
         steps = 0
+        # `from`: the tile beside you that you were stepping into when you turned (a player who lets go of one key
+        # and presses another mid-step: the step that was under way is made first, then the walk: without it the
+        # step was dropped, and the player's screen and the world disagreed about the column they were in)
+        via = args.get("from")
+        if isinstance(via, (list, tuple)) and len(via) == 2 and all(isinstance(v, int) for v in via) \
+                and abs(via[0] - a.x) + abs(via[1] - a.y) == 1 and self.can_go(a, *via):
+            yield from self.pace(a, args)
+            if self.can_go(a, *via):
+                fall = self.move(a, *via)
+                steps += 1
+                if fall:
+                    return {"steps": steps, "stopped": "fell", **fall}
         while steps < 600:
             if not self.can_go(a, a.x + dx, a.y + dy):
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}

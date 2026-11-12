@@ -60,3 +60,25 @@ def test_the_showcase_is_built_and_newcomers_start_beside_it(tmp_path):
     a = sim.login("newcomer", "t")
     assert max(abs(a.x - showcase.SPAWN[0]), abs(a.y - showcase.SPAWN[1])) <= 3 and sim.height(a) == 0
     sim.close()
+
+
+def test_land_is_made_a_row_at_a_time_where_there_are_no_threads(tmp_path, monkeypatch):
+    """The in-browser demo: prefetch starts a chunk, World.work goes on with it between ticks, and it is the same
+    land as made in one go."""
+    import time
+
+    from megastructure import world as world_mod
+    from megastructure.gen import gen_chunk
+    from megastructure.sim import Simulation
+
+    monkeypatch.setattr(world_mod, "THREADS", False)
+    sim = Simulation(tmp_path / "w.sqlite", seed=SEED)
+    w = sim.world
+    assert not w.prefetch(40, 40) and (40, 40) not in w.chunks
+    w.work(time.perf_counter())                                # (no time to spare: nothing more is made)
+    w.tick += 10
+    assert not w.prefetch(40, 40)                              # due, but not made yet: it waits, nothing stalls
+    w.work(time.perf_counter() + 5)
+    assert w.prefetch(40, 40) and bytes(w.chunks[(40, 40)].cols) == bytes(gen_chunk(SEED, 40, 40)[2])
+    assert not w.prefetch(41, 40) and w.chunk(41, 40) is w.chunks[(41, 40)]     # asked for at once: finished on the spot
+    sim.close()
