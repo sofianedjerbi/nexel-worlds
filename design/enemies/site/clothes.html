@@ -34,7 +34,14 @@
   .opts { display:flex; flex-wrap:wrap; gap:6px; }
   .opt { font:inherit; border:2px solid var(--line); border-radius:10px; background:#f6fbef; color:var(--ink); padding:4px 4px 3px;
     cursor:pointer; width:84px; text-align:center; font-size:11px; font-weight:800; line-height:1.15; }
-  .opt canvas { margin:0 auto 2px; border-radius:6px; }
+  .opt { width:120px; }
+  .opt .pair { display:flex; align-items:center; justify-content:center; gap:5px; margin-bottom:2px; min-height:72px; }
+  .opt canvas { border-radius:6px; }
+  .opt canvas.item { background:#e9cfa0; border:2px solid #b48a62; border-radius:7px; }
+  #bag { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  #bag figure { margin:0; width:84px; text-align:center; font-size:11px; font-weight:800; line-height:1.15; }
+  #bag canvas { margin:0 auto 3px; background:#e9cfa0; border:3px solid #b48a62; border-radius:10px; box-shadow:inset 0 0 0 2px #f6e3bd; }
+  #bag small { display:block; color:var(--ink2); font-weight:700; }
   .opt.on { border-color:var(--ink); background:#ffe2a6; box-shadow:0 3px 0 var(--ink); transform:translateY(-2px); }
   .notes { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; color:var(--ink2); font-size:14px; }
   .notes b { color:var(--ink); }
@@ -58,6 +65,7 @@
       </div>
       <div>
         <canvas id="world"></canvas>
+        <div id="bag"></div>
         <div id="setup"></div>
         <button class="t" id="copy">copy this setup</button>
       </div>
@@ -74,6 +82,7 @@
       <div><b>Same rules as the sprites.</b> Flat colours with one shade, an outline in a darker tone of the cloth, never black. Armor also recolours the player's own outline where it covers it.</div>
       <div><b>Tiers.</b> Cloth and leather are everyday; iron and gold are armor; the moss set is made from Old Mossback's shell plates and the sporecap hat from a sporecap.</div>
       <div><b>Effects are computed.</b> Sparkles, fireflies and leaves orbit; flame and frost follow the player's outline; spores and flowers trail behind only while walking.</div>
+      <div><b>Every piece is also an item.</b> The small square on each tile is how it looks in a bag, 16 by 16 like the game's own items; the slots under the strip show the five you are wearing. An effect is worn as a charm: a gem on a cord.</div>
       <div><b>A design page.</b> None of this is in the game yet. Your setup is kept in this browser and in the page address, so you can send it back.</div>
     </div>
   </section>
@@ -203,6 +212,73 @@ const EFFECTS = [
 function dot(g, x, y, c, alpha = 1, big = false) { g.globalAlpha = alpha; g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1);
   if (big) { g.fillRect(Math.round(x) - 1, Math.round(y), 3, 1); g.fillRect(Math.round(x), Math.round(y) - 1, 1, 3); } g.globalAlpha = 1; }
 
+// ---------------------------------------------------------------- the items: each piece as it lies in a bag, 16 x 16
+const mix = (h, k, to = [70, 48, 66]) => "#" + rgb(h).map((v, i) => Math.round(v * (1 - k) + to[i] * k).toString(16).padStart(2, "0")).join("");
+const GEM = {sparkle: "#ffe07a", fireflies: "#b8e86a", leaves: "#6fbb62", hearts: "#f2788a", flame: "#f59a4a", frost: "#9ad4f2", halo: "#fff3b8", spores: "#d9d77a", flowers: "#f29aa8"};
+const ARMOR = ["iron", "gold", "moss"], LOW = ["red", "blue", "moss"], SKIRT = ["robe", "moss"];
+HEADS.find((h) => h.id === "flowers").icon = (put) => { for (let i = 0; i < 14; i++) { const a = i * Math.PI / 7;
+  put(Math.round(Math.cos(a) * 5), Math.round(Math.sin(a) * 3.4), ["#f29aa8", "#6fbb62", "#ffe07a", "#6fbb62", "#fff6de", "#6fbb62", "#c9a8f2"][i % 7]); } };
+HEADS.find((h) => h.id === "bandana").icon = (put) => { for (let y = 0; y < 5; y++) for (let x = -5 + y; x <= 5 - y; x++) put(x, y, y === 0 ? "#f39a86" : "#e0635a");
+  put(6, 0, "#c94f4a"); put(7, 1, "#c94f4a"); put(6, -1, "#c94f4a"); };
+function itemName(part, o) { return part === "effect" ? o.name.replace(/ aura| trail| steps|s$/g, "") + " charm" : o.name; }
+function itemIcon(part, o) {                    // -> Map of pixel (y * 16 + x) -> colour, outlined; null for nothing
+  if (o.id === "none") return null;
+  const raw = [], put = (x, y, c) => { const i = raw.findIndex((p) => p[0] === x && p[1] === y); if (i >= 0) raw.splice(i, 1); if (c) raw.push([x, y, c]); };
+  const box = (x0, y0, x1, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) put(x, y, c); };
+  let line;
+  if (part === "head") {
+    line = o.line || (o.recolour && o.recolour.a) || "#4c7a52";
+    if (o.icon) o.icon(put);
+    else {
+      if (o.recolour) { line = o.recolour.a;                       // a helmet or a cap: the dome it makes of the skull
+        for (let y = -5; y <= 0; y++) for (let x = -6; x < 6; x++) if (((x + .5) / 6) ** 2 + ((y - .5) / 5.6) ** 2 <= 1)
+          put(x, y, y === 0 ? o.recolour.c : x < -1 && y < -2 && x > -5 ? o.recolour.d : o.recolour.b); }
+      o.draw({put: (x, y, c) => put(Math.round(x), Math.round(y), c)}, {cx: 0, sy: o.recolour ? -4 : 0, top: -6, hmin: -6, hmax: 6, facing: "down", side: true});
+    }
+  } else if (part === "top") {
+    const body = o.b || o.f, shade = o.d || mix(o.f, .2);
+    line = o.a || mix(body, .5);
+    if (!o.b) {                                                    // a scarf: a loop and a hanging end
+      box(3, 4, 12, 7, o.f); box(6, 5, 9, 6, null); box(9, 8, 11, 12, o.f); box(9, 12, 11, 12, o.g); box(3, 7, 8, 7, mix(o.f, .2));
+    } else if (ARMOR.includes(o.id)) {                             // a chestplate: shoulders, a neck notch, a shine
+      box(4, 4, 11, 13, body); box(2, 3, 4, 5, o.f); box(11, 3, 13, 5, o.f); box(4, 3, 11, 4, o.f); box(7, 3, 8, 4, null);
+      box(4, 12, 11, 13, shade); box(11, 6, 11, 13, shade); box(5, 6, 6, 7, o.g); box(7, 9, 8, 9, shade);
+    } else {                                                       // a shirt: sleeves, a collar, buttons or a stripe
+      box(4, 4, 11, 13, body); box(1, 4, 3, 7, o.f); box(12, 4, 14, 7, o.f); box(5, 3, 10, 4, o.f); box(7, 3, 8, 3, null);
+      box(11, 8, 11, 13, shade); box(4, 13, 11, 13, shade); box(1, 7, 3, 7, shade); box(12, 7, 14, 7, shade);
+      if (o.stripe) { box(4, 7, 11, 7, o.stripe); box(4, 10, 11, 10, o.stripe); } else for (const y of [6, 9, 12]) put(7, y, o.g);
+    }
+  } else if (part === "pants") {
+    line = o.a || mix(o.b, .5);
+    if (SKIRT.includes(o.id)) { for (let y = 3; y <= 12; y++) { const w = 3 + Math.floor((y - 3) / 2.5); for (let x = 7 - w; x <= 8 + w; x++) put(x, y, y === 3 ? o.d : (x + 20) % 3 === 0 ? o.d : o.b); } }
+    else { const end = o.id === "linen" ? 9 : 13;
+      box(3, 3, 12, 5, o.b); box(3, 3, 12, 3, o.d); box(3, 6, 7, end, o.b); box(8, 6, 12, end, o.b); box(7, 8, 8, end, null);
+      box(6, 8, 6, end, o.d); box(12, 6, 12, end, o.d); box(3, end, 5, end, o.d); box(9, end, 11, end, o.d); }
+  } else if (part === "shoes") {
+    line = o.a;
+    if (LOW.includes(o.id)) { box(3, 8, 13, 11, o.m); box(3, 8, 5, 8, null); box(12, 8, 13, 8, null); box(3, 12, 13, 12, o.a); put(7, 9, "#fff6de"); put(9, 9, "#fff6de"); box(3, 9, 5, 9, mix(o.m, .25, [255, 255, 255])); }
+    else { box(5, 3, 9, 9, o.m); box(5, 10, 13, 12, o.m); box(12, 10, 13, 10, null); box(4, 13, 13, 13, o.a); box(5, 3, 9, 3, mix(o.m, .3, [255, 255, 255])); box(9, 5, 9, 9, mix(o.m, .2)); box(10, 10, 11, 10, mix(o.m, .3, [255, 255, 255])); }
+  } else {                                                         // an effect is worn as a charm: a gem on a loop of cord
+    const c = GEM[o.id]; line = mix(c, .5);
+    for (let y = 5; y <= 13; y++) for (let x = 3; x <= 12; x++) if (Math.abs(x - 7.5) + Math.abs(y - 9) <= 4.5) put(x, y, x + y < 15 ? mix(c, .35, [255, 255, 255]) : x + y > 18 ? mix(c, .22) : c);
+    for (const [x, y] of [[6, 1], [7, 0], [8, 0], [9, 1], [6, 2], [9, 2], [7, 3], [8, 3]]) put(x, y, "#c9a27a");
+  }
+  const xs = raw.map((p) => p[0]), ys = raw.map((p) => p[1]);     // centre it in the 16 x 16 slot
+  const dx = Math.round(7.5 - (Math.min(...xs) + Math.max(...xs)) / 2), dy = Math.round(7.5 - (Math.min(...ys) + Math.max(...ys)) / 2);
+  const L = new Map(raw.filter(([x, y]) => x + dx >= 0 && x + dx < 16 && y + dy >= 0 && y + dy < 16).map(([x, y, c]) => [(y + dy) * 16 + x + dx, c]));
+  for (const key of [...L.keys()]) for (const [nx, ny] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+    const x = key % 16 + nx, y = Math.floor(key / 16) + ny;
+    if (x >= 0 && y >= 0 && x < 16 && y < 16 && !L.has(y * 16 + x)) L.set(y * 16 + x, null);
+  }
+  for (const [key, c] of L) if (c === null) L.set(key, line);
+  return L;
+}
+function drawIcon(canvas, part, o) {
+  const g = canvas.getContext("2d"), z = canvas.width / 16, L = itemIcon(part, o);
+  g.clearRect(0, 0, canvas.width, canvas.height);
+  if (L) for (const [key, c] of L) { g.fillStyle = c; g.fillRect((key % 16) * z, Math.floor(key / 16) * z, z, z); }
+}
+
 const PARTS = [["head", "Head", "sits on the skull, over or between the ears", HEADS], ["top", "Top", "the collar and chest", TOPS],
   ["pants", "Pants", "the two rows under the top", PANTS], ["shoes", "Shoes", "the feet", SHOES], ["effect", "Special effect", "around the whole player", EFFECTS]];
 const outfit = {head: "none", top: "none", pants: "none", shoes: "none", effect: "none"};
@@ -259,6 +335,8 @@ function rebuild() {
     edges.push(edge);
   }
   g.putImageData(img, 0, 0);
+  $("bag").innerHTML = PARTS.map(([key, title]) => `<figure><canvas width="64" height="64" data-bag="${key}"></canvas>${pick(key).id === "none" ? "empty" : itemName(key, pick(key))}<small>${title.toLowerCase()} slot</small></figure>`).join("");
+  document.querySelectorAll("[data-bag]").forEach((c) => drawIcon(c, c.dataset.bag, pick(c.dataset.bag)));
   $("setup").innerHTML = PARTS.map(([key, title]) => `<b>${title}:</b> ${pick(key).name}`).join(" &nbsp;·&nbsp; ");
   const code = PARTS.map(([key]) => outfit[key]).join(",");
   localStorage.setItem("megastructure-outfit", code);
@@ -291,10 +369,11 @@ function build() {
     const sec = document.createElement("div");
     sec.className = "part";
     sec.innerHTML = `<h3>${title}<small>${hint}</small></h3><div class="opts">` + list.map((o) =>
-      `<button class="opt" data-part="${key}" data-id="${o.id}"><canvas width="72" height="72"></canvas>${o.name}</button>`).join("") + "</div>";
+      `<button class="opt" data-part="${key}" data-id="${o.id}" title="${o.id === "none" ? o.name : "item: " + itemName(key, o)}"><div class="pair"><canvas width="72" height="72"></canvas>${o.id === "none" ? "" : '<canvas class="item" width="32" height="32"></canvas>'}</div>${o.name}</button>`).join("") + "</div>";
     $("parts").appendChild(sec);
   }
   document.querySelectorAll(".opt").forEach((b) => b.onclick = () => { outfit[b.dataset.part] = b.dataset.id; rebuild(); });
+  document.querySelectorAll(".opt canvas.item").forEach((c) => { const b = c.closest(".opt"); drawIcon(c, b.dataset.part, PARTS.find((p) => p[0] === b.dataset.part)[3].find((o) => o.id === b.dataset.id)); });
   document.querySelectorAll("[data-move]").forEach((b) => b.onclick = () => { moving = b.dataset.move; document.querySelectorAll("[data-move]").forEach((x) => x.classList.toggle("on", x === b)); });
   $("random").onclick = () => { for (const [key, , , list] of PARTS) outfit[key] = list[Math.floor(Math.random() * list.length)].id; rebuild(); };
   $("reset").onclick = () => { for (const [key] of PARTS) outfit[key] = "none"; rebuild(); };
