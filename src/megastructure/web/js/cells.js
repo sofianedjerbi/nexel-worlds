@@ -27,10 +27,10 @@ function surfacesAt(x, y) {                 // every height you can stand at, lo
 // as Movement.height: the ground at or under z here (the lowest ground, if none is)
 function settleAt(x, y, z) { const s = surfacesAt(x, y), under = s.filter((v) => v <= z); return under.length ? under[under.length - 1] : s[0]; }
 // as Movement.landing: the height a step from height h onto (x, y) lands at, or null (a wall). Where the cell at
-// your body's height is solid you jump up onto it if it's ground; where it's empty you step in and come down on the
+// your body's height is solid you jump up onto it if it's ground (and nothing is over your head); where it's empty you step in and come down on the
 // ground under you there (a fall, however far)
-function landAt(h, x, y) {
-  if (solidAt(x, y, h + 1)) return solidAt(x, y, h + 2) ? null : h + 1;
+function landAt(h, x, y, fx, fy) {       // (fx, fy: the tile you step from: a jump needs room over your head there)
+  if (solidAt(x, y, h + 1)) return solidAt(x, y, h + 2) || (fx !== undefined && solidAt(fx, fy, h + 2)) ? null : h + 1;
   let z = h; while (!solidAt(x, y, z)) z--;
   return z;
 }
@@ -51,4 +51,4 @@ function rimAt(x, y) {                      // as World.rim: lower ground around
   return false;
 }
 // for your own steps: from the height you're at on (x0, y0), is the tile beside it not a wall?
-const canStep = (x0, y0, x1, y1) => landAt(myZ(x0, y0), x1, y1) !== null;
+const canStep = (x0, y0, x1, y1) => landAt(myZ(x0, y0), x1, y1, x0, y0) !== null;

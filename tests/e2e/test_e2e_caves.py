@@ -63,7 +63,7 @@ def test_inside_the_cave_shows_through_the_hill_shadowed_along_its_edges(game):
     assert sum(west[:3]) < sum(mid[:3]) - 60 and sum(east[:3]) < sum(mid[:3]) - 60    # darker along the rock
     assert px(-1, -4, 15, 8)[:3] == px(0, -4, 8, 8)[:3] or sum(px(-1, -4, 15, 8)[:3]) > sum(west[:3])   # not between its own tiles
     assert px(-2, -4, 8, 8)[3] == 0                                                   # the hill round it: untouched
-    assert px(0, -6, 8, -4)[3] == 255                                                 # the wall at its back
+    assert px(0, -6, 8, -4)[3] == 0                                                   # (no wall block at its back: the shadow is its edge)
 
 
 def test_a_way_out_to_the_north_shows_right_through_the_hills_border(game):

@@ -31,12 +31,13 @@ class Movement:
 
     def landing(self, a: Agent, x: int, y: int) -> int | None:
         """The height a step to the neighbouring (x, y) lands at, or None (a wall). The world is cells: where the
-        cell at your body's height is solid there you jump up onto it if it is ground (nothing over it); where it is
+        cell at your body's height is solid there you jump up onto it if it is ground (nothing over it, nor over your
+        own head: under a low ceiling there is no jumping out through it); where it is
         empty you step in at your own height and come down on whatever ground is under you there (a fall, however
         far: Movement.fell)."""
         h = self.height(a)
-        if self.world.solid(x, y, h + 1):
-            return None if self.world.solid(x, y, h + 2) else h + 1
+        if self.world.solid(x, y, h + 1):                # (a jump: room over it, and over your own head to make it)
+            return None if self.world.solid(x, y, h + 2) or self.world.solid(a.x, a.y, h + 2) else h + 1
         return max(z for z in self.world.surfaces(x, y) if z <= h)
 
     def can_go(self, a: Agent, x: int, y: int) -> bool:

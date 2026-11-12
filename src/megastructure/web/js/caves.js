@@ -11,7 +11,7 @@ function caveOf(at) {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const k = (x + dx) + "," + (y + dy);
       if (seen.has(k)) continue;
-      const z2 = landAt(z, x + dx, y + dy);
+      const z2 = landAt(z, x + dx, y + dy, x, y);
       if (z2 !== null && coveredAt(x + dx, y + dy, z2)) { seen.set(k, z2); stack.push([x + dx, y + dy, z2]); }
     }
   }
@@ -26,17 +26,18 @@ function setCaveOpen() {
   if (me) {
     const x = Math.round(me.x), y = Math.round(me.y);        // (where you're seen, which runs ahead of the server's tile)
     if (!myAt || myAt.x !== x || myAt.y !== y) {             // your height, kept as the server keeps it (Movement.landing)
-      let z = myAt && Math.abs(myAt.x - x) + Math.abs(myAt.y - y) === 1 ? landAt(myAt.z, x, y) : null;
+      let z = myAt && Math.abs(myAt.x - x) + Math.abs(myAt.y - y) === 1 ? landAt(myAt.z, x, y, myAt.x, myAt.y) : null;
       if (z === null) z = settleAt(x, y, meObs && meObs.self.z !== undefined ? meObs.self.z : 99);   // (woken, moved: where the server has you)
       myAt = {x, y, z};
     } else myAt.z = settleAt(x, y, myAt.z);                  // (the ground dug from under you: down you come)
     const ox = x + (me.x > x + .001 ? 1 : me.x < x - .001 ? -1 : 0), oy = y + (me.y > y + .001 ? 1 : me.y < y - .001 ? -1 : 0);
-    if ((ox !== x) !== (oy !== y)) { const z = landAt(myAt.z, ox, oy); if (z !== null && coveredAt(ox, oy, z)) into = {x: ox, y: oy, z}; }
+    if ((ox !== x) !== (oy !== y)) { const z = landAt(myAt.z, ox, oy, x, y); if (z !== null && coveredAt(ox, oy, z)) into = {x: ox, y: oy, z}; }
   }
   showXYZ();
   const here = myAt && coveredAt(myAt.x, myAt.y, myAt.z) ? myAt : into;
   if (!here === !caveOpen && (!here || openCave.get(here.x + "," + here.y) === here.z)) return;
   caveOpen = !!here; openCave = here ? caveOf(here) : new Map(); caveStamp++;
+  caveDepth = caveDepths();
 }
 // Someone under a hill you're not in: not seen. (You: by the height you're at; the others, by the server's.)
 function unseen(p) {
@@ -104,32 +105,55 @@ function drawFace(g, X, Y, x, y, dx, dy) {
     }
   }
 }
-// The edge of the open cave's edge tiles: its floor right to the tile's edge, a soft shadow along it where the rock is
-function caveEdge(g, x, y, z, X, Y) {
-  const inCave = (tx, ty) => inOpenCave(tx, ty) || (!roofAt(tx, ty) && Math.abs(topAt(tx, ty) - z) <= 1);
-  const W = !inCave(x - 1, y), E = !inCave(x + 1, y), N = !inCave(x, y - 1), S = !inCave(x, y + 1);
-  [.34, .24, .15, .08].forEach((al, k) => {
-    g.fillStyle = `rgba(${SHADE},${al})`;
-    if (W) g.fillRect(X + k, Y, 1, 16);
-    if (E) g.fillRect(X + 15 - k, Y, 1, 16);
-    if (N) g.fillRect(X, Y + k, 16, 1);
-    if (S) g.fillRect(X, Y + 15 - k, 16, 1);
-  });
+// The edge of the open cave's edge tiles: its floor right to the rock, a soft shadow along it; where two walls meet
+// the corner is rounded off (a passage running diagonally isn't a staircase of squares), and where the rock pokes in
+// at a corner the shadow goes round it.
+// (floor: the cave you're in, or open ground level with it. Ground a layer up or down outside is a step: shadowed
+// along, like rock, but never cut into; rock proper is what stands two layers or more over the floor.)
+// (floor: the cave you're in, or open ground level with it. Rock: what stands two layers or more over the floor, or
+// is hollow itself. Ground a layer up or down outside is neither: a step, with its own edge.)
+const caveFloor = (x, y, z) => inOpenCave(x, y) || (!roofAt(x, y) && topAt(x, y) === z);
+const caveRock = (x, y, z) => !inOpenCave(x, y) && (roofAt(x, y) > 0 || Math.abs(topAt(x, y) - z) > 1);
+// The open cave's shadow, from its floor's own outline (f: the floor; o: more floor in the next block, or open ground
+// level with it, which is no edge): a soft shadow on the floor along everything else, the same all the way round.
+function caveShade(f, o, size) {
+  const a = f.getImageData(0, 0, size, size).data, open = o.getImageData(0, 0, size, size).data, shade = [.34, .24, .15, .08];
+  const at = (d, i, j) => i >= 0 && j >= 0 && i < size && j < size && d[(j * size + i) * 4 + 3] > 0;
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    if (!at(a, i, j)) continue;                           // floor: how near is its edge?
+    let d = 9;
+    for (let q = -4; q <= 4 && d > 1; q++) for (let p = -4; p <= 4; p++) if ((p || q) && !at(a, i + p, j + q) && !at(open, i + p, j + q)) d = Math.min(d, Math.hypot(p, q));
+    if (d < 4.5) { f.fillStyle = `rgba(${SHADE},${shade[Math.min(3, Math.round(d) - 1)]})`; f.fillRect(i, j, 1, 1); }
+  }
 }
 function buildCaveOverlay(b) {
   let c = null, g = null;
+  let fc = null, f = null, o = null;                      // (the open cave's floor, on its own: its shadow is worked out from its shape)
   const need = () => { if (!c) { c = document.createElement("canvas"); c.width = c.height = B * 16 + 2 * OV_M; g = c.getContext("2d"); } };
+  const needFloor = () => { need(); if (!fc) { fc = document.createElement("canvas"); fc.width = fc.height = c.width; f = fc.getContext("2d", {willReadFrequently: true}); const oc = document.createElement("canvas"); oc.width = oc.height = c.width; o = oc.getContext("2d", {willReadFrequently: true}); } };
   for (const key in b.col) {                              // (only its hollow tiles)
     const i = +key, x = b.bx * B + i % B, y = b.by * B + (i / B | 0), X = OV_M + (i % B) * 16, Y = OV_M + (i / B | 0) * 16;
     if (inOpenCave(x, y)) {                               // the cave you're in: its floor here, seen through the hill
-      need();
+      needFloor();
       const z = openCave.get(x + "," + y), Yz = Y - shOf(z);
-      if (!inOpenCave(x, y - 1) && (roofAt(x, y - 1) || Math.abs(topAt(x, y - 1) - z) > 1)) {   // the wall at its back, in the hill's own colours (none where it opens onto the ground: a way out)
-        const bands = colsOf(hillSheet(Math.max(1, topAt(x, y)))).bands, h = Math.min(shOf(topAt(x, y) - z), 12);
-        for (let j = 0; j < h; j++) { const col = bands[j === 0 ? 0 : j >= h - 2 ? 2 : 1]; g.fillStyle = `rgb(${col[0] * .8 | 0},${col[1] * .8 | 0},${col[2] * .8 | 0})`; g.fillRect(X, Yz - h + j, 16, 1); }
+      peekFloors = true; drawTile(x, y, {g: f, ox: X, oy: Yz}); peekFloors = false;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && caveFloor(x + dx, y + dy, z)) o.fillRect(X + dx * 16, Yz + dy * 16, 16, 16);   // (more floor, here or in the next block, or open ground level with it: no edge)
+      if (!roofAt(x, y + 1) && !inOpenCave(x, y + 1) && topAt(x, y + 1) === z + 1) {   // a step up in front of it, outside: its
+        f.clearRect(X, Yz + 16 - RELIEF_STEP, 16, RELIEF_STEP); o.fillRect(X, Yz + 16 - RELIEF_STEP, 16, RELIEF_STEP);   //  edge stays (rock is seen through)
       }
-      peekFloors = true; drawTile(x, y, {g, ox: X, oy: Yz}); peekFloors = false;
-      caveEdge(g, x, y, z, X, Yz);
+      for (const dx of [-1, 1]) {                         // a way out to the east or west: through the hill's side wall, which
+        const tx = x + dx, t = topAt(tx, y);              //  is drawn out over the ground beside it
+        if (roofAt(tx, y) || inOpenCave(tx, y) || Math.abs(t - z) > 1) continue;
+        const Yt = Y - shOf(t), wall = LEDGE * SIDE_MAX, x0 = dx > 0 ? X + 16 : X - wall;
+        g.save(); g.beginPath(); g.rect(x0, Yt, wall, 16); g.clip();
+        drawTile(tx, y, {g, ox: X + dx * 16, oy: Yt}); g.restore();
+        const rock = (dy) => !(inOpenCave(x, y + dy) || (!roofAt(x, y + dy) && Math.abs(topAt(x, y + dy) - z) <= 1));
+        [.34, .24, .15, .08].forEach((al, k) => {         // (shadowed along its sides like the cave)
+          g.fillStyle = `rgba(${SHADE},${al})`;
+          if (rock(-1)) g.fillRect(x0, Yt + k, wall, 1);
+          if (rock(1)) g.fillRect(x0, Yt + 15 - k, wall, 1);
+        });
+      }
       for (let n = 1; n <= 3; n++) {                      // a way out to the north: the ground it opens onto is behind the hill;
         // shown too, as far as the hill hides it, right through the hill's border (one passage, out into the open)
         const ty = y - n, t = topAt(x, ty);
@@ -145,6 +169,7 @@ function buildCaveOverlay(b) {
     }
     for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) if (shownVoids(x, y, dx, dy).length) { need(); drawFace(g, X, Y, x, y, dx, dy); }
   }
+  if (fc) { caveShade(f, o, fc.width); g.drawImage(fc, 0, 0); }
   return c;
 }
 // Called each frame after the ground: each block's caves, a picture a block (redrawn only when it changed)

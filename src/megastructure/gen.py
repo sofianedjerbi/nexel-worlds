@@ -6,7 +6,9 @@ regenerated identically.
 
 import math
 from array import array
+from functools import lru_cache
 
+from . import cavegen
 from .tiles import B, G
 
 # The world is cells, solid or empty. A tile's column is its 32 cells from the bottom (LOW) up, a bit each, set
@@ -142,14 +144,24 @@ def gen_level(seed: int, x: int, y: int) -> int:
 
 
 def gen_cave(seed: int, x: int, y: int, level: int) -> tuple[int, int]:
-    """Caves: tunnels winding through the ranges. Their floor keeps low (level 1 where they open onto the land, then
-    up a layer at a time, 4 under the ground over them); where more than a layer of rock is left over the floor it
-    is roofed. (floor, rock over it); (level, 0) where there is no cave."""
-    if level < 1 or _mount(seed, x, y) < 0.55 or abs(fbm(seed, x, y, 40, 97, octaves=1) - 0.5) > 0.045:
+    """Caves (cavegen.py): rooms and straight passages cut level into the hills, a mouth where a passage comes out.
+    (floor, land over it): a cave where ROCK layers or more lie over the floor, an open cut where less; (level, 0): no cave."""
+    floor = cavegen.floor_at(seed, x, y, _land, _hash, _dry)
+    if floor is None:
         return level, 0
-    floor = max(1, level - 4)
-    cut = level - floor
-    return floor, (cut if cut >= 2 else 0)
+    if floor >= cavegen.OPEN:
+        return min(level, floor - cavegen.OPEN), 0
+    return (floor, level - floor) if level - floor >= cavegen.ROCK else (min(level, floor), 0)
+
+
+def _dry(seed: int, x: int, y: int) -> bool:
+    """Land you can stand on: not the sea, its shore or a river."""
+    return _elev(seed, x, y) >= 0.43 and not river(seed, x, y)
+
+
+@lru_cache(maxsize=1 << 17)
+def _land(seed: int, x: int, y: int) -> int:
+    return gen_level(seed, x, y)
 
 
 def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:

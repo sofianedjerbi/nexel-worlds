@@ -16,7 +16,7 @@ function frame(now) {
       // turns: no diagonal slide when two keys are held.
       const [wx, wy] = DIRV[walking.dir], ahead0 = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
       // a jump up is hard going (60% longer a step), a drop careful (20%): as the server paces it (SLOPE_UP/DOWN)
-      const h0 = myZ(Math.round(p.tx), Math.round(p.ty)), h1 = landAt(h0, ahead0.x, ahead0.y), climb = h1 === null ? 0 : h1 - h0, jump = climb > 0;
+      const h0 = myZ(Math.round(p.tx), Math.round(p.ty)), h1 = landAt(h0, ahead0.x, ahead0.y, Math.round(p.tx), Math.round(p.ty)), climb = h1 === null ? 0 : h1 - h0, jump = climb > 0;
       // exactly as the server paces it, in its 0.1 s ticks: a stride of 1 tick (running) or 2 (walking), and a jump up
       // or a drop that many more, rounded (SLOPE_UP/DOWN): so you never run ahead of yourself and wait
       const base = walking.run ? 1 : 2, ticks = base + (jump ? Math.round(base * .6) : climb < 0 ? Math.round(base * .2) : 0);
@@ -159,6 +159,7 @@ function frame(now) {
   drawPlucks(sx, sy, S, now);
   if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
   drawHouses(sx, sy, S, dt, now);
+  drawCaveDark(vis, sx, sy, S, t);                   // (the cave you're in: dark past where daylight reaches)
   drawNight(vis, sx, sy, S, t);
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard

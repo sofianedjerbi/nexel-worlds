@@ -104,7 +104,7 @@ def test_the_land_has_biomes_mountains_rivers_and_caves():
             rivers += river(7, x, y)
             floor, roof = gen_cave(7, x, y, lv)
             caves += roof > 0
-            assert floor + roof <= lv and floor >= min(lv, 1)
+            assert floor + roof <= lv and 0 <= floor
     assert kinds == {"plains", "forest", "highlands", "dry", "swamp", "mountain"} and top >= 8 and rivers and caves
     assert biome(7, 10, 10, gen_level(7, 10, 10)) == "plains"                      # spawn: plains
 
@@ -178,3 +178,17 @@ def test_the_land_is_cells_and_is_saved_as_cells(world):
     c = sim.world.chunk(x >> 5, y >> 5)
     assert Chunk.unpack(c.cx, c.cy, c.pack()).cols == c.cols
     assert Chunk.unpack(0, 0, zlib.compress(bytes(3 * CHUNK * CHUNK))) is None       # a save from before: made anew
+
+
+def test_no_jumping_up_out_through_a_low_ceiling(world):
+    """In a cave one cell high, the ground outside a layer up is not a way out: a jump needs room over your head.
+    (You went out through the rock, at a place with no opening.)"""
+    sim, a = world
+    x, y = a.x, a.y
+    sim.world.set(x, y - 1, level=0, roof=2)                 # a cave one cell high under a hill 2 high...
+    sim.world.set(x, y - 2, level=1)                         # ...the ground behind it a layer up
+    assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.in_cave(a) and sim.height(a) == 0
+    r = run(sim, a, "step", {"dir": "N"})
+    assert not r["ok"] and (a.x, a.y) == (x, y - 1)          # the rock over your head: no jump
+    sim.world.set_cell(x, y - 1, 2, False)                   # its roof taken off: now you can
+    assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.height(a) == 1
