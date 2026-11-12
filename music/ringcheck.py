@@ -7,7 +7,7 @@ import numpy as np
 D = sys.argv[1] if len(sys.argv) > 1 else "music/site/sfx"
 TONAL_OK = {"Progress", "People", "Interface"}
 TONAL_NAMES = {"wade", "fill", "pour", "squawk", "hurt",  # bubbles are real tones (Minnaert)
-               "collect", "orb", "craft", "chirp", "cluck", "moo", "gloom", "love", "grow", "creak", "gate", "chest", "die", "lay", "hatch", "milk"}
+               "collect", "orb", "craft", "chirp", "cluck", "moo", "gloom", "love", "grow", "creak", "gate", "chest", "die", "lay", "hatch", "milk", "boss_wake", "boss_groan"}
 
 
 def ring(x, sr=48000):

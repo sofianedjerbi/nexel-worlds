@@ -30,6 +30,13 @@
     background:linear-gradient(#fff9ec, #f8e8c8); border:2px solid #ead1a8; }
   #viz { position:absolute; inset:0; width:100%; height:100%; }
   .controls { display:flex; align-items:center; gap:16px; margin-top:16px; }
+  #bossplay { font:inherit; font-weight:900; font-size:15px; border:3px solid var(--ink); border-radius:14px; padding:10px 20px; min-width:84px;
+    background:#f7c9a3; color:var(--ink); cursor:pointer; box-shadow:0 4px 0 var(--ink); }
+  #bossplay:active { transform:translateY(3px); box-shadow:0 1px 0 var(--ink); }
+  #bossplay[disabled] { opacity:.5; cursor:wait; }
+  #bosssections { position:relative; display:flex; height:22px; border-radius:8px; overflow:hidden; border:2px solid var(--ink); cursor:pointer; }
+  #bosssections div { height:100%; font-size:10px; font-weight:800; line-height:18px; padding-left:5px; white-space:nowrap; overflow:hidden; border-right:1px solid rgba(0,0,0,.25); }
+  #bosshead { position:absolute; top:0; bottom:0; width:3px; background:var(--ink); left:0; pointer-events:none; }
   #play {
     width:64px; height:64px; border-radius:50%; border:3px solid var(--ink); cursor:pointer;
     background:#ffd36e; box-shadow:0 4px 0 var(--ink); display:grid; place-items:center; flex:none;
@@ -129,6 +136,25 @@
     <div id="ab">
       <button class="abrow" data-v="opus"><b>Opus 5.5</b><span>the original version: every note with the same touch, a darker mono piano, layers switch on and off</span><kbd>A</kbd></button>
       <button class="abrow on" data-v="fable"><b>Fable 5.2</b><span>same notes and form: phrased melody, brighter stereo piano, layers drift in and out, rests 3 dB louder</span><kbd>B</kbd></button>
+    </div>
+  </section>
+
+  <section class="card" id="bosscard">
+    <h2>Boss fight mockup: Old Mossback <small id="bosssub">96 BPM · B minor · 36 bars · 90 s seamless loop</small></h2>
+    <div class="controls">
+      <button id="bossplay" disabled>play</button>
+      <div class="timeline">
+        <div id="bosssections"><span id="bosshead"></span></div>
+        <div class="times"><span id="bossnow">0:00</span><span id="bosswhere">the spore turtle's fight</span><span>1:30</span></div>
+      </div>
+    </div>
+    <div class="notes" style="margin-top:10px">
+      <div><b>Meadow Road, turned to face you:</b> the same scale (B minor is D major's own notes), the same melody (F#, E, F#, then a leap up; F#, E, D, then a step home), only its resting notes moved to B, on the same felt piano and Moog bass.</div>
+      <div><b>Weight, not speed:</b> 96 BPM instead of 72. A heavy thud on beats 1 and 3 is its feet; a dull knock on 2 and 4 is its shell.</div>
+      <div><b>Its voice:</b> a low horn climbs one step at a time under everything (F#, G, A, B), over a bass that repeats the root.</div>
+      <div><b>Form:</b> it stands up (4 bars) · the fight (8) · everything in (8) · it braces: feet and bass drop out, then stomp back on every beat (8) · everything in again (8).</div>
+      <div><b>Rules kept:</b> one key, three chords (B minor, G, A), nothing new in the melody, each part in its own register, no toy sounds.</div>
+      <div><b>Source:</b> <code>music/boss.py</code>. Its sounds (wake, groan, stomp, snap, shake, sporelings) are under "Boss" in the sound effects below. <a href="audio/boss.wav" download="old-mossback.wav">Download</a></div>
     </div>
   </section>
 
@@ -290,8 +316,46 @@ function seek(t) {
   if (playing) { stop(); start(t); } else offset = t;
 }
 
+// The boss mockup: one looping buffer. It and the main track never play together.
+const boss = {meta: null, buf: null, src: null, at: 0, from: 0};
+const bossPos = () => boss.src ? (ctx.currentTime - boss.at + boss.from) % boss.meta.seconds : boss.from;
+function bossStop() { if (boss.src) { boss.from = bossPos(); boss.src.stop(); boss.src = null; } $("bossplay").textContent = "play"; }
+async function bossStart(from) {
+  await ctx.resume();
+  if (playing) $("play").click();
+  if (boss.src) boss.src.stop();
+  boss.buf ||= await ctx.decodeAudioData(await (await fetch("audio/boss.wav")).arrayBuffer());
+  boss.src = ctx.createBufferSource();
+  boss.src.buffer = boss.buf; boss.src.loop = true; boss.src.connect(master);
+  boss.at = ctx.currentTime + 0.03; boss.from = from;
+  boss.src.start(boss.at, from);
+  $("bossplay").textContent = "stop";
+}
+async function loadBoss() {
+  boss.meta = await (await fetch("audio/boss.json")).json();
+  const bar = $("bosssections"), tint = ["#d9e8d0", "#f7e0a3", "#f7c9a3", "#cfe0f0", "#f7c9a3"];
+  boss.meta.sections.forEach((sec, i) => {
+    const d = document.createElement("div");
+    d.style.flex = sec.bars; d.style.background = tint[i % tint.length]; d.textContent = sec.name; d.title = sec.name;
+    bar.appendChild(d);
+  });
+  bar.addEventListener("click", (e) => {
+    const r = bar.getBoundingClientRect(), t = ((e.clientX - r.left) / r.width) * boss.meta.seconds;
+    if (boss.src) bossStart(t); else boss.from = t;
+  });
+  $("bossplay").onclick = () => boss.src ? bossStop() : bossStart(boss.from);
+  $("bossplay").disabled = false;
+  setInterval(() => {
+    const t = bossPos(), sec = boss.meta.sections.filter((x) => x.t <= t).pop();
+    $("bosshead").style.left = `${100 * t / boss.meta.seconds}%`;
+    $("bossnow").textContent = fmt(t);
+    $("bosswhere").textContent = sec ? sec.name : "";
+  }, 100);
+}
+
 $("play").onclick = async () => {
   await ctx.resume();
+  if (!playing) bossStop();
   if (playing) stop(); else start(offset);
   $("icon").innerHTML = playing ? '<path d="M6 4h4.5v16H6zM13.5 4H18v16h-4.5z"/>' : '<path d="M7 4.5v15l13-7.5z"/>';
 };
@@ -491,7 +555,7 @@ async function buildObjMap() {
   wrap.querySelectorAll(".obj").forEach((b) => b.onclick = () => { playSfx(b.dataset.s, null, "fable"); b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 120); });
   box.prepend(wrap);
 }
-load().then(async () => { draw(); await buildSfx(); buildObjMap(); });
+load().then(async () => { draw(); loadBoss(); await buildSfx(); buildObjMap(); });
 </script>
 </body>
 </html>

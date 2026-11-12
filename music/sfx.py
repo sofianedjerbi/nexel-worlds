@@ -410,7 +410,7 @@ def finish(y, kind):
 # ------------------------------------------------------------------ registry
 
 S, META = {}, {}
-PHYSICAL = {"Footsteps", "Work", "Breaking", "Building", "Fights", "World", "Animals"}
+PHYSICAL = {"Footsteps", "Work", "Breaking", "Building", "Fights", "World", "Animals", "Boss"}
 SIZES = [1.0, 0.93, 1.06, 0.97, 1.03, 0.9]
 
 
@@ -583,10 +583,14 @@ def _(c):
     dur = c.u(0.3, 0.34)                                                                  # over before the tree lands
     n = N(dur)
     t = tt(n)
-    k = c.u(0.85, 1.2)
-    strain = stickslip(c, n, c.u(22, 30) + c.u(60, 80) * (t / dur) ** 2, (300 * k, 650 * k, 1100 * k), 5)   # the hinge of wood giving way, faster and faster
-    y = _crack(c, n, int(c.u(9, 13)), dur * 1.6) + 0.45 * strain                          # mostly fibres snapping, not a long groan
-    place(y, 0.7 * strike(c, N(0.1), "wood", size=c.u(1.5, 1.9), hard=1.5), 0)            # the first crack of the trunk
+    y = _crack(c, n, int(c.u(10, 14)), dur * 1.6)                                         # fibres letting go
+    for j in range(int(c.u(6, 9))):                                                       # splinters breaking, closer and closer together
+        at = dur * 0.9 * (1 - (1 - (j + c.u(0.2, 0.8)) / 9) ** 1.8)                       # (no friction pulses here: a slow pulse train through
+        sn = N(0.07)                                                                      # low resonances is exactly how a raspberry is made)
+        place(y, c.u(0.25, 0.5) * (strike(c, sn, "wood", size=c.u(0.6, 1.1), hard=c.u(1.6, 2.4), damp=2) + 0.5 * _crack(c, sn, 3, 0.02)), at)
+    air = sweep(c, n, 500, 2400, 0.7) * (t / dur) ** 1.5                                  # the crown starting to move through the air
+    y = y + 0.22 * air
+    place(y, 0.8 * strike(c, N(0.1), "wood", size=c.u(1.5, 1.9), hard=1.5), 0)            # the first crack of the trunk
     return y * np.clip(t / 0.004, 0, 1) * np.clip((dur - t) / 0.05, 0, 1)
 
 
@@ -788,18 +792,33 @@ def _(c):
     return strike(c, n, "dirt", size=0.7, hard=1.5) + 0.4 * phism(c, n, env_exp(n, 0.03, 0.002), 1200, 2800, 0.0012)   # it lands in the grass
 
 
-@sfx("eat", "Items", "eating: three chomps", 3, 0.3, kind="out", change="new")
+def _chomp(c, n, crisp, count):
+    """One bite. Crisp food breaks in a burst of pulses about a millisecond long, broadband, dense at first and thinning:
+    it is the rate of breaks that reads as crisp, and the energy above 2 kHz as fresh (Povey; the Pringles study).
+    A closing mouth is a resonance sliding down, about 1500 to 700 Hz: that is what turns a crackle into "nom"."""
+    y = np.zeros(n)
+    for _ in range(count):
+        g = N(c.u(0.0006, 0.0018))
+        place(y, c.noise(g) * np.exp(-tt(g) / (g / SR / 3)) * c.u(0.3, 1), min(0.09, -np.log(1 - c.u(0, 0.97)) * 0.02))
+    x = np.linspace(0, 1, n) ** 0.6
+    crack = norm(fft_filter(y, bp(2000, 11000)))
+    mouth = norm(fft_filter(y, bp(1100, 1900, 2)) * (1 - x) + fft_filter(y, bp(520, 950, 2)) * x)
+    wet = texture(c, n, 400, 1800, 4, 25, 0.5) * np.clip(tt(n) / 0.004, 0, 1) * np.exp(-tt(n) / 0.035)
+    return crisp * crack + 0.9 * mouth + 0.22 * wet
+
+
+@sfx("eat", "Items", "eating: a crisp bite, then two chews", 3, 0.3, kind="out", change="new")
 def _(c):
-    n = N(0.6)
+    n = N(0.75)
     y = np.zeros(n)
     at = 0.0
-    for k in range(3):
-        bn = N(0.1)
-        bite = np.clip(tt(bn) / 0.003, 0, 1) * np.exp(-tt(bn) / c.u(0.03, 0.04))
-        crunch = phism(c, bn, bite, 2500, 1800, 0.0012, 0.6)                              # the food breaking between teeth
-        jaw = strike(c, bn, "body", size=c.u(0.55, 0.7), hard=1.2)                        # the jaw closing
-        place(y, (crunch + 0.35 * jaw) * (1.0, 0.75, 0.6)[k], at)
-        at += c.u(0.15, 0.18)
+    for k, (crisp, count, amp) in enumerate(((1.0, 16, 1.0), (0.4, 10, 0.7), (0.3, 9, 0.55))):   # the bite is bright; the chews are in a closed mouth
+        bn = N(0.13)
+        one = _chomp(c, bn, crisp, count)
+        if k == 0:
+            one = one + 0.25 * strike(c, bn, "body", size=c.u(0.55, 0.7), hard=1.2)       # the teeth meeting
+        place(y, one * amp, at)
+        at += c.u(0.2, 0.23) if k == 0 else c.u(0.17, 0.19)
     return y
 
 
@@ -1202,6 +1221,90 @@ def _(c):
     for k, note in enumerate(("D3", "B2")):                                               # two muted low piano notes, falling
         place(y, felt(note, 0.12, 0.5), k * 0.12)
     return fft_filter(y, lp(900))
+
+
+# ================================================================== the first boss (mockup: Old Mossback and its sporelings)
+
+@sfx("boss_wake", "Boss", "Old Mossback wakes: the hill stands up", 1, 0.5, change="new")
+def _(c):
+    dur = 1.9
+    n = N(dur)
+    t = tt(n)
+    x = t / dur
+    swell = np.sin(np.pi * x) ** 1.2
+    rumble = norm(fft_filter(c.noise(n), bp(45, 160))) * swell                            # the ground giving
+    earth = phism(c, n, swell ** 2, 900, 1400, 0.002)                                     # soil and pebbles sliding off
+    soil = texture(c, n, 200, 1500, 5, 12, 0.3) * swell
+    f0 = 62 - 14 * x
+    groan = norm(voice(n, f0, lambda t: [(190, 1.0), (430, 0.4), (1700, 0.03)], 110, 50, c)) * np.clip((x - 0.35) / 0.3, 0, 1) * np.clip((1 - x) / 0.2, 0, 1)
+    return rumble + 0.5 * earth + 0.3 * soil + 0.55 * groan
+
+
+@sfx("boss_groan", "Boss", "Old Mossback is hurt, or bellows before an attack", 2, 0.45, change="new")
+def _(c):
+    dur = [0.9, 1.15][c.v % 2]
+    n = N(dur)
+    t = tt(n)
+    x = t / dur
+    f0 = [74, 66][c.v % 2] * c.u(0.97, 1.03) * (1.08 - 0.3 * x + 0.1 * np.sin(np.pi * x))
+    mouth = np.clip(x / 0.2, 0, 1) * (1 - 0.6 * np.clip((x - 0.7) / 0.3, 0, 1))
+    y = norm(voice(n, f0, lambda t: [(210 + 130 * mouth, 1.0), (540 + 220 * mouth, 0.5), (1900, 0.04 + 0.05 * mouth)], 110, 60, c))
+    y = y * (1 - 0.5 * (0.5 + 0.5 * np.sin(np.pi * np.cumsum(f0) / SR)))                   # a rough old throat
+    breath = texture(c, n, 300, 2500, 5, 10) * (0.05 + 0.1 * x)
+    return (y + breath) * np.clip(t / 0.05, 0, 1) * np.clip((dur - t) / 0.2, 0, 1) ** 0.7
+
+
+@sfx("boss_stomp", "Boss", "Old Mossback drops on the ground", 2, 0.6, change="new")
+def _(c):
+    n = N(1.0)
+    t = tt(n)
+    y = strike(c, n, "dirt", size=2.6, hard=0.7) + 0.9 * strike(c, n, "body", size=2.4, hard=0.8)
+    y += 0.9 * norm(fft_filter(c.noise(n), bp(40, 110))) * env_exp(n, 0.16, 0.004)        # the weight of it
+    late = np.clip((t - 0.05) / 0.02, 0, 1) * np.exp(-np.clip(t - 0.05, 0, None) / 0.22)
+    y += 0.45 * phism(c, n, late, 700, 1800, 0.0015) + 0.25 * phism(c, n, late ** 2, 250, 4200, 0.001)   # earth and grit thrown out
+    return y
+
+
+@sfx("boss_snap", "Boss", "Old Mossback's head shoots out and its beak shuts", 2, 0.5, change="new")
+def _(c):
+    n = N(0.5)
+    y = np.zeros(n)
+    wn = N(0.16)
+    place(y, 0.6 * sweep(c, wn, 350, 2200, 0.5) * np.sin(np.pi * np.linspace(0, 1, wn)) ** 1.5, 0)   # the neck through the air
+    kn = N(0.2)
+    clack = strike(c, kn, "stone", size=0.7, hard=1.5) + 0.5 * _crack(c, kn, 4, 0.01) + 0.4 * strike(c, kn, "body", size=0.6, hard=1.5)   # horn on horn: a dull clack, no ring
+    place(y, clack, 0.13)
+    place(y, 0.35 * clack, 0.13 + c.u(0.03, 0.04))
+    return y
+
+
+@sfx("boss_shake", "Boss", "Old Mossback shakes its shell: plates rattle, the tree thrashes", 2, 0.5, change="new")
+def _(c):
+    dur = 1.1
+    n = N(dur)
+    x = tt(n) / dur
+    swell = np.sin(np.pi * np.clip(x * 1.1, 0, 1)) ** 0.8
+    y = 0.5 * texture(c, n, 1800, 8000, 6, 18, 0.35) * swell                              # leaves
+    y += 0.4 * norm(fft_filter(c.noise(n), bp(50, 140))) * swell                          # the body shuddering
+    for k in range(12):                                                                   # shell plates knocking, never evenly
+        at = 0.05 + k * 0.075 + c.u(-0.015, 0.015)
+        amp = np.sin(np.pi * min(1, at / dur * 1.1)) ** 0.8 * c.u(0.6, 1)
+        place(y, amp * strike(c, N(0.12), "stone" if k % 2 else "plank", size=c.u(1.3, 1.8), hard=1.2, damp=2), at)
+    return y
+
+
+@sfx("sporeling_land", "Boss", "a sporeling lands, tucked under its cap", 3, 0.25, change="new")
+def _(c):
+    n = N(0.25)
+    return strike(c, n, "dirt", size=0.55, hard=1.2) + 0.5 * strike(c, n, "body", size=0.5) + 0.3 * phism(c, n, env_exp(n, 0.02, 0.002), 900, 2600, 0.0012)
+
+
+@sfx("spore_puff", "Boss", "a sporecap or sporeling puffs its spores", 3, 0.25, change="new")
+def _(c):
+    n = N(0.4)
+    t = tt(n)
+    y = sweep(c, n, 2600, 700, 0.6) * np.clip(t / 0.012, 0, 1) * np.exp(-t / 0.09)        # a soft breath of air, falling
+    return y + 0.3 * texture(c, n, 3000, 9000, 4, 30, 0.3) * np.exp(-t / 0.05)
 
 
 # ------------------------------------------------------------------ render all

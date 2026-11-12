@@ -86,3 +86,13 @@ volume, left/right pan, variant rotation, light pitch spread on physical sounds,
 `music/sfx_map.json` decides what each placed block or ground sounds like; the build fails if an item has none.
 `tests/test_audio.py` fails if the client asks for a sound that does not exist; `tests/e2e/test_e2e_sound.py` plays the game in Chrome.
 After changing the server's Python (e.g. `web_static.py`), restart the game server: a running one keeps the old code.
+
+## Boss fight mockup and boss sounds (2026-11-12)
+
+`uv run python music/boss.py` renders "Old Mossback" (96 BPM, B minor, 36 bars, a 90 s loop) to `music/site/audio/boss.wav`; the page has its own player card.
+It is Meadow Road's melody and instruments over a stomp (beats 1 and 3), a shell knock (2 and 4), a root ostinato in the bass and a slowly climbing low horn.
+Research note: a first boss in a calm game gets its tension from the bass, the rhythm and the texture, and from weight, not from speed or chromatic notes.
+`music/sfx.py` has a "Boss" family (wake, groan, stomp, snap, shake, sporeling_land, spore_puff): mockups, not played by the game yet.
+- Eating was three bursts of hiss with a thud. A bite is a burst of millisecond fracture pulses, dense then thinning, bright above 2 kHz,
+  heard through a mouth that closes (a resonance sliding from about 1500 to 700 Hz): `_chomp`. The first bite is crisp, the two chews duller.
+- A slow pulse train (20-110 per second) through low, wide resonances sounds like a raspberry: the falling tree's creak used one. Use separate cracks instead.
