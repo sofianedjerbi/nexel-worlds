@@ -33,3 +33,13 @@ def test_you_swim_across_water_of_every_depth_and_leave_a_wake(game):
     game.hold(["a"], 2600)                                     # and back out
     assert not game.server()["swimming"] and not mine(game, "swimsAt(p, p.e)")
     assert not game.errors
+
+
+def test_a_page_older_than_the_servers_code_reloads_itself(game):
+    stamp = game.js("webStamp")
+    assert stamp > 0                                           # the server said when its client code last changed
+    game.js("spec.onmessage({data: JSON.stringify({type: 'hello', web: webStamp})})")
+    game.sleep(300)
+    assert game.js("myId") is not None                         # the same code: nothing happens
+    with game.page.expect_navigation():                        # newer code after a reconnect: the page loads it
+        game.js("spec.onmessage({data: JSON.stringify({type: 'hello', web: webStamp + 1})})")

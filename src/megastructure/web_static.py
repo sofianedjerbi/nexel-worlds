@@ -32,6 +32,13 @@ STATIC = {"assets": "max-age=3600", "js": "no-cache", "css": "no-cache",   # fol
 CONTENT_TYPES = {".png": "image/png", ".ttf": "font/ttf", ".txt": "text/plain", ".wav": "audio/wav", ".json": "application/json",
                  ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
 
+def web_stamp() -> int:
+    """When the client's code last changed: a page that reconnects and finds a newer one reloads itself (state.js)."""
+    if not (WEB / "index.html").exists():
+        return 0                                             # (the in-browser demo: the page is the client, nothing to compare)
+    return int(max(f.stat().st_mtime for f in [WEB / "index.html", *(WEB / "js").glob("*.js"), *(WEB / "css").glob("*.css")]))
+
+
 def _file(path: Path, ctype: str, cache: str = "no-cache") -> Response:
     body = path.read_bytes()
     return Response(200, "OK", Headers([("Content-Type", ctype), ("Content-Length", str(len(body))),

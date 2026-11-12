@@ -20,7 +20,7 @@ from .devtools import dev_op
 from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
 from .tiles import FOOD, RECIPES
 from .views import Views
-from .web_static import serve_http
+from .web_static import serve_http, web_stamp
 
 log = logging.getLogger("megastructure")
 PROTOCOL = 1
@@ -154,7 +154,7 @@ class GameServer(Views):
 
         pumper = asyncio.create_task(pump())
         try:
-            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL}))
+            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL, "web": web_stamp()}))
             async for raw in ws:
                 msg = json.loads(raw)
                 op = msg.get("op")

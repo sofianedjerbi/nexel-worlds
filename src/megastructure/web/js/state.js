@@ -31,13 +31,16 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]));
 const fmt = (o) => Object.entries(o || {}).map(([k, v]) => `${v} ${label(k)}`).join(", ");
 
-let spec, sid = 0, lastWatch = "";
+let spec, sid = 0, lastWatch = "", webStamp = 0;
 function connectSpec() {
   spec = openSocket("/spectate");
   spec.onopen = () => { lastWatch = ""; requested.clear(); sendSpec({op: "recipes"}); sendSpec({op: "agents"}); };
   spec.onmessage = (m) => {
     const d = JSON.parse(m.data);
-    if (d.type === "tick") onTick(d);
+    if (d.type === "hello") {                     // back after the server restarted with newer code: this page is stale (it would draw the new world wrong)
+      if (webStamp && d.web && d.web !== webStamp) location.reload();
+      webStamp = d.web || webStamp;
+    } else if (d.type === "tick") onTick(d);
     else if (d.type === "event") onEvent(d.ev);
     else if (d.type === "reply") {
       if (d.rows) onRegion(d);

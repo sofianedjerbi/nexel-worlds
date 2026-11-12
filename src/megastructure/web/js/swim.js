@@ -31,6 +31,9 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
     if (a < .3) ctx.fillRect(wx, wy, z, z);                                                            // bubbles where they just were
   }
   ctx.globalAlpha = 1;
+  const deep = DEPTH_OF[gndAt(Math.round(p.x), Math.round(p.y))] || 1, shY = y + (15 + deep * 2) * z;   // their shadow on the bottom, further down the deeper it lies
+  ctx.fillStyle = "rgba(24,40,72,.2)";
+  ctx.fillRect(x + 3 * z, shY, 10 * z, 2 * z); ctx.fillRect(x + 5 * z, shY - z, 6 * z, 4 * z);
   if (moving && stroke !== p.lastStroke) {                   // a stroke: a splash beside them, a side each time
     const side = stroke % 2 ? .35 : -.35;
     burst(p.x + (p.fy ? side : -p.fx * .2), p.y + .35 + (p.fx ? side * .4 : 0), "water", 3, {up: 1.4, spread: 1.6, g: 6, life: .35});
