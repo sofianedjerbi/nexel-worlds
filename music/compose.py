@@ -9,9 +9,14 @@ So:
   * no arpeggio anywhere. Chords are struck together, softly, and held; a pad and a bass under them.
   * the melody never takes two steps in the same direction: it repeats a note, drops a third, leaps a fifth, holds.
   * it sits low (D4-D5), on a soft, dark felt piano that is still a piano (two strings, a felt thump), not a sine.
-What stays from the research (C418, Undertale): few chords and a bass that walks down (G, F#, E), a short melody
-repeated exactly, the same melody reused by the night theme (night.py) and the boss fight (boss.py) over other chords,
-silence, no drums. Layers enter and leave; the material never changes.
+  * the key must be heard ("the scale looks off"): an earlier version began on the IV chord, put melody notes that were
+    not in the chord on the strong beats, and had no leading note and no cadence. Now it is a plain period in D major:
+        I  V6  vi  V   (D, A over C#, B minor, A: the bass walks down, the phrase stops on the leading note C#)
+        I  V6  IV-V  I (D, A over C#, G then A, D: the melody closes E to D)
+    and every melody note that starts on a beat is a note of the chord under it (`off_chord()` checks).
+What stays from the research (C418, Undertale): few chords, a short melody repeated exactly, the same melody reused by
+the night theme (night.py) and the boss fight (boss.py) over other chords, silence, no drums. Layers enter and leave;
+the material never changes.
 The Opus 5.5 version is frozen in music/opus/.
 
 Pure numpy, 48 kHz, 72 BPM, 88 bars = 293 s. Melody from bar 1. Checks: registers, clashes, staircases, loudness.
@@ -110,7 +115,7 @@ def lofi_piano(f, dur, vel, t0):
     cents = rng.normal(0, 2.5)
     y = np.zeros(n)
     for string in (-1.6, 1.9):
-        ph = phase(f, n, t0, (cents + string) / 100, wob=1.2)
+        ph = phase(f, n, t0, (cents + string) / 100, wob=0.5)       # (little tape wobble: the pitch must be sure)
         for k in range(1, 14):
             fk = k * np.sqrt(1 + 0.0005 * k * k)
             if f * fk > 7500:
@@ -173,17 +178,25 @@ def glide_lead(f, dur, vel, t0):
 
 # ------------------------------------------------------------------ material
 
-CHORDS = {"G": "G B D F#", "D/F#": "F# A D", "Em7": "E G B D", "Asus": "A B E", "D": "D F# A"}     # (first note: the bass)
-CYCLE = ["G", "D/F#", "Em7", "Asus", "G", "D/F#", "Em7", "D"]       # 8 bars; the bass walks down G, F#, E
+CHORDS = {"D": "D F# A", "A/C#": "C# E A", "Bm": "B D F#", "A": "A C# E", "G": "G B D"}     # (first note: the bass)
+CYCLE = ["D", "A/C#", "Bm", "A", "D", "A/C#", "G A", "D"]           # 8 bars; "G A": two beats of each
 
-# The melody, per bar: (eighth slot, length in eighths, note). A note said twice and a drop of a third; a leap of a
-# fifth; the same a step higher; a long low note. The second half starts the same and ends in the air, on the fifth.
-SAY = [(0, 3, "A4"), (3, 1, "A4"), (4, 4, "F#4")]
-MELODY = [SAY, [(4, 2, "D4"), (6, 2, "A4")], [(0, 3, "B4"), (3, 1, "B4"), (4, 4, "G4")], [(0, 6, "E4")],
-          SAY, [(4, 2, "D4"), (6, 2, "A4")], [(0, 3, "B4"), (3, 1, "B4"), (4, 4, "D5")], [(0, 7, "A4")]]
+
+def chords_in(i):
+    """The chords of bar i of the cycle: (first eighth, eighths long, chord)."""
+    names = CYCLE[i].split()
+    return [(k * 8 // len(names), 8 // len(names), ch) for k, ch in enumerate(names)]
+
+
+# The melody, per bar: (eighth slot, length in eighths, note). A note said twice, then up a third; down to a long note
+# and a leap back; the same from F#, leaping a sixth; one step down onto the leading note, and it waits there.
+# The second half starts the same and closes: B, B, down to E, home to D.
+SAY = [(0, 3, "F#4"), (3, 1, "F#4"), (4, 4, "A4")]
+MELODY = [SAY, [(0, 6, "E4"), (6, 2, "A4")], [(0, 3, "F#4"), (3, 1, "F#4"), (4, 4, "D5")], [(0, 6, "C#5")],
+          SAY, [(0, 6, "E4"), (6, 2, "A4")], [(0, 3, "B4"), (3, 1, "B4"), (4, 4, "E4")], [(0, 7, "D4")]]
 PHRASE = [[(1.0 if s == 0 else 0.78 if n == 1 else 0.9, 0.012 if n >= 4 else 0.0) for s, n, _ in bar] for bar in MELODY]   # (velocity x, seconds late)
 # The left hand: the chord, all its notes together, held. Never one note after another.
-HAND = {"G": "G2 D3 B3", "D/F#": "F#2 D3 A3", "Em7": "E2 B2 D3 G3", "Asus": "A2 E3 B3", "D": "D3 A3"}
+HAND = {"D": "D3 F#3 A3", "A/C#": "C#3 E3 A3", "Bm": "B2 D3 F#3", "A": "A2 E3 A3", "G": "G2 D3 B3"}
 
 
 def pcs(ch):
@@ -247,27 +260,33 @@ for bar in range(BARS):
         if mel in ("lead", "both"):
             note(s0 + slot, ln, m, (0.9 if mel == "lead" else 0.55) * touch, glide_lead, "lead", -0.1, rev=0.3, echo=0.25, late=late)
 
-    # the left hand: the whole chord at once on the first beat, held; the two upper notes again, softer, on the third
-    hand = hand_notes(ch)
-    for j, m in enumerate(hand):
-        note(s0, 8, m, (0.4 if mel else 0.48) - 0.03 * j, lofi_piano, "piano", -0.3 + 0.15 * j, rev=0.35)
-    if plan["bass"] or mel:
-        for j, m in enumerate(hand[-2:]):
-            note(s0 + 4, 4, m, 0.24, lofi_piano, "piano", -0.1 + 0.2 * j, rev=0.35)
-
-    # pad: three notes per chord
-    for m in pad_voicing(ch):
-        note(s0, 8, m, plan["pad"] * (1.0 if mel else 1.25), analog_pad, "pad", 0.0, rev=0.4, human=False)
-
-    # bass: one long note per bar, walking down
-    if plan["bass"]:
-        note(s0, 7.5, place(pcs(ch)[0], 33), 0.85, moog_bass, "bass", 0.0, rev=0.05, human=False)
+    for slot, ln, ch in chords_in(i):
+        # the left hand: the whole chord at once, held; in a bar of one chord, its two upper notes again, softer, on the third beat
+        hand = hand_notes(ch)
+        for j, m in enumerate(hand):
+            note(s0 + slot, ln, m, (0.4 if mel else 0.48) - 0.03 * j, lofi_piano, "piano", -0.3 + 0.15 * j, rev=0.35)
+        if ln == 8 and (plan["bass"] or mel):
+            for j, m in enumerate(hand[-2:]):
+                note(s0 + 4, 4, m, 0.24, lofi_piano, "piano", -0.1 + 0.2 * j, rev=0.35)
+        # pad: the triad
+        for m in pad_voicing(ch):
+            note(s0 + slot, ln, m, plan["pad"] * (1.0 if mel else 1.25), analog_pad, "pad", 0.0, rev=0.4, human=False)
+        # bass: the chord's bass note, held
+        if plan["bass"]:
+            note(s0 + slot, ln - 0.5, place(pcs(ch)[0], 33), 0.85, moog_bass, "bass", 0.0, rev=0.05, human=False)
 
 
 # ------------------------------------------------------------------ checks
 
 def chord_at_time(t):
-    return CYCLE[int(t / (4 * BEAT)) % 8]
+    bar, slot = divmod(t / (BEAT / 2) + 1e-6, 8)
+    return [ch for a, n, ch in chords_in(int(bar) % 8) if a <= slot][-1]
+
+
+def off_chord():
+    """Melody notes that start on a beat and are not a note of the chord under them."""
+    return [(i, n) for i in range(8) for slot, ln, n in MELODY[i] if slot % 2 == 0
+            and midi(n) % 12 not in pcs([ch for a, _, ch in chords_in(i) if a <= slot][-1])]
 
 
 def clash_report():
@@ -427,6 +446,7 @@ def write_wav(path, x):
 if __name__ == "__main__":
     print("registers:", registers())
     print("staircases in the melody:", staircases())
+    print("melody notes on a beat that are not in the chord:", off_chord())
     print("accompaniment semitone clusters:", accomp_clashes())
     bad = clash_report()
     print(f"clash check: {len(bad)}", bad[:12])

@@ -3,8 +3,8 @@
     uv run python music/boss.py
 
 It is Meadow Road turned to face you: the same melody, note for note (compose.MELODY: its four notes belong to B minor
-as much as to D major), on the same soft piano, with only its last note moved from D to B. What changes is underneath it:
-  the harmony   B minor, G and A (no third) instead of the day's chords
+as much as to D major), on the same soft piano. What changes is underneath it:
+  the harmony   the relative minor, as at night: B minor, F# minor, D, F# minor / B minor, F# minor, G then A, B minor
   the tempo     96 BPM instead of 72, but no faster than a tortoise needs: weight, not speed
   the stomp     a heavy thud on beats 1 and 3 (its feet), a dull knock on 2 and 4 (its shell)
   the bass      an eighth-note ostinato on the root, climbing into each bar
@@ -30,12 +30,12 @@ TAIL = 6 * SR
 OUT = Path(__file__).with_name("site") / "audio"
 rng = np.random.default_rng(7)
 
-CYCLE = ["Bm", "Bm", "G", "A", "Bm", "Bm", "G", "GA"]            # the eighth bar turns on two chords
-ROOT = {"Bm": ("B1", "F#2"), "G": ("G1", "D2"), "A": ("A1", "E2")}
-PIZZ = {"Bm": ["B2", "F#3", "D3", "F#3"], "G": ["G2", "D3", "B2", "D3"], "A": ["A2", "E3", "B2", "E3"]}       # under the melody; A has no third
-PAD = {"Bm": ["B2", "D3", "F#3"], "G": ["G2", "B2", "D3"], "A": ["A2", "B2", "E3"]}
-MELODY = C.MELODY[:7] + [[(0, 7, "B4")]]                         # the day's melody; it ends on B, not on D
-HORN = [(0, 2, "F#2"), (2, 1, "G2"), (3, 1, "A2"), (4, 2, "B2"), (6, 2, "G2")]      # bar, bars long, note: one slow climb
+CYCLE = ["Bm", "F#m", "D", "F#m", "Bm", "F#m", "GA", "Bm"]         # the seventh bar turns on two chords
+ROOT = {"Bm": ("B1", "F#2"), "F#m": ("F#1", "C#2"), "D": ("D2", "A2"), "G": ("G1", "D2"), "A": ("A1", "E2")}
+PIZZ = {"Bm": ["B2", "F#3", "A3", "F#3"], "F#m": ["F#2", "C#3", "A2", "C#3"], "D": ["D3", "A3", "F#3", "A3"], "G": ["G2", "D3", "B2", "D3"], "A": ["A2", "E3", "C#3", "E3"]}
+PAD = {"Bm": ["B2", "D3", "F#3"], "F#m": ["F#2", "A2", "C#3"], "D": ["D3", "F#3", "A3"], "G": ["G2", "B2", "D3"], "A": ["A2", "C#3", "E3"]}
+MELODY = C.MELODY                                                   # the day's melody, as it is
+HORN = [(0, 2, "F#2"), (2, 2, "A2"), (4, 2, "F#2"), (7, 1, "B2")]  # bar, bars long, note: each one belongs to the chords it lies over
 SECTIONS = [("it stands up", 4), ("the fight", 8), ("everything in", 8), ("it braces, then stomps back", 8), ("everything in again", 8)]
 
 

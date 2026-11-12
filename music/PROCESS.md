@@ -118,3 +118,11 @@ melody moving by step in one direction and then back.
 - **No arpeggios, no chords played a note at a time.** Chords are struck together and held.
 - **The melody never takes two steps in the same direction**: repeated notes, thirds, a fifth, long holds. `compose.staircases()` checks it.
 - `music/sketches.py` (four sketches) was removed; the main, night and boss tracks all use `compose.MELODY`.
+
+### The key must be heard (same day)
+"Are you really using music theory? The scale looks off." The clash checks only forbade semitones; they said nothing about function.
+That version began on the IV chord, put non-chord notes (the 9th and major 7th of G) on the strong beats of bar 1, had no leading
+note and no cadence, so D major was never established.
+- Write a period: I V6 vi V (half cadence, melody on the leading note) then I V6 IV-V I (full cadence, melody 2 to 1).
+- Every melody note that starts on a beat is a chord note (`compose.off_chord()`); the night and boss versions check the same.
+- Night and boss reharmonise the same tune in the relative minor (Bm7, F#m, D, F#m / Bm7, F#m, G-A, Bm).

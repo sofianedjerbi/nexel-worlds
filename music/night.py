@@ -3,7 +3,8 @@
     uv run python music/night.py
 
 It is Meadow Road after dark: the same melody, note for note (compose.MELODY), and nothing added to it. What changes:
-  the harmony    the day's notes over minor chords: E minor, B minor, G, A (no third), and it ends on B minor
+  the harmony    the relative minor: B minor, F# minor, D, F# minor / B minor, F# minor, G then A, B minor.
+                 Every melody note on a beat is still a note of its chord; the tune that closed on D now closes in B minor
   the tempo      60 BPM instead of 72, and about 4 dB quieter
   the left hand  one held chord a bar, struck together (never a note at a time: see compose.py)
   the air        a breath of wind; no drums; a short, dry room, so it stays awake and does not turn into a lullaby
@@ -28,10 +29,10 @@ TAIL = 8 * SR
 OUT = Path(__file__).with_name("site") / "audio"
 rng = np.random.default_rng(11)
 
-CYCLE = ["Em", "Bm", "G", "Asus", "Em", "Bm", "G", "Bm"]            # 8 bars, a chord a bar
-ROOT = {"Em": "E2", "Bm": "B1", "G": "G1", "Asus": "A1"}
-HAND = {"Em": ["E2", "B2", "G3"], "Bm": ["B2", "F#3"], "G": ["G2", "D3", "B3"], "Asus": ["A2", "E3", "B3"]}      # struck together, held
-PAD = {"Em": ["E3", "B3"], "Bm": ["B2", "F#3"], "G": ["G3", "D3"], "Asus": ["A2", "E3"]}       # root and fifth only: nothing to rub
+CYCLE = ["Bm", "F#m", "D", "F#m", "Bm", "F#m", "G A", "Bm"]         # 8 bars; "G A": two beats of each
+ROOT = {"Bm": "B1", "F#m": "F#2", "D": "D2", "G": "G2", "A": "A1"}
+HAND = {"Bm": ["B2", "F#3", "A3"], "F#m": ["F#2", "C#3", "A3"], "D": ["D3", "A3"], "G": ["G2", "D3", "B3"], "A": ["A2", "E3"]}      # struck together, held
+PAD = {"Bm": ["B2", "F#3"], "F#m": ["F#3", "C#3"], "D": ["D3", "A3"], "G": ["G3", "D3"], "A": ["A2", "E3"]}                   # root and fifth
 MELODY = C.MELODY                                                   # the day's, as it is
 SECTIONS = [("the melody alone", 8), ("the left hand", 8), ("pad and bass", 8), ("the piano rests: a far whistle", 8), ("everything", 8), ("thinning out", 8)]
 
@@ -50,18 +51,20 @@ def add(bar, slot, inst, name, slots, vel, stem, pan=0.0, rev=0.2):
 
 def block(first, piano=1.0, roll=0.0, pad=0.0, bass=False, far=False):
     for k in range(8):
-        bar, ch = first + k, CYCLE[k]
+        bar, names = first + k, CYCLE[k].split()
         for s, length, nm in MELODY[k]:
             if piano:
-                add(bar, s, lofi_piano, nm, length, piano * (0.8 if s else 0.7), "piano", pan=0.08, rev=0.3)
+                add(bar, s, lofi_piano, nm, length, piano * (0.8 if length >= 3 else 0.68), "piano", pan=0.08, rev=0.3)
             if far:
                 add(bar, s, whistle, nm, length, 0.75, "whistle", pan=0.2, rev=0.45)
-        for j, nm in enumerate(HAND[ch]) if roll else ():
-            add(bar, 0, lofi_piano, nm, 8, roll * (0.46 - 0.04 * j), "piano", pan=-0.3 + 0.2 * j, rev=0.3)
-        for i, nm in enumerate(PAD[ch]) if pad else ():
-            add(bar, 0, analog_pad, nm, 8, pad, "pad", pan=(-0.4, 0.4)[i], rev=0.35)
-        if bass:
-            add(bar, 0, moog_bass, ROOT[ch], 7.5, 0.8, "bass", rev=0.0)
+        for h, ch in enumerate(names):
+            at, ln = h * 8 // len(names), 8 // len(names)
+            for j, nm in enumerate(HAND[ch]) if roll else ():
+                add(bar, at, lofi_piano, nm, ln, roll * (0.46 - 0.04 * j), "piano", pan=-0.3 + 0.2 * j, rev=0.3)
+            for i, nm in enumerate(PAD[ch]) if pad else ():
+                add(bar, at, analog_pad, nm, ln, pad, "pad", pan=(-0.4, 0.4)[i], rev=0.35)
+            if bass:
+                add(bar, at, moog_bass, ROOT[ch], ln - 0.5, 0.8, "bass", rev=0.0)
 
 
 block(0)
@@ -127,11 +130,16 @@ def render():
 
 
 def clashes():
-    """Melody notes a semitone or a minor 9th from a note sounding with them."""
+    """Melody notes a semitone or a minor 9th from a note sounding with them; and notes on a beat that are not in the chord."""
+    tones = {"Bm": "B D F# A", "F#m": "F# A C# E", "D": "D F# A", "G": "G B D", "A": "A C# E"}
     bad = []
     for k in range(8):
-        chord = {midi(nm) for nm in PAD[CYCLE[k]] + HAND[CYCLE[k]]} | {midi(ROOT[CYCLE[k]])}
-        bad += [(k, nm) for _, _, nm in MELODY[k] if any((max(midi(nm), c) - min(midi(nm), c)) % 12 == 1 for c in chord)]
+        names = CYCLE[k].split()
+        for s, n, nm in MELODY[k]:
+            ch = names[min(len(names) - 1, s * len(names) // 8)]
+            under = {midi(x) for x in PAD[ch] + HAND[ch] + [ROOT[ch]]}
+            if any((max(midi(nm), c) - min(midi(nm), c)) % 12 == 1 for c in under) or (s % 2 == 0 and nm[:-1] not in tones[ch].split()):
+                bad.append((k, nm, ch))
     return bad
 
 
@@ -145,7 +153,7 @@ if __name__ == "__main__":
     for name, bars in SECTIONS:
         secs.append({"name": name, "t": t, "bars": bars})
         t += bars * BAR
-    (OUT / "night.json").write_text(json.dumps({"title": "Lantern Road", "bpm": BPM, "key": "E minor (the day's notes)", "bars": BARS, "seconds": LOOP_S,
+    (OUT / "night.json").write_text(json.dumps({"title": "Lantern Road", "bpm": BPM, "key": "B minor (the day's relative minor)", "bars": BARS, "seconds": LOOP_S,
                                                 "sections": secs}, indent=1))
     rms = lambda x: 20 * np.log10(np.sqrt(np.mean(x ** 2)) + 1e-9)
     print(f"{len(events)} notes, {LOOP_S:.1f}s loop, peak {np.abs(master).max():.3f}, rms {rms(master):.1f} dBFS")
