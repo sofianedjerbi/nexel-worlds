@@ -64,7 +64,10 @@ game: GameServer | None = None
 def start(saves: str) -> int:
     """Open (or create) the demo world in `saves` and start ticking; returns the tick it resumes at."""
     global game
-    game = GameServer(Path(saves) / "demo")
+    game = GameServer(Path(saves) / "caves", seed=12)
+    if game.sim.store.get_meta("showcase") is None:        # a new world: the cave showcase is built on it (showcase.py)
+        from . import showcase
+        showcase.build(game.sim)
     asyncio.ensure_future(game.tick_loop())
     return game.sim.tick
 

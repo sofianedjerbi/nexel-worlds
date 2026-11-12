@@ -48,9 +48,11 @@ class Sessions:
 
     def find_spawn(self, salt: int) -> tuple[int, int]:
         r = random.Random(self.seed * 7919 + salt * 104729 + self.tick)
-        for radius in (24, 48, 96, 192):
+        home = self.store.get_meta("spawn")                  # (a world can say where its newcomers start: showcase.py)
+        cx, cy = home or (0, 0)
+        for radius in (3, 8, 24) if home else (24, 48, 96, 192):
             for _ in range(200):
-                x, y = r.randint(-radius, radius), r.randint(-radius, radius)
+                x, y = cx + r.randint(-radius, radius), cy + r.randint(-radius, radius)
                 if self.world.passable(x, y) and GROUNDS[self.world.get(x, y)[0]].name in ("dirt", "grass", "bridge"):
                     return x, y
-        return 0, 0
+        return cx, cy

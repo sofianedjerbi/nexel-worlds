@@ -42,3 +42,21 @@ def test_a_cave_is_empty_cells_in_the_generated_land():
     assert col_surfaces(col) == [z, z + over]                                       # its floor, and the hill over it
     ox, oy = next(t for t, v in c.items() if v > z)                                 # the notch: cut down to the floor
     assert gen_cave(SEED, ox, oy, _land(SEED, ox, oy)) == (z, 0)
+
+
+def test_the_showcase_is_built_and_newcomers_start_beside_it(tmp_path):
+    """showcase.py: the demo's world. Every kind of entry is there, walkable from the field, and you start by it."""
+    from megastructure import showcase
+    from megastructure.sim import Simulation
+
+    sim = Simulation(tmp_path / "w.sqlite", seed=SEED)
+    showcase.build(sim)
+    w = sim.world
+    assert w.surfaces(-52, 54) == [0, 5] and w.surfaces(-52, 59) == [0, 5] and w.top(-52, 60) == 0    # a room, its south mouth
+    assert w.surfaces(-27, 59) == [0, 5] and w.top(-26, 59) == 0 and w.top(-27, 60) == 0            # the outer corner: two faces
+    assert w.surfaces(-35, 55) == [0, 5] and w.surfaces(-34, 56) == [0, 5] and w.top(-35, 56) == 0  # the inner corner
+    assert w.top(-13, 51) == 0 and w.top(-13, 50) == 6                                              # the shaft
+    assert w.surfaces(-55, 69) == [-3, 0] and [w.top(x, 68) for x in (-51, -50, -49, -48)] == [-3, -2, -1, 0]   # the hollow, its steps
+    a = sim.login("newcomer", "t")
+    assert max(abs(a.x - showcase.SPAWN[0]), abs(a.y - showcase.SPAWN[1])) <= 3 and sim.height(a) == 0
+    sim.close()

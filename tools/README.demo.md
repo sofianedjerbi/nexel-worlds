@@ -11,6 +11,10 @@ New: a world of blocks seen from above. Heights and biomes (plains, forests, hig
 mountains, rivers). Jump up a layer by walking into it; with a pickaxe in hand, X digs down (a hole drops you to
 the level below), and walking toward open ground from under a hole jumps you back out.
 
+The demo starts in a field of caves: hills with mouths on every side and at their corners, openings of every size,
+a shaft down from a hilltop (a long fall hurts), a hollow under flat ground with steps down into it, and pits.
+Walk in and the hill opens over you.
+
 WASD / arrows walk (Shift sprints) · Space does the main thing in front of you · X the other · E eats ·
 1–9 / Q pick what's in hand · B bag · C crafting · Enter chat · H help.
 
