@@ -43,7 +43,7 @@ function drawOrbs(sx, sy, S, dt, list) {
       o.vh -= 22 * dt; o.h = Math.max(0, o.h + o.vh * dt);
       if (o.h === 0) o.vh = Math.abs(o.vh) * .4;
     } else {                                                 // then home in, faster and faster
-      const tx = p.x + .5, ty = p.y + .35, dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy);
+      const tx = p.x + .5, ty = p.y + .35 - UP, dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy);
       const sp = Math.min(14, 3 + (o.age - o.homing) * 18);
       if (d < .25) { orbs.splice(i, 1); orbLanded(o); continue; }
       o.x += dx / d * Math.min(d, sp * dt); o.y += dy / d * Math.min(d, sp * dt); o.h *= .85;
@@ -59,7 +59,7 @@ function drawOrbs(sx, sy, S, dt, list) {
     const p = playerNamed(m.who);
     const k = Math.min(1, m.age / .28);
     if (!p || k >= 1) { magnets.splice(i, 1); if (p) sfx("collect", p.tx, p.ty); continue; }
-    const e = k * k, x = m.x + (p.x + .5 - m.x) * e, y = m.y + (p.y + .3 - m.y) * e - Math.sin(k * Math.PI) * .35;
+    const e = k * k, x = m.x + (p.x + .5 - m.x) * e, y = m.y + (p.y + .3 - UP - m.y) * e - Math.sin(k * Math.PI) * .35;
     const sz = 10 * (1 - .4 * e) * z, lift = m.lift + (liftOf(p) - m.lift) * e;   // (shrinks and rises smoothly)
     list.push({y: y - .45, x, fx: () => ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(sy(y) - lift - sz / 2), sz, sz)});
   }

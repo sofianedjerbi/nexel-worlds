@@ -60,7 +60,7 @@ function drawEmote(p, sx, sy, S) {
   const [c, rr] = EMOTE[em.kind], pop = k < .15 ? .6 + k / .15 * .5 : k < .25 ? 1.1 - (k - .15) : 1;
   const size = Math.round(16 * zoom * .75 * pop), x = Math.round(sx(p.x) + S / 2 - size / 2);
   const head = p.e.kind === "agent" ? 9 * zoom + 18 : ANIMALS[p.e.kind] && ANIMALS[p.e.kind].fw === 32 ? 12 * zoom : 2 * zoom;   // above the head
-  const y = Math.round(sy(p.y, p.x) - head - size);
+  const y = Math.round(bodyY(p, sy) - head - size);
   ctx.globalAlpha = k > 1.5 ? (1.8 - k) / .3 : 1;
   ctx.drawImage(IMG.emoji, c * 32, rr * 32, 32, 32, x, y, size, size);
   ctx.globalAlpha = 1;
@@ -109,7 +109,7 @@ function drawFlyers(sx, sy, S, now) {
       else { const b = (tf * 1000 - f.drop.fall) / BOUNCE_MS; if (b < 1) y = f.y - Math.sin(b * Math.PI) * .14; }
       if (tf * 1000 - f.drop.fall > 0 && !f.landed) { f.landed = true; sfx("plant", f.x, f.y); }
     } else if (who) {                                 // arc into the picker's hands, shrinking as it is caught
-      const tx = who.x + .5, ty = who.y + .1, e = k * k * (3 - 2 * k);
+      const tx = who.x + .5, ty = who.y + .1 - UP, e = k * k * (3 - 2 * k);
       x = f.x + (tx - f.x) * e; y = f.y + (ty - f.y) * e - Math.sin(k * Math.PI) * 1.1; sc = 1 - k * .45;
     } else { y -= k * .8; sc = 1 - k; }
     ctx.globalAlpha = k > .85 ? (1 - k) / .15 : 1;

@@ -36,6 +36,8 @@ const reachOf = (weapon) => (weapon === "spear" ? 3 : 2);   // tiles.py REACH, l
 const TALL = "TFU";
 function aimAt(p, shift) {
   if (!GROUND.has(combAt(p.x, p.y)) || entityAt(p)) return p;
+  // someone's head and shoulders are drawn over the lower half of the tile above theirs: pointing there means them
+  if (p.fy > 1 - (4 + STAND) / 16 && entityAt({x: p.x, y: p.y + 1})) return {x: p.x, y: p.y + 1};
   const forGround = selected && !shift && (PLACEABLE_BLOCK[selected] || FILLS[selected] || ["seed", "hoe", "watering_can"].includes(selected));
   if (forGround) return p;
   for (const dy of [1, 2]) {

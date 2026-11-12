@@ -30,7 +30,7 @@ function biteIcon(name, bites) {
 const SWING_ROW = {axe: "axe", sword: "axe", spear: "axe", pickaxe: "axe", hoe: "hoe", watering_can: "water"};
 function drawEntity(p, sx, sy, S, t, now) {
   const e = p.e, x = Math.round(sx(p.x)), z = zoom;
-  let y = Math.round(sy(p.y, p.x));
+  let y = Math.round(bodyY(p, sy));                            // (relief.js: where a body stands in its tile)
   if (x < -S * 2 || x > W + S * 2 || y < -S * 2 || y > H + S * 2) return;
   const moving = now - p.moved < 300;
   const j = jumping(p);                                        // up or down a layer, a person or a creature alike (jump.js)
@@ -89,8 +89,8 @@ function drawEntity(p, sx, sy, S, t, now) {
       if (pose.biting && p.lastBite !== pose.n) {
         p.lastBite = pose.n; sfx("eat", p.x, p.y);
         const mx = p.x + .5 + (p.fx || 0) * .28, cols = spriteColors([ghostIcon(action.item), 0, 0, 16, 16]);
-        for (let i = 0; i < 4; i++) parts.push({x: mx + (Math.random() - .5) * .25, y: p.y + .35, vx: (Math.random() - .5) * .8,
-          vy: -.3 - Math.random() * .6, g: 9, floor: p.y + .85 + Math.random() * .1, life: .5 + Math.random() * .3, age: 0, c: cols[i % cols.length], s: 1});
+        for (let i = 0; i < 4; i++) parts.push({x: mx + (Math.random() - .5) * .25, y: p.y + .35 - UP, vx: (Math.random() - .5) * .8,
+          vy: -.3 - Math.random() * .6, g: 9, floor: p.y + .85 - UP + Math.random() * .1, life: .5 + Math.random() * .3, age: 0, c: cols[i % cols.length], s: 1});
       }
     } else if (tool === "place" || tool === "pick_up" || tool === "give" || tool === "store" || tool === "take" || tool === "drop") {
       bob = Math.round(Math.sin(Math.min(1, k * 5) * Math.PI) * 3) * z;
@@ -104,7 +104,7 @@ function drawEntity(p, sx, sy, S, t, now) {
         frame = Math.floor(now / ms) % 8;
         if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms) && !swimsAt(p, e) && !j) {     // (a swimmer has no footsteps: swim.js; nor has a hop)
           p.lastStep = Math.floor(now / ms);
-          burst(p.x, p.y + .35, "dust", running ? 3 : 2, {up: .6, spread: running ? 2 : 1.2, g: 2, life: .35});
+          burst(p.x, p.y + .35 - UP, "dust", running ? 3 : 2, {up: .6, spread: running ? 2 : 1.2, g: 2, life: .35});
           if (mine) sfx(STEP[gndAt(Math.round(p.x), Math.round(p.y))] || "step");
         }
       } else frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
@@ -123,6 +123,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     if (swimsAt(p, e)) { drawSwimmer(p, e, sheetImg, x, y, z, now, sx, sy); return; }      // (swim.js)
     p.swam = false;
     if (e.sail) {                                     // in a boat: the hull, a wake when moving, and the sailor sitting in it
+      y += STAND * z;                                 // (the boat is where a moored one is drawn: in the middle of its water)
       const movingB = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
       const bf = movingB ? Math.floor(now / 140) % 3 : Math.floor(now / 600) % 2, brow = movingB ? 64 : 32;
       ctx.save();
@@ -170,7 +171,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   }
 }
 function drawNameplate(p, sx, sy, S) {
-  const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(sy(p.y, p.x) - 9 * zoom);
+  const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(bodyY(p, sy) - 9 * zoom);
   if (x < -S || x > W + S || y < -S || y > H + S) return;
   ctx.font = "18px SproutPixel"; ctx.textAlign = "center";
   outlined(e.name, x, y, me && e.name === me ? "#fff1a8" : "#fff8e8");
@@ -184,7 +185,7 @@ function drawProgress(sx, sy, S) {
   const p = ents.get("agent" + myId); if (!p) return;
   const k = Math.min(1, (performance.now() - progress.t0) / progress.ms);
   if (k >= 1) { progress = null; return; }
-  const x = Math.round(sx(p.x) + S / 2 - 18), y = Math.round(sy(p.y, p.x) + S + 2);
+  const x = Math.round(sx(p.x) + S / 2 - 18), y = Math.round(bodyY(p, sy) + S + 2);
   ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 2, y - 2, 40, 9);
   ctx.fillStyle = "#e9cfa2"; ctx.fillRect(x, y, 36, 5);
   ctx.fillStyle = "#6aa66f"; ctx.fillRect(x, y, Math.round(36 * k), 5);

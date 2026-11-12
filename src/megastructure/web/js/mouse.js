@@ -5,13 +5,13 @@
 // =====================================================================================
 const mouse = {x: 0, y: 0, in: false};
 let drag = null;
-function tileAtScreen(mx, my) {
+function tileAtScreen(mx, my) {                        // -> {x, y, fy: how far down the tile, 0 to 1}
   const S = TS(), [ox, oy] = screenOrigin(S), x = Math.floor((mx - ox) / S), y = Math.floor((my - oy) / S);
   for (let j = 6; j > 0; j--) {                        // a level drawn higher (relief.js): the tile shown here, frontmost
     const top = oy + (y + j) * S - liftAt(x, y + j);
-    if (my >= top && my < top + S) return {x, y: y + j};
+    if (my >= top && my < top + S) return {x, y: y + j, fy: (my - top) / S};
   }
-  return {x, y};
+  return {x, y, fy: (my - oy) / S - y};
 }
 cv.addEventListener("mousemove", (e) => {
   if (Math.abs(e.clientX - mouse.x) + Math.abs(e.clientY - mouse.y) > 4) inputMode = "mouse";   // the mouse is back

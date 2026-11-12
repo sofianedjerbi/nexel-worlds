@@ -6,10 +6,11 @@
 // tiles) every frame.
 
 // r, core: its radius (tiles) and the part of it that's clear. It comes when you're really hidden, not for an edge
-// that hides your legs or a post you walk past: body: your height over the foot of your tile (art px); from, full: the
-// share of you that's hidden where it starts and where it is whole (a ledge a layer high in front of you hides you
-// to the waist: nothing; two layers leave your ears: the circle); wait: seconds hidden before it comes
-const XRAY = {r: 3.1, core: .42, body: 20, from: .7, full: .8, wait: .15, far: 12};   // (far: tiles south to look for ground drawn up over you)
+// that hides your legs or a post you walk past: body: your height, feet to ears (art px; your feet are 2 + STAND over
+// the foot of your tile: relief.js); from, full: the share of you that's hidden where it starts and where it is whole
+// (a ledge a layer high in front of you hides your legs: nothing; two layers leave the top of your head: the circle);
+// wait: seconds hidden before it comes
+const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12};   // (far: tiles south to look for ground drawn up over you)
 const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, m: null, t: 0};   // how strong, the height you stand at, your row, its centre (tiles), its two pictures, how long you've been hidden
 
 // Ground you could be on, from where you stand: your height, a step up (a jump), anything lower. The rest is rock.
@@ -47,12 +48,12 @@ function xrayLook(dt) {
     for (const [tx, part] of [[Math.floor(p.x), 1 - f], [Math.floor(p.x) + 1, f]]) {
       let cover = 0;
       if (part > .001) for (let ty = row + 1; ty <= row + XRAY.far; ty++) cover = Math.max(cover, (levelAt(tx, ty) - L) * RELIEF_STEP - (ty - p.y - 1) * 16);
-      hidden += part * Math.min(1, cover / XRAY.body);
+      hidden += part * Math.max(0, Math.min(1, (cover - 2 - STAND) / XRAY.body));
     }
     want = Math.max(0, Math.min(1, (hidden - XRAY.from) / (XRAY.full - XRAY.from)));
     xray.t = want > 0 ? xray.t + dt : 0;
     if (xray.t < XRAY.wait && xray.a <= .01) want = 0;      // (a moment behind something: not yet)
-    if (want > 0 || xray.a > .01) { xray.L = L; xray.row = row; xray.x = p.x; xray.y = p.y - shOf(L) / 16 - .5; }   // (its centre: your body, where it is drawn)
+    if (want > 0 || xray.a > .01) { xray.L = L; xray.row = row; xray.x = p.x; xray.y = p.y - shOf(L) / 16 - .5 - UP; }   // (its centre: your body, where it is drawn)
   }
   xray.a += (want - xray.a) * (1 - Math.exp(-dt / .09));
   if (xray.a < .01 && !want && xray.a) { xray.a = 0; for (const b of blocks.values()) b.rock = b.rockGen = null; }   // (gone: the rock pictures with it)

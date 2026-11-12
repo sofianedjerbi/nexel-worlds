@@ -10,6 +10,13 @@
 const RELIEF_STEP = 8;                                       // art px a level
 const shOf = (L) => RELIEF_STEP * L;                          // how far up a level is drawn (a pit's, down): every layer the same step
 
+// Where a body stands in its tile, a person or a creature alike: STAND art px higher than its sheet puts it. The
+// sheets put the feet 2 px over the tile's bottom: the shadow on the line between two tiles, hanging off a ledge's
+// brink, a tile short of a wall to the north. So: feet 5 px over the bottom, in line with the rocks and crops beside
+// it, the body in the middle of its tile. UP: the same in tiles (its dust, what flies to it, where it is looked for).
+const STAND = 3, UP = STAND / 16;
+const bodyY = (p, sy) => sy(p.y, p.x) - STAND * zoom;         // a body's place on screen (the top of its tile, lifted with its ground, and STAND)
+
 // Something flying off from a spot (a puff, a spark, debris): it keeps the height of where it started, however it
 // drifts (it doesn't step up and down with the tiles it passes over)
 function liftFrom(o) { if (o.lift === undefined) o.lift = liftOf({x: o.x, y: o.y}); return o.lift; }
@@ -230,7 +237,7 @@ function clipBehind(p, sx, sy, S) {
   const x = Math.round(p.x), y = Math.round(p.y);
   if (inOpenCave(x, y) || (caveOpen && p.e.kind === "agent" && p.e.id === myId)) return false;   // (you, going in or out: no flicker)
   const L = standAt(x, y);                                // (between two tiles: the ground they are over: past its edge, a jump is on the higher one)
-  const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, feet = sy(p.y + 1) - shOf(L) * zoom + 4 * zoom, cols = [];
+  const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, feet = sy(p.y + 1) - shOf(L) * zoom + (4 - STAND) * zoom, cols = [];
   let any = false;
   for (let tx = x0; tx <= x1; tx++) {
     const edge = new Array(16).fill(Infinity);            // the top of the higher ground in front, at each px of this column

@@ -23,10 +23,10 @@ function jumpOf(p) {
 // Called as a body is drawn: dust as it leaves the ground, dust and a sound as it lands. -> its hop, or null
 function jumping(p) {
   const j = jumpOf(p), tx = Math.round(p.x), ty = Math.round(p.y);
-  if (j && p.jfrom === undefined) { p.jfrom = standAt(tx, ty); burst(p.x, p.y + .35, "dust", 3, {up: .8, spread: 1.6, g: 3, life: .3}); }
+  if (j && p.jfrom === undefined) { p.jfrom = standAt(tx, ty); burst(p.x, p.y + .35 - UP, "dust", 3, {up: .8, spread: 1.6, g: 3, life: .3}); }
   if (!j && p.jfrom !== undefined) {
     const down = standAt(tx, ty) < p.jfrom;
-    smoke(p.x, p.y + .35, down ? 4 : 3, down ? .4 : .3); sfx(down ? "thud" : "step", tx, ty);
+    smoke(p.x, p.y + .35 - UP, down ? 4 : 3, down ? .4 : .3); sfx(down ? "thud" : "step", tx, ty);
     p.jfrom = p.jpose = undefined;
   }
   return j;

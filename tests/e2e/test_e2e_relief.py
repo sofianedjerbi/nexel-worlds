@@ -35,8 +35,10 @@ def test_world_to_screen_is_lifted_in_one_place(game):
       const sy = (yy, xx) => oy + yy * S - (xx === undefined ? 0 : liftOf({{x: xx, y: yy}}));
       return [sy({y - 3}), sy({y - 3}, {x}), liftAt({x}, {y - 3})]; }})()""")
     assert abs((r[0] - r[1]) - r[2]) < 1e-6 and r[2] > 0
-    for f in ("drawEntity", "drawNameplate", "drawLoot"):          # the things in the world go through it
-        assert "sy(p.y, p.x)" in game.js(f"{f}.toString()") or "sy(l.y, l.x)" in game.js(f"{f}.toString()")
+    for f in ("drawEntity", "drawNameplate", "drawLoot"):          # the things in the world go through it (a body: through bodyY, which is sy and where a body stands in its tile)
+        src = game.js(f"{f}.toString()")
+        assert "bodyY(p, sy)" in src or "sy(l.y, l.x)" in src
+    assert "sy(p.y, p.x)" in game.js("bodyY.toString()")
 
 
 def test_picked_up_items_fly_smoothly_on_high_ground(game):

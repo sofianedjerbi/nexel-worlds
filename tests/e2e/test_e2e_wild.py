@@ -78,3 +78,23 @@ def test_a_creature_comes_up_a_step_as_you_do(game):
     game.sleep(600)
     assert game.server()["hp"] < 100
     assert not game.errors
+
+
+def test_everybody_stands_three_px_up_in_their_tile(game):
+    """A body's sheet puts its feet 2 px over the bottom of its tile (its shadow on the line between two tiles, off the
+    brink of a ledge). People and creatures alike are drawn STAND px higher (relief.js bodyY), and what goes with
+    where they stand follows: pointing at the lower half of the tile above someone means them."""
+    game.clear_area(8)
+    cow = game.spawn("cow", 2, 0, still=200)
+    game.sleep(500)
+    x, y = game.pos()
+    assert game.js("STAND") == 3
+    drawn = game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), sy = (yy, xx) => oy + yy * S - (xx === undefined ? 0 : liftOf({{x: xx, y: yy}})), tops = {{}};
+      const d = ctx.drawImage; ctx.drawImage = function (img, ...a) {{ if (window.__who && a.length === 8) (tops[__who] = tops[__who] || []).push((a[5] - sy({y})) / zoom); return d.call(ctx, img, ...a); }};
+      for (const [k, p] of ents) if (p.e && (p.e.id === myId || p.e.id === {cow})) {{ window.__who = p.e.kind; drawEntity(p, (v) => ox + v * S, sy, S, 0, performance.now()); }}
+      window.__who = null; ctx.drawImage = d; return {{agent: Math.min(...tops.agent), cow: Math.min(...tops.cow)}}; }})()""")
+    assert drawn["agent"] == -18 - 3 and drawn["cow"] == -16 - 3, drawn     # (art px from the top of the tile to the top of the sheet's cell: 3 higher)
+    S, ox, oy = game.js("TS()"), *game.js("screenOrigin()")
+    aim = lambda fy: game.js(f"(() => {{ const p = aimAt(tileAtScreen({ox + (x + 2) * S + S / 2}, {oy + (y - 1) * S} + {fy} * {S}), false); return [p.x, p.y]; }})()")
+    assert aim(.8) == [x + 2, y] and aim(.2) == [x + 2, y - 1]       # its head and shoulders, over the tile above it; the ground further up
+    assert not game.errors

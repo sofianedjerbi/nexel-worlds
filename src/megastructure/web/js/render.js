@@ -154,7 +154,7 @@ function frame(now) {
   for (const b of bubbles) {
     const p = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === b.name); if (!p) continue;
     const text = b.text.length > 60 ? b.text.slice(0, 58) + "…" : b.text, w = ctx.measureText(text).width;
-    const bx = Math.round(sx(p.x) + S / 2), by = Math.round(sy(p.y, p.x) - 26 * zoom / 3 - 22 - b.slot * 26);
+    const bx = Math.round(sx(p.x) + S / 2), by = Math.round(bodyY(p, sy) - 26 * zoom / 3 - 22 - b.slot * 26);
     ctx.globalAlpha = Math.min(1, (7 - (t - b.t)) * 2);
     ctx.fillStyle = b.shout ? "#ffe3a3" : "#fff6e2"; ctx.strokeStyle = "#5b3f36"; ctx.lineWidth = 2;
     roundRect(bx - w / 2 - 9, by - 16, w + 18, 23, 4); ctx.fill(); ctx.stroke();
@@ -208,7 +208,7 @@ function drawNight(vis, sx, sy, S, t) {
   ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = "lighter";
   const glow = (x, y, r, c, a) => { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); };
-  for (const p of ents.values()) if (p.e && p.e.kind === "agent") glow(sx(p.x) + S / 2, sy(p.y, p.x) + S / 2, S * 3, "255,214,150", .22 * dark);
+  for (const p of ents.values()) if (p.e && p.e.kind === "agent") glow(sx(p.x) + S / 2, bodyY(p, sy) + S / 2, S * 3, "255,214,150", .22 * dark);
   const lights = [...fireAt];
   for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") lights.push({x: b.bx * B + i % B, y: b.by * B + (i / B | 0)});
   for (const {x, y} of lights) { const f = .9 + .1 * Math.sin(t * 13 + x); glow(sx(x) + S / 2, sy(y, x) + S / 2, S * 4.5 * f, "255,160,70", .45 * dark); }

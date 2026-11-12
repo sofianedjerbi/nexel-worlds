@@ -16,14 +16,14 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   p.running = false;                                         // nobody sprints in water (the server will not either)
   if (!p.swam) {                                             // going in: a splash
     p.swam = true; p.wake = [];
-    burst(p.x, p.y + .3, "water", 10, {up: 2.6, spread: 3, g: 7, life: .5});
+    burst(p.x, p.y + .3 - UP, "water", 10, {up: 2.6, spread: 3, g: 7, life: .5});
     sfx("water", Math.round(p.x), Math.round(p.y));          // one splash going in; after that only the strokes are heard
   }
   // the wake: a mark dropped every few steps of the way, each one two flecks of foam drifting apart and fading
   if (moving && (!p.wake.length || now - p.wake[p.wake.length - 1].t > SWIM.wakeEvery)) p.wake.push({x: p.x, y: p.y, t: now, across: !!p.fy});
   while (p.wake.length && now - p.wake[0].t > SWIM.wakeLife) p.wake.shift();
   for (const w of p.wake) {
-    const a = (now - w.t) / SWIM.wakeLife, wx = Math.round(sx(w.x)) + 8 * z, wy = Math.round(sy(w.y, w.x)) + 13 * z, d = Math.round(2 + a * 7) * z;
+    const a = (now - w.t) / SWIM.wakeLife, wx = Math.round(sx(w.x)) + 8 * z, wy = Math.round(sy(w.y, w.x)) + (13 - STAND) * z, d = Math.round(2 + a * 7) * z;
     ctx.globalAlpha = (1 - a) * .85;
     ctx.fillStyle = a < .35 ? "#ffffff" : "#d8f4ff";
     if (w.across) { ctx.fillRect(wx - d - z, wy, 2 * z, z); ctx.fillRect(wx + d, wy, 2 * z, z); }      // swimming up or down: foam to the left and right
@@ -36,7 +36,7 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   ctx.fillRect(x + 3 * z, shY, 10 * z, 2 * z); ctx.fillRect(x + 5 * z, shY - z, 6 * z, 4 * z);
   if (moving && stroke !== p.lastStroke) {                   // a stroke: a splash beside them, a side each time
     const side = stroke % 2 ? .35 : -.35;
-    burst(p.x + (p.fy ? side : -p.fx * .2), p.y + .35 + (p.fx ? side * .4 : 0), "water", 3, {up: 1.4, spread: 1.6, g: 6, life: .35});
+    burst(p.x + (p.fy ? side : -p.fx * .2), p.y + .35 - UP + (p.fx ? side * .4 : 0), "water", 3, {up: 1.4, spread: 1.6, g: 6, life: .35});
     if (stroke % 2) sfx("swim", Math.round(p.x), Math.round(p.y));      // a soft pull, every second stroke; treading water is silent
   }
   p.lastStroke = stroke;
