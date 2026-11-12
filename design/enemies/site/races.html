@@ -80,17 +80,14 @@ const RACES = [
   {key: "cat", name: "Cat", tag: "in the game", col: {}, perk: "none: the one everybody is now",
     text: "The player as it is today: pointed ears with pink inside, whiskers, a collar with a bell.", head() {}},
   {key: "bunny", name: "Bunny", tag: "suggestion", col: {a: "#8a6f8f", b: "#fbf3ee", d: "#e6d9dc", c: "#f2a9b4", e: "#f6cfd0"}, perk: "hops down a ledge without the landing pause",
-    text: "Two long ears with rounded tips, pink inside, leaning apart; their tips swing a pixel behind each step. Side on they lean back, one behind the other. From behind, a white tuft of a tail. It keeps the whiskers.",
+    text: "Two long, straight ears with rounded tips, pink inside. Side on, the far ear shows as a shaded edge behind the near one. From behind, a white tuft of a tail. It keeps the whiskers.",
     head(H, A) {
       H.round();
-      // An ear: nine rows, a rounded tip, pink down the inside. `out` is the way it leans (-1 left, 1 right): its top three rows
-      // lean a pixel that way, and as the bunny walks the tip straightens and leans again (it trails the bob).
+      // An ear: nine rows, straight, a rounded tip, pink down the inside. `out` says which side the pink is on (-1 left, 1 right).
       const SHAPE = [".aa.", "abba", "abca", "abca", "abca", "abca", "abca", ".aba", ".aba"];
-      const swing = A.walk ? [0, 1, 1, 0, 0, -1, -1, 0][A.col] : A.col === 5 ? 1 : 0;
       const ear = (x0, out, fill = "b", pink = true, dy = 0) => SHAPE.forEach((row, i) => {
-        const lean = Math.max(-1, Math.min(1, (i < 3 ? out : 0) + (i < 2 ? swing : 0)));      // never more than a pixel: no kink
         [...(out > 0 ? row : [...row].reverse().join(""))].forEach((ch, j) => {
-          if (ch !== ".") H.put(x0 + j + lean, A.sy - 9 + i + 1 + dy, ch === "c" ? (pink ? "c" : fill) : ch === "b" ? fill : "a"); });
+          if (ch !== ".") H.put(x0 + j, A.sy - 9 + i + 1 + dy, ch === "c" ? (pink ? "c" : fill) : ch === "b" ? fill : "a"); });
       });
       if (A.side) {                              // side on they lean back; the far ear shows behind the near one, in shade
         const back = A.facing === "right" ? -1 : 1;
