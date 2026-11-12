@@ -771,3 +771,10 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Seen on the way, not changed: land the screen already holds is only asked again every 30 s, so a big change just outside your view (my test's pond) can be stale for that long.
 - Not measured: a real phone (frame rate there is still unknown).
 
+## Iteration 63: behind a mountain, a circle round you is seen through it
+- User: "When going behind huge Walls and mountains, add a x-ray aura circle around the player, fading around him."
+- Before: behind higher ground you were cut at its edge (clipBehind): behind a cliff of 2 layers or more, gone.
+- Change (new js/xray.js): when the ground in front (south) covers more than half of you (8 art px starts it, 14 is whole), a circle of 3 tiles round you shows what is behind: the land painted again, small, with the ground in the way cut down to your height (its footprint the earth colour of its walls, outlined: still a wall; a single layer up, a step you can jump, only shaded), you and whoever is beside you drawn whole, trees and creatures standing on the cut ground faded out. Only where the hill really covers what is behind it; the rest of the screen is untouched. It fades in rings (pixel steps, not a blur) and comes and goes in about 0.2 s. Nothing is cached or rebuilt: 0.12 ms a frame.
+- Result: steady at full strength while sprinting along behind a wall (120 frames, min 1.00); gone two tiles out from behind a 4-layer hill. 277 unit green. Browser suite, full run: 85/88 after adapting the "a hill hides you" test (it now turns the circle off); the three that failed (boat launch, random play, and the known mute test) are not the same ones as the run before (old mossback) and the first two pass alone, the boat one 4 times in 4: the full run is flaky on this loaded machine.
+- Not done: walls people build (they are a tile high, sprites: they never hide you whole). Terraces rising a layer a tile never cover you enough to start it.
+

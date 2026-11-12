@@ -176,3 +176,25 @@ def test_a_pickaxe_cuts_a_tunnel_into_a_wall(game):
     game.sleep(600)
     s = game.server()
     assert s["in_cave"] and s["z"] == 0 and (s["x"], s["y"]) == (x, y - 1) and game.js("caveOpen")
+
+
+def test_behind_a_mountain_you_are_seen_through_it(game):
+    """Behind a wall or a mountain you were cut at its edge: gone. A circle round you is seen through it (xray.js),
+    fading toward its edge: you show, on the ground you stand on; out from behind it, the circle goes."""
+    game.clear_area(10)
+    game.stamp(-5, 1, ["." * 11] * 4, levels=["66666666666"] * 4)   # a wall 6 layers high, right in front (south) of you
+    game.sleep(900)
+    look = """(() => { const k = DPR, w = Math.round(48 * k), d = ctx.getImageData(Math.round(W / 2 * k) - w / 2, Math.round(H / 2 * k) - w / 2, w, w).data;
+      return Array.from(d); })()"""
+    assert game.js("xray.a") > .95
+    seen = game.js(look)
+    game.js("(() => { XRAY.from = 1e9; XRAY.full = 2e9; return 1; })()")          # without it: the wall, and nothing of you
+    game.sleep(700)
+    assert game.js("xray.a") == 0
+    hidden = game.js(look)
+    assert sum(1 for a, b in zip(seen[::4], hidden[::4]) if abs(a - b) > 24) > len(seen) / 4 * .3
+    game.js("(() => { XRAY.from = 8; XRAY.full = 14; return 1; })()")
+    game.hold(["w"], 900)                                              # out from behind it
+    game.sleep(600)
+    assert game.js("xray.a") == 0
+    assert not game.errors

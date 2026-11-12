@@ -67,6 +67,7 @@ function frame(now) {
   drawWater(vis.filter((b) => b.relief), ox, oy, t);    // the sea: its bottom, its depth, its light (water.js); the land goes over it
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
   drawCaves(vis, sx, sy);                            // (their mouths; the one you're in, seen through its roof)
+  xrayLook(dt); drawXray(sx, sy);                    // (behind a mountain: a circle round you seen through it, xray.js)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B)));
   const allShown = vis.every((b) => !onScreen(b) || b.relief);
@@ -104,6 +105,7 @@ function frame(now) {
       }
       const sh = shakes.get(key);
       if (sh !== undefined && o.spr[0] !== IMG.tree_anim) { const k = (now - sh) / 1000; if (k < .25) px += Math.round(Math.sin(k * 60) * (1 - k * 4) * 1.5) * zoom; }
+      if (xrayCut(o.x, o.ty)) ctx.globalAlpha = 1 - xrayOn(o.x, o.ty);       // (on the ground you're seen through: it fades too)
       ctx.drawImage(img, a, b2, w, h, Math.round(px), Math.round(py), Math.round(ww), Math.round(hh));
       ctx.globalAlpha = 1;
     }
@@ -119,7 +121,10 @@ function frame(now) {
       names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), Math.round(cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom), Math.round((cy - sz / 2 - bob) * DPR) / DPR, sz, sz));
     }
     else if (o.fx) o.fx();
-    else { const cut = clipBehind(o.p, sx, sy, S); drawEntity(o.p, sx, sy, S, t, now); if (cut) ctx.restore(); }
+    else {
+      const see = xraySees(o.p); if (see < 0) continue;
+      const cut = !see && clipBehind(o.p, sx, sy, S); drawEntity(o.p, sx, sy, S, t, now); if (cut) ctx.restore();
+    }
   }
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
     const px = sx(f.x), py = sy(f.y, f.x), tall = "TF".includes(combAt(f.x, f.y) || "");

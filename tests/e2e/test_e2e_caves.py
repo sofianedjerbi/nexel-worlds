@@ -83,7 +83,10 @@ def test_a_way_out_to_the_north_shows_right_through_the_hills_border(game):
 
 
 def test_standing_behind_a_hill_it_hides_you(game):
+    """(As it hides anyone: you yourself are shown through it, in a circle (xray.js, turned off here; its own test is
+    in test_e2e_relief.py).)"""
     game.clear_area(9)
+    game.js("(() => { XRAY.from = 1e9; XRAY.full = 2e9; return 1; })()")
     x, y = game.pos()
     game.stamp(-3, 1, ["......."] * 4, levels=["4444444"] * 4)                         # a hill just south of you
     game.sleep(900)
