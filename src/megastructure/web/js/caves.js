@@ -219,13 +219,26 @@ function buildCaveOverlay(b) {
   if (fc) { caveShade(f, o, fc.width); g.drawImage(fc, 0, 0); }
   return c;
 }
+// The part of a block's overlay that can have anything in it: round its hollow tiles, as far as an opening, its
+// shadow, the ground seen behind it (three tiles north) and the block's highest lift reach
+function caveBox(b, size) {
+  let x0 = size, y0 = size, x1 = 0, y1 = 0;
+  for (const key in b.col) {
+    const X = OV_M + (key % B) * 16, Y = OV_M + (key / B | 0) * 16;
+    x0 = Math.min(x0, X - 40); x1 = Math.max(x1, X + 56); y0 = Math.min(y0, Y - 64 - b.relief.up); y1 = Math.max(y1, Y + 48);
+  }
+  x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+  return [x0, y0, Math.max(1, Math.min(size, x1) - x0), Math.max(1, Math.min(size, y1) - y0)];
+}
 // Called each frame after the ground: each block's caves, a picture a block (redrawn only when it changed)
 function drawCaves(vis, sx, sy) {
   for (const b of vis) {
     if (!b.col || !b.relief) continue;
     const key = (b.ver || 0) + ":" + caveStamp;
-    if (b.caveKey !== key) { b.caveKey = key; b.caveOv = buildCaveOverlay(b); }
-    if (b.caveOv) ctx.drawImage(b.caveOv, sx(b.bx * B) - OV_M * zoom, sy(b.by * B) - OV_M * zoom, b.caveOv.width * zoom, b.caveOv.height * zoom);
+    if (b.caveKey !== key) { b.caveKey = key; b.caveOv = buildCaveOverlay(b); b.caveBox = b.caveOv && caveBox(b, b.caveOv.width); }
+    if (!b.caveOv) continue;
+    const [cx, cy, cw, ch] = b.caveBox;                  // (only the part of it round its hollow tiles: the rest is empty)
+    ctx.drawImage(b.caveOv, cx, cy, cw, ch, sx(b.bx * B) + (cx - OV_M) * zoom, sy(b.by * B) + (cy - OV_M) * zoom, cw * zoom, ch * zoom);
   }
 }
 // Where you are, on screen: X, Y (the tile) and Z (the height you stand at)

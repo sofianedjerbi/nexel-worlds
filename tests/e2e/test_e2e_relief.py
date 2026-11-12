@@ -198,3 +198,24 @@ def test_behind_a_mountain_you_are_seen_through_it(game):
     game.sleep(600)
     assert game.js("xray.a") == 0
     assert not game.errors
+
+
+def test_a_frame_paints_the_screen_a_few_times_over_not_ten(game):
+    """What a weak GPU pays for is paint. Over water every layer of it (bottom, wobble, two nets of light, tint, two
+    of waves) was painted at the screen's size, and the old water under every block besides: ten screens of paint a
+    frame. The water is put together small and blown up once (water.js); a block's raised ground and its caves are
+    painted only where they have something."""
+    game.clear_area(10)
+    game.stamp(-16, -10, ["~" * 33] * 21)
+    game.sleep(1500)
+    screens = game.js("""(() => { const scr = cv.width * cv.height; let px = 0;
+      const area = (x, y, w, h) => { const m = ctx.getTransform(), x0 = m.a * x + m.e, y0 = m.d * y + m.f, x1 = m.a * (x + w) + m.e, y1 = m.d * (y + h) + m.f;
+        return Math.max(0, Math.min(Math.max(x0, x1), cv.width) - Math.max(Math.min(x0, x1), 0)) * Math.max(0, Math.min(Math.max(y0, y1), cv.height) - Math.max(Math.min(y0, y1), 0)); };
+      const d = ctx.drawImage, raf = window.requestAnimationFrame;
+      ctx.drawImage = function (img, ...a) { const k = a.length >= 8 ? 4 : 0; px += area(a[k], a[k + 1], a.length >= 4 ? a[k + 2] : img.width, a.length >= 4 ? a[k + 3] : img.height); return d.call(ctx, img, ...a); };
+      ctx.fillRect = function (x, y, w, h) { px += area(x, y, w, h); return CanvasRenderingContext2D.prototype.fillRect.call(ctx, x, y, w, h); };
+      window.requestAnimationFrame = () => 0;
+      try { frame(performance.now()); } finally { window.requestAnimationFrame = raf; ctx.drawImage = d; delete ctx.fillRect; }
+      return px / scr; })()""")
+    assert 1.5 < screens < 4.5, screens                      # (it was 9.8 over the sea)
+    assert not game.errors

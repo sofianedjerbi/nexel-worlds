@@ -3,7 +3,7 @@
 // =====================================================================================
 //  Frame
 // =====================================================================================
-let lastT = performance.now(), waterPatterns = null, arrivingNow = true;
+let lastT = performance.now(), arrivingNow = true;
 const pileSince = new Map();   // when each pile on the ground was first shown (its hover starts from rest)
 function frame(now) {
   requestAnimationFrame(frame);
@@ -55,15 +55,9 @@ function frame(now) {
   // world to screen. sy(y, x): give the x too and the point is lifted with the ground there (relief.js): everything
   // standing in the world goes through this, so on high ground it is drawn, picked up, killed... where you see it
   const sx = (x) => ox + x * S, sy = (y, x) => oy + y * S - (x === undefined ? 0 : liftOf({x, y}));
-  // animated water underneath everything
-  if (!waterPatterns) waterPatterns = [0, 1, 2, 3].map((f) => { const c = document.createElement("canvas"); c.width = c.height = 16; c.getContext("2d").drawImage(IMG.water, f * 16, 0, 16, 16, 0, 0, 16, 16); return ctx.createPattern(c, "repeat"); });
-  // underneath: plain dark (what hasn't come yet is not the sea); under each block that's ready, its water (or, down
-  // there, its rock), so the sea shows only where there is sea
+  // underneath: plain dark (what hasn't come yet is not the sea). The sea is painted on it where there is sea
+  // (water.js: its bottom is under every water tile and every shore), the land over that
   ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H);
-  ctx.save(); ctx.translate(ox, oy); ctx.scale(zoom, zoom);
-  ctx.fillStyle = waterPatterns[Math.floor(t * 3) % 4];
-  for (const b of vis) if (b.relief) ctx.fillRect(b.bx * B * 16, b.by * B * 16, B * 16, B * 16);
-  ctx.restore();
   drawWater(vis.filter((b) => b.relief), ox, oy, t);    // the sea: its bottom, its depth, its light (water.js); the land goes over it
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
   drawCaves(vis, sx, sy);                            // (their mouths; the one you're in, seen through its roof)

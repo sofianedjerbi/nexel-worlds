@@ -84,6 +84,7 @@ function bedTile(g, x, y, u, ox, oy, under) {      // one tile of the bottom
 function waterLayer(b) {
   if (b.water && b.water.ver === b.ver) return b.water;
   const n = B * 16, x0 = b.bx * B, y0 = b.by * B, foam = [], glints = [], rows = new Array(B).fill(false);
+  const box = [B, B, -1, -1];                                       // the tiles of the block with water (or shallows): x0, y0, x1, y1
   const old = b.water || {}, c = old.canvas || document.createElement("canvas"), bed = old.bed || document.createElement("canvas");
   c.width = c.height = n; bed.width = bed.height = n + 32;          // (the bottom has a tile of margin: it slides when it wobbles)
   const g = c.getContext("2d"), bg = bed.getContext("2d");
@@ -100,6 +101,7 @@ function waterLayer(b) {
     bedTile(bg, x, y, u, (lx + 1) * 16, (ly + 1) * 16, under);
     if (lx < 0 || ly < 0 || lx >= B || ly >= B) continue;
     any = rows[ly] = true;
+    box[0] = Math.min(box[0], lx); box[1] = Math.min(box[1], ly); box[2] = Math.max(box[2], lx); box[3] = Math.max(box[3], ly);
     if (u < 0) continue;
     for (const [dx, dy, side] of [[0, -1, 0], [1, 0, 1], [0, 1, 2], [-1, 0, 3]]) if (isLand(gndAt(x + dx, y + dy))) foam.push([lx, ly, side, hash(x, y, 30 + side)]);
     if (hash(x, y, 20) < .4) glints.push([lx * 16 + Math.floor(hash(x, y, 21) * 14), ly * 16 + 1 + Math.floor(hash(x, y, 22) * 13), hash(x, y, 23)]);
@@ -115,55 +117,73 @@ function waterLayer(b) {
     g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
     g.drawImage(s, .5, .5, B + 1, B + 1, -8, -8, n + 16, n + 16);
   }
-  return (b.water = {ver: b.ver, canvas: c, bed, any, foam, glints, rows});
+  return (b.water = {ver: b.ver, canvas: c, bed, any, foam, glints, rows, box: box.map((v, i) => (v + (i > 1)) * 16)});
 }
+// All of it is art pixels (the patterns slide by whole ones), so it is put together small, a pixel an art pixel, on a
+// canvas the size of the view (and only where a block has water), then blown up onto the screen in one go: painting
+// each layer at the screen's size was seven screens of paint a frame wherever a block in view held a puddle.
+let waterCv = null;
 function drawWater(vis, ox, oy, t) {
   if (!causticPat) { causticPat = causticPattern(); wavePat = wavePattern(); }
-  const drift = (pat, dx, dy, alpha, X, Y, n) => {                  // a tiling pattern, slid by whole pixels
+  const vx = Math.floor(-ox / zoom) - 1, vy = Math.floor(-oy / zoom) - 1, vw = Math.ceil(W / zoom) + 3, vh = Math.ceil(H / zoom) + 3;   // the view, in art px
+  let g = null, ux0 = 1e9, uy0 = 1e9, ux1 = -1e9, uy1 = -1e9;       // (and the part of it with water in it)
+  const drift = (pat, dx, dy, alpha, x, y, w, h) => {               // a tiling pattern, slid by whole pixels
     const mx = ((Math.round(dx) % 64) + 64) % 64, my = ((Math.round(dy) % 64) + 64) % 64;
-    ctx.globalAlpha = alpha;
-    ctx.save(); ctx.translate(mx, my); ctx.fillStyle = pat; ctx.fillRect(X - mx, Y - my, n, n); ctx.restore();
+    g.globalAlpha = alpha;
+    g.save(); g.translate(mx, my); g.fillStyle = pat; g.fillRect(x - mx, y - my, w, h); g.restore();
   };
-  ctx.save(); ctx.translate(ox, oy); ctx.scale(zoom, zoom);
-  ctx.imageSmoothingEnabled = false;
   for (const b of vis) {
     if (!b.canvas || !b.gnd) continue;
     const w = waterLayer(b), n = B * 16, X = b.bx * n, Y = b.by * n, st = WATER.strip;
     if (!w.any) continue;
-    ctx.drawImage(w.bed, 16, 16, n, n, X, Y, n, n);                 // the bottom, then the same in strips that slide: refraction
-    for (let ly = 0; ly < B; ly++) if (w.rows[ly]) for (let k = 0; k < 16; k += st) {
-      const py = ly * 16 + k, dx = Math.round(Math.sin(t * 1.5 + (Y + py) * .09) * WATER.wobble);
-      if (dx) ctx.drawImage(w.bed, 16 + dx, 16 + py, n, st, X, Y + py, n, st);
+    const x0 = Math.max(X + w.box[0], vx), y0 = Math.max(Y + w.box[1], vy), x1 = Math.min(X + w.box[2], vx + vw), y1 = Math.min(Y + w.box[3], vy + vh);
+    if (x1 <= x0 || y1 <= y0) continue;                             // (its water isn't in view)
+    if (!g) {
+      if (!waterCv) waterCv = document.createElement("canvas");
+      if (waterCv.width !== vw || waterCv.height !== vh) { waterCv.width = vw; waterCv.height = vh; }
+      g = waterCv.getContext("2d");
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.clearRect(0, 0, vw, vh);
+      g.translate(-vx, -vy); g.imageSmoothingEnabled = false;
     }
-    ctx.globalCompositeOperation = "lighter";      // light through the surface, on the bottom
-    drift(causticPat, t * 5, t * 3, WATER.caustics[0], X, Y, n);
-    drift(causticPat, -t * 4, t * 6, WATER.caustics[1], X, Y, n);
-    ctx.globalCompositeOperation = "source-over";
-    ctx.globalAlpha = 1;
-    ctx.drawImage(w.canvas, X, Y);                 // the water itself
-    drift(wavePat, t * 4, Math.sin(t * .6) * 2, WATER.waves[0], X, Y, n);         // the surface
-    drift(wavePat, 32 - t * 2.5, 21 + Math.cos(t * .5) * 2, WATER.waves[1], X, Y, n);
-    ctx.fillStyle = WATER.foam;
+    ux0 = Math.min(ux0, x0); uy0 = Math.min(uy0, y0); ux1 = Math.max(ux1, x1); uy1 = Math.max(uy1, y1);
+    const bw = x1 - x0, bh = y1 - y0;
+    g.save(); g.beginPath(); g.rect(x0, y0, bw, bh); g.clip();
+    // the bottom, in strips that slide: refraction
+    for (let ly = Math.floor((y0 - Y) / 16); ly * 16 < y1 - Y; ly++) if (w.rows[ly]) for (let k = 0; k < 16; k += st) {
+      const py = ly * 16 + k, dx = Math.round(Math.sin(t * 1.5 + (Y + py) * .09) * WATER.wobble);
+      g.drawImage(w.bed, 16 + x0 - X + dx, 16 + py, bw, st, x0, Y + py, bw, st);
+    }
+    g.globalCompositeOperation = "lighter";        // light through the surface, on the bottom
+    drift(causticPat, t * 5, t * 3, WATER.caustics[0], x0, y0, bw, bh);
+    drift(causticPat, -t * 4, t * 6, WATER.caustics[1], x0, y0, bw, bh);
+    g.globalCompositeOperation = "source-over";
+    g.globalAlpha = 1;
+    g.drawImage(w.canvas, x0 - X, y0 - Y, bw, bh, x0, y0, bw, bh);  // the water itself
+    drift(wavePat, t * 4, Math.sin(t * .6) * 2, WATER.waves[0], x0, y0, bw, bh);         // the surface
+    drift(wavePat, 32 - t * 2.5, 21 + Math.cos(t * .5) * 2, WATER.waves[1], x0, y0, bw, bh);
+    g.fillStyle = WATER.foam;
     for (const [gx, gy, h] of w.glints) {          // glints of sun, each on its own time
       const s = Math.sin(t * 2.2 + h * 40);
       if (s < .86) continue;
-      ctx.globalAlpha = .95;
-      ctx.fillRect(X + gx, Y + gy, 2, 1);
-      if (s > .95) { ctx.fillRect(X + gx, Y + gy - 1, 1, 3); ctx.globalAlpha = .5; ctx.fillRect(X + gx - 1, Y + gy, 4, 1); }
+      g.globalAlpha = .95;
+      g.fillRect(X + gx, Y + gy, 2, 1);
+      if (s > .95) { g.fillRect(X + gx, Y + gy - 1, 1, 3); g.globalAlpha = .5; g.fillRect(X + gx - 1, Y + gy, 4, 1); }
     }
     for (const [lx, ly, side, h] of w.foam) {      // foam along the shore, coming in and going out
       const wave = Math.sin(t * 1.4 + h * 6.28), inset = wave > .2 ? 2 : 1, px = X + lx * 16, py = Y + ly * 16;
       const a = 2 + Math.floor(h * 5), len = 16 - a - Math.floor(h * 3);          // not a ruled line: it starts and stops
       for (const [off, alpha] of [[0, .5 + .35 * wave], [1, .22 + .15 * wave]]) {  // a bright line, a paler one behind it
-        ctx.globalAlpha = alpha;
+        g.globalAlpha = alpha;
         const i = inset + off * 2;
-        if (side === 0) ctx.fillRect(px + a + off, py + i - 1, len - off * 2, 1);
-        else if (side === 2) ctx.fillRect(px + a + off, py + 16 - i, len - off * 2, 1);
-        else if (side === 3) ctx.fillRect(px + i - 1, py + a + off, 1, len - off * 2);
-        else ctx.fillRect(px + 16 - i, py + a + off, 1, len - off * 2);
+        if (side === 0) g.fillRect(px + a + off, py + i - 1, len - off * 2, 1);
+        else if (side === 2) g.fillRect(px + a + off, py + 16 - i, len - off * 2, 1);
+        else if (side === 3) g.fillRect(px + i - 1, py + a + off, 1, len - off * 2);
+        else g.fillRect(px + 16 - i, py + a + off, 1, len - off * 2);
       }
     }
-    ctx.globalAlpha = 1;
+    g.restore();
   }
-  ctx.restore();
+  if (!g) return;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(waterCv, ux0 - vx, uy0 - vy, ux1 - ux0, uy1 - uy0, ox + ux0 * zoom, oy + uy0 * zoom, (ux1 - ux0) * zoom, (uy1 - uy0) * zoom);
 }

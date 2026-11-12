@@ -135,7 +135,20 @@ function* reliefSteps(b) {                             // (a step a level, so no
     fg.drawImage(t, 0, off);
     yield;
   }
-  b.relief = {flat, up, maxLv, minLv};
+  // where that picture has anything in it (a small hill in a wide plain: the rest is not painted, frame after frame):
+  // the raised tiles, their ledges beside them, their walls down to the lowest ground
+  let box = null;
+  if (flat) {
+    let x0 = Wb, y0 = flat.height, x1 = 0, y1 = 0;
+    for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {
+      const l = levelAt(b.bx * B + tx, b.by * B + ty); if (l <= minLv) continue;
+      x0 = Math.min(x0, tx * 16 - LEDGE * SIDE_MAX); x1 = Math.max(x1, tx * 16 + 16 + LEDGE * SIDE_MAX);
+      y0 = Math.min(y0, ty * 16 + up - shOf(l)); y1 = Math.max(y1, ty * 16 + 17 + up - shOf(minLv));
+    }
+    x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(Wb, x1); y1 = Math.min(flat.height, y1);
+    if (x1 > x0 && y1 > y0) box = [x0, y0, x1 - x0, y1 - y0];
+  }
+  b.relief = {flat: box && flat, up, maxLv, minLv, box};
 }
 let scratch = null;                                    // (canvases to build a level on, kept: one set for every block)
 function reliefScratch(Wb) {
@@ -161,8 +174,8 @@ function drawBlockRelief(b, sx, sy, S) {
   }
   if (!b.relief) return;
   ctx.drawImage(b.canvas, X, Y - shOf(b.relief.minLv) * zoom, B * S, B * S);
-  const f = b.relief.flat;
-  if (f) ctx.drawImage(f, X, Y - b.relief.up * zoom, B * S, f.height * zoom);
+  const f = b.relief.flat, [fx, fy, fw, fh] = b.relief.box || [];
+  if (f) ctx.drawImage(f, fx, fy, fw, fh, X + fx * zoom, Y + (fy - b.relief.up) * zoom, fw * zoom, fh * zoom);
 }
 // Someone standing behind higher ground (it is south of them, drawn up over where they stand) is behind it: what of
 // them is under its top edge isn't drawn. Called before drawing them: clips the canvas, a strip a tile column, down to
