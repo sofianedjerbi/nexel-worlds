@@ -110,35 +110,31 @@ const RACES = [
       if (A.side) { const f = A.facing === "right" ? A.hmax - 1 : A.hmin + 1, s = A.facing === "right" ? -1 : 1;
         for (let y = 6; y <= 7; y++) for (let x = 0; x < 2; x++) H.put(f + s * x, A.sy + y, "m", "bde"); H.put(f, A.sy + 6, "n"); }
     }},
-  {key: "frog", name: "Frog", tag: "suggestion", col: {a: "#2a6a5a", b: "#6fcf9a", d: "#4fb083", c: "#6fcf9a", e: "#6fcf9a"}, perk: "wades through shallow water at walking speed",
-    text: "No ears: two big eyes bulge from the top of the head. A wide flat mouth, two nostrils, a pale chin and belly, darker spots down its back. A bluer green than the grass, so it stands out on it.",
+  {key: "frog", name: "Frog", tag: "suggestion", col: {a: "#2f6672", b: "#74c9bd", d: "#4aa3a0", c: "#74c9bd", e: "#74c9bd"}, perk: "wades through shallow water at walking speed",
+    text: "Built like the game's own hopper, in its colours: a round head with two low bumps on top and a dark eye in each, a soft wide mouth, pink cheeks, a pale belly, spots down its back. No ears, no whiskers.",
     head(H, A) {
       H.round(); H.whiskers(); H.eyes(); H.plain();
-      // An eye: a bump four wide and three tall on top of the head, white with a dark pupil on the side it looks to.
-      const eye = (x0, pupil) => {               // pupil: 0 on the left of the eye, 1 on the right
-        H.put(x0 + 1, A.sy - 3, "a"); H.put(x0 + 2, A.sy - 3, "a");
-        for (const y of [-2, -1]) { H.put(x0, A.sy + y, "a"); H.put(x0 + 3, A.sy + y, "a");
-          for (const j of [0, 1]) H.put(x0 + 1 + j, A.sy + y, A.facing === "up" ? (y === -2 && j === 0 ? "d" : "b") : j === pupil ? "n" : "w"); }
-        H.put(x0, A.sy, "a", "a"); H.put(x0 + 1, A.sy, "b"); H.put(x0 + 2, A.sy, "b");
+      // A bump: four wide, two tall, part of the head's own outline (not a stalk), with the eye in it: two dark pixels, one above the other.
+      const bump = (x0, ex) => {
+        H.put(x0 + 1, A.sy - 2, "a"); H.put(x0 + 2, A.sy - 2, "a"); H.put(x0, A.sy - 1, "a"); H.put(x0 + 3, A.sy - 1, "a");
+        for (const j of [1, 2]) { H.put(x0 + j, A.sy - 1, "b"); H.put(x0 + j, A.sy, "b"); }
+        if (A.facing !== "up") { H.put(x0 + ex, A.sy - 1, "n"); H.put(x0 + ex, A.sy, "n"); }
       };
-      if (A.facing === "down" || A.facing === "up") {
-        eye(A.hmin + 1, 1); eye(A.hmax - 4, 0);
+      if (!A.side) {
+        bump(A.hmin + 1, 2); bump(A.hmax - 4, 1);
         if (A.facing === "down") {
-          for (let x = A.hmin + 3; x <= A.hmax - 3; x++) H.put(x, A.sy + 6, "a", "bde");                       // the mouth
-          H.put(A.cx - 2, A.sy + 4, "d", "b"); H.put(A.cx + 1, A.sy + 4, "d", "b");                             // nostrils
-          for (let y = A.sy + 7; y < A.k; y++) for (let x = A.hmin + 2; x <= A.hmax - 2; x++) H.put(x, y, "y", "b");   // the chin
+          for (let x = A.hmin + 4; x <= A.hmax - 4; x++) H.put(x, A.sy + 5, "d", "b");                      // the mouth: a shade, not a line
+          H.put(A.hmin + 2, A.sy + 4, "p", "b"); H.put(A.hmax - 2, A.sy + 4, "p", "b");                     // cheeks
         } else for (const [x, y] of [[-3, 3], [-2, 3], [1, 5], [2, 5], [-1, 7], [3, 2]]) H.put(A.cx + x, A.sy + y, "d", "b");   // spots
       } else {
-        const right = A.facing === "right", f = right ? A.hmax - 1 : A.hmin + 1, s = right ? -1 : 1;           // f: the front of the face
-        eye(right ? A.hmax - 4 : A.hmin + 1, right ? 1 : 0);
-        for (let x = 0; x < 5; x++) { H.put(f + s * x, A.sy + 6, "a", "bde"); for (let y = A.sy + 7; y < A.k; y++) H.put(f + s * x, y, "y", "b"); }
-        H.put(f, A.sy + 4, "d", "b");
-        for (const [x, y] of [[1, 3], [2, 3], [1, 6]]) H.put((right ? A.hmin : A.hmax) - s * x, A.sy + y, "d", "b");   // spots at the back
+        const right = A.facing === "right", f = right ? A.hmax - 1 : A.hmin + 1, s = right ? -1 : 1;        // f: the front of the face
+        bump(right ? A.hmax - 5 : A.hmin + 2, right ? 2 : 1);                                               // one bump, just behind the brow
+        for (let x = 0; x < 3; x++) H.put(f + s * x, A.sy + 5, "d", "b");                                   // the mouth, from the front of the face
       }
       H.belly();
     }},
 ];
-const EXTRA = {w: "#fffdf4", m: "#f1dfbd", n: "#3a2a30", y: "#f4f3c4"};        // white, muzzle, nose and pupil, belly
+const EXTRA = {w: "#fffdf4", m: "#f1dfbd", n: "#3a2a30", y: "#f4f3c4", p: "#f2a9b4"};        // white, muzzle, nose and pupil, belly
 
 // ---------------------------------------------------------------- reading the cat's frames, and rebuilding the head
 let base, sheets = {}, analysis = [];
