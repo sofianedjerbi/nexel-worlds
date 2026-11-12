@@ -194,19 +194,37 @@ def test_no_jumping_up_out_through_a_low_ceiling(world):
     assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.height(a) == 1
 
 
-def test_a_walk_first_makes_the_step_you_were_finishing(world):
-    """A player who lets go of a key mid-step and presses another: the walk says which tile they were stepping into
-    (`from`), and that step is made first (it was dropped: their screen had them a column away from where they were)."""
+def test_the_world_retraces_the_way_a_screen_walked(world):
+    """A player's screen walks without waiting for the world (which may answer late) and says where it went: the tile
+    it turned at (`walk`'s `from`), the tile it stopped on (`stop`'s `at`), numbered. The world makes them first, in
+    order, a stride a tile, and says how far it got (via_done): it ends where the screen is."""
     sim, a = world
     x, y = a.x, a.y
-    sim.submit(a, "walk", {"dir": "S", "from": [x + 1, y]})
-    for _ in range(7):
+    sim.submit(a, "walk", {"dir": "S", "from": [x + 2, y, 1]})                   # the screen turned two tiles on...
+    sim.submit(a, "walk", {"dir": "E", "from": [x + 2, y + 2, 2]})               # ...and again, before the world got to the first
+    t0 = sim.tick
+    while (a.x, a.y) != (x + 4, y + 2) and sim.tick < t0 + 40:
         sim.step()
-    assert a.x == x + 1 and a.y > y                                              # east one, then south
-    sim.submit(a, "stop", {})
+        assert a.y == y or a.x >= x + 2                                          # along the row, then down: no cutting the corner
+    assert (a.x, a.y) == (x + 4, y + 2) and a.via_done == 2 and not a.via and sim.tick - t0 >= 6 * 2 - 1   # 6 tiles, a stride each
+    done = []
+    sim.submit(a, "stop", {"at": [x + 6, y + 2, 3]}, on_done=done.append)        # let go two tiles further on
+    for _ in range(6):
+        sim.step()
+    assert (a.x, a.y) == (x + 6, y + 2) and done[0]["ok"] and a.via_done == 3
+    sim.submit(a, "walk", {"dir": "S", "from": [x + 4, y + 4, 4]})               # not straight ahead: given up
+    for _ in range(3):
+        sim.step()
+    assert a.x == x + 6 and a.y > y + 2 and a.via_done == 4                      # (it walks on from where it is)
+    sim.submit(a, "stop", {"at": [x + 6, y - 4, 5]})
     sim.step()
-    x, y = a.x, a.y
-    sim.submit(a, "walk", {"dir": "S", "from": [x + 3, y]})
-    for _ in range(5):
+    sim.submit(a, "move_to", {"x": a.x, "y": a.y})                               # doing something else: the way is dropped
+    here = (a.x, a.y)
+    for _ in range(4):
         sim.step()
-    assert a.x == x and a.y > y                                                  # not beside you: ignored
+    assert (a.x, a.y) == here and not a.via and a.via_done == 5
+    sim.submit(a, "stop", {"at": [a.x, a.y + 3, 6]})                             # let go, then straight back (`cut`) before
+    sim.submit(a, "walk", {"dir": "N", "cut": True})                             # the world set off: that tile isn't made
+    for _ in range(4):
+        sim.step()
+    assert a.y < here[1] and a.via_done == 6

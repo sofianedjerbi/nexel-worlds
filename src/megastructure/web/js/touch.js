@@ -66,7 +66,7 @@ if (TOUCH) {
       const h = Math.abs(dx) > Math.abs(dy) * (stick.dir === "N" || stick.dir === "S" ? 1.3 : 1 / 1.3);
       dir = h ? (dx > 0 ? "E" : "W") : (dy > 0 ? "S" : "N");
     }
-    const run = d > STICK_RUN;
+    const run = d > (runKey ? STICK_RUN - 14 : STICK_RUN);     // (sticky: a thumb resting on the line doesn't flick between the two)
     if (dir !== stick.dir || run !== runKey) { stick.dir = dir; setDir(dir, run); }
   });
   const release = (e) => {

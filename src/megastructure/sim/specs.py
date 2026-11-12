@@ -20,7 +20,7 @@ DIR_ARG = {"dir": "N|E|S|W"}
 TOOL_SPECS = {
     "step": {"args": {**DIR_ARG, "run": "bool (optional, sprint: 2x speed)"}, "desc": "move one tile"},
     "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped"},
-    "stop": {"args": {}, "desc": "stop the current action"},
+    "stop": {"args": {}, "desc": "stop the current action"},   # (a player's screen also says walk's `from`, stop's `at`: Movement.follow)
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
     "dig_down": {"args": {"with": "pickaxe"}, "desc": "dig down where you stand (pickaxe in hand). The block "
                  "under your feet goes and you come down with it, on a hill or into a pit below sea level (down to "

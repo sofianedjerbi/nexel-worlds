@@ -85,7 +85,7 @@ setInterval(() => {
 }, 100);
 setInterval(() => { sendSpec({op: "agents"}); sendSpec({op: "metrics"}); }, 1500);
 
-let pred = null;
+let pred = null;             // {x, y, until}: the tile you stopped on, until the server is there too (walk.js)
 const recentlyGone = new Map();   // entities that just left the view (a death event may arrive after the tick)
 let groundItems = [], mailAt = new Set(), fireAt = [], troughAt = new Set();
 function onTick(d) {
@@ -101,9 +101,7 @@ function onTick(d) {
     let p = ents.get(key);
     if (!p) { p = {x: e.x, y: e.y, tx: e.x, ty: e.y, fx: 0, fy: 1, moved: 0}; ents.set(key, p); }
     p.e = e;
-    if (e.kind === "agent" && e.id === myId && pred) {
-      if ((e.x === pred.x && e.y === pred.y) || now > pred.until) pred = null; else { p.e = e; continue; }
-    }
+    if (e.kind === "agent" && e.id === myId && myTick(p, e, now)) continue;   // (your own walk is yours: walk.js)
     if (p.tx !== e.x || p.ty !== e.y) {
       const dx = Math.sign(e.x - p.tx), dy = Math.sign(e.y - p.ty);
       // animal sheets only walk sideways: going up or down they keep facing the way they last went

@@ -222,6 +222,10 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
             act.finish({"ok": False, "status": "failed", "error": "unknown_tool",
                         "detail": f"tools: {', '.join(TOOL_SPECS)}"}, self)
             return act
+        if tool in ("walk", "stop"):                    # where a player's screen turned, or stopped (Movement.follow): kept
+            if args.get("cut"):                         # now, were this replaced before it starts (`cut`: it turned
+                self.via_drop(a)                        # back before the tile it had stopped on: not made after all)
+            self.via_add(a, args.get("from" if tool == "walk" else "at"))
         act = Action(a, tool, args, fn(a, args), on_done)
         moving = a.action is not None and a.action.tool in MOVES
         if moving and tool not in MOVES and tool != "stop":
@@ -245,10 +249,13 @@ class Simulation(Persistence, Sessions, Movement, Progress, Spawning, Undergroun
                 self.passing = None
             a.action = walk                           # it needs time: stop walking, then carry on with it
             self.interrupt(a, f"replaced by {tool}")
+            self.via_drop(a)
             a.action = act
             return act
         if a.action is not None:
             self.interrupt(a, f"replaced by {tool}")
+        if tool not in ("walk", "stop"):
+            self.via_drop(a)                          # (the way a screen had walked: only walking on makes it)
         a.action = act
         return act
 

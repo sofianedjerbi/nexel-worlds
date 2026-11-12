@@ -72,6 +72,63 @@ def test_letting_go_and_pressing_another_key_never_stalls(game):
     assert corner > 7.5 and back > 6.5, (corner, back)        # (sprinting is 10 a second; it was 5.4 and 3)
 
 
+def stops(rec, ms=60):
+    """The pauses (ms) in a recorded walk, its ends left out."""
+    mid = [r for r in rec if rec[0][0] + 400 < r[0] < rec[-1][0] - 400]
+    out, i0 = [], 0
+    for i in range(1, len(mid)):
+        if abs(mid[i][1] - mid[i0][1]) + abs(mid[i][2] - mid[i0][2]) > 1e-6:
+            if mid[i][0] - mid[i0][0] > ms:
+                out.append(round(mid[i][0] - mid[i0][0]))
+            i0 = i
+    return out
+
+
+def test_swimming_never_goes_tile_by_tile(game):
+    """Nobody sprints in water. Sprint held (a phone's stick pushed far), your screen swam at sprint speed, got a
+    tile ahead of the server and waited for it, at every tile."""
+    game.clear_area(14)
+    game.stamp(-12, -1, ["~" * 25] * 3)
+    game.sleep(400)
+    page = game.page
+    game.start_recording()
+    page.keyboard.down("Shift")
+    page.keyboard.down("d")
+    game.sleep(1800)
+    page.keyboard.up("d")
+    page.keyboard.up("Shift")
+    rec = game.recording()
+    game.sleep(600)
+    assert not stops(rec), stops(rec)
+    assert game.pos() == (game.server()["x"], game.server()["y"])
+
+
+def test_late_ticks_do_not_stop_you(game):
+    """The server's word comes late and in lumps (a phone, a slow line): you walk on at your own pace (you were only
+    ever allowed a tile ahead of its last word: sprinting, you stopped at every tile), and you end where it has you."""
+    game.clear_area(14)
+    game.rpc("dev_teleport", x=game.pos()[0] - 12, y=game.pos()[1])
+    game.sleep(700)
+    game.js("(() => { const o = onTick, q = []; onTick = (d) => q.push(d); setInterval(() => { for (const d of q.splice(0)) o(d); }, 220); return 1; })()")
+    page = game.page
+    game.start_recording()
+    page.keyboard.down("Shift")
+    page.keyboard.down("d")
+    game.sleep(900)
+    page.keyboard.down("s")
+    game.sleep(600)
+    page.keyboard.up("s")
+    game.sleep(600)
+    page.keyboard.up("d")
+    page.keyboard.up("Shift")
+    rec = game.recording()
+    dist = sum(abs(b[1] - a[1]) + abs(b[2] - a[2]) for a, b in zip(rec, rec[1:]))
+    game.sleep(900)
+    assert not stops(rec), stops(rec)
+    assert dist > 17, dist                                    # (2.1 s sprinting: 21 tiles at full speed)
+    assert game.pos() == (game.server()["x"], game.server()["y"])
+
+
 def test_two_keys_never_slide_diagonally(game):
     for first, second in (("d", "w"), ("s", "a")):
         game.start_recording()

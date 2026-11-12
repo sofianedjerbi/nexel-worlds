@@ -44,7 +44,7 @@ async function refresh() {
   if (!r.ok) return;
   meObs = r.obs; const s = meObs.self;
   const p = ents.get("agent" + myId);                          // far from where the server has you (another level,
-  if (p && !pred && Math.abs(p.tx - s.x) + Math.abs(p.ty - s.y) > 4) {   // a teleport): be there
+  if (p && !pred && !(walking && p.walking) && Math.abs(p.tx - s.x) + Math.abs(p.ty - s.y) > 4) {   // a teleport): be there
     p.x = p.tx = s.x; p.y = p.ty = s.y; cam.x = camT.x = s.x; cam.y = camT.y = s.y;
   }
   $("mode").textContent = `${s.name} · ${s.x}, ${s.y}${s.sheltered ? " · sheltered" : ""}`;
@@ -61,6 +61,7 @@ function facingTo(p) {  // the direction to look when working on p (the bigger a
 }
 async function act(tool, args, quiet) {
   if (!me) return null;
+  while (pred && performance.now() < pred.until) await new Promise((ok) => setTimeout(ok, 16));   // the server is still coming to where you stopped: what you do, you do from there
   if (actTarget && "dir" in args) { args = {...args, x: actTarget.x, y: actTarget.y}; delete args.dir; }
   const look = actTarget ? facingTo(actTarget) : args.dir;
   const s0 = myPos(), dv = args.dir && DIRV[args.dir];

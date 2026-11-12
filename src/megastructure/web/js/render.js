@@ -10,31 +10,7 @@ function frame(now) {
   const dt = Math.min(.1, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
   for (const p of ents.values()) {
-    if (p.e && p.e.kind === "agent" && p.e.id === myId && walking && p.walking) {
-      // your own walk: glide at exactly the stride speed, never more than a tile ahead of the server. Turning
-      // mid-step first finishes the tile you were walking into, in a straight line (like the server does), then
-      // turns: no diagonal slide when two keys are held.
-      const [wx, wy] = DIRV[walking.dir], ahead0 = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
-      // a jump up is hard going (60% longer a step), a drop careful (20%): as the server paces it (SLOPE_UP/DOWN)
-      const h0 = myZ(Math.round(p.tx), Math.round(p.ty)), h1 = landAt(h0, ahead0.x, ahead0.y, Math.round(p.tx), Math.round(p.ty)), climb = h1 === null ? 0 : h1 - h0, jump = climb > 0;
-      // exactly as the server paces it, in its 0.1 s ticks: a stride of 1 tick (running) or 2 (walking), and a jump up
-      // or a drop that many more, rounded (SLOPE_UP/DOWN): so you never run ahead of yourself and wait
-      const base = walking.run ? 1 : 2, ticks = base + (jump ? Math.round(base * .6) : climb < 0 ? Math.round(base * .2) : 0);
-      const spd = 10 / ticks, step = spd * dt;
-      const side = wx ? "y" : "x", along = wx ? "x" : "y", cur = p[side];
-      // the lane is the server's own row (column): its walk starts from the tile it is on, so lining up anywhere
-      // else (say, the tile you were bumping into) would walk you along between two rows
-      const lane = Math.round(wx ? p.ty : p.tx);
-      if (Math.abs(cur - lane) > 1e-3) {
-        p[side] = cur + Math.sign(lane - cur) * Math.min(step, Math.abs(lane - cur));
-        continue;
-      }
-      p[side] = lane;
-      const next = p[along] + (wx || wy) * step, ahead = (next - (wx ? p.tx : p.ty)) * (wx || wy);
-      const edge = {x: Math.round(p.tx) + wx, y: Math.round(p.ty) + wy};
-      if (ahead <= (walkable(edge.x, edge.y, Math.round(p.tx), Math.round(p.ty)) ? 1 : 0)) p[along] = next;
-      continue;
-    }
+    if (p.e && p.e.kind === "agent" && p.e.id === myId && walking && p.walking) { walkOn(p, dt, now); continue; }   // your own walk (walk.js)
     const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
     // people walk 5 tiles/s (10 sprinting); animals amble, so each of their steps takes most of the pause between them
     // (a scared animal: exactly the server's pace, a tile every FLEE_STRIDE: slower and it fell behind, then snapped)

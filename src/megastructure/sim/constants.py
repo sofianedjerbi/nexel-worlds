@@ -24,7 +24,8 @@ EVENT_QUEUE = 60
 MAX_TEXT = 200
 
 TARGET_R = 3         # actions aimed at x, y: tiles.USE_R plus one, to absorb a walking client's lead
-MOVES = ("walk", "move_to", "step")   # movement: quick actions happen alongside it instead of stopping it
+MOVES = ("walk", "move_to", "step", "stop")   # movement (stop: walking to where the player's screen stopped): quick actions happen alongside it instead of stopping it
+VIA_FAR, VIA_MAX = 8, 8               # a tile a screen walked to: how far it may be from the last, and how many are kept (Movement.follow)
 ATTACK_COOLDOWN = 0.4    # seconds between two swings
 EAT_SECONDS = 0.9    # eating takes a moment (three bites; it can be interrupted)
 CAN_SIZE = 12        # waterings per fill

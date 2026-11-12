@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from .constants import FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, sec
+from .constants import FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
 
@@ -128,19 +128,9 @@ class Movement:
         if d not in DIRS:
             raise ActionError("bad_args", "dir must be one of N, E, S, W")
         dx, dy = DIRS[d]
-        steps = 0
-        # `from`: the tile beside you that you were stepping into when you turned (a player who lets go of one key
-        # and presses another mid-step: the step that was under way is made first, then the walk: without it the
-        # step was dropped, and the player's screen and the world disagreed about the column they were in)
-        via = args.get("from")
-        if isinstance(via, (list, tuple)) and len(via) == 2 and all(isinstance(v, int) for v in via) \
-                and abs(via[0] - a.x) + abs(via[1] - a.y) == 1 and self.can_go(a, *via):
-            yield from self.pace(a, args)
-            if self.can_go(a, *via):
-                fall = self.move(a, *via)
-                steps += 1
-                if fall:
-                    return {"steps": steps, "stopped": "fell", **fall}
+        steps, fall = yield from self.follow(a, args)            # (first, the way your screen has already walked: `from`)
+        if fall:
+            return {"steps": steps, "stopped": "fell", **fall}
         while steps < 600:
             if not self.can_go(a, a.x + dx, a.y + dy):
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
@@ -154,8 +144,53 @@ class Movement:
         return {"steps": steps, "stopped": "limit"}
 
     def _tool_stop(self, a, args):
-        yield from ()  # completes at once; submitting it interrupts whatever was running
-        return {}
+        """Submitting it interrupts whatever was running. With `at` (a player's screen: the tile it stopped on), the
+        way there is made first."""
+        if "at" not in args:
+            self.via_drop(a)
+            return {}
+        steps, fall = yield from self.follow(a, args)
+        return {"steps": steps, **fall}
+
+    # A player's screen walks ahead of the world (web/js/walk.js: it doesn't wait for an answer, which may come late)
+    # and says where it went: the tiles it turned at (`walk`'s `from`) and stopped on (`stop`'s `at`), each [x, y, n],
+    # n counting up. They are kept in order (a.via) and made first, a stride a tile, in straight lines, so the world
+    # ends where the screen is. a.via_done says how far it got (the screen is told: views.py).
+
+    def via_add(self, a: Agent, tile):
+        if isinstance(tile, (list, tuple)) and len(tile) in (2, 3) and all(type(v) is int for v in tile) and len(a.via) < VIA_MAX:
+            a.via.append((tile[0], tile[1], tile[2] if len(tile) == 3 else a.via_done))
+
+    def via_drop(self, a: Agent):
+        if a.via:
+            a.via_done = a.via[-1][2]
+            a.via.clear()
+
+    def follow(self, a: Agent, args):
+        """Make the way in a.via. -> (steps made, what a fall did to you). A tile that isn't straight ahead, or too
+        far, or behind a wall: the way is given up (the screen then comes back to where the world has you)."""
+        steps = 0
+        while a.via:
+            x, y, n = a.via[0]
+            dx, dy = x - a.x, y - a.y
+            if not dx and not dy:
+                a.via.pop(0)
+                a.via_done = n
+                continue
+            to = (a.x + (dx > 0) - (dx < 0), a.y + (dy > 0) - (dy < 0))
+            if (dx and dy) or abs(dx) + abs(dy) > VIA_FAR or not self.can_go(a, *to):
+                self.via_drop(a)
+                break
+            yield from self.pace(a, args)
+            if not self.can_go(a, *to):
+                self.via_drop(a)
+                break
+            fall = self.move(a, *to)
+            steps += 1
+            if fall:
+                self.via_drop(a)
+                return steps, fall
+        return steps, {}
 
     def _tool_move_to(self, a, args):
         try:

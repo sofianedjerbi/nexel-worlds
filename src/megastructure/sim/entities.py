@@ -36,6 +36,8 @@ class Agent:
     # runtime only
     action: "Action | None" = field(default=None, repr=False)
     ready: int = field(default=0, repr=False)   # first tick the next stride may start (movement cooldown)
+    via: list = field(default_factory=list, repr=False)   # (x, y, n): tiles a player's screen has already walked to, to make in order (Movement.follow)
+    via_done: int = field(default=0, repr=False)   # the number of the last of them reached (or given up)
     swing_ready: int = field(default=0, repr=False)   # first tick the next attack may land
     events: list = field(default_factory=list, repr=False)
     online: bool = False
