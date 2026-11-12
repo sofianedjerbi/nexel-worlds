@@ -25,7 +25,7 @@ $("say").addEventListener("keydown", (e) => {
   if (line.startsWith("/")) {
     const parts = line.slice(1).match(/(?:[^\s"]+|"[^"]*")+/g) || [], tool = parts.shift(), args = {};
     for (const p of parts) { const [k, ...v] = p.split("="); const val = v.join("=").replace(/^"|"$/g, ""); args[k] = /^-?\d+$/.test(val) ? +val : val; }
-    act(tool, args);
+    if (!localCommand(tool)) act(tool, args);              // (/coords, /grid: debug.js; anything else is an action)
   } else if (line.startsWith("!")) act("shout", {text: line.slice(1).trim()});
   else act("say", {text: line});
 });

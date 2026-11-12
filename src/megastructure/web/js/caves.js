@@ -243,9 +243,3 @@ function drawCaves(vis, sx, sy) {
     ctx.drawImage(b.caveOv, cx, cy, cw, ch, sx(b.bx * B) + (cx - OV_M) * zoom, sy(b.by * B) + (cy - OV_M) * zoom, cw * zoom, ch * zoom);
   }
 }
-// Where you are, on screen: X, Y (the tile) and Z (the height you stand at)
-let xyzText = "";
-function showXYZ() {
-  const t = myAt ? `X ${myAt.x}  Y ${myAt.y}  Z ${myAt.z}` : "";
-  if (t !== xyzText) { xyzText = t; $("xyz").textContent = t; }
-}

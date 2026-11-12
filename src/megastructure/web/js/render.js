@@ -138,6 +138,7 @@ function frame(now) {
   drawHouses(sx, sy, S, dt, now);
   drawCaveDark(vis, sx, sy, S, t);                   // (the cave you're in: dark past where daylight reaches)
   drawNight(vis, sx, sy, S, t);
+  drawGrid(sx, sy, S);                             // (/grid: debug.js)
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   drawSelector(aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null, sx, sy, now);

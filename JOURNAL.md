@@ -845,3 +845,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Also: someone between two tiles is behind the hill in front by the ground they are over, not the lower of the two (relief.js clipBehind): hopping onto a ledge in front of you, you were hidden until you had landed.
 - Result, on the real frames: up a step, 11 frames of even rise and fall (183 ms), no pop; onto a ledge in front, over its edge and down on it; off it, out and down. Walking up a step and on: 3.1 tiles or more in 0.7 s (under 3 before). Tests: the arc's shape, the shadow, the pace. 293 unit, browser 98/98.
 
+## Iteration 73: /coords and /grid
+- User: "make coordinates showable with /coords command system and /grid to show grid for debugging".
+- The chat line already sent any /word as an action to the server (/dig dir=N). Change (new js/debug.js): /coords and /grid are done in the page, each on until typed again and kept between visits. /coords: X, Y and the height Z you stand at, top right, with the tile you aim at and its height (it was always shown; it is now off until asked for). /grid: every tile outlined where it is drawn, lifted with its ground, its height written in it, and the borders of the 32-tile blocks in orange. Listed in the help.
+- Tests: a browser test types both, and /dig dir=N to see the rest still goes to the server. 295 unit, browser 99/99.
+

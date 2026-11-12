@@ -93,3 +93,26 @@ def test_actions_make_their_sounds(game):
     game.sleep(800)
     heard = set(game.js("__snd"))
     assert {"rustle", "collect", "chop", "creak", "fallthud", "ui"} <= heard, heard
+
+
+def test_coords_and_grid_are_typed_in_the_chat_line(game):
+    """/coords and /grid are debugging aids, off until asked for (js/debug.js); any other /word is still an action."""
+    say = lambda line: (game.page.keyboard.press("Enter"), game.page.keyboard.type(line), game.page.keyboard.press("Enter"), game.sleep(300))
+    game.js("(() => { DEBUG.coords = DEBUG.grid = false; return 1; })()")
+    game.sleep(200)
+    x, y = game.pos()
+    assert game.js("$('xyz').textContent") == ""
+    say("/coords")
+    assert game.js("$('xyz').textContent").startswith(f"X {x}  Y {y}  Z 0") and game.js("localStorage.getItem('megastructure-coords')") == "1"
+    say("/coords")
+    assert game.js("$('xyz').textContent") == ""
+    lines = "(() => { let n = 0; ctx.strokeRect = function (...a) { n++; return CanvasRenderingContext2D.prototype.strokeRect.apply(ctx, a); }; return new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => { delete ctx.strokeRect; ok(n); }))); })()"
+    assert game.js(lines) == 0
+    say("/grid")
+    assert game.js("DEBUG.grid") and game.js(lines) > 100      # a tile, an outline
+    say("/grid")
+    assert game.js(lines) == 0
+    game.stamp(0, -1, ["f"])
+    say("/dig dir=N")                                          # (not one of ours: sent to the server)
+    game.sleep(400)
+    assert game.inv("flower") == 1 and not game.errors
