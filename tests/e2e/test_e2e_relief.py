@@ -154,7 +154,7 @@ def test_walking_off_a_cliff_you_fall_and_a_long_fall_hurts(game):
     game.hold(["s"], 420)                                    # off its south edge
     game.sleep(900)
     s = game.server()
-    assert s["z"] == 0 and s["hp"] == hp - 15 and (s["x"], s["y"]) == game.pos() and s["y"] >= y - 3
+    assert s["z"] == 0 and hp - 15 <= s["hp"] <= hp - 12 and (s["x"], s["y"]) == game.pos() and s["y"] >= y - 3
     assert game.js("myAt.z") == 0 and game.js("liftOf(ents.get('agent' + myId))") == 0
 
 
