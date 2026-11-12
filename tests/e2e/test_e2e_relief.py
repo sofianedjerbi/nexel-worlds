@@ -270,3 +270,24 @@ def test_the_circle_shows_only_the_hidden_ground(game):
     assert rock == look(-1, 0)                                # rock: the same, circle or not
     assert ground != look(0, -2)                              # hidden ground: the circle showed it
     assert not game.errors
+
+
+def test_the_circle_never_touches_ground_that_already_shows(game):
+    """Behind a wall three layers high: its top covers you and half of the row behind you. The circle shows what it
+    covers; a pixel further back, where the ground shows anyway, is the same with the circle or without (it was cut
+    out in whole tile columns with a margin: seams and dark lines in open ground and open water)."""
+    game.clear_area(10)
+    game.stamp(-3, 1, ["." * 7] * 2, levels=["3333333"] * 2)
+    game.sleep(1200)
+    x, y = game.pos()
+    look = lambda dx, dy, rows: game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), out = [];
+      for (const k of {rows}) for (const i of [3, 8, 13]) out.push(...ctx.getImageData(Math.round((ox + {x + dx} * S + i * zoom) * DPR), Math.round((oy + {y + dy} * S + k * zoom) * DPR), 1, 1).data.slice(0, 3));
+      return out; }})()""")
+    assert game.js("xray.a") > .95
+    shows, covered = look(1, -1, [1, 3, 5]), look(1, 0, [4, 8, 12])      # beside you: behind the wall's top edge, and under it
+    game.js("(() => { XRAY.from = 9; XRAY.full = 10; return 1; })()")
+    game.sleep(700)
+    assert game.js("xray.a") == 0
+    assert shows == look(1, -1, [1, 3, 5])
+    assert covered != look(1, 0, [4, 8, 12])
+    assert not game.errors

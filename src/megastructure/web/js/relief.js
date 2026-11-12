@@ -77,6 +77,23 @@ function dilateH(m, w, h, n) {
 // a +3 shows three edges on every side), then its own tiles on top, where you stand. Worked out over the block and a
 // tile round it, so ledges cross block borders.
 const LEDGE = 4, SIDE_MAX = 2;
+// A level's shape in a block and a tile round it (a byte a px, 1 where it is): `own`, its own tiles, from its sheet's
+// cells; `sh`, that and the ledges of the levels above it (shape: those, already worked out)
+function levelShape(b, k, shape) {
+  const M = 16, Wm = B * 16 + 2 * M, own = new Uint8Array(Wm * Wm), sheet = hillSheet(k);
+  for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {
+    const x = b.bx * B + tx, y = b.by * B + ty;
+    if (levelAt(x, y) < k) continue;
+    const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, ux, uy) => levelAt(ux, uy) >= k)), a = cellAlpha(sheet, cx, cy);
+    const ox = (tx + 1) * 16, oy = (ty + 1) * 16;
+    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) if (a[j * 16 + i]) own[(oy + j) * Wm + ox + i] = 1;
+  }
+  // (round it, the layers over it stick out a ledge each: SIDE_MAX of them at the most, so a cliff's side never
+  // reaches further than half a tile onto the ground beside it, where people stand)
+  const sh = new Uint8Array(own);
+  for (let n = 1; n <= SIDE_MAX; n++) if (shape[k + n]) { const d = dilateH(shape[k + n].own, Wm, Wm, LEDGE * n); for (let i = 0; i < sh.length; i++) sh[i] = sh[i] || d[i]; }
+  return {own, sh};
+}
 function* reliefSteps(b) {                             // (a step a level, so no frame waits on a whole block)
   const M = 16, Wb = B * 16, Wm = Wb + 2 * M;
   let maxLv = -99, minLv = 0;                          // (the block's ground canvas is drawn at its lowest level)
@@ -84,22 +101,7 @@ function* reliefSteps(b) {                             // (a step a level, so no
     const l = levelAt(b.bx * B + tx, b.by * B + ty); maxLv = Math.max(maxLv, l); minLv = Math.min(minLv, l);
   }
   const shape = {};
-  for (let k = maxLv; k > minLv; k--) {                    // the shapes, from the top down: each grows round the one above
-    const own = new Uint8Array(Wm * Wm), sheet = hillSheet(k);
-    for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {    // its own tiles' shape, from the sheet's cells
-      const x = b.bx * B + tx, y = b.by * B + ty;
-      if (levelAt(x, y) < k) continue;
-      const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, ux, uy) => levelAt(ux, uy) >= k)), a = cellAlpha(sheet, cx, cy);
-      const ox = (tx + 1) * 16, oy = (ty + 1) * 16;
-      for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) if (a[j * 16 + i]) own[(oy + j) * Wm + ox + i] = 1;
-    }
-    // (round it, the layers over it stick out a ledge each: SIDE_MAX of them at the most, so a cliff's side never
-    // reaches further than half a tile onto the ground beside it, where people stand)
-    const sh = new Uint8Array(own);
-    for (let n = 1; n <= SIDE_MAX; n++) if (shape[k + n]) { const d = dilateH(shape[k + n].own, Wm, Wm, LEDGE * n); for (let i = 0; i < sh.length; i++) sh[i] = sh[i] || d[i]; }
-    shape[k] = {own, sh};
-    yield;
-  }
+  for (let k = maxLv; k > minLv; k--) { shape[k] = levelShape(b, k, shape); yield; }   // the shapes, from the top down: each grows round the one above
   // the raised levels, painted lowest first into one picture: `up` px taller than the block at its top (the highest
   // level's lift), the lowest level's worth at its foot
   const up = shOf(maxLv), flat = maxLv > minLv ? document.createElement("canvas") : null, fg = flat && flat.getContext("2d");
@@ -149,6 +151,33 @@ function* reliefSteps(b) {                             // (a step a level, so no
     if (x1 > x0 && y1 > y0) box = [x0, y0, x1 - x0, y1 - y0];
   }
   b.relief = {flat: box && flat, up, maxLv, minLv, box};
+}
+// Where a block's ground from level `from` up is drawn, in one colour: the same shapes, the same lifts as its picture
+// (rel: its relief), so it is that ground to the pixel, rounded edges, ledges and walls. (xray.js: to someone standing
+// lower, that is the rock the circle looks through.) Built the same way, a step a level.
+function* rockSteps(b, from, rel) {
+  const M = 16, Wb = B * 16, Wm = Wb + 2 * M, c = document.createElement("canvas"), shape = {};
+  c.width = Wb; c.height = Wb + rel.up - shOf(rel.minLv);
+  const g = c.getContext("2d"), mc = reliefScratch(Wb)[0];
+  for (let k = rel.maxLv; k >= Math.max(from, rel.minLv + 1); k--) {
+    const sh = (shape[k] = levelShape(b, k, shape)).sh, mask = new ImageData(Wb, Wb), md = mask.data;
+    for (let y = 0; y < Wb; y++) for (let x = 0; x < Wb; x++) if (sh[(y + M) * Wm + x + M]) md[(y * Wb + x) * 4 + 3] = 255;
+    mc.getContext("2d").putImageData(mask, 0, 0);
+    for (let s = 0; s <= RELIEF_STEP; s++) g.drawImage(mc, 0, rel.up - shOf(k) + s);   // its top, and its wall under it
+    yield;
+  }
+  return c;
+}
+// ...kept on the block while it's asked for (-> null while it is being worked out: a few ms a frame)
+function rockOf(b, from) {
+  const rel = b.relief;
+  if (b.rock && b.rock.of === rel && b.rock.from === from) return b.rock.canvas;
+  if (!b.rockGen || b.rockGen.of !== rel || b.rockGen.from !== from) { b.rockGen = rockSteps(b, from, rel); b.rockGen.of = rel; b.rockGen.from = from; }
+  for (const t0 = performance.now(); performance.now() - t0 < 4;) {
+    const r = b.rockGen.next();
+    if (r.done) { b.rock = {of: rel, from, canvas: r.value}; b.rockGen = null; return r.value; }
+  }
+  return b.rock && b.rock.from === from ? b.rock.canvas : null;      // (its land just changed: the one from before, meanwhile)
 }
 let scratch = null;                                    // (canvases to build a level on, kept: one set for every block)
 function reliefScratch(Wb) {

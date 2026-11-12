@@ -61,7 +61,7 @@ function frame(now) {
   drawWater(vis.filter((b) => b.relief), ox, oy, t);    // the sea: its bottom, its depth, its light (water.js); the land goes over it
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
   drawCaves(vis, sx, sy);                            // (their mouths; the one you're in, seen through its roof)
-  xrayLook(dt); drawXray(sx, sy);                    // (behind a mountain: a circle round you seen through it, xray.js)
+  xrayLook(dt); drawXray(vis, sx, sy);                    // (behind a mountain: a circle round you seen through it, xray.js)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B)));
   const allShown = vis.every((b) => !onScreen(b) || b.relief);
