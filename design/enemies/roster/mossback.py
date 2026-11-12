@@ -6,7 +6,7 @@ the shell sinks on each footfall, the head follows a frame late, the tree sways 
 Three attacks, each with its own warning:
   stomp   it rises on its legs and hangs there, then drops: a ring of dust, everything near is thrown back
   snap    the head pulls into the shell, eyes narrowed, then shoots out two tiles along the way it faces
-  shake   the shell shudders and the tree thrashes, leaves fly, and sporecaps tumble off its back
+  shake   it braces low with its head in and eyes shut, then the shell rocks over planted feet, the tree whips, leaves fly, and three sporelings (roster/sporeling.py) tumble off its back
 """
 import math
 
@@ -45,7 +45,7 @@ def shell(cx, bot, view, puff=0):
     return part(c)
 
 
-def garden(g, cx, bot, sway=0, puff=0, shed=False):
+def garden(g, cx, bot, sway=0, puff=0, shed=False, bare=False):
     """What grows on the shell: an apple tree (it sways), two mushrooms, flowers."""
     top = lambda x: round(dome_top(cx, bot, x, puff))
     t = canvas(W, H)
@@ -61,7 +61,7 @@ def garden(g, cx, bot, sway=0, puff=0, shed=False):
         if not shed or (x + y) % 2:
             dot(cn, tx + sway + x, cy + y, "a")
     g = over(g, part(cn, "O"))
-    for mx in (cx - 12, cx - 4):                                     # mushrooms
+    for mx in () if bare else (cx - 12, cx - 4):                     # mushrooms (gone once it has shaken them off)
         m = canvas(W, H)
         y = top(mx)
         for x in (mx, mx + 1):
@@ -101,12 +101,12 @@ def head(view, hx, hy, r=0.0, open_=False, angry=False, blink=False):
         g[hy - 1][hx - 3] = "k" if blink else "e"; g[hy - 2][hx - 3] = "o" if blink else "e"
         if angry:
             g[hy - 3][hx - 4] = g[hy - 4][hx - 3] = g[hy - 4][hx - 2] = "o"
-        g[hy + 1][hx - 1] = g[hy + 1][hx] = "p"
-        for x in range(hx - 7, hx - 2):
-            g[hy + 3][x] = "o"
+        g[hy][hx - 6] = "K"                                          # a nostril, and a beak: one flat line, no expression
+        for x in range(hx - 7, hx):
+            g[hy + 2][x] = "o"
         if open_:
-            for y in (hy + 2, hy + 3, hy + 4):
-                for x in range(hx - 7, hx - 2 - (y - hy - 2)):
+            for y in (hy + 3, hy + 4):
+                for x in range(hx - 7, hx - 2 - (y - hy - 3)):
                     if g[y][x] != ".":
                         g[y][x] = "m"
     else:
@@ -114,30 +114,30 @@ def head(view, hx, hy, r=0.0, open_=False, angry=False, blink=False):
             g[hy - 1][hx + sx] = "k" if blink else "e"; g[hy - 2][hx + sx] = "o" if blink else "e"
             if angry:
                 g[hy - 4][hx + sx + (1 if sx < 0 else -1)] = g[hy - 4][hx + sx] = "o"; g[hy - 5][hx + sx + (-1 if sx < 0 else 1)] = "o"
-        g[hy + 1][hx - 6] = g[hy + 1][hx + 5] = "p"
-        for x in (hx - 2, hx + 1):
-            g[hy + 2][x] = "o"
-        g[hy + 3][hx - 1] = g[hy + 3][hx] = "o"
+        g[hy + 1][hx - 1] = g[hy + 1][hx] = "K"                       # nostrils, and a beak: one flat line, no expression
+        for x in range(hx - 3, hx + 3):
+            dot(g, x, hy + 3, "o", on="kK")
         if open_:
-            ell(g, hx, hy + 3, 3.5, 2.6, "m")
+            ell(g, hx, hy + 5, 3, 1.6, "m")
     return ["".join(row) for row in g]
 
 
 def frame(view, up=0, step=None, bob=0, neck=0, open_=False, angry=False, blink=False, sway=0, shake=0, dust=0, asleep=False,
-          puff=0, zs=0, leaves=0, drops=0):
+          puff=0, zs=0, leaves=0, drops=0, bare=False):
     """up: the body raised on its legs (negative: dropped). step: frame of the walk. neck: head pulled in (<0) or shot out (>0)."""
     side = view == "left"
-    cx = (49 if side else 40) + shake
+    feet = 49 if side else 40                                        # the legs stay planted; the shell shakes over them
+    cx = feet + shake
     bot = BASE if asleep else BASE - LEGS - up + bob
     g = ["." * W] * H
     ph = lambda off: (0, 0) if step is None else (STEP_DX[(step + off) % 8], STEP_UP[(step + off) % 8] * 2)
     low = lambda u: max(0, u + min(0, up))                           # a dropped body cannot lift a foot
     if side and not asleep:
         nk = canvas(W, H)                                            # the neck, from the shell to wherever the head is
-        hx, hy = cx - 25 - neck, bot - 7 + (bob if step is not None else 0) - (2 if neck > 8 else 0)
+        hx, hy = feet + shake // 2 - 25 - neck, bot - 7 + (bob if step is not None else 0) - (2 if neck > 8 else 0)
         ell(nk, (hx + cx - 20) / 2, hy + 1, (cx - 20 - hx) / 2 + 3, 3.6, "K")
         g = over(g, part(nk))
-        for x, off in ((cx - 8, 4), (cx + 4, 0)):                    # far legs
+        for x, off in ((feet - 8, 4), (feet + 4, 0)):                    # far legs
             g = over(g, leg(x, bot, ph(off)[0], low(ph(off)[1]), far=True, w=7))
         tl = canvas(W, H)                                            # tail
         for i in range(4):
@@ -146,46 +146,47 @@ def frame(view, up=0, step=None, bob=0, neck=0, open_=False, angry=False, blink=
     if view == "up" and not asleep and neck > 8:                     # from behind, the head only shows when it shoots out
         g = over(g, head("up", cx, round(dome_top(cx, bot, cx)) - 2, 0))
     g = over(g, shell(cx, bot, view, puff))
-    g = garden(g, cx, bot, sway, puff, shed=drops > 0)
+    g = garden(g, cx, bot, sway, puff, shed=drops > 0 or bare, bare=bare or drops > 0)
     if not asleep:
         if side:
             g = over(g, head(view, hx, hy, 0, open_, angry, blink))
-            for x, off in ((cx - 18, 0), (cx + 11, 4)):              # near legs
+            for x, off in ((feet - 18, 0), (feet + 11, 4)):              # near legs
                 g = over(g, leg(x, bot, ph(off)[0], low(ph(off)[1])))
         else:
             lift = (0, 0) if step is None else ((2, 0) if step in (1, 2, 3) else (0, 2) if step in (5, 6, 7) else (0, 0))
-            for k, x in enumerate((cx - 20, cx + 12)):
+            for k, x in enumerate((feet - 20, feet + 12)):
                 g = over(g, leg(x, bot, 0, low(lift[k])))
             if view == "down":
-                g = over(g, head(view, cx, bot - 4 + neck * .45 + (bob if step is not None else 0), max(-2, neck * .16), open_, angry, blink))
+                g = over(g, head(view, feet + shake // 2, bot - 4 + neck * .45 + (bob if step is not None else 0), max(-2, neck * .16), open_, angry, blink))
     g = [list(r) for r in g]
     for k in range(zs):                                              # asleep: a z or two drifting up
         x, y = cx + 20 + k * 5, BASE - 34 - k * 7
         for i, j in ((0, 0), (1, 0), (2, 0), (3, 0), (2, 1), (1, 2), (0, 3), (1, 3), (2, 3), (3, 3)):
             dot(g, x + i, y + j, "z", on=".")
-    for k in range(leaves * 5):                                      # leaves torn off the tree
-        a = k * 1.3 + leaves
-        dot(g, cx + 5 + (10 + leaves * 3) * math.cos(a), BASE - 45 + (7 + leaves * 2) * math.sin(a) + leaves * 2, "C" if k % 2 else "c", on=".")
-    for k in range(3 if drops else 0):                               # sporecaps tumbling off its back
-        t = drops / 3
-        sx = (-1, 1, -1)[k]
-        x = round(cx + sx * (10 + k * 4) + sx * 20 * t)
-        y = round(BASE - 26 * (1 - t * t) - (6 * math.sin(math.pi * t)))
-        for i in range(-3, 4):                                       # a small sporecap, cap first
-            dot(g, x + i, y - 3, "Q", on=".")
-            if abs(i) < 3:
-                dot(g, x + i, y - 4, "r", on="."); dot(g, x + i, y - 5, "r" if abs(i) < 2 else "Q", on=".")
-        dot(g, x - 1, y - 5, "w"); dot(g, x + 1, y - 4, "w")
-        for i in (-1, 0):
-            dot(g, x + i, y - 2, "w", on="."); dot(g, x + i, y - 1, "w", on=".")
+    for k in range(leaves * 6):                                      # leaves torn off the tree: thrown out, then drifting down
+        a = k * 1.1 + leaves * .7
+        dot(g, feet + 5 + (9 + leaves * 4) * math.cos(a), BASE - 46 + (6 + leaves * 2) * math.sin(a) + leaves * leaves, "C" if k % 2 else "c", on=".")
+    for start, end, arc in ((-12, -32, 9), (-4, -17, 14), (8, 32, 9)) if drops else ():   # three sporelings thrown off its back,
+        t = drops / 3.5                                                                    # tucked under their caps (see FALLS)
+        x = round(40 + start + (end - start) * t)
+        y = round(BASE - 26 * (1 - t * t) - arc * math.sin(math.pi * t))
+        m = canvas(W, H)
+        ell(m, x + .5, y - 2, 6, 4.6, "r", clip=(0, y))
+        for i in range(-5, 7):
+            dot(m, x + i, y - 1, "Q", on="r")
+        ell(m, x - 1.5, y - 5.3, 1.6, .6, "p", on="r")
+        for i, j in ((-4, -3), (-3, -3), (-4, -2), (-3, -2), (0, -5), (3, -3)):
+            dot(m, x + i, y + j, "w", on="r")
+        g = [list(r) for r in over(["".join(r) for r in g], part(m, "Q"))]
     for sx in (-1, 1) if dust else ():                               # the ring of dust
         x = cx + sx * (25 + dust * 4)
         ell(g, x, BASE - dust, 4.5 - dust * .6, 2.4, "w" if dust == 1 else "x", on=".")
         ell(g, x + sx * 5, BASE - 3 - dust * 2, 2, 1.4, "x", on=".")
         dot(g, x - sx * 3, BASE - 5 - dust * 2, "R", on="."); dot(g, x + sx * 2, BASE - 8 - dust, "P", on=".")
-    return ground(g, cx, 46 if not asleep else 42)
+    return ground(g, feet, 46 if not asleep else 42)
 
 
+FALLS = (-32, -17, 32)                             # where the three sporelings land, in pixels from the middle of its cell
 BOB = [1, 0, 0, 0, 1, 0, 0, 0]                       # the shell sinks as each pair of feet lands
 SWAY = [0, 1, 1, 0, 0, -1, -1, 0]                    # the tree answers a frame late
 
@@ -199,16 +200,18 @@ def frames(d):
                frame(d, up=-3, dust=2, sway=-2, angry=True), frame(d, up=-1, dust=3, sway=1), frame(d)],
         snap=[frame(d, neck=-4, angry=True), frame(d, neck=-7, angry=True, shake=1), frame(d, neck=-7, angry=True), frame(d, neck=17, open_=True, angry=True, sway=2),
               frame(d, neck=17, angry=True, sway=-1), frame(d, neck=8), frame(d)],
-        shake=[frame(d, shake=-1, sway=-3, leaves=1), frame(d, shake=1, sway=3, leaves=2), frame(d, shake=-1, sway=-3, leaves=3, angry=True),
-               frame(d, shake=1, sway=3, leaves=2, angry=True), frame(d, shake=-1, sway=-2, drops=1), frame(d, shake=1, sway=2, drops=2),
-               frame(d, sway=-1, drops=3), frame(d)])
-
+        shake=[frame(d, up=-2, neck=-3, blink=True), frame(d, up=-2, neck=-3, blink=True, shake=1, sway=-1),       # it braces: low, head in, eyes shut
+               frame(d, up=-2, neck=-3, blink=True, shake=-1, sway=1),
+               frame(d, up=-1, shake=-2, sway=4, leaves=1, angry=True), frame(d, shake=2, sway=-4, leaves=2, angry=True),     # the tree whips the other way
+               frame(d, up=-1, shake=-2, sway=4, leaves=3, drops=1, angry=True), frame(d, shake=2, sway=-4, leaves=3, drops=2, angry=True),
+               frame(d, up=-1, shake=-1, sway=3, leaves=2, drops=3), frame(d, shake=1, sway=-2, leaves=1, bare=True),
+               frame(d, up=-1, sway=1, bare=True, blink=True), frame(d)])
 
 ENEMY = dict(
     key="mossback", name="Old Mossback", pal=PAL, role="first boss", cell=(80, 64), move="walk",
     ms=dict(sleep=320, idle=240, walk=120, stomp=[160, 300, 220, 80, 180, 220, 200], snap=[180, 200, 200, 70, 260, 140, 180],
-            shake=[110, 110, 110, 110, 130, 130, 160, 200]),
-    where="one, on the meadow of the biggest island", when="asleep until its tree is cut or its apples are picked",
+            shake=[180, 150, 150, 90, 90, 90, 90, 100, 110, 180, 200]),
+    falls=FALLS, where="one, on the meadow of the biggest island", when="asleep until its tree is cut or its apples are picked",
     behaviour="A hill with an apple tree on it, until someone swings an axe at the tree. Then the hill stands up. It is slow "
               "and turns slowly. <b>Stomp</b>: it rises and hangs, then drops: step two tiles back or be thrown. "
               "<b>Snap</b>: the head pulls in, then shoots two tiles straight ahead: step sideways, then hit the stretched neck, "

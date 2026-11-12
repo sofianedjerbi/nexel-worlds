@@ -74,7 +74,7 @@
       <div><b>Big, not busy.</b> Old Mossback is about four players wide, in the same flat colours and darker-tone outlines as the cow, so it belongs to the same world.</div>
       <div><b>Three attacks, three warnings.</b> Each has its own held pose (risen on its legs, head pulled in, shell shuddering), so the answer can be read before the hit: back off, sidestep, deal with the sporecaps.</div>
       <div><b>A first boss teaches.</b> It is slow, every warning is long (about half a second), and it has one soft spot, the stretched neck, that rewards waiting.</div>
-      <div><b>It uses the small mobs.</b> The sporecaps it shakes off are the same sporecap as below; hoppers and burrows stay ordinary, rare creatures.</div>
+      <div><b>It has a brood.</b> Its shake drops three sporelings, small sporecaps with their own landing; in the strip above they fall, pop up, waddle off and puff. Sporecaps, hoppers and burrows stay ordinary, rare creatures.</div>
       <div><b>Off this page.</b> The owl and the stone golem are dropped. The tusker, pincer, strawman, wisp and wyrm are still in the game.</div>
       <div><b>Source:</b> one file per creature in <code>design/enemies/roster/</code>; <code>build.py</code> makes the sheets (rows down, up, left, right; columns idle, move, then each action) and this page. Designs only: nothing here is in the game yet.</div>
     </div>
@@ -112,7 +112,7 @@ function sprite(g, e, dir, mode, i, x, y, z) {
 }
 
 function build() {
-  $("sub").textContent = `Old Mossback and three small mobs, beside the game's own player, cow and chicken`;
+  $("sub").textContent = `Old Mossback, its sporelings and three small mobs, beside the game's own player, cow and chicken`;
   for (const e of meta) {
     const [cw, ch] = e.cell, z = cw > 32 ? 3 : 4, el = document.createElement("section");
     el.className = "card enemy" + (cw > 48 ? " wide" : "");
@@ -164,7 +164,7 @@ function drawOld(g, key, dir, moving, t, x, y, z, memo) {
 const W = 22, H = 9, POND = [17, 1, 5, 7], BEACH = [15, 0, 2, 9];
 const LOOPS = {sporecap: [.8, 1.3, 3.4, 1.4], mossback: [7.5, 2.6, 5.5, 2.2], player: [.8, 4.6, 3, 1.3], cow: [4.6, 7.4, 3.6, .9],
   burrow: [1, 7.4, 2.6, 1], chicken: [10, 7.6, 3, .8], hopper: [14.6, 1.3, 1.6, 6.4]};
-const SPEED = {sporecap: .8, hopper: 2.2, burrow: 1.6, mossback: .8};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the player walks at 2.4
+const SPEED = {sporeling: 2, sporecap: .8, hopper: 2.2, burrow: 1.6, mossback: .8};      // tiles per second; the game's cow ambles at 1.2, its chicken at 1.6, the player walks at 2.4
 function along([x, y, w, h], d) {                       // where on the rectangle after d tiles, and which way it faces
   d %= 2 * (w + h);
   if (d < w) return [x + d, y, "right"];
@@ -192,6 +192,30 @@ function stepOld(key, dt) {                              // the old ones only wa
   if (a.t >= (a.moving ? 4200 : 1500)) { a.t = 0; a.moving = !a.moving; }
   if (a.moving) a.d += OLD[key].speed * dt / 1000;
   return [...along(LOOPS[key], a.d), a];
+}
+
+// Old Mossback's shake drops three sporelings where the falling ones in its own frames reach the ground. Each lands,
+// waddles away from it, puffs, and is gone.
+const spawned = [];
+let shaking = false;
+function brood(boss, x, y, dir, mode, dt, things, g, z) {
+  const a = actors.mossback, e = meta.find((m) => m.key === "sporeling");
+  const now = mode === "shake" && a.t >= total(boss.ms.shake.slice(0, 8));       // the frame they touch the ground
+  if (now && !shaking) {
+    const flip = dir === "right" ? -1 : 1;               // the right-facing sheet is the left one mirrored
+    for (const px of boss.falls) spawned.push({x: x + flip * px / 16, y: y + .05 + Math.abs(px) * .001, way: flip * px < 0 ? "left" : "right", t: 0});
+  }
+  shaking = now;
+  const land = total(e.ms.land), puff = total(e.ms.puff), walk = 2600;
+  for (const s of spawned) {
+    s.t += dt;
+    let m = "land", t = s.t;
+    if (s.t >= land + walk) { m = "puff"; t = s.t - land - walk; }
+    else if (s.t >= land) { m = "walk"; t = s.t - land; s.x += (s.way === "left" ? -1 : 1) * SPEED.sporeling * .5 * dt / 1000; }
+    const i = frameAt(e, m, t, m === "walk");
+    things.push({x: s.x, y: s.y, label: "", paint: (px, py) => sprite(g, e, m === "land" ? "down" : s.way, m, i, px, py + 2 * z, z)});
+  }
+  for (let k = spawned.length - 1; k >= 0; k--) if (spawned[k].t >= land + walk + puff) spawned.splice(k, 1);
 }
 
 let last = 0;
@@ -227,8 +251,10 @@ function draw(t) {
     things.push({x, y, label: OLD[key].name, old: true, paint: (px, py) => drawOld(g, key, dir, a.moving, t, px, py, z, a.memo)});
   }
   for (const e of meta) {
+    if (e.key === "sporeling") continue;                 // they only exist when the boss shakes them off
     const [x, y, dir, mode, i] = step(e, dt);
     things.push({x, y, label: e.name, paint: (px, py) => sprite(g, e, dir, mode, i, px, py + 2 * z, z)});
+    if (e.key === "mossback") brood(e, x, y, dir, mode, dt, things, g, z);
   }
   things.sort((a, b) => a.y - b.y);
   g.font = "800 11px ui-rounded, system-ui"; g.textAlign = "center";

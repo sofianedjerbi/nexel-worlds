@@ -21,7 +21,7 @@ from art import mirror  # noqa: E402
 
 SITE = HERE / "site"
 ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
-ORDER = ["mossback", "sporecap", "hopper", "burrow"]      # on the page: the boss and the three kept mobs (older designs stay in roster/, off it)
+ORDER = ["mossback", "sporeling", "sporecap", "hopper", "burrow"]      # on the page: the boss, its brood and the three kept mobs (older designs stay in roster/, off it)
 DIRS = ["down", "up", "left", "right"]
 IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
 SHADOW = (80, 64, 134, 46)        # the cow's and chicken's shadow colour, a touch stronger for the lighter page grass
