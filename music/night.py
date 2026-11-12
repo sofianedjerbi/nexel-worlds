@@ -3,8 +3,8 @@
     uv run python music/night.py
 
 It is Meadow Road after dark: the same melody, note for note (compose.MELODY), and nothing added to it. What changes:
-  the harmony    the relative minor: B minor, F# minor, D, F# minor / B minor, F# minor, G then A, B minor.
-                 Every melody note on a beat is still a note of its chord; the tune that closed on D now closes in B minor
+  the harmony    the relative minor: B minor 7, A, F# minor, then A and B minor. The head's A is still a chord note
+                 everywhere; the tune that closed on D over D now closes on D over B minor
   the tempo      60 BPM instead of 72, and about 4 dB quieter
   the left hand  one held chord a bar, struck together (never a note at a time: see compose.py)
   the air        a breath of wind; no drums; a short, dry room, so it stays awake and does not turn into a lullaby
@@ -29,10 +29,10 @@ TAIL = 8 * SR
 OUT = Path(__file__).with_name("site") / "audio"
 rng = np.random.default_rng(11)
 
-CYCLE = ["Bm", "F#m", "D", "F#m", "Bm", "F#m", "G A", "Bm"]         # 8 bars; "G A": two beats of each
-ROOT = {"Bm": "B1", "F#m": "F#2", "D": "D2", "G": "G2", "A": "A1"}
-HAND = {"Bm": ["B2", "F#3", "A3"], "F#m": ["F#2", "C#3", "A3"], "D": ["D3", "A3"], "G": ["G2", "D3", "B3"], "A": ["A2", "E3"]}      # struck together, held
-PAD = {"Bm": ["B2", "F#3"], "F#m": ["F#3", "C#3"], "D": ["D3", "A3"], "G": ["G3", "D3"], "A": ["A2", "E3"]}                   # root and fifth
+CYCLE = ["Bm", "Bm", "A", "A", "F#m", "F#m", "A", "Bm"]            # 8 bars
+ROOT = {"Bm": "B1", "F#m": "F#2", "A": "A1"}
+HAND = {"Bm": ["B2", "F#3", "A3"], "F#m": ["F#2", "C#3", "A3"], "A": ["A2", "E3", "A3"]}      # struck together, held
+PAD = {"Bm": ["B2", "F#3"], "F#m": ["F#3", "C#3"], "A": ["A2", "E3"]}                         # root and fifth
 MELODY = C.MELODY                                                   # the day's, as it is
 SECTIONS = [("the melody alone", 8), ("the left hand", 8), ("pad and bass", 8), ("the piano rests: a far whistle", 8), ("everything", 8), ("thinning out", 8)]
 
@@ -131,7 +131,7 @@ def render():
 
 def clashes():
     """Melody notes a semitone or a minor 9th from a note sounding with them; and notes on a beat that are not in the chord."""
-    tones = {"Bm": "B D F# A", "F#m": "F# A C# E", "D": "D F# A", "G": "G B D", "A": "A C# E"}
+    tones = {"Bm": "B D F# A", "F#m": "F# A C# E", "A": "A C# E"}
     bad = []
     for k in range(8):
         names = CYCLE[k].split()

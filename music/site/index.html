@@ -135,7 +135,7 @@
     </div>
     <div id="ab">
       <button class="abrow" data-v="opus"><b>Opus 5.5</b><span>the original version: every note with the same touch, a darker mono piano, layers switch on and off</span><kbd>A</kbd></button>
-      <button class="abrow on" data-v="fable"><b>Fable 5.2</b><span>the new theme: repeated notes and leaps over held chords, on a softer, lower piano; no arpeggios</span><kbd>B</kbd></button>
+      <button class="abrow on" data-v="fable"><b>Fable 5.2</b><span>the new theme: one three-note head and four landings over held chords, on a softer, lower piano</span><kbd>B</kbd></button>
     </div>
   </section>
 
@@ -150,7 +150,7 @@
     </div>
     <div class="notes" style="margin-top:10px">
       <div><b>Meadow Road after dark:</b> the same melody, note for note, on the same soft piano. Nothing is added to it.</div>
-      <div><b>What makes it night:</b> the same tune over the relative minor (B minor, F# minor, D, F# minor; B minor, F# minor, G then A, B minor), so what closed on D now closes in B minor. 60 BPM instead of 72, about 4 dB quieter. One held chord a bar.</div>
+      <div><b>What makes it night:</b> the same tune over the relative minor (B minor 7, A, F# minor, then A and B minor), so what closed on D major now closes in B minor. 60 BPM instead of 72, about 4 dB quieter. One held chord a bar.</div>
       <div><b>Form:</b> the melody alone (8 bars) · the left hand (8) · pad and bass (8) · the piano rests and a far whistle carries the melody (8) · everything (8) · thinning out (8).</div>
       <div><b>Nothing decorative:</b> the first version had crickets and plucked "fireflies"; both are gone. Only a faint breath of wind is left.</div>
       <div><b>Source:</b> <code>music/night.py</code>. A mockup: the game does not play it yet. <a href="audio/night.wav" download="lantern-road.wav">Download</a></div>
@@ -169,9 +169,9 @@
     <div class="notes" style="margin-top:10px">
       <div><b>Meadow Road, turned to face you:</b> the same melody, note for note, on the same soft piano, over the relative minor.</div>
       <div><b>Weight, not speed:</b> 96 BPM instead of 72. A heavy thud on beats 1 and 3 is its feet; a dull knock on 2 and 4 is its shell.</div>
-      <div><b>Its voice:</b> a low horn under everything, holding a note of each chord (F#, A, F#, B), over a bass that repeats the root.</div>
+      <div><b>Its voice:</b> a low horn under everything, holding a note of each chord (F#, A, F#, A, B), over a bass that repeats the root.</div>
       <div><b>Form:</b> it stands up (4 bars) · the fight (8) · everything in (8) · it braces: feet and bass drop out, then stomp back on every beat (8) · everything in again (8).</div>
-      <div><b>Rules kept:</b> one key, the night theme's chords (B minor, F# minor, D, G, A), nothing new in the melody, each part in its own register, no toy sounds.</div>
+      <div><b>Rules kept:</b> one key, the night theme's chords (B minor, A, F# minor), nothing new in the melody, each part in its own register, no toy sounds.</div>
       <div><b>Source:</b> <code>music/boss.py</code>. Its sounds (wake, groan, stomp, snap, shake, sporelings) are under "Boss" in the sound effects below. <a href="audio/boss.wav" download="old-mossback.wav">Download</a></div>
     </div>
   </section>
@@ -199,8 +199,8 @@
     <h2>How it's made</h2>
     <div class="notes">
       <div><b>Approach:</b> music that "doesn't explain anything" (C418's words): no story, no climax, one texture that slowly changes.</div>
-      <div><b>Harmony:</b> a plain period in D major, a chord a bar, struck together and held. First half: D, A over C#, B minor, A (the bass walks down; it stops on the dominant). Second half: D, A over C#, G then A, D (a full cadence home).</div>
-      <div><b>Melody:</b> eight bars, D4 to D5. A note said twice, then up a third (F#, F#, A); down to a long E and a leap back to A; the same again leaping a sixth (F#, F#, D); one step down onto the leading note C#, where it waits. The second half starts the same and closes B, B, E, D. Every note on a beat belongs to the chord under it, and it never takes two steps in the same direction.</div>
+      <div><b>Harmony:</b> D major, two bars a chord, struck together and held: D, A over C#, B minor 7, then A and D (a full cadence home). The bass walks down D, C#, B, A.</div>
+      <div><b>Melody:</b> one head of three notes, long-short-long (A, up to B, back to A), said four times exactly the same. Only the long note it lands on changes: F#, E, F#, D. That is the whole theme; nothing else is ever added.</div>
       <div><b>Variation:</b> only who plays it, and what is around it: the piano or a synth lead, chords alone, open space. The melody rests in 4 of 11 blocks. There is no arpeggio any more.</div>
       <div><b>Sound:</b> felt piano through a "cheap mic", detuned analog pad with a slowly breathing filter, Moog-style bass, tape hiss.</div>
       <div><b>Checks:</b> registers never overlap, no clashing notes, loudness per block. Seamless 293 s loop. Download: <a href="audio/master.wav" download="meadow-road-fable.wav">Fable</a>, <a href="opus/audio/master.wav" download="meadow-road-opus.wav">Opus</a></div>

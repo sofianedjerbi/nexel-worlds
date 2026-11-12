@@ -10,10 +10,14 @@ So:
   * the melody never takes two steps in the same direction: it repeats a note, drops a third, leaps a fifth, holds.
   * it sits low (D4-D5), on a soft, dark felt piano that is still a piano (two strings, a felt thump), not a sine.
   * the key must be heard ("the scale looks off"): an earlier version began on the IV chord, put melody notes that were
-    not in the chord on the strong beats, and had no leading note and no cadence. Now it is a plain period in D major:
-        I  V6  vi  V   (D, A over C#, B minor, A: the bass walks down, the phrase stops on the leading note C#)
-        I  V6  IV-V  I (D, A over C#, G then A, D: the melody closes E to D)
-    and every melody note that starts on a beat is a note of the chord under it (`off_chord()` checks).
+    not in the chord on the strong beats, and had no leading note and no cadence.
+  * it must not wander ("going anywhere, freestyling, typically AI-generated"): a line where every bar does something
+    else, with leaps, is not a tune. The version the user once called perfect was one tiny cell repeated exactly.
+So the theme is one head of three notes (A, up to B, back to A: long, short, long), said four times, exactly the same.
+Only the note it lands on changes, and those four landings are the whole story: F#, E, F#, D (3, 2, 3, 1: a question,
+its answer). Two bars a chord, the bass walking down, a full cadence at the end:
+        D . | A over C# . | B minor 7 . | A, D        (I, V6, vi7, V-I)
+Every melody note that starts on a beat is a note of the chord under it (`off_chord()` checks).
 What stays from the research (C418, Undertale): few chords, a short melody repeated exactly, the same melody reused by
 the night theme (night.py) and the boss fight (boss.py) over other chords, silence, no drums. Layers enter and leave;
 the material never changes.
@@ -178,8 +182,8 @@ def glide_lead(f, dur, vel, t0):
 
 # ------------------------------------------------------------------ material
 
-CHORDS = {"D": "D F# A", "A/C#": "C# E A", "Bm": "B D F#", "A": "A C# E", "G": "G B D"}     # (first note: the bass)
-CYCLE = ["D", "A/C#", "Bm", "A", "D", "A/C#", "G A", "D"]           # 8 bars; "G A": two beats of each
+CHORDS = {"D": "D F# A", "A/C#": "C# E A", "Bm7": "B D F# A", "A": "A C# E"}     # (first note: the bass)
+CYCLE = ["D", "D", "A/C#", "A/C#", "Bm7", "Bm7", "A", "D"]          # 8 bars
 
 
 def chords_in(i):
@@ -188,15 +192,12 @@ def chords_in(i):
     return [(k * 8 // len(names), 8 // len(names), ch) for k, ch in enumerate(names)]
 
 
-# The melody, per bar: (eighth slot, length in eighths, note). A note said twice, then up a third; down to a long note
-# and a leap back; the same from F#, leaping a sixth; one step down onto the leading note, and it waits there.
-# The second half starts the same and closes: B, B, down to E, home to D.
-SAY = [(0, 3, "F#4"), (3, 1, "F#4"), (4, 4, "A4")]
-MELODY = [SAY, [(0, 6, "E4"), (6, 2, "A4")], [(0, 3, "F#4"), (3, 1, "F#4"), (4, 4, "D5")], [(0, 6, "C#5")],
-          SAY, [(0, 6, "E4"), (6, 2, "A4")], [(0, 3, "B4"), (3, 1, "B4"), (4, 4, "E4")], [(0, 7, "D4")]]
+# The melody, per bar: (eighth slot, length in eighths, note). One head, four landings. Nothing else, ever.
+HEAD = [(0, 3, "A4"), (3, 1, "B4"), (4, 4, "A4")]
+MELODY = [HEAD, [(0, 7, "F#4")], HEAD, [(0, 7, "E4")], HEAD, [(0, 7, "F#4")], HEAD, [(0, 7, "D4")]]
 PHRASE = [[(1.0 if s == 0 else 0.78 if n == 1 else 0.9, 0.012 if n >= 4 else 0.0) for s, n, _ in bar] for bar in MELODY]   # (velocity x, seconds late)
 # The left hand: the chord, all its notes together, held. Never one note after another.
-HAND = {"D": "D3 F#3 A3", "A/C#": "C#3 E3 A3", "Bm": "B2 D3 F#3", "A": "A2 E3 A3", "G": "G2 D3 B3"}
+HAND = {"D": "D3 F#3 A3", "A/C#": "C#3 E3 A3", "Bm7": "B2 D3 F#3 A3", "A": "A2 E3 A3"}
 
 
 def pcs(ch):

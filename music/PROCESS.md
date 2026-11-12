@@ -126,3 +126,10 @@ note and no cadence, so D major was never established.
 - Write a period: I V6 vi V (half cadence, melody on the leading note) then I V6 IV-V I (full cadence, melody 2 to 1).
 - Every melody note that starts on a beat is a chord note (`compose.off_chord()`); the night and boss versions check the same.
 - Night and boss reharmonise the same tune in the relative minor (Bm7, F#m, D, F#m / Bm7, F#m, G-A, Bm).
+
+### It must not wander (2026-11-13)
+"The theme feels like it's going anywhere, freestyling: AI-generated typically." A through-composed line with a different shape and a
+leap in every bar is not a tune, however correct its harmony. Back to the discipline of the version the user called perfect:
+- **One head (A, B, A: long, short, long), repeated four times exactly; only the landing note changes (F#, E, F#, D).**
+- Two bars a chord (D, A/C#, Bm7, then A and D). Night and boss: Bm7, A, F#m, then A and Bm.
+- When fixing one complaint, re-read all the earlier ones: this one had been made, and solved, a day before.
