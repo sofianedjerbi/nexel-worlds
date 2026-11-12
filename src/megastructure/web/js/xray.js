@@ -6,10 +6,10 @@
 // tiles) every frame.
 
 // r, core: its radius (tiles) and the part of it that's clear. It comes when you're really hidden, not for an edge
-// that hides your feet or a post you walk past: body: your height (art px); from, full: the share of you that's
-// hidden where it starts and where it is whole (a wall two layers high in front of you leaves your head: nothing; three
-// hides you: the circle); wait: seconds hidden before it comes
-const XRAY = {r: 3.1, core: .42, body: 22, from: .75, full: .95, wait: .15, far: 12};   // (far: tiles south to look for ground drawn up over you)
+// that hides your legs or a post you walk past: body: your height over the foot of your tile (art px); from, full: the
+// share of you that's hidden where it starts and where it is whole (a ledge a layer high in front of you hides you
+// to the waist: nothing; two layers leave your ears: the circle); wait: seconds hidden before it comes
+const XRAY = {r: 3.1, core: .42, body: 20, from: .7, full: .8, wait: .15, far: 12};   // (far: tiles south to look for ground drawn up over you)
 const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, m: null, t: 0};   // how strong, the height you stand at, your row, its centre (tiles), its two pictures, how long you've been hidden
 
 // Ground you could be on, from where you stand: your height, a step up (a jump), anything lower. The rest is rock.

@@ -830,3 +830,10 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Tests made steady on the way (they failed some runs in the full suite, none from this): the boss test waits for the boss to be asleep instead of 0.9 s; the swim sound test lets the last stroke finish; the swim layer test looks at the block the pond is in.
 - Not done: creatures do not look for a way round or up to you (they step toward you, as before, now over steps); farm animals wander over steps too, so a terrace no longer pens them (fences do).
 
+## Iteration 71: a sprite behind a ledge is cut along the ledge's own edge
+- User (a screenshot: their character at the corner of a ledge, cut straight across at the collar): "corner angles aren't transparent ??"
+- Reproduced (a ledge a layer high west and south of you, its edge in steps): behind higher ground a sprite is clipped to the hill's top edge (relief.js clipBehind), and that edge was one straight line a tile column, a px under the tile's top. The ledge's drawn edge is set in a few px from there and rounded at a corner: between the cut and the edge, and all round the corner, the ground behind showed but not the sprite.
+- Change: the cut follows the ground's own shape, an art px column at a time: for every layer of the higher ground in front, the first drawn row of its sheet cell (the cells the land is built from). Nothing is redrawn.
+- Also: the x-ray circle now comes from two layers right in front of you. Measured on the same map, two layers leave only the ears (I had taken the body for 22 px over the tile's foot; it is 20), and it stayed off at 73% hidden. One layer hides you to the waist: no circle, as before.
+- Result: before and after screenshots at the ledge's corner; a test reads the cut strip by strip in your own tile column (it was -7 px all the way across; it now rounds off down the corner). Tests: 291 unit, browser 97/97. On the way: the relief test file passed 300 lines (the x-ray tests have their own file now), and the click-while-walking test raced its own reading of where you are (it failed some full runs): it clicks the flower's tile itself.
+

@@ -208,28 +208,51 @@ function drawBlockRelief(b, sx, sy, S) {
   const f = b.relief.flat, [fx, fy, fw, fh] = b.relief.box || [];
   if (f) ctx.drawImage(f, fx, fy, fw, fh, X + fx * zoom, Y + (fy - b.relief.up) * zoom, fw * zoom, fh * zoom);
 }
+// A sheet cell as a top edge: for each of its 16 px columns, the first row that is drawn (16: none of it)
+const cellTops = new Map();
+function cellTop(sheet, cx, cy) {
+  let m = cellTops.get(sheet); if (!m) cellTops.set(sheet, m = new Map());
+  const key = cx * 100 + cy;
+  if (!m.has(key)) {
+    const a = cellAlpha(sheet, cx, cy), top = new Uint8Array(16).fill(16);
+    for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) if (a[j * 16 + i]) { top[i] = j; break; }
+    m.set(key, top);
+  }
+  return m.get(key);
+}
 // Someone standing behind higher ground (it is south of them, drawn up over where they stand) is behind it: what of
-// them is under its top edge isn't drawn. Called before drawing them: clips the canvas, a strip a tile column, down to
-// that edge, and returns true (restore after); false when nothing hides them. Nothing of the land is redrawn.
+// them is under its top edge isn't drawn. Called before drawing them: clips the canvas down to that edge and returns
+// true (restore after); false when nothing hides them. Nothing of the land is redrawn. The edge is the ground's own,
+// an art px column at a time: each of its layers in its own shape, set in a little from the tile's side and rounded
+// at its corners (cut straight across a tile, the sprite was gone where a corner lets the ground behind it show).
 // (Not in the cave you're in: that one is seen through the hill.)
 function clipBehind(p, sx, sy, S) {
   const x = Math.round(p.x), y = Math.round(p.y);
   if (inOpenCave(x, y) || (caveOpen && p.e.kind === "agent" && p.e.id === myId)) return false;   // (you, going in or out: no flicker)
   const L = Math.min(standAt(Math.floor(p.x), Math.floor(p.y)), standAt(Math.ceil(p.x), Math.ceil(p.y)));
-  const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, edges = [];
+  const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, feet = sy(p.y + 1) - shOf(L) * zoom + 4 * zoom, cols = [];
   let any = false;
   for (let tx = x0; tx <= x1; tx++) {
-    let edge = Infinity;                                  // the highest hill top in front of them, in this column
+    const edge = new Array(16).fill(Infinity);            // the top of the higher ground in front, at each px of this column
     for (let ty = Math.floor(p.y) + 1; ty <= Math.floor(p.y) + 8; ty++) {
       const lv = levelAt(tx, ty);
-      if (lv > L && !inOpenCave(tx, ty)) edge = Math.min(edge, sy(ty) - shOf(lv) * zoom + zoom);
+      if (lv <= L || inOpenCave(tx, ty)) continue;
+      for (let k = L + 1; k <= lv; k++) {
+        const top = cellTop(hillSheet(k), ...blobCell(maskOf(tx, ty, (cc, gg, ux, uy) => levelAt(ux, uy) >= k))), Y = sy(ty) - shOf(k) * zoom;
+        for (let i = 0; i < 16; i++) if (top[i] < 16) edge[i] = Math.min(edge[i], Y + top[i] * zoom);
+      }
     }
-    edges.push(edge); any = any || edge < sy(p.y + 1) - shOf(L) * zoom + 4 * zoom;      // (reaching up to their feet, or their shadow)
+    cols.push(edge); any = any || edge.some((e) => e < feet);                           // (reaching up to their feet, or their shadow)
   }
   if (!any) return false;
   ctx.save(); ctx.beginPath();
   ctx.rect(-1e4, -1e4, sx(x0) + 1e4, 2e4); ctx.rect(sx(x1 + 1), -1e4, 1e4, 2e4);
-  edges.forEach((edge, k) => ctx.rect(sx(x0 + k), -1e4, S, (edge === Infinity ? 1e4 : edge) + 1e4));
+  cols.forEach((edge, c) => {
+    for (let i = 0, j; i < 16; i = j) {                    // (a run of px with the same edge: one strip)
+      for (j = i + 1; j < 16 && edge[j] === edge[i]; j++);
+      ctx.rect(sx(x0 + c) + i * zoom, -1e4, (j - i) * zoom, (edge[i] === Infinity ? 1e4 : edge[i]) + 1e4);
+    }
+  });
   ctx.clip();
   return true;
 }

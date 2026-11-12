@@ -178,28 +178,6 @@ def test_a_pickaxe_cuts_a_tunnel_into_a_wall(game):
     assert s["in_cave"] and s["z"] == 0 and (s["x"], s["y"]) == (x, y - 1) and game.js("caveOpen")
 
 
-def test_behind_a_mountain_you_are_seen_through_it(game):
-    """Behind a wall or a mountain you were cut at its edge: gone. A circle round you is seen through it (xray.js),
-    fading toward its edge: you show, on the ground you stand on; out from behind it, the circle goes."""
-    game.clear_area(10)
-    game.stamp(-5, 1, ["." * 11] * 4, levels=["66666666666"] * 4)   # a wall 6 layers high, right in front (south) of you
-    game.sleep(900)
-    look = """(() => { const k = DPR, w = Math.round(48 * k), d = ctx.getImageData(Math.round(W / 2 * k) - w / 2, Math.round(H / 2 * k) - w / 2, w, w).data;
-      return Array.from(d); })()"""
-    assert game.js("xray.a") > .95
-    seen = game.js(look)
-    game.js("(() => { XRAY.from = 1e9; XRAY.full = 2e9; return 1; })()")          # without it: the wall, and nothing of you
-    game.sleep(700)
-    assert game.js("xray.a") == 0
-    hidden = game.js(look)
-    assert sum(1 for a, b in zip(seen[::4], hidden[::4]) if abs(a - b) > 24) > len(seen) / 4 * .3
-    game.js("(() => { XRAY.from = .75; XRAY.full = .95; return 1; })()")
-    game.hold(["w"], 900)                                              # out from behind it
-    game.sleep(600)
-    assert game.js("xray.a") == 0
-    assert not game.errors
-
-
 def test_a_frame_paints_the_screen_a_few_times_over_not_ten(game):
     """What a weak GPU pays for is paint. Over water every layer of it (bottom, wobble, two nets of light, tint, two
     of waves) was painted at the screen's size, and the old water under every block besides: ten screens of paint a
@@ -251,43 +229,20 @@ def test_told_it_missed_events_the_page_asks_for_its_land_again(game):
     assert game.tile(2, 0) != "T"
 
 
-def test_the_circle_shows_only_the_hidden_ground(game):
-    """The circle is the ground that rock hides (your height, a step up, or lower), and nothing else: rock that hides
-    none stays as it is drawn. (It had painted the rock too: first the walls beside you with a tall face down to the
-    cut, walls that are not there; then all of it as a brown footprint, wherever the circle reached.)"""
-    game.clear_area(10)
-    game.stamp(-4, -3, ["." * 9] * 7, levels=["666606666"] * 4 + ["666666666"] * 3)   # a nook, open to the north: walls west, east and south
-    game.sleep(1200)
-    x, y = game.pos()
-    look = lambda dx, dy: game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), out = [];
-      for (let k = 3; k <= 12; k++) out.push(...ctx.getImageData(Math.round((ox + ({x + dx} + .5) * S) * DPR), Math.round((oy + ({y + dy}) * S + k * zoom) * DPR), 1, 1).data.slice(0, 3));
-      return out; }})()""")
-    assert game.js("xray.a") > .95
-    rock, ground = look(-1, 0), look(0, -2)                   # where the wall beside you stands; the channel behind you
-    game.js("(() => { XRAY.from = 9; XRAY.full = 10; return 1; })()")
-    game.sleep(700)
-    assert game.js("xray.a") == 0
-    assert rock == look(-1, 0)                                # rock: the same, circle or not
-    assert ground != look(0, -2)                              # hidden ground: the circle showed it
-    assert not game.errors
-
-
-def test_the_circle_never_touches_ground_that_already_shows(game):
-    """Behind a wall three layers high: its top covers you and half of the row behind you. The circle shows what it
-    covers; a pixel further back, where the ground shows anyway, is the same with the circle or without (it was cut
-    out in whole tile columns with a margin: seams and dark lines in open ground and open water)."""
-    game.clear_area(10)
-    game.stamp(-3, 1, ["." * 7] * 2, levels=["3333333"] * 2)
-    game.sleep(1200)
-    x, y = game.pos()
-    look = lambda dx, dy, rows: game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), out = [];
-      for (const k of {rows}) for (const i of [3, 8, 13]) out.push(...ctx.getImageData(Math.round((ox + {x + dx} * S + i * zoom) * DPR), Math.round((oy + {y + dy} * S + k * zoom) * DPR), 1, 1).data.slice(0, 3));
-      return out; }})()""")
-    assert game.js("xray.a") > .95
-    shows, covered = look(1, -1, [1, 3, 5]), look(1, 0, [4, 8, 12])      # beside you: behind the wall's top edge, and under it
-    game.js("(() => { XRAY.from = 9; XRAY.full = 10; return 1; })()")
-    game.sleep(700)
-    assert game.js("xray.a") == 0
-    assert shows == look(1, -1, [1, 3, 5])
-    assert covered != look(1, 0, [4, 8, 12])
+def test_a_sprite_behind_a_ledge_is_cut_along_the_ledges_own_edge(game):
+    """Behind higher ground you are cut at its top edge. That edge is set in a little from the tile's side and rounded
+    at a corner: cut straight across the tile (a px under its top), you were gone where the corner lets the ground
+    behind it show."""
+    game.clear_area(8)
+    lv = ["1110000", "1110000", "1110000", "1111000", "1111100", "1111110", "1111111"]   # a ledge west and south of you, its edge in steps
+    game.stamp(-3, -2, ["." * 7] * 7, levels=lv)
+    game.sleep(1000)
+    r = game.js("""(() => { const p = ents.get('agent' + myId), S = TS(), [ox, oy] = screenOrigin(S);
+      const sx = (x) => ox + x * S, sy = (y, x) => oy + y * S - (x === undefined ? 0 : liftOf({x, y})), strips = [];
+      ctx.rect = function (x, y, w, h) { strips.push([x, y + h]); return CanvasRenderingContext2D.prototype.rect.call(ctx, x, y, w, h); };
+      const cut = clipBehind(p, sx, sy, S); if (cut) ctx.restore(); delete ctx.rect;
+      const x0 = sx(Math.round(p.x)), foot = sy(Math.round(p.y) + 1);      // your tile's column; the line between you and the tile in front
+      return {cut, edge: strips.filter((q) => q[0] > x0 - .01 && q[0] < x0 + S - .01 && q[1] < 5000).map((q) => Math.round((q[1] - foot) / zoom))}; })()""")
+    assert r["cut"] and r["edge"]
+    assert max(r["edge"]) > -5 and len(set(r["edge"])) > 2, r   # (art px over that line: the ledge is 8 high, and was cut at -7 all the way across; its edge rounds off at the corner)
     assert not game.errors

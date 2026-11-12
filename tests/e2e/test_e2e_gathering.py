@@ -50,8 +50,8 @@ def test_a_click_picks_on_the_move(game):
     fx, fy = game.pos()[0] + 3, game.pos()[1] - 1
     game.page.keyboard.down("d")
     game.sleep(200)
-    x, y = game.pos()
-    click_tile(game, fx - x, fy - y)                         # a click on the flower while walking...
+    sx, sy = game.js(SCREEN, [fx, fy])                       # (the flower's own tile: you are moving, your tile is changing)
+    game.page.mouse.click(sx, sy)                            # a click on the flower while walking...
     game.sleep(150)
     moving = game.js("walking !== null")
     game.page.keyboard.up("d")
