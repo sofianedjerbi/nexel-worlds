@@ -74,7 +74,7 @@ class Observation:
             "time": self.clock(),
             "self": {"id": a.id, "name": a.name, "x": a.x, "y": a.y, "hp": a.hp, "hunger": a.hunger,
                      "inventory": dict(sorted(a.inventory.items())), "wearing": dict(a.worn), "armor": self.armor(a), "race": a.race, "swimming": self.swimming(a), "deaths": a.deaths,
-                     "action": a.action.tool if a.action else None,
+                     "action": a.action.tool if a.action else a.aside.tool if a.aside else None,
                      "spawn": a.spawn, "sailing": a.sailing, "can": a.can, "xp": a.xp, "level": level_of(a.xp)[0], "in_cave": self.in_cave(a), "z": self.height(a),
                      "standing_on": here_g if here_b == "none" else f"{here_g}+{here_b}",
                      "sheltered": self.sheltered(a.x, a.y)},

@@ -42,7 +42,7 @@ class Sessions:
         return a
 
     def logout(self, a: Agent):
-        if a.action:
+        if a.action or a.aside:
             self.interrupt(a, "disconnected")
         a.online = False
         self.emit("leave", a.x, a.y, radius=SHOUT_R, name=a.name)

@@ -31,7 +31,7 @@ class Needs:
             raise ActionError("missing_item", f"you have no {item}")
         if a.hunger >= 100:
             raise ActionError("full", "you're full")
-        yield from self.wait(a, EAT_SECONDS)       # a proper bite: moving or doing something else stops it
+        yield from self.wait(a, EAT_SECONDS)       # a proper bite, with the hands (constants.ASIDE): walking goes on, doing something else stops it
         if not a.count(item):
             raise ActionError("missing_item", "it's gone")
         a.add(item, -1)

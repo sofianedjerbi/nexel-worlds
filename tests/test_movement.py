@@ -89,3 +89,34 @@ def test_hitting_while_walking(world):
     sim.creatures[hen.id] = hen
     hit = sim.submit(a, "attack", {"target": hen.id})
     assert hit.result["ok"] and a.action is walk                       # the punch lands, the walk goes on
+
+
+def test_you_eat_while_you_walk(world):
+    """Eating is done with the hands (constants.ASIDE): it runs beside a walk, which goes on, and beside starting one.
+    Doing something else stops the meal. (It replaced the walk: you stood still for every bite.)"""
+    sim, a = world
+    a.hunger = 40
+    a.add("berries", 3)
+    walk = sim.submit(a, "walk", {"dir": "E"})
+    for _ in range(3):
+        sim.step()
+    x = a.x
+    eat = sim.submit(a, "eat", {"item": "berries"})
+    assert a.action is walk and a.aside is eat                              # both at once
+    for _ in range(12):
+        sim.step()
+    assert eat.result["ok"] and a.hunger > 40 and a.count("berries") == 2   # eaten...
+    assert a.action is walk and walk.result is None and a.x >= x + 4       # ...and still walking, at its pace
+    eat = sim.submit(a, "eat", {"item": "berries"})                         # the other way round: eating, then setting off
+    sim.submit(a, "stop", {})
+    sim.step()
+    walk = sim.submit(a, "walk", {"dir": "W"})
+    assert a.aside is eat and eat.result is None
+    for _ in range(12):
+        sim.step()
+    assert eat.result["ok"] and a.count("berries") == 1 and a.action is walk
+    eat = sim.submit(a, "eat", {"item": "berries"})                         # something else for the hands: the meal stops
+    sim.world.set(a.x - 1, a.y - 1, block="tree")
+    sim.submit(a, "dig", {"x": a.x - 1, "y": a.y - 1})
+    assert eat.result["status"] == "interrupted" and a.aside is None and a.count("berries") == 1
+

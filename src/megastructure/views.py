@@ -22,7 +22,8 @@ class Views:
                  "with": a.action.args.get("with") if a.action else None,
                  "item": a.action.args.get("item") if a.action else None,
                  "run": bool(a.action.args.get("run")) if a.action else False, "sail": a.sailing, "z": self.sim.height(a),
-                 **({"worn": a.worn} if a.worn else {}), **({"race": a.race} if a.race != "cat" else {}), **({"swim": True} if self.sim.swimming(a) else {}), **({"vn": a.via_done} if a.via_done else {})}
+                 **({"worn": a.worn} if a.worn else {}), **({"race": a.race} if a.race != "cat" else {}), **({"swim": True} if self.sim.swimming(a) else {}), **({"vn": a.via_done} if a.via_done else {}),
+                 **({"eats": a.aside.args.get("item")} if a.aside else {})}       # (what their hands are doing meanwhile)
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
         ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "z": self.sim.height(c), "hp": c.hp, "love": c.love > self.sim.tick, "scared": c.scared > self.sim.tick,
                   **({"act": c.mode, "dir": list(c.dir), "run": c.mode == "charge"} if c.kind in WILD else {})}
@@ -81,10 +82,10 @@ class Views:
         """Every tick, each spectator gets the entities inside the rect it watches; agents whose
         multi-tick action just started get a progress notice (so clients can show a bar at once)."""
         for aid, push in list(self.notify.items()):
-            act = self.sim.agents[aid].action
-            if (act is not None and act.started_tick == self.sim.tick and act.tool not in ("step", "move_to", "walk")
-                    and act.expected >= 2):
-                push({"type": "progress", "tool": act.tool, "ticks": act.expected, "tick_hz": TICK_HZ})
+            for act in (self.sim.agents[aid].action, self.sim.agents[aid].aside):       # (and what the hands are doing: eating)
+                if (act is not None and act.started_tick == self.sim.tick and act.tool not in ("step", "move_to", "walk")
+                        and act.expected >= 2):
+                    push({"type": "progress", "tool": act.tool, "ticks": act.expected, "tick_hz": TICK_HZ})
         for q in [q for q in self.behind if q.qsize() < QUEUE_MAX // 2]:
             self.behind.discard(q)
             if q in self.spectators:

@@ -35,6 +35,7 @@ class Agent:
     race: str = "cat"          # cat, bunny, bear, frog or duck (tiles.RACES): looks only
     # runtime only
     action: "Action | None" = field(default=None, repr=False)
+    aside: "Action | None" = field(default=None, repr=False)   # what the hands are doing meanwhile (constants.ASIDE: eating): it runs beside `action`
     ready: int = field(default=0, repr=False)   # first tick the next stride may start (movement cooldown)
     via: list = field(default_factory=list, repr=False)   # (x, y, n): tiles a player's screen has already walked to, to make in order (Movement.follow)
     via_done: int = field(default=0, repr=False)   # the number of the last of them reached (or given up)
@@ -139,6 +140,8 @@ class Action:
         self.result = result
         if a.action is self:
             a.action = None
+        if a.aside is self:
+            a.aside = None
         if self.on_done:
             self.on_done(result)
 

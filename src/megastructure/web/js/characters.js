@@ -37,7 +37,13 @@ function drawEntity(p, sx, sy, S, t, now) {
   if (j && e.kind !== "agent") { jumpShadow(j, x, y, S, z, ANIMALS[e.kind] && ANIMALS[e.kind].fw === 32 ? 8 : 5); y -= Math.round(j.body * z); }
   if (e.kind === "agent") {
     const mine = me && e.id === myId;
-    let action = mine && myAction ? myAction : (e.doing ? {tool: e.doing, dir: e.dir, at: e.at, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null);
+    if (e.eats && !p.eatSince) p.eatSince = now;
+    if (!e.eats) p.eatSince = 0;
+    // what they are doing: you, as your own screen has it; the others, as the server says. Eating is done with the
+    // hands, beside walking (the walk's legs go on under it)
+    let action = mine && (myAside || myAction) ? myAside || myAction
+      : !mine && e.eats ? {tool: "eat", item: e.eats, t0: p.eatSince}
+      : e.doing ? {tool: e.doing, dir: e.dir, at: e.at, tid: e.tid, with: e.with, item: e.item, t0: p.doingSince || now} : null;
     if ((!action || action.tool === "walk" || action.tool === "move_to") && p.swing && now - p.swing.t0 < 320)
       action = {tool: "attack", t0: p.swing.t0, with: p.swing.with};   // a swing, even on the move
     if (e.doing && !p.doingSince) p.doingSince = now;
@@ -85,7 +91,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     } else if (tool === "eat") {                      // three bites (see eatPose): a small nod on each, crumbs fall
       const pose = eatPose(k);
       if (k < .05) p.lastBite = -1;                  // a new meal
-      bob = pose.biting ? z : 0;
+      bob += pose.biting ? z : 0;                    // (on top of a hop: you may be walking)
       if (pose.biting && p.lastBite !== pose.n) {
         p.lastBite = pose.n; sfx("eat", p.x, p.y);
         const mx = p.x + .5 + (p.fx || 0) * .28, cols = spriteColors([ghostIcon(action.item), 0, 0, 16, 16]);

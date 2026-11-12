@@ -21,7 +21,8 @@ function joinGame(name) {
   agentWs.onmessage = (m) => {
     const d = JSON.parse(m.data);
     if (d.type === "progress") {
-      if (pendingAct && pendingAct.tool === d.tool) myAction = {...pendingAct, t0: performance.now()};
+      if (pendingAside && pendingAside.tool === d.tool) myAside = {...pendingAside, t0: performance.now()};
+      else if (pendingAct && pendingAct.tool === d.tool) myAction = {...pendingAct, t0: performance.now()};
       if (d.ticks / d.tick_hz >= .35) progress = {t0: performance.now(), ms: d.ticks / d.tick_hz * 1000, tool: d.tool};
       return;
     }
@@ -53,6 +54,10 @@ async function refresh() {
 }
 setInterval(refresh, 700);
 let myAction = null, pendingAct = null;   // myAction is set only once the server confirms the action started
+// What your hands do meanwhile (the server's ASIDE: eating): it runs beside walking, which goes on, and has its own
+// two of these, so starting a walk or finishing a step doesn't end the meal on screen
+const ASIDE = ["eat"];
+let myAside = null, pendingAside = null;
 let actTarget = null;   // the exact tile perform() aims at: sent as x, y instead of a direction
 function facingTo(p) {  // the direction to look when working on p (the bigger axis wins)
   const s = myPos(); if (!s) return null;
@@ -67,13 +72,17 @@ async function act(tool, args, quiet) {
   const s0 = myPos(), dv = args.dir && DIRV[args.dir];
   const at = "x" in args && "y" in args && tool !== "move_to" ? [args.x, args.y] : dv && s0 ? [s0.x + dv[0], s0.y + dv[1]] : null;
   actTarget = null;
-  busy = true;
+  const aside = ASIDE.includes(tool);
   // the facing only shows once the server says the action takes time (instant things don't turn you or stop you)
-  pendingAct = {tool, dir: look, at, tid: args.target, with: args.with, item: args.item};
+  if (aside) pendingAside = {tool, item: args.item};
+  else { busy = true; pendingAct = {tool, dir: look, at, tid: args.target, with: args.with, item: args.item}; }
   const r = await rpc("act", {tool, args});
-  pendingAct = null; myAction = null;
-  busy = false; progress = null;
-  if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk();   // still holding a direction: walk on
+  if (aside) { pendingAside = myAside = null; if (progress && progress.tool === tool) progress = null; }
+  else {
+    pendingAct = null; myAction = null;
+    busy = false; progress = null;
+    if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk();   // still holding a direction: walk on
+  }
   if (!r.ok && !["interrupted", "offline", "too_soon"].includes(r.error) && !quiet) toast(`${label(tool)}: ${r.detail || r.error}`, true);
   if (r.ok) {
     const c = r.result.changed || {};

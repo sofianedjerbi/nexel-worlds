@@ -8,7 +8,7 @@ def test_eating_takes_three_bites_and_stops_when_full(game):
     game.hold_item("bread")
     game.press("e", 0)
     game.sleep(450)
-    assert game.js("myAction && myAction.tool") == "eat" and game.js("biteIcon('bread', 1) !== null")
+    assert game.js("myAside && myAside.tool") == "eat" and game.js("biteIcon('bread', 1) !== null")
     game.sleep(900)
     assert game.server()["hunger"] == hunger0 + 50            # one bread
     game.rpc("dev_needs", hunger=100)
@@ -17,6 +17,44 @@ def test_eating_takes_three_bites_and_stops_when_full(game):
     if game.inv("bread"):
         game.press("e", 600)
         assert "full" in game.toast()
+
+
+def test_you_eat_while_you_walk(game):
+    """Eating is done with the hands: E on the move doesn't stop you, the bites show on a walking you (to others
+    too), and setting off doesn't end a meal begun standing. (You stood still for every bite.)"""
+    game.clear_area(12)
+    game.give(bread=3)
+    game.rpc("dev_needs", hunger=30)
+    game.hold_item("bread")
+    x0 = game.pos()[0]
+    game.start_recording()
+    game.page.keyboard.down("d")
+    game.sleep(250)
+    game.press("e", 0)
+    game.sleep(450)
+    assert game.js("walking !== null") and game.js("myAside && myAside.tool") == "eat"       # walking, and the bites showing
+    assert game.js("(() => { const e = ents.get('agent' + myId).e; return [e.doing, e.eats]; })()") == ["walk", "bread"]   # as others are told
+    game.sleep(900)
+    game.page.keyboard.up("d")
+    rec = game.recording()
+    game.sleep(600)
+    assert game.server()["hunger"] >= 30 + 50 - 2 and game.inv("bread") == 2                 # the bread is eaten...
+    stops, i0 = [], 0                                                                       # ...and you never stood still for it
+    for i in range(1, len(rec)):
+        if abs(rec[i][1] - rec[i0][1]) > 1e-6:
+            if rec[i][0] - rec[i0][0] > 80 and rec[i0][0] > 300:
+                stops.append(round(rec[i][0] - rec[i0][0]))
+            i0 = i
+    assert not stops and game.pos()[0] >= x0 + 7, (stops, game.pos()[0] - x0)
+    game.rpc("dev_needs", hunger=30)
+    game.press("e", 250)                                                                    # a meal begun standing...
+    game.page.keyboard.down("a")
+    game.sleep(500)
+    assert game.js("walking !== null") and game.js("myAside && myAside.tool") == "eat"       # ...goes on as you set off
+    game.sleep(700)
+    game.page.keyboard.up("a")
+    game.sleep(500)
+    assert game.inv("bread") == 1 and not game.errors
 
 
 def test_hit_a_chicken_while_walking_and_it_runs(game):

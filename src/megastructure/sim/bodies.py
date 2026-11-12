@@ -6,6 +6,7 @@ ground under it there (a fall, however far). Under a hill it is in a cave, at th
 Who may go where is each kind's own business (people: Movement, with water, boats and falls that hurt; creatures:
 Animals, which take no door and no fall that would hurt them); where they end up, and how far they reach, is here."""
 
+from ..tiles import DIRS
 from .constants import FALL_SAFE, LAYER, TARGET_R
 from .entities import ActionError
 
@@ -63,3 +64,20 @@ class Bodies:
         if not self.near(a, x, y, r, z):
             raise ActionError("out_of_range", f"({x},{y}) is out of reach: {r} tiles round you, height counted "
                                               "(a layer is half a tile)")
+
+    def target(self, a, args, flat=False) -> tuple[int, int]:
+        """The tile an action is aimed at: `dir` (the adjacent tile that way), or an absolute `x`, `y`. Within reach
+        (Movement.near: TARGET_R round you, a walking player's client being up to a tile ahead of the server; height
+        counted, unless `flat`: a step, a wall you face)."""
+        if "x" in args and "y" in args and args.get("dir") is None:
+            try:
+                x, y = int(args["x"]), int(args["y"])                 # (your own tile too: a flower underfoot)
+            except (TypeError, ValueError):
+                raise ActionError("bad_args", "x and y must be integers")
+        else:
+            d = str(args.get("dir", "")).upper()
+            if d not in DIRS:
+                raise ActionError("bad_args", "aim with dir (N, E, S or W) or with x and y")
+            x, y = a.x + DIRS[d][0], a.y + DIRS[d][1]
+        self.reach(a, x, y, z=self.height(a) if flat else None)
+        return x, y

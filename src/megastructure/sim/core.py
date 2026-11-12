@@ -19,8 +19,8 @@ from .constants import (
     CREATURE_ID0,
     DAY_TICKS,
     EVENT_QUEUE,
+    ASIDE,
     MOVES,
-    TARGET_R,
     VIEW_R,
     sec,
 )
@@ -45,6 +45,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
+    current = None                                      # the action being stepped right now (wait() marks its length on it)
 
     def __init__(self, store: Store | str | Path, seed: int | None = None, event_log: Path | str | None = None):
         if not isinstance(store, Store):
@@ -155,23 +156,6 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
                 return c
         return None
 
-    def target(self, a: Agent, args, flat=False) -> tuple[int, int]:
-        """The tile an action is aimed at: `dir` (the adjacent tile that way), or an absolute `x`, `y`. Within reach
-        (Movement.near: TARGET_R round you, a walking player's client being up to a tile ahead of the server; height
-        counted, unless `flat`: a step, a wall you face)."""
-        if "x" in args and "y" in args and args.get("dir") is None:
-            try:
-                x, y = int(args["x"]), int(args["y"])                 # (your own tile too: a flower underfoot)
-            except (TypeError, ValueError):
-                raise ActionError("bad_args", "x and y must be integers")
-        else:
-            d = str(args.get("dir", "")).upper()
-            if d not in DIRS:
-                raise ActionError("bad_args", "aim with dir (N, E, S or W) or with x and y")
-            x, y = a.x + DIRS[d][0], a.y + DIRS[d][1]
-        self.reach(a, x, y, z=self.height(a) if flat else None)
-        return x, y
-
     def near_block(self, a: Agent, block: str, r: int = 2) -> bool:
         return any(self.world.block(a.x + dx, a.y + dy) == block
                    for dy in range(-r, r + 1) for dx in range(-r, r + 1))
@@ -200,22 +184,25 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
     def wait(self, a: Agent, seconds: float):
         """Take `seconds` of game time (doubled when exhausted). The starting tick counts."""
         n = sec(seconds)
-        if a.action is not None:
-            a.action.expected = max(a.action.expected, a.action.ticks - 1 + n)
+        act = self.current or a.action                       # (the action being stepped: it may be the hands', beside a walk)
+        if act is not None:
+            act.expected = max(act.expected, act.ticks - 1 + n)
         for _ in range(n - 1):
             yield
 
 
     # ------------------------------------------------------------- agents
 
-    def interrupt(self, a: Agent, why="interrupted", way=False):
+    def interrupt(self, a: Agent, why="interrupted", way=False, hands=True):
         """(way: walking on. Otherwise the way a player's screen had walked (Movement.follow) is forgotten: dead,
-        moved, doing something else, they are not going there any more.)"""
-        act = a.action
-        if act is not None:
-            a.action = None
-            act.gen.close()
-            act.finish({"ok": False, "status": "interrupted", "error": "interrupted", "detail": why}, self)
+        moved, doing something else, they are not going there any more. hands: what the hands were doing meanwhile
+        (Agent.aside: eating) stops too: not for a walk.)"""
+        for slot in ("action", "aside") if hands else ("action",):
+            act = getattr(a, slot)
+            if act is not None:
+                setattr(a, slot, None)
+                act.gen.close()
+                act.finish({"ok": False, "status": "interrupted", "error": "interrupted", "detail": why}, self)
         if not way:
             self.via_drop(a)
 
@@ -233,6 +220,11 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             self.via_add(a, args.get("from" if tool == "walk" else "at"))
         act = Action(a, tool, args, fn(a, args), on_done)
         moving = a.action is not None and a.action.tool in MOVES
+        if tool in ASIDE:                               # with the hands: a walk goes on (anything else stops for it)
+            walk, a.action = (a.action, None) if moving else (None, a.action)
+            self.interrupt(a, f"replaced by {tool}", way=True)       # (what they were doing; a meal already under way)
+            a.action, a.aside = walk, act
+            return act
         if moving and tool not in MOVES and tool != "stop":
             # walking or running: try it right away; if it takes no time (picking a flower, picking up), it happens
             # on the move and the walk goes on. If it needs time (chopping), it replaces the walk as usual.
@@ -256,7 +248,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             self.interrupt(a, f"replaced by {tool}")
             a.action = act
             return act
-        self.interrupt(a, f"replaced by {tool}", way=tool in ("walk", "stop"))
+        self.interrupt(a, f"replaced by {tool}", way=tool in ("walk", "stop"), hands=tool not in MOVES)
         a.action = act
         return act
 
@@ -268,20 +260,22 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         self.rng.seed(self.seed * 1_000_003 + self.tick)
         for aid in sorted(self.agents):
             a = self.agents[aid]
-            act = a.action
-            if act is None or not a.online:
-                continue
-            if act.started_tick is None:
-                act.started_tick = self.tick
-            act.ticks += 1
-            try:
-                next(act.gen)
-            except StopIteration as stop:
-                self.stats["actions"] += 1
-                act.finish({"ok": True, "status": "done", **(stop.value or {})}, self)
-            except ActionError as e:
-                self.stats["actions"] += 1
-                act.finish({"ok": False, "status": "failed", "error": e.code, "detail": e.detail}, self)
+            for act in (a.action, a.aside):               # what they are doing, and what their hands are doing meanwhile
+                if act is None or not a.online:
+                    continue
+                if act.started_tick is None:
+                    act.started_tick = self.tick
+                act.ticks += 1
+                self.current = act
+                try:
+                    next(act.gen)
+                except StopIteration as stop:
+                    self.stats["actions"] += 1
+                    act.finish({"ok": True, "status": "done", **(stop.value or {})}, self)
+                except ActionError as e:
+                    self.stats["actions"] += 1
+                    act.finish({"ok": False, "status": "failed", "error": e.code, "detail": e.detail}, self)
+                self.current = None
         self.step_creatures()
         self.step_environment()
         self.step_needs()

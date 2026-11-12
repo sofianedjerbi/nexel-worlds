@@ -85,7 +85,7 @@ class Combat:
             by.bump("kills")
         self.emit("death", a.x, a.y, radius=SHOUT_R, name=a.name, cause=cause, by=by.name if by else None,
                   dropped=dropped)
-        if a.action:
+        if a.action or a.aside:
             self.interrupt(a, "you died")
         if a.sailing:
             self.world.set(a.x, a.y, block="boat")
