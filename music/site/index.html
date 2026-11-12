@@ -30,13 +30,13 @@
     background:linear-gradient(#fff9ec, #f8e8c8); border:2px solid #ead1a8; }
   #viz { position:absolute; inset:0; width:100%; height:100%; }
   .controls { display:flex; align-items:center; gap:16px; margin-top:16px; }
-  #theme_bplay, #nightplay, #bossplay { font:inherit; font-weight:900; font-size:15px; border:3px solid var(--ink); border-radius:14px; padding:10px 20px; min-width:84px;
+  .lplay, #nightplay, #bossplay { font:inherit; font-weight:900; font-size:15px; border:3px solid var(--ink); border-radius:14px; padding:10px 20px; min-width:84px;
     background:#f7c9a3; color:var(--ink); cursor:pointer; box-shadow:0 4px 0 var(--ink); }
-  #theme_bplay:active, #nightplay:active, #bossplay:active { transform:translateY(3px); box-shadow:0 1px 0 var(--ink); }
-  #theme_bplay[disabled], #nightplay[disabled], #bossplay[disabled] { opacity:.5; cursor:wait; }
-  #theme_bsections, #nightsections, #bosssections { position:relative; display:flex; height:22px; border-radius:8px; overflow:hidden; border:2px solid var(--ink); cursor:pointer; }
-  #theme_bsections div, #nightsections div, #bosssections div { height:100%; font-size:10px; font-weight:800; line-height:18px; padding-left:5px; white-space:nowrap; overflow:hidden; border-right:1px solid rgba(0,0,0,.25); }
-  #theme_bhead, #nighthead, #bosshead { position:absolute; top:0; bottom:0; width:3px; background:var(--ink); left:0; pointer-events:none; }
+  .lplay:active, #nightplay:active, #bossplay:active { transform:translateY(3px); box-shadow:0 1px 0 var(--ink); }
+  .lplay[disabled], #nightplay[disabled], #bossplay[disabled] { opacity:.5; cursor:wait; }
+  .lsections, #nightsections, #bosssections { position:relative; display:flex; height:22px; border-radius:8px; overflow:hidden; border:2px solid var(--ink); cursor:pointer; }
+  .lsections div, #nightsections div, #bosssections div { height:100%; font-size:10px; font-weight:800; line-height:18px; padding-left:5px; white-space:nowrap; overflow:hidden; border-right:1px solid rgba(0,0,0,.25); }
+  .lhead, #nighthead, #bosshead { position:absolute; top:0; bottom:0; width:3px; background:var(--ink); left:0; pointer-events:none; }
   #play {
     width:64px; height:64px; border-radius:50%; border:3px solid var(--ink); cursor:pointer;
     background:#ffd36e; box-shadow:0 4px 0 var(--ink); display:grid; place-items:center; flex:none;
@@ -139,18 +139,10 @@
     </div>
   </section>
 
-  <section class="card" id="theme_bcard">
-    <h2>Another melody to compare <small>same chords, left hand and form as the main theme above</small></h2>
-    <div class="controls">
-      <button id="theme_bplay" disabled>play</button>
-      <div class="timeline">
-        <div id="theme_bsections"><span id="theme_bhead"></span></div>
-        <div class="times"><span id="theme_bnow">0:00</span><span id="theme_bwhere">candidate B</span><span>4:53</span></div>
-      </div>
-    </div>
-    <div class="notes" style="margin-top:10px">
-      <div><b>Candidate B:</b> slower, two notes a bar, stepping down (E, D, then A; B, D, then E). Closer to a piano piece that barely moves. If you prefer it to the main theme above, say so and every track switches to it (<code>THEME=b</code> in <code>music/compose.py</code>).</div>
-    </div>
+  <section class="card" id="sketchcard">
+    <h2>Pick a direction <small>four short sketches for a new main theme · each loops: piano alone, then with pad and bass</small></h2>
+    <div class="notes"><div>Two melodies written blind both came out naive, like a shop's door chime. These four go other ways: the melody comes in after the beat, rests on colour notes, moves little and mostly down, and sits low. Tell me the number you like (or what is wrong with all of them) and I will build the day, night and boss tracks from it. The main track above still plays the melody you rejected.</div></div>
+    <div id="sketches"></div>
   </section>
 
   <section class="card" id="nightcard">
@@ -364,8 +356,8 @@ async function loopStart(id, from) {
   L.src.start(L.at, from);
   $(id + "play").textContent = "stop";
 }
-async function loadLoop(id, tint) {
-  const L = loops[id] = {meta: await (await fetch(`audio/${id}.json`)).json(), buf: null, src: null, at: 0, from: 0};
+async function loadLoop(id, tint, meta) {
+  const L = loops[id] = {meta: meta || await (await fetch(`audio/${id}.json`)).json(), buf: null, src: null, at: 0, from: 0};
   L.pos = () => L.src ? (ctx.currentTime - L.at + L.from) % L.meta.seconds : L.from;
   const bar = $(id + "sections");
   L.meta.sections.forEach((sec, i) => {
@@ -387,8 +379,21 @@ async function loadLoop(id, tint) {
   }, 100);
 }
 const loadBoss = () => Promise.all([loadLoop("boss", ["#d9e8d0", "#f7e0a3", "#f7c9a3", "#cfe0f0", "#f7c9a3"]),
-                                    loadLoop("night", ["#cfd6ee", "#bcc6e6", "#d9d2f0", "#c2d8e8", "#b4bfe2", "#cfd6ee"]),
-                                    loadLoop("theme_b", ["#f7e0a3", "#f3d7b0", "#d9e8d0", "#f7e0a3", "#f7c9a3", "#cfe0f0"])]);
+                                    loadLoop("night", ["#cfd6ee", "#bcc6e6", "#d9d2f0", "#c2d8e8", "#b4bfe2", "#cfd6ee"]), loadSketches()]);
+async function loadSketches() {
+  const list = await (await fetch("audio/sketches.json", {cache: "no-cache"})).json();
+  for (const sk of list) {
+    const id = `sketch_${sk.id}`, row = document.createElement("div");
+    row.style.marginTop = "18px";
+    row.innerHTML = `<div style="font-weight:900;margin-bottom:6px">${sk.id}. ${sk.name} <small style="font-weight:600;opacity:.7">${sk.bpm} BPM</small></div>
+      <div class="controls" style="margin-top:0"><button class="lplay" id="${id}play" disabled>play</button>
+        <div class="timeline"><div class="lsections" id="${id}sections"><span class="lhead" id="${id}head"></span></div>
+        <div class="times"><span id="${id}now">0:00</span><span id="${id}where"></span><span>${fmt(sk.seconds)}</span></div></div></div>
+      <div class="notes" style="margin-top:6px"><div>${sk.why}</div></div>`;
+    $("sketches").appendChild(row);
+    await loadLoop(id, ["#f7e0a3", "#d9e8d0"], sk);
+  }
+}
 
 $("play").onclick = async () => {
   await ctx.resume();
