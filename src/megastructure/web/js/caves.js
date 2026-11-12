@@ -130,20 +130,16 @@ function buildCaveOverlay(b) {
       }
       peekFloors = true; drawTile(x, y, {g, ox: X, oy: Yz}); peekFloors = false;
       caveEdge(g, x, y, z, X, Yz);
-      let out = 0;                                        // a way out to the north: the ground it opens onto is behind
-      for (let n = 1; n <= 3; n++) {                      //  the hill; shown too, as far as the hill hides it
+      for (let n = 1; n <= 3; n++) {                      // a way out to the north: the ground it opens onto is behind the hill;
+        // shown too, as far as the hill hides it, right through the hill's border (one passage, out into the open)
         const ty = y - n, t = topAt(x, ty);
         if (roofAt(x, ty) || inOpenCave(x, ty) || Math.abs(t - z) > 1 || (topAt(x, y) - t) * RELIEF_STEP <= (n - 1) * 16) break;
-        drawTile(x, ty, {g, ox: X, oy: Y - n * 16 - shOf(t)}); out = n;
-        [.34, .24, .15, .08].forEach((al, k) => {         // (shadowed along its sides like the cave: one passage, out under the border)
+        drawTile(x, ty, {g, ox: X, oy: Y - n * 16 - shOf(t)});
+        [.34, .24, .15, .08].forEach((al, k) => {         // (shadowed along its sides like the cave)
           g.fillStyle = `rgba(${SHADE},${al})`;
           if (!inOpenCave(x - 1, y)) g.fillRect(X + k, Y - n * 16 - shOf(t), 1, 16);
           if (!inOpenCave(x + 1, y)) g.fillRect(X + 15 - k, Y - n * 16 - shOf(t), 1, 16);
         });
-      }
-      if (out) {                                          // ...under the hill's own border, which stays (you go out under it)
-        const top = topAt(x, y), sheet = hillSheet(Math.max(1, top)), [cx, cy] = blobCell(maskOf(x, y, (cc, gg, tx, ty) => topAt(tx, ty) >= top));
-        g.drawImage(sheet, cx * 16, cy * 16, 16, colsOf(sheet).north + 6, X, Y - shOf(top), 16, colsOf(sheet).north + 6);
       }
       continue;
     }

@@ -66,7 +66,7 @@ def test_inside_the_cave_shows_through_the_hill_shadowed_along_its_edges(game):
     assert px(0, -6, 8, -4)[3] == 255                                                 # the wall at its back
 
 
-def test_a_way_out_to_the_north_shows_under_the_hills_border_which_stays(game):
+def test_a_way_out_to_the_north_shows_right_through_the_hills_border(game):
     game.clear_area(9)
     x, y = game.pos()
     hill(game, -3, 2, 7, 6, {(0, j): 2 for j in range(2, 6)})                         # a hill south of you, a tunnel in from its north side
@@ -78,10 +78,8 @@ def test_a_way_out_to_the_north_shows_under_the_hills_border_which_stays(game):
     assert px(0, 2, 8, -4)[3] == 0 or px(0, 2, 8, 8)[3] == 255                        # no wall across the way out
     assert px(0, 1, 8, 8)[3] == 255                                                   # the ground it opens onto: shown
     north = game.js("colsOf(hillSheet(4)).north")
-    edge = px(0, 2, 8, -32 + north)                                                   # the hill's own border, over it
-    assert edge[3] == 255 and edge[:3] == game.js(f"""(() => {{ const s = hillSheet(4), [cx, cy] = blobCell(maskOf({x}, {y + 2}, (c, g, tx, ty) => topAt(tx, ty) >= 4));
-      const k = document.createElement('canvas'); k.width = k.height = 16; const q = k.getContext('2d'); q.drawImage(s, cx * 16, cy * 16, 16, 16, 0, 0, 16, 16);
-      return Array.from(q.getImageData(8, {north}, 1, 1).data).slice(0, 3); }})()""")
+    edge, ground = px(0, 2, 8, -32 + north), px(0, 1, 8, 8)                           # where the hill's border was: the passage goes through
+    assert edge[3] == 255 and max(abs(a - b) for a, b in zip(edge[:3], ground[:3])) < 45
 
 
 def test_standing_behind_a_hill_it_hides_you(game):
