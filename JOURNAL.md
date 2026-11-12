@@ -863,3 +863,10 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Change, browser: E on the move doesn't stop you (the meal has its own state on your screen, so setting off or turning doesn't end it there); the bites, the food at the mouth and the crumbs are drawn on a walking character, yours and other people's.
 - Tests: unit (eating beside a walk, a walk begun during a meal, a tree chopped: the meal stops); browser (E while walking: no pause over 80 ms in 1.6 s, 7 tiles gone, the bread eaten; others are told walk + bread; a meal begun standing goes on as you set off). 296 unit; the living tests 10/10.
 
+## Iteration 76: the bar is ten slots; I for the inventory, C for crafting
+- User: "improve the UI: only 10 inventory slots, remove 'bag' and crafting table from the ui, map i to inventory and c to craft".
+- Before: nine slots, then a "bag" slot (B) and a crafting-table button (C) on the same row; what did not fit the nine was in the bag.
+- Change (ui.js, keyboard.js, main.js, touch.js, index.html): the bar is ten slots and nothing else, keys 1 to 9 and 0. An empty slot's key, or the key of the slot in hand again, is empty hands (so 0 still empties your hands while the tenth slot is empty; ` always does). I opens the inventory: everything you carry, by name, the ten of the bar first, then "not on your bar"; picking one takes it in hand, and one from beyond the bar comes onto it. C opens the crafting as before; its button is gone (on a phone the buttons at the top stay: Items, Craft, Talk). B is no longer a key.
+- Read as a change of the interface only: nothing limits what you can carry. More than ten kinds of thing still go to the inventory, beyond the bar.
+- Tests: the UI test for the bag rewritten for this (ten keys, no buttons, 0, B dead, I, picking from beyond the bar, C). 296 unit, browser 101/101.
+

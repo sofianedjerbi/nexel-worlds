@@ -35,18 +35,21 @@ function iconCanvas(name) {
   g.drawImage(IMG[img], x, y, w, h, (16 - dw) >> 1, (16 - dh) >> 1, dw, dh);
   return c;
 }
+// The bar at the bottom is what you carry: ten slots, keys 1 to 9 and 0. (No button on it: I opens the inventory,
+// C the crafting.) What is beyond ten kinds of thing is in the inventory.
+const BAR = 10;
 let slots = JSON.parse(localStorage.getItem("megastructure-slots") || "[]");
 function slotOrder(inv) {               // items keep their slot; new items take the first free one
   slots = slots.map((n) => (n && inv[n] ? n : null));
   for (const n of Object.keys(inv)) if (!slots.includes(n)) { const i = slots.indexOf(null); if (i >= 0) slots[i] = n; else slots.push(n); }
-  while (slots.length < 9) slots.push(null);
+  while (slots.length < BAR) slots.push(null);
   localStorage.setItem("megastructure-slots", JSON.stringify(slots));
   return slots;
 }
 function drawHotbar(inv) {
   const el = $("hotbar");
   if (selected && !inv[selected]) selected = null;
-  const order = slotOrder(inv).slice(0, 9);
+  const order = slotOrder(inv).slice(0, BAR);
   const extra = Object.keys(inv).filter((n) => !order.includes(n));
   const can = meObs ? meObs.self.can ?? CAN_SIZE : CAN_SIZE;
   const sig = JSON.stringify(inv) + order.join() + selected + can; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
@@ -62,14 +65,10 @@ function drawHotbar(inv) {
       d.onclick = () => { selected = selected === name ? null : name; el.dataset.sig = ""; drawHotbar(meObs.self.inventory); };
       d.ondblclick = () => useSelected(name);
     }
-    if (i < 9) d.insertAdjacentHTML("beforeend", `<span class="k">${i + 1}</span>`);
+    d.insertAdjacentHTML("beforeend", `<span class="k">${(i + 1) % 10}</span>`);
     el.appendChild(d);
   });
-  const bag = document.createElement("div"); bag.className = "slot bagslot";   // everything beyond 9 lives in the bag
-  bag.innerHTML = `<span class="bagtxt">${extra.length ? "+" + extra.length : "bag"}</span><span class="k">B</span><span class="tip">bag (B)</span>`;
-  bag.onclick = () => toggleBag();
-  el.appendChild(bag);
-  drawBag(inv, extra);
+  drawBag(inv, order.filter(Boolean), extra);
 }
 // Hearts and food sit on the hotbar, 10 points an icon, halves allowed. Hearts are the UI pack's small hearts (full,
 // half, empty); food is an apple drawn here in the hearts' own palette (plum outline, rose, glint, a leaf; empty is
@@ -123,23 +122,31 @@ function drawVitals(s) {
   $("status").textContent = status; $("status").style.display = status ? "block" : "none";
 }
 let bagFocus = null;     // bag item highlighted for keyboard use
-function toggleBag() { const b = $("bag"); b.style.display = b.style.display === "block" ? "none" : "block"; }
-function drawBag(inv, extra) {
+// The inventory (I): everything you carry, with its name: the ten of your bar, then what is beyond them. Picking one
+// takes it in hand (one from beyond the bar comes onto it, in place of what you hold, or of the last slot).
+function toggleBag() { const b = $("bag"), on = b.style.display !== "block"; sfx(on ? "open" : "close"); b.style.display = on ? "block" : "none"; }
+function drawBag(inv, onBar, extra) {
   const el = $("bagitems"); if (!el) return;
-  el.innerHTML = extra.length ? "" : `<span style="color:var(--ink2)">Everything fits in your hotbar.</span>`;
-  for (const name of extra) {
-    const d = document.createElement("div"); d.className = "slot";
+  el.innerHTML = onBar.length || extra.length ? "" : `<span style="color:var(--ink2)">You carry nothing.</span>`;
+  const card = (name, beyond) => {
+    const d = document.createElement("div"); d.className = "slot" + (name === selected ? " sel" : "");
     d.appendChild(iconCanvas(name));
     d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name))}</span>`);
-    d.dataset.name = name; if (name === bagFocus) d.classList.add("kfocus");
-    d.onclick = () => {                          // bring it into the hotbar (swapping with the selected slot or slot 9)
-      const i = selected && slots.indexOf(selected) >= 0 && slots.indexOf(selected) < 9 ? slots.indexOf(selected) : 8;
-      const j = slots.indexOf(name); if (j >= 0) slots[j] = slots[i]; else slots.push(slots[i]);
-      slots[i] = name; selected = name; localStorage.setItem("megastructure-slots", JSON.stringify(slots));
-      $("hotbar").dataset.sig = ""; drawHotbar(meObs.self.inventory);
+    d.dataset.name = name; d.title = label(name); if (name === bagFocus) d.classList.add("kfocus");
+    if (beyond) d.style.opacity = ".8";
+    d.onclick = () => {
+      if (beyond) {                              // onto the bar, swapping with the slot in hand (or the last)
+        const i = selected && slots.indexOf(selected) >= 0 && slots.indexOf(selected) < BAR ? slots.indexOf(selected) : BAR - 1;
+        const j = slots.indexOf(name); if (j >= 0) slots[j] = slots[i]; else slots.push(slots[i]);
+        slots[i] = name; localStorage.setItem("megastructure-slots", JSON.stringify(slots));
+      }
+      selected = name; $("hotbar").dataset.sig = ""; drawHotbar(meObs.self.inventory);
     };
     el.appendChild(d);
-  }
+  };
+  onBar.forEach((n) => card(n, false));
+  if (extra.length) el.insertAdjacentHTML("beforeend", `<span style="flex-basis:100%;color:var(--ink2);font-size:13px">not on your bar:</span>`);
+  extra.forEach((n) => card(n, true));
 }
 // what animals eat: what grows (no eggs, meat or milk), and hay (tiles.FEED)
 const FEEDS = ["pumpkin", "cauliflower", "lettuce", "eggplant", "carrot", "fruit", "berries", "mushroom", "wheat", "bread", "hay"];

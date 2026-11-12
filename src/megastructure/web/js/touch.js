@@ -1,7 +1,7 @@
 // Touch: the game on a phone. Only on touch screens (body.touch); the keyboard and mouse play stays as it was.
 //   Left thumb: a joystick wherever it lands on the left of the screen (pushed far, you sprint).
 //   Right thumb: the main button (Space: act on what you face, held it keeps going) and the other one (X), each
-//   labelled with what it will do right now; eat and pick up show up when you can. Bag, craft and talk at the top.
+//   labelled with what it will do right now; eat and pick up show up when you can. Items (the inventory), craft and talk at the top.
 //   Two fingers on the world pinch to zoom; a tap on a tile is a click (as with a mouse).
 
 const TOUCH = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window || new URLSearchParams(location.search).has("touch");
@@ -16,7 +16,7 @@ function touchUI() {
   const ctx_ = el("div", "tctx", "");
   el("div", "tEat", "Eat", ctx_); el("div", "tPick", "Pick up", ctx_);
   const top = el("div", "ttop", "");
-  el("div", "tBag", "Bag", top); el("div", "tCraft", "Craft", top); el("div", "tTalk", "Talk", top);
+  el("div", "tBag", "Items", top); el("div", "tCraft", "Craft", top); el("div", "tTalk", "Talk", top);
   return {btns, ctx_};
 }
 
@@ -80,7 +80,7 @@ if (TOUCH) {
   tapButton($("tEat"), () => useSelected());
   tapButton($("tPick"), () => act("pick_up", {}));
   tapButton($("tBag"), () => toggleBag());
-  tapButton($("tCraft"), () => $("craftbtn").click());
+  tapButton($("tCraft"), () => toggleCraft());
   tapButton($("tTalk"), () => openChat());
 
   // pinch to zoom, two fingers on the world

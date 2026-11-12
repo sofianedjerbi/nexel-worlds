@@ -1,7 +1,8 @@
 // Keyboard: the whole game is playable without a mouse.
 //   WASD / arrows walk (Shift sprints), Alt+direction turns on the spot, Space does the main action on the tile
 //   you face and X the alternative one (milk, take down, till). 1-9 / Q pick what's in your hand, 0 empties it.
-//   C crafting and B bag are navigated with the arrows, Enter uses, Esc closes.
+//   C crafting and I inventory are navigated with the arrows, Enter uses, Esc closes. 1-9 and 0: the ten slots of
+//   your bar (an empty one: empty hands), ` empty hands.
 
 const KEYDIR = {w: "N", arrowup: "N", s: "S", arrowdown: "S", a: "W", arrowleft: "W", d: "E", arrowright: "E"};
 const CODEDIR = {KeyW: "N", ArrowUp: "N", KeyS: "S", ArrowDown: "S", KeyA: "W", ArrowLeft: "W", KeyD: "E", ArrowRight: "E"};
@@ -125,7 +126,7 @@ function selectItem(name) {
 }
 function cycleHand(step) {                       // Q: the next item of the hotbar in hand (then empty hands)
   if (!meObs) return;
-  const order = slotOrder(meObs.self.inventory).slice(0, 9), have = order.filter(Boolean);
+  const order = slotOrder(meObs.self.inventory).slice(0, BAR), have = order.filter(Boolean);
   if (!have.length) return;
   const i = have.indexOf(selected), j = i + step;
   selectItem(j < 0 ? have[have.length - 1] : j >= have.length ? null : have[j]);
@@ -143,10 +144,9 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   f: () => act("pick_up", {}),
   e: () => useSelected(),
   q: () => cycleHand(1),
-  0: () => { selectItem(null); toast("Empty hands"); },
   "`": () => { selectItem(null); toast("Empty hands"); },
-  c: () => { $("craftbtn").click(); if (isOpen("craft") && !craftFocus) craftKey("arrowright", {}); },
-  b: () => toggleBag(),
+  c: () => { toggleCraft(); if (isOpen("craft") && !craftFocus) craftKey("arrowright", {}); },
+  i: () => toggleBag(),
   m: () => { setMuted(!muted); toast(muted ? "Sound off (M)" : "Sound on (M)"); },
   h: () => $("helpbtn").click(),
   f3: () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; },
@@ -172,7 +172,9 @@ addEventListener("keydown", (e) => {
     if (!e.repeat) { keys.delete(k); keys.add(k); syncWalk(); }
     return;
   }
-  if (/^[1-9]$/.test(k) && meObs) { const n = slots[+k - 1]; if (n) selectItem(selected === n ? null : n); return; }
+  if (/^[0-9]$/.test(k) && meObs) {                 // a slot of your bar (0: the tenth); an empty one, or the one in hand again: empty hands
+    const n = slots[(+k + 9) % 10]; selectItem(n && selected !== n ? n : null); if (!selected) toast("Empty hands"); return;
+  }
   const fn = SHORTCUTS[k];
   if (fn) { e.preventDefault(); if (!(e.repeat && k !== " " && k !== "x")) fn(); }
 });

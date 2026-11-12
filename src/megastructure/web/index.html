@@ -25,12 +25,12 @@
 </div></div>
 <div class="panel" id="help"><div class="in">
   <b>WASD</b> walk · <b>Shift</b> sprint · <b>Space</b> act on what's in front or around you (fight, chop, place) · <b>X</b> other use (milk, take down, till)<br>
-  <b>place</b>: hold the item (1-9 / Q), face the spot (walk to turn), Space · <b>1-9</b> / <b>Q</b> take in hand · <b>0</b> empty hands (bare hands dig and fight) · <b>E</b> eat · <b>F</b> pick up<br>
-  <b>C</b> craft · <b>B</b> bag (arrows + Enter) · <b>Enter</b> talk · <b>!text</b> shout · <b>/coords</b> <b>/grid</b> debug · <b>+ −</b> zoom · <b>M</b> sound · <b>H</b> help<br>
+  <b>place</b>: hold the item (1-9 / Q), face the spot (walk to turn), Space · <b>1-9, 0</b> / <b>Q</b> take in hand · <b>`</b> empty hands (bare hands dig and fight) · <b>E</b> eat · <b>F</b> pick up<br>
+  <b>C</b> craft · <b>I</b> inventory (arrows + Enter) · <b>Enter</b> talk · <b>!text</b> shout · <b>/coords</b> <b>/grid</b> debug · <b>+ −</b> zoom · <b>M</b> sound · <b>H</b> help<br>
   mouse: <b>click</b> the same as Space on that tile · <b>shift-click</b> the same as X
 </div></div>
 <div class="panel" id="goals"><div class="in"><div class="gh"><h3>Goals</h3><span id="goalcount"></span></div><div id="goallist"></div></div></div>
-<div class="panel" id="bag"><div class="in"><h3>Bag</h3><div id="bagitems"></div></div></div>
+<div class="panel" id="bag"><div class="in"><h3>Inventory</h3><div id="bagitems"></div></div></div>
 <div class="panel" id="craft"><div class="in">
   <div class="ctop"><h3>Crafting</h3><span class="close" id="craftclose" title="Esc">✕</span></div>
   <div id="crafttabs"></div>
@@ -42,7 +42,7 @@
   <div id="status"></div>
   <div id="vitals"><canvas id="hearts"></canvas><canvas id="foods"></canvas></div>
   <div id="xpwrap"><canvas id="xpbar"></canvas><span id="xplevel"></span></div>
-  <div class="hudrow"><div id="hotbar"></div><div class="slot tool" id="craftbtn" title="craft (C)"><canvas id="crafticon"></canvas><span class="k">C</span></div></div>
+  <div class="hudrow"><div id="hotbar"></div></div>
 </div>
 <div class="panel" id="mail"><div class="in">
   <h3 id="mailtitle">Mailbox</h3><span class="close" id="mailclose">close (Esc)</span>

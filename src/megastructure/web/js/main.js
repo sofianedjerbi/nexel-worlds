@@ -34,7 +34,7 @@ $("mailclose").onclick = () => { $("mail").style.display = "none"; };
 $("letter").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") postLetter(); if (e.key === "Escape") $("mail").style.display = "none"; });
 $("craftclose").onclick = () => { sfx("close"); $("craft").style.display = "none"; drawGoals(); };
 $("say").addEventListener("blur", closeChat);
-$("craftbtn").onclick = () => { const c = $("craft"), open = c.style.display !== "block"; sfx(open ? "open" : "close"); c.style.display = open ? "block" : "none"; drawGoals(); };
+function toggleCraft() { const c = $("craft"), open = c.style.display !== "block"; sfx(open ? "open" : "close"); c.style.display = open ? "block" : "none"; drawGoals(); }   // (C; on a phone, its button at the top)
 $("helpbtn").onclick = () => { const h = $("help"); const on = h.style.display !== "block"; h.style.display = on ? "block" : "none"; localStorage.setItem("megastructure-help", on ? "on" : "off"); };
 $("join").onclick = () => { const n = $("name").value.trim(); if (n) joinGame(n); };
 $("watch").onclick = () => { $("joinbox").style.display = "none"; };
@@ -45,6 +45,5 @@ if (qs.get("follow")) { follow = qs.get("follow"); $("joinbox").style.display = 
 if (qs.get("zoom")) zoom = +qs.get("zoom");
 ready.then(() => {
   buildBlob();
-  const ci = $("crafticon"), icon = iconCanvas("workbench"); ci.width = ci.height = 16; ci.getContext("2d").drawImage(icon, 0, 0);
   connectSpec(); requestAnimationFrame(frame);
 });
