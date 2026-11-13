@@ -16,7 +16,8 @@ const SOUND = {
   firstMoment: [8, 20],   // seconds after the sound starts before the first piece
   gap: [50, 140],     // seconds of silence between two pieces (a random time in this range)
   afterFight: [20, 40],   // seconds after a fight before a piece may play again
-  passes: {day: 3, night: 2},   // how many times a piece is played through before it ends (about 1:45 by day, 1:55 at night)
+  passes: {day: 6, night: 4},   // how many times a piece loops before it ends: about 3:30 by day, 3:50 at night
+                      // ("feel free to make it loop for 3-4 min"); the loop joins are exact, nothing is heard there
   arrive: {day: 10, night: 14, boss: 2.5},   // seconds a piece takes to come in: from quiet and muffled (as if from far) to full.
                       // Long on purpose: "make the transition long enough to not be noticed by the player"
   ending: 12,         // seconds over which a piece recedes at its end (quieter and more muffled), and the boss's after a fight
