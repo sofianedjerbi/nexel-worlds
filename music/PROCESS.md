@@ -299,3 +299,19 @@ minecraft feeling. many propositions". First "good" since the C418 round.
   no kit) and 2 (evening: kalimba over electric piano, brushes), Minecraft feeling 1 and 2 (slow, no drums, pads).
   Four render at a time (about 3 minutes for all).
 - Not judged by ear. Unknown to me: how the kalimba, Moon Piano, Cute and conga sounds really sound.
+
+## Kept pieces; boss and a second tune (2026-11-13)
+
+The user: "cuter 1 = amazing, really boosty, beautiful-day thingy. really like it. minecraft feeling 1 = very nice
+night song. keep those two for random day / night moments. now start to rework on the boss theme and other musics".
+- Kept, files untouched since they heard them: `piece_cute1.wav` (day) and `piece_mc1.wav` (night). The other six
+  manners are deleted.
+- `pieces.py` now holds several scores (`SCORES`): street, boss, kite.
+- Old Mossback (boss): the day's lead cell in D minor, 32 bars A A B A. A: bass walking down under D minor
+  (D, C, B, Bb), then Gm9, Em7b5-A7b9, Dm9, A7#5. B: eight bars in the major (Bb, C9, Am7, Dm9), ending on A7b9.
+  Drums "boss" (kick on 1 and 3, a push before 4, sixteenth hats, claps, a fill every eight bars), bass in driving
+  eighths with the octave on the off-beats, chord stabs. Two versions: on the day piece's sounds at 132 BPM; heavier
+  at 140 (Jupiter-8 stabs, TNMG kick and snare, Dream Plucks lead with a soft brass an octave below).
+- Kite weather: a second tune, A major from the IV (Dmaj9, C#m7, Bm9, E13 ... Amaj9), its own cell (two notes down
+  onto a long one, a pickup into the next bar); rendered in the kept day manner and the kept night manner.
+- Not judged by ear. Not in the game yet: the game should play day and night pieces at random moments, not loop them.
