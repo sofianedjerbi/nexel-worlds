@@ -211,12 +211,14 @@ function* reliefSteps(R, ground, see) {
       else if (!s && since[x] <= STEP) cover[f] = 1;                          // ...and its wall
      }
     }
-    if (c1 > c0) { lg.putImageData(col, 0, 0, 0, c0, W, c1 - c0); fg.drawImage(lc, 0, c0, W, c1 - c0, 0, off + ya + c0, W, c1 - c0); }
-    o1 = Math.min(o1, Math.min(yb, H) - ya);
-    if (o1 > o0) {
-      tg.globalCompositeOperation = "source-over"; tg.putImageData(ownM, 0, 0, 0, o0, W, o1 - o0);
-      tg.globalCompositeOperation = "source-in"; tg.drawImage(ground, 0, ya + o0, W, o1 - o0, 0, o0, W, o1 - o0);
-      fg.drawImage(t, 0, o0, W, o1 - o0, 0, off + ya + o0, W, o1 - o0);
+    // (each picture put whole and drawn whole: put a part at a time, a phone's GPU left the mask itself, black, on
+    // the tiles cut out at more than one level)
+    if (c1 > c0) { lg.putImageData(col, 0, 0); fg.drawImage(lc, 0, 0, W, n, 0, off + ya, W, n); }
+    const no = Math.min(yb, H) - ya;
+    if (o1 > o0 && no > 0) {
+      tg.globalCompositeOperation = "source-over"; tg.putImageData(ownM, 0, 0);
+      tg.globalCompositeOperation = "source-in"; tg.drawImage(ground, 0, ya, W, no, 0, 0, W, no);
+      fg.drawImage(t, 0, 0, W, no, 0, off + ya, W, no);
     }
     yield;
   }
