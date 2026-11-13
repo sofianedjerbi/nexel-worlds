@@ -83,8 +83,8 @@ class Environment:
                     self.set_tile(*pos, ground=dry, block=nxt, cause="grew")
                     if nxt == "crop":
                         self.timers[pos] = [self.tick + sec(150), "ripen"]
-                elif kind == "hatch" and self.items.get(pos, {}).get("egg") and self.crowded(*pos):
-                    self._take_items(pos, "egg")            # crowded: nobody came for it, it rots away
+                elif kind == "hatch" and self.items.get(pos, {}).get("egg") and (self.crowded(*pos) or not self.room_for("chick", *pos)):
+                    self._take_items(pos, "egg")            # crowded, or enough animals round whoever is near (or nobody is): it rots away
                     self.emit("fade", *pos, item="egg")
                 elif kind == "hatch" and self.items.get(pos, {}).get("egg"):
                     self._take_items(pos, "egg")

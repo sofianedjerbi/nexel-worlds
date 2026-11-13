@@ -98,3 +98,24 @@ def test_everybody_stands_three_px_up_in_their_tile(game):
     aim = lambda fy: game.js(f"(() => {{ const p = aimAt(tileAtScreen({ox + (x + 2) * S + S / 2}, {oy + (y - 1) * S} + {fy} * {S}), false); return [p.x, p.y]; }})()")
     assert aim(.8) == [x + 2, y] and aim(.2) == [x + 2, y - 1]       # its head and shoulders, over the tile above it; the ground further up
     assert not game.errors
+
+
+def test_a_named_animal_carries_its_name(game):
+    """/name in the chat line: the animal beside you is yours (it never goes away: sim/spawning.py). Its name is
+    drawn over it, as a player's is, the chat says so, and the list of who is near has it by name."""
+    hen = game.spawn("chicken", 1, 0, still=10 ** 6)
+    game.sleep(400)
+    page = game.page
+    page.keyboard.press("/")
+    page.keyboard.type(f"name target={hen} text=Daisy")
+    page.keyboard.press("Enter")
+    game.wait(f"[...ents.values()].some((p) => p.e && p.e.id === {hen} && p.e.name === 'Daisy')", 5000)
+    drawn = game.js("""() => new Promise((ok) => { const o = window.outlined, seen = []; window.outlined = function (t, ...a) { seen.push(t); return o(t, ...a); };
+      requestAnimationFrame(() => requestAnimationFrame(() => { window.outlined = o; ok(seen); })); })""")
+    assert "Daisy" in drawn and game.name in drawn
+    assert "named a chicken Daisy" in game.js("document.querySelector('#chatlog').innerText")
+    page.keyboard.press("/")
+    page.keyboard.type("feed target=")
+    game.sleep(300)
+    assert any("Daisy" in row for row in game.js("[...$('sayhelp').children].map((d) => d.textContent)"))
+    page.keyboard.press("Escape")

@@ -31,7 +31,7 @@ class Observation:
         for c in self.creatures.values():
             if abs(c.x - a.x) <= R and abs(c.y - a.y) <= R:
                 ents.setdefault((c.x, c.y), CREATURES[c.kind]["char"])
-                out_ents.append({"id": c.id, "kind": c.kind, "dx": c.x - a.x, "dy": c.y - a.y, "hp": c.hp})
+                out_ents.append({"id": c.id, "kind": c.kind, "dx": c.x - a.x, "dy": c.y - a.y, "hp": c.hp, **({"name": c.name} if c.name else {})})
         out_ents.sort(key=lambda e: abs(e["dx"]) + abs(e["dy"]))
         grid, used = [], set()
         for y in range(a.y - R, a.y + R + 1):

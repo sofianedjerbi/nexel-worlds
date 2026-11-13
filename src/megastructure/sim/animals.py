@@ -8,6 +8,7 @@ from .constants import (
     CROWD_R,
     FARM,
     FLEE_STRIDE,
+    NAME_MAX,
     TROUGH_EVERY,
     TROUGH_R,
     sec,
@@ -152,6 +153,17 @@ class Animals:
         self._fed(animal)
         self.emit("love", animal.x, animal.y, by=a.name, id=animal.id, kind=animal.kind)
         return {}
+
+    def _tool_name(self, a, args):
+        """Name a creature within reach: it is yours from then on, and never goes away (spawning.py: kept)."""
+        animal = self._creature_target(a, args)
+        text = " ".join(str(args.get("text", "")).split())[:NAME_MAX]
+        if not text:
+            raise ActionError("bad_args", "give it a name: text=...")
+        yield from self.wait(a, 0.3)
+        animal.name = text
+        self.emit("named", animal.x, animal.y, by=a.name, id=animal.id, kind=animal.kind, name=text)
+        return {"named": text}
 
     def _fed(self, animal):
         """A fed animal is in love for a while: hens lay soon, two cows in love nearby make a calf."""

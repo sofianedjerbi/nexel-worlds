@@ -52,6 +52,7 @@ TOOL_SPECS = {
               "desc": "water a growing crop with the can in hand: grows twice as fast; aim at a well or water to refill"},
     "milk": {"args": {"target": "cow id"}, "desc": "milk an adjacent cow (every 2 minutes)"},
     "feed": {"args": {"target": "animal id", "item": "food"}, "desc": "feed an adjacent animal; fed chickens lay eggs"},
+    "name": {"args": {"target": "animal id", "text": "str"}, "desc": "name an animal within 2 tiles: a named animal is yours, it never goes away (wild ones over the limit around a player do, out of sight)"},
     "sleep": {"args": DIR_ARG, "desc": "lie down in a bed nearby: you wake up there after dying"},
     "post": {"args": {**DIR_ARG, "text": "str"}, "desc": "post a letter in an adjacent mailbox"},
     "open_mail": {"args": DIR_ARG, "desc": "take the letters out of an adjacent mailbox (anyone can)"},

@@ -50,4 +50,6 @@ TROUGH_R = 5               # animals this close to a filled trough feed themselv
 
 TROUGH_EVERY = 30          # ...about this often (seconds)
 
+NAME_MAX = 16              # a creature's name (/name), in characters
+
 CREATURE_ID0 = 1_000_000

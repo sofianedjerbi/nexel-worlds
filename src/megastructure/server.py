@@ -59,6 +59,7 @@ class GameServer(Views):
         self.spectators: dict = {}  # queue -> watched rect (x, y, w, h) or None
         self.behind: set = set()    # spectators that missed events (Views._broadcast)
         self.sim.listeners.append(self._broadcast)
+        self.sim.screens = lambda: [r for r in self.spectators.values() if r]   # (nothing comes or goes on a screen: spawning.py)
         self.tick_ms = collections.deque(maxlen=250)
         self.started = time.time()
         self.stopping = asyncio.Event()

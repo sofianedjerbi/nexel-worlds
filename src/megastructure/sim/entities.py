@@ -76,6 +76,7 @@ class Creature:
     love: int = 0       # fed: shows hearts and (chickens) lays an egg soon, until this tick
     lay: int = 0        # next tick a chicken may lay an egg
     born: int = 0       # tick of birth (chicks and calves grow up)
+    name: str = ""      # given by someone (/name): it is theirs, and never goes away (spawning.py)
     scared: int = 0     # hit: runs away from `threat` until this tick (runtime only)
     threat: tuple = (0, 0)
     mode: str = ""      # wild enemies (wild.py): "windup", "charge", "stun" (runtime only, like the next four)
@@ -87,7 +88,7 @@ class Creature:
 
     def to_json(self):
         return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "z": self.z, "hp": self.hp,
-                "milked": self.milked, "love": self.love, "lay": self.lay, "born": self.born}
+                "milked": self.milked, "love": self.love, "lay": self.lay, "born": self.born, **({"name": self.name} if self.name else {})}
 
 CREATURES = {
     "chicken": {"hp": 10, "drops": {"meat": 1, "egg": 1}, "char": "c"},

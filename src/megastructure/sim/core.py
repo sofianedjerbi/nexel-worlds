@@ -64,6 +64,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             self.tokens[aid] = th
         self.by_name = {a.name: a for a in self.agents.values()}
         self.ticking: set[tuple[int, int]] = set()        # chunks where creatures live this tick (spawning.py)
+        self.screens = lambda: ()                         # the rectangles (x, y, w, h) the screens watch now: the server says (spawning.py: in_sight)
         self.item_since: dict[tuple[int, int], int] = {}   # when each pile last grew (the magnet waits a moment)
         self.items: dict[tuple[int, int], dict] = {
             (x, y): json.loads(j) for x, y, j in store.db.execute("SELECT x, y, json FROM ground_items")}

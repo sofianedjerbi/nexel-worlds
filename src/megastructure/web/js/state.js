@@ -217,6 +217,7 @@ function onEvent(e) {
     case "give": if (e.from !== me && e.to !== me) return; text = `${e.from} gave ${e.to} ${fmt(e.items)}`; break;
     case "join": text = `${e.name} ${e.new ? "washed ashore" : "woke up"}`; break;
     case "leave": text = `${e.name} fell asleep`; break;
+    case "named": text = `${e.by} named a ${e.kind} ${e.name}`; break;
 
     default: return;
   }
