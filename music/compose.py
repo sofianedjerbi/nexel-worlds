@@ -155,14 +155,6 @@ shaker = sampler.voice("shaker", LEVEL["shaker"])
 woodblock = sampler.voice("woodblock", LEVEL["woodblock"])
 
 
-STYLE = os.environ.get("MUSIC_STYLE", "")          # "chip": the same scores on sound-chip voices (music/chip.py)
-if STYLE == "chip":
-    import chip
-    for _name in LEVEL:
-        globals()[_name] = chip.voice(_name, chip.LEVEL[_name])
-    OUT = OUT / "chip"
-
-
 def _ends_silent(fn):
     """What an instrument returns ends on zero (the audit found notes cut 25 to 40 dB down: a faint tick each)."""
     def voiced(f, dur, vel, t0):

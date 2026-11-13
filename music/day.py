@@ -19,7 +19,7 @@ import numpy as np
 import compose as C
 from compose import SR, analog_pad, hp, lp, midi, tt
 
-OUT = C.OUT
+OUT = Path(__file__).with_name("site") / "audio"
 TAIL = 6 * SR
 QUAL = {"maj7": (0, 4, 7, 11), "m7": (0, 3, 7, 10), "7sus": (0, 5, 7, 10), "7": (0, 4, 7, 10), "6": (0, 4, 7, 9), "m": (0, 3, 7), "": (0, 4, 7)}
 # who plays, block by block (8 bars each): the melody (1: the lead, 2: the second voice, 12: the lead says it, the

@@ -2,7 +2,6 @@
 
     uv run python music/render_all.py        # about 40 s (it was about 5 minutes one after the other)
 """
-import os
 import subprocess
 import sys
 import time
@@ -20,8 +19,5 @@ for name, p in jobs.items():
     failed |= bool(p.returncode)
 if failed:
     sys.exit(1)
-if os.environ.get("MUSIC_STYLE"):            # a style to compare (MUSIC_STYLE=chip): rendered beside, the game's audio untouched
-    print(f"all in {time.time() - t0:.0f}s")
-    sys.exit(0)
 print(subprocess.run([sys.executable, str(HERE.parent / "tools" / "build_audio.py")], capture_output=True, text=True).stdout.strip().splitlines()[-1])
 print(f"all in {time.time() - t0:.0f}s")

@@ -20,7 +20,7 @@ import compose as C
 import day as D
 
 SR = C.SR
-OUT = C.OUT
+OUT = Path(__file__).with_name("site") / "audio"
 SCALES = {"major": (0, 2, 4, 5, 7, 9, 11), "minor": (0, 2, 3, 5, 7, 8, 10)}
 db = lambda x: 20 * np.log10(max(float(x), 1e-9))
 

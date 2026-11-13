@@ -26,7 +26,7 @@ BAR = 4 * BEAT
 LOOP_S = BARS * BAR
 LOOP_N = int(round(LOOP_S * SR))
 TAIL = 8 * SR
-OUT = C.OUT
+OUT = Path(__file__).with_name("site") / "audio"
 rng = np.random.default_rng(11)
 
 CYCLE = ["Bm", "Bm", "A", "A", "F#m", "F#m", "A", "Bm"]            # 8 bars

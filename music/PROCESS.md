@@ -216,23 +216,10 @@ and filtered saws; no amount of tuning made that sound like an instrument.
   Final audit: 0 failures.
 - Not judged by ear. Still synthesised on purpose: the tape hiss, the night air, and all sound effects (`sfx.py`).
 
-## Chiptune set, to compare (2026-11-13)
+## Chiptune set: rejected and removed (2026-11-13)
 
-The user, on the recorded instruments: "still sounds a bit midi cheap like.. how about chiptune ? try to chiptune the
-music . imagine a modern chiptune concept".
-
-- `music/chip.py`: the same scores on sound-chip voices. `MUSIC_STYLE=chip uv run python music/render_all.py` renders
-  all seven tracks into `site/audio/chip/` (about 35 s) and leaves the recorded set and the game's audio alone.
-  `MUSIC_STYLE=chip uv run python music/quality.py` audits that set (0 failures).
-- From the chips: NES duty cycles (12.5, 25, 50 %), the 16-step NES triangle as bass and as the second voice, a
-  32-step wave channel, shift-register noise, a kick made of a falling triangle, a two-operator FM bell.
-- Modern: any number of channels, so chords are real chords (the classic fast arpeggio is left out: the user refuses
-  arpeggios); band-limited waves; duty cycles that move during a note; late vibrato; the top rolled off; same room,
-  same master. One lead per track: opening 25 % pulse, FM bell, moving-width pulse, struck square, wave channel, soft
-  square, 12.5 % pulse.
-- Each voice is set to the loudness of the recorded one it replaces (`chip.LEVEL`). Both pages have a "Chiptune
-  version" section. Not judged by ear; not in the game.
-
-Sources: https://emastered.com/blog/how-to-make-chiptune-music ; https://blog.soundtrap.com/how-to-make-chiptune-beats ;
-https://ddrkirby.com/articles/nes-chiptunes-unlock-everything/nes-chiptunes-unlock-everything.html ;
-https://killscreen.com/fez-it-follows-conversation-disasterpeace
+A chiptune set of all seven tracks (pulse leads, FM bell, triangle bass, noise drums) was tried and removed the same
+day. The user: "that chiptune is awful", the main instrument and "the noise of each instrument" were hated; the night
+track (FM bell) and Market Morning (struck square) were "pharmacy", the boss "sounds like those MIDI samples".
+Lesson: bells, pure tones and bare pulse waves all read as "pharmacy" here. And three sets of instruments chosen
+without hearing them (synthesised, recorded, chip) have all been refused: stop choosing timbres blind.
