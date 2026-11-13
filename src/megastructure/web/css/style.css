@@ -12,7 +12,7 @@
   canvas#c { position:fixed; inset:0; display:block; image-rendering:pixelated; cursor:url(../assets/cursor.png) 4 2, auto; }
   canvas#c.act { cursor:url(../assets/cursor_point.png) 10 2, pointer; }
   body, button, .slot, .rc, .ag { cursor:url(../assets/cursor.png) 4 2, auto; }
-  .panel { position:fixed; border:24px solid transparent; border-image:url(../assets/panel.png) 9 fill / 27px stretch;
+  .panel { position:fixed; border:calc(8 * var(--u3)) solid transparent; border-image:url(../assets/panel.png) 9 fill / calc(9 * var(--u3)) stretch;   /* (3 px a pixel, in whole screen pixels) */
     image-rendering:pixelated; padding:0; filter:drop-shadow(0 3px 0 rgba(60,40,30,.25)); }
   .panel > .in { margin:-10px -8px -12px; }
   h3 { margin:0 0 4px; font-size:18px; color:var(--ink2); font-weight:800; letter-spacing:0; text-transform:uppercase; }
@@ -57,54 +57,64 @@
   .slot .k { position:absolute; left:-5px; top:-7px; font-size:18px; line-height:18px; color:#f6e3bf; text-shadow:var(--rim-key); }   /* (its key: quieter than the count) */
   .slot:hover .tip { display:block; }
   .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
+  /* ---- crafting (craft.js): the kinds by name on the left, the cards of the kind you are on on the right ----
+     Drawn in the panel's own colours and in pixels, as the panel is: a tile is a face with an edge one art pixel wide
+     that leaves the corners out (four shadows, each the tile moved by a pixel) and a lip under it. Nothing is a smooth
+     rounded box (they were, and beside the frames it looked like a web page). --p: the art pixel (the frames': --u). */
   /* (centred by its margins, as the bag and the HUD are: moved by half its own size it lay between two screen pixels, and its icons' pixels came out uneven) */
-  #craft { left:0; right:0; top:0; bottom:10vh; margin:auto; height:max-content; width:min(860px, calc(100vw - 24px)); display:none; z-index:4; font-size:20px; }
-  #craft .ctop { display:flex; justify-content:space-between; align-items:center; }
-  #craft .close { cursor:pointer; color:var(--ink2); padding:0 4px; } #craft .close:hover { color:var(--ink); }
-  #crafttabs { display:flex; gap:4px; margin:2px 0 8px; flex-wrap:wrap; }
-  .ctab { height:40px; min-width:46px; padding:0 9px; display:flex; align-items:center; justify-content:center; border-radius:6px;
-    background:#ead2a6; color:var(--ink2); cursor:pointer; box-shadow:inset 0 -3px 0 rgba(91,63,54,.18); }
-  .ctab canvas { width:calc(11 * var(--i)); height:calc(11 * var(--i)); image-rendering:pixelated; }
-  .ctab:hover { background:#f3dfba; } .ctab.on { background:#fff3dc; color:var(--ink); box-shadow:inset 0 0 0 2px #6aa66f; }
-  #craft .cbody { display:flex; gap:12px; align-items:flex-start; }
-  #recipes { flex:1; display:grid; grid-template-columns:repeat(auto-fill, calc(30 * var(--u))); gap:6px; align-content:start;
-    max-height:min(500px, calc(100vh - 240px)); overflow:auto; padding:3px; }
-  #recipes .slot .c { right:-5px; bottom:-7px; }
-  #recipes .slot.no canvas { opacity:.38; filter:grayscale(.85); }
-  #recipes .slot .ok { position:absolute; left:-3px; top:-4px; width:17px; height:17px; border-radius:50%; background:#5aa264; color:#fff8e8; font-size:14px; line-height:17px; text-align:center; box-shadow:0 1px 0 rgba(60,40,30,.35); }
-  #recipes .slot:hover { background-image:url(../assets/slot_sel.png); }
-  #recipes .slot.kfocus { outline:none; background-image:url(../assets/slot_sel.png); transform:translateY(calc(-1 * var(--u))); z-index:1;
-    filter:drop-shadow(0 0 0 #fff8e8) drop-shadow(0 3px 0 rgba(60,40,30,.3)); }
-  #recipes .slot.kfocus canvas { opacity:1; filter:none; }
-  #crafttabs .ctitle { margin-left:auto; align-self:center; color:var(--ink); font-size:24px; padding-right:4px; white-space:nowrap; }
-  #crafttabs .ctitle i { font-style:normal; color:#5aa264; }
-  #craftdetail { width:290px; flex:none; background:#fff3dc; border-radius:8px; padding:10px; box-shadow:inset 0 -3px 0 rgba(91,63,54,.12); }
-  #craftdetail .chead { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
-  #craftdetail .slot.big { width:calc(30 * var(--u3)); height:calc(30 * var(--u3)); border-width:calc(5 * var(--u3)); }   /* (the frame and the icon at --u3) */
-  #craftdetail .slot.big canvas { width:calc(16 * var(--u3)); height:calc(16 * var(--u3)); }
-  #craftdetail .cname { font-size:28px; line-height:30px; color:var(--ink); }
-  #craftdetail .cmakes { color:var(--ink2); }
-  .cneeds { display:flex; flex-direction:column; gap:6px; font-size:20px; }
-  .cneed { display:flex; align-items:center; gap:6px; color:var(--ink); }
-  .cneed canvas { width:calc(11 * var(--i)); height:calc(11 * var(--i)); image-rendering:pixelated; flex:none; }
-  .cneed .cn { flex:1; } .cneed .cq { color:var(--accent); }
-  .cneed.miss .cq, .cneed.miss .cn { color:var(--warn); }
-  .cneed.st { margin-top:4px; padding-top:5px; border-top:2px dotted #e2c79a; }
-  .cbtns { display:flex; gap:6px; margin-top:10px; }
-  .cbtn { flex:1; font:inherit; font-size:22px; padding:7px 10px; border-radius:6px; border:2px solid var(--ink); border-bottom-width:4px;
-    background:#4f9a6a; color:#fff8e8; cursor:pointer; }
-  .cbtn:hover { background:#5aa977; } .cbtn:active { border-bottom-width:2px; margin-top:2px; }
-  .cbtn.x5 { flex:none; background:#d99a4e; }
-  .cbtn.off { background:#e7d2ac; color:var(--ink2); border-color:#c9a87a; cursor:default; font-size:19px; }
-  #craft .chint { margin:10px 0 6px; color:var(--ink2); font-size:19px; text-align:center; opacity:.8; }
-  body.touch #craft .chint { display:none; }
-  @media (max-width:560px) { #craft .cbody { flex-direction:column; align-items:stretch; } #craftdetail { width:auto; } #recipes { max-height:30vh; } }
-  .rc { display:flex; justify-content:space-between; gap:6px; padding:2px 4px; cursor:pointer; border-radius:3px; }
-  .rc:hover { background:rgba(91,63,54,.1); }
-  .rc .in2 { color:var(--ink2); font-size:18px; text-align:right; }
-  .rc.no { opacity:.38; cursor:default; } .rc.no:hover { background:none; }
-  /* playing: the title and the "awake" list give way; goals sit alone in the top left */
-  body.playing #brand, body.playing #side { display:none; }
+  #craft { left:0; right:0; top:0; bottom:10vh; margin:auto; height:max-content; width:min(900px, calc(100vw - 24px)); display:none; z-index:4;
+    --p:var(--u); --edge:#aa7959; --lip:#c49a6c; }
+  .rcard, .ccat.on, .rx5, #craft .close { box-shadow:calc(-1 * var(--p)) 0 var(--edge), var(--p) 0 var(--edge), 0 calc(-1 * var(--p)) var(--edge), 0 var(--p) var(--edge),
+    calc(-1 * var(--p)) calc(2 * var(--p)) var(--lip), var(--p) calc(2 * var(--p)) var(--lip), 0 calc(3 * var(--p)) var(--lip); }
+  #craft .ctop { display:flex; justify-content:space-between; align-items:center; margin:0 2px 12px; padding-bottom:8px; border-bottom:var(--p) solid #c49a6c; box-shadow:0 var(--p) 0 #f3e5c2; }
+  #craft h3 { margin:0; font-size:27px; line-height:27px; color:var(--ink); }
+  #craft .close { cursor:pointer; width:27px; height:27px; margin-right:var(--p); font-size:18px; line-height:25px; text-align:center; color:var(--ink); background:#f3e5c2; }
+  #craft .close:hover { background:#fff6e2; } #craft .close:active { transform:translateY(calc(2 * var(--p))); --lip:transparent; }
+  #craft .cbody { display:flex; gap:14px; height:min(520px, calc(100vh - 240px)); margin-bottom:12px; }
+  #craftcats { flex:none; width:190px; display:flex; flex-direction:column; gap:calc(3 * var(--p)); overflow-y:auto; padding:var(--p) calc(2 * var(--p)) calc(4 * var(--p)); }
+  .ccat { flex:none; display:flex; align-items:center; gap:8px; padding:3px 8px; color:var(--ink2); cursor:pointer; }
+  .ccat canvas { width:calc(11 * var(--i)); height:calc(11 * var(--i)); image-rendering:pixelated; flex:none; }
+  .ccat span { flex:1; white-space:nowrap; }
+  .ccat i { flex:none; font-style:normal; min-width:22px; line-height:22px; text-align:center; padding:0 4px; margin:0 var(--p); background:#5aa264; color:#fff8e8;   /* (how many of it can be made now) */
+    box-shadow:calc(-1 * var(--p)) 0 #5aa264, var(--p) 0 #5aa264, 0 calc(-1 * var(--p)) #5aa264, 0 var(--p) #5aa264; }
+  .ccat.ready i { min-width:max(22px, calc(11 * var(--i) - 2 * var(--p))); margin:calc((11 * var(--i) - 22px) / 2) var(--p); }
+  .ccat.ready i.none { background:#c49a6c; box-shadow:calc(-1 * var(--p)) 0 #c49a6c, var(--p) 0 #c49a6c, 0 calc(-1 * var(--p)) #c49a6c, 0 var(--p) #c49a6c; }
+  .ccat:hover { color:var(--ink); }
+  .ccat.on { background:#aa7959; color:#fff6e2; --edge:#90625d; --lip:#90625d; }                 /* (the one you are on: a plank of the slots' wood) */
+  /* the cards lie in a tray, a shade under the panel's paper: the ones you can make stand out of it */
+  #recipes { flex:1; min-width:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:calc(6 * var(--p)) calc(5 * var(--p)); align-content:start; overflow-y:auto;
+    padding:calc(4 * var(--p)) calc(4 * var(--p)) calc(6 * var(--p)); background:#dcc193; margin:var(--p);
+    box-shadow:calc(-1 * var(--p)) 0 #c49a6c, var(--p) 0 #c49a6c, 0 calc(-1 * var(--p)) #c49a6c, 0 var(--p) #c49a6c, inset 0 calc(2 * var(--p)) 0 #d0b384; }
+  #recipes, #craftcats { scrollbar-width:thin; scrollbar-color:#c49a6c transparent; }
+  .rcard { position:relative; min-width:0; display:flex; align-items:center; gap:10px; padding:7px 8px; cursor:pointer; background:#fbf0d6; }
+  .rcard:hover { background:#fff8e6; } .rcard:active { transform:translateY(calc(2 * var(--p))); --lip:transparent; }
+  .rcard.kfocus { --edge:#4f9a6a; --lip:#3f7a4f; }
+  .rcard.no { background:#e6cea2; box-shadow:none; transform:none; }                              /* (not yet: flat in the tray, quieter, and still read) */
+  .rcard.no.kfocus { box-shadow:calc(-1 * var(--p)) 0 var(--edge), var(--p) 0 var(--edge), 0 calc(-1 * var(--p)) var(--edge), 0 var(--p) var(--edge); }
+  .rcard.no .rname { color:var(--ink2); } .rcard.no .rpic canvas { opacity:.7; }
+  /* its picture, in a cell of the slots' own wood (an item is drawn to be seen on it, as in the bar) */
+  .rpic { position:relative; flex:none; width:calc(16 * var(--i)); height:calc(16 * var(--i)); padding:calc(2 * var(--p)); box-sizing:content-box; background:#aa7959; margin:var(--p);
+    box-shadow:calc(-1 * var(--p)) 0 #c49a6c, var(--p) 0 #c49a6c, 0 calc(-1 * var(--p)) #c49a6c, 0 var(--p) #c49a6c, inset 0 var(--p) 0 #9a6b4f; }
+  .rcard.no .rpic { background:#c9a37c; box-shadow:calc(-1 * var(--p)) 0 #d3b388, var(--p) 0 #d3b388, 0 calc(-1 * var(--p)) #d3b388, 0 var(--p) #d3b388; }
+  .rpic canvas { display:block; width:100%; height:100%; image-rendering:pixelated; }
+  .rtxt { flex:1; min-width:0; }
+  .rname { font-size:27px; line-height:28px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rname::first-letter { text-transform:uppercase; }
+  .rname i { font-style:normal; font-size:18px; color:var(--ink2); }   /* (how many it makes) */
+  .rneeds { display:flex; flex-wrap:wrap; align-items:center; gap:2px 9px; margin-top:2px; color:var(--ink); }
+  .rneed { display:inline-flex; align-items:center; gap:3px; }
+  .rneed canvas { width:calc(11 * var(--i)); height:calc(11 * var(--i)); image-rendering:pixelated; flex:none; }
+  .rat { color:var(--ink2); margin-right:-5px; } .rneed.miss, .rat.miss { color:var(--warn); }
+  .rx5 { flex:none; font:inherit; border:0; padding:5px 8px; margin:0 var(--p) calc(2 * var(--p)) 0; background:#e0a458; color:#fff8e8; cursor:pointer; --edge:#8a5a34; --lip:#a8703a; }
+  .rx5:hover { background:#e8b06a; } .rx5:active { transform:translateY(calc(2 * var(--p))); --lip:transparent; }
+  .cnone { grid-column:1 / -1; color:var(--ink2); padding:24px 12px; }
+  /* a phone: all of the screen, over the thumbs' buttons; smaller names */
+  body.touch #craft { left:calc(3 * var(--u)); right:auto; top:calc(3 * var(--u)); bottom:auto; margin:0; width:calc(100vw - 6 * var(--u)); z-index:6; }   /* (on whole screen pixels: the frame's pieces show no joints) */
+  body.touch #craft .cbody { height:calc(100vh - 96px); gap:8px; } body.touch #craft .ctop { margin-bottom:8px; padding-bottom:5px; } body.touch #craft h3 { font-size:18px; line-height:20px; }
+  body.touch:has(#craft[style*="display: block"]) :is(#ttop, #tbtns, #tctx) { visibility:hidden; }   /* (open: the thumbs' buttons are under it) */
+  body.touch #craftcats { width:158px; } body.touch .ccat { gap:6px; padding:3px 6px; } body.touch .rname { font-size:18px; line-height:20px; }
+  body.touch #recipes { grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); } body.touch .rcard { padding:5px 6px; gap:8px; }
+  @media (max-width:560px) { #craftcats { width:auto !important; } .ccat span { display:none; } }   /* (a narrow screen: the kinds by their pictures) */
   #goals { left:10px; top:10px; width:230px; display:none; }
   #goals .gh { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
   #goals h3 { margin:0; }

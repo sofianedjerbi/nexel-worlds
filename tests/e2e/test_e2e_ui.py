@@ -44,50 +44,78 @@ def test_the_bar_is_ten_slots_and_i_opens_the_inventory(game):
     assert not game.errors
 
 
-def test_crafting_cards_say_what_is_missing(game):
+KIND = "(k) => { document.querySelector(`.ccat[data-kind=${k}]`).click(); return craftTab; }"
+READY = "[...document.querySelectorAll('.rcard:not(.no)')].map((c) => c.dataset.name)"     # the cards that are lit
+NEEDS = "(n) => [...document.querySelectorAll(`.rcard[data-name=${n}] .rneeds > *`)].map((e) => [e.textContent, e.classList.contains('miss')])"
+
+
+def test_a_crafting_card_says_what_is_missing(game):
+    """A recipe's card says it all, with nothing to point at: what it needs, what you lack in red as have/need, and
+    where it is made (in red while you are not there)."""
     game.press("c", 400)
     assert game.js("$('craft').style.display") == "block"
+    assert game.js("craftTab") == "Start" and "Nothing yet" not in game.js("$('recipes').textContent")   # (nothing to make yet: where it starts)
+    assert game.js(KIND, "Tools") == "Tools"
     assert "Missing materials" in game.js("document.querySelector('.rcard[data-name=axe]').title")
+    assert game.js(NEEDS, "axe") == [["0/2", True], ["0/2", True], ["0/1", True], ["at", True], ["", True]]
     game.give(wood=2, stone=2, fiber=1)
     game.sleep(300)
     assert "within 2 tiles of a workbench" in game.js("document.querySelector('.rcard[data-name=axe]').title")
+    assert game.js(NEEDS, "axe") == [["2", False], ["2", False], ["1", False], ["at", True], ["", True]]
+    assert game.js("document.querySelector('.rcard[data-name=axe]').classList.contains('no')")
     game.press("Escape", 200)
 
 
-def test_crafting_tabs_detail_and_button(game):
+def test_crafting_shows_one_kind_at_a_time_and_a_lit_card_is_made_with_a_click(game):
+    """The kinds are on the left, by name; only the cards of the one you are on show (it was sixty pictures at once).
+    It opens on what you can make; a lit card is made by clicking it."""
     game.give(wood=4)
     game.press("c", 400)
-    assert game.js("craftTab") == "All" and game.js("craftFocus") == "workbench"     # what you can make, first
-    assert game.js("$('craftdetail').querySelector('.cbtn').textContent") == "Craft"
+    assert game.js("craftTab") == "Can make" and game.js("craftFocus") == "workbench"     # what you can make, first
+    kinds = game.js("[...document.querySelectorAll('.ccat span')].map((e) => e.textContent)")
+    assert kinds[:4] == ["Can make", "Start", "Tools", "Travel"] and len(kinds) >= 10
+    assert game.js("document.querySelectorAll('.rcard').length") == len(game.js(READY)) < 12
+    assert game.js("!$('craftdetail') && !$('crafttabs') && !document.querySelector('#craft .chint')")   # nothing else on the panel
     game.press("Tab", 200)
-    assert game.js("craftTab") == "Start"
+    assert game.js("craftTab") == "Start" and game.js("document.querySelectorAll('.rcard').length") == 6
     game.press("Tab", 200)                                                             # tools: you can't make them yet
-    assert game.js("craftTab") == "Tools" and game.js("craftFocus") == "axe"
-    assert game.js("$('craftdetail').querySelector('.cbtn').textContent") == "Missing materials"
-    game.js("craftTab = 'Start'; craftFocus = 'workbench'; drawRecipes()")
-    game.js("$('craftdetail').querySelector('.cbtn').click()")
+    assert game.js("craftTab") == "Tools" and game.js("craftFocus") == "axe" and game.js(READY) == []
+    game.js("document.querySelector('.rcard[data-name=axe]').click()")                 # not lit: it says why, and makes nothing
+    assert "Missing materials" in game.toast()
+    assert game.js(KIND, "Start") == "Start"
+    game.js("document.querySelector('.rcard[data-name=workbench]').click()")
     game.sleep(1200)
     assert game.inv("workbench") == 1
+    game.press("Escape", 200)
+    game.press("c", 300)                                                               # opened again: on what you can make
+    assert game.js("craftTab") in ("Can make", "Start") and game.js("craftTab") != "Tools"
     game.press("Escape", 200)
 
 
 def test_crafting_says_what_can_be_made_now_and_is_driven_by_keys(game):
-    """What you can make right now wears a tick (the rest is faded) and is counted beside the category's name;
-    Q and E change category like Tab, Home and End go to the first and the last recipe."""
+    """What you can make right now is lit and listed first of all ("Can make", with how many), and counted beside
+    each kind; Q and E change kind like Tab, the arrows go over the cards (right, at the end of a row: the next
+    one), Home and End go to the first and the last."""
     game.give(wood=4)
     game.press("c", 400)
-    ticked = game.js("[...document.querySelectorAll('.rcard')].filter((c) => c.querySelector('.ok')).map((c) => c.dataset.name)")
-    assert "workbench" in ticked and "axe" not in ticked
-    assert game.js("document.querySelector('#crafttabs .ctitle').textContent") == f"Everything · {len(ticked)} ready"
+    lit = game.js(READY)
+    assert "workbench" in lit and "axe" not in lit
+    assert game.js("document.querySelector('.ccat.ready i').textContent") == str(len(lit))
+    assert game.js("document.querySelector('.ccat[data-kind=Start] i').textContent") == str(len([n for n in lit if n in ("workbench", "campfire", "torch", "rope", "plank", "path")]))
     game.press("e", 200)
     assert game.js("craftTab") == "Start"
     game.press("q", 200)
-    assert game.js("craftTab") == "All"
+    assert game.js("craftTab") == "Can make"
     names = game.js("[...document.querySelectorAll('.rcard')].map((c) => c.dataset.name)")
     game.press("End", 200)
     assert game.js("craftFocus") == names[-1]
     game.press("Home", 200)
     assert game.js("craftFocus") == names[0]
+    walked = [names[0]]
+    for _ in names[1:]:
+        game.press("ArrowRight", 80)
+        walked.append(game.js("craftFocus"))
+    assert walked == names                                                             # every card, in order
     game.press("Escape", 200)
     assert not game.errors
 
@@ -175,4 +203,4 @@ def test_the_crafting_list_is_not_made_again_while_it_is_shut(game):
     assert game.js(made) == before and game.js("$('craft').style.display") != "block"
     game.press("c", 300)                                       # opened: it is up to date
     assert game.js(made) != before
-    assert "workbench" in game.js("[...document.querySelectorAll('.rcard')].filter((c) => c.querySelector('.ok')).map((c) => c.dataset.name)")
+    assert "workbench" in game.js(READY)

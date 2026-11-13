@@ -9,7 +9,7 @@ function groundPreview(g, x, y) {
 const fulls = new Map();                         // an item's icon, kept (what lies on the ground is a smaller one: ghostIcon, loot.js)
 const fullIcon = (n) => fulls.get(n) || (fulls.set(n, iconCanvas(n)), fulls.get(n));
 const slotIcon = (n) => smallCanvas(n);          // what a slot shows: the small picture, as on the ground, at the land's pixel (--i)
-function openCraft() { $("craft").style.display = "block"; drawRecipes(); }
+function openCraft() { $("craft").style.display = "block"; craftOpened(); }
 // item icons from the sheets: [image name, sx, sy]
 const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in column 0, produce in column 1, materials in 2-3
   wood: ["items", 32, 48], plank: ["items", 32, 64], stone: ["items", 32, 80], ingot: ["items", 48, 64], fiber: ["gen", "fiber"],
@@ -254,7 +254,7 @@ function panelKey(id, cardSel, getFocus, setFocus, k, e) {
   const cards = [...$(id).querySelectorAll(cardSel)]; if (!cards.length) return false;
   let cur = cards.findIndex((c) => c.dataset.name === getFocus());
   const dir = KEYDIR[k];
-  if (dir) cur = nearestCard(cards, cur, dir);
+  if (dir) { const to = nearestCard(cards, cur, dir); cur = to !== cur ? to : Math.max(0, Math.min(cards.length - 1, cur + (dir === "E" ? 1 : dir === "W" ? -1 : 0))); }   // (no card that way: the next one, or the one before)
   else if (k === "enter" || k === " ") {
     const card = cards[Math.max(0, cur)];
     if (e.shiftKey && id === "craft" && !card.classList.contains("no")) act("craft", {recipe: card.dataset.name, n: 5});
