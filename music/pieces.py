@@ -234,12 +234,12 @@ PIECES = [
          levels=HEAVY | {"lead": -19, "double": -24}, lead="Leads/Light", double="Leads/Classic Lead 2", double_shift=-12, chords="Polysynths/Anthemish 1",
          bass_sound="Basses/Bass 3", kit={"kick": "TNMG/Drums/Kick - Classic", "snare": "TNMG/Drums/Snare - Classic"},
          about="the boss: lead 4 dB lower so the backing (riff, stabs, drums) comes forward; the lead repeats one bar three times then closes"),
-    dict(id="lantern", title="Third theme A: Lantern fish, as a synth ballad", score="lantern", bpm=90, drums="ballad", bass="lilt", comp="hold", sync=True, lead="Leads/Fluff",
-         chords="Polysynths/Oberheim Dreams", pad="Polysynths/Juno-60 Strings", bass_sound="Basses/Bass 3", levels={"chords": -22},
-         about="the same tune without the imitation instruments: a soft synth lead, held analog chords, a string-machine pad, drum machine (kick, clap, hats), two slow beats a bar"),
-    dict(id="shore", title="Third theme B: Far shore", score="shore", bpm=112, drums="four", bass="drive", comp="stab5", sync=True, lead="Nick Moritz/Keys/Dream Plucks",
+    dict(id="shore", title="Far shore, day (kept)", score="shore", bpm=112, drums="four", bass="drive", comp="stab5", sync=True, lead="Nick Moritz/Keys/Dream Plucks",
          double="Leads/Classic Lead 2", chords="Polysynths/Smooth Stabs", pad="Polysynths/Juno-60 Strings", bass_sound="Basses/Bass 3",
          about="new: 112 BPM, a kick on every beat; one lead bar that never changes while seven chords move under it; pluck lead, a synth lead joining an octave up the second time, analog stabs"),
+    dict(id="shore_night", title="Far shore, night (new)", score="shore", bpm=66, drums="none", bass="long", comp="hold", sync=True, lead="Vospi/Keys/The Softest",
+         chords="Bluelight/Pads/Another Warm", pad="Pads/MKS-70 Warm Pad", bass_sound="Basses/Sub 1",
+         about="Far shore in the manner of the kept night piece: 66 BPM, no drums, a soft key over warm pads and a long low bass"),
 ]
 
 
@@ -251,6 +251,8 @@ def clashes(score, under):
 
 def render(piece):
     st = BASE | piece
+    global rng
+    rng = np.random.default_rng(sum(map(ord, piece["id"])))          # the same piece renders the same way every time
     score, steps, under = side_street(st)
     bad = clashes(score, under)
     if bad:

@@ -367,3 +367,20 @@ The user: "lantern fish sounds like those ugly midi songs. bad. Old Mossback (bo
 - Boss mix (the user: "make old mossback background music more prominent by reducing the lead volume, the background
   is really good"): lead -15 to -19 dB, its lower double -20 to -24. Previous render saved as
   `keep_mossback2_lead_loud.wav`.
+
+## The set is complete; final mix (2026-11-13)
+
+The user: "Third theme A: Lantern fish, as a synth ballad = sounds ghosty / midi / weird. very very bad. Third theme B:
+Far shore = really good. keep it. we got all of them ! derive Third theme B: Far shore into a night version. mix all
+of these new songs nicely with effects if needed etc etc".
+- The set: Side street day (`piece_cute1`) and night (`piece_mc1`), Far shore day (`piece_shore`) and night
+  (`piece_shore_night`, new: the Far shore score in the kept night manner), Old Mossback (`piece_mossback2`).
+  Lantern fish is deleted.
+- `music/master.py` is the final mix. It works on the approved stereo files, so no note is re-rendered: 30 Hz
+  high-pass, lows under 120 Hz centred, a 2:1 bus compressor taking 1.5 dB on average (day and boss only), loudness
+  by LUFS (day -16, night -18, boss -14.5), limiter to -1 dBFS true peak. Writes `final_*.wav` and `final.json`.
+  Before: -14.3 to -15.1 LUFS with true peaks up to -0.2 dBFS. No reverb added.
+- Left alone on purpose: the night pieces have almost nothing above 4 kHz and a lot under 60 Hz; that is the sound
+  the user approved.
+- `pieces.py` now renders each piece from its own seed (the same piece renders the same way every time).
+- Not in the game yet. Day and night pieces are meant for random moments, the boss for a loop.

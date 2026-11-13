@@ -27,7 +27,8 @@
 <main>
   <h1>Megastructure: music</h1>
   <div>Every track is a loop. Online they are compressed, so a loop may click where it restarts; in the game it does not. <a href="./">Play the demo</a></div>
-  <section><h2>Three themes: day and night, the boss, third-theme candidates</h2><div>Three themes for the game. Theme 1, Side street: the two pieces you kept (day and night). Theme 2, Old Mossback: the boss version you called amazing, with the lead tightened (one bar three times, then a closing bar). Theme 3: two new candidates on synth sounds only, A (a slow ballad, two beats a bar) and B (Far shore, a kick on every beat, one lead bar over moving chords).</div><div id="pieces"></div></section>
+  <section><h2>The game's music: final mix</h2><div>The five pieces you kept, after the final mix: same loudness within each role (night sits 2 dB under day, the boss a little over), peaks kept under the ceiling, bass and kick centred, a gentle glue compressor on the day pieces and the boss. No reverb added. Not in the game yet.</div><div id="final"></div></section>
+  <section><h2>Before the final mix</h2><div>The same five as they were before the final mix, to compare.</div><div id="pieces"></div></section>
   <section><h2>Earlier: bright plucks, one piece on three palettes</h2><div>The direction you found better (bright plucks), designed further: one piece of about a minute with a form (intro, A, B, A), fills, a second sound answering the tune, a bass audible on small speakers, and the band ducking under the kick. The same piece on three sets of Surge XT sounds, so the sounds and the writing can be judged apart.</div><div id="bright"></div></section>
   <section><h2>Earlier: five directions, about 20 s each</h2><div>New approach: the music is still written in Python, but played on Surge XT, a real synthesizer, with sounds made by sound designers. Five short loops in five different directions (rhythm, sounds and tone all differ). Which direction, if any, is worth continuing?</div><div id="dirs"></div></section>
   <section><h2>Older: other music for the day</h2><div>Each its own tune and its own instruments. None is in the game yet. Every instrument on this page is a recording of a real one (public-domain libraries: VCSL and VSCO 2 CE by Versilian Studios, FreePats guitar); nothing is synthesised.</div><div id="days"></div></section>
@@ -43,6 +44,9 @@ function add(box, file, title, sub, loop) {
   document.getElementById(box).appendChild(d);
 }
 document.addEventListener("play", (e) => document.querySelectorAll("audio").forEach((a) => a !== e.target && a.pause()), true);
+fetch("music/final.json").then((r) => r.json()).then((ds) => {
+  for (const d of ds) add("final", "final_" + d.id, d.title, `${d.where} · ${Math.round(d.seconds)} s · ${d.after.lufs} LUFS`, true);
+});
 fetch("music/pieces.json").then((r) => r.json()).then((ds) => {
   for (const d of ds) add("pieces", "piece_" + d.id, d.title, `${d.bpm} BPM · ${d.about}`, true);
 });

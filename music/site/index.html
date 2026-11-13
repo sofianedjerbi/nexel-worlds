@@ -145,9 +145,15 @@
     </div>
   </section>
 
+  <section class="card" id="finalcard">
+    <h2>The game's music: final mix <small>music/master.py</small></h2>
+    <div class="notes"><div>The five pieces you kept, after the final mix: same loudness within each role (night sits 2 dB under day, the boss a little over), peaks kept under the ceiling, bass and kick centred, a gentle glue compressor on the day pieces and the boss. No reverb added. Not in the game yet.</div></div>
+    <div id="final"></div>
+  </section>
+
   <section class="card" id="piecescard">
-    <h2>Three themes: day and night, the boss, third-theme candidates <small>music/pieces.py on Surge XT</small></h2>
-    <div class="notes"><div>Three themes for the game. Theme 1, Side street: the two pieces you kept (day and night). Theme 2, Old Mossback: the boss version you called amazing, with the lead tightened (one bar three times, then a closing bar). Theme 3: two new candidates on synth sounds only, A (a slow ballad, two beats a bar) and B (Far shore, a kick on every beat, one lead bar over moving chords).</div></div>
+    <h2>Before the final mix <small>music/pieces.py on Surge XT</small></h2>
+    <div class="notes"><div>The same five as they were before the final mix, to compare.</div></div>
     <div id="pieces"></div>
   </section>
 
@@ -436,6 +442,14 @@ function showAudit(q, box) {
     `<div class="rule">${dot(true)}<span>${k}</span><em>gone in ${r.rt60_s} s · starts ${r.predelay_ms} ms after the note · kept to ${r.return} · level: ${Object.entries(r.level_db).map(([a, b]) => `${a} ${b}${b === "dry" ? "" : " dB"}`).join(", ")}</em></div>`).join("") + `</details>`;
   box.innerHTML = h;
 }
+fetch("audio/final.json").then((r) => r.json()).then((ds) => {
+  for (const d of ds) {
+    const row = document.createElement("div");
+    row.style.marginTop = "10px";
+    row.innerHTML = `<b>${d.title}</b> <small>${d.where} · ${Math.round(d.seconds)} s · ${d.after.lufs} LUFS</small><br><audio controls loop preload="none" src="audio/final_${d.id}.wav" style="width:100%;margin-top:4px"></audio>`;
+    $("final").appendChild(row);
+  }
+});
 fetch("audio/pieces.json").then((r) => r.json()).then((ds) => {
   for (const d of ds) {
     const row = document.createElement("div");
@@ -452,7 +466,7 @@ fetch("audio/bright.json").then((r) => r.json()).then((ds) => {
     $("bright").appendChild(row);
   }
 });
-document.addEventListener("play", (e) => document.querySelectorAll("#piecescard audio, #brightcard audio, #dirscard audio").forEach((a) => a !== e.target && a.pause()), true);
+document.addEventListener("play", (e) => document.querySelectorAll("#finalcard audio, #piecescard audio, #brightcard audio, #dirscard audio").forEach((a) => a !== e.target && a.pause()), true);
 fetch("audio/directions.json").then((r) => r.json()).then((ds) => {
   for (const d of ds) {
     const row = document.createElement("div");
