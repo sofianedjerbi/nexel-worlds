@@ -102,34 +102,32 @@ function frame(now) {
       }
       const sh = shakes.get(key);
       if (sh !== undefined && o.spr[0] !== IMG.tree_anim) { const k = (now - sh) / 1000; if (k < .25) px += Math.round(Math.sin(k * 60) * (1 - k * 4) * 1.5) * zoom; }
-      const over = xrayOver(o.x, o.ty); if (over) ctx.globalAlpha = 1 - over;   // (standing in the way of what the circle shows: it fades)
-      ctx.drawImage(img, a, b2, w, h, Math.round(px), Math.round(py), Math.round(ww), Math.round(hh));
-      ctx.globalAlpha = 1;
+      const over = xrayOver(o.x, o.ty);              // (standing in the way of what the x-ray circle shows: it fades)
+      const draw = (k) => { ctx.globalAlpha = k * (1 - over); ctx.drawImage(img, a, b2, w, h, Math.round(px), Math.round(py), Math.round(ww), Math.round(hh)); ctx.globalAlpha = 1; };
+      if (tileBehind(o.x, o.ty)) drawBehind({x: o.x, y: o.ty, e: {}}, sx, sy, S, draw); else draw(1);   // (behind a hill: cut at its edge, behind.js)
     }
     else if (o.pile) {
       if (lootAt(o.x, o.ty)) continue;                // its loot is still hopping in: the pile shows once it lands
       const over = xrayOver(o.x, o.ty); if (over > .98) continue;   // (lying on rock the x-ray circle looks through: it fades with it)
-      ctx.globalAlpha = 1 - over;
       // a gentle hover, smooth to the screen pixel (whole art pixels made it tick between three heights)
       // (just landed: it starts from rest, where the drop came down, and eases into its hover: no jump)
       const key = o.x + "," + o.ty; if (!pileSince.has(key)) pileSince.set(key, now);
       const settle = smooth((now - pileSince.get(key)) / 700);
       const names = Object.keys(o.pile), lift = settle * (Math.sin((now - pileSince.get(key)) / 1000 * 2.4 - Math.PI / 2) + 1) / 2, sz = 10 * zoom;
       const cx = sx(o.x) + S / 2, cy = sy(o.ty, o.x) + S / 2, bob = lift * 2 * zoom;
-      ctx.fillStyle = `rgba(60,40,30,${.25 - lift * .1})`; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, (4 - lift * .8) * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
-      names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), Math.round(cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom), Math.round((cy - sz / 2 - bob) * DPR) / DPR, sz, sz));
-      ctx.globalAlpha = 1;
+      const draw = (k) => {
+        ctx.globalAlpha = k * (1 - over);
+        ctx.fillStyle = `rgba(60,40,30,${.25 - lift * .1})`; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, (4 - lift * .8) * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
+        names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), Math.round(cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom), Math.round((cy - sz / 2 - bob) * DPR) / DPR, sz, sz));
+        ctx.globalAlpha = 1;
+      };
+      if (tileBehind(o.x, o.ty)) drawBehind({x: o.x, y: o.ty, e: {}}, sx, sy, S, draw); else draw(1);
     }
     else if (o.fx) o.fx();
     else {
-      const over = xrayOver(Math.round(o.p.x), Math.round(o.p.y)), shows = xrayShows(o.p);   // (xray.js) on the rock the circle sees through: it fades with it; behind it: seen
+      const over = xrayOver(Math.round(o.p.x), Math.round(o.p.y));           // (xray.js) on the rock the circle sees through: it fades with it
       if (over > .98) continue;
-      const cut = clipBehind(o.p, sx, sy, S, shows > .98 ? 1 : 0);
-      ctx.globalAlpha = 1 - over; drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1;
-      if (cut) ctx.restore();
-      if (cut && shows > .02 && shows <= .98) {        // toward the circle's edge: what the rock hides of them, as faint as the circle is there
-        clipBehind(o.p, sx, sy, S, 2); ctx.globalAlpha = shows; drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1; ctx.restore();
-      }
+      drawBehind(o.p, sx, sy, S, (k) => { ctx.globalAlpha = k * (1 - over); drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1; });   // (behind a hill: cut at its edge)
     }
   }
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)

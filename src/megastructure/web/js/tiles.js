@@ -93,6 +93,7 @@ function drawBlobLayer(g, sheet, x, y, pred, ox, oy, decor) {
   }
   g.drawImage(sheet, sx, sy, 16, 16, ox, oy, 16, 16);
 }
+let landVer = 0;                                    // (goes up whenever a tile of the land is drawn again: what was worked out from the land is out of date)
 function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewhere else than its block's canvas)
   const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B)));
   if (!b || !(to || b.canvas)) return;
@@ -101,7 +102,7 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
   if (!to) {
     g.clearRect(ox, oy, 16, 16);
     b.reliefDirty = true;                            // (its stacked levels are rebuilt from this canvas: relief.js)
-    b.ver = (b.ver || 0) + 1;
+    b.ver = (b.ver || 0) + 1; landVer++;
   }
                                                      // (water tiles stay clear: water.js draws the sea under the land)
   if (gr === ":") {                                  // bridge planks run across the direction of travel

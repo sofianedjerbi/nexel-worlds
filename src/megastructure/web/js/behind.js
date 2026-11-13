@@ -60,6 +60,30 @@ function clipBehind(p, sx, sy, S, part = 0) {
   ctx.clip();
   return true;
 }
+// Drawn behind the ground in front of it, and through the rock the x-ray circle sees through (xray.js): as hidden as
+// ever, and over that what the rock hides of it, as faint as the circle is there (whole in its clear middle).
+// draw(a): draws it, a: how strong
+function drawBehind(p, sx, sy, S, draw) {
+  const shows = xrayShows(p), cut = clipBehind(p, sx, sy, S, shows > .98 ? 1 : 0);
+  draw(1);
+  if (cut) ctx.restore();
+  if (cut && shows > .02 && shows <= .98) { clipBehind(p, sx, sy, S, 2); draw(shows); ctx.restore(); }
+}
+// What stands or lies on a tile (a tree, a rock, a fence, things dropped) is behind higher ground as anybody is, and
+// cut at its edge the same way. Most of it is behind nothing: which tiles are is kept a block, until the land changes,
+// so a frame asks nothing for the rest.
+function tileBehind(x, y) {
+  const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B))); if (!b) return false;
+  if (b.behindAt !== landVer) { b.behindAt = landVer; b.behind = new Map(); }
+  const i = (y - b.by * B) * B + x - b.bx * B;
+  let v = b.behind.get(i);
+  if (v === undefined) {
+    v = false; const L = standAt(x, y);
+    for (let tx = x - 1; tx <= x + 1 && !v; tx++) for (let ty = y + 1; ty <= y + 8 && !v; ty++) v = (levelAt(tx, ty) - L) * RELIEF_STEP > (ty - y - 1) * 16;
+    b.behind.set(i, v);
+  }
+  return v;
+}
 // Is the spot (x, y: tiles, with fractions) behind higher ground drawn up over it? (Dust and sparks there aren't shown.)
 // Higher ground: on the level nothing is behind anything. (It compared 0 with less than 0 there, and a row too far:
 // every puff of dust, spark and splash that wasn't on the very top line of its tile went unseen, everywhere.)
