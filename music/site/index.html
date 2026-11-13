@@ -145,6 +145,12 @@
     </div>
   </section>
 
+  <section class="card" id="dirscard">
+    <h2>New: five directions, about 20 s each <small>music/directions.py on Surge XT (music/surge.py)</small></h2>
+    <div class="notes"><div>New approach: the music is still written in Python, but played on Surge XT, a real synthesizer, with sounds made by sound designers. Five short loops in five different directions (rhythm, sounds and tone all differ). Which direction, if any, is worth continuing?</div></div>
+    <div id="dirs"></div>
+  </section>
+
   <section class="card" id="dayscard">
     <h2>Other music for the day: four suggestions <small>each its own tune and its own instruments; none is in the game</small></h2>
     <div id="days"></div>
@@ -418,6 +424,15 @@ function showAudit(q, box) {
     `<div class="rule">${dot(true)}<span>${k}</span><em>gone in ${r.rt60_s} s · starts ${r.predelay_ms} ms after the note · kept to ${r.return} · level: ${Object.entries(r.level_db).map(([a, b]) => `${a} ${b}${b === "dry" ? "" : " dB"}`).join(", ")}</em></div>`).join("") + `</details>`;
   box.innerHTML = h;
 }
+fetch("audio/directions.json").then((r) => r.json()).then((ds) => {
+  for (const d of ds) {
+    const row = document.createElement("div");
+    row.style.marginTop = "10px";
+    row.innerHTML = `<b>${d.title}</b> <small>${d.mood} · ${d.bpm} BPM<br>sounds: ${d.sounds}</small><br><audio controls loop preload="none" src="audio/dir_${d.id}.wav" style="width:100%;margin-top:4px"></audio>`;
+    $("dirs").appendChild(row);
+  }
+});
+document.addEventListener("play", (e) => document.querySelectorAll("#dirscard audio").forEach((a) => a !== e.target && a.pause()), true);
 async function loadDays() {
   fetch("audio/quality.json").then((r) => r.json()).then((q) => showAudit(q, $("audit")));
   const tint = ["#f7e0a3", "#f7c9a3", "#d9e8d0", "#cfe0f0", "#f3c6d8", "#e6dcc6"];

@@ -53,6 +53,9 @@ def music_page(out: Path):
         (out / "music.html").unlink()
         return print("no music page: render the music first (music/render_all.py, then music/quality.py)")
     (out / "music").mkdir()
+    wavs += sorted(src.glob("dir_*.wav"))            # music/directions.py: short pieces on Surge XT
+    if (src / "directions.json").exists():
+        shutil.copy(src / "directions.json", out / "music" / "directions.json")
     for name in ("days.json", "quality.json"):
         shutil.copy(src / name, out / "music" / name)
     for w in wavs:

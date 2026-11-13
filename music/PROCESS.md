@@ -223,3 +223,21 @@ day. The user: "that chiptune is awful", the main instrument and "the noise of e
 track (FM bell) and Market Morning (struck square) were "pharmacy", the boss "sounds like those MIDI samples".
 Lesson: bells, pure tones and bare pulse waves all read as "pharmacy" here. And three sets of instruments chosen
 without hearing them (synthesised, recorded, chip) have all been refused: stop choosing timbres blind.
+
+## A real synthesizer, driven from Python (2026-11-13)
+
+The user rejected every sound so far (the recorded harp, harmonica and clarinet by name), refused text-to-music
+models ("DONT TEXT TO MUSIC"), and asked for music generated from code with real tools: "people do sounds with
+programming... use tools". They want everything rethought: "the rhythm, the sounds themselves, that tone".
+
+- `music/surge.py` plays Surge XT (open-source synthesizer, installed by the user with `brew install --cask surge-xt`)
+  through DawDreamer, offline. It loads any of the ~3000 factory sounds by name and sends notes. I no longer design
+  instruments. Run with: `uv run --no-project --python 3.11 --with dawdreamer --with numpy python music/directions.py`.
+- `music/directions.py`: five 8-bar loops in five directions (lo-fi tape keys, ambient pads, mellow synthwave, electric
+  piano funk, bright plucks), each with its own rhythm; none uses the old shuffle. Shown first on both pages.
+  The point is to learn which direction is worth a full track before writing one.
+- My own diagnosis of the "tone": the old mixes had almost nothing above 4 kHz (-20 to -35 dB) because the audit
+  called anything brighter harsh. That rule is not applied here.
+- Dead ends this evening: a local text-to-music model (stopped at the user's word, deleted); a local audio-quality
+  model as a stand-in for ears (it rated the hated tracks 7 to 8 out of 10: useless).
+- Not judged by ear.
