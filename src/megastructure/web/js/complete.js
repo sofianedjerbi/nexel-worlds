@@ -10,7 +10,8 @@ const comp = {items: [], note: "", at: 0, from: 0, to: 0};
 
 function askTools() {
   if (tools || !me) return;
-  rpc("tools", {}).then((r) => { if (r.ok && r.tools) { tools = r.tools; if ($("chatbox").classList.contains("open")) suggest(); } });
+  // (listed again when they come, if a command is being typed: not in plain talk, where a list of names asked for with Tab was wiped by it)
+  rpc("tools", {}).then((r) => { if (r.ok && r.tools) { tools = r.tools; if ($("chatbox").classList.contains("open") && $("say").value.startsWith("/")) suggest(); } });
 }
 // The ones that start with what is typed (the shortest first: /di is dig before dig_down), then the ones that have
 // it in them; nothing typed: all of them, in the order they come
