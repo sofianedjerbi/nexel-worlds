@@ -48,17 +48,27 @@ def tune(cell, cadence, bars):
     return [[(s, ln, n) for (s, ln), n in zip(cell if kind == "cell" else cadence, notes.split())] for kind, notes in bars]
 
 
-# Old Mossback, the boss: the day's cell (same rhythm, same rise into a long note) in D minor, the relative minor.
-# A: the bass walks down under one chord (D, C, B, Bb: a line cliche), then iv, a ii-V, and an augmented dominant.
-# B: eight bars of relief in the major (Bb, C, Am, Dm), ending on the dominant. Form A A B A, 32 bars.
-VB = {"Dm9": "F3 A3 C4", "Dm9/C": "F3 A3 C4", "Bm7b5": "A3 D4 F4", "Bbmaj7": "A3 D4 F4", "Gm9": "F3 Bb3 D4", "Em7b5": "G3 Bb3 D4 E4", "A7b9": "G3 Bb3 C#4 E4",
-      "A7#5": "G3 C#4 F4", "C9": "E3 Bb3 D4", "Am7": "G3 C4 E4"}
-RB = {"Dm9": "D3", "Dm9/C": "C3", "Bm7b5": "B2", "Bbmaj7": "Bb2", "Gm9": "G2", "Em7b5": "E2", "A7b9": "A2", "A7#5": "A2", "C9": "C3", "Am7": "A2"}
-_A = ["Dm9", "Dm9/C", "Bm7b5", "Bbmaj7", "Gm9", "Em7b5 A7b9", "Dm9", "A7#5"]
-_TA = [("cell", "A4 D5 F5 E5"), ("cell", "A4 D5 F5 E5"), ("cell", "A4 D5 F5 D5"), ("cadence", "F5 D5 C5 A4"),
-       ("cell", "G4 Bb4 D5 Bb4"), ("cell", "G4 Bb4 E5 C#5"), ("cell", "A4 D5 F5 D5"), ("cadence", "F5 E5 C#5 A4")]
-_TB = [("cell", "A4 D5 F5 D5"), ("cell", "G4 Bb4 E5 C5"), ("cell", "G4 C5 E5 C5"), ("cadence", "F5 E5 C5 A4"),
-       ("cell", "A4 D5 F5 D5"), ("cell", "G4 Bb4 E5 C5"), ("cell", "G4 Bb4 D5 Bb4"), ("cadence", "E5 C#5 Bb4 A4")]
+# Old Mossback, the boss. Its first version reused the day's cell in the minor: "looks too much like the main theme.
+# i believe we should create 2-3 themes for this game". So the boss has its own theme; two candidates, nothing shared
+# with Side street (other key, other cell, other rhythm, other sounds). Both are 32 bars, A A B A.
+#   Stomp  E minor with the Phrygian F chord a semitone above home. Cell: two hammered notes on the beat, a long one,
+#          two pickups (steps 0, 2, 4, 12, 14), low (E4 to E5). Slow and heavy.
+#   Chase  G minor. Cell: a long note first, then three quick ones around it and a landing (steps 0, 6, 8, 10, 12),
+#          high. Fast, a kick on every beat.
+VS = {"Em9": "G3 B3 D4", "Fadd9": "G3 A3 C4", "D9": "F#3 C4 E4", "Am9": "G3 C4 E4", "C6": "G3 C4 E4", "F#m7b5": "A3 C4 E4", "B7b9": "A3 C4 D#4", "Bm7": "A3 D4 F#4"}
+RS = {"Em9": "E2", "Fadd9": "F2", "D9": "D3", "Am9": "A2", "C6": "C3", "F#m7b5": "F#2", "B7b9": "B2", "Bm7": "B2"}
+_SA = ["Em9", "Fadd9", "Em9", "D9", "Am9", "C6", "F#m7b5 B7b9", "Em9"]
+_TSA = [("cell", "E4 E4 B4 A4 G4"), ("cell", "F4 F4 C5 A4 G4"), ("cell", "E4 E4 B4 A4 G4"), ("cadence", "F#4 F#4 A4"),
+        ("cell", "A4 A4 E5 D5 C5"), ("cell", "G4 G4 E5 D5 C5"), ("cell", "A4 A4 C5 B4 A4"), ("cadence", "G4 F#4 E4")]
+_TSB = [("cell", "G4 G4 E5 D5 C5"), ("cell", "A4 A4 E5 D5 C5"), ("cell", "F#4 F#4 D5 B4 A4"), ("cadence", "G4 F#4 E4"),
+        ("cell", "G4 G4 E5 D5 C5"), ("cell", "A4 A4 E5 D5 C5"), ("cell", "A4 A4 C5 B4 A4"), ("cadence", "C5 A4 B4")]
+VC = {"Gm9": "F3 Bb3 D4", "Ebmaj7": "G3 Bb3 D4", "D7b9": "F#3 C4 Eb4", "Bbmaj9": "F3 A3 D4", "Am7b5": "G3 C4 Eb4", "Cm9": "G3 Bb3 Eb4", "F9": "A3 Eb4 G4"}
+RC = {"Gm9": "G2", "Ebmaj7": "Eb2", "D7b9": "D3", "Bbmaj9": "Bb2", "Am7b5": "A2", "Cm9": "C3", "F9": "F2"}
+_CA = ["Gm9", "Gm9", "Ebmaj7", "D7b9", "Gm9", "Bbmaj9", "Am7b5 D7b9", "Gm9"]
+_TCA = [("cell", "D5 C5 D5 Bb4 G4"), ("cell", "D5 C5 D5 Bb4 G4"), ("cell", "D5 C5 D5 Bb4 G4"), ("cadence", "Eb5 D5 A4"),
+        ("cell", "D5 C5 D5 Bb4 G4"), ("cell", "F5 C5 F5 D5 C5"), ("cell", "Eb5 D5 Eb5 C5 A4"), ("cadence", "D5 Bb4 G4")]
+_TCB = [("cell", "G5 F5 G5 Eb5 C5"), ("cell", "G5 F5 G5 Eb5 C5"), ("cell", "F5 C5 F5 D5 C5"), ("cadence", "D5 Bb4 G4"),
+        ("cell", "G5 F5 G5 Eb5 C5"), ("cell", "G5 F5 G5 Eb5 C5"), ("cell", "Eb5 D5 Eb5 C5 A4"), ("cadence", "Eb5 D5 A4")]
 
 # Kite weather, a second day and night tune. A major, starting on the IV (D, C#m, Bm, E; then home to A).
 # Its own cell: two notes down onto a long one, and a pickup into the next bar (steps 0, 3, 6, 14).
@@ -69,7 +79,10 @@ _TK = [("cell", "E5 C#5 A4 B4"), ("cell", "E5 B4 G#4 B4"), ("cell", "D5 A4 F#4 A
 
 SCORES = {
     "street": dict(H=H1, V=V1, R=R1, T=T1),
-    "boss": dict(H=_A + _A + ["Bbmaj7", "C9", "Am7", "Dm9", "Bbmaj7", "C9", "Em7b5", "A7b9"] + _A, V=VB, R=RB, T=tune(CELL, CADENCE, _TA + _TA + _TB + _TA)),
+    "stomp": dict(H=_SA + _SA + ["C6", "D9", "Bm7", "Em9", "C6", "D9", "F#m7b5", "B7b9"] + _SA, V=VS, R=RS,
+                  T=tune([(0, 2), (2, 2), (4, 6), (12, 2), (14, 2)], [(0, 2), (2, 2), (4, 12)], _TSA + _TSA + _TSB + _TSA)),
+    "chase": dict(H=_CA + _CA + ["Cm9", "F9", "Bbmaj9", "Ebmaj7", "Cm9", "F9", "Am7b5", "D7b9"] + _CA, V=VC, R=RC,
+                  T=tune([(0, 6), (6, 2), (8, 2), (10, 2), (12, 4)], [(0, 6), (6, 2), (8, 8)], _TCA + _TCA + _TCB + _TCA)),
     "kite": dict(H=["Dmaj9", "C#m7", "Bm9", "E13", "Dmaj9", "C#m7", "Bm9 E13", "Amaj9"] * 2, V=VK, R=RK,
                  T=tune([(0, 3), (3, 3), (6, 6), (14, 2)], [(0, 3), (3, 3), (6, 10)], _TK * 2)),
 }
@@ -131,6 +144,13 @@ def side_street(st):
             p["clap"] += [(s0 + 12, 1, 60, 96)]
             p["hat"] += [(s0 + s, 1, 60, 86 * ACC[s]) for s in range(16) if not (fill and s >= 12)]
             p["open"] += [(s0 + 6, 2, 60, 78)] if b % 2 else []
+        if d == "chase":                             # a kick on every beat, an open hat between, snare and clap on 2 and 4
+            fill = b % 8 == 7
+            p["kick"] += [(s0 + s, 1, 48, 114 if s == 0 else 104) for s in (0, 4, 8, 12)]
+            p["snare"] += [(s0 + 4, 1, 60, 100), (s0 + 12, 1, 60, 106)] + ([(s0 + 14, 1, 60, 84), (s0 + 15, 1, 60, 98)] if fill else [])
+            p["clap"] += [(s0 + 4, 1, 60, 84), (s0 + 12, 1, 60, 92)]
+            p["open"] += [(s0 + s, 2, 60, 82) for s in (2, 6, 10, 14) if not (fill and s == 14)]
+            p["hat"] += [(s0 + s, 1, 60, 70 * ACC[s]) for s in range(0, 16, 4)]
         if d == "light":
             p["kick"] += [(s0, 1, 48, 96), (s0 + 10, 1, 48, 84)]
             p["hat"] += [(s0 + s, 1, 60, 80 * ACC[s]) for s in (2, 6, 10, 14)]
@@ -163,13 +183,14 @@ PIECES = [
     dict(id="mc1", title="Side street, night (kept: was Minecraft feeling 1)", bpm=66, drums="none", bass="long", comp="hold", lead="Vospi/Keys/The Softest",
          chords="Bluelight/Pads/Another Warm", pad="Pads/MKS-70 Warm Pad", bass_sound="Basses/Sub 1",
          about="kept for random night moments: 66 BPM, no drums, a soft key over warm pads and a long low bass"),
-    dict(id="boss1", title="Old Mossback 1 (boss)", score="boss", bpm=132, drums="boss", bass="drive", comp="stab5", levels=HEAVY, lead="A.Liv/Plucks/Cute 1",
-         chords="A.Liv/Plucks/Cute 2", bass_sound="Nick Moritz/Basses/Plastic Dream",
-         about="the day's lead cell turned to D minor, on the day's own sounds: 132 BPM, a bass in driving eighths, kick on 1 and 3, sixteenth hats, a relief in the major in the middle"),
-    dict(id="boss2", title="Old Mossback 2 (boss, heavier)", score="boss", bpm=140, drums="boss", bass="drive", comp="stab5", levels=HEAVY, lead="Nick Moritz/Keys/Dream Plucks",
-         chords="Polysynths/Jupiter-8", bass_sound="Basses/Bass 1", double="Cybersoda/Brass/Soft 80s Brass", double_shift=-12,
+    dict(id="stomp", title="Old Mossback A: Stomp (boss, its own theme)", score="stomp", bpm=116, drums="boss", bass="drive", comp="stab5", levels=HEAVY,
+         lead="Cybersoda/Brass/Soft 80s Brass", double="Nick Moritz/Keys/Dream Plucks", chords="Polysynths/Jupiter-8", bass_sound="Basses/Bass 1",
          kit={"kick": "TNMG/Drums/Kick - Classic", "snare": "TNMG/Drums/Snare - Classic"},
-         about="the same score at 140 BPM on other sounds: analog chord stabs, a harder kick and snare, a soft brass doubling the tune an octave below from the middle on"),
+         about="slow and heavy, E minor with a dark chord a semitone above home; a low brass lead hammering two notes then a long one; analog stabs, driving bass; a pluck joins an octave up from the middle"),
+    dict(id="chase", title="Old Mossback B: Chase (boss, its own theme)", score="chase", bpm=150, drums="chase", bass="drive", comp="stab5", levels=HEAVY,
+         lead="Kyurumi/Plucks/Dreams And Sweets", chords="Vospi/Plucks/Come Closer", bass_sound="Basses/Rubber Bass",
+         kit={"kick": "Emu/Drums/T8 Kick 1", "snare": "Emu/Drums/T8 Snare"},
+         about="fast, G minor; a high lead that holds a note then circles it with three quick ones; a kick on every beat, open hats between, 808-style drums"),
     dict(id="kite_day", title="Kite weather, day (new tune)", score="kite", bpm=108, bass="bounce", comp="stab", claps=True, lead="A.Liv/Plucks/Cute 1", chords="A.Liv/Plucks/Cute 2",
          bass_sound="Nick Moritz/Basses/Plastic Dream", about="a second day tune in the manner of the kept one: A major, its own lead cell (two notes down onto a long one, a pickup into the next bar)"),
     dict(id="kite_night", title="Kite weather, night (new tune)", score="kite", bpm=66, drums="none", bass="long", comp="hold", lead="Vospi/Keys/The Softest",

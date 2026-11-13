@@ -315,3 +315,17 @@ night song. keep those two for random day / night moments. now start to rework o
 - Kite weather: a second tune, A major from the IV (Dmaj9, C#m7, Bm9, E13 ... Amaj9), its own cell (two notes down
   onto a long one, a pickup into the next bar); rendered in the kept day manner and the kept night manner.
 - Not judged by ear. Not in the game yet: the game should play day and night pieces at random moments, not loop them.
+
+## Three themes; the boss gets its own (2026-11-13)
+
+The user on the boss built from the day's cell: "the old mossback theme looks too much like the main theme. i believe
+we should create 2-3 themes for this game".
+- Theme 1, Side street: the kept day and night pieces. Theme 2, Old Mossback: its own tune. Theme 3: Kite weather is
+  the candidate (not yet judged).
+- Two boss candidates in `pieces.py`, both 32 bars A A B A, sharing nothing with Side street:
+  Stomp: E minor, the Phrygian chord (F over... Fadd9) a semitone above home, D9, Am9, C6, F#m7b5-B7b9; cell of two
+  hammered notes on the beat, a long one, two pickups; 116 BPM; low brass lead, Jupiter-8 stabs, TNMG kick and snare.
+  Chase: G minor (Gm9, Ebmaj7, D7b9, Bbmaj9, Am7b5; B section Cm9, F9); cell of a long note then three quick ones
+  around it; 150 BPM; kick on every beat with open hats between; Dreams And Sweets lead, 808-style drums.
+- The first boss versions (boss1, boss2) are deleted.
+- Lesson: a theme is its own cell, key and rhythm. Re-dressing one cell in another mode is a variation, not a theme.
