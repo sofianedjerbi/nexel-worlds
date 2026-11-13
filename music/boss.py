@@ -32,8 +32,8 @@ rng = np.random.default_rng(7)
 
 CYCLE = ["Bm", "Bm", "A", "A", "F#m", "F#m", "A", "Bm"]
 ROOT = {"Bm": ("B1", "F#2"), "F#m": ("F#1", "C#2"), "D": ("D2", "A2"), "G": ("G1", "D2"), "A": ("A1", "E2")}
-PIZZ = {"Bm": ["B2", "F#3", "A3", "F#3"], "F#m": ["F#2", "C#3", "A2", "C#3"], "D": ["D3", "A3", "F#3", "A3"], "G": ["G2", "D3", "B2", "D3"], "A": ["A2", "E3", "C#3", "E3"]}
-PAD = {"Bm": ["B2", "D3", "F#3"], "F#m": ["F#2", "A2", "C#3"], "D": ["D3", "F#3", "A3"], "G": ["G2", "B2", "D3"], "A": ["A2", "C#3", "E3"]}
+PIZZ = {"Bm": ["B2", "F#3", "A3", "F#3"], "F#m": ["F#2", "C#3", "A2", "C#3"], "A": ["A2", "E3", "B2", "E3"]}     # A has no third (the tune lands on D over it)
+PAD = {"Bm": ["B2", "D3", "F#3"], "F#m": ["F#2", "A2", "C#3"], "A": ["A2", "E3", "A3"]}
 MELODY = C.MELODY                                                   # the day's melody, as it is
 HORN = [(0, 2, "F#2"), (2, 2, "A2"), (4, 2, "F#2"), (6, 1, "A2"), (7, 1, "B2")]  # bar, bars long, note: each belongs to its chord
 SECTIONS = [("it stands up", 4), ("the fight", 8), ("everything in", 8), ("it braces, then stomps back", 8), ("everything in again", 8)]
@@ -175,14 +175,14 @@ def render():
     ir_t = tt(int(2.5 * SR))
     irs = []
     for _ in range(2):                                             # a smaller, drier room than Meadow Road's: a fight is close
-        ir = rng.standard_normal(len(ir_t)) * np.exp(-ir_t / 0.38) * np.clip(ir_t / 0.03, 0, 1)
+        ir = rng.standard_normal(len(ir_t)) * np.exp(-ir_t / 0.25) * np.clip(ir_t / 0.03, 0, 1)
         ir = fft_filter(ir, lambda fr: lp(4500, 1)(fr) * hp(250, 1)(fr))
         irs.append(np.fft.rfft(np.pad(ir / np.sqrt(np.sum(ir ** 2)), (0, LOOP_N - len(ir)))))
     out = {}
     for s, (dry, rev) in stems.items():
         dry, rev = fold(dry), fold(rev)
         wet = np.stack([np.fft.irfft(np.fft.rfft(rev[c]) * irs[c], LOOP_N) for c in range(2)])
-        x = GAIN[s] * (dry + 0.8 * wet)
+        x = GAIN[s] * (dry + 0.3 * wet)
         cut = hp(30, 2)(f) if s in ("bass", "drums") else hp(120, 1)(f)
         out[s] = np.fft.irfft(np.fft.rfft(x, axis=-1) * cut * lp(15000, 2)(f), LOOP_N, axis=-1)
     mix = sum(out.values())

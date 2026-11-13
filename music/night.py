@@ -111,14 +111,14 @@ def render():
     ir_t = tt(int(3.5 * SR))
     irs = []
     for _ in range(2):                                             # open air at night: a little longer than the boss's room, still not a hall
-        ir = rng.standard_normal(len(ir_t)) * np.exp(-ir_t / 0.55) * np.clip(ir_t / 0.03, 0, 1)
+        ir = rng.standard_normal(len(ir_t)) * np.exp(-ir_t / 0.3) * np.clip(ir_t / 0.03, 0, 1)
         ir = fft_filter(ir, lambda fr: lp(5000, 1)(fr) * hp(250, 1)(fr))
         irs.append(np.fft.rfft(np.pad(ir / np.sqrt(np.sum(ir ** 2)), (0, LOOP_N - len(ir)))))
     out = {}
     for s, (dry, rev) in stems.items():
         dry, rev = fold(dry), fold(rev)
         wet = np.stack([np.fft.irfft(np.fft.rfft(rev[c]) * irs[c], LOOP_N) for c in range(2)])
-        x = GAIN[s] * (dry + 0.8 * wet)
+        x = GAIN[s] * (dry + 0.3 * wet)
         cut = hp(30, 2)(f) if s == "bass" else hp(110, 1)(f)
         out[s] = np.fft.irfft(np.fft.rfft(x, axis=-1) * cut * lp(13000, 2)(f), LOOP_N, axis=-1)
     music = sum(out.values())

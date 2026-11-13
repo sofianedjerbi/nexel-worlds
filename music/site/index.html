@@ -135,7 +135,7 @@
     </div>
     <div id="ab">
       <button class="abrow" data-v="opus"><b>Opus 5.5</b><span>the original version: every note with the same touch, a darker mono piano, layers switch on and off</span><kbd>A</kbd></button>
-      <button class="abrow on" data-v="fable"><b>Fable 5.2</b><span>the new theme: one three-note head and four landings over held chords, on a softer, lower piano</span><kbd>B</kbd></button>
+      <button class="abrow on" data-v="fable"><b>Fable 5.2</b><span>the new theme, Animal Crossing style: a light swing, bouncing bass, off-beat electric piano, a shaker</span><kbd>B</kbd></button>
     </div>
   </section>
 
@@ -199,11 +199,11 @@
     <h2>How it's made</h2>
     <div class="notes">
       <div><b>Approach:</b> music that "doesn't explain anything" (C418's words): no story, no climax, one texture that slowly changes.</div>
-      <div><b>Harmony:</b> D major, two bars a chord, struck together and held: D, A over C#, B minor 7, then A and D (a full cadence home). The bass walks down D, C#, B, A.</div>
-      <div><b>Melody:</b> one head of three notes, long-short-long (A, up to B, back to A), said four times exactly the same. Only the long note it lands on changes: F#, E, F#, D. That is the whole theme; nothing else is ever added.</div>
-      <div><b>Variation:</b> only who plays it, and what is around it: the piano or a synth lead, chords alone, open space. The melody rests in 4 of 11 blocks. There is no arpeggio any more.</div>
+      <div><b>Harmony:</b> D major in seventh chords, one a bar, all from the key: Dmaj7, Bm7, F#m7, Em7 then A7; Dmaj7, Bm7, A7sus, D6. An electric piano plays each chord with all its notes together, short, off the beat.</div>
+      <div><b>Melody:</b> one head of three notes (A, up to B, back to A), said four times exactly the same. Only the long note it lands on changes: F#, E, F#, D, and each landing comes an eighth early, the way Animal Crossing tunes push. Nothing else is ever added.</div>
+      <div><b>Variation:</b> only who plays it, and what is around it: the piano or a synth lead; the band (a bouncing bass, the electric piano, a shaker) or open space. A light swing throughout. The melody rests in 4 of 11 blocks.</div>
       <div><b>Sound:</b> felt piano through a "cheap mic", detuned analog pad with a slowly breathing filter, Moog-style bass, tape hiss.</div>
-      <div><b>Checks:</b> registers never overlap, no clashing notes, loudness per block. Seamless 293 s loop. Download: <a href="audio/master.wav" download="meadow-road-fable.wav">Fable</a>, <a href="opus/audio/master.wav" download="meadow-road-opus.wav">Opus</a></div>
+      <div><b>Checks:</b> registers never overlap, no clashing notes, loudness per block. Seamless 251 s loop at 84 BPM. Download: <a href="audio/master.wav" download="meadow-road-fable.wav">Fable</a>, <a href="opus/audio/master.wav" download="meadow-road-opus.wav">Opus</a></div>
     </div>
   </section>
 </main>
@@ -216,6 +216,8 @@ const STEM_INFO = {
   arp:     { what: "the rolling figure on a soft synth, through an echo",       color: "#d99bc4" },
   bass:    { what: "round Moog-style bass",                     color: "#8d6bb5" },
   texture: { what: "tape hiss, a breath of wind",               color: "#6fae78" },
+  comp:    { what: "electric piano: the chord, short, off the beat", color: "#d99bc4" },
+  drums:   { what: "a shaker, far back",                         color: "#b9a37c" },
 };
 const KIND_COLORS = { A: "#f7e0a3", B: "#cfe0f0", rest: "#d9e8d0" };
 const KIND_RGB = { A: [247,224,163], B: [207,224,240], rest: [217,232,208] };

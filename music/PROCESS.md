@@ -133,3 +133,12 @@ leap in every bar is not a tune, however correct its harmony. Back to the discip
 - **One head (A, B, A: long, short, long), repeated four times exactly; only the landing note changes (F#, E, F#, D).**
 - Two bars a chord (D, A/C#, Bm7, then A and D). Night and boss: Bm7, A, F#m, then A and Bm.
 - When fixing one complaint, re-read all the earlier ones: this one had been made, and solved, a day before.
+
+### More Animal Crossing (2026-11-13)
+The user asked to take more from Animal Crossing. That music (Totaka's hourly themes) is bossa nova and lounge: seventh chords, electric
+piano, light drums and bass, "electronic but played as if acoustic". Taken: a light swing (`SWING` 0.58), 84 BPM, a bass bouncing root to
+fifth, an electric piano playing the whole chord short and off the beat, a shaker, diatonic seventh chords one a bar
+(Dmaj7, Bm7, F#m7, Em7-A7 / Dmaj7, Bm7, A7sus, D6), landings an eighth early. The pad is nearly gone. The theme is the same head and landings.
+This drops the old "no drums" rule on purpose; the night theme stays without the band.
+- "The sound seems lost in a puddle of echoes everywhere and reverb too much": no echo on anything, reverb level 0.7 -> 0.22, the room's
+  tail 5 s -> 2 s (decay 0.65 s -> 0.28 s); night and boss cut the same way. Keep it dry: this style is close and clear.
