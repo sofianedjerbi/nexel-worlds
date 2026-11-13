@@ -403,3 +403,8 @@ The user: "both sounds bad. also db should be normalized (w/ sound effect db als
   (attack, decay, brightness) to the sounds of Side street night: leads Wurli (distance 1.7) and EP Middle (2.2); the
   refused ones were at 2.9 and 4.0. Pads Film, Still, Whatever, Obie; bass Sub 2. Versions C and D.
 - Not judged by ear.
+
+- The user: "i think the musics sounds louder than all the other sounds on my pc. is the db too high ?" Yes for its
+  job: -16 LUFS is a listening level; behind a game, -18 to -24 is usual, and most effects are quieter than -16.
+  All music is now at -20 LUFS. When it is wired into the game, SOUND.music must be raised to keep the balance the
+  game has now (old day theme: -17 LUFS at 0.45, about -24 effective; -20 needs about 0.63 for the same).

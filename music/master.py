@@ -5,7 +5,7 @@ What it does, in order, and why:
   1. removes what is under 30 Hz (inaudible, eats headroom)
   2. centres the lows: under 120 Hz the two channels are made equal (bass and kick in the middle, also on one speaker)
   3. glue: a gentle bus compressor (2:1, slow attack so the hits pass, about 1.5 dB on average); not on night pieces
-  4. the same loudness for every piece, -16 LUFS (how loud it is heard, not its peaks). The sound effects are
+  4. the same loudness for every piece, -20 LUFS (how loud it is heard, not its peaks). The sound effects are
      levelled on the same weighting in music/sfx.py (loudest 100 ms, -13 to -30 dB by kind); the game then sets
      music against effects (SOUND in audio.js)
   5. a limiter that keeps the true peak under -1 dBFS (peaks measured four times oversampled)
@@ -29,7 +29,10 @@ SET = [  # file in, name out, title, role, where it plays
     ("piece_shore_night_d", "far_shore_night_d", "Far shore, night D", "night", "random moments at night (pick C or D)"),
     ("piece_mossback2", "old_mossback", "Old Mossback", "boss", "the boss fight, looped"),
 ]
-TARGET = {"day": -16.0, "night": -16.0, "boss": -16.0}     # one loudness for all ("db should be normalized"); the game sets who is louder
+# One loudness for all ("db should be normalized"). -16 was heard as "louder than all the other sounds on my pc": it is
+# a level for music listened to, not for music behind a game (games sit at -18 to -24 LUFS), and louder than most of
+# the effects (-13 to -30 dB). -20 puts it under the main effects wherever it is played.
+TARGET = {"day": -20.0, "night": -20.0, "boss": -20.0}
 
 
 def read(path):
