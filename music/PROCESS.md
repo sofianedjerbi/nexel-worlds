@@ -276,3 +276,15 @@ loop there is), a pentatonic tune landing only on chord notes, and one bar shape
 - A check refuses tune notes a minor ninth above any note of their chord (several were caught and fixed by thinning
   voicings). This is the old "wrong notes" guard, needed again because the harmony is chromatic.
 - Not judged by ear.
+
+## Side street, second version: the lead as one cell (2026-11-13)
+
+The user on pieces.py: "now it sounds like a single thing going anywhere. You're doing the same error again and again.
+The lead is doing bullshit." It was their oldest complaint (wandering, "freestyling") come back: making the harmony
+richer, I had also given every bar of the tune a different shape.
+- The lead is now one cell (steps 2, 4, 6, 12: two short notes up into a long one, then a fall) played in every bar,
+  only its pitches moved to fit the chord; the fourth bar of each phrase is a cadence (three notes down to a held one).
+  Eight bars, played twice exactly, the last bar going home. Harmony, bass, drums and sounds unchanged.
+- Paper boats (the waltz) is removed: same fault.
+- Rule for every later tune: rich harmony below, ONE repeated cell above. Plain harmony plus a simple tune was
+  "naive, generic"; a tune that changes shape was "going anywhere".

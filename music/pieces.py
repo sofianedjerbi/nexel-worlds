@@ -32,22 +32,16 @@ V1 = {"Fmaj9": "A3 C4 E4 G4", "Em7b5": "G3 Bb3 D4 E4", "A7b9": "G3 Bb3 C#4 E4", 
 R1 = {"Fmaj9": "F2", "Em7b5": "E2", "A7b9": "A2", "Dm9": "D2", "Cm7": "C3", "F13": "F2", "Bbmaj9": "Bb2", "Bbm6": "Bb2", "Am7": "A2", "D9": "D3", "Gm9": "G2", "C13": "C3", "F69": "F2"}
 H1 = ["Fmaj9", "Em7b5 A7b9", "Dm9", "Cm7 F13", "Bbmaj9", "Bbm6", "Am7 D9", "Gm9 C13",
       "Fmaj9", "Em7b5 A7b9", "Dm9", "Cm7 F13", "Bbmaj9", "Bbm6", "Gm9 C13", "F69"]
-T1 = [[(2, 2, "A4"), (4, 2, "C5"), (6, 3, "E5"), (10, 2, "D5"), (12, 4, "C5")],
-      [(0, 3, "Bb4"), (3, 3, "A4"), (6, 2, "G4"), (8, 3, "C#5"), (11, 2, "Bb4"), (13, 3, "A4")],
-      [(0, 2, "F4"), (2, 2, "A4"), (4, 5, "E5"), (10, 2, "D5"), (12, 4, "A4")],
-      [(0, 3, "Eb5"), (3, 3, "D5"), (6, 2, "Bb4"), (8, 3, "A4"), (11, 2, "G4"), (13, 3, "F4")],
-      [(0, 2, "D5"), (2, 2, "F5"), (4, 6, "C5"), (12, 4, "A4")],
-      [(0, 2, "Db5"), (2, 2, "F5"), (4, 6, "Bb4"), (12, 4, "G4")],
-      [(0, 3, "C5"), (3, 3, "E5"), (6, 2, "C5"), (8, 3, "F#4"), (11, 2, "A4"), (13, 3, "C5")],
-      [(0, 3, "Bb4"), (3, 3, "D5"), (6, 2, "A4"), (8, 2, "G4"), (10, 2, "A4"), (12, 4, "E4")],
-      [(2, 2, "A4"), (4, 2, "C5"), (6, 3, "E5"), (10, 2, "G5"), (12, 4, "E5")],
-      [(0, 3, "Bb4"), (3, 3, "A4"), (6, 2, "G4"), (8, 3, "C#5"), (11, 2, "Bb4"), (13, 3, "A4")],
-      [(0, 2, "F4"), (2, 2, "A4"), (4, 5, "E5"), (10, 2, "F5"), (12, 4, "D5")],
-      [(0, 3, "Eb5"), (3, 3, "D5"), (6, 2, "Bb4"), (8, 3, "A4"), (11, 2, "G4"), (13, 3, "F4")],
-      [(0, 2, "D5"), (2, 2, "F5"), (4, 6, "C5"), (12, 4, "A4")],
-      [(0, 2, "Db5"), (2, 2, "F5"), (4, 6, "Bb4"), (12, 4, "G4")],
-      [(0, 3, "Bb4"), (3, 3, "D5"), (6, 2, "F5"), (8, 3, "E5"), (11, 2, "D5"), (13, 3, "Bb4")],
-      [(0, 3, "A4"), (3, 3, "C5"), (6, 10, "G4")]]
+# The lead is ONE cell: two short notes up into a long one, then a fall (steps 2, 4, 6, 12). Every bar plays it; only
+# the pitches move, to fit the chord. The fourth bar of each phrase is the cadence: three notes down to a held one.
+# (The first version changed shape every bar: "a single thing going anywhere... the lead is doing bullshit".)
+CELL = [(2, 2), (4, 2), (6, 5), (12, 4)]
+CADENCE = [(0, 3), (3, 3), (6, 2), (8, 8)]
+PITCH = [("cell", "A4 C5 E5 C5"), ("cell", "G4 Bb4 E5 C#5"), ("cell", "F4 A4 D5 A4"), ("cadence", "Eb5 D5 Bb4 A4"),
+         ("cell", "A4 D5 F5 D5"), ("cell", "G4 Db5 F5 Db5"), ("cell", "G4 C5 E5 C5"), ("cadence", "D5 Bb4 A4 G4")]
+PITCH = PITCH + PITCH[:6] + [("cadence", "D5 Bb4 A4 G4"), ("cadence", "A4 G4 F4 F4")]          # the same eight bars again, then home
+T1 = [[(s, ln, n) for (s, ln), n in zip(CELL if kind == "cell" else CADENCE, notes.split())] for kind, notes in PITCH]
+T1[-1] = [(0, 3, "A4"), (3, 3, "G4"), (6, 10, "F4")]
 ACC = [1.0, 0.7, 0.8, 0.72, 0.9, 0.7, 0.84, 0.72, 0.95, 0.7, 0.8, 0.72, 0.9, 0.7, 0.86, 0.76]
 
 
@@ -128,9 +122,7 @@ DUCK = {"pad": 0.4, "chords": 0.2, "bass": 0.3}
 SOUNDS = dict(chords="Vospi/Keys/The Softest", pad="Databroth/Pads/Warmbo", bass="Basses/Rubber Bass", kick="Vospi/Drums/Proper Kick", snare="Vospi/Drums/Simple Snare",
               hat="Emu/Drums/Hat Closed", open="Emu/Drums/Hat Open", shaker="Emu/Drums/Egg Shaker")
 PIECES = [dict(id="street", title="Side street", write=side_street, lead="Nick Moritz/Keys/Dream Plucks",
-               about="4/4 · F major · jazz chords with a ii-V into each, the minor iv, chromatic notes in the tune, a bass that walks into each chord"),
-          dict(id="boats", title="Paper boats", write=paper_boats, lead="Vospi/Keys/The Softest", answer="Nick Moritz/Keys/Dream Plucks",
-               about="a waltz · D major · the Lydian chord, dominants borrowed from other keys, the minor iv; long tune notes on each chord's colour note")]
+               about="4/4 · F major · the lead is one small cell, the same rhythm and shape in every bar, moved to fit each chord; jazz chords underneath; a bass that walks into each chord")]
 
 
 def clashes(score, under):
