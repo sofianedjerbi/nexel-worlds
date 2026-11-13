@@ -1,6 +1,7 @@
 // Crafting: category tabs, a grid of what can be made (in the hotbar's own slots; what you can't make yet dimmed),
 // and beside it the one you're on: what it needs (have / need), where it's made, and a Craft button.
-// Arrows move over the grid, Enter crafts (Shift+Enter five), Tab changes category, Esc closes.
+// Arrows move over the grid, Enter crafts (Shift+Enter five), Tab or Q / E change category, Home / End, Esc closes.
+// What can be made right now wears a green tick; the rest is faded.
 
 const RECIPE_GROUPS = [
   ["Start", "workbench", ["workbench", "campfire", "torch", "rope", "plank", "path"]],
@@ -43,6 +44,9 @@ function drawRecipes() {
     b.onclick = () => { craftTab = title; sfx("ui"); drawRecipes(); };
     tabs.appendChild(b);
   }
+  const shown = groups.filter(([t]) => craftTab === "All" || t === craftTab).flatMap(([, , n]) => n);
+  const ready = shown.filter((n) => { const q = craftState(n); return q.have && q.near; }).length;
+  tabs.insertAdjacentHTML("beforeend", `<div class="ctitle">${esc(craftTab === "All" ? "Everything" : craftTab)}${ready ? ` · <i>${ready} ready</i>` : ""}</div>`);
   // the grid
   el.innerHTML = "";
   const names = groups.filter(([t]) => craftTab === "All" || t === craftTab).flatMap(([, , n]) => n);
@@ -53,6 +57,7 @@ function drawRecipes() {
     d.dataset.name = name; d.title = craftWhy(name);
     d.appendChild(iconCanvas(name));
     if (out > 1) d.insertAdjacentHTML("beforeend", `<span class="c">${out}</span>`);
+    if (s.have && s.near) d.insertAdjacentHTML("beforeend", `<span class="ok">✓</span>`);   // (can be made right now)
     if (s.have && s.near) d.onclick = () => { focusRecipe(name); act("craft", {recipe: name}); };
     else d.onclick = () => focusRecipe(name);
     d.onmousemove = () => focusRecipe(name);              // (only a mouse that moves: one resting there leaves the keys alone)
@@ -63,7 +68,10 @@ function drawRecipes() {
 function focusRecipe(name) {
   if (craftFocus === name) return;
   craftFocus = name;
-  for (const c of $("recipes").querySelectorAll(".rcard")) c.classList.toggle("kfocus", c.dataset.name === name);
+  for (const c of $("recipes").querySelectorAll(".rcard")) {
+    c.classList.toggle("kfocus", c.dataset.name === name);
+    if (c.dataset.name === name) c.scrollIntoView({block: "nearest"});
+  }
   drawCraftDetail();
 }
 // The recipe you're on: its picture and name, what it needs, where, and the button
@@ -102,9 +110,14 @@ function drawCraftDetail() {
 }
 // Keys while it's open: arrows over the grid, Enter crafts, Tab the next category
 function craftKey(k, e) {
-  if (k === "tab") {
-    const tabs = ["All", ...craftGroups().map(([t]) => t)], i = tabs.indexOf(craftTab);
-    craftTab = tabs[(i + (e.shiftKey ? tabs.length - 1 : 1)) % tabs.length]; craftFocus = null; sfx("ui"); drawRecipes();
+  if (k === "tab" || k === "q" || k === "e") {         // categories: Tab / Shift+Tab, or Q and E
+    const tabs = ["All", ...craftGroups().map(([t]) => t)], i = tabs.indexOf(craftTab), back = k === "q" || (k === "tab" && e.shiftKey);
+    craftTab = tabs[(i + (back ? tabs.length - 1 : 1)) % tabs.length]; craftFocus = null; sfx("ui"); drawRecipes();
+    return true;
+  }
+  if (k === "home" || k === "end") {                     // the first or the last recipe
+    const cards = [...$("recipes").querySelectorAll(".rcard")];
+    if (cards.length) { const c = cards[k === "home" ? 0 : cards.length - 1]; craftFocus = null; focusRecipe(c.dataset.name); }
     return true;
   }
   const r = panelKey("craft", ".rcard", () => craftFocus, (n) => { craftFocus = n; drawCraftDetail(); }, k, e);

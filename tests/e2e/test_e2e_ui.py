@@ -71,6 +71,27 @@ def test_crafting_tabs_detail_and_button(game):
     game.press("Escape", 200)
 
 
+def test_crafting_says_what_can_be_made_now_and_is_driven_by_keys(game):
+    """What you can make right now wears a tick (the rest is faded) and is counted beside the category's name;
+    Q and E change category like Tab, Home and End go to the first and the last recipe."""
+    game.give(wood=4)
+    game.press("c", 400)
+    ticked = game.js("[...document.querySelectorAll('.rcard')].filter((c) => c.querySelector('.ok')).map((c) => c.dataset.name)")
+    assert "workbench" in ticked and "axe" not in ticked
+    assert game.js("document.querySelector('#crafttabs .ctitle').textContent") == f"Everything · {len(ticked)} ready"
+    game.press("e", 200)
+    assert game.js("craftTab") == "Start"
+    game.press("q", 200)
+    assert game.js("craftTab") == "All"
+    names = game.js("[...document.querySelectorAll('.rcard')].map((c) => c.dataset.name)")
+    game.press("End", 200)
+    assert game.js("craftFocus") == names[-1]
+    game.press("Home", 200)
+    assert game.js("craftFocus") == names[0]
+    game.press("Escape", 200)
+    assert not game.errors
+
+
 def test_zoom_help_and_debug_keys(game):
     z0 = game.js("zoom")
     game.press("+", 100)
