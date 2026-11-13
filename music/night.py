@@ -34,12 +34,10 @@ ROOT = {"Bm": "B1", "F#m": "F#2", "A": "A1"}
 HAND = {"Bm": ["B2", "F#3", "A3"], "F#m": ["F#2", "C#3", "A3"], "A": ["A2", "E3", "A3"]}      # struck together, held
 PAD = {"Bm": ["B2", "F#3"], "F#m": ["F#3", "C#3"], "A": ["A2", "E3"]}                         # root and fifth
 MELODY = C.MELODY                                                   # the day's, as it is
-SECTIONS = [("the melody alone", 8), ("the left hand", 8), ("pad and bass", 8), ("the piano rests: a far whistle", 8), ("everything", 8), ("thinning out", 8)]
+SECTIONS = [("the melody alone", 8), ("the left hand", 8), ("pad and bass", 8), ("the vibraphone rests: a far flute", 8), ("everything", 8), ("thinning out", 8)]
 
 
-def whistle(f, dur, vel, t0):
-    """The day's lead, heard from far off: softer."""
-    return 0.6 * glide_lead(f, dur, vel, t0)
+whistle = C.flute       # the second voice, from far off
 
 
 events = []      # (seconds, instrument, note, seconds long, velocity, pan, reverb send, stem)
@@ -54,13 +52,13 @@ def block(first, piano=1.0, roll=0.0, pad=0.0, bass=False, far=False):
         bar, names = first + k, CYCLE[k].split()
         for s, length, nm in MELODY[k]:
             if piano:
-                add(bar, s, MAIN, nm, length, piano * (0.8 if length >= 3 else 0.68), "piano", pan=0.08, rev=0.3)
+                add(bar, s, C.vibes, nm, length, piano * (0.8 if length >= 3 else 0.68), "piano", pan=0.08, rev=0.3)    # the lead: a vibraphone
             if far:
                 add(bar, s, whistle, nm, length, 0.75, "whistle", pan=0.2, rev=0.45)
         for h, ch in enumerate(names):
             at, ln = h * 8 // len(names), 8 // len(names)
             for j, nm in enumerate(HAND[ch]) if roll else ():
-                add(bar, at, MAIN, nm, ln, roll * (0.46 - 0.04 * j), "piano", pan=-0.3 + 0.2 * j, rev=0.3)
+                add(bar, at, MAIN, nm, ln, roll * (0.46 - 0.04 * j), "chords", pan=-0.3 + 0.2 * j, rev=0.3)
             for i, nm in enumerate(PAD[ch]) if pad else ():
                 add(bar, at, analog_pad, nm, ln, pad, "pad", pan=(-0.4, 0.4)[i], rev=0.35)
             if bass:
@@ -74,7 +72,7 @@ block(24, piano=0.0, roll=0.9, pad=0.9, bass=True, far=True)
 block(32, roll=1.0, pad=0.9, bass=True, far=True)
 block(40, piano=0.9, pad=0.7)
 
-GAIN = {"piano": 1.0, "whistle": 0.8, "pad": 0.75, "bass": 0.5, "air": 1.0}
+GAIN = {"piano": 1.0, "chords": 1.0, "whistle": 0.8, "pad": 0.75, "bass": 0.5, "air": 1.0}
 
 
 def air():
@@ -108,25 +106,17 @@ def render():
         return out
 
     f = np.fft.rfftfreq(LOOP_N, 1 / SR)
-    ir_t = tt(int(3.5 * SR))
-    irs = []
-    for _ in range(2):                                             # open air at night: a little longer than the boss's room, still not a hall
-        ir = rng.standard_normal(len(ir_t)) * np.exp(-ir_t / 0.3) * np.clip(ir_t / 0.03, 0, 1)
-        ir = fft_filter(ir, lambda fr: lp(5000, 1)(fr) * hp(250, 1)(fr))
-        irs.append(np.fft.rfft(np.pad(ir / np.sqrt(np.sum(ir ** 2)), (0, LOOP_N - len(ir)))))
+    irs = C.room(rng, LOOP_N, rt60=1.4)
     out = {}
     for s, (dry, rev) in stems.items():
         dry, rev = fold(dry), fold(rev)
         wet = np.stack([np.fft.irfft(np.fft.rfft(rev[c]) * irs[c], LOOP_N) for c in range(2)])
-        x = GAIN[s] * (dry + 0.3 * wet)
+        x = GAIN[s] * (dry + C.WET * wet)
         cut = hp(30, 2)(f) if s == "bass" else hp(110, 1)(f)
         out[s] = np.fft.irfft(np.fft.rfft(x, axis=-1) * cut * lp(13000, 2)(f), LOOP_N, axis=-1)
-    music = sum(out.values())
-    scale = 10 ** (-21 / 20) / np.sqrt(np.mean(music ** 2))        # quieter than the day (-17): it is night
-    out = {s: x * scale for s, x in out.items()}
-    out["air"] = GAIN["air"] * air()
-    mix = sum(out.values())
-    return np.tanh(1.4 * mix) / 1.4 * 1.05, out
+    out, mix = C.master(out, -19)                                  # 2 dB quieter than the day (-17 LUFS): it is night
+    out["air"] = (GAIN["air"] * air()).astype(np.float32)
+    return mix + out["air"], out
 
 
 def clashes():

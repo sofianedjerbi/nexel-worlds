@@ -132,30 +132,6 @@ def saw(ph, f, cutoff, kmax=40):
 
 # ------------------------------------------------------------------ instruments (f, dur, vel, t0)
 
-def lofi_piano(f, dur, vel, t0):
-    """The main instrument: a felt piano played softly. Two strings a hair apart (they beat slowly), stretched partials
-    that die at their own rates, a soft thump of felt. Darker and rounder than the first one (heard as "aggressive"),
-    but not a pure tone: the second try was close to a sine with a clean attack, and sounded like a door chime."""
-    n = int((dur + 3.0) * SR)
-    t = tt(n)
-    bright = 1700 + 1900 * vel
-    cents = rng.normal(0, 2.5)
-    y = np.zeros(n)
-    for string in (-1.6, 1.9):
-        ph = phase(f, n, t0, (cents + string) / 100, wob=0.5)       # (little tape wobble: the pitch must be sure)
-        for k in range(1, 14):
-            fk = k * np.sqrt(1 + 0.0005 * k * k)
-            if f * fk > 7500:
-                break
-            tau = 4.0 / k ** 0.75 * (220 / max(f, 110)) ** 0.35
-            y += 0.5 * (1 / k ** 1.25) / (1 + (f * fk / bright) ** 2) * np.sin(fk * ph) * (0.5 * np.exp(-t / (tau * 0.25)) + 0.5 * np.exp(-t / tau))
-    y += fft_filter(rng.standard_normal(n), bp(180, 1400, 1)) * np.exp(-t / 0.012) * 0.05 * (0.5 + vel)   # the felt on the strings
-    y = np.tanh(1.2 * y) / 1.2
-    mic = lambda centre: (lambda fr: bp(90, 6000, 1)(fr) * (1 + 0.15 / (1 + ((fr - centre) / 600) ** 2)))
-    left, right = fft_filter(y, mic(500)), np.roll(fft_filter(y, mic(700)), 10)
-    return 0.46 * vel * np.stack([left, right]) * np.clip(t / 0.007, 0, 1) * release(t, dur, 0.55)
-
-
 def nylon(f, dur, vel, t0):
     """The main instrument since 2026-11-13: a nylon-string guitar, plucked with the thumb. Three pianos were refused
     ("aggressive", then "unbearable": the last was nearly a sine, two strings beating slowly, pushed into a clipper).
@@ -191,17 +167,16 @@ def rhodes(f, dur, vel, t0):
 
 def marimba(f, dur, vel, t0):
     """Candidate: a marimba, soft mallets. The bar (its modes at 1, 4 and 10 times the note) over its tube."""
-    n = int(2.5 * SR)
+    tau = 0.7 * (262 / max(f, 131)) ** 0.6
+    n = int(max(1.5, 6 * tau) * SR)
     t = tt(n)
     ph = phase(f, n, t0, wob=0.0)
-    tau = 0.7 * (262 / max(f, 131)) ** 0.6
     y = np.sin(ph) * np.exp(-t / tau) + 0.3 * vel * np.sin(4 * ph) * np.exp(-t / (tau * 0.18)) \
         + 0.08 * vel * np.sin(10.1 * ph) * np.exp(-t / (tau * 0.05))
     y += fft_filter(rng.standard_normal(n), bp(200, 1500, 1)) * np.exp(-t / 0.006) * 0.08 * vel
     return 0.5 * vel * y * np.clip(t / 0.002, 0, 1)
 
 
-MAIN = nylon            # who plays the melody (night.py and boss.py use it too)
 
 
 _pad_cache = {}
@@ -210,7 +185,7 @@ _pad_cache = {}
 def analog_pad(f, dur, vel, t0):
     """Four detuned saws, filter opening and closing over minutes (whole cycles per loop). The saws of a note are made
     once and kept: the pad plays the same few notes hundreds of times, and this was half of the rendering time."""
-    n = int((dur + 3.0) * SR)
+    n = int((dur + 4.0) * SR)
     t = tt(n)
     key = (round(f, 3), n)
     if key not in _pad_cache:
@@ -222,29 +197,19 @@ def analog_pad(f, dur, vel, t0):
         _pad_cache[key] = (dark, bright)
     dark, bright = _pad_cache[key]
     w = loop_lfo(t0 + t, 3, 0.4)
-    env = np.clip(t / 1.4, 0, 1) ** 2 * release(t, dur, 1.6)
+    env = np.clip(t / 1.4, 0, 1) ** 2 * release(t, dur, 0.8)
     return 0.05 * vel * ((1 - w) * dark + w * bright) * env
 
 
 def moog_bass(f, dur, vel, t0):
     """Round, warm synth bass: saw + square under a low filter, soft attack, held."""
-    n = int((dur + 1.0) * SR)
+    n = int((dur + 1.2) * SR)
     t = tt(n)
     ph = phase(f, n, t0, wob=0.3)
     y = 0.6 * saw(ph, f, 260) + 0.5 * sum(np.sin(k * ph) / k for k in (1, 3, 5)) * 0.8 + 0.5 * np.sin(ph)
     y = np.tanh(1.3 * y)
-    env = np.clip(t / 0.08, 0, 1) * (0.8 + 0.2 * np.exp(-t / 0.5)) * release(t, dur, 0.5)
+    env = np.clip(t / 0.08, 0, 1) * (0.8 + 0.2 * np.exp(-t / 0.5)) * release(t, dur, 0.22)      # (a 0.5 s release was cut 19 dB down, and blurred the bounce)
     return 0.3 * vel * y * env
-
-
-def synth_arp(f, dur, vel, t0):
-    """Soft plucked synth: triangle-ish body, the brightness falls quickly (filter envelope)."""
-    n = int(1.2 * SR)
-    t = tt(n)
-    ph = phase(f, n, t0, wob=0.6)
-    y = sum(((-1) ** ((k - 1) // 2)) / k ** 2 * np.sin(k * ph) * np.exp(-t * (4 + 10 * k)) for k in (1, 3, 5, 7, 9))
-    y += 0.25 * saw(ph, f, 1500) * np.exp(-t / 0.05)
-    return 0.32 * vel * y * np.clip(t / 0.003, 0, 1) * np.exp(-t / 0.5)
 
 
 def epiano(f, dur, vel, t0):
@@ -259,21 +224,107 @@ def epiano(f, dur, vel, t0):
 
 def shaker(f, dur, vel, t0):
     """A shaker, far back: a soft breath of high noise."""
-    n = int(0.11 * SR)
+    n = int(0.17 * SR)
     t = tt(n)
-    y = fft_filter(rng.standard_normal(n), bp(4500, 11000, 1)) * np.clip(t / 0.012, 0, 1) * np.exp(-t / 0.025)
+    y = fft_filter(rng.standard_normal(n), bp(3000, 8000, 2)) * np.clip(t / 0.012, 0, 1) * np.exp(-t / 0.025)
     return 0.22 * vel * y / (np.abs(y).max() + 1e-9)       # (0.4 was "a bit too loud")
+
+
+def melodica(f, dur, vel, t0):
+    """A melodica: a free reed, buzzy but small, speaking at once and held by the breath; a slow shake once it is held."""
+    n = int((dur + 0.4) * SR)
+    t = tt(n)
+    vib = 0.07 * np.clip((t - 0.35) / 0.5, 0, 1) * np.sin(2 * np.pi * 5.2 * t)
+    ph = phase(f, n, t0, vib, wob=0.2)
+    y = saw(ph, f, 1500 + 900 * vel, kmax=24) + 0.35 * sum(np.sin(k * ph) / k for k in (1, 3, 5) if k * f < 6000)
+    y += fft_filter(rng.standard_normal(n), bp(1500, 5000, 1)) * 0.012
+    env = np.clip(t / 0.03, 0, 1) * (0.85 + 0.15 * np.exp(-t / 0.3)) * release(t, dur, 0.07)
+    return 0.16 * vel * y * env
+
+
+def clarinet(f, dur, vel, t0):
+    """A clarinet, low and hollow: the odd harmonics, a soft start, a little breath."""
+    n = int((dur + 0.5) * SR)
+    t = tt(n)
+    vib = 0.04 * np.clip((t - 0.5) / 0.6, 0, 1) * np.sin(2 * np.pi * 4.8 * t)
+    ph = phase(f, n, t0, vib, wob=0.2)
+    y = sum(np.sin(k * ph) / k ** 1.4 / (1 + (k * f / (1600 + 1400 * vel)) ** 2) for k in (1, 3, 5, 7, 9, 11) if k * f < 9000)
+    y += 0.06 * np.sin(2 * ph) + fft_filter(rng.standard_normal(n), bp(900, 3500, 1)) * 0.01
+    env = np.clip(t / 0.05, 0, 1) ** 1.5 * release(t, dur, 0.09)
+    return 0.3 * vel * y * env
+
+
+def flute(f, dur, vel, t0):
+    """A whistled, flute-like voice: nearly a pure tone with breath around it; it scoops into the note and shakes slowly."""
+    n = int((dur + 0.5) * SR)
+    t = tt(n)
+    vib = 0.09 * np.clip((t - 0.3) / 0.5, 0, 1) * np.sin(2 * np.pi * 5.0 * t)
+    ph = phase(f, n, t0, vib - 0.3 * np.exp(-t / 0.04), wob=0.2)
+    y = np.sin(ph) + 0.16 * np.sin(2 * ph) + 0.05 * np.sin(3 * ph)
+    breath = fft_filter(rng.standard_normal(n), lambda fr: bp(f * 1.5, f * 5, 1)(fr))
+    y += 0.05 * breath / (np.abs(breath).max() + 1e-9) * (1 + 2 * np.exp(-t / 0.05))
+    env = np.clip(t / 0.06, 0, 1) * release(t, dur, 0.1)
+    return 0.3 * vel * y * env
+
+
+def vibes(f, dur, vel, t0):
+    """A vibraphone, soft mallets, motor on slow: a metal bar that rings for seconds, gently pulsing."""
+    n = int((dur + 2.0) * SR)
+    t = tt(n)
+    ph = phase(f, n, t0, wob=0.0)
+    tau = 2.6 * (262 / max(f, 131)) ** 0.4
+    y = np.sin(ph) * np.exp(-t / tau) + 0.22 * vel * np.sin(4 * ph) * np.exp(-t / (tau * 0.2)) + 0.05 * vel * np.sin(10 * ph) * np.exp(-t / (tau * 0.04))
+    y *= 1 + 0.12 * np.sin(2 * np.pi * 4.3 * (t0 + t))
+    return 0.4 * vel * y * np.clip(t / 0.004, 0, 1) * release(t, dur, 0.5)
+
+
+def upright(f, dur, vel, t0):
+    """A plucked double bass: a round thump, the string's low modes, gone within a second."""
+    n = int((dur + 0.8) * SR)
+    t = tt(n)
+    ph = phase(f, n, t0, -0.25 * np.exp(-t / 0.03), wob=0.1)
+    y = sum(np.sin(k * ph) / k ** 1.7 * np.exp(-t * (1.1 + 0.9 * k)) for k in range(1, 9) if k * f < 1800)
+    thump = fft_filter(rng.standard_normal(n), bp(60, 400, 1)) * np.exp(-t / 0.01)
+    y += 0.12 * vel * thump / (np.abs(thump).max() + 1e-9)
+    return 0.5 * vel * y * np.clip(t / 0.006, 0, 1) * release(t, dur, 0.12)
+
+
+def woodblock(f, dur, vel, t0):
+    """A small wooden block, far back: two damped modes and the stick."""
+    n = int(0.2 * SR)
+    t = tt(n)
+    y = np.sin(2 * np.pi * 880 * t) * np.exp(-t / 0.022) + 0.5 * np.sin(2 * np.pi * 1420 * t) * np.exp(-t / 0.012)
+    y += 0.2 * fft_filter(rng.standard_normal(n), bp(1500, 5000, 1)) * np.exp(-t / 0.003)
+    return 0.16 * vel * y * np.clip(t / 0.001, 0, 1)
 
 
 def glide_lead(f, dur, vel, t0):
     """Warm monophonic synth lead: filtered saw + sine, slides up into each note, slow vibrato."""
-    n = int((dur + 0.6) * SR)
+    n = int((dur + 1.5) * SR)                # (0.6 s cut the release 21 dB down)
     t = tt(n)
     vib = 0.1 * np.clip((t - 0.4) / 0.6, 0, 1) * np.sin(2 * np.pi * 4.2 * t)
     ph = phase(f, n, t0, -0.5 * np.exp(-t / 0.06) + vib, wob=0.5)
     y = 0.55 * saw(ph, f, 1700) + 0.6 * np.sin(ph)
     env = np.clip(t / 0.06, 0, 1) * release(t, dur, 0.25)
     return 0.22 * vel * y * env
+
+
+def _ends_silent(fn):
+    """What an instrument returns ends on zero (the audit found notes cut 25 to 40 dB down: a faint tick each)."""
+    def voiced(f, dur, vel, t0):
+        y = np.array(fn(f, dur, vel, t0), dtype=float)
+        k = min(y.shape[-1], 480)
+        y[..., -k:] *= np.linspace(1, 0, k)
+        return y
+    voiced.__name__, voiced.__doc__, voiced.raw = fn.__name__, fn.__doc__, fn
+    return voiced
+
+
+VOICES = ["nylon", "rhodes", "marimba", "analog_pad", "moog_bass", "epiano", "shaker", "melodica", "clarinet",
+          "flute", "vibes", "upright", "woodblock", "glide_lead"]
+for _name in VOICES:
+    globals()[_name] = _ends_silent(globals()[_name])
+MAIN = nylon            # who plays Meadow Road's melody (night.py and boss.py use it too)
 
 
 # ------------------------------------------------------------------ material
@@ -358,7 +409,7 @@ for bar in range(BARS):
     for (slot, ln, n), (touch, late) in zip(MELODY[i], PHRASE[i]):
         m = midi(n)
         if mel in ("piano", "both") or (mel == "fragments" and i in (0, 1, 4, 5)):
-            note(s0 + slot, ln, m, 0.66 * touch, MAIN, "piano", 0.1, rev=0.3, late=late)
+            note(s0 + slot, ln, m, 0.9 * touch, MAIN, "piano", 0.1, rev=0.3, late=late)      # (0.66 left the tune 2 to 5 dB under the band)
         if mel in ("lead", "both"):
             note(s0 + slot, ln, m, (0.9 if mel == "lead" else 0.55) * touch, glide_lead, "lead", -0.1, rev=0.3, late=late)
 
@@ -451,20 +502,47 @@ def echo_fx(mono, beats=0.75, fb=0.45):
     return 0.5 * np.stack([np.fft.irfft(x * z / (1 - z ** 2), LOOP_N), np.fft.irfft(x * z ** 2 / (1 - z ** 2), LOOP_N)])
 
 
-def make_ir(rng=rng, seconds=2.0, tau_dark=0.28, tau_bright=0.12, predelay=0.015):
-    n = int(seconds * SR)
-    t = tt(n)
+WET = 0.22          # the room's level against the dry sound (with sends of 0 to 0.4 a voice: 15 to 25 dB under it)
+
+
+def room(rng, n, rt60=1.0, predelay=0.02):
+    """One small room for everything: its sound is gone in a second (60 dB down in rt60), it starts 20 ms after the
+    note so the attack stays clear, and it is kept out of the lows (under 250 Hz) and the highs (over 8 kHz).
+    Mixing references: decay 0.8 to 1.5 s, pre-delay 20 to 30 ms, a 200 to 300 Hz cut on the return, the bass dry."""
+    t = tt(int(1.6 * rt60 * SR))
+    f = np.fft.rfftfreq(n, 1 / SR)
     irs = []
     for _ in range(2):
-        dark = fft_filter(rng.standard_normal(n), lp(1800)) * np.exp(-t / tau_dark)
-        bright = fft_filter(rng.standard_normal(n), hp(1800)) * np.exp(-t / tau_bright) * 0.4
-        ir = (dark + bright) * np.clip(t / 0.03, 0, 1)
-        ir[: int(predelay * SR)] = 0
+        ir = rng.standard_normal(len(t)) * np.exp(-t * 6.91 / rt60) * np.clip(t / 0.01, 0, 1)
+        ir = np.concatenate([np.zeros(int(predelay * SR)), ir])
         ir /= np.sqrt(np.sum(ir ** 2))
-        padded = np.zeros(LOOP_N)
-        padded[:n] = ir
-        irs.append(np.fft.rfft(padded))
+        irs.append(np.fft.rfft(np.pad(ir, (0, n - len(ir)))) * hp(250, 1)(f) * lp(8000, 1)(f))
     return irs
+
+
+def lufs(x):
+    """Loudness as the ear weighs it (ITU-R BS.1770 K-weighting, done in the frequency domain; no gating;
+    the constant is set so that a 997 Hz tone at -20 dBFS in both channels reads -20.0)."""
+    x = np.atleast_2d(x).astype(np.float64)
+    f = np.fft.rfftfreq(x.shape[-1], 1 / SR)
+    k = (1 + (10 ** (4 / 20) - 1) / (1 + (1681 / np.maximum(f, 1)) ** 2)) / np.sqrt(1 + (38 / np.maximum(f, 1e-3)) ** 4)
+    return -1.23 + 10 * np.log10(np.sum(np.abs(np.fft.rfft(x, axis=-1) * k) ** 2) * 2 / x.shape[-1] ** 2 + 1e-12)
+
+
+def master(stems, target_db, ceil=0.89):
+    """The stems at the target loudness (LUFS) and their sum, with peaks held under -1 dBFS by a limiter that
+    only turns the level down for an instant (no clipper: the audit found tanh on three masters)."""
+    pre = sum(stems.values())
+    norm = 10 ** ((target_db - lufs(pre)) / 20)
+    g = limiter_gain(pre * norm, ceil)
+    f = np.fft.rfftfreq(pre.shape[-1], 1 / SR)
+
+    def centred(x):                                                # under 150 Hz everything is in the middle (lows panned apart cancel on small speakers)
+        mid, side = (x[0] + x[1]) / 2, (x[0] - x[1]) / 2
+        side = np.fft.irfft(np.fft.rfft(side) * hp(150, 2)(f), x.shape[-1])
+        return np.stack([mid + side, mid - side])
+    stems = {k: (centred(x.astype(np.float64)) * norm * g).astype(np.float32) for k, x in stems.items()}
+    return stems, sum(stems.values())
 
 
 def texture_bed():
@@ -477,19 +555,20 @@ def texture_bed():
 
 def limiter_gain(x, ceil=0.9, block=48):
     pk = np.abs(x).max(axis=0)
-    nb = LOOP_N // block
+    n = x.shape[-1]
+    nb = n // block
     pb = pk[: nb * block].reshape(nb, block).max(axis=1)
     g = np.minimum(1, ceil / np.maximum(pb, 1e-9))
     w = 8
     gm = np.min([np.roll(g, s) for s in range(-w, w + 1)], axis=0)
     gs = np.mean([np.roll(gm, s) for s in range(-w // 2, w // 2 + 1)], axis=0)
     full = np.repeat(gs, block)
-    return np.concatenate([full, np.full(LOOP_N - len(full), full[-1])]).astype(np.float32)
+    return np.concatenate([full, np.full(n - len(full), full[-1])]).astype(np.float32)
 
 
 PLANE = {"piano": (1.0, 9000), "lead": (0.95, 8000), "pad": (0.8, 6000), "comp": (1.0, 7000), "drums": (1.0, 12000),
          "bass": (1.0, 2500), "texture": (1.0, 14000)}
-GAINS = {"piano": 1.0, "lead": 1.0, "pad": 0.9, "comp": 1.0, "bass": 0.55, "drums": 1.0, "texture": 1.0}
+GAINS = {"piano": 1.0, "lead": 1.0, "pad": 0.9, "comp": 0.85, "bass": 0.5, "drums": 1.0, "texture": 1.0}
 
 
 def render_stem(stem, irs):
@@ -517,10 +596,10 @@ def render_stem(stem, irs):
 
     dry, rev, ech = fold(dry), fold(rev), fold(ech)
     echo = echo_fx(ech) if ech.any() else 0.0
-    send = circ(rev + 0.4 * echo, hp(200, 1))
+    send = rev + 0.4 * echo
     wet = np.stack([np.fft.irfft(np.fft.rfft(send[c]) * irs[c], LOOP_N) for c in range(2)])
     dry_amt, dark = PLANE[stem]
-    out = dry_amt * circ(dry, lp(dark, 1)) + echo + 0.22 * wet      # a small, dry room (0.7 with a 5 s tail was "a puddle of echoes")
+    out = dry_amt * circ(dry, lp(dark, 1)) + echo + WET * wet       # a small, dry room (0.7 with a 5 s tail was "a puddle of echoes")
     if stem == "texture":
         out = out + texture_bed()
     out = circ(out, hp(35, 2) if stem == "bass" else hp(90, 1))
@@ -530,7 +609,7 @@ def render_stem(stem, irs):
 
 
 def _stem_job(stem):
-    return stem, render_stem(stem, make_ir(np.random.default_rng(3)))
+    return stem, render_stem(stem, room(np.random.default_rng(3), LOOP_N))
 
 
 def render():
@@ -539,12 +618,8 @@ def render():
     with ProcessPoolExecutor(max_workers=min(len(STEMS), os.cpu_count() or 2)) as pool:
         stems = dict(pool.map(_stem_job, STEMS))
     stems = {s: stems[s] for s in STEMS}
-    pre = sum(stems.values())
-    norm = np.float32(10 ** (-19 / 20) / np.sqrt(np.mean(pre.astype(np.float64) ** 2)))
-    g = limiter_gain(pre * norm)
-    for s in STEMS:
-        stems[s] *= norm * g
-    return sum(stems.values()), stems
+    stems, mix = master(stems, -17)
+    return mix, stems
 
 
 def write_wav(path, x):

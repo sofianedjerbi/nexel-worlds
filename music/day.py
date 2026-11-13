@@ -1,11 +1,13 @@
-"""Other music for the day: four suggestions, each its own tune, in Meadow Road's sound (nylon guitar, bouncing bass,
-off-beat electric piano, shaker, a far whistle), dry.
+"""Other music for the day: four suggestions, each its own tune and its own instruments, in Meadow Road's manner
+(bouncing bass, chords off the beat, a light swing), dry.
 
     uv run python music/day.py        ->  music/site/audio/day_<id>.wav and .json, days.json
 
-The same rules as compose.py, checked here for every piece: chords are struck together (no arpeggios); the melody never
-takes two steps in a row in the same direction; every melody note on a beat is a chord note; nothing sounds a semitone
-or a minor ninth under the melody (a major seventh that belongs to the chord is fine). Each tune is one two-bar idea: said, answered, said again, closed on a cadence.
+The rules, checked for every piece by music/quality.py (the day theme, night and boss go through the same audit):
+chords are struck together (no arpeggios); the melody never takes two steps in a row in the same direction, never
+outlines a chord with three leaps the same way, and has no augmented leap; a leap larger than a fourth turns back; every
+melody note on a beat is a chord note; nothing sounds a minor ninth under the melody. Each tune is one two-bar idea:
+said, answered, said again, closed on a cadence. No two tracks share a lead instrument, and at most five play at once.
 """
 import json
 import sys
@@ -15,41 +17,49 @@ from pathlib import Path
 import numpy as np
 
 import compose as C
-from compose import MAIN, SR, analog_pad, epiano, glide_lead, hp, lp, midi, moog_bass, shaker, tt
+from compose import SR, analog_pad, hp, lp, midi, tt
 
 OUT = Path(__file__).with_name("site") / "audio"
 TAIL = 6 * SR
 QUAL = {"maj7": (0, 4, 7, 11), "m7": (0, 3, 7, 10), "7sus": (0, 5, 7, 10), "7": (0, 4, 7, 10), "6": (0, 4, 7, 9), "m": (0, 3, 7), "": (0, 4, 7)}
-# who plays, block by block (8 bars each): the melody (g: guitar, w: whistle, gw: both, -: nobody), the band
-# (0: pad and held chords, 1: bass and electric piano, 2: with the shaker)
-FORM = [("the tune", "g", 1), ("with the shaker", "g", 2), ("the band alone", "-", 2), ("a far whistle", "w", 2),
-        ("together", "gw", 2), ("open air", "-", 0)]
+# who plays, block by block (8 bars each): the melody (1: the lead, 2: the second voice, 12: the lead says it, the
+# second answers, -: nobody), the band (0: pad and held chords, 1: bass and chords, 2: with the percussion)
+FORM = [("the tune", "1", 1), ("with the band", "1", 2), ("the band alone", "-", 2), ("handed over", "2", 2),
+        ("call and answer", "12", 2), ("open air", "-", 0)]
+GAIN = dict.fromkeys(["lead", "second", "chords", "pad", "bass", "perc"], 1.0)
+# How loud each part is against the lead, in dB of loudness while it plays. render() sets every part to this, whatever
+# the instruments are: the tune ends up 1 to 2 dB over the whole band, the bass felt, the chords behind, the rest far.
+BALANCE = {"lead": 0.0, "second": 0.0, "chords": -7.0, "bass": -4.0, "pad": -13.0, "perc": -13.0}
 
 PIECES = [
     dict(id="market", title="Market Morning", key="G major", bpm=96, swing=0.6, mood="bouncy, on its toes",
+         band=dict(lead="marimba", second="flute", chords="nylon", bass="upright", perc=["shaker"]),
          cycle=["Gmaj7", "Em7", "Cmaj7", "D7", "Gmaj7", "Em7", "Am7 D7", "G6"],
-         melody=[[(0, 1, "D5"), (1, 1, "B4"), (3, 2, "D5"), (6, 2, "B4")], [(0, 4, "G4")],
-                 [(0, 1, "E5"), (1, 1, "C5"), (3, 2, "E5"), (6, 2, "C5")], [(0, 4, "A4")],
-                 [(0, 1, "D5"), (1, 1, "B4"), (3, 2, "D5"), (6, 2, "B4")], [(0, 4, "G4")],
+         melody=[[(0, 1, "D5"), (1, 1, "B4"), (3, 2, "D5"), (6, 2, "B4")], [(0, 4, "E5")],
+                 [(0, 1, "E5"), (1, 1, "C5"), (3, 2, "E5"), (6, 2, "C5")], [(0, 4, "D5")],
+                 [(0, 1, "D5"), (1, 1, "B4"), (3, 2, "D5"), (6, 2, "B4")], [(0, 4, "E5")],
                  [(0, 1, "E5"), (1, 1, "C5"), (3, 2, "D5"), (6, 2, "F#4")], [(0, 6, "G4")]]),
     dict(id="afternoon", title="Slow Afternoon", key="F major", bpm=72, swing=0.6, mood="lazy, long notes, waits for beat two",
+         band=dict(lead="rhodes", second="clarinet", chords="vibes", bass="moog_bass", perc=[], held=True),
          cycle=["Fmaj7", "Dm7", "Bbmaj7", "C7sus", "Fmaj7", "Am7", "Gm7 C7", "F6"],
-         melody=[[(2, 1, "E5"), (3, 3, "C5"), (6, 2, "A4")], [(0, 5, "D5")],
-                 [(2, 1, "D5"), (3, 3, "Bb4"), (6, 2, "F4")], [(0, 5, "G4")],
-                 [(2, 1, "E5"), (3, 3, "C5"), (6, 2, "A4")], [(0, 5, "E5")],
+         melody=[[(2, 1, "E5"), (3, 3, "C5"), (6, 2, "F5")], [(0, 5, "D5")],
+                 [(2, 1, "D5"), (3, 3, "Bb4"), (6, 2, "D5")], [(0, 5, "C5")],
+                 [(2, 1, "E5"), (3, 3, "C5"), (6, 2, "F5")], [(0, 5, "C5")],
                  [(2, 1, "D5"), (3, 2, "Bb4"), (6, 2, "C5")], [(0, 6, "A4")]]),
     dict(id="overcast", title="Overcast", key="A minor, closing in C major", bpm=80, swing=0.56, mood="bittersweet, a repeated note",
+         band=dict(lead="clarinet", second="vibes", chords="epiano", bass="upright", perc=["shaker"]),
          cycle=["Am7", "Fmaj7", "Cmaj7", "G", "Am7", "Fmaj7", "Dm7 G7", "C6"],
          melody=[[(0, 1, "E5"), (1, 1, "E5"), (2, 2, "C5"), (5, 3, "E5")], [(0, 4, "A4")],
-                 [(0, 1, "E5"), (1, 1, "E5"), (2, 2, "C5"), (5, 3, "G4")], [(0, 4, "B4")],
+                 [(0, 1, "E5"), (1, 1, "E5"), (2, 2, "C5"), (5, 3, "D5")], [(0, 4, "B4")],
                  [(0, 1, "E5"), (1, 1, "E5"), (2, 2, "C5"), (5, 3, "E5")], [(0, 4, "A4")],
-                 [(0, 1, "D5"), (1, 1, "D5"), (2, 3, "F5"), (6, 2, "B4")], [(0, 6, "C5")]]),
-    dict(id="picnic", title="Picnic", key="A major", bpm=108, swing=0.62, mood="brisk and playful, call and answer",
+                 [(0, 1, "F5"), (1, 1, "F5"), (2, 3, "D5"), (6, 2, "D5")], [(0, 6, "C5")]]),
+    dict(id="picnic", title="Picnic", key="A major", bpm=100, swing=0.62, mood="brisk and playful, call and answer",
+         band=dict(lead="melodica", second="nylon", chords="marimba", bass="moog_bass", perc=["shaker", "woodblock"]),
          cycle=["Amaj7", "F#m7", "Dmaj7", "E7", "Amaj7", "F#m7", "Bm7 E7", "A6"],
-         melody=[[(0, 1, "E5"), (1, 1, "C#5"), (2, 2, "E5"), (5, 3, "A4")], [(1, 1, "B4"), (2, 2, "A4"), (4, 3, "F#4")],
-                 [(0, 1, "D5"), (1, 1, "A4"), (2, 2, "D5"), (5, 3, "F#4")], [(1, 1, "F#4"), (2, 2, "G#4"), (4, 3, "E4")],
-                 [(0, 1, "E5"), (1, 1, "C#5"), (2, 2, "E5"), (5, 3, "A4")], [(1, 1, "B4"), (2, 2, "A4"), (4, 3, "F#4")],
-                 [(0, 1, "D5"), (1, 1, "B4"), (2, 2, "D5"), (5, 1, "G#4"), (6, 2, "B4")], [(0, 6, "A4")]]),
+         melody=[[(0, 1, "E5"), (1, 1, "C#5"), (2, 2, "E5"), (5, 2, "A4")], [(1, 1, "B4"), (2, 2, "A4"), (4, 3, "F#4")],
+                 [(0, 1, "D5"), (1, 1, "A4"), (2, 2, "D5"), (5, 2, "F#4")], [(1, 1, "F#4"), (2, 2, "B4"), (4, 3, "E4")],
+                 [(0, 1, "E5"), (1, 1, "C#5"), (2, 2, "E5"), (5, 2, "A4")], [(1, 1, "B4"), (2, 2, "A4"), (4, 3, "F#4")],
+                 [(0, 1, "D5"), (1, 1, "B4"), (2, 2, "D5"), (4, 2, "E5"), (6, 2, "B4")], [(0, 6, "A4")]]),
 ]
 
 
@@ -78,97 +88,120 @@ def over(piece, i, at, ln):
 
 
 def hand(piece, i, at, ln, ch):
-    """The chord without its root, around E3..D#4, and without any note a semitone (a minor ninth) under the melody."""
-    mel = over(piece, i, at, ln)
-    return [52 + (pc - 52) % 12 for pc in tones(ch)[1:] if not any((m - pc) % 12 == 1 for m in mel)]
+    """The chord as it is played: without its root, without any note a minor ninth under the melody, between C3 and
+    D4 (under the tune), each note in the octave nearest the chord before it, so that no voice jumps."""
+    key = (piece["id"], i, at)
+    if key not in _hands:
+        centre = 56.0
+        for _ in range(2):                                         # twice round the cycle: the first bar follows the last
+            for b in range(8):
+                for a_, l_, c_ in spans(piece, b):
+                    mel = over(piece, b, a_, l_)
+                    pcs = [pc for pc in tones(c_)[1:] if not any((m - pc) % 12 == 1 for m in mel)]
+                    v = sorted(min((n for n in range(48, 63) if n % 12 == pc), key=lambda n: abs(n - centre)) for pc in pcs)
+                    _hands[(piece["id"], b, a_)] = v
+                    centre = sum(v) / len(v) if v else centre
+    return _hands[key]
 
 
-def checks(piece):
-    bad, line = [], [midi(n) for bar in piece["melody"] for _, _, n in bar]
-    for i, bar in enumerate(piece["melody"]):
-        for s, l, n in bar:
-            if s % 2 == 0 and midi(n) % 12 not in tones(chord_at(piece, i, s)):
-                bad.append(f"bar {i + 1}: {n} on a beat is not in {chord_at(piece, i, s)}")
-        for at, ln, ch in spans(piece, i):
-            if any((m - pc) % 12 == 1 for m in over(piece, i, at, ln) for pc in tones(ch)[:3]):
-                bad.append(f"bar {i + 1}: the melody is a semitone from the root, third or fifth of {ch}")
-    line += line[:2]
-    for a, b, c in zip(line, line[1:], line[2:]):
-        if 0 < abs(b - a) <= 2 and 0 < abs(c - b) <= 2 and (b - a) * (c - b) > 0:
-            bad.append(f"two steps the same way: {a} {b} {c}")
-    return bad
+_hands = {}
 
 
-def render(piece):
+def render(piece, want_stems=False):
     rng = np.random.default_rng(len(piece["id"]) * 7 + piece["bpm"])
+    band = piece["band"]
+    lead, second, chords, bass = (getattr(C, band[k]) for k in ("lead", "second", "chords", "bass"))
     bars = 8 * len(FORM)
     loop_n = C.fast_len(int(round(bars * 4 * 60 / piece["bpm"] * SR)))
     beat = loop_n / SR / (bars * 4)
     t_of = lambda slot: (slot // 2 + (piece["swing"] if slot % 2 >= 1 else 0.0) + (slot % 1) * 0.5) * beat
     n = loop_n + TAIL
-    dry, rev = np.zeros((2, n)), np.zeros((2, n))
+    dry, rev = ({k: np.zeros((2, n)) for k in GAIN} for _ in range(2))
 
-    def note(slot, ln, m, vel, inst, gain=1.0, pan=0.0, send=0.25, human=True):
+    def note(stem, slot, ln, m, vel, inst, pan=0.0, send=0.25, human=True):
         t0, dur = t_of(slot), ln * beat / 2
         if human:
             t0, vel = t0 + abs(rng.normal(0, 0.008)), vel * (1 + rng.normal(0, 0.06))
-        y = np.atleast_2d(inst(C.hz(m), dur, vel, t0)) * gain
+        y = np.atleast_2d(inst(C.hz(m), dur, vel, t0)) * GAIN[stem]
         y = np.vstack([y, y])[:2]
         k = int(round(t0 * SR))
         y = y[:, : n - k]
         a = (pan + 1) * np.pi / 4
         y = y * np.array([[np.cos(a)], [np.sin(a)]]) * np.sqrt(2)
-        dry[:, k:k + y.shape[1]] += y
-        rev[:, k:k + y.shape[1]] += send * y
+        dry[stem][:, k:k + y.shape[1]] += y
+        rev[stem][:, k:k + y.shape[1]] += send * y
 
-    for b, (_, who, band) in enumerate(FORM):
+    for b, (_, who, level) in enumerate(FORM):
         for i in range(8):
             s0 = (b * 8 + i) * 8
             for j, (s, ln, nm) in enumerate(piece["melody"][i]):
                 touch = 1.0 if j == 0 or ln >= 3 else 0.82
-                if "g" in who:
-                    note(s0 + s, ln, midi(nm), 0.66 * touch, MAIN, pan=0.1, send=0.3)
-                if "w" in who:
-                    note(s0 + s, ln, midi(nm), (0.5 if "g" in who else 0.8) * touch, glide_lead, gain=0.6, pan=-0.15, send=0.4)
+                first = who == "1" or (who == "12" and i % 4 < 2)        # call and answer: two bars each
+                if who != "-" and first:
+                    note("lead", s0 + s, ln, midi(nm), 0.66 * touch, lead, pan=0.1, send=0.3)
+                elif who != "-":
+                    note("second", s0 + s, ln, midi(nm), 0.66 * touch, second, pan=-0.15, send=0.35)
             for at, ln, ch in spans(piece, i):
                 root, notes = 33 + (tones(ch)[0] - 33) % 12, hand(piece, i, at, ln, ch)
                 for j, m in enumerate(notes):
-                    if not band:                                   # open air: the chord on the guitar, held
-                        note(s0 + at, ln, m, 0.4 - 0.03 * j, MAIN, pan=-0.3 + 0.3 * j, send=0.35)
-                    else:                                          # the electric piano: together, short, off the beat
+                    if not level or band.get("held"):              # the chord held, struck once, all its notes together
+                        note("chords", s0 + at, ln, m, (0.6 if not level else 0.36) - 0.03 * j, chords, pan=-0.3 + 0.3 * j, send=0.35)
+                    else:                                          # short, off the beat
                         for off, v in ((2, 0.8), (5, 0.62)) if ln == 8 else ((1, 0.75),):
-                            note(s0 + at + off, 1, m, v * (0.9 if who != "-" else 1.0), epiano, pan=-0.35 + 0.35 * j)
+                            note("chords", s0 + at + off, 1, m, v * (0.9 if who != "-" else 1.0), chords, pan=-0.35 + 0.35 * j)
                 for pc in tones(ch)[:3]:
-                    note(s0 + at, ln, 50 + (pc - 50) % 12, 0.8 if not band else 0.35, analog_pad, gain=0.9, send=0.4, human=False)
-                if band:                                           # the bass bounces: root, root, fifth
-                    note(s0 + at, 1.6, root, 0.85, moog_bass, gain=0.55, send=0.05, human=False)
+                    note("pad", s0 + at, ln, 50 + (pc - 50) % 12, 1.6 if not level else 0.35, analog_pad, send=0.4, human=False)
+                if level and band.get("held"):                     # a held bass: the root, then the fifth late in the bar
+                    note("bass", s0 + at, ln - 0.5 if ln < 8 else 5.5, root, 0.8, bass, send=0.0, human=False)
                     if ln == 8:
-                        note(s0 + 3, 0.8, root, 0.5, moog_bass, gain=0.55, send=0.05, human=False)
-                        note(s0 + 4, 1.6, root + 7, 0.72, moog_bass, gain=0.55, send=0.05, human=False)
-            for k in range(8) if band == 2 else ():
-                note(s0 + k, 1, 60, 0.9 if k in (2, 6) else 0.42 if k % 2 else 0.6, shaker, pan=0.3, send=0.15)
+                        note("bass", s0 + 6, 1.6, root + 7, 0.6, bass, send=0.0, human=False)
+                elif level:                                        # the bass bounces: root, root, fifth
+                    note("bass", s0 + at, 1.6, root, 0.85, bass, send=0.0, human=False)
+                    if ln == 8:
+                        note("bass", s0 + 3, 0.8, root, 0.5, bass, send=0.0, human=False)
+                        note("bass", s0 + 4, 1.6, root + 7, 0.72, bass, send=0.0, human=False)
+            if level == 2 and "shaker" in band["perc"]:
+                for k in range(8):
+                    note("perc", s0 + k, 1, 60, 0.9 if k in (2, 6) else 0.42 if k % 2 else 0.6, C.shaker, pan=0.3, send=0.12)
+            if level == 2 and "woodblock" in band["perc"]:
+                for k in (3, 7):
+                    note("perc", s0 + k, 1, 60, 0.7, C.woodblock, pan=-0.3, send=0.2)
 
     fold = lambda x: x[:, :loop_n] + np.pad(x[:, loop_n:], ((0, 0), (0, loop_n - TAIL)))     # the tail comes back at the start
-    dry, rev = fold(dry), fold(rev)
-    f, t = np.fft.rfftfreq(loop_n, 1 / SR), tt(2 * SR)
-    wet = []
-    for c in range(2):                                             # the same small dry room as Meadow Road
-        ir = rng.standard_normal(len(t)) * np.exp(-t / 0.25) * np.clip(t / 0.03, 0, 1)
-        ir = np.pad(ir / np.sqrt(np.sum(ir ** 2)), (0, loop_n - len(ir)))
-        wet.append(np.fft.irfft(np.fft.rfft(rev[c]) * np.fft.rfft(ir) * lp(5000, 1)(f) * hp(200, 1)(f), loop_n))
-    mix = np.fft.irfft(np.fft.rfft(dry + 0.22 * np.stack(wet), axis=-1) * hp(30, 2)(f) * lp(15000, 2)(f), loop_n, axis=-1)
-    mix *= 10 ** (-19 / 20) / np.sqrt(np.mean(mix ** 2))
-    mix = np.tanh(1.4 * mix) / 1.4
+    f = np.fft.rfftfreq(loop_n, 1 / SR)
+    irs = C.room(rng, loop_n)
+    stems = {}
+    for k in GAIN:
+        d, r = fold(dry[k]), fold(rev[k])
+        wet = np.stack([np.fft.irfft(np.fft.rfft(r[c]) * irs[c], loop_n) for c in range(2)])
+        stems[k] = np.fft.irfft(np.fft.rfft(d + C.WET * wet, axis=-1) * hp(30, 2)(f) * lp(15000, 2)(f), loop_n, axis=-1)
+    edges = np.linspace(0, loop_n, len(FORM) + 1).astype(int)
+    on = {"lead": lambda who, lv: "1" in who, "second": lambda who, lv: "2" in who, "perc": lambda who, lv: lv == 2}
+    loud = {}
+    for k in GAIN:                                                 # each part's loudness over the blocks where it plays
+        parts = [stems[k][:, a:b] for (_, who, lv), a, b in zip(FORM, edges, edges[1:]) if on.get(k, lambda who, lv: lv >= 1)(who, lv)]
+        loud[k] = C.lufs(np.concatenate(parts, axis=-1)) if parts and np.abs(stems[k]).max() > 1e-6 else None
+    for k in GAIN:
+        if loud[k] is not None:
+            stems[k] = stems[k] * 10 ** ((loud["lead"] + BALANCE[k] - loud[k]) / 20)
+    stems, mix = C.master(stems, -17)
     C.write_wav(OUT / f"day_{piece['id']}.wav", mix.astype(np.float32))
     meta = {k: piece[k] for k in ("id", "title", "key", "bpm", "mood")} | {
         "bars": bars, "seconds": loop_n / SR, "chords": " | ".join(piece["cycle"]),
+        "band": ", ".join(NAMES[band[k]] for k in ("lead", "second", "chords", "bass")) + "".join(", " + p for p in band["perc"]),
         "sections": [{"name": name, "t": b * 32 * beat, "bars": 8} for b, (name, _, _) in enumerate(FORM)]}
     (OUT / f"day_{piece['id']}.json").write_text(json.dumps(meta, indent=1))
-    return meta | {"peak": float(np.abs(mix).max()), "seam": float(np.abs(mix[:, 0] - mix[:, -1]).max())}
+    out = meta | {"peak": float(np.abs(mix).max()), "seam": float(np.abs(mix[:, 0] - mix[:, -1]).max())}
+    return (out, mix, stems) if want_stems else out
+
+
+NAMES = {"marimba": "marimba", "flute": "flute", "nylon": "nylon guitar", "upright": "double bass", "rhodes": "electric piano (tine)",
+         "clarinet": "clarinet", "vibes": "vibraphone", "moog_bass": "synth bass", "epiano": "electric piano (soft)", "melodica": "melodica"}
 
 
 if __name__ == "__main__":
-    wrong = {p["id"]: checks(p) for p in PIECES if checks(p)}
+    import quality
+    wrong = {p["id"]: quality.theory(p)["fail"] for p in PIECES if quality.theory(p)["fail"]}
     if wrong:
         sys.exit(f"the rules are broken: {wrong}")
     OUT.mkdir(parents=True, exist_ok=True)

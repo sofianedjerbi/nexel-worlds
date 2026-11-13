@@ -26,6 +26,12 @@
     background:var(--paper); border:3px solid var(--line); border-radius:18px;
     box-shadow:0 5px 0 #b48a62, 0 14px 30px rgba(60,40,30,.15); padding:18px; margin-bottom:18px;
   }
+  .rule { display:flex; gap:8px; align-items:baseline; font-size:13px; padding:2px 0; }
+  .rule span { flex:0 0 46%; } .rule em { font-style:normal; opacity:.75; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; background:#6aa84f; flex:none; }
+  .dot.bad { background:#c0392b; } .dot.info { background:#b9a88f; }
+  details { margin-top:10px; } summary { cursor:pointer; } h4 { margin:10px 0 2px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; opacity:.7; }
+  table.tone { border-collapse:collapse; font-size:12px; margin-top:6px; width:100%; } table.tone td, table.tone th { text-align:left; padding:2px 6px 2px 0; }
   #stage { position:relative; height:280px; border-radius:12px; overflow:hidden;
     background:linear-gradient(#fff9ec, #f8e8c8); border:2px solid #ead1a8; }
   #viz { position:absolute; inset:0; width:100%; height:100%; }
@@ -139,23 +145,18 @@
     </div>
   </section>
 
-  <section class="card" id="trycard">
-    <h2>Main instrument: pick by ear <small>the same 8 bars with the band, four instruments</small></h2>
-    <div class="how">
-      <div><b>Guitar (in use now):</b> nylon string, plucked with the thumb.<br><audio controls preload="none" src="audio/try_guitar.wav"></audio></div>
-      <div><b>Electric piano:</b> a tine that barks a little, then sings.<br><audio controls preload="none" src="audio/try_rhodes.wav"></audio></div>
-      <div><b>Marimba:</b> soft mallets, short notes.<br><audio controls preload="none" src="audio/try_marimba.wav"></audio></div>
-      <div><b>The piano you refused:</b> for comparison.<br><audio controls preload="none" src="audio/try_piano.wav"></audio></div>
+  <section class="card" id="dayscard">
+    <h2>Other music for the day: four suggestions <small>each its own tune and its own instruments; none is in the game</small></h2>
+    <div id="days"></div>
+    <div class="notes" style="margin-top:10px">
+      <div><b>Same rules as Meadow Road:</b> chords struck together, no arpeggios; the melody never climbs or falls step after step; every melody note on a beat is a chord note. Each tune is one two-bar idea: said, answered, said again, closed. No two tracks share a lead instrument.</div>
+      <div><b>Source:</b> <code>music/day.py</code>. Tell me which to keep, change or drop.</div>
     </div>
   </section>
 
-  <section class="card" id="dayscard">
-    <h2>Other music for the day: four suggestions <small>each its own tune, in the same sound; none is in the game</small></h2>
-    <div id="days"></div>
-    <div class="notes" style="margin-top:10px">
-      <div><b>Same rules as Meadow Road:</b> chords struck together, no arpeggios; the melody never climbs or falls step after step; every melody note on a beat is a chord note. Each tune is one two-bar idea: said, answered, said again, closed.</div>
-      <div><b>Source:</b> <code>music/day.py</code>. Tell me which to keep, change or drop.</div>
-    </div>
+  <section class="card" id="auditcard">
+    <h2>Audit <small>theory, Animal Crossing practice, each instrument, each mix: measured by music/quality.py</small></h2>
+    <div id="audit">loading…</div>
   </section>
 
   <section class="card" id="nightcard">
@@ -168,9 +169,9 @@
       </div>
     </div>
     <div class="notes" style="margin-top:10px">
-      <div><b>Meadow Road after dark:</b> the same melody, note for note, on the same nylon guitar. Nothing is added to it.</div>
+      <div><b>Meadow Road after dark:</b> the same melody, note for note, on a vibraphone. Nothing is added to it.</div>
       <div><b>What makes it night:</b> the same tune over the relative minor (B minor 7, A, F# minor, then A and B minor), so what closed on D major now closes in B minor. 60 BPM instead of 72, about 4 dB quieter. One held chord a bar.</div>
-      <div><b>Form:</b> the melody alone (8 bars) · the left hand (8) · pad and bass (8) · the guitar rests and a far whistle carries the melody (8) · everything (8) · thinning out (8).</div>
+      <div><b>Form:</b> the melody alone (8 bars) · the left hand (8) · pad and bass (8) · the vibraphone rests and a far flute carries the melody (8) · everything (8) · thinning out (8).</div>
       <div><b>Nothing decorative:</b> the first version had crickets and plucked "fireflies"; both are gone. Only a faint breath of wind is left.</div>
       <div><b>Source:</b> <code>music/night.py</code>. A mockup: the game does not play it yet. <a href="audio/night.wav" download="lantern-road.wav">Download</a></div>
     </div>
@@ -186,7 +187,7 @@
       </div>
     </div>
     <div class="notes" style="margin-top:10px">
-      <div><b>Meadow Road, turned to face you:</b> the same melody, note for note, on the same nylon guitar, over the relative minor.</div>
+      <div><b>Meadow Road, turned to face you:</b> the same melody, note for note, on a synth voice, over the relative minor.</div>
       <div><b>Weight, not speed:</b> 96 BPM instead of 72. A heavy thud on beats 1 and 3 is its feet; a dull knock on 2 and 4 is its shell.</div>
       <div><b>Its voice:</b> a low horn under everything, holding a note of each chord (F#, A, F#, A, B), over a bass that repeats the root.</div>
       <div><b>Form:</b> it stands up (4 bars) · the fight (8) · everything in (8) · it braces: feet and bass drop out, then stomp back on every beat (8) · everything in again (8).</div>
@@ -393,12 +394,37 @@ async function loadLoop(id, tint, meta) {
     $(id + "where").textContent = sec ? sec.name : "";
   }, 100);
 }
+
+// The audit (music/quality.py): every rule with what was measured.
+function showAudit(q, box) {
+  const dot = (ok) => `<i class="dot ${ok === false ? "bad" : ok === null ? "info" : "ok"}"></i>`;
+  const rows = (list) => list.map(([name, ok, detail]) => `<div class="rule">${dot(ok)}<span>${name}</span><em>${detail || ""}</em></div>`).join("");
+  let h = `<div><b>${q.fails} failures</b> over ${q.tracks.length} tracks and ${q.instruments.length} instruments. Green: passes. Grey: for information.</div>`;
+  for (const t of q.tracks) {
+    const m = t.mix, bal = m.tune_over_band_db ? `${m.tune_over_band_db[0]} to ${m.tune_over_band_db[1]} dB` : "not measured (the tune and the fight share the front)";
+    h += `<details><summary><b>${t.title}</b> <small>lead: ${t.lead} · ${m.lufs} LUFS · peak ${m.peak_db} dBFS · ${m.fail.length + t.theory.filter((r) => r[1] === false).length} failures</small></summary>
+      <h4>Theory</h4>${rows(t.theory)}<h4>Animal Crossing practice</h4>${rows(t.practice)}<h4>Mix</h4>${rows([
+        ["loudness on target", Math.abs(m.lufs - m.target) <= 0.6, `${m.lufs} LUFS, target ${m.target}`],
+        ["peaks under -1 dBFS", m.peak_db <= -0.9, `${m.peak_db} dBFS`],
+        ["sections close in level", m.block_range_db <= 8, `within ${m.block_range_db} dB`],
+        ["the tune over the band", true, bal],
+        ["tonal balance", true, Object.entries(m.bands_db).map(([k, v]) => `${k} ${v}`).join(" · ") + " dB"],
+        ["stereo, and the lows centred", true, `left/right ${m.stereo}, under 150 Hz ${m.low_mono}`],
+        ["the loop point", m.seam <= 0.03, `step of ${m.seam}`]])}</details>`;
+  }
+  h += `<details><summary><b>Instruments</b> <small>tone of each, one note at its usual pitch</small></summary><table class="tone"><tr><th>instrument</th><th>role</th><th>note</th><th>loudness</th><th>attack</th><th>centre</th><th>tuning</th><th>ends</th></tr>` +
+    q.instruments.map((r) => `<tr><td>${dot(r.fail.length ? false : true)}${r.name.replace("_", " ")}</td><td>${r.role}</td><td>${r.note}</td><td>${r.loudness} LUFS</td><td>${r.attack_ms} ms</td><td>${r.centroid_hz} Hz</td><td>${r.cents === null ? "" : r.cents + " cents"}</td><td>${r.cut_db} dB</td></tr>`).join("") + `</table></details>`;
+  h += `<details><summary><b>Reverb</b> <small>one small room</small></summary>` + Object.entries(q.room).map(([k, r]) =>
+    `<div class="rule">${dot(true)}<span>${k}</span><em>gone in ${r.rt60_s} s · starts ${r.predelay_ms} ms after the note · kept to ${r.return} · level: ${Object.entries(r.level_db).map(([a, b]) => `${a} ${b}${b === "dry" ? "" : " dB"}`).join(", ")}</em></div>`).join("") + `</details>`;
+  box.innerHTML = h;
+}
 async function loadDays() {
+  fetch("audio/quality.json").then((r) => r.json()).then((q) => showAudit(q, $("audit")));
   const tint = ["#f7e0a3", "#f7c9a3", "#d9e8d0", "#cfe0f0", "#f3c6d8", "#e6dcc6"];
   for (const d of await (await fetch("audio/days.json")).json()) {
     const id = "day_" + d.id, row = document.createElement("div");
     row.style.marginTop = "14px";
-    row.innerHTML = `<b>${d.title}</b> <small>${d.bpm} BPM · ${d.key} · ${fmt(d.seconds)} loop · ${d.mood}</small>
+    row.innerHTML = `<b>${d.title}</b> <small>${d.bpm} BPM · ${d.key} · ${fmt(d.seconds)} loop · ${d.mood}<br>${d.band}</small>
       <div class="controls" style="margin-top:6px"><button class="lplay" id="${id}play" disabled>play</button>
       <div class="timeline"><div class="lsections" id="${id}sections"><span class="lhead" id="${id}head"></span></div>
       <div class="times"><span id="${id}now">0:00</span><span id="${id}where"></span><span>${d.chords}</span></div></div></div>`;

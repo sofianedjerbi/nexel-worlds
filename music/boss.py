@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 
 import compose as C
-from compose import MAIN, SR, analog_pad, bp, fft_filter, glide_lead, hp, hz, lp, midi, moog_bass, phase, release, saw, tt
+from compose import SR, analog_pad, bp, fft_filter, glide_lead, hp, hz, lp, midi, moog_bass, phase, release, saw, tt
 
 BPM, BARS = 96, 36
 BEAT = 60 / BPM
@@ -31,9 +31,9 @@ OUT = Path(__file__).with_name("site") / "audio"
 rng = np.random.default_rng(7)
 
 CYCLE = ["Bm", "Bm", "A", "A", "F#m", "F#m", "A", "Bm"]
-ROOT = {"Bm": ("B1", "F#2"), "F#m": ("F#1", "C#2"), "D": ("D2", "A2"), "G": ("G1", "D2"), "A": ("A1", "E2")}
+ROOT = {"Bm": ("B1", "F#2"), "F#m": ("F#2", "C#3"), "D": ("D2", "A2"), "G": ("G1", "D2"), "A": ("A1", "E2")}
 PIZZ = {"Bm": ["B2", "F#3", "A3", "F#3"], "F#m": ["F#2", "C#3", "A2", "C#3"], "A": ["A2", "E3", "B2", "E3"]}     # A has no third (the tune lands on D over it)
-PAD = {"Bm": ["B2", "D3", "F#3"], "F#m": ["F#2", "A2", "C#3"], "A": ["A2", "E3", "A3"]}
+PAD = {"Bm": ["B2", "D3", "F#3"], "F#m": ["A2", "C#3", "F#3"], "A": ["A2", "E3", "A3"]}     # (each voice moves a third at most)
 MELODY = C.MELODY                                                   # the day's melody, as it is
 HORN = [(0, 2, "F#2"), (2, 2, "A2"), (4, 2, "F#2"), (6, 1, "A2"), (7, 1, "B2")]  # bar, bars long, note: each belongs to its chord
 SECTIONS = [("it stands up", 4), ("the fight", 8), ("everything in", 8), ("it braces, then stomps back", 8), ("everything in again", 8)]
@@ -43,7 +43,7 @@ def stomp(f, dur, vel, t0):
     """A foot the size of a cart: a short drop in pitch, a low thud of noise, a little grit. Not a drum-machine kick."""
     n = int(0.6 * SR)
     t = tt(n)
-    body = np.sin(2 * np.pi * np.cumsum(50 + 40 * np.exp(-t / 0.018)) / SR) * np.exp(-t / 0.13)
+    body = np.sin(2 * np.pi * np.cumsum(68 + 40 * np.exp(-t / 0.018)) / SR) * np.exp(-t / 0.13)
     thud = fft_filter(rng.standard_normal(n), lp(170)) * np.exp(-t / 0.06)
     grit = fft_filter(rng.standard_normal(n), bp(300, 1400)) * np.exp(-t / 0.012)
     return vel * (0.9 * body + 0.8 * thud / np.abs(thud).max() + 0.2 * grit / np.abs(grit).max()) * np.clip(t / 0.002, 0, 1)
@@ -118,9 +118,9 @@ def block(first, drums=True, bass=True, strings=0, horn_on=False, lead=False, pa
                 for i, nm in enumerate(PAD[ch[half]]):
                     add(bar, half, analog_pad, nm, 4 if CYCLE[k] == "GA" else 8, 0.8, "pad", pan=(-0.4, 0, 0.4)[i], rev=0.4)
         for s, length, nm in MELODY[k]:
-            add(bar, s, MAIN, nm, length, 0.85 * mel, "piano", pan=-0.1, rev=0.3)
+            add(bar, s, glide_lead, nm, length, 0.85 * mel, "piano", pan=-0.1, rev=0.3)     # the lead here: the synth voice
             if lead:
-                add(bar, s, glide_lead, nm, length, 0.5, "lead", pan=0.15, rev=0.3)
+                add(bar, s, C.marimba, nm, length, 0.5, "lead", pan=0.15, rev=0.3)
     for b, bars, nm in HORN if horn_on else ():
         add(first + b, 0, horn, nm, bars * 8 - 0.5, 0.9, "horn", pan=-0.2, rev=0.35)
 
@@ -147,7 +147,7 @@ for bar in range(24, 28):
         add(bar, s, pizz, PIZZ[chords(bar - 20)[s]][s % 4], 1, 0.5 + 0.08 * (bar - 24), "strings", pan=0.35, rev=0.2)
 for s in (5, 6, 7):
     add(27, s, knock, "B1", 1, 0.9, "drums", pan=-0.25)
-block(28, strings=2, horn_on=True, lead=True, shake=True, pad=True)
+block(28, strings=2, horn_on=True, lead=True, shake=True)             # (six voices: the pad stays out)
 
 GAIN = {"drums": 1.15, "bass": 0.9, "strings": 1.3, "horn": 0.9, "piano": 0.9, "lead": 0.9, "pad": 1.0}
 
@@ -172,22 +172,16 @@ def render():
         return out
 
     f = np.fft.rfftfreq(LOOP_N, 1 / SR)
-    ir_t = tt(int(2.5 * SR))
-    irs = []
-    for _ in range(2):                                             # a smaller, drier room than Meadow Road's: a fight is close
-        ir = rng.standard_normal(len(ir_t)) * np.exp(-ir_t / 0.25) * np.clip(ir_t / 0.03, 0, 1)
-        ir = fft_filter(ir, lambda fr: lp(4500, 1)(fr) * hp(250, 1)(fr))
-        irs.append(np.fft.rfft(np.pad(ir / np.sqrt(np.sum(ir ** 2)), (0, LOOP_N - len(ir)))))
+    irs = C.room(rng, LOOP_N, rt60=0.9)
     out = {}
     for s, (dry, rev) in stems.items():
         dry, rev = fold(dry), fold(rev)
         wet = np.stack([np.fft.irfft(np.fft.rfft(rev[c]) * irs[c], LOOP_N) for c in range(2)])
-        x = GAIN[s] * (dry + 0.3 * wet)
+        x = GAIN[s] * (dry + C.WET * wet)
         cut = hp(30, 2)(f) if s in ("bass", "drums") else hp(120, 1)(f)
         out[s] = np.fft.irfft(np.fft.rfft(x, axis=-1) * cut * lp(15000, 2)(f), LOOP_N, axis=-1)
-    mix = sum(out.values())
-    mix *= 10 ** (-17 / 20) / np.sqrt(np.mean(mix ** 2))
-    return np.tanh(1.4 * mix) / 1.4 * 1.05, out
+    out, mix = C.master(out, -15.5)             # 1.5 dB over the day: a fight
+    return mix, out
 
 
 if __name__ == "__main__":

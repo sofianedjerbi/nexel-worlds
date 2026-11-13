@@ -166,3 +166,31 @@ slowly and a clipper on top. Three pianos refused in a row: stop making pianos.
 The user asked for other day musics as suggestions, published with the demo. `music/day.py` holds four (Market Morning,
 Slow Afternoon, Overcast, Picnic): same band and rules as Meadow Road, each one two-bar idea said, answered, said again
 and closed. None is in the game. The demo build makes `music.html` from the rendered tracks (AAC, `tools/build_pages.py`).
+
+## 2026-11-13: one lead per track, and a measured audit
+
+The user: "do not reuse the same instrument", then an audit of all the music against theory, Animal Crossing practice,
+each instrument's tone, the volume and the effects, with research, shown on the GitHub Pages music page.
+
+- Leads, one each: Meadow Road nylon guitar, Lantern Road vibraphone, Old Mossback synth voice, Market Morning marimba,
+  Slow Afternoon electric piano, Overcast clarinet, Picnic melodica. New instruments in `compose.py`: melodica,
+  clarinet, flute, vibraphone, double bass, woodblock. The refused piano and the audition clips are gone.
+- `music/quality.py` is the audit (about a minute). It renders every track and writes `site/audio/quality.json`, which
+  both pages show. The first run found 26 failures; all are fixed:
+  notes cut off 19 to 23 dB down on the synth lead, the bass and the pad (a tick each); the tune 5 to 9 dB under the
+  band in four tracks; a parallel octave between tune and bass (Overcast); a leading note left hanging (Picnic);
+  three-note chord outlines in two melodies; tritone leaps in two; too much sub-bass and seven voices in the boss
+  track; lows panned apart; a shaker centred at 11 kHz; `tanh` clipping on three masters; a reverb that took 1.9 s to
+  die (now 1.0 s, 20 ms pre-delay, kept between 250 Hz and 8 kHz, bass dry).
+- Every track now goes through `C.room()` and `C.master()` (loudness in LUFS, limiter under -1 dBFS, lows centred).
+  The day pieces set each part's level against the lead automatically (`BALANCE` in `day.py`).
+- Two things the audit reports but does not fail: the top note returns with the repeated idea (no single high point),
+  and the last bar rests on the tonic without a turnaround.
+
+Sources: melody rules https://musictheory.pugetsound.edu/mt21c/RulesOfMelody.html ; Animal Crossing practice
+https://gameplay.co/animal-crossing-music-new-horizons-scruffy-youtube/ and https://splice.com/blog/animal-crossing-pocket-camp-music-analysis ;
+cozy game music https://www.orchestraltools.com/tips-for-cozy-game-music ; reverb
+https://www.izotope.com/en/learn/essential-tips-for-mixing-reverb.html and https://www.soundonsound.com/techniques/sympathetic-mixing-how-set-good-mix ;
+loudness https://blog.audiokinetic.com/loudness-processing-best-practices-series-chapter1-loudness-measurement-part2 and
+https://designingsound.org/2013/02/20/different-loudness-ranges-for-console-and-mobile-games ; low interval limits
+https://www.sweetwater.com/insync/low-interval-limit/

@@ -46,14 +46,15 @@ def build(out: Path):
 
 def music_page(out: Path):
     """music.html (tools/pages) plays the rendered tracks of music/site/audio, compressed to AAC (afconvert, macOS):
-    the day theme, night, boss, the day suggestions (music/day.py) and the instrument clips (music/audition.py)."""
+    the day theme, night, boss, the day suggestions (music/day.py), and the audit (music/quality.py)."""
     src = ROOT / "music" / "site" / "audio"
-    wavs = [src / f"{n}.wav" for n in ("master", "night", "boss")] + sorted(src.glob("day_*.wav")) + sorted(src.glob("try_*.wav"))
-    if not shutil.which("afconvert") or not (src / "days.json").exists() or not all(w.exists() for w in wavs):
+    wavs = [src / f"{n}.wav" for n in ("master", "night", "boss")] + sorted(src.glob("day_*.wav"))
+    if not shutil.which("afconvert") or not (src / "days.json").exists() or not (src / "quality.json").exists() or not all(w.exists() for w in wavs):
         (out / "music.html").unlink()
-        return print("no music page: render the music first (music/render_all.py, day.py, audition.py)")
+        return print("no music page: render the music first (music/render_all.py, then music/quality.py)")
     (out / "music").mkdir()
-    shutil.copy(src / "days.json", out / "music" / "days.json")
+    for name in ("days.json", "quality.json"):
+        shutil.copy(src / name, out / "music" / name)
     for w in wavs:
         subprocess.run(["afconvert", "-f", "m4af", "-d", "aac", "-b", "128000", str(w), str(out / "music" / (w.stem + ".m4a"))], check=True)
 
