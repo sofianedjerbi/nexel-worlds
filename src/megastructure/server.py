@@ -128,7 +128,7 @@ class GameServer(Views):
 
         pumper = asyncio.create_task(pump())
         try:
-            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL, "web": web_stamp(), "hp_max": HP_MAX, "food_max": FOOD_MAX, "sprint_food": SPRINT_FOOD}))
+            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL, "web": web_stamp(), "hp_max": HP_MAX, "food_max": FOOD_MAX, "sprint_food": SPRINT_FOOD, "swim_sprint": True}))
             async for raw in ws:
                 msg = json.loads(raw)
                 op = msg.get("op")

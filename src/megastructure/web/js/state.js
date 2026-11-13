@@ -34,7 +34,7 @@ let follow = null, me = null, myId = null, meObs = null, agents = [], metrics = 
 let selected = null, progress = null, foodValue = {};   // foodValue: food points each food gives (from the server)
 // Health and food: how much is full, and the food it takes to sprint. The server says so when it greets (20, 20 and 6:
 // half hearts and half pieces, as the sandbox classic has them); one from before that says nothing: 0 to 100.
-let HP_MAX = 100, FOOD_MAX = 100, SPRINT_FOOD = -1;
+let HP_MAX = 100, FOOD_MAX = 100, SPRINT_FOOD = -1, SWIM_SPRINT = false;      // (SWIM_SPRINT: this server sprints in the water too)
 const hearts = (hp) => Math.round(hp / (HP_MAX / 10) * 10) / 10;      // a blow on someone is said in hearts: "-1.5"
 const ents = new Map();
 let bubbles = [], floats = [];
@@ -56,6 +56,7 @@ function connectSpec() {
       if (webStamp && d.web && d.web !== webStamp) location.reload();
       webStamp = d.web || webStamp;
       if (d.hp_max) { HP_MAX = d.hp_max; FOOD_MAX = d.food_max; SPRINT_FOOD = d.sprint_food; }
+      SWIM_SPRINT = !!d.swim_sprint;
     } else if (d.type === "tick") onTick(d);
     else if (d.type === "event") onEvent(d.ev);
     else if (d.type === "resync") { for (const b of blocks.values()) b.at = -1e9; }   // we missed events (too many at once): ask for our land again

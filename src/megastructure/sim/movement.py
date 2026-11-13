@@ -54,7 +54,8 @@ class Movement:
             self.emit("moor", a.x, a.y, name=a.name)
         climb = -self.step_onto(a, x, y)             # (Bodies: where you land there)
         if not a.sailing:                            # a tile on foot tires a little, at a sprint more, a jump up more still (needs.py)
-            self.tire(a, "swim" if self.swimming(a) else "sprint" if a.action and self.sprints(a, a.action.args) else "walk")
+            fast = bool(a.action) and self.sprints(a, a.action.args)
+            self.tire(a, ("dash" if fast else "swim") if self.swimming(a) else "sprint" if fast else "walk")
             if climb > 0:
                 self.tire(a, "jump")
         if climb and a.ready > self.tick:            # a jump up is hard going, a drop a little careful
@@ -75,11 +76,9 @@ class Movement:
         self.emit("pick_up", a.x, a.y, name=a.name, items=got)
 
     def stride(self, a: Agent, args) -> float:
-        """Seconds per tile: walking 0.2, sprinting (`run: true`) 0.1, sailing 0.15, swimming 0.2 (no sprinting in water)."""
+        """Seconds per tile: walking or swimming 0.2, sprinting (`run: true`) 0.1 on land and in the water, sailing 0.15."""
         if a.sailing:
             return 0.15
-        if self.swimming(a):
-            return 0.2
         return 0.1 if self.sprints(a, args) else 0.2
 
     def sprints(self, a: Agent, args) -> bool:

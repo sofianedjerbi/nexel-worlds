@@ -20,8 +20,9 @@ OLD_SCALE = 5                     # what a number on the old scale (0 to 100) is
 SAT_START = 5.0                   # saturation: food in reserve, unseen; what tires you takes it first, then the food
 TIRED_MAX = 4.0                   # tiredness: at 4, a point of saturation goes (of food, when there is none), and it starts again
 # what tires you, and by how much. Standing costs nothing. Walking: 200 s of it a point; sprinting, a point every 33 s
-# (the classic's are per metre of a much slower walk); healing a half heart costs a point and a half
-TIRES = {"walk": 0.004, "sprint": 0.012, "swim": 0.01, "jump": 0.05, "attack": 0.1, "hurt": 0.1, "dig": 0.02, "heal": 6.0}
+# (the classic's are per metre of a much slower walk); a sprint in the water (dash), every 13 s; healing a half heart
+# costs a point and a half
+TIRES = {"walk": 0.004, "sprint": 0.012, "swim": 0.01, "dash": 0.03, "jump": 0.05, "attack": 0.1, "hurt": 0.1, "dig": 0.02, "heal": 6.0}
 HEAL_FOOD, HEAL_EVERY = 18, sec(4)   # with nine pieces or more: half a heart back every 4 s
 FAST_HEAL_EVERY = sec(0.5)        # with the bar full and saturation left: every half second
 STARVE_EVERY = sec(4)             # with no food left: half a heart gone every 4 s

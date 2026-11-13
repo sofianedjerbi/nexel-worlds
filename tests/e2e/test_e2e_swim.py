@@ -61,3 +61,26 @@ def test_swimming_sounds_like_swimming_not_like_walking(game):
     game.sleep(1200)                                           # treading water: nothing
     assert not set(game.js("Object.keys(sounds.lastAt)")) & {"swim", "step", "wade", "water"}
     assert not game.errors
+
+
+def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
+    """Shift in the water did nothing (nobody sprinted there). Now it is a sprint as on land, ten tiles a second, with
+    its own look: strokes twice as often, and a wake of marks twice as close that last longer."""
+    game.clear_area(8)
+    s = game.server()
+    game.rpc("dev_needs", hp=20, hunger=20)
+    game.rpc("dev_stamp", x=s["x"] + 1, y=s["y"] - 4, rows=["(" * 40] * 9)
+    game.sleep(600)
+    game.hold(["d"], 600)                                      # in, and swimming
+    assert mine(game, "swimsAt(p, p.e)") and game.js("SWIM_SPRINT") is True
+    x0 = game.server()["x"]
+    game.hold(["d"], 1000)
+    swum, slow = game.server()["x"] - x0, mine(game, "p.wake.filter((w) => !w.dash).length")
+    game.page.keyboard.down("Shift")
+    x0 = game.server()["x"]
+    game.hold(["d"], 1000)
+    dashed, marks = game.server()["x"] - x0, mine(game, "p.wake.filter((w) => w.dash).length")
+    game.page.keyboard.up("Shift")
+    assert 4 <= swum <= 6 and 8 <= dashed <= 11, (swum, dashed)          # five tiles a second, then ten
+    assert marks >= 18 and 8 <= slow <= 13 and mine(game, "p.running") is True, (slow, marks)   # (its wake: a mark every 45 ms, not every 110)
+    assert game.server()["swimming"] and not game.errors

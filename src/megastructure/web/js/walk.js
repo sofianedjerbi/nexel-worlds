@@ -77,11 +77,12 @@ function leadOf(p, now) {
   const al = ax * wx + ay * wy, off = Math.abs(ax * wy) + Math.abs(ay * wx);
   return d || off > .01 ? d + Math.abs(al) + off : al;
 }
-const onWater = (x, y, p) => { const t = tile(x, y); return (!!t && wet(t[1])) || !!(p.e && p.e.sail); };   // swimming, sailing: nobody sprints
+// where nobody sprints: in a boat (and, on a server from before the sprint in the water, in the water)
+const onWater = (x, y, p) => { const t = tile(x, y); return (!SWIM_SPRINT && !!t && wet(t[1])) || !!(p.e && p.e.sail); };
 
 // A frame of your walk (render.js). A turn first finishes the tile you were walking into, in a straight line, then
 // turns: no diagonal slide. Each step as the server paces it, in its 0.1 s ticks: a stride of 1 tick (sprinting) or
-// 2 (walking, swimming: nobody sprints in water). Up a layer the server takes a tick more (SLOPE_UP: hard going); you
+// 2 (walking, swimming). Up a layer the server takes a tick more (SLOPE_UP: hard going); you
 // don't, on screen: a hop at the pace of a step (slowed for it, you hung in the air: jump.js). It catches up when
 // you stop, and on a long climb you slow down smoothly, by how far ahead of it you are (LEAD).
 function walkOn(p, dt, now) {

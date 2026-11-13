@@ -1,8 +1,10 @@
 """Swimming and the depth of water: you swim on top of any water; its bottom can be dug down and filled back up."""
 
+import pytest
 from helpers import run
 
 from megastructure.gen import gen_tile
+from megastructure.sim.constants import SPRINT_FOOD, TIRES
 from megastructure.tiles import DEPTH, GROUNDS
 
 
@@ -19,7 +21,12 @@ def test_you_swim_on_any_water_whatever_its_depth(world):
     r = run(sim, a, "walk", {"dir": "E"})
     assert r["steps"] == 4                                             # across all four depths, to the rock on the far side
     assert sim.swimming(a) and sim.observe(a)["self"]["swimming"] and not a.sailing
-    assert sim.stride(a, {"run": True}) == 0.2                          # no sprinting in water
+    assert sim.stride(a, {}) == 0.2 and sim.stride(a, {"run": True}) == 0.1     # a sprint in the water: as fast as on land (there was none)...
+    tired = a.tired
+    assert run(sim, a, "step", {"dir": "W", "run": True})["ok"] and a.tired - tired == pytest.approx(TIRES["dash"])   # ...and it tires three times a swim
+    assert run(sim, a, "step", {"dir": "E"})["ok"] and a.tired - tired == pytest.approx(TIRES["dash"] + TIRES["swim"])
+    a.hunger = SPRINT_FOOD
+    assert sim.stride(a, {"run": True}) == 0.2                          # (not on three pieces of food)
     assert run(sim, a, "walk", {"dir": "W"})["steps"] >= 4 and not sim.swimming(a)      # and back out onto land
 
 
