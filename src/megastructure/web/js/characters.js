@@ -103,7 +103,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     }
     if (frame === undefined) {
       const moving = p.walking || (e.doing === "walk" && !mine) || now - p.moved < 220 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
-      const running = moving && (p.running || (mine && runKey));
+      const running = moving && (p.running || (mine && sprinting()));
       if (moving) {
         anim = running ? "run" : "walk";
         const ms = running ? 60 : 85;                 // 8-frame cycles
@@ -182,7 +182,7 @@ function drawNameplate(p, sx, sy, S) {
   if (x < -S || x > W + S || y < -S || y > H + S) return;
   ctx.font = "18px SproutPixel"; ctx.textAlign = "center";
   outlined(e.name, x, y, me && e.name === me ? "#fff1a8" : "#fff8e8");
-  if (e.kind === "agent" && e.hp < 100) { ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 16, y + 4, 32, 5); ctx.fillStyle = e.hp > 40 ? "#6aa66f" : "#d9473a"; ctx.fillRect(x - 15, y + 5, 30 * e.hp / 100, 3); }
+  if (e.kind === "agent" && e.hp < HP_MAX) { ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 16, y + 4, 32, 5); ctx.fillStyle = e.hp > .4 * HP_MAX ? "#6aa66f" : "#d9473a"; ctx.fillRect(x - 15, y + 5, 30 * e.hp / HP_MAX, 3); }
   ctx.textAlign = "start";
 }
 const AMBLE = {chicken: 1.6, chick: 1.4, cow: 1.2, calf: 1.3, tusker: 1.2, pincer: 4, strawman: 1.2, wisp: 3.3, wyrm: 2.5, mossback: .9, sporeling: 2.2};   // tiles per second
