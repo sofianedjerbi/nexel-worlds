@@ -1,6 +1,8 @@
   @font-face { font-family: SproutPixel; src: url(../assets/sprout-pixel.ttf); }
   :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#f3dfba; --accent:#4f9a6a; --warn:#c0503c;
-    --u:2px; --i:3px; --u3:3px; }   /* the HUD's art pixels, each a whole number of screen pixels: a slot's frame, the item in it (the land's own), the big picture (hudFit, ui.js) */
+    --u:2px; --i:3px; --u3:3px;
+    /* a number on a slot: a hard dark rim, one font pixel wide all round (the font at 18 px is 2 px a pixel), so it reads on wood, on an item, on grass */
+    --rim:2px 0 0 #3d2a24, -2px 0 0 #3d2a24, 0 2px 0 #3d2a24, 0 -2px 0 #3d2a24, 2px 2px 0 #3d2a24, -2px 2px 0 #3d2a24, 2px -2px 0 #3d2a24, -2px -2px 0 #3d2a24; }   /* the HUD's art pixels, each a whole number of screen pixels: a slot's frame, the item in it (the land's own), the big picture (hudFit, ui.js) */
   * { box-sizing:border-box; }
   html, body { margin:0; height:100%; background:#9bd4c3; overflow:hidden; color:var(--ink);
     font:18px/22px SproutPixel, monospace; font-synthesis:none; user-select:none; }
@@ -47,10 +49,10 @@
     image-rendering:pixelated; position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .slot.sel { background-image:url(../assets/slot_sel.png); }
   .slot canvas { width:calc(11 * var(--i)); height:calc(11 * var(--i)); flex:none; image-rendering:pixelated; }
-  .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:18px; font-weight:800; color:#fff8e8; text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+  .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:18px; line-height:18px; color:#fff8e8; text-shadow:var(--rim); }
   .slot .lvl { position:absolute; left:8px; right:8px; bottom:5px; height:4px; background:#5b4038; border-radius:2px; overflow:hidden; }
   .slot .lvl i { display:block; height:100%; background:#7fd3e6; }
-  .slot .k { position:absolute; left:-6px; top:-9px; font-size:18px; font-weight:800; color:#f6e3bf; }
+  .slot .k { position:absolute; left:-5px; top:-7px; font-size:18px; line-height:18px; color:#ffe08a; text-shadow:var(--rim); }   /* (its key: yellow, the count white) */
   .slot:hover .tip { display:block; }
   .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
   /* (centred by its margins, as the bag and the HUD are: moved by half its own size it lay between two screen pixels, and its icons' pixels came out uneven) */
@@ -65,7 +67,7 @@
   #craft .cbody { display:flex; gap:12px; align-items:flex-start; }
   #recipes { flex:1; display:grid; grid-template-columns:repeat(auto-fill, calc(30 * var(--u))); gap:6px; align-content:start;
     max-height:min(500px, calc(100vh - 240px)); overflow:auto; padding:3px; }
-  #recipes .slot .c { font-size:20px; right:-5px; bottom:-7px; }
+  #recipes .slot .c { right:-5px; bottom:-7px; }
   #recipes .slot.no canvas { opacity:.38; filter:grayscale(.85); }
   #recipes .slot .ok { position:absolute; left:-3px; top:-4px; width:17px; height:17px; border-radius:50%; background:#5aa264; color:#fff8e8; font-size:14px; line-height:17px; text-align:center; box-shadow:0 1px 0 rgba(60,40,30,.35); }
   #recipes .slot:hover { background-image:url(../assets/slot_sel.png); }
@@ -188,6 +190,7 @@
   body.touch #joinbox input { font-size:18px; }  /* (16px+ or iOS zooms in on focus) */
   body.touch #actions, body.touch #help, body.touch #helpbtn { display:none !important; }
   body.touch #hud { transform-origin:bottom left; bottom:calc(8px + env(safe-area-inset-bottom)); }
+  body.touch .slot .k { display:none; }   /* (a slot's key: there are no keys) */
   body.touch #goals { transform:scale(.8); transform-origin:top left; }
   body.touch .goal .gi { width:calc(13.75 * var(--i)); height:calc(13.75 * var(--i)); }   /* (11 art px at --i once the panel is made smaller) */
   body.touch #xyz { top:calc(62px + env(safe-area-inset-top)) !important; font-size:12px !important; }  /* (/coords, /perf: under the buttons at the top) */
