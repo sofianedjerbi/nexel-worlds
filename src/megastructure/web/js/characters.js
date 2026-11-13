@@ -33,7 +33,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   let y = Math.round(bodyY(p, sy));                            // (relief.js: where a body stands in its tile)
   if (x < -S * 2 || x > W + S * 2 || y < -S * 2 || y > H + S * 2) return;
   const moving = now - p.moved < 300;
-  const j = jumping(p);                                        // up or down a layer, a person or a creature alike (jump.js)
+  const j = jumping(p, now);                                   // up or down a layer, or falling: a person or a creature alike (jump.js)
   if (j && e.kind !== "agent") { jumpShadow(j, x, y, S, z, ANIMALS[e.kind] && ANIMALS[e.kind].fw === 32 ? 8 : 5); y -= Math.round(j.body * z); }
   if (e.kind === "agent") {
     const mine = me && e.id === myId;
@@ -116,6 +116,7 @@ function drawEntity(p, sx, sy, S, t, now) {
       } else frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
     }
     if (j && ANIM[anim] <= ANIM.run) [anim, frame] = p.jpose || (p.jpose = [anim, frame]);   // in the air: the pose it took off in
+    if (j && j.air && ANIM[anim] <= ANIM.run) { anim = "run"; frame = Math.floor(now / FALL.flail) % 2 ? 2 : 6; }   // falling: its legs going
     if (tool === "sleep" && action.dir && DIRV[action.dir]) {
       // tucked into the bed: head on the pillow, the bed's blanket drawn over the body
       const bx = Math.round(p.tx) + DIRV[action.dir][0], by = Math.round(p.ty) + DIRV[action.dir][1];
@@ -177,7 +178,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   }
 }
 function drawNameplate(p, sx, sy, S) {
-  const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(bodyY(p, sy) - 9 * zoom);
+  const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(bodyY(p, sy) - fallOver(p) - 9 * zoom);
   if (x < -S || x > W + S || y < -S || y > H + S) return;
   ctx.font = "18px SproutPixel"; ctx.textAlign = "center";
   outlined(e.name, x, y, me && e.name === me ? "#fff1a8" : "#fff8e8");
@@ -191,7 +192,7 @@ function drawProgress(sx, sy, S) {
   const p = ents.get("agent" + myId); if (!p) return;
   const k = Math.min(1, (performance.now() - progress.t0) / progress.ms);
   if (k >= 1) { progress = null; return; }
-  const x = Math.round(sx(p.x) + S / 2 - 18), y = Math.round(bodyY(p, sy) + S + 2);
+  const x = Math.round(sx(p.x) + S / 2 - 18), y = Math.round(bodyY(p, sy) - fallOver(p) + S + 2);
   ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 2, y - 2, 40, 9);
   ctx.fillStyle = "#e9cfa2"; ctx.fillRect(x, y, 36, 5);
   ctx.fillStyle = "#6aa66f"; ctx.fillRect(x, y, Math.round(36 * k), 5);

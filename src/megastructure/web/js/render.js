@@ -24,7 +24,10 @@ function frame(now) {
   }
   if (me && myId !== null) {
     const p = ents.get("agent" + myId);
-    if (p) { cam.x = camT.x = p.x; cam.y = camT.y = p.y - liftOf(p) / TS(); }   // (you are drawn lifted on high ground: centre that)
+    if (p) {                                         // (you are drawn lifted on high ground: centre that; falling: you, not the ground you left; jump.js)
+      const fall = falling(p, now);
+      cam.x = camT.x = p.x; cam.y = camT.y = p.y - (liftOf(p) / zoom + (fall ? fall.body : 0) + fallShake(now)) / P;
+    }
     else if (meObs) { cam.x = camT.x = meObs.self.x; cam.y = camT.y = meObs.self.y; }
   } else {
     if (follow) {
@@ -154,7 +157,7 @@ function frame(now) {
   for (const b of bubbles) {
     const p = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === b.name); if (!p) continue;
     const text = b.text.length > 60 ? b.text.slice(0, 58) + "…" : b.text, w = ctx.measureText(text).width;
-    const bx = Math.round(sx(p.x) + S / 2), by = Math.round(bodyY(p, sy) - 26 * zoom / 3 - 22 - b.slot * 26);
+    const bx = Math.round(sx(p.x) + S / 2), by = Math.round(bodyY(p, sy) - fallOver(p) - 26 * zoom / 3 - 22 - b.slot * 26);
     ctx.globalAlpha = Math.min(1, (7 - (t - b.t)) * 2);
     ctx.fillStyle = b.shout ? "#ffe3a3" : "#fff6e2"; ctx.strokeStyle = "#5b3f36"; ctx.lineWidth = 2;
     roundRect(bx - w / 2 - 9, by - 16, w + 18, 23, 4); ctx.fill(); ctx.stroke();

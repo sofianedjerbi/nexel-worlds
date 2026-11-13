@@ -264,10 +264,15 @@ function clipBehind(p, sx, sy, S) {
   return true;
 }
 // Is the spot (x, y: tiles, with fractions) behind higher ground drawn up over it? (Dust and sparks there aren't shown.)
+// Higher ground: on the level nothing is behind anything. (It compared 0 with less than 0 there, and a row too far:
+// every puff of dust, spark and splash that wasn't on the very top line of its tile went unseen, everywhere.)
 function behindHill(x, y) {
   const tx = Math.floor(x), fy = Math.floor(y);
   if (inOpenCave(tx, fy)) return false;
   const L = standAt(tx, fy);
-  for (let ty = fy + 1; ty <= fy + 7; ty++) if ((levelAt(tx, ty) - L) * RELIEF_STEP > (ty - y - 1) * 16) return true;
+  for (let ty = fy + 1; ty <= fy + 7; ty++) {
+    const up = (levelAt(tx, ty) - L) * RELIEF_STEP;        // art px its top is drawn up over the ground the spot is on
+    if (up > 0 && up >= (ty - y) * 16) return true;
+  }
   return false;
 }

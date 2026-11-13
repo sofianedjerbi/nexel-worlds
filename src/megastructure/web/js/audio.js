@@ -13,6 +13,7 @@ const SOUND = {
   music: .45,         // the background loop's volume (0 to turn it off); it fades in over musicFade seconds
   musicFade: 4,
   bossMusic: 1.2,     // the boss fight's loop, as a multiple of `music`
+  wind: .5,           // the wind of a fall at its fastest (fallWind)
   mix: {Footsteps: .9, Work: 1, Breaking: 1, Building: 1, Items: .9, Progress: 1, Fights: 1, Animals: .9, World: .9, People: .8, Interface: .8, Boss: 1},
   hearing: 12,        // tiles: a sound in the world further than this is not heard
   quietest: .15,      // volume at the edge of hearing (it fades linearly from 1)
@@ -163,6 +164,25 @@ function sfx(name, x, y, reach) {
     src.onended = () => { sounds.voices--; };
     src.start();
   } catch (e) { /* audio not available yet (needs a user gesture) */ }
+}
+
+// The wind in your ears as you fall. Not a sample: it has to follow the fall and stop where you land. Noise through a
+// band that rises and swells with your speed (k: 0 to 1; under 0: you are down, it dies away).
+let wind = null;
+function fallWind(k) {
+  if (!audio || (muted && !wind)) return;
+  const t = audio.currentTime;
+  if (k < 0 || muted) { if (wind) { wind.gain.gain.setTargetAtTime(0, t, .03); wind.src.stop(t + .25); wind = null; } return; }
+  if (!wind) {
+    const buf = audio.createBuffer(1, audio.sampleRate, audio.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = audio.createBufferSource(), band = audio.createBiquadFilter(), gain = audio.createGain();
+    src.buffer = buf; src.loop = true; band.type = "bandpass"; band.Q.value = .9; gain.gain.value = 0;
+    src.connect(band).connect(gain).connect(soundOut); src.start();
+    wind = {src, band, gain};
+  }
+  wind.band.frequency.setTargetAtTime(350 + 1500 * k, t, .04);
+  wind.gain.gain.setTargetAtTime(SOUND.wind * k * k, t, .04);
 }
 
 // Something was put down: each kind of block or ground has its own sound (music/sfx_map.json).

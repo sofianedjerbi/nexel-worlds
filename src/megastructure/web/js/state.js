@@ -164,6 +164,10 @@ function onEvent(e) {
     if (WILD[String(e.attacker).slice(2)]) sfx("punch", e.x, e.y);
     burst(tx, ty, "hit", 6, {dy: -.4}); sfx("hit", tx, ty); if (e.target === me) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + e.damage, color: "#ff8a7a", t});
   }
+  if (e.type === "fall") {                            // a fall that hurt: shown as they land (jump.js), or now if they are not seen falling
+    const q = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === e.name);
+    if (q) { q.fallHurt = e.damage; setTimeout(() => fallHurts(q, performance.now(), e.name === me), 700); }   // (if nothing landed by then)
+  }
   if (e.type === "death" && e.name === me) {
     sfx("die");
     showDeath(e);                                     // (death.js)
