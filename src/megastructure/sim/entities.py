@@ -90,19 +90,32 @@ class Creature:
         return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "z": self.z, "hp": self.hp,
                 "milked": self.milked, "love": self.love, "lay": self.lay, "born": self.born, **({"name": self.name} if self.name else {})}
 
+# drops: what one leaves when it dies, a line for each thing: (item, chance, at least, at most). The first lines are
+# its usual drop, less sure than it was (a chicken always left a meat and an egg, a cow three meat and a milk: the
+# same thing every time); the last is a rare one, something you would otherwise have to make. The boss's are sure.
 CREATURES = {
-    "chicken": {"hp": 10, "drops": {"meat": 1, "egg": 1}, "char": "c"},
-    "cow": {"hp": 30, "drops": {"meat": 3, "milk": 1}, "char": "k"},
-    "chick": {"hp": 4, "drops": {"meat": 1}, "char": "c", "grows": ("chicken", 300)},
-    "calf": {"hp": 12, "drops": {"meat": 1}, "char": "k", "grows": ("cow", 360)},
-    "tusker": {"hp": 40, "drops": {"meat": 2}, "char": "D", "damage": 14},
-    "pincer": {"hp": 14, "drops": {"meat": 1}, "char": "I", "damage": 5},
-    "strawman": {"hp": 50, "drops": {"hay": 2}, "char": "S", "damage": 10},
-    "wisp": {"hp": 1, "drops": {}, "char": "i"},
-    "wyrm": {"hp": 60, "drops": {"meat": 4}, "char": "E", "damage": 18},
-    "mossback": {"hp": 300, "drops": {"shell_plate": 5, "meat": 6, "fruit": 4, "mushroom": 3}, "char": "G", "damage": 22, "snap": 28},   # the first boss (boss.py)
-    "sporeling": {"hp": 1, "drops": {}, "char": "s", "damage": 3},
+    "chicken": {"hp": 10, "drops": (("meat", .6, 1, 1), ("egg", .15, 1, 1), ("heart_charm", .02, 1, 1)), "char": "c"},
+    "cow": {"hp": 30, "drops": (("meat", .8, 1, 2), ("milk", .15, 1, 1), ("leather_boots", .03, 1, 1)), "char": "k"},
+    "chick": {"hp": 4, "drops": (("meat", .3, 1, 1),), "char": "c", "grows": ("chicken", 300)},
+    "calf": {"hp": 12, "drops": (("meat", .5, 1, 1),), "char": "k", "grows": ("cow", 360)},
+    "tusker": {"hp": 40, "drops": (("meat", .8, 1, 2), ("leather_vest", .05, 1, 1)), "char": "D", "damage": 14},
+    "pincer": {"hp": 14, "drops": (("meat", .5, 1, 1), ("shell_plate", .05, 1, 1)), "char": "I", "damage": 5},
+    "strawman": {"hp": 50, "drops": (("hay", 1, 1, 2), ("straw_hat", .1, 1, 1)), "char": "S", "damage": 10},
+    "wisp": {"hp": 1, "drops": (), "char": "i"},
+    "wyrm": {"hp": 60, "drops": (("meat", 1, 2, 4), ("frost_charm", .1, 1, 1)), "char": "E", "damage": 18},
+    "mossback": {"hp": 300, "drops": (("shell_plate", 1, 5, 5), ("meat", 1, 6, 6), ("fruit", 1, 4, 4), ("mushroom", 1, 3, 3)), "char": "G", "damage": 22, "snap": 28},   # the first boss (boss.py)
+    "sporeling": {"hp": 1, "drops": (("mushroom", .05, 1, 1),), "char": "s", "damage": 3},
 }
+
+
+def roll_drops(kind: str, rng, luck: float = 1.0) -> dict:
+    """What one of this kind leaves this time: each line of its table by its chance (times `luck`: a dev tool makes
+    every line sure, for tests)."""
+    out = {}
+    for item, chance, lo, hi in CREATURES[kind]["drops"]:
+        if rng.random() < chance * luck:
+            out[item] = out.get(item, 0) + rng.randint(lo, hi)
+    return out
 
 
 class Action:

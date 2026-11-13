@@ -3,7 +3,7 @@
 from .. import tiles as T
 from ..tiles import DIRS
 from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, SHOUT_R, sec
-from .entities import CREATURES, ActionError, Agent, Creature
+from .entities import ActionError, Agent, Creature, roll_drops
 from .progress import XP_KILL
 
 
@@ -103,9 +103,9 @@ class Combat:
 
     def kill_creature(self, c: Creature, by: Agent | None):
         self.creatures.pop(c.id, None)
-        self.add_items(c.x, c.y, CREATURES[c.kind]["drops"])
+        drops = roll_drops(c.kind, self.rng, self.luck)      # (not the same thing every time: entities.py)
+        self.add_items(c.x, c.y, drops)
         if by:
             by.bump(f"killed_{c.kind}")
             self.gain_xp(by, XP_KILL.get(c.kind, 0), c.x, c.y)
-        self.emit("creature_died", c.x, c.y, kind=c.kind, id=c.id, by=by.name if by else None,
-                  drops=CREATURES[c.kind]["drops"])
+        self.emit("creature_died", c.x, c.y, kind=c.kind, id=c.id, by=by.name if by else None, drops=drops)

@@ -52,4 +52,4 @@ def test_every_piece_has_a_recipe_and_the_client_draws_exactly_the_same_pieces()
     table = re.search(r"const WEAR = \{(.*?)\n\};", js, re.S).group(1)
     client = dict(re.findall(r'(\w+): \["(\w+)", ', table))
     assert client == WEAR
-    assert CREATURES["mossback"]["drops"]["shell_plate"] >= 5      # enough for the whole mossback set
+    assert ("shell_plate", 1, 5, 5) in CREATURES["mossback"]["drops"]      # enough for the whole mossback set, every time

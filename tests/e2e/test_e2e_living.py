@@ -104,6 +104,7 @@ def test_hit_a_chicken_while_walking_and_it_runs(game):
 
 
 def test_killing_leaves_a_poof_and_drops(game):
+    game.lucky()
     game.give(sword=1)
     game.hold_item("sword")
     hen = game.spawn("chicken", 1, 0, still=10 ** 6)
@@ -186,6 +187,7 @@ def test_loot_next_to_you_comes_to_you(game):
 def test_a_drop_shows_once_not_twice(game):
     """What a creature drops hops out, lands, and only then shows as the pile: never the pile and the hopping drop at
     once (the pile was matched by its sort position, not its tile, so both were drawn)."""
+    game.lucky()
     game.give(sword=1)
     game.hold_item("sword")
     game.clear_area(5)
@@ -209,6 +211,7 @@ def test_a_drop_shows_once_not_twice(game):
 def test_several_drops_land_together_without_blinking(game):
     """A cow drops meat and milk: each hops out and lands; none blinks out before the pile shows (they hand over to
     the pile together, all at rest where they landed)."""
+    game.lucky()
     game.give(sword=1)
     game.hold_item("sword")
     game.clear_area(5)

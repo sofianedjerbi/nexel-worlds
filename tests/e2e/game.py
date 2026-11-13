@@ -62,6 +62,10 @@ class Game:
     def spawn(self, kind, dx, dy, still=0):
         return self.rpc("dev_creatures", kind=kind, dx=dx, dy=dy, still=still)["spawned"]
 
+    def lucky(self):
+        """Every creature leaves all it can (its drops are by chance: sim/entities.py), for as long as this server runs."""
+        self.rpc("dev_luck", luck=1000)
+
     def give(self, **items):
         self.rpc("dev_give", items=items)
         self.sleep(800)          # the client refreshes its observation every 0.7 s

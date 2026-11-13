@@ -58,3 +58,30 @@ def test_every_thing_that_can_be_made_has_a_line_about_it():
     assert set(blurbs) == set(RECIPES), (set(RECIPES) - set(blurbs), set(blurbs) - set(RECIPES))
     assert len(set(blurbs.values())) == len(blurbs)
     assert all(8 <= len(b) <= 50 and b[-1] in ".?!" for b in blurbs.values()), [b for b in blurbs.values() if not 8 <= len(b) <= 50]
+
+
+def test_a_creature_does_not_leave_the_same_thing_every_time(world):
+    """A chicken always left a meat and an egg. Now its usual drops are by chance, and once in a long while it leaves
+    something rare; the boss's drops are sure."""
+    import random
+
+    from megastructure.sim import CREATURES
+    from megastructure.sim.entities import roll_drops
+    sim, a = world
+    rng, n = random.Random(3), 2000
+    got = [roll_drops("chicken", rng) for _ in range(n)]
+    meat, egg, rare = (sum(1 for d in got if k in d) / n for k in ("meat", "egg", "heart_charm"))
+    assert .55 < meat < .65 and .11 < egg < .19 and .008 < rare < .035
+    assert sum(1 for d in got if not d) > n / 4                              # often nothing at all
+    for kind, c in CREATURES.items():
+        assert all(0 < ch <= 1 and 1 <= lo <= hi for _, ch, lo, hi in c["drops"]), kind
+        if kind not in ("wisp", "chick", "calf", "mossback"):
+            assert min(ch for _, ch, _, _ in c["drops"]) <= .1, kind         # each has its rare one
+    assert roll_drops("mossback", rng) == {"shell_plate": 5, "meat": 6, "fruit": 4, "mushroom": 3}
+    sim.luck = 1000                                                          # (the tests' switch: every line)
+    hen = Creature(sim.next_creature, "chicken", a.x + 3, a.y, 10); sim.next_creature += 1
+    sim.creatures[hen.id] = hen
+    seen = []
+    sim.listeners.append(lambda e: e["type"] == "creature_died" and seen.append(e["drops"]))
+    sim.kill_creature(hen, a)
+    assert seen == [{"meat": 1, "egg": 1, "heart_charm": 1}] == [sim.items[(a.x + 3, a.y)]]
