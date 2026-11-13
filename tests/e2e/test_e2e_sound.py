@@ -50,23 +50,64 @@ def test_muting_stops_new_sounds(game):
     game.press("m")
 
 
-def test_the_music_is_streamed_in_pieces_and_m_silences_it(game):
-    """The loop is fetched and held a few seconds at a time (whole, it was 37 MB before the first note and 75 MB and
-    more decoded). Muted, it stops (nothing is fetched while it isn't heard) and comes back at the piece it was in."""
-    if not game.js("sounds.manifest ? !!sounds.manifest.music : null"):
+def test_a_piece_of_music_plays_as_a_moment_and_m_silences_it(game):
+    """By day and by night a piece plays now and then (audio.js moments), streamed a few seconds at a time. Muted, it
+    stops (nothing is fetched while it isn't heard); sound back on, another moment comes within seconds."""
+    if not game.js("!!sounds.manifest"):
         game.wait("sounds.manifest", 20000)
-    if not game.js("!!sounds.manifest.music"):
-        pytest.skip("no music rendered: uv run python music/compose.py, then tools/build_audio.py")
+    if not game.js("!!sounds.manifest.tracks && sounds.manifest.play.day.length > 0"):
+        pytest.skip("no music rendered: music/pieces.py, music/master.py, then tools/build_audio.py")
+    assert not game.js("music.on") and game.js("moment.next") > game.js("performance.now()")     # silence first: the first piece waits
+    game.js("moment.next = 0")                                 # (not the 8 to 20 s a player waits)
     game.wait("music.on && music.nodes.size > 0", 30000)
     game.sleep(1500)
-    assert game.js("music.gain.gain.value") > 0.05             # fading in
-    assert game.js("music.nodes.size") <= 2 and game.js("sounds.manifest.music.files.length") > 10
-    piece = game.js("Math.min(...[...music.nodes.values()].map((n) => n.i))")
+    assert game.js("music.gain.gain.value") > 0.05
+    assert game.js("sounds.manifest.play.day.includes(music.key)") and game.js("music.nodes.size") <= 2
+    assert game.js("moment.next") == float("inf") or game.js("moment.next === Infinity")       # none is due while one plays
     game.press("m")
     game.sleep(2600)
     assert game.js("music.gain.gain.value") < 0.02 and not game.js("music.on") and game.js("music.nodes.size") == 0
     game.press("m")
-    game.wait("music.on && music.nodes.size > 0", 10000)
+    game.wait("music.on && music.nodes.size > 0", 15000)
     game.sleep(1500)
     assert game.js("music.gain.gain.value") > 0.05
-    assert game.js("Math.min(...[...music.nodes.values()].map((n) => n.i))") == piece
+
+
+def test_the_boss_piece_takes_over_during_a_fight_and_hands_back(game):
+    if not game.js("!!sounds.manifest"):
+        game.wait("sounds.manifest", 20000)
+    if not game.js("!!sounds.manifest.tracks && !!sounds.manifest.play.boss"):
+        pytest.skip("no music rendered")
+    game.js("moment.next = 0")
+    game.wait("music.on && music.nodes.size > 0", 30000)
+    game.js("(() => { window.realBossMusic = bossMusic; bossMusic = () => {}; })()")     # (boss.js turns it off twice a second: no boss in view)
+    game.js("realBossMusic(true)")
+    game.wait("bossTrack.on && bossTrack.nodes.size > 0", 15000)
+    game.sleep(3000)
+    assert game.js("bossTrack.key") == game.js("sounds.manifest.play.boss") and game.js("bossTrack.gain.gain.value") > 0.3
+    assert not game.js("music.on") and game.js("music.gain.gain.value") < 0.02                 # the moment gave way
+    game.js("moment.next = 0")
+    game.sleep(1500)
+    assert not game.js("music.on")                             # no moment starts while the fight is on
+    game.js("realBossMusic(false)")
+    game.sleep(500)
+    assert not game.js("bossTrack.on") and game.js("moment.next") > game.js("performance.now()") + 15000    # silence after the fight
+    game.js("bossMusic = realBossMusic")
+
+
+def test_a_piece_ends_on_its_own_then_silence_and_night_has_its_own_pieces(game):
+    if not game.js("!!sounds.manifest"):
+        game.wait("sounds.manifest", 20000)
+    if not game.js("!!sounds.manifest.tracks && sounds.manifest.play.night.length > 0"):
+        pytest.skip("no music rendered")
+    game.js("(() => { if (music.on) { muted = true; tune(.1); muted = false; } })()")          # (a moment left by another test)
+    game.wait("!music.on && music.nodes.size === 0", 10000)
+    key = game.js("(() => { SOUND.passes.day = 1; clock.night = false; moment.next = 0; moments(); return music.key; })()")
+    assert game.js("sounds.manifest.play.day.includes(music.key)")
+    game.wait("music.on && music.nodes.size > 0", 20000)
+    game.wait("!music.on", 60000)                              # one pass of a day piece: about 35 s
+    assert game.js("music.gain.gain.value") < 0.1              # it faded on its last chord
+    wait = game.js("moment.next - performance.now()")
+    assert 45000 < wait < 141000                               # SOUND.gap: silence before the next
+    night = game.js("(() => { clock.night = true; moment.next = 0; moments(); return music.key; })()")
+    assert game.js("sounds.manifest.play.night.includes(music.key)") and night != key

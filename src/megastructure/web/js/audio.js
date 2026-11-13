@@ -4,15 +4,20 @@
 //   a sound itself            edit its generator in music/sfx.py, then `uv run python tools/build_audio.py`
 //   what an object sounds like when placed    edit music/sfx_map.json, then rebuild
 //   how loud a family is, how far sounds carry, how often one may repeat    edit SOUND below
-//   the music                 music/compose.py renders it; rebuild; its volume is SOUND.music
+//   the music                 music/pieces.py writes it, music/master.py mixes it, the build cuts it up; which piece plays
+//                             when is TRACKS in tools/build_audio.py; how loud and how often is SOUND below
 //   when a sound plays        the call sites: sfx(name, x, y) for something in the world, sfx(name) for the player or the interface
 // A name that the build does not know is reported once in the console and stays silent (tests/test_audio.py catches it earlier).
 
 const SOUND = {
   master: .8,
-  music: .45,         // the background loop's volume (0 to turn it off); it fades in over musicFade seconds
-  musicFade: 4,
-  bossMusic: 1.2,     // the boss fight's loop, as a multiple of `music`
+  music: .64,         // the music's volume (0 to turn it off). The files are at -20 LUFS: this keeps it where the old theme sat
+  bossMusic: 1.4,     // the boss fight's loop, as a multiple of `music`
+  firstMoment: [8, 20],   // seconds after the sound starts before the first piece
+  gap: [50, 140],     // seconds of silence between two pieces (a random time in this range)
+  afterFight: [20, 40],   // seconds after a fight before a piece may play again
+  passes: {day: 2, night: 1},   // how many times a piece is played through before it ends
+  ending: 2.5,        // seconds over which a piece fades on its last held chord
   wind: .5,           // the wind of a fall at its fastest (fallWind)
   mix: {Footsteps: .9, Work: 1, Breaking: 1, Building: 1, Items: .9, Progress: 1, Fights: 1, Animals: .9, World: .9, People: .8, Interface: .8, Boss: 1},
   hearing: 12,        // tiles: a sound in the world further than this is not heard
@@ -68,60 +73,90 @@ async function warmSounds() {
   await Promise.all(Array.from({length: SOUND.loaders}, worker));
 }
 
-// The music: a loop (the background one; the boss's own, music/boss.py, which takes over while a fight is on and hands
-// back after), each on its own gain (the effects' limiter never pumps it). A loop is streamed: the build cuts it into
-// pieces of a few seconds, lossless (tools/build_audio.py), and they are played one after the other to the sample,
-// each fetched a little before its turn and let go once played. (Whole, the background loop was 37 MB to fetch before
-// its first note and 75 MB and more to hold, decoded.) A piece carries a little of its neighbours at both ends
-// (`pad`): the browser resamples each piece on its own, so the join is made inside sound that both pieces have.
-const music = {key: "music", gain: null, on: false, at: 0, run: 0, nodes: new Map()};          // (at: the piece to play next; nodes: those playing or due)
-const bossTrack = {key: "boss", gain: null, on: false, at: 0, run: 0, nodes: new Map(), first: true};   // (first: every fight starts from its first bar)
+// The music. By day and by night a piece plays now and then, with silence between (a moment): one of the pieces the
+// manifest lists for the hour (`play.day`, `play.night`), never the one before, played through `passes` times, fading
+// on its last chord. While a fight is on, the boss's piece loops instead, and a moment in progress gives way.
+// A piece is streamed: the build cuts it into parts of a few seconds, lossless (tools/build_audio.py), played one after
+// the other to the sample, each fetched a little before its turn and let go once played. A part carries a little of its
+// neighbours at both ends (`pad`): the browser resamples each part on its own, so the join is made inside sound that
+// both have. Each kind is on its own gain (the effects' limiter never pumps it).
+const music = {key: null, gain: null, on: false, at: 0, run: 0, nodes: new Map(), left: 0};       // the moment playing, if one is
+const bossTrack = {key: null, gain: null, on: false, at: 0, run: 0, nodes: new Map(), left: Infinity};
+const moment = {next: Infinity, last: {}};                 // next: when a piece may start (performance.now ms)
 let fight = false;
 const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
+const between = ([lo, hi]) => (lo + Math.random() * (hi - lo)) * 1000;
 const piece = (file) => fetch(`audio/${file}?v=${sounds.manifest.version}`)
   .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
   .then((raw) => ac().decodeAudioData(raw)).catch(() => null);
-async function stream(tr) {
-  const m = sounds.manifest[tr.key], a = ac(), rate = a.sampleRate, run = ++tr.run;
+async function stream(tr, done) {
+  const m = sounds.manifest.tracks[tr.key], a = ac(), rate = a.sampleRate, run = ++tr.run;
   for (const src of tr.nodes.keys()) src.stop();           // (what was left of it fading out)
-  tr.on = true;
+  tr.on = true; tr.at = 0;
   if (!tr.gain) { tr.gain = a.createGain(); tr.gain.gain.value = 0; tr.gain.connect(a.destination); }
-  let next = 0;                                            // where the next piece starts, in the context's own samples
+  let next = 0;                                            // where the next part starts, in the context's own samples
   while (tr.on && tr.run === run) {
     const i = tr.at, buf = await piece(m.files[i]);
     if (!tr.on || tr.run !== run) return;
     if (!buf) { await pause(3000); continue; }             // (no network just now: again in a moment)
-    const len = Math.floor((i === m.files.length - 1 ? m.last : m.seg) * rate + 1e-6);
+    const end = i === m.files.length - 1, len = Math.floor((end ? m.last : m.seg) * rate + 1e-6);
     if (next < (a.currentTime + .05) * rate) next = Math.ceil((a.currentTime + .15) * rate);   // the first; or late (a slow line, a sleeping tab): a gap, then on
     const src = a.createBufferSource(), starts = next / rate;
     src.buffer = buf; src.connect(tr.gain); src.start(starts, m.pad, len / rate);
     tr.nodes.set(src, {i, starts}); src.onended = () => { tr.nodes.delete(src); src.disconnect(); };
     next += len; tr.at = (i + 1) % m.files.length;
+    if (end && --tr.left <= 0) {                           // its last part: fade on the last chord, then it is over
+      const ends = next / rate;
+      tr.gain.gain.setTargetAtTime(0, ends - SOUND.ending, SOUND.ending / 3);
+      await pause((ends - a.currentTime) * 1000);
+      if (tr.run === run) { tr.on = false; done && done(); }
+      return;
+    }
     while (tr.on && tr.run === run && a.currentTime < starts - 1) await pause(400);   // the one after is fetched as this one is about to play
   }
 }
 function halt(tr, after) {                                 // stop it, `after` seconds from now (its gain fades meanwhile)
   if (!tr.on) return;
-  tr.on = false;
-  const t = audio.currentTime, due = [...tr.nodes.values()].sort((p, q) => p.starts - q.starts);
-  for (const src of tr.nodes.keys()) src.stop(t + after);
-  const now = due.filter((n) => n.starts <= t).pop() || due[0];
-  tr.at = tr.first ? 0 : now ? now.i : tr.at;              // (the background loop comes back at the piece it was in)
+  tr.on = false; tr.run++;
+  for (const src of tr.nodes.keys()) src.stop(audio.currentTime + after);
 }
-// What should be heard now: nothing (muted: nothing is fetched either), the boss's loop (a fight is on, the
-// background loop going on silently under it), the background loop. tc: how fast the change is heard (seconds).
+// A moment: is it time for a piece, and which. (Called every second, and whenever something changes.)
+function moments() {
+  const m = sounds.manifest;
+  if (!audio || muted || fight || !m || !m.tracks || !SOUND.music || music.on || performance.now() < moment.next) return;
+  const hour = typeof clock !== "undefined" && clock.night ? "night" : "day", all = m.play[hour] || [];
+  const list = all.length > 1 ? all.filter((k) => k !== moment.last[hour]) : all;
+  if (!list.length) return;
+  music.key = moment.last[hour] = list[Math.floor(Math.random() * list.length)];
+  music.left = SOUND.passes[hour] || 1;
+  moment.next = Infinity;
+  stream(music, () => { moment.next = performance.now() + between(SOUND.gap); });
+  music.gain.gain.cancelScheduledValues(audio.currentTime);
+  music.gain.gain.setTargetAtTime(SOUND.music, audio.currentTime, .05);
+}
+setInterval(moments, 1000);
+// What should be heard now: nothing (muted: nothing is fetched either), the boss's loop (a fight is on), or the
+// moments. tc: how fast the change is heard (seconds).
 function tune(tc) {
   const m = sounds.manifest;
-  if (!audio || !m || !SOUND.music) return;
-  const bg = !muted && !!m.music, boss = bg && fight && !!m.boss, t = audio.currentTime;
-  if (bg && !music.on) stream(music); else if (!bg) halt(music, 2);
-  if (boss && !bossTrack.on) stream(bossTrack); else if (!boss) halt(bossTrack, 6);
-  if (music.gain) music.gain.gain.setTargetAtTime(bg && !boss ? SOUND.music : 0, t, tc);
+  if (!audio || !m || !m.tracks || !SOUND.music) return;
+  const t = audio.currentTime, boss = !muted && fight && !!m.tracks[m.play.boss];
+  bossTrack.key = m.play.boss;
+  if (boss && !bossTrack.on) { bossTrack.left = Infinity; stream(bossTrack); } else if (!boss) halt(bossTrack, 6);
   if (bossTrack.gain) bossTrack.gain.gain.setTargetAtTime(boss ? SOUND.music * SOUND.bossMusic : 0, t, tc);
+  if (music.on && (muted || fight)) {                      // a moment gives way: to silence, or to the fight
+    music.gain.gain.cancelScheduledValues(t); music.gain.gain.setTargetAtTime(0, t, tc);
+    halt(music, 2);
+  }
+  if (moment.next === Infinity && !music.on) moment.next = performance.now() + (muted ? Infinity : between(fight ? SOUND.afterFight : [2, 5]));
 }
-const startMusic = () => tune(SOUND.musicFade / 3);
-function bossMusic(on) { if (on !== fight) { fight = on; tune(on ? .3 : 1.3); } }
-// M: everything off or on. The music fades out, and comes back at the piece it was in.
+const startMusic = () => { moment.next = performance.now() + between(SOUND.firstMoment); };
+function bossMusic(on) {
+  if (on === fight) return;
+  fight = on; tune(on ? .3 : 1.3);
+  if (!on && !music.on) moment.next = performance.now() + between(SOUND.afterFight);
+}
+// M: everything off or on. A piece that was playing fades out; sound back on, the next one comes after a few seconds.
 function setMuted(on) {
   muted = on;
   localStorage.setItem("megastructure-muted", on ? "1" : "0");

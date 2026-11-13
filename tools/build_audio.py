@@ -7,11 +7,10 @@ Sources of truth:
   music/sfx_map.json   which sound an item makes when placed ("place") and a ground when laid ("ground")
 Output (not committed: rebuild after changing either source):
   audio/<name>_<variant>.flac  16-bit stereo, 32 kHz, lossless (a third of the same samples as wav: 5 MB to fetch, not 15)
-  audio/music_NNN.flac         the background loop, from music/site/audio/master.wav (render it with music/compose.py),
-                               in pieces of SEG seconds, lossless: the player streams them (audio.js) instead of
-                               fetching 37 MB and holding all of it decoded (75 MB and more)
-  audio/boss_NNN.flac          the boss fight's loop, from music/site/audio/boss.wav (music/boss.py), the same way
-  audio/sfx.json               the manifest the client reads: sounds, place (by block name), ground, music, version
+  audio/<track>_NNN.flac       each piece of music (TRACKS below), from music/site/audio/final_<track>.wav (written by
+                               music/master.py from the pieces of music/pieces.py), cut into pieces of SEG seconds,
+                               lossless: the player streams them (audio.js) instead of fetching and decoding a whole one
+  audio/sfx.json               the manifest the client reads: sounds, place (by block name), ground, tracks, play, version
 The build fails if a placeable item or a fillable ground has no sound, or the map names a sound that does not exist.
 """
 
@@ -86,15 +85,17 @@ def write_wav(path: Path, st: np.ndarray, rate: int):
         w.writeframes(pcm.tobytes())
 
 
-MASTER = MUSIC / "site" / "audio" / "master.wav"      # the rendered soundtrack (music/compose.py)
-BOSS = MUSIC / "site" / "audio" / "boss.wav"          # the boss fight's loop (music/boss.py)
+# The game's music: which piece plays when (audio.js). By day and by night a piece plays now and then, with silence
+# between; the boss's loops while its fight is on. Far shore night C is the one of two candidates wired in.
+TRACKS = {"side_street_day": "day", "far_shore_day": "day", "side_street_night": "night", "far_shore_night_c": "night", "old_mossback": "boss"}
+final = lambda name: MUSIC / "site" / "audio" / f"final_{name}.wav"
 
 
 def version() -> str:
     h = hashlib.sha1()
     for f in ("sfx.py", "sfx_map.json"):
         h.update((MUSIC / f).read_bytes())
-    for f in (MASTER, BOSS):
+    for f in map(final, TRACKS):
         if f.exists():
             h.update(f"{f.stat().st_size}:{f.stat().st_mtime_ns}".encode())
     return h.hexdigest()[:10]
@@ -105,14 +106,13 @@ def pcm16(st: np.ndarray) -> np.ndarray:
     return (np.clip(st, -1, 1) * 32767).round().astype("<i2").T.copy()
 
 
-def build_music(out: Path, src: Path = None, name: str = "music") -> dict | None:
-    """A music loop (the background one, or the boss fight's), resampled like the effects and cut into pieces, each a
+def build_music(out: Path, src: Path, name: str) -> dict | None:
+    """A piece of music, resampled like the effects and cut into pieces, each a
     lossless file: the same samples as one long wav. A piece carries PAD seconds of what comes before and after it
     (the loop's other end, for the first and the last). None (and a note) when it has not been rendered."""
     import soundfile
-    src = src or MASTER
     if not src.exists():
-        print(f"no {name}: render it first with `uv run python music/{'boss' if src == BOSS else 'compose'}.py`")
+        print(f"no {name}: render the music first (music/pieces.py, then music/master.py)")
         return None
     with wave.open(str(src)) as w:
         sr, ch = w.getframerate(), w.getnchannels()
@@ -143,11 +143,13 @@ def build(out: Path = OUT) -> dict:
             soundfile.write(str(out / f), pcm16(resample(sfx.render(name, v), sfx.SR, RATE)), RATE, format="FLAC", subtype="PCM_16")
             files.append(f)
         sounds[name] = {"files": files, "category": m["cat"], "pitch": bool(m["vary"])}   # tuned sounds are never re-pitched
-    manifest = {"version": version(), "rate": RATE, "sounds": sounds, "place": blocks, "ground": grounds,
-                "music": build_music(out), "boss": build_music(out, BOSS, "boss")}
+    tracks = {name: t for name in TRACKS if (t := build_music(out, final(name), name))}
+    play = {role: [n for n in tracks if TRACKS[n] == role] for role in ("day", "night")} | {"boss": next((n for n in tracks if TRACKS[n] == "boss"), None)}
+    manifest = {"version": version(), "rate": RATE, "sounds": sounds, "place": blocks, "ground": grounds, "tracks": tracks, "play": play}
     (out / "sfx.json").write_text(json.dumps(manifest, indent=1))
     size = sum((out / f).stat().st_size for s in sounds.values() for f in s["files"]) / 1e6
-    music = f", music {sum(f.stat().st_size for f in out.glob('music_*.flac')) / 1e6:.0f} MB in {len(manifest['music']['files'])} pieces" if manifest["music"] else ""
+    files = [f for t in tracks.values() for f in t["files"]]
+    music = f", {len(tracks)} pieces of music, {sum((out / f).stat().st_size for f in files) / 1e6:.0f} MB in {len(files)} files" if tracks else ""
     print(f"built {out.relative_to(ROOT)}: {len(sounds)} sounds, {sum(len(s['files']) for s in sounds.values())} files, {size:.1f} MB{music}")
     return manifest
 
