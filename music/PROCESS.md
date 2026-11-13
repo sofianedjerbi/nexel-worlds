@@ -363,3 +363,7 @@ The user: "lantern fish sounds like those ugly midi songs. bad. Old Mossback (bo
   Juno-60 Strings pad, drum machine) and "shore" (Far shore: 112 BPM, four-on-the-floor, A major from the IV with
   E over D; one lead bar, E5 C#5 B4 C#5, that fits all seven chords, so the tune stays while the harmony moves).
 - Not judged by ear.
+
+- Boss mix (the user: "make old mossback background music more prominent by reducing the lead volume, the background
+  is really good"): lead -15 to -19 dB, its lower double -20 to -24. Previous render saved as
+  `keep_mossback2_lead_loud.wav`.
