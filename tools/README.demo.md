@@ -25,3 +25,6 @@ This repository only holds the built site.
 
 Art: **Sprout Lands** by **Cup Nooble** (https://cupnooble.itch.io/), used under its license: the asset pack
 itself may not be redistributed or resold, even modified, and may not be used for AI training. See `assets/CREDITS.md`.
+
+Music: played on public-domain (CC0) instrument recordings: VCSL and VSCO 2 Community Edition by Versilian Studios
+(https://github.com/sgossner), and the Spanish classical guitar of the FreePats project (https://freepats.zenvoid.org/).

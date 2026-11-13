@@ -195,8 +195,8 @@ def render(piece, want_stems=False):
     return (out, mix, stems) if want_stems else out
 
 
-NAMES = {"marimba": "marimba", "flute": "flute", "nylon": "nylon guitar", "upright": "double bass", "rhodes": "electric piano (tine)",
-         "clarinet": "clarinet", "vibes": "vibraphone", "moog_bass": "synth bass", "epiano": "electric piano (soft)", "melodica": "melodica"}
+NAMES = {"marimba": "marimba", "flute": "flute", "nylon": "nylon guitar", "upright": "double bass", "rhodes": "concert harp",
+         "clarinet": "clarinet", "vibes": "vibraphone", "moog_bass": "double bass", "epiano": "harp", "melodica": "harmonica"}
 
 
 if __name__ == "__main__":

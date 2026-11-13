@@ -40,6 +40,8 @@ import wave
 
 import numpy as np
 
+import sampler
+
 SR = 48000
 BPM = 84
 SWING = 0.58       # where in the beat the off-beat eighth falls (0.5 straight, 0.67 a full shuffle)
@@ -132,181 +134,25 @@ def saw(ph, f, cutoff, kmax=40):
 
 # ------------------------------------------------------------------ instruments (f, dur, vel, t0)
 
-def nylon(f, dur, vel, t0):
-    """The main instrument since 2026-11-13: a nylon-string guitar, plucked with the thumb. Three pianos were refused
-    ("aggressive", then "unbearable": the last was nearly a sine, two strings beating slowly, pushed into a clipper).
-    One string as its modes: a pluck at a fifth of its length, bright for a tenth of a second and then round as the
-    high modes die first; a wooden body (two low resonances); the thumb's small knock. No detune, no clipping."""
-    n = int((dur + 2.5) * SR)
-    t = tt(n)
-    ph = phase(f, n, t0, wob=0.25)
-    tau1 = 1.5 * (196 / max(f, 98)) ** 0.5                      # lower strings ring longer
-    y = np.zeros(n)
-    for k in range(1, 25):
-        fk = k * np.sqrt(1 + 0.00006 * k * k)
-        if f * fk > 9000:
-            break
-        amp = np.sin(np.pi * k * 0.2) / k ** 1.5 / (1 + (f * fk / (2200 + 2600 * vel)) ** 2)
-        y += amp * np.sin(fk * ph) * np.exp(-t * (1 + 0.09 * k * k) / tau1)
-    y += fft_filter(rng.standard_normal(n), bp(120, 900, 1)) * np.exp(-t / 0.008) * 0.06 * vel      # the thumb on the string
-    body = lambda fr: (bp(70, 7000, 1)(fr) * (1 + 0.9 / (1 + ((fr - 110) / 25) ** 2) + 0.6 / (1 + ((fr - 215) / 40) ** 2)
-                                               + 0.25 / (1 + ((fr - 420) / 90) ** 2)))
-    y = fft_filter(y, body)
-    return 0.4 * vel * y * np.clip(t / 0.003, 0, 1) * release(t, dur, 0.35)
-
-
-def rhodes(f, dur, vel, t0):
-    """Candidate: an electric piano as a lead. A tine and its bar (FM): it barks a little at the start, then sings."""
-    n = int((dur + 1.5) * SR)
-    t = tt(n)
-    ph = phase(f, n, t0, wob=0.25)
-    idx = (0.35 + 1.5 * vel * np.exp(-t / 0.18)) * min(1.0, 500 / f)
-    y = np.sin(ph + idx * np.sin(ph)) + 0.12 * vel * np.sin(14 * ph) * np.exp(-t / 0.05)
-    return 0.3 * vel * y * np.clip(t / 0.004, 0, 1) * np.exp(-t / 2.2) * release(t, dur, 0.3)
-
-
-def marimba(f, dur, vel, t0):
-    """Candidate: a marimba, soft mallets. The bar (its modes at 1, 4 and 10 times the note) over its tube."""
-    tau = 0.7 * (262 / max(f, 131)) ** 0.6
-    n = int(max(1.5, 6 * tau) * SR)
-    t = tt(n)
-    ph = phase(f, n, t0, wob=0.0)
-    y = np.sin(ph) * np.exp(-t / tau) + 0.3 * vel * np.sin(4 * ph) * np.exp(-t / (tau * 0.18)) \
-        + 0.08 * vel * np.sin(10.1 * ph) * np.exp(-t / (tau * 0.05))
-    y += fft_filter(rng.standard_normal(n), bp(200, 1500, 1)) * np.exp(-t / 0.006) * 0.08 * vel
-    return 0.5 * vel * y * np.clip(t / 0.002, 0, 1)
-
-
-
-
-_pad_cache = {}
-
-
-def analog_pad(f, dur, vel, t0):
-    """Four detuned saws, filter opening and closing over minutes (whole cycles per loop). The saws of a note are made
-    once and kept: the pad plays the same few notes hundreds of times, and this was half of the rendering time."""
-    n = int((dur + 4.0) * SR)
-    t = tt(n)
-    key = (round(f, 3), n)
-    if key not in _pad_cache:
-        dark, bright = np.zeros((2, n)), np.zeros((2, n))
-        for j, d in enumerate((-9, -3, 4, 10)):
-            ph = phase(f, n, 0.0, d / 100, wob=0.8)
-            dark[j % 2] += saw(ph, f, 650)
-            bright[j % 2] += saw(ph, f, 2600)
-        _pad_cache[key] = (dark, bright)
-    dark, bright = _pad_cache[key]
-    w = loop_lfo(t0 + t, 3, 0.4)
-    env = np.clip(t / 1.4, 0, 1) ** 2 * release(t, dur, 0.8)
-    return 0.05 * vel * ((1 - w) * dark + w * bright) * env
-
-
-def moog_bass(f, dur, vel, t0):
-    """Round, warm synth bass: saw + square under a low filter, soft attack, held."""
-    n = int((dur + 1.2) * SR)
-    t = tt(n)
-    ph = phase(f, n, t0, wob=0.3)
-    y = 0.6 * saw(ph, f, 260) + 0.5 * sum(np.sin(k * ph) / k for k in (1, 3, 5)) * 0.8 + 0.5 * np.sin(ph)
-    y = np.tanh(1.3 * y)
-    env = np.clip(t / 0.08, 0, 1) * (0.8 + 0.2 * np.exp(-t / 0.5)) * release(t, dur, 0.22)      # (a 0.5 s release was cut 19 dB down, and blurred the bounce)
-    return 0.3 * vel * y * env
-
-
-def epiano(f, dur, vel, t0):
-    """Electric piano, for the chords: a round tone with a small tine on top that dies at once. Short, soft."""
-    n = int((dur + 0.5) * SR)
-    t = tt(n)
-    ph = phase(f, n, t0, wob=0.4)
-    y = np.sin(ph) + 0.35 * np.sin(2 * ph) * np.exp(-t / 0.25) + 0.12 * np.sin(3 * ph) * np.exp(-t / 0.12) \
-        + 0.1 * vel * np.sin(7.02 * ph) * np.exp(-t / 0.03)
-    return 0.2 * vel * y * np.clip(t / 0.004, 0, 1) * np.exp(-t / 0.6) * release(t, dur, 0.12)
-
-
-def shaker(f, dur, vel, t0):
-    """A shaker, far back: a soft breath of high noise."""
-    n = int(0.17 * SR)
-    t = tt(n)
-    y = fft_filter(rng.standard_normal(n), bp(3000, 8000, 2)) * np.clip(t / 0.012, 0, 1) * np.exp(-t / 0.025)
-    return 0.22 * vel * y / (np.abs(y).max() + 1e-9)       # (0.4 was "a bit too loud")
-
-
-def melodica(f, dur, vel, t0):
-    """A melodica: a free reed, buzzy but small, speaking at once and held by the breath; a slow shake once it is held."""
-    n = int((dur + 0.4) * SR)
-    t = tt(n)
-    vib = 0.07 * np.clip((t - 0.35) / 0.5, 0, 1) * np.sin(2 * np.pi * 5.2 * t)
-    ph = phase(f, n, t0, vib, wob=0.2)
-    y = saw(ph, f, 1500 + 900 * vel, kmax=24) + 0.35 * sum(np.sin(k * ph) / k for k in (1, 3, 5) if k * f < 6000)
-    y += fft_filter(rng.standard_normal(n), bp(1500, 5000, 1)) * 0.012
-    env = np.clip(t / 0.03, 0, 1) * (0.85 + 0.15 * np.exp(-t / 0.3)) * release(t, dur, 0.07)
-    return 0.16 * vel * y * env
-
-
-def clarinet(f, dur, vel, t0):
-    """A clarinet, low and hollow: the odd harmonics, a soft start, a little breath."""
-    n = int((dur + 0.5) * SR)
-    t = tt(n)
-    vib = 0.04 * np.clip((t - 0.5) / 0.6, 0, 1) * np.sin(2 * np.pi * 4.8 * t)
-    ph = phase(f, n, t0, vib, wob=0.2)
-    y = sum(np.sin(k * ph) / k ** 1.4 / (1 + (k * f / (1600 + 1400 * vel)) ** 2) for k in (1, 3, 5, 7, 9, 11) if k * f < 9000)
-    y += 0.06 * np.sin(2 * ph) + fft_filter(rng.standard_normal(n), bp(900, 3500, 1)) * 0.01
-    env = np.clip(t / 0.05, 0, 1) ** 1.5 * release(t, dur, 0.09)
-    return 0.3 * vel * y * env
-
-
-def flute(f, dur, vel, t0):
-    """A whistled, flute-like voice: nearly a pure tone with breath around it; it scoops into the note and shakes slowly."""
-    n = int((dur + 0.5) * SR)
-    t = tt(n)
-    vib = 0.09 * np.clip((t - 0.3) / 0.5, 0, 1) * np.sin(2 * np.pi * 5.0 * t)
-    ph = phase(f, n, t0, vib - 0.3 * np.exp(-t / 0.04), wob=0.2)
-    y = np.sin(ph) + 0.16 * np.sin(2 * ph) + 0.05 * np.sin(3 * ph)
-    breath = fft_filter(rng.standard_normal(n), lambda fr: bp(f * 1.5, f * 5, 1)(fr))
-    y += 0.05 * breath / (np.abs(breath).max() + 1e-9) * (1 + 2 * np.exp(-t / 0.05))
-    env = np.clip(t / 0.06, 0, 1) * release(t, dur, 0.1)
-    return 0.3 * vel * y * env
-
-
-def vibes(f, dur, vel, t0):
-    """A vibraphone, soft mallets, motor on slow: a metal bar that rings for seconds, gently pulsing."""
-    n = int((dur + 2.0) * SR)
-    t = tt(n)
-    ph = phase(f, n, t0, wob=0.0)
-    tau = 2.6 * (262 / max(f, 131)) ** 0.4
-    y = np.sin(ph) * np.exp(-t / tau) + 0.22 * vel * np.sin(4 * ph) * np.exp(-t / (tau * 0.2)) + 0.05 * vel * np.sin(10 * ph) * np.exp(-t / (tau * 0.04))
-    y *= 1 + 0.12 * np.sin(2 * np.pi * 4.3 * (t0 + t))
-    return 0.4 * vel * y * np.clip(t / 0.004, 0, 1) * release(t, dur, 0.5)
-
-
-def upright(f, dur, vel, t0):
-    """A plucked double bass: a round thump, the string's low modes, gone within a second."""
-    n = int((dur + 0.8) * SR)
-    t = tt(n)
-    ph = phase(f, n, t0, -0.25 * np.exp(-t / 0.03), wob=0.1)
-    y = sum(np.sin(k * ph) / k ** 1.7 * np.exp(-t * (1.1 + 0.9 * k)) for k in range(1, 9) if k * f < 1800)
-    thump = fft_filter(rng.standard_normal(n), bp(60, 400, 1)) * np.exp(-t / 0.01)
-    y += 0.12 * vel * thump / (np.abs(thump).max() + 1e-9)
-    return 0.5 * vel * y * np.clip(t / 0.006, 0, 1) * release(t, dur, 0.12)
-
-
-def woodblock(f, dur, vel, t0):
-    """A small wooden block, far back: two damped modes and the stick."""
-    n = int(0.2 * SR)
-    t = tt(n)
-    y = np.sin(2 * np.pi * 880 * t) * np.exp(-t / 0.022) + 0.5 * np.sin(2 * np.pi * 1420 * t) * np.exp(-t / 0.012)
-    y += 0.2 * fft_filter(rng.standard_normal(n), bp(1500, 5000, 1)) * np.exp(-t / 0.003)
-    return 0.16 * vel * y * np.clip(t / 0.001, 0, 1)
-
-
-def glide_lead(f, dur, vel, t0):
-    """Warm monophonic synth lead: filtered saw + sine, slides up into each note, slow vibrato."""
-    n = int((dur + 1.5) * SR)                # (0.6 s cut the release 21 dB down)
-    t = tt(n)
-    vib = 0.1 * np.clip((t - 0.4) / 0.6, 0, 1) * np.sin(2 * np.pi * 4.2 * t)
-    ph = phase(f, n, t0, -0.5 * np.exp(-t / 0.06) + vib, wob=0.5)
-    y = 0.55 * saw(ph, f, 1700) + 0.6 * np.sin(ph)
-    env = np.clip(t / 0.06, 0, 1) * release(t, dur, 0.25)
-    return 0.22 * vel * y * env
+# Every instrument is a recording (music/sampler.py; public-domain libraries fetched by music/fetch_samples.py). The
+# synthesised ones were heard as "MIDI default Windows samples.. so ugly". The names are the old ones, so the scores did
+# not change; LEVEL sets each recording to the loudness its synthesised version had, so the balance did not change either.
+LEVEL = {"nylon": 1.97, "rhodes": 2.4, "marimba": 2.53, "analog_pad": 0.93, "moog_bass": 2.66, "epiano": 0.97, "shaker": 13.4,
+         "melodica": 5.7, "clarinet": 4.38, "flute": 3.02, "vibes": 2.69, "upright": 2.65, "woodblock": 3.42, "glide_lead": 2.26}
+nylon = sampler.voice("guitar", LEVEL["nylon"])                     # Spanish classical guitar
+rhodes = sampler.voice("harp", LEVEL["rhodes"])                     # concert harp (a recorded 1980s electric piano
+epiano = sampler.voice("harp", LEVEL["epiano"])                     # was dropped: the likeliest to still sound "MIDI")
+marimba = sampler.voice("marimba", LEVEL["marimba"])
+vibes = sampler.voice("vibes", LEVEL["vibes"])                      # vibraphone, soft mallets
+flute = sampler.voice("flute", LEVEL["flute"])
+clarinet = sampler.voice("clarinet", LEVEL["clarinet"])
+melodica = sampler.voice("harmonica", LEVEL["melodica"])            # a chromatic harmonica: the same family of reed
+glide_lead = sampler.voice("oboe", LEVEL["glide_lead"])
+upright = sampler.voice("bass", LEVEL["upright"])                   # double bass, plucked
+moog_bass = sampler.voice("bass", LEVEL["moog_bass"])
+analog_pad = sampler.voice("strings", LEVEL["analog_pad"], attack=1.2)     # violas and cellos, held
+shaker = sampler.voice("shaker", LEVEL["shaker"])
+woodblock = sampler.voice("woodblock", LEVEL["woodblock"])
 
 
 def _ends_silent(fn):

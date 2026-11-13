@@ -20,6 +20,7 @@ from pathlib import Path
 import numpy as np
 
 import compose as C
+import sampler
 from compose import SR, analog_pad, bp, fft_filter, glide_lead, hp, hz, lp, midi, moog_bass, phase, release, saw, tt
 
 BPM, BARS = 96, 36
@@ -39,49 +40,12 @@ HORN = [(0, 2, "F#2"), (2, 2, "A2"), (4, 2, "F#2"), (6, 1, "A2"), (7, 1, "B2")] 
 SECTIONS = [("it stands up", 4), ("the fight", 8), ("everything in", 8), ("it braces, then stomps back", 8), ("everything in again", 8)]
 
 
-def stomp(f, dur, vel, t0):
-    """A foot the size of a cart: a short drop in pitch, a low thud of noise, a little grit. Not a drum-machine kick."""
-    n = int(0.6 * SR)
-    t = tt(n)
-    body = np.sin(2 * np.pi * np.cumsum(68 + 40 * np.exp(-t / 0.018)) / SR) * np.exp(-t / 0.13)
-    thud = fft_filter(rng.standard_normal(n), lp(170)) * np.exp(-t / 0.06)
-    grit = fft_filter(rng.standard_normal(n), bp(300, 1400)) * np.exp(-t / 0.012)
-    return vel * (0.9 * body + 0.8 * thud / np.abs(thud).max() + 0.2 * grit / np.abs(grit).max()) * np.clip(t / 0.002, 0, 1)
-
-
-def knock(f, dur, vel, t0):
-    """Shell plate on shell plate: mostly contact noise, four heavily damped modes."""
-    n = int(0.2 * SR)
-    t = tt(n)
-    y = fft_filter(rng.standard_normal(n), bp(700, 2600)) * np.exp(-t / 0.012)
-    y = y / np.abs(y).max() + 0.5 * sum(np.sin(2 * np.pi * m * rng.uniform(0.97, 1.03) * t) * np.exp(-t / 0.02) for m in (410, 655, 980, 1370)) / 2
-    return 0.5 * vel * y * np.clip(t / 0.001, 0, 1)
-
-
-def shaker(f, dur, vel, t0):
-    n = int(0.12 * SR)
-    t = tt(n)
-    y = fft_filter(rng.standard_normal(n), hp(5000)) * np.clip(t / 0.004, 0, 1) * np.exp(-t / 0.022)
-    return 0.25 * vel * y / np.abs(y).max()
-
-
-def pizz(f, dur, vel, t0):
-    """Plucked strings: bright for an instant, then only the body of the note."""
-    n = int(0.7 * SR)
-    t = tt(n)
-    ph = phase(f, n, t0, wob=0.3)
-    y = saw(ph, f, 2400) * np.exp(-t / 0.045) + 0.8 * saw(ph, f, 750) * np.exp(-t / 0.2)
-    return 0.3 * vel * y * np.clip(t / 0.002, 0, 1)
-
-
-def horn(f, dur, vel, t0):
-    """A low horn: slow to speak, brighter as it swells, a little unsteady."""
-    n = int((dur + 0.8) * SR)
-    t = tt(n)
-    swell = 0.55 + 0.45 * np.sin(np.pi * np.clip(t / dur, 0, 1))
-    ph = phase(f, n, t0, 0.06 * np.sin(2 * np.pi * 4.6 * t) * np.clip((t - 0.5) / 0.8, 0, 1), wob=0.5)
-    y = sum(np.sin(k * ph) / k ** 1.2 * swell ** (0.6 * k) for k in range(1, 11) if k * f < 2400)
-    return 0.26 * vel * y * np.clip(t / 0.2, 0, 1) * release(t, dur, 0.35)
+# Recorded, like every other instrument (music/sampler.py); each is set to the loudness its synthesised version had.
+stomp = sampler.voice("bassdrum", 12.0)        # its feet: a concert bass drum
+knock = sampler.voice("woodblock", 6.75)       # its shell: a woodblock
+shaker = sampler.voice("shaker", 26.0)
+pizz = sampler.voice("cellopizz", 1.61)        # plucked cellos
+horn = sampler.voice("horn", 2.44)             # a French horn
 
 
 events = []      # (seconds, instrument, note, seconds long, velocity, pan, reverb send, stem)
@@ -118,7 +82,7 @@ def block(first, drums=True, bass=True, strings=0, horn_on=False, lead=False, pa
                 for i, nm in enumerate(PAD[ch[half]]):
                     add(bar, half, analog_pad, nm, 4 if CYCLE[k] == "GA" else 8, 0.8, "pad", pan=(-0.4, 0, 0.4)[i], rev=0.4)
         for s, length, nm in MELODY[k]:
-            add(bar, s, glide_lead, nm, length, 0.85 * mel, "piano", pan=-0.1, rev=0.3)     # the lead here: the synth voice
+            add(bar, s, glide_lead, nm, length, 0.85 * mel, "piano", pan=-0.1, rev=0.3)     # the lead here: an oboe
             if lead:
                 add(bar, s, C.marimba, nm, length, 0.5, "lead", pan=0.15, rev=0.3)
     for b, bars, nm in HORN if horn_on else ():

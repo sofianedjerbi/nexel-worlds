@@ -72,7 +72,7 @@ block(24, piano=0.0, roll=0.9, pad=0.9, bass=True, far=True)
 block(32, roll=1.0, pad=0.9, bass=True, far=True)
 block(40, piano=0.9, pad=0.7)
 
-GAIN = {"piano": 1.0, "chords": 1.0, "whistle": 0.8, "pad": 0.75, "bass": 0.5, "air": 1.0}
+GAIN = {"piano": 1.0, "chords": 1.6, "whistle": 0.8, "pad": 1.0, "bass": 0.5, "air": 1.0}
 
 
 def air():

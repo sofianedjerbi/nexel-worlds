@@ -194,3 +194,24 @@ https://www.izotope.com/en/learn/essential-tips-for-mixing-reverb.html and https
 loudness https://blog.audiokinetic.com/loudness-processing-best-practices-series-chapter1-loudness-measurement-part2 and
 https://designingsound.org/2013/02/20/different-loudness-ranges-for-console-and-mobile-games ; low interval limits
 https://www.sweetwater.com/insync/low-interval-limit/
+
+
+## Recorded instruments (2026-11-13)
+
+The user: "Instruments sounds like Midi default windows sample.. so ugly". Every instrument was synthesised from sines
+and filtered saws; no amount of tuning made that sound like an instrument.
+
+- Every instrument is now a recording of a real one, from public-domain (CC0) libraries: VCSL and VSCO 2 Community
+  Edition by Versilian Studios, and the FreePats Spanish classical guitar. `music/fetch_samples.py` downloads them
+  (about 600 MB, into `music/samples/`, not committed); `music/sampler.py` builds a cache and plays them.
+- Who plays what: nylon guitar (Meadow Road), vibraphone (night), oboe (boss, was the synth voice), marimba, concert
+  harp (was the electric piano: a recorded 1980s synth piano was tried and dropped as the likeliest to still sound
+  "MIDI"), clarinet, harmonica (was the melodica), flute, plucked double bass (both basses), violas and cellos (the
+  pad), a real shaker and woodblock. Boss: concert bass drum for the stomps, plucked cellos, French horn.
+- The sampler takes the nearest recorded pitch (3 semitones away at most in the current scores) and the dynamic layer
+  for the velocity, corrects each recording's own tuning, and loops held notes inside their steady part. File names
+  count octaves differently per library, so the octave is read from the sound.
+- Each recording is set to the loudness its synthesised version had (`LEVEL` in `compose.py`), so the mixes moved little.
+  The audit then asked for: the harmonica and the shaker darker (`EQ` in `sampler.py`), the night band up 2 to 4 dB.
+  Final audit: 0 failures.
+- Not judged by ear. Still synthesised on purpose: the tape hiss, the night air, and all sound effects (`sfx.py`).

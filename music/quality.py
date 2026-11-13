@@ -33,7 +33,7 @@ def tracks():
     minor = dict(key="B minor", cycle=night.CYCLE, melody=C.MELODY, swing=0.5)
     return [road,
             minor | dict(id="night", title="Lantern Road", bpm=night.BPM, lead="vibraphone", tones=played({k: [v] for k, v in night.ROOT.items()}, night.PAD, night.HAND), voicing=lambda i, at, ln, ch: [C.midi(n) for n in night.HAND[ch]]),
-            minor | dict(id="boss", title="Old Mossback", bpm=boss.BPM, lead="synth lead", tones=played({k: [v[0]] for k, v in boss.ROOT.items() if k in boss.PAD}, boss.PAD, boss.PIZZ), voicing=lambda i, at, ln, ch: [C.midi(n) for n in boss.PAD[ch]])] + [
+            minor | dict(id="boss", title="Old Mossback", bpm=boss.BPM, lead="oboe", tones=played({k: [v[0]] for k, v in boss.ROOT.items() if k in boss.PAD}, boss.PAD, boss.PIZZ), voicing=lambda i, at, ln, ch: [C.midi(n) for n in boss.PAD[ch]])] + [
             p | dict(lead=D.NAMES[p["band"]["lead"]], voicing=(lambda p: lambda i, at, ln, ch: D.hand(p, i, at, ln, ch))(p)) for p in D.PIECES]
 
 
@@ -128,6 +128,9 @@ def practice(p, seconds, voices, leads):
 
 REGISTER = {"nylon": "A4", "marimba": "D5", "rhodes": "C5", "clarinet": "E5", "melodica": "E5", "vibes": "A4", "flute": "D5", "glide_lead": "A4",
             "epiano": "A3", "analog_pad": "F#3", "moog_bass": "D2", "upright": "G2", "shaker": "C4", "woodblock": "C4"}
+SHOWN = {"nylon": "nylon guitar", "marimba": "marimba", "rhodes": "concert harp", "clarinet": "clarinet", "melodica": "harmonica", "vibes": "vibraphone",
+         "flute": "flute", "glide_lead": "oboe", "epiano": "harp, chords", "analog_pad": "violas and cellos", "moog_bass": "double bass", "upright": "double bass (2)",
+         "shaker": "shaker", "woodblock": "woodblock"}        # what each voice is a recording of
 ROLE = {"nylon": "lead", "marimba": "lead", "rhodes": "lead", "clarinet": "lead", "melodica": "lead", "vibes": "lead", "glide_lead": "lead", "flute": "second",
         "epiano": "chords", "analog_pad": "pad", "moog_bass": "bass", "upright": "bass", "shaker": "percussion", "woodblock": "percussion"}
 
@@ -151,7 +154,7 @@ def tone(name):
         a, b, c = np.log(S[k - 1:k + 2] + 1e-30)
         cents = 1200 * np.log2((k + 0.5 * (a - c) / (a - 2 * b + c)) * SR / n / f0)
     share = lambda lo, hi: 10 * np.log10(S[(fr >= lo) & (fr < hi)].sum() / S.sum() + 1e-12)
-    row = {"name": name, "role": ROLE[name], "note": note, "loudness": round(C.lufs(np.stack([y[:int(1.2 * SR)]] * 2)), 1), "peak": round(db(pk), 1),
+    row = {"name": SHOWN[name], "role": ROLE[name], "note": note, "loudness": round(C.lufs(np.stack([y[:int(1.2 * SR)]] * 2)), 1), "peak": round(db(pk), 1),
            "attack_ms": round(half / SR * 1000, 1), "centroid_hz": int((fr * S).sum() / S.sum()), "above_4k_db": round(share(4000, 24000), 1),
            "below_40_db": round(share(0, 40), 1), "cents": None if cents is None else round(float(cents), 1),
            "cut_db": round(db(np.abs(raw[-48:]).max() / np.abs(raw).max()), 0), "dc": round(db(abs(y.mean()) / pk), 0)}
