@@ -1,4 +1,4 @@
-"""Experience (felling, mining, crafting, hunting) and the item magnet."""
+"""Experience (mining ore, crafting, hunting) and the item magnet."""
 
 from helpers import run
 from megastructure.sim import Creature
@@ -13,10 +13,16 @@ def test_levels_get_longer():
     assert level_of(17)[0] == 2
 
 
-def test_work_and_hunting_give_experience(world):
+def test_ore_and_hunting_give_experience_and_other_blocks_none(world):
     sim, a = world
-    sim.world.set(a.x + 1, a.y, block="ore")
     a.add("pickaxe")
+    a.add("axe")
+    for block, tool in (("tree", "axe"), ("rock", "pickaxe"), ("stump", "axe"), ("ripe_crop", None)):     # (they gave 2, 1, 1, 2)
+        sim.world.set(a.x + 1, a.y, block=block)
+        assert run(sim, a, "dig", {"dir": "E", **({"with": tool} if tool else {})})["ok"]
+        assert a.xp == 0, block
+    assert run(sim, a, "dig_down", {"with": "pickaxe"})["ok"] and a.xp == 0                              # (2)
+    sim.world.set(a.x + 1, a.y, block="ore")
     assert run(sim, a, "dig", {"dir": "E", "with": "pickaxe"})["ok"]
     assert a.xp == 4
     hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y, 10); sim.next_creature += 1

@@ -3,8 +3,9 @@
 from .constants import sec
 from .entities import Agent
 
-# experience for felling, mining, harvesting, crafting and hunting
-XP_DIG = {"tree": 2, "bare_fruit_tree": 2, "stump": 1, "rock": 1, "ore": 4, "ripe_crop": 2}
+# experience for mining ore, crafting and hunting. Taking a block gives none, but for ore (as the sandbox classic has
+# it: it was 2 for a tree, 1 for a rock or a stump, 2 for a ripe crop, 1 or 2 for digging down)
+XP_DIG = {"ore": 4}
 XP_KILL = {"chicken": 2, "calf": 1, "cow": 4, "tusker": 8, "pincer": 3, "strawman": 10, "wyrm": 20, "mossback": 100, "sporeling": 1}
 XP_CRAFT = 1
 MAGNET_R = 1                 # items within this reach (Movement.near: a circle, height counted) come to you...

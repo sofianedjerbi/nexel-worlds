@@ -20,7 +20,6 @@ class Underground:
         if DEEPER.get(self.world.ground(x, y)) != deeper or self.world.block(x, y) != "none":
             raise ActionError("changed", "something changed there")
         a.add("dirt")
-        self.gain_xp(a, 1, x, y)
         self.set_tile(x, y, ground=deeper, by=a, cause="dig")
         return {"got": {"dirt": 1}, "depth": DEPTH[deeper]}
 
@@ -44,6 +43,5 @@ class Underground:
             raise ActionError("changed", "something changed here")
         z = self.height(a)
         a.add("stone" if z < 0 or z > 1 else "dirt", 1)
-        self.gain_xp(a, 2, x, y)
         self.set_cell(x, y, z, False, by=a, cause="dig_down")
         return {"level": self.height(a), **self.fell(a, z - self.height(a))}
