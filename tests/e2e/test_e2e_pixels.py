@@ -151,6 +151,6 @@ def test_smoke_shadows_and_glows_are_round_in_the_lands_pixels(game, zoom):
     assert game.js("__round") == 0 and len(rows) > 400
     off = [r for r in rows if r[3] != zoom or r[2] % zoom or r[2] <= 0 or any(v != int(v) for v in r)]
     assert not off, off[:5]
-    game.js("(() => { __rows.length = 0; ctx.fillStyle = '#000'; pixelOval(200, 200, 6, 2.5, 0, .5); return 1; })()")   # (the shadow under you)
-    assert [r[2] // zoom for r in game.js("__rows")] == [8, 10, 12, 10, 8]
+    under = game.js("(() => { __rows.length = 0; ctx.fillStyle = '#000'; pixelOval(200, 200, 6, 2.5, 0, .5); return __rows.slice(); })()")
+    assert [r[2] // zoom for r in under] == [8, 10, 12, 10, 8]              # (the shadow under you; read at once: a frame draws more)
     assert not game.errors
