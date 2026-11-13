@@ -1,6 +1,10 @@
 // Behind a wall or a mountain you'd be hidden (behind.js: clipBehind). Instead, a circle round you is seen through
-// it. The rule is one: inside the circle the land is drawn without the rock in front of you, and nothing else
-// changes. The rock in front: what stands two layers or more over you, south of your row. The land without it is
+// it. The rule is one: inside the circle the land is drawn without the rock in the way, and nothing else changes.
+// The rock in the way: of the mass that hides you (the ground two layers or more over you, all that joins up with
+// what is drawn over you), the tiles on the line of sight to the place you are in, which is the ground you could
+// walk or drop to from where you stand without leaving the circle. So the river ahead of you along a bank that turns
+// shows, not only what is north of your feet; a cliff with nothing of that place behind it stays whole, and so does
+// a rock that stands apart, whatever it hides. The land without it is
 // painted by the land's own painter (relief.js: reliefSteps), the few tiles round you, every shape and colour as it
 // is with the rock there: the ground you stand on with its water, the cliff behind you down to its foot, a step, a
 // ledge. Of that picture only what the rock is drawn over is put on the screen: ground that shows anyway is never
@@ -14,15 +18,35 @@
 // the foot of your tile: relief.js); from, full: the share of you that's hidden where it starts and where it is whole
 // (a ledge a layer high in front of you hides your legs: nothing; two layers leave the top of your head: the circle);
 // wait: seconds hidden before it comes; far: tiles south to look for ground drawn up over you; box: tiles across
-// that are painted (the circle, wherever you are on your tile); ms: a frame's share of painting it; turn: seconds a new picture takes to come over the one before; whole (tests): no rock is left out and all of the
-// picture is shown: it must then be the land's own, to the pixel
-const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, box: 9, ms: 2.5, turn: .12, whole: false};
+// that are painted (the circle, wherever you are on your tile); ms: a frame's share of painting it; turn: seconds a
+// new picture takes to come over the one before; near: how far from your tile (tiles) the place you are in goes;
+// whole (tests): no rock is left out and all of the picture is shown: it must then be the land's own, to the pixel
+const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, box: 9, ms: 2.5, turn: .12, near: 4.1, whole: false};
 // how strong, the height you stand at, your row, its centre (tiles), its canvas, how long you've been hidden, the land
 // without the rock (pic), the next one being painted (job), the one before (old) and how far pic has come over it (mix)
 const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, c2: null, t: 0, pic: null, job: null, old: null, mix: 1};
 
-// The rock that is seen through
-const xrayRock = (tx, ty) => ty > xray.row && levelAt(tx, ty) >= xray.L + 2 && !XRAY.whole;
+// The rock that is seen through (the picture's: xrayPicture)
+function xrayRock(tx, ty) {
+  const P = xray.pic, i = P ? tx - P.rx : -1, j = P ? ty - P.ry : -1;
+  return i >= 0 && i < P.rw && j >= 0 && j < P.rh && P.rock[j * P.rw + i] === 1;
+}
+// The place you are in: the ground you could walk or drop to from your tile (your height, a step up, or lower; no
+// rock on the way), no further than XRAY.near. -> column of tiles -> its rows of that ground
+function xrayPlace(tx, row, L) {
+  const cols = new Map(), seen = new Set([tx + "," + row]), todo = [[tx, row]];
+  while (todo.length) {
+    const [x, y] = todo.pop();
+    if (!cols.has(x)) cols.set(x, []);
+    cols.get(x).push(y);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, key = nx + "," + ny;
+      if (seen.has(key) || (nx - tx) ** 2 + (ny - row) ** 2 > XRAY.near ** 2 || tile(nx, ny) === null || levelAt(nx, ny) > L + 1) continue;
+      seen.add(key); todo.push([nx, ny]);
+    }
+  }
+  return cols;
+}
 // How clear the circle is at a spot as drawn (tiles, lifted with its ground): 0 the land as it is, 1 seen through
 function xrayAt(x, y) {
   if (xray.a <= .01) return 0;
@@ -94,13 +118,32 @@ function* xrayPicture(tx, key, near) {
   for (let ty = xray.row - 14; ty <= xray.row + 14; ty++) for (let x = tx - 5; x <= tx + 5; x++) { const l = levelAt(x, ty); lo = Math.min(lo, l); hi = Math.max(hi, l); }
   const y0 = Math.max(xray.row - 14, (y + shOf(lo) >> 4) - 1), y1 = Math.min(xray.row + 14, y + h + shOf(hi) >> 4);   // every row of tiles that can be drawn in it
   const R = {x: tx - (w >> 1), y: y0, w, h: y1 - y0 + 1}, gh = R.h * 16, ground = new Uint32Array(W * gh);   // (its ground: the blocks' own px, tiles.js)
-  const row = xray.row, L = xray.L, rock = (x, ty) => ty > row && levelAt(x, ty) >= L + 2 && !XRAY.whole;   // (the rock seen through, from where you were when this was started)
+  // the rock seen through, from where you were when this was started: on the line of sight to a tile of your place
+  // (south of it in its column, and high enough to be drawn over it: two layers a row), and of the mass that hides
+  // you (gone through from what is over your tile and the two beside it, tile to tile)
+  const L = xray.L, row = xray.row, place = xrayPlace(tx, row, L), mass = new Set(), todo = [];
+  const sight = (x, ty) => {
+    const lv = XRAY.whole ? -99 : levelAt(x, ty), rows = lv >= L + 2 && place.get(x);
+    return !!rows && rows.some((gy) => gy < ty && lv - levelAt(x, gy) > 2 * (ty - gy) - 2);
+  };
+  const at = (x, ty) => (x - tx + 8) * 64 + ty - row + 24, join = (x, ty) => { if (!mass.has(at(x, ty))) { mass.add(at(x, ty)); todo.push([x, ty]); } };
+  for (let x = tx - 1; x <= tx + 1; x++) if ((place.get(x) || []).includes(row)) for (let ty = row + 1; ty <= row + XRAY.far; ty++) if (sight(x, ty)) join(x, ty);
+  while (todo.length) {
+    const [x, ty] = todo.pop();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (Math.abs(x + dx - tx) <= 6 && Math.abs(ty + dy - row) <= 20 && levelAt(x + dx, ty + dy) >= L + 2) join(x + dx, ty + dy);
+  }
+  const rock = (x, ty) => mass.has(at(x, ty)) && sight(x, ty);
   for (const b of near) {
     const bx = (b.bx * B - R.x) * 16, by = (b.by * B - R.y) * 16, x0 = Math.max(0, bx), x1 = Math.min(W, bx + BW);
     if (x1 > x0) for (let yy = Math.max(0, by); yy < Math.min(gh, by + BW); yy++) ground.set(b.px.subarray((yy - by) * BW + x0 - bx, (yy - by) * BW + x1 - bx), yy * W + x0);
   }
   const see = {keep: new Uint8Array((w + 4) * (R.h + 4)), c0: y - R.y * 16, c1: y - R.y * 16 + h, state: new Uint8Array(W * h), cover: new Uint8Array(W * h), wet: new Uint8Array(W * h)};
-  for (let j = -2; j < R.h + 2; j++) for (let i = -2; i < w + 2; i++) see.keep[(j + 2) * (w + 4) + i + 2] = rock(R.x + i, R.y + j) ? 0 : 1;
+  const rocks = new Uint8Array(w * R.h);
+  for (let j = -2; j < R.h + 2; j++) for (let i = -2; i < w + 2; i++) {
+    const is = rock(R.x + i, R.y + j);
+    see.keep[(j + 2) * (w + 4) + i + 2] = is ? 0 : 1;
+    if (is && i >= 0 && i < w && j >= 0 && j < R.h) rocks[j * w + i] = 1;
+  }
   see.base = (R, put, lift, minLv) => {                    // the ground itself, each tile kept at the lowest level (water shows through it at the sea's)
     for (let j = 0; j < R.h; j++) for (let i = 0; i < w; i++) {
       const keep = see.keep[(j + 2) * (w + 4) + i + 2], Y = j * 16 + lift;
@@ -119,7 +162,7 @@ function* xrayPicture(tx, key, near) {
   let any = 0;
   for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) { seen[f] = 1; any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
   const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(m, W, h), 0, 0);
-  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, any};
+  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, any, rock: rocks, rx: R.x, ry: R.y, rw: w, rh: R.h};
 }
 
 // The circle itself, over the land and under everything standing on it

@@ -9,7 +9,7 @@ const pileSince = new Map();   // when each pile on the ground was first shown (
 function frame(now) {
   requestAnimationFrame(frame);
   const began = performance.now();
-  const dt = Math.min(.1, (now - lastT) / 1000); lastT = now;
+  const dt = Math.max(0, Math.min(.1, (now - lastT) / 1000)); lastT = now;   // (never back in time: a frame stamped before the last one moved every body standing still by 0/0, for good)
   const t = now / 1000;
   for (const p of ents.values()) {
     if (p.e && p.e.kind === "agent" && p.e.id === myId && walking && p.walking) { walkOn(p, dt, now); continue; }   // your own walk (walk.js)

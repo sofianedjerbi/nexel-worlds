@@ -64,11 +64,11 @@ def test_the_circle_is_painted_by_the_lands_own_painter(game):
     game.stamp(-7, -6, rows, levels=lv, roofs=roofs)
     # (the land on the screen built, and you standing where the server has you: waited for, however busy the machine)
     built = BUILT
-    at = lambda X, Y: game.wait(f"(() => {{ const p = ents.get('agent' + myId); return !!p && !!p.e && p.x === {X} && p.y === {Y} && !!myAt && myAt.x === {X} && myAt.y === {Y}; }})()", 8000)
-    game.sleep(600); game.wait(built, 8000)
+    at = lambda X, Y: game.wait(f"(() => {{ const p = ents.get('agent' + myId); return !!p && !!p.e && p.x === {X} && p.y === {Y} && !!myAt && myAt.x === {X} && myAt.y === {Y}; }})()", 20000)
+    game.sleep(600); game.wait(built, 20000)
     for dx, dy in [(0, 0), (-3, 1), (3, 0), (1, 1)]:
         x, y = game.pos()
-        game.rpc("dev_teleport", x=x + dx, y=y + dy); at(x + dx, y + dy); game.wait(built, 8000); game.sleep(200)
+        game.rpc("dev_teleport", x=x + dx, y=y + dy); at(x + dx, y + dy); game.wait(built, 20000); game.sleep(200)
         shown, bad = frames(game, "const A = shot('whole'), any = xray.a === 1 && xray.pic.any; return [any, differ(A, shot('off'))];")
         assert shown > 10000 and bad == 0, (dx, dy, shown, bad)
         game.rpc("dev_teleport", x=x, y=y); at(x, y)
@@ -154,29 +154,78 @@ def test_the_side_of_a_cliff_beside_open_water_is_not_seen_through(game):
     assert not game.errors
 
 
+def stamp_levels(game, f):
+    """A 15x15 scene round you: f(i, j) -> the level of each tile, built and its circle ready. (Land, not water: a
+    scene of water left behind is in the next test's blocks.)"""
+    game.clear_area(12)
+    lv = [[f(i, j) for i in range(-7, 8)] for j in range(-7, 8)]
+    game.stamp(-7, -7, ["." * 15] * 15, levels=["".join("0123456789"[v] for v in r) for r in lv])
+    game.sleep(700); game.wait(BUILT, 20000); game.wait("xray.a > .95 && !xray.job", 20000)
+    return game.pos()
+
+
 def test_no_wall_is_drawn_where_the_rock_joins_a_hill_beside_you(game):
-    """In a river against a bank that turns: the rock in front of you (south) is one mass with the hill beside you
-    (east or west, on your row). Along that hill the circle had a strip of wall, half a tile wide and as tall as the
-    hill, standing alone between the water and the rock: the painter put a wall under the hill's side ledge where the
-    rock was left out, though the hill goes on south as that rock. There the rock now stays as it is drawn, under the
-    hill's tiles and under its side alike, and nothing of the side is left over higher up; the water shows up to it.
-    A corner, the bank in steps (the screenshot), a hill taller than the rock, each on both sides."""
-    scenes = {"corner": lambda i, j: 6 if j >= 1 or i >= 1 else 0, "steps": lambda i, j: 6 if i + j >= 1 else 0,
-              "taller": lambda i, j: 9 if i >= 1 and j <= 0 else 4 if j >= 1 else 0}
+    """Against a cliff that turns a corner: the rock in front of you (south) is one mass with the hill beside
+    you (east or west, on your row). Along that hill the circle had a strip of wall, half a tile wide and as tall as
+    the hill, standing alone between the ground and the rock (in a river: the screenshot): the painter put a wall
+    under the hill's side ledge where the rock was left out, though the hill goes on south. There the rock now stays
+    as it is drawn, under the hill's tiles and along its side alike, and nothing of the side is left over higher up;
+    the ground shows up to it.
+    A corner, a hill taller than the rock and one lower, each on both sides."""
+    scenes = {"corner": lambda i, j: 6 if j >= 1 or i >= 1 else 0, "taller": lambda i, j: 9 if i >= 1 and j <= 0 else 4 if j >= 1 else 0,
+              "lower": lambda i, j: 3 if i >= 1 and j <= 0 else 8 if j >= 1 else 0}
     for name, f in scenes.items():
         for side in (1, -1):
-            game.clear_area(12)
-            lv = [[f(side * i, j) for i in range(-7, 8)] for j in range(-7, 8)]
-            game.stamp(-7, -7, ["".join("." if v else "~" for v in r) for r in lv], levels=["".join("0123456789"[v] for v in r) for r in lv])
-            game.sleep(700); game.wait(BUILT, 20000); game.wait("xray.a > .95 && !xray.job", 20000)
-            x, y = game.pos()
+            x, y = stamp_levels(game, lambda i, j: f(side * i, j))
             # along the hill: its column and the half of your tile beside it, from the top of the rock in front down
-            # to the foot of your row; the water: the other half of your tile
+            # to the foot of your row; the ground: the other half of your tile
             top = f"{y} + 1 - {f(0, 1)} / 2"
             hill = f"{x} + 11 / 16, {top}, {x} + 2, {y} + 1" if side > 0 else f"{x} - 1, {top}, {x} + 5 / 16, {y} + 1"
-            water = f"{x}, {y}, {x} + 8 / 16, {y} + 1" if side > 0 else f"{x} + 8 / 16, {y}, {x} + 1, {y} + 1"
-            same, seen = frames(game, f"const A = shot('clear'), B_ = shot('off'); return [box(A, {hill}).join() === box(B_, {hill}).join(), box(A, {water}).join() !== box(B_, {water}).join()];")
+            open_ = f"{x}, {y}, {x} + 8 / 16, {y} + 1" if side > 0 else f"{x} + 8 / 16, {y}, {x} + 1, {y} + 1"
+            same, seen = frames(game, f"const A = shot('clear'), B_ = shot('off'); return [box(A, {hill}).join() === box(B_, {hill}).join(), box(A, {open_}).join() !== box(B_, {open_}).join()];")
             assert same and seen, (name, side, same, seen)
+    game.clear_area(12)
+    assert not game.errors
+
+
+def test_the_circle_shows_the_place_you_are_in_not_only_what_is_behind_you(game):
+    """Along a bank that goes off in steps (a river's: the screenshot), the ground ahead is hidden by bank tiles on
+    your own row and north of it. The circle saw through the rock south of your row only: it stopped dead at your feet
+    and at your side, and showed nothing of where you were heading. The rock seen through is now what stands on the
+    line of sight to the place you are in (the ground you could walk to from where you stand, inside the circle): the
+    ground ahead shows, all of your own tile shows, the bank's foot stays as it is drawn, and no wall is painted."""
+    for side in (1, -1):
+        x, y = stamp_levels(game, lambda i, j: 6 if side * i + j >= 1 else 0)
+        ahead = f"{x + side}, {y - 1}, {x + side + 1}, {y}"                       # the ground a step on, round the bank's corner
+        mine = f"{x}, {y}, {x + 1}, {y + 1}"
+        foot = [f"{x + side}, {y}, {x + side + 1}, {y + 1}", f"{x}, {y + 1}, {x + 1}, {y + 2}"]   # the bank, beside you and in front
+        near = f"{x - 2}, {y - 2}, {x + 3}, {y + 1}"
+        out = frames(game, f"""const A = shot('clear'), B_ = shot('off'), diff = (b) => box(A, ...b).join() !== box(B_, ...b).join();
+          const walls = new Set(); for (let k = 1; k <= 6; k++) for (const c of colsOf(hillSheet(k)).bands) walls.add([c[0] | 0, c[1] | 0, c[2] | 0].join());
+          const px = box(A, {near}); let n = 0; for (let i = 0; i < px.length; i += 3) if (walls.has(px[i] + ',' + px[i + 1] + ',' + px[i + 2])) n++;
+          return [diff([{ahead}]), diff([{mine}]), diff([{foot[0]}]), diff([{foot[1]}]), n, xrayRock({x + side}, {y}), xrayRock({x}, {y + 1})];""")
+        assert out == [True, True, False, False, 0, True, True], (side, out)
+    game.clear_area(12)
+    assert not game.errors
+
+
+def test_a_rock_that_stands_apart_stays_whole_in_the_circle(game):
+    """Behind a wall, with a pillar standing in the meadow behind you: the pillar hides ground you could walk to, but
+    it is not the rock that hides you. It stays, whole: the circle shows it as the land has it with the wall in front
+    taken away (cut out like the wall, its foot was a square of the wall's own top in the middle of the grass)."""
+    game.clear_area(12)
+    game.stamp(-5, 1, ["." * 11] * 3, levels=["6" * 11] * 3)
+    game.stamp(1, -2, ["."], levels=["6"])
+    game.sleep(700); game.wait(BUILT, 20000); game.wait("xray.a > .95 && !xray.job", 20000)
+    x, y = game.pos()
+    area = f"{x} + 1, {y} - 3, {x} + 2, {y}"                 # the pillar's column, under the wall's top
+    on, off, rock = frames(game, f"return [box(shot('clear'), {area}), box(shot('off'), {area}), [xrayRock({x + 1}, {y - 2}), xrayRock({x}, {y + 1})]];")
+    assert on != off and rock == [False, True]
+    game.stamp(-5, 1, ["." * 11] * 3, levels=["0" * 11] * 3)  # the wall in front, gone
+    game.sleep(700); game.wait(BUILT, 20000)
+    game.wait("xray.a === 0", 20000)
+    assert on == frames(game, f"return box(shot('off'), {area});")
+    game.clear_area(12)
     assert not game.errors
 
 

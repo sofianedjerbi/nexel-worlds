@@ -17,7 +17,7 @@ class Game:
         self.page.keyboard.type(name)
         self.page.keyboard.press("Enter")
         self.name = name
-        self.wait("meObs && myPos()", 8000)
+        self.wait("meObs && myPos()", 25000)                 # (however busy the machine)
         self.rpc("dev_time", phase=.3)
 
     def js(self, expr, arg=None):
