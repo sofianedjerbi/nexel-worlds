@@ -86,17 +86,23 @@ def test_a_blocks_raised_ground_is_built_in_small_steps(game):
 
 
 def test_a_blocks_water_is_made_again_only_when_it_changed(game):
-    """Its bottom and its tint were made again whenever a tile of the block was drawn again, in the frame that showed it."""
-    game.stamp(3, -3, ["~~~", "~~~"])
-    game.sleep(900)
+    """Its bottom and its tint were made again whenever a tile of the block was drawn again, in the frame that showed it.
+    (The pond, the tile it grows by and the cobbled tile are put inside one block: at fixed places they fell on two
+    when the player woke near a block's edge, and the pond's block was then made again for a tile that is not its own.)"""
     x, y = game.pos()
-    game.js(f"(() => {{ const b = tileIdx({x + 4}, {y - 3})[0]; window.__b = b; window.__w = b.water; return b.water.any; }})()")
-    assert game.js("__w.any") is True
+    px, py = x + 3, y - 3
+    px -= max(0, px % 32 + 3 - 32)
+    py -= max(0, py % 32 + 3 - 32)
+    cx = px - 6 if px % 32 >= 6 else px + 7                      # a cobbled tile, away from the water, in its block
+    game.stamp(px - x, py - y, ["~~~", "~~~"])
+    game.sleep(900)
+    game.js(f"(() => {{ const b = tileIdx({px + 1}, {py})[0]; window.__b = b; window.__w = b.water; return b.water.any; }})()")
+    assert game.js("__w.any") is True and game.js(f"tileIdx({cx}, {py})[0] === __b && tileIdx({px}, {py + 2})[0] === __b") is True
     built = "!dirtyTiles.length && !__b.reliefGen && !__b.reliefDirty"
-    game.stamp(-4, 3, ["_"])                                     # a cobbled tile, away from the water: its block is built again
+    game.stamp(cx - x, py - y, ["_"])                            # its block is built again
     game.sleep(500); game.wait(built)
     assert game.js("__b.water === __w") is True
-    game.stamp(3, -1, ["~"])                                     # the pond grows
+    game.stamp(px - x, py + 2 - y, ["~"])                        # the pond grows
     game.wait("__b.water !== __w", 8000); game.wait(built)
     assert game.js("__b.water !== __w && __b.water.any && __b.water.foam.length > __w.foam.length") is True
 

@@ -10,7 +10,8 @@
 // icon, and the window, the cells and the buttons are bevelled, a light edge up and left, a dark one down and right.
 // (It was sixty small pictures at once, then twelve cards of several sizes: too much on the screen.)
 // Up and down move in the list and turn the page at its ends, left and right (or Tab, Q and E) change kind, Enter
-// makes (Shift: five), Home and End go to the first and the last of the kind, Esc closes.
+// makes (Shift: five), F is the switch, Home and End go to the first and the last of the kind, Esc closes. All of it
+// is done without a mouse: every button has its key, written on it while you play by keys (`kbd`: keyboard.js).
 
 const RECIPE_GROUPS = [
   ["Basics", "workbench", ["workbench", "campfire", "torch", "rope", "plank", "path", "boat", "mailbox"]],
@@ -66,6 +67,7 @@ function drawRecipes() {
     b.appendChild(iconCanvas(ic)); b.onclick = () => craftTurn({tab: title});
     tabs.appendChild(b);
   }
+  tabs.insertAdjacentHTML("beforeend", `<div class="ckeys"><kbd>Q</kbd><kbd>E</kbd></div>`);
   $("craftonly").className = "b " + (craftOnly ? "on" : "paper");
   el.innerHTML = v.shown.length ? "" : `<div class="cnone">${craftOnly ? "Nothing in " + esc(craftTab) + " can be made yet." : "Nothing here."}</div>`;
   for (const name of v.shown) {                             // the list: a name, lit if it can be made
@@ -120,9 +122,9 @@ function drawCraftDetail() {
   const btns = document.createElement("div"); btns.className = "cbtns";
   const b = document.createElement("div"); b.className = "b cbtn" + (ok ? "" : " off");
   b.textContent = ok ? "Craft" : !s.have ? "Missing materials" : `Go to a ${label(rc.station)}`;
-  if (ok) b.onclick = () => craftMake(name);
+  if (ok) { b.onclick = () => craftMake(name); b.insertAdjacentHTML("beforeend", "<kbd>Enter</kbd>"); }
   btns.appendChild(b);
-  if (ok && s.n >= 5) { const b5 = document.createElement("div"); b5.className = "b paper x5"; b5.textContent = "x5"; b5.title = "five at once (Shift+Enter)"; b5.onclick = () => craftMake(name, true); btns.appendChild(b5); }
+  if (ok && s.n >= 5) { const b5 = document.createElement("div"); b5.className = "b paper x5"; b5.innerHTML = "x5<kbd>Shift</kbd>"; b5.title = "five at once (Shift+Enter)"; b5.onclick = () => craftMake(name, true); btns.appendChild(b5); }
   el.append(head); el.insertAdjacentHTML("beforeend", `<div class="cblurb">${esc(BLURB[name] || "")}</div>`); el.append(needs, btns);
 }
 // Keys while it is open
@@ -137,7 +139,8 @@ function craftKey(k, e) {
   else if (k === "pagedown" || k === "pageup") craftTurn({page: craftPage + (k === "pagedown" ? 1 : -1)});
   else if (k === "home") craftTurn({page: 0});
   else if (k === "end") craftTurn({page: v.pages - 1, last: true});
-  else if (k === "enter" || k === " ") craftMake(craftFocus, e.shiftKey);
+  else if (k === "enter" || k === " ") { if (!e.repeat) craftMake(craftFocus, e.shiftKey); }      // (a held key makes one)
+  else if (k === "f") { if (!e.repeat) craftTurn({only: !craftOnly}); }
   else return false;
   return true;
 }

@@ -3,6 +3,10 @@
 //   you face and X the alternative one (milk, take down, till). 1-9 / Q pick what's in your hand, 0 empties it.
 //   C crafting and I inventory are navigated with the arrows, Enter uses, Esc closes. 1-9 and 0: the ten slots of
 //   your bar (an empty one: empty hands), ` empty hands.
+//   While the recipe book is open the keys are its own (craft.js): none of them acts on the world behind it (X took
+//   down what you faced, a number changed what you hold), but for the ones in BOOK_KEYS. One of the book and the
+//   inventory is open at a time. What a key does there is written on it (a cap on the button, `kbd`) while you
+//   play by keys (body.bykeys), and put away when the mouse moves.
 
 const KEYDIR = {w: "N", arrowup: "N", s: "S", arrowdown: "S", a: "W", arrowleft: "W", d: "E", arrowright: "E"};
 const CODEDIR = {KeyW: "N", ArrowUp: "N", KeyS: "S", ArrowDown: "S", KeyA: "W", ArrowLeft: "W", KeyD: "E", ArrowRight: "E"};
@@ -132,6 +136,12 @@ function cycleHand(step) {                       // Q: the next item of the hotb
   selectItem(j < 0 ? have[have.length - 1] : j >= have.length ? null : have[j]);
   toast(selected ? `In hand: ${label(selected)}` : "Empty hands");
 }
+const BOOK_KEYS = new Set(["c", "i", "m", "h", "f3", "t", "/", "+", "=", "-"]);   // what still does its usual thing with the recipe book open
+let capAt = null;
+addEventListener("mousemove", (e) => {
+  if (capAt && Math.abs(e.clientX - capAt.x) + Math.abs(e.clientY - capAt.y) > 4) document.body.classList.remove("bykeys");
+  capAt = {x: e.clientX, y: e.clientY};
+});
 function closePanels() {
   for (const id of ["bag", "mail", "craft"]) $(id).style.display = "none";
   drawGoals();
@@ -145,8 +155,8 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   e: () => useSelected(),
   q: () => cycleHand(1),
   "`": () => { selectItem(null); toast("Empty hands"); },
-  c: () => toggleCraft(),
-  i: () => toggleBag(),
+  c: () => { $("bag").style.display = "none"; toggleCraft(); },
+  i: () => { if (isOpen("craft")) toggleCraft(); toggleBag(); },
   m: () => { setMuted(!muted); toast(muted ? "Sound off (M)" : "Sound on (M)"); },
   h: () => $("helpbtn").click(),
   f3: () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; },
@@ -161,10 +171,10 @@ addEventListener("keydown", (e) => {
   if (document.activeElement === $("say") || document.activeElement === $("letter") || !me) return;
   const k = e.key.toLowerCase();
   if (k === "shift") { keys.add("shift"); runKey = true; syncWalk(); return; }
-  inputMode = "keys";
+  inputMode = "keys"; document.body.classList.add("bykeys");
   if (k === "escape") { if (isOpen("craft") || isOpen("bag") || isOpen("mail")) closePanels(); else selectItem(null); return; }
   // an open panel takes the arrows, Enter and Space
-  if (isOpen("craft") && craftKey(k, e)) { e.preventDefault(); return; }
+  if (isOpen("craft") && (craftKey(k, e) || !BOOK_KEYS.has(k))) { e.preventDefault(); return; }
   if (isOpen("bag") && bagKey(k, e)) { e.preventDefault(); return; }
   if (e.altKey && CODEDIR[e.code]) { e.preventDefault(); turn(CODEDIR[e.code]); return; }
   if (KEYDIR[k]) {   // only a real press counts: a held key's auto-repeat must not cancel a chop in progress

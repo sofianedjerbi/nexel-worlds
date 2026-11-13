@@ -77,6 +77,12 @@
   #craft .b.off { cursor:default; color:var(--ink2); text-shadow:none; background:#d6bd92; box-shadow:inset var(--q) var(--q) 0 #e6d2ac, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #bf9f74, calc(-1 * var(--q)) 0 #aa7959, var(--q) 0 #aa7959, 0 calc(-1 * var(--q)) #aa7959, 0 var(--q) #aa7959; }
   #craft .b.paper { color:var(--ink); text-shadow:none; background:#f3e5c2; box-shadow:inset var(--q) var(--q) 0 #fff8e6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #d9bd8f, calc(-1 * var(--q)) 0 #aa7959, var(--q) 0 #aa7959, 0 calc(-1 * var(--q)) #aa7959, 0 var(--q) #aa7959; } #craft .b.paper:hover { background:#fbf0d6; }
   #craft .b.on { color:#fff6e2; text-shadow:var(--q) var(--q) 0 #6b4a3a; background:#aa7959; box-shadow:inset var(--q) var(--q) 0 #8a5f4b, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }     /* (a switch that is on: pressed in) */
+  /* a key's cap on what it does, while you play by keys (keyboard.js): on a button, after its word */
+  #craft kbd { display:none; flex:none; align-items:center; height:calc(9 * var(--q)); padding:0 calc(2 * var(--q)); font:inherit; font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink); text-shadow:none;
+    background:#f3e5c2; box-shadow:inset var(--q) var(--q) 0 #fff8e6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #d9bd8f, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+  body.bykeys:not(.touch) #craft kbd { display:flex; }
+  #craft .b > kbd { margin:var(--q) 0 0 calc(4 * var(--q)); }                                        /* (beside the word: the two are centred together) */
+  #crafttabs .ckeys { display:flex; gap:calc(3 * var(--q)); margin:var(--q) 0 0 calc(-1 * var(--q)); }
   /* the bookmarks, down the side: the one you are on is of the window's own paper and runs into it */
   #crafttabs { position:absolute; left:calc(-19 * var(--q)); top:calc(4 * var(--q)); display:flex; flex-direction:column; gap:calc(3 * var(--q)); }
   .ctab { width:calc(20 * var(--q)); height:calc(20 * var(--q)); padding:calc(2 * var(--q)); cursor:pointer; background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #ecd9b4, calc(-1 * var(--q)) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
