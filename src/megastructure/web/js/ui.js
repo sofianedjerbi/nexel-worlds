@@ -6,8 +6,8 @@ function groundPreview(g, x, y) {
   if (g === ":") return [IMG.bridge, 0, 32, 16, 16, 0, 0];
   return [IMG.soil, 16, 16, 16, 16, 0, 0];
 }
-const ghosts = new Map();
-const ghostIcon = (n) => ghosts.get(n) || (ghosts.set(n, iconCanvas(n)), ghosts.get(n));
+const fulls = new Map();                         // an item's icon, kept (what lies on the ground is a smaller one: ghostIcon, loot.js)
+const fullIcon = (n) => fulls.get(n) || (fulls.set(n, iconCanvas(n)), fulls.get(n));
 function openCraft() { $("craft").style.display = "block"; drawRecipes(); }
 // item icons from the sheets: [image name, sx, sy]
 const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in column 0, produce in column 1, materials in 2-3
@@ -24,6 +24,33 @@ const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in co
   sign: ["signs", 0, 0], flag: ["gen", "flag"], bed: ["furniture", 0, 16, 16, 32], chair: ["furniture", 64, 32],
   table: ["furniture", 48, 48], plant: ["furniture", 48, 0, 16, 32], clock: ["furniture", 96, 48], rug: ["furniture", 0, 80], well: ["well", 0, 0, 32, 32], coop: ["coop", 160, 80, 32, 44], picnic_blanket: ["blanket", 2, 8, 44, 32], basket: ["basket", 0, 0], trough: ["barn", 0, 0], hay: ["barn", 0, 16],
 };
+// An item's picture is 16 x 16 art pixels, and wherever it shows, an art pixel is a whole number of screen pixels:
+// the land's own on the ground (zoom; loot.js), the frames' own in the HUD (--u: hudFit below). A thing bigger than a tile (a
+// boat, a bed, a well) is made smaller by whole pixels, never squeezed: each n x n block becomes one pixel, of the
+// colour most of it has (the darker of two as many: an outline holds). The px are worked out here and put once.
+const smalls = new Map();
+function smallArt(img, x, y, w, h, size = 16) {     // (size: how many px it may be across; 11 on the ground, loot.js)
+  const src = document.createElement("canvas"); src.width = w; src.height = h;
+  const sg = src.getContext("2d", {willReadFrequently: true}); sg.drawImage(img, x, y, w, h, 0, 0, w, h);
+  const d = sg.getImageData(0, 0, w, h).data, at = (i, j) => (j * w + i) * 4;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;                    // what is drawn of it (a mailbox is 8 px of its cell: as it is)
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (d[at(i, j) + 3] >= 128) { x0 = Math.min(x0, i); x1 = Math.max(x1, i); y0 = Math.min(y0, j); y1 = Math.max(y1, j); }
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1, n = Math.ceil(Math.max(bw, bh) / size), ow = Math.ceil(bw / n), oh = Math.ceil(bh / n), out = new ImageData(ow, oh);
+  const dark = (c) => (c >> 16) * 3 + (c >> 8 & 255) * 6 + (c & 255);
+  for (let j = 0; j < oh; j++) for (let i = 0; i < ow; i++) {
+    const seen = new Map(); let solid = 0, cells = 0;
+    for (let b = 0; b < n && j * n + b < bh; b++) for (let a = 0; a < n && i * n + a < bw; a++) {
+      const o = at(x0 + i * n + a, y0 + j * n + b); cells++;
+      if (d[o + 3] < 128) continue;
+      const c = d[o] << 16 | d[o + 1] << 8 | d[o + 2]; solid++; seen.set(c, (seen.get(c) || 0) + 1);
+    }
+    if (solid * 2 < cells) continue;
+    let best = 0, votes = 0;
+    for (const [c, v] of seen) if (v > votes || (v === votes && dark(c) < dark(best))) { best = c; votes = v; }
+    out.data.set([best >> 16, best >> 8 & 255, best & 255, 255], (j * ow + i) * 4);
+  }
+  return out;
+}
 function iconCanvas(name) {
   const c = document.createElement("canvas"); c.width = 16; c.height = 16; const g = c.getContext("2d");
   const ic = ICONS[name];
@@ -31,13 +58,31 @@ function iconCanvas(name) {
   if (!ic) { g.fillStyle = "#8a6a55"; g.fillRect(4, 4, 8, 8); return c; }
   if (ic[0] === "gen") { g.drawImage(IMG.gen, GEN[ic[1]] * 16, 0, 16, 16, 0, 0, 16, 16); return c; }
   const [img, x, y, w = 16, h = 16] = ic;
-  const k = 16 / Math.max(w, h), dw = Math.round(w * k), dh = Math.round(h * k);   // keep the shape
-  g.drawImage(IMG[img], x, y, w, h, (16 - dw) >> 1, (16 - dh) >> 1, dw, dh);
+  if (w <= 16 && h <= 16) { g.drawImage(IMG[img], x, y, w, h, (16 - w) >> 1, (16 - h) >> 1, w, h); return c; }
+  if (!smalls.has(name)) smalls.set(name, smallArt(IMG[img], x, y, w, h));
+  const small = smalls.get(name);
+  g.putImageData(small, (16 - small.width) >> 1, (16 - small.height) >> 1);
   return c;
 }
 // The bar at the bottom is what you carry: ten slots, keys 1 to 9 and 0. (No button on it: I opens the inventory,
 // C the crafting.) What is beyond ten kinds of thing is in the inventory.
 const BAR = 10;
+// The HUD's art pixels (--u1, --u, --u3: about 1, 2 and 3 CSS px), each a whole number of screen pixels, so a slot's
+// frame and the icon in it are cut on the screen's own grid (a phone with 2.625 screen px to a CSS px: 3, 5 and 8).
+// The bar's (--u) is a screen pixel less, and again, while its ten slots would not fit across, or the HUD would take
+// more than hudTall of the height (a phone: touch.js). Nothing of it is ever scaled.
+let hudU = 2, hudTall = 1, hudK = 2.5, hudSig = "";   // (hudK: CSS px an art pixel of the hearts and the food: 2.5, less where the two rows would not fit across)
+function hudFit() {
+  const d = window.devicePixelRatio || 1, st = document.documentElement.style, h = $("hud").offsetHeight, was = hudU;
+  let n = Math.max(1, Math.round(2 * d));
+  while (n > 1 && ((BAR * 32 - 2) * n / d > innerWidth - 16 || (h && h + 30 * (n / d - was) > innerHeight * hudTall))) n--;
+  hudU = n / d; hudK = Math.min(2.5, Math.max(1, Math.floor((innerWidth - 34) * d / 198)) / d);   // (two rows of ten icons: 99 art px each)
+  if (hudSig === (hudSig = [n, d].join())) return false;
+  st.setProperty("--u", hudU + "px"); st.setProperty("--u1", Math.max(1, Math.round(d)) / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px");
+  return hudU !== was;
+}
+hudFit(); addEventListener("resize", hudFit);
+new ResizeObserver(() => document.documentElement.style.setProperty("--hudh", $("hud").offsetHeight + "px")).observe($("hud"));   // (the bag sits on it)
 let slots = JSON.parse(localStorage.getItem("megastructure-slots") || "[]");
 function slotOrder(inv) {               // items keep their slot; new items take the first free one
   slots = slots.map((n) => (n && inv[n] ? n : null));
@@ -76,8 +121,7 @@ function drawHotbar(inv) {
 const HEART = [4, 84, 9, 8];                     // full; half and empty are the next 16 px cells along
 const APPLE = ["....sg...", "...sgg...", ".aa.s.aa.", "abbabbbba", "abcbbbbba", "abbbbbbba", "abbbbbbda", ".abbbbda.", "..aaaaa.."];
 const APPLE_COL = {a: "#664165", b: "#c87c86", c: "#e8b5ac", d: "#a8606e", s: "#7a5236", g: "#7fae5a"};
-const HUD_K = 2.5;                               // CSS px an art pixel in the vitals and the xp bar
-function pixelCanvas(cv, w, h, k = HUD_K) {      // sizes a canvas for art w x h at about k CSS px an art pixel
+function pixelCanvas(cv, w, h, k = hudK) {       // sizes a canvas for art w x h at about k CSS px an art pixel
   const SC = Math.max(1, Math.round(k * (window.devicePixelRatio || 1)));
   if (cv.width !== w * SC || cv.height !== h * SC) {
     cv.width = w * SC; cv.height = h * SC;
@@ -88,7 +132,7 @@ function pixelCanvas(cv, w, h, k = HUD_K) {      // sizes a canvas for art w x h
 }
 function drawIcons(cv, icon, value, gain = 0) {   // gain: food points to preview (what eating would give back)
   const N = 10, hearts = icon === "heart", iw = hearts ? HEART[2] : APPLE[0].length, ih = hearts ? HEART[3] : APPLE.length;
-  const step = iw + 1, sig = [icon, value, gain, window.devicePixelRatio || 1].join();
+  const step = iw + 1, sig = [icon, value, gain, window.devicePixelRatio || 1, hudK].join();
   if (cv.dataset.sig === sig) return;
   cv.dataset.sig = sig;
   const [g, SC] = pixelCanvas(cv, step * (N - 1) + iw, 9);

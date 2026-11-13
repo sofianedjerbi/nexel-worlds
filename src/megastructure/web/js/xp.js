@@ -60,8 +60,8 @@ function drawOrbs(sx, sy, S, dt, list) {
     const k = Math.min(1, m.age / .28);
     if (!p || k >= 1) { magnets.splice(i, 1); if (p) sfx("collect", p.tx, p.ty); continue; }
     const e = k * k, x = m.x + (p.x + .5 - m.x) * e, y = m.y + (p.y + .3 - UP - m.y) * e - Math.sin(k * Math.PI) * .35;
-    const sz = 10 * (1 - .4 * e) * z, lift = m.lift + (liftOf(p) - m.lift) * e;   // (shrinks and rises smoothly)
-    list.push({y: y - .45, x, fx: () => ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(sy(y) - lift - sz / 2), sz, sz)});
+    const sz = DROP * z, lift = m.lift + (liftOf(p) - m.lift) * e, a = k > .7 ? (1 - k) / .3 : 1;   // (as it lay, never smaller: it fades as it is caught)
+    list.push({y: y - .45, x, fx: () => { ctx.globalAlpha = a; ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(sy(y) - lift - sz / 2), sz, sz); ctx.globalAlpha = 1; }});
   }
 }
 
@@ -98,10 +98,11 @@ function drawXp() {
 // (#xplevel, only once you have one).
 const TRACK = [36, 36, 40, 7], XP_K = 2;   // the track in sliders.png; CSS px an art pixel
 function drawXpBar(k, level) {
-  // as wide as the whole item row (the hotbar and the craft slot), vitals likewise
-  const cv = $("xpbar"), dpr = window.devicePixelRatio || 1, bar = $("hotbar").parentElement.offsetWidth;   // (its layout width: the HUD may be scaled)
-  if ($("vitals").style.width !== bar + "px") $("vitals").style.width = bar + "px";
-  const SC0 = Math.max(1, Math.round(XP_K * dpr)), w = Math.max(40, Math.round(bar * dpr / SC0)), h = TRACK[3];
+  // as wide as the HUD: the bar's ten slots, or the hearts and the food where those are wider (a phone). Worked out,
+  // not measured: measured, it kept the width of a bar that had since been made smaller to fit (hudFit, ui.js)
+  const cv = $("xpbar"), dpr = window.devicePixelRatio || 1, thumbs = document.body.classList.contains("touch");
+  const bar = Math.max((BAR * 32 - 2) * hudU, 198 * Math.max(1, Math.round(hudK * dpr)) / dpr + (thumbs ? 18 : 8));
+  const SC0 = Math.max(1, Math.round(XP_K * dpr)), w = Math.max(40, Math.floor(bar * dpr / SC0 + 1e-6)), h = TRACK[3];
   const lv = level ? String(level) : "";
   if ($("xplevel").textContent !== lv) $("xplevel").textContent = lv;
   const sig = [w, Math.round(k * w), dpr].join();

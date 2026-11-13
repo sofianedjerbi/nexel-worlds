@@ -14,7 +14,7 @@ const BITE_AT = [[6, 1, 2.6], [3, 0, 3.2], [4, 4, 9]];   // each bite: centre x,
 function biteIcon(name, bites) {
   const key = name + bites;
   if (biteIcons.has(key)) return biteIcons.get(key);
-  const big = ghostIcon(name).getContext("2d").getImageData(0, 0, 16, 16).data;
+  const big = fullIcon(name).getContext("2d").getImageData(0, 0, 16, 16).data;
   const c = document.createElement("canvas"); c.width = c.height = 8; const g = c.getContext("2d"), img = g.createImageData(8, 8);
   let left = 0;
   for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
@@ -94,7 +94,7 @@ function drawEntity(p, sx, sy, S, t, now) {
       bob += pose.biting ? z : 0;                    // (on top of a hop: you may be walking)
       if (pose.biting && p.lastBite !== pose.n) {
         p.lastBite = pose.n; sfx("eat", p.x, p.y);
-        const mx = p.x + .5 + (p.fx || 0) * .28, cols = spriteColors([ghostIcon(action.item), 0, 0, 16, 16]);
+        const mx = p.x + .5 + (p.fx || 0) * .28, cols = spriteColors([fullIcon(action.item), 0, 0, 16, 16]);
         for (let i = 0; i < 4; i++) parts.push({x: mx + (Math.random() - .5) * .25, y: p.y + .35 - UP, vx: (Math.random() - .5) * .8,
           vy: -.3 - Math.random() * .6, g: 9, floor: p.y + .85 - UP + Math.random() * .1, life: .5 + Math.random() * .3, age: 0, c: cols[i % cols.length], s: 1});
       }

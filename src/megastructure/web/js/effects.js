@@ -100,7 +100,7 @@ function drawFlyers(sx, sy, S, now) {
     const f = flyers[i], k = (now - f.t0) / FLY_MS;
     if (k >= 1) { flyers.splice(i, 1); continue; }
     const who = f.by && [...ents.values()].find((q) => q.e && q.e.name === f.by);
-    let x = f.x, y = f.y, sc = 1;
+    let x = f.x, y = f.y, gone = false;
     if (k < 0 && !f.drop) continue;
     if (k < 0) {                                    // falling from the tree, then one small bounce, then resting
       const tf = (now - f.drop.t0) / 1000;
@@ -108,13 +108,12 @@ function drawFlyers(sx, sy, S, now) {
       if (tf * 1000 < f.drop.fall) y = f.drop.top + .5 * FRUIT_G * tf * tf;
       else { const b = (tf * 1000 - f.drop.fall) / BOUNCE_MS; if (b < 1) y = f.y - Math.sin(b * Math.PI) * .14; }
       if (tf * 1000 - f.drop.fall > 0 && !f.landed) { f.landed = true; sfx("plant", f.x, f.y); }
-    } else if (who) {                                 // arc into the picker's hands, shrinking as it is caught
+    } else if (who) {                                 // arc into the picker's hands, fading as it is caught (never smaller: its pixels are the land's)
       const tx = who.x + .5, ty = who.y + .1 - UP, e = k * k * (3 - 2 * k);
-      x = f.x + (tx - f.x) * e; y = f.y + (ty - f.y) * e - Math.sin(k * Math.PI) * 1.1; sc = 1 - k * .45;
-    } else { y -= k * .8; sc = 1 - k; }
-    ctx.globalAlpha = k > .85 ? (1 - k) / .15 : 1;
-    const w = 16 * z * sc;
-    ctx.drawImage(IMG.trees, f.ix, f.iy, 16, 16, Math.round(sx(x) - w / 2), Math.round(sy(y, x) - w / 2), Math.round(w), Math.round(w));
+      x = f.x + (tx - f.x) * e; y = f.y + (ty - f.y) * e - Math.sin(k * Math.PI) * 1.1;
+    } else { y -= k * .8; gone = true; }             // (nobody to catch it: it rises and fades)
+    ctx.globalAlpha = gone ? 1 - k : k > .7 ? (1 - k) / .3 : 1;
+    ctx.drawImage(IMG.trees, f.ix, f.iy, 16, 16, Math.round(sx(x) - 8 * z), Math.round(sy(y, x) - 8 * z), 16 * z, 16 * z);
   }
   ctx.globalAlpha = 1;
 }

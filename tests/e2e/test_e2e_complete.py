@@ -78,7 +78,7 @@ def test_what_an_argument_can_be(game):
 def test_tab_finishes_a_name_in_plain_talk(browser, server, game):
     """Nothing is listed while you talk; Tab finishes the name of someone near (two that start alike: the list)."""
     friends = [open_game(browser, server, name) for name in ("Marlow", "Marigold")]
-    game.sleep(1800)                                                    # (who is here: asked every 1.5 s)
+    game.wait("['Marlow', 'Marigold'].every((n) => agents.some((a) => a.online && a.name === n))", 20000)   # (who is here: asked every 1.5 s)
     page = game.page
     page.keyboard.press("Enter")
     page.keyboard.type("hello marl")

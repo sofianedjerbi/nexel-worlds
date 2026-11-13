@@ -119,12 +119,12 @@ function frame(now) {
       // (just landed: it starts from rest, where the drop came down, and eases into its hover: no jump)
       const key = o.x + "," + o.ty; if (!pileSince.has(key)) pileSince.set(key, now);
       const settle = smooth((now - pileSince.get(key)) / 700);
-      const names = Object.keys(o.pile), lift = settle * (Math.sin((now - pileSince.get(key)) / 1000 * 2.4 - Math.PI / 2) + 1) / 2, sz = 10 * zoom;
+      const names = Object.keys(o.pile).slice(0, 3), lift = settle * (Math.sin((now - pileSince.get(key)) / 1000 * 2.4 - Math.PI / 2) + 1) / 2;
       const cx = sx(o.x) + S / 2, cy = sy(o.ty, o.x) + S / 2, bob = lift * 2 * zoom;
-      const draw = (k) => {
+      const draw = (k) => {                           // (each thing its small icon, a pixel of it a pixel of the land: loot.js)
         ctx.globalAlpha = k * (1 - over);
         ctx.fillStyle = `rgba(60,40,30,${.25 - lift * .1})`; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, (4 - lift * .8) * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
-        names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), Math.round(cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom), Math.round((cy - sz / 2 - bob) * DPR) / DPR, sz, sz));
+        names.forEach((n, i) => { const [dx, dy] = pileAt(i, names.length); ctx.drawImage(ghostIcon(n), Math.round(cx + (dx - DROP / 2) * zoom), Math.round((cy + (dy - DROP / 2) * zoom - bob) * DPR) / DPR, DROP * zoom, DROP * zoom); });
         ctx.globalAlpha = 1;
       };
       if (tileBehind(o.x, o.ty)) drawBehind({x: o.x, y: o.ty, e: {}}, sx, sy, S, draw); else draw(1);

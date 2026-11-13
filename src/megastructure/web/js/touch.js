@@ -43,7 +43,7 @@ function tapButton(e, fn) {
 }
 
 if (TOUCH) {
-  document.body.classList.add("touch");
+  document.body.classList.add("touch"); hudTall = .26;       // (the HUD: a quarter of the height at most, ui.js)
   if (Math.min(innerWidth, innerHeight) < 520 && !new URLSearchParams(location.search).get("zoom")) zoom = 2;
   const {btns} = touchUI(), pad = $("pad"), base = $("stickbase"), knob = $("stickknob");
 
@@ -111,9 +111,10 @@ if (TOUCH) {
       $("tEat").style.display = get("E") ? "block" : "none";
       $("tPick").style.display = get("F") ? "block" : "none";
     }
+    if (hudFit()) return;                                      // (the bar's pixel changed: measured at the next turn)
     const hud = $("hud"), w = Math.max(hud.scrollWidth, $("vitals").scrollWidth), h = hud.offsetHeight;
-    const k = Math.min(1, (innerWidth - 16) / (w || 1), innerHeight * .26 / (h || 1));   // (at most a quarter of the height)
-    hud.style.transform = `translateX(-50%) scale(${k})`;
+    const k = Math.min(1, (innerWidth - 16) / (w || 1));       // (the vitals alone too wide: a very narrow screen)
+    hud.style.transform = k < 1 ? `translateX(${(innerWidth - w * k) / 2}px) scale(${k})` : "";   // (wider than the screen, it starts at its left)
     const narrow = innerWidth - w * k < 2 * 190;               // no room for the thumbs beside the hotbar
     document.body.style.setProperty("--tbot", (narrow ? h * k + 18 : 12) + "px");
   }, 200);

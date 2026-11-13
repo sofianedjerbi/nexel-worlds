@@ -1,5 +1,6 @@
   @font-face { font-family: SproutPixel; src: url(../assets/sprout-pixel.ttf); }
-  :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#f3dfba; --accent:#4f9a6a; --warn:#c0503c; }
+  :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#f3dfba; --accent:#4f9a6a; --warn:#c0503c;
+    --u1:1px; --u:2px; --u3:3px; }   /* the HUD's art pixels: about 1, 2 and 3 CSS px, each a whole number of screen pixels (hudFit, ui.js) */
   * { box-sizing:border-box; }
   html, body { margin:0; height:100%; background:#9bd4c3; overflow:hidden; color:var(--ink);
     font:18px/22px SproutPixel, monospace; font-synthesis:none; user-select:none; }
@@ -37,48 +38,50 @@
   #joinbox .watch { margin-top:10px; }
   #where { color:var(--ink2); margin-bottom:3px; }
   #doing { color:#b0692a; min-height:16px; }
-  #hotbar { display:flex; gap:clamp(2px, .4vw, 6px); flex-wrap:nowrap; justify-content:center; }
-  .slot { width:clamp(44px, 4.3vw, 60px); height:clamp(44px, 4.3vw, 60px); border:10px solid transparent; border-image:url(../assets/slot.png) 10 fill / 20px stretch;
+  #hotbar { display:flex; gap:calc(2 * var(--u)); flex-wrap:nowrap; justify-content:center; }
+  /* a slot is its frame as it was drawn, 30 art px a side, and the icon in it 16: both at --u a pixel. The frame is put
+     whole (in nine pieces, between two screen pixels, the joints showed) */
+  .slot { width:calc(30 * var(--u)); height:calc(30 * var(--u)); flex:none; border:calc(5 * var(--u)) solid transparent;
+    background:url(../assets/slot.png) 0 0 / 100% 100% no-repeat border-box;
     image-rendering:pixelated; position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-  .slot.sel { border-image-source:url(../assets/slot_sel.png); }
-  .slot canvas { width:clamp(24px, 2.3vw, 32px); height:clamp(24px, 2.3vw, 32px); image-rendering:pixelated; }
+  .slot.sel { background-image:url(../assets/slot_sel.png); }
+  .slot canvas { width:calc(16 * var(--u)); height:calc(16 * var(--u)); flex:none; image-rendering:pixelated; }
   .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:18px; font-weight:800; color:#fff8e8; text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
   .slot .lvl { position:absolute; left:8px; right:8px; bottom:5px; height:4px; background:#5b4038; border-radius:2px; overflow:hidden; }
   .slot .lvl i { display:block; height:100%; background:#7fd3e6; }
   .slot .k { position:absolute; left:-6px; top:-9px; font-size:18px; font-weight:800; color:#f6e3bf; }
   .slot:hover .tip { display:block; }
   .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
-  #craft { left:50%; top:50%; transform:translate(-50%,-55%); width:min(860px, calc(100vw - 24px)); display:none; z-index:4; font-size:20px; }
+  /* (centred by its margins, as the bag and the HUD are: moved by half its own size it lay between two screen pixels, and its icons' pixels came out uneven) */
+  #craft { left:0; right:0; top:0; bottom:10vh; margin:auto; height:max-content; width:min(860px, calc(100vw - 24px)); display:none; z-index:4; font-size:20px; }
   #craft .ctop { display:flex; justify-content:space-between; align-items:center; }
   #craft .close { cursor:pointer; color:var(--ink2); padding:0 4px; } #craft .close:hover { color:var(--ink); }
   #crafttabs { display:flex; gap:4px; margin:2px 0 8px; flex-wrap:wrap; }
   .ctab { height:40px; min-width:46px; padding:0 9px; display:flex; align-items:center; justify-content:center; border-radius:6px;
     background:#ead2a6; color:var(--ink2); cursor:pointer; box-shadow:inset 0 -3px 0 rgba(91,63,54,.18); }
-  .ctab canvas { width:28px; height:28px; image-rendering:pixelated; }
+  .ctab canvas { width:calc(16 * var(--u)); height:calc(16 * var(--u)); image-rendering:pixelated; }
   .ctab:hover { background:#f3dfba; } .ctab.on { background:#fff3dc; color:var(--ink); box-shadow:inset 0 0 0 2px #6aa66f; }
   #craft .cbody { display:flex; gap:12px; align-items:flex-start; }
-  #recipes { flex:1; display:grid; grid-template-columns:repeat(auto-fill, 64px); gap:6px; align-content:start;
+  #recipes { flex:1; display:grid; grid-template-columns:repeat(auto-fill, calc(30 * var(--u))); gap:6px; align-content:start;
     max-height:min(500px, calc(100vh - 240px)); overflow:auto; padding:3px; }
-  #recipes .slot { width:64px; height:64px; position:relative; display:flex; align-items:center; justify-content:center; cursor:pointer; }
-  #recipes .slot canvas { width:40px; height:40px; }
   #recipes .slot .c { font-size:20px; right:-5px; bottom:-7px; }
   #recipes .slot.no canvas { opacity:.38; filter:grayscale(.85); }
   #recipes .slot .ok { position:absolute; left:-3px; top:-4px; width:17px; height:17px; border-radius:50%; background:#5aa264; color:#fff8e8; font-size:14px; line-height:17px; text-align:center; box-shadow:0 1px 0 rgba(60,40,30,.35); }
-  #recipes .slot:hover { border-image-source:url(../assets/slot_sel.png); }
-  #recipes .slot.kfocus { outline:none; border-image-source:url(../assets/slot_sel.png); transform:translateY(-2px) scale(1.1); z-index:1;
+  #recipes .slot:hover { background-image:url(../assets/slot_sel.png); }
+  #recipes .slot.kfocus { outline:none; background-image:url(../assets/slot_sel.png); transform:translateY(calc(-1 * var(--u))); z-index:1;
     filter:drop-shadow(0 0 0 #fff8e8) drop-shadow(0 3px 0 rgba(60,40,30,.3)); }
   #recipes .slot.kfocus canvas { opacity:1; filter:none; }
   #crafttabs .ctitle { margin-left:auto; align-self:center; color:var(--ink); font-size:24px; padding-right:4px; white-space:nowrap; }
   #crafttabs .ctitle i { font-style:normal; color:#5aa264; }
   #craftdetail { width:290px; flex:none; background:#fff3dc; border-radius:8px; padding:10px; box-shadow:inset 0 -3px 0 rgba(91,63,54,.12); }
   #craftdetail .chead { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
-  #craftdetail .slot.big { width:76px; height:76px; display:flex; align-items:center; justify-content:center; flex:none; }
-  #craftdetail .slot.big canvas { width:48px; height:48px; }
+  #craftdetail .slot.big { width:calc(30 * var(--u3)); height:calc(30 * var(--u3)); border-width:calc(5 * var(--u3)); }   /* (the frame and the icon at --u3) */
+  #craftdetail .slot.big canvas { width:calc(16 * var(--u3)); height:calc(16 * var(--u3)); }
   #craftdetail .cname { font-size:28px; line-height:30px; color:var(--ink); }
   #craftdetail .cmakes { color:var(--ink2); }
   .cneeds { display:flex; flex-direction:column; gap:6px; font-size:20px; }
   .cneed { display:flex; align-items:center; gap:6px; color:var(--ink); }
-  .cneed canvas { width:28px; height:28px; image-rendering:pixelated; flex:none; }
+  .cneed canvas { width:calc(16 * var(--u)); height:calc(16 * var(--u)); image-rendering:pixelated; flex:none; }
   .cneed .cn { flex:1; } .cneed .cq { color:var(--accent); }
   .cneed.miss .cq, .cneed.miss .cn { color:var(--warn); }
   .cneed.st { margin-top:4px; padding-top:5px; border-top:2px dotted #e2c79a; }
@@ -103,7 +106,7 @@
   #goalcount { color:var(--ink2); font-size:18px; }
   .goal { display:flex; gap:8px; align-items:center; padding:3px 0; line-height:20px; animation:goalin .35s steps(4); }
   .goal + .goal { border-top:2px dotted rgba(91,63,54,.25); }
-  .goal .gi { width:24px; height:24px; flex:none; image-rendering:pixelated; }
+  .goal .gi { width:calc(16 * var(--u)); height:calc(16 * var(--u)); flex:none; image-rendering:pixelated; }
   .goal .gt { flex:1; }
   .goal .tick { width:14px; height:14px; flex:none; border:2px solid var(--ink2); border-radius:2px; }
   .goal.done .gt { color:var(--ink2); text-decoration:line-through; }
@@ -111,7 +114,7 @@
   .goal.done { animation:goaldone 1.6s steps(8) forwards; }
   @keyframes goalin { from { opacity:0; transform:translateX(-12px); } }
   @keyframes goaldone { 0%, 70% { opacity:1; } 100% { opacity:0; transform:translateX(-12px); } }
-  #bag { left:50%; bottom:92px; transform:translateX(-50%); display:none; max-width:560px; }
+  #bag { left:0; right:0; margin:0 auto; width:max-content; bottom:calc(var(--hudh, 118px) + 18px); display:none; max-width:560px; }   /* (over the HUD, whatever its height: ui.js) */
   #bagitems { display:flex; flex-wrap:wrap; gap:6px; }
   .bagslot .bagtxt { color:#fff8e8; text-shadow:1px 1px 0 var(--ink); }
   #mail { left:50%; top:50%; transform:translate(-50%,-55%); width:min(520px, 92vw); display:none; z-index:4; }
@@ -130,9 +133,9 @@
   .slot.kfocus { outline:3px solid #6aa66f; outline-offset:1px; }
 
   /* ---- HUD: hearts and food on the hotbar ---- */
-  #hud { position:fixed; left:50%; bottom:10px; transform:translateX(-50%); display:none; flex-direction:column; align-items:stretch;
+  #hud { position:fixed; left:0; right:0; margin:0 auto; width:max-content; bottom:10px; display:none; flex-direction:column; align-items:stretch;
     gap:3px; z-index:3; filter:drop-shadow(0 3px 0 rgba(60,40,30,.3)); pointer-events:none; }
-  #hud .hudrow { display:flex; gap:clamp(2px, .4vw, 6px); align-items:center; pointer-events:auto; }
+  #hud .hudrow { display:flex; gap:calc(2 * var(--u)); align-items:center; pointer-events:auto; }
   #vitals { display:flex; justify-content:space-between; align-items:flex-end; padding:0 4px; box-sizing:border-box; }
   #vitals canvas { image-rendering:pixelated; }
   /* experience: the wooden track between the vitals and the hotbar (drawn on a canvas by xp.js) */
@@ -183,8 +186,9 @@
   body.touch #joinbox { width:min(420px, 92vw); box-sizing:border-box; }
   body.touch #joinbox input { font-size:18px; }  /* (16px+ or iOS zooms in on focus) */
   body.touch #actions, body.touch #help, body.touch #helpbtn { display:none !important; }
-  body.touch #hud { transform-origin:bottom center; bottom:calc(8px + env(safe-area-inset-bottom)); }
+  body.touch #hud { transform-origin:bottom left; bottom:calc(8px + env(safe-area-inset-bottom)); }
   body.touch #goals { transform:scale(.8); transform-origin:top left; }
+  body.touch .goal .gi { width:calc(20 * var(--u1)); height:calc(20 * var(--u1)); }   /* (16 art px at --u1 once the panel is made smaller) */
   body.touch #xyz { top:calc(62px + env(safe-area-inset-top)) !important; font-size:12px !important; }  /* (/coords, /perf: under the buttons at the top) */
   @media (max-width:600px) { body.touch #side { display:none; } }
   body.touch #vitals { min-width:max-content; gap:10px; } body.touch #hud .hudrow { justify-content:center; }
@@ -227,12 +231,12 @@
   #death .dt { font-size:40px; line-height:44px; color:var(--warn); margin:2px 0 4px; text-shadow:2px 2px 0 rgba(91,63,54,.25); }
   #deathcause { font-size:22px; color:var(--ink); margin-bottom:10px; }
   #deathloot { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:6px 0 4px; }
-  #deathloot .dslot { position:relative; width:40px; height:40px; background:#e9d3ab; border:2px solid #c9a676; border-radius:5px;
+  #deathloot .dslot { position:relative; width:calc(16 * var(--u) + 12px); height:calc(16 * var(--u) + 12px); background:#e9d3ab; border:2px solid #c9a676; border-radius:5px;
     box-shadow:inset 0 -3px 0 rgba(91,63,54,.15); animation:dslotin .4s steps(4) backwards; }
   #deathloot .dslot:nth-child(2) { animation-delay:.07s } #deathloot .dslot:nth-child(3) { animation-delay:.14s }
   #deathloot .dslot:nth-child(4) { animation-delay:.21s } #deathloot .dslot:nth-child(n+5) { animation-delay:.28s }
   @keyframes dslotin { from { opacity:0; transform:translateY(-8px); } }
-  #deathloot .dicon { width:32px; height:32px; image-rendering:pixelated; margin:4px; }
+  #deathloot .dicon { width:calc(16 * var(--u)); height:calc(16 * var(--u)); image-rendering:pixelated; margin:4px; display:block; }
   #deathloot span { position:absolute; right:1px; bottom:-4px; color:#fff8e8; font-size:16px;
     text-shadow:2px 0 0 var(--ink),-2px 0 0 var(--ink),0 2px 0 var(--ink),0 -2px 0 var(--ink),2px 2px 0 var(--ink),-2px 2px 0 var(--ink),2px -2px 0 var(--ink),-2px -2px 0 var(--ink); }
   #deathleft, #deathwake { color:var(--ink2); font-size:18px; line-height:22px; }
