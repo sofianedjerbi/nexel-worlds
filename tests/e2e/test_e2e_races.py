@@ -21,9 +21,9 @@ def test_every_race_is_drawn_and_dressed(game):
         if SHOT:
             game.page.screenshot(path=f"{SHOT}/race_{race}.png", clip={"x": 520, "y": 300, "width": 160, "height": 150})
     sizes = game.js("""(() => { const out = {};
-      for (const r of Races.RACES) { const s = wornSheet('#a9cdf2', null, r.key); out[r.key] = [s.width, s.height, r.key === 'cat' || s.grids.length === 192]; }
+      for (const r of Races.RACES) { const s = wornSheet('#a9cdf2', null, r.key); out[r.key] = [s.width, s.height, r.key === 'cat' || s.grids.length === 288]; }
       return out; })()""")
-    assert all(v == [384, 1152, True] for v in sizes.values()), sizes
+    assert all(v == [384, 1728, True] for v in sizes.values()), sizes      # (the sheet's 24 rows and the 12 of tool_art.js)
     for item in outfit:
         game.act("wear", item=item)
         game.sleep(600)
@@ -50,7 +50,7 @@ PIECES = """(() => {
     return n; };
   const frames = (key) => { const s = raceSheet(key, "#f3f2c0"), c = document.createElement("canvas"); c.width = s.width; c.height = s.height;
     const g = c.getContext("2d"); g.drawImage(s, 0, 0); const out = [];
-    for (let r = 0; r < 24; r++) for (let col = 0; col < 8; col++) out.push(pieces(g.getImageData(col * 48, r * 48, 48, 48).data));
+    for (let r = 0; r < s.height / 48; r++) for (let col = 0; col < 8; col++) out.push(pieces(g.getImageData(col * 48, r * 48, 48, 48).data));
     return out; };
   const cat = frames("cat"), bad = {};
   for (const r of Races.RACES) if (r.key !== "cat") { const f = frames(r.key); bad[r.key] = f.map((n, i) => n > cat[i] ? i : -1).filter((i) => i >= 0); }
@@ -77,3 +77,19 @@ def test_a_bunnys_ear_faces_the_way_it_walks(game):
         out[name] = pink / np - eye / ne; }
       return out; })()""")
     assert side["right"] > 0 and side["left"] < 0, side          # the pink is ahead of the middle of the ear
+
+
+def test_every_tool_has_its_own_swing(game):
+    """The sheet draws an axe, a hoe and a watering can; a pickaxe, a sword and a spear were all swung as the axe.
+    tool_art.js draws each on the axe's frames: every frame of each differs from the axe's and from the others'."""
+    game.wait("IMG.character && IMG.character.complete && IMG.character.width > 0", 20000)
+    assert game.js("[ANIM.pickaxe, ANIM.sword, ANIM.spear]") == [24, 28, 32]
+    assert game.js("[SWING_ROW.pickaxe, SWING_ROW.sword, SWING_ROW.spear, SWING_ROW.axe]") == ["pickaxe", "sword", "spear", "axe"]
+    same = game.js("""(() => { const c = document.createElement("canvas"); c.width = IMG.character.width; c.height = IMG.character.height;
+      const g = c.getContext("2d"); g.drawImage(IMG.character, 0, 0); const rows = {axe: 16, pickaxe: 24, sword: 28, spear: 32}, out = [];
+      const diff = (a, b, r, col) => { const p = g.getImageData(col * 48, (rows[a] + r) * 48, 48, 48).data, q = g.getImageData(col * 48, (rows[b] + r) * 48, 48, 48).data;
+        let n = 0; for (let i = 0; i < p.length; i += 4) if (p[i] !== q[i] || p[i + 1] !== q[i + 1] || p[i + 2] !== q[i + 2] || p[i + 3] !== q[i + 3]) n++; return n; };
+      for (const [a, b] of [["axe", "pickaxe"], ["axe", "sword"], ["axe", "spear"], ["pickaxe", "sword"], ["sword", "spear"], ["pickaxe", "spear"]])
+        for (let r = 0; r < 4; r++) for (let col = 0; col < 8; col++) if (diff(a, b, r, col) < 4) out.push([a, b, r, col]);
+      return out; })()""")
+    assert same == [], same

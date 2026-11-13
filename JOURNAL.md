@@ -1058,3 +1058,12 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Bunny: side on, the pink inside of the near ear faced backwards; it now faces the way the bunny faces. The far ear no longer leaves a dark dot and a grey patch inside the top of the head.
 - Clothes (web/js/wear.js) had their own copy of the same measurement: a hat on the plain cat jumped on swing frames too. Same fix.
 - After: 0 frames flagged of 768; hats stay on through every swing. Tests (tests/e2e/test_e2e_races.py): no race has more pieces than the cat on any frame; the bunny's ear pink is ahead of the ear's middle in both side views.
+
+## Iteration 94: every tool has its own swing
+- User: "implement sprites for every key tool of the game".
+- Before: the character sheet draws an axe, a hoe and a watering can. The game's other tools, the pickaxe, the sword and the spear, were all swung as the axe.
+- Now (web/js/tool_art.js): three sets of rows are added under the sheet when it loads, made from the axe's 32 frames: same body, hand and arc, the axe taken out and the tool drawn where it was. The axe's handle gives the direction the tool points; the tool is drawn as solid shapes at eight times the size and reduced to pixels (drawn straight onto the pixels, a thin tool at an angle came out dotted). Pickaxe: the handle kept, a bar bent back with steel tips across its end. Sword: grip, gold guard, a blade with a shaded edge. Spear: a shaft through the hand, a stone point. Where the axe lay over the body and the new tool does not, the body shows through.
+- Because the rows are part of the sheet, every race and every outfit has them with no other change (sprites.js ANIM: pickaxe 24, sword 28, spear 32; characters.js SWING_ROW).
+- Checked: the three sets on the cat and on all four races, enlarged; 0 frames of 1,152 with a part come loose; real frames of each swing captured in play on a test server.
+- Tests (tests/e2e/test_e2e_races.py): every frame of each tool differs from the axe's and from the other tools'.
+- Not done: no tool is shown in the hand while walking or standing (the sheet has none there either); the hoe and the watering can are the sheet's own drawings.

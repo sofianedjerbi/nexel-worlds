@@ -10,7 +10,8 @@ const ASSETS = [...ANIMAL_SHEETS, "thin_fall", "stump_thin", "fruit_bare", "barn
   "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen", "tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling"];
 let GEN = {};
 function loadImg(n) {   // decoded up front: a sheet decoded lazily on first draw stalls that frame (~100 ms)
-  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => res(i)); i.onerror = rej; i.src = `assets/${n}.png`; IMG[n] = i; });
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => { if (n === "character") IMG[n] = ToolArt.extend(i); res(i); }); i.onerror = rej; i.src = `assets/${n}.png`;
+    if (n !== "character") IMG[n] = i; });       // (the character sheet is only there once the rows of its other tools are under it: tool_art.js)
 }
 const ready = Promise.all([...ASSETS.map(loadImg),
   fetch("assets/gen.txt").then((r) => r.text()).then((t) => t.trim().split("\n").forEach((n, i) => GEN[n] = i)),
