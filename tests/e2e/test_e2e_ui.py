@@ -122,10 +122,60 @@ def test_the_recipe_book_is_driven_by_keys(game):
         assert game.js("craftTab") == kind, key
     game.press("q", 150)
     assert game.js("craftFocus") == "workbench"
+    game.press("ArrowDown", 80)
+    game.press("PageUp", 150)                                                          # (a page that does not turn: the first line again, and lit)
+    assert game.js("craftFocus") == "workbench" == game.js("document.querySelector('#recipes .cur').dataset.name")
+    assert game.js("document.querySelector('#craftdetail .cname').textContent") == "Workbench"
     game.press("Enter", 1200)
     assert game.inv("workbench") == 1
     game.press("Escape", 200)
     assert not game.errors
+
+
+# Every recipe of every kind, one after the other: the places of the window and of its parts (in the book's px), and
+# the recipes where something spills out of its place or is cut
+BOOK = """() => { const q = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--q')), seen = new Set(), bad = []; let n = 0;
+  const at = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((v) => Math.round(v / q * 10) / 10).join(); };
+  const cut = (e) => e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1;
+  for (const [t] of craftGroups()) { craftTurn({tab: t});
+    for (let p = 0, pages = craftView().pages; p < pages; p++) { craftTurn({page: p});
+      for (const name of craftView().shown) { focusRecipe(name); n++;
+        const d = $('craftdetail'), w = d.querySelector('.cneeds'), wr = w.getBoundingClientRect();
+        seen.add([$('craft'), $('recipes'), d, w, d.querySelector('.chead'), d.querySelector('.cblurb'), d.querySelector('.cbtns')].map(at).join(' '));
+        const kept = [...w.children].every((c) => { const r = c.getBoundingClientRect(); return r.width > 0 && r.top >= wr.top && r.bottom <= wr.bottom && r.left >= wr.left && r.right <= wr.right && !cut(c); });
+        if (!kept || [d, w, d.querySelector('.cblurb'), d.querySelector('.cname')].some(cut)) bad.push(name); } } }
+  return {n, sizes: [...seen], bad}; }"""
+
+
+def test_the_recipe_book_is_one_size_whatever_it_shows(game):
+    """The window and each part of its pages keep their place and their size, whatever the recipe (it grew by a line
+    for the seven that take four things, and moved up). What a recipe takes has a place of four lines: more than four
+    go two abreast, then three, without their names; more than twelve, what you lack comes first and the last place
+    says how many more. Nothing spills and nothing is cut."""
+    game.give(wood=9, stone=4)
+    game.press("c", 400)
+    plain = game.js(BOOK)
+    assert plain["n"] == game.js("Object.keys(recipes).length") >= 80 and len(plain["sizes"]) == 1 and not plain["bad"], plain
+    assert game.js("Math.max(...Object.values(recipes).map((r) => Object.keys(r.inputs).length + (r.station ? 1 : 0)))") == 4   # (a line each, today)
+    game.js("""(() => { const all = ['wood', 'stone', ...Object.keys(recipes).filter((n) => n !== 'wood' && n !== 'stone')], take = (n) => Object.fromEntries(all.slice(0, n).map((k, i) => [k, i === 2 ? 120 : i % 3 + 1]));
+      recipes.well.inputs = take(5); recipes.coop.inputs = take(10); recipes.clock.inputs = take(15); return 1; })()""")
+    big = game.js(BOOK)
+    assert big["sizes"] == plain["sizes"] and not big["bad"], big
+    needs = "(() => { const w = document.querySelector('#craftdetail .cneeds'); return [w.className, w.children.length, getComputedStyle(w.querySelector('.cneed > span')).display, (w.lastChild.querySelector('b') || w.lastChild).textContent, [...w.querySelectorAll('.cneed:not(.more)')].map((c) => c.classList.contains('miss'))]; })()"
+    game.js("(() => { craftTurn({tab: 'Home'}); craftTurn({page: 1}); focusRecipe('well'); })()")
+    cls, n, name, _, _ = game.js(needs)
+    assert cls == "well cneeds c2" and n == 6 and name == "none"                       # six: two abreast, a picture and a number each
+    game.js("focusRecipe('coop')")
+    cls, n, _, last, _ = game.js(needs)
+    assert cls == "well cneeds c3" and n == 11 and last == "far"                       # eleven: three abreast
+    game.js("(() => { craftTurn({page: 0}); focusRecipe('clock'); })()")
+    cls, n, _, last, miss = game.js(needs)
+    assert cls == "well cneeds c3" and n == 12 and last == "+5 more"                   # sixteen: eleven and "+5 more"...
+    assert all(miss) and game.js("document.querySelector('#craftdetail .cneed.more').title").endswith("Wood 9/1, Stone 4/2")   # ...what you lack first (the wood and the stone, which you have, are its first two)
+    game.js("$('craftonly').click()")                                                  # nothing to list, and no recipe on the right page
+    assert game.js("document.querySelectorAll('#recipes .rcard').length") == 0
+    assert game.js("(() => { const r = $('craft').getBoundingClientRect(), q = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--q')); return [r.width / q, r.height / q]; })()") == [252, 155]
+    game.press("Escape", 200)
 
 
 def test_zoom_help_and_debug_keys(game):

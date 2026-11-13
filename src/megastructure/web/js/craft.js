@@ -2,6 +2,10 @@
 // list: five names at a time (the wheel or the arrows turn the pages; a switch keeps only what you can make). On the
 // right page the one you are on, and nothing else: its picture and name, a line about it (blurbs.js), each thing it
 // takes with what you have of it, where it is made, and one button.
+// The book is one size, whatever is on its pages: each part of a page has its place and keeps it. What a recipe takes
+// lies in a place of four lines (NEED_ROWS): up to four things, a line each with its name; more, and they go two
+// abreast, then three, without their names (eight, twelve); more than twelve, and what you lack comes first and the
+// last place says how many more there are. (It grew by a line for the seven recipes that take four things.)
 // It is drawn in one pixel size, the land's (--q, ui.js): a sunk cell of 18 pixels holds a thing's whole 16 pixel
 // icon, and the window, the cells and the buttons are bevelled, a light edge up and left, a dark one down and right.
 // (It was sixty small pictures at once, then twelve cards of several sizes: too much on the screen.)
@@ -15,7 +19,7 @@ const RECIPE_GROUPS = [
   ["Home", "bed", ["bed", "chair", "table", "plant", "clock", "rug", "well", "coop", "trough", "hay", "picnic_blanket", "basket", "cooked_meat", "bread", "ingot"]],
   ["Wear", "straw_hat", []],             // (clothes, armor and charms: wear_items.js)
 ];
-const CRAFT_ROWS = 5;
+const CRAFT_ROWS = 5, NEED_ROWS = 4, NEED_COLS = 3;
 let craftFocus = null, craftTab = "Basics", craftOnly = false, craftPage = 0;   // the recipe you are on; the kind, the switch, the page
 
 function craftGroups() {
@@ -86,7 +90,7 @@ function craftTurn({tab, page, only, last}) {
   if (tab !== undefined) { craftTab = tab; craftPage = 0; }
   if (only !== undefined) { craftOnly = only; craftPage = 0; }
   if (page !== undefined) craftPage = page;
-  craftFocus = null; sfx("ui"); drawRecipes();
+  craftFocus = null; $("recipes").dataset.sig = ""; sfx("ui"); drawRecipes();    // (drawn again even where nothing turned, the first page's "<": the lit line was one name and Enter made another)
   if (last) { const c = [...$("recipes").querySelectorAll(".rcard")].pop(); if (c) focusRecipe(c.dataset.name); }
 }
 function craftMake(name, five) {
@@ -103,11 +107,16 @@ function drawCraftDetail() {
   head.insertAdjacentHTML("beforeend", `<div class="cname">${esc(capital(label(name)))}${out > 1 ? ` <i>x${out}</i>` : ""}</div>`);   // (x2: how many it makes)
   const needs = document.createElement("div"); needs.className = "well cneeds";
   const need = (item, text, miss) => {
-    const row = document.createElement("div"); row.className = "cneed" + (miss ? " miss" : ""); row.appendChild(craftCell(item));
+    const row = document.createElement("div"); row.className = "cneed" + (miss ? " miss" : ""); row.title = capital(label(item)) + " " + text; row.appendChild(craftCell(item));
     row.insertAdjacentHTML("beforeend", `<span>${esc(capital(label(item)))}</span><b>${text}</b>`); needs.appendChild(row);
   };
-  for (const [k, v] of Object.entries(rc.inputs)) need(k, `${s.inv[k] || 0}/${v}`, (s.inv[k] || 0) < v);     // what you have of what it takes
-  if (rc.station) need(rc.station, s.near ? "here" : "far", !s.near);
+  let list = Object.entries(rc.inputs).map(([k, v]) => [k, `${s.inv[k] || 0}/${v}`, (s.inv[k] || 0) < v]);    // what you have of what it takes
+  if (rc.station) list.push([rc.station, s.near ? "here" : "far", !s.near]);
+  const cols = Math.min(NEED_COLS, Math.ceil(list.length / NEED_ROWS)), room = cols * NEED_ROWS, over = list.length - room;
+  if (cols > 1) needs.classList.add("c" + cols);
+  if (over > 0) list = [...list.filter((n) => n[2]), ...list.filter((n) => !n[2])];                              // (too many: what you lack first)
+  for (const n of over > 0 ? list.slice(0, room - 1) : list) need(...n);
+  if (over > 0) needs.insertAdjacentHTML("beforeend", `<div class="cneed more" title="${esc(list.slice(room - 1).map((n) => capital(label(n[0])) + " " + n[1]).join(", "))}">+${over + 1} more</div>`);
   const btns = document.createElement("div"); btns.className = "cbtns";
   const b = document.createElement("div"); b.className = "b cbtn" + (ok ? "" : " off");
   b.textContent = ok ? "Craft" : !s.have ? "Missing materials" : `Go to a ${label(rc.station)}`;
