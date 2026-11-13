@@ -1,8 +1,10 @@
   @font-face { font-family: SproutPixel; src: url(../assets/sprout-pixel.ttf); }
   :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#f3dfba; --accent:#4f9a6a; --warn:#c0503c;
     --u:2px; --i:3px; --u3:3px;
-    /* a number on a slot: a hard dark rim, one font pixel wide all round (the font at 18 px is 2 px a pixel), so it reads on wood, on an item, on grass */
-    --rim:2px 0 0 #3d2a24, -2px 0 0 #3d2a24, 0 2px 0 #3d2a24, 0 -2px 0 #3d2a24, 2px 2px 0 #3d2a24, -2px 2px 0 #3d2a24, 2px -2px 0 #3d2a24, -2px -2px 0 #3d2a24; }   /* the HUD's art pixels, each a whole number of screen pixels: a slot's frame, the item in it (the land's own), the big picture (hudFit, ui.js) */
+    /* a number on a slot: a hard rim, one font pixel wide all round (the font at 18 px is 2 px a pixel), so it reads on wood, on an item, on grass.
+       In the ink's brown for a count, in a lighter one for a slot's key: near black, and the key yellow, they shouted */
+    --rim:2px 0px 0 #5b3f36, -2px 0px 0 #5b3f36, 0px 2px 0 #5b3f36, 0px -2px 0 #5b3f36, 2px 2px 0 #5b3f36, -2px 2px 0 #5b3f36, 2px -2px 0 #5b3f36, -2px -2px 0 #5b3f36;
+    --rim-key:2px 0px 0 #7a5846, -2px 0px 0 #7a5846, 0px 2px 0 #7a5846, 0px -2px 0 #7a5846, 2px 2px 0 #7a5846, -2px 2px 0 #7a5846, 2px -2px 0 #7a5846, -2px -2px 0 #7a5846; }   /* the HUD's art pixels, each a whole number of screen pixels: a slot's frame, the item in it (the land's own), the big picture (hudFit, ui.js) */
   * { box-sizing:border-box; }
   html, body { margin:0; height:100%; background:#9bd4c3; overflow:hidden; color:var(--ink);
     font:18px/22px SproutPixel, monospace; font-synthesis:none; user-select:none; }
@@ -52,7 +54,7 @@
   .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:18px; line-height:18px; color:#fff8e8; text-shadow:var(--rim); }
   .slot .lvl { position:absolute; left:8px; right:8px; bottom:5px; height:4px; background:#5b4038; border-radius:2px; overflow:hidden; }
   .slot .lvl i { display:block; height:100%; background:#7fd3e6; }
-  .slot .k { position:absolute; left:-5px; top:-7px; font-size:18px; line-height:18px; color:#ffe08a; text-shadow:var(--rim); }   /* (its key: yellow, the count white) */
+  .slot .k { position:absolute; left:-5px; top:-7px; font-size:18px; line-height:18px; color:#f6e3bf; text-shadow:var(--rim-key); }   /* (its key: quieter than the count) */
   .slot:hover .tip { display:block; }
   .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
   /* (centred by its margins, as the bag and the HUD are: moved by half its own size it lay between two screen pixels, and its icons' pixels came out uneven) */
