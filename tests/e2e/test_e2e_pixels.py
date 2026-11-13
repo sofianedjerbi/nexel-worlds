@@ -155,3 +155,20 @@ def test_smoke_shadows_and_glows_are_round_in_the_lands_pixels(game, zoom):
     assert [r[2] // zoom for r in under] == [8, 10, 12, 10, 8]              # (the shadow under you; read at once: a frame draws more)
     game.press("f", 600)                                         # (nothing left lying in the world the tests share: a pile
     assert game.inv("wood") == 1 and not game.errors             #  near where another test's player woke was drawn in its count)
+
+
+def test_the_tools_have_no_white_edge(game):
+    """The pack's icons have a white ring round them, a sticker's (and the pickaxe was drawn with one). The tools
+    are shown without it, as the sword and the spear always were: in the bar, the book and the inventory no px of a
+    tool is near white, and the tool is still there (the wood keeps its ring: only the tools were asked for)."""
+    count = """(n) => { const d = iconCanvas(n).getContext('2d').getImageData(0, 0, 16, 16).data; let white = 0, solid = 0;
+      for (let o = 0; o < d.length; o += 4) if (d[o + 3] >= 128) { solid++; if (Math.min(d[o], d[o + 1], d[o + 2]) > 225) white++; }
+      return [white, solid]; }"""
+    for tool in ("axe", "pickaxe", "hoe", "watering_can", "sword", "spear"):
+        white, solid = game.js(count, tool)
+        assert white == 0 and solid >= 20, tool
+    assert game.js(count, "wood")[0] > 20
+    game.give(axe=1)
+    slot = game.js("""(() => { const c = [...document.querySelectorAll('#hud .slot canvas')][0], d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let white = 0;
+      for (let o = 0; o < d.length; o += 4) if (d[o + 3] >= 128 && Math.min(d[o], d[o + 1], d[o + 2]) > 225) white++; return [slots[0], white]; })()""")
+    assert slot == ["axe", 0]

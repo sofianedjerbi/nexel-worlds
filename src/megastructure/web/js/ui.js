@@ -52,14 +52,24 @@ function smallArt(img, x, y, w, h, size = 16) {     // (size: how many px it may
   }
   return out;
 }
+// The tools without the white edge the pack's icons have round them (a sticker's: a ring of white px, and the hole in
+// the can's handle filled with it). A tool has no white of its own, so every near white px of it goes. In the bar,
+// the book, the inventory and the hand they are then as the sword and the spear always were: no ring.
+const BARE = new Set(["axe", "pickaxe", "hoe", "watering_can"]);
+function bare(c) {
+  const g = c.getContext("2d"), im = g.getImageData(0, 0, 16, 16), d = im.data;
+  for (let o = 0; o < d.length; o += 4) if (Math.min(d[o], d[o + 1], d[o + 2]) > 225) d[o + 3] = 0;
+  g.putImageData(im, 0, 0);
+  return c;
+}
 function iconCanvas(name) {
-  const c = document.createElement("canvas"); c.width = 16; c.height = 16; const g = c.getContext("2d");
+  const c = document.createElement("canvas"); c.width = 16; c.height = 16; const g = c.getContext("2d", {willReadFrequently: BARE.has(name)});
   const ic = ICONS[name];
   if (!ic && WEAR[name]) return wearIcon(name);          // clothes and armor draw their own (wear_items.js)
   if (!ic) { g.fillStyle = "#8a6a55"; g.fillRect(4, 4, 8, 8); return c; }
-  if (ic[0] === "gen") { g.drawImage(IMG.gen, GEN[ic[1]] * 16, 0, 16, 16, 0, 0, 16, 16); return c; }
+  if (ic[0] === "gen") { g.drawImage(IMG.gen, GEN[ic[1]] * 16, 0, 16, 16, 0, 0, 16, 16); return BARE.has(name) ? bare(c) : c; }
   const [img, x, y, w = 16, h = 16] = ic;
-  if (w <= 16 && h <= 16) { g.drawImage(IMG[img], x, y, w, h, (16 - w) >> 1, (16 - h) >> 1, w, h); return c; }
+  if (w <= 16 && h <= 16) { g.drawImage(IMG[img], x, y, w, h, (16 - w) >> 1, (16 - h) >> 1, w, h); return BARE.has(name) ? bare(c) : c; }
   if (!smalls.has(name)) smalls.set(name, smallArt(IMG[img], x, y, w, h));
   const small = smalls.get(name);
   g.putImageData(small, (16 - small.width) >> 1, (16 - small.height) >> 1);
