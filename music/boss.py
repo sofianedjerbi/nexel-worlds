@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 
 import compose as C
-from compose import SR, analog_pad, bp, fft_filter, glide_lead, hp, hz, lofi_piano, lp, midi, moog_bass, phase, release, saw, tt
+from compose import MAIN, SR, analog_pad, bp, fft_filter, glide_lead, hp, hz, lp, midi, moog_bass, phase, release, saw, tt
 
 BPM, BARS = 96, 36
 BEAT = 60 / BPM
@@ -118,7 +118,7 @@ def block(first, drums=True, bass=True, strings=0, horn_on=False, lead=False, pa
                 for i, nm in enumerate(PAD[ch[half]]):
                     add(bar, half, analog_pad, nm, 4 if CYCLE[k] == "GA" else 8, 0.8, "pad", pan=(-0.4, 0, 0.4)[i], rev=0.4)
         for s, length, nm in MELODY[k]:
-            add(bar, s, lofi_piano, nm, length, 0.85 * mel, "piano", pan=-0.1, rev=0.3)
+            add(bar, s, MAIN, nm, length, 0.85 * mel, "piano", pan=-0.1, rev=0.3)
             if lead:
                 add(bar, s, glide_lead, nm, length, 0.5, "lead", pan=0.15, rev=0.3)
     for b, bars, nm in HORN if horn_on else ():

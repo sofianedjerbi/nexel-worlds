@@ -156,6 +156,54 @@ def lofi_piano(f, dur, vel, t0):
     return 0.46 * vel * np.stack([left, right]) * np.clip(t / 0.007, 0, 1) * release(t, dur, 0.55)
 
 
+def nylon(f, dur, vel, t0):
+    """The main instrument since 2026-11-13: a nylon-string guitar, plucked with the thumb. Three pianos were refused
+    ("aggressive", then "unbearable": the last was nearly a sine, two strings beating slowly, pushed into a clipper).
+    One string as its modes: a pluck at a fifth of its length, bright for a tenth of a second and then round as the
+    high modes die first; a wooden body (two low resonances); the thumb's small knock. No detune, no clipping."""
+    n = int((dur + 2.5) * SR)
+    t = tt(n)
+    ph = phase(f, n, t0, wob=0.25)
+    tau1 = 1.5 * (196 / max(f, 98)) ** 0.5                      # lower strings ring longer
+    y = np.zeros(n)
+    for k in range(1, 25):
+        fk = k * np.sqrt(1 + 0.00006 * k * k)
+        if f * fk > 9000:
+            break
+        amp = np.sin(np.pi * k * 0.2) / k ** 1.5 / (1 + (f * fk / (2200 + 2600 * vel)) ** 2)
+        y += amp * np.sin(fk * ph) * np.exp(-t * (1 + 0.09 * k * k) / tau1)
+    y += fft_filter(rng.standard_normal(n), bp(120, 900, 1)) * np.exp(-t / 0.008) * 0.06 * vel      # the thumb on the string
+    body = lambda fr: (bp(70, 7000, 1)(fr) * (1 + 0.9 / (1 + ((fr - 110) / 25) ** 2) + 0.6 / (1 + ((fr - 215) / 40) ** 2)
+                                               + 0.25 / (1 + ((fr - 420) / 90) ** 2)))
+    y = fft_filter(y, body)
+    return 0.4 * vel * y * np.clip(t / 0.003, 0, 1) * release(t, dur, 0.35)
+
+
+def rhodes(f, dur, vel, t0):
+    """Candidate: an electric piano as a lead. A tine and its bar (FM): it barks a little at the start, then sings."""
+    n = int((dur + 1.5) * SR)
+    t = tt(n)
+    ph = phase(f, n, t0, wob=0.25)
+    idx = (0.35 + 1.5 * vel * np.exp(-t / 0.18)) * min(1.0, 500 / f)
+    y = np.sin(ph + idx * np.sin(ph)) + 0.12 * vel * np.sin(14 * ph) * np.exp(-t / 0.05)
+    return 0.3 * vel * y * np.clip(t / 0.004, 0, 1) * np.exp(-t / 2.2) * release(t, dur, 0.3)
+
+
+def marimba(f, dur, vel, t0):
+    """Candidate: a marimba, soft mallets. The bar (its modes at 1, 4 and 10 times the note) over its tube."""
+    n = int(2.5 * SR)
+    t = tt(n)
+    ph = phase(f, n, t0, wob=0.0)
+    tau = 0.7 * (262 / max(f, 131)) ** 0.6
+    y = np.sin(ph) * np.exp(-t / tau) + 0.3 * vel * np.sin(4 * ph) * np.exp(-t / (tau * 0.18)) \
+        + 0.08 * vel * np.sin(10.1 * ph) * np.exp(-t / (tau * 0.05))
+    y += fft_filter(rng.standard_normal(n), bp(200, 1500, 1)) * np.exp(-t / 0.006) * 0.08 * vel
+    return 0.5 * vel * y * np.clip(t / 0.002, 0, 1)
+
+
+MAIN = nylon            # who plays the melody (night.py and boss.py use it too)
+
+
 _pad_cache = {}
 
 
@@ -214,7 +262,7 @@ def shaker(f, dur, vel, t0):
     n = int(0.11 * SR)
     t = tt(n)
     y = fft_filter(rng.standard_normal(n), bp(4500, 11000, 1)) * np.clip(t / 0.012, 0, 1) * np.exp(-t / 0.025)
-    return 0.4 * vel * y / (np.abs(y).max() + 1e-9)
+    return 0.22 * vel * y / (np.abs(y).max() + 1e-9)       # (0.4 was "a bit too loud")
 
 
 def glide_lead(f, dur, vel, t0):
@@ -310,7 +358,7 @@ for bar in range(BARS):
     for (slot, ln, n), (touch, late) in zip(MELODY[i], PHRASE[i]):
         m = midi(n)
         if mel in ("piano", "both") or (mel == "fragments" and i in (0, 1, 4, 5)):
-            note(s0 + slot, ln, m, 0.66 * touch, lofi_piano, "piano", 0.1, rev=0.3, late=late)
+            note(s0 + slot, ln, m, 0.66 * touch, MAIN, "piano", 0.1, rev=0.3, late=late)
         if mel in ("lead", "both"):
             note(s0 + slot, ln, m, (0.9 if mel == "lead" else 0.55) * touch, glide_lead, "lead", -0.1, rev=0.3, late=late)
 
@@ -319,7 +367,7 @@ for bar in range(BARS):
         hand, root = hand_notes(ch), place(pcs(ch)[0], 33)
         for j, m in enumerate(hand):
             if not band:                        # space: the chord on the piano, held
-                note(s0 + slot, ln, m, 0.42 - 0.03 * j, lofi_piano, "piano", -0.3 + 0.3 * j, rev=0.35)
+                note(s0 + slot, ln, m, 0.42 - 0.03 * j, MAIN, "piano", -0.3 + 0.3 * j, rev=0.35)
             else:                               # the electric piano, short, off the beat: after beat 2 and on the "and" of 3
                 for at, v in ((2, 0.8), (5, 0.62)) if ln == 8 else ((1, 0.75),):
                     note(s0 + slot + at, 1, m, v * (0.9 if mel else 1.0), epiano, "comp", -0.35 + 0.35 * j, rev=0.25)

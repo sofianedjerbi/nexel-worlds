@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 
 import compose as C
-from compose import SR, analog_pad, bp, fft_filter, glide_lead, hp, hz, lofi_piano, lp, midi, moog_bass, tt
+from compose import MAIN, SR, analog_pad, bp, fft_filter, glide_lead, hp, hz, lp, midi, moog_bass, tt
 
 BPM, BARS = 60, 48
 BEAT = 60 / BPM
@@ -54,13 +54,13 @@ def block(first, piano=1.0, roll=0.0, pad=0.0, bass=False, far=False):
         bar, names = first + k, CYCLE[k].split()
         for s, length, nm in MELODY[k]:
             if piano:
-                add(bar, s, lofi_piano, nm, length, piano * (0.8 if length >= 3 else 0.68), "piano", pan=0.08, rev=0.3)
+                add(bar, s, MAIN, nm, length, piano * (0.8 if length >= 3 else 0.68), "piano", pan=0.08, rev=0.3)
             if far:
                 add(bar, s, whistle, nm, length, 0.75, "whistle", pan=0.2, rev=0.45)
         for h, ch in enumerate(names):
             at, ln = h * 8 // len(names), 8 // len(names)
             for j, nm in enumerate(HAND[ch]) if roll else ():
-                add(bar, at, lofi_piano, nm, ln, roll * (0.46 - 0.04 * j), "piano", pan=-0.3 + 0.2 * j, rev=0.3)
+                add(bar, at, MAIN, nm, ln, roll * (0.46 - 0.04 * j), "piano", pan=-0.3 + 0.2 * j, rev=0.3)
             for i, nm in enumerate(PAD[ch]) if pad else ():
                 add(bar, at, analog_pad, nm, ln, pad, "pad", pan=(-0.4, 0.4)[i], rev=0.35)
             if bass:

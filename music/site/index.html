@@ -135,7 +135,17 @@
     </div>
     <div id="ab">
       <button class="abrow" data-v="opus"><b>Opus 5.5</b><span>the original version: every note with the same touch, a darker mono piano, layers switch on and off</span><kbd>A</kbd></button>
-      <button class="abrow on" data-v="fable"><b>Fable 5.2</b><span>the new theme, Animal Crossing style: a light swing, bouncing bass, off-beat electric piano, a shaker</span><kbd>B</kbd></button>
+      <button class="abrow on" data-v="fable"><b>Fable 5.2</b><span>the new theme, Animal Crossing style: a light swing, bouncing bass, off-beat electric piano, a shaker; the melody on a nylon guitar</span><kbd>B</kbd></button>
+    </div>
+  </section>
+
+  <section class="card" id="trycard">
+    <h2>Main instrument: pick by ear <small>the same 8 bars with the band, four instruments</small></h2>
+    <div class="how">
+      <div><b>Guitar (in use now):</b> nylon string, plucked with the thumb.<br><audio controls preload="none" src="audio/try_guitar.wav"></audio></div>
+      <div><b>Electric piano:</b> a tine that barks a little, then sings.<br><audio controls preload="none" src="audio/try_rhodes.wav"></audio></div>
+      <div><b>Marimba:</b> soft mallets, short notes.<br><audio controls preload="none" src="audio/try_marimba.wav"></audio></div>
+      <div><b>The piano you refused:</b> for comparison.<br><audio controls preload="none" src="audio/try_piano.wav"></audio></div>
     </div>
   </section>
 
@@ -149,9 +159,9 @@
       </div>
     </div>
     <div class="notes" style="margin-top:10px">
-      <div><b>Meadow Road after dark:</b> the same melody, note for note, on the same soft piano. Nothing is added to it.</div>
+      <div><b>Meadow Road after dark:</b> the same melody, note for note, on the same nylon guitar. Nothing is added to it.</div>
       <div><b>What makes it night:</b> the same tune over the relative minor (B minor 7, A, F# minor, then A and B minor), so what closed on D major now closes in B minor. 60 BPM instead of 72, about 4 dB quieter. One held chord a bar.</div>
-      <div><b>Form:</b> the melody alone (8 bars) · the left hand (8) · pad and bass (8) · the piano rests and a far whistle carries the melody (8) · everything (8) · thinning out (8).</div>
+      <div><b>Form:</b> the melody alone (8 bars) · the left hand (8) · pad and bass (8) · the guitar rests and a far whistle carries the melody (8) · everything (8) · thinning out (8).</div>
       <div><b>Nothing decorative:</b> the first version had crickets and plucked "fireflies"; both are gone. Only a faint breath of wind is left.</div>
       <div><b>Source:</b> <code>music/night.py</code>. A mockup: the game does not play it yet. <a href="audio/night.wav" download="lantern-road.wav">Download</a></div>
     </div>
@@ -167,7 +177,7 @@
       </div>
     </div>
     <div class="notes" style="margin-top:10px">
-      <div><b>Meadow Road, turned to face you:</b> the same melody, note for note, on the same soft piano, over the relative minor.</div>
+      <div><b>Meadow Road, turned to face you:</b> the same melody, note for note, on the same nylon guitar, over the relative minor.</div>
       <div><b>Weight, not speed:</b> 96 BPM instead of 72. A heavy thud on beats 1 and 3 is its feet; a dull knock on 2 and 4 is its shell.</div>
       <div><b>Its voice:</b> a low horn under everything, holding a note of each chord (F#, A, F#, A, B), over a bass that repeats the root.</div>
       <div><b>Form:</b> it stands up (4 bars) · the fight (8) · everything in (8) · it braces: feet and bass drop out, then stomp back on every beat (8) · everything in again (8).</div>
@@ -201,8 +211,8 @@
       <div><b>Approach:</b> music that "doesn't explain anything" (C418's words): no story, no climax, one texture that slowly changes.</div>
       <div><b>Harmony:</b> D major in seventh chords, one a bar, all from the key: Dmaj7, Bm7, F#m7, Em7 then A7; Dmaj7, Bm7, A7sus, D6. An electric piano plays each chord with all its notes together, short, off the beat.</div>
       <div><b>Melody:</b> one head of three notes (A, up to B, back to A), said four times exactly the same. Only the long note it lands on changes: F#, E, F#, D, and each landing comes an eighth early, the way Animal Crossing tunes push. Nothing else is ever added.</div>
-      <div><b>Variation:</b> only who plays it, and what is around it: the piano or a synth lead; the band (a bouncing bass, the electric piano, a shaker) or open space. A light swing throughout. The melody rests in 4 of 11 blocks.</div>
-      <div><b>Sound:</b> felt piano through a "cheap mic", detuned analog pad with a slowly breathing filter, Moog-style bass, tape hiss.</div>
+      <div><b>Variation:</b> only who plays it, and what is around it: the guitar or a synth lead; the band (a bouncing bass, the electric piano, a shaker) or open space. A light swing throughout. The melody rests in 4 of 11 blocks.</div>
+      <div><b>Sound:</b> a nylon-string guitar plucked with the thumb (modelled string and body), detuned analog pad with a slowly breathing filter, Moog-style bass, tape hiss.</div>
       <div><b>Checks:</b> registers never overlap, no clashing notes, loudness per block. Seamless 250 s loop at 84 BPM. Download: <a href="audio/master.wav" download="meadow-road-fable.wav">Fable</a>, <a href="opus/audio/master.wav" download="meadow-road-opus.wav">Opus</a></div>
     </div>
   </section>
@@ -210,7 +220,7 @@
 
 <script>
 const STEM_INFO = {
-  piano:   { what: "soft felt piano: the melody, held chords", color: "#e6b44f" },
+  piano:   { what: "nylon guitar: the melody, held chords", color: "#e6b44f" },
   lead:    { what: "warm glide synth lead",                     color: "#e48a7a" },
   pad:     { what: "analog pad, filter breathing over minutes", color: "#8fb3e0" },
   arp:     { what: "the rolling figure on a soft synth, through an echo",       color: "#d99bc4" },

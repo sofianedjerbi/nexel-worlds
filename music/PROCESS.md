@@ -148,3 +148,15 @@ The user: "you're taking too much time on this process", then "keep the full ren
 3 minutes went: the pad re-synthesising the same few notes 297 times (now cached per pitch), whole-loop FFTs on a length with a big prime
 factor (`fast_len`: the loop is rounded to a 2-3-5 length), and stems rendered one after another (now one process each).
 `uv run python music/render_all.py` renders day, night and boss at once and rebuilds the game's audio: about 40 s instead of about 5 minutes.
+
+## 2026-11-13: the piano is out
+
+Verdict on the Animal Crossing version: "shaker is a bit too loud and the main theme instrument sound is unbearable".
+Measured, the felt piano was nearly a sine (second harmonic 11 dB down, nothing above 1.5 kHz), with two strings beating
+slowly and a clipper on top. Three pianos refused in a row: stop making pianos.
+
+- The melody is now on `nylon` (a nylon guitar: one string as its modes, bright at the pluck then round, a wooden body).
+  `MAIN` in `compose.py` names the melody instrument; night and boss use it too.
+- Shaker 5 dB lower.
+- `music/audition.py` renders the same 8 bars with each candidate (guitar, electric piano, marimba, the old piano) for
+  the page's "pick by ear" card. The user picks; do not guess a fourth time.
