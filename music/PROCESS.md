@@ -384,3 +384,8 @@ of these new songs nicely with effects if needed etc etc".
   the user approved.
 - `pieces.py` now renders each piece from its own seed (the same piece renders the same way every time).
 - Not in the game yet. Day and night pieces are meant for random moments, the boss for a loop.
+
+- The user on Far shore night: "do not use the same instrument for night themes" (it had Side street night's soft
+  key and pads). Two versions on other sounds: A (the day version's own pluck, Dream Plucks, over Warmbo and Winter
+  Warmer, Mellow bass) and B (Tape Keys over Tape Magic and Wool 1, Mellow bass). The first one is deleted.
+  The Mellow bass is very wide in the lows, so `master.py` now centres the lows more firmly (170 Hz, steeper).

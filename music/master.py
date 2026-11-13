@@ -24,7 +24,8 @@ SET = [  # file in, name out, title, role, where it plays
     ("piece_cute1", "side_street_day", "Side street, day", "day", "random moments in the day"),
     ("piece_shore", "far_shore_day", "Far shore, day", "day", "random moments in the day"),
     ("piece_mc1", "side_street_night", "Side street, night", "night", "random moments at night"),
-    ("piece_shore_night", "far_shore_night", "Far shore, night", "night", "random moments at night"),
+    ("piece_shore_night_a", "far_shore_night_a", "Far shore, night A", "night", "random moments at night (pick A or B)"),
+    ("piece_shore_night_b", "far_shore_night_b", "Far shore, night B", "night", "random moments at night (pick A or B)"),
     ("piece_mossback2", "old_mossback", "Old Mossback", "boss", "the boss fight, looped"),
 ]
 TARGET = {"day": -16.0, "night": -18.0, "boss": -14.5}
@@ -106,7 +107,7 @@ def measure(x):
 def master(x, role):
     x = spectrum_gain(x, lambda f: 1 / np.sqrt(1 + (30 / np.maximum(f, 1e-3)) ** 4))
     mid, side = (x[0] + x[1]) / 2, (x[0] - x[1]) / 2
-    side = spectrum_gain(side, lambda f: 1 / np.sqrt(1 + (120 / np.maximum(f, 1e-3)) ** 8))
+    side = spectrum_gain(side, lambda f: 1 / np.sqrt(1 + (170 / np.maximum(f, 1e-3)) ** 12))     # (steeper: one bass sound was as wide as it was loud)
     x = np.stack([mid + side, mid - side])
     took = (0.0, 0.0)
     if role != "night":
