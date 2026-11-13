@@ -123,7 +123,7 @@ function frame(now) {
       const cx = sx(o.x) + S / 2, cy = sy(o.ty, o.x) + S / 2, bob = lift * 2 * zoom;
       const draw = (k) => {                           // (each thing its small icon, a pixel of it a pixel of the land: loot.js)
         ctx.globalAlpha = k * (1 - over);
-        ctx.fillStyle = `rgba(60,40,30,${.25 - lift * .1})`; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, (4 - lift * .8) * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = `rgba(60,40,30,${.25 - lift * .1})`; pixelOval(cx, cy + 5 * zoom, 4 - lift * .8, 1.5, 0, .5);
         names.forEach((n, i) => { const [dx, dy] = pileAt(i, names.length); ctx.drawImage(ghostIcon(n), Math.round(cx + (dx - DROP / 2) * zoom), Math.round((cy + (dy - DROP / 2) * zoom - bob) * DPR) / DPR, DROP * zoom, DROP * zoom); });
         ctx.globalAlpha = 1;
       };

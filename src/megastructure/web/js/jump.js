@@ -116,5 +116,5 @@ function jumping(p, now = performance.now()) {
 // Its shadow, on the ground under it (x, y: where the body is drawn standing; z: the zoom)
 function jumpShadow(j, x, y, S, z, wide = 5) {
   ctx.fillStyle = "rgba(40,30,50,.2)";
-  ctx.beginPath(); ctx.ellipse(x + S / 2, y - Math.round(j.ground * z) + S - 2 * z, Math.max(wide * .6, wide - (j.body - j.ground) / 6) * z, 2 * z, 0, 0, 7); ctx.fill();
+  pixelOval(x + S / 2, y - Math.round(j.ground * z) + S - 2 * z, Math.max(wide * .6, wide - (j.body - j.ground) / 6), 2, 0, .5);
 }

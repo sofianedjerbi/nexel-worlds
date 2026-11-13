@@ -123,3 +123,34 @@ def test_a_big_things_icon_is_made_smaller_by_whole_pixels(game):
       for (let i = 0; i < d.length; i += 4) if (d[i + 3]) m++;
       return [n, m]; })()""")
     assert same[0] == same[1] and same[0] > 60, same
+
+
+# every smooth round shape drawn on the game's canvas, and every row a pixel oval is filled with
+ROUND = """() => { window.__round = 0; window.__rows = []; window.__in = 0;
+  for (const f of ['arc', 'ellipse']) { const o = ctx[f]; ctx[f] = function (...a) { __round++; return o.apply(this, a); }; }
+  const po = pixelOval; pixelOval = function (...a) { __in++; try { return po(...a); } finally { __in--; } };
+  const fr = ctx.fillRect; ctx.fillRect = function (x, y, w, h) { if (__in) __rows.push([x, y, w, h]); return fr.call(this, x, y, w, h); };
+  return 1; }"""
+
+
+@pytest.mark.parametrize("zoom", [2, 3])
+def test_smoke_shadows_and_glows_are_round_in_the_lands_pixels(game, zoom):
+    """A creature's poof, a little dust, an orb's glow, the shadow under you and the one under a pile are rows of whole
+    art pixels, on whole screen pixels: never a smooth circle or ellipse (they all were, among pixel art). A shadow
+    is an oval, not a bar: its middle row is the widest."""
+    game.js(f"zoom = {zoom}")
+    game.give(wood=1)
+    game.act("drop", item="wood", n=1)
+    game.sleep(400)
+    game.js(ROUND)
+    x, y = game.pos()
+    game.js(f"(() => {{ smoke({x + 2}, {y}, 8); smoke({x - 2}, {y}, 4, .4); return 1; }})()")
+    game.sleep(700)
+    game.js("drawOrb(120, 120, ORB, false)")
+    rows = game.js("__rows")
+    assert game.js("__round") == 0 and len(rows) > 400
+    off = [r for r in rows if r[3] != zoom or r[2] % zoom or r[2] <= 0 or any(v != int(v) for v in r)]
+    assert not off, off[:5]
+    game.js("(() => { __rows.length = 0; ctx.fillStyle = '#000'; pixelOval(200, 200, 6, 2.5, 0, .5); return 1; })()")   # (the shadow under you)
+    assert [r[2] // zoom for r in game.js("__rows")] == [8, 10, 12, 10, 8]
+    assert not game.errors

@@ -971,3 +971,13 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - The page (agent.js, intent.js): while you eat nothing but those is asked for, and no swing is shown (the punch was drawn at once, before the server answered).
 - Tests: the sim test of the walking meal now holds that a dig, a punch, a second bite and a pick-up are refused and the walk and the meal go on, that talking does not stop the meal, and that the hands are free once it is eaten; a browser test presses Space on a tree and F on a thing underfoot during a meal (nothing asked for, no swing, the tree stands, the meal is finished), then both work. 306 unit; browser 136/136.
 - Not done: the server the user plays on runs the old rule until it is started again (the page's own rule holds for a player at once; an agent's actions are refused only after that).
+
+## Iteration 86: smoke, glows and shadows in the land's pixels; numbers on the slots that read
+- User: "same for particles , i want them pixellated. not pure circles". Then: "numbers in the bottom inventory slots arent really visible".
+- What there was: chips and sparks were already square art pixels. The round things were not: a smoke puff (a creature's poof, landing dust, chimney smoke) was a smooth circle with a stroked edge, an xp orb's glow a smooth disc, and the shadows under you, under a jump, under loot and under a pile smooth ellipses.
+- Change (effects.js pixelOval): a round shape is rows of whole art pixels, each art pixel filled if its middle is inside, on whole screen pixels; a puff's edge is its outermost art pixel all round. All six use it; no arc or ellipse is drawn on the game's canvas any more. A shadow has an odd number of rows, so it is an oval (8, 10, 12, 10, 8 under you) and not a bar (the first try gave a pile a plain 8 x 2 rectangle).
+- Done beyond the words: the shadows and the orb's glow are not particles. They were the same smooth circles among pixel art, so they went the same way; said to the user.
+- The numbers: a slot's key (1 to 0) was cream on the cream frame, with no edge: nearly gone. The count had a thin blurred edge. Both have a hard dark rim one font pixel wide (the key yellow, the count white). On a touch screen the keys are not shown: there are none.
+- Measured: frames of a poof, dust and a pile before and after, blown up (scratchpad items/puffs_cmp.png, k_bars.png).
+- Tests: with the zoom at 2 and 3, a poof, dust, an orb, your shadow and a pile's draw no arc and no ellipse, and every row is whole art pixels on whole screen pixels. 306 unit; browser 138/138.
+- Not done: lights at night, the cave's light and the x-ray circle's edge are still smooth gradients (light, not shapes). The hearts' pixel is still not the slots'.

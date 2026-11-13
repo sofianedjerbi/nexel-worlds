@@ -193,18 +193,34 @@ function drawDying(sx, sy, S, t, now) {
     ctx.restore();
   }
 }
+// A round shape in the land's own pixels: each art pixel whose middle is inside is filled whole, in the fill style
+// set. Smoke, shadows and glows were plain smooth circles among pixel art. gx, gy: where on the screen (rounded to a
+// screen pixel); rx, ry: art px; mx, my .5: round the middle of the art pixel at gx, gy (an odd number of them across,
+// or down: a shadow three rows high, not a bar of two); ring: only its outermost art pixel all round.
+function pixelOval(gx, gy, rx, ry, mx = 0, my = mx, ring = false) {
+  const z = zoom, half = (a, b, j) => { const t = (j + .5 - my) / b; return b > 0 && t * t < 1 ? a * Math.sqrt(1 - t * t) : -1; };
+  gx = Math.round(gx); gy = Math.round(gy);
+  for (let j = Math.floor(my - ry); j < Math.ceil(my + ry); j++) {
+    const d = half(rx, ry, j), i0 = Math.ceil(mx - d - .5), i1 = Math.floor(mx + d - .5);
+    if (d < 0 || i1 < i0) continue;
+    const e = ring ? half(rx - 1, ry - 1, j) : -1, a0 = Math.ceil(mx - e - .5), a1 = Math.floor(mx + e - .5);
+    if (!ring || e < 0 || a1 < a0) { ctx.fillRect(gx + i0 * z, gy + j * z, (i1 - i0 + 1) * z, z); continue; }
+    if (a0 > i0) ctx.fillRect(gx + i0 * z, gy + j * z, (a0 - i0) * z, z);
+    if (i1 > a1) ctx.fillRect(gx + (a1 + 1) * z, gy + j * z, (i1 - a1) * z, z);
+  }
+}
 function drawPuffs(sx, sy, dt) {
   const z = zoom;
   for (let i = puffs.length - 1; i >= 0; i--) {
     const p = puffs[i]; p.age += dt;
     if (p.age > p.life) { puffs.splice(i, 1); continue; }
     if (p.age < 0) continue;
-    const k = p.age / p.life, r = Math.round((p.r + p.grow * k) * z / 2) * 2;
+    const k = p.age / p.life, r = p.r + p.grow * k;     // (art px)
     p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97;
     if (behindHill(p.x, p.y)) continue;                 // (behind a hill: not seen)
-    const cx = Math.round(sx(p.x)), cy = Math.round(sy(p.y) - liftFrom(p)), a = (1 - k) * .85;
-    ctx.fillStyle = `rgba(246,240,228,${a})`; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
-    ctx.strokeStyle = `rgba(150,128,116,${a * .6})`; ctx.lineWidth = z; ctx.stroke();
+    const cx = sx(p.x), cy = sy(p.y) - liftFrom(p), a = (1 - k) * .85;
+    ctx.fillStyle = `rgba(246,240,228,${a})`; pixelOval(cx, cy, r, r);
+    if (r >= 2) { ctx.fillStyle = `rgba(150,128,116,${a * .6})`; pixelOval(cx, cy, r, r, 0, 0, true); }    // its edge, one art pixel
   }
 }
 function drawEffects(sx, sy, S, dt) {

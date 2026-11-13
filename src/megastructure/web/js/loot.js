@@ -82,7 +82,7 @@ function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list
                                                                     //  the ground (only then: it ends at rest, as the pile shows)
     list.push({y: l.y - .01 + i * 1e-4, x: l.x, fx: () => {         // (in the pile's order: the last in front)
       ctx.fillStyle = "rgba(60,40,30,.25)";
-      ctx.beginPath(); ctx.ellipse(cx, ground + 5 * z, Math.max(1, 4 - h * 4) * z, 1.5 * z, 0, 0, 7); ctx.fill();
+      pixelOval(cx, ground + 5 * z, Math.max(1, 4 - h * 4), 1.5, 0, .5);
       ctx.drawImage(ghostIcon(l.name), 0, 0, DROP, DROP - dip, Math.round(cx - DROP * z / 2), Math.round(ground - DROP * z / 2 - h * S) + dip * z, DROP * z, (DROP - dip) * z);
     }});
   });

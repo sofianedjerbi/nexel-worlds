@@ -57,7 +57,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
     if (mine || e.name === follow) {
       ctx.fillStyle = mine ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
-      ctx.beginPath(); ctx.ellipse(x + S / 2, y - (j ? Math.round(j.ground * z) : 0) + S - 2 * z, 6 * z, 2.5 * z, 0, 0, 7); ctx.fill();   // (on the ground under you)
+      pixelOval(x + S / 2, y - (j ? Math.round(j.ground * z) : 0) + S - 2 * z, 6, 2.5, 0, .5);   // (on the ground under you)
     }
     if (j) jumpShadow(j, x, y, S, z);
     if (tool === "dig" || tool === "attack" || tool === "craft") {

@@ -70,7 +70,7 @@ const ORB = [".ooo.", "owyyo", "oyyyo", "oyyyo", ".ooo."];
 const ORB_BIG = ["..ooo..", ".owwyo.", "owyyyyo", "oyyyyyo", "oyyyyyo", ".oyyyo.", "..ooo.."];
 function drawOrb(cx, cy, shape, flick) {
   const z = zoom, n = shape.length, x0 = cx - Math.floor(n / 2) * z, y0 = cy - Math.floor(n / 2) * z;
-  ctx.fillStyle = "rgba(220,255,140,.25)"; ctx.beginPath(); ctx.arc(cx + z / 2, cy + z / 2, (n / 2 + 2) * z, 0, 7); ctx.fill();
+  ctx.fillStyle = "rgba(220,255,140,.25)"; pixelOval(cx, cy, n / 2 + 2, n / 2 + 2, .5);   // its glow, on the orb's own pixels
   const col = {o: "#4f8a2a", y: flick ? "#b9e45a" : "#dcf27a", w: "#fffbd8"};
   shape.forEach((row, j) => [...row].forEach((c, i) => { if (c !== ".") { ctx.fillStyle = col[c]; ctx.fillRect(x0 + i * z, y0 + j * z, z, z); } }));
 }
