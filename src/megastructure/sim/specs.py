@@ -38,7 +38,7 @@ TOOL_SPECS = {
     "attack": {"args": {"target": "entity id", "with": "weapon (optional, e.g. sword, spear, axe; default fists)"},
                "desc": "hit an agent or creature within reach (3 tiles, 4 with a spear in hand; a circle round you, and height counts: a layer is half a tile, so not up a cliff or down one)"},
     "give": {"args": {"target": "agent id", "item": "str", "n": "int"}, "desc": "hand items to an agent within 2 tiles"},
-    "eat": {"args": {"item": "str"}, "desc": "eat food"},
+    "eat": {"args": {"item": "str"}, "desc": "eat food (a moment: you can walk meanwhile, nothing else)"},
     "wear": {"args": {"item": "str"}, "desc": "put on a hat, top, pants, shoes or charm you carry (iron, gold, leather and mossback pieces are armor)"},
     "unwear": {"args": {"slot": "head|top|pants|shoes|effect"}, "desc": "take off what you wear there"},
     "say": {"args": {"text": "str"}, "desc": f"local chat, heard within {SAY_R} tiles"},

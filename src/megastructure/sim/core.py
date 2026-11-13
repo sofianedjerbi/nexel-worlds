@@ -20,6 +20,7 @@ from .constants import (
     DAY_TICKS,
     EVENT_QUEUE,
     ASIDE,
+    MEANWHILE,
     MOVES,
     VIEW_R,
     sec,
@@ -214,6 +215,11 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             act.finish({"ok": False, "status": "failed", "error": "unknown_tool",
                         "detail": f"tools: {', '.join(TOOL_SPECS)}"}, self)
             return act
+        if a.aside is not None and tool not in MEANWHILE:      # eating: the hands are full. You can walk on (and talk),
+            act = Action(a, tool, args, iter(()), on_done)     # nothing else until it is eaten: no punch, no digging
+            act.finish({"ok": False, "status": "failed", "error": "hands_full",
+                        "detail": "you are eating: you can walk meanwhile, nothing else until it is eaten"}, self)
+            return act
         if tool in ("walk", "stop"):                    # where a player's screen turned, or stopped (Movement.follow): kept
             if args.get("cut"):                         # now, were this replaced before it starts (`cut`: it turned
                 self.via_drop(a)                        # back before the tile it had stopped on: not made after all)
@@ -222,7 +228,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         moving = a.action is not None and a.action.tool in MOVES
         if tool in ASIDE:                               # with the hands: a walk goes on (anything else stops for it)
             walk, a.action = (a.action, None) if moving else (None, a.action)
-            self.interrupt(a, f"replaced by {tool}", way=True)       # (what they were doing; a meal already under way)
+            self.interrupt(a, f"replaced by {tool}", way=True)       # (what they were doing)
             a.action, a.aside = walk, act
             return act
         if moving and tool not in MOVES and tool != "stop":
@@ -248,7 +254,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             self.interrupt(a, f"replaced by {tool}")
             a.action = act
             return act
-        self.interrupt(a, f"replaced by {tool}", way=tool in ("walk", "stop"), hands=tool not in MOVES)
+        self.interrupt(a, f"replaced by {tool}", way=tool in ("walk", "stop"), hands=tool not in MEANWHILE)
         a.action = act
         return act
 

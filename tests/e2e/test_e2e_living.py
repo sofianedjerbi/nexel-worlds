@@ -19,6 +19,35 @@ def test_eating_takes_three_bites_and_stops_when_full(game):
         assert "full" in game.toast()
 
 
+def test_eating_your_hands_are_full(game):
+    """While you eat you can walk, nothing else: Space on a tree beside you asks for nothing and shows no swing, F
+    picks nothing up, and the tree stands; once it is eaten the same keys work. (A player chopped and punched with
+    the food at his mouth, and the meal stopped for it.)"""
+    game.clear_area(6)
+    game.stamp(1, 0, ["T"])
+    game.give(bread=1, stone=1)
+    game.rpc("dev_needs", hunger=30)
+    game.act("drop", item="stone", n=1)                       # something to pick up, under you
+    game.sleep(300)
+    game.face(1, 0)
+    game.hold_item("bread")
+    game.js("(() => { window.__asked = []; const o = rpc; rpc = function (op, d) { if (op === 'act') __asked.push(d.tool); return o(op, d); }; return 1; })()")
+    game.press("e", 0)
+    game.wait("myAside && myAside.tool === 'eat'")
+    game.press("Space", 150)
+    game.press("f", 150)
+    assert game.js("eating()") and game.js("__asked") == ["eat"]                     # nothing asked for but the meal
+    assert game.js("!ents.get('agent' + myId).swing && !myAction")                   # no punch shown
+    assert game.inv("stone") == 0 and game.js(f"combAt({game.pos()[0] + 1}, {game.pos()[1]})") == "T"
+    assert game.rpc("act", tool="dig", args={"dir": "E"})["error"] == "hands_full"   # (the server's own rule, asked past the page)
+    game.wait("!eating()", 4000)
+    assert game.server()["hunger"] == 30 + 50                                        # ...and the meal was not stopped for any of it
+    game.press("f", 400)
+    assert game.inv("stone") == 1                                                    # eaten: the hands are free
+    game.press("Space", 200)
+    assert game.js("__asked") == ["eat", "dig", "pick_up", "dig"] and not game.errors   # (the first dig: the one asked past the page)
+
+
 def test_you_eat_while_you_walk(game):
     """Eating is done with the hands: E on the move doesn't stop you, the bites show on a walking you (to others
     too), and setting off doesn't end a meal begun standing. (You stood still for every bite.)"""

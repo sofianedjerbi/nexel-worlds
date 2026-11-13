@@ -27,9 +27,10 @@ TARGET_R = 3         # actions aimed at x, y: tiles.USE_R plus one, to absorb a 
 LAYER = 0.5          # a layer of height is half a tile: in what you can reach, height is distance too (Movement.near)
 ASIDE = ("eat",)     # done with the hands: whatever the feet are doing goes on (Agent.aside)
 MOVES = ("walk", "move_to", "step", "stop")   # movement (stop: walking to where the player's screen stopped): quick actions happen alongside it instead of stopping it
+MEANWHILE = MOVES + ("say", "shout")          # all that can be done while the hands are full (eating): walking, and talking. No punching, no digging, nothing else
 VIA_FAR, VIA_MAX = 8, 8               # a tile a screen walked to: how far it may be from the last, and how many are kept (Movement.follow)
 ATTACK_COOLDOWN = 0.4    # seconds between two swings
-EAT_SECONDS = 0.9    # eating takes a moment (three bites; walking on doesn't stop it, doing something else does)
+EAT_SECONDS = 0.9    # eating takes a moment (three bites; you walk on meanwhile, and do nothing else: MEANWHILE)
 CAN_SIZE = 12        # waterings per fill
 
 COOP_R = 6           # chickens this close to a coop lay there, twice as often

@@ -59,6 +59,10 @@ let myAction = null, pendingAct = null;   // myAction is set only once the serve
 // two of these, so starting a walk or finishing a step doesn't end the meal on screen
 const ASIDE = ["eat"];
 let myAside = null, pendingAside = null;
+// Eating, your hands are full: you can walk on and talk, nothing else until it is eaten (the server's rule: sim
+// MEANWHILE). Nothing is asked for meanwhile, and no swing is shown (intent.js perform).
+const MEANWHILE = ["walk", "stop", "step", "move_to", "say", "shout"];
+const eating = () => !!(pendingAside || myAside);
 let actTarget = null;   // the exact tile perform() aims at: sent as x, y instead of a direction
 function facingTo(p) {  // the direction to look when working on p (the bigger axis wins)
   const s = myPos(); if (!s) return null;
@@ -66,7 +70,7 @@ function facingTo(p) {  // the direction to look when working on p (the bigger a
   return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "E" : dx < 0 ? "W" : null) : dy > 0 ? "S" : "N";
 }
 async function act(tool, args, quiet) {
-  if (!me) return null;
+  if (!me || (eating() && !MEANWHILE.includes(tool))) return null;
   while (pred && performance.now() < pred.until) await new Promise((ok) => setTimeout(ok, 16));   // the server is still coming to where you stopped: what you do, you do from there
   if (actTarget && "dir" in args) { args = {...args, x: actTarget.x, y: actTarget.y}; delete args.dir; }
   const look = actTarget ? facingTo(actTarget) : args.dir;

@@ -196,7 +196,7 @@ function inReach(p, it, flat = it.flat) {                       // (it.flat: a w
 }
 const TOO_HIGH = "Out of reach: too high up, or too far down.";
 async function perform(p, it) {
-  if (!it || it.info || !it.run) return;
+  if (!it || it.info || !it.run || (eating() && !it.walk)) return;   // (eating: no punch, no digging: agent.js)
   if (it.ok === false) return toast(it.text, true);
   if (it.walk || it.here) return it.run();
   if (!inReach(p, it)) return toast(inReach(p, it, true) ? TOO_HIGH : "Too far: get closer.", true);

@@ -93,7 +93,8 @@ def test_hitting_while_walking(world):
 
 def test_you_eat_while_you_walk(world):
     """Eating is done with the hands (constants.ASIDE): it runs beside a walk, which goes on, and beside starting one.
-    Doing something else stops the meal. (It replaced the walk: you stood still for every bite.)"""
+    (It replaced the walk: you stood still for every bite.) Nothing else is done meanwhile: a punch, a dig, another
+    bite are refused until it is eaten (they stopped the meal, and a player could chop with his mouth full); talking is."""
     sim, a = world
     a.hunger = 40
     a.add("berries", 3)
@@ -115,8 +116,18 @@ def test_you_eat_while_you_walk(world):
     for _ in range(12):
         sim.step()
     assert eat.result["ok"] and a.count("berries") == 1 and a.action is walk
-    eat = sim.submit(a, "eat", {"item": "berries"})                         # something else for the hands: the meal stops
+    eat = sim.submit(a, "eat", {"item": "berries"})                         # something else for the hands: not while eating
     sim.world.set(a.x - 1, a.y - 1, block="tree")
-    sim.submit(a, "dig", {"x": a.x - 1, "y": a.y - 1})
-    assert eat.result["status"] == "interrupted" and a.aside is None and a.count("berries") == 1
+    for tool, args in (("dig", {"x": a.x - 1, "y": a.y - 1}), ("attack", {"dir": "W"}), ("eat", {"item": "berries"}), ("pick_up", {})):
+        no = sim.submit(a, tool, args)
+        assert no.result["error"] == "hands_full" and a.aside is eat and eat.result is None, tool
+    assert sim.world.block(a.x - 1, a.y - 1) == "tree" and a.action is walk and walk.result is None    # (and the walk goes on)
+    said = sim.submit(a, "say", {"text": "mm"})                             # ...talking is, and the meal goes on
+    sim.step()
+    assert said.result["ok"] and a.aside is eat
+    for _ in range(12):
+        sim.step()
+    assert eat.result["ok"] and a.count("berries") == 0 and a.aside is None
+    dig = sim.submit(a, "dig", {"x": a.x - 1, "y": a.y - 1})                # eaten: the hands are free again
+    assert dig.result is None or dig.result["error"] != "hands_full"
 
