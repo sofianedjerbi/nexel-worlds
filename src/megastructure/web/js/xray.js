@@ -75,7 +75,7 @@ function xrayLook(dt) {
 function xrayPaint(tx) {
   const near = [];                                          // the blocks it can take tiles from, and what they have of the land
   for (let by = Math.floor((xray.row - 14) / B); by <= Math.floor((xray.row + 14) / B); by++) for (let bx = Math.floor((tx - 5) / B); bx <= Math.floor((tx + 5) / B); bx++) {
-    const b = blocks.get(bkey(bx, by)); if (b && b.canvas) near.push(b);
+    const b = blocks.get(bkey(bx, by)); if (b && b.px) near.push(b);
   }
   const key = [tx, xray.row, xray.L, XRAY.whole, ...near.map((b) => b.bx + ":" + b.by + ":" + (b.ver || 0))].join();
   if (xray.pic && xray.pic.key === key) { xray.job = null; return true; }
@@ -93,16 +93,18 @@ function* xrayPicture(tx, key, near) {
   let lo = 99, hi = -99;
   for (let ty = xray.row - 14; ty <= xray.row + 14; ty++) for (let x = tx - 5; x <= tx + 5; x++) { const l = levelAt(x, ty); lo = Math.min(lo, l); hi = Math.max(hi, l); }
   const y0 = Math.max(xray.row - 14, (y + shOf(lo) >> 4) - 1), y1 = Math.min(xray.row + 14, y + h + shOf(hi) >> 4);   // every row of tiles that can be drawn in it
-  const R = {x: tx - (w >> 1), y: y0, w, h: y1 - y0 + 1}, ground = document.createElement("canvas"), gg = ground.getContext("2d");
+  const R = {x: tx - (w >> 1), y: y0, w, h: y1 - y0 + 1}, gh = R.h * 16, ground = new Uint32Array(W * gh);   // (its ground: the blocks' own px, tiles.js)
   const row = xray.row, L = xray.L, rock = (x, ty) => ty > row && levelAt(x, ty) >= L + 2 && !XRAY.whole;   // (the rock seen through, from where you were when this was started)
-  ground.width = W; ground.height = R.h * 16;
-  for (const b of near) gg.drawImage(b.canvas, (b.bx * B - R.x) * 16, (b.by * B - R.y) * 16);
+  for (const b of near) {
+    const bx = (b.bx * B - R.x) * 16, by = (b.by * B - R.y) * 16, x0 = Math.max(0, bx), x1 = Math.min(W, bx + BW);
+    if (x1 > x0) for (let yy = Math.max(0, by); yy < Math.min(gh, by + BW); yy++) ground.set(b.px.subarray((yy - by) * BW + x0 - bx, (yy - by) * BW + x1 - bx), yy * W + x0);
+  }
   const see = {keep: new Uint8Array((w + 4) * (R.h + 4)), c0: y - R.y * 16, c1: y - R.y * 16 + h, state: new Uint8Array(W * h), cover: new Uint8Array(W * h), wet: new Uint8Array(W * h)};
   for (let j = -2; j < R.h + 2; j++) for (let i = -2; i < w + 2; i++) see.keep[(j + 2) * (w + 4) + i + 2] = rock(R.x + i, R.y + j) ? 0 : 1;
-  see.base = (R, fg, ground, lift, minLv) => {             // the ground itself, each tile kept at the lowest level (water shows through it at the sea's)
+  see.base = (R, put, lift, minLv) => {                    // the ground itself, each tile kept at the lowest level (water shows through it at the sea's)
     for (let j = 0; j < R.h; j++) for (let i = 0; i < w; i++) {
       const keep = see.keep[(j + 2) * (w + 4) + i + 2], Y = j * 16 + lift;
-      if (keep) fg.drawImage(ground, i * 16, j * 16, 16, 16, i * 16, Y, 16, 16);
+      if (keep) put(i, j, Y);
       for (let yy = Math.max(0, Y); yy < Math.min(h, Y + 16); yy++) for (let f = yy * W + i * 16, e = f + 16; f < e; f++) {
         if (keep) { see.state[f] = 1; see.cover[f] = 0; see.wet[f] = minLv === 0 ? 1 : 0; } else see.cover[f] = 1;
       }
@@ -112,13 +114,12 @@ function* xrayPicture(tx, key, near) {
   const mouths = caveMouths(near, R.x * 16, y, W, h, rock);   // (the mouths of caves in what is kept: caves.js)
   if (mouths) over.getContext("2d").drawImage(mouths, -OV_M, -OV_M);
   // of it, what the rock is drawn over: the kept ground that is on top there (seen), and its water
-  const seen = new Uint8Array(W * h), m = new ImageData(W, h), wm = new ImageData(W, h), wet = document.createElement("canvas"), wg = wet.getContext("2d");
+  // (two masks, a canvas each, made once: one written again after it was drawn from is what a phone's GPU got wrong)
+  const seen = new Uint8Array(W * h), m = new Uint32Array(W * h), wm = new Uint32Array(W * h);
   let any = 0;
-  for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) { seen[f] = 1; any++; m.data[f * 4 + 3] = 255; if (see.wet[f]) wm.data[f * 4 + 3] = 255; }
-  wet.width = W; wet.height = h; wg.putImageData(m, 0, 0);
-  const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(wet, 0, 0);
-  wg.putImageData(wm, 0, 0);
-  return {key, x: R.x * 16, y, w: W, h, over, wet, seen, any};
+  for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) { seen[f] = 1; any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
+  const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(m, W, h), 0, 0);
+  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, any};
 }
 
 // The circle itself, over the land and under everything standing on it

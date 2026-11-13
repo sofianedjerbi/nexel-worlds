@@ -102,22 +102,42 @@ function drawBlobLayer(g, sheet, x, y, pred, ox, oy, decor) {
   }
   g.drawImage(sheet, sx, sy, 16, 16, ox, oy, 16, 16);
 }
-// Is a sheet's 16 px cell drawn in full, every px of it solid? (what is under such a cell does not show)
-const sheetPx = new Map();
-function cellSolid(sheet, sx, sy) {
+// The land is painted in the page, a px a number, and handed to the GPU whole, once (a block's ground: relief.js).
+// Painted through canvases a piece at a time, a phone's GPU got it wrong where a desktop's did not.
+// A sheet's px, read once: a Uint32 a px, its alpha on top.
+const BW = B * 16, sheetPx = new Map();
+function sheetData(sheet) {
   let m = sheetPx.get(sheet);
   if (!m) {
     const c = document.createElement("canvas"); c.width = sheet.width; c.height = sheet.height;
-    const g = c.getContext("2d"); g.drawImage(sheet, 0, 0);
-    m = {data: g.getImageData(0, 0, c.width, c.height).data, w: c.width, solid: new Map()}; sheetPx.set(sheet, m);
+    const g = c.getContext("2d", {willReadFrequently: true}); g.drawImage(sheet, 0, 0);
+    m = {px: new Uint32Array(g.getImageData(0, 0, c.width, c.height).data.buffer), w: c.width, solid: new Map()}; sheetPx.set(sheet, m);
   }
-  const key = sy * 4096 + sx; let v = m.solid.get(key);
+  return m;
+}
+// Is a sheet's 16 px cell drawn in full, every px of it solid? (what is under such a cell does not show)
+function cellSolid(sheet, sx, sy) {
+  const m = sheetData(sheet), key = sy * 4096 + sx; let v = m.solid.get(key);
   if (v === undefined) {
     v = true;
-    for (let j = 0; j < 16 && v; j++) for (let i = 0; i < 16; i++) if (m.data[((sy + j) * m.w + sx + i) * 4 + 3] !== 255) { v = false; break; }
+    for (let j = 0; j < 16 && v; j++) for (let i = 0; i < 16; i++) if (m.px[(sy + j) * m.w + sx + i] >>> 24 !== 255) { v = false; break; }
     m.solid.set(key, v);
   }
   return v;
+}
+// A px over another, as a canvas lays it (the sheets' shadows are see-through)
+function pxOver(s, d) {
+  const sa = (s >>> 24) / 255, da = (d >>> 24) / 255 * (1 - sa), a = sa + da;
+  const ch = (k) => Math.round(((s >>> k & 255) * sa + (d >>> k & 255) * da) / a);
+  return (Math.round(a * 255) << 24 | ch(16) << 16 | ch(8) << 8 | ch(0)) >>> 0;
+}
+// A sheet's cell laid on px (to, W wide, at o): a solid one copied a row at a time, another px by px over what is there
+function layCell(to, o, W, sheet, sx, sy, solid) {
+  const m = sheetData(sheet);
+  for (let j = 0, s = sy * m.w + sx; j < 16; j++, s += m.w, o += W) {
+    if (solid) { to.set(m.px.subarray(s, s + 16), o); continue; }
+    for (let i = 0; i < 16; i++) { const v = m.px[s + i], a = v >>> 24; if (a === 255) to[o + i] = v; else if (a) to[o + i] = pxOver(v, to[o + i]); }
+  }
 }
 // What a tile is made of is first noted, a sheet's cell after the other (LAID), then painted from the last cell that
 // is solid all over: on a plateau twelve layers high, the one that shows and not the thirteen under it.
@@ -125,7 +145,7 @@ const LAID = {n: 0, img: [], at: [], drawImage(img, sx, sy) { this.img[this.n] =
 let landVer = 0;                                    // (goes up whenever a tile of the land is drawn again: what was worked out from the land is out of date)
 function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewhere else than its block's canvas)
   const b = blockOf(x, y);
-  if (!b || !(to || b.canvas)) return;
+  if (!b || !(to || b.px)) return;
   const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, ox = to ? to.ox : lx * 16, oy = to ? to.oy : ly * 16;
   const c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y), up = (cc, gg, tx, ty) => levelAt(tx, ty) >= k;
   let k = lv;
@@ -170,14 +190,14 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
   for (let j = base; j < g.n; j++) order.push(j);
   let first = order.length - 1;
   while (first >= 0 && !cellSolid(g.img[order[first]], g.at[order[first]] % 4096, g.at[order[first]] >> 12)) first--;
-  const out = to ? to.g : b.ctx;
-  if (!to) {
-    if (first < 0) out.clearRect(ox, oy, 16, 16);    // (nothing solid all over it: what was there must go first)
-    (b.solid || (b.solid = new Uint8Array(B * B)))[i] = first < 0 ? 0 : 1;   // (relief.js: under a tile solid all over, nothing shows)
-    b.reliefDirty = true;                            // (its stacked levels are rebuilt from this canvas: relief.js)
-    b.ver = (b.ver || 0) + 1; landVer++;
-  }
-  for (let q = Math.max(0, first); q < order.length; q++) out.drawImage(g.img[order[q]], g.at[order[q]] % 4096, g.at[order[q]] >> 12, 16, 16, ox, oy, 16, 16);
+  const at = (q) => [g.img[order[q]], g.at[order[q]] % 4096, g.at[order[q]] >> 12];
+  if (to) { for (let q = Math.max(0, first); q < order.length; q++) { const [img, sx, sy] = at(q); to.g.drawImage(img, sx, sy, 16, 16, ox, oy, 16, 16); } return; }
+  const o = ly * 16 * BW + lx * 16;
+  if (first < 0) for (let j = 0; j < 16; j++) b.px.fill(0, o + j * BW, o + j * BW + 16);   // (nothing solid all over it: what was there must go first)
+  for (let q = Math.max(0, first); q < order.length; q++) layCell(b.px, o, BW, ...at(q), q === first);
+  (b.solid || (b.solid = new Uint8Array(B * B)))[i] = first < 0 ? 0 : 1;   // (relief.js: under a tile solid all over, nothing shows)
+  b.reliefDirty = true;                              // (its stacked levels are rebuilt from these px: relief.js)
+  b.ver = (b.ver || 0) + 1; landVer++;
 }
 // what's laid on the ground: tilled soil (wet or not), floors, ash, cobble
 function groundMarks(g, x, y, gr, ox, oy) {
@@ -218,14 +238,20 @@ function edgeSheet(name) {
   g.putImageData(d, 0, 0);
   return edgeSheets[name] = c;
 }
+// A block's ground: its px (b.px), every tile of it painted a little a frame, or at once. What is shown of it is a
+// canvas made of them when its raised picture is (b.canvas: relief.js)
 function startBlock(b) {
-  b.canvas = document.createElement("canvas"); b.canvas.width = B * 16; b.canvas.height = B * 16;
-  b.ctx = b.canvas.getContext("2d"); b.drawn = true;
+  b.px = new Uint32Array(BW * BW); b.drawn = true;
   for (let ly = B - 1; ly >= 0; ly--) for (let lx = B - 1; lx >= 0; lx--) dirtyTiles.push(b.bx * B + lx, b.by * B + ly);
 }
 function renderBlock(b) {
-  b.canvas = document.createElement("canvas"); b.canvas.width = B * 16; b.canvas.height = B * 16;
-  b.ctx = b.canvas.getContext("2d");
+  b.px = new Uint32Array(BW * BW);
   for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) drawTile(b.bx * B + lx, b.by * B + ly);
   b.drawn = true;
+}
+// px as a canvas, made once and never drawn on again
+function pxCanvas(px, w, h) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  c.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(px.buffer, px.byteOffset, w * h * 4), w, h), 0, 0);
+  return c;
 }

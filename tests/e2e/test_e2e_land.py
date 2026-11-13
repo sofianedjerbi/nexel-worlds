@@ -1,4 +1,4 @@
-"""Land coming in: only what shows is painted, a little a frame, and it is the same land to the pixel."""
+"""Land coming in: only what shows is painted, a little a frame, in the page, and it is the same land to the pixel."""
 
 LV = "0123456789ABC"
 # a mountain of terraces twelve layers high, 13 tiles across
@@ -8,15 +8,15 @@ MOUNTAIN = ["".join(LV[max(0, 12 - 2 * max(abs(dx), abs(dy)))] for dx in range(-
 SIG = """() => { const hash = (c) => { if (!c) return 0; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let a = 2166136261;
     for (let i = 0; i < d.length; i++) a = Math.imul(a ^ d[i], 16777619); return a >>> 0; };
   return [...blocks.values()].filter((b) => b.canvas).sort((p, q) => p.by - q.by || p.bx - q.bx).map((b) => {
-    let n = 0; const o = b.ctx.drawImage; b.ctx.drawImage = function (...a) { n++; return o.apply(this, a); };
+    let n = 0; const o = window.layCell; window.layCell = function (...a) { n++; return o(...a); };
     for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) drawTile(b.bx * B + lx, b.by * B + ly);
-    delete b.ctx.drawImage; buildRelief(b);
+    window.layCell = o; buildRelief(b);
     return {key: [hash(b.canvas), hash(b.relief.flat), b.relief.up, b.relief.minLv, (b.relief.box || []).join()].join(':'), n}; }); }"""
 
 
 def test_only_what_shows_is_painted_and_the_land_is_the_same(game):
     """A tile is painted from its last solid layer, and a level's tiles hidden under the level above are passed over
-    (tiles.js, relief.js). The pictures are the same to the pixel as with every layer painted (nothing taken for
+    (tiles.js, relief.js). The pictures are the same to the pixel as with every layer laid (nothing taken for
     solid); a block cost 42 ms to build at the foot of a twelve-layer mountain, on a fast machine."""
     game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN)
     game.stamp(-9, -4, ["..~~..", ".~~~~.", "..~~.."], levels=["000000", "0aaaa0", "000000"])     # a pond, and a pit under it
@@ -29,6 +29,39 @@ def test_only_what_shows_is_painted_and_the_land_is_the_same(game):
     assert [b["key"] for b in quick] == [b["key"] for b in whole] and len(quick) >= 2
     assert sum(b["n"] for b in quick) * 5 < sum(b["n"] for b in whole) * 3    # (about half the paint on a meadow, a tenth on the mountain)
     assert game.js(SIG) == quick                                              # ...and drawn again, the same
+
+
+PAGE = """() => { const P = CanvasRenderingContext2D.prototype, od = P.drawImage, op = P.putImageData, out = [];
+  for (const b of blocks.values()) { if (!b.px || !b.relief) continue;
+    const c = document.createElement('canvas'); c.width = c.height = BW; const g = c.getContext('2d', {willReadFrequently: true});
+    for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) drawTile(b.bx * B + lx, b.by * B + ly, {g, ox: lx * 16, oy: ly * 16});
+    const d = new Uint8Array(g.getImageData(0, 0, BW, BW).data.buffer), p = new Uint8Array(b.px.buffer); let diff = 0, near = 0, shown = 0, draws = 0, puts = 0;
+    for (let i = 0; i < d.length; i += 4) { const solid = d[i + 3] === 255 && p[i + 3] === 255, by = Math.max(Math.abs(d[i] - p[i]), Math.abs(d[i + 1] - p[i + 1]), Math.abs(d[i + 2] - p[i + 2]));
+      if (solid ? by > 1 : Math.abs(d[i + 3] - p[i + 3]) > 1) diff++; else if (by) near++; }
+    P.drawImage = function (...a) { draws++; return od.apply(this, a); }; P.putImageData = function (...a) { puts++; return op.apply(this, a); };
+    b.shown = -1; buildRelief(b); P.drawImage = od; P.putImageData = op;
+    const s = new Uint32Array(b.canvas.getContext('2d').getImageData(0, 0, BW, BW).data.buffer);
+    for (let i = 0; i < s.length; i++) if (s[i] !== b.px[i]) shown++;
+    out.push({diff, near, shown, draws, puts, levels: b.relief.maxLv - b.relief.minLv, water: b.water.any}); }
+  return out; }"""
+
+
+def test_the_land_is_painted_in_the_page_and_handed_to_the_gpu_whole(game):
+    """A block's ground and its raised picture are px worked out in the page, each made a canvas once (tiles.js,
+    relief.js). Put together by the GPU a piece at a time (a mask, the ground drawn into it, a few rows put and a few
+    rows drawn, on canvases used again for the next level), a phone showed the mask itself on cliff tops: black
+    tiles, which no desktop drew. The px are the tiles as a canvas lays them (a sheet's see-through shadow rounds a
+    step differently here and there, as it does from one canvas to another); and building a block draws on no
+    canvas: two pictures are put, once each."""
+    game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN)
+    game.stamp(-9, -4, ["..~~..", ".~~~~.", "..~~.."], levels=["000000", "0aaaa0", "000000"])
+    game.sleep(900)
+    blocks = game.js(PAGE)
+    assert len(blocks) >= 2 and max(b["levels"] for b in blocks) >= 12
+    assert all(b["diff"] == 0 and b["shown"] == 0 and b["near"] < 2000 for b in blocks), blocks
+    dry = [b for b in blocks if not b["water"]]
+    assert dry and all(b["draws"] == 0 and b["puts"] == (2 if b["levels"] else 1) for b in dry), blocks
+    assert all(b["puts"] <= 3 and b["draws"] <= 1 for b in blocks), blocks      # (water: its tint, a px a tile, blown up)
 
 
 def test_a_blocks_raised_ground_is_built_in_small_steps(game):
@@ -48,11 +81,12 @@ def test_a_blocks_water_is_made_again_only_when_it_changed(game):
     x, y = game.pos()
     game.js(f"(() => {{ const b = tileIdx({x + 4}, {y - 3})[0]; window.__b = b; window.__w = b.water; return b.water.any; }})()")
     assert game.js("__w.any") is True
+    built = "!dirtyTiles.length && !__b.reliefGen && !__b.reliefDirty"
     game.stamp(-4, 3, ["_"])                                     # a cobbled tile, away from the water: its block is built again
-    game.sleep(900)
-    assert game.js("__b.water === __w && !__b.reliefGen && !__b.reliefDirty") is True
+    game.sleep(500); game.wait(built)
+    assert game.js("__b.water === __w") is True
     game.stamp(3, -1, ["~"])                                     # the pond grows
-    game.sleep(900)
+    game.sleep(500); game.wait(built)
     assert game.js("__b.water !== __w && __b.water.any && __b.water.foam.length > __w.foam.length") is True
 
 

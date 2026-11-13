@@ -125,9 +125,10 @@ function levelShape(R, k, shape, ta, tb, keep, of) {
   }
   return {own, sh, edge, full};
 }
-// Painted lowest level first into one picture, a step a level (so no frame waits on a whole block). ground: the
-// rect's tiles as drawn flat (a block's canvas). -> {flat, up, maxLv, minLv}: the picture is `up` px taller than the
-// rect at its top (the highest level's lift), the lowest level's worth at its foot.
+// Painted lowest level first into one picture, a few rows a step (so no frame waits on a whole block). ground: the
+// rect's tiles as painted flat, a Uint32 a px (a block's: tiles.js). The picture is px too, worked out here and made
+// a canvas once, at the end: nothing of it is put together by the GPU. -> {flat, up, maxLv, minLv}: the picture is
+// `up` px taller than the rect at its top (the highest level's lift), the lowest level's worth at its foot.
 // see (xray.js): the land without the rock in the way. Only the tiles see.keep says are painted, exactly as they are
 // with that rock there (every shape and colour is still worked out from the whole land), into the rows c0..c1 of the
 // picture alone. What becomes of each px is noted as the land is painted, in the order it is painted in: see.state
@@ -149,17 +150,15 @@ function* reliefSteps(R, ground, see) {
     if (see) kept[k] = levelShape(R, k, kept, ...tiles(k), see.keep, shape[k].own);
     yield;
   }
-  const flat = see || maxLv > minLv ? document.createElement("canvas") : null, fg = flat && flat.getContext("2d");
-  if (flat) { flat.width = W; flat.height = tall; fg.imageSmoothingEnabled = false; }
-  if (see) see.base(R, fg, ground, top - shOf(minLv), minLv);        // (the ground itself, at the lowest level)
-  const [lc, t] = reliefScratch(W, H + STEP), lg = lc.getContext("2d"), tg = t.getContext("2d");
+  const out = see || maxLv > minLv ? new Uint32Array(W * tall) : null;
+  // a tile of the ground as painted, put at row Y of the picture (see: the ground itself, at the lowest level)
+  if (see) see.base(R, (i, j, Y) => { for (let r = Math.max(0, -Y); r < 16 && Y + r < tall; r++) out.set(ground.subarray((j * 16 + r) * W + i * 16, (j * 16 + r) * W + i * 16 + 16), (Y + r) * W + i * 16); }, top - shOf(minLv), minLv);
   // px rows since the shape was last met, down each column; since kept ground was, and its own tiles (not a ledge)
   const since = new Int16Array(W), mine = see ? new Int16Array(W) : since, solid = new Int16Array(W);
   for (let k = minLv + 1; k <= maxLv; k++) {
     const {own, sh} = shape[k], kown = see && kept[k].own, ksh = see && kept[k].sh, cols = colsOf(hillSheet(k)), off = top - shOf(k), [ya, yb] = span(k), n = yb - ya;
     const state = see && see.state, cover = see && see.cover, wet = see && see.wet;
     if (n <= 0) continue;
-    const col = new ImageData(W, n), cd = col.data, ownM = new ImageData(W, n), od = ownM.data;
     // A block's tiles are gone over sixteen px at a time where there is nothing to work out. 1: a tile that is this
     // level's all over, with the level above all over it and all over the tile south of it, both solid as drawn
     // (tiles.js): those two hide it to the last px, nothing of it is painted (of a terrace twelve layers up, the
@@ -177,24 +176,26 @@ function* reliefSteps(R, ground, see) {
         else if (f[j]) skip[q] = 3;
       }
     }
-    let c0 = n, c1 = 0, o0 = n, o1 = 0;                  // (the rows of it anything was put in)
     since.fill(99); mine.fill(99); solid.fill(99);
     for (let y = ya; y < yb; y++) {
      if (y > ya && !(y - ya & 31)) yield;                 // (a step every 32 rows: no frame waits on more)
-     const row = skip && y < H ? (y >> 4) * R.w : -1, r = y - ya;
+     const row = skip && y < H ? (y >> 4) * R.w : -1, fy = y + off, fo = fy * W, inPic = fy >= 0 && fy < tall;
      for (let x = 0; x < W; x++) {
       const sk = row >= 0 && !(x & 15) ? skip[row + (x >> 4)] : 0;
       if (sk) {                                          // (in a tile of its own the shape was just met; past an empty one it is as far as it was)
-        if (sk === 3) { for (let o = (r * W + x) * 4 + 3, e = o + 64; o < e; o += 4) od[o] = 255; if (r < o0) o0 = r; o1 = r + 1; }
+        if (sk === 3 && R.solid && R.solid[row + (x >> 4)]) out.set(ground.subarray(y * W + x, y * W + x + 16), fo + x);
+        else if (sk === 3) for (let i = x; i < x + 16; i++) { const v = ground[y * W + i], a = v >>> 24; if (a === 255) out[fo + i] = v; else if (a) out[fo + i] = pxOver(v, out[fo + i]); }
         if (sk !== 2 && (y & 15) === 15) since.fill(0, x, x + 16);
         x += 15; continue;
       }
       const i = (y + M) * Wm + x + M, s = sh[i], on = y < H && s, ours = on && (!see || kown[i] || (ksh[i] && !own[i]));
       since[x] = on ? 0 : since[x] + 1; if (see) { mine[x] = ours ? 0 : mine[x] + 1; solid[x] = ours && own[i] ? 0 : solid[x] + 1; }
-      const o = ((y - ya) * W + x) * 4, f = (y + off) * W + x, shown = see && y + off >= 0 && y + off < tall;
+      const f = fo + x, shown = see && inPic;
       let c = null;
-      if (ours && own[i]) { od[o + 3] = 255; if (r < o0) o0 = r; o1 = r + 1; }   // its own tiles: the ground as drawn, cut to its shape
-      else if (ours) {                                                        // the ledge, where the shape is not its own tiles
+      if (ours && own[i]) {                                                   // its own tiles: the ground as painted, cut to its shape
+        const v = ground[y * W + x], a = v >>> 24;
+        if (inPic) { if (a === 255) out[f] = v; else if (a) out[f] = pxOver(v, out[f]); }
+      } else if (ours) {                                                      // the ledge, where the shape is not its own tiles
         let ownL = false, ownR = false;
         for (let j = 1; j <= LEDGE; j++) { if (own[i - j]) ownL = true; if (own[i + j]) ownR = true; }
         if (ownL && ownR) c = cols.top;                    // (a sliver between two of its own edges: its top)
@@ -204,31 +205,23 @@ function* reliefSteps(R, ground, see) {
       // tile, there is no wall but its inside: nothing to see; under a kept ledge there is one, as at any corner)
       const inside = see && on && !ours && own[i] && solid[x] <= STEP;
       if (!ours && !inside && mine[x] <= STEP && (!s || (see && on))) c = cols.bands[mine[x] === 1 ? 0 : mine[x] === STEP ? 2 : 1];
-      if (c) { cd[o] = c[0] | 0; cd[o + 1] = c[1] | 0; cd[o + 2] = c[2] | 0; cd[o + 3] = 255; if (r < c0) c0 = r; c1 = r + 1; }
+      if (c && inPic) out[f] = (255 << 24 | (c[2] | 0) << 16 | (c[1] | 0) << 8 | (c[0] | 0)) >>> 0;
       if (!shown) continue;
       if (ours || c) { state[f] = 1; cover[f] = !ours && (on || since[x] < mine[x]) ? 1 : 0; if (k === 0 && ours && own[i]) wet[f] = 1; }
       else if (on) { cover[f] = 1; if (inside) state[f] = 2, wet[f] = 0; }    // the rock left out
       else if (!s && since[x] <= STEP) cover[f] = 1;                          // ...and its wall
      }
     }
-    // (each picture put whole and drawn whole: put a part at a time, a phone's GPU left the mask itself, black, on
-    // the tiles cut out at more than one level)
-    if (c1 > c0) { lg.putImageData(col, 0, 0); fg.drawImage(lc, 0, 0, W, n, 0, off + ya, W, n); }
-    const no = Math.min(yb, H) - ya;
-    if (o1 > o0 && no > 0) {
-      tg.globalCompositeOperation = "source-over"; tg.putImageData(ownM, 0, 0);
-      tg.globalCompositeOperation = "source-in"; tg.drawImage(ground, 0, ya, W, no, 0, 0, W, no);
-      fg.drawImage(t, 0, 0, W, no, 0, off + ya, W, no);
-    }
     yield;
   }
+  const flat = out && pxCanvas(out, W, tall);            // (handed to the GPU whole, once)
   return {flat, up, maxLv, minLv};
 }
 // A block's: its picture, and where that has anything in it (a small hill in a wide plain: the rest is not painted,
 // frame after frame): the raised tiles, their ledges beside them, their walls down to the lowest ground
 function* blockRelief(b) {
   const R = {x: b.bx * B, y: b.by * B, w: B, h: B, solid: b.solid}, Wb = B * 16, Ws = B + 4;
-  const {flat, up, maxLv, minLv} = yield* reliefSteps(R, b.canvas);
+  const {flat, up, maxLv, minLv} = yield* reliefSteps(R, b.px);
   let box = null;
   if (flat) {
     let x0 = Wb, y0 = flat.height, x1 = 0, y1 = 0;
@@ -241,13 +234,8 @@ function* blockRelief(b) {
     if (x1 > x0 && y1 > y0) box = [x0, y0, x1 - x0, y1 - y0];
   }
   yield* waterSteps(b);                                // (its water too, water.js: the block shows once all of it is there)
+  if (b.shown !== b.ver) { b.canvas = pxCanvas(b.px, Wb, Wb); b.shown = b.ver; }   // (its ground as it is now, a canvas: with the raised picture made of it, never one without the other)
   b.relief = {flat: box && flat, up, maxLv, minLv, box};
-}
-const scratch = new Map();                             // (canvases to build a level on, kept: a pair a size)
-function reliefScratch(w, h) {
-  const key = w + "x" + h;
-  if (!scratch.has(key)) scratch.set(key, [0, 1].map(() => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }));
-  return scratch.get(key);
 }
 function buildRelief(b) { for (const _ of blockRelief(b)); b.reliefDirty = false; }   // (all at once: tests, tools)
 // The raised ground of the blocks coming (render.js: in the order they are wanted) is built a step at a time, until
@@ -259,7 +247,7 @@ function reliefWork(coming, until) {
   if (dirtyTiles.length) return;
   let stepped = false;
   for (const b of coming) {
-    if (!b.canvas) continue;
+    if (!b.px) continue;
     if (b.reliefDirty || (!b.relief && !b.reliefGen)) b.reliefGen = blockRelief(b);
     b.reliefDirty = false;
     while (b.reliefGen && (!stepped || performance.now() < until)) { stepped = true; if (b.reliefGen.next().done) b.reliefGen = null; }
