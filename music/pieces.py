@@ -48,27 +48,31 @@ def tune(cell, cadence, bars):
     return [[(s, ln, n) for (s, ln), n in zip(cell if kind == "cell" else cadence, notes.split())] for kind, notes in bars]
 
 
-# Old Mossback, the boss. Its first version reused the day's cell in the minor: "looks too much like the main theme.
-# i believe we should create 2-3 themes for this game". So the boss has its own theme; two candidates, nothing shared
-# with Side street (other key, other cell, other rhythm, other sounds). Both are 32 bars, A A B A.
-#   Stomp  E minor with the Phrygian F chord a semitone above home. Cell: two hammered notes on the beat, a long one,
-#          two pickups (steps 0, 2, 4, 12, 14), low (E4 to E5). Slow and heavy.
-#   Chase  G minor. Cell: a long note first, then three quick ones around it and a landing (steps 0, 6, 8, 10, 12),
-#          high. Fast, a kick on every beat.
-VS = {"Em9": "G3 B3 D4", "Fadd9": "G3 A3 C4", "D9": "F#3 C4 E4", "Am9": "G3 C4 E4", "C6": "G3 C4 E4", "F#m7b5": "A3 C4 E4", "B7b9": "A3 C4 D#4", "Bm7": "A3 D4 F#4"}
-RS = {"Em9": "E2", "Fadd9": "F2", "D9": "D3", "Am9": "A2", "C6": "C3", "F#m7b5": "F#2", "B7b9": "B2", "Bm7": "B2"}
-_SA = ["Em9", "Fadd9", "Em9", "D9", "Am9", "C6", "F#m7b5 B7b9", "Em9"]
-_TSA = [("cell", "E4 E4 B4 A4 G4"), ("cell", "F4 F4 C5 A4 G4"), ("cell", "E4 E4 B4 A4 G4"), ("cadence", "F#4 F#4 A4"),
-        ("cell", "A4 A4 E5 D5 C5"), ("cell", "G4 G4 E5 D5 C5"), ("cell", "A4 A4 C5 B4 A4"), ("cadence", "G4 F#4 E4")]
-_TSB = [("cell", "G4 G4 E5 D5 C5"), ("cell", "A4 A4 E5 D5 C5"), ("cell", "F#4 F#4 D5 B4 A4"), ("cadence", "G4 F#4 E4"),
-        ("cell", "G4 G4 E5 D5 C5"), ("cell", "A4 A4 E5 D5 C5"), ("cell", "A4 A4 C5 B4 A4"), ("cadence", "C5 A4 B4")]
-VC = {"Gm9": "F3 Bb3 D4", "Ebmaj7": "G3 Bb3 D4", "D7b9": "F#3 C4 Eb4", "Bbmaj9": "F3 A3 D4", "Am7b5": "G3 C4 Eb4", "Cm9": "G3 Bb3 Eb4", "F9": "A3 Eb4 G4"}
-RC = {"Gm9": "G2", "Ebmaj7": "Eb2", "D7b9": "D3", "Bbmaj9": "Bb2", "Am7b5": "A2", "Cm9": "C3", "F9": "F2"}
-_CA = ["Gm9", "Gm9", "Ebmaj7", "D7b9", "Gm9", "Bbmaj9", "Am7b5 D7b9", "Gm9"]
-_TCA = [("cell", "D5 C5 D5 Bb4 G4"), ("cell", "D5 C5 D5 Bb4 G4"), ("cell", "D5 C5 D5 Bb4 G4"), ("cadence", "Eb5 D5 A4"),
-        ("cell", "D5 C5 D5 Bb4 G4"), ("cell", "F5 C5 F5 D5 C5"), ("cell", "Eb5 D5 Eb5 C5 A4"), ("cadence", "D5 Bb4 G4")]
-_TCB = [("cell", "G5 F5 G5 Eb5 C5"), ("cell", "G5 F5 G5 Eb5 C5"), ("cell", "F5 C5 F5 D5 C5"), ("cadence", "D5 Bb4 G4"),
-        ("cell", "G5 F5 G5 Eb5 C5"), ("cell", "G5 F5 G5 Eb5 C5"), ("cell", "Eb5 D5 Eb5 C5 A4"), ("cadence", "Eb5 D5 A4")]
+# Old Mossback, the boss: its own theme (the first reused the day's cell: "looks too much like the main theme").
+# Two earlier candidates failed: "Chase B sounds off-rhythm" (measured: its lead sound spoke 65 ms late and its chord
+# sound echoed between the beats) and "Mossback A sounds boring. not a boss".
+# So: 160 BPM, C minor. Four bars of intro (riff, kick, crashes, a tom fill), then A A B A. The bass is a riff in
+# sixteenths with the octave popping out in threes. The lead is a held synth lead, not a pluck: one cell of three notes
+# in 3+3+2 (a long note, a step down, a leap down); each phrase ends on a held leading note (B over G7) that wants C.
+# B lifts to the major side (Ab, Bb, Gm7, Cm), then a diminished bar and the dominant. Every sound passes
+# surge.timing(): under 15 ms late, no echo.
+VM = {"Cm": "Eb3 G3 C4", "Ab": "Eb3 Ab3 C4", "G7": "F3 B3 D4", "Fm": "Ab3 C4 Eb4", "Bb": "F3 Bb3 C4", "G7#5": "F3 B3 Eb4", "Gm7": "F3 Bb3 D4", "Dm7b5": "F3 Ab3 C4"}
+RM = {"Cm": "C2", "Ab": "Ab2", "G7": "G2", "Fm": "F2", "Bb": "Bb2", "G7#5": "G2", "Gm7": "G2", "Dm7b5": "D2"}
+_MA = ["Cm", "Cm", "Ab", "G7", "Cm", "Fm", "Ab Bb", "G7#5"]
+_TMA = [("cell", "Eb5 D5 G4"), ("cell", "Eb5 D5 G4"), ("cell", "Eb5 D5 Ab4"), ("cadence", "D5 B4"),
+        ("cell", "Eb5 D5 G4"), ("cell", "F5 Eb5 Ab4"), ("cell", "Eb5 D5 Bb4"), ("cadence", "Eb5 B4")]
+_TMB = [("cell", "G5 F5 C5"), ("cell", "F5 Eb5 Bb4"), ("cell", "D5 C5 G4"), ("cadence", "Eb5 C5"),
+        ("cell", "G5 F5 C5"), ("cell", "F5 Eb5 Bb4"), ("cell", "F5 D5 Ab4"), ("cadence", "D5 B4")]
+
+# Lantern fish, the third theme: nothing of Side street's manner. 6/8 (two slow beats a bar), D Dorian (the G13 chord
+# is its colour), no drum kit: congas, a shaker and clicks. A held flute-like synth sings one cell (a long note, a
+# short one, a longer one: step down, third down); a kalimba plays the chords as short two- and three-note hits and
+# doubles the tune the second time; a fingered bass plays root then fifth.
+VL = {"Dm9": "F3 A3 C4", "G13": "F3 B3 E4", "Bbmaj7": "A3 D4 F4", "Am7": "G3 C4 E4", "Gm9": "F3 Bb3 D4", "A7sus": "G3 D4 E4", "A7b9": "G3 Bb3 C#4 E4"}
+RL = {"Dm9": "D2", "G13": "G2", "Bbmaj7": "Bb2", "Am7": "A2", "Gm9": "G2", "A7sus": "A2", "A7b9": "A2"}
+_TL = [("cell", "D5 C5 A4"), ("cell", "E5 D5 B4"), ("cell", "D5 C5 A4"), ("cadence", "E5 D5"),
+       ("cell", "F5 E5 C5"), ("cell", "E5 D5 B4"), ("cell", "D5 C5 A4"), ("cadence", "D5 E5")]
+_TL2 = _TL[:6] + [("cell", "D5 C5 A4"), ("cadence", "Bb4 A4")]
 
 # Kite weather, a second day and night tune. A major, starting on the IV (D, C#m, Bm, E; then home to A).
 # Its own cell: two notes down onto a long one, and a pickup into the next bar (steps 0, 3, 6, 14).
@@ -79,10 +83,10 @@ _TK = [("cell", "E5 C#5 A4 B4"), ("cell", "E5 B4 G#4 B4"), ("cell", "D5 A4 F#4 A
 
 SCORES = {
     "street": dict(H=H1, V=V1, R=R1, T=T1),
-    "stomp": dict(H=_SA + _SA + ["C6", "D9", "Bm7", "Em9", "C6", "D9", "F#m7b5", "B7b9"] + _SA, V=VS, R=RS,
-                  T=tune([(0, 2), (2, 2), (4, 6), (12, 2), (14, 2)], [(0, 2), (2, 2), (4, 12)], _TSA + _TSA + _TSB + _TSA)),
-    "chase": dict(H=_CA + _CA + ["Cm9", "F9", "Bbmaj9", "Ebmaj7", "Cm9", "F9", "Am7b5", "D7b9"] + _CA, V=VC, R=RC,
-                  T=tune([(0, 6), (6, 2), (8, 2), (10, 2), (12, 4)], [(0, 6), (6, 2), (8, 8)], _TCA + _TCA + _TCB + _TCA)),
+    "mossback": dict(H=["Cm"] * 4 + _MA + _MA + ["Ab", "Bb", "Gm7", "Cm", "Ab", "Bb", "Dm7b5", "G7"] + _MA, V=VM, R=RM,
+                     T=[[]] * 4 + tune([(0, 6), (6, 6), (12, 4)], [(0, 6), (6, 10)], _TMA + _TMA + _TMB + _TMA)),
+    "lantern": dict(spb=12, H=(["Dm9", "G13", "Dm9", "G13", "Bbmaj7", "Am7", "Gm9", "A7sus"] + ["Dm9", "G13", "Dm9", "G13", "Bbmaj7", "Am7", "Gm9", "A7b9"]) * 2,
+                    V=VL, R=RL, T=tune([(0, 6), (6, 2), (8, 4)], [(0, 6), (6, 6)], (_TL + _TL2) * 2)),
     "kite": dict(H=["Dmaj9", "C#m7", "Bm9", "E13", "Dmaj9", "C#m7", "Bm9 E13", "Amaj9"] * 2, V=VK, R=RK,
                  T=tune([(0, 3), (3, 3), (6, 6), (14, 2)], [(0, 3), (3, 3), (6, 10)], _TK * 2)),
 }
@@ -92,33 +96,41 @@ def side_street(st):
     """The score, in the manner `st` asks for: drums full / light / bossa / brush / none, bass walk / bounce / long,
     comp (the keys) comp / stab / hold; for the boss: drums boss, bass drive, comp stab5. The score is SCORES[st["score"]]."""
     H1, V1, R1, T1 = (SCORES[st.get("score", "street")][k] for k in "HVRT")
-    p = {k: [] for k in ("lead", "double", "chords", "pad", "bass", "kick", "snare", "clap", "hat", "open", "shaker", "conga", "click", "brush")}
-    roots = [(16 * b + (8 * j if len(bar.split()) == 2 else 0), ch) for b, bar in enumerate(H1) for j, ch in enumerate(bar.split())]
+    spb = SCORES[st.get("score", "street")].get("spb", 16)                       # sixteenths in a bar: 16 is 4/4, 12 is 6/8
+    acc = (lambda s: ACC[int(s) % 16]) if spb == 16 else (lambda s: (1.0, 0.7, 0.8, 0.7, 0.84, 0.7, 0.94, 0.7, 0.8, 0.7, 0.86, 0.72)[int(s) % 12])
+    p = {k: [] for k in ("lead", "double", "chords", "pad", "bass", "kick", "snare", "clap", "hat", "open", "shaker", "conga", "click", "brush", "crash", "tom")}
+    roots = [(spb * b + (spb // 2 * j if len(bar.split()) == 2 else 0), ch) for b, bar in enumerate(H1) for j, ch in enumerate(bar.split())]
     for b, bar in enumerate(H1):
-        s0, chs = 16 * b, bar.split()
+        s0, chs = spb * b, bar.split()
         for s, ln, n in T1[b]:
-            p["lead"].append((s0 + s, ln, midi(n) + st.get("lead_up", 0), 100 * ACC[s]))
+            p["lead"].append((s0 + s, ln, midi(n) + st.get("lead_up", 0), 100 * acc(s)))
             if st.get("double") and b >= len(H1) // 2:
-                p["double"].append((s0 + s, ln, midi(n) + st.get("double_shift", 12), 76 * ACC[s]))               # the second time through, a second sound an octave up
+                p["double"].append((s0 + s, ln, midi(n) + st.get("double_shift", 12), 76 * acc(s)))               # the second time through, a second sound an octave up
         for j, ch in enumerate(chs):
-            at, split = s0 + 8 * j, len(chs) == 2
+            at, split = s0 + spb // 2 * j, len(chs) == 2
             hits = {"comp": [(0, 6)] if split else [(0, 5), (10, 4)] if b % 2 == 0 else [(0, 3), (7, 5)],
                     "stab": [(2, 1), (6, 1)] if split else [(2, 1), (6, 1), (10, 1), (14, 1)],
                     "stab5": [(0, 2), (3, 2), (6, 1)] if split else [(0, 2), (3, 2), (6, 2), (10, 1), (12, 2)],
-                    "hold": [(0, 8 if split else 16)]}[st["comp"]]
+                    "lilt": [(0, 3), (4, 2)] if split else [(0, 3), (4, 2), (6, 3), (10, 2)],      # 6/8: on 1, 3, 4 and 6
+                    "hold": [(0, spb // 2 if split else spb)]}[st["comp"]]
             for i, n in enumerate(V1[ch].split()):
                 for s, ln in hits:
-                    p["chords"].append((at + s, ln, midi(n), (80 - 3 * i) * ACC[(8 * j + s) % 16]))
+                    p["chords"].append((at + s, ln, midi(n) + st.get("chords_up", 0), (80 - 3 * i) * acc(at + s - s0)))
                 if i >= 1:
-                    p["pad"].append((at, 16 // len(chs), midi(n) + 12, 58))
+                    p["pad"].append((at, spb // len(chs), midi(n) + 12, 58))
     for k, (at, ch) in enumerate(roots):
         nxt_at, nxt = roots[(k + 1) % len(roots)]
-        span = (nxt_at - at) % (16 * len(H1)) or 16
+        span = (nxt_at - at) % (spb * len(H1)) or spb
         r = midi(R1[ch])
         if st["bass"] == "long":
             p["bass"].append((at, span - 1, r, 96))
             continue
-        if st["bass"] == "drive":                   # eighth notes, the octave on the off-beats
+        if st["bass"] == "riff":                    # sixteenths on the root, the octave popping out in threes (3+3+2+3+3+2): no approach note
+            p["bass"] += [(at + s, 0.9, r + (12 if s % 8 in (3, 6) else 0), 108 if s % 8 == 0 else 96 if s % 8 in (3, 6) else 84) for s in range(span)]
+            continue
+        if st["bass"] == "lilt":                    # 6/8: the root, then the fifth on the second beat
+            p["bass"] += [(at, 5, r, 100)] + ([(at + 6, 4, r + 7, 86)] if span == 12 else [])
+        elif st["bass"] == "drive":                   # eighth notes, the octave on the off-beats
             p["bass"] += [(at + s, 1.6, r + (12 if s % 4 == 2 else 0), 106 if s % 8 == 0 else 90) for s in range(0, span - 2, 2)]
         elif st["bass"] == "bounce":
             p["bass"] += [(at + s, 1.5, r + (12 if s % 8 == 4 else 0), 104 if s == 0 else 88) for s in range(0, span - 2, 4)]
@@ -128,8 +140,23 @@ def side_street(st):
                 p["bass"] += [(at + 6, 1, r, 78), (at + 8, 4, r + (7 if r < 43 else -5), 92)]
         p["bass"].append((at + span - 2, 2, midi(R1[nxt]) - 1, 86))                 # into the next root from a semitone below
     d = st["drums"]
+    intro = st.get("intro", 0)                                  # bars before the tune comes in
     for b in range(len(H1)):
-        s0, end = 16 * b, b % 8 == 7
+        s0, end = spb * b, b % 8 == 7
+        if d == "bossfast":                          # kick on 1, before 3, on 3 and before 1; snare on 2 and 4; a crash at each new part; tom fills
+            fill, start = (b - intro) % 8 == 7 or b == intro - 1, b == 0 or (b - intro) % 8 == 0
+            p["crash"] += [(s0, 4, 60, 100)] if start else []
+            p["kick"] += [(s0 + s, 1, 48, 118 if s in (0, 8) else 100) for s in ((0, 8) if b < intro // 2 else (0, 6, 8, 14))]
+            if b >= intro // 2:
+                p["snare"] += [(s0 + 4, 1, 60, 108), (s0 + 12, 1, 60, 112)] if not fill else [(s0 + 4, 1, 60, 108)]
+                p["clap"] += [(s0 + 12, 1, 60, 96)] if not fill else []
+                p["hat"] += [(s0 + s, 1, 60, 88 * ACC[s]) for s in range(0, 8 if fill else 16, 2)]
+            if fill:                                 # eight sixteenths down the toms into the next part
+                p["tom"] += [(s0 + 8 + k, 1, 57 - 2 * (k // 2), 86 + 4 * k) for k in range(8)]
+        if d == "lilt":                              # 6/8, no kit: a low and a high conga on the two beats, a shaker on every eighth, clicks between
+            p["conga"] += [(s0, 1, 55, 90), (s0 + 6, 1, 60, 76)] + ([(s0 + 10, 1, 60, 64)] if b % 2 else [])
+            p["shaker"] += [(s0 + s, 1, 60, 62 * acc(s)) for s in range(0, 12, 2)]
+            p["click"] += [(s0 + 4, 1, 60, 76), (s0 + 10, 1, 60, 70)] if b >= 4 else []
         if d == "full":
             p["kick"] += [(s0, 1, 48, 110), (s0 + 7, 1, 48, 88), (s0 + 10, 1, 48, 98)]
             p["snare"] += [(s0 + 4, 1, 60, 96), (s0 + 12, 1, 60, 102)] + ([(s0 + 13, 1, 60, 70), (s0 + 15, 1, 60, 92)] if end else [])
@@ -165,15 +192,15 @@ def side_street(st):
             p["brush"] += [(s0 + 4, 2, 60, 80), (s0 + 12, 2, 60, 86)]
             p["shaker"] += [(s0 + s, 1, 60, 56 * ACC[s]) for s in range(0, 16, 2)]
     under = {s0 + s: (V1[ch].split() + [R1[ch]], ch) for b, bar in enumerate(H1) for j, ch in enumerate(bar.split())
-             for s0 in [16 * b] for s in range(8 * j, 16 if j == len(bar.split()) - 1 else 8)}
-    return {k: v for k, v in p.items() if v}, 16 * len(H1), under
+             for s0 in [spb * b] for s in range(spb // 2 * j, spb if j == len(bar.split()) - 1 else spb // 2)}
+    return {k: v for k, v in p.items() if v}, spb * len(H1), under
 
 
 LEVEL = {"lead": -15, "double": -22, "chords": -21, "pad": -25, "bass": -18, "kick": -18, "snare": -21, "clap": -25, "hat": -27, "open": -28, "shaker": -31,
-         "conga": -22, "click": -27, "brush": -23}
+         "conga": -22, "click": -27, "brush": -23, "crash": -24, "tom": -20}
 DUCK = {"pad": 0.4, "chords": 0.2, "bass": 0.3}
 KIT = dict(kick="Vospi/Drums/Proper Kick", snare="Vospi/Drums/Simple Snare", clap="Emu/Drums/T8 Clap", hat="Emu/Drums/Hat Closed", open="Emu/Drums/Hat Open",
-           shaker="Emu/Drums/Egg Shaker", conga="Emu/Drums/T8 Conga", click="Vospi/Drums/Nice Clicks Perc", brush="Malfunction/Drums/Brush")
+           shaker="Emu/Drums/Egg Shaker", crash="Emu/Drums/T8 Cymbal", tom="Emu/Drums/T8 Tom", conga="Emu/Drums/T8 Conga", click="Vospi/Drums/Nice Clicks Perc", brush="Malfunction/Drums/Brush")
 BASE = dict(bpm=96, swing=0.5, drums="full", bass="walk", comp="comp", lead="Nick Moritz/Keys/Dream Plucks", chords="Vospi/Keys/The Softest",
             pad="Databroth/Pads/Warmbo", bass_sound="Basses/Rubber Bass")
 HEAVY = {"kick": -15, "snare": -18, "bass": -16, "chords": -20}
@@ -183,18 +210,18 @@ PIECES = [
     dict(id="mc1", title="Side street, night (kept: was Minecraft feeling 1)", bpm=66, drums="none", bass="long", comp="hold", lead="Vospi/Keys/The Softest",
          chords="Bluelight/Pads/Another Warm", pad="Pads/MKS-70 Warm Pad", bass_sound="Basses/Sub 1",
          about="kept for random night moments: 66 BPM, no drums, a soft key over warm pads and a long low bass"),
-    dict(id="stomp", title="Old Mossback A: Stomp (boss, its own theme)", score="stomp", bpm=116, drums="boss", bass="drive", comp="stab5", levels=HEAVY,
-         lead="Cybersoda/Brass/Soft 80s Brass", double="Nick Moritz/Keys/Dream Plucks", chords="Polysynths/Jupiter-8", bass_sound="Basses/Bass 1",
-         kit={"kick": "TNMG/Drums/Kick - Classic", "snare": "TNMG/Drums/Snare - Classic"},
-         about="slow and heavy, E minor with a dark chord a semitone above home; a low brass lead hammering two notes then a long one; analog stabs, driving bass; a pluck joins an octave up from the middle"),
-    dict(id="chase", title="Old Mossback B: Chase (boss, its own theme)", score="chase", bpm=150, drums="chase", bass="drive", comp="stab5", levels=HEAVY,
-         lead="Kyurumi/Plucks/Dreams And Sweets", chords="Vospi/Plucks/Come Closer", bass_sound="Basses/Rubber Bass",
-         kit={"kick": "Emu/Drums/T8 Kick 1", "snare": "Emu/Drums/T8 Snare"},
-         about="fast, G minor; a high lead that holds a note then circles it with three quick ones; a kick on every beat, open hats between, 808-style drums"),
-    dict(id="kite_day", title="Kite weather, day (new tune)", score="kite", bpm=108, bass="bounce", comp="stab", claps=True, lead="A.Liv/Plucks/Cute 1", chords="A.Liv/Plucks/Cute 2",
-         bass_sound="Nick Moritz/Basses/Plastic Dream", about="a second day tune in the manner of the kept one: A major, its own lead cell (two notes down onto a long one, a pickup into the next bar)"),
-    dict(id="kite_night", title="Kite weather, night (new tune)", score="kite", bpm=66, drums="none", bass="long", comp="hold", lead="Vospi/Keys/The Softest",
-         chords="Bluelight/Pads/Another Warm", pad="Pads/MKS-70 Warm Pad", bass_sound="Basses/Sub 1", about="the same new tune in the manner of the kept night piece: slow, no drums, pads"),
+    dict(id="mossback1", title="Old Mossback (boss, new) 1", score="mossback", bpm=160, intro=4, drums="bossfast", bass="riff", comp="stab5", sync=True,
+         levels=HEAVY | {"lead": -14, "double": -20}, lead="Leads/Classic Lead 2", double="Leads/Crisp PWM", double_shift=-12, chords="Polysynths/Smooth Stabs",
+         bass_sound="Basses/Attacky", kit={"kick": "TNMG/Drums/Kick - Classic", "snare": "TNMG/Drums/Snare - Classic"},
+         about="160 BPM, C minor: a four-bar intro, a bass riff in sixteenths, a held synth lead (three notes a bar, each phrase ending on a note that hangs), crashes and tom fills; a second lead joins an octave below from the middle"),
+    dict(id="mossback2", title="Old Mossback (boss, new) 2: brighter lead", score="mossback", bpm=160, intro=4, drums="bossfast", bass="riff", comp="stab5", sync=True,
+         levels=HEAVY | {"lead": -15, "double": -20}, lead="Leads/Light", double="Leads/Classic Lead 2", double_shift=-12, chords="Polysynths/Anthemish 1",
+         bass_sound="Basses/Bass 3", kit={"kick": "TNMG/Drums/Kick - Classic", "snare": "TNMG/Drums/Snare - Classic"},
+         about="the same piece with a brighter, sharper lead and bigger chord stabs"),
+    dict(id="lantern", title="Lantern fish (third theme, new)", score="lantern", bpm=90, drums="lilt", bass="lilt", comp="lilt", sync=True, lead="Winds/Cyber Flute",
+         double="Slowboat/Mallets/Kalimba", chords="Slowboat/Mallets/Kalimba", chords_up=12, pad="Bluelight/Pads/Another Warm", bass_sound="Basses/Fingered",
+         levels={"chords": -20, "conga": -21},
+         about="6/8, two slow beats a bar; no drum kit (congas, shaker, clicks); a held flute-like synth lead, a kalimba playing the chords as short hits and doubling the tune the second time, a fingered bass"),
 ]
 
 
@@ -214,6 +241,8 @@ def render(piece):
     n = int(round(steps * step * SR))
 
     def when(s):                                       # swing: the second eighth of each beat comes late
+        if st["swing"] == 0.5:
+            return s * step
         beat, f = divmod(s / 4, 1)
         return (beat + (f * 2 * st["swing"] if f < 0.5 else st["swing"] + (f - 0.5) * 2 * (1 - st["swing"]))) * 4 * step
 
@@ -222,7 +251,7 @@ def render(piece):
     for part, notes in score.items():
         ev = [(m, vel * (1 + rng.normal(0, 0.04)), max(0.0, when(s) + (0.0 if part in ("kick", "bass") else rng.normal(0.004, 0.005))),
                ln * step * rng.uniform(0.86, 0.97)) for s, ln, m, vel in notes]
-        y = surge.play(sounds[part], ev, n / SR + 6.0)
+        y = surge.play(sounds[part], ev, n / SR + 6.0, st["bpm"] if st.get("sync") else None)
         y = y[:, :n] + np.pad(y[:, n:2 * n], ((0, 0), (0, max(0, 2 * n - y.shape[1]))))[:, :n]
         f = np.fft.rfftfreq(n, 1 / SR)
         y = np.fft.irfft(np.fft.rfft(y, axis=1) / np.sqrt(1 + ((35 if part in ("kick", "bass") else 110) / np.maximum(f, 1e-3)) ** 4), n, axis=1)

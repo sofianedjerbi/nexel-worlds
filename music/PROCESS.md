@@ -329,3 +329,21 @@ we should create 2-3 themes for this game".
   around it; 150 BPM; kick on every beat with open hats between; Dreams And Sweets lead, 808-style drums.
 - The first boss versions (boss1, boss2) are deleted.
 - Lesson: a theme is its own cell, key and rhythm. Re-dressing one cell in another mode is a variation, not a theme.
+
+## Boss and third theme, second attempt; a timing check (2026-11-13)
+
+The user: "Chase B sounds off-rythm. Mossback A sounds boring. not a boss. kite is just the same thing as the 2 theme
+we kept but with different lead = sucks. change instruments etc".
+- Off-rhythm, measured: `surge.timing(name, bpm)` plays one short note and reports how late the sound reaches half its
+  peak and whether it echoes. Chase's lead (Dreams And Sweets) was 65 ms late (a sixteenth at 150 BPM is 100 ms) and
+  its chord sound (Come Closer) echoed at -7 dB between the beats. The kept day piece's lead and drums are within
+  1 ms. Rule: every rhythmic sound under 15 ms late and without echo; pads exempt. The synth is now told the tempo
+  (`sync`), so tempo-synced effects follow it. One patch hung the synth during screening (probably Kalimba Hang Drum).
+- Old Mossback, third version (score "mossback"): 160 BPM, C minor, intro 4 bars then A A B A; sixteenth-note bass
+  riff with octave pops in 3+3+2; a held synth lead (Classic Lead 2, or Light), three notes a bar, phrases ending on
+  the leading note; crashes, tom fills, chord stabs; a second lead an octave below from the middle. Two sound sets.
+- Lantern fish, third theme (score "lantern"): 6/8 at 90, D Dorian, no kit (congas, shaker, clicks), Cyber Flute
+  lead, kalimba chords as short hits and doubling the tune the second time, fingered bass root-fifth, warm pad.
+  The engine now takes any bar length (`spb`).
+- Stomp, Chase and Kite weather are deleted. A theme differs in meter, rhythm section and instruments, not in lead.
+- Not judged by ear; timing is measured.

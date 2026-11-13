@@ -39,14 +39,16 @@ def _state(patch):
     return b"VC2!" + struct.pack("<I", len(xml)) + xml + b"\x00"
 
 
-def play(name, notes, seconds):
-    """Stereo audio of `notes` [(midi note, velocity 1-127, start s, length s)] on the sound `name`."""
+def play(name, notes, seconds, bpm=None):
+    """Stereo audio of `notes` [(midi note, velocity 1-127, start s, length s)] on the sound `name`.
+    `bpm` is the tempo the synthesizer is told: sounds with a tempo-synced echo or LFO follow it (untold, it assumes 120)."""
     import dawdreamer as daw
     global _engine
     if _engine is None:
         _engine = daw.RenderEngine(SR, 256)
     global _count
     _count += 1
+    _engine.set_bpm(float(bpm or 120))
     synth = _engine.make_plugin_processor(f"s{_count}", PLUGIN)
     with tempfile.NamedTemporaryFile(suffix=".bin") as f:
         f.write(_state(find(name)))
@@ -77,6 +79,35 @@ def probe(name, note=60):
     return dict(name=name, rms=float(np.sqrt((y[int(0.25 * SR): int(1.25 * SR)] ** 2).mean())), speaks_ms=round(on * 1000), full_ms=round(half * 1000),
                 held=round(float(held), 2), ring_s=round(float(ring), 2), centre=int((fr * S).sum() / S.sum()), top_db=round(float(top), 1))
 
+
+def timing(name, bpm, note=60):
+    """Is the sound on the beat? One short note: how late it reaches half its peak, and whether it repeats itself
+    (an echo), how loud, and after how many sixteenths at this tempo. An echo that is not a whole number of
+    sixteenths, or a slow attack on a rhythmic part, is heard as playing off the beat."""
+    y = play(name, [(note, 100, 0.5, 0.12)], 4.0, bpm).mean(axis=0)
+    env = np.sqrt(np.convolve(y ** 2, np.ones(240) / 240, "same"))
+    pk = env.max() + 1e-12
+    late = (np.argmax(env > 0.5 * pk) - 0.5 * SR) / SR * 1000
+    first = int(np.argmax(env)) 
+    step = 60 / bpm / 4
+    echoes = []
+    k = first + int(0.07 * SR)
+    while k < len(env) - 2400 and len(echoes) < 3:
+        seg = env[k: k + int(1.2 * SR)]
+        j = k + int(np.argmax(seg))
+        before = env[max(k, j - int(0.05 * SR)): j].min() if j - k > 480 else env[j]
+        if env[j] > 0.06 * pk and env[j] > 1.5 * before:           # a bump that rises again: a repeat, not the decay
+            echoes.append((round(20 * np.log10(env[j] / pk), 1), round((j - first) / SR / step, 2)))
+            k = j + int(0.07 * SR)
+        else:
+            break
+    return dict(name=name, late_ms=round(float(late), 1), echoes=echoes)
+
+
+if __name__ == "__main__" and sys.argv[1:2] == ["timing"]:
+    for n in sys.argv[3:]:
+        r = timing(n.split("@")[0], float(sys.argv[2]), int(n.split("@")[1]) if "@" in n else 60)
+        print(f"{r['name']:40s} late {r['late_ms']:6.1f} ms   echoes (dB, sixteenths later): {r['echoes']}", flush=True)
 
 if __name__ == "__main__" and sys.argv[1:2] == ["probe"]:
     for n in sys.argv[2:]:
