@@ -55,8 +55,9 @@ def music_page(out: Path):
     (out / "music").mkdir()
     for name in ("days.json", "quality.json"):
         shutil.copy(src / name, out / "music" / name)
-    for w in wavs:
-        subprocess.run(["afconvert", "-f", "m4af", "-d", "aac", "-b", "128000", str(w), str(out / "music" / (w.stem + ".m4a"))], check=True)
+    (out / "music" / "chip").mkdir()
+    for w in wavs + [c for c in (src / "chip" / w.name for w in wavs) if c.exists()]:       # chip: the chiptune set, when rendered
+        subprocess.run(["afconvert", "-f", "m4af", "-d", "aac", "-b", "128000", str(w), str(out / "music" / w.relative_to(src).with_suffix(".m4a"))], check=True)
 
 
 if __name__ == "__main__":

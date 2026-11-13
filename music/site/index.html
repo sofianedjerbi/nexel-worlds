@@ -145,6 +145,18 @@
     </div>
   </section>
 
+  <section class="card" id="chipcard">
+    <h2>Chiptune version: to compare <small>MUSIC_STYLE=chip uv run python music/render_all.py · music/chip.py</small></h2>
+    <div class="notes"><div>The same seven pieces, note for note, on sound-chip voices: pulse waves, the NES triangle as bass, a wave channel, shift-register noise for percussion. Modern in that chords are real chords (no fast arpeggios), duty cycles move while a note sounds, vibrato comes in late, nothing aliases, and the mix keeps its room. Not in the game; the recorded versions are below.</div></div>
+      <div class="chiprow" style="margin-top:10px"><b>Meadow Road</b> <small>day theme · lead: a 25 % pulse that opens as each note rings</small><br><audio controls loop preload="none" src="audio/chip/master.wav" style="width:100%;margin-top:4px"></audio></div>
+      <div class="chiprow" style="margin-top:10px"><b>Lantern Road</b> <small>night · lead: a two-operator FM bell</small><br><audio controls loop preload="none" src="audio/chip/night.wav" style="width:100%;margin-top:4px"></audio></div>
+      <div class="chiprow" style="margin-top:10px"><b>Old Mossback</b> <small>boss · lead: a pulse whose width keeps moving, over a triangle kick and noise snare</small><br><audio controls loop preload="none" src="audio/chip/boss.wav" style="width:100%;margin-top:4px"></audio></div>
+      <div class="chiprow" style="margin-top:10px"><b>Market Morning</b> <small>lead: a struck square wave</small><br><audio controls loop preload="none" src="audio/chip/day_market.wav" style="width:100%;margin-top:4px"></audio></div>
+      <div class="chiprow" style="margin-top:10px"><b>Slow Afternoon</b> <small>lead: a Game Boy style wave channel</small><br><audio controls loop preload="none" src="audio/chip/day_afternoon.wav" style="width:100%;margin-top:4px"></audio></div>
+      <div class="chiprow" style="margin-top:10px"><b>Overcast</b> <small>lead: a soft 50 % square</small><br><audio controls loop preload="none" src="audio/chip/day_overcast.wav" style="width:100%;margin-top:4px"></audio></div>
+      <div class="chiprow" style="margin-top:10px"><b>Picnic</b> <small>lead: the thin 12.5 % pulse</small><br><audio controls loop preload="none" src="audio/chip/day_picnic.wav" style="width:100%;margin-top:4px"></audio></div>
+  </section>
+
   <section class="card" id="dayscard">
     <h2>Other music for the day: four suggestions <small>each its own tune and its own instruments; none is in the game</small></h2>
     <div id="days"></div>
@@ -418,6 +430,7 @@ function showAudit(q, box) {
     `<div class="rule">${dot(true)}<span>${k}</span><em>gone in ${r.rt60_s} s · starts ${r.predelay_ms} ms after the note · kept to ${r.return} · level: ${Object.entries(r.level_db).map(([a, b]) => `${a} ${b}${b === "dry" ? "" : " dB"}`).join(", ")}</em></div>`).join("") + `</details>`;
   box.innerHTML = h;
 }
+document.addEventListener("play", (e) => document.querySelectorAll("#chipcard audio").forEach((a) => a !== e.target && a.pause()), true);
 async function loadDays() {
   fetch("audio/quality.json").then((r) => r.json()).then((q) => showAudit(q, $("audit")));
   const tint = ["#f7e0a3", "#f7c9a3", "#d9e8d0", "#cfe0f0", "#f3c6d8", "#e6dcc6"];

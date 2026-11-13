@@ -27,6 +27,7 @@
 <main>
   <h1>Megastructure: music</h1>
   <div>Every track is a loop. Online they are compressed, so a loop may click where it restarts; in the game it does not. <a href="./">Play the demo</a></div>
+  <section><h2>Chiptune version: to compare</h2><div>The same seven pieces, note for note, on sound-chip voices: pulse waves, the NES triangle as bass, a wave channel, shift-register noise for percussion. Modern in that chords are real chords (no fast arpeggios), duty cycles move while a note sounds, vibrato comes in late, nothing aliases, and the mix keeps its room. Not in the game; the recorded versions are below.</div><div id="chip"></div></section>
   <section><h2>Other music for the day: four suggestions</h2><div>Each its own tune and its own instruments. None is in the game yet. Every instrument on this page is a recording of a real one (public-domain libraries: VCSL and VSCO 2 CE by Versilian Studios, FreePats guitar); nothing is synthesised.</div><div id="days"></div></section>
   <section><h2>The other tracks</h2><div id="now"></div></section>
   <section><h2>Audit</h2><div>Theory, Animal Crossing practice, each instrument and each mix, measured.</div><div id="audit">loading…</div></section>
@@ -43,6 +44,13 @@ document.addEventListener("play", (e) => document.querySelectorAll("audio").forE
 fetch("music/days.json").then((r) => r.json()).then((days) => {
   for (const d of days) add("days", "day_" + d.id, d.title, `${d.bpm} BPM · ${d.key} · ${fmt(d.seconds)} · ${d.mood} · ${d.band}`, true);
 });
+add("chip", "chip/master", "Meadow Road", "day theme · lead: a 25 % pulse that opens as each note rings", true);
+add("chip", "chip/night", "Lantern Road", "night · lead: a two-operator FM bell", true);
+add("chip", "chip/boss", "Old Mossback", "boss · lead: a pulse whose width keeps moving, over a triangle kick and noise snare", true);
+add("chip", "chip/day_market", "Market Morning", "lead: a struck square wave", true);
+add("chip", "chip/day_afternoon", "Slow Afternoon", "lead: a Game Boy style wave channel", true);
+add("chip", "chip/day_overcast", "Overcast", "lead: a soft 50 % square", true);
+add("chip", "chip/day_picnic", "Picnic", "lead: the thin 12.5 % pulse", true);
 add("now", "master", "Meadow Road", "the day theme in the game, on a nylon guitar · 84 BPM · D major · 4:10", true);
 add("now", "boss", "Old Mossback", "the boss fight in the game: the same tune in B minor, on an oboe · 96 BPM · 1:30", true);
 add("now", "night", "Lantern Road", "the day theme at night, on a vibraphone, not in the game yet · 60 BPM · 3:12", true);

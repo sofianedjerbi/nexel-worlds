@@ -28,7 +28,7 @@ BEAT = 60 / BPM
 BAR = 4 * BEAT
 LOOP_N = int(round(BARS * BAR * SR))
 TAIL = 6 * SR
-OUT = Path(__file__).with_name("site") / "audio"
+OUT = C.OUT
 rng = np.random.default_rng(7)
 
 CYCLE = ["Bm", "Bm", "A", "A", "F#m", "F#m", "A", "Bm"]
@@ -46,6 +46,9 @@ knock = sampler.voice("woodblock", 6.75)       # its shell: a woodblock
 shaker = sampler.voice("shaker", 26.0)
 pizz = sampler.voice("cellopizz", 1.61)        # plucked cellos
 horn = sampler.voice("horn", 2.44)             # a French horn
+if C.STYLE == "chip":
+    import chip
+    stomp, knock, shaker, pizz, horn = [chip.voice(k, chip.LEVEL["boss_" + k]) for k in ("stomp", "knock", "shaker", "pizz", "horn")]
 
 
 events = []      # (seconds, instrument, note, seconds long, velocity, pan, reverb send, stem)
