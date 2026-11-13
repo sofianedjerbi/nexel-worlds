@@ -347,3 +347,19 @@ we kept but with different lead = sucks. change instruments etc".
   The engine now takes any bar length (`spb`).
 - Stomp, Chase and Kite weather are deleted. A theme differs in meter, rhythm section and instruments, not in lead.
 - Not judged by ear; timing is measured.
+
+## Boss kept; third theme again (2026-11-13)
+
+The user: "lantern fish sounds like those ugly midi songs. bad. Old Mossback (boss, new) 2: brighter lead = amazing
+!!! but the lead is a bit.. freestyling".
+- Boss: mossback2 is kept (Light lead, Anthemish 1 stabs, Bass 3 riff, TNMG kick and snare, 160 BPM). Its lead now
+  plays one bar three times and then a cadence, in every phrase (A: Eb5 D5 G4 x3, then D5 B4; B: G5 F5 C5 x3, then
+  a cadence); before, five bars of eight differed. Nothing else changed. The first render is saved beside it as
+  `keep_mossback2_first.wav` (not published). mossback1 is deleted.
+- Lesson on sound: a flute-like synth, a kalimba and congas are synths imitating acoustic instruments, and that is
+  what the user hears as MIDI. The three things they liked are synths being synths (Cute plucks; a soft key and
+  pads; a bright saw lead with analog stabs). No imitation instruments from now on.
+- Third theme, two candidates on synth sounds: "lantern" (same 6/8 score: Fluff lead, Oberheim Dreams held chords,
+  Juno-60 Strings pad, drum machine) and "shore" (Far shore: 112 BPM, four-on-the-floor, A major from the IV with
+  E over D; one lead bar, E5 C#5 B4 C#5, that fits all seven chords, so the tune stays while the harmony moves).
+- Not judged by ear.

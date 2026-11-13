@@ -58,16 +58,20 @@ def tune(cell, cadence, bars):
 # surge.timing(): under 15 ms late, no echo.
 VM = {"Cm": "Eb3 G3 C4", "Ab": "Eb3 Ab3 C4", "G7": "F3 B3 D4", "Fm": "Ab3 C4 Eb4", "Bb": "F3 Bb3 C4", "G7#5": "F3 B3 Eb4", "Gm7": "F3 Bb3 D4", "Dm7b5": "F3 Ab3 C4"}
 RM = {"Cm": "C2", "Ab": "Ab2", "G7": "G2", "Fm": "F2", "Bb": "Bb2", "G7#5": "G2", "Gm7": "G2", "Dm7b5": "D2"}
-_MA = ["Cm", "Cm", "Ab", "G7", "Cm", "Fm", "Ab Bb", "G7#5"]
-_TMA = [("cell", "Eb5 D5 G4"), ("cell", "Eb5 D5 G4"), ("cell", "Eb5 D5 Ab4"), ("cadence", "D5 B4"),
-        ("cell", "Eb5 D5 G4"), ("cell", "F5 Eb5 Ab4"), ("cell", "Eb5 D5 Bb4"), ("cadence", "Eb5 B4")]
-_TMB = [("cell", "G5 F5 C5"), ("cell", "F5 Eb5 Bb4"), ("cell", "D5 C5 G4"), ("cadence", "Eb5 C5"),
-        ("cell", "G5 F5 C5"), ("cell", "F5 Eb5 Bb4"), ("cell", "F5 D5 Ab4"), ("cadence", "D5 B4")]
+# The lead, second version ("amazing !!! but the lead is a bit.. freestyling"): A is ONE bar played three times over
+# changing chords, then the hanging cadence; B is one other bar three times, then a cadence. Before, five bars of
+# eight differed.
+_TMA = [("cell", "Eb5 D5 G4")] * 3 + [("cadence", "D5 B4")] + [("cell", "Eb5 D5 G4")] * 3 + [("cadence", "D5 B4")]
+_TMB = [("cell", "G5 F5 C5")] * 3 + [("cadence", "Eb5 C5")] + [("cell", "G5 F5 C5")] * 3 + [("cadence", "D5 B4")]
+_MA = ["Cm", "Cm", "Ab", "G7", "Cm", "Fm", "Ab Bb", "G7"]
 
-# Lantern fish, the third theme: nothing of Side street's manner. 6/8 (two slow beats a bar), D Dorian (the G13 chord
-# is its colour), no drum kit: congas, a shaker and clicks. A held flute-like synth sings one cell (a long note, a
-# short one, a longer one: step down, third down); a kalimba plays the chords as short two- and three-note hits and
-# doubles the tune the second time; a fingered bass plays root then fifth.
+# The third theme. Lantern fish on a flute-like lead, a kalimba and congas "sounds like those ugly midi songs":
+# synth sounds imitating acoustic instruments are the MIDI sound. Everything the user liked is a synth being a synth.
+# Two candidates, both on synth sounds:
+#   Lantern fish  the same score (6/8, D Dorian) as a slow synth ballad: a soft synth lead, held analog chords,
+#                 string-machine pad, kick on the first beat and clap on the second.
+#   Far shore     4/4, A major from the IV with the Lydian chord (E over D): ONE lead bar that fits all seven chords,
+#                 so the tune stays still while the harmony moves under it; a kick on every beat.
 VL = {"Dm9": "F3 A3 C4", "G13": "F3 B3 E4", "Bbmaj7": "A3 D4 F4", "Am7": "G3 C4 E4", "Gm9": "F3 Bb3 D4", "A7sus": "G3 D4 E4", "A7b9": "G3 Bb3 C#4 E4"}
 RL = {"Dm9": "D2", "G13": "G2", "Bbmaj7": "Bb2", "Am7": "A2", "Gm9": "G2", "A7sus": "A2", "A7b9": "A2"}
 _TL = [("cell", "D5 C5 A4"), ("cell", "E5 D5 B4"), ("cell", "D5 C5 A4"), ("cadence", "E5 D5"),
@@ -81,10 +85,17 @@ RK = {"Dmaj9": "D3", "C#m7": "C#3", "Bm9": "B2", "E13": "E2", "Amaj9": "A2"}
 _TK = [("cell", "E5 C#5 A4 B4"), ("cell", "E5 B4 G#4 B4"), ("cell", "D5 A4 F#4 A4"), ("cadence", "B4 G#4 B4"),
        ("cell", "E5 C#5 A4 B4"), ("cell", "E5 B4 G#4 B4"), ("cell", "D5 A4 F#4 G#4"), ("cadence", "B4 C#5 E5")]
 
+VF = {"Dmaj9": "F#3 A3 C#4 E4", "E/D": "E3 G#3 B3 E4", "C#m7": "E3 G#3 B3", "F#m9": "E3 A3 C#4", "Bm9": "A3 D4 F#4", "E11": "A3 B3 D4", "Amaj9": "G#3 B3 C#4 E4",
+      "A69": "F#3 B3 C#4 E4"}
+RF = {"Dmaj9": "D3", "E/D": "D3", "C#m7": "C#3", "F#m9": "F#2", "Bm9": "B2", "E11": "E2", "Amaj9": "A2", "A69": "A2"}
+_TF = [("cell", "E5 C#5 B4 C#5")] * 3 + [("cadence", "C#5 A4")] + [("cell", "E5 C#5 B4 C#5")] * 3 + [("cadence", "B4 A4")]
+
 SCORES = {
     "street": dict(H=H1, V=V1, R=R1, T=T1),
     "mossback": dict(H=["Cm"] * 4 + _MA + _MA + ["Ab", "Bb", "Gm7", "Cm", "Ab", "Bb", "Dm7b5", "G7"] + _MA, V=VM, R=RM,
                      T=[[]] * 4 + tune([(0, 6), (6, 6), (12, 4)], [(0, 6), (6, 10)], _TMA + _TMA + _TMB + _TMA)),
+    "shore": dict(H=["Dmaj9", "E/D", "C#m7", "F#m9", "Bm9", "E11", "Amaj9", "A69"] * 2, V=VF, R=RF,
+                  T=tune([(0, 4), (6, 2), (8, 2), (10, 6)], [(0, 4), (6, 10)], _TF * 2)),
     "lantern": dict(spb=12, H=(["Dm9", "G13", "Dm9", "G13", "Bbmaj7", "Am7", "Gm9", "A7sus"] + ["Dm9", "G13", "Dm9", "G13", "Bbmaj7", "Am7", "Gm9", "A7b9"]) * 2,
                     V=VL, R=RL, T=tune([(0, 6), (6, 2), (8, 4)], [(0, 6), (6, 6)], (_TL + _TL2) * 2)),
     "kite": dict(H=["Dmaj9", "C#m7", "Bm9", "E13", "Dmaj9", "C#m7", "Bm9 E13", "Amaj9"] * 2, V=VK, R=RK,
@@ -153,6 +164,15 @@ def side_street(st):
                 p["hat"] += [(s0 + s, 1, 60, 88 * ACC[s]) for s in range(0, 8 if fill else 16, 2)]
             if fill:                                 # eight sixteenths down the toms into the next part
                 p["tom"] += [(s0 + 8 + k, 1, 57 - 2 * (k // 2), 86 + 4 * k) for k in range(8)]
+        if d == "ballad":                            # 6/8 on a drum machine: kick on the first beat, clap on the second, hats on the eighths
+            p["kick"] += [(s0, 1, 48, 104)] + ([(s0 + 10, 1, 48, 80)] if b % 4 == 3 else [])
+            p["clap"] += [(s0 + 6, 1, 60, 92)]
+            p["hat"] += [(s0 + s, 1, 60, 78 * acc(s)) for s in range(0, 12, 2)]
+        if d == "four":                              # a kick on every beat, closed hats between, claps on 2 and 4
+            p["kick"] += [(s0 + s, 1, 48, 110 if s == 0 else 100) for s in (0, 4, 8, 12)]
+            p["clap"] += [(s0 + 4, 1, 60, 86), (s0 + 12, 1, 60, 92)]
+            p["hat"] += [(s0 + s, 1, 60, 88) for s in (2, 6, 10, 14)] + [(s0 + 15, 1, 60, 56)]
+            p["snare"] += [(s0 + 13, 1, 60, 76), (s0 + 14, 1, 60, 88), (s0 + 15, 1, 60, 100)] if end else []
         if d == "lilt":                              # 6/8, no kit: a low and a high conga on the two beats, a shaker on every eighth, clicks between
             p["conga"] += [(s0, 1, 55, 90), (s0 + 6, 1, 60, 76)] + ([(s0 + 10, 1, 60, 64)] if b % 2 else [])
             p["shaker"] += [(s0 + s, 1, 60, 62 * acc(s)) for s in range(0, 12, 2)]
@@ -210,18 +230,16 @@ PIECES = [
     dict(id="mc1", title="Side street, night (kept: was Minecraft feeling 1)", bpm=66, drums="none", bass="long", comp="hold", lead="Vospi/Keys/The Softest",
          chords="Bluelight/Pads/Another Warm", pad="Pads/MKS-70 Warm Pad", bass_sound="Basses/Sub 1",
          about="kept for random night moments: 66 BPM, no drums, a soft key over warm pads and a long low bass"),
-    dict(id="mossback1", title="Old Mossback (boss, new) 1", score="mossback", bpm=160, intro=4, drums="bossfast", bass="riff", comp="stab5", sync=True,
-         levels=HEAVY | {"lead": -14, "double": -20}, lead="Leads/Classic Lead 2", double="Leads/Crisp PWM", double_shift=-12, chords="Polysynths/Smooth Stabs",
-         bass_sound="Basses/Attacky", kit={"kick": "TNMG/Drums/Kick - Classic", "snare": "TNMG/Drums/Snare - Classic"},
-         about="160 BPM, C minor: a four-bar intro, a bass riff in sixteenths, a held synth lead (three notes a bar, each phrase ending on a note that hangs), crashes and tom fills; a second lead joins an octave below from the middle"),
-    dict(id="mossback2", title="Old Mossback (boss, new) 2: brighter lead", score="mossback", bpm=160, intro=4, drums="bossfast", bass="riff", comp="stab5", sync=True,
+    dict(id="mossback2", title="Old Mossback (boss, kept; lead tightened)", score="mossback", bpm=160, intro=4, drums="bossfast", bass="riff", comp="stab5", sync=True,
          levels=HEAVY | {"lead": -15, "double": -20}, lead="Leads/Light", double="Leads/Classic Lead 2", double_shift=-12, chords="Polysynths/Anthemish 1",
          bass_sound="Basses/Bass 3", kit={"kick": "TNMG/Drums/Kick - Classic", "snare": "TNMG/Drums/Snare - Classic"},
-         about="the same piece with a brighter, sharper lead and bigger chord stabs"),
-    dict(id="lantern", title="Lantern fish (third theme, new)", score="lantern", bpm=90, drums="lilt", bass="lilt", comp="lilt", sync=True, lead="Winds/Cyber Flute",
-         double="Slowboat/Mallets/Kalimba", chords="Slowboat/Mallets/Kalimba", chords_up=12, pad="Bluelight/Pads/Another Warm", bass_sound="Basses/Fingered",
-         levels={"chords": -20, "conga": -21},
-         about="6/8, two slow beats a bar; no drum kit (congas, shaker, clicks); a held flute-like synth lead, a kalimba playing the chords as short hits and doubling the tune the second time, a fingered bass"),
+         about="the version you called amazing, same sounds and arrangement; the lead now repeats one bar three times then closes, in every phrase"),
+    dict(id="lantern", title="Third theme A: Lantern fish, as a synth ballad", score="lantern", bpm=90, drums="ballad", bass="lilt", comp="hold", sync=True, lead="Leads/Fluff",
+         chords="Polysynths/Oberheim Dreams", pad="Polysynths/Juno-60 Strings", bass_sound="Basses/Bass 3", levels={"chords": -22},
+         about="the same tune without the imitation instruments: a soft synth lead, held analog chords, a string-machine pad, drum machine (kick, clap, hats), two slow beats a bar"),
+    dict(id="shore", title="Third theme B: Far shore", score="shore", bpm=112, drums="four", bass="drive", comp="stab5", sync=True, lead="Nick Moritz/Keys/Dream Plucks",
+         double="Leads/Classic Lead 2", chords="Polysynths/Smooth Stabs", pad="Polysynths/Juno-60 Strings", bass_sound="Basses/Bass 3",
+         about="new: 112 BPM, a kick on every beat; one lead bar that never changes while seven chords move under it; pluck lead, a synth lead joining an octave up the second time, analog stabs"),
 ]
 
 
