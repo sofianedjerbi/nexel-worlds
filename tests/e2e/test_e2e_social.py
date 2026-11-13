@@ -119,3 +119,36 @@ def test_who_is_awake_and_the_goals_show_only_while_tab_is_held(game, browser, s
     page.wait_for_function("typeof agents !== 'undefined' && agents.some((a) => a.online)", timeout=15000)
     assert page.evaluate("$('side').getBoundingClientRect().width") > 100 and page.evaluate("getComputedStyle(document.querySelector('#brand .t')).display") != "none"
     page.close()
+
+
+SAID = """() => { window.__said = []; const P = AudioBufferSourceNode.prototype, o = P.start, say = new Set(sounds.manifest.sounds.say.files.map((f) => sounds.buffers.get(f)));
+  P.start = function (when, off, dur) { if (say.has(this.buffer)) window.__said.push([when, dur, this.playbackRate.value]); return o.apply(this, arguments); }; return say.size; }"""
+
+
+def test_a_line_is_said_in_a_run_of_syllables_as_it_is_written(game, friend):
+    """Speech was one sound a line (and none for your own). It is a run of short pieces of the recorded "say" voices,
+    about one for every two letters, each at its letter's pitch and the speaker's own, on the audio clock, while the
+    line is written out in its bubble. A space is a breath; a question rises at its end; another speaker, another voice."""
+    for g in (game, friend):
+        g.wait("sounds.manifest && sounds.manifest.sounds.say.files.every((f) => sounds.buffers.get(f) instanceof AudioBuffer)", 60000)
+        assert g.js(SAID) == 5
+    line = "hello over there, are you awake?"
+    game.press("Enter", 200)
+    game.page.keyboard.type(line)
+    game.page.keyboard.press("Enter")
+    game.wait(f"bubbles.some((b) => b.text === {line!r})", 5000)
+    shown = game.js(f"(() => {{ const b = bubbles.find((b) => b.text === {line!r}); return written(b.text, performance.now() / 1000 - b.t).length; }})()")
+    assert 0 < shown < len(line)                                    # being written, a letter every 45 ms
+    game.sleep(1700)
+    assert game.js(f"(() => {{ const b = bubbles.find((b) => b.text === {line!r}); return written(b.text, performance.now() / 1000 - b.t); }})()") == line
+    for g in (game, friend):                                        # the one who speaks hears it too
+        said = g.js("window.__said")
+        when, rate = [s[0] for s in said], [s[2] for s in said]
+        assert 11 <= len(said) <= 15, len(said)                     # 26 letters in six words: a syllable for every two, each word starting one
+        gaps = [round(b - a, 3) for a, b in zip(when, when[1:])]
+        assert min(gaps) >= .085 and max(gaps) <= .2 and all(.05 < s[1] < .16 for s in said), gaps    # in time, short, a breath between words
+        assert len({round(r, 3) for r in rate}) >= 5 and rate[-1] > rate[0]      # not one note: the letters', and the question rises
+    mine, theirs = game.js("voiceOf(me)"), friend.js("voiceOf(me)")
+    assert -4 <= mine <= 4 and game.js(f"voiceOf({friend.name!r})") == theirs    # a voice from the name: the same on every screen
+    game.js("(() => { muted = true; window.__said = []; return 1; })()")
+    assert game.js("babble('x', 'not a sound when muted', undefined, undefined, false)") == 0 and game.js("window.__said") == []

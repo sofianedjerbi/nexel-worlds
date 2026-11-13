@@ -177,7 +177,7 @@ function frame(now) {
     roundRect(bx - w / 2 - 9, by - 16, w + 18, 23, 4); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(bx - 5, by + 7); ctx.lineTo(bx + 5, by + 7); ctx.lineTo(bx, by + 13); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillRect(bx - 4, by + 5, 8, 3);
-    ctx.fillStyle = "#5b3f36"; ctx.fillText(text, bx, by + 1);
+    ctx.fillStyle = "#5b3f36"; ctx.textAlign = "left"; ctx.fillText(written(text, t - b.t), bx - w / 2, by + 1); ctx.textAlign = "center";   // (written out as it is said: babble.js)
     ctx.globalAlpha = 1;
   }
   ctx.textAlign = "start";

@@ -203,7 +203,8 @@ function onEvent(e) {
   if (e.type === "trough") { burst(e.x, e.y, "food", 3, {dy: -.4, g: 3}); sfx(animalVoice(e.kind), e.x, e.y); }
   if (e.type === "picnic") { emote(e.name, "love"); burst(e.x, e.y, "food", 6, {dy: -.6, g: 3}); }
   if (e.type === "mail" && e.to === me && e.from !== me) sfx("mail");
-  if ((e.type === "say" || e.type === "shout") && e.from !== me) sfx(e.type, e.x, e.y, e.type === "shout" ? 30 : undefined);
+  if (e.type === "shout" && e.from !== me) sfx("shout", e.x, e.y, 30);
+  if (e.type === "say" || e.type === "shout") babble(e.from, e.text, e.x, e.y, e.type === "shout");      // (babble.js: a run of syllables, yours too)
   if (e.type === "give" && e.to === me) sfx("give");
   if ((e.type === "join" || e.type === "leave") && e.name !== me) sfx(e.type);
   if (e.type === "sign") sfx("write", e.x, e.y);
