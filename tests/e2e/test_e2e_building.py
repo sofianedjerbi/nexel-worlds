@@ -2,12 +2,16 @@
 
 
 def craft_with_keys(game, recipe):
-    """Open crafting (C), arrow to the recipe, Enter."""
+    """Open crafting (C), find the recipe (each kind in turn, down its names page after page), Enter."""
     game.press("c", 400)
-    for _ in range(40):
+    for _ in range(8):
+        seen = set()
+        while game.js("craftFocus") != recipe and game.js("craftFocus") not in seen:
+            seen.add(game.js("craftFocus"))
+            game.press("ArrowDown", 60)
         if game.js("craftFocus") == recipe:
             break
-        game.press("ArrowRight", 60)
+        game.press("e", 100)
     assert game.js("craftFocus") == recipe
     game.press("Enter", 1200)
     game.press("Escape", 200)

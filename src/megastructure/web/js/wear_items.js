@@ -120,11 +120,10 @@ const WearItems = (() => {
 })();
 const wearIcon = WearItems.icon, wearFx = WearItems.fx;
 
-// Crafting: their own tabs (craft.js RECIPE_GROUPS).
+// Crafting: all of it under one bookmark, clothes first, then armor, then charms (craft.js RECIPE_GROUPS).
 const wearOf = (slots, pick = () => true) => Object.keys(WEAR).filter((n) => slots.includes(WEAR[n][0]) && pick(n));
 const isArmor = (n) => /^(iron|gold|leather|moss)/.test(n);
-RECIPE_GROUPS.push(["Clothes", "straw_hat", wearOf(["head", "top", "pants", "shoes"], (n) => !isArmor(n))],
-  ["Armor", "iron_chestplate", wearOf(["head", "top", "pants", "shoes"], isArmor)], ["Charms", "flame_charm", wearOf(["effect"])]);
+RECIPE_GROUPS.find(([t]) => t === "Wear")[2].push(...wearOf(["head", "top", "pants", "shoes"], (n) => !isArmor(n)), ...wearOf(["head", "top", "pants", "shoes"], isArmor), ...wearOf(["effect"]));
 
 // What you wear, beside the hotbar: click a piece to take it off.
 const wearingEl = document.createElement("div");

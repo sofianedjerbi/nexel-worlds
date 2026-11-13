@@ -31,10 +31,13 @@
 </div></div>
 <div class="panel" id="goals"><div class="in"><div class="gh"><h3>Goals</h3><span id="goalcount"></span></div><div id="goallist"></div></div></div>
 <div class="panel" id="bag"><div class="in"><h3>Inventory</h3><div id="bagitems"></div></div></div>
-<div class="panel" id="craft"><div class="in">
-  <div class="ctop"><h3>Crafting</h3><span class="close" id="craftclose" title="Esc">x</span></div>
-  <div class="cbody"><div id="craftcats"></div><div id="recipes"></div></div>
-</div></div>
+<div id="craft"><div id="crafttabs"></div><div class="b paper" id="craftclose" title="Esc">x</div>
+  <div class="cbook">
+    <div class="cleft"><div class="ctools"><div class="b paper" id="craftonly" title="only what you can make now">Can make</div><div class="b paper" id="craftprev">&lt;</div><div class="b paper" id="craftnext">&gt;</div></div>
+      <div class="well" id="recipes"></div><div id="craftmore"></div></div>
+    <div id="craftdetail"></div>
+  </div>
+</div>
 <div id="chatbox"><div id="chatlog"></div><div id="sayhelp"></div><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout · / commands)" maxlength="200" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
 <div id="hud">
   <div id="status"></div>
@@ -82,6 +85,7 @@
 <script src="js/agent.js"></script>
 <script src="js/intent.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/blurbs.js"></script>
 <script src="js/craft.js"></script>
 <script src="js/races.js"></script>
 <script src="js/wear.js"></script>

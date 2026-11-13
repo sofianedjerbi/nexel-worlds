@@ -1,6 +1,6 @@
   @font-face { font-family: SproutPixel; src: url(../assets/sprout-pixel.ttf); }
   :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#f3dfba; --accent:#4f9a6a; --warn:#c0503c;
-    --u:2px; --i:3px; --u3:3px;
+    --u:2px; --i:3px; --u3:3px; --q:3px;
     /* a number on a slot: a hard rim, one font pixel wide all round (the font at 18 px is 2 px a pixel), so it reads on wood, on an item, on grass.
        In the ink's brown for a count, in a lighter one for a slot's key: near black, and the key yellow, they shouted */
     --rim:2px 0px 0 #5b3f36, -2px 0px 0 #5b3f36, 0px 2px 0 #5b3f36, 0px -2px 0 #5b3f36, 2px 2px 0 #5b3f36, -2px 2px 0 #5b3f36, 2px -2px 0 #5b3f36, -2px -2px 0 #5b3f36;
@@ -57,64 +57,49 @@
   .slot .k { position:absolute; left:-5px; top:-7px; font-size:18px; line-height:18px; color:#f6e3bf; text-shadow:var(--rim-key); }   /* (its key: quieter than the count) */
   .slot:hover .tip { display:block; }
   .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
-  /* ---- crafting (craft.js): the kinds by name on the left, the cards of the kind you are on on the right ----
-     Drawn in the panel's own colours and in pixels, as the panel is: a tile is a face with an edge one art pixel wide
-     that leaves the corners out (four shadows, each the tile moved by a pixel) and a lip under it. Nothing is a smooth
-     rounded box (they were, and beside the frames it looked like a web page). --p: the art pixel (the frames': --u). */
-  /* (centred by its margins, as the bag and the HUD are: moved by half its own size it lay between two screen pixels, and its icons' pixels came out uneven) */
-  #craft { left:0; right:0; top:0; bottom:10vh; margin:auto; height:max-content; width:min(900px, calc(100vw - 24px)); display:none; z-index:4;
-    --p:var(--u); --edge:#aa7959; --lip:#c49a6c; }
-  .rcard, .ccat.on, .rx5, #craft .close { box-shadow:calc(-1 * var(--p)) 0 var(--edge), var(--p) 0 var(--edge), 0 calc(-1 * var(--p)) var(--edge), 0 var(--p) var(--edge),
-    calc(-1 * var(--p)) calc(2 * var(--p)) var(--lip), var(--p) calc(2 * var(--p)) var(--lip), 0 calc(3 * var(--p)) var(--lip); }
-  #craft .ctop { display:flex; justify-content:space-between; align-items:center; margin:0 2px 12px; padding-bottom:8px; border-bottom:var(--p) solid #c49a6c; box-shadow:0 var(--p) 0 #f3e5c2; }
-  #craft h3 { margin:0; font-size:27px; line-height:27px; color:var(--ink); }
-  #craft .close { cursor:pointer; width:27px; height:27px; margin-right:var(--p); font-size:18px; line-height:25px; text-align:center; color:var(--ink); background:#f3e5c2; }
-  #craft .close:hover { background:#fff6e2; } #craft .close:active { transform:translateY(calc(2 * var(--p))); --lip:transparent; }
-  #craft .cbody { display:flex; gap:14px; height:min(520px, calc(100vh - 240px)); margin-bottom:12px; }
-  #craftcats { flex:none; width:190px; display:flex; flex-direction:column; gap:calc(3 * var(--p)); overflow-y:auto; padding:var(--p) calc(2 * var(--p)) calc(4 * var(--p)); }
-  .ccat { flex:none; display:flex; align-items:center; gap:8px; padding:3px 8px; color:var(--ink2); cursor:pointer; }
-  .ccat canvas { width:calc(11 * var(--i)); height:calc(11 * var(--i)); image-rendering:pixelated; flex:none; }
-  .ccat span { flex:1; white-space:nowrap; }
-  .ccat i { flex:none; font-style:normal; min-width:22px; line-height:22px; text-align:center; padding:0 4px; margin:0 var(--p); background:#5aa264; color:#fff8e8;   /* (how many of it can be made now) */
-    box-shadow:calc(-1 * var(--p)) 0 #5aa264, var(--p) 0 #5aa264, 0 calc(-1 * var(--p)) #5aa264, 0 var(--p) #5aa264; }
-  .ccat.ready i { min-width:max(22px, calc(11 * var(--i) - 2 * var(--p))); margin:calc((11 * var(--i) - 22px) / 2) var(--p); }
-  .ccat.ready i.none { background:#c49a6c; box-shadow:calc(-1 * var(--p)) 0 #c49a6c, var(--p) 0 #c49a6c, 0 calc(-1 * var(--p)) #c49a6c, 0 var(--p) #c49a6c; }
-  .ccat:hover { color:var(--ink); }
-  .ccat.on { background:#aa7959; color:#fff6e2; --edge:#90625d; --lip:#90625d; }                 /* (the one you are on: a plank of the slots' wood) */
-  /* the cards lie in a tray, a shade under the panel's paper: the ones you can make stand out of it */
-  #recipes { flex:1; min-width:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:calc(6 * var(--p)) calc(5 * var(--p)); align-content:start; overflow-y:auto;
-    padding:calc(4 * var(--p)) calc(4 * var(--p)) calc(6 * var(--p)); background:#dcc193; margin:var(--p);
-    box-shadow:calc(-1 * var(--p)) 0 #c49a6c, var(--p) 0 #c49a6c, 0 calc(-1 * var(--p)) #c49a6c, 0 var(--p) #c49a6c, inset 0 calc(2 * var(--p)) 0 #d0b384; }
-  #recipes, #craftcats { scrollbar-width:thin; scrollbar-color:#c49a6c transparent; }
-  .rcard { position:relative; min-width:0; display:flex; align-items:center; gap:10px; padding:7px 8px; cursor:pointer; background:#fbf0d6; }
-  .rcard:hover { background:#fff8e6; } .rcard:active { transform:translateY(calc(2 * var(--p))); --lip:transparent; }
-  .rcard.kfocus { --edge:#4f9a6a; --lip:#3f7a4f; }
-  .rcard.no { background:#e6cea2; box-shadow:none; transform:none; }                              /* (not yet: flat in the tray, quieter, and still read) */
-  .rcard.no.kfocus { box-shadow:calc(-1 * var(--p)) 0 var(--edge), var(--p) 0 var(--edge), 0 calc(-1 * var(--p)) var(--edge), 0 var(--p) var(--edge); }
-  .rcard.no .rname { color:var(--ink2); } .rcard.no .rpic canvas { opacity:.7; }
-  /* its picture, in a cell of the slots' own wood (an item is drawn to be seen on it, as in the bar) */
-  .rpic { position:relative; flex:none; width:calc(16 * var(--i)); height:calc(16 * var(--i)); padding:calc(2 * var(--p)); box-sizing:content-box; background:#aa7959; margin:var(--p);
-    box-shadow:calc(-1 * var(--p)) 0 #c49a6c, var(--p) 0 #c49a6c, 0 calc(-1 * var(--p)) #c49a6c, 0 var(--p) #c49a6c, inset 0 var(--p) 0 #9a6b4f; }
-  .rcard.no .rpic { background:#c9a37c; box-shadow:calc(-1 * var(--p)) 0 #d3b388, var(--p) 0 #d3b388, 0 calc(-1 * var(--p)) #d3b388, 0 var(--p) #d3b388; }
-  .rpic canvas { display:block; width:100%; height:100%; image-rendering:pixelated; }
-  .rtxt { flex:1; min-width:0; }
-  .rname { font-size:27px; line-height:28px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .rname::first-letter { text-transform:uppercase; }
-  .rname i { font-style:normal; font-size:18px; color:var(--ink2); }   /* (how many it makes) */
-  .rneeds { display:flex; flex-wrap:wrap; align-items:center; gap:2px 9px; margin-top:2px; color:var(--ink); }
-  .rneed { display:inline-flex; align-items:center; gap:3px; }
-  .rneed canvas { width:calc(11 * var(--i)); height:calc(11 * var(--i)); image-rendering:pixelated; flex:none; }
-  .rat { color:var(--ink2); margin-right:-5px; } .rneed.miss, .rat.miss { color:var(--warn); }
-  .rx5 { flex:none; font:inherit; border:0; padding:5px 8px; margin:0 var(--p) calc(2 * var(--p)) 0; background:#e0a458; color:#fff8e8; cursor:pointer; --edge:#8a5a34; --lip:#a8703a; }
-  .rx5:hover { background:#e8b06a; } .rx5:active { transform:translateY(calc(2 * var(--p))); --lip:transparent; }
-  .cnone { grid-column:1 / -1; color:var(--ink2); padding:24px 12px; }
-  /* a phone: all of the screen, over the thumbs' buttons; smaller names */
-  body.touch #craft { left:calc(3 * var(--u)); right:auto; top:calc(3 * var(--u)); bottom:auto; margin:0; width:calc(100vw - 6 * var(--u)); z-index:6; }   /* (on whole screen pixels: the frame's pieces show no joints) */
-  body.touch #craft .cbody { height:calc(100vh - 96px); gap:8px; } body.touch #craft .ctop { margin-bottom:8px; padding-bottom:5px; } body.touch #craft h3 { font-size:18px; line-height:20px; }
-  body.touch:has(#craft[style*="display: block"]) :is(#ttop, #tbtns, #tctx) { visibility:hidden; }   /* (open: the thumbs' buttons are under it) */
-  body.touch #craftcats { width:158px; } body.touch .ccat { gap:6px; padding:3px 6px; } body.touch .rname { font-size:18px; line-height:20px; }
-  body.touch #recipes { grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); } body.touch .rcard { padding:5px 6px; gap:8px; }
-  @media (max-width:560px) { #craftcats { width:auto !important; } .ccat span { display:none; } }   /* (a narrow screen: the kinds by their pictures) */
+  /* ---- crafting, a recipe book (craft.js) ----
+     One pixel size for all of it, --q (the land's: ui.js): every length is a number of them, and the text is the font
+     at that pixel (9 to a line). A window, a cell, a button: a face, a bevel inside it (a light edge up and left, a dark
+     one down and right) and an edge outside it one pixel wide that leaves the corners out. All of it is shadows of the
+     box: no picture, so nothing to stretch or to show joints. The colours are the panel's own. */
+  #craft { position:fixed; left:0; right:0; top:0; bottom:10vh; margin:auto; width:calc(252 * var(--q)); height:max-content; padding:calc(5 * var(--q)); display:none; z-index:4;
+    color:var(--ink); font-size:calc(9 * var(--q)); line-height:calc(9 * var(--q)); background:#e8cfa6; box-shadow:inset var(--q) var(--q) 0 #fbf0d6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(4 * var(--q)) 0 rgba(60,40,30,.22); }
+  #craft canvas { display:block; width:calc(16 * var(--q)); height:calc(16 * var(--q)); image-rendering:pixelated; }
+  #craft .cell { position:relative; flex:none; width:calc(18 * var(--q)); height:calc(18 * var(--q)); padding:var(--q); background:#cfad84; box-shadow:inset var(--q) var(--q) 0 #9a6f55, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }   /* a sunk slot: 18 px round a 16 px icon */
+  #craft .cell.res { background:#f1dfb8; box-shadow:inset var(--q) var(--q) 0 #b8946a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #fffaf0; }                                  /* (what comes out: a lighter one) */
+  #craft .cell span { position:absolute; right:0; bottom:calc(-1 * var(--q)); color:#fff8e8; text-shadow:var(--q) var(--q) 0 var(--ink); }
+  #craft .well { background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #b8946a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; padding:calc(3 * var(--q)); display:flex; flex-direction:column; gap:calc(2 * var(--q)); }   /* a sunk place: a list lies in it */
+  #craft .b { flex:none; display:flex; align-items:center; justify-content:center; height:calc(16 * var(--q)); padding:0 calc(5 * var(--q)) var(--q); cursor:pointer; white-space:nowrap;
+    color:#fff8e8; text-shadow:var(--q) var(--q) 0 #2f5a3b; background:#5aa264; box-shadow:inset var(--q) var(--q) 0 #8fcc97, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #3f7a4f, calc(-1 * var(--q)) 0 #2f5a3b, var(--q) 0 #2f5a3b, 0 calc(-1 * var(--q)) #2f5a3b, 0 var(--q) #2f5a3b; }
+  #craft .b:hover { background:#68b272; } #craft .b:active { box-shadow:inset var(--q) var(--q) 0 #3f7a4f, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #8fcc97, calc(-1 * var(--q)) 0 #2f5a3b, var(--q) 0 #2f5a3b, 0 calc(-1 * var(--q)) #2f5a3b, 0 var(--q) #2f5a3b; }
+  #craft .b.off { cursor:default; color:var(--ink2); text-shadow:none; background:#d6bd92; box-shadow:inset var(--q) var(--q) 0 #e6d2ac, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #bf9f74, calc(-1 * var(--q)) 0 #aa7959, var(--q) 0 #aa7959, 0 calc(-1 * var(--q)) #aa7959, 0 var(--q) #aa7959; }
+  #craft .b.paper { color:var(--ink); text-shadow:none; background:#f3e5c2; box-shadow:inset var(--q) var(--q) 0 #fff8e6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #d9bd8f, calc(-1 * var(--q)) 0 #aa7959, var(--q) 0 #aa7959, 0 calc(-1 * var(--q)) #aa7959, 0 var(--q) #aa7959; } #craft .b.paper:hover { background:#fbf0d6; }
+  #craft .b.on { color:#fff6e2; text-shadow:var(--q) var(--q) 0 #6b4a3a; background:#aa7959; box-shadow:inset var(--q) var(--q) 0 #8a5f4b, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }     /* (a switch that is on: pressed in) */
+  /* the bookmarks, down the side: the one you are on is of the window's own paper and runs into it */
+  #crafttabs { position:absolute; left:calc(-19 * var(--q)); top:calc(4 * var(--q)); display:flex; flex-direction:column; gap:calc(3 * var(--q)); }
+  .ctab { width:calc(20 * var(--q)); height:calc(20 * var(--q)); padding:calc(2 * var(--q)); cursor:pointer; background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #ecd9b4, calc(-1 * var(--q)) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+  .ctab.on { width:calc(21 * var(--q)); background:#e8cfa6; box-shadow:inset var(--q) var(--q) 0 #fbf0d6, calc(-1 * var(--q)) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; position:relative; z-index:1; }
+  #craftclose { position:absolute; right:calc(5 * var(--q)); top:calc(5 * var(--q)); width:calc(16 * var(--q)); padding:0 0 var(--q); }
+  #craft .cbook { display:flex; gap:calc(6 * var(--q)); }
+  #craft .cleft { flex:none; width:calc(110 * var(--q)); }
+  #craft .ctools { display:flex; gap:calc(3 * var(--q)); margin:0 var(--q) calc(4 * var(--q)); } #craftonly { flex:1 !important; } #craftprev, #craftnext { width:calc(16 * var(--q)); padding:0 0 var(--q) !important; }
+  #recipes { height:calc(114 * var(--q)); }
+  #craft .line { flex:none; display:flex; align-items:center; gap:calc(4 * var(--q)); height:calc(20 * var(--q)); padding:var(--q) calc(4 * var(--q)) var(--q) var(--q); cursor:pointer; white-space:nowrap; overflow:hidden; }
+  #craft .line.no { color:var(--ink2); } #craft .line.no canvas { opacity:.35; }                    /* (not yet: quieter, and still read) */
+  #craft .line.cur { color:#fff6e2; text-shadow:var(--q) var(--q) 0 #6b4a3a; background:#aa7959; box-shadow:inset var(--q) var(--q) 0 #c49a6c, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #8a5f4b, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+  #craft .line.cur canvas { opacity:1; }
+  #craft .cnone { font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); padding:calc(4 * var(--q)); }
+  #craftmore { height:calc(8 * var(--q)); margin-top:calc(3 * var(--q)); font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); text-align:center; }
+  #craftdetail { flex:1; min-width:0; display:flex; flex-direction:column; gap:calc(4 * var(--q)); }
+  #craft .chead { display:flex; align-items:center; gap:calc(5 * var(--q)); margin:0 calc(20 * var(--q)) 0 var(--q); height:calc(18 * var(--q)); }
+  #craft .cname i { font-style:normal; color:var(--ink2); }
+  #craft .cblurb { min-height:calc(16 * var(--q)); margin:0 calc(2 * var(--q)); font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); }       /* (a line about it: two lines at most) */
+  #craft .cneed { display:flex; align-items:center; gap:calc(4 * var(--q)); } #craft .cneed b { margin-left:auto; padding-right:calc(2 * var(--q)); font-weight:normal; color:#3f8a52; white-space:nowrap; }
+  #craft .cneed.miss b { color:var(--warn); }
+  #craft .cbtns { display:flex; gap:calc(4 * var(--q)); margin:auto var(--q) var(--q); } #craft .cbtn { flex:1; height:calc(20 * var(--q)); } #craft .x5 { height:calc(20 * var(--q)); }
+  /* a phone: in the middle of the screen, over the thumbs' buttons, which are put away while it is open */
+  body.touch #craft { bottom:0; z-index:6; }
+  body.touch:has(#craft[style*="display: block"]) :is(#ttop, #tbtns, #tctx) { visibility:hidden; }
   #goals { left:10px; top:10px; width:230px; display:none; }
   #goals .gh { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
   #goals h3 { margin:0; }

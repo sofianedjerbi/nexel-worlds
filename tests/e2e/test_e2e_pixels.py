@@ -21,7 +21,7 @@ SMALL = """(name) => { const px = (c) => c.getContext('2d').getImageData(0, 0, c
   for (let i = 0; i < src.length; i += 4) if (src[i + 3] >= 128) own.add(src[i] << 16 | src[i + 1] << 8 | src[i + 2]);
   for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; out.solid++;
     if (d[i + 3] !== 255) out.soft++; else if (!own.has(d[i] << 16 | d[i + 1] << 8 | d[i + 2])) out.alien++;
-    if (ICONS[name][0] === 'items' && Math.min(d[i], d[i + 1], d[i + 2]) > 225) out.white++; }
+    if ((ICONS[name][0] === 'items' || name === 'pickaxe') && Math.min(d[i], d[i + 1], d[i + 2]) > 225) out.white++; }
   return out; }"""
 
 
@@ -48,7 +48,7 @@ def test_a_thing_on_the_ground_is_drawn_at_the_lands_own_pixel_size(game, zoom):
     assert {(w, h) for w, h, _, _ in draws} == {(11, 11), (11, 10), (16, 16)}, {(w, h) for w, h, _, _ in draws}   # (10: landing, a row in the ground)
     off = [d for d in draws if d[2] != d[0] * zoom or d[3] != d[1] * zoom]
     assert not off, off[:5]
-    for name in ("wood", "axe", "torch", "pickaxe", "stone"):   # (not an egg: its glint is white)
+    for name in ("wood", "axe", "torch", "pickaxe", "stone", "spear"):   # (not an egg: its glint is white)
         m = game.js(SMALL, name)
         assert m["solid"] > 8 and m["soft"] == 0 and m["alien"] == 0 and m["white"] == 0, (name, m)
     assert not game.errors
@@ -57,10 +57,10 @@ def test_a_thing_on_the_ground_is_drawn_at_the_lands_own_pixel_size(game, zoom):
 # every item icon in the HUD and its slot's frame: screen pixels to an art pixel, and whether anything scales it
 HUD = """() => { const d = devicePixelRatio, out = {};
   const px = (sel, art) => [...document.querySelectorAll(sel)].filter((e) => e.offsetWidth).map((e) => { const r = e.getBoundingClientRect(); return [r.width * d / art, r.height * d / art]; }).flat();
-  out.icons = px('#hotbar .slot canvas, #bagitems .slot canvas, .ccat canvas, .rneed canvas', 11);
-  out.art = [...new Set([...document.querySelectorAll('#hotbar .slot canvas, #bagitems .slot canvas, .ccat canvas, .rneed canvas')].map((c) => c.width + 'x' + c.height))].join();
+  out.icons = px('#hotbar .slot canvas, #bagitems .slot canvas', 11);
+  out.art = [...new Set([...document.querySelectorAll('#hotbar .slot canvas, #bagitems .slot canvas')].map((c) => c.width + 'x' + c.height))].join();
   out.frames = px('#hotbar .slot, #bagitems .slot', 30);
-  out.big = px('.rpic canvas', 16);                                          // (a recipe's picture: the 16 px icon)
+  out.big = [...px('#craft canvas', 16), ...px('#craft .cell', 18), parseFloat(getComputedStyle($('craft')).fontSize) * d / 9];   // (the recipe book: icons, cells and the font, at its one pixel)
   out.vitals = [$('hearts').getBoundingClientRect().width * d / 99];         // (ten hearts: 99 art px)
   out.moved = ['hud', 'bag', 'craft'].map((id) => getComputedStyle($(id)).transform).join();
   out.fits = $('hud').getBoundingClientRect().left >= 0 && $('hud').getBoundingClientRect().right <= innerWidth;
@@ -86,12 +86,12 @@ def test_an_item_in_the_hud_is_whole_screen_pixels_and_the_lands_own(browser, se
         g.sleep(900)                                             # (a phone fits its HUD every fifth of a second)
         m = g.js(HUD)
         whole = lambda v: abs(v - round(v)) < .02 and round(v) >= 1          # noqa: E731
-        assert len(m["icons"]) > 60 and len(m["frames"]) > 30 and len(m["big"]) >= 8
+        assert len(m["icons"]) > 30 and len(m["frames"]) > 30 and len(m["big"]) >= 30
         assert all(whole(v) for v in m["icons"] + m["frames"] + m["big"] + m["vitals"]), m
         item, frame = {round(v) for v in m["icons"]}, {round(v) for v in m["frames"]}
         assert len(item) == 1 and len(frame) == 1 and m["art"] == "11x11", m
         assert item == {land} if land else max(item) * 11 <= max(frame) * 17.6, (item, frame)   # (no more than the frame's hole takes)
-        assert {round(v) for v in m["big"]} == item                              # (...at the item's own pixel)
+        assert len({round(v) for v in m["big"]}) == 1 and (not land or {round(v) for v in m["big"]} == {land + (1 if touch else 0)})   # (one pixel: the land's)
         assert goals and all(abs(v - round(v)) < .05 and round(v) >= 1 for v in goals), goals   # (a phone's goals are a smaller panel)
         assert m["moved"] == "none,none,none" and m["fits"], m
         assert not g.errors

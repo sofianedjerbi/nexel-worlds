@@ -1,21 +1,22 @@
-// Crafting: on the left the kinds of thing, by name (first of all "Can make": what you can make here and now); on
-// the right the recipes of the kind you are on, and only those, each a card that says it all: its picture, its name,
-// what it needs (what you lack in red, have/need) and where. A card you can make is lit: a click, a tap or Enter
-// makes it (Shift: five). There is nothing else on the panel. (It was a wall of sixty small pictures, most of them
-// faded, under tabs with no names, beside a pane for the one you pointed at.)
-// Arrows move over the cards, Tab or Q / E change kind, Home / End, Esc closes.
+// Crafting, a recipe book. Down its side, a bookmark for each of the five kinds of thing. On the left page a short
+// list: five names at a time (the wheel or the arrows turn the pages; a switch keeps only what you can make). On the
+// right page the one you are on, and nothing else: its picture and name, a line about it (blurbs.js), each thing it
+// takes with what you have of it, where it is made, and one button.
+// It is drawn in one pixel size, the land's (--q, ui.js): a sunk cell of 18 pixels holds a thing's whole 16 pixel
+// icon, and the window, the cells and the buttons are bevelled, a light edge up and left, a dark one down and right.
+// (It was sixty small pictures at once, then twelve cards of several sizes: too much on the screen.)
+// Up and down move in the list and turn the page at its ends, left and right (or Tab, Q and E) change kind, Enter
+// makes (Shift: five), Home and End go to the first and the last of the kind, Esc closes.
 
 const RECIPE_GROUPS = [
-  ["Start", "workbench", ["workbench", "campfire", "torch", "rope", "plank", "path"]],
+  ["Basics", "workbench", ["workbench", "campfire", "torch", "rope", "plank", "path", "boat", "mailbox"]],
   ["Tools", "pickaxe", ["axe", "pickaxe", "hoe", "watering_can", "spear", "sword"]],
-  ["Travel", "boat", ["boat", "mailbox"]],
   ["Build", "wood_wall", ["wood_wall", "door", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
-  ["Home", "bed", ["bed", "chair", "table", "plant", "clock", "rug"]],
-  ["Farm", "well", ["well", "coop", "trough", "hay", "picnic_blanket", "basket"]],
-  ["Cook", "bread", ["cooked_meat", "bread", "ingot"]],
+  ["Home", "bed", ["bed", "chair", "table", "plant", "clock", "rug", "well", "coop", "trough", "hay", "picnic_blanket", "basket", "cooked_meat", "bread", "ingot"]],
+  ["Wear", "straw_hat", []],             // (clothes, armor and charms: wear_items.js)
 ];
-const READY = "Can make";                  // the first kind: all that can be made here and now
-let craftFocus = null, craftTab = null;    // the recipe highlighted; the kind shown (null: not chosen yet)
+const CRAFT_ROWS = 5;
+let craftFocus = null, craftTab = "Basics", craftOnly = false, craftPage = 0;   // the recipe you are on; the kind, the switch, the page
 
 function craftGroups() {
   const listed = new Set(RECIPE_GROUPS.flatMap(([, , n]) => n));
@@ -31,75 +32,107 @@ function craftState(name) {
 }
 function craftWhy(name) {
   const s = craftState(name), st = recipes[name].station;
-  return !s.have ? "Missing materials" : s.near ? "Click to craft" : `Go within 2 tiles of a ${label(st)} to make it`;
+  return !s.have ? "Missing materials" : s.near ? "Enter or the button to make it" : `Go within 2 tiles of a ${label(st)} to make it`;
 }
-
 const craftOk = (name) => { const s = craftState(name); return s.have && s.near; };
-const craftKinds = () => { const g = craftGroups(); return [[READY, null, g.flatMap(([, , n]) => n).filter(craftOk)], ...g]; };
-
-// Opened: on what you can make (nothing yet: on where it starts), whatever was looked at last time
-function craftOpened() { craftTab = craftFocus = null; $("recipes").dataset.sig = ""; drawRecipes(); }
+const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+// A sunk cell with a thing's whole icon in it (and a number on it, if given)
+function craftCell(name, n, cls = "") {
+  const d = document.createElement("div"); d.className = "cell " + cls; d.title = capital(label(name)); d.appendChild(iconCanvas(name));
+  if (n != null) d.insertAdjacentHTML("beforeend", `<span>${n}</span>`);
+  return d;
+}
+// What the list shows: the kind's recipes (with the switch on, the ones you can make), and the page of them you are on
+function craftView() {
+  const groups = craftGroups(), g = groups.find(([t]) => t === craftTab) || groups[0]; craftTab = g[0];
+  const all = g[2].filter((n) => !craftOnly || craftOk(n)), pages = Math.max(1, Math.ceil(all.length / CRAFT_ROWS));
+  craftPage = Math.max(0, Math.min(pages - 1, craftPage));
+  const shown = all.slice(craftPage * CRAFT_ROWS, (craftPage + 1) * CRAFT_ROWS);
+  if (!shown.includes(craftFocus)) craftFocus = shown[0] || null;
+  return {groups, all, shown, pages};
+}
+function craftOpened() { $("recipes").dataset.sig = ""; drawRecipes(); }
 function drawRecipes() {
   const el = $("recipes"); if (!el || !Object.keys(recipes).length) return;
-  const kinds = craftKinds();
-  if (!kinds.some(([t]) => t === craftTab)) craftTab = kinds[0][2].length ? READY : kinds[1][0];
-  const sig = JSON.stringify(meObs ? meObs.self.inventory : {}) + (meObs ? meObs.grid.join("") : "") + craftTab;
+  const v = craftView(), sig = JSON.stringify(meObs ? meObs.self.inventory : {}) + (meObs ? meObs.grid.join("") : "") + [craftTab, craftOnly, craftPage].join();
   if (el.dataset.sig === sig) return; el.dataset.sig = sig;
-  const cats = $("craftcats"); cats.innerHTML = "";         // the kinds, each with how many of it can be made now
-  for (const [title, ic, names] of kinds) {
-    const n = names.filter(craftOk).length, b = document.createElement("div");
-    b.className = "ccat" + (title === craftTab ? " on" : "") + (title === READY ? " ready" : ""); b.dataset.kind = title;
-    if (ic) b.appendChild(slotIcon(ic));
-    b.insertAdjacentHTML("beforeend", `${ic ? "" : `<i${n ? "" : ' class="none"'}>${n}</i>`}<span>${esc(title)}</span>${ic && n ? `<i>${n}</i>` : ""}`);
-    b.onclick = () => { craftTab = title; craftFocus = null; sfx("ui"); drawRecipes(); };
-    cats.appendChild(b);
+  const tabs = $("crafttabs"); tabs.innerHTML = "";         // the bookmarks
+  for (const [title, ic] of v.groups) {
+    const b = document.createElement("div"); b.className = "ctab" + (title === craftTab ? " on" : ""); b.dataset.kind = b.title = title;
+    b.appendChild(iconCanvas(ic)); b.onclick = () => craftTurn({tab: title});
+    tabs.appendChild(b);
   }
-  const names = kinds.find(([t]) => t === craftTab)[2];     // its recipes
-  el.innerHTML = names.length ? "" : `<div class="cnone">Nothing yet. Gather wood, stone and fiber: what you can make will show here.</div>`;
-  el.scrollTop = 0;
-  if (!names.includes(craftFocus)) craftFocus = names.find(craftOk) || names[0] || null;
-  for (const name of names) el.appendChild(recipeCard(name));
-}
-// A recipe: its picture, its name (and how many it makes, if more than one), and what it needs: each thing with how
-// many (in red, have/need, what you lack), then where it is made
-function recipeCard(name) {
-  const rc = recipes[name], s = craftState(name), ok = s.have && s.near, out = Object.values(rc.output)[0];
-  const d = document.createElement("div"); d.className = "rcard" + (ok ? "" : " no") + (name === craftFocus ? " kfocus" : "");
-  d.dataset.name = name; d.title = craftWhy(name);
-  const pic = document.createElement("div"); pic.className = "rpic"; pic.appendChild(iconCanvas(name));
-  const txt = document.createElement("div"); txt.className = "rtxt"; txt.innerHTML = `<div class="rname">${esc(label(name))}${out > 1 ? ` <i>x${out}</i>` : ""}</div>`;
-  const needs = document.createElement("div"); needs.className = "rneeds";
-  const need = (item, text, miss, tip) => {
-    const n = document.createElement("span"); n.className = "rneed" + (miss ? " miss" : ""); n.title = tip;
-    n.appendChild(slotIcon(item)); n.insertAdjacentText("beforeend", text); needs.appendChild(n);
-  };
-  for (const [k, v] of Object.entries(rc.inputs)) { const have = s.inv[k] || 0; need(k, have >= v ? v : `${have}/${v}`, have < v, `${label(k)}: you have ${have} of ${v}`); }
-  if (rc.station) { needs.insertAdjacentHTML("beforeend", `<span class="rat${s.near ? "" : " miss"}">at</span>`); need(rc.station, "", !s.near, s.near ? `at the ${label(rc.station)}` : `go within 2 tiles of a ${label(rc.station)}`); }
-  txt.appendChild(needs); d.append(pic, txt);
-  if (ok && s.n >= 5) {                                     // five at once (Shift+Enter, Shift and a click)
-    const b5 = document.createElement("button"); b5.className = "rx5"; b5.textContent = "x5"; b5.title = "make five (Shift+Enter)";
-    b5.onclick = (e) => { e.stopPropagation(); focusRecipe(name); act("craft", {recipe: name, n: 5}); }; d.appendChild(b5);
+  $("craftonly").className = "b " + (craftOnly ? "on" : "paper");
+  el.innerHTML = v.shown.length ? "" : `<div class="cnone">${craftOnly ? "Nothing in " + esc(craftTab) + " can be made yet." : "Nothing here."}</div>`;
+  for (const name of v.shown) {                             // the list: a name, lit if it can be made
+    const d = document.createElement("div"); d.className = "line rcard" + (craftOk(name) ? "" : " no") + (name === craftFocus ? " cur" : "");
+    d.dataset.name = name; d.title = craftWhy(name);
+    d.appendChild(craftCell(name)); d.insertAdjacentHTML("beforeend", `<span>${esc(capital(label(name)))}</span>`);
+    d.onmousemove = () => focusRecipe(name);                // (only a mouse that moves: one resting there leaves the keys alone)
+    d.onclick = () => focusRecipe(name); d.ondblclick = () => craftMake(name);
+    el.appendChild(d);
   }
-  d.onclick = (e) => { focusRecipe(name); if (ok) act("craft", e && e.shiftKey && s.n >= 5 ? {recipe: name, n: 5} : {recipe: name}); else toast(craftWhy(name), true); };
-  d.onmousemove = () => focusRecipe(name);                  // (only a mouse that moves: one resting there leaves the keys alone)
-  return d;
+  $("craftmore").textContent = `${craftTab} · ${craftPage + 1} of ${v.pages}`;
+  drawCraftDetail();
 }
 function focusRecipe(name) {
   if (craftFocus === name) return;
   craftFocus = name;
-  for (const c of $("recipes").querySelectorAll(".rcard")) c.classList.toggle("kfocus", c.dataset.name === name);
+  for (const c of $("recipes").querySelectorAll(".rcard")) c.classList.toggle("cur", c.dataset.name === name);
+  drawCraftDetail();
 }
-// Keys while it's open: arrows over the cards, Enter crafts, Tab the next kind
+// Another kind, another page, the switch: then the list again, from its first line (or its last, coming back up)
+function craftTurn({tab, page, only, last}) {
+  if (tab !== undefined) { craftTab = tab; craftPage = 0; }
+  if (only !== undefined) { craftOnly = only; craftPage = 0; }
+  if (page !== undefined) craftPage = page;
+  craftFocus = null; sfx("ui"); drawRecipes();
+  if (last) { const c = [...$("recipes").querySelectorAll(".rcard")].pop(); if (c) focusRecipe(c.dataset.name); }
+}
+function craftMake(name, five) {
+  if (!name) return;
+  const s = craftState(name);
+  if (s.have && s.near) act("craft", five && s.n >= 5 ? {recipe: name, n: 5} : {recipe: name}); else toast(craftWhy(name), true);
+}
+// The right page: the recipe you are on
+function drawCraftDetail() {
+  const el = $("craftdetail"), name = craftFocus; if (!el) return;
+  el.innerHTML = ""; if (!name || !recipes[name]) return;
+  const rc = recipes[name], s = craftState(name), ok = s.have && s.near, out = Object.values(rc.output)[0];
+  const head = document.createElement("div"); head.className = "chead"; head.appendChild(craftCell(name, null, "res"));
+  head.insertAdjacentHTML("beforeend", `<div class="cname">${esc(capital(label(name)))}${out > 1 ? ` <i>x${out}</i>` : ""}</div>`);   // (x2: how many it makes)
+  const needs = document.createElement("div"); needs.className = "well cneeds";
+  const need = (item, text, miss) => {
+    const row = document.createElement("div"); row.className = "cneed" + (miss ? " miss" : ""); row.appendChild(craftCell(item));
+    row.insertAdjacentHTML("beforeend", `<span>${esc(capital(label(item)))}</span><b>${text}</b>`); needs.appendChild(row);
+  };
+  for (const [k, v] of Object.entries(rc.inputs)) need(k, `${s.inv[k] || 0}/${v}`, (s.inv[k] || 0) < v);     // what you have of what it takes
+  if (rc.station) need(rc.station, s.near ? "here" : "far", !s.near);
+  const btns = document.createElement("div"); btns.className = "cbtns";
+  const b = document.createElement("div"); b.className = "b cbtn" + (ok ? "" : " off");
+  b.textContent = ok ? "Craft" : !s.have ? "Missing materials" : `Go to a ${label(rc.station)}`;
+  if (ok) b.onclick = () => craftMake(name);
+  btns.appendChild(b);
+  if (ok && s.n >= 5) { const b5 = document.createElement("div"); b5.className = "b paper x5"; b5.textContent = "x5"; b5.title = "five at once (Shift+Enter)"; b5.onclick = () => craftMake(name, true); btns.appendChild(b5); }
+  el.append(head); el.insertAdjacentHTML("beforeend", `<div class="cblurb">${esc(BLURB[name] || "")}</div>`); el.append(needs, btns);
+}
+// Keys while it is open
 function craftKey(k, e) {
-  if (k === "tab" || k === "q" || k === "e") {         // categories: Tab / Shift+Tab, or Q and E
-    const tabs = craftKinds().map(([t]) => t), i = tabs.indexOf(craftTab), back = k === "q" || (k === "tab" && e.shiftKey);
-    craftTab = tabs[(i + (back ? tabs.length - 1 : 1)) % tabs.length]; craftFocus = null; sfx("ui"); drawRecipes();
-    return true;
-  }
-  if (k === "home" || k === "end") {                     // the first or the last recipe
-    const cards = [...$("recipes").querySelectorAll(".rcard")];
-    if (cards.length) { const c = cards[k === "home" ? 0 : cards.length - 1]; craftFocus = null; focusRecipe(c.dataset.name); }
-    return true;
-  }
-  return panelKey("craft", ".rcard", () => craftFocus, (n) => { craftFocus = n; }, k, e);
+  const v = craftView(), kinds = v.groups.map(([t]) => t), ki = kinds.indexOf(craftTab), i = v.shown.indexOf(craftFocus);
+  const dir = KEYDIR[k];
+  if (k === "tab" || k === "q" || k === "e" || dir === "W" || dir === "E") {       // the kinds
+    const back = k === "q" || dir === "W" || (k === "tab" && e.shiftKey);
+    craftTurn({tab: kinds[(ki + (back ? kinds.length - 1 : 1)) % kinds.length]});
+  } else if (dir === "S") { if (i < v.shown.length - 1) focusRecipe(v.shown[i + 1]); else if (craftPage < v.pages - 1) craftTurn({page: craftPage + 1}); }
+  else if (dir === "N") { if (i > 0) focusRecipe(v.shown[i - 1]); else if (craftPage > 0) craftTurn({page: craftPage - 1, last: true}); }
+  else if (k === "pagedown" || k === "pageup") craftTurn({page: craftPage + (k === "pagedown" ? 1 : -1)});
+  else if (k === "home") craftTurn({page: 0});
+  else if (k === "end") craftTurn({page: v.pages - 1, last: true});
+  else if (k === "enter" || k === " ") craftMake(craftFocus, e.shiftKey);
+  else return false;
+  return true;
 }
+$("craftonly").onclick = () => craftTurn({only: !craftOnly});
+$("craftprev").onclick = () => craftTurn({page: craftPage - 1});
+$("craftnext").onclick = () => craftTurn({page: craftPage + 1});
+$("craft").addEventListener("wheel", (e) => { e.preventDefault(); const p = craftPage; craftPage += Math.sign(e.deltaY); craftView(); if (craftPage !== p) craftTurn({page: craftPage}); }, {passive: false});

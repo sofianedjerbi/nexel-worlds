@@ -47,21 +47,24 @@ def test_play_with_thumbs(browser, server):
 
 
 def test_crafting_on_a_phone_takes_the_screen_and_a_tap_makes_a_lit_card(browser, server):
-    """Open, the crafting is all of the screen and nothing lies over it (the thumbs' buttons and the ones at the top
-    did: they are put away while it is open); a tap on a lit card makes the thing."""
+    """Open, the recipe book is in the middle of the screen, all of it, and nothing lies over it (the thumbs' buttons
+    and the ones at the top did: they are put away while it is open); a tap on a name, a tap on the button."""
     ctx, g = touch_game(browser, server, 844, 390)
     try:
         g.give(wood=4)
         g.js("toggleCraft()")
         g.sleep(400)
         box = g.js("(() => { const b = $('craft').getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom]; })()")
-        assert box[0] >= 0 and box[1] >= 0 and box[2] <= 844 and box[3] <= 390 and box[2] - box[0] > 800
+        assert box[0] >= 0 and box[1] >= 0 and box[2] <= 844 and box[3] <= 390 and box[2] - box[0] > 500
         shown = "['ttop', 'tbtns', 'tctx'].map((id) => getComputedStyle($(id)).visibility).join()"
         assert g.js(shown) == "hidden,hidden,hidden"
-        assert g.js("craftTab") == "Can make" and g.js("parseFloat(getComputedStyle(document.querySelector('.rname')).fontSize)") >= 18
-        x, y = g.js("(() => { const b = document.querySelector('.rcard[data-name=workbench]').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
-        g.page.touchscreen.tap(x, y)
-        g.sleep(1200)
+        assert g.js("craftFocus") == "workbench" and g.js("parseFloat(getComputedStyle(document.querySelector('#craft .line')).fontSize)") >= 18
+        assert g.js("document.querySelector('#craft .line').getBoundingClientRect().height") >= 40      # (a name is a finger high)
+        for sel in (".rcard[data-name=campfire]", ".rcard[data-name=workbench]", "#craftdetail .cbtn"):   # a tap on a name takes you to it; the button makes it
+            x, y = g.js("(s) => { const b = document.querySelector(s).getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; }", sel)
+            g.page.touchscreen.tap(x, y)
+            g.sleep(300)
+        g.sleep(900)
         assert g.inv("workbench") == 1
         g.js("$('craftclose').click()")
         assert g.js(shown) == "visible,visible,visible" and not g.errors

@@ -73,16 +73,19 @@ const BAR = 10;
 // or 2 on a small phone, so an item looks in the bar as it does on the ground), --u3 for the crafting's big picture.
 // The bar's (--u) is a screen pixel less, and again, while its ten slots would not fit across, or the HUD would take
 // more than hudTall of the height (a phone: touch.js); the item's is no more than fits the frame. Nothing is scaled.
+// --q is the recipe book's own (craft.js): everything in it is a number of them.
 let hudU = 2, hudTall = 1, hudK = 2.5, hudSig = "";   // (hudK: CSS px an art pixel of the hearts and the food: 2.5, less where the two rows would not fit across)
 function hudFit() {
   const d = window.devicePixelRatio || 1, st = document.documentElement.style, h = $("hud").offsetHeight, was = hudU;
   let n = Math.max(1, Math.round(2 * d));
   while (n > 1 && ((BAR * 32 - 2) * n / d > innerWidth - 16 || (h && h + 30 * (n / d - was) > innerHeight * hudTall))) n--;
   hudU = n / d; hudK = Math.min(2.5, Math.max(1, Math.floor((innerWidth - 34) * d / 198)) / d);   // (two rows of ten icons: 99 art px each)
-  const land = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520 ? 2 : 3;
+  const small = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520, land = small ? 2 : 3;
   const item = Math.max(1, Math.min(Math.round(land * d), Math.floor(1.6 * n)));    // (11 px of it in a hole of 16: its edge px are empty)
-  if (hudSig === (hudSig = [n, d, item].join())) return false;
-  st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px");
+  let book = Math.round(land * d) + (small ? 1 : 0);                                // the recipe book's pixel (--q): the land's (a screen pixel more under a thumb), less while its 272 x 160 would not fit
+  while (book > 1 && (272 * book / d > innerWidth - 12 || 160 * book / d > innerHeight - 12)) book--;
+  if (hudSig === (hudSig = [n, d, item, book].join())) return false;
+  st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px");
   return hudU !== was;
 }
 hudFit(); addEventListener("resize", hudFit);
