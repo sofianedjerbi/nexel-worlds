@@ -64,7 +64,7 @@ function frame(now) {
   drawWater(vis.filter((b) => b.relief), ox, oy, t);    // the sea: its bottom, its depth, its light (water.js); the land goes over it
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
   drawCaves(vis, sx, sy);                            // (their mouths; the one you're in, seen through its roof)
-  xrayLook(dt); drawXray(vis, sx, sy);                    // (behind a mountain: a circle round you seen through it, xray.js)
+  xrayLook(dt); drawXray(sx, sy);                    // (behind a mountain: a circle round you seen through it, xray.js)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B)));
   const allShown = vis.every((b) => !onScreen(b) || b.relief);
@@ -108,6 +108,8 @@ function frame(now) {
     }
     else if (o.pile) {
       if (lootAt(o.x, o.ty)) continue;                // its loot is still hopping in: the pile shows once it lands
+      const over = xrayOver(o.x, o.ty); if (over > .98) continue;   // (lying on rock the x-ray circle looks through: it fades with it)
+      ctx.globalAlpha = 1 - over;
       // a gentle hover, smooth to the screen pixel (whole art pixels made it tick between three heights)
       // (just landed: it starts from rest, where the drop came down, and eases into its hover: no jump)
       const key = o.x + "," + o.ty; if (!pileSince.has(key)) pileSince.set(key, now);
@@ -116,11 +118,18 @@ function frame(now) {
       const cx = sx(o.x) + S / 2, cy = sy(o.ty, o.x) + S / 2, bob = lift * 2 * zoom;
       ctx.fillStyle = `rgba(60,40,30,${.25 - lift * .1})`; ctx.beginPath(); ctx.ellipse(cx, cy + 5 * zoom, (4 - lift * .8) * zoom, 1.5 * zoom, 0, 0, 7); ctx.fill();
       names.slice(0, 3).forEach((n, i) => ctx.drawImage(ghostIcon(n), Math.round(cx - sz / 2 + (i - (Math.min(3, names.length) - 1) / 2) * 4 * zoom), Math.round((cy - sz / 2 - bob) * DPR) / DPR, sz, sz));
+      ctx.globalAlpha = 1;
     }
     else if (o.fx) o.fx();
     else {
-      const see = xraySees(o.p); if (see < 0) continue;
-      const cut = !see && clipBehind(o.p, sx, sy, S); drawEntity(o.p, sx, sy, S, t, now); if (cut) ctx.restore();
+      const over = xrayOver(Math.round(o.p.x), Math.round(o.p.y)), shows = xrayShows(o.p);   // (xray.js) on the rock the circle sees through: it fades with it; behind it: seen
+      if (over > .98) continue;
+      const cut = clipBehind(o.p, sx, sy, S, shows > .98 ? 1 : 0);
+      ctx.globalAlpha = 1 - over; drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1;
+      if (cut) ctx.restore();
+      if (cut && shows > .02 && shows <= .98) {        // toward the circle's edge: what the rock hides of them, as faint as the circle is there
+        clipBehind(o.p, sx, sy, S, 2); ctx.globalAlpha = shows; drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1; ctx.restore();
+      }
     }
   }
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)

@@ -94,7 +94,7 @@ def test_running_into_new_ground_never_stalls_a_frame(game):
     gaps = sorted(b - a for a, b in zip(ms, ms[1:]))
     assert gaps[-1] < 60, gaps[-5:]
     t = game.js("""(() => { let worst = 0; for (const b of blocks.values()) { if (!b.canvas) continue;
-      const it = reliefSteps(b); while (true) { const t0 = performance.now(), r = it.next(); worst = Math.max(worst, performance.now() - t0); if (r.done) break; } }
+      const it = blockRelief(b); while (true) { const t0 = performance.now(), r = it.next(); worst = Math.max(worst, performance.now() - t0); if (r.done) break; } }
       return worst; })()""")
     assert t < 12, t                                            # a step is small: it fits the frame's budget
 
@@ -210,7 +210,7 @@ def test_ground_redrawn_while_a_block_is_first_built_builds_it_again(game):
     game.sleep(900)
     x, y = game.pos()
     game.js(f"""(() => {{ const t = tileIdx({x + 7}, {y - 1}), b = t[0];
-      b.relief = null; b.reliefGen = reliefSteps(b); b.reliefGen.next();      // as if just arrived: its first build under way
+      b.relief = null; b.reliefGen = blockRelief(b); b.reliefGen.next();      // as if just arrived: its first build under way
       b.lv[t[1]] = String.fromCharCode(SEA + 3); drawTile({x + 7}, {y - 1});   // ...and its land turns out higher here
       window.__b = b; return 1; }})()""")
     game.sleep(900)

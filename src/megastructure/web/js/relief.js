@@ -67,90 +67,137 @@ function cellAlpha(sheet, cx, cy) {
   return m.cells.get(key);
 }
 
-// Grow a shape (0/1 per px, w x h) n px to the left and right
-function dilateH(m, w, h, n) {
-  const out = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++) {
-    let last = -1e9;
-    for (let x = 0; x < w; x++) { if (m[y * w + x]) last = x; if (x - last <= n) out[y * w + x] = 1; }
-    last = 1e9;
-    for (let x = w - 1; x >= 0; x--) { if (m[y * w + x]) last = x; if (last - x <= n) out[y * w + x] = 1; }
-  }
-  return out;
-}
-
-// The lifted levels of a block, built when its ground canvas changed. Each level k: its body (a wall band a layer high, lit
-// at its top, dark at its foot), the ledge round the level above it (LEDGE px, in the sheet's own side-edge colours:
-// a +3 shows three edges on every side), then its own tiles on top, where you stand. Worked out over the block and a
-// tile round it, so ledges cross block borders.
+// The lifted levels of a rect of tiles R = {x, y, w, h}: a block's, built when its ground canvas changed, or the few
+// tiles round you the x-ray circle shows (xray.js). Each level k: its body (a wall band a layer high, lit at its top,
+// dark at its foot), the ledge round the level above it (LEDGE px, in the sheet's own side-edge colours: a +3 shows
+// three edges on every side), then its own tiles on top, where you stand. Worked out over the rect and a tile round
+// it, so ledges cross block borders.
 const LEDGE = 4, SIDE_MAX = 2;
-// A level's shape in a block and a tile round it (a byte a px, 1 where it is): `own`, its own tiles, from its sheet's
-// cells; `sh`, that and the ledges of the levels above it (shape: those, already worked out)
-function levelShape(b, k, shape) {
-  const M = 16, Wm = B * 16 + 2 * M, own = new Uint8Array(Wm * Wm), sheet = hillSheet(k);
-  for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {
-    const x = b.bx * B + tx, y = b.by * B + ty;
-    if (levelAt(x, y) < k) continue;
-    const [cx, cy] = blobCell(maskOf(x, y, (cc, gg, ux, uy) => levelAt(ux, uy) >= k)), a = cellAlpha(sheet, cx, cy);
-    const ox = (tx + 1) * 16, oy = (ty + 1) * 16;
-    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) if (a[j * 16 + i]) own[(oy + j) * Wm + ox + i] = 1;
+// The rect's levels and two tiles round it, read once: lv, and gone (no tile there yet: for the tiles beside it, it
+// counts as ground of every height, as maskOf has it)
+function rectLevels(R) {
+  const Ws = R.w + 4; R.lv = new Int8Array(Ws * (R.h + 4)); R.gone = new Uint8Array(R.lv.length);
+  for (let ty = -2; ty < R.h + 2; ty++) for (let tx = -2; tx < R.w + 2; tx++) {
+    const j = (ty + 2) * Ws + tx + 2; R.lv[j] = levelAt(R.x + tx, R.y + ty); R.gone[j] = tile(R.x + tx, R.y + ty) === null ? 1 : 0;
+  }
+}
+// A level's shape in the rect and a tile round it (a byte a px, 1 where it is): `own`, its own tiles, from its sheet's
+// cells; `sh`, that and the ledges of the levels above it (shape: those, already worked out); `edge`: where in it the
+// tiles are that end it on a side (the others, whole and with whole tiles round them, grow no ledge). ta..tb: the rows
+// of tiles asked for. keep: of the tiles it says only (and of a shape already made: `of`)
+const wholeCells = new Map();                          // (a sheet's inner cell: every px of it drawn?)
+function levelShape(R, k, shape, ta, tb, keep, of) {
+  const Ws = R.w + 4, Wm = (R.w + 2) * 16, own = new Uint8Array(Wm * (R.h + 2) * 16), sheet = hillSheet(k), edge = [];
+  if (!wholeCells.has(sheet)) wholeCells.set(sheet, cellAlpha(sheet, ...blobCell(255)).every((v) => v === 1));
+  const has = (tx, ty) => { const j = (ty + 2) * Ws + tx + 2; return R.gone[j] || R.lv[j] >= k; }, whole = wholeCells.get(sheet);
+  const kept = (j) => keep[j] && R.lv[j] >= k;
+  for (let ty = ta; ty <= tb; ty++) for (let tx = -1; tx <= R.w; tx++) {
+    const j = (ty + 2) * Ws + tx + 2, o = (ty + 1) * 16 * Wm + (tx + 1) * 16;
+    if (R.lv[j] < k || (keep && !keep[j])) continue;
+    let m = 0;
+    if (has(tx, ty - 1)) m |= N_; if (has(tx + 1, ty)) m |= E_; if (has(tx, ty + 1)) m |= S_; if (has(tx - 1, ty)) m |= W_;
+    if (has(tx + 1, ty - 1)) m |= NE; if (has(tx + 1, ty + 1)) m |= SE; if (has(tx - 1, ty + 1)) m |= SW; if (has(tx - 1, ty - 1)) m |= NW;
+    if (m !== 255 || !whole || (keep && !(kept(j - 1) && kept(j + 1)))) edge.push(o);
+    if (of) { for (let r = 0; r < 16; r++) own.set(of.subarray(o + r * Wm, o + r * Wm + 16), o + r * Wm); continue; }
+    if (m === 255 && whole) { for (let r = 0; r < 16; r++) own.fill(1, o + r * Wm, o + r * Wm + 16); continue; }
+    const [cx, cy] = blobCell(m), a = cellAlpha(sheet, cx, cy);
+    for (let r = 0; r < 16; r++) for (let i = 0; i < 16; i++) if (a[r * 16 + i]) own[o + r * Wm + i] = 1;
   }
   // (round it, the layers over it stick out a ledge each: SIDE_MAX of them at the most, so a cliff's side never
-  // reaches further than half a tile onto the ground beside it, where people stand)
+  // reaches further than half a tile onto the ground beside it, where people stand: n px out from every px of theirs
+  // that ends a row)
   const sh = new Uint8Array(own);
-  for (let n = 1; n <= SIDE_MAX; n++) if (shape[k + n]) { const d = dilateH(shape[k + n].own, Wm, Wm, LEDGE * n); for (let i = 0; i < sh.length; i++) sh[i] = sh[i] || d[i]; }
-  return {own, sh};
-}
-function* reliefSteps(b) {                             // (a step a level, so no frame waits on a whole block)
-  const M = 16, Wb = B * 16, Wm = Wb + 2 * M;
-  let maxLv = -99, minLv = 0;                          // (the block's ground canvas is drawn at its lowest level)
-  for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {
-    const l = levelAt(b.bx * B + tx, b.by * B + ty); maxLv = Math.max(maxLv, l); minLv = Math.min(minLv, l);
+  for (let n = 1; n <= SIDE_MAX; n++) if (shape[k + n]) for (const o of shape[k + n].edge) {
+    const src = shape[k + n].own;
+    for (let r = 0; r < 16; r++) for (let q = o + r * Wm, e = q + 16, row = q - q % Wm; q < e; q++) {
+      if (!src[q]) continue;
+      sh[q] = 1;                                         // (its own px too: a level's edge may be set in further than the one over it)
+      if (!src[q - 1]) for (let d = 1; d <= LEDGE * n && q - d >= row; d++) sh[q - d] = 1;
+      if (!src[q + 1]) for (let d = 1; d <= LEDGE * n && q + d < row + Wm; d++) sh[q + d] = 1;
+    }
   }
-  const shape = {};
-  for (let k = maxLv; k > minLv; k--) { shape[k] = levelShape(b, k, shape); yield; }   // the shapes, from the top down: each grows round the one above
-  // the raised levels, painted lowest first into one picture: `up` px taller than the block at its top (the highest
-  // level's lift), the lowest level's worth at its foot
-  const up = shOf(maxLv), flat = maxLv > minLv ? document.createElement("canvas") : null, fg = flat && flat.getContext("2d");
-  if (flat) { flat.width = Wb; flat.height = Wb + up - shOf(minLv); fg.imageSmoothingEnabled = false; }
-  const [mc, tint, lc, t] = reliefScratch(Wb), tg0 = tint.getContext("2d"), tg = t.getContext("2d");
-  for (let k = minLv + 1; k <= maxLv; k++) {
-    const {own, sh} = shape[k], cols = colsOf(hillSheet(k)), off = up - shOf(k);
-    const mask = new ImageData(Wb, Wb), md = mask.data, ledge = new ImageData(Wb, Wb), ld = ledge.data, ownM = new ImageData(Wb, Wb), od = ownM.data;
-    for (let y = 0; y < Wb; y++) for (let x = 0; x < Wb; x++) {
-      const i = (y + M) * Wm + x + M, o = (y * Wb + x) * 4;
-      if (!sh[i]) continue;
-      md[o + 3] = 255;
-      if (own[i]) { od[o + 3] = 255; continue; }                              // the ledge, where the shape is not its own tiles
-      let ownL = false, ownR = false;
-      for (let j = 1; j <= LEDGE; j++) { if (own[i - j]) ownL = true; if (own[i + j]) ownR = true; }
-      let c;
-      if (ownL && ownR) c = cols.top;                    // (a sliver between two of its own edges: its top)
-      else { let dd = 0; while (dd < 3 && sh[i - dd - 1] && sh[i + dd + 1]) dd++; c = cols.side[dd]; }
-      ld[o] = c[0]; ld[o + 1] = c[1]; ld[o + 2] = c[2]; ld[o + 3] = 255;
-    }
-    mc.getContext("2d").putImageData(mask, 0, 0);
-    for (let s = 0; s < RELIEF_STEP; s++) {                    // the body: its wall, a band, under the whole shape
-      const col = s === RELIEF_STEP - 1 ? cols.bands[0] : s === 0 ? cols.bands[2] : cols.bands[1];
-      tg0.globalCompositeOperation = "source-over"; tg0.clearRect(0, 0, Wb, Wb);
-      tg0.fillStyle = `rgb(${col[0] | 0},${col[1] | 0},${col[2] | 0})`; tg0.fillRect(0, 0, Wb, Wb);
-      tg0.globalCompositeOperation = "destination-in"; tg0.drawImage(mc, 0, 0);
-      fg.drawImage(tint, 0, off + RELIEF_STEP - s);
-    }
-    lc.getContext("2d").putImageData(ledge, 0, 0);
-    fg.drawImage(lc, 0, off);
-    tg.globalCompositeOperation = "source-over"; tg.putImageData(ownM, 0, 0);   // its own tiles: the ground as drawn, cut to
-    tg.globalCompositeOperation = "source-in"; tg.drawImage(b.canvas, 0, 0);    //  the level's own shape
-    fg.drawImage(t, 0, off);
+  return {own, sh, edge};
+}
+// Painted lowest level first into one picture, a step a level (so no frame waits on a whole block). ground: the
+// rect's tiles as drawn flat (a block's canvas). -> {flat, up, maxLv, minLv}: the picture is `up` px taller than the
+// rect at its top (the highest level's lift), the lowest level's worth at its foot.
+// see (xray.js): the land without the rock in the way. Only the tiles see.keep says are painted, exactly as they are
+// with that rock there (every shape and colour is still worked out from the whole land), into the rows c0..c1 of the
+// picture alone. What becomes of each px is noted as the land is painted, in the order it is painted in: see.state
+// (1: ground that is kept is on top of what is painted; 2: the inside of the rock, where it stood against kept ground:
+// nothing to see), see.cover (1: on the real land the rock left out is on top there), see.wet (water shows there).
+function* reliefSteps(R, ground, see) {
+  rectLevels(R);
+  const M = 16, W = R.w * 16, H = R.h * 16, Wm = W + 2 * M, Ws = R.w + 4, STEP = RELIEF_STEP;
+  let maxLv = -99, minLv = see ? 99 : 0;                // (a block's ground canvas is drawn at its lowest level, the sea's at the highest)
+  for (let ty = -1; ty <= R.h; ty++) for (let tx = -1; tx <= R.w; tx++) { const l = R.lv[(ty + 2) * Ws + tx + 2]; maxLv = Math.max(maxLv, l); minLv = Math.min(minLv, l); }
+  const up = shOf(maxLv), top = see ? -see.c0 : up, tall = see ? see.c1 - see.c0 : H + up - shOf(minLv);
+  // level k's px rows that land in the picture (and STEP over them: where its wall may start), and the rows of tiles
+  // its shape is asked for (the two levels under it take their ledges from it)
+  const span = (k) => [Math.max(0, shOf(k) - top - STEP), Math.min(H + STEP, tall + shOf(k) - top)];
+  const tiles = (k) => see ? [Math.max(-1, (shOf(k) - top - 3 * STEP >> 4) - 1), Math.min(R.h, (tall + shOf(k) - top >> 4) + 1)] : [-1, R.h];
+  const shape = {}, kept = {};
+  for (let k = maxLv; k > minLv; k--) {                // the shapes, from the top down: each grows round the one above
+    shape[k] = levelShape(R, k, shape, ...tiles(k));
+    if (see) kept[k] = levelShape(R, k, kept, ...tiles(k), see.keep, shape[k].own);
     yield;
   }
-  // where that picture has anything in it (a small hill in a wide plain: the rest is not painted, frame after frame):
-  // the raised tiles, their ledges beside them, their walls down to the lowest ground
+  const flat = see || maxLv > minLv ? document.createElement("canvas") : null, fg = flat && flat.getContext("2d");
+  if (flat) { flat.width = W; flat.height = tall; fg.imageSmoothingEnabled = false; }
+  if (see) see.base(R, fg, ground, top - shOf(minLv), minLv);        // (the ground itself, at the lowest level)
+  const [lc, t] = reliefScratch(W, H + STEP), lg = lc.getContext("2d"), tg = t.getContext("2d");
+  // px rows since the shape was last met, down each column; since kept ground was, and its own tiles (not a ledge)
+  const since = new Int16Array(W), mine = see ? new Int16Array(W) : since, solid = new Int16Array(W);
+  for (let k = minLv + 1; k <= maxLv; k++) {
+    const {own, sh} = shape[k], kown = see && kept[k].own, ksh = see && kept[k].sh, cols = colsOf(hillSheet(k)), off = top - shOf(k), [ya, yb] = span(k), n = yb - ya;
+    const state = see && see.state, cover = see && see.cover, wet = see && see.wet;
+    if (n <= 0) continue;
+    const col = new ImageData(W, n), cd = col.data, ownM = new ImageData(W, n), od = ownM.data;
+    let anyC = false, anyO = false;
+    since.fill(99); mine.fill(99); solid.fill(99);
+    for (let y = ya; y < yb; y++) for (let x = 0; x < W; x++) {
+      const i = (y + M) * Wm + x + M, s = sh[i], on = y < H && s, ours = on && (!see || kown[i] || (ksh[i] && !own[i]));
+      since[x] = on ? 0 : since[x] + 1; if (see) { mine[x] = ours ? 0 : mine[x] + 1; solid[x] = ours && own[i] ? 0 : solid[x] + 1; }
+      const o = ((y - ya) * W + x) * 4, f = (y + off) * W + x, shown = see && y + off >= 0 && y + off < tall;
+      let c = null;
+      if (ours && own[i]) { od[o + 3] = 255; anyO = true; }                   // its own tiles: the ground as drawn, cut to its shape
+      else if (ours) {                                                        // the ledge, where the shape is not its own tiles
+        let ownL = false, ownR = false;
+        for (let j = 1; j <= LEDGE; j++) { if (own[i - j]) ownL = true; if (own[i + j]) ownR = true; }
+        if (ownL && ownR) c = cols.top;                    // (a sliver between two of its own edges: its top)
+        else { let dd = 0; while (dd < 3 && sh[i - dd - 1] && sh[i + dd + 1]) dd++; c = cols.side[dd]; }
+      }
+      // under its edge, its body: the wall, a band. (see: where the rock left out stood against kept tiles, tile on
+      // tile, there is no wall but its inside: nothing to see; under a kept ledge there is one, as at any corner)
+      const inside = see && on && !ours && own[i] && solid[x] <= STEP;
+      if (!ours && !inside && mine[x] <= STEP && (!s || (see && on))) c = cols.bands[mine[x] === 1 ? 0 : mine[x] === STEP ? 2 : 1];
+      if (c) { cd[o] = c[0] | 0; cd[o + 1] = c[1] | 0; cd[o + 2] = c[2] | 0; cd[o + 3] = 255; anyC = true; }
+      if (!shown) continue;
+      if (ours || c) { state[f] = 1; cover[f] = !ours && (on || since[x] < mine[x]) ? 1 : 0; if (k === 0 && ours && own[i]) wet[f] = 1; }
+      else if (on) { cover[f] = 1; if (inside) state[f] = 2, wet[f] = 0; }    // the rock left out
+      else if (!s && since[x] <= STEP) cover[f] = 1;                          // ...and its wall
+    }
+    if (anyC) { lg.putImageData(col, 0, 0); fg.drawImage(lc, 0, 0, W, n, 0, off + ya, W, n); }
+    const no = Math.min(yb, H) - ya;
+    if (anyO && no > 0) {
+      tg.globalCompositeOperation = "source-over"; tg.putImageData(ownM, 0, 0);
+      tg.globalCompositeOperation = "source-in"; tg.drawImage(ground, 0, ya, W, no, 0, 0, W, no);
+      fg.drawImage(t, 0, 0, W, no, 0, off + ya, W, no);
+    }
+    yield;
+  }
+  return {flat, up, maxLv, minLv};
+}
+// A block's: its picture, and where that has anything in it (a small hill in a wide plain: the rest is not painted,
+// frame after frame): the raised tiles, their ledges beside them, their walls down to the lowest ground
+function* blockRelief(b) {
+  const R = {x: b.bx * B, y: b.by * B, w: B, h: B}, Wb = B * 16, Ws = B + 4;
+  const {flat, up, maxLv, minLv} = yield* reliefSteps(R, b.canvas);
   let box = null;
   if (flat) {
     let x0 = Wb, y0 = flat.height, x1 = 0, y1 = 0;
     for (let ty = -1; ty <= B; ty++) for (let tx = -1; tx <= B; tx++) {
-      const l = levelAt(b.bx * B + tx, b.by * B + ty); if (l <= minLv) continue;
+      const l = R.lv[(ty + 2) * Ws + tx + 2]; if (l <= minLv) continue;
       x0 = Math.min(x0, tx * 16 - LEDGE * SIDE_MAX); x1 = Math.max(x1, tx * 16 + 16 + LEDGE * SIDE_MAX);
       y0 = Math.min(y0, ty * 16 + up - shOf(l)); y1 = Math.max(y1, ty * 16 + 17 + up - shOf(minLv));
     }
@@ -159,40 +206,14 @@ function* reliefSteps(b) {                             // (a step a level, so no
   }
   b.relief = {flat: box && flat, up, maxLv, minLv, box};
 }
-// Where a block's ground from level `from` up is drawn, in one colour: the same shapes, the same lifts as its picture
-// (rel: its relief), so it is that ground to the pixel, rounded edges, ledges and walls. (xray.js: to someone standing
-// lower, that is the rock the circle looks through.) Built the same way, a step a level.
-function* rockSteps(b, from, rel) {
-  const M = 16, Wb = B * 16, Wm = Wb + 2 * M, c = document.createElement("canvas"), shape = {};
-  c.width = Wb; c.height = Wb + rel.up - shOf(rel.minLv);
-  const g = c.getContext("2d"), mc = reliefScratch(Wb)[0];
-  for (let k = rel.maxLv; k >= Math.max(from, rel.minLv + 1); k--) {
-    const sh = (shape[k] = levelShape(b, k, shape)).sh, mask = new ImageData(Wb, Wb), md = mask.data;
-    for (let y = 0; y < Wb; y++) for (let x = 0; x < Wb; x++) if (sh[(y + M) * Wm + x + M]) md[(y * Wb + x) * 4 + 3] = 255;
-    mc.getContext("2d").putImageData(mask, 0, 0);
-    for (let s = 0; s <= RELIEF_STEP; s++) g.drawImage(mc, 0, rel.up - shOf(k) + s);   // its top, and its wall under it
-    yield;
-  }
-  return c;
-}
-// ...kept on the block while it's asked for (-> null while it is being worked out: a few ms a frame)
-function rockOf(b, from) {
-  const rel = b.relief;
-  if (b.rock && b.rock.of === rel && b.rock.from === from) return b.rock.canvas;
-  if (!b.rockGen || b.rockGen.of !== rel || b.rockGen.from !== from) { b.rockGen = rockSteps(b, from, rel); b.rockGen.of = rel; b.rockGen.from = from; }
-  for (const t0 = performance.now(); performance.now() - t0 < 4;) {
-    const r = b.rockGen.next();
-    if (r.done) { b.rock = {of: rel, from, canvas: r.value}; b.rockGen = null; return r.value; }
-  }
-  return b.rock && b.rock.from === from ? b.rock.canvas : null;      // (its land just changed: the one from before, meanwhile)
-}
-let scratch = null;                                    // (canvases to build a level on, kept: one set for every block)
-function reliefScratch(Wb) {
-  if (!scratch) scratch = [0, 1, 2, 3].map(() => { const c = document.createElement("canvas"); c.width = c.height = Wb; return c; });
-  return scratch;
+const scratch = new Map();                             // (canvases to build a level on, kept: a pair a size)
+function reliefScratch(w, h) {
+  const key = w + "x" + h;
+  if (!scratch.has(key)) scratch.set(key, [0, 1].map(() => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }));
+  return scratch.get(key);
 }
 let reliefBudgetAt = 0, reliefSpent = 0, freshThisFrame = false;
-function buildRelief(b) { for (const _ of reliefSteps(b)); b.reliefDirty = false; }   // (all at once: tests, tools)
+function buildRelief(b) { for (const _ of blockRelief(b)); b.reliefDirty = false; }   // (all at once: tests, tools)
 // A block's ground, with its levels stacked
 function drawBlockRelief(b, sx, sy, S) {
   const X = sx(b.bx * B), Y = sy(b.by * B);
@@ -201,7 +222,7 @@ function drawBlockRelief(b, sx, sy, S) {
   // (Its ground redrawn while it is being built, the first time too: the block beside it arriving changes its edge.
   // It is built again from the start, what it had read being out of date: dropped, that left a column of flat
   // ground along the edge.)
-  if (b.reliefDirty || (!b.relief && !b.reliefGen)) b.reliefGen = reliefSteps(b);
+  if (b.reliefDirty || (!b.relief && !b.reliefGen)) b.reliefGen = blockRelief(b);
   b.reliefDirty = false;
   const now = performance.now();
   if (now - reliefBudgetAt > 8) { reliefBudgetAt = now; reliefSpent = 0; }
@@ -214,65 +235,4 @@ function drawBlockRelief(b, sx, sy, S) {
   ctx.drawImage(b.canvas, X, Y - shOf(b.relief.minLv) * zoom, B * S, B * S);
   const f = b.relief.flat, [fx, fy, fw, fh] = b.relief.box || [];
   if (f) ctx.drawImage(f, fx, fy, fw, fh, X + fx * zoom, Y + (fy - b.relief.up) * zoom, fw * zoom, fh * zoom);
-}
-// A sheet cell as a top edge: for each of its 16 px columns, the first row that is drawn (16: none of it)
-const cellTops = new Map();
-function cellTop(sheet, cx, cy) {
-  let m = cellTops.get(sheet); if (!m) cellTops.set(sheet, m = new Map());
-  const key = cx * 100 + cy;
-  if (!m.has(key)) {
-    const a = cellAlpha(sheet, cx, cy), top = new Uint8Array(16).fill(16);
-    for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) if (a[j * 16 + i]) { top[i] = j; break; }
-    m.set(key, top);
-  }
-  return m.get(key);
-}
-// Someone standing behind higher ground (it is south of them, drawn up over where they stand) is behind it: what of
-// them is under its top edge isn't drawn. Called before drawing them: clips the canvas down to that edge and returns
-// true (restore after); false when nothing hides them. Nothing of the land is redrawn. The edge is the ground's own,
-// an art px column at a time: each of its layers in its own shape, set in a little from the tile's side and rounded
-// at its corners (cut straight across a tile, the sprite was gone where a corner lets the ground behind it show).
-// (Not in the cave you're in: that one is seen through the hill.)
-function clipBehind(p, sx, sy, S) {
-  const x = Math.round(p.x), y = Math.round(p.y);
-  if (inOpenCave(x, y) || (caveOpen && p.e.kind === "agent" && p.e.id === myId)) return false;   // (you, going in or out: no flicker)
-  const L = standAt(x, y);                                // (between two tiles: the ground they are over: past its edge, a jump is on the higher one)
-  const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, feet = sy(p.y + 1) - shOf(L) * zoom + (4 - STAND) * zoom, cols = [];
-  let any = false;
-  for (let tx = x0; tx <= x1; tx++) {
-    const edge = new Array(16).fill(Infinity);            // the top of the higher ground in front, at each px of this column
-    for (let ty = Math.floor(p.y) + 1; ty <= Math.floor(p.y) + 8; ty++) {
-      const lv = levelAt(tx, ty);
-      if (lv <= L || inOpenCave(tx, ty)) continue;
-      for (let k = L + 1; k <= lv; k++) {
-        const top = cellTop(hillSheet(k), ...blobCell(maskOf(tx, ty, (cc, gg, ux, uy) => levelAt(ux, uy) >= k))), Y = sy(ty) - shOf(k) * zoom;
-        for (let i = 0; i < 16; i++) if (top[i] < 16) edge[i] = Math.min(edge[i], Y + top[i] * zoom);
-      }
-    }
-    cols.push(edge); any = any || edge.some((e) => e < feet);                           // (reaching up to their feet, or their shadow)
-  }
-  if (!any) return false;
-  ctx.save(); ctx.beginPath();
-  ctx.rect(-1e4, -1e4, sx(x0) + 1e4, 2e4); ctx.rect(sx(x1 + 1), -1e4, 1e4, 2e4);
-  cols.forEach((edge, c) => {
-    for (let i = 0, j; i < 16; i = j) {                    // (a run of px with the same edge: one strip)
-      for (j = i + 1; j < 16 && edge[j] === edge[i]; j++);
-      ctx.rect(sx(x0 + c) + i * zoom, -1e4, (j - i) * zoom, (edge[i] === Infinity ? 1e4 : edge[i]) + 1e4);
-    }
-  });
-  ctx.clip();
-  return true;
-}
-// Is the spot (x, y: tiles, with fractions) behind higher ground drawn up over it? (Dust and sparks there aren't shown.)
-// Higher ground: on the level nothing is behind anything. (It compared 0 with less than 0 there, and a row too far:
-// every puff of dust, spark and splash that wasn't on the very top line of its tile went unseen, everywhere.)
-function behindHill(x, y) {
-  const tx = Math.floor(x), fy = Math.floor(y);
-  if (inOpenCave(tx, fy)) return false;
-  const L = standAt(tx, fy);
-  for (let ty = fy + 1; ty <= fy + 7; ty++) {
-    const up = (levelAt(tx, ty) - L) * RELIEF_STEP;        // art px its top is drawn up over the ground the spot is on
-    if (up > 0 && up >= (ty - y) * 16) return true;
-  }
-  return false;
 }

@@ -1,20 +1,28 @@
-// Behind a wall or a mountain you'd be hidden (relief.js: clipBehind). Instead, a circle round you is seen through it:
-// where rock is drawn over ground you could be on (your height, a step up, or lower), that ground shows instead, with
-// its water, you, and who and what is there. Rock is what stands two layers or more over you. Nothing else changes:
-// a pixel that shows such ground already, rock that hides none, everything outside the circle stay exactly as they
-// are drawn. It fades out toward its edge, comes and goes softly, and is only for you. Painted small (art px, a few
-// tiles) every frame.
+// Behind a wall or a mountain you'd be hidden (behind.js: clipBehind). Instead, a circle round you is seen through
+// it. The rule is one: inside the circle the land is drawn without the rock in front of you, and nothing else
+// changes. The rock in front: what stands two layers or more over you, south of your row. The land without it is
+// painted by the land's own painter (relief.js: reliefSteps), the few tiles round you, every shape and colour as it
+// is with the rock there: the ground you stand on with its water, the cliff behind you down to its foot, a step, a
+// ledge. Of that picture only what the rock is drawn over is put on the screen: ground that shows anyway is never
+// touched, and where there is only the rock's own inside to see (where it stands, where it joins a hill beside you),
+// the rock stays as it is drawn. What stands on that rock in the way (a tree, a creature, things lying there) fades
+// with it; who is on the ground behind it shows through it. It fades out toward its edge, comes and goes softly, and
+// is only for you. Painted again when you step onto another tile or the land changes, not each frame.
 
 // r, core: its radius (tiles) and the part of it that's clear. It comes when you're really hidden, not for an edge
 // that hides your legs or a post you walk past: body: your height, feet to ears (art px; your feet are 2 + STAND over
 // the foot of your tile: relief.js); from, full: the share of you that's hidden where it starts and where it is whole
 // (a ledge a layer high in front of you hides your legs: nothing; two layers leave the top of your head: the circle);
-// wait: seconds hidden before it comes
-const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12};   // (far: tiles south to look for ground drawn up over you)
-const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, m: null, t: 0};   // how strong, the height you stand at, your row, its centre (tiles), its two pictures, how long you've been hidden
+// wait: seconds hidden before it comes; far: tiles south to look for ground drawn up over you; box: tiles across
+// that are painted (the circle, wherever you are on your tile); ms: a frame's share of painting it; turn: seconds a new picture takes to come over the one before; whole (tests): no rock is left out and all of the
+// picture is shown: it must then be the land's own, to the pixel
+const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, box: 9, ms: 2.5, turn: .12, whole: false};
+// how strong, the height you stand at, your row, its centre (tiles), its canvas, how long you've been hidden, the land
+// without the rock (pic), the next one being painted (job), the one before (old) and how far pic has come over it (mix)
+const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, c2: null, t: 0, pic: null, job: null, old: null, mix: 1};
 
-// Ground you could be on, from where you stand: your height, a step up (a jump), anything lower. The rest is rock.
-const xrayOpen = (tx, ty) => levelAt(tx, ty) <= xray.L + 1;
+// The rock that is seen through
+const xrayRock = (tx, ty) => ty > xray.row && levelAt(tx, ty) >= xray.L + 2 && !XRAY.whole;
 // How clear the circle is at a spot as drawn (tiles, lifted with its ground): 0 the land as it is, 1 seen through
 function xrayAt(x, y) {
   if (xray.a <= .01) return 0;
@@ -22,20 +30,17 @@ function xrayAt(x, y) {
   return xray.a * smooth(Math.max(0, Math.min(1, (1 - d) / (1 - XRAY.core))));
 }
 const xrayOn = (tx, ty) => xrayAt(tx, ty - shOf(levelAt(tx, ty)) / 16);      // ...at what stands on a tile
-// What stands on a tile is in the way: on rock in front of you (south), drawn up over ground the circle shows.
-// -> how much it fades (0: it stays: nothing is hidden behind it)
+// What stands on the rock seen through is in the way where something shows behind it (its tile as drawn, and the one
+// over that: a tree is tall). -> how much it fades (0: it stays: nothing is seen behind it)
 function xrayOver(tx, ty) {
-  if (xray.a <= .01 || ty <= xray.row || xrayOpen(tx, ty)) return 0;
-  const r = Math.round(ty - (levelAt(tx, ty) - xray.L) / 2);                 // the row, at your height, that it is drawn over
-  return xrayOpen(tx, r) || xrayOpen(tx, r - 1) ? xrayOn(tx, ty) : 0;
+  const P = xray.pic;
+  if (xray.a <= .01 || !P || !xrayRock(tx, ty)) return 0;
+  const X = tx * 16 - P.x, Y = ty * 16 - shOf(levelAt(tx, ty)) - P.y;
+  for (let y = Math.max(0, Y - 16); y < Math.min(P.h, Y + 16); y += 2) for (let x = Math.max(0, X); x < Math.min(P.w, X + 16); x += 2) if (P.seen[y * P.w + x]) return xrayOn(tx, ty);
+  return 0;
 }
-// Someone in the circle: 1 on the hidden ground with you (drawn whole, not cut at the hill's edge), -1 standing in
-// the way (not drawn), 0 neither
-function xraySees(p) {
-  const tx = Math.round(p.x), ty = Math.round(p.y);
-  if (xray.a <= .01) return 0;
-  return xrayOver(tx, ty) >= .3 ? -1 : xrayOpen(tx, ty) && xrayOn(tx, ty) >= .3 ? 1 : 0;
-}
+// Someone on the ground behind that rock: how clearly they show through it (0: hidden as ever, 1: whole)
+const xrayShows = (p) => (xrayRock(Math.round(p.x), Math.round(p.y)) ? 0 : xrayOn(Math.round(p.x), Math.round(p.y)));
 
 // Once a frame, before anything of it is drawn: are you behind something, and how much of you
 function xrayLook(dt) {
@@ -53,58 +58,95 @@ function xrayLook(dt) {
     want = Math.max(0, Math.min(1, (hidden - XRAY.from) / (XRAY.full - XRAY.from)));
     xray.t = want > 0 ? xray.t + dt : 0;
     if (xray.t < XRAY.wait && xray.a <= .01) want = 0;      // (a moment behind something: not yet)
-    if (want > 0 || xray.a > .01) { xray.L = L; xray.row = row; xray.x = p.x; xray.y = p.y - shOf(L) / 16 - .5 - UP; }   // (its centre: your body, where it is drawn)
+    if (xray.t > 0 || xray.a > .01) {
+      xray.L = L; xray.row = row; xray.x = p.x; xray.y = p.y - shOf(L) / 16 - .5 - UP;   // (its centre: your body, where it is drawn)
+      if (!xrayPaint(Math.round(p.x)) && xray.a <= .01) want = 0;              // (it comes once its picture is ready)
+    }
   }
   xray.a += (want - xray.a) * (1 - Math.exp(-dt / .09));
-  if (xray.a < .01 && !want && xray.a) { xray.a = 0; for (const b of blocks.values()) b.rock = b.rockGen = null; }   // (gone: the rock pictures with it)
+  xray.mix = XRAY.turn ? Math.min(1, xray.mix + dt / XRAY.turn) : 1;
+  if (xray.mix >= 1 || xray.a <= .01) xray.old = null;
+  if (xray.a < .01 && !want) xray.a = 0;
 }
 
-// The circle itself, over the land and under everything standing on it. Two small pictures, the size of the circle:
-// the rock in it exactly as it is drawn (relief.js: rockOf, the land's own shapes: rounded edges, ledges, walls), and
-// the ground you could be on, painted plainly. The ground is kept only where the rock is: a pixel that already shows
-// that ground is never touched.
-function drawXray(vis, sx, sy) {
-  if (xray.a <= .01) return;
-  const D = Math.ceil(XRAY.r * 32) + 2, L = xray.L, lift = shOf(L), n = B * 16;
-  if (!xray.c) for (const k of ["c", "m"]) { xray[k] = document.createElement("canvas"); xray[k].width = xray[k].height = D; }
-  const g = xray.c.getContext("2d"), m = xray.m.getContext("2d");
-  const cx = xray.x * 16 + 8, cy = xray.y * 16 + 8, ax = Math.round(cx - D / 2), ay = Math.round(cy - D / 2);
-  m.clearRect(0, 0, D, D);
-  let any = false;
-  for (const b of vis) {                                                      // the rock, from two layers over where you stand
-    const rel = b.relief; if (!rel || rel.maxLv < L + 2) continue;
-    const X = b.bx * n - ax, Y = b.by * n - rel.up - ay;
-    if (X >= D || Y >= D || X + n <= 0 || Y + n + rel.up - shOf(rel.minLv) <= 0) continue;
-    const rock = rockOf(b, L + 2);
-    if (!rock) { xray.a = Math.min(xray.a, .011); return; }                   // (being worked out: the circle waits for it)
-    m.drawImage(rock, X, Y); any = true;
+// The land without the rock in front, round the tile you're on: painted when that tile, your height or the land
+// changes, a few ms a frame (XRAY.ms): until it is ready the one before stays, which is right a tile further along
+// a wall, and a row late for a moment when you step toward it or away. -> is the picture the one for where you are?
+function xrayPaint(tx) {
+  const near = [];                                          // the blocks it can take tiles from, and what they have of the land
+  for (let by = Math.floor((xray.row - 14) / B); by <= Math.floor((xray.row + 14) / B); by++) for (let bx = Math.floor((tx - 5) / B); bx <= Math.floor((tx + 5) / B); bx++) {
+    const b = blocks.get(bkey(bx, by)); if (b && b.canvas) near.push(b);
   }
-  if (!any) return;
-  const x0 = Math.floor(ax / 16) - 1, x1 = Math.floor((ax + D) / 16) + 1, y0 = Math.floor((ay + lift) / 16) - 6, y1 = Math.floor((ay + D + lift) / 16) + 1;
-  g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.clearRect(0, 0, D, D);
-  g.imageSmoothingEnabled = false;
-  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {     // the ground, from the back: each tile at its height
-    const t = tileIdx(tx, ty); if (!t || !t[0].canvas || !xrayOpen(tx, ty)) continue;
-    const lv = levelAt(tx, ty), X = tx * 16 - ax, Y = ty * 16 - shOf(lv) - ay, i = t[1];
-    if (waterView && lv === 0) {                                              // water there, and under a shore's edge (water.js: as it is on screen)
-      const wx = tx * 16 - waterView.x, wy = ty * 16 - waterView.y;
-      if (wx >= 0 && wy >= 0 && wx + 16 <= waterCv.width && wy + 16 <= waterCv.height) g.drawImage(waterCv, wx, wy, 16, 16, X, Y, 16, 16);
-    }
-    g.drawImage(t[0].canvas, (i % B) * 16, (i / B | 0) * 16, 16, 16, X, Y, 16, 16);
-    for (let k = lv, below = xrayOpen(tx, ty + 1) ? levelAt(tx, ty + 1) : lv; k > below; k--) {   // its wall down to lower ground in front (a band a layer, as relief.js paints them)
-      const c = colsOf(hillSheet(k)).bands, yk = Y + 16 + (lv - k) * RELIEF_STEP;
-      g.fillStyle = `rgb(${c[1].map(Math.round)})`; g.fillRect(X, yk, 16, RELIEF_STEP);
-      g.fillStyle = `rgb(${c[0].slice(0, 3).map(Math.round)})`; g.fillRect(X, yk, 16, 1);
-      g.fillStyle = `rgb(${c[2].slice(0, 3).map(Math.round)})`; g.fillRect(X, yk + RELIEF_STEP - 1, 16, 1);
-    }
+  const key = [tx, xray.row, xray.L, XRAY.whole, ...near.map((b) => b.bx + ":" + b.by + ":" + (b.ver || 0))].join();
+  if (xray.pic && xray.pic.key === key) { xray.job = null; return true; }
+  if (!xray.job || xray.job.key !== key) xray.job = {key, steps: xrayPicture(tx, key, near)};
+  const t0 = performance.now();
+  let r = xray.job.steps.next(); while (!r.done && performance.now() - t0 < XRAY.ms) r = xray.job.steps.next();
+  if (r.done) {                                             // (a step toward the rock or away changes what is seen through by a row of it: the new picture comes over the old, not at once)
+    if (xray.a > .01 && xray.pic) { xray.old = xray.pic; xray.mix = 0; }
+    xray.pic = r.value; xray.job = null;
   }
-  g.globalCompositeOperation = "destination-in"; g.drawImage(xray.m, 0, 0);  // ...only where the rock is drawn over it
+  return r.done;
+}
+function* xrayPicture(tx, key, near) {
+  const D = Math.ceil(XRAY.r * 32) + 2, w = XRAY.box, W = w * 16, h = D + 22, y = xray.row * 16 - shOf(xray.L) - (D >> 1) - 6;   // (its rows on the screen, in art px: the circle's, wherever you are on your tile)
+  let lo = 99, hi = -99;
+  for (let ty = xray.row - 14; ty <= xray.row + 14; ty++) for (let x = tx - 5; x <= tx + 5; x++) { const l = levelAt(x, ty); lo = Math.min(lo, l); hi = Math.max(hi, l); }
+  const y0 = Math.max(xray.row - 14, (y + shOf(lo) >> 4) - 1), y1 = Math.min(xray.row + 14, y + h + shOf(hi) >> 4);   // every row of tiles that can be drawn in it
+  const R = {x: tx - (w >> 1), y: y0, w, h: y1 - y0 + 1}, ground = document.createElement("canvas"), gg = ground.getContext("2d");
+  const row = xray.row, L = xray.L, rock = (x, ty) => ty > row && levelAt(x, ty) >= L + 2 && !XRAY.whole;   // (the rock seen through, from where you were when this was started)
+  ground.width = W; ground.height = R.h * 16;
+  for (const b of near) gg.drawImage(b.canvas, (b.bx * B - R.x) * 16, (b.by * B - R.y) * 16);
+  const see = {keep: new Uint8Array((w + 4) * (R.h + 4)), c0: y - R.y * 16, c1: y - R.y * 16 + h, state: new Uint8Array(W * h), cover: new Uint8Array(W * h), wet: new Uint8Array(W * h)};
+  for (let j = -2; j < R.h + 2; j++) for (let i = -2; i < w + 2; i++) see.keep[(j + 2) * (w + 4) + i + 2] = rock(R.x + i, R.y + j) ? 0 : 1;
+  see.base = (R, fg, ground, lift, minLv) => {             // the ground itself, each tile kept at the lowest level (water shows through it at the sea's)
+    for (let j = 0; j < R.h; j++) for (let i = 0; i < w; i++) {
+      const keep = see.keep[(j + 2) * (w + 4) + i + 2], Y = j * 16 + lift;
+      if (keep) fg.drawImage(ground, i * 16, j * 16, 16, 16, i * 16, Y, 16, 16);
+      for (let yy = Math.max(0, Y); yy < Math.min(h, Y + 16); yy++) for (let f = yy * W + i * 16, e = f + 16; f < e; f++) {
+        if (keep) { see.state[f] = 1; see.cover[f] = 0; see.wet[f] = minLv === 0 ? 1 : 0; } else see.cover[f] = 1;
+      }
+    }
+  };
+  const {flat: over} = yield* reliefSteps(R, ground, see);
+  const mouths = caveMouths(near, R.x * 16, y, W, h, rock);   // (the mouths of caves in what is kept: caves.js)
+  if (mouths) over.getContext("2d").drawImage(mouths, -OV_M, -OV_M);
+  // of it, what the rock is drawn over: the kept ground that is on top there (seen), and its water
+  const seen = new Uint8Array(W * h), m = new ImageData(W, h), wm = new ImageData(W, h), wet = document.createElement("canvas"), wg = wet.getContext("2d");
+  let any = 0;
+  for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) { seen[f] = 1; any++; m.data[f * 4 + 3] = 255; if (see.wet[f]) wm.data[f * 4 + 3] = 255; }
+  wet.width = W; wet.height = h; wg.putImageData(m, 0, 0);
+  const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(wet, 0, 0);
+  wg.putImageData(wm, 0, 0);
+  return {key, x: R.x * 16, y, w: W, h, over, wet, seen, any};
+}
+
+// The circle itself, over the land and under everything standing on it
+function drawXray(sx, sy) {
+  const P = xray.pic;
+  if (xray.a <= .01 || !P || !(P.any || xray.old)) return;
+  const D = Math.ceil(XRAY.r * 32) + 2, cx = xray.x * 16 + 8, cy = xray.y * 16 + 8, ax = Math.round(cx - D / 2), ay = Math.round(cy - D / 2);
+  for (const k of ["c", "c2"]) if (!xray[k]) { xray[k] = document.createElement("canvas"); xray[k].width = xray[k].height = D; }
+  const part = (c, Q, share) => {                          // a picture's part under the circle: its water as it is on the screen this frame (water.js), the land over it
+    const g = c.getContext("2d");
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.clearRect(0, 0, D, D); g.imageSmoothingEnabled = false;
+    if (waterView) {
+      g.drawImage(waterCv, ax - waterView.x, ay - waterView.y, D, D, 0, 0, D, D);
+      g.globalCompositeOperation = "destination-in"; g.drawImage(Q.wet, ax - Q.x, ay - Q.y, D, D, 0, 0, D, D);
+      g.globalCompositeOperation = "source-over";
+    }
+    g.drawImage(Q.over, ax - Q.x, ay - Q.y, D, D, 0, 0, D, D);
+    if (share < 1) { g.globalCompositeOperation = "destination-in"; g.fillStyle = `rgba(0,0,0,${share})`; g.fillRect(0, 0, D, D); }
+    return g;
+  };
+  const g = part(xray.c, P, xray.old ? xray.mix : 1);
+  if (xray.old) { part(xray.c2, xray.old, 1 - xray.mix); g.globalCompositeOperation = "lighter"; g.drawImage(xray.c2, 0, 0); }   // (the two, each for its share)
   const R = XRAY.r * 16, fade = g.createRadialGradient(cx - ax, cy - ay, R * XRAY.core, cx - ax, cy - ay, R);
   [1, .8, .6, .4, .2, 0].forEach((v, i, all) => {                             // (in steps, as pixel art fades: rings, not a blur)
     fade.addColorStop(i / all.length, `rgba(0,0,0,${v})`); fade.addColorStop(Math.min(1, (i + 1) / all.length), `rgba(0,0,0,${v})`);
   });
-  g.fillStyle = fade; g.fillRect(0, 0, D, D);
+  g.globalCompositeOperation = "destination-in"; g.fillStyle = fade; g.fillRect(0, 0, D, D);
   ctx.globalAlpha = xray.a;
-  ctx.drawImage(xray.c, Math.round(sx(0) + ax * zoom), Math.round(sy(0) + ay * zoom), D * zoom, D * zoom);
+  ctx.drawImage(xray.c, sx(0) + ax * zoom, sy(0) + ay * zoom, D * zoom, D * zoom);   // (on the land's own grid: not rounded apart from it)
   ctx.globalAlpha = 1;
 }

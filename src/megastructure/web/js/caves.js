@@ -81,11 +81,13 @@ const shownCell = (x, y, z, dx, dy) => !inOpenCave(x, y) && z > topAt(x + dx, y 
 // side, the hole in the wall runs to the one in the side; in a corner between two walls, the side's runs up to the
 // wall's. Their shadows join the same way (m: the block's shadow px, W wide, each shaded once however many reach it).
 // Higher ground in front of it (south) is drawn over it: from that ground's far edge down, nothing of it shows.
+// (faceSkip: but for the ground it says: the rock the x-ray circle sees through.)
+let faceSkip = null;
 function drawFace(g, m, W, X, Y, x, y, dx, dy) {
   const top = topAt(x, y), front = topAt(x + dx, y + dy), cols = colsOf(hillSheet(Math.max(1, top))), px = dy ? 1 : 0, py = dy ? 0 : 1;
   const open = (z, side) => shownCell(x + side * px, y + side * py, z, dx, dy);      // the same cell, a tile along the face
   let lim = 1e9;
-  if (dy >= 0) for (let ty = y + dy + 1; ty <= y + 9; ty++) { const l = topAt(x + dx, ty); if (l > front) lim = Math.min(lim, Y + (ty - y) * 16 - shOf(l) + 1); }
+  if (dy >= 0) for (let ty = y + dy + 1; ty <= y + 9; ty++) { const l = topAt(x + dx, ty); if (l > front && !(faceSkip && faceSkip(x + dx, ty))) lim = Math.min(lim, Y + (ty - y) * 16 - shOf(l) + 1); }
   const fill = (col, ax, ay, w, h) => { h = Math.min(h, lim - Y - ay); if (w > 0 && h > 0) { g.fillStyle = col; g.fillRect(X + ax, Y + ay, w, h); } };
   const clear = (ax, ay, w, h) => { h = Math.min(h, lim - Y - ay); if (h > 0) g.clearRect(X + ax, Y + ay, w, h); };
   const mark = (ax, ay, v) => { const k = (Y + ay) * W + X + ax; if (Y + ay < lim && m[k] < v) m[k] = v; };
@@ -213,12 +215,29 @@ function buildCaveOverlay(b) {
     }
     for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) if (shownVoids(x, y, dx, dy).length) { need(); sm = sm || new Uint8Array(c.width * c.width); drawFace(g, sm, c.width, X, Y, x, y, dx, dy); }
   }
-  if (sm) {                                               // the shadows, under the openings
-    g.globalCompositeOperation = "destination-over";
-    for (let k = 0; k < sm.length; k++) if (sm[k]) { g.fillStyle = `rgba(${SHADE},${SPILL_AL[sm[k]]})`; g.fillRect(k % c.width, k / c.width | 0, 1, 1); }
-    g.globalCompositeOperation = "source-over";
-  }
+  if (sm) spillShadows(g, sm, c.width);
   if (fc) { caveShade(f, o, fc.width); g.drawImage(fc, 0, 0); }
+  return c;
+}
+function spillShadows(g, sm, w) {                         // the shadows, under the openings
+  g.globalCompositeOperation = "destination-over";
+  for (let k = 0; k < sm.length; k++) if (sm[k]) { g.fillStyle = `rgba(${SHADE},${SPILL_AL[sm[k]]})`; g.fillRect(k % w, k / w | 0, 1, 1); }
+  g.globalCompositeOperation = "source-over";
+}
+// The mouths of the caves in a part of the land, for the x-ray circle (xray.js): of the hollow tiles of the blocks
+// `near` that are not `rock` (what the circle sees through), on a canvas w x h art px with its corner at (x0, y0) of
+// the world as drawn (and OV_M px round it), hidden only by ground in front that is not `rock`. null: none
+function caveMouths(near, x0, y0, w, h, rock) {
+  let c = null, g = null, sm = null;
+  for (const b of near) for (const key in b.col || {}) {
+    const x = b.bx * B + key % B, y = b.by * B + (key / B | 0), X = OV_M + x * 16 - x0, Y = OV_M + y * 16 - y0;
+    if (X < OV_M - 16 || X > OV_M + w || Y < 0 || Y > h + 2 * OV_M - 64 || rock(x, y) || inOpenCave(x, y)) continue;
+    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) if (shownVoids(x, y, dx, dy).length) {
+      if (!c) { c = document.createElement("canvas"); c.width = w + 2 * OV_M; c.height = h + 2 * OV_M; g = c.getContext("2d"); sm = new Uint8Array(c.width * c.height); }
+      faceSkip = rock; drawFace(g, sm, c.width, X, Y, x, y, dx, dy); faceSkip = null;
+    }
+  }
+  if (sm) spillShadows(g, sm, c.width);
   return c;
 }
 // The part of a block's overlay that can have anything in it: round its hollow tiles, as far as an opening, its
