@@ -159,6 +159,14 @@
   #chatbox.open { pointer-events:auto; } #chatbox.open #chatlog { overflow:auto; } #chatbox.open #chatlog div.old { opacity:1; }
   #say { display:none; width:100%; font:inherit; color:#fff8e8; background:rgba(40,28,24,.8); border:2px solid rgba(255,248,232,.35); padding:3px 8px; outline:none; }
   #chatbox.open #say { display:block; }
+  /* what can come next in the line (complete.js): a list over it, the one Tab takes marked */
+  #sayhelp { display:none; align-self:flex-start; box-sizing:content-box; width:max-content; min-width:calc(100% - 4px); max-width:min(700px, 92vw);
+    max-height:168px; overflow-y:auto; background:rgba(40,28,24,.9); border:2px solid rgba(255,248,232,.35); color:#fff8e8;
+    font-size:18px; line-height:22px; pointer-events:auto; scrollbar-width:none; }   /* (seven rows; wider than the line if what it says is long) */
+  #sayhelp div { display:flex; gap:12px; padding:1px 8px; white-space:nowrap; cursor:pointer; }
+  #sayhelp b { flex:none; font-weight:normal; color:#ffe6a8; } #sayhelp span { color:rgba(255,248,232,.55); overflow:hidden; text-overflow:ellipsis; }
+  #sayhelp div.on { background:rgba(255,248,232,.17); } #sayhelp div.on span { color:rgba(255,248,232,.85); }
+  #sayhelp div.note { cursor:default; }
   #debug { position:fixed; right:12px; bottom:12px; display:none; color:#fff8e8; background:rgba(40,28,24,.6); padding:4px 8px; font-size:18px; z-index:3; }
   #vitals canvas.low { animation:jiggle .45s steps(2) infinite; }
   @keyframes jiggle { 0% { transform:translateY(0); } 50% { transform:translateY(-2px); } }

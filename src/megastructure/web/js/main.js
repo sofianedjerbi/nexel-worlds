@@ -14,17 +14,17 @@ function chatLine(text, cls = "", who = null) {
   log.scrollTop = log.scrollHeight;
 }
 setInterval(() => { for (const d of $("chatlog").children) d.classList.toggle("old", Date.now() - d.dataset.t > CHAT_SHOW_MS); }, 500);
-function openChat(prefix = "") { $("chatbox").classList.add("open"); const i = $("say"); i.value = prefix; i.focus(); $("chatlog").scrollTop = 1e9; }
-function closeChat() { $("chatbox").classList.remove("open"); $("say").blur(); }
+function openChat(prefix = "") { $("chatbox").classList.add("open"); const i = $("say"); i.value = prefix; i.focus(); $("chatlog").scrollTop = 1e9; askTools(); suggest(); }   // (complete.js)
+function closeChat() { $("chatbox").classList.remove("open"); $("say").blur(); suggest(); }
 $("say").addEventListener("keydown", (e) => {
   e.stopPropagation();
   if (e.key === "Escape") closeChat();
-  if (e.key !== "Enter") return;
+  if (completeKey(e) || e.key !== "Enter") return;         // (Tab, the arrows: the list over the line, complete.js)
   const line = e.target.value.trim(); closeChat(); e.target.value = "";
   if (!line) return;
   if (line.startsWith("/")) {
     const parts = line.slice(1).match(/(?:[^\s"]+|"[^"]*")+/g) || [], tool = parts.shift(), args = {};
-    for (const p of parts) { const [k, ...v] = p.split("="); const val = v.join("=").replace(/^"|"$/g, ""); args[k] = /^-?\d+$/.test(val) ? +val : val; }
+    for (const p of parts) { const [k, ...v] = p.split("="); const val = v.join("=").replace(/^"|"$/g, ""); args[k] = /^-?\d+$/.test(val) ? +val : val === "true" ? true : val === "false" ? false : val; }
     if (!localCommand(tool)) act(tool, args);              // (/coords, /grid: debug.js; anything else is an action)
   } else if (line.startsWith("!")) act("shout", {text: line.slice(1).trim()});
   else act("say", {text: line});

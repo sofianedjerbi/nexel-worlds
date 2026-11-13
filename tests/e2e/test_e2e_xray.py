@@ -57,13 +57,17 @@ def test_the_circle_is_painted_by_the_lands_own_painter(game):
             r += "~" if water else "."; l += "1" if cave or step else "8" if north else "5" if south else "0"; f += "5" if cave else "0"
         rows.append(r); lv.append(l); roofs.append(f)
     game.stamp(-7, -6, rows, levels=lv, roofs=roofs)
-    game.sleep(1500)
+    # (the land on the screen built, and you standing where the server has you: waited for, however busy the machine)
+    built = """(() => { const [qx, qy, qw, qh] = viewRect(0); for (const b of blocks.values()) if (b.bx * B < qx + qw && (b.bx + 1) * B > qx
+      && b.by * B < qy + qh && (b.by + 1) * B > qy && (!b.relief || b.reliefGen || b.reliefDirty)) return false; return !dirtyTiles.length; })()"""
+    at = lambda X, Y: game.wait(f"(() => {{ const p = ents.get('agent' + myId); return !!p && !!p.e && p.x === {X} && p.y === {Y} && !!myAt && myAt.x === {X} && myAt.y === {Y}; }})()", 8000)
+    game.sleep(600); game.wait(built, 8000)
     for dx, dy in [(0, 0), (-3, 1), (3, 0), (1, 1)]:
         x, y = game.pos()
-        game.rpc("dev_teleport", x=x + dx, y=y + dy); game.sleep(700)
+        game.rpc("dev_teleport", x=x + dx, y=y + dy); at(x + dx, y + dy); game.wait(built, 8000); game.sleep(200)
         shown, bad = frames(game, "const A = shot('whole'), any = xray.a === 1 && xray.pic.any; return [any, differ(A, shot('off'))];")
         assert shown > 10000 and bad == 0, (dx, dy, shown, bad)
-        game.rpc("dev_teleport", x=x, y=y); game.sleep(300)
+        game.rpc("dev_teleport", x=x, y=y); at(x, y)
     assert not game.errors
 
 
