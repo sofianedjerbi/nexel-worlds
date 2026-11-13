@@ -111,3 +111,21 @@ def test_a_piece_ends_on_its_own_then_silence_and_night_has_its_own_pieces(game)
     assert 45000 < wait < 141000                               # SOUND.gap: silence before the next
     night = game.js("(() => { clock.night = true; moment.next = 0; moments(); return music.key; })()")
     assert game.js("sounds.manifest.play.night.includes(music.key)") and night != key
+
+
+def test_moving_the_selection_makes_its_own_quiet_sound(game):
+    """Another recipe in the crafting list, another hotbar slot: `pick`, quieter than a tab's `ui`."""
+    game.wait(ALL_LOADED, 60000)
+    assert game.js("sounds.manifest.sounds.pick.category") == "Interface"
+    game.press("c")
+    game.wait("isOpen('craft')", 5000)
+    game.sleep(300)
+    t0 = game.js("performance.now()")
+    game.press("ArrowDown")
+    game.sleep(200)
+    assert game.js("sounds.lastAt.pick || 0") > t0             # the recipe below
+    tab = game.js("sounds.lastAt.ui || 0")
+    game.press("e")
+    game.sleep(200)
+    assert game.js("sounds.lastAt.ui || 0") > tab              # another kind: the tab's own sound, as before
+    game.press("c")

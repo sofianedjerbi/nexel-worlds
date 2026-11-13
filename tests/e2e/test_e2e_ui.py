@@ -218,7 +218,7 @@ def test_actions_make_their_sounds(game):
     game.wait(f"combAt({game.pos()[0] - 1}, {game.pos()[1]}) === 't'", 8000)
     game.sleep(800)
     heard = set(game.js("__snd"))
-    assert {"rustle", "collect", "chop", "creak", "fallthud", "ui"} <= heard, heard
+    assert {"rustle", "collect", "chop", "creak", "fallthud", "pick"} <= heard, heard     # (pick: the axe taken in hand)
 
 
 def test_coords_and_grid_are_typed_in_the_chat_line(game):

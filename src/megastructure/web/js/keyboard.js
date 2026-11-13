@@ -120,7 +120,7 @@ function turn(dir) {
   [p.fx, p.fy] = DIRV[dir];
 }
 function selectItem(name) {
-  if (name !== selected) sfx("ui");
+  if (name !== selected) sfx("pick");
   selected = name; $("hotbar").dataset.sig = "";
   if (meObs) drawHotbar(meObs.self.inventory);
 }

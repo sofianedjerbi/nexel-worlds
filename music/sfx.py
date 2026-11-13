@@ -1198,12 +1198,20 @@ def _(c):
 
 # ================================================================== interface
 
-@sfx("ui", "Interface", "clicking a button, picking a hotbar slot, switching tabs", 3, 0.2, kind="in")
+@sfx("ui", "Interface", "clicking a button, switching tabs or pages", 3, 0.2, kind="in")
 def _(c):
     n = N(0.2)
     y = 0.5 * strike(c, n, "wood", size=c.u(0.35, 0.45), hard=1.5, damp=2.5)               # a small wooden key
     place(y, glow(["D6", "E6", "A6"][c.v % 3], 0.08, 0.6), 0)
     return y
+
+
+# The user: "add a noise in the crafting menu or in the ui when switching selection. should be the default noise when
+# switching things, less loud than the tab switch". The same small wooden key as `ui`, lighter, without its note, 4 dB under.
+@sfx("pick", "Interface", "moving the selection: another recipe in the crafting list, another hotbar slot", 3, 0.12, kind="in", change="new")
+def _(c):
+    n = N(0.12)
+    return 0.5 * strike(c, n, "wood", size=c.u(0.28, 0.36), hard=1.2, damp=3.5)
 
 
 @sfx("open", "Interface", "opening a panel (crafting, mailbox, chest view)", 1, 0.25)

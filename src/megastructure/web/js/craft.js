@@ -81,7 +81,7 @@ function drawRecipes() {
 }
 function focusRecipe(name) {
   if (craftFocus === name) return;
-  craftFocus = name;
+  craftFocus = name; sfx("pick");                          // (quieter than a tab's "ui")
   for (const c of $("recipes").querySelectorAll(".rcard")) c.classList.toggle("cur", c.dataset.name === name);
   drawCraftDetail();
 }
