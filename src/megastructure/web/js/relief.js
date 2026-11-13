@@ -153,8 +153,26 @@ function* reliefSteps(R, ground, see) {
   const out = see || maxLv > minLv ? new Uint32Array(W * tall) : null;
   // a tile of the ground as painted, put at row Y of the picture (see: the ground itself, at the lowest level)
   if (see) see.base(R, (i, j, Y) => { for (let r = Math.max(0, -Y); r < 16 && Y + r < tall; r++) out.set(ground.subarray((j * 16 + r) * W + i * 16, (j * 16 + r) * W + i * 16 + 16), (Y + r) * W + i * 16); }, top - shOf(minLv), minLv);
-  // px rows since the shape was last met, down each column; since kept ground was, and its own tiles (not a ledge)
-  const since = new Int16Array(W), mine = see ? new Int16Array(W) : since, solid = new Int16Array(W);
+  // px rows since the shape was last met, down each column; and since kept ground was
+  const since = new Int16Array(W), mine = see ? new Int16Array(W) : since;
+  // see: where a kept hill goes on south as rock left out, there is no wall at that level and nothing to see but the
+  // rock's inside. joins: the line over row ty of tiles, a px column each: under a kept tile the rock stands against,
+  // and beside that tile, over lower ground, as far out as the hill's side reaches (reach: the columns a kept ledge
+  // has got to, at this level or one under it, where the side is widest: so nothing of it is left over higher up)
+  const reach = see && new Uint8Array((R.h + 2) * W), ja = see && new Uint8Array(W), jb = see && new Uint8Array(W);
+  const joins = (k, ty, ksh, to) => {
+    const goesOn = (j) => see.keep[j] && R.lv[j] >= k && !see.keep[j + Ws] && R.lv[j + Ws] >= k;
+    to.fill(0);
+    for (let tx = 0; tx < R.w; tx++) {
+      const j = (ty + 1) * Ws + tx + 2, x0 = tx * 16;      // (the tile over the line)
+      if (goesOn(j)) to.fill(1, x0, x0 + 16);
+      else if (R.lv[j] < k) for (const d of [-1, 1]) if (goesOn(j + d)) for (let x = d < 0 ? x0 : x0 + 8, e = x + 8; x < e; x++) {
+        const q = ty * W + x;
+        for (let r = 0, i = ty * 16 * Wm + x + M; r < 16 && !reach[q]; r++, i += Wm) reach[q] = ksh[i];
+        to[x] = reach[q];
+      }
+    }
+  };
   for (let k = minLv + 1; k <= maxLv; k++) {
     const {own, sh} = shape[k], kown = see && kept[k].own, ksh = see && kept[k].sh, cols = colsOf(hillSheet(k)), off = top - shOf(k), [ya, yb] = span(k), n = yb - ya;
     const state = see && see.state, cover = see && see.cover, wet = see && see.wet;
@@ -176,9 +194,10 @@ function* reliefSteps(R, ground, see) {
         else if (f[j]) skip[q] = 3;
       }
     }
-    since.fill(99); mine.fill(99); solid.fill(99);
+    since.fill(99); mine.fill(99);
     for (let y = ya; y < yb; y++) {
      if (y > ya && !(y - ya & 31)) yield;                 // (a step every 32 rows: no frame waits on more)
+     if (see && (y === ya || !(y & 15))) { if (y === ya) joins(k, y >> 4, ksh, ja); else ja.set(jb); joins(k, (y >> 4) + 1, ksh, jb); }
      const row = skip && y < H ? (y >> 4) * R.w : -1, fy = y + off, fo = fy * W, inPic = fy >= 0 && fy < tall;
      for (let x = 0; x < W; x++) {
       const sk = row >= 0 && !(x & 15) ? skip[row + (x >> 4)] : 0;
@@ -189,7 +208,7 @@ function* reliefSteps(R, ground, see) {
         x += 15; continue;
       }
       const i = (y + M) * Wm + x + M, s = sh[i], on = y < H && s, ours = on && (!see || kown[i] || (ksh[i] && !own[i]));
-      since[x] = on ? 0 : since[x] + 1; if (see) { mine[x] = ours ? 0 : mine[x] + 1; solid[x] = ours && own[i] ? 0 : solid[x] + 1; }
+      since[x] = on ? 0 : since[x] + 1; if (see) mine[x] = ours ? 0 : mine[x] + 1;
       const f = fo + x, shown = see && inPic;
       let c = null;
       if (ours && own[i]) {                                                   // its own tiles: the ground as painted, cut to its shape
@@ -201,15 +220,18 @@ function* reliefSteps(R, ground, see) {
         if (ownL && ownR) c = cols.top;                    // (a sliver between two of its own edges: its top)
         else { let dd = 0; while (dd < 3 && sh[i - dd - 1] && sh[i + dd + 1]) dd++; c = cols.side[dd]; }
       }
-      // under its edge, its body: the wall, a band. (see: where the rock left out stood against kept tiles, tile on
-      // tile, there is no wall but its inside: nothing to see; under a kept ledge there is one, as at any corner)
-      const inside = see && on && !ours && own[i] && solid[x] <= STEP;
+      // under its edge, its body: the wall, a band. (see: none where the level goes on south as rock left out, a
+      // layer down from the line (joins), nor in what a ledge's rounded end leaves over that line. A wall: under a
+      // kept tile behind the rock's ledge, and where the level ends, as at any corner)
+      const inside = see && !ours && ((ja[x] && (y & 15) < STEP) || (jb[x] && !s && mine[x] <= STEP));
       if (!ours && !inside && mine[x] <= STEP && (!s || (see && on))) c = cols.bands[mine[x] === 1 ? 0 : mine[x] === STEP ? 2 : 1];
       if (c && inPic) out[f] = (255 << 24 | (c[2] | 0) << 16 | (c[1] | 0) << 8 | (c[0] | 0)) >>> 0;
       if (!shown) continue;
       if (ours || c) { state[f] = 1; cover[f] = !ours && (on || since[x] < mine[x]) ? 1 : 0; if (k === 0 && ours && own[i]) wet[f] = 1; }
-      else if (on) { cover[f] = 1; if (inside) state[f] = 2, wet[f] = 0; }    // the rock left out
-      else if (!s && since[x] <= STEP) cover[f] = 1;                          // ...and its wall
+      else {                                                                  // the rock left out, and its wall
+        if (on || (!s && since[x] <= STEP && since[x] < mine[x])) cover[f] = 1;
+        if (inside) state[f] = 2, wet[f] = 0;
+      }
      }
     }
     yield;

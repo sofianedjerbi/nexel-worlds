@@ -86,7 +86,7 @@ def test_a_blocks_water_is_made_again_only_when_it_changed(game):
     game.sleep(500); game.wait(built)
     assert game.js("__b.water === __w") is True
     game.stamp(3, -1, ["~"])                                     # the pond grows
-    game.sleep(500); game.wait(built)
+    game.wait("__b.water !== __w", 8000); game.wait(built)
     assert game.js("__b.water !== __w && __b.water.any && __b.water.foam.length > __w.foam.length") is True
 
 

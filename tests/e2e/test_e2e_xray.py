@@ -20,6 +20,11 @@ def frames(game, body):
       const out = (() => { %s })(); Object.assign(XRAY, keep); Object.assign(window, real); window.requestAnimationFrame = raf; return out; }""" % body)
 
 
+# the land on the screen is built (waited for, however busy the machine)
+BUILT = """(() => { const [qx, qy, qw, qh] = viewRect(0); for (const b of blocks.values()) if (b.bx * B < qx + qw && (b.bx + 1) * B > qx
+  && b.by * B < qy + qh && (b.by + 1) * B > qy && (!b.relief || b.reliefGen || b.reliefDirty)) return false; return !dirtyTiles.length; })()"""
+
+
 def test_behind_a_mountain_you_are_seen_through_it(game):
     """Behind a wall or a mountain you were cut at its edge: gone. A circle round you is seen through it (xray.js),
     fading toward its edge: you show, on the ground you stand on; out from behind it, the circle goes."""
@@ -58,8 +63,7 @@ def test_the_circle_is_painted_by_the_lands_own_painter(game):
         rows.append(r); lv.append(l); roofs.append(f)
     game.stamp(-7, -6, rows, levels=lv, roofs=roofs)
     # (the land on the screen built, and you standing where the server has you: waited for, however busy the machine)
-    built = """(() => { const [qx, qy, qw, qh] = viewRect(0); for (const b of blocks.values()) if (b.bx * B < qx + qw && (b.bx + 1) * B > qx
-      && b.by * B < qy + qh && (b.by + 1) * B > qy && (!b.relief || b.reliefGen || b.reliefDirty)) return false; return !dirtyTiles.length; })()"""
+    built = BUILT
     at = lambda X, Y: game.wait(f"(() => {{ const p = ents.get('agent' + myId); return !!p && !!p.e && p.x === {X} && p.y === {Y} && !!myAt && myAt.x === {X} && myAt.y === {Y}; }})()", 8000)
     game.sleep(600); game.wait(built, 8000)
     for dx, dy in [(0, 0), (-3, 1), (3, 0), (1, 1)]:
@@ -147,6 +151,32 @@ def test_the_side_of_a_cliff_beside_open_water_is_not_seen_through(game):
     edge, under = f"{x} + 2 + 9 / 16, {y} - 2, {x} + 3, {y} + 1", f"{x} - 1, {y} + 1 / 16, {x}, {y} + 1"
     same, seen = frames(game, f"const A = shot('on'), B_ = shot('off'); return [box(A, {edge}).join() === box(B_, {edge}).join(), box(A, {under}).join() !== box(B_, {under}).join()];")
     assert same and seen
+    assert not game.errors
+
+
+def test_no_wall_is_drawn_where_the_rock_joins_a_hill_beside_you(game):
+    """In a river against a bank that turns: the rock in front of you (south) is one mass with the hill beside you
+    (east or west, on your row). Along that hill the circle had a strip of wall, half a tile wide and as tall as the
+    hill, standing alone between the water and the rock: the painter put a wall under the hill's side ledge where the
+    rock was left out, though the hill goes on south as that rock. There the rock now stays as it is drawn, under the
+    hill's tiles and under its side alike, and nothing of the side is left over higher up; the water shows up to it.
+    A corner, the bank in steps (the screenshot), a hill taller than the rock, each on both sides."""
+    scenes = {"corner": lambda i, j: 6 if j >= 1 or i >= 1 else 0, "steps": lambda i, j: 6 if i + j >= 1 else 0,
+              "taller": lambda i, j: 9 if i >= 1 and j <= 0 else 4 if j >= 1 else 0}
+    for name, f in scenes.items():
+        for side in (1, -1):
+            game.clear_area(12)
+            lv = [[f(side * i, j) for i in range(-7, 8)] for j in range(-7, 8)]
+            game.stamp(-7, -7, ["".join("." if v else "~" for v in r) for r in lv], levels=["".join("0123456789"[v] for v in r) for r in lv])
+            game.sleep(700); game.wait(BUILT, 20000); game.wait("xray.a > .95 && !xray.job", 20000)
+            x, y = game.pos()
+            # along the hill: its column and the half of your tile beside it, from the top of the rock in front down
+            # to the foot of your row; the water: the other half of your tile
+            top = f"{y} + 1 - {f(0, 1)} / 2"
+            hill = f"{x} + 11 / 16, {top}, {x} + 2, {y} + 1" if side > 0 else f"{x} - 1, {top}, {x} + 5 / 16, {y} + 1"
+            water = f"{x}, {y}, {x} + 8 / 16, {y} + 1" if side > 0 else f"{x} + 8 / 16, {y}, {x} + 1, {y} + 1"
+            same, seen = frames(game, f"const A = shot('clear'), B_ = shot('off'); return [box(A, {hill}).join() === box(B_, {hill}).join(), box(A, {water}).join() !== box(B_, {water}).join()];")
+            assert same and seen, (name, side, same, seen)
     assert not game.errors
 
 

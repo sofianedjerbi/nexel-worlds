@@ -4,8 +4,8 @@
 // painted by the land's own painter (relief.js: reliefSteps), the few tiles round you, every shape and colour as it
 // is with the rock there: the ground you stand on with its water, the cliff behind you down to its foot, a step, a
 // ledge. Of that picture only what the rock is drawn over is put on the screen: ground that shows anyway is never
-// touched, and where there is only the rock's own inside to see (where it stands, where it joins a hill beside you),
-// the rock stays as it is drawn. What stands on that rock in the way (a tree, a creature, things lying there) fades
+// touched, and where there is only the rock's own inside to see (where it stands; where it joins a hill beside you,
+// under that hill's tiles and along its side alike: no wall is drawn at the cut), the rock stays as it is drawn. What stands on that rock in the way (a tree, a creature, things lying there) fades
 // with it; who is on the ground behind it shows through it. It fades out toward its edge, comes and goes softly, and
 // is only for you. Painted again when you step onto another tile or the land changes, not each frame.
 
