@@ -57,7 +57,8 @@ def test_a_thing_on_the_ground_is_drawn_at_the_lands_own_pixel_size(game, zoom):
 # every item icon in the HUD and its slot's frame: screen pixels to an art pixel, and whether anything scales it
 HUD = """() => { const d = devicePixelRatio, out = {};
   const px = (sel, art) => [...document.querySelectorAll(sel)].filter((e) => e.offsetWidth).map((e) => { const r = e.getBoundingClientRect(); return [r.width * d / art, r.height * d / art]; }).flat();
-  out.icons = px('#hotbar .slot canvas, #bagitems .slot canvas, #recipes .slot canvas, .ctab canvas, .cneed canvas', 16);
+  out.icons = px('#hotbar .slot canvas, #bagitems .slot canvas, #recipes .slot canvas, .ctab canvas, .cneed canvas', 11);
+  out.art = [...new Set([...document.querySelectorAll('#hotbar .slot canvas, #bagitems .slot canvas, #recipes .slot canvas')].map((c) => c.width + 'x' + c.height))].join();
   out.frames = px('#hotbar .slot, #bagitems .slot, #recipes .slot', 30);
   out.big = [...px('#craftdetail .slot.big canvas', 16), ...px('#craftdetail .slot.big', 30)];
   out.vitals = [$('hearts').getBoundingClientRect().width * d / 99];         // (ten hearts: 99 art px)
@@ -66,26 +67,30 @@ HUD = """() => { const d = devicePixelRatio, out = {};
   return out; }"""
 
 
-@pytest.mark.parametrize("w,h,dpr,touch", [(1280, 760, 1, False), (1280, 760, 2, False), (1100, 700, 1.5, False),
-                                         (840, 384, 2.625, True), (390, 844, 3, True), (560, 700, 2, False)])
-def test_an_item_in_the_hud_is_whole_screen_pixels_like_its_frame(browser, server, w, h, dpr, touch):
-    """In the bar, the inventory and the crafting, an art pixel of an icon is a whole number of screen pixels, the same
-    as its slot's frame (the bar's icons were 1.84 CSS px a pixel on a desktop and 1.5 on a phone, in frames at 2,
-    and on a phone the whole HUD was scaled to fit). Where ten slots do not fit across, the pixel is smaller by whole
-    screen pixels; nothing is scaled, and nothing is moved by half its size onto a half pixel."""
+@pytest.mark.parametrize("w,h,dpr,touch,land", [(1280, 760, 1, False, 3), (1280, 760, 2, False, 6), (1100, 700, 1.5, False, 0),
+                                              (840, 384, 2.625, True, 5), (390, 844, 3, True, 0), (560, 700, 2, False, 0)])
+def test_an_item_in_the_hud_is_whole_screen_pixels_and_the_lands_own(browser, server, w, h, dpr, touch, land):
+    """In the bar, the inventory and the crafting an item is the small picture it is on the ground (11 art px), and
+    an art pixel of it is a whole number of screen pixels: the land's own at the zoom the game starts with (3 CSS px,
+    2 on a small phone), `land` here, where the slot has room for it. A slot's frame is whole screen pixels too. (The
+    bar's icons were 1.84 CSS px a pixel on a desktop and 1.5 on a phone, in frames at 2, and on a phone the whole
+    HUD was scaled to fit.) Where ten slots do not fit across, the frame's pixel is smaller by whole screen pixels;
+    nothing is scaled, and nothing is moved by half its size onto a half pixel."""
     ctx = browser.new_context(viewport={"width": w, "height": h}, device_scale_factor=dpr, has_touch=touch, is_mobile=touch)
     try:
         g = Game(ctx.new_page(), server)
         g.join(f"px{random.randint(1000, 9999)}", 3)
         g.give(wood=5, stone=3, boat=1, bed=1, coop=1, plank=2, fiber=2, seed=1, egg=1, bread=1, torch=1, rope=1)
-        goals = g.js("[...document.querySelectorAll('.goal .gi')].map((e) => e.getBoundingClientRect().width * devicePixelRatio / 16)")
+        goals = g.js("[...document.querySelectorAll('.goal .gi')].map((e) => e.getBoundingClientRect().width * devicePixelRatio / 11)")
         g.js("(() => { openCraft(); $('bag').style.display = 'block'; return 1; })()")
         g.sleep(900)                                             # (a phone fits its HUD every fifth of a second)
         m = g.js(HUD)
         whole = lambda v: abs(v - round(v)) < .02 and round(v) >= 1          # noqa: E731
         assert len(m["icons"]) > 60 and len(m["frames"]) > 60 and len(m["big"]) == 4
         assert all(whole(v) for v in m["icons"] + m["frames"] + m["big"] + m["vitals"]), m
-        assert {round(v) for v in m["icons"]} == {round(v) for v in m["frames"]} and len({round(v) for v in m["icons"]}) == 1, m
+        item, frame = {round(v) for v in m["icons"]}, {round(v) for v in m["frames"]}
+        assert len(item) == 1 and len(frame) == 1 and m["art"] == "11x11", m
+        assert item == {land} if land else max(item) * 11 <= max(frame) * 17.6, (item, frame)   # (no more than the frame's hole takes)
         assert len({round(v) for v in m["big"]}) == 1
         assert goals and all(abs(v - round(v)) < .05 and round(v) >= 1 for v in goals), goals   # (a phone's goals are a smaller panel)
         assert m["moved"] == "none,none,none" and m["fits"], m

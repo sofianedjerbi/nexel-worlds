@@ -40,7 +40,7 @@ function drawRecipes() {
   const tabs = $("crafttabs"); tabs.innerHTML = "";
   for (const [title, ic] of [["All", null], ...groups.map(([t, i]) => [t, i])]) {
     const b = document.createElement("div"); b.className = "ctab" + (title === craftTab ? " on" : ""); b.title = title;
-    if (ic) b.appendChild(iconCanvas(ic)); else b.textContent = "All";
+    if (ic) b.appendChild(slotIcon(ic)); else b.textContent = "All";
     b.onclick = () => { craftTab = title; sfx("ui"); drawRecipes(); };
     tabs.appendChild(b);
   }
@@ -55,7 +55,7 @@ function drawRecipes() {
     const s = craftState(name), out = Object.values(recipes[name].output)[0];
     const d = document.createElement("div"); d.className = "slot rcard" + (s.have && s.near ? "" : " no") + (name === craftFocus ? " kfocus" : "");
     d.dataset.name = name; d.title = craftWhy(name);
-    d.appendChild(iconCanvas(name));
+    d.appendChild(slotIcon(name));
     if (out > 1) d.insertAdjacentHTML("beforeend", `<span class="c">${out}</span>`);
     if (s.have && s.near) d.insertAdjacentHTML("beforeend", `<span class="ok">✓</span>`);   // (can be made right now)
     if (s.have && s.near) d.onclick = () => { focusRecipe(name); act("craft", {recipe: name}); };
@@ -86,13 +86,13 @@ function drawCraftDetail() {
   const list = document.createElement("div"); list.className = "cneeds";
   for (const [k, v] of Object.entries(rc.inputs)) {
     const have = s.inv[k] || 0, row = document.createElement("div"); row.className = "cneed" + (have >= v ? "" : " miss");
-    row.appendChild(iconCanvas(k));
+    row.appendChild(slotIcon(k));
     row.insertAdjacentHTML("beforeend", `<span class="cn">${esc(label(k))}</span><span class="cq">${have >= v ? v : have + "/" + v}</span>`);
     list.appendChild(row);
   }
   if (rc.station) {
     const row = document.createElement("div"); row.className = "cneed st" + (s.near ? "" : " miss");
-    row.appendChild(iconCanvas(rc.station));
+    row.appendChild(slotIcon(rc.station));
     row.insertAdjacentHTML("beforeend", `<span class="cn">${s.near ? "at the" : "go to a"} ${esc(label(rc.station))}</span><span class="cq">${s.near ? "✓" : ""}</span>`);
     list.appendChild(row);
   }

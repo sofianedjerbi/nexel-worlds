@@ -45,7 +45,7 @@ function drawGoals() {
   for (const i of goalsShown) {
     const row = document.createElement("div");
     row.className = "goal" + (goalsDoneAt[i] ? " done" : "");
-    const icon = iconCanvas(GOALS[i][1]); icon.className = "gi";
+    const icon = slotIcon(GOALS[i][1]); icon.className = "gi";
     row.append(icon);
     row.insertAdjacentHTML("beforeend", `<span class="gt">${esc(GOALS[i][0])}</span><span class="tick"></span>`);
     list.append(row);

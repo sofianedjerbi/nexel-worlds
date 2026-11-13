@@ -1,7 +1,8 @@
 // Loot: what a creature (or a person) drops pops out of the poof, arcs up and lands with a bounce or two, right where
 // the pile then shows. The pile at that tile waits until everything has landed, so nothing appears twice.
 // A thing on the ground is smaller than its icon (16 px across, it was far too big beside a body), and a pixel of it
-// is a pixel of the land all the same: the icon is made two thirds the size by whole pixels, 11 for 16 (ghostIcon).
+// is a pixel of the land all the same: the icon is made two thirds the size by whole pixels, 11 for 16 (smallPx).
+// The HUD shows the same small picture in its slots, at the land's pixel too (slotIcon, ui.js).
 
 const loot = [];
 const LOOT_G = 26;   // gravity, in tiles/s² (a quick, light hop)
@@ -11,13 +12,17 @@ const pileAt = (i, n) => PILE_AT[Math.min(3, n) - 1][i];
 // The small icon: of every three px across and down, the first two become one (the colour most of them have, the
 // darker of two as many: an outline holds, and a torch keeps its stick) and the third stays. The white sticker edge
 // of the pack's item icons goes first: in pieces it would be noise, and nothing else on the ground has one.
-const ghosts = new Map(), DROP = 11, DROP_AT = [0, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 16];
-function ghostIcon(name) {
-  if (ghosts.has(name)) return ghosts.get(name);
-  const cv = document.createElement("canvas"), ic = ICONS[name]; cv.width = cv.height = DROP; ghosts.set(name, cv);
-  if (ic && ic[0] !== "gen" && (ic[3] > 16 || ic[4] > 16)) {       // a big thing (a boat, a well): straight from its sprite, once
-    const small = smallArt(IMG[ic[0]], ic[1], ic[2], ic[3], ic[4], DROP);
-    cv.getContext("2d").putImageData(small, (DROP - small.width) >> 1, (DROP - small.height) >> 1); return cv;
+const ghosts = new Map(), smalls11 = new Map(), DROP = 11, DROP_AT = [0, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 16];
+const smallCanvas = (name) => {                // a fresh one each time (the HUD keeps what it is given)
+  const cv = document.createElement("canvas"), px = smallPx(name); cv.width = cv.height = DROP;
+  cv.getContext("2d").putImageData(px, (DROP - px.width) >> 1, (DROP - px.height) >> 1); return cv;
+};
+const ghostIcon = (n) => ghosts.get(n) || (ghosts.set(n, smallCanvas(n)), ghosts.get(n));     // the one the land draws from
+function smallPx(name) {
+  if (smalls11.has(name)) return smalls11.get(name);
+  const ic = ICONS[name];
+  if (ic && ic[0] !== "gen" && (ic[3] > 16 || ic[4] > 16)) {       // a big thing (a boat, a well): straight from its sprite
+    smalls11.set(name, smallArt(IMG[ic[0]], ic[1], ic[2], ic[3], ic[4], DROP)); return smalls11.get(name);
   }
   const d = iconCanvas(name).getContext("2d").getImageData(0, 0, 16, 16).data, sticker = ICONS[name] && ICONS[name][0] === "items";
   const solid = (x, y) => x >= 0 && y >= 0 && x < 16 && y < 16 && d[(y * 16 + x) * 4 + 3] >= 128;
@@ -35,8 +40,8 @@ function ghostIcon(name) {
     for (const [c, v] of seen) if (v > votes || (v === votes && dark(c) < dark(best))) { best = c; votes = v; }
     out.data.set([best >> 16, best >> 8 & 255, best & 255, 255], (j * DROP + i) * 4);
   }
-  cv.getContext("2d").putImageData(out, 0, 0);
-  return cv;
+  smalls11.set(name, out);
+  return out;
 }
 
 function dropLoot(x, y, items, now) {

@@ -140,7 +140,7 @@ setInterval(() => {
   for (const slot of ["head", "top", "pants", "shoes", "effect"]) {
     if (!worn[slot]) continue;
     const d = document.createElement("div"); d.className = "slot"; d.dataset.slot = slot;
-    d.appendChild(wearIcon(worn[slot]));
+    d.appendChild(slotIcon(worn[slot]));
     d.insertAdjacentHTML("beforeend", `<span class="tip">${esc(label(worn[slot]))} · click to take off</span>`);
     d.onclick = () => act("unwear", {slot});
     wearingEl.appendChild(d);

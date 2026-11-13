@@ -15,7 +15,7 @@ function showDeath(e) {
   const items = Object.entries(e.dropped || {}).filter(([, n]) => n > 0);
   for (const [name, n] of items.slice(0, 8)) {
     const s = document.createElement("div"); s.className = "dslot";
-    const ic = iconCanvas(name); ic.className = "dicon"; s.appendChild(ic);
+    const ic = slotIcon(name); ic.className = "dicon"; s.appendChild(ic);
     const k = document.createElement("span"); k.textContent = n > 1 ? "×" + n : ""; s.appendChild(k);
     s.title = label(name); loot.appendChild(s);
   }

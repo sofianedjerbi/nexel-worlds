@@ -8,6 +8,7 @@ function groundPreview(g, x, y) {
 }
 const fulls = new Map();                         // an item's icon, kept (what lies on the ground is a smaller one: ghostIcon, loot.js)
 const fullIcon = (n) => fulls.get(n) || (fulls.set(n, iconCanvas(n)), fulls.get(n));
+const slotIcon = (n) => smallCanvas(n);          // what a slot shows: the small picture, as on the ground, at the land's pixel (--i)
 function openCraft() { $("craft").style.display = "block"; drawRecipes(); }
 // item icons from the sheets: [image name, sx, sy]
 const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in column 0, produce in column 1, materials in 2-3
@@ -67,18 +68,21 @@ function iconCanvas(name) {
 // The bar at the bottom is what you carry: ten slots, keys 1 to 9 and 0. (No button on it: I opens the inventory,
 // C the crafting.) What is beyond ten kinds of thing is in the inventory.
 const BAR = 10;
-// The HUD's art pixels (--u1, --u, --u3: about 1, 2 and 3 CSS px), each a whole number of screen pixels, so a slot's
-// frame and the icon in it are cut on the screen's own grid (a phone with 2.625 screen px to a CSS px: 3, 5 and 8).
+// The HUD's art pixels, each a whole number of screen pixels, so that all is cut on the screen's own grid: --u for
+// a slot's frame (about 2 CSS px), --i for the item in it (the land's own pixel at the zoom the game starts with: 3,
+// or 2 on a small phone, so an item looks in the bar as it does on the ground), --u3 for the crafting's big picture.
 // The bar's (--u) is a screen pixel less, and again, while its ten slots would not fit across, or the HUD would take
-// more than hudTall of the height (a phone: touch.js). Nothing of it is ever scaled.
+// more than hudTall of the height (a phone: touch.js); the item's is no more than fits the frame. Nothing is scaled.
 let hudU = 2, hudTall = 1, hudK = 2.5, hudSig = "";   // (hudK: CSS px an art pixel of the hearts and the food: 2.5, less where the two rows would not fit across)
 function hudFit() {
   const d = window.devicePixelRatio || 1, st = document.documentElement.style, h = $("hud").offsetHeight, was = hudU;
   let n = Math.max(1, Math.round(2 * d));
   while (n > 1 && ((BAR * 32 - 2) * n / d > innerWidth - 16 || (h && h + 30 * (n / d - was) > innerHeight * hudTall))) n--;
   hudU = n / d; hudK = Math.min(2.5, Math.max(1, Math.floor((innerWidth - 34) * d / 198)) / d);   // (two rows of ten icons: 99 art px each)
-  if (hudSig === (hudSig = [n, d].join())) return false;
-  st.setProperty("--u", hudU + "px"); st.setProperty("--u1", Math.max(1, Math.round(d)) / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px");
+  const land = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520 ? 2 : 3;
+  const item = Math.max(1, Math.min(Math.round(land * d), Math.floor(1.6 * n)));    // (11 px of it in a hole of 16: its edge px are empty)
+  if (hudSig === (hudSig = [n, d, item].join())) return false;
+  st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px");
   return hudU !== was;
 }
 hudFit(); addEventListener("resize", hudFit);
@@ -102,7 +106,7 @@ function drawHotbar(inv) {
   order.forEach((name, i) => {
     const d = document.createElement("div"); d.className = "slot" + (name && name === selected ? " sel" : "");
     if (name) {
-      d.appendChild(iconCanvas(name));
+      d.appendChild(slotIcon(name));
       const how = WEAR[name] ? " · E to wear" : FOODS.includes(name) ? " · E to eat, or feed animals" : name === "watering_can" ? ` · ${can}/${CAN_SIZE} water · click a crop; refill at a well or water`
         : (PLACEABLE_BLOCK[name] || FILLS[name] || name === "seed") ? " · select, click the ground to place" : "";
       d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name) + how)}</span>`);
@@ -174,7 +178,7 @@ function drawBag(inv, onBar, extra) {
   el.innerHTML = onBar.length || extra.length ? "" : `<span style="color:var(--ink2)">You carry nothing.</span>`;
   const card = (name, beyond) => {
     const d = document.createElement("div"); d.className = "slot" + (name === selected ? " sel" : "");
-    d.appendChild(iconCanvas(name));
+    d.appendChild(slotIcon(name));
     d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name))}</span>`);
     d.dataset.name = name; d.title = label(name); if (name === bagFocus) d.classList.add("kfocus");
     if (beyond) d.style.opacity = ".8";
