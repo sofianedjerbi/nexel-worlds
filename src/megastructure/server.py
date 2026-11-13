@@ -18,6 +18,7 @@ from websockets.exceptions import ConnectionClosed
 
 from .devtools import dev_op
 from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
+from .sim.constants import FOOD_MAX, HP_MAX, SPRINT_FOOD
 from .tiles import FOOD, RECIPES
 from .views import Views
 from .web_static import serve_http, web_stamp
@@ -127,7 +128,7 @@ class GameServer(Views):
 
         pumper = asyncio.create_task(pump())
         try:
-            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL, "web": web_stamp()}))
+            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL, "web": web_stamp(), "hp_max": HP_MAX, "food_max": FOOD_MAX, "sprint_food": SPRINT_FOOD}))
             async for raw in ws:
                 msg = json.loads(raw)
                 op = msg.get("op")

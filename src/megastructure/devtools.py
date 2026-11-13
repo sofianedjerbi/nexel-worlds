@@ -64,9 +64,10 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
         if msg.get("race") in RACES:
             agent.race = msg["race"]
         return {"race": agent.race}
-    if op == "dev_needs":                        # set hunger (and hp)
-        agent.hunger = max(0, min(100, int(msg.get("hunger", agent.hunger))))
-        agent.hp = max(1, min(100, int(msg.get("hp", agent.hp))))
+    if op == "dev_needs":                        # set food (and health)
+        agent.hunger = max(0, min(20, int(msg.get("hunger", agent.hunger))))      # (half pieces: 20 is full)
+        agent.sat = float(msg.get("sat", 0 if "hunger" in msg else agent.sat))    # (no reserve unless asked for: what is set is what shows)
+        agent.hp = max(0.5, min(20, float(msg.get("hp", agent.hp))))               # (half hearts: 20 is ten hearts)
         return {"hunger": agent.hunger, "hp": agent.hp}
     if op == "dev_give":
         for k, n in dict(msg.get("items") or {}).items():

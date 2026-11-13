@@ -12,6 +12,7 @@ const KEYDIR = {w: "N", arrowup: "N", s: "S", arrowdown: "S", a: "W", arrowleft:
 const CODEDIR = {KeyW: "N", ArrowUp: "N", KeyS: "S", ArrowDown: "S", KeyA: "W", ArrowLeft: "W", KeyD: "E", ArrowRight: "E"};
 const keys = new Set();
 let runKey = false;
+const sprinting = () => runKey && !(meObs && meObs.self.hunger <= SPRINT_FOOD);   // (three pieces of food or fewer: no sprinting, as the server has it)
 let inputMode = "mouse";     // "keys" once you play with the keyboard: hints then follow the tile you face
 
 function facingTile() {

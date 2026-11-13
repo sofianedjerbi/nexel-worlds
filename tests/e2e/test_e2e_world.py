@@ -83,7 +83,7 @@ def test_a_coop_collects_the_eggs(game):
 
 def test_food_tastes_better_on_a_picnic_blanket(game):
     game.give(picnic_blanket=1, bread=2)
-    game.rpc("dev_needs", hunger=30)
+    game.rpc("dev_needs", hunger=4)
     game.hold_item("picnic_blanket")
     game.face(0, -1)
     game.press("Space", 900)
@@ -93,7 +93,7 @@ def test_food_tastes_better_on_a_picnic_blanket(game):
     before = game.server()["hunger"]
     game.hold_item("bread")
     game.press("e", 1400)
-    assert game.server()["hunger"] - before > 50             # bread is 50, x1.5 on the blanket
+    assert game.server()["hunger"] - before == 15            # bread is 10, x1.5 on the blanket
 
 
 def test_dig_down_and_climb_back_out(game):

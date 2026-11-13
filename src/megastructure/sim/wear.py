@@ -50,8 +50,8 @@ class Wear:
         """The percent of a blow that what `a` wears turns."""
         return min(ARMOR_CAP, sum(ARMOR.get(item, 0) for item in a.worn.values()))
 
-    def guarded(self, target, dmg: int) -> int:
-        """A blow of `dmg` on `target`, after armor (never less than 1)."""
+    def guarded(self, target, dmg: float) -> float:
+        """A blow of `dmg` half hearts on `target`, after armor: to the half, never less than one."""
         if not isinstance(target, Agent) or not target.worn:
             return dmg
-        return max(1, round(dmg * (100 - self.armor(target)) / 100))
+        return max(0.5, round(dmg * (100 - self.armor(target)) / 100 * 2) / 2)

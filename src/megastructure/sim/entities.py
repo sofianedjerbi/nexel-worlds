@@ -21,8 +21,8 @@ class Agent:
     x: int
     y: int
     persona: str = ""
-    hp: int = 100
-    hunger: int = 80
+    hp: float = 20             # health, in half hearts: 20 is ten hearts (constants.HP_MAX); a half is the least there is
+    hunger: int = 20           # food, in half pieces: 20 is the bar full; high is fed, 0 is starving
     inventory: dict = field(default_factory=dict)
     deaths: int = 0
     stats: dict = field(default_factory=dict)
@@ -33,6 +33,8 @@ class Agent:
     can: int = 12              # waterings left in the watering can; refill at a well or any water
     worn: dict = field(default_factory=dict)   # what you wear: slot -> item (sim/wear.py)
     race: str = "cat"          # cat, bunny, bear, frog or duck (tiles.RACES): looks only
+    sat: float = 5.0           # saturation: food in reserve, unseen (needs.py)
+    tired: float = 0.0         # tiredness, 0 to 4 (needs.py)
     # runtime only
     action: "Action | None" = field(default=None, repr=False)
     aside: "Action | None" = field(default=None, repr=False)   # what the hands are doing meanwhile (constants.ASIDE: eating): it runs beside `action`
@@ -45,7 +47,7 @@ class Agent:
 
     def to_json(self) -> dict:
         return {k: getattr(self, k) for k in
-                ("id", "name", "x", "y", "z", "persona", "hp", "hunger", "inventory", "deaths", "stats", "spawn", "sailing", "can", "xp", "worn", "race")}
+                ("id", "name", "x", "y", "z", "persona", "hp", "hunger", "inventory", "deaths", "stats", "spawn", "sailing", "can", "xp", "worn", "race", "sat", "tired")}
 
     def count(self, item) -> int:
         return self.inventory.get(item, 0)
@@ -90,7 +92,8 @@ class Creature:
         return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "z": self.z, "hp": self.hp,
                 "milked": self.milked, "love": self.love, "lay": self.lay, "born": self.born, **({"name": self.name} if self.name else {})}
 
-# drops: what one leaves when it dies, a line for each thing: (item, chance, at least, at most). The first lines are
+# hp: a creature's own (not hearts: what a weapon takes from it, tiles.WEAPONS). damage: what it does to you, in half
+# hearts. drops: what one leaves when it dies, a line for each thing: (item, chance, at least, at most). The first lines are
 # its usual drop, less sure than it was (a chicken always left a meat and an egg, a cow three meat and a milk: the
 # same thing every time); the last is a rare one, something you would otherwise have to make. The boss's are sure.
 CREATURES = {
@@ -98,13 +101,13 @@ CREATURES = {
     "cow": {"hp": 30, "drops": (("meat", .8, 1, 2), ("milk", .15, 1, 1), ("leather_boots", .03, 1, 1)), "char": "k"},
     "chick": {"hp": 4, "drops": (("meat", .3, 1, 1),), "char": "c", "grows": ("chicken", 300)},
     "calf": {"hp": 12, "drops": (("meat", .5, 1, 1),), "char": "k", "grows": ("cow", 360)},
-    "tusker": {"hp": 40, "drops": (("meat", .8, 1, 2), ("leather_vest", .05, 1, 1)), "char": "D", "damage": 14},
-    "pincer": {"hp": 14, "drops": (("meat", .5, 1, 1), ("shell_plate", .05, 1, 1)), "char": "I", "damage": 5},
-    "strawman": {"hp": 50, "drops": (("hay", 1, 1, 2), ("straw_hat", .1, 1, 1)), "char": "S", "damage": 10},
+    "tusker": {"hp": 40, "drops": (("meat", .8, 1, 2), ("leather_vest", .05, 1, 1)), "char": "D", "damage": 3},
+    "pincer": {"hp": 14, "drops": (("meat", .5, 1, 1), ("shell_plate", .05, 1, 1)), "char": "I", "damage": 1},
+    "strawman": {"hp": 50, "drops": (("hay", 1, 1, 2), ("straw_hat", .1, 1, 1)), "char": "S", "damage": 2},
     "wisp": {"hp": 1, "drops": (), "char": "i"},
-    "wyrm": {"hp": 60, "drops": (("meat", 1, 2, 4), ("frost_charm", .1, 1, 1)), "char": "E", "damage": 18},
-    "mossback": {"hp": 300, "drops": (("shell_plate", 1, 5, 5), ("meat", 1, 6, 6), ("fruit", 1, 4, 4), ("mushroom", 1, 3, 3)), "char": "G", "damage": 22, "snap": 28},   # the first boss (boss.py)
-    "sporeling": {"hp": 1, "drops": (("mushroom", .05, 1, 1),), "char": "s", "damage": 3},
+    "wyrm": {"hp": 60, "drops": (("meat", 1, 2, 4), ("frost_charm", .1, 1, 1)), "char": "E", "damage": 3.5},
+    "mossback": {"hp": 300, "drops": (("shell_plate", 1, 5, 5), ("meat", 1, 6, 6), ("fruit", 1, 4, 4), ("mushroom", 1, 3, 3)), "char": "G", "damage": 4.5, "snap": 5.5},   # the first boss (boss.py)
+    "sporeling": {"hp": 1, "drops": (("mushroom", .05, 1, 1),), "char": "s", "damage": 0.5},
 }
 
 

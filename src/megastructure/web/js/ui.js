@@ -122,7 +122,8 @@ function drawHotbar(inv) {
   });
   drawBag(inv, order.filter(Boolean), extra);
 }
-// Hearts and food sit on the hotbar, 10 points an icon, halves allowed. Hearts are the UI pack's small hearts (full,
+// Hearts and food sit on the hotbar, ten of each, halves allowed: a heart is a tenth of full health, a piece a tenth
+// of full food (state.js: HP_MAX, FOOD_MAX; a part of a half shows as the half). Hearts are the UI pack's small hearts (full,
 // half, empty); food is an apple drawn here in the hearts' own palette (plum outline, rose, glint, a leaf; empty is
 // the bare outline colour, like an empty heart). Pixel-exact: every art pixel is a whole number of device pixels.
 const HEART = [4, 84, 9, 8];                     // full; half and empty are the next 16 px cells along
@@ -139,17 +140,19 @@ function pixelCanvas(cv, w, h, k = hudK) {       // sizes a canvas for art w x h
 }
 function drawIcons(cv, icon, value, gain = 0) {   // gain: food points to preview (what eating would give back)
   const N = 10, hearts = icon === "heart", iw = hearts ? HEART[2] : APPLE[0].length, ih = hearts ? HEART[3] : APPLE.length;
+  const one = (hearts ? HP_MAX : FOOD_MAX) / N;                // what an icon is worth
+  value = Math.ceil(value / (one / 2) - 1e-9) * (one / 2);
   const step = iw + 1, sig = [icon, value, gain, window.devicePixelRatio || 1, hudK].join();
   if (cv.dataset.sig === sig) return;
   cv.dataset.sig = sig;
   const [g, SC] = pixelCanvas(cv, step * (N - 1) + iw, 9);
   for (let i = 0; i < N; i++) {
-    const x = i * step, full = value >= (i + 1) * 10, half = !full && value >= i * 10 + 5, top = 9 - ih;
+    const x = i * step, full = value >= (i + 1) * one, half = !full && value >= i * one + one / 2, top = 9 - ih;
     if (hearts) {
       g.drawImage(IMG.hearts, (full ? 0 : half ? 1 : 2) * 16 + HEART[0], HEART[1], iw, ih, x * SC, top * SC, iw * SC, ih * SC);
       continue;
     }
-    const after = value + gain, fullA = after >= (i + 1) * 10, halfA = !fullA && after >= i * 10 + 5;
+    const after = value + gain, fullA = after >= (i + 1) * one, halfA = !fullA && after >= i * one + one / 2;
     APPLE.forEach((row, j) => [...row].forEach((c, k) => {
       if (c === ".") return;
       const lit = full || (half && k < 5), soon = !lit && (fullA || (halfA && k < 5));
@@ -158,18 +161,19 @@ function drawIcons(cv, icon, value, gain = 0) {   // gain: food points to previe
       if (soon) { g.globalAlpha = .55; g.fillStyle = APPLE_COL[c]; g.fillRect((x + k) * SC, (top + j) * SC, SC, SC); g.globalAlpha = 1; }
     }));
   }
-  cv.classList.toggle("low", value <= 25);
+  cv.classList.toggle("low", value <= one * 2.5);
 }
 // Holding food: the apples it would give back blink on the bar (every frame, from render; redrawn only on change).
 function foodPreview() {
   if (!meObs) return;
-  const h = meObs.self.hunger, gain = selected && foodValue[selected] && h < 100 ? foodValue[selected] : 0;
+  const h = meObs.self.hunger, gain = selected && foodValue[selected] && h < FOOD_MAX ? foodValue[selected] : 0;
   drawIcons($("foods"), "food", h, gain && Math.floor(performance.now() / 450) % 2 === 0 ? gain : 0);
 }
 function drawVitals(s) {
   drawIcons($("hearts"), "heart", s.hp);
   foodPreview();
-  const status = s.hunger < 25 ? "Starving: eat something (E)" : "";
+  const status = s.hunger <= 0 || (SPRINT_FOOD < 0 && s.hunger < 25) ? "Starving: eat something (E)" : s.hunger <= SPRINT_FOOD ? "Too hungry to sprint: eat something (E)" : "";
+  if (walking && walking.run !== sprinting()) syncWalk();          // (fed again, or not enough any more: the sprint follows)
   $("status").textContent = status; $("status").style.display = status ? "block" : "none";
 }
 let bagFocus = null;     // bag item highlighted for keyboard use

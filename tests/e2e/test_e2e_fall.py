@@ -8,14 +8,14 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     game.clear_area(10)
     game.stamp(-1, -1, ["..."] * 3, levels=["888"] * 3)       # a tower eight layers high under you
     game.sleep(700)
-    game.rpc("dev_needs", hp=100, hunger=100)
+    game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     x, y = game.pos()
     game.js("""(() => { window.__f = []; const o = fallOf;
       fallOf = (p, now) => { const r = o(p, now); if (p === ents.get('agent' + myId)) __f.push([now, r ? (r.air ? 1 : 0) : -1, r ? r.body + liftOf(p) / zoom : 0, parts.length, wind ? 1 : 0, cam.y]); return r; }; return 1; })()""")
     game.hold(["d"], 450)
     game.sleep(250)
     assert game.js("fallQuake !== null") and game.js("flashes.has('agent' + myId)")            # it hurt: the ground shakes, you flash
-    assert any(f["text"] == "-25" for f in game.js("floats"))                                   # (8 layers: 5 over what is safe, 5 hp each)
+    assert any(f["text"] == "-2.5" for f in game.js("floats"))                                  # (8 layers: 5 over what is safe, half a heart each)
     game.sleep(700)
     rec = game.js("__f")
     air = [r for r in rec if r[1] == 1]
@@ -28,7 +28,7 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     assert after >= before + 12, (before, after)                                                 # dust where you land
     k = len(air) // 2                                                                            # the camera is on you as you fall
     assert abs(air[k + 1][5] - (y - heights[k] / 16)) < .02                                      # (each frame's is read at the start of the next)
-    assert game.js("fallQuake") is None and game.server()["hp"] < 80
+    assert game.js("fallQuake") is None and game.server()["hp"] < 16
     assert game.pos() == (game.server()["x"], game.server()["y"]) and not game.errors
 
 
@@ -42,7 +42,7 @@ def test_a_drop_of_two_layers_is_still_a_hop_and_three_a_short_fall(game):
     game.stamp(-1, -1, ["..."] * 3, levels=["333"] * 3)
     game.sleep(600)
     assert step(.3) == [True, True] and step(.6)[0]            # three: a fall (it walks to the edge, then drops)
-    assert game.server()["hp"] == 100
+    assert game.server()["hp"] == 20
 
 
 def test_dust_shows_on_level_ground_and_not_behind_a_ledge(game):

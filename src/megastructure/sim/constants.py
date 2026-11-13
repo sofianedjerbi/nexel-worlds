@@ -11,7 +11,21 @@ DAY_TICKS = sec(600)   # a 10-minute day
 
 STEP = sec(0.2)        # walking speed: 5 tiles per second
 SLOPE_UP, SLOPE_DOWN = 0.6, 0.2   # a step up a slope takes 60% longer, down it 20% (client: render.js)
-FALL_SAFE, FALL_HP = 3, 5         # a fall of up to 3 layers is nothing; each layer more costs half a heart
+FALL_SAFE, FALL_HP = 3, 1         # a fall of up to 3 layers is nothing; each layer more costs half a heart
+
+# Health and food, as the sandbox classic has them (needs.py). Health is counted in half hearts, ten hearts in all;
+# food in half pieces, ten on the bar. (They were 0 to 100, and food went down by itself, a piece every 100 s.)
+HP_MAX, FOOD_MAX = 20, 20
+OLD_SCALE = 5                     # what a number on the old scale (0 to 100) is divided by
+SAT_START = 5.0                   # saturation: food in reserve, unseen; what tires you takes it first, then the food
+TIRED_MAX = 4.0                   # tiredness: at 4, a point of saturation goes (of food, when there is none), and it starts again
+# what tires you, and by how much. Standing costs nothing. Walking: 200 s of it a point; sprinting, a point every 33 s
+# (the classic's are per metre of a much slower walk); healing a half heart costs a point and a half
+TIRES = {"walk": 0.004, "sprint": 0.012, "swim": 0.01, "jump": 0.05, "attack": 0.1, "hurt": 0.1, "dig": 0.02, "heal": 6.0}
+HEAL_FOOD, HEAL_EVERY = 18, sec(4)   # with nine pieces or more: half a heart back every 4 s
+FAST_HEAL_EVERY = sec(0.5)        # with the bar full and saturation left: every half second
+STARVE_EVERY = sec(4)             # with no food left: half a heart gone every 4 s
+SPRINT_FOOD = 6                   # with three pieces or fewer: no sprinting
 
 VIEW_R = 10
 

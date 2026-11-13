@@ -169,10 +169,12 @@ FILLERS = {
 }
 SEED_GROUNDS = {"tilled", "wet_tilled"}  # seeds only take on tilled soil
 
-# hunger points each food gives back (100 is full; you lose 1 every 10 s; one apple on the bar is 10): snacks are an
-# apple or so, a cooked meal half the bar
-FOOD = {"wheat": 5, "berries": 10, "mushroom": 10, "lettuce": 15, "meat": 15, "egg": 15, "fruit": 20, "carrot": 20,
-        "milk": 20, "cauliflower": 25, "eggplant": 25, "pumpkin": 30, "cooked_meat": 40, "bread": 50}
+# food points each food gives back (20 is the bar full: a piece on it is 2): snacks are a piece or so, a cooked meal
+# near half the bar. And how much of it also goes in reserve (saturation: twice the points times this): little for
+# what is picked and eaten raw, more for what is grown, most for what is cooked
+FOOD = {"wheat": 1, "berries": 2, "mushroom": 2, "lettuce": 3, "meat": 3, "egg": 3, "fruit": 4, "carrot": 4,
+        "milk": 4, "cauliflower": 5, "eggplant": 5, "pumpkin": 6, "cooked_meat": 8, "bread": 10}
+PLAIN, RICH = 0.3, {"carrot": 0.6, "cauliflower": 0.6, "eggplant": 0.6, "pumpkin": 0.6, "bread": 0.6, "cooked_meat": 0.8}
 
 # what animals eat: food that grows (not eggs, meat or milk), and hay (one bale feeds three times from a trough)
 FEED = {**{k: 1 for k in FOOD if k not in ("egg", "meat", "cooked_meat", "milk")}, "hay": 3}

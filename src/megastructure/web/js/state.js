@@ -31,7 +31,11 @@ function screenOrigin(S = TS()) {
 }
 let cam = {x: 0, y: 0}, camT = {x: 0, y: 0};
 let follow = null, me = null, myId = null, meObs = null, agents = [], metrics = {}, recipes = {}, clock = {night: false, phase: .3};
-let selected = null, progress = null, foodValue = {};   // foodValue: hunger points each food gives (from the server)
+let selected = null, progress = null, foodValue = {};   // foodValue: food points each food gives (from the server)
+// Health and food: how much is full, and the food it takes to sprint. The server says so when it greets (20, 20 and 6:
+// half hearts and half pieces, as the sandbox classic has them); one from before that says nothing: 0 to 100.
+let HP_MAX = 100, FOOD_MAX = 100, SPRINT_FOOD = -1;
+const hearts = (hp) => Math.round(hp / (HP_MAX / 10) * 10) / 10;      // a blow on someone is said in hearts: "-1.5"
 const ents = new Map();
 let bubbles = [], floats = [];
 const requested = new Map();
@@ -51,6 +55,7 @@ function connectSpec() {
     if (d.type === "hello") {                     // back after the server restarted with newer code: this page is stale (it would draw the new world wrong)
       if (webStamp && d.web && d.web !== webStamp) location.reload();
       webStamp = d.web || webStamp;
+      if (d.hp_max) { HP_MAX = d.hp_max; FOOD_MAX = d.food_max; SPRINT_FOOD = d.sprint_food; }
     } else if (d.type === "tick") onTick(d);
     else if (d.type === "event") onEvent(d.ev);
     else if (d.type === "resync") { for (const b of blocks.values()) b.at = -1e9; }   // we missed events (too many at once): ask for our land again
@@ -162,7 +167,7 @@ function onEvent(e) {
       sfx(tgt.e.kind === "chicken" || tgt.e.kind === "chick" ? "squawk" : animalVoice(tgt.e.kind), tx, ty);
     }
     if (WILD[String(e.attacker).slice(2)]) sfx("punch", e.x, e.y);
-    burst(tx, ty, "hit", 6, {dy: -.4}); sfx("hit", tx, ty); if (e.target === me) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + e.damage, color: "#ff8a7a", t});
+    burst(tx, ty, "hit", 6, {dy: -.4}); sfx("hit", tx, ty); if (e.target === me) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + (tgt && tgt.e.kind === "agent" ? hearts(e.damage) : e.damage), color: "#ff8a7a", t});
   }
   if (e.type === "fall") {                            // a fall that hurt: shown as they land (jump.js), or now if they are not seen falling
     const q = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === e.name);

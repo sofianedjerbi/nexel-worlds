@@ -68,7 +68,7 @@ def test_observe_shape(world):
     o = sim.observe(a)
     assert len(o["grid"]) == 21 and all(len(r) == 21 for r in o["grid"])
     assert o["grid"][10][10] == "@" and o["legend"]["@"] == "you"
-    assert o["self"]["hp"] == 100
+    assert o["self"]["hp"] == 20 and o["self"]["hunger"] == 17
 
 def test_spread_bushes_are_tidied_on_load(world):
     sim, a = world

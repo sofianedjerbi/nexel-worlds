@@ -3,16 +3,16 @@
 
 def test_eating_takes_three_bites_and_stops_when_full(game):
     game.give(bread=2)
-    game.rpc("dev_needs", hunger=40)
+    game.rpc("dev_needs", hunger=8)
     hunger0 = game.server()["hunger"]
     game.hold_item("bread")
     game.press("e", 0)
     game.sleep(450)
     assert game.js("myAside && myAside.tool") == "eat" and game.js("biteIcon('bread', 1) !== null")
     game.sleep(900)
-    assert game.server()["hunger"] == hunger0 + 50            # one bread
-    game.rpc("dev_needs", hunger=100)
-    while game.server()["hunger"] < 100 and game.inv("bread"):
+    assert game.server()["hunger"] == hunger0 + 10            # one bread: five pieces
+    game.rpc("dev_needs", hunger=20)
+    while game.server()["hunger"] < 20 and game.inv("bread"):
         game.press("e", 1300)
     if game.inv("bread"):
         game.press("e", 600)
@@ -26,7 +26,7 @@ def test_eating_your_hands_are_full(game):
     game.clear_area(6)
     game.stamp(1, 0, ["T"])
     game.give(bread=1, stone=1)
-    game.rpc("dev_needs", hunger=30)
+    game.rpc("dev_needs", hunger=8)
     game.act("drop", item="stone", n=1)                       # something to pick up, under you
     game.sleep(300)
     game.face(1, 0)
@@ -41,7 +41,7 @@ def test_eating_your_hands_are_full(game):
     assert game.inv("stone") == 0 and game.js(f"combAt({game.pos()[0] + 1}, {game.pos()[1]})") == "T"
     assert game.rpc("act", tool="dig", args={"dir": "E"})["error"] == "hands_full"   # (the server's own rule, asked past the page)
     game.wait("!eating()", 4000)
-    assert game.server()["hunger"] == 30 + 50                                        # ...and the meal was not stopped for any of it
+    assert game.server()["hunger"] == 8 + 10                                        # ...and the meal was not stopped for any of it
     game.press("f", 400)
     assert game.inv("stone") == 1                                                    # eaten: the hands are free
     game.press("Space", 200)
@@ -53,7 +53,7 @@ def test_you_eat_while_you_walk(game):
     too), and setting off doesn't end a meal begun standing. (You stood still for every bite.)"""
     game.clear_area(12)
     game.give(bread=3)
-    game.rpc("dev_needs", hunger=30)
+    game.rpc("dev_needs", hunger=8)
     game.hold_item("bread")
     x0 = game.pos()[0]
     game.start_recording()
@@ -67,7 +67,7 @@ def test_you_eat_while_you_walk(game):
     game.page.keyboard.up("d")
     rec = game.recording()
     game.sleep(600)
-    assert game.server()["hunger"] >= 30 + 50 - 2 and game.inv("bread") == 2                 # the bread is eaten...
+    assert game.server()["hunger"] == 8 + 10 and game.inv("bread") == 2                 # the bread is eaten...
     stops, i0 = [], 0                                                                       # ...and you never stood still for it
     for i in range(1, len(rec)):
         if abs(rec[i][1] - rec[i0][1]) > 1e-6:
@@ -75,7 +75,7 @@ def test_you_eat_while_you_walk(game):
                 stops.append(round(rec[i][0] - rec[i0][0]))
             i0 = i
     assert not stops and game.pos()[0] >= x0 + 7, (stops, game.pos()[0] - x0)
-    game.rpc("dev_needs", hunger=30)
+    game.rpc("dev_needs", hunger=8)
     game.press("e", 250)                                                                    # a meal begun standing...
     game.page.keyboard.down("a")
     game.sleep(500)
@@ -230,3 +230,29 @@ def test_several_drops_land_together_without_blinking(game):
     first = next(i for i, f in enumerate(d) if f[0] == 2)    # both out...
     on_ground = [f for f in d[first:] if f[1] or f[2] != "[]"]   # (until they fly to you: that's the pick-up, not the drop)
     assert on_ground and all(f[0] == 2 for f in on_ground), [f for f in on_ground if f[0] != 2][:5]   # ...both drawn, every frame
+
+
+def test_ten_hearts_and_ten_pieces_in_halves_and_no_sprint_when_hungry(game):
+    """Health is 20 half hearts and food 20 half pieces (they were 0 to 100): the bar shows them a half at a time, a
+    blow is said in hearts, and with three pieces of food or fewer the Shift key does not sprint."""
+    assert game.js("[HP_MAX, FOOD_MAX, SPRINT_FOOD]") == [20, 20, 6]
+    game.rpc("dev_needs", hp=13, hunger=7)
+    game.sleep(900)
+    lit = """(id) => { const c = $(id), g = c.getContext('2d'), n = c.width / 99;        // each icon: 2 as the first (full), 0 as the last (empty), 1 neither
+      const px = (i) => g.getImageData(i * 10 * n, 0, 9 * n, c.height).data.join(), full = px(0), none = px(9);
+      return [...Array(10)].map((_, i) => px(i) === full ? 2 : px(i) === none ? 0 : 1); }"""
+    assert game.js(lit, "hearts") == [2, 2, 2, 2, 2, 2, 1, 0, 0, 0]              # six hearts and a half
+    assert game.js(lit, "foods") == [2, 2, 2, 1, 0, 0, 0, 0, 0, 0]               # three pieces and a half
+    assert game.js("$('status').textContent") == ""
+    game.page.keyboard.down("Shift")
+    game.page.keyboard.down("d")
+    game.sleep(400)
+    assert game.js("walking && walking.run") is True                             # fed enough: a sprint
+    game.rpc("dev_needs", hunger=6)
+    game.sleep(1100)
+    assert game.js("walking && walking.run") is False and "sprint" in game.js("$('status').textContent")   # ...and no more, the keys still held
+    game.page.keyboard.up("d")
+    game.page.keyboard.up("Shift")
+    game.rpc("dev_needs", hunger=0)
+    game.sleep(900)
+    assert "Starving" in game.js("$('status').textContent")

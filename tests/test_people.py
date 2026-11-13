@@ -9,12 +9,12 @@ def test_combat_death_and_drop(world):
     b.x, b.y = a.x + 1, a.y
     b.add("wood", 5)
     a.add("spear", 1)
-    b.hp = 18
+    b.hp, b.hunger = 4, 10                                   # two hearts left (and not healing)
     r = run(sim, a, "attack", {"target": b.id})              # bare fists: the spear stays in the bag
-    assert r["ok"] and r["damage"] == 5 and not r["killed"]
+    assert r["ok"] and r["damage"] == 1 and b.hp == 3 and not r["killed"]     # half a heart
     r = run(sim, a, "attack", {"target": b.id, "with": "spear"})
     assert r["ok"] and r["killed"]
-    assert b.deaths == 1 and b.hp == 100 and not b.inventory
+    assert b.deaths == 1 and (b.hp, b.hunger, b.sat) == (20, 20, 5.0) and not b.inventory   # woken whole and fed
     assert sim.items[(a.x + 1, a.y)]["wood"] == 5
     r = run(sim, a, "step", {"dir": "E"})          # walking onto the pile picks it up
     assert r["ok"] and r["changed"]["inventory"]["wood"] == 5 and (a.x, a.y) not in sim.items

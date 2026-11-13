@@ -1,27 +1,60 @@
-"""Hunger (the one need): eating; beds (where you wake up); watering crops."""
+"""Health and food, as the sandbox classic has them; eating; beds (where you wake up); watering crops.
+
+Health is ten hearts, counted in halves (20); food ten pieces, counted in halves (20). Food does not go down by
+itself: what you do tires you (constants.TIRES: walking a little, sprinting three times that, a swing, a blow taken,
+digging, and most of all healing), and each time tiredness reaches 4 a point of saturation goes, or of food when
+there is none left. Saturation is food in reserve, unseen: eating gives both, good food more of it.
+With nine pieces of food or more you heal, half a heart every 4 s; with the bar full and saturation left, every half
+second. With three pieces or fewer you cannot sprint. With none, half a heart goes every 4 s.
+"""
 
 from .. import tiles as T
-from .constants import CAN_SIZE, EAT_SECONDS, PICNIC, sec
+from .constants import (
+    CAN_SIZE,
+    EAT_SECONDS,
+    FAST_HEAL_EVERY,
+    FOOD_MAX,
+    HEAL_EVERY,
+    HEAL_FOOD,
+    HP_MAX,
+    PICNIC,
+    STARVE_EVERY,
+    TIRED_MAX,
+    TIRES,
+    sec,
+)
 from .entities import ActionError
 
 
 class Needs:
-    """Simulation mixin: hunger (the one need): eating; beds (where you wake up); watering crops."""
+    """Simulation mixin: health and food; eating; beds (where you wake up); watering crops."""
+
+    def tire(self, a, what: str, n: float = 1):
+        """Something that tires (constants.TIRES), n times: at 4, a point of saturation goes, or of food."""
+        a.tired += TIRES[what] * n
+        while a.tired >= TIRED_MAX:
+            a.tired -= TIRED_MAX
+            if a.sat > 0:
+                a.sat = max(0.0, a.sat - 1)
+            elif a.hunger > 0:
+                a.hunger -= 1
 
     def step_needs(self):
         t = self.tick
         for a in self.agents.values():
             if not a.online:
                 continue
-            if t % sec(10) == 0 and a.hunger > 0:
-                a.hunger -= 1
-            if t % sec(5) == 0:
-                if a.hunger == 0:
-                    self.damage(a, 1, "starvation")
-                elif a.hunger > 40 and a.hp < 100:
-                    a.hp += 1
+            if 0 < a.hp < HP_MAX:
+                if a.hunger >= FOOD_MAX and a.sat >= TIRES["heal"] / TIRED_MAX and t % FAST_HEAL_EVERY == 0:
+                    a.hp = min(HP_MAX, a.hp + 1)              # (the reserve pays for it: a point and a half each time)
+                    self.tire(a, "heal")
+                elif a.hunger >= HEAL_FOOD and t % HEAL_EVERY == 0:
+                    a.hp = min(HP_MAX, a.hp + 1)
+                    self.tire(a, "heal")
+            if a.hunger <= 0 and t % STARVE_EVERY == 0:
+                self.damage(a, 1, "starvation")
             if (a.x, a.y) in self.fires and t % sec(1) == 0:
-                self.damage(a, 3, "fire")
+                self.damage(a, 1, "fire")
 
     def _tool_eat(self, a, args):
         item = str(args.get("item", ""))
@@ -29,7 +62,7 @@ class Needs:
             raise ActionError("not_food", f"food: {', '.join(T.FOOD)}")
         if not a.count(item):
             raise ActionError("missing_item", f"you have no {item}")
-        if a.hunger >= 100:
+        if a.hunger >= FOOD_MAX:
             raise ActionError("full", "you're full")
         yield from self.wait(a, EAT_SECONDS)       # a proper bite, with the hands (constants.ASIDE): walking goes on, doing something else stops it
         if not a.count(item):
@@ -37,7 +70,9 @@ class Needs:
         a.add(item, -1)
         here = self.resolve(a.x, a.y)
         picnic = self.world.block(*here) == "picnic_blanket"
-        a.hunger = min(100, a.hunger + int(T.FOOD[item] * (PICNIC if picnic else 1)))
+        gain = int(T.FOOD[item] * (PICNIC if picnic else 1))
+        a.hunger = min(FOOD_MAX, a.hunger + gain)
+        a.sat = min(float(a.hunger), a.sat + gain * 2 * T.RICH.get(item, T.PLAIN))     # (never more in reserve than on the bar)
         if picnic:
             self.emit("picnic", a.x, a.y, name=a.name)
         return {"picnic": picnic} if picnic else {}
@@ -48,7 +83,7 @@ class Needs:
         if self.world.block(x, y) != "bed":
             raise ActionError("no_bed", f"{args.get('dir')} is {self.describe(x, y)}, not a bed")
         yield from self.wait(a, 1)
-        a.hp = min(100, a.hp + 10)
+        a.hp = min(HP_MAX, a.hp + 2)
         a.spawn = [x, y]
         return {"spawn": [x, y]}
 

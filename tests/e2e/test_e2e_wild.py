@@ -16,21 +16,21 @@ def shot(game, name):
 
 def test_the_tusker_warns_charges_and_hurts_if_you_stay(game):
     game.clear_area(8)
-    game.rpc("dev_needs", hp=100, hunger=100)
+    game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     game.spawn("tusker", 4, 0)
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'tusker' && q.e.act === 'windup')", 3000)
     e = kind(game, "tusker")
     assert e["dir"] == [-1, 0]                                 # pawing the ground, facing us
     shot(game, "tusker_windup")
     game.sleep(2200)
-    assert game.server()["hp"] < 100                           # we stood in its line
+    assert game.server()["hp"] < 20                           # we stood in its line
     shot(game, "tusker_after")
     assert not game.errors
 
 
 def test_the_pincer_and_the_strawman_are_drawn_in_every_direction(game):
     game.clear_area(8)
-    game.rpc("dev_needs", hp=100, hunger=100)
+    game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     game.spawn("pincer", 3, 1, still=10 ** 6)
     game.spawn("strawman", -3, 0, still=10 ** 6)
     game.spawn("tusker", 0, -6, still=10 ** 6)
@@ -51,7 +51,7 @@ def test_the_pincer_and_the_strawman_are_drawn_in_every_direction(game):
 
 def test_the_wisp_and_the_wyrm_are_in_the_game(game):
     game.clear_area(8)
-    game.rpc("dev_needs", hp=100, hunger=100)
+    game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     game.stamp(2, -2, ["=====", "=====", "=====", "=====", "====="])      # a pool of deep water to the east
     game.spawn("wyrm", 4, 0)
     game.spawn("wisp", -3, -2, still=10 ** 6)
@@ -60,7 +60,7 @@ def test_the_wisp_and_the_wyrm_are_in_the_game(game):
     shot(game, "wisp_wyrm")
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'wyrm' && q.e.act === 'windup')", 8000)   # it lines up on us and rears
     game.sleep(1500)
-    assert game.server()["hp"] < 100                           # we stood on the shore, on its line
+    assert game.server()["hp"] < 20                           # we stood on the shore, on its line
     shot(game, "wyrm_lunge")
     assert not game.errors
 
@@ -71,12 +71,12 @@ def test_a_creature_comes_up_a_step_as_you_do(game):
     game.clear_area(10)
     game.stamp(-1, -1, ["..."] * 3, levels=["111"] * 3)          # you, on ground a layer up
     game.sleep(500)
-    game.rpc("dev_needs", hp=100, hunger=100)
+    game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     boar = game.spawn("tusker", 4, 0)                            # (it sees four tiles)
     game.wait(f"[...ents.values()].some((q) => q.e && q.e.id === {boar} && q.e.z === 1)", 6000)   # it charged, up the step
     assert game.js(f"(() => {{ const q = ents.get('tusker{boar}'); return liftOf(q) > 0; }})()")        # ...and is drawn up there
     game.sleep(600)
-    assert game.server()["hp"] < 100
+    assert game.server()["hp"] < 20
     assert not game.errors
 
 

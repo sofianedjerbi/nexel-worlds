@@ -2,7 +2,7 @@
 
 from .. import tiles as T
 from ..tiles import DIRS
-from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, SHOUT_R, sec
+from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, FOOD_MAX, HP_MAX, OLD_SCALE, SAT_START, SHOUT_R, sec
 from .entities import ActionError, Agent, Creature, roll_drops
 from .progress import XP_KILL
 
@@ -50,8 +50,9 @@ class Combat:
         if not self.near(a, t.x, t.y, reach, self.height(t)) or t.hp <= 0:
             raise ActionError("missed", "target moved away")
         a.swing_ready = self.tick + sec(ATTACK_COOLDOWN)
-        dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)
-        dmg = self.shell(t, dmg) if isinstance(t, Creature) else self.guarded(t, dmg)     # Old Mossback's shell (boss.py), or armor (wear.py)
+        dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)                 # (what it takes from a creature; from a person, in half hearts, a fifth of it)
+        dmg = self.shell(t, dmg) if isinstance(t, Creature) else self.guarded(t, max(0.5, round(dmg / OLD_SCALE * 2) / 2))     # Old Mossback's shell (boss.py), or armor (wear.py)
+        self.tire(a, "attack")
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"
         self.emit("attack", a.x, a.y, attacker=a.name, target=name, damage=dmg, weapon=weapon or "fists")
         a.bump("attacks")
@@ -64,8 +65,10 @@ class Combat:
         killed = t.deaths > before if isinstance(t, Agent) else t.id not in self.creatures
         return {"target": name, "damage": dmg, "target_hp": 0 if killed else t.hp, "killed": killed}
 
-    def damage(self, target, n: int, cause: str, by: Agent | None = None):
+    def damage(self, target, n: float, cause: str, by: Agent | None = None):
         target.hp -= n
+        if isinstance(target, Agent):
+            self.tire(target, "hurt")
         if target.hp <= 0:
             if isinstance(target, Agent):
                 self.kill_agent(target, cause, by)
@@ -97,7 +100,7 @@ class Combat:
         else:
             a.spawn = None
             a.x, a.y = self.find_spawn(a.id * 31 + a.deaths)
-        a.hp, a.hunger = 100, 70
+        a.hp, a.hunger, a.sat, a.tired = HP_MAX, FOOD_MAX, SAT_START, 0.0
         a.events.append({"tick": self.tick, "type": "respawn", "cause": cause,
                          "by": by.name if by else None, "x": a.x, "y": a.y})
 

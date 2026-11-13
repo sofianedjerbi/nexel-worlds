@@ -5,7 +5,7 @@ from test_e2e_wild import kind, shot
 
 def test_old_mossback_sleeps_wakes_and_fights(game):
     game.clear_area(10)
-    game.rpc("dev_needs", hp=100, hunger=100)
+    game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     game.spawn("mossback", 4, 0)
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'mossback' && q.e.act === 'sleep')", 25000)   # (its first step may be a while coming: it lives once the land round it is loaded, a chunk every other tick)
     boss = kind(game, "mossback")
@@ -15,7 +15,7 @@ def test_old_mossback_sleeps_wakes_and_fights(game):
       return out; })()""")
     assert drawn == {"mossback": True, "sporeling": True}
     shot(game, "boss_asleep")
-    assert game.server()["hp"] == 100                          # asleep, it hurts nobody
+    assert game.server()["hp"] == 20                          # asleep, it hurts nobody
     game.act("attack", target=boss["id"])
     game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'mossback' && q.e.act !== 'sleep')", 4000)
     shot(game, "boss_awake")
@@ -23,5 +23,5 @@ def test_old_mossback_sleeps_wakes_and_fights(game):
     shot(game, "boss_warning")
     game.sleep(3500)
     shot(game, "boss_after")
-    assert game.server()["hp"] < 100 or kind(game, "sporeling")      # we stood there: it hit us, or shook its brood loose
+    assert game.server()["hp"] < 20 or kind(game, "sporeling")      # we stood there: it hit us, or shook its brood loose
     assert not game.errors

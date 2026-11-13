@@ -145,18 +145,19 @@ def test_a_pit_below_sea_level_is_drawn_like_any_hole(game):
 
 
 def test_walking_off_a_cliff_you_fall_and_a_long_fall_hurts(game):
-    """Off an edge you come down on the ground below, on screen as on the server; 6 layers cost 15 hp."""
+    """Off an edge you come down on the ground below, on screen as on the server; 6 layers cost a heart and a half."""
     game.clear_area(6)
     x, y = game.pos()
     game.stamp(-2, -6, ["....."] * 3, levels=["66666"] * 3)
     game.rpc("dev_teleport", x=x, y=y - 4)                   # up on it (dev_teleport: on top)
     game.sleep(900)
     assert game.server()["z"] == 6 and game.js("myAt.z") == 6
+    game.rpc("dev_needs", hp=20, hunger=17)                    # (not healing by itself)
     hp = game.server()["hp"]
     game.hold(["s"], 420)                                    # off its south edge
     game.sleep(900)
     s = game.server()
-    assert s["z"] == 0 and hp - 15 <= s["hp"] <= hp - 12 and (s["x"], s["y"]) == game.pos() and s["y"] >= y - 3
+    assert s["z"] == 0 and s["hp"] == hp - 3 and (s["x"], s["y"]) == game.pos() and s["y"] >= y - 3
     assert game.js("myAt.z") == 0 and game.js("liftOf(ents.get('agent' + myId))") == 0
 
 

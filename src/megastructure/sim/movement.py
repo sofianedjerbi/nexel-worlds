@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from .constants import FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, VIA_FAR, VIA_MAX, sec
+from .constants import FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRINT_FOOD, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
 
@@ -53,6 +53,10 @@ class Movement:
             a.sailing = False
             self.emit("moor", a.x, a.y, name=a.name)
         climb = -self.step_onto(a, x, y)             # (Bodies: where you land there)
+        if not a.sailing:                            # a tile on foot tires a little, at a sprint more, a jump up more still (needs.py)
+            self.tire(a, "swim" if self.swimming(a) else "sprint" if a.action and self.sprints(a, a.action.args) else "walk")
+            if climb > 0:
+                self.tire(a, "jump")
         if climb and a.ready > self.tick:            # a jump up is hard going, a drop a little careful
             a.ready += round((a.ready - self.tick) * (SLOPE_UP if climb > 0 else SLOPE_DOWN))
         self.arrive(a)
@@ -76,7 +80,11 @@ class Movement:
             return 0.15
         if self.swimming(a):
             return 0.2
-        return 0.1 if args.get("run") else 0.2
+        return 0.1 if self.sprints(a, args) else 0.2
+
+    def sprints(self, a: Agent, args) -> bool:
+        """Asked to run, and fed enough for it (three pieces of food or fewer: no sprinting)."""
+        return bool(args.get("run")) and a.hunger > SPRINT_FOOD
 
     def pace(self, a: Agent, args):
         """Step first, then cool down: wait only until the previous stride is over, then claim this one.

@@ -123,8 +123,8 @@ def test_picnic_and_basket(world):
     a.add("picnic_blanket", 1)
     run(sim, a, "place", {"dir": "N", "item": "picnic_blanket"})
     a.y -= 2                                              # sit on the back row (a part tile)
-    a.hunger, a.inventory["bread"] = 10, 1
-    assert run(sim, a, "eat", {"item": "bread"})["picnic"] and a.hunger == 10 + 75     # bread 50, x1.5 on a blanket
+    a.hunger, a.inventory["bread"] = 2, 1
+    assert run(sim, a, "eat", {"item": "bread"})["picnic"] and a.hunger == 2 + 15      # bread 10, x1.5 on a blanket
     a.y += 2
     a.add("basket", 1); a.add("fiber", 2)
     run(sim, a, "place", {"dir": "S", "item": "basket"})

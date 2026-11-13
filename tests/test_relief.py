@@ -123,7 +123,7 @@ def test_you_walk_on_a_cave_or_in_under_it(world):
     assert run(sim, a, "step", {"dir": "S"})["ok"] and sim.height(a) == 2 and not sim.in_cave(a)  # up onto the hill, over it
     assert run(sim, a, "step", {"dir": "E"})["ok"] and sim.height(a) == 2                         # along it
     assert run(sim, a, "step", {"dir": "E"})["ok"] and run(sim, a, "step", {"dir": "E"})["ok"]    # and off its end
-    assert sim.height(a) == 0 and a.hp == 100
+    assert sim.height(a) == 0 and a.hp == 20
 
 
 def test_you_fall_off_an_edge_and_a_long_fall_hurts(world):
@@ -135,18 +135,18 @@ def test_you_fall_off_an_edge_and_a_long_fall_hurts(world):
     plateau(sim, a, h=3)
     a.x, a.y, a.z = x, y - 2, 3                              # on its south edge
     r = run(sim, a, "step", {"dir": "S"})
-    assert r["ok"] and sim.height(a) == 0 and a.hp == 100 and "fell" not in r      # 3 layers: nothing
+    assert r["ok"] and sim.height(a) == 0 and a.hp == 20 and "fell" not in r      # 3 layers: nothing
     a.x, a.y = x, y
     plateau(sim, a, h=6)
     a.x, a.y, a.z = x, y - 2, 6
     r = run(sim, a, "walk", {"dir": "S"})
-    assert r["ok"] and r["stopped"] == "fell" and r["fell"] == 6 and r["damage"] == 15 and a.hp == 85
+    assert r["ok"] and r["stopped"] == "fell" and r["fell"] == 6 and r["damage"] == 3 and a.hp == 17
     assert (a.x, a.y) == (x, y - 1) and sim.height(a) == 0
     a.x, a.y, a.z = x, y - 2, 6
     r = run(sim, a, "move_to", {"x": x, "y": y})             # a way down that doesn't hurt: there is none
-    assert not r["ok"] and (a.x, a.y) == (x, y - 2) and a.hp == 85
+    assert not r["ok"] and (a.x, a.y) == (x, y - 2) and a.hp == 17
     assert run(sim, a, "move_to", {"x": x, "y": y - 4})["ok"] and run(sim, a, "move_to", {"x": x, "y": y - 2})["ok"]   # (along the top: fine)
-    assert run(sim, a, "move_to", {"x": x, "y": y - 1})["ok"] and a.hp == 70       # the one step, asked for
+    assert run(sim, a, "move_to", {"x": x, "y": y - 1})["ok"] and a.hp == 14       # the one step, asked for
 
 
 def test_digging_down_into_a_hollow_drops_you_in(world):
@@ -156,7 +156,7 @@ def test_digging_down_into_a_hollow_drops_you_in(world):
     a.z = 0
     a.add("pickaxe")
     r = run(sim, a, "dig_down", {"with": "pickaxe"})
-    assert r["ok"] and sim.height(a) == -6 and r["fell"] == 6 and a.hp == 85
+    assert r["ok"] and sim.height(a) == -6 and r["fell"] == 6 and a.hp == 17
 
 
 def test_the_land_is_cells_and_is_saved_as_cells(world):

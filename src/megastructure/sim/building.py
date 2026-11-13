@@ -90,6 +90,8 @@ class Building:
         for k, n in drops.items():
             a.add(k, n)
         self.gain_xp(a, XP_DIG.get(block.name, 0), x, y)
+        if block.hardness > 3:                       # (work: not a flower picked in passing)
+            self.tire(a, "dig")
         if block.name in T.PICKED:
             # picking takes the fruit or berries; the plant stays, bare, and bears again later
             bare, seconds = T.PICKED[block.name]

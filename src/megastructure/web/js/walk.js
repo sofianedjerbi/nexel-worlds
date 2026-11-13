@@ -17,7 +17,7 @@ function mark(x, y) { const n = ++trailN; trail.push({x, y, n}); return [x, y, n
 // Held keys (or the stick): one message when the direction or sprint changes, one when you let go.
 function syncWalk() {
   const k = [...keys].reverse().find((k) => KEYDIR[k]);
-  const want = k && me ? {dir: KEYDIR[k], run: runKey} : null;
+  const want = k && me ? {dir: KEYDIR[k], run: sprinting()} : null;
   if (want && walking && want.dir === walking.dir && want.run === walking.run) return;
   if (!want && !walking) return;
   const prev = walking, p = ents.get("agent" + myId), now = performance.now();

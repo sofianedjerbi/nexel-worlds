@@ -96,7 +96,7 @@ def test_you_eat_while_you_walk(world):
     (It replaced the walk: you stood still for every bite.) Nothing else is done meanwhile: a punch, a dig, another
     bite are refused until it is eaten (they stopped the meal, and a player could chop with his mouth full); talking is."""
     sim, a = world
-    a.hunger = 40
+    a.hunger = 8
     a.add("berries", 3)
     walk = sim.submit(a, "walk", {"dir": "E"})
     for _ in range(3):
@@ -106,7 +106,7 @@ def test_you_eat_while_you_walk(world):
     assert a.action is walk and a.aside is eat                              # both at once
     for _ in range(12):
         sim.step()
-    assert eat.result["ok"] and a.hunger > 40 and a.count("berries") == 2   # eaten...
+    assert eat.result["ok"] and a.hunger == 10 and a.count("berries") == 2   # eaten...
     assert a.action is walk and walk.result is None and a.x >= x + 4       # ...and still walking, at its pace
     eat = sim.submit(a, "eat", {"item": "berries"})                         # the other way round: eating, then setting off
     sim.submit(a, "stop", {})
