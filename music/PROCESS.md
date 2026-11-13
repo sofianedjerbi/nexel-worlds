@@ -288,3 +288,14 @@ richer, I had also given every bar of the tune a different shape.
 - Paper boats (the waltz) is removed: same fault.
 - Rule for every later tune: rich harmony below, ONE repeated cell above. Plain harmony plus a simple tune was
   "naive, generic"; a tune that changes shape was "going anywhere".
+
+## Side street, eight ways (2026-11-13)
+
+The user on the one-cell version of Side street: "good. now make it cuter or sweeter, animal-crossing feeling or
+minecraft feeling. many propositions". First "good" since the C418 round.
+- `music/pieces.py` now renders one score in a manner given by a dict (tempo, swing, drums full / light / bossa /
+  brush / none, bass walk / bounce / long, chords comp / stab / hold, sounds). Lead cell and chords never change.
+- Nine files: the reference, Cuter 1 and 2, Sweeter 1 and 2, Animal Crossing feeling 1 (day: swing, congas, clicks,
+  no kit) and 2 (evening: kalimba over electric piano, brushes), Minecraft feeling 1 and 2 (slow, no drums, pads).
+  Four render at a time (about 3 minutes for all).
+- Not judged by ear. Unknown to me: how the kalimba, Moon Piano, Cute and conga sounds really sound.
