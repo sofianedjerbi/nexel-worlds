@@ -260,3 +260,19 @@ xt and more design."
 Sources: https://surge-synthesizer.github.io/manual-xt/ ; https://www.kvraudio.com/forum/viewtopic.php?p=8899142 ;
 https://www.rogerlinndesign.com/support/ls-surge ; https://www.musicradar.com/tuition/tech/how-to-humanise-your-music-in-a-daw-632072 ;
 https://unison.audio/how-to-humanize-midi/
+
+## Richer writing (2026-11-13)
+
+The user on bright.py: "instruments are a bit better but it still sounds too naive, too.. generic."
+My reading: the sounds are now acceptable enough that the writing shows. bright.py used G, D, Em, C (the commonest
+loop there is), a pentatonic tune landing only on chord notes, and one bar shape repeated.
+
+- `music/pieces.py`: two pieces on the Bright A sounds.
+  Side street: 4/4, 96 BPM, F major; Fmaj9, Em7b5-A7b9, Dm9, Cm7-F13, Bbmaj9, Bbm6, Am7-D9, Gm9-C13; rootless
+  voicings moving by step; the tune uses C#, Eb, Db, F# as those chords bring them, starts off the beat, bars of a
+  phrase differ; the bass enters each root from a semitone below; comping changes bar to bar.
+  Paper boats: a waltz, 132 BPM, D major; E over D (Lydian), F#7 and B7 (borrowed dominants), Gm6 (minor iv); long
+  tune notes on colour notes (G#, A#, D#); second time through a pluck doubles the tune an octave up.
+- A check refuses tune notes a minor ninth above any note of their chord (several were caught and fixed by thinning
+  voicings). This is the old "wrong notes" guard, needed again because the harmony is chromatic.
+- Not judged by ear.

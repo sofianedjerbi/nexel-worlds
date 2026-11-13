@@ -53,8 +53,8 @@ def music_page(out: Path):
         (out / "music.html").unlink()
         return print("no music page: render the music first (music/render_all.py, then music/quality.py)")
     (out / "music").mkdir()
-    wavs += sorted(src.glob("dir_*.wav")) + sorted(src.glob("bright_*.wav"))      # music/directions.py, music/bright.py: pieces on Surge XT
-    for name in ("directions.json", "bright.json"):
+    wavs += sorted(src.glob("dir_*.wav")) + sorted(src.glob("bright_*.wav")) + sorted(src.glob("piece_*.wav"))      # directions.py, bright.py, pieces.py: on Surge XT
+    for name in ("directions.json", "bright.json", "pieces.json"):
         if (src / name).exists():
             shutil.copy(src / name, out / "music" / name)
     for name in ("days.json", "quality.json"):
