@@ -145,8 +145,14 @@
     </div>
   </section>
 
+  <section class="card" id="brightcard">
+    <h2>Newest: bright plucks, one piece on three palettes <small>music/bright.py on Surge XT</small></h2>
+    <div class="notes"><div>The direction you found better (bright plucks), designed further: one piece of about a minute with a form (intro, A, B, A), fills, a second sound answering the tune, a bass audible on small speakers, and the band ducking under the kick. The same piece on three sets of Surge XT sounds, so the sounds and the writing can be judged apart.</div></div>
+    <div id="bright"></div>
+  </section>
+
   <section class="card" id="dirscard">
-    <h2>New: five directions, about 20 s each <small>music/directions.py on Surge XT (music/surge.py)</small></h2>
+    <h2>Earlier: five directions, about 20 s each <small>music/directions.py on Surge XT (music/surge.py)</small></h2>
     <div class="notes"><div>New approach: the music is still written in Python, but played on Surge XT, a real synthesizer, with sounds made by sound designers. Five short loops in five different directions (rhythm, sounds and tone all differ). Which direction, if any, is worth continuing?</div></div>
     <div id="dirs"></div>
   </section>
@@ -424,6 +430,15 @@ function showAudit(q, box) {
     `<div class="rule">${dot(true)}<span>${k}</span><em>gone in ${r.rt60_s} s · starts ${r.predelay_ms} ms after the note · kept to ${r.return} · level: ${Object.entries(r.level_db).map(([a, b]) => `${a} ${b}${b === "dry" ? "" : " dB"}`).join(", ")}</em></div>`).join("") + `</details>`;
   box.innerHTML = h;
 }
+fetch("audio/bright.json").then((r) => r.json()).then((ds) => {
+  for (const d of ds) {
+    const row = document.createElement("div");
+    row.style.marginTop = "10px";
+    row.innerHTML = `<b>${d.title}</b> <small>${d.bpm} BPM<br>${d.sounds}</small><br><audio controls loop preload="none" src="audio/bright_${d.id}.wav" style="width:100%;margin-top:4px"></audio>`;
+    $("bright").appendChild(row);
+  }
+});
+document.addEventListener("play", (e) => document.querySelectorAll("#brightcard audio, #dirscard audio").forEach((a) => a !== e.target && a.pause()), true);
 fetch("audio/directions.json").then((r) => r.json()).then((ds) => {
   for (const d of ds) {
     const row = document.createElement("div");

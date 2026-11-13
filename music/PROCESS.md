@@ -241,3 +241,22 @@ programming... use tools". They want everything rethought: "the rhythm, the soun
 - Dead ends this evening: a local text-to-music model (stopped at the user's word, deleted); a local audio-quality
   model as a stand-in for ears (it rated the hated tracks 7 to 8 out of 10: useless).
 - Not judged by ear.
+
+## Bright plucks, designed further (2026-11-13)
+
+The user on the five directions: "Dream plucks is better but it isn't ... worth continuing. do more research on surge
+xt and more design."
+
+- Research: every Surge XT control is reachable from Python by name (2855 parameters: macros, filters, envelopes, the
+  16 effect slots), so sounds can be adjusted and automated, not only picked. The sound they found better (Nick
+  Moritz's Dream Plucks) carries its designer's own reverb, EQ, delay and drive. On programmed music sounding
+  programmed: one velocity, one note length and exact timing are the giveaways; fix with accents by position, varied
+  lengths, small timing offsets, automation, and room for the lead.
+- `music/bright.py`: one 24-bar piece (intro, A, B, A) at 104 BPM in G, with fills, an answering second sound, bass
+  an octave higher (audible on small speakers), sidechain ducking under the kick; rendered on three palettes
+  (Dream, Cute, Sweets) to separate the sounds from the writing. About 10 minutes to render (33 synth parts).
+- Not judged by ear.
+
+Sources: https://surge-synthesizer.github.io/manual-xt/ ; https://www.kvraudio.com/forum/viewtopic.php?p=8899142 ;
+https://www.rogerlinndesign.com/support/ls-surge ; https://www.musicradar.com/tuition/tech/how-to-humanise-your-music-in-a-daw-632072 ;
+https://unison.audio/how-to-humanize-midi/
