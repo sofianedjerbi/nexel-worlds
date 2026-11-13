@@ -6,7 +6,7 @@ Sources of truth:
   music/sfx.py         every sound's generator, category and level
   music/sfx_map.json   which sound an item makes when placed ("place") and a ground when laid ("ground")
 Output (not committed: rebuild after changing either source):
-  audio/<name>_<variant>.wav   16-bit stereo, 32 kHz
+  audio/<name>_<variant>.flac  16-bit stereo, 32 kHz, lossless (a third of the same samples as wav: 5 MB to fetch, not 15)
   audio/music_NNN.flac         the background loop, from music/site/audio/master.wav (render it with music/compose.py),
                                in pieces of SEG seconds, lossless: the player streams them (audio.js) instead of
                                fetching 37 MB and holding all of it decoded (75 MB and more)
@@ -128,6 +128,7 @@ def build_music(out: Path, src: Path = None, name: str = "music") -> dict | None
 
 
 def build(out: Path = OUT) -> dict:
+    import soundfile
     blocks, grounds = place_maps(sound_names())       # fail before the slow part
     sfx = load_sfx()
     out.mkdir(parents=True, exist_ok=True)
@@ -138,14 +139,14 @@ def build(out: Path = OUT) -> dict:
         m = sfx.META[name]
         files = []
         for v in range(m["variants"]):
-            f = f"{name}_{v}.wav"
-            write_wav(out / f, resample(sfx.render(name, v), sfx.SR, RATE), RATE)
+            f = f"{name}_{v}.flac"
+            soundfile.write(str(out / f), pcm16(resample(sfx.render(name, v), sfx.SR, RATE)), RATE, format="FLAC", subtype="PCM_16")
             files.append(f)
         sounds[name] = {"files": files, "category": m["cat"], "pitch": bool(m["vary"])}   # tuned sounds are never re-pitched
     manifest = {"version": version(), "rate": RATE, "sounds": sounds, "place": blocks, "ground": grounds,
                 "music": build_music(out), "boss": build_music(out, BOSS, "boss")}
     (out / "sfx.json").write_text(json.dumps(manifest, indent=1))
-    size = sum(f.stat().st_size for f in out.glob("*.wav")) / 1e6
+    size = sum((out / f).stat().st_size for s in sounds.values() for f in s["files"]) / 1e6
     music = f", music {sum(f.stat().st_size for f in out.glob('music_*.flac')) / 1e6:.0f} MB in {len(manifest['music']['files'])} pieces" if manifest["music"] else ""
     print(f"built {out.relative_to(ROOT)}: {len(sounds)} sounds, {sum(len(s['files']) for s in sounds.values())} files, {size:.1f} MB{music}")
     return manifest

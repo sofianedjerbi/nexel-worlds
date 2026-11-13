@@ -177,6 +177,7 @@
   body.touch #actions, body.touch #help, body.touch #helpbtn { display:none !important; }
   body.touch #hud { transform-origin:bottom center; bottom:calc(8px + env(safe-area-inset-bottom)); }
   body.touch #goals { transform:scale(.8); transform-origin:top left; }
+  body.touch #xyz { top:calc(62px + env(safe-area-inset-top)) !important; font-size:12px !important; }  /* (/coords, /perf: under the buttons at the top) */
   @media (max-width:600px) { body.touch #side { display:none; } }
   body.touch #vitals { min-width:max-content; gap:10px; } body.touch #hud .hudrow { justify-content:center; }
   body.touch #chatbox { width:min(460px, 60vw); bottom:calc(var(--tbot, 12px) + 150px); }

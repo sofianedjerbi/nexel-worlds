@@ -50,7 +50,8 @@ async function refresh() {
   }
   $("mode").textContent = `${s.name} · ${s.x}, ${s.y}${s.sheltered ? " · sheltered" : ""}`;
   drawVitals(s);
-  drawHotbar(s.inventory); drawRecipes(); drawGoals();
+  drawHotbar(s.inventory); drawGoals();
+  if ($("craft").style.display === "block") drawRecipes();   // (shut, it is not kept up to date: every step you take changes what is near)
 }
 setInterval(refresh, 700);
 let myAction = null, pendingAct = null;   // myAction is set only once the server confirms the action started

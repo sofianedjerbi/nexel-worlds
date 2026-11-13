@@ -152,7 +152,27 @@ def test_coords_and_grid_are_typed_in_the_chat_line(game):
     assert game.js("DEBUG.grid") and game.js(lines) > 100      # a tile, an outline
     say("/grid")
     assert game.js(lines) == 0
+    say("/perf")                                               # what the last second cost
+    game.sleep(1300)
+    text = game.js("$('xyz').textContent")
+    assert " fps" in text and "script " in text and "ticks " in text and "world " in text and "blocks" in text, text
+    say("/perf")
+    game.sleep(100)
+    assert game.js("$('xyz').textContent") == ""
     game.stamp(0, -1, ["f"])
     say("/dig dir=N")                                          # (not one of ours: sent to the server)
     game.sleep(400)
     assert game.inv("flower") == 1 and not game.errors
+
+
+def test_the_crafting_list_is_not_made_again_while_it_is_shut(game):
+    """It was built again, every card of it, each time what is near you changed: every step you took."""
+    made = "$('recipes').dataset.sig"
+    before = game.js(made)
+    game.give(wood=10)                                         # (enough for a workbench)
+    game.press("d", 600)
+    game.sleep(900)
+    assert game.js(made) == before and game.js("$('craft').style.display") != "block"
+    game.press("c", 300)                                       # opened: it is up to date
+    assert game.js(made) != before
+    assert "workbench" in game.js("[...document.querySelectorAll('.rcard')].filter((c) => c.querySelector('.ok')).map((c) => c.dataset.name)")

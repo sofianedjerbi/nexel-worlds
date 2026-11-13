@@ -38,7 +38,7 @@ function wavePattern() {                           // small waves, tileable: a s
   }
   return ctx.createPattern(c, "repeat");
 }
-function bedTile(g, x, y, u, ox, oy, under) {      // one tile of the bottom
+function bedTile(g, x, y, u, ox, oy, under, land) {   // one tile of the bottom
   const d = Math.abs(u), h = (k) => hash(x, y, k);
   g.fillStyle = WATER.sand[u < 0 ? 0 : d];
   g.fillRect(ox, oy, 16, 16);
@@ -78,46 +78,61 @@ function bedTile(g, x, y, u, ox, oy, under) {      // one tile of the bottom
   if (up(-1, 0)) { shade(.26, ox, oy, 1, 16); shade(.12, ox + 1, oy, 2, 16); }
   if (up(1, 0)) { shade(.26, ox + 15, oy, 1, 16); shade(.12, ox + 13, oy, 2, 16); }
   if (up(0, 1)) { g.fillStyle = "rgba(255,255,255,.16)"; g.fillRect(ox, oy + 15, 16, 1); }
-  if (isLand(gndAt(x, y - 1))) { shade(.26, ox, oy, 16, 3); shade(.12, ox, oy + 3, 16, 3); }     // the bank's shadow on the bottom
-  if (isLand(gndAt(x - 1, y))) shade(.14, ox, oy, 3, 16);
+  if (land(x, y - 1)) { shade(.26, ox, oy, 16, 3); shade(.12, ox, oy + 3, 16, 3); }     // the bank's shadow on the bottom
+  if (land(x - 1, y)) shade(.14, ox, oy, 3, 16);
 }
-function waterLayer(b) {
-  if (b.water && b.water.ver === b.ver) return b.water;
-  const n = B * 16, x0 = b.bx * B, y0 = b.by * B, foam = [], glints = [], rows = new Array(B).fill(false);
+// What a block's water is made of, and nothing else: for its tiles and the two round them, the depth drawn there (a
+// land tile by the water has shallows under its edge: -1) and whether it is land.
+function waterStuff(b) {
+  const m = B + 6, n = B + 4, x0 = b.bx * B - 3, y0 = b.by * B - 3, dep = new Int8Array(m * m), isL = new Uint8Array(m * m);
+  for (let j = 0; j < m; j++) for (let i = 0; i < m; i++) { const g = gndAt(x0 + i, y0 + j); dep[j * m + i] = DEPTH_OF[g] || 0; isL[j * m + i] = isLand(g) ? 1 : 0; }
+  const un = new Int8Array(n * n), land = new Uint8Array(n * n);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const q = (j + 1) * m + i + 1; let u = dep[q];
+    for (let d = 0; d < 9 && !u; d++) if (dep[q + ((d / 3 | 0) - 1) * m + d % 3 - 1]) u = -1;
+    un[j * n + i] = u; land[j * n + i] = isL[q];
+  }
+  return {un, land};
+}
+// The still parts of a block's water (b.water): made as the last steps of building the block (relief.js: a block shows
+// once its land and its water are both there; one made again keeps what it had until then), and only when what it
+// is made of changed: its tiles drawn again the same, a block arriving beside it with no water near, leave it be.
+function* waterSteps(b) {
+  const {un, land} = waterStuff(b), old = b.water, same = (p, q) => p.every((v, i) => v === q[i]);
+  if (old && same(old.un, un) && same(old.land, land)) return;
+  const n = B * 16, m = B + 4, x0 = b.bx * B, y0 = b.by * B, foam = [], glints = [], rows = new Array(B).fill(false);
   const box = [B, B, -1, -1];                                       // the tiles of the block with water (or shallows): x0, y0, x1, y1
-  const old = b.water || {}, c = old.canvas || document.createElement("canvas"), bed = old.bed || document.createElement("canvas");
+  const under = (x, y) => un[(y - y0 + 2) * m + x - x0 + 2], isL = (x, y) => land[(y - y0 + 2) * m + x - x0 + 2] === 1;
+  let any = false;
+  for (let ly = 0; ly < B && !any; ly++) for (let lx = 0; lx < B; lx++) if (under(x0 + lx, y0 + ly)) { any = true; break; }
+  if (!any) { b.water = {un, land, any, foam, glints, rows, box: [0, 0, 0, 0]}; return; }
+  const c = document.createElement("canvas"), bed = document.createElement("canvas");
   c.width = c.height = n; bed.width = bed.height = n + 32;          // (the bottom has a tile of margin: it slides when it wobbles)
   const g = c.getContext("2d"), bg = bed.getContext("2d");
-  let any = false;
-  const under = (x, y) => {                        // the depth drawn at a tile: a land tile by the water has shallows under its edge
-    const d = depthAt(x, y);
-    if (d) return d;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (depthAt(x + dx, y + dy)) return -1;
-    return 0;
-  };
-  for (let ly = -1; ly <= B; ly++) for (let lx = -1; lx <= B; lx++) {
-    const x = x0 + lx, y = y0 + ly, u = under(x, y);
-    if (!u) continue;
-    bedTile(bg, x, y, u, (lx + 1) * 16, (ly + 1) * 16, under);
-    if (lx < 0 || ly < 0 || lx >= B || ly >= B) continue;
-    any = rows[ly] = true;
-    box[0] = Math.min(box[0], lx); box[1] = Math.min(box[1], ly); box[2] = Math.max(box[2], lx); box[3] = Math.max(box[3], ly);
-    if (u < 0) continue;
-    for (const [dx, dy, side] of [[0, -1, 0], [1, 0, 1], [0, 1, 2], [-1, 0, 3]]) if (isLand(gndAt(x + dx, y + dy))) foam.push([lx, ly, side, hash(x, y, 30 + side)]);
-    if (hash(x, y, 20) < .4) glints.push([lx * 16 + Math.floor(hash(x, y, 21) * 14), ly * 16 + 1 + Math.floor(hash(x, y, 22) * 13), hash(x, y, 23)]);
-  }
-  if (any) {                                       // the water over it: one pixel a tile, blown up smooth
-    const s = document.createElement("canvas"); s.width = s.height = B + 2;
-    const sg = s.getContext("2d"), img = sg.createImageData(B + 2, B + 2);
-    for (let j = 0; j < B + 2; j++) for (let i = 0; i < B + 2; i++) {
-      const u = under(x0 + i - 1, y0 + j - 1), [r, gg, bb, a] = WATER.tint[u < 0 ? 0 : u];
-      img.data.set([r, gg, bb, Math.round(255 * a)], (j * (B + 2) + i) * 4);
+  for (let ly = -1; ly <= B; ly++) {
+    for (let lx = -1; lx <= B; lx++) {
+      const x = x0 + lx, y = y0 + ly, u = under(x, y);
+      if (!u) continue;
+      bedTile(bg, x, y, u, (lx + 1) * 16, (ly + 1) * 16, under, isL);
+      if (lx < 0 || ly < 0 || lx >= B || ly >= B) continue;
+      rows[ly] = true;
+      box[0] = Math.min(box[0], lx); box[1] = Math.min(box[1], ly); box[2] = Math.max(box[2], lx); box[3] = Math.max(box[3], ly);
+      if (u < 0) continue;
+      for (const [dx, dy, side] of [[0, -1, 0], [1, 0, 1], [0, 1, 2], [-1, 0, 3]]) if (isL(x + dx, y + dy)) foam.push([lx, ly, side, hash(x, y, 30 + side)]);
+      if (hash(x, y, 20) < .4) glints.push([lx * 16 + Math.floor(hash(x, y, 21) * 14), ly * 16 + 1 + Math.floor(hash(x, y, 22) * 13), hash(x, y, 23)]);
     }
-    sg.putImageData(img, 0, 0);
-    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
-    g.drawImage(s, .5, .5, B + 1, B + 1, -8, -8, n + 16, n + 16);
+    if ((ly & 3) === 3) yield;                                     // (a step every four rows of tiles)
   }
-  return (b.water = {ver: b.ver, canvas: c, bed, any, foam, glints, rows, box: box.map((v, i) => (v + (i > 1)) * 16)});
+  const s = document.createElement("canvas"); s.width = s.height = B + 2;   // the water over it: one pixel a tile, blown up smooth
+  const sg = s.getContext("2d"), img = sg.createImageData(B + 2, B + 2);
+  for (let j = 0; j < B + 2; j++) for (let i = 0; i < B + 2; i++) {
+    const u = under(x0 + i - 1, y0 + j - 1), [r, gg, bb, a] = WATER.tint[u < 0 ? 0 : u];
+    img.data.set([r, gg, bb, Math.round(255 * a)], (j * (B + 2) + i) * 4);
+  }
+  sg.putImageData(img, 0, 0);
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
+  g.drawImage(s, .5, .5, B + 1, B + 1, -8, -8, n + 16, n + 16);
+  b.water = {un, land, canvas: c, bed, any, foam, glints, rows, box: box.map((v, i) => (v + (i > 1)) * 16)};
 }
 // All of it is art pixels (the patterns slide by whole ones), so it is put together small, a pixel an art pixel, on a
 // canvas the size of the view (and only where a block has water), then blown up onto the screen in one go: painting
@@ -134,9 +149,8 @@ function drawWater(vis, ox, oy, t) {
     g.save(); g.translate(mx, my); g.fillStyle = pat; g.fillRect(x - mx, y - my, w, h); g.restore();
   };
   for (const b of vis) {
-    if (!b.canvas || !b.gnd) continue;
-    const w = waterLayer(b), n = B * 16, X = b.bx * n, Y = b.by * n, st = WATER.strip;
-    if (!w.any) continue;
+    const w = b.water, n = B * 16, X = b.bx * n, Y = b.by * n, st = WATER.strip;
+    if (!w || !w.any) continue;
     const x0 = Math.max(X + w.box[0], vx), y0 = Math.max(Y + w.box[1], vy), x1 = Math.min(X + w.box[2], vx + vw), y1 = Math.min(Y + w.box[3], vy + vh);
     if (x1 <= x0 || y1 <= y0) continue;                             // (its water isn't in view)
     if (!g) {

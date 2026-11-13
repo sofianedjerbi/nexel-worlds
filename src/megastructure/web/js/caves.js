@@ -256,7 +256,9 @@ function drawCaves(vis, sx, sy) {
   for (const b of vis) {
     if (!b.col || !b.relief) continue;
     const key = (b.ver || 0) + ":" + caveStamp;
-    if (b.caveKey !== key) { b.caveKey = key; b.caveOv = buildCaveOverlay(b); b.caveBox = b.caveOv && caveBox(b, b.caveOv.width); }
+    if (b.caveKey !== key && (!dirtyTiles.length || b.caveKey === undefined)) {   // (not while its ground is still being drawn again: once, after)
+      b.caveKey = key; b.caveOv = buildCaveOverlay(b); b.caveBox = b.caveOv && caveBox(b, b.caveOv.width);
+    }
     if (!b.caveOv) continue;
     const [cx, cy, cw, ch] = b.caveBox;                  // (only the part of it round its hollow tiles: the rest is empty)
     ctx.drawImage(b.caveOv, cx, cy, cw, ch, sx(b.bx * B) + (cx - OV_M) * zoom, sy(b.by * B) + (cy - OV_M) * zoom, cw * zoom, ch * zoom);

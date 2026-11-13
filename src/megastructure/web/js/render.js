@@ -4,9 +4,11 @@
 //  Frame
 // =====================================================================================
 let lastT = performance.now(), arrivingNow = true;
+const LAND_MS = 3;
 const pileSince = new Map();   // when each pile on the ground was first shown (its hover starts from rest)
 function frame(now) {
   requestAnimationFrame(frame);
+  const began = performance.now();
   const dt = Math.min(.1, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
   for (const p of ents.values()) {
@@ -37,19 +39,23 @@ function frame(now) {
     }
     const k = 1 - Math.pow(.002, dt); cam.x += (camT.x - cam.x) * k; cam.y += (camT.y - cam.y) * k;
   }
-  // bounded work per frame: at most one fresh block, plus incremental tile redraws within ~4 ms
   const [vx, vy, vw, vh0] = viewRect(2), vh = vh0 + 6;   // (+6 rows south: high ground there is drawn up into view)
-  const vis = [];
-  for (let by = Math.floor(vy / B); by <= Math.floor((vy + vh) / B); by++)
-    for (let bx = Math.floor(vx / B); bx <= Math.floor((vx + vw) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) vis.push(b); }
+  const inRect = (x, y, w, h) => { const out = []; for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) out.push(b); } return out; };
+  const vis = inRect(vx, vy, vw, vh);
   setCaveOpen();
-  // a block coming into view: its canvas now, its tiles a few at a time within the frame's budget (below)
+  // Land coming in (a new block's ground, tiles to draw again, raised ground and water: relief.js) is built a little
+  // a frame, all of it within LAND_MS: what is on the screen first, then what is about to be, then the rest of what
+  // was asked for (state.js: six tiles out). More of the frame while something on the screen is still missing, most
+  // of it while you arrive (nothing is shown yet).
   const [qx, qy, qw, qh] = viewRect(0), onScreen = (b) => b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh + 6 && (b.by + 1) * B > qy;
-  const fresh = vis.find((b) => !b.drawn && onScreen(b)) || vis.find((b) => !b.drawn);
-  if (fresh) { if (onScreen(fresh)) renderBlock(fresh); else startBlock(fresh); }   // (on screen: whole, at once)
-  freshThisFrame = !!fresh;                        // (then no relief work this frame: relief.js)
-  const t0 = performance.now();
-  while (dirtyTiles.length && performance.now() - t0 < 4) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
+  const [ax, ay, aw, ah] = viewRect(6), rank = (b) => (onScreen(b) ? 0 : vis.includes(b) ? 1 : 2);
+  const coming = inRect(ax, ay, aw, ah + 6).sort((a, b) => rank(a) - rank(b));
+  const landFrom = performance.now(), landUntil = landFrom + (arrivingNow ? 12 : coming.some((b) => !b.relief && onScreen(b)) ? LAND_MS * 2.5 : LAND_MS);
+  const fresh = coming.find((b) => !b.drawn);
+  if (fresh) { if (arrivingNow && onScreen(fresh)) renderBlock(fresh); else startBlock(fresh); }   // (arriving: whole, at once)
+  for (let n = 0; dirtyTiles.length && (n++ & 15 || performance.now() < landUntil);) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
+  reliefWork(coming, landUntil);
+  const landMs = performance.now() - landFrom;
 
   const S = TS();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -174,6 +180,7 @@ function frame(now) {
     ctx.globalAlpha = 1;
   }
   ctx.textAlign = "start";
+  perfFrame(now, performance.now() - began, landMs);   // (/perf: debug.js)
 }
 // Highlight what an action would hit: a ghost of what gets placed, tinted footprint, and an outline.
 function drawIntent(p, it, sx, sy, S, t, ox, oy) {

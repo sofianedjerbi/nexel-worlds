@@ -88,18 +88,25 @@ function rectLevels(R) {
 const wholeCells = new Map();                          // (a sheet's inner cell: every px of it drawn?)
 function levelShape(R, k, shape, ta, tb, keep, of) {
   const Ws = R.w + 4, Wm = (R.w + 2) * 16, own = new Uint8Array(Wm * (R.h + 2) * 16), sheet = hillSheet(k), edge = [];
+  const full = keep ? null : new Uint8Array(R.lv.length);     // (the tiles that are this level's all over: every px, with its own all round)
   if (!wholeCells.has(sheet)) wholeCells.set(sheet, cellAlpha(sheet, ...blobCell(255)).every((v) => v === 1));
-  const has = (tx, ty) => { const j = (ty + 2) * Ws + tx + 2; return R.gone[j] || R.lv[j] >= k; }, whole = wholeCells.get(sheet);
+  const whole = wholeCells.get(sheet), at = new Uint8Array(R.lv.length);   // (at: this high, or not here yet)
+  for (let j = 0; j < at.length; j++) at[j] = R.gone[j] || R.lv[j] >= k ? 1 : 0;
   const kept = (j) => keep[j] && R.lv[j] >= k;
-  for (let ty = ta; ty <= tb; ty++) for (let tx = -1; tx <= R.w; tx++) {
+  for (let ty = ta; ty <= tb; ty++) for (let tx = -1, run = -2; tx <= R.w + 1; tx++) {
     const j = (ty + 2) * Ws + tx + 2, o = (ty + 1) * 16 * Wm + (tx + 1) * 16;
-    if (R.lv[j] < k || (keep && !keep[j])) continue;
-    let m = 0;
-    if (has(tx, ty - 1)) m |= N_; if (has(tx + 1, ty)) m |= E_; if (has(tx, ty + 1)) m |= S_; if (has(tx - 1, ty)) m |= W_;
-    if (has(tx + 1, ty - 1)) m |= NE; if (has(tx + 1, ty + 1)) m |= SE; if (has(tx - 1, ty + 1)) m |= SW; if (has(tx - 1, ty - 1)) m |= NW;
-    if (m !== 255 || !whole || (keep && !(kept(j - 1) && kept(j + 1)))) edge.push(o);
+    let m = -1;
+    if (tx <= R.w && R.lv[j] >= k && !(keep && !keep[j])) {
+      m = 0;
+      if (at[j - Ws]) m |= N_; if (at[j + 1]) m |= E_; if (at[j + Ws]) m |= S_; if (at[j - 1]) m |= W_;
+      if (at[j - Ws + 1]) m |= NE; if (at[j + Ws + 1]) m |= SE; if (at[j + Ws - 1]) m |= SW; if (at[j - Ws - 1]) m |= NW;
+      if (m !== 255 || !whole || (keep && !(kept(j - 1) && kept(j + 1)))) edge.push(o);
+    }
+    const plain = m === 255 && whole && !of;                // (a run of whole tiles side by side is filled a row of px at a time)
+    if (plain) { full[j] = 1; if (run < -1) run = tx; }
+    else if (run >= -1) { for (let r = 0, q = (ty + 1) * 16 * Wm + (run + 1) * 16; r < 16; r++, q += Wm) own.fill(1, q, q + (tx - run) * 16); run = -2; }
+    if (m < 0 || plain) continue;
     if (of) { for (let r = 0; r < 16; r++) own.set(of.subarray(o + r * Wm, o + r * Wm + 16), o + r * Wm); continue; }
-    if (m === 255 && whole) { for (let r = 0; r < 16; r++) own.fill(1, o + r * Wm, o + r * Wm + 16); continue; }
     const [cx, cy] = blobCell(m), a = cellAlpha(sheet, cx, cy);
     for (let r = 0; r < 16; r++) for (let i = 0; i < 16; i++) if (a[r * 16 + i]) own[o + r * Wm + i] = 1;
   }
@@ -116,7 +123,7 @@ function levelShape(R, k, shape, ta, tb, keep, of) {
       if (!src[q + 1]) for (let d = 1; d <= LEDGE * n && q + d < row + Wm; d++) sh[q + d] = 1;
     }
   }
-  return {own, sh, edge};
+  return {own, sh, edge, full};
 }
 // Painted lowest level first into one picture, a step a level (so no frame waits on a whole block). ground: the
 // rect's tiles as drawn flat (a block's canvas). -> {flat, up, maxLv, minLv}: the picture is `up` px taller than the
@@ -153,14 +160,40 @@ function* reliefSteps(R, ground, see) {
     const state = see && see.state, cover = see && see.cover, wet = see && see.wet;
     if (n <= 0) continue;
     const col = new ImageData(W, n), cd = col.data, ownM = new ImageData(W, n), od = ownM.data;
-    let anyC = false, anyO = false;
+    // A block's tiles are gone over sixteen px at a time where there is nothing to work out. 1: a tile that is this
+    // level's all over, with the level above all over it and all over the tile south of it, both solid as drawn
+    // (tiles.js): those two hide it to the last px, nothing of it is painted (of a terrace twelve layers up, the
+    // eleven under it). 2: a tile the level is nowhere near: not its own, no ledge of the two levels above can reach
+    // it from the tile beside it, and none of that in the tile north of it either, whose wall would come down into
+    // it. 3: a tile that is this level's all over, and shows: the ground as drawn, the whole of it.
+    let skip = null;
+    if (!see) {
+      const f = shape[k].full, f1 = shape[k + 1] && shape[k + 1].full, near = (j) => R.lv[j] >= k || R.lv[j - 1] > k || R.lv[j + 1] > k;
+      skip = new Uint8Array(R.w * R.h);
+      for (let ty = 0; ty < R.h; ty++) for (let tx = 0; tx < R.w; tx++) {
+        const j = (ty + 2) * Ws + tx + 2, q = ty * R.w + tx;
+        if (!near(j) && !near(j - Ws)) skip[q] = 2;
+        else if (f1 && R.solid && ty < R.h - 1 && f[j] && f1[j] && f1[j + Ws] && R.solid[q] && R.solid[q + R.w]) skip[q] = 1;
+        else if (f[j]) skip[q] = 3;
+      }
+    }
+    let c0 = n, c1 = 0, o0 = n, o1 = 0;                  // (the rows of it anything was put in)
     since.fill(99); mine.fill(99); solid.fill(99);
-    for (let y = ya; y < yb; y++) for (let x = 0; x < W; x++) {
+    for (let y = ya; y < yb; y++) {
+     if (y > ya && !(y - ya & 31)) yield;                 // (a step every 32 rows: no frame waits on more)
+     const row = skip && y < H ? (y >> 4) * R.w : -1, r = y - ya;
+     for (let x = 0; x < W; x++) {
+      const sk = row >= 0 && !(x & 15) ? skip[row + (x >> 4)] : 0;
+      if (sk) {                                          // (in a tile of its own the shape was just met; past an empty one it is as far as it was)
+        if (sk === 3) { for (let o = (r * W + x) * 4 + 3, e = o + 64; o < e; o += 4) od[o] = 255; if (r < o0) o0 = r; o1 = r + 1; }
+        if (sk !== 2 && (y & 15) === 15) since.fill(0, x, x + 16);
+        x += 15; continue;
+      }
       const i = (y + M) * Wm + x + M, s = sh[i], on = y < H && s, ours = on && (!see || kown[i] || (ksh[i] && !own[i]));
       since[x] = on ? 0 : since[x] + 1; if (see) { mine[x] = ours ? 0 : mine[x] + 1; solid[x] = ours && own[i] ? 0 : solid[x] + 1; }
       const o = ((y - ya) * W + x) * 4, f = (y + off) * W + x, shown = see && y + off >= 0 && y + off < tall;
       let c = null;
-      if (ours && own[i]) { od[o + 3] = 255; anyO = true; }                   // its own tiles: the ground as drawn, cut to its shape
+      if (ours && own[i]) { od[o + 3] = 255; if (r < o0) o0 = r; o1 = r + 1; }   // its own tiles: the ground as drawn, cut to its shape
       else if (ours) {                                                        // the ledge, where the shape is not its own tiles
         let ownL = false, ownR = false;
         for (let j = 1; j <= LEDGE; j++) { if (own[i - j]) ownL = true; if (own[i + j]) ownR = true; }
@@ -171,18 +204,19 @@ function* reliefSteps(R, ground, see) {
       // tile, there is no wall but its inside: nothing to see; under a kept ledge there is one, as at any corner)
       const inside = see && on && !ours && own[i] && solid[x] <= STEP;
       if (!ours && !inside && mine[x] <= STEP && (!s || (see && on))) c = cols.bands[mine[x] === 1 ? 0 : mine[x] === STEP ? 2 : 1];
-      if (c) { cd[o] = c[0] | 0; cd[o + 1] = c[1] | 0; cd[o + 2] = c[2] | 0; cd[o + 3] = 255; anyC = true; }
+      if (c) { cd[o] = c[0] | 0; cd[o + 1] = c[1] | 0; cd[o + 2] = c[2] | 0; cd[o + 3] = 255; if (r < c0) c0 = r; c1 = r + 1; }
       if (!shown) continue;
       if (ours || c) { state[f] = 1; cover[f] = !ours && (on || since[x] < mine[x]) ? 1 : 0; if (k === 0 && ours && own[i]) wet[f] = 1; }
       else if (on) { cover[f] = 1; if (inside) state[f] = 2, wet[f] = 0; }    // the rock left out
       else if (!s && since[x] <= STEP) cover[f] = 1;                          // ...and its wall
+     }
     }
-    if (anyC) { lg.putImageData(col, 0, 0); fg.drawImage(lc, 0, 0, W, n, 0, off + ya, W, n); }
-    const no = Math.min(yb, H) - ya;
-    if (anyO && no > 0) {
-      tg.globalCompositeOperation = "source-over"; tg.putImageData(ownM, 0, 0);
-      tg.globalCompositeOperation = "source-in"; tg.drawImage(ground, 0, ya, W, no, 0, 0, W, no);
-      fg.drawImage(t, 0, 0, W, no, 0, off + ya, W, no);
+    if (c1 > c0) { lg.putImageData(col, 0, 0, 0, c0, W, c1 - c0); fg.drawImage(lc, 0, c0, W, c1 - c0, 0, off + ya + c0, W, c1 - c0); }
+    o1 = Math.min(o1, Math.min(yb, H) - ya);
+    if (o1 > o0) {
+      tg.globalCompositeOperation = "source-over"; tg.putImageData(ownM, 0, 0, 0, o0, W, o1 - o0);
+      tg.globalCompositeOperation = "source-in"; tg.drawImage(ground, 0, ya + o0, W, o1 - o0, 0, o0, W, o1 - o0);
+      fg.drawImage(t, 0, o0, W, o1 - o0, 0, off + ya + o0, W, o1 - o0);
     }
     yield;
   }
@@ -191,7 +225,7 @@ function* reliefSteps(R, ground, see) {
 // A block's: its picture, and where that has anything in it (a small hill in a wide plain: the rest is not painted,
 // frame after frame): the raised tiles, their ledges beside them, their walls down to the lowest ground
 function* blockRelief(b) {
-  const R = {x: b.bx * B, y: b.by * B, w: B, h: B}, Wb = B * 16, Ws = B + 4;
+  const R = {x: b.bx * B, y: b.by * B, w: B, h: B, solid: b.solid}, Wb = B * 16, Ws = B + 4;
   const {flat, up, maxLv, minLv} = yield* reliefSteps(R, b.canvas);
   let box = null;
   if (flat) {
@@ -204,6 +238,7 @@ function* blockRelief(b) {
     x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(Wb, x1); y1 = Math.min(flat.height, y1);
     if (x1 > x0 && y1 > y0) box = [x0, y0, x1 - x0, y1 - y0];
   }
+  yield* waterSteps(b);                                // (its water too, water.js: the block shows once all of it is there)
   b.relief = {flat: box && flat, up, maxLv, minLv, box};
 }
 const scratch = new Map();                             // (canvases to build a level on, kept: a pair a size)
@@ -212,26 +247,28 @@ function reliefScratch(w, h) {
   if (!scratch.has(key)) scratch.set(key, [0, 1].map(() => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }));
   return scratch.get(key);
 }
-let reliefBudgetAt = 0, reliefSpent = 0, freshThisFrame = false;
 function buildRelief(b) { for (const _ of blockRelief(b)); b.reliefDirty = false; }   // (all at once: tests, tools)
-// A block's ground, with its levels stacked
-function drawBlockRelief(b, sx, sy, S) {
-  const X = sx(b.bx * B), Y = sy(b.by * B);
-  // built in steps, within a few ms a frame across all blocks. A block never built isn't shown until it is (never its
-  // flat ground, which would then jump up); one rebuilt keeps showing what it was until the new one is ready.
-  // (Its ground redrawn while it is being built, the first time too: the block beside it arriving changes its edge.
-  // It is built again from the start, what it had read being out of date: dropped, that left a column of flat
-  // ground along the edge.)
-  if (b.reliefDirty || (!b.relief && !b.reliefGen)) b.reliefGen = blockRelief(b);
-  b.reliefDirty = false;
-  const now = performance.now();
-  if (now - reliefBudgetAt > 8) { reliefBudgetAt = now; reliefSpent = 0; }
-  while (b.reliefGen && reliefSpent < 6 && !freshThisFrame) {
-    const t0 = performance.now(), r = b.reliefGen.next();
-    reliefSpent += performance.now() - t0;
-    if (r.done) b.reliefGen = null;
+// The raised ground of the blocks coming (render.js: in the order they are wanted) is built a step at a time, until
+// the frame's time for land is up. Not while tiles wait to be drawn: it is built from the ground as drawn, whole.
+// (A block's ground redrawn while it is being built, the first time too (the block beside it arriving changes its
+// edge): it is built again from the start, what it had read being out of date. Dropped, that left a column of flat
+// ground along the edge.)
+function reliefWork(coming, until) {
+  if (dirtyTiles.length) return;
+  let stepped = false;
+  for (const b of coming) {
+    if (!b.canvas) continue;
+    if (b.reliefDirty || (!b.relief && !b.reliefGen)) b.reliefGen = blockRelief(b);
+    b.reliefDirty = false;
+    while (b.reliefGen && (!stepped || performance.now() < until)) { stepped = true; if (b.reliefGen.next().done) b.reliefGen = null; }
+    if (b.reliefGen) return;
   }
+}
+// A block's ground, with its levels stacked. One never built isn't shown until it is (never its flat ground, which
+// would then jump up); one rebuilt keeps showing what it was until the new one is ready.
+function drawBlockRelief(b, sx, sy, S) {
   if (!b.relief) return;
+  const X = sx(b.bx * B), Y = sy(b.by * B);
   ctx.drawImage(b.canvas, X, Y - shOf(b.relief.minLv) * zoom, B * S, B * S);
   const f = b.relief.flat, [fx, fy, fw, fh] = b.relief.box || [];
   if (f) ctx.drawImage(f, fx, fy, fw, fh, X + fx * zoom, Y + (fy - b.relief.up) * zoom, fw * zoom, fh * zoom);

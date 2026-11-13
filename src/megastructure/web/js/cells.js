@@ -5,7 +5,7 @@
 // where that isn't the whole story (a hollow under a hill), their column.
 
 const SEA = 64, LOW = -16;
-function tileIdx(x, y) { const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B))); return b ? [b, (y - b.by * B) * B + (x - b.bx * B)] : null; }
+function tileIdx(x, y) { const b = blockOf(x, y); return b ? [b, (y - b.by * B) * B + (x - b.bx * B)] : null; }
 const colSolid = (lv) => (lv - LOW >= 31 ? 0xFFFFFFFF : ((1 << (lv - LOW + 1)) - 1) >>> 0);   // a plain column: solid up to lv
 const colTop = (c) => 31 - Math.clz32(c) + LOW;                                 // its highest solid cell
 const colFloor = (c) => 30 - Math.clz32(~c & (c + 1)) + LOW;                    // the top of the solid cells standing on the bottom

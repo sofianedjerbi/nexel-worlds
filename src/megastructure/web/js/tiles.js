@@ -7,8 +7,17 @@ const B = 32, P = 16;
 const smooth = (v) => { v = Math.max(0, Math.min(1, v)); return v * v * (3 - 2 * v); };   // 0..1, eased
 const blocks = new Map();
 const bkey = (bx, by) => bx + "," + by;
+// The block a tile is in. Tiles are asked for in runs (a tile and the eight round it, a row of a picture), so the
+// last block found is kept: no key to put together, nothing to look up. Forgotten whenever the blocks change.
+let hitB = null, hitX = NaN, hitY = NaN;
+for (const m of ["set", "delete", "clear"]) { const o = blocks[m].bind(blocks); blocks[m] = (...a) => { hitX = NaN; return o(...a); }; }
+function blockOf(x, y) {
+  const bx = Math.floor(x / B), by = Math.floor(y / B);
+  if (bx !== hitX || by !== hitY) { hitX = bx; hitY = by; hitB = blocks.get(bkey(bx, by)) || null; }
+  return hitB;
+}
 function tile(x, y) {
-  const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B)));
+  const b = blockOf(x, y);
   if (!b) return null;
   const i = (y - b.by * B) * B + (x - b.bx * B);
   return [b.comb[i], b.gnd[i]];
@@ -93,38 +102,56 @@ function drawBlobLayer(g, sheet, x, y, pred, ox, oy, decor) {
   }
   g.drawImage(sheet, sx, sy, 16, 16, ox, oy, 16, 16);
 }
+// Is a sheet's 16 px cell drawn in full, every px of it solid? (what is under such a cell does not show)
+const sheetPx = new Map();
+function cellSolid(sheet, sx, sy) {
+  let m = sheetPx.get(sheet);
+  if (!m) {
+    const c = document.createElement("canvas"); c.width = sheet.width; c.height = sheet.height;
+    const g = c.getContext("2d"); g.drawImage(sheet, 0, 0);
+    m = {data: g.getImageData(0, 0, c.width, c.height).data, w: c.width, solid: new Map()}; sheetPx.set(sheet, m);
+  }
+  const key = sy * 4096 + sx; let v = m.solid.get(key);
+  if (v === undefined) {
+    v = true;
+    for (let j = 0; j < 16 && v; j++) for (let i = 0; i < 16; i++) if (m.data[((sy + j) * m.w + sx + i) * 4 + 3] !== 255) { v = false; break; }
+    m.solid.set(key, v);
+  }
+  return v;
+}
+// What a tile is made of is first noted, a sheet's cell after the other (LAID), then painted from the last cell that
+// is solid all over: on a plateau twelve layers high, the one that shows and not the thirteen under it.
+const LAID = {n: 0, img: [], at: [], drawImage(img, sx, sy) { this.img[this.n] = img; this.at[this.n++] = sy * 4096 + sx; }};
 let landVer = 0;                                    // (goes up whenever a tile of the land is drawn again: what was worked out from the land is out of date)
 function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewhere else than its block's canvas)
-  const b = blocks.get(bkey(Math.floor(x / B), Math.floor(y / B)));
+  const b = blockOf(x, y);
   if (!b || !(to || b.canvas)) return;
-  const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, g = to ? to.g : b.ctx, ox = to ? to.ox : lx * 16, oy = to ? to.oy : ly * 16;
-  const c = b.comb[i], gr = b.gnd[i];
-  if (!to) {
-    g.clearRect(ox, oy, 16, 16);
-    b.reliefDirty = true;                            // (its stacked levels are rebuilt from this canvas: relief.js)
-    b.ver = (b.ver || 0) + 1; landVer++;
-  }
-                                                     // (water tiles stay clear: water.js draws the sea under the land)
-  if (gr === ":") {                                  // bridge planks run across the direction of travel
-    const ew = [-1, 1].some((d) => { const q = gndAt(x + d, y); return q === ":" || isLand(q); });
-    g.drawImage(IMG.bridge, ew ? 0 : 32, 32, 16, 16, ox, oy, 16, 16);
-  }
-  if (isLand(gr)) {
-    drawBlobLayer(g, IMG.soil, x, y, (_, gg) => isLand(gg), ox, oy, .15);
-    if (gr === "." || hasGrassNeighbour(x, y)) {
-      if (gr === "." || gr === "_" || gr === "n") drawBlobLayer(g, IMG.grass, x, y, (_, gg) => gg === "." || gg === "_" || gg === "n", ox, oy, gr === "." ? .3 : 0);
-    }
-    groundMarks(g, x, y, gr, ox, oy);
-  }
+  const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, ox = to ? to.ox : lx * 16, oy = to ? to.oy : ly * 16;
+  const c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y), up = (cc, gg, tx, ty) => levelAt(tx, ty) >= k;
+  let k = lv;
+  g.n = 0;
   // relief: each level lays its hill sheet (grass, darker grass, then stone) over the tiles at least that high; the
   // sheets' edge tiles carry the cliff face, so a plateau shows its south cliff and a soft rim round the rest
-  const lv = levelAt(x, y);
-  // (round a pit, at sea level and below: the same sheet's edge alone, the regular border of raised ground, so every
-  // side of a hole shows; the ground's own look inside it stays)
-  let low = lv;
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) low = Math.min(low, levelAt(x + dx, y + dy));
-  for (let k = low + 1; k <= Math.min(0, lv); k++) drawBlobLayer(g, edgeSheet("hill1"), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, ox, oy, 0);
-  for (let k = 1; k <= lv; k++) drawBlobLayer(g, hillSheet(k), x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= k, ox, oy, k < 3 ? .25 : .1);
+  // (looked at from the top level down: under one that is solid all over, nothing is laid)
+  for (; k >= 1; k--) { drawBlobLayer(g, hillSheet(k), x, y, up, ox, oy, k < 3 ? .25 : .1); if (cellSolid(g.img[g.n - 1], g.at[g.n - 1] % 4096, g.at[g.n - 1] >> 12)) break; }
+  const hills = g.n, covered = k >= 1;
+  if (!covered) {                                    // (water tiles stay clear: water.js draws the sea under the land)
+    if (gr === ":") {                                // bridge planks run across the direction of travel
+      const ew = [-1, 1].some((d) => { const q = gndAt(x + d, y); return q === ":" || isLand(q); });
+      g.drawImage(IMG.bridge, ew ? 0 : 32, 32, 16, 16, ox, oy, 16, 16);
+    }
+    if (isLand(gr)) {
+      drawBlobLayer(g, IMG.soil, x, y, (_, gg) => isLand(gg), ox, oy, .15);
+      if (gr === "." || gr === "_" || gr === "n") drawBlobLayer(g, IMG.grass, x, y, (_, gg) => gg === "." || gg === "_" || gg === "n", ox, oy, gr === "." ? .3 : 0);
+      groundMarks(g, x, y, gr, ox, oy);
+    }
+    // (round a pit, at sea level and below: the hill sheet's edge alone, the regular border of raised ground, so
+    // every side of a hole shows; the ground's own look inside it stays)
+    let low = lv;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) low = Math.min(low, levelAt(x + dx, y + dy));
+    for (k = low + 1; k <= Math.min(0, lv); k++) drawBlobLayer(g, edgeSheet("hill1"), x, y, up, ox, oy, 0);
+  }
+  const base = g.n;
   if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
   const hd = hash(x, y, 41);
@@ -135,8 +162,23 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
       g.drawImage(IMG.water_objects, col * 16, 0, 16, 16, ox, oy, 16, 16);
     }
   }
+  // in the order they lie: the ground and what is laid on it, the hill's levels from the lowest (they were noted
+  // from the top down), then what is on top of the hill. From the last one that hides all under it.
+  const order = [];
+  for (let j = hills; j < base; j++) order.push(j);
+  for (let j = hills - 1; j >= 0; j--) order.push(j);
+  for (let j = base; j < g.n; j++) order.push(j);
+  let first = order.length - 1;
+  while (first >= 0 && !cellSolid(g.img[order[first]], g.at[order[first]] % 4096, g.at[order[first]] >> 12)) first--;
+  const out = to ? to.g : b.ctx;
+  if (!to) {
+    if (first < 0) out.clearRect(ox, oy, 16, 16);    // (nothing solid all over it: what was there must go first)
+    (b.solid || (b.solid = new Uint8Array(B * B)))[i] = first < 0 ? 0 : 1;   // (relief.js: under a tile solid all over, nothing shows)
+    b.reliefDirty = true;                            // (its stacked levels are rebuilt from this canvas: relief.js)
+    b.ver = (b.ver || 0) + 1; landVer++;
+  }
+  for (let q = Math.max(0, first); q < order.length; q++) out.drawImage(g.img[order[q]], g.at[order[q]] % 4096, g.at[order[q]] >> 12, 16, 16, ox, oy, 16, 16);
 }
-const hasGrassNeighbour = () => true;
 // what's laid on the ground: tilled soil (wet or not), floors, ash, cobble
 function groundMarks(g, x, y, gr, ox, oy) {
   if (gr === "o" || gr === "u") drawBlobLayer(g, IMG.tilled, x, y, (_, gg) => gg === "o" || gg === "u", ox, oy, 0);

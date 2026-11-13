@@ -8,7 +8,7 @@ function groundPreview(g, x, y) {
 }
 const ghosts = new Map();
 const ghostIcon = (n) => ghosts.get(n) || (ghosts.set(n, iconCanvas(n)), ghosts.get(n));
-function openCraft() { $("craft").style.display = "block"; }
+function openCraft() { $("craft").style.display = "block"; drawRecipes(); }
 // item icons from the sheets: [image name, sx, sy]
 const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in column 0, produce in column 1, materials in 2-3
   wood: ["items", 32, 48], plank: ["items", 32, 64], stone: ["items", 32, 80], ingot: ["items", 48, 64], fiber: ["gen", "fiber"],
