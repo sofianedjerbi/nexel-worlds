@@ -54,7 +54,7 @@ class Game:
         self.sleep(400)
 
     def clear_area(self, r=10):
-        """Flat meadow around us, no animals near (they wander into tests)."""
+        """Flat meadow around us, no animals near (they wander into tests), nothing lying on the ground (left by one)."""
         self.rpc("dev_creatures", clear=40)
         self.stamp(-r, -r, ["." * (2 * r + 1)] * (2 * r + 1))
         self.sleep(300)

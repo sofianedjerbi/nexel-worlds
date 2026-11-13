@@ -41,3 +41,16 @@ def test_a_spectator_that_missed_events_is_told_to_ask_for_its_land_again(tmp_pa
     rest = [q.get_nowait() for _ in range(q.qsize())]
     assert '{"type":"resync"}' in rest and q not in gs.behind
     gs.sim.close()
+
+
+def test_clearing_the_ground_for_a_test_takes_what_lies_on_it_too(world):
+    """dev_creatures with `clear` (the tests' clear_area) removes the piles near as well as the creatures: a pile one
+    browser test left was drawn, and counted, in another's whenever its player woke near it. Without `clear` (a
+    creature spawned) nothing on the ground is touched."""
+    sim, a = world
+    sim.items[(a.x + 2, a.y)] = {"wood": 1}
+    sim.items[(a.x + 60, a.y)] = {"stone": 1}
+    dev_op(sim, a, "dev_creatures", {"kind": "cow", "dx": 1, "dy": 0})
+    assert (a.x + 2, a.y) in sim.items
+    dev_op(sim, a, "dev_creatures", {"clear": 40})
+    assert (a.x + 2, a.y) not in sim.items and (a.x + 60, a.y) in sim.items and not sim.creatures
