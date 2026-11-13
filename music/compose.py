@@ -43,10 +43,26 @@ import numpy as np
 SR = 48000
 BPM = 84
 SWING = 0.58       # where in the beat the off-beat eighth falls (0.5 straight, 0.67 a full shuffle)
-BEAT = 60 / BPM
 BARS = 88
-LOOP_S = BARS * 4 * BEAT
-LOOP_N = int(round(LOOP_S * SR))
+
+
+def fast_len(n):
+    """The length nearest n whose only factors are 2, 3 and 5: whole-loop FFTs are several times faster on it
+    (84 BPM gave a length with a big prime in it). It moves the tempo by less than one percent."""
+    best = 1
+    for a in range(25):
+        for b in range(16):
+            v = 2 ** a * 3 ** b
+            while v < 2 * n:
+                if abs(v - n) < abs(best - n):
+                    best = v
+                v *= 5
+    return best
+
+
+LOOP_N = fast_len(int(round(BARS * 4 * 60 / BPM * SR)))
+LOOP_S = LOOP_N / SR
+BEAT = LOOP_S / (BARS * 4)
 TAIL = 7 * SR
 OUT = Path(__file__).with_name("site") / "audio"
 rng = np.random.default_rng(418)
@@ -140,19 +156,26 @@ def lofi_piano(f, dur, vel, t0):
     return 0.46 * vel * np.stack([left, right]) * np.clip(t / 0.007, 0, 1) * release(t, dur, 0.55)
 
 
+_pad_cache = {}
+
+
 def analog_pad(f, dur, vel, t0):
-    """Four detuned saws, filter opening and closing over minutes (whole cycles per loop)."""
+    """Four detuned saws, filter opening and closing over minutes (whole cycles per loop). The saws of a note are made
+    once and kept: the pad plays the same few notes hundreds of times, and this was half of the rendering time."""
     n = int((dur + 3.0) * SR)
     t = tt(n)
-    out = np.zeros((2, n))
-    for j, d in enumerate((-9, -3, 4, 10)):
-        ph = phase(f, n, t0, d / 100, wob=0.8)
-        dark, bright = saw(ph, f, 650), saw(ph, f, 2600)
-        w = loop_lfo(t0 + t, 3, 0.4)
-        y = (1 - w) * dark + w * bright
-        out[j % 2] += y
+    key = (round(f, 3), n)
+    if key not in _pad_cache:
+        dark, bright = np.zeros((2, n)), np.zeros((2, n))
+        for j, d in enumerate((-9, -3, 4, 10)):
+            ph = phase(f, n, 0.0, d / 100, wob=0.8)
+            dark[j % 2] += saw(ph, f, 650)
+            bright[j % 2] += saw(ph, f, 2600)
+        _pad_cache[key] = (dark, bright)
+    dark, bright = _pad_cache[key]
+    w = loop_lfo(t0 + t, 3, 0.4)
     env = np.clip(t / 1.4, 0, 1) ** 2 * release(t, dur, 1.6)
-    return 0.05 * vel * out * env
+    return 0.05 * vel * ((1 - w) * dark + w * bright) * env
 
 
 def moog_bass(f, dur, vel, t0):
@@ -380,7 +403,7 @@ def echo_fx(mono, beats=0.75, fb=0.45):
     return 0.5 * np.stack([np.fft.irfft(x * z / (1 - z ** 2), LOOP_N), np.fft.irfft(x * z ** 2 / (1 - z ** 2), LOOP_N)])
 
 
-def make_ir(seconds=2.0, tau_dark=0.28, tau_bright=0.12, predelay=0.015):
+def make_ir(rng=rng, seconds=2.0, tau_dark=0.28, tau_bright=0.12, predelay=0.015):
     n = int(seconds * SR)
     t = tt(n)
     irs = []
@@ -458,12 +481,16 @@ def render_stem(stem, irs):
     return out.astype(np.float32)
 
 
+def _stem_job(stem):
+    return stem, render_stem(stem, make_ir(np.random.default_rng(3)))
+
+
 def render():
-    irs = make_ir()
-    stems = {}
-    for s in STEMS:
-        stems[s] = render_stem(s, irs)
-        print(f"  rendered {s}", flush=True)
+    """Every stem in its own process, at once (they do not depend on each other)."""
+    from concurrent.futures import ProcessPoolExecutor
+    with ProcessPoolExecutor(max_workers=min(len(STEMS), os.cpu_count() or 2)) as pool:
+        stems = dict(pool.map(_stem_job, STEMS))
+    stems = {s: stems[s] for s in STEMS}
     pre = sum(stems.values())
     norm = np.float32(10 ** (-19 / 20) / np.sqrt(np.mean(pre.astype(np.float64) ** 2)))
     g = limiter_gain(pre * norm)

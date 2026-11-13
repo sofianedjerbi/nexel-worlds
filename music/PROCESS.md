@@ -142,3 +142,9 @@ fifth, an electric piano playing the whole chord short and off the beat, a shake
 This drops the old "no drums" rule on purpose; the night theme stays without the band.
 - "The sound seems lost in a puddle of echoes everywhere and reverb too much": no echo on anything, reverb level 0.7 -> 0.22, the room's
   tail 5 s -> 2 s (decay 0.65 s -> 0.28 s); night and boss cut the same way. Keep it dry: this style is close and clear.
+
+### Rendering fast (2026-11-13)
+The user: "you're taking too much time on this process", then "keep the full rendering, just make it faster". A profile showed where the
+3 minutes went: the pad re-synthesising the same few notes 297 times (now cached per pitch), whole-loop FFTs on a length with a big prime
+factor (`fast_len`: the loop is rounded to a 2-3-5 length), and stems rendered one after another (now one process each).
+`uv run python music/render_all.py` renders day, night and boss at once and rebuilds the game's audio: about 40 s instead of about 5 minutes.
