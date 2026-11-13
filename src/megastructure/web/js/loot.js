@@ -24,9 +24,12 @@ function smallPx(name) {
   if (ic && ic[0] !== "gen" && (ic[3] > 16 || ic[4] > 16)) {       // a big thing (a boat, a well): straight from its sprite
     smalls11.set(name, smallArt(IMG[ic[0]], ic[1], ic[2], ic[3], ic[4], DROP)); return smalls11.get(name);
   }
-  const d = iconCanvas(name).getContext("2d").getImageData(0, 0, 16, 16).data, sticker = ICONS[name] && ICONS[name][0] === "items";
+  const d = iconCanvas(name).getContext("2d").getImageData(0, 0, 16, 16).data;
   const solid = (x, y) => x >= 0 && y >= 0 && x < 16 && y < 16 && d[(y * 16 + x) * 4 + 3] >= 128;
-  const edge = (x, y, o) => sticker && Math.min(d[o], d[o + 1], d[o + 2]) > 225 && [-1, 0, 1].some((a) => [-1, 0, 1].some((b) => !solid(x + a, y + b)));
+  const rim = (x, y, o) => solid(x, y) && Math.min(d[o], d[o + 1], d[o + 2]) > 225 && [-1, 0, 1].some((a) => [-1, 0, 1].some((b) => !solid(x + a, y + b)));
+  let white = 0, round = 0;                                // has it a sticker edge: is most of its outline near white? (the pack's item icons, and the pickaxe drawn like them)
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (solid(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !solid(x + a, y + b))) { round++; white += rim(x, y, (y * 16 + x) * 4) ? 1 : 0; }
+  const sticker = white * 2 > round, edge = (x, y, o) => sticker && rim(x, y, o);
   const dark = (c) => (c >> 16) * 3 + (c >> 8 & 255) * 6 + (c & 255), out = new ImageData(DROP, DROP);
   for (let j = 0; j < DROP; j++) for (let i = 0; i < DROP; i++) {
     const seen = new Map(); let n = 0, cells = 0;

@@ -24,6 +24,8 @@ P = {k: hexc(v) for k, v in {
     "n": "d9a441", "N": "f5d77a", "m": "b25b4c", "M": "e08a6f", "c": "8c5a3c", "b": "e8c48c", "B": "c79a5c",
     "t": "9db86a", "T": "6f8f4a", "h": "7a7d81", "H": "c9ced1",
     "u": "90625d", "U": "c49a6c", "l": "cfeaf2", "L": "8cc4d8",   # house wood (the wall sheet's outline and plank) and glass
+    # the pack's own item icons (its axe, its hoe): the white sticker edge, the head's four greys, the handle's three browns
+    "1": "f3f4e7", "2": "818b83", "3": "c1c8b9", "4": "6b7470", "5": "9da89a", "6": "90625d", "7": "b68962", "8": "754c60",
 }.items()}
 
 GEN = {
@@ -91,10 +93,10 @@ GEN = {
         "                ", "            HH  ", "           HSSH ", "           SSH  ", "          oSH   ", "         oW     ",
         "        oW      ", "       oW       ", "      oW        ", "     oW         ", "    oW          ", "   oW           ",
         "  oW            ", "                ", "                ", "                "],
-    "pickaxe": [
-        "                ", "    hhhh        ", "   hHHHHhh      ", "  hH    oHh     ", "  h    oW  h    ", "       oW   h   ",
-        "      oW        ", "     oW         ", "    oW          ", "   oW           ", "  oW            ", "  o             ",
-        "                ", "                ", "                ", "                "],
+    "pickaxe": [   # in the manner of the pack's axe and hoe: their handle, a head that curves to two points, the sticker edge
+        "                ", "                ", "    111111      ", "   15533331     ", "    11455331    ", "      1145531   ",
+        "        145531  ", "       16745331 ", "      167814531 ", "     16781 1531 ", "    16781  1431 ", "   16781    151 ",
+        "  16781      1  ", "  1881          ", "   11           ", "                "],
     "axe": [
         "                ", "         hh     ", "        hHHh    ", "       ohHHHh   ", "       oWhHHh   ", "      oW  hh    ",
         "      oW         ", "     oW         ", "    oW          ", "   oW           ", "  oW            ", "  o             ",
