@@ -99,18 +99,28 @@ const WearParts = (() => {
     }},
   ];
   function analyse(d, row) {                      // d: one 48 x 48 frame's pixels
-    const at = (x, y) => d[(y * CELL + x) * 4 + 3] ? CLASS[[d[(y * CELL + x) * 4], d[(y * CELL + x) * 4 + 1], d[(y * CELL + x) * 4 + 2]].join()] || "?" : null;
+    // The head is measured on the body alone: the piece that wears the collar, not the tool, its arc or a hand apart
+    // from the body (measured on everything, a raised axe was taken for the head, and a hat jumped onto it).
+    const at = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL && d[(y * CELL + x) * 4 + 3] ? CLASS[[d[(y * CELL + x) * 4], d[(y * CELL + x) * 4 + 1], d[(y * CELL + x) * 4 + 2]].join()] || "?" : null;
+    const body = new Uint8Array(CELL * CELL), stack = [];
+    const mine = (x, y) => { const c = at(x, y); return c && c !== "?"; };
+    for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (at(x, y) === "f") { body[y * CELL + x] = 1; stack.push([x, y]); }
+    if (!stack.length) for (let y = 0; y < CELL && !stack.length; y++) for (let x = 0; x < CELL; x++) if (mine(x, y)) { body[y * CELL + x] = 1; stack.push([x, y]); break; }
+    while (stack.length) { const [x, y] = stack.pop();
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const u = x + dx, v = y + dy;
+        if (u >= 0 && v >= 0 && u < CELL && v < CELL && !body[v * CELL + u] && mine(u, v)) { body[v * CELL + u] = 1; stack.push([u, v]); } } }
+    const on = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL && body[y * CELL + x] ? at(x, y) : null;
     let top = CELL, bottom = 0, k = null, sy = null;
-    for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (at(x, y)) { top = Math.min(top, y); bottom = Math.max(bottom, y); if (k === null && at(x, y) === "f") k = y; }
+    for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (on(x, y)) { top = Math.min(top, y); bottom = Math.max(bottom, y); if (k === null && on(x, y) === "f") k = y; }
     if (k === null) k = top + 9;
     for (let y = top; y < k && sy === null; y++) {                 // the skull starts at the first row that is one unbroken run (the ears are two)
       let run = 0, best = 0, runs = 0;
-      for (let x = 0; x < CELL; x++) { if (at(x, y)) { run++; best = Math.max(best, run); if (run === 1) runs++; } else run = 0; }
+      for (let x = 0; x < CELL; x++) { if (on(x, y)) { run++; best = Math.max(best, run); if (run === 1) runs++; } else run = 0; }
       if (runs === 1 && best >= 6) sy = y;
     }
     if (sy === null) sy = top + 1;
     let hmin = CELL, hmax = 0;
-    for (let x = 0; x < CELL; x++) if (at(x, sy + 3)) { hmin = Math.min(hmin, x); hmax = Math.max(hmax, x); }
+    for (let x = 0; x < CELL; x++) if (on(x, sy + 3)) { hmin = Math.min(hmin, x); hmax = Math.max(hmax, x); }
     const facing = DIRS[row % 4];
     return {top, bottom, k, sy, hmin, hmax, cx: Math.round((hmin + hmax + 1) / 2), facing, side: facing === "left" || facing === "right", at};
   }

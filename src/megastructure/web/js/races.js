@@ -18,11 +18,11 @@ const Races = (() => {
         const SHAPE = [".aa.", "abba", "abca", "abca", "abca", "abca", "abca", "abca", "abba"];      // the same width all the way down
         const ear = (x0, out, fill = "b", pink = true, dy = 0) => SHAPE.forEach((row, i) => {
           [...(out > 0 ? row : [...row].reverse().join(""))].forEach((ch, j) => {
-            if (ch !== ".") H.put(x0 + j, A.sy - 9 + i + 1 + dy, ch === "c" ? (pink ? "c" : fill) : ch === "b" ? fill : "a"); });
+            if (ch !== "." && A.sy - 9 + i + 1 + dy <= A.sy) H.put(x0 + j, A.sy - 9 + i + 1 + dy, ch === "c" ? (pink ? "c" : fill) : ch === "b" ? fill : "a"); });
         });
-        if (A.side) {                              // side on they lean back; the far ear shows behind the near one, in shade
-          const back = A.facing === "right" ? -1 : 1;
-          ear(A.cx - 2 + back, back, "d", false, 1); ear(A.cx - 2, back, "b", true);       // the far one a pixel back and lower: only its edge shows
+        if (A.side) {                              // side on, the far ear shows behind the near one, in shade. The near ear's pink
+          const back = A.facing === "right" ? -1 : 1;      // inside faces the way the bunny faces (it faced backwards: "rabbit ears are
+          ear(A.cx - 2 + back, back, "d", false, 1); ear(A.cx - 2, -back, "b", true);      // backwards"); the far one a pixel back and lower: only its edge shows
           H.put(A.cx - 1, A.sy, "b"); H.put(A.cx, A.sy, "b");                              // the near ear runs into the head: no line across its foot
         } else for (const [x0, out] of [[A.cx - 5, -1], [A.cx + 1, 1]]) {
           ear(x0, out, "b", A.facing !== "up");
@@ -85,7 +85,18 @@ const Races = (() => {
   ];
   const EXTRA = {w: "#fffdf4", m: "#f1dfbd", n: "#3a2a30", y: "#f4f3c4", p: "#f2a9b4", o: "#f59a4a", O: "#e07f38", B: "#a85a2a"};     // ... and the bill and feet        // white, muzzle, nose and pupil, belly
   function analyse(d, row, col) {
-    const at = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL && d[(y * CELL + x) * 4 + 3] ? CLASS[[d[(y * CELL + x) * 4], d[(y * CELL + x) * 4 + 1], d[(y * CELL + x) * 4 + 2]].join()] || "?" : null;
+    // What is in the frame: the body, and on the swings a tool, its arc and sometimes a hand apart from the body. The
+    // head is measured on the body alone (the piece that wears the collar). Measured on everything, a raised axe was
+    // taken for the head: ears were put on it, the head came out as a slab, the tool above the head was wiped.
+    const raw = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL && d[(y * CELL + x) * 4 + 3] ? CLASS[[d[(y * CELL + x) * 4], d[(y * CELL + x) * 4 + 1], d[(y * CELL + x) * 4 + 2]].join()] || "?" : null;
+    const body = new Uint8Array(CELL * CELL), stack = [];
+    const own = (x, y) => { const c = raw(x, y); return c && c !== "?"; };
+    for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (raw(x, y) === "f") { body[y * CELL + x] = 1; stack.push([x, y]); }
+    if (!stack.length) for (let y = 0; y < CELL && !stack.length; y++) for (let x = 0; x < CELL; x++) if (own(x, y)) { body[y * CELL + x] = 1; stack.push([x, y]); break; }
+    while (stack.length) { const [x, y] = stack.pop();
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const u = x + dx, v = y + dy;
+        if (u >= 0 && v >= 0 && u < CELL && v < CELL && !body[v * CELL + u] && own(u, v)) { body[v * CELL + u] = 1; stack.push([u, v]); } } }
+    const at = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL && body[y * CELL + x] ? raw(x, y) : null;
     let top = CELL, bottom = 0, k = null, sy = null;
     for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (at(x, y)) { top = Math.min(top, y); bottom = Math.max(bottom, y); if (k === null && at(x, y) === "f") k = y; }
     if (k === null) k = top + 9;
@@ -99,16 +110,36 @@ const Races = (() => {
     for (let x = 0; x < CELL; x++) if (at(x, sy + 3)) { hmin = Math.min(hmin, x); hmax = Math.max(hmax, x); }
     const facing = DIRS[row % 4], side = facing === "left" || facing === "right";
     if (side) {                                    // side on, the cat's ear flops as it walks: measure the head lower down, where it
-      hmin = CELL; hmax = 0;                       // never changes, and find the top of the skull above the face, not above the ear
-      for (let x = 0; x < CELL; x++) if (at(x, k - 3)) { hmin = Math.min(hmin, x); hmax = Math.max(hmax, x); }
+      // never changes (three rows and one row above the collar: the narrower of the two, so a hand resting against one
+      // of them is not taken for the face), and find the top of the skull above the face, not above the ear.
+      let mid = 0, nf = 0; for (let x = 0; x < CELL; x++) if (at(x, k) === "f") { mid += x; nf++; }
+      mid = nf ? Math.round(mid / nf) : Math.round((hmin + hmax) / 2);
+      let lo = -1, hi = CELL;
+      for (const y of [k - 3, k - 1]) { if (!at(mid, y)) continue;
+        let a = mid, b = mid; while (at(a - 1, y)) a--; while (at(b + 1, y)) b++; lo = Math.max(lo, a); hi = Math.min(hi, b); }
+      if (lo >= 0) { hmin = lo; hmax = hi; }
+      // A hand held out beside the face (the hoe's first frame) is the body's, but it is not the head: it is set apart
+      // with the tool, so that rounding the head, taking the whiskers off and the rest leave it alone (it came out
+      // flattened, and the muzzle or the bill was put on it). The head's box: its edges, the front one a pixel in above the snout.
+      const front = facing === "right" ? 1 : -1;
+      const out = (x, y) => y < k - 4 ? (front > 0 ? x < hmin || x > hmax - 1 : x < hmin + 1 || x > hmax) : x < hmin || x > hmax;
+      const seen = new Uint8Array(CELL * CELL);
+      for (let y = top; y < k + 2; y++) for (let x = 0; x < CELL; x++) {
+        if (!body[y * CELL + x] || seen[y * CELL + x] || !out(x, y)) continue;
+        const blob = [], st = [[x, y]]; seen[y * CELL + x] = 1;
+        while (st.length) { const [u, v] = st.pop(); blob.push(v * CELL + u);
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const p = u + dx, q = v + dy;
+            if (q >= 0 && q < k + 2 && p >= 0 && p < CELL && body[q * CELL + p] && !seen[q * CELL + p] && out(p, q)) { seen[q * CELL + p] = 1; st.push([p, q]); } } }
+        if (blob.length >= 5) for (const i of blob) body[i] = 0;
+      }
       const xf = facing === "right" ? hmax - 2 : hmin + 2;
       sy = top; while (sy < k && !at(xf, sy)) sy++;
     }
-    return {top, bottom, k, sy, hmin, hmax, cx: Math.round((hmin + hmax + 1) / 2), facing, side, at, walk: row >= 4 && row < 8, col};
+    return {top, bottom, k, sy, hmin, hmax, cx: Math.round((hmin + hmax + 1) / 2), facing, side, at, raw, body, walk: row >= 4 && row < 8, col};
   }
   function remake(d, A, race) {                    // d: the frame's pixels, rewritten in place
-    const g = [];                                  // the frame as colour classes; null is empty
-    for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) g.push(A.at(x, y));
+    const g = [], other = [];                      // the body as colour classes (null is empty); other: the tool, its arc, a hand apart
+    for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) { g.push(A.at(x, y)); other.push(A.at(x, y) ? null : A.raw(x, y)); }
     const get = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL ? g[y * CELL + x] : null;
     const span = (y) => { let a = CELL, b = -1; for (let x = 0; x < CELL; x++) if (get(x, y)) { a = Math.min(a, x); b = x; } return [a, b]; };
     const H = {
@@ -137,6 +168,16 @@ const Races = (() => {
       belly() { if (A.facing !== "up") for (let y = A.k + 2; y < A.bottom - 1; y++) for (let x = 0; x < CELL; x++) if (get(x, y) === "b") g[y * CELL + x] = "y"; },
     };
     race.head(H, A);
+    // A tool held over the head is held by a hand, which on the cat is a few pixels above the skull, where its ears are:
+    // rounding the head took the hand with the ears, and the tool hung in the air. What was body within two pixels of the
+    // tool, above the skull, is put back.
+    if (A.facing !== "down") for (let y = 0; y <= A.sy; y++) for (let x = 0; x < CELL; x++) {       // (facing us, the tool is in front of the body)
+      const was = A.at(x, y); if (!was || g[y * CELL + x]) continue;
+      let near = false;
+      for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2; dx++) if (other[(y + dy) * CELL + x + dx] === "?") { near = true; break; }
+      if (near) g[y * CELL + x] = was === "c" ? "b" : was;                // (the cat's pink ear lining is not a hand's colour)
+    }
+    for (let i = 0; i < g.length; i++) if (other[i]) g[i] = other[i];      // the tool, the arc and the hand go back on top, untouched
     for (let i = 0; i < g.length; i++) {
       const c = g[i], hex = c && (race.col[c] || EXTRA[c] || BASE[c]);
       if (!hex) { if (!c) d[i * 4 + 3] = 0; continue; }
