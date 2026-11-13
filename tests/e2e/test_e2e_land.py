@@ -19,7 +19,7 @@ def test_only_what_shows_is_painted_and_the_land_is_the_same(game):
     (tiles.js, relief.js). The pictures are the same to the pixel as with every layer laid (nothing taken for
     solid); a block cost 42 ms to build at the foot of a twelve-layer mountain, on a fast machine."""
     game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN)
-    game.stamp(-9, -4, ["..~~..", ".~~~~.", "..~~.."], levels=["000000", "0aaaa0", "000000"])     # a pond, and a pit under it
+    pond(game)                                                   # a pond, and a pit under it
     game.sleep(900)
     game.js(SIG)                                                 # (read once first: Chrome paints a canvas another way once it has been read)
     quick = game.js(SIG)
@@ -46,6 +46,17 @@ PAGE = """() => { const P = CanvasRenderingContext2D.prototype, od = P.drawImage
   return out; }"""
 
 
+def pond(game):
+    """A pond and a pit under it, up and to the left of you, wholly inside one block. (Stamped at a fixed place it fell
+    across a corner of four blocks when the player woke near one: every block had water, and a test that needs one
+    without failed; which player wakes where changes whenever a test is added.)"""
+    x, y = game.pos()
+    px, py = x - 9, y - 4
+    px -= max(0, px % 32 + 6 - 32)
+    py -= max(0, py % 32 + 3 - 32)
+    game.stamp(px - x, py - y, ["..~~..", ".~~~~.", "..~~.."], levels=["000000", "0aaaa0", "000000"])
+
+
 def test_the_land_is_painted_in_the_page_and_handed_to_the_gpu_whole(game):
     """A block's ground and its raised picture are px worked out in the page, each made a canvas once (tiles.js,
     relief.js). Put together by the GPU a piece at a time (a mask, the ground drawn into it, a few rows put and a few
@@ -54,7 +65,7 @@ def test_the_land_is_painted_in_the_page_and_handed_to_the_gpu_whole(game):
     step differently here and there, as it does from one canvas to another); and building a block draws on no
     canvas: two pictures are put, once each."""
     game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN)
-    game.stamp(-9, -4, ["..~~..", ".~~~~.", "..~~.."], levels=["000000", "0aaaa0", "000000"])
+    pond(game)
     game.sleep(900)
     blocks = game.js(PAGE)
     assert len(blocks) >= 2 and max(b["levels"] for b in blocks) >= 12
