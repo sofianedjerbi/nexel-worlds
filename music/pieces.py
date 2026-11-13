@@ -237,13 +237,16 @@ PIECES = [
     dict(id="shore", title="Far shore, day (kept)", score="shore", bpm=112, drums="four", bass="drive", comp="stab5", sync=True, lead="Nick Moritz/Keys/Dream Plucks",
          double="Leads/Classic Lead 2", chords="Polysynths/Smooth Stabs", pad="Polysynths/Juno-60 Strings", bass_sound="Basses/Bass 3",
          about="new: 112 BPM, a kick on every beat; one lead bar that never changes while seven chords move under it; pluck lead, a synth lead joining an octave up the second time, analog stabs"),
-    # (the first Far shore night used Side street night's instruments: "do not use the same instrument for night themes")
-    dict(id="shore_night_a", title="Far shore, night A", score="shore", bpm=66, drums="none", bass="long", comp="hold", sync=True, lead="Nick Moritz/Keys/Dream Plucks",
-         chords="Databroth/Pads/Warmbo", pad="Pads/Winter Warmer", bass_sound="Basses/Mellow", levels={"chords": -23},
-         about="slow, no drums; the day version's own pluck, played softly over a warm pad and an airy one, a mellow bass"),
-    dict(id="shore_night_b", title="Far shore, night B", score="shore", bpm=66, drums="none", bass="long", comp="hold", sync=True, lead="Cybersoda/Keys/Tape Keys",
-         chords="Databroth/Pads/Tape Magic", pad="Bluelight/Pads/Wool 1", bass_sound="Basses/Mellow", levels={"chords": -23},
-         about="slow, no drums; worn tape keys over tape-worn pads, a mellow bass"),
+    # Far shore night. First on Side street night's instruments: "do not use the same instrument for night themes". Then on
+    # Dream Plucks or Tape Keys: "both sounds bad". Now on the sounds that MEASURE closest to the ones of the night piece
+    # the user likes (attack, decay, brightness; scratch script near.py): leads Wurli and EP Middle, pads Film, Still,
+    # Whatever, Obie, bass Sub 2. The two refused leads measured much further from it.
+    dict(id="shore_night_c", title="Far shore, night C", score="shore", bpm=66, drums="none", bass="long", comp="hold", sync=True, lead="Cybersoda/Keys/Wurli",
+         chords="Bluelight/Pads/Film", pad="Pads/Still", bass_sound="Basses/Sub 2",
+         about="slow, no drums; an electric piano over two dark warm pads and a low bass (the sounds measured closest to Side street night's, without being them)"),
+    dict(id="shore_night_d", title="Far shore, night D", score="shore", bpm=66, drums="none", bass="long", comp="hold", sync=True, lead="Vospi/Keys/EP Middle",
+         chords="Bluelight/Pads/Whatever", pad="Bluelight/Pads/Obie", bass_sound="Basses/Sub 2",
+         about="slow, no drums; a softer electric piano over two other warm pads and a low bass"),
 ]
 
 

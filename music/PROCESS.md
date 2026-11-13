@@ -389,3 +389,17 @@ of these new songs nicely with effects if needed etc etc".
   key and pads). Two versions on other sounds: A (the day version's own pluck, Dream Plucks, over Warmbo and Winter
   Warmer, Mellow bass) and B (Tape Keys over Tape Magic and Wool 1, Mellow bass). The first one is deleted.
   The Mellow bass is very wide in the lows, so `master.py` now centres the lows more firmly (170 Hz, steeper).
+
+## One loudness; Far shore night, third try (2026-11-13)
+
+The user: "both sounds bad. also db should be normalized (w/ sound effect db also !)".
+- Music: `master.py` now puts every piece at -16 LUFS (it had day -16, night -18, boss -14.5). Who is louder in the
+  game is the game's business (SOUND in audio.js), not the files'.
+- Sound effects: `sfx.py` gives each sound a level (loudest 100 ms, K-weighted: -13 dB for the boss's biggest to
+  -30 dB for the softest step). Measured over the 198 files: 187 on target, 11 under by 0.5 to 4 dB (chop, mine,
+  snap, creak, place, place_planks), because the whole sound was scaled down to fit its peak. `render()` now uses a
+  soft ceiling and re-levels: all 198 within 0.3 dB, highest peak 0.948. Game audio rebuilt.
+- Far shore night: versions A (Dream Plucks) and B (Tape Keys) refused. Sounds are now chosen by measuring closeness
+  (attack, decay, brightness) to the sounds of Side street night: leads Wurli (distance 1.7) and EP Middle (2.2); the
+  refused ones were at 2.9 and 4.0. Pads Film, Still, Whatever, Obie; bass Sub 2. Versions C and D.
+- Not judged by ear.

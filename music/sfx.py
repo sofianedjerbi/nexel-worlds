@@ -1344,7 +1344,13 @@ def render(name, v):
     if m["vary"]:
         raw = resize(raw, SIZES[v % len(SIZES)])
     st = finish(raw, m["kind"])
-    st *= 10 ** ((20 * np.log10(m["loud"]) - 9 - loudness(st)) / 20)     # perceived level, per sound; every variant matches
+    want = 20 * np.log10(m["loud"]) - 9                                  # perceived level, per sound; every variant matches
+    for _ in range(6):
+        st *= 10 ** ((want - loudness(st)) / 20)
+        if np.abs(st).max() <= 0.95:
+            break
+        st = 0.95 * np.tanh(st / 0.95)      # a soft ceiling. (Scaling the whole sound down to fit its peak left the sharpest
+                                            # ones, chop, mine, snap, 1 to 4 dB under the level they were given.)
     return st * min(1, 0.95 / np.abs(st).max())
 
 
