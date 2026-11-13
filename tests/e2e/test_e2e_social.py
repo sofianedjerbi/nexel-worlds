@@ -92,3 +92,30 @@ def test_boat_launch_sail_and_moor(game):
     game.hold(["s"], 900)                                    # back to the shore: you step out, the boat stays
     game.sleep(800)
     assert not game.server()["sailing"]
+
+
+def test_who_is_awake_and_the_goals_show_only_while_tab_is_held(game, browser, server):
+    """While you play, the screen is the world's (the goals lay over the title, the list of who is awake was always
+    there): both show while Tab is held, side by side under the line of news, and go when it is let go. Someone only
+    watching keeps the list: they pick who to follow."""
+    shown = "['side', 'goals', 'brand'].map((id) => { const r = $(id).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] : null; })"
+    side, goals, brand = game.js(shown)
+    assert side is None and goals is None and brand and brand[3] <= 64         # only the clock's line, top left
+    assert game.js("getComputedStyle(document.querySelector('#brand .t')).display") == "none"
+    game.wait("agents.some((a) => a.name === me && a.online)", 10000)             # (the list is asked for now and then)
+    game.page.keyboard.down("Tab")
+    game.sleep(200)
+    side, goals, brand = game.js(shown)
+    assert side and goals and side[2] <= goals[0] and side[1] == goals[1] >= 70    # side by side, clear of the top
+    assert side[1] >= brand[3] and game.name in game.js("$('agents').innerText") and len(game.js("[...document.querySelectorAll('.goal')].map((g) => g.innerText)")) == 3
+    game.page.keyboard.up("Tab")
+    game.sleep(200)
+    assert game.js(shown)[:2] == [None, None]
+    game.give(wood=4)                                                              # a goal done is said at the top
+    game.sleep(600)
+    assert game.toast() == "Goal done: Chop 4 wood"
+    page = browser.new_page()                                                      # someone watching
+    page.goto(server)
+    page.wait_for_function("typeof agents !== 'undefined' && agents.some((a) => a.online)", timeout=15000)
+    assert page.evaluate("$('side').getBoundingClientRect().width") > 100 and page.evaluate("getComputedStyle(document.querySelector('#brand .t')).display") != "none"
+    page.close()

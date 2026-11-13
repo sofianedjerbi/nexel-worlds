@@ -14,8 +14,8 @@ function joinGame(name) {
     $("joinbox").style.display = "none"; $("hud").style.display = "flex"; document.body.classList.add("playing");
     $("help").style.display = localStorage.getItem("megastructure-help") === "on" ? "block" : "none";
     $("mode").textContent = "playing as " + me;
-    toast(TOUCH ? "You wake up in a meadow. Left thumb to walk, A to use what you face, B for its other use."
-      : "You wake up in a meadow. WASD to walk, click things to use them, Enter to talk.");
+    toast(TOUCH ? "You wake up in a meadow. Left thumb to walk, A to use what you face, B for its other use. Tap the clock for your goals."
+      : "You wake up in a meadow. WASD to walk, click things to use them, Enter to talk. Hold Tab for your goals.");
     refresh();
   };
   agentWs.onmessage = (m) => {
@@ -28,7 +28,7 @@ function joinGame(name) {
     }
     const f = pending[d.id]; if (f) { delete pending[d.id]; f(d); }
   };
-  agentWs.onclose = () => { if (me) toast("Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "watching"; ["hud", "craft", "help", "goals", "bag"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; document.body.classList.remove("playing"); };
+  agentWs.onclose = () => { if (me) toast("Disconnected", true); me = null; myId = null; meObs = null; $("mode").textContent = "watching"; ["hud", "craft", "help", "goals", "bag"].forEach((id) => $(id).style.display = "none"); $("joinbox").style.display = "block"; document.body.classList.remove("playing", "tab"); };
 }
 function rpc(op, extra) {
   return new Promise((res) => {

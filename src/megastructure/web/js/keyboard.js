@@ -186,6 +186,7 @@ addEventListener("keydown", (e) => {
   if (/^[0-9]$/.test(k) && meObs) {                 // a slot of your bar (0: the tenth); an empty one, or the one in hand again: empty hands
     const n = slots[(+k + 9) % 10]; selectItem(n && selected !== n ? n : null); if (!selected) toast("Empty hands"); return;
   }
+  if (k === "tab") { e.preventDefault(); document.body.classList.add("tab"); return; }   // held: who is awake, and the goals (style.css)
   const fn = SHORTCUTS[k];
   if (fn) { e.preventDefault(); if (!(e.repeat && k !== " " && k !== "x")) fn(); }
 });
@@ -193,6 +194,8 @@ addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase();
   keys.delete(k);
   if (k === "shift") { keys.delete("shift"); runKey = false; }
+  if (k === "tab") document.body.classList.remove("tab");
   syncWalk();
 });
-addEventListener("blur", () => { runKey = false; keys.clear(); syncWalk(); });
+addEventListener("blur", () => { runKey = false; keys.clear(); document.body.classList.remove("tab"); syncWalk(); });
+$("brand").onclick = (e) => { if (me && e.target.id !== "helpbtn") document.body.classList.toggle("tab"); };   // (a phone has no Tab: a tap on the clock)

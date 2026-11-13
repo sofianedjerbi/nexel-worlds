@@ -1,4 +1,5 @@
-// Goals: the next three things to try, top left, ticked off as you do them.
+// Goals: the next three things to try, ticked off as you do them. They show while Tab is held, beside who is awake
+// (keyboard.js; a tap on the clock, on a phone); one done is said in a line at the top.
 
 // [what to do, its icon, done?]
 const GOALS = [
@@ -27,13 +28,14 @@ function drawGoals() {
   if (meObs.self.sheltered) d.sheltered = true;
   if (meObs.self.sailing) d.sailed = true;
   GOALS.forEach(([, , f], i) => {
-    if (f(inv, d) && !d["g" + i]) { d["g" + i] = true; if (goalsShown.includes(i)) { goalsDoneAt[i] = now; sfx("chime"); } }
+    if (f(inv, d) && !d["g" + i]) { d["g" + i] = true; if (goalsShown.includes(i)) { goalsDoneAt[i] = now; sfx("chime"); toast("Goal done: " + GOALS[i][0]); } }
   });
   localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d));
   const lingering = goalsShown.filter((i) => goalsDoneAt[i] && now - goalsDoneAt[i] < 1600);
   const open = GOALS.map((_, i) => i).filter((i) => !d["g" + i] && !lingering.includes(i));
   goalsShown = [...lingering, ...open].slice(0, 3);
   const el = $("goals"), done = GOALS.filter((_, i) => d["g" + i]).length;
+  el.classList.toggle("none", !goalsShown.length);
   if (!goalsShown.length) { el.style.display = "none"; return; }
   el.style.display = $("craft").style.display === "block" ? "none" : "block";
   const sig = goalsShown.map((i) => i + (goalsDoneAt[i] ? "d" : "")).join() + "|" + done;

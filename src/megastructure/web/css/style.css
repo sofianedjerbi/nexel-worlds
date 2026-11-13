@@ -117,6 +117,13 @@
   body.touch #craft { bottom:0; z-index:6; }
   body.touch:has(#craft[style*="display: block"]) :is(#ttop, #tbtns, #tctx) { visibility:hidden; }
   #goals { left:10px; top:10px; width:230px; display:none; }
+  /* While you play the screen is the world's: who is awake and the goals show only while Tab is held (as the sandbox
+     classic lists its players), side by side at the top; of the title panel the clock stays. (The goals lay over the
+     title, the list of who is awake was always there.) Watching, not playing, the list stays: you pick who to follow. */
+  body.playing #side, body.playing #goals { display:none !important; }
+  body.playing.tab #side { display:flex !important; right:calc(50% + 5px); top:76px; }                 /* (under where a line of news shows) */
+  body.playing.tab #goals:not(.none) { display:block !important; left:calc(50% + 5px); top:76px; }
+  body.playing #brand .t { display:none; } body.playing #brand { cursor:pointer; }
   #goals .gh { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
   #goals h3 { margin:0; }
   #goalcount { color:var(--ink2); font-size:18px; }
