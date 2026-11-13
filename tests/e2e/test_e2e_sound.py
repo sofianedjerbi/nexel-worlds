@@ -83,7 +83,7 @@ def test_the_boss_piece_takes_over_during_a_fight_and_hands_back(game):
     game.js("(() => { window.realBossMusic = bossMusic; bossMusic = () => {}; })()")     # (boss.js turns it off twice a second: no boss in view)
     game.js("realBossMusic(true)")
     game.wait("bossTrack.on && bossTrack.nodes.size > 0", 15000)
-    game.sleep(3000)
+    game.sleep(6500)                                           # (the moment takes SOUND.giveWay seconds to recede)
     assert game.js("bossTrack.key") == game.js("sounds.manifest.play.boss") and game.js("bossTrack.gain.gain.value") > 0.3
     assert not game.js("music.on") and game.js("music.gain.gain.value") < 0.02                 # the moment gave way
     game.js("moment.next = 0")

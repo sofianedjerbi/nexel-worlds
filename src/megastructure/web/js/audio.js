@@ -16,8 +16,11 @@ const SOUND = {
   firstMoment: [8, 20],   // seconds after the sound starts before the first piece
   gap: [50, 140],     // seconds of silence between two pieces (a random time in this range)
   afterFight: [20, 40],   // seconds after a fight before a piece may play again
-  passes: {day: 2, night: 1},   // how many times a piece is played through before it ends
-  ending: 2.5,        // seconds over which a piece fades on its last held chord
+  passes: {day: 3, night: 2},   // how many times a piece is played through before it ends (about 1:45 by day, 1:55 at night)
+  arrive: {day: 10, night: 14, boss: 2.5},   // seconds a piece takes to come in: from quiet and muffled (as if from far) to full.
+                      // Long on purpose: "make the transition long enough to not be noticed by the player"
+  ending: 12,         // seconds over which a piece recedes at its end (quieter and more muffled), and the boss's after a fight
+  giveWay: 4,         // seconds a day or night piece takes to recede when a fight starts (the boss's piece comes in over it)
   wind: .5,           // the wind of a fall at its fastest (fallWind)
   mix: {Footsteps: .9, Work: 1, Breaking: 1, Building: 1, Items: .9, Progress: 1, Fights: 1, Animals: .9, World: .9, People: .8, Interface: .8, Boss: 1},
   hearing: 12,        // tiles: a sound in the world further than this is not heard
@@ -79,7 +82,8 @@ async function warmSounds() {
 // A piece is streamed: the build cuts it into parts of a few seconds, lossless (tools/build_audio.py), played one after
 // the other to the sample, each fetched a little before its turn and let go once played. A part carries a little of its
 // neighbours at both ends (`pad`): the browser resamples each part on its own, so the join is made inside sound that
-// both have. Each kind is on its own gain (the effects' limiter never pumps it).
+// both have. Each kind is on its own gain (the effects' limiter never pumps it) and its own low-pass filter: a piece
+// never starts or stops dead ("they just spawn out of nowhere"), it arrives and recedes (swell).
 const music = {key: null, gain: null, on: false, at: 0, run: 0, nodes: new Map(), left: 0};       // the moment playing, if one is
 const bossTrack = {key: null, gain: null, on: false, at: 0, run: 0, nodes: new Map(), left: Infinity};
 const moment = {next: Infinity, last: {}};                 // next: when a piece may start (performance.now ms)
@@ -93,7 +97,11 @@ async function stream(tr, done) {
   const m = sounds.manifest.tracks[tr.key], a = ac(), rate = a.sampleRate, run = ++tr.run;
   for (const src of tr.nodes.keys()) src.stop();           // (what was left of it fading out)
   tr.on = true; tr.at = 0;
-  if (!tr.gain) { tr.gain = a.createGain(); tr.gain.gain.value = 0; tr.gain.connect(a.destination); }
+  if (!tr.gain) {
+    tr.gain = a.createGain(); tr.gain.gain.value = 0;
+    tr.far = a.createBiquadFilter(); tr.far.type = "lowpass"; tr.far.frequency.value = FAR; tr.far.Q.value = .5;
+    tr.gain.connect(tr.far).connect(a.destination);
+  }
   let next = 0;                                            // where the next part starts, in the context's own samples
   while (tr.on && tr.run === run) {
     const i = tr.at, buf = await piece(m.files[i]);
@@ -107,13 +115,24 @@ async function stream(tr, done) {
     next += len; tr.at = (i + 1) % m.files.length;
     if (end && --tr.left <= 0) {                           // its last part: fade on the last chord, then it is over
       const ends = next / rate;
-      tr.gain.gain.setTargetAtTime(0, ends - SOUND.ending, SOUND.ending / 3);
+      swell(tr, 0, SOUND.ending, ends - SOUND.ending);
       await pause((ends - a.currentTime) * 1000);
       if (tr.run === run) { tr.on = false; done && done(); }
       return;
     }
     while (tr.on && tr.run === run && a.currentTime < starts - 1) await pause(400);   // the one after is fetched as this one is about to play
   }
+}
+// A piece comes in (level > 0) or goes out (0) over `secs`, from `at` (now by default): its volume, and how muffled it
+// is. Far away a sound is quiet and has lost its top; near, it is full.
+const FAR = 350, NEAR = 18000;
+function swell(tr, level, secs, at) {
+  if (!tr.gain) return;
+  const t = Math.max(at ?? 0, audio.currentTime), g = tr.gain.gain, f = tr.far.frequency;
+  g.cancelScheduledValues(t); f.cancelScheduledValues(t);
+  g.setTargetAtTime(level, t, secs / 3);
+  f.setValueAtTime(level ? Math.min(f.value, NEAR / 2) : Math.max(f.value, FAR * 2), t);      // (from where it is, if it was already moving)
+  f.exponentialRampToValueAtTime(level ? NEAR : FAR, t + secs);
 }
 function halt(tr, after) {                                 // stop it, `after` seconds from now (its gain fades meanwhile)
   if (!tr.on) return;
@@ -131,8 +150,7 @@ function moments() {
   music.left = SOUND.passes[hour] || 1;
   moment.next = Infinity;
   stream(music, () => { moment.next = performance.now() + between(SOUND.gap); });
-  music.gain.gain.cancelScheduledValues(audio.currentTime);
-  music.gain.gain.setTargetAtTime(SOUND.music, audio.currentTime, .05);
+  swell(music, SOUND.music, SOUND.arrive[hour]);
 }
 setInterval(moments, 1000);
 // What should be heard now: nothing (muted: nothing is fetched either), the boss's loop (a fight is on), or the
@@ -140,13 +158,16 @@ setInterval(moments, 1000);
 function tune(tc) {
   const m = sounds.manifest;
   if (!audio || !m || !m.tracks || !SOUND.music) return;
-  const t = audio.currentTime, boss = !muted && fight && !!m.tracks[m.play.boss];
+  const boss = !muted && fight && !!m.tracks[m.play.boss];
   bossTrack.key = m.play.boss;
-  if (boss && !bossTrack.on) { bossTrack.left = Infinity; stream(bossTrack); } else if (!boss) halt(bossTrack, 6);
-  if (bossTrack.gain) bossTrack.gain.gain.setTargetAtTime(boss ? SOUND.music * SOUND.bossMusic : 0, t, tc);
-  if (music.on && (muted || fight)) {                      // a moment gives way: to silence, or to the fight
-    music.gain.gain.cancelScheduledValues(t); music.gain.gain.setTargetAtTime(0, t, tc);
-    halt(music, 2);
+  if (boss && !bossTrack.on) { bossTrack.left = Infinity; stream(bossTrack); swell(bossTrack, SOUND.music * SOUND.bossMusic, SOUND.arrive.boss); }
+  else if (!boss && bossTrack.on) {                        // the fight is over (or sound is off): it recedes
+    const out = muted ? 3 * tc : SOUND.ending;
+    swell(bossTrack, 0, out); halt(bossTrack, out + 1);
+  }
+  if (music.on && (muted || fight)) {                      // a moment gives way: to silence, or to the fight (they cross)
+    const out = muted ? 3 * tc : SOUND.giveWay;
+    swell(music, 0, out); halt(music, out + .5);
   }
   if (moment.next === Infinity && !music.on) moment.next = performance.now() + (muted ? Infinity : between(fight ? SOUND.afterFight : [2, 5]));
 }
