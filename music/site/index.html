@@ -149,6 +149,15 @@
     </div>
   </section>
 
+  <section class="card" id="dayscard">
+    <h2>Other music for the day: four suggestions <small>each its own tune, in the same sound; none is in the game</small></h2>
+    <div id="days"></div>
+    <div class="notes" style="margin-top:10px">
+      <div><b>Same rules as Meadow Road:</b> chords struck together, no arpeggios; the melody never climbs or falls step after step; every melody note on a beat is a chord note. Each tune is one two-bar idea: said, answered, said again, closed.</div>
+      <div><b>Source:</b> <code>music/day.py</code>. Tell me which to keep, change or drop.</div>
+    </div>
+  </section>
+
   <section class="card" id="nightcard">
     <h2>Night theme: Lantern Road <small>60 BPM · B minor · 48 bars · 3:12 seamless loop</small></h2>
     <div class="controls">
@@ -384,6 +393,19 @@ async function loadLoop(id, tint, meta) {
     $(id + "where").textContent = sec ? sec.name : "";
   }, 100);
 }
+async function loadDays() {
+  const tint = ["#f7e0a3", "#f7c9a3", "#d9e8d0", "#cfe0f0", "#f3c6d8", "#e6dcc6"];
+  for (const d of await (await fetch("audio/days.json")).json()) {
+    const id = "day_" + d.id, row = document.createElement("div");
+    row.style.marginTop = "14px";
+    row.innerHTML = `<b>${d.title}</b> <small>${d.bpm} BPM · ${d.key} · ${fmt(d.seconds)} loop · ${d.mood}</small>
+      <div class="controls" style="margin-top:6px"><button class="lplay" id="${id}play" disabled>play</button>
+      <div class="timeline"><div class="lsections" id="${id}sections"><span class="lhead" id="${id}head"></span></div>
+      <div class="times"><span id="${id}now">0:00</span><span id="${id}where"></span><span>${d.chords}</span></div></div></div>`;
+    $("days").appendChild(row);
+    loadLoop(id, tint, d);
+  }
+}
 const loadBoss = () => Promise.all([loadLoop("boss", ["#d9e8d0", "#f7e0a3", "#f7c9a3", "#cfe0f0", "#f7c9a3"]),
                                     loadLoop("night", ["#cfd6ee", "#bcc6e6", "#d9d2f0", "#c2d8e8", "#b4bfe2", "#cfd6ee"])]);
 
@@ -589,7 +611,7 @@ async function buildObjMap() {
   wrap.querySelectorAll(".obj").forEach((b) => b.onclick = () => { playSfx(b.dataset.s, null, "fable"); b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 120); });
   box.prepend(wrap);
 }
-load().then(async () => { draw(); loadBoss(); await buildSfx(); buildObjMap(); });
+load().then(async () => { draw(); loadBoss(); loadDays(); await buildSfx(); buildObjMap(); });
 </script>
 </body>
 </html>

@@ -160,3 +160,9 @@ slowly and a clipper on top. Three pianos refused in a row: stop making pianos.
 - Shaker 5 dB lower.
 - `music/audition.py` renders the same 8 bars with each candidate (guitar, electric piano, marimba, the old piano) for
   the page's "pick by ear" card. The user picks; do not guess a fourth time.
+
+## 2026-11-13: other music for the day
+
+The user asked for other day musics as suggestions, published with the demo. `music/day.py` holds four (Market Morning,
+Slow Afternoon, Overcast, Picnic): same band and rules as Meadow Road, each one two-bar idea said, answered, said again
+and closed. None is in the game. The demo build makes `music.html` from the rendered tracks (AAC, `tools/build_pages.py`).

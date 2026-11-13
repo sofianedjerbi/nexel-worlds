@@ -6,6 +6,7 @@ The page loads js/local.js, which boots the real server inside the tab; nothing 
 """
 
 import shutil
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -38,8 +39,23 @@ def build(out: Path):
     assert box in page, "the join box changed"
     (out / "index.html").write_text(page.replace(box, box + '\n  <div class="watch"><a href="showcase.html" '
                                     'style="color:var(--ink2)">New: heights, biomes, dig anywhere</a></div>'))
+    music_page(out)
     (out / ".nojekyll").write_text("")
     print(f"built {out} ({sum(f.stat().st_size for f in out.rglob('*') if f.is_file()) // 1024} KB)")
+
+
+def music_page(out: Path):
+    """music.html (tools/pages) plays the rendered tracks of music/site/audio, compressed to AAC (afconvert, macOS):
+    the day theme, night, boss, the day suggestions (music/day.py) and the instrument clips (music/audition.py)."""
+    src = ROOT / "music" / "site" / "audio"
+    wavs = [src / f"{n}.wav" for n in ("master", "night", "boss")] + sorted(src.glob("day_*.wav")) + sorted(src.glob("try_*.wav"))
+    if not shutil.which("afconvert") or not (src / "days.json").exists() or not all(w.exists() for w in wavs):
+        (out / "music.html").unlink()
+        return print("no music page: render the music first (music/render_all.py, day.py, audition.py)")
+    (out / "music").mkdir()
+    shutil.copy(src / "days.json", out / "music" / "days.json")
+    for w in wavs:
+        subprocess.run(["afconvert", "-f", "m4af", "-d", "aac", "-b", "128000", str(w), str(out / "music" / (w.stem + ".m4a"))], check=True)
 
 
 if __name__ == "__main__":

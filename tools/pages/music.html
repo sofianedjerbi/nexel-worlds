@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Megastructure: music</title>
+<style>
+  body { margin:0; background:#f3e3c3; color:#5b3a29; font:16px/1.45 system-ui, sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:20px 14px 60px; }
+  h1 { font-size:26px; margin:6px 0 2px; }
+  h2 { font-size:19px; margin:0 0 4px; }
+  section { background:#fff6e0; border:3px solid #c99b6b; border-radius:14px; padding:14px; margin-top:16px; }
+  .t { margin-top:14px; }
+  .t small { display:block; color:#8a6a55; }
+  audio { width:100%; margin-top:6px; }
+  a { color:#5b3a29; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Megastructure: music</h1>
+  <div>Every track is a loop. Online they are compressed, so a loop may click where it restarts; in the game it does not. <a href="./">Play the demo</a></div>
+  <section><h2>Other music for the day: four suggestions</h2><div>Each its own tune, in the same sound. None is in the game yet.</div><div id="days"></div></section>
+  <section><h2>The other tracks</h2><div id="now"></div></section>
+  <section><h2>Main instrument: the same 8 bars, four ways</h2><div id="try"></div></section>
+</main>
+<script>
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+function add(box, file, title, sub, loop) {
+  const d = document.createElement("div");
+  d.className = "t";
+  d.innerHTML = `<b>${title}</b><small>${sub}</small><audio controls preload="none" ${loop ? "loop" : ""} src="music/${file}.m4a"></audio>`;
+  document.getElementById(box).appendChild(d);
+}
+document.addEventListener("play", (e) => document.querySelectorAll("audio").forEach((a) => a !== e.target && a.pause()), true);
+fetch("music/days.json").then((r) => r.json()).then((days) => {
+  for (const d of days) add("days", "day_" + d.id, d.title, `${d.bpm} BPM · ${d.key} · ${fmt(d.seconds)} · ${d.mood}`, true);
+});
+add("now", "master", "Meadow Road", "the day theme in the game, on a nylon guitar · 84 BPM · D major · 4:10", true);
+add("now", "boss", "Old Mossback", "the boss fight in the game: the same tune in B minor · 96 BPM · 1:30", true);
+add("now", "night", "Lantern Road", "a night version of the day theme, not in the game yet · 60 BPM · 3:12", true);
+add("try", "try_guitar", "Guitar", "in use now: nylon string, plucked with the thumb");
+add("try", "try_rhodes", "Electric piano", "a tine that barks a little, then sings");
+add("try", "try_marimba", "Marimba", "soft mallets, short notes");
+add("try", "try_piano", "The old piano", "for comparison");
+</script>
+</body>
+</html>
