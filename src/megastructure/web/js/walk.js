@@ -78,11 +78,13 @@ function leadOf(p, now) {
   return d || off > .01 ? d + Math.abs(al) + off : al;
 }
 // where nobody sprints: in a boat (and, on a server from before the sprint in the water, in the water)
+// tiles a second from the tile (x, y): 5 walking, 10 at a sprint; in the water the server's SWIM_PACE times slower (half)
+const speedAt = (x, y, p) => { const t = tile(x, y); return (walking.run && !onWater(x, y, p) ? 10 : 5) / (t && wet(t[1]) && !(p.e && p.e.sail) ? SWIM_PACE : 1); };
 const onWater = (x, y, p) => { const t = tile(x, y); return (!SWIM_SPRINT && !!t && wet(t[1])) || !!(p.e && p.e.sail); };
 
 // A frame of your walk (render.js). A turn first finishes the tile you were walking into, in a straight line, then
 // turns: no diagonal slide. Each step as the server paces it, in its 0.1 s ticks: a stride of 1 tick (sprinting) or
-// 2 (walking, swimming). Up a layer the server takes a tick more (SLOPE_UP: hard going); you
+// 2 (walking), twice that in the water. Up a layer the server takes a tick more (SLOPE_UP: hard going); you
 // don't, on screen: a hop at the pace of a step (slowed for it, you hung in the air: jump.js). It catches up when
 // you stop, and on a long climb you slow down smoothly, by how far ahead of it you are (LEAD).
 function walkOn(p, dt, now) {
@@ -91,7 +93,7 @@ function walkOn(p, dt, now) {
   for (let i = 0; i < 4 && t > 1e-5; i++) {
     const off = walking.lane - p[side];
     if (Math.abs(off) > 1e-3) {
-      const v = walking.run && !onWater(Math.round(p.x), Math.round(p.y), p) ? 10 : 5, go = Math.min(Math.abs(off), v * t);
+      const v = speedAt(Math.round(p.x), Math.round(p.y), p), go = Math.min(Math.abs(off), v * t);
       p[side] += Math.sign(off) * go; t -= go / v; p.moved = now;
       continue;
     }
@@ -99,7 +101,7 @@ function walkOn(p, dt, now) {
     const a0 = s > 0 ? Math.floor(p[along] + 1e-6) : Math.ceil(p[along] - 1e-6);      // the tile you're leaving, and the next
     const fx = wx ? a0 : walking.lane, fy = wx ? walking.lane : a0, nx = fx + wx, ny = fy + wy;
     if (!walkable(nx, ny, fx, fy)) { p[along] -= s * Math.min((p[along] - a0) * s, 10 * t); p.tx = fx; p.ty = fy; break; }   // a wall: you stay
-    const v = walking.run && !onWater(fx, fy, p) ? 10 : 5;
+    const v = speedAt(fx, fy, p);
     const go = Math.min((a0 + s - p[along]) * s, v * t);
     p[along] += s * go; t -= go / v; p.tx = nx; p.ty = ny; p.moved = now;
   }

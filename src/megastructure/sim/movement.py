@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS
-from .constants import FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRINT_FOOD, VIA_FAR, VIA_MAX, sec
+from .constants import FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
 
@@ -76,10 +76,11 @@ class Movement:
         self.emit("pick_up", a.x, a.y, name=a.name, items=got)
 
     def stride(self, a: Agent, args) -> float:
-        """Seconds per tile: walking or swimming 0.2, sprinting (`run: true`) 0.1 on land and in the water, sailing 0.15."""
+        """Seconds per tile: walking 0.2, sprinting (`run: true`) 0.1, sailing 0.15. In the water, from the tile you
+        swim in, twice as long (SWIM_PACE): 0.4 swimming, 0.2 at a sprint."""
         if a.sailing:
             return 0.15
-        return 0.1 if self.sprints(a, args) else 0.2
+        return (0.1 if self.sprints(a, args) else 0.2) * (SWIM_PACE if self.swimming(a) else 1)
 
     def sprints(self, a: Agent, args) -> bool:
         """Asked to run, and fed enough for it (three pieces of food or fewer: no sprinting)."""

@@ -1120,3 +1120,9 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - The music (audio.js `moments`): a piece remembers the hour it began in. When the hour turns on it, it is not cut: it plays the pass it is in to the end and closes on its last chord, receding over 12 s; then 6 to 12 s of silence (`SOUND.turn`, not the 50 to 140 s between pieces) and the new hour's piece comes in from far. The same at dawn.
 - A runner's dust (effects.js `kickDust`): it was three specks. Now each footfall throws a puff back from the heel (two big pieces that go quickly, smaller ones that drift up and thin out) and three bits of the ground itself, kicked up behind, that fall back and lie a moment: green on grass, sand, stone, earth. Walking is unchanged.
 - Looked at on real frames of a sprint. Tests: night falling on a day piece (it plays on, ends within its pass, a night piece within 12 s). 160 browser passed.
+
+## Iteration 102: the water halves your speed
+- User: "speed in water should be decreased, half of ground speed."
+- Now (sim/constants.py `SWIM_PACE = 2`, movement.py `stride`): a tile swum takes twice a tile walked: 0.4 s swimming (2.5 tiles a second), 0.2 s at a sprint (5), from the tile you swim in. Boats are unchanged. The server says its pace in its hello (`swim_pace`) and your own walk on screen (walk.js `speedAt`) goes at it; a server from before says nothing and the page keeps the old speed. For the local agents nothing to learn: it is the server that paces them.
+- Takes effect on the play server at its next restart.
+- Tests: the strides in the water (0.4, 0.2; 0.4 on three pieces of food); in Chrome 2 to 3 tiles swum in a second, 4 to 6 at a sprint. 345 unit; 158 browser passed, two that failed in the parallel run passed alone.

@@ -64,7 +64,8 @@ def test_swimming_sounds_like_swimming_not_like_walking(game):
 
 
 def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
-    """Shift in the water did nothing (nobody sprinted there). Now it is a sprint as on land, ten tiles a second, with
+    """Shift in the water did nothing (nobody sprinted there). Now it is a sprint: twice a swim, and the water halves
+    both (2.5 tiles a second swimming, 5 at a sprint: "speed in water should be decreased, half of ground speed"), with
     its own look: strokes twice as often, and a wake of marks twice as close that last longer."""
     game.clear_area(8)
     s = game.server()
@@ -81,6 +82,6 @@ def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
     game.hold(["d"], 1000)
     dashed, marks = game.server()["x"] - x0, mine(game, "p.wake.filter((w) => w.dash).length")
     game.page.keyboard.up("Shift")
-    assert 4 <= swum <= 6 and 8 <= dashed <= 11, (swum, dashed)          # five tiles a second, then ten
+    assert 2 <= swum <= 3 and 4 <= dashed <= 6 and game.js("SWIM_PACE") == 2, (swum, dashed)   # 2.5 tiles a second, then five
     assert marks >= 18 and 8 <= slow <= 13 and mine(game, "p.running") is True, (slow, marks)   # (its wake: a mark every 45 ms, not every 110)
     assert game.server()["swimming"] and not game.errors
