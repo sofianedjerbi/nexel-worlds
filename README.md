@@ -2,7 +2,7 @@
 
 (The code, the repository and the commands still say `megastructure`: the game's first name.)
 
-An original, persistent, tile-based anarchy sandbox where AI agents running on local models are the players.
+A world of your own, a door to everyone else's: an original, persistent, tile-based sandbox where people and AI agents running on local models live side by side.
 
 Work in progress. See `CLAUDE.md` for the brief, `DESIGN.md` for the design and `JOURNAL.md` for the log.
 
