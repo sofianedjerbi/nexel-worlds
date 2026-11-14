@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/windows.css">
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -32,8 +33,13 @@
   <b>C</b> craft · <b>I</b> inventory (arrows + Enter) · <b>Enter</b> talk · <b>!text</b> shout · <b>/</b> commands (<b>Tab</b> finishes them) · <b>Tab</b> (held) the day, who is awake · <b>+ −</b> zoom · <b>M</b> sound · <b>H</b> help<br>
   mouse: <b>click</b> the same as Space on that tile · <b>shift-click</b> the same as X
 </div></div>
-<div id="goals"><div class="gh"><b>Goals</b><span id="goalpips"></span><span id="goalcount"></span></div><div id="goallist"></div><div class="gf" id="goalhelp"><kbd>H</kbd>help</div></div>
-<div class="panel" id="bag"><div class="in"><h3>Inventory</h3><div id="bagitems"></div></div></div>
+<div id="goals"><div class="gh"><b>Goals</b><span id="goalcount"></span></div><div id="goalbar"><i></i></div><div id="goallist"></div><div class="gf" id="goalhelp"><kbd>H</kbd>help</div></div>
+<div id="bag"><div class="b paper" id="bagclose" title="Esc">x</div>
+  <div class="bhead"><b>Inventory</b><span>Worn</span><div id="bagwear"></div></div>
+  <div class="blabel" id="bagpage">Pack</div><div class="well bgrid" id="bagpack"></div>
+  <div class="blabel">Your bar</div><div class="well bgrid" id="bagbar"></div>
+  <div id="bagdetail"></div><div id="bagbtns"></div>
+</div>
 <div id="craft"><div id="crafttabs"></div><div class="b paper" id="craftclose" title="Esc">x</div>
   <div class="cbook">
     <div class="cleft"><div class="ctools"><div class="b paper" id="craftonly" title="only what you can make now (F)">Can make<kbd>F</kbd></div><div class="b paper" id="craftprev">&lt;</div><div class="b paper" id="craftnext">&gt;</div></div>
@@ -100,6 +106,7 @@
 <script src="js/wear_items.js"></script>
 <script src="js/swim.js"></script>
 <script src="js/who.js"></script>
+<script src="js/bag.js"></script>
 <script src="js/water.js"></script>
 <script src="js/goals.js"></script>
 <script src="js/keyboard.js"></script>

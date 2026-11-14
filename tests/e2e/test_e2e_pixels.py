@@ -57,9 +57,11 @@ def test_a_thing_on_the_ground_is_drawn_at_the_lands_own_pixel_size(game, zoom):
 # every item icon in the HUD and its slot's frame: screen pixels to an art pixel, and whether anything scales it
 HUD = """() => { const d = devicePixelRatio, out = {};
   const px = (sel, art) => [...document.querySelectorAll(sel)].filter((e) => e.offsetWidth).map((e) => { const r = e.getBoundingClientRect(); return [r.width * d / art, r.height * d / art]; }).flat();
-  out.icons = px('#hotbar .slot canvas, #bagitems .slot canvas', 11);
-  out.art = [...new Set([...document.querySelectorAll('#hotbar .slot canvas, #bagitems .slot canvas')].map((c) => c.width + 'x' + c.height))].join();
-  out.frames = px('#hotbar .slot, #bagitems .slot', 30);
+  out.icons = px('#hotbar .slot canvas', 11);
+  out.art = [...new Set([...document.querySelectorAll('#hotbar .slot canvas')].map((c) => c.width + 'x' + c.height))].join();
+  out.frames = px('#hotbar .slot', 30);
+  out.bag = [...px('#bag canvas', 16), ...px('#bag .cell', 18), parseFloat(getComputedStyle($('bag')).fontSize) * d / 9];           // (the inventory: the same, at its own)
+  out.card = [...px('#goals .gi', 16), ...px('#goals .gc', 18), parseFloat(getComputedStyle($('goals')).fontSize) * d / 9];         // (the goals' card)
   out.big = [...px('#craft canvas', 16), ...px('#craft .cell', 18), parseFloat(getComputedStyle($('craft')).fontSize) * d / 9];   // (the recipe book: icons, cells and the font, at its one pixel)
   out.vitals = [$('hearts').getBoundingClientRect().width * d / 99];         // (ten hearts: 99 art px)
   out.moved = ['hud', 'bag', 'craft'].map((id) => getComputedStyle($(id)).transform).join();
@@ -81,18 +83,18 @@ def test_an_item_in_the_hud_is_whole_screen_pixels_and_the_lands_own(browser, se
         g = Game(ctx.new_page(), server)
         g.join(f"px{random.randint(1000, 9999)}", 3)
         g.give(wood=5, stone=3, boat=1, bed=1, coop=1, plank=2, fiber=2, seed=1, egg=1, bread=1, torch=1, rope=1)
-        goals = g.js("[...document.querySelectorAll('.goal .gi')].map((e) => e.getBoundingClientRect().width * devicePixelRatio / 11)")
-        g.js("(() => { openCraft(); $('bag').style.display = 'block'; return 1; })()")
+        m0 = g.js(HUD)                                           # (the goals' card, before the book covers it)
+        g.js("(() => { openCraft(); toggleBag(); return 1; })()")
         g.sleep(900)                                             # (a phone fits its HUD every fifth of a second)
         m = g.js(HUD)
         whole = lambda v: abs(v - round(v)) < .02 and round(v) >= 1          # noqa: E731
-        assert len(m["icons"]) > 30 and len(m["frames"]) > 30 and len(m["big"]) >= 30
-        assert all(whole(v) for v in m["icons"] + m["frames"] + m["big"] + m["vitals"]), m
+        assert len(m["icons"]) >= 16 and len(m["frames"]) >= 20 and len(m["big"]) >= 30 and len(m["bag"]) > 100 and len(m0["card"]) >= 12
+        assert all(whole(v) for v in m["icons"] + m["frames"] + m["big"] + m["vitals"] + m["bag"] + m0["card"]), (m, m0["card"])
+        assert len({round(v) for v in m["bag"]}) == 1 and len({round(v) for v in m0["card"]}) == 1          # (each in one pixel size)
         item, frame = {round(v) for v in m["icons"]}, {round(v) for v in m["frames"]}
         assert len(item) == 1 and len(frame) == 1 and m["art"] == "11x11", m
         assert item == {land} if land else max(item) * 11 <= max(frame) * 17.6, (item, frame)   # (no more than the frame's hole takes)
         assert len({round(v) for v in m["big"]}) == 1 and (not land or {round(v) for v in m["big"]} == {land + (1 if touch else 0)})   # (one pixel: the land's)
-        assert goals and all(abs(v - round(v)) < .05 and round(v) >= 1 for v in goals), goals   # (a phone's goals are a smaller panel)
         assert m["moved"] == "none,none,none" and m["fits"], m
         assert not g.errors
     finally:

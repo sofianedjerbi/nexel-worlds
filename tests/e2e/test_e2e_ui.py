@@ -13,8 +13,8 @@ def test_hotbar_keys_and_q_cycle_what_is_in_hand(game):
 
 
 def test_the_bar_is_ten_slots_and_i_opens_the_inventory(game):
-    """Ten slots (1-9 and 0), no bag or crafting button on the bar. I opens the inventory: everything you carry, by
-    name; what is beyond the ten comes onto the bar when picked. C opens the crafting."""
+    """Ten slots (1-9 and 0), no bag or crafting button on the bar. I opens the inventory (tests/e2e/test_e2e_bag.py),
+    C the crafting; B is no key."""
     kinds = ["wood", "stone", "fiber", "seed", "flower", "rope", "torch", "plank", "path", "dirt", "egg", "bread"]
     game.give(**{k: 1 for k in kinds})
     assert game.js("[...document.querySelectorAll('#hotbar .slot .k')].map((e) => e.textContent).join('')") == "1234567890"
@@ -25,15 +25,6 @@ def test_the_bar_is_ten_slots_and_i_opens_the_inventory(game):
     assert game.js("$('bag').style.display") != "block"                              # (B is no longer a key)
     game.press("i", 300)
     assert game.js("$('bag').style.display") == "block"
-    assert game.js("document.querySelectorAll('#bagitems .slot').length") == len(kinds)
-    game.press("ArrowRight", 100)
-    picked = game.js("bagFocus")
-    game.press("Enter", 300)
-    assert game.js("selected") == picked and picked in game.js("slots.slice(0, 10)")
-    beyond = game.js("[...document.querySelectorAll('#bagitems .slot')].pop().dataset.name")
-    assert beyond not in game.js("slots.slice(0, 10)")
-    game.js("[...document.querySelectorAll('#bagitems .slot')].pop().onclick()")     # one from beyond the bar: onto it, in hand
-    assert game.js("selected") == beyond and beyond in game.js("slots.slice(0, 10)")
     game.press("Escape", 200)
     assert game.js("$('bag').style.display") == "none"
     game.press("c", 300)

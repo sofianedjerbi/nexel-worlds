@@ -1,5 +1,5 @@
-// Goals: the next three things to try, top left, ticked off as you do them: a part of the HUD (no panel: style.css).
-// Over them a pip for each goal, lit when it is done; under them, the help's key. (All done: the pips and the key stay.)
+// Goals: the next three things to try, top left, ticked off as you do them: a small card in the manner of what Tab
+// shows (style.css). Over them how many are done, as a bar; under them, the help's key. (All done: those stay.)
 
 // [what to do, its icon, done?]
 const GOALS = [
@@ -40,13 +40,13 @@ function drawGoals() {
   if (el.dataset.sig === sig) return;
   el.dataset.sig = sig;
   $("goalcount").textContent = `${done}/${GOALS.length}`;
-  $("goalpips").innerHTML = GOALS.map((_, i) => `<i${d["g" + i] ? ' class="on"' : ""}></i>`).join("");
+  $("goalbar").firstChild.style.width = `${done / GOALS.length * 100}%`;
   const list = $("goallist");
   list.innerHTML = "";
   for (const i of goalsShown) {
     const row = document.createElement("div");
     row.className = "goal" + (goalsDoneAt[i] ? " done" : "");
-    const icon = slotIcon(GOALS[i][1]), cell = document.createElement("span"); icon.className = "gi"; cell.className = "gc"; cell.append(icon);
+    const icon = iconCanvas(GOALS[i][1]), cell = document.createElement("span"); icon.className = "gi"; cell.className = "gc"; cell.append(icon);   // (its whole picture, at the card's pixel)
     row.append(cell);
     row.insertAdjacentHTML("beforeend", `<span class="gt">${esc(GOALS[i][0])}</span><span class="tick"></span>`);
     list.append(row);

@@ -95,7 +95,9 @@ function hudFit() {
   let book = Math.round(land * d) + (small ? 1 : 0);                                // the recipe book's pixel (--q): the land's (a screen pixel more under a thumb), less while its 272 x 160 would not fit
   while (book > 1 && (272 * book / d > innerWidth - 12 || 160 * book / d > innerHeight - 12)) book--;
   if (hudSig === (hudSig = [n, d, item, book].join())) return false;
-  st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px"); st.setProperty("--w", Math.max(1, Math.round(book * .7)) / d + "px");   // (--w: what Tab shows, who.js: a size under the book's)
+  st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px"); st.setProperty("--w", Math.max(1, Math.round(book * .7)) / d + "px");
+  let bag = book; while (bag > 1 && (224 * bag / d > innerWidth - 12 || 196 * bag / d > innerHeight - 12)) bag--;       // (--b: the inventory's, bag.js)
+  st.setProperty("--b", bag / d + "px");   // (--w: what Tab shows, who.js: a size under the book's)
   return hudU !== was;
 }
 hudFit(); addEventListener("resize", hudFit);
@@ -130,7 +132,7 @@ function drawHotbar(inv) {
     d.insertAdjacentHTML("beforeend", `<span class="k">${(i + 1) % 10}</span>`);
     el.appendChild(d);
   });
-  drawBag(inv, order.filter(Boolean), extra);
+  drawBag();                                         // (bag.js: the inventory, if it is open)
 }
 // Hearts and food sit on the hotbar, ten of each, halves allowed: a heart is a tenth of full health, a piece a tenth
 // of full food (state.js: HP_MAX, FOOD_MAX; a part of a half shows as the half). Hearts are the UI pack's small hearts (full,
@@ -186,33 +188,6 @@ function drawVitals(s) {
   if (walking && walking.run !== sprinting()) syncWalk();          // (fed again, or not enough any more: the sprint follows)
   $("status").textContent = status; $("status").style.display = status ? "block" : "none";
 }
-let bagFocus = null;     // bag item highlighted for keyboard use
-// The inventory (I): everything you carry, with its name: the ten of your bar, then what is beyond them. Picking one
-// takes it in hand (one from beyond the bar comes onto it, in place of what you hold, or of the last slot).
-function toggleBag() { const b = $("bag"), on = b.style.display !== "block"; sfx(on ? "open" : "close"); b.style.display = on ? "block" : "none"; }
-function drawBag(inv, onBar, extra) {
-  const el = $("bagitems"); if (!el) return;
-  el.innerHTML = onBar.length || extra.length ? "" : `<span style="color:var(--ink2)">You carry nothing.</span>`;
-  const card = (name, beyond) => {
-    const d = document.createElement("div"); d.className = "slot" + (name === selected ? " sel" : "");
-    d.appendChild(slotIcon(name));
-    d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name))}</span>`);
-    d.dataset.name = name; d.title = label(name); if (name === bagFocus) d.classList.add("kfocus");
-    if (beyond) d.style.opacity = ".8";
-    d.onclick = () => {
-      if (beyond) {                              // onto the bar, swapping with the slot in hand (or the last)
-        const i = selected && slots.indexOf(selected) >= 0 && slots.indexOf(selected) < BAR ? slots.indexOf(selected) : BAR - 1;
-        const j = slots.indexOf(name); if (j >= 0) slots[j] = slots[i]; else slots.push(slots[i]);
-        slots[i] = name; localStorage.setItem("megastructure-slots", JSON.stringify(slots));
-      }
-      selected = name; $("hotbar").dataset.sig = ""; drawHotbar(meObs.self.inventory);
-    };
-    el.appendChild(d);
-  };
-  onBar.forEach((n) => card(n, false));
-  if (extra.length) el.insertAdjacentHTML("beforeend", `<span style="flex-basis:100%;color:var(--ink2);font-size:13px">not on your bar:</span>`);
-  extra.forEach((n) => card(n, true));
-}
 // what animals eat: what grows (no eggs, meat or milk), and hay (tiles.FEED)
 const FEEDS = ["pumpkin", "cauliflower", "lettuce", "eggplant", "carrot", "fruit", "berries", "mushroom", "wheat", "bread", "hay"];
 const FOODS = ["pumpkin", "cauliflower", "lettuce", "eggplant", "carrot", "fruit", "berries", "mushroom", "egg", "milk", "meat", "cooked_meat", "wheat", "bread"];
@@ -250,38 +225,4 @@ function toast(msg, bad) {
   if (bad) sfx("buzz"); $("toastt").textContent = msg; const t = $("toast"); t.style.display = "block"; $("toastt").style.color = bad ? "var(--warn)" : "var(--ink)"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3200); }
 
 
-// ------------------------------------------------------------------ keyboard navigation inside panels
-// Arrow keys (or WASD) move a highlight over the cards of an open panel; Enter/Space uses the highlighted card.
 const isOpen = (id) => $(id).style.display === "block";
-function nearestCard(cards, cur, dir) {
-  if (cur < 0) return 0;
-  const r = cards[cur].getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-  let best = -1, bestD = Infinity;
-  cards.forEach((c, i) => {
-    if (i === cur) return;
-    const q = c.getBoundingClientRect(), dx = q.left + q.width / 2 - cx, dy = q.top + q.height / 2 - cy;
-    const along = {N: -dy, S: dy, W: -dx, E: dx}[dir], across = dir === "N" || dir === "S" ? Math.abs(dx) : Math.abs(dy);
-    if (along <= 2) return;                                  // only cards that lie in that direction
-    const d = along + across * 3;                            // prefer staying in the same row/column
-    if (d < bestD) { bestD = d; best = i; }
-  });
-  return best < 0 ? cur : best;
-}
-function panelKey(id, cardSel, getFocus, setFocus, k, e) {
-  const cards = [...$(id).querySelectorAll(cardSel)]; if (!cards.length) return false;
-  let cur = cards.findIndex((c) => c.dataset.name === getFocus());
-  const dir = KEYDIR[k];
-  if (dir) { const to = nearestCard(cards, cur, dir); cur = to !== cur ? to : Math.max(0, Math.min(cards.length - 1, cur + (dir === "E" ? 1 : dir === "W" ? -1 : 0))); }   // (no card that way: the next one, or the one before)
-  else if (k === "enter" || k === " ") {
-    const card = cards[Math.max(0, cur)];
-    if (e.shiftKey && id === "craft" && !card.classList.contains("no")) act("craft", {recipe: card.dataset.name, n: 5});
-    else if (card.onclick && !card.classList.contains("no")) card.onclick();
-    else toast(card.title || "Can't use that now.", true);
-    return true;
-  } else return false;
-  cards.forEach((c) => c.classList.remove("kfocus"));
-  cards[cur].classList.add("kfocus"); cards[cur].scrollIntoView({block: "nearest"});
-  setFocus(cards[cur].dataset.name);
-  return true;
-}
-const bagKey = (k, e) => panelKey("bag", ".slot[data-name]", () => bagFocus, (n) => bagFocus = n, k, e);

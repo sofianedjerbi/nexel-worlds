@@ -173,10 +173,10 @@ addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (k === "shift") { keys.add("shift"); runKey = true; syncWalk(); return; }
   inputMode = "keys"; document.body.classList.add("bykeys");
-  if (k === "escape") { if (isOpen("craft") || isOpen("bag") || isOpen("mail")) closePanels(); else selectItem(null); return; }
+  if (k === "escape") { if (isOpen("bag") && bagKey(k, e)) return; if (isOpen("craft") || isOpen("bag") || isOpen("mail")) closePanels(); else selectItem(null); return; }
   // an open panel takes the arrows, Enter and Space
   if (isOpen("craft") && (craftKey(k, e) || !BOOK_KEYS.has(k))) { e.preventDefault(); return; }
-  if (isOpen("bag") && bagKey(k, e)) { e.preventDefault(); return; }
+  if (isOpen("bag") && (bagKey(k, e) || !BOOK_KEYS.has(k))) { e.preventDefault(); return; }      // (the inventory's keys are its own too: bag.js)
   if (e.altKey && CODEDIR[e.code]) { e.preventDefault(); turn(CODEDIR[e.code]); return; }
   if (KEYDIR[k]) {   // only a real press counts: a held key's auto-repeat must not cancel a chop in progress
     e.preventDefault();
