@@ -32,9 +32,11 @@ def free_port() -> int:
 def server(tmp_path_factory):
     """A fresh world (fixed seed) with dev tools on; stopped at the end."""
     port, saves = free_port(), tmp_path_factory.mktemp("saves")
+    import game as game_module
+    game_module.SERVER_LOG = saves / "server.log"         # (what the server says is kept: a player who does not get in reads it)
     proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", str(saves), "--world", "e2e",
                              "--port", str(port), "--seed", "7", "--dev"], cwd=ROOT,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            stdout=subprocess.DEVNULL, stderr=open(game_module.SERVER_LOG, "w"))
     for _ in range(100):
         try:
             socket.create_connection(("127.0.0.1", port), timeout=.2).close()

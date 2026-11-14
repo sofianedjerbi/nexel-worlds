@@ -95,7 +95,7 @@ function hudFit() {
   let book = Math.round(land * d) + (small ? 1 : 0);                                // the recipe book's pixel (--q): the land's (a screen pixel more under a thumb), less while its 272 x 160 would not fit
   while (book > 1 && (272 * book / d > innerWidth - 12 || 160 * book / d > innerHeight - 12)) book--;
   if (hudSig === (hudSig = [n, d, item, book].join())) return false;
-  st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px");
+  st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px"); st.setProperty("--w", Math.max(1, Math.round(book * .7)) / d + "px");   // (--w: what Tab shows, who.js: a size under the book's)
   return hudU !== was;
 }
 hudFit(); addEventListener("resize", hudFit);

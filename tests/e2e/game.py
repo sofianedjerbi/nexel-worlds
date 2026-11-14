@@ -4,6 +4,9 @@ import json
 import time
 
 
+SERVER_LOG = None        # the test server's log (conftest.py)
+
+
 class Game:
     def __init__(self, page, url):
         self.page, self.url, self.errors = page, url, []
@@ -22,7 +25,11 @@ class Game:
         except Exception as e:                               # not in: say what the page has, so that the cause can be read afterwards
             state = self.js("""() => ({me, myId, obs: !!meObs, toast: $('toast').style.display === 'block' ? $('toastt').innerText : '', clock: $('clock').textContent,
               agent: typeof agentWs === 'undefined' || !agentWs ? null : agentWs.readyState, spec: typeof spec === 'undefined' || !spec ? null : spec.readyState, stamp: webStamp, url: location.href})""")
-            raise AssertionError(f"{name} did not get in: {state}; page errors: {self.errors}") from e
+            said = []
+            if SERVER_LOG and SERVER_LOG.exists():           # what the server said of them, and anything that went wrong in it
+                lines = SERVER_LOG.read_text(errors="replace").splitlines()
+                said = [ln[:200] for ln in lines if name in ln or "Traceback" in ln or "ERROR" in ln or "Error" in ln][-12:]
+            raise AssertionError(f"{name} did not get in: {state}; page errors: {self.errors}; server: {said}") from e
         self.rpc("dev_time", phase=.3)
 
     def js(self, expr, arg=None):

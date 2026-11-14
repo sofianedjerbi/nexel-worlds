@@ -1,7 +1,8 @@
 // What Tab shows while it is held (keyboard.js; a tap on the goals, on a phone): the day, and who is awake.
 // Drawn as the recipe book is (craft.js: one pixel size, --q; a window, sunk cells, a sunk list, all of them shadows
-// of a box): at the top the sun or the moon, the day and the hour, and under them the day as a bar, its last quarter
-// the night, with a mark where the hour is. Then a line for each one awake: their picture (their own sheet, as they
+// of a box; its pixel is a size under the book's, --w: it was the book's own, and too big): at the top the sun or
+// the moon, the day and the hour, and under them the day as a bar in the sky's colours hour by hour (daylight.js:
+// bands and checkers in big cells, not a gold part and a dark one), with a mark where the hour is. Then a line for each one awake: their picture (their own sheet, as they
 // are dressed), their name, their level; you first, and lit. At the foot, where you are and how many are asleep.
 // Nothing in it moves in: it is there the frame after the key.
 
@@ -33,8 +34,9 @@ function whoTick() {
 }
 function drawWho() {
   whoTick();
+  if (!$("whoband").width || $("whoband").width === 300) skyBar($("whoband"), 68, 3);        // (once: the day's bar, in cells of two px)
   const up = agents.filter((a) => a.online).sort((a, b) => (b.name === me) - (a.name === me) || a.name.localeCompare(b.name));
-  const asleep = agents.length - up.length, list = $("wholist"), q = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--q")) || 3;
+  const asleep = agents.length - up.length, list = $("wholist"), q = parseFloat(getComputedStyle($("who")).getPropertyValue("--q")) || 2;
   const rows = Math.max(2, Math.min(WHO_ROWS, Math.floor((innerHeight - 76 - 66 * q) / (22 * q))));     // (what is round the list: 60 of its px, and a little air)
   list.replaceChildren(...up.slice(0, rows).map((a) => {
     const d = document.createElement("div"); d.className = "line" + (a.name === me ? " cur" : "");

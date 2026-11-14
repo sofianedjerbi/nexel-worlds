@@ -201,20 +201,3 @@ function outlined(text, x, y, color) {
   for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) ctx.fillText(text, x + a, y + b);
   ctx.fillStyle = color; ctx.fillText(text, x, y);
 }
-function drawNight(vis, sx, sy, S, t) {
-  const phase = clock.phase || 0;
-  const dusk = Math.max(0, Math.min(1, (phase - .70) / .05)), dawn = phase < .03 ? 1 - phase / .03 : 0;
-  const dark = .58 * Math.max(dusk, dawn);
-  if (dark <= 0.01) return;
-  ctx.save();
-  ctx.globalCompositeOperation = "multiply";
-  ctx.fillStyle = `rgba(${Math.round(255 - 170 * dark)},${Math.round(255 - 150 * dark)},${Math.round(255 - 70 * dark)},1)`;
-  ctx.fillRect(0, 0, W, H);
-  ctx.globalCompositeOperation = "lighter";
-  const glow = (x, y, r, c, a) => { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); };
-  for (const p of ents.values()) if (p.e && p.e.kind === "agent") glow(sx(p.x) + S / 2, bodyY(p, sy) + S / 2, S * 3, "255,214,150", .22 * dark);
-  const lights = [...fireAt];
-  for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") lights.push({x: b.bx * B + i % B, y: b.by * B + (i / B | 0)});
-  for (const {x, y} of lights) { const f = .9 + .1 * Math.sin(t * 13 + x); glow(sx(x) + S / 2, sy(y, x) + S / 2, S * 4.5 * f, "255,160,70", .45 * dark); }
-  ctx.restore();
-}

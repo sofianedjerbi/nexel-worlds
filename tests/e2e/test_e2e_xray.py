@@ -279,13 +279,18 @@ def test_the_circle_is_painted_again_only_when_you_change_tile(game):
     game.stamp(-7, 1, ["." * 15] * 3, levels=["6" * 15] * 3)
     game.sleep(1200)
     assert game.js("xray.a") > .95
-    game.js("(() => { window.__n = 0; const real = window.xrayPicture; window.xrayPicture = function* (...a) { window.__n++; return yield* real(...a); }; return 1; })()")
+    game.js("(() => { window.__tx = []; const real = window.xrayPicture; window.xrayPicture = function* (...a) { window.__tx.push(a[0]); return yield* real(...a); }; return 1; })()")
     game.sleep(800)
-    assert game.js("__n") == 0
+    assert game.js("__tx") == []
     x, y = game.pos()
     game.hold(["d"], 700)                                     # east along the wall
     game.sleep(500)
     moved = game.pos()[0] - x
     assert moved >= 2 and game.js("xray.a") > .95
-    assert game.js("__n") <= moved + 1, (game.js("__n"), moved)
+    tiles = game.js("__tx")                                   # the tile each painting was for
+    assert tiles and all(a != b for a, b in zip(tiles, tiles[1:])), tiles      # never twice running for one tile
+    # (It was "no more paintings than tiles walked, and one": on a busy machine the server falls behind, your screen
+    # takes you a tile back to where it has you and on again, and that tile is painted twice, rightly. Three more
+    # than the tiles are let; every frame would be forty.)
+    assert len(tiles) <= moved + 3, (tiles, moved)
     assert not game.errors
