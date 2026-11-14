@@ -36,6 +36,7 @@ $("craftclose").onclick = () => { sfx("close"); $("craft").style.display = "none
 $("say").addEventListener("blur", closeChat);
 function toggleCraft() { const c = $("craft"), open = c.style.display !== "block"; sfx(open ? "open" : "close"); c.style.display = open ? "block" : "none"; if (open) craftOpened(); drawGoals(); }   // (C; on a phone, its button at the top)
 $("helpbtn").onclick = () => { const h = $("help"); const on = h.style.display !== "block"; h.style.display = on ? "block" : "none"; localStorage.setItem("megastructure-help", on ? "on" : "off"); };
+$("goalhelp").onclick = () => $("helpbtn").click();
 $("join").onclick = () => { const n = $("name").value.trim(); if (n) joinGame(n); };
 $("watch").onclick = () => { $("joinbox").style.display = "none"; };
 $("brand").onclick = () => { if (!me) $("joinbox").style.display = "block"; };

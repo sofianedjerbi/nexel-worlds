@@ -17,7 +17,12 @@ class Game:
         self.page.keyboard.type(name)
         self.page.keyboard.press("Enter")
         self.name = name
-        self.wait("meObs && myPos()", 25000)                 # (however busy the machine)
+        try:
+            self.wait("meObs && myPos()", 25000)             # (however busy the machine)
+        except Exception as e:                               # not in: say what the page has, so that the cause can be read afterwards
+            state = self.js("""() => ({me, myId, obs: !!meObs, toast: $('toast').style.display === 'block' ? $('toastt').innerText : '', clock: $('clock').textContent,
+              agent: typeof agentWs === 'undefined' || !agentWs ? null : agentWs.readyState, spec: typeof spec === 'undefined' || !spec ? null : spec.readyState, stamp: webStamp, url: location.href})""")
+            raise AssertionError(f"{name} did not get in: {state}; page errors: {self.errors}") from e
         self.rpc("dev_time", phase=.3)
 
     def js(self, expr, arg=None):

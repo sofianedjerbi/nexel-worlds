@@ -94,30 +94,39 @@ def test_boat_launch_sail_and_moor(game):
     assert not game.server()["sailing"]
 
 
-def test_who_is_awake_and_the_goals_show_only_while_tab_is_held(game, browser, server):
-    """While you play, the screen is the world's (the goals lay over the title, the list of who is awake was always
-    there): both show while Tab is held, side by side under the line of news, and go when it is let go. Someone only
-    watching keeps the list: they pick who to follow."""
-    shown = "['side', 'goals', 'brand'].map((id) => { const r = $(id).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] : null; })"
-    side, goals, brand = game.js(shown)
-    assert side is None and goals is None and brand and brand[3] <= 64         # only the clock's line, top left
-    assert game.js("getComputedStyle(document.querySelector('#brand .t')).display") == "none"
-    game.wait("agents.some((a) => a.name === me && a.online)", 10000)             # (the list is asked for now and then)
+def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game, friend, browser, server):
+    """While you play: the goals, top left, with the help's link under them; no title panel, no list of who is awake.
+    Held, Tab shows one panel at the top: the day, your name and where you are, who else is awake; it is there at
+    once (the goals were on Tab for a day and slid in again at each press, which looked like lag) and goes when the
+    key is let go. Someone only watching keeps the title and the list: they pick who to follow."""
+    box = "(id) => { const r = $(id).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] : null; }"
+    goals = game.js(box, "goals")
+    assert goals and goals[0] <= 12 and goals[1] <= 12 and game.js(box, "brand") is None and game.js(box, "side") is None
+    assert len(game.js("[...document.querySelectorAll('.goal')].map((g) => g.innerText)")) == 3 and game.js("$('goalhelp').innerText") == "help (H)"
+    was = game.js("$('help').style.display")
+    game.js("$('goalhelp').click()")                                               # the help, from the goals
+    assert game.js("$('help').style.display") != was
+    game.js("$('goalhelp').click()")
+    game.wait(f"agents.filter((a) => a.online).length >= 2 && agents.some((a) => a.name === {friend.name!r})", 10000)   # (the list is asked for now and then)
     game.page.keyboard.down("Tab")
-    game.sleep(200)
-    side, goals, brand = game.js(shown)
-    assert side and goals and side[2] <= goals[0] and side[1] == goals[1] >= 70    # side by side, clear of the top
-    assert side[1] >= brand[3] and game.name in game.js("$('agents').innerText") and len(game.js("[...document.querySelectorAll('.goal')].map((g) => g.innerText)")) == 3
+    shown = game.js("""() => new Promise((ok) => requestAnimationFrame(() => { const s = $('side'), r = s.getBoundingClientRect();     // the frame after the key
+      ok({top: r.top, mid: Math.round(r.left + r.width / 2), text: s.innerText, moving: s.getAnimations({subtree: true}).length}); }))""")
+    assert shown["top"] >= 70 and abs(shown["mid"] - game.js("innerWidth") / 2) <= 2 and shown["moving"] == 0     # there, in the middle, nothing sliding in
+    lines = shown["text"].split("\n")
+    assert lines[0].startswith("day ") and lines[1].startswith(game.name + " · ")  # the day and the hour; who you are, and where
+    assert f"{game.name} (you)" in shown["text"] and friend.name in shown["text"]  # ...and who is awake
+    assert game.js(box, "goals") == goals                                          # (the goals do not move for it)
     game.page.keyboard.up("Tab")
-    game.sleep(200)
-    assert game.js(shown)[:2] == [None, None]
-    game.give(wood=4)                                                              # a goal done is said at the top
+    game.sleep(100)
+    assert game.js(box, "side") is None
+    game.give(wood=4)                                                              # a goal done: ticked where it is, no line of news for it
     game.sleep(600)
-    assert game.toast() == "Goal done: Chop 4 wood"
+    assert "Goal done" not in game.toast() and game.js("document.querySelectorAll('.goal.done').length") == 1
     page = browser.new_page()                                                      # someone watching
     page.goto(server)
     page.wait_for_function("typeof agents !== 'undefined' && agents.some((a) => a.online)", timeout=15000)
-    assert page.evaluate("$('side').getBoundingClientRect().width") > 100 and page.evaluate("getComputedStyle(document.querySelector('#brand .t')).display") != "none"
+    assert page.evaluate("$('side').getBoundingClientRect().width") > 100 and page.evaluate("$('brand').innerText").startswith("MEGASTRUCTURE")
+    assert page.evaluate("getComputedStyle($('tabday')).display") == "none" and "help (H)" in page.evaluate("$('brand').innerText")
     page.close()
 
 

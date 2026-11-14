@@ -186,7 +186,7 @@ addEventListener("keydown", (e) => {
   if (/^[0-9]$/.test(k) && meObs) {                 // a slot of your bar (0: the tenth); an empty one, or the one in hand again: empty hands
     const n = slots[(+k + 9) % 10]; selectItem(n && selected !== n ? n : null); if (!selected) toast("Empty hands"); return;
   }
-  if (k === "tab") { e.preventDefault(); document.body.classList.add("tab"); return; }   // held: who is awake, and the goals (style.css)
+  if (k === "tab") { e.preventDefault(); if (!e.repeat) { drawTab(); document.body.classList.add("tab"); } return; }   // held: the day, you, who is awake (style.css)
   const fn = SHORTCUTS[k];
   if (fn) { e.preventDefault(); if (!(e.repeat && k !== " " && k !== "x")) fn(); }
 });
@@ -198,4 +198,6 @@ addEventListener("keyup", (e) => {
   syncWalk();
 });
 addEventListener("blur", () => { runKey = false; keys.clear(); document.body.classList.remove("tab"); syncWalk(); });
-$("brand").onclick = (e) => { if (me && e.target.id !== "helpbtn") document.body.classList.toggle("tab"); };   // (a phone has no Tab: a tap on the clock)
+$("goals").onclick = (e) => { if (me && e.target.id !== "goalhelp") { drawTab(); document.body.classList.toggle("tab"); } };   // (a phone has no Tab: a tap on the goals)
+// What Tab shows over the list of who is awake: the day and the hour, then who you are and where
+function drawTab() { $("tabday").innerHTML = `${esc($("clock").textContent)}<br><span>${esc($("mode").textContent)}</span>`; }

@@ -14,7 +14,7 @@
 <div id="hover"></div>
 <div id="xyz" style="position:fixed;top:10px;right:12px;z-index:5;font:inherit;font-size:15px;color:#fff6e0;text-shadow:0 1px 0 #3b2a22,1px 0 0 #3b2a22,-1px 0 0 #3b2a22,0 -1px 0 #3b2a22;pointer-events:none;white-space:pre;text-align:right"></div>
 <div class="panel" id="brand"><div class="in"><div class="t">MEGASTRUCTURE</div><div class="s"><span id="clock">waking…</span> · <span id="mode">watching</span> · <span id="helpbtn" class="link">help (H)</span></div></div></div>
-<div class="panel" id="side"><div class="in"><h3>Awake</h3><div id="agents"></div></div></div>
+<div class="panel" id="side"><div class="in"><div id="tabday"></div><h3>Awake</h3><div id="agents"></div></div></div>
 <div id="debug"></div>
 <div id="actions"></div>
 <div class="panel" id="joinbox"><div class="in">
@@ -26,10 +26,10 @@
 <div class="panel" id="help"><div class="in">
   <b>WASD</b> walk · <b>Shift</b> sprint · <b>Space</b> act on what's in front or around you (fight, chop, place) · <b>X</b> other use (milk, take down, till)<br>
   <b>place</b>: hold the item (1-9 / Q), face the spot (walk to turn), Space · <b>1-9, 0</b> / <b>Q</b> take in hand · <b>`</b> empty hands (bare hands dig and fight) · <b>E</b> eat · <b>F</b> pick up<br>
-  <b>C</b> craft · <b>I</b> inventory (arrows + Enter) · <b>Enter</b> talk · <b>!text</b> shout · <b>/</b> commands (<b>Tab</b> finishes them) · <b>Tab</b> (held) goals, who is awake · <b>+ −</b> zoom · <b>M</b> sound · <b>H</b> help<br>
+  <b>C</b> craft · <b>I</b> inventory (arrows + Enter) · <b>Enter</b> talk · <b>!text</b> shout · <b>/</b> commands (<b>Tab</b> finishes them) · <b>Tab</b> (held) the day, who is awake · <b>+ −</b> zoom · <b>M</b> sound · <b>H</b> help<br>
   mouse: <b>click</b> the same as Space on that tile · <b>shift-click</b> the same as X
 </div></div>
-<div class="panel" id="goals"><div class="in"><div class="gh"><h3>Goals</h3><span id="goalcount"></span></div><div id="goallist"></div></div></div>
+<div class="panel" id="goals"><div class="in"><div class="gh"><h3>Goals</h3><span id="goalcount"></span></div><div id="goallist"></div><div class="gf"><span id="goalhelp" class="link">help (H)</span></div></div></div>
 <div class="panel" id="bag"><div class="in"><h3>Inventory</h3><div id="bagitems"></div></div></div>
 <div id="craft"><div id="crafttabs"></div><div class="b paper" id="craftclose" title="Esc">x</div>
   <div class="cbook">

@@ -102,6 +102,7 @@ function onTick(d) {
   troughAt = new Set((d.troughs || []).map(([x, y]) => x + "," + y));
   fireAt = (d.fires || []).map(([x, y]) => ({x, y}));
   $("clock").textContent = d.time.replace("(night)", "· night");
+  if (document.body.classList.contains("tab")) drawTab();      // (keyboard.js: the day, on the panel Tab shows)
   const seen = new Set(), now = performance.now();
   for (const e of d.entities) {
     const key = e.kind + e.id; seen.add(key);
