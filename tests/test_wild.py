@@ -33,17 +33,38 @@ def test_tusker_warns_then_charges_in_a_straight_line(world):
     assert a.hp <= hp - CREATURES["tusker"]["damage"] + 2         # you stood there: it ran you down (you heal a little)
 
 
-def test_step_aside_and_the_tusker_runs_past_into_a_tree(world):
+def test_step_well_aside_and_the_tusker_runs_past_into_a_tree(world):
     sim, a = world
     boar = put(sim, "tusker", a.x + 4, a.y)
-    sim.world.set(a.x - 3, a.y, block="tree")
+    sim.world.set(a.x - 3, a.y + 1, block="tree")
     sim.step()
-    a.y += 1                                                      # out of its line
+    a.y += 2                                                      # two lanes out of its line: it leans one toward you, no more
     hp = a.hp
     for _ in range(sec(2)):
         sim.step()
     assert a.hp >= hp
     assert boar.mode == "stun" and (boar.x, boar.y) == (a.x - 2, a.y - 1)   # it rammed the tree and stands dazed
+
+
+def test_the_tusker_lines_up_aims_as_it_sets_off_and_leans(world):
+    """It almost never hit: it charged along the longer way from wherever it stood (past you, unless you were dead in
+    its line) and at where you were when it began to paw. It trots into line first, aims again as it sets off, and
+    leans a lane toward you as it runs: one small step aside is not enough any more."""
+    sim, a = world
+    boar = put(sim, "tusker", a.x + 4, a.y + 2)                    # not in line with us
+    hp = a.hp
+    for _ in range(sec(3)):
+        sim.step()
+        if a.hp < hp:
+            break
+    assert a.hp < hp                                              # it came into line, and ran us down where we stood
+    boar.mode, boar.rest, boar.x, boar.y, a.hp = "", 0, a.x + 4, a.y, hp
+    sim.step()
+    assert boar.mode == "windup"
+    a.y += 1                                                      # one lane aside while it paws
+    for _ in range(sec(2)):
+        sim.step()
+    assert a.hp < hp
 
 
 def test_pincer_snaps_only_if_you_stay_next_to_it(world):

@@ -19,6 +19,11 @@ TUSKER_STUN, TUSKER_REST = 2.5, 3.0                       # seconds stunned afte
 # the ground half as long, runs further, shakes off a tree sooner and hardly rests between two charges
 TUSKER_ANGRY = 12.0                                       # seconds, from the last blow
 ANGRY = {"sees": 10, "windup": 0.35, "run": 11, "stun": 1.2, "rest": 0.5, "trot": 0.2}
+# It hardly ever hit anyone ("he has trouble charging the player also, never hit him almost"): it charged along the
+# longer way to you from wherever it stood, so beside you unless you were dead in its line, and at where you were when
+# it began to paw. Now, calm too, it first trots into line with you; it aims again as it sets off; and running it
+# leans a lane toward you every TUSKER_LEAN tiles while you are still ahead of it. Stepping well aside still works.
+TUSKER_TROT, TUSKER_LEAN = 0.3, 3
 PINCER_SEES, PINCER_WINDUP, PINCER_REST = 3, 0.6, 1.2
 STRAW_SEES, STRAW_WINDUP, STRAW_REST, STRAW_STEP = 14, 0.5, 1.5, 0.9
 WISP_SEES, WISP_LEAD, WISP_CALL = 9, 4, 6.0               # tiles; it keeps this far ahead of you; seconds between calls
@@ -75,6 +80,11 @@ class Wild(Boss):
         if c.mode == "stun":
             c.until = min(c.until, self.tick + sec(0.4))
 
+    def _tusker_prey(self, c, online, mad, further=0):
+        """Whom it goes for: angry, the one who hit it; or the nearest it sees (`further`: tiles more, once it has begun)."""
+        foe = next((a for a in online if a.id == c.foe and cheb(a, c) <= ANGRY["sees"] + further), None) if mad else None
+        return foe or self.nearest(c, online, TUSKER_SEES + further)
+
     def _step_tusker(self, c, online):
         mad = c.angry > self.tick
         if c.mode == "stun":
@@ -83,10 +93,20 @@ class Wild(Boss):
             return
         if c.mode == "windup":
             if self.tick >= c.until:
+                prey = self._tusker_prey(c, online, mad, 3)
+                if prey and (prey.x, prey.y) != (c.x, c.y):   # off it goes: at where they are now, not where they were
+                    c.dir = toward(c, prey)
                 c.mode, c.left = "charge", ANGRY["run"] if mad else TUSKER_RUN
             return
         if c.mode == "charge":                                # a tile every tick: twice a running player's pace
             x, y = c.x + c.dir[0], c.y + c.dir[1]
+            prey = self._tusker_prey(c, online, mad, 3) if c.left % TUSKER_LEAN == 0 else None
+            if prey:                                           # leaning: a lane toward them, if they are still ahead and it is free
+                ahead = (prey.x - c.x) * c.dir[0] + (prey.y - c.y) * c.dir[1]
+                off = (prey.y - c.y) if c.dir[0] else (prey.x - c.x)
+                lane = (0, (off > 0) - (off < 0)) if c.dir[0] else ((off > 0) - (off < 0), 0)
+                if ahead > 0 and off and self.world.passable(x + lane[0], y + lane[1]) and self.world.block(x + lane[0], y + lane[1]) not in ("door", "gate"):
+                    x, y = x + lane[0], y + lane[1]
             hit = next((a for a in online if (a.x, a.y) == (x, y)), None)
             if hit:
                 self.bite(c, hit)
@@ -99,14 +119,13 @@ class Wild(Boss):
                 if c.left <= 0:
                     c.mode, c.rest = "", self.tick + sec(ANGRY["rest"] if mad else TUSKER_REST)
             return
-        foe = next((a for a in online if a.id == c.foe and cheb(a, c) <= ANGRY["sees"]), None) if mad else None
-        prey = foe or self.nearest(c, online, TUSKER_SEES)
+        prey = self._tusker_prey(c, online, mad)
         if prey and self.tick >= c.rest:
             dx, dy = prey.x - c.x, prey.y - c.y
-            if mad and dx and dy:                             # not in line with them: a quick trot along the shorter way, to be
+            if dx and dy:                             # not in line with them: a quick trot along the shorter way, to be
                 step = (0, (dy > 0) - (dy < 0)) if abs(dx) >= abs(dy) else ((dx > 0) - (dx < 0), 0)
                 if self._creature_move(c, c.x + step[0], c.y + step[1]):
-                    c.cooldown, c.dir = sec(ANGRY["trot"]) - 1, step
+                    c.cooldown, c.dir = sec(ANGRY["trot"] if mad else TUSKER_TROT) - 1, step
                     return
             self.wind_up(c, toward(c, prey), ANGRY["windup"] if mad else TUSKER_WINDUP)
         else:

@@ -34,6 +34,33 @@ function wildFrame([col, n, ms], t, loop) {
   while (t >= ms[i]) t -= ms[i++];
   return col + i;
 }
+// A tusker's dust and temper. Pawing the ground: a puff thrown back from its hoof at each scrape. Charging: earth
+// torn up behind it all the way, big puffs and bits of the ground itself (effects.js KICK), so its line is seen.
+// Angry: steam blown from its snout to both sides every half second, and a red spark off its back now and then.
+const TUSK_FX = {paw: 170, tear: 40, snort: 520};          // ms between two of each
+function tuskerFx(p, e, now) {
+  const [fx, fy] = e.dir || [p.fx || 0, p.fy || 1], r = Math.random, bits = KICK[gndAt(Math.round(p.x), Math.round(p.y))] || PCOL.dust;
+  const due = (k) => now - (p[k] || 0) > TUSK_FX[k] && (p[k] = now);
+  if (e.act === "windup" && due("paw")) {
+    const x = p.x + .5 + fx * .3, y = p.y + .9 - UP + fy * .2;
+    for (let i = 0; i < 3; i++) parts.push({x: x + (r() - .5) * .3, y, vx: -fx * (1.5 + r() * 1.5) + (r() - .5) * .8, vy: -fy * (1 + r()) - .5 - r() * .8, g: -.4,
+      life: .3 + r() * .25, age: 0, c: "rgba(236,222,190,.85)", s: i ? 2 : 3});
+    parts.push({x, y, vx: -fx * (2 + r() * 2) + (r() - .5), vy: -2 - r() * 1.5 - fy, g: 12, floor: y + .05 + r() * .1 - fy * .4, life: .5, age: 0, c: bits[0], s: 1});
+  }
+  if (e.act === "charge" && due("tear")) {
+    const x = p.x + .5 - fx * .6, y = p.y + .9 - UP - fy * .45;
+    for (let i = 0; i < 3; i++) parts.push({x: x + (r() - .5) * .5, y: y + (r() - .5) * .2, vx: -fx * (.6 + r() * 1.6) + (r() - .5) * 1.4, vy: -fy * (.5 + r()) - .3 - r() * .9, g: -.8,
+      life: .4 + r() * .45, age: 0, c: i % 2 ? "rgba(233,217,180,.85)" : "rgba(246,238,216,.85)", s: i === 0 ? 4 : i === 1 ? 3 : 2});
+    for (let i = 0; i < 2; i++) parts.push({x: x + (r() - .5) * .5, y, vx: -fx * (1 + r() * 2) + (r() - .5) * 2.2, vy: -2 - r() * 2.2 - fy * .5, g: 13,
+      floor: y + .05 + r() * .15 - fy * .4, life: .55 + r() * .3, age: 0, c: bits[i % bits.length], s: r() < .3 ? 2 : 1});
+  }
+  if (e.angry && due("snort")) {
+    const x = p.x + .5 + fx * .7, y = p.y + .45 - UP + fy * .35, side = fx ? [0, 1] : [1, 0];
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) parts.push({x, y, vx: fx * (.8 + r() * .8) + side[0] * s * (.9 + i * .5), vy: fy * .6 + side[1] * s * (.5 + i * .3) - .7 - r() * .4, g: -1.6,
+      life: .35 + i * .12, age: 0, c: i ? "rgba(255,255,255,.8)" : "rgba(255,238,230,.9)", s: i === 2 ? 1 : 2});
+    if (r() < .6) parts.push({x: p.x + .5 + (r() - .5) * .6, y: p.y + .1 - UP, vx: (r() - .5) * 2, vy: -2.5 - r() * 1.5, g: 6, life: .45, age: 0, c: r() < .5 ? "#f0503f" : "#ffb347", s: 1});
+  }
+}
 const ANGER = [".r...r.", "rr...rr", ".......", "rr...rr", ".r...r."];      // the mark over one that is angry (a tusker that was hit: sim/wild.py)
 function drawWild(p, x, y, now) {
   const e = p.e, A = WILD[e.kind], z = zoom;
@@ -42,6 +69,7 @@ function drawWild(p, x, y, now) {
     p.windAt = now; p.anim = e.act; p.animDir = e.dir;                                                    // play it from its first frame
   }
   p.act = e.act;
+  if (e.kind === "tusker") tuskerFx(p, e, now);
   const since = now - (p.windAt || -1e9), once = A.once ? A[p.anim] : A.act, acting = once && since < once[2].reduce((a, b) => a + b, 0);
   const [fx, fy] = acting && p.animDir ? p.animDir : e.act && e.dir ? e.dir : [p.fx, p.fy], row = fy > 0 ? 0 : fy < 0 ? 1 : fx < 0 ? 2 : 3;
   const calm = () => wildFrame(e.act === "sleep" ? A.sleep : moving ? A.walk : A.idle, now + e.id * 137, true);
