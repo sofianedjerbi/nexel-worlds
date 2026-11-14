@@ -30,7 +30,7 @@ def test_bubbles_are_pixels_pile_up_and_come_down(game):
     game.sleep(400)
     a, b, c = game.js(MINE)
     assert [a["text"], c["text"]] == ["hi!", "ok, coming"]
-    assert 2 <= len(b["rows"]) <= 5 and " ".join(b["rows"]) == long and b["w"] <= 304 + 16, b   # wrapped whole, no wider than a bubble
+    assert 2 <= len(b["rows"]) <= 7 and " ".join(b["rows"]) == long and b["w"] <= 400 + 16, b   # wrapped whole, no wider than a bubble
     assert a["y"] > b["y"] + b["h"] and b["y"] > c["y"] + c["h"]                 # the oldest lowest, then the next, none on another
     assert a["y"] - (b["y"] + b["h"]) == 2 and b["y"] - (c["y"] + c["h"]) == 2   # one gap between them
     shot(game, "three")
@@ -42,9 +42,31 @@ def test_bubbles_are_pixels_pile_up_and_come_down(game):
     assert now[1]["y"] + now[1]["h"] == now[0]["y"] - 2
     shot(game, "after_one_went")
     game.js("bubbles.length = 0")
-    game.js(f"({SAY})({'a' * 200!r}, 11)")                                       # one endless word: broken into rows, ended with …
+    game.js(f"({SAY})({'a' * 200!r}, 11)")                                       # one endless word: broken into rows
     game.sleep(300)
     rows = game.js(MINE)[0]["rows"]
-    assert len(rows) == 5 and rows[4].endswith("…"), rows
+    assert len(rows) == 7 and "".join(rows) == "a" * 200, rows                  # all of the longest line a chat takes, nothing cut
     shot(game, "endless")
+    assert not game.errors
+
+
+def test_what_is_typed_in_capitals_is_shouted(game):
+    """A shout needed "!" before it. Now a line in capitals is one (three letters or more: "OK" is talk), and it is a
+    yell: each syllable held longer and falling, through a breaking curve and an echo (babble.js SHOUT)."""
+    assert game.js("['HELLO THERE', 'WAIT!!', 'Hello', 'OK', 'I', '123', 'ÉCOUTE'].map(shouted)") == [True, True, False, False, False, False, True]
+    game.wait("sounds.manifest && sounds.manifest.sounds.say.files.every((f) => sounds.buffers.get(f) instanceof AudioBuffer)", 60000)
+    game.js("""(() => { window.__said = []; window.__shaped = 0; const P = AudioBufferSourceNode.prototype, o = P.start;
+      P.start = function (when, off, dur) { window.__said.push(dur / this.playbackRate.value); return o.apply(this, arguments); };
+      const c = BaseAudioContext.prototype.createWaveShaper; BaseAudioContext.prototype.createWaveShaper = function () { window.__shaped++; return c.call(this); }; })()""")
+    for line, shout in (("come here", False), ("COME HERE", True)):
+        game.js("window.__said = []")
+        game.press("Enter", 200)
+        game.page.keyboard.type(line)
+        game.page.keyboard.press("Enter")
+        game.wait(f"bubbles.some((b) => b.text === {line!r})", 5000)
+        assert game.js(f"bubbles.find((b) => b.text === {line!r}).shout") is shout
+        game.sleep(300)
+        said = game.js("window.__said")
+        assert len(said) >= 3 and (max(said) > .1) is shout, said               # a shout's syllables are held longer (as long as the recording lasts)
+    assert game.js("window.__shaped") == 1                                      # only the shout went through the breaking curve
     assert not game.errors

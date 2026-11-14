@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/help.css">
 <link rel="stylesheet" href="css/windows.css">
 </head>
 <body>
@@ -27,12 +28,7 @@
   <div class="row"><input id="name" placeholder="your name" maxlength="24" autocomplete="off"><button id="join">Wake up</button></div>
   <div class="watch"><button class="ghost" id="watch">just watch</button></div>
 </div></div>
-<div class="panel" id="help"><div class="in">
-  <b>WASD</b> walk · <b>Shift</b> sprint · <b>Space</b> act on what's in front or around you (fight, chop, place) · <b>X</b> other use (milk, take down, till)<br>
-  <b>place</b>: hold the item (1-9 / Q), face the spot (walk to turn), Space · <b>1-9, 0</b> / <b>Q</b> take in hand · <b>`</b> empty hands (bare hands dig and fight) · <b>E</b> eat · <b>F</b> pick up<br>
-  <b>C</b> craft · <b>I</b> inventory (arrows + Enter) · <b>Enter</b> talk · <b>!text</b> shout · <b>/</b> commands (<b>Tab</b> finishes them) · <b>Tab</b> (held) the day, who is awake · <b>+ −</b> zoom · <b>M</b> sound · <b>H</b> help<br>
-  mouse: <b>click</b> the same as Space on that tile · <b>shift-click</b> the same as X
-</div></div>
+<div id="help"></div>
 <div id="goals"><div class="gh"><b>Goals</b><span id="goalcount"></span></div><div id="goalbar"><i></i></div><div id="goallist"></div><div class="gf" id="goalhelp"><kbd>H</kbd>help</div></div>
 <div id="bag"><div class="b paper" id="bagclose" title="Esc">x</div>
   <div class="bhead"><b>Inventory</b><span>Worn</span><div id="bagwear"></div></div>
@@ -47,7 +43,7 @@
     <div id="craftdetail"></div>
   </div>
 </div>
-<div id="chatbox"><div id="chatlog"></div><div id="sayhelp"></div><input id="say" placeholder="Say something… (Enter send · Esc cancel · !shout · / commands)" maxlength="200" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+<div id="chatbox"><div id="chatlog"></div><div id="sayhelp"></div><input id="say" placeholder="Say something… (Enter send · Esc cancel · CAPITALS shout · / commands)" maxlength="200" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
 <div id="hud">
   <div id="status"></div>
   <div id="vitals"><canvas id="hearts"></canvas><canvas id="foods"></canvas></div>
@@ -116,5 +112,6 @@
 <script src="js/touch.js"></script>
 <script src="js/complete.js"></script>
 <script src="js/main.js"></script>
+<script src="js/help.js"></script>
 </body>
 </html>

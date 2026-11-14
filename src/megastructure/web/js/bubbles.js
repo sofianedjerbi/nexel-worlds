@@ -1,12 +1,12 @@
 // What people say, over their heads. A bubble is drawn in the pixel of its text (the 18 px font's is 2 px): stepped
-// corners, a dark edge, a shade along its foot, a stepped tail. A long line is wrapped (the chat keeps what five rows cannot). Someone who says
+// corners, a dark edge, a shade along its foot, a stepped tail. A long line is wrapped (seven rows hold all a chat line can be: 200 letters). Someone who says
 // several things keeps them in a pile: the oldest lowest, by the head, with the tail; newer ones above it. When
 // one goes the ones above come down onto its place. Two people's piles never cover each other: the later one is
 // raised over the other. While someone speaks their name is not written over their head (characters.js): the tail
 // points at the head itself and the name is a small dark tab on the top of the pile, as the label of a speech box.
 // state.js adds to `bubbles`; render.js calls drawBubbles last, over everything.
 
-const BUBBLE = {q: 2, life: 7, after: 3.5, most: 3, wide: 304, lines: 5, pitch: 20, padX: 8, padY: 6, gap: 2, fall: 12, fade: .25,
+const BUBBLE = {q: 2, life: 7, after: 3.5, most: 3, wide: 400, lines: 7, pitch: 20, padX: 8, padY: 6, gap: 2, fall: 12, fade: .25,
   ink: "#5b3f36", paper: "#fff6e2", shout: "#ffe3a3", foot: "#ecd7b0", footShout: "#f2c877", shade: "rgba(60,40,30,.25)"};
 
 // The line as the rows it is written in (at most BUBBLE.lines, the last ending in … if there was more), and its size.
@@ -88,7 +88,8 @@ function drawBubbles(sx, sy, S, t) {
     }
     placed.push({l: Math.min(...pile.mine.map(x0)), r: Math.min(...pile.mine.map(x0)) + pile.w, t: pile.top, b: pile.foot + 3 * q});
     pile.mine.forEach((b, n) => {
-      const x = x0(b), y = pile.foot - snap(b.up) - b.h, since = t - b.t;
+      const since = t - b.t, jolt = b.shout && since < .5 ? (Math.floor(since * 30) % 2 ? q : -q) : 0;      // (a shout: its bubble shakes as it lands)
+      const x = x0(b) + jolt, y = pile.foot - snap(b.up) - b.h;
       ctx.globalAlpha = Math.max(0, Math.min(1, (b.life - since) / BUBBLE.fade));
       bubbleBox(b, x, y, n ? null : Math.max(x + 5 * q, Math.min(x + b.w - 5 * q, pile.tx)));
       ctx.fillStyle = BUBBLE.ink;

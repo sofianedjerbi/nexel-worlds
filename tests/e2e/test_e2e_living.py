@@ -74,7 +74,7 @@ def test_you_eat_while_you_walk(game):
             if rec[i][0] - rec[i0][0] > 80 and rec[i0][0] > 300:
                 stops.append(round(rec[i][0] - rec[i0][0]))
             i0 = i
-    assert not stops and game.pos()[0] >= x0 + 7, (stops, game.pos()[0] - x0)
+    assert not stops and game.pos()[0] >= x0 + 5, (stops, game.pos()[0] - x0)           # (slower while you chew: EAT_PACE)
     game.rpc("dev_needs", hunger=8)
     game.press("e", 250)                                                                    # a meal begun standing...
     game.page.keyboard.down("a")
