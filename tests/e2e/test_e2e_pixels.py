@@ -61,7 +61,7 @@ HUD = """() => { const d = devicePixelRatio, out = {};
   out.art = [...new Set([...document.querySelectorAll('#hotbar .slot canvas')].map((c) => c.width + 'x' + c.height))].join();
   out.frames = px('#hotbar .slot', 30);
   out.bag = [...px('#bag canvas', 16), ...px('#bag .cell', 18), parseFloat(getComputedStyle($('bag')).fontSize) * d / 9];           // (the inventory: the same, at its own)
-  out.card = [...px('#goals .gi', 16), ...px('#goals .gc', 18), parseFloat(getComputedStyle($('goals')).fontSize) * d / 9];         // (the goals' card)
+  out.card = [...px('#goals .gi', 11), ...px('#goals .gc', 13), parseFloat(getComputedStyle($('goals')).fontSize) * d / 6];         // (the goals' card)
   out.big = [...px('#craft canvas', 16), ...px('#craft .cell', 18), parseFloat(getComputedStyle($('craft')).fontSize) * d / 9];   // (the recipe book: icons, cells and the font, at its one pixel)
   out.vitals = [$('hearts').getBoundingClientRect().width * d / 99];         // (ten hearts: 99 art px)
   out.moved = ['hud', 'bag', 'craft'].map((id) => getComputedStyle($(id)).transform).join();

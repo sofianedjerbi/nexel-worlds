@@ -1,10 +1,10 @@
-// The help (H): a window in the recipe book's manner, a page at a time. It was one small panel of four long lines,
+// The help (?, or F1; H was its key, and is now the goals'): a window in the recipe book's manner, a page at a time. It was one small panel of four long lines,
 // every key of the game run together with dots between. Now: four pages (Move, Do, Carry, Talk), five rows at most
-// on each, a row a key drawn as a key and a few words on one line. Left and Right (or a click on a tab) turn the page; H or
+// on each, a row a key drawn as a key and a few words on one line. Left and Right (or a click on a tab) turn the page; ? or
 // Esc shuts it. Its looks are css/help.css.
 
 const HELP = [
-  ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Alt"], "Turn without walking"], [["+", "−"], "Zoom"]]],
+  ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Alt"], "Turn without walking"], [["+", "−"], "Zoom"], [["H"], "Goals: away, or back"]]],
   ["Do", [[["Space"], "Use what you face"], [["X"], "Other use: milk, till"], [["F"], "Pick up"], [["E"], "Eat"],
     [["Click"], "Space there. Shift: X"]]],
   ["Carry", [[["1-9", "Q"], "Take in hand"], [["`"], "Empty your hands"], [["Space"], "Place what you hold"],
@@ -16,14 +16,14 @@ let helpPage = 0;
 const helpOpen = () => $("help").style.display === "block";
 function drawHelp() {
   const keys = (ks) => ks.map((k) => `<kbd>${k}</kbd>`).join("");
-  $("help").innerHTML = `<div class="hh"><b>Help</b><span><kbd>H</kbd>close</span></div>`
+  $("help").innerHTML = `<div class="hh"><b>Help</b><span><kbd>Esc</kbd>close</span></div>`
     + `<div class="tabs">${HELP.map(([name], i) => `<div class="tab${i === helpPage ? " on" : ""}" data-i="${i}">${name}</div>`).join("")}</div>`
     + `<div class="well">${HELP[helpPage][1].map(([ks, what]) => `<div class="row"><div class="keys">${keys(ks)}</div><div class="what">${what}</div></div>`).join("")}</div>`
     + `<div class="hf"><kbd>←</kbd><kbd>→</kbd>turn the page</div>`;
 }
 function turnHelp(to) { helpPage = (to + HELP.length) % HELP.length; drawHelp(); sfx("pick"); }
 function toggleHelp() { const on = !helpOpen(); if (on) drawHelp(); $("help").style.display = on ? "block" : "none"; sfx(on ? "open" : "close"); }
-$("helpbtn").onclick = toggleHelp;                        // (the brand's link, the goals' key, H: keyboard.js)
+$("helpbtn").onclick = toggleHelp;                        // (the brand's link, the goals' key, ?: keyboard.js)
 $("help").addEventListener("click", (e) => { const t = e.target.closest(".tab"); if (t) turnHelp(+t.dataset.i); else if (e.target.closest(".hh span")) toggleHelp(); });
 window.addEventListener("keydown", (e) => {               // (before the game's keys: the arrows turn pages, they do not walk you)
   if (!helpOpen() || document.activeElement === $("say")) return;

@@ -105,7 +105,7 @@ function availableActions() {
   if (selected && FOODS.includes(selected)) rows.push(["E", `Eat ${label(selected)}`]);
   if (selected && WEAR[selected]) rows.push(["E", `Wear ${label(selected)}`]);
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push(["F", "Pick up"]);
-  return rows;   // only what you can do right here, right now (all the other keys are in the help, H)
+  return rows;   // only what you can do right here, right now (all the other keys are in the help, ?)
 }
 function updateActions() {
   const html = availableActions().map(([k, t, cls]) => `<div class="${cls || ""}"><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
@@ -137,7 +137,7 @@ function cycleHand(step) {                       // Q: the next item of the hotb
   selectItem(j < 0 ? have[have.length - 1] : j >= have.length ? null : have[j]);
   toast(selected ? `In hand: ${label(selected)}` : "Empty hands");
 }
-const BOOK_KEYS = new Set(["c", "i", "m", "h", "f3", "t", "/", "+", "=", "-"]);   // what still does its usual thing with the recipe book open
+const BOOK_KEYS = new Set(["c", "i", "m", "h", "?", "f1", "f3", "t", "/", "+", "=", "-"]);   // what still does its usual thing with the recipe book open
 let capAt = null;
 addEventListener("mousemove", (e) => {
   if (capAt && Math.abs(e.clientX - capAt.x) + Math.abs(e.clientY - capAt.y) > 4) document.body.classList.remove("bykeys");
@@ -159,7 +159,8 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   c: () => { $("bag").style.display = "none"; toggleCraft(); },
   i: () => { if (isOpen("craft")) toggleCraft(); toggleBag(); },
   m: () => { setMuted(!muted); toast(muted ? "Sound off (M)" : "Sound on (M)"); },
-  h: () => $("helpbtn").click(),
+  h: () => toggleGoals(),                            // (goals.js: the goals' card away, or back. It was the help: that is ? now)
+  "?": () => $("helpbtn").click(), f1: () => $("helpbtn").click(),
   f3: () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; },
   t: () => openChat(),
   enter: () => openChat(),
@@ -198,4 +199,5 @@ addEventListener("keyup", (e) => {
   syncWalk();
 });
 addEventListener("blur", () => { runKey = false; keys.clear(); document.body.classList.remove("tab"); syncWalk(); });
-$("goals").onclick = (e) => { if (me && !e.target.closest("#goalhelp")) { drawWho(); document.body.classList.toggle("tab"); } };   // (a phone has no Tab: a tap on the goals; who.js)
+$("goalhide").onclick = () => toggleGoals();
+$("goals").onclick = (e) => { if (me && !e.target.closest(".gf")) { drawWho(); document.body.classList.toggle("tab"); } };   // (a phone has no Tab: a tap on the goals; who.js)

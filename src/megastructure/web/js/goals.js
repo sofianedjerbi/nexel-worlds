@@ -1,5 +1,6 @@
-// Goals: the next three things to try, top left, ticked off as you do them: a small card in the manner of what Tab
-// shows, at the land's pixel (css/windows.css). Over them how many are done; under them, the help's key. (All done: those stay.)
+// Goals: the next three things to try, top left, ticked off as you do them: a small card in the inventory's pixel
+// (css/windows.css). Over them the title, how many are done, and two keys: H puts the card away (and brings it back:
+// kept from one day to the next), ? is the help. (All done: the top line stays.)
 
 // [what to do, its icon, done?]
 const GOALS = [
@@ -20,7 +21,12 @@ function markGoal(key) { if (!me) return; const d = goalState(); d[key] = true; 
 function goalState() { return JSON.parse(localStorage.getItem("megastructure-goals-" + me) || "{}"); }
 // The next three goals, each with its item's icon. One just done stays a moment, ticked, with a chime, then the
 // next slides in; the header counts how many are done.
-let goalsShown = [], goalsDoneAt = {};
+let goalsShown = [], goalsDoneAt = {}, goalsOff = localStorage.getItem("megastructure-goals-off") === "1";
+function toggleGoals() {                             // H: the card away, or back
+  goalsOff = !goalsOff; localStorage.setItem("megastructure-goals-off", goalsOff ? "1" : "0");
+  sfx(goalsOff ? "close" : "open"); if (goalsOff) toast("Goals put away. H brings them back; ? is the help.");
+  drawGoals();
+}
 function drawGoals() {
   if (!meObs) return;
   const inv = meObs.self.inventory, d = goalState(), now = performance.now();
@@ -35,7 +41,7 @@ function drawGoals() {
   const open = GOALS.map((_, i) => i).filter((i) => !d["g" + i] && !lingering.includes(i));
   goalsShown = [...lingering, ...open].slice(0, 3);
   const el = $("goals"), done = GOALS.filter((_, i) => d["g" + i]).length;
-  el.style.display = $("craft").style.display === "block" ? "none" : "block";
+  el.style.display = goalsOff || $("craft").style.display === "block" ? "none" : "block";
   const sig = goalsShown.map((i) => i + (goalsDoneAt[i] ? "d" : "")).join() + "|" + done;
   if (el.dataset.sig === sig) return;
   el.dataset.sig = sig;
@@ -45,7 +51,7 @@ function drawGoals() {
   for (const i of goalsShown) {
     const row = document.createElement("div");
     row.className = "goal" + (goalsDoneAt[i] ? " done" : "");
-    const icon = iconCanvas(GOALS[i][1]), cell = document.createElement("span"); icon.className = "gi"; cell.className = "gc"; cell.append(icon);   // (its whole picture, at the card's pixel)
+    const icon = slotIcon(GOALS[i][1]), cell = document.createElement("span"); icon.className = "gi"; cell.className = "gc"; cell.append(icon);   // (its small picture, the bar's, at the card's pixel)
     row.append(cell);
     row.insertAdjacentHTML("beforeend", `<span class="gt">${esc(GOALS[i][0])}</span><span class="tick"></span>`);
     list.append(row);

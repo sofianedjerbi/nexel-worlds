@@ -6,7 +6,7 @@ SHOT = os.environ.get("HELP_SHOTS")          # a folder to keep a picture of eac
 
 
 def test_the_help_is_a_window_of_short_pages(game):
-    game.press("h")
+    game.press("?")                                                             # (H was its key: H is the goals' now)
     box = game.js("(() => { const r = $('help').getBoundingClientRect(); return [r.left + r.width / 2, innerWidth / 2, r.width, r.height, innerHeight]; })()")
     assert abs(box[0] - box[1]) < 2 and box[3] < box[4]                          # in the middle, whole on the screen
     assert game.js("[...document.querySelectorAll('#help .tab')].map((t) => t.textContent)") == ["Move", "Do", "Carry", "Talk"]
@@ -26,6 +26,6 @@ def test_the_help_is_a_window_of_short_pages(game):
     assert game.server()["x"] == x0                                              # the arrows turned pages: they did not walk you
     game.page.click("#help .tab[data-i='2']")
     assert game.js("document.querySelector('#help .tab.on').textContent") == "Carry"
-    game.press("h")
+    game.press("?")
     assert game.js("$('help').style.display") == "none"
     assert not game.errors

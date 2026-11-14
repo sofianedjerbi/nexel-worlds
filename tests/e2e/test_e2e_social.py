@@ -96,7 +96,7 @@ def test_boat_launch_sail_and_moor(game):
 
 def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game, friend, browser, server):
     """While you play: the goals, top left, a card in the recipe book's manner and pixel (how many are done,
-    the next three each a line with its picture in a cell and a box, the help's key under them); no title panel, no list of who
+    the next three each a line with its small picture in a cell and a box; H puts it away, ? is the help); no title panel, no list of who
     is awake. Held, Tab shows one window in the top right corner (who.js), drawn as the recipe book is: the sun or the moon, the day and the
     hour, the day as a bar in the sky's colours with a mark at the hour, then a line for each one awake with their picture, their name and
     their level, you first and lit; at the foot where you are and how many are awake. It is there at once (the goals
@@ -105,14 +105,20 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     box = "(id) => { const r = $(id).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] : null; }"
     goals = game.js(box, "goals")
     assert goals and goals[0] <= 14 and goals[1] <= 14 and game.js(box, "brand") is None and game.js(box, "side") is None and game.js(box, "who") is None
-    assert len(game.js("[...document.querySelectorAll('.goal')].map((g) => g.innerText)")) == 3 and game.js("$('goalhelp').innerText.replace(/\\s+/g, ' ')") == "H help"
+    assert len(game.js("[...document.querySelectorAll('.goal')].map((g) => g.innerText)")) == 3 and game.js("$('goalhide').textContent + ' ' + $('goalhelp').textContent") == "Hhide ?help"
     look = game.js("(() => { const g = getComputedStyle($('goals')), q = parseFloat(g.getPropertyValue('--q')), r = $('goals').getBoundingClientRect(); return [g.backgroundColor, Math.round(r.width / q), $('goalcount').textContent, document.querySelectorAll('.goal .gc canvas').length, q, [...document.querySelectorAll('.goal .tick')].map((t) => Math.round(r.right - t.getBoundingClientRect().right))]; })()")
-    assert look[0] == "rgb(232, 207, 166)" and look[1] == 128 and look[2] == "0/12" and look[3] == 3 and len(set(look[5])) == 1   # a card of paper, one width; nothing done yet; each picture in its cell; the boxes in one column
+    assert look[0] == "rgb(232, 207, 166)" and look[1] == 106 and look[2] == "0/12" and look[3] == 3 and len(set(look[5])) == 1    # a card of paper, 106 of its px wide (it was 128, and 110 high: way too big); nothing done yet; each picture in its cell; the boxes in one column
+    assert game.js("(() => { const r = $('goals').getBoundingClientRect(); return [r.width, r.height]; })()") == [318, 186]              # 318 by 186 on the screen (it was 384 by 330)
+    assert game.js("[...document.querySelectorAll('.goal .gt')].every((t) => t.scrollWidth <= t.clientWidth) && $('goals').scrollWidth <= $('goals').clientWidth")   # no words cut
     assert look[4] == game.js("parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--q'))") == 3              # at the land's pixel, the recipe book's (at two thirds of it, it was too small and its px were not the game's)
     was = game.js("$('help').style.display")
     game.js("$('goalhelp').click()")                                               # the help, from the goals
     assert game.js("$('help').style.display") != was
     game.js("$('goalhelp').click()")
+    game.press("h", 200)                                                           # H puts the goals away...
+    assert game.js(box, "goals") is None and "H brings them back" in game.toast() and game.js("localStorage.getItem('megastructure-goals-off')") == "1"
+    game.press("h", 200)                                                           # ...and brings them back
+    assert game.js(box, "goals") == goals and game.js("$('help').style.display") != "block"
     game.wait(f"agents.filter((a) => a.online).length >= 2 && agents.some((a) => a.name === {friend.name!r})", 10000)   # (the list is asked for now and then)
     game.page.keyboard.down("Tab")
     shown = game.js("""() => new Promise((ok) => requestAnimationFrame(() => { const w = $('who'), r = w.getBoundingClientRect(), q = parseFloat(getComputedStyle(w).getPropertyValue('--q'));     // the frame after the key (its pixel: a size under the recipe book's)
@@ -142,7 +148,7 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     page.goto(server)
     page.wait_for_function("typeof agents !== 'undefined' && agents.some((a) => a.online)", timeout=15000)
     assert page.evaluate("$('side').getBoundingClientRect().width") > 100 and page.evaluate("$('brand').innerText").startswith("MEGASTRUCTURE")
-    assert page.evaluate("$('who').getBoundingClientRect().width") == 0 and "help (H)" in page.evaluate("$('brand').innerText")
+    assert page.evaluate("$('who').getBoundingClientRect().width") == 0 and "help (?)" in page.evaluate("$('brand').innerText")
     page.close()
 
 
