@@ -166,20 +166,7 @@ function frame(now) {
   ctx.textAlign = "center"; ctx.font = "18px SproutPixel";
   for (const f of floats) { ctx.globalAlpha = 1 - (t - f.t) / 1.4; outlined(f.text, Math.round(sx(f.x) + S / 2), Math.round(sy(f.y, f.x) - (t - f.t) * S * .7), f.color); }
   ctx.globalAlpha = 1;
-  bubbles = bubbles.filter((b) => t - b.t < 7);
-  ctx.font = "18px SproutPixel";
-  for (const b of bubbles) {
-    const p = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === b.name); if (!p) continue;
-    const text = b.text.length > 60 ? b.text.slice(0, 58) + "…" : b.text, w = ctx.measureText(text).width;
-    const bx = Math.round(sx(p.x) + S / 2), by = Math.round(bodyY(p, sy) - fallOver(p) - 26 * zoom / 3 - 22 - b.slot * 26);
-    ctx.globalAlpha = Math.min(1, (7 - (t - b.t)) * 2);
-    ctx.fillStyle = b.shout ? "#ffe3a3" : "#fff6e2"; ctx.strokeStyle = "#5b3f36"; ctx.lineWidth = 2;
-    roundRect(bx - w / 2 - 9, by - 16, w + 18, 23, 4); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(bx - 5, by + 7); ctx.lineTo(bx + 5, by + 7); ctx.lineTo(bx, by + 13); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillRect(bx - 4, by + 5, 8, 3);
-    ctx.fillStyle = "#5b3f36"; ctx.textAlign = "left"; ctx.fillText(written(text, t - b.t), bx - w / 2, by + 1); ctx.textAlign = "center";   // (written out as it is said: babble.js)
-    ctx.globalAlpha = 1;
-  }
+  drawBubbles(sx, sy, S, t);                       // (what people say: bubbles.js)
   ctx.textAlign = "start";
   perfFrame(now, performance.now() - began, landMs);   // (/perf: debug.js)
 }
@@ -214,7 +201,6 @@ function outlined(text, x, y, color) {
   for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) ctx.fillText(text, x + a, y + b);
   ctx.fillStyle = color; ctx.fillText(text, x, y);
 }
-function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 function drawNight(vis, sx, sy, S, t) {
   const phase = clock.phase || 0;
   const dusk = Math.max(0, Math.min(1, (phase - .70) / .05)), dawn = phase < .03 ? 1 - phase / .03 : 0;

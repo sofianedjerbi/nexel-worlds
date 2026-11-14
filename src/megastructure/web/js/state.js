@@ -152,8 +152,7 @@ function onEvent(e) {
   if (e.type === "attack") emote(e.target, "bang");
   if (e.type === "death") emote(e.name, "skull");
   if (e.type === "say" || e.type === "shout") {
-    const slot = bubbles.filter((b) => b.name === e.from && t - b.t < 7).length;
-    bubbles.push({name: e.from, text: e.text, t, shout: e.type === "shout", slot: Math.min(slot, 2)});
+    bubbles.push({name: e.from, text: e.text, t, shout: e.type === "shout"});      // (drawn, piled and let go by bubbles.js)
   }
   if (e.type === "attack") {
     noteFight(e);
