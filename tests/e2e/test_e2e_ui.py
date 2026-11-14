@@ -175,9 +175,9 @@ def test_zoom_help_and_debug_keys(game):
     assert game.js("zoom") == z0 + 1
     game.press("-", 100)
     assert game.js("zoom") == z0
-    game.press("?", 200)
+    game.press("h", 200)
     assert game.js("$('help').style.display") == "block"
-    game.press("?", 200)
+    game.press("h", 200)
     game.press("F3", 300)
     assert game.js("$('debug').style.display") == "block" and "ms/tick" in game.js("$('debug').innerText")
     game.press("F3", 100)

@@ -1,6 +1,8 @@
 // Goals: the next three things to try, top left, ticked off as you do them: a small card in the inventory's pixel
-// (css/windows.css). Over them the title, how many are done, and two keys: H puts the card away (and brings it back:
-// kept from one day to the next), ? is the help. (All done: the top line stays.)
+// (css/windows.css). Over them the title, how many are done, and two keys: G puts the card away, H is the help.
+// The card is not on the screen unless you ask for it (G: kept from one day to the next). Early in the game, while
+// fewer than EARLY goals are done, a small tab in its place says so: "G goals 2/12" (on a phone it is always
+// there: a tap on it is the key); and a goal done while the card is away is said in the line of news.
 
 // [what to do, its icon, done?]
 const GOALS = [
@@ -21,10 +23,12 @@ function markGoal(key) { if (!me) return; const d = goalState(); d[key] = true; 
 function goalState() { return JSON.parse(localStorage.getItem("megastructure-goals-" + me) || "{}"); }
 // The next three goals, each with its item's icon. One just done stays a moment, ticked, with a chime, then the
 // next slides in; the header counts how many are done.
-let goalsShown = [], goalsDoneAt = {}, goalsOff = localStorage.getItem("megastructure-goals-off") === "1";
-function toggleGoals() {                             // H: the card away, or back
+const EARLY = 4;
+let goalsShown = [], goalsDoneAt = {}, goalsOff = localStorage.getItem("megastructure-goals-off") !== "0";      // (away, unless you asked for it)
+function toggleGoals() {                             // G: the card, or away again
+  if (!me) return;
   goalsOff = !goalsOff; localStorage.setItem("megastructure-goals-off", goalsOff ? "1" : "0");
-  sfx(goalsOff ? "close" : "open"); if (goalsOff) toast("Goals put away. H brings them back; ? is the help.");
+  sfx(goalsOff ? "close" : "open");
   drawGoals();
 }
 function drawGoals() {
@@ -34,14 +38,17 @@ function drawGoals() {
   if (meObs.self.sheltered) d.sheltered = true;
   if (meObs.self.sailing) d.sailed = true;
   GOALS.forEach(([, , f], i) => {
-    if (f(inv, d) && !d["g" + i]) { d["g" + i] = true; if (goalsShown.includes(i)) { goalsDoneAt[i] = now; sfx("chime"); } }
+    if (f(inv, d) && !d["g" + i]) { d["g" + i] = true; if (goalsShown.includes(i)) { goalsDoneAt[i] = now; sfx("chime"); if (goalsOff) toast("Goal done: " + GOALS[i][0]); } }
   });
   localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d));
   const lingering = goalsShown.filter((i) => goalsDoneAt[i] && now - goalsDoneAt[i] < 1600);
   const open = GOALS.map((_, i) => i).filter((i) => !d["g" + i] && !lingering.includes(i));
   goalsShown = [...lingering, ...open].slice(0, 3);
   const el = $("goals"), done = GOALS.filter((_, i) => d["g" + i]).length;
-  el.style.display = goalsOff || $("craft").style.display === "block" ? "none" : "block";
+  const book = $("craft").style.display === "block";
+  el.style.display = goalsOff || book ? "none" : "block";
+  $("goalhint").style.display = goalsOff && !book && (done < EARLY || document.body.classList.contains("touch")) && done < GOALS.length ? "flex" : "none";
+  $("goalhintn").textContent = `${done}/${GOALS.length}`;
   const sig = goalsShown.map((i) => i + (goalsDoneAt[i] ? "d" : "")).join() + "|" + done;
   if (el.dataset.sig === sig) return;
   el.dataset.sig = sig;

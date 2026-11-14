@@ -14,8 +14,8 @@ function joinGame(name) {
     $("joinbox").style.display = "none"; $("hud").style.display = "flex"; document.body.classList.add("playing");
     $("help").style.display = localStorage.getItem("megastructure-help") === "on" ? "block" : "none";
     $("mode").textContent = "playing as " + me;
-    toast(TOUCH ? "You wake up in a meadow. Left thumb to walk, A to use what you face, B for its other use. Tap your goals to see who is awake."
-      : "You wake up in a meadow. WASD to walk, click things to use them, Enter to talk. Hold Tab to see who is awake.");
+    toast(TOUCH ? "You wake up in a meadow. Left thumb to walk, A to use what you face, B for its other use. Tap \"goals\" for what to try next."
+      : "You wake up in a meadow. WASD to walk, click things to use them, Enter to talk. G: goals. H: help.");
     refresh();
   };
   agentWs.onmessage = (m) => {
