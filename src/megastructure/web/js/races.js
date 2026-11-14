@@ -223,27 +223,23 @@ const Races = (() => {
 })();
 const raceSheet = Races.raceSheet;
 
-// The join box: pick who you are. The choice is kept in this browser and sent with your name (agent.js).
+// The first screen: pick who you are (title.js lays it out, css/title.css draws it). The choice is kept in this
+// browser and sent with your name (agent.js).
 let myRace = localStorage.getItem("megastructure-race") || "cat";
-(() => {
-  const row = document.createElement("div");
-  row.id = "racepick";
-  row.style.cssText = "display:flex; gap:6px; justify-content:center; margin:10px 0 2px";
-  $("join").closest(".row").after(row);
-  const draw = () => {
-    if (!IMG.character || !IMG.character.complete || !IMG.character.width) return setTimeout(draw, 150);
-    row.innerHTML = "";
-    for (const r of Races.RACES) {
-      const b = document.createElement("button");
-      b.type = "button"; b.dataset.race = r.key; b.title = r.name;
-      b.style.cssText = `padding:2px; border-radius:10px; cursor:pointer; background:${r.key === myRace ? "#ffe2a6" : "transparent"}; border:3px solid ${r.key === myRace ? "#5b3f36" : "transparent"}`;
-      const c = document.createElement("canvas"); c.width = c.height = 48; c.style.cssText = "width:48px; height:48px; image-rendering:pixelated; display:block";
-      const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
-      g.drawImage(raceSheet(r.key, "#f3f2c0"), 12, 12, 24, 24, 0, 0, 48, 48);
-      b.appendChild(c);
-      b.onclick = () => { myRace = r.key; localStorage.setItem("megastructure-race", myRace); draw(); };
-      row.appendChild(b);
-    }
-  };
-  draw();
-})();
+function drawRacePick() {
+  const row = $("racepick");
+  if (!IMG.character || !IMG.character.complete || !IMG.character.width) return setTimeout(drawRacePick, 150);
+  row.innerHTML = "";
+  for (const r of Races.RACES) {
+    const b = document.createElement("button");
+    b.type = "button"; b.dataset.race = r.key; b.title = r.name; b.className = r.key === myRace ? "on" : "";
+    const c = document.createElement("canvas"); c.width = c.height = 24;
+    const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
+    g.drawImage(raceSheet(r.key, "#f3f2c0"), 12, 10, 24, 24, 0, 0, 24, 24);
+    b.appendChild(c);
+    b.onclick = () => pickRace(r.key);
+    row.appendChild(b);
+  }
+}
+function pickRace(key) { myRace = key; localStorage.setItem("megastructure-race", myRace); drawRacePick(); }
+(() => { const row = document.createElement("div"); row.id = "racepick"; $("raceslot").appendChild(row); drawRacePick(); })();

@@ -1,0 +1,45 @@
+/* The first screen (js/title.js): the classic menu. The world is whole behind it; on the left the game's name, large,
+   and a line that is never twice the same (splash.js); on the right one window: who you are (your character beside
+   your name, the five races under them), then a short list played with the arrows and Enter or the mouse.
+   One pixel size for the window, --w (what Tab shows and the help use it); the name's own is three of the land's. */
+#joinbox { --q:max(var(--w), 2px); --L:calc(3 * var(--u3)); position:fixed; inset:0; width:auto; transform:none; text-align:left; pointer-events:none; z-index:4; }
+body.touch #joinbox { width:auto; }
+body.title #brand, body.title #side { display:none; }
+#joinbox > * { position:absolute; pointer-events:auto; }
+#joinbox .logo { left:7vw; top:13vh; font-size:calc(9 * var(--L)); line-height:calc(11 * var(--L)); color:#fff1a8; white-space:nowrap; letter-spacing:var(--L); pointer-events:none;
+  text-shadow: var(--L) 0 0 #5b3f36, calc(-1 * var(--L)) 0 0 #5b3f36, 0 var(--L) 0 #5b3f36, 0 calc(-1 * var(--L)) 0 #5b3f36,
+    var(--L) var(--L) 0 #5b3f36, calc(-1 * var(--L)) var(--L) 0 #5b3f36, var(--L) calc(-1 * var(--L)) 0 #5b3f36, calc(-1 * var(--L)) calc(-1 * var(--L)) 0 #5b3f36,
+    0 calc(2 * var(--L)) 0 #5b3f36, var(--L) calc(2 * var(--L)) 0 #5b3f36, calc(-1 * var(--L)) calc(2 * var(--L)) 0 #5b3f36, 0 calc(3 * var(--L)) 0 rgba(43,35,32,.35); }
+#joinbox .logo em { font-style:normal; color:#ffd36a; display:block; }
+#joinbox .say { left:7vw; top:calc(13vh + 27 * var(--L)); max-width:40vw; font-size:calc(9 * var(--u3)); line-height:calc(11 * var(--u3)); color:#fff6e2; text-shadow:var(--u3) var(--u3) 0 #2b2320; pointer-events:none; }
+#joinbox .menu { right:8vw; top:50%; transform:translateY(-50%); width:calc(150 * var(--q)); padding:calc(5 * var(--q)); display:flex; flex-direction:column; gap:calc(3 * var(--q));
+  color:var(--ink); font-size:calc(9 * var(--q)); line-height:calc(9 * var(--q)); background:#e8cfa6;
+  box-shadow:inset var(--q) var(--q) 0 #fbf0d6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(4 * var(--q)) 0 rgba(60,40,30,.25); }
+#joinbox .card { display:flex; align-items:center; gap:calc(5 * var(--q)); padding:calc(4 * var(--q)); background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #b8946a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }
+#joinbox #titleme { flex:none; width:calc(48 * var(--q)); height:calc(52 * var(--q)); image-rendering:pixelated; }
+#joinbox .me { flex:1; min-width:0; display:flex; flex-direction:column; gap:calc(3 * var(--q)); }
+#joinbox .soft { color:var(--ink2); }
+#joinbox input { all:unset; box-sizing:border-box; width:100%; height:calc(17 * var(--q)); padding:0 calc(4 * var(--q)); font:inherit; color:var(--ink); background:#fff6e2; cursor:text;
+  box-shadow:inset var(--q) var(--q) 0 #cfad84, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+#joinbox input::placeholder { color:#b8946a; }
+#joinbox input.need { background:#ffd9d0; }
+#joinbox button { all:unset; box-sizing:border-box; cursor:pointer; font:inherit; color:var(--ink); }
+#racepick { display:flex; justify-content:space-between; gap:calc(2 * var(--q)); padding:calc(2 * var(--q)); }
+#racepick.on { background:#fff1a8; box-shadow:inset var(--q) var(--q) 0 #fffaf0, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #e0b84e, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+#joinbox #racepick button { display:flex; align-items:center; justify-content:center; width:calc(26 * var(--q)); height:calc(26 * var(--q)); background:#cfad84; box-shadow:inset var(--q) var(--q) 0 #9a6f55, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }
+#joinbox #racepick button.on { background:#fff6e2; box-shadow:inset var(--q) var(--q) 0 #fffaf0, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #e0b84e, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+#racepick canvas { display:block; width:calc(24 * var(--q)); height:calc(24 * var(--q)); image-rendering:pixelated; }
+#joinbox .item { display:flex; align-items:center; justify-content:space-between; height:calc(17 * var(--q)); padding:0 calc(5 * var(--q)); }
+#joinbox a.item { color:inherit; text-decoration:none; }
+#joinbox .item.on { background:#fff1a8; box-shadow:inset var(--q) var(--q) 0 #fffaf0, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #e0b84e, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+#joinbox kbd { display:inline-flex; align-items:center; justify-content:center; min-width:calc(11 * var(--q)); height:calc(11 * var(--q)); padding:0 calc(3 * var(--q)) var(--q); font:inherit; color:var(--ink);
+  background:#fbf0d6; box-shadow:inset var(--q) var(--q) 0 #fffaf0, inset calc(-1 * var(--q)) calc(-2 * var(--q)) 0 #cfad84, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+body.touch #joinbox kbd { display:none; }
+/* a narrow screen (a phone held upright): the name over the window, both in the middle */
+@media (max-width: 860px) {
+  #joinbox { --L:calc(2 * var(--u3)); }
+  #joinbox .logo { left:0; right:0; top:5vh; text-align:center; }
+  #joinbox .say { left:4vw; right:4vw; max-width:none; top:calc(5vh + 26 * var(--L)); text-align:center; }
+  #joinbox .menu { left:50%; right:auto; top:auto; bottom:5vh; transform:translateX(-50%); width:min(calc(150 * var(--q)), 94vw); }
+}
+body.touch #titlehelp { display:none; }                     /* (the help is a list of keys: a phone has none) */

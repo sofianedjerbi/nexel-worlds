@@ -9,6 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/help.css">
+<link rel="stylesheet" href="css/title.css">
 <link rel="stylesheet" href="css/windows.css">
 </head>
 <body>
@@ -22,12 +23,19 @@
   <div class="well" id="wholist"></div><div id="whofoot"><span id="whoat"></span><span id="whocount"></span></div></div>
 <div id="debug"></div>
 <div id="actions"></div>
-<div class="panel" id="joinbox"><div class="in">
-  <div class="t">NEXEL WORLDS</div>
-  <p><span id="splash">Build your world. Open a door.</span><br>Pick a name to wake up on the shore.</p>
-  <div class="row"><input id="name" placeholder="your name" maxlength="24" autocomplete="off"><button id="join">Wake up</button></div>
-  <div class="watch"><button class="ghost" id="watch">just watch</button></div>
-</div></div>
+<div id="joinbox">
+  <div class="logo">NEXEL<em>WORLDS</em></div>
+  <div class="say" id="splash">Build your world. Open a door.</div>
+  <div class="menu">
+    <div class="card"><canvas id="titleme" width="24" height="26"></canvas>
+      <div class="me"><span class="soft">Your name</span><input id="name" placeholder="type it here" maxlength="24" autocomplete="off"></div></div>
+    <div id="raceslot"></div>
+    <button class="item" id="join"><span>Wake up</span><kbd>Enter</kbd></button>
+    <button class="item" id="watch"><span>Just watch</span></button>
+    <button class="item" id="titlehelp"><span>Help</span><kbd>H</kbd></button>
+    <button class="item" id="titlesound"><span>Sound</span><span class="soft" id="titlesoundv">on</span></button>
+  </div>
+</div>
 <div id="help"></div>
 <div id="goals"><div class="gh"><b>Goals</b><span id="goalcount"></span><span class="gf" id="goalhide"><kbd>G</kbd>hide</span><span class="gf" id="goalhelp"><kbd>H</kbd>help</span></div><div id="goallist"></div></div>
 <div id="goalhint"><kbd>G</kbd>goals<span id="goalhintn"></span></div>
@@ -115,5 +123,6 @@
 <script src="js/main.js"></script>
 <script src="js/help.js"></script>
 <script src="js/splash.js"></script>
+<script src="js/title.js"></script>
 </body>
 </html>

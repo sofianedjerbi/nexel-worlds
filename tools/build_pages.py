@@ -35,10 +35,9 @@ def build(out: Path):
     for f in (ROOT / "tools" / "pages").iterdir():           # the showcase page (what's new) and its clip
         shutil.copy(f, out / f.name)
     page = (out / "index.html").read_text()
-    box = '<div class="watch"><button class="ghost" id="watch">just watch</button></div>'
+    box = '<button class="item" id="watch"><span>Just watch</span></button>'      # (the first screen's menu: one row more, online)
     assert box in page, "the join box changed"
-    (out / "index.html").write_text(page.replace(box, box + '\n  <div class="watch"><a href="showcase.html" '
-                                    'style="color:var(--ink2)">New: heights, biomes, dig anywhere</a></div>'))
+    (out / "index.html").write_text(page.replace(box, box + '\n    <a class="item" href="showcase.html"><span>What\'s new</span></a>'))
     music_page(out)
     (out / ".nojekyll").write_text("")
     print(f"built {out} ({sum(f.stat().st_size for f in out.rglob('*') if f.is_file()) // 1024} KB)")
