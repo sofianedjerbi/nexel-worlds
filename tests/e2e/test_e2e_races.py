@@ -93,3 +93,40 @@ def test_every_tool_has_its_own_swing(game):
         for (let r = 0; r < 4; r++) for (let col = 0; col < 8; col++) if (diff(a, b, r, col) < 4) out.push([a, b, r, col]);
       return out; })()""")
     assert same == [], same
+
+
+SWINGS = os.environ.get("SWING_SHOTS")       # a folder to keep each frame of each attack in, as the game draws it
+
+
+def test_a_sword_cuts_across_and_a_spear_is_thrust(game):
+    """An attack with a sword or a spear was the sheet's chop, which reads as breaking a block. swing_art.js draws the
+    weapon over the standing body: the sword crosses from one side of you to the other, the spear goes out and back."""
+    game.clear_area(6)
+    game.give(sword=1, spear=1)
+    blade = """(kind, row, f) => { const d = SwingArt.frame(kind, row, f, [[1, 1, 1], [2, 2, 2], [3, 3, 3]]); let n = 0, sx = 0, sy = 0, far = 0;
+      for (let i = 0; i < 48 * 48; i++) if (d[i * 4 + 3] && d[i * 4] > 100 && d[i * 4] < 240) { n++; sx += i % 48; sy += Math.floor(i / 48); far = Math.max(far, i % 48); }
+      return [n, sx / n, sy / n, far]; }"""                     # the weapon's own px (not the hand, not the streak)
+    sword = game.js(f"[0, 1, 2, 3, 4].map((f) => ({blade})('sword', 0, f))")
+    assert all(n > 15 for n, *_ in sword), sword
+    assert sword[1][1] < 16 and sword[4][1] > 32, sword        # facing us: from the left of the body to the right of it
+    assert sword[2][2] > 34, sword                             # passing in front, below the feet
+    spear = game.js(f"[0, 1, 2, 3, 4, 5, 6, 7].map((f) => ({blade})('spear', 2, f))")
+    assert spear[3][3] - spear[1][3] >= 10 and spear[7][3] < spear[3][3] - 4, spear   # out, then back
+    for kind in ("sword", "spear"):
+        game.hold_item(kind)
+        for way, (dx, dy) in {"down": (0, 1), "up": (0, -1), "right": (1, 0), "left": (-1, 0)}.items():
+            game.face(dx, dy)
+            for f in range(6):
+                drawn = game.js(f"""new Promise((done) => {{ const p = ents.get('agent' + myId), d0 = ctx.drawImage, out = [];
+                  p.fx = {dx}; p.fy = {dy}; p.swing = {{t0: performance.now() - {f * 50 + 20}, with: '{kind}'}};
+                  ctx.drawImage = function (img, ...r) {{ if (r.length === 8 && r[2] === 48 && r[3] === 48 && (img.height === 192 || img.height > 1000)) out.push([img.height, r[0] / 48, r[1] / 48]); return d0.call(this, img, ...r); }};
+                  requestAnimationFrame(() => requestAnimationFrame(() => {{ ctx.drawImage = d0; window._hold = setInterval(() => {{ p.swing.t0 = performance.now() - {f * 50 + 20}; }}, 5); done(out); }})); }})""")
+                row = {"down": 0, "up": 1, "right": 2, "left": 3}[way]
+                assert [192, f, row] in drawn, (kind, way, f, drawn)                   # the weapon's frame, for the way faced
+                assert any(h > 1000 and r == row for h, c, r in drawn), drawn          # over the standing body, not the chop
+                if SWINGS:
+                    game.sleep(60)
+                    v = game.page.viewport_size; x, y = v["width"] / 2, v["height"] / 2    # (you are in the middle of the screen)
+                    game.page.screenshot(path=f"{SWINGS}/{kind}_{way}_{f}.png", clip={"x": x - 110, "y": y - 110, "width": 220, "height": 220})
+                game.js("clearInterval(window._hold)")
+    assert not game.errors

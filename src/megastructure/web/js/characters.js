@@ -53,7 +53,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     if (action && action.dir && DIRV[action.dir]) { [p.fx, p.fy] = DIRV[action.dir]; }
     if (action && action.tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == action.tid); if (q) { p.fx = Math.sign(q.x - p.x); p.fy = p.fx ? 0 : Math.sign(q.y - p.y); } }
     const sheetImg = wornSheet(agentTint(e.name), e.worn, e.race);        // (wear.js: their sheet, dressed)
-    let bob = j ? Math.round(j.body * z) : 0, anim = "idle", frame, lunge = 0;
+    let bob = j ? Math.round(j.body * z) : 0, anim = "idle", frame, lunge = 0, blow = null;
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
     if (mine || e.name === follow) {
       ctx.fillStyle = mine ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
@@ -69,6 +69,8 @@ function drawEntity(p, sx, sy, S, t, now) {
       const fps = tool === "attack" ? 20 : 13, n = Math.floor(k * fps);
       frame = n % 8;
       if (!held) lunge = Math.round(Math.sin(Math.min(1, frame / 6) * Math.PI) * 3) * z;
+      // a sword cuts and a spear is thrust (swing_art.js), where the sheet's swing is a chop: the body stands and steps in
+      if (tool === "attack" && SwingArt.KINDS.includes(action.with)) { blow = [action.with, frame]; anim = "idle"; lunge = SwingArt.STEP[action.with][frame] * z; }
       const swing = Math.floor(n / 8);
       if (frame >= 4 && p.lastSwing !== swing) {     // the strike lands: debris and a shake on the target
         p.lastSwing = swing;
@@ -80,6 +82,7 @@ function drawEntity(p, sx, sy, S, t, now) {
           sfx(!held && (mat === "wood" || mat === "stone") ? "punch" : STRIKE[mat], tx, ty);
         } else if (tool === "craft") burst(Math.round(p.tx), Math.round(p.ty), "spark", 5, {dy: -.6, g: 4});
       }
+      if (blow) frame = 0;
     } else if (tool === "water") {
       anim = "water"; const n = Math.floor(k * 10); frame = n % 8;
       if (frame >= 3 && frame <= 6 && p.lastDrop !== n) { p.lastDrop = n; const [tx, ty] = action.at || [Math.round(p.tx) + p.fx, Math.round(p.ty) + p.fy];
@@ -145,8 +148,12 @@ function drawEntity(p, sx, sy, S, t, now) {
     const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
     const cellX = x - 16 * z - p.fx * (kb - lunge), cellY = y - 18 * z - bob - p.fy * (kb - lunge), fi = syy / 48 * 8 + frame;
     wearFx("back", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);      // a charm's effect (wear_items.js)
+    // the weapon of a cut or a thrust: in front of the body, behind it when they face away
+    const arm = () => blow && ctx.drawImage(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, 48, 48, cellX, cellY, 48 * z, 48 * z);
+    if (p.fy < 0) arm();
     ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
     wearFx("front", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);
+    if (p.fy >= 0) arm();
     if (tool === "eat" && action.item && p.fy >= 0) {   // the food, half size and crisp, held up to the mouth
       const pose = eatPose(k), food = biteIcon(action.item, pose.bites);
       if (food) {
