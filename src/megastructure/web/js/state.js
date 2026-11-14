@@ -62,7 +62,7 @@ function connectSpec() {
     else if (d.type === "resync") { for (const b of blocks.values()) b.at = -1e9; }   // we missed events (too many at once): ask for our land again
     else if (d.type === "reply") {
       if (d.rows) onRegion(d);
-      else if (d.agents) { agents = d.agents; drawAgents(); }
+      else if (d.agents) { agents = d.agents; drawAgents(); if (document.body.classList.contains("tab")) drawWho(); }
       else if (d.recipes) { recipes = d.recipes; foodValue = d.food || {}; drawRecipes(); }
       else if (d.tick_ms_p50 !== undefined) { metrics = d; drawStats(); }
     }
@@ -102,7 +102,7 @@ function onTick(d) {
   troughAt = new Set((d.troughs || []).map(([x, y]) => x + "," + y));
   fireAt = (d.fires || []).map(([x, y]) => ({x, y}));
   $("clock").textContent = d.time.replace("(night)", "· night");
-  if (document.body.classList.contains("tab")) drawTab();      // (keyboard.js: the day, on the panel Tab shows)
+  if (document.body.classList.contains("tab")) whoTick();      // (who.js: the hour, on what Tab shows)
   const seen = new Set(), now = performance.now();
   for (const e of d.entities) {
     const key = e.kind + e.id; seen.add(key);

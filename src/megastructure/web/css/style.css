@@ -118,14 +118,30 @@
   body.touch:has(#craft[style*="display: block"]) :is(#ttop, #tbtns, #tctx) { visibility:hidden; }
   #goals { left:10px; top:10px; width:230px; display:none; }
   /* While you play: the goals stay, top left, with the help's link (the title panel is put away: its day and your
-     name show on Tab). Held, Tab shows one panel at the top, under the line of news: the day, who you are, who else
-     is awake (as the sandbox classic lists its players). Nothing in it moves in: it is there at once. (The goals were
-     put on Tab too for a day: each press played their slide in again, in four steps, which looked like lag.)
+     name show on Tab). Held, Tab shows one window at the top, under the line of news: the day, who you are, who else
+     is awake (as the sandbox classic lists its players; who.js). Nothing in it moves in: it is there at once. (The goals
+     were put on Tab too for a day: each press played their slide in again, in four steps, which looked like lag.)
      Watching, not playing, the title and the list stay as they were: you pick who to follow. */
   body.playing #brand, body.playing #side { display:none !important; }
-  body.playing.tab #side { display:flex !important; left:50%; right:auto; top:76px; transform:translateX(-50%); width:max-content; min-width:230px; max-width:90vw; }
-  #tabday { display:none; margin-bottom:6px; padding-bottom:6px; border-bottom:2px dotted rgba(91,63,54,.25); line-height:22px; white-space:nowrap; }
-  body.playing #tabday { display:block; } #tabday span { color:var(--ink2); }
+  /* ---- what Tab shows (who.js): drawn as the recipe book is, in its pixel (--q) and its colours ---- */
+  #who { position:fixed; left:50%; top:76px; transform:translateX(-50%); width:calc(150 * var(--q)); padding:calc(5 * var(--q)); display:none; z-index:5; pointer-events:none;
+    color:var(--ink); font-size:calc(9 * var(--q)); line-height:calc(9 * var(--q)); background:#e8cfa6; box-shadow:inset var(--q) var(--q) 0 #fbf0d6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(4 * var(--q)) 0 rgba(60,40,30,.22); }
+  body.playing.tab #who { display:block; }
+  #who canvas { display:block; width:calc(16 * var(--q)); height:calc(16 * var(--q)); image-rendering:pixelated; }
+  #who .cell { flex:none; width:calc(18 * var(--q)); height:calc(18 * var(--q)); padding:var(--q); background:#cfad84; box-shadow:inset var(--q) var(--q) 0 #9a6f55, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }
+  #who .whead { display:flex; align-items:center; gap:calc(5 * var(--q)); height:calc(18 * var(--q)); margin:0 var(--q); } #whoday { flex:1; font-weight:normal; } #whohour { padding-right:calc(2 * var(--q)); }
+  #whosky { background:#f1dfb8 !important; } #whosky[data-night="1"] { background:#5d5f8f !important; box-shadow:inset var(--q) var(--q) 0 #45476e, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #8d8fb8 !important; }
+  /* the day as a bar: its last quarter is the night; the mark is the hour */
+  #whobar { position:relative; height:calc(6 * var(--q)); margin:calc(5 * var(--q)) calc(2 * var(--q)) calc(6 * var(--q)); background:#f2c75c; box-shadow:inset var(--q) var(--q) 0 #fbe39a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #d09a3a, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+  #whobar i { position:absolute; right:0; top:0; bottom:0; width:25%; background:#5d5f8f; box-shadow:inset var(--q) var(--q) 0 #8d8fb8, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #45476e; }
+  #whomark { position:absolute; top:calc(-2 * var(--q)); width:calc(4 * var(--q)); height:calc(10 * var(--q)); background:#fff6e2; box-shadow:inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #d9bd8f, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+  #wholist { background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #b8946a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; padding:calc(3 * var(--q)); display:flex; flex-direction:column; gap:calc(2 * var(--q)); }
+  #who .line { flex:none; display:flex; align-items:center; gap:calc(4 * var(--q)); height:calc(20 * var(--q)); padding:var(--q) calc(5 * var(--q)) var(--q) var(--q); white-space:nowrap; overflow:hidden; }
+  #who .line .n { min-width:0; overflow:hidden; } #who .line .lv { margin-left:auto; font-size:calc(6 * var(--q)); color:var(--ink2); }
+  #who .line .tag { font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); padding:0 calc(2 * var(--q)); color:#6b4a3a; background:#f3e5c2; text-shadow:none; box-shadow:calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+  #who .line.cur { color:#fff6e2; text-shadow:var(--q) var(--q) 0 #6b4a3a; background:#aa7959; box-shadow:inset var(--q) var(--q) 0 #c49a6c, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #8a5f4b, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+  #who .line.cur .lv { color:#f3dcc0; text-shadow:none; }
+  #whofoot { display:flex; justify-content:space-between; height:calc(8 * var(--q)); margin:calc(3 * var(--q)) calc(2 * var(--q)) 0; font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); }
   #goals .gf { margin-top:4px; text-align:right; color:var(--ink2); }
   #goals .gh { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
   #goals h3 { margin:0; }
