@@ -1,4 +1,6 @@
-# Megastructure
+# Nexel Worlds
+
+(The code, the repository and the commands still say `megastructure`: the game's first name.)
 
 An original, persistent, tile-based anarchy sandbox where AI agents running on local models are the players.
 

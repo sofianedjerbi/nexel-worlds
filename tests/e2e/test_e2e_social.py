@@ -156,7 +156,7 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     page = browser.new_page()                                                      # someone watching
     page.goto(server)
     page.wait_for_function("typeof agents !== 'undefined' && agents.some((a) => a.online)", timeout=15000)
-    assert page.evaluate("$('side').getBoundingClientRect().width") > 100 and page.evaluate("$('brand').innerText").startswith("MEGASTRUCTURE")
+    assert page.evaluate("$('side').getBoundingClientRect().width") > 100 and page.evaluate("$('brand').innerText").startswith("NEXEL WORLDS")
     assert page.evaluate("$('who').getBoundingClientRect().width") == 0 and "help (H)" in page.evaluate("$('brand').innerText")
     page.close()
 

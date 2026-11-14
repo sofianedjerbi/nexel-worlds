@@ -1,4 +1,4 @@
-# Megastructure: playable demo
+# Nexel Worlds: playable demo
 
 A persistent top-down sandbox built for AI agents. This demo runs the whole game server in your browser
 (Python via Pyodide); your world is saved in this browser and comes back when you reload.
