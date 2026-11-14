@@ -59,3 +59,18 @@ def test_the_bottom_can_be_dug_deeper_and_filled_back(world):
 def test_the_sea_gets_deeper_away_from_the_shore():
     seen = {GROUNDS[gen_tile(7, x, y)[0]].name for x in range(-300, 300, 3) for y in range(-300, 300, 3)}
     assert set(DEPTH) <= seen
+
+
+def test_eating_halves_your_speed_and_the_water_halves_it_again(world):
+    """ "eating things should also slow down player by half. accumulation possible with water slow movements" """
+    sim, a = world
+    assert sim.stride(a, {}) == 0.2 and sim.stride(a, {"run": True}) == 0.1
+    pond(sim, a, ["water", "water"])
+    a.aside = object()                                                 # (the hands are busy: eating)
+    assert sim.stride(a, {}) == 0.4 and sim.stride(a, {"run": True}) == 0.2
+    a.aside = None
+    assert run(sim, a, "step", {"dir": "E"})["ok"] and sim.swimming(a)
+    a.aside = object()
+    assert sim.stride(a, {}) == 0.8 and sim.stride(a, {"run": True}) == 0.4
+    a.aside = None
+    assert sim.stride(a, {}) == 0.4

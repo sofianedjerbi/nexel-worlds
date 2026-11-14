@@ -78,8 +78,9 @@ function leadOf(p, now) {
   return d || off > .01 ? d + Math.abs(al) + off : al;
 }
 // where nobody sprints: in a boat (and, on a server from before the sprint in the water, in the water)
-// tiles a second from the tile (x, y): 5 walking, 10 at a sprint; in the water the server's SWIM_PACE times slower (half)
-const speedAt = (x, y, p) => { const t = tile(x, y); return (walking.run && !onWater(x, y, p) ? 10 : 5) / (t && wet(t[1]) && !(p.e && p.e.sail) ? SWIM_PACE : 1); };
+// tiles a second from the tile (x, y): 5 walking, 10 at a sprint; in the water the server's SWIM_PACE times slower (half),
+// and EAT_PACE times slower while you eat (half again: the two add up)
+const speedAt = (x, y, p) => { const t = tile(x, y); return (walking.run && !onWater(x, y, p) ? 10 : 5) / (t && wet(t[1]) && !(p.e && p.e.sail) ? SWIM_PACE : 1) / (eating() ? EAT_PACE : 1); };
 const onWater = (x, y, p) => { const t = tile(x, y); return (!SWIM_SPRINT && !!t && wet(t[1])) || !!(p.e && p.e.sail); };
 
 // A frame of your walk (render.js). A turn first finishes the tile you were walking into, in a straight line, then
