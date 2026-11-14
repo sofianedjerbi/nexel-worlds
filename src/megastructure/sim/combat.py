@@ -60,6 +60,8 @@ class Combat:
             t.cooldown = 0
             if t.kind in FARM:                      # farm animals don't stand there and take it: they run
                 t.scared, t.threat = self.tick + sec(FLEE_SECONDS), (a.x, a.y)
+            elif t.kind == "tusker":                # ...and a tusker takes it badly (wild.py)
+                self.enrage(t, a)
         before = t.deaths if isinstance(t, Agent) else 0
         self.damage(t, dmg, f"killed by {a.name}", by=a)
         killed = t.deaths > before if isinstance(t, Agent) else t.id not in self.creatures

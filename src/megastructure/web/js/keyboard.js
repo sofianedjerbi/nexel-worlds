@@ -198,4 +198,4 @@ addEventListener("keyup", (e) => {
   syncWalk();
 });
 addEventListener("blur", () => { runKey = false; keys.clear(); document.body.classList.remove("tab"); syncWalk(); });
-$("goals").onclick = (e) => { if (me && e.target.id !== "goalhelp") { drawWho(); document.body.classList.toggle("tab"); } };   // (a phone has no Tab: a tap on the goals; who.js)
+$("goals").onclick = (e) => { if (me && !e.target.closest("#goalhelp")) { drawWho(); document.body.classList.toggle("tab"); } };   // (a phone has no Tab: a tap on the goals; who.js)

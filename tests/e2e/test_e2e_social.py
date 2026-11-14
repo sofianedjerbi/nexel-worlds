@@ -95,16 +95,19 @@ def test_boat_launch_sail_and_moor(game):
 
 
 def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game, friend, browser, server):
-    """While you play: the goals, top left, with the help's link under them; no title panel, no list of who is awake.
-    Held, Tab shows one window at the top (who.js), drawn as the recipe book is: the sun or the moon, the day and the
+    """While you play: the goals, top left, a part of the HUD (no panel: light text with a dark edge, a pip for each
+    goal, a picture in a cell for each of the next three, the help's key under them); no title panel, no list of who
+    is awake. Held, Tab shows one window in the top right corner (who.js), drawn as the recipe book is: the sun or the moon, the day and the
     hour, the day as a bar in the sky's colours with a mark at the hour, then a line for each one awake with their picture, their name and
     their level, you first and lit; at the foot where you are and how many are awake. It is there at once (the goals
     were on Tab for a day and slid in again at each press, which looked like lag) and goes when the key is let go.
     Someone only watching keeps the title and the list: they pick who to follow."""
     box = "(id) => { const r = $(id).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] : null; }"
     goals = game.js(box, "goals")
-    assert goals and goals[0] <= 12 and goals[1] <= 12 and game.js(box, "brand") is None and game.js(box, "side") is None and game.js(box, "who") is None
-    assert len(game.js("[...document.querySelectorAll('.goal')].map((g) => g.innerText)")) == 3 and game.js("$('goalhelp').innerText") == "help (H)"
+    assert goals and goals[0] <= 14 and goals[1] <= 14 and game.js(box, "brand") is None and game.js(box, "side") is None and game.js(box, "who") is None
+    assert len(game.js("[...document.querySelectorAll('.goal')].map((g) => g.innerText)")) == 3 and game.js("$('goalhelp').innerText.replace(/\\s+/g, ' ')") == "H help"
+    look = game.js("(() => { const g = getComputedStyle($('goals')), c = getComputedStyle(document.querySelector('.goal .gc')); return [g.backgroundImage, g.borderImageSource, g.backgroundColor, document.querySelectorAll('#goalpips i').length, document.querySelectorAll('#goalpips i.on').length, c.backgroundColor, document.querySelectorAll('.goal .gc canvas').length]; })()")
+    assert look[:3] == ["none", "none", "rgba(0, 0, 0, 0)"] and look[3:5] == [12, 0] and look[5] == "rgb(232, 207, 166)" and look[6] == 3   # no sheet of paper; twelve pips, none lit yet; each picture in its cell
     was = game.js("$('help').style.display")
     game.js("$('goalhelp').click()")                                               # the help, from the goals
     assert game.js("$('help').style.display") != was
@@ -113,11 +116,11 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     game.page.keyboard.down("Tab")
     shown = game.js("""() => new Promise((ok) => requestAnimationFrame(() => { const w = $('who'), r = w.getBoundingClientRect(), q = parseFloat(getComputedStyle(w).getPropertyValue('--q'));     // the frame after the key (its pixel: a size under the recipe book's)
       const ink = (c) => { const d = c.getContext('2d').getImageData(0, 0, 16, 16).data; let n = 0; for (let o = 3; o < d.length; o += 4) if (d[o]) n++; return n; };
-      ok({top: r.top, mid: Math.round(r.left + r.width / 2), wide: Math.round(r.width / q), px: [q, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--q'))], moving: w.getAnimations({subtree: true}).length, day: $('whoday').textContent, hour: $('whohour').textContent,
+      ok({top: r.top, right: r.right, wide: Math.round(r.width / q), px: [q, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--q'))], moving: w.getAnimations({subtree: true}).length, day: $('whoday').textContent, hour: $('whohour').textContent,
         lines: [...w.querySelectorAll('.line')].map((l) => [l.querySelector('.n').textContent, l.classList.contains('cur'), !!l.querySelector('.tag'), l.querySelector('.lv').textContent, ink(l.querySelector('canvas'))]),
         sky: [$('whosky').dataset.night, ink($('whosky').querySelector('canvas'))], mark: parseFloat(getComputedStyle($('whomark')).left) / ($('whobar').offsetWidth - 4 * q), phase: clock.phase,
         foot: $('whofoot').innerText, whole: [...w.querySelectorAll('.line, .cell, #whobar')].every((e) => { const b = e.getBoundingClientRect(); return b.left >= r.left && b.right <= r.right && b.bottom <= r.bottom; })}); }))""")
-    assert shown["top"] >= 70 and abs(shown["mid"] - game.js("innerWidth") / 2) <= 2 and shown["wide"] == 150 and shown["px"] == [2, 3] and shown["moving"] == 0     # there, in the middle, 300 px wide (it was 450: too big), nothing sliding in
+    assert shown["top"] <= 16 and 8 <= game.js("innerWidth") - shown["right"] <= 16 and shown["wide"] == 150 and shown["px"] == [2, 3] and shown["moving"] == 0     # there, in the top right corner, 300 px wide (it was 450: too big), nothing sliding in
     assert shown["day"].startswith("Day ") and len(shown["hour"]) == 5 and shown["hour"][2] == ":"       # the day and the hour
     assert shown["sky"][0] == "0" and shown["sky"][1] > 40 and abs(shown["mark"] - shown["phase"]) < .02  # the sun; the mark where the hour is on the day's bar
     me, other = shown["lines"][0], [l for l in shown["lines"] if l[0] == friend.name][0]
@@ -133,7 +136,7 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     assert game.js(box, "who") is None
     game.give(wood=4)                                                              # a goal done: ticked where it is, no line of news for it
     game.sleep(600)
-    assert "Goal done" not in game.toast() and game.js("document.querySelectorAll('.goal.done').length") == 1
+    assert "Goal done" not in game.toast() and game.js("document.querySelectorAll('.goal.done').length") == 1 and game.js("document.querySelectorAll('#goalpips i.on').length") == 1
     page = browser.new_page()                                                      # someone watching
     page.goto(server)
     page.wait_for_function("typeof agents !== 'undefined' && agents.some((a) => a.online)", timeout=15000)

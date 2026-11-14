@@ -87,6 +87,8 @@ class Creature:
     rest: int = 0       # no new attack before this tick
     left: int = 0       # tiles left in a charge (Old Mossback: the tick until which its neck is out)
     awake: int = 0      # Old Mossback: it stays up until this tick
+    angry: int = 0      # a tusker that was hit: angry until this tick, at `foe` (wild.py; runtime only)
+    foe: int = 0        # ...the id of whoever hit it
 
     def to_json(self):
         return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "z": self.z, "hp": self.hp,

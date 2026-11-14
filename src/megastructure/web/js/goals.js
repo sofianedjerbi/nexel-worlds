@@ -1,5 +1,5 @@
-// Goals: the next three things to try, top left, ticked off as you do them; under them, the help's link. (All done:
-// the count and the link stay.)
+// Goals: the next three things to try, top left, ticked off as you do them: a part of the HUD (no panel: style.css).
+// Over them a pip for each goal, lit when it is done; under them, the help's key. (All done: the pips and the key stay.)
 
 // [what to do, its icon, done?]
 const GOALS = [
@@ -40,13 +40,14 @@ function drawGoals() {
   if (el.dataset.sig === sig) return;
   el.dataset.sig = sig;
   $("goalcount").textContent = `${done}/${GOALS.length}`;
+  $("goalpips").innerHTML = GOALS.map((_, i) => `<i${d["g" + i] ? ' class="on"' : ""}></i>`).join("");
   const list = $("goallist");
   list.innerHTML = "";
   for (const i of goalsShown) {
     const row = document.createElement("div");
     row.className = "goal" + (goalsDoneAt[i] ? " done" : "");
-    const icon = slotIcon(GOALS[i][1]); icon.className = "gi";
-    row.append(icon);
+    const icon = slotIcon(GOALS[i][1]), cell = document.createElement("span"); icon.className = "gi"; cell.className = "gc"; cell.append(icon);
+    row.append(cell);
     row.insertAdjacentHTML("beforeend", `<span class="gt">${esc(GOALS[i][0])}</span><span class="tick"></span>`);
     list.append(row);
   }

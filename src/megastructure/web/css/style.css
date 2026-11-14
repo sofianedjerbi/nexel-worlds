@@ -116,17 +116,22 @@
   /* a phone: in the middle of the screen, over the thumbs' buttons, which are put away while it is open */
   body.touch #craft { bottom:0; z-index:6; }
   body.touch:has(#craft[style*="display: block"]) :is(#ttop, #tbtns, #tctx) { visibility:hidden; }
-  #goals { left:10px; top:10px; width:230px; display:none; }
+  /* The goals, top left: part of the HUD, as the hearts and the hints of what a key does are. No panel (it was a
+     sheet of paper over the land): light text with a dark edge, a pip for each goal (lit when done), and for each of
+     the next three its picture in a small cell, as a slot of the bar holds a thing, with a box that is ticked. Under
+     them the help's key. */
+  #goals { position:fixed; left:12px; top:12px; display:none; z-index:3; color:#fff8e8; font-size:18px; line-height:20px; cursor:default;
+    text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
   /* While you play: the goals stay, top left, with the help's link (the title panel is put away: its day and your
-     name show on Tab). Held, Tab shows one window at the top, under the line of news: the day, who you are, who else
+     name show on Tab). Held, Tab shows one window in the top right corner (under a phone's buttons there): the day, who you are, who else
      is awake (as the sandbox classic lists its players; who.js). Nothing in it moves in: it is there at once. (The goals
      were put on Tab too for a day: each press played their slide in again, in four steps, which looked like lag.)
      Watching, not playing, the title and the list stay as they were: you pick who to follow. */
   body.playing #brand, body.playing #side { display:none !important; }
   /* ---- what Tab shows (who.js): drawn as the recipe book is, in its pixel (--q) and its colours ---- */
-  #who { --q:var(--w); position:fixed; left:50%; top:76px; transform:translateX(-50%); width:calc(150 * var(--q)); padding:calc(5 * var(--q)); display:none; z-index:5; pointer-events:none;
+  #who { --q:var(--w); position:fixed; right:calc(10px + var(--w)); top:calc(10px + var(--w)); width:calc(150 * var(--q)); padding:calc(5 * var(--q)); display:none; z-index:5; pointer-events:none;
     color:var(--ink); font-size:calc(9 * var(--q)); line-height:calc(9 * var(--q)); background:#e8cfa6; box-shadow:inset var(--q) var(--q) 0 #fbf0d6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(4 * var(--q)) 0 rgba(60,40,30,.22); }
-  body.playing.tab #who { display:block; }
+  body.playing.tab #who { display:block; } body.touch #who { top:calc(64px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); }
   #who canvas { display:block; width:calc(16 * var(--q)); height:calc(16 * var(--q)); image-rendering:pixelated; }
   #who .cell { flex:none; width:calc(18 * var(--q)); height:calc(18 * var(--q)); padding:var(--q); background:#cfad84; box-shadow:inset var(--q) var(--q) 0 #9a6f55, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }
   #who .whead { display:flex; align-items:center; gap:calc(5 * var(--q)); height:calc(18 * var(--q)); margin:0 var(--q); } #whoday { flex:1; font-weight:normal; } #whohour { padding-right:calc(2 * var(--q)); }
@@ -142,18 +147,21 @@
   #who .line.cur { color:#fff6e2; text-shadow:var(--q) var(--q) 0 #6b4a3a; background:#aa7959; box-shadow:inset var(--q) var(--q) 0 #c49a6c, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #8a5f4b, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
   #who .line.cur .lv { color:#f3dcc0; text-shadow:none; }
   #whofoot { display:flex; justify-content:space-between; height:calc(8 * var(--q)); margin:calc(3 * var(--q)) calc(2 * var(--q)) 0; font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); }
-  #goals .gf { margin-top:4px; text-align:right; color:var(--ink2); }
-  #goals .gh { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
-  #goals h3 { margin:0; }
-  #goalcount { color:var(--ink2); font-size:18px; }
-  .goal { display:flex; gap:8px; align-items:center; padding:3px 0; line-height:20px; animation:goalin .35s steps(4); }
-  .goal + .goal { border-top:2px dotted rgba(91,63,54,.25); }
+  #goals .gh { display:flex; align-items:center; gap:8px; margin-bottom:6px; } #goals .gh b { font-weight:normal; letter-spacing:1px; text-transform:uppercase; }
+  #goalpips { display:flex; gap:4px; } #goalpips i { width:6px; height:8px; background:rgba(40,28,24,.6); box-shadow:0 0 0 2px var(--ink); }
+  #goalpips i.on { background:#9bd67f; box-shadow:0 0 0 2px var(--ink), inset 0 2px 0 #c8f0b0; }
+  #goalcount { color:#f3dcc0; margin-left:2px; }
+  .goal { display:flex; gap:8px; align-items:center; padding:2px 0; animation:goalin .35s steps(4); }
+  .goal .gc { flex:none; display:flex; align-items:center; justify-content:center; width:calc(20 * var(--w)); height:calc(20 * var(--w)); background:#e8cfa6;
+    box-shadow:inset var(--w) var(--w) 0 #fbf0d6, inset calc(-1 * var(--w)) calc(-1 * var(--w)) 0 #c49a6c, calc(-1 * var(--w)) 0 var(--ink), var(--w) 0 var(--ink), 0 calc(-1 * var(--w)) var(--ink), 0 var(--w) var(--ink); }
   .goal .gi { width:calc(11 * var(--i)); height:calc(11 * var(--i)); flex:none; image-rendering:pixelated; }
-  .goal .gt { flex:1; }
-  .goal .tick { width:14px; height:14px; flex:none; border:2px solid var(--ink2); border-radius:2px; }
-  .goal.done .gt { color:var(--ink2); text-decoration:line-through; }
-  .goal.done .tick { background:var(--accent); border-color:var(--accent); box-shadow:inset 0 0 0 2px #fff8e8; }
+  .goal .gt { margin-left:2px; }
+  .goal .tick { width:10px; height:10px; flex:none; margin-left:4px; background:rgba(40,28,24,.6); box-shadow:0 0 0 2px var(--ink); }
+  .goal.done .gt { color:#c8f0b0; }
+  .goal.done .tick { background:#9bd67f; box-shadow:0 0 0 2px var(--ink), inset 0 2px 0 #c8f0b0; }
   .goal.done { animation:goaldone 1.6s steps(8) forwards; }
+  #goals .gf { display:flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer; pointer-events:auto; color:#f3dcc0; }
+  #goals kbd { display:inline-block; min-width:22px; padding:0 5px; text-align:center; font:inherit; line-height:16px; color:var(--ink); background:#f7e7c6; border:2px solid var(--ink); border-bottom-width:4px; border-radius:4px; text-shadow:none; }
   @keyframes goalin { from { opacity:0; transform:translateX(-12px); } }
   @keyframes goaldone { 0%, 70% { opacity:1; } 100% { opacity:0; transform:translateX(-12px); } }
   #bag { left:0; right:0; margin:0 auto; width:max-content; bottom:calc(var(--hudh, 118px) + 18px); display:none; max-width:560px; }   /* (over the HUD, whatever its height: ui.js) */

@@ -34,6 +34,7 @@ function wildFrame([col, n, ms], t, loop) {
   while (t >= ms[i]) t -= ms[i++];
   return col + i;
 }
+const ANGER = [".r...r.", "rr...rr", ".......", "rr...rr", ".r...r."];      // the mark over one that is angry (a tusker that was hit: sim/wild.py)
 function drawWild(p, x, y, now) {
   const e = p.e, A = WILD[e.kind], z = zoom;
   const moving = now - p.moved < 350 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
@@ -53,6 +54,11 @@ function drawWild(p, x, y, now) {
   blit();
   const fl = flashes.get(e.kind + e.id);
   if (fl && now - fl < 120) { ctx.globalCompositeOperation = "lighter"; blit(); ctx.globalCompositeOperation = "source-over"; }
+  if (e.angry) {                                             // angry: the red mark by its head, beating
+    const mx = x + 13 * z, my = y - (A.ch - 16) * z + 3 * z - (Math.floor(now / 170) % 2) * z;
+    ANGER.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === "r") { ctx.fillStyle = "#6e1d1d"; ctx.fillRect(mx + i * z, my + (j + 1) * z, z, z); } }));
+    ANGER.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === "r") { ctx.fillStyle = "#f0503f"; ctx.fillRect(mx + i * z, my + j * z, z, z); } }));
+  }
   if (A.hp && e.act !== "sleep" && e.hp < A.hp) {                    // the boss's health, over its tree
     const w = 40 * z, bx = Math.round(x + 8 * z - w / 2), by = y - (A.ch - 12) * z;
     ctx.fillStyle = "#5b3f36"; ctx.fillRect(bx - z, by - z, w + 2 * z, 4 * z);

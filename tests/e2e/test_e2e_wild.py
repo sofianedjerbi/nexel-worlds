@@ -119,3 +119,19 @@ def test_a_named_animal_carries_its_name(game):
     game.sleep(300)
     assert any("Daisy" in row for row in game.js("[...$('sayhelp').children].map((d) => d.textContent)"))
     page.keyboard.press("Escape")
+
+
+def test_a_tusker_that_is_hit_shows_it_is_angry(game):
+    """Hit, a tusker is angry (sim/wild.py): it stamps, a red mark beats by its head, and it comes for you."""
+    game.rpc("dev_needs", hp=20, hunger=17)
+    boar = game.spawn("tusker", 3, 0, still=10 ** 6)
+    game.sleep(400)
+    assert game.js(f"ents.get('tusker{boar}').e.angry") is None                 # calm: no mark
+    game.js(f"act('attack', {{target: {boar}}})")
+    game.wait(f"ents.get('tusker{boar}') && ents.get('tusker{boar}').e.angry === true", 5000)
+    red = game.js("""() => new Promise((ok) => requestAnimationFrame(() => { const p = [...ents.values()].find((q) => q.e.kind === 'tusker'), S = TS(), [ox, oy] = screenOrigin(S);
+      const d = cv.getContext('2d').getImageData(Math.round((ox + p.x * S - S) * DPR), Math.round((oy + p.y * S - 2 * S) * DPR), Math.round(3 * S * DPR), Math.round(2 * S * DPR)).data; let n = 0;
+      for (let o = 0; o < d.length; o += 4) if (d[o] === 240 && d[o + 1] === 80 && d[o + 2] === 63) n++; ok(n / (zoom * DPR) ** 2); }))""")
+    assert red == 12                                                             # the mark: twelve px of its red
+    game.sleep(2500)
+    assert game.server()["hp"] < 20                                              # ...and it came

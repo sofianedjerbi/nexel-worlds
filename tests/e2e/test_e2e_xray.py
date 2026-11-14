@@ -288,9 +288,9 @@ def test_the_circle_is_painted_again_only_when_you_change_tile(game):
     moved = game.pos()[0] - x
     assert moved >= 2 and game.js("xray.a") > .95
     tiles = game.js("__tx")                                   # the tile each painting was for
-    assert tiles and all(a != b for a, b in zip(tiles, tiles[1:])), tiles      # never twice running for one tile
-    # (It was "no more paintings than tiles walked, and one": on a busy machine the server falls behind, your screen
-    # takes you a tile back to where it has you and on again, and that tile is painted twice, rightly. Three more
-    # than the tiles are let; every frame would be forty.)
-    assert len(tiles) <= moved + 3, (tiles, moved)
+    # (It was "no more paintings than tiles walked, and one". On a busy machine the server falls behind, your screen
+    # takes you a tile back and on again, and that tile is painted twice, rightly; and land that comes in beside you
+    # as you walk makes the tile you are on be painted again, rightly too. Three more than the tiles are let; a
+    # painting every frame would be forty.)
+    assert tiles and len(tiles) <= moved + 3, (tiles, moved)
     assert not game.errors

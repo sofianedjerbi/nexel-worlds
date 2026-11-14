@@ -1,6 +1,6 @@
 """Wild creatures (tusker, pincer, strawman, wisp, wyrm) and how rarely creatures turn up."""
 
-from helpers import clear
+from helpers import clear, run
 
 from megastructure.sim import CREATURES, DAY_TICKS, Creature, sec
 from megastructure.sim.spawning import HOME_R, PASSIVE, PASSIVE_CAP
@@ -173,3 +173,53 @@ def test_the_client_table_matches_the_sheets():
         if kind in design:                                             # (the ones still on the design page)
             assert [cw, ch] == design[kind]["cell"] and w == design[kind]["frames"] * cw
         assert kind in CREATURES
+
+
+def test_a_tusker_that_is_hit_goes_for_whoever_hit_it(world):
+    """Hit, a tusker went on as before: one charge, three seconds' rest, whoever was nearest. Now it is angry for
+    twelve seconds: at the one who hit it, from further than it sees; it lines itself up with them, paws the ground
+    half as long, shakes off a tree in half the time and charges again at once."""
+    from megastructure.sim.wild import ANGRY, TUSKER_ANGRY, TUSKER_SEES
+    sim, a = world
+    clear(sim, a, r=12)
+    a.hp, a.hunger = 20, 17
+    boar = put(sim, "tusker", a.x + 2, a.y, cooldown=10 ** 6)       # (held still: we hit it first)
+    assert run(sim, a, "attack", {"target": boar.id})["ok"]
+    assert sim.tick < boar.angry <= sim.tick + sec(TUSKER_ANGRY)
+    assert boar.foe == a.id and any(e["type"] == "enrage" and e["id"] == boar.id for e in a.events)
+    boar.cooldown = 0
+    boar.x, boar.y, boar.mode, boar.cooldown = a.x + 7, a.y + 3, "", 0      # (put) further than it sees, and not in line with us
+    assert max(abs(boar.x - a.x), abs(boar.y - a.y)) > TUSKER_SEES
+    for _ in range(sec(0.2) * 3 + 2):
+        sim.step()
+    assert boar.y == a.y and boar.mode == "windup" and boar.dir == (-1, 0)       # it trotted into our line, and paws the ground at us
+    start = sim.tick
+    while boar.mode == "windup":
+        sim.step()
+    assert sim.tick - start <= sec(ANGRY["windup"])                # ...half as long
+    hp = a.hp
+    for _ in range(sec(1.5)):
+        sim.step()
+    assert a.hp == hp - CREATURES["tusker"]["damage"]              # ran down: we stood there
+    a.y += 2                                                       # out of its line: it lines up again, and comes again
+    hits = [e for e in a.events if e["type"] == "attack"]
+    for _ in range(sec(4)):
+        sim.step()
+        a.hp = 20
+    assert len([e for e in a.events if e["type"] == "attack"]) > len(hits) or boar.mode in ("windup", "charge", "stun")
+    for _ in range(sec(TUSKER_ANGRY) + sec(6)):                    # left alone, it calms down
+        sim.step()
+        a.hp = 20
+        a.x, a.y = boar.x + 30, boar.y + 30                        # (far from it)
+    assert boar.angry <= sim.tick and boar.id in sim.creatures
+
+
+def test_a_calm_tusker_is_as_it_was(world):
+    from megastructure.sim.wild import TUSKER_REST
+    sim, a = world
+    clear(sim, a, r=12)
+    boar = put(sim, "tusker", a.x + 6, a.y + 3)                    # past what it sees: it does not come
+    for _ in range(sec(3)):
+        sim.step()
+    assert boar.mode == "" and max(abs(boar.x - a.x), abs(boar.y - a.y)) >= 4 and boar.angry == 0
+    assert TUSKER_REST == 3.0

@@ -14,6 +14,11 @@ from .entities import CREATURES
 WILD = ("tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling")       # (the last two: boss.py)
 TUSKER_SEES, TUSKER_WINDUP, TUSKER_RUN = 4, 0.7, 8        # tiles; seconds pawing the ground; tiles it charges
 TUSKER_STUN, TUSKER_REST = 2.5, 3.0                       # seconds stunned after ramming something; between charges
+# A tusker that is hit is angry for a while (it only went on as before: a charge, a long rest, whoever was nearest).
+# Angry, it goes for the one who hit it, from further off; it lines itself up with them before it charges; it paws
+# the ground half as long, runs further, shakes off a tree sooner and hardly rests between two charges
+TUSKER_ANGRY = 12.0                                       # seconds, from the last blow
+ANGRY = {"sees": 10, "windup": 0.35, "run": 11, "stun": 1.2, "rest": 0.5, "trot": 0.2}
 PINCER_SEES, PINCER_WINDUP, PINCER_REST = 3, 0.6, 1.2
 STRAW_SEES, STRAW_WINDUP, STRAW_REST, STRAW_STEP = 14, 0.5, 1.5, 0.9
 WISP_SEES, WISP_LEAD, WISP_CALL = 9, 4, 6.0               # tiles; it keeps this far ahead of you; seconds between calls
@@ -62,14 +67,23 @@ class Wild(Boss):
 
     # ------------------------------------------------------------- tusker: paws the ground, then charges straight
 
+    def enrage(self, c, a):
+        """A tusker hit by `a`: angry at them from now (see TUSKER_ANGRY). It shakes off what it was dazed by."""
+        if c.angry <= self.tick:
+            self.emit("enrage", c.x, c.y, id=c.id, kind=c.kind, at=a.name)
+        c.angry, c.foe, c.rest = self.tick + sec(TUSKER_ANGRY), a.id, 0
+        if c.mode == "stun":
+            c.until = min(c.until, self.tick + sec(0.4))
+
     def _step_tusker(self, c, online):
+        mad = c.angry > self.tick
         if c.mode == "stun":
             if self.tick >= c.until:
-                c.mode, c.rest = "", self.tick + sec(TUSKER_REST)
+                c.mode, c.rest = "", self.tick + sec(ANGRY["rest"] if mad else TUSKER_REST)
             return
         if c.mode == "windup":
             if self.tick >= c.until:
-                c.mode, c.left = "charge", TUSKER_RUN
+                c.mode, c.left = "charge", ANGRY["run"] if mad else TUSKER_RUN
             return
         if c.mode == "charge":                                # a tile every tick: twice a running player's pace
             x, y = c.x + c.dir[0], c.y + c.dir[1]
@@ -78,16 +92,23 @@ class Wild(Boss):
                 self.bite(c, hit)
                 c.mode, c.until = "stun", self.tick + sec(1)
             elif not self._creature_move(c, x, y):            # a tree, a wall, a fence, water: it rams it
-                c.mode, c.until = "stun", self.tick + sec(TUSKER_STUN)
+                c.mode, c.until = "stun", self.tick + sec(ANGRY["stun"] if mad else TUSKER_STUN)
                 self.emit("bonk", c.x, c.y, id=c.id, kind=c.kind)
             else:
                 c.left -= 1
                 if c.left <= 0:
-                    c.mode, c.rest = "", self.tick + sec(TUSKER_REST)
+                    c.mode, c.rest = "", self.tick + sec(ANGRY["rest"] if mad else TUSKER_REST)
             return
-        prey = self.nearest(c, online, TUSKER_SEES)
+        foe = next((a for a in online if a.id == c.foe and cheb(a, c) <= ANGRY["sees"]), None) if mad else None
+        prey = foe or self.nearest(c, online, TUSKER_SEES)
         if prey and self.tick >= c.rest:
-            self.wind_up(c, toward(c, prey), TUSKER_WINDUP)
+            dx, dy = prey.x - c.x, prey.y - c.y
+            if mad and dx and dy:                             # not in line with them: a quick trot along the shorter way, to be
+                step = (0, (dy > 0) - (dy < 0)) if abs(dx) >= abs(dy) else ((dx > 0) - (dx < 0), 0)
+                if self._creature_move(c, c.x + step[0], c.y + step[1]):
+                    c.cooldown, c.dir = sec(ANGRY["trot"]) - 1, step
+                    return
+            self.wind_up(c, toward(c, prey), ANGRY["windup"] if mad else TUSKER_WINDUP)
         else:
             self.stroll(c, 1.2, 2.0)
 

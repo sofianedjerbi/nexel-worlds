@@ -26,7 +26,7 @@ class Views:
                  **({"eats": a.aside.args.get("item")} if a.aside else {})}       # (what their hands are doing meanwhile)
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
         ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "z": self.sim.height(c), "hp": c.hp, "love": c.love > self.sim.tick, "scared": c.scared > self.sim.tick,
-                  **({"act": c.mode, "dir": list(c.dir), "run": c.mode == "charge"} if c.kind in WILD else {}), **({"name": c.name} if c.name else {})}
+                  **({"act": c.mode, "dir": list(c.dir), "run": c.mode == "charge"} if c.kind in WILD else {}), **({"angry": True} if c.angry > self.sim.tick else {}), **({"name": c.name} if c.name else {})}
                  for c in self.sim.creatures.values() if x <= c.x < x + w and y <= c.y < y + h]
         return ents
 
