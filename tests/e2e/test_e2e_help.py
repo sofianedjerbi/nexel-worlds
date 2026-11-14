@@ -29,3 +29,10 @@ def test_the_help_is_a_window_of_short_pages(game):
     game.press("h")
     assert game.js("$('help').style.display") == "none"
     assert not game.errors
+
+
+def test_the_first_screen_says_something_different_each_time(game):
+    """Under the name, one of our own lines, drawn at random when the page opens (js/splash.js)."""
+    assert game.js("SPLASH.length") >= 20 and game.js("SPLASH.includes($('splash').textContent)")
+    assert game.js("SPLASH.every((s) => s.length <= 64 && !/small|little|tiny/i.test(s))")       # short; the worlds are not small
+    assert game.js("new Set(SPLASH).size === SPLASH.length")
