@@ -129,3 +129,25 @@ def test_moving_the_selection_makes_its_own_quiet_sound(game):
     game.sleep(200)
     assert game.js("sounds.lastAt.ui || 0") > tab              # another kind: the tab's own sound, as before
     game.press("c")
+
+
+def test_night_falling_on_a_day_piece_closes_it_and_brings_the_nights(game):
+    """A day piece went on playing into the night, all its passes. Now the hour turning ends it at the end of the pass
+    it is in, on its last chord; after a short silence (SOUND.turn) a night piece comes in."""
+    if not game.js("!!sounds.manifest"):
+        game.wait("sounds.manifest", 20000)
+    if not game.js("!!sounds.manifest.tracks && sounds.manifest.play.night.length > 0"):
+        pytest.skip("no music rendered")
+    game.js("(() => { if (music.on) { muted = true; tune(.1); muted = false; } })()")
+    game.wait("!music.on && music.nodes.size === 0", 10000)
+    game.js("(() => { clock.night = false; moment.next = 0; moments(); })()")
+    game.wait("music.on && music.nodes.size > 0", 20000)
+    assert game.js("[music.hour, music.left > 1, !!music.turned]") == ["day", True, False]
+    game.rpc("dev_time", phase=.8)
+    game.wait("clock.night && music.turned", 8000)
+    assert game.js("music.on && music.left <= 1")              # not cut: it plays on, to the end of this pass
+    game.wait("!music.on", 80000)
+    assert game.js("music.gain.gain.value") < 0.1              # closed on its last chord
+    assert 0 < game.js("moment.next - performance.now()") < 12500
+    game.wait("music.on && music.hour === 'night' && sounds.manifest.play.night.includes(music.key)", 20000)
+    assert not game.errors

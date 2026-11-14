@@ -12,19 +12,10 @@ function swimsAt(p, e) {
   const t = tile(Math.round(p.x), Math.round(p.y));
   return t ? wet(t[1]) && t[0] !== "V" : !!e.swim;
 }
-function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
-  const moving = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
-  const dash = SWIM_SPRINT && moving && (e.id === myId && e.kind === "agent" ? sprinting() : !!e.run);     // a sprint in the water
-  const stroke = Math.floor((now + e.id * 97) / (dash ? SWIM.dashStroke : moving ? SWIM.stroke : SWIM.tread));
-  const bob = (moving ? stroke % 2 : Math.round(Math.sin(now / 450 + e.id) * .5 + .5)) * z;      // one pixel, with each stroke
-  p.running = dash;
-  if (!p.swam) {                                             // going in: a splash
-    p.swam = true; p.wake = [];
-    burst(p.x, p.y + .3 - UP, "water", 10, {up: 2.6, spread: 3, g: 7, life: .5});
-    sfx("water", Math.round(p.x), Math.round(p.y));          // one splash going in; after that only the strokes are heard
-  }
-  // the wake: a mark dropped every few steps of the way, each one two flecks of foam drifting apart and fading
-  if (moving && (!p.wake.length || now - p.wake[p.wake.length - 1].t > (dash ? SWIM.dashEvery : SWIM.wakeEvery))) p.wake.push({x: p.x, y: p.y, t: now, across: !!p.fy, dash, fx: p.fx || 0, fy: p.fy || 0});
+// The wake someone left: each mark two flecks of foam drifting apart and fading, in its own time. Drawn for a swimmer
+// and for someone who has just come out (characters.js): the marks behind them were all gone at once at the shore.
+function drawWake(p, now, sx, sy, z) {
+  if (!p.wake || !p.wake.length) return;
   while (p.wake.length && now - p.wake[0].t > (p.wake[0].dash ? SWIM.dashLife : SWIM.wakeLife)) p.wake.shift();
   for (const w of p.wake) {
     const a = (now - w.t) / (w.dash ? SWIM.dashLife : SWIM.wakeLife), wx = Math.round(sx(w.x)) + 8 * z, wy = Math.round(sy(w.y, w.x)) + (13 - STAND) * z;
@@ -41,6 +32,21 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
     if (w.dash && a < .55) { ctx.fillStyle = "#ffffff"; const j = ((w.t / 45 | 0) % 3 - 1) * z; if (w.across) ctx.fillRect(wx + j - z, wy, 2 * z, 2 * z); else ctx.fillRect(wx - z, wy + j - z, 2 * z, 2 * z); }   // the churned line down the middle
   }
   ctx.globalAlpha = 1;
+}
+function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
+  const moving = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
+  const dash = SWIM_SPRINT && moving && (e.id === myId && e.kind === "agent" ? sprinting() : !!e.run);     // a sprint in the water
+  const stroke = Math.floor((now + e.id * 97) / (dash ? SWIM.dashStroke : moving ? SWIM.stroke : SWIM.tread));
+  const bob = (moving ? stroke % 2 : Math.round(Math.sin(now / 450 + e.id) * .5 + .5)) * z;      // one pixel, with each stroke
+  p.running = dash;
+  if (!p.swam) {                                             // going in: a splash
+    p.swam = true; p.wake = p.wake || [];                   // (the marks of the last swim, if any are left, stay)
+    burst(p.x, p.y + .3 - UP, "water", 10, {up: 2.6, spread: 3, g: 7, life: .5});
+    sfx("water", Math.round(p.x), Math.round(p.y));          // one splash going in; after that only the strokes are heard
+  }
+  // the wake: a mark dropped every few steps of the way, each one two flecks of foam drifting apart and fading
+  if (moving && (!p.wake.length || now - p.wake[p.wake.length - 1].t > (dash ? SWIM.dashEvery : SWIM.wakeEvery))) p.wake.push({x: p.x, y: p.y, t: now, across: !!p.fy, dash, fx: p.fx || 0, fy: p.fy || 0});
+  drawWake(p, now, sx, sy, z);
   const deep = DEPTH_OF[gndAt(Math.round(p.x), Math.round(p.y))] || 1, shY = y + (15 + deep * 2) * z;   // their shadow on the bottom, further down the deeper it lies
   ctx.fillStyle = "rgba(24,40,72,.2)";
   ctx.fillRect(x + 3 * z, shY, 10 * z, 2 * z); ctx.fillRect(x + 5 * z, shY - z, 6 * z, 4 * z);

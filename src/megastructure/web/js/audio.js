@@ -21,6 +21,7 @@ const SOUND = {
   arrive: {day: 10, night: 14, boss: 2.5},   // seconds a piece takes to come in: from quiet and muffled (as if from far) to full.
                       // Long on purpose: "make the transition long enough to not be noticed by the player"
   ending: 12,         // seconds over which a piece recedes at its end (quieter and more muffled), and the boss's after a fight
+  turn: [6, 12],      // seconds of silence when the hour turned during a piece (dusk, dawn): it closes on its chord, then the new hour's
   giveWay: 4,         // seconds a day or night piece takes to recede when a fight starts (the boss's piece comes in over it)
   wind: .5,           // the wind of a fall at its fastest (fallWind)
   mix: {Footsteps: .9, Work: 1, Breaking: 1, Building: 1, Items: .9, Progress: 1, Fights: 1, Animals: .9, World: .9, People: .8, Interface: .8, Boss: 1},
@@ -143,14 +144,18 @@ function halt(tr, after) {                                 // stop it, `after` s
 // A moment: is it time for a piece, and which. (Called every second, and whenever something changes.)
 function moments() {
   const m = sounds.manifest;
+  const hour = typeof clock !== "undefined" && clock.night ? "night" : "day";
+  // Night falls (or day breaks) on a piece of the other hour: it is not cut, it plays this pass to its end and closes
+  // there on its last chord, receding; after a short silence the new hour's piece comes in from far.
+  if (music.on && music.hour && music.hour !== hour && !music.turned) { music.turned = true; music.left = Math.min(music.left, 1); }
   if (!audio || muted || fight || !m || !m.tracks || !SOUND.music || music.on || performance.now() < moment.next) return;
-  const hour = typeof clock !== "undefined" && clock.night ? "night" : "day", all = m.play[hour] || [];
+  const all = m.play[hour] || [];
   const list = all.length > 1 ? all.filter((k) => k !== moment.last[hour]) : all;
   if (!list.length) return;
   music.key = moment.last[hour] = list[Math.floor(Math.random() * list.length)];
-  music.left = SOUND.passes[hour] || 1;
+  music.left = SOUND.passes[hour] || 1; music.hour = hour; music.turned = false;
   moment.next = Infinity;
-  stream(music, () => { moment.next = performance.now() + between(SOUND.gap); });
+  stream(music, () => { moment.next = performance.now() + between(music.turned ? SOUND.turn : SOUND.gap); });
   swell(music, SOUND.music, SOUND.arrive[hour]);
 }
 setInterval(moments, 1000);

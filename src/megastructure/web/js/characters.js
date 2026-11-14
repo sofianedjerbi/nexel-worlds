@@ -113,7 +113,7 @@ function drawEntity(p, sx, sy, S, t, now) {
         frame = Math.floor(now / ms) % 8;
         if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms) && !swimsAt(p, e) && !j) {     // (a swimmer has no footsteps: swim.js; nor has a hop)
           p.lastStep = Math.floor(now / ms);
-          burst(p.x, p.y + .35 - UP, "dust", running ? 3 : 2, {up: .6, spread: running ? 2 : 1.2, g: 2, life: .35});
+          if (running) kickDust(p); else burst(p.x, p.y + .35 - UP, "dust", 2, {up: .6, spread: 1.2, g: 2, life: .35});   // (effects.js)
           if (mine) sfx(STEP[gndAt(Math.round(p.x), Math.round(p.y))] || "step");
         }
       } else frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
@@ -132,6 +132,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     }
     if (swimsAt(p, e)) { drawSwimmer(p, e, sheetImg, x, y, z, now, sx, sy); return; }      // (swim.js)
     p.swam = false;
+    drawWake(p, now, sx, sy, z);                      // (just out of the water: their wake fades where it lies)
     if (e.sail) {                                     // in a boat: the hull, a wake when moving, and the sailor sitting in it
       y += STAND * z;                                 // (the boat is where a moored one is drawn: in the middle of its water)
       const movingB = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;

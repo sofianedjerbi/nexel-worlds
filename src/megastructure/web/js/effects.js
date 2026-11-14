@@ -39,6 +39,17 @@ function burst(x, y, kind, n, opts = {}) {
     vx: (Math.random() - .5) * (opts.spread || 3), vy: -Math.random() * (opts.up || 3) - .5,
     g: opts.g ?? 9, life: opts.life || (.4 + Math.random() * .4), age: 0, c: cols[i % cols.length], s: opts.size || (Math.random() < .3 ? 2 : 1)});
 }
+// A runner's footfall: a puff thrown back from the heel that drifts up and thins out (big, then small pieces of
+// it), and a few bits of the ground itself kicked up behind that fall back and lie a moment (grass, sand, stone).
+const KICK = {".": ["#7fb069", "#5e8c4f"], ",": ["#7fb069", "#5e8c4f"], "'": ["#7fb069", "#5e8c4f"], o: ["#e0cf9a", "#cdb97f"], ":": ["#8a8f8c", "#b6bab1"], n: ["#8a8f8c", "#b6bab1"], _: ["#a8775a", "#8c6a44"]};
+function kickDust(p) {
+  const fx = p.fx || 0, fy = p.fy || 0, x = p.x + .5 - fx * .3, y = p.y + .88 - UP - fy * .25, r = Math.random;
+  for (let i = 0; i < 5; i++) parts.push({x: x + (r() - .5) * .3, y: y + (r() - .5) * .12, vx: -fx * (1 + r() * 1.4) + (r() - .5) * .7,
+    vy: -fy * (.8 + r()) - .25 - r() * .5, g: -.6, life: i < 2 ? .28 + r() * .1 : .45 + r() * .3, age: 0, c: i % 2 ? "rgba(233,217,180,.8)" : "rgba(246,238,216,.8)", s: i < 2 ? 3 : i < 4 ? 2 : 1});
+  const bits = KICK[gndAt(Math.round(p.x), Math.round(p.y))] || PCOL.dust;
+  for (let i = 0; i < 3; i++) parts.push({x: x + (r() - .5) * .3, y, vx: -fx * (1.2 + r() * 1.6) + (r() - .5) * 1.2, vy: -1.6 - r() * 1.4 - fy * .6, g: 12,
+    floor: y + .04 + r() * .12 - fy * .3, life: .45 + r() * .25, age: 0, c: bits[i % bits.length], s: 1});
+}
 const EMOTE = {happy: [0, 2], laugh: [1, 2], love: [0, 9], star: [0, 10], bang: [5, 8], what: [6, 8], music: [7, 8],
   sleep: [9, 8], skull: [7, 0], ok: [0, 8], no: [2, 8]};
 const emotes = new Map();   // agent name -> {kind, t0}
