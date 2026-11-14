@@ -3,8 +3,11 @@
 //   at the top, what you wear: five cells, a faint picture in an empty one of what goes there;
 //   the pack: three rows of ten cells (more than that: a second page, PageDown);
 //   your bar: the ten cells you play with, each with its key, the same ten as at the foot of the screen;
-//   under them, the one thing the cursor is on: its picture, its name, how many, what it is for and a line about
-//   it, then what you can do with it, each on a button with its key.
+//   and nothing else but a label that hangs on the cell the cursor is on (the thing's name, how many, and its line
+//   from blurbs.js: the funny one, not what it is for), and under the cells one line of keys, each said in a word
+//   for the thing you are on ("eat", "wear", "take off"), dim when it does nothing there. A key's word can be clicked.
+//   (There was a strip under the cells with the thing's picture, three lines about it and a row of buttons: too
+//   much to read and too much room. Of five mockups the user took "only the cells".)
 // A thing stays in its cell until you move it (ui.js: slots, kept from one day to the next); an empty cell stays
 // empty. (It was a strip of pictures without names that wrapped and changed size and order as you picked things up.)
 // All of it without a mouse: the arrows (or W A S D) move the cursor a cell at a time, on a grid; Enter takes the
@@ -60,16 +63,6 @@ function bagCarry() {                                // X: pick up what the curs
   else { const to = bagIndex(bagAt); if (to !== bagMove) bagSwap(bagMove, to); bagMove = null; }
   bagDraw(true);
 }
-// What a thing is for, in a line
-function bagWhat(name, worn) {
-  if (worn) return "You wear it.";
-  if (FOODS.includes(name)) { const n = (foodValue[name] || 0) / (FOOD_MAX / 10); return `Food: ${n} piece${n === 1 ? "" : "s"}.`; }
-  if (WEAR[name]) return `To wear: ${{head: "on your head", top: "on your back", pants: "on your legs", shoes: "on your feet", effect: "a charm"}[WEAR[name][0]]}.`;
-  if (name === "watering_can") return `${meObs.self.can ?? CAN_SIZE}/${CAN_SIZE} water. Hold it, Space on a crop.`;
-  if (["axe", "pickaxe", "hoe", "sword", "spear", "torch"].includes(name)) return "A tool: hold it, Space on what you face.";
-  if (PLACEABLE_BLOCK[name] || FILLS[name] || name === "seed") return "To place: hold it, face a tile, Space.";
-  return "A material: things are made of it (C).";
-}
 function bagCell(at, name, n) {
   const d = name ? craftCell(name, n > 1 ? n : null) : Object.assign(document.createElement("div"), {className: "cell"});
   const idx = at.zone === "wear" ? -1 : bagIndex(at);
@@ -100,16 +93,24 @@ function bagDraw(now) {
   $("bagpack").replaceChildren(...[...Array(PACK)].map((_, i) => { const n = slots[BAR + bagPage * PACK + i] || null; return bagCell({zone: "pack", i}, n, inv[n]); }));
   $("bagbar").replaceChildren(...[...Array(BAR)].map((_, i) => bagCell({zone: "bar", i}, slots[i] || null, inv[slots[i]])));
   $("bagpage").textContent = pages > 1 ? `Pack · ${bagPage + 1} of ${pages}` : "Pack";
-  const d = $("bagdetail"), btns = $("bagbtns"), name = bagItem(bagAt), isWorn = bagAt.zone === "wear"; d.innerHTML = btns.innerHTML = "";
-  const btn = (text, key, cls, fn) => { const b = document.createElement("div"); b.className = "b " + cls; b.innerHTML = `${text}<kbd>${key}</kbd>`; b.onclick = fn; btns.appendChild(b); };
-  if (!name) d.innerHTML = `<div class="bnone">${bagMove != null ? "Put it down here." : isWorn ? "Nothing worn here: E on a thing to wear puts it on." : "An empty cell."}</div>`;
-  else {
-    const n = isWorn ? 1 : inv[name] || 0, use = bagUses(name, isWorn);
-    d.appendChild(craftCell(name, null, "res"));
-    d.insertAdjacentHTML("beforeend", `<div class="binfo"><div class="bname">${esc(capital(label(name)))}${n > 1 ? ` <i>x${n}</i>` : ""}</div><div class="bwhat">${esc(bagWhat(name, isWorn))}</div><div class="bwhat">${esc(BLURB[name] || "")}</div></div>`);
-    if (bagMove == null) { btn(isWorn ? "Take off" : "Hold", "Enter", "", bagHold); if (use && !isWorn) btn(use, "E", "paper", bagUse); }
+  const name = bagItem(bagAt), isWorn = bagAt.zone === "wear", cur = el.querySelector(".cell.cur");
+  if (name && cur) {                                 // the label on the cursor's cell: over it (under it, for what you wear), moved along to stay inside the window
+    const n = isWorn ? 1 : inv[name] || 0;
+    cur.insertAdjacentHTML("beforeend", `<div class="btip${isWorn ? " down" : ""}">${esc(capital(label(name)))}${n > 1 ? " x" + n : ""}<i>${esc(BLURB[name] || "")}</i></div>`);
+    const tip = cur.lastChild, t = tip.getBoundingClientRect(), w = el.getBoundingClientRect(), q = parseFloat(getComputedStyle(el).getPropertyValue("--q")) || 3, pad = 4 * q;
+    const dx = t.left < w.left + pad ? w.left + pad - t.left : t.right > w.right - pad ? w.right - pad - t.right : 0;
+    if (dx) tip.style.transform = `translateX(calc(-50% + ${Math.round(dx / q) * q}px))`;
   }
-  if (bagMove != null) btn("Put down", "X", "on", bagCarry); else if (name && !isWorn) btn("Move", "X", "paper", bagCarry);
+  const keys = $("bagkeys"), use = name ? bagUses(name, isWorn) : ""; keys.innerHTML = "";
+  const key = (cap, word, fn, off) => { const k = document.createElement("span"); k.className = "bkey" + (off ? " off" : ""); k.innerHTML = `<kbd>${cap}</kbd>${word}`; if (fn && !off) k.onclick = fn; keys.appendChild(k); };
+  if (bagMove != null) { key("X", "put down", bagCarry); key("Esc", "let go", () => { bagMove = null; bagDraw(true); }); }
+  else {
+    key("Enter", isWorn ? "take off" : "hold", bagHold, !name);
+    key("E", isWorn || !use ? "use" : use.toLowerCase(), bagUse, !use || isWorn);
+    key("X", "move", bagCarry, !name || isWorn);
+    key("1-0", "to bar", null, !name || isWorn);
+    key("Esc", "close", toggleBag);
+  }
 }
 // Keys while it is open
 function bagKey(k, e) {

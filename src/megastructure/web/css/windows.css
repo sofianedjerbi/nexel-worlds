@@ -58,14 +58,14 @@
   #craft .cneed.miss b { color:var(--warn); }
   #craft .cbtns { flex:none; display:flex; gap:calc(4 * var(--q)); margin:0 var(--q) var(--q); } #craft .cbtn { flex:1; height:calc(20 * var(--q)); } #craft .x5 { height:calc(20 * var(--q)); }
   /* a phone: in the middle of the screen, over the thumbs' buttons, which are put away while it is open */
-  body.touch :is(#craft, #bag) { bottom:0; z-index:6; }
+  body.touch :is(#craft, #bag) { bottom:0; z-index:6; } body.touch #goals { --q:var(--w); }      /* (a phone: the goals in the smaller pixel, for room) */
   body.touch:has(:is(#craft, #bag)[style*="display: block"]) :is(#ttop, #tbtns, #tctx) { visibility:hidden; }
-  /* The goals, top left: a small card in the manner of what Tab shows (its pixel, --w; its paper, bevels and sunk
-     cells), which sits in the other corner: a title and how many are done, that as one bar filling from the left,
-     then the next three in a sunk list, each a line of one height: its picture in a cell, its words, a box at the
+  /* The goals, top left: a card in the recipe book's manner and in its pixel, the land's (--q: at two thirds of it,
+     as what Tab shows is, it was too small and its px were not the game's): a title and how many are done, then
+     the next three in a sunk list, each a line of one height: its picture in a cell, its words, a box at the
      right that is ticked. Under them the help's key. (They were a sheet of paper, then loose outlined text over the
      land with a pip a goal: the pips lit here and there, the boxes wherever the words ended.) */
-  #goals { --q:var(--w); position:fixed; left:calc(10px + var(--w)); top:calc(10px + var(--w)); width:calc(122 * var(--q)); padding:calc(5 * var(--q)); display:none; z-index:3; cursor:default;
+  #goals { position:fixed; left:calc(10px + var(--q)); top:calc(10px + var(--q)); width:calc(128 * var(--q)); padding:calc(5 * var(--q)); display:none; z-index:3; cursor:default;
     color:var(--ink); font-size:calc(9 * var(--q)); line-height:calc(9 * var(--q)); background:#e8cfa6; box-shadow:inset var(--q) var(--q) 0 #fbf0d6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(4 * var(--q)) 0 rgba(60,40,30,.22); }
   /* While you play: the goals stay, top left, with the help's link (the title panel is put away: its day and your
      name show on Tab). Held, Tab shows one window in the top right corner (under a phone's buttons there): the day, who you are, who else
@@ -92,9 +92,7 @@
   #who .line.cur { color:#fff6e2; text-shadow:var(--q) var(--q) 0 #6b4a3a; background:#aa7959; box-shadow:inset var(--q) var(--q) 0 #c49a6c, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #8a5f4b, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
   #who .line.cur .lv { color:#f3dcc0; text-shadow:none; }
   #whofoot { display:flex; justify-content:space-between; height:calc(8 * var(--q)); margin:calc(3 * var(--q)) calc(2 * var(--q)) 0; font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); }
-  #goals .gh { display:flex; align-items:center; height:calc(10 * var(--q)); margin:0 calc(2 * var(--q)); } #goals .gh b { flex:1; font-weight:normal; } #goalcount { color:var(--ink2); }
-  #goalbar { height:calc(4 * var(--q)); margin:calc(3 * var(--q)) calc(2 * var(--q)) calc(5 * var(--q)); background:#b8946a; box-shadow:inset var(--q) var(--q) 0 #9a6f55, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
-  #goalbar i { display:block; height:100%; background:#8fc46a; box-shadow:inset 0 var(--q) 0 #c2e8a0, inset 0 calc(-1 * var(--q)) 0 #6aa04e; }
+  #goals .gh { display:flex; align-items:center; height:calc(10 * var(--q)); margin:0 calc(2 * var(--q)) calc(4 * var(--q)); } #goals .gh b { flex:1; font-weight:normal; } #goalcount { color:var(--ink2); font-size:calc(6 * var(--q)); }
   #goallist { background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #b8946a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; padding:calc(3 * var(--q)); display:flex; flex-direction:column; gap:calc(2 * var(--q)); min-height:calc(70 * var(--q)); }
   .goal { flex:none; display:flex; align-items:center; gap:calc(4 * var(--q)); height:calc(20 * var(--q)); padding:var(--q) calc(4 * var(--q)) var(--q) var(--q); animation:goalin .35s steps(4); }
   .goal .gc { flex:none; display:flex; align-items:center; justify-content:center; width:calc(18 * var(--q)); height:calc(18 * var(--q)); background:#cfad84; box-shadow:inset var(--q) var(--q) 0 #9a6f55, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }
@@ -108,8 +106,8 @@
   #goals kbd { display:flex; align-items:center; height:calc(9 * var(--q)); padding:0 calc(2 * var(--q)); font:inherit; color:var(--ink); background:#f3e5c2; box-shadow:inset var(--q) var(--q) 0 #fff8e6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #d9bd8f, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
   @keyframes goalin { from { opacity:0; transform:translateX(-12px); } }
   @keyframes goaldone { 0%, 70% { opacity:1; } 100% { opacity:0; transform:translateX(-12px); } }
-  /* ---- the inventory (bag.js): the recipe book's manner, in a pixel of its own (--b: the book's, less where 224 x 196 would not fit) ---- */
-  #bag { --q:var(--b); position:fixed; left:0; right:0; top:0; bottom:10vh; margin:auto; width:calc(214 * var(--q)); height:calc(190 * var(--q)); padding:calc(5 * var(--q)); display:none; z-index:4;
+  /* ---- the inventory (bag.js): the recipe book's manner, in a pixel of its own (--b: the book's, less where 224 x 162 would not fit) ---- */
+  #bag { --q:var(--b); position:fixed; left:0; right:0; top:0; bottom:10vh; margin:auto; width:calc(214 * var(--q)); height:calc(155 * var(--q)); padding:calc(5 * var(--q)); display:none; z-index:4;
     color:var(--ink); font-size:calc(9 * var(--q)); line-height:calc(9 * var(--q)); background:#e8cfa6; box-shadow:inset var(--q) var(--q) 0 #fbf0d6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(4 * var(--q)) 0 rgba(60,40,30,.22); }
   #bagclose { position:absolute; right:calc(5 * var(--q)); top:calc(6 * var(--q)); width:calc(16 * var(--q)); padding:0 0 var(--q); }
   #bag .bhead { display:flex; align-items:center; gap:calc(4 * var(--q)); height:calc(18 * var(--q)); margin:0 calc(22 * var(--q)) calc(2 * var(--q)) calc(2 * var(--q)); } #bag .bhead b { flex:1; font-weight:normal; }
@@ -122,6 +120,11 @@
   #bag .cell.cur { box-shadow:inset var(--q) var(--q) 0 #9a6f55, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4, 0 0 0 var(--q) #fff6e2, 0 0 0 calc(2 * var(--q)) #6b4a3a; z-index:1; }   /* (the cursor: a light frame and a dark one round the cell) */
   #bag .cell.moving canvas, #bag .cell.moving span { opacity:.35; }
   #bag .cell span { right:var(--q); bottom:0; font-size:calc(6 * var(--q)); line-height:calc(7 * var(--q)); }                                   /* (how many: small, in the corner) */
-  #bagdetail { display:flex; gap:calc(5 * var(--q)); height:calc(26 * var(--q)); margin:calc(5 * var(--q)) calc(2 * var(--q)) 0; } #bag .binfo { flex:1; min-width:0; } #bag .bname { height:calc(10 * var(--q)); white-space:nowrap; overflow:hidden; } #bag .bname i { font-style:normal; color:var(--ink2); }
-  #bag .bwhat, #bag .bnone { height:calc(8 * var(--q)); font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); white-space:nowrap; overflow:hidden; } #bag .bnone { height:auto; padding:calc(5 * var(--q)) 0; }
-  #bagbtns { display:flex; gap:calc(4 * var(--q)); height:calc(16 * var(--q)); margin:calc(3 * var(--q)) calc(3 * var(--q)) 0; } #bagbtns .b { height:calc(16 * var(--q)); }
+  /* the label on the cursor's cell: the thing's name and its line */
+  #bag .btip { position:absolute; left:50%; bottom:calc(100% + calc(4 * var(--q))); transform:translateX(-50%); z-index:5; white-space:nowrap; pointer-events:none; padding:calc(3 * var(--q)) calc(4 * var(--q)); background:#f3e5c2; color:var(--ink); font-size:calc(9 * var(--q)); line-height:calc(10 * var(--q)); text-shadow:none;
+    box-shadow:inset var(--q) var(--q) 0 #fff8e6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #d9bd8f, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(3 * var(--q)) 0 rgba(60,40,30,.25); }
+  #bag .btip i { display:block; font-style:normal; font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); } #bag .btip i:empty { display:none; }
+  #bag .btip.down { bottom:auto; top:calc(100% + calc(4 * var(--q))); }
+  /* the keys, in a line: each with its word for the thing you are on */
+  #bagkeys { display:flex; align-items:center; gap:calc(4 * var(--q)); height:calc(9 * var(--q)); margin:calc(5 * var(--q)) calc(3 * var(--q)) 0; font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); white-space:nowrap; }
+  #bag .bkey { display:flex; align-items:center; gap:calc(2 * var(--q)); cursor:pointer; } #bag .bkey.off { opacity:.35; cursor:default; } #bagkeys kbd { display:flex; margin:0; }

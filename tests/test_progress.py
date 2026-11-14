@@ -55,7 +55,9 @@ def test_every_thing_that_can_be_made_has_a_line_about_it():
     from megastructure.tiles import RECIPES
     text = (Path(__file__).parent.parent / "src/megastructure/web/js/blurbs.js").read_text()
     blurbs = dict(re.findall(r'^  (\w+): "((?:[^"\\]|\\.)*)",$', text, re.M))
-    assert set(blurbs) == set(RECIPES), (set(RECIPES) - set(blurbs), set(blurbs) - set(RECIPES))
+    found = {"wood", "stone", "fiber", "ore", "dirt", "seed", "berries", "fruit", "mushroom", "egg", "milk", "meat", "wheat", "pumpkin", "cauliflower", "lettuce",
+             "eggplant", "carrot", "flower", "shell_plate"}          # what is not made has its line too (the inventory shows it)
+    assert set(blurbs) == set(RECIPES) | found, (set(RECIPES) | found - set(blurbs), set(blurbs) - set(RECIPES) - found)
     assert len(set(blurbs.values())) == len(blurbs)
     assert all(8 <= len(b) <= 50 and b[-1] in ".?!" for b in blurbs.values()), [b for b in blurbs.values() if not 8 <= len(b) <= 50]
 

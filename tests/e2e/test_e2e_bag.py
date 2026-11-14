@@ -2,26 +2,32 @@
 
 CELLS = "(id) => [...$(id).children].map((c) => { const k = c.querySelector('canvas'), n = c.querySelector('span'); return c.title && !c.classList.contains('ghost') ? c.title.toLowerCase().replace(/ /g, '_') + (n ? ':' + n.textContent : '') : null; })"
 BOX = "(() => { const r = $('bag').getBoundingClientRect(), q = parseFloat(getComputedStyle($('bag')).getPropertyValue('--q')); return [Math.round(r.width / q), Math.round(r.height / q), Math.round(r.left), Math.round(r.top)]; })()"
-DETAIL = "[document.querySelector('#bagdetail .bname')?.textContent || document.querySelector('#bagdetail .bnone')?.textContent, [...document.querySelectorAll('#bagbtns .b')].map((b) => b.textContent)]"
+# the label on the cursor's cell [its name and how many, its line], and the keys that do something there, each with its word
+LABEL = "(() => { const t = document.querySelector('#bag .cell.cur .btip'); return t ? [t.firstChild.textContent, t.querySelector('i').textContent] : null; })()"
+KEYS = "[...document.querySelectorAll('#bagkeys .bkey:not(.off)')].map((k) => k.textContent)"
 
 
 def test_the_inventory_is_a_window_of_cells_where_everything_keeps_its_place(game):
     """It was a strip of pictures without names that wrapped, and changed size and order as you picked things up. It is
-    one window of one size: what you wear (five cells), the pack (three rows of ten), your bar (ten, with their keys),
-    and under them the thing the cursor is on, by name, with what it is for and what you can do. A thing stays in
-    its cell; an empty cell stays empty; a new thing takes the first empty cell."""
+    one window of one size, and only cells: what you wear (five), the pack (three rows of ten), your bar (ten, with
+    their keys). A label hangs on the cell the cursor is on: the thing's name, how many, and its funny line, nothing
+    about what it is for; under the cells, one line of keys. A thing stays in its cell; an empty cell stays empty; a
+    new thing takes the first empty cell."""
     kinds = ["wood", "stone", "fiber", "seed", "flower", "rope", "torch", "plank", "path", "dirt", "egg", "bread"]
     game.give(**{k: 2 for k in kinds})
     game.press("i", 400)
     box = game.js(BOX)
-    assert box[:2] == [214, 190] and game.js("[$('bagwear').children.length, $('bagpack').children.length, $('bagbar').children.length]") == [5, 30, 10]
+    assert box[:2] == [214, 155] and game.js("[$('bagwear').children.length, $('bagpack').children.length, $('bagbar').children.length]") == [5, 30, 10]
     bar, pack = game.js(CELLS, "bagbar"), game.js(CELLS, "bagpack")
     assert [c.split(":")[0] for c in bar] == game.js("slots.slice(0, 10)") and all(c.endswith(":2") for c in bar)        # the bar's ten, each with how many
     assert sorted(c.split(":")[0] for c in pack if c) == sorted(set(kinds) - {c.split(":")[0] for c in bar}) and pack[2:] == [None] * 28   # the rest in the pack's first cells; the others empty
     assert game.js("[...document.querySelectorAll('#bagbar .k')].map((k) => k.textContent).join('')") == "1234567890"
-    name, btns = game.js(DETAIL)
-    assert name == bar[0].split(":")[0].capitalize().replace("_", " ") + " x2" and btns[0] == "HoldEnter" and btns[-1] == "MoveX"   # by name, with what can be done and its key
-    assert game.js("document.querySelectorAll('#bagdetail .bwhat')[0].textContent") != ""
+    first = bar[0].split(":")[0]
+    assert game.js(LABEL) == [first.capitalize().replace("_", " ") + " x2", game.js(f"BLURB[{first!r}]")] and game.js(f"BLURB[{first!r}]")    # by name, with its line (every thing has one)
+    assert game.js("Object.keys(meObs.self.inventory).every((n) => BLURB[n])") and game.js("document.querySelector('#bagdetail, #bagbtns, .bwhat') === null && document.querySelector('#bag .btip').childNodes.length === 2")   # ...and no other words about it: no strip, no buttons
+    assert game.js(KEYS)[0] == "Enterhold" and game.js(KEYS)[-1] == "Escclose"
+    inside = game.js("(() => { const t = document.querySelector('#bag .btip').getBoundingClientRect(), w = $('bag').getBoundingClientRect(); return t.left >= w.left && t.right <= w.right; })()")
+    assert inside                                                               # (the label of the first cell does not run out of the window)
     game.rpc("dev_give", items={"carrot": 3, bar[4].split(":")[0]: 5})           # a new thing, and more of one you have
     game.sleep(900)
     assert game.js(CELLS, "bagpack")[:3] == pack[:2] + ["carrot:3"]              # the new one: the first empty cell
@@ -64,7 +70,7 @@ def test_the_inventory_is_played_with_keys_alone(game):
     assert game.js(at) == ["pack", 0]
     first, bar0 = game.js("slots[10]"), game.js("slots[0]")
     game.press("x", 150)                                                         # pick it up...
-    assert game.js("bagMove") == 10 and game.js(DETAIL)[1] == ["Put downX"]
+    assert game.js("bagMove") == 10 and game.js(KEYS) == ["Xput down", "Esclet go"]
     for _ in range(3):
         game.press("ArrowDown", 60)
     game.press("x", 200)                                                         # ...and put it down on the bar's first cell: the two change places
@@ -77,16 +83,16 @@ def test_the_inventory_is_played_with_keys_alone(game):
     assert game.js("slots[2]") == bar0 and game.js("$('bag').style.display") == "block"
     where = game.js("(() => { const i = slots.indexOf('bread'); return i < 10 ? ['bar', i] : ['pack', i - 10]; })()")
     game.js(f"(() => {{ bagAt = {{zone: {where[0]!r}, i: {where[1]}}}; bagDraw(true); }})()")
-    assert game.js(DETAIL) == ["Bread x2", ["HoldEnter", "EatE", "MoveX"]]
+    assert game.js(LABEL)[0] == "Bread x2" and game.js(KEYS) == ["Enterhold", "Eeat", "Xmove", "1-0to bar", "Escclose"]
     game.press("e", 1500)                                                        # eaten: one less, the window stays
     assert game.inv("bread") == 1 and game.server()["hunger"] == 18 and game.js("$('bag').style.display") == "block"
     where = game.js("(() => { const i = slots.indexOf('straw_hat'); return i < 10 ? ['bar', i] : ['pack', i - 10]; })()")
     game.js(f"(() => {{ bagAt = {{zone: {where[0]!r}, i: {where[1]}}}; bagDraw(true); }})()")
-    assert game.js(DETAIL)[1] == ["HoldEnter", "WearE", "MoveX"]
+    assert game.js(KEYS)[:3] == ["Enterhold", "Ewear", "Xmove"]
     game.press("e", 1200)                                                        # put on
     assert game.server()["wearing"] == {"head": "straw_hat"} and game.js(CELLS, "bagwear")[0] == "straw_hat"
     game.js("(() => { bagAt = {zone: 'wear', i: 0}; bagDraw(true); })()")
-    assert game.js(DETAIL) == ["Straw hat", ["Take offEnter"]]
+    assert game.js(LABEL)[0] == "Straw hat" and game.js(KEYS) == ["Entertake off", "Escclose"]
     game.press("Enter", 1200)                                                    # ...and taken off
     assert game.server()["wearing"] == {} and game.inv("straw_hat") == 1
     assert game.inv("flower") == 1 and game.js("$('bag').style.display") == "block"       # (X, E and the numbers did nothing behind the window: the flower you face is there)

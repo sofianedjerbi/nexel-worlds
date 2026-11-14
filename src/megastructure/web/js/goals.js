@@ -1,5 +1,5 @@
 // Goals: the next three things to try, top left, ticked off as you do them: a small card in the manner of what Tab
-// shows (style.css). Over them how many are done, as a bar; under them, the help's key. (All done: those stay.)
+// shows, at the land's pixel (css/windows.css). Over them how many are done; under them, the help's key. (All done: those stay.)
 
 // [what to do, its icon, done?]
 const GOALS = [
@@ -40,7 +40,6 @@ function drawGoals() {
   if (el.dataset.sig === sig) return;
   el.dataset.sig = sig;
   $("goalcount").textContent = `${done}/${GOALS.length}`;
-  $("goalbar").firstChild.style.width = `${done / GOALS.length * 100}%`;
   const list = $("goallist");
   list.innerHTML = "";
   for (const i of goalsShown) {

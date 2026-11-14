@@ -96,7 +96,7 @@ function hudFit() {
   while (book > 1 && (272 * book / d > innerWidth - 12 || 160 * book / d > innerHeight - 12)) book--;
   if (hudSig === (hudSig = [n, d, item, book].join())) return false;
   st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px"); st.setProperty("--w", Math.max(1, Math.round(book * .7)) / d + "px");
-  let bag = book; while (bag > 1 && (224 * bag / d > innerWidth - 12 || 196 * bag / d > innerHeight - 12)) bag--;       // (--b: the inventory's, bag.js)
+  let bag = book; while (bag > 1 && (224 * bag / d > innerWidth - 12 || 162 * bag / d > innerHeight - 12)) bag--;       // (--b: the inventory's, bag.js)
   st.setProperty("--b", bag / d + "px");   // (--w: what Tab shows, who.js: a size under the book's)
   return hudU !== was;
 }

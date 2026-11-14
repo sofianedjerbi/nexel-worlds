@@ -95,7 +95,7 @@ def test_boat_launch_sail_and_moor(game):
 
 
 def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game, friend, browser, server):
-    """While you play: the goals, top left, a small card in the manner of what Tab shows (how many are done as a bar,
+    """While you play: the goals, top left, a card in the recipe book's manner and pixel (how many are done,
     the next three each a line with its picture in a cell and a box, the help's key under them); no title panel, no list of who
     is awake. Held, Tab shows one window in the top right corner (who.js), drawn as the recipe book is: the sun or the moon, the day and the
     hour, the day as a bar in the sky's colours with a mark at the hour, then a line for each one awake with their picture, their name and
@@ -106,8 +106,9 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     goals = game.js(box, "goals")
     assert goals and goals[0] <= 14 and goals[1] <= 14 and game.js(box, "brand") is None and game.js(box, "side") is None and game.js(box, "who") is None
     assert len(game.js("[...document.querySelectorAll('.goal')].map((g) => g.innerText)")) == 3 and game.js("$('goalhelp').innerText.replace(/\\s+/g, ' ')") == "H help"
-    look = game.js("(() => { const g = getComputedStyle($('goals')), q = parseFloat(g.getPropertyValue('--q')), r = $('goals').getBoundingClientRect(); return [g.backgroundColor, Math.round(r.width / q), $('goalbar').firstChild.style.width, document.querySelectorAll('.goal .gc canvas').length, [...document.querySelectorAll('.goal .tick')].map((t) => Math.round(r.right - t.getBoundingClientRect().right))]; })()")
-    assert look[0] == "rgb(232, 207, 166)" and look[1] == 122 and look[2] == "0%" and look[3] == 3 and len(set(look[4])) == 1   # a card of paper, one width; nothing done yet; each picture in its cell; the boxes in one column
+    look = game.js("(() => { const g = getComputedStyle($('goals')), q = parseFloat(g.getPropertyValue('--q')), r = $('goals').getBoundingClientRect(); return [g.backgroundColor, Math.round(r.width / q), $('goalcount').textContent, document.querySelectorAll('.goal .gc canvas').length, q, [...document.querySelectorAll('.goal .tick')].map((t) => Math.round(r.right - t.getBoundingClientRect().right))]; })()")
+    assert look[0] == "rgb(232, 207, 166)" and look[1] == 128 and look[2] == "0/12" and look[3] == 3 and len(set(look[5])) == 1   # a card of paper, one width; nothing done yet; each picture in its cell; the boxes in one column
+    assert look[4] == game.js("parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--q'))") == 3              # at the land's pixel, the recipe book's (at two thirds of it, it was too small and its px were not the game's)
     was = game.js("$('help').style.display")
     game.js("$('goalhelp').click()")                                               # the help, from the goals
     assert game.js("$('help').style.display") != was
@@ -136,7 +137,7 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     assert game.js(box, "who") is None
     game.give(wood=4)                                                              # a goal done: ticked where it is, no line of news for it
     game.sleep(600)
-    assert "Goal done" not in game.toast() and game.js("document.querySelectorAll('.goal.done').length") == 1 and game.js("$('goalbar').firstChild.style.width").startswith("8.3")
+    assert "Goal done" not in game.toast() and game.js("document.querySelectorAll('.goal.done').length") == 1 and game.js("$('goalcount').textContent") == "1/12"
     page = browser.new_page()                                                      # someone watching
     page.goto(server)
     page.wait_for_function("typeof agents !== 'undefined' && agents.some((a) => a.online)", timeout=15000)
