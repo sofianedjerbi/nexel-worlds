@@ -20,6 +20,7 @@ class Persistence:
         db.execute("DELETE FROM creatures")
         db.executemany("INSERT INTO creatures VALUES(?,?)",
                        [(c.id, json.dumps(c.to_json())) for c in self.creatures.values()])
+        self.store.set_meta("vitals", 2)                      # (the players above are in half hearts and half pieces: core.py)
         self.store.set_meta("tick", self.tick)
         self.store.set_meta("fires", [[list(k), v] for k, v in self.fires.items()])
         self.store.set_meta("timers", [[x, y, t, k] for (x, y), (t, k) in self.timers.items()])

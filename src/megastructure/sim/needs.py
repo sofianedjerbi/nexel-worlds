@@ -17,6 +17,7 @@ from .constants import (
     HEAL_EVERY,
     HEAL_FOOD,
     HP_MAX,
+    OLD_SCALE,
     PICNIC,
     STARVE_EVERY,
     TIRED_MAX,
@@ -28,6 +29,15 @@ from .entities import ActionError
 
 class Needs:
     """Simulation mixin: health and food; eating; beds (where you wake up); watering crops."""
+
+    def old_vitals(self, before: bool):
+        """On opening a world: players saved when health and food were 0 to 100 are put in half hearts and half
+        pieces. The save says which it is (`vitals`, written with the players: persistence.py), and so do the
+        numbers: more than full is the old scale. (The mark was written on opening: a server that opened the world
+        and died before saving left it marked and not converted, and the players would have woken with fifty hearts.)"""
+        for a in self.agents.values():
+            if before or a.hp > HP_MAX or a.hunger > FOOD_MAX:
+                a.hp, a.hunger = max(0.5, round(a.hp / OLD_SCALE * 2) / 2), round(a.hunger / OLD_SCALE)
 
     def tire(self, a, what: str, n: float = 1):
         """Something that tires (constants.TIRES), n times: at 4, a point of saturation goes, or of food."""

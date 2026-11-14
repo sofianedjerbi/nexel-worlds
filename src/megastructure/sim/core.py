@@ -22,7 +22,6 @@ from .constants import (
     ASIDE,
     MEANWHILE,
     MOVES,
-    OLD_SCALE,
     VIEW_R,
     sec,
 )
@@ -63,10 +62,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             known = {f.name for f in fields(Agent)}            # saves from older versions may carry dropped fields
             self.agents[aid] = Agent(**{k: v for k, v in json.loads(js).items() if k in known})
             self.tokens[aid] = th
-        if self.agents and store.get_meta("vitals", 1) < 2:    # saved when health and food were 0 to 100: now half hearts, half pieces (needs.py)
-            for a in self.agents.values():
-                a.hp, a.hunger = max(0.5, round(a.hp / OLD_SCALE * 2) / 2), round(a.hunger / OLD_SCALE)
-        store.set_meta("vitals", 2)
+        self.old_vitals(store.get_meta("vitals", 1) < 2)       # (saved when health and food were 0 to 100: needs.py)
         self.by_name = {a.name: a for a in self.agents.values()}
         self.ticking: set[tuple[int, int]] = set()        # chunks where creatures live this tick (spawning.py)
         self.screens = lambda: ()                         # the rectangles (x, y, w, h) the screens watch now: the server says (spawning.py: in_sight)

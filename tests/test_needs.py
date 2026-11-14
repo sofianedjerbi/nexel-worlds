@@ -107,12 +107,48 @@ def test_a_world_saved_on_the_old_scale_is_converted_once(tmp_path):
     sim = make(tmp_path, "old")
     a = sim.login("Ash", "tok")
     a.hp, a.hunger = 85, 40                                    # as saved before: 0 to 100
-    sim.world.store.set_meta("vitals", 1)
     sim.close()
+    sim.world.store.db = None
+    import sqlite3
+    db = sqlite3.connect(tmp_path / "old.sqlite")
+    db.execute("INSERT OR REPLACE INTO meta VALUES('vitals', '1')")
+    db.commit()
+    db.close()
     sim = make(tmp_path, "old")
     a = sim.by_name["Ash"]
     assert (a.hp, a.hunger, a.sat) == (17, 8, 5.0)
     sim.close()
     sim = make(tmp_path, "old")
-    assert sim.by_name["Ash"].hp == 17                         # only once
+    assert sim.by_name["Ash"].hp == 17 and sim.world.store.get_meta("vitals") == 2      # only once
     sim.close()
+
+
+def test_a_server_that_dies_before_saving_leaves_the_world_to_be_converted(tmp_path):
+    """The play world was opened by a second server that could not have its port: it marked the save converted and
+    died before saving the players. The mark is written with the players now, and numbers over full are the old scale
+    whatever the mark says."""
+    import sqlite3
+    sim = make(tmp_path, "w")
+    a = sim.login("Ash", "tok")
+    a.hp, a.hunger = 100, 66
+    sim.close()                                                # (saved: marked 2, by the save)
+    db = sqlite3.connect(tmp_path / "w.sqlite")
+    assert db.execute("SELECT value FROM meta WHERE key='vitals'").fetchone() == ("2",)   # marked, and 100 and 66 in it: as the play world was left
+    db.close()
+    sim = make(tmp_path, "w")
+    a = sim.by_name["Ash"]
+    assert (a.hp, a.hunger) == (20, 13)                        # over full: the old scale
+    sim.world.store.db.execute("INSERT OR REPLACE INTO meta VALUES('vitals', '1')")
+    sim.world.store.commit()
+    a.hp, a.hunger = 85, 40
+    sim.flush()
+    sim.world.store.db.execute("INSERT OR REPLACE INTO meta VALUES('vitals', '1')")     # an old save again...
+    sim.world.store.commit()
+    sim.world.store.close()                                    # ...opened, and the server dies: nothing saved
+    dead = make(tmp_path, "w")
+    assert dead.by_name["Ash"].hp == 17
+    dead.world.store.db.rollback()
+    dead.world.store.db.close()
+    db = sqlite3.connect(tmp_path / "w.sqlite")
+    assert db.execute("SELECT value FROM meta WHERE key='vitals'").fetchone() == ("1",)   # not marked: the next one converts it
+    db.close()
