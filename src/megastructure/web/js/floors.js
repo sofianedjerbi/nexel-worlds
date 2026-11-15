@@ -115,7 +115,8 @@ const Floors = (() => {
   // are seen through it, and only through what covers you
   function draw(vis, list, sx, sy, S, t, now) {
     const me_ = ents.get("agent" + myId), q = zoom, foot = me_ ? bodyY(me_, sy) + S - 2 * q : 0, bx = me_ ? sx(me_.x) : 0;
-    const veil = (x, y, z, roof) => { const top = sy(y) - shOf(z) * q; return y > me_.y + .3 && sx(x) < bx + S - 3 * q && sx(x) + S > bx + 3 * q && top - (roof ? 7 * q : 0) < foot && top + S + 8 * q > foot - 18 * q; };
+    const h = myAt ? myAt.z : 0;                      // (a block no higher than where you stand, the floor or the roof you are on, covers nothing of you)
+    const veil = (x, y, z, roof) => { const top = sy(y) - shOf(z) * q; return z > h && y > me_.y + .3 && sx(x) < bx + S - 3 * q && sx(x) + S > bx + 3 * q && top - (roof ? 7 * q : 0) < foot && top + S + 8 * q > foot - 18 * q; };
     veils = 0;
     for (const b of vis) if (b.built) for (const [i, c] of b.built) {
       const x = b.bx * B + i % B, y = b.by * B + (i / B | 0), base = standAt(x, y);

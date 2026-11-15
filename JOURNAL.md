@@ -1511,3 +1511,13 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   screen's sign, the tests) it is plain.
 - Measured: the test of iteration 125 extended (bold, key, new line; plain text; a player's `**` stays as typed);
   the fourteen test files that read messages, 80 of 80. Seen in a screenshot.
+
+## Iteration 129: a house of two storeys beside doben3, and doben4 to try it
+- Asked: "create doben4 next to doben3 and showcase there a nice multi-floor building with item in doben4 inventory to test it".
+- doben4 joined from the user's own browser (its token is kept there, as for every name they play), stands at
+  (90, 179) beside doben3. West of them, at (83..90, 170..176): walls and a door stamped on the ground, the rest laid
+  by doben4 with the game's own `place`: a floor of planks, a table and chairs, a chest, a clock; two steps by the west
+  wall; the floor upstairs on the walls, its front row a terrace over the door; walls and a door upstairs, a bed, a
+  table, a rug; a roof a storey over that; a path and flowers. Tried first on a copy of the world.
+- Two faults seen while looking at it: standing on a roof, the roof tile south of you was thinned as if it covered you
+  (now only a block higher than where you stand can); someone upstairs over a door opened it (now only people on the land).
