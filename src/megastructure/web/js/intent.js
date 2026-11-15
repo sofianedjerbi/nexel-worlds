@@ -16,6 +16,7 @@ const FILLS = {dirt: {o: ",", u: ",", "~": ",", "(": "~", "=": "(", ")": "="}, p
 const FILL_TEXT = {",": "Fill with dirt", "~": "Raise the bottom", "(": "Raise the bottom", "=": "Raise the bottom", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
 const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
 const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C", well: "Y", coop: "J", picnic_blanket: "m", basket: "q", trough: "e", hay: "y"};
+PLACEABLE_BLOCK.roof = "roof";                       // (in hand a roof is something you place: not a thing on the tile, a tile over it: structures.js)
 const HARVEST = {t: "Dig up the stump", U: "Chop tree (the fruit grows back if you wait)", v: "Cut the bush (fiber)", e: "Take down the trough (and what's in it)", y: "Pick up the hay bale", Y: "Take down the well", J: "Take down the coop", m: "Roll up the blanket", q: "Take the basket", X: "Take down mailbox", V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", R: "Mine rock wall", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
@@ -67,6 +68,12 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   const placing = selected && !shift && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed");
   const hasBlock = !GROUND.has(c) && !(flower && placing);   // building over a flower picks it
   const isMe = p.x === s.x && p.y === s.y;
+  if (selected === "roof") {                     // a roof tile: over the tile, whatever is on it (structures.js)
+    const on = Structures.roofAt(p.x, p.y), rests = Structures.WALLS.includes(c) || Object.values(DIRV).some(([dx, dy]) => Structures.roofAt(p.x + dx, p.y + dy) || Structures.WALLS.includes(combAt(p.x + dx, p.y + dy) || "-"));
+    if (shift) return on ? {text: "Take the roof tile off", near: 1, run: (d) => act("unroof", {dir: d})} : {text: "No roof there", ok: false};
+    return !ROOFS ? {text: "This world roofs its houses by itself", ok: false} : on ? {text: "There is a roof here", ghost: "roof", ok: false}
+      : rests ? {text: "Lay roof", ghost: "roof", ok: true, near: 1, run: (d) => act("place", {dir: d, item: "roof"})} : {text: "A roof needs a wall or a roof beside it", ghost: "roof", ok: false};
+  }
   if (ent) {
     const who = ent.e.name || ent.e.kind, w = inHand(), weapon = w && WEAPON_DMG[w] ? w : null;
     if (ANIMALS[ent.e.kind] && selected && FEEDS.includes(selected) && !shift)

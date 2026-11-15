@@ -69,9 +69,11 @@ function onRegion(d) {
       if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && c === colAt(bx * B + i % B, by * B + (i / B | 0))) continue;
       setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, c);
     }
+    old.roofs = new Set(d.roofs || []); roofVer++;
     old.at = performance.now(); return;
   }
-  const b = {bx, by, comb, gnd, lv, col, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
+  const b = {bx, by, comb, gnd, lv, col, objs: new Map(), drawn: false, canvas: null, at: performance.now(), roofs: new Set(d.roofs || [])};   // (roofs: where a roof tile lies, structures.js)
+  roofVer++;
   comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
   blocks.set(k, b);
   // neighbours' edge tiles depend on this block for autotiling

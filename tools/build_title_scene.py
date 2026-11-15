@@ -72,12 +72,15 @@ def build():
     put(27, 23, block="flag")
     put(28, 25, block="tree")
 
-    # the house: walls, a door, a floor, a bed, a table and a chair, a chest (its roof is the page's doing)
+    # the house: walls, a door, a floor, a bed, a table and a chair, a chest (and its roof)
     for y in range(22, 28):
         for x in range(38, 45):
             edge = x in (38, 44) or y in (22, 27)
             put(x, y, ground="floor", block="wood_wall" if edge else "none")
     put(41, 27, block="door")
+    for y in range(22, 28):                                    # its roof: a tile over each of its tiles (sim/roofing.py)
+        for x in range(38, 45):
+            gs.sim.roofed.set(x, y, True)
     put(39, 23, block="bed"); put(42, 24, block="table"); put(43, 24, block="chair"); put(39, 25, block="chest")
     put(43, 28, block="mailbox")
 
@@ -196,7 +199,7 @@ def build():
     for by in range(H // 32):
         for bx in range(W // 32):
             r = gs.region(bx * 32, by * 32, 32, 32)
-            blocks.append({k: r[k] for k in ("x", "y", "w", "h", "rows", "ground", "levels") if k in r} | ({"cols": r["cols"]} if "cols" in r else {}))
+            blocks.append({k: r[k] for k in ("x", "y", "w", "h", "rows", "ground", "levels", "cols", "roofs") if k in r})
     sea = gs.region(W, 0, 32, 32)
     sea = {k: sea[k] for k in ("rows", "ground", "levels")}
     gs.sim.close()

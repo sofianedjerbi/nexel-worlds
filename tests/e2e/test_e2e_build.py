@@ -40,3 +40,46 @@ def test_a_wall_is_planned_with_a_cursor_and_built_by_keys_alone(game):
     assert game.js("Build.on") is False
     game.press("ArrowRight", 500)                              # out of the mode the arrows walk you again
     assert game.js("Build.on") is False and not game.errors
+
+
+ROW = "([x, y, n]) => { let s = ''; for (let i = 0; i < n; i++) s += Structures.roofAt(x + i, y) ? 'r' : '.'; return s; }"
+
+
+def test_a_roof_is_laid_a_tile_at_a_time_and_seen_through_from_under_it(game):
+    """A roof came by itself, whole, the moment walls closed a room. It is a piece like the rest (a `roof`, from
+    wood): laid on a wall or beside a roof tile, planned with the cursor, taken back with X; and whoever stands
+    under a roof sees through all of it."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.stamp(2, -3, ["WWWW", "W..W", "WW+W"])               # walls and a door, no roof: nothing draws one by itself
+    game.sleep(700)
+    assert game.js("ROOFS") is True and game.js(ROW, [x + 2, y - 3, 4]) == "...."
+    game.give(roof=6)
+    kb = game.page.keyboard
+    game.press(game.js(SLOT, "roof"))
+    game.press("b")
+    for k in ["ArrowRight"] * 2 + ["ArrowUp"] * 6:             # the cursor in the open: no roof hangs in the air
+        game.press(k, 110)
+    assert game.js("Build.hint(Build.S.at).ok") is False and "wall" in game.js("Build.hint(Build.S.at).text")
+    game.press("ArrowDown", 110)
+    game.press("ArrowDown", 110)                               # on the north wall: a row of four
+    kb.down("Space")
+    for _ in range(3):
+        game.press("ArrowRight", 130)
+    kb.up("Space")
+    game.wait(f"({ROW})([{x + 2}, {y - 3}, 4]) === 'rrrr' && Build.S.plans.size === 0", 30000)
+    assert game.inv("roof") == 2
+    game.press("ArrowDown", 130)                               # beside those, over the room: two more
+    game.press("ArrowLeft", 130)
+    kb.down("Space"); game.press("ArrowLeft", 130); kb.up("Space")
+    game.wait(f"({ROW})([{x + 2}, {y - 2}, 4]) === '.rr.' && Build.S.plans.size === 0", 30000)
+    game.press("x")                                            # the last one planned: taken back off
+    game.wait(f"({ROW})([{x + 2}, {y - 2}, 4]) === '..r.' && Build.S.plans.size === 0", 30000)
+    assert game.inv("roof") == 1
+    game.press("b")
+    assert game.js("([x, y]) => [Structures.seeThrough(x + 4, y - 2), Structures.seeThrough(x + 2, y - 3)]", [x, y]) == [1, 1]      # from outside: all of it
+    assert game.server()["sheltered"] is False
+    game.rpc("dev_teleport", x=x + 4, y=y - 2)                 # under it
+    game.sleep(900)
+    assert game.server()["sheltered"] is True and not game.errors
+    assert game.js("([x, y]) => [Structures.seeThrough(x + 4, y - 2), Structures.seeThrough(x + 2, y - 3)]", [x, y]) == [.12, .12]  # from under it: seen through, the whole roof

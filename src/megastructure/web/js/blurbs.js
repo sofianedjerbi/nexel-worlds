@@ -15,6 +15,7 @@ const BLURB = {
   spear: "A pointy way to keep your distance.",
   sword: "For arguments you intend to win.",
   wood_wall: "Keeps the outside outside.",
+  roof: "Laid a tile at a time. Keeps the sky off.",
   door: "A wall that changes its mind.",
   fence: "Tells cows where the world ends.",
   gate: "A fence with manners.",

@@ -1,5 +1,5 @@
 // The help (H, or ?): a window in the recipe book's manner, a page at a time. It was one small panel of four long lines,
-// every key of the game run together with dots between. Now: four pages (Move, Do, Carry, Talk), five rows at most
+// every key of the game run together with dots between. Now: five pages (Move, Do, Carry, Build, Talk), five rows at most
 // on each, a row a key drawn as a key and a few words on one line. Left and Right (or a click on a tab) turn the page; H or
 // Esc shuts it. Its looks are css/help.css.
 
@@ -9,6 +9,8 @@ const HELP = [
     [["Click"], "Space there. Shift: X"]]],
   ["Carry", [[["1-9", "Q"], "Take in hand"], [["`"], "Empty your hands"], [["Space"], "Place what you hold"],
     [["I"], "Inventory"], [["C"], "Craft"]]],
+  ["Build", [[["B"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan the piece in hand"], [["X"], "Take back, or take down"],
+    [["Hold"], "Space or X + move: a row"]]],
   ["Talk", [[["Enter"], "Talk"], [["ABC"], "Shout: IN CAPITALS"], [["/"], "Commands, Tab ends one"], [["Tab"], "Hold: who is awake"],
     [["M"], "Sound on or off"]]],
 ];

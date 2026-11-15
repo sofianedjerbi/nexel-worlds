@@ -36,6 +36,7 @@ const Build = (() => {
     const j = S.plans.get(key(p));
     if (j) { if (j.state !== "doing") S.plans.delete(key(p)); return; }
     const t = tile(p.x, p.y); if (!t) return;
+    if (ROOFS && Structures.roofAt(p.x, p.y) && (selected === "roof" || GROUND.has(t[0]))) { S.plans.set(key(p), {x: p.x, y: p.y, take: true, roof: true, state: "todo"}); return work(); }   // (the roof over it)
     const built = !GROUND.has(t[0]) ? "#W%+g".includes(t[0]) || !!Object.values(PLACEABLE_BLOCK).includes(t[0]) : "_n:".includes(t[1]);
     if (!built) return S.hold ? null : toast("Nothing built there to take down", true);
     S.plans.set(key(p), {x: p.x, y: p.y, take: true, state: "todo"});
@@ -76,16 +77,17 @@ const Build = (() => {
     if (!j.take && !(meObs.self.inventory[j.item] > 0)) return `No ${label(j.item)} left`;
     const on = () => { const s = myPos(); return s.x === j.x && s.y === j.y; };
     const here = myPos();                             // not beside it (or beside it, but inside what it would close): to a free tile beside it
-    if (on() || !reaches(j.x, j.y, 1) || (solid(j) && !wayOut(here, j))) {
-      const s = myPos(), beside = Object.values(DIRV).map(([dx, dy]) => ({x: j.x + dx, y: j.y + dy})).filter((q) => plainWalk(q.x, q.y) && !entityAt(q));
-      const cost = (q) => (solid(j) && !wayOut(q, j) ? 200 : 0) + (S.plans.has(key(q)) ? 60 : 0) + Math.abs(q.x - s.x) + Math.abs(q.y - s.y);     // (not walled in, for choice)
+    if (on() || !reaches(j.x, j.y, USE_R) || (solid(j) && !wayOut(here, j))) {
+      const s = myPos(), beside = [];                  // (within the game's reach of it: two tiles; beside it for choice)
+      for (let dy = -USE_R; dy <= USE_R; dy++) for (let dx = -USE_R; dx <= USE_R; dx++) { const q = {x: j.x + dx, y: j.y + dy, far: Math.abs(dx) + Math.abs(dy) > 1 ? 3 : 0}; if ((dx || dy) && dx * dx + dy * dy <= 5 && plainWalk(q.x, q.y) && !entityAt(q)) beside.push(q); }
+      const cost = (q) => (solid(j) && !wayOut(q, j) ? 200 : 0) + (S.plans.has(key(q)) ? 60 : 0) + q.far + Math.abs(q.x - s.x) + Math.abs(q.y - s.y);     // (not walled in, for choice)
       beside.sort((a, b) => cost(a) - cost(b));
       let there = false;
       for (const q of beside) {
         const r = await act("move_to", {x: q.x, y: q.y}, true);
         // (the walk is over on the server a moment before your screen has you there: wait for it)
         for (let i = 0; r && r.ok && i < 40 && !(myPos().x === q.x && myPos().y === q.y); i++) await new Promise((ok) => setTimeout(ok, 25));
-        if (r && r.ok && !on() && reaches(j.x, j.y, 1)) { there = true; break; }
+        if (r && r.ok && !on() && reaches(j.x, j.y, USE_R)) { there = true; break; }
         if (!S.plans.has(key(j))) return null;
       }
       if (!there) return "No way to get beside it";
@@ -93,7 +95,7 @@ const Build = (() => {
     if (!S.plans.has(key(j))) return null;            // (taken back meanwhile)
     actTarget = {x: j.x, y: j.y};
     const t = tile(j.x, j.y), tool = j.take && TOOL_FOR[t[0]] && meObs.self.inventory[TOOL_FOR[t[0]]] ? TOOL_FOR[t[0]] : null;
-    const r = await act(j.take ? "dig" : "place", j.take ? {dir: "N", ...(tool ? {with: tool} : {})} : {dir: "N", item: j.item}, true);
+    const r = await act(j.roof ? "unroof" : j.take ? "dig" : "place", j.take ? {dir: "N", ...(tool ? {with: tool} : {})} : {dir: "N", item: j.item}, true);
     return r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done";
   }
 
@@ -128,7 +130,8 @@ const Build = (() => {
     for (const [k, j] of S.plans) {
       if (j.state === "bad" && now() - j.t > BAD_MS) { S.plans.delete(k); continue; }
       const x = sx(j.x), y = sy(j.y, j.x);
-      const spr = j.take ? null : j.ground ? groundPreview(j.ground, j.x, j.y) : j.item === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(j.x, j.y)] * 16, 16, 16, 0, -2] : objectSprite(PLACEABLE_BLOCK[j.item], j.x, j.y, t);
+      if (j.item === "roof") Structures.drawRoof(j.x, j.y, sx, sy, Sz, j.state === "doing" ? .75 : .5);
+      const spr = j.take || j.item === "roof" ? null : j.ground ? groundPreview(j.ground, j.x, j.y) : j.item === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(j.x, j.y)] * 16, 16, 16, 0, -2] : objectSprite(PLACEABLE_BLOCK[j.item], j.x, j.y, t);
       ctx.globalAlpha = j.state === "doing" ? .75 : .5;
       if (spr) ctx.drawImage(spr[0], spr[1], spr[2], spr[3], spr[4], x + spr[5] * z, y + spr[6] * z, spr[3] * z, spr[4] * z);
       ctx.globalAlpha = 1;

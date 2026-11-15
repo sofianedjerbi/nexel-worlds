@@ -85,6 +85,7 @@ function frame(now) {
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (hiddenAt(x, y)) continue;                     // (in a cave, seen from outside: under its roof)
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
+    if (ROOFS && Structures.WALLS.includes(c)) { list.push({y, x, fx: () => Structures.drawWall(c, x, y, sx, sy, S, now)}); continue; }   // (a wall, a door: structures.js)
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
   }
   // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
@@ -96,8 +97,11 @@ function frame(now) {
   if (pileSince.size) { const here = new Set(groundItems.map(([ix, iy]) => ix + "," + iy)); for (const k of pileSince.keys()) if (!here.has(k) || lootAt(...k.split(",").map(Number))) pileSince.delete(k); }
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)
   drawOrbs(sx, sy, S, dt, list);
-  if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
-  drawHouses(sx, sy, S, dt, now, list);              // (houses.js: each among the rest, at its front wall's row)
+  if (ROOFS) Structures.roofs(vis, list, sx, sy, S);                         // (roof tiles, laid by hand: structures.js)
+  else {                                             // (a server from before them: a roof over every closed room, houses.js)
+    if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
+    drawHouses(sx, sy, S, dt, now, list);
+  }
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const o of list) {
     selMeasure(o);
@@ -177,6 +181,7 @@ function frame(now) {
 function drawIntent(p, it, sx, sy, S, t, ox, oy) {
   if (it && it.ghost) {
     ctx.globalAlpha = .7;
+    if (it.ghost === "roof") Structures.drawRoof(p.x, p.y, sx, sy, S, .6);
     const spr = it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
       : it.ghost === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(p.x, p.y)] * 16, 16, 16, 0, -2]
       : objectSprite(PLACEABLE_BLOCK[it.ghost], it.anchor ? it.anchor.x : p.x, it.anchor ? it.anchor.y : p.y, t);
