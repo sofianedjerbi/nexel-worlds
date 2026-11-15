@@ -42,7 +42,8 @@ def bars(cell, n=3):
 
 
 # "keep sugar rush somewhere for later its pretty good. but does not fit main menu"; "sugar rush was too fast. it fit
-# well a high energy moment not a menu". Kept as site/audio/keep_sugar_rush.wav (never rendered again: `later`).
+# well a high energy moment not a menu". Kept as site/audio/keep_sugar_rush.wav; the four of the third round, kept
+# too ("great ideas but they do not fit main menu"), as site/audio/keep_menu_<id>.wav. None is rendered again.
 LATER = [
     dict(id="sugar", title="Sugar rush", key="E flat major", feel="a kick on every beat, the fastest of the five; the lead calls, a second synth answers", bpm=156, passes=1,
          H=["Abmaj9", "Bb13", "Gm7", "Cm9", "Abmaj9", "Bb13", "Ebmaj9", "Eb69", "Abmaj9", "Bb13", "Gm7", "Cm9", "Fm9", "Bb13", "Ebmaj9", "Eb69"] * 2,
@@ -58,14 +59,6 @@ LATER = [
          lead="Damon Armani/Plucks/Rattler", second="Damon Armani/Leads/Funky", chords="Polysynths/Phasey", pad="Polysynths/Xpander 2", bass_sound="Basses/Slow",
          shift={"pad": 12},
          kit={"kick": "TNMG/Drums/Kick - Classic", "snare": "TNMG/Drums/Snare - Classic"}),
-]
-
-# Third round. "i don't like the other ones.. redesign other ones and audit them". What the one that was liked had and
-# the refused ones had not: a lead that is plucked (it dies away under the finger; the refused leads held their note
-# and were cut short), and nothing out of the kept pieces' ranges. So: plucked leads only (measured: 14 dB or more
-# down after 0.7 s held, as Cute 1 and Rattler are), a menu's pace (112 to 126, no kick on every beat), 16 bars once
-# (32 s, the length of the kept day pieces), new tunes, and no sound of a refused piece.
-MENU = [
     dict(id="mat", title="Welcome mat", key="A major", feel="a bounce: the bass hops between octaves, short chords off the beat; the lead calls, a second pluck answers", bpm=120, passes=1,
          H=["A69", "F#m7", "Dmaj9", "E13", "A69", "F#m7", "Dmaj9", "E13 A69"] * 2,
          V={"A69": "F#3 B3 C#4 E4", "F#m7": "E3 A3 C#4", "Dmaj9": "F#3 A3 C#4 E4", "E13": "D3 G#3 C#4"},
@@ -109,6 +102,47 @@ MENU = [
          shift={"lead": 12, "pad": -12}),
 ]
 
+# Third round. "i don't like the other ones.. redesign other ones and audit them". What the one that was liked had and
+# the refused ones had not: a lead that is plucked (it dies away under the finger; the refused leads held their note
+# and were cut short), and nothing out of the kept pieces' ranges. So: plucked leads only (measured: 14 dB or more
+# down after 0.7 s held, as Cute 1 and Rattler are), a menu's pace (112 to 126, no kick on every beat), 16 bars once
+# (32 s, the length of the kept day pieces), new tunes, and no sound of a refused piece.
+# Fourth round. "keep all the other menu songs, they have great ideas but they do not fit main menu. try a slower more
+# chill beat for the welcome menu. ambiant almost". The four above are kept for later (site/audio/keep_menu_<id>.wav).
+# Now the manner of the kept night pieces (slow, pads in front, a soft lead with room around it) with a beat so soft it
+# is nearly not one: a low kick, a brush or a shaker, no clap, no hat. Held against days and nights together
+# (mixcheck "chill"). Three depths of calm, for the user to place the cursor.
+SOFT = {"kick": -22, "brush": -27, "shaker": -34, "click": -31, "chords": -20, "pad": -22, "bass": -17, "lead": -15}
+MENU = [
+    dict(id="window", title="Morning window", key="D major", feel="a slow soft beat: a low kick, a brush on two and four, a shaker; pads in front, a lead of three notes", bpm=80, passes=1, ref="chill", levels=SOFT,
+         H=["Dmaj9", "Bm9", "Gmaj9", "A13sus", "Dmaj9", "Bm9", "Gmaj9", "D69"] * 2,
+         V={"Dmaj9": "F#3 A3 C#4 E4", "Bm9": "D3 F#3 A3 C#4", "Gmaj9": "F#3 A3 B3 D4", "A13sus": "G3 B3 D4 F#4", "D69": "F#3 B3 E4"},
+         R={"Dmaj9": "D3", "Bm9": "B2", "Gmaj9": "G2", "A13sus": "A2", "D69": "D3"},
+         cell=[(0, 3), (6, 2), (8, 6)], cadence=[(0, 6), (6, 10)],                           # down a sixth and back up: a slow nod
+         tune=(bars("F#5 A4 F#5") + [("cadence", "E5 B4")] + bars("F#5 A4 F#5") + [("cadence", "F#5 D5")]) * 2,
+         comp=[(0, 15)], bass=[(0, 9, 0, 100), (10, 5, 0, 84)],
+         beat=dict(kick=[(0, 96), (10, 80)], brush=[(4, 80), (12, 86)], shaker=[(s, 60) for s in range(0, 16, 2)]),
+         lead="Giana Brotherz/Keys/Sin Ring", chords="Bluelight/Pads/Wool 2", pad="Landosonic/Pads/Washing The Podium 2", bass_sound="Altenberg/Basses/Boog"),
+    dict(id="tide", title="Slow tide", key="F major", feel="half time, slower: one low kick and one brush a bar; the lead knocks twice and rises", bpm=72, passes=1, ref="chill", levels=SOFT,
+         H=["Fmaj9", "Am7", "Bbmaj9", "C13sus", "Dm9", "Am7", "Bbmaj9", "F69"] * 2,
+         V={"Fmaj9": "E3 G3 A3 C4", "Am7": "G3 C4 E4", "Bbmaj9": "A3 C4 D4 F4", "C13sus": "Bb3 D4 F4", "Dm9": "F3 A3 C4 E4", "F69": "A3 D4 G4"},
+         R={"Fmaj9": "F2", "Am7": "A2", "Bbmaj9": "Bb2", "C13sus": "C3", "Dm9": "D3", "F69": "F2"},
+         cell=[(0, 2), (3, 2), (6, 8)], cadence=[(0, 6), (6, 10)],                           # the same note twice, up a third, held
+         tune=(bars("A4 A4 C5") + [("cadence", "D5 G4")] + bars("A4 A4 C5") + [("cadence", "C5 F5")]) * 2,
+         comp=[(0, 15)], bass=[(0, 13, 0, 100)],
+         beat=dict(kick=[(0, 96)], brush=[(8, 84)], shaker=[(s, 58) for s in range(0, 16, 4)]),
+         lead="Jacky Ligon/Keys/Corporealities", chords="Pads/Chowning", pad="LinnStrument MPE/Pads/Warm Pad", bass_sound="Rozzer/Basses/Nu Skool Bass 2"),
+    dict(id="still", title="Still water", key="A major", feel="almost ambient: a kick like a heartbeat and a far click, two notes and a long one over still pads", bpm=66, passes=1, ref="chill", levels=SOFT | {"lead": -17, "bass": -15.5, "click": -34},
+         H=["A69", "F#m7", "Dmaj9", "E13sus", "A69", "C#m7", "Dmaj9", "A69"] * 2,
+         V={"A69": "F#3 B3 C#4 E4", "F#m7": "E3 A3 C#4", "Dmaj9": "F#3 A3 C#4 E4", "E13sus": "D3 F#3 A3 C#4", "C#m7": "E3 G#3 B3"},
+         R={"A69": "A2", "F#m7": "F#2", "Dmaj9": "D3", "E13sus": "E2", "C#m7": "C#3"},
+         cell=[(0, 4), (8, 8)], cadence=[(0, 16)],                                           # two notes a third apart, then one note for the whole bar
+         tune=(bars("E5 C#5") + [("cadence", "B4")] + bars("E5 C#5") + [("cadence", "A4")]) * 2,
+         comp=[(0, 15)], bass=[(0, 14, 0, 96)],
+         beat=dict(kick=[(0, 90), (6, 70)], click=[(12, 70)]),
+         lead="Plucks/Frog", chords="Dan Maurer/Pads/Muted Square Pad", pad="Pads/Sparkly", bass_sound="Basses/Bass 2", shift={"lead": 12}),
+]
+
 
 def arrange(st):
     """The parts of one candidate: the whole score once per pass; from the second pass on the lead is doubled an
@@ -116,7 +150,7 @@ def arrange(st):
     spb, H, n = st.get("spb", 16), st["H"], len(st["H"])
     acc = (lambda s: STRAIGHT[int(s) % 16]) if spb == 16 else (lambda s: WALTZ[int(s) % 12])
     shapes = {"cell": st["cell"], "cadence": st["cadence"]}
-    p = {k: [] for k in ("lead", "double", "answer", "chords", "pad", "bass", "kick", "snare", "clap", "hat", "open", "click")}
+    p = {k: [] for k in ("lead", "double", "answer", "chords", "pad", "bass", "kick", "snare", "clap", "hat", "open", "click", "brush", "shaker")}
     under = {}
     for k in range(st["passes"]):
         for b, bar in enumerate(H):
@@ -162,7 +196,7 @@ def render(m):
         raise SystemExit(f"{m['title']}: notes clash with their chord: {bad}")
     parts = mixcheck.stems(st, arrange)
     lines = []
-    wrong = mixcheck.check(parts, lines.append)
+    wrong = mixcheck.check(parts, lines.append, m.get("ref", "day"))
     x = mixcheck.bus(parts)
     y, _ = master.master(x, "day")                           # the game's level for music: -20 LUFS, true peak under -1 dB
     with wave.open(str(OUT / f"menu_{m['id']}.wav"), "wb") as w:

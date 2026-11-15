@@ -25,6 +25,11 @@ TONAL = ("lead", "double", "answer", "chords", "pad")
 # The two kept day pieces, by band (dB of the whole mix), from this file's own report: the envelope a new day mix must sit in.
 KEPT = np.array([[-11.8, -7.7, -10.6, -9.9, -4.9, -7.1, -13.8, -19.8, -21.8], [-14.0, -8.6, -5.5, -4.4, -10.5, -13.5, -15.3, -20.1, -23.0]])
 ROOM = 3.0
+# The two kept night pieces (Side street night, Far shore night): slow, no drums, dark on top. A slow, near-ambient
+# piece is held against days and nights together: anywhere between the two is a balance the user has kept.
+NIGHT = np.array([[-5.3, -8.5, -11.9, -11.4, -7.1, -6.3, -45.9, -54.2, -60.3], [-9.8, -7.7, -12.0, -7.3, -3.7, -13.4, -21.8, -47.4, -55.3]])
+RANGES = {"day": dict(bands=KEPT, lead=(0.35, 0.85), spread=(8, 14), crest=(14.5, 21)),
+          "chill": dict(bands=np.vstack([KEPT, NIGHT]), lead=(0.35, 0.95), spread=(6, 14), crest=(13.5, 21))}
 
 
 def stems(st, arrange):
@@ -86,8 +91,10 @@ def fills(y):
     return float((e > e.max() * 0.1).mean())
 
 
-def check(st, say=print):
+def check(st, say=print, ref="day"):
     """Prints the mix part by part and returns what is out of the kept pieces' range, as sentences."""
+    r = RANGES[ref]
+    kept = r["bands"]
     mix = sum(st.values())
     whole = bands(mix).sum()
     db = lambda v: 10 * np.log10(v / whole + 1e-12)
@@ -105,22 +112,22 @@ def check(st, say=print):
             bad.append("the bass buzzes over 2 kHz")
         if part == "bass" and 10 * np.log10((10 ** (b[:3] / 10)).sum()) < -12:
             bad.append("the bass is thin under 250 Hz")
-    if "lead" in st and not 0.35 <= fills(st["lead"]) <= 0.85:
-        bad.append(f"the lead fills {fills(st['lead']):.0%} of the time (kept: 41 and 71 %)")
+    if "lead" in st and not r["lead"][0] <= fills(st["lead"]) <= r["lead"][1]:
+        bad.append(f"the lead fills {fills(st['lead']):.0%} of the time (kept days: 41 and 71 %; nights: 73 and 91 %)")
     if "pad" not in st:
         bad.append("no pad under the piece")
     for i, v in enumerate(prof):
-        if not KEPT[:, i].min() - ROOM <= v <= KEPT[:, i].max() + ROOM:
-            bad.append(f"{EDGES[i]}-{EDGES[i + 1]} Hz is at {v:.1f} dB of the mix (kept: {KEPT[:, i].min():.1f} to {KEPT[:, i].max():.1f})")
+        if not kept[:, i].min() - ROOM <= v <= kept[:, i].max() + ROOM:
+            bad.append(f"{EDGES[i]}-{EDGES[i + 1]} Hz is at {v:.1f} dB of the mix (kept: {kept[:, i].min():.1f} to {kept[:, i].max():.1f})")
     m = mix.mean(axis=0)
     e = np.sqrt(np.convolve(m ** 2, np.ones(4800) / 4800, "same")[::4800])
     spread = 20 * np.log10(np.percentile(e, 95) / np.percentile(e, 10))
     crest = 20 * np.log10(np.abs(m).max() / np.sqrt((m ** 2).mean()))
     say(f"   level over 100 ms moves {spread:.1f} dB (kept 10.8, 10.6)   crest {crest:.1f} dB (kept 18.9, 16.3)")
-    if not 8 <= spread <= 14:
-        bad.append(f"the level moves {spread:.1f} dB over 100 ms (kept: about 11)")
-    if not 14.5 <= crest <= 21:
-        bad.append(f"crest {crest:.1f} dB (kept: 16 to 19)")
+    if not r["spread"][0] <= spread <= r["spread"][1]:
+        bad.append(f"the level moves {spread:.1f} dB over 100 ms (kept days: about 11; nights: about 8)")
+    if not r["crest"][0] <= crest <= r["crest"][1]:
+        bad.append(f"crest {crest:.1f} dB (kept: 15 to 19)")
     return bad
 
 

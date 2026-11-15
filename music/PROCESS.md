@@ -470,3 +470,19 @@ unique theme. cute and fast".
   80-300 Hz (+3.1 dB there), the middle narrowed 2.8 dB (one speaker: -1.9 then -1.0 dB). Far shore night: octaves
   (+2.1 dB). Far shore day and Old Mossback: nothing to correct. The game still plays the originals.
 - Page: http://127.0.0.1:8099/menu.html (four candidates, Sugar rush, original against corrected). Not judged by ear.
+
+## Menu music, fourth round: slow and near-ambient; corrections into the game (2026-11-15)
+- Verdict on round three: "i agree with the corrections on existing songs. keep all the other menu songs, they have
+  great ideas but they do not fit main menu. try a slower more chill beat for the welcome menu. ambiant almost".
+- Corrections in the game: `tools/build_audio.py` takes `fixed_<name>.wav` where there is one (Side street day and
+  night, Far shore night); audio rebuilt; sound tests pass (8 browser, 8 unit).
+- Kept for later, not rendered again: Sugar rush and Welcome mat, Porch light, Jam jar, Paper boat
+  (`site/audio/keep_*.wav`, scores in `menu.LATER`).
+- Three candidates in the manner of the kept night pieces, with a beat that is nearly not one (low kick, brush or
+  shaker, no clap, no hat), 16 bars: Morning window (D, 80, kick + brush on two and four + shaker), Slow tide (F, 72,
+  half time), Still water (A, 66, a heartbeat kick and a far click; two notes and a long one).
+- `mixcheck` has a "chill" reference: days and nights together. First render: one lead held all the time and bright
+  (replaced by a plucked one), one piece light at 60-120 Hz and too peaky (a percussive bass; replaced by one that
+  holds). All three now have nothing out of range. Still water's bass is almost all under 120 Hz, like the nights'
+  before their correction.
+- Not judged by ear.

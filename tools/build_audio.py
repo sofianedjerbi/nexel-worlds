@@ -88,7 +88,11 @@ def write_wav(path: Path, st: np.ndarray, rate: int):
 # The game's music: which piece plays when (audio.js). By day and by night a piece plays now and then, with silence
 # between; the boss's loops while its fight is on. Far shore night C is the one of two candidates wired in.
 TRACKS = {"side_street_day": "day", "far_shore_day": "day", "side_street_night": "night", "far_shore_night_c": "night", "old_mossback": "boss"}
-final = lambda name: MUSIC / "site" / "audio" / f"final_{name}.wav"
+def final(name):
+    """The piece's finished file: the corrected one (music/refit.py; "i agree with the corrections on existing songs")
+    where there is one, else the mastered one."""
+    fixed = MUSIC / "site" / "audio" / f"fixed_{name}.wav"
+    return fixed if fixed.exists() else MUSIC / "site" / "audio" / f"final_{name}.wav"
 
 
 def version() -> str:

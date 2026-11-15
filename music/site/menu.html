@@ -40,11 +40,11 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">Third round. Four new candidates for the music of the first screen, at a menu's pace; Sugar rush kept for later; and the five songs of the game, original against corrected, for you to validate. Everything loops with no gap.</div>
+  <div class="sub">Fourth round. Three slow, near-ambient candidates for the music of the first screen; the five pieces kept for later; and the songs of the game, original against corrected. Everything loops with no gap.</div>
   <div id="list"></div>
   <h2 class="part">Kept for later</h2>
   <div id="later"></div>
-  <h2 class="part">The songs in the game: original and corrected</h2>
+  <h2 class="part">The songs in the game: original and corrected (the corrected ones now play)</h2>
   <div id="songs"></div>
   <div class="box">
     <h2>What the reading says about menu music</h2>
@@ -52,7 +52,7 @@
       <li>It is the appetizer: it says the mood of the game before anything is played.</li>
       <li>The tune has to be caught in the first seconds, so each of these starts on its tune, with no introduction.</li>
       <li>Nobody knows how long a player stays, so it loops, and the loop must not be heard. One developer made the menu a little faster than the music of play (120 against 100).</li>
-      <li>A short tune that calls and is answered is what people remember (Grant Kirkhope on Banjo-Kazooie). "Welcome mat" and "Jam jar" are built on that.</li>
+      <li>A short tune that calls and is answered is what people remember (Grant Kirkhope on Banjo-Kazooie). Sugar rush, Welcome mat and Jam jar (kept for later) are built on that.</li>
       <li>Bright and cute, measured on title themes: a major key, 126 to 154 beats a minute (Super Mario Party 126, Donkey Kong 140, Kirby 150 and 154), short notes.</li>
     </ul>
     <p class="note">Sources:
@@ -74,13 +74,13 @@
     </ul>
   </div>
   <div class="box">
-    <h2>Third round: what changed</h2>
+    <h2>Fourth round: what changed</h2>
     <ul>
-      <li>You kept Sugar rush for a high-energy moment (too fast for a menu) and refused the four others.</li>
-      <li>What Sugar rush had and they had not: a plucked lead (it dies away under the finger; theirs held the note and were cut short), and nothing out of the kept pieces' ranges.</li>
-      <li>The four new ones: plucked leads only, 112 to 126 beats a minute, no kick on every beat, new tunes, no sound of a refused piece, 16 bars (about 32 s, like the kept day pieces).</li>
-      <li>Audit (<code>music/mixcheck.py</code>): every part soloed and held against Side street day and Far shore day: register, tonal balance by band, how much of the time the lead sounds, how much the level moves, peaks. All four are in range on every item.</li>
-      <li>The songs of the game were approved by ear and are not rendered again: the corrections are made on the finished files (<code>music/refit.py</code>). The game still plays the originals.</li>
+      <li>You kept the four menu pieces of the last round for later (good ideas, not for the first screen) and asked for a slower, more chill beat, almost ambient.</li>
+      <li>These three take the manner of the night pieces you kept (slow, pads in front, a soft lead with room around it) and add a beat so soft it is nearly not one: a low kick, a brush or a shaker, no clap, no hat.</li>
+      <li>Three depths of calm, so you can say where the cursor goes: 80 beats a minute with a soft beat, 72 in half time, 66 with only a heartbeat.</li>
+      <li>Audit (<code>music/mixcheck.py</code>): every part soloed and held against the kept day and night pieces together; what is out of range is written under each piece.</li>
+      <li>The corrections you agreed to are now in the game's music (three songs); the originals stay on this page to compare.</li>
       <li>I cannot hear any of this. The meters only say the known faults are gone.</li>
     </ul>
   </div>
@@ -88,7 +88,7 @@
 <script>
 const TONE = ["#f7d488", "#f4a6c0", "#b9e0a5", "#a9c8ec", "#8fe0d4"];
 let ctx = null, playing = null;                       // playing: {id, src, t0, len}
-const buffers = {}, FILES = {later: "keep_sugar_rush"};
+const buffers = {}, FILES = {};
 async function load(id) {
   if (!buffers[id]) buffers[id] = fetch(`audio/${FILES[id] || "menu_" + id}.wav?v=${Date.now()}`).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b));
   return buffers[id];
@@ -124,10 +124,13 @@ fetch("audio/menu.json?v=" + Date.now()).then((r) => r.json()).then((all) => {
         lead <b>${m.sounds.lead}</b>${m.sounds.second ? ` · answer <b>${m.sounds.second}</b>` : ""}${m.sounds.double ? ` · joined the second time by <b>${m.sounds.double}</b>` : ""} · chords <b>${m.sounds.chords}</b> · pad <b>${m.sounds.pad}</b> · bass <b>${m.sounds.bass_sound}</b><br>
         against the kept pieces: ${m.out_of_range.length ? m.out_of_range.join("; ") : "everything in range"}</div>
     </div>`).join("");
-  document.getElementById("later").innerHTML = `
-    <div class="box" id="c-later" style="--tone:#f4a6c0">
-      <div class="row"><div class="n">S</div><div><h2>Sugar rush</h2><div class="feel">kept for a high-energy moment: 156 beats a minute, a kick on every beat, call and answer. Not in the game yet.</div></div><button id="b-later">Play</button></div>
-      <div class="bar" data-id="later"><i></i></div>
+  const LATER = [["sugar", "keep_sugar_rush", "Sugar rush", "for a high-energy moment: 156 beats a minute, a kick on every beat, call and answer"],
+    ["mat", "keep_menu_mat", "Welcome mat", "120 beats a minute, a bounce, call and answer"], ["porch", "keep_menu_porch", "Porch light", "112 beats a minute, a light shuffle"],
+    ["jam", "keep_menu_jam", "Jam jar", "126 beats a minute, half time, call and answer"], ["boat", "keep_menu_boat", "Paper boat", "116 beats a minute, a plain backbeat"]];
+  document.getElementById("later").innerHTML = `<div class="box" style="--tone:#f4a6c0">
+      <div class="facts">Kept, not in the game yet: good ideas that do not fit the first screen.</div>
+      ${LATER.map(([id, file, title, what]) => { FILES["k_" + id] = file;
+        return `<div class="ver" id="c-k_${id}"><span style="width:150px">${title}</span><button id="b-k_${id}">Play</button><div class="bar" data-id="k_${id}"><i></i></div></div><div class="note" style="margin-left:164px">${what}</div>`; }).join("")}
     </div>`;
   return fetch("audio/fixed.json?v=" + Date.now()).then((r) => r.json());
 }).then((songs) => {
