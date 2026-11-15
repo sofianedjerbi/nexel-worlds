@@ -101,3 +101,28 @@ def test_a_chair_is_turned_to_the_table_or_the_fire_it_is_set_at(game):
     assert faces(0, 0) == ["E", 64] and faces(4, 0) == ["W", 80]                           # by the fire: both towards it
     assert faces(1, 2) == ["S", 96] and faces(1, 4) == ["N", 112] and faces(6, 3) == ["E", 64]      # over and under a table; on its own
     game.stamp(3, -8, ["." * 7] * 5)
+
+
+FIELD = [".....", ".ooo.", ".ooo.", ".ooo.", "....."]
+# a tile's px of the tilled sheet's darker tone: how many in each row, and in each column
+DARK = """([x, y]) => { const [b, i] = tileIdx(x, y), o = (i / B | 0) * 16 * BW + (i % B) * 16, rows = new Array(16).fill(0), cols = new Array(16).fill(0);
+  for (let j = 0; j < 16; j++) for (let k = 0; k < 16; k++) { const v = b.px[o + j * BW + k]; if ((v & 0xffffff) === (138 << 16 | 185 << 8 | 220)) { rows[j]++; cols[k]++; } }
+  return {rows, cols}; }"""
+
+
+def test_tilled_soil_is_furrows_not_a_line_round_a_patch(game):
+    """The pack's tilled soil is a patch with a line round it, 10 px inside its outer tiles; on bare soil of its own
+    colour only the line showed, a box floating inside the field ("see the weird line in the field?"). At sea level
+    a tilled tile is furrows over the whole of it (web/js/furrows.js): a darker line every 4 px, the same on a
+    field's rim as in its middle, and no line down the tile. Up on a hill, on grass, the patch is kept."""
+    x, y = game.pos()
+    game.stamp(3, -8, FIELD, levels=["0" * 5] * 5)
+    game.sleep(700)
+    rim, mid = game.js(DARK, [x + 4, y - 6]), game.js(DARK, [x + 5, y - 6])                # the field's west side, its middle
+    for t in (rim, mid):
+        # furrows across; nothing down it (the patch's edge was 16 in a column; the soil's own specks under it are a few)
+        assert all(t["rows"][r] >= 8 for r in (3, 7, 11, 15)) and max(t["cols"]) <= 10, t
+    game.stamp(3, -8, FIELD, levels=["2" * 5] * 5)
+    game.sleep(900)
+    assert max(game.js(DARK, [x + 4, y - 6])["cols"]) >= 12                                # on a hill: the patch's own edge
+    game.stamp(3, -8, ["." * 5] * 5, levels=["0" * 5] * 5)

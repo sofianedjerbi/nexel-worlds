@@ -169,7 +169,7 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
     for (k = low + 1; k <= Math.min(0, lv); k++) drawBlobLayer(g, edgeSheet("hill1"), x, y, up, ox, oy, 0);
   }
   const base = g.n;
-  if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy);           // paths, tilled soil, floors up on the hill
+  if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy, lv > 0);   // paths, tilled soil, floors up on the hill
   if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
   const hd = hash(x, y, 41);
   if (gr === "~" && hd < .09) {                      // shore water: lily pads, reeds, little rocks
@@ -197,8 +197,9 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
   b.ver = (b.ver || 0) + 1; landVer++;
 }
 // what's laid on the ground: tilled soil (wet or not), floors, ash, cobble
-function groundMarks(g, x, y, gr, ox, oy) {
-  if (gr === "o" || gr === "u") drawBlobLayer(g, IMG.tilled, x, y, (_, gg) => gg === "o" || gg === "u", ox, oy, 0);
+// (tilled soil: furrows over the whole tile, furrows.js; up on a hill, on its grass, the pack's patch)
+function groundMarks(g, x, y, gr, ox, oy, high = false) {
+  if (gr === "o" || gr === "u") { if (high) drawBlobLayer(g, IMG.tilled, x, y, (_, gg) => gg === "o" || gg === "u", ox, oy, 0); else g.drawImage(...Furrows.cell(x, y), 16, 16, ox, oy, 16, 16); }
   if (gr === "u") drawBlobLayer(g, IMG.tilled_wet, x, y, (_, gg) => gg === "u", ox, oy, 0);
   if (gr === "n") g.drawImage(IMG.bridge, 0, 32, 16, 16, ox, oy, 16, 16);
   if (gr === "'") drawBlobLayer(g, IMG.ash, x, y, (_, gg) => gg === "'", ox, oy, 0);
