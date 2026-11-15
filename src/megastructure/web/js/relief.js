@@ -15,17 +15,18 @@ const shOf = (L) => RELIEF_STEP * L;                          // how far up a le
 // brink, a tile short of a wall to the north. So: feet 5 px over the bottom, in line with the rocks and crops beside
 // it, the body in the middle of its tile. UP: the same in tiles (its dust, what flies to it, where it is looked for).
 const STAND = 3, UP = STAND / 16;
-const bodyY = (p, sy) => sy(p.y, p.x) - STAND * zoom;         // a body's place on screen (the top of its tile, lifted with its ground, and STAND)
+const bodyY = (p, sy) => sy(p.y) - liftOf(p) - STAND * zoom;      // a body's place on screen (the top of its tile, lifted with the ground it stands on, and STAND)
 
 // Something flying off from a spot (a puff, a spark, debris): it keeps the height of where it started, however it
 // drifts (it doesn't step up and down with the tiles it passes over)
 function liftFrom(o) { if (o.lift === undefined) o.lift = liftOf({x: o.x, y: o.y}); return o.lift; }
 // Screen px something on tile (x, y) is drawn higher by
 const liftAt = (x, y) => shOf(standAt(x, y)) * zoom;
-// ...and someone between two tiles: in proportion to how far along they are
+// ...and someone between two tiles: in proportion to how far along they are (a body: at its own height, where a
+// floor is built over a room: floors.js)
 function liftOf(p) {
   const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
-  const f = ax === bx ? p.y - ay : p.x - ax, a = liftAt(ax, ay), b = liftAt(bx, by);
+  const f = ax === bx ? p.y - ay : p.x - ax, a = shOf(Floors.standOf(p, ax, ay)) * zoom, b = shOf(Floors.standOf(p, bx, by)) * zoom;
   return a + (b - a) * f;
 }
 

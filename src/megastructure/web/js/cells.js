@@ -17,10 +17,14 @@ function colAt(x, y) {
 }
 const topAt = (x, y) => colTop(colAt(x, y));                                    // the land as seen from above
 const roofAt = (x, y) => { const t = tileIdx(x, y); return t && t[0].col && t[0].col[t[1]] !== undefined ? colTop(t[0].col[t[1]]) - floorAt(x, y) : 0; };   // over the lowest ground: how far up the land goes (0: open sky)
-const solidAt = (x, y, z) => z < LOW || (z - LOW < 32 && (colAt(x, y) >>> (z - LOW) & 1) === 1);
-const coveredAt = (x, y, z) => z - LOW < 31 && colAt(x, y) >>> (z - LOW + 1) !== 0;   // standing at z: something solid over you
+// What you walk on is the land and what is built over it (floors.js): a column with both. (colAt is the land alone:
+// what is painted as land, and what a cave is under.)
+const fullAt = (x, y) => (colAt(x, y) | Floors.mask(x, y)) >>> 0;
+const solidAt = (x, y, z) => z < LOW || (z - LOW < 32 && (fullAt(x, y) >>> (z - LOW) & 1) === 1);
+const landSolid = (x, y, z) => z < LOW || (z - LOW < 32 && (colAt(x, y) >>> (z - LOW) & 1) === 1);    // ...the land alone
+const coveredAt = (x, y, z) => z - LOW < 31 && colAt(x, y) >>> (z - LOW + 1) !== 0;   // standing at z: land over you (a cave)
 function surfacesAt(x, y) {                 // every height you can stand at, lowest first
-  const c = colAt(x, y), tops = (c & ~(c >>> 1)) >>> 0, out = [];
+  const c = fullAt(x, y), tops = (c & ~(c >>> 1)) >>> 0, out = [];
   for (let i = 0; i < 32; i++) if (tops >>> i & 1) out.push(i + LOW);
   return out;
 }
@@ -42,8 +46,8 @@ const levelAt = (x, y) => (peekFloors && inOpenCave(x, y) ? openCave.get(x + ","
 const standAt = (x, y) => (inOpenCave(x, y) ? openCave.get(x + "," + y) : topAt(x, y));   // ...and what's on the tile
 const hiddenAt = (x, y) => roofAt(x, y) > 0 && !inOpenCave(x, y);   // what lies on the lowest ground, under a hill you're not in
 
-let myAt = null;                            // your tile and the height you stand at (caves.js keeps it, as the server does)
-const myZ = (x, y) => (myAt && Math.abs(myAt.x - x) + Math.abs(myAt.y - y) <= 2 ? settleNear(x, y, myAt.z) : topAt(x, y));
+let myAt = null, myWas = null;             // your tile and the height you stand at (caves.js keeps it, as the server does); and the tile before
+const myZ = (x, y) => (myAt && myAt.x === x && myAt.y === y ? myAt.z : myAt && Math.abs(myAt.x - x) + Math.abs(myAt.y - y) <= 2 ? settleNear(x, y, myAt.z) : topAt(x, y));
 function settleNear(x, y, z) { return surfacesAt(x, y).reduce((a, v) => (Math.abs(v - z) < Math.abs(a - z) ? v : a)); }   // the ground nearest z
 function rimAt(x, y) {                      // as World.rim: lower ground around it (nothing built)
   const lv = floorAt(x, y);

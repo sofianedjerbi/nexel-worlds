@@ -5,7 +5,7 @@ import json
 from .gen import col_floor
 from .sim.constants import TICK_HZ
 from .sim.wild import WILD
-from .tiles import DIRS, GROUNDS
+from .tiles import BLOCKS, DIRS, GROUNDS, B
 
 QUEUE_MAX = 2000        # messages a spectator may have waiting: past that, new ones are dropped (Views._broadcast)
 
@@ -55,13 +55,14 @@ class Views:
         world = self.sim.world
         rows = ["".join(world.char(i, j) for i in range(x, x + w)) for j in range(y, y + h)]
         ground = ["".join(GROUNDS[world.get(i, j)[0]].char for i in range(x, x + w)) for j in range(y, y + h)]
-        # the land: a char per tile, 64 + its lowest ground's height (sea level "@"); and for the tiles where that
+        # the land (without what is built over it): a char per tile, 64 + its lowest ground's height (sea level "@"); and for the tiles where that
         # isn't all (a cave under a hill), their whole column of cells, by index in the region (gen.col_solid...)
-        raw = [world.col(i, j) for j in range(y, y + h) for i in range(x, x + w)]
+        raw = [self.sim.land_col(i, j) for j in range(y, y + h) for i in range(x, x + w)]
         levels = ["".join(chr(64 + col_floor(v)) for v in raw[j * w:(j + 1) * w]) for j in range(h)]
         cols = {str(i): v for i, v in enumerate(raw) if v & (v + 1)}
-        roofs = [(j - y) * w + i - x for i, j in self.sim.roofed.within(x, y, w, h)]      # (where a roof tile lies, by index: sim/roofing.py)
-        return {**({"cols": cols} if cols else {}), **({"roofs": roofs} if roofs else {}), "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
+        # what is built over the land (sim/storeys.py): [tile's index, height, kind, the char of what stands on it]
+        floors = [[(j - y) * w + i - x, z, kind, BLOCKS[B[thing]].char] for i, j, z, kind, thing in self.sim.floors.within(x, y, w, h)]
+        return {**({"cols": cols} if cols else {}), **({"floors": floors} if floors else {}), "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
                 "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}
 
     # ----------------------------------------------------------- what they are sent, as it happens

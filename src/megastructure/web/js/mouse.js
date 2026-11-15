@@ -5,10 +5,16 @@
 // =====================================================================================
 const mouse = {x: 0, y: 0, in: false};
 let drag = null;
+// How far up a tile is drawn, where you point at it: in build mode with the cursor lifted, at the cursor's height;
+// where something is built (floors.js), the floor nearest your own height; otherwise the land
+function aimLift(x, y) {
+  if (Build.on && Build.S.plane !== null) return shOf(Build.S.plane) * zoom;
+  return FLOORS && myAt && Floors.any(x, y) ? shOf(settleNear(x, y, myAt.z)) * zoom : liftAt(x, y);
+}
 function tileAtScreen(mx, my) {                        // -> {x, y, fy: how far down the tile, 0 to 1}
   const S = TS(), [ox, oy] = screenOrigin(S), x = Math.floor((mx - ox) / S), y = Math.floor((my - oy) / S);
   for (let j = 6; j > 0; j--) {                        // a level drawn higher (relief.js): the tile shown here, frontmost
-    const top = oy + (y + j) * S - liftAt(x, y + j);
+    const top = oy + (y + j) * S - aimLift(x, y + j);
     if (my >= top && my < top + S) return {x, y: y + j, fy: (my - top) / S};
   }
   return {x, y, fy: (my - oy) / S - y};

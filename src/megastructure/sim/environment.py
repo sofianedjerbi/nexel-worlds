@@ -107,7 +107,7 @@ class Environment:
                 x = cx * 32 + self.rng.randrange(32)
                 y = cy * 32 + self.rng.randrange(32)
                 # nature grows back what was there at the start (bushes, flowers, mushrooms), never more
-                if self.rng.random() < 0.1 and self.world.block(x, y) == "none" and self.entity_at(x, y) is None \
+                if self.rng.random() < 0.1 and self.world.block(x, y) == "none" and self.entity_at(x, y) is None and (x, y) not in self.floors.at \
                         and self.world.ground(x, y) in ("grass", "dirt") and (x, y) not in self.items:
                     orig = BLOCKS[gen_tile(self.world.seed, x, y, self.world.level(x, y))[1]].name
                     if orig in ("berry_bush", "flower", "mushroom"):

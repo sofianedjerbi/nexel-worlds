@@ -56,7 +56,7 @@ function connectSpec() {
       if (webStamp && d.web && d.web !== webStamp) location.reload();
       webStamp = d.web || webStamp;
       if (d.hp_max) { HP_MAX = d.hp_max; FOOD_MAX = d.food_max; SPRINT_FOOD = d.sprint_food; }
-      ROOFS = !!d.roofs;                             // (roofs laid a tile at a time: structures.js)
+      FLOORS = !!d.floors;                           // (blocks built over the land, stood on: floors.js)
       SWIM_SPRINT = !!d.swim_sprint; SWIM_PACE = d.swim_pace || 1; EAT_PACE = d.eat_pace || 1;
     } else if (d.type === "tick") onTick(d);
     else if (d.type === "event") onEvent(d.ev);
@@ -110,6 +110,7 @@ function onTick(d) {
     const key = e.kind + e.id; seen.add(key);
     let p = ents.get(key);
     if (!p) { p = {x: e.x, y: e.y, tx: e.x, ty: e.y, fx: 0, fy: 1, moved: 0}; ents.set(key, p); }
+    if (!p.zAt || p.zAt.x !== e.x || p.zAt.y !== e.y || p.zAt.z !== e.z) { p.zWas = p.zAt; p.zAt = {x: e.x, y: e.y, z: e.z}; }     // (its height, and the tile before: floors.js)
     p.e = e;
     if (e.kind === "agent" && e.id === myId && myTick(p, e, now)) continue;   // (your own walk is yours: walk.js)
     if (p.tx !== e.x || p.ty !== e.y) {
@@ -148,7 +149,12 @@ function onEvent(e) {
     if (old && blk) tileSound(old, blk, e);
     return;
   }
-  if (e.type === "roof") { Structures.setRoof(e.x, e.y, e.on); sfx(e.on ? "plant" : "rustle", e.x, e.y); return; }
+  if (e.type === "floor") {                         // (a block built or taken, or what stands on it: floors.js)
+    Floors.set(e.x, e.y, e.z, e.kind, e.thing);
+    if (e.cause === "dig") sfx("snap", e.x, e.y); else sfxPlaced(CH[e.thing] || "", "floor", e.x, e.y);
+    return;
+  }
+  if (e.type === "roof") { Floors.set(e.x, e.y, floorAt(e.x, e.y) + Floors.STOREY, e.on ? "roof" : null); sfx(e.on ? "plant" : "rustle", e.x, e.y); return; }     // (a server from before blocks)
   if (e.type === "say" || e.type === "shout") { const em = emoteFor(e.text); if (em) setTimeout(() => emote(e.from, em), 2500); }
   if (e.type === "give") { emote(e.to, "love"); emote(e.from, "happy"); }
   if (e.type === "craft") emote(e.name, "star");

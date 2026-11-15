@@ -70,7 +70,7 @@ function facingIntent(alt) {
   const faced = intent(q, alt);
   if (useful(faced) && inReach(q, faced)) return {p: q, it: faced};
   // a pickaxe in hand, facing higher ground with nothing on it: cut into it (it comes down a layer)
-  if (inHand() === "pickaxe" && solidAt(q.x, q.y, myZ(s.x, s.y) + 1) && GROUND.has(combAt(q.x, q.y)))
+  if (inHand() === "pickaxe" && landSolid(q.x, q.y, myZ(s.x, s.y) + 1) && GROUND.has(combAt(q.x, q.y)))
     return {p: q, it: {text: "Dig into the hill", flat: true, run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
   // X with a pickaxe and nothing else to use it on: dig down where you stand
   if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !":n".includes(under))

@@ -9,8 +9,8 @@ const HELP = [
     [["Click"], "Space there. Shift: X"]]],
   ["Carry", [[["1-9", "Q"], "Take in hand"], [["`"], "Empty your hands"], [["Space"], "Place what you hold"],
     [["I"], "Inventory"], [["C"], "Craft"]]],
-  ["Build", [[["B"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan the piece in hand"], [["X"], "Take back, or take down"],
-    [["Hold"], "Space or X + move: a row"]]],
+  ["Build", [[["B"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Take back, or take down"],
+    [["R", "F"], "Cursor a floor up, down"]]],
   ["Talk", [[["Enter"], "Talk"], [["ABC"], "Shout: IN CAPITALS"], [["Tab"], "Hold: who is awake"],
     [["M"], "Sound on or off"]]],
 ];

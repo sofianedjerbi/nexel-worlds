@@ -21,19 +21,21 @@ TOOL_SPECS = {
     "step": {"args": {**DIR_ARG, "run": "bool (optional, sprint: 2x speed)"}, "desc": "move one tile"},
     "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped"},
     "stop": {"args": {}, "desc": "stop the current action"},   # (a player's screen also says walk's `from`, stop's `at`: Movement.follow)
-    "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
+    "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)", "z": "int (optional): a height there, a floor built over a room"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
     "dig_down": {"args": {"with": "pickaxe"}, "desc": "dig down where you stand (pickaxe in hand). The block "
                  "under your feet goes and you come down with it, on a hill or into a pit below sea level (down to "
                  "-12); over a hollow you fall in (a fall of more than 3 layers hurts: 5 hp a layer). You can jump "
                  "onto ground one layer higher; higher than that is a wall: dig toward it with a pickaxe to take out "
                  "the block in front of you (a tunnel). Caves are empty space under the hills (in_cave in your stats)"},
-    "dig": {"args": {**DIR_ARG, "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)"},
+    "dig": {"args": {**DIR_ARG, "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)", "z": "int (optional): the height of something built over the ground"},
             "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground (needs a hoe). By hand, "
-                    "wood takes 4x and stone 6x as long as with an axe / pickaxe; ore needs a pickaxe"},
-    "place": {"args": {**DIR_ARG, "item": "str", "text": "str (flags only, optional)"},
-              "desc": "place an item: furniture/walls/etc. as blocks; dirt fills holes or water, path lays cobble, plank makes a bridge (water) or floor (land); "
-                      "roof lays a roof tile over that tile (it rests on a wall or door, or on a roof tile beside it, within 3 tiles of a wall; under a roof you are sheltered)"},
-    "unroof": {"args": {**DIR_ARG}, "desc": "take the roof tile over that tile back into your pack"},
+                    "wood takes 4x and stone 6x as long as with an axe / pickaxe; ore needs a pickaxe. A built block in front of you (a step, "
+                    "the floor you stand level with) comes back into your pack, what stands on it first"},
+    "place": {"args": {**DIR_ARG, "item": "str", "text": "str (flags only, optional)", "z": "int (optional): a height, to build over the ground"},
+              "desc": "place an item: furniture/walls/etc. as blocks; dirt fills holes or water, and on open ground raises it a layer; path lays cobble, plank makes a bridge (water) or floor (land); "
+                      "roof lays a roof block over that tile, a storey up (3 layers: it rests on a wall or door under it, or holds to a block beside it; you can stand on it; under a roof you are sheltered). "
+                      "With z, plank or roof is a block in that cell (on the block under it: a step; or a storey over a wall; or beside a block), and a wall, door, bed... stands on the block built at that height"},
+    "unroof": {"args": {**DIR_ARG}, "desc": "take the block built over that tile (a roof, a floor) back into your pack"},
     "pick_up": {"args": {"item": "str (optional)"}, "desc": "pick up items on your tile"},
     "drop": {"args": {"item": "str", "n": "int"}, "desc": "drop items on your tile"},
     "craft": {"args": {"recipe": "str", "n": "int (optional)"}, "desc": "craft from the recipe book"},

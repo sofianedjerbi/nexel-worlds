@@ -29,7 +29,7 @@ function setCaveOpen() {
       let z = myAt && Math.abs(myAt.x - x) + Math.abs(myAt.y - y) === 1 ? landAt(myAt.z, x, y, myAt.x, myAt.y) : null;
       const told = me.e && me.e.z !== undefined ? me.e.z : meObs && meObs.self.z !== undefined ? meObs.self.z : 99;
       if (z === null) z = settleAt(x, y, told);              // (woken, moved: where the server has you)
-      myAt = {x, y, z};
+      myWas = myAt; myAt = {x, y, z};
     } else myAt.z = settleAt(x, y, myAt.z);                  // (the ground dug from under you: down you come)
     // standing where the server has you: its height for you is the truth (yours can go stale: a fall you didn't see,
     // a respawn; you then couldn't step off a height you weren't on)
@@ -69,7 +69,7 @@ function shownVoids(x, y, dx, dy) {
   }
   return out;
 }
-const shownCell = (x, y, z, dx, dy) => !inOpenCave(x, y) && z > topAt(x + dx, y + dy) && z < topAt(x, y) && !solidAt(x, y, z);
+const shownCell = (x, y, z, dx, dy) => !inOpenCave(x, y) && z > topAt(x + dx, y + dy) && z < topAt(x, y) && !landSolid(x, y, z);
 // The openings on one face of a hill tile, a cell at a time: an opening is only the empty cells that show there, so
 // cells side by side or one over the other (on this tile or the next along the face) run together into one hole of
 // whatever shape they make. (X, Y): the tile's corner at sea level, in art px. Always in the hill's wall: facing south

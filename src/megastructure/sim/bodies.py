@@ -6,6 +6,7 @@ ground under it there (a fall, however far). Under a hill it is in a cave, at th
 Who may go where is each kind's own business (people: Movement, with water, boats and falls that hurt; creatures:
 Animals, which take no door and no fall that would hurt them); where they end up, and how far they reach, is here."""
 
+from ..gen import LOW
 from ..tiles import DIRS
 from .constants import FALL_SAFE, LAYER, TARGET_R
 from .entities import ActionError
@@ -22,17 +23,20 @@ class Bodies:
         return b.z
 
     def in_cave(self, b) -> bool:
-        """Something solid over its head."""
-        return self.world.covered(b.x, b.y, self.height(b))
+        """Land over its head (not a floor or a roof somebody built: storeys.py)."""
+        return bool(self.land_col(b.x, b.y) >> (self.height(b) - LOW + 1))
 
     def landing(self, b, x: int, y: int) -> int | None:
         """The height a step to the neighbouring (x, y) lands at, or None (a wall). Where the cell at your body's
         height is solid there you jump up onto it if it is ground (nothing over it, nor over your own head: under a
         low ceiling there is no jumping out through it); where it is empty you step in at your own height and come
         down on whatever ground is under you there (a fall, however far)."""
-        h = self.height(b)
+        return self.lands(self.height(b), b.x, b.y, x, y)
+
+    def lands(self, h: int, x0: int, y0: int, x: int, y: int) -> int | None:
+        """...the same, for anyone standing at height h on (x0, y0) (the way somewhere is worked out with it)."""
         if self.world.solid(x, y, h + 1):                # (a jump: room over it, and over your own head to make it)
-            return None if self.world.solid(x, y, h + 2) or self.world.solid(b.x, b.y, h + 2) else h + 1
+            return None if self.world.solid(x, y, h + 2) or self.world.solid(x0, y0, h + 2) else h + 1
         return max(z for z in self.world.surfaces(x, y) if z <= h)
 
     def safe_step(self, b, x: int, y: int) -> bool:

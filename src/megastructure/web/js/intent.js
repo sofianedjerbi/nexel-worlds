@@ -9,14 +9,16 @@ function plainWalk(x, y) {
   return WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
 }
 function walkable(x, y, fx, fy) {               // (fx, fy): where you come from: a layer up or down at most
-  return plainWalk(x, y) && (fx === undefined || canStep(fx, fy, x, y));
+  if (fx === undefined) return plainWalk(x, y);
+  const z = landAt(myZ(fx, fy), x, y, fx, fy), c = z === null ? null : Floors.get(x, y, z);     // (on a built block, what stands on it is what counts: floors.js)
+  return z !== null && (c && FLOORS ? !SOLID.has(c[1]) : plainWalk(x, y));
 }
 // ---- what a click does, decided per tile (also shown as the cursor hint) ----------------
 const FILLS = {dirt: {o: ",", u: ",", "~": ",", "(": "~", "=": "(", ")": "="}, path: {".": "_", ",": "_", "'": "_"}, plank: {"~": ":", ".": "n", ",": "n", "'": "n"}};
 const FILL_TEXT = {",": "Fill with dirt", "~": "Raise the bottom", "(": "Raise the bottom", "=": "Raise the bottom", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
 const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
 const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C", well: "Y", coop: "J", picnic_blanket: "m", basket: "q", trough: "e", hay: "y"};
-PLACEABLE_BLOCK.roof = "roof";                       // (in hand a roof is something you place: not a thing on the tile, a tile over it: structures.js)
+PLACEABLE_BLOCK.roof = "roof";                       // (in hand a roof is something you place: not a thing on the tile, a block over it: floors.js)
 const HARVEST = {t: "Dig up the stump", U: "Chop tree (the fruit grows back if you wait)", v: "Cut the bush (fiber)", e: "Take down the trough (and what's in it)", y: "Pick up the hay bale", Y: "Take down the well", J: "Take down the coop", m: "Roll up the blanket", q: "Take the basket", X: "Take down mailbox", V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", R: "Mine rock wall", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
@@ -68,12 +70,6 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   const placing = selected && !shift && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed");
   const hasBlock = !GROUND.has(c) && !(flower && placing);   // building over a flower picks it
   const isMe = p.x === s.x && p.y === s.y;
-  if (selected === "roof") {                     // a roof tile: over the tile, whatever is on it (structures.js)
-    const on = Structures.roofAt(p.x, p.y), rests = Structures.WALLS.includes(c) || Object.values(DIRV).some(([dx, dy]) => Structures.roofAt(p.x + dx, p.y + dy) || Structures.WALLS.includes(combAt(p.x + dx, p.y + dy) || "-"));
-    if (shift) return on ? {text: "Take the roof tile off", near: 1, run: (d) => act("unroof", {dir: d})} : {text: "No roof there", ok: false};
-    return !ROOFS ? {text: "This world roofs its houses by itself", ok: false} : on ? {text: "There is a roof here", ghost: "roof", ok: false}
-      : rests ? {text: "Lay roof", ghost: "roof", ok: true, near: 1, run: (d) => act("place", {dir: d, item: "roof"})} : {text: "Needs a wall or roof beside", ghost: "roof", ok: false};
-  }
   if (ent) {
     const who = ent.e.name || ent.e.kind, w = inHand(), weapon = w && WEAPON_DMG[w] ? w : null;
     if (ANIMALS[ent.e.kind] && selected && FEEDS.includes(selected) && !shift)
@@ -93,6 +89,8 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     return {ent, text: weapon ? `Attack ${who} with ${label(weapon)}${tail}` : `Punch ${who}${tail}`, near: reachOf(weapon), diag: true, attack: true,
       run: () => act("attack", weapon ? {target: ent.e.id, with: weapon} : {target: ent.e.id})};
   }
+  const up = Floors.intent(p, shift);            // (a block in hand, or a built block under what you aim at: floors.js)
+  if (up) return up;
   // your own tile: something growing under your feet (a flower, a mushroom, a crop) is picked; otherwise pick up items
   const underfoot = isMe && hasBlock && !SOLID.has(c);
   if (isMe && !underfoot && !(selected && !shift && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed")))
@@ -197,7 +195,7 @@ const standsAt = (o) => (o.e && o.e.z !== undefined ? o.e.z : floorAt(o.tx, o.ty
 function inReach(p, it, flat = it.flat) {                       // (it.flat: a wall you dig into is at your own height, whatever is on top of it)
   const s = myPos(); if (!s) return false;
   const tiles = it.foot && !it.from ? it.foot : [p];            // a structure: any of its tiles will do
-  const reach = it.attack ? it.near : USE_R, z = it.ent ? standsAt(it.ent) : undefined;
+  const reach = it.attack ? it.near : USE_R, z = it.ent ? standsAt(it.ent) : it.z;
   return tiles.some((q) => reaches(q.x, q.y, reach, z, flat))
     && !(it.foot && it.from && it.foot.some((q) => q.x === s.x && q.y === s.y));   // not standing in a new structure's spot
 }

@@ -53,7 +53,7 @@ class Observation:
         # heights, same window: a digit per tile (0 is low ground), a capital letter (B = 1...) for stairs going south;
         # only sent when there is any relief in view
         inside = self.in_cave(a)            # (outside the caves, their roofs are the ground)
-        heights = ["".join(height_char(self.world.level(x, y) + (0 if inside else self.world.roof(x, y))) for x in range(a.x - R, a.x + R + 1))
+        heights = ["".join(height_char(self.world.level(x, y) + (0 if inside else self.land_roof(x, y))) for x in range(a.x - R, a.x + R + 1))
                    for y in range(a.y - R, a.y + R + 1)]
         if all(set(h) <= {"0"} for h in heights):
             heights = None

@@ -85,23 +85,19 @@ function frame(now) {
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (hiddenAt(x, y)) continue;                     // (in a cave, seen from outside: under its roof)
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
-    if (ROOFS && Structures.WALLS.includes(c)) { list.push({y, x, fx: () => Structures.drawWall(c, x, y, sx, sy, S, now)}); continue; }   // (a wall, a door: structures.js)
+    if (Structures.WALLS.includes(c)) { list.push({y, x, fx: () => Structures.drawWall(c, x, y, sx, sy, S, now)}); continue; }   // (a wall, a door: structures.js)
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
   }
   // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
   occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent").map((p) => Math.round(p.x) + "," + Math.round(p.y)));
   const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && b.relief); };
   // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
-  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p)) list.push({y: p.y + .01, p});
+  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p)) list.push({y: p.y + .01 + Floors.rise(p) * Floors.K, p});
   for (const [ix, iy, pile] of groundItems) if (!hiddenAt(ix, iy)) list.push({y: iy - .01, x: ix, ty: iy, pile});   // (ty: its tile; y sorts)
   if (pileSince.size) { const here = new Set(groundItems.map(([ix, iy]) => ix + "," + iy)); for (const k of pileSince.keys()) if (!here.has(k) || lootAt(...k.split(",").map(Number))) pileSince.delete(k); }
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)
   drawOrbs(sx, sy, S, dt, list);
-  if (ROOFS) Structures.roofs(vis, list, sx, sy, S);                         // (roof tiles, laid by hand: structures.js)
-  else {                                             // (a server from before them: a roof over every closed room, houses.js)
-    if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
-    drawHouses(sx, sy, S, dt, now, list);
-  }
+  if (worldReady) Floors.draw(vis, list, sx, sy, S, t, now);                 // (what is built over the land: floors, roofs, what stands on them: floors.js)
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const o of list) {
     selMeasure(o);
@@ -181,10 +177,10 @@ function frame(now) {
 function drawIntent(p, it, sx, sy, S, t, ox, oy) {
   if (it && it.ghost) {
     ctx.globalAlpha = .7;
-    const built = ROOFS && Structures.WALLS.includes(PLACEABLE_BLOCK[it.ghost] || "-");        // (a wall, a door: as it will stand, structures.js)
-    if (it.ghost === "roof") Structures.drawRoof(p.x, p.y, sx, sy, S, .6);
+    const up = it.z !== undefined, built = !up && Structures.WALLS.includes(PLACEABLE_BLOCK[it.ghost] || "-");        // (a wall, a door: as it will stand, structures.js)
+    if (up && !it.ghostGround) (it.ghost === "roof" || it.ghost === "plank" ? Floors.cell(it.ghost, p.x, p.y, it.z, sx, sy, S, .6) : Floors.thing(PLACEABLE_BLOCK[it.ghost], p.x, p.y, it.z, sx, sy, S, t, 0, .6));   // (over the ground: floors.js)
     if (built) Structures.drawWall(PLACEABLE_BLOCK[it.ghost], p.x, p.y, sx, sy, S, 0, .6);
-    const spr = built ? null : it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
+    const spr = built || (up && !it.ghostGround) ? null : it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
       : it.ghost === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(p.x, p.y)] * 16, 16, 16, 0, -2]
       : objectSprite(PLACEABLE_BLOCK[it.ghost], it.anchor ? it.anchor.x : p.x, it.anchor ? it.anchor.y : p.y, t);
     const gx = it.anchor ? it.anchor.x : p.x, gy = it.anchor ? it.anchor.y : p.y;
@@ -192,7 +188,7 @@ function drawIntent(p, it, sx, sy, S, t, ox, oy) {
     ctx.globalAlpha = 1;
     for (const q of it.foot || [p]) {
       ctx.fillStyle = it.ok && !(it.bad || []).some((b) => b.x === q.x && b.y === q.y) ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)";
-      ctx.fillRect(sx(q.x), sy(q.y, q.x), S, S);
+      ctx.fillRect(sx(q.x), it.z !== undefined ? sy(q.y) - shOf(it.z) * zoom : sy(q.y, q.x), S, S);
     }
   }
   // what the selector goes around, in tiles: the aimed creature, person or thing as it was just drawn (selector.js),
@@ -202,7 +198,7 @@ function drawIntent(p, it, sx, sy, S, t, ox, oy) {
   const drawn = selTarget(p, it, ox, oy, S);
   if (drawn) return {...drawn, bad};
   if (it.ent) return {x0: it.ent.x, y0: it.ent.y, x1: it.ent.x + 1, y1: it.ent.y + 1, bad};   // until it's been drawn once
-  const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y), up = liftAt(p.x, p.y) / S;   // (as drawn)
+  const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y), up = (it.z !== undefined ? shOf(it.z) * zoom : liftAt(p.x, p.y)) / S;   // (as drawn)
   return {x0: Math.min(...xs), y0: Math.min(...ys) - up, x1: Math.max(...xs) + 1, y1: Math.max(...ys) + 1 - up, bad};
 }
 

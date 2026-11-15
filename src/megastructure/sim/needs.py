@@ -90,12 +90,13 @@ class Needs:
     def _tool_sleep(self, a, args):
         """Lie down in a bed nearby: you'll wake up there after dying (and it heals a little)."""
         x, y = self.target(a, args)
-        if self.world.block(x, y) != "bed":
+        z = self.surface(a, x, y)                          # (a bed upstairs: on the floor nearest your own height)
+        if self.thing(x, y, z) != "bed":
             raise ActionError("no_bed", f"{args.get('dir')} is {self.describe(x, y)}, not a bed")
         yield from self.wait(a, 1)
         a.hp = min(HP_MAX, a.hp + 2)
-        a.spawn = [x, y]
-        return {"spawn": [x, y]}
+        a.spawn = [x, y, z] if self.floors.get(x, y, z) else [x, y]
+        return {"spawn": a.spawn}
 
     def _tool_water(self, a, args):
         """Water a planted tile with a watering can: it grows twice as fast until the next stage."""

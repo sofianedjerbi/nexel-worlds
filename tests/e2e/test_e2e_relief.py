@@ -38,7 +38,7 @@ def test_world_to_screen_is_lifted_in_one_place(game):
     for f in ("drawEntity", "drawNameplate", "drawLoot"):          # the things in the world go through it (a body: through bodyY, which is sy and where a body stands in its tile)
         src = game.js(f"{f}.toString()")
         assert "bodyY(p, sy)" in src or "sy(l.y, l.x)" in src
-    assert "sy(p.y, p.x)" in game.js("bodyY.toString()")
+    assert "liftOf(p)" in game.js("bodyY.toString()")              # (a body: lifted with the ground it stands on, which over a room is a floor: floors.js)
 
 
 def test_picked_up_items_fly_smoothly_on_high_ground(game):

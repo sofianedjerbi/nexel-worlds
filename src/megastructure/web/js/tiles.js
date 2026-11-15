@@ -53,7 +53,6 @@ function setTile(x, y, comb, gnd, who = null, col = null) {    // (col: its colu
   if (gnd === "o" && b.gnd[i] !== "o") debris(x, y, null, 6, {kind: "o", dust: true});
   b.comb[i] = comb; b.gnd[i] = gnd;
   b.objs.delete(i); if (isObject(comb)) b.objs.set(i, comb);
-  if (ENCLOSE.has(old) || ENCLOSE.has(comb)) roomsDirty = true;
   touch(x, y);
 }
 function onRegion(d) {
@@ -69,11 +68,11 @@ function onRegion(d) {
       if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && c === colAt(bx * B + i % B, by * B + (i / B | 0))) continue;
       setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, c);
     }
-    old.roofs = new Set(d.roofs || []); roofVer++;
+    Floors.load(old, d);
     old.at = performance.now(); return;
   }
-  const b = {bx, by, comb, gnd, lv, col, objs: new Map(), drawn: false, canvas: null, at: performance.now(), roofs: new Set(d.roofs || [])};   // (roofs: where a roof tile lies, structures.js)
-  roofVer++;
+  const b = {bx, by, comb, gnd, lv, col, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
+  Floors.load(b, d);                                 // (what is built over its land: floors.js)
   comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
   blocks.set(k, b);
   // neighbours' edge tiles depend on this block for autotiling

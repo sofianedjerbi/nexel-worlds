@@ -33,6 +33,9 @@ class Building:
         return g if b == "none" else f"{b} on {g}"
 
     def _tool_dig(self, a, args):
+        up = self.dig_up(a, args)                          # (a block built over the ground, or what stands on one: storeys.py)
+        if up is not None:
+            return (yield from up)
         x, y = self.resolve(*self.target(a, args, flat=True))   # (flat: a wall is dug at your own height, whatever is on top of it)
         g, b = self.world.get(x, y)
         block, ground = BLOCKS[b], GROUNDS[g]
@@ -117,8 +120,9 @@ class Building:
         return out
 
     def _tool_place(self, a, args):
-        if args.get("item") == "roof":                     # (a roof is laid over the tile, whatever is on it: roofing.py)
-            return (yield from self.lay_roof(a, args))
+        up = self.place_up(a, args)                        # (a block for a cell over the ground, a thing for a built block, earth: storeys.py)
+        if up is not None:
+            return (yield from up)
         x, y = self.target(a, args)
         item = str(args.get("item", ""))
         if self.world.rim(x, y):

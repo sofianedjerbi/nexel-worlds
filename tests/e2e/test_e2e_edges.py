@@ -132,26 +132,21 @@ def test_tilled_soil_is_furrows_not_a_line_round_a_patch(game):
 
 HOUSE = ["WWWWW", "WnnnW", "WnnnW", "WW+WW"]
 # one frame: what was drawn of the house's front and of you, in the order it was drawn
-ORDER = """() => new Promise((ok) => { const seq = [], f = window.drawFront, w = Structures.drawWall, e = window.drawEntity;
-  window.drawFront = function (...a) { seq.push('front'); return f(...a); };
+ORDER = """() => new Promise((ok) => { const seq = [], w = Structures.drawWall, e = window.drawEntity;
   Structures.drawWall = function (...a) { seq.push('front'); return w(...a); };
   window.drawEntity = function (p, ...a) { if (p.e.id === myId) seq.push('me'); return e(p, ...a); };
-  requestAnimationFrame(() => requestAnimationFrame(() => { window.drawFront = f; Structures.drawWall = w; window.drawEntity = e; ok(seq.slice(-2)); })); })"""
+  requestAnimationFrame(() => requestAnimationFrame(() => { Structures.drawWall = w; window.drawEntity = e; ok(seq.slice(-2)); })); })"""
 
 
 def test_a_house_is_under_what_stands_before_it(game):
     """Houses were drawn last, over everything: the front wall hid the head of whoever stood before the door, and
     the mailbox beside it ("house layer is weird, it goes above mailbox and players"). A house is drawn in its
-    place, at its front wall's row (web/js/houses.js): you before its door are drawn after it. And a mailbox with a
+    place, each wall at its own row (web/js/structures.js): you before its door are drawn after it. And a mailbox with a
     letter in it shows the whole of the letter's bubble (the sheet's rows 62 to 88: it was cut from 64)."""
     x, y = game.pos()
     game.stamp(-2, -4, HOUSE, levels=["0" * 5] * 4)            # its door straight over you
     game.sleep(1200)
-    assert game.js("ROOFS") is True and game.js(ORDER) == ["front", "me"]                 # its walls, each drawn in its place: you after them
-    game.js("ROOFS = false")                                   # (a server from before roofs were laid by hand: the house as it was drawn then)
-    game.sleep(900)
-    assert game.js("rooms.length") >= 1 and game.js(ORDER) == ["front", "me"]
-    game.js("ROOFS = true")
+    assert game.js(ORDER) == ["front", "me"]                   # its walls, each drawn in its place: you after them
     letter = game.js("([x, y]) => { const was = mailAt; mailAt = new Set([x + ',' + y]); const s = objectSprite('X', x, y, .6); mailAt = was; return [s[2], s[2] + s[4], s[6] + s[4]]; }", [x + 3, y])
     assert letter[0] <= 62 and letter[1] >= 89 and letter[2] == 16, letter                 # all of it; its foot where it was
     game.stamp(-2, -4, ["." * 5] * 4)

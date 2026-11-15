@@ -1,7 +1,7 @@
 """Walking, pathfinding and sailing: strides, steps, walks and move_to."""
 
 from ..pathfind import astar
-from ..tiles import BLOCKS, DIRS, GROUNDS
+from ..tiles import BLOCKS, DIRS, GROUNDS, B
 from .constants import EAT_PACE, FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
@@ -11,9 +11,13 @@ class Movement:
 
     # ============================================================== tools
 
-    def can_enter(self, a: Agent, x: int, y: int) -> bool:
+    def can_enter(self, a: Agent, x: int, y: int, z: int | None = None) -> bool:
         """Walkers stay on land or swim (on top of the water, whatever its depth); a moored boat can be boarded; sailors
-        move over the water faster and may step ashore."""
+        move over the water faster and may step ashore. z: the height they would stand at there: on a built block
+        (storeys.py), what stands on that block is what counts, not the ground under it."""
+        cell = self.floors.get(x, y, z) if z is not None else None
+        if cell is not None:
+            return not BLOCKS[B[cell[1]]].solid
         g, b = self.world.get(x, y)
         ground, block = GROUNDS[g], BLOCKS[b]
         if ground.liquid:
@@ -21,17 +25,19 @@ class Movement:
         return ground.walkable and not block.solid
 
     def swimming(self, a: Agent) -> bool:
-        """In the water without a boat."""
-        return not a.sailing and GROUNDS[self.world.get(a.x, a.y)[0]].liquid
+        """In the water without a boat (not on something built over it)."""
+        return not a.sailing and GROUNDS[self.world.get(a.x, a.y)[0]].liquid and self.floors.get(a.x, a.y, self.height(a)) is None
 
     def can_go(self, a: Agent, x: int, y: int) -> bool:
-        """From where `a` stands to the neighbouring (x, y): the tile can be entered, and isn't a wall."""
-        return self.can_enter(a, x, y) and self.landing(a, x, y) is not None
+        """From where `a` stands to the neighbouring (x, y): it isn't a wall, and where they'd land can be entered."""
+        land = self.landing(a, x, y)
+        return land is not None and self.can_enter(a, x, y, land)
 
     def why_not(self, a: Agent, x: int, y: int) -> str:
-        if self.can_enter(a, x, y) and self.landing(a, x, y) is None:
+        land = self.landing(a, x, y)
+        if land is None and self.can_enter(a, x, y):
             return "a wall, too high to jump (dig into it: dig with a pickaxe)"
-        return self.describe(x, y)
+        return self.thing(x, y, land).replace("_", " ") if land is not None and self.floors.get(x, y, land) else self.describe(x, y)
 
     def fell(self, a: Agent, layers: int) -> dict:
         """Coming down `layers` at once: up to FALL_SAFE is nothing, each layer more hurts."""
@@ -182,12 +188,21 @@ class Movement:
         except (KeyError, TypeError, ValueError):
             raise ActionError("bad_args", "move_to needs integer x and y")
         replans = 0
-        ok = lambda x, y: self.can_enter(a, x, y) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
-        # the way goes up a layer at a time and never down a fall that hurts (except a single step you ask for: the
-        # tile beside you, off an edge)
+        ok = lambda x, y, z: self.can_enter(a, x, y, z) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
+        # the way is worked out with heights (a floor over a room is another place than the room): up a layer at a
+        # time, by the steps there are, and never down a fall that hurts (except a single step you ask for: the tile
+        # beside you, off an edge). A tile nobody can stand on: to beside it
         drop = 99 if abs(gx - a.x) + abs(gy - a.y) == 1 else FALL_SAFE
-        step = lambda p, q: any(-drop <= j - i <= 1 for i in self.world.surfaces(*p) for j in self.world.surfaces(*q))
-        path = astar(ok, (a.x, a.y), (gx, gy), step=step)
+
+        def moves(n):
+            for dx, dy in DIRS.values():
+                land = self.lands(n[2], n[0], n[1], n[0] + dx, n[1] + dy)
+                if land is not None and n[2] - land <= drop and ok(n[0] + dx, n[1] + dy, land):
+                    yield (n[0] + dx, n[1] + dy, land)
+        gz = args.get("z") if type(args.get("z")) is int and args["z"] in self.world.surfaces(gx, gy) else None     # (z: that tile at that height: the floor over a room)
+        beside = not any(ok(gx, gy, z) for z in ([gz] if gz is not None else self.world.surfaces(gx, gy)))
+        way = lambda: astar((a.x, a.y, self.height(a)), (gx, gy) if gz is None else (gx, gy, gz), moves, beside=beside)
+        path = way()
         if path is None:
             far = abs(gx - a.x) + abs(gy - a.y) > 64
             raise ActionError("no_path", "target further than 64 tiles" if far else
@@ -195,11 +210,11 @@ class Movement:
         steps = 0
         while path:
             yield from self.pace(a, args)
-            nx, ny = path[0]
-            land = self.landing(a, nx, ny) if self.can_enter(a, nx, ny) else None
-            if land is None or self.height(a) - land > drop:
+            nx, ny = path[0][:2]
+            land = self.landing(a, nx, ny)
+            if land is None or self.height(a) - land > drop or not ok(nx, ny, land):
                 replans += 1
-                path = astar(ok, (a.x, a.y), (gx, gy), step=step) if replans <= 2 else None
+                path = way() if replans <= 2 else None
                 if path is None:
                     raise ActionError("blocked", f"path blocked at ({nx},{ny}); stopped at ({a.x},{a.y})")
                 continue

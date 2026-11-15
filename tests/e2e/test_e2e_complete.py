@@ -26,19 +26,21 @@ def test_a_command_is_built_with_tab_and_the_arrows(game):
         page.fill("#say", typed)
         assert game.js(ROWS) == rows, typed
     page.keyboard.press("Tab")
-    assert game.js(LINE) == "/dig " and game.js(ROWS) == ["dir=", "with="]
+    assert game.js(LINE) == "/dig " and game.js(ROWS) == ["dir=", "with=", "z="]      # (z: the height of something built over the ground)
     page.keyboard.press("Tab")
     assert game.js(LINE) == "/dig dir=" and game.js(ROWS) == ["N", "E", "S", "W"]
     for key in ("ArrowDown", "ArrowDown", "ArrowUp"):
         page.keyboard.press(key)
     assert game.js("$('sayhelp').querySelector('.on b').textContent") == "E"
     page.keyboard.press("Tab")
-    assert game.js(LINE) == "/dig dir=E " and game.js(ROWS) == ["with="]    # (what is given already is not offered again)
+    assert game.js(LINE) == "/dig dir=E " and game.js(ROWS) == ["with=", "z="]    # (what is given already is not offered again)
     page.keyboard.press("Tab")
     assert game.js(LINE) == "/dig dir=E with=" and set(game.js(ROWS)) == {"wood", "berries"}   # what you carry
     page.keyboard.type("wo")
     page.keyboard.press("Tab")
-    assert game.js(LINE) == "/dig dir=E with=wood " and game.js(ROWS) == [] and game.js("$('sayhelp').style.display") == "none"
+    assert game.js(LINE) == "/dig dir=E with=wood " and game.js(ROWS) == ["z="]          # (only what is left)
+    page.keyboard.type("z=0 ")
+    assert game.js(ROWS) == [] and game.js("$('sayhelp').style.display") == "none"     # nothing left: no list
     assert game.js(OPEN) is True                                        # (Tab never leaves the line)
     page.keyboard.press("Escape")
     assert game.js("$('sayhelp').style.display") == "none" and not game.js("$('chatbox').classList.contains('open')")

@@ -18,7 +18,7 @@ def test_a_wall_is_planned_with_a_cursor_and_built_by_keys_alone(game):
     game.press("ArrowRight"); game.press("ArrowRight")         # the cursor moves; you do not
     assert game.js("[Build.S.at.x, Build.S.at.y]") == [x + 2, y + 1] and game.pos() == (x, y)
     rows = game.js("Build.rows()")                             # the corner: the mode's name, and only the keys that do something here
-    assert [r[0] for r in rows] == ["B", "Space"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"
+    assert [r[0] for r in rows] == ["B", "Space", "R"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"     # (R: the cursor up a floor)
     assert all(len(r[1]) <= 26 for r in rows)                  # (short: a long line ran under the bar)
     kb.down("Space")                                           # held: a row of four
     for _ in range(3):
@@ -44,18 +44,19 @@ def test_a_wall_is_planned_with_a_cursor_and_built_by_keys_alone(game):
     assert game.js("Build.on") is False and not game.errors
 
 
-ROW = "([x, y, n]) => { let s = ''; for (let i = 0; i < n; i++) s += Structures.roofAt(x + i, y) ? 'r' : '.'; return s; }"
+ROW = "([x, y, n]) => { let s = ''; for (let i = 0; i < n; i++) s += (Floors.get(x + i, y, 3) || [])[0] === 'roof' ? 'r' : '.'; return s; }"
 
 
-def test_a_roof_is_laid_a_tile_at_a_time_and_seen_through_from_under_it(game):
-    """A roof came by itself, whole, the moment walls closed a room. It is a piece like the rest (a `roof`, from
-    wood): laid on a wall or beside a roof tile, planned with the cursor, taken back with X; and whoever stands
-    under a roof sees through all of it."""
+def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
+    """A roof came by itself, whole, the moment walls closed a room; then it was a tile laid over a tile by a rule of
+    its own. It is a block like the rest (a `roof`, from wood): a storey up, on a wall or beside a block, planned
+    with the cursor (with a roof in hand, over what the cursor is on), taken back with X; and whoever stands under
+    it sees through all of it."""
     game.clear_area(8)
     x, y = game.pos()
     game.stamp(2, -3, ["WWWW", "W..W", "WW+W"])               # walls and a door, no roof: nothing draws one by itself
     game.sleep(700)
-    assert game.js("ROOFS") is True and game.js(ROW, [x + 2, y - 3, 4]) == "...."
+    assert game.js("FLOORS") is True and game.js(ROW, [x + 2, y - 3, 4]) == "...."
     # what was wrong in the clip: a door that looked like a window in hand and as a plan, a floor that let the grass through
     assert game.js("objectSprite('+', 0, 0, 0)[0] === IMG.door && fullIcon('door') !== fullIcon('wood_wall')")
     game.stamp(-3, 2, ["nn"])
@@ -87,12 +88,15 @@ def test_a_roof_is_laid_a_tile_at_a_time_and_seen_through_from_under_it(game):
     game.wait(f"({ROW})([{x + 2}, {y - 2}, 4]) === '..r.' && Build.S.plans.size === 0", 30000)
     assert game.inv("roof") == 1
     game.press("b")
-    assert game.js("([x, y]) => [Structures.seeThrough(x + 4, y - 2), Structures.seeThrough(x + 2, y - 3)]", [x, y]) == [1, 1]      # from outside: all of it
+    game.rpc("dev_teleport", x=x, y=y)                         # (the work may have left you under it: reach counts height)
+    game.sleep(700)
+    assert game.js("([x, y]) => [Floors.alpha(x + 4, y - 2, 3), Floors.alpha(x + 2, y - 3, 3)]", [x, y]) == [1, 1]      # from outside: all of it
     assert game.server()["sheltered"] is False
-    game.rpc("dev_teleport", x=x + 4, y=y - 2)                 # under it
+    game.rpc("dev_teleport", x=x + 4, y=y - 2, z=0)            # under it (on the ground: without a height you are set down on top, on the roof)
     game.sleep(900)
     assert game.server()["sheltered"] is True and not game.errors
-    assert game.js("([x, y]) => [Structures.seeThrough(x + 4, y - 2), Structures.seeThrough(x + 2, y - 3)]", [x, y]) == [.12, .12]  # from under it: seen through, the whole roof
+    assert game.js("([x, y]) => [Floors.alpha(x + 4, y - 2, 3), Floors.alpha(x + 2, y - 3, 3)]", [x, y]) == [.12, .12]  # from under it: seen through, the whole roof
+    assert game.server()["z"] == 0 and game.js(f"solidAt({x + 4}, {y - 2}, 3) && !solidAt({x + 4}, {y - 2}, 2)")      # a block: it can be stood on
 
 
 def test_what_the_audit_of_build_mode_found_is_mended(game):
@@ -106,7 +110,7 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     game.press(game.js(SLOT, "wood_wall"))
     assert ["B", "Build mode: plan a lot"] in game.js("availableActions()")           # a piece in hand: B is said
     game.press("b")
-    assert [r[0] for r in game.js("Build.rows()")] == ["B", "Space"]                   # nothing built here: no X line
+    assert [r[0] for r in game.js("Build.rows()")] == ["B", "Space", "R"]              # nothing built here: no X line
     kb.down("ArrowRight"); game.sleep(700); kb.up("ArrowRight")                        # an arrow held: at once, then at the cursor's own pace
     assert game.js("Build.S.at.x") - x >= 5
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y + 1}}}")
@@ -166,6 +170,7 @@ def test_walls_are_thin_and_hide_nothing_and_a_side_door_has_its_leaf_and_shadow
     assert game.js("([x, y]) => [Structures.sideDoor(x + 3, y - 2), Structures.sideDoor(x - 2, y - 3), Structures.sideDoor(x + 3, y - 3)]", [x, y]) == [True, False, False]
     lum = "([dx, dy, up]) => { const t = TS(), d = ctx.getImageData(Math.round(cv.width / 2 + dx * t), Math.round(cv.height / 2 + (dy - up) * t), 1, 1).data; return d[0] + d[1] + d[2]; }"
     grass = game.js(lum, [6, -2, 0])
+    game.wait(f"({lum})([3, -2, .25]) < {grass - 150}", 5000)  # (on a busy machine the stamped tiles take a few frames)
     assert game.js(lum, [3, -2, .25]) < grass - 150 and game.js(lum, [2.78, -2, .25]) < grass - 60     # the leaf across the way; its shadow beside it, on the ground
     assert abs(game.js(lum, [-3, 1, 0]) - grass) < 40          # the tile north of a wall: its ground, nothing over it
     game.rpc("dev_teleport", x=x - 3, y=y + 1)                 # standing there, behind the wall: nothing of it is seen through

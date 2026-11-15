@@ -13,7 +13,7 @@ const JUMP = {over: 2, off: 1};      // art px the arc clears the edge by: going
 function jumpOf(p) {
   const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
   if (ax === bx && ay === by) return null;
-  const la = standAt(ax, ay), lb = standAt(bx, by);
+  const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by);
   if (la === lb) return null;
   const f = ax === bx ? p.y - ay : p.x - ax, d = (lb - la) * RELIEF_STEP;        // how far across; px from the first to the second
   const up = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0 === d > 0;   // going to the higher one?
@@ -39,7 +39,7 @@ function falling(p, now) {
 }
 function fallOf(p, now) {
   const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y), ramp = liftOf(p) / zoom;
-  const la = standAt(ax, ay), lb = standAt(bx, by), between = (ax !== bx || ay !== by) && la !== lb;
+  const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by), between = (ax !== bx || ay !== by) && la !== lb;
   const fwd = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0, down = between && fwd === la > lb;   // going to the lower one?
   const f = ax === bx ? p.y - ay : p.x - ax, u = la > lb ? f : 1 - f;         // how far from the higher tile's middle to the lower one's
   let F = p.fall;
@@ -105,9 +105,9 @@ function jumping(p, now = performance.now()) {
     return {body: Math.sin(k * Math.PI) * FALL.bounce[0], ground: 0, air: false};
   }
   const j = jumpOf(p), tx = Math.round(p.x), ty = Math.round(p.y);
-  if (j && p.jfrom === undefined) { p.jfrom = standAt(tx, ty); burst(p.x, p.y + .35 - UP, "dust", 3, {up: .8, spread: 1.6, g: 3, life: .3}); }
+  if (j && p.jfrom === undefined) { p.jfrom = Floors.standOf(p, tx, ty); burst(p.x, p.y + .35 - UP, "dust", 3, {up: .8, spread: 1.6, g: 3, life: .3}); }
   if (!j && p.jfrom !== undefined) {
-    const down = standAt(tx, ty) < p.jfrom;
+    const down = Floors.standOf(p, tx, ty) < p.jfrom;
     smoke(p.x, p.y + .35 - UP, down ? 4 : 3, down ? .4 : .3); sfx(down ? "thud" : "step", tx, ty);
     p.jfrom = p.jpose = undefined;
   }

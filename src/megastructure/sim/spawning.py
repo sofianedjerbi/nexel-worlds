@@ -216,7 +216,7 @@ class Spawning:
         was = store.get_meta("spawn_rules", 1)
         if was >= RULES:
             return
-        homes = [p for a in self.agents.values() for p in ((a.x, a.y), tuple(a.spawn) if a.spawn else None) if p]
+        homes = [p for a in self.agents.values() for p in ((a.x, a.y), tuple(a.spawn[:2]) if a.spawn else None) if p]
         gone = [c.id for c in self.creatures.values() if c.kind in PASSIVE and c.id % KEEP_ONE_IN
                 and not any(max(abs(c.x - hx), abs(c.y - hy)) <= (HOME_R if was < 2 else CAP_R) for hx, hy in homes)
                 and not self.kept(c, live=False)]

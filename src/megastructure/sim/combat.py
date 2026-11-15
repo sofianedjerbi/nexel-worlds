@@ -96,7 +96,11 @@ class Combat:
             self.world.set(a.x, a.y, block="boat")
             a.sailing = False
         bed = a.spawn
-        if bed and self.world.block(*bed) == "bed":
+        if bed and len(bed) > 2 and self.thing(*bed) == "bed":        # a bed upstairs: beside it, on its floor
+            spots = [(bed[0] + dx, bed[1] + dy) for dx, dy in DIRS.values() if self.thing(bed[0] + dx, bed[1] + dy, bed[2]) == "none"
+                     and bed[2] in self.world.surfaces(bed[0] + dx, bed[1] + dy)] or [tuple(bed[:2])]
+            a.x, a.y, a.z = *spots[0], bed[2]
+        elif bed and self.world.block(*bed[:2]) == "bed":
             spots = [(bed[0] + dx, bed[1] + dy) for dx, dy in DIRS.values() if self.world.passable(bed[0] + dx, bed[1] + dy)]
             a.x, a.y = spots[0] if spots else self.find_spawn(a.id * 31 + a.deaths)
         else:

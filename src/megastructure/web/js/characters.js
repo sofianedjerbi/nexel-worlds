@@ -114,7 +114,7 @@ function drawEntity(p, sx, sy, S, t, now) {
         if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms) && !swimsAt(p, e) && !j) {     // (a swimmer has no footsteps: swim.js; nor has a hop)
           p.lastStep = Math.floor(now / ms);
           if (running) kickDust(p); else burst(p.x, p.y + .35 - UP, "dust", 2, {up: .6, spread: 1.2, g: 2, life: .35});   // (effects.js)
-          if (mine) sfx(STEP[gndAt(Math.round(p.x), Math.round(p.y))] || "step");
+          if (mine) sfx(Floors.rise(p) ? "tock" : STEP[gndAt(Math.round(p.x), Math.round(p.y))] || "step");      // (on a built block: planks under your feet)
         }
       } else frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
     }
