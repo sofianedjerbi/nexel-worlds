@@ -25,6 +25,9 @@ const SOUND = {
   giveWay: 4,         // seconds a day or night piece takes to recede when a fight starts (the boss's piece comes in over it)
   wind: .5,           // the wind of a fall at its fastest (fallWind)
   mix: {Footsteps: .9, Work: 1, Breaking: 1, Building: 1, Items: .9, Progress: 1, Fights: 1, Animals: .9, World: .9, People: .8, Interface: .8, Boss: 1},
+  scene: {People: .5, rest: .25},   // the island behind the first screen: its voices and its other sounds, as parts of what they
+                      // are in the game. Under the music ("lower volume than music. not too low"): measured at these, a voice in the
+                      // middle of the view is 6 dB under the music's usual level, an axe's blow about level with it, the rest under
   hearing: 12,        // tiles: a sound in the world further than this is not heard
   quietest: .15,      // volume at the edge of hearing (it fades linearly from 1)
   panWidth: 9,        // tiles to the side at which a sound is fully left or right
@@ -190,6 +193,18 @@ function setMuted(on) {
   if (on) tune(.3); else { ac(); (sounds.loading || loadSounds()).then(() => tune(.3)); }
 }
 
+// Where the world is heard from when you are nobody in it: nowhere (null), or the ears the page is lent (the first
+// screen's island: the middle of its view, title_scene.js). What is heard through them is a scene's, quieter.
+let ears = null;
+// A sound of the world at (x, y), of a family (`kind`), heard no further than `far` tiles: how loud, and to which
+// side -> {vol, pan}; null: out of hearing, or nobody to hear it
+function heard(x, y, far, kind) {
+  const me = myPos(), at = me || (ears && ears());
+  if (!at) return null;
+  const dx = x - at.x, d = Math.hypot(dx, y - at.y);
+  if (d > far) return null;
+  return {vol: Math.max(SOUND.quietest, 1 - d / far) * (me ? 1 : SOUND.scene[kind] ?? SOUND.scene.rest), pan: Math.max(-1, Math.min(1, dx / SOUND.panWidth)) * SOUND.panAmount};
+}
 // Play a sound. With x, y it is in the world: quieter with distance, panned to its side, silent beyond SOUND.hearing
 // (or beyond `reach` tiles when given). Without, it is the player's own or the interface's.
 function sfx(name, x, y, reach) {
@@ -200,12 +215,9 @@ function sfx(name, x, y, reach) {
   if (!s) { if (!sounds.warned.has(name)) { sounds.warned.add(name); console.warn(`sfx: unknown sound "${name}"`); } return; }
   let vol = 1, pan = 0;
   if (x !== undefined) {
-    const me = myPos();
-    if (!me) return;
-    const dx = x - me.x, d = Math.hypot(dx, y - me.y), far = reach || SOUND.hearing;
-    if (d > far) return;
-    vol = Math.max(SOUND.quietest, 1 - d / far);
-    pan = Math.max(-1, Math.min(1, dx / SOUND.panWidth)) * SOUND.panAmount;
+    const h = heard(x, y, reach || SOUND.hearing, s.category);
+    if (!h) return;
+    ({vol, pan} = h);
   }
   const now = performance.now(), gap = SOUND.minGap[name] ?? SOUND.minGap.default;
   if (now - (sounds.lastAt[name] || -1e9) < gap || sounds.voices >= SOUND.maxVoices) return;

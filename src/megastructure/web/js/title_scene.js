@@ -7,7 +7,8 @@
 // server's tick and its events would tell it. This file is the island's clock: its hours (a day in a little over
 // three minutes, so the light, the dusk and the fire at night all pass), its field (watered wheat grows a stage and
 // its soil dries), what was felled or picked growing back, its hens and cows, and the view, which goes slowly after
-// one of its people, then another.
+// one of its people, then another. Its sounds are the game's own (an axe, a tree coming down, water, their voices),
+// heard from the middle of the view and kept under the music.
 // Its people are their own (title_cast.js): they choose what to do, and no two visits are the same.
 // It stops when you wake up or choose to watch: the land is forgotten and the world's own is asked for.
 
@@ -26,8 +27,9 @@ const TitleScene = (() => {
     const t = S.at(x, y);
     if (t) onEvent({type: "tile", x: OX + x, y: OY + y, ground: now.ground || CH[t[1]], block: now.block || (GROUND.has(t[0]) ? "none" : CH[t[0]]), cause, by});
   };
-  S.say = (p, text, shout = false) => {                      // (over their head, and not in the world's chat)
+  S.say = (p, text, shout = false) => {                      // (over their head and in their voice, and not in the world's chat)
     bubbles.push({name: p.name, text, t: performance.now() / 1000, shout});
+    babble(p.name, text, OX + p.x, OY + p.y, shout);
     const em = emoteFor(text); if (em) setTimeout(() => S.on && emote(p.name, em), 2500);
   };
   const free = (x, y, but) => { const t = S.at(x, y); return !!t && t[0] === "." && ![...S.herd, ...S.people].some((o) => o !== but && o.x === x && o.y === y); };
@@ -49,8 +51,8 @@ const TitleScene = (() => {
   }
   function grow() {                                          // a tile of the field: watered, its wheat grows a stage and its soil dries; dry, it grows now and then
     const [x0, y0, x1, y1] = S.C.field, x = x0 + S.pick(x1 - x0 + 1), y = y0 + S.pick(y1 - y0 + 1), t = S.at(x, y), next = {";": "crop", "\"": "ripe_crop"}[t[0]];
-    if (t[1] === "u") S.put(x, y, {ground: "tilled", ...(next ? {block: next} : {})}, "grew");
-    else if (next && !S.pick(6)) S.put(x, y, {block: next}, "grew");
+    if (t[1] === "u") S.put(x, y, {ground: "tilled", ...(next ? {block: next} : {})});              // (said with no cause: without the sound of
+    else if (next && !S.pick(6)) S.put(x, y, {block: next});                                          // something growing, which here would never stop)
   }
   const z = (a) => levelAt(OX + a.x, OY + a.y) || 0;
   const said = (a) => a.kind === "agent"                     // (someone held in a talk stands and faces who spoke)
@@ -90,6 +92,7 @@ const TitleScene = (() => {
     Object.assign(S, {on: true, tick: 0, phase: .3, seed: (seed || Date.now()) >>> 0 || 1, due: [], mail: false, trough: 0, people: [], herd: [], eye: null, till: 0});
     for (const b of M.blocks) onRegion({...b, x: b.x + OX, y: b.y + OY});
     cam.x = camT.x = OX + S.C.centre[0]; cam.y = camT.y = OY + S.C.centre[1] + 4 * Math.sin(1);
+    ears = () => ({x: cam.x, y: cam.y});                     // its sounds are heard from the middle of the view, under the music (audio.js)
     S.herd = [...herd("chicken", 3, 9101, S.C.pen, 14), ...herd("chick", 1, 9111, S.C.pen, 9), ...herd("cow", 2, 9121, S.C.meadow, 26)];
     S.people = TitleCast.wake(S);
     sea(); step();
@@ -97,7 +100,7 @@ const TitleScene = (() => {
   }
   function stop() {                                          // you wake up, or watch: the island is forgotten, the world's land is asked for
     if (!S.on) return;
-    S.on = false; clearInterval(S.timer);
+    S.on = false; clearInterval(S.timer); ears = null;
     ents.clear(); blocks.clear(); dirtyTiles.length = 0; requested.clear(); lastWatch = ""; arrivingNow = true; fireAt = [];
     bubbles.length = 0; emotes.clear(); mailAt = new Set(); troughAt = new Set();
     if (!me) { cam.x = camT.x = 0; cam.y = camT.y = 0; }

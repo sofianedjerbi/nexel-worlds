@@ -19,13 +19,13 @@ function babble(name, text, x, y, shout) {
   if (muted) return 0;
   const m = sounds.manifest;
   if (!m) { loadSounds(); return 0; }
-  const s = m.sounds.say, me = myPos();
+  const s = m.sounds.say;
   if (!s) return 0;
   let vol = 1, pan = 0;
-  if (x !== undefined && me) {                               // (as any sound in the world: quieter with distance, to the side it comes from)
-    const dx = x - me.x, d = Math.hypot(dx, y - me.y), far = shout ? 30 : SOUND.hearing;
-    if (d > far) return 0;
-    vol = Math.max(SOUND.quietest, 1 - d / far); pan = Math.max(-1, Math.min(1, dx / SOUND.panWidth)) * SOUND.panAmount;
+  if (x !== undefined && (myPos() || ears)) {                // (as any sound in the world: quieter with distance, to the side it comes from: audio.js)
+    const h = heard(x, y, shout ? 30 : SOUND.hearing, "People");
+    if (!h) return 0;
+    ({vol, pan} = h);
   }
   const bufs = s.files.map((f) => sounds.buffers.get(f)).filter((b) => b instanceof AudioBuffer);
   if (!bufs.length) { s.files.forEach(loadSoundFile); return 0; }      // still downloading: silent this once

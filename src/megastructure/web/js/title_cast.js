@@ -217,7 +217,7 @@ const TitleCast = (() => {
     },
     *sail(p) {                                       // round the island by boat: out from the pier's end, and back to it
       const ring = I.C.ring, moor = I.C.moor, [px, py] = I.C.pier, [mx, my] = moor[0];
-      const splash = () => burst(I.ox + mx, I.oy + my, "water", 8, {up: 1.5, spread: 2});
+      const splash = () => { burst(I.ox + mx, I.oy + my, "water", 8, {up: 1.5, spread: 2}); sfx("water", I.ox + mx, I.oy + my); };
       const to = function* ([x, y]) { p.x = x; p.y = y; p.doing = "walk"; yield; yield; };
       if (!p.sail) {                                 // aboard: the boat tied up there is theirs again
         if (!(yield* go(p, px, py))) return;

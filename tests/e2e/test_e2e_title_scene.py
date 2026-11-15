@@ -43,11 +43,16 @@ def test_the_first_screen_shows_an_island_of_its_own_at_once(browser, server):
     assert all(pen[0] <= c[2] <= pen[2] and pen[1] <= c[3] <= pen[3] for c in cast if c[0] in ("chicken", "chick"))      # the hens keep to their pen
     assert page.evaluate("clock.phase") > phase0 and page.evaluate("[cam.x, cam.y]") != cam0             # the hours pass; the view goes after someone
     assert set(page.evaluate(ASKED)) <= {"recipes", "agents", "metrics"}, page.evaluate(ASKED)           # the server was asked for no land, and told of nothing watched
+    # its sounds are the game's own, heard from the middle of the view and kept under the music: a voice there at
+    # half what it is in the game, anything else at a quarter, less from further, nothing from out of hearing
+    vols = page.evaluate("[heard(cam.x, cam.y, 12, 'People').vol, heard(cam.x + 6, cam.y, 12, 'Work').vol, heard(cam.x + 20, cam.y, 12, 'Work'), SOUND.scene.People, SOUND.scene.rest, SOUND.music]")
+    assert vols[0] == vols[3] and abs(vols[1] - vols[4] / 2) < 1e-9 and vols[2] is None and vols[4] < vols[3] < vols[5], vols
     assert page.evaluate("document.querySelector('#joinbox .logo') !== null && titleOpen()")
     page.click("#watch")                                            # just watch: the island is forgotten, the world's own land comes
     page.wait_for_function("!TitleScene.on && blocks.size > 0 && !arrivingNow", timeout=20000)
     assert page.evaluate("[...blocks.values()].every((b) => Math.abs(b.bx) < 20 && Math.abs(b.by) < 20)") and not any(c[1] in ("Mira", "Pip") for c in page.evaluate(CAST))
     assert {"watch", "region"} <= set(page.evaluate(ASKED)) and page.evaluate("[cam.x, cam.y]") == [0, 0]
+    assert page.evaluate("ears === null && heard(0, 0, 12, 'Work') === null")                            # (and its ears: nobody hears the world for you)
     page.close()
     assert not errors, errors
 
@@ -59,6 +64,7 @@ def test_waking_up_leaves_the_island_for_the_world(game):
     assert game.js("[...blocks.values()].every((b) => b.bx > -200 && b.by > -200)") and game.js(f"!!tile({x}, {y})")
     assert not any(c[1] in ("Mira", "Tobi", "Pip", "Lou", "Nell") for c in game.js("[...ents.values()].map((p) => [p.e.kind, p.e.name || ''])"))
     assert game.js("bubbles.every((b) => !['Mira', 'Tobi', 'Pip', 'Lou', 'Nell'].includes(b.name))")           # ...and nothing they said hangs over it
+    assert game.js(f"ears === null && heard({x}, {y}, 12, 'Work').vol === 1")                                 # the world is heard by you, as loud as it is
 
 
 # The island's clock run by hand, a tenth of a second a step, with a seed: what each one did (never the same twice
