@@ -156,13 +156,10 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
   for (; k >= 1; k--) { drawBlobLayer(g, hillSheet(k), x, y, up, ox, oy, k < 3 ? .25 : .1); if (cellSolid(g.img[g.n - 1], g.at[g.n - 1] % 4096, g.at[g.n - 1] >> 12)) break; }
   const hills = g.n, covered = k >= 1;
   if (!covered) {                                    // (water tiles stay clear: water.js draws the sea under the land)
-    if (gr === ":") {                                // bridge planks run across the direction of travel
-      const ew = [-1, 1].some((d) => { const q = gndAt(x + d, y); return q === ":" || isLand(q); });
-      g.drawImage(IMG.bridge, ew ? 0 : 32, 32, 16, 16, ox, oy, 16, 16);
-    }
-    if (isLand(gr)) {
-      drawBlobLayer(g, IMG.soil, x, y, (_, gg) => isLand(gg), ox, oy, .15);
-      if (gr === "." || gr === "_" || gr === "n") drawBlobLayer(g, IMG.grass, x, y, (_, gg) => gg === "." || gg === "_" || gg === "n", ox, oy, gr === "." ? .3 : 0);
+    if (gr === ":") Bridge.lay(g, x, y, ox, oy);      // (bridge.js: planks across the way it runs, posts at its ends)
+    if (isLand(gr)) {                                // (a bridge that runs onto this land: no shore between them)
+      drawBlobLayer(g, IMG.soil, x, y, (_, gg, tx, ty) => isLand(gg) || Bridge.rests(x, y, tx, ty), ox, oy, .15);
+      if (gr === "." || gr === "_" || gr === "n") drawBlobLayer(g, IMG.grass, x, y, (_, gg, tx, ty) => gg === "." || gg === "_" || gg === "n" || Bridge.rests(x, y, tx, ty), ox, oy, gr === "." ? .3 : 0);
       groundMarks(g, x, y, gr, ox, oy);
     }
     // (round a pit, at sea level and below: the hill sheet's edge alone, the regular border of raised ground, so

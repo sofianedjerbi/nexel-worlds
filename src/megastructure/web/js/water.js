@@ -85,7 +85,7 @@ function bedTile(g, x, y, u, ox, oy, under, land) {   // one tile of the bottom
 // land tile by the water has shallows under its edge: -1) and whether it is land.
 function waterStuff(b) {
   const m = B + 6, n = B + 4, x0 = b.bx * B - 3, y0 = b.by * B - 3, dep = new Int8Array(m * m), isL = new Uint8Array(m * m);
-  for (let j = 0; j < m; j++) for (let i = 0; i < m; i++) { const g = gndAt(x0 + i, y0 + j); dep[j * m + i] = DEPTH_OF[g] || 0; isL[j * m + i] = isLand(g) ? 1 : 0; }
+  for (let j = 0; j < m; j++) for (let i = 0; i < m; i++) { const g = gndAt(x0 + i, y0 + j); dep[j * m + i] = DEPTH_OF[g] || (g === ":" ? 1 : 0); isL[j * m + i] = isLand(g) ? 1 : 0; }      // (a bridge: water under it)
   const un = new Int8Array(n * n), land = new Uint8Array(n * n);
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     const q = (j + 1) * m + i + 1; let u = dep[q];
