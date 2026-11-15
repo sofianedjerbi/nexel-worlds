@@ -1690,3 +1690,10 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   and over the edge as anyone standing up there is: the row and your height. Filmed on a copy: up the front ladder of
   the tower, over the edge onto its top, in front all the way.
 - Test: up a ladder onto a block, the step over is placed after the block.
+
+## Iteration 139: the door is one knock each way
+- Chosen by ear on the page of iteration 138: "go with one knock sound effect".
+- `music/sfx.py`: "gate" (a door or a gate opens) is one wooden knock, "door_close" one knock lower and fuller; made
+  from the page's own recipe and random source, never resized or re-pitched: the game's two files differ from the
+  two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
+- Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.

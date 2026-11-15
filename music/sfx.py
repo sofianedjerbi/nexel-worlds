@@ -742,48 +742,24 @@ def _(c):
     return phism(c, n, e, 1200, 800, 0.004, 0.5) + 0.4 * phism(c, n, e, 400, 2200, 0.0015) + 0.7 * strike(c, n, "dirt", size=1.4)
 
 
-# The door. Four tries, each refused: a hinge's creak made of a slow train of pulses ("door do a weird noise"); a latch,
-# a breath and a soft stop ("i dont hear anything. i hear a clic that does not sound like a door at all"); two knocks
-# of a board ("a door that open/close noise. not a toctoc"). What a door does, then, and both ways:
-#   opening: the latch lets go (one clack: metal, and the wood right behind it), then the door swings on its hinge:
-#            wood working against wood, a dry creak with no pitch (grains of noise in the wood's band, thick while it
-#            moves fastest: Cook's particle model, not pulses at a rate, which is what read as a buzz);
-#   closing: the same swing, shorter, then the door meets its frame (ONE thud of the board, with its body) and the
-#            latch catches just after.
-def door_swing(c, seconds, f0, f1):
-    """A door turning on its hinge: one continuous creak whose pitch follows the door (f0 to f1 Hz: slip after slip,
-    fast enough to be a note, not a rattle), a little unsteady as a hinge is, through the wood's resonances, over the
-    air the board pushes. Nothing in it starts or stops sharply. (It was grains of noise, 130 a second: measured,
-    each grain stood 8 to 10 dB over what was around it, as a knock does: the swing itself was the clicking.)"""
-    n = N(seconds)
-    t = tt(n)
-    e = np.sin(np.pi * t / seconds) ** 1.2
-    wobble = 1 + 0.04 * np.interp(t, np.linspace(0, seconds, 9), c.rng.normal(0, 1, 9))
-    k = c.u(0.9, 1.12)
-    # ("that does not sound like a door sound anymore.. sound like an old person moaning": the creak, a gliding note
-    # through resonances, is how a voice is made. It is out. What is left is the air the board pushes, no note in it.)
-    return norm(texture(c, n, 220 * k, 1000 * k, 5, 12, 0.3) * e)
+# The door. Five made without hearing them were refused, each for its own fault: a slow pulse train ("a weird noise"),
+# a lone latch ("a clic that does not sound like a door"), two knocks ("not a toctoc": it wants an opening and a
+# closing), a swing of noise grains ("still a click"), a gliding note ("an old person moaning"). Then six were put on
+# a page to be chosen by ear (music/doors.py, site/door.html): "go with one knock sound effect". So: one wooden knock
+# each way, the knock of the wood and the board's body under it as one sound: higher to open, lower and fuller to
+# close. (One variant each: these are the two that were heard and chosen.)
+def door_knock(c, size, hard, body):
+    return strike(c, N(0.3), "wood", size=size, hard=hard) + body * strike(c, N(0.3), "plank", size=size * 1.15, hard=hard)
 
 
-# ("i still hear a click when opening and closing. i just wanna hear the door noise !": the latch's clack at the head
-# of each was a click, and so was every grain of the swing. No latch, no metal, nothing struck hard: opening is the
-# creak alone, rising as the door gathers way; closing the creak falling, and the door coming to rest on its frame as
-# a soft low thump, a big board touched, not knocked.)
-@sfx("gate", "Building", "a gate or a door opens: it swings on its hinge", 2, 0.55)
+@sfx("gate", "Building", "a gate or a door opens: one wooden knock", 1, 0.55, kind="out", tuned=True)      # (tuned: never resized or re-pitched: as chosen)
 def _(c):
-    y = np.zeros(N(0.7))
-    place(y, door_swing(c, c.u(0.5, 0.58), c.u(150, 175), c.u(290, 330)), 0.0)
-    return y
+    return door_knock(Ctx("door_knock_open", 0), 0.85, 1.1, 0.4)        # (the very knock of the page: its own random source)
 
 
-@sfx("door_close", "Building", "a gate or a door closes: it swings, and comes to rest on its frame", 2, 0.55)
+@sfx("door_close", "Building", "a gate or a door closes: one knock, lower and fuller", 1, 0.55, kind="out", tuned=True)
 def _(c):
-    y = np.zeros(N(0.7))
-    swing = c.u(0.3, 0.36)
-    place(y, 0.8 * door_swing(c, swing, c.u(280, 320), c.u(150, 175)), 0.0)
-    n = N(0.11)                                               # it comes to rest: a low soft whump of air and board, not a blow
-    place(y, 0.75 * norm(texture(c, n, 90, 340, 3, 10, 0.2)) * np.sin(np.pi * tt(n) / 0.11) ** 1.5, swing - 0.06)   # (a struck board, however softly, stood 9 dB out: a click again)
-    return y
+    return door_knock(Ctx("door_knock_close", 0), 1.25, 0.9, 0.7)
 
 
 @sfx("chest", "Building", "opening a chest", 2, 0.4, kind="in")
