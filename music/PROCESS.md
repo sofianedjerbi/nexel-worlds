@@ -452,3 +452,21 @@ unique theme. cute and fast".
   clean; on a small mono speaker 1.2 to 3.3 dB quieter (Side street night most: its pad is wider than it is loud
   in the middle and its bass is all under 60 Hz). Nothing changed: they were approved by ear.
 - Not judged by ear.
+
+## Menu music, third round; corrected songs for validation (2026-11-15)
+- Verdict on round two: "keep sugar rush somewhere for later its pretty good. but does not fit main menu. i don't like
+  the other ones.. redesign other ones and audit them"; "sugar rush was too fast. it fit well a high energy moment not
+  a menu"; "also fix the existing songs and add them into showcase for validation".
+- Sugar rush: `site/audio/keep_sugar_rush.wav`, its score in `menu.LATER`; not rendered again, not in the game.
+- What it had and the refused four had not: a plucked lead (Rattler: 39 dB down after 0.7 s held; Cute 1: 28 dB);
+  the refused leads held their note and were cut short. Every item of mixcheck in range.
+- Four new pieces (`menu.MENU`), 16 bars once, about 32 s: Welcome mat (A, 120, bounce, call and answer), Porch light
+  (E, 112, light shuffle), Jam jar (C, 126, half time, call and answer), Paper boat (G, 116, backbeat, the lead after
+  the beat). Leads Table Morph, Man Machine, SoftSaw, Angel Pluck (all plucked by measure); no sound of a refused
+  piece. Audit: first render had bright hats and claps, light basses under 60 Hz, a lead with rumble under 120 Hz and
+  one not plucked enough; after the changes all four have nothing out of range.
+- `music/refit.py`: corrections on the approved finished files, written beside them (`fixed_<name>.wav`,
+  `fixed.json`). Side street day: left and right balanced (0.4 dB). Side street night: the bass's octaves added at
+  80-300 Hz (+3.1 dB there), the middle narrowed 2.8 dB (one speaker: -1.9 then -1.0 dB). Far shore night: octaves
+  (+2.1 dB). Far shore day and Old Mossback: nothing to correct. The game still plays the originals.
+- Page: http://127.0.0.1:8099/menu.html (four candidates, Sugar rush, original against corrected). Not judged by ear.

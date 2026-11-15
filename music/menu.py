@@ -41,18 +41,9 @@ def bars(cell, n=3):
     return [("cell", cell)] * n
 
 
-MENU = [
-    dict(id="hop", title="Hop in", key="G major", feel="a bounce: the bass hops between octaves, the chords land off the beat", bpm=132, passes=2,
-         H=["Gmaj9", "Cmaj9", "Gmaj9", "D13", "Em9", "Cmaj9", "Am9 D13", "G69"] * 2,
-         V={"Gmaj9": "F#3 A3 B3 D4", "Cmaj9": "E3 G3 B3 D4", "D13": "F#3 B3 C4 E4", "Em9": "G3 B3 D4 F#4", "Am9": "G3 B3 C4 E4", "G69": "E3 A3 B3 D4"},
-         R={"Gmaj9": "G2", "Cmaj9": "C3", "D13": "D3", "Em9": "E2", "Am9": "A2", "G69": "G2"},
-         cell=[(0, 2), (3, 2), (6, 5), (12, 3)], cadence=[(0, 3), (3, 3), (6, 10)],       # the same note twice, a hop up, a drop: one bar that fits all seven chords
-         tune=(bars("B4 B4 D5 A4") + [("cadence", "E5 D5 A4")] + bars("B4 B4 D5 A4") + [("cadence", "B4 A4 G4")]) * 2,
-         comp=[(2, 1), (6, 1), (10, 1), (14, 1)], bass=[(0, 2, 0, 104), (4, 1.5, 12, 88), (8, 2, 0, 96), (12, 1.5, 12, 88)],
-         beat=dict(kick=[(0, 110), (7, 88), (10, 98)], snare=[(4, 96), (12, 102)], clap=[(12, 90)], hat=[(s, 88) for s in range(0, 16, 2)]),
-         fill=dict(snare=[(13, 70), (15, 92)]),
-         gate=0.55, levels={"lead": -16.5}, lead="Kinsey Dulcet/Leads/Funk Feedback Lead", double="Damon Armani/Plucks/Daft Punk", chords="Plucks/Scrape Pluck", pad="Pads/Sawteeth", bass_sound="Basses/Rubber Bass",
-         shift={"lead": 12, "double": 12}),
+# "keep sugar rush somewhere for later its pretty good. but does not fit main menu"; "sugar rush was too fast. it fit
+# well a high energy moment not a menu". Kept as site/audio/keep_sugar_rush.wav (never rendered again: `later`).
+LATER = [
     dict(id="sugar", title="Sugar rush", key="E flat major", feel="a kick on every beat, the fastest of the five; the lead calls, a second synth answers", bpm=156, passes=1,
          H=["Abmaj9", "Bb13", "Gm7", "Cm9", "Abmaj9", "Bb13", "Ebmaj9", "Eb69", "Abmaj9", "Bb13", "Gm7", "Cm9", "Fm9", "Bb13", "Ebmaj9", "Eb69"] * 2,
          V={"Abmaj9": "G3 Bb3 C4 Eb4", "Bb13": "Ab3 C4 D4 G4", "Gm7": "F3 Bb3 D4", "Cm9": "Eb3 G3 Bb3 D4", "Fm9": "Ab3 C4 Eb4 G4", "Ebmaj9": "G3 Bb3 D4 F4", "Eb69": "G3 Bb3 C4 F4"},
@@ -67,39 +58,55 @@ MENU = [
          lead="Damon Armani/Plucks/Rattler", second="Damon Armani/Leads/Funky", chords="Polysynths/Phasey", pad="Polysynths/Xpander 2", bass_sound="Basses/Slow",
          shift={"pad": 12},
          kit={"kick": "TNMG/Drums/Kick - Classic", "snare": "TNMG/Drums/Snare - Classic"}),
-    dict(id="skip", title="Skip rope", key="C major", feel="a shuffle: every second note comes late, the bass walks", bpm=120, swing=0.64, passes=2,
-         H=["C69", "A7b9", "Dm9", "G13", "Em7", "A7b9", "Dm9 G13", "C69"] * 2,
-         V={"C69": "E3 A3 D4 G4", "A7b9": "G3 Bb3 C#4 E4", "Dm9": "F3 A3 C4 E4", "G13": "F3 B3 E4", "Em7": "G3 B3 D4"},
-         R={"C69": "C3", "A7b9": "A2", "Dm9": "D3", "G13": "G2", "Em7": "E2"},
-         cell=[(0, 2), (2, 2), (4, 2), (6, 6)], cadence=[(0, 4), (4, 4), (8, 8)],          # long-short, long-short: the skip itself
-         tune=(bars("E5 E5 G5 E5") + [("cadence", "E5 D5 B4")] + bars("E5 E5 G5 E5") + [("cadence", "A4 G4 C5")]) * 2,
-         comp=[(0, 3), (6, 2), (14, 2)], bass=[(0, 3.5, 0, 104), (4, 3.5, 7, 90), (8, 3.5, 12, 96), (12, 3.5, 7, 90)],
-         beat=dict(kick=[(0, 100), (8, 92)], clap=[(4, 88), (12, 92)], hat=[(s, 84) for s in range(0, 16, 2)], click=[(6, 70), (14, 76)]),
-         fill=dict(snare=[(14, 90)]),
-         lead="Polysynths/Quote", double="Dan Maurer/Plucks/Hidden Tiger", chords="Polysynths/MG", pad="Bluelight/Pads/Sawdust", bass_sound="Damon Armani/Basses/Satu Bass",
-         shift={"pad": 12}),
-    dict(id="carousel", title="Carousel", key="B flat major", feel="a fast waltz, three beats a bar: the bass on one, the chords on two and three", bpm=174, spb=12, passes=4,
-         H=["Bbmaj9", "Dm7", "Ebmaj9", "F13", "Bbmaj9", "Dm7", "Ebm6", "F13", "Bbmaj9", "Dm7", "Ebmaj9", "F13", "Gm9", "Ebm6", "F13", "Bb69"],
-         V={"Bbmaj9": "A3 C4 D4 F4", "Dm7": "F3 A3 C4", "Ebmaj9": "G3 Bb3 D4 F4", "F13": "Eb3 A3 D4", "Ebm6": "Gb3 Bb3 C4 Eb4", "Gm9": "F3 A3 Bb3 D4", "Bb69": "G3 C4 D4 F4"},
-         R={"Bbmaj9": "Bb2", "Dm7": "D3", "Ebmaj9": "Eb3", "F13": "F2", "Ebm6": "Eb3", "Gm9": "G2", "Bb69": "Bb2"},
-         cell=[(0, 4), (4, 2), (6, 2), (8, 4)], cadence=[(0, 4), (4, 8)],                  # down a third and back: round and round
-         tune=bars("F5 D5 D5 F5") + [("cadence", "D5 C5")] + bars("F5 D5 D5 F5", 2) + [("cell", "F5 Eb5 Eb5 F5"), ("cadence", "A4 C5")]
-              + bars("F5 D5 D5 F5") + [("cadence", "D5 C5"), ("cell", "F5 D5 D5 F5"), ("cell", "F5 Eb5 Eb5 F5"), ("cell", "F5 D5 D5 F5"), ("cadence", "C5 Bb4")],
-         comp=[(4, 2), (8, 2)], bass=[(0, 4, 0, 104)],
-         beat=dict(kick=[(0, 104)], hat=[(4, 84), (8, 88)]), even=dict(clap=[(8, 84)]), fill=dict(hat=[(6, 70), (10, 80)]),
-         gate=0.4, levels={"bass": -15}, lead="Bluelight/Leads/Lead 3", double="Leads/Fuji", chords="Plucks/Woody", pad="Pads/Communication", bass_sound="Basses/Bass 1",
-         shift={"lead": -12, "double": 12}),
-    dict(id="tide", title="Tide pool", key="D major, with the C chord of its sunny side", feel="3+3+2: bass and kick push across the beat, one clap a bar", bpm=138, passes=2,
-         H=["D69", "Cmaj9", "Gmaj9", "A13sus", "D69", "Cmaj9", "Gmaj9", "A13"] * 2,
-         V={"D69": "F#3 B3 E4", "Cmaj9": "E3 G3 B3 D4", "Gmaj9": "F#3 A3 B3 D4", "A13sus": "G3 B3 D4 F#4", "A13": "G3 B3 C#4 F#4"},
-         R={"D69": "D3", "Cmaj9": "C3", "Gmaj9": "G2", "A13sus": "A2", "A13": "A2"},
-         cell=[(0, 5), (6, 5), (12, 2), (14, 2)], cadence=[(0, 6), (6, 10)],              # on the 3+3+2 itself: two long, a leap up, a step back
-         tune=(bars("A4 A4 F#5 E5") + [("cadence", "E5 B4")] + bars("A4 A4 F#5 E5") + [("cadence", "E5 C#5")]) * 2,
-         comp=[(3, 2), (10, 2), (14, 2)], bass=[(0, 3, 0, 106), (6, 3, 0, 96), (12, 2, 12, 92)],
-         beat=dict(kick=[(0, 112), (6, 96), (12, 88)], clap=[(8, 96)], hat=[(s, 84) for s in range(0, 16, 2)], click=[(3, 76), (11, 70)]),
-         fill=dict(snare=[(13, 72), (14, 84), (15, 96)]),
-         gate=0.45, lead="Leads/Resofest 2", double="Leads/Generic", chords="Polysynths/Reset", pad="Argitoth/Pads/Subtle Pad", bass_sound="Bluelight/Basses/Bass 7",
-         shift={"lead": 12, "double": 12, "pad": 12}),
+]
+
+# Third round. "i don't like the other ones.. redesign other ones and audit them". What the one that was liked had and
+# the refused ones had not: a lead that is plucked (it dies away under the finger; the refused leads held their note
+# and were cut short), and nothing out of the kept pieces' ranges. So: plucked leads only (measured: 14 dB or more
+# down after 0.7 s held, as Cute 1 and Rattler are), a menu's pace (112 to 126, no kick on every beat), 16 bars once
+# (32 s, the length of the kept day pieces), new tunes, and no sound of a refused piece.
+MENU = [
+    dict(id="mat", title="Welcome mat", key="A major", feel="a bounce: the bass hops between octaves, short chords off the beat; the lead calls, a second pluck answers", bpm=120, passes=1,
+         H=["A69", "F#m7", "Dmaj9", "E13", "A69", "F#m7", "Dmaj9", "E13 A69"] * 2,
+         V={"A69": "F#3 B3 C#4 E4", "F#m7": "E3 A3 C#4", "Dmaj9": "F#3 A3 C#4 E4", "E13": "D3 G#3 C#4"},
+         R={"A69": "A2", "F#m7": "F#2", "Dmaj9": "D3", "E13": "E2"},
+         cell=[(0, 2), (4, 2), (6, 2), (10, 2)], cadence=[(0, 4), (4, 4), (8, 8)],          # down a third and back, then the drop to the keynote
+         tune=(bars("E5 C#5 E5 A4") + [("cadence", "B4 G#4 E5")] + bars("E5 C#5 E5 A4") + [("cadence", "B4 G#4 A4")]) * 2,
+         answer=[(12, 2, "C#5"), (14, 2, "E5")],
+         comp=[(2, 2), (6, 2), (10, 2), (14, 2)], bass=[(0, 3, 0, 104), (4, 2, 12, 88), (8, 3, 0, 96), (12, 2, 12, 88)],
+         beat=dict(kick=[(0, 104), (10, 92)], clap=[(4, 84), (12, 90)], hat=[(s, 84) for s in range(0, 16, 2)]), fill=dict(snare=[(13, 70), (15, 88)]),
+         lead="Giana Brotherz/Keys/Table Morph", second="Polysynths/Metal Chonk", chords="Giana Brotherz/Keys/Harmonic Ring", pad="Polysynths/Xpander 1",
+         bass_sound="Luna/Basses/Synthwave", shift={"lead": -12, "answer": 12, "pad": 12}),
+    dict(id="porch", title="Porch light", key="E major", feel="a light shuffle: the bass walks root and fifth, the chords are held", bpm=112, swing=0.58, passes=1,
+         H=["Emaj9", "G#m7", "Amaj9", "B13", "C#m9", "G#m7", "Amaj9 B13", "E69"] * 2,
+         V={"Emaj9": "G#3 B3 D#4 F#4", "G#m7": "F#3 B3 D#4", "Amaj9": "G#3 B3 C#4 E4", "B13": "A3 D#4 G#4", "C#m9": "E3 G#3 B3 D#4", "E69": "G#3 B3 C#4 F#4"},
+         R={"Emaj9": "E2", "G#m7": "G#2", "Amaj9": "A2", "B13": "B2", "C#m9": "C#3", "E69": "E2"},
+         cell=[(0, 2), (2, 2), (6, 4), (12, 3)], cadence=[(0, 3), (3, 3), (6, 10)],         # one note knocked twice, down a third, back
+         tune=(bars("B4 B4 G#4 B4") + [("cadence", "F#5 F#5 D#5")] + bars("B4 B4 G#4 B4") + [("cadence", "B4 B4 E5")]) * 2,
+         comp=[(0, 3), (6, 2), (11, 2)], bass=[(0, 3.5, 0, 104), (8, 3.5, 7, 92)],
+         beat=dict(kick=[(0, 100), (8, 90)], clap=[(4, 86), (12, 90)], hat=[(s, 84) for s in range(0, 16, 2)], click=[(6, 70), (14, 74)]), fill=dict(snare=[(14, 86)]),
+         lead="Plucks/Man Machine", chords="Jacky Ligon/Keys/Midnightly", pad="Polysynths/Korg Triton", bass_sound="Giana Brotherz/Basses/Tech Cabinet", shift={"pad": 12}),
+    dict(id="jam", title="Jam jar", key="C major", feel="half time: one kick, one clap a bar under quick hats; the lead calls, a second pluck answers", bpm=126, passes=1,
+         H=["Fmaj9", "Em7", "Dm9", "G13", "Fmaj9", "Em7", "G13", "C69"] * 2,
+         V={"Fmaj9": "E3 G3 A3 C4", "Em7": "D3 G3 B3", "Dm9": "F3 A3 C4 E4", "G13": "F3 B3 E4", "C69": "E3 G3 A3 D4"},
+         R={"Fmaj9": "F2", "Em7": "E2", "Dm9": "D3", "G13": "G2", "C69": "C3"},
+         cell=[(0, 3), (3, 3), (6, 2), (10, 3)], cadence=[(0, 6), (6, 10)],                 # up a third and back, a step down: on the 3+3 of the bar
+         tune=(bars("E5 G5 E5 D5") + [("cadence", "B4 D5")] + bars("E5 G5 E5 D5") + [("cadence", "E5 C5")]) * 2,
+         answer=[(13, 1, "E5"), (14, 2, "G5")],
+         comp=[(0, 2), (3, 2), (6, 2), (11, 2)], bass=[(0, 3, 0, 104), (6, 2, 0, 90), (8, 3, 12, 94), (14, 2, 0, 88)],
+         beat=dict(kick=[(0, 106), (14, 86)], clap=[(8, 94)], snare=[(8, 84)], hat=[(s, 84) for s in range(0, 16, 2)]), fill=dict(snare=[(12, 72), (13, 80)]),
+         lead="Emu/Keys/SoftSaw", second="Kyurumi/Plucks/Bandpass Pluck", chords="Plucks/80s Gliss", pad="Cybersoda/Pads/Lush",
+         bass_sound="Kinsey Dulcet/Basses/Everybody Needs A 303, Really", shift={"answer": -12}),
+    dict(id="boat", title="Paper boat", key="G major", feel="a plain backbeat: the lead comes in after the beat, the chords are long", bpm=116, passes=1,
+         H=["G69", "Em9", "Cmaj9", "D13", "G69", "Bm7", "Cmaj9 D13", "G69"] * 2,
+         V={"G69": "E3 A3 B3 D4", "Em9": "G3 B3 D4 F#4", "Cmaj9": "E3 G3 B3 D4", "D13": "F#3 B3 C4 E4", "Bm7": "A3 D4 F#4"},
+         R={"G69": "G2", "Em9": "E2", "Cmaj9": "C3", "D13": "D3", "Bm7": "B2"},
+         cell=[(2, 2), (4, 2), (8, 2), (10, 4)], cadence=[(0, 4), (4, 4), (8, 8)],          # late on purpose: twice the same note, a third under, back
+         tune=(bars("D5 D5 B4 D5") + [("cadence", "A4 F#4 A4")] + bars("D5 D5 B4 D5") + [("cadence", "A4 B4 G4")]) * 2,
+         comp=[(0, 6), (8, 6)], bass=[(0, 3, 0, 104), (4, 3, 0, 90), (8, 3, 0, 98), (12, 3, 7, 90)],
+         beat=dict(kick=[(0, 106), (8, 98), (10, 84)], snare=[(4, 92), (12, 96)], hat=[(s, 84) for s in range(0, 16, 2)]), fill=dict(snare=[(14, 80), (15, 90)]),
+         levels={"lead": -17}, lead="Nick Moritz/Keys/Angel Pluck", chords="Jacky Ligon/Keys/Fiftyish", pad="Giana Brotherz/Pads/Back Texture", bass_sound="Slowboat/Basses/Happy Bass 2",
+         shift={"lead": 12, "pad": -12}),
 ]
 
 
@@ -141,9 +148,13 @@ def arrange(st):
     return p, spb * n * st["passes"], under
 
 
+# Against the kept pieces' mix these sparser, slower pieces came out bright on top (hats, claps) and light under 60 Hz.
+LEVELS = {"answer": -22, "bass": -16, "hat": -30, "clap": -27, "click": -29}
+
+
 def render(m):
     """One candidate: its parts alone, the engineer's checks on them (mixcheck), the kept pieces' mix bus, the game's level."""
-    st = pieces.BASE | dict(m, id="menu_" + m["id"], sync=True, levels={"answer": -19} | m.get("levels", {}),
+    st = pieces.BASE | dict(m, id="menu_" + m["id"], sync=True, levels=LEVELS | m.get("levels", {}),
                             kit=m.get("kit", {}) | ({"answer": m["second"]} if "second" in m else {}))
     score, steps, under = arrange(st)
     bad = pieces.clashes(score, under) + [(int(s), note) for s, _, note, _ in score.get("answer", []) for v in under[int(s)][0] if (note - midi(v)) % 12 == 1]
