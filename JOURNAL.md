@@ -1303,3 +1303,14 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Broke the page for two minutes on the way (structures.js used a table that intent.js defines later; the live page reads these files): found by my own run, fixed. A page-load check goes before saving a new file from now on.
 - Tests: tests/test_roofs.py (3: where a roof rests, taking it back and the save, an old house roofed once), tests/e2e/test_e2e_build.py (2: a wall planned and built by keys alone, taken down, no more plans than pieces; a roof laid a tile at a time, taken back, seen through from under), the house test now checks both drawings (new server, old server), the help has a Build page.
 - Not done: a piece bigger than a tile (well, coop) is still put by hand; no stacking or second floors; a roof stays when the wall under it goes; windows are still where the wall's run puts them, not placed; touch has no build mode; the AI players have `place` with `roof` and `unroof` but no "build this plan" tool of their own.
+
+## Iteration 118: the first screen has its music
+- Asked: "Make that the home screen song" (High tide, the longer take with the drop after two bars), after "with just
+  a gradient at the beginning to avoid it popping out of nowhere".
+- Change: `tools/build_audio.py` builds a sixth piece, role `menu` (`music/site/audio/menu_tide_high.wav`, written by
+  `music/slowtide.py`); `audio.js` has a third track beside the moments and the boss's: while the first screen is up
+  (`titleOpen()`), it loops, comes in over 6 s (level and tone, `swell`), keeps the day's pieces out, and recedes over
+  5 s once you are in the world. It starts at the first key or click: a browser plays nothing before one.
+- Measured: new browser test (silence before a key; the gain rises, under 0.3 then higher, full and clear after 8 s;
+  no moment meanwhile; off 8 s after joining); sound tests 9 of 9, first-screen tests 7 of 7, unit 409.
+- Not judged by ear by me; the user chose the piece by ear. The public demo's game build does not have it yet.

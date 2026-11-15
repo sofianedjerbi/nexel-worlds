@@ -87,12 +87,14 @@ def write_wav(path: Path, st: np.ndarray, rate: int):
 
 # The game's music: which piece plays when (audio.js). By day and by night a piece plays now and then, with silence
 # between; the boss's loops while its fight is on. Far shore night C is the one of two candidates wired in.
-TRACKS = {"side_street_day": "day", "far_shore_day": "day", "side_street_night": "night", "far_shore_night_c": "night", "old_mossback": "boss"}
+TRACKS = {"side_street_day": "day", "far_shore_day": "day", "side_street_night": "night", "far_shore_night_c": "night", "old_mossback": "boss",
+          "high_tide": "menu"}                     # the first screen's (music/slowtide.py writes it, already mastered)
+SOURCE = {"high_tide": "menu_tide_high"}
 def final(name):
     """The piece's finished file: the corrected one (music/refit.py; "i agree with the corrections on existing songs")
     where there is one, else the mastered one."""
     fixed = MUSIC / "site" / "audio" / f"fixed_{name}.wav"
-    return fixed if fixed.exists() else MUSIC / "site" / "audio" / f"final_{name}.wav"
+    return fixed if fixed.exists() else MUSIC / "site" / "audio" / (SOURCE.get(name, f"final_{name}") + ".wav")
 
 
 def version() -> str:
@@ -148,7 +150,7 @@ def build(out: Path = OUT) -> dict:
             files.append(f)
         sounds[name] = {"files": files, "category": m["cat"], "pitch": bool(m["vary"])}   # tuned sounds are never re-pitched
     tracks = {name: t for name in TRACKS if (t := build_music(out, final(name), name))}
-    play = {role: [n for n in tracks if TRACKS[n] == role] for role in ("day", "night")} | {"boss": next((n for n in tracks if TRACKS[n] == "boss"), None)}
+    play = {role: [n for n in tracks if TRACKS[n] == role] for role in ("day", "night")} | {role: next((n for n in tracks if TRACKS[n] == role), None) for role in ("boss", "menu")}
     manifest = {"version": version(), "rate": RATE, "sounds": sounds, "place": blocks, "ground": grounds, "tracks": tracks, "play": play}
     (out / "sfx.json").write_text(json.dumps(manifest, indent=1))
     size = sum((out / f).stat().st_size for s in sounds.values() for f in s["files"]) / 1e6

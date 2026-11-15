@@ -151,3 +151,37 @@ def test_night_falling_on_a_day_piece_closes_it_and_brings_the_nights(game):
     assert 0 < game.js("moment.next - performance.now()") < 12500
     game.wait("music.on && music.hour === 'night' && sounds.manifest.play.night.includes(music.key)", 20000)
     assert not game.errors
+
+
+def test_the_first_screen_has_its_own_piece_that_comes_in_slowly_and_recedes_in_the_world(browser, server):
+    """"Make that the home screen song", "with just a gradient at the beginning to avoid it popping out of nowhere":
+    the first screen's piece starts at the first key (a browser plays nothing before one), rises from nothing, keeps
+    the day's pieces out, and recedes once you are in the world."""
+    page = browser.new_page(viewport={"width": 1200, "height": 800})
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.add_init_script("localStorage.setItem('megastructure-muted', '0')")
+    page.goto(server)
+    page.wait_for_function("typeof ready !== 'undefined' && typeof titleOpen === 'function' && titleOpen()")
+    js = page.evaluate
+    assert js("!audio") and js("!menuTrack.on")                       # silence until a key
+    page.keyboard.type("Tide")
+    page.wait_for_function("!!sounds.manifest", timeout=20000)
+    if not js("!!(sounds.manifest.play && sounds.manifest.play.menu)"):
+        page.close()
+        pytest.skip("no first-screen piece built: music/slowtide.py, then tools/build_audio.py")
+    page.wait_for_function("menuTrack.on && menuTrack.nodes.size > 0", timeout=30000)
+    assert js("menuTrack.key") == "high_tide"
+    early = js("menuTrack.gain.gain.value")
+    page.wait_for_timeout(2500)
+    mid = js("menuTrack.gain.gain.value")
+    assert early < 0.3 and early < mid, (early, mid)                  # the gradient: it rises, it does not pop
+    page.wait_for_timeout(6000)
+    assert js("menuTrack.gain.gain.value") > 0.5 and js("menuTrack.far.frequency.value") > 8000      # full and clear
+    assert not js("music.on")                                         # the day's pieces wait
+    page.keyboard.press("Enter")                                      # into the world
+    page.wait_for_function("!!me", timeout=20000)
+    page.wait_for_timeout(8500)
+    assert not js("menuTrack.on") and js("menuTrack.nodes.size") == 0 and js("menuTrack.gain.gain.value") < 0.06
+    page.close()
+    assert not errors, errors

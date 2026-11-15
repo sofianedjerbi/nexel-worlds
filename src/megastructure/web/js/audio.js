@@ -18,11 +18,12 @@ const SOUND = {
   afterFight: [20, 40],   // seconds after a fight before a piece may play again
   passes: {day: 6, night: 4},   // how many times a piece loops before it ends: about 3:30 by day, 3:50 at night
                       // ("feel free to make it loop for 3-4 min"); the loop joins are exact, nothing is heard there
-  arrive: {day: 10, night: 14, boss: 2.5},   // seconds a piece takes to come in: from quiet and muffled (as if from far) to full.
+  arrive: {day: 10, night: 14, boss: 2.5, menu: 6},   // seconds a piece takes to come in: from quiet and muffled (as if from far) to full.
                       // Long on purpose: "make the transition long enough to not be noticed by the player"
   ending: 12,         // seconds over which a piece recedes at its end (quieter and more muffled), and the boss's after a fight
   turn: [6, 12],      // seconds of silence when the hour turned during a piece (dusk, dawn): it closes on its chord, then the new hour's
   giveWay: 4,         // seconds a day or night piece takes to recede when a fight starts (the boss's piece comes in over it)
+  menuOut: 5,         // seconds the first screen's piece takes to recede once you are in the world
   wind: .5,           // the wind of a fall at its fastest (fallWind)
   mix: {Footsteps: .9, Work: 1, Breaking: 1, Building: 1, Items: .9, Progress: 1, Fights: 1, Animals: .9, World: .9, People: .8, Interface: .8, Boss: 1},
   scene: {People: .5, rest: .25},   // the island behind the first screen: its voices and its other sounds, as parts of what they
@@ -91,8 +92,12 @@ async function warmSounds() {
 // never starts or stops dead ("they just spawn out of nowhere"), it arrives and recedes (swell).
 const music = {key: null, gain: null, on: false, at: 0, run: 0, nodes: new Map(), left: 0};       // the moment playing, if one is
 const bossTrack = {key: null, gain: null, on: false, at: 0, run: 0, nodes: new Map(), left: Infinity};
+// The first screen's piece ("Make that the home screen song": High tide, music/slowtide.py): it loops while the screen is
+// up, comes in with a gradient ("to avoid it popping out of nowhere") on the first key or click (a browser plays nothing
+// before one), and recedes when you enter the world.
+const menuTrack = {key: null, gain: null, on: false, at: 0, run: 0, nodes: new Map(), left: Infinity};
 const moment = {next: Infinity, last: {}};                 // next: when a piece may start (performance.now ms)
-let fight = false;
+let fight = false, home = false;
 const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const between = ([lo, hi]) => (lo + Math.random() * (hi - lo)) * 1000;
 const piece = (file) => fetch(`audio/${file}?v=${sounds.manifest.version}`)
@@ -151,7 +156,7 @@ function moments() {
   // Night falls (or day breaks) on a piece of the other hour: it is not cut, it plays this pass to its end and closes
   // there on its last chord, receding; after a short silence the new hour's piece comes in from far.
   if (music.on && music.hour && music.hour !== hour && !music.turned) { music.turned = true; music.left = Math.min(music.left, 1); }
-  if (!audio || muted || fight || !m || !m.tracks || !SOUND.music || music.on || performance.now() < moment.next) return;
+  if (!audio || muted || fight || home || !m || !m.tracks || !SOUND.music || music.on || performance.now() < moment.next) return;
   const all = m.play[hour] || [];
   const list = all.length > 1 ? all.filter((k) => k !== moment.last[hour]) : all;
   if (!list.length) return;
@@ -174,13 +179,21 @@ function tune(tc) {
     const out = muted ? 3 * tc : SOUND.ending;
     swell(bossTrack, 0, out); halt(bossTrack, out + 1);
   }
-  if (music.on && (muted || fight)) {                      // a moment gives way: to silence, or to the fight (they cross)
+  const menu = !muted && home && !!m.tracks[m.play.menu];
+  menuTrack.key = m.play.menu;
+  if (menu && !menuTrack.on) { menuTrack.left = Infinity; stream(menuTrack); swell(menuTrack, SOUND.music, SOUND.arrive.menu); }
+  else if (!menu && menuTrack.on) { const out = muted ? 3 * tc : SOUND.menuOut; swell(menuTrack, 0, out); halt(menuTrack, out + 1); }
+  if (music.on && (muted || fight || home)) {              // a moment gives way: to silence, to the fight (they cross), to the first screen
     const out = muted ? 3 * tc : SOUND.giveWay;
     swell(music, 0, out); halt(music, out + .5);
   }
   if (moment.next === Infinity && !music.on) moment.next = performance.now() + (muted ? Infinity : between(fight ? SOUND.afterFight : [2, 5]));
 }
 const startMusic = () => { moment.next = performance.now() + between(SOUND.firstMoment); };
+setInterval(() => {                                        // is the first screen up? (again while its piece is not on: the sound may not have started yet)
+  const on = typeof titleOpen === "function" && titleOpen();
+  if (on !== home || (on && !menuTrack.on && !muted)) { home = on; tune(1); }
+}, 500);
 function bossMusic(on) {
   if (on === fight) return;
   fight = on; tune(on ? .3 : 1.3);

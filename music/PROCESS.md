@@ -518,3 +518,7 @@ unique theme. cute and fast".
   (A, A answered, B, A + inner voice, C with the drums thinned, B + a sixth under, A everything twice): 66 bars,
   2 min 32 s at 104. One looping file; the two thin bars come round each time. Blocks can have any number of bars.
 - Checks: nothing out of range (day reference); the thin bars sit 6 dB under the rest. Published to the demo page.
+
+## High tide is the first screen's music (2026-11-15)
+- "Great !! Make that the home screen song". Wired: `tools/build_audio.py` (role `menu`), `audio.js` (`menuTrack`:
+  loops while the first screen is up, a 6 s gradient in, 5 s out on entering the world). JOURNAL iteration 118.
