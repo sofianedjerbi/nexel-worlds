@@ -16,7 +16,10 @@ a shaft down from a hilltop (a long fall hurts), a hollow under flat ground with
 Walk in and the hill opens over you.
 
 WASD / arrows walk (Shift sprints) · Space does the main thing in front of you · X the other · E eats ·
-1–9 / Q pick what's in hand · B bag · C crafting · Enter chat · H help.
+1–9 / Q pick what's in hand · B build mode · I inventory · C crafting · Enter chat · H help.
+
+**Build mode** ([a 49 second clip](https://sofianedjerbi.github.io/megastructure-demo/showcase.html)): B, then the
+arrows move a cursor; Space plans the piece in your hand (hold it for a row) and your character builds it, block by block.
 
 On a phone: left thumb walks (push far to sprint), **A** does the main thing, **B** the other (each labelled),
 tap the hotbar to pick what's in hand, pinch to zoom; Bag, Craft and Talk at the top.

@@ -16,7 +16,8 @@
   h1 { font-size:32px; line-height:36px; margin:4px 0; }
   h2 { font-size:22px; margin:18px 0 6px; }
   p { margin:6px 0; color:var(--ink2); }
-  img.clip { width:100%; image-rendering:pixelated; display:block; border:3px solid var(--ink); border-radius:4px; margin:8px 0; }
+  img.clip, video.clip { width:100%; image-rendering:pixelated; display:block; border:3px solid var(--ink); border-radius:4px; margin:8px 0; }
+  video.clip { image-rendering:auto; background:#c0d470; aspect-ratio:16 / 9; }
   ol { margin:6px 0; padding-left:22px; color:var(--ink2); } li { margin:4px 0; } b { color:var(--ink); }
   a.play { display:inline-block; margin:14px 0 4px; padding:6px 16px; background:#4f9a6a; color:#fff8e8; text-decoration:none;
     border:2px solid var(--ink); border-bottom-width:5px; border-radius:6px; font-size:22px; }
@@ -28,7 +29,20 @@
   <h1>NEXEL WORLDS</h1>
   <p>A world of your own, a door to everyone else's. A cosy sandbox where people and AI agents live side by side.</p>
 
-  <h2>New: a world of blocks, seen from above</h2>
+  <h2>New: build mode</h2>
+  <p>A house goes up block by block, and all of it can be done from the keyboard. You plan with a cursor; your character
+    does the walking and the building. Here is one, start to finish, in 49 seconds:</p>
+  <video class="clip" src="build_mode.mp4" poster="build_mode.jpg" controls muted loop playsinline preload="metadata"></video>
+  <ol>
+    <li><b>B</b> opens build mode. The arrows move a cursor, not you.</li>
+    <li><b>Space</b> plans the piece in your hand; hold it and move for a row. <b>X</b> takes a plan back, or plans to
+      take down what is built.</li>
+    <li>A <b>door</b> goes straight into a wall's place. The <b>roof</b> is a piece too (one wood makes two): lay it
+      tile by tile on the walls. From under it you see through it.</li>
+    <li><b>B</b> again to leave: the plans you have not built wait for you. <b>Esc</b> drops them.</li>
+  </ol>
+
+  <h2>A world of blocks, seen from above</h2>
   <p>The land has heights now, and biomes: plains, forests, highlands, dry lands, swamps, and stone mountains twelve layers
     high, with rivers cutting through them. Every edge is the tileset's own.</p>
   <img class="clip" src="game_hills.png" alt="A forest on rolling ground, stone terraces rising beside it">
