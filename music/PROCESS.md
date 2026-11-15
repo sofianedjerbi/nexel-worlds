@@ -486,3 +486,15 @@ unique theme. cute and fast".
   holds). All three now have nothing out of range. Still water's bass is almost all under 120 Hz, like the nights'
   before their correction.
 - Not judged by ear.
+
+## Slow tide in full, the menu's music (2026-11-15)
+- "go use slow tide for the menu !! but add more depth, make it longer, more details in the background, mastering,
+  real music. make a last demo out of it. i want real variations with different melodies".
+- The chosen take is kept (`site/audio/keep_slow_tide_first.wav`) and is the A of `music/slowtide.py`: 64 bars,
+  3 min 33 s, eight blocks A A B A C B A A. Tunes: A (knocks twice, rises a third), B on D minor (after the beat, a
+  leap of a fifth, settles), C with the beat stopped (two long notes, a second voice). Layers instead of echo: a high
+  quiet pad (Closer Still), an inner voice twice a bar inside the chords (Uni Saw FB), a second voice (Sin Ring) that
+  answers A or doubles B a sixth under; bass and beat change by block.
+- Checks: no tune note a semitone or minor ninth over a chord note; mixcheck "chill": nothing out of range; master
+  (glue 1.5 dB, -20 LUFS, true peak -4.7 dB) then refit (the bass's octaves). Blocks sit within 1 dB of each other.
+- `site/audio/menu_slow_tide.wav`, on the page with a map of the blocks. Not in the game yet; not judged by ear.
