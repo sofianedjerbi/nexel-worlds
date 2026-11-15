@@ -16,7 +16,11 @@ function frame(now) {
     const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
     // people walk 5 tiles/s (10 sprinting); animals amble, so each of their steps takes most of the pause between them
     // (a scared animal: exactly the server's pace, a tile every FLEE_STRIDE: slower and it fell behind, then snapped)
-    const pace = p.running || (p.e && p.e.run) ? 10 : p.e && p.e.scared && AMBLE[p.e.kind] ? 1 / FLEE_STRIDE : p.e && AMBLE[p.e.kind] ? AMBLE[p.e.kind] : 5;
+    // (an animal that the world moves faster than it ambles, a tusker trotting into line or ending its charge, goes at
+    // the world's pace, p.pace, state.js; and one that paws the ground or stands dazed is where it is: it was drawn
+    // most of a tile behind, sliding into place while it pawed. "it glitches a few pixels... when doing key moves")
+    const amble = p.e && AMBLE[p.e.kind] ? Math.max(p.e.scared ? 1 / FLEE_STRIDE : AMBLE[p.e.kind], p.pace || 0, p.e.kind === "tusker" && p.e.act ? 8 : 0) : 0;
+    const pace = p.running || (p.e && p.e.run) ? 10 : amble || 5;
     const step = (d > 1.5 ? d * 8 : pace * 1.05) * dt;
     if (d <= step) { p.x = p.tx; p.y = p.ty; }
     else if (d > 1.5) { p.x += dx / d * step; p.y += dy / d * step; }    // far behind (lag, teleport): straight there

@@ -1563,3 +1563,15 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   is shown for a line with something typed; on a bare "/", Down walks the list and Up goes to the last command.
 - Measured: a new test in `test_e2e_complete.py` (the order back and forth, the draft, commands only from "/", the
   list's arrows, kept after a reload); completion 5 of 5, and the interface, touch and social tests.
+
+## Iteration 133: the tusker is where it is
+- Said: "boar is kinda buggy it glitches a few pixels somewhat teleporting near to its location when doing key moves".
+- Looked for it in three places. The sheet: every animation's frames sit on the same pixels. The charge: drawn at
+  ten tiles a second, no jump (worst frame step 0.28 tile). The moves around it: trotting into line (a tile every
+  0.2 s when angry) and at the end of a charge the world moves it faster than the 1.2 tiles a second it was drawn
+  ambling at, so it began to paw, or stood dazed, up to 0.7 tile from its tile and slid there during the move.
+- Change: an animal goes at the world's pace when that is faster than its amble (`state.js` p.pace, from its last two
+  places; `render.js`), and a tusker pawing or dazed closes what is left at once (8 tiles a second).
+- Measured (`test_e2e_wild.py`, the drawn place frame by frame): a quarter of a second into a warning or a daze it
+  is under 0.02 tile from its tile (0.69 with the old rule, same test); no frame moves it more than 0.6 tile. The
+  wild, living, world and moving tests pass. Not seen by me in motion.
