@@ -408,3 +408,26 @@ The user: "both sounds bad. also db should be normalized (w/ sound effect db als
   job: -16 LUFS is a listening level; behind a game, -18 to -24 is usual, and most effects are quieter than -16.
   All music is now at -20 LUFS. When it is wired into the game, SOUND.music must be raised to keep the balance the
   game has now (old day theme: -17 LUFS at 0.45, about -24 effective; -20 needs about 0.63 for the same).
+
+## Music for the first screen: five candidates (2026-11-15)
+
+The user: "do research on music menu for games then craft a demo webpage with 5 music for the start menu with their
+unique theme. cute and fast".
+- Reading (links on the page): a menu theme is the appetizer and says the game's mood; the tune must be caught in the
+  first seconds; it loops for as long as someone stays; one developer ran the menu a little faster than play (120
+  against 100); call and answer is what is remembered (Kirkhope on Banjo-Kazooie); bright title themes measured at
+  126 to 154 BPM in a major key (Super Mario Party, Donkey Kong, Kirby).
+- `music/menu.py`, page `music/site/menu.html` (http://127.0.0.1:8099/menu.html). The house recipe (rich chords, a lead
+  of one bar three times then a cadence, synth sounds, dry), but each candidate is its own theme: key, chord cycle,
+  groove, lead bar and sounds. No sound of a kept piece, no pads, no introduction.
+  1. Hop in: G major, 132, a bounce (octave bass, off-beat chords). One lead bar fits all seven chords.
+  2. Sugar rush: E flat, 172, a kick on every beat, IV V iii vi; the lead calls and a second synth answers.
+  3. Skip rope: C major, 120, a shuffle (swing 0.64), I VI7 ii V, the bass walks.
+  4. Carousel: B flat, 174, a waltz (3/4), with the minor iv.
+  5. Tide pool: D major with its flat seventh chord (C), 138, 3+3+2.
+- Sounds chosen by measure (speaks under 15 ms late, no echo): leads Cute 3, Nice Pluck 4, Snap, Saw Pluck, Nice
+  Pluck 1; chords Ploppy, Instant Coffee PWM, Spik, Poly Lala, Simplistic; basses Bass 4, Schnell, Square Bass,
+  Bass 5, Squared. From the second pass a second sound doubles the lead an octave down.
+- Loops of 45 to 66 s, mastered by `master.master` to -20 LUFS. Band balance measured within the range of Side street
+  day and Far shore day.
+- Not judged by ear, not in the game.

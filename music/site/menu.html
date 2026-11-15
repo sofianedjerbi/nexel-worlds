@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexel Worlds · music for the first screen</title>
+<style>
+  :root { --q:3px; --ink:#f3e6cf; --soft:#b9a48a; --night:#1d1a2b; --panel:#2f2a44; --hi:#4a4368; --lo:#17142a; --edge:#0d0b18; --gold:#ffd36a; --on:#fff1a8; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--night); color:var(--ink); font:16px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; padding:32px 16px 64px; }
+  main { width:min(920px, 100%); margin:0 auto; }
+  h1 { margin:0; font-size:34px; letter-spacing:2px; color:var(--on); text-shadow:var(--q) var(--q) 0 #5b3f36; }
+  h1 em { font-style:normal; color:var(--gold); }
+  .sub { color:var(--soft); margin:8px 0 24px; }
+  .box { background:var(--panel); padding:16px 18px; margin-bottom:18px;
+    box-shadow:inset var(--q) var(--q) 0 var(--hi), inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 var(--lo), calc(-1 * var(--q)) 0 var(--edge), var(--q) 0 var(--edge), 0 calc(-1 * var(--q)) var(--edge), 0 var(--q) var(--edge); }
+  .box.on { background:#3a3357; }
+  .row { display:flex; align-items:center; gap:16px; }
+  .n { flex:none; width:44px; height:44px; display:grid; place-items:center; font-size:22px; color:var(--night); background:var(--tone);
+    box-shadow:inset var(--q) var(--q) 0 rgba(255,255,255,.45), inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 rgba(0,0,0,.25); }
+  h2 { margin:0; font-size:24px; color:var(--on); }
+  .feel { color:var(--ink); }
+  .facts { color:var(--soft); font-size:14px; margin-top:8px; }
+  .facts b { color:var(--ink); font-weight:normal; }
+  button { all:unset; cursor:pointer; flex:none; margin-left:auto; padding:10px 22px; font-size:18px; color:var(--night); background:var(--gold); text-align:center; min-width:96px;
+    box-shadow:inset var(--q) var(--q) 0 #fff1a8, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c98f2e, calc(-1 * var(--q)) 0 var(--edge), var(--q) 0 var(--edge), 0 calc(-1 * var(--q)) var(--edge), 0 var(--q) var(--edge); }
+  button:active { transform:translateY(var(--q)); }
+  .bar { position:relative; height:12px; margin-top:14px; background:var(--lo); cursor:pointer; box-shadow:inset var(--q) var(--q) 0 var(--edge); }
+  .bar i { position:absolute; left:0; top:0; bottom:0; width:0; background:var(--tone); }
+  .bar s { position:absolute; top:0; bottom:0; width:var(--q); background:rgba(0,0,0,.35); }
+  ul { margin:8px 0 0; padding-left:20px; } li { margin:4px 0; }
+  a { color:var(--gold); }
+  .note { color:var(--soft); font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>NEXEL <em>WORLDS</em></h1>
+  <div class="sub">Five candidates for the music of the first screen. Cute and fast, each with a theme of its own. Each one loops with no gap, as it would behind the menu.</div>
+  <div id="list"></div>
+  <div class="box">
+    <h2>What the reading says about menu music</h2>
+    <ul>
+      <li>It is the appetizer: it says the mood of the game before anything is played.</li>
+      <li>The tune has to be caught in the first seconds, so each of these starts on its tune, with no introduction.</li>
+      <li>Nobody knows how long a player stays, so it loops, and the loop must not be heard. One developer made the menu a little faster than the music of play (120 against 100).</li>
+      <li>A short tune that calls and is answered is what people remember (Grant Kirkhope on Banjo-Kazooie). "Sugar rush" is built on that.</li>
+      <li>Bright and cute, measured on title themes: a major key, 126 to 154 beats a minute (Super Mario Party 126, Donkey Kong 140, Kirby 150 and 154), short notes.</li>
+    </ul>
+    <p class="note">Sources:
+      <a href="https://comic.gamedev.net/forums/topic/713923-what-goes-into-a-good-music-track-for-the-title-screen/">gamedev.net, what goes into a title track</a> ·
+      <a href="https://www.ninichimusic.com/blog/introducing-the-game-music-for-tank-tank-rush">Ninichi, menu against main theme</a> ·
+      <a href="https://composercode.com/ep-16-the-inevitable-interview-with-grant-kirkhope-banjo-kazooie-goldeneye-007/">Composer Code, Grant Kirkhope</a> ·
+      <a href="https://www.gamedeveloper.com/game-platforms/interview-magical-planet---the-music-of-hiroki-kikuta-yoko-shimomura">Game Developer, Hiroki Kikuta</a> ·
+      <a href="https://www.hooktheory.com/theorytab/view/nintendo/super-mario-party---title-theme">Hooktheory, Super Mario Party</a> ·
+      <a href="https://www.hooktheory.com/theorytab/view/nintendo/donkey-kong---title-theme">Donkey Kong</a> ·
+      <a href="https://www.hooktheory.com/theorytab/view/nintendo/friendly-field---kirby-star-allies">Kirby</a></p>
+  </div>
+  <div class="box">
+    <h2>How they are made</h2>
+    <ul>
+      <li>The recipe of the pieces you kept: rich chords under a lead that plays one bar three times, then a cadence.</li>
+      <li>Synth sounds from Surge XT, played from Python (<code>music/menu.py</code>). No sound of a kept piece is used again, and there are no pads.</li>
+      <li>Every sound was measured on the beat, with no echo. Every piece is at the game's music level (-20 LUFS).</li>
+      <li>I cannot hear them. They are five guesses built on what you have liked so far, and the choice is yours.</li>
+    </ul>
+  </div>
+</main>
+<script>
+const TONE = ["#f7d488", "#f4a6c0", "#b9e0a5", "#a9c8ec", "#8fe0d4"];
+let ctx = null, playing = null;                       // playing: {id, src, t0, len}
+const buffers = {};
+async function load(id) {
+  if (!buffers[id]) buffers[id] = fetch(`audio/menu_${id}.wav?v=${Date.now()}`).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b));
+  return buffers[id];
+}
+function stop() {
+  if (!playing) return;
+  playing.src.stop(); document.getElementById("b-" + playing.id).textContent = "Play";
+  document.getElementById("c-" + playing.id).classList.remove("on"); document.querySelector(`#c-${playing.id} .bar i`).style.width = "0";
+  playing = null;
+}
+async function play(id, from) {
+  ctx = ctx || new AudioContext();
+  const was = playing && playing.id; stop();
+  if (was === id && from === undefined) return;
+  const btn = document.getElementById("b-" + id); btn.textContent = "...";
+  const buf = await load(id);
+  if (playing) stop();
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(ctx.destination);   // (a looped buffer: no gap at the seam)
+  const at = (from || 0) * buf.duration; src.start(0, at);
+  playing = {id, src, t0: ctx.currentTime - at, len: buf.duration};
+  btn.textContent = "Stop"; document.getElementById("c-" + id).classList.add("on");
+}
+function tick() {
+  if (playing) document.querySelector(`#c-${playing.id} .bar i`).style.width = (((ctx.currentTime - playing.t0) % playing.len) / playing.len * 100) + "%";
+  requestAnimationFrame(tick);
+}
+fetch("audio/menu.json?v=" + Date.now()).then((r) => r.json()).then((all) => {
+  document.getElementById("list").innerHTML = all.map((m, i) => `
+    <div class="box" id="c-${m.id}" style="--tone:${TONE[i]}">
+      <div class="row"><div class="n">${i + 1}</div><div><h2>${m.title}</h2><div class="feel">${m.feel}</div></div><button id="b-${m.id}">Play</button></div>
+      <div class="bar" data-id="${m.id}"><i></i>${[1, 2, 3].map((k) => `<s style="left:${k * 25}%"></s>`).join("")}</div>
+      <div class="facts"><b>${m.bpm}</b> beats a minute · <b>${m.meter}</b> · <b>${m.key}</b> · loop of <b>${Math.round(m.seconds)} s</b><br>
+        lead <b>${m.sounds.lead}</b>${m.sounds.second ? ` · answer <b>${m.sounds.second}</b>` : ""}${m.sounds.double ? ` · joined the second time by <b>${m.sounds.double}</b>` : ""} · chords <b>${m.sounds.chords}</b> · bass <b>${m.sounds.bass_sound}</b></div>
+    </div>`).join("");
+  all.forEach((m) => { document.getElementById("b-" + m.id).onclick = () => play(m.id); });
+  document.querySelectorAll(".bar").forEach((b) => b.onclick = (e) => play(b.dataset.id, (e.clientX - b.getBoundingClientRect().left) / b.offsetWidth));
+  tick();
+});
+</script>
+</body>
+</html>
