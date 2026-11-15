@@ -1,7 +1,7 @@
 """The first screen's background: a small island made by hand, baked into the page (web/js/title_map.js) so that it
 shows at once, before any world is loaded. It is built here in a throwaway world with the game's own tiles and
-exported as the page takes land in (six blocks of 32 x 32, and one of open sea for all the rest), with the places and
-the ways its little cast needs (web/js/title_scene.js plays them).
+exported as the page takes land in (six blocks of 32 x 32, and one of open sea for all the rest), with the places its
+people go to and where they stand there (web/js/title_cast.js: they choose what to do themselves).
 
     uv run python tools/build_title_scene.py
 """
@@ -12,9 +12,20 @@ import tempfile
 from pathlib import Path
 
 from megastructure.server import GameServer
+from megastructure.tiles import BLOCKS, GROUNDS
 
 W, H = 96, 64
 OUT = Path(__file__).parent.parent / "src" / "megastructure" / "web" / "js" / "title_map.js"
+
+
+# Where its people stand for what was put there by hand, the way they face, and the tile they look at: [x, y, way, tx, ty]
+FIXED = {
+    "fire": [[40, 33, "E", 41, 33], [42, 33, "W", 41, 33], [41, 35, "N", 41, 33], [41, 32, "S", 41, 33]],      # (the one below it a tile off: a head hid the flame)
+    "well": [[55, 28, "N", 55, 27]], "mail": [[44, 28, "W", 43, 28]], "trough": [[35, 38, "S", 35, 39]], "coop": [[33, 36, "W", 32, 36]],
+    "sign": [[50, 44, "W", 49, 44]], "picnic": [[45, 35, "S", 45, 35], [46, 34, "W", 46, 34], [44, 34, "E", 44, 34]],
+    # (the pier's end, the bridge, the hill's top by the flag, the pond's shore, the pen's gate, the field's edge)
+    "views": [[77, 43, "E", 78, 43], [60, 43, "S", 60, 44], [61, 43, "N", 61, 42], [27, 24, "S", 27, 25], [58, 39, "E", 59, 39], [66, 40, "N", 66, 39], [39, 37, "W", 37, 37], [52, 29, "N", 52, 27]],
+}
 
 
 def build():
@@ -77,11 +88,12 @@ def build():
                 if (x, y) in land:
                     put(x, y, ground="cobble", block="none")
     path(41, 28, 41, 31); path(41, 31, 54, 31); path(47, 31, 47, 43); path(47, 43, 58, 43); path(63, 43, 72, 43)
-    for x in range(73, 78):                                   # the pier, and the boat tied up at its end
+    for x in range(73, 78):                                   # the pier (Pip ties his boat up at its end when he comes ashore)
         put(x, 43, ground="bridge")
-    put(78, 43, block="boat")
     put(41, 33, block="campfire"); put(39, 33, block="chair"); put(43, 33, block="chair")
-    put(44, 35, block="picnic_blanket"); put(45, 35, block="part"); put(46, 35, block="part"); put(44, 34, block="part"); put(45, 34, block="part"); put(46, 34, block="part")
+    put(44, 35, block="picnic_blanket")
+    for x, y in ((45, 35), (46, 35), (44, 34), (45, 34), (46, 34)):
+        put(x, y, block="flat_part")                           # (walked on, as the game lays it)
     put(49, 44, block="sign")
 
     # the field, at every age, and the well beside it
@@ -113,13 +125,17 @@ def build():
                 put(x, y, block=block); taken.add((x, y)); n -= 1
     reserve = [(x, y) for x in range(60, 72) for y in range(22, 31)]      # the cow's meadow stays open
     taken.update(reserve)
+    taken.update((x, y) for x, y, *_ in sum(FIXED.values(), []))           # and where people stand, and the gate's way in
+    taken.update([(38, 37), (39, 37), (36, 37)])
     scatter("tree", 26, (20, 13, 76, 20)); scatter("tree", 12, (18, 28, 28, 46)); scatter("tree", 14, (62, 45, 78, 52)); scatter("tree", 8, (36, 44, 56, 51))
     scatter("fruit_tree", 4, (46, 20, 58, 22), 0); scatter("berry_bush", 7, (30, 28, 70, 50), 0); scatter("rock", 6, (20, 18, 36, 32), 0); scatter("ore", 2, (22, 26, 32, 32), 0)
     scatter("mushroom", 5, (18, 26, 30, 44), 0); scatter("thicket", 4, (64, 14, 76, 22), 0)
     taken.difference_update(reserve)
     scatter("flower", 46, (16, 12, 80, 52), 0)
 
-    # the ways of the cast, a tile at a time
+    put(52, 18, block="tree"); put(52, 19, block="none"); put(51, 19, block="none"); put(53, 19, block="none")      # a tree with room under it
+
+    # the sea road round the island, a tile at a time, and the way to it from the pier's end
     def walk(*pts):
         out = [list(pts[0])]
         for x1, y1 in pts[1:]:
@@ -135,18 +151,46 @@ def build():
         if not ring or [x, y] != ring[-1]:
             ring += walk(ring[-1], (x, y))[1:] if ring else [[x, y]]
     ring += walk(ring[-1], ring[0])[1:-1]
-    assert all(world.ground(x, y) in ("water", "mid_water", "deep_water") for x, y in ring)
+    join = min(range(len(ring)), key=lambda i: abs(ring[i][0] - 84) + abs(ring[i][1] - 43))
+    ring = ring[join:] + ring[:join]                           # (it starts where the pier's way meets it)
+    moor = walk((78, 43), ring[0])[:-1]
+    wet = ("water", "mid_water", "deep_water")
+    assert all(world.ground(x, y) in wet and world.block(x, y) == "none" for x, y in ring + moor)
+
+    # where its people can stand: bare ground a body can walk, reached from the door a step at a time (a level up or down at most)
+    grounds, things = {g.name: g for g in GROUNDS}, {b.name: b for b in BLOCKS}
+    def bare(x, y):
+        return grounds[world.ground(x, y)].walkable and not things[world.block(x, y)].solid
+    reach, edge = {(41, 28)}, [(41, 28)]
+    while edge:
+        x, y = edge.pop()
+        for dx, dy in ((0, 1), (1, 0), (-1, 0), (0, -1)):
+            q = (x + dx, y + dy)
+            if q not in reach and bare(*q) and abs(world.level(*q) - world.level(x, y)) <= 1:
+                reach.add(q); edge.append(q)
+    used = set()
+    def stand(tx, ty, tall):
+        """Where to stand to work at (tx, ty), and the way to face: under a tree for choice; beside a small thing (a
+        head hides the tile over it: a rock, a bush or a flower worked at from below is not seen)."""
+        under, sides = ((0, 1, "N"),), ((1, 0, "W"), (-1, 0, "E"))
+        for dx, dy, d in (under + sides if tall else sides + under) + ((0, -1, "S"),):
+            q = (tx + dx, ty + dy)
+            if q in reach and q not in used and world.block(*q) == "none" and world.ground(*q) in ("grass", "cobble"):
+                used.add(q)
+                return [q[0], q[1], d, tx, ty]
+    def spots(kind, most, near=(47, 31)):
+        found = sorted(((x, y) for y in range(H) for x in range(W) if world.block(x, y) == kind), key=lambda q: abs(q[0] - near[0]) + abs(q[1] - near[1]) * 1.5)
+        return [s for s in (stand(*q, "tree" in kind) for q in found) if s][:most]
+    used.update((x, y) for x, y, *_ in sum(FIXED.values(), []))
+    places = {**FIXED, "trees": spots("tree", 12), "rocks": spots("rock", 5) + spots("ore", 2), "bushes": spots("berry_bush", 7),
+              "fruit": spots("fruit_tree", 4), "flowers": spots("flower", 18)}
+    for kind, found in places.items():
+        assert found and all((x, y) in reach for x, y, *_ in found), (kind, found)
     cast = {
-        "mira": walk((41, 28), (41, 31), (50, 31), (50, 28)),                  # from the door to the field: she waters it, and comes back
-        "sailor": ring,
-        "duck": walk((56, 35), (64, 35), (64, 36), (56, 36), (56, 35))[:-1],
-        "tobi": [52, 19], "tobi_tree": None,
-        "pen": [31, 35, 36, 39], "meadow": [61, 23, 70, 29],
-        "centre": [47, 31],
+        "centre": [47, 31], "view": [26, 18, 70, 46], "door": [41, 28], "field": [48, 24, 53, 27], "pen": [31, 35, 36, 39], "meadow": [61, 23, 70, 29],
+        "pond": sorted([x, y] for x, y in pond if world.ground(x, y) == "mid_water"), "ring": ring, "moor": moor, "pier": [77, 43],
+        "places": places,
     }
-    for y in (18, 17, 20):                                     # a tree for Tobi to chop, with room to stand under it
-        pass
-    put(52, 18, block="tree"); put(52, 19, block="none"); put(51, 19, block="none"); put(53, 19, block="none")
 
     blocks = []
     for by in range(H // 32):
@@ -163,4 +207,4 @@ if __name__ == "__main__":
     data = build()
     OUT.write_text("// The first screen's island, baked (tools/build_title_scene.py makes this file: do not edit it by hand).\n"
                    "const TITLE_MAP = " + json.dumps(data, separators=(",", ":")) + ";\n")
-    print(OUT, OUT.stat().st_size, "bytes;", len(data["blocks"]), "blocks; ring", len(data["cast"]["sailor"]), "tiles")
+    print(OUT, OUT.stat().st_size, "bytes;", len(data["blocks"]), "blocks; ring", len(data["cast"]["ring"]), "tiles;", {k: len(v) for k, v in data["cast"]["places"].items()})
