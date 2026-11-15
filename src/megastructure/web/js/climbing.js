@@ -67,7 +67,10 @@ const Climb = (() => {
   // A ladder at height z on (x, y): its rails and rungs from its foot up to the top it leads to
   function drawLadder(x, y, z, sx, sy, S, a = 1) {
     const q = zoom, L = lean(x, y, z), top = L ? L.top : z + 2, shift = L ? L.dx * 3 : 0;
-    const X = sx(x) + (4 + shift) * q, y0 = sy(y) - shOf(z) * q + 14 * q, y1 = sy(y) - shOf(top) * q - (L && L.dy < 0 ? 2 : 10) * q;
+    // (its top: against a thing north of it, just over that thing's front edge; south of it, poking over its far edge
+    // (the rest is behind it); beside it, along its side; leaning on nothing, two layers up)
+    const edge = !L ? -shOf(top) : L.dy < 0 ? -shOf(top) - 2 : L.dy > 0 ? 16 - shOf(top) - 6 : -shOf(top) + 2;
+    const X = sx(x) + (4 + shift) * q, y0 = sy(y) - shOf(z) * q + 14 * q, y1 = sy(y) + edge * q;
     ctx.globalAlpha = a;
     for (let yy = y0 - 3 * q; yy > y1 + q; yy -= 4 * q) { ctx.fillStyle = RAIL; ctx.fillRect(X + 2 * q, yy, 4 * q, q); ctx.fillStyle = RUNG; ctx.fillRect(X + 2 * q, yy - q, 4 * q, q); }
     for (const rx of [0, 6]) {
