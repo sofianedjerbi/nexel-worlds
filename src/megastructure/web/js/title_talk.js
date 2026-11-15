@@ -1,5 +1,6 @@
 // What the island's people say (title_cast.js): to each other when they meet, one line and its answer; round the
-// fire at night; and to themselves, now and then, at what they have just done. All of it ours.
+// fire at night; shouted from one end of the island to the other; and to themselves, now and then, at what they
+// have just done. All of it ours.
 const TITLE_TALK = {
   meet: [
     ["The hens are loud today.", "They heard about breakfast."],
@@ -38,6 +39,25 @@ const TITLE_TALK = {
     ["I could sit here forever.", "You said that yesterday. You did."],
     ["Was that an owl?", "That was my stomach."],
     ["Same time tomorrow?", "Same fire, too."],
+  ],
+  // shouted across the island now and then: who shouts, what; who shouts back, what
+  shout: [
+    ["Tobi", "WHO TOOK MY AXE?!", "Nell", "IT'S IN YOUR HAND!"],
+    ["Tobi", "HELLOOO!", "Nell", "HELLO YOURSELF!"],
+    ["Tobi", "IS IT SOUP AGAIN?!", "Mira", "IT'S ALWAYS SOUP!"],
+    ["Tobi", "TREE COMING DOWN!", "Mira", "NOT ON THE WHEAT!"],
+    ["Mira", "DINNER AT SUNDOWN!", "Tobi", "IS IT SOUP?!"],
+    ["Mira", "WHO LEFT THE GATE OPEN?!", "Nell", "NOT ME!"],
+    ["Mira", "LOU! OUT OF MY WHEAT!", "Lou", "QUACK!"],
+    ["Mira", "HAS ANYONE SEEN CLOVER?!", "Tobi", "SHE'S BEHIND YOU!"],
+    ["Nell", "I FOUND A BUG!", "Mira", "PUT IT BACK!"],
+    ["Nell", "ECHO!", "Tobi", "ECHO!"],
+    ["Nell", "RACE YOU TO THE FLAG!", "Tobi", "I'M HOLDING AN AXE!"],
+    ["Nell", "THE DUCK WINKED AT ME!", "Lou", "QUACK."],
+    ["Pip", "LAND HO!", "Tobi", "IT'S THE SAME LAND, PIP!"],
+    ["Pip", "I CAN SEE MY HOUSE!", "Mira", "THAT'S MY HOUSE!"],
+    ["Pip", "MAN OVERBOARD!", "Nell", "YOU'RE THE ONLY ONE ABOARD!"],
+    ["Lou", "QUACK!", "Nell", "HE SAID QUACK!"],
   ],
   solo: {
     chop: ["Timber!", "Mind your toes!", "One more for the pile."],

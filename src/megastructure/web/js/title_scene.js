@@ -26,8 +26,8 @@ const TitleScene = (() => {
     const t = S.at(x, y);
     if (t) onEvent({type: "tile", x: OX + x, y: OY + y, ground: now.ground || CH[t[1]], block: now.block || (GROUND.has(t[0]) ? "none" : CH[t[0]]), cause, by});
   };
-  S.say = (p, text) => {                                     // (over their head, and not in the world's chat)
-    bubbles.push({name: p.name, text, t: performance.now() / 1000, shout: false});
+  S.say = (p, text, shout = false) => {                      // (over their head, and not in the world's chat)
+    bubbles.push({name: p.name, text, t: performance.now() / 1000, shout});
     const em = emoteFor(text); if (em) setTimeout(() => S.on && emote(p.name, em), 2500);
   };
   const free = (x, y, but) => { const t = S.at(x, y); return !!t && t[0] === "." && ![...S.herd, ...S.people].some((o) => o !== but && o.x === x && o.y === y); };
@@ -68,6 +68,7 @@ const TitleScene = (() => {
     for (const [, fn] of now) fn();                          // what was felled or picked is grown again
     if (S.tick % 8 === 0) grow();
     for (const p of S.people) TitleCast.live(p);
+    TitleCast.hail();
     for (const a of S.herd) graze(a);
     const hm = Math.floor(S.phase * 1440), two = (n) => String(n).padStart(2, "0"), night = S.phase >= .75, where = (s) => [[OX + s[3], OY + s[4]]];
     onTick({type: "tick", tick: S.tick, time: `day 1, ${two(Math.floor(hm / 60))}:${two(hm % 60)}${night ? " (night)" : ""}`, night, phase: S.phase, entities: [...S.people, ...S.herd].map(said), items: [],

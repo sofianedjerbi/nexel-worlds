@@ -64,18 +64,19 @@ def test_waking_up_leaves_the_island_for_the_world(game):
 # The island's clock run by hand, a tenth of a second a step, with a seed: what each one did (never the same twice
 # running), what was said, what changed on the island, and whether anyone was ever where a body cannot be
 RUN = """([seed, steps]) => { TitleScene.stop(); document.getElementById('joinbox').style.display = ''; TitleScene.start(seed); clearInterval(TitleScene.S.timer);
-  const S = TitleScene.S, did = {}, said = [], wrong = [], was = new Map(), oe = window.onEvent, push = bubbles.push.bind(bubbles); let tiles = 0, fire = 0, ashore = 0;
-  window.onEvent = (e) => { if (e.type === 'tile') tiles++; return oe(e); }; bubbles.push = (b) => { said.push(b.name + ': ' + b.text); return push(b); };
+  const S = TitleScene.S, did = {}, said = [], shouts = [], wrong = [], was = new Map(), oe = window.onEvent, push = bubbles.push.bind(bubbles); let tiles = 0, fire = 0, ashore = 0;
+  window.onEvent = (e) => { if (e.type === 'tile') tiles++; return oe(e); };
+  bubbles.push = (b) => { (b.shout ? shouts : said).push(b.name + ': ' + b.text); if (b.shout && shouts.length === 1) shouts.first = S.tick; return push(b); };
   for (let i = 0; i < steps; i++) { TitleScene.step(); bubbles.length = 0;
     for (const p of S.people) { const l = did[p.name] || (did[p.name] = []), t = S.at(p.x, p.y), w = was.get(p) || [p.x, p.y];
       if (l[l.length - 1] !== p.last) l.push(p.last);
-      const water = !!t && wet(t[1]) && GROUND.has(t[0]), ground = !!t && WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
+      const water = !!t && wet(t[1]) && GROUND.has(t[0]), ground = !!t && WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]) && !(p.still && (t[0] === '+' || t[1] === 'n'));
       if (!(p.sail || p.swim ? water : ground) || Math.abs(p.x - w[0]) + Math.abs(p.y - w[1]) > 1) wrong.push([i, p.name, p.x, p.y, t && t.slice(0, 2)]);
       was.set(p, [p.x, p.y]); }
     fire = Math.max(fire, S.people.filter((p) => p.last === 'fire' && p.still).length); if (!S.people[2].sail) ashore++; }
   window.onEvent = oe; bubbles.push = push;
   const things = (c) => [...blocks.values()].reduce((n, b) => n + [...b.objs.values()].filter((q) => q === c).length, 0);
-  return {did, said, wrong, tiles, fire, ashore, trees: things('T'), stumps: things('t'), boat: things('V')}; }"""
+  return {did, said, shouts: [...shouts], first: shouts.first, wrong, tiles, fire, ashore, trees: things('T'), stumps: things('t'), boat: things('V')}; }"""
 
 
 def test_the_islands_people_choose_what_they_do(browser, server):
@@ -83,8 +84,8 @@ def test_the_islands_people_choose_what_they_do(browser, server):
     round and round). They choose (web/js/title_cast.js): over a day and a half each does many kinds of things and
     never the same twice running, they speak to each other, what they do changes the island (a tree is felled and
     grows back, wheat is watered, pulled and sown), in the evening they come round the fire, Pip ties his boat up and
-    takes it out again; nobody is ever on water on foot, in a wall, or a tile further than a step. And another
-    visit is another play."""
+    takes it out again; nobody is ever on water on foot, in a wall, or a tile further than a step, nor stands
+    in a doorway or indoors (under the roof they are not seen). And another visit is another play."""
     page, errors = open_page(browser, server)
     page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on && !arrivingNow", timeout=10000)
     trees = page.evaluate("[...blocks.values()].reduce((n, b) => n + [...b.objs.values()].filter((q) => q === 'T').length, 0)")
@@ -96,6 +97,9 @@ def test_the_islands_people_choose_what_they_do(browser, server):
         assert all(a != b for n in ("Mira", "Tobi", "Nell", "Pip") for a, b in zip(did[n], did[n][1:])), did        # never the same twice running
         assert {"harvest", "water"} <= set(did["Mira"]) and {"chop", "mine"} <= set(did["Tobi"]) and "sail" in did["Pip"]
         assert len(run["said"]) >= 20 and len(set(run["said"])) >= 15, run["said"]                                    # they speak, and not the one line
+        # now and then one shouts across the island and is shouted back at: the first within ten seconds, never the same twice running
+        assert len(run["shouts"]) >= 8 and run["first"] <= 100, run["shouts"]
+        assert all(a != b for a, b in zip(run["shouts"][::2], run["shouts"][2::2])), run["shouts"]
         assert run["tiles"] >= 60 and run["fire"] >= 2 and 300 < run["ashore"] < 2700, run                         # the island changes; the fire; the boat out and in
         assert run["trees"] + run["stumps"] == trees and 0 < run["trees"] and run["boat"] <= 1, run                # a felled tree is a stump, then a tree again
     assert one["did"] != two["did"] and one["said"] != two["said"]                                                # another visit, another play

@@ -4,12 +4,13 @@
 // What they do is done to the island: watered soil is wet and its wheat grows, ripe wheat is pulled and sown again,
 // a tree comes down and grows back from its stump, berries and fruit are picked and eaten, flowers go and come
 // again, the trough is filled, a letter is posted and found, a cow is milked, the boat is tied up at the pier and
-// taken out again. They call to each other and stop for a word (title_talk.js); in the evening the day's work is
-// left and they come round the fire, going off between two whiles by it for a walk, a letter, the well.
+// taken out again. They call to each other and stop for a word (title_talk.js), and now and then one shouts
+// across the island and is shouted back at; in the evening the day's work is left and they come round the fire,
+// going off between two whiles by it for a walk, a letter, the well.
 // The dice are thrown anew at each visit: no two are the same.
 // An errand is written as a generator: each `yield` is a tenth of a second going by.
 const TitleCast = (() => {
-  let I = null, spoke = 0;                           // the island; when someone last spoke to themselves
+  let I = null, spoke = 0, loud = 0, last = null;    // the island; when someone last spoke to themselves; when the next shout is due, and the last one
   const WAYS = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]}, taken = new Map();      // (a place -> who has it)
   const lv = (x, y) => levelAt(I.ox + x, I.oy + y) || 0, one = (list) => list[I.pick(list.length)];
   const bare = (x, y) => { const t = I.at(x, y); return !!t && WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]); };
@@ -73,7 +74,8 @@ const TitleCast = (() => {
   // a good deal nearer: a head hides the tile over it) -> [x, y, the way to face, tx, ty]
   function beside(p, tx, ty) {
     const cost = (s) => far(p, s) + (s[2] === "N" ? 4 : 0);
-    return Object.entries(WAYS).map(([d, [dx, dy]]) => [tx - dx, ty - dy, d, tx, ty]).filter(([x, y]) => bare(x, y) && !someone(x, y, p)).sort((a, b) => cost(a) - cost(b))[0] || null;
+    const out = (x, y) => { const t = I.at(x, y); return t[0] !== "+" && t[1] !== "n"; };                    // (not in a doorway, nor indoors: under the roof they are not seen)
+    return Object.entries(WAYS).map(([d, [dx, dy]]) => [tx - dx, ty - dy, d, tx, ty]).filter(([x, y]) => bare(x, y) && out(x, y) && !someone(x, y, p)).sort((a, b) => cost(a) - cost(b))[0] || null;
   }
   // The field's tiles that are as wanted (their thing, their ground); and for p one of the two nearest, with where to stand
   const field = (want) => { const [x0, y0, x1, y1] = I.C.field, out = []; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const t = I.at(x, y); if (t && want(t[0], t[1])) out.push([x, y]); } return out; };
@@ -83,7 +85,7 @@ const TitleCast = (() => {
   function* talk(p, q, lines) {
     if (!q) return;
     const [a, b] = one(lines);
-    q.hold = 72; q.face = toward(q, p);
+    q.hold = 72; q.face = toward(q, p); p.talks = I.tick + 72;
     I.say(p, a); yield* rest(p, 32, toward(p, q));
     I.say(q, b); yield* rest(p, 34, toward(p, q));
   }
@@ -263,14 +265,30 @@ const TitleCast = (() => {
     Object.assign(p, {doing: null, with: null, item: null, aim: null, still: false, run: false});
     p.job = choose(p);
   }
+  // Now and then someone in sight shouts across the island, and is shouted back at; whoever else is by laughs.
+  // (The first, a few seconds after the island wakes: it is the first thing a visitor hears of them.)
+  function hail() {
+    if (I.tick < loud || !I.eye) return;
+    const who = (n) => I.people.find((p) => p.name === n), seen = (p) => !!p && Math.abs(p.x - I.eye.x) <= 11 && Math.abs(p.y - I.eye.y) <= 6;
+    const free = (p) => seen(p) && !p.hold && !(p.talks > I.tick);                                         // (in sight, and not in the middle of a word with someone)
+    const s = one(TITLE_TALK.shout.filter((q) => q !== last && free(who(q[0]))));
+    if (!s) { loud = I.tick + 20; return; }          // (nobody in sight has anything to shout: soon again)
+    last = s; loud = I.tick + 220 + I.pick(200);
+    I.say(who(s[0]), s[1], true);
+    I.later(32, () => {
+      I.say(who(s[2]), s[3], true);
+      const by = one(I.people.filter((p) => seen(p) && p.name !== s[0] && p.name !== s[2]));
+      if (by) I.later(14, () => emote(by.name, "laugh"));
+    });
+  }
   // The island wakes: who lives there, and where each is found (somewhere else each time)
   function wake(island) {
-    I = island; taken.clear(); spoke = 0;
+    I = island; taken.clear(); spoke = 0; last = null; loud = 40 + I.pick(30);
     const C = I.C, on = 1 + I.pick(C.ring.length - 1), at = ([x, y]) => ({x, y});
     const P = (id, name, race, worn, more) => ({id, kind: "agent", name, race, worn, doing: null, dir: null, hold: 0, ...more});
     return [P(9001, "Mira", "bunny", {head: "straw_hat"}, at(C.door)), P(9002, "Tobi", "bear", null, at(one(C.places.trees))),
       P(9003, "Pip", "frog", {head: "bandana"}, {...at(C.ring[on]), sail: true, on, turn: I.pick(2) ? 1 : -1}),
       P(9004, "Lou", "duck", null, {...at(one(C.pond)), swim: true}), P(9005, "Nell", "cat", null, at(one(C.places.views)))];
   }
-  return {wake, live};
+  return {wake, live, hail};
 })();
