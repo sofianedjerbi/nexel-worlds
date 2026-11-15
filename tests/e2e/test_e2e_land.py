@@ -77,6 +77,35 @@ def test_the_land_is_painted_in_the_page_and_handed_to_the_gpu_whole(game):
     assert all(b["puts"] <= 3 and b["draws"] <= 1 for b in blocks), blocks      # (water: its tint, a px a tile, blown up)
 
 
+COBBLES = ["..........", ".________.", ".___.._...", ".._..._...", ".._.._____", ".._......_", ".._......_", ".........."]
+# every stone of the tiles from (x, y), w by h of them: the px of each (joined by a side), as [wide, high, how many]
+STONES = """([x0, y0, w, h]) => { const c = document.createElement('canvas'); c.width = w * 16; c.height = h * 16; const g = c.getContext('2d', {willReadFrequently: true});
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) drawTile(x0 + x, y0 + y, {g, ox: x * 16, oy: y * 16});
+  const d = g.getImageData(0, 0, c.width, c.height).data, W = c.width, H = c.height, grey = (i, r, gg, b) => d[i * 4] === r && d[i * 4 + 1] === gg && d[i * 4 + 2] === b;
+  const stone = (i) => grey(i, 157, 168, 154) || grey(i, 129, 139, 131), seen = new Uint8Array(W * H), out = [];
+  for (let i = 0; i < W * H; i++) { if (seen[i] || !stone(i)) continue;
+    let n = 0, x1 = W, x2 = -1, y1 = H, y2 = -1; const q = [i]; seen[i] = 1;
+    while (q.length) { const k = q.pop(), x = k % W, y = (k - x) / W; n++; x1 = Math.min(x1, x); x2 = Math.max(x2, x); y1 = Math.min(y1, y); y2 = Math.max(y2, y);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, m = ny * W + nx; if (nx >= 0 && ny >= 0 && nx < W && ny < H && !seen[m] && stone(m)) { seen[m] = 1; q.push(m); } } }
+    out.push([x2 - x1 + 1, y2 - y1 + 1, n]); }
+  return out; }"""
+
+
+def test_no_cobble_is_cut_at_a_tiles_edge(game):
+    """Cobbled tiles were picked at random from a sheet that holds a strip, a square and a tile on its own: every
+    tile cut its neighbour's stones at the edge. The stones are laid in rows over the tiles (web/js/pavement.js):
+    on a path that runs, turns, forks and widens every stone is whole, one of the pack's (5 to 7 px wide, 5 or 6
+    high, its four corners off), and every cobbled tile has some."""
+    x, y = game.pos()
+    game.stamp(2, -9, COBBLES, levels=["0" * 10] * 8)
+    game.sleep(600)
+    stones = game.js(STONES, [x + 2, y - 9, 10, 8])
+    cut = [s for s in stones if not (s[0] in (5, 6, 7) and s[1] in (5, 6) and s[2] == s[0] * s[1] - 4)]
+    tiles = sum(row.count("_") for row in COBBLES)
+    assert not cut and 3.2 * tiles <= len(stones) <= 4 * tiles, (cut, len(stones), tiles)          # (four to a tile, fewer at an end)
+    game.stamp(2, -9, ["." * 10] * 8)
+
+
 def test_a_blocks_raised_ground_is_built_in_small_steps(game):
     """No step of building a block is long (they were up to 10 ms each on a fast machine: a late frame on a slow one)."""
     game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN)
