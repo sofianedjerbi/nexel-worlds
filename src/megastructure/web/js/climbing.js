@@ -48,7 +48,8 @@ const Climb = (() => {
   // Someone between two tiles on a ladder, as drawn: up its rungs on its own tile first, and only at the top over onto
   // what it leans on (coming down: over the edge first, then down the rungs); facing it all the way. (It was a straight
   // slide from the foot to the top in a fifth of a second, the ladder drawn over the body.) -> null, or {dx, dy: tiles
-  // to move the body by, lift: art px higher, on: on the rungs, u: how far up, fx, fy: the way to the top, y: its row}
+  // to move the body by, lift: art px higher, h: the height it is at (layers), on: on the rungs, u: how far up, fx, fy:
+  // the way to the top, y: its row}
   const OVER = .8;                                    // (the part of the step spent on the rungs; the rest is the step over)
   function climbOf(p) {
     const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
@@ -59,7 +60,7 @@ const Climb = (() => {
     const lo = Math.min(la, lb), hi = Math.max(la, lb), on = u <= OVER;
     const pos = on ? 0 : (u - OVER) / (1 - OVER), h = on ? lo + (hi - lo) * u / OVER : hi;
     const fx = footA ? bx - ax : ax - bx, fy = footA ? by - ay : ay - by, footY = footA ? ay : by;
-    return {dx: fx * (pos - u), dy: fy * (pos - u), lift: (h - lo - (hi - lo) * u) * RELIEF_STEP, on, u, fx, fy, y: on ? footY : footY + fy};
+    return {dx: fx * (pos - u), dy: fy * (pos - u), lift: (h - lo - (hi - lo) * u) * RELIEF_STEP, h, on, u, fx, fy, y: on ? footY : footY + fy};
   }
 
   // The flight of stairs put at (x, y) by you: [[x, y, ground, top], ...], or {why}

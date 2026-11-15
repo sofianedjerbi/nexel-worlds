@@ -1611,3 +1611,15 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   browser run 199 pass, 1 error (a player not getting in, under load).
 - The world that is running keeps the old numbers until its server is started again; until then the page shows a
   punch on a creature as "-2.5" and the boss's bar is wrong.
+
+## Iteration 135: no x-ray on a ladder or a flight of stairs
+- User: "xray is triggered at certain moment during star walk and ladder climbing".
+- Measured on a copy, frame by frame (xray.a), ladders against a cliff six layers high on each of its sides and
+  flights up a cliff three layers high from each side: the circle opened on the side ladders half way up. Its rule
+  measures how much of you the ground south of you hides, from the height you are at; that height was the land's
+  under you, not the step, the floor or the rung you are on, and where you were was not where you are drawn on a
+  ladder.
+- xray.js now takes the height you are at (Floors.standOf: built blocks counted; on a ladder, the climb's own height)
+  and where you are drawn. Measured again: no circle on any flight nor on the side ladders; behind the cliff at a
+  ladder's foot it is there as anywhere behind a cliff, and goes as you climb out.
+- Test: a ladder at the cliff's side, climbed: the circle stays shut. climb, x-ray and relief tests, 29.

@@ -80,3 +80,12 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     assert step(game, "ArrowDown") == (x, y - 2, 0)            # and down it
     game.sleep(400)
     assert game.server()["hp"] == hp and game.js("ents.get('agent' + myId).fall") in (None, False) and not game.errors
+    # up a ladder at the cliff's side: nothing hides you, the x-ray circle stays shut (it took your height from the
+    # ground under you, and opened half way up)
+    game.rpc("dev_stamp", x=x - 3, y=y - 3, rows=["l"])
+    game.rpc("dev_teleport", x=x - 3, y=y - 3, z=0)
+    game.sleep(900)
+    game.js("() => { window.__xr = 0; const t0 = performance.now(); const f = () => { __xr = Math.max(__xr, xray.a); if (performance.now() - t0 < 1800) requestAnimationFrame(f); }; requestAnimationFrame(f); }")
+    game.hold(["ArrowRight"], 90)
+    game.sleep(1900)
+    assert game.server()["z"] == 6 and game.js("__xr") < .1

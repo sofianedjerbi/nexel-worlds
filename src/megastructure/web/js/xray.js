@@ -71,20 +71,23 @@ function xrayLook(dt) {
   const p = me && ents.get("agent" + myId);
   let want = 0;
   if (p && p.e && !caveOpen) {
-    const L = Math.min(standAt(Math.floor(p.x), Math.floor(p.y)), standAt(Math.ceil(p.x), Math.ceil(p.y))), row = Math.floor(p.y + .001);
+    // (where you are as drawn, at the height you are at: on a step, a floor, a ladder's rungs; it was the land's under
+    // you, and a climb up a cliff's side or a flight of stairs beside one brought the circle up half way)
+    const cl = Climb.climbOf(p), px = p.x + (cl ? cl.dx : 0), py = p.y + (cl ? cl.dy : 0);
+    const L = cl ? Math.floor(cl.h) : Math.min(Floors.standOf(p, Math.floor(p.x), Math.floor(p.y)), Floors.standOf(p, Math.ceil(p.x), Math.ceil(p.y))), row = Math.floor(py + .001);
     let hidden = 0;                                        // the share of you under the top edge of the ground in front: the two
-    const f = p.x - Math.floor(p.x);                       //  columns you stand across, each for the part of you in it
-    for (const [tx, part] of [[Math.floor(p.x), 1 - f], [Math.floor(p.x) + 1, f]]) {
+    const f = px - Math.floor(px);                         //  columns you stand across, each for the part of you in it
+    for (const [tx, part] of [[Math.floor(px), 1 - f], [Math.floor(px) + 1, f]]) {
       let cover = 0;
-      if (part > .001) for (let ty = row + 1; ty <= row + XRAY.far; ty++) cover = Math.max(cover, (levelAt(tx, ty) - L) * RELIEF_STEP - (ty - p.y - 1) * 16);
+      if (part > .001) for (let ty = row + 1; ty <= row + XRAY.far; ty++) cover = Math.max(cover, (levelAt(tx, ty) - L) * RELIEF_STEP - (ty - py - 1) * 16);
       hidden += part * Math.max(0, Math.min(1, (cover - 2 - STAND) / XRAY.body));
     }
     want = Math.max(0, Math.min(1, (hidden - XRAY.from) / (XRAY.full - XRAY.from)));
     xray.t = want > 0 ? xray.t + dt : 0;
     if (xray.t < XRAY.wait && xray.a <= .01) want = 0;      // (a moment behind something: not yet)
     if (xray.t > 0 || xray.a > .01) {
-      xray.L = L; xray.row = row; xray.x = p.x; xray.y = p.y - shOf(L) / 16 - .5 - UP;   // (its centre: your body, where it is drawn)
-      if (!xrayPaint(Math.round(p.x)) && xray.a <= .01) want = 0;              // (it comes once its picture is ready)
+      xray.L = L; xray.row = row; xray.x = px; xray.y = py - shOf(L) / 16 - .5 - UP;   // (its centre: your body, where it is drawn)
+      if (!xrayPaint(Math.round(px)) && xray.a <= .01) want = 0;               // (it comes once its picture is ready)
     }
   }
   xray.a += (want - xray.a) * (1 - Math.exp(-dt / .09));
