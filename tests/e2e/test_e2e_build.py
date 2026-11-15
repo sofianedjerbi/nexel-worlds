@@ -172,6 +172,13 @@ def test_walls_are_thin_and_hide_nothing_and_a_side_door_has_its_leaf_and_shadow
     game.sleep(700)
     px = game.js("(() => { const d = ctx.getImageData(Math.round(cv.width / 2 + TS() * .3), Math.round(cv.height / 2 + TS()), 1, 1).data; return [d[0], d[1], d[2]]; })()")
     assert px in ([170, 121, 89], [144, 98, 93], [220, 185, 138]), px       # the wall just south of you: its planks' own colours, not thinned
+    # a lower corner is joined as an upper one is: where a wall comes down onto a front, its band runs into the
+    # front's cap (there was the cap's dark line across it: "lower corners should be linked to upper")
+    game.rpc("dev_stamp", x=x - 4, y=y + 4, rows=["W..", "WWW"])          # (a place in the world: you are no longer where you woke)
+    game.rpc("dev_teleport", x=x - 3, y=y + 4)
+    game.sleep(900)
+    join = game.js("(() => { const t = TS(), z = t / 16, d = ctx.getImageData(Math.round(cv.width / 2 - t + 7.5 * z - t / 2), Math.round(cv.height / 2 + t - t / 2 - 3.5 * z), 1, 1).data; return [d[0], d[1], d[2]]; })()")
+    assert join == [196, 154, 108], join                       # the cap's own colour where the band meets it, not its outline
     game.rpc("dev_teleport", x=x + 3, y=y - 2)                 # in the doorway: its leaf is back against a post
     game.sleep(900)
     assert game.js("doors.get(myPos().x + ',' + myPos().y)") == 1 and not game.errors

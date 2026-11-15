@@ -1369,3 +1369,8 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - A door in a run going north (iteration 121's opening under a lintel went with the tall walls): seen from above, the band's two ends as its posts, its leaf between them, back against a post while someone is by it, and under it the doorway's shadow in the dark of the game's holes.
 - Third drawing of walls in a day (fronts and flat bands; tall blocks; thin). The first two were mine to get wrong: I chose a look, then met what it cost in the user's own house. This one I tried on their house before keeping it.
 - The clip is filmed again. Tests: the test of iteration 121 rewritten (the leaf and its shadow; the ground north of a wall is as it is; the wall south of you is its own colours, not thinned; a door opens for you). 410 unit; 31 in Chrome (build, edges, the island, pixels, land).
+
+## Iteration 123: a lower corner is joined as an upper one is
+- User, with a picture: "lower corners should be linked to upper. also, great redesign of walls".
+- Where a wall came down onto a front (a house's two lower corners, a T from the north) the front's cap had its dark top line right across the band: two pieces touching. The band now runs into the cap (structures.js: the line is left open over the band's width).
+- Looked at both lower corners of the user's yard on a copy; the test reads the pixel where they meet (the cap's own colour). 410 unit; the four build tests pass.

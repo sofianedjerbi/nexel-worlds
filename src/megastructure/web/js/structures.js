@@ -5,8 +5,9 @@
 //   everything of it is drawn on that tile (4 px over it), so it hides nothing behind it. Where nothing is built
 //   south of it, it shows its front: a cap over planks, from the wall beside it (or its own middle) to the wall on
 //   its other side. Where a wall goes on south of it, it shows its top: a band 6 px wide down the middle of the
-//   tile, and the front of a wall joining it from a side runs up to that band. So a corner, a T and a crossing are
-//   one wall, a gap in a wall is a gap, and a wall that ends has an end.
+//   tile, and the front of a wall joining it from a side runs up to that band; a band that comes down onto a
+//   front runs into its cap. So a corner (upper or lower), a T and a crossing are one wall, a gap in a wall is a
+//   gap, and a wall that ends has an end.
 //   (Twice before: fronts one way and wide flat bands the other, which met badly; then blocks a tile high, whose
 //   tops hid the row behind them, were seen through to make up for it, and turned a gap into a patch of planks.)
 //   A door in a run east-west is the pack's door, as it is drawn. In a run north-south it is seen from above: the
@@ -72,6 +73,7 @@ const Structures = (() => {
       planks(x0, x1 - x0); cap(x0, x1);
       if (!w) r(ink, x0, 0, 1, 16);
       if (!e) r(ink, x1 - 1, 0, 1, 16);
+      if (n) r(top, L + 1, 0, R - L - 2, 1);           // (a wall comes down onto it: its band runs into this cap, no line across it)
     } else {                                            // a wall goes on south of it: its top, a band; a wall from a side joins it
       if (w) planks(0, L);
       if (e) planks(R, 16 - R);
