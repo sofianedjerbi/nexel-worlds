@@ -89,6 +89,7 @@ def test_you_eat_while_you_walk(game):
 def test_hit_a_chicken_while_walking_and_it_runs(game):
     hen = game.spawn("chicken", 2, -1, still=10 ** 6)
     game.sleep(400)
+    x0, y0 = game.pos()
     game.page.keyboard.down("d")
     game.sleep(150)
     game.press(" ", 0)                                       # Space on the hen: a punch, and no stopping
@@ -97,10 +98,11 @@ def test_hit_a_chicken_while_walking_and_it_runs(game):
     game.page.keyboard.up("d")
     assert still_walking
     game.sleep(1500)
-    x, y = game.pos()
     q = game.js(f"(() => {{ const q = ents.get('chicken{hen}'); return q ? [q.tx, q.ty, q.e.hp] : null; }})()")
     assert q and q[2] < 10                                   # it was hit...
-    assert abs(q[0] - x) + abs(q[1] - y) >= 4                # ...and ran off
+    # ...and ran off: three tiles and more from where it stood. (It was "four from where you end up": it runs from
+    # where it was hit, you walk on beside it for a moment, and on a busy machine that moment was a tile longer.)
+    assert abs(q[0] - (x0 + 2)) + abs(q[1] - (y0 - 1)) >= 3, (q, x0, y0)
 
 
 def test_killing_leaves_a_poof_and_drops(game):
@@ -172,6 +174,7 @@ def test_mining_ore_sends_orbs_and_fills_the_bar(game):
 
 
 def test_loot_next_to_you_comes_to_you(game):
+    game.lucky()                                              # (what a hen leaves is by chance: here, all of it. This test was missed when it became so, and failed four times in ten)
     game.rpc("dev_creatures", clear=6)
     hen = game.spawn("chicken", 1, 1, still=10 ** 6)
     game.give(sword=1)

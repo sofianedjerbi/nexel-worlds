@@ -87,9 +87,16 @@ const ToolArt = (() => {
     const W = img.width, H = img.height, c = document.createElement("canvas");
     c.width = W; c.height = H + KINDS.length * 4 * CELL;
     const g = c.getContext("2d"); g.drawImage(img, 0, 0);
+    // The axe's four rows are read once, from a small canvas made for reading, and each frame is cut out of that in
+    // memory. (They were read a frame at a time from the sheet's own canvas, 96 times: the browser warned of it, and
+    // a canvas that is read back like that is moved off the GPU, where everything drawn from the sheet comes from.)
+    const axe = document.createElement("canvas"); axe.width = W; axe.height = 4 * CELL;
+    const ag = axe.getContext("2d", {willReadFrequently: true}); ag.drawImage(img, 0, AXE_ROW * CELL, W, 4 * CELL, 0, 0, W, 4 * CELL);
+    const src = ag.getImageData(0, 0, W, 4 * CELL).data;
     KINDS.forEach((kind, n) => {
       for (let r = 0; r < 4; r++) for (let col = 0; col < W / CELL; col++) {
-        const f = g.getImageData(col * CELL, (AXE_ROW + r) * CELL, CELL, CELL);
+        const f = new ImageData(CELL, CELL);
+        for (let y = 0; y < CELL; y++) f.data.set(src.subarray(((r * CELL + y) * W + col * CELL) * 4, ((r * CELL + y) * W + (col + 1) * CELL) * 4), y * CELL * 4);
         redraw(f.data, kind);
         g.putImageData(f, col * CELL, H + (n * 4 + r) * CELL);
       }
