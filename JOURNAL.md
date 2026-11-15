@@ -1431,3 +1431,9 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   list of sounds allowed to ring), a little shorter and 1.5 dB quieter. `houses.js`: a door that has only just shut
   (under 0.7 s) is not heard again when it reopens (someone hovering at the sill).
 - Measured: audio tests 8, sound and building browser tests 13. Not heard by me.
+
+## Iteration 124: the list of commands is whole again
+- Said: "keep the hint of all commands when starting by /". I had read "remove the hint on a simple '/'" as the list
+  shown on a "/"; it was the words that advertise the commands. State now: a "/" lists every command as it always
+  did (`complete.js` as before iteration 121); the help's "/ Commands" row and the chat line's "/ commands" stay out.
+- Measured: `test_e2e_complete.py` as it was before iteration 121, 4 of 4.

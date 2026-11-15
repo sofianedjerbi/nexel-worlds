@@ -4,10 +4,9 @@
 // one that is marked, the first or the one the arrows moved to; a click or a tap takes any. Enter sends the line as
 // it is typed. In plain talk, Tab finishes the name of someone near (several: the list, then Tab).
 
-// "there's a lot of useless slash commands. like walk etc... no need for those", then: "keep all commands available
-// client side just remove the hint on a simple '/' and also remove them from the help. they should be accessible if
-// you know them, and if you know them they still show highlight syntax". So a "/" alone lists nothing (the thirty
-// actions of the server are keys and clicks for a person); from its first letter on, the list is there as before.
+// Every action of the server is a command, and all of them are listed from the "/" on ("keep the hint of all commands
+// when starting by /"). What went, at "there's a lot of useless slash commands... remove the hint on a simple '/' and
+// also remove them from the help": the words that advertised them, in the chat line's own text and in the help.
 let tools = null;                                    // the server's actions: name -> {args: {name: what it is}, desc}
 const LOCAL = {coords: "where you are, top right", grid: "every tile outlined, with its height", perf: "what the last second cost, top right"};
 const comp = {items: [], note: "", at: 0, from: 0, to: 0};
@@ -53,8 +52,7 @@ function completions(text, caret, asked) {
     return {from, items: names.filter((n) => n.toLowerCase().startsWith(word.toLowerCase())).map((n) => ({put: n + " ", show: n, hint: ""}))};
   }
   if ((head.match(/"/g) || []).length % 2) return null;   // (in a quoted text: yours to write)
-  if (from === 0) {                                   // the command itself (a "/" alone: nothing; you know it or you do not need it)
-    if (word.length < 2) return null;
+  if (from === 0) {                                   // the command itself
     const all = [...Object.entries(tools || {}).map(([n, t]) => [n, t.desc, Object.keys(t.args).length]), ...Object.entries(LOCAL).map(([n, d]) => [n, d, 0])];
     return {from: 1, items: matching(all.map(([n, hint, args]) => ({put: n + (args ? " " : ""), show: n, hint})), word.slice(1))};
   }
