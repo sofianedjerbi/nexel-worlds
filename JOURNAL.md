@@ -1670,3 +1670,14 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   included) nor on stairs, and comes and goes over 0.15 s instead of at once. Measured again: no veil and no circle on
   any of the eight, the veil behind a house as before.
 - Test: up a ladder behind a block, nothing turns see-through. climb, floors, build, x-ray tests: 21.
+
+## Iteration 138: six doors to choose from
+- Said, to my asking for a recording: "nah ??? just like other sound effect, create it. do a showcase html page in
+  local".
+- `music/doors.py` makes six doors, each an opening and a closing, from the same parts as the other effects (struck
+  wood and board, friction, shaped noise), as unlike each other as a door allows: clunk and swish; an old hinge
+  (slips you can count, quickening and slowing); wood dragged on wood; one knock each way; a heavy door (a low
+  rumble, a deep thud); the latch working (three sounds in a blink). `music/site/door.html` plays each (Open, Close,
+  Both), with the stopgap that is in the game now. http://127.0.0.1:8099/door.html
+- Measured: all twelve at the game's door level; the page loads and plays all fourteen files. None is in the game:
+  the choice is the user's ear.
