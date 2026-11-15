@@ -17,6 +17,7 @@ class Persistence:
             else:
                 db.execute("DELETE FROM ground_items WHERE x=? AND y=?", pos)
         self.dirty_items.clear()
+        self.roofed.flush()
         db.execute("DELETE FROM creatures")
         db.executemany("INSERT INTO creatures VALUES(?,?)",
                        [(c.id, json.dumps(c.to_json())) for c in self.creatures.values()])

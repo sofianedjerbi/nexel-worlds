@@ -60,7 +60,8 @@ class Views:
         raw = [world.col(i, j) for j in range(y, y + h) for i in range(x, x + w)]
         levels = ["".join(chr(64 + col_floor(v)) for v in raw[j * w:(j + 1) * w]) for j in range(h)]
         cols = {str(i): v for i, v in enumerate(raw) if v & (v + 1)}
-        return {**({"cols": cols} if cols else {}), "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
+        roofs = [(j - y) * w + i - x for i, j in self.sim.roofed.within(x, y, w, h)]      # (where a roof tile lies, by index: sim/roofing.py)
+        return {**({"cols": cols} if cols else {}), **({"roofs": roofs} if roofs else {}), "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
                 "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}
 
     # ----------------------------------------------------------- what they are sent, as it happens

@@ -117,6 +117,8 @@ class Building:
         return out
 
     def _tool_place(self, a, args):
+        if args.get("item") == "roof":                     # (a roof is laid over the tile, whatever is on it: roofing.py)
+            return (yield from self.lay_roof(a, args))
         x, y = self.target(a, args)
         item = str(args.get("item", ""))
         if self.world.rim(x, y):

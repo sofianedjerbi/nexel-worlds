@@ -30,6 +30,7 @@ from .environment import Environment
 from .items import Items
 from .movement import Movement
 from .progress import Progress
+from .roofing import Roofing
 from .spawning import Spawning
 from .underground import Underground
 from .wear import Wear
@@ -42,7 +43,7 @@ from .social import Social
 from .specs import TOOL_SPECS
 
 
-class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Underground, Building, Items, Combat, Animals, Wild, Wear, Needs, Social, Environment, Observation):
+class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Underground, Building, Roofing, Items, Combat, Animals, Wild, Wear, Needs, Social, Environment, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
@@ -76,6 +77,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             self.creatures[cid] = Creature(**json.loads(js))
         self.next_creature = max(self.creatures, default=CREATURE_ID0) + 1
         self._thin_herds()
+        self.open_roofs(store)                             # (roofing.py: where roof tiles lie; once, the old houses' own)
         self.thin_wild(store)                              # (spawning.py: once, when a world meets the rarer-mobs rules)
         self.fires: dict[tuple, int] = {tuple(k): v for k, v in store.get_meta("fires", [])}
         self.timers: dict[tuple, list] = {(x, y): [t, kind] for x, y, t, kind in store.get_meta("timers", [])}
@@ -168,7 +170,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
     def sheltered(self, x, y) -> bool:
         """Inside a room: the area around (x, y) is closed off by walls/doors/gates within 160 tiles
         (same rule the client uses to draw roofs). Next to 3+ walls also counts, as before. In a cave too."""
-        if self.world.roof(x, y):
+        if self.world.roof(x, y) or (x, y) in self.roofed:
             return True
         if sum(1 for dx, dy in DIRS.values() if BLOCKS[self.world.get(x + dx, y + dy)[1]].wall) >= 3:
             return True

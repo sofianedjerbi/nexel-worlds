@@ -31,7 +31,9 @@ TOOL_SPECS = {
             "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground (needs a hoe). By hand, "
                     "wood takes 4x and stone 6x as long as with an axe / pickaxe; ore needs a pickaxe"},
     "place": {"args": {**DIR_ARG, "item": "str", "text": "str (flags only, optional)"},
-              "desc": "place an item: furniture/walls/etc. as blocks; dirt fills holes or water, path lays cobble, plank makes a bridge (water) or floor (land)"},
+              "desc": "place an item: furniture/walls/etc. as blocks; dirt fills holes or water, path lays cobble, plank makes a bridge (water) or floor (land); "
+                      "roof lays a roof tile over that tile (it rests on a wall or door, or on a roof tile beside it, within 3 tiles of a wall; under a roof you are sheltered)"},
+    "unroof": {"args": {**DIR_ARG}, "desc": "take the roof tile over that tile back into your pack"},
     "pick_up": {"args": {"item": "str (optional)"}, "desc": "pick up items on your tile"},
     "drop": {"args": {"item": "str", "n": "int"}, "desc": "drop items on your tile"},
     "craft": {"args": {"recipe": "str", "n": "int (optional)"}, "desc": "craft from the recipe book"},

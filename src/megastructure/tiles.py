@@ -204,6 +204,7 @@ RECIPES = {
     for r in [
         Recipe("workbench", {"wood": 4}, {"workbench": 1}, 6),
         Recipe("plank", {"wood": 1}, {"plank": 2}, 3),
+        Recipe("roof", {"wood": 1}, {"roof": 2}, 3),       # shingles: laid a tile at a time over walls (sim/roofing.py)
         Recipe("path", {"stone": 2}, {"path": 2}, 3),
         Recipe("fence", {"wood": 2}, {"fence": 1}, 3),
         Recipe("door", {"wood": 3}, {"door": 1}, 4),
