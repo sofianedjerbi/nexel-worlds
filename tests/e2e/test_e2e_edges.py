@@ -67,24 +67,26 @@ def test_a_gate_is_seen_from_the_side_in_a_fence_that_runs_north_and_south(game)
     game.stamp(3, -8, ["." * 5] * 4)
 
 
-HILL = [".......", "...T...", ".T.T.T.", ".T.T...", ".......", ".T~...."]
-HIGH = ["0000000", "0222220", "0222220", "0222220", "0000000", "0000000"]
+HILL = [".......", "...T...", ".T.T.T.", ".T.T...", ".......", ".T~.T..", "....~.."]
+HIGH = ["0000000", "0222220", "0222220", "0222220", "0000000", "0000000", "0000000"]
 
 
 def test_a_tree_on_the_brink_of_a_hill_stands_back_from_it(game):
     """A hill's edge tile is the cliff's face from its 8th px down, and a tree's foot is at the bottom of its tile: a
     tree on the south edge of a plateau stood on the face of the cliff. What grows or lies on such a tile is drawn
     back from the drop (web/js/sprites.js brink): 8 px from one to the south, 4 from one to a side; not from the
-    north edge, nor in the middle, nor by water."""
+    north edge, nor in the middle. And the same from water ("weird tree at sea border": a shore tile is cut as a
+    hill's edge is, bank and foam where the cliff's face would be)."""
     x, y = game.pos()
     game.stamp(3, -8, HILL, levels=HIGH)
     game.sleep(900)
     back = lambda dx, dy: game.js("([x, y]) => brink(x, y)", [x + 3 + dx, y - 8 + dy])
-    assert back(3, 2) == [0, 0] and back(3, 1) == [0, 0] and back(1, 5) == [0, 0]           # the middle, the north edge, the water's side
+    assert back(3, 2) == [0, 0] and back(3, 1) == [0, 0]                                  # the middle, the north edge
+    assert back(1, 5) == [-4, 0] and back(4, 5) == [0, -8]                                # by water: to its east, to its south
     assert back(3, 3) == [0, -8] and back(1, 2) == [4, 0] and back(5, 2) == [-4, 0] and back(1, 3) == [4, -8]      # south, west, east, the corner
     spr = game.js("([x, y]) => [objectSprite('T', x, y, 0).slice(5), spriteOf('T', x, y, 0).slice(5)]", [x + 6, y - 5])
     assert spr[0] == [spr[1][0], spr[1][1] - 8]                                           # (its picture: the same, 8 px up)
-    game.stamp(3, -8, ["." * 7] * 6, levels=["0" * 7] * 6)
+    game.stamp(3, -8, ["." * 7] * 7, levels=["0" * 7] * 7)
 
 
 SEATS = ["h.^.h..", ".......", ".h.....", ".L....h", ".h....."]

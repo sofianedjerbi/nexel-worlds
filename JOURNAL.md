@@ -1282,3 +1282,9 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - A minute of it logged in Chrome with the sound on: 19 strokes of the duck, 13 rustles, 7 bites, 6 blows of the axe, 6 plantings, 2 shouts and their answers, 3 lines said, water, a gate, a creak; volumes 0.04 to 0.46.
 - Tests: on the first screen a voice at the view's middle is heard at SOUND.scene.People, a blow six tiles off at half of SOUND.scene.rest, nothing from twenty; both under the music's own number; after "Just watch" and after waking the ears are gone and the world is heard by you at its full level. 398 unit, 35 in Chrome (island, swim, bubbles, social, sounds).
 - Not judged by ear: I cannot hear it. The two numbers are SOUND.scene in audio.js.
+
+## Iteration 116: a tree by the water stands back from it too
+- User: "weird tree at sea border" (a tree with its foot on the bank and in the water).
+- In iteration 113 I drew things back from a hill's edge and left water out ("not by water"), without looking at a shore tile. Dumped it now: a shore tile is cut as a hill's edge is: grass on its top 7 px, then the bank, the foam, the water, where the cliff's face would be; 7 px of bank and foam at a side. So the same fault, and the same cure: `brink` (sprites.js) counts as a drop any side the land is painted as a shore towards (water, a bridge's side), as well as lower ground.
+- Looked at it in Chrome with trees and rocks put all round the pond: on the grass, back from the bank, on every side.
+- Test: a tree with water to its east is drawn 4 px back, one with water to its south 8 px. 398 unit, 33 in Chrome (edges, island, x-ray, pixels).

@@ -34,14 +34,16 @@ function troughFull() {                     // the feeding box with hay heaped i
   return c;
 }
 function genCell(name) { return [GEN[name] * 16, 0]; }
-// What stands at the brink of raised ground is drawn back from it. A hill's edge tile is not flat all over: the
-// cliff's face is its south edge from the 8th px down, a ledge 7 px wide its west and east edges; and a thing's foot
-// is at the bottom of its tile, in the middle. A tree on such a tile stood on the face of the cliff. So what grows
-// or lies there (trees, stumps, bushes, rocks, mushrooms, flowers) is drawn 8 px back from a drop to the south, 4
-// from one to a side, less from one only at a corner. Its tile, and what it stops, are what they were.
+// What stands at the brink of raised ground, or of the water, is drawn back from it. An edge tile is not flat all
+// over: a hill's south edge is the cliff's face from the 8th px down, a ledge 7 px wide its west and east edges;
+// a shore's is cut the same (the bank, the foam, the water); and a thing's foot is at the bottom of its tile, in
+// the middle. A tree on such a tile stood on the face of the cliff, or in the water. So what grows or lies there
+// (trees, stumps, bushes, rocks, mushrooms, flowers) is drawn 8 px back from a drop to the south, 4 from one to a
+// side, less from one only at a corner. Its tile, and what it stops, are what they were.
 const BRINK = new Set("TFUtbvM*Qf");
 function brink(x, y) {                               // -> [dx, dy], art px
-  const l = standAt(x, y), low = (dx, dy) => { const q = tile(x + dx, y + dy); return !!q && !wet(q[1]) && standAt(x + dx, y + dy) < l; };
+  // (a drop: lower ground; or what the land is painted as a shore towards, tiles.js: water, a bridge's side)
+  const l = standAt(x, y), low = (dx, dy) => { const q = tile(x + dx, y + dy); return !!q && (standAt(x + dx, y + dy) < l || !(isLand(q[1]) || Bridge.rests(x, y, x + dx, y + dy))); };
   const s = low(0, 1), w = low(-1, 0), e = low(1, 0), sw = !s && !w && low(-1, 1), se = !s && !e && low(1, 1);
   return [(w ? 4 : sw ? 3 : 0) - (e ? 4 : se ? 3 : 0), s ? -8 : sw || se ? -4 : 0];
 }
