@@ -30,7 +30,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">The door's sound: six to choose from by ear. Each has an opening and a closing; "Both" opens, waits a second, and closes, as walking through does.</div>
+  <div class="sub">The door's sound. First three: "Wood on wood" made faster, as you asked, three ways. Under them the six of before. "Both" opens, waits a second, and closes, as walking through does.</div>
   <div id="list"></div>
   <div class="box">
     <h2>Why six</h2>
@@ -42,7 +42,7 @@
   </div>
 </main>
 <script>
-const TONE = ["#f7d488", "#f4a6c0", "#b9e0a5", "#a9c8ec", "#8fe0d4", "#d9b8f0", "#c9c2b0"];
+const TONE = ["#ffd36a", "#ffd36a", "#ffd36a", "#f7d488", "#f4a6c0", "#b9e0a5", "#a9c8ec", "#8fe0d4", "#d9b8f0", "#c9c2b0"];
 let ctx = null; const buffers = {};
 const load = (file) => buffers[file] || (buffers[file] = fetch(`${file}?v=${Date.now()}`).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b)));
 async function play(file, after = 0) {
@@ -54,7 +54,7 @@ fetch("audio/doors.json?v=" + Date.now()).then((r) => r.json()).then((all) => {
   all.push({id: "now", title: "In the game now", what: "the stopgap: a soft swish; closing ends in a low whump", open: {}, close: {}, files: ["sfx/gate_0.wav", "sfx/door_close_0.wav"]});
   document.getElementById("list").innerHTML = all.map((d, i) => `
     <div class="box" style="--tone:${TONE[i]}">
-      <div class="row"><div class="n">${d.id === "now" ? "·" : i + 1}</div><div class="t"><h2>${d.title}</h2><div>${d.what}</div></div>
+      <div class="row"><div class="n">${d.id === "now" ? "·" : i < 3 ? "ABC"[i] : i - 2}</div><div class="t"><h2>${d.title}</h2><div>${d.what}</div></div>
         <button data-f="${d.files ? d.files[0] : `audio/door_${d.id}_open.wav`}">Open</button>
         <button data-f="${d.files ? d.files[1] : `audio/door_${d.id}_close.wav`}">Close</button>
         <button class="both" data-f="${d.files ? d.files[0] : `audio/door_${d.id}_open.wav`}" data-g="${d.files ? d.files[1] : `audio/door_${d.id}_close.wav`}">Both</button></div>

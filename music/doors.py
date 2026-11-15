@@ -66,12 +66,17 @@ def hinge_close(c):
     return y
 
 
-def scrape(c, seconds, up):
-    """Wood dragged on wood: a dry hiss whose colour moves as the door does (no note, no grains)."""
+def scrape(c, seconds, up, rough=0.0, pitch=1.0):
+    """Wood dragged on wood: a dry hiss whose colour moves as the door does (no note, no grains). rough: how much it
+    judders, as old wood does (the hiss itself swelling 18 to 48 times a second, faster as the door moves faster:
+    smooth swells, not pulses); pitch: its colour, lower under 1."""
     n = N(seconds)
-    u = tt(n) / seconds if up else 1 - tt(n) / seconds
-    low, high = norm(texture(c, n, 300, 750, 4, 14, 0.25)), norm(texture(c, n, 650, 1500, 4, 14, 0.25))
-    return norm((low * (1 - u) + high * u) * np.sin(np.pi * tt(n) / seconds) ** 1.2)
+    t = tt(n)
+    u = t / seconds if up else 1 - t / seconds
+    bell = np.sin(np.pi * t / seconds)
+    low, high = norm(texture(c, n, 300 * pitch, 750 * pitch, 4, 14, 0.25)), norm(texture(c, n, 650 * pitch, 1500 * pitch, 4, 14, 0.25))
+    judder = 1 - rough * 0.5 * (1 + np.cos(2 * np.pi * np.cumsum(18 + 30 * bell) / SR))
+    return norm((low * (1 - u) + high * u) * bell ** 1.2 * judder)
 
 
 def scrape_open(c):
@@ -85,6 +90,22 @@ def scrape_close(c):
     place(y, 0.8 * scrape(c, 0.3, False), 0.0)
     place(y, 0.7 * thunk(c, 1.3, 0.65), 0.27)
     return y
+
+
+# "make it more like a door that open old door. wood on wood but faster": the third, in half the time, three ways:
+# as it was; juddering as old wood does; juddering and lower.
+def fast(rough, pitch):
+    def opening(c):
+        y = np.zeros(N(0.4))
+        place(y, scrape(c, 0.27, True, rough, pitch), 0.0)
+        return y
+
+    def closing(c):
+        y = np.zeros(N(0.45))
+        place(y, 0.8 * scrape(c, 0.17, False, rough, pitch), 0.0)
+        place(y, 0.7 * thunk(c, 1.3, 0.65), 0.15)
+        return y
+    return opening, closing
 
 
 def knock_open(c):
@@ -130,6 +151,9 @@ def latch_close(c):
 
 
 DOORS = [
+    ("fast", "Wood on wood, faster", "the third below in half the time: a quarter of a second to open; closing: quicker still, then a soft thunk", *fast(0, 1)),
+    ("fastold", "Faster, an old door", "the same, juddering as old dry wood does when it is forced", *fast(0.75, 1)),
+    ("fastlow", "Faster, old and lower", "the same judder, lower in colour: a thicker, heavier old door", *fast(0.75, 0.7)),
     ("clunk", "Clunk and swish", "the handle and the board as one clunk, then the air; closing: the air, a full thunk, the bolt", clunk_open, clunk_close),
     ("hinge", "Old hinge", "slips you can count that quicken and slow, in dull wood; closing ends in a thunk (close to the very first door, slower and softer)", hinge_open, hinge_close),
     ("scrape", "Wood on wood", "a dry hiss of wood dragged on wood whose colour rises; closing: it falls, then a soft thunk", scrape_open, scrape_close),
