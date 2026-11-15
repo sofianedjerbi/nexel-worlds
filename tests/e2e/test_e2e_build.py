@@ -56,6 +56,14 @@ def test_a_roof_is_laid_a_tile_at_a_time_and_seen_through_from_under_it(game):
     game.stamp(2, -3, ["WWWW", "W..W", "WW+W"])               # walls and a door, no roof: nothing draws one by itself
     game.sleep(700)
     assert game.js("ROOFS") is True and game.js(ROW, [x + 2, y - 3, 4]) == "...."
+    # what was wrong in the clip: a door that looked like a window in hand and as a plan, a floor that let the grass through
+    assert game.js("objectSprite('+', 0, 0, 0)[0] === IMG.door && fullIcon('door') !== fullIcon('wood_wall')")
+    game.stamp(-3, 2, ["nn"])
+    game.sleep(600)
+    solid = game.js("""([x, y]) => { const [b, i] = tileIdx(x, y), o = (i / B | 0) * 16 * BW + (i % B) * 16; let n = 0, green = 0;
+      for (let j = 0; j < 16; j++) for (let k = 0; k < 16; k++) { const v = b.px[o + j * BW + k]; if (v >>> 24 === 255) n++; if ((v & 0xffffff) === (112 << 16 | 212 << 8 | 192)) green++; } return [n, green]; }""", [x - 3, y + 2])
+    assert solid == [256, 0], solid                            # a floor tile: solid all over, no grass in it
+    game.stamp(-3, 2, [".."])
     game.give(roof=6)
     kb = game.page.keyboard
     game.press(game.js(SLOT, "roof"))

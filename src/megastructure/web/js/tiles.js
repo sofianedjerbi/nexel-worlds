@@ -203,7 +203,7 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
 function groundMarks(g, x, y, gr, ox, oy, high = false) {
   if (gr === "o" || gr === "u") { if (high) drawBlobLayer(g, IMG.tilled, x, y, (_, gg) => gg === "o" || gg === "u", ox, oy, 0); else g.drawImage(...Furrows.cell(x, y), 16, 16, ox, oy, 16, 16); }
   if (gr === "u") drawBlobLayer(g, IMG.tilled_wet, x, y, (_, gg) => gg === "u", ox, oy, 0);
-  if (gr === "n") g.drawImage(IMG.bridge, 0, 32, 16, 16, ox, oy, 16, 16);
+  if (gr === "n") g.drawImage(IMG.house_walls, 16, 16, 16, 16, ox, oy, 16, 16);          // (a floor: the pack's house floor, solid all over. It was the bridge's planks, see-through at their edges: grass in stripes)
   if (gr === "'") drawBlobLayer(g, IMG.ash, x, y, (_, gg) => gg === "'", ox, oy, 0);
   if (gr === "_") g.drawImage(...Pave.cell(x, y), 16, 16, ox, oy, 16, 16);          // (pavement.js: stones laid in rows, none cut at a tile's edge)
 }

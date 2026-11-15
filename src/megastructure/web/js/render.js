@@ -181,8 +181,10 @@ function frame(now) {
 function drawIntent(p, it, sx, sy, S, t, ox, oy) {
   if (it && it.ghost) {
     ctx.globalAlpha = .7;
+    const built = ROOFS && Structures.WALLS.includes(PLACEABLE_BLOCK[it.ghost] || "-");        // (a wall, a door: as it will stand, structures.js)
     if (it.ghost === "roof") Structures.drawRoof(p.x, p.y, sx, sy, S, .6);
-    const spr = it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
+    if (built) Structures.drawWall(PLACEABLE_BLOCK[it.ghost], p.x, p.y, sx, sy, S, 0, .6);
+    const spr = built ? null : it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
       : it.ghost === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(p.x, p.y)] * 16, 16, 16, 0, -2]
       : objectSprite(PLACEABLE_BLOCK[it.ghost], it.anchor ? it.anchor.x : p.x, it.anchor ? it.anchor.y : p.y, t);
     const gx = it.anchor ? it.anchor.x : p.x, gy = it.anchor ? it.anchor.y : p.y;

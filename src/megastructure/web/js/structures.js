@@ -1,13 +1,19 @@
 // What is built, drawn a piece at a time. A house was walls drawn as small blocks until they closed a room; then
 // a roof and a tall front were drawn over the lot in one go: a house dropped onto the world. Now each wall is
 // itself from the first one laid, and a roof is tiles laid one by one (the server keeps where: sim/roofing.py).
-//   A wall with nothing built south of it shows its front: the pack's plank wall, a tile high, its trim over it.
-//   A wall with a wall south of it shows its top only (a run going north and south: one band).
-//   A door in a run east-west is the pack's door in that front; in a run north-south, an opening under a lintel.
+//   A wall is a block, a tile high: its top, drawn a tile up (over the tile north of it: it hides what is behind
+//   it), the same for every wall, edged where no wall is beside it; and, where nothing is built south of it, its
+//   front under that: the pack's planks (stone: its stones). So a wall running east is a band of top over a band of
+//   front, one running north a band of top with a front at its south end, and they meet as one thing at a corner.
+//   (They were two things: fronts with a trim over them one way, wide flat bands the other.)
+//   A door in a run east-west is the pack's door in that front, as it is drawn (it was stretched); in a run
+//   north-south, an opening under a lintel.
+//   Nothing is put on a wall that you did not put there (windows came by themselves, one wall in three).
 //   A roof tile is drawn over its tile, a tile and a bit up (on the walls): its top edge scalloped where no roof
 //   is north of it, its eave where none is south, its sides where none is beside it, the ridge half way down its run.
-// Where you stand under a roof, that whole roof is seen through, and so are the wall tops just south of you (they
-// would hide you); in build mode every roof is, so that what is under it can be planned.
+// Where you stand under a roof, that whole roof is seen through; so are the wall tops south of you and near (a
+// wall a tile high hides the row behind it: you, and what you are at); in build mode every roof is, so that what
+// is under it can be planned.
 // (A server from before roofs were laid by hand says so by not saying `roofs`: houses.js then draws as it did.)
 let ROOFS = false, roofVer = 0;
 const Structures = (() => {
@@ -29,29 +35,46 @@ const Structures = (() => {
     return (under = {at, ver: roofVer, tiles}).tiles;
   }
   const seeThrough = (x, y) => (mine().has(x + "," + y) ? .12 : Build.on ? .4 : 1);          // how much of the roof tile at (x, y) is drawn
-  // A wall's top, h px of it from y0 (art px over the tile's top): a plain cap, edged where nothing is built beside it
-  function cap(px, py, z, y0, h, x, y, stone) {
-    ctx.fillStyle = stone ? STONE[1] : CAP; ctx.fillRect(px, py + y0 * z, 16 * z, h * z);
+  // A wall's top: a plain cap a tile up, edged where no wall is beside it, a darker line along its south where its
+  // front begins
+  function cap(px, py, z, x, y, stone) {
+    const top = py - 16 * z, open = (dx, dy) => !wall(x + dx, y + dy);
+    ctx.fillStyle = stone ? STONE[1] : CAP; ctx.fillRect(px, top, 16 * z, 16 * z);
+    ctx.fillStyle = stone ? STONE[2] : BEVEL;
+    if (open(0, -1)) ctx.fillRect(px, top + z, 16 * z, z);
+    if (open(0, 1)) ctx.fillRect(px, top + 14 * z, 16 * z, z);
+    if (open(-1, 0)) ctx.fillRect(px + z, top, z, 16 * z);
+    if (open(1, 0)) ctx.fillRect(px + 14 * z, top, z, 16 * z);
     ctx.fillStyle = stone ? STONE[0] : INK;
-    if (!wall(x - 1, y)) ctx.fillRect(px, py + y0 * z, z, h * z);
-    if (!wall(x + 1, y)) ctx.fillRect(px + 15 * z, py + y0 * z, z, h * z);
-    if (!wall(x, y - 1)) { ctx.fillRect(px, py + y0 * z, 16 * z, z); ctx.fillStyle = stone ? STONE[2] : BEVEL; ctx.fillRect(px + z, py + (y0 + 1) * z, 14 * z, z); }
+    if (open(-1, 0)) ctx.fillRect(px, top, z, 16 * z);
+    if (open(1, 0)) ctx.fillRect(px + 15 * z, top, z, 16 * z);
+    if (open(0, -1)) ctx.fillRect(px, top, 16 * z, z);
+    if (open(0, 1)) ctx.fillRect(px, top + 15 * z, 16 * z, z);
   }
-  function drawWall(c, x, y, sx, sy, S, now) {
+  // A door: open while someone is by it (as houses.js has it), and the sheet's frame for how far (5: shut)
+  function doorFrame(x, y) {
+    const key = x + "," + y, near = [[0, 0], [0, -1], [0, 1]].some(([dx, dy]) => occupied.has((x + dx) + "," + (y + dy)));
+    const o = Math.max(0, Math.min(1, (doors.get(key) || 0) + (near ? .15 : -.1)));
+    if (!(doors.get(key) || 0) && o) sfx("gate", x, y);
+    doors.set(key, o);
+    return 5 - Math.round(o * 5);
+  }
+  // (a: how much of it is drawn: a plan's ghost is half there)
+  function drawWall(c, x, y, sx, sy, S, now, a = 1) {
     const z = zoom, px = sx(x), py = sy(y, x), south = wall(x, y + 1), w = wall(x - 1, y), e = wall(x + 1, y), stone = c === "%";
-    const s = myPos(), hides = s && ((s.x === x && s.y === y - 1) || mine().has(x + "," + (y - 1)));        // (you are just behind it, or under the roof behind it)
+    // (its top is seen through when it would hide where you are: you are north of it, near, or under the roof behind it)
+    const s = myPos(), hides = a === 1 && s && ((s.y < y && y - s.y <= 4 && Math.abs(x - s.x) <= 5) || mine().has(x + "," + (y - 1)));
     const side = c === "+" && !w && !e && (wall(x, y - 1) || south);                                        // a door in a run north-south
-    if (south || side) {                               // its top only, a band going on south
-      ctx.globalAlpha = hides ? .3 : side ? .55 : 1; cap(px, py, z, -8, 16, x, y, stone); ctx.globalAlpha = 1;
-      return;
+    if (!south && !side) {                             // its front
+      ctx.globalAlpha = a;
+      if (c === "+") {                                 // the pack's door between its posts, a dark doorway behind it
+        ctx.fillStyle = "#4a3530"; ctx.fillRect(px + 3 * z, py, 10 * z, 15 * z);
+        ctx.drawImage(IMG.door, (a === 1 ? doorFrame(x, y) : 5) * 16, 0, 16, 16, px, py, S, S);
+      } else if (stone) { const [gx, gy] = genCell("stone_wall"); ctx.drawImage(IMG.gen, gx, gy, 16, 16, px, py, S, S); }
+      else { const [fx, fy] = FRONT[!w ? 0 : !e ? 2 : 1]; ctx.drawImage(IMG.house_walls, fx, fy + 8, 16, 8, px, py, S, 8 * z); ctx.drawImage(IMG.house_walls, fx, fy + 8, 16, 8, px, py + 8 * z, S, 8 * z); }
     }
-    const [fx, fy] = FRONT[!w ? 0 : !e ? 2 : 1];
-    if (stone) { const [gx, gy] = genCell("stone_wall"); ctx.drawImage(IMG.gen, gx, gy, 16, 16, px, py, S, S); }
-    else { ctx.drawImage(IMG.house_walls, fx, fy + 8, 16, 8, px, py, S, 8 * z); ctx.drawImage(IMG.house_walls, fx, fy + 8, 16, 8, px, py + 8 * z, S, 8 * z); }
-    if (c === "+") drawDoor(x, y, sx, sy, S, z, now);                                                       // (houses.js: the pack's door, which opens for you)
-    else if (!stone && w && e) { let k = 0; while (k < 14 && wall(x - k - 1, y)) k++; if (k % 3 === 1 && combAt(x - 1, y) !== "+" && combAt(x + 1, y) !== "+") ctx.drawImage(IMG.gen, GEN.window * 16, 0, 16, 16, px, py - 5 * z, S, S); }
-    ctx.globalAlpha = hides ? .3 : 1;                  // over it, its trim (seen through when it would hide you)
-    if (stone) cap(px, py, z, -8, 8, x, y, true); else ctx.drawImage(IMG.house_walls, fx, fy, 16, 8, px, py - 8 * z, S, 8 * z);
+    ctx.globalAlpha = a * (hides ? .3 : side ? .55 : 1);
+    cap(px, py, z, x, y, stone);
     ctx.globalAlpha = 1;
   }
   // One roof tile: the middle of the sheet's roof, its edges laid over it where the roof ends

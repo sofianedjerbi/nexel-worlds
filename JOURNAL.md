@@ -1340,3 +1340,15 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Two ways that did not do: Playwright's recorder needs a download (its ffmpeg); Chrome's MediaRecorder writes a streaming MP4 with no length (3 s shown for 49, no seeking) and softer. Checked the file that is kept: 49.46 s, seeks to 12, 30 and 46 s and plays from there; the Mac's own reader thumbnails it. (My first check said it could not be sought: the little test server could not, not the file.)
 - On the demo: the first section of showcase.html ("What's new" on the first screen's menu), with the four keys under it; the README's key line is right again (it said B was the bag).
 - Not done: no sound in the clip; not judged in Safari or on a phone (only that the Mac's reader opens it).
+
+## Iteration 120: what the clip showed to be wrong with what is built
+- User, having watched it: "Looks weird: window appear out of nowhere ? The door you place does not look like a door ? Wall connect weirdly ? Floor do not cover grass ?"
+- Looked at the clip's own frames, enlarged. All four were so, and mine:
+  1. Windows came by themselves (one wall in three of a run, a rule kept from the old houses). Nothing is put on a wall now that you did not put there.
+  2. The door: in hand and as a plan it was the sheet's "wall with a small hole" (a window, to look at); standing, it was the pack's door stretched from 16 to 22 px over a dark box. It is the pack's door as drawn, between its posts, in the wall's front; the same picture in hand and as a plan.
+  3. Walls were two things: a front with a trim over it where they ran east, a wide flat band where they ran north, and they met badly at every corner. A wall is one block now, a tile high: its top drawn a tile up, the same for every wall and edged where no wall is beside it, and its plank front under that where nothing is built south of it. A plan's ghost is drawn the same way.
+  4. The floor was the bridge's planks, see-through along two edges (made for water under them): the grass showed in stripes. It is the pack's house floor, solid all over.
+- What a wall a tile high costs: it hides the row behind it. So the tops of walls south of you and near (four rows, five tiles to a side) are seen through, as under a roof.
+- The clip was filmed again with it (tools/film_build_mode.py, the same scene).
+- Tests: a door's picture is the door and not the wall's; a floor tile is solid all over with no grass in it. 410 unit; 30 in Chrome (build, edges, the island, land, pixels).
+- Not done: no window to place (a piece of its own, later); a door in a run north-south is still an opening under a lintel, not a door seen from its side.

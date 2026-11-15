@@ -167,8 +167,10 @@ const Build = (() => {
     for (const [k, j] of S.plans) {
       if (j.state === "bad" && now() - j.t > BAD_MS) { S.plans.delete(k); continue; }
       const x = sx(j.x), y = sy(j.y, j.x);
+      const built = ROOFS && !j.take && Structures.WALLS.includes(PLACEABLE_BLOCK[j.item] || "-");
       if (j.item === "roof") Structures.drawRoof(j.x, j.y, sx, sy, Sz, j.state === "doing" ? .75 : .5);
-      const spr = j.take || j.item === "roof" ? null : j.ground ? groundPreview(j.ground, j.x, j.y) : j.item === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(j.x, j.y)] * 16, 16, 16, 0, -2] : objectSprite(PLACEABLE_BLOCK[j.item], j.x, j.y, t);
+      if (built) Structures.drawWall(PLACEABLE_BLOCK[j.item], j.x, j.y, sx, sy, Sz, 0, j.state === "doing" ? .75 : .5);
+      const spr = j.take || j.item === "roof" || built ? null : j.ground ? groundPreview(j.ground, j.x, j.y) : j.item === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(j.x, j.y)] * 16, 16, 16, 0, -2] : objectSprite(PLACEABLE_BLOCK[j.item], j.x, j.y, t);
       ctx.globalAlpha = j.state === "doing" ? .75 : .5;
       if (spr) ctx.drawImage(spr[0], spr[1], spr[2], spr[3], spr[4], x + spr[5] * z, y + spr[6] * z, spr[3] * z, spr[4] * z);
       ctx.globalAlpha = 1;

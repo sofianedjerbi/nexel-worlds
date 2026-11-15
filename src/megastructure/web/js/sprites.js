@@ -91,7 +91,7 @@ function spriteOf(c, x, y, t) {
       else if (room(1, 1)) c = [0, 0]; else if (room(-1, 1)) c = [2, 0]; else if (room(1, -1)) c = [0, 2]; else if (room(-1, -1)) c = [2, 2];
       return [IMG.house_walls, c[0] * 16, c[1] * 16, 16, 16, 0, 0];
     }
-    case "+": return [IMG.house_walls, 48, 32, 16, 16, 0, 0];                          // doorway in the wall
+    case "+": return [IMG.door, 80, 0, 16, 16, 0, 0];                                 // a door, shut (it was a wall with a small hole in it: a window, to look at)
     case "^": return [IMG.gen, ...genCell(Math.floor(t * 6 + x) % 2 ? "campfire1" : "campfire0"), 16, 16, 0, -2];
     case "x": return [IMG.gen, ...genCell(Math.floor(t * 8 + x + y) % 2 ? "fire1" : "fire0"), 16, 16, 0, -3];
     case "&": return [IMG.gen, ...genCell("workbench"), 16, 16, 0, -3];
