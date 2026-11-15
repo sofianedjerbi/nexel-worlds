@@ -151,20 +151,27 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     assert not game.errors
 
 
-def test_a_door_in_a_wall_that_runs_north_is_an_opening_shaded_as_a_hole(game):
-    """A door in a wall running north and south was the wall's top, half seen through: no door, no way to be seen
-    going through it. It is an opening in the wall's band over the door's own tile, dark as the game's holes are
-    under its lintel, the leaf across it; the top of the wall south of it is left out there (it would lie over the
-    way through), and whoever stands in it is seen."""
+def test_walls_are_thin_and_hide_nothing_and_a_side_door_has_its_leaf_and_shadow(game):
+    """Walls were blocks a tile high: their tops hid the row behind them, were seen through near you to make up for
+    it ("xray that trigger without roof"), and a gap in a wall running north showed as a patch of planks ("weird
+    wall connexion"). A wall is thin and drawn on its own tile: the ground of the tile north of one is as it is, a
+    gap is a gap, nothing of a wall is ever seen through. A door in a run going north is seen from above: its leaf
+    between two posts, the doorway's shadow under it (the dark of the game's holes); it opens for whoever is by it."""
     game.clear_area(8)
     x, y = game.pos()
     game.stamp(3, -3, ["W", "+", "W"])                         # a run going north, a door in its middle
-    game.stamp(-3, -3, ["W+W"])                                # and one in a run going east: a door from the front, as before
+    game.stamp(-3, -3, ["W+W"])                                # one in a run going east: the door from the front
+    game.stamp(-4, 2, ["WWW"])                                 # and a wall south of open ground
     game.sleep(900)
     assert game.js("([x, y]) => [Structures.sideDoor(x + 3, y - 2), Structures.sideDoor(x - 2, y - 3), Structures.sideDoor(x + 3, y - 3)]", [x, y]) == [True, False, False]
     lum = "([dx, dy, up]) => { const t = TS(), d = ctx.getImageData(Math.round(cv.width / 2 + dx * t), Math.round(cv.height / 2 + (dy - up) * t), 1, 1).data; return d[0] + d[1] + d[2]; }"
-    grass, deep, low = game.js(lum, [5, -2, 0]), game.js(lum, [3, -2, .35]), game.js(lum, [3, -2, -.4])
-    assert deep < grass - 200 and deep < low < grass, (grass, deep, low)     # dark in under the lintel, lighter towards you, the ground still under it
-    game.rpc("dev_teleport", x=x + 3, y=y - 2)                 # in the doorway: its leaf is back against a post, and you are not under a wall's top
+    grass = game.js(lum, [6, -2, 0])
+    assert game.js(lum, [3, -2, .25]) < grass - 150 and game.js(lum, [2.78, -2, .25]) < grass - 60     # the leaf across the way; its shadow beside it, on the ground
+    assert abs(game.js(lum, [-3, 1, 0]) - grass) < 40          # the tile north of a wall: its ground, nothing over it
+    game.rpc("dev_teleport", x=x - 3, y=y + 1)                 # standing there, behind the wall: nothing of it is seen through
+    game.sleep(700)
+    px = game.js("(() => { const d = ctx.getImageData(Math.round(cv.width / 2 + TS() * .3), Math.round(cv.height / 2 + TS()), 1, 1).data; return [d[0], d[1], d[2]]; })()")
+    assert px in ([170, 121, 89], [144, 98, 93], [220, 185, 138]), px       # the wall just south of you: its planks' own colours, not thinned
+    game.rpc("dev_teleport", x=x + 3, y=y - 2)                 # in the doorway: its leaf is back against a post
     game.sleep(900)
     assert game.js("doors.get(myPos().x + ',' + myPos().y)") == 1 and not game.errors
