@@ -155,12 +155,18 @@ class Animals:
         return {}
 
     def _tool_name(self, a, args):
-        """Name a creature within reach: it is yours from then on, and never goes away (spawning.py: kept)."""
+        """Name a creature within reach: it is yours from then on, and never goes away (spawning.py: kept).
+        It takes a name tag ("Naming mobs = naming tag required"), which stays on the animal."""
         animal = self._creature_target(a, args)
         text = " ".join(str(args.get("text", "")).split())[:NAME_MAX]
         if not text:
             raise ActionError("bad_args", "give it a name: text=...")
+        if a.inventory.get("name_tag", 0) < 1:
+            raise ActionError("missing_item", "a name needs a name tag (craft one: 1 plank, 1 fiber)")
         yield from self.wait(a, 0.3)
+        if a.inventory.get("name_tag", 0) < 1:
+            raise ActionError("missing_item", "the name tag is gone")
+        a.add("name_tag", -1)
         animal.name = text
         self.emit("named", animal.x, animal.y, by=a.name, id=animal.id, kind=animal.kind, name=text)
         return {"named": text}

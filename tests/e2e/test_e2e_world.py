@@ -46,9 +46,12 @@ def test_signs_say_what_you_wrote(game):
     game.give(sign=1)
     game.hold_item("sign")
     game.face(1, 0)
-    game.press("Space", 900)
-    x, y = game.pos()
-    assert game.act("write_sign", x=x + 1, y=y, text="Ben's farm")["ok"]
+    game.press("Space", 300)                               # a sign is written as it goes up (ask.js)
+    game.wait("$('ask').style.display === 'block' && document.activeElement === $('asktext')")
+    game.page.keyboard.type("Ben's farm")
+    game.page.keyboard.press("Enter")
+    game.sleep(900)
+    assert game.tile(1, 0) == "?"
     game.press("0", 100)
     game.face(1, 0)
     game.press("Space", 800)

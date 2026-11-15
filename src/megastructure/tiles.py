@@ -213,6 +213,7 @@ RECIPES = {
         Recipe("campfire", {"wood": 3, "stone": 2}, {"campfire": 1}, 4),
         Recipe("torch", {"wood": 1, "fiber": 1}, {"torch": 1}, 2),
         Recipe("rope", {"fiber": 3}, {"rope": 1}, 3),
+        Recipe("name_tag", {"plank": 1, "fiber": 1}, {"name_tag": 1}, 2),     # a name for an animal: used up on it (sim/animals.py)
         Recipe("axe", {"wood": 2, "stone": 2, "fiber": 1}, {"axe": 1}, 6, "workbench"),
         Recipe("pickaxe", {"wood": 2, "stone": 3, "fiber": 1}, {"pickaxe": 1}, 6, "workbench"),
         Recipe("hoe", {"wood": 2, "stone": 1}, {"hoe": 1}, 5, "workbench"),

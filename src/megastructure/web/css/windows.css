@@ -41,7 +41,13 @@
   #craft .line.cur { color:#fff6e2; text-shadow:var(--q) var(--q) 0 #6b4a3a; background:#aa7959; box-shadow:inset var(--q) var(--q) 0 #c49a6c, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #8a5f4b, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
   #craft .line.cur canvas { opacity:1; }
   #craft .cnone { font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); padding:calc(4 * var(--q)); }
-  #craftmore { height:calc(8 * var(--q)); margin-top:calc(3 * var(--q)); font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); text-align:center; }
+  /* under the list: the search (craft.js: a name, or what a thing is made of, in every kind at once), then where you are */
+  #craft .cfoot { display:flex; align-items:center; gap:calc(3 * var(--q)); height:calc(8 * var(--q)); margin-top:calc(3 * var(--q)); }
+  #craftfind { flex:1; min-width:0; height:calc(8 * var(--q)); padding:0 calc(2 * var(--q)); border:0; outline:none; font:inherit; font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink);
+    background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #b8946a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }
+  #craftfind::placeholder { color:var(--ink2); opacity:.8; }
+  #craftfind:focus { background:#f3dfba; }
+  #craftmore { flex:none; font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); text-align:right; white-space:nowrap; }
   #craftdetail { flex:1; min-width:0; display:flex; flex-direction:column; gap:calc(3 * var(--q)); }
   #craft .chead { display:flex; align-items:center; gap:calc(5 * var(--q)); margin:0 calc(20 * var(--q)) 0 var(--q); height:calc(18 * var(--q)); }
   #craft .cname { min-width:0; max-height:calc(18 * var(--q)); overflow:hidden; }

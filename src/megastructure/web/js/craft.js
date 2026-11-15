@@ -17,11 +17,11 @@ const RECIPE_GROUPS = [
   ["Basics", "workbench", ["workbench", "campfire", "torch", "rope", "plank", "path", "boat", "mailbox"]],
   ["Tools", "pickaxe", ["axe", "pickaxe", "hoe", "watering_can", "spear", "sword"]],
   ["Build", "wood_wall", ["wood_wall", "door", "roof", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
-  ["Home", "bed", ["bed", "chair", "table", "plant", "clock", "rug", "well", "coop", "trough", "hay", "picnic_blanket", "basket", "cooked_meat", "bread", "ingot"]],
+  ["Home", "bed", ["bed", "chair", "table", "plant", "clock", "rug", "well", "coop", "trough", "hay", "name_tag", "picnic_blanket", "basket", "cooked_meat", "bread", "ingot"]],
   ["Wear", "straw_hat", []],             // (clothes, armor and charms: wear_items.js)
 ];
 const CRAFT_ROWS = 5, NEED_ROWS = 4, NEED_COLS = 3;
-let craftFocus = null, craftTab = "Basics", craftOnly = false, craftPage = 0;   // the recipe you are on; the kind, the switch, the page
+let craftFocus = null, craftTab = "Basics", craftOnly = false, craftPage = 0, craftFind = "";   // the recipe you are on; the kind, the switch, the page, what is searched
 
 function craftGroups() {
   const listed = new Set(RECIPE_GROUPS.flatMap(([, , n]) => n));
@@ -50,26 +50,33 @@ function craftCell(name, n, cls = "") {
 // What the list shows: the kind's recipes (with the switch on, the ones you can make), and the page of them you are on
 function craftView() {
   const groups = craftGroups(), g = groups.find(([t]) => t === craftTab) || groups[0]; craftTab = g[0];
-  const all = g[2].filter((n) => !craftOnly || craftOk(n)), pages = Math.max(1, Math.ceil(all.length / CRAFT_ROWS));
+  const all = (craftFind ? craftFound(groups) : g[2]).filter((n) => !craftOnly || craftOk(n)), pages = Math.max(1, Math.ceil(all.length / CRAFT_ROWS));
   craftPage = Math.max(0, Math.min(pages - 1, craftPage));
   const shown = all.slice(craftPage * CRAFT_ROWS, (craftPage + 1) * CRAFT_ROWS);
   if (!shown.includes(craftFocus)) craftFocus = shown[0] || null;
   return {groups, all, shown, pages};
 }
+// The search ("add a research feature in the crafting menu"): in every kind at once, the things whose name has what
+// is typed, then the things made of something whose name has it ("fiber": the rope, the torch, the name tag...).
+function craftFound(groups) {
+  const q = craftFind.toLowerCase(), all = [...new Set(groups.flatMap(([, , n]) => n))], has = (n) => label(n).toLowerCase().includes(q) || n.includes(q);
+  const named = all.filter(has);
+  return [...named, ...all.filter((n) => !named.includes(n) && Object.keys(recipes[n].inputs).some(has))];
+}
 function craftOpened() { $("recipes").dataset.sig = ""; drawRecipes(); }
 function drawRecipes() {
   const el = $("recipes"); if (!el || !Object.keys(recipes).length) return;
-  const v = craftView(), sig = JSON.stringify(meObs ? meObs.self.inventory : {}) + (meObs ? meObs.grid.join("") : "") + [craftTab, craftOnly, craftPage].join();
+  const v = craftView(), sig = JSON.stringify(meObs ? meObs.self.inventory : {}) + (meObs ? meObs.grid.join("") : "") + [craftTab, craftOnly, craftPage, craftFind].join();
   if (el.dataset.sig === sig) return; el.dataset.sig = sig;
   const tabs = $("crafttabs"); tabs.innerHTML = "";         // the bookmarks
   for (const [title, ic] of v.groups) {
-    const b = document.createElement("div"); b.className = "ctab" + (title === craftTab ? " on" : ""); b.dataset.kind = b.title = title;
+    const b = document.createElement("div"); b.className = "ctab" + (title === craftTab && !craftFind ? " on" : ""); b.dataset.kind = b.title = title;
     b.appendChild(iconCanvas(ic)); b.onclick = () => craftTurn({tab: title});
     tabs.appendChild(b);
   }
   tabs.insertAdjacentHTML("beforeend", `<div class="ckeys"><kbd>Q</kbd><kbd>E</kbd></div>`);
   $("craftonly").className = "b " + (craftOnly ? "on" : "paper");
-  el.innerHTML = v.shown.length ? "" : `<div class="cnone">${craftOnly ? "Nothing in " + esc(craftTab) + " can be made yet." : "Nothing here."}</div>`;
+  el.innerHTML = v.shown.length ? "" : `<div class="cnone">${craftFind ? "Nothing called “" + esc(craftFind) + "”" + (craftOnly ? " that you can make." : ".") : craftOnly ? "Nothing in " + esc(craftTab) + " can be made yet." : "Nothing here."}</div>`;
   for (const name of v.shown) {                             // the list: a name, lit if it can be made
     const d = document.createElement("div"); d.className = "line rcard" + (craftOk(name) ? "" : " no") + (name === craftFocus ? " cur" : "");
     d.dataset.name = name; d.title = craftWhy(name);
@@ -78,7 +85,7 @@ function drawRecipes() {
     d.onclick = () => focusRecipe(name); d.ondblclick = () => craftMake(name);
     el.appendChild(d);
   }
-  $("craftmore").textContent = `${craftTab} · ${craftPage + 1} of ${v.pages}`;
+  $("craftmore").textContent = `${craftFind ? "Search" : craftTab} · ${craftPage + 1} of ${v.pages}`;
   drawCraftDetail();
 }
 function focusRecipe(name) {
@@ -89,7 +96,7 @@ function focusRecipe(name) {
 }
 // Another kind, another page, the switch: then the list again, from its first line (or its last, coming back up)
 function craftTurn({tab, page, only, last}) {
-  if (tab !== undefined) { craftTab = tab; craftPage = 0; }
+  if (tab !== undefined) { craftTab = tab; craftPage = 0; craftFind = $("craftfind").value = ""; }      // (a kind: the search is over)
   if (only !== undefined) { craftOnly = only; craftPage = 0; }
   if (page !== undefined) craftPage = page;
   craftFocus = null; $("recipes").dataset.sig = ""; sfx("ui"); drawRecipes();    // (drawn again even where nothing turned, the first page's "<": the lit line was one name and Enter made another)
@@ -141,9 +148,22 @@ function craftKey(k, e) {
   else if (k === "end") craftTurn({page: v.pages - 1, last: true});
   else if (k === "enter" || k === " ") { if (!e.repeat) craftMake(craftFocus, e.shiftKey); }      // (a held key makes one)
   else if (k === "f") { if (!e.repeat) craftTurn({only: !craftOnly}); }
+  else if (k === "/") { $("craftfind").focus(); $("craftfind").select(); }
   else return false;
   return true;
 }
+// The search's own keys: letters are its own; the arrows walk the list, Enter makes, Esc empties it, then leaves it.
+$("craftfind").addEventListener("input", (e) => { craftFind = e.target.value.trim(); craftPage = 0; craftFocus = null; $("recipes").dataset.sig = ""; drawRecipes(); });
+$("craftfind").addEventListener("keydown", (e) => {
+  e.stopPropagation();
+  const k = e.key.toLowerCase();
+  if (k === "arrowdown" || k === "arrowup" || k === "pagedown" || k === "pageup") { e.preventDefault(); craftKey(k, e); }
+  else if (k === "enter") { e.preventDefault(); if (!e.repeat) craftMake(craftFocus, e.shiftKey); }
+  else if (k === "escape" || k === "tab") {
+    e.preventDefault();
+    if (k === "escape" && e.target.value) { e.target.value = ""; e.target.dispatchEvent(new Event("input")); } else e.target.blur();
+  }
+});
 $("craftonly").onclick = () => craftTurn({only: !craftOnly});
 $("craftprev").onclick = () => craftTurn({page: craftPage - 1});
 $("craftnext").onclick = () => craftTurn({page: craftPage + 1});

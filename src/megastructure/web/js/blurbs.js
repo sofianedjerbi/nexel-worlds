@@ -4,6 +4,7 @@ const BLURB = {
   campfire: "Warm, bright, and it cooks. Do not hug it.",
   torch: "A stick that is afraid of the dark for you.",
   rope: "Three plants holding hands very tightly.",
+  name_tag: "A word on a string. The cow keeps it.",
   plank: "A log that went to finishing school.",
   path: "Stones laid flat so your feet feel important.",
   boat: "Like walking on water, but drier.",

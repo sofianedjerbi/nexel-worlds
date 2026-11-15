@@ -178,8 +178,8 @@ class Building:
             self.timers[(x, y)] = [self.tick + sec(150), "ripen"]
         if block == "mailbox":
             self.world.set_meta(x, y, {"owner": a.name, "letters": []})
-        if block == "flag":
-            text = str(args.get("text") or f"claimed by {a.name}")[:MAX_TEXT]
+        if block == "flag" or (block == "sign" and str(args.get("text") or "").strip()):     # ("Signs = write when placing")
+            text = str(args.get("text") or f"claimed by {a.name}").strip()[:MAX_TEXT]
             self.world.set_meta(x, y, {"text": text, "by": a.name})
         a.bump("placed")
         return {}

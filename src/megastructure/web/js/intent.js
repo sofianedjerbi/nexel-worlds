@@ -72,6 +72,8 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   const isMe = p.x === s.x && p.y === s.y;
   if (ent) {
     const who = ent.e.name || ent.e.kind, w = inHand(), weapon = w && WEAPON_DMG[w] ? w : null;
+    if (ent.e.kind !== "agent" && selected === "name_tag" && !shift)       // a name tag in hand: its name (ask.js)
+      return {ent, text: ent.e.name ? `Rename ${ent.e.name}` : `Name the ${label(ent.e.kind)}`, near: USE_R, diag: true, run: () => nameAnimal(ent.e)};
     if (ANIMALS[ent.e.kind] && selected && FEEDS.includes(selected) && !shift)
       return {ent, text: `Feed ${label(selected)} to the ${ent.e.kind}`, near: USE_R, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
     if (ent.e.kind === "agent" && selected && !weapon && !shift)
@@ -116,7 +118,8 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     }
     if (block === "V") return !hasBlock && wet(g) ? {text: "Launch boat", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
                                                      : {text: "Boats go on shallow water", ghost: it, ok: false};
-    if (block) return free ? {text: `Place ${label(it === "hay" ? "hay_bale" : it)}`, ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
+    if (block) return free ? {text: `Place ${label(it === "hay" ? "hay_bale" : it)}`, ghost: it, ok: true, near: 1,
+                              run: (d) => (it === "sign" || it === "flag" ? placeWritten(d, it) : act("place", {dir: d, item: it}))}      // (a sign is written as it goes up: ask.js)
                            : {text: `Can't place ${label(it)} here`, ghost: it, ok: false};
     if (it === "seed") {
       if (!hasBlock && (g === "o" || g === "u")) return {text: "Plant seed", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};

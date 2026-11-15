@@ -101,10 +101,11 @@ def test_everybody_stands_three_px_up_in_their_tile(game):
 
 
 def test_a_named_animal_carries_its_name(game):
-    """/name in the chat line: the animal beside you is yours (it never goes away: sim/spawning.py). Its name is
-    drawn over it, as a player's is, the chat says so, and the list of who is near has it by name."""
+    """Named (here by the action typed in full; in play with a name tag in hand: test_e2e_ask.py), the animal beside
+    you is yours (it never goes away: sim/spawning.py). Its name is drawn over it, as a player's is, the chat says
+    so, and the list of who is near has it by name."""
     hen = game.spawn("chicken", 1, 0, still=10 ** 6)
-    game.sleep(400)
+    game.give(name_tag=1)                                      # (a name takes a name tag)
     page = game.page
     page.keyboard.press("/")
     page.keyboard.type(f"name target={hen} text=Daisy")

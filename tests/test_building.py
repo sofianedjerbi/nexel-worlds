@@ -155,6 +155,9 @@ def test_sign_and_locker(world):
     run(sim, a, "place", {"dir": "N", "item": "sign"})
     run(sim, a, "write_sign", {"dir": "N", "text": "keep out"})
     assert run(sim, a, "read_sign", {"dir": "N"})["text"] == "keep out"
+    a.add("sign", 1)                                                   # a sign goes up with its words ("write when placing")
+    assert run(sim, a, "place", {"dir": "W", "item": "sign", "text": "  fresh eggs  "})["ok"]
+    assert run(sim, a, "read_sign", {"dir": "W"})["text"] == "fresh eggs"
     assert run(sim, a, "place", {"dir": "E", "item": "chest"})["ok"]
     assert run(sim, a, "store", {"dir": "E", "item": "ore", "n": 2})["chest"] == {"ore": 2}
     # anyone can break it open and loot the contents

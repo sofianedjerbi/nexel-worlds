@@ -78,7 +78,10 @@ def test_nothing_goes_on_a_screen_and_a_named_or_a_housed_one_never_goes(world):
     clear(sim, a, r=45)
     put(sim, "chicken", a.x + 1, a.y, cooldown=10 ** 6)
     daisy = put(sim, "cow", a.x, a.y + 1, cooldown=10 ** 6)
+    assert run(sim, a, "name", {"target": daisy.id, "text": "Daisy"})["error"] == "missing_item" and not daisy.name      # a name takes a name tag
+    a.add("name_tag", 1)
     assert run(sim, a, "name", {"target": daisy.id, "text": "  Daisy   the cow of the long name "})["ok"] and daisy.name == "Daisy the cow of"
+    assert a.inventory.get("name_tag", 0) == 0                          # (it stays on her)
     assert run(sim, a, "name", {"target": daisy.id, "text": " "})["error"] == "bad_args" and daisy.name == "Daisy the cow of"
     daisy.x, daisy.y = a.x + 30, a.y + 30                              # she wanders off
     sim.world.set(a.x - 30, a.y, block="coop")

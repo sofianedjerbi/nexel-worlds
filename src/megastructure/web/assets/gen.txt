@@ -29,3 +29,4 @@ heart
 food
 bolt
 stone_item
+name_tag

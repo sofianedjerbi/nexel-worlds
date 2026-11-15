@@ -8,17 +8,19 @@ OPEN = "$('chatbox').classList.contains('open') && document.activeElement === $(
 
 
 def test_a_command_is_built_with_tab_and_the_arrows(game):
-    """A "/" lists the commands a real player needs (what has no key or click: naming an animal, writing on a sign,
-    and the page's own): "/ shouldn't confuse player with bot commands". A bot's action is not offered while its name
-    is being typed, but once it is written in full its hint is there, then its arguments, then what an argument can
-    be. Tab takes the marked one, the arrows move the mark. Enter sends the line as it is typed."""
+    """A "/" lists the commands a real player needs: the page's own (a sign is written as it goes up and an animal is
+    named with a name tag: no command for those). "/ shouldn't confuse player with bot commands": a bot's action is
+    not offered while its name is being typed, but once it is written in full its hint is there, then its arguments,
+    then what an argument can be. Tab takes the marked one, the arrows move the mark. Enter sends the line as typed."""
     page = game.page
     game.give(wood=3, berries=2)
     page.keyboard.press("/")
-    game.wait("$('sayhelp').children.length === 5")                     # (asked of the server once, when the line opens)
-    assert game.js(ROWS) == ["write_sign", "name", "coords", "grid", "perf"]
-    assert game.js("$('sayhelp').querySelector('.on b').textContent") == "write_sign"
-    page.keyboard.type("na")
+    game.wait("!!tools && $('sayhelp').children.length === 3")          # (asked of the server once, when the line opens)
+    assert game.js(ROWS) == ["coords", "grid", "perf"]
+    assert game.js("$('sayhelp').querySelector('.on b').textContent") == "coords"
+    page.keyboard.type("nam")
+    assert game.js(ROWS) == []
+    page.keyboard.type("e")
     assert game.js(ROWS) == ["name"]
     page.keyboard.press("Tab")
     assert game.js(LINE) == "/name " and game.js(ROWS) == ["target=", "text="]
@@ -61,10 +63,10 @@ def test_what_an_argument_can_be(game):
     cow = game.rpc("dev_creatures", kind="cow", dx=2, dy=0, still=600)["spawned"]
     game.sleep(600)
     page.keyboard.press("/")
-    game.wait("$('sayhelp').children.length === 5")
+    game.wait("!!tools && $('sayhelp').children.length === 3")
     for line, want in (("/eat item=", ["berries", "bread"]), ("/drop item=w", ["wood"]), ("/craft recipe=plank", ["plank"]),
                        ("/unwear slot=", ["head", "top", "pants", "shoes", "effect"]), ("/step dir=N run=", ["true"]),
-                       ("/sign", ["write_sign"]), ("/read_sign", ["read_sign"]), ("/eat", ["eat"]), ("/ea", []), ("/say text=\"dig dir=", [])):
+                       ("/sign", []), ("/read_sign", ["read_sign"]), ("/eat", ["eat"]), ("/ea", []), ("/say text=\"dig dir=", [])):
         page.fill("#say", line)
         assert game.js(ROWS) == want, line
     page.fill("#say", "/move_to x=")
@@ -117,7 +119,7 @@ def test_a_tap_takes_one_on_a_phone(browser, server):
     page.tap("#join")
     page.wait_for_function("meObs && myPos()", timeout=8000)
     page.tap("#tTalk")
-    page.keyboard.type("/wr")
+    page.keyboard.type("/write_sign")
     page.wait_for_function("$('sayhelp').children.length === 1")
     page.tap("#sayhelp div")
     assert page.evaluate(LINE) == "/write_sign " and page.evaluate(OPEN) is True

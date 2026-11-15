@@ -1458,6 +1458,22 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Measured: `test_e2e_complete.py` (the five on "/"; /st, /ste, /di list nothing; /step and /dig list themselves;
   arguments of /eat, /drop, /milk as before) and the interface tests, 16 of 16.
 
+## Iteration 127: a sign is written as it goes up; an animal is named with a name tag
+- Asked: "turn the command that could be turned into UI (signs, naming mobs) into ui. As example Signs = write when
+  placing. Naming mobs = naming tag required".
+- Signs: placing a sign or a flag opens a small box (`web/js/ask.js`, the panel's pixels): what it says, Enter puts it
+  up, Esc gives up, nothing typed is a blank sign (a flag then says whose it is). The server's `place` takes the text
+  for a sign as it did for a flag (`sim/building.py`).
+- Names: a new thing, the name tag (1 plank, 1 fiber, no bench; icon drawn in `tools/pixel_art.py`, added to the
+  sheet). In hand, used on an animal: a box asks its name. The server's `name` now needs a tag and uses it up
+  (`sim/animals.py`): this is so for the AI players too, and their tool list says it.
+- Commands: nothing a player needs is a command any more; "/" lists the page's three (coords, grid, perf); the
+  server's actions, write_sign and name among them, are hinted once written in full, as in iteration 126.
+- Measured: unit 416 (a name without a tag is refused, the tag is used up; a sign placed with words reads them);
+  `test_e2e_ask.py` (the box, the letters typed do not walk you, Esc, reading the sign; naming a cow) and the
+  completion tests, 6 of 6. Seen in a screenshot: the box in the panel's style.
+- The world that is running keeps its old rules until its server is started again.
+
 ## Iteration 128: building up, a block at a time; a roof is a block like the rest
 - User: "does current building models allow building multiple floor houses ? if no, make it intuitive and possible. walls should just be blocks but for houses, building mode should allow building like minecraft: grass = grass block etc etc." Then, while I was reading: "roof break the "block rule" i feel like".
 - It did not: one piece a tile, and over it a roof that was a rule of its own (a tile laid over a tile, on a wall or beside a roof, no further than three tiles from a wall, stood on by nobody, built on by nothing).
@@ -1473,3 +1489,14 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Seen in Chrome on a copy: a house of two storeys from outside, from behind, in the room, on the steps, upstairs.
 - Tests: tests/test_storeys.py (6: where a block rests; a second floor stood on, built on, reached by steps; taken back top first and kept in the save; earth; old roofs; the way up to a floor asked for), tests/e2e/test_e2e_floors.py (3: a second floor by keys alone; what is seen from where, a bed upstairs, a fall off the edge; earth, and a floor going on by hand); the build, edge, relief and chat-completion tests moved to blocks (and `z`). 417 unit, 192 in Chrome.
 - Not done, known: the AI players are told of `z` but see only the ground's layer in observe; nothing built burns; what lies on the ground is one pile a tile whatever the height (dropped upstairs, it is picked up from under); a fence upstairs joins by the ground's fences; touch has no build mode; a planned block does not carry a plan on top of it (plan the second step once the first is built); the clip on the demo shows a house of one storey.
+
+## Iteration 129: the recipe book has a search
+- Asked: "add a research feature in the crafting menu" (read as: a search).
+- Change: under the list, a field (`#craftfind`, the book's sunk cell). Typed in it: in every kind at once, the things
+  whose name has it, then the things made of something whose name has it ("fiber": rope, torch, name tag, flag...).
+  "/" goes to it; in it the letters are its own, the arrows walk the list, Enter makes (Shift: five), Esc empties it
+  and then leaves it; choosing a kind ends the search. "Can make" still narrows it. `craft.js` craftFound.
+- The name tag sits with the farm's things (Home), not in Basics: the first kind keeps its two pages.
+- Measured: `test_e2e_craft_search.py`; full browser run before this last move 191 pass, 3 fail, 1 error: two were
+  mine (an older test naming without a tag, the book's key test with a ninth thing in Basics: both corrected), the
+  floors test and a player not getting in pass alone. Unit 421.

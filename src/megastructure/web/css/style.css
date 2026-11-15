@@ -58,9 +58,9 @@
   .slot:hover .tip { display:block; }
   .tip { display:none; position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; pointer-events:none; z-index:3; }
   .bagslot .bagtxt { color:#fff8e8; text-shadow:1px 1px 0 var(--ink); }
-  #mail { left:50%; top:50%; transform:translate(-50%,-55%); width:min(520px, 92vw); display:none; z-index:4; }
-  #mail .close { position:absolute; right:-6px; top:-14px; cursor:pointer; color:var(--ink2); }
-  #mail .row { display:flex; gap:6px; margin-top:8px; } #mail input { flex:1; }
+  #mail, #ask { left:50%; top:50%; transform:translate(-50%,-55%); width:min(520px, 92vw); display:none; z-index:4; }      /* (#ask: a word asked of you, ask.js) */
+  #mail .close, #ask .close { position:absolute; right:-6px; top:-14px; cursor:pointer; color:var(--ink2); }
+  #mail .row, #ask .row { display:flex; gap:6px; margin-top:8px; } #mail input, #ask input { flex:1; }
   #letters { max-height:240px; overflow:auto; }
   .letter { background:#fff6e2; border:2px solid #d9b98a; border-radius:5px; padding:6px 8px; margin:4px 0; }
   .letter .from { color:var(--ink2); }

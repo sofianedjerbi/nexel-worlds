@@ -31,7 +31,7 @@ TOOL_SPECS = {
             "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground (needs a hoe). By hand, "
                     "wood takes 4x and stone 6x as long as with an axe / pickaxe; ore needs a pickaxe. A built block in front of you (a step, "
                     "the floor you stand level with) comes back into your pack, what stands on it first"},
-    "place": {"args": {**DIR_ARG, "item": "str", "text": "str (flags only, optional)", "z": "int (optional): a height, to build over the ground"},
+    "place": {"args": {**DIR_ARG, "item": "str", "text": "str (what a sign or a flag says, optional)", "z": "int (optional): a height, to build over the ground"},
               "desc": "place an item: furniture/walls/etc. as blocks; dirt fills holes or water, and on open ground raises it a layer; path lays cobble, plank makes a bridge (water) or floor (land); "
                       "roof lays a roof block over that tile, a storey up (3 layers: it rests on a wall or door under it, or holds to a block beside it; you can stand on it; under a roof you are sheltered). "
                       "With z, plank or roof is a block in that cell (on the block under it: a step; or a storey over a wall; or beside a block), and a wall, door, bed... stands on the block built at that height"},
@@ -56,7 +56,7 @@ TOOL_SPECS = {
               "desc": "water a growing crop with the can in hand: grows twice as fast; aim at a well or water to refill"},
     "milk": {"args": {"target": "cow id"}, "desc": "milk an adjacent cow (every 2 minutes)"},
     "feed": {"args": {"target": "animal id", "item": "food"}, "desc": "feed an adjacent animal; fed chickens lay eggs"},
-    "name": {"args": {"target": "animal id", "text": "str"}, "desc": "name an animal within 2 tiles: a named animal is yours, it never goes away (wild ones over the limit around a player do, out of sight)"},
+    "name": {"args": {"target": "animal id", "text": "str"}, "desc": "name an animal within 2 tiles with a name tag you carry (used up; craft: 1 plank, 1 fiber): a named animal is yours, it never goes away (wild ones over the limit around a player do, out of sight)"},
     "sleep": {"args": DIR_ARG, "desc": "lie down in a bed nearby: you wake up there after dying"},
     "post": {"args": {**DIR_ARG, "text": "str"}, "desc": "post a letter in an adjacent mailbox"},
     "open_mail": {"args": DIR_ARG, "desc": "take the letters out of an adjacent mailbox (anyone can)"},

@@ -137,4 +137,8 @@ GEN = {
         "                ", "                ", "                ", "                ", "      dddd      ", "    ddsSSsd     ",
         "   dsSSSsssd    ", "   dsSsssssd    ", "   dssssssdd    ", "    ddssddd     ", "      ddd       ", "                ",
         "                ", "                ", "                ", "                "],
+    "name_tag": [   # a paper tag on a string, a hole at its point, two lines written on it
+        "                ", "                ", "  B             ", "   B            ", "    B           ", "    oooooooooo  ",
+        "   oeeeeeeeeeeo ", "  oeeoeeeeeeeeo ", " oeeo oecccceeo ", "  oeeoeeeeeeeeo ", "   oeeeeccceeeo ", "    oooooooooo  ",
+        "                ", "                ", "                ", "                "],
 }

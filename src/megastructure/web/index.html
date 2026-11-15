@@ -54,7 +54,7 @@
 <div id="craft"><div id="crafttabs"></div><div class="b paper" id="craftclose" title="Esc">x</div>
   <div class="cbook">
     <div class="cleft"><div class="ctools"><div class="b paper" id="craftonly" title="only what you can make now (F)">Can make<kbd>F</kbd></div><div class="b paper" id="craftprev">&lt;</div><div class="b paper" id="craftnext">&gt;</div></div>
-      <div class="well" id="recipes"></div><div id="craftmore"></div></div>
+      <div class="well" id="recipes"></div><div class="cfoot"><input id="craftfind" placeholder="Search  /" maxlength="24" autocomplete="off" autocapitalize="off" spellcheck="false"><div id="craftmore"></div></div></div>
     <div id="craftdetail"></div>
   </div>
 </div>
@@ -65,6 +65,10 @@
   <div id="xpwrap"><canvas id="xpbar"></canvas><span id="xplevel"></span></div>
   <div class="hudrow"><div id="hotbar"></div></div>
 </div>
+<div class="panel" id="ask"><div class="in">
+  <h3 id="asktitle"></h3><span class="close" id="askclose">close (Esc)</span>
+  <div class="row"><input id="asktext" autocomplete="off"><button id="askok">OK</button></div>
+</div></div>
 <div class="panel" id="mail"><div class="in">
   <h3 id="mailtitle">Mailbox</h3><span class="close" id="mailclose">close (Esc)</span>
   <div id="letters"></div>
@@ -132,6 +136,7 @@
 <script src="js/xray.js"></script>
 <script src="js/touch.js"></script>
 <script src="js/complete.js"></script>
+<script src="js/ask.js"></script>
 <script src="js/main.js"></script>
 <script src="js/help.js"></script>
 <script src="js/splash.js"></script>
