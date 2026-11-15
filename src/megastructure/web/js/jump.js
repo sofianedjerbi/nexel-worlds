@@ -85,7 +85,7 @@ function fallHurts(p, now, mine) {
   const n = p.fallHurt; if (!n) return;
   p.fallHurt = 0;
   flashes.set(p.e.kind + p.e.id, now);
-  floats.push({x: Math.round(p.x), y: Math.round(p.y), text: "-" + hearts(n), color: "#ff8a7a", t: now / 1000});
+  floats.push({x: Math.round(p.x), y: Math.round(p.y), text: "-" + hearts(n), heart: true, color: "#ff8a7a", t: now / 1000});
   if (mine) { sfx("hurt"); fallQuake = {t0: now, amp: FALL.shake[0] + Math.min(3, hearts(n))}; }
 }
 // The ground shaking under you after a fall that hurt: art px to move the camera by, dying away

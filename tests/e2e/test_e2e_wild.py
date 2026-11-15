@@ -162,3 +162,17 @@ def test_a_tusker_is_where_it_is_when_it_paws_charges_and_stands_dazed(game):
     })""")
     assert {"windup", "charge", "stun"} <= set(seen["acts"]), seen
     assert seen["worst"] < 0.6 and seen["late"] < 0.02, seen    # (no jump; in its place while it paws and while it is dazed)
+
+
+def test_a_blow_is_said_in_hearts_whoever_takes_it(game):
+    """"heart and demi heart should be the universal health unit... default player hit damage should be 0.5 not 5
+    hearts": bare hands take half a heart from a cow (three hearts: six blows), and the number over it is in hearts,
+    with a small heart beside it, as over a player."""
+    cow = game.spawn("cow", 1, 0, still=10 ** 6)
+    game.sleep(400)
+    game.hold_item(None)
+    game.face(1, 0)
+    game.press("Space", 500)
+    hp = game.js(f"[...ents.values()].find((p) => p.e && p.e.id === {cow}).e.hp")
+    last = game.js("floats.filter((f) => f.heart).map((f) => f.text).pop()")
+    assert hp == 5 and last == "-0.5", (hp, last)             # six half hearts, one gone

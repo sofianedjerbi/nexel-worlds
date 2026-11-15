@@ -2,7 +2,7 @@
 
 from .. import tiles as T
 from ..tiles import DIRS
-from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, FOOD_MAX, HP_MAX, OLD_SCALE, SAT_START, SHOUT_R, sec
+from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, FOOD_MAX, HP_MAX, SAT_START, SHOUT_R, sec
 from .entities import ActionError, Agent, Creature, roll_drops
 from .progress import XP_KILL
 
@@ -50,8 +50,8 @@ class Combat:
         if not self.near(a, t.x, t.y, reach, self.height(t)) or t.hp <= 0:
             raise ActionError("missed", "target moved away")
         a.swing_ready = self.tick + sec(ATTACK_COOLDOWN)
-        dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)                 # (what it takes from a creature; from a person, in half hearts, a fifth of it)
-        dmg = self.shell(t, dmg) if isinstance(t, Creature) else self.guarded(t, max(0.5, round(dmg / OLD_SCALE * 2) / 2))     # Old Mossback's shell (boss.py), or armor (wear.py)
+        dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)                 # (in half hearts, from a creature or a person alike)
+        dmg = self.shell(t, dmg) if isinstance(t, Creature) else self.guarded(t, dmg)     # Old Mossback's shell (boss.py), or armor (wear.py)
         self.tire(a, "attack")
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"
         self.emit("attack", a.x, a.y, attacker=a.name, target=name, damage=dmg, weapon=weapon or "fists")

@@ -1595,3 +1595,19 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Seen in Chrome on a copy of the world (the two towers by doben3): all four flights and the climb, frame by frame.
 - Tests: the ladder test samples the climb (on the rungs half a second and more, on the ladder's tile, facing it, held
   back over its foot); the stairs test checks each step is drawn as a step. 429 unit.
+
+## Iteration 134: one unit of health, the half heart
+- Said: "i see that player damages are numbers, are they healths ? damage to the player should be health and vice versa
+  for the damage player gives and mob lifes. heart and demi heart should be the universal health unit. because default
+  player hit damage should be 0.5 not 5 hearts".
+- What it was: a person's health in half hearts (20), but a creature's on a scale of its own (a cow 30, a tusker 40)
+  and weapons on that scale (bare hands 5, a sword 30), shown raw over a creature ("-5") and divided by five on a
+  person.
+- Change: everything in half hearts. Bare hands 1 (half a heart), pickaxe 2, axe 3, spear 4, sword 6 (`tiles.py`);
+  creatures a fifth of what they were (chicken 2, cow 6, tusker 8, strawman 10, wyrm 12, Old Mossback 60...,
+  `sim/entities.py`), so each takes about the same number of blows; a creature saved on the old scale is capped at its
+  kind's. A blow is said in hearts with a small heart beside it, on a creature as on a person, and a fall too.
+- Measured: unit 429 (the boss test restated); a new browser test (a punch on a cow: 5 of 6 left, "-0.5"); full
+  browser run 199 pass, 1 error (a player not getting in, under load).
+- The world that is running keeps the old numbers until its server is started again; until then the page shows a
+  punch on a creature as "-2.5" and the boss's bar is wrong.

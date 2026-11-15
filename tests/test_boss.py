@@ -2,6 +2,7 @@
 
 from test_wild import put
 
+from megastructure import tiles as T
 from megastructure.sim import CREATURES, sec
 from megastructure.sim.boss import ATTACKS, EXPOSED, SHELL, SPORE_LIFE
 
@@ -116,4 +117,5 @@ def test_a_sporeling_dies_in_one_hit_and_the_boss_takes_many(world):
     sim.submit(a, "attack", {"target": s.id})
     run(sim, 0.3)
     assert s.id not in sim.creatures
-    assert sim.shell(boss, 30) == 30 // SHELL and CREATURES["mossback"]["hp"] // (30 // SHELL) > 30
+    sword = T.WEAPONS["sword"]                                         # (half hearts: on the shell, a blow of a sword takes half a heart)
+    assert sim.shell(boss, sword) == max(1, sword // SHELL) and CREATURES["mossback"]["hp"] // max(1, sword // SHELL) > 30

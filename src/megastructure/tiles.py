@@ -179,8 +179,11 @@ PLAIN, RICH = 0.3, {"carrot": 0.6, "cauliflower": 0.6, "eggplant": 0.6, "pumpkin
 # what animals eat: food that grows (not eggs, meat or milk), and hay (one bale feeds three times from a trough)
 FEED = {**{k: 1 for k in FOOD if k not in ("egg", "meat", "cooked_meat", "milk")}, "hay": 3}
 
-WEAPONS = {"sword": 30, "spear": 18, "axe": 12, "pickaxe": 10}
-FIST_DAMAGE = 5
+# What a blow takes, in half hearts, from a person or a creature alike ("heart and demi heart should be the universal
+# health unit... default player hit damage should be 0.5 not 5 hearts"): bare hands half a heart, a sword three.
+# (They were 5 to 30 on a scale of the creatures' own, shown as "-5" over a cow.)
+WEAPONS = {"sword": 6, "spear": 4, "axe": 3, "pickaxe": 2}
+FIST_DAMAGE = 1
 # Reach is a circle round you with height counted (sim Movement.near): so many tiles, a layer of height half a tile
 REACH = {None: 3, "spear": 4}   # melee reach: fists and most weapons 3, a spear 4 (a player's screen keeps a tile less: its lead)
 USE_R = 2                       # within which you can dig, pick, place and use things

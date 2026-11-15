@@ -90,25 +90,29 @@ class Creature:
     angry: int = 0      # a tusker that was hit: angry until this tick, at `foe` (wild.py; runtime only)
     foe: int = 0        # ...the id of whoever hit it
 
+    def __post_init__(self):                       # (one saved on the old scale, 30 for a cow: no more than its kind has)
+        self.hp = min(self.hp, CREATURES.get(self.kind, {}).get("hp", self.hp))
+
     def to_json(self):
         return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "z": self.z, "hp": self.hp,
                 "milked": self.milked, "love": self.love, "lay": self.lay, "born": self.born, **({"name": self.name} if self.name else {})}
 
-# hp: a creature's own (not hearts: what a weapon takes from it, tiles.WEAPONS). damage: what it does to you, in half
+# hp: in half hearts, as a person's (a chicken has one heart, a cow three, a tusker four, Old Mossback thirty: a fifth
+# of what they were on their own old scale, so each takes the same number of blows). damage: what it does to you, in half
 # hearts. drops: what one leaves when it dies, a line for each thing: (item, chance, at least, at most). The first lines are
 # its usual drop, less sure than it was (a chicken always left a meat and an egg, a cow three meat and a milk: the
 # same thing every time); the last is a rare one, something you would otherwise have to make. The boss's are sure.
 CREATURES = {
-    "chicken": {"hp": 10, "drops": (("meat", .6, 1, 1), ("egg", .15, 1, 1), ("heart_charm", .02, 1, 1)), "char": "c"},
-    "cow": {"hp": 30, "drops": (("meat", .8, 1, 2), ("milk", .15, 1, 1), ("leather_boots", .03, 1, 1)), "char": "k"},
-    "chick": {"hp": 4, "drops": (("meat", .3, 1, 1),), "char": "c", "grows": ("chicken", 300)},
-    "calf": {"hp": 12, "drops": (("meat", .5, 1, 1),), "char": "k", "grows": ("cow", 360)},
-    "tusker": {"hp": 40, "drops": (("meat", .8, 1, 2), ("leather_vest", .05, 1, 1)), "char": "D", "damage": 3},
-    "pincer": {"hp": 14, "drops": (("meat", .5, 1, 1), ("shell_plate", .05, 1, 1)), "char": "I", "damage": 1},
-    "strawman": {"hp": 50, "drops": (("hay", 1, 1, 2), ("straw_hat", .1, 1, 1)), "char": "S", "damage": 2},
+    "chicken": {"hp": 2, "drops": (("meat", .6, 1, 1), ("egg", .15, 1, 1), ("heart_charm", .02, 1, 1)), "char": "c"},
+    "cow": {"hp": 6, "drops": (("meat", .8, 1, 2), ("milk", .15, 1, 1), ("leather_boots", .03, 1, 1)), "char": "k"},
+    "chick": {"hp": 1, "drops": (("meat", .3, 1, 1),), "char": "c", "grows": ("chicken", 300)},
+    "calf": {"hp": 3, "drops": (("meat", .5, 1, 1),), "char": "k", "grows": ("cow", 360)},
+    "tusker": {"hp": 8, "drops": (("meat", .8, 1, 2), ("leather_vest", .05, 1, 1)), "char": "D", "damage": 3},
+    "pincer": {"hp": 3, "drops": (("meat", .5, 1, 1), ("shell_plate", .05, 1, 1)), "char": "I", "damage": 1},
+    "strawman": {"hp": 10, "drops": (("hay", 1, 1, 2), ("straw_hat", .1, 1, 1)), "char": "S", "damage": 2},
     "wisp": {"hp": 1, "drops": (), "char": "i"},
-    "wyrm": {"hp": 60, "drops": (("meat", 1, 2, 4), ("frost_charm", .1, 1, 1)), "char": "E", "damage": 3.5},
-    "mossback": {"hp": 300, "drops": (("shell_plate", 1, 5, 5), ("meat", 1, 6, 6), ("fruit", 1, 4, 4), ("mushroom", 1, 3, 3)), "char": "G", "damage": 4.5, "snap": 5.5},   # the first boss (boss.py)
+    "wyrm": {"hp": 12, "drops": (("meat", 1, 2, 4), ("frost_charm", .1, 1, 1)), "char": "E", "damage": 3.5},
+    "mossback": {"hp": 60, "drops": (("shell_plate", 1, 5, 5), ("meat", 1, 6, 6), ("fruit", 1, 4, 4), ("mushroom", 1, 3, 3)), "char": "G", "damage": 4.5, "snap": 5.5},   # the first boss (boss.py)
     "sporeling": {"hp": 1, "drops": (("mushroom", .05, 1, 1),), "char": "s", "damage": 0.5},
 }
 

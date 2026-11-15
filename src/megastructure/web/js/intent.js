@@ -26,7 +26,7 @@ const HARVEST = {t: "Dig up the stump", U: "Chop tree (the fruit grows back if y
 // which tool speeds up digging each block (tiles.py Block.tool); ore can only be mined with a pickaxe in hand
 const TOOL_FOR = {t: "axe", U: "axe", T: "axe", M: "pickaxe", "*": "pickaxe", H: "axe", "#": "axe", "%": "pickaxe", "+": "axe", "&": "axe", C: "axe", B: "axe", h: "axe",
   L: "axe", K: "axe", g: "axe", W: "axe", V: "axe", X: "axe", Y: "pickaxe", J: "axe", e: "axe", l: "axe"};
-const WEAPON_DMG = {sword: 30, spear: 18, axe: 12, pickaxe: 10};
+const WEAPON_DMG = {sword: 6, spear: 4, axe: 3, pickaxe: 2};      // (half hearts: tiles.py)
 const inHand = () => (selected && meObs && meObs.self.inventory[selected] ? selected : null);   // what's in your hand
 // The creature or person at a tile: where it stands, or where it is drawn right now (moving animals stay clickable).
 function entityAt(p) {

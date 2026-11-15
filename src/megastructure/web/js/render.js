@@ -5,6 +5,7 @@
 // =====================================================================================
 let lastT = performance.now(), arrivingNow = true;
 const LAND_MS = 3;
+const HIT_HEART = [".oo.oo.", "owrorro", "orrrrro", ".orrro.", "..oro..", "...o..."];      // the small heart beside a blow's number (2 px a pixel)
 const pileSince = new Map();   // when each pile on the ground was first shown (its hover starts from rest)
 function frame(now) {
   requestAnimationFrame(frame);
@@ -173,7 +174,15 @@ function frame(now) {
   drawProgress(sx, sy, S);
   floats = floats.filter((f) => t - f.t < 1.4);
   ctx.textAlign = "center"; ctx.font = "18px SproutPixel";
-  for (const f of floats) { ctx.globalAlpha = 1 - (t - f.t) / 1.4; outlined(f.text, Math.round(sx(f.x) + S / 2), Math.round(sy(f.y, f.x) - (t - f.t) * S * .7), f.color); }
+  for (const f of floats) {
+    ctx.globalAlpha = 1 - (t - f.t) / 1.4;
+    const fx = Math.round(sx(f.x) + S / 2) - (f.heart ? 9 : 0), fy = Math.round(sy(f.y, f.x) - (t - f.t) * S * .7);
+    outlined(f.text, fx, fy, f.color);
+    if (f.heart) {                                     // health lost is said in hearts: the number, then a small heart
+      const hx = fx + Math.ceil(ctx.measureText(f.text).width / 2) + 4, hy = fy - 13;
+      HIT_HEART.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== ".") { ctx.fillStyle = ch === "o" ? "#5b3f36" : ch === "w" ? "#ffd9d0" : "#e8554a"; ctx.fillRect(hx + i * 2, hy + j * 2, 2, 2); } }));
+    }
+  }
   ctx.globalAlpha = 1;
   drawBubbles(sx, sy, S, t);                       // (what people say: bubbles.js)
   ctx.textAlign = "start";
