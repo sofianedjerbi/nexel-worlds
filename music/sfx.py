@@ -750,30 +750,39 @@ def _(c):
 #            moves fastest: Cook's particle model, not pulses at a rate, which is what read as a buzz);
 #   closing: the same swing, shorter, then the door meets its frame (ONE thud of the board, with its body) and the
 #            latch catches just after.
-def door_swing(c, seconds):
+def door_swing(c, seconds, f0, f1):
+    """A door turning on its hinge: one continuous creak whose pitch follows the door (f0 to f1 Hz: slip after slip,
+    fast enough to be a note, not a rattle), a little unsteady as a hinge is, through the wood's resonances, over the
+    air the board pushes. Nothing in it starts or stops sharply. (It was grains of noise, 130 a second: measured,
+    each grain stood 8 to 10 dB over what was around it, as a knock does: the swing itself was the clicking.)"""
     n = N(seconds)
-    e = np.sin(np.pi * tt(n) / seconds) ** 1.5
-    k = c.u(0.9, 1.15)
-    return norm(phism(c, n, e, 130, 520 * k, 0.007, 0.6) + 0.4 * phism(c, n, e, 90, 1250 * k, 0.004, 0.6)) * e      # (wood: low and dry, not a scratch)
+    t = tt(n)
+    e = np.sin(np.pi * t / seconds) ** 1.2
+    wobble = 1 + 0.04 * np.interp(t, np.linspace(0, seconds, 9), c.rng.normal(0, 1, 9))
+    k = c.u(0.9, 1.12)
+    creak = stickslip(c, n, (f0 + (f1 - f0) * t / seconds) * wobble, (650 * k, 1300 * k, 2100 * k), 8)
+    air = norm(texture(c, n, 250, 1200, 5, 12, 0.3))
+    return norm((0.75 * creak + 0.35 * air) * e)
 
 
-@sfx("gate", "Building", "a gate or a door opens: the latch lets go, it swings on its hinge", 2, 0.5)
+# ("i still hear a click when opening and closing. i just wanna hear the door noise !": the latch's clack at the head
+# of each was a click, and so was every grain of the swing. No latch, no metal, nothing struck hard: opening is the
+# creak alone, rising as the door gathers way; closing the creak falling, and the door coming to rest on its frame as
+# a soft low thump, a big board touched, not knocked.)
+@sfx("gate", "Building", "a gate or a door opens: it swings on its hinge", 2, 0.55)
 def _(c):
-    y = np.zeros(N(0.6))
-    place(y, 0.3 * strike(c, N(0.06), "metal", size=c.u(0.8, 1.0), damp=3.0), 0.0)
-    place(y, 0.55 * strike(c, N(0.12), "wood", size=c.u(0.8, 0.95), hard=1.2), 0.02)
-    place(y, 0.7 * door_swing(c, c.u(0.32, 0.38)), 0.07)
+    y = np.zeros(N(0.7))
+    place(y, door_swing(c, c.u(0.5, 0.58), c.u(150, 175), c.u(290, 330)), 0.0)
     return y
 
 
-@sfx("door_close", "Building", "a gate or a door closes: it swings, meets its frame, the latch catches", 2, 0.55)
+@sfx("door_close", "Building", "a gate or a door closes: it swings, and comes to rest on its frame", 2, 0.55)
 def _(c):
-    y = np.zeros(N(0.6))
-    swing = c.u(0.18, 0.23)
-    place(y, 0.5 * door_swing(c, swing), 0.0)
-    size = c.u(1.0, 1.15)
-    place(y, strike(c, N(0.3), "wood", size=size, hard=0.9) + 0.6 * strike(c, N(0.3), "plank", size=size, hard=1.0), swing - 0.03)   # it meets its frame
-    place(y, 0.25 * strike(c, N(0.06), "metal", size=c.u(0.8, 1.0), damp=3.0), swing + 0.01)                                        # the latch catches
+    y = np.zeros(N(0.7))
+    swing = c.u(0.3, 0.36)
+    place(y, 0.8 * door_swing(c, swing, c.u(280, 320), c.u(150, 175)), 0.0)
+    n = N(0.11)                                               # it comes to rest: a low soft whump of air and board, not a blow
+    place(y, 0.75 * norm(texture(c, n, 90, 340, 3, 10, 0.2)) * np.sin(np.pi * tt(n) / 0.11) ** 1.5, swing - 0.06)   # (a struck board, however softly, stood 9 dB out: a click again)
     return y
 
 

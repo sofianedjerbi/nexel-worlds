@@ -1636,3 +1636,15 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Measured: opening 0.45 s, the creak at its fullest a quarter of a second in; closing 0.33 s, the thud at 0.17 s;
   no pulse ripple in either (-5 to -7 dB); the door test hears both; audio, world, sound and floors tests pass.
 - Not heard by me: four versions now, each judged by the user's ear only.
+
+## Iteration 136: the door's sound without a click in it
+- Said, of iteration 135: "i still hear a click when opening and closing. i just wanna hear the door noise !"
+- Measured, a new meter: how far the loudest 2 ms stand over the 50 ms around them. A knock (a board being set):
+  +10 dB. Iteration 135's door: the latch, and also its swing, made of 130 grains of noise a second, each grain +8 to
+  +10 dB: the swing itself was clicking.
+- Change (`music/sfx.py`): no latch, no metal, nothing struck. The swing is one continuous creak whose pitch follows
+  the door (150 to 310 Hz opening, back down closing; a little unsteady; through the wood's resonances) over the air
+  the board pushes. Closing ends in a low soft whump of noise, not a blow.
+- Measured: opening +4.3 dB, closing +5.3 dB (half a knock's sharpness); opening 0.6 s, closing 0.45 s; no slow
+  pulse ripple (the creak is too fast to rattle). The door and sound tests pass.
+- Not heard by me. The creak is a note that glides: if it reads as a squeak, it wants to be lower or shorter.
