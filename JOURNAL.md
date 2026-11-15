@@ -1352,3 +1352,10 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - The clip was filmed again with it (tools/film_build_mode.py, the same scene).
 - Tests: a door's picture is the door and not the wall's; a floor tile is solid all over with no grass in it. 410 unit; 30 in Chrome (build, edges, the island, land, pixels).
 - Not done: no window to place (a piece of its own, later); a door in a run north-south is still an opening under a lintel, not a door seen from its side.
+
+## Iteration 121: a door in a wall that runs north is an opening, shaded as the game's holes are
+- User: "Have you added side doors with shadow effect like holes ?" No: it was the wall's top drawn half see-through, no door, and whoever went through was under the top of the wall south of it.
+- Now (structures.js): over the door's own tile the wall's band is open: the ground shows, shaded with the holes' own dark (caves.js: deepest in under the lintel, four steps lighter towards you), the band's edges go on as its posts, and the leaf lies across the way, shut, or back against a post while someone is by it. The top of the wall just south of such a door is left out (it would lie over the way through), so whoever stands in the doorway is seen.
+- Seen in Chrome: a yard with a door in its east side and one in its west, a stone run with one, shut, open, and walked through.
+- Test: the tile of such a door is dark at its top, lighter at its foot, the ground still under it; a door in a run going east is not one of these; standing in it opens it. 410 unit; the build tests (4) and 19 round them pass.
+- Not done: under a roof it is hidden from outside, as everything under a roof is; the leaf is a plain bar (the pack has no door seen from above).

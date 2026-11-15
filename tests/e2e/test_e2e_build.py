@@ -149,3 +149,22 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     assert game.js("[Build.S.at.x, Build.S.at.y]") == [me[0] + 3, me[1] - 2] and game.js("$('hover').textContent") == "Plan wooden wall"
     game.press("b")
     assert not game.errors
+
+
+def test_a_door_in_a_wall_that_runs_north_is_an_opening_shaded_as_a_hole(game):
+    """A door in a wall running north and south was the wall's top, half seen through: no door, no way to be seen
+    going through it. It is an opening in the wall's band over the door's own tile, dark as the game's holes are
+    under its lintel, the leaf across it; the top of the wall south of it is left out there (it would lie over the
+    way through), and whoever stands in it is seen."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.stamp(3, -3, ["W", "+", "W"])                         # a run going north, a door in its middle
+    game.stamp(-3, -3, ["W+W"])                                # and one in a run going east: a door from the front, as before
+    game.sleep(900)
+    assert game.js("([x, y]) => [Structures.sideDoor(x + 3, y - 2), Structures.sideDoor(x - 2, y - 3), Structures.sideDoor(x + 3, y - 3)]", [x, y]) == [True, False, False]
+    lum = "([dx, dy, up]) => { const t = TS(), d = ctx.getImageData(Math.round(cv.width / 2 + dx * t), Math.round(cv.height / 2 + (dy - up) * t), 1, 1).data; return d[0] + d[1] + d[2]; }"
+    grass, deep, low = game.js(lum, [5, -2, 0]), game.js(lum, [3, -2, .35]), game.js(lum, [3, -2, -.4])
+    assert deep < grass - 200 and deep < low < grass, (grass, deep, low)     # dark in under the lintel, lighter towards you, the ground still under it
+    game.rpc("dev_teleport", x=x + 3, y=y - 2)                 # in the doorway: its leaf is back against a post, and you are not under a wall's top
+    game.sleep(900)
+    assert game.js("doors.get(myPos().x + ',' + myPos().y)") == 1 and not game.errors

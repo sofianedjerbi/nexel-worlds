@@ -6,8 +6,11 @@
 //   front under that: the pack's planks (stone: its stones). So a wall running east is a band of top over a band of
 //   front, one running north a band of top with a front at its south end, and they meet as one thing at a corner.
 //   (They were two things: fronts with a trim over them one way, wide flat bands the other.)
-//   A door in a run east-west is the pack's door in that front, as it is drawn (it was stretched); in a run
-//   north-south, an opening under a lintel.
+//   A door in a run east-west is the pack's door in that front, as it is drawn (it was stretched). In a run
+//   north-south it is seen from above, as the game's holes are: the wall's band is open over the door's own tile
+//   (the top of the wall south of it is left out there, or it would hide the way through), dark in under the
+//   lintel and lighter towards you, the band's edges going on as its posts, and the door's leaf across it, shut,
+//   or back against a post while someone goes through.
 //   Nothing is put on a wall that you did not put there (windows came by themselves, one wall in three).
 //   A roof tile is drawn over its tile, a tile and a bit up (on the walls): its top edge scalloped where no roof
 //   is north of it, its eave where none is south, its sides where none is beside it, the ridge half way down its run.
@@ -19,6 +22,7 @@ let ROOFS = false, roofVer = 0;
 const Structures = (() => {
   const WALLS = "W%+", LIFT = 22, INK = "#754c60", CAP = "#c49a6c", BEVEL = "#b68962", STONE = ["#8a8f8c", "#b6bab1", "#9da89a"];
   const wall = (x, y) => WALLS.includes(combAt(x, y) || "-");
+  const sideDoor = (x, y) => combAt(x, y) === "+" && !wall(x - 1, y) && !wall(x + 1, y) && (wall(x, y - 1) || wall(x, y + 1));      // a door in a run north-south
   const roofAt = (x, y) => { const t = tileIdx(x, y); return !!t && !!t[0].roofs && t[0].roofs.has(t[1]); };
   function setRoof(x, y, on) { const t = tileIdx(x, y); if (!t) return; (t[0].roofs || (t[0].roofs = new Set()))[on ? "add" : "delete"](t[1]); roofVer++; }
   // The roof you are under, as the set of its tiles ("x,y"): worked out again when you move or a roof changes
@@ -59,13 +63,26 @@ const Structures = (() => {
     doors.set(key, o);
     return 5 - Math.round(o * 5);
   }
+  // The way through a door in a run north-south, on the door's own tile: shaded as a hole is (caves.js: its dark,
+  // deepest in under the lintel), a post each side, and the leaf
+  function passage(px, py, z, x, y, a) {
+    const r = (c, X, Y, W_, H_) => { ctx.fillStyle = c; ctx.fillRect(px + X * z, py + Y * z, W_ * z, H_ * z); };
+    ctx.globalAlpha = a;
+    r(`rgba(${SHADE},.42)`, 2, 0, 12, 16);
+    [.4, .28, .18, .09].forEach((al, k) => r(`rgba(${SHADE},${al})`, 2, k * 3, 12, 3));
+    r(INK, 0, 0, 1, 16); r(BEVEL, 1, 0, 1, 16); r(BEVEL, 14, 0, 1, 16); r(INK, 15, 0, 1, 16);
+    if ((a === 1 ? doorFrame(x, y) : 5) >= 3) { r(INK, 2, 6, 12, 4); r("#90625d", 2, 7, 12, 2); r("#e8cfa6", 11, 7, 1, 1); }      // shut: across the way
+    else { r(INK, 2, 0, 3, 11); r("#90625d", 2, 1, 2, 9); }                                                                    // open: back against its post
+    ctx.globalAlpha = 1;
+  }
   // (a: how much of it is drawn: a plan's ghost is half there)
   function drawWall(c, x, y, sx, sy, S, now, a = 1) {
     const z = zoom, px = sx(x), py = sy(y, x), south = wall(x, y + 1), w = wall(x - 1, y), e = wall(x + 1, y), stone = c === "%";
     // (its top is seen through when it would hide where you are: you are north of it, near, or under the roof behind it)
     const s = myPos(), hides = a === 1 && s && ((s.y < y && y - s.y <= 4 && Math.abs(x - s.x) <= 5) || mine().has(x + "," + (y - 1)));
-    const side = c === "+" && !w && !e && (wall(x, y - 1) || south);                                        // a door in a run north-south
-    if (!south && !side) {                             // its front
+    const side = sideDoor(x, y);
+    if (side) passage(px, py, z, x, y, a);
+    else if (!south) {                                 // its front
       ctx.globalAlpha = a;
       if (c === "+") {                                 // the pack's door between its posts, a dark doorway behind it
         ctx.fillStyle = "#4a3530"; ctx.fillRect(px + 3 * z, py, 10 * z, 15 * z);
@@ -73,7 +90,8 @@ const Structures = (() => {
       } else if (stone) { const [gx, gy] = genCell("stone_wall"); ctx.drawImage(IMG.gen, gx, gy, 16, 16, px, py, S, S); }
       else { const [fx, fy] = FRONT[!w ? 0 : !e ? 2 : 1]; ctx.drawImage(IMG.house_walls, fx, fy + 8, 16, 8, px, py, S, 8 * z); ctx.drawImage(IMG.house_walls, fx, fy + 8, 16, 8, px, py + 8 * z, S, 8 * z); }
     }
-    ctx.globalAlpha = a * (hides ? .3 : side ? .55 : 1);
+    if (sideDoor(x, y - 1)) return;                    // (the wall south of such a door: its top would lie over the way through)
+    ctx.globalAlpha = a * (hides ? .3 : 1);
     cap(px, py, z, x, y, stone);
     ctx.globalAlpha = 1;
   }
@@ -102,5 +120,5 @@ const Structures = (() => {
       list.push({y: y + .6, x, fx: () => drawRoof(x, y, sx, sy, S)});
     }
   }
-  return {WALLS, roofAt, setRoof, drawWall, drawRoof, roofs, seeThrough};
+  return {WALLS, roofAt, setRoof, drawWall, drawRoof, roofs, seeThrough, sideDoor};
 })();
