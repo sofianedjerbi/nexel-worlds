@@ -131,3 +131,48 @@ def test_a_tap_takes_one_on_a_phone(browser, server):
     assert page.evaluate(LINE) == "/write_sign dir=E " and page.evaluate(OPEN) is True
     ctx.close()
     assert not errors
+
+
+def test_the_arrows_bring_back_what_you_sent(game):
+    """"implement up/down arrow to browse chat/command history": Up goes back through what you sent, Down forward, and
+    past the newest the line you were writing is back; begun from a "/", only the commands; kept between visits; the
+    arrows are still the list's while a list is being walked."""
+    page = game.page
+
+    def send(line, key="Enter"):
+        page.keyboard.press(key)
+        page.keyboard.type(line)
+        page.keyboard.press("Enter")
+        game.sleep(250)
+
+    send("hello")
+    send("coords", "/")
+    send("how are you")
+    send("coords", "/")                                        # (again: on, then off; kept once, at its latest place)
+    page.keyboard.press("Enter")
+    page.keyboard.type("draft")
+    seen = []
+    for key in ("ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown"):
+        page.keyboard.press(key)
+        seen.append(game.js(LINE))
+    assert seen == ["/coords", "how are you", "hello", "hello", "how are you", "/coords", "draft", "draft"], seen
+    assert game.js(OPEN) is True
+    page.keyboard.press("Escape")
+    page.keyboard.press("/")                                   # from a "/": the commands only; Down is the list's
+    game.wait("$('sayhelp').children.length === 3")
+    page.keyboard.press("ArrowDown")
+    assert game.js(LINE) == "/" and game.js("$('sayhelp').querySelector('.on b').textContent") == "grid"
+    page.keyboard.press("ArrowUp")
+    assert game.js(LINE) == "/coords"
+    page.keyboard.press("ArrowUp")
+    assert game.js(LINE) == "/coords"                          # (the oldest command: it stays)
+    page.keyboard.press("ArrowDown")
+    assert game.js(LINE) == "/"
+    page.fill("#say", "/dig dir=")                             # a list being walked: the arrows are its own
+    page.keyboard.press("ArrowDown")
+    assert game.js(LINE) == "/dig dir=" and game.js("$('sayhelp').querySelector('.on b').textContent") == "E"
+    page.keyboard.press("Escape")
+    assert game.js("JSON.parse(localStorage.getItem('megastructure-said'))") == ["hello", "how are you", "/coords"]
+    page.reload()                                              # kept between visits
+    page.wait_for_function("typeof ready !== 'undefined'")
+    assert game.js("said") == ["hello", "how are you", "/coords"]

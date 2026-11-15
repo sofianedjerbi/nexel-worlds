@@ -19,14 +19,42 @@ function chatLine(text, cls = "", who = null) {
   log.scrollTop = log.scrollHeight;
 }
 setInterval(() => { for (const d of $("chatlog").children) d.classList.toggle("old", Date.now() - d.dataset.t > CHAT_SHOW_MS); }, 500);
-function openChat(prefix = "") { $("chatbox").classList.add("open"); const i = $("say"); i.value = prefix; i.focus(); $("chatlog").scrollTop = 1e9; askTools(); suggest(); }   // (complete.js)
+// What you sent before comes back with the arrows ("implement up/down arrow to browse chat/command history"): Up goes
+// back through it, Down forward again, and past the newest the line you were writing is there as you left it. Begun
+// from a "/", only the commands come back. It is kept from one visit to the next (the last SAID_KEEP lines).
+// The arrows stay the list's (complete.js) while a list of several is being walked: a line with something typed.
+const SAID_KEEP = 50;
+let said = JSON.parse(localStorage.getItem("megastructure-said") || "[]"), saidAt = null, saidDraft = "";
+function saidKey(e) {
+  if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return false;
+  const i = $("say"), up = e.key === "ArrowUp";
+  if (saidAt === null) {                               // not going through it yet: Up begins, unless the arrows are the list's
+    if (!up || (comp.items.length > 1 && i.value !== "" && i.value !== "/")) return false;
+    saidDraft = i.value;
+  }
+  const list = saidDraft.startsWith("/") ? said.filter((l) => l.startsWith("/")) : said;
+  e.preventDefault();
+  if (!list.length) return true;
+  const at = Math.max(0, (saidAt === null ? list.length : saidAt) + (up ? -1 : 1));
+  if (at >= list.length) { saidAt = null; i.value = saidDraft; } else { saidAt = at; i.value = list[at]; }
+  i.setSelectionRange(i.value.length, i.value.length);
+  suggest();                                           // (a command that comes back has its hints)
+  return true;
+}
+function saidAdd(line) {
+  said = [...said.filter((l) => l !== line), line].slice(-SAID_KEEP);      // (said twice: once, at its latest place)
+  localStorage.setItem("megastructure-said", JSON.stringify(said));
+}
+$("say").addEventListener("input", () => { saidAt = null; });
+function openChat(prefix = "") { saidAt = null; $("chatbox").classList.add("open"); const i = $("say"); i.value = prefix; i.focus(); $("chatlog").scrollTop = 1e9; askTools(); suggest(); }   // (complete.js)
 function closeChat() { $("chatbox").classList.remove("open"); $("say").blur(); suggest(); }
 $("say").addEventListener("keydown", (e) => {
   e.stopPropagation();
   if (e.key === "Escape") closeChat();
-  if (completeKey(e) || e.key !== "Enter") return;         // (Tab, the arrows: the list over the line, complete.js)
+  if (saidKey(e) || completeKey(e) || e.key !== "Enter") return;   // (the arrows: what you sent before; Tab, the arrows: the list over the line, complete.js)
   const line = e.target.value.trim(); closeChat(); e.target.value = "";
   if (!line) return;
+  saidAdd(line);
   if (line.startsWith("/")) {
     const parts = line.slice(1).match(/(?:[^\s"]+|"[^"]*")+/g) || [], tool = parts.shift(), args = {};
     for (const p of parts) { const [k, ...v] = p.split("="); const val = v.join("=").replace(/^"|"$/g, ""); args[k] = /^-?\d+$/.test(val) ? +val : val === "true" ? true : val === "false" ? false : val; }

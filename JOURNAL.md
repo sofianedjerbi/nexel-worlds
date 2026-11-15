@@ -1554,3 +1554,12 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   is there at once, as before.
 - Measured: a new test in `test_e2e_social.py` (the same rows kept, none stepped, only the new one comes in); the
   social tests 8 of 8. Not seen by me in motion.
+
+## Iteration 132: the arrows bring back what you sent
+- Asked: "implement up/down arrow to browse chat/command history".
+- Change (`main.js`): in the chat line, Up goes back through the lines you sent (talk and commands), Down forward,
+  and past the newest the line you were writing is back as it was. Begun from a "/", only the commands. The last 50
+  are kept in the browser, a line sent twice once. The arrows stay the list's (complete.js) while a list of several
+  is shown for a line with something typed; on a bare "/", Down walks the list and Up goes to the last command.
+- Measured: a new test in `test_e2e_complete.py` (the order back and forth, the draft, commands only from "/", the
+  list's arrows, kept after a reload); completion 5 of 5, and the interface, touch and social tests.
