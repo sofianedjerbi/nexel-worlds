@@ -86,7 +86,8 @@ function frame(now) {
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
   }
-  occupied = new Set([...ents.values()].filter((p) => p.e).map((p) => Math.round(p.x) + "," + Math.round(p.y)));
+  // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
+  occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent").map((p) => Math.round(p.x) + "," + Math.round(p.y)));
   const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && b.relief); };
   // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
   for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p)) list.push({y: p.y + .01, p});

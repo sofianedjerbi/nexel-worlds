@@ -27,6 +27,10 @@ def test_the_first_screen_shows_an_island_of_its_own_at_once(browser, server):
     assert names == ["Lou", "Mira", "Nell", "Pip", "Tobi"] and sorted(c[0] for c in cast if c[0] != "agent") == ["chick", "chicken", "chicken", "chicken", "cow", "cow"]
     look = "(() => { const c = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, kinds = new Set(); for (let i = 0; i < c.length; i += 4 * 97) kinds.add(c[i] >> 3 << 10 | c[i + 1] >> 3 << 5 | c[i + 2] >> 3); return kinds.size; })()"
     assert page.evaluate(look) > 40                                 # drawn: land, water, things (not one colour)
+    # (the dice are thrown anew at each visit, and in one of them Pip is coming ashore: for what follows, a play that is known)
+    page.evaluate("(() => { TitleScene.stop(); document.getElementById('joinbox').style.display = ''; TitleScene.start(3); })()")
+    page.wait_for_function("TitleScene.on && !arrivingNow", timeout=10000)
+    cast = page.evaluate(CAST)
     start, cam0, phase0 = {c[1] or f"{c[0]}{i}": c[2:4] for i, c in enumerate(cast)}, page.evaluate("[cam.x, cam.y]"), page.evaluate("clock.phase")
     page.wait_for_timeout(4000)
     cast = page.evaluate(CAST)

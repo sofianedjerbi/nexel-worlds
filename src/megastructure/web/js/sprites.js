@@ -34,8 +34,25 @@ function troughFull() {                     // the feeding box with hay heaped i
   return c;
 }
 function genCell(name) { return [GEN[name] * 16, 0]; }
+// What stands at the brink of raised ground is drawn back from it. A hill's edge tile is not flat all over: the
+// cliff's face is its south edge from the 8th px down, a ledge 7 px wide its west and east edges; and a thing's foot
+// is at the bottom of its tile, in the middle. A tree on such a tile stood on the face of the cliff. So what grows
+// or lies there (trees, stumps, bushes, rocks, mushrooms, flowers) is drawn 8 px back from a drop to the south, 4
+// from one to a side, less from one only at a corner. Its tile, and what it stops, are what they were.
+const BRINK = new Set("TFUtbvM*Qf");
+function brink(x, y) {                               // -> [dx, dy], art px
+  const l = standAt(x, y), low = (dx, dy) => { const q = tile(x + dx, y + dy); return !!q && !wet(q[1]) && standAt(x + dx, y + dy) < l; };
+  const s = low(0, 1), w = low(-1, 0), e = low(1, 0), sw = !s && !w && low(-1, 1), se = !s && !e && low(1, 1);
+  return [(w ? 4 : sw ? 3 : 0) - (e ? 4 : se ? 3 : 0), s ? -8 : sw || se ? -4 : 0];
+}
 // object sprite for a tile char: [img, sx, sy, sw, sh, dx (from tile left), dy (from tile top)]
 function objectSprite(c, x, y, t) {
+  const s = spriteOf(c, x, y, t);
+  if (!s || !BRINK.has(c)) return s;
+  const [dx, dy] = brink(x, y);
+  return dx || dy ? [s[0], s[1], s[2], s[3], s[4], s[5] + dx, s[6] + dy] : s;
+}
+function spriteOf(c, x, y, t) {
   const h = hash(x, y, 21);
   switch (c) {
     case "T": {
@@ -87,7 +104,7 @@ function objectSprite(c, x, y, t) {
       return [IMG.nature, fx * 16, fy * 16, 16, 16, 0, -1];
     }
     case "B": return [IMG.furniture, Math.floor(h * 3) * 16, 16, 16, 32, 0, -16];         // bed: foot on this tile
-    case "h": return [IMG.furniture, 64, 32, 16, 16, 0, -3];
+    case "h": return [IMG.furniture, CHAIR[chairFaces(x, y)], 32, 16, 16, 0, -3];       // (turned to what it is set at: world_decor.js)
     case "L": return [IMG.furniture, 48, 48, 16, 16, 0, -3];
     case "p": return [IMG.furniture, 48 + Math.floor(h * 3) * 16, 0, 16, 32, 0, -16];
     case "K": return [IMG.furniture, 96, 48, 16, 16, 0, -3];
@@ -97,7 +114,11 @@ function objectSprite(c, x, y, t) {
       const was = doors.get(key) || 0, o = Math.max(0, Math.min(1, was + (near ? .12 : -.08)));
       if (!was && o) sfx("gate", x, y);                                                     // it starts to swing open
       doors.set(key, o);
-      return [IMG.gates, Math.round(o * 3) * 16, 0, 16, 16, 0, -3];
+      // (five frames a way: seen from the front, every other cell of the sheet's first row, the ones hinged on the
+      // left; in a fence that runs north and south, the sheet's side-on gate, two leaves between the posts over
+      // and under it. It showed the first four cells one after the other: its hinge changed sides as it opened.)
+      const f = Math.round(o * 4) * 32;
+      return gateSide(x, y) ? [IMG.gates, f, 16, 32, 32, 0, -13] : [IMG.gates, f, 0, 16, 16, 0, -3];
     }
     case "t": {                                       // a stump, cut flat: the felling sheet's own, or the thin tree's
       // hidden while the fall animation still draws the tree there: the round sheet draws its stump until its fade

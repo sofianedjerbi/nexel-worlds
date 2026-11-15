@@ -112,8 +112,23 @@ function drawFire(px, py, S, t, x, y) {            // the generated two-frame fl
   ctx.drawImage(IMG.gen, GEN[f] * 16, 0, 16, 16, Math.round(px), Math.round(py - 3 * zoom), S, S);
 }
 
+// A chair is turned to what it is set at: a table or a fire a tile or two from it (every chair faced east, the
+// sheet's first of four: of two chairs by a fire, one had its back to it). With neither near: east, as before.
+const CHAIR = {E: 64, W: 80, S: 96, N: 112};          // (the sheet's four chairs: where each is, by the way it faces)
+function chairFaces(x, y) {
+  for (const far of [1, 2]) for (const [way, dx, dy] of [["E", 1, 0], ["W", -1, 0], ["S", 0, 1], ["N", 0, -1]])
+    if ("L^".includes(combAt(x + dx * far, y + dy * far) || "-")) return way;
+  return "E";
+}
+// A gate in a fence (or a wall) that runs north and south: seen from the side (sprites.js)
+function gateSide(x, y) {
+  const f = (dx, dy) => "#gW%".includes(combAt(x + dx, y + dy) || "-");
+  return (f(0, -1) || f(0, 1)) && !f(-1, 0) && !f(1, 0);
+}
+// (a fence's rails go on to a gate beside it that is seen from the front: to its hinge post, and for its door to
+// shut on. Not to one over or under it: that gate's leaves hang from this fence's own posts)
 function fenceSprite(x, y) {
-  const f = (dx, dy) => { const c = combAt(x + dx, y + dy); return c === "#" || c === "+"; };
+  const f = (dx, dy) => { const c = combAt(x + dx, y + dy); return c === "#" || c === "+" || (c === "g" && !dy && !gateSide(x + dx, y)); };
   const n = f(0, -1), s = f(0, 1), e = f(1, 0), w = f(-1, 0);
   const col = e && w ? 2 : e ? 1 : w ? 3 : 0, row = n && s ? 1 : s ? 0 : n ? 2 : 3;
   return [IMG.fences, col * 16, row * 16, 16, 16, 0, -4];

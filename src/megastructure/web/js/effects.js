@@ -258,8 +258,9 @@ function drawEffects(sx, sy, S, dt) {
     if (fr >= 12) { falls.splice(i, 1); continue; }
     ctx.globalAlpha = fr >= 9 ? 1 - (fr - 9) / 3 : 1;
     // the sheet falls to the left with the trunk at frame x 32-48; mirrored about the trunk when it should fall right
-    if (f.side > 0) { ctx.save(); ctx.translate(sx(f.x) + 8 * z, 0); ctx.scale(-1, 1); ctx.translate(-(sx(f.x) + 8 * z), 0); }
-    ctx.drawImage(f.thin ? IMG.thin_fall : IMG.tree_fall, fr * 64, 0, 64, 48, sx(f.x) - 32 * z, sy(f.y, f.x) - 28 * z, 64 * z, 48 * z);
+    const [bx, by] = brink(f.x, f.y), x0 = sx(f.x) + bx * z;      // (where the tree stood: back from a drop, sprites.js)
+    if (f.side > 0) { ctx.save(); ctx.translate(x0 + 8 * z, 0); ctx.scale(-1, 1); ctx.translate(-(x0 + 8 * z), 0); }
+    ctx.drawImage(f.thin ? IMG.thin_fall : IMG.tree_fall, fr * 64, 0, 64, 48, x0 - 32 * z, sy(f.y, f.x) + (by - 28) * z, 64 * z, 48 * z);
     if (f.side > 0) ctx.restore();
     ctx.globalAlpha = 1;
   }
