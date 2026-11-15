@@ -1648,3 +1648,12 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Measured: opening +4.3 dB, closing +5.3 dB (half a knock's sharpness); opening 0.6 s, closing 0.45 s; no slow
   pulse ripple (the creak is too fast to rattle). The door and sound tests pass.
 - Not heard by me. The creak is a note that glides: if it reads as a squeak, it wants to be lower or shorter.
+
+## Iteration 137: the moan is out of the door
+- Said, of iteration 136: "that does not sound like a door sound anymore.. sound like an old person moaning". The
+  creak was a note gliding through resonances, which is how a voice is made.
+- Change: the note is out. A door opening is the air the board pushes (a soft swish, 0.6 s); closing, the swish and
+  a low soft whump. No click (the meter of 136: +6.7 and +5.3 dB), no note (ringcheck 0.02). It is a stopgap: plain,
+  and not yet "a door".
+- Five versions made without hearing them, five refused. Asked of the user: a recording of a real door (a free pack
+  made for games), which is a file to download and so theirs to allow.

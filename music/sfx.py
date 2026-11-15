@@ -760,9 +760,9 @@ def door_swing(c, seconds, f0, f1):
     e = np.sin(np.pi * t / seconds) ** 1.2
     wobble = 1 + 0.04 * np.interp(t, np.linspace(0, seconds, 9), c.rng.normal(0, 1, 9))
     k = c.u(0.9, 1.12)
-    creak = stickslip(c, n, (f0 + (f1 - f0) * t / seconds) * wobble, (650 * k, 1300 * k, 2100 * k), 8)
-    air = norm(texture(c, n, 250, 1200, 5, 12, 0.3))
-    return norm((0.75 * creak + 0.35 * air) * e)
+    # ("that does not sound like a door sound anymore.. sound like an old person moaning": the creak, a gliding note
+    # through resonances, is how a voice is made. It is out. What is left is the air the board pushes, no note in it.)
+    return norm(texture(c, n, 220 * k, 1000 * k, 5, 12, 0.3) * e)
 
 
 # ("i still hear a click when opening and closing. i just wanna hear the door noise !": the latch's clack at the head
