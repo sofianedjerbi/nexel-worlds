@@ -3,7 +3,7 @@
 "go use slow tide for the menu !! but add more depth, make it longer, more details in the background, mastering, real
 music. make a last demo out of it. i want real variations with different melodies". The take the user chose
 (menu.py "tide", 16 bars, 53 s) is kept as site/audio/keep_slow_tide_first.wav and is the A of this piece, note for
-note and on the same sounds. Around it, 64 bars (3 min 33 s at 72), eight blocks of eight bars:
+note and on the same sounds. Around it, 64 bars (3 min 12 s at 80; first 3 min 33 s at 72), eight blocks of eight bars:
 
     1  A   the theme alone over pads and bass, no beat           5  C   the beat stops: a third tune of long notes, on a second voice
     2  A   the beat comes in (the chosen take), an inner voice   6  B   the second tune again, a second voice a sixth under it
@@ -51,7 +51,8 @@ BLOCKS = [dict(h=HA, tune=A), dict(h=HA, tune=A, beat="half", inner=True), dict(
           dict(h=HA, tune=A, beat="half", answer=True, air=True, inner=True, bass="fifth"), dict(h=HC, tune=C, voice="second", beat="air", air=True),
           dict(h=HB, tune=B, beat="push", sixth=True, air=True, twice=True, bass="two", inner=True),
           dict(h=HA, tune=A, beat="ghost", answer=True, air=True, inner=True, bass="fifth"), dict(h=HA, tune=A, air=True)]
-PIECE = dict(id="menu_slow_tide", title="Slow tide", bpm=72, swing=0.5, sync=True, lead="Jacky Ligon/Keys/Corporealities", chords="Pads/Chowning",
+PIECE = dict(id="menu_slow_tide", title="Slow tide", bpm=80,          # ("can you make it a bit faster": 72, the chosen take's pace, to 80)
+             swing=0.5, sync=True, lead="Jacky Ligon/Keys/Corporealities", chords="Pads/Chowning",
              pad="LinnStrument MPE/Pads/Warm Pad", bass_sound="Rozzer/Basses/Nu Skool Bass 2", double=None,
              kit={"second": "Giana Brotherz/Keys/Sin Ring", "under": "Giana Brotherz/Keys/Sin Ring", "answer": "Giana Brotherz/Keys/Sin Ring",
                   "inner": "Polysynths/Uni Saw FB", "air": "Jacky Ligon/Pads/Closer Still"},
@@ -116,8 +117,8 @@ if __name__ == "__main__":
         w.writeframes(np.round(np.clip(y, -1, 1).T * 32767).astype(np.int16).tobytes())
     blocks = []
     for k in range(len(BLOCKS)):                                    # each block's own level, to see the piece breathe
-        a, b = (int(round(i * 128 * 60 / 72 / 4 * pieces.SR)) for i in (k, k + 1))
+        a, b = (int(round(i * 128 * 60 / PIECE["bpm"] / 4 * pieces.SR)) for i in (k, k + 1))
         blocks.append(round(master.lufs(y[:, a:b]) - after["lufs"], 1))
     print(f"   out of range: {wrong or 'nothing'}\n   master {did}\n   small speakers {fixes or 'nothing to correct'}\n   {after}\n   blocks against the whole (dB): {blocks}")
-    (OUT / "slow_tide.json").write_text(json.dumps(dict(seconds=round(y.shape[1] / pieces.SR, 1), out_of_range=wrong, master=did, fixes=fixes,
+    (OUT / "slow_tide.json").write_text(json.dumps(dict(bpm=PIECE["bpm"], seconds=round(y.shape[1] / pieces.SR, 1), out_of_range=wrong, master=did, fixes=fixes,
                                                         after={k: float(v) for k, v in after.items()}, blocks=blocks), indent=1))
