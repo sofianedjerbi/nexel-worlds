@@ -3,6 +3,8 @@
 // frames, hand and arc, with only the tool redrawn where the axe was (its handle gives the direction it points).
 // The rows are added under the sheet once, when it loads (assets.js), so everything built from the sheet afterwards
 // (a person's colour, their race, their clothes) has them too. ANIM in sprites.js names the rows.
+// (This file comes before assets.js in the page: after it, a sheet already in the browser's cache could be loaded
+// before this was read, "ToolArt is not defined", and the page never started.)
 
 const ToolArt = (() => {
   const CELL = 48, AXE_ROW = 16, KINDS = ["pickaxe", "sword", "spear"];

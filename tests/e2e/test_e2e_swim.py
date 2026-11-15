@@ -79,9 +79,12 @@ def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
     swum, slow = game.server()["x"] - x0, mine(game, "p.wake.filter((w) => !w.dash).length")
     game.page.keyboard.down("Shift")
     x0 = game.server()["x"]
-    game.hold(["d"], 1000)
+    game.page.keyboard.down("d")
+    game.sleep(1000)
+    ran = mine(game, "p.running")                              # (asked while still at it: asked after the keys were let go, it was sometimes over)
+    game.page.keyboard.up("d")
     dashed, marks = game.server()["x"] - x0, mine(game, "p.wake.filter((w) => w.dash).length")
     game.page.keyboard.up("Shift")
     assert 2 <= swum <= 3 and 4 <= dashed <= 6 and game.js("SWIM_PACE") == 2, (swum, dashed)   # 2.5 tiles a second, then five
-    assert marks >= 18 and 8 <= slow <= 13 and mine(game, "p.running") is True, (slow, marks)   # (its wake: a mark every 45 ms, not every 110)
+    assert marks >= 18 and 8 <= slow <= 13 and ran is True, (slow, marks)                      # (its wake: a mark every 45 ms, not every 110)
     assert game.server()["swimming"] and not game.errors
