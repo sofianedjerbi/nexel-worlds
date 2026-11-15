@@ -1657,3 +1657,16 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   and not yet "a door".
 - Five versions made without hearing them, five refused. Asked of the user: a recording of a real door (a free pack
   made for games), which is a file to download and so theirs to allow.
+
+## Iteration 136: nothing turns see-through on a ladder or stairs
+- User: "xray still trigger mid-ladder and at the last staircase step !"
+- Measured on a copy of the world, each ladder of doben4's ladder tower and each flight of the stairs tower, per frame:
+  the x-ray circle never opened; what did was the veil (floors.js: a built block drawn over your body is seen through,
+  for walking behind a house). From the sides, half way up a ladder and for two frames on a flight's last step: it took
+  the place a straight line had you at, not your body on the rungs, and the height of the tile you were leaving. Behind
+  the tower, up its back ladder and its back flight: a see-through stripe down the tower's top while your head already
+  showed over the edge.
+- Now the veil takes you as drawn (on the rungs; the higher tile while you step), is never on a ladder (its foot
+  included) nor on stairs, and comes and goes over 0.15 s instead of at once. Measured again: no veil and no circle on
+  any of the eight, the veil behind a house as before.
+- Test: up a ladder behind a block, nothing turns see-through. climb, floors, build, x-ray tests: 21.

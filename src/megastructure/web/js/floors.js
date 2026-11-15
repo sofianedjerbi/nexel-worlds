@@ -13,6 +13,8 @@ let FLOORS = false;
 const Floors = (() => {
   const STOREY = 3, K = .03, THIN = .12, FAINT = .3, VEIL = .25;
   let ver = 0, over = {key: "-", z: 99, tiles: new Set()}, veils = 0;      // (veils: how many blocks were a veil over you in the last frame)
+  const fades = new Map(), FADE = .15;                // a veil comes and goes softly: "x,y,z" -> how much of it is drawn now
+  let drawnAt = 0;
   const colOf = (x, y) => { const t = tileIdx(x, y); return t && t[0].built ? t[0].built.get(t[1]) : undefined; };   // z -> [kind, the char of what stands on it]
   const get = (x, y, z) => { const c = colOf(x, y); return c ? c.get(z) : undefined; };
   function put(b, i, z, kind, ch) { let c = b.built.get(i); if (!c) b.built.set(i, c = new Map()); c.set(z, [kind, ch === " " ? "" : ch || ""]); }
@@ -116,14 +118,31 @@ const Floors = (() => {
   // south of you that is drawn over your body (you stand behind a house, or on steps under a floor) is a veil: you
   // are seen through it, and only through what covers you
   function draw(vis, list, sx, sy, S, t, now) {
-    const me_ = ents.get("agent" + myId), q = zoom, foot = me_ ? bodyY(me_, sy) + S - 2 * q : 0, bx = me_ ? sx(me_.x) : 0;
-    const h = myAt ? myAt.z : 0;                      // (a block no higher than where you stand, the floor or the roof you are on, covers nothing of you)
-    const veil = (x, y, z, roof) => { const top = sy(y) - shOf(z) * q; return z > h && y > me_.y + .3 && sx(x) < bx + S - 3 * q && sx(x) + S > bx + 3 * q && top - (roof ? 7 * q : 0) < foot && top + S + 8 * q > foot - 18 * q; };
+    // (you as drawn: on a ladder's rungs where the climb has you, climbing.js; and at the height you are at, the higher
+    // of the two tiles while you step between them: a block no higher than that, the floor, the step or the roof you
+    // are on or stepping onto, covers nothing of you. It took the place a straight line had you at and the tile you
+    // were leaving: half way up a ladder at a tower's side, and on a flight's last step, the tower came and went)
+    const me_ = ents.get("agent" + myId), q = zoom, cl = me_ ? Climb.climbOf(me_) : null;
+    const myx = me_ ? me_.x + (cl ? cl.dx : 0) : 0, myy = me_ ? me_.y + (cl ? cl.dy : 0) : 0;
+    const foot = me_ ? bodyY(me_, sy) + (cl ? cl.dy * S - cl.lift * q : 0) + S - 2 * q : 0, bx = sx(myx);
+    const h = cl ? cl.h : me_ ? Math.max(standOf(me_, Math.floor(me_.x), Math.floor(me_.y)), standOf(me_, Math.ceil(me_.x), Math.ceil(me_.y))) : 0;
+    // (none on a ladder or a flight of stairs: climbing behind a tower it opened a see-through stripe down its top
+    // while your head showed over the edge, "xray ... mid-ladder and at the last staircase step")
+    const onSteps = me_ && [[Math.floor(me_.x), Math.floor(me_.y)], [Math.ceil(me_.x), Math.ceil(me_.y)]].some(([tx, ty]) => {
+      const zz = standOf(me_, tx, ty); return (get(tx, ty, zz) || [])[0] === "stairs" || thingAt(tx, ty, zz) === "l"; });
+    const veil = (x, y, z, roof) => { const top = sy(y) - shOf(z) * q; return !cl && !onSteps && z > h && y > myy + .3 && sx(x) < bx + S - 3 * q && sx(x) + S > bx + 3 * q && top - (roof ? 7 * q : 0) < foot && top + S + 8 * q > foot - 18 * q; };
     veils = 0;
+    const tnow = performance.now(), step = Math.min(.1, (tnow - drawnAt) / 1000); drawnAt = tnow;
     for (const b of vis) if (b.built) for (const [i, c] of b.built) {
       const x = b.bx * B + i % B, y = b.by * B + (i / B | 0), base = standAt(x, y);
       for (const [z, [kind, ch]] of c) {
-        const a0 = alpha(x, y, z), v = a0 > VEIL && me_ && veil(x, y, z, kind === "roof"), a = v ? VEIL : a0, key = y + (z - base) * K;
+        const a0 = alpha(x, y, z), v = a0 > VEIL && me_ && veil(x, y, z, kind === "roof"), key = y + (z - base) * K, fk = x + "," + y + "," + z;
+        let a = v ? VEIL : a0;
+        if (v || fades.has(fk)) {                     // (eased towards it, both ways, over FADE seconds)
+          const was = fades.has(fk) ? fades.get(fk) : a0;
+          a = was + (a - was) * Math.min(1, step / FADE);
+          if (!v && Math.abs(a - a0) < .02) { fades.delete(fk); a = a0; } else fades.set(fk, a);
+        }
         if (v) veils++;
         list.push({y: key - .005, x, fx: () => cell(kind, x, y, z, sx, sy, S, a)});
         if (ch) list.push({y: key, x, fx: () => thing(ch, x, y, z, sx, sy, S, t, now, a)});

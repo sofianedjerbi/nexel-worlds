@@ -89,3 +89,17 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     game.hold(["ArrowRight"], 90)
     game.sleep(1900)
     assert game.server()["z"] == 6 and game.js("__xr") < .1
+    # nor does anything turn see-through on a ladder: up one behind a tower, the tower stays as it is (a see-through
+    # stripe was opened down its top while your head showed over its edge)
+    game.rpc("dev_stamp", x=x + 6, y=y - 3, rows=["W"])
+    game.rpc("dev_teleport", x=x + 6, y=y - 2, z=0)
+    game.sleep(400)
+    game.give(plank=2)
+    assert game.rpc("act", tool="place", args={"x": x + 6, "y": y - 3, "item": "plank", "z": 3})["ok"]
+    game.rpc("dev_stamp", x=x + 6, y=y - 4, rows=["l"])
+    game.rpc("dev_teleport", x=x + 6, y=y - 4, z=0)
+    game.sleep(900)
+    game.js("() => { window.__v = 0; const t0 = performance.now(); const f = () => { __v = Math.max(__v, Floors.veils); if (performance.now() - t0 < 1500) requestAnimationFrame(f); }; requestAnimationFrame(f); }")
+    game.hold(["ArrowDown"], 90)
+    game.sleep(1600)
+    assert game.server()["z"] == 3 and game.js("__v") == 0
