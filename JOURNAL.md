@@ -1389,3 +1389,14 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   the glide starts and ends clean; the sign; the stop at 2; kept). Full browser run 186 pass, 1 error that is a player
   not getting in under load (passes alone); unit 413.
 - Not seen by me in motion at 60 frames a second, only in screenshots taken during the glide: no edge shows.
+
+## Iteration 120: the zoom's sign in its place, the keys of the main row
+- Said: "the zoom indicator show up at a weird spot", "qwerty -+ does not work. you use the numpad ones ? ppl dont
+  always have numpads".
+- The sign was half way up the right edge; it is now in the middle, just over the hearts (under you).
+- The keys were looked up by the character typed, among the game's shortcuts, which wait for a player. I could not
+  make them fail on a US layout; what could fail: another layout (the character differs), or watching without a
+  character. `zoom.js` now listens itself: the characters + = - _, else the two keys right of 0 by their place
+  (Equal, Minus) and the numpad's; not while typing, not with Ctrl or Cmd (the browser's zoom), also for a watcher.
+- Measured: `test_e2e_zoom.py` (Equal, Minus, with Shift, numpad; the chat's dash is not a zoom; a watcher; the
+  sign's place); 6 of 6 with the old key test and the first screen's.

@@ -50,7 +50,17 @@ cv.addEventListener("wheel", (e) => {
   ZOOM.acc = 0; ZOOM.stepped = now;
 }, {passive: false});
 
-// The sign: − ▪▪▪▫▫ +, shown while you zoom and a moment after; it nods when you are at an end.
+// The keys. "qwerty -+ does not work. you use the numpad ones ? ppl dont always have numpads": the key that types - or
+// the one that types = or + (with or without Shift), whatever the layout; failing that, the two keys right of 0 where
+// a QWERTY keyboard has them, and the numpad's. Also when you only watch (the game's other keys wait for a player).
+addEventListener("keydown", (e) => {
+  const el = document.activeElement;
+  if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || (el && /^(INPUT|TEXTAREA)$/.test(el.tagName))) return;   // (Ctrl or Cmd with + is the browser's own zoom)
+  const d = e.key === "+" || e.key === "=" ? 1 : e.key === "-" || e.key === "_" ? -1 : {Equal: 1, NumpadAdd: 1, Minus: -1, NumpadSubtract: -1}[e.code] || 0;
+  if (d) { e.preventDefault(); zoomBy(d); }
+});
+
+// The sign: − ▪▪▪▫▫ +, shown in the middle just over the hearts while you zoom and a moment after; it nods at an end.
 function zoomSign(level, stuck) {
   if (!ZOOM.el) {
     ZOOM.el = document.createElement("div"); ZOOM.el.id = "zoomer";
@@ -62,6 +72,8 @@ function zoomSign(level, stuck) {
   el.querySelector("span").innerHTML = Array.from({length: ZOOM.max - lo + 1}, (_, i) => `<i class="${lo + i <= level ? "on" : ""}"></i>`).join("");
   el.querySelector("[data-d='-1']").classList.toggle("end", level <= lo);
   el.querySelector("[data-d='1']").classList.toggle("end", level >= ZOOM.max);
+  const hud = $("vitals").getBoundingClientRect();           // "the zoom indicator show up at a weird spot" (it was half way up the right edge): over your bar, under you
+  el.style.bottom = (hud.height ? innerHeight - hud.top + 10 : 16) + "px";
   el.classList.add("show");
   if (stuck) { el.classList.remove("nod"); void el.offsetWidth; el.classList.add("nod"); }
   clearTimeout(ZOOM.hide);

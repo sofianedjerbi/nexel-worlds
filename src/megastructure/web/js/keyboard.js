@@ -170,7 +170,6 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   t: () => openChat(),
   enter: () => openChat(),
   "/": () => openChat("/"),
-  "+": () => zoomBy(1), "=": () => zoomBy(1), "-": () => zoomBy(-1),
 };
 
 addEventListener("keydown", (e) => {

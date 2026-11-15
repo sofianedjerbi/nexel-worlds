@@ -33,3 +33,27 @@ def test_a_level_glides_and_the_sign_shows_where_you_are_and_where_it_stops(game
     assert game.js("zoom") == 6
     game.sleep(2200)
     assert not game.js("$('zoomer').classList.contains('show')")                # it goes away on its own
+
+
+def test_the_keys_of_the_main_row_zoom_on_any_layout_and_for_a_watcher_too(game, browser, server):
+    """"qwerty -+ does not work. you use the numpad ones ?": the keys right of 0, with or without Shift, and the numpad."""
+    game.js("zoom = 3")
+    for key, want in (("Equal", 4), ("Minus", 3), ("Shift+Equal", 4), ("Shift+Minus", 3), ("NumpadAdd", 4), ("NumpadSubtract", 3)):
+        game.page.keyboard.press(key)
+        game.wait(f"zoom === {want}", 2000)
+    sign = game.js("(() => { const r = $('zoomer').getBoundingClientRect(), v = $('vitals').getBoundingClientRect(); return [r.left + r.width / 2, r.bottom, v.top]; })()")
+    assert abs(sign[0] - 600) < 2 and 0 < sign[2] - sign[1] < 20, sign          # the sign: in the middle, just over the hearts
+    game.press("t", 200)                                       # typing a dash in the chat is not a zoom
+    game.page.keyboard.type("a-b=c")
+    game.sleep(300)
+    assert game.js("zoom") == 3
+    game.page.keyboard.press("Escape")
+    page = browser.new_page(viewport={"width": 1000, "height": 700})            # someone who only watches
+    page.goto(server + "/?zoom=3")
+    page.wait_for_function("typeof ready !== 'undefined'")
+    page.click("#watch")
+    page.keyboard.press("Minus")
+    page.wait_for_function("zoom === 2", timeout=2000)
+    page.keyboard.press("Minus")                               # a watcher may see wide
+    page.wait_for_function("zoom === 1", timeout=2000)
+    page.close()
