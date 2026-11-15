@@ -33,6 +33,7 @@
  "use": {
   "open a chest": "chest",
   "open a door or gate": "gate",
+  "close a door or gate": "door_close",
   "write a sign": "write",
   "light a campfire": "whoosh",
   "eat": "eat",

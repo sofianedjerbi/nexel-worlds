@@ -1623,3 +1623,16 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   and where you are drawn. Measured again: no circle on any flight nor on the side ladders; behind the cliff at a
   ladder's foot it is there as anywhere behind a cliff, and goes as you climb out.
 - Test: a ladder at the cliff's side, climbed: the circle stays shut. climb, x-ray and relief tests, 29.
+
+## Iteration 135: a door opens and closes, and is heard doing both
+- Said, of the door's sound of iteration 123 (a latch, a breath, a soft stop): "fix the door noise, i dont hear
+  anything. i hear a clic that does not sound like a door at all"; then, of two knocks of a board I had begun:
+  "a door that open/close noise. not a toctoc".
+- Change (`music/sfx.py`): opening ("gate"): the latch lets go, one clack, then the door swings on its hinge, a dry
+  wooden creak with no pitch (grains of noise in the wood's band, thickest while it moves fastest; no pulses at a
+  rate, which is what buzzed in the first one). Closing (new, "door_close"): the swing, shorter, one thud as it
+  meets its frame, the latch catching. Both about 5 dB louder than the click. `structures.js`, `sprites.js`: a door
+  or a gate that begins to shut plays the closing one.
+- Measured: opening 0.45 s, the creak at its fullest a quarter of a second in; closing 0.33 s, the thud at 0.17 s;
+  no pulse ripple in either (-5 to -7 dB); the door test hears both; audio, world, sound and floors tests pass.
+- Not heard by me: four versions now, each judged by the user's ear only.

@@ -30,8 +30,9 @@ const Structures = (() => {
     const key = x + "," + y + (z === undefined ? "" : "," + z);
     const near = z === undefined ? [[0, 0], [0, -1], [0, 1], [1, 0], [-1, 0]].some(([dx, dy]) => occupied.has((x + dx) + "," + (y + dy))) : [...ents.values()].some((p) => p.e && p.e.kind === "agent" && by(p));
     const was = doors.get(key) || 0, o = Math.max(0, Math.min(1, was + (near ? .15 : -.1))), now = performance.now();
-    if (!was && o && now - (doorShut.get(key) || -1e9) > 700) sfx("gate", x, y);      // (heard when it opens, not again if it only just shut: someone hovering at the sill)
-    if (was && !o) doorShut.set(key, now);
+    const lately = now - (doorShut.get(key) || -1e9) < 700;                          // (not again if it only just began to shut: someone hovering at the sill)
+    if (!was && o && !lately) sfx("gate", x, y);                                      // it opens: the latch, the swing
+    if (was >= 1 && o < 1 && !lately) { sfx("door_close", x, y); doorShut.set(key, now); }   // it begins to shut: the swing, then it meets its frame as it gets there
     doors.set(key, o);
     return 5 - Math.round(o * 5);
   }

@@ -110,6 +110,7 @@ function spriteOf(c, x, y, t) {
       const key = x + "," + y, near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => occupied.has((x + dx) + "," + (y + dy)));
       const was = doors.get(key) || 0, o = Math.max(0, Math.min(1, was + (near ? .12 : -.08)));
       if (!was && o) sfx("gate", x, y);                                                     // it starts to swing open
+      if (was >= 1 && o < 1) sfx("door_close", x, y);                                       // ...and to swing shut
       doors.set(key, o);
       // (five frames a way: seen from the front, every other cell of the sheet's first row, the ones hinged on the
       // left; in a fence that runs north and south, the sheet's side-on gate, two leaves between the posts over

@@ -742,19 +742,38 @@ def _(c):
     return phism(c, n, e, 1200, 800, 0.004, 0.5) + 0.4 * phism(c, n, e, 400, 2200, 0.0015) + 0.7 * strike(c, n, "dirt", size=1.4)
 
 
-# "door do a weird noise. fix the door noise": it was a hinge's creak, a train of 45 to 140 pulses a second through three
-# resonances for 0.4 s (the same slow pulse train that made the falling tree "sound like a fart"), then a hard knock
-# of wood and metal, as of a door slammed shut, on a door that opens. Now what a small wooden door does when it is
-# opened: the latch lifts (a small dry tick of metal), the bolt leaves the wood, the door swings (air and a dry
-# hinge: a soft breath of noise, no pitch, no pulses), and it comes to rest against its stop, softly.
-@sfx("gate", "Building", "a gate or a door opens: the latch, the swing, it comes to rest", 2, 0.35)
+# The door. Four tries, each refused: a hinge's creak made of a slow train of pulses ("door do a weird noise"); a latch,
+# a breath and a soft stop ("i dont hear anything. i hear a clic that does not sound like a door at all"); two knocks
+# of a board ("a door that open/close noise. not a toctoc"). What a door does, then, and both ways:
+#   opening: the latch lets go (one clack: metal, and the wood right behind it), then the door swings on its hinge:
+#            wood working against wood, a dry creak with no pitch (grains of noise in the wood's band, thick while it
+#            moves fastest: Cook's particle model, not pulses at a rate, which is what read as a buzz);
+#   closing: the same swing, shorter, then the door meets its frame (ONE thud of the board, with its body) and the
+#            latch catches just after.
+def door_swing(c, seconds):
+    n = N(seconds)
+    e = np.sin(np.pi * tt(n) / seconds) ** 1.5
+    k = c.u(0.9, 1.15)
+    return norm(phism(c, n, e, 130, 520 * k, 0.007, 0.6) + 0.4 * phism(c, n, e, 90, 1250 * k, 0.004, 0.6)) * e      # (wood: low and dry, not a scratch)
+
+
+@sfx("gate", "Building", "a gate or a door opens: the latch lets go, it swings on its hinge", 2, 0.5)
 def _(c):
-    y = np.zeros(N(0.5))
-    place(y, 0.3 * strike(c, N(0.05), "metal", size=c.u(0.7, 0.9), damp=4.0), 0.0)                # the latch lifts
-    place(y, 0.5 * strike(c, N(0.08), "wood", size=c.u(0.8, 1.0), hard=1.3), c.u(0.035, 0.05))   # the bolt leaves the wood
-    n = N(c.u(0.22, 0.27))
-    place(y, 0.1 * phism(c, n, np.sin(np.pi * tt(n) / (n / SR)) ** 2, 2500, c.u(500, 700), 0.002, 0.5), 0.07)   # the swing: under the rest
-    place(y, 0.42 * strike(c, N(0.18), "plank", size=c.u(1.2, 1.4), hard=0.7), c.u(0.3, 0.33))   # it comes to rest
+    y = np.zeros(N(0.6))
+    place(y, 0.3 * strike(c, N(0.06), "metal", size=c.u(0.8, 1.0), damp=3.0), 0.0)
+    place(y, 0.55 * strike(c, N(0.12), "wood", size=c.u(0.8, 0.95), hard=1.2), 0.02)
+    place(y, 0.7 * door_swing(c, c.u(0.32, 0.38)), 0.07)
+    return y
+
+
+@sfx("door_close", "Building", "a gate or a door closes: it swings, meets its frame, the latch catches", 2, 0.55)
+def _(c):
+    y = np.zeros(N(0.6))
+    swing = c.u(0.18, 0.23)
+    place(y, 0.5 * door_swing(c, swing), 0.0)
+    size = c.u(1.0, 1.15)
+    place(y, strike(c, N(0.3), "wood", size=size, hard=0.9) + 0.6 * strike(c, N(0.3), "plank", size=size, hard=1.0), swing - 0.03)   # it meets its frame
+    place(y, 0.25 * strike(c, N(0.06), "metal", size=c.u(0.8, 1.0), damp=3.0), swing + 0.01)                                        # the latch catches
     return y
 
 

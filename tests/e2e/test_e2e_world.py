@@ -10,8 +10,11 @@ def test_a_house_shelters_you_and_doors_keep_animals_out(game):
     game.js(f"act('move_to', {{x: {x}, y: {y + 3}}})")       # people walk through the door
     game.sleep(1200)
     assert game.pos() == (x, y + 3)
+    game.wait("sounds.manifest", 20000)
+    assert "gate" in game.js("Object.keys(sounds.lastAt)")    # the door was heard opening ("a door that open/close noise")...
     game.rpc("dev_teleport", x=x, y=y)
     game.sleep(800)
+    assert "door_close" in game.js("Object.keys(sounds.lastAt)")   # ...and, nobody by it any more, closing
     hen = game.spawn("chicken", 0, 3)
     game.rpc("dev_skip", seconds=40)
     game.sleep(600)
