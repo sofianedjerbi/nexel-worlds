@@ -104,7 +104,7 @@ const fruitSheet = (x, y) => IMG[FRUITS[fruitKind(x, y)]];
 const FRUIT_ICON = [[16, 32], [80, 32], [112, 32], [48, 32]];   // trees.png: apple, pear, peach, orange
 const BERRY_BUSH = [32, 48, 64];                                // trees.png x of the red, purple, blue bushes (row 48)
 const BERRY_ICON = [[16, 64], [48, 64], [64, 64]];              // matching single berries (row 64)
-const chestOpen = new Map(), doors = new Map();
+const chestOpen = new Map(), doors = new Map(), doorShut = new Map();      // (doorShut: when each door last closed, houses.js)
 let occupied = new Set();
 
 function drawFire(px, py, S, t, x, y) {            // the generated two-frame flame sprite, flickering per tile

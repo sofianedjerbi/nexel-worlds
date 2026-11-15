@@ -1420,3 +1420,14 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   "/ Commands" row and the chat line's "/ commands" word are gone.
 - Measured: `test_e2e_complete.py` (the earlier tests back, plus: nothing on "/", a list on "/s", nothing again after
   Backspace) 4 of 4; interface tests 14 of 14.
+
+## Iteration 123: the door's sound
+- Said: "door do a weird noise. fix the door noise".
+- What it was (`music/sfx.py` "gate", played when a door or a gate opens): a hinge's creak, a train of 45 to 140
+  pulses a second for 0.4 s, then a hard knock of wood and metal. Measured: the envelope rippling at 40-160 Hz 4 dB
+  over its slower movement (a buzz). The same slow pulse train was once heard as "a fart" on the falling tree.
+- Change: the latch (a small tick of metal), the bolt leaving the wood, a soft breath of noise for the swing, the
+  door coming to rest; no pulses (ripple now 6 dB under), no pitch (ringcheck 0.00, and the door is no longer on its
+  list of sounds allowed to ring), a little shorter and 1.5 dB quieter. `houses.js`: a door that has only just shut
+  (under 0.7 s) is not heard again when it reopens (someone hovering at the sill).
+- Measured: audio tests 8, sound and building browser tests 13. Not heard by me.

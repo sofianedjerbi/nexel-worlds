@@ -742,14 +742,19 @@ def _(c):
     return phism(c, n, e, 1200, 800, 0.004, 0.5) + 0.4 * phism(c, n, e, 400, 2200, 0.0015) + 0.7 * strike(c, n, "dirt", size=1.4)
 
 
-@sfx("gate", "Building", "a gate or a door swings open", 2, 0.35)
+# "door do a weird noise. fix the door noise": it was a hinge's creak, a train of 45 to 140 pulses a second through three
+# resonances for 0.4 s (the same slow pulse train that made the falling tree "sound like a fart"), then a hard knock
+# of wood and metal, as of a door slammed shut, on a door that opens. Now what a small wooden door does when it is
+# opened: the latch lifts (a small dry tick of metal), the bolt leaves the wood, the door swings (air and a dry
+# hinge: a soft breath of noise, no pitch, no pulses), and it comes to rest against its stop, softly.
+@sfx("gate", "Building", "a gate or a door opens: the latch, the swing, it comes to rest", 2, 0.35)
 def _(c):
-    n = N(0.55)
-    t = tt(n)
-    k = c.u(0.85, 1.2)
-    hinge = stickslip(c, n, c.u(45, 65) + c.u(45, 75) * t / 0.55, (900 * k, 1800 * k, 2600 * k), 12) * np.clip(t / 0.01, 0, 1) * np.clip((0.4 - t) / 0.15, 0, 1)
-    y = 0.7 * hinge
-    place(y, strike(c, N(0.2), "wood", size=1.3, hard=1.2) * 0.6 + 0.1 * strike(c, N(0.2), "metal", size=1.6, damp=3.0), 0.4)   # it meets the post
+    y = np.zeros(N(0.5))
+    place(y, 0.3 * strike(c, N(0.05), "metal", size=c.u(0.7, 0.9), damp=4.0), 0.0)                # the latch lifts
+    place(y, 0.5 * strike(c, N(0.08), "wood", size=c.u(0.8, 1.0), hard=1.3), c.u(0.035, 0.05))   # the bolt leaves the wood
+    n = N(c.u(0.22, 0.27))
+    place(y, 0.1 * phism(c, n, np.sin(np.pi * tt(n) / (n / SR)) ** 2, 2500, c.u(500, 700), 0.002, 0.5), 0.07)   # the swing: under the rest
+    place(y, 0.42 * strike(c, N(0.18), "plank", size=c.u(1.2, 1.4), hard=0.7), c.u(0.3, 0.33))   # it comes to rest
     return y
 
 

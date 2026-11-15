@@ -88,7 +88,9 @@ function drawFront(rm, sx, sy, S, z, now) {
 function drawDoor(x, y, sx, sy, S, z, now) {
   const key = x + "," + y, near = [[0, 0], [0, -1], [0, 1]].some(([dx, dy]) => occupied.has((x + dx) + "," + (y + dy)));
   const o = Math.max(0, Math.min(1, (doors.get(key) || 0) + (near ? .15 : -.1)));
-  if (!(doors.get(key) || 0) && o) sfx("gate", x, y);
+  const was = doors.get(key) || 0;                    // (heard when it opens, not again if it only just shut: someone hovering at the sill)
+  if (!was && o && now - (doorShut.get(key) || -1e9) > 700) sfx("gate", x, y);
+  if (was && !o) doorShut.set(key, now);
   doors.set(key, o);
   ctx.fillStyle = "#4a3530"; ctx.fillRect(sx(x) + 2 * z, sy(y, x) - 6 * z, S - 4 * z, S + 6 * z);   // the dark doorway
   const f = 5 - Math.round(o * 5);                                           // door.png row 0: open (0) .. closed (5)
