@@ -33,6 +33,7 @@
   .note { color:var(--soft); font-size:14px; }
   .part { margin:32px 0 14px; color:var(--gold); }
   .blocks { display:grid; grid-template-columns:repeat(8, 1fr); gap:var(--q); margin-top:6px; font-size:12px; color:var(--soft); line-height:1.25; }
+  .blocks.four { grid-template-columns:repeat(4, 1fr); }
   .blocks b { display:block; color:var(--ink); font-weight:normal; font-size:14px; }
   .ver { display:flex; align-items:center; gap:14px; margin-top:12px; }
   .ver .bar { flex:1; margin-top:0; } .ver span { width:110px; flex:none; } .ver.on span { color:var(--on); }
@@ -42,27 +43,24 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">Slow tide is the music of the first screen: here it is in full. Under it, the earlier candidates, the pieces kept for later, and the songs of the game. Everything loops with no gap.</div>
-  <div class="box" id="c-full" style="--tone:#a9c8ec">
-    <div class="row"><div class="n">T</div><div><h2>Slow tide, in full</h2><div class="feel">The music of the first screen: <span id="fullpace">3 min 12 s, 80 beats a minute</span>, F major. Three tunes, eight blocks of eight bars; click a block to hear it.</div></div><button id="b-full">Play</button></div>
-    <div class="bar" data-id="full"><i></i><s style="left:12.5%"></s><s style="left:25%"></s><s style="left:37.5%"></s><s style="left:50%"></s><s style="left:62.5%"></s><s style="left:75%"></s><s style="left:87.5%"></s></div>
-    <div class="blocks"><div><b>1 · A</b>the theme alone, no beat</div><div><b>2 · A</b>the beat comes in, an inner voice</div><div><b>3 · B</b>a second tune, on D minor</div><div><b>4 · A</b>the theme, answered</div>
-      <div><b>5 · C</b>the beat stops: a third tune, long notes</div><div><b>6 · B</b>second tune, a voice a sixth under</div><div><b>7 · A</b>everything together</div><div><b>8 · A</b>the theme alone, back to 1</div></div>
-    <div class="facts">lead <b>Corporealities</b> · second voice <b>Sin Ring</b> · inner voice <b>Uni Saw FB</b> · chords <b>Chowning</b> · pads <b>Warm Pad</b>, <b>Closer Still</b> (high, quiet) · bass <b>Nu Skool Bass 2</b><br>
-      <span id="fullfacts"></span></div>
-    <div class="ver" id="c-slow"><span style="width:150px">In full at 72</span><button id="b-slow">Play</button><div class="bar" data-id="slow"><i></i></div></div>
-    <div class="ver" id="c-first"><span style="width:150px">The take you chose</span><button id="b-first">Play</button><div class="bar" data-id="first"><i></i></div></div>
-  </div>
+  <div class="sub">Slow tide, the theme you chose for the first screen, made dynamic three ways; each starts with a gradient. Under them, the earlier versions and candidates, the pieces kept for later, and the songs of the game. Everything loops with no gap.</div>
+  <div id="tides"></div>
   <div class="box">
-    <h2>Fifth round: Slow tide in full</h2>
+    <h2>Sixth round: dynamic, with a gradient</h2>
     <ul>
-      <li>You chose Slow tide and asked for more depth, more length, details in the background, a master, and real variations with different melodies.</li>
-      <li>The take you chose is untouched and is the A of the piece, note for note, on the same sounds. Blocks 3 and 6 have a second tune (it comes in after the beat and leaps a fifth where A knocks twice), block 5 a third one (two long notes, on a second voice, with the beat stopped).</li>
-      <li>Depth is layers, not echo: a high quiet pad, an inner voice that moves twice a bar inside the chords, a second voice that answers the theme or doubles the second tune a sixth under. The bass and the beat change from block to block.</li>
-      <li>Master: light glue (1.5 dB), lows in the centre, -20 LUFS, true peak under -1 dB, then the small-speaker correction you agreed to for the night songs (the bass's octaves).</li>
-      <li>Audit: every part soloed; nothing out of the kept pieces' ranges; no tune note a semitone over a chord note.</li>
-      <li>I cannot hear it. It is not in the game yet.</li>
+      <li>You refused the full version ("it sucks") and asked for something more dynamic, with a gradient at the beginning so it does not pop out of nowhere.</li>
+      <li>What the meters say of the refused one: pads in front, hardly a beat, every block within 1 dB of the others. Nothing moved.</li>
+      <li>These three keep the theme and the sounds you chose and put a real band under them: the drum kit of the day songs, a bass that moves, short chords. Each has four blocks: the theme thin, the groove, a second tune, everything.</li>
+      <li>The gradient: when you press Play, the first six seconds rise in level and open in tone (muffled, then clear). It is done by the player, not written in the file, so the loop itself never fades. The game would do the same.</li>
+      <li>Audit: every part soloed and held against Side street day and Far shore day; all three have nothing out of range.</li>
+      <li>I cannot hear them. None is in the game.</li>
     </ul>
+  </div>
+  <div class="box" style="--tone:#a9c8ec">
+    <div class="facts">Earlier versions of Slow tide, to compare (no gradient).</div>
+    <div class="ver" id="c-full"><span style="width:170px">In full at 80 (refused)</span><button id="b-full">Play</button><div class="bar" data-id="full"><i></i></div></div>
+    <div class="ver" id="c-slow"><span style="width:170px">In full at 72</span><button id="b-slow">Play</button><div class="bar" data-id="slow"><i></i></div></div>
+    <div class="ver" id="c-first"><span style="width:170px">The take you chose</span><button id="b-first">Play</button><div class="bar" data-id="first"><i></i></div></div>
   </div>
   <h2 class="part">The three candidates of the fourth round</h2>
   <div id="list"></div>
@@ -113,9 +111,17 @@
 const TONE = ["#f7d488", "#f4a6c0", "#b9e0a5", "#a9c8ec", "#8fe0d4"];
 let ctx = null, playing = null;                       // playing: {id, src, t0, len}
 const buffers = {}, FILES = {full: "menu_slow_tide", slow: "menu_slow_tide_72", first: "keep_slow_tide_first"};
-fetch("audio/slow_tide.json?v=" + Date.now()).then((r) => r.json()).then((m) => { document.getElementById("fullpace").textContent = `${Math.floor(m.seconds / 60)} min ${Math.round(m.seconds % 60)} s, ${m.bpm} beats a minute`;
-  document.getElementById("fullfacts").innerHTML =
-  `audit: ${m.out_of_range.length ? m.out_of_range.join("; ") : "everything in range"} · ${m.after.lufs} LUFS · true peak ${m.after.true_peak} dB · on a laptop speaker ${m.after.laptop} dB · on one speaker ${m.after.one_speaker} dB`; });
+const GRADIENT = 6;                                   // seconds: the level rises and the tone opens
+const tides = fetch("audio/tide.json?v=" + Date.now()).then((r) => r.json()).then((all) => {
+  document.getElementById("tides").innerHTML = all.filter((m) => m.id !== "full").map((m, i) => { FILES["t_" + m.id] = "menu_tide_" + m.id;
+    return `<div class="box" id="c-t_${m.id}" style="--tone:${TONE[i + 2]}">
+      <div class="row"><div class="n">${"ABC"[i]}</div><div><h2>${m.title}</h2><div class="feel">${m.feel}</div></div><button id="b-t_${m.id}">Play</button></div>
+      <div class="bar" data-id="t_${m.id}"><i></i>${[1, 2, 3].map((k) => `<s style="left:${k * 25}%"></s>`).join("")}</div>
+      <div class="blocks four">${m.names.map((n, k) => `<div><b>${n.split(" · ")[0]}</b>${n.split(" · ")[1]}</div>`).join("")}</div>
+      <div class="facts"><b>${m.bpm}</b> beats a minute · F major · loop of <b>${Math.round(m.seconds)} s</b> · starts with a gradient of ${GRADIENT} s<br>
+        audit: ${m.out_of_range.length ? m.out_of_range.join("; ") : "everything in range"} · ${m.lufs} LUFS · true peak ${m.true_peak} dB</div>
+    </div>`; }).join("");
+});
 async function load(id) {
   if (!buffers[id]) buffers[id] = fetch(`audio/${FILES[id] || "menu_" + id}.wav?v=${Date.now()}`).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b));
   return buffers[id];
@@ -133,7 +139,13 @@ async function play(id, from) {
   const btn = document.getElementById("b-" + id); btn.textContent = "...";
   const buf = await load(id);
   if (playing) stop();
-  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(ctx.destination);   // (a looped buffer: no gap at the seam)
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;                                  // (a looped buffer: no gap at the seam)
+  if (id.startsWith("t_") && from === undefined) {                                                          // the gradient: quiet and muffled, then full and clear
+    const g = ctx.createGain(), f = ctx.createBiquadFilter(), t = ctx.currentTime;
+    f.type = "lowpass"; f.frequency.setValueAtTime(350, t); f.frequency.exponentialRampToValueAtTime(20000, t + GRADIENT);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.15, t + GRADIENT * 0.35); g.gain.linearRampToValueAtTime(1, t + GRADIENT);
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+  } else src.connect(ctx.destination);
   const at = (from || 0) * buf.duration; src.start(0, at);
   playing = {id, src, t0: ctx.currentTime - at, len: buf.duration};
   btn.textContent = "Stop"; document.getElementById("c-" + id).classList.add("on");
@@ -142,7 +154,7 @@ function tick() {
   if (playing) document.querySelector(`#c-${playing.id} .bar i`).style.width = (((ctx.currentTime - playing.t0) % playing.len) / playing.len * 100) + "%";
   requestAnimationFrame(tick);
 }
-fetch("audio/menu.json?v=" + Date.now()).then((r) => r.json()).then((all) => {
+tides.then(() => fetch("audio/menu.json?v=" + Date.now())).then((r) => r.json()).then((all) => {
   document.getElementById("list").innerHTML = all.map((m, i) => `
     <div class="box" id="c-${m.id}" style="--tone:${TONE[i]}">
       <div class="row"><div class="n">${i + 1}</div><div><h2>${m.title}</h2><div class="feel">${m.feel}</div></div><button id="b-${m.id}">Play</button></div>

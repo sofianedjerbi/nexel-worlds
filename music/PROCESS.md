@@ -498,3 +498,15 @@ unique theme. cute and fast".
 - Checks: no tune note a semitone or minor ninth over a chord note; mixcheck "chill": nothing out of range; master
   (glue 1.5 dB, -20 LUFS, true peak -4.7 dB) then refit (the bass's octaves). Blocks sit within 1 dB of each other.
 - `site/audio/menu_slow_tide.wav`, on the page with a map of the blocks. Not in the game yet; not judged by ear.
+
+## Slow tide, dynamic, with a gradient (2026-11-15)
+- On the full version (72, then 80 at "can you make it a bit faster"): "nah it sucks. i want something more dynamic.
+  with just a gradient at the beginning to avoid it popping out of nowhere". Measured on it: pads in front, hardly a
+  beat, every block within 1 dB of the others.
+- `music/slowtide.py` VARIANTS: the chosen theme and sounds over a real band (the day pieces' kit, a moving bass,
+  short chords on Glass Tick), four blocks of eight bars (theme thin / groove / second tune / everything): Rising
+  tide (96, bounce), High tide (104, kick on every beat), Spring tide (88, half time under running hats).
+  First render: too much under 60 Hz, dull at 4-8 kHz, the stab sound (Mol) thumping under 120 Hz; after the
+  changes all three have nothing out of range (day reference). `site/audio/menu_tide_<id>.wav`, `tide.json`.
+- The gradient is the player's: on the page six seconds of rising level and opening low-pass at Play; not in the file
+  (it loops). audio.js would do the same on the first screen. Not judged by ear, not in the game.
