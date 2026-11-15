@@ -25,7 +25,8 @@ cv.addEventListener("mousemove", (e) => {
   const p = tileAtScreen(e.clientX, e.clientY), t = tile(p.x, p.y), tip = $("hover");
   if (!t) { tip.style.display = "none"; return; }
   let text;
-  if (me) { const it = intent(aimAt(p, e.shiftKey), e.shiftKey); text = it ? it.text : ""; tip.className = it && it.ok === false ? "bad" : ""; cv.classList.toggle("act", !!(it && !it.walk && !it.info && it.ok !== false)); }
+  if (me && Build.on) Build.point(p);
+  if (me) { const it = Build.on ? Build.hint(p) : intent(aimAt(p, e.shiftKey), e.shiftKey); text = it ? it.text : ""; tip.className = it && it.ok === false ? "bad" : ""; cv.classList.toggle("act", !!(it && !it.walk && !it.info && it.ok !== false)); }
   else {
     const here = entityAt(p);
     text = here ? (here.e.name || here.e.kind) : GROUND.has(t[0]) ? label(CH[t[1]]) : label(CH[t[0]]);

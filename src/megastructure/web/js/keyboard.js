@@ -108,6 +108,8 @@ function availableActions() {
   if (selected && FOODS.includes(selected)) rows.push(["E", `Eat ${label(selected)}`]);
   if (selected && WEAR[selected]) rows.push(["E", `Wear ${label(selected)}`]);
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push(["F", "Pick up"]);
+  if (Build.waiting()) rows.push(["B", `Build: ${Build.waiting()} plans wait`]);      // (build.js: said where it helps, a piece in hand or plans left)
+  else if (placingItem() && !FOOT[PLACEABLE_BLOCK[selected]]) rows.push(["B", "Build mode: plan a lot"]);
   return rows;   // only what you can do right here, right now (all the other keys are in the help, H)
 }
 function updateActions() {
@@ -178,7 +180,7 @@ addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (k === "shift") { keys.add("shift"); runKey = true; syncWalk(); return; }
   inputMode = "keys"; document.body.classList.add("bykeys");
-  if (k === "escape" && Build.on && !isOpen("craft") && !isOpen("bag") && !isOpen("mail")) { Build.toggle(false); return; }
+  if (k === "escape" && Build.on && !isOpen("craft") && !isOpen("bag") && !isOpen("mail")) { Build.onKey(k, e); return; }
   if (k === "escape") { if (isOpen("bag") && bagKey(k, e)) return; if (isOpen("craft") || isOpen("bag") || isOpen("mail")) closePanels(); else selectItem(null); return; }
   // an open panel takes the arrows, Enter and Space
   if (isOpen("craft") && (craftKey(k, e) || !BOOK_KEYS.has(k))) { e.preventDefault(); return; }

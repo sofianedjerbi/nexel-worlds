@@ -1,56 +1,69 @@
 // Building, as a plan and then the work. Placing was one tile at a time, the one you faced: to raise a wall you
 // walked a step, turned, pressed, and again, and walled yourself in. Now you plan first and your character builds:
-//   B          build mode, and out of it (Esc too). What is in your hand is the piece: the bar's numbers, Q.
+//   B          build mode, and out of it. What is in your hand is the piece: the bar's numbers; Q, the next piece.
 //   arrows     move the cursor, a tile at a time (it is not you who walks: the view goes with the cursor)
-//   Space      plan the piece here. Held while you move: a row of them
-//   X          take a plan back; on something built: plan to take it down. Held while you move: a row
-// Every plan is a ghost on the ground. Your character goes to the nearest, stands beside it and builds it (the
-// game's own moves: walk there, place; the server checks each as it always did), then the next, block by block.
+//   Space      plan the piece here. Held while you move: a row. A door on a wall, a gate on a fence: in its place
+//   X          take a plan back; on something built: plan to take it down (its roof first). Held: a row
+//   Esc        drop every plan (with none: out of the mode)
+// Every plan is a ghost on the ground. In build mode your character goes to the nearest, stands within reach of it
+// and builds it (the game's own moves: walk there, place; the server checks each as it always did), then the next,
+// block by block. Out of the mode it is yours to walk again, and the plans wait where they are till you come back.
 // A plan that cannot be done (no way there, someone standing on it) turns red, says why, and goes.
-// By mouse, in build mode: a click plans, a drag plans a row, shift or the right button takes.
-// The whole of it by keys alone. One piece a tile; a piece bigger than a tile (a well, a coop) is still put by hand.
+// By mouse, in build mode: the cursor is where you point, a click plans, a drag plans a row, shift or the right
+// button takes. The whole of it by keys alone. A piece bigger than a tile (a well, a coop) is still put by hand.
 const Build = (() => {
-  const REACH = 8, STEP_MS = 110, BAD_MS = 2600;            // how far from you the cursor goes; its pace when a key is held; how long a failed plan shows
-  const S = {on: false, at: null, plans: new Map(), hold: null, working: false, moved: 0, pan: {x: 0, y: 0}};
+  const REACH = 10, FIRST_MS = 230, STEP_MS = 75, BAD_MS = 2600;   // how far from you the cursor goes; a held arrow: its wait, then its pace; how long a failed plan shows
+  const SWAP = {door: "W%", gate: "#"};                      // a piece that goes in the place of another: a door in a wall, a gate in a fence
+  const S = {on: false, at: null, plans: new Map(), hold: null, working: false, dir: null, timer: 0, pan: {x: 0, y: 0}};
   const key = (p) => p.x + "," + p.y, now = () => performance.now();
   const piece = () => (selected && meObs && meObs.self.inventory[selected] && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed") ? selected : null);
   const todo = () => [...S.plans.values()].filter((j) => j.state !== "bad");
 
-  // What planning the piece in hand at p would be: the game's own answer for that tile (intent.js), as a ghost
+  // What planning the piece in hand at p would be: the game's own answer for that tile (intent.js), as a ghost,
+  // said in a few words (they are written beside the bar: a long line ran under it)
   function hint(p) {
     const it = piece();
-    if (!it) return {text: selected ? `${label(selected)} is not something to build with` : "Nothing in hand: pick a piece (1-9, Q)", ok: false};
-    if (FOOT[PLACEABLE_BLOCK[it]]) return {text: `The ${label(it)} is put by hand: leave build mode (B)`, ok: false, ghost: it};
-    const have = meObs.self.inventory[it], used = todo().filter((j) => j.item === it).length;
+    if (!it) return {text: selected ? "Not a building piece" : "Pick a piece: 1-9, Q", ok: false};
+    if (FOOT[PLACEABLE_BLOCK[it]]) return {text: "Put by hand: leave with B", ok: false, ghost: it};
+    const have = meObs.self.inventory[it], used = todo().filter((j) => j.item === it).length, t = tile(p.x, p.y);
     if (S.plans.has(key(p))) return {text: "Planned", ok: false, ghost: it};
-    if (used >= have) return {text: `No more ${label(it)}: all ${have} are planned`, ok: false, ghost: it};
-    return intent(p, false) || {text: "Nothing can go there", ok: false};
+    if (used >= have) return {text: `All ${have} are planned`, ok: false, ghost: it};
+    if (t && SWAP[it] && SWAP[it].includes(t[0])) return {text: `Plan ${label(it)} in its place`, ok: true, ghost: it, swap: true};
+    const say = intent(p, false) || {text: "Nothing can go there", ok: false};
+    return {...say, text: say.ok === false ? say.text.replace(/^Can't place .* here$/, "Can't go there") : say.text.replace(/^(Place|Lay|Build|Plant|Launch) /, "Plan ")};
+  }
+  // What X would take at p: a plan, the roof over it, the thing built there -> its name, or nothing
+  function taking(p) {
+    const t = tile(p.x, p.y), j = S.plans.get(key(p));
+    if (j) return j.state === "doing" ? null : "plan";
+    if (!t) return null;
+    if (ROOFS && Structures.roofAt(p.x, p.y)) return "roof";
+    if (!GROUND.has(t[0])) return "#W%+g".includes(t[0]) || Object.values(PLACEABLE_BLOCK).includes(t[0]) ? label(CH[t[0]]) : null;
+    return "_n:".includes(t[1]) ? label(CH[t[1]]) : null;
   }
   function plan(p) {
     const it = hint(p);
     if (!it.ghost || it.ok === false) return S.hold ? null : toast(it.text, true);
-    S.plans.set(key(p), {x: p.x, y: p.y, item: selected, ground: it.ghostGround || null, state: "todo"});
+    S.plans.set(key(p), {x: p.x, y: p.y, item: selected, ground: it.ghostGround || null, swap: !!it.swap, state: "todo"});
     sfx("pick"); work();
   }
-  function take(p) {                                  // a plan back; or, of something built there, a plan to take it down
-    const j = S.plans.get(key(p));
-    if (j) { if (j.state !== "doing") S.plans.delete(key(p)); return; }
-    const t = tile(p.x, p.y); if (!t) return;
-    if (ROOFS && Structures.roofAt(p.x, p.y) && (selected === "roof" || GROUND.has(t[0]))) { S.plans.set(key(p), {x: p.x, y: p.y, take: true, roof: true, state: "todo"}); return work(); }   // (the roof over it)
-    const built = !GROUND.has(t[0]) ? "#W%+g".includes(t[0]) || !!Object.values(PLACEABLE_BLOCK).includes(t[0]) : "_n:".includes(t[1]);
-    if (!built) return S.hold ? null : toast("Nothing built there to take down", true);
-    S.plans.set(key(p), {x: p.x, y: p.y, take: true, state: "todo"});
-    work();
+  function take(p) {                                  // a plan back; or, of what is built there (its roof first), a plan to take it down
+    const what = taking(p);
+    if (!what) return S.hold ? null : toast("Nothing built there", true);
+    if (what === "plan") { S.plans.delete(key(p)); return; }
+    S.plans.set(key(p), {x: p.x, y: p.y, take: true, roof: what === "roof", state: "todo"});
+    sfx("pick"); work();
   }
   // The work: the nearest plan, a place to stand beside it, the piece put (or the thing taken down); then the next
   async function work() {
     if (S.working) return;
     S.working = true;
     try {
-      for (let j; me && (j = nearest());) {
+      for (let j; me && S.on && (j = nearest());) {
         j.state = "doing";
         const why = await build(j);
         if (!why) S.plans.delete(key(j));
+        else if (!S.on) j.state = "todo";                                     // (you left the mode and walked off: it waits)
         else if (!j.tried) { j.tried = true; j.state = "todo"; }             // once more, after the others: what was in the way may be gone
         else { j.state = "bad"; j.why = why; j.t = now(); toast(why, true); }
       }
@@ -93,35 +106,59 @@ const Build = (() => {
       if (!there) return "No way to get beside it";
     }
     if (!S.plans.has(key(j))) return null;            // (taken back meanwhile)
+    const t = tile(j.x, j.y), tool = (j.take || j.swap) && TOOL_FOR[t[0]] && meObs.self.inventory[TOOL_FOR[t[0]]] ? TOOL_FOR[t[0]] : null;
+    const went = (r) => (r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done");
+    if (j.swap && SWAP[j.item].includes(t[0])) {       // what is in its place comes down first (and back into your pack)
+      actTarget = {x: j.x, y: j.y};
+      const why = went(await act("dig", {dir: "N", ...(tool ? {with: tool} : {})}, true));
+      if (why) return why;
+    }
     actTarget = {x: j.x, y: j.y};
-    const t = tile(j.x, j.y), tool = j.take && TOOL_FOR[t[0]] && meObs.self.inventory[TOOL_FOR[t[0]]] ? TOOL_FOR[t[0]] : null;
-    const r = await act(j.roof ? "unroof" : j.take ? "dig" : "place", j.take ? {dir: "N", ...(tool ? {with: tool} : {})} : {dir: "N", item: j.item}, true);
-    return r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done";
+    return went(await act(j.roof ? "unroof" : j.take ? "dig" : "place", j.take ? {dir: "N", ...(tool ? {with: tool} : {})} : {dir: "N", item: j.item}, true));
   }
 
   function toggle(on = !S.on) {
     if (on === S.on || (on && !me)) return;
-    S.on = on; S.hold = null;
+    S.on = on; S.hold = null; held(null);
     document.body.classList.toggle("building", on);
-    if (on) { S.at = facingTile() || myPos(); toast("Build: arrows move the cursor · Space plans what is in your hand (hold it for a row) · X takes · B when done"); }
-    else { for (const [k, j] of S.plans) if (j.state !== "doing") S.plans.delete(k); S.pan = {x: 0, y: 0}; }      // (what was not begun is dropped)
+    if (on) { S.at = facingTile() || myPos(); toast("Build mode: the arrows move the cursor, Space plans. Hold it for a row."); work(); }
+    else { S.pan = {x: 0, y: 0}; if (todo().length) toast(`${todo().length} plans wait: B to go on building`); }      // (the plans stay where they are)
   }
+  function drop() { const n = todo().length; for (const [k, j] of S.plans) if (j.state !== "doing") S.plans.delete(k); toast(`${n} plans dropped`); }
   function move(dir) {
     const s = myPos(), [dx, dy] = DIRV[dir], x = S.at.x + dx, y = S.at.y + dy;
-    if (!s || !tile(x, y) || Math.max(Math.abs(x - s.x), Math.abs(y - s.y)) > REACH) return;
+    if (!s || !tile(x, y) || Math.max(Math.abs(x - s.x), Math.abs(y - s.y)) > REACH) { sfx("buzz"); return false; }      // (as far as it goes: said, not silent)
     S.at = {x, y};
     if (S.hold === " ") plan(S.at); else if (S.hold === "x") take(S.at);
+    return true;
   }
-  // A key in build mode -> true: it was the mode's (the rest, the bar's numbers and Q among them, go on as ever)
+  // An arrow held: a step at once, then, after a short wait, at the cursor's own pace (not the keyboard's repeat,
+  // which starts late and differs from one machine to the next)
+  function held(dir) {
+    clearTimeout(S.timer); S.dir = dir;
+    if (!dir) return;
+    move(dir);
+    const again = () => { if (S.on && S.dir === dir && move(dir)) S.timer = setTimeout(again, STEP_MS); };
+    S.timer = setTimeout(again, FIRST_MS);
+  }
+  function nextPiece() {                              // Q: the next thing of your bar that is a piece
+    const bar = slots.slice(0, BAR).filter((n) => n && meObs.self.inventory[n] && (PLACEABLE_BLOCK[n] || FILLS[n] || n === "seed"));
+    if (!bar.length) return toast("Nothing to build with in your bar", true);
+    selectItem(bar[(bar.indexOf(selected) + 1) % bar.length]);
+  }
+  // A key in build mode -> true: it was the mode's (the rest, the bar's numbers among them, go on as ever)
   function onKey(k, e) {
     if (!S.on) return false;
-    if (k === "b" || k === "escape") { if (!e.repeat) toggle(false); return true; }
-    if (KEYDIR[k]) { if (!e.repeat || now() - S.moved >= STEP_MS) { S.moved = now(); move(KEYDIR[k]); } return true; }
+    if (k === "b") { if (!e.repeat) toggle(false); return true; }
+    if (k === "escape") { if (!e.repeat) { if (todo().length) drop(); else toggle(false); } return true; }
+    if (KEYDIR[k]) { if (!e.repeat) held(KEYDIR[k]); return true; }
     if (k === " " || k === "x") { if (!e.repeat) { S.hold = k; if (k === " ") plan(S.at); else take(S.at); } return true; }
+    if (k === "q") { if (!e.repeat) nextPiece(); return true; }
     return k === "f" || k === "e";                    // (no picking up nor eating by mistake while you plan)
   }
-  addEventListener("keyup", (e) => { if (e.key.toLowerCase() === S.hold || e.key === S.hold) S.hold = null; });
-  addEventListener("blur", () => { S.hold = null; });
+  addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if (k === S.hold) S.hold = null; if (KEYDIR[k] === S.dir) held(null); });
+  addEventListener("blur", () => { S.hold = null; held(null); });
+  function point(p) { if (S.on && tile(p.x, p.y)) S.at = p; }                // (the mouse: the cursor is where it points)
   function click(p, alt) { S.at = p; if (alt) take(p); else plan(p); }
 
   // What is drawn of it: every plan as a ghost of its piece (a red one: it could not be done), and the cursor
@@ -135,11 +172,14 @@ const Build = (() => {
       ctx.globalAlpha = j.state === "doing" ? .75 : .5;
       if (spr) ctx.drawImage(spr[0], spr[1], spr[2], spr[3], spr[4], x + spr[5] * z, y + spr[6] * z, spr[3] * z, spr[4] * z);
       ctx.globalAlpha = 1;
-      ctx.fillStyle = j.state === "bad" || j.take ? "rgba(230,80,70,.35)" : j.state === "doing" ? "rgba(255,241,168,.35)" : "rgba(140,190,255,.28)";
+      ctx.fillStyle = j.state === "bad" ? "rgba(230,80,70,.4)" : j.take ? "rgba(255,150,60,.3)" : j.state === "doing" ? "rgba(255,241,168,.35)" : "rgba(140,190,255,.28)";
       ctx.fillRect(x, y, Sz, Sz);
+      if (j.take) { ctx.fillStyle = "#b5532a"; for (let i = 4; i < 12; i++) { ctx.fillRect(x + i * z, y + i * z, z, z); ctx.fillRect(x + (15 - i) * z, y + i * z, z, z); } }     // (to come down: a cross)
     }
+    if (S.on && !me) { S.plans.clear(); toggle(false); }                    // (you fell, or the game went: out of the mode)
     if (!S.on || !S.at) return;
-    const x = sx(S.at.x), y = sy(S.at.y, S.at.x), c = 4 * z, w = z, blink = Math.floor(t * 3) % 2 ? "#fff1a8" : "#ffffff";
+    const x = sx(S.at.x), y = sy(S.at.y, S.at.x), c = 5 * z, w = 2 * z, blink = Math.floor(t * 3) % 2 ? "#fff1a8" : "#ffffff";
+    ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fillRect(x, y, Sz, Sz);
     ctx.fillStyle = "#5b3f36";                        // the cursor: four corners, in the game's ink with a light line inside
     for (const [cx, cy, hx, hy] of [[x - w, y - w, 1, 1], [x + Sz + w, y - w, -1, 1], [x - w, y + Sz + w, 1, -1], [x + Sz + w, y + Sz + w, -1, -1]]) {
       ctx.fillRect(Math.min(cx, cx + hx * (c + w)), Math.min(cy, cy + hy * 2 * w), c + w, 2 * w); ctx.fillRect(Math.min(cx, cx + hx * 2 * w), Math.min(cy, cy + hy * (c + w)), 2 * w, c + w);
@@ -155,10 +195,15 @@ const Build = (() => {
     S.pan.x += (to.x - S.pan.x) * k; S.pan.y += (to.y - S.pan.y) * k;
     return S.pan;
   }
-  // What the keys do just now, for the corner of the screen (keyboard.js)
+  // What the keys do just now, for the corner of the screen (keyboard.js): the mode's name first, then each key
+  // that does something here, in a few words
   function rows() {
-    const it = hint(S.at), left = todo().length, j = S.plans.get(key(S.at));
-    return [["Space", it.ok === false ? it.text : `Plan: ${it.text}`, it.ok === false ? "bad" : ""], ["X", j ? "Take the plan back" : "Plan to take down"], ["B", left ? `Done (${left} to build)` : "Done"]];
+    const it = hint(S.at), n = todo().length, what = taking(S.at), out = [["B", "BUILD MODE · leave", "head"]];
+    out.push(["Space", it.text, it.ok === false ? "bad" : ""]);
+    if (what) out.push(["X", what === "plan" ? "Take the plan back" : what === "roof" ? "Take the roof off" : `Take down ${what}`]);
+    if (n) out.push(["Esc", `Drop the ${n} plan${n > 1 ? "s" : ""}`]);
+    return out;
   }
-  return {S, toggle, onKey, click, draw, pan, rows, hint, get on() { return S.on; }, aim: () => ({p: S.at, it: hint(S.at)})};
+  const waiting = () => (!S.on && todo().length ? todo().length : 0);        // plans left on the ground, out of the mode
+  return {S, toggle, onKey, click, point, draw, pan, rows, hint, waiting, get on() { return S.on; }, aim: () => ({p: S.at, it: hint(S.at)})};
 })();

@@ -1314,3 +1314,21 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Measured: new browser test (silence before a key; the gain rises, under 0.3 then higher, full and clear after 8 s;
   no moment meanwhile; off 8 s after joining); sound tests 9 of 9, first-screen tests 7 of 7, unit 409.
 - Not judged by ear by me; the user chose the piece by ear. The public demo's game build does not have it yet.
+
+## Iteration 118: build mode, audited
+- User: "Audit your building interface".
+- Played it through on a copy server, keys then mouse, ten states photographed and read (1280 x 760). What was wrong, worst first:
+  1. Leaving threw the plans away while the key said "Done (4 to build)". The plans not yet built were dropped without a word.
+  2. Nothing said B existed: a wall in hand showed "Place wooden wall" and no more.
+  3. The mode was easy to lose: once its message had gone, a thin pale cursor and three small lines were all that said the arrows no longer walk you.
+  4. The mouse was half in it: the cursor stayed where the keys had left it, the label under the pointer said "Place".
+  5. A door took three moves: take the wall down, wait, place the door.
+  6. The lines were long and vague: "berries is not something to build with" ran under the bar; "Plan to take down" showed over bare grass.
+  7. The cursor stopped eight tiles out without a sound, and a held arrow started late (the keyboard's own repeat).
+  8. A plan to take something down was the same red square as a plan that had failed.
+  9. Q went through the food and the tools.
+  10. X on a roofed wall took the wall and left the roof in the air.
+- Mended (build.js): B leaves and the plans stay on the ground, waiting; the work goes on only in build mode, so out of it your character is yours; "Build: 4 plans wait [B]" is said in the corner. Esc drops the plans (with none: leaves). With a piece in hand the corner says "Build mode: plan a lot [B]". In the mode its first line is "BUILD MODE · leave [B]", in the bar's yellow; the cursor is thicker, on a lit tile. The cursor is where the mouse points and the label says what a click plans. A door on a wall, a gate on a fence: planned in its place (the wall comes down into your pack, the door goes in). Every line 26 letters at most, each key shown only if it does something there ("Take down wooden wall", "Take the roof off", "Take the plan back"). The cursor goes ten tiles and buzzes at its limit; a held arrow steps at once, then every 75 ms after 230. To come down: an orange tile with a cross. Q: the next piece of your bar. X takes the roof first. Falling or leaving the game ends the mode.
+- Coming back into the mode puts the cursor on the tile you face (my test took it to be where I had left it: the test was wrong, not the game).
+- Tests: test_e2e_build.py (3): the two from before, and one for the audit: B said with a piece in hand, no X line over grass, a held arrow five tiles in 0.7 s, plans kept on leaving and built on coming back, Q among pieces only, a door planned in a wall's place, Esc twice, the mouse as the cursor. 409 unit; 29 in Chrome round it (build, edges, help, keys, ui, bag, the island).
+- Not mended: touch has no build mode (the phone); plans are not kept across a reload; the corner's lines are still small text over the world rather than a panel; the cursor cannot go past ten tiles from you (walk closer); nobody else sees your plans.

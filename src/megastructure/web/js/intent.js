@@ -72,7 +72,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     const on = Structures.roofAt(p.x, p.y), rests = Structures.WALLS.includes(c) || Object.values(DIRV).some(([dx, dy]) => Structures.roofAt(p.x + dx, p.y + dy) || Structures.WALLS.includes(combAt(p.x + dx, p.y + dy) || "-"));
     if (shift) return on ? {text: "Take the roof tile off", near: 1, run: (d) => act("unroof", {dir: d})} : {text: "No roof there", ok: false};
     return !ROOFS ? {text: "This world roofs its houses by itself", ok: false} : on ? {text: "There is a roof here", ghost: "roof", ok: false}
-      : rests ? {text: "Lay roof", ghost: "roof", ok: true, near: 1, run: (d) => act("place", {dir: d, item: "roof"})} : {text: "A roof needs a wall or a roof beside it", ghost: "roof", ok: false};
+      : rests ? {text: "Lay roof", ghost: "roof", ok: true, near: 1, run: (d) => act("place", {dir: d, item: "roof"})} : {text: "Needs a wall or roof beside", ghost: "roof", ok: false};
   }
   if (ent) {
     const who = ent.e.name || ent.e.kind, w = inHand(), weapon = w && WEAPON_DMG[w] ? w : null;
