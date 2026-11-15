@@ -9,13 +9,18 @@ from websockets.http11 import Response
 WEB = Path(__file__).parent / "web"
 
 
-def serve_http(connection, request):
-    """Plain HTTP GETs (no websocket upgrade) get the browser client."""
+def serve_http(connection, request, accounts=None):
+    """Plain HTTP GETs (no websocket upgrade) get the browser client. A world that asks who you are (gate.py)
+    tells the page where to log in."""
     if request.headers.get("Upgrade", "").lower() == "websocket":
         return None
     path = request.path.split("?")[0]
     if path in ("/", "/index.html"):
-        return _file(WEB / "index.html", "text/html; charset=utf-8")
+        page = _file(WEB / "index.html", "text/html; charset=utf-8")
+        if accounts:
+            body = page.body.replace(b"<body>", f'<body data-accounts="{accounts}">'.encode(), 1)
+            page = Response(200, "OK", Headers([("Content-Type", "text/html; charset=utf-8"), ("Content-Length", str(len(body))), ("Cache-Control", "no-cache")]), body)
+        return page
     folder, _, name = path.lstrip("/").partition("/")
     if folder in STATIC:
         root = (WEB / folder).resolve()

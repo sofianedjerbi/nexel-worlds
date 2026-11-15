@@ -17,3 +17,14 @@ uv run pytest -q
 ```
 
 Open http://127.0.0.1:7777/ to watch live, follow agents, or type a name and press Enter to play.
+
+### Asking who players are (optional)
+
+A world can ask for an email login: a six-digit code by mail, then a signed ticket the world checks. It never sees the email.
+
+```sh
+brew install mailpit && mailpit                  # catches the mail on this machine: inbox at http://127.0.0.1:8025
+uv run python -m megastructure.account --origin http://127.0.0.1:7777      # the account service, on :7780, data in accounts/
+uv run python -m megastructure.server --accounts http://127.0.0.1:7780
+MEGASTRUCTURE_AGENT_KEY=$(cat saves/default/agent.key) uv run python -m megastructure.bots --n 8   # local programs use the world's key
+```

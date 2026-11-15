@@ -132,6 +132,6 @@ def test_a_tusker_that_is_hit_shows_it_is_angry(game):
     red = game.js("""() => new Promise((ok) => requestAnimationFrame(() => { const p = [...ents.values()].find((q) => q.e.kind === 'tusker'), S = TS(), [ox, oy] = screenOrigin(S);
       const d = cv.getContext('2d').getImageData(Math.round((ox + p.x * S - S) * DPR), Math.round((oy + p.y * S - 2 * S) * DPR), Math.round(3 * S * DPR), Math.round(2 * S * DPR)).data; let n = 0;
       for (let o = 0; o < d.length; o += 4) if (d[o] === 240 && d[o + 1] === 80 && d[o + 2] === 63) n++; ok(n / (zoom * DPR) ** 2); }))""")
-    assert red == 12                                                             # the mark: twelve px of its red
+    assert 12 <= red < 16, red                                                   # the mark: twelve px of its red (and a spark of the same red, some frames)
     game.sleep(2500)
     assert game.server()["hp"] < 20                                              # ...and it came

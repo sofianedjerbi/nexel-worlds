@@ -7,7 +7,10 @@ function joinGame(name) {
   let token = localStorage.getItem(key); if (!token) { token = crypto.randomUUID(); localStorage.setItem(key, token); }
   agentWs = openSocket("/agent");
   agentWs.onopen = async () => {
-    const r = await rpc("hello", {name, token, persona: "human", race: myRace});      // (races.js)
+    const ticket = ACCOUNT.url ? await accountTicket() : null;                         // a world that asks who you are (account.js)
+    if (ACCOUNT.url && !ticket) { agentWs.close(); return; }
+    const r = await rpc("hello", {name, token, persona: "human", race: myRace, ...(ticket ? {ticket} : {})});      // (races.js)
+    if (r.error === "bad_ticket") accountDrop();
     if (!r.ok) { toast(r.error === "bad_token" ? `“${name}” is already someone else. Pick another name.` : (r.detail || r.error), true); agentWs.close(); return; }
     me = r.agent.name; myId = r.agent.id; follow = null; localStorage.setItem("megastructure-name", me);
     camT.x = cam.x = r.agent.x; camT.y = cam.y = r.agent.y;

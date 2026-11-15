@@ -27,13 +27,19 @@
   <div class="logo">NEXEL<em>WORLDS</em></div>
   <div class="say" id="splash">Build your world. Open a door.</div>
   <div class="menu">
-    <div class="card"><canvas id="titleme" width="24" height="26"></canvas>
+    <div class="card step-mail"><div class="me"><span class="soft">Your email</span><input id="email" type="email" placeholder="you@example.com" maxlength="254" autocomplete="email"></div></div>
+    <button class="item step-mail" id="sendcode"><span>Send me a code</span><kbd>Enter</kbd></button>
+    <div class="card step-code"><div class="me"><span class="soft">The code we mailed you</span><input id="code" inputmode="numeric" placeholder="6 digits" maxlength="6" autocomplete="one-time-code"></div></div>
+    <button class="item step-code" id="login"><span>Log in</span><kbd>Enter</kbd></button>
+    <button class="item step-code" id="startover"><span>Start over</span></button>
+    <div class="card step-me"><canvas id="titleme" width="24" height="26"></canvas>
       <div class="me"><span class="soft">Your name</span><input id="name" placeholder="type it here" maxlength="24" autocomplete="off"></div></div>
-    <div id="raceslot"></div>
-    <button class="item" id="join"><span>Wake up</span><kbd>Enter</kbd></button>
+    <div id="raceslot" class="step-me"></div>
+    <button class="item step-me" id="join"><span>Wake up</span><kbd>Enter</kbd></button>
     <button class="item" id="watch"><span>Just watch</span></button>
     <button class="item" id="titlehelp"><span>Help</span><kbd>H</kbd></button>
     <button class="item" id="titlesound"><span>Sound</span><span class="soft" id="titlesoundv">on</span></button>
+    <button class="item step-me" id="logout"><span>Log out</span><span class="soft" id="logoutv"></span></button>
   </div>
 </div>
 <div id="help"></div>
@@ -123,6 +129,7 @@
 <script src="js/main.js"></script>
 <script src="js/help.js"></script>
 <script src="js/splash.js"></script>
+<script src="js/account.js"></script>
 <script src="js/title.js"></script>
 <script src="js/title_map.js"></script>
 <script src="js/title_scene.js"></script>

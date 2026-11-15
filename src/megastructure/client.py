@@ -3,6 +3,7 @@
 import asyncio
 import itertools
 import json
+import os
 
 from websockets.asyncio.client import connect
 
@@ -61,7 +62,8 @@ class Client:
         return await fut
 
     async def hello(self, name: str, token: str, persona: str = "") -> dict:
-        r = await self.request("hello", name=name, token=token, persona=persona)
+        key = os.environ.get("MEGASTRUCTURE_AGENT_KEY", "")   # a world with a door (gate.py): its agent.key lets local programs in
+        r = await self.request("hello", name=name, token=token, persona=persona, **({"key": key} if key else {}))
         if not r.get("ok"):
             raise ApiError(r)
         self.agent = r["agent"]

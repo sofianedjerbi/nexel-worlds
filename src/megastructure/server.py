@@ -17,6 +17,7 @@ from websockets.asyncio.server import serve
 from websockets.exceptions import ConnectionClosed
 
 from .devtools import dev_op
+from .gate import Gate
 from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
 from .sim.constants import FOOD_MAX, HP_MAX, EAT_PACE, SPRINT_FOOD, SWIM_PACE
 from .tiles import FOOD, RECIPES
@@ -51,9 +52,10 @@ class RateLimiter:
 
 
 class GameServer(Views):
-    def __init__(self, world_dir: Path, seed: int | None = None, dev: bool = False):
+    def __init__(self, world_dir: Path, seed: int | None = None, dev: bool = False, accounts: str = ""):
         self.dev = dev  # enables dev_give (QA only; never on a public server)
         world_dir.mkdir(parents=True, exist_ok=True)
+        self.gate = Gate(accounts, world_dir) if accounts else None   # a world that asks who you are (gate.py)
         self.sim = Simulation(world_dir / "world.sqlite", seed=seed, event_log=world_dir / "events.jsonl")
         self.conns: dict[int, object] = {}  # agent id -> connection
         self.notify: dict[int, object] = {}  # agent id -> callable(dict) pushing a message to that agent
@@ -142,6 +144,9 @@ class GameServer(Views):
                 elif op == "recipes":
                     out = {"recipes": {k: {"inputs": r.inputs, "output": r.output, "station": r.station}
                                        for k, r in RECIPES.items()}, "food": FOOD}
+                elif op == "who" and self.gate:                # the name this account already plays here, if any
+                    account = await asyncio.to_thread(self.gate.account, str(msg.get("ticket", "")), ws.request.headers.get("Host", ""))
+                    out = {"who": True, "name": self.sim.agents[self.sim.owners[account]].name if account in self.sim.owners else None}
                 elif op == "agents":
                     out = {"agents": [dict(a.to_json(), online=a.online) for a in self.sim.agents.values()]}
                 else:
@@ -162,7 +167,7 @@ class GameServer(Views):
                 await ws.send(await out.get())
 
         wtask = asyncio.create_task(writer())
-        agent = None
+        agent, account, refused = None, None, 0
         limits = RateLimiter()
         try:
             async for raw in ws:
@@ -182,11 +187,17 @@ class GameServer(Views):
                     if op != "hello":
                         reply(mid, False, error="hello_first")
                         continue
+                    name, token, race = str(msg.get("name", "")), str(msg.get("token", "")), str(msg.get("race", ""))
                     try:
-                        agent = self.sim.login(str(msg.get("name", "")), str(msg.get("token", "")),
-                                               str(msg.get("persona", "")), str(msg.get("race", "")))
+                        if self.gate:                          # a ticket (a person) or this world's key (a local program)
+                            account = await asyncio.to_thread(self.gate.who, msg, ws.request.headers.get("Host", ""))
+                        agent = (self.sim.enter(account, name, token, race) if account
+                                 else self.sim.login(name, token, str(msg.get("persona", "")), race))
                     except ActionError as e:
                         reply(mid, False, error=e.code, detail=e.detail)
+                        refused += 1
+                        if refused >= 10:                      # (nobody honest is turned away ten times)
+                            break
                         continue
                     old = self.conns.get(agent.id)
                     if old is not None and old is not ws:
@@ -219,7 +230,7 @@ class GameServer(Views):
                             reply(mid, False, error=result.get("error"), detail=result.get("detail"), result=result)
 
                     self.sim.submit(agent, tool, args, on_done=done)
-                elif op.startswith("dev_") and self.dev:  # QA tools, only with --dev
+                elif op.startswith("dev_") and self.dev and not account:  # QA tools, only with --dev, never for who came by ticket
                     reply(mid, **dev_op(self.sim, agent, op, msg))
                 elif op == "tools":
                     reply(mid, tools=TOOL_SPECS)
@@ -243,7 +254,8 @@ class GameServer(Views):
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, self.stopping.set)
         ticker = asyncio.create_task(self.tick_loop())
-        async with serve(self.handler, host, port, max_size=2**20, process_request=serve_http) as server:
+        async with serve(self.handler, host, port, max_size=2**20,
+                         process_request=lambda c, r: serve_http(c, r, self.gate and self.gate.url)) as server:
             log.info("megastructure listening on ws://%s:%d (seed %d, tick %d) - open http://%s:%d/ to watch",
                      host, port, self.sim.seed, self.sim.tick, host, port)
             await self.stopping.wait()
@@ -262,9 +274,10 @@ def main():
     p.add_argument("--port", type=int, default=7777)
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--dev", action="store_true", help="enable dev_give for automated QA")
+    p.add_argument("--accounts", default="", help="ask who players are: the account service, e.g. http://127.0.0.1:7780")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    gs = GameServer(Path(args.saves) / args.world, seed=args.seed, dev=args.dev)
+    gs = GameServer(Path(args.saves) / args.world, seed=args.seed, dev=args.dev, accounts=args.accounts)
     asyncio.run(gs.run(args.host, args.port))
 
 

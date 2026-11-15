@@ -17,6 +17,11 @@ body.title #brand, body.title #side { display:none; }
   box-shadow:inset var(--q) var(--q) 0 #fbf0d6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(4 * var(--q)) 0 rgba(60,40,30,.25); }
 #joinbox .card { display:flex; align-items:center; gap:calc(5 * var(--q)); padding:calc(4 * var(--q)); background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #b8946a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }
 #joinbox #titleme { flex:none; width:calc(48 * var(--q)); height:calc(52 * var(--q)); image-rendering:pixelated; }
+/* one step at a time (title.js): your email, the code, who you are; a world with no accounts only has the last */
+#joinbox:not([data-step="mail"]) .step-mail, #joinbox:not([data-step="code"]) .step-code, #joinbox:not([data-step="me"]) .step-me { display:none; }
+body:not([data-accounts]) #logout { display:none; }
+#joinbox #logoutv { min-width:0; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#joinbox input[readonly] { background:#e8cfa6; cursor:default; }
 #joinbox .me { flex:1; min-width:0; display:flex; flex-direction:column; gap:calc(3 * var(--q)); }
 #joinbox .soft { color:var(--ink2); }
 #joinbox input { all:unset; box-sizing:border-box; width:100%; height:calc(17 * var(--q)); padding:0 calc(4 * var(--q)); font:inherit; color:var(--ink); background:#fff6e2; cursor:text;

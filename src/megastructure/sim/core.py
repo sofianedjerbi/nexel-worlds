@@ -37,7 +37,7 @@ from .wild import Wild
 from .needs import Needs
 from .observe import Observation
 from .persistence import Persistence
-from .sessions import Sessions
+from .sessions import Sessions, owners_of
 from .social import Social
 from .specs import TOOL_SPECS
 
@@ -62,6 +62,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             known = {f.name for f in fields(Agent)}            # saves from older versions may carry dropped fields
             self.agents[aid] = Agent(**{k: v for k, v in json.loads(js).items() if k in known})
             self.tokens[aid] = th
+        self.owners = owners_of(store.db)                      # (sessions.py)
         self.old_vitals(store.get_meta("vitals", 1) < 2)       # (saved when health and food were 0 to 100: needs.py)
         self.by_name = {a.name: a for a in self.agents.values()}
         self.ticking: set[tuple[int, int]] = set()        # chunks where creatures live this tick (spawning.py)
