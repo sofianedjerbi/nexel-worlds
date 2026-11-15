@@ -1,4 +1,4 @@
-// Mouse: hover hints, click to act, drag, zoom.
+// Mouse: hover hints, click to act, drag. (The wheel: zoom.js.)
 
 // =====================================================================================
 //  Input
@@ -39,4 +39,3 @@ cv.addEventListener("mouseleave", () => { mouse.in = false; $("hover").style.dis
 cv.addEventListener("mousedown", (e) => { if (e.button === 0) drag = {x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false}; });
 cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.moved && me) { const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, e.shiftKey); else clickTile(q, e.shiftKey); } drag = null; });
 cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (!me) return; const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, true); else clickTile(q, false); });
-cv.addEventListener("wheel", (e) => { e.preventDefault(); zoom = Math.max(1, Math.min(6, zoom + (e.deltaY < 0 ? 1 : -1))); }, {passive: false});

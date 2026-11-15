@@ -1374,3 +1374,18 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - User, with a picture: "lower corners should be linked to upper. also, great redesign of walls".
 - Where a wall came down onto a front (a house's two lower corners, a T from the north) the front's cap had its dark top line right across the band: two pieces touching. The band now runs into the cap (structures.js: the line is left open over the band's width).
 - Looked at both lower corners of the user's yard on a copy; the test reads the pixel where they meet (the cap's own colour). 410 unit; the four build tests pass.
+
+## Iteration 119: zoom that can be used
+- Asked: "fix the zooming process. in the game, zooming is hard, uninturitive and ugly".
+- What it was (read and tried on a copy): every wheel event was a whole level, so one trackpad swipe (dozens of events)
+  went from one end to the other; the picture jumped from a size to the next; nothing showed the level or its ends;
+  level 1 made a player 16 px tall.
+- Change: `web/js/zoom.js` owns it. The wheel is counted in distance (a mouse notch: a level; a trackpad: a level per
+  90 px, at most one every 200 ms; a pinch on a trackpad counts too); a level glides into the next over 140 ms (the
+  canvas is scaled, never under the window's size, then drawn at the new whole-number size); a sign (− pips +, in the
+  HUD's pixels, clickable) shows while you zoom and nods at an end; a player's view stops at 2, a spectator's at 1;
+  the level is kept in the browser. `+`, `−` and the phone's pinch go through the same code.
+- Measured: `tests/e2e/test_e2e_zoom.py` (a notch is one level; a 40-event swipe is one level, it was the whole range;
+  the glide starts and ends clean; the sign; the stop at 2; kept). Full browser run 186 pass, 1 error that is a player
+  not getting in under load (passes alone); unit 413.
+- Not seen by me in motion at 60 frames a second, only in screenshots taken during the glide: no edge shows.

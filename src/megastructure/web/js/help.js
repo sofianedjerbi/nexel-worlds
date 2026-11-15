@@ -4,7 +4,7 @@
 // Esc shuts it. Its looks are css/help.css.
 
 const HELP = [
-  ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Alt"], "Turn without walking"], [["+", "−"], "Zoom"], [["G"], "Goals: show or hide"]]],
+  ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Alt"], "Turn without walking"], [["+", "−"], "Zoom (or the wheel)"], [["G"], "Goals: show or hide"]]],
   ["Do", [[["Space"], "Use what you face"], [["X"], "Other use: milk, till"], [["F"], "Pick up"], [["E"], "Eat"],
     [["Click"], "Space there. Shift: X"]]],
   ["Carry", [[["1-9", "Q"], "Take in hand"], [["`"], "Empty your hands"], [["Space"], "Place what you hold"],

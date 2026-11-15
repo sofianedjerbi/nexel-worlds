@@ -67,6 +67,17 @@
   #banner { left:50%; top:24%; transform:translateX(-50%); display:none; text-align:center; width:min(520px, 90vw); z-index:5; }
   #banner .t { font-size:36px; line-height:40px; color:var(--warn); margin-bottom:6px; }
   #toast { left:50%; top:10px; transform:translateX(-50%); display:none; max-width:70vw; }
+  /* the zoom's sign (zoom.js): − ▪▪▪▫▫ +, in the HUD's pixels, there while you zoom and a moment after */
+  #zoomer { position:fixed; right:12px; top:50%; margin-top:-22px; display:flex; align-items:center; gap:calc(2 * var(--q)); padding:calc(2 * var(--q)) calc(3 * var(--q));
+    background:#f7e7c6; color:var(--ink); border:var(--q) solid var(--ink); border-bottom-width:calc(2 * var(--q)); opacity:0; pointer-events:none; transition:opacity .25s steps(3); z-index:6; }
+  #zoomer.show { opacity:1; pointer-events:auto; }
+  #zoomer.nod { animation:zoomnod .18s steps(2); }
+  @keyframes zoomnod { 50% { transform:translateX(calc(2 * var(--q))); } }
+  #zoomer b { font-size:26px; line-height:22px; width:22px; text-align:center; cursor:pointer; }
+  #zoomer b.end { color:#c9ab86; cursor:default; }
+  #zoomer span { display:flex; gap:var(--q); }
+  #zoomer i { width:calc(3 * var(--q)); height:calc(3 * var(--q)); background:#d9bd95; box-shadow:inset 0 var(--q) 0 #c9ab86; }
+  #zoomer i.on { background:var(--accent); box-shadow:inset 0 var(--q) 0 #7fc296; }
   #help { right:10px; bottom:10px; display:none; max-width:300px; color:var(--ink2); font-size:18px; }
   #help b { color:var(--ink); font-weight:normal; }
   #hover.bad { color:var(--warn); }

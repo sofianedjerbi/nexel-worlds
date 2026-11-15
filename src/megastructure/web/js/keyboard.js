@@ -152,7 +152,6 @@ function closePanels() {
   for (const id of ["bag", "mail", "craft"]) $(id).style.display = "none";
   drawGoals();
 }
-function zoomBy(d) { zoom = Math.max(1, Math.min(6, zoom + d)); }
 
 const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   " ": () => useFacing(false),

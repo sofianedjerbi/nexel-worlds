@@ -171,9 +171,9 @@ def test_the_recipe_book_is_one_size_whatever_it_shows(game):
 
 def test_zoom_help_and_debug_keys(game):
     z0 = game.js("zoom")
-    game.press("+", 100)
+    game.press("+", 300)                               # (a level glides into the next: zoom.js)
     assert game.js("zoom") == z0 + 1
-    game.press("-", 100)
+    game.press("-", 300)
     assert game.js("zoom") == z0
     game.press("h", 200)
     assert game.js("$('help').style.display") == "block"
