@@ -20,7 +20,7 @@ from .entities import ActionError
 
 STOREY = 3                                        # a floor is this many layers over the one under it
 RESTS_ON = ("wood_wall", "stone_wall", "door")    # what holds a block up from under, a storey below it
-UPSTAIRS = ("wood_wall", "stone_wall", "door", "fence", "gate", "chair", "table", "bed", "plant", "clock", "rug")
+UPSTAIRS = ("wood_wall", "stone_wall", "door", "fence", "gate", "chair", "table", "bed", "plant", "clock", "rug", "ladder")
 EARTH = "dirt"                                    # the piece that raises the land a layer
 
 
@@ -149,8 +149,10 @@ class Storeys:
         self.reach(a, x, y, z=z)
         for again in (False, True):
             cell = self.floors.get(x, y, z)
-            if cell is None or self.world.solid(x, y, z + 1):
+            if cell is None or self.world.solid(x, y, z + 1) or cell[0] == "stairs":
                 raise ActionError("bad_target", "there is no floor there to stand it on")
+            if block == "ladder" and not self.leans(x, y, z):
+                raise ActionError("bad_target", "a ladder goes against something taller beside it")
             if cell[1] != "none":
                 raise ActionError("occupied", f"there is a {cell[1].replace('_', ' ')} there")
             if BLOCKS[B[block]].solid and any(self.height(b) == z for b in self.bodies_on(x, y)):
@@ -169,6 +171,8 @@ class Storeys:
             raise ActionError("bad_target", "nothing is built there")
         self.reach(a, x, y, z=z)
         kind, thing = cell
+        if kind == "stairs":
+            return (yield from self.take_stairs(a, x, y, z))
         if thing != "none":
             block = BLOCKS[B[thing]]
             yield from self.wait(a, block.hardness / 20 * (T.BY_HAND[block.tool] if block.tool and tool != block.tool else 1))
@@ -219,11 +223,15 @@ class Storeys:
         the built block you face, a roof a storey over the tile), a thing for a built block, earth for the land.
         -> the action, or None (building.py goes on)."""
         item = str(args.get("item", ""))
-        if item not in KINDS and item not in PLACEABLE and item != EARTH:
+        if item not in KINDS and item not in PLACEABLE and item != EARTH and item != "stairs":
             return None
         x, y = self.target(a, args, flat=True)
+        if item == "stairs":                             # (a flight of them, down from the higher place beside: climbing.py)
+            return self.lay_stairs(a, x, y)
         s = self.surface(a, x, y, args.get("z"))         # (the height it is about: named, or the ground nearest your own)
         on_land = self.floors.get(x, y, s) is None       # ...which is the land's own, not a built block
+        if item == "ladder" and on_land and not self.leans(x, y, s):
+            raise ActionError("bad_target", "a ladder goes against something taller beside it")
         if item == EARTH:
             land = on_land and s == self.world.top(x, y) and self.world.block(x, y) in ("none", "flower")
             return self.raise_land(a, x, y) if land and self.world.ground(x, y) in T.LAND else None

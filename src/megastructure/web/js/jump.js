@@ -14,7 +14,7 @@ function jumpOf(p) {
   const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
   if (ax === bx && ay === by) return null;
   const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by);
-  if (la === lb) return null;
+  if (la === lb || Climb.onLadder(ax, ay, la, bx, by, lb)) return null;          // (up or down a ladder: a straight climb)
   const f = ax === bx ? p.y - ay : p.x - ax, d = (lb - la) * RELIEF_STEP;        // how far across; px from the first to the second
   const up = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0 === d > 0;   // going to the higher one?
   return {body: (Math.abs(d) / 2 + (up ? JUMP.over : JUMP.off)) * 4 * f * (1 - f), ground: (f < .5 ? 0 : d) - d * f};
@@ -44,7 +44,7 @@ function fallOf(p, now) {
   const f = ax === bx ? p.y - ay : p.x - ax, u = la > lb ? f : 1 - f;         // how far from the higher tile's middle to the lower one's
   let F = p.fall;
   if (!F) {
-    if (!down || Math.abs(la - lb) < FALL.from) return null;
+    if (!down || Math.abs(la - lb) < FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb)) return null;
     F = p.fall = {top: Math.max(la, lb) * RELIEF_STEP, land: Math.min(la, lb) * RELIEF_STEP, t0: 0};
   }
   if (F.done) {                                           // down before the step was over: on the ground, to the end of it

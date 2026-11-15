@@ -89,6 +89,7 @@ const Floors = (() => {
       const ink = Structures.INK;
       if (!get(x, y, z + 1)) {
         ctx.drawImage(IMG.house_walls, 16, 16, 16, 16, px, top, S, S);
+        if (kind === "stairs") Climb.tread(x, y, z, px, top);       // (a step: its tread, climbing.js)
         if (!get(x, y - 1, z)) r(ink, 0, 0, 16, 1);
         if (!get(x - 1, y, z)) r(ink, 0, 0, 1, 16);
         if (!get(x + 1, y, z)) r(ink, 15, 0, 1, 16);
@@ -105,6 +106,7 @@ const Floors = (() => {
   function thing(ch, x, y, z, sx, sy, S, t, now, a) {
     const at = (yy) => sy(yy) - shOf(z) * zoom;
     if (Structures.WALLS.includes(ch)) return Structures.drawWall(ch, x, y, sx, at, S, now, a, z);
+    if (ch === "l") return Climb.drawLadder(x, y, z, sx, sy, S, a);
     const spr = objectSprite(ch, x, y, t); if (!spr) return;
     ctx.globalAlpha = a;
     ctx.drawImage(spr[0], spr[1], spr[2], spr[3], spr[4], Math.round(sx(x) + spr[5] * zoom), Math.round(at(y) + spr[6] * zoom), spr[3] * zoom, spr[4] * zoom);
@@ -130,7 +132,7 @@ const Floors = (() => {
   }
   // What a click or a key means with a block in hand, or on a tile whose ground at your height is a built block
   // (intent.js asks first): said in a few words, with what does it. Nothing: the ground's own (intent.js goes on)
-  const UP = new Set("W%+#ghLBpKr");                 // what stands on a built block (sim/storeys.py UPSTAIRS)
+  const UP = new Set("W%+#ghLBpKrl");                // what stands on a built block (sim/storeys.py UPSTAIRS)
   function intent(p, shift) {
     const s = myPos(), it = selected && !shift ? selected : null, isMe = s.x === p.x && s.y === p.y;
     const z = settleNear(p.x, p.y, myZ(s.x, s.y)), c = FLOORS ? get(p.x, p.y, z) : null, on = c ? c[1] : "", zArg = (zz) => (FLOORS ? {z: zz} : {});
@@ -145,10 +147,11 @@ const Floors = (() => {
       return why ? {text: why, ghost: it, ok: false, z: zz} : place(zz, it === "roof" ? "Lay roof" : "Put planks on top");
     }
     if (!c || isMe) return null;
+    if (it && PLACEABLE_BLOCK[it] && c[0] === "stairs") return {text: "Not on a step", ghost: it, ok: false, z};
     if (it && PLACEABLE_BLOCK[it]) return on ? {text: "Something is there", ghost: it, ok: false, z} : UP.has(PLACEABLE_BLOCK[it]) ? place(z, `Place ${label(it)}`) : {text: "It needs the ground", ghost: it, ok: false, z};
     if (on === "B" && !shift) return {text: "Sleep (wake up here after dying)", near: 1, z, run: (d) => act("sleep", {dir: d})};
     if (on) { const tool = TOOL_FOR[on], w = inHand(); return {text: (HARVEST[on] || "Take down " + label(CH[on])) + (tool ? (w === tool ? ` with ${tool}` : " by hand (slow)") : ""), near: 1, z, run: (d) => act("dig", {dir: d, z, ...(w ? {with: w} : {})})}; }
-    if (shift) return {text: c[0] === "roof" ? "Take the roof block" : "Take up the planks", near: 1, z, run: (d) => act("dig", {dir: d, z})};
+    if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", near: 1, z, run: (d) => act("dig", {dir: d, z})};
     return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y, z})};
   }
   return {STOREY, K, UP, any: (x, y) => !!colOf(x, y), get, set, load, mask, thingAt, fits, standOf, rise, alpha, cell, thing, draw, intent, get ver() { return ver; }, get veils() { return veils; }};

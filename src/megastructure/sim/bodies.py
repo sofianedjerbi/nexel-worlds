@@ -31,13 +31,20 @@ class Bodies:
         height is solid there you jump up onto it if it is ground (nothing over it, nor over your own head: under a
         low ceiling there is no jumping out through it); where it is empty you step in at your own height and come
         down on whatever ground is under you there (a fall, however far)."""
-        return self.lands(self.height(b), b.x, b.y, x, y)
+        return self.lands(self.height(b), b.x, b.y, x, y, climbs=hasattr(b, "inventory"))
 
-    def lands(self, h: int, x0: int, y0: int, x: int, y: int) -> int | None:
-        """...the same, for anyone standing at height h on (x0, y0) (the way somewhere is worked out with it)."""
+    def lands(self, h: int, x0: int, y0: int, x: int, y: int, climbs: bool = False) -> int | None:
+        """...the same, for anyone standing at height h on (x0, y0) (the way somewhere is worked out with it). With
+        `climbs` (people): on a ladder, where the step would be a wall or nowhere to stand, up it (climbing.py)."""
         if self.world.solid(x, y, h + 1):                # (a jump: room over it, and over your own head to make it)
-            return None if self.world.solid(x, y, h + 2) or self.world.solid(x0, y0, h + 2) else h + 1
-        return max(z for z in self.world.surfaces(x, y) if z <= h)
+            land = None if self.world.solid(x, y, h + 2) or self.world.solid(x0, y0, h + 2) else h + 1
+        else:
+            land = max(z for z in self.world.surfaces(x, y) if z <= h)
+        if climbs and self.thing(x0, y0, h) == "ladder" and (land is None or not self.open_at(x, y, land)):
+            up = self.climb_to(h, x0, y0, x, y)
+            if up is not None:
+                return up
+        return land
 
     def safe_step(self, b, x: int, y: int) -> bool:
         """A step to the neighbouring (x, y) that is no wall and no fall that hurts: one a body takes of itself."""

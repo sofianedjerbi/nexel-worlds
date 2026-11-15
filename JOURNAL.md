@@ -1521,3 +1521,25 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   table, a rug; a roof a storey over that; a path and flowers. Tried first on a copy of the world.
 - Two faults seen while looking at it: standing on a roof, the roof tile south of you was thinned as if it covered you
   (now only a block higher than where you stand can); someone upstairs over a door opened it (now only people on the land).
+
+## Iteration 130: stairs and ladders
+- Asked: "create stairs and ladders to access upper floors".
+- The way up was a pile of planks, one high then two, beside a hole in the floor: right, but nothing said so. Two
+  pieces now (sim/climbing.py, web/js/climbing.js; the same rules both sides, so your walk and the hints say what the
+  server will do).
+- Stairs (1 wood: 2): put beside a higher place (a floor's edge, a terrace, a ledge, 2 to 7 layers up), one press
+  lays the whole flight: a step a tile, a layer lower each, down to the ground. Straight out from it; where that way
+  is shut (often by you, standing before the wall), along it. A step is a column of built blocks (kind `stairs`),
+  drawn as planks with a tread: lit at its nose, the next riser's shadow at its back. A stairs a step; X takes a step
+  back, its whole column.
+- Ladder (2 wood): against anything taller beside it, on the ground or on a floor. Walk into the taller thing from
+  the ladder and you come out on top (the lowest place up there you can stand on, the ladder's tile open all the way:
+  a floor over a ladder needs a hatch); walk off the top onto it and you climb down: no fall, however high. Only
+  people climb. Drawn from its foot to the top it leads to, rails and rungs in the houses' wood; climbing is a
+  straight slide, not a hop or a fall. The way somewhere (move_to) goes up ladders too.
+- Icons drawn in tools/pixel_art.py and added at the end of gen.png. A ladder is heard as a fence post going in
+  (tools/build_audio.py SOUNDS_LIKE: the sound map is in music/, which I leave alone).
+- Tried on a copy of the world on doben4's house: a flight up to its terrace from the west end, a ladder from the
+  terrace onto the roof, climbed and come down unhurt.
+- Tests: tests/test_climbing.py (3), tests/e2e/test_e2e_climb.py (2: a flight by Space and walked up, one planned in
+  build mode; a ladder against a cliff six layers up, climbed and come down unhurt).

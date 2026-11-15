@@ -85,6 +85,7 @@ function spriteOf(c, x, y, t) {
       ? [IMG.mailbox, 64, 60 + (Math.floor(t * 2) % 2 ? 0 : -1), 16, 36, 0, -20] : [IMG.mailbox, 0, 16, 16, 32, 0, -16];      // (from the sheet's row 60: the letter's bubble begins at 62, and its top was cut off)
     case "V": return [IMG.boats, (Math.floor(t * 1.5 + h * 9) % 2) * 48, 32, 48, 32, -16, -10];   // moored, rocking
     case "W": return [IMG.house_walls, 48, 16, 16, 16, 0, 0];                         // (a wall as a thing: a small plank block; standing, structures.js draws it)
+    case "l": return [IMG.gen, ...genCell("ladder"), 16, 16, 0, -2];                    // (as a thing in hand; standing, climbing.js draws it up to its top)
     case "+": return [IMG.door, 80, 0, 16, 16, 0, 0];                                 // a door, shut (it was a wall with a small hole in it: a window, to look at)
     case "^": return [IMG.gen, ...genCell(Math.floor(t * 6 + x) % 2 ? "campfire1" : "campfire0"), 16, 16, 0, -2];
     case "x": return [IMG.gen, ...genCell(Math.floor(t * 8 + x + y) % 2 ? "fire1" : "fire0"), 16, 16, 0, -3];

@@ -1,0 +1,66 @@
+"""Ladders and stairs, by keys (web/js/climbing.js; the server: sim/climbing.py)."""
+
+SLOT = "(n) => String((slots.indexOf(n) + 1) % 10)"           # the key of the bar's slot that holds it
+
+
+def step(game, key):
+    game.hold([key], 90)                                       # (a tap: a tile)
+    game.sleep(550)
+    s = game.server()
+    return s["x"], s["y"], s["z"]
+
+
+def test_stairs_are_laid_with_one_press_and_walked_up(game):
+    """Beside a floor three layers up, Space with stairs in hand lays the whole flight: two steps down towards you.
+    Up them by the arrows, a hop a step, onto the floor. In build mode a flight is planned the same way."""
+    game.clear_area(10)
+    x, y = game.pos()
+    game.stamp(-1, -4, ["WWW"])                                # a wall, and a floor on it three layers up
+    game.give(plank=6, stairs=4)
+    game.rpc("dev_teleport", x=x, y=y - 2, z=0)                # (within reach of it)
+    for i in (-1, 0, 1):
+        assert game.rpc("act", tool="place", args={"x": x + i, "y": y - 4, "item": "plank", "z": 3})["ok"]
+    game.press(game.js(SLOT, "stairs"))
+    game.face(0, -1)                                           # facing the wall under the floor: the flight can't come at you, it runs along it
+    assert "Build stairs (2 steps)" in game.actions()
+    game.press("Space", 900)
+    assert game.js(f"[surfacesAt({x}, {y - 3}), surfacesAt({x - 1}, {y - 3})]") == [[2], [1]] and game.inv("stairs") == 2
+    game.rpc("dev_teleport", x=x - 1, y=y - 2, z=0)
+    game.sleep(600)
+    for key, want in (("ArrowUp", (x - 1, y - 3, 1)), ("ArrowRight", (x, y - 3, 2)), ("ArrowUp", (x, y - 4, 3))):
+        assert step(game, key) == want
+    assert game.js("myAt.z") == 3 and not game.errors
+    # in build mode: a flight down from the floor's other end, planned with Space and laid by your character
+    game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0)
+    game.sleep(600)
+    game.press("b")
+    game.js(f"Build.S.at = {{x: {x + 1}, y: {y - 3}}}")       # (beside the first flight's top step: this one comes straight out)
+    assert game.js("Build.hint(Build.S.at).text") == "Plan stairs (2 steps)"
+    game.press("Space")
+    game.wait(f"surfacesAt({x + 1}, {y - 3})[0] === 2 && surfacesAt({x + 1}, {y - 2})[0] === 1 && Build.S.plans.size === 0", 20000)
+    game.press("b")
+    assert game.inv("stairs") == 0 and not game.errors
+
+
+def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
+    """A cliff six layers up: a ladder against it, up it by walking into the cliff, down it by walking off: no fall,
+    no hurt. Out in the open a ladder has nothing to lean on: it is not placed."""
+    game.clear_area(10)
+    x, y = game.pos()
+    game.stamp(-2, -4, ["....."] * 2, levels=["66666"] * 2)
+    game.give(ladder=2)
+    game.press(game.js(SLOT, "ladder"))
+    game.face(1, 0)
+    assert "A ladder goes against something taller" in game.actions()
+    game.rpc("dev_teleport", x=x, y=y - 1, z=0)
+    game.sleep(600)
+    game.face(0, -1)
+    game.press("Space", 700)
+    assert game.js(f"combAt({x}, {y - 2})") == "l" and game.inv("ladder") == 1
+    hp = game.server()["hp"]
+    assert step(game, "ArrowUp") == (x, y - 2, 0)              # onto the ladder
+    assert step(game, "ArrowUp") == (x, y - 3, 6)              # up it, onto the cliff
+    assert game.js("myAt.z") == 6
+    assert step(game, "ArrowDown") == (x, y - 2, 0)            # and down it
+    game.sleep(400)
+    assert game.server()["hp"] == hp and game.js("ents.get('agent' + myId).fall") in (None, False) and not game.errors

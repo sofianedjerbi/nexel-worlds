@@ -85,6 +85,7 @@ function frame(now) {
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (hiddenAt(x, y)) continue;                     // (in a cave, seen from outside: under its roof)
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
+    if (c === "l") { list.push({y, x, fx: () => Climb.drawLadder(x, y, standAt(x, y), sx, sy, S)}); continue; }   // (a ladder: up to what it leans on, climbing.js)
     if (Structures.WALLS.includes(c)) { list.push({y, x, fx: () => Structures.drawWall(c, x, y, sx, sy, S, now)}); continue; }   // (a wall, a door: structures.js)
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
   }
@@ -177,16 +178,17 @@ function frame(now) {
 function drawIntent(p, it, sx, sy, S, t, ox, oy) {
   if (it && it.ghost) {
     ctx.globalAlpha = .7;
-    const up = it.z !== undefined, built = !up && Structures.WALLS.includes(PLACEABLE_BLOCK[it.ghost] || "-");        // (a wall, a door: as it will stand, structures.js)
-    if (up && !it.ghostGround) (it.ghost === "roof" || it.ghost === "plank" ? Floors.cell(it.ghost, p.x, p.y, it.z, sx, sy, S, .6) : Floors.thing(PLACEABLE_BLOCK[it.ghost], p.x, p.y, it.z, sx, sy, S, t, 0, .6));   // (over the ground: floors.js)
+    const up = it.z !== undefined && !it.draw, built = !up && !it.draw && Structures.WALLS.includes(PLACEABLE_BLOCK[it.ghost] || "-");        // (a wall, a door: as it will stand, structures.js)
+    if (it.draw) it.draw(sx, sy, S);                   // (stairs, a ladder: drawn as they will be, climbing.js)
+    else if (up && !it.ghostGround) (it.ghost === "roof" || it.ghost === "plank" ? Floors.cell(it.ghost, p.x, p.y, it.z, sx, sy, S, .6) : Floors.thing(PLACEABLE_BLOCK[it.ghost], p.x, p.y, it.z, sx, sy, S, t, 0, .6));   // (over the ground: floors.js)
     if (built) Structures.drawWall(PLACEABLE_BLOCK[it.ghost], p.x, p.y, sx, sy, S, 0, .6);
-    const spr = built || (up && !it.ghostGround) ? null : it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
+    const spr = built || it.draw || (up && !it.ghostGround) ? null : it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
       : it.ghost === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(p.x, p.y)] * 16, 16, 16, 0, -2]
       : objectSprite(PLACEABLE_BLOCK[it.ghost], it.anchor ? it.anchor.x : p.x, it.anchor ? it.anchor.y : p.y, t);
     const gx = it.anchor ? it.anchor.x : p.x, gy = it.anchor ? it.anchor.y : p.y;
     if (spr) { const [img, a2, b2, w2, h2, dx2, dy2] = spr; ctx.drawImage(img, a2, b2, w2, h2, sx(gx) + dx2 * zoom, sy(gy, gx) + dy2 * zoom, w2 * zoom, h2 * zoom); }
     ctx.globalAlpha = 1;
-    for (const q of it.foot || [p]) {
+    for (const q of it.steps ? [] : it.foot || [p]) {
       ctx.fillStyle = it.ok && !(it.bad || []).some((b) => b.x === q.x && b.y === q.y) ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)";
       ctx.fillRect(sx(q.x), it.z !== undefined ? sy(q.y) - shOf(it.z) * zoom : sy(q.y, q.x), S, S);
     }

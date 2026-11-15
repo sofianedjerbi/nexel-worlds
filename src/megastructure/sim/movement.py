@@ -58,6 +58,7 @@ class Movement:
             self.set_tile(a.x, a.y, block="boat", by=a, cause="moor")   # leave the boat where you got off
             a.sailing = False
             self.emit("moor", a.x, a.y, name=a.name)
+        x0, y0, h0 = a.x, a.y, self.height(a)
         climb = -self.step_onto(a, x, y)             # (Bodies: where you land there)
         if not a.sailing:                            # a tile on foot tires a little, at a sprint more, a jump up more still (needs.py)
             fast = bool(a.action) and self.sprints(a, a.action.args)
@@ -67,6 +68,8 @@ class Movement:
         if climb and a.ready > self.tick:            # a jump up is hard going, a drop a little careful
             a.ready += round((a.ready - self.tick) * (SLOPE_UP if climb > 0 else SLOPE_DOWN))
         self.arrive(a)
+        if self.on_ladder(x0, y0, h0, x, y, self.height(a)):
+            return {}                                # (down a ladder: climbed, not fallen)
         return self.fell(a, -climb)                  # (what the fall did to you, if it was one)
 
     def arrive(self, a: Agent):
@@ -196,8 +199,8 @@ class Movement:
 
         def moves(n):
             for dx, dy in DIRS.values():
-                land = self.lands(n[2], n[0], n[1], n[0] + dx, n[1] + dy)
-                if land is not None and n[2] - land <= drop and ok(n[0] + dx, n[1] + dy, land):
+                land = self.lands(n[2], n[0], n[1], n[0] + dx, n[1] + dy, climbs=True)
+                if land is not None and (n[2] - land <= drop or self.on_ladder(*n, n[0] + dx, n[1] + dy, land)) and ok(n[0] + dx, n[1] + dy, land):
                     yield (n[0] + dx, n[1] + dy, land)
         gz = args.get("z") if type(args.get("z")) is int and args["z"] in self.world.surfaces(gx, gy) else None     # (z: that tile at that height: the floor over a room)
         beside = not any(ok(gx, gy, z) for z in ([gz] if gz is not None else self.world.surfaces(gx, gy)))
@@ -212,7 +215,7 @@ class Movement:
             yield from self.pace(a, args)
             nx, ny = path[0][:2]
             land = self.landing(a, nx, ny)
-            if land is None or self.height(a) - land > drop or not ok(nx, ny, land):
+            if land is None or (self.height(a) - land > drop and not self.on_ladder(a.x, a.y, self.height(a), nx, ny, land)) or not ok(nx, ny, land):
                 replans += 1
                 path = way() if replans <= 2 else None
                 if path is None:

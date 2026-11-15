@@ -6,7 +6,7 @@ that. Kept in its own table of the save."""
 from .gen import LOW
 from .world import Store
 
-KINDS = ("plank", "roof")           # a floor of planks; shingles
+KINDS = ("plank", "roof", "stairs")           # a floor of planks; shingles; the steps of a flight of stairs (sim/climbing.py)
 
 
 class Floors:

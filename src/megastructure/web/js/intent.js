@@ -18,14 +18,14 @@ const FILLS = {dirt: {o: ",", u: ",", "~": ",", "(": "~", "=": "(", ")": "="}, p
 const FILL_TEXT = {",": "Fill with dirt", "~": "Raise the bottom", "(": "Raise the bottom", "=": "Raise the bottom", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
 const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
 const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C", well: "Y", coop: "J", picnic_blanket: "m", basket: "q", trough: "e", hay: "y"};
-PLACEABLE_BLOCK.roof = "roof";                       // (in hand a roof is something you place: not a thing on the tile, a block over it: floors.js)
+PLACEABLE_BLOCK.roof = "roof"; PLACEABLE_BLOCK.stairs = "stairs"; PLACEABLE_BLOCK.ladder = "l";                       // (in hand a roof is something you place: not a thing on the tile, a block over it: floors.js)
 const HARVEST = {t: "Dig up the stump", U: "Chop tree (the fruit grows back if you wait)", v: "Cut the bush (fiber)", e: "Take down the trough (and what's in it)", y: "Pick up the hay bale", Y: "Take down the well", J: "Take down the coop", m: "Roll up the blanket", q: "Take the basket", X: "Take down mailbox", V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", R: "Mine rock wall", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
 // which tool speeds up digging each block (tiles.py Block.tool); ore can only be mined with a pickaxe in hand
 const TOOL_FOR = {t: "axe", U: "axe", T: "axe", M: "pickaxe", "*": "pickaxe", H: "axe", "#": "axe", "%": "pickaxe", "+": "axe", "&": "axe", C: "axe", B: "axe", h: "axe",
-  L: "axe", K: "axe", g: "axe", W: "axe", V: "axe", X: "axe", Y: "pickaxe", J: "axe", e: "axe"};
+  L: "axe", K: "axe", g: "axe", W: "axe", V: "axe", X: "axe", Y: "pickaxe", J: "axe", e: "axe", l: "axe"};
 const WEAPON_DMG = {sword: 30, spear: 18, axe: 12, pickaxe: 10};
 const inHand = () => (selected && meObs && meObs.self.inventory[selected] ? selected : null);   // what's in your hand
 // The creature or person at a tile: where it stands, or where it is drawn right now (moving animals stay clickable).
@@ -91,7 +91,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     return {ent, text: weapon ? `Attack ${who} with ${label(weapon)}${tail}` : `Punch ${who}${tail}`, near: reachOf(weapon), diag: true, attack: true,
       run: () => act("attack", weapon ? {target: ent.e.id, with: weapon} : {target: ent.e.id})};
   }
-  const up = Floors.intent(p, shift);            // (a block in hand, or a built block under what you aim at: floors.js)
+  const up = Climb.intent(p, shift) || Floors.intent(p, shift);     // (stairs, a ladder; a block in hand, or a built block under what you aim at: climbing.js, floors.js)
   if (up) return up;
   // your own tile: something growing under your feet (a flower, a mushroom, a crop) is picked; otherwise pick up items
   const underfoot = isMe && hasBlock && !SOLID.has(c);

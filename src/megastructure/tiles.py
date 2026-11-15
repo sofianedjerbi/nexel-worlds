@@ -97,7 +97,7 @@ BLOCKS = [
     Block("bare_fruit_tree", "U", flammable=True, hardness=12, drops={"wood": 3}, tool="axe", wall=True),  # picked
     Block("cave_wall", "R", hardness=14, drops={"stone": 1}, tool="pickaxe", wall=True),   # underground rock
     Block("hole", "O", solid=False),          # dug down through the ground: walk onto it, you drop to the level below
-    Block("ladder", "l", solid=False),        # (old worlds: under a hole; just floor now)
+    Block("ladder", "l", solid=False, flammable=True, hardness=4, drops={"ladder": 1}, tool="axe"),   # against something taller: up it (sim/climbing.py)
 ]
 
 # Picking these leaves them bare (block, seconds until the fruit is back); digging the bare one removes it.
@@ -157,7 +157,7 @@ PLACEABLE = {
     "chest": "chest",
     "flower": "flower",
     "well": "well", "coop": "coop", "picnic_blanket": "picnic_blanket", "basket": "basket", "trough": "trough", "hay": "hay_bale",
-    "wood_wall": "wood_wall", "boat": "boat", "mailbox": "mailbox", "bed": "bed", "chair": "chair", "table": "table", "plant": "plant", "clock": "clock", "rug": "rug", "gate": "gate",
+    "wood_wall": "wood_wall", "boat": "boat", "mailbox": "mailbox", "bed": "bed", "chair": "chair", "table": "table", "plant": "plant", "clock": "clock", "rug": "rug", "gate": "gate", "ladder": "ladder",
 }
 # Items laid into the ground: item -> {ground it can go on: resulting ground}. One item, one obvious result
 # per surface; raw materials (wood, stone, fiber, ore) are never placeable themselves.
@@ -204,7 +204,9 @@ RECIPES = {
     for r in [
         Recipe("workbench", {"wood": 4}, {"workbench": 1}, 6),
         Recipe("plank", {"wood": 1}, {"plank": 2}, 3),
-        Recipe("roof", {"wood": 1}, {"roof": 2}, 3),       # shingles: a block laid a storey up, on walls or beside a block (sim/storeys.py)
+        Recipe("roof", {"wood": 1}, {"roof": 2}, 3),
+        Recipe("ladder", {"wood": 2}, {"ladder": 1}, 3),
+        Recipe("stairs", {"wood": 1}, {"stairs": 2}, 3),   # a step each: a flight up a storey takes two (sim/climbing.py)       # shingles: a block laid a storey up, on walls or beside a block (sim/storeys.py)
         Recipe("path", {"stone": 2}, {"path": 2}, 3),
         Recipe("fence", {"wood": 2}, {"fence": 1}, 3),
         Recipe("door", {"wood": 3}, {"door": 1}, 4),

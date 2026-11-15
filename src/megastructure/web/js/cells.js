@@ -34,8 +34,13 @@ function settleAt(x, y, z) { const s = surfacesAt(x, y), under = s.filter((v) =>
 // your body's height is solid you jump up onto it if it's ground (and nothing is over your head); where it's empty you step in and come down on the
 // ground under you there (a fall, however far)
 function landAt(h, x, y, fx, fy) {       // (fx, fy: the tile you step from: a jump needs room over your head there)
-  if (solidAt(x, y, h + 1)) return solidAt(x, y, h + 2) || (fx !== undefined && solidAt(fx, fy, h + 2)) ? null : h + 1;
-  let z = h; while (!solidAt(x, y, z)) z--;
+  let z = h;
+  if (solidAt(x, y, h + 1)) z = solidAt(x, y, h + 2) || (fx !== undefined && solidAt(fx, fy, h + 2)) ? null : h + 1;
+  else while (!solidAt(x, y, z)) z--;
+  if (fx !== undefined && FLOORS && Floors.thingAt(fx, fy, h) === "l" && (z === null || !Climb.openAt(x, y, z))) {   // (on a ladder, into a wall: up it, climbing.js)
+    const up = Climb.climb(h, fx, fy, x, y);
+    if (up !== null) return up;
+  }
   return z;
 }
 

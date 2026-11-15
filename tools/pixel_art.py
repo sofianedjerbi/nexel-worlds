@@ -137,6 +137,14 @@ GEN = {
         "                ", "                ", "                ", "                ", "      dddd      ", "    ddsSSsd     ",
         "   dsSSSsssd    ", "   dsSsssssd    ", "   dssssssdd    ", "    ddssddd     ", "      ddd       ", "                ",
         "                ", "                ", "                ", "                "],
+    "ladder": [
+        "                ", "    oW    oW    ", "    oW    oW    ", "    oWwwwwoW    ", "    oWooooow    ", "    oW    oW    ",
+        "    oWwwwwoW    ", "    oWooooow    ", "    oW    oW    ", "    oWwwwwoW    ", "    oWooooow    ", "    oW    oW    ",
+        "    oWwwwwoW    ", "    oWooooow    ", "    oo    oo    ", "                "],     # two rails and their rungs, in the wood of the pack's houses
+    "stairs": [
+        "                ", "                ", "          oooooo", "          oWWWWo", "          owwwwo", "      oooooWwwwo",
+        "      oWWWWwwwwo", "      owwwwwwwwo", "  oooooWwwwwwwwo", "  oWWWWwwwwwwwwo", "  owwwwwwwwwwwwo", "  owwwwwwwwwwwwo",
+        "  oooooooooooooo", "                ", "                ", "                "],     # three steps, seen from the side
     "name_tag": [   # a paper tag on a string, a hole at its point, two lines written on it
         "                ", "                ", "  B             ", "   B            ", "    B           ", "    oooooooooo  ",
         "   oeeeeeeeeeeo ", "  oeeoeeeeeeeeo ", " oeeo oecccceeo ", "  oeeoeeeeeeeeo ", "   oeeeeccceeeo ", "    oooooooooo  ",

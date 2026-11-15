@@ -30,6 +30,7 @@ from .environment import Environment
 from .items import Items
 from .movement import Movement
 from .progress import Progress
+from .climbing import Climbing
 from .spawning import Spawning
 from .storeys import Storeys
 from .underground import Underground
@@ -43,7 +44,7 @@ from .social import Social
 from .specs import TOOL_SPECS
 
 
-class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Underground, Building, Storeys, Items, Combat, Animals, Wild, Wear, Needs, Social, Environment, Observation):
+class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Underground, Building, Storeys, Climbing, Items, Combat, Animals, Wild, Wear, Needs, Social, Environment, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
@@ -198,7 +199,6 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             act.expected = max(act.expected, act.ticks - 1 + n)
         for _ in range(n - 1):
             yield
-
 
     # ------------------------------------------------------------- agents
 

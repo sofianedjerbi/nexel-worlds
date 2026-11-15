@@ -42,6 +42,11 @@ const Build = (() => {
     const have = meObs.self.inventory[it], used = todo().filter((j) => j.item === it).length, t = tile(p.x, p.y);
     const L = level(p), on = onIt(p, L), c = FLOORS ? Floors.get(p.x, p.y, L) : null, what = Floors.thingAt(p.x, p.y, L);
     if (used >= have) return {text: `All ${have} are planned`, ok: false, ghost: it};
+    if (it === "stairs" || it === "ladder") {          // (a flight, a ladder: as they will be, climbing.js)
+      if (S.plans.has(key(p, L))) return {text: "Planned", ok: false, ghost: it};
+      const say = Climb.intent(p, false) || {text: "Nothing can go there", ok: false};
+      return {...say, z: L, text: say.ok === false ? say.text : say.text.replace(/^(Place|Build) /, "Plan ")};
+    }
     if (BLOCK(it) && (FLOORS || it === "roof") && !(it === "plank" && on && !c && t && FILLS.plank[t[1]] && GROUND.has(t[0]))) {     // a block, for a cell
       const z = !on ? L : it === "roof" ? L + Floors.STOREY : L + 1, why = S.plans.has(key(p, z)) ? "Planned" : Floors.fits(p.x, p.y, z, planned);
       return why ? {text: why, ok: false, ghost: it, z} : {text: `Plan ${label(it)}${on && it === "plank" ? " on top" : ""}`, ok: true, ghost: it, z};
@@ -62,7 +67,7 @@ const Build = (() => {
     const zs = [...new Set([selected === "roof" && on ? L + Floors.STOREY : undefined, h.z, L].filter((z) => z !== undefined))];
     for (const z of zs) { const j = S.plans.get(key(p, z)); if (j) return j.state === "doing" ? null : {z, what: "plan", plan: j}; }
     if (!t) return null;
-    const built = (z) => { const c = FLOORS || z !== L ? Floors.get(p.x, p.y, z) : null; return c ? {z, what: c[1] ? label(CH[c[1]]) : c[0] === "roof" ? "roof" : "planks", up: true} : null; };
+    const built = (z) => { const c = FLOORS || z !== L ? Floors.get(p.x, p.y, z) : null; return c ? {z, what: c[1] ? label(CH[c[1]]) : c[0] === "roof" ? "roof" : c[0] === "stairs" ? "the step" : "planks", up: true} : null; };
     for (const z of zs) if (built(z)) return built(z);
     if (on && L === standAt(p.x, p.y)) {
       if (!GROUND.has(t[0])) return "#W%+g".includes(t[0]) || Object.values(PLACEABLE_BLOCK).includes(t[0]) ? {z: L, what: label(CH[t[0]])} : null;
@@ -76,7 +81,7 @@ const Build = (() => {
     if (!it.ghost || it.ok === false) return S.hold ? null : toast(it.text, true);
     if (BLOCK(selected) && S.hold && S.row !== undefined && S.row !== z) return;     // (a row of blocks is at one height: over a floor already laid it does not pile them up)
     S.row = z;
-    S.plans.set(key(p, z), {x: p.x, y: p.y, z, item: selected, up: it.z !== undefined, ground: it.ghostGround || null, swap: !!it.swap, state: "todo"});
+    S.plans.set(key(p, z), {x: p.x, y: p.y, z, item: selected, up: it.z !== undefined && !it.draw, ground: it.ghostGround || null, swap: !!it.swap, steps: it.steps || null, state: "todo"});
     sfx("pick"); work();
   }
   function take(p) {                                  // a plan back; or, of what is built there, a plan to take it down
@@ -127,7 +132,8 @@ const Build = (() => {
     const here = () => { const s = myPos(); return {...s, z: myZ(s.x, s.y)}; };
     // from (q, h): within the game's reach of it, height counted; and not where it goes (a block in your body, a wall on your feet)
     const ok = (q, h) => (q.x - j.x) ** 2 + (q.y - j.y) ** 2 + ((j.z - h) * LAYER) ** 2 <= (USE_R + .5) ** 2
-      && !(q.x === j.x && q.y === j.y && (j.up ? j.z - h >= 0 && j.z - h <= 2 : true));
+      && !(q.x === j.x && q.y === j.y && (j.up ? j.z - h >= 0 && j.z - h <= 2 : true))
+      && !(j.steps || []).some(([x, y]) => x === q.x && y === q.y);            // (not where a flight of stairs goes)
     if (!ok(here(), here().z) || (solid(j) && !wayOut(here(), j))) {
       const s = here(), spots = [];                    // (beside it for choice, on your own floor for choice)
       for (let dy = -USE_R; dy <= USE_R; dy++) for (let dx = -USE_R; dx <= USE_R; dx++) for (const h of surfacesAt(j.x + dx, j.y + dy)) {
@@ -220,6 +226,8 @@ const Build = (() => {
       if (j.state === "bad" && now() - j.t > BAD_MS) { S.plans.delete(k); continue; }
       const x = sx(j.x), y = top(j, j.z), a = j.state === "doing" ? .75 : .5, ch = PLACEABLE_BLOCK[j.item];
       if (j.take) { /* (what is there is seen: a cross over it, below) */ }
+      else if (j.steps) { if (j.state !== "doing" || !Floors.get(j.x, j.y, j.steps[0][3])) Climb.ghostFlight(j.steps, sx, sy, Sz, true); continue; }
+      else if (j.item === "ladder") Climb.drawLadder(j.x, j.y, j.z, sx, sy, Sz, a);
       else if (j.up && BLOCK(j.item)) Floors.cell(j.item, j.x, j.y, j.z, sx, sy, Sz, a);
       else if (j.up) Floors.thing(ch, j.x, j.y, j.z, sx, sy, Sz, t, 0, a);
       else if (Structures.WALLS.includes(ch || "-")) Structures.drawWall(ch, j.x, j.y, sx, sy, Sz, 0, a);

@@ -21,7 +21,8 @@ WASD / arrows walk (Shift sprints) · Space does the main thing in front of you 
 **Build mode** ([a 49 second clip](https://sofianedjerbi.github.io/megastructure-demo/showcase.html)): B, then the
 arrows move a cursor; Space plans the piece in your hand (hold it for a row) and your character builds it, block by block.
 R lifts the cursor a floor (F brings it down): planks planned over a room are the floor above, planks on a floor are a
-step, a roof is a block like the rest; you stand on all of it and build on it.
+step, a roof is a block like the rest; you stand on all of it and build on it. Stairs beside a higher floor lay the
+whole flight with one press; a ladder against anything taller is climbed by walking into it.
 
 On a phone: left thumb walks (push far to sprint), **A** does the main thing, **B** the other (each labelled),
 tap the hotbar to pick what's in hand, pinch to zoom; Bag, Craft and Talk at the top.

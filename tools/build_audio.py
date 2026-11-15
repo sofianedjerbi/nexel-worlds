@@ -45,10 +45,15 @@ def sound_names() -> set[str]:
     return set(re.findall(r'^@sfx\("([a-z_]+)"', (MUSIC / "sfx.py").read_text(), re.M))
 
 
+SOUNDS_LIKE = {"ladder": "fence"}     # pieces put down with the sound of another: a ladder goes up as a post does
+
+
 def place_maps(names: set[str]) -> tuple[dict, dict]:
     """(block name -> sound, ground name -> sound), checked against the game's own tables."""
     from megastructure import tiles as T
     table = json.loads((MUSIC / "sfx_map.json").read_text())
+    for item, like in SOUNDS_LIKE.items():                   # (a new piece heard as an older one: the map is music's)
+        table["place"].setdefault(item, table["place"][like])
     blocks = {}
     for item, block in T.PLACEABLE.items():
         if item not in table["place"]:
