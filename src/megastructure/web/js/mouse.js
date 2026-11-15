@@ -19,6 +19,7 @@ cv.addEventListener("mousemove", (e) => {
   if (drag) {
     const dx = (e.clientX - drag.x) / TS(), dy = (e.clientY - drag.y) / TS();
     if (Math.abs(dx) + Math.abs(dy) > .3) drag.moved = true;
+    if (drag.moved && me && Build.on) { const q = tileAtScreen(e.clientX, e.clientY); if (!drag.at || drag.at.x !== q.x || drag.at.y !== q.y) { drag.at = q; Build.click(q, e.shiftKey); } }   // (a row of plans)
     if (drag.moved && !me) { follow = null; camT.x = cam.x = drag.cx - dx; camT.y = cam.y = drag.cy - dy; }
   }
   const p = tileAtScreen(e.clientX, e.clientY), t = tile(p.x, p.y), tip = $("hover");
@@ -35,6 +36,6 @@ cv.addEventListener("mousemove", (e) => {
 });
 cv.addEventListener("mouseleave", () => { mouse.in = false; $("hover").style.display = "none"; });
 cv.addEventListener("mousedown", (e) => { if (e.button === 0) drag = {x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false}; });
-cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.moved && me) clickTile(tileAtScreen(e.clientX, e.clientY), e.shiftKey); drag = null; });
-cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (me) clickTile(tileAtScreen(e.clientX, e.clientY), false); });
+cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.moved && me) { const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, e.shiftKey); else clickTile(q, e.shiftKey); } drag = null; });
+cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (!me) return; const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, true); else clickTile(q, false); });
 cv.addEventListener("wheel", (e) => { e.preventDefault(); zoom = Math.max(1, Math.min(6, zoom + (e.deltaY < 0 ? 1 : -1))); }, {passive: false});

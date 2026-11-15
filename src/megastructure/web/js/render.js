@@ -28,7 +28,8 @@ function frame(now) {
     const p = ents.get("agent" + myId);
     if (p) {                                         // (you are drawn lifted on high ground: centre that; falling: you, not the ground you left; jump.js)
       const fall = falling(p, now);
-      cam.x = camT.x = p.x; cam.y = camT.y = p.y - (liftOf(p) / zoom + (fall ? fall.body : 0) + fallShake(now)) / P;
+      const pan = Build.pan(dt);                      // (build mode: half way to the cursor)
+      cam.x = camT.x = p.x + pan.x; cam.y = camT.y = p.y + pan.y - (liftOf(p) / zoom + (fall ? fall.body : 0) + fallShake(now)) / P;
     }
     else if (meObs) { cam.x = camT.x = meObs.self.x; cam.y = camT.y = meObs.self.y; }
   } else {
@@ -159,6 +160,7 @@ function frame(now) {
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   drawSelector(aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null, sx, sy, now);
+  Build.draw(sx, sy, S, t);                         // (what is planned, and the cursor: build.js)
   for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
   for (const o of list) if (o.p && o.p.e.kind !== "agent" && o.p.e.name) drawNameplate(o.p, sx, sy, S);     // (a named animal: /name)
   for (const o of list) if (o.p && ANIMALS[o.p.e.kind]) drawEmote(o.p, sx, sy, S);

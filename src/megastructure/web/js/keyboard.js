@@ -7,6 +7,7 @@
 //   down what you faced, a number changed what you hold), but for the ones in BOOK_KEYS. One of the book and the
 //   inventory is open at a time. What a key does there is written on it (a cap on the button, `kbd`) while you
 //   play by keys (body.bykeys), and put away when the mouse moves.
+//   B: build mode (build.js): the arrows move a cursor, Space plans the piece in hand, your character builds.
 
 const KEYDIR = {w: "N", arrowup: "N", s: "S", arrowdown: "S", a: "W", arrowleft: "W", d: "E", arrowright: "E"};
 const CODEDIR = {KeyW: "N", ArrowUp: "N", KeyS: "S", ArrowDown: "S", KeyA: "W", ArrowLeft: "W", KeyD: "E", ArrowRight: "E"};
@@ -88,6 +89,7 @@ function facingIntent(alt) {
 // The tile hints are drawn for: where the mouse points, or the tile you face when playing by keyboard.
 function aimedTile() {
   if (!me) return null;
+  if (Build.on) return Build.aim();                  // (build mode: the cursor's tile, whatever you play with)
   if (inputMode === "keys") return facingIntent(false);
   if (!mouse.in) return null;
   const p = aimAt(tileAtScreen(mouse.x, mouse.y), keys.has("shift"));
@@ -97,6 +99,7 @@ function aimedTile() {
 let actionsHtml = "";
 function availableActions() {
   if (!me || !meObs) return [];
+  if (Build.on) return Build.rows();
   const s = myPos(), rows = [];
   const main = facingIntent(false), alt = facingIntent(true);
   if (main && !main.it.info && main.it.ok !== false) rows.push(["Space", main.it.text]);
@@ -161,6 +164,7 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   m: () => { setMuted(!muted); toast(muted ? "Sound off (M)" : "Sound on (M)"); },
   h: () => $("helpbtn").click(), "?": () => $("helpbtn").click(),
   g: () => toggleGoals(),                            // (goals.js: the goals' card, or away again)
+  b: () => Build.toggle(),                           // (build.js: plan with a cursor, your character builds)
   f3: () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; },
   t: () => openChat(),
   enter: () => openChat(),
@@ -174,10 +178,12 @@ addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (k === "shift") { keys.add("shift"); runKey = true; syncWalk(); return; }
   inputMode = "keys"; document.body.classList.add("bykeys");
+  if (k === "escape" && Build.on && !isOpen("craft") && !isOpen("bag") && !isOpen("mail")) { Build.toggle(false); return; }
   if (k === "escape") { if (isOpen("bag") && bagKey(k, e)) return; if (isOpen("craft") || isOpen("bag") || isOpen("mail")) closePanels(); else selectItem(null); return; }
   // an open panel takes the arrows, Enter and Space
   if (isOpen("craft") && (craftKey(k, e) || !BOOK_KEYS.has(k))) { e.preventDefault(); return; }
   if (isOpen("bag") && (bagKey(k, e) || !BOOK_KEYS.has(k))) { e.preventDefault(); return; }      // (the inventory's keys are its own too: bag.js)
+  if (Build.onKey(k, e)) { e.preventDefault(); return; }                  // (build mode: the cursor's keys are its own, build.js)
   if (e.altKey && CODEDIR[e.code]) { e.preventDefault(); turn(CODEDIR[e.code]); return; }
   if (KEYDIR[k]) {   // only a real press counts: a held key's auto-repeat must not cancel a chop in progress
     e.preventDefault();
