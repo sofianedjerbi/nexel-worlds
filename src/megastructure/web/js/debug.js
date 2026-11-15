@@ -6,7 +6,7 @@
 //             work a frame (and the part of it that built land coming in); the world's ticks reaching the screen, and
 //             what a tick costs the world; the canvas, the blocks and bodies in view
 // Each is on until typed again, and kept between visits. Any other /word is an action sent to the server
-// (/dig dir=N). The chat line lists them all as you type (complete.js).
+// (/dig dir=N). The chat line lists the ones a player needs; the others once written in full (complete.js).
 
 const DEBUG = {coords: localStorage.getItem("megastructure-coords") === "1", grid: localStorage.getItem("megastructure-grid") === "1",
                perf: localStorage.getItem("megastructure-perf") === "1"};

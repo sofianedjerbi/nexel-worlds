@@ -1446,3 +1446,14 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   (name taken, a code sent: no chat there); its text is still set, unseen, while you play (tests read it).
 - Measured: a new test in `test_e2e_ui.py`; the eleven test files that read messages, 67 of 67.
 - Seen in a screenshot on a copy: the lines sit with the chat's, in its strip.
+
+## Iteration 126: the list of commands is the player's
+- Said: "you don't get it.... the / should show hint for commands that are useful for real players. if somewhat a
+  player type another command like /step, then still show /step hint but the /step needs to be written entirely.
+  but / shouldn't confuse player with bot commands". (Three readings of mine before this one were wrong: 121 cut the
+  commands, 122 hid the whole list, 124 brought all of it back.)
+- Change: `complete.js` PLAYER = name, write_sign, with the page's coords, grid, perf: these are listed on a "/" and
+  as you type. Any other action of the server is listed only when its name is written in full (/step), and then its
+  arguments and their values as for the others. Every command still runs.
+- Measured: `test_e2e_complete.py` (the five on "/"; /st, /ste, /di list nothing; /step and /dig list themselves;
+  arguments of /eat, /drop, /milk as before) and the interface tests, 16 of 16.

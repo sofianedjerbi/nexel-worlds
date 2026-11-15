@@ -4,9 +4,13 @@
 // one that is marked, the first or the one the arrows moved to; a click or a tap takes any. Enter sends the line as
 // it is typed. In plain talk, Tab finishes the name of someone near (several: the list, then Tab).
 
-// Every action of the server is a command, and all of them are listed from the "/" on ("keep the hint of all commands
-// when starting by /"). What went, at "there's a lot of useless slash commands... remove the hint on a simple '/' and
-// also remove them from the help": the words that advertised them, in the chat line's own text and in the help.
+// Which commands are listed. The server has some thirty actions: they are what the AI players call, and for a person
+// nearly all of them are a key or a click. "the / should show hint for commands that are useful for real players. if
+// somewhat a player type another command like /step, then still show /step hint but the /step needs to be written
+// entirely. but / shouldn't confuse player with bot commands". So the list, on a "/" and while a name is being typed,
+// holds what a player has no key for (PLAYER: naming an animal, writing on a sign; and the page's own, debug.js);
+// any other action is listed once its name is written in full, and from there its arguments as for the others.
+const PLAYER = ["name", "write_sign"];
 let tools = null;                                    // the server's actions: name -> {args: {name: what it is}, desc}
 const LOCAL = {coords: "where you are, top right", grid: "every tile outlined, with its height", perf: "what the last second cost, top right"};
 const comp = {items: [], note: "", at: 0, from: 0, to: 0};
@@ -52,8 +56,9 @@ function completions(text, caret, asked) {
     return {from, items: names.filter((n) => n.toLowerCase().startsWith(word.toLowerCase())).map((n) => ({put: n + " ", show: n, hint: ""}))};
   }
   if ((head.match(/"/g) || []).length % 2) return null;   // (in a quoted text: yours to write)
-  if (from === 0) {                                   // the command itself
-    const all = [...Object.entries(tools || {}).map(([n, t]) => [n, t.desc, Object.keys(t.args).length]), ...Object.entries(LOCAL).map(([n, d]) => [n, d, 0])];
+  if (from === 0) {                                   // the command itself: a player's, or a bot's written in full
+    const typed = word.slice(1).toLowerCase();
+    const all = [...Object.entries(tools || {}).filter(([n]) => PLAYER.includes(n) || n === typed).map(([n, t]) => [n, t.desc, Object.keys(t.args).length]), ...Object.entries(LOCAL).map(([n, d]) => [n, d, 0])];
     return {from: 1, items: matching(all.map(([n, hint, args]) => ({put: n + (args ? " " : ""), show: n, hint})), word.slice(1))};
   }
   const cmd = head.slice(1).split(/\s+/)[0].toLowerCase(), spec = tools && tools[cmd], eq = word.indexOf("=");
