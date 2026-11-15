@@ -39,16 +39,18 @@ function findRooms(vx, vy, vw, vh) {
 
 
 const FRONT = [[48, 16], [56, 16], [64, 16]];        // house_walls.png: front wall with top trim (left, middle, right)
-function drawHouses(sx, sy, S, dt, now) {
+// A house takes its place among the things of the frame (`list`, drawn from the back to the front), at the row of
+// its front wall: what is in the room, or behind the house, is under its roof; what stands before it (someone at
+// the door, a mailbox, a tree) is over its wall. It was drawn last, over everything: the front wall hid the heads
+// of whoever stood in front of it.
+function drawHouses(sx, sy, S, dt, now, list) {
   const s0 = myPos(), z = zoom;
   for (const rm of rooms) {
     const inside = s0 && (roomOf.get(s0.x + "," + s0.y) === rm);
     rm.fade += ((inside ? .15 : 1) - rm.fade) * Math.min(1, dt * 8);
-    drawRoof(rm, sx, sy, S, z);
-    drawFront(rm, sx, sy, S, z, now);
+    list.push({y: rm.y1 + .005, x: rm.x0, fx: () => { drawRoof(rm, sx, sy, S, z); drawFront(rm, sx, sy, S, z, now); ctx.globalAlpha = 1; }});   // (after its wall's own tiles, before someone in its doorway)
     if (Math.random() < dt * 1.2) puffs.push({x: rm.x1 - .5, y: rm.y0 - .9, vx: .15, vy: -.35, r: .8, grow: 3, life: 1.6, age: 0});   // chimney smoke
   }
-  ctx.globalAlpha = 1;
 }
 function drawRoof(rm, sx, sy, S, z) {
   // pixel-exact, never stretched: the scalloped top edge (7 px of its tile), whole shingle rows with the ridge band in

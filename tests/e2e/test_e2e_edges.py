@@ -126,3 +126,26 @@ def test_tilled_soil_is_furrows_not_a_line_round_a_patch(game):
     game.sleep(900)
     assert max(game.js(DARK, [x + 4, y - 6])["cols"]) >= 12                                # on a hill: the patch's own edge
     game.stamp(3, -8, ["." * 5] * 5, levels=["0" * 5] * 5)
+
+
+HOUSE = ["WWWWW", "WnnnW", "WnnnW", "WW+WW"]
+# one frame: what was drawn of the house's front and of you, in the order it was drawn
+ORDER = """() => new Promise((ok) => { const seq = [], f = window.drawFront, e = window.drawEntity;
+  window.drawFront = function (...a) { seq.push('front'); return f(...a); };
+  window.drawEntity = function (p, ...a) { if (p.e.id === myId) seq.push('me'); return e(p, ...a); };
+  requestAnimationFrame(() => requestAnimationFrame(() => { window.drawFront = f; window.drawEntity = e; ok(seq.slice(-2)); })); })"""
+
+
+def test_a_house_is_under_what_stands_before_it(game):
+    """Houses were drawn last, over everything: the front wall hid the head of whoever stood before the door, and
+    the mailbox beside it ("house layer is weird, it goes above mailbox and players"). A house is drawn in its
+    place, at its front wall's row (web/js/houses.js): you before its door are drawn after it. And a mailbox with a
+    letter in it shows the whole of the letter's bubble (the sheet's rows 62 to 88: it was cut from 64)."""
+    x, y = game.pos()
+    game.stamp(-2, -4, HOUSE, levels=["0" * 5] * 4)            # its door straight over you
+    game.sleep(1200)
+    assert game.js("rooms.length") >= 1
+    assert game.js(ORDER) == ["front", "me"]
+    letter = game.js("([x, y]) => { const was = mailAt; mailAt = new Set([x + ',' + y]); const s = objectSprite('X', x, y, .6); mailAt = was; return [s[2], s[2] + s[4], s[6] + s[4]]; }", [x + 3, y])
+    assert letter[0] <= 62 and letter[1] >= 89 and letter[2] == 16, letter                 # all of it; its foot where it was
+    game.stamp(-2, -4, ["." * 5] * 4)

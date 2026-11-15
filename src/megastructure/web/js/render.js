@@ -95,6 +95,8 @@ function frame(now) {
   if (pileSince.size) { const here = new Set(groundItems.map(([ix, iy]) => ix + "," + iy)); for (const k of pileSince.keys()) if (!here.has(k) || lootAt(...k.split(",").map(Number))) pileSince.delete(k); }
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)
   drawOrbs(sx, sy, S, dt, list);
+  if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
+  drawHouses(sx, sy, S, dt, now, list);              // (houses.js: each among the rest, at its front wall's row)
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const o of list) {
     selMeasure(o);
@@ -151,8 +153,6 @@ function frame(now) {
   drawXp();
   foodPreview();
   drawPlucks(sx, sy, S, now);
-  if (roomsDirty || now - roomsAt > 600) { roomsAt = now; roomsDirty = false; findRooms(vx - 4, vy - 4, vw + 8, vh + 8); }
-  drawHouses(sx, sy, S, dt, now);
   drawCaveDark(vis, sx, sy, S, t);                   // (the cave you're in: dark past where daylight reaches)
   drawNight(vis, sx, sy, S, t);
   drawGrid(sx, sy, S);                             // (/grid: debug.js)

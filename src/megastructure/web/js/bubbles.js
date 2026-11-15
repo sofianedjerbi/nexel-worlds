@@ -42,9 +42,11 @@ function bubbleBox(b, x, y, tx) {
   r(paper, x + 2 * q, y + q, w - 4 * q, h - 2 * q); r(paper, x + q, y + 2 * q, w - 2 * q, h - 4 * q);
   r(b.shout ? BUBBLE.footShout : BUBBLE.foot, x + 2 * q, y + h - 2 * q, w - 4 * q, q);
   if (tx != null) {                                          // the tail: three steps down to a point
-    r(paper, tx - 3 * q, y + h - q, 6 * q, q);
+    // (the paper runs down into it: the shade along the bubble's foot stops at it, and is at the tail's own foot.
+    // It ran across over the tail: a line between the bubble and its tail)
+    r(paper, tx - 3 * q, y + h - 2 * q, 6 * q, 2 * q);
     r(BUBBLE.ink, tx - 3 * q, y + h, 6 * q, q); r(paper, tx - 2 * q, y + h, 4 * q, q);
-    r(BUBBLE.ink, tx - 2 * q, y + h + q, 4 * q, q); r(paper, tx - q, y + h + q, 2 * q, q);
+    r(BUBBLE.ink, tx - 2 * q, y + h + q, 4 * q, q); r(b.shout ? BUBBLE.footShout : BUBBLE.foot, tx - q, y + h + q, 2 * q, q);
     r(BUBBLE.ink, tx - q, y + h + 2 * q, 2 * q, q);
   }
 }

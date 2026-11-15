@@ -80,7 +80,7 @@ function spriteOf(c, x, y, t) {
     case "Q": return [IMG.nature, [0, 16, 48][Math.floor(h * 3)], 0, 16, 16, 0, 0];
     case "#": return fenceSprite(x, y);
     case "X": return mailAt.has(x + "," + y)                                            // a letter pops up when mail waits
-      ? [IMG.mailbox, 64, 64 + (Math.floor(t * 2) % 2 ? 0 : -1), 16, 32, 0, -16] : [IMG.mailbox, 0, 16, 16, 32, 0, -16];
+      ? [IMG.mailbox, 64, 60 + (Math.floor(t * 2) % 2 ? 0 : -1), 16, 36, 0, -20] : [IMG.mailbox, 0, 16, 16, 32, 0, -16];      // (from the sheet's row 60: the letter's bubble begins at 62, and its top was cut off)
     case "V": return [IMG.boats, (Math.floor(t * 1.5 + h * 9) % 2) * 48, 32, 48, 32, -16, -10];   // moored, rocking
     case "W": {
       const room = (dx, dy) => roomOf.has((x + dx) + "," + (y + dy));

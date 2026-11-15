@@ -21,9 +21,11 @@ def test_bubbles_are_pixels_pile_up_and_come_down(game):
     one = game.js(MINE)[0]
     edge = game.js(f"""(() => {{ const d = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3).join(), x = {one['x']}, y = {one['y']}, w = {one['w']}, h = {one['h']};
       const top = new Set(); for (let i = 2; i < w - 2; i++) top.add(d(x + i, y)); for (let i = 2; i < w - 2; i++) top.add(d(x + i, y + 1));
-      return {{top: [...top], corner: d(x, y), in1: d(x + 4, y + 2), side: d(x, y + 2), foot: d(x + 4, y + h - 3)}}; }})()""")
+      return {{top: [...top], corner: d(x, y), in1: d(x + 4, y + 2), side: d(x, y + 2), foot: d(x + 4, y + h - 3), over: d(x + w / 2, y + h - 3), tail: d(x + w / 2, y + h + 1)}}; }})()""")
     assert edge["top"] == ["91,63,54"] and edge["side"] == "91,63,54", edge       # a hard dark edge, two px thick: no smoothing
     assert edge["corner"] != "91,63,54" and edge["in1"] == "255,246,226" and edge["foot"] == "236,215,176", edge   # the corner stepped off; paper; the foot's shade
+    # (the paper runs down into the tail: the foot's shade ran across over it, a line between the bubble and its tail)
+    assert edge["over"] == "255,246,226" and edge["tail"] == "255,246,226", edge
     shot(game, "one")
     long = "I found a cave full of iron past the river, bring a pickaxe and some torches when you come"
     game.js(f"({SAY})({long!r}, 4); ({SAY})('ok, coming', 4, true)")
