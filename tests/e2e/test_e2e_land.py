@@ -71,7 +71,9 @@ def test_the_land_is_painted_in_the_page_and_handed_to_the_gpu_whole(game):
     assert len(blocks) >= 2 and max(b["levels"] for b in blocks) >= 12
     assert all(b["diff"] == 0 and b["shown"] == 0 and b["near"] < 2000 for b in blocks), blocks
     dry = [b for b in blocks if not b["water"]]
-    assert dry and all(b["draws"] == 0 and b["puts"] == (2 if b["levels"] else 1) for b in dry), blocks
+    # (every block without water; there was "and there is one": a player who wakes by a lake has none, and the rule
+    # for all blocks below holds them)
+    assert all(b["draws"] == 0 and b["puts"] == (2 if b["levels"] else 1) for b in dry), blocks
     assert all(b["puts"] <= 3 and b["draws"] <= 1 for b in blocks), blocks      # (water: its tint, a px a tile, blown up)
 
 
@@ -123,7 +125,9 @@ def test_land_coming_in_at_a_sprint_takes_little_of_a_frame(browser, server):
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.goto(f"{server}/?zoom=2")
-    page.wait_for_function("typeof ready !== 'undefined' && typeof blocks !== 'undefined' && blocks.size > 0 && !arrivingNow", timeout=20000)
+    page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on", timeout=20000)
+    page.click("#watch")                                         # (past the first screen's island, to the world's own land)
+    page.wait_for_function("!TitleScene.on && blocks.size > 0 && !arrivingNow", timeout=20000)
     page.wait_for_timeout(1500)
     frames = page.evaluate(GLIDE)[5:]
     page.close()
