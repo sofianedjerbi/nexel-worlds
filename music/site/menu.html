@@ -43,8 +43,18 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">Slow tide, the theme you chose for the first screen, made dynamic three ways; each starts with a gradient. Under them, the earlier versions and candidates, the pieces kept for later, and the songs of the game. Everything loops with no gap.</div>
+  <div class="sub">High tide, the version you liked, made longer with the drop after two bars; it starts with a gradient. Under it, the earlier versions and candidates, the pieces kept for later, and the songs of the game. Everything loops with no gap.</div>
   <div id="tides"></div>
+  <div class="box">
+    <h2>Seventh round: High tide, longer, the drop sooner</h2>
+    <ul>
+      <li>You said High tide is good but takes a little time to settle, and asked for it longer, loop compatible, with the drop (drums and all) sooner.</li>
+      <li>Before: eight thin bars, 18 seconds, before the drums. Now two bars, 4.6 seconds (pads, bass, a few hats, a snare pickup), which is about the length of the gradient; then the drop.</li>
+      <li>Longer: 2 min 32 s instead of 1 min 14 s. Eight blocks after the drop: the theme, the theme answered, the second tune, the theme with an inner voice, a block where the drums thin out under a third tune, the second tune with a voice a sixth under, then everything twice.</li>
+      <li>Loop: one file. Each time round it passes through the two thin bars, the only place the band lets go, and drops again. The same sounds and grooves as the take you liked.</li>
+      <li>Audit: nothing out of range. I cannot hear it. It is not in the game.</li>
+    </ul>
+  </div>
   <div class="box">
     <h2>Sixth round: dynamic, with a gradient</h2>
     <ul>
@@ -113,12 +123,14 @@ let ctx = null, playing = null;                       // playing: {id, src, t0, 
 const buffers = {}, FILES = {full: "menu_slow_tide", slow: "menu_slow_tide_72", first: "keep_slow_tide_first"};
 const GRADIENT = 6;                                   // seconds: the level rises and the tone opens
 const tides = fetch("audio/tide.json?v=" + Date.now()).then((r) => r.json()).then((all) => {
-  document.getElementById("tides").innerHTML = all.filter((m) => m.id !== "full").map((m, i) => { FILES["t_" + m.id] = "menu_tide_" + m.id;
-    return `<div class="box" id="c-t_${m.id}" style="--tone:${TONE[i + 2]}">
-      <div class="row"><div class="n">${"ABC"[i]}</div><div><h2>${m.title}</h2><div class="feel">${m.feel}</div></div><button id="b-t_${m.id}">Play</button></div>
-      <div class="bar" data-id="t_${m.id}"><i></i>${[1, 2, 3].map((k) => `<s style="left:${k * 25}%"></s>`).join("")}</div>
-      <div class="blocks four">${m.names.map((n, k) => `<div><b>${n.split(" · ")[0]}</b>${n.split(" · ")[1]}</div>`).join("")}</div>
-      <div class="facts"><b>${m.bpm}</b> beats a minute · F major · loop of <b>${Math.round(m.seconds)} s</b> · starts with a gradient of ${GRADIENT} s<br>
+  all = all.filter((m) => m.id !== "full").sort((x, y) => (y.id === "high") - (x.id === "high"));
+  document.getElementById("tides").innerHTML = all.map((m, i) => { FILES["t_" + m.id] = "menu_tide_" + m.id;
+    const starts = m.starts || m.names.map((_, k) => k / m.names.length), ends = starts.slice(1).concat(1);
+    return `${i === 1 ? '<h2 class="part">The three of the round before (High tide, first take, is B)</h2>' : ""}<div class="box" id="c-t_${m.id}" style="--tone:${TONE[(i + 3) % 5]}">
+      <div class="row"><div class="n">${m.id === "high" ? "H" : "ABC"[i - 1]}</div><div><h2>${m.title}${m.id === "high" ? ", longer, the drop sooner" : ""}</h2><div class="feel">${m.feel}</div></div><button id="b-t_${m.id}">Play</button></div>
+      <div class="bar" data-id="t_${m.id}"><i></i>${starts.slice(1).map((x) => `<s style="left:${x * 100}%"></s>`).join("")}</div>
+      <div class="blocks" style="display:flex; gap:0">${m.names.map((n, k) => `<div style="width:${(ends[k] - starts[k]) * 100}%; padding-right:4px; overflow:hidden"><b>${n.split(" · ")[0]}</b>${(ends[k] - starts[k]) > 0.06 ? n.split(" · ")[1] : ""}</div>`).join("")}</div>
+      <div class="facts"><b>${m.bpm}</b> beats a minute · F major · loop of <b>${Math.floor(m.seconds / 60)} min ${Math.round(m.seconds % 60)} s</b> · starts with a gradient of ${GRADIENT} s<br>
         audit: ${m.out_of_range.length ? m.out_of_range.join("; ") : "everything in range"} · ${m.lufs} LUFS · true peak ${m.true_peak} dB</div>
     </div>`; }).join("");
 });

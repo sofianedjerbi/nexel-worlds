@@ -93,6 +93,22 @@ VARIANTS = [
     dict(id="half", title="Spring tide", feel="half time under running hats: one snare a bar, a bass that leans across the beat", bpm=88, levels=DAY,
          blocks=form("half2", "half3", "sync", "bounce", SYNC)),
 ]
+# "High tide is good but it takes a lil bit of time to settle. Can you make it longer(loop compatible) and make the
+# 'drop with drums etc' appear sooner ?" The take that was liked is site/audio/keep_high_tide_first.wav: eight thin
+# bars (18 s) before the drums. Now two bars (4.6 s, about the length of the gradient: pads, bass, a few hats, a snare
+# pickup, no tune), then the drop, and eight blocks instead of three after it. One file that loops: every time round
+# it passes through those two thin bars, the only place the band lets go, and drops again.
+G = dict(beat="four", bass="drive", stab=PUSH, fill=True)
+VARIANTS.append(dict(id="high", title="High tide", feel="two thin bars, then the drop: a kick on every beat, open hats between, a bass that drives in eighths, pushed chords", bpm=104, levels=DAY,
+    blocks=[dict(name="in · two bars: pads, bass, a pickup", h=["Bbmaj9", "C13sus"], beat="thin", bass="long", air=True, fill=True),
+            dict(name="A · the drop: the theme", h=HA, tune=A, **G),
+            dict(name="A · the theme, answered", h=HA, tune=A, answer=True, **G),
+            dict(name="B · the second tune", h=HB, tune=B, twice=True, air=True, **G | dict(beat="four2")),
+            dict(name="A · theme, an inner voice", h=HA, tune=A, answer=True, inner=True, air=True, **G),
+            dict(name="C · the drums thin out: a third tune", h=HC, tune=C, voice="second", beat="four2", bass="sync", air=True, inner=True),
+            dict(name="B · second tune, a sixth under", h=HB, tune=B, sixth=True, twice=True, air=True, **G | dict(beat="four2")),
+            dict(name="A · everything", h=HA, tune=A, answer=True, inner=True, air=True, **G),
+            dict(name="A · everything, to the top", h=HA, tune=A, answer=True, inner=True, air=True, **G | dict(bass="bounce"))]))
 TUNES = ("lead", "second", "under", "answer", "inner")
 
 
@@ -100,10 +116,11 @@ def arrange(st=None):
     p = {k: [] for k in ("lead", "second", "under", "answer", "inner", "air", "stab", "chords", "pad", "bass", "kick", "snare", "clap", "hat", "open", "brush", "shaker")}
     under = {}
     blocks = (st or {}).get("blocks", BLOCKS)
-    for k, blk in enumerate(blocks):
-        t = blk["tune"]
+    bar0 = 0
+    for blk in blocks:
+        t = blk.get("tune") or dict(cell=[], cad=[], bar="", ends=("", ""))          # (a block with no tune: the two bars before the drop)
         for b, bar in enumerate(blk["h"]):
-            s0, chs = 16 * (8 * k + b), bar.split()
+            s0, chs = 16 * (bar0 + b), bar.split()
             cadence = b % 4 == 3
             notes = (t["ends"][b // 4] if cadence else t["bar"]).split()
             for (s, ln), note in zip(t["cad"] if cadence else t["cell"], notes):
@@ -130,9 +147,10 @@ def arrange(st=None):
                 p["bass"] += [(at + s, min(ln, half - 1), midi(R[ch]) + up, vel) for s, ln, up, vel in BASS[blk.get("bass", "long")] if s < half]
             for part, hits in BEAT.get(blk.get("beat"), {}).items():
                 p[part] += [(s0 + s, 1, 48 if part == "kick" else 60, vel) for s, vel in hits]
-            if blk.get("fill") and b == 7:
+            if blk.get("fill") and b == len(blk["h"]) - 1:
                 p["snare"] += [(s0 + 13, 1, 60, 70), (s0 + 15, 1, 60, 90)]
-    return {k: v for k, v in p.items() if v}, 16 * 8 * len(blocks), under
+        bar0 += len(blk["h"])
+    return {k: v for k, v in p.items() if v}, 16 * bar0, under
 
 
 def clashes(score, under):
@@ -157,18 +175,19 @@ def render(v):
         w.setnchannels(2), w.setsampwidth(2), w.setframerate(pieces.SR)
         w.writeframes(np.round(np.clip(y, -1, 1).T * 32767).astype(np.int16).tobytes())
     blocks = []
+    at = np.cumsum([0] + [len(b["h"]) for b in st["blocks"]]) * 16 * 60 / st["bpm"] / 4
     for k in range(len(st["blocks"])):                              # each block's own level, to see the piece breathe
-        i, j = (int(round(n * 128 * 60 / st["bpm"] / 4 * pieces.SR)) for n in (k, k + 1))
+        i, j = (int(round(n * pieces.SR)) for n in (at[k], at[k + 1]))
         blocks.append(round(master.lufs(y[:, i:j]) - after["lufs"], 1))
     print(f"\n== {v['title']}  {y.shape[1] / pieces.SR:.0f} s\n" + "\n".join(lines) + f"\n   out of range: {wrong or 'nothing'}\n   master {did}; small speakers {fixes or 'nothing'}\n   blocks against the whole (dB): {blocks}", flush=True)
     return dict(id=v["id"], title=v["title"], feel=v["feel"], bpm=st["bpm"], seconds=round(y.shape[1] / pieces.SR, 1), out_of_range=wrong, blocks=blocks,
-                names=[b["name"] for b in st["blocks"]], lufs=float(after["lufs"]), true_peak=float(after["true_peak"]))
+                names=[b["name"] for b in st["blocks"]], starts=[round(float(a / at[-1]), 4) for a in at[:-1]], lufs=float(after["lufs"]), true_peak=float(after["true_peak"]))
 
 
 if __name__ == "__main__":
     import sys
     from multiprocessing import get_context
-    todo = [v for v in VARIANTS if (v["id"] in sys.argv[1:] if sys.argv[1:] else v["id"] != "full")]
+    todo = [v for v in VARIANTS if (v["id"] in sys.argv[1:] if sys.argv[1:] else v["id"] == "high")]
     with get_context("spawn").Pool(4) as pool:
         done = {d["id"]: d for d in pool.map(render, todo)}
     old = {d["id"]: d for d in json.loads((OUT / "tide.json").read_text())} if (OUT / "tide.json").exists() else {}

@@ -510,3 +510,11 @@ unique theme. cute and fast".
   changes all three have nothing out of range (day reference). `site/audio/menu_tide_<id>.wav`, `tide.json`.
 - The gradient is the player's: on the page six seconds of rising level and opening low-pass at Play; not in the file
   (it loops). audio.js would do the same on the first screen. Not judged by ear, not in the game.
+
+## High tide, longer, the drop sooner (2026-11-15)
+- "High tide is good but it takes a lil bit of time to settle. Can you make it longer(loop compatible) and make the
+  'drop with drums etc' appear sooner ?" The liked take: `site/audio/keep_high_tide_first.wav` (8 thin bars, 18 s).
+- `slowtide.py` variant "high": two thin bars (4.6 s: pads, bass, hats, a snare pickup, no tune), then eight blocks
+  (A, A answered, B, A + inner voice, C with the drums thinned, B + a sixth under, A everything twice): 66 bars,
+  2 min 32 s at 104. One looping file; the two thin bars come round each time. Blocks can have any number of bars.
+- Checks: nothing out of range (day reference); the thin bars sit 6 dB under the rest. Published to the demo page.
