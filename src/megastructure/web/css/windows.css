@@ -104,18 +104,19 @@
   #goalhint span { color:var(--ink2); } body:not(.playing) #goalhint { display:none !important; }
   #goals .gh { display:flex; align-items:center; gap:calc(3 * var(--q)); height:calc(9 * var(--q)); margin:0 calc(1 * var(--q)) calc(2 * var(--q)) calc(2 * var(--q)); } #goals .gh b { font-weight:normal; } #goalcount { flex:1; color:var(--ink2); }
   #goallist { background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #b8946a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; padding:calc(2 * var(--q)); display:flex; flex-direction:column; gap:var(--q); min-height:calc(45 * var(--q)); }
-  .goal { flex:none; display:flex; align-items:center; gap:calc(3 * var(--q)); height:calc(13 * var(--q)); padding-right:calc(2 * var(--q)); animation:goalin .35s steps(4); }
+  .goal { flex:none; display:flex; align-items:center; gap:calc(3 * var(--q)); height:calc(13 * var(--q)); padding-right:calc(2 * var(--q)); }
+  .goal.in { animation:goalin .3s cubic-bezier(.2, .7, .3, 1); }      /* (a new goal comes in; smooth: in four steps it read as a slow machine) */
   .goal .gc { flex:none; display:flex; align-items:center; justify-content:center; width:calc(13 * var(--q)); height:calc(13 * var(--q)); background:#cfad84; box-shadow:inset var(--q) var(--q) 0 #9a6f55, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }
   .goal .gi { width:calc(11 * var(--q)); height:calc(11 * var(--q)); flex:none; image-rendering:pixelated; }
   .goal .gt { flex:1; min-width:0; white-space:nowrap; overflow:hidden; }
   .goal .tick { flex:none; width:calc(6 * var(--q)); height:calc(6 * var(--q)); background:#cfad84; box-shadow:inset var(--q) var(--q) 0 #9a6f55, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }
   .goal.done .gt { color:#4f7a3a; }
   .goal.done .tick { background:#8fc46a; box-shadow:inset var(--q) var(--q) 0 #6aa04e, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c2e8a0; }
-  .goal.done { animation:goaldone 1.6s steps(8) forwards; }
+  .goal.done { animation:goaldone 1.6s ease-in forwards; }
   #goals .gf { display:flex; align-items:center; gap:calc(2 * var(--q)); color:var(--ink2); cursor:pointer; }
   :is(#goals, #goalhint) kbd { display:flex; align-items:center; height:calc(8 * var(--q)); padding:0 calc(2 * var(--q)); font:inherit; color:var(--ink); background:#f3e5c2; box-shadow:inset var(--q) var(--q) 0 #fff8e6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #d9bd8f, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
   @keyframes goalin { from { opacity:0; transform:translateX(-12px); } }
-  @keyframes goaldone { 0%, 70% { opacity:1; } 100% { opacity:0; transform:translateX(-12px); } }
+  @keyframes goaldone { 0%, 78% { opacity:1; transform:none; } 100% { opacity:0; transform:translateX(-12px); } }
   /* ---- the inventory (bag.js): the recipe book's manner, in a pixel of its own (--b: the book's, less where 224 x 162 would not fit) ---- */
   #bag { --q:var(--b); position:fixed; left:0; right:0; top:0; bottom:10vh; margin:auto; width:calc(214 * var(--q)); height:calc(155 * var(--q)); padding:calc(5 * var(--q)); display:none; z-index:4;
     color:var(--ink); font-size:calc(9 * var(--q)); line-height:calc(9 * var(--q)); background:#e8cfa6; box-shadow:inset var(--q) var(--q) 0 #fbf0d6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(4 * var(--q)) 0 rgba(60,40,30,.22); }

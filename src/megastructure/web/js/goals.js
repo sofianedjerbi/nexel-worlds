@@ -43,7 +43,7 @@ function drawGoals() {
   localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d));
   const lingering = goalsShown.filter((i) => goalsDoneAt[i] && now - goalsDoneAt[i] < 1600);
   const open = GOALS.map((_, i) => i).filter((i) => !d["g" + i] && !lingering.includes(i));
-  goalsShown = [...lingering, ...open].slice(0, 3);
+  goalsShown = [...lingering, ...open].slice(0, 3).sort((a, b) => a - b);      // (in the list's order: the one just done stays where it was)
   const el = $("goals"), done = GOALS.filter((_, i) => d["g" + i]).length;
   const book = $("craft").style.display === "block";
   el.style.display = goalsOff || book ? "none" : "block";
@@ -53,14 +53,25 @@ function drawGoals() {
   if (el.dataset.sig === sig) return;
   el.dataset.sig = sig;
   $("goalcount").textContent = `${done}/${GOALS.length}`;
-  const list = $("goallist");
-  list.innerHTML = "";
-  for (const i of goalsShown) {
-    const row = document.createElement("div");
-    row.className = "goal" + (goalsDoneAt[i] ? " done" : "");
-    const icon = slotIcon(GOALS[i][1]), cell = document.createElement("span"); icon.className = "gi"; cell.className = "gc"; cell.append(icon);   // (its small picture, the bar's, at the card's pixel)
-    row.append(cell);
-    row.insertAdjacentHTML("beforeend", `<span class="gt">${esc(GOALS[i][0])}</span><span class="tick"></span>`);
-    list.append(row);
+  // The rows are kept from one drawing to the next ("the item sliding animation on goals... looks buggy (low fps)":
+  // every row was made again at each change, so all three slid in again, in four jumps). Now only a goal that is new
+  // comes in, the ones that stay glide up to their new place, and the one just done goes out, all of it smooth.
+  const list = $("goallist"), first = !list.children.length;
+  const old = new Map([...list.children].map((r) => [+r.dataset.i, r])), tops = new Map([...old].map(([i, r]) => [i, r.offsetTop]));
+  for (const [i, r] of old) if (!goalsShown.includes(i)) r.remove();
+  goalsShown.forEach((i, k) => {
+    let row = old.get(i);
+    if (!row) {
+      row = document.createElement("div"); row.dataset.i = i; row.className = "goal" + (first ? "" : " in");
+      const icon = slotIcon(GOALS[i][1]), cell = document.createElement("span"); icon.className = "gi"; cell.className = "gc"; cell.append(icon);   // (its small picture, the bar's, at the card's pixel)
+      row.append(cell);
+      row.insertAdjacentHTML("beforeend", `<span class="gt">${esc(GOALS[i][0])}</span><span class="tick"></span>`);
+    }
+    row.classList.toggle("done", !!goalsDoneAt[i]);
+    if (list.children[k] !== row) list.insertBefore(row, list.children[k] || null);
+  });
+  for (const [i, top] of tops) {                       // the ones that stay: from where they were to where they are
+    const row = old.get(i), dy = row.isConnected ? top - row.offsetTop : 0;
+    if (dy && row.animate) row.animate([{transform: `translateY(${dy}px)`}, {transform: "none"}], {duration: 260, easing: "cubic-bezier(.2, .7, .3, 1)"});
   }
 }

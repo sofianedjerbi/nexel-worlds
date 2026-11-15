@@ -1543,3 +1543,14 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   terrace onto the roof, climbed and come down unhurt.
 - Tests: tests/test_climbing.py (3), tests/e2e/test_e2e_climb.py (2: a flight by Space and walked up, one planned in
   build mode; a ladder against a cliff six layers up, climbed and come down unhurt).
+
+## Iteration 131: the goals' card moves smoothly
+- Said: "see the item sliding animation on goals? it looks buggy (low fps)".
+- What it was: a row slid in over 0.35 s in four steps (about 11 pictures a second, on purpose) and went out in
+  eight steps over 1.6 s; and at each change all three rows were made again, so all three slid in again; the one
+  just done jumped to the top first.
+- Change: `goals.js` keeps the rows; the one done stays where it was and fades out, the ones that stay glide up to
+  their place (260 ms), only the new goal comes in (300 ms); no steps anywhere (`windows.css`). The card shown with G
+  is there at once, as before.
+- Measured: a new test in `test_e2e_social.py` (the same rows kept, none stepped, only the new one comes in); the
+  social tests 8 of 8. Not seen by me in motion.

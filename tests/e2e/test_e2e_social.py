@@ -193,3 +193,22 @@ def test_a_line_is_said_in_a_run_of_syllables_as_it_is_written(game, friend):
     assert -4 <= mine <= 4 and game.js(f"voiceOf({friend.name!r})") == theirs    # a voice from the name: the same on every screen
     game.js("(() => { muted = true; window.__said = []; return 1; })()")
     assert game.js("babble('x', 'not a sound when muted', undefined, undefined, false)") == 0 and game.js("window.__said") == []
+
+
+def test_a_goal_done_goes_out_and_only_the_new_one_comes_in(game):
+    """"the item sliding animation on goals... looks buggy (low fps)": every row was made again at each change, so all
+    three slid in again, in four jumps. The rows that stay are the same ones, only the new goal comes in, and nothing
+    moves in steps."""
+    game.press("g", 400)
+    game.wait("document.querySelectorAll('.goal').length === 3")
+    assert game.js("[...document.querySelectorAll('.goal')].every((r) => !r.classList.contains('in') && !r.getAnimations().length)")   # there at once
+    game.js("(() => { document.querySelectorAll('.goal').forEach((r, k) => { r.kept = k; }); return 1; })()")
+    game.give(berries=1)                                       # the third of the three
+    game.wait("document.querySelector('.goal.done')", 5000)
+    rows = game.js("[...document.querySelectorAll('.goal')].map((r) => [r.kept, r.classList.contains('done'), r.classList.contains('in')])")
+    assert rows == [[0, False, False], [1, False, False], [2, True, False]], rows          # the same rows, each where it was
+    assert "steps" not in game.js("getComputedStyle(document.querySelector('.goal.done')).animationTimingFunction")
+    game.wait("!document.querySelector('.goal.done') && document.querySelectorAll('.goal').length === 3", 6000)
+    rows = game.js("[...document.querySelectorAll('.goal')].map((r) => [r.kept ?? null, r.classList.contains('in')])")
+    assert rows == [[0, False], [1, False], [None, True]], rows                             # two stayed; the new one came in
+    assert "steps" not in game.js("getComputedStyle(document.querySelector('.goal.in')).animationTimingFunction")
