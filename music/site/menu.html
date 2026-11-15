@@ -60,9 +60,19 @@
     <h2>How they are made</h2>
     <ul>
       <li>The recipe of the pieces you kept: rich chords under a lead that plays one bar three times, then a cadence.</li>
-      <li>Synth sounds from Surge XT, played from Python (<code>music/menu.py</code>). No sound of a kept piece is used again, and there are no pads.</li>
+      <li>Synth sounds from Surge XT, played from Python (<code>music/menu.py</code>). No sound of a kept piece is used again.</li>
       <li>Every sound was measured on the beat, with no echo. Every piece is at the game's music level (-20 LUFS).</li>
       <li>I cannot hear them. They are five guesses built on what you have liked so far, and the choice is yours.</li>
+    </ul>
+  </div>
+  <div class="box">
+    <h2>Second round: what the meters found</h2>
+    <ul>
+      <li>You said every one of the first five sounded bad. I soloed every part and held each mix against the two day pieces you kept (<code>music/mixcheck.py</code>).</li>
+      <li>Several sounds spoke an octave under the key pressed: the lower double and some chords were playing in the bass's register, on top of the bass and the kick.</li>
+      <li>One lead was only a click, one bass buzzed, and no piece had the quiet wide pad both kept pieces stand on. The level was a flat wall, or full of holes.</li>
+      <li>Now: every sound was chosen out of 1,200 measured ones for its closeness to a sound you kept, each part sits in its own register, each piece has its own pad, and held leads are played short.</li>
+      <li>The tunes and chords are the ones of the first round; "Sugar rush" went from 172 to 156 beats a minute.</li>
     </ul>
   </div>
 </main>
@@ -102,7 +112,8 @@ fetch("audio/menu.json?v=" + Date.now()).then((r) => r.json()).then((all) => {
       <div class="row"><div class="n">${i + 1}</div><div><h2>${m.title}</h2><div class="feel">${m.feel}</div></div><button id="b-${m.id}">Play</button></div>
       <div class="bar" data-id="${m.id}"><i></i>${[1, 2, 3].map((k) => `<s style="left:${k * 25}%"></s>`).join("")}</div>
       <div class="facts"><b>${m.bpm}</b> beats a minute · <b>${m.meter}</b> · <b>${m.key}</b> · loop of <b>${Math.round(m.seconds)} s</b><br>
-        lead <b>${m.sounds.lead}</b>${m.sounds.second ? ` · answer <b>${m.sounds.second}</b>` : ""}${m.sounds.double ? ` · joined the second time by <b>${m.sounds.double}</b>` : ""} · chords <b>${m.sounds.chords}</b> · bass <b>${m.sounds.bass_sound}</b></div>
+        lead <b>${m.sounds.lead}</b>${m.sounds.second ? ` · answer <b>${m.sounds.second}</b>` : ""}${m.sounds.double ? ` · joined the second time by <b>${m.sounds.double}</b>` : ""} · chords <b>${m.sounds.chords}</b> · pad <b>${m.sounds.pad}</b> · bass <b>${m.sounds.bass_sound}</b><br>
+        against the kept pieces: ${m.out_of_range.length ? m.out_of_range.join("; ") : "everything in range"}</div>
     </div>`).join("");
   all.forEach((m) => { document.getElementById("b-" + m.id).onclick = () => play(m.id); });
   document.querySelectorAll(".bar").forEach((b) => b.onclick = (e) => play(b.dataset.id, (e.clientX - b.getBoundingClientRect().left) / b.offsetWidth));

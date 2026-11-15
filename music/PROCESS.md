@@ -431,3 +431,24 @@ unique theme. cute and fast".
 - Loops of 45 to 66 s, mastered by `master.master` to -20 LUFS. Band balance measured within the range of Side street
   day and Far shore day.
 - Not judged by ear, not in the game.
+
+## Menu music, second round: an engineer's pass (2026-11-15)
+- Verdict on the first five: "everyone of them sounds bad i think", "please keep a sound engineer approach". Also asked:
+  "review the existing musics with a sound engineer POV".
+- `music/mixcheck.py`: every part alone (the stem stage of `pieces.render`), by band, width and how much of the time
+  it sounds, held against Side street day and Far shore day. Found in the first five:
+  - sounds that speak an octave under the key pressed (Square Pop, Instant Coffee PWM, Crisp PWM, Snap...): the
+    lower double and some chords sat at 60-250 Hz on the bass and kick;
+  - Skip rope's lead (Snap) a click: sounding 19 % of the time, level moving 21 dB; the others a wall (5-8 dB; kept 11);
+  - Tide pool's bass as loud at 2-8 kHz as the chords; no pad anywhere (both kept pieces have one at -13 dB).
+- Sounds now chosen by measure, not name: 1,200 Surge XT sounds scanned at the notes and lengths played (octave it
+  really sounds in, tuning, attack, body, ring, brightness, width), ranked by distance to the kept pieces' sounds;
+  imitations of instruments and sounds already used are left out; `surge.timing` on each (Evilous and Long Stocking
+  had an echo and were dropped).
+- `menu.py`: `shift` (octave correction per part), `pad` (the chord held an octave over the stabs), the second-pass
+  double at the lead's pitch, `gate` (held leads played short), Sugar rush 172 to 156. Tunes and chords unchanged.
+  Result: Sugar rush in range everywhere; the four others one small item each (printed, shown on the page).
+- The five pieces in the game, same meters: -20.0 LUFS, true peak -5 to -7 dB, no clipping, no DC, loop seams
+  clean; on a small mono speaker 1.2 to 3.3 dB quieter (Side street night most: its pad is wider than it is loud
+  in the middle and its bass is all under 60 Hz). Nothing changed: they were approved by ear.
+- Not judged by ear.
