@@ -96,7 +96,9 @@ function drawBubbles(sx, sy, S, t) {
       bubbleBox(b, x, y, n ? null : Math.max(x + 5 * q, Math.min(x + b.w - 5 * q, pile.tx)));
       ctx.fillStyle = BUBBLE.ink;
       let left = written(b.text, since).length;              // written out as it is said (babble.js), row after row
-      b.rows.forEach((row, i) => { if (left > 0) ctx.fillText(row.slice(0, left), x + BUBBLE.padX, y + BUBBLE.padY + 12 + i * BUBBLE.pitch); left -= row.length + 1; });
+      // (the letters in the middle of the paper: 4 px over a capital, 4 under it to the foot's shade, where a g or a y
+      // comes down to. They were a font pixel higher: 2 px over, 6 under, and a line of capitals looked hung from the top)
+      b.rows.forEach((row, i) => { if (left > 0) ctx.fillText(row.slice(0, left), x + BUBBLE.padX, y + BUBBLE.padY + 14 + i * BUBBLE.pitch); left -= row.length + 1; });
       b.at = [x, y];                                          // (where it was drawn: for the tests)
       if (n === pile.mine.length - 1) { ctx.globalAlpha = pile.mine.length > 1 ? 1 : ctx.globalAlpha; bubbleTab(pile.name, x, y, me && pile.name === me); }
     });

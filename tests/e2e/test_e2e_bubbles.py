@@ -26,6 +26,11 @@ def test_bubbles_are_pixels_pile_up_and_come_down(game):
     assert edge["corner"] != "91,63,54" and edge["in1"] == "255,246,226" and edge["foot"] == "236,215,176", edge   # the corner stepped off; paper; the foot's shade
     # (the paper runs down into the tail: the foot's shade ran across over it, a line between the bubble and its tail)
     assert edge["over"] == "255,246,226" and edge["tail"] == "255,246,226", edge
+    # the letters in the middle of the paper: as far under its top edge as over the foot's shade (they were 2 px and 6)
+    rows = game.js(f"""(() => {{ const x = {one['x']}, y = {one['y']}, w = {one['w']}, h = {one['h']}, d = ctx.getImageData(x + 6, y + 2, w - 12, h - 6).data, rows = [];
+      for (let j = 0; j < h - 6; j++) for (let i = 0; i < w - 12; i++) if (d[(j * (w - 12) + i) * 4] === 91 && d[(j * (w - 12) + i) * 4 + 1] === 63) {{ rows.push(j); break; }}
+      return [rows[0], h - 6 - 1 - rows[rows.length - 1]]; }})()""")
+    assert rows == [4, 4], rows
     shot(game, "one")
     long = "I found a cave full of iron past the river, bring a pickaxe and some torches when you come"
     game.js(f"({SAY})({long!r}, 4); ({SAY})('ok, coming', 4, true)")
