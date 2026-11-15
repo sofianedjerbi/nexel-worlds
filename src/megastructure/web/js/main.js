@@ -25,7 +25,8 @@ $("say").addEventListener("keydown", (e) => {
   if (line.startsWith("/")) {
     const parts = line.slice(1).match(/(?:[^\s"]+|"[^"]*")+/g) || [], tool = parts.shift(), args = {};
     for (const p of parts) { const [k, ...v] = p.split("="); const val = v.join("=").replace(/^"|"$/g, ""); args[k] = /^-?\d+$/.test(val) ? +val : val === "true" ? true : val === "false" ? false : val; }
-    if (!localCommand(tool)) act(tool, args);              // (/coords, /grid: debug.js; anything else is an action)
+    if (localCommand(tool)) return;                        // (/coords, /grid, /perf: debug.js)
+    if (COMMAND.includes(tool)) act(tool, args); else toast(`No command /${tool}. Type / to see them.`);
   } else if (line.startsWith("!")) act("shout", {text: line.slice(1).trim()});
   else if (shouted(line)) act("shout", {text: line});      // WRITTEN IN CAPITALS: a shout, as it reads
   else act("say", {text: line});

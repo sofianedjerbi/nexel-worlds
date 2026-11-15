@@ -4,14 +4,18 @@
 // one that is marked, the first or the one the arrows moved to; a click or a tap takes any. Enter sends the line as
 // it is typed. In plain talk, Tab finishes the name of someone near (several: the list, then Tab).
 
-let tools = null;                                    // the server's actions: name -> {args: {name: what it is}, desc}
+// "there's a lot of useless slash commands. like walk etc... no need for those": the server has some thirty actions
+// (they are what the AI players call), and nearly all of them are a key or a click here. The commands are the ones
+// that have no other way: naming an animal, writing on a sign; and the page's own (debug.js).
+const COMMAND = ["name", "write_sign"];
+let tools = null;                                    // the server's actions kept as commands: name -> {args: {name: what it is}, desc}
 const LOCAL = {coords: "where you are, top right", grid: "every tile outlined, with its height", perf: "what the last second cost, top right"};
 const comp = {items: [], note: "", at: 0, from: 0, to: 0};
 
 function askTools() {
   if (tools || !me) return;
   // (listed again when they come, if a command is being typed: not in plain talk, where a list of names asked for with Tab was wiped by it)
-  rpc("tools", {}).then((r) => { if (r.ok && r.tools) { tools = r.tools; if ($("chatbox").classList.contains("open") && $("say").value.startsWith("/")) suggest(); } });
+  rpc("tools", {}).then((r) => { if (r.ok && r.tools) { tools = Object.fromEntries(COMMAND.filter((n) => r.tools[n]).map((n) => [n, r.tools[n]])); if ($("chatbox").classList.contains("open") && $("say").value.startsWith("/")) suggest(); } });
 }
 // The ones that start with what is typed (the shortest first: /di is dig before dig_down), then the ones that have
 // it in them; nothing typed: all of them, in the order they come

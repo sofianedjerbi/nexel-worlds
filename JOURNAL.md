@@ -1400,3 +1400,13 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   (Equal, Minus) and the numpad's; not while typing, not with Ctrl or Cmd (the browser's zoom), also for a watcher.
 - Measured: `test_e2e_zoom.py` (Equal, Minus, with Shift, numpad; the chat's dash is not a zoom; a watcher; the
   sign's place); 6 of 6 with the old key test and the first screen's.
+
+## Iteration 121: five commands, not thirty-four
+- Said: "there's a lot of useless slash commands. like walk etc... no need for those".
+- What it was: "/" listed every action of the server (31: step, walk, stop, move_to, dig, eat...), which are what the
+  AI players call and, for a person, a key or a click; plus the page's three (coords, grid, perf).
+- Change: `complete.js` keeps as commands only the actions with no other way in the page (I looked for each in the
+  page's code): `/name` (name an animal) and `/write_sign`; with `/coords`, `/grid`, `/perf`. Any other /word does
+  nothing and says "No command /word. Type / to see them." The server and the AI players' actions are untouched.
+- Measured: `test_e2e_complete.py` rewritten (the list is those five; /walk and /dig do nothing; /name names a cow),
+  one assertion of `test_e2e_ui.py` turned round; 17 of 17 with the interface and touch tests; unit 413.
