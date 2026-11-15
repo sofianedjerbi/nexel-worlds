@@ -99,7 +99,11 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     game.rpc("dev_stamp", x=x + 6, y=y - 4, rows=["l"])
     game.rpc("dev_teleport", x=x + 6, y=y - 4, z=0)
     game.sleep(900)
-    game.js("() => { window.__v = 0; const t0 = performance.now(); const f = () => { __v = Math.max(__v, Floors.veils); if (performance.now() - t0 < 1500) requestAnimationFrame(f); }; requestAnimationFrame(f); }")
+    game.js("""() => { window.__v = 0; window.__over = []; const t0 = performance.now(); const f = () => { __v = Math.max(__v, Floors.veils);
+      const c = Climb.climbOf(ents.get('agent' + myId)); if (c && !c.on) __over.push(c.y);
+      if (performance.now() - t0 < 1500) requestAnimationFrame(f); }; requestAnimationFrame(f); }""")
     game.hold(["ArrowDown"], 90)
     game.sleep(1600)
     assert game.server()["z"] == 3 and game.js("__v") == 0
+    over = game.js("__over")                                    # stepping over onto the block: drawn after it, on it (it was drawn
+    assert over and min(over) > (y - 3) + 3 * game.js("Floors.K")   # under the block till the step was done)

@@ -1681,3 +1681,12 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   Both), with the stopgap that is in the game now. http://127.0.0.1:8099/door.html
 - Measured: all twelve at the game's door level; the page loads and plays all fourteen files. None is in the game:
   the choice is the user's ear.
+
+## Iteration 137: over the top of a ladder, not under it
+- User: "at the end of hte ladder, i go under the platform before going over it".
+- Stepping over at a ladder's top, you were placed in the frame's order by the top's row alone; a built block there is
+  placed by its row and its height, so the block you were stepping onto was drawn after you, over you, till the step
+  was done. Now (climbing.js climbOf) on the rungs you are placed in front of the ladder and of what its foot stands on,
+  and over the edge as anyone standing up there is: the row and your height. Filmed on a copy: up the front ladder of
+  the tower, over the edge onto its top, in front all the way.
+- Test: up a ladder onto a block, the step over is placed after the block.
