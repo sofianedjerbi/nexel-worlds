@@ -227,9 +227,9 @@ let toastTimer;
 // others and is kept in the history; the sign at the top is only for the first screen, where there is no chat.
 // (The sign's text is still set, unseen: the tests and the first screen read it.)
 const NOTE_MS = 6000;                                  // a note shows a little less long than what someone said
-function toast(msg, bad) {
-  if (me && typeof chatLine === "function") { chatLine(msg, bad ? "note bad" : "note sys"); $("chatlog").lastElementChild.dataset.t = Date.now() - (CHAT_SHOW_MS - NOTE_MS); }
-  if (bad) sfx("buzz"); $("toastt").textContent = msg; const t = $("toast"); t.style.display = "block"; $("toastt").style.color = bad ? "var(--warn)" : "var(--ink)"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3200); }
+function toast(msg, bad, stay = NOTE_MS) {             // (msg may be dressed: **bold**, a new line, `K` a key; main.js rich. stay: ms it shows)
+  if (me && typeof chatLine === "function") { chatLine(msg, bad ? "note bad" : "note sys"); $("chatlog").lastElementChild.dataset.t = Date.now() - (CHAT_SHOW_MS - stay); }
+  if (bad) sfx("buzz"); $("toastt").textContent = typeof plain === "function" ? plain(msg) : msg; const t = $("toast"); t.style.display = "block"; $("toastt").style.color = bad ? "var(--warn)" : "var(--ink)"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3200); }
 
 
 const isOpen = (id) => $(id).style.display === "block";

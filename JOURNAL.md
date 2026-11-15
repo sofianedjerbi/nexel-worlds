@@ -1500,3 +1500,14 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Measured: `test_e2e_craft_search.py`; full browser run before this last move 191 pass, 3 fail, 1 error: two were
   mine (an older test naming without a tag, the book's key test with a ninth thing in Basics: both corrected), the
   floors test and a player not getting in pass alone. Unit 421.
+
+## Iteration 130: what the game says is dressed
+- Said: "default dialogue (you wake up in meadows..) and things like that are ugly, add bold, line return, change
+  sentences idk make them beautiful in the chat".
+- Change: a line of the game's (not a player's) may carry **bold**, a new line and `K` a key drawn as a key
+  (`main.js` rich); its lines hang under each other beside the mark. Rewritten: the welcome (your name, four short
+  lines, the keys as keys, shown 16 s), who came, left, died, gave, named (names in bold), in hand, sound, goal done,
+  a sign read (its words on their own line), a letter, build mode. Where a message is read as text (the first
+  screen's sign, the tests) it is plain.
+- Measured: the test of iteration 125 extended (bold, key, new line; plain text; a player's `**` stays as typed);
+  the fourteen test files that read messages, 80 of 80. Seen in a screenshot.

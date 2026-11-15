@@ -266,5 +266,11 @@ def test_what_the_game_says_is_a_line_of_the_chat_not_a_sign_at_the_top(game):
     assert ["note sys", "Empty hands ×2"] in lines and lines[-1] == ["note bad", "Too far: get closer."], lines
     assert game.js("getComputedStyle($('toast')).display") == "none" and game.toast() == "Too far: get closer."
     assert game.js("getComputedStyle($('chatlog').lastElementChild, '::before').width") == "6px"      # its mark
+    game.js("(() => { toast('In hand: **wood**\\nSecond line `M`'); return 1; })()")              # dressed: bold, a new line, a key
+    last = "$('chatlog').lastElementChild"
+    assert game.js(last + ".querySelector('b').textContent") == "wood" and game.js(last + ".querySelector('kbd').textContent") == "M" and game.js(last + ".querySelectorAll('br').length") == 1
+    assert game.toast() == "In hand: wood Second line M"                                               # (plain where it is read as text)
     game.sleep(6800)
     assert game.js("$('chatlog').lastElementChild.classList.contains('old')")                         # it fades, and stays in the history
+    game.js("(() => { act('say', {text: 'a **b** `c`'}); return 1; })()")                             # what a player says is never dressed
+    game.wait("[...$('chatlog').children].some((d) => d.textContent.includes('a **b** `c`'))", 5000)

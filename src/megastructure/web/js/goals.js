@@ -38,7 +38,7 @@ function drawGoals() {
   if (meObs.self.sheltered) d.sheltered = true;
   if (meObs.self.sailing) d.sailed = true;
   GOALS.forEach(([, , f], i) => {
-    if (f(inv, d) && !d["g" + i]) { d["g" + i] = true; if (goalsShown.includes(i)) { goalsDoneAt[i] = now; sfx("chime"); if (goalsOff) toast("Goal done: " + GOALS[i][0]); } }
+    if (f(inv, d) && !d["g" + i]) { d["g" + i] = true; if (goalsShown.includes(i)) { goalsDoneAt[i] = now; sfx("chime"); if (goalsOff) toast("Goal done: **" + GOALS[i][0] + "**"); } }
   });
   localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d));
   const lingering = goalsShown.filter((i) => goalsDoneAt[i] && now - goalsDoneAt[i] < 1600);

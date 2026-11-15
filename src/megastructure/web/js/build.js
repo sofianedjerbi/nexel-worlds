@@ -163,7 +163,7 @@ const Build = (() => {
     if (on === S.on || (on && !me)) return;
     S.on = on; S.hold = null; S.plane = null; held(null);
     document.body.classList.toggle("building", on);
-    if (on) { S.at = facingTile() || myPos(); toast("Build mode: the arrows move the cursor, Space plans. Hold it for a row. R: up a floor."); work(); }
+    if (on) { S.at = facingTile() || myPos(); toast("**Build mode**\nThe arrows move the cursor · `Space` plans, held: a row\n`R` up a floor"); work(); }
     else { S.pan = {x: 0, y: 0}; if (todo().length) toast(`${todo().length} plans wait: B to go on building`); }      // (the plans stay where they are)
   }
   function drop() { const n = todo().length; for (const [k, j] of S.plans) if (j.state !== "doing") S.plans.delete(k); toast(`${n} plans dropped`); }

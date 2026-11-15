@@ -111,9 +111,16 @@
     text-shadow:1px 1px 0 rgba(0,0,0,.45); overflow-wrap:anywhere; }
   #chatlog div.old { opacity:0; }
   /* a word from the game itself (ui.js toast): a small square mark, then the words, in the chat's own strip */
-  #chatlog .note::before { content:""; display:inline-block; width:calc(2 * var(--q)); height:calc(2 * var(--q)); margin-right:8px; background:currentColor;
-    box-shadow:var(--q) var(--q) 0 rgba(0,0,0,.35); vertical-align:2px; }
+  #chatlog .note { position:relative; padding-left:26px; }      /* (its lines hang under each other, the mark beside the first) */
+  #chatlog .note::before { content:""; position:absolute; left:9px; top:9px; width:calc(2 * var(--q)); height:calc(2 * var(--q)); background:currentColor;
+    box-shadow:var(--q) var(--q) 0 rgba(0,0,0,.35); }
   body.playing #toast { display:none !important; }      /* (said in the chat while you play) */
+  /* a dressed line (main.js rich): the word that matters in white, a key drawn as a key, room between its lines */
+  #chatlog b { color:#fff8e8; } #chatlog .bad b { color:#ffe3da; }
+  #chatlog .note:has(br), #chatlog .note:has(kbd) { padding:4px 10px 5px 26px; line-height:26px; }
+  #chatlog .note:has(br)::before, #chatlog .note:has(kbd)::before { top:14px; }
+  #chatlog kbd { display:inline-block; min-width:20px; padding:0 5px; margin:0 1px; font:inherit; font-size:16px; line-height:18px; text-align:center; text-shadow:none;
+    color:var(--ink); background:#f3dfba; box-shadow:0 var(--q) 0 #b8946a; vertical-align:1px; }
   #chatlog .who { color:#ffe6a8; } #chatlog .shout { color:#ffb38a; } #chatlog .sys { color:#c9e7b8; } #chatlog .bad { color:#ffb0a0; }
   #chatbox.open { pointer-events:auto; } #chatbox.open #chatlog { overflow:auto; } #chatbox.open #chatlog div.old { opacity:1; }
   #say { display:none; width:100%; font:inherit; color:#fff8e8; background:rgba(40,28,24,.8); border:2px solid rgba(255,248,232,.35); padding:3px 8px; outline:none; }

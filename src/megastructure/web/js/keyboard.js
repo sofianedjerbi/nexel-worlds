@@ -140,7 +140,7 @@ function cycleHand(step) {                       // Q: the next item of the hotb
   if (!have.length) return;
   const i = have.indexOf(selected), j = i + step;
   selectItem(j < 0 ? have[have.length - 1] : j >= have.length ? null : have[j]);
-  toast(selected ? `In hand: ${label(selected)}` : "Empty hands");
+  toast(selected ? `In hand: **${label(selected)}**` : "Empty hands");
 }
 const BOOK_KEYS = new Set(["c", "i", "m", "h", "?", "g", "f3", "t", "/", "+", "=", "-"]);   // what still does its usual thing with the recipe book open
 let capAt = null;
@@ -162,7 +162,7 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   "`": () => { selectItem(null); toast("Empty hands"); },
   c: () => { $("bag").style.display = "none"; toggleCraft(); },
   i: () => { if (isOpen("craft")) toggleCraft(); toggleBag(); },
-  m: () => { setMuted(!muted); toast(muted ? "Sound off (M)" : "Sound on (M)"); },
+  m: () => { setMuted(!muted); toast(muted ? "Sound **off** `M`" : "Sound **on** `M`"); },
   h: () => $("helpbtn").click(), "?": () => $("helpbtn").click(),
   g: () => toggleGoals(),                            // (goals.js: the goals' card, or away again)
   b: () => Build.toggle(),                           // (build.js: plan with a cursor, your character builds)

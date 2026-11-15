@@ -2,6 +2,11 @@
 
 // Chat, like many sandbox games: recent lines show for a while then fade; Enter opens the history and the input.
 const CHAT_SHOW_MS = 10000, CHAT_KEEP = 100;
+// What the game itself says may be dressed ("add bold, line return... make them beautiful in the chat"): **bold** for
+// the word that matters, a new line where one is written, `K` for a key drawn as a key. What a player says is never
+// dressed: it is shown as typed.
+const rich = (text) => esc(text).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<kbd>$1</kbd>").replace(/\n/g, "<br>");
+const plain = (text) => String(text).replace(/\*\*|`/g, "").replace(/\n/g, " ");
 function chatLine(text, cls = "", who = null) {
   const log = $("chatlog"), last = log.lastElementChild;
   if (last && last.dataset.text === text + (who || "")) {           // the same line again: count it
@@ -9,7 +14,7 @@ function chatLine(text, cls = "", who = null) {
     last.dataset.t = Date.now(); last.classList.remove("old"); return;
   }
   const d = document.createElement("div"); d.className = cls; d.dataset.text = text + (who || ""); d.dataset.t = Date.now();
-  d.innerHTML = (who ? `<span class="who">${esc(who)}</span> ` : "") + esc(text) + `<span class="n"></span>`;
+  d.innerHTML = (who ? `<span class="who">${esc(who)}</span> ` : "") + (who ? esc(text) : rich(text)) + `<span class="n"></span>`;
   log.appendChild(d); while (log.childElementCount > CHAT_KEEP) log.firstElementChild.remove();
   log.scrollTop = log.scrollHeight;
 }

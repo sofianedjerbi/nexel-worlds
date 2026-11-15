@@ -17,8 +17,8 @@ function joinGame(name) {
     $("joinbox").style.display = "none"; $("hud").style.display = "flex"; document.body.classList.add("playing");
     $("help").style.display = localStorage.getItem("megastructure-help") === "on" ? "block" : "none";
     $("mode").textContent = "playing as " + me;
-    toast(TOUCH ? "You wake up in a meadow. Left thumb to walk, A to use what you face, B for its other use. Tap \"goals\" for what to try next."
-      : "You wake up in a meadow. WASD to walk, click things to use them, Enter to talk. G: goals. H: help.");
+    toast(TOUCH ? `**Welcome, ${me}.**\nYou wake up in a meadow.\nLeft thumb walks · **A** uses what you face\n**B** its other use · tap **goals** for what to try`
+      : `**Welcome, ${me}.**\nYou wake up in a meadow.\n\`W\` \`A\` \`S\` \`D\` walk · \`Space\` use\n\`Enter\` talk · \`G\` goals · \`H\` help`, false, 16000);
     refresh();
   };
   agentWs.onmessage = (m) => {
@@ -102,8 +102,8 @@ async function act(tool, args, quiet) {
     if (tool === "water") markGoal("watered");
     if (tool === "dig_down") sfx("crumble");
     if (tool === "milk") markGoal("milked");
-    if (r.result.text !== undefined) toast(`The sign reads: “${r.result.text}”`);
-    if (r.result.named) toast(`Its name is ${r.result.named}.`);
+    if (r.result.text !== undefined) toast(`The sign reads\n**“${r.result.text}”**`);
+    if (r.result.named) toast(`Its name is **${r.result.named}**.`);
     if (r.result.took) { if (!Object.keys(r.result.took).length) toast("It's empty."); }   // took it all (the +items float shows)
     else if (r.result.chest) toast(`Chest: ${fmt(r.result.chest) || "empty"}`);
     if (r.result.rows_near_to_far) toast(`You look into the distance: ${r.result.agents.length ? "someone is out there." : "nobody."}`);

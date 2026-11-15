@@ -218,8 +218,8 @@ function onEvent(e) {
   if (e.type === "give" && e.to === me) sfx("give");
   if ((e.type === "join" || e.type === "leave") && e.name !== me) sfx(e.type);
   if (e.type === "sign") sfx("write", e.x, e.y);
-  if (e.type === "mail" && e.to === me && e.from !== me) toast(`${e.from} left you a letter (mailbox at ${e.x}, ${e.y}).`);
-  if (e.type === "mail_opened" && e.owner === me && e.by !== me) toast(`${e.by} opened your mailbox and took ${e.n} letter${e.n > 1 ? "s" : ""}!`, true);
+  if (e.type === "mail" && e.to === me && e.from !== me) toast(`**${e.from}** left you a letter\nin the mailbox at ${e.x}, ${e.y}`);
+  if (e.type === "mail_opened" && e.owner === me && e.by !== me) toast(`**${e.by}** opened your mailbox\nand took ${e.n} letter${e.n > 1 ? "s" : ""}`, true);
   if (e.type === "board" || e.type === "moor") { burst(e.x, e.y, "water", 8, {up: 1.5, spread: 2}); sfx("water", e.x, e.y); }
   if (e.type === "hatch") { burst(e.x, e.y, "spark", 8, {dy: -.3, g: 4}); sfx("hatch", e.x, e.y); }
   if (e.type === "born") { burst(e.x, e.y, "food", 8, {dy: -.5, g: 3}); sfx("love", e.x, e.y); }
@@ -230,11 +230,11 @@ function onEvent(e) {
   switch (e.type) {
     case "say": text = e.text; break;
     case "shout": text = e.text; break;
-    case "death": text = `${e.name} died (${e.cause})`; break;
-    case "give": if (e.from !== me && e.to !== me) return; text = `${e.from} gave ${e.to} ${fmt(e.items)}`; break;
-    case "join": text = `${e.name} ${e.new ? "washed ashore" : "woke up"}`; break;
-    case "leave": text = `${e.name} fell asleep`; break;
-    case "named": text = `${e.by} named a ${e.kind} ${e.name}`; break;
+    case "death": text = `**${e.name}** died (${e.cause})`; break;
+    case "give": if (e.from !== me && e.to !== me) return; text = `**${e.from}** gave **${e.to}** ${fmt(e.items)}`; break;
+    case "join": text = `**${e.name}** ${e.new ? "washed ashore" : "woke up"}`; break;
+    case "leave": text = `**${e.name}** fell asleep`; break;
+    case "named": text = `**${e.by}** named a ${e.kind} **${e.name}**`; break;
 
     default: return;
   }
