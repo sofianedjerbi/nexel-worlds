@@ -1575,3 +1575,23 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Measured (`test_e2e_wild.py`, the drawn place frame by frame): a quarter of a second into a warning or a daze it
   is under 0.02 tile from its tile (0.69 with the old rule, same test); no frame moves it more than 0.6 tile. The
   wild, living, world and moving tests pass. Not seen by me in motion.
+
+## Iteration 134: a ladder is climbed, stairs look like stairs
+- User: "ladder animation is awful !!!!! and stairs does not look like stairs at all".
+- Looked first: every frame Chrome painted while climbing a ladder six layers up a cliff, and the stairs tower close up.
+  The climb was three frames: the server moved you at once and your screen slid you in a straight line from the
+  ladder's foot to the top in a fifth of a second, walking, the ladder drawn over your body (you were sorted behind
+  it), the camera jumping with you. A step was a plank floor block at its height: a flight was boxes. The packs have
+  no wooden stairs nor ladder (only stone slabs in hill slopes), so both stay drawn by the game.
+- Ladder (climbing.js, walk.js, render.js, characters.js; sim/movement.py): a layer takes CLIMB_S (0.15 s): the
+  server holds your next step till you are up (or down), your walk crosses the climb at that pace, and so does anyone
+  seen climbing. Drawn: up the rungs on the ladder's own tile first, facing it, legs going, a rung's tock now and then;
+  only at the top over the edge (down: over the edge first, then down the rungs). In front of the ladder while on it;
+  the camera follows the body as drawn.
+- Stairs (climbing.js drawStep): no longer a plank block. Rising north: small steps, a board and a darker riser, three
+  to a tile over its top and front, a stringer down each side, the same rhythm from the ground to the floor. Rising
+  east or west: two treads across each tile, the one nearer the foot half a layer lower, stringers along its sides
+  and a stepped stringer in front. Rising south: each step's tread front, the next over the rest.
+- Seen in Chrome on a copy of the world (the two towers by doben3): all four flights and the climb, frame by frame.
+- Tests: the ladder test samples the climb (on the rungs half a second and more, on the ladder's tile, facing it, held
+  back over its foot); the stairs test checks each step is drawn as a step. 429 unit.

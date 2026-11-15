@@ -25,6 +25,9 @@ def test_stairs_are_laid_with_one_press_and_walked_up(game):
     assert "Build stairs (2 steps)" in game.actions()
     game.press("Space", 900)
     assert game.js(f"[surfacesAt({x}, {y - 3}), surfacesAt({x - 1}, {y - 3})]") == [[2], [1]] and game.inv("stairs") == 2
+    drawn = game.js("""() => new Promise((ok) => { const was = Climb.drawStep, ups = []; Climb.drawStep = function (...a) { ups.push(a.slice(0, 3)); return was(...a); };
+      requestAnimationFrame(() => requestAnimationFrame(() => { Climb.drawStep = was; ok(ups.length); })); })""")
+    assert drawn >= 2                                          # each step drawn as a step: treads, risers, stringers (it was a plank block)
     game.rpc("dev_teleport", x=x - 1, y=y - 2, z=0)
     game.sleep(600)
     for key, want in (("ArrowUp", (x - 1, y - 3, 1)), ("ArrowRight", (x, y - 3, 2)), ("ArrowUp", (x, y - 4, 3))):
@@ -59,7 +62,20 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     assert game.js(f"combAt({x}, {y - 2})") == "l" and game.inv("ladder") == 1
     hp = game.server()["hp"]
     assert step(game, "ArrowUp") == (x, y - 2, 0)              # onto the ladder
-    assert step(game, "ArrowUp") == (x, y - 3, 6)              # up it, onto the cliff
+    # up it: rung by rung on the ladder's own tile, facing it, for about a second (six layers), and only then over the
+    # edge (it was a slide from foot to top in a fifth of a second, the ladder drawn over the body)
+    game.js("""() => { window.__seen = []; const t0 = performance.now();
+      const f = () => { const p = ents.get('agent' + myId), c = Climb.climbOf(p); if (c) __seen.push([Math.round(performance.now() - t0), c.on, +c.dx.toFixed(2), +c.dy.toFixed(2), p.fy]);
+        if (performance.now() - t0 < 1600) requestAnimationFrame(f); }; requestAnimationFrame(f); }""")
+    game.hold(["ArrowUp"], 90)
+    game.sleep(1700)
+    seen = game.js("__seen")
+    on = [c for c in seen if c[1]]
+    assert on and on[-1][0] - on[0][0] >= 500, seen[:3]        # on the rungs for half a second and more
+    assert all(c[2] == 0 for c in on) and all(c[4] == -1 for c in on)      # on the ladder's own tile, facing it
+    assert any(c[3] > .4 for c in on)                          # (held back over its foot while it rises: the straight line had it half way up the cliff)
+    s = game.server()
+    assert (s["x"], s["y"], s["z"]) == (x, y - 3, 6)           # up it, onto the cliff
     assert game.js("myAt.z") == 6
     assert step(game, "ArrowDown") == (x, y - 2, 0)            # and down it
     game.sleep(400)

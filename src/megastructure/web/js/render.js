@@ -20,7 +20,7 @@ function frame(now) {
     // the world's pace, p.pace, state.js; and one that paws the ground or stands dazed is where it is: it was drawn
     // most of a tile behind, sliding into place while it pawed. "it glitches a few pixels... when doing key moves")
     const amble = p.e && AMBLE[p.e.kind] ? Math.max(p.e.scared ? 1 / FLEE_STRIDE : AMBLE[p.e.kind], p.pace || 0, p.e.kind === "tusker" && p.e.act ? 8 : 0) : 0;
-    const pace = p.running || (p.e && p.e.run) ? 10 : amble || 5;
+    const pace = Climb.paceOf(p) || (p.running || (p.e && p.e.run) ? 10 : amble || 5);      // (up or down a ladder: rung by rung, climbing.js)
     const step = (d > 1.5 ? d * 8 : pace * 1.05) * dt;
     if (d <= step) { p.x = p.tx; p.y = p.ty; }
     else if (d > 1.5) { p.x += dx / d * step; p.y += dy / d * step; }    // far behind (lag, teleport): straight there
@@ -33,7 +33,8 @@ function frame(now) {
     if (p) {                                         // (you are drawn lifted on high ground: centre that; falling: you, not the ground you left; jump.js)
       const fall = falling(p, now);
       const pan = Build.pan(dt);                      // (build mode: half way to the cursor)
-      cam.x = camT.x = p.x + pan.x; cam.y = camT.y = p.y + pan.y - (liftOf(p) / zoom + (fall ? fall.body : 0) + fallShake(now)) / P;
+      const cl = Climb.climbOf(p);                    // (on a ladder: where the body is drawn, climbing.js)
+      cam.x = camT.x = p.x + pan.x + (cl ? cl.dx : 0); cam.y = camT.y = p.y + pan.y + (cl ? cl.dy : 0) - (liftOf(p) / zoom + (cl ? cl.lift : 0) + (fall ? fall.body : 0) + fallShake(now)) / P;
     }
     else if (meObs) { cam.x = camT.x = meObs.self.x; cam.y = camT.y = meObs.self.y; }
   } else {
@@ -97,7 +98,7 @@ function frame(now) {
   occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
   const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && b.relief); };
   // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
-  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p)) list.push({y: p.y + .01 + Floors.rise(p) * Floors.K, p});
+  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p)) { const cl = Climb.climbOf(p); list.push({y: cl ? cl.y + .02 : p.y + .01 + Floors.rise(p) * Floors.K, p}); }   // (on a ladder: in front of it)
   for (const [ix, iy, pile] of groundItems) if (!hiddenAt(ix, iy)) list.push({y: iy - .01, x: ix, ty: iy, pile});   // (ty: its tile; y sorts)
   if (pileSince.size) { const here = new Set(groundItems.map(([ix, iy]) => ix + "," + iy)); for (const k of pileSince.keys()) if (!here.has(k) || lootAt(...k.split(",").map(Number))) pileSince.delete(k); }
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)

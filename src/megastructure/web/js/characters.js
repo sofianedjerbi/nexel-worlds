@@ -29,11 +29,14 @@ function biteIcon(name, bites) {
 // which swing of the character sheet each tool in hand uses: every tool has its own
 const SWING_ROW = {axe: "axe", sword: "sword", spear: "spear", pickaxe: "pickaxe", hoe: "hoe", watering_can: "water"};
 function drawEntity(p, sx, sy, S, t, now) {
-  const e = p.e, x = Math.round(sx(p.x)), z = zoom;
+  const e = p.e, z = zoom;
+  let x = Math.round(sx(p.x));
   let y = Math.round(bodyY(p, sy));                            // (relief.js: where a body stands in its tile)
   if (x < -S * 2 || x > W + S * 2 || y < -S * 2 || y > H + S * 2) return;
   const moving = now - p.moved < 300;
   const j = jumping(p, now);                                   // up or down a layer, or falling: a person or a creature alike (jump.js)
+  const cl = Climb.climbOf(p);                                 // up or down a ladder (climbing.js)
+  if (cl) { x += Math.round(cl.dx * S); y += Math.round(cl.dy * S - cl.lift * z); }
   if (j && e.kind !== "agent") { jumpShadow(j, x, y, S, z, ANIMALS[e.kind] && ANIMALS[e.kind].fw === 32 ? 8 : 5); y -= Math.round(j.body * z); }
   if (e.kind === "agent") {
     const mine = me && e.id === myId;
@@ -55,7 +58,7 @@ function drawEntity(p, sx, sy, S, t, now) {
     const sheetImg = wornSheet(agentTint(e.name), e.worn, e.race);        // (wear.js: their sheet, dressed)
     let bob = j ? Math.round(j.body * z) : 0, anim = "idle", frame, lunge = 0, blow = null;
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
-    if (mine || e.name === follow) {
+    if ((mine || e.name === follow) && !(cl && cl.on)) {
       ctx.fillStyle = mine ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
       pixelOval(x + S / 2, y - (j ? Math.round(j.ground * z) : 0) + S - 2 * z, 6, 2.5, 0, .5);   // (on the ground under you)
     }
@@ -103,6 +106,10 @@ function drawEntity(p, sx, sy, S, t, now) {
       }
     } else if (tool === "place" || tool === "pick_up" || tool === "give" || tool === "store" || tool === "take" || tool === "drop") {
       bob = Math.round(Math.sin(Math.min(1, k * 5) * Math.PI) * 3) * z;
+    }
+    if (frame === undefined && cl && cl.on) {         // on the rungs: facing the ladder, hand over hand
+      p.fx = cl.fx; p.fy = cl.fy; anim = "walk"; frame = Math.floor(cl.u * 24) % 8;
+      if (mine && frame % 4 === 0 && p.lastStep !== Math.floor(cl.u * 6)) { p.lastStep = Math.floor(cl.u * 6); sfx("tock"); }
     }
     if (frame === undefined) {
       const moving = p.walking || (e.doing === "walk" && !mine) || now - p.moved < 220 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;

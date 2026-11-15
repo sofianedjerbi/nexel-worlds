@@ -32,6 +32,35 @@ const Climb = (() => {
   }
   // A step from (x0, y0, h0) to (x, y, h) taken on a ladder: climbed, not hopped nor fallen (jump.js)
   const onLadder = (x0, y0, h0, x, y, h) => ladderAt(x0, y0, h0) || ladderAt(x, y, h);
+  // A ladder is climbed rung by rung: CLIMB_S a layer (sim/constants.py), the next step waits for it. Your walk
+  // crosses a climb at that pace (walk.js), and so is anyone else seen climbing (render.js): tiles a second, or 0
+  const CLIMB_S = .15;
+  function pace(fx, fy, h, x, y) {
+    const z = landAt(h, x, y, fx, fy);
+    return z !== null && Math.abs(z - h) > 1 && onLadder(fx, fy, h, x, y, z) ? 1 / (Math.abs(z - h) * CLIMB_S) : 0;
+  }
+  function paceOf(p) {
+    let ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
+    if (ax === bx && ay === by) { bx = p.tx; by = p.ty; if (Math.abs(bx - ax) + Math.abs(by - ay) !== 1) return 0; }
+    const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by);
+    return Math.abs(la - lb) > 1 && onLadder(ax, ay, la, bx, by, lb) ? 1 / (Math.abs(la - lb) * CLIMB_S) : 0;
+  }
+  // Someone between two tiles on a ladder, as drawn: up its rungs on its own tile first, and only at the top over onto
+  // what it leans on (coming down: over the edge first, then down the rungs); facing it all the way. (It was a straight
+  // slide from the foot to the top in a fifth of a second, the ladder drawn over the body.) -> null, or {dx, dy: tiles
+  // to move the body by, lift: art px higher, on: on the rungs, u: how far up, fx, fy: the way to the top, y: its row}
+  const OVER = .8;                                    // (the part of the step spent on the rungs; the rest is the step over)
+  function climbOf(p) {
+    const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
+    if ((ax === bx && ay === by) || !FLOORS) return null;
+    const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by);
+    if (Math.abs(la - lb) < 2 || !onLadder(ax, ay, la, bx, by, lb)) return null;
+    const footA = la < lb, u = footA ? (ax === bx ? p.y - ay : p.x - ax) : (ax === bx ? by - p.y : bx - p.x);
+    const lo = Math.min(la, lb), hi = Math.max(la, lb), on = u <= OVER;
+    const pos = on ? 0 : (u - OVER) / (1 - OVER), h = on ? lo + (hi - lo) * u / OVER : hi;
+    const fx = footA ? bx - ax : ax - bx, fy = footA ? by - ay : ay - by, footY = footA ? ay : by;
+    return {dx: fx * (pos - u), dy: fy * (pos - u), lift: (h - lo - (hi - lo) * u) * RELIEF_STEP, on, u, fx, fy, y: on ? footY : footY + fy};
+  }
 
   // The flight of stairs put at (x, y) by you: [[x, y, ground, top], ...], or {why}
   function flight(x, y) {
@@ -80,16 +109,42 @@ const Climb = (() => {
     }
     ctx.globalAlpha = 1;
   }
-  // A step's tread, over its top (at screen px, top): lit at its nose, the next riser's shadow at its back
-  function tread(x, y, z, px, top) {
-    const q = zoom, up = WAYS.find(([dx, dy]) => solidAt(x + dx, y + dy, z + 1) && !solidAt(x + dx, y + dy, z + 2));
-    if (!up) return;
+  // A step of a flight, drawn as stairs (it was a plank block, and a flight looked like boxes): over its top and its
+  // front, small steps of the house's wood, a board to tread on and a darker riser, three to a tile, and a stringer
+  // down each side; the same rhythm from the ground to the floor. Rising east or west, the treads are seen from above
+  // across the tile and the front is the stringer, stepped as the flight climbs; rising south (towards you), each
+  // step shows the front of its tread, the next one over the rest. (x, y, z: the cell; px, top: its top on screen)
+  const TREAD = "#c49a6c", RISER = "#8a5f52", STRINGER = "#6e4a4f";
+  function drawStep(x, y, z, px, top, a) {
+    const q = zoom, ink = Structures.INK, up = WAYS.find(([dx, dy]) => solidAt(x + dx, y + dy, z + 1) && !solidAt(x + dx, y + dy, z + 2)) || [0, -1];
     const r = (col, X, Y, W_, H_) => { ctx.fillStyle = col; ctx.fillRect(px + X * q, top + Y * q, W_ * q, H_ * q); };
-    const [dx, dy] = up, back = "rgba(60,40,48,.35)";
-    if (dy < 0) { r(back, 1, 1, 14, 3); r(LIGHT, 1, 14, 14, 1); }
-    else if (dy > 0) { r(back, 1, 12, 14, 3); r(LIGHT, 1, 1, 14, 1); }
-    else if (dx > 0) { r(back, 12, 1, 3, 14); r(LIGHT, 1, 1, 1, 14); }
-    else { r(back, 1, 1, 3, 14); r(LIGHT, 14, 1, 1, 14); }
+    const covered = solidAt(x, y, z + 1), front = !solidAt(x, y + 1, z), [dx, dy] = up;
+    ctx.globalAlpha = a;
+    if (dy < 0) {                                       // rising north: treads and risers face you
+      const rows = (covered ? 0 : 16) + (front ? 8 : 0), y0 = covered ? 16 : 0;
+      for (let k = 0; k < rows; k += 8) {
+        r(RISER, 2, y0 + k, 12, 3); r(ink, 2, y0 + k, 12, 1);
+        r(TREAD, 2, y0 + k + 3, 12, 5); r(LIGHT, 2, y0 + k + 7, 12, 1);
+      }
+      if (rows) for (const X of [0, 14]) { r(ink, X, y0, 2, rows); r(STRINGER, X + (X ? 0 : 1), y0, 1, rows); }
+    } else if (dy > 0) {                                // rising south: the next step covers this one's back
+      if (!covered) {
+        r(TREAD, 2, 0, 12, 8); r(LIGHT, 2, 0, 12, 1); r(RISER, 2, 6, 12, 2);
+        r(TREAD, 2, 8, 12, 8); r(LIGHT, 2, 8, 12, 1);
+        for (const X of [0, 14]) { r(ink, X, 0, 2, 16); r(STRINGER, X + (X ? 0 : 1), 0, 1, 16); }
+      }
+      if (front) { r(STRINGER, 0, 16, 16, 8); r(ink, 0, 23, 16, 1); }
+    } else {                                            // rising east or west: two treads across the tile, the lower one half a layer down
+      const hi = dx > 0 ? 8 : 0, lo = 8 - hi;           // (the half nearer the top, the half nearer the foot: x of each)
+      for (const [X, d] of [[hi, 0], [lo, 4]]) {
+        if (!covered) {
+          r(TREAD, X, d + 2, 8, 12); r(dx > 0 ? LIGHT : RISER, X, d + 2, 1, 12); r(dx > 0 ? RISER : LIGHT, X + 7, d + 2, 1, 12);
+          r(ink, X, d, 8, 1); r(STRINGER, X, d + 1, 8, 1); r(STRINGER, X, d + 14, 8, 1); r(ink, X, d + 15, 8, 1);   // (the stringers, along its sides)
+        }
+        if (front) { const f0 = covered ? 16 : d + 16, f1 = 24; r(STRINGER, X, f0, 8, f1 - f0); if (!covered) r(LIGHT, X, f0, 8, 1); r(ink, X, 23, 8, 1); }
+      }
+    }
+    ctx.globalAlpha = 1;
   }
 
   // What a click or a key means with stairs or a ladder in hand (intent.js asks first); nothing: not these
@@ -112,5 +167,5 @@ const Climb = (() => {
     for (const [x, y, g, t] of f) for (let z = g + 1; z <= t; z++) Floors.cell("stairs", x, y, z, sx, sy, S, .55);
     for (const [x, y, , t] of f) { ctx.fillStyle = ok ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)"; ctx.fillRect(sx(x), sy(y) - shOf(t) * zoom, S, S); }
   }
-  return {openAt, climb, lean, onLadder, flight, drawLadder, tread, intent, ghostFlight};
+  return {openAt, climb, lean, onLadder, pace, paceOf, climbOf, flight, drawLadder, drawStep, intent, ghostFlight};
 })();

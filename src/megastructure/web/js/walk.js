@@ -102,7 +102,7 @@ function walkOn(p, dt, now) {
     const a0 = s > 0 ? Math.floor(p[along] + 1e-6) : Math.ceil(p[along] - 1e-6);      // the tile you're leaving, and the next
     const fx = wx ? a0 : walking.lane, fy = wx ? walking.lane : a0, nx = fx + wx, ny = fy + wy;
     if (!walkable(nx, ny, fx, fy)) { p[along] -= s * Math.min((p[along] - a0) * s, 10 * t); p.tx = fx; p.ty = fy; break; }   // a wall: you stay
-    const v = speedAt(fx, fy, p);
+    const v = Climb.pace(fx, fy, myZ(fx, fy), nx, ny) || speedAt(fx, fy, p);      // (up or down a ladder: rung by rung, climbing.js)
     const go = Math.min((a0 + s - p[along]) * s, v * t);
     p[along] += s * go; t -= go / v; p.tx = nx; p.ty = ny; p.moved = now;
   }

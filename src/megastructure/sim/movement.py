@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS, B
-from .constants import EAT_PACE, FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
+from .constants import CLIMB_S, EAT_PACE, FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
 
@@ -69,6 +69,8 @@ class Movement:
             a.ready += round((a.ready - self.tick) * (SLOPE_UP if climb > 0 else SLOPE_DOWN))
         self.arrive(a)
         if self.on_ladder(x0, y0, h0, x, y, self.height(a)):
+            if abs(climb) > 1:                       # (a ladder is climbed rung by rung: the next step waits for the top, or the foot)
+                a.ready = max(a.ready, self.tick + sec(abs(climb) * CLIMB_S))
             return {}                                # (down a ladder: climbed, not fallen)
         return self.fell(a, -climb)                  # (what the fall did to you, if it was one)
 

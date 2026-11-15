@@ -13,6 +13,7 @@ STEP = sec(0.2)        # walking speed: 5 tiles per second
 EAT_PACE = 2           # and so does a tile walked while eating (the two add up: a tile swum while eating takes four times as long)
 SWIM_PACE = 2          # a tile in the water takes this many times a tile on land: half the speed, swimming or sprinting
 SLOPE_UP, SLOPE_DOWN = 0.6, 0.2   # a step up a slope takes 60% longer, down it 20% (client: render.js)
+CLIMB_S = 0.15                    # up or down a ladder: seconds a layer, rung by rung (client: climbing.js)
 FALL_SAFE, FALL_HP = 3, 1         # a fall of up to 3 layers is nothing; each layer more costs half a heart
 
 # Health and food, as the sandbox classic has them (needs.py). Health is counted in half hearts, ten hearts in all;

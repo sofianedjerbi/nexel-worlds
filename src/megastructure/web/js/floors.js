@@ -80,6 +80,7 @@ const Floors = (() => {
     const q = zoom, px = sx(x), top = sy(y) - shOf(z) * q, same = (dx, dy) => { const c = get(x + dx, y + dy, z); return !!c && c[0] === kind; };
     const r = (col, X, Y, W_, H_) => { ctx.fillStyle = col; ctx.fillRect(px + X * q, top + Y * q, W_ * q, H_ * q); };
     ctx.globalAlpha = a;
+    if (kind === "stairs") { ctx.globalAlpha = 1; return Climb.drawStep(x, y, z, px, top, a); }   // (a step of a flight: climbing.js)
     if (kind === "roof") {
       let up = 0, down = 0;
       while (up < 14 && same(0, -up - 1)) up++;
@@ -89,7 +90,6 @@ const Floors = (() => {
       const ink = Structures.INK;
       if (!get(x, y, z + 1)) {
         ctx.drawImage(IMG.house_walls, 16, 16, 16, 16, px, top, S, S);
-        if (kind === "stairs") Climb.tread(x, y, z, px, top);       // (a step: its tread, climbing.js)
         if (!get(x, y - 1, z)) r(ink, 0, 0, 16, 1);
         if (!get(x - 1, y, z)) r(ink, 0, 0, 1, 16);
         if (!get(x + 1, y, z)) r(ink, 15, 0, 1, 16);
