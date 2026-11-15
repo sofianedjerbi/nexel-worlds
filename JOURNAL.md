@@ -1437,3 +1437,12 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   shown on a "/"; it was the words that advertise the commands. State now: a "/" lists every command as it always
   did (`complete.js` as before iteration 121); the help's "/ Commands" row and the chat line's "/ commands" stay out.
 - Measured: `test_e2e_complete.py` as it was before iteration 121, 4 of 4.
+
+## Iteration 125: what the game says is said in the chat
+- Said: "all errors messages and shit show up on top of screen.. can't you just show them beautifully in the chat ?"
+- Change: `toast()` (ui.js, some forty callers: a no, a hint, "Empty hands", "Sound off") writes a line of the chat
+  while you play: a small square mark, green for a word, red for a no; the same line twice is counted (×2); it shows
+  6 s, fades like the rest and stays in the history (Enter). The sign at the top stays for the first screen only
+  (name taken, a code sent: no chat there); its text is still set, unseen, while you play (tests read it).
+- Measured: a new test in `test_e2e_ui.py`; the eleven test files that read messages, 67 of 67.
+- Seen in a screenshot on a copy: the lines sit with the chat's, in its strip.

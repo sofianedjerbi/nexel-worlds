@@ -221,7 +221,14 @@ function banner(title, text) {
   clearTimeout(bannerTimer); bannerTimer = setTimeout(() => $("banner").style.display = "none", 7000);
 }
 let toastTimer;
+// What the game has to tell you: something could not be done, a hint, a word about what just happened.
+// "all errors messages and shit show up on top of screen.. can't you just show them beautifully in the chat ?": while
+// you play it is a line of the chat (a small mark before it: green for a word, red for a no), which fades like the
+// others and is kept in the history; the sign at the top is only for the first screen, where there is no chat.
+// (The sign's text is still set, unseen: the tests and the first screen read it.)
+const NOTE_MS = 6000;                                  // a note shows a little less long than what someone said
 function toast(msg, bad) {
+  if (me && typeof chatLine === "function") { chatLine(msg, bad ? "note bad" : "note sys"); $("chatlog").lastElementChild.dataset.t = Date.now() - (CHAT_SHOW_MS - NOTE_MS); }
   if (bad) sfx("buzz"); $("toastt").textContent = msg; const t = $("toast"); t.style.display = "block"; $("toastt").style.color = bad ? "var(--warn)" : "var(--ink)"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3200); }
 
 

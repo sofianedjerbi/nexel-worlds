@@ -110,6 +110,10 @@
   #chatlog div { background:rgba(40,28,24,.55); color:#fff8e8; padding:1px 8px; font-size:18px; line-height:22px; transition:opacity .8s;
     text-shadow:1px 1px 0 rgba(0,0,0,.45); overflow-wrap:anywhere; }
   #chatlog div.old { opacity:0; }
+  /* a word from the game itself (ui.js toast): a small square mark, then the words, in the chat's own strip */
+  #chatlog .note::before { content:""; display:inline-block; width:calc(2 * var(--q)); height:calc(2 * var(--q)); margin-right:8px; background:currentColor;
+    box-shadow:var(--q) var(--q) 0 rgba(0,0,0,.35); vertical-align:2px; }
+  body.playing #toast { display:none !important; }      /* (said in the chat while you play) */
   #chatlog .who { color:#ffe6a8; } #chatlog .shout { color:#ffb38a; } #chatlog .sys { color:#c9e7b8; } #chatlog .bad { color:#ffb0a0; }
   #chatbox.open { pointer-events:auto; } #chatbox.open #chatlog { overflow:auto; } #chatbox.open #chatlog div.old { opacity:1; }
   #say { display:none; width:100%; font:inherit; color:#fff8e8; background:rgba(40,28,24,.8); border:2px solid rgba(255,248,232,.35); padding:3px 8px; outline:none; }
