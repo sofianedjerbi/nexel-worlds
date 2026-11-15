@@ -237,9 +237,9 @@ def test_coords_and_grid_are_typed_in_the_chat_line(game):
     game.sleep(100)
     assert game.js("$('xyz').textContent") == ""
     game.stamp(0, -1, ["f"])
-    say("/dig dir=N")                                          # (what a key does is not a command: complete.js)
+    say("/dig dir=N")                                          # (not one of ours: sent to the server)
     game.sleep(400)
-    assert game.inv("flower") == 0 and "No command" in game.js("$('toastt').textContent") and not game.errors
+    assert game.inv("flower") == 1 and not game.errors
 
 
 def test_the_crafting_list_is_not_made_again_while_it_is_shut(game):

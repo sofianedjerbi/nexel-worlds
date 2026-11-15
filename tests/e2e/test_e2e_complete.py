@@ -8,65 +8,75 @@ OPEN = "$('chatbox').classList.contains('open') && document.activeElement === $(
 
 
 def test_a_command_is_built_with_tab_and_the_arrows(game):
-    """A "/" lists the commands: the few actions that have no key or click (naming an animal, writing on a sign) and
-    the page's own. ("a lot of useless slash commands. like walk etc... no need for those": the thirty actions of the
-    server are not listed, and are not commands.) Typing narrows the list, Tab takes the marked one, the arrows move
-    the mark; then its arguments, then what an argument can be. Enter sends the line as it is typed."""
+    """A "/" alone lists nothing ("just remove the hint on a simple '/'... they should be accessible if you know them,
+    and if you know them they still show highlight syntax"); from the first letter the commands that fit are listed
+    (the server's actions, and the ones done in the page), Tab takes the marked one, the arrows move the mark; then
+    its arguments, then what an argument can be. Enter sends the line as it is typed."""
     page = game.page
+    game.give(wood=3, berries=2)
     page.keyboard.press("/")
-    game.wait("$('sayhelp').children.length === 5")                     # (asked of the server once, when the line opens)
-    assert game.js(ROWS) == ["name", "write_sign", "coords", "grid", "perf"]
-    assert game.js("$('sayhelp').querySelector('.on b').textContent") == "name"
-    page.keyboard.type("wr")
-    assert game.js(ROWS) == ["write_sign"]
+    game.wait("!!tools")                                                # (asked of the server once, when the line opens)
+    assert game.js(ROWS) == [] and game.js("$('sayhelp').style.display") == "none"      # nothing on the "/" alone
+    page.keyboard.type("s")
+    rows = game.js(ROWS)
+    assert {"say", "step", "stop", "sleep", "store", "shout"} <= set(rows) and "dig" not in rows
+    page.keyboard.press("Backspace")
+    assert game.js(ROWS) == []
+    page.keyboard.type("di")
+    assert game.js(ROWS) == ["dig", "dig_down"]                         # (the shortest first)
     page.keyboard.press("Tab")
-    assert game.js(LINE) == "/write_sign " and game.js(ROWS) == ["dir=", "text="]
+    assert game.js(LINE) == "/dig " and game.js(ROWS) == ["dir=", "with="]
     page.keyboard.press("Tab")
-    assert game.js(LINE) == "/write_sign dir=" and game.js(ROWS) == ["N", "E", "S", "W"]
+    assert game.js(LINE) == "/dig dir=" and game.js(ROWS) == ["N", "E", "S", "W"]
     for key in ("ArrowDown", "ArrowDown", "ArrowUp"):
         page.keyboard.press(key)
     assert game.js("$('sayhelp').querySelector('.on b').textContent") == "E"
     page.keyboard.press("Tab")
-    assert game.js(LINE) == "/write_sign dir=E " and game.js(ROWS) == ["text="]   # (what is given already is not offered again)
+    assert game.js(LINE) == "/dig dir=E " and game.js(ROWS) == ["with="]    # (what is given already is not offered again)
     page.keyboard.press("Tab")
-    assert game.js(LINE) == "/write_sign dir=E text=" and game.js("$('sayhelp').textContent") == "text: str"   # (yours to write)
+    assert game.js(LINE) == "/dig dir=E with=" and set(game.js(ROWS)) == {"wood", "berries"}   # what you carry
+    page.keyboard.type("wo")
+    page.keyboard.press("Tab")
+    assert game.js(LINE) == "/dig dir=E with=wood " and game.js(ROWS) == [] and game.js("$('sayhelp').style.display") == "none"
     assert game.js(OPEN) is True                                        # (Tab never leaves the line)
     page.keyboard.press("Escape")
     assert game.js("$('sayhelp').style.display") == "none" and not game.js("$('chatbox').classList.contains('open')")
-    at = game.js("myPos()")
-    for line in ("walk dir=E", "dig dir=N"):                            # what a key does is not a command: nothing happens but a word
-        page.keyboard.press("/")
-        page.keyboard.type(line)
-        assert game.js(ROWS) == []
-        page.keyboard.press("Enter")
-        game.sleep(500)
-        assert "No command" in game.js("$('toastt').textContent") and game.js("myPos()") == at
-    page.keyboard.press("/")                                            # the page's own still run
-    page.keyboard.type("coords")
-    page.keyboard.press("Enter")
-    game.sleep(300)
-    assert game.js("DEBUG.coords") is True
-    game.js("(() => { flip('coords', 'Coordinates'); return 1; })()")
+    game.stamp(0, -1, ["f"])
+    page.keyboard.press("/")
+    page.keyboard.type("dig dir=N")
+    assert game.js(ROWS) == ["N"]
+    page.keyboard.press("Enter")                                        # sent as typed: the list is not in the way
+    game.sleep(500)
+    assert game.inv("flower") == 1
 
 
 def test_what_an_argument_can_be(game):
-    """Who is near, nearest first, for a name; a text is yours to write, and the list says what it is. A click takes
-    one; the line keeps the caret. The command is sent as typed."""
+    """What you can eat of what you carry, the recipes, a slot of your clothes, who is near; a number or a text is
+    yours to write, and the list says what it is. A click takes one; the line keeps the caret."""
     page = game.page
+    game.give(wood=3, berries=2, bread=1)
     cow = game.rpc("dev_creatures", kind="cow", dx=2, dy=0, still=600)["spawned"]
     game.sleep(600)
     page.keyboard.press("/")
-    game.wait("$('sayhelp').children.length === 5")
-    for line, want in (("/n", ["name", "write_sign"]), ("/na", ["name"]), ("/sign", ["write_sign"]), ("/write_sign dir=", ["N", "E", "S", "W"]), ("/name text=\"dig dir=", [])):
+    game.wait("!!tools")
+    for line, want in (("/eat item=", ["berries", "bread"]), ("/drop item=w", ["wood"]), ("/craft recipe=plank", ["plank"]),
+                       ("/unwear slot=", ["head", "top", "pants", "shoes", "effect"]), ("/step dir=N run=", ["true"]),
+                       ("/sign", ["write_sign", "read_sign"]), ("/say text=\"dig dir=", [])):
         page.fill("#say", line)
         assert game.js(ROWS) == want, line
-    page.fill("#say", "/name target=")
+    page.fill("#say", "/move_to x=")
+    assert game.js("$('sayhelp').textContent") == "x: int"              # (yours to write)
+    page.fill("#say", "/milk target=")
     assert len(game.js(ROWS)) == 1 and "cow, 2 tiles away" in game.js("$('sayhelp').textContent")
-    page.click("#sayhelp div")
-    assert game.js(LINE) == f"/name target={cow} " and game.js(OPEN) is True
-    page.keyboard.type("text=Daisy")
+    page.keyboard.press("Tab")
+    assert game.js(LINE) == f"/milk target={cow} "
+    page.fill("#say", "/unwear slot=")
+    page.click("#sayhelp div:nth-child(3)")
+    assert game.js(LINE) == "/unwear slot=pants " and game.js(OPEN) is True
+    page.fill("#say", "/step dir=N run=false")                          # (and "false" is not a yes: it was, sent as a text)
     page.keyboard.press("Enter")
-    game.wait("[...ents.values()].some((p) => p.e && p.e.kind === 'cow' && p.e.name === 'Daisy')", 5000)
+    game.sleep(600)
+    assert game.js("$('toast').style.display") != "block" or "run" not in game.js("$('toastt').textContent")
 
 
 def test_tab_finishes_a_name_in_plain_talk(browser, server, game):
@@ -104,15 +114,15 @@ def test_a_tap_takes_one_on_a_phone(browser, server):
     page.tap("#join")
     page.wait_for_function("meObs && myPos()", timeout=8000)
     page.tap("#tTalk")
-    page.keyboard.type("/wr")
+    page.keyboard.type("/unw")
     page.wait_for_function("$('sayhelp').children.length === 1")
     page.tap("#sayhelp div")
-    assert page.evaluate(LINE) == "/write_sign " and page.evaluate(OPEN) is True
+    assert page.evaluate(LINE) == "/unwear " and page.evaluate(OPEN) is True
     page.tap("#sayhelp div")
-    assert page.evaluate(LINE) == "/write_sign dir=" and page.evaluate(ROWS) == ["N", "E", "S", "W"]
+    assert page.evaluate(LINE) == "/unwear slot=" and page.evaluate(ROWS) == ["head", "top", "pants", "shoes", "effect"]
     box = page.evaluate("(() => { const r = $('sayhelp').getBoundingClientRect(), s = $('say').getBoundingClientRect(); return [r.left, r.right, r.bottom, s.top, innerWidth]; })()")
     assert box[0] >= 0 and box[1] <= box[4] and box[2] <= box[3]         # on the screen, over the line
     page.tap("#sayhelp div:nth-child(2)")
-    assert page.evaluate(LINE) == "/write_sign dir=E " and page.evaluate(OPEN) is True
+    assert page.evaluate(LINE) == "/unwear slot=top " and page.evaluate(OPEN) is True
     ctx.close()
     assert not errors

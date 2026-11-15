@@ -1410,3 +1410,13 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   nothing and says "No command /word. Type / to see them." The server and the AI players' actions are untouched.
 - Measured: `test_e2e_complete.py` rewritten (the list is those five; /walk and /dig do nothing; /name names a cow),
   one assertion of `test_e2e_ui.py` turned round; 17 of 17 with the interface and touch tests; unit 413.
+
+## Iteration 122: every command again, but none listed on a "/" alone
+- Said, after iteration 121: "keep all commands available client side just remove the hint on a simple '/' and also
+  remove them from the help. they should be accessible if you know them, and if you know them they still show
+  highlight syntax".
+- Change: iteration 121's cut is undone (every action of the server is a command again). `complete.js` lists nothing
+  for a "/" alone; from the first letter the commands that fit, then arguments and values, as before. The help's
+  "/ Commands" row and the chat line's "/ commands" word are gone.
+- Measured: `test_e2e_complete.py` (the earlier tests back, plus: nothing on "/", a list on "/s", nothing again after
+  Backspace) 4 of 4; interface tests 14 of 14.

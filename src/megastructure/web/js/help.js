@@ -11,7 +11,7 @@ const HELP = [
     [["I"], "Inventory"], [["C"], "Craft"]]],
   ["Build", [[["B"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan the piece in hand"], [["X"], "Take back, or take down"],
     [["Hold"], "Space or X + move: a row"]]],
-  ["Talk", [[["Enter"], "Talk"], [["ABC"], "Shout: IN CAPITALS"], [["/"], "Commands, Tab ends one"], [["Tab"], "Hold: who is awake"],
+  ["Talk", [[["Enter"], "Talk"], [["ABC"], "Shout: IN CAPITALS"], [["Tab"], "Hold: who is awake"],
     [["M"], "Sound on or off"]]],
 ];
 let helpPage = 0;
