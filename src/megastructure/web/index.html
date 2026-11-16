@@ -11,12 +11,13 @@
 <link rel="stylesheet" href="css/help.css">
 <link rel="stylesheet" href="css/title.css">
 <link rel="stylesheet" href="css/windows.css">
+<link rel="stylesheet" href="css/menu.css">
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="hover"></div>
 <div id="xyz" style="position:fixed;top:10px;right:12px;z-index:5;font:inherit;font-size:15px;color:#fff6e0;text-shadow:0 1px 0 #3b2a22,1px 0 0 #3b2a22,-1px 0 0 #3b2a22,0 -1px 0 #3b2a22;pointer-events:none;white-space:pre;text-align:right"></div>
-<div class="panel" id="brand"><div class="in"><div class="t">NEXEL WORLDS</div><div class="s"><span id="clock">waking…</span> · <span id="mode">watching</span> · <span id="helpbtn" class="link">help (H)</span></div></div></div>
+<div class="panel" id="brand"><div class="in"><div class="t">NEXEL WORLDS</div><div class="s"><span id="clock">waking…</span> · <span id="mode">watching</span> · <span id="helpbtn" class="link">help (H)</span> · <span id="menubtn" class="link">menu (Esc)</span></div></div></div>
 <div class="panel" id="side"><div class="in"><h3>Awake</h3><div id="agents"></div></div></div>
 <div id="who"><div class="whead"><div class="cell" id="whosky"></div><b id="whoday"></b><span id="whohour"></span></div>
   <div id="whobar"><canvas id="whoband"></canvas><b id="whomark"></b></div>
@@ -39,10 +40,12 @@
     <button class="item" id="watch"><span>Just watch</span></button>
     <button class="item" id="titlehelp"><span>Help</span><kbd>H</kbd></button>
     <button class="item" id="titlesound"><span>Sound</span><span class="soft" id="titlesoundv">on</span></button>
+    <button class="item" id="titleopts"><span>Settings</span></button>
     <button class="item step-me" id="logout"><span>Log out</span><span class="soft" id="logoutv"></span></button>
   </div>
 </div>
 <div id="help"></div>
+<div id="menu"></div>
 <div id="goals"><div class="gh"><b>Goals</b><span id="goalcount"></span><span class="gf" id="goalhide"><kbd>G</kbd>hide</span><span class="gf" id="goalhelp"><kbd>H</kbd>help</span></div><div id="goallist"></div></div>
 <div id="goalhint"><kbd>G</kbd>goals<span id="goalhintn"></span></div>
 <div id="bag"><div class="b paper" id="bagclose" title="Esc">x</div>
@@ -82,6 +85,7 @@
   <div class="dbar"><i id="deathbar"></i></div><div class="dhint">any key to get up</div></div></div>
 <div class="panel" id="toast"><div class="in" id="toastt"></div></div>
 
+<script src="js/options.js"></script>
 <script src="js/vocab.js"></script>
 <script src="js/tool_art.js"></script>
 <script src="js/assets.js"></script>
@@ -140,6 +144,7 @@
 <script src="js/ask.js"></script>
 <script src="js/main.js"></script>
 <script src="js/help.js"></script>
+<script src="js/menu.js"></script>
 <script src="js/splash.js"></script>
 <script src="js/account.js"></script>
 <script src="js/title.js"></script>

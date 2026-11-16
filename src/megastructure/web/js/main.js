@@ -18,7 +18,7 @@ function chatLine(text, cls = "", who = null) {
   log.appendChild(d); while (log.childElementCount > CHAT_KEEP) log.firstElementChild.remove();
   log.scrollTop = log.scrollHeight;
 }
-setInterval(() => { for (const d of $("chatlog").children) d.classList.toggle("old", Date.now() - d.dataset.t > CHAT_SHOW_MS); }, 500);
+setInterval(() => { for (const d of $("chatlog").children) d.classList.toggle("old", Date.now() - d.dataset.t > opt("chat") * 1000); }, 500);      // (the settings' A chat line stays)
 // What you sent before comes back with the arrows ("implement up/down arrow to browse chat/command history"): Up goes
 // back through it, Down forward again, and past the newest the line you were writing is there as you left it. Begun
 // from a "/", only the commands come back. It is kept from one visit to the next (the last SAID_KEEP lines).

@@ -24,16 +24,18 @@ const PCOL = {T: ["#6b4b35", "#8f6a45", "#7fb069", "#5e8c4f"], H: ["#5e8c4f", "#
 // Chips knocked off a block: its own colours, popping out low, landing around its foot and settling.
 function debris(x, y, spr, n, opts = {}) {
   const cols = spr ? spriteColors(spr) : PCOL[opts.kind] || PCOL.dust;
+  n = particles(n);                                         // (the settings' Particles: options.js)
   for (let i = 0; i < n; i++) parts.push({
     x: x + .5 + (Math.random() - .5) * .5, y: y + .45 + (opts.dy || 0) + (Math.random() - .5) * .2,
     vx: (Math.random() - .5) * 2.4, vy: -1.2 - Math.random() * 1.6, g: 11,
     floor: y + .62 + Math.random() * .3, life: .9 + Math.random() * .5, age: 0, c: cols[i % cols.length], s: 1});
-  if (opts.dust) for (let i = 0; i < 3; i++) parts.push({   // a soft puff that drifts up
+  if (opts.dust) for (let i = 0; i < particles(3); i++) parts.push({   // a soft puff that drifts up
     x: x + .3 + Math.random() * .4, y: y + .6, vx: (Math.random() - .5) * .6, vy: -.5 - Math.random() * .4, g: -.2,
     life: .5 + Math.random() * .3, age: 0, c: "rgba(236,226,206,.7)", s: 2});
 }
 function burst(x, y, kind, n, opts = {}) {
   const cols = PCOL[kind] || PCOL.dust;
+  n = particles(n);
   for (let i = 0; i < n; i++) parts.push({
     x: x + .5 + (Math.random() - .5) * .5, y: y + .5 + (opts.dy || 0) + (Math.random() - .5) * .4,
     vx: (Math.random() - .5) * (opts.spread || 3), vy: -Math.random() * (opts.up || 3) - .5,
@@ -43,6 +45,7 @@ function burst(x, y, kind, n, opts = {}) {
 // it), and a few bits of the ground itself kicked up behind that fall back and lie a moment (grass, sand, stone).
 const KICK = {".": ["#7fb069", "#5e8c4f"], ",": ["#7fb069", "#5e8c4f"], "'": ["#7fb069", "#5e8c4f"], o: ["#e0cf9a", "#cdb97f"], ":": ["#8a8f8c", "#b6bab1"], n: ["#8a8f8c", "#b6bab1"], _: ["#a8775a", "#8c6a44"]};
 function kickDust(p) {
+  if (opt("particles") !== "all") return;
   const fx = p.fx || 0, fy = p.fy || 0, x = p.x + .5 - fx * .3, y = p.y + .88 - UP - fy * .25, r = Math.random;
   for (let i = 0; i < 5; i++) parts.push({x: x + (r() - .5) * .3, y: y + (r() - .5) * .12, vx: -fx * (1 + r() * 1.4) + (r() - .5) * .7,
     vy: -fy * (.8 + r()) - .25 - r() * .5, g: -.6, life: i < 2 ? .28 + r() * .1 : .45 + r() * .3, age: 0, c: i % 2 ? "rgba(233,217,180,.8)" : "rgba(246,238,216,.8)", s: i < 2 ? 3 : i < 4 ? 2 : 1});
@@ -190,6 +193,7 @@ function dyingPoof(p, now) {
   smoke(p.x, p.y, 8);
 }
 function smoke(x, y, n, size = 1) {   // size 1: a creature's poof; smaller for a little dust
+  n = particles(n);
   for (let i = 0; i < n; i++) puffs.push({x: x + .5 + (Math.random() - .5) * .7, y: y + .35 + (Math.random() - .5) * .35,
     vx: (Math.random() - .5) * .7, vy: -.35 - Math.random() * .45, r: (1.5 + Math.random() * 1.5) * size, grow: (4 + Math.random() * 4) * size,
     life: .65 + Math.random() * .45, age: -i * .025});

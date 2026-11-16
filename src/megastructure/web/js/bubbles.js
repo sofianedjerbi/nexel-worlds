@@ -59,6 +59,7 @@ function bubbleTab(name, x, y, mine) {
 const speaking = (name) => bubbles.some((b) => b.name === name && b.at);     // (their name is on their bubbles)
 let bubbleT = 0;
 function drawBubbles(sx, sy, S, t) {
+  if (!opt("bubbles")) { bubbles = []; bubbleT = t; return; }
   const dt = Math.min(.1, Math.max(0, t - bubbleT)), q = BUBBLE.q, snap = (v) => Math.round(v / q) * q; bubbleT = t;
   ctx.font = "18px SproutPixel"; ctx.textAlign = "left";
   bubbles = bubbles.filter((b) => t - b.t < bubbleShape(b).life);

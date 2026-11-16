@@ -150,6 +150,10 @@ def test_an_ai_player_is_its_races_robot(game):
         assert r["eyes"] >= (0 if key == "frog" else 2), (key, r)        # its own eyes, uncovered (the frog's are up in its bumps)
     # the world says who is one: a player that came with a persona of its own
     game.js("""(() => { const ws = new WebSocket(`ws://${location.host}/agent`); window.rusty = ws;
+      ws.onmessage = (m) => { const r = JSON.parse(m.data); if (r.agent) window.rustyAt = [r.agent.x, r.agent.y]; };
       ws.onopen = () => ws.send(JSON.stringify({id: 1, op: "hello", name: "Rusty", token: "t", persona: "a quiet builder"})); })()""")
+    game.wait("window.rustyAt", timeout=8000)
+    x, y = game.js("rustyAt")
+    game.rpc("dev_teleport", x=x + 1, y=y)                          # (it wakes where the world puts it: go and see it)
     game.wait("[...ents.values()].some((q) => q.e && q.e.name === 'Rusty')", timeout=8000)
     assert game.js("(() => { const q = [...ents.values()].find((q) => q.e && q.e.name === 'Rusty'); return [q.e.bot === true, [...ents.values()].find((q) => q.e && q.e.id === myId).e.bot]; })()") == [True, None]

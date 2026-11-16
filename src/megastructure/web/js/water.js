@@ -144,6 +144,7 @@ function drawWater(vis, ox, oy, t) {
   const vx = Math.floor(-ox / zoom) - 1, vy = Math.floor(-oy / zoom) - 1, vw = Math.ceil(W / zoom) + 3, vh = Math.ceil(H / zoom) + 3;   // the view, in art px
   let g = null, ux0 = 1e9, uy0 = 1e9, ux1 = -1e9, uy1 = -1e9;       // (and the part of it with water in it)
   const drift = (pat, dx, dy, alpha, x, y, w, h) => {               // a tiling pattern, slid by whole pixels
+    if (!opt("shimmer")) return;                                   // (the settings' Water shimmer)
     const mx = ((Math.round(dx) % 64) + 64) % 64, my = ((Math.round(dy) % 64) + 64) % 64;
     g.globalAlpha = alpha;
     g.save(); g.translate(mx, my); g.fillStyle = pat; g.fillRect(x - mx, y - my, w, h); g.restore();

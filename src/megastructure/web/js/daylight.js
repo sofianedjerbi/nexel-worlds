@@ -78,7 +78,8 @@ function drawNight(vis, sx, sy, S, t) {
   const z = zoom, x0 = ((sx(0) % z) + z) % z - z, y0 = ((sy(0) % z) + z) % z - z, w = Math.ceil((W - x0) / z), h = Math.ceil((H - y0) / z);
   const cv = LIGHT.cv, g = cv.getContext("2d");
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-  g.globalCompositeOperation = "source-over"; g.fillStyle = `rgb(${tint.join()})`; g.fillRect(0, 0, w, h);
+  const lift = opt("night") / 100 * .6;                       // (the settings' Light at night: the dark, thinned)
+  g.globalCompositeOperation = "source-over"; g.fillStyle = `rgb(${tint.map((v) => Math.round(v + (255 - v) * lift)).join()})`; g.fillRect(0, 0, w, h);
   if (dark > .2) {                                           // the lights: only once it is getting dark
     g.globalCompositeOperation = "lighter";
     const at = (px, py) => [(px - x0) / z, (py - y0) / z], shift = [Math.round((sx(0) - x0) / z) & 1, Math.round((sy(0) - y0) / z) & 1], k = (dark - .2) / .8;

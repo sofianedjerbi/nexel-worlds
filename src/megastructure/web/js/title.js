@@ -6,8 +6,8 @@
 // code mailed to it. Each step has its own field and its own rows; the others are not on the screen.
 
 const TITLE = {at: 1, step: "me", first: {me: "join", mail: "sendcode", code: "login"}, field: {me: "name", mail: "email", code: "code"},
-  steps: {me: ["racepick", "join", "watch", "titlehelp", "titlesound", "logout"], mail: ["sendcode", "watch", "titlehelp", "titlesound"],
-    code: ["login", "startover", "watch", "titlehelp", "titlesound"]},
+  steps: {me: ["racepick", "join", "watch", "titlehelp", "titlesound", "titleopts", "logout"], mail: ["sendcode", "watch", "titlehelp", "titlesound", "titleopts"],
+    code: ["login", "startover", "watch", "titlehelp", "titlesound", "titleopts"]},
   get rows() { return this.steps[this.step].filter((id) => id !== "logout" || ACCOUNT.session); }};
 const titleOpen = () => $("joinbox").style.display !== "none" && !me;
 function titleDraw() {
@@ -41,6 +41,7 @@ const TITLE_GO = {
   watch() { $("joinbox").style.display = "none"; titleDraw(); },
   titlehelp() { $("helpbtn").click(); },
   titlesound() { setMuted(!muted); titleDraw(); },
+  titleopts() { openMenu("opts"); },                         // (menu.js: the settings)
   sendcode: accountCode, login: accountLogin, startover: accountOver, logout: accountOut,
 };
 function titleGo(i) {                                        // a row is chosen: by Enter on it, or a click

@@ -172,7 +172,7 @@ function frame(now) {
   for (const o of list) if (o.p && o.p.e.kind !== "agent" && o.p.e.name) drawNameplate(o.p, sx, sy, S);     // (a named animal: /name)
   for (const o of list) if (o.p && ANIMALS[o.p.e.kind]) drawEmote(o.p, sx, sy, S);
   drawProgress(sx, sy, S);
-  floats = floats.filter((f) => t - f.t < 1.4);
+  floats = opt("floats") ? floats.filter((f) => t - f.t < 1.4) : [];
   ctx.textAlign = "center"; ctx.font = "18px SproutPixel";
   for (const f of floats) {
     ctx.globalAlpha = 1 - (t - f.t) / 1.4;

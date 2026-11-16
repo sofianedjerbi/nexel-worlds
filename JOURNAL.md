@@ -1698,6 +1698,23 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 143: a menu on Esc, and settings
+
+"implement a full settings menu into the game (echap) like minecraft with lot of options". Esc with nothing to shut
+opens a short list (back, settings, help, leave); the first screen has a Settings row. Four pages, 39 rows, each one
+acting at once and kept in the browser (js/options.js: defaults and opt(); js/menu.js: the window; css/menu.css):
+Sound (all on or off, everything, music, how often it plays, seven families), Picture (zoom, sharpness, light at
+night, particles, water shimmer, fall shake, smooth zoom, hearts and gains), Screen (bubbles, names, how long a chat
+line stays, key hints, mouse tips, goals, coordinates, grid, performance), Keys (sprint held or pressed once, and
+eleven actions that take another key: the hints and the help follow; walking, numbers and the windows' own keys stay).
+The music now leaves through a gain of its own so that its volume can be set. Esc no longer empties your hands (` does).
+
+A mistake of mine, live for about twenty minutes: a comment I added in the middle of a line of state.js swallowed
+the rest of it (W = innerWidth), the canvas was 0 px wide and the world was not drawn. My own screenshot showed a
+plain sea-coloured screen behind the menu and I took it for the headless browser. The full suite caught it (29
+failures). Rule: a plain background in a screenshot of the game is a failure until shown otherwise; run the suite
+before believing a screenshot. Tests: 4 new in Chrome; 437 + 211 pass.
+
 ## Iteration 142: the AI players are robots
 
 "go with tin cat" (the first of eleven): the race as it is, in steel, nothing over the face. Made for every race by

@@ -95,6 +95,7 @@ function fallHurts(p, now, mine) {
 }
 // The ground shaking under you after a fall that hurt: art px to move the camera by, dying away
 function fallShake(now) {
+  if (!opt("shake")) fallQuake = null;
   if (!fallQuake) return 0;
   const k = (now - fallQuake.t0) / 1000 / FALL.shake[1];
   if (k >= 1) { fallQuake = null; return 0; }

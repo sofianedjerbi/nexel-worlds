@@ -33,7 +33,7 @@ function babble(name, text, x, y, shout) {
   try {
     const a = ac(), t0 = a.currentTime + .02, base = voiceOf(name) + (shout ? SHOUT.up : 0), letters = [...String(text).toLowerCase()];
     const out = a.createGain(), p = a.createStereoPanner(), asks = /\?\s*$/.test(text);
-    out.gain.value = vol * (SOUND.mix[s.category] ?? 1) * (shout ? SHOUT.level : .85); p.pan.value = pan; p.connect(soundOut);
+    out.gain.value = vol * (SOUND.mix[s.category] ?? 1) * soundShare(s.category) * (shout ? SHOUT.level : .85); p.pan.value = pan; p.connect(soundOut);
     if (shout) {                                             // pushed through the curve, its bite brought up, and an echo after it
       if (!strain) { strain = new Float32Array(1024); for (let i = 0; i < 1024; i++) strain[i] = Math.tanh((i / 511.5 - 1) * SHOUT.push) / Math.tanh(SHOUT.push); }
       const hard = a.createWaveShaper(), bite = a.createBiquadFilter(), late = a.createDelay(1), back = a.createGain();

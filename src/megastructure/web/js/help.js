@@ -12,12 +12,14 @@ const HELP = [
   ["Build", [[["B"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],
     [["R", "F"], "Cursor a floor up, down"]]],
   ["Talk", [[["Enter"], "Talk"], [["ABC"], "Shout: IN CAPITALS"], [["Tab"], "Hold: who is awake"],
-    [["M"], "Sound on or off"]]],
+    [["M"], "Sound on or off"], [["Esc"], "Menu and settings"]]],
 ];
+const HELP_ACT = {Space: "use", X: "alt", F: "pick", E: "eat", Q: "next", "`": "hands", I: "bag", C: "craft", B: "build", M: "mute"};
 let helpPage = 0;
 const helpOpen = () => $("help").style.display === "block";
 function drawHelp() {
-  const keys = (ks) => ks.map((k) => `<kbd>${k}</kbd>`).join("");
+  const mine = HELP[helpPage][0] !== "Build";            // (build mode's keys are its own; the others as the settings have them: options.js)
+  const keys = (ks) => ks.map((k) => `<kbd>${mine && HELP_ACT[k] ? capOf(HELP_ACT[k]) : k}</kbd>`).join("");
   $("help").innerHTML = `<div class="hh"><b>Help</b><span><kbd>H</kbd>close</span></div>`
     + `<div class="tabs">${HELP.map(([name], i) => `<div class="tab${i === helpPage ? " on" : ""}" data-i="${i}">${name}</div>`).join("")}</div>`
     + `<div class="well">${HELP[helpPage][1].map(([ks, what]) => `<div class="row"><div class="keys">${keys(ks)}</div><div class="what">${what}</div></div>`).join("")}</div>`

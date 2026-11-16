@@ -102,14 +102,14 @@ function availableActions() {
   if (Build.on) return Build.rows();
   const s = myPos(), rows = [];
   const main = facingIntent(false), alt = facingIntent(true);
-  if (main && !main.it.info && main.it.ok !== false) rows.push(["Space", main.it.text]);
-  else if (main && placingItem()) rows.push(["Space", main.it.text, "bad"]);           // why it can't go there
-  if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push(["X", alt.it.text]);
-  if (selected && FOODS.includes(selected)) rows.push(["E", `Eat ${label(selected)}`]);
-  if (selected && WEAR[selected]) rows.push(["E", `Wear ${label(selected)}`]);
-  if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push(["F", "Pick up"]);
-  if (Build.waiting()) rows.push(["B", `Build: ${Build.waiting()} plans wait`]);      // (build.js: said where it helps, a piece in hand or plans left)
-  else if (placingItem() && !FOOT[PLACEABLE_BLOCK[selected]]) rows.push(["B", "Build mode: plan a lot"]);
+  if (main && !main.it.info && main.it.ok !== false) rows.push([capOf("use"), main.it.text]);      // (the keys as the settings have them: options.js)
+  else if (main && placingItem()) rows.push([capOf("use"), main.it.text, "bad"]);           // why it can't go there
+  if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push([capOf("alt"), alt.it.text]);
+  if (selected && FOODS.includes(selected)) rows.push([capOf("eat"), `Eat ${label(selected)}`]);
+  if (selected && WEAR[selected]) rows.push([capOf("eat"), `Wear ${label(selected)}`]);
+  if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push([capOf("pick"), "Pick up"]);
+  if (Build.waiting()) rows.push([capOf("build"), `Build: ${Build.waiting()} plans wait`]);      // (build.js: said where it helps, a piece in hand or plans left)
+  else if (placingItem() && !FOOT[PLACEABLE_BLOCK[selected]]) rows.push([capOf("build"), "Build mode: plan a lot"]);
   return rows;   // only what you can do right here, right now (all the other keys are in the help, H)
 }
 function updateActions() {
@@ -162,7 +162,7 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   "`": () => { selectItem(null); toast("Empty hands"); },
   c: () => { $("bag").style.display = "none"; toggleCraft(); },
   i: () => { if (isOpen("craft")) toggleCraft(); toggleBag(); },
-  m: () => { setMuted(!muted); toast(muted ? "Sound **off** `M`" : "Sound **on** `M`"); },
+  m: () => { setMuted(!muted); toast(`Sound **${muted ? "off" : "on"}** \`${capOf("mute")}\``); },
   h: () => $("helpbtn").click(), "?": () => $("helpbtn").click(),
   g: () => toggleGoals(),                            // (goals.js: the goals' card, or away again)
   b: () => Build.toggle(),                           // (build.js: plan with a cursor, your character builds)
@@ -176,13 +176,14 @@ addEventListener("keydown", (e) => {
   if (document.activeElement === $("name")) { if (e.key === "Enter") $("join").click(); return; }
   if (document.activeElement === $("say") || document.activeElement === $("letter") || !me) return;
   const k = e.key.toLowerCase();
-  if (k === "shift") { keys.add("shift"); runKey = true; syncWalk(); return; }
+  if (k === "shift") { keys.add("shift"); if (opt("sprint") === "hold") runKey = true; else if (!e.repeat) runKey = !runKey; syncWalk(); return; }      // (the settings' Sprint)
   inputMode = "keys"; document.body.classList.add("bykeys");
   if (k === "escape" && Build.on && !isOpen("craft") && !isOpen("bag") && !isOpen("mail")) { Build.onKey(k, e); return; }
-  if (k === "escape") { if (isOpen("bag") && bagKey(k, e)) return; if (isOpen("craft") || isOpen("bag") || isOpen("mail")) closePanels(); else selectItem(null); return; }
+  if (k === "escape") { if (isOpen("bag") && bagKey(k, e)) return; if (isOpen("craft") || isOpen("bag") || isOpen("mail")) closePanels(); else if (!isOpen("ask")) openMenu(); return; }      // (nothing to shut: the menu, menu.js)
   // an open panel takes the arrows, Enter and Space
-  if (isOpen("craft") && (craftKey(k, e) || !BOOK_KEYS.has(k))) { e.preventDefault(); return; }
-  if (isOpen("bag") && (bagKey(k, e) || !BOOK_KEYS.has(k))) { e.preventDefault(); return; }      // (the inventory's keys are its own too: bag.js)
+  const u = usualKey(k);                              // (options.js: the key's action as the settings have it, by its usual key)
+  if (isOpen("craft") && (craftKey(k, e) || !BOOK_KEYS.has(u))) { e.preventDefault(); return; }
+  if (isOpen("bag") && (bagKey(k, e) || !BOOK_KEYS.has(u))) { e.preventDefault(); return; }      // (the inventory's keys are its own too: bag.js)
   if (Build.onKey(k, e)) { e.preventDefault(); return; }                  // (build mode: the cursor's keys are its own, build.js)
   if (e.altKey && CODEDIR[e.code]) { e.preventDefault(); turn(CODEDIR[e.code]); return; }
   if (KEYDIR[k]) {   // only a real press counts: a held key's auto-repeat must not cancel a chop in progress
@@ -194,13 +195,13 @@ addEventListener("keydown", (e) => {
     const n = slots[(+k + 9) % 10]; selectItem(n && selected !== n ? n : null); if (!selected) toast("Empty hands"); return;
   }
   if (k === "tab") { e.preventDefault(); if (!e.repeat) { drawWho(); document.body.classList.add("tab"); } return; }   // held: the day, you, who is awake (style.css)
-  const fn = SHORTCUTS[k];
-  if (fn) { e.preventDefault(); if (!(e.repeat && k !== " " && k !== "x")) fn(); }
+  const fn = SHORTCUTS[u];
+  if (fn) { e.preventDefault(); if (!(e.repeat && u !== " " && u !== "x")) fn(); }
 });
 addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase();
   keys.delete(k);
-  if (k === "shift") { keys.delete("shift"); runKey = false; }
+  if (k === "shift") { keys.delete("shift"); if (opt("sprint") === "hold") runKey = false; }
   if (k === "tab") document.body.classList.remove("tab");
   syncWalk();
 });

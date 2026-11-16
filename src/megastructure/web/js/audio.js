@@ -39,7 +39,7 @@ const SOUND = {
   loaders: 4,         // parallel downloads while warming the cache after the first gesture
 };
 
-let audio = null, soundOut = null, muted = localStorage.getItem("megastructure-muted") === "1";
+let audio = null, soundOut = null, musicOut = null, muted = localStorage.getItem("megastructure-muted") === "1";
 const sounds = {manifest: null, loading: null, buffers: new Map(), lastVariant: {}, lastAt: {}, voices: 0, warned: new Set()};
 
 function ac() {
@@ -50,8 +50,15 @@ function ac() {
     const limiter = audio.createDynamicsCompressor();      // a safety net when many sounds land together
     limiter.threshold.value = -6; limiter.ratio.value = 12; limiter.attack.value = .002; limiter.release.value = .15;
     soundOut.connect(limiter).connect(audio.destination);
+    musicOut = audio.createGain(); musicOut.connect(audio.destination);      // (the music's own way out: the settings' Music)
+    soundLevels();
   }
   return audio;
+}
+// The settings' volumes (options.js): Everything over all of it, Music over the music; a family's is taken as it plays.
+function soundLevels() {
+  if (!audio) return;
+  soundOut.gain.value = SOUND.master * opt("master") / 100; musicOut.gain.value = opt("master") / 100 * opt("music") / 100;
 }
 // start audio on the first gesture, not inside the first frame that plays a sound (creating it stalls ~100 ms)
 for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!muted) { ac(); loadSounds(); } }, {once: true, capture: true});
@@ -110,7 +117,7 @@ async function stream(tr, done) {
   if (!tr.gain) {
     tr.gain = a.createGain(); tr.gain.gain.value = 0;
     tr.far = a.createBiquadFilter(); tr.far.type = "lowpass"; tr.far.frequency.value = FAR; tr.far.Q.value = .5;
-    tr.gain.connect(tr.far).connect(a.destination);
+    tr.gain.connect(tr.far).connect(musicOut);
   }
   let next = 0;                                            // where the next part starts, in the context's own samples
   while (tr.on && tr.run === run) {
@@ -163,7 +170,7 @@ function moments() {
   music.key = moment.last[hour] = list[Math.floor(Math.random() * list.length)];
   music.left = SOUND.passes[hour] || 1; music.hour = hour; music.turned = false;
   moment.next = Infinity;
-  stream(music, () => { moment.next = performance.now() + between(music.turned ? SOUND.turn : SOUND.gap); });
+  stream(music, () => { moment.next = performance.now() + (music.turned ? between(SOUND.turn) : between(SOUND.gap) * ({often: .35, rarely: 2.5}[opt("often")] || 1)); });
   swell(music, SOUND.music, SOUND.arrive[hour]);
 }
 setInterval(moments, 1000);
@@ -244,7 +251,7 @@ function sfx(name, x, y, reach) {
     const a = ac(), src = a.createBufferSource(), g = a.createGain(), p = a.createStereoPanner();
     src.buffer = buf;
     if (s.pitch) src.playbackRate.value = 1 + (Math.random() * 2 - 1) * SOUND.pitch;
-    g.gain.value = vol * (SOUND.mix[s.category] ?? 1);
+    g.gain.value = vol * (SOUND.mix[s.category] ?? 1) * soundShare(s.category);
     p.pan.value = pan;
     src.connect(g).connect(p).connect(soundOut);
     sounds.voices++;

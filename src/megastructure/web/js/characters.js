@@ -193,6 +193,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   }
 }
 function drawNameplate(p, sx, sy, S) {
+  if (!opt("names")) return;
   const e = p.e, o = overBody(p, S), x = Math.round(sx(p.x) + S / 2 + o[0]), y = Math.round(bodyY(p, sy) + o[1] - 9 * zoom);
   if (x < -S || x > W + S || y < -S || y > H + S) return;
   ctx.font = "18px SproutPixel"; ctx.textAlign = "center";
