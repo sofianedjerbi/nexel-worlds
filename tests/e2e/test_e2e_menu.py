@@ -185,3 +185,24 @@ def test_a_shader_gives_things_a_shadow_that_follows_the_sun_and_a_reflection_in
     game.js("setOpt('shadows', false)"); game.sleep(600)
     assert game.js(lit, east) > on[1] + 3                       # (the hour's light moves on meanwhile: lighter than shaded, not equal to before)
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
+
+
+def test_nothing_is_reflected_in_water_that_a_hill_hides(game):
+    # "player reflection is visible even if player is standing on a mountain, because there's water under it"
+    game.clear_area(8)
+    game.stamp(-3, -3, ["~~~~~~~", "~~~~~~~", ".......", ".......", "......."], levels=["0000000", "0000000", "5555555", "5555555", "5555555"])
+    game.rpc("dev_time", phase=.3)
+    game.js("setOpt('shimmer', false); setOpt('shadows', false); setOpt('reflect', false); setOpt('shader', 'natural')")
+    game.sleep(1200)
+    x, y = game.pos()
+    grab = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const a = Math.round(x0 * DPR), b = Math.round(y0 * DPR), d = cv.getContext("2d").getImageData(a, b, Math.round((x1 - x0) * DPR), Math.round((y1 - y0) * DPR)).data;
+      let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] * 3 + d[i + 1] * 5 + d[i + 2] * 7; ok(sum); })))"""
+    # you stand on the hill's top; drawn lifted, it covers the pond behind it. The screen under your feet, where your
+    # reflection would be turned over to: the same with reflections on and off.
+    box = game.js("(() => { const S = TS(), [ox, oy] = screenOrigin(S), p = ents.get('agent' + myId), sy = (yy) => oy + yy * S; const fy = bodyY(p, sy) + 14 * zoom, fx = ox + p.x * S; return [fx - S, fy, fx + 2 * S, fy + 2 * S]; })()")
+    assert game.js("liftOf({x: %d, y: %d})" % (x, y)) > 0
+    off = game.js(grab, box)
+    game.js("setOpt('reflect', true)"); game.sleep(800)
+    assert game.js(grab, box) == off
+    game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")

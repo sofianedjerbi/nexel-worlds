@@ -1713,6 +1713,13 @@ the morning and east in the evening, its reflection in the pond); 453 pass, and 
 test of the other session's work in progress. Left: light from a fire throws no shadow; clouds are not in the
 water; hills throw none.
 
+Then, from the user: "player shadow does not start properly at player feet" (I had set a body's foot by eye, at .74
+of a tile: a person's is the sheet's own measure, 13 art px under the body's place, and each animal kind's is found
+once from its lowest painted row); and "player reflection is visible even if player is standing on a mountain,
+because there's water under it" (the mask was every water tile: now a water tile counts down to where the nearest
+land south of it begins on the screen, so none of it behind a hill). A test builds that hill over a pond; it fails
+without the fix.
+
 ## Iteration 144: shaders
 
 "add nice shaders in the settings menu, like minecraft shaders". The game is a 2D canvas; a shader takes the finished

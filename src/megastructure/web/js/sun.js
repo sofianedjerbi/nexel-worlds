@@ -35,16 +35,47 @@ const Sun = (() => {
     lg.setTransform(DPR, 0, 0, DPR, 0, 0); lg.globalAlpha = 1; lg.globalCompositeOperation = "source-over"; lg.imageSmoothingEnabled = false;
     lg.clearRect(0, 0, W, H);
   }
+  // Where a body's feet are on the screen. A person: the sheet's own measure (characters.js draws the frame 18 art px
+  // over the body's place, its feet at row 32 of it), less a jump or a climb. An animal: each kind's sheet is its own,
+  // so one of the kind is drawn once on the layer and its lowest painted row is found.
+  const stands = new Map();
+  let clean = false;                                // the layer is empty: a kind may be measured on it
+  function standsAtY(p, sx, sy, S, t, now) {
+    const y = bodyY(p, sy), kind = p.e.kind;
+    if (kind === "agent") return y + 13 * zoom + overBody(p, S)[1];      // (a pixel in under the feet: the shadow starts under them, not after them)
+    if (!stands.has(kind + zoom)) {
+      let foot = 14 * zoom;
+      if (!clean) return y + foot;
+      try {
+        lg.save(); lg.setTransform(DPR, 0, 0, DPR, 0, 0); lg.clearRect(0, 0, W, H);
+        drawEntity(p, sx, sy, S, t, now);
+        lg.restore();
+        const x0 = Math.max(0, Math.round((sx(p.x) - S) * DPR)), y0 = Math.max(0, Math.round((y - 2 * S) * DPR)), w = Math.round(3 * S * DPR), h = Math.round(4 * S * DPR);
+        const d = lg.getImageData(x0, y0, w, h).data;
+        let row = h - 1;
+        const painted = (r) => { for (let i = 0; i < w; i++) if (d[(r * w + i) * 4 + 3] > 60) return true; return false; };
+        while (row > 0 && !painted(row)) row--;
+        if (row > 0) foot = (y0 + row + 1) / DPR - y;
+        lg.clearRect(0, 0, W, H);
+      } catch (e) { /* not readable: a person's measure */ }
+      if (jumping(p, now) || Climb.climbOf(p)) return y + foot;      // (in the air: not the one to measure a kind by)
+      stands.set(kind + zoom, foot);
+    }
+    return y + stands.get(kind + zoom);
+  }
   // Each thing of the list drawn through the transform `via(footX, footY)` gives, with ctx on the layer
   function cast(list, sx, sy, S, t, now, via) {
     const main = ctx;
     ctx = lg;
     try {
+      clean = true;
+      for (const o of list) if (o.p) standsAtY(o.p, sx, sy, S, t, now);      // (each kind of body here, measured before anything is on the layer)
+      clean = false;
       for (const o of list) {
         const p = o.p, x = p ? p.x : o.x, y = p ? p.y : o.ty ?? o.y;
         if ((!o.spr && !p && !o.wall) || x === undefined) continue;
         const fx = sx(x) + S / 2;
-        const fy = p ? bodyY(p, sy) + S * .74 : o.spr && o.spr[0].src ? sy(y, x) + (o.spr[6] + footOf(...o.spr.slice(0, 5)) - 1) * zoom : sy(y, x) + S * .94;
+        const fy = p ? standsAtY(p, sx, sy, S, t, now) : o.spr && o.spr[0].src ? sy(y, x) + (o.spr[6] + footOf(...o.spr.slice(0, 5)) - 1) * zoom : sy(y, x) + S * .94;
         if (fx < -4 * S || fx > W + 4 * S || fy < -2 * S || fy > H + 6 * S) continue;
         lg.save();
         lg.transform(...via(fx, fy));
@@ -53,14 +84,21 @@ const Sun = (() => {
         else o.fx();
         lg.restore();
       }
-    } finally { ctx = main; lg.setTransform(DPR, 0, 0, DPR, 0, 0); lg.globalAlpha = 1; }
+    } finally { clean = false; ctx = main; lg.setTransform(DPR, 0, 0, DPR, 0, 0); lg.globalAlpha = 1; }
   }
   function reflections(list, vis, sx, sy, S, t, now) {
     if (!vis.some((b) => b.water && b.water.any)) return;
     const [vx, vy, vw, vh] = viewRect(2), wet = new Path2D();
     let any = false, top = H, bottom = 0;
+    // Water that is seen: higher ground to the south is drawn up the screen over what lies behind it ("player reflection
+    // is visible even if player is standing on a mountain, because there's water under it"). A water tile shows down to
+    // where the nearest land south of it begins on the screen: all of it by a shore, none of it behind a hill.
     for (let y = vy; y <= vy + vh; y++) for (let x = vx; x <= vx + vw; x++) if (DEPTH_OF[gndAt(x, y)]) {
-      const Y = sy(y, x); wet.rect(sx(x), Y, S, S); any = true; top = Math.min(top, Y); bottom = Math.max(bottom, Y + S);
+      const Y = sy(y, x);
+      let cut = Y + S;
+      for (let k = 1; k <= 12 && cut > Y; k++) { const g = gndAt(x, y + k); if (g && !DEPTH_OF[g]) cut = Math.min(cut, sy(y + k, x)); }
+      if (cut <= Y) continue;
+      wet.rect(sx(x), Y, S, cut - Y); any = true; top = Math.min(top, Y); bottom = Math.max(bottom, cut);
     }
     if (!any) return;
     ready();
