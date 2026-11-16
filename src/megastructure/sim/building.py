@@ -33,8 +33,8 @@ class Building:
         return g if b == "none" else f"{b} on {g}"
 
     def _tool_dig(self, a, args):
-        up = self.dig_up(a, args)                          # (a block built over the ground, or what stands on one: storeys.py)
-        if up is not None:
+        up = self.dig_up(a, args) or self.dig_land(a, args)   # (a block built over the ground, or what stands on one: storeys.py;
+        if up is not None:                                     #  the land's own top at a height: a hole, underground.py)
             return (yield from up)
         x, y = self.resolve(*self.target(a, args, flat=True))   # (flat: a wall is dug at your own height, whatever is on top of it)
         g, b = self.world.get(x, y)

@@ -18,7 +18,8 @@ def test_a_wall_is_planned_with_a_cursor_and_built_by_keys_alone(game):
     game.press("ArrowRight"); game.press("ArrowRight")         # the cursor moves; you do not
     assert game.js("[Build.S.at.x, Build.S.at.y]") == [x + 2, y + 1] and game.pos() == (x, y)
     rows = game.js("Build.rows()")                             # the corner: the mode's name, and only the keys that do something here
-    assert [r[0] for r in rows] == ["B", "Space", "R"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"     # (R: the cursor up a floor)
+    assert [r[0] for r in rows] == ["B", "Space", "R", "X"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"     # (R: the cursor up a floor)
+    assert rows[3][1] == "Dig a hole"                          # (X on bare ground: a hole)
     assert all(len(r[1]) <= 26 for r in rows)                  # (short: a long line ran under the bar)
     kb.down("Space")                                           # held: a row of four
     for _ in range(3):
@@ -65,7 +66,7 @@ def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
       for (let j = 0; j < 16; j++) for (let k = 0; k < 16; k++) { const v = b.px[o + j * BW + k]; if (v >>> 24 === 255) n++; if ((v & 0xffffff) === (112 << 16 | 212 << 8 | 192)) green++; } return [n, green]; }""", [x - 3, y + 2])
     assert solid == [256, 0], solid                            # a floor tile: solid all over, no grass in it
     game.stamp(-3, 2, [".."])
-    game.give(roof=6)
+    game.give(roof=7)                                          # (one left in hand: with a roof in hand X is about roofs)
     kb = game.page.keyboard
     game.press(game.js(SLOT, "roof"))
     game.press("b")
@@ -79,14 +80,14 @@ def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
         game.press("ArrowRight", 130)
     kb.up("Space")
     game.wait(f"({ROW})([{x + 2}, {y - 3}, 4]) === 'rrrr' && Build.S.plans.size === 0", 30000)
-    assert game.inv("roof") == 2
+    assert game.inv("roof") == 3
     game.press("ArrowDown", 130)                               # beside those, over the room: two more
     game.press("ArrowLeft", 130)
     kb.down("Space"); game.press("ArrowLeft", 130); kb.up("Space")
     game.wait(f"({ROW})([{x + 2}, {y - 2}, 4]) === '.rr.' && Build.S.plans.size === 0", 30000)
     game.press("x")                                            # the last one planned: taken back off
     game.wait(f"({ROW})([{x + 2}, {y - 2}, 4]) === '..r.' && Build.S.plans.size === 0", 30000)
-    assert game.inv("roof") == 1
+    assert game.inv("roof") == 2
     game.press("b")
     game.rpc("dev_teleport", x=x, y=y)                         # (the work may have left you under it: reach counts height)
     game.sleep(700)
@@ -110,7 +111,7 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     game.press(game.js(SLOT, "wood_wall"))
     assert ["B", "Build mode: plan a lot"] in game.js("availableActions()")           # a piece in hand: B is said
     game.press("b")
-    assert [r[0] for r in game.js("Build.rows()")] == ["B", "Space", "R"]              # nothing built here: no X line
+    assert game.js("Build.rows()")[3] == ["X", "Dig a hole"]                           # nothing built here: X digs
     kb.down("ArrowRight"); game.sleep(700); kb.up("ArrowRight")                        # an arrow held: at once, then at the cursor's own pace
     assert game.js("Build.S.at.x") - x >= 5
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y + 1}}}")
@@ -187,3 +188,36 @@ def test_walls_are_thin_and_hide_nothing_and_a_side_door_has_its_leaf_and_shadow
     game.rpc("dev_teleport", x=x + 3, y=y - 2)                 # in the doorway: its leaf is back against a post
     game.sleep(900)
     assert game.js("doors.get(myPos().x + ',' + myPos().y)") == 1 and not game.errors
+
+
+def test_x_breaks_anything_and_digs_holes(game):
+    """X in build mode was "take a plan back, or take down what was built": a tree, a rock, the ground itself could not
+    be planned away. Now X breaks whatever is at the cursor (a tree, a rock, a wall...) and on bare ground digs a hole,
+    a layer deeper each time; held while the cursor moves, a row. Your character does it, with the right tool if it
+    has one."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.stamp(1, -2, ["TM"])                                  # a tree and a rock
+    game.give(axe=1, pickaxe=1)
+    game.press("b")
+    game.js(f"Build.S.at = {{x: {x + 1}, y: {y - 2}}}")
+    assert game.js("Build.rows()")[3] == ["X", "Chop tree"]
+    game.press("x")
+    game.press("ArrowRight", 150)
+    assert game.js("Build.rows()")[3] == ["X", "Mine rock"]
+    game.press("x")
+    game.wait(f"combAt({x + 1}, {y - 2}) !== 'T' && combAt({x + 2}, {y - 2}) !== 'M' && Build.S.plans.size === 0", 30000)
+    game.js(f"Build.S.at = {{x: {x - 2}, y: {y + 2}}}")       # a row of holes, X held
+    kb = game.page.keyboard
+    kb.down("x")
+    for _ in range(2):
+        game.press("ArrowRight", 150)
+    kb.up("x")
+    game.wait("Build.S.plans.size === 0", 30000)
+    assert game.js(f"[0, 1, 2].map((i) => surfacesAt({x - 2} + i, {y + 2})[0])") == [-1, -1, -1]
+    game.js(f"Build.S.at = {{x: {x - 1}, y: {y + 2}}}")       # again on one of them: a layer deeper
+    assert game.js("Build.rows()")[3] == ["X", "Dig a hole"]
+    game.press("x")
+    game.wait(f"surfacesAt({x - 1}, {y + 2})[0] === -2 && Build.S.plans.size === 0", 20000)
+    game.press("b")
+    assert game.inv("dirt") == 3 and game.inv("stone") == 3 and not game.errors      # (the rock's two, and the deeper layer is stone)

@@ -28,7 +28,7 @@ TOOL_SPECS = {
                  "onto ground one layer higher; higher than that is a wall: dig toward it with a pickaxe to take out "
                  "the block in front of you (a tunnel). Caves are empty space under the hills (in_cave in your stats)"},
     "dig": {"args": {**DIR_ARG, "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)", "z": "int (optional): the height of something built over the ground"},
-            "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground (needs a hoe). By hand, "
+            "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground (needs a hoe); with z on bare ground, the ground there comes down a layer (a hole: faster with a pickaxe). By hand, "
                     "wood takes 4x and stone 6x as long as with an axe / pickaxe; ore needs a pickaxe. A built block in front of you (a step, "
                     "the floor you stand level with) comes back into your pack, what stands on it first"},
     "place": {"args": {**DIR_ARG, "item": "str", "text": "str (what a sign or a flag says, optional)", "z": "int (optional): a height, to build over the ground"},

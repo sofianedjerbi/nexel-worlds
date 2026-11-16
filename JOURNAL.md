@@ -1762,3 +1762,19 @@ not its body).
   house.
 - Tests: up a ladder behind a block, the circle is open at its foot and gone on top; behind the house it opens.
   climb, floors, build, edges, x-ray: 27.
+
+## Iteration 142: build mode breaks and digs as it builds
+- User: "now the build mode: it isn't intuitive to dig holes. it should be used to both destroy blocks break things
+  and also build things !! intuitive !!"
+- X in build mode took a plan back or took down what had been built; a tree, a rock, the ground itself said "Nothing
+  built there". Now, as in the sandbox classics: Space builds with the piece in hand, X breaks what is at the cursor:
+  a plan back; a thing, a tree, a rock, a bush, a wall, a step, a floor down (with the right tool if your character
+  has one: an axe for wood, a pickaxe for stone); on bare ground a hole, a layer deeper each time (by hand, slowly;
+  with a pickaxe, faster). Held while the cursor moves: a row. The corner says what X does there ("Chop tree", "Mine
+  rock", "Dig a hole", "Take down wooden wall"); the greeting and the help say it too.
+- Server (sim/underground.py dig_land): `dig` with `z` at the land's own top on a tile beside you takes that cell (a
+  hole, a layer deeper; the ground keeps its grass); not under someone, not past -12. Without `z`, dig is what it was.
+- Seen on a test server: a row of holes dug with X held, one dug twice more; a tree, a rock and a fence planned down
+  and taken.
+- Tests: tests/test_climbing.py (a hole beside you), test_e2e_build.py (X breaks a tree and a rock, digs a row of holes,
+  a layer deeper again); the audit tests now see X dig over grass. 430 unit; build, help, climb, floors: 12.

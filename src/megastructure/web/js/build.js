@@ -3,7 +3,8 @@
 //   B          build mode, and out of it. What is in your hand is the piece: the bar's numbers; Q, the next piece.
 //   arrows     move the cursor, a tile at a time (it is not you who walks: the view goes with the cursor)
 //   Space      plan the piece here. Held while you move: a row. A door on a wall, a gate on a fence: in its place
-//   X          take a plan back; on something built: plan to take it down. Held: a row
+//   X          break what is at the cursor: a plan back; a thing, a tree, a rock, a wall, a step, a floor: down; bare
+//              ground: a hole, a layer deeper each time (a pickaxe digs faster). Held: a row
 //   R, F       the cursor up a floor, and down (also PgUp, PgDn)
 //   Esc        drop every plan (with none: out of the mode)
 // The cursor has a height. It rides the ground nearest your own (the floor you stand on); R lifts it a storey, into
@@ -69,9 +70,10 @@ const Build = (() => {
     if (!t) return null;
     const built = (z) => { const c = FLOORS || z !== L ? Floors.get(p.x, p.y, z) : null; return c ? {z, what: c[1] ? label(CH[c[1]]) : c[0] === "roof" ? "roof" : c[0] === "stairs" ? "the step" : "planks", up: true} : null; };
     for (const z of zs) if (built(z)) return built(z);
-    if (on && L === standAt(p.x, p.y)) {
-      if (!GROUND.has(t[0])) return "#W%+g".includes(t[0]) || Object.values(PLACEABLE_BLOCK).includes(t[0]) ? {z: L, what: label(CH[t[0]])} : null;
+    if (on && L === standAt(p.x, p.y)) {               // on the land: whatever stands there; what is laid in it; else the ground itself
+      if (!GROUND.has(t[0])) { const c = "Zz".includes(t[0]) ? (structAt(p.x, p.y) || {c: t[0]}).c : t[0]; return {z: L, what: label(CH[c]), verb: Object.values(PLACEABLE_BLOCK).includes(c) ? "" : (HARVEST[c] || "").replace(/ \(.*$/, "")}; }   // (what grows: its own verb)
       if ("_n:".includes(t[1])) return {z: L, what: label(CH[t[1]])};
+      if (!wet(t[1]) && L > -12) return {z: L, what: "ground", dig: true};
     }
     for (let z = L + 1; S.plane === null && z <= L + 3 * Floors.STOREY; z++) if (built(z)) return built(z);
     return null;
@@ -88,7 +90,7 @@ const Build = (() => {
     const hit = taking(p);
     if (!hit) return S.hold ? null : toast("Nothing built there", true);
     if (hit.plan) { S.plans.delete(key(p, hit.z)); return; }
-    S.plans.set(key(p, hit.z), {x: p.x, y: p.y, z: hit.z, take: true, up: !!hit.up, state: "todo"});
+    S.plans.set(key(p, hit.z), {x: p.x, y: p.y, z: hit.z, take: true, up: !!hit.up, dig: !!hit.dig, state: "todo"});
     sfx("pick"); work();
   }
   // The work: the nearest plan, a place to stand beside it, the piece put (or the thing taken down); then the next
@@ -153,9 +155,10 @@ const Build = (() => {
       if (!there) return "No way to get near it";
     }
     if (!S.plans.has(key(j, j.z))) return null;       // (taken back meanwhile)
-    const was = Floors.thingAt(j.x, j.y, j.z), tool = (j.take || j.swap) && TOOL_FOR[was] && meObs.self.inventory[TOOL_FOR[was]] ? TOOL_FOR[was] : null;
+    const was = Floors.thingAt(j.x, j.y, j.z), inv = meObs.self.inventory;
+    const tool = j.dig ? (inv.pickaxe ? "pickaxe" : null) : (j.take || j.swap) && TOOL_FOR[was] && inv[TOOL_FOR[was]] ? TOOL_FOR[was] : null;   // (a hole: the pickaxe if you have one)
     const went = (r) => (r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done");
-    const z = FLOORS ? {z: j.z} : {}, dig = () => { actTarget = {x: j.x, y: j.y}; return act(FLOORS || !j.up ? "dig" : "unroof", {dir: "N", ...z, ...(tool ? {with: tool} : {})}, true); };
+    const z = FLOORS || j.dig ? {z: j.z} : {}, dig = () => { actTarget = {x: j.x, y: j.y}; return act(FLOORS || !j.up ? "dig" : "unroof", {dir: "N", ...z, ...(tool ? {with: tool} : {})}, true); };
     if (j.swap && SWAP[j.item].includes(was)) {        // what is in its place comes down first (and back into your pack)
       const why = went(await dig());
       if (why) return why;
@@ -169,7 +172,7 @@ const Build = (() => {
     if (on === S.on || (on && !me)) return;
     S.on = on; S.hold = null; S.plane = null; held(null);
     document.body.classList.toggle("building", on);
-    if (on) { S.at = facingTile() || myPos(); toast("**Build mode**\nThe arrows move the cursor · `Space` plans, held: a row\n`R` up a floor"); work(); }
+    if (on) { S.at = facingTile() || myPos(); toast("**Build mode**\nThe arrows move the cursor · `Space` builds · `X` breaks or digs\nHeld: a row · `R` up a floor"); work(); }
     else { S.pan = {x: 0, y: 0}; if (todo().length) toast(`${todo().length} plans wait: B to go on building`); }      // (the plans stay where they are)
   }
   function drop() { const n = todo().length; for (const [k, j] of S.plans) if (j.state !== "doing") S.plans.delete(k); toast(`${n} plans dropped`); }
@@ -239,7 +242,8 @@ const Build = (() => {
       }
       ctx.fillStyle = j.state === "bad" ? "rgba(230,80,70,.4)" : j.take ? "rgba(255,150,60,.3)" : j.state === "doing" ? "rgba(255,241,168,.35)" : "rgba(140,190,255,.28)";
       ctx.fillRect(x, y, Sz, Sz);
-      if (j.take) { ctx.fillStyle = "#b5532a"; for (let i = 4; i < 12; i++) { ctx.fillRect(x + i * z, y + i * z, z, z); ctx.fillRect(x + (15 - i) * z, y + i * z, z, z); } }     // (to come down: a cross)
+      if (j.dig) { ctx.fillStyle = "rgba(60,36,30,.5)"; ctx.fillRect(x + 2 * z, y + 2 * z, 12 * z, 12 * z); ctx.fillStyle = "rgba(36,22,24,.55)"; ctx.fillRect(x + 4 * z, y + 5 * z, 8 * z, 8 * z); }   // (a hole to dig: dark, deeper in its middle)
+      else if (j.take) { ctx.fillStyle = "#b5532a"; for (let i = 4; i < 12; i++) { ctx.fillRect(x + i * z, y + i * z, z, z); ctx.fillRect(x + (15 - i) * z, y + i * z, z, z); } }     // (to come down: a cross)
     }
     if (S.on && !me) { S.plans.clear(); toggle(false); }                    // (you fell, or the game went: out of the mode)
     if (!S.on || !S.at) return;
@@ -272,7 +276,7 @@ const Build = (() => {
     const out = [["B", up ? `BUILD · floor ${up > 0 ? "+" : ""}${up} · leave` : "BUILD MODE · leave", "head"]];
     out.push(["Space", it.text, it.ok === false ? "bad" : ""]);
     if (FLOORS) out.push(["R", S.plane === null ? "Cursor up a floor" : "Up · F: down"]);
-    if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.what === "roof" ? "Take the roof off" : `Take down ${hit.what}`]);
+    if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.dig ? "Dig a hole" : hit.what === "roof" ? "Take the roof off" : hit.verb || `Take down ${hit.what}`]);
     if (n) out.push(["Esc", `Drop the ${n} plan${n > 1 ? "s" : ""}`]);
     return out;
   }

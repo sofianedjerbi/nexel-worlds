@@ -66,3 +66,24 @@ def test_stairs_are_a_flight_laid_with_one_press(world):
     s.world.set_cell(x - 1, y - 2, 4, True)                     # a floor over the first step: no room for it, whichever way
     r = run(s, a, "place", {"x": x - 1, "y": y - 2, "item": "stairs"})
     assert r["error"] == "bad_target" and "no room" in r["detail"]
+
+
+def test_a_hole_is_dug_beside_you_a_layer_at_a_time(world):
+    """`dig` aimed at a tile's ground with its height: the ground there comes down a layer (by hand, slowly; with a
+    pickaxe, faster). Without the height it is the old dig (tilling wants a hoe). Not under someone."""
+    s, a = world
+    x, y = a.x, a.y
+    s.world.set(x + 1, y, ground="grass")
+    assert run(s, a, "dig", {"dir": "E"})["error"] == "need_tool"                 # (no height: tilling, as ever)
+    r = run(s, a, "dig", {"dir": "E", "z": 0})                                    # by hand
+    assert r["ok"] and s.world.surfaces(x + 1, y) == [-1] and a.count("dirt") == 1 and s.world.ground(x + 1, y) == "grass"
+    a.add("pickaxe")
+    t0 = s.tick
+    r = run(s, a, "dig", {"dir": "E", "z": -1, "with": "pickaxe"})               # a layer deeper, quicker
+    assert r["ok"] and s.world.surfaces(x + 1, y) == [-2] and s.tick - t0 < 15
+    s.world.set(x - 1, y, block="rock")
+    assert run(s, a, "dig", {"dir": "W", "z": 0, "with": "pickaxe"})["ok"] and s.world.block(x - 1, y) == "none"   # a thing on it: the thing first
+    assert s.world.surfaces(x - 1, y) == [0]
+    from megastructure.sim import Creature
+    s.creatures[99] = Creature(99, "chicken", x, y + 1, 4, z=0)
+    assert run(s, a, "dig", {"dir": "S", "z": 0, "with": "pickaxe"})["error"] == "occupied"
