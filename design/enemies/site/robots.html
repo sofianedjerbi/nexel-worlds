@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexel Worlds · robots for the AI players</title>
+<style>
+  :root { --q:3px; --ink:#f3e6cf; --soft:#b9a48a; --night:#1d1a2b; --panel:#2f2a44; --hi:#4a4368; --lo:#17142a; --edge:#0d0b18; --gold:#ffd36a; --on:#fff1a8; --grass:#8fc46a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--night); color:var(--ink); font:16px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; padding:32px 16px 64px; }
+  main { width:min(1000px, 100%); margin:0 auto; }
+  h1 { margin:0; font-size:34px; letter-spacing:2px; color:var(--on); text-shadow:var(--q) var(--q) 0 #5b3f36; }
+  h1 em { font-style:normal; color:var(--gold); }
+  .sub { color:var(--soft); margin:8px 0 24px; }
+  .box { background:var(--panel); padding:16px 18px; margin-bottom:18px;
+    box-shadow:inset var(--q) var(--q) 0 var(--hi), inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 var(--lo), calc(-1 * var(--q)) 0 var(--edge), var(--q) 0 var(--edge), 0 calc(-1 * var(--q)) var(--edge), 0 var(--q) var(--edge); }
+  h2 { margin:0 0 4px; font-size:24px; color:var(--on); display:flex; align-items:center; gap:12px; }
+  h2 i { width:18px; height:18px; display:inline-block; box-shadow:inset var(--q) var(--q) 0 rgba(255,255,255,.5), 0 0 0 var(--q) var(--edge); }
+  .what { margin-bottom:12px; }
+  .rows { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
+  .cell { text-align:center; color:var(--soft); font-size:13px; }
+  .lawn { background:var(--grass); padding:6px; box-shadow:inset var(--q) var(--q) 0 #a9d884, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #6aa04e; display:flex; gap:4px; }
+  .lawn.night { background:#3d5a52; box-shadow:inset var(--q) var(--q) 0 #4f7168, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #2a4039; }
+  canvas { image-rendering:pixelated; display:block; }
+  .arrow { font-size:28px; color:var(--gold); padding:0 4px 40px; }
+  ul { margin:8px 0 0; padding-left:20px; } li { margin:4px 0; }
+  code { color:var(--on); }
+</style>
+</head>
+<body>
+<main>
+  <h1>NEXEL <em>WORLDS</em></h1>
+  <div class="sub">A robot of each race, for the AI players: so that at a glance you know who is a person and who is a machine. Shown here before anything is put in the game.</div>
+  <div class="box">
+    <h2>The idea</h2>
+    <ul>
+      <li>A robot is its race in plate. The head keeps the race's outline (the cat's ears, the bunny's long ears, the duck's bill), so a robot bunny is still a bunny from across a field.</li>
+      <li>What says "machine": steel with a dark edge where the fur was; a dark visor across the face with two lit eyes; the lining of the ears, the cheeks and the collar's bell turned into lamps.</li>
+      <li>Each race has its own light: cat cyan, bunny pink, bear amber, frog green, duck yellow. The lamps are the only bright colour on it, so they also show at night.</li>
+      <li>The plate keeps a little of the player's own colour, as fur does, so two robot cats are not the same grey.</li>
+      <li>They are drawn by the game's own code from the same sheet as the races (<code>web/js/races.js</code>), so every animation exists already: walking, running, hoe, axe, watering can, pickaxe, sword, spear. Clothes go on as on a person.</li>
+    </ul>
+  </div>
+  <div id="list"></div>
+  <div class="box">
+    <h2>Not decided yet</h2>
+    <ul>
+      <li>Nothing in the game wears these. To put them in, the world has to say which players are AI (it does not today), and their robot is drawn in place of their race.</li>
+      <li>Open questions for you: is the visor right on every race, or should some keep a face? Should an AI player choose its race, or get one by chance? Should the lamps blink when it thinks or talks?</li>
+    </ul>
+  </div>
+</main>
+<script>
+const NAMES = {cat: ["Cat-bot", "Pointed plate ears lined in cyan, the whiskers kept as feelers, a cyan lamp where the bell was."],
+  bunny: ["Bunny-bot", "The two long ears as tall aerials lined in pink; pink eyes behind the visor; a pink lamp at the collar."],
+  bear: ["Bear-bot", "Small round ears lit amber, the muzzle a grey snout plate with an amber nose lamp under the visor."],
+  frog: ["Frog-bot", "No visor: its eyes are the two green lenses up on its head. A dark grille for a mouth, a green lamp on each cheek, a paler belly plate."],
+  duck: ["Duck-bot", "The curl of down as a small aerial, the visor over the eyes, and the bill and feet kept orange: the one robot with a warm colour on it."]};
+const LIGHT = {cat: "#6fe9ff", bunny: "#ff8fd6", bear: "#ffb44a", frog: "#8cff7a", duck: "#ffe75a"};
+const CELL = 48, Z = 3;
+const img = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src + "?v=" + Date.now(); });
+const anims = [];
+function sprite(sheet, row, frames, ms) {            // one animated cell: a row of the sheet, its frames in turn
+  const c = document.createElement("canvas"); c.width = 30 * Z; c.height = 34 * Z; c.style.width = c.width + "px";
+  const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
+  anims.push((t) => { g.clearRect(0, 0, c.width, c.height); g.drawImage(sheet, frames[Math.floor(t / ms) % frames.length] * CELL + 9, row * CELL + 2, 30, 34, 0, 0, 30 * Z, 34 * Z); });
+  return c;
+}
+const cell = (label, night, ...canvases) => { const d = document.createElement("div"); d.className = "cell";
+  const lawn = document.createElement("div"); lawn.className = "lawn" + (night ? " night" : ""); canvases.forEach((c) => lawn.append(c)); d.append(lawn, label); return d; };
+(async () => {
+  const meta = await (await fetch("sheets/robots.json?v=" + Date.now())).json();
+  for (const key of meta.races) {
+    const race = await img(`sheets/race_${key}_cream.png`), bots = {};
+    for (const t of Object.keys(meta.tints)) bots[t] = await img(`sheets/robot_${key}_${t}.png`);
+    const box = document.createElement("div"); box.className = "box";
+    box.innerHTML = `<h2><i style="background:${LIGHT[key]}"></i>${NAMES[key][0]}</h2><div class="what">${NAMES[key][1]}</div>`;
+    const rows = document.createElement("div"); rows.className = "rows";
+    const arrow = document.createElement("div"); arrow.className = "arrow"; arrow.textContent = ">";
+    rows.append(cell("the race", false, sprite(race, 0, [0, 1], 500)), arrow,
+      cell("its robot, from every side", false, sprite(bots.cream, 0, [0, 1], 500), sprite(bots.cream, 2, [0, 1], 500), sprite(bots.cream, 1, [0, 1], 500), sprite(bots.cream, 3, [0, 1], 500)),
+      cell("walking", false, sprite(bots.cream, 4, [0, 1, 2, 3], 130), sprite(bots.cream, 6, [0, 1, 2, 3], 130)),
+      cell("at work", false, sprite(bots.cream, 16, [0, 1, 2, 3], 150), sprite(bots.cream, 18, [0, 1, 2, 3], 150)),
+      cell("three players", false, sprite(bots.cream, 0, [0], 500), sprite(bots.rose, 0, [0], 500), sprite(bots.sky, 0, [0], 500)),
+      cell("at night", true, sprite(bots.cream, 0, [0, 1], 500), sprite(bots.cream, 2, [0, 1], 500)));
+    box.append(rows); document.getElementById("list").append(box);
+  }
+  const tick = (t) => { anims.forEach((a) => a(t)); requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

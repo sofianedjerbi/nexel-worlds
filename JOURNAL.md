@@ -1697,3 +1697,18 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   from the page's own recipe and random source, never resized or re-pitched: the game's two files differ from the
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
+
+## Iteration 140: a robot of each race, shown before it is used
+- Asked: "design a robotic equivalnet of each race for AI players, and create a showcase page for it before
+  implementing them".
+- Design: a robot is its race in plate. The head keeps the race's outline; steel with a dark edge where the fur was;
+  a dark visor across the face with two lit eyes; the ears' lining, the cheeks and the bell as lamps, in a light of
+  the race's own (cat cyan, bunny pink, bear amber, frog green, duck yellow). The frog has no visor: its eyes are the
+  two lenses on its head, its mouth a grille. The plate keeps a little of the player's colour.
+- Made as the races are: `web/js/races.js` raceSheet(key, tint, bot) draws it from the cat's sheet, so every
+  animation exists. Nothing in the game calls it with `bot` yet. `design/enemies/robots.py` saves the sheets;
+  `design/enemies/site/robots.html` shows each race and its robot from every side, walking, at work, in three
+  players' colours and on a dark ground. http://127.0.0.1:8098/robots.html
+- Looked at, enlarged, before the page: the frog's first robot was a grey frog (no visor, small lenses): grille and
+  cheek lamps added. Race and first-screen tests pass (the races are as they were).
+- Not done, on purpose: the world does not say which players are AI; that, and who wears what, wait for the user.
