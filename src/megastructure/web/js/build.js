@@ -1,6 +1,6 @@
 // Building, as a plan and then the work. Placing was one tile at a time, the one you faced: to raise a wall you
 // walked a step, turned, pressed, and again, and walled yourself in. Now you plan first and your character builds:
-//   B          build mode, and out of it. What is in your hand is the piece: the bar's numbers; Q, the next piece.
+//   B          build mode, and out of it. What is in your hand is the piece: the bar's numbers.
 //   arrows     move the cursor, a tile at a time (it is not you who walks: the view goes with the cursor)
 //   Space      plan the piece here. Held while you move: a row. A door on a wall, a gate on a fence: in its place
 //   X          break what is at the cursor: a plan back; a thing, a tree, a rock, a wall, a step, a floor: down; bare
@@ -41,7 +41,7 @@ const Build = (() => {
   // said in a few words (they are written beside the bar: a long line ran under it)
   function hint(p) {
     const it = piece();
-    if (!it) return {text: selected ? "Not a building piece" : "Pick a piece: 1-9, Q", ok: false};
+    if (!it) return {text: selected ? "Not a building piece" : "Pick a piece: 1-9", ok: false};
     if (FOOT[PLACEABLE_BLOCK[it]]) return {text: "Put by hand: leave with B", ok: false, ghost: it};
     const have = meObs.self.inventory[it], used = todo().filter((j) => j.item === it).length, t = tile(p.x, p.y);
     const L = level(p), on = onIt(p, L), c = FLOORS ? Floors.get(p.x, p.y, L) : null, what = Floors.thingAt(p.x, p.y, L);
