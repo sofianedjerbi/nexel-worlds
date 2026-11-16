@@ -41,4 +41,4 @@
 #menu .pick { flex:1; justify-content:space-between; }
 #menu .pick span { flex:1; text-align:center; color:var(--ink); white-space:nowrap; }
 #menu .pick b { padding:0 calc(4 * var(--q)); }
-body.nohints #actions, body.notips #hover { display:none !important; }
+body.nohints #actions, body.nohints #prompts, body.notips #hover { display:none !important; }

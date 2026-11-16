@@ -145,6 +145,13 @@
   #debug { bottom:auto; top:120px; }
   #actions div.bad { color:#ffb0a0; }
   #actions div.head { color:#fff1a8; }   /* (build mode's name, over its keys: build.js) */
+  /* ---- the keys beside what they act on: the build cursor, what you face (prompts.js) ---- */
+  #prompts { position:fixed; left:0; top:0; z-index:3; pointer-events:none; color:#fff8e8; font-size:18px; line-height:26px;
+    text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+  #prompts > div { position:absolute; left:0; top:0; white-space:nowrap; }
+  #prompts .key { display:inline-block; min-width:28px; padding:0 6px; margin-right:8px; text-align:center; line-height:18px; color:var(--ink);
+    background:#f7e7c6; border:2px solid var(--ink); border-bottom-width:4px; border-radius:4px; text-shadow:none; }
+  #prompts div.bad { color:#ffb0a0; }
   /* ---- touch screens (touch.js): a joystick on the left, two buttons on the right, a few at the top ---- */
   body.touch { touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; }
   body.touch #joinbox { width:min(420px, 92vw); box-sizing:border-box; }

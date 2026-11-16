@@ -39,11 +39,11 @@ const Keyhole = (() => {
     ctx.fillStyle = "rgba(43,30,38,.35)"; ctx.fillRect(x, top, zoom, yF + S - top); ctx.fillRect(x + S - zoom, top, zoom, yF + S - top);   // (its sides: cut)
     ctx.restore(); ctx.globalAlpha = 1;
   }
-  // how far the cursor is under you (or over you), in layers: a tag beside it, in the game's ink
+  // how far the cursor is under you (or over you), in layers: a tag at its left (its keys are at its right: prompts.js)
   function tag(x, y, S, n) {
     const text = (n > 0 ? "+" : "") + n;
     ctx.font = "18px SproutPixel"; ctx.textAlign = "left";
-    const w = Math.ceil(ctx.measureText(text).width) + 10, X = Math.round(x + S + 3 * zoom), Y = Math.round(y + S / 2 - 10);
+    const w = Math.ceil(ctx.measureText(text).width) + 10, X = Math.round(x - 3 * zoom - w - 2), Y = Math.round(y + S / 2 - 10);
     ctx.fillStyle = "#5b3f36"; ctx.fillRect(X - 2, Y - 2, w + 4, 24);
     ctx.fillStyle = "#7a5646"; ctx.fillRect(X, Y, w, 20);
     ctx.fillStyle = "#fff6e2"; ctx.fillText(text, X + 5, Y + 16);

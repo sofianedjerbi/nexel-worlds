@@ -96,15 +96,15 @@ function aimedTile() {
   return {p, it: intent(p, keys.has("shift"))};
 }
 // Bottom right: what you can do right now, each with its key. Rebuilt every frame, written only when it changes.
-let actionsHtml = "";
+let actionsHtml = "", faceRows = [];               // (faceRows: what Space and X do to what you face, beside it: prompts.js)
 function availableActions() {
   if (!me || !meObs) return [];
   if (Build.on) return Build.rows();
   const s = myPos(), rows = [];
   const main = facingIntent(false), alt = facingIntent(true);
-  if (main && !main.it.info && main.it.ok !== false) rows.push([capOf("use"), main.it.text]);      // (the keys as the settings have them: options.js)
-  else if (main && placingItem()) rows.push([capOf("use"), main.it.text, "bad"]);           // why it can't go there
-  if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push([capOf("alt"), alt.it.text]);
+  if (main && !main.it.info && main.it.ok !== false) rows.push([capOf("use"), main.it.text, "", true]);      // (the keys as the settings have them: options.js; true: what you face)
+  else if (main && placingItem()) rows.push([capOf("use"), main.it.text, "bad", true]);           // why it can't go there
+  if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push([capOf("alt"), alt.it.text, "", true]);
   if (selected && FOODS.includes(selected)) rows.push([capOf("eat"), `Eat ${label(selected)}`]);
   if (selected && WEAR[selected]) rows.push([capOf("eat"), `Wear ${label(selected)}`]);
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push([capOf("pick"), "Pick up"]);
@@ -112,8 +112,13 @@ function availableActions() {
   else if (placingItem() && !FOOT[PLACEABLE_BLOCK[selected]]) rows.push([capOf("build"), "Build mode: plan a lot"]);
   return rows;   // only what you can do right here, right now (all the other keys are in the help, H)
 }
+// The corner: what is not beside what it acts on (prompts.js): in build mode its name and Esc; by keys, all but
+// what you face
 function updateActions() {
-  const html = availableActions().map(([k, t, cls]) => `<div class="${cls || ""}"><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
+  const all = availableActions(), keys = inputMode === "keys";
+  faceRows = Build.on || !keys ? [] : all.filter((r) => r[3]);
+  const corner = Build.on ? all.filter(([k]) => k === "B" || k === "Esc") : keys ? all.filter((r) => !r[3]) : all;
+  const html = corner.map(([k, t, cls]) => `<div class="${cls || ""}"><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
   if (html === actionsHtml) return;
   actionsHtml = html;
   const el = $("actions"); el.innerHTML = html; el.style.display = html ? "block" : "none";

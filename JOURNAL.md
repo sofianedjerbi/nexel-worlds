@@ -1914,3 +1914,17 @@ not its body).
   hides the cursor, none on the ground); floors, views and build tests on layers and the keyhole. 445 unit; browser
   211 passed + help fixed (a row too long) + one that fails only under load (gathering; passes alone).
 - Next: the user tries it (a reload at :7777); the online demo when they ask.
+
+## Iteration 148: the keys beside what they act on
+- User: "the keys appear in the chat, as a guide in each mode. can't you make it more intuitive ??" Looked: each
+  mode's greeting put its keys in the chat (build mode: two lines of keys every time), and the rest were a list in
+  the bottom corner, away from where you look.
+- Change (prompts.js): the keys are drawn beside what they act on, in the corner's keycaps. By the build cursor: at
+  its right what Space and X do there ("1-9 Pick a piece" with nothing in hand); at its left "E Up" over "Q Down"
+  where the cursor can go up or down, and its depth between them, like a lift's panel (over it, they hid your
+  feet). By what you face, playing by keys: Space and X. The corner keeps the rest (build mode's name and Esc; eat,
+  pick up, B). A toast with a key in it shows and goes, not kept in the chat (only the welcome is); build mode
+  says nothing when it opens.
+- Tests: test_e2e_prompts (build mode: nothing in the chat, the keys at the cursor's right, E over Q at its left,
+  the corner only the mode, following the cursor; what you face: Space beside it); test_e2e_ui (a guide is not
+  kept in the chat); game.actions() reads both. 448 unit, browser 214 + one under load (sound; passes alone).

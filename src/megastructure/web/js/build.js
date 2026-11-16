@@ -44,7 +44,7 @@ const Build = (() => {
   // said in a few words (they are written beside the bar: a long line ran under it)
   function hint(p) {
     const it = piece();
-    if (!it) return {text: selected ? "Not a building piece" : "Pick a piece: 1-9", ok: false};
+    if (!it) return selected ? {text: "Not a building piece", ok: false} : {text: "Pick a piece", key: "1-9", ok: false};
     if (FOOT[PLACEABLE_BLOCK[it]]) return {text: "Put by hand: leave with B", ok: false, ghost: it};
     const have = meObs.self.inventory[it], used = todo().filter((j) => j.item === it).length, t = tile(p.x, p.y);
     const L = level(p), on = onIt(p, L), c = FLOORS ? Floors.get(p.x, p.y, L) : null, what = Floors.thingAt(p.x, p.y, L);
@@ -180,7 +180,7 @@ const Build = (() => {
     if (on === S.on || (on && !me)) return;
     S.on = on; S.hold = null; S.plane = null; S.deep = null; held(null);
     document.body.classList.toggle("building", on);
-    if (on) { S.at = facingTile() || myPos(); toast("**Build mode**\nThe arrows move the cursor · `Space` builds · `X` breaks or digs\nHeld: a row · `Q` `E` a layer down, up"); work(); }
+    if (on) { S.at = facingTile() || myPos(); work(); }        // (its keys are by the cursor: prompts.js)
     else { S.pan = {x: 0, y: 0}; if (todo().length) toast(`${todo().length} plans wait: B to go on building`); }      // (the plans stay where they are)
   }
   function drop() { const n = todo().length; for (const [k, j] of S.plans) if (j.state !== "doing") S.plans.delete(k); toast(`${n} plans dropped`); }
@@ -256,7 +256,7 @@ const Build = (() => {
     }
     if (S.on && !me) { S.plans.clear(); toggle(false); }                    // (you fell, or the game went: out of the mode)
     if (!S.on || !S.at) return;
-    const L = level(), x = sx(S.at.x), y = top(S.at, L), c = 5 * z, w = 2 * z, blink = Math.floor(t * 3) % 2 ? "#fff1a8" : "#ffffff";
+    const L = level(), x = sx(S.at.x), y = top(S.at, L), c = 5 * z, w = 2 * z, _ = (S.rect = {x, y, w: Sz, h: Sz}), blink = Math.floor(t * 3) % 2 ? "#fff1a8" : "#ffffff";
     if (!onIt(S.at, L) && !solidAt(S.at.x, S.at.y, L)) {      // in the air: its shadow on what is under it, and the line down to it
       const under = settleAt(S.at.x, S.at.y, L), y0 = top(S.at, under);
       ctx.fillStyle = "rgba(40,30,50,.22)"; ctx.fillRect(x + 2 * z, y0 + 2 * z, Sz - 4 * z, Sz - 4 * z);
@@ -285,12 +285,12 @@ const Build = (() => {
   function rows() {
     const it = hint(S.at), n = todo().length, hit = taking(S.at), s = myPos(), up = s ? level() - myZ(s.x, s.y) : 0, sign = (v) => (v > 0 ? "+" : "") + v;
     const out = [["B", up ? `BUILD · ${sign(up)} · leave` : "BUILD MODE · leave", "head"]];
-    out.push(["Space", it.text, it.ok === false ? "bad" : ""]);
+    out.push([it.key || "Space", it.text, it.ok === false && !it.key ? "bad" : ""]);
     out.push(["Q E", "A layer down, up"]);
     if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.down ? `Dig down to ${sign(up)}` : hit.dig ? "Dig a hole" : hit.what === "roof" ? "Take the roof off" : hit.verb || `Take down ${hit.what}`]);
     if (n) out.push(["Esc", `Drop the ${n} plan${n > 1 ? "s" : ""}`]);
     return out;
   }
   const waiting = () => (!S.on && todo().length ? todo().length : 0);        // plans left on the ground, out of the mode
-  return {S, toggle, onKey, click, point, draw, pan, rows, hint, waiting, level, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
+  return {S, toggle, onKey, ways: () => { const L = level(), all = S.at && myPos() ? stops(S.at) : []; return {up: all.some((z) => z > L), down: all.some((z) => z < L)}; }, click, point, draw, pan, rows, hint, waiting, level, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
 })();

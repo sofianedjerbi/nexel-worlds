@@ -266,7 +266,10 @@ def test_what_the_game_says_is_a_line_of_the_chat_not_a_sign_at_the_top(game):
     assert ["note sys", "Empty hands ×2"] in lines and lines[-1] == ["note bad", "Too far: get closer."], lines
     assert game.js("getComputedStyle($('toast')).display") == "none" and game.toast() == "Too far: get closer."
     assert game.js("getComputedStyle($('chatlog').lastElementChild, '::before').width") == "6px"      # its mark
-    game.js("(() => { toast('In hand: **wood**\\nSecond line `M`'); return 1; })()")              # dressed: bold, a new line, a key
+    n = game.js("$('chatlog').children.length")
+    game.js("(() => { toast('What hides you: **Cut away** `V`'); return 1; })()")                 # a guide (a key in it) shows and goes:
+    assert game.js("$('chatlog').children.length") == n and "Cut away" in game.toast()               # not kept in the chat (prompts.js)
+    game.js("(() => { toast('In hand: **wood**\\nSecond line `M`', false, NOTE_MS, true); return 1; })()")   # dressed: bold, a new line, a key (the welcome)
     last = "$('chatlog').lastElementChild"
     assert game.js(last + ".querySelector('b').textContent") == "wood" and game.js(last + ".querySelector('kbd').textContent") == "M" and game.js(last + ".querySelectorAll('br').length") == 1
     assert game.toast() == "In hand: wood Second line M"                                               # (plain where it is read as text)

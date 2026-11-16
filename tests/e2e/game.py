@@ -87,7 +87,8 @@ class Game:
 
     # ---- the screen
     def actions(self):
-        return self.js("$('actions').innerText").replace("\n", " | ")
+        """The keys said on the screen: beside what you face or the build cursor (prompts.js), and in the corner."""
+        return " | ".join(t for t in (self.js(f"$('{w}').innerText").strip().replace("\n", " | ") for w in ("prompts", "actions")) if t)
 
     def toast(self):
         return self.js("$('toast').style.display === 'block' ? $('toastt').innerText : ''")
