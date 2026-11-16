@@ -5,12 +5,14 @@
 //   Space      plan the piece here. Held while you move: a row. A door on a wall, a gate on a fence: in its place
 //   X          break what is at the cursor: a plan back; a thing, a tree, a rock, a wall, a step, a floor: down; bare
 //              ground: a hole, a layer deeper each time (a pickaxe digs faster). Held: a row
-//   Q E        the cursor down a floor, and up (also PgDn, PgUp)
+//   Q E        the cursor a layer down, and up (also PgDn, PgUp)
 //   Esc        drop every plan (with none: out of the mode)
 // The cursor has a height. It rides the ground nearest your own (the floor you stand on); E lifts it a storey, into
 // the air over a room or onto the floor above, and there it stays as it moves, until Q brings it down. Below your
-// own floor, Q sinks it a storey: onto the floor under yours (the ground floor from upstairs), into a pit, a cave
-// under you. (It was R and F, then Shift ↑ ↓: "not natural"; the user chose Q and E.) What you plan
+// own floor Q sinks it to what is under it: the floor under yours (the ground floor from upstairs), a cave's floor,
+// or, in the ground, a layer at a time: there X digs down to it, the layers over it one by one. How far down it is
+// is written beside it, in layers, as deep as a hole is dug. (It was R and F, then Shift ↑ ↓: "not natural"; the
+// user chose Q and E. They counted storeys: on solid ground Q did nothing but say "floor -1".) What you plan
 // goes where the cursor is: a thing (a wall, a door, a bed) on what the cursor is on; a block (planks, a roof) on
 // top of it, or, the cursor in the air, in the cell it is in, where a wall under it or a block beside it holds it.
 // Planks on bare ground are a floor laid in it, as ever; a roof goes a storey over what the cursor is on (over your
@@ -24,12 +26,13 @@
 const Build = (() => {
   const REACH = 10, FIRST_MS = 230, STEP_MS = 75, BAD_MS = 2600;   // how far from you the cursor goes; a held arrow: its wait, then its pace; how long a failed plan shows
   const SWAP = {door: "W%", gate: "#"};                      // a piece that goes in the place of another: a door in a wall, a gate in a fence
-  const S = {on: false, at: null, plane: null, down: 0, plans: new Map(), hold: null, working: false, dir: null, timer: 0, pan: {x: 0, y: 0}};
-  const now = () => performance.now(), UPMOST = 9, DEEPEST = 4;   // (how far over your own height the cursor goes: three floors; under it: four)
+  const S = {on: false, at: null, plane: null, deep: null, plans: new Map(), hold: null, working: false, dir: null, timer: 0, pan: {x: 0, y: 0}};
+  const now = () => performance.now(), UPMOST = 9, DEEPEST = 12, LOWEST = -11;   // (how far over your own height the cursor goes: three floors; under it, layers; the deepest a hole is dug: sim/underground.py)
   // The cursor's height: the plane it was lifted to, or the ground at its tile nearest your own height
   const ride = (p) => { const s = myPos(); return settleNear(p.x, p.y, s ? myZ(s.x, s.y) : topAt(p.x, p.y)); };
-  const sink = (p) => { const s = myPos(); return settleAt(p.x, p.y, (s ? myZ(s.x, s.y) : topAt(p.x, p.y)) - S.down * Floors.STOREY + 1); };   // (sunk: the floor under that)
-  const level = (p = S.at) => (S.plane !== null ? S.plane : !p ? 0 : S.down ? sink(p) : ride(p));
+  const under = (p, t) => (solidAt(p.x, p.y, t) ? t : settleAt(p.x, p.y, t));      // (sunk to t: in the ground there, or on what is under it)
+  const level = (p = S.at) => (S.plane !== null ? S.plane : !p ? 0 : S.deep !== null ? under(p, S.deep) : ride(p));
+  const buried = (p, L) => landSolid(p.x, p.y, L + 1);                            // (in the ground: X digs down to it)
   const onIt = (p, L) => solidAt(p.x, p.y, L) && !solidAt(p.x, p.y, L + 1);        // the cursor is on something there (not in the air, not inside it)
   const key = (p, z = level(p)) => p.x + "," + p.y + "," + z;
   const BLOCK = (it) => it === "roof" || it === "plank";
@@ -71,6 +74,7 @@ const Build = (() => {
     const zs = [...new Set([selected === "roof" && on ? L + Floors.STOREY : undefined, h.z, L].filter((z) => z !== undefined))];
     for (const z of zs) { const j = S.plans.get(key(p, z)); if (j) return j.state === "doing" ? null : {z, what: "plan", plan: j}; }
     if (!t) return null;
+    if (buried(p, L)) return {z: L, what: "ground", dig: true, down: true};
     const built = (z) => { const c = FLOORS || z !== L ? Floors.get(p.x, p.y, z) : null; return c ? {z, what: c[1] ? label(CH[c[1]]) : c[0] === "roof" ? "roof" : c[0] === "stairs" ? "the step" : "planks", up: true} : null; };
     for (const z of zs) if (built(z)) return built(z);
     if (on && L === standAt(p.x, p.y)) {               // on the land: whatever stands there; what is laid in it; else the ground itself
@@ -93,7 +97,8 @@ const Build = (() => {
     const hit = taking(p);
     if (!hit) return S.hold ? null : toast("Nothing built there", true);
     if (hit.plan) { S.plans.delete(key(p, hit.z)); return; }
-    S.plans.set(key(p, hit.z), {x: p.x, y: p.y, z: hit.z, take: true, up: !!hit.up, dig: !!hit.dig, state: "todo"});
+    if (hit.down) { for (let z = topAt(p.x, p.y); z > hit.z; z--) if (landSolid(p.x, p.y, z)) S.plans.set(key(p, z), {x: p.x, y: p.y, z, take: true, dig: true, state: "todo"}); }   // (each layer over it, from the top)
+    else S.plans.set(key(p, hit.z), {x: p.x, y: p.y, z: hit.z, take: true, up: !!hit.up, dig: !!hit.dig, state: "todo"});
     sfx("pick"); work();
   }
   // The work: the nearest plan, a place to stand beside it, the piece put (or the thing taken down); then the next
@@ -115,7 +120,7 @@ const Build = (() => {
     const s = myPos(); if (!s) return null;
     // (what you can walk on first, a floor, a door: then what closes the way, the nearest first; a block that
     // nothing holds yet, or a thing whose floor is not laid yet, after what is to hold it)
-    const wait = (j) => !j.take && j.up && (BLOCK(j.item) ? !!Floors.fits(j.x, j.y, j.z) : !Floors.get(j.x, j.y, j.z));
+    const wait = (j) => (j.dig ? landSolid(j.x, j.y, j.z + 1) : !j.take && j.up && (BLOCK(j.item) ? !!Floors.fits(j.x, j.y, j.z) : !Floors.get(j.x, j.y, j.z)));
     const far = (j) => (j.tried ? 1000 : 0) + (wait(j) ? 5000 : 0) + (solid(j) ? 500 : 0) + Math.abs(j.x - s.x) + Math.abs(j.y - s.y) + Math.abs(j.z - myZ(s.x, s.y));
     return [...S.plans.values()].filter((j) => j.state === "todo").sort((a, b) => far(a) - far(b))[0];
   }
@@ -173,9 +178,9 @@ const Build = (() => {
 
   function toggle(on = !S.on) {
     if (on === S.on || (on && !me)) return;
-    S.on = on; S.hold = null; S.plane = null; S.down = 0; held(null);
+    S.on = on; S.hold = null; S.plane = null; S.deep = null; held(null);
     document.body.classList.toggle("building", on);
-    if (on) { S.at = facingTile() || myPos(); toast("**Build mode**\nThe arrows move the cursor · `Space` builds · `X` breaks or digs\nHeld: a row · `Q` `E` a floor down, up"); work(); }
+    if (on) { S.at = facingTile() || myPos(); toast("**Build mode**\nThe arrows move the cursor · `Space` builds · `X` breaks or digs\nHeld: a row · `Q` `E` a layer down, up"); work(); }
     else { S.pan = {x: 0, y: 0}; if (todo().length) toast(`${todo().length} plans wait: B to go on building`); }      // (the plans stay where they are)
   }
   function drop() { const n = todo().length; for (const [k, j] of S.plans) if (j.state !== "doing") S.plans.delete(k); toast(`${n} plans dropped`); }
@@ -195,17 +200,20 @@ const Build = (() => {
     const again = () => { if (S.on && S.dir === dir && move(dir)) S.timer = setTimeout(again, STEP_MS); };
     S.timer = setTimeout(again, FIRST_MS);
   }
-  // E, Q: the cursor up a storey (into the air over a room, onto the floor above), and down: back to riding
-  // the ground at your height, then under it (sunk: the floor under yours, a pit, a cave), as far as a hole goes
+  // E, Q: the cursor to the next height it can be at on its tile, up or down: in the ground a layer at a time, or what
+  // is under it (a floor, a cave's floor, a pit's); on the ground; in the air, a storey at a time
+  function stops(p) {
+    const s = myPos(), me = myZ(s.x, s.y), r = ride(p), out = [];
+    for (let t = Math.max(LOWEST, me - DEEPEST); t < r; t++) { const z = under(p, t); if (z < r && out[out.length - 1] !== z) out.push(z); }
+    out.push(r);
+    if (FLOORS) for (let z = r + Floors.STOREY; z <= me + UPMOST; z += Floors.STOREY) out.push(z);
+    return out;
+  }
   function lift(d) {
-    const s = myPos();
-    if (!FLOORS) return toast("Floors come when this world's server is restarted", true);
-    if (!s) return sfx("buzz");
-    if (d > 0 && S.down) S.down--;
-    else if (d > 0) { const to = level() + Floors.STOREY; if (to > myZ(s.x, s.y) + UPMOST) return sfx("buzz"); S.plane = to; }
-    else if (S.plane !== null) { const to = S.plane - Floors.STOREY; S.plane = to <= ride(S.at) ? null : to; }
-    else if (S.down < DEEPEST) S.down++;
-    else return sfx("buzz");
+    if (!myPos()) return sfx("buzz");
+    const L = level(), all = stops(S.at), to = d < 0 ? all.filter((z) => z < L).pop() : all.find((z) => z > L), r = ride(S.at);
+    if (to === undefined) return d > 0 && !FLOORS ? toast("Floors come when this world's server is restarted", true) : sfx("buzz");
+    S.plane = to > r ? to : null; S.deep = to < r ? to : null;
     sfx("pick");
   }
   // A key in build mode -> true: it was the mode's (the rest, the bar's numbers among them, go on as ever)
@@ -263,6 +271,8 @@ const Build = (() => {
     for (const [cx, cy, hx, hy] of [[x, y, 1, 1], [x + Sz, y, -1, 1], [x, y + Sz, 1, -1], [x + Sz, y + Sz, -1, -1]]) {
       ctx.fillRect(Math.min(cx, cx + hx * c), Math.min(cy, cy + hy * w), c, w); ctx.fillRect(Math.min(cx, cx + hx * w), Math.min(cy, cy + hy * c), w, c);
     }
+    const s = myPos(), n = s ? L - myZ(s.x, s.y) : 0;
+    if (n) Keyhole.tag(x, y, Sz, n);                   // (how far under you, or over: keyhole.js)
   }
   // The view, in build mode: half way from you to the cursor, eased (both stay on the screen)
   function pan(dt) {
@@ -273,14 +283,14 @@ const Build = (() => {
   // What the keys do just now, for the corner of the screen (keyboard.js): the mode's name first, then each key
   // that does something here, in a few words
   function rows() {
-    const it = hint(S.at), n = todo().length, hit = taking(S.at), s = myPos(), up = !s ? 0 : S.plane === null ? -S.down : Math.round((S.plane - myZ(s.x, s.y)) / Floors.STOREY);
-    const out = [["B", up ? `BUILD · floor ${up > 0 ? "+" : ""}${up} · leave` : "BUILD MODE · leave", "head"]];
+    const it = hint(S.at), n = todo().length, hit = taking(S.at), s = myPos(), up = s ? level() - myZ(s.x, s.y) : 0, sign = (v) => (v > 0 ? "+" : "") + v;
+    const out = [["B", up ? `BUILD · ${sign(up)} · leave` : "BUILD MODE · leave", "head"]];
     out.push(["Space", it.text, it.ok === false ? "bad" : ""]);
-    if (FLOORS) out.push(["Q E", "A floor down, up"]);
-    if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.dig ? "Dig a hole" : hit.what === "roof" ? "Take the roof off" : hit.verb || `Take down ${hit.what}`]);
+    out.push(["Q E", "A layer down, up"]);
+    if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.down ? `Dig down to ${sign(up)}` : hit.dig ? "Dig a hole" : hit.what === "roof" ? "Take the roof off" : hit.verb || `Take down ${hit.what}`]);
     if (n) out.push(["Esc", `Drop the ${n} plan${n > 1 ? "s" : ""}`]);
     return out;
   }
   const waiting = () => (!S.on && todo().length ? todo().length : 0);        // plans left on the ground, out of the mode
-  return {S, toggle, onKey, click, point, draw, pan, rows, hint, waiting, level, get on() { return S.on; }, aim: () => ({p: S.at, it: hint(S.at)})};
+  return {S, toggle, onKey, click, point, draw, pan, rows, hint, waiting, level, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
 })();

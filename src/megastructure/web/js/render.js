@@ -78,6 +78,7 @@ function frame(now) {
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
   drawCaves(vis, sx, sy);                            // (their mouths; the one you're in, seen through its roof)
   xrayLook(dt); drawXray(sx, sy);                    // (behind a mountain: a circle round you seen through it, xray.js)
+  Keyhole.draw(sx, sy);                              // (the build cursor's own tile, where the ground hides it: keyhole.js)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B)));
   const allShown = vis.every((b) => !onScreen(b) || b.relief);

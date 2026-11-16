@@ -1881,3 +1881,36 @@ not its body).
 - The demo's What's new page: a section "four ways to see what hides you" with a clip (tools/film_views.py: V in the
   house, behind it, down a dug stair; build mode Q and E), and the floors clip filmed again with Q and E.
 - Next: the user picks a view (or asks for others); a dug hole's floor drawn as dug earth.
+
+## Iteration 147: digging down, "Earth and a keyhole"; Q and E a layer
+- User: "i wasn't talking about that kind of demo.. but concepts of build mode when breaking block down, under the
+  player". Five mockups (local page, a throwaway server with the drawing changed on the fly) in four places (a pit
+  beside you, a one-tile shaft, a stair dug down, a cave under you): earth and a keyhole, a stacked cursor, a window
+  cut down, a whole-layer view, a side-view panel; and today's. They chose 1, "but attention: your rendering has some
+  weird lines in the middle! also how do you make it more intuitive with keyboard ??"
+- Measured first, today: a dug floor is grass (a hole three deep reads as a raised table); the x-ray circle round
+  the cursor shows the grass round the hole and the cursor seems to sit on it; on solid ground Q did nothing but turn
+  the corner's "BUILD MODE" into "floor -1" (it counted storeys; X digs layers); nothing said how deep the cursor is.
+- The lines: at the foot of a hole's walls, the grass of the ground beside it (its px past its level's shape, under
+  the cliff's foot or its side) was painted at the lower level's height: a green line, two art px, along the floor.
+- Change:
+  - tiles.js: ground under sea level (only ever dug: gen.py never goes under 0) is the soil, no grass, a shade
+    darker a layer down (dugSheet); a hole's walls (the sheet of levels 0 and under, relief.js) and the rims of dug
+    steps are earth; the px that made the line are that floor's earth (dugFoot: south, east, west).
+  - keyhole.js: where the ground hides the build cursor (the grass in front, or earth or a cave's roof over it),
+    its own column is drawn as if cut open in front: the wall behind, a band a layer, down to its floor; faint when
+    it is in the ground (not dug yet). Beside the cursor, how far under you it is ("-3"). The x-ray circle no longer
+    goes round the cursor. A floor drawn alone, three layers down, showed a tile and a half south of its hole.
+  - build.js: Q and E go to the next height the cursor can be at on its tile: in the ground a layer at a time, or
+    what is under it (the floor under yours, a cave's, a pit's); on the ground; in the air a storey at a time. In
+    the ground X digs down to it, every layer over it from the top (a layer under another waits for it). The corner:
+    "BUILD · -3", "X Dig down to -3", "Q E A layer down, up"; the red selector of a bad hint is at the cursor's
+    height (it stayed on the surface); the mouse points at the sunk cursor's height.
+- Result (Chrome, throwaway server): B, Q Q Q (the cursor three layers down, its column faint, "-3"), X: three
+  layers dug, top first, by the character standing at the rim (1 dirt, 2 stone); the pit, the shaft and the stair
+  show earth floors and walls with no green line; a pit's south row and a stair's last step show their keyhole
+  joined to the hole. Tests: test_e2e_digging (Q/E by layers and X digging down to it; no grass on a dug floor, at
+  its walls' foot nor beside a step, which fails with the fix taken out: 16 green px; the keyhole where the grass
+  hides the cursor, none on the ground); floors, views and build tests on layers and the keyhole. 445 unit; browser
+  211 passed + help fixed (a row too long) + one that fails only under load (gathering; passes alone).
+- Next: the user tries it (a reload at :7777); the online demo when they ask.

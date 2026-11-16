@@ -11,7 +11,7 @@ const HELP = [
   ["Carry", [[["1-9", "Q"], "Take in hand"], [["`"], "Empty your hands"], [["Space"], "Place what you hold"],
     [["I"], "Inventory"], [["C"], "Craft"]]],
   ["Build", [[["B"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],
-    [["Q", "E"], "Cursor a floor down, up"]]],
+    [["Q", "E"], "Cursor a layer down, up"]]],
   ["Talk", [[["Enter"], "Talk"], [["ABC"], "Shout: IN CAPITALS"], [["Tab"], "Hold: who is awake"],
     [["M"], "Sound on or off"], [["Esc"], "Menu and settings"]]],
 ];

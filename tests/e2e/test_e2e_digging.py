@@ -1,0 +1,71 @@
+"""Digging down in build mode (web/js/build.js, keyhole.js, tiles.js). "depth visualisation is unintuitive", and of
+five mockups the user chose "Earth and a keyhole": dug ground is earth, a shade darker a layer down; where the ground
+hides the cursor only its own column is seen through; beside it, how far down it is. By keys: Q sinks the cursor a
+layer into the ground, E brings it back, X digs down to it."""
+
+GRASS = 0xff70d4c0                                             # (the meadow's green, #c0d470, as a block's px has it)
+GREEN = f"""([x, y, rows, cols]) => {{ const b = blockOf(x, y), o = (y - b.by * B) * 16 * BW + (x - b.bx * B) * 16; let n = 0;
+  for (const j of rows) for (const i of cols) if (b.px[o + j * BW + i] === {GRASS}) n++; return n; }}"""
+DRAWN = "dirtyTiles.length === 0"
+
+
+def test_q_sinks_the_cursor_a_layer_and_x_digs_down_to_it(game):
+    """On solid ground Q did nothing but say "floor -1" (it counted storeys); now each Q is a layer into the ground,
+    said beside the cursor and in the corner, and X there digs every layer over it, from the top."""
+    game.clear_area(8)
+    game.give(pickaxe=1)
+    x, y = game.pos()
+    game.press("ArrowDown", 200)                              # (facing south: the cursor starts on the tile in front)
+    game.press("b")
+    at = game.js("[Build.S.at.x, Build.S.at.y]")
+    rows = lambda: {r[0]: r[1] for r in game.js("Build.rows()")}
+    assert game.js("Build.level()") == 0 and rows()["Q E"] == "A layer down, up" and rows()["X"] == "Dig a hole"
+    for depth in (1, 2, 3):
+        game.press("q", 120)
+        assert game.js("Build.level()") == -depth and rows()["B"] == f"BUILD · -{depth} · leave" and rows()["X"] == f"Dig down to -{depth}"
+    game.wait("Keyhole.shown", 3000)                           # (in the ground: its column, faint, down to the cursor)
+    game.press("e", 120)
+    assert game.js("Build.level()") == -2
+    game.press("q", 120)
+    game.press("x")
+    assert sorted(game.js("[...Build.S.plans.values()].map((j) => j.z)")) == [-2, -1, 0]       # every layer over it
+    game.wait(f"surfacesAt({at[0]}, {at[1]})[0] === -3 && Build.S.plans.size === 0", 30000)
+    assert game.js("Build.level()") == -3 and game.inv("dirt") == 1 and game.inv("stone") == 2    # (under sea level: stone)
+    game.press("q", 120)                                       # under the floor dug: a layer more
+    assert game.js("Build.level()") == -4 and rows()["X"] == "Dig down to -4"
+    game.press("b")
+    assert not game.errors
+
+
+def test_a_dug_floor_is_earth_with_no_grass_at_the_foot_of_its_walls(game):
+    """A hole three deep had a grass floor and grass lips: it looked like a raised table; and the grass of the ground
+    round it showed in a line at the foot of each wall ("weird lines in the middle")."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.stamp(-1, 2, ["..."] * 3, levels=["ccc"] * 3)      # a pit three deep (x-1..x+1, y+2..y+4)
+    game.stamp(3, -2, ["...."], levels=["abcd"])            # a stair dug down, east
+    game.wait(DRAWN, 8000); game.sleep(300)
+    green = lambda dx, dy, rows=range(16), cols=range(16): game.js(GREEN, [x + dx, y + dy, list(rows), list(cols)])
+    assert [green(0, 3), green(0, 4)] == [0, 0]               # the pit's floor: earth
+    assert green(0, 1, [14, 15]) == 0                          # the ground north of it: no grass under its wall's foot
+    assert green(2, -2, range(2, 14), [14, 15]) == 0 and green(3, -2) == 0     # west of the first step, past its wall's side; the step
+    game.sleep(200)
+    assert not game.errors
+
+
+def test_the_keyhole_shows_the_cursor_where_the_ground_in_front_hides_it(game):
+    """Down a hole the grass in front is drawn over the floor: the cursor's own tile is seen through, and no more (the
+    x-ray circle that went round it is yours alone); on the ground, where nothing hides it, there is none."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.stamp(-1, 2, ["..."] * 3, levels=["ccc"] * 3)
+    game.wait(DRAWN, 8000)
+    game.press("b")
+    game.js(f"Build.S.at = {{x: {x}, y: {y + 4}}}")           # the pit's south row: under the grass in front
+    assert game.js("Build.level()") == -3
+    game.wait("Keyhole.shown", 3000)
+    assert game.js("xray.a") < .1
+    game.js(f"Build.S.at = {{x: {x + 3}, y: {y}}}")
+    game.wait("!Keyhole.shown", 3000)
+    game.press("b")
+    assert not game.errors

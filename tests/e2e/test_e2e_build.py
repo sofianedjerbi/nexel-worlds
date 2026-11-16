@@ -217,10 +217,11 @@ def test_x_breaks_anything_and_digs_holes(game):
     assert game.js("Build.rows()")[3] == ["X", "Dig a hole"]
     game.press("x")
     game.wait(f"surfacesAt({x - 1}, {y + 2})[0] === -2 && Build.S.plans.size === 0", 20000)
-    # two layers down the hole's floor is behind the grass in front of it: the x-ray circle goes round the cursor
-    # ("the selector become unvisible, it should trigger xray too"), and away from the hole it is yours again
-    game.wait(f"xray.a > .9 && xray.x === {x - 1} && xray.L === -2", 5000)
+    # two layers down the hole's floor is behind the grass in front of it: its own tile is seen through, a keyhole
+    # (keyhole.js; "the selector become unvisible, it should trigger xray too"), and nothing else: no x-ray circle
+    game.wait("Keyhole.shown", 3000)
+    assert game.js("xray.a") < .1
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y + 3}}}")
-    game.wait("xray.a < .1", 5000)
+    game.wait("!Keyhole.shown", 3000)
     game.press("b")
     assert game.inv("dirt") == 3 and game.inv("stone") == 3 and not game.errors      # (the rock's two, and the deeper layer is stone)

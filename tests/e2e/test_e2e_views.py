@@ -46,7 +46,7 @@ def test_in_a_house_what_is_over_you_is_cut_away_outlined_or_faint(game):
     game.press("b")
     game.js(f"Build.S.at = {{x: {x0 + 3}, y: {y0 + 2}}}")       # (over the room, not the stairs)
     game.press("q")
-    assert game.js("[Build.level(), Build.rows()[0][1]]") == [0, "BUILD · floor -1 · leave"] and alpha(floor) == [0]
+    assert game.js("[Build.level(), Build.rows()[0][1]]") == [0, "BUILD · -3 · leave"] and alpha(floor) == [0]
     game.press("e")
     assert alpha(floor) == [1]
     game.press("b")

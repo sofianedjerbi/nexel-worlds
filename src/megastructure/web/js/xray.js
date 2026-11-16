@@ -77,17 +77,12 @@ function xrayCover(tx, row, py, L) {
   for (let ty = row + 1; ty <= row + XRAY.far; ty++) cover = Math.max(cover, (levelAt(tx, ty) - L) * RELIEF_STEP - (ty - py - 1) * 16);
   return cover;
 }
-// Once a frame, before anything of it is drawn: are you behind something, and how much of you. In build mode the
-// cursor first: down in a hole you dig (two layers or more), or behind a rise, the circle goes round it, so you see
-// where it is and what is there ("the selector become unvisible, it should trigger xray too": build.js)
+// Once a frame, before anything of it is drawn: are you behind something, and how much of you. (The build cursor
+// down a hole went round with it too; it has its own keyhole now: keyhole.js)
 function xrayLook(dt) {
-  const p = me && ents.get("agent" + myId), at = Build.on && Build.S.at;
+  const p = me && ents.get("agent" + myId);
   let want = 0, f = null;                                  // (what the circle is round: px, py as drawn, L, row; mid: its centre over its tile)
-  if (at && !caveOpen) {
-    const L = Build.level();
-    if (xrayCover(at.x, at.y, at.y, L) >= 2 * RELIEF_STEP) { want = 1; f = {px: at.x, py: at.y, L, row: at.y, mid: 0}; }
-  }
-  if (!f && p && p.e && !caveOpen) {
+  if (p && p.e && !caveOpen) {
     // (where you are as drawn, at the height you are at: on a step, a floor, a ladder's rungs; it was the land's under
     // you, and a climb up a cliff's side or a flight of stairs beside one brought the circle up half way)
     const cl = Climb.climbOf(p), px = p.x + (cl ? cl.dx : 0), py = p.y + (cl ? cl.dy : 0);
@@ -102,7 +97,7 @@ function xrayLook(dt) {
     xray.t = want > 0 ? xray.t + dt : 0;
     if (xray.t < XRAY.wait && xray.a <= .01) want = 0;      // (a moment behind something: not yet)
     if (xray.t > 0 || xray.a > .01) {
-      xray.L = f.L; xray.row = f.row; xray.x = f.px; xray.y = f.py - shOf(f.L) / 16 - f.mid;   // (its centre: your body, or the cursor's tile, where it is drawn)
+      xray.L = f.L; xray.row = f.row; xray.x = f.px; xray.y = f.py - shOf(f.L) / 16 - f.mid;   // (its centre: your body, where it is drawn)
       if (!xrayPaint(Math.round(f.px)) && xray.a <= .01) want = 0;               // (it comes once its picture is ready)
     }
   }

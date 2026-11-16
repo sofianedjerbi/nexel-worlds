@@ -25,7 +25,7 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     game.press("b")
     assert game.js("Build.level()") == 0 and "Q E" in [r[0] for r in game.js("Build.rows()")]
     game.press("e")                                            # the cursor up a floor: over the house, in the air
-    assert game.js("[Build.S.plane, Build.level()]") == [3, 3] and "floor +1" in game.js("Build.rows()")[0][1]
+    assert game.js("[Build.S.plane, Build.level()]") == [3, 3] and "+3" in game.js("Build.rows()")[0][1]      # (layers over you)
     at(0, -6)
     assert game.js("Build.hint(Build.S.at)")["ok"] is False    # in the open: nothing under it, nothing beside it
     for row in range(4):                                       # a row over each line of the house, walls and room
@@ -41,7 +41,7 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     game.press("x"); game.press("ArrowDown", 120); game.press("x")
     game.wait(f"({CELLS})([{x + 1}, {y - 5}, 5, 4, 3]) === 'ppppp/p.ppp/p.ppp/ppppp/' && Build.S.plans.size === 0", 30000)
     game.press("q")                                            # down again: the cursor rides the ground
-    assert game.js("[Build.S.plane, Build.S.down, runKey]") == [None, 0, False]
+    assert game.js("[Build.S.plane, Build.S.deep, runKey]") == [None, None, False]
     at(2, -3)
     assert game.js("Build.hint(Build.S.at).text") == "Plan plank on top"
     game.press("Space")                                        # a step: planks on the floor
@@ -65,9 +65,9 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y - 3}}}")
     assert game.js("Build.level()") == 3
     game.press("q")
-    assert game.js("[Build.level(), Build.rows()[0][1]]") == [0, "BUILD · floor -1 · leave"]
+    assert game.js("[Build.level(), Build.rows()[0][1]]") == [0, "BUILD · -3 · leave"]
     game.press("e")
-    assert game.js("[Build.level(), Build.S.down, Build.S.plane]") == [3, 0, None]
+    assert game.js("[Build.level(), Build.S.deep, Build.S.plane]") == [3, None, None]
     game.press("b")
     game.press(game.js(SLOT, "wood_wall"))                     # upstairs, by hand: a wall on the floor before you
     game.press("Space", 700)
