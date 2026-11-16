@@ -2,7 +2,10 @@
 where the ground is solid, further where it was hollow (a fall: Movement.fell). On a hill that cuts into it; at sea
 level and below it digs a pit (down to DEEPEST). You climb out a layer at a time, as up any step.
 And a hole dug beside you: `dig` aimed at a tile's ground with its height (`z`) takes the top cell of the land there,
-a layer at a time, by hand or faster with a pickaxe (build mode's X on bare ground: web/js/build.js)."""
+a layer at a time, by hand or faster with a pickaxe (build mode's X on bare ground: web/js/build.js). Or a cell inside
+the land that is open on a side (beside a hole, a tunnel's end): it goes and what is over it stays, a roof. So a way
+down is dug as a tunnel, the room to stand in a step at a time ("like minecraft ... l shape tunnels. this enforce me
+to dig huge columns"): build mode's X with the cursor in the ground."""
 
 from ..tiles import BLOCKS, DEEPER, DEPTH, GROUNDS
 from .entities import ActionError, Agent
@@ -32,7 +35,13 @@ class Underground:
             return None
         x, y = self.target(a, args, flat=True)
         z = self.surface(a, x, y, args["z"])
-        if z not in self.world.surfaces(x, y) or self.floors.get(x, y, z) is not None:
+        if self.floors.get(x, y, z) is not None:
+            return None
+        if z not in self.world.surfaces(x, y):              # (inside the land: open on a side; shut in, not; air: not this)
+            if self.open_cell(x, y, z):
+                return self._lower(a, x, y, z, self.held(a, args) == "pickaxe", inside=True)
+            if self.world.solid(x, y, z):
+                raise ActionError("cannot_dig", "that is inside the land, with no air beside it: dig to it from next to it")
             return None
         if z == self.world.level(x, y):
             g, b = self.world.get(x, y)
@@ -40,12 +49,21 @@ class Underground:
                 return None
         return self._lower(a, x, y, z, self.held(a, args) == "pickaxe")
 
-    def _lower(self, a: Agent, x: int, y: int, z: int, pick: bool):
+    def open_cell(self, x: int, y: int, z: int) -> bool:
+        """A cell of the land with air on a side of it (over it, under it, beside it): it can be dug."""
+        w = self.world
+        return w.solid(x, y, z) and any(not w.solid(x + dx, y + dy, z + dz) for dx, dy, dz in
+                                        ((0, 0, 1), (0, 0, -1), (1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0)))
+
+    def _lower(self, a: Agent, x: int, y: int, z: int, pick: bool, inside: bool = False):
         self.reach(a, x, y, z=z)
+        h = self.height(a)
+        if inside and not (abs(x - a.x) + abs(y - a.y) == 1 and h <= z <= h + 2):   # (in front of you: not through the land)
+            raise ActionError("out_of_range", "a cell inside the land is dug from beside it, from your feet to your head")
         for again in (False, True):
             if z <= DEEPEST:
                 raise ActionError("cannot_dig", "this is as deep as it goes")
-            if not self.world.solid(x, y, z) or self.world.solid(x, y, z + 1):
+            if not self.world.solid(x, y, z) or (self.world.solid(x, y, z + 1) and not (inside and self.open_cell(x, y, z))):
                 raise ActionError("changed", "something changed there")
             if any(self.height(b) == z for b in self.bodies_on(x, y)):
                 raise ActionError("occupied", "someone is standing there")

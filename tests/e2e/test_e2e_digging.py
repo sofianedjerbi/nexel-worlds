@@ -1,7 +1,7 @@
 """Digging down in build mode (web/js/build.js, keyhole.js, tiles.js). "depth visualisation is unintuitive", and of
 five mockups the user chose "Earth and a keyhole": dug ground is earth, a shade darker a layer down; where the ground
 hides the cursor only its own column is seen through; beside it, how far down it is. By keys: Q sinks the cursor a
-layer into the ground, E brings it back, X digs down to it."""
+layer into the ground, E brings it back, X digs the room to stand there: a way down is a tunnel, a step at a time."""
 
 GRASS = 0xff70d4c0                                             # (the meadow's green, #c0d470, as a block's px has it)
 GREEN = f"""([x, y, rows, cols]) => {{ const b = blockOf(x, y), o = (y - b.by * B) * 16 * BW + (x - b.bx * B) * 16; let n = 0;
@@ -9,30 +9,35 @@ GREEN = f"""([x, y, rows, cols]) => {{ const b = blockOf(x, y), o = (y - b.by * 
 DRAWN = "dirtyTiles.length === 0"
 
 
-def test_q_sinks_the_cursor_a_layer_and_x_digs_down_to_it(game):
+def test_q_sinks_the_cursor_a_layer_and_x_digs_a_way_down_a_step_at_a_time(game):
     """On solid ground Q did nothing but say "floor -1" (it counted storeys); now each Q is a layer into the ground,
-    said beside the cursor and in the corner, and X there digs every layer over it, from the top."""
+    said beside the cursor and in the corner. There X digs the room to stand in, and what is over it stays: a way down
+    is dug a step at a time, a tunnel ("like minecraft ... this enforce me to dig huge columns": it dug every layer
+    over the cursor). Where no air is beside it, it says so."""
     game.clear_area(8)
     game.give(pickaxe=1)
     x, y = game.pos()
     game.press("ArrowDown", 200)                              # (facing south: the cursor starts on the tile in front)
     game.press("b")
-    at = game.js("[Build.S.at.x, Build.S.at.y]")
-    rows = lambda: {r[0]: r[1] for r in game.js("Build.rows()")}
-    assert game.js("Build.level()") == 0 and rows()["Q E"] == "A layer down, up" and rows()["X"] == "Dig a hole"
+    rows = lambda: {r[0]: r[1:] for r in game.js("Build.rows()")}
+    assert game.js("Build.level()") == 0 and rows()["Q E"][0] == "A layer down, up" and rows()["X"][0] == "Dig a hole"
     for depth in (1, 2, 3):
         game.press("q", 120)
-        assert game.js("Build.level()") == -depth and rows()["B"] == f"BUILD · -{depth} · leave" and rows()["X"] == f"Dig down to -{depth}"
+        assert game.js("Build.level()") == -depth and rows()["B"][0] == f"BUILD · -{depth} · leave"
+    assert rows()["X"] == ["Dig the step before it first", "bad"]       # (three down, beside you: shut in)
     game.wait("Keyhole.shown", 3000)                           # (in the ground: its column, faint, down to the cursor)
-    game.press("e", 120)
-    assert game.js("Build.level()") == -2
-    game.press("q", 120)
     game.press("x")
-    assert sorted(game.js("[...Build.S.plans.values()].map((j) => j.z)")) == [-2, -1, 0]       # every layer over it
-    game.wait(f"surfacesAt({at[0]}, {at[1]})[0] === -3 && Build.S.plans.size === 0", 30000)
-    assert game.js("Build.level()") == -3 and game.inv("dirt") == 1 and game.inv("stone") == 2    # (under sea level: stone)
-    game.press("q", 120)                                       # under the floor dug: a layer more
-    assert game.js("Build.level()") == -4 and rows()["X"] == "Dig down to -4"
+    assert game.js("Build.S.plans.size") == 0
+    game.press("e", 120); game.press("e", 120)
+    for k in range(3):                                         # a step down a tile, three tiles south
+        if k:
+            game.press("ArrowDown", 120); game.press("q", 120)
+        below = game.js("Build.level() - myAt.z")             # (said from where you stand: you go down it as it is dug)
+        assert game.js("Build.level()") == -1 - k and below < 0 and rows()["X"][0] == f"Dig a way to {below}"
+        game.press("x")
+        game.wait(f"surfacesAt({x}, {y + 1 + k})[0] === {-1 - k} && Build.S.plans.size === 0", 30000)
+    assert game.js(f"surfacesAt({x}, {y + 3})") == [-3, 0]   # the third step: under a roof, the land over it left
+    assert game.js("Build.level()") == -3 and game.inv("dirt") == 2 and game.inv("stone") == 3    # (under sea level: stone)
     game.press("b")
     assert not game.errors
 

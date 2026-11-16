@@ -183,6 +183,10 @@ function buildCaveOverlay(b) {
       needFloor();
       const z = openCave.get(x + "," + y), Yz = Y - shOf(z);
       peekFloors = true; drawTile(x, y, {g: f, ox: X, oy: Yz}); peekFloors = false;
+      const face = (top, low, Y0) => { for (let k = top; k > low; k--) { const bs = colsOf(hillSheet(k)).bands; for (let r = 0; r < RELIEF_STEP; r++) { const c = bs[r ? (r === RELIEF_STEP - 1 ? 2 : 1) : 0]; f.fillStyle = `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`; f.fillRect(X, Y0 + (top - k) * RELIEF_STEP + r, 16, 1); } } };
+      const zs = openCave.get(x + "," + (y + 1)), zn = !inOpenCave(x, y - 1) && !roofAt(x, y - 1) ? topAt(x, y - 1) : z;   // a step down in front, in the
+      if (zs !== undefined && zs < z) face(z, zs, Yz + 16);           // cave (a tunnel dug down), and one down from open ground behind: its face,
+      if (zn > z && zn - z < 4) face(zn, z, Yz - (zn - z) * RELIEF_STEP);   // a band a layer as relief.js paints walls (the hill showed in the gap)
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && caveFloor(x + dx, y + dy, z)) o.fillRect(X + dx * 16, Yz + dy * 16, 16, 16);   // (more floor, here or in the next block, or open ground level with it: no edge)
       if (!roofAt(x, y + 1) && !inOpenCave(x, y + 1) && topAt(x, y + 1) === z + 1) {   // a step up in front of it, outside: its
         f.clearRect(X, Yz + 16 - RELIEF_STEP, 16, RELIEF_STEP); o.fillRect(X, Yz + 16 - RELIEF_STEP, 16, RELIEF_STEP);   //  edge stays (rock is seen through)

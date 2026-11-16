@@ -68,6 +68,24 @@ def test_stairs_are_a_flight_laid_with_one_press(world):
     assert r["error"] == "bad_target" and "no room" in r["detail"]
 
 
+def test_a_way_down_is_dug_as_a_tunnel_and_what_is_over_it_stays(world):
+    """"like minecraft you know when you go donw you do l shape tunnels. this enforce me to dig huge columns": a cell
+    inside the land with air on a side of it is dug, and the land over it stays, a roof. A step down at a time, the
+    room to stand in (two cells), and you walk down it; a cell with no air beside it is not dug."""
+    s, a = world
+    x, y = a.x, a.y
+    a.add("pickaxe")
+    dig = lambda dx, z: run(s, a, "dig", {"x": x + dx, "y": y, "z": z, "with": "pickaxe"})
+    assert dig(1, 0)["ok"] and run(s, a, "step", {"dir": "E"})["ok"] and s.height(a) == -1       # a step, open
+    assert dig(2, 0)["ok"] and dig(2, -1)["ok"] and run(s, a, "step", {"dir": "E"})["ok"] and s.height(a) == -2
+    r = dig(3, -1)                                             # in front, at your body's height: under the ground
+    assert r["ok"] and s.world.solid(x + 3, y, 0) and not s.world.solid(x + 3, y, -1)
+    assert dig(3, -2)["ok"] and s.world.surfaces(x + 3, y) == [-3, 0]                  # the room to stand in, a roof over it
+    assert run(s, a, "step", {"dir": "E"})["ok"] and (a.x, s.height(a)) == (x + 3, -3) and s.world.covered(x + 3, y, -3)
+    assert dig(5, -2)["ok"] is False and s.world.solid(x + 5, y, -2)                  # no air beside it: not dug
+    assert run(s, a, "step", {"dir": "W"})["ok"] and s.height(a) == -2               # and back up, a step at a time
+
+
 def test_a_hole_is_dug_beside_you_a_layer_at_a_time(world):
     """`dig` aimed at a tile's ground with its height: the ground there comes down a layer (by hand, slowly; with a
     pickaxe, faster). Without the height it is the old dig (tilling wants a hoe). Not under someone."""

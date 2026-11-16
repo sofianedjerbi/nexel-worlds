@@ -1928,3 +1928,28 @@ not its body).
 - Tests: test_e2e_prompts (build mode: nothing in the chat, the keys at the cursor's right, E over Q at its left,
   the corner only the mode, following the cursor; what you face: Space beside it); test_e2e_ui (a guide is not
   kept in the chat); game.actions() reads both. 448 unit, browser 214 + one under load (sound; passes alone).
+
+## Iteration 149: a way down is a tunnel; dug stairs without artefacts
+- User (playing, screenshots): "i want to dig a tunnel down, like minecraft you know when you go donw you do l shape
+  tunnels. this enforce me to dig huge columns !!!" and "ugly weird artefacts in stairs going down".
+- Measured: X with the cursor in the ground dug every layer over it (a column open to the sky); the server only ever
+  took a tile's top cell. Their stairs: the deepest floors greyed to olive (each colour channel darkened to the same
+  floor), a stray green px at corners where a lower floor is diagonal, light lines down the sides of steps (grass
+  recoloured to the lightest earth). A tunnel seen from inside (the cave view): floors only, the hill showing in
+  the gap between each step and the next.
+- Change:
+  - Server (sim/underground.py): a cell inside the land with air beside it (over, under, a side) is dug, and what is
+    over it stays, a roof; only from beside it, between your feet and your head (not through the land); a shut-in
+    cell is refused with a reason.
+  - Build mode: X with the cursor in the ground digs the room to stand there (the two cells over its floor), not the
+    column; where no air is beside it: "Dig the step before it first" (red). The character goes down into the
+    tunnel to dig the next step (a tunnel's floor is a place to stand). Q a layer down a tile on, X: a step.
+  - Drawing: dug earth darkens warm (channels to different floors); walls have no light lines; the px past a wall's
+    foot are the floor's earth on each side and the corners south; in the cave view a step down in the tunnel has
+    its face, and so does the drop from open ground into it.
+- Result: on a throwaway server, five steps south by keys (Q, X, ↓, Q, X...): the first two open, from the third a
+  roof ([-3, 0], [-4, 0], [-5, 0]), the character digs from inside and walks down to -5, the cave view continuous.
+  Tests: test_climbing (a tunnel dug a step at a time, walked down and up, a shut-in cell refused);
+  test_e2e_digging (the way down by keys, the third step under a roof). 449 unit; browser 212 + 3 fixed.
+- The live server needs a restart for tunnels (the server's dig); the drawing is in with a reload.
+- Next: the cave view's edge art on a narrow tunnel; the sides of steps (dark ledges) could be quieter.

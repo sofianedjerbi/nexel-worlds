@@ -23,12 +23,12 @@ const Keyhole = (() => {
     const p = Build.on && Build.S.at;
     shown = false;
     if (!p) return;
-    const L = Build.level(), land = topAt(p.x, p.y), inGround = land > L, cover = xrayCover(p.x, p.y, p.y, L);
+    const L = Build.level(), land = topAt(p.x, p.y), inGround = land > L, cover = xrayCover(p.x, p.y, p.y, L), dug = !landSolid(p.x, p.y, L + 1);
     if (!inGround && cover <= 0) return;                // (it shows as it is)
     shown = true;
     const Z = inGround ? land : Math.max(L, levelAt(p.x, p.y - 1)), S = TS(), x = sx(p.x), yF = sy(p.y) - shOf(L) * zoom, y0 = sy(p.y) - shOf(Z) * zoom;
     const top = Math.min(y0, yF + S - cover * zoom), d = Math.max(0, -L), [cx, cy] = blobCell(255);
-    ctx.globalAlpha = inGround ? .7 : 1;
+    ctx.globalAlpha = dug ? 1 : .7;                      // (faint: in the ground, not dug yet; a tunnel under its roof is dug)
     ctx.save(); ctx.beginPath(); ctx.rect(x, top, S, yF + S - top); ctx.clip();
     for (let y = y0 - S; y + S > top; y -= S) ctx.drawImage(dugSheet("soil", d), cx * 16, cy * 16, 16, 16, x, y, S, S);   // (over the wall: the floor north of it, as a pit's goes on)
     for (let z = Z; z > L; z--) {                     // the wall behind: lit at its top, dark at its foot
