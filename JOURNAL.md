@@ -1708,6 +1708,11 @@ a brass wind-up with a key in its back. The visor robot is out of web/js/races.j
 a design, so nothing of a refused look stays in the game's code. Race tests: 5 pass. Next: the user's choice, then
 the other races.
 
+Then "more concepts": six more on the same page, further apart: one eye, a box head with aerials (the only one that
+changes the outline), scrap, a white shell trimmed in the player's colour, neon (dark body, everything lit), a heart
+light. A design's `mix` now says how much of the person's colour each of its colours takes (the shell tints its trim,
+not its body).
+
 ## Iteration 140: a robot of each race, shown before it is used
 - Asked: "design a robotic equivalnet of each race for AI players, and create a showcase page for it before
   implementing them".

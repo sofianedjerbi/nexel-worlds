@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nexel Worlds · five robots for the cat</title>
+<title>Nexel Worlds · robots for the cat</title>
 <style>
   :root { --q:3px; --ink:#f3e6cf; --soft:#b9a48a; --night:#1d1a2b; --panel:#2f2a44; --hi:#4a4368; --lo:#17142a; --edge:#0d0b18; --gold:#ffd36a; --on:#fff1a8; --grass:#8fc46a; }
   * { box-sizing:border-box; }
@@ -30,10 +30,10 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">Five robots for the cat, to choose from. The first design had a dark visor across the face: refused. None of these covers the face. Once one is chosen, the other races get theirs the same way. Nothing here is in the game.</div>
+  <div class="sub">Eleven robots for the cat, to choose from: the first five, then six more that go further (6 to 11). The first design had a dark visor across the face: refused. None of these covers the face. Once one is chosen, the other races get theirs the same way. Nothing here is in the game.</div>
   <div class="box">
     <h2>Side by side</h2>
-    <div class="what">The cat as it is, then the five.</div>
+    <div class="what">The cat as it is, then all eleven.</div>
     <div class="rows" id="all"></div>
   </div>
   <div id="list"></div>
@@ -41,7 +41,7 @@
     <h2>To tell me</h2>
     <ul>
       <li>Which one (or which parts of which: say, the brass body with the lamp eyes).</li>
-      <li>All five keep the cat's outline, so the other races would keep theirs: long ears, round ears, the bill.</li>
+      <li>All but the box head keep the cat's outline, so the other races would keep theirs: long ears, round ears, the bill.</li>
       <li>Every animation exists already (walking, running, every tool): they are drawn by the game's own code from the cat's sheet.</li>
     </ul>
   </div>
@@ -61,7 +61,7 @@ const cell = (label, night, ...canvases) => { const d = document.createElement("
 (async () => {
   const meta = await (await fetch("sheets/robots.json?v=" + Date.now())).json();
   const cat = await img("sheets/race_cat_cream.png");
-  document.getElementById("all").append(cell("the cat", false, sprite(cat, 0, [0, 1], 500)));
+  document.getElementById("all").append(cell("the cat", false, sprite(cat, 0, [0, 1], 500), sprite(cat, 2, [0, 1], 500)));
   for (const [n, d] of meta.designs.entries()) {
     const bots = {};
     for (const t of Object.keys(meta.tints)) bots[t] = await img(`sheets/robot_cat_${d.id}_${t}.png`);
