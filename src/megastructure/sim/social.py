@@ -34,7 +34,7 @@ class Social:
         x, y = self.target(a, args)
         text = self._text(args)
         if self.world.block(x, y) not in ("sign", "flag"):
-            raise ActionError("no_sign", f"{args['dir']} is {self.describe(x, y)}, not a sign")
+            raise ActionError("no_sign", f"{args.get('dir') or 'that tile'} is {self.describe(x, y)}, not a sign")
         yield from self.wait(a, 0.5)
         if self.world.block(x, y) not in ("sign", "flag"):
             raise ActionError("no_sign", "the sign is gone")
@@ -47,7 +47,7 @@ class Social:
         yield from self.wait(a, 0.1)
         m = self.world.meta.get((x, y))
         if self.world.block(x, y) not in ("sign", "flag") or not m:
-            raise ActionError("no_sign", f"no readable sign {args['dir']}")
+            raise ActionError("no_sign", f"no readable sign {args.get('dir') or 'there'}")
         return {"text": m.get("text", ""), "by": m.get("by")}
 
     def _tool_look_far(self, a, args):

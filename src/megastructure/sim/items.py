@@ -69,7 +69,7 @@ class Items:
     def _chest(self, a, args):
         x, y = self.target(a, args)
         if self.world.block(x, y) not in ("chest", "basket", "trough"):
-            raise ActionError("no_chest", f"{args['dir']} is {self.describe(x, y)}")
+            raise ActionError("no_chest", f"{args.get('dir') or 'that tile'} is {self.describe(x, y)}")
         return x, y
 
     def _tool_store(self, a, args):

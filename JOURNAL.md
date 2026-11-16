@@ -1795,3 +1795,19 @@ not its body).
   and taken.
 - Tests: tests/test_climbing.py (a hole beside you), test_e2e_build.py (X breaks a tree and a rock, digs a row of holes,
   a layer deeper again); the audit tests now see X dig over grass. 430 unit; build, help, climb, floors: 12.
+
+## Iteration 143: a broken action no longer stops the world's clock
+- Building a showcase house on a copy of the world, the copy froze: 0 ticks a second, nothing in the log. Run again
+  under a wrapper that printed what killed the tick task: `place` aimed by x, y on a tile holding a block said
+  `f"{args['dir']} has {b}"`, a KeyError (no `dir`), out of the action's generator, out of `step()`, and the tick
+  loop's task died with it, silently (its exception is never looked at). The same `args['dir']` was in step, chest,
+  write_sign and read_sign: any of them, aimed by x, y, could freeze a world.
+- Now: those say "that tile …"; an action that raises anything but a refusal fails with `error: "bug"`, the exception
+  written to the log (sim/entities.py `failure`), and the tick goes on; the server logs a tick that breaks and keeps
+  ticking. Test: test_building.py (the refusal said; a broken action fails, two ticks still pass).
+- The live server runs the old code until it is restarted: the house was built there only after the copy proved
+  every placement of it free of that path (the strip in front cleared first).
+- The house (three storeys, by x 72-80, y 161-168, north-west of doben4's): the ground floor with stairs up along the
+  west wall; the first floor with a short wall from the back, a ladder against it under a hatch; the attic on top with
+  a roof terrace round it. A ladder in the open middle of a room is never climbed (every step off it is floor at its
+  height): it has to lean on a wall. Walked by an agent on the copy: ground → first floor → attic → roof terrace → ground.

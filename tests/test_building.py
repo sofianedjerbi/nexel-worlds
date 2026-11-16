@@ -165,3 +165,25 @@ def test_sign_and_locker(world):
     b.x, b.y = a.x + 2, a.y
     r = run(sim, b, "dig", {"dir": "W"})
     assert r["ok"] and b.count("ore") == 2 and b.count("chest") == 1
+
+
+def test_aimed_by_x_and_y_a_refusal_is_said_and_a_bug_never_stops_the_world(world):
+    """Placing by x, y on a tile that has something said `args['dir']` and broke the tick: the world's clock stopped
+    for good, in silence. Now it is said as any refusal; and an action that breaks only fails, the world goes on."""
+    s, a = world
+    x, y = a.x + 1, a.y
+    s.world.set(x, y, block="rock")
+    a.add("chair", 1)
+    r = run(s, a, "place", {"x": x, "y": y, "item": "chair"})
+    assert r["error"] == "occupied" and "that tile" in r["detail"]
+    for tool in ("read_sign", "step"):
+        assert run(s, a, tool, {"x": x, "y": y})["ok"] is False
+    act = s.submit(a, "move_to", {"x": a.x - 20, "y": a.y})       # (a long action, its insides swapped for a bug)
+
+    def broken():
+        raise KeyError("boom")
+        yield
+    act.gen, t = broken(), s.tick
+    s.step()
+    s.step()
+    assert s.tick == t + 2 and act.result["error"] == "bug"

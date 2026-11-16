@@ -1,6 +1,7 @@
 """Agents, creatures and in-flight actions."""
 
 import hashlib
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,15 @@ class ActionError(Exception):
     def __init__(self, code: str, detail: str = ""):
         super().__init__(code, detail)
         self.code, self.detail = code, detail
+
+
+def failure(e: Exception) -> dict:
+    """An action that stopped on an exception -> what it answers. A refusal (ActionError) says why; anything else is
+    a bug: written to the log, and the action only fails (never the whole world's clock with it)."""
+    if isinstance(e, ActionError):
+        return {"ok": False, "status": "failed", "error": e.code, "detail": e.detail}
+    logging.getLogger(__name__).exception("an action broke")
+    return {"ok": False, "status": "failed", "error": "bug", "detail": f"something went wrong in the game ({type(e).__name__})"}
 
 
 @dataclass

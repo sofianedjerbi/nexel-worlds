@@ -75,7 +75,10 @@ class GameServer(Views):
         while not self.stopping.is_set():
             t0 = time.perf_counter()
             chunks0 = len(self.sim.world.chunks)
-            self.sim.step()
+            try:
+                self.sim.step()
+            except Exception:                            # (a bug: written down, and the world goes on: never a clock stopped in silence)
+                log.exception("tick %d broke", self.sim.tick)
             self.push_ticks()
             t1 = time.perf_counter()
             if self.sim.tick % FLUSH_EVERY == 0:

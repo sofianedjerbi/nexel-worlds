@@ -25,7 +25,7 @@ from .constants import (
     VIEW_R,
     sec,
 )
-from .entities import Action, ActionError, Agent, Creature
+from .entities import Action, ActionError, Agent, Creature, failure
 from .environment import Environment
 from .items import Items
 from .movement import Movement
@@ -286,9 +286,9 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
                 except StopIteration as stop:
                     self.stats["actions"] += 1
                     act.finish({"ok": True, "status": "done", **(stop.value or {})}, self)
-                except ActionError as e:
+                except Exception as e:                    # (a refusal; or a bug: the action fails, the world goes on)
                     self.stats["actions"] += 1
-                    act.finish({"ok": False, "status": "failed", "error": e.code, "detail": e.detail}, self)
+                    act.finish(failure(e), self)
                 self.current = None
         self.step_creatures()
         self.step_environment()

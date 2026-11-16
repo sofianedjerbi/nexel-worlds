@@ -109,10 +109,10 @@ class Movement:
     def _tool_step(self, a, args):
         x, y = self.target(a, args, flat=True)
         if not self.can_go(a, x, y):
-            raise ActionError("blocked", f"{args['dir']} is {self.why_not(a, x, y)}")
+            raise ActionError("blocked", f"{args.get('dir') or 'that tile'} is {self.why_not(a, x, y)}")
         yield from self.pace(a, args)
         if not self.can_go(a, x, y):
-            raise ActionError("blocked", f"{args['dir']} is {self.why_not(a, x, y)}")
+            raise ActionError("blocked", f"{args.get('dir') or 'that tile'} is {self.why_not(a, x, y)}")
         self.move(a, x, y)
         return {}
 

@@ -136,7 +136,7 @@ class Building:
         if item in T.FILLERS:
             options = T.FILLERS[item]
             if b != "none":
-                raise ActionError("occupied", f"{args['dir']} has {b}")
+                raise ActionError("occupied", f"{args.get('dir') or 'that tile'} has {b}")
             if g not in options:
                 raise ActionError("bad_target", f"{item} goes on {', '.join(sorted(options))}, not {g}")
             yield from self.wait(a, 0.3)
@@ -155,7 +155,7 @@ class Building:
         if block in T.FOOTPRINT:
             return (yield from self._place_structure(a, item, block, x, y))
         if b != "none":
-            raise ActionError("occupied", f"{args['dir']} has {b}")
+            raise ActionError("occupied", f"{args.get('dir') or 'that tile'} has {b}")
         if block == "boat":
             if g not in T.DEPTH:
                 raise ActionError("bad_target", "boats go on water next to you")
