@@ -1718,7 +1718,8 @@ of a tile: a person's is the sheet's own measure, 13 art px under the body's pla
 once from its lowest painted row); and "player reflection is visible even if player is standing on a mountain,
 because there's water under it" (the mask was every water tile: now a water tile counts down to where the nearest
 land south of it begins on the screen, so none of it behind a hill). A test builds that hill over a pond; it fails
-without the fix.
+without the fix. And "with shader you can remove the white circle under the player": with a shader's shadows on, the
+pale mark under you is not drawn (you have a shadow, and it starts at your feet with nothing over it).
 
 ## Iteration 144: shaders
 

@@ -58,7 +58,8 @@ function drawEntity(p, sx, sy, S, t, now) {
     const sheetImg = wornSheet(agentTint(e.name), e.worn, e.race, e.bot);        // (wear.js: their sheet, dressed)
     let bob = j ? Math.round(j.body * z) : 0, anim = "idle", frame, lunge = 0, blow = null;
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
-    if ((mine || e.name === follow) && !(cl && cl.on)) {
+    // (the pale mark under you. With a shader's shadows you have a shadow of your own: no mark, sun.js)
+    if ((mine || e.name === follow) && !(cl && cl.on) && !Sun.shades()) {
       ctx.fillStyle = mine ? "rgba(255,248,232,.55)" : "rgba(255,200,120,.55)";
       pixelOval(x + S / 2, y - (j ? Math.round(j.ground * z) : 0) + S - 2 * z, 6, 2.5, 0, .5);   // (on the ground under you)
     }

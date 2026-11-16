@@ -132,5 +132,6 @@ const Sun = (() => {
       if (opt("shadows")) shadows(list, sx, sy, S, t, now);
     } catch (e) { if (!Sun.said) { Sun.said = true; console.warn("sun: " + e.message); } }
   }
-  return {draw, SHADE, GLASS};
+  const shades = () => !!SHADERS[opt("shader")] && opt("shaderk") > 0 && opt("shadows");      // are shadows being drawn?
+  return {draw, shades, SHADE, GLASS};
 })();

@@ -128,7 +128,7 @@ def test_a_key_can_be_changed_and_the_game_follows(game):
 
 
 def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
-    assert game.js("[opt('shader'), !!Shader.el]") == ["off", False]            # nothing of it until asked for
+    assert game.js("[opt('shader'), !!Shader.el, Sun.shades()]") == ["off", False, False]            # nothing of it until asked for
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab")
     assert game.js("[...document.querySelectorAll('#menu .row .name')].map((e) => e.textContent)") == ["Shader", "Strength", "Glow", "Shadows", "Water reflections", "Cloud shadows", "Dark corners"]
     game.press("ArrowRight", 500)                               # the first look
@@ -172,6 +172,7 @@ def test_a_shader_gives_things_a_shadow_that_follows_the_sun_and_a_reflection_in
     game.sleep(800)
     on = [game.js(lit, r) for r in (west, east, pond)]
     assert on[0] < plain[0] - 3 and abs(on[1] - plain[1]) < 1.5, (plain, on)      # its shadow lies to the west, none to the east
+    assert game.js("Sun.shades()") is True                      # (and the pale mark under you is not drawn: you have a shadow)
     game.js("setOpt('reflect', false)"); game.sleep(600)        # the tree is in the water under it: the water without it is not the same
     bare = game.js(lit, pond)
     assert abs(on[2] - bare) > 1 and abs(game.js(lit, pond) - bare) < .3, (on, bare)
