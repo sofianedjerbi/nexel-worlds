@@ -28,6 +28,10 @@ const MENU_PAGES = [
     choice("Particles", "particles", [["all", "All"], ["fewer", "Fewer"], ["none", "None"]]),
     toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
     choice("What hides you", "above", VIEWS.map((v) => [v.key, v.name]))]],
+  ["Shaders", [                                          // (shader.js: the finished picture, repainted)
+    choice("Shader", "shader", [["off", "Off"], ...Object.entries(SHADERS).map(([k, v]) => [k, v.name])]),
+    slider("Strength", "shaderk", {hear: null}), slider("Glow", "glow", {max: 200, step: 20, hear: null}),
+    toggle("Cloud shadows", "clouds"), toggle("Dark corners", "corners")]],
   ["Screen", [
     toggle("Speech bubbles", "bubbles"), toggle("Names over heads", "names"),
     choice("A chat line stays", "chat", [[5, "5 seconds"], [10, "10 seconds"], [30, "30 seconds"], [600, "10 minutes"]]),

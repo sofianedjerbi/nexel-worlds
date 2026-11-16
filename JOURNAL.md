@@ -1698,6 +1698,20 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 144: shaders
+
+"add nice shaders in the settings menu, like minecraft shaders". The game is a 2D canvas; a shader takes the finished
+picture each frame and repaints it on a WebGL canvas laid over it (js/shader.js, #fx): bright parts glow (two blurs
+of a quarter-size picture), colours are graded, cloud shadows drift over the land (fixed to it, an art pixel at a
+time, none at night or in a cave), corners darken. Six looks (Soft glow, Golden hour, Vivid, Dreamy, Moody, Old
+screen) and a Shaders page: which, strength, glow, cloud shadows, dark corners. Off by default: nothing of it exists
+until asked for, and the 2D canvas is never touched. Looked at by day and by night on real frames: the first glow
+whitened the whole meadow by day (grass is as bright as a lamp's pool), so by day the glow is a third and starts
+higher. Measured: 1.5 ms of script a frame with a shader, 1.3 without (960 x 600). Not tried on a phone.
+The same slip as iteration 143, caught at once this time by looking: a comment added by script inside a line of
+uniforms swallowed two of them and the picture went grey. Comments go on a line of their own, always.
+Tests: one new in Chrome (the picture is graded, strength 0 is the plain picture, off hides it); 451 + 217 pass.
+
 ## Iteration 143: a menu on Esc, and settings
 
 "implement a full settings menu into the game (echap) like minecraft with lot of options". Esc with nothing to shut

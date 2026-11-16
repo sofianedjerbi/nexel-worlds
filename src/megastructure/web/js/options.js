@@ -18,6 +18,8 @@ const OPT_DEFAULT = {
   glide: true,            // a zoom level glides into the next
   shimmer: true,          // the water's moving light and small waves
   floats: true,           // hearts lost, things gained, written over heads
+  // shaders (shader.js): which look (off, or a key of SHADERS), how much of it, how much glow, cloud shadows, dark corners
+  shader: "off", shaderk: 100, glow: 100, clouds: true, corners: true,
   // interface
   bubbles: true, names: true, chat: 10, hints: true, tips: true,
   // keys

@@ -190,6 +190,7 @@ function frame(now) {
   ctx.globalAlpha = 1;
   drawBubbles(sx, sy, S, t);                       // (what people say: bubbles.js)
   ctx.textAlign = "start";
+  Shader.frame(ox, oy, S, t);                      // (the settings' Shaders: the finished picture, repainted over itself: shader.js)
   perfFrame(now, performance.now() - began, landMs);   // (/perf: debug.js)
 }
 // Highlight what an action would hit: a ghost of what gets placed, tinted footprint, and an outline.

@@ -25,7 +25,7 @@ def test_esc_opens_the_menu_and_no_key_acts_behind_it(game):
     assert game.js("isOpen('bag')")
     game.press("Escape"); assert not game.js("isOpen('bag')") and not game.js("menuOpen()")      # Esc shuts a window first
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter")
-    assert game.js("[...document.querySelectorAll('#menu .tab')].map((e) => e.textContent)") == ["Sound", "Picture", "Screen", "Keys"]
+    assert game.js("[...document.querySelectorAll('#menu .tab')].map((e) => e.textContent)") == ["Sound", "Picture", "Shaders", "Screen", "Keys"]
     assert game.js("document.querySelectorAll('#menu .row').length") == 11
     game.press("Escape"); assert game.js("MENU.view") == "main"   # back to the list, then out
     game.press("Escape"); assert not game.js("menuOpen()")
@@ -71,7 +71,7 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
     game.js("fallQuake = {t0: performance.now(), amp: 5}; floats.push({x: 0, y: 0, text: '-1', color: '#fff', t: performance.now() / 1000})")
     game.sleep(200)
     assert game.js("[fallShake(performance.now()), floats.length]") == [0, 0]
-    game.press("Tab")                                           # Screen
+    game.press("Tab"); game.press("Tab")                        # Screen (past Shaders)
     for name, key in (("Speech bubbles", "bubbles"), ("Names over heads", "names"), ("Key hints", "hints"), ("Mouse tips", "tips")):
         at_row(game, name); game.press("Enter")
         assert game.js(f"opt('{key}')") is False
@@ -91,7 +91,7 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
 
 
 def test_a_key_can_be_changed_and_the_game_follows(game):
-    game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab"); game.press("Tab")
+    game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab"); game.press("Tab"); game.press("Tab")
     at_row(game, "Inventory"); game.press("Enter")
     assert game.js("document.querySelector('#menu .row.on .ctl').textContent") == "press a key"
     game.press("w")                                             # a key of the game's own: refused, and said
@@ -125,3 +125,27 @@ def test_a_key_can_be_changed_and_the_game_follows(game):
     game.press("Shift"); assert game.js("runKey") is True       # pressed and let go: still running
     game.press("Shift"); assert game.js("runKey") is False
     game.js("setOpt('sprint', 'hold'); localStorage.clear()")
+
+
+def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
+    assert game.js("[opt('shader'), !!Shader.el]") == ["off", False]            # nothing of it until asked for
+    game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab")
+    assert game.js("[...document.querySelectorAll('#menu .row .name')].map((e) => e.textContent)") == ["Shader", "Strength", "Glow", "Cloud shadows", "Dark corners"]
+    game.press("ArrowRight", 500)                               # the first look
+    assert game.js("[opt('shader'), Shader.works, getComputedStyle(Shader.el).display, Shader.el.width === cv.width, Shader.el.height === cv.height]") == ["soft", True, "block", True, True]
+    game.press("Escape"); game.press("Escape")
+    look = """(() => { const c = document.createElement("canvas"); c.width = 40; c.height = 30; const g = c.getContext("2d");
+      g.drawImage(Shader.el, 0, 0, 40, 30); const fx = [...g.getImageData(0, 0, 40, 30).data];
+      g.drawImage(cv, 0, 0, 40, 30); const plain = [...g.getImageData(0, 0, 40, 30).data];
+      let d = 0, lit = 0; for (let i = 0; i < fx.length; i += 4) { d += Math.abs(fx[i] - plain[i]) + Math.abs(fx[i + 1] - plain[i + 1]) + Math.abs(fx[i + 2] - plain[i + 2]); lit += fx[i] + fx[i + 1] + fx[i + 2]; }
+      return [d / 1200, lit / 3600]; })()"""
+    game.js("window.shot = null; requestAnimationFrame(() => requestAnimationFrame(() => { window.shot = " + look + "; }))")      # (read it in the frame it was drawn in)
+    game.wait("window.shot")
+    d, lit = game.js("shot")
+    assert 1 < d < 90 and lit > 40, (d, lit)                    # the same picture, graded: not the plain one, not a blank or a white-out
+    game.js("setOpt('shaderk', 0); setOpt('clouds', false); window.shot = null; requestAnimationFrame(() => requestAnimationFrame(() => { window.shot = " + look + "; }))")
+    game.wait("window.shot")
+    assert game.js("shot")[0] < 2, game.js("shot")              # strength 0: the picture as it is
+    game.js("setOpt('shader', 'off')"); game.sleep(200)
+    assert game.js("getComputedStyle(Shader.el).display") == "none"
+    game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
