@@ -1830,3 +1830,25 @@ not its body).
 - Tests: test_e2e_build (the circle round the cursor two layers down, gone away from the hole), test_e2e_floors
   (Shift ↑ ↓ up and back, Shift did not set you running; upstairs Shift ↓ is the room under, "floor -1"). Build,
   floors, climb, help, menu, moving, keys, ui, behind: 43 pass; 438 unit.
+
+## Iteration 145: the house of three floors on the demo's "What's new" page
+- User: "Showcase it on the demo website" (the house of three storeys, its stairs and ladder; and the floors keys).
+- A clip, filmed like the build mode's: tools/film_floors.py builds the same house on a throwaway world (the plan
+  that built it in the user's world, as the game's own requests: stamp and place, 467 of them, 0 refused) and a
+  player plays it by keys: in at the door, up the stairs, to the ladder, into the short wall it leans on (the climb),
+  out of the attic onto the roof terrace, back down by walking off the top onto the ladder; then build mode upstairs:
+  Shift ↑ to the attic, Shift ↓ twice to the ground floor under you ("floor -1"), seen through yours. 33 s, 4.4 MB.
+  Every leg checked as it was played (upstairs 1,3 z3; attic 4,1 z6; roof 5,5 z6; down the ladder 5,1 z3; hp 20
+  throughout). Decoded at 3, 12, 20, 27, 32 s by macOS's AVFoundation (headless Chrome shows a paused video's first
+  frame whatever the seek, for the old clip too).
+- Cut on the way: the first take came down by `move_to`, and the server's path stepped off the roof terrace's edge
+  (no hurt: hp 20), so its caption "down by the ladder and the stairs" was false; the take now comes down by the
+  ladder, by keys. A stair dug down into the ground was filmed too and left out: a dug hole still reads as a flat
+  brown patch (the known weak point), not something to show off yet. Shift ↑ from the ground put the cursor two
+  storeys up off the top of the screen (the camera follows you, not the cursor): filmed from the first floor instead.
+- The filming itself moved to tools/filmkit.py (the screencast, the encoder, the MP4 writer, the throwaway server),
+  shared by film_build_mode.py and film_floors.py; a scene can choose its poster (a frame while filming).
+- The page: a section "New: houses with floors" over build mode's; build mode's own list said R and F for floors and
+  "X takes a plan back": now Shift with the arrows, and X breaks what is at the cursor or digs.
+- Next: the camera might follow the build cursor when it leaves the screen; a dug hole's floor drawn as dug earth;
+  the pathfinder stepping off a roof's edge rather than taking the ladder (no hurt, but not what a person would do).

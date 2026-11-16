@@ -32,7 +32,7 @@ def build(out: Path):
         for f in sorted(PKG.rglob("*.py")):
             if "__pycache__" not in f.parts:
                 z.write(f, Path("megastructure") / f.relative_to(PKG))
-    for f in (ROOT / "tools" / "pages").iterdir():           # the showcase page (what's new) and its clips (build_mode.mp4: tools/film_build_mode.py)
+    for f in (ROOT / "tools" / "pages").iterdir():           # the showcase page (what's new) and its clips (tools/film_*.py)
         shutil.copy(f, out / f.name)
     page = (out / "index.html").read_text()
     box = '<button class="item" id="watch"><span>Just watch</span></button>'      # (the first screen's menu: one row more, online)
