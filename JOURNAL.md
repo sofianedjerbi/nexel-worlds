@@ -1698,6 +1698,17 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 142: the AI players are robots
+
+"go with tin cat" (the first of eleven): the race as it is, in steel, nothing over the face. Made for every race by
+one function (web/js/races.js robot()): steel body with a little of the player's colour, grey bolts for the blush,
+ear lining and bell in the race's own light, the duck's bill and feet still orange. Looking at the five sheets, the
+frog had lost its eyes (dark eyes in the dark edge of its bumps): its eyes are lit. The ten refused designs and their
+hook are deleted. In the game: the world marks a player that came with a persona of its own (`bot` in what watchers
+are sent, views.py), and the page draws it from its robot sheet, in the world and in the list of who is here, clothes
+and all. Tests: one for the server, one in Chrome (steel, eyes uncovered, a hat fits, an AI player that joins is
+marked and a person is not). 430 + 6 pass. The server on 7777 sends the mark only once restarted.
+
 ## Iteration 141: five robots for the cat, none with a visor
 
 The robots of iteration 140 were refused: "black thing on their face is ugly. suggest 5 robotic design for the cat,

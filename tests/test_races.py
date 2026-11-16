@@ -25,3 +25,13 @@ def test_the_client_knows_the_same_races():
     from pathlib import Path
     js = (Path(__file__).parent.parent / "src/megastructure/web/js/races.js").read_text()
     assert tuple(re.findall(r'\{key: "(\w+)", name:', js)) == RACES
+
+
+def test_who_watches_is_told_which_players_are_ai(world):
+    sim, a = world
+    from megastructure.views import Views
+    sim.login("Rusty", "t", "a quiet builder")
+    sim.login("Bryn", "tok2", "human", "bunny")
+    views = Views(); views.sim = sim
+    seen = {e["name"]: e for e in views.entities_in(-10**6, -10**6, 2 * 10**6, 2 * 10**6) if e.get("name")}
+    assert seen["Rusty"].get("bot") is True and "bot" not in seen["Bryn"]      # an AI player is drawn as its race's robot

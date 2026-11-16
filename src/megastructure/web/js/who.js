@@ -21,7 +21,7 @@ function skyIcon(night) {
 }
 function portrait(a) {                               // head and shoulders, hat and all, from their own sheet's first frame
   const c = document.createElement("canvas"); c.width = c.height = 16; const g = c.getContext("2d");
-  try { g.drawImage(wornSheet(agentTint(a.name), a.worn, a.race), 16, 12, 16, 16, 0, 0, 16, 16); } catch (e) { /* sheets still loading */ }
+  try { g.drawImage(wornSheet(agentTint(a.name), a.worn, a.race, a.bot), 16, 12, 16, 16, 0, 0, 16, 16); } catch (e) { /* sheets still loading */ }
   return c;
 }
 // The hour and the mark on the day's bar: every tick while it shows

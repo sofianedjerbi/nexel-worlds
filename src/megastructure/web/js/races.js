@@ -83,9 +83,14 @@ const Races = (() => {
         H.feet();
       }},
   ];
-  // The robots for the AI players are still designs (design/enemies/robots_cat.js, shown on design/enemies/site/
-  // robots.html; nobody wears one): raceSheet's third argument is one of them, {id, make(race)}, and the race that
-  // make() returns is drawn in place of the race. Its `mix` is how much of the person's colour each of its colours takes.
+  // The AI players are robots ("go with tin cat", chosen from eleven on design/enemies/site/robots.html; a dark visor
+  // across the face was refused): the race as it is, in steel. The same head, face and dark eyes; grey bolts where
+  // the blush was; the ears' lining and the bell lit in the race's own light; the duck keeps its orange bill and feet;
+  // the frog's eyes, up in its two bumps where a dark eye is lost in the dark edge, are lit.
+  const LIGHT = {cat: "#6fe9ff", bunny: "#ff8fd6", bear: "#ffb44a", frog: "#8cff7a", duck: "#ffe75a"};
+  const robot = (race) => ({...race, mix: {b: .18, d: .15},
+    col: {a: "#39414f", b: "#d5dbe3", d: "#a2acb9", e: "#a2acb9", c: LIGHT[race.key], f: "#566070", g: LIGHT[race.key],
+          w: "#eef2f6", m: "#b7c0cb", n: race.key === "frog" ? LIGHT.frog : "#39414f", y: "#c3cbd5", p: "#a2acb9"}});
   const EXTRA = {w: "#fffdf4", m: "#f1dfbd", n: "#3a2a30", y: "#f4f3c4", p: "#f2a9b4", o: "#f59a4a", O: "#e07f38", B: "#a85a2a"};     // ... and the bill and feet        // white, muzzle, nose and pupil, belly
   function analyse(d, row, col) {
     // What is in the frame: the body, and on the swings a tool, its arc and sometimes a hand apart from the body. The
@@ -193,8 +198,8 @@ const Races = (() => {
   const sheets = new Map();
   let baseData = null, analysis = null;
   const blend = (h, tint, k) => "#" + rgb(h).map((v, i) => Math.round(v * (1 - k) + rgb(tint)[i] * k).toString(16).padStart(2, "0")).join("");
-  function raceSheet(key, tint, bot) {             // bot: a robot design (above)
-    const found = RACES.find((r) => r.key === key), race = found && bot ? bot.make(found) : found, id = (bot ? "bot:" + bot.id + ":" : "") + key + tint;
+  function raceSheet(key, tint, bot) {             // bot: the race's robot (an AI player)
+    const found = RACES.find((r) => r.key === key), race = found && bot ? robot(found) : found, id = (bot ? "bot:" : "") + key + tint;
     if (!race || (key === "cat" && !bot)) return characterSheet(tint);
     if (sheets.has(id)) return sheets.get(id);
     const W = IMG.character.width, H = IMG.character.height, cols = W / CELL, rows = H / CELL;
@@ -208,7 +213,7 @@ const Races = (() => {
       analysis = [];
       for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) analysis.push(analyse(frame(r, c), r, c));
     }
-    const mix = race.mix || {b: .35, d: .3};     // a little of the person's colour, in the body and its shade
+    const mix = race.mix || {b: .35, d: .3};     // a little of the person's colour, in the body and its shade (a robot: less, it is steel)
     const mine = {...race, col: {...race.col, ...Object.fromEntries(Object.entries(mix).map(([k, m]) => [k, blend(race.col[k] || BASE[k], tint, m)]))}};
     for (const k of ["c", "e"]) if (race.col[k] === race.col.b) mine.col[k] = mine.col.b;
     const out = document.createElement("canvas"); out.width = W; out.height = H;

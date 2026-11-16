@@ -149,12 +149,12 @@ const WearParts = (() => {
   // It carries, per frame, the pixels just outside the dressed player (for the auras) and the top of the head.
   const sheets = new Map();
   let analysis = null;
-  function wornSheet(tint, worn, race = "cat") {
-    const plain = raceSheet(race, tint);              // (races.js; the cat's is sprites.js characterSheet)
+  function wornSheet(tint, worn, race = "cat", bot = false) {      // bot: an AI player, drawn as its race's robot
+    const plain = raceSheet(race, tint, bot);              // (races.js; the cat's is sprites.js characterSheet)
     if (!worn) return plain;
     const o = {head: "none", top: "none", pants: "none", shoes: "none"};
     for (const [slot, item] of Object.entries(worn)) if (WEAR[item] && slot in o) o[slot] = WEAR[item][1];
-    const key = tint + race + Object.values(o).join();
+    const key = tint + race + (bot ? "bot" : "") + Object.values(o).join();
     if (sheets.has(key)) return sheets.get(key);
     const W = plain.width, H = plain.height, cols = W / CELL, rows = H / CELL;
     const frame = (data, r, c) => { const d = new Uint8ClampedArray(CELL * CELL * 4);

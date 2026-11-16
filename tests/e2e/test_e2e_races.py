@@ -130,3 +130,26 @@ def test_a_sword_cuts_across_and_a_spear_is_thrust(game):
                     game.page.screenshot(path=f"{SWINGS}/{kind}_{way}_{f}.png", clip={"x": x - 110, "y": y - 110, "width": 220, "height": 220})
                 game.js("clearInterval(window._hold)")
     assert not game.errors
+
+
+def test_an_ai_player_is_its_races_robot(game):
+    # "go with tin cat": the race as it is, in steel (nothing over the face), and every race has one, dressed or not
+    out = game.js("""(() => { const res = {}, px = (s, x, y) => [...s.getContext("2d").getImageData(x, y, 1, 1).data];
+      for (const r of Races.RACES) {
+        const bot = raceSheet(r.key, "#f0a6b4", true), W = bot.width / 48, g = bot.grids[0], an = bot.an[0];
+        const i = g.findIndex((c, k) => c === "b" && Math.floor(k / 48) > an.k), body = px(bot, i % 48, Math.floor(i / 48));
+        const eyes = g.filter((c, k) => (c === "a" || c === "n") && Math.floor(k / 48) > an.sy + 2 && Math.floor(k / 48) < an.k - 1 && g[k - 1] && g[k + 1] && g[k - 1] !== "a" && g[k + 1] !== "a").length;
+        const hat = wornSheet("#f0a6b4", {head: "straw_hat"}, r.key, true), plain = wornSheet("#f0a6b4", {head: "straw_hat"}, r.key);
+        res[r.key] = {frames: bot.grids.length === W * bot.height / 48, grey: Math.max(...body.slice(0, 3)) - Math.min(...body.slice(0, 3)), eyes,
+                      same: bot === raceSheet(r.key, "#f0a6b4"), hat: hat !== plain && hat.width === bot.width && hat.toDataURL() !== bot.toDataURL()};
+      }
+      return res; })()""")
+    for key, r in out.items():
+        assert r["frames"] and not r["same"] and r["hat"], (key, r)
+        assert r["grey"] < 30, (key, r)                                  # steel, with a little of the player's colour (rose fur: 60 and more)
+        assert r["eyes"] >= (0 if key == "frog" else 2), (key, r)        # its own eyes, uncovered (the frog's are up in its bumps)
+    # the world says who is one: a player that came with a persona of its own
+    game.js("""(() => { const ws = new WebSocket(`ws://${location.host}/agent`); window.rusty = ws;
+      ws.onopen = () => ws.send(JSON.stringify({id: 1, op: "hello", name: "Rusty", token: "t", persona: "a quiet builder"})); })()""")
+    game.wait("[...ents.values()].some((q) => q.e && q.e.name === 'Rusty')", timeout=8000)
+    assert game.js("(() => { const q = [...ents.values()].find((q) => q.e && q.e.name === 'Rusty'); return [q.e.bot === true, [...ents.values()].find((q) => q.e && q.e.id === myId).e.bot]; })()") == [True, None]

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nexel Worlds · robots for the cat</title>
+<title>Nexel Worlds · robots for the AI players</title>
 <style>
   :root { --q:3px; --ink:#f3e6cf; --soft:#b9a48a; --night:#1d1a2b; --panel:#2f2a44; --hi:#4a4368; --lo:#17142a; --edge:#0d0b18; --gold:#ffd36a; --on:#fff1a8; --grass:#8fc46a; }
   * { box-sizing:border-box; }
@@ -30,23 +30,33 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">Eleven robots for the cat, to choose from: the first five, then six more that go further (6 to 11). The first design had a dark visor across the face: refused. None of these covers the face. Once one is chosen, the other races get theirs the same way. Nothing here is in the game.</div>
+  <div class="sub">A robot of each race, for the AI players: so that at a glance you know who is a person and who is a machine. The look is the "tin cat", chosen from eleven: the race as it is, in steel.</div>
   <div class="box">
-    <h2>Side by side</h2>
-    <div class="what">The cat as it is, then all eleven.</div>
-    <div class="rows" id="all"></div>
+    <h2>The idea</h2>
+    <ul>
+      <li>A robot is its race in steel, and nothing else is changed: the same head, the same face, the same dark eyes. Nothing covers the face.</li>
+      <li>Grey bolts where the blush was. The lining of the ears and the bell at the collar are lit.</li>
+      <li>Each race has its own light: cat cyan, bunny pink, bear amber, frog green, duck yellow.</li>
+      <li>The steel keeps a little of the player's own colour, so two robot cats are not the same grey.</li>
+      <li>Every animation exists already, and clothes go on as on a person.</li>
+    </ul>
   </div>
   <div id="list"></div>
   <div class="box">
-    <h2>To tell me</h2>
+    <h2>In the game</h2>
     <ul>
-      <li>Which one (or which parts of which: say, the brass body with the lamp eyes).</li>
-      <li>All but the box head keep the cat's outline, so the other races would keep theirs: long ears, round ears, the bill.</li>
-      <li>Every animation exists already (walking, running, every tool): they are drawn by the game's own code from the cat's sheet.</li>
+      <li>An AI player is drawn as the robot of its race, in the world and in the list of who is here. People are drawn as before.</li>
+      <li>An AI player's race comes from its name, so they are not all the same.</li>
     </ul>
   </div>
 </main>
 <script>
+const NAMES = {cat: ["Cat-bot", "The cat in steel: pointed ears lined in cyan, the whiskers kept, a cyan lamp where the bell was."],
+  bunny: ["Bunny-bot", "The two long ears in steel, lined in pink, the white tail tuft kept pale; a pink lamp at the collar."],
+  bear: ["Bear-bot", "Small round ears lit amber, the muzzle a paler plate with its dark nose; an amber lamp at the collar."],
+  frog: ["Frog-bot", "The two bumps with a lit green eye in each (a dark eye there is lost in the dark edge), the wide mouth a shade of steel, grey bolts for cheeks, a paler belly plate; a green lamp at the collar."],
+  duck: ["Duck-bot", "The curl on top in steel, and the bill and feet kept orange: the one robot with a warm colour on it; a yellow lamp at the collar."]};
+const LIGHT = {cat: "#6fe9ff", bunny: "#ff8fd6", bear: "#ffb44a", frog: "#8cff7a", duck: "#ffe75a"};
 const CELL = 48, Z = 3;
 const img = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src + "?v=" + Date.now(); });
 const anims = [];
@@ -60,17 +70,16 @@ const cell = (label, night, ...canvases) => { const d = document.createElement("
   const lawn = document.createElement("div"); lawn.className = "lawn" + (night ? " night" : ""); canvases.forEach((c) => lawn.append(c)); d.append(lawn, label); return d; };
 (async () => {
   const meta = await (await fetch("sheets/robots.json?v=" + Date.now())).json();
-  const cat = await img("sheets/race_cat_cream.png");
-  document.getElementById("all").append(cell("the cat", false, sprite(cat, 0, [0, 1], 500), sprite(cat, 2, [0, 1], 500)));
-  for (const [n, d] of meta.designs.entries()) {
-    const bots = {};
-    for (const t of Object.keys(meta.tints)) bots[t] = await img(`sheets/robot_cat_${d.id}_${t}.png`);
-    document.getElementById("all").append(cell((n + 1) + ". " + d.name, false, sprite(bots.cream, 0, [0, 1], 500), sprite(bots.cream, 2, [0, 1], 500)));
+  for (const key of meta.races) {
+    const race = await img(`sheets/race_${key}_cream.png`), bots = {};
+    for (const t of Object.keys(meta.tints)) bots[t] = await img(`sheets/robot_${key}_${t}.png`);
     const box = document.createElement("div"); box.className = "box";
-    box.innerHTML = `<h2><i style="background:#6fe9ff"></i>${n + 1}. ${d.name}</h2><div class="what">${d.text}</div>`;
+    box.innerHTML = `<h2><i style="background:${LIGHT[key]}"></i>${NAMES[key][0]}</h2><div class="what">${NAMES[key][1]}</div>`;
     const rows = document.createElement("div"); rows.className = "rows";
-    rows.append(cell("from every side", false, sprite(bots.cream, 0, [0, 1], 500), sprite(bots.cream, 2, [0, 1], 500), sprite(bots.cream, 1, [0, 1], 500), sprite(bots.cream, 3, [0, 1], 500)),
-      cell("walking", false, sprite(bots.cream, 4, [0, 1, 2, 3], 130), sprite(bots.cream, 6, [0, 1, 2, 3], 130), sprite(bots.cream, 5, [0, 1, 2, 3], 130)),
+    const arrow = document.createElement("div"); arrow.className = "arrow"; arrow.textContent = ">";
+    rows.append(cell("the race", false, sprite(race, 0, [0, 1], 500)), arrow,
+      cell("its robot, from every side", false, sprite(bots.cream, 0, [0, 1], 500), sprite(bots.cream, 2, [0, 1], 500), sprite(bots.cream, 1, [0, 1], 500), sprite(bots.cream, 3, [0, 1], 500)),
+      cell("walking", false, sprite(bots.cream, 4, [0, 1, 2, 3], 130), sprite(bots.cream, 6, [0, 1, 2, 3], 130)),
       cell("at work", false, sprite(bots.cream, 16, [0, 1, 2, 3], 150), sprite(bots.cream, 18, [0, 1, 2, 3], 150)),
       cell("three players", false, sprite(bots.cream, 0, [0], 500), sprite(bots.rose, 0, [0], 500), sprite(bots.sky, 0, [0], 500)),
       cell("at night", true, sprite(bots.cream, 0, [0, 1], 500), sprite(bots.cream, 2, [0, 1], 500)));

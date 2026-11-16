@@ -22,7 +22,7 @@ class Views:
                  "with": a.action.args.get("with") if a.action else None,
                  "item": a.action.args.get("item") if a.action else None,
                  "run": bool(a.action.args.get("run")) if a.action else False, "sail": a.sailing, "z": self.sim.height(a),
-                 **({"worn": a.worn} if a.worn else {}), **({"race": a.race} if a.race != "cat" else {}), **({"swim": True} if self.sim.swimming(a) else {}), **({"vn": a.via_done} if a.via_done else {}),
+                 **({"worn": a.worn} if a.worn else {}), **({"race": a.race} if a.race != "cat" else {}), **({"bot": True} if a.persona and a.persona != "human" else {}), **({"swim": True} if self.sim.swimming(a) else {}), **({"vn": a.via_done} if a.via_done else {}),
                  **({"eats": a.aside.args.get("item")} if a.aside else {})}       # (what their hands are doing meanwhile)
                 for a in self.sim.agents.values() if a.online and x <= a.x < x + w and y <= a.y < y + h]
         ents += [{"kind": c.kind, "id": c.id, "x": c.x, "y": c.y, "z": self.sim.height(c), "hp": c.hp, "love": c.love > self.sim.tick, "scared": c.scared > self.sim.tick,
