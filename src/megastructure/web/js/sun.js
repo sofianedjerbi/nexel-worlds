@@ -12,7 +12,7 @@
 const Sun = (() => {
   const SHADE = {alpha: .3, night: .1, color: "#1d2440", reach: 1.5, fall: .45};   // reach: a shadow's length sideways at sunrise, in heights; fall: towards you, always
   const GLASS = {alpha: .5, ripple: 1, wave: .9, speed: 2.2};                     // ripple: art px a row slides; wave: how tight; speed
-  let layer = null, lg = null;
+  let layer = null, lg = null, casting = false;
   // Where a sprite stands: its lowest row that is not empty (most have empty rows under them), in art px from its top
   const feet = new Map();
   function footOf(img, a, b, w, h) {
@@ -48,7 +48,7 @@ const Sun = (() => {
       if (!clean) return y + foot;
       try {
         lg.save(); lg.setTransform(DPR, 0, 0, DPR, 0, 0); lg.clearRect(0, 0, W, H);
-        drawEntity(p, sx, sy, S, t, now);
+        drawEntity({...p}, sx, sy, S, t, now);
         lg.restore();
         const x0 = Math.max(0, Math.round((sx(p.x) - S) * DPR)), y0 = Math.max(0, Math.round((y - 2 * S) * DPR)), w = Math.round(3 * S * DPR), h = Math.round(4 * S * DPR);
         const d = lg.getImageData(x0, y0, w, h).data;
@@ -66,7 +66,13 @@ const Sun = (() => {
   // Each thing of the list drawn through the transform `via(footX, footY)` gives, with ctx on the layer
   function cast(list, sx, sy, S, t, now, via) {
     const main = ctx;
-    ctx = lg;
+    // Drawing a body does more than paint it: it throws up dust and splashes, plays a step, notes where its swing is.
+    // Drawn here a second and a third time, all of that came twice more ("particle shadow create weird patterns..
+    // especially the one when sprinting in water"). So: a copy of the body is drawn (what it notes is thrown away),
+    // what it throws up is taken back, it makes no sound (audio.js asks Sun.casting); and a body in the water has
+    // no shadow and no reflection (its wake and its spray are drawn with it, and are not things that stand).
+    const dust = parts.length, puff = puffs.length;
+    ctx = lg; casting = true;
     try {
       clean = true;
       for (const o of list) if (o.p) standsAtY(o.p, sx, sy, S, t, now);      // (each kind of body here, measured before anything is on the layer)
@@ -74,17 +80,18 @@ const Sun = (() => {
       for (const o of list) {
         const p = o.p, x = p ? p.x : o.x, y = p ? p.y : o.ty ?? o.y;
         if ((!o.spr && !p && !o.wall) || x === undefined) continue;
+        if (p && DEPTH_OF[gndAt(Math.round(p.x), Math.round(p.y))]) continue;
         const fx = sx(x) + S / 2;
         const fy = p ? standsAtY(p, sx, sy, S, t, now) : o.spr && o.spr[0].src ? sy(y, x) + (o.spr[6] + footOf(...o.spr.slice(0, 5)) - 1) * zoom : sy(y, x) + S * .94;
         if (fx < -4 * S || fx > W + 4 * S || fy < -2 * S || fy > H + 6 * S) continue;
         lg.save();
         lg.transform(...via(fx, fy));
         if (o.spr) { const [img, a, b, w, h, dx, dy] = o.spr; lg.drawImage(img, a, b, w, h, Math.round(sx(x) + dx * zoom), Math.round(sy(y, x) + dy * zoom), w * zoom, h * zoom); }
-        else if (p) drawEntity(p, sx, sy, S, t, now);
+        else if (p) drawEntity({...p}, sx, sy, S, t, now);
         else o.fx();
         lg.restore();
       }
-    } finally { clean = false; ctx = main; lg.setTransform(DPR, 0, 0, DPR, 0, 0); lg.globalAlpha = 1; }
+    } finally { clean = false; casting = false; parts.length = Math.min(parts.length, dust); puffs.length = Math.min(puffs.length, puff); ctx = main; lg.setTransform(DPR, 0, 0, DPR, 0, 0); lg.globalAlpha = 1; }
   }
   function reflections(list, vis, sx, sy, S, t, now) {
     if (!vis.some((b) => b.water && b.water.any)) return;
@@ -133,5 +140,6 @@ const Sun = (() => {
     } catch (e) { if (!Sun.said) { Sun.said = true; console.warn("sun: " + e.message); } }
   }
   const shades = () => !!SHADERS[opt("shader")] && opt("shaderk") > 0 && opt("shadows");      // are shadows being drawn?
-  return {draw, shades, SHADE, GLASS};
+  const layerData = () => (layer ? lg.getImageData(0, 0, layer.width, layer.height).data : []);      // (for the tests: what the last layer holds)
+  return {draw, shades, layerData, SHADE, GLASS, get casting() { return casting; }};
 })();

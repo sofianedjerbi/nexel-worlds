@@ -207,3 +207,32 @@ def test_nothing_is_reflected_in_water_that_a_hill_hides(game):
     game.js("setOpt('reflect', true)"); game.sleep(800)
     assert game.js(grab, box) == off
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
+
+
+def test_a_shadow_adds_no_dust_or_spray_and_a_swimmer_has_none(game):
+    # "particle shadow create weird patterns.. especially the one when sprinting in water": drawing a body again for
+    # its shadow and its reflection threw up its dust and its spray again
+    game.clear_area(8)
+    game.stamp(1, -1, ["~~~~~~~", "~~~~~~~", "~~~~~~~"])
+    count = """(ms) => new Promise((ok) => { let n = 0, seen = new Set(); const t0 = performance.now();
+      const tick = () => { for (const q of parts) if (!seen.has(q)) { seen.add(q); n++; } if (performance.now() - t0 < ms) requestAnimationFrame(tick); else ok(n); };
+      requestAnimationFrame(tick); })"""
+    def swim():
+        game.rpc("dev_teleport", x=game.home[0], y=game.home[1]); game.sleep(500)
+        game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
+        game.sleep(600)
+        n = game.js(count, 1500)
+        game.page.keyboard.up("d"); game.page.keyboard.up("Shift"); game.sleep(300)
+        return n
+    game.home = game.pos()
+    plain = swim()
+    game.js("setOpt('shader', 'natural')"); game.sleep(500)
+    shaded = swim()
+    assert plain > 5 and shaded < plain * 1.5, (plain, shaded)      # as much spray as without (it came three times over)
+    lit = """() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => { let seen = 0; const d = Sun.layerData(); for (let i = 3; i < d.length; i += 4) if (d[i]) seen++; ok(seen); })))"""
+    game.rpc("dev_teleport", x=game.home[0], y=game.home[1]); game.sleep(600)
+    assert game.js(lit) > 20                                        # on land: your shadow is on the layer
+    game.rpc("dev_teleport", x=game.home[0] + 4, y=game.home[1]); game.sleep(600)
+    assert game.js("DEPTH_OF[gndAt(myPos().x, myPos().y)] > 0")     # in the water: nothing of you on it
+    assert game.js(lit) == 0, game.js(lit)
+    game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")

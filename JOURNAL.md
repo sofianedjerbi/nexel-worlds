@@ -1721,6 +1721,12 @@ land south of it begins on the screen, so none of it behind a hill). A test buil
 without the fix. And "with shader you can remove the white circle under the player": with a shader's shadows on, the
 pale mark under you is not drawn (you have a shadow, and it starts at your feet with nothing over it).
 
+And "particle shadow create weird patterns.. especially the one when sprinting in water": drawing a body does more
+than paint it (dust, spray, a step's sound, where its swing is), and for its shadow and its reflection it was drawn
+twice more: three times the spray, and the wake itself laid over as a shadow. Now a copy of the body is drawn for
+those, what it throws up is taken back, it makes no sound, and a body in the water has neither shadow nor
+reflection. A test counts the spray of a sprint in water with and without a shader.
+
 ## Iteration 144: shaders
 
 "add nice shaders in the settings menu, like minecraft shaders". The game is a 2D canvas; a shader takes the finished

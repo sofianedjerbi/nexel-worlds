@@ -228,7 +228,7 @@ function heard(x, y, far, kind) {
 // Play a sound. With x, y it is in the world: quieter with distance, panned to its side, silent beyond SOUND.hearing
 // (or beyond `reach` tiles when given). Without, it is the player's own or the interface's.
 function sfx(name, x, y, reach) {
-  if (muted) return;
+  if (muted || (typeof Sun !== "undefined" && Sun.casting)) return;      // (sun.js: a body drawn again for its shadow makes no sound)
   const m = sounds.manifest;
   if (!m) { loadSounds(); return; }
   const s = m.sounds[name];
