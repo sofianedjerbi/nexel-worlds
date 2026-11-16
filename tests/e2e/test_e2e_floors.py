@@ -136,8 +136,8 @@ def test_you_see_the_floor_you_are_on_and_fall_off_its_edge(game):
     assert game.server()["spawn"] == [x0 + 3, y0 + 1, 3]                                            # slept in: you wake upstairs
     assert game.js("Floors.veils") == 0
     go(game, x0 + 2, y0 - 2, 0)                                               # behind the house: two tiles north of its north wall
-    game.wait("Floors.veils >= 1", 8000)
-    assert alpha((x0 + 2, y0, 6), (x0 + 2, y0 + 3, 6)) == [1, 1] and 1 <= game.js("Floors.veils") <= 6      # not seen through as a room is: only the few blocks drawn over you are a veil
+    game.wait("Floors.seen > .9", 8000)                                                             # (once its land is drawn: a busy machine takes a moment)
+    assert alpha((x0 + 2, y0, 6), (x0 + 2, y0 + 3, 6)) == [1, 1] and game.js("Floors.veils") >= 1      # not seen through as a room is: a circle round you, as through a hill
     go(game, x0 + 2, y0 + 6, 0)                                                                     # before the house: nothing is over you
     assert game.js("Floors.veils") == 0
     go(game, x0 + 3, y0 + 3, 3)                                               # upstairs again; a gap is cut in the south wall, and off you walk

@@ -1736,3 +1736,18 @@ not its body).
   a ladder (climbing.js), in a hop and in a fall; used by the name, the bubbles, the marks and the progress bar.
 - Filmed on a copy: up a side ladder of the tower and up a flight, the name over the head all the way.
 - Test: on the rungs, the name's place is the body's. climb, bubbles, interface, fall tests: 19.
+
+## Iteration 139: behind a tower or a house, a circle round you as through a hill
+- User, with a picture of doben4 at the back ladder of the tower, only the name showing: "there should be xray here!!"
+- Iteration 136 left the veil out on ladders and stairs, and there you were lost behind the tower. What was wrong with
+  the veil was its shape and its trigger, not that it came: each block over you was seen through whole (a stripe down
+  the tower's top), and it took you where a straight line had you.
+- Now (floors.js draw, holed): when what is built south of you is drawn over your body (you as drawn: on the rungs, at
+  the height you are at), the blocks in front of you round you are drawn with a circle in them, as the hill's x-ray
+  does (xray.js): clear in its middle, fading in rings to whole at its edge, 1.7 tiles across; it comes and goes over
+  0.15 s. On ladders and stairs too.
+- Measured on a copy, per frame, the eight ladders and flights of the two towers: open on the back ladder and the back
+  flight from the foot until you are on top, without a break; never on the others. Seen: behind the tower, behind the
+  house.
+- Tests: up a ladder behind a block, the circle is open at its foot and gone on top; behind the house it opens.
+  climb, floors, build, edges, x-ray: 27.

@@ -90,8 +90,8 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     game.hold(["ArrowRight"], 90)
     game.sleep(1900)
     assert game.server()["z"] == 6 and game.js("__xr") < .1
-    # nor does anything turn see-through on a ladder: up one behind a tower, the tower stays as it is (a see-through
-    # stripe was opened down its top while your head showed over its edge)
+    # up a ladder behind a block: hidden behind it at the foot, you are seen through it in a circle, as through a hill,
+    # and on top the circle is gone (it was a see-through stripe down the block, then nothing: you were lost behind it)
     game.rpc("dev_stamp", x=x + 6, y=y - 3, rows=["W"])
     game.rpc("dev_teleport", x=x + 6, y=y - 2, z=0)
     game.sleep(400)
@@ -100,11 +100,12 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     game.rpc("dev_stamp", x=x + 6, y=y - 4, rows=["l"])
     game.rpc("dev_teleport", x=x + 6, y=y - 4, z=0)
     game.sleep(900)
-    game.js("""() => { window.__v = 0; window.__over = []; const t0 = performance.now(); const f = () => { __v = Math.max(__v, Floors.veils);
+    assert game.js("Floors.seen") > .9                          # (at the foot, behind it)
+    game.js("""() => { window.__v = 0; window.__over = []; const t0 = performance.now(); const f = () => { __v = Math.max(__v, Floors.seen);
       const c = Climb.climbOf(ents.get('agent' + myId)); if (c && !c.on) __over.push(c.y);
       if (performance.now() - t0 < 1500) requestAnimationFrame(f); }; requestAnimationFrame(f); }""")
     game.hold(["ArrowDown"], 90)
     game.sleep(1600)
-    assert game.server()["z"] == 3 and game.js("__v") == 0
+    assert game.server()["z"] == 3 and game.js("__v") > .9 and game.js("Floors.seen") < .05      # (gone, on top)
     over = game.js("__over")                                    # stepping over onto the block: drawn after it, on it (it was drawn
     assert over and min(over) > (y - 3) + 3 * game.js("Floors.K")   # under the block till the step was done)

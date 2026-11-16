@@ -13,7 +13,7 @@ let FLOORS = false;
 const Floors = (() => {
   const STOREY = 3, K = .03, THIN = .12, FAINT = .3, VEIL = .25;
   let ver = 0, over = {key: "-", z: 99, tiles: new Set()}, veils = 0;      // (veils: how many blocks were a veil over you in the last frame)
-  const fades = new Map(), FADE = .15;                // a veil comes and goes softly: "x,y,z" -> how much of it is drawn now
+  const FADE = .15;                                  // the circle round you comes and goes over this many seconds
   let drawnAt = 0;
   const colOf = (x, y) => { const t = tileIdx(x, y); return t && t[0].built ? t[0].built.get(t[1]) : undefined; };   // z -> [kind, the char of what stands on it]
   const get = (x, y, z) => { const c = colOf(x, y); return c ? c.get(z) : undefined; };
@@ -114,39 +114,56 @@ const Floors = (() => {
     ctx.drawImage(spr[0], spr[1], spr[2], spr[3], spr[4], Math.round(sx(x) + spr[5] * zoom), Math.round(at(y) + spr[6] * zoom), spr[3] * zoom, spr[4] * zoom);
     ctx.globalAlpha = 1;
   }
-  // The frame's blocks, each in its place among the rest: a row at a time, and in a row from the ground up. A block
-  // south of you that is drawn over your body (you stand behind a house, or on steps under a floor) is a veil: you
-  // are seen through it, and only through what covers you
+  // The frame's blocks, each in its place among the rest: a row at a time, and in a row from the ground up. When what
+  // is built south of you is drawn over your body (behind a house, at the back of a tower, up its back ladder), you are
+  // seen through it as through a hill (xray.js): a circle round you, the blocks in front of you clear in its middle,
+  // fading in rings to whole at its edge. It comes and goes over FADE seconds, and only for what is really over you.
+  // (It was each block that covered you seen through whole: a stripe down a tower's top; and it took the place a
+  // straight line had you at on a ladder and the tile you were leaving on a step: it came and went half way up a
+  // ladder and on a flight's last step. Then it was left out on ladders and stairs, and you were lost behind a tower.)
+  const RINGS = [[.45, 1], [.6, .8], [.72, .6], [.84, .4], [1, .2]], XR = 1.7;    // (radius, tiles; each ring's out edge and how clear)
+  let seen = 0;                                      // how clear the circle is now (0 to 1)
   function draw(vis, list, sx, sy, S, t, now) {
-    // (you as drawn: on a ladder's rungs where the climb has you, climbing.js; and at the height you are at, the higher
-    // of the two tiles while you step between them: a block no higher than that, the floor, the step or the roof you
-    // are on or stepping onto, covers nothing of you. It took the place a straight line had you at and the tile you
-    // were leaving: half way up a ladder at a tower's side, and on a flight's last step, the tower came and went)
+    // you as drawn: on a ladder's rungs where the climb has you (climbing.js); at the height you are at, the higher of
+    // the two tiles while you step between them: a block no higher than that covers nothing of you
     const me_ = ents.get("agent" + myId), q = zoom, cl = me_ ? Climb.climbOf(me_) : null;
     const myx = me_ ? me_.x + (cl ? cl.dx : 0) : 0, myy = me_ ? me_.y + (cl ? cl.dy : 0) : 0;
     const foot = me_ ? bodyY(me_, sy) + (cl ? cl.dy * S - cl.lift * q : 0) + S - 2 * q : 0, bx = sx(myx);
     const h = cl ? cl.h : me_ ? Math.max(standOf(me_, Math.floor(me_.x), Math.floor(me_.y)), standOf(me_, Math.ceil(me_.x), Math.ceil(me_.y))) : 0;
-    // (none on a ladder or a flight of stairs: climbing behind a tower it opened a see-through stripe down its top
-    // while your head showed over the edge, "xray ... mid-ladder and at the last staircase step")
-    const onSteps = me_ && [[Math.floor(me_.x), Math.floor(me_.y)], [Math.ceil(me_.x), Math.ceil(me_.y)]].some(([tx, ty]) => {
-      const zz = standOf(me_, tx, ty); return (get(tx, ty, zz) || [])[0] === "stairs" || thingAt(tx, ty, zz) === "l"; });
-    const veil = (x, y, z, roof) => { const top = sy(y) - shOf(z) * q; return !cl && !onSteps && z > h && y > myy + .3 && sx(x) < bx + S - 3 * q && sx(x) + S > bx + 3 * q && top - (roof ? 7 * q : 0) < foot && top + S + 8 * q > foot - 18 * q; };
-    veils = 0;
+    const before = (y, z) => me_ && z > h && y > myy + .3;               // in front of you, and over your feet
+    const covers = (x, y, z, roof) => { const top = sy(y) - shOf(z) * q; return before(y, z) && sx(x) < bx + S - 3 * q && sx(x) + S > bx + 3 * q && top - (roof ? 7 * q : 0) < foot && top + S + 8 * q > foot - 18 * q; };
+    const cx = bx + S / 2, cy = foot - 9 * q, R = XR * S;
+    const near = (x, y, z) => { const top = sy(y) - shOf(z) * q - 8 * q, l = sx(x) - 12 * q; return before(y, z) && Math.max(l - cx, 0, cx - l - S - 24 * q) ** 2 + Math.max(top - cy, 0, cy - top - S - 32 * q) ** 2 < R * R; };
     const tnow = performance.now(), step = Math.min(.1, (tnow - drawnAt) / 1000); drawnAt = tnow;
+    let hidden = false;
+    veils = 0;
     for (const b of vis) if (b.built) for (const [i, c] of b.built) {
       const x = b.bx * B + i % B, y = b.by * B + (i / B | 0), base = standAt(x, y);
       for (const [z, [kind, ch]] of c) {
-        const a0 = alpha(x, y, z), v = a0 > VEIL && me_ && veil(x, y, z, kind === "roof"), key = y + (z - base) * K, fk = x + "," + y + "," + z;
-        let a = v ? VEIL : a0;
-        if (v || fades.has(fk)) {                     // (eased towards it, both ways, over FADE seconds)
-          const was = fades.has(fk) ? fades.get(fk) : a0;
-          a = was + (a - was) * Math.min(1, step / FADE);
-          if (!v && Math.abs(a - a0) < .02) { fades.delete(fk); a = a0; } else fades.set(fk, a);
-        }
-        if (v) veils++;
-        list.push({y: key - .005, x, fx: () => cell(kind, x, y, z, sx, sy, S, a)});
-        if (ch) list.push({y: key, x, fx: () => thing(ch, x, y, z, sx, sy, S, t, now, a)});
+        const a = alpha(x, y, z), key = y + (z - base) * K, hole = a > VEIL && near(x, y, z);
+        if (hole && covers(x, y, z, kind === "roof")) hidden = true;
+        if (hole) veils++;
+        const paint = (fn) => (hole ? () => holed(fn, a, cx, cy, R) : () => fn(a));
+        list.push({y: key - .005, x, fx: paint((aa) => cell(kind, x, y, z, sx, sy, S, aa))});
+        if (ch) list.push({y: key, x, fx: paint((aa) => thing(ch, x, y, z, sx, sy, S, t, now, aa))});
       }
+    }
+    seen += ((hidden ? 1 : 0) - seen) * Math.min(1, step / FADE);
+    if (seen < .01 && !hidden) { seen = 0; veils = 0; }
+  }
+  // A block in front of you drawn with the circle in it: ring by ring, clearer towards you (the hill's own way, xray.js)
+  function holed(fn, a, cx, cy, R) {
+    if (seen < .01) return fn(a);
+    let r0 = 0;
+    for (const [k, clear] of [...RINGS, [99, 0]]) {
+      const r1 = k * R;
+      ctx.save(); ctx.beginPath();
+      if (k < 99) { ctx.moveTo(cx + r1, cy); ctx.arc(cx, cy, r1, 0, 2 * Math.PI); } else ctx.rect(0, 0, W, H);
+      if (r0) { ctx.moveTo(cx + r0, cy); ctx.arc(cx, cy, r0, 0, 2 * Math.PI); }
+      ctx.clip("evenodd");
+      fn(a * (1 - seen * clear * (1 - VEIL)));
+      ctx.restore();
+      r0 = r1;
     }
   }
   // What a click or a key means with a block in hand, or on a tile whose ground at your height is a built block
@@ -173,5 +190,5 @@ const Floors = (() => {
     if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", near: 1, z, run: (d) => act("dig", {dir: d, z})};
     return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y, z})};
   }
-  return {STOREY, K, UP, any: (x, y) => !!colOf(x, y), get, set, load, mask, thingAt, fits, standOf, rise, alpha, cell, thing, draw, intent, get ver() { return ver; }, get veils() { return veils; }};
+  return {STOREY, K, UP, any: (x, y) => !!colOf(x, y), get, set, load, mask, thingAt, fits, standOf, rise, alpha, cell, thing, draw, intent, get ver() { return ver; }, get veils() { return veils; }, get seen() { return seen; }};
 })();
