@@ -73,7 +73,7 @@ function drawBubbles(sx, sy, S, t) {
       b.up = b.up === undefined || b.up < up ? up : Math.max(up, b.up - Math.max(q, (b.up - up) * dt * BUBBLE.fall));
       up += b.h + BUBBLE.gap;
     }
-    const tx = snap(sx(p.x) + S / 2), foot = snap(bodyY(p, sy) - fallOver(p) - (p.e.hp < HP_MAX ? 9 * zoom + 4 : 4 * zoom)) - 3 * q,     // (the tail's point: over the head, or over the health bar)
+    const o = overBody(p, S), tx = snap(sx(p.x) + S / 2 + o[0]), foot = snap(bodyY(p, sy) + o[1] - (p.e.hp < HP_MAX ? 9 * zoom + 4 : 4 * zoom)) - 3 * q,     // (the tail's point: over the head, or over the health bar)
       w = Math.max(...mine.map((b) => b.w));
     const top = foot - Math.max(...mine.map((b) => b.up + b.h)) - 11 * q;     // (with the name's tab)
     if (tx < -w || tx > W + w || foot < -20 || top > H) continue;

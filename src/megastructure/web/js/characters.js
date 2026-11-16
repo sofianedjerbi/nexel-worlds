@@ -193,7 +193,7 @@ function drawEntity(p, sx, sy, S, t, now) {
   }
 }
 function drawNameplate(p, sx, sy, S) {
-  const e = p.e, x = Math.round(sx(p.x) + S / 2), y = Math.round(bodyY(p, sy) - fallOver(p) - 9 * zoom);
+  const e = p.e, o = overBody(p, S), x = Math.round(sx(p.x) + S / 2 + o[0]), y = Math.round(bodyY(p, sy) + o[1] - 9 * zoom);
   if (x < -S || x > W + S || y < -S || y > H + S) return;
   ctx.font = "18px SproutPixel"; ctx.textAlign = "center";
   if (!(e.kind === "agent" && speaking(e.name))) outlined(e.name, x, y, me && e.name === me ? "#fff1a8" : "#fff8e8");   // (speaking: the name is on the bubbles, bubbles.js)
@@ -207,7 +207,7 @@ function drawProgress(sx, sy, S) {
   const p = ents.get("agent" + myId); if (!p) return;
   const k = Math.min(1, (performance.now() - progress.t0) / progress.ms);
   if (k >= 1) { progress = null; return; }
-  const x = Math.round(sx(p.x) + S / 2 - 18), y = Math.round(bodyY(p, sy) - fallOver(p) + S + 2);
+  const o = overBody(p, S), x = Math.round(sx(p.x) + S / 2 - 18 + o[0]), y = Math.round(bodyY(p, sy) + o[1] + S + 2);
   ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 2, y - 2, 40, 9);
   ctx.fillStyle = "#e9cfa2"; ctx.fillRect(x, y, 36, 5);
   ctx.fillStyle = "#6aa66f"; ctx.fillRect(x, y, Math.round(36 * k), 5);

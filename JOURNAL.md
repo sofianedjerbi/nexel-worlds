@@ -1712,3 +1712,12 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
 - Looked at, enlarged, before the page: the frog's first robot was a grey frog (no visor, small lenses): grille and
   cheek lamps added. Race and first-screen tests pass (the races are as they were).
 - Not done, on purpose: the world does not say which players are AI; that, and who wears what, wait for the user.
+
+## Iteration 138: the name goes with the body
+- User: "the username does not properly follow the player."
+- What is drawn over a body (its name and health, what it says, its marks, the progress bar) followed it only in a
+  fall: up a ladder it stayed on the straight line from the foot to the top, a tile and more from the climber, and in
+  a hop (each step of a flight) it stood still while the body jumped. jump.js overBody: the same place as the body, on
+  a ladder (climbing.js), in a hop and in a fall; used by the name, the bubbles, the marks and the progress bar.
+- Filmed on a copy: up a side ladder of the tower and up a flight, the name over the head all the way.
+- Test: on the rungs, the name's place is the body's. climb, bubbles, interface, fall tests: 19.

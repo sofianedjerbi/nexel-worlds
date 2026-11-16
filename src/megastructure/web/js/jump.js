@@ -65,8 +65,13 @@ function fallOf(p, now) {
   if (mine) fallWind(Math.min(1, FALL.g * t / 600));       // (louder and higher with its speed)
   return {body: h - ramp, ground: F.land - ramp, air: true};
 }
-// What is drawn over a falling body (its name, what it says) falls with it: screen px to lift it by, over bodyY
-const fallOver = (p) => (p.fall && p.fallNow ? p.fallNow.body * zoom : 0);
+// What is drawn over a body (its name, its health, what it says, its marks) goes where the body is drawn: up a ladder
+// (climbing.js), in a hop, in a fall. -> screen px to move it by from sx(p.x), bodyY. (It followed falls only: on a
+// ladder the name stayed on the straight line, a tile and more from the climber; in a hop it stood still.)
+function overBody(p, S) {
+  const cl = Climb.climbOf(p), j = p.fall && p.fallNow ? p.fallNow : jumpOf(p);
+  return [cl ? cl.dx * S : 0, (cl ? cl.dy * S - cl.lift * zoom : 0) - (j ? j.body * zoom : 0)];
+}
 // It lands, `layers` further down
 function landed(p, layers, now, mine) {
   const tx = Math.round(p.x), ty = Math.round(p.y), heavy = layers >= FALL.heavy, hurt = p.fallHurt;
