@@ -120,8 +120,9 @@ function levelShape(R, k, shape, ta, tb, keep, of) {
     for (let r = 0; r < 16; r++) for (let q = o + r * Wm, e = q + 16, row = q - q % Wm; q < e; q++) {
       if (!src[q]) continue;
       sh[q] = 1;                                         // (its own px too: a level's edge may be set in further than the one over it)
-      if (!land[q - 1]) for (let d = 1; d <= LEDGE * n && q - d >= row; d++) sh[q - d] = 1;
-      if (!land[q + 1]) for (let d = 1; d <= LEDGE * n && q + d < row + Wm; d++) sh[q + d] = 1;
+      const ld = (k + n <= 0 ? 1 : LEDGE) * n;          // (a dug level's: a line, not a ledge out over the floor under it, a post down each step)
+      if (!land[q - 1]) for (let d = 1; d <= ld && q - d >= row; d++) sh[q - d] = 1;
+      if (!land[q + 1]) for (let d = 1; d <= ld && q + d < row + Wm; d++) sh[q + d] = 1;
     }
   }
   return {own, sh, edge, full, land: of || own};
