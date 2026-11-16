@@ -2004,3 +2004,42 @@ not its body).
   a tunnel dug south reads as a trench to the character. Tests: test_e2e_digging (the pocket: drawn at -8, seen, no
   cave view); caves, x-ray, behind, relief, build, world: 50 passed; 449 unit.
 - The server need not restart (drawing only): a reload.
+
+## Iteration 151: under ground, audited: one way to be seen, square steps, no flash
+- User (screenshot of their stair): "still got the weird green line issue. also there's no gradient, when going
+  down/up blocks it flashes... the whole vision underground sucks and deserves a full audit, 'what hides you'".
+- Audit, on a copy of the live save (another port) and on a throwaway world: 15 situations built and shot (stairs
+  dug east, west, south, north; pits; a shaft; tunnels and a room under a roof; a cave; behind a hill; an L; a
+  trench: 27 pictures), and a walk down a stair kept frame by frame. Found:
+  1. The green line is not paint: a gap two px wide in the picture seen through the meadow in front, at each step's
+     side and at a stair's end. The steps had a hill's rounded shape; what was left over outside it fell under a rule
+     made for mountains (rock joining a hill: nothing to see there), and the meadow showed through.
+  2. Each step had a dark bar and a wavy foot: the rim of a hill, drawn on dug ground.
+  3. The flash: walking down, the height the place was worked out from was the next step's while you were still on
+     this one, so the steps two behind you fell out of what is seen through, then came back (the cut-away changed
+     twice a step); and the picture coming over the one before was put on the land faint, each for its share: half
+     way, a quarter of the meadow showed between them. Measured on a walk down eight steps and back up: 33 frames
+     where the green on screen round you jumps and comes back.
+  4. A tunnel or a room under a roof was drawn open for good (iteration 150): walking over it, you stood at its
+     bottom. Before that, as a cave: its floor far from its stair.
+  5. What is seen through ended cut square on the meadow, with no edge: a pit's floor like a sheet of paper.
+- Change:
+  - Dug ground is cut square (relief.js: a level under sea level is all of its tile; tiles.js: no hill rim on it).
+    The px past the lip of the ground round a hole are the wall's earth, one colour (a dashed line along a stair).
+  - One way to be seen under ground: the land is drawn as it is from above, a roof is a roof (cells.js). In a
+    hollow dug under level ground you are hidden as in a hole, and seen through what hides you (xray.js): the
+    place you are in goes under roofs, their floors are kept in the picture (their roof left out, like the rock in
+    front), painted by the land's own painter with the levels the picture has (relief.js: R.lk), the tiles round
+    them drawn with their edge to them. Who is in that place with you shows; who walks over it fades. Caves under
+    hills keep their own view.
+  - The place is, in dug ground, all you could walk to under sea level, from your tile's own height: the whole
+    stair stays seen as you walk it. Two pictures are added up, each for its share, then put on the land once.
+  - In dug ground what is seen through ends in a line, the hole's own outline, where the ground beside it or in
+    front stands higher.
+- Result: the user's stair on the copy: every step a clean square, darker a layer down, joined to its wall, no
+  green; the pocket at its end shows from inside, the meadow is whole from above. The walk: 33 flashes -> 1 (61 px,
+  at the top). Tests: test_e2e_digging (a stair: square earth, no meadow in any step as drawn, the steps over you
+  still of the place, two pictures half way make a whole one; a tunnel: its roof from above, seen through from
+  inside, its floor and the stair down to it); the x-ray's own tests on mountains unchanged.
+- Left: what is seen through is nine tiles wide (a long tunnel ends straight at its side); a tunnel that goes on
+  under a hill is a cave there; a tree in front of a hole still stands in front of it.

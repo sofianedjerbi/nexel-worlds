@@ -76,27 +76,28 @@ function cellAlpha(sheet, cx, cy) {
 const LEDGE = 4, SIDE_MAX = 2;
 // The rect's levels and two tiles round it, read once: lv, and gone (no tile there yet: for the tiles beside it, it
 // counts as ground of every height, as maskOf has it)
-function rectLevels(R) {
-  const Ws = R.w + 4; R.lv = new Int8Array(Ws * (R.h + 4)); R.gone = new Uint8Array(R.lv.length);
+function rectLevels(R, to = "lv") {
+  const Ws = R.w + 4, lv = R[to] = new Int8Array(Ws * (R.h + 4)); R.gone = new Uint8Array(lv.length);
   for (let ty = -2; ty < R.h + 2; ty++) for (let tx = -2; tx < R.w + 2; tx++) {
-    const j = (ty + 2) * Ws + tx + 2; R.lv[j] = levelAt(R.x + tx, R.y + ty); R.gone[j] = tile(R.x + tx, R.y + ty) === null ? 1 : 0;
+    const j = (ty + 2) * Ws + tx + 2; lv[j] = levelAt(R.x + tx, R.y + ty); R.gone[j] = tile(R.x + tx, R.y + ty) === null ? 1 : 0;
   }
 }
 // A level's shape in the rect and a tile round it (a byte a px, 1 where it is): `own`, its own tiles, from its sheet's
 // cells; `sh`, that and the ledges of the levels above it (shape: those, already worked out); `edge`: where in it the
 // tiles are that end it on a side (the others, whole and with whole tiles round them, grow no ledge). ta..tb: the rows
-// of tiles asked for. keep: of the tiles it says only (and of a shape already made: `of`)
+// of tiles asked for. keep: of the tiles it says only (and of a shape already made: `of`), each as high as R.lk has
+// it (xray.js: the floor of a tunnel you are in, kept; the ground over it is not)
 const wholeCells = new Map();                          // (a sheet's inner cell: every px of it drawn?)
 function levelShape(R, k, shape, ta, tb, keep, of) {
   const Ws = R.w + 4, Wm = (R.w + 2) * 16, own = new Uint8Array(Wm * (R.h + 2) * 16), sheet = hillSheet(k), edge = [];
   const full = keep ? null : new Uint8Array(R.lv.length);     // (the tiles that are this level's all over: every px, with its own all round)
   if (!wholeCells.has(sheet)) wholeCells.set(sheet, cellAlpha(sheet, ...blobCell(255)).every((v) => v === 1));
-  const whole = wholeCells.get(sheet), at = new Uint8Array(R.lv.length);   // (at: this high, or not here yet)
-  for (let j = 0; j < at.length; j++) at[j] = R.gone[j] || R.lv[j] >= k ? 1 : 0;
+  const whole = wholeCells.get(sheet), at = new Uint8Array(R.lv.length), lv = keep && R.lk ? R.lk : R.lv;   // (at: this high, or not here yet)
+  for (let j = 0; j < at.length; j++) at[j] = R.gone[j] || lv[j] >= k ? 1 : 0;
   for (let ty = ta; ty <= tb; ty++) for (let tx = -1, run = -2; tx <= R.w + 1; tx++) {
     const j = (ty + 2) * Ws + tx + 2, o = (ty + 1) * 16 * Wm + (tx + 1) * 16;
     let m = -1;
-    if (tx <= R.w && R.lv[j] >= k && !(keep && !keep[j])) {
+    if (tx <= R.w && lv[j] >= k && !(keep && !keep[j])) {
       m = 0;
       if (at[j - Ws]) m |= N_; if (at[j + 1]) m |= E_; if (at[j + Ws]) m |= S_; if (at[j - 1]) m |= W_;
       if (at[j - Ws + 1]) m |= NE; if (at[j + Ws + 1]) m |= SE; if (at[j + Ws - 1]) m |= SW; if (at[j - Ws - 1]) m |= NW;
@@ -107,6 +108,7 @@ function levelShape(R, k, shape, ta, tb, keep, of) {
     else if (run >= -1) { for (let r = 0, q = (ty + 1) * 16 * Wm + (run + 1) * 16; r < 16; r++, q += Wm) own.fill(1, q, q + (tx - run) * 16); run = -2; }
     if (m < 0 || plain) continue;
     if (of) { for (let r = 0; r < 16; r++) own.set(of.subarray(o + r * Wm, o + r * Wm + 16), o + r * Wm); continue; }
+    if (k < 0) { for (let r = 0; r < 16; r++) own.fill(1, o + r * Wm, o + r * Wm + 16); continue; }   // (under sea level the land is dug: cut square, the whole tile, no rounded rim)
     const [cx, cy] = blobCell(m), a = cellAlpha(sheet, cx, cy);
     for (let r = 0; r < 16; r++) for (let i = 0; i < 16; i++) if (a[r * 16 + i]) own[o + r * Wm + i] = 1;
   }
@@ -135,12 +137,12 @@ function levelShape(R, k, shape, ta, tb, keep, of) {
 // with that rock there (every shape and colour is still worked out from the whole land), into the rows c0..c1 of the
 // picture alone. What becomes of each px is noted as the land is painted, in the order it is painted in: see.state
 // (1: ground that is kept is on top of what is painted; 2: the inside of the rock, where it stood against kept ground:
-// nothing to see), see.cover (1: on the real land the rock left out is on top there), see.wet (water shows there).
+// nothing to see), see.lev (the level of that ground), see.cover (1: on the real land the rock left out is on top there), see.wet (water shows there).
 function* reliefSteps(R, ground, see) {
   rectLevels(R);
-  const M = 16, W = R.w * 16, H = R.h * 16, Wm = W + 2 * M, Ws = R.w + 4, STEP = RELIEF_STEP;
+  const M = 16, W = R.w * 16, H = R.h * 16, Wm = W + 2 * M, Ws = R.w + 4, STEP = RELIEF_STEP, lk = R.lk || R.lv;
   let maxLv = -99, minLv = see ? 99 : 0;                // (a block's ground canvas is drawn at its lowest level, the sea's at the highest)
-  for (let ty = -1; ty <= R.h; ty++) for (let tx = -1; tx <= R.w; tx++) { const l = R.lv[(ty + 2) * Ws + tx + 2]; maxLv = Math.max(maxLv, l); minLv = Math.min(minLv, l); }
+  for (let ty = -1; ty <= R.h; ty++) for (let tx = -1; tx <= R.w; tx++) { const j = (ty + 2) * Ws + tx + 2; maxLv = Math.max(maxLv, R.lv[j]); minLv = Math.min(minLv, R.lv[j], lk[j]); }
   const up = shOf(maxLv), top = see ? -see.c0 : up, tall = see ? see.c1 - see.c0 : H + up - shOf(minLv);
   // level k's px rows that land in the picture (and STEP over them: where its wall may start), and the rows of tiles
   // its shape is asked for (the two levels under it take their ledges from it)
@@ -168,9 +170,9 @@ function* reliefSteps(R, ground, see) {
     to.fill(0);
     for (let tx = 0; tx < R.w; tx++) {
       const j = (ty + 1) * Ws + tx + 2, x0 = tx * 16, under = !see.keep[j + Ws] && R.lv[j + Ws] >= k;   // (j: the tile over the line)
-      if (see.keep[j] && R.lv[j] >= k) to.fill(under ? 1 : R.lv[j + Ws] < k ? 2 : 0, x0, x0 + 16);
-      else if (under && R.lv[j] < k) for (const d of [-1, 1]) {
-        const hill = see.keep[j + d] && R.lv[j + d] >= k && R.lv[j + d + Ws] >= k;
+      if (see.keep[j] && lk[j] >= k) to.fill(under ? 1 : lk[j + Ws] < k ? 2 : 0, x0, x0 + 16);
+      else if (k > 0 && under && lk[j] < k) for (const d of [-1, 1]) {   // (in dug ground no hill has a side: a stair's end kept a gap two px wide beside the meadow)
+        const hill = see.keep[j + d] && lk[j + d] >= k && R.lv[j + d + Ws] >= k;
         for (let x = d < 0 ? x0 : x0 + 8, e = x + 8; x < e; x++) {
           const q = ty * W + x;
           if (hill) for (let r = 0, i = ty * 16 * Wm + x + M; r < 16 && !reach[q]; r++, i += Wm) reach[q] = ksh[i];
@@ -234,7 +236,7 @@ function* reliefSteps(R, ground, see) {
       if (!ours && !inside && mine[x] <= STEP && (!s || (see && on && ja[x] === 2))) c = cols.bands[mine[x] === 1 ? 0 : mine[x] === STEP ? 2 : 1];
       if (c && inPic) out[f] = (255 << 24 | (c[2] | 0) << 16 | (c[1] | 0) << 8 | (c[0] | 0)) >>> 0;
       if (!shown) continue;
-      if (ours || c) { state[f] = 1; cover[f] = !ours && (on || since[x] < mine[x]) ? 1 : 0; if (k === 0 && ours && own[i]) wet[f] = 1; }
+      if (ours || c) { state[f] = 1; see.lev[f] = k; cover[f] = !ours && (on || since[x] < mine[x]) ? 1 : 0; if (k === 0 && ours && own[i]) wet[f] = 1; }
       else {                                                                  // the rock left out, and its wall
         if (on || (!s && since[x] <= STEP && since[x] < mine[x])) cover[f] = 1;
         if (inside) state[f] = 2, wet[f] = 0;

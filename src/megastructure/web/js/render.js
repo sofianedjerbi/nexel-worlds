@@ -145,7 +145,7 @@ function frame(now) {
     }
     else if (o.fx) o.fx();
     else {
-      const over = xrayOver(Math.round(o.p.x), Math.round(o.p.y));           // (xray.js) on the rock the circle sees through: it fades with it
+      const over = xrayOverBody(o.p);                // (xray.js) on the rock the circle sees through: it fades with it
       if (over > .98) continue;
       drawBehind(o.p, sx, sy, S, (k) => { ctx.globalAlpha = k * (1 - over); drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1; });   // (behind a hill: cut at its edge)
     }

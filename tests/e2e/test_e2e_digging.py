@@ -76,17 +76,62 @@ def test_the_keyhole_shows_the_cursor_where_the_ground_in_front_hides_it(game):
     assert not game.errors
 
 
-def test_a_pocket_dug_under_the_meadow_is_drawn_open_where_you_stand_in_it(game):
-    """doben4 at the end of a stair dug east, eight down under a roof left at ground level: the cave view drew its
-    floor four tiles south of its stair, on the grass ("dauben is completely buried and appear here... the underground
-    view is buggy as hell"). A hollow dug under level ground is drawn open, as a hole is, joined to its stair."""
+SEEN = "xray.a > .95 && !xray.job && xray.pic && xray.pic.any > 0"
+# the screen without anybody on it: in each of the tiles [x, y, depth] as drawn, how many px are greener than earth
+GREEN_ON_SCREEN = """(tiles) => { const keep = {}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) { keep[f] = window[f]; window[f] = () => null; }
+  frame(performance.now()); const S = TS(), [ox, oy] = screenOrigin(S), out = [];
+  for (const [x, y, d] of tiles) { const px = ctx.getImageData(Math.round((ox + x * S) * DPR), Math.round((oy + y * S + shOf(d) * zoom) * DPR), S * DPR, S * DPR).data; let n = 0;
+    for (let i = 0; i < px.length; i += 4) if (px[i + 1] > px[i] + 12) n++; out.push(n); }
+  Object.assign(window, keep); return out; }"""
+
+
+def test_a_stair_dug_down_is_cut_square_and_seen_whole_with_no_gap_as_you_walk_it(game):
+    """A stair dug east, a tile wide. Each step had a dark bar down its side and a green line beside it ("still got the
+    weird green line issue"): the bar was the rim of a hill, drawn on a dug step; the line, a gap two px wide in the
+    picture of the stair seen through the meadow in front, where the step's rounded shape ended. Dug ground is cut
+    square: a step is all of its tile. And going down, it flashed at every step ("when going down/up blocks it
+    flashes"): the steps two behind you were out of what is seen through; two pictures were put on the land each
+    faint, which showed between them. The whole stair stays seen; the pictures are added up before they are drawn."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.stamp(1, 0, ["......"], levels=["abcdef"])
+    game.rpc("dev_teleport", x=x + 4, y=y, z=-4)
+    game.wait(f"myAt && myAt.x === {x + 4} && myAt.z === -4", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000)
+    even = game.js(f"""() => {{ const out = []; for (let k = 1; k <= 6; k++) {{ const b = blockOf({x} + k, {y}), o = ({y} - b.by * B) * 16 * BW + ({x} + k - b.bx * B) * 16, sum = [0, 0];
+      for (let j = 0; j < 16; j++) for (let i = 1; i < 14; i++) if (i < 7 || i > 8) {{ const v = b.px[o + j * BW + i]; sum[i < 7 ? 0 : 1] += (v & 255) + (v >> 8 & 255) + (v >> 16 & 255); }}
+      out.push(sum[1] / sum[0] * 6 / 5 > .95); }} return out; }}""")
+    assert even == [True] * 6                                  # each step: earth all over its tile, no dark rim down its lower side
+    assert game.js(GREEN_ON_SCREEN, [[x + k, y, k] for k in range(1, 7)]) == [0] * 6     # seen whole: no meadow in any of them
+    # stepping off the step three down (your height is already the next one's): the steps over you are still of the place
+    assert game.js(f"[1, 2, 3, 4, 5, 6].every((k) => xrayPlace({x + 3}, {y}, -4).z.get(({x} + k) + ',' + {y}) === -k)")
+    # a picture coming over the one before, half way: the two make a whole one
+    alpha = game.js("""() => { XRAY.turn = 1e9; xray.old = xray.pic; xray.mix = .5; frame(performance.now()); const P = xray.pic, f = P.seen.indexOf(1);
+      const a = xray.cw.getContext('2d').getImageData(f % P.w, f / P.w | 0, 1, 1).data[3]; XRAY.turn = .12; xray.old = null; xray.mix = 1; return a; }""")
+    assert alpha >= 253
+    assert not game.errors
+
+
+def test_a_tunnel_keeps_its_roof_from_above_and_is_seen_through_it_from_inside(game):
+    """doben4 at the end of a stair, eight down under a roof left at ground level: the cave view drew its floor four
+    tiles south of its stair, on the grass ("dauben is completely buried and appear here... the underground view is
+    buggy as hell"); then, drawn open for good, who walked over a tunnel stood at its bottom. A hollow dug under the
+    ground is the ground over it, from above; in it you are seen through that ground and the ground in front, as in a
+    hole: you, its floor, the stair you came down."""
     game.clear_area(10)
     x, y = game.pos()
-    game.stamp(-5, 0, ["......"], levels=["cdefgh"], roofs=["000008"], heads=["000002"])
-    game.rpc("dev_teleport", x=x, y=y, z=-8)
-    game.wait(f"myAt && myAt.z === -8 && myAt.x === {x}", 5000)
-    game.wait(DRAWN, 8000)
-    assert game.js(f"[topAt({x}, {y}), levelAt({x}, {y}), standAt({x}, {y}), hiddenAt({x}, {y}), caveOpen]") == [0, -8, -8, False, False]
-    assert game.js(f"[levelAt({x - 1}, {y}), levelAt({x + 1}, {y})]") == [-7, 0]        # (the stair beside it; the meadow)
-    game.sleep(300)
+    game.stamp(1, 0, ["........"], levels=["abcddddd"], roofs=["00004444"], heads=["00002222"])
+    X = x + 6
+    state = f"""(() => {{ const p = ents.get('agent' + myId); return [levelAt({X}, {y}), standAt({X}, {y}), hiddenAt({X}, {y}), caveOpen, xray.a > .95, unseen(p), xrayShows(p) > .9, xrayOverBody(p), liftOf(p) / zoom]; }})()"""
+    game.rpc("dev_teleport", x=X, y=y, z=0)                  # walking over it
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === 0", 8000)
+    game.wait(DRAWN, 8000); game.sleep(600)
+    assert game.js(state) == [0, 0, True, False, False, False, False, 0, 0]
+    assert game.js(GREEN_ON_SCREEN, [[X, y, 0]])[0] > 200      # (the meadow, whole)
+    game.rpc("dev_teleport", x=X, y=y, z=-4)                 # in it
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === -4", 8000)
+    game.wait(SEEN, 20000)
+    assert game.js(state) == [0, -4, False, False, True, False, True, 0, -32]
+    assert game.js(f"[seenUnder({X}, {y}), seenUnder({X - 1}, {y}), seenUnder({X}, {y + 1}), xrayGone({X}, {y + 1})]") == [-4, -4, None, True]
+    assert game.js(GREEN_ON_SCREEN, [[X, y, 4], [X - 1, y, 4], [x + 3, y, 3]]) == [0, 0, 0]      # its floor where you stand, beside you, the stair down to it
     assert not game.errors

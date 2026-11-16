@@ -144,7 +144,7 @@ function layCell(to, o, W, sheet, sx, sy, solid) {
 // is solid all over: on a plateau twelve layers high, the one that shows and not the thirteen under it.
 const LAID = {n: 0, img: [], at: [], drawImage(img, sx, sy) { this.img[this.n] = img; this.at[this.n++] = sy * 4096 + sx; }};
 let landVer = 0;                                    // (goes up whenever a tile of the land is drawn again: what was worked out from the land is out of date)
-function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewhere else than its block's canvas)
+function drawTile(x, y, to = null) {                 // (to: somewhere else than its block's px: a canvas {g, ox, oy}, or px {px, o, w})
   const b = blockOf(x, y);
   if (!b || !(to || b.px)) return;
   const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, ox = to ? to.ox : lx * 16, oy = to ? to.oy : ly * 16;
@@ -163,11 +163,12 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
       if (!dug && (gr === "." || gr === "_" || gr === "n")) drawBlobLayer(g, IMG.grass, x, y, (_, gg, tx, ty) => gg === "." || gg === "_" || gg === "n" || Bridge.rests(x, y, tx, ty), ox, oy, gr === "." ? .3 : 0);
       groundMarks(g, x, y, gr, ox, oy);
     }
-    // (round a pit, at sea level and below: the hill sheet's edge alone, the regular border of raised ground, so
-    // every side of a hole shows; the ground's own look inside it stays)
+    // (round a hole, at sea level: the hill sheet's edge alone, the regular border of raised ground, so every side
+    // of it shows. Under sea level the land is dug: cut square a layer a step, no rim of its own: relief.js)
     let low = lv;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) low = Math.min(low, levelAt(x + dx, y + dy));
-    for (k = low + 1; k <= Math.min(0, lv); k++) drawBlobLayer(g, dug ? dugSheet("edge", -k) : edgeSheet("hill1"), x, y, up, ox, oy, 0);   // (dug: earth)
+    k = 0;
+    if (lv >= 0 && low < 0) drawBlobLayer(g, edgeSheet("hill1"), x, y, up, ox, oy, 0);
   }
   const base = g.n;
   if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy, lv > 0);   // paths, tilled soil, floors up on the hill
@@ -189,11 +190,12 @@ function drawTile(x, y, to = null) {                 // (to: {g, ox, oy}, somewh
   let first = order.length - 1;
   while (first >= 0 && !cellSolid(g.img[order[first]], g.at[order[first]] % 4096, g.at[order[first]] >> 12)) first--;
   const at = (q) => [g.img[order[q]], g.at[order[q]] % 4096, g.at[order[q]] >> 12];
-  if (to) { for (let q = Math.max(0, first); q < order.length; q++) { const [img, sx, sy] = at(q); to.g.drawImage(img, sx, sy, 16, 16, ox, oy, 16, 16); } return; }
-  const o = ly * 16 * BW + lx * 16;
-  if (first < 0) for (let j = 0; j < 16; j++) b.px.fill(0, o + j * BW, o + j * BW + 16);   // (nothing solid all over it: what was there must go first)
-  for (let q = Math.max(0, first); q < order.length; q++) layCell(b.px, o, BW, ...at(q), q === first);
-  dugFoot(b.px, o, x, y, lv);
+  if (to && to.g) { for (let q = Math.max(0, first); q < order.length; q++) { const [img, sx, sy] = at(q); to.g.drawImage(img, sx, sy, 16, 16, ox, oy, 16, 16); } return; }
+  const px = to ? to.px : b.px, W = to ? to.w : BW, o = to ? to.o : ly * 16 * BW + lx * 16;
+  if (first < 0) for (let j = 0; j < 16; j++) px.fill(0, o + j * W, o + j * W + 16);   // (nothing solid all over it: what was there must go first)
+  for (let q = Math.max(0, first); q < order.length; q++) layCell(px, o, W, ...at(q), q === first);
+  dugFoot(px, o, W, x, y, lv);
+  if (to) return;
   (b.solid || (b.solid = new Uint8Array(B * B)))[i] = first < 0 ? 0 : 1;   // (relief.js: under a tile solid all over, nothing shows)
   b.reliefDirty = true;                              // (its stacked levels are rebuilt from these px: relief.js)
   b.ver = (b.ver || 0) + 1; landVer++;
@@ -210,11 +212,11 @@ function groundMarks(g, x, y, gr, ox, oy, high = false) {
 
 // Dug ground (the land is never under sea level but where it was dug): earth, not grass, a shade darker a layer
 // down, and so are a hole's walls (the sheet of a level at sea level or under: relief.js). A hole three deep had a
-// grass floor and grass lips: it looked like a raised table. name: the soil (a floor), hill1 (walls), edge (their rims); d: layers down
+// grass floor and grass lips: it looked like a raised table. name: the soil (a floor), hill1 (walls); d: layers down
 const dugSheets = {}, EARTH = [[0xc8, 0x98, 0x6e], [0xb0, 0x7e, 0x5a], [0x8b, 0x5a, 0x40]];
 function dugSheet(name, d) {
   if (dugSheets[name + d]) return dugSheets[name + d];
-  const img = name === "edge" ? edgeSheet("hill1") : IMG[name], c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+  const img = IMG[name], c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
   const g = c.getContext("2d"); g.drawImage(img, 0, 0);
   const im = g.getImageData(0, 0, c.width, c.height), px = im.data, wall = name !== "soil";
   const f = [Math.max(.45, 1 - .075 * d), Math.max(.38, 1 - .09 * d), Math.max(.3, 1 - .11 * d)];      // (deeper: darker, still warm brown)
@@ -226,18 +228,18 @@ function dugSheet(name, d) {
   g.putImageData(im, 0, 0);
   return (dugSheets[name + d] = c);
 }
-// Beside a dug floor lower than it (south, east, west; the corners south), a tile's px out of its own level's shape
-// (its own grass, past the cliff's foot or its side) show at the foot of the hole's wall: a green line along its
-// floor. They are that floor's earth. Each side by its own floor (the shape over a floor is the level a layer up's)
-function dugFoot(px, o, x, y, lv) {
-  const [cx, cy] = blobCell(255);
+// Beside a dug floor (south, east, west; the corners south), the px of a tile at sea level or over it that are out
+// of its shape there (its own grass, past the cliff's foot or its side) show at the top of the hole's wall: a green
+// line. They are that wall's earth (the floor's own, a tile a shade along a stair: a dashed line). A dug tile has
+// none: its shape is all of it
+function dugFoot(px, o, W, x, y, lv) {
+  if (lv < 0) return;
+  let a = null, v = 0;
   for (const [dx, dy, at] of [[0, 1, (q, r) => [q, 15 - r]], [1, 0, (q, r) => [15 - r, q]], [-1, 0, (q, r) => [r, q]], [1, 1, (q, r) => [15 - (q & 7), 15 - r]], [-1, 1, (q, r) => [q & 7, 15 - r]]]) {
-    const s = levelAt(x + dx, y + dy);
-    if (s >= lv || s >= 0 || wet(gndAt(x + dx, y + dy) || "~")) continue;
-    const a = cellAlpha(hillSheet(s + 1), ...blobCell(maskOf(x, y, (cc, gg, tx, ty) => levelAt(tx, ty) > s))), m = sheetData(dugSheet("soil", -s));
+    if (levelAt(x + dx, y + dy) >= 0 || wet(gndAt(x + dx, y + dy) || "~")) continue;
+    if (!a) { const c = colsOf(hillSheet(0)).bands[1]; a = cellAlpha(hillSheet(0), ...blobCell(maskOf(x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= 0))); v = (255 << 24 | c[2] << 16 | c[1] << 8 | c[0]) >>> 0; }
     for (let q = 0; q < (dx && dy ? 8 : 16); q++) {    // (q: along that side, a corner's half; r: in from it, to the shape)
-      let r = 0; while (r < 16 && !a[at(q, r)[1] * 16 + at(q, r)[0]]) r++;
-      for (let k = 0; k < r; k++) { const [i, j] = at(q, k); px[o + j * BW + i] = m.px[(cy * 16 + j) * m.w + cx * 16 + i]; }
+      for (let r = 0; r < 16 && !a[at(q, r)[1] * 16 + at(q, r)[0]]; r++) { const [i, j] = at(q, r); px[o + j * W + i] = v; }
     }
   }
 }
