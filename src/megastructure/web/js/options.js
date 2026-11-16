@@ -20,6 +20,7 @@ const OPT_DEFAULT = {
   floats: true,           // hearts lost, things gained, written over heads
   // shaders (shader.js): which look (off, or a key of SHADERS), how much of it, how much glow, cloud shadows, dark corners
   shader: "off", shaderk: 100, glow: 100, clouds: true, corners: true,
+  shadows: true, reflect: true,      // (sun.js: what stands throws a shadow, and is seen in the water)
   // interface
   bubbles: true, names: true, chat: 10, hints: true, tips: true,
   // keys

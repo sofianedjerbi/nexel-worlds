@@ -8,6 +8,7 @@
 
 const SHADERS = {       // glow: how much; from: how bright a thing must be to glow (0 to 1); sat, con: colour and contrast (1: as is);
   //                       tint: red, green, blue; vig: dark corners; lift: a haze; scan: an old screen's lines
+  natural: {name: "Natural", glow: .5, from: .8, sat: 1, con: 1, tint: [1, 1, 1], vig: 0, lift: 0, scan: 0},      // (shadows, reflections, a little glow: the colours as they are)
   soft: {name: "Soft glow", glow: .7, from: .8, sat: 1.08, con: 1.04, tint: [1, 1, 1], vig: .2, lift: 0, scan: 0},
   golden: {name: "Golden hour", glow: .75, from: .78, sat: 1.12, con: 1.05, tint: [1.06, 1, .9], vig: .3, lift: 0, scan: 0},
   vivid: {name: "Vivid", glow: .4, from: .84, sat: 1.32, con: 1.12, tint: [1, 1, 1], vig: .15, lift: 0, scan: 0},

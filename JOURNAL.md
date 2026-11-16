@@ -1698,6 +1698,21 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 152: real shadows and reflections
+
+"we want real shaders, reflection, not just color hue tweaks, shadows, like minecraft". Iteration 144 only repainted
+the finished picture. Now a shader also adds to the world (js/sun.js): every tree, wall, thing, animal and person
+throws its own shape on the ground away from the sun (west and long in the morning, short at noon, east in the
+evening, faint at night), and what stands by water is seen in it upside down under its feet, rippling. Both are the
+frame's own sprites drawn once more through a transform onto a layer (`ctx` is pointed at it meanwhile, so whatever
+draws a body or a wall draws its shadow with no code of its own), a shadow filled flat, a reflection kept where
+there is water; render.js calls it between the ground and what stands on it. A look "Natural" keeps the colours.
+Looked at on a staged pond, morning, noon, evening, night: the first shadows hung under their things (a sprite has
+empty rows under it: each one's lowest painted row is found once). Tests: one in Chrome (a tree's shadow west in
+the morning and east in the evening, its reflection in the pond); 453 pass, and the browser suite but for a digging
+test of the other session's work in progress. Left: light from a fire throws no shadow; clouds are not in the
+water; hills throw none.
+
 ## Iteration 144: shaders
 
 "add nice shaders in the settings menu, like minecraft shaders". The game is a 2D canvas; a shader takes the finished

@@ -130,10 +130,12 @@ def test_a_key_can_be_changed_and_the_game_follows(game):
 def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
     assert game.js("[opt('shader'), !!Shader.el]") == ["off", False]            # nothing of it until asked for
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab")
-    assert game.js("[...document.querySelectorAll('#menu .row .name')].map((e) => e.textContent)") == ["Shader", "Strength", "Glow", "Cloud shadows", "Dark corners"]
+    assert game.js("[...document.querySelectorAll('#menu .row .name')].map((e) => e.textContent)") == ["Shader", "Strength", "Glow", "Shadows", "Water reflections", "Cloud shadows", "Dark corners"]
     game.press("ArrowRight", 500)                               # the first look
-    assert game.js("[opt('shader'), Shader.works, getComputedStyle(Shader.el).display, Shader.el.width === cv.width, Shader.el.height === cv.height]") == ["soft", True, "block", True, True]
+    assert game.js("[opt('shader'), Shader.works, getComputedStyle(Shader.el).display, Shader.el.width === cv.width, Shader.el.height === cv.height]") == ["natural", True, "block", True, True]
     game.press("Escape"); game.press("Escape")
+    game.js("setOpt('shader', 'golden')")                       # (Natural keeps the colours: a graded one, to see it act)
+    game.sleep(300)
     look = """(() => { const c = document.createElement("canvas"); c.width = 40; c.height = 30; const g = c.getContext("2d");
       g.drawImage(Shader.el, 0, 0, 40, 30); const fx = [...g.getImageData(0, 0, 40, 30).data];
       g.drawImage(cv, 0, 0, 40, 30); const plain = [...g.getImageData(0, 0, 40, 30).data];
@@ -148,4 +150,38 @@ def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
     assert game.js("shot")[0] < 2, game.js("shot")              # strength 0: the picture as it is
     game.js("setOpt('shader', 'off')"); game.sleep(200)
     assert game.js("getComputedStyle(Shader.el).display") == "none"
+    game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
+
+
+def test_a_shader_gives_things_a_shadow_that_follows_the_sun_and_a_reflection_in_water(game):
+    game.clear_area(8)
+    game.stamp(-6, -1, ["...........", ".T.........", "~~~~~~~~~~~", "~~~~~~~~~~~", "..........."])      # a tree, a pond under it
+    x, y = game.pos()
+    tx, ty = x - 5, y                                           # the tree (you stand well east of it: your own shadow is not in what is measured)
+    lit = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const S = TS(), [ox, oy] = screenOrigin(S), a = Math.round((ox + x0 * S) * DPR), b = Math.round((oy + y0 * S) * DPR);
+      const d = cv.getContext("2d").getImageData(a, b, Math.round((x1 - x0) * S * DPR), Math.round((y1 - y0) * S * DPR)).data;
+      let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+      ok(sum / d.length * 4 / 3); })))"""
+    west, east, pond = [tx - 2, ty + .4, tx, ty + 1], [tx + 1, ty + .4, tx + 3, ty + 1], [tx - .5, ty + 1.1, tx + 1.5, ty + 2.6]
+    game.js("setOpt('shimmer', false)")                         # (still water: what is measured is the reflection, not a wave)
+    game.rpc("dev_time", phase=.06)                             # early morning: the sun in the east
+    game.sleep(1200)
+    plain = [game.js(lit, r) for r in (west, east, pond)]
+    game.js("setOpt('shader', 'natural')")
+    game.sleep(800)
+    on = [game.js(lit, r) for r in (west, east, pond)]
+    assert on[0] < plain[0] - 3 and abs(on[1] - plain[1]) < 1.5, (plain, on)      # its shadow lies to the west, none to the east
+    game.js("setOpt('reflect', false)"); game.sleep(600)        # the tree is in the water under it: the water without it is not the same
+    bare = game.js(lit, pond)
+    assert abs(on[2] - bare) > 1 and abs(game.js(lit, pond) - bare) < .3, (on, bare)
+    game.rpc("dev_time", phase=.7)                              # evening: the other side
+    game.sleep(1200)
+    game.js("setOpt('shader', 'off')"); game.sleep(600)
+    plain = [game.js(lit, r) for r in (west, east)]
+    game.js("setOpt('shader', 'natural')"); game.sleep(800)
+    on = [game.js(lit, r) for r in (west, east)]
+    assert on[1] < plain[1] - 3 and abs(on[0] - plain[0]) < 1.5, (plain, on)
+    game.js("setOpt('shadows', false)"); game.sleep(600)
+    assert game.js(lit, east) > on[1] + 3                       # (the hour's light moves on meanwhile: lighter than shaded, not equal to before)
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")

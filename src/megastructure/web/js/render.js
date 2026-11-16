@@ -93,7 +93,7 @@ function frame(now) {
     if (hiddenAt(x, y)) continue;                     // (in a cave, seen from outside: under its roof)
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
     if (c === "l") { list.push({y, x, fx: () => Climb.drawLadder(x, y, standAt(x, y), sx, sy, S)}); continue; }   // (a ladder: up to what it leans on, climbing.js)
-    if (Structures.WALLS.includes(c)) { list.push({y, x, fx: () => Structures.drawWall(c, x, y, sx, sy, S, now)}); continue; }   // (a wall, a door: structures.js)
+    if (Structures.WALLS.includes(c)) { list.push({y, x, wall: true, fx: () => Structures.drawWall(c, x, y, sx, sy, S, now)}); continue; }   // (a wall, a door: structures.js)
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
   }
   // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
@@ -107,6 +107,8 @@ function frame(now) {
   drawOrbs(sx, sy, S, dt, list);
   if (worldReady) Floors.draw(vis, list, sx, sy, S, t, now);                 // (what is built over the land: floors, roofs, what stands on them: floors.js)
   list.sort((a, b) => a.y - b.y || a.x - b.x);
+  // (a shader's shadows and reflections of all of it, on the ground, under what stands there: sun.js)
+  Sun.draw(list, vis, sx, sy, S, t, now);
   for (const o of list) {
     selMeasure(o);
     if (o.spr) {

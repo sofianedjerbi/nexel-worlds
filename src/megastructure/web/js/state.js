@@ -3,7 +3,8 @@
 // =====================================================================================
 //  Networking
 // =====================================================================================
-const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+const cv = document.getElementById("c");
+let ctx = cv.getContext("2d");      // (let: sun.js points it at a layer of its own while shadows and reflections are drawn)
 // The canvas is drawn with at most DPR_MAX device px a CSS px: pixel art gains nothing past 2, and a 3x phone
 // screen is nine times the paint of a plain one. A machine that still can't keep up (slowFrame, below) draws at 1.
 let DPR = 1, W = 0, H = 0, DPR_MAX = 2, frameMs = 16, paceFrom = 0;
