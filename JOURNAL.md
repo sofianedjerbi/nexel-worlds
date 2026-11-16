@@ -1698,6 +1698,16 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 141: five robots for the cat, none with a visor
+
+The robots of iteration 140 were refused: "black thing on their face is ugly. suggest 5 robotic design for the cat,
+before generalizing to everyone". I had generalised one untested idea to five races. Now: one race, five unlike
+designs, the user picks (design/enemies/robots_cat.js, page design/enemies/site/robots.html): tin (the cat in steel,
+its own eyes), lamp eyes and an aerial, a pale lit screen for a face, enamel in the player's colour with steel parts,
+a brass wind-up with a key in its back. The visor robot is out of web/js/races.js; raceSheet's third argument is now
+a design, so nothing of a refused look stays in the game's code. Race tests: 5 pass. Next: the user's choice, then
+the other races.
+
 ## Iteration 140: a robot of each race, shown before it is used
 - Asked: "design a robotic equivalnet of each race for AI players, and create a showcase page for it before
   implementing them".

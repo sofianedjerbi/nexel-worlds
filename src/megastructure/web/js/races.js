@@ -83,35 +83,9 @@ const Races = (() => {
         H.feet();
       }},
   ];
-  // The robots ("design a robotic equivalent of each race for AI players"; design/enemies/site/robots.html: shown there,
-  // not yet worn by anyone). A robot is its race in plate: the same head, so every race is still told by its outline,
-  // in steel with a dark edge; a dark visor across the face with two lit eyes in the race's own light; the lining of
-  // the ears, the collar and the cheeks in that light's colour; the bell a lamp.
-  const LIGHT = {cat: "#6fe9ff", bunny: "#ff8fd6", bear: "#ffb44a", frog: "#8cff7a", duck: "#ffe75a"};
-  const robot = (race) => ({...race, bot: true,
-    col: {a: "#39414f", b: "#d5dbe3", d: "#a2acb9", e: "#e8edf2", c: LIGHT[race.key], f: "#566070", g: LIGHT[race.key],
-          w: "#eef2f6", m: "#aeb7c3", n: race.key === "frog" ? LIGHT.frog : "#262b35", y: "#bcc5d0", p: LIGHT[race.key], L: LIGHT[race.key], v: "#262b35"},
-    head(H, A) {
-      race.head(H, A);
-      if (A.facing === "up") return;                 // (from behind: plate, and the ears)
-      const eyes = [];                               // the eyes: the dark pixels inside the face
-      for (let y = A.sy + 3; y < A.k - 1; y++) for (let x = A.hmin + 1; x < A.hmax; x++)
-        if ("an".includes(H.get(x, y) || "?") && H.get(x - 1, y) && H.get(x + 1, y) && H.get(x, y - 1) && H.get(x, y + 1) && !"an".includes(H.get(x - 1, y)) && !"an".includes(H.get(x + 1, y))) eyes.push([x, y]);
-      if (race.key === "frog") {                     // the frog's eyes are its two lenses, up on its head: no visor; its wide
-        const f = A.facing === "right" ? A.hmax - 1 : A.hmin + 1, s = A.facing === "right" ? -1 : 1;      // mouth is a dark grille, a lamp on each cheek
-        if (A.side) for (let x = 0; x < 3; x++) H.put(f + s * x, A.sy + 5, "v");
-        else { for (let x = A.hmin + 4; x <= A.hmax - 4; x++) H.put(x, A.sy + 5, "v"); H.put(A.hmin + 2, A.sy + 4, "L"); H.put(A.hmax - 2, A.sy + 4, "L"); }
-        return;
-      }
-      if (!eyes.length) return;
-      const y0 = Math.min(...eyes.map((e) => e[1])) - 1, y1 = Math.max(...eyes.map((e) => e[1])) + 1;
-      const front = A.facing === "right" ? 1 : -1;
-      for (let y = y0; y <= y1; y++) for (let x = A.hmin + 2; x <= A.hmax - 2; x++) {
-        if (A.side && (x - A.cx) * front < -1) continue;    // side on, the visor wraps round the front of the face only
-        if ("bde".includes(H.get(x, y) || "?")) H.put(x, y, "v");
-      }
-      for (const [x, y] of eyes) H.put(x, y, "L");
-    }});
+  // The robots for the AI players are still designs (design/enemies/robots_cat.js, shown on design/enemies/site/
+  // robots.html; nobody wears one): raceSheet's third argument is one of them, {id, make(race)}, and the race that
+  // make() returns is drawn in place of the race. Its `mix` is how much of the person's colour its body takes.
   const EXTRA = {w: "#fffdf4", m: "#f1dfbd", n: "#3a2a30", y: "#f4f3c4", p: "#f2a9b4", o: "#f59a4a", O: "#e07f38", B: "#a85a2a"};     // ... and the bill and feet        // white, muzzle, nose and pupil, belly
   function analyse(d, row, col) {
     // What is in the frame: the body, and on the swings a tool, its arc and sometimes a hand apart from the body. The
@@ -219,8 +193,8 @@ const Races = (() => {
   const sheets = new Map();
   let baseData = null, analysis = null;
   const blend = (h, tint, k) => "#" + rgb(h).map((v, i) => Math.round(v * (1 - k) + rgb(tint)[i] * k).toString(16).padStart(2, "0")).join("");
-  function raceSheet(key, tint, bot) {             // bot: the race's robot
-    const found = RACES.find((r) => r.key === key), race = found && bot ? robot(found) : found, id = (bot ? "bot:" : "") + key + tint;
+  function raceSheet(key, tint, bot) {             // bot: a robot design (above)
+    const found = RACES.find((r) => r.key === key), race = found && bot ? bot.make(found) : found, id = (bot ? "bot:" + bot.id + ":" : "") + key + tint;
     if (!race || (key === "cat" && !bot)) return characterSheet(tint);
     if (sheets.has(id)) return sheets.get(id);
     const W = IMG.character.width, H = IMG.character.height, cols = W / CELL, rows = H / CELL;
@@ -234,7 +208,8 @@ const Races = (() => {
       analysis = [];
       for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) analysis.push(analyse(frame(r, c), r, c));
     }
-    const mine = {...race, col: {...race.col, b: blend(race.col.b, tint, bot ? .18 : .35), d: blend(race.col.d, tint, bot ? .15 : .3)}};      // a little of the person's colour (a robot: less, it is steel)
+    const mix = race.mix || [.35, .3];           // a little of the person's colour
+    const mine = {...race, col: {...race.col, b: blend(race.col.b || BASE.b, tint, mix[0]), d: blend(race.col.d || BASE.d, tint, mix[1])}};
     for (const k of ["c", "e"]) if (race.col[k] === race.col.b) mine.col[k] = mine.col.b;
     const out = document.createElement("canvas"); out.width = W; out.height = H;
     const img = new ImageData(W, H);
