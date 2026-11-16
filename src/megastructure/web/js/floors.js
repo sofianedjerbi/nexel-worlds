@@ -6,12 +6,13 @@
 //   (structures.js), the same block.
 // So a tile can be stood on at more than one height (the room, the floor over it): a body is drawn at its own.
 // What is over your head is seen through, with all that holds to it at that height and all that is higher there: you
-// see the room you are in. In build mode: all that is over the cursor's level.
+// see the room you are in. In build mode: all that is over the cursor's level. How, the settings say (options.js,
+// VIEWS): not drawn (cut away), its edges only (outline), faint (faded, circle).
 // A server from before blocks says `roofs`, not `floors`: each of its roof tiles is shown as a roof block a storey
 // over its ground; nobody stands on those (FLOORS false).
 let FLOORS = false;
 const Floors = (() => {
-  const STOREY = 3, K = .03, THIN = .12, FAINT = .3, VEIL = .25;
+  const STOREY = 3, K = .03, THIN = .12, FAINT = .3, VEIL = .25, FADED = .65;     // (FADED: how much of it goes, faded, in front of you)
   let ver = 0, over = {key: "-", z: 99, tiles: new Set()}, veils = 0;      // (veils: how many blocks were a veil over you in the last frame)
   const FADE = .15;                                  // the circle round you comes and goes over this many seconds
   let drawnAt = 0;
@@ -74,8 +75,20 @@ const Floors = (() => {
     }
     return (over = {key, z, tiles});
   }
-  // How much of what is at height z of the tile is drawn
-  const alpha = (x, y, z) => (mine().tiles.has(x + "," + y) && z >= over.z ? THIN : Build.on && z > Build.level() ? FAINT : 1);
+  // How much of what is at height z of the tile is drawn: over you, or over the cursor's floor, as the view has it
+  // (cut away and outline: none of it; outline() draws the edges)
+  const hides = (x, y, z) => (mine().tiles.has(x + "," + y) && z >= over.z ? THIN : Build.on && z > Build.level() ? FAINT : 0);
+  const alpha = (x, y, z) => { const h = hides(x, y, z); return !h ? 1 : opt("above") === "cut" || opt("above") === "outline" ? 0 : h; };
+  // A block's top as its edges, in the pack's ink: the sides no block of its kind goes on from (the outline view)
+  function outline(kind, x, y, z, sx, sy, a) {
+    const q = zoom, px = sx(x), top = sy(y) - shOf(z) * q, same = (dx, dy) => !!get(x + dx, y + dy, z);
+    ctx.globalAlpha = a; ctx.fillStyle = Structures.INK;
+    if (!same(0, -1)) ctx.fillRect(px, top, 16 * q, q);
+    if (!same(0, 1)) ctx.fillRect(px, top + 15 * q, 16 * q, q);
+    if (!same(-1, 0)) ctx.fillRect(px, top, q, 16 * q);
+    if (!same(1, 0)) ctx.fillRect(px + 15 * q, top, q, 16 * q);
+    ctx.globalAlpha = 1;
+  }
 
   // One block: its top (unless a block is on it), its south face (unless one goes on south of it)
   function cell(kind, x, y, z, sx, sy, S, a) {
@@ -141,19 +154,30 @@ const Floors = (() => {
       const x = b.bx * B + i % B, y = b.by * B + (i / B | 0), base = standAt(x, y);
       for (const [z, [kind, ch]] of c) {
         const a = alpha(x, y, z), key = y + (z - base) * K, hole = a > VEIL && near(x, y, z);
+        if (!a) {                                      // (over you, cut away or as its edges)
+          if (opt("above") === "outline") list.push({y: key - .005, x, fx: () => outline(kind, x, y, z, sx, sy, .85)});
+          continue;
+        }
         if (hole && covers(x, y, z, kind === "roof")) hidden = true;
         if (hole) veils++;
-        const paint = (fn) => (hole ? () => holed(fn, a, cx, cy, R) : () => fn(a));
-        list.push({y: key - .005, x, fx: paint((aa) => cell(kind, x, y, z, sx, sy, S, aa))});
+        const edge = (aa) => outline(kind, x, y, z, sx, sy, aa), paint = (fn, e = () => {}) => (hole ? () => holed(fn, a, cx, cy, R, e) : () => fn(a));
+        list.push({y: key - .005, x, fx: paint((aa) => cell(kind, x, y, z, sx, sy, S, aa), edge)});
         if (ch) list.push({y: key, x, fx: paint((aa) => thing(ch, x, y, z, sx, sy, S, t, now, aa))});
       }
     }
     seen += ((hidden ? 1 : 0) - seen) * Math.min(1, step / FADE);
     if (seen < .01 && !hidden) { seen = 0; veils = 0; }
   }
-  // A block in front of you drawn with the circle in it: ring by ring, clearer towards you (the hill's own way, xray.js)
-  function holed(fn, a, cx, cy, R) {
+  // A block in front of you drawn with the circle in it: ring by ring, clearer towards you (the hill's own way, xray.js);
+  // in the other views, each block near you that is in front of you as a whole: gone, its edges, or faint
+  function holed(fn, a, cx, cy, R, edge) {
     if (seen < .01) return fn(a);
+    const v = opt("above");
+    if (v !== "circle") {
+      fn(a * (1 - seen * (v === "faded" ? FADED : 1)));
+      if (v === "outline") edge(a * seen * .85);
+      return;
+    }
     let r0 = 0;
     for (const [k, clear] of [...RINGS, [99, 0]]) {
       const r1 = k * R;

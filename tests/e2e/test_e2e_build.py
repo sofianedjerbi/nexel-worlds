@@ -18,7 +18,7 @@ def test_a_wall_is_planned_with_a_cursor_and_built_by_keys_alone(game):
     game.press("ArrowRight"); game.press("ArrowRight")         # the cursor moves; you do not
     assert game.js("[Build.S.at.x, Build.S.at.y]") == [x + 2, y + 1] and game.pos() == (x, y)
     rows = game.js("Build.rows()")                             # the corner: the mode's name, and only the keys that do something here
-    assert [r[0] for r in rows] == ["B", "Space", "Shift ↑ ↓", "X"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"     # (Shift ↑ ↓: the cursor a floor up, down)
+    assert [r[0] for r in rows] == ["B", "Space", "Q E", "X"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"     # (Q E: the cursor a floor down, up)
     assert rows[3][1] == "Dig a hole"                          # (X on bare ground: a hole)
     assert all(len(r[1]) <= 26 for r in rows)                  # (short: a long line ran under the bar)
     kb.down("Space")                                           # held: a row of four
@@ -53,6 +53,7 @@ def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
     its own. It is a block like the rest (a `roof`, from wood): a storey up, on a wall or beside a block, planned
     with the cursor (with a roof in hand, over what the cursor is on), taken back with X; and whoever stands under
     it sees through all of it."""
+    game.js("setOpt('above', 'circle')")                       # (the view that fades what is over you: test_e2e_views.py has the rest)
     game.clear_area(8)
     x, y = game.pos()
     game.stamp(2, -3, ["WWWW", "W..W", "WW+W"])               # walls and a door, no roof: nothing draws one by itself
@@ -127,11 +128,8 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     game.press("b")                                            # back in: the work goes on
     game.wait(f"({WALLS})([{x + 3}, {y + 1}, 4]) === 'WWWW' && Build.S.plans.size === 0", 25000)
     game.js(f"Build.S.at = {{x: {x + 6}, y: {y + 1}}}")         # (the cursor on the last wall: coming back in, it is at the tile you face)
-    game.press("q"); game.sleep(150)                           # Q: the next piece of the bar, not the berries nor the axe
-    assert game.js("selected") == "door"
-    game.press("q"); game.sleep(150)
-    assert game.js("selected") == "wood_wall"
-    game.press("q"); game.sleep(150)                           # a door, on the last wall: planned in its place
+    game.press(game.js(SLOT, "door")); game.sleep(150)         # (Q went to the next piece: Q and E are the floors now; the bar's numbers)
+    assert game.js("selected") == "door"                       # a door, on the last wall: planned in its place
     rows = game.js("Build.rows()")
     assert rows[1][1] == "Plan door in its place" and ["X", "Take down wooden wall"] in rows
     game.press("Space")

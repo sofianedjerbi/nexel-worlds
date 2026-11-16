@@ -1,6 +1,8 @@
 """Caves as drawn: openings on each side of a hill, as wide and as high as the empty cells; the cave you're in seen
 through the hill, shadowed along its edges, with its way out to the north; and being hidden behind a hill."""
 
+import pytest
+
 # a pixel [r, g, b, a] of the caves as drawn: tile (x, y), art px (ax, ay) from the tile's corner at sea level (from
 # whichever block's overlay has something there: an opening is drawn from its first tile's block)
 PX = """([x, y, ax, ay]) => { for (const b of blocks.values()) { if (!b.caveOv) continue;
@@ -9,6 +11,8 @@ PX = """([x, y, ax, ay]) => { for (const b of blocks.values()) { if (!b.caveOv) 
     const d = Array.from(b.caveOv.getContext('2d').getImageData(X, Y, 1, 1).data); if (d[3]) return d; }
   return [0, 0, 0, 0]; }"""
 HOLE, DEEP = [0x2a, 0x1d, 0x28], [0x1d, 0x14, 0x1c]           # the hole, and its darker depth
+
+pytestmark = pytest.mark.usefixtures("circle_view")      # (the circle's tests: the view that has it, conftest.py)
 
 
 def hill(game, x0, y0, w, h, caves, top=4):

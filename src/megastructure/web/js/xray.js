@@ -47,9 +47,14 @@ function xrayPlace(tx, row, L) {
   }
   return cols;
 }
-// How clear the circle is at a spot as drawn (tiles, lifted with its ground): 0 the land as it is, 1 seen through
+// How clear the circle is at a spot as drawn (tiles, lifted with its ground): 0 the land as it is, 1 seen through.
+// Not a circle (the views of options.js: VIEWS): the rock in the way is gone (cut away, outline) or faint (faded)
+// all over the picture, and so is what stands on it
+const XRAY_FADED = .65;                                    // (faded: how much of the rock goes)
 function xrayAt(x, y) {
   if (xray.a <= .01) return 0;
+  const v = opt("above"), P = xray.pic;
+  if (v !== "circle") return P && x >= P.rx && x < P.rx + P.rw && y >= P.ry - 1 && y < P.ry + P.rh ? xray.a * (v === "faded" ? XRAY_FADED : 1) : 0;
   const d = Math.hypot(x - xray.x, y - xray.y) / XRAY.r;
   return xray.a * smooth(Math.max(0, Math.min(1, (1 - d) / (1 - XRAY.core))));
 }
@@ -179,10 +184,11 @@ function* xrayPicture(tx, key, near) {
   return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, any, rock: rocks, rx: R.x, ry: R.y, rw: w, rh: R.h};
 }
 
-// The circle itself, over the land and under everything standing on it
+// The circle itself, over the land and under everything standing on it (in the other views: drawXrayWhole)
 function drawXray(sx, sy) {
   const P = xray.pic;
   if (xray.a <= .01 || !P || !(P.any || xray.old)) return;
+  if (opt("above") !== "circle") return drawXrayWhole(sx, sy);
   const D = Math.ceil(XRAY.r * 32) + 2, cx = xray.x * 16 + 8, cy = xray.y * 16 + 8, ax = Math.round(cx - D / 2), ay = Math.round(cy - D / 2);
   for (const k of ["c", "c2"]) if (!xray[k]) { xray[k] = document.createElement("canvas"); xray[k].width = xray[k].height = D; }
   const part = (c, Q, share) => {                          // a picture's part under the circle: its water as it is on the screen this frame (water.js), the land over it
@@ -207,4 +213,36 @@ function drawXray(sx, sy) {
   ctx.globalAlpha = xray.a;
   ctx.drawImage(xray.c, sx(0) + ax * zoom, sy(0) + ay * zoom, D * zoom, D * zoom);   // (on the land's own grid: not rounded apart from it)
   ctx.globalAlpha = 1;
+}
+
+// Cut away, outline, faded: all of the picture (the ground under the rock in the way, its water as it is this
+// frame), over the rock: whole, or a share of it; in the outline view the rock's edges over it, in the pack's ink
+function drawXrayWhole(sx, sy) {
+  const v = opt("above"), k = v === "faded" ? XRAY_FADED : 1;
+  for (const [Q, share] of xray.old ? [[xray.old, 1 - xray.mix], [xray.pic, xray.mix]] : [[xray.pic, 1]]) {
+    if (!Q.any) continue;
+    if (!Q.whole) { Q.whole = document.createElement("canvas"); Q.whole.width = Q.w; Q.whole.height = Q.h; }
+    const g = Q.whole.getContext("2d");
+    g.globalCompositeOperation = "source-over"; g.clearRect(0, 0, Q.w, Q.h); g.imageSmoothingEnabled = false;
+    if (waterView) {
+      g.drawImage(waterCv, Q.x - waterView.x, Q.y - waterView.y, Q.w, Q.h, 0, 0, Q.w, Q.h);
+      g.globalCompositeOperation = "destination-in"; g.drawImage(Q.wet, 0, 0);
+      g.globalCompositeOperation = "source-over";
+    }
+    g.drawImage(Q.over, 0, 0);
+    if (v === "outline") g.drawImage(xrayEdges(Q), 0, 0);
+    ctx.globalAlpha = xray.a * share * k;
+    ctx.drawImage(Q.whole, sx(0) + Q.x * zoom, sy(0) + Q.y * zoom, Q.w * zoom, Q.h * zoom);
+    ctx.globalAlpha = 1;
+  }
+}
+// The edges of what the rock was drawn over (the picture's seen), an art px wide, in ink: made once a picture
+function xrayEdges(Q) {
+  if (Q.edges) return Q.edges;
+  const m = new Uint32Array(Q.w * Q.h), s = Q.seen, W = Q.w, ink = 0xff604c75;          // (the walls' ink, #754c60: structures.js; as a little-endian px)
+  for (let y = 0; y < Q.h; y++) for (let x = 0; x < W; x++) {
+    const f = y * W + x;
+    if (s[f] && (x === 0 || y === 0 || x === W - 1 || y === Q.h - 1 || !s[f - 1] || !s[f + 1] || !s[f - W] || !s[f + W])) m[f] = ink;
+  }
+  return (Q.edges = pxCanvas(m, W, Q.h));
 }

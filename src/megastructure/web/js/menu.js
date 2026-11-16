@@ -26,7 +26,8 @@ const MENU_PAGES = [
     choice("Sharpness", "sharp", [["auto", "Auto"], ["full", "Full"], ["light", "Light"]]),
     slider("Light at night", "night", {hear: null}),
     choice("Particles", "particles", [["all", "All"], ["fewer", "Fewer"], ["none", "None"]]),
-    toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats")]],
+    toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
+    choice("What hides you", "above", VIEWS.map((v) => [v.key, v.name]))]],
   ["Screen", [
     toggle("Speech bubbles", "bubbles"), toggle("Names over heads", "names"),
     choice("A chat line stays", "chat", [[5, "5 seconds"], [10, "10 seconds"], [30, "30 seconds"], [600, "10 minutes"]]),

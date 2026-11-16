@@ -11,6 +11,7 @@ const OPT_DEFAULT = {
   often: "normal",        // how long the silences between two pieces of music are: often, normal, rarely
   // picture
   sharp: "auto",          // device px a CSS px: auto (2, and 1 on a machine that cannot keep up), full (2), light (1)
+  above: "cut",           // what hides you (a floor over you, a house or the ground in front): cut (away), outline, faded, circle (VIEWS)
   night: 0,               // how much the night is lit up, 0 (as it is) to 100
   particles: "all",       // all, fewer, none
   shake: true,            // the ground shakes when a fall hurts
@@ -42,6 +43,18 @@ function optApply(k) {
 }
 addEventListener("DOMContentLoaded", () => optApply());
 
+// What hides you, four ways to show it ("depth visualisation is unintuitive"; the user wanted several to try): what
+// is over you (the floors and the roof of the house you are in; in build mode, all over the cursor's floor: floors.js)
+// and what is in front of you or the cursor, drawn over it (a house, a tower, the ground in front of a hole or a
+// hill: floors.js, xray.js). Cut away: not drawn. Outline: only its edges. Faded: drawn faint. Circle: a circle round
+// you seen through it (as it was). V goes from one to the next (keyboard.js); the Picture page has them too.
+const VIEWS = [{key: "cut", name: "Cut away"}, {key: "outline", name: "Outline"}, {key: "faded", name: "Faded"}, {key: "circle", name: "Circle"}];
+function nextView() {
+  const i = VIEWS.findIndex((v) => v.key === opt("above")), v = VIEWS[(i + 1) % VIEWS.length];
+  setOpt("above", v.key);
+  toast(`What hides you: **${v.name}** \`V\``);
+}
+
 // The sound families of audio.js (SOUND.mix) under the settings' sliders.
 const SOUND_OPT = {Footsteps: "steps", Work: "work", Breaking: "work", Building: "work", Fights: "fights", Boss: "fights", Animals: "animals",
                    World: "world", Items: "world", Progress: "world", People: "voices", Interface: "ui"};
@@ -54,7 +67,7 @@ const particles = (n) => (opt("particles") === "none" ? 0 : opt("particles") ===
 const KEY_ACTIONS = {use: [" ", "Use what you face"], alt: ["x", "Other use"], pick: ["f", "Pick up"], eat: ["e", "Eat or wear"], next: ["q", "Next thing in hand"],
   hands: ["`", "Empty your hands"], craft: ["c", "Craft"], bag: ["i", "Inventory"], build: ["b", "Build mode"], talk: ["t", "Talk"], mute: ["m", "Sound on or off"]};
 const KEY_FIXED = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "shift", "tab", "enter", "escape", "control", "alt", "meta", "capslock",
-  "h", "?", "g", "f3", "/", "+", "=", "-", "_", ..."0123456789"]);
+  "h", "?", "g", "v", "f3", "/", "+", "=", "-", "_", ..."0123456789"]);
 const keyOf = (action) => opt("keys")[action] || KEY_ACTIONS[action][0];
 // The key that was pressed -> the usual key of the action it now does ("": it does nothing any more)
 function usualKey(k) {

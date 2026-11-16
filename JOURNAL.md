@@ -1852,3 +1852,32 @@ not its body).
   "X takes a plan back": now Shift with the arrows, and X breaks what is at the cursor or digs.
 - Next: the camera might follow the build cursor when it leaves the screen; a dug hole's floor drawn as dug earth;
   the pathfinder stepping off a roof's edge rather than taking the ladder (no hurt, but not what a person would do).
+
+## Iteration 146: what hides you, four ways to try; Q and E for floors
+- User: "Shift + u/d is unintuitive. And depth visualisation is unintuitive"; asked, they chose Q / E for floors and
+  "cut away" for what hides you; then: "Showcase multiple things in megastructure demo ... No I mean multiple up/down
+  visualisation": several views to try in the demo, not only the one chosen.
+- Keys: in build mode E lifts the cursor a floor, Q brings it down (and under your own floor), PgUp/PgDn as well;
+  Shift ↑ ↓ and R/F are gone. Q no longer goes to the next piece in build mode (the bar's numbers do). The corner says
+  "Q E A floor down, up"; the greeting and the help (Build page) say it.
+- Views (options.js VIEWS, setting `above`; V goes from one to the next, toasted; Esc, Settings, Picture, "What hides
+  you"; the help has a page "See" with zoom and V):
+  - Cut away (the usual one): what is over you (the house you are in; in build mode, everything over the cursor's
+    floor) is not drawn; a house in front of you loses the blocks near you that are in front; the ground in front of
+    you (a hill, the lip of a hole you dug) is gone over the whole of its picture, not in a soft circle.
+  - Outline: the same, with the edges of what is gone drawn in the walls' ink (blocks: their top's free sides; the
+    ground: the edge of what the rock was drawn over).
+  - Faded: drawn faint (over you as before, .12; in front, 65% of it gone).
+  - Circle: as it was.
+  The land's picture is the x-ray's own (relief.js through xrayPicture): only how it is put on the screen differs.
+- Seen in Chrome in six places, each in the four views: in the house's room, upstairs, build mode looking at the
+  floor under yours, behind the house, down a stair dug three deep, behind a hill three high. Read best: cut away in
+  the room and in build mode (nothing in the way at all); the circle and cut away behind a hill; outline in a room
+  is a wireframe of every storey over you (nested rectangles), busy with three storeys.
+- Tests: test_e2e_views (V and the Picture row; in a house, alpha 0/0/.12/.12 and the outline's ink drawn; Q to the
+  floor under yours cuts away all over it, E back; behind a rise, the x-ray uniform 1 / .65 and its edges in ink).
+  The circle's own tests (x-ray, behind, caves) choose the circle (conftest: circle_view); floors and build tests use
+  Q and E. Full browser suite 209 passed (one player could not join under load; it passes alone), 441 unit.
+- The demo's What's new page: a section "four ways to see what hides you" with a clip (tools/film_views.py: V in the
+  house, behind it, down a dug stair; build mode Q and E), and the floors clip filmed again with Q and E.
+- Next: the user picks a view (or asks for others); a dug hole's floor drawn as dug earth.

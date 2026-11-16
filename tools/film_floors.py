@@ -117,7 +117,7 @@ def scene(g, rec):
     walk("ArrowDown", f"myPos().y === {y0 + 4}"); g.sleep(500)
     # build mode upstairs: the cursor a floor up, and a floor down, under your own floor, seen through it
     g.press(g.js(SLOT, "plank"))                            # (eight planks left from the house)
-    cap("Build mode: Shift ↑ lifts the cursor a floor")
+    cap("Build mode: E lifts the cursor a floor")
     g.press("b"); g.sleep(900)
     cur = lambda: g.js("Build.S.at")
 
@@ -128,9 +128,9 @@ def scene(g, rec):
         for _ in range(abs(y0 + j - c["y"])):
             g.press("ArrowDown" if y0 + j > c["y"] else "ArrowUp", wait)
     cursor_to(5, 3); g.sleep(500)
-    g.press("Shift+ArrowUp", 1800)
-    cap("Shift ↓: down again, and under your own floor")
-    g.press("Shift+ArrowDown", 1100); g.press("Shift+ArrowDown", 1500)
+    g.press("e", 1800)
+    cap("Q: down again, and under your own floor")
+    g.press("q", 1100); g.press("q", 1500)
     for k in ["ArrowLeft"] * 3 + ["ArrowDown"] * 2 + ["ArrowRight"] * 2:
         g.press(k, 260)
     g.sleep(1200); where("the cursor " + str(g.js("[Build.S.at, Build.level(), xray.a > .5]")))

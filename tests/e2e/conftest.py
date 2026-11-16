@@ -69,6 +69,13 @@ def open_game(browser, server, name=None, zoom=4) -> Game:
 
 
 @pytest.fixture
+def circle_view(game):
+    """What hides you shown as a circle round you seen through it (options.js: VIEWS): for the circle's own tests
+    (pytestmark = pytest.mark.usefixtures("circle_view")); the other views: test_e2e_views.py."""
+    game.js("setOpt('above', 'circle')")
+
+
+@pytest.fixture
 def game(browser, server):
     """A new player, daytime, standing in the middle of a cleared 21x21 meadow with no animals nearby."""
     g = open_game(browser, server)

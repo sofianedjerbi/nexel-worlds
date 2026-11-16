@@ -1,6 +1,10 @@
 """What stands behind higher ground, in Chrome (js/behind.js): a tree, a rock, things dropped are cut at its edge as
 anybody is, and show through it in the x-ray circle."""
 
+import pytest
+
+pytestmark = pytest.mark.usefixtures("circle_view")      # (the circle's tests: the view that has it, conftest.py)
+
 
 def test_a_tree_behind_a_hill_is_hidden_by_it_and_shows_in_the_circle(game):
     """A tree standing behind a hill was drawn over the hill, as if it stood on top of it (only bodies were cut at a

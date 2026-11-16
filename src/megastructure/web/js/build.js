@@ -5,12 +5,12 @@
 //   Space      plan the piece here. Held while you move: a row. A door on a wall, a gate on a fence: in its place
 //   X          break what is at the cursor: a plan back; a thing, a tree, a rock, a wall, a step, a floor: down; bare
 //              ground: a hole, a layer deeper each time (a pickaxe digs faster). Held: a row
-//   Shift ↑ ↓  the cursor up a floor, and down (also PgUp, PgDn; R and F as they were)
+//   Q E        the cursor down a floor, and up (also PgDn, PgUp)
 //   Esc        drop every plan (with none: out of the mode)
-// The cursor has a height. It rides the ground nearest your own (the floor you stand on); Shift ↑ lifts it a storey,
-// into the air over a room or onto the floor above, and there it stays as it moves, until Shift ↓ brings it down.
-// Below your own floor, Shift ↓ sinks it a storey: onto the floor under yours (the ground floor from upstairs), into
-// a pit, a cave under you. ("R for up a floor.. not natural. also what for down a floor?") What you plan
+// The cursor has a height. It rides the ground nearest your own (the floor you stand on); E lifts it a storey, into
+// the air over a room or onto the floor above, and there it stays as it moves, until Q brings it down. Below your
+// own floor, Q sinks it a storey: onto the floor under yours (the ground floor from upstairs), into a pit, a cave
+// under you. (It was R and F, then Shift ↑ ↓: "not natural"; the user chose Q and E.) What you plan
 // goes where the cursor is: a thing (a wall, a door, a bed) on what the cursor is on; a block (planks, a roof) on
 // top of it, or, the cursor in the air, in the cell it is in, where a wall under it or a block beside it holds it.
 // Planks on bare ground are a floor laid in it, as ever; a roof goes a storey over what the cursor is on (over your
@@ -175,7 +175,7 @@ const Build = (() => {
     if (on === S.on || (on && !me)) return;
     S.on = on; S.hold = null; S.plane = null; S.down = 0; held(null);
     document.body.classList.toggle("building", on);
-    if (on) { S.at = facingTile() || myPos(); toast("**Build mode**\nThe arrows move the cursor · `Space` builds · `X` breaks or digs\nHeld: a row · `Shift` `↑` `↓` a floor up, down"); work(); }
+    if (on) { S.at = facingTile() || myPos(); toast("**Build mode**\nThe arrows move the cursor · `Space` builds · `X` breaks or digs\nHeld: a row · `Q` `E` a floor down, up"); work(); }
     else { S.pan = {x: 0, y: 0}; if (todo().length) toast(`${todo().length} plans wait: B to go on building`); }      // (the plans stay where they are)
   }
   function drop() { const n = todo().length; for (const [k, j] of S.plans) if (j.state !== "doing") S.plans.delete(k); toast(`${n} plans dropped`); }
@@ -195,7 +195,7 @@ const Build = (() => {
     const again = () => { if (S.on && S.dir === dir && move(dir)) S.timer = setTimeout(again, STEP_MS); };
     S.timer = setTimeout(again, FIRST_MS);
   }
-  // Shift ↑, Shift ↓: the cursor up a storey (into the air over a room, onto the floor above), and down: back to riding
+  // E, Q: the cursor up a storey (into the air over a room, onto the floor above), and down: back to riding
   // the ground at your height, then under it (sunk: the floor under yours, a pit, a cave), as far as a hole goes
   function lift(d) {
     const s = myPos();
@@ -208,24 +208,15 @@ const Build = (() => {
     else return sfx("buzz");
     sfx("pick");
   }
-  function nextPiece() {                              // Q: the next thing of your bar that is a piece
-    const bar = slots.slice(0, BAR).filter((n) => n && meObs.self.inventory[n] && (PLACEABLE_BLOCK[n] || FILLS[n] || n === "seed"));
-    if (!bar.length) return toast("Nothing to build with in your bar", true);
-    selectItem(bar[(bar.indexOf(selected) + 1) % bar.length]);
-  }
   // A key in build mode -> true: it was the mode's (the rest, the bar's numbers among them, go on as ever)
   function onKey(k, e) {
     if (!S.on) return false;
     if (k === "b") { if (!e.repeat) toggle(false); return true; }
     if (k === "escape") { if (!e.repeat) { if (todo().length) drop(); else toggle(false); } return true; }
-    const dir = KEYDIR[k] || CODEDIR[e.code];
-    if (dir && e.shiftKey && (dir === "N" || dir === "S")) { if (!e.repeat) lift(dir === "N" ? 1 : -1); return true; }   // (Shift ↑ ↓: a floor up, down)
     if (KEYDIR[k]) { if (!e.repeat) held(KEYDIR[k]); return true; }
     if (k === " " || k === "x") { if (!e.repeat) { S.hold = k; S.row = undefined; if (k === " ") plan(S.at); else take(S.at); } return true; }
-    if (k === "r" || k === "pageup" || k === "pagedown") { if (!e.repeat) lift(k === "pagedown" ? -1 : 1); return true; }
-    if (k === "f") { if (!e.repeat) lift(-1); return true; }
-    if (k === "q") { if (!e.repeat) nextPiece(); return true; }
-    return k === "e";                                 // (no eating by mistake while you plan)
+    if (k === "e" || k === "q" || k === "pageup" || k === "pagedown") { if (!e.repeat) lift(k === "e" || k === "pageup" ? 1 : -1); return true; }
+    return false;
   }
   addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if (k === S.hold) S.hold = null; if (KEYDIR[k] === S.dir) held(null); });
   addEventListener("blur", () => { S.hold = null; held(null); });
@@ -285,7 +276,7 @@ const Build = (() => {
     const it = hint(S.at), n = todo().length, hit = taking(S.at), s = myPos(), up = !s ? 0 : S.plane === null ? -S.down : Math.round((S.plane - myZ(s.x, s.y)) / Floors.STOREY);
     const out = [["B", up ? `BUILD · floor ${up > 0 ? "+" : ""}${up} · leave` : "BUILD MODE · leave", "head"]];
     out.push(["Space", it.text, it.ok === false ? "bad" : ""]);
-    if (FLOORS) out.push(["Shift ↑ ↓", "A floor up, down"]);
+    if (FLOORS) out.push(["Q E", "A floor down, up"]);
     if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.dig ? "Dig a hole" : hit.what === "roof" ? "Take the roof off" : hit.verb || `Take down ${hit.what}`]);
     if (n) out.push(["Esc", `Drop the ${n} plan${n > 1 ? "s" : ""}`]);
     return out;

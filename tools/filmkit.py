@@ -28,7 +28,7 @@ W, H, BITRATE = 1280, 720, 1400000
 SLOT = "(n) => String((slots.indexOf(n) + 1) % 10)"           # the key of the bar's slot that holds it
 OVERLAY = """() => {
   const css = document.createElement('style');
-  css.textContent = `#goalhint, #goals { display:none !important; }
+  css.textContent = `#goalhint, #goals, #chatlog { display:none !important; }
     #cap { position:fixed; left:16px; top:14px; z-index:50; max-width:560px; font:26px/32px SproutPixel, monospace; color:#5b3f36; background:#fff6e2; border:3px solid #5b3f36;
       border-bottom-width:6px; border-radius:6px; padding:8px 14px; box-shadow:0 3px 0 rgba(60,40,30,.25); }
     #cap:empty { display:none; }

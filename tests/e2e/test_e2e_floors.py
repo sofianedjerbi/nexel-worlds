@@ -12,7 +12,7 @@ def cells(game, x, y, w, h, z):
 
 def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     """Nothing could be built over anything: one piece a tile, and a roof nobody stood on. Now the cursor of build
-    mode has a height (Shift ↑, Shift ↓): planks planned in the air over a room are a floor, on the walls and from block to
+    mode has a height (E up, Q down): planks planned in the air over a room are a floor, on the walls and from block to
     block; planks on a floor are a step, two of them a higher one; up you walk, a jump a block, and upstairs you
     build as on the ground. All of it by keys."""
     game.clear_area(10)
@@ -23,8 +23,8 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     at = lambda i, j: game.js(f"Build.S.at = {{x: {x + i}, y: {y + j}}}")
     game.press(game.js(SLOT, "plank"))
     game.press("b")
-    assert game.js("Build.level()") == 0 and "Shift ↑ ↓" in [r[0] for r in game.js("Build.rows()")]
-    game.press("Shift+ArrowUp")                                # the cursor up a floor: over the house, in the air
+    assert game.js("Build.level()") == 0 and "Q E" in [r[0] for r in game.js("Build.rows()")]
+    game.press("e")                                            # the cursor up a floor: over the house, in the air
     assert game.js("[Build.S.plane, Build.level()]") == [3, 3] and "floor +1" in game.js("Build.rows()")[0][1]
     at(0, -6)
     assert game.js("Build.hint(Build.S.at)")["ok"] is False    # in the open: nothing under it, nothing beside it
@@ -40,8 +40,8 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     at(2, -4)                                                  # the stairwell: two blocks taken back, at the cursor's level
     game.press("x"); game.press("ArrowDown", 120); game.press("x")
     game.wait(f"({CELLS})([{x + 1}, {y - 5}, 5, 4, 3]) === 'ppppp/p.ppp/p.ppp/ppppp/' && Build.S.plans.size === 0", 30000)
-    game.press("Shift+ArrowDown")                              # down again: the cursor rides the ground
-    assert game.js("[Build.S.plane, Build.S.down, runKey]") == [None, 0, False]   # (and Shift did not set you running)
+    game.press("q")                                            # down again: the cursor rides the ground
+    assert game.js("[Build.S.plane, Build.S.down, runKey]") == [None, 0, False]
     at(2, -3)
     assert game.js("Build.hint(Build.S.at).text") == "Plan plank on top"
     game.press("Space")                                        # a step: planks on the floor
@@ -64,9 +64,9 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     game.press("b")                                            # upstairs, the cursor down a floor: the room under it
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y - 3}}}")
     assert game.js("Build.level()") == 3
-    game.press("Shift+ArrowDown")
+    game.press("q")
     assert game.js("[Build.level(), Build.rows()[0][1]]") == [0, "BUILD · floor -1 · leave"]
-    game.press("Shift+ArrowUp")
+    game.press("e")
     assert game.js("[Build.level(), Build.S.down, Build.S.plane]") == [3, 0, None]
     game.press("b")
     game.press(game.js(SLOT, "wood_wall"))                     # upstairs, by hand: a wall on the floor before you
@@ -120,6 +120,7 @@ def test_you_see_the_floor_you_are_on_and_fall_off_its_edge(game):
     the floor above and the roof with it; on the steps still; upstairs, only the roof, and the floor you stand on is
     whole. Behind the house, only the blocks drawn over you are a veil. A bed upstairs is slept in; off the edge of
     a floor you fall to the ground."""
+    game.js("setOpt('above', 'circle')")                       # (the view that fades what is over you: test_e2e_views.py has the rest)
     game.clear_area(10)
     x, y = game.pos()
     x0, y0 = x + 2, y - 7

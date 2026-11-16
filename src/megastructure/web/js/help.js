@@ -4,13 +4,14 @@
 // Esc shuts it. Its looks are css/help.css.
 
 const HELP = [
-  ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Alt"], "Turn without walking"], [["+", "−"], "Zoom (or the wheel)"], [["G"], "Goals: show or hide"]]],
+  ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Alt"], "Turn without walking"], [["G"], "Goals: show or hide"]]],
+  ["See", [[["+", "−"], "Zoom (or the wheel)"], [["V"], "What hides you: next way"]]],
   ["Do", [[["Space"], "Use what you face"], [["X"], "Other use: milk, till"], [["F"], "Pick up"], [["E"], "Eat"],
     [["Click"], "Space there. Shift: X"]]],
   ["Carry", [[["1-9", "Q"], "Take in hand"], [["`"], "Empty your hands"], [["Space"], "Place what you hold"],
     [["I"], "Inventory"], [["C"], "Craft"]]],
   ["Build", [[["B"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],
-    [["Shift", "↑", "↓"], "Cursor a floor up, down"]]],
+    [["Q", "E"], "Cursor a floor down, up"]]],
   ["Talk", [[["Enter"], "Talk"], [["ABC"], "Shout: IN CAPITALS"], [["Tab"], "Hold: who is awake"],
     [["M"], "Sound on or off"], [["Esc"], "Menu and settings"]]],
 ];

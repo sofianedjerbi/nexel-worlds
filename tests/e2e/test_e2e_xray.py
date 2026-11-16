@@ -1,6 +1,10 @@
 """The x-ray circle in Chrome (js/xray.js): behind a wall or a mountain, a circle round you shows the land without the
 rock in front of you, painted by the land's own painter, and nothing else changes."""
 
+import pytest
+
+pytestmark = pytest.mark.usefixtures("circle_view")      # (the circle's tests: the view that has it, conftest.py)
+
 
 def frames(game, body):
     """Frozen frames, one moment (water moves: two moments can't be compared). `body` is JS that returns something; it
