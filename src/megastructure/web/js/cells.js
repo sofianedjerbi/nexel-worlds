@@ -47,9 +47,14 @@ function landAt(h, x, y, fx, fy) {       // (fx, fy: the tile you step from: a j
 // The cave you're in is seen through the hill over it (caves.js): its tiles ("x,y") and the height of its floor there
 let caveOpen = false, openCave = new Map(), peekFloors = false;   // (peekFloors: while its floor is being drawn)
 const inOpenCave = (x, y) => caveOpen && openCave.has(x + "," + y);
-const levelAt = (x, y) => (peekFloors && inOpenCave(x, y) ? openCave.get(x + "," + y) : topAt(x, y));   // the height the land is drawn at
-const standAt = (x, y) => (inOpenCave(x, y) ? openCave.get(x + "," + y) : topAt(x, y));   // ...and what's on the tile
-const hiddenAt = (x, y) => roofAt(x, y) > 0 && !inOpenCave(x, y);   // what lies on the lowest ground, under a hill you're not in
+// A hollow dug under level ground (its floor under sea level: only digging gets there) is drawn open, as a hole is,
+// and what is in it is seen: the earth over it is thin, and would hide you, the stair down to it and what lies there
+// (seen through as a cave, its floor showed four tiles from its stair, on the grass: "the underground view is buggy
+// as hell"). Caves under hills are seen through when you are in them (caves.js)
+const dugHollow = (x, y) => roofAt(x, y) > 0 && floorAt(x, y) < 0 && topAt(x, y) <= 0;
+const levelAt = (x, y) => (peekFloors && inOpenCave(x, y) ? openCave.get(x + "," + y) : dugHollow(x, y) ? floorAt(x, y) : topAt(x, y));   // the height the land is drawn at
+const standAt = (x, y) => (inOpenCave(x, y) ? openCave.get(x + "," + y) : dugHollow(x, y) ? floorAt(x, y) : topAt(x, y));   // ...and what's on the tile
+const hiddenAt = (x, y) => roofAt(x, y) > 0 && !inOpenCave(x, y) && !dugHollow(x, y);   // what lies on the lowest ground, under a hill you're not in
 
 let myAt = null, myWas = null;             // your tile and the height you stand at (caves.js keeps it, as the server does); and the tile before
 const myZ = (x, y) => (myAt && myAt.x === x && myAt.y === y ? myAt.z : myAt && Math.abs(myAt.x - x) + Math.abs(myAt.y - y) <= 2 ? settleNear(x, y, myAt.z) : topAt(x, y));

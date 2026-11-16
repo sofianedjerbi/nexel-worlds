@@ -1953,3 +1953,18 @@ not its body).
   test_e2e_digging (the way down by keys, the third step under a roof). 449 unit; browser 212 + 3 fixed.
 - The live server needs a restart for tunnels (the server's dig); the drawing is in with a reload.
 - Next: the cave view's edge art on a narrow tunnel; the sides of steps (dark ledges) could be quieter.
+
+## Iteration 150: a hollow dug under the meadow is drawn open
+- User (screenshot, after the restart): "dauben is completely buried and appear here... the underground view is
+  buggy as hell". Read on a copy of the save: doben4 at depth -8 at the end of a stair dug east (open steps -3 to -7,
+  their own tile a pocket under a roof left at ground level). Rebuilt on a throwaway server: in the pocket the cave
+  view's picture stopped 48 px under each hollow, the floor (64 px down) not drawn: they stood on the grass, four
+  tiles south of their tile; and as a cave nothing in front was cut away, so the stair leading there was hidden.
+- Change: a hollow dug under level ground (floor under sea level, land over it no higher than the meadow: only
+  digging makes one) is drawn open, as a hole is (cells.js: levelAt, standAt; what is in it is seen); the cave view
+  is for caves under hills (it no longer takes dug hollows; its picture reaches a floor dug deep). A dug step's side
+  is a line, not a ledge (it drew a dark post down each step).
+- Result: in the pocket the stair is seen joined to where you stand (the ground in front cut away, the user's view),
+  a tunnel dug south reads as a trench to the character. Tests: test_e2e_digging (the pocket: drawn at -8, seen, no
+  cave view); caves, x-ray, behind, relief, build, world: 50 passed; 449 unit.
+- The server need not restart (drawing only): a reload.

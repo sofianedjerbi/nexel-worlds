@@ -23,7 +23,7 @@ const Keyhole = (() => {
     const p = Build.on && Build.S.at;
     shown = false;
     if (!p) return;
-    const L = Build.level(), land = topAt(p.x, p.y), inGround = land > L, cover = xrayCover(p.x, p.y, p.y, L), dug = !landSolid(p.x, p.y, L + 1);
+    const L = Build.level(), land = levelAt(p.x, p.y), inGround = land > L, cover = xrayCover(p.x, p.y, p.y, L), dug = !landSolid(p.x, p.y, L + 1);
     if (!inGround && cover <= 0) return;                // (it shows as it is)
     shown = true;
     const Z = inGround ? land : Math.max(L, levelAt(p.x, p.y - 1)), S = TS(), x = sx(p.x), yF = sy(p.y) - shOf(L) * zoom, y0 = sy(p.y) - shOf(Z) * zoom;

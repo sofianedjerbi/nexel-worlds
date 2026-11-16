@@ -38,7 +38,7 @@ function setCaveOpen() {
     if ((ox !== x) !== (oy !== y)) { const z = landAt(myAt.z, ox, oy, x, y); if (z !== null && coveredAt(ox, oy, z)) into = {x: ox, y: oy, z}; }
   }
   showXYZ();
-  const here = myAt && coveredAt(myAt.x, myAt.y, myAt.z) ? myAt : into;
+  const cave = (p) => p && coveredAt(p.x, p.y, p.z) && !dugHollow(p.x, p.y), here = cave(myAt) ? myAt : cave(into) ? into : null;   // (a dug hollow is drawn open: cells.js)
   if (!here === !caveOpen && (!here || openCave.get(here.x + "," + here.y) === here.z)) return;
   caveOpen = !!here; openCave = here ? caveOf(here) : new Map(); caveStamp++;
   caveDepth = caveDepths();
@@ -47,7 +47,7 @@ function setCaveOpen() {
 // drawn: you look in). (You: by the height you're at; the others, people and creatures, by the server's.)
 function unseen(p) {
   const x = Math.round(p.x), y = Math.round(p.y);
-  if (!roofAt(x, y)) return false;
+  if (!roofAt(x, y) || dugHollow(x, y)) return false;
   const mine = p.e.kind === "agent" && p.e.id === myId, z = mine && myAt ? settleNear(x, y, myAt.z) : p.e.z !== undefined ? p.e.z : floorAt(x, y);
   return inOpenCave(x, y) ? !mine && z > openCave.get(x + "," + y) : coveredAt(x, y, z);
 }
@@ -179,6 +179,7 @@ function buildCaveOverlay(b) {
   const needFloor = () => { need(); if (!fc) { fc = document.createElement("canvas"); fc.width = fc.height = c.width; f = fc.getContext("2d", {willReadFrequently: true}); const oc = document.createElement("canvas"); oc.width = oc.height = c.width; o = oc.getContext("2d", {willReadFrequently: true}); } };
   for (const key in b.col) {                              // (only its hollow tiles)
     const i = +key, x = b.bx * B + i % B, y = b.by * B + (i / B | 0), X = OV_M + (i % B) * 16, Y = OV_M + (i / B | 0) * 16;
+    if (dugHollow(x, y)) continue;                        // (drawn open, as a hole: cells.js)
     if (inOpenCave(x, y)) {                               // the cave you're in: its floor here, seen through the hill
       needFloor();
       const z = openCave.get(x + "," + y), Yz = Y - shOf(z);
@@ -235,7 +236,7 @@ function caveMouths(near, x0, y0, w, h, rock) {
   let c = null, g = null, sm = null;
   for (const b of near) for (const key in b.col || {}) {
     const x = b.bx * B + key % B, y = b.by * B + (key / B | 0), X = OV_M + x * 16 - x0, Y = OV_M + y * 16 - y0;
-    if (X < OV_M - 16 || X > OV_M + w || Y < 0 || Y > h + 2 * OV_M - 64 || rock(x, y) || inOpenCave(x, y)) continue;
+    if (X < OV_M - 16 || X > OV_M + w || Y < 0 || Y > h + 2 * OV_M - 64 || rock(x, y) || inOpenCave(x, y) || dugHollow(x, y)) continue;
     for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) if (shownVoids(x, y, dx, dy).length) {
       if (!c) { c = document.createElement("canvas"); c.width = w + 2 * OV_M; c.height = h + 2 * OV_M; g = c.getContext("2d"); sm = new Uint8Array(c.width * c.height); }
       faceSkip = rock; drawFace(g, sm, c.width, X, Y, x, y, dx, dy); faceSkip = null;
@@ -245,12 +246,12 @@ function caveMouths(near, x0, y0, w, h, rock) {
   return c;
 }
 // The part of a block's overlay that can have anything in it: round its hollow tiles, as far as an opening, its
-// shadow, the ground seen behind it (three tiles north) and the block's highest lift reach
+// shadow, the ground seen behind it (three tiles north), the block's highest lift reach and its floors' lowest
 function caveBox(b, size) {
   let x0 = size, y0 = size, x1 = 0, y1 = 0;
   for (const key in b.col) {
     const X = OV_M + (key % B) * 16, Y = OV_M + (key / B | 0) * 16;
-    x0 = Math.min(x0, X - 40); x1 = Math.max(x1, X + 56); y0 = Math.min(y0, Y - 64 - b.relief.up); y1 = Math.max(y1, Y + 48);
+    x0 = Math.min(x0, X - 40); x1 = Math.max(x1, X + 56); y0 = Math.min(y0, Y - 64 - b.relief.up); y1 = Math.max(y1, Y + 48 - shOf(Math.min(0, floorAt(b.bx * B + key % B, b.by * B + (key / B | 0)))));   // (a floor dug under sea level: as far down as it is drawn)
   }
   x0 = Math.max(0, x0); y0 = Math.max(0, y0);
   return [x0, y0, Math.max(1, Math.min(size, x1) - x0), Math.max(1, Math.min(size, y1) - y0)];

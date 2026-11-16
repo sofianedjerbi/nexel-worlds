@@ -74,3 +74,19 @@ def test_the_keyhole_shows_the_cursor_where_the_ground_in_front_hides_it(game):
     game.wait("!Keyhole.shown", 3000)
     game.press("b")
     assert not game.errors
+
+
+def test_a_pocket_dug_under_the_meadow_is_drawn_open_where_you_stand_in_it(game):
+    """doben4 at the end of a stair dug east, eight down under a roof left at ground level: the cave view drew its
+    floor four tiles south of its stair, on the grass ("dauben is completely buried and appear here... the underground
+    view is buggy as hell"). A hollow dug under level ground is drawn open, as a hole is, joined to its stair."""
+    game.clear_area(10)
+    x, y = game.pos()
+    game.stamp(-5, 0, ["......"], levels=["cdefgh"], roofs=["000008"], heads=["000002"])
+    game.rpc("dev_teleport", x=x, y=y, z=-8)
+    game.wait(f"myAt && myAt.z === -8 && myAt.x === {x}", 5000)
+    game.wait(DRAWN, 8000)
+    assert game.js(f"[topAt({x}, {y}), levelAt({x}, {y}), standAt({x}, {y}), hiddenAt({x}, {y}), caveOpen]") == [0, -8, -8, False, False]
+    assert game.js(f"[levelAt({x - 1}, {y}), levelAt({x + 1}, {y})]") == [-7, 0]        # (the stair beside it; the meadow)
+    game.sleep(300)
+    assert not game.errors
