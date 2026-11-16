@@ -18,7 +18,7 @@ def test_a_wall_is_planned_with_a_cursor_and_built_by_keys_alone(game):
     game.press("ArrowRight"); game.press("ArrowRight")         # the cursor moves; you do not
     assert game.js("[Build.S.at.x, Build.S.at.y]") == [x + 2, y + 1] and game.pos() == (x, y)
     rows = game.js("Build.rows()")                             # the corner: the mode's name, and only the keys that do something here
-    assert [r[0] for r in rows] == ["B", "Space", "R", "X"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"     # (R: the cursor up a floor)
+    assert [r[0] for r in rows] == ["B", "Space", "Shift ↑ ↓", "X"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"     # (Shift ↑ ↓: the cursor a floor up, down)
     assert rows[3][1] == "Dig a hole"                          # (X on bare ground: a hole)
     assert all(len(r[1]) <= 26 for r in rows)                  # (short: a long line ran under the bar)
     kb.down("Space")                                           # held: a row of four
@@ -219,5 +219,10 @@ def test_x_breaks_anything_and_digs_holes(game):
     assert game.js("Build.rows()")[3] == ["X", "Dig a hole"]
     game.press("x")
     game.wait(f"surfacesAt({x - 1}, {y + 2})[0] === -2 && Build.S.plans.size === 0", 20000)
+    # two layers down the hole's floor is behind the grass in front of it: the x-ray circle goes round the cursor
+    # ("the selector become unvisible, it should trigger xray too"), and away from the hole it is yours again
+    game.wait(f"xray.a > .9 && xray.x === {x - 1} && xray.L === -2", 5000)
+    game.js(f"Build.S.at = {{x: {x + 3}, y: {y + 3}}}")
+    game.wait("xray.a < .1", 5000)
     game.press("b")
     assert game.inv("dirt") == 3 and game.inv("stone") == 3 and not game.errors      # (the rock's two, and the deeper layer is stone)

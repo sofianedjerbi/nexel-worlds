@@ -1811,3 +1811,22 @@ not its body).
   west wall; the first floor with a short wall from the back, a ladder against it under a hatch; the attic on top with
   a roof terrace round it. A ladder in the open middle of a room is never climbed (every step off it is floor at its
   height): it has to lean on a wall. Walked by an agent on the copy: ground → first floor → attic → roof terrace → ground.
+
+## Iteration 144: Shift ↑ ↓ for floors, and the x-ray goes round the cursor in a hole
+- User: "R for up a floor.. not natural. also what for down a floor ? if i want to go mine like minecraft i need to
+  dig my stair down ! this is not easy since the selector become unvisible, it should trigger xray too and be able to
+  go down a floor. R is unnatural also"
+- Seen first on a copy: a staircase dug down with X (−1, −2, −3). The cursor rode into each hole, but two layers down
+  a hole's floor is drawn behind the grass in front of it: the cursor sat on that grass, the hole itself unseen.
+- Keys: in build mode Shift ↑ is a floor up, Shift ↓ a floor down (WASD too, by the key's place; PgUp/PgDn as
+  before; R/F still work, unsaid). Down was only ever "back from up"; now, below your own floor, the cursor sinks a
+  storey (as far as four): from upstairs onto the ground floor under you, into a pit, a cave. The corner says
+  "Shift ↑ ↓ A floor up, down" and "floor -1"; the greeting and the help page say it. Shift in build mode no longer
+  toggles running (keyboard.js).
+- X-ray (xray.js): in build mode the cursor is looked at first: two layers or more under the ground in front of it,
+  the circle goes round the cursor, not you (the hill's own see-through, the same picture), and back to you when
+  it comes out. Compared on the copy with it off: off, the deepest step can't be seen; on, the hole shows down to
+  the cursor.
+- Tests: test_e2e_build (the circle round the cursor two layers down, gone away from the hole), test_e2e_floors
+  (Shift ↑ ↓ up and back, Shift did not set you running; upstairs Shift ↓ is the room under, "floor -1"). Build,
+  floors, climb, help, menu, moving, keys, ui, behind: 43 pass; 438 unit.

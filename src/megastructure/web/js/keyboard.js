@@ -176,7 +176,7 @@ addEventListener("keydown", (e) => {
   if (document.activeElement === $("name")) { if (e.key === "Enter") $("join").click(); return; }
   if (document.activeElement === $("say") || document.activeElement === $("letter") || !me) return;
   const k = e.key.toLowerCase();
-  if (k === "shift") { keys.add("shift"); if (opt("sprint") === "hold") runKey = true; else if (!e.repeat) runKey = !runKey; syncWalk(); return; }      // (the settings' Sprint)
+  if (k === "shift") { keys.add("shift"); if (Build.on) return; if (opt("sprint") === "hold") runKey = true; else if (!e.repeat) runKey = !runKey; syncWalk(); return; }      // (the settings' Sprint; in build mode Shift is the floors' key: build.js)
   inputMode = "keys"; document.body.classList.add("bykeys");
   if (k === "escape" && Build.on && !isOpen("craft") && !isOpen("bag") && !isOpen("mail")) { Build.onKey(k, e); return; }
   if (k === "escape") { if (isOpen("bag") && bagKey(k, e)) return; if (isOpen("craft") || isOpen("bag") || isOpen("mail")) closePanels(); else if (!isOpen("ask")) openMenu(); return; }      // (nothing to shut: the menu, menu.js)

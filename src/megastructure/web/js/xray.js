@@ -66,28 +66,39 @@ function xrayOver(tx, ty) {
 // Someone on the ground behind that rock: how clearly they show through it (0: hidden as ever, 1: whole)
 const xrayShows = (p) => (xrayRock(Math.round(p.x), Math.round(p.y)) ? 0 : xrayOn(Math.round(p.x), Math.round(p.y)));
 
-// Once a frame, before anything of it is drawn: are you behind something, and how much of you
+// How far (art px) the ground south of a tile rises over the foot of its row (py: the row as drawn) at height L
+function xrayCover(tx, row, py, L) {
+  let cover = 0;
+  for (let ty = row + 1; ty <= row + XRAY.far; ty++) cover = Math.max(cover, (levelAt(tx, ty) - L) * RELIEF_STEP - (ty - py - 1) * 16);
+  return cover;
+}
+// Once a frame, before anything of it is drawn: are you behind something, and how much of you. In build mode the
+// cursor first: down in a hole you dig (two layers or more), or behind a rise, the circle goes round it, so you see
+// where it is and what is there ("the selector become unvisible, it should trigger xray too": build.js)
 function xrayLook(dt) {
-  const p = me && ents.get("agent" + myId);
-  let want = 0;
-  if (p && p.e && !caveOpen) {
+  const p = me && ents.get("agent" + myId), at = Build.on && Build.S.at;
+  let want = 0, f = null;                                  // (what the circle is round: px, py as drawn, L, row; mid: its centre over its tile)
+  if (at && !caveOpen) {
+    const L = Build.level();
+    if (xrayCover(at.x, at.y, at.y, L) >= 2 * RELIEF_STEP) { want = 1; f = {px: at.x, py: at.y, L, row: at.y, mid: 0}; }
+  }
+  if (!f && p && p.e && !caveOpen) {
     // (where you are as drawn, at the height you are at: on a step, a floor, a ladder's rungs; it was the land's under
     // you, and a climb up a cliff's side or a flight of stairs beside one brought the circle up half way)
     const cl = Climb.climbOf(p), px = p.x + (cl ? cl.dx : 0), py = p.y + (cl ? cl.dy : 0);
     const L = cl ? Math.floor(cl.h) : Math.min(Floors.standOf(p, Math.floor(p.x), Math.floor(p.y)), Floors.standOf(p, Math.ceil(p.x), Math.ceil(p.y))), row = Math.floor(py + .001);
     let hidden = 0;                                        // the share of you under the top edge of the ground in front: the two
-    const f = px - Math.floor(px);                         //  columns you stand across, each for the part of you in it
-    for (const [tx, part] of [[Math.floor(px), 1 - f], [Math.floor(px) + 1, f]]) {
-      let cover = 0;
-      if (part > .001) for (let ty = row + 1; ty <= row + XRAY.far; ty++) cover = Math.max(cover, (levelAt(tx, ty) - L) * RELIEF_STEP - (ty - py - 1) * 16);
-      hidden += part * Math.max(0, Math.min(1, (cover - 2 - STAND) / XRAY.body));
-    }
+    const fr = px - Math.floor(px);                        //  columns you stand across, each for the part of you in it
+    for (const [tx, part] of [[Math.floor(px), 1 - fr], [Math.floor(px) + 1, fr]]) if (part > .001) hidden += part * Math.max(0, Math.min(1, (xrayCover(tx, row, py, L) - 2 - STAND) / XRAY.body));
     want = Math.max(0, Math.min(1, (hidden - XRAY.from) / (XRAY.full - XRAY.from)));
+    f = {px, py, L, row, mid: .5 + UP};
+  }
+  if (f) {
     xray.t = want > 0 ? xray.t + dt : 0;
     if (xray.t < XRAY.wait && xray.a <= .01) want = 0;      // (a moment behind something: not yet)
     if (xray.t > 0 || xray.a > .01) {
-      xray.L = L; xray.row = row; xray.x = px; xray.y = py - shOf(L) / 16 - .5 - UP;   // (its centre: your body, where it is drawn)
-      if (!xrayPaint(Math.round(px)) && xray.a <= .01) want = 0;               // (it comes once its picture is ready)
+      xray.L = f.L; xray.row = f.row; xray.x = f.px; xray.y = f.py - shOf(f.L) / 16 - f.mid;   // (its centre: your body, or the cursor's tile, where it is drawn)
+      if (!xrayPaint(Math.round(f.px)) && xray.a <= .01) want = 0;               // (it comes once its picture is ready)
     }
   }
   xray.a += (want - xray.a) * (1 - Math.exp(-dt / .09));
