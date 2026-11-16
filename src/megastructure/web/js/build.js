@@ -79,7 +79,7 @@ const Build = (() => {
     if (buried(p, L)) { const z = landSolid(p.x, p.y, L + 2) ? L + 2 : L + 1; return {z: L, what: "ground", dig: true, down: true, shut: !open(p.x, p.y, z)}; }   // (the cell to dig first: air beside it?)
     const built = (z) => { const c = FLOORS || z !== L ? Floors.get(p.x, p.y, z) : null; return c ? {z, what: c[1] ? label(CH[c[1]]) : c[0] === "roof" ? "roof" : c[0] === "stairs" ? "the step" : "planks", up: true} : null; };
     for (const z of zs) if (built(z)) return built(z);
-    if (on && L === standAt(p.x, p.y)) {               // on the land: whatever stands there; what is laid in it; else the ground itself
+    if (on && L === groundAt(p.x, p.y)) {               // on the land: whatever stands there; what is laid in it; else the ground itself
       if (!GROUND.has(t[0])) { const c = "Zz".includes(t[0]) ? (structAt(p.x, p.y) || {c: t[0]}).c : t[0]; return {z: L, what: label(CH[c]), verb: Object.values(PLACEABLE_BLOCK).includes(c) ? "" : (HARVEST[c] || "").replace(/ \(.*$/, "")}; }   // (what grows: its own verb)
       if ("_n:".includes(t[1])) return {z: L, what: label(CH[t[1]])};
       if (!wet(t[1]) && L > -12) return {z: L, what: "ground", dig: true};
@@ -139,7 +139,7 @@ const Build = (() => {
     return false;
   }
   // Somewhere to stand at height h on tile q: on the ground, or on a built block with nothing solid on it
-  const stands = (q, h) => { const c = FLOORS ? Floors.get(q.x, q.y, h) : null; return c ? !SOLID.has(c[1]) : h === standAt(q.x, q.y) ? plainWalk(q.x, q.y) : surfacesAt(q.x, q.y).includes(h); };   // (a tunnel's floor, under its roof, too)
+  const stands = (q, h) => { const c = FLOORS ? Floors.get(q.x, q.y, h) : null; return c ? !SOLID.has(c[1]) : h === groundAt(q.x, q.y) ? plainWalk(q.x, q.y) : surfacesAt(q.x, q.y).includes(h); };   // (a tunnel's floor, under its roof, too)
   async function build(j) {                           // -> why it could not be done (nothing: it is done)
     if (!j.take && !(meObs.self.inventory[j.item] > 0)) return `No ${label(j.item)} left`;
     const here = () => { const s = myPos(); return {...s, z: myZ(s.x, s.y)}; };

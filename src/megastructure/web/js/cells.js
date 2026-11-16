@@ -64,6 +64,9 @@ function standAt(x, y) {                    // ...and what's on the tile
   const f = roofAt(x, y) > 0 ? seenUnder(x, y) : undefined;
   return f === undefined ? topAt(x, y) : f;
 }
+// ...as the world has it, however it is drawn (what you can build on, take, climb): on its lowest ground, in the
+// tunnel under a roof that was dug (seen through or not: build mode took a step for the ground over it, now and then)
+const groundAt = (x, y) => (inOpenCave(x, y) ? openCave.get(x + "," + y) : dugHollow(x, y) ? floorAt(x, y) : topAt(x, y));
 const hiddenAt = (x, y) => roofAt(x, y) > 0 && !inOpenCave(x, y) && seenUnder(x, y) === undefined;   // what lies on the lowest ground, under ground you're not in
 
 let myAt = null, myWas = null;             // your tile and the height you stand at (caves.js keeps it, as the server does); and the tile before

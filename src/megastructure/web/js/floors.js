@@ -35,7 +35,7 @@ const Floors = (() => {
   // The built cells of the tile's column, a bit each (cells.js: what you walk on is the land and these)
   function mask(x, y) { const c = FLOORS && colOf(x, y); let m = 0; if (c) for (const z of c.keys()) m |= 1 << (z - LOW); return m >>> 0; }
   // What stands at height z of the tile: on a built block, what was put on it; on the land, the tile's own
-  const thingAt = (x, y, z) => { const c = get(x, y, z); return c ? c[1] : z === standAt(x, y) ? combAt(x, y) || "" : ""; };
+  const thingAt = (x, y, z) => { const c = get(x, y, z); return c ? c[1] : z === groundAt(x, y) ? combAt(x, y) || "" : ""; };
   // As the server's block_fits: why no block can go in the cell (x, y, z), in a few words; nothing when one can
   // (planned: blocks that are only planned yet, which hold the ones planned beside them: build.js)
   function fits(x, y, z, planned = () => false) {

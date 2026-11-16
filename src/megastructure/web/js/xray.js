@@ -21,7 +21,8 @@
 // that are painted (the circle, wherever you are on your tile); ms: a frame's share of painting it; turn: seconds a
 // new picture takes to come over the one before; near: how far from your tile (tiles) the place you are in goes;
 // whole (tests): no rock is left out and all of the picture is shown: it must then be the land's own, to the pixel
-const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, box: 9, ms: 2.5, turn: .12, near: 4.1, whole: false};
+// wide: how far from your tile ground that was dug is seen (not in the circle: it has its own reach, r)
+const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, box: 9, ms: 2.5, turn: .12, near: 4.1, wide: 12, whole: false};
 // how strong, the height you stand at, your row, its centre (tiles), its canvas, how long you've been hidden, the land
 // without the rock (pic), the next one being painted (job), the one before (old) and how far pic has come over it (mix)
 const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, c2: null, t: 0, pic: null, job: null, old: null, mix: 1};
@@ -35,18 +36,20 @@ function xrayRock(tx, ty) {
 // rock on the way), no further than XRAY.near; and, in ground that was dug, all you could walk to under sea level: up
 // its steps too, and under its roof (a tunnel, a room: cells.js), so that the way you came stays seen as you go down
 // it (a step down, the one two behind you was out of the place: it closed). -> {cols: column of tiles -> its rows of
-// that ground, z: "x,y" -> its height there}
+// that ground, z: "x,y" -> its height there}. Ground that was dug is of it as far as XRAY.wide: all of the tunnel
+// or the room on the screen ("underground vision should display as much as player can see"; it stopped four tiles
+// from you, a fire a little further on not seen); how much of it light shows: cavelight.js
 function xrayPlace(tx, row, L) {
-  const h0 = settleNear(tx, row, L), cols = new Map(), z = new Map([[tx + "," + row, h0]]), todo = [[tx, row, h0]];   // (h0: your tile's own height: stepping off it down a stair, L is already the next one's)
+  const far = opt("above") === "circle" ? 0 : XRAY.wide, h0 = settleNear(tx, row, L), cols = new Map(), z = new Map([[tx + "," + row, h0]]), todo = [[tx, row, h0]];   // (h0: your tile's own height: stepping off it down a stair, L is already the next one's)
   while (todo.length) {
     const [x, y, h] = todo.pop();
     if (!cols.has(x)) cols.set(x, []);
     cols.get(x).push(y);
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy, key = nx + "," + ny;
-      if (z.has(key) || (nx - tx) ** 2 + (ny - row) ** 2 > XRAY.near ** 2 || tile(nx, ny) === null) continue;
+      if (z.has(key) || tile(nx, ny) === null) continue;
       const lv = levelAt(nx, ny), w = lv <= L + 1 ? null : landAt(h, nx, ny, x, y), h2 = lv <= L + 1 ? lv : w !== null && w < 0 && (w === lv || dugHollow(nx, ny)) ? w : null;
-      if (h2 === null) continue;
+      if (h2 === null || ((nx - tx) ** 2 + (ny - row) ** 2 > XRAY.near ** 2 && !(h2 < 0 && Math.max(Math.abs(nx - tx), Math.abs(ny - row)) <= far))) continue;
       z.set(key, h2); todo.push([nx, ny, h2]);
     }
   }
@@ -132,11 +135,11 @@ function xrayLook(dt) {
 // changes, a few ms a frame (XRAY.ms): until it is ready the one before stays, which is right a tile further along
 // a wall, and a row late for a moment when you step toward it or away. -> is the picture the one for where you are?
 function xrayPaint(tx) {
-  const near = [];                                          // the blocks it can take tiles from, and what they have of the land
-  for (let by = Math.floor((xray.row - 14) / B); by <= Math.floor((xray.row + 14) / B); by++) for (let bx = Math.floor((tx - 5) / B); bx <= Math.floor((tx + 5) / B); bx++) {
+  const near = [], wide = opt("above") === "circle" ? 5 : XRAY.wide + 2;   // the blocks it can take tiles from, and what they have of the land
+  for (let by = Math.floor((xray.row - 14) / B); by <= Math.floor((xray.row + 14) / B); by++) for (let bx = Math.floor((tx - wide) / B); bx <= Math.floor((tx + wide) / B); bx++) {
     const b = blocks.get(bkey(bx, by)); if (b && b.px) near.push(b);
   }
-  const key = [tx, xray.row, xray.L, XRAY.whole, ...near.map((b) => b.bx + ":" + b.by + ":" + (b.ver || 0))].join();
+  const key = [tx, xray.row, xray.L, XRAY.whole, wide, ...near.map((b) => b.bx + ":" + b.by + ":" + (b.ver || 0))].join();
   if (xray.pic && xray.pic.key === key) { xray.job = null; return true; }
   if (!xray.job || xray.job.key !== key) xray.job = {key, steps: xrayPicture(tx, key, near)};
   const t0 = performance.now();
@@ -148,7 +151,6 @@ function xrayPaint(tx) {
   return r.done;
 }
 function* xrayPicture(tx, key, near) {
-  const D = Math.ceil(XRAY.r * 32) + 2, w = XRAY.box, W = w * 16, h = D + 22, y = xray.row * 16 - shOf(xray.L) - (D >> 1) - 6;   // (its rows on the screen, in art px: the circle's, wherever you are on your tile)
   // the rock seen through, from where you were when this was started: on the line of sight to a tile of your place
   // (south of it in its column, and high enough to be drawn over it: two layers a row), and of the mass that hides
   // you (gone through from what is over your tile and the two beside it, tile to tile)
@@ -157,19 +159,24 @@ function* xrayPicture(tx, key, near) {
     const lv = XRAY.whole ? -99 : levelAt(x, ty), rows = lv >= L + 2 && place.get(x);
     return !!rows && rows.some((gy) => gy < ty && lv - floors.get(x + "," + gy) > 2 * (ty - gy) - 2);
   };
-  const at = (x, ty) => (x - tx + 8) * 64 + ty - row + 24, join = (x, ty) => { if (!mass.has(at(x, ty))) { mass.add(at(x, ty)); todo.push([x, ty]); } };
+  const at = (x, ty) => (x - tx + 16) * 64 + ty - row + 24, join = (x, ty) => { if (!mass.has(at(x, ty))) { mass.add(at(x, ty)); todo.push([x, ty]); } };
   for (let x = tx - 1; x <= tx + 1; x++) if ((place.get(x) || []).includes(row)) for (let ty = row + 1; ty <= row + XRAY.far; ty++) if (sight(x, ty)) join(x, ty);
   while (todo.length) {
     const [x, ty] = todo.pop();
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (Math.abs(x + dx - tx) <= 6 && Math.abs(ty + dy - row) <= 20 && levelAt(x + dx, ty + dy) >= L + 2) join(x + dx, ty + dy);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (Math.abs(x + dx - tx) <= XRAY.wide + 2 && Math.abs(ty + dy - row) <= 20 && levelAt(x + dx, ty + dy) >= L + 2) join(x + dx, ty + dy);
   }
   // the place under a roof (a tunnel, a room dug under the ground): its floor is kept, the ground over it left out
   const floor = new Map(); for (const [key, h] of floors) { const [x, ty] = key.split(",").map(Number); if (h < levelAt(x, ty)) floor.set(key, h); }
   const rock = (x, ty) => mass.has(at(x, ty)) && sight(x, ty) && !floor.has(x + "," + ty);
+  // its tiles across and its rows on the screen (art px): the circle's, wherever you are on your tile; and all of the
+  // dug ground of your place, each floor where it is drawn with the wall behind it
+  const D = Math.ceil(XRAY.r * 32) + 2, dug = [...floors].filter(([, f]) => f < 0).map(([k, f]) => [...k.split(",").map(Number), f]);
+  const xa = Math.min(tx - (XRAY.box >> 1), ...dug.map((d) => d[0] - 1)), w = Math.max(tx + (XRAY.box >> 1), ...dug.map((d) => d[0] + 1)) - xa + 1, W = w * 16;
+  const ya = xray.row * 16 - shOf(xray.L) - (D >> 1) - 6, y = Math.min(ya, ...dug.map((d) => d[1] * 16 - 24)), h = Math.max(ya + D + 22, ...dug.map((d) => d[1] * 16 - shOf(d[2]) + 26)) - y;
   let lo = Math.min(99, ...floor.values()), hi = -99, edged = [];
-  for (let ty = xray.row - 14; ty <= xray.row + 14; ty++) for (let x = tx - 5; x <= tx + 5; x++) { const l = levelAt(x, ty); lo = Math.min(lo, l); hi = Math.max(hi, l); }
+  for (let ty = xray.row - 14; ty <= xray.row + 14; ty++) for (let x = xa - 1; x <= xa + w; x++) { const l = levelAt(x, ty); lo = Math.min(lo, l); hi = Math.max(hi, l); }
   const y0 = Math.max(xray.row - 14, (y + shOf(lo) >> 4) - 1), y1 = Math.min(xray.row + 14, y + h + shOf(hi) >> 4);   // every row of tiles that can be drawn in it
-  const R = {x: tx - (w >> 1), y: y0, w, h: y1 - y0 + 1}, gh = R.h * 16, ground = new Uint32Array(W * gh);   // (its ground: the blocks' own px, tiles.js)
+  const R = {x: xa, y: y0, w, h: y1 - y0 + 1}, gh = R.h * 16, ground = new Uint32Array(W * gh);   // (its ground: the blocks' own px, tiles.js)
   for (const b of near) {
     const bx = (b.bx * B - R.x) * 16, by = (b.by * B - R.y) * 16, x0 = Math.max(0, bx), x1 = Math.min(W, bx + BW);
     if (x1 > x0) for (let yy = Math.max(0, by); yy < Math.min(gh, by + BW); yy++) ground.set(b.px.subarray((yy - by) * BW + x0 - bx, (yy - by) * BW + x1 - bx), yy * W + x0);
@@ -219,7 +226,7 @@ function* xrayPicture(tx, key, near) {
     if (n >= 0 && n < seen.length && !seen[n] && !(see.state[n] === 1 && see.lev[n] <= see.lev[f])) { edge[f] = ink; lines++; break; }
   }
   if (lines) { og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(edge, W, h), 0, 0); }
-  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, any, rock: rocks, floor, rx: R.x, ry: R.y, rw: w, rh: R.h};
+  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, any, rock: rocks, floor, place: floors, lev: see.lev, depth: underDepths(floor, floors), rx: R.x, ry: R.y, rw: w, rh: R.h};
 }
 
 // The circle itself, over the land and under everything standing on it (in the other views: drawXrayWhole)
@@ -251,43 +258,4 @@ function drawXray(sx, sy) {
   ctx.globalAlpha = xray.a;
   ctx.drawImage(xray.c, sx(0) + ax * zoom, sy(0) + ay * zoom, D * zoom, D * zoom);   // (on the land's own grid: not rounded apart from it)
   ctx.globalAlpha = 1;
-}
-
-// Cut away, outline, faded: all of the picture (the ground under the rock in the way, its water as it is this
-// frame), over the rock: whole, or a share of it; in the outline view the rock's edges over it, in the pack's ink
-function drawXrayWhole(sx, sy) {
-  const v = opt("above"), k = v === "faded" ? XRAY_FADED : 1, both = (xray.old ? [[xray.old, 1 - xray.mix], [xray.pic, xray.mix]] : [[xray.pic, 1]]).filter(([Q]) => Q.any);
-  if (!both.length) return;
-  for (const [Q] of both) {
-    if (!Q.whole) { Q.whole = document.createElement("canvas"); Q.whole.width = Q.w; Q.whole.height = Q.h; }
-    const g = Q.whole.getContext("2d");
-    g.globalCompositeOperation = "source-over"; g.clearRect(0, 0, Q.w, Q.h); g.imageSmoothingEnabled = false;
-    if (waterView) {
-      g.drawImage(waterCv, Q.x - waterView.x, Q.y - waterView.y, Q.w, Q.h, 0, 0, Q.w, Q.h);
-      g.globalCompositeOperation = "destination-in"; g.drawImage(Q.wet, 0, 0);
-      g.globalCompositeOperation = "source-over";
-    }
-    g.drawImage(Q.over, 0, 0);
-    if (v === "outline") g.drawImage(xrayEdges(Q), 0, 0);
-  }
-  // one picture, or the new one coming over the one before: the two added up, each for its share, then put on the
-  // land once (each put on it faint, the land showed between them half way: a flash at every step)
-  const x0 = Math.min(...both.map(([Q]) => Q.x)), y0 = Math.min(...both.map(([Q]) => Q.y)), w = Math.max(...both.map(([Q]) => Q.x + Q.w)) - x0, h = Math.max(...both.map(([Q]) => Q.y + Q.h)) - y0;
-  const c = xray.cw || (xray.cw = document.createElement("canvas")); if (c.width < w || c.height < h) { c.width = Math.max(c.width, w); c.height = Math.max(c.height, h); }
-  const g = c.getContext("2d");
-  g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.clearRect(0, 0, c.width, c.height); g.imageSmoothingEnabled = false;
-  for (const [Q, share] of both) { g.globalAlpha = xray.old ? share : 1; g.drawImage(Q.whole, Q.x - x0, Q.y - y0); g.globalCompositeOperation = "lighter"; }
-  ctx.globalAlpha = xray.a * k;
-  ctx.drawImage(c, 0, 0, w, h, sx(0) + x0 * zoom, sy(0) + y0 * zoom, w * zoom, h * zoom);
-  ctx.globalAlpha = 1;
-}
-// The edges of what the rock was drawn over (the picture's seen), an art px wide, in ink: made once a picture
-function xrayEdges(Q) {
-  if (Q.edges) return Q.edges;
-  const m = new Uint32Array(Q.w * Q.h), s = Q.seen, W = Q.w, ink = 0xff604c75;          // (the walls' ink, #754c60: structures.js; as a little-endian px)
-  for (let y = 0; y < Q.h; y++) for (let x = 0; x < W; x++) {
-    const f = y * W + x;
-    if (s[f] && (x === 0 || y === 0 || x === W - 1 || y === Q.h - 1 || !s[f - 1] || !s[f + 1] || !s[f - W] || !s[f + W])) m[f] = ink;
-  }
-  return (Q.edges = pxCanvas(m, W, Q.h));
 }

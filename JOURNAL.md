@@ -2050,3 +2050,32 @@ not its body).
   inside, its floor and the stair down to it); the x-ray's own tests on mountains unchanged.
 - Left: what is seen through is nine tiles wide (a long tunnel ends straight at its side); a tunnel that goes on
   under a hill is a cave there; a tree in front of a hole still stands in front of it.
+
+## Iteration 152: under ground you see what light shows
+- User (while 151 was being tested): "underground vision should display as much as player can see, it is player
+  vision. if fire is here, player see it, so it should be visible . design a proper model". And, before: "there's no
+  gradient".
+- Looked: a cave under a hill already has a model (cavelight.js): all of the cave is shown, daylight comes in at
+  its mouth and dies away over six tiles, you light a little round you, a fire more; the rest is dark. A tunnel dug
+  under the meadow had none: seen through its roof four tiles from you and no further (a walk's reach, a picture
+  nine tiles wide), all of it as bright as day, then cut off; a fire five tiles on was not drawn.
+- The model, one for both:
+  1. From above, the land is the land: a roof is the meadow, nobody under it is seen.
+  2. In the ground (a hole, a stair, a tunnel, a room) you see the place you are in: all the dug ground you could
+     walk to from where you stand, as far as the screen goes (twelve tiles), through whatever hides it from above.
+  3. How much of it you see is light: under the sky, daylight; under a roof, daylight a few tiles in from where the
+     place is open to the sky, a little round you (and round anyone else there), more round a fire however far it
+     is; between them it is dark, not gone.
+  4. Whatever is in the place is drawn with it: a fire, what lies there, who stands there. Who walks over it fades.
+- Change: xray.js: ground that was dug is of the place as far as XRAY.wide (12 tiles), the picture as wide and as
+  tall as that ground is drawn (it was 9 tiles, round you). cavelight.js: drawUnderDark, the cave's light on the
+  picture's px under a roof (each px from its tile's light and the tiles' beside it; 0.4 ms a frame); the picture
+  of a twenty-tile tunnel is painted in 9 ms, over 3 to 5 frames. xrayviews.js: the views that are not the circle,
+  out of xray.js (300 lines). Build mode, ladders and what is on a tile go by the tile's real ground (cells.js:
+  groundAt), not by how it is drawn: a step's test failed now and then under load, the tunnel seen through or not
+  when X was pressed.
+- Result (a tunnel 14 tiles long with a fire, a side tunnel to a room with a fire, by day and by night, looked at):
+  from the mouth the tunnel is bright, darkens, and the fires show lit in the distance; at night only you and the
+  fires light it. 60 frames a second walking it. Test: test_e2e_digging (a fire nine tiles in: drawn, its tile lit,
+  the tunnel between dark, the mouth bright).
+- Left: light goes round corners (no line of sight); a tunnel under a hill is still a cave there.

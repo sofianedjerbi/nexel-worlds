@@ -135,3 +135,23 @@ def test_a_tunnel_keeps_its_roof_from_above_and_is_seen_through_it_from_inside(g
     assert game.js(f"[seenUnder({X}, {y}), seenUnder({X - 1}, {y}), seenUnder({X}, {y + 1}), xrayGone({X}, {y + 1})]") == [-4, -4, None, True]
     assert game.js(GREEN_ON_SCREEN, [[X, y, 4], [X - 1, y, 4], [x + 3, y, 3]]) == [0, 0, 0]      # its floor where you stand, beside you, the stair down to it
     assert not game.errors
+
+
+def test_under_ground_you_see_what_light_shows_a_fire_however_far(game):
+    """"underground vision should display as much as player can see, it is player vision. if fire is here, player see
+    it, so it should be visible": what was seen of a tunnel stopped four tiles from you, all of it as bright as day
+    ("there's no gradient"), and a fire a little further on was not drawn. All of the place on the screen is seen;
+    how bright, light says (cavelight.js): daylight a few tiles in from its mouth, you, a fire; the rest dark."""
+    game.clear_area(16)
+    x, y = game.pos()
+    game.stamp(-8, 0, ["............^..."], levels=["abcddddddddddddd"], roofs=["0000444444444444"], heads=["0000222222222222"])
+    game.rpc("dev_teleport", x=x - 5, y=y, z=-4)             # at the foot of the stair, the tunnel's mouth
+    game.wait(f"myAt && myAt.x === {x - 5} && myAt.z === -4", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
+    fire, mid = x + 4, x                                       # the fire nine tiles from you; between it and you, five tiles in
+    assert game.js(f"[combAt({fire}, {y}), seenUnder({fire}, {y}), hiddenAt({fire}, {y}), standAt({fire}, {y})]") == ["^", -4, False, -4]
+    dark = f"""(X) => {{ const P = xray.pic, f = ({y} * 16 - shOf(-4) + 8 - P.y) * P.w + X * 16 + 8 - P.x; return [P.under.includes(f), +(P.img.data[f * 4 + 3] / 255).toFixed(2)]; }}"""
+    at_mouth, between, by_fire = (game.js(dark, X) for X in (x - 4, mid, fire))
+    assert at_mouth[0] and between[0] and by_fire[0]           # (floor under the roof, in the picture)
+    assert at_mouth[1] < .15 and by_fire[1] < .1 and between[1] > .25, (at_mouth, between, by_fire)
+    assert not game.errors

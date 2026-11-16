@@ -165,6 +165,7 @@ function frame(now) {
   foodPreview();
   drawPlucks(sx, sy, S, now);
   drawCaveDark(vis, sx, sy, S, t);                   // (the cave you're in: dark past where daylight reaches)
+  drawUnderDark(vis, sx, sy, t);                     // (...and the tunnel you dug, seen through its roof: cavelight.js)
   drawNight(vis, sx, sy, S, t);
   drawGrid(sx, sy, S);                             // (/grid: debug.js)
   updateActions();
