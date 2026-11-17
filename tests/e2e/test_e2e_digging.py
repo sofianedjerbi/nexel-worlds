@@ -256,3 +256,24 @@ def test_where_the_cut_ends_it_has_an_edge_a_line_and_a_shadow_in_from_it(game):
     assert px(X, y, -4, 0, 8)[1:] != ink and px(X, y, -4, 15, 8)[1:] != ink            # between two of its floors: nothing
     assert not game.errors
 
+
+def test_the_outline_goes_round_the_place_itself_and_is_the_usual_view(game):
+    """"Top outline is kinda broken. Also make outline the default": the outline was round all that the ground in
+    front was drawn over, so a tile out from the cut on every side (the tiles beside the place are in the picture
+    with their own edge) and across a stair's wall where the meadow's edge had been. It goes round the place itself,
+    as one shape: along the top of its wall, its floor's front, its end; nothing a tile out, nothing across it."""
+    assert game.js("opt('above')") == "outline"
+    game.clear_area(12)
+    x, y = game.pos()
+    game.stamp(1, 0, ["........"], levels=["abcddddd"], roofs=["00004444"], heads=["00002222"])
+    X = x + 6
+    game.rpc("dev_teleport", x=X, y=y, z=-4)
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === -4", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000)
+    line = lambda *a: game.js("""([x, y, lv, ax, ay]) => { const P = xray.pic, X = x * 16 + ax - P.x, Y = y * 16 - shOf(lv) + ay - P.y;
+      return xrayEdges(P).getContext('2d').getImageData(X, Y, 1, 1).data[3] > 0; }""", list(a))
+    assert line(X, y, 0, 8, 0) and line(X, y, -4, 8, 15) and line(x + 8, y, -4, 15, 8)       # the top of its wall, its floor's front, its end
+    assert not line(X, y - 1, 0, 8, 0) and not line(X, y - 1, 0, 8, 8) and not line(x + 9, y, -4, 8, 8)   # a tile out: nothing
+    assert not line(X, y, -4, 8, 8) and not line(X, y, 0, 8, 12) and not line(x + 2, y, -2, 8, 8) and not line(x + 2, y, 0, 8, 6)   # across it, the stair's wall too: nothing
+    assert not game.errors
+

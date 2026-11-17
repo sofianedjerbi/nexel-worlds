@@ -10,7 +10,9 @@
 //    earth stopped square against the grass). Not over it where the land's own edge is (its grass hangs there), nor
 //    toward ground that goes on level with it (a way out).
 // c: the picture's {W, h (px), w (tiles), R (its rect of tiles), y (its top, art px), see, seen, floor, floors, place,
-// rocks}. -> {px: what to lay over it, cut: the tiles of 1, more: the px it added to seen}
+// rocks}. -> {px: what to lay over it, cut: the tiles of 1, more: the px it added to seen, deep: the px that show
+// the place where it is under a roof, dug or cut, seen through or not (the outline goes round them: xrayviews.js;
+// null: none, a hill in front and no more)}
 const CUT = {earth: 110, ink: [112, 70, 58], lip: [.34, .22, .11]};   // how dark earth cut through is (of 255); the edge's ink; its shadow, a px each
 function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks}) {
   const n = W * h, px = new Uint32Array(n), al = new Float32Array(n), fill = new Uint8Array(n), cut = new Set(), sa = CUT.earth / 255;
@@ -29,9 +31,11 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks}) {
   const deepT = new Uint8Array(w * R.h), tileOf = (f, d = 0) => { const i = f % W >> 4, j = Math.floor((y + (f / W | 0) + shOf(see.lev[f]) + d) / 16) - R.y; return j >= 0 && j < R.h ? j * w + i : -1; };
   for (const [k, lv] of floors) if (lv < 0 || floor.has(k) || cut.has(k)) { const [x, ty] = k.split(",").map(Number), i = x - R.x, j = ty - R.y; if (i >= 0 && i < w && j >= 0 && j < R.h) deepT[j * w + i] = 1; }
   for (const k of cut) { const [x, ty] = k.split(",").map(Number); deepT[(ty - R.y) * w + x - R.x] = 1; }
-  const deep = new Uint8Array(n), dist = new Uint8Array(n).fill(255), todo = [];
+  const deep = new Uint8Array(n), dist = new Uint8Array(n).fill(255), todo = [], lvT = R.lk || R.lv;
   for (let f = 0; f < n; f++) if (see.state[f] === 1 || fill[f]) {
-    const t = tileOf(f, see.band[f] ? 4 : 0), ts = tileOf(f);   // (a band starts a px or two over the line between two tiles where a hill's edge is set in: it is of the tile in front all the same)
+    // (a band starts a px or two over the line between two tiles where a hill's edge is set in, and under each band a
+    // px or two of the tile behind show, painted a level down: its body. Both are of the tile in front all the same)
+    const ts = tileOf(f), body = see.band[f] || (ts >= 0 && see.lev[f] < lvT[((ts / w | 0) + 2) * (w + 4) + ts % w + 2]), t = body ? tileOf(f, 4) : ts;
     if (t < 0 || !deepT[t]) continue;
     deep[f] = 1;
     if (ts >= 0 && seen[f] && see.band[f] && !fill[f] && floor.has((R.x + ts % w) + "," + (R.y + (ts / w | 0))) && landSolid(R.x + ts % w, R.y + (ts / w | 0), see.lev[f])) al[f] = sa;   // 2
@@ -63,5 +67,5 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks}) {
     if (fill[f]) px[f] = pack(earth.map((v, q) => v * (1 - lip) + [30, 20, 28][q] * lip), 1);
     else if (al[f] || lip) px[f] = pack([30, 20, 28], 1 - (1 - al[f]) * (1 - lip));
   }
-  return {px, cut, more};
+  return {px, cut, more, deep: deep.includes(1) ? deep : null};
 }

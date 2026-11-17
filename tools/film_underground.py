@@ -28,7 +28,6 @@ def scene(g, rec):
     cx, cy = x + 4, y + 8                                                         # a stair down to two tunnels side by
     stamp(cx, cy, ["...."], ["abcd"])                                             #  side under the meadow, a fire in one
     stamp(cx + 4, cy, [".....^..", ".", "........"], ["d" * 8, "d", "d" * 8], roofs=["4" * 8, "4", "4" * 8], heads=["2" * 8, "2", "2" * 8])
-    g.js("setOpt('above', 'cut')")
     g.rpc("dev_time", phase=.4)
 
     def tp(tx, ty, z, wait=1100):
@@ -48,7 +47,7 @@ def scene(g, rec):
     g.hold(["ArrowUp"], 1900); g.sleep(700)
     g.hold(["ArrowRight"], 800); g.sleep(500)
     g.hold(["ArrowLeft"], 1500); g.sleep(900)
-    for i in range(4):                                         # V through the four views, in the cave
+    for i in range(4):                                         # V through the four views, in the cave (from the usual one, the outline)
         if i:
             g.press("v", 0)
         caption(g, f"V: {NAMES[g.js('opt(`above`)')]}"); g.sleep(1500)

@@ -2151,4 +2151,14 @@ not its body).
   hill's edge is set in two px: those two rows were taken for the tile behind, a border two px high with its shadow
   round it). The line is the land's brown, a little darker (112, 70, 58), not ink. Looked at px by px at the
   junctions (a map of what each px is), then on the 24 situations.
+- Then: "Top outline is kinda broken. Also make outline the default". The outline view (V) drew its line round
+  all that the ground in front had been drawn over. Since iteration 151 that is more than the cut: the tiles beside
+  the place are in the picture with their own edge, so the line ran a tile out from the cut, on top and on each
+  side; it also crossed a stair's wall where the meadow's edge had been, and went round the sliver of meadow a
+  hill's side had covered. Now, in the ground or under a roof, the outline goes round the place itself as one
+  shape (xraycut.js says which px are the place's: dug, under a roof or cut, seen through or not; a wall's
+  in-between px, the tile behind painted a level down, count as the tile in front, like its bands); behind a hill
+  and no more it is as it was. Outline is the usual view (options.js): who never chose gets it, who chose keeps
+  theirs. Looked at on the 24 situations in the usual view. Tests: the line along a tunnel's wall top, its floor's
+  front and its end, none a tile out, none across it or the stair's wall; V starts from the outline.
 

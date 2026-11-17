@@ -9,12 +9,12 @@ ROW = "document.querySelector('#menu .row.on .name').textContent"
 
 
 def test_v_goes_through_the_four_views_and_the_picture_page_has_them(game):
-    assert game.js("opt('above')") == "cut"                   # (the one the user chose)
+    assert game.js("opt('above')") == "outline"               # (the usual one: "make outline the default")
     seen = []
     for _ in range(4):
         game.press("v", 250)
         seen.append([game.js("opt('above')"), game.toast()])
-    assert [s[0] for s in seen] == ["outline", "faded", "circle", "cut"] and "Outline" in seen[0][1] and "Cut away" in seen[3][1]
+    assert [s[0] for s in seen] == ["faded", "circle", "cut", "outline"] and "Faded" in seen[0][1] and "Outline" in seen[3][1]
     assert game.js("JSON.parse(localStorage.getItem('megastructure-options') || '{}').above") is None     # (back at the usual one: nothing kept)
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab")
     for _ in range(12):
@@ -22,7 +22,7 @@ def test_v_goes_through_the_four_views_and_the_picture_page_has_them(game):
             break
         game.press("ArrowDown", 40)
     game.press("ArrowRight")
-    assert game.js("opt('above')") == "outline"
+    assert game.js("opt('above')") == "faded"
     game.press("Escape"); game.press("Escape")
 
 

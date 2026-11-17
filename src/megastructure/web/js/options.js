@@ -11,7 +11,7 @@ const OPT_DEFAULT = {
   often: "normal",        // how long the silences between two pieces of music are: often, normal, rarely
   // picture
   sharp: "auto",          // device px a CSS px: auto (2, and 1 on a machine that cannot keep up), full (2), light (1)
-  above: "cut",           // what hides you (a floor over you, a house or the ground in front): cut (away), outline, faded, circle (VIEWS)
+  above: "outline",       // what hides you (a floor over you, a house or the ground in front): cut (away), outline, faded, circle (VIEWS; "make outline the default")
   night: 0,               // how much the night is lit up, 0 (as it is) to 100
   particles: "all",       // all, fewer, none
   shake: true,            // the ground shakes when a fall hurts
