@@ -165,7 +165,7 @@ const Climb = (() => {
     }
     const z = settleNear(p.x, p.y, myZ(s.x, s.y)), c = FLOORS ? Floors.get(p.x, p.y, z) : null, on = c ? c[1] : z === groundAt(p.x, p.y) ? combAt(p.x, p.y) : "";
     if ((on && !GROUND.has(on) && on !== "f") || !openAt(p.x, p.y, z)) return {text: "Something is in the way", ghost: it, ok: false, z};
-    if (!FLOORS || !lean(p.x, p.y, z)) return {text: "A ladder goes against something taller", ghost: it, ok: false, z};
+    if (!FLOORS || !lean(p.x, p.y, z)) return {text: "Needs something taller behind", ghost: it, ok: false, z};
     return {text: "Place ladder", ghost: it, ok: true, near: 1, z, draw: (sx, sy, S) => drawLadder(p.x, p.y, z, sx, sy, S, .6), run: (d) => act("place", {dir: d, item: it, z})};
   }
   function ghostFlight(f, sx, sy, S, ok) {

@@ -14,12 +14,15 @@ function walkable(x, y, fx, fy) {               // (fx, fy): where you come from
   return z !== null && (c && FLOORS ? !SOLID.has(c[1]) : plainWalk(x, y));
 }
 // ---- what a click does, decided per tile (also shown as the cursor hint) ----------------
+// The words: "interaction sentences are wayyyy too long" (it said "Chop tree (the fruit grows back if you wait) by hand
+// (slow)" beside the key). What you can do is a verb and a thing, three words or so; no reason, no advice, no tool
+// named (it is in your hand). Without the tool a thing wants: "(slow)". Why something cannot be done: one short line.
 const FILLS = {dirt: {o: ",", u: ",", "~": ",", "(": "~", "=": "(", ")": "="}, path: {".": "_", ",": "_", "'": "_"}, plank: {"~": ":", ".": "n", ",": "n", "'": "n"}};
-const FILL_TEXT = {",": "Fill with dirt", "~": "Raise the bottom", "(": "Raise the bottom", "=": "Raise the bottom", _: "Lay cobblestone path", ":": "Build bridge", n: "Lay wooden floor"};
+const FILL_TEXT = {",": "Fill with dirt", "~": "Raise the bottom", "(": "Raise the bottom", "=": "Raise the bottom", _: "Lay path", ":": "Build bridge", n: "Lay floor"};
 const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
 const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C", well: "Y", coop: "J", picnic_blanket: "m", basket: "q", trough: "e", hay: "y"};
 PLACEABLE_BLOCK.roof = "roof"; PLACEABLE_BLOCK.stairs = "stairs"; PLACEABLE_BLOCK.ladder = "l";                       // (in hand a roof is something you place: not a thing on the tile, a block over it: floors.js)
-const HARVEST = {t: "Dig up the stump", U: "Chop tree (the fruit grows back if you wait)", v: "Cut the bush (fiber)", e: "Take down the trough (and what's in it)", y: "Pick up the hay bale", Y: "Take down the well", J: "Take down the coop", m: "Roll up the blanket", q: "Take the basket", X: "Take down mailbox", V: "Pick up the boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take the plant",
+const HARVEST = {t: "Dig up stump", U: "Chop tree", v: "Cut bush", e: "Take down trough", y: "Take hay bale", Y: "Take down well", J: "Take down coop", m: "Roll up blanket", q: "Take basket", X: "Take down mailbox", V: "Take boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take plant",
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", R: "Mine rock wall", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
@@ -75,20 +78,19 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     if (ent.e.kind !== "agent" && selected === "name_tag" && !shift)       // a name tag in hand: its name (ask.js)
       return {ent, text: ent.e.name ? `Rename ${ent.e.name}` : `Name the ${label(ent.e.kind)}`, near: USE_R, diag: true, run: () => nameAnimal(ent.e)};
     if (ANIMALS[ent.e.kind] && selected && FEEDS.includes(selected) && !shift)
-      return {ent, text: `Feed ${label(selected)} to the ${ent.e.kind}`, near: USE_R, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
+      return {ent, text: `Feed ${label(ent.e.kind)}`, near: USE_R, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
     if (ent.e.kind === "agent" && selected && !weapon && !shift)
-      return {ent, text: `Give ${label(selected)} to ${ent.e.name}`, near: 2, run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})};
+      return {ent, text: `Give to ${ent.e.name}`, near: 2, run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})};
     if (shift) {                                       // shift: the peaceful thing
       if (ent.e.kind === "cow") return {ent, text: "Milk cow", near: USE_R, diag: true, run: () => act("milk", {target: ent.e.id})};
-      if (ent.e.kind === "agent") return {ent, text: `${ent.e.name} · select an item and click to give it`, info: true};
-      return {ent, text: {chicken: "Chicken: feed it (select food) for eggs", chick: "A chick: it grows into a chicken", calf: "A calf: it grows into a cow",
-        tusker: "A tusker: it charges in a straight line, step aside", pincer: "A pincer: it snaps if you stand next to it",
-        strawman: "A strawman: it walks at night, and fears firelight", wisp: "A wisp: a light that leads you on at night",
-        wyrm: "A wyrm: it lunges along its line, stay out of it",
-        mossback: "Old Mossback: back off when it rises, step aside when its head pulls in, hit the neck", sporeling: "A sporeling: one hit"}[ent.e.kind] || who, info: true};
+      if (ent.e.kind === "agent") return {ent, text: `${ent.e.name}: hold a thing to give it`, info: true};
+      return {ent, text: {chicken: "Chicken: feed it for eggs", chick: "A chick", calf: "A calf",
+        tusker: "A tusker: it charges, step aside", pincer: "A pincer: it snaps up close",
+        strawman: "A strawman: it fears firelight", wisp: "A wisp",
+        wyrm: "A wyrm: stay out of its line",
+        mossback: "Old Mossback: hit the neck", sporeling: "A sporeling: one hit"}[ent.e.kind] || who, info: true};
     }
-    const tail = ent.e.kind === "cow" ? " · shift: milk" : ent.e.kind === "agent" ? " · shift: talk" : "";
-    return {ent, text: weapon ? `Attack ${who} with ${label(weapon)}${tail}` : `Punch ${who}${tail}`, near: reachOf(weapon), diag: true, attack: true,
+    return {ent, text: weapon ? `Attack ${who}` : `Punch ${who}`, near: reachOf(weapon), diag: true, attack: true,
       run: () => act("attack", weapon ? {target: ent.e.id, with: weapon} : {target: ent.e.id})};
   }
   const up = Climb.intent(p, shift) || Floors.intent(p, shift);     // (stairs, a ladder; a block in hand, or a built block under what you aim at: climbing.js, floors.js)
@@ -102,9 +104,9 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     const it = selected, block = PLACEABLE_BLOCK[it];
     if ((block || FILLS[it] || it === "seed") && rimAt(p.x, p.y)) return {text: "Nothing stays on the edge of a hill", ghost: it, ok: false};
     // containers first: clicking a chest, basket or trough with anything selected puts it in
-    if (c === "e" && it !== "torch") return FEEDS.includes(it) ? {text: `Put ${label(it)} in the trough`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
-                                                     : {text: "Troughs take hay, grain or greens (not eggs, meat or milk)", ok: false};
-    if ((c === "C" || c === "q") && it !== "torch") return {text: `Store ${label(it)} in ${c === "q" ? "basket" : "chest"}`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
+    if (c === "e" && it !== "torch") return FEEDS.includes(it) ? {text: "Fill trough", near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
+                                                     : {text: "Troughs take hay, grain or greens", ok: false};
+    if ((c === "C" || c === "q") && it !== "torch") return {text: `Store in ${c === "q" ? "basket" : "chest"}`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
     const free = !hasBlock && WALKABLE_GROUND.has(g);
     if (FOOT[block]) {
       const f = footprint(block, p.x, p.y, s.x, s.y);
@@ -113,7 +115,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
           || (q.x === s.x && q.y === s.y) || (SOLID.has(block) && entityAt(q)) || rimAt(q.x, q.y) || floorAt(q.x, q.y) !== floorAt(p.x, p.y); });
       const near = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy}))
         .filter((q) => !f.tiles.some((r) => r.x === q.x && r.y === q.y));
-      return {text: bad.length ? (bad.some((q) => q.x === s.x && q.y === s.y) ? `Step out of the way to place the ${label(it)}` : bad.some((q) => entityAt(q)) ? "Wait, something is standing there" : `The ${label(it)} needs a clear ${FOOT[block].join("×")} spot of dry land`) : `Place ${label(it)}`,
+      return {text: bad.length ? (bad.some((q) => q.x === s.x && q.y === s.y) ? "Step aside first" : bad.some((q) => entityAt(q)) ? "Something is in the way" : `Needs a clear ${FOOT[block].join("×")} spot`) : `Place ${label(it)}`,
         ghost: it, ok: !bad.length, bad, foot: f.tiles, anchor: {x: f.ax, y: f.ay}, from: near, near: 1, run: (d) => act("place", {dir: d, item: it})};
     }
     if (block === "V") return !hasBlock && wet(g) ? {text: "Launch boat", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
@@ -123,7 +125,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
                            : {text: `Can't place ${label(it)} here`, ghost: it, ok: false};
     if (it === "seed") {
       if (!hasBlock && (g === "o" || g === "u")) return {text: "Plant seed", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
-      return {text: "Seeds grow in tilled soil: till it with a hoe first", ghost: it, ok: false};
+      return {text: "Seeds need tilled soil", ghost: it, ok: false};
     }
     if (FILLS[it]) {
       const res = !hasBlock && FILLS[it][g];
@@ -132,40 +134,40 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     }
     if (it === "torch") {
       const burnable = (!GROUND.has(c) && "TFbH#+&?!\";wCBhLrgWVXJmqeyUv".includes(c)) || (GROUND.has(c) && g === ".");
-      return burnable ? {text: "Set on fire (uses the torch)", ok: true, near: 1, run: (d) => act("ignite", {dir: d, with: "torch"})}
+      return burnable ? {text: "Set on fire", ok: true, near: 1, run: (d) => act("ignite", {dir: d, with: "torch"})}
                       : {text: "That won't burn", ok: false};
     }
     if (it === "hoe" && !hasBlock && (g === "." || g === ","))                  // the hoe in hand: Space/click tills
       return {text: "Till soil", near: 1, run: (d) => act("dig", {dir: d, with: "hoe"})};
     if (it === "watering_can" && (c === "Y" || (wet(g) && GROUND.has(c))))
-      return {text: `Fill the watering can (${meObs ? meObs.self.can ?? CAN_SIZE : "?"}/${CAN_SIZE})`, near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
-    if (it === "watering_can" && (c === ";" || c === '"') && meObs && meObs.self.can === 0) return {text: "The can is empty: fill it at a well or water", ok: false};
+      return {text: `Fill can (${meObs ? meObs.self.can ?? CAN_SIZE : "?"}/${CAN_SIZE})`, near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
+    if (it === "watering_can" && (c === ";" || c === '"') && meObs && meObs.self.can === 0) return {text: "The can is empty", ok: false};
     if (it === "watering_can" && (c === ";" || c === '"')) return g === "u" ? {text: "Already watered", ok: false}
-      : {text: "Water crop (grows 2x faster)", near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
+      : {text: "Water crop", near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
   }
   const sailing = !!(meObs && meObs.self.sailing);
   if (c === "V" && !shift && !sailing) return {text: "Board the boat", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && wet(g)) return {text: "Sail here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
-  if (!hasBlock && wet(g) && selected === "pickaxe" && !shift && g !== ")") return {text: "Dig the bottom deeper", near: 1, run: (d) => act("dig", {dir: d, with: "pickaxe"})};
+  if (!hasBlock && wet(g) && selected === "pickaxe" && !shift && g !== ")") return {text: "Dig deeper", near: 1, run: (d) => act("dig", {dir: d, with: "pickaxe"})};
   if (!sailing && !hasBlock && wet(g) && !placingItem()) return {text: "Swim here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && WALKABLE_GROUND.has(g)) return {text: "Go ashore", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (hasBlock) {
     if ((c === "C" || c === "q") && !shift) return {text: c === "q" ? "Open basket" : "Open chest", near: 1, run: (d) => act("take", {dir: d})};
-    if (c === "e" && !shift) return {text: troughAt.has(p.x + "," + p.y) ? "Trough: animals within 5 tiles feed themselves · click to take out" : "Empty trough: select hay or food and click to fill it",
+    if (c === "e" && !shift) return {text: troughAt.has(p.x + "," + p.y) ? "Trough: feeds animals nearby" : "Empty trough: fill it with hay",
       near: 1, run: (d) => act("take", {dir: d})};
-    if (c === "Y" && !shift) return {text: "Well (fills watering cans) · shift-click takes it down", info: true};
-    if (c === "J" && !shift) return {text: "Chicken coop: hens nearby lay here, twice as often · shift: take down", info: true};
-    if (c === "m" && !shift) return {text: "Picnic blanket: food eaten here fills you 50% more · shift: roll up", info: true};
+    if (c === "Y" && !shift) return {text: "Well: fills watering cans", info: true};
+    if (c === "J" && !shift) return {text: "Coop: hens lay here", info: true};
+    if (c === "m" && !shift) return {text: "Picnic blanket: food fills you more", info: true};
     if ((c === "?" || c === "!") && !shift) return {text: "Read", near: 1, run: (d) => act("read_sign", {dir: d})};
-    if (c === "X" && !shift) return {text: mailAt.has(p.x + "," + p.y) ? "Mailbox: there's mail!" : "Mailbox", near: 1, run: () => openMailPanel(actTarget)};
-    if (c === "B" && !shift) return {text: "Sleep (wake up here after dying)", near: 1, run: (d) => act("sleep", {dir: d})};
-    if ((c === "&" || c === "^") && !shift) return {text: c === "&" ? "Workbench: craft tools here" : "Campfire: cook here", near: 2, run: () => openCraft()};
+    if (c === "X" && !shift) return {text: mailAt.has(p.x + "," + p.y) ? "Read mail" : "Mailbox", near: 1, run: () => openMailPanel(actTarget)};
+    if (c === "B" && !shift) return {text: "Sleep", near: 1, run: (d) => act("sleep", {dir: d})};
+    if ((c === "&" || c === "^") && !shift) return {text: c === "&" ? "Craft" : "Cook", near: 2, run: () => openCraft()};
     const crop = cropSpecies(p.x, p.y);
-    const text = c === "w" ? `Harvest ${crop}` : c === '"' ? `Young ${crop} (uproot)` : c === ";" ? `${crop} sprout (uproot)` : HARVEST[c] || label(CH[c]);
+    const text = c === "w" ? `Harvest ${crop}` : c === '"' ? `Uproot ${crop}` : c === ";" ? `Uproot ${crop} sprout` : HARVEST[c] || label(CH[c]);
     const tool = TOOL_FOR[c], w = inHand();
     if (c === "*" && w !== "pickaxe")
-      return {text: meObs && meObs.self.inventory.pickaxe ? "Ore: hold your pickaxe (select it) to mine it" : "Ore: you need a pickaxe to mine it", ok: false};
-    const how = tool ? (w === tool ? ` with ${tool}` : " by hand (slow)") : "";
+      return {text: meObs && meObs.self.inventory.pickaxe ? "Ore: hold your pickaxe" : "Ore: needs a pickaxe", ok: false};
+    const how = tool && w !== tool ? " (slow)" : "";
     return {text: text + how, near: 1, run: (d) => act("dig", w ? {dir: d, with: w} : {dir: d})};
   }
   if (wet(g)) return {text: label(CH[g]), info: true};
@@ -174,7 +176,7 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     if (takeUp) return {text: takeUp, near: 1, run: (d) => act("dig", {dir: d})};
     if (g !== "." && g !== ",") return {text: label(CH[g]), info: true};
     return inHand() === "hoe" ? {text: "Till soil", near: 1, run: (d) => act("dig", {dir: d, with: "hoe"})}
-                              : {text: "Tilling needs a hoe in hand", ok: false};
+                              : {text: "Needs a hoe", ok: false};
   }
   return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
 }

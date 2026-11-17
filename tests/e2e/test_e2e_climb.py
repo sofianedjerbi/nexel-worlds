@@ -54,7 +54,7 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     game.give(ladder=2)
     game.press(game.js(SLOT, "ladder"))
     game.face(1, 0)
-    assert "A ladder goes against something taller" in game.actions()
+    assert "Needs something taller behind" in game.actions()
     game.rpc("dev_teleport", x=x, y=y - 1, z=0)
     game.sleep(600)
     game.face(0, -1)

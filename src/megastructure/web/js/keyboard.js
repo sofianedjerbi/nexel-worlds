@@ -62,7 +62,7 @@ function facingIntent(alt) {
 function facingNow(alt) {
   const q = facingTile(), s = myPos(); if (!q || !s) return null;
   if (!alt && placingItem()) {
-    if (entityAt(q)) return {p: q, it: {text: `Can't place the ${label(selected)}: something is in the way`, ok: false, ghost: selected}};
+    if (entityAt(q)) return {p: q, it: {text: "Something is in the way", ok: false, ghost: selected}};
     const it = intent(q, false);
     return it ? {p: q, it: it.ok === false || inReach(q, it) ? it : {...it, ok: false, text: TOO_HIGH}} : null;
   }

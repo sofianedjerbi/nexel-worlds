@@ -40,7 +40,7 @@ def test_cant_place_on_things_and_says_why(game):
     game.spawn("chicken", 0, -1, still=10 ** 6)
     game.face(0, -1)
     game.sleep(300)
-    assert "something is in the way" in game.actions()
+    assert "Something is in the way" in game.actions()
 
 
 def test_structures_grow_away_from_you_and_come_down_whole(game):
@@ -81,7 +81,7 @@ def test_farming_hoe_seed_water_harvest(game):
 
 def test_tilling_needs_a_hoe(game):
     game.face(1, 0)
-    assert "Tilling needs a hoe" in game.js("intent(facingTile(), true).text")
+    assert "Needs a hoe" in game.js("intent(facingTile(), true).text")
     game.press("x", 400)
     assert game.tile(1, 0) == "."
 
@@ -105,7 +105,7 @@ def test_chest_store_and_take(game):
     game.face(1, 0)
     game.press("Space", 800)
     game.hold_item("stone")
-    assert "Store stone in chest" in game.actions()
+    assert "Store in chest" in game.actions()
     game.press("Space", 800)
     assert game.inv("stone") == 0
     game.press("0", 200)

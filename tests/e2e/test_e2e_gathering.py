@@ -62,7 +62,7 @@ def test_a_click_picks_on_the_move(game):
 def test_chop_by_hand_and_with_an_axe(game):
     game.stamp(1, 0, ["T"])
     game.face(1, 0)
-    assert "Chop tree by hand (slow)" in game.actions()
+    assert "Chop tree (slow)" in game.actions()                # (a verb and a thing: "interaction sentences are wayyyy too long")
     t0 = time.time()
     game.press("Space", 0)
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === 't'", 8000)
@@ -74,7 +74,7 @@ def test_chop_by_hand_and_with_an_axe(game):
     game.give(axe=1)
     game.hold_item("axe")
     game.stamp(1, 0, ["T"])
-    assert "with axe" in game.actions()
+    assert "Chop tree" in game.actions() and "(slow)" not in game.actions()
     t0 = time.time()
     game.press("Space", 0)
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === 't'", 8000)

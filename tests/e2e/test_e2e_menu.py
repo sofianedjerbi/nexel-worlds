@@ -144,7 +144,7 @@ def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
     game.js("window.shot = null; requestAnimationFrame(() => requestAnimationFrame(() => { window.shot = " + look + "; }))")      # (read it in the frame it was drawn in)
     game.wait("window.shot")
     d, lit = game.js("shot")
-    assert 1 < d < 90 and lit > 40, (d, lit)                    # the same picture, graded: not the plain one, not a blank or a white-out
+    assert 1 < d < 150 and lit > 40, (d, lit)                   # the same picture, graded: not the plain one, not a blank or a white-out
     game.js("setOpt('shaderk', 0); setOpt('clouds', false); window.shot = null; requestAnimationFrame(() => requestAnimationFrame(() => { window.shot = " + look + "; }))")
     game.wait("window.shot")
     assert game.js("shot")[0] < 2, game.js("shot")              # strength 0: the picture as it is

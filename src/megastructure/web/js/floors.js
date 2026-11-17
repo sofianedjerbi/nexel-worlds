@@ -209,8 +209,8 @@ const Floors = (() => {
     if (!c || isMe) return null;
     if (it && PLACEABLE_BLOCK[it] && c[0] === "stairs") return {text: "Not on a step", ghost: it, ok: false, z};
     if (it && PLACEABLE_BLOCK[it]) return on ? {text: "Something is there", ghost: it, ok: false, z} : UP.has(PLACEABLE_BLOCK[it]) ? place(z, `Place ${label(it)}`) : {text: "It needs the ground", ghost: it, ok: false, z};
-    if (on === "B" && !shift) return {text: "Sleep (wake up here after dying)", near: 1, z, run: (d) => act("sleep", {dir: d})};
-    if (on) { const tool = TOOL_FOR[on], w = inHand(); return {text: (HARVEST[on] || "Take down " + label(CH[on])) + (tool ? (w === tool ? ` with ${tool}` : " by hand (slow)") : ""), near: 1, z, run: (d) => act("dig", {dir: d, z, ...(w ? {with: w} : {})})}; }
+    if (on === "B" && !shift) return {text: "Sleep", near: 1, z, run: (d) => act("sleep", {dir: d})};
+    if (on) { const tool = TOOL_FOR[on], w = inHand(); return {text: (HARVEST[on] || "Take down " + label(CH[on])) + (tool && w !== tool ? " (slow)" : ""), near: 1, z, run: (d) => act("dig", {dir: d, z, ...(w ? {with: w} : {})})}; }
     if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", near: 1, z, run: (d) => act("dig", {dir: d, z})};
     return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y, z})};
   }

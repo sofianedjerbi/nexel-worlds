@@ -30,7 +30,7 @@ def test_refill_the_can_at_a_well(game):
     game.server()
     game.hold_item("watering_can")
     game.face(0, -1)
-    assert "Fill the watering can" in game.actions()
+    assert "Fill can" in game.actions()
     game.press("Space", 1200)
     assert game.server()["can"] == 12
 

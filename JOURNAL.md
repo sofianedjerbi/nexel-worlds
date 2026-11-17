@@ -1698,6 +1698,16 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 157: what you can do, in three words
+
+The user, with a screenshot of "Chop tree (the fruit grows back if you wait) by hand (slow)" beside the Space key:
+"interaction sentences are wayyyy too long". Every line of intent.js (and the same tails in floors.js, keyboard.js,
+climbing.js) rewritten to one rule: a verb and a thing; no reason, no advice, no tool named (it is in your hand);
+"(slow)" where the thing wants a tool you do not hold; why something cannot be done is one short line. "Chop tree
+(slow)", "Feed cow", "Store in chest", "Fill can (3/5)", "Sleep", "Craft", "Attack tusker". What was lost with the
+length (the fruit grows back, a bed is where you wake) is not said anywhere else yet. Tests that quoted the old
+lines updated; 462 + the browser suite pass (one join flake under load).
+
 ## Iteration 152: real shadows and reflections
 
 "we want real shaders, reflection, not just color hue tweaks, shadows, like minecraft". Iteration 144 only repainted
