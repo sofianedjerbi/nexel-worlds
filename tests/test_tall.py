@@ -95,3 +95,18 @@ def test_a_tile_event_and_a_region_say_a_column_as_its_heights(world):
     sim.set_tile(a.x + 2, a.y, level=-40, roof=44, head=2)
     ev = [e for e in seen if e["type"] == "tile"][-1]
     assert ev["col"] == [-40, -38, 4]
+
+
+def test_the_block_under_your_feet_is_dug_by_hand_too(world):
+    """"i should be able to break this block by putting myself in top of it then digging under my feets": digging
+    down wanted a pickaxe in hand. By hand it is slower; you come down with the block either way."""
+    sim, a = world
+    x, y, z = a.x, a.y, sim.height(a)
+    t0 = sim.tick
+    r = run(sim, a, "dig_down", {})
+    by_hand = sim.tick - t0
+    assert r["ok"] and (a.x, a.y) == (x, y) and sim.height(a) == z - 1 and sim.world.level(x, y) == z - 1
+    a.inventory["pickaxe"] = 1
+    t0 = sim.tick
+    assert run(sim, a, "dig_down", {"with": "pickaxe"})["ok"] and sim.height(a) == z - 2
+    assert sim.tick - t0 < by_hand

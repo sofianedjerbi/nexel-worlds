@@ -2520,3 +2520,32 @@ The user: "please make the underground reach up -512 and the sky max block shoul
   and what stands on a tile (a tree) is drawn in the tunnel under it: both as before, at any depth. High over the
   land on what you built, the ground far below is not drawn. The land is made as it was: no higher mountains, no
   deeper caves. Nothing here was tried by hand on a real climb down: only set, then looked at.
+
+## Iteration 159: build mode breaks one block, the one in front of you first
+
+The user: "when pressing B to enter breaking mode, please show the most pertinent block first: in front of the
+player, direction where he's facing at his exact level"; then, a screenshot of a tunnel, the cursor two layers down:
+"i should be able to break this block by putting myself in top of it then digging under my feets ! also, why am i
+unable to break block at my eye level ? why do i need to target the one down to dig both at once ? suck !"
+
+- Where the cursor started: on the tile you face, at the ground nearest your height there. Facing a wall that is
+  the top of the land over it: in the user's tunnel, seventeen layers up, and Q a layer a press to bring it down.
+- What X did in the ground: from a cursor at a floor's height, the two blocks over it at once (the room to stand
+  in). The block at eye level could not be picked by itself.
+- Now (build.js): in the ground the cursor is on a block and X digs that block, where air is beside it (or a block
+  planned beside it: they are still planned ahead). It starts on the block in front of your legs; that one gone, on
+  the one in front of your eyes; no wall there, on the ground as before. E and Q go a block up and down.
+- The block you stand on: X on it sent you off it to dig it from beside. It is dug from on it (the game's own
+  dig_down) and you come down with it. By hand too (underground.py: 3 s, 1.5 with a pickaxe; the sea's bottom
+  still wants the pickaxe): this part needs the server restarted.
+- The keyhole (the cursor seen in the ground) is that block's top, not a room two blocks high.
+- Looked at, on a copy of the live save, where the user's tunnel ends now (-13): B, E, X, X, the cursor on your
+  own tile, X: the eye block goes, then the legs', then you come down a layer.
+- Tests (test_e2e_digging.py): the two that said "a way down, two blocks" say a block; new: where the cursor
+  starts (a wall, a step up, the level; the eye block once the legs' is gone), the block under you. One of the
+  simulation: dug down by hand, slower than with a pickaxe. 471 unit, 242 of 245 browser (two joins that timed out;
+  the x-ray circle's px test, which passes alone four times in four).
+- Found, not mine, not fixed: test_e2e_living's chicken test fails every time when run alone (the hen runs two
+  tiles, not three), here and on the commit before the taller world; it passes in the whole run.
+- Seen, left as it is: dug down a layer at a tunnel's end, the tunnel behind you goes from the picture (two layers
+  up is a wall: not of the place you could walk to).

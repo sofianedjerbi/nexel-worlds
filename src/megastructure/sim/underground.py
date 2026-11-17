@@ -86,16 +86,17 @@ class Underground:
                 and self.height(a) > DEEPEST)
 
     def _tool_dig_down(self, a: Agent, args):
-        if self.held(a, args) != "pickaxe":
-            raise ActionError("need_tool", "digging down needs a pickaxe in hand (with: pickaxe)"
-                              + ("" if a.count("pickaxe") else "; craft one at a workbench"))
+        pick = self.held(a, args) == "pickaxe"             # (by hand too, slower: "i should be able to break this block by putting myself in top of it then digging under my feets")
         x, y = a.x, a.y
         if self.swimming(a):                                # the bottom under you, from the surface
+            if not pick:
+                raise ActionError("need_tool", "digging the bottom needs a pickaxe in hand (with: pickaxe)"
+                                  + ("" if a.count("pickaxe") else "; craft one at a workbench"))
             return (yield from self.deepen(a, x, y))
         if a.sailing or not self._diggable_down(a):
             raise ActionError("cannot_dig", "you need to stand on clear ground to dig down"
                               + (" (this is as deep as it goes)" if self.height(a) <= DEEPEST else ""))
-        yield from self.wait(a, 1.5)
+        yield from self.wait(a, 1.5 if pick else 3.0)
         if not self._diggable_down(a) or (a.x, a.y) != (x, y):
             raise ActionError("changed", "something changed here")
         z = self.height(a)

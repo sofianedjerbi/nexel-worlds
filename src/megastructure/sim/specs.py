@@ -22,9 +22,9 @@ TOOL_SPECS = {
     "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped"},
     "stop": {"args": {}, "desc": "stop the current action"},   # (a player's screen also says walk's `from`, stop's `at`: Movement.follow)
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)", "z": "int (optional): a height there, a floor built over a room"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
-    "dig_down": {"args": {"with": "pickaxe"}, "desc": "dig down where you stand (pickaxe in hand). The block "
+    "dig_down": {"args": {"with": "pickaxe"}, "desc": "dig down where you stand (by hand, or faster with a pickaxe in hand). The block "
                  "under your feet goes and you come down with it, on a hill or into a pit below sea level (down to "
-                 "-12); over a hollow you fall in (a fall of more than 3 layers hurts: 5 hp a layer). You can jump "
+                 "-512); over a hollow you fall in (a fall of more than 3 layers hurts: 5 hp a layer). You can jump "
                  "onto ground one layer higher; higher than that is a wall: dig toward it with a pickaxe to take out "
                  "the block in front of you (a tunnel). Caves are empty space under the hills (in_cave in your stats)"},
     "dig": {"args": {**DIR_ARG, "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)", "z": "int (optional): the height of something built over the ground"},
