@@ -102,7 +102,8 @@ def test_a_stair_dug_down_is_cut_square_and_seen_whole_with_no_gap_as_you_walk_i
       for (let j = 0; j < 16; j++) for (let i = 1; i < 14; i++) if (i < 7 || i > 8) {{ const v = b.px[o + j * BW + i]; sum[i < 7 ? 0 : 1] += (v & 255) + (v >> 8 & 255) + (v >> 16 & 255); }}
       out.push(sum[1] / sum[0] * 6 / 5 > .95); }} return out; }}""")
     assert even == [True] * 6                                  # each step: earth all over its tile, no dark rim down its lower side
-    assert game.js(GREEN_ON_SCREEN, [[x + k, y, k] for k in range(1, 7)]) == [0] * 6     # seen whole: no meadow in any of them
+    green = game.js(GREEN_ON_SCREEN, [[x + k, y, k] for k in range(1, 7)])
+    assert green[0] > 0 and green[1:] == [0] * 5              # seen whole: no meadow in any of them, but the first: the step up in front of it is the way out, its edge as on the land
     # stepping off the step three down (your height is already the next one's): the steps over you are still of the place
     assert game.js(f"[1, 2, 3, 4, 5, 6].every((k) => xrayPlace({x + 3}, {y}, -4).z.get(({x} + k) + ',' + {y}) === -k)")
     # a picture coming over the one before, half way: the two make a whole one

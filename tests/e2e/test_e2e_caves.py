@@ -84,8 +84,8 @@ def test_in_a_cave_you_are_seen_through_the_hill_as_anywhere_you_are_hidden(game
     assert floor[0] and floor[2] > floor[1]                                           # its floor: the meadow's
     assert back[0] and back[1] > back[2] and roof[0]                                  # its back wall, earth; over it the roof, cut through
     lit = lambda *a: game.js("""([x, y, lv, ax, ay]) => { frame(performance.now()); const P = xray.pic, f = (y * 16 - shOf(lv) + ay - P.y) * P.w + x * 16 + ax - P.x;
-      return [P.solid[f], +(P.img.data[f * 4 + 3] / 255).toFixed(3)]; }""", list(a))
-    assert lit(x, y - 6, 0, 8, -4)[0] == 0 and lit(x, y - 6, 0, 8, -20)[0] == 1       # (earth that was cut through: the light says how dark, cavelight.js)
+      return +(P.img.data[f * 4 + 3] / 255).toFixed(3); }""", list(a))
+    assert abs(lit(x, y - 6, 0, 8, -4) - lit(x, y - 6, 0, 8, -20)) < .06              # (the wall and the earth over it: one light, cavelight.js)
     assert not px(x - 2, y - 4, 4, 8, 8)[0]                                           # the hill beside it: as it is (it was drawn again with an edge toward the room: "it goes under the background tiles")
     ink = game.js("CUT.ink")                                # the cut's edge (xraycut.js): a line along the room's side,
     assert px(x - 1, y - 3, 0, 0, 8)[1:] == ink and px(x - 1, y - 5, 0, 0, 8)[1:] == ink and px(x, y - 2, 0, 8, 15)[1:] != ink   # none across its way out

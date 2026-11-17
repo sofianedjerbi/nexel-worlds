@@ -11,9 +11,9 @@ PIC = """([x, y, lv, ax, ay]) => { const P = xray.pic, X = x * 16 + ax - P.x, Y 
   return [P.seen[Y * P.w + X], ...Array.from(P.over.getContext('2d').getImageData(X, Y, 1, 1).data).slice(0, 3)]; }"""
 
 
-# a px of that picture as the light has it (cavelight.js): [is it earth that was cut through, how dark it is, 0 to 1]
+# a px of that picture as the light has it (cavelight.js): how dark it is, 0 to 1
 LIT = """([x, y, lv, ax, ay]) => { frame(performance.now()); const P = xray.pic, f = (y * 16 - shOf(lv) + ay - P.y) * P.w + x * 16 + ax - P.x;
-  return [P.solid[f], +(P.img.data[f * 4 + 3] / 255).toFixed(3)]; }"""
+  return +(P.img.data[f * 4 + 3] / 255).toFixed(3); }"""
 
 
 def test_a_stair_dug_under_a_hill_is_a_burrow_in_the_bank_not_floors_lying_on_the_hill(game):
@@ -41,8 +41,8 @@ def test_a_stair_dug_under_a_hill_is_a_burrow_in_the_bank_not_floors_lying_on_th
         for up in range(2, 8 * (top - floor), 6):
             seen, r, g, b = px(tx, floor, 8, -up)
             assert seen and r > g, (tx, up, [seen, r, g, b])    # (earth: no hill showing in it)
-    back, roof = game.js(LIT, [X, y, -4, 8, -4]), game.js(LIT, [X, y, -4, 8, -20])   # where you stand: the hollow's back wall, lit by you; the roof over it, cut through: earth, which you do not light
-    assert back[0] == 0 and roof[0] == 1 and roof[1] > back[1] + .1, (back, roof)
+    back, roof = game.js(LIT, [X, y, -4, 8, -4]), game.js(LIT, [X, y, -4, 8, -20])   # where you stand: the hollow's back wall, and the roof over it, cut through: one light
+    assert abs(back - roof) < .06, (back, roof)
     assert not game.errors
 
 
@@ -130,6 +130,10 @@ def test_the_outline_goes_round_the_place_itself_and_is_the_usual_view(game):
     # "there shouldn't be a line where player can travel to outside": none where you step off the stair's top step
     # onto the meadow, west of it or in front of it; under the next step there is one (two layers up is a wall)
     assert not line(x + 1, y, -1, 0, 8) and not line(x + 1, y, -1, 8, 15) and line(x + 2, y, -2, 8, 15)
+    # "the first step of the stairs look awkward": it lay whole on the meadow, a flat square. The step up in front of
+    # it is not cut through: the meadow's own edge, as on the land; and the next step's side has its line under it
+    assert not game.js(PIC, [x + 1, y, -1, 8, 12])[0] and not game.js("([x, y]) => xray.pic.rock[(y - xray.pic.ry) * xray.pic.rw + x - xray.pic.rx]", [x + 1, y + 1])
+    assert line(x + 2, y, -2, 0, 4) and line(x + 2, y, -2, 0, 12)
     assert not line(x + 2, y, 0, 8, 0) and not line(x + 2, y, 0, 8, -2)      # round the open stair the land has its own rim: no line under it
     assert not game.errors
 
@@ -150,12 +154,15 @@ def test_light_is_one_model_no_edge_where_a_roof_starts_and_none_through_the_ear
     lit = lambda *a: game.js(LIT, list(a))
     # the top of the wall, where the roof starts (the stair's last step is open, the next tile is under the roof):
     # its last px under the sky, its first px under the roof, and the earth two and five tiles in
-    sky, first, two, five = lit(x + 4, y, 0, 15, 2), lit(x + 5, y, 0, 0, 2), lit(x + 6, y, 0, 8, 2), lit(x + 9, y, 0, 8, 2)
-    assert first[0] == 1 and abs(first[1] - sky[1]) < .08 and first[1] < two[1] < five[1] and five[1] > .4, (sky, first, two, five)
+    sky, first, two, four = lit(x + 4, y, 0, 15, 2), lit(x + 5, y, 0, 0, 2), lit(x + 6, y, 0, 8, 2), lit(x + 8, y, 0, 8, 2)
+    assert abs(first - sky) < .08 and first < two < four, (sky, first, two, four)
+    # "lightning show clear distinction with floor": the earth over the tunnel has the light of the floor under it
+    # (it had the sky's alone: darker than the hollow and its floor from the second tile in, a stair of light and dark)
+    assert abs(two - lit(x + 6, y, -4, 8, 8)) < .08 and abs(four - lit(x + 8, y, -4, 8, 8)) < .08, (two, four)
     game.rpc("dev_time", phase=.85)                           # by night: the fire, five tiles on in this tunnel
     game.sleep(600)
     near, through = lit(x + 8, y, -4, 8, 8), lit(x + 10, y + 2, -4, 8, 8)     # a floor two tiles from it; the floor of the tunnel beside, straight across the earth from it
-    assert near[1] < .3 and through[1] > .5, (near, through)
+    assert near < .3 and through > .5, (near, through)
     assert not game.errors
 
 
@@ -171,7 +178,7 @@ def test_a_wall_under_a_roof_has_its_bands_where_the_pit_beside_it_has_them(game
     """"Still got a weird tileset jump", where a stair open to the sky goes in under a roof: the wall cut through had
     its bands on the tiles' lines, the land's own wall has those over the sea's level two px up (a hill's edge is set
     in) and two px of the tile's foot under them, so every line of the wall broke where the roof starts. And at that
-    corner two px of the cut's ink went up into the pit's rim, and the earth's dark started at half its strength."""
+    corner two px of the cut's ink went up into the pit's rim, and the earth's dark made a step in the light."""
     game.clear_area(12)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)
@@ -181,13 +188,14 @@ def test_a_wall_under_a_roof_has_its_bands_where_the_pit_beside_it_has_them(game
     game.wait(f"myAt && myAt.x === {X} && myAt.z === -4", 8000)
     game.wait(DRAWN, 8000); game.wait(SEEN, 20000)
     lines = lambda px: [r for r in range(1, 32) if sum(px[r]) < sum(px[r - 1]) - 15 and sum(px[r]) < sum(px[r + 1]) - 15]   # (the rows darker than those over and under them)
-    assert lines(game.js(DOWN, [x + 4, y, 8, 0, 32])) == [5, 15, 23, 31]          # the land's own wall, four layers down
-    assert lines(game.js(DOWN, [X, y, 8, 0, 32])) == [5, 15, 23, 31]              # the wall cut through: the same rows (they were 7, 15, 23, 31)
-    assert lines(game.js(DOWN, [X, y, 1, 0, 32])) == [5, 15, 23, 31]              # ...right beside the pit too
+    game.wait("xray.mix >= 1 && !xray.old", 8000)             # (the picture whole, not one coming over another)
+    pit, wall, side = (game.js(DOWN, [tx, y, ax, 0, 32]) for tx, ax in ((x + 4, 8), (X, 8), (X, 1)))
+    # the land's own wall, four layers down; the wall cut through: the same rows (they were 7, 15, 23, 31); and right beside the pit
+    assert lines(pit) == lines(wall) == lines(side) == [5, 15, 23, 31], (lines(pit), lines(wall), lines(side), [sum(p) for p in wall[20:26]], [sum(p) for p in side[20:26]])
     line = lambda *a: game.js("([x, y, ax, ay]) => { const P = xray.pic; return P.line[(y * 16 + ay - P.y) * P.w + x * 16 + ax - P.x]; }", list(a))
     assert line(X, y, 8, 0) and not line(X, y, 8, -1)                             # the cut starts on its tile's line, under a roof
     assert not line(x + 4, y, 15, -2) and not line(x + 4, y, 15, -1)              # no ink up the side of the pit's wall where it starts, two px over that line
     for r, g, b in game.js(DOWN, [X, y, 0, -2, -1]): assert g > r + 12            # the tile behind the roof: grass to its corner
-    assert game.js(LIT, [X, y, 0, 0, 4])[1] < .04 < .06 < game.js(LIT, [X, y, 0, 8, 4])[1]   # the earth's dark: from next to nothing where the roof starts (it was half of it there)
+    assert game.js(LIT, [X, y, 0, 0, 4]) < .04 and abs(game.js(LIT, [X + 1, y, 0, 8, 4]) - game.js(LIT, [X + 1, y, -4, 8, 8])) < .06   # the light: no step where the roof starts; the wall as its floor, a tile on
     assert not game.errors
 

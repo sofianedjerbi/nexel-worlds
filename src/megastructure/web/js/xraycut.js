@@ -4,8 +4,7 @@
 //    room) is cut level with the floor behind it, and shows as that: earth, cut. (The land as drawn showed there: a
 //    strip of meadow between two floors four layers down, the nearer tunnel a floor lying on the grass.)
 // 2. Under a roof the wall behind the place goes up to the top of the land, cut open: the hollow's own back wall,
-//    and over it the roof cut through: earth (solid: the light there is the sky's alone, cavelight.js: by a fire the
-//    hollow shows in it, a burrow in a bank).
+//    and over it the roof cut through: earth, lit as the place is (cavelight.js).
 // 3. Where the cut ends against the land beside it or in front of it, a line in the pack's ink and a shadow three px
 //    in from it, in steps: a hole has an edge ("the borders are still abrupt, like cut without separation": dark
 //    earth stopped square against the grass). Not where the land's own edge is (round a hole open to the sky: its
@@ -13,10 +12,10 @@
 // c: the picture's {W, h (px), w (tiles), R (its rect of tiles), y (its top, art px), see, seen, floor, floors, place,
 // rocks, paint (its px as the land's painter left them)}. -> {px: what to lay over it, cut: the tiles of 1, more: the px it added to seen, line: the px of the
 // outline round the place where it is under a roof, dug or cut (xrayviews.js; null: no such place, a hill in front and
-// no more), deep: the place's own px, solid: of them, earth that was cut through}
+// no more), deep: the place's own px}
 const CUT = {ink: [112, 70, 58], lip: [.34, .22, .11]};   // the edge's ink; its shadow, a px each
 function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint}) {
-  const n = W * h, px = new Uint32Array(n), solid = new Uint8Array(n), fill = new Uint8Array(n), cuts = new Map(), earth = colsOf(hillSheet(0)).bands[1];
+  const n = W * h, px = new Uint32Array(n), fill = new Uint8Array(n), cuts = new Map(), earth = colsOf(hillSheet(0)).bands[1];
   let more = 0;
   for (let i = 0; i < w; i++) {                              // 1
     const x = R.x + i, under = (place.get(x) || []).filter((gy) => floors.get(x + "," + gy) < 0 || floor.has(x + "," + gy));
@@ -67,7 +66,6 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
       // roof, every line of it broken where the roof starts, "still got a weird tileset jump")
       const rr = r < Y + 6 ? r + 2 : r, k = Math.ceil((Y - rr) / 8), foot = k <= F || (r >= Y + 6 && r < Y + 8), lv = foot ? Math.max(F + 1, 0) : k;
       wall.set(f, foot ? band(lv, 3) : band(k, rr - (Y - shOf(k)))); if (!seen[f]) { seen[f] = 1; more++; } see.lev[f] = lv; see.band[f] = 1;
-      if (landSolid(R.x + i, R.y + j, lv)) solid[f] = 1;     // 2
     }
   }
   // (and beside a tile under a roof, the wall of one open to the sky: the four px of it next to that tile had the same
@@ -101,6 +99,10 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
     if (see.state[q] === 1 && !see.band[q] && rimT[Math.max(0, tileOf(q))]) return false;
     if (dx && t >= 0 && (f / W | 0) < r0T[t]) return false;    // (nor down the side of a wall's top where it is set in over its tile's line, two px: beside a roof they were two px of ink up into the pit's rim)
     if (see.band[f] || fill[f] || t < 0) return true;         // (a wall, earth that was cut: no way through)
+    if (see.state[q] === 1 && !see.band[q]) {                // (the ground beside it is of a tile a row on from the one stepped onto that way: the tile in
+      const tq = tileOf(q);                                   //  front of this one, whose edge hangs over the floor: the way out is that way; any other: ground
+      if ((tq / w | 0) > j + dy) { if (tq !== t + w) return true; d = 2; dx = 0; dy = 1; }   //  that stands in front, and the cut goes through it)
+    }
     if (walk[t * 4 + d] < 0) walk[t * 4 + d] = landAt(lvOf(i, j), R.x + i + dx, R.y + j + dy, R.x + i, R.y + j) === null ? 0 : 1;
     return !walk[t * 4 + d];
   };
@@ -122,9 +124,8 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
     if (dist[f] === 0) { px[f] = pack(CUT.ink, 1); continue; }
     const lip = dist[f] <= CUT.lip.length ? CUT.lip[dist[f] - 1] : 0;
     const own = fill[f] ? earth : wall.get(f);
-    if (fill[f]) solid[f] = 1;
     if (own) px[f] = pack(own.map((v, q) => v * (1 - lip) + [30, 20, 28][q] * lip), 1);
     else if (lip) px[f] = pack([30, 20, 28], lip);
   }
-  return {px, cut: new Set(cuts.keys()), more, line: deep.includes(1) ? line : null, deep, solid, cols};
+  return {px, cut: new Set(cuts.keys()), more, line: deep.includes(1) ? line : null, deep, cols};
 }

@@ -8,11 +8,12 @@
 //   straight line and three quarters of the tiles walked: round a corner, not through the earth between two tunnels
 //   ("if fire is here, player see it, so it should be visible": however far it is, it is lit).
 // - A tile's light is the most of these; what is missing of it is its dark, DARKEST at the most.
-// - Earth that was cut through (the roof over a hollow, what stood between two tunnels) has the sky's light alone,
-//   and for EARTH_REACH tiles: by a fire the hollow shows in it, a burrow in a bank.
+// - The earth cut through over a hollow or between two tunnels is lit as the place beside it, wall and floor one
+//   light: it had the sky's light alone, so it was darker than the hollow and its floor from the second tile in, a
+//   stair of light and dark down a dug stair ("lightning show clear distinction with floor").
 // - Every px of the place takes its dark from its tile and the tiles beside it: no squares, and no edge where a roof
 //   starts.
-const SUN_REACH = 6, EARTH_REACH = 2.5, DARKEST = .7, UNLIT_EARTH = .55, GLOW = {me: [4.5, .85], other: [3.5, .75], fire: [6, 1]};   // (tiles of reach, strength)
+const SUN_REACH = 6, DARKEST = .7, GLOW = {me: [4.5, .85], other: [3.5, .75], fire: [6, 1]};   // (tiles of reach, strength)
 const sunNow = () => { const phase = clock.phase || 0; return 1 - Math.max(Math.max(0, Math.min(1, (phase - .70) / .05)), phase < .03 ? 1 - phase / .03 : 0); };
 const tilesBeside = (k) => { const [x, y] = k.split(",").map(Number); return [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [x + dx, y + dy, x, y]); };
 // floor: the place's tiles under a roof ("x,y" -> height) -> "x,y" -> steps in from the nearest way out under the sky
@@ -50,7 +51,7 @@ function underPx(P) {
 }
 // ...and the px the light is worked out for: all of the place's own (P.deep: under a roof or not, seen through or
 // not), each with where it is among the tiles (its tile's corner in the grid of tiles and how far along it is, across
-// and down) and whether it is earth cut through; P.shade, P.img: the dark put on them. Once a picture
+// and down) P.shade, P.img: the dark put on them. Once a picture
 function litPx(P) {
   if (P.lit) return P.lit;
   P.shade = document.createElement("canvas"); P.shade.width = P.w; P.shade.height = P.h; P.img = P.shade.getContext("2d").createImageData(P.w, P.h);
@@ -68,34 +69,23 @@ function litPx(P) {
 function drawUnderDark(vis, sx, sy, t) {
   const P = xray.pic;
   if (xray.a <= .01 || !P || !P.floor.size || !P.deep || opt("above") === "circle") return;
-  const sun = sunNow(), lights = [], tw = P.rw + 2, n = tw * (P.rh + 2), dark = new Float32Array(n).fill(-1), earth = new Float32Array(n).fill(-1), at = (x, y) => (y - P.ry + 1) * tw + x - P.rx + 1, inPic = (x, y) => x >= P.rx && x < P.rx + P.rw && y >= P.ry && y < P.ry + P.rh;
+  const sun = sunNow(), lights = [], tw = P.rw + 2, n = tw * (P.rh + 2), dark = new Float32Array(n).fill(-1), at = (x, y) => (y - P.ry + 1) * tw + x - P.rx + 1, inPic = (x, y) => x >= P.rx && x < P.rx + P.rw && y >= P.ry && y < P.ry + P.rh;
   const lamp = (lx, ly, r, st) => lights.push([lx, ly, r, st, P.place.has(Math.round(lx) + "," + Math.round(ly)) ? stepsFrom(P, Math.round(lx) + "," + Math.round(ly)) : null]);
   for (const p of ents.values()) { const x = Math.round(p.x), y = Math.round(p.y); if (p.e && p.e.kind === "agent" && (p.e.id === myId || (P.floor.has(x + "," + y) && xrayShows(p) > 0))) lamp(p.x, p.y, ...(p.e.id === myId ? GLOW.me : GLOW.other)); }
   for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") { const x = b.bx * B + i % B, y = b.by * B + (i / B | 0); if (P.place.has(x + "," + y)) lamp(x, y, GLOW.fire[0] * (.95 + .05 * Math.sin(t * 13 + x)), GLOW.fire[1]); }
   for (const k of P.place.keys()) {
     const [x, y] = k.split(",").map(Number); if (!inPic(x, y)) continue;
-    if (!P.floor.has(k)) { dark[at(x, y)] = earth[at(x, y)] = 0; continue; }        // (under the sky: the light outside)
+    if (!P.floor.has(k)) { dark[at(x, y)] = 0; continue; }   // (under the sky: the light outside)
     const d = P.depth.get(k) || 99;
     let light = sun * Math.max(0, 1 - (d - 1) / SUN_REACH);
     for (const [lx, ly, r, st, steps] of lights) { const walked = steps ? steps.get(k) : 0; if (walked !== undefined) light = Math.max(light, st * Math.max(0, 1 - Math.max(Math.hypot(lx - x, ly - y), .75 * walked) / r)); }
     dark[at(x, y)] = (1 - Math.min(1, light)) * DARKEST;
-    earth[at(x, y)] = (1 - sun * Math.max(0, 1 - (d - .5) / EARTH_REACH)) * UNLIT_EARTH;
   }
-  // (a tile under the sky beside one under a roof: as far under nought as that one's earth is over it, so the dark of
-  // the earth starts from nothing where the roof starts and is whole a half tile in: it started at half, a step in
-  // the wall's light at the very line where the roof starts, the wall the same on both sides of it)
-  const set = dark.map((v) => (v < 0 ? 0 : 1));
-  for (const k of P.place.keys()) if (!P.floor.has(k)) { const [x, y] = k.split(",").map(Number); if (inPic(x, y)) earth[at(x, y)] = -Math.max(0, ...tilesBeside(k).map(([nx, ny]) => (P.floor.has(nx + "," + ny) && inPic(nx, ny) ? earth[at(nx, ny)] : 0))); }
-  for (const g of [dark, earth]) {                         // (the earth round it and between its parts: as the tiles of the place beside it, so its edges don't fade)
-    const own = g.slice();
-    for (let q = tw; q < n - tw; q++) if (!set[q]) { let sum = 0, cnt = 0; for (const o of [-1, 1, -tw, tw, -tw - 1, -tw + 1, tw - 1, tw + 1]) if (set[q + o]) { sum += own[q + o]; cnt++; } g[q] = cnt ? sum / cnt : 0; }
-    for (let q = 0; q < n; q++) if (!set[q] && (q < tw || q >= n - tw)) g[q] = 0;
-  }
+  const own = dark.slice();                                 // (the earth round it and between its parts: as the tiles of the place beside it, so its edges don't fade)
+  for (let q = tw; q < n - tw; q++) if (own[q] < 0) { let sum = 0, cnt = 0; for (const o of [-1, 1, -tw, tw, -tw - 1, -tw + 1, tw - 1, tw + 1]) if (own[q + o] >= 0) { sum += own[q + o]; cnt++; } dark[q] = cnt ? sum / cnt : 0; }
+  for (let q = 0; q < n; q++) if (dark[q] < 0) dark[q] = 0;
   const L = litPx(P), px = P.img.data, mix = (g, q, a, b) => (g[q] * (1 - a) + g[q + 1] * a) * (1 - b) + (g[q + tw] * (1 - a) + g[q + tw + 1] * a) * b;
-  for (let i = 0; i < L.f.length; i++) {
-    const f = L.f[i], q = L.q[i], a = L.a[i], b = L.b[i], d = mix(dark, q, a, b);
-    px[f * 4 + 3] = 255 * (P.solid[f] ? Math.max(d, mix(earth, q, a, b)) : d);
-  }
+  for (let i = 0; i < L.f.length; i++) px[L.f[i] * 4 + 3] = 255 * mix(dark, L.q[i], L.a[i], L.b[i]);
   P.shade.getContext("2d").putImageData(P.img, 0, 0);
   ctx.globalAlpha = xray.a; ctx.imageSmoothingEnabled = false;
   ctx.drawImage(P.shade, sx(0) + P.x * zoom, sy(0) + P.y * zoom, P.w * zoom, P.h * zoom);

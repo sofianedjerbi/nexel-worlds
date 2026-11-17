@@ -164,7 +164,7 @@ function* xrayPicture(tx, key, near) {
   const L = xray.L, row = xray.row, {cols: place, z: floors} = xrayPlace(tx, row, L), mass = new Set(), todo = [];
   const sight = (x, ty) => {
     const lv = XRAY.whole ? -99 : levelAt(x, ty), rows = lv >= L + 2 && place.get(x);
-    return !!rows && rows.some((gy) => gy < ty && lv - floors.get(x + "," + gy) > 2 * (ty - gy) - 2);
+    return !!rows && rows.some((gy) => { const up = lv - floors.get(x + "," + gy); return gy < ty && up > 1 && up > 2 * (ty - gy) - 2; });   // (a step up in front of a floor hides a hand of it, as anywhere on the land, and is the way out of it: not cut through. A stair's first step lay whole on the meadow, a flat square with the pit's rim stopped short at its corner: "the first step of the stairs look awkward")
   };
   const at = (x, ty) => (x - tx + 16) * 64 + ty - row + 24, join = (x, ty) => { if (!mass.has(at(x, ty))) { mass.add(at(x, ty)); todo.push([x, ty]); } };
   for (let x = tx - 1; x <= tx + 1; x++) if ((place.get(x) || []).includes(row)) for (let ty = row + 1; ty <= row + XRAY.far; ty++) if (sight(x, ty)) join(x, ty);
@@ -244,10 +244,10 @@ function* xrayPicture(tx, key, near) {
   let any = 0;
   for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) { seen[f] = 1; any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
   const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(m, W, h), 0, 0);
-  const {px: earth, cut, more, line, deep, solid, cols} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint});   // (the earth cut through, and the cut's edge: xraycut.js)
+  const {px: earth, cut, more, line, deep, cols} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint});   // (the earth cut through, and the cut's edge: xraycut.js)
   any += more; og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(earth, W, h), 0, 0);
   const mouths = [...floor.keys()].filter((k) => { const [fx, fy] = k.split(",").map(Number); return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => topAt(fx + dx, fy + dy) < topAt(fx, fy)); }).sort().join(" ");
-  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, line, deep, solid, cols, any, rock: rocks, floor, cut, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};
+  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, line, deep, cols, any, rock: rocks, floor, cut, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};
 }
 
 // The circle itself, over the land and under everything standing on it (in the other views: drawXrayWhole)

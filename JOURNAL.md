@@ -2238,4 +2238,22 @@ not its body).
   place, 4176 px, with the caves' redraw at once. It now says where the two pictures differ: a box a tile and a half
   wide at the east end of the water, beside the cave's plateau, not at the cave's mouth. Cause not found; it passes
   alone and in most loaded runs (it failed in two of about twelve today).
+- Then, on the picture of that seam: "Lightning show clear distinction with floor. And the first step of the stairs
+  look awkward".
+  The light: the earth cut through over a hollow had the sky's light alone, so from the second tile in it was much
+  darker than the hollow under it and its floor: down a dug stair, a stair of light and dark with hard edges. That
+  was my "burrow in a bank", and it is the cut in the light the user had asked to be rid of. One light now: every
+  px of the place, wall, earth or floor, has its tile's (cavelight.js, 93 lines; xraycut.js no longer says which
+  px are earth).
+  The first step: a floor one step under the meadow in front of it was seen whole through that meadow, a flat
+  square lying on the grass with no edge (no line there: you can walk off it), and the pit's rim stopped short at
+  its corner. A step up in front of a floor is not cut through any more (xray.js: only ground two layers over a
+  floor hides it): it is the way out, and it keeps its edge as on the land. It is also what you see standing on
+  that step, so nothing changes as you walk down. And the side of the next step, which is against that meadow now,
+  has its line: the line's rule looked at the tile stepped onto that way, not at the ground that is really beside
+  the px (ground in front of that tile, a row on, is cut through: a line).
+- Tests: the earth over a tunnel is as dark as the floor under it, two and four tiles in; the first step's meadow is
+  not rock and not seen through, and the second step has its line down its side; the stair test said every step was
+  seen whole: every step but the first. The new test of the seam read the screen while one picture was still coming
+  over another, once, on a loaded machine: it waits for the picture to be whole.
 
