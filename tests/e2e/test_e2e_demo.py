@@ -58,4 +58,5 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     page.route("**/js/*.js*", lambda r: r.abort())             # (no script has come yet)
     page.goto(site, wait_until="domcontentloaded")
     page.wait_for_function("!!document.querySelector('#poster.in') && document.getElementById('poster').currentSrc.startsWith('data:image/webp') && document.getElementById('poster').naturalWidth === 480", timeout=5000)
+    assert page.evaluate("document.fonts.check('18px SproutPixel') && !performance.getEntriesByType('resource').some((e) => /sprout-pixel/.test(e.name))")   # (and its letters)
     phone.close()

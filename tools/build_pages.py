@@ -42,6 +42,9 @@ def build(out: Path):
     small = '"assets/title_poster_s.webp"'                  # (a phone's still picture of the island: in the page too, 45 KB: there with the first picture.
     assert page.count(small) == 1, "index.html no longer names its small poster"     #  Asked for, it came at 0.85 s behind seventy scripts and showed at 1.6 s)
     page = page.replace(small, '"data:image/webp;base64,' + base64.b64encode((out / "assets" / "title_poster_s.webp").read_bytes()).decode() + '"')
+    font, ask = "url(assets/sprout-pixel.ttf)", '<link rel="preload" href="assets/sprout-pixel.ttf" as="font" type="font/ttf" crossorigin>\n'   # (and the game's letters, 17 KB: the first picture had its window and no word in it)
+    assert page.count(font) == 1 and page.count(ask) == 1, "index.html no longer names its font"
+    page = page.replace(font, "url(data:font/ttf;base64," + base64.b64encode((out / "assets" / "sprout-pixel.ttf").read_bytes()).decode() + ")").replace(ask, "")
     (out / "index.html").write_text(page.replace("</head>", '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>\n</head>', 1))
     with zipfile.ZipFile(out / "py.zip", "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted(PKG.rglob("*.py")):

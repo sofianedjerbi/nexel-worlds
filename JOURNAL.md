@@ -2357,4 +2357,7 @@ a060b94): not touched.
   scripts on the one connection), and the page, busy running them, showed it at 1.6 s. A phone's picture is in the
   page itself in the demo's build (tools/build_pages.py: 66 KB of page, gzipped, for 18): it is there with the first
   picture. A desk's (91 KB) is still asked for: a line there is not a phone's.
+- After that, on the published site: the island's picture is in the first frame (0.2 s on 9 Mbit/s, 0.6 s on 1.6),
+  the island itself comes in at 2.4 s (6.5 s). That first frame had its window and no word in it: the game's letters
+  were a file too. They are in the demo's page as well (17 KB; the page is 70 KB gzipped).
 
