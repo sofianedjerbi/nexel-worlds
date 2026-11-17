@@ -131,7 +131,7 @@ function levelShape(R, k, shape, ta, tb, keep, of) {
 }
 // Painted lowest level first into one picture, a few rows a step (so no frame waits on a whole block). ground: the
 // rect's tiles as painted flat, a Uint32 a px (a block's: tiles.js). The picture is px too, worked out here and made
-// a canvas once, at the end: nothing of it is put together by the GPU. -> {flat, up, maxLv, minLv}: the picture is
+// a canvas once, at the end: nothing of it is put together by the GPU. -> {flat, up, maxLv, minLv, out}: the picture is
 // `up` px taller than the rect at its top (the highest level's lift), the lowest level's worth at its foot.
 // see (xray.js): the land without the rock in the way. Only the tiles see.keep says are painted, exactly as they are
 // with that rock there (every shape and colour is still worked out from the whole land), into the rows c0..c1 of the
@@ -246,7 +246,7 @@ function* reliefSteps(R, ground, see) {
     yield;
   }
   const flat = out && pxCanvas(out, W, tall);            // (handed to the GPU whole, once)
-  return {flat, up, maxLv, minLv};
+  return {flat, up, maxLv, minLv, out};
 }
 // A block's: its picture, and where that has anything in it (a small hill in a wide plain: the rest is not painted,
 // frame after frame): the raised tiles, their ledges beside them, their walls down to the lowest ground

@@ -213,7 +213,7 @@ function* xrayPicture(tx, key, near) {
       }
     }
   };
-  const {flat: over} = yield* reliefSteps(R, ground, see);
+  const {flat: over, out: paint} = yield* reliefSteps(R, ground, see);
   const holes = caveMouths(near, R.x * 16, y, W, h, (x, ty) => rock(x, ty) || floor.has(x + "," + ty));   // (the mouths of caves in what is kept: caves.js)
   if (holes) over.getContext("2d").drawImage(holes, -OV_M, -OV_M);
   // of it, what the rock is drawn over: the kept ground that is on top there (seen), and its water
@@ -222,7 +222,7 @@ function* xrayPicture(tx, key, near) {
   let any = 0;
   for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) { seen[f] = 1; any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
   const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(m, W, h), 0, 0);
-  const {px: earth, cut, more, line} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks});   // (the earth cut through, and the cut's edge: xraycut.js)
+  const {px: earth, cut, more, line} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint});   // (the earth cut through, and the cut's edge: xraycut.js)
   any += more; og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(earth, W, h), 0, 0);
   const mouths = [...floor.keys()].filter((k) => { const [fx, fy] = k.split(",").map(Number); return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => topAt(fx + dx, fy + dy) < topAt(fx, fy)); }).sort().join(" ");
   return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, line, any, rock: rocks, floor, cut, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};

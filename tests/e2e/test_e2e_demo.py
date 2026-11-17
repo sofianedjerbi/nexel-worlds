@@ -30,6 +30,9 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.goto(site)
     page.wait_for_function("blocks.size > 0", timeout=90000)       # Pyodide comes from the CDN on first load
+    # every script the page names has the build's mark: a page loaded again after a publish is the new build at once
+    marks = page.evaluate("[...document.scripts].filter((s) => s.getAttribute('src') && s.getAttribute('src').startsWith('js/')).map((s) => s.getAttribute('src').split('?v=')[1])")
+    assert len(marks) > 50 and all(marks) and len(set(marks)) == 1, marks[:5]
     page.fill("#name", "visitor")
     page.click("#join")
     page.wait_for_function("meObs !== null", timeout=20000)

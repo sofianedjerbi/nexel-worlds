@@ -2174,4 +2174,18 @@ not its body).
 - Then, on the sheet: "The line shouldn't show up at intersections with same level": the outline closed a cave's
   doorway and both ends of a passage, where the floor goes on level with the meadow. It is open there, as the
   cut's own line already was. Tests: no line across a cave's way out; the hill beside a room is as it is.
+- Then, a crop of where the stair under its roof meets the open pit: "Weird artefact here". A px map of the corner
+  showed three things. The slivers made into wall kept their level and were not marked as wall, so against the
+  meadow beside them they counted as ground that goes on level with it: no line for the top two px and down the
+  side. The end of a ledge that had hung from the roof's side (two px by two) and the band under it, two px out of
+  step with the wall's, stood in the pit's wall: the line went round them in a hook. And along the pit's own side the
+  meadow tile's set-in edge shows two px of itself painted a level down: taken for ground level with the floor, no
+  line there. Now: a wall cut through is its bands and no more (a px there that is anything else, or a band out of
+  step, is the band as the painter paints it); the four px of an open hole's wall next to a roofed tile are that
+  wall's own px from further in (relief.js hands its px over); and ground level with a floor is a tile's own top,
+  not what shows of it a level down.
+- The demo's pages name every script, style and clip, the worker and the game's Python with the build's own mark
+  (tools/build_pages.py: stamp): GitHub Pages lets a browser keep a file ten minutes and a phone keeps a clip
+  longer, so a page loaded again after a publish could be the build before ("Now update the demo": it was, the
+  files compared equal).
 
