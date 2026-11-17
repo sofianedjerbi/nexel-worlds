@@ -2274,4 +2274,21 @@ not its body).
   where it meets a cliff). Not what the photo shows; noted.
 - Test: at that corner the meadow tile is meadow to its own corner, and the line runs down the floor's side from the
   rim's end to its foot. It fails on the code before.
+- Build mode, asked with the last picture: "make the destruction in build mode more easy by pathfinding the user
+  position. 1/ I dig down my stair 2/ I get stopped 2 block on front of me because it is out of range 3/ id like to
+  not be blocked if the block I want to destroy will be accessible by destroying the previous ones".
+  What stopped it: X on a cell in the ground with no air beside it was refused ("No air beside it: dig the step
+  before it first"), the game's own rule for a dig (sim/underground.py), asked of the land as it is now. So a way
+  down was a step, a wait while it was dug, the next step. It is asked of the land as it will be (build.js): air
+  beside the cell, or a hole planned beside it. Each plan was taken under the same rule, so a chain of them starts at
+  air. The work does them in their order: a hole with no air beside it yet waits for the ones that open it; one
+  whose opener could not be done says so and goes. The server's rule is not touched: every dig is still checked
+  there as it is done.
+- Measured: four steps planned one after the other with the work held (7 cells), none of them dug; then the work
+  let go: all four dug, the last two under the land, the character at the foot. A cell with nothing planned beside
+  it is refused as before.
+- The test failed one run in three on a loaded machine. Printed what there was when the wait ran out (not guessed):
+  no plan left, the stair whole, a tile further south. The key pressed 200 ms to face south had walked a tile. The
+  test counts from the cursor now. (My first guess, the map a moment behind the dig, was wrong for this; the work
+  still waits half a second for it before it gives a step up, once.)
 

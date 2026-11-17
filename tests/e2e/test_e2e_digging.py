@@ -24,7 +24,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_a_way_down_a_step_at_a_time(game)
     for depth in (1, 2, 3):
         game.press("q", 120)
         assert game.js("Build.level()") == -depth and rows()["B"][0] == f"BUILD · -{depth} · leave"
-    assert rows()["X"] == ["Dig the step before it first", "bad"]       # (three down, beside you: shut in)
+    assert rows()["X"] == ["Plan the step before it first", "bad"]      # (three down, beside you: shut in)
     game.wait("Keyhole.shown", 3000)                           # (in the ground: its column, faint, down to the cursor)
     game.press("x")
     assert game.js("Build.S.plans.size") == 0
@@ -39,6 +39,41 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_a_way_down_a_step_at_a_time(game)
     assert game.js(f"surfacesAt({x}, {y + 3})") == [-3, 0]   # the third step: under a roof, the land over it left
     assert game.js("Build.level()") == -3 and game.inv("dirt") == 2 and game.inv("stone") == 3    # (under sea level: stone)
     game.press("b")
+    assert not game.errors
+
+
+def test_a_way_down_is_planned_ahead_each_step_where_the_one_before_it_will_have_made_room(game):
+    """"I dig down my stair, I get stopped 2 block on front of me because it is out of range. I'd like to not be
+    blocked if the block I want to destroy will be accessible by destroying the previous ones": a cell in the ground
+    with no air beside it was refused until the step before it was dug: a step, a wait, a step. It is planned once
+    the step before it is: three steps one after the other, at once, and your character digs them in their order.
+    A step with nothing planned before it is still refused."""
+    game.clear_area(8)
+    game.give(pickaxe=1)
+    game.press("ArrowDown", 200)
+    game.press("b")
+    x, y = game.js("[Build.S.at.x, Build.S.at.y]")             # (the cursor: on the tile in front of you; the first step is dug there)
+    game.js("(() => { window.__work = Build.S.working; Build.S.working = true; return 1; })()")   # (the work held: every plan is made before a hole is dug)
+    rows = lambda: {r[0]: r[1:] for r in game.js("Build.rows()")}
+    sizes = []
+    for k in range(4):                                         # four steps down, a tile south each: none of them dug yet
+        if k:
+            game.press("ArrowDown", 120)
+        game.press("q", 120)
+        assert game.js("Build.level()") == -1 - k and rows()["X"][0].startswith("Dig a way to"), (k, rows())
+        game.press("x", 120); sizes.append(game.js("Build.S.plans.size"))
+    assert sizes == [1, 3, 5, 7]                               # (the first: the land's top cell; then the room of each, two cells)
+    game.press("ArrowDown", 120); game.press("ArrowDown", 120)  # two tiles on from the last, as deep: nothing planned beside it
+    assert rows()["X"] == ["Plan the step before it first", "bad"]
+    game.press("x", 120)
+    assert game.js("Build.S.plans.size") == 7
+    game.js("(() => { Build.S.working = false; Build.toggle(false); Build.toggle(true); return 1; })()")   # the work goes on
+    try:
+        game.wait(f"surfacesAt({x}, {y + 3})[0] === -4 && Build.S.plans.size === 0", 60000)
+    except Exception:                                         # (what there is when it does not come: the plans left, the stair as far as it got, you)
+        raise AssertionError(game.js(f"""JSON.stringify({{plans: [...Build.S.plans.values()].map((j) => [j.x - {x}, j.y - {y}, j.z, j.state, j.why || '', !!j.tried]), working: Build.S.working, on: Build.on,
+          steps: [0, 1, 2, 3].map((k) => surfacesAt({x}, {y} + k)), me: [myAt.x - {x}, myAt.y - {y}, myAt.z], said: (document.getElementById('toast') || {{}}).textContent}})"""))
+    assert [game.js(f"surfacesAt({x}, {y + k})") for k in (0, 1, 2, 3)] == [[-1], [-2], [-3, 0], [-4, 0]]   # two steps open to the sky, then under the land
     assert not game.errors
 
 

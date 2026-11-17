@@ -12,8 +12,8 @@
 // own floor Q sinks it to what is under it: the floor under yours (the ground floor from upstairs), a cave's floor,
 // or, in the ground, a layer at a time: there X digs the room to stand in (two cells), and what is over it stays: a
 // way down is a tunnel, a step at a time ("like minecraft ... this enforce me to dig huge columns"; it dug the whole
-// column over it). How far down it is is written beside it, in layers. (It was R and F, then Shift ↑ ↓: "not
-// natural"; the user chose Q and E. They counted storeys: on solid ground Q did nothing but say "floor -1".) What you plan
+// column over it), and planned as far ahead as you like: each step where the one before it will have made room (it
+// was refused until that one was dug). How deep is written beside it. (Q, E: after R F and Shift ↑ ↓, "not natural".) What you plan
 // goes where the cursor is: a thing (a wall, a door, a bed) on what the cursor is on; a block (planks, a roof) on
 // top of it, or, the cursor in the air, in the cell it is in, where a wall under it or a block beside it holds it.
 // Planks on bare ground are a floor laid in it, as ever; a roof goes a storey over what the cursor is on (over your
@@ -34,7 +34,7 @@ const Build = (() => {
   const under = (p, t) => (solidAt(p.x, p.y, t) ? t : settleAt(p.x, p.y, t));      // (sunk to t: in the ground there, or on what is under it)
   const level = (p = S.at) => (S.plane !== null ? S.plane : !p ? 0 : S.deep !== null ? under(p, S.deep) : ride(p));
   const buried = (p, L) => landSolid(p.x, p.y, L + 1);                            // (in the ground: X digs the room to stand there)
-  const open = (x, y, z) => landSolid(x, y, z) && [[0, 0, 1], [0, 0, -1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])].some(([dx, dy, dz]) => !solidAt(x + dx, y + dy, z + dz));   // (air beside it: it can be dug, sim/underground.py)
+  const digs = (x, y, z) => { const j = S.plans.get(x + "," + y + "," + z); return !!j && !!j.dig && j.state !== "bad"; }, open = (x, y, z, soon) => landSolid(x, y, z) && [[0, 0, 1], [0, 0, -1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])].some(([dx, dy, dz]) => !solidAt(x + dx, y + dy, z + dz) || (soon && digs(x + dx, y + dy, z + dz)));   // (air beside it: it can be dug, sim/underground.py; soon: or will be, once what is planned beside it is dug)
   const onIt = (p, L) => solidAt(p.x, p.y, L) && !solidAt(p.x, p.y, L + 1);        // the cursor is on something there (not in the air, not inside it)
   const key = (p, z = level(p)) => p.x + "," + p.y + "," + z;
   const BLOCK = (it) => it === "roof" || it === "plank";
@@ -76,7 +76,7 @@ const Build = (() => {
     const zs = [...new Set([selected === "roof" && on ? L + Floors.STOREY : undefined, h.z, L].filter((z) => z !== undefined))];
     for (const z of zs) { const j = S.plans.get(key(p, z)); if (j) return j.state === "doing" ? null : {z, what: "plan", plan: j}; }
     if (!t) return null;
-    if (buried(p, L)) { const z = landSolid(p.x, p.y, L + 2) ? L + 2 : L + 1; return {z: L, what: "ground", dig: true, down: true, shut: !open(p.x, p.y, z)}; }   // (the cell to dig first: air beside it?)
+    if (buried(p, L)) { const z = landSolid(p.x, p.y, L + 2) ? L + 2 : L + 1; return {z: L, what: "ground", dig: true, down: true, shut: !open(p.x, p.y, z, true)}; }   // (the cell to dig first: air beside it, or a hole planned there?)
     const built = (z) => { const c = FLOORS || z !== L ? Floors.get(p.x, p.y, z) : null; return c ? {z, what: c[1] ? label(CH[c[1]]) : c[0] === "roof" ? "roof" : c[0] === "stairs" ? "the step" : "planks", up: true} : null; };
     for (const z of zs) if (built(z)) return built(z);
     if (on && L === groundAt(p.x, p.y)) {               // on the land: whatever stands there; what is laid in it; else the ground itself
@@ -92,15 +92,14 @@ const Build = (() => {
     const it = hint(p), z = it.z !== undefined ? it.z : level(p);
     if (!it.ghost || it.ok === false) return S.hold ? null : toast(it.text, true);
     if (BLOCK(selected) && S.hold && S.row !== undefined && S.row !== z) return;     // (a row of blocks is at one height: over a floor already laid it does not pile them up)
-    S.row = z;
-    S.plans.set(key(p, z), {x: p.x, y: p.y, z, item: selected, up: it.z !== undefined && !it.draw, ground: it.ghostGround || null, swap: !!it.swap, steps: it.steps || null, state: "todo"});
+    S.row = z; S.plans.set(key(p, z), {x: p.x, y: p.y, z, item: selected, up: it.z !== undefined && !it.draw, ground: it.ghostGround || null, swap: !!it.swap, steps: it.steps || null, state: "todo"});
     sfx("pick"); work();
   }
   function take(p) {                                  // a plan back; or, of what is built there, a plan to take it down
     const hit = taking(p);
     if (!hit) return S.hold ? null : toast("Nothing built there", true);
     if (hit.plan) { S.plans.delete(key(p, hit.z)); return; }
-    if (hit.shut) return S.hold ? null : toast("No air beside it: dig the step before it first", true);
+    if (hit.shut) return S.hold ? null : toast("No air beside it: plan the step before it first", true);
     if (hit.down) { for (const z of [hit.z + 2, hit.z + 1]) if (landSolid(p.x, p.y, z)) S.plans.set(key(p, z), {x: p.x, y: p.y, z, take: true, dig: true, tunnel: true, state: "todo"}); }   // (the room to stand in: a tunnel, what is over it stays)
     else S.plans.set(key(p, hit.z), {x: p.x, y: p.y, z: hit.z, take: true, up: !!hit.up, dig: !!hit.dig, state: "todo"});
     sfx("pick"); work();
@@ -123,7 +122,7 @@ const Build = (() => {
     const s = myPos(); if (!s) return null;
     // (what you can walk on first, a floor, a door: then what closes the way, the nearest first; a block that
     // nothing holds yet, or a thing whose floor is not laid yet, after what is to hold it)
-    const wait = (j) => (j.dig ? S.plans.has(j.x + "," + j.y + "," + (j.z + 1)) : !j.take && j.up && (BLOCK(j.item) ? !!Floors.fits(j.x, j.y, j.z) : !Floors.get(j.x, j.y, j.z)));
+    const wait = (j) => (j.dig ? S.plans.has(j.x + "," + j.y + "," + (j.z + 1)) || (j.tunnel && !open(j.x, j.y, j.z)) : !j.take && j.up && (BLOCK(j.item) ? !!Floors.fits(j.x, j.y, j.z) : !Floors.get(j.x, j.y, j.z)));
     const far = (j) => (j.tried ? 1000 : 0) + (wait(j) ? 5000 : 0) + (solid(j) ? 500 : 0) + Math.abs(j.x - s.x) + Math.abs(j.y - s.y) + Math.abs(j.z - myZ(s.x, s.y));
     return [...S.plans.values()].filter((j) => j.state === "todo").sort((a, b) => far(a) - far(b))[0];
   }
@@ -142,6 +141,8 @@ const Build = (() => {
   const stands = (q, h) => { const c = FLOORS ? Floors.get(q.x, q.y, h) : null; return c ? !SOLID.has(c[1]) : h === groundAt(q.x, q.y) ? plainWalk(q.x, q.y) : surfacesAt(q.x, q.y).includes(h); };   // (a tunnel's floor, under its roof, too)
   async function build(j) {                           // -> why it could not be done (nothing: it is done)
     if (!j.take && !(meObs.self.inventory[j.item] > 0)) return `No ${label(j.item)} left`;
+    for (let i = 0; j.tunnel && !j.tried && i < 24 && !open(j.x, j.y, j.z); i++) await new Promise((done) => setTimeout(done, 25));   // (the hole dug before it may be on your screen a moment after it is dug)
+    if (j.tunnel && !open(j.x, j.y, j.z)) return "No air beside it: the step before it was not dug";     // (what was to open it is gone: it could not be done)
     const here = () => { const s = myPos(); return {...s, z: myZ(s.x, s.y)}; };
     // from (q, h): within the game's reach of it, height counted; and not where it goes (a block in your body, a wall on your feet)
     const ok = (q, h) => (q.x - j.x) ** 2 + (q.y - j.y) ** 2 + ((j.z - h) * LAYER) ** 2 <= (USE_R + .5) ** 2
@@ -182,8 +183,7 @@ const Build = (() => {
 
   function toggle(on = !S.on) {
     if (on === S.on || (on && !me)) return;
-    S.on = on; S.hold = null; S.plane = null; S.deep = null; held(null);
-    document.body.classList.toggle("building", on);
+    S.on = on; S.hold = null; S.plane = null; S.deep = null; held(null); document.body.classList.toggle("building", on);
     if (on) { S.at = facingTile() || myPos(); work(); }        // (its keys are by the cursor: prompts.js)
     else { S.pan = {x: 0, y: 0}; if (todo().length) toast(`${todo().length} plans wait: B to go on building`); }      // (the plans stay where they are)
   }
@@ -291,7 +291,7 @@ const Build = (() => {
     const out = [["B", up ? `BUILD · ${sign(up)} · leave` : "BUILD MODE · leave", "head"]];
     out.push([it.key || "Space", it.text, it.ok === false && !it.key ? "bad" : ""]);
     out.push(["Q E", "A layer down, up"]);
-    if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.shut ? "Dig the step before it first" : hit.down ? `Dig a way to ${sign(up)}` : hit.dig ? "Dig a hole" : hit.what === "roof" ? "Take the roof off" : hit.verb || `Take down ${hit.what}`, ...(hit.shut ? ["bad"] : [])]);
+    if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.shut ? "Plan the step before it first" : hit.down ? `Dig a way to ${sign(up)}` : hit.dig ? "Dig a hole" : hit.what === "roof" ? "Take the roof off" : hit.verb || `Take down ${hit.what}`, ...(hit.shut ? ["bad"] : [])]);
     if (n) out.push(["Esc", `Drop the ${n} plan${n > 1 ? "s" : ""}`]);
     return out;
   }
