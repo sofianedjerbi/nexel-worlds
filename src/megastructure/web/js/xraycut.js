@@ -50,7 +50,7 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
       if ((!put && !back) || (r < r0 && see.band[f] !== 1)) continue;
       if (put && !fill[f]) {                                 // (of what was painted there: the place's floors, and the wall behind this tile, its bands and
         const ts = tileOf(f), tf = tileOf(f, 4);            //  what shows between them of the tile behind, painted a level down; not land that stands in front
-        if (see.band[f] === 2 ? !back : see.band[f] === 1 ? tf !== t : ts < 0 || (!deepT[ts] && (ts !== t - w || see.lev[f] >= lvT[at(ts % w, ts / w | 0)]))) continue;   //  of it or beside it: its top, its wall, a ledge)
+        if (see.band[f] === 1 ? tf !== t : see.band[f] === 0 && (ts < 0 || (!deepT[ts] && (ts !== t - w || see.lev[f] >= lvT[at(ts % w, ts / w | 0)])))) continue;   //  of it: its top, its wall. A ledge down the tile's side is of the place: the line is on the tile's edge, not two px in, "this border is weird")
       }
       deep[f] = 1; own[f] = t + 1;
       if (!back || fill[f]) continue;

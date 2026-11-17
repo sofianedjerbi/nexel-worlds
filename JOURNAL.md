@@ -2217,4 +2217,7 @@ not its body).
   the picture of a cave's mouths on its hill is drawn again when the place seen through its roof changes, and that
   was put off while any tile was still being drawn. It is drawn at once now (caves.js); two loaded runs pass.
   tests/e2e/test_e2e_underground.py: the tests of being seen under ground, out of test_e2e_digging.py (313 lines).
+- And: "This border is weird", the east end of an open stair: the thin line the land paints down a dug tile's side
+  (its side wall, a px or two) was left out of the place's shape, so the outline ran two px in from the tile's edge,
+  a strip of wall outside it, and missed the floor's corner. It is of the place: the line is on the tile's edge.
 
