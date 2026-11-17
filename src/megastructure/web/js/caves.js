@@ -181,9 +181,12 @@ function caveBox(b, size) {
 function drawCaves(vis, sx, sy) {
   for (const b of vis) {
     if (!b.col || !b.relief) continue;
-    const key = (b.ver || 0) + ":" + caveStamp;
-    if (b.caveKey !== key && (!dirtyTiles.length || b.caveKey === undefined)) {   // (not while its ground is still being drawn again: once, after)
-      b.caveKey = key; b.caveOv = buildCaveOverlay(b); b.caveBox = b.caveOv && caveBox(b, b.caveOv.width);
+    // (its ground changed: not while it is still being drawn again: once, after. Only the place seen through its roof
+    // changed, caveStamp: at once; put off while other tiles were being drawn, a cave's mouth was missing for a while
+    // after you left it, and the pixel test of the x-ray failed now and then on a loaded machine)
+    const ver = b.ver || 0;
+    if (b.caveVer !== ver ? !dirtyTiles.length || b.caveVer === undefined : b.caveSt !== caveStamp) {
+      b.caveVer = ver; b.caveSt = caveStamp; b.caveOv = buildCaveOverlay(b); b.caveBox = b.caveOv && caveBox(b, b.caveOv.width);
     }
     if (!b.caveOv) continue;
     const [cx, cy, cw, ch] = b.caveBox;                  // (only the part of it round its hollow tiles: the rest is empty)

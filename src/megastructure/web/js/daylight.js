@@ -88,16 +88,27 @@ function drawNight(vis, sx, sy, S, t) {
   if (dark > .2) {                                           // the lights: only once it is getting dark
     g.globalCompositeOperation = "lighter";
     const at = (px, py) => [(px - x0) / z, (py - y0) / z], shift = [Math.round((sx(0) - x0) / z) & 1, Math.round((sy(0) - y0) / z) & 1], k = (dark - .2) / .8;
-    const P = xray.a > .01 ? xray.pic : null, c2 = LIGHT.cv2, g2 = c2.getContext("2d"), to = (kind) => (kind === 0 ? g : kind === 1 && P ? g2 : null);
+    const P = xray.a > .01 && xray.pic && xray.pic.cols ? xray.pic : null, c2 = LIGHT.cv2, g2 = c2.getContext("2d");
     if (c2.width !== w || c2.height !== h) { c2.width = w; c2.height = h; }
     g2.globalCompositeOperation = "source-over"; g2.clearRect(0, 0, w, h); g2.globalCompositeOperation = "lighter";
+    // (a light under a roof seen through: as far as it goes in the place, cavelight.js: along its tunnels, not
+    // through the earth between two of them; so only over the columns of the tiles it reaches)
+    const under = (lx, ly, r, draw) => {
+      const key = Math.round(lx) + "," + Math.round(ly), steps = P.place.has(key) ? stepsFrom(P, key) : null, ox = P.x + Math.round((sx(0) - x0) / z), oy = P.y + Math.round((sy(0) - y0) / z);
+      g2.save(); g2.beginPath();
+      if (steps) for (const [k, n] of steps) { const c = P.cols.get(k), [x, y] = k.split(",").map(Number); if (c && Math.max(Math.hypot(x - lx, y - ly), .75 * n) * 16 < r + 8) g2.rect(ox + c[0], oy + c[1], 16, c[2] - c[1]); }
+      g2.clip(); draw(g2); g2.restore();
+    };
     for (const p of ents.values()) if (p.e && p.e.kind === "agent") {
-      const tx = Math.round(p.x), ty = Math.round(p.y), on = to(underRoof(tx, ty, Floors.standOf(p, tx, ty)));
-      if (on) lamp(on, ...at(sx(p.x) + S / 2, bodyY(p, sy) + S / 2), 42, "rgb(255,222,170)", .45 * k, shift);
+      const tx = Math.round(p.x), ty = Math.round(p.y), kind = underRoof(tx, ty, Floors.standOf(p, tx, ty)), draw = (on) => lamp(on, ...at(sx(p.x) + S / 2, bodyY(p, sy) + S / 2), 42, "rgb(255,222,170)", .45 * k, shift);
+      if (kind === 0) draw(g); else if (kind === 1 && P) under(p.x, p.y, 42, draw);
     }
     const lights = [...fireAt];
     for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") lights.push({x: b.bx * B + i % B, y: b.by * B + (i / B | 0)});
-    for (const {x, y} of lights) { const on = to(underRoof(x, y, floorAt(x, y))); if (on) lamp(on, ...at(sx(x) + S / 2, sy(y, x) + S / 2), 64 + Math.round(3 * Math.sin(t * 9 + x * 7)), "rgb(255,176,96)", 1.15 * k, shift); }
+    for (const {x, y} of lights) {
+      const kind = underRoof(x, y, floorAt(x, y)), r = 64 + Math.round(3 * Math.sin(t * 9 + x * 7)), draw = (on) => lamp(on, ...at(sx(x) + S / 2, sy(y, x) + S / 2), r, "rgb(255,176,96)", 1.15 * k, shift);
+      if (kind === 0) draw(g); else if (kind === 1 && P) under(x, y, r, draw);
+    }
     if (P) {                                                 // (those under the roof: cut to what the picture shows under it, then with the rest)
       underPx(P); g2.globalCompositeOperation = "destination-in"; g2.drawImage(P.mask, P.x + Math.round((sx(0) - x0) / z), P.y + Math.round((sy(0) - y0) / z));
       g.drawImage(c2, 0, 0);

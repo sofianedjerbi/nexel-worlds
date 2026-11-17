@@ -2188,4 +2188,33 @@ not its body).
   (tools/build_pages.py: stamp): GitHub Pages lets a browser keep a file ten minutes and a phone keeps a clip
   longer, so a page loaded again after a publish could be the build before ("Now update the demo": it was, the
   files compared equal).
+- Then two more crops. "Upper is weird here": on the staged stair the first tile of the open pit has a hill behind
+  it, and the outline ran under the land's own rim there, along its curved foot. One edge for the outline as for
+  the cut's line: the land's rim where it has one (round what is open to the sky), the line elsewhere; which tile
+  has a rim is asked of the tiles, not of what each px was painted as (stubs stayed at a rim's rounded corners).
+  And: "There shouldn't be a line where player can travel to outside (outside notion isn't really to be taken as
+  it..)": a stair's top step was lined off from the meadow you step onto it from. The rule was ground level with
+  the floor; it is now the game's own step (cells.js: landAt): no line on a side of a floor you can walk off that
+  way, level, a step up or a drop. Tests: no line west of a stair's top step nor in front of it, one under the
+  next; none under an open stair's rim.
+- Then: "See how lightning is cut ? Uniformise it with a real lightning model, sun outside goes inside etc". Two
+  things lit the place: the floors and walls under a roof took their tile's light, and the earth cut through over
+  them was a flat shade darker, baked into the picture, from the roof's edge on: a line down the wall where the
+  roof starts. And a light counted its reach as the crow flies: a fire lit the tunnel beside its own through the
+  earth between them (at night its glow too). One model now (cavelight.js), for every px of the place, under a
+  roof or not: under the sky, the light outside; under a roof the sun comes in at every way out and fades along
+  the way; you, the others, a fire light round them by the longer of the straight line and three quarters of the
+  tiles walked (a search over the place's tiles, kept a picture); earth cut through has the sky's light alone, for
+  two tiles and a half. Each px takes it from its tile and the tiles beside it. Night's lamps under a roof go over
+  the columns of the tiles they reach, no further (daylight.js; xraycut.js hands the columns over).
+- And: "Tile transition is broken there": beside a roofed floor that has a part of the place open to the sky beside
+  it too, the tile behind kept the corner the hole's rim turns on the land, a wedge of earth over the corner of the
+  cut. That tile is drawn without it (xray.js): the rim ends where the cut starts.
+- Tests: the dark of the wall's top is the same on both sides of where a roof starts and grows with the way in; by
+  night a floor two tiles from a fire is lit and the floor of the tunnel beside it, straight across the earth, is
+  not. The tests that read the baked shade read the light.
+- The x-ray's pixel test, which failed now and then on a loaded machine (4176 px, the same each time), was mine:
+  the picture of a cave's mouths on its hill is drawn again when the place seen through its roof changes, and that
+  was put off while any tile was still being drawn. It is drawn at once now (caves.js); two loaded runs pass.
+  tests/e2e/test_e2e_underground.py: the tests of being seen under ground, out of test_e2e_digging.py (313 lines).
 

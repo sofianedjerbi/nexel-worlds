@@ -181,7 +181,7 @@ function* xrayPicture(tx, key, near) {
   const D = Math.ceil(XRAY.r * 32) + 2, dug = [...floors].filter(([k, f]) => f < 0 || floor.has(k)).map(([k, f]) => [...k.split(",").map(Number), f]);   // (dug, or under a roof)
   const xa = Math.min(tx - (XRAY.box >> 1), ...dug.map((d) => d[0] - 1)), w = Math.max(tx + (XRAY.box >> 1), ...dug.map((d) => d[0] + 1)) - xa + 1, W = w * 16;
   const ya = xray.row * 16 - shOf(xray.L) - (D >> 1) - 6, y = Math.min(ya, ...dug.map((d) => d[1] * 16 - shOf(Math.max(2, topAt(d[0], d[1]), topAt(d[0], d[1] - 1))) - 8)), h = Math.max(ya + D + 22, ...dug.map((d) => d[1] * 16 - shOf(d[2]) + 26)) - y;
-  let lo = Math.min(99, ...floor.values()), hi = -99;
+  let lo = Math.min(99, ...floor.values()), hi = -99, edged = [];
   for (let ty = xray.row - 14; ty <= xray.row + 14; ty++) for (let x = xa - 1; x <= xa + w; x++) { const l = levelAt(x, ty); lo = Math.min(lo, l); hi = Math.max(hi, l); }
   const y0 = Math.max(xray.row - 14, (y + shOf(lo) >> 4) - 1), y1 = Math.min(xray.row + 14, y + h + shOf(hi) >> 4);   // every row of tiles that can be drawn in it
   const R = {x: xa, y: y0, w, h: y1 - y0 + 1}, gh = R.h * 16, ground = new Uint32Array(W * gh);   // (its ground: the blocks' own px, tiles.js)
@@ -195,7 +195,25 @@ function* xrayPicture(tx, key, near) {
     // open hole: over the top of the cut, "it goes under the background tiles", and the outline in hooks at each step)
     peek = floor;
     for (const key of floor.keys()) { const [x, ty] = key.split(",").map(Number), i = x - R.x, j = ty - R.y; if (i >= 0 && i < w && j >= 0 && j < R.h) drawTile(x, ty, {px: ground, o: j * 16 * W + i * 16, w: W}); }
-    rectLevels(R, "lk"); peek = null;
+    rectLevels(R, "lk");
+    // (...but for the corner the land's edge turns in a tile beside a roofed floor, where a part of the place open to
+    // the sky is beside that floor too: on the land the hole's rim turns there, to run on down the roof's side. That
+    // side is cut away, and the turn was left over the corner of the cut, a wedge of earth: "tile transition is
+    // broken there". That tile is drawn without it: the rim ends where the cut starts)
+    for (const key of floor.keys()) {
+      const [fx, fy] = key.split(",").map(Number);
+      for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = fx + ax, ty = fy + ay, i = x - R.x, j = ty - R.y, q = j * w + i, lv = topAt(x, ty), flat = new Map();
+        if (i < 0 || i >= w || j < 0 || j >= R.h || floors.has(x + "," + ty) || edged.includes(q)) continue;
+        for (const s of [-1, 1]) {                          // (the two tiles beside the floor that are at this tile's corners)
+          const dx = fx + s * ay, dy = fy + s * ax, d = dx + "," + dy;
+          if (floors.get(d) < 0 && !floor.has(d) && topAt(x + s * ay, ty + s * ax) >= lv) flat.set(d, lv);
+        }
+        if (!flat.size) continue;
+        peek = flat; drawTile(x, ty, {px: ground, o: j * 16 * W + i * 16, w: W}); edged.push(q);
+      }
+    }
+    peek = null;
   }
   const see = {keep: new Uint8Array((w + 4) * (R.h + 4)), c0: y - R.y * 16, c1: y - R.y * 16 + h, state: new Uint8Array(W * h), lev: new Int8Array(W * h), band: new Uint8Array(W * h), cover: new Uint8Array(W * h), wet: new Uint8Array(W * h)};
   const rocks = new Uint8Array(w * R.h);
@@ -214,6 +232,10 @@ function* xrayPicture(tx, key, near) {
     }
   };
   const {flat: over, out: paint} = yield* reliefSteps(R, ground, see);
+  for (const q of edged) {                                  // (those tiles: with their edge as drawn here, where they are on top)
+    const lv = R.lv[((q / w | 0) + 2) * (w + 4) + q % w + 2], X = (q % w) * 16, Y = (R.y + (q / w | 0)) * 16 - shOf(lv) - y;
+    for (let r = Math.max(0, -Y); r < 16 && Y + r < h; r++) for (let f = (Y + r) * W + X, e = f + 16; f < e; f++) if (see.state[f] === 1 && see.lev[f] === lv) see.cover[f] = 1;
+  }
   const holes = caveMouths(near, R.x * 16, y, W, h, (x, ty) => rock(x, ty) || floor.has(x + "," + ty));   // (the mouths of caves in what is kept: caves.js)
   if (holes) over.getContext("2d").drawImage(holes, -OV_M, -OV_M);
   // of it, what the rock is drawn over: the kept ground that is on top there (seen), and its water
@@ -222,10 +244,10 @@ function* xrayPicture(tx, key, near) {
   let any = 0;
   for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) { seen[f] = 1; any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
   const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(m, W, h), 0, 0);
-  const {px: earth, cut, more, line} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint});   // (the earth cut through, and the cut's edge: xraycut.js)
+  const {px: earth, cut, more, line, deep, solid, cols} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint});   // (the earth cut through, and the cut's edge: xraycut.js)
   any += more; og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(earth, W, h), 0, 0);
   const mouths = [...floor.keys()].filter((k) => { const [fx, fy] = k.split(",").map(Number); return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => topAt(fx + dx, fy + dy) < topAt(fx, fy)); }).sort().join(" ");
-  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, line, any, rock: rocks, floor, cut, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};
+  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, line, deep, solid, cols, any, rock: rocks, floor, cut, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};
 }
 
 // The circle itself, over the land and under everything standing on it (in the other views: drawXrayWhole)

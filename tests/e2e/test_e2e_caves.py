@@ -82,7 +82,10 @@ def test_in_a_cave_you_are_seen_through_the_hill_as_anywhere_you_are_hidden(game
     px = lambda *a: game.js(PIC, list(a))
     floor, back, roof = px(x, y - 5, 0, 8, 8), px(x, y - 6, 0, 8, -4), px(x, y - 6, 0, 8, -20)
     assert floor[0] and floor[2] > floor[1]                                           # its floor: the meadow's
-    assert back[0] and back[1] > back[2] and roof[0] and sum(back[1:]) - sum(roof[1:]) > 40, (back, roof)   # its back wall, earth; over it the roof cut through, in the shade
+    assert back[0] and back[1] > back[2] and roof[0]                                  # its back wall, earth; over it the roof, cut through
+    lit = lambda *a: game.js("""([x, y, lv, ax, ay]) => { frame(performance.now()); const P = xray.pic, f = (y * 16 - shOf(lv) + ay - P.y) * P.w + x * 16 + ax - P.x;
+      return [P.solid[f], +(P.img.data[f * 4 + 3] / 255).toFixed(3)]; }""", list(a))
+    assert lit(x, y - 6, 0, 8, -4)[0] == 0 and lit(x, y - 6, 0, 8, -20)[0] == 1       # (earth that was cut through: the light says how dark, cavelight.js)
     assert not px(x - 2, y - 4, 4, 8, 8)[0]                                           # the hill beside it: as it is (it was drawn again with an edge toward the room: "it goes under the background tiles")
     ink = game.js("CUT.ink")                                # the cut's edge (xraycut.js): a line along the room's side,
     assert px(x - 1, y - 3, 0, 0, 8)[1:] == ink and px(x - 1, y - 5, 0, 0, 8)[1:] == ink and px(x, y - 2, 0, 8, 15)[1:] != ink   # none across its way out
@@ -122,7 +125,7 @@ def test_a_cave_wider_than_the_circle_is_seen_whole_its_mouth_in_daylight_howeve
     game.wait("dirtyTiles.length === 0", 20000); game.wait(SEEN, 20000); game.sleep(400)
     assert game.js("xray.pic.floor.size") == 91
     assert game.js(PIC, [x - 9, y - 6, 0, 8, 8])[0] and game.js(PIC, [x + 8, y - 6, 0, 8, 8])[0]   # its two ends
-    dark = f"""([X, Y]) => {{ const P = xray.pic, f = (Y * 16 + 8 - P.y) * P.w + X * 16 + 8 - P.x; return [P.under.includes(f), +(P.img.data[f * 4 + 3] / 255).toFixed(2)]; }}"""
+    dark = f"""([X, Y]) => {{ const P = xray.pic, f = (Y * 16 + 8 - P.y) * P.w + X * 16 + 8 - P.x; return [!!P.deep[f], +(P.img.data[f * 4 + 3] / 255).toFixed(2)]; }}"""
     mouth, deep, me = (game.js(dark, [X, Y]) for X, Y in ((x - 9, y - 3), (x - 3, y - 6), (x + 2, y - 6)))
     assert mouth[0] and deep[0] and me[0] and mouth[1] < .1 and me[1] < .2 and deep[1] > .4, (mouth, deep, me)
 
