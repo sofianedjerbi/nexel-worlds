@@ -1698,6 +1698,18 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 162: light on water, rays at low sun, a fire's shadows
+
+"can you make the shaders even more beautiful ? i mean the general minecraft-like shaders". Three things added to
+every look but the old screens. Water: sun.js hands shader.js a small picture of where water is seen (what swims in
+it cut out), and the sky's colour of the hour lies in it (blue at noon, the sunset's when the sun is low, deep blue
+at night: the day bar's own colours made noon water yellow), clouds pass over it, the sun or the moon glitters on it
+a pixel at a time in drifting patches. Low sun: shafts of warm light from the sun's side, drifting, dying away.
+Night: what stands within six tiles of a fire throws its shadow away from the fire, longer the further it stands
+(level with the fire it was a line: it keeps a body). Two switches: Light on water, Sun rays. Looked at morning,
+noon, evening, night on a staged pond. Test: the pond is bluer at noon with the light on, the sun's corner brighter
+with rays, a tree's shadow lies away from the fire. 462 + 250 pass.
+
 ## Iteration 161: old screens, and words kept out of the shader
 
 "add old school shaders, lines": five more looks in shader.js, each a screen of another year: Tube TV (lines, a

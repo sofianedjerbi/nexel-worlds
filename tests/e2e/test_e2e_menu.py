@@ -130,7 +130,7 @@ def test_a_key_can_be_changed_and_the_game_follows(game):
 def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
     assert game.js("[opt('shader'), !!Shader.el, Sun.shades()]") == ["off", False, False]            # nothing of it until asked for
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab")
-    assert game.js("[...document.querySelectorAll('#menu .row .name')].map((e) => e.textContent)") == ["Shader", "Strength", "Glow", "Shadows", "Water reflections", "Cloud shadows", "Dark corners"]
+    assert game.js("[...document.querySelectorAll('#menu .row .name')].map((e) => e.textContent)") == ["Shader", "Strength", "Glow", "Shadows", "Water reflections", "Light on water", "Sun rays", "Cloud shadows", "Dark corners"]
     game.press("ArrowRight", 500)                               # the first look
     assert game.js("[opt('shader'), Shader.works, getComputedStyle(Shader.el).display, Shader.el.width === cv.width, Shader.el.height === cv.height]") == ["natural", True, "block", True, True]
     game.press("Escape"); game.press("Escape")
@@ -281,4 +281,42 @@ def test_what_is_written_in_the_world_is_drawn_over_a_shader_not_through_it(game
     game.js("setOpt('shader', 'off')"); game.sleep(400)
     off = game.js(ink)
     assert off["shown"] == "none" and abs(off["sum"] - bare["sum"]) > abs(plain["sum"] - bare["sum"]) / 2, (bare, plain, off)
+    game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
+
+
+def test_the_shaders_light_the_water_send_rays_at_low_sun_and_a_fire_throws_shadows(game):
+    # "can you make the shaders even more beautiful ?"
+    game.clear_area(8)
+    game.stamp(-6, -1, ["...........", ".T.^.......", "...........", "~~~~~~~~~~~", "~~~~~~~~~~~"])      # a tree, a fire east of it, a pond
+    x, y = game.pos()
+    tx, ty = x - 5, y
+    game.js("setOpt('shimmer', false); setOpt('clouds', false); setOpt('corners', false)")
+    assert game.js("Sun.water") is None                         # no shader: nothing is worked out
+    game.js("setOpt('shader', 'natural')"); game.sleep(800)
+    assert game.js("!!Sun.water && Sun.water.width === Math.ceil(W / 4)")       # where the water is seen, for the sky, the clouds and the glitter
+    fx = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const c = document.createElement("canvas"); c.width = 60; c.height = 40; const g = c.getContext("2d");
+      g.drawImage(Shader.el, x0 * Shader.el.width, y0 * Shader.el.height, (x1 - x0) * Shader.el.width, (y1 - y0) * Shader.el.height, 0, 0, 60, 40);
+      const d = g.getImageData(0, 0, 60, 40).data; let sum = 0, blue = 0; for (let i = 0; i < d.length; i += 4) { sum += d[i] + d[i + 1] + d[i + 2]; blue += d[i + 2] - d[i]; }
+      ok([sum / 2400, blue / 2400]); })))"""
+    pond = game.js("(() => { const S = TS(), [ox, oy] = screenOrigin(S); return [(ox + %d * S) / W, (oy + %d * S) / H, (ox + %d * S) / W, (oy + %d * S) / H]; })()" % (x - 5, y + 2, x + 3, y + 4))
+    game.rpc("dev_time", phase=.37); game.sleep(1200)
+    lit = game.js(fx, pond)
+    game.js("setOpt('waterlight', false)"); game.sleep(600)
+    assert game.js("Sun.water") is None
+    dull = game.js(fx, pond)
+    assert lit[1] > dull[1] + 4, (lit, dull)                    # noon: the sky's blue lies in the water
+    game.rpc("dev_time", phase=.05); game.sleep(1200)           # the sun low in the east: shafts of light from that side
+    corner = [.55, .0, 1, .45]
+    rays = game.js(fx, corner)
+    game.js("setOpt('rays', false)"); game.sleep(600)
+    assert rays[0] > game.js(fx, corner)[0] + 1.5, rays
+    game.rpc("dev_time", phase=.87); game.sleep(1500)           # night: the tree's shadow lies away from the fire, to the west
+    lit2 = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const S = TS(), [ox, oy] = screenOrigin(S), d = cv.getContext("2d").getImageData(Math.round((ox + x0 * S) * DPR), Math.round((oy + y0 * S) * DPR), Math.round((x1 - x0) * S * DPR), Math.round((y1 - y0) * S * DPR)).data;
+      let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2]; ok(sum / d.length * 4 / 3); })))"""
+    west = [tx - 2, ty + .3, tx, ty + 1.1]
+    shaded = game.js(lit2, west)
+    game.js("setOpt('shadows', false)"); game.sleep(600)
+    assert game.js(lit2, west) > shaded + 1, shaded             # (little, in numbers: the night darkens all of it afterwards)
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")

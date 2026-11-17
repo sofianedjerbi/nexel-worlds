@@ -37,7 +37,8 @@ const Shader = (() => {
       c += (texture2D(uA, uv + uStep * 3.231).rgb + texture2D(uA, uv - uStep * 3.231).rgb) * .0703;
       gl_FragColor = vec4(c, 1.); }`;
   const FINAL = HEAD + `uniform sampler2D uB, uC; uniform vec2 uRes, uOrigin; uniform vec3 uTint;
-    uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uCloud, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK;
+    uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uCloud, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK, uWater, uDay, uRays;
+    uniform sampler2D uW; uniform vec3 uSky, uSun; uniform vec2 uRayDir, uRayFrom;
     float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
       return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
@@ -56,7 +57,23 @@ const Shader = (() => {
         float n = noise(w) * .55 + noise(w * 2.1 + 7.3) * .3 + noise(w * 4.3 + 1.7) * .15;
         c *= mix(vec3(1.), vec3(.74, .78, .9), smoothstep(.5, .64, n) * uCloud);
       }
+      // Water (sun.js gives where it is seen): the sky's colour of the hour lies in it, clouds pass over it, and the
+      // sun (the moon) glitters on it, a pixel of the land at a time, in drifting patches
+      float wet = uWater > 0. ? texture2D(uW, q).r * uWater : 0.;
+      if (wet > 0.) {
+        vec2 wp = floor((px - uOrigin) / uTile * 16.), cw = wp / 16. * .055 + vec2(3.1 - uT * .011, 1.7 + uT * .004);
+        c = mix(c, uSky, wet * .24);
+        c += wet * uDay * .1 * smoothstep(.5, .66, noise(cw) * .55 + noise(cw * 2.1 + 7.3) * .3 + noise(cw * 4.3 + 1.7) * .15);
+        float h = hash(wp), twinkle = .5 + .5 * sin(uT * (2. + h * 3.) + h * 40.);
+        c += wet * uSun * step(.962, h) * twinkle * smoothstep(.38, .68, noise(vec2(wp.x * .05 - uT * .14, wp.y * .13 + uT * .03)));
+      }
       c = 1. - (1. - c) * (1. - g * uGlow);                    // the glow, laid on as light is
+      // Low sun: shafts of light across the picture, from the sun's side, drifting, dying away as they go
+      if (uRays > 0.) {
+        float across = dot(px, vec2(uRayDir.y, -uRayDir.x)), gone = dot(px / uRes - uRayFrom, uRayDir);
+        float beam = smoothstep(.5, .8, noise(vec2(across * .006, uT * .035)) * .7 + noise(vec2(across * .019 + 5., uT * .06)) * .3);
+        c += uRays * beam * vec3(1., .84, .58) * (1. - smoothstep(.1, 1.15, gone));
+      }
       float l = dot(c, vec3(.299, .587, .114));
       c = (mix(vec3(l), c, uSat) - .5) * uCon + .5;
       c = c * uTint + uLift;
@@ -75,7 +92,7 @@ const Shader = (() => {
       if (q.x < 0. || q.x > 1. || q.y < 0. || q.y > 1.) c = vec3(0.);
       gl_FragColor = vec4(c, 1.);
     }`;
-  let el = null, gl = null, bad = false, P = null, scene = null, targets = [], size = "";
+  let el = null, gl = null, bad = false, P = null, scene = null, wtex = null, targets = [], size = "";
   function program(frag) {
     const mk = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
     const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, VERT)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, frag)); gl.bindAttribLocation(p, 0, "p"); gl.linkProgram(p);
@@ -98,7 +115,7 @@ const Shader = (() => {
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    scene = texture();
+    scene = texture(); wtex = texture();
   }
   function pass(prog, from, to, w, h, set) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, to ? to.fb : null); gl.viewport(0, 0, w, h); gl.useProgram(prog.p);
@@ -137,6 +154,19 @@ const Shader = (() => {
         gl.uniform1f(u.uVig, opt("corners") ? look.vig * k : 0); gl.uniform1f(u.uScan, look.scan * k);
         for (const [name, v] of [["uCurve", look.curve], ["uMask", look.mask], ["uShift", look.shift], ["uTape", look.tape], ["uGrid", look.grid]]) gl.uniform1f(u[name], (v || 0) * k);
         gl.uniform1f(u.uPal, look.pal || 0); gl.uniform1f(u.uPalK, k);
+        // the light on water, and the low sun's shafts: not on the old screens (a look with `pal` or `tape`)
+        const plain = !look.pal && !look.tape, water = plain && !under && typeof Sun !== "undefined" ? Sun.water : null;
+        gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, wtex); gl.uniform1i(u.uW, 3);
+        if (water) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, water);
+        const phase = (((clock.phase || 0) % 1) + 1) % 1, [m0, m1, f] = dayAt(phase), hour = mix(rgbOf(m0[1]), rgbOf(m1[1]), f);
+        gl.uniform1f(u.uWater, water ? k : 0); gl.uniform1f(u.uDay, day);
+        gl.uniform3f(u.uSun, (.3 + .5 * day) * (day > .5 ? 1 : .6), (.36 + .4 * day) * (day > .5 ? 1 : .75), (.5 + .1 * day));
+        const way = phase < .75 ? phase / .75 * 2 - 1 : 0, low = Math.max(0, Math.min(1, (Math.abs(way) - .5) / .4));
+        // the sky the water shows: blue by day, the hour's own colour when the sun is low, deep blue at night
+        const sky = mix(mix([120, 190, 250], hour, low * .85), [44, 62, 140], 1 - day);
+        gl.uniform3f(u.uSky, sky[0] / 255, sky[1] / 255, sky[2] / 255);
+        gl.uniform1f(u.uRays, opt("rays") && plain && !under ? .17 * k * low * Math.min(1, day * 1.4) : 0);
+        gl.uniform2f(u.uRayDir, (way < 0 ? -1 : 1) * .84, .54); gl.uniform2f(u.uRayFrom, way < 0 ? 1 : 0, 0);
         gl.uniform1f(u.uCloud, opt("clouds") && !under ? .85 * k * day : 0);
       });
     } catch (e) { bad = true; if (el) el.style.display = "none"; console.warn("shader: off (" + e.message + ")"); }
