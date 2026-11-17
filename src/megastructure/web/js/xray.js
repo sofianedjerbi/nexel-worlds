@@ -39,7 +39,7 @@ function xrayRock(tx, ty) {
 // The place you are in: the ground you could walk or drop to from your tile (your height, a step up, or lower; no
 // rock on the way), no further than XRAY.near; and, in ground that was dug, all you could walk to under sea level: up
 // its steps too; and under a roof of any kind (a cave, a tunnel, a room: cells.js), so that the way you came stays
-// seen as you go down it (a step down, the one two behind you was out of the place: it closed). -> {cols: column of
+// seen as you go down it (a step down, the one two behind you was out of the place: it closed); and, there, what is open onto the room you are in though no step leads to it: a floor higher up beside you, under your room's top (dug down two layers at a tunnel's end, the tunnel was a wall to climb: gone from the picture, you in a hole in the rock: "how did he get there ? where's the exit ? why the tunnel is invisible ??"). -> {cols: column of
 // tiles -> its rows of that ground, z: "x,y" -> its height there}. Ground that was dug or is under a roof is of it
 // as far as XRAY.wide: all of the tunnel, the room or the cave on the screen ("underground vision should display as
 // much as player can see"; it stopped four tiles from you, a fire a little further on not seen); how much of it
@@ -53,7 +53,7 @@ function xrayPlace(tx, row, L) {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy, key = nx + "," + ny;
       if (z.has(key) || tile(nx, ny) === null) continue;
-      const lv = levelAt(nx, ny), w = lv <= L + 1 ? null : landAt(h, nx, ny, x, y), h2 = lv <= L + 1 ? lv : w !== null && (w === lv ? w < 0 : coveredAt(nx, ny, w)) ? w : null;
+      const lv = levelAt(nx, ny), top = ceilAt(x, y, h), w = lv <= L + 1 ? null : landAt(h, nx, ny, x, y) ?? surfacesAt(nx, ny).find((s) => s > h && s < top) ?? null, h2 = lv <= L + 1 ? lv : w !== null && (w === lv ? w < 0 : coveredAt(nx, ny, w)) ? w : null;
       if (h2 === null || ((nx - tx) ** 2 + (ny - row) ** 2 > XRAY.near ** 2 && !((h2 < 0 || h2 < lv) && Math.max(Math.abs(nx - tx), Math.abs(ny - row)) <= far))) continue;
       z.set(key, h2); todo.push([nx, ny, h2]);
     }
@@ -76,18 +76,25 @@ const xrayOn = (tx, ty) => xrayAt(tx, ty - shOf(levelAt(tx, ty)) / 16);      // 
 // What stands on the rock seen through is in the way where something shows behind it (its tile as drawn, and the one
 // over that: a tree is tall). -> how much it fades (0: it stays: nothing is seen behind it)
 function xrayOver(tx, ty) {
-  const P = xray.pic;
-  if (xray.a <= .01 || !P || !xrayRock(tx, ty)) return 0;
-  const X = tx * 16 - P.x, Y = ty * 16 - shOf(levelAt(tx, ty)) - P.y;
-  for (let y = Math.max(0, Y - 16); y < Math.min(P.h, Y + 16); y += 2) for (let x = Math.max(0, X); x < Math.min(P.w, X + 16); x += 2) if (P.seen[y * P.w + x]) return xrayOn(tx, ty);
-  return 0;
+  return xray.a > .01 && xray.pic && xrayRock(tx, ty) && xraySeenAt(tx, ty, levelAt(tx, ty)) ? xrayOn(tx, ty) : 0;
+}
+// Is anything of the picture shown where what stands at (x, y), h high, is drawn: its tile there, and the one over it?
+function xraySeenAt(x, y, h) {
+  const P = xray.pic, X = Math.round(x * 16) - P.x, Y = Math.round(y * 16) - shOf(h) - P.y;
+  for (let r = Math.max(0, Y - 16); r < Math.min(P.h, Y + 16); r += 2) for (let c = Math.max(0, X); c < Math.min(P.w, X + 16); c += 2) if (P.seen[r * P.w + c]) return true;
+  return false;
 }
 // ...and the ground over the place you are in, under it: left out as that rock is (behind.js: neither hides anybody)
 const xrayGone = (tx, ty) => xrayRock(tx, ty) || seenUnder(tx, ty) !== undefined;
-// Someone on that rock fades with it, and so does who walks over the roof of the place you are in (not who is in it)
+// Someone on that rock fades with it, and so does who walks over the roof of the place you are in (not who is in it),
+// where they are drawn over what is seen of it: over the land that is left over a room they are as anyone on the land
+// ("mobs dispawn on top of tunnel. they should only if they cover the visible part of the tunnel": every tile over the
+// place hid who stood on it, as when the land over it was cut open up to its top)
 function xrayOverBody(p) {
   const x = Math.round(p.x), y = Math.round(p.y), f = seenUnder(x, y);
-  return f === undefined ? xrayOver(x, y) : Floors.standOf(p, x, y) > f + 1 ? xrayOn(x, y) : 0;
+  if (f === undefined) return xrayOver(x, y);
+  const h = Floors.standOf(p, x, y);
+  return h > f + 1 && xraySeenAt(p.x, p.y, h) ? xrayOn(x, y) : 0;
 }
 // Someone on the ground behind that rock: how clearly they show through it (0: hidden as ever, 1: whole). (Under a
 // roof of the place you are in: on its floor, not who walks over it)

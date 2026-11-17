@@ -81,11 +81,14 @@ const Sun = (() => {
         const p = o.p, x = p ? p.x : o.x, y = p ? p.y : o.ty ?? o.y;
         if ((!o.spr && !p && !o.wall) || x === undefined) continue;
         if (p && DEPTH_OF[gndAt(Math.round(p.x), Math.round(p.y))]) continue;
+        // (what the place you are seen in is seen through, xray.js: as faint as it is drawn, gone with it. "and their shadow should dispawn also")
+        const over = p ? xrayOverBody(p) : o.spr ? xrayOver(o.x, o.ty) : 0;
+        if (over > .98) continue;
         const fx = sx(x) + S / 2;
         const fy = p ? standsAtY(p, sx, sy, S, t, now) : o.spr && o.spr[0].src ? sy(y, x) + (o.spr[6] + footOf(...o.spr.slice(0, 5)) - 1) * zoom : sy(y, x) + S * .94;
         if (fx < -4 * S || fx > W + 4 * S || fy < -2 * S || fy > H + 6 * S) continue;
         lg.save();
-        lg.transform(...via(fx, fy));
+        lg.transform(...via(fx, fy)); lg.globalAlpha = 1 - over;
         if (o.spr) { const [img, a, b, w, h, dx, dy] = o.spr; lg.drawImage(img, a, b, w, h, Math.round(sx(x) + dx * zoom), Math.round(sy(y, x) + dy * zoom), w * zoom, h * zoom); }
         else if (p) drawEntity({...p}, sx, sy, S, t, now);
         else o.fx();

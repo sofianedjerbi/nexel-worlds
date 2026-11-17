@@ -2597,3 +2597,28 @@ The user: "Find a way to optimize the stability and the speed of tests".
   tiles of the others' leftovers; flat meadows 32 tiles across are 5 in 100 spots); the tests' own 345 sleeps; the
   0.3 s after every key pressed. Still needing a second try now and then: the x-ray circle's px (mine, cause not
   found), the chat's shout (which sample is drawn), the first screen's piece, the shader's two at dawn.
+
+## Iteration 161: who is over a tunnel, and the tunnel over you
+
+The user, two screenshots. "mobs dispawn on top of tunnel. they should only if they cover the visible part of the
+tunnel. and their shadow should dispawn also". Then, doben4 in a pocket in the rock: "the topology of the space is..
+hard to understand . how did he get there ? where's the exit ? why the tunnel is invisible ??"
+
+- Who stands on a tile over the place you are in was not drawn: a rule from when the land over a room was cut open
+  up to its top (157 left the land there; the rule stayed). They are drawn as anyone on the land, and go only where
+  they are drawn over what is seen of the place (xray.js xrayOverBody: the picture's own px, under their tile as
+  drawn and the one over it).
+- Their shadow (the shader's, sun.js) was cast whether they were drawn or not. It is as faint as they are, and gone
+  with them; so is the shadow of what stands on rock that is seen through.
+- Since 158 anyone more than two dozen layers over you or under you was not drawn at all, on land that is drawn too
+  (a tusker on the mountain, you 26 under it). Only away from the land, now (render.js).
+- The invisible tunnel: I had seen it in 159, written "left as it is", and it was the next thing sent. The place
+  seen was what you could walk or drop to: dug down two layers at a tunnel's end, the tunnel is a wall to climb, and
+  it went from the picture. What is open onto the room you are in is of the place, a step to it or not (xrayPlace:
+  a floor beside you, higher than yours and under your room's top). On a copy of the live save at doben4's spot
+  (-30, -3, 15 down): 3 tiles of place before, the pocket; 15 after, the tunnel and the stair he came down.
+- Tests (test_e2e_place.py, new: what is of the place and who is over it, out of test_e2e_underground.py which was
+  over 300 lines): a hen on the tunnel's roof is drawn and has its shadow, one drawn where the tunnel shows is
+  gone, shadow and all; three layers under a tunnel's end the tunnel's five tiles are of the place and on the
+  screen. My digging tests turn you by `face`, not by an arrow held 0.2 s (it walked a tile, one run in ten).
+  472 unit; 247 browser, one at its second try (that arrow).

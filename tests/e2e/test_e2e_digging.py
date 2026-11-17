@@ -18,7 +18,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     game.clear_area(8)
     game.give(pickaxe=1)
     x, y = game.pos()
-    game.press("ArrowDown", 200)                              # (facing south: the cursor starts on the tile in front)
+    game.face(0, 1)                                           # (facing south: the cursor starts on the tile in front. Turned, not by a key: an arrow held a fifth of a second walks a tile on a busy machine)
     game.press("b")
     rows = lambda: {r[0]: r[1:] for r in game.js("Build.rows()")}
     assert game.js("Build.level()") == 0 and rows()["Q E"][0] == "A layer down, up" and rows()["X"][0] == "Dig a hole"
@@ -33,7 +33,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     game.stamp(0, 0, ["."], levels=["c"])                     # you, three down in a hole: earth in front of your legs and of your eyes
     game.rpc("dev_teleport", x=x, y=y, z=-3)
     game.wait(f"myAt && myAt.x === {x} && myAt.z === -3", 8000); game.wait(DRAWN, 8000)
-    game.press("ArrowDown", 250); game.press("b")
+    game.face(0, 1); game.press("b")
     assert game.js("[[Build.S.at.x, Build.S.at.y], Build.level()]") == [[x, y + 1], -2] and rows()["X"][0] == "Dig the block"   # the block in front of your legs
     game.press("e", 120)                                      # the one in front of your eyes: it is dug by itself
     assert game.js("Build.level()") == -1 and rows()["X"][0] == "Dig the block"
@@ -59,7 +59,7 @@ def test_blocks_are_planned_ahead_each_where_the_one_before_it_will_have_made_ro
     game.stamp(0, 0, ["."], levels=["c"])
     game.rpc("dev_teleport", x=x, y=y, z=-3)
     game.wait(f"myAt && myAt.x === {x} && myAt.z === -3", 8000); game.wait(DRAWN, 8000)
-    game.press("ArrowDown", 250); game.press("b")
+    game.face(0, 1); game.press("b")
     game.js("(() => { window.__work = Build.S.working; Build.S.working = true; return 1; })()")   # (the work held: every plan is made before a block is dug)
     rows = lambda: {r[0]: r[1:] for r in game.js("Build.rows()")}
     sizes = []
@@ -89,7 +89,7 @@ def test_the_block_you_stand_on_is_dug_from_on_it_and_you_come_down_with_it(game
     it wanted a pickaxe. It is dug from on it, by hand too, and you come down with it."""
     game.clear_area(8)
     x, y = game.pos()
-    game.press("ArrowDown", 200); game.press("b")
+    game.face(0, 1); game.press("b")
     game.press("ArrowUp", 150)                                # the cursor on your own tile: the block you stand on
     assert game.js("[[Build.S.at.x, Build.S.at.y], Build.level()]") == [[x, y], 0]
     for depth in (1, 2):
@@ -226,13 +226,13 @@ def test_the_cursor_starts_on_the_block_in_front_of_you_at_your_own_height(game)
     x, y = game.pos()
     game.stamp(-6, -2, ["." * 6] * 5, levels=["7" * 6] * 5)                # high ground west of you, seven layers
     game.stamp(1, 0, ["."], levels=["1"])                                   # a step up east of you
-    for key, front, level, text in (("ArrowLeft", [x - 1, y], 1, "Dig the block"), ("ArrowRight", [x + 1, y], 1, "Dig a hole"), ("ArrowDown", [x, y + 1], 0, "Dig a hole")):
-        game.press(key, 250)
+    for key, front, level, text in (((-1, 0), [x - 1, y], 1, "Dig the block"), ((1, 0), [x + 1, y], 1, "Dig a hole"), ((0, 1), [x, y + 1], 0, "Dig a hole")):
+        game.face(*key)
         game.press("b")
         at, lv, rows = game.js("[[Build.S.at.x, Build.S.at.y], Build.level(), Object.fromEntries(Build.rows().map((r) => [r[0], r[1]]))]")
         assert (at, lv, rows["X"]) == (front, level, text), (key, at, lv, rows)
         game.press("b")
-    game.press("ArrowLeft", 250)                              # into the high ground: X, and that block is dug, the land over it left
+    game.face(-1, 0)                                          # into the high ground: X, and that block is dug, the land over it left
     game.press("b"); game.press("x")
     game.wait(f"surfacesAt({x - 1}, {y}).join() === '0,7' && Build.S.plans.size === 0", 30000)
     game.press("b"); game.press("b")                          # in again: the block in front of your eyes, now

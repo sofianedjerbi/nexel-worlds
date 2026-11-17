@@ -234,32 +234,3 @@ def test_the_rim_of_a_pit_ends_where_the_ground_in_front_is_cut_through(game):
     line = lambda ay: game.js("([x, y, ay]) => { const P = xray.pic; return P.line[(y * 16 + 8 + ay - P.y) * P.w + x * 16 - P.x]; }", [x, y, ay])
     assert not line(3) and line(8) and line(11) and line(15)  # down the floor's west side: the pit's own rim beside it, then the line to its foot
     assert not game.errors
-
-
-
-def test_what_is_dug_under_high_ground_is_seen_and_no_more_one_block_dug_opens_one_block(game):
-    """"im breaking only 1 bloc why the whole column is deleted ??": doben4's tunnel under a mountain. Behind every
-    floor the picture cut the land open up to its top: one block dug at the tunnel's end and seventeen layers of rock
-    were gone from the screen (every one still there in the world). What is seen through is what was dug: a floor and
-    the wall behind it, as high as its room. The land over the room stays as it is drawn."""
-    game.clear_area(12)
-    x, y = game.pos()
-    game.rpc("dev_time", phase=.4)
-    game.stamp(1, -4, ["." * 9] * 9, levels=["3" * 9] * 9)                # high ground, three layers
-    game.stamp(0, 0, ["......."], levels=["dddddd3"], roofs=["0777770"], heads=["0222220"])   # a pit at its foot, a tunnel from it under the high ground
-    X = x + 5                                                 # the tunnel's end: seven layers of land over its floor
-    game.rpc("dev_teleport", x=X, y=y, z=-4)
-    game.wait(f"myAt && myAt.x === {X} && myAt.z === -4", 8000)
-    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.wait("xray.mix >= 1 && !xray.old", 8000)
-    # the rows of a tile's column in the picture that are seen through, counted up from the top of its floor
-    shown = lambda tx, f: game.js(f"""([x, y, f]) => {{ const P = xray.pic, out = []; for (let up = -15; up < 80; up++) {{ const Y = y * 16 - shOf(f) - up - P.y; if (Y >= 0 && Y < P.h && P.seen[Y * P.w + x * 16 + 8 - P.x]) out.push(up); }} return out; }}""", [tx, y, f])
-    assert shown(X, -4) == list(range(-15, 17))               # its floor and the two layers of its wall: not the seven of the land over it
-    assert not any(r > g + 20 for r, g, b in game.js(DOWN, [X, y, 8, -22, -12]))      # (there, on the screen: the high ground's grass, a flower: no earth)
-    for z, floor, rows in ((-2, -3, 9), (-3, -4, 17)):        # dug on a tile from there, a block, then the one under it:
-        col = game.js(f"JSON.stringify(colAt({X + 1}, {y}))")
-        assert game.rpc("act", tool="dig", args={"x": X + 1, "y": y, "z": z})["ok"]
-        game.wait(f"JSON.stringify(colAt({X + 1}, {y})) !== '{col}'", 20000)
-        game.wait(f"{DRAWN} && xray.pic && xray.pic.floor.get('{X + 1},{y}') === {floor} && xray.mix >= 1 && !xray.old", 20000)
-        assert shown(X + 1, floor) == list(range(-15, rows)), (z, shown(X + 1, floor))   # a block's worth of the picture, a layer of wall each
-        assert game.js(f"topAt({X + 1}, {y})") == 3           # (and of the world)
-    assert not game.errors

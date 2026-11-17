@@ -114,7 +114,7 @@ function frame(now) {
   occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
   const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && b.relief); };
   // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
-  const apart = (p) => me && away.z !== undefined && Math.abs(liftOf(p) / zoom / RELIEF_STEP - away.z) > APART;   // (further than APART layers over you or under you: not of where you are)
+  const apart = (p) => away.a > 0 && Math.abs(liftOf(p) / zoom / RELIEF_STEP - away.z) > APART;   // (away from the land, state.js: who is on the land you left is not drawn with it; on land that is drawn, anyone is)
   for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p) && !apart(p)) { const cl = Climb.climbOf(p); list.push({y: cl ? cl.y : p.y + .01 + Floors.rise(p) * Floors.K, p}); }   // (on a ladder: in front of it)
   for (const [ix, iy, pile] of groundItems) if (!hiddenAt(ix, iy)) list.push({y: iy - .01, x: ix, ty: iy, pile});   // (ty: its tile; y sorts)
   if (pileSince.size) { const here = new Set(groundItems.map(([ix, iy]) => ix + "," + iy)); for (const k of pileSince.keys()) if (!here.has(k) || lootAt(...k.split(",").map(Number))) pileSince.delete(k); }
