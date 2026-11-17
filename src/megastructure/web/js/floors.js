@@ -50,7 +50,7 @@ const Floors = (() => {
   // The height a body is drawn at on a tile: the land's, or, where something is built, its own (yours: caves.js keeps
   // it as the server does; the others': the server says), where it was a step ago, or where a step would land it
   function standOf(p, x, y) {
-    if (!p.e || !(FLOORS && colOf(x, y) || dugHollow(x, y))) return standAt(x, y);   // (in a hollow dug under the ground too: on its roof or in it)
+    if (!p.e || !(FLOORS && colOf(x, y) || hollow(x, y))) return standAt(x, y);   // (over a hollow too, a cave or a tunnel: on its roof or in it)
     const mine = p.e.kind === "agent" && p.e.id === myId, at = mine ? myAt : p.zAt, was = mine ? myWas : p.zWas;
     if (at && at.x === x && at.y === y) return at.z;
     if (was && was.x === x && was.y === y) return was.z;

@@ -21,7 +21,7 @@ function frontEdge(tx, row, from, least, far, skip) {
   const edge = new Array(16).fill(Infinity);
   for (let ty = row + 1; ty <= row + far; ty++) {
     const lv = levelAt(tx, ty);
-    if (lv < least || inOpenCave(tx, ty) || (skip && skip(tx, ty))) continue;
+    if (lv < least || (skip && skip(tx, ty))) continue;
     for (let k = from + 1; k <= lv; k++) {
       const top = k < 0 ? FLAT_TOP : cellTop(hillSheet(k), ...blobCell(maskOf(tx, ty, (cc, gg, ux, uy) => levelAt(ux, uy) >= k))), Y = ty * 16 - shOf(k);   // (dug: cut square, relief.js)
       for (let i = 0; i < 16; i++) if (top[i] < 16) edge[i] = Math.min(edge[i], Y + top[i]);
@@ -34,13 +34,11 @@ function frontEdge(tx, row, from, least, far, skip) {
 // true (restore after); false when nothing hides them. Nothing of the land is redrawn. The edge is the ground's own,
 // an art px column at a time: each of its layers in its own shape, set in a little from the tile's side and rounded
 // at its corners (cut straight across a tile, the sprite was gone where a corner lets the ground behind it show).
-// (Not in the cave you're in: that one is seen through the hill.)
 // part (in the x-ray circle, xray.js): 1: behind the ground that is not seen through alone; 2: only what of them the
 // rock seen through hides (drawn a second time, as faint as the circle is there)
 function clipBehind(p, sx, sy, S, part = 0) {
   const x = Math.round(p.x), y = Math.round(p.y);
-  if (inOpenCave(x, y) || (caveOpen && p.e.kind === "agent" && p.e.id === myId)) return false;   // (you, going in or out: no flicker)
-  const L = dugHollow(x, y) ? Floors.standOf(p, x, y) : standAt(x, y);   // (between two tiles: the ground they are over: past its edge, a jump is on the higher one; under ground that was dug: the floor they are on, behind the ground in front as in a hole)
+  const L = hollow(x, y) ? Floors.standOf(p, x, y) : standAt(x, y);   // (between two tiles: the ground they are over: past its edge, a jump is on the higher one; under a roof: the floor they are on, behind the ground in front as in a hole)
   const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, feet = sy(p.y + 1) - shOf(L) * zoom + (4 - STAND) * zoom, cols = [];
   let any = part === 2;
   for (let tx = x0; tx <= x1; tx++) {                     // (the top of the higher ground in front, at each px of each column)
@@ -90,7 +88,6 @@ function tileBehind(x, y) {
 // every puff of dust, spark and splash that wasn't on the very top line of its tile went unseen, everywhere.)
 function behindHill(x, y) {
   const tx = Math.floor(x), fy = Math.floor(y);
-  if (inOpenCave(tx, fy)) return false;
   const L = standAt(tx, fy), through = xrayAt(x - .5, y - .5 - shOf(L) / 16) > .5;   // (in the x-ray circle, xray.js: the rock it sees through hides nothing)
   for (let ty = fy + 1; ty <= fy + 7; ty++) {
     const up = (levelAt(tx, ty) - L) * RELIEF_STEP;        // art px its top is drawn up over the ground the spot is on

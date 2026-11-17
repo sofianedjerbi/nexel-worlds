@@ -44,30 +44,22 @@ function landAt(h, x, y, fx, fy) {       // (fx, fy: the tile you step from: a j
   return z;
 }
 
-// The cave you're in is seen through the hill over it (caves.js): its tiles ("x,y") and the height of its floor there
-let caveOpen = false, openCave = new Map();
-const inOpenCave = (x, y) => caveOpen && openCave.has(x + "," + y);
-// Floors the land is drawn with while this is set ("x,y" -> a height), in place of its top there: the open cave's
-// while its overlay is drawn (caves.js); under ground that was dug, the place you are in, in the picture of it seen
-// through what hides you (xray.js)
+// Floors the land is drawn with while this is set ("x,y" -> a height), in place of its top there: the place you are
+// in under a roof, in the picture of it seen through what hides you (xray.js)
 let peek = null;
-// A hollow dug under level ground (its floor under sea level: only digging gets there; the land over it no higher
-// than the meadow): a tunnel, a room. From above it is the ground over it. In it you are seen as in a hole with
-// ground in front: through it (xray.js), you, the way you came and what is there, not as in a cave under a hill
-// (caves.js: a pocket eight down showed four tiles from its stair, on the grass; and drawn open for good, you stood
-// at its bottom while walking over it)
-const dugHollow = (x, y) => roofAt(x, y) > 0 && floorAt(x, y) < 0 && topAt(x, y) <= 0;
+// A hollow: empty cells under solid ones, a cave under a hill, a tunnel or a room dug under the ground alike. From
+// above it is the land over it, always. In it you are hidden, as behind a hill or down a hole, and seen the same one
+// way: through what hides you (xray.js), you, the place you are in and what is there. (There were three ways: a cave
+// under a hill was opened for good, flat, its floors where they are drawn and nothing round them: a stair dug down
+// under a hill was squares of earth lying on the hill, tiles south of it.)
+const hollow = (x, y) => roofAt(x, y) > 0;
 const seenUnder = (x, y) => (xray.a > .01 && xray.pic ? xray.pic.floor.get(x + "," + y) : undefined);   // its floor there, where the place you are in is shown through its roof
 const levelAt = (x, y) => { const v = peek ? peek.get(x + "," + y) : undefined; return v === undefined ? topAt(x, y) : v; };   // the height the land is drawn at
-function standAt(x, y) {                    // ...and what's on the tile
-  if (inOpenCave(x, y)) return openCave.get(x + "," + y);
-  const f = roofAt(x, y) > 0 ? seenUnder(x, y) : undefined;
-  return f === undefined ? topAt(x, y) : f;
-}
-// ...as the world has it, however it is drawn (what you can build on, take, climb): on its lowest ground, in the
-// tunnel under a roof that was dug (seen through or not: build mode took a step for the ground over it, now and then)
-const groundAt = (x, y) => (inOpenCave(x, y) ? openCave.get(x + "," + y) : dugHollow(x, y) ? floorAt(x, y) : topAt(x, y));
-const hiddenAt = (x, y) => roofAt(x, y) > 0 && !inOpenCave(x, y) && seenUnder(x, y) === undefined;   // what lies on the lowest ground, under ground you're not in
+function standAt(x, y) { const f = roofAt(x, y) > 0 ? seenUnder(x, y) : undefined; return f === undefined ? topAt(x, y) : f; }   // ...and what's on the tile
+// ...as the world has it, however it is drawn (what you can build on, take, climb): its lowest ground, where what is
+// on a tile lies (under a roof: in the hollow, seen through or not)
+const groundAt = floorAt;
+const hiddenAt = (x, y) => roofAt(x, y) > 0 && seenUnder(x, y) === undefined;   // what lies on the lowest ground, under ground you're not in
 
 let myAt = null, myWas = null;             // your tile and the height you stand at (caves.js keeps it, as the server does); and the tile before
 const myZ = (x, y) => (myAt && myAt.x === x && myAt.y === y ? myAt.z : myAt && Math.abs(myAt.x - x) + Math.abs(myAt.y - y) <= 2 ? settleNear(x, y, myAt.z) : topAt(x, y));

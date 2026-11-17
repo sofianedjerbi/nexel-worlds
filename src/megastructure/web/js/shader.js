@@ -99,7 +99,7 @@ const Shader = (() => {
       pass(P.blur, a.tex, b, qw, qh, (u) => gl.uniform2f(u.uStep, 3 / qw, 0));               // and a wide one from it, in c
       pass(P.blur, b.tex, c, qw, qh, (u) => gl.uniform2f(u.uStep, 0, 3 / qh));
       const tint = lightAt(clock.phase || 0), day = 1 - Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36);
-      const under = typeof myAt !== "undefined" && myAt && typeof inOpenCave === "function" && inOpenCave(myAt.x, myAt.y);
+      const under = typeof myAt !== "undefined" && myAt && typeof coveredAt === "function" && coveredAt(myAt.x, myAt.y, myAt.z);
       pass(P.final, scene, null, w, h, (u) => {
         gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, a.tex); gl.uniform1i(u.uB, 1);
         gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, c.tex); gl.uniform1i(u.uC, 2);

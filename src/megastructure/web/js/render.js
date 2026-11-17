@@ -49,7 +49,7 @@ function frame(now) {
   const [vx, vy, vw, vh0] = viewRect(2), vh = vh0 + 6;   // (+6 rows south: high ground there is drawn up into view)
   const inRect = (x, y, w, h) => { const out = []; for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) out.push(b); } return out; };
   const vis = inRect(vx, vy, vw, vh);
-  setCaveOpen();
+  trackMe();
   // Land coming in (a new block's ground, tiles to draw again, raised ground and water: relief.js) is built a little
   // a frame, all of it within LAND_MS: what is on the screen first, then what is about to be, then the rest of what
   // was asked for (state.js: six tiles out). More of the frame while something on the screen is still missing, most
@@ -76,8 +76,8 @@ function frame(now) {
   ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H);
   drawWater(vis.filter((b) => b.relief), ox, oy, t);    // the sea: its bottom, its depth, its light (water.js); the land goes over it
   for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
-  drawCaves(vis, sx, sy);                            // (their mouths; the one you're in, seen through its roof)
-  xrayLook(dt); drawXray(sx, sy);                    // (behind a mountain: a circle round you seen through it, xray.js)
+  drawCaves(vis, sx, sy);                            // (the caves' mouths, on their hills)
+  xrayLook(dt); drawXray(sx, sy);                    // (hidden, behind a mountain, down a hole or under a roof: seen through it, xray.js)
   Keyhole.draw(sx, sy);                              // (the build cursor's own tile, where the ground hides it: keyhole.js)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B)));
@@ -164,8 +164,7 @@ function frame(now) {
   drawXp();
   foodPreview();
   drawPlucks(sx, sy, S, now);
-  drawCaveDark(vis, sx, sy, S, t);                   // (the cave you're in: dark past where daylight reaches)
-  drawUnderDark(vis, sx, sy, t);                     // (...and the tunnel you dug, seen through its roof: cavelight.js)
+  drawUnderDark(vis, sx, sy, t);                     // (under a roof, a cave's or a tunnel's: dark past where light reaches, cavelight.js)
   drawNight(vis, sx, sy, S, t);
   drawGrid(sx, sy, S);                             // (/grid: debug.js)
   updateActions();

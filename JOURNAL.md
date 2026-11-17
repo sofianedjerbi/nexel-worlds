@@ -2079,3 +2079,44 @@ not its body).
   fires light it. 60 frames a second walking it. Test: test_e2e_digging (a fire nine tiles in: drawn, its tile lit,
   the tunnel between dark, the mouth bright).
 - Left: light goes round corners (no line of sight); a tunnel under a hill is still a cave there.
+
+## Iteration 153: one way to be seen when you are hidden
+- User, with a picture of a stair dug west under a hill: "this is very weird and ugly !". Then: "everything should
+  have the same view ! not per-situation view. there should be an unique 'player is hided, xray on' view".
+- Looked (a copy of the live save, the watcher on doben4's tile): the stair runs under a hill, so it was drawn by
+  the cave's own view (caves.js): each floor alone, flat, where it is drawn (a layer down, half a tile south), no
+  wall behind it: five squares of earth lying on the hill, up to three tiles south of the stair. Iteration 151 gave
+  hollows under the meadow to the x-ray and left hollows under hills to that view: two ways, and the stair crossed
+  from one to the other.
+- Was wrong: I called it "left" in 152 ("a tunnel under a hill is still a cave there") and shipped it. A second view
+  for the same situation is a bug, not a leftover.
+- Change: one rule. The land is always drawn as it is. Where you are hidden (ground in front, or a roof: a hill, the
+  meadow over a tunnel), the x-ray is on and shows the place you are in through what hides it; nothing else does.
+  - cells.js: `hollow` (any roof) in place of dugHollow; caveOpen, openCave, inOpenCave gone. caves.js keeps what a
+    cave is from outside (its mouths on the hill) and loses its open view, its shadows and its floors (271 lines to
+    190). cavelight.js: one light, under any roof (107 to 48).
+  - xray.js: the place goes under roofs of any kind, as far as dug ground did (12 tiles). Behind a floor under a
+    roof its wall goes up to the top of the land, cut open (the land's painter did that already); of it, the hollow's
+    own back wall is as it is and the roof cut through over it is earth in the shade (relief.js notes which px are a
+    wall's band): a burrow in a bank, as high as the hollow is. Earth left between two parts of the place (two
+    tunnels side by side, a pillar) is cut level with the floor behind it and shows as cut earth: the land as drawn
+    showed there, a strip of meadow between two floors, the nearer tunnel a floor on the grass.
+  - A hill's side rule (no wall where rock left out joins a kept hill) is not for a floor under a roof: it left a
+    green notch in the wall. The mouths of the place you are seen in are not drawn on its hill (a dark line stayed
+    under the picture); a picture's own mouths go by that picture, not by the one shown while it is painted (the
+    pixel test caught it).
+- Result: on a sheet of 24 situations before and after (stair under a hill, cave room, passages through a hill, tunnels
+  four ways, a room, two tunnels, eight down, a cave with a stair dug in it, behind a hill, a pit, a shaft), and on
+  the live copy: the stair is a lit tunnel in dark earth under the hill, a cave is its room with the wall behind it;
+  behind a hill, a pit, an open stair: as they were, to the eye. Filmed walking down the stair and into a cave: no
+  frame brighter or darker than the ones beside it by more than a step.
+- Measured before landing it, in a cave 22 x 12 under a hill: the picture was nine tiles wide (it took its size from
+  dug ground alone), a square hole in the hill; and the cave's mouth was dark unless the meadow outside it was near
+  you. Now the picture is as wide and as tall as the place under its roof, up to the top of the land behind it, and
+  a way out is in daylight wherever it is. That cave (266 floors on the screen): the picture 12 ms, painted over 4
+  to 6 frames; the light 1.1 ms a frame; 60 frames a second walking, 14 frames of 206 over 20 ms (worst 28).
+- Tests: the cave view's two tests are now the x-ray's (in a cave; in from behind a hill); new: the stair under a
+  hill (floors, the wall behind each up to the land's top, roof darker than the back wall), two tunnels (cut earth
+  between, no green), a cave eighteen wide (both its ends in the picture, its far mouth in daylight, its middle dark).
+- Left: a cave's floor has no soft shadow along its walls any more (the land's painter has none); light still goes
+  round corners; the picture stops twelve tiles from you in a cave larger than that.

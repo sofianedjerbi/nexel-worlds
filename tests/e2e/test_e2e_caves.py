@@ -1,5 +1,5 @@
 """Caves as drawn: openings on each side of a hill, as wide and as high as the empty cells; the cave you're in seen
-through the hill, shadowed along its edges, with its way out to the north; and being hidden behind a hill."""
+through the hill as anywhere you are hidden; and being hidden behind a hill."""
 
 import pytest
 
@@ -54,36 +54,70 @@ def test_an_opening_is_as_wide_and_as_high_as_the_empty_cells_on_each_side(game)
     assert 0 < px(0, -9, 8, -32 - 4)[3] < 255 and px(0, -9, 8, 8)[3] == 0
 
 
-def test_inside_the_cave_shows_through_the_hill_shadowed_along_its_edges(game):
+SEEN = "xray.a > .95 && !xray.job && xray.pic && xray.pic.any > 0"
+# a px of the picture seen through what hides you: of tile (x, y) as drawn at height lv, (ax, ay) art px from its
+# corner -> [seen, r, g, b]
+PIC = """([x, y, lv, ax, ay]) => { const P = xray.pic, X = x * 16 + ax - P.x, Y = y * 16 - shOf(lv) + ay - P.y;
+  if (X < 0 || Y < 0 || X >= P.w || Y >= P.h) return [0, 0, 0, 0];
+  return [P.seen[Y * P.w + X], ...Array.from(P.over.getContext('2d').getImageData(X, Y, 1, 1).data).slice(0, 3)]; }"""
+
+
+def test_in_a_cave_you_are_seen_through_the_hill_as_anywhere_you_are_hidden(game):
+    """A cave had a view of its own: opened for good while you were in it, its floor flat in the hill's top, shadowed
+    along its edges. "everything should have the same view ! ... an unique 'player is hided, xray on' view": in a cave
+    you are hidden by the hill over you, and seen through it as behind a hill or down a hole (xray.js): the room, its
+    wall behind it up to the top of the hill (its own back wall; over that the roof, cut through), the hill round it
+    whole. Its mouth is not drawn on a hill that is seen through."""
+    game.js("setOpt('above', 'cut')")
     game.clear_area(9)
     x, y = game.pos()
     hill(game, -3, -8, 7, 7, {(i, j): 2 for i in (-1, 0, 1) for j in range(-6, -1)})      # a room 3 wide, open to the south
-    px = lambda tx, ty, ax, ay: game.js(PX, [x + tx, y + ty, ax, ay])
+    assert game.js(f"shownVoids({x}, {y - 2}, 0, 1)") == [[1, 2]] and game.js("xray.a") < .01   # outside: the hill, its mouth in it
+    assert game.js(f"[standAt({x}, {y - 4}), hiddenAt({x}, {y - 4})]") == [4, True]
     game.hold(["w"], 800)
-    drawn(game)
-    assert game.server()["in_cave"] and game.js("caveOpen") and game.js("openCave.size") == 15
-    mid, west, east = px(0, -4, 8, 8), px(-1, -4, 0, 8), px(1, -4, 15, 8)
-    assert mid[3] == 255 and west[3] == 255 and east[3] == 255                       # its floor, right to the tiles' edges
-    assert sum(west[:3]) < sum(mid[:3]) - 60 and sum(east[:3]) < sum(mid[:3]) - 60    # darker along the rock
-    assert px(-1, -4, 15, 8)[:3] == px(0, -4, 8, 8)[:3] or sum(px(-1, -4, 15, 8)[:3]) > sum(west[:3])   # not between its own tiles
-    assert px(-2, -4, 8, 8)[3] == 0                                                   # the hill round it: untouched
-    assert px(0, -6, 8, -4)[3] == 0                                                   # (no wall block at its back: the shadow is its edge)
+    game.wait(SEEN, 20000); game.sleep(400)
+    assert game.server()["in_cave"] and game.js("xray.pic.floor.size") == 15
+    assert game.js(f"[standAt({x}, {y - 4}), standAt({x - 1}, {y - 4}), standAt({x - 2}, {y - 4}), hiddenAt({x}, {y - 6})]") == [0, 0, 4, False]
+    assert game.js(f"shownVoids({x}, {y - 2}, 0, 1)") == []
+    px = lambda *a: game.js(PIC, list(a))
+    floor, back, roof = px(x, y - 5, 0, 8, 8), px(x, y - 6, 0, 8, -4), px(x, y - 6, 0, 8, -20)
+    assert floor[0] and floor[2] > floor[1]                                           # its floor: the meadow's
+    assert back[0] and back[1] > back[2] and roof[0] and sum(back[1:]) - sum(roof[1:]) > 40, (back, roof)   # its back wall, earth; over it the roof cut through, in the shade
+    assert px(x - 2, y - 4, 4, 8, 8)[0] and not px(x - 3, y - 4, 4, 8, 8)[0]          # the hill beside it: with its edge to it; past that, untouched
 
 
-def test_a_way_out_to_the_north_shows_right_through_the_hills_border(game):
+def test_walking_into_a_hill_from_behind_it_you_stay_on_the_ground_and_in_sight(game):
+    game.js("setOpt('above', 'cut')")
     game.clear_area(9)
     x, y = game.pos()
     hill(game, -3, 2, 7, 6, {(0, j): 2 for j in range(2, 6)})                         # a hill south of you, a tunnel in from its north side
-    px = lambda tx, ty, ax, ay: game.js(PX, [x + tx, y + ty, ax, ay])
-    game.js("window.seen = []; (function f() { const p = ents.get('agent' + myId); window.seen.push(liftOf(p)); requestAnimationFrame(f); })()")
+    game.js("window.seen = []; (function f() { const p = ents.get('agent' + myId); window.seen.push([liftOf(p), unseen(p)]); requestAnimationFrame(f); })()")
     game.hold(["s"], 700)
-    drawn(game)
-    assert game.server()["in_cave"] and game.js("caveOpen") and game.js("Math.max(...window.seen)") < .5   # (never drawn up on the hill)
-    assert px(0, 2, 8, -4)[3] == 0 or px(0, 2, 8, 8)[3] == 255                        # no wall across the way out
-    assert px(0, 1, 8, 8)[3] == 255                                                   # the ground it opens onto: shown
-    north = game.js("colsOf(hillSheet(4)).north")
-    edge, ground = px(0, 2, 8, -32 + north), px(0, 1, 8, 8)                           # where the hill's border was: the passage goes through
-    assert edge[3] == 255 and max(abs(a - b) for a, b in zip(edge[:3], ground[:3])) < 45
+    game.wait(SEEN, 20000); game.sleep(400)
+    assert game.server()["in_cave"] and game.js("Math.max(...window.seen.map((s) => s[0]))") < .5 and not game.js("window.seen.some((s) => s[1])")   # (never drawn up on the hill, never gone)
+    assert game.js(f"[seenUnder({x}, {y + 2}), seenUnder({x}, {y + 5}), seenUnder({x + 1}, {y + 3})]") == [0, 0, None]
+    assert game.js("xrayShows(ents.get('agent' + myId))") > .9                        # you, through the hill in front
+    assert game.js(f"xrayGone({x}, {y + 6})") and not game.js(f"xrayGone({x + 3}, {y + 5})")   # the hill in front of the tunnel is seen through; where it hides nothing of the place, it stays
+
+
+def test_a_cave_wider_than_the_circle_is_seen_whole_its_mouth_in_daylight_however_far(game):
+    """The picture was as wide as the circle (nine tiles) unless the ground was dug: a cave eighteen tiles wide showed
+    nine of them, a square hole in its hill. And daylight came in only where the ground outside the mouth was near
+    you: a mouth eleven tiles off was dark."""
+    game.js("setOpt('above', 'cut')")
+    game.clear_area(14)
+    x, y = game.pos()
+    game.stamp(-10, -9, ["." * 20] * 7, levels=["4" * 20] * 7)                        # a hill, a cave 18 x 5 in it,
+    game.stamp(-9, -8, ["." * 18] * 5, levels=["0" * 18] * 5, roofs=["4" * 18] * 5, heads=["2" * 18] * 5)
+    game.stamp(-9, -3, ["."], levels=["0"], roofs=["4"], heads=["2"])                 # its mouth south, at its west end
+    game.rpc("dev_teleport", x=x + 2, y=y - 6, z=0)                                   # eleven tiles east of its mouth
+    game.wait(f"myAt && myAt.x === {x + 2} && myAt.y === {y - 6}", 8000)
+    game.wait("dirtyTiles.length === 0", 20000); game.wait(SEEN, 20000); game.sleep(400)
+    assert game.js("xray.pic.floor.size") == 91
+    assert game.js(PIC, [x - 9, y - 6, 0, 8, 8])[0] and game.js(PIC, [x + 8, y - 6, 0, 8, 8])[0]   # its two ends
+    dark = f"""([X, Y]) => {{ const P = xray.pic, f = (Y * 16 + 8 - P.y) * P.w + X * 16 + 8 - P.x; return [P.under.includes(f), +(P.img.data[f * 4 + 3] / 255).toFixed(2)]; }}"""
+    mouth, deep, me = (game.js(dark, [X, Y]) for X, Y in ((x - 9, y - 3), (x - 3, y - 6), (x + 2, y - 6)))
+    assert mouth[0] and deep[0] and me[0] and mouth[1] < .1 and me[1] < .2 and deep[1] > .4, (mouth, deep, me)
 
 
 def test_standing_behind_a_hill_it_hides_you(game):

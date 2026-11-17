@@ -99,9 +99,10 @@ def test_running_into_new_ground_never_stalls_a_frame(game):
     assert t < 12, t                                            # a step is small: it fits the frame's budget
 
 
-def test_a_cave_is_its_mountain_from_outside_and_a_hole_in_it_inside(game):
-    """A cave is drawn as the mountain over it, like a house's roof: what's in it is not seen. Walk in and its roof is
-    off at once (no fade, no shade over the world): the cave is a hole in the mountain, the mountain stays round it."""
+def test_a_cave_is_its_mountain_from_outside_and_seen_through_it_inside(game):
+    """A cave is drawn as the mountain over it, like a house's roof: what's in it is not seen. Walk in and you are
+    seen through the mountain, as anywhere you are hidden (xray.js): you, the cave, what is in it; the mountain stays
+    round it, and no shade goes over the world."""
     game.clear_area(6)
     x, y = game.pos()
     game.stamp(-3, -6, [".......", "......."] * 3, levels=["4441444", "4441444", "4441444", "4441444", "4441444", "4441444"],
@@ -111,10 +112,10 @@ def test_a_cave_is_its_mountain_from_outside_and_a_hole_in_it_inside(game):
     game.sleep(1200)
     assert game.js(f"levelAt({x}, {y - 3})") == 4 and game.js(f"hiddenAt({x}, {y - 3})")     # outside: its roof
     game.js("""window.seen = []; (function f() { const p = ents.get('agent' + myId);
-      window.seen.push([liftOf(p), hiddenAt(Math.round(p.x), Math.round(p.y))]); requestAnimationFrame(f); })()""")
+      window.seen.push([liftOf(p), unseen(p)]); requestAnimationFrame(f); })()""")
     game.hold(["w"], 900)                                    # in through the mouth
-    game.sleep(500)
-    assert game.server()["in_cave"] and game.js("caveOpen")
+    game.wait("xray.a > .95", 8000)
+    assert game.server()["in_cave"] and game.js(f"seenUnder({x}, {y - 3})") == 1
     # ...and all the way in you stayed on the ground, in sight (never drawn climbing its roof, or under it)
     assert game.js("Math.max(...window.seen.map((s) => s[0])) - Math.min(...window.seen.map((s) => s[0]))") < .5 and not game.js("window.seen.some((s) => s[1])")
     assert game.js(f"standAt({x}, {y - 3})") == 1 and game.js(f"standAt({x - 1}, {y - 3})") == 4   # shown through the hill
@@ -123,7 +124,7 @@ def test_a_cave_is_its_mountain_from_outside_and_a_hole_in_it_inside(game):
     game.hold(["s"], 900)                                    # and out: its roof is back
     game.sleep(500)
     assert game.js("Math.max(...window.seen.map((s) => s[0])) - Math.min(...window.seen.map((s) => s[0]))") < .5 and not game.js("window.seen.some((s) => s[1])")
-    assert not game.js("caveOpen") and game.js(f"levelAt({x}, {y - 3})") == 4
+    assert game.js("xray.a < .01") and game.js(f"[standAt({x}, {y - 3}), hiddenAt({x}, {y - 3})]") == [4, True]
 
 
 def test_a_pit_below_sea_level_is_drawn_like_any_hole(game):
@@ -178,7 +179,7 @@ def test_a_pickaxe_cuts_a_tunnel_into_a_wall(game):
     game.hold(["w"], 300)
     game.sleep(600)
     s = game.server()
-    assert s["in_cave"] and s["z"] == 0 and (s["x"], s["y"]) == (x, y - 1) and game.js("caveOpen")
+    assert s["in_cave"] and s["z"] == 0 and (s["x"], s["y"]) == (x, y - 1) and game.js(f"seenUnder({x}, {y - 1})") == 0
 
 
 def test_a_frame_paints_the_screen_a_few_times_over_not_ten(game):

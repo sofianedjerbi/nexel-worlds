@@ -1,5 +1,7 @@
-// Behind a wall or a mountain you'd be hidden (behind.js: clipBehind). Instead, a circle round you is seen through
-// it. The rule is one: inside the circle the land is drawn without the rock in the way, and nothing else changes.
+// The one way you are seen when you are hidden: behind a wall or a mountain, down a hole, under a roof (a cave under
+// a hill, a tunnel dug under the meadow). The land is always drawn as it is; you are seen through what hides you, in
+// the view chosen (options.js: cut away, outline, faded, a circle). Told here for the circle.
+// The rule is one: inside the circle the land is drawn without the rock in the way, and nothing else changes.
 // The rock in the way: of the mass that hides you (the ground two layers or more over you, all that joins up with
 // what is drawn over you), the tiles on the line of sight to the place you are in, which is the ground you could
 // walk or drop to from where you stand without leaving the circle. So the river ahead of you along a bank that turns
@@ -20,12 +22,14 @@
 // wait: seconds hidden before it comes; far: tiles south to look for ground drawn up over you; box: tiles across
 // that are painted (the circle, wherever you are on your tile); ms: a frame's share of painting it; turn: seconds a
 // new picture takes to come over the one before; near: how far from your tile (tiles) the place you are in goes;
-// whole (tests): no rock is left out and all of the picture is shown: it must then be the land's own, to the pixel
-// wide: how far from your tile ground that was dug is seen (not in the circle: it has its own reach, r)
-const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, box: 9, ms: 2.5, turn: .12, near: 4.1, wide: 12, whole: false};
+// whole (tests): no rock is left out, no roof, and all of the picture is shown: it must then be the land's own, to the pixel
+// wide: how far from your tile ground that was dug, or is under a roof, is seen (not in the circle: it has its own
+// reach, r); earth: how dark earth that was cut through is (of 255: a roof over a hollow, what stood between two tunnels)
+const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, box: 9, ms: 2.5, turn: .12, near: 4.1, wide: 12, earth: 110, whole: false};
 // how strong, the height you stand at, your row, its centre (tiles), its canvas, how long you've been hidden, the land
-// without the rock (pic), the next one being painted (job), the one before (old) and how far pic has come over it (mix)
-const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, c2: null, t: 0, pic: null, job: null, old: null, mix: 1};
+// without the rock (pic), the next one being painted (job), the one before (old) and how far pic has come over it (mix);
+// open: the mouths of the place seen through its roof now (caves.js draws no hole there)
+const xray = {a: 0, L: 0, row: 0, x: 0, y: 0, c: null, c2: null, t: 0, pic: null, job: null, old: null, mix: 1, open: ""};
 
 // The rock that is seen through (the picture's: xrayPicture)
 function xrayRock(tx, ty) {
@@ -34,11 +38,12 @@ function xrayRock(tx, ty) {
 }
 // The place you are in: the ground you could walk or drop to from your tile (your height, a step up, or lower; no
 // rock on the way), no further than XRAY.near; and, in ground that was dug, all you could walk to under sea level: up
-// its steps too, and under its roof (a tunnel, a room: cells.js), so that the way you came stays seen as you go down
-// it (a step down, the one two behind you was out of the place: it closed). -> {cols: column of tiles -> its rows of
-// that ground, z: "x,y" -> its height there}. Ground that was dug is of it as far as XRAY.wide: all of the tunnel
-// or the room on the screen ("underground vision should display as much as player can see"; it stopped four tiles
-// from you, a fire a little further on not seen); how much of it light shows: cavelight.js
+// its steps too; and under a roof of any kind (a cave, a tunnel, a room: cells.js), so that the way you came stays
+// seen as you go down it (a step down, the one two behind you was out of the place: it closed). -> {cols: column of
+// tiles -> its rows of that ground, z: "x,y" -> its height there}. Ground that was dug or is under a roof is of it
+// as far as XRAY.wide: all of the tunnel, the room or the cave on the screen ("underground vision should display as
+// much as player can see"; it stopped four tiles from you, a fire a little further on not seen); how much of it
+// light shows: cavelight.js
 function xrayPlace(tx, row, L) {
   const far = opt("above") === "circle" ? 0 : XRAY.wide, h0 = settleNear(tx, row, L), cols = new Map(), z = new Map([[tx + "," + row, h0]]), todo = [[tx, row, h0]];   // (h0: your tile's own height: stepping off it down a stair, L is already the next one's)
   while (todo.length) {
@@ -48,8 +53,8 @@ function xrayPlace(tx, row, L) {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy, key = nx + "," + ny;
       if (z.has(key) || tile(nx, ny) === null) continue;
-      const lv = levelAt(nx, ny), w = lv <= L + 1 ? null : landAt(h, nx, ny, x, y), h2 = lv <= L + 1 ? lv : w !== null && w < 0 && (w === lv || dugHollow(nx, ny)) ? w : null;
-      if (h2 === null || ((nx - tx) ** 2 + (ny - row) ** 2 > XRAY.near ** 2 && !(h2 < 0 && Math.max(Math.abs(nx - tx), Math.abs(ny - row)) <= far))) continue;
+      const lv = levelAt(nx, ny), w = lv <= L + 1 ? null : landAt(h, nx, ny, x, y), h2 = lv <= L + 1 ? lv : w !== null && (w === lv ? w < 0 : coveredAt(nx, ny, w)) ? w : null;
+      if (h2 === null || ((nx - tx) ** 2 + (ny - row) ** 2 > XRAY.near ** 2 && !((h2 < 0 || h2 < lv) && Math.max(Math.abs(nx - tx), Math.abs(ny - row)) <= far))) continue;
       z.set(key, h2); todo.push([nx, ny, h2]);
     }
   }
@@ -102,7 +107,7 @@ function xrayCover(tx, row, py, L) {
 function xrayLook(dt) {
   const p = me && ents.get("agent" + myId);
   let want = 0, f = null;                                  // (what the circle is round: px, py as drawn, L, row; mid: its centre over its tile)
-  if (p && p.e && !caveOpen) {
+  if (p && p.e) {
     // (where you are as drawn, at the height you are at: on a step, a floor, a ladder's rungs; it was the land's under
     // you, and a climb up a cliff's side or a flight of stairs beside one brought the circle up half way)
     const cl = Climb.climbOf(p), px = p.x + (cl ? cl.dx : 0), py = p.y + (cl ? cl.dy : 0);
@@ -111,7 +116,7 @@ function xrayLook(dt) {
     const fr = px - Math.floor(px);                        //  columns you stand across, each for the part of you in it
     let roof = false;                                      // (under ground that was dug, its roof over you: all of you, at once)
     for (const [tx, part] of [[Math.floor(px), 1 - fr], [Math.floor(px) + 1, fr]]) if (part > .001) {
-      const under = dugHollow(tx, row) && coveredAt(tx, row, L);
+      const under = roofAt(tx, row) > 0 && coveredAt(tx, row, L);
       roof = roof || under; hidden += part * (under ? 1 : Math.max(0, Math.min(1, (xrayCover(tx, row, py, L) - 2 - STAND) / XRAY.body)));
     }
     want = Math.max(0, Math.min(1, (hidden - XRAY.from) / (XRAY.full - XRAY.from)));
@@ -129,6 +134,8 @@ function xrayLook(dt) {
   xray.mix = XRAY.turn ? Math.min(1, xray.mix + dt / XRAY.turn) : 1;
   if (xray.mix >= 1 || xray.a <= .01) xray.old = null;
   if (xray.a < .01 && !want) xray.a = 0;
+  const open = xray.a > .01 && xray.pic ? xray.pic.mouths : "";   // (the mouths of the place seen through its roof are not drawn on the hill: caves.js)
+  if (open !== xray.open) { xray.open = open; caveStamp++; }
 }
 
 // The land without the rock in front, round the tile you're on: painted when that tile, your height or the land
@@ -165,14 +172,15 @@ function* xrayPicture(tx, key, near) {
     const [x, ty] = todo.pop();
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (Math.abs(x + dx - tx) <= XRAY.wide + 2 && Math.abs(ty + dy - row) <= 20 && levelAt(x + dx, ty + dy) >= L + 2) join(x + dx, ty + dy);
   }
-  // the place under a roof (a tunnel, a room dug under the ground): its floor is kept, the ground over it left out
-  const floor = new Map(); for (const [key, h] of floors) { const [x, ty] = key.split(",").map(Number); if (h < levelAt(x, ty)) floor.set(key, h); }
+  // the place under a roof (a cave under a hill, a tunnel, a room dug under the ground): its floor is kept, the land over it left out
+  const floor = new Map(); for (const [key, h] of floors) { const [x, ty] = key.split(",").map(Number); if (h < levelAt(x, ty) && !XRAY.whole) floor.set(key, h); }
   const rock = (x, ty) => mass.has(at(x, ty)) && sight(x, ty) && !floor.has(x + "," + ty);
   // its tiles across and its rows on the screen (art px): the circle's, wherever you are on your tile; and all of the
-  // dug ground of your place, each floor where it is drawn with the wall behind it
-  const D = Math.ceil(XRAY.r * 32) + 2, dug = [...floors].filter(([, f]) => f < 0).map(([k, f]) => [...k.split(",").map(Number), f]);
+  // ground of your place that was dug or is under a roof, each floor where it is drawn with the wall behind it, up to
+  // the top of the land (a cave twenty tiles wide showed nine of them, round you)
+  const D = Math.ceil(XRAY.r * 32) + 2, dug = [...floors].filter(([k, f]) => f < 0 || floor.has(k)).map(([k, f]) => [...k.split(",").map(Number), f]);   // (dug, or under a roof)
   const xa = Math.min(tx - (XRAY.box >> 1), ...dug.map((d) => d[0] - 1)), w = Math.max(tx + (XRAY.box >> 1), ...dug.map((d) => d[0] + 1)) - xa + 1, W = w * 16;
-  const ya = xray.row * 16 - shOf(xray.L) - (D >> 1) - 6, y = Math.min(ya, ...dug.map((d) => d[1] * 16 - 24)), h = Math.max(ya + D + 22, ...dug.map((d) => d[1] * 16 - shOf(d[2]) + 26)) - y;
+  const ya = xray.row * 16 - shOf(xray.L) - (D >> 1) - 6, y = Math.min(ya, ...dug.map((d) => d[1] * 16 - shOf(Math.max(2, topAt(d[0], d[1]), topAt(d[0], d[1] - 1))) - 8)), h = Math.max(ya + D + 22, ...dug.map((d) => d[1] * 16 - shOf(d[2]) + 26)) - y;
   let lo = Math.min(99, ...floor.values()), hi = -99, edged = [];
   for (let ty = xray.row - 14; ty <= xray.row + 14; ty++) for (let x = xa - 1; x <= xa + w; x++) { const l = levelAt(x, ty); lo = Math.min(lo, l); hi = Math.max(hi, l); }
   const y0 = Math.max(xray.row - 14, (y + shOf(lo) >> 4) - 1), y1 = Math.min(xray.row + 14, y + h + shOf(hi) >> 4);   // every row of tiles that can be drawn in it
@@ -189,7 +197,7 @@ function* xrayPicture(tx, key, near) {
     rectLevels(R, "lk"); peek = null;
     edged = [...again].filter((q) => !floor.has((R.x + q % w) + "," + (R.y + (q / w | 0))));
   }
-  const see = {keep: new Uint8Array((w + 4) * (R.h + 4)), c0: y - R.y * 16, c1: y - R.y * 16 + h, state: new Uint8Array(W * h), lev: new Int8Array(W * h), cover: new Uint8Array(W * h), wet: new Uint8Array(W * h)};
+  const see = {keep: new Uint8Array((w + 4) * (R.h + 4)), c0: y - R.y * 16, c1: y - R.y * 16 + h, state: new Uint8Array(W * h), lev: new Int8Array(W * h), band: new Uint8Array(W * h), cover: new Uint8Array(W * h), wet: new Uint8Array(W * h)};
   const rocks = new Uint8Array(w * R.h);
   for (let j = -2; j < R.h + 2; j++) for (let i = -2; i < w + 2; i++) {
     const is = rock(R.x + i, R.y + j);
@@ -210,13 +218,27 @@ function* xrayPicture(tx, key, near) {
     const lv = R.lv[((q / w | 0) + 2) * (w + 4) + q % w + 2], X = (q % w) * 16, Y = (R.y + (q / w | 0)) * 16 - shOf(lv) - y;
     for (let r = Math.max(0, -Y); r < 16 && Y + r < h; r++) for (let f = (Y + r) * W + X, e = f + 16; f < e; f++) if (see.state[f] === 1 && see.lev[f] === lv) see.cover[f] = 1;
   }
-  const mouths = caveMouths(near, R.x * 16, y, W, h, (x, ty) => rock(x, ty) || floor.has(x + "," + ty));   // (the mouths of caves in what is kept: caves.js)
-  if (mouths) over.getContext("2d").drawImage(mouths, -OV_M, -OV_M);
+  const holes = caveMouths(near, R.x * 16, y, W, h, (x, ty) => rock(x, ty) || floor.has(x + "," + ty));   // (the mouths of caves in what is kept: caves.js)
+  if (holes) over.getContext("2d").drawImage(holes, -OV_M, -OV_M);
   // of it, what the rock is drawn over: the kept ground that is on top there (seen), and its water
   // (two masks, a canvas each, made once: one written again after it was drawn from is what a phone's GPU got wrong)
   const seen = new Uint8Array(W * h), m = new Uint32Array(W * h), wm = new Uint32Array(W * h);
   let any = 0;
   for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) { seen[f] = 1; any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
+  // Earth left standing between two parts of the place under a roof or dug (two tunnels side by side, a pillar in a
+  // room) is cut level with the floor behind it, and shows as that: earth, cut. (The land as drawn showed there: a
+  // strip of meadow between two floors four layers down, the nearer tunnel a floor lying on the grass.)
+  const sec = new Uint32Array(W * h), soil = colsOf(hillSheet(0)).bands[1], sa = XRAY.earth / 255, cut = new Set();
+  const earth = (255 << 24 | Math.round(soil[2] * (1 - sa) + 28 * sa) << 16 | Math.round(soil[1] * (1 - sa) + 20 * sa) << 8 | Math.round(soil[0] * (1 - sa) + 30 * sa)) >>> 0;
+  for (let i = 0; i < w; i++) {
+    const x = R.x + i, under = (place.get(x) || []).filter((gy) => floors.get(x + "," + gy) < 0 || floor.has(x + "," + gy));
+    for (let j = 0; under.length > 1 && j < R.h; j++) {
+      const ty = R.y + j, north = under.filter((gy) => gy < ty);
+      if (!rocks[j * w + i] || !north.length || !under.some((gy) => gy > ty)) continue;
+      const lv = floors.get(x + "," + Math.max(...north)), Y = ty * 16 - shOf(lv) - y;
+      for (let r = Math.max(0, Y); r < Math.min(h, Y + 16); r++) for (let f = r * W + i * 16, e = f + 16; f < e; f++) if (see.state[f] !== 1) { seen[f] = 1; any++; see.lev[f] = lv; sec[f] = earth; cut.add(x + "," + ty); }
+    }
+  }
   const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(m, W, h), 0, 0);
   // In ground that was dug, what is seen through ends in a line, the hole's own outline, where the ground left beside
   // it or in front of it stands higher (a pit's floor lay on the meadow in front like a sheet of paper, cut square)
@@ -225,8 +247,16 @@ function* xrayPicture(tx, key, near) {
   for (let f = 0; f < seen.length; f++) if (seen[f] && see.lev[f] < 0) for (const n of [f % W ? f - 1 : -1, (f + 1) % W ? f + 1 : -1, f + W]) {
     if (n >= 0 && n < seen.length && !seen[n] && !(see.state[n] === 1 && see.lev[n] <= see.lev[f])) { edge[f] = ink; lines++; break; }
   }
-  if (lines) { og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(edge, W, h), 0, 0); }
-  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, any, rock: rocks, floor, place: floors, lev: see.lev, depth: underDepths(floor, floors), rx: R.x, ry: R.y, rw: w, rh: R.h};
+  // Under a roof the wall behind the place goes up to the top of the land, cut open: the part of it that is the
+  // hollow's own back wall is as it is; over that, where the roof was cut through, it is earth in the shade (the
+  // hollow shows in it, as high as it is: a burrow in a bank)
+  for (let f = 0; f < seen.length; f++) if (seen[f] && see.band[f] && !sec[f]) {
+    const k = see.lev[f], tx = R.x + (f % W >> 4), ty = Math.floor((y + (f / W | 0) + shOf(k)) / 16);
+    if (floor.has(tx + "," + ty) && landSolid(tx, ty, k)) sec[f] = (XRAY.earth << 24 | 0x1c141e) >>> 0;
+  }
+  og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(sec, W, h), 0, 0); if (lines) og.drawImage(pxCanvas(edge, W, h), 0, 0);
+  const mouths = [...floor.keys()].filter((k) => { const [fx, fy] = k.split(",").map(Number); return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => topAt(fx + dx, fy + dy) < topAt(fx, fy)); }).sort().join(" ");
+  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, any, rock: rocks, floor, cut, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};
 }
 
 // The circle itself, over the land and under everything standing on it (in the other views: drawXrayWhole)

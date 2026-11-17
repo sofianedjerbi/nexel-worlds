@@ -131,7 +131,7 @@ def test_you_see_the_floor_you_are_on_and_fall_off_its_edge(game):
     assert alpha(floor, roof, wall) == [1, 1, 1] and game.server()["sheltered"] is False            # from outside
     go(game, x0 + 3, y0 + 2, 0)                                               # in the room
     assert alpha(floor, roof, wall) == [.12, .12, .12] and game.server()["sheltered"] is True and game.server()["in_cave"] is False
-    assert game.js("!caveOpen")                                                                     # (a room is no cave: nothing of the land is opened, nor darkened)
+    assert game.js("xray.a < .01")                                                                  # (a room is no cave: nothing of the land is seen through, nor darkened)
     go(game, x0 + 1, y0 + 2, 1)                                               # on the first step: the room still
     assert alpha(floor, roof) == [.12, .12]
     go(game, x0 + 2, y0 + 2, 3)                                               # upstairs

@@ -113,8 +113,8 @@ def test_a_stair_dug_down_is_cut_square_and_seen_whole_with_no_gap_as_you_walk_i
 
 
 def test_a_tunnel_keeps_its_roof_from_above_and_is_seen_through_it_from_inside(game):
-    """doben4 at the end of a stair, eight down under a roof left at ground level: the cave view drew its floor four
-    tiles south of its stair, on the grass ("dauben is completely buried and appear here... the underground view is
+    """doben4 at the end of a stair, eight down under a roof left at ground level: a view of its own for caves drew its
+    floor four tiles south of its stair, on the grass ("dauben is completely buried and appear here... the underground view is
     buggy as hell"); then, drawn open for good, who walked over a tunnel stood at its bottom. A hollow dug under the
     ground is the ground over it, from above; in it you are seen through that ground and the ground in front, as in a
     hole: you, its floor, the stair you came down."""
@@ -122,16 +122,16 @@ def test_a_tunnel_keeps_its_roof_from_above_and_is_seen_through_it_from_inside(g
     x, y = game.pos()
     game.stamp(1, 0, ["........"], levels=["abcddddd"], roofs=["00004444"], heads=["00002222"])
     X = x + 6
-    state = f"""(() => {{ const p = ents.get('agent' + myId); return [levelAt({X}, {y}), standAt({X}, {y}), hiddenAt({X}, {y}), caveOpen, xray.a > .95, unseen(p), xrayShows(p) > .9, xrayOverBody(p), liftOf(p) / zoom]; }})()"""
+    state = f"""(() => {{ const p = ents.get('agent' + myId); return [levelAt({X}, {y}), standAt({X}, {y}), hiddenAt({X}, {y}), xray.a > .95, unseen(p), xrayShows(p) > .9, xrayOverBody(p), liftOf(p) / zoom]; }})()"""
     game.rpc("dev_teleport", x=X, y=y, z=0)                  # walking over it
     game.wait(f"myAt && myAt.x === {X} && myAt.z === 0", 8000)
     game.wait(DRAWN, 8000); game.sleep(600)
-    assert game.js(state) == [0, 0, True, False, False, False, False, 0, 0]
+    assert game.js(state) == [0, 0, True, False, False, False, 0, 0]
     assert game.js(GREEN_ON_SCREEN, [[X, y, 0]])[0] > 200      # (the meadow, whole)
     game.rpc("dev_teleport", x=X, y=y, z=-4)                 # in it
     game.wait(f"myAt && myAt.x === {X} && myAt.z === -4", 8000)
     game.wait(SEEN, 20000)
-    assert game.js(state) == [0, -4, False, False, True, False, True, 0, -32]
+    assert game.js(state) == [0, -4, False, True, False, True, 0, -32]
     assert game.js(f"[seenUnder({X}, {y}), seenUnder({X - 1}, {y}), seenUnder({X}, {y + 1}), xrayGone({X}, {y + 1})]") == [-4, -4, None, True]
     assert game.js(GREEN_ON_SCREEN, [[X, y, 4], [X - 1, y, 4], [x + 3, y, 3]]) == [0, 0, 0]      # its floor where you stand, beside you, the stair down to it
     assert not game.errors
@@ -154,4 +154,60 @@ def test_under_ground_you_see_what_light_shows_a_fire_however_far(game):
     at_mouth, between, by_fire = (game.js(dark, X) for X in (x - 4, mid, fire))
     assert at_mouth[0] and between[0] and by_fire[0]           # (floor under the roof, in the picture)
     assert at_mouth[1] < .15 and by_fire[1] < .1 and between[1] > .25, (at_mouth, between, by_fire)
+    assert not game.errors
+
+
+# a px of the picture seen through what hides you: of tile (x, y) as drawn at height lv, (ax, ay) art px from its
+# corner -> [seen, r, g, b]
+PIC = """([x, y, lv, ax, ay]) => { const P = xray.pic, X = x * 16 + ax - P.x, Y = y * 16 - shOf(lv) + ay - P.y;
+  if (X < 0 || Y < 0 || X >= P.w || Y >= P.h) return [0, 0, 0, 0];
+  return [P.seen[Y * P.w + X], ...Array.from(P.over.getContext('2d').getImageData(X, Y, 1, 1).data).slice(0, 3)]; }"""
+
+
+def test_a_stair_dug_under_a_hill_is_a_burrow_in_the_bank_not_floors_lying_on_the_hill(game):
+    """doben4's stair, dug west from a pit, under a hill that rises as it goes down ("this is very weird and ugly !"):
+    under a hill a view of its own drew each floor alone where it is drawn, tiles south of the stair, squares of earth
+    on the hill. "everything should have the same view ! ... an unique 'player is hided, xray on' view": under a hill
+    as under the meadow you are seen through what hides you. Behind each floor its wall goes up to the top of the
+    land, cut open: the hollow's own back wall, and over it the roof cut through, earth in the shade."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.stamp(-9, -3, ["." * 10] * 7, levels=["3322110000"] * 7)
+    game.stamp(-9, 0, ["." * 10], levels=["ffedcbba00"], roofs=["9976400000"], heads=["2222200000"])
+    X = x - 6                                                  # four down, under a hill two high
+    game.rpc("dev_teleport", x=X, y=y + 1, z=2)               # on the hill beside it: the hill, whole
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === 2", 8000)
+    game.wait(DRAWN, 8000); game.sleep(600)
+    assert game.js(f"[xray.a, standAt({X}, {y}), hiddenAt({X}, {y})]") == [0, 2, True]
+    game.rpc("dev_teleport", x=X, y=y, z=-4)                 # on the stair
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === -4", 8000)
+    game.wait(SEEN, 20000)
+    assert game.js(f"[-9, -8, -7, -6, -5, -4].map((d) => seenUnder({x} + d, {y}))") == [-6, -6, -5, -4, -3, None]
+    assert game.js(f"[standAt({X}, {y}), hiddenAt({X}, {y}), xray.pic.floor.size]") == [-4, False, 5]
+    px = lambda tx, lv, ax, ay: game.js(PIC, [tx, y, lv, ax, ay])
+    for tx, floor, top in ((x - 9, -6, 3), (X, -4, 2)):       # behind a floor: its wall, from the top of the land down to it
+        for up in range(2, 8 * (top - floor), 6):
+            seen, r, g, b = px(tx, floor, 8, -up)
+            assert seen and r > g, (tx, up, [seen, r, g, b])    # (earth: no hill showing in it)
+    back, roof = px(x - 5, -3, 8, -12), px(X, -4, 8, -20)     # the same layer of earth: a hollow's back wall; the roof of the next, cut through
+    assert back[0] and roof[0] and sum(back[1:]) - sum(roof[1:]) > 40, (back, roof)
+    assert not game.errors
+
+
+def test_earth_left_between_two_tunnels_is_cut_earth_not_a_strip_of_meadow(game):
+    """Two tunnels side by side, four down, joined at one end: the earth between them hides the far one and is left
+    out; where it stood the land as drawn showed, a strip of meadow between two floors, and the nearer tunnel was a
+    floor lying on the grass. It is cut level with the floor behind it and shows as that."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.stamp(1, 0, ["...."], levels=["abcd"])
+    game.rpc("dev_stamp", x=x + 5, y=y, rows=["......", ".", "......"], levels=["dddddd", "d", "dddddd"], roofs=["444444", "4", "444444"], heads=["222222", "2", "222222"])
+    X = x + 8
+    game.rpc("dev_teleport", x=X, y=y, z=-4)                 # in the far one
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === -4", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000)
+    assert game.js(f"[seenUnder({X}, {y}), seenUnder({X}, {y + 1}), seenUnder({X}, {y + 2}), xray.pic.cut.has('{X},{y + 1}')]") == [-4, None, -4, True]
+    seen, r, g, b = game.js(PIC, [X, y + 1, -4, 8, 8])
+    assert seen and r > g, [seen, r, g, b]
+    assert game.js(GREEN_ON_SCREEN, [[X, y, 4], [X, y + 1, 4], [X, y + 2, 4]]) == [0, 0, 0]
     assert not game.errors
