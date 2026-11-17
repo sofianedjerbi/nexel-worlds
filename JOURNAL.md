@@ -2133,4 +2133,22 @@ not its body).
     thing; the server's reach counts tiles, not height). Open.
 - The page's two pictures of the view before this one (the land over you dimmed) are gone. The pixel test of the
   x-ray failed once in a loaded run (4176 px) and passed 3 times alone and in four runs at once: not understood.
+- Then, on the published clip: "The borders are still abrupt, like cut without separation". The earth cut open
+  stopped square against the grass: the only line was on dug floors, in a brown that does not show on dark earth,
+  and none on walls or in caves; and the soft shadow the old cave view had along its floor was gone with it. Now
+  where the cut ends against the land in front of it or beside it there is a line (a dark brown of the pack's
+  kind) and a shadow three px in from it, in steps: the place reads as set into the ground. Not over it where the
+  land's own edge is (its grass hangs there), nor across a way out (ground that goes on level with a floor), nor
+  between two floors of the place. The earth's own drawing (cut earth between tunnels, the roof cut through, the
+  edge) is its own file, xraycut.js (xray.js was at 291 lines). Looked at on nine situations at two zooms; behind
+  a hill is as it was. Tests: the line and the shadow at a tunnel's front and end, none between its floors; a line
+  along a cave room's side, none across its doorway.
+- Then, on a zoomed picture of a room: "Outline is buggy here !". Three things in it: the line ran beside the
+  land's own rim (the tile beside the room has its edge drawn toward it: two outlines side by side, the rim stopping
+  half way down and the line going on alone); the line stopped short of the top of the wall; and a dark dot sat
+  where the stair's wall meets the room's. Now there is one edge: no line where a tile beside the place or behind
+  it has its own edge there, the line from where that ends, and a wall's band counts as the tile in front of it (a
+  hill's edge is set in two px: those two rows were taken for the tile behind, a border two px high with its shadow
+  round it). The line is the land's brown, a little darker (112, 70, 58), not ink. Looked at px by px at the
+  junctions (a map of what each px is), then on the 24 situations.
 

@@ -237,3 +237,22 @@ def test_at_night_a_fire_under_a_roof_lights_nothing_of_the_meadow_over_it(game)
     assert far > 100 and abs(over - far) < 25 and abs(beside - far) < 25, (over, beside, far)   # the meadow over the fire: as dark as the meadow anywhere
     assert not game.errors
 
+
+def test_where_the_cut_ends_it_has_an_edge_a_line_and_a_shadow_in_from_it(game):
+    """"The borders are still abrupt, like cut without separation": the earth cut open stopped square against the
+    grass. Where the cut ends against the land in front of it or beside it there is a line, and a shadow three px in
+    from it (xraycut.js); none between two floors of the place."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.stamp(1, 0, ["........"], levels=["abcddddd"], roofs=["00004444"], heads=["00002222"])
+    X = x + 6
+    game.rpc("dev_teleport", x=X, y=y, z=-4)
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === -4", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000)
+    ink, px = game.js("CUT.ink"), lambda *a: game.js(PIC, list(a))
+    front, in1, mid = px(X, y, -4, 8, 15), px(X, y, -4, 8, 14), px(X, y, -4, 8, 8)    # the floor's last row, against the meadow in front; a px in; its middle
+    assert front[0] and front[1:] == ink and sum(mid[1:]) - sum(in1[1:]) > 30, (front, in1, mid)
+    assert px(x + 8, y, -4, 15, 8)[1:] == ink                 # the tunnel's end
+    assert px(X, y, -4, 0, 8)[1:] != ink and px(X, y, -4, 15, 8)[1:] != ink            # between two of its floors: nothing
+    assert not game.errors
+

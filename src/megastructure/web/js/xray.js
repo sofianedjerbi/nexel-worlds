@@ -24,8 +24,8 @@
 // new picture takes to come over the one before; near: how far from your tile (tiles) the place you are in goes;
 // whole (tests): no rock is left out, no roof, and all of the picture is shown: it must then be the land's own, to the pixel
 // wide: how far from your tile ground that was dug, or is under a roof, is seen (not in the circle: it has its own
-// reach, r); earth: how dark earth that was cut through is (of 255: a roof over a hollow, what stood between two tunnels)
-const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, box: 9, ms: 2.5, turn: .12, near: 4.1, wide: 12, earth: 110, whole: false};
+// reach, r)
+const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, box: 9, ms: 2.5, turn: .12, near: 4.1, wide: 12, whole: false};
 // how strong, the height you stand at, your row, its centre (tiles), its canvas, how long you've been hidden, the land
 // without the rock (pic), the next one being painted (job), the one before (old) and how far pic has come over it (mix);
 // open: the mouths of the place seen through its roof now (caves.js draws no hole there)
@@ -225,36 +225,9 @@ function* xrayPicture(tx, key, near) {
   const seen = new Uint8Array(W * h), m = new Uint32Array(W * h), wm = new Uint32Array(W * h);
   let any = 0;
   for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) { seen[f] = 1; any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
-  // Earth left standing between two parts of the place under a roof or dug (two tunnels side by side, a pillar in a
-  // room) is cut level with the floor behind it, and shows as that: earth, cut. (The land as drawn showed there: a
-  // strip of meadow between two floors four layers down, the nearer tunnel a floor lying on the grass.)
-  const sec = new Uint32Array(W * h), soil = colsOf(hillSheet(0)).bands[1], sa = XRAY.earth / 255, cut = new Set();
-  const earth = (255 << 24 | Math.round(soil[2] * (1 - sa) + 28 * sa) << 16 | Math.round(soil[1] * (1 - sa) + 20 * sa) << 8 | Math.round(soil[0] * (1 - sa) + 30 * sa)) >>> 0;
-  for (let i = 0; i < w; i++) {
-    const x = R.x + i, under = (place.get(x) || []).filter((gy) => floors.get(x + "," + gy) < 0 || floor.has(x + "," + gy));
-    for (let j = 0; under.length > 1 && j < R.h; j++) {
-      const ty = R.y + j, north = under.filter((gy) => gy < ty);
-      if (!rocks[j * w + i] || !north.length || !under.some((gy) => gy > ty)) continue;
-      const lv = floors.get(x + "," + Math.max(...north)), Y = ty * 16 - shOf(lv) - y;
-      for (let r = Math.max(0, Y); r < Math.min(h, Y + 16); r++) for (let f = r * W + i * 16, e = f + 16; f < e; f++) if (see.state[f] !== 1) { seen[f] = 1; any++; see.lev[f] = lv; sec[f] = earth; cut.add(x + "," + ty); }
-    }
-  }
   const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(m, W, h), 0, 0);
-  // In ground that was dug, what is seen through ends in a line, the hole's own outline, where the ground left beside
-  // it or in front of it stands higher (a pit's floor lay on the meadow in front like a sheet of paper, cut square)
-  const rim = colsOf(hillSheet(0)).side.reduce((d, c) => (c[0] + c[1] + c[2] < d[0] + d[1] + d[2] ? c : d)), ink = (255 << 24 | rim[2] << 16 | rim[1] << 8 | rim[0]) >>> 0, edge = new Uint32Array(W * h);
-  let lines = 0;
-  for (let f = 0; f < seen.length; f++) if (seen[f] && see.lev[f] < 0) for (const n of [f % W ? f - 1 : -1, (f + 1) % W ? f + 1 : -1, f + W]) {
-    if (n >= 0 && n < seen.length && !seen[n] && !(see.state[n] === 1 && see.lev[n] <= see.lev[f])) { edge[f] = ink; lines++; break; }
-  }
-  // Under a roof the wall behind the place goes up to the top of the land, cut open: the part of it that is the
-  // hollow's own back wall is as it is; over that, where the roof was cut through, it is earth in the shade (the
-  // hollow shows in it, as high as it is: a burrow in a bank)
-  for (let f = 0; f < seen.length; f++) if (seen[f] && see.band[f] && !sec[f]) {
-    const k = see.lev[f], tx = R.x + (f % W >> 4), ty = Math.floor((y + (f / W | 0) + shOf(k)) / 16);
-    if (floor.has(tx + "," + ty) && landSolid(tx, ty, k)) sec[f] = (XRAY.earth << 24 | 0x1c141e) >>> 0;
-  }
-  og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(sec, W, h), 0, 0); if (lines) og.drawImage(pxCanvas(edge, W, h), 0, 0);
+  const {px: earth, cut, more} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks});   // (the earth cut through, and the cut's edge: xraycut.js)
+  any += more; og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(earth, W, h), 0, 0);
   const mouths = [...floor.keys()].filter((k) => { const [fx, fy] = k.split(",").map(Number); return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => topAt(fx + dx, fy + dy) < topAt(fx, fy)); }).sort().join(" ");
   return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, any, rock: rocks, floor, cut, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};
 }
