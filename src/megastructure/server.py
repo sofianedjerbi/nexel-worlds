@@ -90,7 +90,13 @@ class GameServer(Views):
                 log.warning("slow tick %d: %.0f ms (step %.0f ms, chunks %d -> %d)", self.sim.tick, dt,
                             (t1 - t0) * 1000, chunks0, len(self.sim.world.chunks))
             nxt += period
-            self.sim.world.work(time.perf_counter() + nxt - loop.time() - 0.03)   # (in the browser, no threads: land is made in the time to spare)
+            # In the browser (no threads) land is made in the time to spare, 8 ms at a time, the loop turning three times
+            # between two (heard, answered, sent): what the tick said leaves first and the page is answered meanwhile
+            # (made in one go, both waited 65 ms behind the land, one tick in six; more on a phone).
+            while nxt - loop.time() > 0.03 and not self.sim.world.work(0):
+                for _ in range(3):
+                    await asyncio.sleep(0)
+                self.sim.world.work(time.perf_counter() + min(0.008, nxt - loop.time() - 0.03))
             delay = nxt - loop.time()
             if delay < -1.0:  # fell far behind (e.g. laptop sleep): don't try to catch up
                 nxt = loop.time()

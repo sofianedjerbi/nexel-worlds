@@ -2406,3 +2406,34 @@ The user: "Can we optimize the game further especial on phones ? performance foc
   task behind it (not found). In the demo, world ticks come 100 ms apart on average but one in twenty is 20 to 50
   ms late (not looked into). What still makes memory: the frame's own list of what stands on the land, the sprites.
   test_e2e_menu.py's shader tests fail under load, old code and new (two readings of a pond 0.3 apart at dawn).
+
+## Iteration 156: the world's side of the demo (what a tick costs, when its words leave)
+
+The user: "and how about game performances ?" (after 155, which was the frame). Read as: the game itself, not the
+drawing: the world's ticks, the waits, the start.
+
+- Measured in the built demo (the world is Python in a worker of the page). A tick costs the world 0.1 to 0.4 ms of
+  its 100 ms. A save costs 3 ms. The page gets a tick's words under 2 ms after the worker sends them.
+- Found: the worker sent one tick in six 60 to 70 ms late (gaps of 160 to 170 ms, then 35), for the first ten
+  seconds in a world and whenever new land was asked for. Traced inside Python: land is made in the time to spare
+  after a tick, and it was made in one go, in the tick's own turn of the loop. What the tick had just said was in a
+  queue and left only after it; so did every answer to the page (a tap, an action).
+- Changed (server.py tick_loop, world.py work): the tick's words leave first; land is then made 8 ms at a time, the
+  loop turning three times between two (the page is heard, answered, the answer sent: with one turn an answer still
+  waited three slices). A server with threads never enters the loop.
+- A phone's CPU: Chrome cannot slow a worker ("only supported for pages"), so Python itself was slowed with a
+  profile hook, measured on a chunk of land (x4.0 and x7.0). In the 14 s after joining, old and new:
+  late ticks 16 of 139 -> 0 (x1), 16 of 138 -> 0 (x4), 17 of 139 -> 1 (x7; the longest gap 288 -> 161 ms).
+  The page asks, the world answers, 95 in 100 within: 15.8 -> 3.6 ms (x1), 63 -> 23 ms (x4), 67 -> 31 ms (x7); the
+  longest at x4: 148 -> 33 ms. Land is made as fast as before (17 chunks in 14 s; at x7, 15 before, 17 now).
+- Test (test_caves.py): a tick's words are heard before any land is made, the loop turns three times between two
+  goes, and the land is all made in the end. Fails on the old code (said, land, heard).
+- The start, a second visit, here: 1.0 s, of which Python itself 0.75 s and the game's code 0.19 s. Tried: the
+  game's code sent ready-made (.pyc; this Python and Pyodide's write the same): 0.19 -> 0.15 s for a file three
+  times as big (123 -> 423 KB). Not kept.
+- Wrong in 155, put right: the "wait of 150 to 200 ms once in 25 s" was my own measuring. Every scene measured with
+  Chrome's profiler on has one wait of 50 to 183 ms; every scene without it has none over 16.8 ms, and a minute
+  standing still without it has none. (An empty page with the same frame loop has none either.) The game drops no
+  frame standing, walking or sprinting as a phone.
+- Not measured: a real phone. `/perf` in the chat shows there what was measured here (frames, the longest wait,
+  ticks reaching the screen, what a tick costs the world).

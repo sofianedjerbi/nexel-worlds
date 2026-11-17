@@ -142,11 +142,10 @@ class World:
         self._install(cx, cy, *future.result()).touched = self.tick
         return True
 
-    def work(self, until: float):
-        """Without threads: go on making the land that was asked for (prefetch) until the clock reads `until`."""
-        for future, _ in self._pending.values():
-            if isinstance(future, Steps) and not future.work(until):
-                return
+    def work(self, until: float) -> bool:
+        """Without threads: go on making the land that was asked for (prefetch) until the clock reads `until`. True
+        once there is none left to make."""
+        return all(not isinstance(future, Steps) or future.work(until) for future, _ in self._pending.values())
 
     def _tidy(self, c: Chunk):
         """Older worlds spread berry bushes at random until meadows filled up. Nobody can plant a bush, so a

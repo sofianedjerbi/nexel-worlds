@@ -82,3 +82,54 @@ def test_land_is_made_a_row_at_a_time_where_there_are_no_threads(tmp_path, monke
     assert w.prefetch(40, 40) and bytes(w.chunks[(40, 40)].cols) == bytes(gen_chunk(SEED, 40, 40)[2])
     assert not w.prefetch(41, 40) and w.chunk(41, 40) is w.chunks[(41, 40)]     # asked for at once: finished on the spot
     sim.close()
+
+
+def test_what_a_tick_says_leaves_before_land_is_made_and_the_loop_turns_meanwhile(tmp_path, monkeypatch):
+    """The in-browser demo makes land in the time to spare after a tick. Made in one go, what the tick had just said
+    waited behind it (65 ms, one tick in six, more on a phone) and so did every answer to the page. The tick's words
+    leave first; land is then made a little at a time, the loop turning three times between two (the page is heard,
+    answered, the answer sent), and it is all made in the end."""
+    import asyncio
+    import time
+
+    from megastructure import world as world_mod
+    from megastructure.server import GameServer
+
+    monkeypatch.setattr(world_mod, "THREADS", False)
+    gs = GameServer(tmp_path / "w", seed=SEED)
+    w, log, turns = gs.sim.world, [], [0]
+    push, work = gs.push_ticks, w.work
+    monkeypatch.setattr(gs, "push_ticks", lambda: (push(), log.append(("said", 0)))[0])
+    monkeypatch.setattr(w, "work", lambda until: (until and log.append(("land", turns[0])), work(until))[1])
+
+    async def play():
+        q = asyncio.Queue()
+        gs.spectators[q] = (0, 0, 8, 8)
+
+        async def hear():
+            while True:
+                log.append(("heard", 0) if '"type":"tick"' in await q.get() else ("other", 0))
+
+        async def others():                                     # (anything else on the loop: the page, heard and answered)
+            while not gs.stopping.is_set():
+                turns[0] += 1
+                await asyncio.sleep(0)
+
+        ear, clock, rest = asyncio.create_task(hear()), asyncio.create_task(gs.tick_loop()), asyncio.create_task(others())
+        for i in range(3):
+            w.prefetch(60 + i, 60)
+        end = time.perf_counter() + 5
+        while any(job.out is None for job, _ in w._pending.values()) and time.perf_counter() < end:
+            await asyncio.sleep(.02)
+        gs.stopping.set()
+        await clock
+        await rest
+        ear.cancel()
+
+    asyncio.run(play())
+    assert all(job.out is not None for job, _ in w._pending.values())
+    kinds = [k for k, _ in log if k != "other"]
+    assert "land" in kinds and all(b == "heard" for a, b in zip(kinds, kinds[1:]) if a == "said")
+    goes = [(a[1], b[1]) for a, b in zip(log, log[1:]) if a[0] == b[0] == "land"]
+    assert goes and all(b - a >= 3 for a, b in goes), goes[:8]
+    gs.sim.close()
