@@ -211,3 +211,29 @@ def test_earth_left_between_two_tunnels_is_cut_earth_not_a_strip_of_meadow(game)
     assert seen and r > g, [seen, r, g, b]
     assert game.js(GREEN_ON_SCREEN, [[X, y, 4], [X, y + 1, 4], [X, y + 2, 4]]) == [0, 0, 0]
     assert not game.errors
+
+
+# the screen without anybody on it: the mean brightness (r + g + b) of each tile [x, y] where the land at sea level is drawn
+BRIGHT = """(tiles) => { const keep = {}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) { keep[f] = window[f]; window[f] = () => null; }
+  frame(performance.now()); const S = TS(), [ox, oy] = screenOrigin(S), out = [];
+  for (const [x, y] of tiles) { const px = ctx.getImageData(Math.round((ox + x * S) * DPR), Math.round((oy + y * S) * DPR), S * DPR, S * DPR).data; let n = 0;
+    for (let i = 0; i < px.length; i += 4) n += px[i] + px[i + 1] + px[i + 2]; out.push(Math.round(n / (px.length / 4))); }
+  Object.assign(window, keep); return out; }"""
+
+
+def test_at_night_a_fire_under_a_roof_lights_nothing_of_the_meadow_over_it(game):
+    """Night's lights were drawn where they are on the screen, roof or no roof: a fire in a tunnel lit a ring of the
+    meadow over it (and who hid under the ground glowed through it). A light under a roof lights what is under that
+    roof: seen through, the picture of the place; hidden, nothing (daylight.js)."""
+    game.clear_area(16)
+    x, y = game.pos()
+    game.stamp(-8, 0, ["........^......."], levels=["abcddddddddddddd"], roofs=["0000444444444444"], heads=["0000222222222222"])
+    game.rpc("dev_time", phase=.85)
+    game.rpc("dev_teleport", x=x + 7, y=y - 4, z=0)           # on the meadow, away from the fire (it is under (x, y), four down)
+    game.wait(f"myAt && myAt.x === {x + 7} && myAt.y === {y - 4}", 8000)
+    game.wait(DRAWN, 8000); game.sleep(900)
+    assert game.js(f"[combAt({x}, {y}), hiddenAt({x}, {y}), xray.a]") == ["^", True, 0]
+    over, beside, far = game.js(BRIGHT, [[x, y], [x, y + 1], [x + 15, y + 1]])
+    assert far > 100 and abs(over - far) < 25 and abs(beside - far) < 25, (over, beside, far)   # the meadow over the fire: as dark as the meadow anywhere
+    assert not game.errors
+

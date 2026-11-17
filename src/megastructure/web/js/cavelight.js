@@ -13,6 +13,21 @@ function underDepths(floor) {
   for (let i = 0; i < queue.length; i++) for (const [nx, ny] of near(queue[i])) { const n = nx + "," + ny; if (floor.has(n) && !depth.has(n)) { depth.set(n, depth.get(queue[i]) + 1); queue.push(n); } }
   return depth;
 }
+// The picture's px that show ground under a roof (its floors, the walls behind them, the earth cut between its
+// parts), made once a picture: P.under (their places), P.mask (a canvas of them: night's lights under a roof keep
+// to it, daylight.js), P.shade and P.img (the dark put on them)
+function underPx(P) {
+  if (P.under) return P.under;
+  P.shade = document.createElement("canvas"); P.shade.width = P.w; P.shade.height = P.h; P.img = P.shade.getContext("2d").createImageData(P.w, P.h); P.under = [];
+  const fl = new Uint8Array(P.rw * P.rh), m = new Uint32Array(P.w * P.h);
+  for (const k of [...P.floor.keys(), ...P.cut]) { const [x, y] = k.split(",").map(Number), i = x - P.rx, j = y - P.ry; if (i >= 0 && i < P.rw && j >= 0 && j < P.rh) fl[j * P.rw + i] = 1; }
+  for (let f = 0; f < P.seen.length; f++) if (P.seen[f]) {
+    const i = Math.floor((P.x + f % P.w) / 16) - P.rx, j = Math.floor((P.y + (f / P.w | 0) + shOf(P.lev[f])) / 16) - P.ry;
+    if (i >= 0 && i < P.rw && j >= 0 && j < P.rh && fl[j * P.rw + i]) { P.under.push(f); m[f] = 0xff000000; P.img.data[f * 4] = 14; P.img.data[f * 4 + 1] = 10; P.img.data[f * 4 + 2] = 18; }
+  }
+  P.mask = pxCanvas(m, P.w, P.h);
+  return P.under;
+}
 // Drawn over the picture seen through the roof and whoever stands in it: a shade a px of the floors and walls under
 // the roof, each from its tile's light and the tiles' beside it (no squares), as the land's px are (not smoothed)
 function drawUnderDark(vis, sx, sy, t) {
@@ -29,16 +44,8 @@ function drawUnderDark(vis, sx, sy, t) {
   }
   const edge = dark.slice();                               // (the rock round it: as dark as the floor beside it, so its edges don't fade)
   for (let q = tw; q < dark.length - tw; q++) if (dark[q] < 0) { let sum = 0, cnt = 0; for (const o of [-1, 1, -tw, tw, -tw - 1, -tw + 1, tw - 1, tw + 1]) if (dark[q + o] >= 0) { sum += dark[q + o]; cnt++; } edge[q] = cnt ? sum / cnt : 0; }
-  if (!P.shade) {                                          // (once a picture: its px that show ground under a roof)
-    P.shade = document.createElement("canvas"); P.shade.width = P.w; P.shade.height = P.h; P.img = P.shade.getContext("2d").createImageData(P.w, P.h); P.under = [];
-    const fl = new Uint8Array(P.rw * P.rh); for (const k of [...P.floor.keys(), ...P.cut]) { const [x, y] = k.split(",").map(Number); if (inPic(x, y)) fl[(y - P.ry) * P.rw + x - P.rx] = 1; }   // (and the earth cut between its parts)
-    for (let f = 0; f < P.seen.length; f++) if (P.seen[f]) {
-      const i = Math.floor((P.x + f % P.w) / 16) - P.rx, j = Math.floor((P.y + (f / P.w | 0) + shOf(P.lev[f])) / 16) - P.ry;
-      if (i >= 0 && i < P.rw && j >= 0 && j < P.rh && fl[j * P.rw + i]) { P.under.push(f); P.img.data[f * 4] = 14; P.img.data[f * 4 + 1] = 10; P.img.data[f * 4 + 2] = 18; }
-    }
-  }
-  const px = P.img.data;
-  for (const f of P.under) {
+  const under = underPx(P), px = P.img.data;
+  for (const f of under) {
     const u = (P.x + f % P.w + .5) / 16 - P.rx + .5, v = (P.y + (f / P.w | 0) + .5 + shOf(P.lev[f])) / 16 - P.ry + .5, i = Math.floor(u), j = Math.floor(v), a = u - i, b = v - j, q = j * tw + i;
     px[f * 4 + 3] = 255 * Math.max(0, (edge[q] * (1 - a) + edge[q + 1] * a) * (1 - b) + (edge[q + tw] * (1 - a) + edge[q + tw + 1] * a) * b);
   }

@@ -2120,3 +2120,17 @@ not its body).
   between, no green), a cave eighteen wide (both its ends in the picture, its far mouth in daylight, its middle dark).
 - Left: a cave's floor has no soft shadow along its walls any more (the land's painter has none); light still goes
   round corners; the picture stops twelve tiles from you in a cave larger than that.
+- Then, from the user: "How does it looks like now ? Do a demo on static demo website GH pages". Filmed it
+  (tools/film_underground.py, 31 s: a stair under a hill, a cave with a fire, V through the four views, a tunnel by
+  night, the meadow over it) for the "What's new" page, and looked at the frames first. Two things they showed:
+  - At night a fire in a tunnel lit a ring of the meadow over it, and standing on the meadow over a fire you stood
+    in its glow: night's lights were drawn where they are on the screen, roof or no roof (so who hid under the
+    ground at night glowed through it too). Now a light under a roof lights what the picture shows under that roof,
+    and nothing when it is hidden (daylight.js: underRoof; cavelight.js: underPx, the picture's px under a roof,
+    made once). A test: the meadow over a fire four down is as dark as the meadow anywhere (520 against 323 before).
+  - Standing on the meadow over a campfire in a tunnel, the game offers "Campfire: cook here": what is on a tile is
+    acted on whatever height you are at. Not fixed here: it is the rules' question too (intent.js reads the tile's
+    thing; the server's reach counts tiles, not height). Open.
+- The page's two pictures of the view before this one (the land over you dimmed) are gone. The pixel test of the
+  x-ray failed once in a loaded run (4176 px) and passed 3 times alone and in four runs at once: not understood.
+

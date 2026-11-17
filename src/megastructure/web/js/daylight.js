@@ -43,7 +43,7 @@ function skyBar(cv, w, h) {
   g.putImageData(im, 0, 0);
 }
 
-const LIGHT = {cv: document.createElement("canvas"), pats: new Map(), steps: [.25, .2, .16, .12, .08, .05], edge: 2};   // steps: how much each ring adds, from the middle out
+const LIGHT = {cv: document.createElement("canvas"), cv2: document.createElement("canvas"), pats: new Map(), steps: [.25, .2, .16, .12, .08, .05], edge: 2};   // steps: how much each ring adds, from the middle out
 function checker(color) {                            // a pattern of one px in two, in a light's colour
   if (!LIGHT.pats.has(color)) {
     const c = document.createElement("canvas"); c.width = c.height = 2; const g = c.getContext("2d");
@@ -70,6 +70,11 @@ function lamp(g, cx, cy, r, color, a, shift) {
   }
   g.globalAlpha = 1;
 }
+// A light under a roof (a fire in a cave, someone in a tunnel) lights what is under that roof and no more. Where the
+// place it is in is seen through what hides it (xray.js): within that picture; hidden: nothing. (A fire in a tunnel
+// lit a ring of the meadow over it, and who hid under the ground at night glowed through it.) -> 0: under the sky,
+// 1: under a roof and seen, 2: hidden
+const underRoof = (x, y, z) => (roofAt(x, y) > 0 && coveredAt(x, y, z) ? (seenUnder(x, y) !== undefined ? 1 : 2) : 0);
 // The hour's light over the picture, and at night the lights in it (render.js, after the world is drawn)
 function drawNight(vis, sx, sy, S, t) {
   const tint = lightAt(clock.phase || 0), wash = washAt(clock.phase || 0), dark = Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36);
@@ -83,10 +88,20 @@ function drawNight(vis, sx, sy, S, t) {
   if (dark > .2) {                                           // the lights: only once it is getting dark
     g.globalCompositeOperation = "lighter";
     const at = (px, py) => [(px - x0) / z, (py - y0) / z], shift = [Math.round((sx(0) - x0) / z) & 1, Math.round((sy(0) - y0) / z) & 1], k = (dark - .2) / .8;
-    for (const p of ents.values()) if (p.e && p.e.kind === "agent") lamp(g, ...at(sx(p.x) + S / 2, bodyY(p, sy) + S / 2), 42, "rgb(255,222,170)", .45 * k, shift);
+    const P = xray.a > .01 ? xray.pic : null, c2 = LIGHT.cv2, g2 = c2.getContext("2d"), to = (kind) => (kind === 0 ? g : kind === 1 && P ? g2 : null);
+    if (c2.width !== w || c2.height !== h) { c2.width = w; c2.height = h; }
+    g2.globalCompositeOperation = "source-over"; g2.clearRect(0, 0, w, h); g2.globalCompositeOperation = "lighter";
+    for (const p of ents.values()) if (p.e && p.e.kind === "agent") {
+      const tx = Math.round(p.x), ty = Math.round(p.y), on = to(underRoof(tx, ty, Floors.standOf(p, tx, ty)));
+      if (on) lamp(on, ...at(sx(p.x) + S / 2, bodyY(p, sy) + S / 2), 42, "rgb(255,222,170)", .45 * k, shift);
+    }
     const lights = [...fireAt];
     for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") lights.push({x: b.bx * B + i % B, y: b.by * B + (i / B | 0)});
-    for (const {x, y} of lights) lamp(g, ...at(sx(x) + S / 2, sy(y, x) + S / 2), 64 + Math.round(3 * Math.sin(t * 9 + x * 7)), "rgb(255,176,96)", 1.15 * k, shift);
+    for (const {x, y} of lights) { const on = to(underRoof(x, y, floorAt(x, y))); if (on) lamp(on, ...at(sx(x) + S / 2, sy(y, x) + S / 2), 64 + Math.round(3 * Math.sin(t * 9 + x * 7)), "rgb(255,176,96)", 1.15 * k, shift); }
+    if (P) {                                                 // (those under the roof: cut to what the picture shows under it, then with the rest)
+      underPx(P); g2.globalCompositeOperation = "destination-in"; g2.drawImage(P.mask, P.x + Math.round((sx(0) - x0) / z), P.y + Math.round((sy(0) - y0) / z));
+      g.drawImage(c2, 0, 0);
+    }
   }
   ctx.save();
   ctx.globalCompositeOperation = "multiply"; ctx.imageSmoothingEnabled = false;
