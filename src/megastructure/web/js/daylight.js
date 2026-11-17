@@ -104,7 +104,7 @@ function drawNight(vis, sx, sy, S, t) {
       if (kind === 0) draw(g); else if (kind === 1 && P) under(p.x, p.y, 42, draw);
     }
     const lights = [...fireAt];
-    for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") lights.push({x: b.bx * B + i % B, y: b.by * B + (i / B | 0)});
+    for (const b of vis) b.objs.forEach((c, i) => { if (c === "^" || c === "x") lights.push({x: b.bx * B + i % B, y: b.by * B + (i / B | 0)}); });
     for (const {x, y} of lights) {
       const kind = underRoof(x, y, floorAt(x, y)), r = 64 + Math.round(3 * Math.sin(t * 9 + x * 7)), draw = (on) => lamp(on, ...at(sx(x) + S / 2, sy(y, x) + S / 2), r, "rgb(255,176,96)", 1.15 * k, shift);
       if (kind === 0) draw(g); else if (kind === 1 && P) under(x, y, r, draw);

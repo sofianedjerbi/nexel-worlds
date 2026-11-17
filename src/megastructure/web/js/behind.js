@@ -16,9 +16,18 @@ function cellTop(sheet, cx, cy) {
 // the column's 16 px, in art px of the world (Infinity: none there). Every layer of that ground in its own shape
 // (cellTop), from the layer over `from` (the height it is seen from) up; only ground at least `least` high counts;
 // `far`: the rows looked at; skip: tiles that don't count (the rock the x-ray circle sees through).
-const FLAT_TOP = new Uint8Array(16);
+// Kept until the land changes (landVer, tiles.js) or, with `skip`, what is seen through does: it was worked out again
+// for every body and every tree behind a hill in every frame, five columns of eight rows each: most of the memory
+// the page made (12 to 23 MB a second as a phone: the collector's work). The array is the cache's own: not to be written in.
+const FLAT_TOP = new Uint8Array(16), EDGES = [new Map(), new Map()];
+let edgesAt = -1, edgesPic = null, edgesOn = false;
 function frontEdge(tx, row, from, least, far, skip) {
-  const edge = new Array(16).fill(Infinity);
+  if (edgesAt !== landVer || EDGES[0].size > 6000) { edgesAt = landVer; EDGES[0].clear(); EDGES[1].clear(); }
+  if (edgesPic !== xray.pic || edgesOn !== xray.a > .01) { edgesPic = xray.pic; edgesOn = xray.a > .01; EDGES[1].clear(); }   // (what xrayGone goes by)
+  const memo = far === 8 ? EDGES[skip ? 1 : 0] : null, key = ((tx + 524288) * 1048576 + row + 524288) * 4096 + (from + 32) * 64 + least + 32;
+  const kept = memo && memo.get(key);
+  if (kept) return kept;
+  const edge = new Float64Array(16).fill(Infinity);
   for (let ty = row + 1; ty <= row + far; ty++) {
     const lv = levelAt(tx, ty);
     if (lv < least || (skip && skip(tx, ty))) continue;
@@ -27,6 +36,7 @@ function frontEdge(tx, row, from, least, far, skip) {
       for (let i = 0; i < 16; i++) if (top[i] < 16) edge[i] = Math.min(edge[i], Y + top[i]);
     }
   }
+  if (memo) memo.set(key, edge);
   return edge;
 }
 // Someone standing behind higher ground (it is south of them, drawn up over where they stand) is behind it: what of
@@ -36,26 +46,29 @@ function frontEdge(tx, row, from, least, far, skip) {
 // at its corners (cut straight across a tile, the sprite was gone where a corner lets the ground behind it show).
 // part (in the x-ray circle, xray.js): 1: behind the ground that is not seen through alone; 2: only what of them the
 // rock seen through hides (drawn a second time, as faint as the circle is there)
+const CLIP_TO = [], CLIP_FROM = [];                        // (a body's columns, written over each time: nothing made a frame)
 function clipBehind(p, sx, sy, S, part = 0) {
   const x = Math.round(p.x), y = Math.round(p.y);
   const L = hollow(x, y) ? Floors.standOf(p, x, y) : standAt(x, y);   // (between two tiles: the ground they are over: past its edge, a jump is on the higher one; under a roof: the floor they are on, behind the ground in front as in a hole)
-  const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, feet = sy(p.y + 1) - shOf(L) * zoom + (4 - STAND) * zoom, cols = [];
+  const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, feet = sy(p.y + 1) - shOf(L) * zoom + (4 - STAND) * zoom, row = Math.floor(p.y), base = sy(0), n = x1 - x0 + 1;
+  const at = (e) => (e === Infinity ? 1e4 : base + e * zoom);   // (an edge, in art px of the world: where it is on the screen)
   let any = part === 2;
-  for (let tx = x0; tx <= x1; tx++) {                     // (the top of the higher ground in front, at each px of each column)
-    const edge = (skip) => frontEdge(tx, Math.floor(p.y), L, L + 1, 8, skip).map((e) => (e === Infinity ? 1e4 : sy(0) + e * zoom));
-    const to = edge(part ? xrayGone : null), from = part === 2 ? edge(null) : null;
-    cols.push([to, from]); any = any || to.some((e) => e < feet);                       // (reaching up to their feet, or their shadow)
+  for (let c = 0; c < n; c++) {                           // (the top of the higher ground in front, at each px of each column)
+    const to = CLIP_TO[c] = frontEdge(x0 + c, row, L, L + 1, 8, part ? xrayGone : null);
+    CLIP_FROM[c] = part === 2 ? frontEdge(x0 + c, row, L, L + 1, 8, null) : null;
+    for (let i = 0; i < 16 && !any; i++) any = at(to[i]) < feet;                        // (reaching up to their feet, or their shadow)
   }
   if (!any) return false;
   ctx.save(); ctx.beginPath();
   if (part < 2) { ctx.rect(-1e4, -1e4, sx(x0) + 1e4, 2e4); ctx.rect(sx(x1 + 1), -1e4, 1e4, 2e4); }
-  cols.forEach(([to, from], c) => {
+  for (let c = 0; c < n; c++) {
+    const to = CLIP_TO[c], from = CLIP_FROM[c];
     for (let i = 0, j; i < 16; i = j) {                    // (a run of px with the same edge: one strip)
       for (j = i + 1; j < 16 && to[j] === to[i] && (!from || from[j] === from[i]); j++);
-      const top = from ? from[i] : -1e4;
-      if (to[i] > top) ctx.rect(sx(x0 + c) + i * zoom, top, (j - i) * zoom, to[i] - top);
+      const top = from ? at(from[i]) : -1e4, foot = at(to[i]);
+      if (foot > top) ctx.rect(sx(x0 + c) + i * zoom, top, (j - i) * zoom, foot - top);
     }
-  });
+  }
   ctx.clip();
   return true;
 }

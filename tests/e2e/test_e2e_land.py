@@ -39,10 +39,13 @@ PAGE = """() => { const P = CanvasRenderingContext2D.prototype, od = P.drawImage
     for (let i = 0; i < d.length; i += 4) { const solid = d[i + 3] === 255 && p[i + 3] === 255, by = Math.max(Math.abs(d[i] - p[i]), Math.abs(d[i + 1] - p[i + 1]), Math.abs(d[i + 2] - p[i + 2]));
       if (solid ? by > 1 : Math.abs(d[i + 3] - p[i + 3]) > 1) diff++; else if (by) near++; }
     P.drawImage = function (...a) { draws++; return od.apply(this, a); }; P.putImageData = function (...a) { puts++; return op.apply(this, a); };
-    b.shown = -1; buildRelief(b); P.drawImage = od; P.putImageData = op;
-    const s = new Uint32Array(b.canvas.getContext('2d').getImageData(0, 0, BW, BW).data.buffer);
-    for (let i = 0; i < s.length; i++) if (s[i] !== b.px[i]) shown++;
-    out.push({diff, near, shown, draws, puts, levels: b.relief.maxLv - b.relief.minLv, water: b.water.any}); }
+    b.groundAt = -1; buildRelief(b); P.drawImage = od; P.putImageData = op;
+    const cv = b.canvas, s = new Uint32Array(cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data.buffer), f = b.relief.flat;
+    if (!f) { for (let i = 0; i < s.length; i++) if (s[i] !== b.px[i]) shown++; }      // (nothing raised: its ground)
+    else { const it = reliefSteps({x: b.bx * B, y: b.by * B, w: B, h: B, solid: b.solid}, b.px); let r; do r = it.next(); while (!r.done);
+      const up = r.value.out, o = (b.relief.up - shOf(b.relief.minLv)) * BW;           // (its raised px alone; where its ground starts in the picture)
+      for (let i = 0; i < s.length; i++) if (s[i] !== (up[i] >>> 24 ? up[i] : i >= o ? b.px[i - o] : 0)) shown++; }
+    out.push({diff, near, shown, draws, puts, raised: !!f, levels: b.relief.maxLv - b.relief.minLv, water: b.water.any}); }
   return out; }"""
 
 
@@ -58,12 +61,14 @@ def pond(game):
 
 
 def test_the_land_is_painted_in_the_page_and_handed_to_the_gpu_whole(game):
-    """A block's ground and its raised picture are px worked out in the page, each made a canvas once (tiles.js,
-    relief.js). Put together by the GPU a piece at a time (a mask, the ground drawn into it, a few rows put and a few
+    """A block's ground and its raised picture are px worked out in the page, made one canvas, once (tiles.js,
+    relief.js: the raised ground and, where there is none, the ground: a frame paints a block once, not land under land). Put together by the GPU a piece at a time (a mask, the ground drawn into it, a few rows put and a few
     rows drawn, on canvases used again for the next level), a phone showed the mask itself on cliff tops: black
     tiles, which no desktop drew. The px are the tiles as a canvas lays them (a sheet's see-through shadow rounds a
     step differently here and there, as it does from one canvas to another); and building a block draws on no
-    canvas: two pictures are put, once each."""
+    canvas: its one picture is put, once."""
+    game.stamp(-48, -48, ["." * 97] * 97)                    # (every block in view a plain meadow first: a stair another test
+    game.wait("dirtyTiles.length === 0", 30000)              #  left open nearby has the foot of the tile behind it in the block's px only: 194 px "differ")
     game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN)
     pond(game)
     game.sleep(900)
@@ -73,8 +78,9 @@ def test_the_land_is_painted_in_the_page_and_handed_to_the_gpu_whole(game):
     dry = [b for b in blocks if not b["water"]]
     # (every block without water; there was "and there is one": a player who wakes by a lake has none, and the rule
     # for all blocks below holds them)
-    assert all(b["draws"] == 0 and b["puts"] == (2 if b["levels"] else 1) for b in dry), blocks
-    assert all(b["puts"] <= 3 and b["draws"] <= 1 for b in blocks), blocks      # (water: its tint, a px a tile, blown up)
+    land = lambda b: 1 if b["raised"] or not b["levels"] else 2   # (2: higher ground beside it and none of it in the block: its ground alone is shown)
+    assert any(b["raised"] for b in blocks) and all(b["draws"] == 0 and b["puts"] == land(b) for b in dry), blocks
+    assert all(b["puts"] <= land(b) + 1 and b["draws"] <= 1 for b in blocks), blocks      # (water: its tint, a px a tile, blown up)
 
 
 COBBLES = ["..........", ".________.", ".___.._...", ".._..._...", ".._.._____", ".._......_", ".._......_", ".........."]

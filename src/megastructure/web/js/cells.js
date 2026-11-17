@@ -9,14 +9,15 @@ function tileIdx(x, y) { const b = blockOf(x, y); return b ? [b, (y - b.by * B) 
 const colSolid = (lv) => (lv - LOW >= 31 ? 0xFFFFFFFF : ((1 << (lv - LOW + 1)) - 1) >>> 0);   // a plain column: solid up to lv
 const colTop = (c) => 31 - Math.clz32(c) + LOW;                                 // its highest solid cell
 const colFloor = (c) => 30 - Math.clz32(~c & (c + 1)) + LOW;                    // the top of the solid cells standing on the bottom
-const floorAt = (x, y) => { const t = tileIdx(x, y); return t ? t[0].lv[t[1]].charCodeAt(0) - SEA : 0; };   // the lowest ground
+// (floorAt, colAt and roofAt are asked for a tile many hundred times a frame: straight from its block, no pair made)
+const floorAt = (x, y) => { const b = blockOf(x, y); return b ? b.lv[(y - b.by * B) * B + (x - b.bx * B)].charCodeAt(0) - SEA : 0; };   // the lowest ground
 function colAt(x, y) {
-  const t = tileIdx(x, y); if (!t) return colSolid(0);
-  const c = t[0].col ? t[0].col[t[1]] : undefined;
-  return c === undefined ? colSolid(t[0].lv[t[1]].charCodeAt(0) - SEA) : c;
+  const b = blockOf(x, y); if (!b) return colSolid(0);
+  const i = (y - b.by * B) * B + (x - b.bx * B), c = b.col ? b.col[i] : undefined;
+  return c === undefined ? colSolid(b.lv[i].charCodeAt(0) - SEA) : c;
 }
 const topAt = (x, y) => colTop(colAt(x, y));                                    // the land as seen from above
-const roofAt = (x, y) => { const t = tileIdx(x, y); return t && t[0].col && t[0].col[t[1]] !== undefined ? colTop(t[0].col[t[1]]) - floorAt(x, y) : 0; };   // over the lowest ground: how far up the land goes (0: open sky)
+const roofAt = (x, y) => { const b = blockOf(x, y), i = b ? (y - b.by * B) * B + (x - b.bx * B) : 0; return b && b.col && b.col[i] !== undefined ? colTop(b.col[i]) - (b.lv[i].charCodeAt(0) - SEA) : 0; };   // over the lowest ground: how far up the land goes (0: open sky)
 // What you walk on is the land and what is built over it (floors.js): a column with both. (colAt is the land alone:
 // what is painted as land, and what a cave is under.)
 const fullAt = (x, y) => (colAt(x, y) | Floors.mask(x, y)) >>> 0;

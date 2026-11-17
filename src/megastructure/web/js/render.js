@@ -88,14 +88,14 @@ function frame(now) {
   if (!worldReady) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }
   // y-sorted sprites: objects and creatures
   const list = [];
-  for (const b of vis) if (b.relief && worldReady) for (const [i, c] of b.objs) {   // (things show with their ground, not before)
+  // (forEach, and what is out of view left first: a pair was made a frame for every thing of every block in view)
+  for (const b of vis) if (b.relief && worldReady) b.objs.forEach((c, i) => {   // (things show with their ground, not before)
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
-    if (hiddenAt(x, y)) continue;                     // (in a cave, seen from outside: under its roof)
-    if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3) continue;
-    if (c === "l") { list.push({y, x, fx: () => Climb.drawLadder(x, y, standAt(x, y), sx, sy, S)}); continue; }   // (a ladder: up to what it leans on, climbing.js)
-    if (Structures.WALLS.includes(c)) { list.push({y, x, wall: true, fx: () => Structures.drawWall(c, x, y, sx, sy, S, now)}); continue; }   // (a wall, a door: structures.js)
+    if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3 || hiddenAt(x, y)) return;   // (hidden: in a cave, seen from outside: under its roof)
+    if (c === "l") { list.push({y, x, fx: () => Climb.drawLadder(x, y, standAt(x, y), sx, sy, S)}); return; }   // (a ladder: up to what it leans on, climbing.js)
+    if (Structures.WALLS.includes(c)) { list.push({y, x, wall: true, fx: () => Structures.drawWall(c, x, y, sx, sy, S, now)}); return; }   // (a wall, a door: structures.js)
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
-  }
+  });
   // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
   occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
   const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && b.relief); };
@@ -112,7 +112,7 @@ function frame(now) {
   for (const o of list) {
     selMeasure(o);
     if (o.spr) {
-      const [img, a, b2, w, h, dx, dy] = o.spr, key = o.x + "," + o.ty;
+      const [img, a, b2, w, h, dx, dy] = o.spr, key = pops.size || shakes.size ? o.x + "," + o.ty : "";   // (its name: made only while something bounces or shakes)
       let px = sx(o.x) + dx * zoom, py = sy(o.ty, o.x) + dy * zoom, ww = w * zoom, hh = h * zoom;
       const pop = pops.get(key);
       if (pop !== undefined) {                       // newly placed: bounce in

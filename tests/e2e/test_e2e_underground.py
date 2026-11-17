@@ -2,6 +2,8 @@
 for a stair under a hill, a tunnel, a room; where the cut ends and its outline; the light in it, by day and by night.
 (The dug look itself, and build mode's digging: test_e2e_digging.py; caves under hills: test_e2e_caves.py.)"""
 
+import json
+
 from test_e2e_digging import DRAWN, GREEN_ON_SCREEN, SEEN
 
 # a px of the picture seen through what hides you: of tile (x, y) as drawn at height lv, (ax, ay) art px from its
@@ -166,9 +168,10 @@ def test_light_is_one_model_no_edge_where_a_roof_starts_and_none_through_the_ear
     assert not game.errors
 
 
-# the screen without anybody on it: the colour of each art px down a tile's column, ax px across it, from a0 to a1 px
+# the screen without anybody or anything on the land: the colour of each art px down a tile's column, ax px across it, from a0 to a1 px
 # under its line at sea level -> [[r, g, b]...]
-DOWN = """([x, y, ax, a0, a1]) => { const keep = {}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) { keep[f] = window[f]; window[f] = () => null; }
+DOWN = """([x, y, ax, a0, a1]) => { const keep = {}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent', 'objectSprite']) { keep[f] = window[f]; window[f] = () => null; }
+  parts.length = puffs.length = 0;          // (nor the dust of your landing, still in the air when the picture is soon there: a line more or less on the wall, a run in four)
   frame(performance.now()); const S = TS(), [ox, oy] = screenOrigin(S), k = S / 16, out = [];
   for (let ay = a0; ay <= a1; ay++) out.push(Array.from(ctx.getImageData(Math.round((ox + x * S + (ax + .5) * k) * DPR), Math.round((oy + y * S + (ay + .5) * k) * DPR), 1, 1).data).slice(0, 3));
   Object.assign(window, keep); return out; }"""
@@ -189,9 +192,13 @@ def test_a_wall_under_a_roof_has_its_bands_where_the_pit_beside_it_has_them(game
     game.wait(DRAWN, 8000); game.wait(SEEN, 20000)
     lines = lambda px: [r for r in range(1, 32) if sum(px[r]) < sum(px[r - 1]) - 15 and sum(px[r]) < sum(px[r + 1]) - 15]   # (the rows darker than those over and under them)
     game.wait("xray.mix >= 1 && !xray.old", 8000)             # (the picture whole, not one coming over another)
-    pit, wall, side = (game.js(DOWN, [tx, y, ax, 0, 32]) for tx, ax in ((x + 4, 8), (X, 8), (X, 1)))
+    pit, wall, side = game.js(f"(cols) => {{ const down = {DOWN}; return cols.map(down); }}", [[tx, y, ax, 0, 32] for tx, ax in ((x + 4, 8), (X, 8), (X, 1))])   # (the three at one instant)
     # the land's own wall, four layers down; the wall cut through: the same rows (they were 7, 15, 23, 31); and right beside the pit
-    assert lines(pit) == lines(wall) == lines(side) == [5, 15, 23, 31], (lines(pit), lines(wall), lines(side), [sum(p) for p in wall[20:26]], [sum(p) for p in side[20:26]])
+    why = lambda: json.dumps({"lines": [lines(pit), lines(wall), lines(side)], "wall": [sum(p) for p in wall[3:14]], "side": [sum(p) for p in side[3:14]], "state": game.js(f"""(() => {{
+      const on = (x, y) => [x, y, combAt(x, y), groundItems.filter(([a, b]) => a === x && b === y).length, [...ents.values()].filter((p) => Math.round(p.x) === x && Math.round(p.y) === y).map((p) => p.e && p.e.kind)];
+      return {{a: xray.a, mix: xray.mix, old: !!xray.old, job: !!xray.job, at: myAt, view: opt('above'), shader: opt('shader'), parts: parts.length, floats: floats.length, phase: clock.phase,
+        on: [on({X}, {y}), on({X}, {y - 1}), on({X}, {y + 1}), on({X - 1}, {y}), on({X + 1}, {y})]}}; }})()""")})
+    assert lines(pit) == lines(wall) == lines(side) == [5, 15, 23, 31], why()
     line = lambda *a: game.js("([x, y, ax, ay]) => { const P = xray.pic; return P.line[(y * 16 + ay - P.y) * P.w + x * 16 + ax - P.x]; }", list(a))
     assert line(X, y, 8, 0) and not line(X, y, 8, -1)                             # the cut starts on its tile's line, under a roof
     assert not line(x + 4, y, 15, -2) and not line(x + 4, y, 15, -1)              # no ink up the side of the pit's wall where it starts, two px over that line

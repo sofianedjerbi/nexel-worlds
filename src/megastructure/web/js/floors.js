@@ -16,7 +16,7 @@ const Floors = (() => {
   let ver = 0, over = {key: "-", z: 99, tiles: new Set()}, veils = 0;      // (veils: how many blocks were a veil over you in the last frame)
   const FADE = .15;                                  // the circle round you comes and goes over this many seconds
   let drawnAt = 0;
-  const colOf = (x, y) => { const t = tileIdx(x, y); return t && t[0].built ? t[0].built.get(t[1]) : undefined; };   // z -> [kind, the char of what stands on it]
+  const colOf = (x, y) => { const b = blockOf(x, y); return b && b.built ? b.built.get((y - b.by * B) * B + (x - b.bx * B)) : undefined; };   // z -> [kind, the char of what stands on it]
   const get = (x, y, z) => { const c = colOf(x, y); return c ? c.get(z) : undefined; };
   function put(b, i, z, kind, ch) { let c = b.built.get(i); if (!c) b.built.set(i, c = new Map()); c.set(z, [kind, ch === " " ? "" : ch || ""]); }
   function set(x, y, z, kind, ch) {

@@ -246,13 +246,14 @@ function* reliefSteps(R, ground, see) {
     }
     yield;
   }
+  if (out && R.whole) for (let i = 0, o = (up - shOf(minLv)) * W; i < W * H; i++) if (out[o + i] >>> 24 === 0) out[o + i] = ground[i];   // (a block: its ground under it, in the one picture)
   const flat = out && pxCanvas(out, W, tall);            // (handed to the GPU whole, once)
   return {flat, up, maxLv, minLv, out};
 }
 // A block's: its picture, and where that has anything in it (a small hill in a wide plain: the rest is not painted,
 // frame after frame): the raised tiles, their ledges beside them, their walls down to the lowest ground
 function* blockRelief(b) {
-  const R = {x: b.bx * B, y: b.by * B, w: B, h: B, solid: b.solid}, Wb = B * 16, Ws = B + 4;
+  const R = {x: b.bx * B, y: b.by * B, w: B, h: B, solid: b.solid, whole: true}, Wb = B * 16, Ws = B + 4;
   const {flat, up, maxLv, minLv} = yield* reliefSteps(R, b.px);
   let box = null;
   if (flat) {
@@ -266,7 +267,9 @@ function* blockRelief(b) {
     if (x1 > x0 && y1 > y0) box = [x0, y0, x1 - x0, y1 - y0];
   }
   yield* waterSteps(b);                                // (its water too, water.js: the block shows once all of it is there)
-  if (b.shown !== b.ver) { b.canvas = pxCanvas(b.px, Wb, Wb); b.shown = b.ver; }   // (its ground as it is now, a canvas: with the raised picture made of it, never one without the other)
+  // (what is shown of it, b.canvas: its raised picture, the ground in it (painted once a frame, not twice: half the paint of
+  // a phone's frame was land under land); a block with nothing raised: its ground alone, a canvas made of its px as they are now)
+  if (box) { b.canvas = flat; b.ground = null; } else { if (!b.ground || b.groundAt !== b.ver) { b.ground = pxCanvas(b.px, Wb, Wb); b.groundAt = b.ver; } b.canvas = b.ground; }
   b.relief = {flat: box && flat, up, maxLv, minLv, box};
 }
 function buildRelief(b) { for (const _ of blockRelief(b)); b.reliefDirty = false; }   // (all at once: tests, tools)
@@ -290,8 +293,7 @@ function reliefWork(coming, until) {
 // would then jump up); one rebuilt keeps showing what it was until the new one is ready.
 function drawBlockRelief(b, sx, sy, S) {
   if (!b.relief) return;
-  const X = sx(b.bx * B), Y = sy(b.by * B);
-  ctx.drawImage(b.canvas, X, Y - shOf(b.relief.minLv) * zoom, B * S, B * S);
-  const f = b.relief.flat, [fx, fy, fw, fh] = b.relief.box || [];
-  if (f) ctx.drawImage(f, fx, fy, fw, fh, X + fx * zoom, Y + (fy - b.relief.up) * zoom, fw * zoom, fh * zoom);
+  const X = sx(b.bx * B), Y = sy(b.by * B), f = b.relief.flat;
+  if (f) ctx.drawImage(f, X, Y - b.relief.up * zoom, f.width * zoom, f.height * zoom);
+  else ctx.drawImage(b.canvas, X, Y - shOf(b.relief.minLv) * zoom, B * S, B * S);
 }

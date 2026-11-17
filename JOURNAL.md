@@ -2361,3 +2361,48 @@ a060b94): not touched.
   the island itself comes in at 2.4 s (6.5 s). That first frame had its window and no word in it: the game's letters
   were a file too. They are in the demo's page as well (17 KB; the page is 70 KB gzipped).
 
+
+## Iteration 155: what a frame costs on a phone
+
+The user: "Can we optimize the game further especial on phones ? performance focused task".
+
+- Measured first, as a phone (390 x 844, the canvas at two px a px, touch, the CPU slowed four times, a copy of the
+  live world): 58 to 60 frames a second in eight scenes, 0.4 to 2.1 ms of script a frame, the page idle 82 to 92 %
+  of the time. So the script's time was not the cost, and nothing was changed for it. Two other things were.
+- Memory made, for the collector to take back: 12 MB a second standing still, 23 walking, 23 by night, 22 under
+  ground. Sampled by function: the edge of the ground in front of everybody and of every tree behind a hill, worked
+  out again every frame (behind.js: an array, a closure and a pair for every tile it asked about); the hint for the
+  tile you face, worked out three times a frame (keyboard.js); a pair made for every tile's column (cells.js) and
+  for every thing of every block in view (render.js).
+  Now: the edge is kept until the land changes (or what is seen through does); the hint for a tick of the world, a
+  place, a way faced, a thing in hand (a key pressed still works it out that instant); tiles are read straight from
+  their block. 3.4 MB a second standing (was 12.5), 6.4 walking (23.3), 3.6 by night (23.2), 3.4 under ground
+  (21.7). With two rows of trees behind a hill in view: 88 KB a frame, was 1045.
+- Paint: 3.8 screens a frame by day, 2.4 of them land: each block's ground, then its raised ground over the whole of
+  it. A block is one picture now (relief.js: the ground is laid under the raised px in the page, before the one
+  upload; a block with nothing raised keeps its ground alone): land 1.3 screens, a frame 2.7 by day (was 3.8), 3.7
+  by night (4.8), 2.9 under ground (3.9). One canvas a block less in memory too.
+- Under ground the dark was worked out for every px of the place and its picture sent to the screen's memory again
+  every frame, standing still. It is worked out when a light or the sun has moved (cavelight.js).
+- The same, proven before landing, old code and new in one page on the same world: every tile's column, mask and
+  edge in view (five scenes, 5000 edges each, kept and fresh), the dark px for px at five hours and walking, the
+  hint over 1445 frames of walking and acting (39 different hints): no difference. The land of a frame painted both
+  ways and read back, 1.3 million px, in thirteen scenes (meadow, hills, a pit, a pond, under ground, two zooms,
+  walking): no px differs.
+- After: 58 to 60 frames a second as before, 0.27 to 1.84 ms of script a frame (was 0.38 to 2.11).
+- Tests (test_e2e_frame.py): each block in view is painted once a frame; what is kept is what would be worked out
+  now (after the land changed, something else in hand, a walk, under a roof); the dark is put when a light moves
+  and not standing still; memory a frame with trees behind a hill. Each fails on the old code. Two tests that read
+  inside a block's two layers read its one picture (test_e2e_land.py, test_e2e_relief.py).
+- A test of mine from iteration 153 (the wall's bands under a roof) failed one run in four once the page was
+  faster: it read the wall while the dust of the landing was still in the air over it (found by printing the state
+  at the failure: two particles). It reads one instant now, without dust or anything standing on the land.
+- Another, older than this: the land's test (the page's px against a canvas's) failed two runs in five when it woke
+  near a stair that an under ground test had left open: the foot of the tile behind a pit is in the block's px
+  only, 194 px "differ". Found by building those scenes on a copy and listing the tiles. It starts from a plain
+  meadow in every block in view now. The new tests flatten what they built.
+- Not measured: a real phone. The CPU is slowed, the GPU is not: the paint is counted in screens, not in time.
+- Left: one wait of 150 to 200 ms between two frames about once in 25 s standing still, before and after, no long
+  task behind it (not found). In the demo, world ticks come 100 ms apart on average but one in twenty is 20 to 50
+  ms late (not looked into). What still makes memory: the frame's own list of what stands on the land, the sprites.
+  test_e2e_menu.py's shader tests fail under load, old code and new (two readings of a pond 0.3 apart at dawn).

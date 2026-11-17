@@ -84,11 +84,13 @@ function onRegion(d) {
 // =====================================================================================
 const isLand = (g) => g !== null && !wet(g) && g !== ":";
 const isObject = (c) => "TFbM*#%+^&?!x\"wtCQ;fBhLpKrgWVXYJmqeyUvl".includes(c) && !GROUND.has(c);
+const AROUND = [0, -1, N_, 1, 0, E_, 0, 1, S_, -1, 0, W_, 1, -1, NE, 1, 1, SE, -1, 1, SW, -1, -1, NW];
 function maskOf(x, y, pred) {
   let m = 0;
-  const p = (dx, dy) => { const t = tile(x + dx, y + dy); return t === null ? true : pred(t[0], t[1], x + dx, y + dy); };
-  if (p(0, -1)) m |= N_; if (p(1, 0)) m |= E_; if (p(0, 1)) m |= S_; if (p(-1, 0)) m |= W_;
-  if (p(1, -1)) m |= NE; if (p(1, 1)) m |= SE; if (p(-1, 1)) m |= SW; if (p(-1, -1)) m |= NW;
+  for (let k = 0; k < 24; k += 3) {                          // (N E S W, then the corners: straight from each one's block, nothing made)
+    const nx = x + AROUND[k], ny = y + AROUND[k + 1], b = blockOf(nx, ny), i = b ? (ny - b.by * B) * B + (nx - b.bx * B) : 0;
+    if (!b || pred(b.comb[i], b.gnd[i], nx, ny)) m |= AROUND[k + 2];
+  }
   return m;
 }
 function hash(x, y, s = 0) {
@@ -275,7 +277,7 @@ function edgeSheet(name) {
   return edgeSheets[name] = c;
 }
 // A block's ground: its px (b.px), every tile of it painted a little a frame, or at once. What is shown of it is a
-// canvas made of them when its raised picture is (b.canvas: relief.js)
+// canvas made of them when its raised picture is, and in it (b.canvas: relief.js)
 function startBlock(b) {
   b.px = new Uint32Array(BW * BW); b.drawn = true;
   for (let ly = B - 1; ly >= 0; ly--) for (let lx = B - 1; lx >= 0; lx--) dirtyTiles.push(b.bx * B + lx, b.by * B + ly);

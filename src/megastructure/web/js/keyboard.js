@@ -48,7 +48,18 @@ function noteFight(e) {
 // Holding something to place (a block, path, planks, dirt, seeds): Space puts it on the tile in front of you, and
 // only there (the ghost shows it, green or red). Walk to aim: a tap turns you and moves you a tile.
 const placingItem = () => selected && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed");
+// It is asked three times a frame (the corner's rows, the hint beside the tile, the aim): worked out once for a tick
+// of the world, a place, a way faced, a thing in hand and a state of the land, and kept till one of them changes (it
+// made a sixth of the memory the page went through: the collector's work).
+const FACED = [{}, {}];
 function facingIntent(alt) {
+  const m = FACED[alt ? 1 : 0], p = ents.get("agent" + myId), s = myPos(), hot = !!foe && performance.now() < foe.until;
+  if (p && s && m.clock === clock && m.obs === meObs && m.land === landVer && m.built === Floors.ver && m.sel === selected && m.x === s.x && m.y === s.y && m.fx === p.fx && m.fy === p.fy && m.foe === foe && m.hot === hot) return m.out;
+  const out = facingNow(alt);
+  Object.assign(m, {clock, obs: meObs, land: landVer, built: Floors.ver, sel: selected, x: s && s.x, y: s && s.y, fx: p && p.fx, fy: p && p.fy, foe, hot, out});
+  return out;
+}
+function facingNow(alt) {
   const q = facingTile(), s = myPos(); if (!q || !s) return null;
   if (!alt && placingItem()) {
     if (entityAt(q)) return {p: q, it: {text: `Can't place the ${label(selected)}: something is in the way`, ok: false, ghost: selected}};
@@ -124,7 +135,7 @@ function updateActions() {
   const el = $("actions"); el.innerHTML = html; el.style.display = html ? "block" : "none";
 }
 function useFacing(alt) {
-  const f = facingIntent(alt);
+  const f = facingNow(alt);                        // (a key pressed: as things are this instant, not as kept)
   if (!f || f.it.info) return toast(f ? f.it.text : "Nothing within reach.", !f);
   if (f.it.ok === false) return toast(f.it.text, true);
   if (walking && !isQuick(f)) return;             // Space never stops you: work that takes time waits until you stand

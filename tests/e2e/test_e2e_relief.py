@@ -8,6 +8,9 @@ def terrace(game, h=3, dy=-4, rows=3):
     game.stamp(-2, dy, ["....."] * rows, levels=[str(h) * 5] * rows)
 
 
+# a block's raised ground alone (what is shown, b.relief.flat, has its ground under it: relief.js)
+RAISED = "((b) => { const it = reliefSteps({x: b.bx * B, y: b.by * B, w: B, h: B, solid: b.solid}, b.px); let r; do r = it.next(); while (!r.done); return r.value.flat; })"
+
 def test_every_layer_is_the_same_step_up(game):
     """Level 1 is raised too: +1 always looks like +1 (it used to be drawn flat, so two +1s looked like a +2)."""
     x, y = game.pos()
@@ -65,7 +68,7 @@ def test_walls_have_no_dark_line_at_their_foot(game):
     game.sleep(800)
     x, y = game.pos()
     found = game.js(f"""(() => {{ const b = blocks.get(bkey(Math.floor({x} / B), Math.floor({y - 2} / B)));
-      buildRelief(b); const c = b.relief.flat; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      buildRelief(b); const c = {RAISED}(b); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
       for (let i = 0; i < d.length; i += 4) if (d[i + 3] && d[i] === 80 && d[i + 1] === 64 && d[i + 2] === 134) return true;
       return false; }})()""")
     assert found is False
@@ -77,10 +80,11 @@ def test_sides_show_a_ledge_per_layer(game):
     game.sleep(800)
     x, y = game.pos()
     width = lambda yy: game.js(f"""(() => {{ const b = blocks.get(bkey(Math.floor({x} / B), Math.floor({yy} / B))); buildRelief(b);
-      const c = b.relief.flat, lx = ({x} - b.bx * B) * 16, ly = ({yy} - b.by * B) * 16 + 8 + b.relief.up - shOf(1);   // (level 1's row in the block's picture)
+      const c = {RAISED}(b), lx = ({x} - b.bx * B) * 16, ly = ({yy} - b.by * B) * 16 + 8 + b.relief.up - shOf(1);   // (level 1's row in the block's raised picture)
       const d = c.getContext('2d').getImageData(lx - 12, ly, 40, 1).data; let n = 0;
       for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n; }})()""")
-    assert width(y - 3) - width(y - 5) >= 2 * 2 * 3 - 2        # a +3 strip: two ledges of 3 px each side more than a +1
+    high, low = width(y - 3), width(y - 5)
+    assert high - low >= 2 * 2 * 3 - 2, (high, low, game.js('dirtyTiles.length'))   # a +3 strip: two ledges of 3 px each side more than a +1
 
 
 def test_running_into_new_ground_never_stalls_a_frame(game):

@@ -65,28 +65,38 @@ function litPx(P) {
   });
   return P.lit;
 }
-// Drawn over the picture and whoever stands in it: the dark of each px of the place, as the land's px are (not smoothed)
+// Drawn over the picture and whoever stands in it: the dark of each px of the place, as the land's px are (not smoothed).
+// Worked out again only when a light has moved, a fire's flame has changed (its reach, a sixteenth of a tile) or the
+// sun has: it was every frame, every px of the place written and the whole picture sent to the screen's memory again,
+// standing still in the dark. A picture's tiles are read once (P.cells), its grids kept (P.dark).
 function drawUnderDark(vis, sx, sy, t) {
   const P = xray.pic;
   if (xray.a <= .01 || !P || !P.floor.size || !P.deep || opt("above") === "circle") return;
-  const sun = sunNow(), lights = [], tw = P.rw + 2, n = tw * (P.rh + 2), dark = new Float32Array(n).fill(-1), at = (x, y) => (y - P.ry + 1) * tw + x - P.rx + 1, inPic = (x, y) => x >= P.rx && x < P.rx + P.rw && y >= P.ry && y < P.ry + P.rh;
-  const lamp = (lx, ly, r, st) => lights.push([lx, ly, r, st, P.place.has(Math.round(lx) + "," + Math.round(ly)) ? stepsFrom(P, Math.round(lx) + "," + Math.round(ly)) : null]);
+  const sun = sunNow(), lights = [], tw = P.rw + 2, n = tw * (P.rh + 2);
+  const sig = [sun], was = P.sig;                           // (all the dark is worked out from: the same numbers, the same dark)
+  const lamp = (lx, ly, r, st) => { const k = Math.round(lx) + "," + Math.round(ly); lights.push([lx, ly, r, st, P.place.has(k) ? stepsFrom(P, k) : null]); sig.push(lx, ly, r, st); };
   for (const p of ents.values()) { const x = Math.round(p.x), y = Math.round(p.y); if (p.e && p.e.kind === "agent" && (p.e.id === myId || (P.floor.has(x + "," + y) && xrayShows(p) > 0))) lamp(p.x, p.y, ...(p.e.id === myId ? GLOW.me : GLOW.other)); }
-  for (const b of vis) for (const [i, c] of b.objs) if (c === "^" || c === "x") { const x = b.bx * B + i % B, y = b.by * B + (i / B | 0); if (P.place.has(x + "," + y)) lamp(x, y, GLOW.fire[0] * (.95 + .05 * Math.sin(t * 13 + x)), GLOW.fire[1]); }
-  for (const k of P.place.keys()) {
-    const [x, y] = k.split(",").map(Number); if (!inPic(x, y)) continue;
-    if (!P.floor.has(k)) { dark[at(x, y)] = 0; continue; }   // (under the sky: the light outside)
-    const d = P.depth.get(k) || 99;
-    let light = sun * Math.max(0, 1 - (d - 1) / SUN_REACH);
-    for (const [lx, ly, r, st, steps] of lights) { const walked = steps ? steps.get(k) : 0; if (walked !== undefined) light = Math.max(light, st * Math.max(0, 1 - Math.max(Math.hypot(lx - x, ly - y), .75 * walked) / r)); }
-    dark[at(x, y)] = (1 - Math.min(1, light)) * DARKEST;
+  for (const b of vis) b.objs.forEach((c, i) => { if (c === "^" || c === "x") { const x = b.bx * B + i % B, y = b.by * B + (i / B | 0); if (P.place.has(x + "," + y)) lamp(x, y, GLOW.fire[0] * (.95 + .05 * Math.sin(t * 13 + x)), GLOW.fire[1]); } });
+  if (!was || was.length !== sig.length || sig.some((v, i) => v !== was[i])) {
+    P.sig = sig;
+    if (!P.cells) {                                         // (its tiles inside the picture: where, the key, under a roof or not, how far in, its place in the grid)
+      P.cells = []; P.dark = new Float32Array(n); P.own = new Float32Array(n);
+      for (const k of P.place.keys()) { const [x, y] = k.split(",").map(Number); if (x >= P.rx && x < P.rx + P.rw && y >= P.ry && y < P.ry + P.rh) P.cells.push([x, y, k, P.floor.has(k), P.depth.get(k) || 99, (y - P.ry + 1) * tw + x - P.rx + 1]); }
+    }
+    const dark = P.dark.fill(-1), own = P.own, round = [-1, 1, -tw, tw, -tw - 1, -tw + 1, tw - 1, tw + 1];
+    for (const [x, y, k, under, d, q] of P.cells) {
+      if (!under) { dark[q] = 0; continue; }                // (under the sky: the light outside)
+      let light = sun * Math.max(0, 1 - (d - 1) / SUN_REACH);
+      for (const [lx, ly, r, st, steps] of lights) { const walked = steps ? steps.get(k) : 0; if (walked !== undefined) light = Math.max(light, st * Math.max(0, 1 - Math.max(Math.hypot(lx - x, ly - y), .75 * walked) / r)); }
+      dark[q] = (1 - Math.min(1, light)) * DARKEST;
+    }
+    own.set(dark);                                          // (the earth round it and between its parts: as the tiles of the place beside it, so its edges don't fade)
+    for (let q = tw; q < n - tw; q++) if (own[q] < 0) { let sum = 0, cnt = 0; for (const o of round) { const v = own[q + o]; if (v >= 0) { sum += v; cnt++; } } dark[q] = cnt ? sum / cnt : 0; }
+    for (let q = 0; q < n; q++) if (dark[q] < 0) dark[q] = 0;
+    const L = litPx(P), px = P.img.data, f = L.f, qs = L.q, as = L.a, bs = L.b;
+    for (let i = 0; i < f.length; i++) { const q = qs[i], a = as[i], b = bs[i]; px[f[i] * 4 + 3] = 255 * ((dark[q] * (1 - a) + dark[q + 1] * a) * (1 - b) + (dark[q + tw] * (1 - a) + dark[q + tw + 1] * a) * b); }
+    P.shade.getContext("2d").putImageData(P.img, 0, 0);
   }
-  const own = dark.slice();                                 // (the earth round it and between its parts: as the tiles of the place beside it, so its edges don't fade)
-  for (let q = tw; q < n - tw; q++) if (own[q] < 0) { let sum = 0, cnt = 0; for (const o of [-1, 1, -tw, tw, -tw - 1, -tw + 1, tw - 1, tw + 1]) if (own[q + o] >= 0) { sum += own[q + o]; cnt++; } dark[q] = cnt ? sum / cnt : 0; }
-  for (let q = 0; q < n; q++) if (dark[q] < 0) dark[q] = 0;
-  const L = litPx(P), px = P.img.data, mix = (g, q, a, b) => (g[q] * (1 - a) + g[q + 1] * a) * (1 - b) + (g[q + tw] * (1 - a) + g[q + tw + 1] * a) * b;
-  for (let i = 0; i < L.f.length; i++) px[L.f[i] * 4 + 3] = 255 * mix(dark, L.q[i], L.a[i], L.b[i]);
-  P.shade.getContext("2d").putImageData(P.img, 0, 0);
   ctx.globalAlpha = xray.a; ctx.imageSmoothingEnabled = false;
   ctx.drawImage(P.shade, sx(0) + P.x * zoom, sy(0) + P.y * zoom, P.w * zoom, P.h * zoom);
   ctx.globalAlpha = 1;
