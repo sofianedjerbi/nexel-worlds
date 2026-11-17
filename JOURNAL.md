@@ -2220,4 +2220,22 @@ not its body).
 - And: "This border is weird", the east end of an open stair: the thin line the land paints down a dug tile's side
   (its side wall, a px or two) was left out of the place's shape, so the outline ran two px in from the tile's edge,
   a strip of wall outside it, and missed the floor's corner. It is of the place: the line is on the tile's edge.
+- Then: "Still got a weird tileset jump", where the stair open to the sky goes in under the hill. Measured on the
+  screen, a px at a time (a column each side of the seam): the wall cut through had its bands on the tiles' lines;
+  the land's own wall, of a hole open to the sky, has the bands over the sea's level two px up (a hill's edge is set
+  in two px) and two px of the tile's foot under them. So every line of the wall broke by two px where the roof
+  starts. The cut lays its bands as the land does now (xraycut.js); it still starts on its tile's line, so its first
+  band is two px short. At that corner too: two px of the cut's ink went up the side of the pit's wall, into its
+  rim (no line there now), a px of wall was left in the corner of the tile behind the roof (grass now), and the
+  earth's dark started at half its strength at the very line where the roof starts (cavelight.js: from nothing).
+- What I tried first and threw away: the land's own rim round a place under a roof, as round a pit, so that both
+  sides of the seam were one thing. It is what the user had sent back before ("It goes under the background tiles.
+  Completely.."): I looked at that picture again before landing it. The roof's top stays a clean line.
+- Test: the rows of the wall that are darker than those over and under them are the same down the pit's wall and
+  down the wall under the roof beside it (5, 15, 23, 31; they were 7, 15, 23, 31), no line up the pit's side, grass
+  to the corner, the dark next to nothing at the seam. It fails on the code before.
+- Wrong in the entry above: the x-ray's pixel test is not fixed. It failed again on a loaded machine, at its first
+  place, 4176 px, with the caves' redraw at once. It now says where the two pictures differ: a box a tile and a half
+  wide at the east end of the water, beside the cave's plateau, not at the cave's mouth. Cause not found; it passes
+  alone and in most loaded runs (it failed in two of about twelve today).
 

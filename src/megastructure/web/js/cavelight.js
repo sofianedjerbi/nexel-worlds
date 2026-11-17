@@ -81,10 +81,15 @@ function drawUnderDark(vis, sx, sy, t) {
     dark[at(x, y)] = (1 - Math.min(1, light)) * DARKEST;
     earth[at(x, y)] = (1 - sun * Math.max(0, 1 - (d - .5) / EARTH_REACH)) * UNLIT_EARTH;
   }
+  // (a tile under the sky beside one under a roof: as far under nought as that one's earth is over it, so the dark of
+  // the earth starts from nothing where the roof starts and is whole a half tile in: it started at half, a step in
+  // the wall's light at the very line where the roof starts, the wall the same on both sides of it)
+  const set = dark.map((v) => (v < 0 ? 0 : 1));
+  for (const k of P.place.keys()) if (!P.floor.has(k)) { const [x, y] = k.split(",").map(Number); if (inPic(x, y)) earth[at(x, y)] = -Math.max(0, ...tilesBeside(k).map(([nx, ny]) => (P.floor.has(nx + "," + ny) && inPic(nx, ny) ? earth[at(nx, ny)] : 0))); }
   for (const g of [dark, earth]) {                         // (the earth round it and between its parts: as the tiles of the place beside it, so its edges don't fade)
     const own = g.slice();
-    for (let q = tw; q < n - tw; q++) if (own[q] < 0) { let sum = 0, cnt = 0; for (const o of [-1, 1, -tw, tw, -tw - 1, -tw + 1, tw - 1, tw + 1]) if (own[q + o] >= 0) { sum += own[q + o]; cnt++; } g[q] = cnt ? sum / cnt : 0; }
-    for (let q = 0; q < n; q++) if (g[q] < 0) g[q] = 0;
+    for (let q = tw; q < n - tw; q++) if (!set[q]) { let sum = 0, cnt = 0; for (const o of [-1, 1, -tw, tw, -tw - 1, -tw + 1, tw - 1, tw + 1]) if (set[q + o]) { sum += own[q + o]; cnt++; } g[q] = cnt ? sum / cnt : 0; }
+    for (let q = 0; q < n; q++) if (!set[q] && (q < tw || q >= n - tw)) g[q] = 0;
   }
   const L = litPx(P), px = P.img.data, mix = (g, q, a, b) => (g[q] * (1 - a) + g[q + 1] * a) * (1 - b) + (g[q + tw] * (1 - a) + g[q + tw + 1] * a) * b;
   for (let i = 0; i < L.f.length; i++) {

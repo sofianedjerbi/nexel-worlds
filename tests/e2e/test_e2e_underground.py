@@ -158,3 +158,36 @@ def test_light_is_one_model_no_edge_where_a_roof_starts_and_none_through_the_ear
     assert near[1] < .3 and through[1] > .5, (near, through)
     assert not game.errors
 
+
+# the screen without anybody on it: the colour of each art px down a tile's column, ax px across it, from a0 to a1 px
+# under its line at sea level -> [[r, g, b]...]
+DOWN = """([x, y, ax, a0, a1]) => { const keep = {}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) { keep[f] = window[f]; window[f] = () => null; }
+  frame(performance.now()); const S = TS(), [ox, oy] = screenOrigin(S), k = S / 16, out = [];
+  for (let ay = a0; ay <= a1; ay++) out.push(Array.from(ctx.getImageData(Math.round((ox + x * S + (ax + .5) * k) * DPR), Math.round((oy + y * S + (ay + .5) * k) * DPR), 1, 1).data).slice(0, 3));
+  Object.assign(window, keep); return out; }"""
+
+
+def test_a_wall_under_a_roof_has_its_bands_where_the_pit_beside_it_has_them(game):
+    """"Still got a weird tileset jump", where a stair open to the sky goes in under a roof: the wall cut through had
+    its bands on the tiles' lines, the land's own wall has those over the sea's level two px up (a hill's edge is set
+    in) and two px of the tile's foot under them, so every line of the wall broke where the roof starts. And at that
+    corner two px of the cut's ink went up into the pit's rim, and the earth's dark started at half its strength."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(1, 0, ["........"], levels=["abcddddd"], roofs=["00004444"], heads=["00002222"])
+    X = x + 5                                                # (the first tile under the roof; the one west of it is as deep, open to the sky)
+    game.rpc("dev_teleport", x=X, y=y, z=-4)
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === -4", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000)
+    lines = lambda px: [r for r in range(1, 32) if sum(px[r]) < sum(px[r - 1]) - 15 and sum(px[r]) < sum(px[r + 1]) - 15]   # (the rows darker than those over and under them)
+    assert lines(game.js(DOWN, [x + 4, y, 8, 0, 32])) == [5, 15, 23, 31]          # the land's own wall, four layers down
+    assert lines(game.js(DOWN, [X, y, 8, 0, 32])) == [5, 15, 23, 31]              # the wall cut through: the same rows (they were 7, 15, 23, 31)
+    assert lines(game.js(DOWN, [X, y, 1, 0, 32])) == [5, 15, 23, 31]              # ...right beside the pit too
+    line = lambda *a: game.js("([x, y, ax, ay]) => { const P = xray.pic; return P.line[(y * 16 + ay - P.y) * P.w + x * 16 + ax - P.x]; }", list(a))
+    assert line(X, y, 8, 0) and not line(X, y, 8, -1)                             # the cut starts on its tile's line, under a roof
+    assert not line(x + 4, y, 15, -2) and not line(x + 4, y, 15, -1)              # no ink up the side of the pit's wall where it starts, two px over that line
+    for r, g, b in game.js(DOWN, [X, y, 0, -2, -1]): assert g > r + 12            # the tile behind the roof: grass to its corner
+    assert game.js(LIT, [X, y, 0, 0, 4])[1] < .04 < .06 < game.js(LIT, [X, y, 0, 8, 4])[1]   # the earth's dark: from next to nothing where the roof starts (it was half of it there)
+    assert not game.errors
+

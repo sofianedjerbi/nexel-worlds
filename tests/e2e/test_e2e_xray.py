@@ -73,8 +73,8 @@ def test_the_circle_is_painted_by_the_lands_own_painter(game):
     for dx, dy in [(0, 0), (-3, 1), (3, 0), (1, 1)]:
         x, y = game.pos()
         game.rpc("dev_teleport", x=x + dx, y=y + dy); at(x + dx, y + dy); game.wait(built, 20000); game.sleep(200)
-        shown, bad = frames(game, "const A = shot('whole'), any = xray.a === 1 && xray.pic.any; return [any, differ(A, shot('off'))];")
-        assert shown > 10000 and bad == 0, (dx, dy, shown, bad)
+        shown, bad, why = frames(game, "const A = shot('whole'), any = xray.a === 1 && xray.pic.any, Z = shot('off'), box = [1e9, 1e9, -1, -1]; let n = 0; for (let i = 0; i < A.length; i += 4) if (A[i] !== Z[i] || A[i + 1] !== Z[i + 1] || A[i + 2] !== Z[i + 2]) { n++; const x = (i / 4) % cv.width, y = (i / 4 / cv.width) | 0; box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y); box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y); } return [any, n, n ? {box: box.map((v, q) => +((v / DPR - (q & 1 ? oy : ox)) / S).toFixed(2)), me: [myAt.x, myAt.y], dirty: dirtyTiles.length, caveStamp, open: xray.open} : null];")
+        assert shown > 10000 and bad == 0, (dx, dy, shown, bad, why)   # (why: on a loaded machine this fails now and then at the first place, cause not found: where the two differ, in tiles, and the caves' state)
         game.rpc("dev_teleport", x=x, y=y); at(x, y)
     assert not game.errors
 

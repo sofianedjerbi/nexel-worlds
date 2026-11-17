@@ -41,25 +41,33 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
   const roofT = new Uint8Array(w * R.h), band = (k, m) => colsOf(hillSheet(k)).bands[m <= 0 ? 0 : m >= 7 ? 2 : 1];
   for (const k of floor.keys()) { const [x, ty] = k.split(",").map(Number), i = x - R.x, j = ty - R.y; if (i >= 0 && i < w && j >= 0 && j < R.h) roofT[j * w + i] = 1; }
   const rows = (i, j) => { const f0 = lvOf(i, j), Y = (R.y + j) * 16 - y; return [Y, Y - shOf(Math.max(f0, lvOf(i, j - 1))), Y - shOf(f0)]; };   // (a tile's line at sea level, the top of the wall behind it, the top of its floor)
-  const cols = new Map();                                    // (a tile of the place -> its column in the picture: [px across, its wall's first row, the foot of its floor]: a light's reach, daylight.js)
+  const r0T = new Int32Array(w * R.h), cols = new Map();                                    // (a tile of the place -> its column in the picture: [px across, its wall's first row, the foot of its floor]: a light's reach, daylight.js)
   for (let j = 0; j < R.h; j++) for (let i = 0; i < w; i++) if (deepT[j * w + i]) {
-    const [Y, r0, top] = rows(i, j), t = j * w + i, roofed = roofT[t];
-    cols.set((R.x + i) + "," + (R.y + j), [i * 16, r0 - 3, top + 16]);
+    const [Y, r0, top] = rows(i, j), t = j * w + i, roofed = roofT[t], F = lvOf(i, j);
+    cols.set((R.x + i) + "," + (R.y + j), [i * 16, r0 - 3, top + 16]); r0T[t] = r0;
     for (let r = Math.max(0, r0 - 3); r < Math.min(h, top + 16); r++) for (let f = r * W + i * 16, e = f + 16; f < e; f++) {
       const back = roofed && r >= r0 && r < top, put = fill[f] || see.state[f] === 1;   // (back: over the floor of a tile under a roof: the wall behind it, whatever was painted)
-      if ((!put && !back) || (r < r0 && see.band[f] !== 1)) continue;
+      if (roofed && r < r0 && see.state[f] === 1 && see.band[f] === 1 && tileOf(f, 4) === t) {   // (under a roof the cut starts on the tile's line: a px of
+        const up = wall.get(f - W) || (see.state[f - W] === 1 && !see.band[f - W] ? [paint[f - W] & 255, paint[f - W] >> 8 & 255, paint[f - W] >> 16 & 255] : null);   //  wall over it, where the corner of the tile behind is rounded off on the land, is that tile's ground, as over it)
+        if (up) wall.set(f, up);
+      }
+      if ((!put && !back) || (r < r0 && (roofed || see.band[f] !== 1))) continue;       // (over a tile's line: the set-in top of a wall the land painted, of a tile open to the sky; under a roof the cut starts on the line)
       if (put && !fill[f]) {                                 // (of what was painted there: the place's floors, and the wall behind this tile, its bands and
         const ts = tileOf(f), tf = tileOf(f, 4);            //  what shows between them of the tile behind, painted a level down; not land that stands in front
         if (see.band[f] === 1 ? tf !== t : see.band[f] === 0 && (ts < 0 || (!deepT[ts] && (ts !== t - w || see.lev[f] >= lvT[at(ts % w, ts / w | 0)])))) continue;   //  of it: its top, its wall. A ledge down the tile's side is of the place: the line is on the tile's edge, not two px in, "this border is weird")
       }
       deep[f] = 1; own[f] = t + 1;
       if (!back || fill[f]) continue;
-      // (a wall cut through is its bands, a layer each, and no more: where the land's painter put something else
-      // there, a sliver of grass through the set-in edge of a hill that steps down beside it, the end of a ledge that
-      // hung from the roof's side and the band under it, two px out of step: the band, as it paints it)
-      const k = Math.ceil((Y - r) / 8);
-      if (!put || see.band[f] !== 1 || !seen[f] || see.lev[f] !== k) { wall.set(f, band(k, r - (Y - shOf(k)))); if (!seen[f]) { seen[f] = 1; more++; } see.lev[f] = k; see.band[f] = 1; }
-      if (landSolid(R.x + i, R.y + j, k)) solid[f] = 1;      // 2
+      // (a wall cut through is its bands, a layer each, and no more, whatever the land's painter put there: a sliver
+      // of grass through the set-in edge of a hill that steps down beside it, the end of a ledge that hung from the
+      // roof's side. Laid as that painter lays the wall of a hole open to the sky: the bands over the sea's level
+      // two px up, where a hill's edge is set in (so the first is two px short under a roof, which starts on the
+      // tile's line), then two px of the foot of the tile behind before the first band under the sea's level, or
+      // before the floor. They were all on the tiles' lines: two px out of step with the wall of a pit beside the
+      // roof, every line of it broken where the roof starts, "still got a weird tileset jump")
+      const rr = r < Y + 6 ? r + 2 : r, k = Math.ceil((Y - rr) / 8), foot = k <= F || (r >= Y + 6 && r < Y + 8), lv = foot ? Math.max(F + 1, 0) : k;
+      wall.set(f, foot ? band(lv, 3) : band(k, rr - (Y - shOf(k)))); if (!seen[f]) { seen[f] = 1; more++; } see.lev[f] = lv; see.band[f] = 1;
+      if (landSolid(R.x + i, R.y + j, lv)) solid[f] = 1;     // 2
     }
   }
   // (and beside a tile under a roof, the wall of one open to the sky: the four px of it next to that tile had the same
@@ -91,6 +99,7 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
     // (the land's own rim: behind this tile; beside it, as far down as that tile's top is drawn; and whatever tile's top q is)
     if (t >= 0 && dy <= 0 && ti >= 0 && ti < w && tj >= 0 && rimT[tj * w + ti] && (dy < 0 || (f / W | 0) < (R.y + tj) * 16 - y - shOf(lvT[at(ti, tj)]) + 16)) return false;
     if (see.state[q] === 1 && !see.band[q] && rimT[Math.max(0, tileOf(q))]) return false;
+    if (dx && t >= 0 && (f / W | 0) < r0T[t]) return false;    // (nor down the side of a wall's top where it is set in over its tile's line, two px: beside a roof they were two px of ink up into the pit's rim)
     if (see.band[f] || fill[f] || t < 0) return true;         // (a wall, earth that was cut: no way through)
     if (walk[t * 4 + d] < 0) walk[t * 4 + d] = landAt(lvOf(i, j), R.x + i + dx, R.y + j + dy, R.x + i, R.y + j) === null ? 0 : 1;
     return !walk[t * 4 + d];
