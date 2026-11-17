@@ -1,15 +1,14 @@
 """On a phone: the joystick walks, the main button (held) chops what you face, the HUD fits the screen."""
 
-import random
 
-from game import Game
+from game import Game, new_name
 
 
 def touch_game(browser, server, w, h):
     ctx = browser.new_context(viewport={"width": w, "height": h}, has_touch=True, is_mobile=True, device_scale_factor=3)
     page = ctx.new_page()
     g = Game(page, server)
-    g.join(f"ph{random.randint(1000, 9999)}", 3)
+    g.join(new_name("ph"), 3)
     g.clear_area()
     cdp = ctx.new_cdp_session(page)
     g.touch = lambda kind, x=0, y=0: cdp.send("Input.dispatchTouchEvent", {

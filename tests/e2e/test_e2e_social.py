@@ -31,7 +31,7 @@ def test_chat_shows_and_fades(game, friend):
 def test_give_and_see_each_other(game, friend):
     game.give(berries=3)
     assert game.js(f"[...ents.values()].some((q) => q.e && q.e.name === '{friend.name}')")
-    assert friend.name in game.js("$('agents').innerText")
+    game.wait(f"$('agents').innerText.includes('{friend.name}')", 5000)    # (the list of who is here is asked for every second and a half: waited for, not looked at once)
     game.hold_item("berries")
     x, y = friend.pos()
     me = game.pos()

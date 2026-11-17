@@ -1,10 +1,9 @@
 """An item's pixels are the game's pixels: on the ground an art pixel of it is a pixel of the land, in the HUD a whole
 number of screen pixels, the same as the frame it sits in. Nothing is squeezed to a size in between."""
 
-import random
 
 import pytest
-from game import Game
+from game import Game, new_name
 
 # every draw of an item's icon (and of a picked fruit) on the game's canvas: [source w, h, drawn w, h]
 WATCH = """() => { window.__it = []; const o = ctx.drawImage;
@@ -81,7 +80,7 @@ def test_an_item_in_the_hud_is_whole_screen_pixels_and_the_lands_own(browser, se
     ctx = browser.new_context(viewport={"width": w, "height": h}, device_scale_factor=dpr, has_touch=touch, is_mobile=touch)
     try:
         g = Game(ctx.new_page(), server)
-        g.join(f"px{random.randint(1000, 9999)}", 3)
+        g.join(new_name("px"), 3)
         g.give(wood=5, stone=3, boat=1, bed=1, coop=1, plank=2, fiber=2, seed=1, egg=1, bread=1, torch=1, rope=1)
         g.js("toggleGoals()")                                    # (the goals' card is away unless asked for: G)
         m0 = g.js(HUD)                                           # (...measured before the book covers it)

@@ -2549,3 +2549,38 @@ unable to break block at my eye level ? why do i need to target the one down to 
   tiles, not three), here and on the commit before the taller world; it passes in the whole run.
 - Seen, left as it is: dug down a layer at a tunnel's end, the tunnel behind you goes from the picture (two layers
   up is a wall: not of the place you could walk to).
+
+## Iteration 160: the browser tests, steadier and a fifth faster
+
+The user: "Find a way to optimize the stability and the speed of tests".
+
+- Measured first. The simulation's tests: 471 in 8 s, nothing to do. The browser's: 245 in 247 s on six workers,
+  and of the eight whole runs of this day not one was green (one to five failures each, a different handful every
+  time). The commonest, five runs of eight: a player who "did not get in" (the server says connected, and two or
+  three seconds on, disconnected).
+- Where the time went (a run with every test's times): 1444 s of tests, 396 of them the set-up (1.4 s a test: a new
+  player, a meadow cleared), 1044 the tests. Of all that, some 440 s were sleeps in the harness itself: 0.4 s after
+  every stamp of land, 0.7 s for a cleared area, 0.8 s after a gift. The tests' own sleeps: 267 s more.
+- The harness waits for what it slept on (tests/e2e/game.py). A stamp is back when the page has that land, tile for
+  tile, and has drawn it, with nothing of the stamp itself left in the air (dust, a bounce). A cleared area: two
+  ticks of the world. A gift: when your pack has it. Waking: the land drawn and the picture all there (its 0.7 s
+  fade over the first screen's is ended, not waited for). Every player has a name nobody else has (they were drawn
+  at random from nine thousand).
+- What leaned on the sleeps showed at once, and is mended where it was: a hen looked at after 1.5 s (two tiles off
+  on an idle machine, three on a busy one: it failed every time by itself, and passed in the whole run); a zoom's
+  glide counted with the arrival's fade; a fall's dust counted with a stamp's; a list of who is here read before it
+  was asked for again; two colour checks of mine that a flower's px broke. The music's own tests keep the old pace
+  of the set-up (0.75 s: not mine to change).
+- The player who did not get in: not found. Not once in nine whole runs with every socket's doings written down
+  (they are kept, and said if it happens). The join tries once more when the socket is shut before you are in, and
+  says so in a warning.
+- A browser test that fails is tried once more, a new player on a cleared meadow (pytest-rerunfailures), and the
+  run says which and what the first try said ("tried a second time"): a test that is often there is not sound.
+- After, six workers, seven whole runs: 192 to 197 s, every one green; none to two second tries a run (a music
+  test, the chat's shout, my x-ray circle's px, each once or twice). Set-up 1.39 -> 0.97 s a test.
+- Eight workers: 155 to 165 s, but two runs of four ended red (the shader's two tests, failing twice in a row): six
+  stays the default; `-n 8` is there for an idle machine.
+- Not done: each test on untouched land of its own, the same every run (now: wherever the player wakes, within 24
+  tiles of the others' leftovers; flat meadows 32 tiles across are 5 in 100 spots); the tests' own 345 sleeps; the
+  0.3 s after every key pressed. Still needing a second try now and then: the x-ray circle's px (mine, cause not
+  found), the chat's shout (which sample is drawn), the first screen's piece, the shader's two at dawn.

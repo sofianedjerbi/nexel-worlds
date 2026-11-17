@@ -97,12 +97,15 @@ def test_hit_a_chicken_while_walking_and_it_runs(game):
     still_walking = game.js("walking !== null")
     game.page.keyboard.up("d")
     assert still_walking
-    game.sleep(1500)
-    q = game.js(f"(() => {{ const q = ents.get('chicken{hen}'); return q ? [q.tx, q.ty, q.e.hp] : null; }})()")
-    assert q and q[2] < 10                                   # it was hit...
-    # ...and ran off: three tiles and more from where it stood. (It was "four from where you end up": it runs from
-    # where it was hit, you walk on beside it for a moment, and on a busy machine that moment was a tile longer.)
-    assert abs(q[0] - (x0 + 2)) + abs(q[1] - (y0 - 1)) >= 3, (q, x0, y0)
+    # it was hit, and ran off: three tiles and more from where it stood. (It was "four from where you end up": it runs
+    # from where it was hit, you walk on beside it for a moment, and on a busy machine that moment was a tile longer.
+    # Then it was looked at after a second and a half: by itself, on a machine with nothing else to do, the hen was two
+    # tiles off by then, every time; in the whole run, slower, three. It is waited for.)
+    far = f"(() => {{ const q = ents.get('chicken{hen}'); return !!q && q.e.hp < 10 && Math.abs(q.tx - {x0 + 2}) + Math.abs(q.ty - {y0 - 1}) >= 3; }})()"
+    try:
+        game.wait(far, 6000)
+    except Exception:
+        raise AssertionError((game.js(f"(() => {{ const q = ents.get('chicken{hen}'); return q ? [q.tx, q.ty, q.e.hp] : null; }})()"), x0, y0))
 
 
 def test_killing_leaves_a_poof_and_drops(game):
