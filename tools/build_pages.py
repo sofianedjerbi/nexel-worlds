@@ -5,6 +5,7 @@
 The page loads js/local.js, which boots the real server inside the tab; nothing else differs from the served client.
 """
 
+import base64
 import hashlib
 import re
 import shutil
@@ -38,6 +39,9 @@ def build(out: Path):
     page = page.replace(line, "").replace(mark, "<script>\n" + (out / "js" / "splash.js").read_text() + "</script>\n" + mark)
     page, n = re.subn(r'<link rel="stylesheet" href="(css/[\w.]+)">', lambda m: "<style>\n" + (out / m.group(1)).read_text().replace("url(../", "url(") + "</style>", page)
     assert n >= 5 and "</head>" in page, "index.html no longer names its styles"
+    small = '"assets/title_poster_s.webp"'                  # (a phone's still picture of the island: in the page too, 45 KB: there with the first picture.
+    assert page.count(small) == 1, "index.html no longer names its small poster"     #  Asked for, it came at 0.85 s behind seventy scripts and showed at 1.6 s)
+    page = page.replace(small, '"data:image/webp;base64,' + base64.b64encode((out / "assets" / "title_poster_s.webp").read_bytes()).decode() + '"')
     (out / "index.html").write_text(page.replace("</head>", '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>\n</head>', 1))
     with zipfile.ZipFile(out / "py.zip", "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted(PKG.rglob("*.py")):
@@ -68,7 +72,7 @@ def stamp(out: Path):
         if (out / page).exists():
             text = (out / page).read_text()
             (out / page).write_text(re.sub(r'((?:src|href|poster)=")((?:js|css)/[^"?#]+|[^"/:?#]+\.(?:mp4|jpg|png|gif))"', rf'\1\2?v={v}"', text))
-    for name, old in (("index.html", '"js/local_worker.js"'), ("index.html", '"assets/title_poster.webp"'), ("index.html", '"assets/title_poster_s.webp"'), ("js/local_worker.js", '"../py.zip"')):
+    for name, old in (("index.html", '"js/local_worker.js"'), ("index.html", '"assets/title_poster.webp"'), ("js/local_worker.js", '"../py.zip"')):
         text = (out / name).read_text()
         assert old in text, f"{name} no longer names {old}"
         (out / name).write_text(text.replace(old, old[:-1] + f'?v={v}"'))

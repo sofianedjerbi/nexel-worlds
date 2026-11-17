@@ -2352,4 +2352,9 @@ a060b94): not touched.
   with: there, no still picture until it is started again (the user's word); the island still comes in whole.
 - Test: the picture is there before the island's script has come; at the hand-over the picture's lines on land are
   on the same screen px (and far fewer an art px aside), the view has not moved; then it goes after someone.
+- On the published site, as a phone (9 Mbit/s, CPU four times slower): the picture showed at 1.6 s, not at 0.23 s as
+  from my own server. Measured there: its 45 KB were asked for at 0.26 s and had come at 0.85 s (behind seventy
+  scripts on the one connection), and the page, busy running them, showed it at 1.6 s. A phone's picture is in the
+  page itself in the demo's build (tools/build_pages.py: 66 KB of page, gzipped, for 18): it is there with the first
+  picture. A desk's (91 KB) is still asked for: a line there is not a phone's.
 
