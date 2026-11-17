@@ -29,14 +29,15 @@ function drawXrayWhole(sx, sy) {
   ctx.globalAlpha = 1;
 }
 // The outline, an art px wide, in ink, made once a picture. In the ground or under a roof: round the place itself,
-// as one shape (its px where it is dug, under a roof or cut, seen through or not: a hole's open part is of it, no
-// line across it; the line was round all that the ground in front was drawn over, and so round the tiles beside the
-// place that are in the picture with their own edge, a tile out from the cut on every side, and round the sliver of
-// meadow a hill's side had covered). Behind a hill and no more: round what the hill was drawn over
+// as one shape (xraycut.js says which px: its edge where it is dug, under a roof or cut, seen through or not, so a
+// hole's open part is of it and no line crosses it; none where its floor goes on level with the ground outside. The
+// line was round all that the ground in front was drawn over: a tile out from the cut, across a stair's wall, round
+// the sliver of meadow a hill's side had covered). Behind a hill and no more: round what the hill was drawn over
 function xrayEdges(Q) {
   if (Q.edges) return Q.edges;
-  const m = new Uint32Array(Q.w * Q.h), W = Q.w, ink = 0xff604c75, s = Q.deep || Q.seen;   // (the walls' ink, #754c60: structures.js; as a little-endian px)
-  for (let y = 0; y < Q.h; y++) for (let x = 0; x < W; x++) {
+  const m = new Uint32Array(Q.w * Q.h), W = Q.w, ink = 0xff604c75, s = Q.seen;   // (the walls' ink, #754c60: structures.js; as a little-endian px)
+  if (Q.line) for (let f = 0; f < m.length; f++) { if (Q.line[f]) m[f] = ink; }
+  else for (let y = 0; y < Q.h; y++) for (let x = 0; x < W; x++) {
     const f = y * W + x;
     if (s[f] && (x === 0 || y === 0 || x === W - 1 || y === Q.h - 1 || !s[f - 1] || !s[f + 1] || !s[f - W] || !s[f + W])) m[f] = ink;
   }

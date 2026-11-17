@@ -83,9 +83,14 @@ def test_in_a_cave_you_are_seen_through_the_hill_as_anywhere_you_are_hidden(game
     floor, back, roof = px(x, y - 5, 0, 8, 8), px(x, y - 6, 0, 8, -4), px(x, y - 6, 0, 8, -20)
     assert floor[0] and floor[2] > floor[1]                                           # its floor: the meadow's
     assert back[0] and back[1] > back[2] and roof[0] and sum(back[1:]) - sum(roof[1:]) > 40, (back, roof)   # its back wall, earth; over it the roof cut through, in the shade
-    assert px(x - 2, y - 4, 4, 8, 8)[0] and not px(x - 3, y - 4, 4, 8, 8)[0]          # the hill beside it: with its edge to it; past that, untouched
-    ink = game.js("CUT.ink")                                # the cut's edge (xraycut.js): a line along the room's side where the hill's wall is beside it;
-    assert px(x - 1, y - 3, 0, 0, 8)[1:] == ink and px(x - 1, y - 5, 0, 0, 8)[1:] != ink and px(x, y - 2, 0, 8, 15)[1:] != ink   # none where the hill's own edge is, none across its way out
+    assert not px(x - 2, y - 4, 4, 8, 8)[0]                                           # the hill beside it: as it is (it was drawn again with an edge toward the room: "it goes under the background tiles")
+    ink = game.js("CUT.ink")                                # the cut's edge (xraycut.js): a line along the room's side,
+    assert px(x - 1, y - 3, 0, 0, 8)[1:] == ink and px(x - 1, y - 5, 0, 0, 8)[1:] == ink and px(x, y - 2, 0, 8, 15)[1:] != ink   # none across its way out
+    line = lambda *a: game.js("""([x, y, lv, ax, ay]) => { const P = xray.pic, X = x * 16 + ax - P.x, Y = y * 16 - shOf(lv) + ay - P.y;
+      return xrayEdges(P).getContext('2d').getImageData(X, Y, 1, 1).data[3] > 0; }""", list(a))
+    # the outline (the usual view): along its side and the top of its wall; not across its way out, where its floor
+    # goes on level with the meadow ("the line shouldn't show up at intersections with same level")
+    assert line(x - 1, y - 4, 0, 0, 8) and line(x, y - 6, 4, 8, 0) and not line(x, y - 2, 0, 8, 15) and not line(x, y - 2, 0, 8, 14)
 
 
 def test_walking_into_a_hill_from_behind_it_you_stay_on_the_ground_and_in_sight(game):

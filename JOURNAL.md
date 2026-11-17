@@ -2161,4 +2161,17 @@ not its body).
   and no more it is as it was. Outline is the usual view (options.js): who never chose gets it, who chose keeps
   theirs. Looked at on the 24 situations in the usual view. Tests: the line along a tunnel's wall top, its floor's
   front and its end, none a tile out, none across it or the stair's wall; V starts from the outline.
+- Then, on a zoomed picture of the stair: "It goes under the background tiles. Completely.." The tiles beside a
+  place under a roof were drawn again with a hill's edge toward its floor (grass and lip, as round an open hole:
+  iteration 151). Over the top of the cut that put the land's tiles on the picture: the outline ran under them, in
+  hooks at every step of the wall's top. Now those tiles stay as they are on the land and the cut is a window in
+  it, straight along its tiles, with its own edge all round (a hole open to the sky keeps the land's rim: that is
+  the land). The place's shape is worked out from whole tiles (each tile's column from the top of the wall behind
+  it to the foot of its floor), not a px at a time from what each px was painted as: where a hill steps down
+  beside the wall, slivers of grass showed in it and the line went round them; those px are the wall's band now.
+  Land that stands in front of the place and is not left out (a hill's face before a cave's room, seen from its
+  mouth) is not of its shape.
+- Then, on the sheet: "The line shouldn't show up at intersections with same level": the outline closed a cave's
+  doorway and both ends of a passage, where the floor goes on level with the meadow. It is open there, as the
+  cut's own line already was. Tests: no line across a cave's way out; the hill beside a room is as it is.
 

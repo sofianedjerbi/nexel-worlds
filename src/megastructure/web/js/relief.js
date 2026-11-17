@@ -137,7 +137,7 @@ function levelShape(R, k, shape, ta, tb, keep, of) {
 // with that rock there (every shape and colour is still worked out from the whole land), into the rows c0..c1 of the
 // picture alone. What becomes of each px is noted as the land is painted, in the order it is painted in: see.state
 // (1: ground that is kept is on top of what is painted; 2: the inside of the rock, where it stood against kept ground:
-// nothing to see), see.lev (the level of that ground), see.band (1: a wall's band, not ground), see.cover (1: on the real land the rock left out is on top there), see.wet (water shows there).
+// nothing to see), see.lev (the level of that ground), see.band (1: a wall's band, 2: a ledge, not ground), see.cover (1: on the real land the rock left out is on top there), see.wet (water shows there).
 function* reliefSteps(R, ground, see) {
   rectLevels(R);
   const M = 16, W = R.w * 16, H = R.h * 16, Wm = W + 2 * M, Ws = R.w + 4, STEP = RELIEF_STEP, lk = R.lk || R.lv;
@@ -236,7 +236,7 @@ function* reliefSteps(R, ground, see) {
       if (!ours && !inside && mine[x] <= STEP && (!s || (see && on && ja[x] === 2))) c = cols.bands[mine[x] === 1 ? 0 : mine[x] === STEP ? 2 : 1];
       if (c && inPic) out[f] = (255 << 24 | (c[2] | 0) << 16 | (c[1] | 0) << 8 | (c[0] | 0)) >>> 0;
       if (!shown) continue;
-      if (ours || c) { state[f] = 1; see.lev[f] = k; see.band[f] = ours ? 0 : 1; cover[f] = !ours && (on || since[x] < mine[x]) ? 1 : 0; if (k === 0 && ours && own[i]) wet[f] = 1; }
+      if (ours || c) { state[f] = 1; see.lev[f] = k; see.band[f] = ours ? (own[i] ? 0 : 2) : 1; cover[f] = !ours && (on || since[x] < mine[x]) ? 1 : 0; if (k === 0 && ours && own[i]) wet[f] = 1; }
       else {                                                                  // the rock left out, and its wall
         if (on || (!s && since[x] <= STEP && since[x] < mine[x])) cover[f] = 1;
         if (inside) state[f] = 2, wet[f] = 0;
