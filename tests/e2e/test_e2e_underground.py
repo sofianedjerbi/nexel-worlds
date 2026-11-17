@@ -199,3 +199,26 @@ def test_a_wall_under_a_roof_has_its_bands_where_the_pit_beside_it_has_them(game
     assert game.js(LIT, [X, y, 0, 0, 4]) < .04 and abs(game.js(LIT, [X + 1, y, 0, 8, 4]) - game.js(LIT, [X + 1, y, -4, 8, 8])) < .06   # the light: no step where the roof starts; the wall as its floor, a tile on
     assert not game.errors
 
+
+def test_the_rim_of_a_pit_ends_where_the_ground_in_front_is_cut_through(game):
+    """"Weird left border": a tile dug a layer down at the foot of a cliff, a terrace in front of it, and beside it a
+    tile dug under the higher ground. The terrace is cut through to show you; on the land the pit's rim turns at that
+    corner to run on along the terrace, and the turn was left beside the cut: the rim's end curled in, a tuft of
+    grass under it, then the line. The tile at that corner is drawn without the turn, its shape too: the rim ends
+    flat where its tile ends, and the line runs from there to the foot of the cut."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(-8, -6, ["." * 17] * 6, levels=["2" * 17] * 6)          # higher ground north: a cliff
+    game.stamp(0, 1, ["." * 6] * 5, levels=["1" * 6] * 5)              # a terrace in front, from the pit's column on
+    game.stamp(1, 0, ["."], levels=["2"])
+    game.stamp(0, 0, [".."], levels=["aa"], roofs=["03"], heads=["02"])
+    game.rpc("dev_teleport", x=x, y=y, z=-1)
+    game.wait(f"myAt && myAt.x === {x} && myAt.z === -1", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.wait("xray.mix >= 1 && !xray.old", 8000)
+    for ax in (12, 15):                                      # the meadow tile at the pit's corner: meadow to its own corner (the rim's turn was there)
+        for r, g, b in game.js(DOWN, [x - 1, y + 1, ax, 0, 4]): assert g >= r, (ax, r, g, b)   # (no earth)
+    line = lambda ay: game.js("([x, y, ay]) => { const P = xray.pic; return P.line[(y * 16 + 8 + ay - P.y) * P.w + x * 16 - P.x]; }", [x, y, ay])
+    assert not line(3) and line(8) and line(11) and line(15)  # down the floor's west side: the pit's own rim beside it, then the line to its foot
+    assert not game.errors
+

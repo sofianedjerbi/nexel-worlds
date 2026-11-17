@@ -196,25 +196,31 @@ function* xrayPicture(tx, key, near) {
     peek = floor;
     for (const key of floor.keys()) { const [x, ty] = key.split(",").map(Number), i = x - R.x, j = ty - R.y; if (i >= 0 && i < w && j >= 0 && j < R.h) drawTile(x, ty, {px: ground, o: j * 16 * W + i * 16, w: W}); }
     rectLevels(R, "lk");
-    // (...but for the corner the land's edge turns in a tile beside a roofed floor, where a part of the place open to
-    // the sky is beside that floor too: on the land the hole's rim turns there, to run on down the roof's side. That
-    // side is cut away, and the turn was left over the corner of the cut, a wedge of earth: "tile transition is
-    // broken there". That tile is drawn without it: the rim ends where the cut starts)
-    for (const key of floor.keys()) {
-      const [fx, fy] = key.split(",").map(Number);
-      for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const x = fx + ax, ty = fy + ay, i = x - R.x, j = ty - R.y, q = j * w + i, lv = topAt(x, ty), flat = new Map();
-        if (i < 0 || i >= w || j < 0 || j >= R.h || floors.has(x + "," + ty) || edged.includes(q)) continue;
-        for (const s of [-1, 1]) {                          // (the two tiles beside the floor that are at this tile's corners)
-          const dx = fx + s * ay, dy = fy + s * ax, d = dx + "," + dy;
-          if (floors.get(d) < 0 && !floor.has(d) && topAt(x + s * ay, ty + s * ax) >= lv) flat.set(d, lv);
-        }
-        if (!flat.size) continue;
-        peek = flat; drawTile(x, ty, {px: ground, o: j * 16 * W + i * 16, w: W}); edged.push(q);
-      }
-    }
     peek = null;
   }
+  // (...but for the corner the land's edge turns in a tile that is at a corner of a part of the place open to the sky,
+  // where one of the two tiles between them is cut away: a floor under a roof, or ground in front that you are seen
+  // through. On the land the hole's rim turns there, to run on along that tile; it is gone, and the turn was left
+  // beside the cut: a wedge of earth over its corner ("tile transition is broken there"), a rim's end curled in with
+  // a tuft of grass under it, beside the line ("weird left border"). That tile is drawn without it: the rim ends
+  // where the cut starts)
+  const flats = new Map(), gone = (x, ty) => floor.has(x + "," + ty) || rock(x, ty);
+  for (const [key, lp] of floors) if (lp < 0 && !floor.has(key)) {
+    const [px, py] = key.split(",").map(Number);
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+      const x = px + sx, ty = py + sy, i = x - R.x, j = ty - R.y, lv = topAt(x, ty);
+      if (i < 0 || i >= w || j < 0 || j >= R.h || floors.get(x + "," + ty) < 0 || floor.has(x + "," + ty) || rock(x, ty) || topAt(px, ty) < lv || topAt(x, py) < lv || !(gone(px, ty) || gone(x, py))) continue;
+      if (!flats.has(j * w + i)) flats.set(j * w + i, new Map());
+      flats.get(j * w + i).set(key, lv);
+    }
+  }
+  if (flats.size) R.fill = new Uint8Array((w + 4) * (R.h + 4));   // (its shape too: relief.js)
+  for (const [q, flat] of flats) {
+    const i = q % w, j = q / w | 0;
+    for (const key of flat.keys()) { const [px, py] = key.split(",").map(Number); R.fill[(j + 2) * (w + 4) + i + 2] |= py < R.y + j ? (px > R.x + i ? NE : NW) : px > R.x + i ? SE : SW; }
+    peek = flat; drawTile(R.x + i, R.y + j, {px: ground, o: j * 16 * W + i * 16, w: W}); edged.push(q);
+  }
+  peek = null;
   const see = {keep: new Uint8Array((w + 4) * (R.h + 4)), c0: y - R.y * 16, c1: y - R.y * 16 + h, state: new Uint8Array(W * h), lev: new Int8Array(W * h), band: new Uint8Array(W * h), cover: new Uint8Array(W * h), wet: new Uint8Array(W * h)};
   const rocks = new Uint8Array(w * R.h);
   for (let j = -2; j < R.h + 2; j++) for (let i = -2; i < w + 2; i++) {

@@ -46,10 +46,6 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
     cols.set((R.x + i) + "," + (R.y + j), [i * 16, r0 - 3, top + 16]); r0T[t] = r0;
     for (let r = Math.max(0, r0 - 3); r < Math.min(h, top + 16); r++) for (let f = r * W + i * 16, e = f + 16; f < e; f++) {
       const back = roofed && r >= r0 && r < top, put = fill[f] || see.state[f] === 1;   // (back: over the floor of a tile under a roof: the wall behind it, whatever was painted)
-      if (roofed && r < r0 && see.state[f] === 1 && see.band[f] === 1 && tileOf(f, 4) === t) {   // (under a roof the cut starts on the tile's line: a px of
-        const up = wall.get(f - W) || (see.state[f - W] === 1 && !see.band[f - W] ? [paint[f - W] & 255, paint[f - W] >> 8 & 255, paint[f - W] >> 16 & 255] : null);   //  wall over it, where the corner of the tile behind is rounded off on the land, is that tile's ground, as over it)
-        if (up) wall.set(f, up);
-      }
       if ((!put && !back) || (r < r0 && (roofed || see.band[f] !== 1))) continue;       // (over a tile's line: the set-in top of a wall the land painted, of a tile open to the sky; under a roof the cut starts on the line)
       if (put && !fill[f]) {                                 // (of what was painted there: the place's floors, and the wall behind this tile, its bands and
         const ts = tileOf(f), tf = tileOf(f, 4);            //  what shows between them of the tile behind, painted a level down; not land that stands in front

@@ -101,6 +101,7 @@ function levelShape(R, k, shape, ta, tb, keep, of) {
       m = 0;
       if (at[j - Ws]) m |= N_; if (at[j + 1]) m |= E_; if (at[j + Ws]) m |= S_; if (at[j - 1]) m |= W_;
       if (at[j - Ws + 1]) m |= NE; if (at[j + Ws + 1]) m |= SE; if (at[j + Ws - 1]) m |= SW; if (at[j - Ws - 1]) m |= NW;
+      if (R.fill) m |= R.fill[j];                        // (xray.js: a corner of it that is whole in the picture, where the land rounds it off toward a hole)
       if (m !== 255 || !whole) edge.push(o);
     }
     const plain = m === 255 && whole && !of;                // (a run of whole tiles side by side is filled a row of px at a time)

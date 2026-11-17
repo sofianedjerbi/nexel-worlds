@@ -2256,4 +2256,22 @@ not its body).
   not rock and not seen through, and the second step has its line down its side; the stair test said every step was
   seen whole: every step but the first. The new test of the seam read the screen while one picture was still coming
   over another, once, on a loaded machine: it waits for the picture to be whole.
+- Then a photo of a screen: "Weird left border". The player ("test") is not in the local save nor in its events:
+  the online demo, whose world I cannot read. Rebuilt from the photo on a throwaway world, three tries until the
+  left side matched (a tile dug a layer down at the foot of a cliff, a terrace a layer up in front of it from its
+  own column on, beside it a tile dug under the higher ground). What is there, a px at a time: the pit's own rim down
+  its west side (the land's), then, where the terrace in front is cut through, the rim's end curled in with a tuft
+  of grass under it, then the line. That turn is the land's: at the pit's corner its rim turns to run on along the
+  terrace; the terrace is gone, the turn was left. The same thing as the wedge behind a roof ("tile transition is
+  broken there"), at a corner in front.
+- One rule for both (xray.js): a tile at a corner of a part of the place open to the sky, where one of the two tiles
+  between them is cut away (a floor under a roof, or ground in front that you are seen through), is drawn without
+  the turn. And its shape with it (relief.js, R.fill: the corner whole): the art alone left two px of the pit's side
+  in the notch of the shape; so the px I had put right by hand behind a roof (xraycut.js) is gone too. The rim ends
+  flat where its tile ends, the line runs from there to the foot of the cut. The meadow beside a pit is of your
+  place (you can step onto it): my first try passed over every tile of the place and changed nothing.
+- Left as it is: the side of a roof that is cut away still shows on the land beside the cut (its ledge, four px,
+  where it meets a cliff). Not what the photo shows; noted.
+- Test: at that corner the meadow tile is meadow to its own corner, and the line runs down the floor's side from the
+  rim's end to its foot. It fails on the code before.
 
