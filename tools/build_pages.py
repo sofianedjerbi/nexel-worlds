@@ -68,7 +68,7 @@ def stamp(out: Path):
         if (out / page).exists():
             text = (out / page).read_text()
             (out / page).write_text(re.sub(r'((?:src|href|poster)=")((?:js|css)/[^"?#]+|[^"/:?#]+\.(?:mp4|jpg|png|gif))"', rf'\1\2?v={v}"', text))
-    for name, old in (("index.html", '"js/local_worker.js"'), ("js/local_worker.js", '"../py.zip"')):
+    for name, old in (("index.html", '"js/local_worker.js"'), ("index.html", '"assets/title_poster.webp"'), ("index.html", '"assets/title_poster_s.webp"'), ("js/local_worker.js", '"../py.zip"')):
         text = (out / name).read_text()
         assert old in text, f"{name} no longer names {old}"
         (out / name).write_text(text.replace(old, old[:-1] + f'?v={v}"'))

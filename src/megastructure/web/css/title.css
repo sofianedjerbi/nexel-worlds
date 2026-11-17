@@ -73,3 +73,11 @@ body.touch #joinbox #join, body.touch #joinbox #sendcode, body.touch #joinbox #l
 body.booting #joinbox #join { position:relative; overflow:hidden; }
 body.booting #joinbox #join::after { content:""; position:absolute; left:0; bottom:0; width:25%; height:calc(2 * var(--q)); background:#e0b84e; animation:booting 1.4s steps(14) infinite; }
 @keyframes booting { from { left:-25%; } to { left:100%; } }
+
+/* The island behind the first screen: its still picture first (index.html puts it; it comes in softly), then the
+   island itself over it, once all of it is painted (title_scene.js says so: body.scene), not a block at a time. */
+#poster { position:fixed; z-index:0; max-width:none; image-rendering:pixelated; pointer-events:none; opacity:0; transition:opacity .35s ease-out; }
+#poster.in { opacity:1; }
+body:not(.title) #poster, body.scene #poster { visibility:hidden; transition:visibility 0s .8s; }
+canvas#c { transition:opacity .7s ease-out; }
+body.title:not(.scene) canvas#c { opacity:0; }

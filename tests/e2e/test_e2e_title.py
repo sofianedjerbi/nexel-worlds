@@ -118,3 +118,38 @@ def test_wake_up_says_the_world_is_still_coming(browser, server):
     page.evaluate("(() => { document.body.classList.remove('booting'); agentWs = null; titleDraw(); })()")
     assert page.evaluate(label) == "Wake up" and page.evaluate("getComputedStyle($('join'), '::after').content") == "none"
     page.close()
+
+
+def test_the_island_is_there_at_once_as_a_still_picture_and_comes_in_over_it(browser, server):
+    """"I want the demo background to load beautifully asap": behind the first screen's window there was the sea's flat
+    colour until every picture of the game had come (seven seconds on a slow line), then the island a block at a
+    time. Its still picture is asked for first of all (tools/build_title_poster.py: what the game paints at the
+    island's first moment, nobody on it) and put on the very pixels the island will be drawn at; the island comes in
+    over it once all of it is painted, the view held still until it has: nothing jumps."""
+    # where the still picture has a line (a px unlike the one beside it) on land, not water (it moves): the share of
+    # those px the island as drawn has too, on the same screen px; and the same count a single art px aside (far less)
+    same = """async () => { const img = document.getElementById('poster'), r = img.getBoundingClientRect(), z = r.width / img.naturalWidth;
+      const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+      const p = g.getImageData(0, 0, c.width, c.height).data, k = cv.width / innerWidth, d = ctx.getImageData(0, 0, cv.width, cv.height).data; let same = 0, aside = 0, n = 0;
+      const eq = (i, j) => d[i] === p[j] && d[i + 1] === p[j + 1] && d[i + 2] === p[j + 2];
+      for (let y = 4; y < innerHeight; y += 3) for (let x = 4; x < innerWidth; x += 3) {
+        const px = Math.floor((x - r.left) / z), py = Math.floor((y - r.top) / z); if (px < 1 || py < 0 || px >= c.width - 1 || py >= c.height) continue;
+        const i = (Math.floor(y * k) * cv.width + Math.floor(x * k)) * 4, j = (py * c.width + px) * 4;
+        if (p[j + 2] > p[j] || (p[j] === p[j + 4] && p[j + 1] === p[j + 5] && p[j + 2] === p[j + 6])) continue;
+        n++; if (eq(i, j)) same++; if (eq(i, j - 4)) aside++; }
+      return [n, same / n, aside / n, z, cam.x - TitleScene.S.ox - TitleScene.S.C.centre[0], cam.y - TitleScene.S.oy - TitleScene.S.C.centre[1] - TITLE_DY]; }"""
+    for kw, zoom, small in ((dict(viewport={"width": 1281, "height": 760}), 3, False), (dict(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True, device_scale_factor=3), 2, True),
+                            (dict(viewport={"width": 844, "height": 390}, has_touch=True, is_mobile=True, device_scale_factor=3), 2, True)):
+        page = browser.new_page(**kw)
+        page.route("**/js/title_scene.js*", lambda r: (page.wait_for_timeout(700), r.continue_()))        # (the island's own script late: its picture is there before it)
+        page.goto(server, wait_until="commit")
+        page.wait_for_function("!!document.querySelector('#poster.in')", timeout=5000)
+        js = page.evaluate
+        assert js("[typeof TitleScene, document.body.classList.contains('scene'), getComputedStyle(document.getElementById('c')).opacity, document.getElementById('poster').currentSrc.includes('_s.webp')]") == ["undefined", False, "0", small]
+        page.wait_for_function("document.body.classList.contains('scene')", timeout=30000)
+        n, share, aside, z, dx, dy = js(same)
+        assert n > 1500 and share > .65 and share > aside + .2 and z == zoom and abs(dx) + abs(dy) < 1e-6, (kw["viewport"], n, share, aside, z, dx, dy)   # the same pixels (but for who lives there, and what the wind moves); the view has not moved
+        page.wait_for_function("getComputedStyle(document.getElementById('c')).opacity === '1' && getComputedStyle(document.getElementById('poster')).visibility === 'hidden'", timeout=5000)
+        page.wait_for_function("Math.abs(cam.x - TitleScene.S.ox - TitleScene.S.C.centre[0]) + Math.abs(cam.y - TitleScene.S.oy - TitleScene.S.C.centre[1] - TITLE_DY) > .05", timeout=20000)   # then the view goes after someone, as ever
+        page.close()
+

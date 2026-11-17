@@ -25,6 +25,19 @@ function bookPx() { const d = devicePixelRatio || 1, small = document.body.class
   document.body.classList.add("title");                     // (the first screen: title.js keeps it; said here, not in the tag, which the server writes the accounts' address into)
   document.body.classList.toggle("touch", matchMedia("(pointer: coarse)").matches || "ontouchstart" in window || new URLSearchParams(location.search).has("touch"));
   const n = bookPx(); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", n / d + "px"); st.setProperty("--w", Math.max(1, Math.round(n * .7)) / d + "px"); })();
+// The island behind the first screen, as a still picture (tools/build_title_poster.py), asked for before anything else
+// and put, a whole number of screen pixels an art pixel, on the very pixels the game will draw the island at (state.js:
+// screenOrigin, at the zoom the game starts with; title_scene.js starts its view TITLE_DY tiles under the island's
+// middle). It comes in softly when it has come, and the island comes in over it once it is painted (title.css):
+// there was the sea's flat colour behind the window until every picture of the game had come.
+const TITLE_DY = 4 * Math.sin(1);
+(() => { const qs = new URLSearchParams(location.search), saved = +localStorage.getItem("megastructure-zoom"), small = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520;
+  if (qs.get("follow")) return;                              // (you came to follow someone: the world's own land)
+  const z = +qs.get("zoom") || (saved >= 1 && saved === Math.round(saved) ? saved : small ? 2 : 3), img = new Image(), f = TITLE_DY % 1 * 16;
+  const fit = () => { const w = img.naturalWidth, h = img.naturalHeight; img.style.width = w * z + "px";
+    img.style.left = Math.round(innerWidth / 2 - 8 * z) - z * (w / 2 - 8) + "px"; img.style.top = Math.round(innerHeight / 2 - 8 * z) - Math.round(f * z) - z * (h / 2 - 8 - Math.round(f)) + "px"; };
+  img.id = "poster"; img.alt = ""; img.fetchPriority = "high"; img.onload = () => { fit(); addEventListener("resize", fit); img.classList.add("in"); };
+  img.src = small ? "assets/title_poster_s.webp" : "assets/title_poster.webp"; document.body.appendChild(img); })();
 </script>
 <canvas id="c"></canvas>
 <div id="hover"></div>

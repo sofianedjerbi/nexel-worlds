@@ -94,6 +94,7 @@ def test_static_server_serves_audio():
     from megastructure import web_static
     assert "audio" in web_static.STATIC and web_static.CONTENT_TYPES[".wav"] == "audio/wav"
     assert web_static.CONTENT_TYPES[".flac"] == "audio/flac"   # (the music's pieces)
+    assert web_static.CONTENT_TYPES[".webp"] == "image/webp"   # (the first screen's still picture of its island)
     assert web_static.CONTENT_TYPES[".json"] == "application/json"
 
 

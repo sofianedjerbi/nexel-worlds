@@ -34,7 +34,7 @@ def serve_http(connection, request, accounts=None):
 STATIC = {"assets": "max-age=3600", "js": "no-cache", "css": "no-cache",   # folder -> Cache-Control
           "audio": "max-age=3600"}       # built by tools/build_audio.py; the client asks for files as name?v=<build>
 
-CONTENT_TYPES = {".png": "image/png", ".ttf": "font/ttf", ".txt": "text/plain", ".wav": "audio/wav", ".flac": "audio/flac", ".json": "application/json",
+CONTENT_TYPES = {".png": "image/png", ".webp": "image/webp", ".ttf": "font/ttf", ".txt": "text/plain", ".wav": "audio/wav", ".flac": "audio/flac", ".json": "application/json",
                  ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
 
 def web_stamp() -> int:

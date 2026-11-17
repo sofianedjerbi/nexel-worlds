@@ -2332,3 +2332,24 @@ a real phone: these are Chrome's own slow line and slow CPU.
 A test of another session's fails on main and did before today's commits (test_e2e_menu: a swimmer's shadow, from
 a060b94): not touched.
 
+- Then: "I want the demo background to load beautifully asap". Behind the first screen's window there was the sea's
+  flat colour until every picture of the game had come and the island was painted (3.5 s on 9 Mbit/s, 7 s on 1.6,
+  as a phone), and I had left it so ("not done" above).
+  The island has a still picture now (tools/build_title_poster.py: what the game paints at the island's first
+  moment, nobody on it, an art px a px, kept lossless: 43 KB for a small phone, 91 KB for a desk's screen). The page
+  asks for it first of all and puts it on the very pixels the island will be drawn at (index.html: the game's own
+  sum for where the screen's middle is, at the zoom the game starts with); it comes in softly. The island comes in
+  over it once the game shows it (render.js: arrivingNow, the game's own word for "all of it is there"), over 0.7 s,
+  and the view is held still until it has. In at 0.23 s on 9 Mbit/s, 0.9 s on 1.6.
+- Measured at the moment the island comes in, in five screens (a desk's even and odd widths, two px a px, a phone
+  both ways): 96 to 99.6 % of the screen's px are the still picture's own; the rest are who lives there and the
+  water. Two things were wrong first, both found by reading the canvas at that moment, not by looking:
+  my own count of "painted" said so a frame or two before the game showed the land (the screen was still dark); and
+  on a real server the island was lit by the world's hour a frame in two, when the page had begun to watch the
+  world before the island began (an older flicker: the server's ticks are passed over while the island is on,
+  state.js).
+- The game's own server did not serve .webp (web_static.py): it does. The server at 7777 runs the code it started
+  with: there, no still picture until it is started again (the user's word); the island still comes in whole.
+- Test: the picture is there before the island's script has come; at the hand-over the picture's lines on land are
+  on the same screen px (and far fewer an art px aside), the view has not moved; then it goes after someone.
+

@@ -59,7 +59,7 @@ function connectSpec() {
       if (d.hp_max) { HP_MAX = d.hp_max; FOOD_MAX = d.food_max; SPRINT_FOOD = d.sprint_food; }
       FLOORS = !!d.floors;                           // (blocks built over the land, stood on: floors.js)
       SWIM_SPRINT = !!d.swim_sprint; SWIM_PACE = d.swim_pace || 1; EAT_PACE = d.eat_pace || 1;
-    } else if (d.type === "tick") onTick(d);
+    } else if (d.type === "tick") { if (typeof TitleScene === "undefined" || !TitleScene.on) onTick(d); }   // (the first screen's island has its own hour: a world watched before the island began lit it with its own, a frame in two)
     else if (d.type === "event") onEvent(d.ev);
     else if (d.type === "resync") { for (const b of blocks.values()) b.at = -1e9; }   // we missed events (too many at once): ask for our land again
     else if (d.type === "reply") {

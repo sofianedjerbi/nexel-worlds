@@ -64,8 +64,12 @@ const TitleScene = (() => {
     for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++)
       if (!blocks.has(bkey(bx, by))) onRegion({x: bx * B, y: by * B, w: B, h: B, ...M.sea});
   }
+  // The island is on the screen, all of it (render.js: arrivingNow, the game's own word: until then it shows nothing
+  // of a land that is coming): the first screen lets it in over its still picture (title.css: body.scene), whole.
+  // (My own count of the blocks that were painted said so a frame or two early: the screen was still dark.)
   function step() {
     S.tick++; S.phase = (.3 + S.tick / DAY) % 1;
+    if (!S.shown && (S.tick > 150 || (S.tick > 1 && !arrivingNow))) { S.shown = S.tick; requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.add("scene"))); }
     const now = S.due.filter(([at]) => at <= S.tick); S.due = S.due.filter(([at]) => at > S.tick);
     for (const [, fn] of now) fn();                          // what was felled or picked is grown again
     if (S.tick % 8 === 0) grow();
@@ -85,13 +89,14 @@ const TitleScene = (() => {
       S.eye = (fire.length ? fire : who)[S.pick((fire.length ? fire : who).length)] || S.eye; S.till = S.tick + 140 + S.pick(120);
     }
     const [x0, y0, x1, y1] = S.C.view, x = Math.max(x0, Math.min(x1, S.eye.x)), y = Math.max(y0, Math.min(y1, S.eye.y));
-    camT.x += (OX + x - camT.x) * .035; camT.y += (OY + y - camT.y) * .035;
+    if (S.shown && S.tick > S.shown + 8) { camT.x += (OX + x - camT.x) * .035; camT.y += (OY + y - camT.y) * .035; }   // (not before the island has come in over its still picture: the two are on the same pixels)
   }
   function start(seed) {                                     // (a seed: the same play again, for a test; none: the hour's own)
     if (S.on || !M || me) return;
-    Object.assign(S, {on: true, tick: 0, phase: .3, seed: (seed || Date.now()) >>> 0 || 1, due: [], mail: false, trough: 0, people: [], herd: [], eye: null, till: 0});
+    Object.assign(S, {on: true, tick: 0, phase: .3, seed: (seed || Date.now()) >>> 0 || 1, due: [], mail: false, trough: 0, people: [], herd: [], eye: null, till: 0, shown: 0});
     for (const b of M.blocks) onRegion({...b, x: b.x + OX, y: b.y + OY});
-    cam.x = camT.x = OX + S.C.centre[0]; cam.y = camT.y = OY + S.C.centre[1] + 4 * Math.sin(1);
+    cam.x = camT.x = OX + S.C.centre[0]; cam.y = camT.y = OY + S.C.centre[1] + TITLE_DY;
+    arrivingNow = true;                                      // (a land that is coming: shown whole, once it is all there)
     ears = () => ({x: cam.x, y: cam.y});                     // its sounds are heard from the middle of the view, under the music (audio.js)
     S.herd = [...herd("chicken", 3, 9101, S.C.pen, 14), ...herd("chick", 1, 9111, S.C.pen, 9), ...herd("cow", 2, 9121, S.C.meadow, 26)];
     S.people = TitleCast.wake(S);
@@ -108,5 +113,5 @@ const TitleScene = (() => {
   return {start, stop, step, get on() { return S.on; }, S};
 })();
 // It plays from the moment the pictures are loaded, while the first screen shows (not when you came to follow someone)
-ready.then(() => { if ($("joinbox").style.display !== "none" && !new URLSearchParams(location.search).get("follow")) TitleScene.start(); });
+ready.then(() => { if ($("joinbox").style.display !== "none" && !new URLSearchParams(location.search).get("follow")) TitleScene.start(); if (!TitleScene.on) document.body.classList.add("scene"); });   // (no island: the land as it comes)
 new MutationObserver(() => { if ($("joinbox").style.display === "none") TitleScene.stop(); }).observe($("joinbox"), {attributes: true, attributeFilter: ["style"]});
