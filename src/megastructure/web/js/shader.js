@@ -15,6 +15,15 @@ const SHADERS = {       // glow: how much; from: how bright a thing must be to g
   dream: {name: "Dreamy", glow: 1.3, from: .7, sat: 1.05, con: .97, tint: [1.02, 1, 1.04], vig: .32, lift: .02, scan: 0},
   moody: {name: "Moody", glow: .6, from: .76, sat: .86, con: 1.14, tint: [.93, .98, 1.09], vig: .45, lift: 0, scan: 0},
   screen: {name: "Old screen", glow: .7, from: .74, sat: 1.1, con: 1.08, tint: [1, 1.02, .98], vig: .38, lift: 0, scan: .12},
+  // "add old school shaders, lines": screens of other years. More of each has: curve: the glass bulges; mask: the
+  // red, green and blue stripes of a tube; shift: red and blue slide apart (px); tape: a video tape's wobble, tear and
+  // snow; grid: a dark line between art pixels both ways (a handheld's cells); pal: 1 a handheld's four greens, 2 a
+  // terminal's one green
+  crt: {name: "Tube TV", glow: 1, from: .7, sat: 1.12, con: 1.1, tint: [1, 1, 1], vig: .5, lift: .01, scan: .34, curve: .16, mask: .2, shift: .7},
+  arcade: {name: "Arcade", glow: .8, from: .72, sat: 1.3, con: 1.14, tint: [1, 1, 1], vig: .35, lift: 0, scan: .26, curve: .07, mask: .3},
+  tape: {name: "Video tape", glow: .6, from: .74, sat: .9, con: 1.02, tint: [1.02, 1, 1.03], vig: .3, lift: .025, scan: .14, shift: 1.8, tape: 1},
+  handheld: {name: "Handheld", glow: 0, from: .9, sat: 1, con: 1.1, tint: [1, 1, 1], vig: 0, lift: 0, scan: 0, grid: .2, pal: 1},
+  terminal: {name: "Green terminal", glow: 1.3, from: .55, sat: 1, con: 1.15, tint: [1, 1, 1], vig: .45, lift: 0, scan: .36, curve: .12, pal: 2},
 };
 const Shader = (() => {
   const VERT = "attribute vec2 p; varying vec2 uv; void main() { uv = p * .5 + .5; gl_Position = vec4(p, 0., 1.); }";
@@ -28,13 +37,20 @@ const Shader = (() => {
       c += (texture2D(uA, uv + uStep * 3.231).rgb + texture2D(uA, uv - uStep * 3.231).rgb) * .0703;
       gl_FragColor = vec4(c, 1.); }`;
   const FINAL = HEAD + `uniform sampler2D uB, uC; uniform vec2 uRes, uOrigin; uniform vec3 uTint;
-    uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uCloud, uTile, uT, uArt;
+    uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uCloud, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK;
     float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
       return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
     void main() {
-      vec3 c = texture2D(uA, uv).rgb, g = texture2D(uB, uv).rgb * .6 + texture2D(uC, uv).rgb * .7;
-      vec2 px = vec2(uv.x, 1. - uv.y) * uRes;
+      vec2 q = uv, mid = uv - .5;
+      // the glass of a tube bulges: the picture is pushed out towards its corners, and past its edge there is none
+      q = .5 + mid * (1. + uCurve * dot(mid, mid) - uCurve * .25);
+      // a tape: each line a little off, and a tear that climbs the screen
+      float row = floor((1. - q.y) * uRes.y / 2.);
+      q.x += uTape * ((hash(vec2(row, floor(uT * 24.))) - .5) * .0016 + .012 * (1. - smoothstep(0., .035, abs(fract(uT * .09) - (1. - q.y)))));
+      vec2 off = vec2(uShift / uRes.x, 0.);
+      vec3 c = vec3(texture2D(uA, q + off).r, texture2D(uA, q).g, texture2D(uA, q - off).b), g = texture2D(uB, q).rgb * .6 + texture2D(uC, q).rgb * .7;
+      vec2 px = vec2(q.x, 1. - q.y) * uRes;
       if (uCloud > 0.) {                                       // cloud shadows: fixed to the land, an art pixel at a time, drifting east
         vec2 w = floor((px - uOrigin) / uTile * 16.) / 16. * .055 + vec2(-uT * .011, uT * .004);
         float n = noise(w) * .55 + noise(w * 2.1 + 7.3) * .3 + noise(w * 4.3 + 1.7) * .15;
@@ -44,8 +60,19 @@ const Shader = (() => {
       float l = dot(c, vec3(.299, .587, .114));
       c = (mix(vec3(l), c, uSat) - .5) * uCon + .5;
       c = c * uTint + uLift;
+      l = clamp(dot(c, vec3(.299, .587, .114)), 0., 1.);
+      // a handheld's four greens (the shade a pixel falls in), or a terminal's one green
+      vec3 four = mix(mix(vec3(.06, .22, .06), vec3(.19, .38, .19), step(.3, l)), mix(vec3(.55, .67, .06), vec3(.61, .74, .06), step(.78, l)), step(.55, l));
+      if (uPal > .5) c = mix(c, uPal < 1.5 ? four : vec3(.12, 1., .38) * pow(l, 1.7) * 1.25, uPalK);
+      c += uTape * (hash(px + uT) - .5) * .07;
       c *= 1. - uVig * smoothstep(.42, .9, distance(uv, vec2(.5)) * 1.25);
-      if (uScan > 0.) c *= 1. - uScan * step(uArt - 1.5, mod(gl_FragCoord.y, uArt));      // a dark line under each art pixel
+      // a dark line under each art pixel; a handheld's cells have one beside each too
+      float lineY = step(uArt - 1.5, mod(gl_FragCoord.y, uArt)), lineX = step(uArt - 1.5, mod(gl_FragCoord.x, uArt));
+      c *= (1. - uScan * lineY) * (1. - uGrid * max(lineX, lineY)) * (1. + uScan * .4 + uMask * .45);
+      // a tube's stripes: each screen pixel shows mostly one of red, green, blue
+      float stripe = mod(floor(gl_FragCoord.x), 3.);
+      c *= 1. - uMask + uMask * 1.6 * vec3(step(stripe, .5), step(.5, stripe) * step(stripe, 1.5), step(1.5, stripe));
+      if (q.x < 0. || q.x > 1. || q.y < 0. || q.y > 1.) c = vec3(0.);
       gl_FragColor = vec4(c, 1.);
     }`;
   let el = null, gl = null, bad = false, P = null, scene = null, targets = [], size = "";
@@ -81,7 +108,7 @@ const Shader = (() => {
   // Called at the end of each frame (render.js): ox, oy where the world's corner is on the screen, S a tile's size, t seconds
   function frame(ox, oy, S, t) {
     const look = SHADERS[opt("shader")];
-    if (!look || bad) { if (el && el.style.display !== "none") el.style.display = "none"; return; }
+    if (!look || bad) { for (const c of [el, words]) if (c && c.style.display !== "none") c.style.display = "none"; return; }
     try {
       if (!el) start();
       const w = cv.width, h = cv.height, qw = Math.max(2, w >> 2), qh = Math.max(2, h >> 2);
@@ -108,9 +135,27 @@ const Shader = (() => {
         gl.uniform1f(u.uGlow, look.glow * k * opt("glow") / 100 * (1 - .65 * day)); gl.uniform1f(u.uSat, on(look.sat)); gl.uniform1f(u.uCon, on(look.con));
         gl.uniform3f(u.uTint, on(look.tint[0]), on(look.tint[1]), on(look.tint[2])); gl.uniform1f(u.uLift, look.lift * k);
         gl.uniform1f(u.uVig, opt("corners") ? look.vig * k : 0); gl.uniform1f(u.uScan, look.scan * k);
+        for (const [name, v] of [["uCurve", look.curve], ["uMask", look.mask], ["uShift", look.shift], ["uTape", look.tape], ["uGrid", look.grid]]) gl.uniform1f(u[name], (v || 0) * k);
+        gl.uniform1f(u.uPal, look.pal || 0); gl.uniform1f(u.uPalK, k);
         gl.uniform1f(u.uCloud, opt("clouds") && !under ? .85 * k * day : 0);
       });
     } catch (e) { bad = true; if (el) el.style.display = "none"; console.warn("shader: off (" + e.message + ")"); }
   }
-  return {frame, get el() { return el; }, get works() { return !bad; }};
+  // What is written in the world (names, what people say, hearts lost, the small faces over heads) is not for a shader:
+  // "your shaders make text bubble unreadable and too bright" (a white bubble glowed, its letters went with it). With a
+  // shader on, the frame draws them on a third canvas over the shader's (render.js: Shader.over(true) before them,
+  // Shader.over(false) after; `ctx` is pointed at it meanwhile), as they are with no shader.
+  let words = null, wg = null, home = null;
+  function over(on) {
+    if (home) { ctx = home; home = null; }                   // (always back first, whatever happened in between)
+    if (!on || !SHADERS[opt("shader")] || bad || !el) return;
+    if (!words) { words = document.createElement("canvas"); words.id = "fxwords"; el.after(words); wg = words.getContext("2d"); }
+    if (words.width !== cv.width || words.height !== cv.height) { words.width = cv.width; words.height = cv.height; words.style.width = cv.style.width; words.style.height = cv.style.height; }
+    if (words.style.display !== "block") words.style.display = "block";
+    wg.setTransform(1, 0, 0, 1, 0, 0); wg.globalAlpha = 1; wg.clearRect(0, 0, words.width, words.height);
+    wg.setTransform(DPR, 0, 0, DPR, 0, 0); wg.imageSmoothingEnabled = false;
+    home = ctx; ctx = wg;
+  }
+  const layers = () => [el, words].filter((c) => c && c.style.display === "block");      // (zoom.js: they glide with the picture)
+  return {frame, over, layers, get el() { return el; }, get words() { return words; }, get works() { return !bad; }};
 })();

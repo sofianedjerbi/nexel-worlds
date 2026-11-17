@@ -32,8 +32,9 @@ function zoomLeg() {
   if (!cv.animate || !opt("glide") || matchMedia("(prefers-reduced-motion: reduce)").matches) { zoom = next; return zoomLeg(); }
   const glide = (a, b, done) => {
     const an = cv.animate([{transform: `scale(${a})`}, {transform: `scale(${b})`}], {duration: ZOOM.ms, easing: "cubic-bezier(.3, .6, .4, 1)", fill: "forwards"});
-    const fx = Shader.el && Shader.el.style.display === "block" ? Shader.el.animate([{transform: `scale(${a})`}, {transform: `scale(${b})`}], {duration: ZOOM.ms, easing: "cubic-bezier(.3, .6, .4, 1)", fill: "forwards"}) : null;      // (a shader's picture lies over this one: it glides with it)
-    an.onfinish = () => { done(); an.cancel(); if (fx) fx.cancel(); };      // (finish comes before the frame is drawn: the new size and the plain canvas show together)
+    // (a shader's picture and what is written over it lie over this one: they glide with it)
+    const fx = Shader.layers().map((c) => c.animate([{transform: `scale(${a})`}, {transform: `scale(${b})`}], {duration: ZOOM.ms, easing: "cubic-bezier(.3, .6, .4, 1)", fill: "forwards"}));
+    an.onfinish = () => { done(); an.cancel(); fx.forEach((f) => f.cancel()); };      // (finish comes before the frame is drawn: the new size and the plain canvas show together)
   };
   if (next > zoom) glide(1, next / zoom, () => { zoom = next; zoomLeg(); });
   else { const from = zoom / next; zoom = next; glide(from, 1, zoomLeg); }

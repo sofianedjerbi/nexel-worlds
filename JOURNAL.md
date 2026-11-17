@@ -1698,6 +1698,19 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 161: old screens, and words kept out of the shader
+
+"add old school shaders, lines": five more looks in shader.js, each a screen of another year: Tube TV (lines, a
+bulging glass, red green blue stripes, colours a little apart), Arcade (the same, sharper and brighter), Video tape
+(each line a little off, a tear that climbs, snow), Handheld (four greens, a dark line between art pixels both
+ways), Green terminal (one green, lines, glow). Looked at on a staged scene: the tube looks came out dim (lines and
+stripes take light: given back), the terminal flat (its green now follows brightness more steeply).
+Then "your shaders make text bubble unreadable and too bright": a white bubble glowed and its letters went with it.
+What is written in the world (names, what people say, hearts lost, the faces over heads) is now drawn on a third
+canvas over the shader's, untouched (render.js: Shader.over(true) before them, Shader.over(false) after).
+Tests: the lines and the greens are measured on the shader's picture; a bubble is on the words' canvas and not in
+what the shader repaints. 462 + 247 pass.
+
 ## Iteration 157: what you can do, in three words
 
 The user, with a screenshot of "Chop tree (the fruit grows back if you wait) by hand (slow)" beside the Space key:

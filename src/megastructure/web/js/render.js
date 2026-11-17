@@ -189,6 +189,7 @@ function frame(now) {
   Build.draw(sx, sy, S, t);                         // (what is planned, and the cursor: build.js)
   if (Build.on) Prompts.build();                    // (the keys beside what they act on: prompts.js)
   else Prompts.show(box && {x: sx(box.x0), y: sy(box.y0), w: (box.x1 - box.x0) * S, h: (box.y1 - box.y0) * S}, faceRows);
+  Shader.over(true);                               // (with a shader on, what is written goes over it, untouched: shader.js)
   for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
   for (const o of list) if (o.p && o.p.e.kind !== "agent" && o.p.e.name) drawNameplate(o.p, sx, sy, S);     // (a named animal: /name)
   for (const o of list) if (o.p && ANIMALS[o.p.e.kind]) drawEmote(o.p, sx, sy, S);
@@ -207,6 +208,7 @@ function frame(now) {
   ctx.globalAlpha = 1;
   drawBubbles(sx, sy, S, t);                       // (what people say: bubbles.js)
   ctx.textAlign = "start";
+  Shader.over(false);
   Shader.frame(ox, oy, S, t);                      // (the settings' Shaders: the finished picture, repainted over itself: shader.js)
   perfFrame(now, performance.now() - began, landMs);   // (/perf: debug.js)
 }

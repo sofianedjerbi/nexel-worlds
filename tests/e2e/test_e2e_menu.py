@@ -236,3 +236,49 @@ def test_a_shadow_adds_no_dust_or_spray_and_a_swimmer_has_none(game):
     assert game.js("DEPTH_OF[gndAt(myPos().x, myPos().y)] > 0")     # in the water: nothing of you on it
     assert game.js(lit) == 0, game.js(lit)
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
+
+
+def test_the_old_school_shaders_draw_their_lines(game):
+    # "add old school shaders, lines": a tube's lines, a handheld's greens, a terminal's one green
+    assert game.js("['screen', 'crt', 'arcade', 'tape', 'handheld', 'terminal'].every((k) => SHADERS[k])")
+    game.clear_area(6)
+    game.rpc("dev_time", phase=.3)
+    game.js("zoom = 4; ZOOM.to = 4; setOpt('clouds', false); setOpt('corners', false); setOpt('shadows', false)")
+    rows = """(k) => new Promise((ok) => { setOpt('shader', k); setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const c = document.createElement("canvas"); c.width = 64; c.height = 64; const g = c.getContext("2d");
+      g.drawImage(Shader.el, Shader.el.width / 2 + 40, Shader.el.height / 2 + 40, 64, 64, 0, 0, 64, 64);      // (a patch of meadow, device px as they are)
+      const d = g.getImageData(0, 0, 64, 64).data, row = [], sum = [0, 0, 0];
+      for (let y = 0; y < 64; y++) { let v = 0; for (let x = 0; x < 64; x++) { const i = (y * 64 + x) * 4; v += d[i] + d[i + 1] + d[i + 2]; sum[0] += d[i]; sum[1] += d[i + 1]; sum[2] += d[i + 2]; } row.push(v / 64); }
+      const art = Math.round(zoom * DPR), dark = row.filter((v, y) => y % art === (64 - 1 - (Shader.el.height - (Shader.el.height / 2 + 40) - 64)) % art);
+      ok({spread: Math.max(...row) - Math.min(...row), rgb: sum.map((v) => v / 4096), works: Shader.works}); })), 400); })"""
+    plain, tube, hand, term = (game.js(rows, k) for k in ("natural", "crt", "handheld", "terminal"))
+    assert all(r["works"] for r in (plain, tube, hand, term))
+    assert tube["spread"] > plain["spread"] + 40, (plain, tube)                 # dark lines across it
+    assert hand["rgb"][1] > hand["rgb"][0] * 1.1 and hand["rgb"][2] < 80, hand    # greens, next to no blue
+    assert term["rgb"][1] > term["rgb"][0] * 3 and term["rgb"][1] > term["rgb"][2] * 2, term
+    game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
+
+
+def test_what_is_written_in_the_world_is_drawn_over_a_shader_not_through_it(game):
+    # "your shaders make text bubble unreadable and too bright": a bubble went through the glow with the rest
+    game.clear_area(5)
+    game.js("setOpt('names', false)")
+    ink = """() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const count = (c) => { if (!c) return -1; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 200) n++; return n; };
+      const S = TS(), [ox, oy] = screenOrigin(S), p = ents.get("agent" + myId);
+      const d = cv.getContext("2d").getImageData(Math.round((ox + p.x * S - 3 * S) * DPR), Math.round((oy + p.y * S - 5 * S) * DPR), Math.round(7 * S * DPR), Math.round(4 * S * DPR)).data;
+      let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+      ok({sum, words: count(Shader.words), shown: Shader.words ? getComputedStyle(Shader.words).display : "none", said: bubbles.length}); })))"""
+    bare = game.js(ink)                                         # the meadow over your head, nothing said
+    game.act("say", text="hello there, a long line to see")
+    game.wait("bubbles.length > 0")
+    game.sleep(400)
+    plain = game.js(ink)
+    assert plain["said"] and plain["sum"] != bare["sum"] and plain["shown"] == "none", (bare, plain)     # no shader: the bubble is on the picture
+    game.js("setOpt('shader', 'soft'); setOpt('shadows', false)"); game.sleep(600)
+    on = game.js(ink)
+    assert on["said"] and abs(on["sum"] - bare["sum"]) < abs(plain["sum"] - bare["sum"]) / 8 and on["words"] > 300 and on["shown"] == "block", (bare, plain, on)    # a shader: not in what it repaints, over it
+    game.js("setOpt('shader', 'off')"); game.sleep(400)
+    off = game.js(ink)
+    assert off["shown"] == "none" and abs(off["sum"] - bare["sum"]) > abs(plain["sum"] - bare["sum"]) / 2, (bare, plain, off)
+    game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
