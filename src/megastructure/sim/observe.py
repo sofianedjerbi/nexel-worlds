@@ -4,8 +4,9 @@ from .constants import VIEW_R
 
 
 def height_char(lv: int) -> str:
-    """A height for the agents: 0-9 and A, B, C (10-12) up; a, b, c... (-1, -2, -3...) down in pits."""
-    return str(lv) if 0 <= lv <= 9 else chr(55 + lv) if lv > 9 else chr(96 - lv)
+    """A height for the agents: 0-9 and A, B, C (10-12) up; a, b, c... (-1, -2, -3...) down in pits. Z is 35 or
+    higher, z is 26 down or deeper (the land goes to 512 each way: your own height is said in full, `z`)."""
+    return str(lv) if 0 <= lv <= 9 else chr(55 + min(lv, 35)) if lv > 9 else chr(96 - max(lv, -26))
 
 
 from .entities import CREATURES, Agent

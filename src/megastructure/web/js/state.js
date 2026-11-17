@@ -73,9 +73,21 @@ function connectSpec() {
   spec.onclose = () => setTimeout(connectSpec, 1000);
 }
 const sendSpec = (o) => spec && spec.readyState === 1 && spec.send(JSON.stringify({...o, id: ++sid}));
+// The tiles of the screen: what is loaded, watched and drawn. Round where you are drawn (near) and round where you
+// are (far): the two are a few rows apart, as you stand high or low (a hill's top, a pit). Far from the land that is
+// drawn where you are (away: more than APART layers under it or over it, a tunnel forty down, a tower), that land is
+// rows away from you and nothing of yours: a corridor forty layers down showed in the middle of a forest twenty tiles
+// south of it, and at a hundred the page had let go of the tiles you stood on. There it is round where you are, and
+// no more: your own land at its own height from yours (off the screen, its top), the rest of the screen earth, or sky.
+// away: on: so now; a: how far gone the other land is (0 to 1, a moment: render.js); y: your own row; shift: rows from
+// where you are drawn to the land drawn there, when it is high or low itself (a plateau); sky: over the land, not under;
+// t: when it was worked out (not this moment's: nobody plays, the first screen: the camera alone says where)
+const away = {on: false, a: 0, y: 0, shift: 0, sky: false, high: false, t: -1e9};
 function viewRect(margin) {
-  const w = Math.ceil(W / TS()) + margin * 2, h = Math.ceil(H / TS()) + margin * 2;
-  return [Math.floor(cam.x - w / 2), Math.floor(cam.y - h / 2), w, h];
+  const w = Math.ceil(W / TS()) + margin * 2, h = Math.ceil(H / TS()) + margin * 2, x = Math.floor(cam.x - w / 2), y = Math.floor(cam.y - h / 2);
+  if (!me || performance.now() - away.t > 250) return [x, y, w, h];
+  const near = Math.floor(cam.y + away.shift - h / 2), far = Math.floor(away.y - h / 2), top = Math.min(near, far);
+  return away.a >= 1 ? [x, far, w, h] : [x, top, w, Math.max(near, far) + h - top];
 }
 setInterval(() => {
   if (!spec || spec.readyState !== 1 || (typeof TitleScene !== "undefined" && TitleScene.on)) return;     // (the first screen's island is the page's own: title_scene.js)
@@ -148,7 +160,7 @@ function onEvent(e) {
   const t = performance.now() / 1000;
   if (e.type === "tile") {
     const g = CHAR[e.ground], blk = e.block === "none" ? g : CHAR[e.block], old = combAt(e.x, e.y);
-    if (g && blk) setTile(e.x, e.y, blk, g, e.by, e.col === undefined ? null : e.col);
+    if (g && blk) setTile(e.x, e.y, blk, g, e.by, e.col === undefined ? null : colIn(e.col));
     if (old && blk) tileSound(old, blk, e);
     return;
   }

@@ -77,9 +77,10 @@ const LEDGE = 4, SIDE_MAX = 2;
 // The rect's levels and two tiles round it, read once: lv, and gone (no tile there yet: for the tiles beside it, it
 // counts as ground of every height, as maskOf has it)
 function rectLevels(R, to = "lv") {
-  const Ws = R.w + 4, lv = R[to] = new Int8Array(Ws * (R.h + 4)); R.gone = new Uint8Array(lv.length);
-  for (let ty = -2; ty < R.h + 2; ty++) for (let tx = -2; tx < R.w + 2; tx++) {
-    const j = (ty + 2) * Ws + tx + 2; lv[j] = levelAt(R.x + tx, R.y + ty); R.gone[j] = tile(R.x + tx, R.y + ty) === null ? 1 : 0;
+  const Ws = R.w + 4, lv = R[to] = new Int16Array(Ws * (R.h + 4)), cap = R.cap === undefined ? HIGH : R.cap; R.gone = new Uint8Array(lv.length);
+  for (let ty = -2; ty < R.h + 2; ty++) for (let tx = -2; tx < R.w + 2; tx++) {   // (no deeper than APART under the sea: a shaft dug further is that deep from above; R.real, R.cap, xray.js: your place as deep as it is, nothing over cap)
+    const j = (ty + 2) * Ws + tx + 2, l = levelAt(R.x + tx, R.y + ty); R.gone[j] = tile(R.x + tx, R.y + ty) === null ? 1 : 0;
+    lv[j] = Math.min(cap, l < -APART && !(R.real && R.real.has((R.x + tx) + "," + (R.y + ty))) ? -APART : l);
   }
 }
 // A level's shape in the rect and a tile round it (a byte a px, 1 where it is): `own`, its own tiles, from its sheet's

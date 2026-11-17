@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .chunks import Chunk
-from .gen import CHUNK, LOW, col_cave, col_floor, col_surfaces, col_top, gen_chunk, gen_chunk_steps, gen_tile
+from .gen import CHUNK, HIGH, LOW, col_cave, col_floor, col_surfaces, col_top, gen_chunk, gen_chunk_steps, gen_tile
 from .tiles import BLOCKS, GROUNDS, B, G
 
 THREADS = sys.platform != "emscripten"   # the in-browser demo has no threads: it generates land inline
@@ -226,7 +226,7 @@ class World:
 
     def solid(self, x: int, y: int, z: int) -> bool:
         """Is the cell whose top is at height z solid? (Everything under the bottom is; nothing over the top.)"""
-        return z < LOW or (z - LOW < 32 and bool(self.col(x, y) >> (z - LOW) & 1))
+        return z < LOW or (z <= HIGH and bool(self.col(x, y) >> (z - LOW) & 1))
 
     def covered(self, x: int, y: int, z: int) -> bool:
         """Standing at height z here: is there anything solid over you (a cave)?"""
@@ -234,7 +234,7 @@ class World:
 
     def set_cell(self, x: int, y: int, z: int, solid: bool):
         """Fill or empty one cell (never the bottom one)."""
-        if LOW < z < LOW + 32:
+        if LOW < z <= HIGH:
             c = self.chunk(x >> 5, y >> 5)
             i = (y & 31) * CHUNK + (x & 31)
             c.cols[i] = c.cols[i] | 1 << (z - LOW) if solid else c.cols[i] & ~(1 << (z - LOW))

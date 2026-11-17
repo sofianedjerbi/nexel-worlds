@@ -43,11 +43,7 @@ const noVoid = (x, y) => (faceSkip ? faceSkip(x, y) : seenUnder(x, y) !== undefi
 function shownVoids(x, y, dx, dy) {
   const c = colAt(x, y), top = colTop(c), front = topAt(x + dx, y + dy), out = [];
   if (front >= top || noVoid(x, y)) return out;
-  for (let z = front + 1; z < top; z++) {
-    if (c >>> (z - LOW) & 1) continue;
-    const lo = z; while (z + 1 < top && !(c >>> (z + 1 - LOW) & 1)) z++;
-    out.push([lo, z]);
-  }
+  for (let i = 1; i < c.length; i += 2) { const lo = Math.max(c[i - 1] + 1, front + 1); if (lo <= c[i]) out.push([lo, c[i]]); }   // (its empty cells over the ground in front: a span each)
   return out;
 }
 const shownCell = (x, y, z, dx, dy) => !noVoid(x, y) && z > topAt(x + dx, y + dy) && z < topAt(x, y) && !landSolid(x, y, z);

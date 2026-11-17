@@ -1,14 +1,27 @@
-// The land is cells, solid or empty (gen.py): a tile's column is its 32 cells from the bottom (LOW) up, a bit each,
-// set where the cell is solid; cell z is the block whose top is at height z, so land h high is solid up to cell h
-// (0: sea level). Nothing else is kept about relief. A cave is empty cells with solid ones over them; a pit, a column
-// dug low. A block of tiles (tiles.js) keeps a char a tile for its lowest ground (SEA + height) and, for the tiles
-// where that isn't the whole story (a hollow under a hill), their column.
+// The land is cells, solid or empty (cells.py): a tile's column is its cells from the bottom (LOW) to the top (HIGH);
+// cell z is the block whose top is at height z, so land h high is solid up to cell h (0: sea level). Nothing else is
+// kept about relief. A cave is empty cells with solid ones over them; a pit, a column dug low. A column is kept as
+// the heights where it changes, from the bottom up: solid up to the first, empty up to the second, solid up to the
+// third... An odd count: a plain column is one height; a cave under a hill three (its floor, its ceiling, the hill's
+// top). (It was 32 cells, -16 to 15, a bit each in a number: "make the underground reach -512 and the sky max block
+// should be 512 too".) A block of tiles (tiles.js) keeps a char a tile for its lowest ground (SEA + height) and, for
+// the tiles where that isn't the whole story (a hollow under a hill), their column.
 
-const SEA = 64, LOW = -16;
+const SEA = 1024, LOW = -512, HIGH = 512, PLAIN = new Map();   // (SEA: a height's char here; who sends land says what it counted from, tiles.js: 64 before)
+const APART = 24;                             // layers: further than that from you, up or down, is not of where you are (state.js: away; all the land was within it, before)
 function tileIdx(x, y) { const b = blockOf(x, y); return b ? [b, (y - b.by * B) * B + (x - b.bx * B)] : null; }
-const colSolid = (lv) => (lv - LOW >= 31 ? 0xFFFFFFFF : ((1 << (lv - LOW + 1)) - 1) >>> 0);   // a plain column: solid up to lv
-const colTop = (c) => 31 - Math.clz32(c) + LOW;                                 // its highest solid cell
-const colFloor = (c) => 30 - Math.clz32(~c & (c + 1)) + LOW;                    // the top of the solid cells standing on the bottom
+const colSolid = (lv) => PLAIN.get(lv) || PLAIN.set(lv, [lv]).get(lv);            // a plain column: solid up to lv (one list a height, for every tile that is that)
+const colTop = (c) => c[c.length - 1];                                          // its highest solid cell
+const colFloor = (c) => c[0];                                                   // the top of the solid cells standing on the bottom
+const colSame = (a, b) => a === b || (a.length === b.length && a.every((v, i) => v === b[i]));
+function colHas(c, z) { for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; }   // is its cell z solid?
+// A column as it comes from the server -> as it is kept. (From a server from before: 32 cells from -16 up, a bit each.)
+function colIn(v) {
+  if (typeof v !== "number") return v.length === 1 ? colSolid(v[0]) : v;
+  const out = [];
+  for (let i = 0; i < 32; i++) if ((v >>> i & 1) !== (i < 31 ? v >>> (i + 1) & 1 : 0)) out.push(i - 16);
+  return out.length === 1 ? colSolid(out[0]) : out;
+}
 // (floorAt, colAt and roofAt are asked for a tile many hundred times a frame: straight from its block, no pair made)
 const floorAt = (x, y) => { const b = blockOf(x, y); return b ? b.lv[(y - b.by * B) * B + (x - b.bx * B)].charCodeAt(0) - SEA : 0; };   // the lowest ground
 function colAt(x, y) {
@@ -18,16 +31,16 @@ function colAt(x, y) {
 }
 const topAt = (x, y) => colTop(colAt(x, y));                                    // the land as seen from above
 const roofAt = (x, y) => { const b = blockOf(x, y), i = b ? (y - b.by * B) * B + (x - b.bx * B) : 0; return b && b.col && b.col[i] !== undefined ? colTop(b.col[i]) - (b.lv[i].charCodeAt(0) - SEA) : 0; };   // over the lowest ground: how far up the land goes (0: open sky)
-// What you walk on is the land and what is built over it (floors.js): a column with both. (colAt is the land alone:
-// what is painted as land, and what a cave is under.)
-const fullAt = (x, y) => (colAt(x, y) | Floors.mask(x, y)) >>> 0;
-const solidAt = (x, y, z) => z < LOW || (z - LOW < 32 && (fullAt(x, y) >>> (z - LOW) & 1) === 1);
-const landSolid = (x, y, z) => z < LOW || (z - LOW < 32 && (colAt(x, y) >>> (z - LOW) & 1) === 1);    // ...the land alone
-const coveredAt = (x, y, z) => z - LOW < 31 && colAt(x, y) >>> (z - LOW + 1) !== 0;   // standing at z: land over you (a cave)
-function ceilAt(x, y, z) { let c = z; while (c - LOW < 31 && !landSolid(x, y, c + 1)) c++; return c; }   // ...and how high the room you stand in goes: the top of its last empty cell
+// What you walk on is the land and what is built over it (floors.js: a block built is one more solid cell of its
+// tile). (colAt is the land alone: what is painted as land, and what a cave is under.)
+const landSolid = (x, y, z) => z < LOW || colHas(colAt(x, y), z);               // ...the land alone
+const solidAt = (x, y, z) => landSolid(x, y, z) || Floors.built(x, y, z);
+const coveredAt = (x, y, z) => z < topAt(x, y);                                 // standing at z: land over you (a cave)
+function ceilAt(x, y, z) { const c = colAt(x, y); for (let i = 1; i < c.length; i += 2) if (c[i] >= z) return c[i]; return HIGH; }   // ...and how high the room you stand in goes: the top of its last empty cell
 function surfacesAt(x, y) {                 // every height you can stand at, lowest first
-  const c = fullAt(x, y), tops = (c & ~(c >>> 1)) >>> 0, out = [];
-  for (let i = 0; i < 32; i++) if (tops >>> i & 1) out.push(i + LOW);
+  const c = colAt(x, y), over = Floors.cells(x, y), out = [];
+  for (let i = 0; i < c.length; i += 2) if (!over || !over.has(c[i] + 1)) out.push(c[i]);
+  if (over) { for (const z of over.keys()) if (!over.has(z + 1) && !colHas(c, z + 1)) out.push(z); out.sort((p, q) => p - q); }
   return out;
 }
 // as Movement.height: the ground at or under z here (the lowest ground, if none is)

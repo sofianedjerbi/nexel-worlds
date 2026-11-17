@@ -28,7 +28,7 @@ const Build = (() => {
   const REACH = 10, FIRST_MS = 230, STEP_MS = 75, BAD_MS = 2600;   // how far from you the cursor goes; a held arrow: its wait, then its pace; how long a failed plan shows
   const SWAP = {door: "W%", gate: "#"};                      // a piece that goes in the place of another: a door in a wall, a gate in a fence
   const S = {on: false, at: null, plane: null, deep: null, plans: new Map(), hold: null, working: false, dir: null, timer: 0, pan: {x: 0, y: 0}};
-  const now = () => performance.now(), UPMOST = 9, DEEPEST = 12, LOWEST = -11;   // (how far over your own height the cursor goes: three floors; under it, layers; the deepest a hole is dug: sim/underground.py)
+  const now = () => performance.now(), UPMOST = 9, DEEPEST = 12, LOWEST = LOW;   // (how far over your own height the cursor goes: three floors; under it, layers; the deepest ground there is: the top of the bottom cell, sim/underground.py)
   // The cursor's height: the plane it was lifted to, or the ground at its tile nearest your own height
   const ride = (p) => { const s = myPos(); return settleNear(p.x, p.y, s ? myZ(s.x, s.y) : topAt(p.x, p.y)); };
   const under = (p, t) => (solidAt(p.x, p.y, t) ? t : settleAt(p.x, p.y, t));      // (sunk to t: in the ground there, or on what is under it)
@@ -82,9 +82,9 @@ const Build = (() => {
     if (on && L === groundAt(p.x, p.y)) {               // on the land: whatever stands there; what is laid in it; else the ground itself
       if (!GROUND.has(t[0])) { const c = "Zz".includes(t[0]) ? (structAt(p.x, p.y) || {c: t[0]}).c : t[0]; return {z: L, what: label(CH[c]), verb: Object.values(PLACEABLE_BLOCK).includes(c) ? "" : (HARVEST[c] || "").replace(/ \(.*$/, "")}; }   // (what grows: its own verb)
       if ("_n:".includes(t[1])) return {z: L, what: label(CH[t[1]])};
-      if (!wet(t[1]) && L > -12) return {z: L, what: "ground", dig: true};
+      if (!wet(t[1]) && L > LOW) return {z: L, what: "ground", dig: true};
     }
-    if (on && landSolid(p.x, p.y, L) && L > -12) return {z: L, what: "ground", dig: true};      // (a tunnel's floor)
+    if (on && landSolid(p.x, p.y, L) && L > LOW) return {z: L, what: "ground", dig: true};      // (a tunnel's floor)
     for (let z = L + 1; S.plane === null && z <= L + 3 * Floors.STOREY; z++) if (built(z)) return built(z);
     return null;
   }

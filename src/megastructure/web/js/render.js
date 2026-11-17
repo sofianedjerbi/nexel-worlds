@@ -36,9 +36,19 @@ function frame(now) {
       const pan = Build.pan(dt);                      // (build mode: half way to the cursor)
       const cl = Climb.climbOf(p);                    // (on a ladder: where the body is drawn, climbing.js)
       cam.x = camT.x = p.x + pan.x + (cl ? cl.dx : 0); cam.y = camT.y = p.y + pan.y + (cl ? cl.dy : 0) - (liftOf(p) / zoom + (cl ? cl.lift : 0) + (fall ? fall.body : 0) + fallShake(now)) / P;
+      // (the land drawn where you are drawn, found: a tile within APART layers' rows of you, in your column or two each
+      // side, whose top is there, or the wall between two; none: you are away from it, state.js. Under it if the land
+      // round your tile is over you, else over it; high: far over the land beside you, a tower's top, a pillar's)
+      const z = liftOf(p) / zoom / RELIEF_STEP, tx = Math.round(p.x), ty = Math.round(p.y), r = ty - z / 2;
+      let found = null, high = topAt(tx, ty), low = 1e9;
+      for (const dx of [0, -1, 1, -2, 2]) for (let y2 = ty - APART / 2, last = null; y2 <= ty + APART / 2 && found === null; y2++) { const top = topAt(tx + dx, y2), r2 = y2 - top / 2; if (Math.abs(r2 - r) <= 1 || (last !== null && last < r && r < r2)) found = top; last = r2; }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const top = topAt(tx + dx, ty + dy); high = Math.max(high, top); low = Math.min(low, top); }
+      away.on = found === null; away.y = p.y + pan.y; away.shift = found !== null && Math.abs(found) > APART / 2 ? found / 2 : 0; away.sky = high - z <= APART; away.high = z - low > APART; away.z = z; away.t = now;
     }
-    else if (meObs) { cam.x = camT.x = meObs.self.x; cam.y = camT.y = meObs.self.y; }
+    else if (meObs) { cam.x = camT.x = meObs.self.x; cam.y = camT.y = meObs.self.y; away.on = away.high = false; away.y = cam.y; away.shift = 0; }
+    away.a = Math.abs(cam.y - away.y) > 40 || Math.abs(+away.on - away.a) < .02 ? +away.on : away.a + (+away.on - away.a) * (1 - Math.exp(-dt / .12));   // (a jump a long way: at once)
   } else {
+    away.on = away.high = false; away.a = 0; away.shift = 0; away.y = cam.y;
     if (follow) {
       const a = [...ents.values()].find((p) => p.e && p.e.kind === "agent" && p.e.name === follow);
       const b = a || agents.find((q) => q.name === follow);
@@ -73,14 +83,18 @@ function frame(now) {
   const sx = (x) => ox + x * S, sy = (y, x) => oy + y * S - (x === undefined ? 0 : liftOf({x, y}));
   // underneath: plain dark (what hasn't come yet is not the sea). The sea is painted on it where there is sea
   // (water.js: its bottom is under every water tile and every shore), the land over that
-  ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H);
-  drawWater(vis.filter((b) => b.relief), ox, oy, t);    // the sea: its bottom, its depth, its light (water.js); the land goes over it
-  for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
-  drawCaves(vis, sx, sy);                            // (the caves' mouths, on their hills)
+  // (away from the land, state.js: under it the screen is that dark, earth; over it, the sky. Going: the land fades to it)
+  const SKY = "#a8d8ea"; ctx.fillStyle = away.high ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H);
+  if (away.a < 1) {                                  // (away: no land is drawn: what is on the screen there is rows from where you are)
+    drawWater(vis.filter((b) => b.relief), ox, oy, t);    // the sea: its bottom, its depth, its light (water.js); the land goes over it
+    for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
+    drawCaves(vis, sx, sy);                            // (the caves' mouths, on their hills)
+  }
+  if (away.a > 0 && away.a < 1) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
   xrayLook(dt); drawXray(sx, sy);                    // (hidden, behind a mountain, down a hole or under a roof: seen through it, xray.js)
   Keyhole.draw(sx, sy);                              // (the build cursor's own tile, where the ground hides it: keyhole.js)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
-  const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor(cam.y / B)));
+  const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor((away.a >= 1 ? away.y : cam.y + away.shift) / B)));
   const allShown = vis.every((b) => !onScreen(b) || b.relief);
   arrivingNow = (arrivingNow || !hereBlock || !hereBlock.relief) && !allShown;   // (from arriving until all of it is ready)
   const worldReady = !arrivingNow;
@@ -91,7 +105,7 @@ function frame(now) {
   // (forEach, and what is out of view left first: a pair was made a frame for every thing of every block in view)
   for (const b of vis) if (b.relief && worldReady) b.objs.forEach((c, i) => {   // (things show with their ground, not before)
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
-    if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3 || hiddenAt(x, y)) return;   // (hidden: in a cave, seen from outside: under its roof)
+    if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3 || hiddenAt(x, y) || (away.a > 0 && Math.abs(standAt(x, y) - away.z) > APART)) return;   // (hidden: in a cave, seen from outside: under its roof; away: on the land you left)
     if (c === "l") { list.push({y, x, fx: () => Climb.drawLadder(x, y, standAt(x, y), sx, sy, S)}); return; }   // (a ladder: up to what it leans on, climbing.js)
     if (Structures.WALLS.includes(c)) { list.push({y, x, wall: true, fx: () => Structures.drawWall(c, x, y, sx, sy, S, now)}); return; }   // (a wall, a door: structures.js)
     const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
@@ -100,7 +114,8 @@ function frame(now) {
   occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
   const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && b.relief); };
   // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
-  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p)) { const cl = Climb.climbOf(p); list.push({y: cl ? cl.y : p.y + .01 + Floors.rise(p) * Floors.K, p}); }   // (on a ladder: in front of it)
+  const apart = (p) => me && away.z !== undefined && Math.abs(liftOf(p) / zoom / RELIEF_STEP - away.z) > APART;   // (further than APART layers over you or under you: not of where you are)
+  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p) && !apart(p)) { const cl = Climb.climbOf(p); list.push({y: cl ? cl.y : p.y + .01 + Floors.rise(p) * Floors.K, p}); }   // (on a ladder: in front of it)
   for (const [ix, iy, pile] of groundItems) if (!hiddenAt(ix, iy)) list.push({y: iy - .01, x: ix, ty: iy, pile});   // (ty: its tile; y sorts)
   if (pileSince.size) { const here = new Set(groundItems.map(([ix, iy]) => ix + "," + iy)); for (const k of pileSince.keys()) if (!here.has(k) || lootAt(...k.split(",").map(Number))) pileSince.delete(k); }
   drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)

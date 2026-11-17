@@ -32,12 +32,11 @@ function setTile(x, y, comb, gnd, who = null, col = null) {    // (col: its colu
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
   if (!b) return;
   const i = (y - by * B) * B + (x - bx * B);
-  const relief = col !== null && col >>> 0 !== colAt(x, y);
+  const relief = col !== null && !colSame(col, colAt(x, y));
   if (b.comb[i] === comb && b.gnd[i] === gnd && !relief) return;
   if (relief) {                              // the land changed: edges around redraw
-    const c = col >>> 0, f = colFloor(c);
-    b.lv[i] = String.fromCharCode(SEA + f);
-    if (c !== colSolid(f)) (b.col || (b.col = {}))[i] = c; else if (b.col) delete b.col[i];
+    b.lv[i] = String.fromCharCode(SEA + colFloor(col));
+    if (col.length > 1) (b.col || (b.col = {}))[i] = col; else if (b.col) delete b.col[i];
     for (let d = -2; d <= 2; d++) touch(x + d, y);
   }
   const old = b.comb[i], now = performance.now();
@@ -59,13 +58,15 @@ function onRegion(d) {
   if (d.w !== B || d.h !== B || d.x % B || d.y % B) return;
   const bx = d.x / B, by = d.y / B, k = bkey(bx, by);
   const comb = [], gnd = [], lv = [], col = d.cols || null;     // (col: the hollow tiles' columns, by index)
-  for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) { comb.push(d.rows[j][i]); gnd.push(d.ground[j][i]); lv.push(d.levels ? d.levels[j][i] : "@"); }
+  for (const i in col) col[i] = colIn(col[i]);
+  const from = d.sea || 64;                                    // (what its heights' chars are counted from: a server from before, and the first screen's island, 64)
+  for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) { comb.push(d.rows[j][i]); gnd.push(d.ground[j][i]); lv.push(String.fromCharCode(d.levels ? d.levels[j].charCodeAt(i) - from + SEA : SEA)); }
   requested.delete(k);
   const old = blocks.get(k);
   if (old && old.drawn) {             // resync: only redraw what actually changed
     for (let i = 0; i < B * B; i++) {
       const c = col && col[i] !== undefined ? col[i] : colSolid(lv[i].charCodeAt(0) - SEA);
-      if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && c === colAt(bx * B + i % B, by * B + (i / B | 0))) continue;
+      if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && colSame(c, colAt(bx * B + i % B, by * B + (i / B | 0)))) continue;
       setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, c);
     }
     Floors.load(old, d);
@@ -217,6 +218,7 @@ function groundMarks(g, x, y, gr, ox, oy, high = false) {
 // grass floor and grass lips: it looked like a raised table. name: the soil (a floor), hill1 (walls); d: layers down
 const dugSheets = {}, EARTH = [[0xc8, 0x98, 0x6e], [0xb0, 0x7e, 0x5a], [0x8b, 0x5a, 0x40]];
 function dugSheet(name, d) {
+  d = Math.min(d, 8);                                 // (as dark as it gets, eight layers down: one sheet for all that is deeper, down to the bottom)
   if (dugSheets[name + d]) return dugSheets[name + d];
   const img = IMG[name], c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
   const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -250,6 +252,7 @@ function dugFoot(px, o, W, x, y, lv) {
 const hillSheets = {};
 function hillSheet(k) {
   if (k <= 0) return dugSheet("hill1", -k);
+  k = Math.min(k, 12);                                // (the mountains' top: one sheet for all that is built higher)
   if (hillSheets[k]) return hillSheets[k];
   const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 0 ? 1 : k <= 4 ? 1 + .04 * ((k - 1) % 2) : .92 + .024 * (k - 5);
   if (f === 1) return hillSheets[k] = img;

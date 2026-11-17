@@ -5,42 +5,12 @@ regenerated identically.
 """
 
 import math
-from array import array
 from functools import lru_cache
 
 from . import cavegen
 from .tiles import B, G
 
-# The world is cells, solid or empty. A tile's column is its 32 cells from the bottom (LOW) up, a bit each, set
-# where the cell is solid; cell z is the block whose top is at height z, so land h high is solid up to cell h (0: sea
-# level). Nothing else is kept about relief: a cave is empty cells with solid ones over them, a pit a column dug low.
-LOW, HIGH = -16, 15
-
-
-def col_solid(level: int) -> int:
-    """A plain column: solid up to `level`."""
-    return (1 << (max(LOW, min(HIGH, level)) - LOW + 1)) - 1
-
-
-def col_cave(floor: int, head: int, top: int) -> int:
-    """Land `top` high with `head` cells empty over a floor at `floor`."""
-    return col_solid(top) & ~(col_solid(min(floor + head, top - 1)) ^ col_solid(floor)) if top > floor + 1 and head > 0 else col_solid(floor)
-
-
-def col_top(col: int) -> int:
-    """The highest solid cell: the land as seen from above."""
-    return col.bit_length() - 1 + LOW
-
-
-def col_floor(col: int) -> int:
-    """The lowest ground: the top of the solid cells standing on the bottom."""
-    return (~col & (col + 1)).bit_length() - 2 + LOW
-
-
-def col_surfaces(col: int) -> list[int]:
-    """Every height you can stand at in this column: a solid cell with an empty one over it. Lowest first."""
-    tops = col & ~(col >> 1)
-    return [z + LOW for z in range(tops.bit_length()) if tops >> z & 1]
+from .cells import HIGH, LOW, SEA, col_cave, col_floor, col_runs, col_solid, col_surfaces, col_top, runs_col  # noqa: F401 (the land's cells: asked for here too)
 
 CHUNK = 32
 
@@ -253,7 +223,7 @@ def gen_chunk_steps(seed: int, cx: int, cy: int):
     land on (the in-browser demo: World.work does a little between ticks)."""
     ground = bytearray(CHUNK * CHUNK)
     block = bytearray(CHUNK * CHUNK)
-    cols = array("I", bytes(4 * CHUNK * CHUNK))        # (a column of cells a tile, 32 bits: col_solid...)
+    cols = [0] * (CHUNK * CHUNK)                       # (a column of cells a tile: col_solid...)
     bx, by = cx * CHUNK, cy * CHUNK
     memo = {}
 

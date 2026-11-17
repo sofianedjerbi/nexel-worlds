@@ -14,7 +14,7 @@ import sqlite3
 
 from .. import tiles as T
 from ..floors import KINDS, Floors
-from ..gen import HIGH, LOW, col_floor, col_solid, col_top
+from ..gen import HIGH, LOW, col_floor, col_runs, col_solid, col_top
 from ..tiles import BLOCKS, DIRS, GROUNDS, PLACEABLE, B
 from .entities import ActionError
 
@@ -61,6 +61,10 @@ class Storeys:
         """The tile's column without what was built in it: the land alone (what a screen paints as land)."""
         return self.world.col(x, y) & ~self.floors.mask(x, y)
 
+    def land_runs(self, x, y) -> list[int]:
+        """...as it is sent: the heights where it changes (cells.col_runs)."""
+        return col_runs(self.land_col(x, y))
+
     def land_roof(self, x, y) -> int:
         """How far up the land goes over the tile's lowest ground (a cave: 0 under the sky, or under a built floor)."""
         c = self.land_col(x, y)
@@ -89,7 +93,7 @@ class Storeys:
     def block_fits(self, x, y, z) -> str | None:
         """Why no block can go in the cell (x, y, z); None when one can."""
         w = self.world
-        if not LOW < z <= HIGH - 2:
+        if not LOW < z <= HIGH:
             return "nothing is built that high"
         if w.solid(x, y, z):
             return "there is a block there already"
@@ -200,7 +204,7 @@ class Storeys:
         """A block of earth on the land: the ground there comes up a layer, as digging takes it down one."""
         for again in (False, True):
             top = self.world.top(x, y)
-            if self.world.col(x, y) != col_solid(top) or top >= HIGH - STOREY:
+            if self.world.col(x, y) != col_solid(top) or top >= HIGH:
                 raise ActionError("bad_target", "earth goes on open ground")
             if self.world.block(x, y) not in ("none", "flower"):
                 raise ActionError("occupied", f"there is a {self.world.block(x, y).replace('_', ' ')} there")

@@ -67,7 +67,8 @@ const XRAY_FADED = .65;                                    // (faded: how much o
 function xrayAt(x, y) {
   if (xray.a <= .01) return 0;
   const v = opt("above"), P = xray.pic;
-  if (v !== "circle") return P && x >= P.rx && x < P.rx + P.rw && y >= P.ry - 1 && y < P.ry + P.rh ? xray.a * (v === "faded" ? XRAY_FADED : 1) : 0;
+  // (in the picture: its rows of tiles, or its own px: far under the land a floor is drawn rows under the last of those, and who stood on it was not seen)
+  if (v !== "circle") return P && x >= P.rx && x < P.rx + P.rw && ((y >= P.ry - 1 && y < P.ry + P.rh) || (y * 16 >= P.y - 16 && y * 16 < P.y + P.h)) ? xray.a * (v === "faded" ? XRAY_FADED : 1) : 0;
   const d = Math.hypot(x - xray.x, y - xray.y) / XRAY.r;
   return xray.a * smooth(Math.max(0, Math.min(1, (1 - d) / (1 - XRAY.core))));
 }
@@ -180,11 +181,14 @@ function* xrayPicture(tx, key, near) {
   // the top of the land (a cave twenty tiles wide showed nine of them, round you)
   const D = Math.ceil(XRAY.r * 32) + 2, dug = [...floors].filter(([k, f]) => f < 0 || floor.has(k)).map(([k, f]) => [...k.split(",").map(Number), f]);   // (dug, or under a roof)
   const xa = Math.min(tx - (XRAY.box >> 1), ...dug.map((d) => d[0] - 1)), w = Math.max(tx + (XRAY.box >> 1), ...dug.map((d) => d[0] + 1)) - xa + 1, W = w * 16;
-  const ya = xray.row * 16 - shOf(xray.L) - (D >> 1) - 6, y = Math.min(ya, ...dug.map((d) => d[1] * 16 - shOf(Math.max(2, topAt(d[0], d[1]), topAt(d[0], d[1] - 1))) - 8)), h = Math.max(ya + D + 22, ...dug.map((d) => d[1] * 16 - shOf(d[2]) + 26)) - y;
+  // (cap: nothing of the picture is higher than APART layers over the highest ground of the place: far under the land
+  // its walls are not painted up to the land's top, hundreds of layers of them that nothing shows)
+  const cap = Math.max(...floors.values()) + APART;
+  const ya = xray.row * 16 - shOf(xray.L) - (D >> 1) - 6, y = Math.min(ya, ...dug.map((d) => d[1] * 16 - shOf(Math.min(cap, Math.max(2, topAt(d[0], d[1]), topAt(d[0], d[1] - 1)))) - 8)), h = Math.max(ya + D + 22, ...dug.map((d) => d[1] * 16 - shOf(d[2]) + 26)) - y;
   let lo = Math.min(99, ...floor.values()), hi = -99, edged = [];
-  for (let ty = xray.row - 14; ty <= xray.row + 14; ty++) for (let x = xa - 1; x <= xa + w; x++) { const l = levelAt(x, ty); lo = Math.min(lo, l); hi = Math.max(hi, l); }
+  for (let ty = xray.row - 14; ty <= xray.row + 14; ty++) for (let x = xa - 1; x <= xa + w; x++) { const l = Math.min(cap, Math.max(-APART, levelAt(x, ty))); lo = Math.min(lo, l); hi = Math.max(hi, l); }
   const y0 = Math.max(xray.row - 14, (y + shOf(lo) >> 4) - 1), y1 = Math.min(xray.row + 14, y + h + shOf(hi) >> 4);   // every row of tiles that can be drawn in it
-  const R = {x: xa, y: y0, w, h: y1 - y0 + 1}, gh = R.h * 16, ground = new Uint32Array(W * gh);   // (its ground: the blocks' own px, tiles.js)
+  const R = {x: xa, y: y0, w, h: y1 - y0 + 1, real: floors, cap}, gh = R.h * 16, ground = new Uint32Array(W * gh);   // (its ground: the blocks' own px, tiles.js)
   for (const b of near) {
     const bx = (b.bx * B - R.x) * 16, by = (b.by * B - R.y) * 16, x0 = Math.max(0, bx), x1 = Math.min(W, bx + BW);
     if (x1 > x0) for (let yy = Math.max(0, by); yy < Math.min(gh, by + BW); yy++) ground.set(b.px.subarray((yy - by) * BW + x0 - bx, (yy - by) * BW + x1 - bx), yy * W + x0);
@@ -221,7 +225,7 @@ function* xrayPicture(tx, key, near) {
     peek = flat; drawTile(R.x + i, R.y + j, {px: ground, o: j * 16 * W + i * 16, w: W}); edged.push(q);
   }
   peek = null;
-  const see = {keep: new Uint8Array((w + 4) * (R.h + 4)), c0: y - R.y * 16, c1: y - R.y * 16 + h, state: new Uint8Array(W * h), lev: new Int8Array(W * h), band: new Uint8Array(W * h), cover: new Uint8Array(W * h), wet: new Uint8Array(W * h)};
+  const see = {keep: new Uint8Array((w + 4) * (R.h + 4)), c0: y - R.y * 16, c1: y - R.y * 16 + h, state: new Uint8Array(W * h), lev: new Int16Array(W * h), band: new Uint8Array(W * h), cover: new Uint8Array(W * h), wet: new Uint8Array(W * h)};
   const rocks = new Uint8Array(w * R.h);
   for (let j = -2; j < R.h + 2; j++) for (let i = -2; i < w + 2; i++) {
     const is = rock(R.x + i, R.y + j);

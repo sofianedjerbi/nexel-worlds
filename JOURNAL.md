@@ -2479,3 +2479,44 @@ The user, a screenshot of a tunnel under a mountain: "im breaking only 1 bloc wh
   240 browser tests (two of sound and chat timing, which pass alone).
 - Found on the way, not fixed: in build mode by mouse, pointing at a tunnel seen through picks the tile of the land
   drawn there (fourteen rows south, on the mountain), not the tunnel under the pointer.
+
+## Iteration 158: the land from -512 to 512
+
+The user: "please make the underground reach up -512 and the sky max block should be 512 too".
+
+- It was 32 cells a tile, -16 to 15, a bit each in a 32-bit number, on the server, in the save, on the wire and in
+  the page (whose bit tricks stop at 32). Digging stopped at -12, building at 13.
+- The server (cells.py, taken out of gen.py): a column is still one number, a bit a cell, as long as it needs
+  (Python's): LOW -512, HIGH 512. Digging goes down to the top of the bottom cell (-512: that cell stays), blocks
+  up to 512. A chunk is saved as each tile's heights where its column changes (chunks.py, format 5: [floor,
+  ceiling, top...]); one saved before (format 4) is read as the land it was. The first time a world from before is
+  opened its file is copied aside (world.before-tall.sqlite: a game from before cannot read what this one saves).
+  Tried on a copy of the live world: the copy is made, doben4's tunnel reads [-11, -9, 6] as its events said, 335
+  built blocks and 9 characters there, open again fine.
+- The wire: a column is those heights (a region's `cols`, a tile's `col`); a height's char counts from 1024, said
+  in the region (`sea`). The page (cells.js) keeps a column as that list; it reads what a server from before sends
+  (64, 32 bits) and the first screen's island the same way: the page that is on disk works with the server that is
+  running until it is restarted (68 of 69 browser tests with the new page on the old server; the other passes alone).
+- Speed, old and new: a chunk of land 7.2 and 7.0 ms, a tick 0.104 and 0.103 ms, a chunk packed 0.02 and 0.22 ms.
+- Then, in it: a corridor set at -40, -120, -500 (dev_col, new: a column at any depth). What the screen showed:
+  at -40 the corridor in the middle of a forest twenty tiles south of it (you are drawn half a tile south a layer
+  down: the land drawn there is whatever is there); at -500 the page had let go of the tiles you stood on, and you
+  were not on the screen. Two arrays of levels were 8 bits (127 at most).
+- Now (state.js away, render.js): what is loaded, watched and drawn is round where you are, not only round where you
+  are drawn. Where no land is drawn at your own level within two dozen layers' rows of you (looked for in your
+  column and two each side), the land is not drawn at all: the screen is earth under it, sky over it, and the place
+  you are in is seen as anywhere under a roof. The land fades to that in a moment. Within those two dozen layers
+  (all there was before) nothing changes.
+- The picture of the place (xray.js): no higher than two dozen layers over its highest floor (its walls were
+  painted up to the land's top: 144 x 1051 px at -120, now 144 x 267 at any depth); the land's own picture no
+  deeper than 24 under the sea (a shaft dug further is that deep from above; its bottom is seen from in it). Who
+  stands on a deep floor is seen (the test was on rows of tiles, and the floor is drawn rows under the last).
+- Measured as before, at -24, -26, -120, -500, +30, +200: 60 frames a second, 0.2 to 0.7 ms of script a frame.
+- Tests: five of the simulation (a column and its heights; a chunk from before; the world copied aside once and the
+  same land; dug to the bottom and built to the top; what is sent), three in the browser (land from a server from
+  before; far under the land, at -20, -60 and -500; the sky over a pillar). 470 unit, 241 of 243 browser (a join
+  that timed out and an egg, both pass alone).
+- Not done, known: a tile has one ground for its whole column, so a tunnel under a pond has no floor drawn (water),
+  and what stands on a tile (a tree) is drawn in the tunnel under it: both as before, at any depth. High over the
+  land on what you built, the ground far below is not drawn. The land is made as it was: no higher mountains, no
+  deeper caves. Nothing here was tried by hand on a real climb down: only set, then looked at.

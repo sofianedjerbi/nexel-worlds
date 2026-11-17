@@ -32,8 +32,8 @@ const Floors = (() => {
     for (const i of d.roofs || []) put(b, i, b.lv[i].charCodeAt(0) - SEA + STOREY, "roof", "");
     ver++;
   }
-  // The built cells of the tile's column, a bit each (cells.js: what you walk on is the land and these)
-  function mask(x, y) { const c = FLOORS && colOf(x, y); let m = 0; if (c) for (const z of c.keys()) m |= 1 << (z - LOW); return m >>> 0; }
+  // The built cells of the tile's column (cells.js: what you walk on is the land and these): all of them, by height; is there one at z?
+  const cells = (x, y) => (FLOORS && colOf(x, y)) || null, built = (x, y, z) => { const c = FLOORS && colOf(x, y); return !!c && c.has(z); };
   // What stands at height z of the tile: on a built block, what was put on it; on the land, the tile's own
   const thingAt = (x, y, z) => { const c = get(x, y, z); return c ? c[1] : z === groundAt(x, y) ? combAt(x, y) || "" : ""; };
   // As the server's block_fits: why no block can go in the cell (x, y, z), in a few words; nothing when one can
@@ -214,5 +214,5 @@ const Floors = (() => {
     if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", near: 1, z, run: (d) => act("dig", {dir: d, z})};
     return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y, z})};
   }
-  return {STOREY, K, UP, any: (x, y) => !!colOf(x, y), get, set, load, mask, thingAt, fits, standOf, rise, alpha, cell, thing, draw, intent, get ver() { return ver; }, get veils() { return veils; }, get seen() { return seen; }};
+  return {STOREY, K, UP, any: (x, y) => !!colOf(x, y), get, set, load, cells, built, thingAt, fits, standOf, rise, alpha, cell, thing, draw, intent, get ver() { return ver; }, get veils() { return veils; }, get seen() { return seen; }};
 })();

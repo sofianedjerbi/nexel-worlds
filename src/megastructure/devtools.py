@@ -69,8 +69,16 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
         agent.sat = float(msg.get("sat", 0 if "hunger" in msg else agent.sat))    # (no reserve unless asked for: what is set is what shows)
         agent.hp = max(0.5, min(20, float(msg.get("hp", agent.hp))))               # (half hearts: 20 is ten hearts)
         return {"hunger": agent.hunger, "hp": agent.hp}
+    if op == "dev_col":                          # land laid out a column at a time, at any depth: `tiles` [[x, y]...], each `col`: the heights where it changes (cells.col_runs)
+        from .cells import runs_col
+        col = runs_col([int(v) for v in msg["col"]])
+        for x, y in [(int(p[0]), int(p[1])) for p in msg.get("tiles") or []]:
+            sim.raze(x, y)
+            sim.world.chunk(x >> 5, y >> 5).cols[(y & 31) * 32 + (x & 31)] = col
+            sim.set_tile(x, y, cause="dev")
+        return {}
     if op == "dev_give":
         for k, n in dict(msg.get("items") or {}).items():
             agent.add(str(k), int(n))
         return {"inventory": agent.inventory}
-    return {"ok": False, "error": "unknown_op", "detail": "dev ops: dev_time, dev_skip, dev_teleport, dev_damage, dev_stamp, dev_give, dev_creatures, dev_needs, dev_race, dev_luck"}
+    return {"ok": False, "error": "unknown_op", "detail": "dev ops: dev_time, dev_skip, dev_teleport, dev_damage, dev_stamp, dev_col, dev_give, dev_creatures, dev_needs, dev_race, dev_luck"}

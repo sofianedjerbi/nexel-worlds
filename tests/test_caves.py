@@ -79,7 +79,7 @@ def test_land_is_made_a_row_at_a_time_where_there_are_no_threads(tmp_path, monke
     w.tick += 10
     assert not w.prefetch(40, 40)                              # due, but not made yet: it waits, nothing stalls
     w.work(time.perf_counter() + 5)
-    assert w.prefetch(40, 40) and bytes(w.chunks[(40, 40)].cols) == bytes(gen_chunk(SEED, 40, 40)[2])
+    assert w.prefetch(40, 40) and w.chunks[(40, 40)].cols == gen_chunk(SEED, 40, 40)[2]
     assert not w.prefetch(41, 40) and w.chunk(41, 40) is w.chunks[(41, 40)]     # asked for at once: finished on the spot
     sim.close()
 

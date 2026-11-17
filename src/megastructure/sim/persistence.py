@@ -1,6 +1,9 @@
 """Saving the world: flushing agents, items, creatures and timers to SQLite; unloading idle chunks."""
 
 import json
+import sqlite3
+
+from ..cells import HIGH, LOW
 
 
 class Persistence:
@@ -29,6 +32,18 @@ class Persistence:
         self.world.flush()
         if self.event_log:
             self.event_log.flush()
+
+    def taller(self, store):
+        """Once, when a world saved with 32 cells a tile (-16 to 15) is first opened with these: the world file is
+        copied aside first (world.before-tall.sqlite). Its chunks are read as they were, in the taller column, and
+        saved that way as they change (chunks.py): a game from before could not read them again."""
+        if store.get_meta("cells") is None:
+            if store.db.execute("SELECT 1 FROM chunks LIMIT 1").fetchone():
+                store.commit()
+                copy = sqlite3.connect(store.path.with_name(store.path.stem + ".before-tall.sqlite"))
+                store.db.backup(copy)
+                copy.close()
+            store.set_meta("cells", HIGH - LOW + 1)
 
     def maintain(self):
         anchors = [(a.x, a.y) for a in self.agents.values() if a.online]

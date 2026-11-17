@@ -1,16 +1,20 @@
 """A chunk of the world: 32x32 tiles, each with its ground, what stands on it and its column of cells; packed for
 the save file and read back."""
 
+import struct
 import zlib
 from array import array
 
-from .gen import CHUNK, col_solid
+from .gen import CHUNK, LOW, col_runs, col_solid, runs_col
 
-FORMAT = 4                               # chunk format: the land as cells, solid or empty (gen.col_solid...)
+# chunk format: the land as cells, each tile's column as the heights where it changes (gen.col_runs): how many of
+# them a tile, then all of them. 4, before it: 32 cells a tile, a bit each, from -16 up: read as it was, in the taller
+# column (solid under it down to the bottom).
+FORMAT = 5
 
 
-def cells(n: int, fill: int) -> array:
-    return array("I", [fill]) * n
+def cells(n: int, fill: int) -> list:
+    return [fill] * n
 
 
 class Chunk:
@@ -24,15 +28,28 @@ class Chunk:
         self.touched = 0
 
     def pack(self) -> bytes:
-        return zlib.compress(bytes(self.ground) + bytes(self.block) + self.cols.tobytes() + bytes([FORMAT]), 6)
+        runs = [col_runs(c) for c in self.cols]
+        flat = [z for r in runs for z in r]
+        body = struct.pack(f"<{len(runs)}H", *map(len, runs)) + struct.pack(f"<{len(flat)}h", *flat)
+        return zlib.compress(bytes(self.ground) + bytes(self.block) + body + bytes([FORMAT]), 6)
 
     @classmethod
     def unpack(cls, cx, cy, data: bytes) -> "Chunk | None":
         """The chunk as it was packed; None for a save from before the land was cells (it is made anew)."""
         raw = zlib.decompress(data)
         n = CHUNK * CHUNK
-        if len(raw) != 6 * n + 1 or raw[-1] != FORMAT:
+        if raw[-1] == 4 and len(raw) == 6 * n + 1:
+            old = array("I")
+            old.frombytes(raw[2 * n:6 * n])
+            under = col_solid(-17)
+            cols = [c << (-16 - LOW) | under for c in old]
+        elif raw[-1] == FORMAT and len(raw) > 4 * n:
+            counts = struct.unpack_from(f"<{n}H", raw, 2 * n)
+            flat = struct.unpack_from(f"<{sum(counts)}h", raw, 4 * n)
+            cols, at = [], 0
+            for k in counts:
+                cols.append(runs_col(flat[at:at + k]))
+                at += k
+        else:
             return None
-        cols = array("I")
-        cols.frombytes(raw[2 * n:6 * n])
         return cls(cx, cy, bytearray(raw[:n]), bytearray(raw[n:2 * n]), cols)

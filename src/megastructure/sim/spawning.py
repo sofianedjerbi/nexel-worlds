@@ -211,6 +211,7 @@ class Spawning:
         From the second (hens bred without end, world.before-mob-limits.sqlite): where anyone will wake up, the ones
         over their limit go (nobody is there to see it), and of the animals left far from everyone, one in
         KEEP_ONE_IN stays. A kept one never goes."""
+        self.taller(store)                                   # (and the land's taller column, once: persistence.py)
         for cid in [c.id for c in self.creatures.values() if c.kind not in CREATURES]:
             del self.creatures[cid]                          # (a kind the game no longer has: the gloom)
         was = store.get_meta("spawn_rules", 1)

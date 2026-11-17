@@ -16,6 +16,7 @@ from pathlib import Path
 from websockets.asyncio.server import serve
 from websockets.exceptions import ConnectionClosed
 
+from .cells import HIGH, LOW
 from .devtools import dev_op
 from .gate import Gate
 from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
@@ -139,7 +140,7 @@ class GameServer(Views):
 
         pumper = asyncio.create_task(pump())
         try:
-            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL, "web": web_stamp(), "hp_max": HP_MAX, "food_max": FOOD_MAX, "sprint_food": SPRINT_FOOD, "swim_sprint": True, "floors": True, "swim_pace": SWIM_PACE, "eat_pace": EAT_PACE}))
+            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL, "cells": [LOW, HIGH], "web": web_stamp(), "hp_max": HP_MAX, "food_max": FOOD_MAX, "sprint_food": SPRINT_FOOD, "swim_sprint": True, "floors": True, "swim_pace": SWIM_PACE, "eat_pace": EAT_PACE}))
             async for raw in ws:
                 msg = json.loads(raw)
                 op = msg.get("op")

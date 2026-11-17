@@ -24,7 +24,7 @@ let edgesAt = -1, edgesPic = null, edgesOn = false;
 function frontEdge(tx, row, from, least, far, skip) {
   if (edgesAt !== landVer || EDGES[0].size > 6000) { edgesAt = landVer; EDGES[0].clear(); EDGES[1].clear(); }
   if (edgesPic !== xray.pic || edgesOn !== xray.a > .01) { edgesPic = xray.pic; edgesOn = xray.a > .01; EDGES[1].clear(); }   // (what xrayGone goes by)
-  const memo = far === 8 ? EDGES[skip ? 1 : 0] : null, key = ((tx + 524288) * 1048576 + row + 524288) * 4096 + (from + 32) * 64 + least + 32;
+  const memo = far === 8 ? EDGES[skip ? 1 : 0] : null, key = ((tx & 32767) * 32768 + (row & 32767)) * 4194304 + (from + 1024) * 2048 + least + 1024;   // (heights go 512 each way; tiles 32768 apart are never kept at once)
   const kept = memo && memo.get(key);
   if (kept) return kept;
   const edge = new Float64Array(16).fill(Infinity);

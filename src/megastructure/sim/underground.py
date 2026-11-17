@@ -7,10 +7,11 @@ the land that is open on a side (beside a hole, a tunnel's end): it goes and wha
 down is dug as a tunnel, the room to stand in a step at a time ("like minecraft ... l shape tunnels. this enforce me
 to dig huge columns"): build mode's X with the cursor in the ground."""
 
+from ..gen import LOW
 from ..tiles import BLOCKS, DEEPER, DEPTH, GROUNDS
 from .entities import ActionError, Agent
 
-DEEPEST = -12
+DEEPEST = LOW                            # the bottom cell stays: the lowest ground is at its top (it was -12)
 
 
 class Underground:
