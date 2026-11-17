@@ -24,6 +24,7 @@ const fullAt = (x, y) => (colAt(x, y) | Floors.mask(x, y)) >>> 0;
 const solidAt = (x, y, z) => z < LOW || (z - LOW < 32 && (fullAt(x, y) >>> (z - LOW) & 1) === 1);
 const landSolid = (x, y, z) => z < LOW || (z - LOW < 32 && (colAt(x, y) >>> (z - LOW) & 1) === 1);    // ...the land alone
 const coveredAt = (x, y, z) => z - LOW < 31 && colAt(x, y) >>> (z - LOW + 1) !== 0;   // standing at z: land over you (a cave)
+function ceilAt(x, y, z) { let c = z; while (c - LOW < 31 && !landSolid(x, y, c + 1)) c++; return c; }   // ...and how high the room you stand in goes: the top of its last empty cell
 function surfacesAt(x, y) {                 // every height you can stand at, lowest first
   const c = fullAt(x, y), tops = (c & ~(c >>> 1)) >>> 0, out = [];
   for (let i = 0; i < 32; i++) if (tops >>> i & 1) out.push(i + LOW);

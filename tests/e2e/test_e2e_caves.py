@@ -66,8 +66,8 @@ def test_in_a_cave_you_are_seen_through_the_hill_as_anywhere_you_are_hidden(game
     """A cave had a view of its own: opened for good while you were in it, its floor flat in the hill's top, shadowed
     along its edges. "everything should have the same view ! ... an unique 'player is hided, xray on' view": in a cave
     you are hidden by the hill over you, and seen through it as behind a hill or down a hole (xray.js): the room, its
-    wall behind it up to the top of the hill (its own back wall; over that the roof, cut through), the hill round it
-    whole. Its mouth is not drawn on a hill that is seen through."""
+    wall behind it as high as the room, the hill over it and round it whole. Its mouth is not drawn on a hill that is
+    seen through."""
     game.js("setOpt('above', 'cut')")
     game.clear_area(9)
     x, y = game.pos()
@@ -82,10 +82,10 @@ def test_in_a_cave_you_are_seen_through_the_hill_as_anywhere_you_are_hidden(game
     px = lambda *a: game.js(PIC, list(a))
     floor, back, roof = px(x, y - 5, 0, 8, 8), px(x, y - 6, 0, 8, -4), px(x, y - 6, 0, 8, -20)
     assert floor[0] and floor[2] > floor[1]                                           # its floor: the meadow's
-    assert back[0] and back[1] > back[2] and roof[0]                                  # its back wall, earth; over it the roof, cut through
+    assert back[0] and back[1] > back[2] and not roof[0]                              # its back wall, earth; over it the hill, not cut
     lit = lambda *a: game.js("""([x, y, lv, ax, ay]) => { frame(performance.now()); const P = xray.pic, f = (y * 16 - shOf(lv) + ay - P.y) * P.w + x * 16 + ax - P.x;
       return +(P.img.data[f * 4 + 3] / 255).toFixed(3); }""", list(a))
-    assert abs(lit(x, y - 6, 0, 8, -4) - lit(x, y - 6, 0, 8, -20)) < .06              # (the wall and the earth over it: one light, cavelight.js)
+    assert abs(lit(x, y - 6, 0, 8, -4) - lit(x, y - 6, 0, 8, 8)) < .06                # (the wall and its floor: one light, cavelight.js)
     assert not px(x - 2, y - 4, 4, 8, 8)[0]                                           # the hill beside it: as it is (it was drawn again with an edge toward the room: "it goes under the background tiles")
     ink = game.js("CUT.ink")                                # the cut's edge (xraycut.js): a line along the room's side,
     assert px(x - 1, y - 3, 0, 0, 8)[1:] == ink and px(x - 1, y - 5, 0, 0, 8)[1:] == ink and px(x, y - 2, 0, 8, 15)[1:] != ink   # none across its way out
@@ -93,7 +93,7 @@ def test_in_a_cave_you_are_seen_through_the_hill_as_anywhere_you_are_hidden(game
       return xrayEdges(P).getContext('2d').getImageData(X, Y, 1, 1).data[3] > 0; }""", list(a))
     # the outline (the usual view): along its side and the top of its wall; not across its way out, where its floor
     # goes on level with the meadow ("the line shouldn't show up at intersections with same level")
-    assert line(x - 1, y - 4, 0, 0, 8) and line(x, y - 6, 4, 8, 0) and not line(x, y - 2, 0, 8, 15) and not line(x, y - 2, 0, 8, 14)
+    assert line(x - 1, y - 4, 0, 0, 8) and line(x, y - 6, 2, 8, -2) and not line(x, y - 6, 4, 8, 0) and not line(x, y - 2, 0, 8, 15) and not line(x, y - 2, 0, 8, 14)
 
 
 def test_walking_into_a_hill_from_behind_it_you_stay_on_the_ground_and_in_sight(game):

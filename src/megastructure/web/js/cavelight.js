@@ -8,9 +8,9 @@
 //   straight line and three quarters of the tiles walked: round a corner, not through the earth between two tunnels
 //   ("if fire is here, player see it, so it should be visible": however far it is, it is lit).
 // - A tile's light is the most of these; what is missing of it is its dark, DARKEST at the most.
-// - The earth cut through over a hollow or between two tunnels is lit as the place beside it, wall and floor one
-//   light: it had the sky's light alone, so it was darker than the hollow and its floor from the second tile in, a
-//   stair of light and dark down a dug stair ("lightning show clear distinction with floor").
+// - The wall behind a room, and earth cut level between two parts of the place, are lit as the place beside them, wall
+//   and floor one light: the earth had the sky's light alone, so it was darker than the hollow and its floor from the
+//   second tile in, a stair of light and dark down a dug stair ("lightning show clear distinction with floor").
 // - Every px of the place takes its dark from its tile and the tiles beside it: no squares, and no edge where a roof
 //   starts.
 const SUN_REACH = 6, DARKEST = .7, GLOW = {me: [4.5, .85], other: [3.5, .75], fire: [6, 1]};   // (tiles of reach, strength)

@@ -1,8 +1,11 @@
 // What is under the build cursor where the ground hides it (build.js): its own tile, and nothing else, is seen
 // through, a keyhole. Down in a hole the grass in front of it is drawn over its floor; in the ground (Q), or under a
 // cave's roof, the earth is over it. There its column is drawn as if cut open in front: the wall behind, a band a
-// layer as relief.js paints walls, from the top of the hole (or of the land, in the ground) down to the floor the
-// cursor is at, dug earth as deep as it is (tiles.js: dugSheet); in the ground, faint: not dug yet. The cursor over
+// layer as relief.js paints walls, from the top of the hole down to the floor the cursor is at, dug earth as deep as
+// it is (tiles.js: dugSheet). In the ground: the room there and no more, its floor and its wall (what X would dig,
+// two layers, faint: not dug yet; under a roof, the room that is dug), the land over it left as it is (it was the
+// whole column from the top of the land: a strip seventeen layers high under a mountain). Nothing where the place
+// you are in is seen through already (xray.js). The cursor over
 // it, and beside the cursor how far down it is from you, in layers. (A floor drawn alone, three layers down, showed a
 // tile and a half south of its hole, on the grass.) The user's pick of five, 2026-11-16, "1 · Earth and a keyhole":
 // the x-ray circle that went round the cursor showed the grass round the hole too, and the cursor seemed on it.
@@ -24,10 +27,10 @@ const Keyhole = (() => {
     shown = false;
     if (!p) return;
     const L = Build.level(), land = levelAt(p.x, p.y), inGround = land > L, cover = xrayCover(p.x, p.y, p.y, L), dug = !landSolid(p.x, p.y, L + 1);
-    if (!inGround && cover <= 0) return;                // (it shows as it is)
+    if ((!inGround && cover <= 0) || seenUnder(p.x, p.y) === L) return;   // (it shows as it is; or it is of the place you are in, seen already: xray.js)
     shown = true;
-    const Z = inGround ? land : Math.max(L, levelAt(p.x, p.y - 1)), S = TS(), x = sx(p.x), yF = sy(p.y) - shOf(L) * zoom, y0 = sy(p.y) - shOf(Z) * zoom;
-    const top = Math.min(y0, yF + S - cover * zoom), d = Math.max(0, -L), [cx, cy] = blobCell(255);
+    const Z = inGround ? Math.min(land, dug ? ceilAt(p.x, p.y, L) : L + 2) : Math.max(L, levelAt(p.x, p.y - 1)), S = TS(), x = sx(p.x), yF = sy(p.y) - shOf(L) * zoom, y0 = sy(p.y) - shOf(Z) * zoom;
+    const top = inGround ? y0 : Math.min(y0, yF + S - cover * zoom), d = Math.max(0, -L), [cx, cy] = blobCell(255);
     ctx.globalAlpha = dug ? 1 : .7;                      // (faint: in the ground, not dug yet; a tunnel under its roof is dug)
     ctx.save(); ctx.beginPath(); ctx.rect(x, top, S, yF + S - top); ctx.clip();
     for (let y = y0 - S; y + S > top; y -= S) ctx.drawImage(dugSheet("soil", d), cx * 16, cy * 16, 16, 16, x, y, S, S);   // (over the wall: the floor north of it, as a pit's goes on)

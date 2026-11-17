@@ -25,7 +25,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_a_way_down_a_step_at_a_time(game)
         game.press("q", 120)
         assert game.js("Build.level()") == -depth and rows()["B"][0] == f"BUILD · -{depth} · leave"
     assert rows()["X"] == ["Plan the step before it first", "bad"]      # (three down, beside you: shut in)
-    game.wait("Keyhole.shown", 3000)                           # (in the ground: its column, faint, down to the cursor)
+    game.wait("Keyhole.shown", 3000)                           # (in the ground: the room X would dig there, faint: a floor, two layers of wall)
     game.press("x")
     assert game.js("Build.S.plans.size") == 0
     game.press("e", 120); game.press("e", 120)

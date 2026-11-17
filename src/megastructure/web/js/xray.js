@@ -199,12 +199,12 @@ function* xrayPicture(tx, key, near) {
     peek = null;
   }
   // (...but for the corner the land's edge turns in a tile that is at a corner of a part of the place open to the sky,
-  // where one of the two tiles between them is cut away: a floor under a roof, or ground in front that you are seen
-  // through. On the land the hole's rim turns there, to run on along that tile; it is gone, and the turn was left
+  // where one of the two tiles between them is cut away: ground in front that you are seen through. On the land the
+  // hole's rim turns there, to run on along that tile; it is gone, and the turn was left
   // beside the cut: a wedge of earth over its corner ("tile transition is broken there"), a rim's end curled in with
   // a tuft of grass under it, beside the line ("weird left border"). That tile is drawn without it: the rim ends
   // where the cut starts)
-  const flats = new Map(), gone = (x, ty) => floor.has(x + "," + ty) || rock(x, ty);
+  const flats = new Map(), gone = rock;                     // (cut away: ground in front that you are seen through. Not a tile over a room: it is there, with its own rim)
   for (const [key, lp] of floors) if (lp < 0 && !floor.has(key)) {
     const [px, py] = key.split(",").map(Number);
     for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
@@ -248,10 +248,11 @@ function* xrayPicture(tx, key, near) {
   // (two masks, a canvas each, made once: one written again after it was drawn from is what a phone's GPU got wrong)
   const seen = new Uint8Array(W * h), m = new Uint32Array(W * h), wm = new Uint32Array(W * h);
   let any = 0;
-  for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) { seen[f] = 1; any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
+  for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) seen[f] = 1;
+  const {px: earth, cut, line, deep, cols} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint});   // (the earth cut through and the cut's edge; of seen, the land over a room is taken back: xraycut.js)
+  for (let f = 0; f < seen.length; f++) if (seen[f]) { any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
   const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(m, W, h), 0, 0);
-  const {px: earth, cut, more, line, deep, cols} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint});   // (the earth cut through, and the cut's edge: xraycut.js)
-  any += more; og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(earth, W, h), 0, 0);
+  og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(earth, W, h), 0, 0);
   const mouths = [...floor.keys()].filter((k) => { const [fx, fy] = k.split(",").map(Number); return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => topAt(fx + dx, fy + dy) < topAt(fx, fy)); }).sort().join(" ");
   return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, line, deep, cols, any, rock: rocks, floor, cut, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};
 }

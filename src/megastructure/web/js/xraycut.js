@@ -1,10 +1,13 @@
 // The earth itself in the picture of the place seen through what hides it (xray.js: xrayPicture): what was cut
 // through to show it, and where the cut ends. Three things, a px each, laid over the land's own painting:
-// 1. Earth left standing between two parts of the place under a roof or dug (two tunnels side by side, a pillar in a
-//    room) is cut level with the floor behind it, and shows as that: earth, cut. (The land as drawn showed there: a
-//    strip of meadow between two floors four layers down, the nearer tunnel a floor lying on the grass.)
-// 2. Under a roof the wall behind the place goes up to the top of the land, cut open: the hollow's own back wall,
-//    and over it the roof cut through: earth, lit as the place is (cavelight.js).
+// 1. Earth left standing between two parts of the place, in front of a part open to the sky (a pit), is cut level
+//    with the floor behind it, and shows as that: earth, cut. (The land as drawn showed there: a strip of meadow
+//    between two floors four layers down.) Not in front of a part under a roof: there it is that room's back wall
+//    (2), as high as the room, and what is over it is not cut (two tunnels side by side: the earth between them was
+//    sliced level with their floors, a row nobody dug shown as gone).
+// 2. Under a roof the wall behind the place goes up to the top of the room and no further: the hollow's own back
+//    wall, its bands. The land over the room is not cut: it is there, and stays as it is drawn (a window the size of
+//    what was dug).
 // 3. Where the cut ends against the land beside it or in front of it, a line in the pack's ink and a shadow three px
 //    in from it, in steps: a hole has an edge ("the borders are still abrupt, like cut without separation": dark
 //    earth stopped square against the grass). Not where the land's own edge is (round a hole open to the sky: its
@@ -20,8 +23,8 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
   for (let i = 0; i < w; i++) {                              // 1
     const x = R.x + i, under = (place.get(x) || []).filter((gy) => floors.get(x + "," + gy) < 0 || floor.has(x + "," + gy));
     for (let j = 0; under.length > 1 && j < R.h; j++) {
-      const ty = R.y + j, north = under.filter((gy) => gy < ty);
-      if (!rocks[j * w + i] || !north.length || !under.some((gy) => gy > ty)) continue;
+      const ty = R.y + j, north = under.filter((gy) => gy < ty), south = under.filter((gy) => gy > ty);
+      if (!rocks[j * w + i] || !north.length || !south.length || floor.has(x + "," + Math.min(...south))) continue;   // (in front of a room under a roof it stands: that room's back wall, 2)
       const lv = floors.get(x + "," + Math.max(...north)), Y = ty * 16 - shOf(lv) - y;
       for (let r = Math.max(0, Y); r < Math.min(h, Y + 16); r++) for (let f = r * W + i * 16, e = f + 16; f < e; f++) if (see.state[f] !== 1) { seen[f] = 1; more++; see.lev[f] = lv; fill[f] = 1; cuts.set(x + "," + ty, lv); }
     }
@@ -40,12 +43,18 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
   const roofT = new Uint8Array(w * R.h), band = (k, m) => colsOf(hillSheet(k)).bands[m <= 0 ? 0 : m >= 7 ? 2 : 1];
   for (const k of floor.keys()) { const [x, ty] = k.split(",").map(Number), i = x - R.x, j = ty - R.y; if (i >= 0 && i < w && j >= 0 && j < R.h) roofT[j * w + i] = 1; }
   const rows = (i, j) => { const f0 = lvOf(i, j), Y = (R.y + j) * 16 - y; return [Y, Y - shOf(Math.max(f0, lvOf(i, j - 1))), Y - shOf(f0)]; };   // (a tile's line at sea level, the top of the wall behind it, the top of its floor)
-  const r0T = new Int32Array(w * R.h), cols = new Map();                                    // (a tile of the place -> its column in the picture: [px across, its wall's first row, the foot of its floor]: a light's reach, daylight.js)
+  const r0T = new Int32Array(w * R.h), rcT = new Int32Array(w * R.h), lid = [], over = new Uint8Array(n), cols = new Map();                                    // (a tile of the place -> its column in the picture: [px across, its wall's first row, the foot of its floor]: a light's reach, daylight.js)
   for (let j = 0; j < R.h; j++) for (let i = 0; i < w; i++) if (deepT[j * w + i]) {
     const [Y, r0, top] = rows(i, j), t = j * w + i, roofed = roofT[t], F = lvOf(i, j);
-    cols.set((R.x + i) + "," + (R.y + j), [i * 16, r0 - 3, top + 16]); r0T[t] = r0;
+    // (under a roof the wall behind stops at the top of the room, its first row rc: the land over the room is not
+    // cut, it stays as it is drawn. It went up to the top of the land: one block dug under a mountain and its whole
+    // column was gone from the picture, seventeen layers of rock that are still there, "im breaking only 1 bloc why
+    // the whole column is deleted ??". The band of the room's top layer starts two px over its line above the sea)
+    const c = roofed ? ceilAt(R.x + i, R.y + j, F) : 0, rc = roofed ? Math.min(top, Math.max(r0, Y - shOf(c) - (c >= 0 ? 2 : 0))) : r0;
+    cols.set((R.x + i) + "," + (R.y + j), [i * 16, roofed ? rc : r0 - 3, top + 16]); r0T[t] = r0; rcT[t] = rc;
     for (let r = Math.max(0, r0 - 3); r < Math.min(h, top + 16); r++) for (let f = r * W + i * 16, e = f + 16; f < e; f++) {
-      const back = roofed && r >= r0 && r < top, put = fill[f] || see.state[f] === 1;   // (back: over the floor of a tile under a roof: the wall behind it, whatever was painted)
+      if (roofed && r >= r0 && r < rc) { lid.push(f); continue; }
+      const back = roofed && r >= rc && r < top, put = fill[f] || see.state[f] === 1;   // (back: over the floor of a tile under a roof: the wall behind it, whatever was painted)
       if ((!put && !back) || (r < r0 && (roofed || see.band[f] !== 1))) continue;       // (over a tile's line: the set-in top of a wall the land painted, of a tile open to the sky; under a roof the cut starts on the line)
       if (put && !fill[f]) {                                 // (of what was painted there: the place's floors, and the wall behind this tile, its bands and
         const ts = tileOf(f), tf = tileOf(f, 4);            //  what shows between them of the tile behind, painted a level down; not land that stands in front
@@ -69,13 +78,14 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
   for (let j = 0; j < R.h; j++) for (let i = 0; i < w; i++) if (deepT[j * w + i] && !roofT[j * w + i]) for (const d of [-1, 1]) {
     if (i + d < 0 || i + d >= w || !roofT[j * w + i + d]) continue;
     const [, r0, top] = rows(i, j);
-    for (let r = Math.max(0, r0 - 2); r < Math.min(h, top); r++) for (let c = 0; c < 4; c++) {
+    for (let r = Math.max(0, r0 - 2, rcT[j * w + i + d]); r < Math.min(h, top); r++) for (let c = 0; c < 4; c++) {   // (as far up as that room goes: over it the land is whole, its side as it is drawn)
       const col = d < 0 ? c : 15 - c, f = r * W + i * 16 + col, src = r * W + i * 16 + (d < 0 ? 4 : 11);
       if (!deep[src] || fill[src] || see.band[src] === 2) continue;
       const v = wall.get(src) || [paint[src] & 255, paint[src] >> 8 & 255, paint[src] >> 16 & 255];
       wall.set(f, v); deep[f] = 1; own[f] = j * w + i + 1; if (!seen[f]) { seen[f] = 1; more++; } see.lev[f] = see.lev[src]; see.band[f] = see.band[src];
     }
   }
+  for (const f of lid) if (!deep[f]) { over[f] = 1; if (seen[f]) { seen[f] = 0; more--; } }   // (the land over a room: as it is drawn, unless another tile of the place is seen there)
   // (q: beside f, over it or under it: not of the place; and not the land's own edge, the top of a tile beside or
   // behind a part of the place that is open to the sky, which has its rim or its grass there...)
   const rimT = new Uint8Array(w * R.h), openT = new Uint8Array(w * R.h);
@@ -93,6 +103,7 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint})
     // (the land's own rim: behind this tile; beside it, as far down as that tile's top is drawn; and whatever tile's top q is)
     if (t >= 0 && dy <= 0 && ti >= 0 && ti < w && tj >= 0 && rimT[tj * w + ti] && (dy < 0 || (f / W | 0) < (R.y + tj) * 16 - y - shOf(lvT[at(ti, tj)]) + 16)) return false;
     if (see.state[q] === 1 && !see.band[q] && rimT[Math.max(0, tileOf(q))]) return false;
+    if (over[q] && t >= 0 && !roofT[t]) return false;         // (nor beside a part open to the sky where the land over a room starts: it is drawn there with its own rim toward the hole)
     if (dx && t >= 0 && (f / W | 0) < r0T[t]) return false;    // (nor down the side of a wall's top where it is set in over its tile's line, two px: beside a roof they were two px of ink up into the pit's rim)
     if (see.band[f] || fill[f] || t < 0) return true;         // (a wall, earth that was cut: no way through)
     if (see.state[q] === 1 && !see.band[q]) {                // (the ground beside it is of a tile a row on from the one stepped onto that way: the tile in

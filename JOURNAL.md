@@ -2447,3 +2447,35 @@ drawing: the world's ticks, the waits, the start.
   frame standing, walking or sprinting as a phone.
 - Not measured: a real phone. `/perf` in the chat shows there what was measured here (frames, the longest wait,
   ticks reaching the screen, what a tick costs the world).
+
+## Iteration 157: under a roof, what is dug is what is seen
+
+The user, a screenshot of a tunnel under a mountain: "im breaking only 1 bloc why the whole column is deleted ??"
+
+- Looked at first, on a copy of the live save (never the live server): the world was right. Each dig took one cell
+  (the events' columns: 6 and 7 empty, 8 to 22 solid); the fifteen layers of rock over the tunnel were all there.
+- The picture was wrong. Seen through what hides you, a floor under a roof had the wall behind it drawn up to the top
+  of the land, "cut open": the room's own wall and, over it, the roof cut through, painted as the same wall. Under a
+  meadow that was two layers of earth; under a mountain, one block dug and a strip seventeen layers high was gone
+  from the mountain. Replayed on the copy: a block dug, the whole column open; the second, the same strip a layer
+  longer.
+- Now (xraycut.js): under a roof the wall behind a floor stops at the top of the room (cells.js ceilAt). The land
+  over the room is not cut: it stays as it is drawn. A block dug opens a block of the picture.
+- With it, the same thing in three other places. Earth between two tunnels side by side was sliced level with their
+  floors, a row nobody dug shown as gone: it is the nearer tunnel's back wall, as high as that tunnel (earth
+  between two pits open to the sky is cut as before). The build cursor's keyhole drew its whole column from the top
+  of the land, and drew it again over a tunnel already seen through (a strip with two seams beside the player, in
+  the user's screenshot): it is the room at the cursor, and nothing where the place is seen already. Where an open
+  stair goes in under a roof, the land over the tunnel has its own rim toward the pit again, turn and all, and the
+  cut's line is not drawn beside it (one edge, never two).
+- Proven in one page, old xrayPicture and xrayCut (git HEAD) beside the new, 20 scenes in two views: behind a hill,
+  a pit, an open stair, a shaft, a passage with no wall over it: no px differs (seen, the place's px, the outline,
+  the picture). Under a roof the new picture shows nothing the old did not: it only gives px back (256 to 3200 a
+  scene).
+- Looked at: the user's spot before and after, a block dug, two; a sheet of 24 scenes; the junction at five times.
+- Tests: five of test_e2e_underground.py and one of test_e2e_caves.py said the old shape and say the new one; a new
+  one is the user's case (a tunnel under high ground: its floor and two layers of wall are seen, the land over it
+  is the land; a block dug at its end opens a block, then the next). Each fails on the old code. 462 unit, 238 of
+  240 browser tests (two of sound and chat timing, which pass alone).
+- Found on the way, not fixed: in build mode by mouse, pointing at a tunnel seen through picks the tile of the land
+  drawn there (fourteen rows south, on the mountain), not the tunnel under the pointer.
