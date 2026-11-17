@@ -2292,3 +2292,43 @@ not its body).
   test counts from the cursor now. (My first guess, the map a moment behind the dig, was wrong for this; the work
   still waits half a second for it before it gives a step up, once.)
 
+## Iteration 154: the first screen on a phone, and how long it takes to come
+
+"Make the homepage more mobile friendly: better menu design (don't change desktop), instant loading." Read as: the
+game's first screen (the title and its window), which is what the demo opens on.
+
+Measured first, as a phone (390 x 844 at 3, touch, CPU four times slower, the demo served gzipped as Pages does):
+- On its side (844 x 390) the window was taller than the screen: the game's name off the top, its line behind the
+  window. Upright it held, with rows 34 px high.
+- On a slow line (1.6 Mbit/s) the page was bare text for about seven seconds: the game's own bar over its name, a
+  list without its window, no field for your name. Its sizes, "this is a phone", "this is the first screen" and the
+  step were all said by scripts, the seventy of them.
+- Wake up pressed: nothing showed until the world was there, 14 s later on 9 Mbit/s, 83 s on the slow line. The
+  world's Python (six megabytes on a first visit) started only once the page had loaded, and every sound of the game
+  was fetched at the same time (the island's sounds ask for them).
+
+Changed:
+- The page says what its first picture needs itself, in a few lines before anything is drawn (index.html): the
+  windows' pixel (the same sum ui.js keeps up: one function), a phone or not, the first screen, the step. With every
+  script held back the first screen is whole. First picture at 0.16 s.
+- A phone's window (title.css, under body.touch only): Wake up is a button across it, always lit; the others are
+  buttons two abreast, one left over across; 44 px and 52 px high. On its side: the name on the left, the window on
+  the right, your character half the size; nothing off the screen. No line about Tab on a phone (splash.js).
+  A desk's screen: every part of the window compared between the two builds at three sizes, 36 parts, none differs.
+- The demo's world starts with the page (local.js, written into the page with the styles: tools/build_pages.py),
+  unless the browser says the line is slow: there the page's own files go first, as before. Sounds wait for the
+  world (audio.js: when they load, nothing of what they are).
+- Wake up pressed while the world is still coming says "Waking the world…", a strip along its foot (also on a desk:
+  it is about the wait, not the window's design).
+
+Measured after, first visit: 9 Mbit/s: the menu answers at 1.1 s (as before), in the world at 8.3 s (15.5). 1.6
+Mbit/s: the menu at 2.6 s (as before), in the world at 40 s (86).
+
+Not done, and why: one script instead of seventy (Pages serves them at once over one connection, and one file that
+fails would take the whole game with it); a picture of the island behind the window before the island is drawn (it
+comes with the pictures, 0.6 MB: 3 s on 9 Mbit/s, 7 s on the slow line; the sea's colour till then). I cannot measure
+a real phone: these are Chrome's own slow line and slow CPU.
+
+A test of another session's fails on main and did before today's commits (test_e2e_menu: a swimmer's shadow, from
+a060b94): not touched.
+

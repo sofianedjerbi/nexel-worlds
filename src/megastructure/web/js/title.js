@@ -15,11 +15,12 @@ function titleDraw() {
   document.querySelectorAll("#racepick, #joinbox .item").forEach((e) => e.classList.toggle("on", e.id === rows[TITLE.at]));
   $("titlesoundv").textContent = muted ? "off" : "on";
   $("logoutv").textContent = ACCOUNT.email;
+  $("join").firstElementChild.textContent = document.body.classList.contains("booting") && agentWs && agentWs.readyState === 0 ? "Waking the world…" : "Wake up";   // (the demo's world is still coming, local.js: you are in as soon as it has)
   document.body.classList.toggle("title", titleOpen());
 }
 function titleStep() {                                       // the step the account is at: its field, its first row
-  const step = accountStep(), moved = step !== TITLE.step || !$("joinbox").dataset.step;
-  TITLE.step = $("joinbox").dataset.step = step;
+  const step = accountStep(), moved = step !== TITLE.step || !TITLE.begun;      // (the page itself says "me" from its first picture: index.html)
+  TITLE.step = $("joinbox").dataset.step = step; TITLE.begun = true;
   if (moved) {
     TITLE.at = TITLE.rows.indexOf(TITLE.first[step]);
     if (step === "mail") $("email").value = ACCOUNT.email;
@@ -37,7 +38,7 @@ function titleMe(now) {                                      // you, breathing, 
 }
 const TITLE_GO = {
   racepick() { TITLE.at = TITLE.rows.indexOf("join"); titleGo(TITLE.at); },
-  join() { const n = $("name").value.trim(); if (n) joinGame(n); else { $("name").classList.add("need"); $("name").focus(); } },
+  join() { const n = $("name").value.trim(); if (n) { joinGame(n); titleDraw(); } else { $("name").classList.add("need"); $("name").focus(); } },
   watch() { $("joinbox").style.display = "none"; titleDraw(); },
   titlehelp() { $("helpbtn").click(); },
   titlesound() { setMuted(!muted); titleDraw(); },

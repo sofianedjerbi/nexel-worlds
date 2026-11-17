@@ -28,8 +28,15 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     ctx = browser.new_context(viewport={"width": 1100, "height": 750})
     page, errors = ctx.new_page(), []
     page.on("pageerror", lambda e: errors.append(str(e)))
-    page.goto(site)
+    asked = []
+    page.on("request", lambda r: asked.append(r.url.split("/")[-1].split("?")[0]))
+    page.goto(site, wait_until="commit")
+    # the world starts to come with the page, before its scripts have (its start and the styles are in the page itself)
+    page.wait_for_function("typeof bootLocal === 'function' && document.body.classList.contains('booting')", timeout=5000)
+    assert page.evaluate("[document.querySelectorAll('link[rel=stylesheet]').length, !!document.querySelector('script[src*=\"local.js\"]')]") == [0, False]
     page.wait_for_function("blocks.size > 0", timeout=90000)       # Pyodide comes from the CDN on first load
+    page.wait_for_function("!document.body.classList.contains('booting')", timeout=90000)
+    assert "sfx.json" not in asked[:asked.index("py.zip")], "the sounds were asked for before the world had come"
     # every script the page names has the build's mark: a page loaded again after a publish is the new build at once
     marks = page.evaluate("[...document.scripts].filter((s) => s.getAttribute('src') && s.getAttribute('src').startsWith('js/')).map((s) => s.getAttribute('src').split('?v=')[1])")
     assert len(marks) > 50 and all(marks) and len(set(marks)) == 1, marks[:5]

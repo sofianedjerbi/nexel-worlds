@@ -65,7 +65,7 @@ for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!m
 
 // The manifest (what exists, which file, which family), then every file in the background.
 function loadSounds() {
-  if (!sounds.loading) sounds.loading = fetch("audio/sfx.json", {cache: "no-cache"})
+  if (!sounds.loading) sounds.loading = (window.bootWait || Promise.resolve()).then(() => fetch("audio/sfx.json", {cache: "no-cache"}))   // (the demo: once its world has come, local.js: the sounds took the line from it)
     .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then((m) => { sounds.manifest = m; startMusic(); return warmSounds(); })      // (the music's first piece with the effects, not after them)
     .catch(() => { console.info("no sound effects: run `uv run python tools/build_audio.py`"); setTimeout(() => sounds.loading = null, 15000); });

@@ -48,3 +48,28 @@ body.touch #joinbox kbd { display:none; }
   #joinbox .menu { left:50%; right:auto; top:auto; bottom:5vh; transform:translateX(-50%); width:min(calc(150 * var(--q)), 94vw); }
 }
 body.touch #titlehelp { display:none; }                     /* (the help is a list of keys: a phone has none) */
+#raceslot { min-height:calc(30 * var(--q)); }               /* (its place is kept while the five are still to be drawn) */
+/* A phone (body.touch: said by the page itself, before its first picture; a desk's screen has none of this). The
+   list is for a thumb: what you came for, Wake up, is a button across the window, always lit; the others are
+   buttons too, two abreast (one left over takes its row), each as high as a finger is wide (they were lines of text, 34 px each, in a column
+   that was taller than a phone held on its side: the game's name was off the screen and its line ran behind the
+   window). On its side the name is on the left, the window on the right, your character half the size. */
+body.touch #joinbox .menu { flex-direction:row; flex-wrap:wrap; max-height:calc(100dvh - 16px); overflow-y:auto; overscroll-behavior:contain; }
+body.touch #joinbox .card, body.touch #joinbox #raceslot, body.touch #joinbox #join, body.touch #joinbox #sendcode, body.touch #joinbox #login { flex:0 0 100%; }
+body.touch #joinbox .item { flex:1 1 40%; height:calc(22 * var(--q)); background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #f8edd4, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #b8946a; }
+body.touch #joinbox .item:active { background:#fff6e2; }
+body.touch #joinbox #join, body.touch #joinbox #sendcode, body.touch #joinbox #login { height:calc(26 * var(--q)); justify-content:center; background:#fff1a8;
+  box-shadow:inset var(--q) var(--q) 0 #fffaf0, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #e0b84e, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+@media (max-width: 860px) { body.touch #joinbox .menu { bottom:max(4vh, env(safe-area-inset-bottom)); } }
+@media (max-height: 520px) and (orientation: landscape) {
+  body.touch #joinbox { --L:calc(2 * var(--u3)); }
+  body.touch #joinbox .logo { left:max(5vw, env(safe-area-inset-left)); right:auto; top:8vh; text-align:left; }
+  body.touch #joinbox .say { left:max(5vw, env(safe-area-inset-left)); right:auto; top:calc(8vh + 26 * var(--L)); max-width:42vw; text-align:left; }
+  body.touch #joinbox .menu { left:auto; right:max(4vw, env(safe-area-inset-right)); top:50%; bottom:auto; transform:translateY(-50%); }
+  body.touch #joinbox #titleme { width:calc(24 * var(--q)); height:calc(26 * var(--q)); }
+}
+/* the demo's world is still coming (local.js): a strip goes along the foot of Wake up, on any screen; pressed
+   meanwhile it says so, and you are in as soon as the world is there (nothing showed for the fourteen seconds) */
+body.booting #joinbox #join { position:relative; overflow:hidden; }
+body.booting #joinbox #join::after { content:""; position:absolute; left:0; bottom:0; width:25%; height:calc(2 * var(--q)); background:#e0b84e; animation:booting 1.4s steps(14) infinite; }
+@keyframes booting { from { left:-25%; } to { left:100%; } }

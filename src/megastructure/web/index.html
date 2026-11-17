@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<link rel="preload" href="assets/sprout-pixel.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/help.css">
 <link rel="stylesheet" href="css/title.css">
@@ -14,6 +15,17 @@
 <link rel="stylesheet" href="css/menu.css">
 </head>
 <body>
+<script>
+// Before the first picture, with no file to wait for: is this a phone (touch.js goes on from there), and the pixel of
+// the windows (ui.js keeps it up). So the first screen is itself at once: it was a page of bare text, the game's
+// own bar over its name and a list without its window, for as long as the scripts took to come (eight seconds on a
+// phone's slow line).
+function bookPx() { const d = devicePixelRatio || 1, small = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520; let n = Math.round((small ? 2 : 3) * d) + (small ? 1 : 0); while (n > 1 && (272 * n / d > innerWidth - 12 || 160 * n / d > innerHeight - 12)) n--; return n; }
+(() => { const d = devicePixelRatio || 1, st = document.documentElement.style;
+  document.body.classList.add("title");                     // (the first screen: title.js keeps it; said here, not in the tag, which the server writes the accounts' address into)
+  document.body.classList.toggle("touch", matchMedia("(pointer: coarse)").matches || "ontouchstart" in window || new URLSearchParams(location.search).has("touch"));
+  const n = bookPx(); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", n / d + "px"); st.setProperty("--w", Math.max(1, Math.round(n * .7)) / d + "px"); })();
+</script>
 <canvas id="c"></canvas>
 <div id="hover"></div>
 <div id="xyz" style="position:fixed;top:10px;right:12px;z-index:5;font:inherit;font-size:15px;color:#fff6e0;text-shadow:0 1px 0 #3b2a22,1px 0 0 #3b2a22,-1px 0 0 #3b2a22,0 -1px 0 #3b2a22;pointer-events:none;white-space:pre;text-align:right"></div>
@@ -25,7 +37,7 @@
 <div id="debug"></div>
 <div id="actions"></div>
 <div id="prompts"></div>
-<div id="joinbox">
+<div id="joinbox" data-step="me">
   <div class="logo">NEXEL<em>WORLDS</em></div>
   <div class="say" id="splash">Build your world. Open a door.</div>
   <div class="menu">

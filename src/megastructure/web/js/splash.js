@@ -33,4 +33,7 @@ const SPLASH = [
   "Made of pixels and good intentions.",
   "Nobody knows where the wisp goes.",
 ];
-(() => { const el = document.getElementById("splash"); if (el) el.textContent = SPLASH[Math.floor(Math.random() * SPLASH.length)]; })();
+(() => {                                                    // (a phone has no Tab to hold)
+  const el = document.getElementById("splash"), all = SPLASH.filter((t) => !/\bTab\b/.test(t) || !document.body.classList.contains("touch"));
+  if (el) el.textContent = all[Math.floor(Math.random() * all.length)];
+})();

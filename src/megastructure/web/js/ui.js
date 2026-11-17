@@ -92,8 +92,7 @@ function hudFit() {
   hudU = n / d; hudK = Math.min(2.5, Math.max(1, Math.floor((innerWidth - 34) * d / 198)) / d);   // (two rows of ten icons: 99 art px each)
   const small = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520, land = small ? 2 : 3;
   const item = Math.max(1, Math.min(Math.round(land * d), Math.floor(1.6 * n)));    // (11 px of it in a hole of 16: its edge px are empty)
-  let book = Math.round(land * d) + (small ? 1 : 0);                                // the recipe book's pixel (--q): the land's (a screen pixel more under a thumb), less while its 272 x 160 would not fit
-  while (book > 1 && (272 * book / d > innerWidth - 12 || 160 * book / d > innerHeight - 12)) book--;
+  const book = bookPx();   // the recipe book's pixel (--q): the land's (a screen pixel more under a thumb), less while its 272 x 160 would not fit (index.html: worked out there first, before the first picture)
   if (hudSig === (hudSig = [n, d, item, book].join())) return false;
   st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px"); st.setProperty("--w", Math.max(1, Math.round(book * .7)) / d + "px");
   let bag = book; while (bag > 1 && (224 * bag / d > innerWidth - 12 || 162 * bag / d > innerHeight - 12)) bag--;       // (--b: the inventory's, bag.js)
