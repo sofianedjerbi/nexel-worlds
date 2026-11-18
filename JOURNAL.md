@@ -1698,6 +1698,27 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 175: the horizon itself
+
+"Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
+pictures at half size; the horizon is the top sixth of one. This time: the top 230 px of every place at three
+places of the walk, full size, and parts of it three times enlarged, after every change (about ninety pictures).
+What was wrong there, and what it is now:
+- far trees were made pale by being seen through: the tree behind showed in them. Now each is solid, with its own
+  shape laid over it thinly in the air's colour;
+- things past the horizon went down as slowly as they had come up, and stood in a crowd on the line: three times
+  as fast now;
+- a band of holes under the line on a mountain (the last sliver before the horizon was left out to avoid a smear):
+  put back, and that sliver goes into the air's colour instead;
+- land past the horizon, drawn as one pale tone, was a sheet over the sky: not drawn (things still go down behind);
+- a white band along the line: less of the air on far land;
+- the mountain far off was blinds and columns a tile wide: a terrace there is a few pixels, its wall a few more,
+  drawn one by one. Past the middle of the bend the land is now its slope (its height between tiles, the terraces
+  giving way to it gradually), in its own colour run together, darker where it rises towards us, and only where the
+  land has height in it (level ground and ponds keep what is painted on them); and far land leans back more than a
+  tree does (a fifth of its height left at the line, not half), so a mountain is a slope and not a wall;
+- wisps over the line: nothing stands up over the horizon from the very last of the ground.
+
 ## Iteration 174: the sky page, audited
 
 "Also audit your own demo. It looks buggy as HELL". I had been fixing what was pointed at and looking at one or two

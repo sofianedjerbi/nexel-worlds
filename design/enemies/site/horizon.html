@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 11.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 12.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -134,7 +134,9 @@ float along(float py, out float t, out float spread, out float wide) {
   spread = df;
   return (y0 + (yh - y0) * f) * uRes.y;
 }
-float lean(float t, float wide) { return uMode > 2.5 ? 1. / wide : 1. - .5 * pow(t, 1.6); }      // a thing standing far away: how much of its height shows
+// How much of the land's height shows far away. It leans back with the ground, and more than a tree does: with half
+// of it left at the horizon a mountain was a wall of stacked steps as tall as the screen over a strip of ground.
+float lean(float t, float wide) { return 1. - .8 * pow(t, 1.4); }
 // For the pixel P: the spot of the ground (a row of the picture, at sea level) that is seen there at height h over it
 vec2 P; float PY;
 float seen(float h, out float tt, out float sp, out float wd) {
@@ -143,6 +145,11 @@ float seen(float h, out float tt, out float sp, out float wd) {
   d = along(py, tt, sp, wd); PY = py;
   return uBottom - d;
 }
+// The land's height (in levels) at a spot between tiles, sloping from each tile's middle to the next: far off, where a
+// tile is a pixel or two, the land is drawn as this slope and not as its separate terraces
+float lv(vec2 tc) { float v = tc.x < 0. || tc.y < 0. || tc.x >= uMapSize.x || tc.y >= uMapSize.y ? 0. : texture2D(uMap, (tc + .5) / uMapSize).r * 255.; return v < .5 ? 0. : v - 128.; }
+float slope(vec2 pos) { vec2 f = pos - .5, i = floor(f), w = f - i;
+  return mix(mix(lv(i), lv(i + vec2(1., 0.)), w.x), mix(lv(i + vec2(0., 1.)), lv(i + vec2(1., 1.)), w.x), w.y); }
 float levelOf(vec2 tc) { return tc.x < 0. || tc.y < 0. || tc.x >= uMapSize.x || tc.y >= uMapSize.y ? -1. : texture2D(uMap, (tc + .5) / uMapSize).r * 255.; }
 void main() {
   vec2 p = gl_FragCoord.xy / uK, a = floor(p / 3.) * 3.;        // (p: in the picture's own pixels, whatever the canvas has)
@@ -164,11 +171,37 @@ void main() {
     float h = uHigh - float(i) * uStep / 3., tt, sp, wd;
     if (h < uLow - .5 || hit) break;
     float ground = seen(h, tt, sp, wd);
-    if (PY / uRes.y >= yh || tt > .975 || PY < 0.) continue;   // (that spot is over the horizon, or under the screen)
+    if (PY / uRes.y >= yh || PY < 0.) continue;                // (that spot is over the horizon, or under the screen)
+    if (y >= yh && tt > .93) continue;                         // (over the horizon line, only land that is not at the line itself: there one try is tiles apart from the next, and what stood up was hit and missed row by row, in wisps)
     float x = clamp(uCx + (p.x - uRes.x * .5) * wd, 1., uSrc.x - 1.);
     vec2 tc = floor((vec2(x, ground) - uGrid.xy) / uGrid.z);
     float v = levelOf(tc), top = (v - 128.) * uStep;
-    if (v < .5 || top < h - .5) continue;
+    if (v < .5) continue;
+    // Far off (past the middle of the bend) a terrace is a few pixels and its wall a few more: drawn one by one they
+    // were blinds, and columns a tile wide ("everything looks broken at horizon level"). There the land is its slope:
+    // one colour run together from its own top, darker where it rises towards us.
+    float farK = smoothstep(.36, .66, tt);
+    if (farK > 0.) {
+      // (between the two: the height is part terrace, part slope, so that the land does not jump where one way of
+      // drawing it gives way to the other)
+      vec2 tp = (vec2(x, ground) - uGrid.xy) / uGrid.z;
+      if (mix(top, slope(tp) * uStep, farK) < h - .5) continue;
+      // the height is tried a third of a level at a time: the land's own height here is found between this try and the
+      // one before it (left at the try, each one came out as a line across the slope)
+      float lo = h, hi = h + uStep / 3., g = ground, t3 = tt, s3 = sp, w3 = wd;
+      for (int k = 0; k < 5; k++) {
+        float mid = (lo + hi) * .5, gm = seen(mid, t3, s3, w3);
+        vec2 tm = (vec2(x, gm) - uGrid.xy) / uGrid.z; float lm = lv(floor(tm)) * uStep;
+        if (PY / uRes.y < yh && mix(lm, slope(tm) * uStep, smoothstep(.36, .66, t3)) >= mid) { lo = mid; g = gm; } else hi = mid;
+      }
+      g = seen(lo, t3, s3, w3); tp = (vec2(x, g) - uGrid.xy) / uGrid.z;
+      float rise = slope(tp + vec2(0., -.8)) - slope(tp + vec2(0., .8)), here = lv(floor(tp)) * uStep;
+      // (only where the land has height in it: level ground far off keeps what is painted on it, a pond its water)
+      float rough = clamp(abs(rise) * 3. + abs(slope(tp) - lv(floor(tp))) * 3., 0., 1.);
+      c = mix(land(g - lo, x, s3), land(g - here, x, max(s3, 60.)) * (1. - clamp(rise, -.5, 2.5) * .07), farK * rough);
+      t = t3; hit = true; continue;
+    }
+    if (top < h - .5) continue;
     // Land this high is seen here. Heights are tried a third of a level at a time, and far off one try is several
     // tiles of ground: the spot found is somewhere inside that land, not where the eye first meets it. So: its front,
     // the south edge of the last tile south of the spot that is still this high (its wall hangs from there); then the
@@ -180,32 +213,28 @@ void main() {
     for (int j = 0; j < 20; j++) { float v2 = levelOf(te + vec2(0., 1.)), t2 = (v2 - 128.) * uStep; if (v2 < .5 || t2 < h - .5) break; te.y += 1.; topE = t2; }
     float edge = uGrid.y + (te.y + 1.) * uGrid.z, he = h, g = ground, t3 = tt, s3 = sp, w3 = wd;
     for (int k = 0; k < 4; k++) { he += (edge - g) / max(.2, s3 * lean(t3, w3)); g = seen(he, t3, s3, w3); }
-    if (he <= topE + .5) { if (edge - he < 1.) continue; c = land(edge - he, x, 1. / max(.3, lean(t3, w3))); }
-    else { g = seen(topE, t3, s3, w3); if (g - topE < 1.) continue; c = land(g - topE, x, s3); }
-    t = t3; hit = true;
-  }
-  // Past the horizon the world goes on round and down. Land there is behind the ground, but land high enough stands
-  // over the horizon and is seen, lower and lower as it goes: for this pixel over the horizon, the spot of the far
-  // side that would be seen here at each height (as far past the horizon as the near side's spot is short of it).
-  if (!hit && bent && uLayers > .5 && uMode < 1.5 && y >= yh) {
-    float tA, sA, wA, most = along(yh * uRes.y, tA, sA, wA);
-    for (int i = 0; i < 72; i++) {
-      float h = uHigh - float(i) * uStep / 3., tt, sp, wd;
-      if (h < uStep * .5 || hit) break;
-      float near = seen(h, tt, sp, wd);
-      if (PY / uRes.y >= yh || PY < 0.) continue;
-      float ground = uBottom - (2. * most - (uBottom - near)), x = clamp(uCx + (p.x - uRes.x * .5), 1., uSrc.x - 1.);
-      vec2 tc = floor((vec2(x, ground) - uGrid.xy) / uGrid.z);
-      float v = levelOf(tc), top = (v - 128.) * uStep;
-      if (v < .5 || top < h - .5 || ground - top < 1.) continue;
-      c = mix(land(ground - top, x, 46.), hor / max(light, vec3(.01)), .68); t = max(tt, .9); hit = true;      // (its colour run together and pale: a shape in the air, not blocks)
+    if (he <= topE + .5) {
+      if (edge - he < 1.) continue;
+      // Near, the wall as the game painted it. Far off a mountain is seen nearly from the side: a dark wall and a
+      // light top every few pixels, which read as stripes. There the wall takes the colour of the land over it, a
+      // little darker: the mountain is a slope with steps in it, not a ladder.
+      float far = smoothstep(.45, .8, t3);
+      c = mix(land(edge - he, x, 1. / max(.3, lean(t3, w3))), land(edge - topE - 8., x, 14.) * .93, far);
     }
+    else {
+      g = seen(topE, t3, s3, w3); if (g - topE < 1.) continue;
+      // (a far top is a few rows of screen for many of ground: the dark rim every terrace is painted with came out as
+      // a scratch across each one. Far off, the top's colour run together over more ground: plain.)
+      c = mix(land(g - topE, x, s3), land(g - topE, x, max(s3, 70.)), smoothstep(.5, .8, t3));
+    }
+    t = t3; hit = true;
   }
   bool sky = uMode > .5 && !hit && y >= yh;
   if (!sky) {
     if (!hit) { c = hor / max(light, vec3(.01)); t = 1.; }      // (past what the picture holds: the air's colour, not a filler)
     c *= light;
-    c = mix(c, hor * mix(1., .92, light.b - light.r), smoothstep(.55, 1., t) * .6);
+    c = mix(c, hor * mix(1., .92, light.b - light.r), smoothstep(.6, 1., t) * .4);
+    c = mix(c, hor, smoothstep(.93, 1., t) * .85);            // (the last sliver before the line: a screen row there is tiles of ground, and it flickered in streaks. It goes into the air.)
     c *= 1. - .08 * t * t;
   } else {
     float up = (a.y / uRes.y - yh) / (1. - yh), px = a.y - yh * uRes.y;
@@ -281,12 +310,13 @@ function where(s, row) {
   if (s.mode !== 1 || d <= y0) return {y: d, t: 0, behind: false};
   let want = (d - y0) / (yh - y0), behind = false;
   const most = fOf(s, .999);
-  if (want >= most) { want = 2 * most - want; behind = true; if (want <= 0) return null; }
+  if (want >= most) { want = most - 3 * (want - most); behind = true; if (want <= 0) return null; }      // (down three times as fast as it came up: at the same pace things stood in a crowd along the line)
   let lo = 0, hi = .999;
   for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2; if (fOf(s, m) < want) lo = m; else hi = m; }
   return {y: y0 + (yh - y0) * lo, t: lo, behind};
 }
-const leanOf = (t) => 1 - .5 * Math.pow(t, 1.6);              // how much of a height shows far away, where things lean back (the land's walls: the same, in the shader)
+const leanOf = (t) => 1 - .5 * Math.pow(t, 1.6);              // how much of a built thing's height shows far away, where things lean back
+const landLean = (t) => 1 - .8 * Math.pow(t, 1.4);            // ...and of the land's (the same in the shader)
 // What stands, put back on the ground as it is drawn now, far ones first: its foot is a row of the ground, found on the
 // screen through the bend, and it is drawn upright there.
 //   A thing of its own (a tree, a rock, an animal, you) keeps its shape and is smaller far away. A piece of something
@@ -296,11 +326,21 @@ const leanOf = (t) => 1 - .5 * Math.pow(t, 1.6);              // how much of a h
 function things(g, s, sc) {
   const W = s.vw, yh = s.yh / 100, S = sc.grid[2];
   g.clearRect(0, 0, W, H);
+  // the air's colour at this hour (the shader's `hor`), and everything that stands as a shape of that colour
+  const mixc = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k), step = (a, b, x) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const air = mixc(mixc([.78, .9, .98], [.99, .68, .42], step(.5, .7, s.hour / 100)), [.17, .21, .44], step(.7, .84, s.hour / 100)).map((v) => Math.round(v * 255)).join();
+  if (sc.fogOf !== air) {
+    if (!sc.fog) { sc.fog = document.createElement("canvas"); sc.fog.width = sc.atlas.width; sc.fog.height = sc.atlas.height; }
+    const f = sc.fog.getContext("2d");
+    f.globalCompositeOperation = "source-over"; f.clearRect(0, 0, sc.fog.width, sc.fog.height); f.drawImage(sc.atlas, 0, 0);
+    f.globalCompositeOperation = "source-in"; f.fillStyle = `rgb(${air})`; f.fillRect(0, 0, sc.fog.width, sc.fog.height);
+    sc.fogOf = air;
+  }
   for (const q of sc.sprites) {
     if ((s.bottom - q.foot) / H < -.6) break;                  // (sorted: the rest are nearer still, under the screen)
     const at = where(s, q.foot); if (!at) continue;
     const {y, t, behind} = at, lean = leanOf(t), size = q.b ? 1 : 1 - .38 * Math.pow(t, 1.5), gap = q.foot - (q.y + q.h);   // gap: how high over its foot it is (a floor upstairs, a thing on a hill)
-    const cx = W / 2 + q.x + q.w / 2 - sc.cx, w = q.w * size, h = q.h * size * (q.b ? lean : 1), base = y * H + gap * lean;
+    const cx = W / 2 + q.x + q.w / 2 - sc.cx, w = q.w * size, h = q.h * size * (q.b ? lean : 1), base = y * H + gap * (q.b ? lean : landLean(t));
     if (cx < -80 || cx > W + 80 || base > H + 40) continue;
     let cut = behind && s.mode === 1 ? yh * H : 0;             // under this height on the screen it is hidden
     const mine = sc.levelAt(q.x + q.w / 2, q.foot - 1), near = s.mode !== 1 || base <= Math.min(s.y0, s.yh - 2) / 100 * H;      // near: it is drawn where nothing is bent
@@ -311,16 +351,19 @@ function things(g, s, sc) {
       // ground away for them, and that is in the picture. Far off the hole's near rim hides its floor, and them with it.)
       if (L <= mine || (near && (L <= 0 || mine < 0))) continue;
       const edge = where(s, sc.grid[1] + Math.floor((row - sc.grid[1]) / S) * S);      // that higher land's far edge, and how high its top is there
-      if (edge && !edge.behind) cut = Math.max(cut, edge.y * H + L * sc.step * leanOf(edge.t));
+      if (edge && !edge.behind) cut = Math.max(cut, edge.y * H + L * sc.step * landLean(edge.t));
     }
     if (cut >= base + h) continue;
-    g.globalAlpha = q.b ? 1 : 1 - .35 * Math.max(0, Math.min(1, (t - .6) / .4));      // (far things pale into the air; not the pieces of a house: one seen through another was a house twice)
     const top = H - base - h, clip = cut > base;
     if (clip) { g.save(); g.beginPath(); g.rect(0, 0, W, H - cut); g.clip(); }
     // (where nothing is bent a thing is on the land's own pixels; in the bend the ground under it moves by parts of a
     // pixel, and a thing kept on whole pixels jumps about on it as you walk)
     if (t > 0) g.drawImage(sc.atlas, q.ax, q.ay, q.w, q.h, cx - w / 2, top, w, Math.max(1, h));
     else g.drawImage(sc.atlas, q.ax, q.ay, q.w, q.h, Math.round(cx - w / 2), Math.round(top), Math.round(w), Math.max(1, Math.round(h)));
+    // (far things take the air's colour, as the land does: the same shape again in that colour, laid over thinly.
+    // Made paler by being seen through, a tree showed the tree behind it.)
+    const fog = .4 * Math.max(0, Math.min(1, (t - .6) / .4));
+    if (fog > .01) { g.globalAlpha = fog; g.drawImage(sc.fog, q.ax, q.ay, q.w, q.h, cx - w / 2, top, w, Math.max(1, h)); g.globalAlpha = 1; }
     if (clip) g.restore();
   }
   g.globalAlpha = 1;
