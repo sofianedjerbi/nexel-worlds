@@ -2695,3 +2695,25 @@ should be intuitive, visible". Both dropped.
 - Tests: test_e2e_place.py + 2 (the front, its seams, its edge, floor against wall far down; your own floor at a
   tunnel's north end). The outline test's line under an open stair's second step is under that step's front.
   473 unit, 251 browser (none at a second try).
+
+## Iteration 163: a step shut from a room too low to jump in
+
+The user, in a room one layer high he had dug at the foot of his stair: "doben4 visualizatino issue: why i can't
+go up bu i cna climb from the left ? fix this visualization issue". The step north of him was one layer up; a jump
+needs room over your head (cells.js landAt, as the world's Movement.landing), and his room was one layer high. From
+the tile beside the step, three high, he climbed it. The picture drew the same step from both: a front of one
+layer, no line (162 drew a line at two layers and more, by the levels alone).
+
+- I started on the line and said why in words; he cut in: "no messages, the roof above the player should be
+  indicated in some way. if you dont know how to decide create a html mockup page". I did not know: five ways on
+  the mockup page (127.0.0.1:7795), drawn on the real picture of his spot: the edge, a slab of rock, the roof seen
+  through over you, the roof's shade, a bump of the head. He asked what a purple line was that hid the picture (my
+  line across the cat in the third: taken out), then: "go with 1 approach".
+- The edge (xraycut.js edge, shut). Between a floor and a lower floor of the place beside it, in front of it or
+  behind it, the line is where the world has no way up from the lower one: landAt, not a count of layers. Too high
+  and open onto it: the line, its shadow on the lower floor (162). No way between the two at all, the lower room
+  stops under this floor: the line of where the cut ends, shadow on both sides: two holes that touch. None where you
+  climb. Floors not beside each other, drawn side by side: two layers and more, as before.
+- A floor's front is also drawn toward a lower room that stops level with it (was: only one that goes higher).
+- Test: test_e2e_place.py + 1 (a step shut from a room one high, open from the room beside it, open from a high
+  room under it). 473 unit, 254 browser (one at a second try: a wall's door, not this).

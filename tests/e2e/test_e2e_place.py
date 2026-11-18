@@ -143,3 +143,28 @@ def test_the_floor_you_stand_on_is_seen_under_a_higher_floor_drawn_over_it(game)
     assert game.js(f"(() => {{ const P = xray.pic, f = ({y - 2} * 16 + 64 + 8 - P.y) * P.w + {X} * 16 + 8 - P.x; return [P.seen[f], P.lev[f]]; }})()") == [1, -8]
     assert game.js(LINE, [X, y - 2, -8, 8, 16]) and not game.js(LINE, [X, y - 2, -8, 8, 8])
     assert not game.errors
+
+
+def test_a_step_is_shut_from_a_room_too_low_to_jump_in_and_open_from_beside_it(game):
+    """"doben4 visualizatino issue: why i can't go up bu i cna climb from the left ?": the room he stood in was one
+    layer high and the step north of him one layer up: a jump needs room over your head. From the tile beside the
+    step, three high, he climbed it. The picture drew that step the same from both. "the roof above the player
+    should be indicated in some way": of five ways drawn for him he took the edge. Where the world has no way up
+    from a lower floor, the step's edge over that floor has the line of where the cut ends; where it has one, none."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(1, -4, ["." * 9] * 9, levels=["3" * 9] * 9)
+    X = x + 5                 # you, in a room one layer high; a step north of you; west of that step a room three high; east, a step with a high room under it
+    for tile, col in (((X - 1, y), [-7, -6, 3]), ((X, y), [-7, -6, 3]), ((X + 1, y), [-7, -4, 3]), ((X + 2, y), [-7, -4, 3]),
+                      ((X - 1, y - 1), [-7, -4, 3]), ((X, y - 1), [-6, -3, 3]), ((X + 2, y - 1), [-6, -3, 3])):
+        game.rpc("dev_col", tiles=[list(tile)], col=col)
+    game.rpc("dev_teleport", x=X, y=y, z=-7)
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === -7", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.wait("xray.mix >= 1 && !xray.old", 8000)
+    assert game.js(f"[landAt(-7, {X}, {y - 1}, {X}, {y}), landAt(-7, {X}, {y - 1}, {X - 1}, {y - 1}), landAt(-7, {X + 2}, {y - 1}, {X + 2}, {y}), xray.pic.floor.size]") == [None, -6, -6, 7]
+    line = lambda *a: game.js(LINE, list(a))
+    assert line(X, y - 1, -6, 8, 15)                                             # shut from your room: the step's edge, over the wall behind you
+    assert not line(X, y - 1, -6, 0, 8) and not line(X, y - 1, -6, 0, 20)        # open from beside it: none down its floor's side, nor its front's
+    assert not line(X + 2, y - 1, -6, 8, 15)                                     # a step with room to jump under it: none
+    assert not game.errors

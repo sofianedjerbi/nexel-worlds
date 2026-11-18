@@ -95,7 +95,7 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, 
   // floor two layers over yours a tile on along it ("why can't i go up ? why cant i climb right ?"; told in words it
   // was "explicit guiding.. it should be intuitive, visible"). A stair seen from its side has its steps' fronts.
   for (let j = 0; j < R.h; j++) for (let i = 0; i < w; i++) if (deepT[j * w + i]) {
-    const t = j * w + i, F = lvOf(i, j), beside = (d) => (i + d >= 0 && i + d < w && deepT[t + d] && lvOf(i + d, j) < F && ceilAt(R.x + i + d, R.y + j, lvOf(i + d, j)) > F ? lvOf(i + d, j) : F);
+    const t = j * w + i, F = lvOf(i, j), beside = (d) => (i + d >= 0 && i + d < w && deepT[t + d] && lvOf(i + d, j) < F && ceilAt(R.x + i + d, R.y + j, lvOf(i + d, j)) >= F ? lvOf(i + d, j) : F);
     const low = Math.max(F - APART, Math.min(beside(-1), beside(1))), [Y, , top] = rows(i, j), end = Math.min(h, top + 16 + shOf(F) - shOf(low));
     // (...under what is seen of the floor's own foot: not where ground that is not cut stands in front of it, a step up out of a hole: the front lay on the meadow)
     const foot = top + 15 < 0 || top + 15 >= h ? -1 : (top + 15) * W + i * 16;
@@ -149,12 +149,25 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, 
   // in front of it: nobody climbs that. A line is where you do not pass)
   const lvs = new Int16Array(w * R.h + 1).fill(-9999); for (let t = 0; t < w * R.h; t++) if (deepT[t]) lvs[t + 1] = lvOf(t % w, t / w | 0);
   const lvP = (f) => lvs[own[f]];                           // (a px of the place: its tile's level; past the picture's ends deep is not set)
-  const ledge = (f) => { const lv = (see.band[f] && !face[f] ? -9999 : lvs[own[f]]) - 2; return lv > -9999 && ((deep[f - 1] && lvs[own[f - 1]] <= lv) || (deep[f + 1] && lvs[own[f + 1]] <= lv) || (deep[f + W] && lvs[own[f + W]] <= lv) || (deep[f - W] && lvs[own[f - W]] <= lv)); };
+  // (shut: of a floor and a lower floor of the place beside it, in front of it or behind it: 0 you climb from that one onto this
+  // one, as the world has it, cells.js landAt; 1 it is too high; 2 no way between them at all, the lower room stops
+  // under this floor: a step of one layer is not climbed from a room one layer high, a jump needs room over your head,
+  // and the picture showed the step, as from the room beside it that is three high: "why i can't go up bu i cna climb
+  // from the left ?")
+  const shut = new Int8Array(w * R.h * 4).fill(-1);
+  const edge = (lv, t, q) => {
+    if (!deep[q]) return 0;
+    const u = own[q] - 1, d = lv - lvs[u + 1], k = u === t - 1 ? 0 : u === t + 1 ? 1 : u === t + w ? 2 : u === t - w ? 3 : -1;
+    if (u === t || d < 1 || k < 0) return d > 1 && u !== t ? 1 : 0;      // (not beside each other, drawn side by side: two layers and more)
+    if (shut[t * 4 + k] < 0) { const ux = R.x + u % w, uy = R.y + (u / w | 0); shut[t * 4 + k] = landAt(lv - d, R.x + t % w, R.y + (t / w | 0), ux, uy) !== null ? 0 : ceilAt(ux, uy, lv - d) > lv ? 1 : 2; }
+    return shut[t * 4 + k];
+  };
+  const ledge = (f) => { if (see.band[f] && !face[f]) return 0; const t = own[f] - 1, lv = lvs[t + 1]; return Math.max(edge(lv, t, f - 1), edge(lv, t, f + 1), edge(lv, t, f + W), edge(lv, t, f - W)); };
   const line = new Uint8Array(n), high = new Int16Array(n).fill(-9999);   // (high: of a px in the shadow of such an edge, the level it is the edge of: its shadow falls on what is lower, the foot of it, not on the floor it is the edge of)
   for (let f = 0; f < n; f++) if (deep[f]) {                  // 3: where the cut ends
     const x = f % W;
     if (x === 0 || x === W - 1 || out(f, f - 1, 0, -1, 0) || out(f, f + 1, 1, 1, 0) || out(f, f + W, 2, 0, 1) || out(f, f - W, 3, 0, -1)) { line[f] = 1; if (seen[f]) { dist[f] = 0; todo.push(f); } }
-    else if (ledge(f)) { line[f] = 1; high[f] = lvP(f); if (seen[f]) { dist[f] = 0; todo.push(f); } }
+    else { const e = ledge(f); if (e) { line[f] = 1; if (e === 1) high[f] = lvP(f); if (seen[f]) { dist[f] = 0; todo.push(f); } } }   // (too high: its shadow on the lower floor; no way at all: the edge of two holes, as where the cut ends)
   }
   for (let i = 0; i < todo.length; i++) {                    // (and in from it, a step a px)
     const f = todo[i], d = dist[f] + 1, x = f % W;
