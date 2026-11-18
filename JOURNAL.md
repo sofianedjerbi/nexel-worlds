@@ -1733,6 +1733,17 @@ thing appears or goes in one step. One thing found and fixed: the walk moved the
 the land's sharp pixels then moved by two, three, two: a shake of every tree. The camera goes a whole pixel at a
 time. Looked at four moments of the horizon three times enlarged: terraces and trees move as one.
 
+Then, from a picture of the mountain: "Corners are weird, and looks soo flat". Drawn alone (?only=tops, ?only=walls:
+kept in the page) the two kinds of shape showed it. Corners: the game rounds a cliff's outer corners, so the corner
+of that tile's painting is cut away and shows the grass below; up at the tile's own height that was a small square
+of another green at every corner. On a side where a tile is such a corner its painting is now taken a little in:
+a square corner, as its wall has. Flat: three things. Far land was left with under half its height (the rule from
+the old method, where a tall far mountain was a mess): now seven tenths. A level is 8 px in the game, which from
+above is low: here a level is drawn half as tall again by default ("Block height", to two and a half times; walls
+stretch, what stands on high land goes up with it, a floor upstairs does not). And nothing was lit: a wall is now
+light at its top and darker to its foot, and the strip of land under a cliff is in its shade. With real shapes
+each of these was a few lines.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
