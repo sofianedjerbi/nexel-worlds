@@ -52,6 +52,9 @@ def build(out: Path):
                 z.write(f, Path("megastructure") / f.relative_to(PKG))
     for f in (ROOT / "tools" / "pages").iterdir():           # the showcase page (what's new) and its clips (tools/film_*.py)
         shutil.copy(f, out / f.name)
+    # (a design shown online: the sky over a curved world, design/enemies/horizon_capture.py makes its pictures)
+    shutil.copy(ROOT / "design" / "enemies" / "site" / "horizon.html", out / "horizon.html")
+    shutil.copytree(ROOT / "design" / "enemies" / "site" / "horizon", out / "horizon")
     page = (out / "index.html").read_text()
     box = '<button class="item" id="watch"><span>Just watch</span></button>'      # (the first screen's menu: one row more, online)
     assert box in page, "the join box changed"
