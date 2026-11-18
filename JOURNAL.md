@@ -1698,6 +1698,19 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 164: a sky over the world, shown before it is built
+
+"whats frustrating in this game is that you don't see the sky", then: "try to make this game curved in a animal
+crossing way ... as a first showcase in the html page. same for the flat sky strip ... (both with view distance
+tweak, short and big view distance)". A page, not the game (design/enemies/site/horizon.html, port 8098): a real
+frame of the game 54 tiles tall (design/enemies/horizon_capture.py) repainted by a small shader two ways. Curved:
+the lower screen is today's picture, above a line the land is drawn shorter and shorter up to a horizon (asin, as on
+a log), with haze, and the sky over it. Sky strip: nothing bends, the land fades and ends on a line. Each short and
+far, side by side, and one to play with (horizon height, where the bend starts, view distance, the hour, a walk
+north). The sky is the hour's: sun or moon on its way across, clouds, stars. What each costs is written on the
+page (far curved: about 20 more tiles to draw, things flat near the horizon; strip: 3 to 8 tiles of view lost).
+Not shown: mountains, which are drawn up the screen and would stand into the sky. Nothing in the game changed.
+
 ## Iteration 163: how much of each, and each shader's own settings
 
 "add more settings also. feel free to add per-shader settings". The Shaders page's switches are amounts now (0 is

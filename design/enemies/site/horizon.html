@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexel Worlds · a sky over the world</title>
+<style>
+  :root { --q:3px; --ink:#f3e6cf; --soft:#b9a48a; --night:#1d1a2b; --panel:#2f2a44; --hi:#4a4368; --lo:#17142a; --edge:#0d0b18; --gold:#ffd36a; --on:#fff1a8; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--night); color:var(--ink); font:16px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; padding:32px 16px 64px; }
+  main { width:min(1140px, 100%); margin:0 auto; }
+  h1 { margin:0; font-size:34px; letter-spacing:2px; color:var(--on); text-shadow:var(--q) var(--q) 0 #5b3f36; }
+  h1 em { font-style:normal; color:var(--gold); }
+  .sub { color:var(--soft); margin:8px 0 24px; }
+  .box { background:var(--panel); padding:16px 18px; margin-bottom:18px;
+    box-shadow:inset var(--q) var(--q) 0 var(--hi), inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 var(--lo), calc(-1 * var(--q)) 0 var(--edge), var(--q) 0 var(--edge), 0 calc(-1 * var(--q)) var(--edge), 0 var(--q) var(--edge); }
+  h2 { margin:0 0 8px; font-size:24px; color:var(--on); }
+  canvas { display:block; width:100%; height:auto; image-rendering:pixelated; box-shadow:0 0 0 var(--q) var(--edge); }
+  .bar { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 12px; }
+  button { font:inherit; color:var(--ink); background:var(--hi); border:0; padding:6px 12px 8px; cursor:pointer;
+    box-shadow:inset var(--q) var(--q) 0 #655d8a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #332d4f, 0 0 0 var(--q) var(--edge); }
+  button.on { background:var(--gold); color:#3b2a22; box-shadow:inset var(--q) var(--q) 0 #ffe9a8, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c99a3a, 0 0 0 var(--q) var(--edge); }
+  .knobs { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:8px 24px; margin-top:14px; }
+  label { display:flex; align-items:center; gap:10px; color:var(--soft); }
+  label span { flex:none; width:118px; } label b { flex:none; width:44px; text-align:right; color:var(--ink); font-weight:normal; }
+  input[type=range] { flex:1; accent-color:var(--gold); }
+  .four { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .four div { cursor:pointer; } .four p { margin:6px 0 0; color:var(--soft); font-size:14px; } .four p b { color:var(--on); font-weight:normal; }
+  ul { margin:6px 0 0; padding-left:20px; } li { margin:4px 0; }
+  @media (max-width:760px) { .four { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>NEXEL <em>WORLDS</em></h1>
+  <div class="sub">A sky over the world: two ways to show one, each with a short and a far view. Made from a real frame of the game (a strip of meadow, 54 tiles from south to north); nothing here is in the game.</div>
+  <div class="box">
+    <h2>Try it</h2>
+    <div class="bar" id="presets"></div>
+    <canvas id="main" width="1100" height="650"></canvas>
+    <div class="knobs">
+      <label><span>Horizon height</span><input type="range" id="yh" min="50" max="96"><b></b></label>
+      <label><span>Bend starts at</span><input type="range" id="y0" min="10" max="80"><b></b></label>
+      <label><span>View distance</span><input type="range" id="g" min="0" max="300"><b></b></label>
+      <label><span>Hour</span><input type="range" id="hour" min="0" max="100"><b></b></label>
+      <label><span>Walk north</span><input type="range" id="walk" min="0" max="100"><b></b></label>
+      <label><span>Walk by itself</span><input type="checkbox" id="auto" checked></label>
+    </div>
+  </div>
+  <div class="box">
+    <h2>The four, side by side</h2>
+    <div class="four" id="four"></div>
+  </div>
+  <div class="box">
+    <h2>What each one costs</h2>
+    <ul>
+      <li><b>Curved</b> (the world rolls away from you, as on a log): the lower part of the screen is exactly today's picture; above "Bend starts at" the land is drawn shorter and shorter up to the horizon. Short view: the bent band shows about 1.6 times its own height of land. Far view: about 3.5 times. So far means more land to draw north of you (about 20 more tiles at this size), and things near the horizon are squashed flat: a tree there is a few pixels tall.</li>
+      <li><b>Sky strip</b> (the land just ends in haze): nothing is bent, every tile keeps its shape, the mouse aims as today. But the land stops on a straight line, and what the sky takes is taken from your view: short view loses about 8 tiles of the north, far view about 3.</li>
+      <li>Both: pointing with the mouse in the bent band needs the same bend undone (curved only); what is written over heads there must follow; the sky is the hour's (sun or moon on its way across, clouds, stars at night).</li>
+      <li>Not shown here: mountains. High ground is drawn up the screen, so a hill near the horizon would stand into the sky. That may look right (a peak against the sky) or not: to be seen in the game itself.</li>
+    </ul>
+  </div>
+</main>
+<script>
+const SRC = "horizon/world.png?v=" + Date.now(), W = 1100, H = 650;
+const PRESETS = [
+  {key: "flat", name: "Today (no sky)", mode: 0, yh: 100, y0: 100, g: 0, say: "The game as it is: you look straight down, the screen is land from edge to edge."},
+  {key: "curve1", name: "Curved · short view", mode: 1, yh: 80, y0: 42, g: 0, say: "The world bends away from 42% up the screen; the horizon is at 80%. A near horizon: cosy, like a small planet."},
+  {key: "curve2", name: "Curved · far view", mode: 1, yh: 84, y0: 36, g: 140, say: "The same bend, with more than twice the land in it: you see ponds and trees far to the north, very flat near the top."},
+  {key: "strip1", name: "Sky strip · short view", mode: 2, yh: 68, y0: 50, g: 0, say: "Nothing bends. The land fades into haze and ends at 68% of the screen: a lot of sky, less of the world."},
+  {key: "strip2", name: "Sky strip · far view", mode: 2, yh: 86, y0: 70, g: 0, say: "The same, with the land up to 86%: a thin band of sky, nearly all of today's view kept."},
+];
+const VERT = "attribute vec2 p; void main() { gl_Position = vec4(p, 0., 1.); }";
+const FRAG = `precision highp float;
+uniform sampler2D uTex; uniform vec2 uRes, uSrc; uniform float uBottom, uMode, uYh, uY0, uG, uT, uHour;
+float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
+  return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
+// the hour: 0 morning, .5 afternoon, .68 sunset, .8 and on night
+vec3 pick(vec3 day, vec3 dusk, vec3 night) { float a = smoothstep(.5, .7, uHour), b = smoothstep(.7, .84, uHour); return mix(mix(day, dusk, a), night, b); }
+vec3 land(float row, float x, float spread) {            // the game's picture at a row of it, averaged over what one screen row covers
+  vec3 c = vec3(0.);
+  for (int i = 0; i < 5; i++) { float r = row - spread * (float(i) / 4. - .5);
+    c += texture2D(uTex, vec2((floor(x) + .5) / uSrc.x, (spread < 1.5 ? floor(r) + .5 : r) / uSrc.y)).rgb; }
+  return c / 5.;
+}
+void main() {
+  vec2 p = gl_FragCoord.xy, a = floor(p / 3.) * 3.;        // a: the sky is made of the land's own pixels (3 screen px)
+  float y = p.y / uRes.y, yh = uYh, y0 = min(uY0, yh - .02), d = p.y, spread = 1., t = 0.;
+  vec3 zen = pick(vec3(.33, .6, .93), vec3(.27, .3, .58), vec3(.05, .07, .19)), hor = pick(vec3(.78, .9, .98), vec3(.99, .68, .42), vec3(.17, .21, .44));
+  vec3 light = pick(vec3(1.), vec3(1., .9, .8), vec3(.5, .58, .86));
+  bool sky = uMode > .5 && y >= yh;
+  if (uMode > .5 && uMode < 1.5 && y > y0 && !sky) {         // curved: the band between y0 and the horizon holds more and more land
+    t = (y - y0) / (yh - y0);
+    float f = asin(t) * (1. + uG * t * t), df = (1. / sqrt(max(1e-4, 1. - t * t))) * (1. + uG * t * t) + asin(t) * 2. * uG * t;
+    d = (y0 + (yh - y0) * f) * uRes.y; spread = df;
+  }
+  if (uMode > 1.5 && !sky) t = clamp((y - y0) / (yh - y0), 0., 1.);
+  vec3 c;
+  if (!sky) {
+    float row = uBottom - d;
+    c = row > 1. ? land(row, p.x, spread) : hor;
+    c *= light;
+    float haze = uMode > 1.5 ? smoothstep(.0, 1., t) : smoothstep(.5, 1., t);
+    c = mix(c, hor * mix(1., .92, light.b - light.r), haze * (uMode > 1.5 ? .96 : .82));
+    if (uMode < 1.5) c *= 1. - .1 * t * t * t;
+  } else {
+    float up = (a.y / uRes.y - yh) / (1. - yh);
+    c = mix(hor, zen, pow(clamp(up, 0., 1.), .7));
+    // the sun's way across (the moon's at night), then clouds, then stars
+    float night = smoothstep(.72, .84, uHour), way = night > .5 ? (uHour - .78) / .22 : uHour / .72;
+    vec2 sun = vec2(uRes.x * (.12 + .76 * way), uRes.y * (yh + (1. - yh) * (.18 + .62 * sin(way * 3.1416))));
+    float disc = length(a + 1.5 - sun);
+    c = mix(c, night > .5 ? vec3(.92, .94, 1.) : vec3(1., .95, .7), step(disc, night > .5 ? 13. : 17.));
+    c += (night > .5 ? vec3(.2, .24, .4) : vec3(.5, .4, .2)) * smoothstep(90., 15., disc) * .5;
+    vec2 q = vec2(a.x * .004 + uT * .012, up * 3.2);
+    float cl = noise(q) * .55 + noise(q * 2.3 + 4.1) * .3 + noise(q * 5.1 + 9.) * .15;
+    c = mix(c, pick(vec3(1.), vec3(1., .82, .72), vec3(.3, .34, .56)), step(.56, cl) * (.9 - .5 * up));
+    c = mix(c, pick(vec3(.86, .92, 1.), vec3(.9, .62, .6), vec3(.22, .26, .46)), step(.5, cl) * (1. - step(.56, cl)) * .7);
+    float star = step(.9975, hash(a)) * night * (1. - step(.5, cl)) * (.6 + .4 * sin(uT * 3. + a.x));
+    c += star;
+  }
+  gl_FragColor = vec4(c, 1.);
+}`;
+function view(canvas, get) {
+  const gl = canvas.getContext("webgl", {antialias: false});
+  const mk = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+  const pr = gl.createProgram(); gl.attachShader(pr, mk(gl.VERTEX_SHADER, VERT)); gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, FRAG)); gl.linkProgram(pr); gl.useProgram(pr);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const u = (n) => gl.getUniformLocation(pr, n), tex = gl.createTexture();
+  let size = null;
+  return {
+    load(img) { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+      size = [img.width, img.height]; },
+    draw(t) { if (!size) return; const s = get();
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.uniform2f(u("uRes"), W, H); gl.uniform2f(u("uSrc"), ...size); gl.uniform1f(u("uBottom"), s.bottom); gl.uniform1f(u("uMode"), s.mode);
+      gl.uniform1f(u("uYh"), s.yh / 100); gl.uniform1f(u("uY0"), s.y0 / 100); gl.uniform1f(u("uG"), s.g / 100); gl.uniform1f(u("uT"), t); gl.uniform1f(u("uHour"), s.hour / 100);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); },
+  };
+}
+// The camera: the screen's bottom row is a row of the picture; walking north moves it up. You stand at row 1270.
+const state = {...PRESETS[1], hour: 30, walk: 55};
+const bottomOf = (walk) => 2580 - walk / 100 * 1250;
+const views = [view(document.getElementById("main"), () => ({...state, bottom: bottomOf(state.walk)}))];
+const $ = (id) => document.getElementById(id);
+function show() {
+  for (const id of ["yh", "y0", "g", "hour", "walk"]) { $(id).value = state[id]; $(id).parentNode.querySelector("b").textContent = id === "g" ? (1.57 * (1 + state.g / 100)).toFixed(1) + "x" : id === "hour" ? (state.hour < 72 ? "day" : "night") : state[id] + "%"; }
+  document.querySelectorAll("#presets button").forEach((b) => b.classList.toggle("on", b.dataset.key === state.key));
+  for (const id of ["y0", "g"]) $(id).disabled = state.mode !== 1 && !(id === "y0" && state.mode === 2);
+  $("yh").disabled = state.mode === 0;
+}
+function pick(p) { Object.assign(state, p); show(); }
+for (const p of PRESETS) { const b = document.createElement("button"); b.textContent = p.name; b.dataset.key = p.key; b.onclick = () => pick(p); $("presets").append(b); }
+for (const id of ["yh", "y0", "g", "hour", "walk"]) $(id).oninput = () => { state[id] = +$(id).value; state.key = "own"; if (id === "walk") $("auto").checked = false; show(); };
+for (const p of PRESETS.slice(1)) {
+  const d = document.createElement("div"), c = document.createElement("canvas"); c.width = W; c.height = H;
+  d.append(c); d.insertAdjacentHTML("beforeend", `<p><b>${p.name}.</b> ${p.say}</p>`); d.onclick = () => { pick(p); scrollTo({top: 0, behavior: "smooth"}); };
+  $("four").append(d);
+  views.push(view(c, () => ({...p, hour: state.hour, bottom: bottomOf(state.walk)})));
+}
+const img = new Image();
+img.onload = () => { views.forEach((v) => v.load(img)); show(); requestAnimationFrame(tick); };
+img.src = SRC;
+function tick(ms) {
+  const t = ms / 1000;
+  if ($("auto").checked) { state.walk = 50 + 42 * Math.sin(t * .22); $("walk").value = state.walk; $("walk").parentNode.querySelector("b").textContent = Math.round(state.walk) + "%"; }
+  views.forEach((v) => v.draw(t));
+  requestAnimationFrame(tick);
+}
+</script>
+</body>
+</html>
