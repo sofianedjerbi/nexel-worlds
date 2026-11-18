@@ -1719,6 +1719,11 @@ horizon band of each at full size, the presets, night, a phone. The mountain is 
 Lesson for me: when the third fix in a row is a new special case, the method is what is wrong. Stop and ask what
 would make the cases not exist.
 
+Then, from a picture of the taller mountain: "Weird green lines at corners". At a wall's two sides the game paints
+the grass rim turning the corner, a few px wide; on an upright wall that is a green line down each corner. A wall's
+painting is now taken from the middle of its tile and spread over its width (a wall is bands across: nothing is
+lost). One line of the shapes; no rule.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole

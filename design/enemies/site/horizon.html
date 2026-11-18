@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 13.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 14.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -204,10 +204,13 @@ function shapes(sc) {
     const L = sc.tile(i, j); if (L === null) continue;
     const X = gx + i * S, Y = gy + j * S, h = L * st;
     if (X + S <= 0 || X >= iw || Y - h < 0 || Y + S - h > ih) continue;        // (its painting is not all in the picture: left out, not smeared from the picture's edge)
-    const quad = (r0, h0, r1, h1) => { for (const [x, r, hh] of [[X, r0, h0], [X + S, r0, h0], [X, r1, h1], [X + S, r0, h0], [X + S, r1, h1], [X, r1, h1]]) land.push(x, r, hh, x, r - hh); };
+    // (`in`: how far in from the tile's sides the painting is taken, px. A wall's is taken from its middle, spread
+    // over its width: at a wall's two sides the game paints the grass rim turning the corner, a few px wide, which
+    // on an upright wall was a green line at each corner: "weird green lines at corners". A wall is bands across.)
+    const quad = (r0, h0, r1, h1, inn = 0) => { for (const [x, r, hh] of [[X, r0, h0], [X + S, r0, h0], [X, r1, h1], [X + S, r0, h0], [X + S, r1, h1], [X, r1, h1]]) land.push(x, r, hh, x === X ? X + inn : X + S - inn, r - hh); };
     for (let q = 0; q < 4; q++) quad(Y + q * S / 4, h, Y + (q + 1) * S / 4, h);
     const south = sc.tile(i, j + 1);
-    if (south !== null && south < L) for (let k = L; k > south; k--) quad(Y + S, k * st, Y + S, (k - 1) * st);
+    if (south !== null && south < L) for (let k = L; k > south; k--) quad(Y + S, k * st, Y + S, (k - 1) * st, 10);
   }
   for (const q of sc.sprites) {
     const cx = q.x + q.w / 2, gap = q.foot - (q.y + q.h), b = q.b ? 1 : 0;
