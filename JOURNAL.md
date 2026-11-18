@@ -3132,3 +3132,41 @@ take the height in account for pathfinding ? tf is the particles also going all 
   at the foot of what is higher; 4 a light edge where a floor drops; 5 a side cut of the row you stand on, in a
   corner (a drawing from the world's columns). The code of 1 is written (scratchpad T_clean.patch), not tested by
   the suite yet. No pick yet. The demo is published from 4df79cd.
+
+## Iteration 172: a column shows both its rooms, and the brink of a floor is lit
+
+Six pictures of his cave on the mockup page; the user: "go with 4" (a light edge where a floor drops; on the page
+2 to 5 each came on top of 1, a column shows both its rooms).
+
+- Both rooms (xray.js xrayPlace: by; xraycut.js 6). A tile was of the place at one height. He dug the block at his
+  eyes under his tunnel's end: the new room took the tile and that tile of the tunnel went from the picture
+  ("digged another block and topology changed !! what the hell"). xrayPlace now says which other heights of a tile
+  are of the place, and the column is drawn as it is, cut along its south side: the upper room's wall and floor,
+  the front of the rock between the two, and under it what shows of the lower room through its opening, a layer of
+  it eight px (a room one layer high: the south half of its floor). The same from the room over it and from the
+  one under it. Dig a block out of the wall under a floor: that band of the wall is the new room, and nothing else
+  moves.
+- Not where the upper room would be drawn over a floor of another tile that you walk to from where you stand (his
+  nook, north of the two tiles the tunnel is over): that floor is seen, the upper room is not, as before.
+- The lines ask each px for its own level (a tile's other room has its own): no edge across a tunnel's floor
+  where one tile of it is drawn this way; and "can you climb it" asks landAt for that very floor (it asked for
+  any landing: under a floor you walk in under it).
+- Who stands on the floor of a tile's other room is in the place, seen (xray.js xrayAlso): he was taken for
+  someone on the roof.
+- The brink (xraycut.js 7). Under a roof, a px of a floor is lit (x 1.35) where it drops to its own front or to
+  the wall of the room south of it, and down its side where the floor of the tile beside it is lower. A stair is
+  seen as steps: an L of light on each. Not where the line is (an edge nobody climbs), not on land open to the sky
+  (it is drawn as it is, with or without the picture over it).
+- The painter. The two cost 6 ms a picture at a quarter of the CPU (23 -> 29); nearly all of the painter's last
+  loop was two look-ups a px for the three quarters of the picture that are not of the place and get nothing: left
+  out (counted on every shape: 1.2 million such px, none that had anything laid). 23 -> 20 ms.
+- Looked at: his spot from the hole, from the new room, from the nook, from the tunnel over them and from the
+  stair; every shape on a throwaway world against the game before (tunnels both ways, a room with a shelf, low
+  rooms, a way through a hill, open pits: as they were but for the lit brinks; open pits unchanged), by night.
+- Tests: test_e2e_stacked.py, new, 2 (a block dug under a tunnel's floor: the tunnel's floor stays, the rock under
+  it, the new room's half floor, no edge across the tunnel, who stands on either floor is seen, the same from the
+  tunnel; the brink of a stair's steps lit, not their middle nor their high side; both fail on the code before).
+  475 unit; browser 252 passed in the full run, none failed, none at a second try (the nine of the sounds are not
+  run in a side checkout: no music there).
+- Left: the upper room is not drawn over a room north of it that you walk to; a lower room's own front is not
+  drawn from over it. A phone was not looked at.
