@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 21.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 26.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -117,25 +117,31 @@ const PRESETS = [
 const PLACE = `
 uniform vec2 uRes; uniform float uBottom, uMode, uYh, uY0, uG, uCx, uFar;
 float curve(float t) { return asin(t) * (1. + uG * t * t); }
-void place(float r, out float y, out float t) {
+void place(float r, out float y, out float t) {      // (t is 1 beyond the horizon too: as deep in the air as the horizon)
   float d = (uBottom - r) / uRes.y, y0 = min(uY0, uYh - .02); t = 0.;
   if (uMode < .5 || d <= y0) { y = d * uRes.y; return; }
   float want = (d - y0) / (uYh - y0), most = curve(.999);
+  float past = max(0., want - most) * (uYh - y0) * uRes.y;      // px of ground beyond the horizon
   if (want >= most) want = max(0., most - 3. * (want - most));
   float lo = 0., hi = .999;
   for (int i = 0; i < 22; i++) { float m = (lo + hi) * .5; if (curve(m) < want) lo = m; else hi = m; }
-  t = lo; y = (y0 + (uYh - y0) * t) * uRes.y;
+  // Beyond the horizon the ground falls away, a pixel down for each pixel further: a hill there shows its top over
+  // the line, then sinks. (Without this a mountain behind the horizon stood whole in the sky, its terraces piled
+  // like bricks with animals on them: "Wtf is happening at the horizon".)
+  y = (y0 + (uYh - y0) * lo) * uRes.y - past; t = past > 0. ? 1. : lo;
 }
-float landLean(float t) { return 1. - .3 * pow(t, 1.5); }    // how much of the land's height shows where it leans back, far off (most of it: with half, a far mountain lay flat)
+float landLean(float t) { return 1. - .5 * pow(t, 1.5); }    // how much of the land's height shows where it leans back, far off (most of it: with half, a far mountain lay flat)
+uniform float uRef;                                          // the land's height where you stand: the camera is at your height, as in the game
 uniform float uTall;                                         // how tall a level is drawn, as a share of the game's 8 px ("looks soo flat")
 float depth(float r, float lead) { return clamp((uBottom - r) / uFar - lead, -.98, .98); }      // nearer along the ground: in front
 `;
 const LAND_V = `#version 300 es
 precision highp float;
-in vec3 aPos; in vec2 aUV; in float aShade; out vec2 vUV; out float vT, vShade;` + PLACE + `
+in vec3 aPos; in vec2 aUV; in float aShade, aFar; out vec2 vUV; out float vT, vShade;` + PLACE + `
+// (a cliff's side slopes near you; far off it stands straight again: there each sloping end made a terrace a bevelled brick)
 void main() {
   float y, t; place(aPos.y, y, t);
-  gl_Position = vec4((uRes.x * .5 + aPos.x - uCx) / uRes.x * 2. - 1., (y + aPos.z * uTall * landLean(t)) / uRes.y * 2. - 1., depth(aPos.y, 0.), 1.);
+  gl_Position = vec4((uRes.x * .5 + aPos.x - uCx) / uRes.x * 2. - 1., (y + (mix(aPos.z, aFar, smoothstep(.15, .6, t)) - uRef) * uTall * landLean(t)) / uRes.y * 2. - 1., depth(aPos.y, 0.), 1.);
   vUV = aUV; vT = t; vShade = aShade;
 }`;
 const LAND_F = `#version 300 es
@@ -153,7 +159,7 @@ void main() {
   float small = 1. - .38 * pow(t, 1.5), back = 1. - .5 * pow(t, 1.6), built = step(.5, aBuilt);
   float sx = uRes.x * .5 + aCx - uCx + aOff.x * mix(small, 1., built);
   // (aLift: the height of the land it stands on, drawn as tall as the land is; aOwn: how high over that it is itself, a floor upstairs)
-  float sy = y + aLift * uTall * landLean(t) + aOwn * mix(landLean(t), back, built) + aOff.y * mix(small, back, built);
+  float sy = y + (aLift - uRef) * uTall * landLean(t) + aOwn * mix(landLean(t), back, built) + aOff.y * mix(small, back, built);
   // (in front of the ground it stands on; and someone down a hole near you is seen in it, as the game cuts the ground away for them)
   float z = aLift < 0. && t == 0. ? -.99 : depth(aFoot, .0015);
   gl_Position = vec4(sx / uRes.x * 2. - 1., sy / uRes.y * 2. - 1., z, 1.);
@@ -207,15 +213,39 @@ function shapes(sc) {
   // A tile's height along its width, at its west side, a little in, a little in from the east, and its east side:
   // its own, but down to the land beside it at a side where that land is lower (the cliff's side slopes there)
   const edge = (i, j) => { const L = sc.tile(i, j), w = sc.tile(i - 1, j), e = sc.tile(i + 1, j); return [w !== null && w < L ? w * st : L * st, L * st, L * st, e !== null && e < L ? e * st : L * st]; };
+  // What the game's picture really shows. The game paints high land over what is behind it: a river behind a
+  // mountain, the far wall of a canyon. Taken from the picture, those wore the mountain's painting: a canyon wall
+  // twelve levels high stood at the horizon as pale slabs ("Wtf is happening at the horizon"). So: front(i, j) is
+  // the highest row of the picture that land south of a tile is painted up to; a top or a level of a wall that is
+  // not clear of it (or not all in the picture) takes the painting of one that is, at the same level: the nearest
+  // plain tile for a top, any wall for a wall.
+  const front = new Float32Array(sc.mw * sc.mh).fill(1e9);
+  for (let i = 0; i < sc.mw; i++) { let f = 1e9; for (let j = sc.mh - 1; j >= 0; j--) { front[j * sc.mw + i] = f; const L = sc.tile(i, j); if (L !== null) f = Math.min(f, gy + j * S - L * st); } }
+  const inPic = (X, top, bottom) => top >= 0 && bottom <= ih;      // (a tile half off the picture's side keeps its own painting)
+  const topSeen = (i, j) => { const L = sc.tile(i, j), Y = gy + j * S, h = L * st; return inPic(gx + i * S, Y - h, Y + S - h) && (L <= 0 || front[j * sc.mw + i] >= Y + S - h); };
+  const bandSeen = (i, j, k) => { const Y = gy + j * S; return inPic(gx + i * S, Y + S - k * st, Y + S - (k - 1) * st) && (k <= 0 || front[j * sc.mw + i] >= Y + S - (k - 1) * st); };
+  const plain = new Map(), bands = new Map();
+  for (let j = 0; j < sc.mh; j++) for (let i = 0; i < sc.mw; i++) {
+    const L = sc.tile(i, j); if (L === null) continue;
+    if (topSeen(i, j) && [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => sc.tile(i + a, j + b) === L)) { if (!plain.has(L)) plain.set(L, []); plain.get(L).push([i, j]); }
+    const south = sc.tile(i, j + 1);
+    if (south !== null && south < L) for (let k = L; k > south; k--) if (!bands.has(k) && bandSeen(i, j, k)) bands.set(k, [i, j]);
+  }
+  const nearestKey = (map, k) => { let best = null; for (const q of map.keys()) if (best === null || Math.abs(q - k) < Math.abs(best - k)) best = q; return best; };
+  const topFrom = (i, j, L) => { if (topSeen(i, j)) return [i, j]; const list = plain.get(L) || plain.get(nearestKey(plain, L)); if (!list) return null;
+    let best = list[0], bd = 1e9; for (const q of list) { const d = (q[0] - i) ** 2 + (q[1] - j) ** 2; if (d < bd) { bd = d; best = q; } } return best; };
+  const bandFrom = (i, j, k) => bandSeen(i, j, k) ? [i, j] : bands.get(k) || bands.get(nearestKey(bands, k)) || null;
   for (let j = 0; j < sc.mh; j++) for (let i = 0; i < sc.mw; i++) {
     const L = sc.tile(i, j); if (L === null) continue;
     const X = gx + i * S, Y = gy + j * S, h = L * st;
-    if (X + S <= 0 || X >= iw || Y - h < 0 || Y + S - h > ih) continue;        // (its painting is not all in the picture: left out, not smeared from the picture's edge)
+    if (X + S <= 0 || X >= iw) continue;
+    const src = topFrom(i, j, L); if (!src) continue;
+    const dX = (src[0] - i) * S, dY = (src[1] - j) * S - (sc.tile(src[0], src[1]) - L) * st;      // from this tile's painting to the one it wears
     const north = sc.tile(i, j - 1), south = sc.tile(i, j + 1), west = sc.tile(i - 1, j), east = sc.tile(i + 1, j);
     const low = (v) => v !== null && v < L, ONLY = new URLSearchParams(location.search).get("only");      // (?only=tops or ?only=walls: one kind of shape alone, to look at it)
     // One piece with four corners, each [x, ground row, height, lit]; its painting is the tile's own (the game draws a
     // top `h` px up the picture from its square), or what `uv` says.
-    const piece = (a, b, c, d, uv = (x, r, hh) => [x, r - h]) => { for (const [x, r, hh, lit] of [a, b, c, b, d, c]) land.push(x, r, hh, ...uv(x, r, hh), lit); };
+    const piece = (a, b, c, d, uv = (x, r, hh) => [x + dX, r - h + dY]) => { for (const [x, r, hh, lit, far = hh] of [a, b, c, b, d, c]) land.push(x, r, hh, ...uv(x, r, hh), lit, far); };      // (far: its height far off, where a side does not slope)
     // Its top, in three across. Where the land west or east of it is lower, the game paints that side of the tile as
     // a narrow strip of cliff: seen from above, that is all a side wall is. Left flat at the tile's height it gave a
     // cliff no side at all ("corners are weird, and looks soo flat"): here that strip is the cliff's side, sloping
@@ -229,7 +259,7 @@ function shapes(sc) {
       // (a side: the cliff's earth, taken from one column of the strip the game paints there, 8 px in, so that its
       // sawtooth rim is not smeared down the slope like a twisted rope; light at the top, darker to the foot)
       const col = c === 0 ? X + 8 : X + S - 9, lo = Math.min(hs[c], hs[c + 1]), sh = (v) => v > lo ? .9 : .66;
-      piece([xs[c], r0, hs[c], sh(hs[c])], [xs[c + 1], r0, hs[c + 1], sh(hs[c + 1])], [xs[c], r1, hs[c], sh(hs[c])], [xs[c + 1], r1, hs[c + 1], sh(hs[c + 1])], () => [col, Y + S / 2 - h]);      // (one colour a tile: rows of it lay slanted down the slope, as streaks)
+      piece([xs[c], r0, hs[c], sh(hs[c]), h], [xs[c + 1], r0, hs[c + 1], sh(hs[c + 1]), h], [xs[c], r1, hs[c], sh(hs[c]), h], [xs[c + 1], r1, hs[c + 1], sh(hs[c + 1]), h], () => [col + dX, Y + S / 2 - h + dY]);      // (one colour a tile: rows of it lay slanted down the slope, as streaks)
     }
     // Walls: upright, along the tile's south edge, wherever its own edge stands higher than the edge of the tile
     // south of it: the whole edge where that tile is lower (the cliff's front), or only a corner of it where one of
@@ -240,10 +270,30 @@ function shapes(sc) {
     const under = south === null ? null : edge(i, j + 1);
     if (ONLY !== "tops" && under) {
       const foot = Math.min(...under), span = Math.max(1, h - foot), lit = (v) => .7 + .26 * Math.max(0, Math.min(1, (v - foot) / span));
-      const uv = (x, r, hh) => [X + 10 + (x - X) / S * (S - 20), r - hh];
+      const fb = Math.min(h, south * st);
+      // The edge in pieces across: its three parts, and a sloping part cut again wherever its slope crosses a level,
+      // so that each piece's top lies within one level (a slope over several levels, cut by levels only, left gaps).
+      const parts = [];
       for (let c = 0; c < 3; c++) {
-        const t0 = hs[c], t1 = hs[c + 1], b0 = Math.min(t0, under[c]), b1 = Math.min(t1, under[c + 1]);
-        if (t0 > b0 || t1 > b1) piece([xs[c], Y + S, t0, lit(t0)], [xs[c + 1], Y + S, t1, lit(t1)], [xs[c], Y + S, b0, lit(b0)], [xs[c + 1], Y + S, b1, lit(b1)], uv);
+        const cut = [0, 1];
+        for (const [l, r] of [[hs[c], hs[c + 1]], [under[c], under[c + 1]]]) if (l !== r)
+          for (let m = Math.floor(Math.min(l, r) / st) + 1; m * st < Math.max(l, r); m++) cut.push((m * st - l) / (r - l));
+        cut.sort((p, q) => p - q);
+        const at = (l, r, f) => l + (r - l) * f;
+        for (let q = 0; q + 1 < cut.length; q++) if (cut[q + 1] > cut[q]) parts.push([at(xs[c], xs[c + 1], cut[q]), at(xs[c], xs[c + 1], cut[q + 1]),
+          at(hs[c], hs[c + 1], cut[q]), at(hs[c], hs[c + 1], cut[q + 1]), at(under[c], under[c + 1], cut[q]), at(under[c], under[c + 1], cut[q + 1])]);
+      }
+      // A level at a time: each takes its own painting, or another wall's at that level where its own is covered.
+      // (A wall's foot goes 2 px under the land it stands on: where they only met, a pixel of sky showed at corners.)
+      const cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      for (let k = L; k * st > foot; k--) {
+        const from = bandFrom(i, j, k); if (!from) continue;
+        const hi = k * st, lo = hi - st, wX = gx + from[0] * S, wY = gy + from[1] * S, ff = cl(fb, lo, hi), sink = (v, u) => v <= u ? v - 2 : v;
+        const uv = (x, r, hh) => [wX + 10 + (x - X) / S * (S - 20), wY + S - Math.max(hh, lo)];
+        for (const [xa, xb, ta, tb, ua, ub] of parts) {
+          const t0 = cl(ta, lo, hi), t1 = cl(tb, lo, hi), b0 = cl(ua, lo, t0), b1 = cl(ub, lo, t1);
+          if (t0 > b0 || t1 > b1 || hi > ff) piece([xa, Y + S, t0, lit(t0), hi], [xb, Y + S, t1, lit(t1), hi], [xa, Y + S, sink(b0, ua), lit(b0), ff], [xb, Y + S, sink(b1, ub), lit(b1), ff], uv);
+        }
       }
     }
   }
@@ -284,7 +334,7 @@ function view(box, get) {
   const built = new Map();                                     // a place's shapes and pictures, on this card
   const placeOf = (key) => {
     if (!built.has(key)) { const sc = SCENES[key], m = sc.mesh || (sc.mesh = shapes(sc));
-      built.set(key, {land: array(P.land, m.land, [["aPos", 3], ["aUV", 2], ["aShade", 1]]), cards: array(P.card, m.cards, [["aFoot", 1], ["aCx", 1], ["aOff", 2], ["aLift", 1], ["aOwn", 1], ["aBuilt", 1], ["aUV", 2]]),
+      built.set(key, {land: array(P.land, m.land, [["aPos", 3], ["aUV", 2], ["aShade", 1], ["aFar", 1]]), cards: array(P.card, m.cards, [["aFoot", 1], ["aCx", 1], ["aOff", 2], ["aLift", 1], ["aOwn", 1], ["aBuilt", 1], ["aUV", 2]]),
         ground: texture(sc.ground, false), atlas: texture(sc.atlas, true)}); }
     return built.get(key);
   };
@@ -311,7 +361,7 @@ function view(box, get) {
       for (const [prog, mesh, tex, img] of [[P.land, g.land, g.ground, sc.ground], [P.card, g.cards, g.atlas, sc.atlas]]) {
         const u = prog.u; gl.useProgram(prog.pr);
         gl.uniform2f(u.uRes, vw, H); gl.uniform1f(u.uBottom, s.bottom); gl.uniform1f(u.uMode, s.mode); gl.uniform1f(u.uYh, s.yh / 100); gl.uniform1f(u.uY0, s.y0 / 100);
-        gl.uniform1f(u.uG, s.g / 100); gl.uniform1f(u.uCx, sc.cx); gl.uniform1f(u.uFar, 5200); gl.uniform1f(u.uTall, s.tall / 100);
+        gl.uniform1f(u.uG, s.g / 100); gl.uniform1f(u.uCx, sc.cx); gl.uniform1f(u.uFar, 5200); gl.uniform1f(u.uTall, s.tall / 100); gl.uniform1f(u.uRef, s.mode ? Math.round(heightAt(sc, sc.cx, s.bottom - .3 * H) * s.tall / 100) / (s.tall / 100) : 0);
         gl.uniform3f(u.uLight, ...light); gl.uniform3f(u.uAir, ...air); gl.uniform2f(u.uSrc, img.width, img.height);
         gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(u.uTex, 0);
         gl.bindVertexArray(mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, mesh.n);
@@ -322,7 +372,25 @@ function view(box, get) {
 const state = {...PRESETS[2], hour: 30, walk: 55, stand: true, hills: true, layers: true, scene: "meadow"};
 // (in a house or under ground the camera stays on you while the walk goes by itself: that is where you look)
 // (a whole pixel of the picture at a time: at parts of a pixel the land's sharp pixels moved by two, then three, then two: a shake)
-const bottomOf = (walk, scene) => ((scene === "inside" || scene.startsWith("under")) && $("auto").checked ? 1545 : Math.round(2580 - walk / 100 * 1250));
+// The land's height (px) around a spot of the picture: the levels of the tiles near it, the nearest counting most, so
+// that it changes evenly as you walk. The camera is held at that height: on a mountain you look out from it, over
+// the land below, and the sky is still there (it was not: the mountain you stood on was drawn up over it).
+function heightAt(sc, x, r) {
+  const [gx, gy, S] = sc.grid, fi = (x - gx) / S - .5, fj = (r - gy) / S - .5; let sum = 0, all = 0;
+  for (let j = Math.floor(fj) - 3; j <= Math.floor(fj) + 4; j++) for (let i = Math.floor(fi) - 3; i <= Math.floor(fi) + 4; i++) {
+    const L = sc.tile(i, j), w = Math.max(0, 1 - Math.abs(i - fi) / 4) * Math.max(0, 1 - Math.abs(j - fj) / 4);
+    if (L !== null && L > 0) { sum += L * w; all += w; } else all += w; }
+  return all ? sum / all * sc.step : 0;
+}
+// How far north the walk may go in a place: not so far that the horizon shows the end of the picture taken of it
+// (high land near the picture's top edge is not all in it and is left out: pale bars stood there, at the horizon).
+function northOf(sc) {
+  if (sc.north === undefined) { const [gx, gy, S] = sc.grid; let end = 0;
+    for (let j = 0; j < sc.mh; j++) for (let i = 0; i < sc.mw; i++) { const L = sc.tile(i, j); if (L !== null && gy + j * S - L * sc.step < 0) end = Math.max(end, gy + (j + 1) * S); }
+    sc.north = Math.max(1330, end + 1480); }      // (1480: the ground from the screen's bottom to the horizon in the far view)
+  return sc.north;
+}
+const bottomOf = (walk, scene) => ((scene === "inside" || scene.startsWith("under")) && $("auto").checked ? 1545 : Math.round(2580 - walk / 100 * (2580 - (SCENES[scene].tile ? northOf(SCENES[scene]) : 1330))));
 const $ = (id) => document.getElementById(id);
 const views = [view($("main"), () => ({...state, bottom: bottomOf(state.walk, state.scene)}))];
 function show() {

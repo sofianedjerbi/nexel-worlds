@@ -1753,6 +1753,23 @@ wedge of sky: every south edge is now closed against the edge of the tile south 
 colour of earth a tile, light at the top and dark at the foot: clean. The pale stripe was the strip's outer 5 px,
 which the side no longer uses; the corner inset is gone with it (the rounded corner now lies on the slope).
 
+"Wtf is happening at the horizon": pale slabs, dark bricks piled into the sky, animals standing in it. My own
+pictures of the mountain had no sky in them at all and I had not said so: I looked at the cliffs I was fixing, not
+at the horizon. Four causes, found by printing the level grid and looking at the game's own picture of the place:
+- The place has a canyon: a plateau 12 levels up, a river at its foot, the mountain in front. The game paints the
+  mountain over the canyon's far wall and the river. Taken from the picture, those wore the mountain's painting:
+  the slabs. Now `front(i, j)` says how far up the picture the land south of a tile is painted; a top or a level
+  of a wall that is not clear of it takes the painting of one that is, at the same level.
+- Beyond the horizon nothing went down (the bend is flat there), and far land kept 70% of a height drawn 1.5
+  times: a mountain behind the horizon stood whole in the sky. Now the ground falls a pixel for each pixel beyond
+  the horizon, far land keeps half its height, and the haze stays full there (it thinned again: dark walls).
+- The camera stayed at sea level: on the mountain, the mountain was drawn up over the sky. It is now held at the
+  height of the land you stand on (an even mean of the tiles around), as the game's is.
+- A cliff's sloping side, far off, made each terrace a bevelled brick: far off the sides stand straight again.
+Also: walls are cut by level exactly where a side slopes over several levels; a wall's foot goes 2 px under the
+land it stands on; the walk stops before the horizon reaches the end of the picture taken (pale bars there).
+Rule for me: after a change to the land, look at the horizon band of every place, on a phone's width too.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
