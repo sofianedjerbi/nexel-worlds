@@ -3118,3 +3118,9 @@ take the height in account for pathfinding ? tf is the particles also going all 
   on the code before, the dust anywhere between the roof and the tunnel). test_e2e_relief.py reads drawBody.
   Browser: 252 passed in the full run; two failed there: the relief's source check (mine, the name: updated) and a
   wall's door (passes alone).
+- The picture under ground, asked this time: six pictures of his cave on the mockup page (127.0.0.1:7795), 0 to 4
+  drawn by the game's code in a side checkout, none landed: 0 today; 1 a column shows both its rooms, cut along
+  its south side (the tunnel's floor stays, the wall under it has one block out); 2 walls block by block; 3 shade
+  at the foot of what is higher; 4 a light edge where a floor drops; 5 a side cut of the row you stand on, in a
+  corner (a drawing from the world's columns). The code of 1 is written (scratchpad T_clean.patch), not tested by
+  the suite yet. No pick yet. The demo is published from 4df79cd.
