@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 31.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 32.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -318,6 +318,7 @@ function shapes(sc) {
     }
   }
   for (const q of sc.sprites) {
+    if (q === sc.me) continue;                                  // (you: drawn each frame where you stand, see `youAt`)
     const cx = q.x + q.w / 2, gap = q.foot - (q.y + q.h), b = q.b ? 1 : 0;
     const lift = (sc.tile(Math.floor((cx - gx) / S), Math.floor((q.foot - 1 - gy) / S)) || 0) * st;      // the land's height where it stands
     for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]])
@@ -348,9 +349,10 @@ function view(box, get) {
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
     const width = parts.reduce((n, q) => n + q[1], 0); let off = 0;
     for (const [name, n] of parts) { const loc = prog.at(name); if (loc >= 0) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, width * 4, off * 4); } off += n; }
-    return {vao, n: data.length / width};
+    return {vao, n: data.length / width, buf: gl.getParameter(gl.ARRAY_BUFFER_BINDING)};
   };
   const sky = array(P.sky, new Float32Array([-1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1]), [["p", 2]]);
+  const CARD = [["aFoot", 1], ["aCx", 1], ["aOff", 2], ["aLift", 1], ["aOwn", 1], ["aBuilt", 1], ["aUV", 2]], you = array(P.card, new Float32Array(54), CARD);
   const built = new Map();                                     // a place's shapes and pictures, on this card
   const placeOf = (key) => {
     if (!built.has(key)) { const sc = SCENES[key], m = sc.mesh || (sc.mesh = shapes(sc));
@@ -370,6 +372,7 @@ function view(box, get) {
       if (box.dataset.vw !== String(vw)) { box.dataset.vw = vw; box.style.aspectRatio = `${vw} / ${H}`; }
       const cw = Math.max(200, Math.round(box.clientWidth * Math.min(2, window.devicePixelRatio || 1))), k = cw / vw;
       if (canvas.width !== cw) { canvas.width = cw; canvas.height = Math.round(H * k); }
+      const cxv = s.me ? Math.max(vw / 2, Math.min(sc.ground.width - vw / 2, Math.round(s.me.x))) : sc.cx;      // (on a narrow screen the view follows you sideways)
       const g = placeOf(s.scene), hr = s.hour / 100, dusk = ease(.5, .7, hr), night = ease(.7, .84, hr);
       const light = mixc(mixc([1, 1, 1], [1, .9, .8], dusk), [.5, .58, .86], night), air = mixc(mixc([.78, .9, .98], [.99, .68, .42], dusk), [.17, .21, .44], night);
       gl.viewport(0, 0, canvas.width, canvas.height);
@@ -381,10 +384,16 @@ function view(box, get) {
       for (const [prog, mesh, tex, img] of [[P.land, g.land, g.ground, sc.ground], [P.card, g.cards, g.atlas, sc.atlas]]) {
         const u = prog.u; gl.useProgram(prog.pr);
         gl.uniform2f(u.uRes, vw, H); gl.uniform1f(u.uBottom, s.bottom); gl.uniform1f(u.uMode, s.mode); gl.uniform1f(u.uYh, s.yh / 100); gl.uniform1f(u.uY0, s.y0 / 100);
-        gl.uniform1f(u.uG, s.g / 100); gl.uniform1f(u.uCx, sc.cx); gl.uniform1f(u.uFar, 5200); gl.uniform1f(u.uTall, s.tall / 100); if (u.uFlatFar) gl.uniform1f(u.uFlatFar, new URLSearchParams(location.search).get('flatfar') ? 1 : 0); gl.uniform1f(u.uRef, s.mode ? Math.round(heightAt(sc, sc.cx, s.bottom - .3 * H) * s.tall / 100) / (s.tall / 100) : 0);
+        gl.uniform1f(u.uG, s.g / 100); gl.uniform1f(u.uCx, cxv); gl.uniform1f(u.uFar, 5200); gl.uniform1f(u.uTall, s.tall / 100); if (u.uFlatFar) gl.uniform1f(u.uFlatFar, new URLSearchParams(location.search).get('flatfar') ? 1 : 0); gl.uniform1f(u.uRef, s.mode ? Math.round(heightAt(sc, s.me ? s.me.x : sc.cx, s.me ? s.me.r : s.bottom - .3 * H) * s.tall / 100) / (s.tall / 100) : 0);
         gl.uniform3f(u.uLight, ...light); gl.uniform3f(u.uAir, ...air); gl.uniform2f(u.uSrc, img.width, img.height);
         gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(u.uTex, 0);
         gl.bindVertexArray(mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, mesh.n);
+        if (prog === P.card && sc.me) {                         // you, where you stand (where the game had you, or where you have walked to)
+          const q = sc.me, at = s.me || sc.home, [gx, gy, S] = sc.grid, lift = (sc.tile(Math.floor((at.x - gx) / S), Math.floor((at.r - 1 - gy) / S)) || 0) * sc.step, v = [];
+          for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]) { const fx = at.left ? 1 - dx : dx;
+            v.push(at.r, at.x, (dx - .5) * q.w, dy * q.h, lift, at.hop || 0, 0, q.ax + .5 + fx * (q.w - 1), q.ay + .5 + (1 - dy) * (q.h - 1)); }
+          gl.bindVertexArray(you.vao); gl.bindBuffer(gl.ARRAY_BUFFER, you.buf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Float32Array(v)); gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
       }
     },
   };
@@ -402,17 +411,31 @@ function heightAt(sc, x, r) {
     if (L !== null && L > 0) { sum += L * w; all += w; } else all += w; }
   return all ? sum / all * sc.step : 0;
 }
-// How far north the walk may go in a place: not so far that the horizon shows the end of the picture taken of it
-// (high land near the picture's top edge is not all in it and is left out: pale bars stood there, at the horizon).
-function northOf(sc) {
-  if (sc.north === undefined) { const [gx, gy, S] = sc.grid; let end = 0;
-    for (let j = 0; j < sc.mh; j++) for (let i = 0; i < sc.mw; i++) { const L = sc.tile(i, j); if (L !== null && gy + j * S - L * sc.step < 0) end = Math.max(end, gy + (j + 1) * S); }
-    sc.north = Math.max(1330, end + 1480); }      // (1480: the ground from the screen's bottom to the horizon in the far view)
-  return sc.north;
-}
+// How far north the walk may go in a place: not so far that the horizon shows the end of the land known there
+// (1480: the ground from the screen's bottom to the horizon in the far view). Land too high to be all in the
+// picture wears the painting of land that is, so the picture's own top edge is no limit.
+function northOf(sc) { return Math.max(1330, sc.grid[1] + 1480); }
 const bottomOf = (walk, scene) => ((scene === "inside" || scene.startsWith("under")) && $("auto").checked ? 1545 : Math.round(2580 - walk / 100 * (2580 - (SCENES[scene].tile ? northOf(SCENES[scene]) : 1330))));
 const $ = (id) => document.getElementById(id);
-const views = [view($("main"), () => ({...state, bottom: bottomOf(state.walk, state.scene)}))];
+// Playing (on this computer only: a try of the curve in the hand, not a part of the public page). You walk with the
+// arrows or WASD, or by dragging on the picture; the view keeps you 40% up the screen. You go where the land is known
+// and no more than a level up or down at a step, as in the game.
+const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname), keys = new Set(), drag = {on: false, x: 0, y: 0, dx: 0, dy: 0};
+const playing = () => LOCAL && $("play") && $("play").checked && SCENES[state.scene].me;
+const youAt = () => { const sc = SCENES[state.scene]; return sc.at || (sc.at = {...sc.home, px: sc.home.x, pr: sc.home.r}); };
+const views = [view($("main"), () => { if (!playing()) return {...state, bottom: bottomOf(state.walk, state.scene)};
+  const sc = SCENES[state.scene], at = youAt(); return {...state, me: {x: at.px, r: at.pr, left: at.left, hop: at.hop}, bottom: Math.max(northOf(sc), Math.min(sc.ground.height, at.pr + Math.round(.4 * H)))}; })];
+function walkYou(dt, t) {
+  const sc = SCENES[state.scene], at = youAt(), [gx, gy, S] = sc.grid, lev = (x, r) => sc.tile(Math.floor((x - gx) / S), Math.floor((r - 1 - gy) / S));
+  let dx = (keys.has("ArrowRight") || keys.has("d") ? 1 : 0) - (keys.has("ArrowLeft") || keys.has("a") || keys.has("q") ? 1 : 0), dy = (keys.has("ArrowDown") || keys.has("s") ? 1 : 0) - (keys.has("ArrowUp") || keys.has("w") || keys.has("z") ? 1 : 0);
+  if (drag.on && Math.hypot(drag.dx, drag.dy) > 14) { const a = Math.atan2(drag.dy, drag.dx); dx = Math.cos(a); dy = Math.sin(a); }
+  const n = Math.hypot(dx, dy); at.hop = 0; if (!n) return;
+  const step = 190 * Math.min(.05, dt) / n, here = lev(at.x, at.r), ok = (x, r) => { const L = lev(x, r); return L !== null && Math.abs(L - here) <= 1 && x > 24 && x < sc.ground.width - 24 && r < sc.ground.height - 40 && r > northOf(sc) - .4 * H; };
+  const nx = at.x + dx * step, nr = at.r + dy * step;
+  if (ok(nx, at.r)) at.x = nx; if (ok(at.x, nr)) at.r = nr;
+  at.px = Math.round(at.x); at.pr = Math.round(at.r);      // (drawn on whole pixels, as the land is)
+  if (dx) at.left = dx < 0; at.hop = Math.floor(t * 9) % 2 ? 3 : 0;
+}
 function show() {
   for (const id of ["yh", "y0", "g", "hour", "walk", "tall"]) { $(id).value = state[id];
     $(id).parentNode.querySelector("b").textContent = id === "g" ? (1.57 * (1 + state.g / 100)).toFixed(1) + "x" : id === "hour" ? (state.hour < 72 ? "day" : "night") : Math.round(state[id]) + "%"; }
@@ -445,12 +468,27 @@ const image = (src) => new Promise((ok) => { const i = new Image(); i.onload = (
     const md = mg.getImageData(0, 0, mc.width, mc.height).data;
     sc.tile = (i, j) => { const v = i < 0 || j < 0 || i >= sc.mw || j >= sc.mh ? 0 : md[(j * sc.mw + i) * 4]; return v ? v - 128 : null; };
     sc.ground = ground;
+    // you: the one the game had in the middle of its picture (a body's size), if there is one
+    const mine = sc.sprites.filter((q) => !q.b && q.w > 34 && q.w < 50 && q.h > 38 && q.h < 58 && Math.abs(q.x + q.w / 2 - sc.cx) < 8);
+    sc.me = mine.sort((a, b) => Math.abs(a.foot - 1300) - Math.abs(b.foot - 1300))[0] || null;
+    if (sc.me) sc.home = {x: sc.me.x + sc.me.w / 2, r: sc.me.foot};
   }));
+  if (LOCAL) {
+    $("auto").parentNode.insertAdjacentHTML("beforebegin", '<label><span>Play: arrows, WASD or drag</span><input type="checkbox" id="play"></label>');
+    $("play").onchange = () => { if ($("play").checked) $("auto").checked = false; $("main").style.touchAction = $("play").checked ? "none" : ""; };
+    addEventListener("keydown", (e) => { if (!playing()) return; keys.add(e.key.length === 1 ? e.key.toLowerCase() : e.key); if (e.key.startsWith("Arrow")) e.preventDefault(); });
+    addEventListener("keyup", (e) => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key)); addEventListener("blur", () => keys.clear());
+    const m = $("main");
+    m.addEventListener("pointerdown", (e) => { if (!playing()) return; drag.on = true; drag.x = e.clientX; drag.y = e.clientY; drag.dx = drag.dy = 0; m.setPointerCapture(e.pointerId); });
+    m.addEventListener("pointermove", (e) => { if (drag.on) { drag.dx = e.clientX - drag.x; drag.dy = e.clientY - drag.y; } });
+    for (const ev of ["pointerup", "pointercancel"]) m.addEventListener(ev, () => { drag.on = false; });
+  }
   show(); requestAnimationFrame(tick);
 })();
 function tick(ms) {
   const t = ms / 1000;
-  if ($("auto").checked) { state.walk = 50 + 42 * Math.sin(t * .22); $("walk").value = state.walk; $("walk").parentNode.querySelector("b").textContent = Math.round(state.walk) + "%"; }
+  if ($("auto").checked && !playing()) { state.walk = 50 + 42 * Math.sin(t * .22); $("walk").value = state.walk; $("walk").parentNode.querySelector("b").textContent = Math.round(state.walk) + "%"; }
+  if (playing()) walkYou(t - (tick.last || t), t); tick.last = t;
   views.forEach((v) => v.draw(t));
   requestAnimationFrame(tick);
 }

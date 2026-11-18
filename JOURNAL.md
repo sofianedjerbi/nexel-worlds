@@ -1797,6 +1797,23 @@ there are put where the game's picture has them, that many rows further south, o
 and you are one picture again, in the bend and far off. No stepped sides down into a room (the painting has them).
 Rule for me: photograph each place as the page opens it, before anything else.
 
+"What are those weird corners? Can you make the demo playable also? Only on local. We still need 3d perception
+everywhere". Three things.
+- The corners (a hill's west end): two causes. Far off I had the cliff's stepped side fade back to straight (the
+  "bricks" of page 24): half-way, a smear. The side now keeps its steps at every distance: depth everywhere is
+  what was asked, and pixel steps do not read as bricks the way slanted ends did. And a pale bracket at the hill's
+  foot: the game paints a high cliff's side over the next tile (a few px a level); lying flat on that tile it was
+  the bracket. A tile beside higher land takes its painting from further in there.
+- Playable, on this computer only (the checkbox is there only on localhost; the public page is not republished):
+  "Play". You are the one the game had in the middle of its picture, taken out of the place's fixed cards and drawn
+  each frame; arrows, WASD or a drag; a level up or down at a step; the view keeps you 40% up the screen and, on a
+  narrow screen, follows you sideways; the camera's height is the land's under you. Walked by script in three
+  places: up the mountain's terraces, up the dug room's stair, across the meadow.
+- The walk's north limit was the picture's top edge; since land too high to be in the picture wears other land's
+  painting, it is the end of the known land (the level grid), 400 px further on the mountain.
+Known: your shadow stays where the game had you (it is in the ground's picture); no walking frames (one picture,
+turned and hopping); trees and walls do not stop you.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
