@@ -76,6 +76,30 @@ def test_who_walks_over_a_tunnel_is_seen_unless_drawn_over_what_shows_of_it_and_
     assert not game.errors
 
 
+def test_the_dust_of_who_is_over_your_tunnel_is_up_there_with_them(game):
+    """"tf is the particles also going all the way down to the player": a tusker on the land over his tunnel pawed the
+    ground, and its dust was drawn down in the tunnel. What a body throws up took the height of the ground drawn on
+    its tile, which over the place you are in is that place's floor. It is at the body's own height."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(1, -4, ["." * 9] * 9, levels=["3" * 9] * 9)                # high ground, three layers
+    game.stamp(0, 0, ["......."], levels=["dddddd3"], roofs=["0777770"], heads=["0222220"])   # a tunnel under it from a pit at its foot
+    X = x + 3
+    game.rpc("dev_teleport", x=X, y=y - 2, z=3)               # on the high ground: a tusker put there, on the tunnel's roof
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === 3", 8000)
+    boar = game.spawn("tusker", 0, 2, still=10 ** 6)
+    game.rpc("dev_teleport", x=X, y=y, z=-4)                  # you, in the tunnel under it
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === -4", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.wait("xray.mix >= 1 && !xray.old", 8000)
+    game.wait(f"ents.has('tusker{boar}')", 8000)
+    dust, own, floor = game.js("""(id) => { const p = ents.get('tusker' + id), a = parts.length; p.e = {...p.e, act: 'windup', dir: [0, 1]}; p.paw = 0;
+      frame(performance.now()); const mine = parts.slice(a).filter((q) => Math.hypot(q.x - p.x - .5, q.y - p.y - .5) < 1.5);
+      return [mine.map((q) => q.lift), liftOf(p), liftOf({x: p.x, y: p.y})]; }""", boar)
+    assert len(dust) >= 3 and all(v == own for v in dust) and own > floor, (dust, own, floor)       # (the bare spot: the tunnel's floor, seven layers under it)
+    assert not game.errors
+
+
 def test_dug_down_at_a_tunnels_end_the_tunnel_over_you_is_still_seen(game):
     """"see doben4 position ? the topology of the space is.. hard to understand . how did he get there ? where's the
     exit ? why the tunnel is invisible ??": the place seen was what you could walk or drop to. Two layers under a

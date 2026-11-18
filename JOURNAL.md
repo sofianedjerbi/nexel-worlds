@@ -3092,3 +3092,29 @@ as doben4 i still dont see the exit. i dont see how to go up, where to dig to es
   its three layers of front whole; two steps dug and all of it is whole; it fails on the code before). 474 unit;
   browser 248 passed in the full run, one failed there twice and passes alone (a shout's bubble), two at a second
   try; the relief's ledge test failed twice in a part run and passes alone, here and on the code before.
+- Taken out the same hour. He reloaded and saw it: "weird transparancy, path isn't obvious to player.. why the hell
+  there's transparency". I had chosen a look by myself, on four pictures I made, where his rule is the mockup page
+  first ("if you dont know how to decide create a html mockup page"). Every px of the place is whole again. Kept: a
+  floor stands on its front whatever is under it; the picture is painted again when a block is built.
+- And, before that, on the game as it was: "digged another block and topology changed !! what the hell". He had dug
+  the block at his eyes under the tunnel's end (-26,-3: -13/-12/-11/-9/6): the tile is of the place at one height,
+  his new room's, and the tunnel's floor over it went from the picture. Open: a column with two rooms of the place.
+
+## Iteration 171: the dust of who is over your tunnel is up there with them
+
+"also, the boar is targetting the player underground but running towards its position in the ground above ?? do we
+take the height in account for pathfinding ? tf is the particles also going all the way down to the player"
+
+- The boar. Since 166 a wild creature does not see who is more than four layers over it or under it (sim/wild.py).
+  That is the world's code: the server he plays on (7777) was started before it and still runs the old one. It
+  needs a restart, which is his to say.
+- The dust (web/js/characters.js drawEntity). What a body throws up (a step's dust, a landing's, a tusker pawing
+  the ground) took the height of the ground drawn on its tile (relief.js liftFrom, cells.js standAt). Over the
+  place you are in that is the place's floor, seen through its roof: the tusker's dust was drawn seven layers
+  down, in the tunnel. All that is thrown up while a body is drawn takes that body's own height (the body is
+  drawn by drawBody; drawEntity is that and this). Not done: what an event throws up at a spot (a hit, a death),
+  which has no body to ask.
+- Tests: test_e2e_place.py + 1 (a tusker on a tunnel's roof paws the ground: its dust at its own height; it fails
+  on the code before, the dust anywhere between the roof and the tunnel). test_e2e_relief.py reads drawBody.
+  Browser: 252 passed in the full run; two failed there: the relief's source check (mine, the name: updated) and a
+  wall's door (passes alone).

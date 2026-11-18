@@ -28,7 +28,16 @@ function biteIcon(name, bites) {
 }
 // which swing of the character sheet each tool in hand uses: every tool has its own
 const SWING_ROW = {axe: "axe", sword: "sword", spear: "spear", pickaxe: "pickaxe", hoe: "hoe", watering_can: "water"};
+// What a body throws up as it is drawn (the dust of its steps, of a landing, of a tusker pawing the ground) is at the
+// body's own height. It took the height of the ground drawn on its tile, and under someone on the roof of the place
+// you are in that is the place's floor (cells.js standAt): a tusker over your tunnel pawed the ground, and its dust
+// was down in the tunnel with you ("tf is the particles also going all the way down to the player")
 function drawEntity(p, sx, sy, S, t, now) {
+  const a = parts.length, b = puffs.length;
+  drawBody(p, sx, sy, S, t, now);
+  if (parts.length > a || puffs.length > b) { const up = liftOf(p); for (let i = a; i < parts.length; i++) parts[i].lift = up; for (let i = b; i < puffs.length; i++) puffs[i].lift = up; }
+}
+function drawBody(p, sx, sy, S, t, now) {
   const e = p.e, z = zoom;
   let x = Math.round(sx(p.x));
   let y = Math.round(bodyY(p, sy));                            // (relief.js: where a body stands in its tile)
