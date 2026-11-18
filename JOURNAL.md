@@ -1698,6 +1698,18 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 172: far trees keep their shape; the page on a phone
+
+"At horizon tree appear compressed. Also fix your demo online so it show good on phone". Trees: far things were
+drawn as wide and lower (so that a house's pieces stay joined), which made a far tree squat. The capture now says
+which pieces are built (a wall, a floor, a roof); a thing of its own (a tree, a rock, an animal, a person) keeps
+its shape and is smaller far away, a built piece keeps its width and is lower. The phone: the page opened on a
+screen of text and twelve buttons with a picture 195 px tall under them, and drew eight views at three device
+pixels a pixel. On a narrow screen now: the picture first, as wide as the screen and showing 600 of the picture's
+pixels across instead of 1100 (bigger), the two rows of buttons slide sideways, one view (the seven side by side
+are left out), two device pixels a pixel at most; and on any screen a view is only drawn while it is on screen.
+The opening words are two lines. Looked at 390 x 844 at 3 px a px, and 1200 wide.
+
 ## Iteration 171: a far wall is its own wall
 
 The user, with a close-up of the mountain's far terraces: "Sidewalls still look like squares here". Right, and not

@@ -58,14 +58,14 @@ GRAB = """async () => {
     // (Its foot is a row of the ground as it lies flat, sea level's: the land's own height at its tile is added back,
     // so the page knows both where on the ground it is and how high over that it stands.)
     const bottom = Y + y1 + 1, foot = Math.round(p ? bottom + liftOf(p) : o.spr ? bottom + liftAt(o.x, o.ty) : Math.max(bottom + liftAt(Math.round(x), y), sy(y) + S));
-    items.push({c: piece, x: X + x0, y: Y + y0, foot});
+    items.push({c: piece, x: X + x0, y: Y + y0, foot, built: !o.spr && !p});      // (built: a piece of something bigger: a wall, a floor, a roof)
     og.clearRect(X, Y, w, h);
   }
   let aw = 2048, ax = 0, ay = 0, shelf = 0; const out = [];
   for (const it of items) { if (ax + it.c.width > aw) { ax = 0; ay += shelf + 1; shelf = 0; } it.ax = ax; it.ay = ay; ax += it.c.width + 1; shelf = Math.max(shelf, it.c.height); }
   const atlas = document.createElement("canvas"); atlas.width = aw; atlas.height = ay + shelf + 1;
   const ag = atlas.getContext("2d");
-  for (const it of items) { ag.drawImage(it.c, it.ax, it.ay); out.push({x: it.x, y: it.y, w: it.c.width, h: it.c.height, ax: it.ax, ay: it.ay, foot: it.foot}); }
+  for (const it of items) { ag.drawImage(it.c, it.ax, it.ay); out.push({x: it.x, y: it.y, w: it.c.width, h: it.c.height, ax: it.ax, ay: it.ay, foot: it.foot, ...(it.built ? {b: 1} : {})}); }
   // The land's height, tile by tile: a small picture, a pixel a tile, red 128 + the tile's level (0: no land known).
   // With where its first tile is on the ground picture (at sea level) and a tile's size, the page knows how high the
   // land is at any spot of the ground, and so which level's sheet it is on and where earth lies under it.
