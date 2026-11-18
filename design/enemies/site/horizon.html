@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 16.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 17.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -218,7 +218,8 @@ function shapes(sc) {
     // the grass below, which up at this height was a small square of another green at every corner ("corners are
     // weird"). On a side where the tile is such a corner its painting is taken a little in, so the corner is square,
     // as its wall is. And where higher land stands north of it, its first strip is in that land's shade.
-    const cornerL = low(west) && (low(south) || low(north)) ? 9 : 0, cornerR = low(east) && (low(south) || low(north)) ? 9 : 0;
+    // (15 px: the cut is four of the land's pixels, 12; at 9 its tip was left, a green dot at each corner)
+    const cornerL = low(west) && (low(south) || low(north)) ? 15 : 0, cornerR = low(east) && (low(south) || low(north)) ? 15 : 0;
     if (ONLY !== "walls") for (let q = 0; q < 4; q++) quad(Y + q * S / 4, h, Y + (q + 1) * S / 4, h, cornerL, cornerR, q === 0 && north !== null && north > L ? .74 : 1, 1);
     // Its wall, a strip a level, lit at its top and darker to its foot. Its painting is taken from the tile's middle
     // and spread over its width: at its two sides the game paints the grass rim turning the corner, which on an
