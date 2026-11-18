@@ -13,6 +13,15 @@ const toggle = (name, key, more = {}) => ({name, kind: "toggle", ...(typeof key 
 const choice = (name, key, list) => ({name, kind: "choice", list, ...kept(key)});
 const debugRow = (name, what) => toggle(name, {get: () => DEBUG[what], set: (v) => { DEBUG[what] = v; localStorage.setItem("megastructure-" + what, v ? "1" : "0"); }, def: false});
 const lo = (r) => (typeof r.min === "function" ? r.min() : r.min);
+// The rows of the shader that is on: its colours, and what only it has (an old screen's lines, its bulge...)
+const LOOK_HAS = [["scan", "Lines"], ["curve", "Screen bulge"], ["mask", "Colour stripes"], ["shift", "Colour fringe"], ["tape", "Tape wobble"], ["grid", "Pixel grid"]];
+function lookRows(look) {
+  if (!look) return [];
+  const row = (name, what, more = {}) => slider("· " + name, null, {get: () => lookOpt(what, more.def ?? 100), set: (v) => setLookOpt(what, v, more.def ?? 100), def: 100, max: 200, step: 20, hear: null, ...more});
+  return [...(look.pal ? [] : [row("Colour", "sat"), row("Warmth", "warm", {min: -100, max: 100, def: 0, unit: ""})]), row("Contrast", "con"), row("Haze", "haze", {min: 0, max: 100, def: 0}),
+    ...LOOK_HAS.filter(([what]) => look[what]).map(([what, name]) => row(name, what))];
+}
+const pageRows = (i) => { const rows = MENU_PAGES[i][1]; return typeof rows === "function" ? rows() : rows; };
 const HEAR = {master: "pick", steps: "step", work: "chop", fights: "hit", animals: "cluck", world: "water", ui: "pick"};      // a sound of the family, at its new level
 const MENU_PAGES = [
   ["Sound", [
@@ -28,10 +37,13 @@ const MENU_PAGES = [
     choice("Particles", "particles", [["all", "All"], ["fewer", "Fewer"], ["none", "None"]]),
     toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
     choice("What hides you", "above", VIEWS.map((v) => [v.key, v.name]))]],
-  ["Shaders", [                                          // (shader.js: the finished picture, repainted)
+  // (shader.js, sun.js) Which shader, then that shader's own settings (they change with it, and each shader keeps
+  // its own), then what all of them share: how much of each thing, 0 (none) to 200
+  ["Shaders", () => [
     choice("Shader", "shader", [["off", "Off"], ...Object.entries(SHADERS).map(([k, v]) => [k, v.name])]),
-    slider("Strength", "shaderk", {hear: null}), slider("Glow", "glow", {max: 200, step: 20, hear: null}),
-    toggle("Shadows", "shadows"), toggle("Water reflections", "reflect"), toggle("Light on water", "waterlight"), toggle("Sun rays", "rays"), toggle("Cloud shadows", "clouds"), toggle("Dark corners", "corners")]],
+    ...lookRows(SHADERS[opt("shader")]),
+    slider("Strength", "shaderk", {hear: null}), ...[["Glow", "glow"], ["Shadows", "shadows"], ["Shadow length", "shadowlen"], ["Water reflections", "reflect"],
+      ["Light on water", "waterlight"], ["Sun rays", "rays"], ["Cloud shadows", "clouds"], ["Dark corners", "corners"]].map(([name, key]) => slider(name, key, {max: 200, step: 20, hear: null}))]],
   ["Screen", [
     toggle("Speech bubbles", "bubbles"), toggle("Names over heads", "names"),
     choice("A chat line stays", "chat", [[5, "5 seconds"], [10, "10 seconds"], [30, "30 seconds"], [600, "10 minutes"]]),
@@ -48,7 +60,7 @@ const MENU_MAIN = [
   ["Help", "H", () => { closeMenu(); toggleHelp(); }],
   ["Leave the world", "", () => location.reload()],
 ];
-const menuRows = () => (MENU.view === "main" ? MENU_MAIN : MENU_PAGES[MENU.page][1]);
+const menuRows = () => (MENU.view === "main" ? MENU_MAIN : pageRows(MENU.page));
 function drawMenu() {
   const el = $("menu"), well = el.querySelector(".well"), top = well ? well.scrollTop : 0;
   if (MENU.view === "main") {
@@ -97,7 +109,7 @@ function menuChange(i, d, to) {
   drawMenu();
 }
 function menuReset() {                                      // this page as it came
-  for (const r of MENU_PAGES[MENU.page][1]) if (r.kind !== "key" && JSON.stringify(r.get()) !== JSON.stringify(r.def)) r.set(r.def);
+  for (const r of pageRows(MENU.page)) if (r.kind !== "key" && JSON.stringify(r.get()) !== JSON.stringify(r.def)) r.set(r.def);
   if (MENU_PAGES[MENU.page][0] === "Keys") setOpt("keys", {});
   MENU.said = ""; sfx("pick"); drawMenu();
 }

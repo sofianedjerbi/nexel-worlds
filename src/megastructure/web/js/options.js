@@ -19,8 +19,12 @@ const OPT_DEFAULT = {
   shimmer: true,          // the water's moving light and small waves
   floats: true,           // hearts lost, things gained, written over heads
   // shaders (shader.js): which look (off, or a key of SHADERS), how much of it, how much glow, cloud shadows, dark corners
-  shader: "off", shaderk: 100, glow: 100, clouds: true, corners: true,
-  shadows: true, reflect: true, waterlight: true, rays: true,      // (sun.js: what stands throws a shadow, and is seen in the water)
+  shader: "off", shaderk: 100, glow: 100, clouds: 100, corners: 100,
+  // (sun.js: what stands throws a shadow, and is seen in the water. Each is how much of it, 0 to 200: 0 is none)
+  shadows: 100, shadowlen: 100, reflect: 100, waterlight: 100, rays: 100,
+  // each shader's own settings ("feel free to add per-shader settings"): shader -> {what: how much}, where it is not
+  // as the shader comes (lookOpt, below)
+  looks: {},
   // interface
   bubbles: true, names: true, chat: 10, hints: true, tips: true,
   // keys
@@ -31,6 +35,14 @@ const OPT = {v: {...OPT_DEFAULT}};
 try { Object.assign(OPT.v, JSON.parse(localStorage.getItem("megastructure-options") || "{}")); } catch (e) { /* unreadable: the defaults */ }
 for (const k of Object.keys(OPT.v)) if (!(k in OPT_DEFAULT) || typeof OPT.v[k] !== typeof OPT_DEFAULT[k]) { if (k in OPT_DEFAULT) OPT.v[k] = OPT_DEFAULT[k]; else delete OPT.v[k]; }
 const opt = (k) => OPT.v[k];
+// A setting of the shader that is on: how much of what it has (a percentage of its own; `def` where it has none)
+const lookOpt = (what, def = 100) => { const m = OPT.v.looks[OPT.v.shader]; return m && what in m ? m[what] : def; };
+function setLookOpt(what, v, def = 100) {
+  const all = {...OPT.v.looks}, key = OPT.v.shader, m = {...(all[key] || {})};
+  if (v === def) delete m[what]; else m[what] = v;
+  if (Object.keys(m).length) all[key] = m; else delete all[key];
+  setOpt("looks", all);
+}
 function setOpt(k, v) {
   OPT.v[k] = v;
   const changed = Object.fromEntries(Object.entries(OPT.v).filter(([key, val]) => JSON.stringify(val) !== JSON.stringify(OPT_DEFAULT[key])));

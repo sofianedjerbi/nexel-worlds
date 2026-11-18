@@ -62,7 +62,7 @@ const Shader = (() => {
       float wet = uWater > 0. ? texture2D(uW, q).r * uWater : 0.;
       if (wet > 0.) {
         vec2 wp = floor((px - uOrigin) / uTile * 16.), cw = wp / 16. * .055 + vec2(3.1 - uT * .011, 1.7 + uT * .004);
-        c = mix(c, uSky, wet * .24);
+        c = mix(c, uSky, min(wet * .24, .6));
         c += wet * uDay * .1 * smoothstep(.5, .66, noise(cw) * .55 + noise(cw * 2.1 + 7.3) * .3 + noise(cw * 4.3 + 1.7) * .15);
         float h = hash(wp), twinkle = .5 + .5 * sin(uT * (2. + h * 3.) + h * 40.);
         c += wet * uSun * step(.962, h) * twinkle * smoothstep(.38, .68, noise(vec2(wp.x * .05 - uT * .14, wp.y * .13 + uT * .03)));
@@ -149,25 +149,27 @@ const Shader = (() => {
         gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, c.tex); gl.uniform1i(u.uC, 2);
         gl.uniform2f(u.uRes, W, H); gl.uniform2f(u.uOrigin, ox, oy); gl.uniform1f(u.uTile, S); gl.uniform1f(u.uT, t); gl.uniform1f(u.uArt, zoom * DPR);
         // (by day the whole meadow is bright: a full glow there is a white-out; it is for the dark)
-        gl.uniform1f(u.uGlow, look.glow * k * opt("glow") / 100 * (1 - .65 * day)); gl.uniform1f(u.uSat, on(look.sat)); gl.uniform1f(u.uCon, on(look.con));
-        gl.uniform3f(u.uTint, on(look.tint[0]), on(look.tint[1]), on(look.tint[2])); gl.uniform1f(u.uLift, look.lift * k);
-        gl.uniform1f(u.uVig, opt("corners") ? look.vig * k : 0); gl.uniform1f(u.uScan, look.scan * k);
-        for (const [name, v] of [["uCurve", look.curve], ["uMask", look.mask], ["uShift", look.shift], ["uTape", look.tape], ["uGrid", look.grid]]) gl.uniform1f(u[name], (v || 0) * k);
+        // (this shader's own settings: options.js lookOpt, a share of what it has; warmth and haze are added to it)
+        const mine = (what) => lookOpt(what) / 100, warm = lookOpt("warm", 0) / 100 * k, haze = lookOpt("haze", 0) / 100 * k;
+        gl.uniform1f(u.uGlow, look.glow * k * opt("glow") / 100 * (1 - .65 * day)); gl.uniform1f(u.uSat, on(look.sat * mine("sat"))); gl.uniform1f(u.uCon, on(look.con * mine("con")));
+        gl.uniform3f(u.uTint, on(look.tint[0]) * (1 + .1 * warm), on(look.tint[1]), on(look.tint[2]) * (1 - .14 * warm)); gl.uniform1f(u.uLift, look.lift * k + haze * .09);
+        gl.uniform1f(u.uVig, look.vig * k * opt("corners") / 100); gl.uniform1f(u.uScan, Math.min(.8, look.scan * k * mine("scan")));
+        for (const [name, what] of [["uCurve", "curve"], ["uMask", "mask"], ["uShift", "shift"], ["uTape", "tape"], ["uGrid", "grid"]]) gl.uniform1f(u[name], (look[what] || 0) * k * mine(what));
         gl.uniform1f(u.uPal, look.pal || 0); gl.uniform1f(u.uPalK, k);
         // the light on water, and the low sun's shafts: not on the old screens (a look with `pal` or `tape`)
         const plain = !look.pal && !look.tape, water = plain && !under && typeof Sun !== "undefined" ? Sun.water : null;
         gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, wtex); gl.uniform1i(u.uW, 3);
         if (water) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, water);
         const phase = (((clock.phase || 0) % 1) + 1) % 1, [m0, m1, f] = dayAt(phase), hour = mix(rgbOf(m0[1]), rgbOf(m1[1]), f);
-        gl.uniform1f(u.uWater, water ? k : 0); gl.uniform1f(u.uDay, day);
+        gl.uniform1f(u.uWater, water ? k * opt("waterlight") / 100 : 0); gl.uniform1f(u.uDay, day);
         gl.uniform3f(u.uSun, (.3 + .5 * day) * (day > .5 ? 1 : .6), (.36 + .4 * day) * (day > .5 ? 1 : .75), (.5 + .1 * day));
         const way = phase < .75 ? phase / .75 * 2 - 1 : 0, low = Math.max(0, Math.min(1, (Math.abs(way) - .5) / .4));
         // the sky the water shows: blue by day, the hour's own colour when the sun is low, deep blue at night
         const sky = mix(mix([120, 190, 250], hour, low * .85), [44, 62, 140], 1 - day);
         gl.uniform3f(u.uSky, sky[0] / 255, sky[1] / 255, sky[2] / 255);
-        gl.uniform1f(u.uRays, opt("rays") && plain && !under ? .17 * k * low * Math.min(1, day * 1.4) : 0);
+        gl.uniform1f(u.uRays, plain && !under ? .17 * k * low * Math.min(1, day * 1.4) * opt("rays") / 100 : 0);
         gl.uniform2f(u.uRayDir, (way < 0 ? -1 : 1) * .84, .54); gl.uniform2f(u.uRayFrom, way < 0 ? 1 : 0, 0);
-        gl.uniform1f(u.uCloud, opt("clouds") && !under ? .85 * k * day : 0);
+        gl.uniform1f(u.uCloud, !under ? Math.min(1, .85 * k * day * opt("clouds") / 100) : 0);
       });
     } catch (e) { bad = true; if (el) el.style.display = "none"; console.warn("shader: off (" + e.message + ")"); }
   }

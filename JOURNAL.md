@@ -1698,6 +1698,17 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 163: how much of each, and each shader's own settings
+
+"add more settings also. feel free to add per-shader settings". The Shaders page's switches are amounts now (0 is
+none, 100 as it comes, up to 200): glow, shadows, shadow length (new), water reflections, light on water, sun rays,
+cloud shadows, dark corners. Under the Shader row come the settings of the shader that is on, marked with a dot,
+and each shader keeps its own (options.js `looks`): colour, warmth, contrast, haze, and what only an old screen
+has: lines, screen bulge, colour stripes, colour fringe, tape wobble, pixel grid. A page's rows may now be a
+function (they change with the shader). A switch someone had turned off comes back on (its kept value was a yes or
+no). Tests: the rows change with the shader, the tube's lines turned off stay off while the arcade's are untouched,
+and the lines on the picture follow. The shader tests have a file of their own. 473 + 251 pass.
+
 ## Iteration 162: light on water, rays at low sun, a fire's shadows
 
 "can you make the shaders even more beautiful ? i mean the general minecraft-like shaders". Three things added to

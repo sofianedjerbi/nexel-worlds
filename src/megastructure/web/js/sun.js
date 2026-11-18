@@ -139,7 +139,7 @@ const Sun = (() => {
     lg.globalCompositeOperation = "destination-in"; lg.fill(wet);                    // ...and only where there is water
     // onto the picture a row of art pixels at a time, each slid a little: the ripple (fixed to the land, not to the screen)
     const z = zoom, y0 = sy(0), first = Math.floor((Math.max(0, top) - y0) / z), last = Math.ceil((Math.min(H, bottom) - y0) / z);
-    ctx.globalAlpha = GLASS.alpha;
+    ctx.globalAlpha = Math.min(.95, GLASS.alpha * opt("reflect") / 100);
     for (let r = first; r < last; r++) {
       const Y = y0 + r * z, slide = Math.round(Math.sin(r * GLASS.wave + t * GLASS.speed) * GLASS.ripple) * z;
       ctx.drawImage(layer, 0, Math.round(Y * DPR), layer.width, Math.round(z * DPR), slide, Y, W, z);
@@ -150,8 +150,9 @@ const Sun = (() => {
     const phase = (((clock.phase || 0) % 1) + 1) % 1, day = phase < .75;
     const a = day ? phase / .75 : (phase - .75) / .25;                               // the sun's way across (at night: the moon's)
     const tint = lightAt(phase), dark = Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36);
-    const alpha = SHADE.alpha + (SHADE.night - SHADE.alpha) * dark;
-    const kx = (2 * a - 1) * SHADE.reach, ky = SHADE.fall;
+    const much = opt("shadows") / 100, long = opt("shadowlen") / 100;                 // (the settings: how dark, how long)
+    const alpha = Math.min(.9, (SHADE.alpha + (SHADE.night - SHADE.alpha) * dark) * much);
+    const kx = (2 * a - 1) * SHADE.reach * long, ky = SHADE.fall * long;
     // At night what stands near a fire is lit by it: its shadow lies away from the fire, longer the further it stands.
     const fires = [];
     if (dark > .35) {
@@ -167,12 +168,12 @@ const Sun = (() => {
     ready();
     cast(list, sx, sy, S, t, now, (fx, fy) => {
       const near = fireBy(fx, fy); if (!near || near[1] < .45) return null;          // (not the fire's own)
-      const [f, d] = near, len = Math.min(2.4, .7 + d * .32), qx = (fx - f[0]) / (d * S) * len, up = (fy - f[1]) / (d * S) * len * .7;
+      const [f, d] = near, len = Math.min(2.4, .7 + d * .32) * long, qx = (fx - f[0]) / (d * S) * len, up = (fy - f[1]) / (d * S) * len * .7;
       const qy = Math.abs(up) < .28 ? (up < -.05 ? -.28 : .28) : up;                  // (level with the fire: still a shape on the ground, not a line)
       return [1, 0, -qx, -qy, qx * fy, fy * (1 + qy)];
     });
     lg.globalCompositeOperation = "source-in"; lg.fillStyle = SHADE.color; lg.fillRect(0, 0, W, H);
-    ctx.globalAlpha = SHADE.byFire * dark; ctx.drawImage(layer, 0, 0, W, H); ctx.globalAlpha = 1;
+    ctx.globalAlpha = Math.min(.9, SHADE.byFire * dark * much); ctx.drawImage(layer, 0, 0, W, H); ctx.globalAlpha = 1;
   }
   // render.js, between the ground and what stands on it
   function draw(list, vis, sx, sy, S, t, now) {
@@ -185,7 +186,7 @@ const Sun = (() => {
       if (opt("shadows")) shadows(list, vis, sx, sy, S, t, now);
     } catch (e) { if (!Sun.said) { Sun.said = true; console.warn("sun: " + e.message); } }
   }
-  const shades = () => !!SHADERS[opt("shader")] && opt("shaderk") > 0 && opt("shadows");      // are shadows being drawn?
+  const shades = () => !!SHADERS[opt("shader")] && opt("shaderk") > 0 && opt("shadows") > 0;      // are shadows being drawn?
   const layerData = () => (layer ? lg.getImageData(0, 0, layer.width, layer.height).data : []);      // (for the tests: what the last layer holds)
   return {draw, shades, layerData, get water() { return mask; }, SHADE, GLASS, get casting() { return casting; }};
 })();
