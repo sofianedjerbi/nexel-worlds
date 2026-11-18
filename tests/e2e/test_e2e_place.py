@@ -8,6 +8,8 @@ from test_e2e_underground import DOWN, PIC
 # is a px of the picture one of its lines? [x, y, level: a tile as drawn; ax, ay: the px in it]
 LINE = """([x, y, lv, ax, ay]) => { const P = xray.pic, X = x * 16 + ax - P.x, Y = y * 16 - shOf(lv) + ay - P.y;
   return xrayEdges(P).getContext('2d').getImageData(X, Y, 1, 1).data[3] > 0; }"""
+# how much of a px of the picture is kept, 0 to 255 (xraycut.js 6: what you do not walk to is seen through its roof)
+KEPT = """([x, y, lv, ax, ay]) => { const P = xray.pic; return P.over.getContext('2d').getImageData(x * 16 + ax - P.x, y * 16 - shOf(lv) + ay - P.y, 1, 1).data[3]; }"""
 
 
 def test_what_is_dug_under_high_ground_is_seen_and_no_more_one_block_dug_opens_one_block(game):
@@ -188,4 +190,35 @@ def test_a_tunnel_dug_under_a_tunnel_the_upper_one_is_seen_on_to_its_way_out(gam
     assert game.js(f"[2, 3, 4, 5, 6, 7].map((i) => seenUnder({x} + i, {y}))") == [-7, -7, -7, -4, -4, -4]   # yours where you are under it, the upper one past there
     seen, r, g, b = game.js(PIC, [x + 6, y, -4, 8, 8])       # its floor, two tiles on: on the screen, earth
     assert seen and r > g, [seen, r, g, b]
+    assert not game.errors
+
+
+def test_what_you_do_not_walk_to_is_seen_through_the_rock_and_stands_on_its_wall(game):
+    """"the vizualisation issue is still bad. as doben4 i still dont see the exit. i dont see how to go up, where to
+    dig to escape": a hole with a low nook, and his tunnel going by three layers over the hole's floor, rock between
+    the two. The tunnel's floor was drawn against the nook's, the same earth, a line between: the floor he stood on
+    going on east. A floor stands on its front whatever is under it; and of the place, what you walk to from where
+    you stand is cut open, the rest is seen through its roof. A step dug to it, and it is cut open too."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(1, -4, ["." * 9] * 9, levels=["3" * 9] * 9)
+    X = x + 4                 # you, in a nook one layer high; south of it your hole, a pit west of that; the tunnel from over the hole on east
+    for tile, col in (((X, y - 1), [-9, -8, 3]), ((X - 1, y - 1), [-9, -8, 3]), ((X - 2, y), [-9, -6, 3]), ((X - 1, y), [-9, -8, -7, -4, 3]), ((X, y), [-9, -7, -6, -4, 3]),
+                      ((X + 1, y), [-6, -4, 3]), ((X + 2, y), [-6, -4, 3]), ((X + 3, y), [-6, -4, 3])):
+        game.rpc("dev_col", tiles=[list(tile)], col=col)
+    game.rpc("dev_teleport", x=X, y=y - 1, z=-9)
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === -9", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.wait("xray.mix >= 1 && !xray.old", 8000)
+    assert game.js(f"[landAt(-9, {X + 1}, {y}, {X}, {y}), xray.pic.floor.size, seenUnder({X}, {y}), seenUnder({X + 1}, {y})]") == [None, 8, -9, -6]
+    px, kept, lum = lambda *a: game.js(PIC, list(a)), lambda *a: game.js(KEPT, list(a)), lambda p: p[1] + p[2] + p[3]
+    assert [kept(X, y - 1, -9, 8, 8), kept(X, y, -9, 8, 8), kept(X - 2, y, -9, 8, 8)] == [255, 255, 255]      # your nook, your hole, the pit you drop to: cut open
+    assert all(110 < kept(X + i, y, -6, 8, 8) < 170 for i in (1, 2, 3)), [kept(X + i, y, -6, 8, 8) for i in (1, 2, 3)]   # the tunnel: through the rock, half of it
+    floor, front = px(X + 1, y, -6, 8, 8), [px(X + 1, y, -6, 8, 16 + a) for a in range(24)]      # under its end beside your hole, the three layers it stands on:
+    assert all(p[0] for p in front) and lum(floor) > 1.3 * lum(front[4]) and not px(X + 1, y, -6, 8, 40)[0], (floor, front)
+    assert [kept(X + 1, y, -6, 8, 16 + a) for a in (2, 12, 22)] == [255, 255, 255]             # ...your hole's wall: whole
+    for i, col in ((1, [-8, -4, 3]), (2, [-7, -4, 3])):       # two steps dug down into its floor from your hole: you walk up to it
+        game.rpc("dev_col", tiles=[[X + i, y]], col=col)
+    game.wait(f"{DRAWN} && xray.pic && xray.pic.place.get('{X + 2},{y}') === -7 && xray.mix >= 1 && !xray.old", 20000)
+    assert [kept(X + 1, y, -8, 8, 8), kept(X + 2, y, -7, 8, 8), kept(X + 3, y, -6, 8, 8)] == [255, 255, 255]
     assert not game.errors

@@ -3045,3 +3045,34 @@ here ! and the tusker seems to be targetting me..????"
   fails on the code before), test_e2e_living.py + 1 (a hen on a pillar nine layers up is not on the tile you face).
   474 unit; 257 browser, one failed twice in the full run and passes alone, here and without this change (the
   relief's ledges, under load).
+
+## Iteration 170: what you do not walk to is seen through the rock, and stands on its wall
+
+The user, in a hole with a nook one layer high, his tunnel going by over it: "the vizualisation issue is still bad.
+as doben4 i still dont see the exit. i dont see how to go up, where to dig to escape".
+
+- What the picture said (a copy of the live save at his spot, -27,-4, 14 down). The tunnel's floor is three layers
+  over the hole's, rock between the two (columns -14/-12/-11/-9/7: the tunnel is over two tiles of the hole). Three
+  layers are a tile and a half up the screen: its floor was drawn against the nook he stood in, the same earth, a
+  line between. The floor he stood on, going on east. Nothing said it was higher, or another room.
+- Fronts (xraycut.js 4). A floor higher than the place's floor beside it showed its front only where the lower room
+  was open onto it (162). It shows it whatever is between them: the tunnel's end stands on three layers of wall, the
+  east wall of his hole, a block a band.
+- Tried on his spot, side by side, before choosing: floors lighter the higher they are (weak: the cave's light is
+  on the same scale); the part he cannot get to left dark (the way out is the dark part); a strip of rock left
+  between the two (the tunnel floats, the wall is cut from it); the part he cannot get to seen through the rock.
+- Seen through the rock (xraycut.js 6, xray.js). The place is all that is open onto your room (161, 164). Of it,
+  what you walk to from where you stand, a step or a drop at a time (cells.js landAt, by a tile at any height), is
+  cut open as before. The rest, under a roof, is kept at .55: the land over it shows through it. A front that is
+  the wall of a room you walk in is whole. What is open to the sky is as it is (an open trench's far steps turned
+  green with the meadow in front of them). Dig or build a step to it and it is cut open with the rest.
+- Looked at: his spot in the four views and by night; the same place built on a throwaway world from the nook, from
+  the hole, from the tunnel (all of it cut open: you drop into the hole); tunnels east-west and north-south, a room
+  with a shelf (the shelf is seen through: you do not walk to it), low rooms, a way through a hill, open pits.
+- Left: where the tunnel is over the hole only the hole is drawn (one floor a tile). A phone was not looked at.
+- The picture is painted again when a block is built (Floors.ver in its key): two planks put down as steps in the
+  pit, you standing still, and the tunnel is cut open.
+- Tests: test_e2e_place.py + 1 (his spot built again: the nook, the hole and the pit whole, the tunnel kept at .55,
+  its three layers of front whole; two steps dug and all of it is whole; it fails on the code before). 474 unit;
+  browser 248 passed in the full run, one failed there twice and passes alone (a shout's bubble), two at a second
+  try; the relief's ledge test failed twice in a part run and passes alone, here and on the code before.

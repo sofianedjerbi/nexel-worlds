@@ -15,8 +15,9 @@
 // c: the picture's {W, h (px), w (tiles), R (its rect of tiles), y (its top, art px), see, seen, floor, floors, place,
 // rocks, paint (its px as the land's painter left them)}. -> {px: what to lay over it, cut: the tiles of 1, more: the px it added to seen, line: the px of the
 // outline round the place where it is under a roof, dug or cut, and of the edges in it nobody climbs (xrayviews.js; null: no
-// such place, a hill in front and no more), deep: the place's own px, fronts: the tiles a floor's front is drawn on (4)}
-const CUT = {ink: [112, 70, 58], lip: [.34, .22, .11]};   // the edge's ink; its shadow, a px each
+// such place, a hill in front and no more), deep: the place's own px, fronts: the tiles a floor's front is drawn on (4),
+// veil: how much of each px is kept (6; null: all of it)}
+const CUT = {ink: [112, 70, 58], lip: [.34, .22, .11], veil: .55};   // the edge's ink; its shadow, a px each; how much is kept of the part of the place you do not walk to (6)
 function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, ground, at: me}) {
   const n = W * h, px = new Uint32Array(n), fill = new Uint8Array(n), cuts = new Map(), earth = colsOf(hillSheet(0)).bands[1];
   let more = 0;
@@ -89,13 +90,15 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, 
       wall.set(f, v); deep[f] = 1; own[f] = j * w + i + 1; if (!seen[f]) { seen[f] = 1; more++; } see.lev[f] = see.lev[src]; see.band[f] = see.band[src];
     }
   }
-  // 4. A floor higher than the one beside it (east, west) that it is open onto, rock in front of it: its front shows,
-  // down to that floor's level, the layers it stands on. Height is how far up the screen a floor is drawn, and
-  // nothing else said it: a tunnel that goes down a layer a tile was a strip of earth going up across the screen, the
-  // floor two layers over yours a tile on along it ("why can't i go up ? why cant i climb right ?"; told in words it
-  // was "explicit guiding.. it should be intuitive, visible"). A stair seen from its side has its steps' fronts.
+  // 4. A floor higher than the one beside it (east, west), rock in front of it: its front shows, down to that floor's
+  // level, the layers it stands on (open onto that room or not: a tunnel three layers over the room beside it, rock
+  // between the two, was drawn as the next tile of that room's floor, "i dont see how to go up, where to dig").
+  // Height is how far up the screen a floor is drawn, and nothing else said it: a tunnel that goes down a layer a
+  // tile was a strip of earth going up across the screen, the floor two layers over yours a tile on along it ("why
+  // can't i go up ? why cant i climb right ?"; told in words it was "explicit guiding.. it should be intuitive,
+  // visible"). A stair seen from its side has its steps' fronts.
   for (let j = 0; j < R.h; j++) for (let i = 0; i < w; i++) if (deepT[j * w + i]) {
-    const t = j * w + i, F = lvOf(i, j), beside = (d) => (i + d >= 0 && i + d < w && deepT[t + d] && lvOf(i + d, j) < F && ceilAt(R.x + i + d, R.y + j, lvOf(i + d, j)) >= F ? lvOf(i + d, j) : F);
+    const t = j * w + i, F = lvOf(i, j), beside = (d) => (i + d >= 0 && i + d < w && deepT[t + d] && lvOf(i + d, j) < F ? lvOf(i + d, j) : F);
     const low = Math.max(F - APART, Math.min(beside(-1), beside(1))), [Y, , top] = rows(i, j), end = Math.min(h, top + 16 + shOf(F) - shOf(low));
     // (...under what is seen of the floor's own foot: not where ground that is not cut stands in front of it, a step up out of a hole: the front lay on the meadow)
     const foot = top + 15 < 0 || top + 15 >= h ? -1 : (top + 15) * W + i * 16;
@@ -114,6 +117,21 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, 
       own[f] = t0 + 1; face[f] = 0; wall.delete(f); see.band[f] = 0; see.lev[f] = F; own0.set(f, ground[(j * 16 + r - top) * W + i * 16 + c]);
     }
   }
+  // 6. The place is all that is open onto your room. Of it, what you walk to from where you stand, a step or a drop
+  // at a time (cells.js landAt; by a tile at any height, under a floor of the place or over one), is cut open; the
+  // rest, under a roof, is seen through that roof, half of it: a tunnel that goes by over your hole is not the floor
+  // you stand on going on ("i still dont see the exit. i dont see how to go up, where to dig to escape": its floor
+  // three layers up was drawn against his, the same earth, a line between). A front that is the wall of a room you
+  // walk in is of that room. (Not what is open to the sky: it is seen as it is, from above.)
+  const k0 = me.join(), reach = new Set(), by = new Set([k0 + "," + floors.get(k0)]), go = [[me[0], me[1], floors.get(k0)]], farT = new Uint8Array(w * R.h);
+  while (go.length) {
+    const [x, ty, lv] = go.pop();
+    if (floors.get(x + "," + ty) === lv) reach.add(x + "," + ty);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (x + dx) + "," + (ty + dy), z = floors.has(k) ? landAt(lv, x + dx, ty + dy, x, ty) : null; if (z !== null && !by.has(k + "," + z)) { by.add(k + "," + z); go.push([x + dx, ty + dy, z]); } }
+  }
+  for (let t = 0; t < w * R.h; t++) if (roofT[t] && !reach.has((R.x + t % w) + "," + (R.y + (t / w | 0)))) farT[t] = 1;
+  const nearT = (t, F) => deepT[t] && !farT[t] && lvOf(t % w, t / w | 0) < F;
+  const far = (f) => { const t = own[f] - 1, i = t % w; return t >= 0 && farT[t] === 1 && !(face[f] && ((i > 0 && nearT(t - 1, lvs[t + 1])) || (i < w - 1 && nearT(t + 1, lvs[t + 1])))); };
   for (const f of lid) if (!deep[f]) { over[f] = 1; if (seen[f]) { seen[f] = 0; more--; } }   // (the land over a room: as it is drawn, unless another tile of the place is seen there)
   // (q: beside f, over it or under it: not of the place; and not the land's own edge, the top of a tile beside or
   // behind a part of the place that is open to the sky, which has its rim or its grass there...)
@@ -182,5 +200,7 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, 
     if (own) px[f] = pack(own.map((v, q) => v * (1 - lip) + [30, 20, 28][q] * lip), 1);
     else if (lip) px[f] = pack([30, 20, 28], lip);
   }
-  return {px, cut: new Set(cuts.keys()), more, line: deep.includes(1) ? line : null, deep, cols, fronts};
+  let veil = null;
+  if (farT.includes(1)) { veil = new Uint32Array(n).fill(0xff000000); for (let f = 0; f < n; f++) if (deep[f] && far(f)) veil[f] = (Math.round(CUT.veil * 255) << 24) >>> 0; }
+  return {px, cut: new Set(cuts.keys()), more, line: deep.includes(1) ? line : null, deep, cols, fronts, veil};
 }
