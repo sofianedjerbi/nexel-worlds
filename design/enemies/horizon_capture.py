@@ -79,7 +79,7 @@ GRAB = """async () => {
     mg.fillStyle = `rgb(${128 + L},0,0)`; mg.fillRect(i, j, 1, 1);
   }
   const faces = [], grid = [Math.round(ox + tx0 * S), Math.round(oy + ty0 * S), S];
-  return {ground, atlas: atlas.toDataURL("image/png"), levels: map.toDataURL("image/png"), sprites: out, size: [cv.width, cv.height], lv: [...levels].sort((a, b) => b - a), step, grid};
+  return {ground, atlas: atlas.toDataURL("image/png"), levels: map.toDataURL("image/png"), sprites: out, size: [cv.width, cv.height], lv: [...levels].sort((a, b) => b - a), step, grid, tile0: [tx0, ty0], at: [myAt.x, myAt.y, myAt.z]};
 }"""
 SETUP = "rpc('dev_time', {phase: .3}); setOpt('names', false); setOpt('hints', false); setOpt('shader', 'natural'); setOpt('reflect', 0); setOpt('clouds', 0); setOpt('above', 'cut')"
 
@@ -87,7 +87,7 @@ SETUP = "rpc('dev_time', {phase: .3}); setOpt('names', false); setOpt('hints', f
 def save(name, got):
     for part in ("ground", "atlas", "levels"):
         (OUT / f"{name}_{part}.png").write_bytes(base64.b64decode(got[part].split(",")[1]))
-    (OUT / f"{name}.json").write_text(json.dumps({"size": got["size"], "sprites": got["sprites"], "lv": got["lv"], "step": got["step"], "grid": got["grid"]}))
+    (OUT / f"{name}.json").write_text(json.dumps({"size": got["size"], "sprites": got["sprites"], "lv": got["lv"], "step": got["step"], "grid": got["grid"], "tile0": got["tile0"]}))
     print(name, got["size"], len(got["sprites"]), "things; levels", got["lv"], flush=True)
 
 

@@ -1698,6 +1698,27 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 176: the sky page drawn from shapes
+
+"It does NOT look clean at all. It is terrible. Horrible. Rethink your approach". Twelve pages had the same
+method: take the game's finished flat picture and work out, for each pixel of a bent screen, what would be seen
+there (a march down through heights, a search for the land's front edge, a slope for far land, a rule for what is
+past the horizon, a rule for what hides what). Each fix was a rule more, and each rule left something wrong at the
+horizon, where one screen row is many tiles. The method was wrong, not its details: a picture does not hold what a
+view from elsewhere needs. Rethought: the place is built once as geometry and the graphics card draws it.
+- every tile's top: a square at its height, in four strips so that it bends, with the game's painting of it (the
+  game draws a top `height` px up the picture from its square: taken from there);
+- every wall: upright, where a tile is higher than the one south of it, with the game's painting of it;
+- everything that stands: an upright card with its foot on the ground (a thing of its own smaller far off, a built
+  piece as wide and lower).
+A vertex is put where the bend puts its spot of the ground and raised by its height; depth is distance along the
+ground. Land hiding land, a far terrace's size, the smoothing of far detail (the card's own, from smaller copies of
+the picture), things going down behind the horizon (the ground in front of them is nearer): none of it is a rule
+any more. About 250 lines of rules out, 150 of shapes in. Looked at: every place at four places of the walk, the
+horizon band of each at full size, the presets, night, a phone. The mountain is terraces to the horizon.
+Lesson for me: when the third fix in a row is a new special case, the method is what is wrong. Stop and ask what
+would make the cases not exist.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
