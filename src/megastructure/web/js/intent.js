@@ -32,8 +32,8 @@ const TOOL_FOR = {t: "axe", U: "axe", T: "axe", M: "pickaxe", "*": "pickaxe", H:
 const WEAPON_DMG = {sword: 6, spear: 4, axe: 3, pickaxe: 2};      // (half hearts: tiles.py)
 const inHand = () => (selected && meObs && meObs.self.inventory[selected] ? selected : null);   // what's in your hand
 // The creature or person at a tile: where it stands, or where it is drawn right now (moving animals stay clickable).
-function entityAt(p) {
-  const others = [...ents.values()].filter((q) => q.e && !(q.e.kind === "agent" && q.e.id === myId));
+function entityAt(p) {                        // (who stands there, near your own height: a tusker on the mountain over your tunnel, twenty layers up, was on your tile: "Punch tusker", "i shouldn't be able to select the tusker here !". As far as a hand or a bite goes: sim/wild.py BITE_HIGH)
+  const s = myPos(), h = s ? myZ(s.x, s.y) : null, others = [...ents.values()].filter((q) => q.e && !(q.e.kind === "agent" && q.e.id === myId) && (h === null || Math.abs(standsAt(q) - h) <= 4));
   return others.find((q) => q.tx === p.x && q.ty === p.y) || others.find((q) => Math.round(q.x) === p.x && Math.round(q.y) === p.y);
 }
 const reachOf = (weapon) => (weapon === "spear" ? 3 : 2);   // tiles.py REACH, less the tile the server allows for your lead (reaches, below: a circle, height counted)

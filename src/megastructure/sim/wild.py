@@ -32,6 +32,7 @@ LIGHT, LIGHT_R = ("campfire", "fire"), 6
 
 
 BITE_HIGH = 4            # layers: how far up or down a bite reaches (two tiles: as far as your own hand, next to it)
+SEES_HIGH = 4            # layers: who is further over it or under it than that is not seen, nor gone for
 
 
 def cheb(a, c) -> int:
@@ -50,8 +51,14 @@ class Wild(Boss):
     def step_wild(self, c, online):
         getattr(self, "_step_" + c.kind)(c, online)
 
+    def level(self, c, a) -> bool:
+        """Is `a` near c's own height? Who is not is not seen by it: distance was counted on the map alone, and a
+        tusker on a mountain pawed the ground and charged over someone in a tunnel twenty layers under its feet ("the
+        tusker seems to be targetting me..????")."""
+        return abs(self.height(a) - self.height(c)) <= SEES_HIGH
+
     def nearest(self, c, online, r):
-        return min((a for a in online if cheb(a, c) <= r), key=lambda a: (cheb(a, c), a.id), default=None)
+        return min((a for a in online if cheb(a, c) <= r and self.level(c, a)), key=lambda a: (cheb(a, c), a.id), default=None)
 
     def bite(self, c, prey, dmg=None):
         if abs(self.height(prey) - self.height(c)) > BITE_HIGH:
@@ -82,7 +89,7 @@ class Wild(Boss):
 
     def _tusker_prey(self, c, online, mad, further=0):
         """Whom it goes for: angry, the one who hit it; or the nearest it sees (`further`: tiles more, once it has begun)."""
-        foe = next((a for a in online if a.id == c.foe and cheb(a, c) <= ANGRY["sees"] + further), None) if mad else None
+        foe = next((a for a in online if a.id == c.foe and cheb(a, c) <= ANGRY["sees"] + further and self.level(c, a)), None) if mad else None
         return foe or self.nearest(c, online, TUSKER_SEES + further)
 
     def _step_tusker(self, c, online):

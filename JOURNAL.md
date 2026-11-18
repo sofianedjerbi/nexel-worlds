@@ -2801,3 +2801,20 @@ eye-level".
 - Looked at on a copy of the live save at his spot, every way he can face. Tests: test_e2e_digging.py + 1 (the box,
   the marks read on the screen, the numbers, E up the rock a layer at a time), four updated to the new start and
   layout. 473 unit, 255 browser (one at a second try: tilled soil's furrows, not this).
+
+## Iteration 166: who is far over you is not on your tile, and does not see you
+
+The user, in his tunnel, a tusker on the mountain twenty layers over it: "i shouldn't be able to select the tusker
+here ! and the tusker seems to be targetting me..????"
+
+- Selecting it (web/js/intent.js entityAt). Who is on a tile was asked of the map alone: the tile he faced had the
+  tusker, "Punch tusker". It is who stands there near your own height, as far as a hand reaches up or down (four
+  layers: sim/wild.py BITE_HIGH). The reach itself already counted height (reaches); the tile's tenant did not.
+- Targeting him (sim/wild.py level, nearest; boss.py). A wild creature saw whoever was near on the map: the tusker
+  pawed the ground and charged over his head (its bite did not reach: that was counted). Who is more than four
+  layers over it or under it is not seen, nor gone for: tusker, pincer, strawman, wisp, wyrm, sporelings, Old
+  Mossback. This is the world's side: the demo has it; the server on 7777 at its next restart.
+- Tests: test_wild.py + 1 (a tusker on a pillar ten layers up does nothing, two layers up it paws the ground; it
+  fails on the code before), test_e2e_living.py + 1 (a hen on a pillar nine layers up is not on the tile you face).
+  474 unit; 257 browser, one failed twice in the full run and passes alone, here and without this change (the
+  relief's ledges, under load).

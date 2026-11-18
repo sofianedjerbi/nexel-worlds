@@ -262,3 +262,20 @@ def test_ten_hearts_and_ten_pieces_in_halves_and_no_sprint_when_hungry(game):
     game.rpc("dev_needs", hunger=0)
     game.sleep(900)
     assert "Starving" in game.js("$('status').textContent")
+
+
+def test_who_stands_far_over_you_is_not_on_your_tile(game):
+    """"i shouldn't be able to select the tusker here !": he was in a tunnel, a tusker on the mountain twenty layers
+    over it, and the tile he faced had it: "Punch tusker". Who is on a tile was asked of the map alone. It is who
+    stands there near your own height, as far as a hand reaches up or down."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.stamp(1, 0, ["."], levels=["9"])                     # a pillar nine layers high east of you, a hen on it
+    game.spawn("chicken", 1, 0, still=600)
+    game.wait(f"[...ents.values()].some((o) => o.e && o.e.kind === 'chicken' && o.tx === {x + 1} && o.ty === {y} && o.e.z === 9)", 8000)
+    game.face(1, 0)
+    assert game.js(f"[!!entityAt({{x: {x + 1}, y: {y}}}), JSON.stringify(facingIntent(false) || {{}}).includes('hicken')]") == [False, False]
+    game.stamp(1, 0, ["."], levels=["2"])                     # two layers: within reach, it is there
+    game.wait(f"[...ents.values()].some((o) => o.e && o.e.kind === 'chicken' && o.e.z === 2)", 8000)
+    assert game.js(f"!!entityAt({{x: {x + 1}, y: {y}}})") is True
+    assert not game.errors

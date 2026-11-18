@@ -52,7 +52,7 @@ class Boss:
                 c.mode, c.hp = "sleep", full
                 self.emit("boss", c.x, c.y, what="sleep", id=c.id)
             return
-        near = [a for a in online if max(self._moss_gap(c, a)) <= MOSS_SEES]
+        near = [a for a in online if max(self._moss_gap(c, a)) <= MOSS_SEES and self.level(c, a)]      # (and near its own height: wild.py)
         if not near:
             return
         prey = min(near, key=lambda a: (sum(self._moss_gap(c, a)), a.id))

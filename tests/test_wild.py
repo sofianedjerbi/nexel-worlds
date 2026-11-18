@@ -244,3 +244,23 @@ def test_a_calm_tusker_is_as_it_was(world):
         sim.step()
     assert boar.mode == "" and max(abs(boar.x - a.x), abs(boar.y - a.y)) >= 4 and boar.angry == 0
     assert TUSKER_REST == 3.0
+
+
+def test_a_wild_creature_does_not_see_who_is_far_over_it_or_under_it(world):
+    """"the tusker seems to be targetting me..????": he was in a tunnel twenty layers under a tusker on the mountain.
+    Distance was counted on the map alone. Who is more than a bite's reach over it or under it is not seen."""
+    sim, a = world
+    clear(sim, a, 6)
+    sim.world.set(a.x + 2, a.y, level=10)                           # a pillar ten layers high, two tiles from you: a tusker on it
+    boar = put(sim, "tusker", a.x + 2, a.y)
+    assert sim.height(boar) == 10 and sim.height(a) == 0
+    for _ in range(sec(3)):
+        sim.step()
+    assert boar.mode == "" and not any(e["type"] == "windup" for e in a.events)
+    sim.world.set(a.x + 2, a.y, level=2)                            # two layers: it sees you
+    boar.z = 2
+    for _ in range(sec(3)):
+        sim.step()
+        if boar.mode:
+            break
+    assert boar.mode == "windup"
