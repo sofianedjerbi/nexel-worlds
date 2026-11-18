@@ -2743,3 +2743,20 @@ layer, no line (162 drew a line at two layers and more, by the levels alone).
 - A floor's front is also drawn toward a lower room that stops level with it (was: only one that goes higher).
 - Test: test_e2e_place.py + 1 (a step shut from a room one high, open from the room beside it, open from a high
   room under it). 473 unit, 254 browser (one at a second try: a wall's door, not this).
+
+## Iteration 164: a tunnel dug under a tunnel: the upper one is seen on to its way out
+
+The user: "see doben4 position ? the cave extend and has an exit, but im unable to see it. sucks." He had dug a
+second tunnel under his stair's foot, two tiles of it under the first (columns with two rooms: -14/-13/-12/-9/7).
+From the lower one the picture had ten tiles: his own level, and nothing of the tunnel over him or of its eleven
+tiles on to the meadow.
+
+- A tile is of the place at one height ("x,y" -> a floor). The upper tunnel is reached from the pit at its end,
+  open onto it; its first two tiles were already of the place, lower, and the walk stopped there.
+- xrayPlace takes every height a tile is reached at from the one before it (the one you walk or drop to, and what
+  is open onto that room: it took the first of the two), and a tile that is of the place at another height is gone
+  by at this one, not drawn twice. On a copy of the live save at his spot: 10 tiles -> 22, the tunnel up to the
+  meadow.
+- Left: where the upper tunnel is over the lower one, the lower is drawn (yours) and the upper is not: one floor a
+  tile in the picture. The upper one's end there is open, no line.
+- Test: test_e2e_place.py + 1.

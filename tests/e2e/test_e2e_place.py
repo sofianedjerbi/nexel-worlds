@@ -168,3 +168,24 @@ def test_a_step_is_shut_from_a_room_too_low_to_jump_in_and_open_from_beside_it(g
     assert not line(X, y - 1, -6, 0, 8) and not line(X, y - 1, -6, 0, 20)        # open from beside it: none down its floor's side, nor its front's
     assert not line(X + 2, y - 1, -6, 8, 15)                                     # a step with room to jump under it: none
     assert not game.errors
+
+
+def test_a_tunnel_dug_under_a_tunnel_the_upper_one_is_seen_on_to_its_way_out(game):
+    """"see doben4 position ? the cave extend and has an exit, but im unable to see it. sucks.": he had dug a tunnel
+    under his tunnel, from a pit at its end. A tile was of the place at one height: where the upper tunnel is over
+    the lower one it was not gone through, and none of it was seen past there, the way out with it. A tile that is
+    of the place at another height is gone by at this one."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(1, -4, ["." * 9] * 9, levels=["3" * 9] * 9)
+    for i, col in ((2, [-7, -1, 3]), (3, [-7, -5, -4, -1, 3]), (4, [-7, -5, -4, -1, 3]), (5, [-4, -1, 3]), (6, [-4, -1, 3]), (7, [-4, -1, 3])):
+        game.rpc("dev_col", tiles=[[x + i, y]], col=col)      # a pit; east of it a tunnel, and under its first two tiles the one you dug: you, at its end
+    game.rpc("dev_teleport", x=x + 4, y=y, z=-7)
+    game.wait(f"myAt && myAt.x === {x + 4} && myAt.z === -7", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.wait("xray.mix >= 1 && !xray.old", 8000)
+    assert game.js(f"[landAt(-7, {x + 5}, {y}, {x + 4}, {y}), xray.pic.floor.size]") == [None, 6]       # a wall east of you; and all six tiles are of the place
+    assert game.js(f"[2, 3, 4, 5, 6, 7].map((i) => seenUnder({x} + i, {y}))") == [-7, -7, -7, -4, -4, -4]   # yours where you are under it, the upper one past there
+    seen, r, g, b = game.js(PIC, [x + 6, y, -4, 8, 8])       # its floor, two tiles on: on the screen, earth
+    assert seen and r > g, [seen, r, g, b]
+    assert not game.errors

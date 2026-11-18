@@ -45,17 +45,16 @@ function xrayRock(tx, ty) {
 // much as player can see"; it stopped four tiles from you, a fire a little further on not seen); how much of it
 // light shows: cavelight.js
 function xrayPlace(tx, row, L) {
-  const far = opt("above") === "circle" ? 0 : XRAY.wide, h0 = settleNear(tx, row, L), cols = new Map(), z = new Map([[tx + "," + row, h0]]), todo = [[tx, row, h0]];   // (h0: your tile's own height: stepping off it down a stair, L is already the next one's)
+  const far = opt("above") === "circle" ? 0 : XRAY.wide, h0 = settleNear(tx, row, L), cols = new Map(), z = new Map([[tx + "," + row, h0]]), todo = [[tx, row, h0]], by = new Set();   // (h0: your tile's own height: stepping off it down a stair, L is already the next one's)
   while (todo.length) {
-    const [x, y, h] = todo.pop();
-    if (!cols.has(x)) cols.set(x, []);
-    cols.get(x).push(y);
+    const [x, y, h, past] = todo.pop();
+    if (!past) { if (!cols.has(x)) cols.set(x, []); cols.get(x).push(y); }
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy, key = nx + "," + ny;
-      if (z.has(key) || tile(nx, ny) === null) continue;
-      const lv = levelAt(nx, ny), top = ceilAt(x, y, h), w = lv <= L + 1 ? null : landAt(h, nx, ny, x, y) ?? surfacesAt(nx, ny).find((s) => s > h && s < top) ?? null, h2 = lv <= L + 1 ? lv : w !== null && (w === lv ? w < 0 : coveredAt(nx, ny, w)) ? w : null;
-      if (h2 === null || ((nx - tx) ** 2 + (ny - row) ** 2 > XRAY.near ** 2 && !((h2 < 0 || h2 < lv) && Math.max(Math.abs(nx - tx), Math.abs(ny - row)) <= far))) continue;
-      z.set(key, h2); todo.push([nx, ny, h2]);
+      if (tile(nx, ny) === null) continue;
+      // (every height of that tile you get to from here: the one you walk or drop to, and what is open onto this room. A tile that is of the place at another height is gone by at this one, not drawn twice: a tunnel dug under a tunnel, the upper one went on to its way out and none of it was seen past where it is over you, "the cave extend and has an exit, but im unable to see it")
+      const lv = levelAt(nx, ny), top = ceilAt(x, y, h), ws = lv <= L + 1 ? [lv] : [landAt(h, nx, ny, x, y), ...surfacesAt(nx, ny).filter((s) => s > h && s < top)].filter((w) => w !== null && (w === lv ? w < 0 : coveredAt(nx, ny, w)));
+      for (const h2 of new Set(ws)) if ((nx - tx) ** 2 + (ny - row) ** 2 <= XRAY.near ** 2 || ((h2 < 0 || h2 < lv) && Math.max(Math.abs(nx - tx), Math.abs(ny - row)) <= far)) { if (!z.has(key)) { z.set(key, h2); todo.push([nx, ny, h2]); } else if (z.get(key) !== h2 && !by.has(key + "," + h2)) { by.add(key + "," + h2); todo.push([nx, ny, h2, true]); } }
     }
   }
   return {cols, z};
