@@ -1782,6 +1782,10 @@ lower corners (up to 18 px in) and paints the shaded grass of the cliff's foot o
 A wall now takes the middle third of its tile and not those 7 rows. And my shade under a cliff was one smooth
 fade the whole tile wide: it is four flat bands of one land pixel, only as wide as the cliff above.
 
+"Corners and their shadow are a bit squarish": the shade ended as a square block at a cliff's corner. Under each
+step of the cliff's side there is now one band more than under the step before (1, 2, 3, 4, then four under the
+flat edge): the shade ends round, in the land's pixels, as the cliff's own stepped corner does.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole

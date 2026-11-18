@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 28.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 29.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -260,19 +260,22 @@ function shapes(sc) {
     // the game paints the cliff), darker the lower it is. Where higher land stands north, the first strip is in
     // its shade. Far off a side's steps stand at the tile's height again (there they made each terrace a brick).
     const hs = edge(i, j);
-    // (the shade under a cliff: four bands of one land pixel, each one flat, lighter away from the cliff, and only
-    // as wide as the cliff above stands over this tile. It was one smooth fade the whole tile wide.)
-    const shaded = north !== null && north > L, above = shaded ? edge(i, j - 1).find((q) => q[3] < 0) : null, rows = [];
-    if (shaded) for (let q = 0; q < 4; q++) rows.push([Y + q * PX, Y + (q + 1) * PX, .7 + .075 * q]);
-    for (let q = 0; q < 4; q++) { const a = Y + q * S / 4, b = a + S / 4; if (!shaded || q > 0) rows.push([a, b, 1]); else rows.push([Y + 4 * PX, b, 1]); }
-    if (ONLY !== "walls") for (const [xa, xb, hh, rib] of hs) for (const [r0, r1, l0] of rows) {
+    // The shade under a cliff: bands of one land pixel, each one flat, lighter away from the cliff. Under the
+    // cliff's flat edge, four; under each step of its side, one more than the step before: so the shade ends
+    // round, as the cliff does, and not as a square block ("corners and their shadow are a bit squarish").
+    const shaded = north !== null && north > L, above = shaded ? edge(i, j - 1) : [];
+    const bandsAt = (x) => { const q = above.find((v) => x >= v[0] && x < v[1]); return !q || q[2] <= h ? 0 : q[3] < 0 ? 4 : q[3] + 1; };
+    if (ONLY !== "walls") for (const [xa, xb, hh, rib] of hs) {
       if (rib < 0) {
-        const cuts = l0 < 1 ? [xa, Math.max(xa, Math.min(xb, above[0])), Math.max(xa, Math.min(xb, above[1])), xb] : [xa, xb];
-        for (let c = 0; c + 1 < cuts.length; c++) if (cuts[c + 1] > cuts[c]) { const l = l0 < 1 && c !== 1 ? 1 : l0;
-          piece([X + cuts[c], r0, hh, l], [X + cuts[c + 1], r0, hh, l], [X + cuts[c], r1, hh, l], [X + cuts[c + 1], r1, hh, l]); }
+        const cuts = [...new Set([xa, xb, ...above.flatMap((v) => [v[0], v[1]]).filter((x) => x > xa && x < xb)])].sort((p, q) => p - q);
+        for (let c = 0; c + 1 < cuts.length; c++) { const n = bandsAt((cuts[c] + cuts[c + 1]) / 2), x0 = X + cuts[c], x1 = X + cuts[c + 1];
+          const flat = (r0, r1, l) => piece([x0, r0, hh, l], [x1, r0, hh, l], [x0, r1, hh, l], [x1, r1, hh, l]);
+          for (let q = 0; q < n; q++) flat(Y + q * PX, Y + (q + 1) * PX, .7 + .075 * q);
+          flat(Y + n * PX, Y + S / 4, 1); for (let q = 1; q < 4; q++) flat(Y + q * S / 4, Y + (q + 1) * S / 4, 1); }
         continue; }
+      for (let q = 0; q < 4; q++) { const r0 = Y + q * S / 4, r1 = r0 + S / 4;
       const col = xa < S / 2 ? X + 8 : X + S - 9, sh = .6 + .09 * rib;
-      piece([X + xa, r0, hh, sh, h], [X + xb, r0, hh, sh, h], [X + xa, r1, hh, sh, h], [X + xb, r1, hh, sh, h], () => [col + dX, Y + S / 2 - h + dY]);
+      piece([X + xa, r0, hh, sh, h], [X + xb, r0, hh, sh, h], [X + xa, r1, hh, sh, h], [X + xb, r1, hh, sh, h], () => [col + dX, Y + S / 2 - h + dY]); }
     }
     // Walls: upright, along the tile's south edge, wherever a step of its edge stands higher than the step of the
     // tile south of it at that place: the whole edge where that tile is lower (the cliff's front), or a few px of
