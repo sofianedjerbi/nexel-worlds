@@ -259,11 +259,10 @@ function* xrayPicture(tx, key, near) {
   const seen = new Uint8Array(W * h), m = new Uint32Array(W * h), wm = new Uint32Array(W * h);
   let any = 0;
   for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) seen[f] = 1;
-  const {px: earth, cut, line, deep, cols, fronts, veil} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, ground, at: [tx, row]});   // (the earth cut through and the cut's edge; of seen, the land over a room is taken back: xraycut.js)
+  const {px: earth, cut, line, deep, cols, fronts} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, ground, at: [tx, row]});   // (the earth cut through and the cut's edge; of seen, the land over a room is taken back: xraycut.js)
   for (let f = 0; f < seen.length; f++) if (seen[f]) { any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
   const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(m, W, h), 0, 0);
   og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(earth, W, h), 0, 0);
-  if (veil) { og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(veil, W, h), 0, 0); }   // (what you do not walk to: seen through the rock, xraycut.js 6)
   const mouths = [...floor.keys()].filter((k) => { const [fx, fy] = k.split(",").map(Number); return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => topAt(fx + dx, fy + dy) < topAt(fx, fy)); }).sort().join(" ");
   return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, line, deep, cols, any, rock: rocks, floor, cut, fronts, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};
 }
