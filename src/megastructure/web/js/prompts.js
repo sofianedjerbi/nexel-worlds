@@ -10,14 +10,14 @@ const Prompts = (() => {
   const row = ([k, t, cls]) => `<div class="${cls || ""}"><span class="key">${esc(k)}</span>${esc(t)}</div>`;
   // rect: where the thing is on the screen (css px), or nothing: none shown. side: rows at its right; up, down: a row
   // each at its left, high and low (over it they hid your feet: you stand next to it)
-  function show(rect, side = [], up = null, down = null) {
+  function show(rect, side = [], up = null, down = null) {      // (rect.under: the rows under it, not at its right; rect.right: up and down at its right, not at its left: you stand there, and what marks the block's height on you is not written over)
     const h = rect && (side.length || up || down) ? `<div class="side">${side.map(row).join("")}</div><div class="up">${up ? row(up) : ""}</div><div class="down">${down ? row(down) : ""}</div>` : "";
     if (h !== html) { html = h; el.innerHTML = h; for (const k of ["side", "up", "down"]) part[k] = el.querySelector("." + k); }
     if (!h) return;
-    const left = Math.round(rect.x - 10), mid = Math.round(rect.y + rect.h / 2);     // (up and down at its left, over and under its middle: the depth goes between, keyhole.js)
-    part.side.style.transform = `translate(${Math.round(rect.x + rect.w + 10)}px, ${mid}px) translateY(-50%)`;
-    part.up.style.transform = `translate(${left}px, ${mid - 14}px) translate(-100%, -100%)`;
-    part.down.style.transform = `translate(${left}px, ${mid + 14}px) translateX(-100%)`;
+    const left = Math.round(rect.right ? rect.x + rect.w + 10 : rect.x - 10), mid = Math.round(rect.y + rect.h / 2), to = rect.right ? "0" : "-100%";     // (up and down at its left, over and under its middle: the depth goes between, keyhole.js)
+    part.side.style.transform = rect.under ? `translate(${Math.round(rect.x - 4)}px, ${Math.round(rect.y + rect.h + 12)}px)` : `translate(${Math.round(rect.x + rect.w + 10)}px, ${mid}px) translateY(-50%)`;
+    part.up.style.transform = `translate(${left}px, ${mid - 14}px) translate(${to}, -100%)`;
+    part.down.style.transform = `translate(${left}px, ${mid + 14}px) translateX(${to})`;
   }
   // build mode: the cursor's keys (its rows but the mode's name, Esc, and Q E: those go at its left)
   function build() {

@@ -18,8 +18,9 @@ def test_build_mode_says_its_keys_by_the_cursor_and_nothing_in_the_chat(game):
     assert up[4].replace(" ", "") == "EUp" and down[4].replace(" ", "") == "QDown"     # at its left, E over Q
     assert up[1] < r["x"] and down[1] < r["x"] and up[3] < r["y"] + r["h"] / 2 < down[2]
     assert game.js("$('actions').textContent") == "BBUILD MODE · leave"                  # the corner: only the mode (B to leave)
-    game.press("ArrowRight", 150)                              # it goes with the cursor
-    assert abs(game.js(PART, "side")[0] - game.js("Build.S.rect.x + Build.S.rect.w + 10")) < 2
+    game.press("ArrowRight", 150)                              # it goes with the cursor; east of you: its keys under it and at its right, none over you
+    r = game.js("Build.S.rect"); side, up = game.js(PART, "side"), game.js(PART, "up")
+    assert r["under"] and r["right"] and side[2] >= r["y"] + r["h"] and up[0] >= r["x"] + r["w"]
     game.press("b")
     game.sleep(200)
     assert game.js("$('prompts').innerText").strip() == "" and not game.errors

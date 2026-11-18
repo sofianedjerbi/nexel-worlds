@@ -2760,3 +2760,30 @@ tiles on to the meadow.
 - Left: where the upper tunnel is over the lower one, the lower is drawn (yours) and the upper is not: one floor a
   tile in the picture. The upper one's end there is open, no line.
 - Test: test_e2e_place.py + 1.
+
+## Iteration 165: the build cursor is a block, where it is beside you is on you, and it starts at your eyes
+
+The user: "going up in tunnel really isn't intuitive: +1 mean whaT ? +1 above player ? please make the block
+selection with position relative to player more evident. and default block to dig should be the one at player
+eye-level".
+
+- What he had. The cursor was the top of its block: a flat square, a layer up the wall from the layer it would dig,
+  with "+1" beside the block in front of his legs (layers over the floor he stood on: the block in front of your
+  legs was +1, of your eyes +2). E from a tunnel's floor went a storey up, three layers, into the rock ("+4"), on a
+  block X could not dig; one stop was the air under the roof, where X said "plan the step before it first".
+- It starts on the block in front of your eyes (toggle: z + 2, then z + 1). 159 had made it your legs.
+- A block in the ground is drawn as a box: its top and, lit, its front, a layer high (build.js draw; keyhole.js
+  paints the front of a block not dug yet under its top). Where the front is beside you is how high the block is.
+- On you: the layer of you the block is level with, between two marks (Keyhole.mark): your legs, your head, over
+  your head, under your feet. Also for a cursor on ground over your floor (a step: your legs).
+- The number (Keyhole.rel): over your floor, how far over your HEAD: nothing for the two layers you stand in, +1
+  the block over your head (and a storey up, the floor over you: it said +3). Under your floor: as it was.
+- E and Q in the ground go a layer at a time, up as down (stops): a tunnel's roof, the block over it. In the air a
+  storey at a time, where there is room over it (not the air under a roof).
+- `buried` is a block (it was "land over it": the air under a roof too). In build mode the game's selector is not
+  drawn (its red corners were under the cursor's; they showed at the box's fold).
+- The keys beside the cursor are not written over you: you beside it, its rows go under it; you at its left, E, Q
+  and the number at its right (prompts.js; they covered the cat and would cover the marks).
+- Looked at on a copy of the live save at his spot, every way he can face. Tests: test_e2e_digging.py + 1 (the box,
+  the marks read on the screen, the numbers, E up the rock a layer at a time), four updated to the new start and
+  layout. 473 unit, 255 browser (one at a second try: tilled soil's furrows, not this).

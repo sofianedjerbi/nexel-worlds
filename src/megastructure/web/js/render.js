@@ -185,7 +185,7 @@ function frame(now) {
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   const box = aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null;
-  drawSelector(box, sx, sy, now);
+  drawSelector(Build.on ? null : box, sx, sy, now);     // (in build mode the cursor is the selector: build.js)
   Build.draw(sx, sy, S, t);                         // (what is planned, and the cursor: build.js)
   if (Build.on) Prompts.build();                    // (the keys beside what they act on: prompts.js)
   else Prompts.show(box && {x: sx(box.x0), y: sy(box.y0), w: (box.x1 - box.x0) * S, h: (box.y1 - box.y0) * S}, faceRows);

@@ -25,7 +25,7 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     game.press("b")
     assert game.js("Build.level()") == 0 and "Q E" in [r[0] for r in game.js("Build.rows()")]
     game.press("e")                                            # the cursor up a floor: over the house, in the air
-    assert game.js("[Build.S.plane, Build.level()]") == [3, 3] and "+3" in game.js("Build.rows()")[0][1]      # (layers over you)
+    assert game.js("[Build.S.plane, Build.level()]") == [3, 3] and "+1" in game.js("Build.rows()")[0][1]      # (how far over your head: the floor over it. It said the layers over your floor, +3)
     at(0, -6)
     assert game.js("Build.hint(Build.S.at)")["ok"] is False    # in the open: nothing under it, nothing beside it
     for row in range(4):                                       # a row over each line of the house, walls and room

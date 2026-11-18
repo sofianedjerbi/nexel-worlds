@@ -7,7 +7,7 @@
 //              ground: a hole, a layer deeper each time (a pickaxe digs faster); in the ground: that block. Held: a row
 //   Q E        the cursor a layer down, and up (also PgDn, PgUp)
 //   Esc        drop every plan (with none: out of the mode)
-// The cursor has a height. It starts on the block in front of you, at your own height ("show the most pertinent block first: in front of the player, direction where he's facing at his exact level"): a wall there, the block in front of your legs (or, that one gone, of your eyes); else the ground there (it rode the top of the land over the wall, a mountain's seventeen
+// The cursor has a height. It starts on the block in front of you, at your own height ("show the most pertinent block first: in front of the player, direction where he's facing at his exact level"): a wall there, the block in front of your eyes ("default block to dig should be the one at player eye-level": it was the one in front of your legs; that one gone, of your legs); else the ground there (it rode the top of the land over the wall, a mountain's seventeen
 // layers up, and Q brought it down a layer a press). It rides the ground nearest your own (the floor you stand on); E lifts it a storey, into the air over a room or onto the floor above, and there it stays as it moves, until Q brings it down. Below your
 // own floor Q sinks it to what is under it: the floor under yours (the ground floor from upstairs), a cave's floor,
 // or, in the ground, a layer at a time: there it is on a block, and X digs that block and no other, where air is beside it; what is over it stays ("like minecraft ... this enforce me to dig huge columns": it dug the whole column over it; then the room to stand in, two blocks at once from the lower one: "why am i unable to break block at my eye level ? why do i
@@ -32,7 +32,7 @@ const Build = (() => {
   const ride = (p) => { const s = myPos(); return settleNear(p.x, p.y, s ? myZ(s.x, s.y) : topAt(p.x, p.y)); };
   const under = (p, t) => (solidAt(p.x, p.y, t) ? t : settleAt(p.x, p.y, t));      // (sunk to t: in the ground there, or on what is under it)
   const level = (p = S.at) => (S.plane !== null ? S.plane : !p ? 0 : S.deep !== null ? under(p, S.deep) : ride(p));
-  const buried = (p, L) => landSolid(p.x, p.y, L + 1);                            // (in the ground, land over it: X digs the block it is on, the one whose top is at L)
+  const buried = (p, L) => landSolid(p.x, p.y, L) && landSolid(p.x, p.y, L + 1);  // (a block in the ground, land over it: X digs it, the one whose top is at L. Not the air under a room's roof: X said "plan the step before it first" there)
   const digs = (x, y, z) => { const j = S.plans.get(x + "," + y + "," + z); return !!j && !!j.dig && j.state !== "bad"; }, open = (x, y, z, soon) => landSolid(x, y, z) && [[0, 0, 1], [0, 0, -1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])].some(([dx, dy, dz]) => !solidAt(x + dx, y + dy, z + dz) || (soon && digs(x + dx, y + dy, z + dz)));   // (air beside it: it can be dug, sim/underground.py; soon: or will be, once what is planned beside it is dug)
   const onIt = (p, L) => solidAt(p.x, p.y, L) && !solidAt(p.x, p.y, L + 1);        // the cursor is on something there (not in the air, not inside it)
   const key = (p, z = level(p)) => p.x + "," + p.y + "," + z;
@@ -183,7 +183,7 @@ const Build = (() => {
   function toggle(on = !S.on) {
     if (on === S.on || (on && !me)) return;
     S.on = on; S.hold = null; S.plane = null; S.deep = null; held(null); document.body.classList.toggle("building", on);
-    if (on) { S.at = facingTile() || myPos(); const s = myPos(), z = s ? myZ(s.x, s.y) : 0, c = s ? [z + 1, z + 2].find((t) => landSolid(S.at.x, S.at.y, t)) : undefined, r = ride(S.at); if (c < r) S.deep = c; else if (c > r) S.plane = c; work(); }   // (in front of you, at your own height: see above; its keys are by the cursor: prompts.js)
+    if (on) { S.at = facingTile() || myPos(); const s = myPos(), z = s ? myZ(s.x, s.y) : 0, c = s ? [z + 2, z + 1].find((t) => landSolid(S.at.x, S.at.y, t)) : undefined, r = ride(S.at); if (c < r) S.deep = c; else if (c > r) S.plane = c; work(); }   // (in front of you, at your own height: see above; its keys are by the cursor: prompts.js)
     else { S.pan = {x: 0, y: 0}; if (todo().length) toast(`${todo().length} plans wait: B to go on building`); }      // (the plans stay where they are)
   }
   function drop() { const n = todo().length; for (const [k, j] of S.plans) if (j.state !== "doing") S.plans.delete(k); toast(`${n} plans dropped`); }
@@ -209,7 +209,7 @@ const Build = (() => {
     const s = myPos(), me = myZ(s.x, s.y), r = ride(p), out = [];
     for (let t = Math.max(LOWEST, me - DEEPEST); t < r; t++) { const z = under(p, t); if (z < r && out[out.length - 1] !== z) out.push(z); }
     out.push(r);
-    if (FLOORS) for (let z = r + Floors.STOREY; z <= me + UPMOST; z += Floors.STOREY) out.push(z);
+    for (let z = r + 1; z <= me + UPMOST; z++) if (landSolid(p.x, p.y, z) || (FLOORS && (z - r) % Floors.STOREY === 0 && !landSolid(p.x, p.y, z + 1))) out.push(z);   // (over it: in the ground a layer at a time, as under it: a tunnel's roof, the block over that; in the air a storey at a time, where there is room over it. It was a storey at a time through the rock: E from a tunnel's floor went three layers up into it, "going up in tunnel really isn't intuitive")
     return out;
   }
   function lift(d) {
@@ -259,23 +259,24 @@ const Build = (() => {
     }
     if (S.on && !me) { S.plans.clear(); toggle(false); }                    // (you fell, or the game went: out of the mode)
     if (!S.on || !S.at) return;
-    const L = level(), x = sx(S.at.x), y = top(S.at, L), c = 5 * z, w = 2 * z, _ = (S.rect = {x, y, w: Sz, h: Sz}), blink = Math.floor(t * 3) % 2 ? "#fff1a8" : "#ffffff";
+    const L = level(), x = sx(S.at.x), y = top(S.at, L), c = 5 * z, w = 2 * z, cube = buried(S.at, L), Hh = Sz + (cube ? RELIEF_STEP * z : 0), mx = (myPos() || S.at).x, _ = (S.rect = {x, y, w: Sz, h: Hh, under: mx !== S.at.x, right: mx < S.at.x}), blink = Math.floor(t * 3) % 2 ? "#fff1a8" : "#ffffff";
     if (!onIt(S.at, L) && !solidAt(S.at.x, S.at.y, L)) {      // in the air: its shadow on what is under it, and the line down to it
       const under = settleAt(S.at.x, S.at.y, L), y0 = top(S.at, under);
       ctx.fillStyle = "rgba(40,30,50,.22)"; ctx.fillRect(x + 2 * z, y0 + 2 * z, Sz - 4 * z, Sz - 4 * z);
       ctx.fillStyle = "rgba(91,63,54,.5)"; for (let yy = y + Sz; yy < y0 + Sz / 2; yy += 3 * z) ctx.fillRect(x + Sz / 2 - z / 2, yy, z, 2 * z);
     }
     ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fillRect(x, y, Sz, Sz);
+    if (cube) { ctx.fillStyle = "rgba(255,255,255,.3)"; ctx.fillRect(x, y + Sz, Sz, Hh - Sz); ctx.fillStyle = "rgba(91,63,54,.7)"; ctx.fillRect(x, y + Sz - z, Sz, z); }   // (a block in the ground: a box, its top and, lit, its front, a layer high: where that front is beside you is how high the block is. It was its top alone, a flat square a layer up the wall, "+1" beside it: "+1 mean whaT ? +1 above player ?")
     ctx.fillStyle = "#5b3f36";                        // the cursor: four corners, in the game's ink with a light line inside
-    for (const [cx, cy, hx, hy] of [[x - w, y - w, 1, 1], [x + Sz + w, y - w, -1, 1], [x - w, y + Sz + w, 1, -1], [x + Sz + w, y + Sz + w, -1, -1]]) {
+    for (const [cx, cy, hx, hy] of [[x - w, y - w, 1, 1], [x + Sz + w, y - w, -1, 1], [x - w, y + Hh + w, 1, -1], [x + Sz + w, y + Hh + w, -1, -1]]) {
       ctx.fillRect(Math.min(cx, cx + hx * (c + w)), Math.min(cy, cy + hy * 2 * w), c + w, 2 * w); ctx.fillRect(Math.min(cx, cx + hx * 2 * w), Math.min(cy, cy + hy * (c + w)), 2 * w, c + w);
     }
     ctx.fillStyle = blink;
-    for (const [cx, cy, hx, hy] of [[x, y, 1, 1], [x + Sz, y, -1, 1], [x, y + Sz, 1, -1], [x + Sz, y + Sz, -1, -1]]) {
+    for (const [cx, cy, hx, hy] of [[x, y, 1, 1], [x + Sz, y, -1, 1], [x, y + Hh, 1, -1], [x + Sz, y + Hh, -1, -1]]) {
       ctx.fillRect(Math.min(cx, cx + hx * c), Math.min(cy, cy + hy * w), c, w); ctx.fillRect(Math.min(cx, cx + hx * w), Math.min(cy, cy + hy * c), w, c);
     }
-    const s = myPos(), n = s ? L - myZ(s.x, s.y) : 0;
-    if (n) Keyhole.tag(x, y, Sz, n);                   // (how far under you, or over: keyhole.js)
+    const s = myPos();
+    if (s) Keyhole.mark(x, y, Hh, L - myZ(s.x, s.y), cube, sx, sy, S.rect.right);   // (where it is beside you, on you; how far over your head or under your feet: keyhole.js)
   }
   // The view, in build mode: half way from you to the cursor, eased (both stay on the screen)
   function pan(dt) {
@@ -286,7 +287,7 @@ const Build = (() => {
   // What the keys do just now, for the corner of the screen (keyboard.js): the mode's name first, then each key
   // that does something here, in a few words
   function rows() {
-    const it = hint(S.at), n = todo().length, hit = taking(S.at), s = myPos(), up = s ? level() - myZ(s.x, s.y) : 0, sign = (v) => (v > 0 ? "+" : "") + v;
+    const it = hint(S.at), n = todo().length, hit = taking(S.at), s = myPos(), up = s ? Keyhole.rel(level() - myZ(s.x, s.y)) : 0, sign = (v) => (v > 0 ? "+" : "") + v;
     const out = [["B", up ? `BUILD · ${sign(up)} · leave` : "BUILD MODE · leave", "head"]];
     out.push([it.key || "Space", it.text, it.ok === false && !it.key ? "bad" : ""]);
     out.push(["Q E", "A layer down, up"]);

@@ -34,9 +34,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     game.rpc("dev_teleport", x=x, y=y, z=-3)
     game.wait(f"myAt && myAt.x === {x} && myAt.z === -3", 8000); game.wait(DRAWN, 8000)
     game.face(0, 1); game.press("b")
-    assert game.js("[[Build.S.at.x, Build.S.at.y], Build.level()]") == [[x, y + 1], -2] and rows()["X"][0] == "Dig the block"   # the block in front of your legs
-    game.press("e", 120)                                      # the one in front of your eyes: it is dug by itself
-    assert game.js("Build.level()") == -1 and rows()["X"][0] == "Dig the block"
+    assert game.js("[[Build.S.at.x, Build.S.at.y], Build.level()]") == [[x, y + 1], -1] and rows()["X"][0] == "Dig the block"   # the block in front of your eyes: it is dug by itself
     game.press("x")
     game.wait(f"surfacesAt({x}, {y + 1}).join() === '-2,0' && Build.S.plans.size === 0", 30000)
     assert game.js("Build.level()") == -2 and rows()["X"][0] == "Dig a hole"     # (the cursor is on the one under it now)
@@ -59,7 +57,7 @@ def test_blocks_are_planned_ahead_each_where_the_one_before_it_will_have_made_ro
     game.stamp(0, 0, ["."], levels=["c"])
     game.rpc("dev_teleport", x=x, y=y, z=-3)
     game.wait(f"myAt && myAt.x === {x} && myAt.z === -3", 8000); game.wait(DRAWN, 8000)
-    game.face(0, 1); game.press("b")
+    game.face(0, 1); game.press("b"); game.press("q", 120)    # (it starts on the block in front of your eyes: Q, the one in front of your legs)
     game.js("(() => { window.__work = Build.S.working; Build.S.working = true; return 1; })()")   # (the work held: every plan is made before a block is dug)
     rows = lambda: {r[0]: r[1:] for r in game.js("Build.rows()")}
     sizes = []
@@ -215,18 +213,19 @@ def test_under_ground_you_see_what_light_shows_a_fire_however_far(game):
     assert not game.errors
 
 
-def test_the_cursor_starts_on_the_block_in_front_of_you_at_your_own_height(game):
+def test_the_cursor_starts_on_the_block_in_front_of_your_eyes(game):
     """"when pressing B ... please show the most pertinent block first: in front of the player, direction where he's
     facing at his exact level": the cursor started on the tile you face, at the ground nearest your height there: in
     a tunnel, facing its end, that was the top of the land over the wall (a mountain: seventeen layers up), and Q, a
-    layer a press, brought it down to where you dig. Facing a wall it starts on the block in front of your legs (that
-    one gone, of your eyes). On the level, or a step up, it is on that ground, as it was."""
+    layer a press, brought it down to where you dig. Facing a wall it starts on the block in front of your eyes
+    ("default block to dig should be the one at player eye-level": it was the one in front of your legs; that one
+    gone, of your legs). On the level, or a step up, it is on that ground, as it was."""
     game.clear_area(10)
     game.give(pickaxe=1)
     x, y = game.pos()
     game.stamp(-6, -2, ["." * 6] * 5, levels=["7" * 6] * 5)                # high ground west of you, seven layers
     game.stamp(1, 0, ["."], levels=["1"])                                   # a step up east of you
-    for key, front, level, text in (((-1, 0), [x - 1, y], 1, "Dig the block"), ((1, 0), [x + 1, y], 1, "Dig a hole"), ((0, 1), [x, y + 1], 0, "Dig a hole")):
+    for key, front, level, text in (((-1, 0), [x - 1, y], 2, "Dig the block"), ((1, 0), [x + 1, y], 1, "Dig a hole"), ((0, 1), [x, y + 1], 0, "Dig a hole")):
         game.face(*key)
         game.press("b")
         at, lv, rows = game.js("[[Build.S.at.x, Build.S.at.y], Build.level(), Object.fromEntries(Build.rows().map((r) => [r[0], r[1]]))]")
@@ -234,8 +233,37 @@ def test_the_cursor_starts_on_the_block_in_front_of_you_at_your_own_height(game)
         game.press("b")
     game.face(-1, 0)                                          # into the high ground: X, and that block is dug, the land over it left
     game.press("b"); game.press("x")
-    game.wait(f"surfacesAt({x - 1}, {y}).join() === '0,7' && Build.S.plans.size === 0", 30000)
-    game.press("b"); game.press("b")                          # in again: the block in front of your eyes, now
-    assert game.js("[[Build.S.at.x, Build.S.at.y], Build.level()]") == [[x - 1, y], 2]
+    game.wait(f"surfacesAt({x - 1}, {y}).join() === '1,7' && Build.S.plans.size === 0", 30000)
+    game.press("b"); game.press("b")                          # in again: the block in front of your legs, now
+    assert game.js("[[Build.S.at.x, Build.S.at.y], Build.level()]") == [[x - 1, y], 1]
+    game.press("b")
+    assert not game.errors
+
+
+MARK = """() => { frame(performance.now()); const m = Keyhole.marks; if (!m) return null;
+  const d = ctx.getImageData(Math.round((m.x + zoom / 2) * DPR), Math.round((m.y + m.h / 2) * DPR), 1, 1).data; return [m.n, d[0] > 235 && d[1] > 215 && d[2] > 130 && d[2] < 205]; }"""
+
+
+def test_a_block_in_the_ground_is_a_box_its_layer_is_marked_on_you_and_e_goes_up_the_rock_a_layer_at_a_time(game):
+    """"going up in tunnel really isn't intuitive: +1 mean whaT ? +1 above player ? please make the block selection
+    with position relative to player more evident": the cursor was the top of its block, a flat square a layer up the
+    wall, "+1" beside the block in front of your legs; and E went up through rock a storey at a time, three layers.
+    A block in the ground is a box, its front a layer high; the layer of you it is level with is marked on you; a
+    number is how far over your head it is (under your floor: as it was); E and Q go a layer at a time in the ground."""
+    game.clear_area(10)
+    game.give(pickaxe=1)
+    x, y = game.pos()
+    game.stamp(-6, -2, ["." * 6] * 5, levels=["7" * 6] * 5)                # high ground west of you, seven layers
+    game.face(-1, 0); game.press("b")
+    see = lambda: game.js("[Build.level(), Build.rows()[0][1], Build.S.rect.h / zoom]") + [game.js(MARK)]
+    assert see() == [2, "BUILD MODE · leave", 24, [2, True]]              # the block in front of your eyes: a box, nothing written, your head marked
+    game.press("q", 120)
+    assert see() == [1, "BUILD MODE · leave", 24, [1, True]]              # of your legs
+    game.press("e", 120); game.press("e", 120)
+    assert see() == [3, "BUILD · +1 · leave", 24, [3, True]]              # the one over your head: +1, the mark over your head
+    game.press("e", 120)
+    assert see()[:3] == [4, "BUILD · +2 · leave", 24]                     # a layer at a time up the rock (it went to 5: a storey over the ground it rode)
+    game.press("b"); game.face(1, 0); game.press("b")                     # on the ground, level with you: a square, no mark
+    assert see() == [0, "BUILD MODE · leave", 16, None]
     game.press("b")
     assert not game.errors
