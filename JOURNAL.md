@@ -1838,6 +1838,21 @@ was not: its horizon stayed at the bend's line. It is now sea level's as seen fr
 higher you are: from the top, a wide sky and far hills over the plain below. (First try, dropped: let the camera's
 height count less to the horizon. The band went, and the sky with it from the mountain's side.)
 
+"Underground does not show any depth effect. We should be able to see 3d holes". Right: page 30 had made a dug
+room a flat picture on the ground (the game's own cut-away painting, put on its rows), which is the one thing
+that cannot have depth. Now a dug room is a hole: its floor down there, its north wall standing, and the ground
+south of it hiding what a rim hides. Walking round it in play shows it: from the south you see the far wall and
+a strip of floor, less as you go away; from the stair you look in.
+What made that possible is knowing what the game's cut-away is: while you are in a room the game does not draw
+the ground south of it, as far as the room is deep. So a place now has two sets of shapes. Cut (you are in the
+room, or on its stair): that ground is left out and the floor goes on under it, so the whole floor and you are in
+view, exactly the game's picture near you. Whole (you are outside): the ground is there. Either way the ground
+the game painted the room over wears another tile's painting, and when whole so does the ground just past and
+beside it (the cut's dark edge lay on the grass as the outline of a room that is not open).
+A depth is squeezed in the bend as the ground's rows are (a height leans instead): with a lean, the cut ground
+no longer matched the room's depth far off and the floor, with you, went behind the rim again.
+Looked at: both dug rooms as the page opens, flat, from the stair, and from 300, 700 and 1200 px south.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
