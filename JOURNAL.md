@@ -1770,6 +1770,12 @@ Also: walls are cut by level exactly where a side slopes over several levels; a 
 land it stands on; the walk stops before the horizon reaches the end of the picture taken (pale bars there).
 Rule for me: after a change to the land, look at the horizon band of every place, on a phone's width too.
 
+"Can you improve edges": a cliff's side was a smooth slope, so its two ends were slanted lines, and so was each
+end of a wall; nothing else in a pixel picture is slanted. The side is now four steps of one land pixel (3 px)
+each, darker the lower: every edge is upright or level. `edge(i, j)` gives a tile's width as flat steps; a wall is
+cut where its steps and those of the tile south of it change, so each piece is a rectangle (the code that cut
+slopes by level is gone).
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
