@@ -124,13 +124,13 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, 
   // of the tunnel went from the picture, the new room in its place ("digged another block and topology changed !!
   // what the hell"). Not where the upper room would be drawn over a floor of another tile that you walk to from where
   // you stand, a step or a drop at a time (a room north of the two): that floor is seen, the upper room is not.
-  const xl = new Int16Array(n).fill(-9999), also = new Map(), k0 = me.join(), went = new Set([k0 + "," + floors.get(k0)]), go = [[me[0], me[1], floors.get(k0)]];
+  const xl = new Int16Array(n).fill(-9999), slab = new Uint8Array(n), also = new Map(), k0 = me.join(), went = new Set([k0 + "," + floors.get(k0)]), go = [[me[0], me[1], floors.get(k0)]];
   while (go.length) {
     const [x, ty, lv] = go.pop();
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (x + dx) + "," + (ty + dy), z = floors.has(k) ? landAt(lv, x + dx, ty + dy, x, ty) : null; if (z !== null && !went.has(k + "," + z)) { went.add(k + "," + z); go.push([x + dx, ty + dy, z]); } }
   }
   const walked = (t) => went.has((R.x + t % w) + "," + (R.y + (t / w | 0)) + "," + lvOf(t % w, t / w | 0));
-  const put = (f, t, lv, c) => {                            // (a px of a tile's other room: its level; c: a floor's px, none: a wall's, laid)
+  const put = (f, t, lv, c) => {                            // (a px of a tile's other room: its level; c: a floor's px, none: a wall's, laid. slab: a px of the rock between the two rooms)
     deep[f] = 1; own[f] = t + 1; xl[f] = lv; face[f] = 0;
     if (c !== undefined) { own0.set(f, c); wall.delete(f); see.band[f] = 0; see.lev[f] = lv; if (!seen[f]) { seen[f] = 1; more++; } }
   };
@@ -144,7 +144,7 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, 
       let free = true;
       for (let r = a; r < d && free; r++) for (let c = 0, f = r * W + i * 16; c < 16; c++, f++) if (deep[f] && own[f] !== t + 1 && !see.band[f] && walked(own[f] - 1)) { free = false; break; }
       for (let r = a; free && r < d; r++) for (let c = 0, f = r * W + i * 16; c < 16; c++, f++) {
-        if (r >= b && r < b + 16) put(f, t, up, gpx(r, b, c)); else { lay(f, r, r < b ? Y : Y + 16, r < b ? up : c1); put(f, t, up); }
+        if (r >= b && r < b + 16) put(f, t, up, gpx(r, b, c)); else { lay(f, r, r < b ? Y : Y + 16, r < b ? up : c1); put(f, t, up); if (r >= b) slab[f] = 1; }
       }
       if (free) { cols.get(k)[1] = Math.min(cols.get(k)[1], a); also.set(k, [up]); }
     }
@@ -153,7 +153,7 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, 
       for (let r = Math.max(0, top + 16); foot >= 0 && r < e; r++) for (let c = 0, f = r * W + i * 16; c < 16; c++, f++) {
         const o = own[f] - 1;
         if (!(deep[foot + c] && own[foot + c] === t + 1 && !see.band[foot + c]) || (deep[f] && !(o === t ? face[f] : (o / w | 0) < j))) continue;   // (under the floor's own foot, where it is seen; over what is behind it, not over what stands in front)
-        if (r >= d && r >= t1) put(f, t, dn, gpx(r, t1, c)); else { lay(f, r, r < d ? Y + 16 : Y, r < d ? c1 : dn); put(f, t, r < d ? F : dn); }
+        if (r >= d && r >= t1) put(f, t, dn, gpx(r, t1, c)); else { lay(f, r, r < d ? Y + 16 : Y, r < d ? c1 : dn); put(f, t, r < d ? F : dn); if (r < d) slab[f] = 1; }
       }
       if (foot >= 0) { cols.get(k)[2] = Math.max(cols.get(k)[2], e); fronts.add(x + "," + (ty + 1)); also.set(k, [...(also.get(k) || []), dn]); }
     }
@@ -203,13 +203,17 @@ function xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, 
   const edge = (lv, t, q, other) => {                       // (other: f or q is of a tile's other room, 6: asked each time, by its own level)
     if (!deep[q]) return 0;
     const u = own[q] - 1, d = lv - lvP(q), k = u === t - 1 ? 0 : u === t + 1 ? 1 : u === t + w ? 2 : u === t - w ? 3 : -1;
-    if (u === t || d < 1 || k < 0) return d > 1 && u !== t ? 1 : 0;      // (not beside each other, drawn side by side: two layers and more)
+    if (u === t || d < 1 || k < 0) return d > 1 && u !== t ? 2 : 0;      // (not beside each other in the world, drawn side by side, two layers and more: no way between them)
     const way = () => { const ux = R.x + u % w, uy = R.y + (u / w | 0); return landAt(lv - d, R.x + t % w, R.y + (t / w | 0), ux, uy) === lv ? 0 : ceilAt(ux, uy, lv - d) > lv ? 1 : 2; };
     if (other || xl[q] > -9999) return way();
     if (shut[t * 4 + k] < 0) shut[t * 4 + k] = way();
     return shut[t * 4 + k];
   };
-  const ledge = (f) => { if (see.band[f] && !face[f]) return 0; const t = own[f] - 1, lv = lvP(f), o = xl[f] > -9999; return Math.max(edge(lv, t, f - 1, o), edge(lv, t, f + 1, o), edge(lv, t, f + W, o), edge(lv, t, f - W, o)); };
+  // (...and in a tile with two rooms, 6, there is no way from one to the other: the foot of the upper one's floor,
+  // over the rock between them, and the top of the lower one's opening, under that rock, are such edges. The floor
+  // had its brink lit there, 7, over one layer of rock and the floor of the room under it: the next step of a stair,
+  // "it looks like i am able to go up... but i cannot")
+  const ledge = (f) => { if (f + W < n && own[f + W] === own[f] && (slab[f] ? !slab[f + W] : !see.band[f] && slab[f + W])) return 2; if (see.band[f] && !face[f]) return 0; const t = own[f] - 1, lv = lvP(f), o = xl[f] > -9999; return Math.max(edge(lv, t, f - 1, o), edge(lv, t, f + 1, o), edge(lv, t, f + W, o), edge(lv, t, f - W, o)); };
   const line = new Uint8Array(n), high = new Int16Array(n).fill(-9999);   // (high: of a px in the shadow of such an edge, the level it is the edge of: its shadow falls on what is lower, the foot of it, not on the floor it is the edge of)
   for (let f = 0; f < n; f++) if (deep[f]) {                  // 3: where the cut ends
     const x = f % W;

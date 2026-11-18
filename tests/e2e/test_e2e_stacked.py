@@ -27,9 +27,12 @@ def test_a_block_dug_under_a_tunnels_floor_changes_that_block_and_the_tunnel_sta
     at, line = lambda *a: game.js(AT, list(a)), lambda *a: game.js(LINE, list(a))
     def column(i, low, rows):
         """the tunnel's floor on that tile, the layer of rock under it, and under that the room below, as much of its floor as its opening shows (rows of it, from its foot up)"""
-        floor, rock, room, shut = at(X + i, y, -6, 8, 8), at(X + i, y, -6, 8, 20), at(X + i, y, low, 8, 15), at(X + i, y, low, 8, 15 - rows)
+        floor, rock, room = at(X + i, y, -6, 8, 8), at(X + i, y, -6, 8, 20), at(X + i, y, low, 8, 15)
         assert floor[:2] == [1, -6] and rock[0] == 1 and floor[2] > 1.3 * rock[2], (i, floor, rock)
-        assert room[:2] == [1, low] and room[2] > 1.15 * rock[2] and shut[2] < .8 * room[2], (i, room, shut, rock)   # (a floor nine down is darker than one six down)
+        assert room[:2] == [1, low] and room[2] > 1.15 * rock[2], (i, room, rock)   # (a floor nine down is darker than one six down)
+        # ...and no way from one room to the other: the foot of the tunnel's floor and the top of the room's opening have the line, the opening itself none
+        # ("it looks like i am able to go up... but i cannot": the floor's brink was lit there, over one layer of rock and the room's floor: the next step of a stair)
+        assert line(X + i, y, -6, 8, 15) and line(X + i, y, low, 8, 15 - rows) and not line(X + i, y, low, 8, 15 - rows // 2) and not line(X + i, y, -6, 8, 8), i
     column(0, -9, 16)                                         # over your own hole: the tunnel, a layer of rock, your floor whole
     wall = [at(X + 1, y, -6, 8, 16 + a) for a in (4, 12, 20)]  # the tunnel's next tile stands on its wall, three layers
     assert all(p[0] for p in wall) and at(X + 1, y, -6, 8, 8)[2] > 1.3 * max(p[2] for p in wall), wall

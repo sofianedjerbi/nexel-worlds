@@ -3185,3 +3185,25 @@ Six pictures of his cave on the mockup page; the user: "go with 4" (a light edge
   run in a side checkout: no music there).
 - Left: the upper room is not drawn over a room north of it that you walk to; a lower room's own front is not
   drawn from over it. A phone was not looked at.
+
+## Iteration 173: no way from a room to the floor over it: a line, not a lit brink
+
+The user, beside the room he dug under his tunnel's end, on the picture of 172: "it looks like i am able to go
+up... but i cannot."
+
+- What the picture said. In a column with two rooms: the tunnel's floor, its brink lit (172), one layer of rock,
+  then the floor of his new room, its own brink lit. Two steps of a stair, the second one up onto the tunnel. It
+  is the floor over his head: two layers up, the rock between them its own floor.
+- The line that is where you do not pass (163, his pick then: "the edge") is drawn there, with the shadow it has
+  where the cut ends (xraycut.js ledge): at the foot of the upper room's floor, over the rock between the two, in
+  place of the lit brink; and at the top of the lower room's opening, under that rock. The room under a floor is
+  a pocket with its own top edge, the floor over it is closed along its foot.
+- And two floors that are not beside each other in the world, drawn side by side two layers and more apart (his
+  nook and the tunnel's end, a row on and three layers up: eight px up the screen, as the next step of a stair):
+  there is no way between them at all. Their edge has that shadow on both sides, two holes that touch (it had
+  it on the lower side only, as an edge that is merely too high).
+- Looked at: his spot from the hole, the new room, the nook, the tunnel; every shape on a throwaway world against
+  the game before (a little more shade at such edges, nothing else).
+- Tests: test_e2e_stacked.py: the foot of the upper floor and the top of the opening have the line, the opening
+  and the middle of the floor none (fails on the code before). 475 unit; browser 251 passed in the full run, one
+  failed there twice and passes alone (a shout's bubble).
