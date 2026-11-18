@@ -34,7 +34,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world. Fourth page: the curved far view, now with the land itself in levels (hills and mountains stand), tried on buildings and under ground. Before that: The fog strip is gone, and the curved world was flat: now the ground bends and what stands on it stays standing, with mountains behind. Made from a real frame of the game, taken in two parts: the ground, and each of the 549 things on it. Nothing here is in the game.</div>
+  <div class="sub">(Page 6.) A sky over the world. Now: the curved far view, now with the land itself in levels (hills and mountains stand), tried on buildings and under ground. Before that: The fog strip is gone, and the curved world was flat: now the ground bends and what stands on it stays standing, with mountains behind. Made from a real frame of the game, taken in two parts: the ground, and each of the 549 things on it. Nothing here is in the game.</div>
   <div class="box">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -53,7 +53,7 @@
     </div>
   </div>
   <div class="box">
-    <h2>Five places, in the curved far view</h2>
+    <h2>Seven places, in the curved far view</h2>
     <div class="four" id="four"></div>
   </div>
   <div class="box">
@@ -63,6 +63,7 @@
       <li><b>Far houses stand.</b> A house is already drawn piece by piece (each wall, each floor and roof cell, each ladder), so each piece is put back on the bent ground at its own tile, a floor as high over the ground as it is built. Two-storey houses come out whole and stand up against the sky. (My first try made far pieces narrower: a house came apart in strips. On a log far things keep their width and only lean away.)</li>
       <li><b>The land stands, level by level.</b> The world is in three dimensions already: it knows the height of every tile, and the game already draws each level a step higher than the one under it. So here each level is its own sheet on the curve: bent with the ground, then raised by its own height; and where a level ends over lower land, its wall is put back upright like a house's. The hill with the cave now stands over the horizon, mouth and all; the mountain rises in terraces and takes the sky, as a mountain in front of you does. Untick "Land in levels" to see it pressed flat as before.</li>
       <li><b>The land is solid.</b> The first try at levels left sky under far terraces and filler colour where the picture ran out. Now, for every pixel, the page asks the height map which spot of the ground would be seen there at each height, from the top down, and whether the land there is that high: its top if so, its side if it is higher. No gaps: a far terrace has earth under it, a far hill is a whole block.</li>
+      <li><b>Taller blocks.</b> A level is 8 pixels high in the game today (half a tile). Two of the places are shown again at 14: the game draws them itself with that one number changed, walls and all. Near you a cliff is nearly a tile high per level and reads as a real step; far off the mountain keeps its shape instead of sinking into the ground. It is a change to the whole game's look, not only to the curve: stairs, ladders, jumps and what hides you would all be drawn taller.</li>
       <li><b>What is still rough.</b> The side of far land is the game's painted wall with its bands run together (as painted, a few pixels tall, it was stripes). A tree that stands behind a hill is drawn over it (the page puts everything that stands on top of the land; the game would sort them with the land). A pit far away shows its back wall and little of its floor.</li>
       <li><b>The build cursor far away.</b> Planning a wall up in the bent band means aiming through the bend. The cursor can be kept to the flat part, or the bend undone for it.</li>
       <li><b>A deep place far away.</b> Scroll the walk by hand in "Under ground": the dug room seen from far is squashed while you stand tall in it. In the game you are never far from yourself, but another player's pit is: it reads as a dark slot.</li>
@@ -88,7 +89,9 @@ const SCENES = {
   village: {name: "Two houses", say: "Two floors each, walls upstairs, a roof, seen from outside. Every wall, floor and roof piece is put back standing."},
   inside: {name: "Inside a house", say: "You stand downstairs in the near house: the game has cut its upper floor and roof away, as it does today."},
   hills: {name: "A mountain", say: "The world's own mountain, thirteen levels of terraces, as the game made it. Each level is lifted on the curve; its walls stand."},
+  hills_tall: {name: "Mountain, taller blocks", say: "The same mountain with every level 14 pixels high instead of 8, drawn by the game itself with that one number changed. Taller walls: more of a mountain, near and far."},
   under: {name: "Under ground", say: "You stand in a room dug four down, a stair up to the west; north of you a hill with a cave in it."},
+  under_tall: {name: "Under ground, taller blocks", say: "The dug room and the hill with 14-pixel levels: a deeper room, a higher hill."},
 };
 const PRESETS = [
   {key: "flat", name: "Today (no sky)", mode: 0, yh: 100, y0: 100, g: 0, say: "The game as it is."},
@@ -162,7 +165,7 @@ void main() {
     // whatever the bend does to the ground behind it)
     float edge = uGrid.y + (tc.y + 1.) * uGrid.z;
     float wallRow = edge - (h + (edge - ground) / max(.2, sp * lean(tt, wd)));
-    c = top > h + .5 ? (tt > .4 ? land(wallRow, floor(x / 6.) * 6. + 3., 44.) : land(wallRow, x, 1.)) : land(ground - h, x, sp);      // (h is tried a third of a level at a time: the height at which the eye meets the wall itself is worked back from how far past its edge the try fell)
+    c = top > h + .5 ? land(wallRow, x, 1. / max(.3, lean(tt, wd))) : land(ground - h, x, sp);      // (h is tried a third of a level at a time: the height at which the eye meets the wall itself is worked back from how far past its edge the try fell)
     t = tt; hit = true;
   }
   bool sky = uMode > .5 && !hit && y >= yh;
@@ -254,9 +257,9 @@ function things(g, s, sc) {
   g.globalAlpha = 1;
 }
 // The camera: the screen's bottom row is a row of the picture; walking north moves it up.
-const state = {...PRESETS[2], hour: 30, walk: 55, stand: true, hills: true, layers: true, scene: "hills"};
+const state = {...PRESETS[2], hour: 30, walk: 55, stand: true, hills: true, layers: true, scene: "hills_tall"};
 // (in a house or under ground the camera stays on you while the walk goes by itself: that is where you look)
-const bottomOf = (walk, scene) => ((scene === "inside" || scene === "under") && $("auto").checked ? 1545 : 2580 - walk / 100 * 1250);
+const bottomOf = (walk, scene) => ((scene === "inside" || scene.startsWith("under")) && $("auto").checked ? 1545 : 2580 - walk / 100 * 1250);
 const $ = (id) => document.getElementById(id);
 const views = [view($("main"), () => ({...state, bottom: bottomOf(state.walk, state.scene)}))];
 function show() {

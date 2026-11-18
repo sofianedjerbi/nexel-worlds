@@ -1698,6 +1698,18 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 169: far walls as painted, and taller blocks
+
+"Still look like weird squares that hide space. Also feel free to add more height to blocks". The squares: far off,
+a wall was its painted bands run together into one flat slab, as tall as the terrace over it was deep. Now that the
+wall is found where it really hangs in the picture (its tile's south edge) and at the height the eye meets it, the
+painted wall itself can be used at any distance, only lower as it leans back: far terraces look like near ones.
+Taller blocks: a level is 8 art px in the game; the capture can hand the game its relief.js with that number changed
+(14), and the game draws the mountain and the dug room itself, walls and all, with no error: two more places on the
+page. Near, a cliff is a real step; far, the mountain keeps its shape. It would be a change to the whole game's
+look (stairs, ladders, jumps, what hides you), not to the curve alone. The page says which page it is (6), to know
+which one is being looked at online.
+
 ## Iteration 168: the horizon without holes
 
 The user, with a picture of the mountain: "Horizon line is bugged: empty space under tiles, green stuff on

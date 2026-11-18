@@ -158,12 +158,29 @@ def main():
     try:
         with sync_playwright() as p:
             b = p.chromium.launch(channel="chrome", headless=True)
-            for name, width, seed, stage in (("meadow", 2200, 7, meadow), ("village", 1100, 7, village), ("under", 1100, 7, under), ("hills", 1100, 12, hills)):
+            # (the last two: the same places with every level drawn 14 art px high, not 8: "feel free to add more height
+            # to blocks". The game itself draws them: its relief.js is handed over with that one number changed.)
+            scenes = (("meadow", 2200, 7, meadow, 8), ("village", 1100, 7, village, 8), ("under", 1100, 7, under, 8), ("hills", 1100, 12, hills, 8),
+                      ("under_tall", 1100, 7, under, 14), ("hills_tall", 1100, 12, hills, 14))
+            for name, width, seed, stage, step in scenes:
+                if len(sys.argv) > 1 and name not in sys.argv[1:]:
+                    continue
                 pg = b.new_page(viewport={"width": width, "height": 2600})
+                if step != 8:
+                    def taller(route, request=None, *, step=step):
+                        body = route.fetch().text()
+                        assert "const RELIEF_STEP = 8;" in body
+                        route.fulfill(body=body.replace("const RELIEF_STEP = 8;", f"const RELIEF_STEP = {step};"), content_type="application/javascript")
+                    pg.route("**/js/relief.js*", taller)
                 game = Game(pg, url(seed))
+                pg.on("pageerror", lambda e, name=name: print(name, "page error:", str(e)[:300], flush=True))
                 game.join("Sky" + name, zoom=3)
                 if seed == 7:
                     game.rpc("dev_creatures", clear=60)
+                    if name.startswith("under"):                    # (the place may have been dug already by the run before: a fresh spot)
+                        x, y = game.pos()
+                        game.rpc("dev_teleport", x=x + (40 if step == 8 else 90), y=y, z=0)
+                        game.sleep(1500)
                 game.js(SETUP)
                 game.sleep(2500)
                 at = stage(game)
