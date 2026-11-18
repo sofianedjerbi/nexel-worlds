@@ -34,9 +34,10 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world, second try. The fog strip is gone ("ugly"), and the curved world was flat: now the ground bends and what stands on it stays standing, with mountains behind. Made from a real frame of the game, taken in two parts: the ground, and each of the 549 things on it. Nothing here is in the game.</div>
+  <div class="sub">A sky over the world. Third page: the curved far view is the one kept, tried here on buildings and under ground. Before that: The fog strip is gone ("ugly"), and the curved world was flat: now the ground bends and what stands on it stays standing, with mountains behind. Made from a real frame of the game, taken in two parts: the ground, and each of the 549 things on it. Nothing here is in the game.</div>
   <div class="box">
     <h2>Try it</h2>
+    <div class="bar" id="scenes"></div>
     <div class="bar" id="presets"></div>
     <div class="view" id="main"></div>
     <div class="knobs">
@@ -51,8 +52,18 @@
     </div>
   </div>
   <div class="box">
-    <h2>The four, side by side</h2>
+    <h2>Four places, in the curved far view</h2>
     <div class="four" id="four"></div>
+  </div>
+  <div class="box">
+    <h2>Buildings and under ground: what the test shows</h2>
+    <ul>
+      <li><b>Where you are, nothing changes.</b> The lower part of the screen is not bent: it is today's picture, tile for tile. Standing in a dug room, the hole is cut open around you exactly as now; standing in a house, its upper floor and roof are cut away exactly as now. Digging, building, the build cursor, stairs and ladders all happen there. So the curve does not fight the building system: it only touches what is far.</li>
+      <li><b>Far houses stand.</b> A house is already drawn piece by piece (each wall, each floor and roof cell, each ladder), so each piece is put back on the bent ground at its own tile, a floor as high over the ground as it is built. Two-storey houses come out whole and stand up against the sky. (My first try made far pieces narrower: a house came apart in strips. On a log far things keep their width and only lean away.)</li>
+      <li><b>Far hills go flat.</b> The hill with the cave north of the dug room is pressed into a slab. The land's height is part of the ground picture, so it is bent with it. To stand, the land would have to be put back a level at a time, as it is already drawn a level at a time. This is the real work.</li>
+      <li><b>The build cursor far away.</b> Planning a wall up in the bent band means aiming through the bend. The cursor can be kept to the flat part, or the bend undone for it.</li>
+      <li><b>A deep place far away.</b> Scroll the walk by hand in "Under ground": the dug room seen from far is squashed while you stand tall in it. In the game you are never far from yourself, but another player's pit is: it reads as a dark slot.</li>
+    </ul>
   </div>
   <div class="box">
     <h2>What changed, and what each costs</h2>
@@ -67,7 +78,14 @@
   </div>
 </main>
 <script>
-const W = 1100, H = 650, CX = 1100;
+const W = 1100, H = 650;
+// The places: each a frame of the game taken in two parts (design/enemies/horizon_capture.py)
+const SCENES = {
+  meadow: {name: "Meadow", say: "Trees, ponds, animals: nothing built."},
+  village: {name: "Two houses", say: "Two floors each, walls upstairs, a roof, seen from outside. Every wall, floor and roof piece is put back standing."},
+  inside: {name: "Inside a house", say: "You stand downstairs in the near house: the game has cut its upper floor and roof away, as it does today."},
+  under: {name: "Under ground", say: "You stand in a room dug four down, a stair up to the west; north of you a hill with a cave in it."},
+};
 const PRESETS = [
   {key: "flat", name: "Today (no sky)", mode: 0, yh: 100, y0: 100, g: 0, say: "The game as it is."},
   {key: "curve1", name: "Curved · short view", mode: 1, yh: 80, y0: 42, g: 0, say: "The ground bends away from 42% up the screen to a horizon at 80%. Things stand on it; the last trees stand against the sky."},
@@ -151,55 +169,57 @@ function view(box, get) {
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
   const loc = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   const u = (n) => gl.getUniformLocation(pr, n), tex = gl.createTexture();
-  let src = null;
+  let src = null, shown = null;
   return {
     load(ground) { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, ground);
       for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
       src = [ground.width, ground.height]; },
-    draw(t) { if (!src) return; const s = get();
-      gl.uniform2f(u("uRes"), W, H); gl.uniform2f(u("uSrc"), ...src); gl.uniform1f(u("uBottom"), s.bottom); gl.uniform1f(u("uMode"), s.mode); gl.uniform1f(u("uCx"), CX);
+    draw(t) { const s = get();
+      const sc = SCENES[s.scene]; if (!sc.ground) return;
+      if (shown !== s.scene) { shown = s.scene; this.load(sc.ground); }
+      gl.uniform2f(u("uRes"), W, H); gl.uniform2f(u("uSrc"), ...src); gl.uniform1f(u("uBottom"), s.bottom); gl.uniform1f(u("uMode"), s.mode); gl.uniform1f(u("uCx"), sc.cx);
       gl.uniform1f(u("uYh"), s.yh / 100); gl.uniform1f(u("uY0"), s.y0 / 100); gl.uniform1f(u("uG"), s.g / 100); gl.uniform1f(u("uT"), t); gl.uniform1f(u("uHour"), s.hour / 100); gl.uniform1f(u("uHills"), s.hills ? 1 : 0);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      things(g2, s);
+      things(g2, s, sc);
       const dusk = Math.max(0, Math.min(1, (s.hour - 50) / 20)), night = Math.max(0, Math.min(1, (s.hour - 70) / 14));
       over.style.filter = `brightness(${1 - .05 * dusk - .38 * night}) sepia(${.25 * dusk * (1 - night)}) saturate(${1 - .3 * night}) hue-rotate(${18 * night}deg)`; },
   };
 }
 // What stands, put back on the ground as it is drawn now: far ones first. Its foot is a row of the ground; that row's
 // place on the screen is found from the bend, and it is drawn upright there, smaller with distance.
-let SPRITES = [], ATLAS = null;
-function things(g, s) {
+function things(g, s, sc) {
   g.clearRect(0, 0, W, H); g.imageSmoothingEnabled = false;
-  if (!ATLAS) return;
   const y0 = Math.min(s.y0, s.yh - 2) / 100, yh = s.yh / 100, bent = s.mode === 1 || s.mode === 3;
-  for (const q of SPRITES) {
-    const d = (s.bottom - (q.y + q.h)) / H;                    // how far along the ground its foot is, in screen heights
-    if (d < -.4) break;                                        // (sorted: the rest are nearer still, under the screen)
-    let y = d, t = 0, wide = 1, size = 1, squash = 1;
+  for (const q of sc.sprites) {
+    const d = (s.bottom - q.foot) / H, gap = q.foot - (q.y + q.h);   // how far along the ground its foot is, in screen heights; how high over its foot it is (a floor upstairs)
+    if (d < -.6) break;                                        // (sorted: the rest are nearer still, under the screen)
+    let y = d, t = 0, wide = 1, size = 1, squash = 1, lean = 1;
     if (bent && d > y0) {
       const want = (d - y0) / (yh - y0);
       if (want >= fOf(s, .999)) continue;                      // past the horizon
       let lo = 0, hi = .999; for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2; if (fOf(s, m) < want) lo = m; else hi = m; }
       t = lo; y = y0 + (yh - y0) * t;
-      if (s.mode === 3) { wide = 1 + (fOf(s, t) - t) * .35; size = 1 / wide; } else size = 1 - .45 * Math.pow(t, 1.5);
+      if (s.mode === 3) { wide = 1 + (fOf(s, t) - t) * .35; size = 1 / wide; } else lean = 1 - .5 * Math.pow(t, 1.6);      // (on a log far things are as wide and lean away: lower. Narrower too, a house came apart in strips)
       if (!s.stand) { const e = .01; squash = Math.max(.04, e / (fOf(s, Math.min(.999, t + e)) - fOf(s, t))); size = s.mode === 3 ? 1 / wide : 1; }   // (pressed flat with the ground, as the first try was)
     } else if (s.mode !== 0 && d >= yh) continue;              // (a backdrop: the land has ended)
-    const cx = W / 2 + (q.x + q.w / 2 - CX) / wide, w = q.w * size, h = q.h * size * squash;
+    const cx = W / 2 + (q.x + q.w / 2 - sc.cx) / wide, w = q.w * size, h = q.h * size * squash * lean, lift = gap * size * squash * lean;
     if (cx < -80 || cx > W + 80) continue;
     g.globalAlpha = 1 - .5 * Math.max(0, Math.min(1, (t - .6) / .4));
-    g.drawImage(ATLAS, q.ax, q.ay, q.w, q.h, Math.round(cx - w / 2), Math.round(H - y * H - h), Math.round(w), Math.max(1, Math.round(h)));
+    g.drawImage(sc.atlas, q.ax, q.ay, q.w, q.h, Math.round(cx - w / 2), Math.round(H - y * H - h - lift), Math.round(w), Math.max(1, Math.round(h)));
   }
   g.globalAlpha = 1;
 }
 // The camera: the screen's bottom row is a row of the picture; walking north moves it up.
-const state = {...PRESETS[1], hour: 30, walk: 55, stand: true, hills: true};
-const bottomOf = (walk) => 2580 - walk / 100 * 1250;
+const state = {...PRESETS[2], hour: 30, walk: 55, stand: true, hills: true, scene: "meadow"};
+// (in a house or under ground the camera stays on you while the walk goes by itself: that is where you look)
+const bottomOf = (walk, scene) => ((scene === "inside" || scene === "under") && $("auto").checked ? 1545 : 2580 - walk / 100 * 1250);
 const $ = (id) => document.getElementById(id);
-const views = [view($("main"), () => ({...state, bottom: bottomOf(state.walk)}))];
+const views = [view($("main"), () => ({...state, bottom: bottomOf(state.walk, state.scene)}))];
 function show() {
   for (const id of ["yh", "y0", "g", "hour", "walk"]) { $(id).value = state[id];
     $(id).parentNode.querySelector("b").textContent = id === "g" ? (state.mode === 3 ? 3 + state.g / 100 * 1.4 : 1.57 * (1 + state.g / 100)).toFixed(1) + "x" : id === "hour" ? (state.hour < 72 ? "day" : "night") : Math.round(state[id]) + "%"; }
   document.querySelectorAll("#presets button").forEach((b) => b.classList.toggle("on", b.dataset.key === state.key));
+  document.querySelectorAll("#scenes button").forEach((b) => b.classList.toggle("on", b.dataset.key === state.scene));
   for (const id of ["y0", "g"]) $(id).disabled = state.mode !== 1 && state.mode !== 3;
   $("yh").disabled = state.mode === 0;
 }
@@ -207,17 +227,21 @@ function pick(p) { Object.assign(state, p); show(); }
 for (const p of PRESETS) { const b = document.createElement("button"); b.textContent = p.name; b.dataset.key = p.key; b.onclick = () => pick(p); $("presets").append(b); }
 for (const id of ["yh", "y0", "g", "hour", "walk"]) $(id).oninput = () => { state[id] = +$(id).value; if (id !== "hour" && id !== "walk") state.key = "own"; if (id === "walk") $("auto").checked = false; show(); };
 for (const id of ["stand", "hills"]) $(id).onchange = () => { state[id] = $(id).checked; };
-for (const p of PRESETS.slice(1)) {
+for (const [key, sc] of Object.entries(SCENES)) { const b = document.createElement("button"); b.textContent = sc.name; b.dataset.key = key; b.onclick = () => { state.scene = key; show(); }; $("scenes").append(b); }
+for (const [key, sc] of Object.entries(SCENES)) {
   const d = document.createElement("div"), box = document.createElement("div"); box.className = "view";
-  d.append(box); d.insertAdjacentHTML("beforeend", `<p><b>${p.name}.</b> ${p.say}</p>`); d.onclick = () => { pick(p); scrollTo({top: 0, behavior: "smooth"}); };
+  d.append(box); d.insertAdjacentHTML("beforeend", `<p><b>${sc.name}.</b> ${sc.say}</p>`); d.onclick = () => { pick(PRESETS[2]); state.scene = key; show(); scrollTo({top: 0, behavior: "smooth"}); };
   $("four").append(d);
-  views.push(view(box, () => ({...p, hour: state.hour, stand: state.stand, hills: state.hills, bottom: bottomOf(state.walk)})));
+  views.push(view(box, () => ({...PRESETS[2], scene: key, hour: state.hour, stand: state.stand, hills: state.hills, bottom: bottomOf(state.walk, key)})));
 }
 const image = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src + "?v=" + Date.now(); });
 (async () => {
-  const [ground, atlas, meta] = await Promise.all([image("horizon/ground.png"), image("horizon/atlas.png"), fetch("horizon/sprites.json?v=" + Date.now()).then((r) => r.json())]);
-  SPRITES = meta.sprites.sort((a, b) => (a.y + a.h) - (b.y + b.h)); ATLAS = atlas;
-  views.forEach((v) => v.load(ground)); show(); requestAnimationFrame(tick);
+  await Promise.all(Object.entries(SCENES).map(async ([key, sc]) => {
+    const [ground, atlas, meta] = await Promise.all([image(`horizon/${key}_ground.png`), image(`horizon/${key}_atlas.png`), fetch(`horizon/${key}.json?v=` + Date.now()).then((r) => r.json())]);
+    sc.sprites = meta.sprites.map((q, i) => ({...q, i})).sort((a, b) => a.foot - b.foot || a.i - b.i);      // far ones first; on one row, in the game's own order
+    sc.atlas = atlas; sc.cx = meta.size[0] / 2; sc.ground = ground;
+  }));
+  show(); requestAnimationFrame(tick);
 })();
 function tick(ms) {
   const t = ms / 1000;

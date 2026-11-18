@@ -1698,6 +1698,20 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 166: the curve tried on houses and under ground
+
+"curved far view is really good ! try to showcase the underground view with this, i think it might be hard to make
+it compatible with our building system (or maybe that's the opposite ??)". Tried, on real frames: the capture now
+takes the frame's own list of what stands as render.js hands it to sun.js (bodies, things, walls, built floors and
+roofs, ladders), each drawn alone and cut out with the foot of its tile, and four places are staged: the meadow, two
+two-storey houses (the tests' own house builder), the same from inside the near house, a room dug four down with a
+stair and a hill with a cave behind. What it shows: it is the opposite. The lower screen is not bent, so where you
+stand, dig and build is today's picture: the hole cut open around you, the floor and roof cut away over you, as
+now. Far houses stand, piece by piece, a floor as high as it is built (first they came apart in strips: I had made
+far pieces narrower; on a log they keep their width and lean away). What does not work: far hills. The land's
+height is in the ground picture and is pressed flat with it: the land would have to be put back a level at a time.
+And the build cursor up in the bent band. Still a page (horizon.html, four places side by side); nothing in the game.
+
 ## Iteration 165: the curved world, with things standing on it
 
 "sky strip = ugly. the curved: good, but everything is... flat. add more relief. can you improve sky strip or suggest
