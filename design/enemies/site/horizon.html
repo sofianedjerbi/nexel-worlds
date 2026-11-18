@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 10.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 11.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -58,8 +58,6 @@
       <label><span>Hour</span><input type="range" id="hour" min="0" max="100"><b></b></label>
       <label><span>Walk north</span><input type="range" id="walk" min="0" max="100"><b></b></label>
       <label><span>Walk by itself</span><input type="checkbox" id="auto" checked></label>
-      <label><span>Things stand</span><input type="checkbox" id="stand" checked></label>
-      <label><span>Land in levels</span><input type="checkbox" id="layers" checked></label>
       <label><span>Painted hills</span><input type="checkbox" id="hills" checked></label>
     </div>
   </div>
@@ -68,27 +66,16 @@
     <div class="four" id="four"></div>
   </div>
   <div class="box">
-    <h2>Buildings and under ground: what the test shows</h2>
+    <h2>What this shows</h2>
     <ul>
-      <li><b>Where you are, nothing changes.</b> The lower part of the screen is not bent: it is today's picture, tile for tile. Standing in a dug room, the hole is cut open around you exactly as now; standing in a house, its upper floor and roof are cut away exactly as now. Digging, building, the build cursor, stairs and ladders all happen there. So the curve does not fight the building system: it only touches what is far.</li>
-      <li><b>Far houses stand.</b> A house is already drawn piece by piece (each wall, each floor and roof cell, each ladder), so each piece is put back on the bent ground at its own tile, a floor as high over the ground as it is built. Two-storey houses come out whole and stand up against the sky. (My first try made far pieces narrower: a house came apart in strips. On a log far things keep their width and only lean away.)</li>
-      <li><b>The land stands, level by level.</b> The world is in three dimensions already: it knows the height of every tile, and the game already draws each level a step higher than the one under it. So here each level is its own sheet on the curve: bent with the ground, then raised by its own height; and where a level ends over lower land, its wall is put back upright like a house's. The hill with the cave now stands over the horizon, mouth and all; the mountain rises in terraces and takes the sky, as a mountain in front of you does. Untick "Land in levels" to see it pressed flat as before.</li>
-      <li><b>The land is solid.</b> The first try at levels left sky under far terraces and filler colour where the picture ran out. Now, for every pixel, the page asks the height map which spot of the ground would be seen there at each height, from the top down, and whether the land there is that high: its top if so, its side if it is higher. No gaps: a far terrace has earth under it, a far hill is a whole block.</li>
-      <li><b>Taller blocks.</b> A level is 8 pixels high in the game today (half a tile). Two of the places are shown again at 14: the game draws them itself with that one number changed, walls and all. Near you a cliff is nearly a tile high per level and reads as a real step; far off the mountain keeps its shape instead of sinking into the ground. It is a change to the whole game's look, not only to the curve: stairs, ladders, jumps and what hides you would all be drawn taller.</li>
-      <li><b>What is still rough.</b> The side of far land is the game's painted wall with its bands run together (as painted, a few pixels tall, it was stripes). A tree that stands behind a hill is drawn over it (the page puts everything that stands on top of the land; the game would sort them with the land). A pit far away shows its back wall and little of its floor.</li>
-      <li><b>The build cursor far away.</b> Planning a wall up in the bent band means aiming through the bend. The cursor can be kept to the flat part, or the bend undone for it.</li>
-      <li><b>A deep place far away.</b> Scroll the walk by hand in "Under ground": the dug room seen from far is squashed while you stand tall in it. In the game you are never far from yourself, but another player's pit is: it reads as a dark slot.</li>
-    </ul>
-  </div>
-  <div class="box">
-    <h2>What changed, and what each costs</h2>
-    <ul>
-      <li><b>Things stand.</b> Before, the whole picture was bent, so a tree far away was pressed flat into the grass. Now only the ground bends: trees, rocks, flowers, animals and people are put back on it upright, smaller the further they are, and the ones at the edge stand up against the sky. Untick "Things stand" to see the old way. In the game this means drawing the ground and what stands on it separately, which the shadows already do.</li>
-      <li><b>Mountains behind.</b> Two rows of far hills past the horizon, in the hour's colours. They are painted, not the world's own: a real peak you can walk to would have to be worked out from the map.</li>
-      <li><b>Curved</b>: the lower screen is today's picture, tile for tile. Short view shows about 1.6 times the bent band's height in land, far view about 3.8 times (about 20 more tiles to draw).</li>
-      <li><b>Tilted camera</b> (instead of the sky strip): the ground leans back like a table seen from a chair: far land is shorter and also narrower, lines run to a point. It reads as depth more than the curve does, but nearly the whole screen is resampled, so the land's pixels are no longer square except right at your feet, and the far land needs to be drawn wider as well as further.</li>
-      <li><b>Backdrop</b> (the sky strip, redone): nothing bends at all. The land ends behind a line of woods, with hills and mountains in rows behind it. Every pixel stays as today and the mouse aims as today. It costs about 4 tiles of view, and the world still stops on a line: only now something stands on that line.</li>
-      <li>Still not shown: the world's own high ground (cliffs, mountains) under a bend; aiming with the mouse inside the bent band; names and speech over bent ground.</li>
+      <li><b>Where you are, nothing changes.</b> The lower part of the screen is not bent: it is today's picture, tile for tile. In a dug room the hole is cut open around you as now; in a house its upper floor and roof are cut away as now. Digging and building happen there. The curve only touches what is far.</li>
+      <li><b>What stands, stands.</b> Only the ground bends. Trees, rocks, animals and people are put back on it upright and smaller with distance; a house is put back piece by piece (each wall, floor and roof cell at its own tile), so it stays whole.</li>
+      <li><b>The land is in levels and solid.</b> The world knows the height of every tile. Each spot of the ground is raised by its height on the curve, with earth under it down to the land below, and its cliff is the game's own painted wall.</li>
+      <li><b>Over the horizon and down.</b> The world goes on round: past the horizon a thing sinks behind the ground, its foot first, then the rest. High land the same.</li>
+      <li><b>Taller blocks.</b> A level is 8 pixels high in the game today (half a tile). Two places are shown again at 14, drawn by the game itself with that one number changed. It would change the whole game's look, not only the curve.</li>
+      <li><b>The sky</b> is the hour's: sun or moon on its way across, clouds, stars. The two rows of far hills are painted, not the world's own.</li>
+      <li><b>Short or far.</b> Short view holds about 1.6 times the bent band's height in land; far view about 3.8 times, which is about 20 more tiles to draw.</li>
+      <li><b>Not right yet.</b> A tree that stands behind a hill is drawn over it (the page puts everything that stands on top of the land). Land past the horizon is one pale colour. A pit far away shows its back wall and little of its floor. Aiming with the mouse in the bent band, and names over heads there, are not tried.</li>
     </ul>
   </div>
 </main>
@@ -108,8 +95,6 @@ const PRESETS = [
   {key: "flat", name: "Today (no sky)", mode: 0, yh: 100, y0: 100, g: 0, say: "The game as it is."},
   {key: "curve1", name: "Curved · short view", mode: 1, yh: 80, y0: 42, g: 0, say: "The ground bends away from 42% up the screen to a horizon at 80%. Things stand on it; the last trees stand against the sky."},
   {key: "curve2", name: "Curved · far view", mode: 1, yh: 84, y0: 34, g: 140, say: "The same with more than twice the land in the bend: ponds and woods far to the north, small."},
-  {key: "tilt", name: "Tilted camera", mode: 3, yh: 78, y0: 12, g: 110, say: "The ground leans back and narrows with distance. The strongest depth; the land's pixels are no longer square."},
-  {key: "back", name: "Backdrop", mode: 2, yh: 82, y0: 82, g: 0, say: "Nothing bends: the land ends behind a line of woods, hills and mountains in rows behind it."},
 ];
 // How far along the ground a row of the screen is (y: 0 at the bottom, 1 at the top), as a share of the screen's
 // height; and how much wider the land is drawn there (tilted). The same in the shader below.
@@ -213,7 +198,7 @@ void main() {
       vec2 tc = floor((vec2(x, ground) - uGrid.xy) / uGrid.z);
       float v = levelOf(tc), top = (v - 128.) * uStep;
       if (v < .5 || top < h - .5 || ground - top < 1.) continue;
-      c = land(ground - top, floor(x / 8.) * 8. + 4., 46.) * .9; t = max(tt, .85); hit = true;      // (its colour, plain: it is far and in the air)
+      c = mix(land(ground - top, x, 46.), hor / max(light, vec3(.01)), .68); t = max(tt, .9); hit = true;      // (its colour run together and pale: a shape in the air, not blocks)
     }
   }
   bool sky = uMode > .5 && !hit && y >= yh;
@@ -284,44 +269,59 @@ function view(box, get) {
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       things(g2, s, sc);
       const dusk = Math.max(0, Math.min(1, (s.hour - 50) / 20)), night = Math.max(0, Math.min(1, (s.hour - 70) / 14));
-      over.style.filter = `brightness(${1 - .05 * dusk - .38 * night}) sepia(${.25 * dusk * (1 - night)}) saturate(${1 - .3 * night}) hue-rotate(${18 * night}deg)`; },
+      over.style.filter = `brightness(${1 - .05 * dusk - .46 * night}) sepia(${.25 * dusk * (1 - night)}) saturate(${1 - .3 * night}) hue-rotate(${18 * night}deg)`; },
   };
 }
-// What stands, put back on the ground as it is drawn now: far ones first. Its foot is a row of the ground; that row's
-// place on the screen is found from the bend, and it is drawn upright there, smaller with distance.
+// Where a row of the ground (sea level's) is on the screen: y (0 at the bottom, 1 at the top), how far into the bend
+// it is (t, 0 to 1), and whether it is past the horizon. Past it the world goes on round and down the far side: a spot
+// there is where one as far short of the horizon would be, but behind the ground ("It should not disappear at the top.
+// It should go behind. Up, then down. Like animal crossing").
+function where(s, row) {
+  const y0 = Math.min(s.y0, s.yh - 2) / 100, yh = s.yh / 100, d = (s.bottom - row) / H;
+  if (s.mode !== 1 || d <= y0) return {y: d, t: 0, behind: false};
+  let want = (d - y0) / (yh - y0), behind = false;
+  const most = fOf(s, .999);
+  if (want >= most) { want = 2 * most - want; behind = true; if (want <= 0) return null; }
+  let lo = 0, hi = .999;
+  for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2; if (fOf(s, m) < want) lo = m; else hi = m; }
+  return {y: y0 + (yh - y0) * lo, t: lo, behind};
+}
+const leanOf = (t) => 1 - .5 * Math.pow(t, 1.6);              // how much of a height shows far away, where things lean back (the land's walls: the same, in the shader)
+// What stands, put back on the ground as it is drawn now, far ones first: its foot is a row of the ground, found on the
+// screen through the bend, and it is drawn upright there.
+//   A thing of its own (a tree, a rock, an animal, you) keeps its shape and is smaller far away. A piece of something
+//   built keeps its width, or a house comes apart in strips, and is lower.
+//   Past the horizon only what of it is over the horizon line shows. And land that stands higher in front of it hides
+//   it up to that land's top (a tree behind a hill was drawn over the hill).
 function things(g, s, sc) {
-  const W = s.vw;
+  const W = s.vw, yh = s.yh / 100, S = sc.grid[2];
   g.clearRect(0, 0, W, H);
-  const y0 = Math.min(s.y0, s.yh - 2) / 100, yh = s.yh / 100, bent = s.mode === 1 || s.mode === 3;
   for (const q of sc.sprites) {
-    const d = (s.bottom - q.foot) / H, gap = q.foot - (q.y + q.h);   // how far along the ground its foot is, in screen heights; how high over its foot it is (a floor upstairs)
-    if (d < -.6) break;                                        // (sorted: the rest are nearer still, under the screen)
-    let y = d, t = 0, wide = 1, size = 1, squash = 1, lean = 1, behind = false;
-    if (bent && d > y0) {
-      let want = (d - y0) / (yh - y0);
-      // Past the horizon the world goes on round, and down the far side: a thing there is where one as far short of
-      // the horizon would be, but behind the ground. Its foot is hidden; what of it stands higher than the horizon
-      // still shows, less and less as it goes: up to the line, then down behind it. ("It should not disappear at the
-      // top. It should go behind. Up, then down. Like animal crossing": things had stopped at the line and vanished.)
-      const most = fOf(s, .999);
-      if (want >= most) { if (s.mode !== 1 || !s.stand) continue; want = 2 * most - want; behind = true; if (want <= 0) continue; }
-      let lo = 0, hi = .999; for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2; if (fOf(s, m) < want) lo = m; else hi = m; }
-      t = lo; y = y0 + (yh - y0) * t;
-      lean = 1 - .5 * Math.pow(t, 1.6);                         // how much of a height shows far away, where things lean back (the land's own walls: the same)
-      // A thing of its own (a tree, a rock, an animal, you) keeps its shape and is smaller far away: lower only, a far
-      // tree was squat ("at horizon tree appear compressed"). A piece of something built keeps its width, or a house
-      // comes apart in strips, and is lower.
-      if (s.mode === 3) { wide = 1 + (fOf(s, t) - t) * .35; size = 1 / wide; } else if (!q.b) size = 1 - .38 * Math.pow(t, 1.5);
-      if (!s.stand) { const e = .01; squash = Math.max(.04, e / (fOf(s, Math.min(.999, t + e)) - fOf(s, t))); size = s.mode === 3 ? 1 / wide : 1; }   // (pressed flat with the ground, as the first try was)
-    } else if (s.mode !== 0 && d >= yh) continue;              // (a backdrop: the land has ended)
-    const cx = W / 2 + (q.x + q.w / 2 - sc.cx) / wide, tall = s.mode === 3 ? 1 : q.b ? lean : 1, w = q.w * size, h = q.h * size * squash * tall, lift = gap * squash * (s.mode === 3 ? size : lean);
-    if (cx < -80 || cx > W + 80) continue;
+    if ((s.bottom - q.foot) / H < -.6) break;                  // (sorted: the rest are nearer still, under the screen)
+    const at = where(s, q.foot); if (!at) continue;
+    const {y, t, behind} = at, lean = leanOf(t), size = q.b ? 1 : 1 - .38 * Math.pow(t, 1.5), gap = q.foot - (q.y + q.h);   // gap: how high over its foot it is (a floor upstairs, a thing on a hill)
+    const cx = W / 2 + q.x + q.w / 2 - sc.cx, w = q.w * size, h = q.h * size * (q.b ? lean : 1), base = y * H + gap * lean;
+    if (cx < -80 || cx > W + 80 || base > H + 40) continue;
+    let cut = behind && s.mode === 1 ? yh * H : 0;             // under this height on the screen it is hidden
+    const mine = sc.levelAt(q.x + q.w / 2, q.foot - 1), near = s.mode !== 1 || base <= Math.min(s.y0, s.yh - 2) / 100 * H;      // near: it is drawn where nothing is bent
+    if (sc.lv.length > 1 && mine !== null) for (let k = 1; k <= 30; k++) {
+      const row = q.foot - 1 + k * S, L = sc.levelAt(q.x + q.w / 2, row);
+      if (L === null) break;
+      // (higher than it stands. Near you, where nothing is bent, someone down a hole is seen in it: the game cuts the
+      // ground away for them, and that is in the picture. Far off the hole's near rim hides its floor, and them with it.)
+      if (L <= mine || (near && (L <= 0 || mine < 0))) continue;
+      const edge = where(s, sc.grid[1] + Math.floor((row - sc.grid[1]) / S) * S);      // that higher land's far edge, and how high its top is there
+      if (edge && !edge.behind) cut = Math.max(cut, edge.y * H + L * sc.step * leanOf(edge.t));
+    }
+    if (cut >= base + h) continue;
     g.globalAlpha = q.b ? 1 : 1 - .35 * Math.max(0, Math.min(1, (t - .6) / .4));      // (far things pale into the air; not the pieces of a house: one seen through another was a house twice)
-    if (q.g) continue;                                         // (the land's walls: the land's own picture has them, level by level)
-    const top = H - y * H - h - lift, line = H - yh * H;
-    if (behind) { if (top >= line) continue; g.save(); g.beginPath(); g.rect(0, 0, W, line); g.clip(); }      // (behind the ground: only what is over the horizon)
-    g.drawImage(sc.atlas, q.ax, q.ay, q.w, q.h, Math.round(cx - w / 2), Math.round(top), Math.round(w), Math.max(1, Math.round(h)));
-    if (behind) g.restore();
+    const top = H - base - h, clip = cut > base;
+    if (clip) { g.save(); g.beginPath(); g.rect(0, 0, W, H - cut); g.clip(); }
+    // (where nothing is bent a thing is on the land's own pixels; in the bend the ground under it moves by parts of a
+    // pixel, and a thing kept on whole pixels jumps about on it as you walk)
+    if (t > 0) g.drawImage(sc.atlas, q.ax, q.ay, q.w, q.h, cx - w / 2, top, w, Math.max(1, h));
+    else g.drawImage(sc.atlas, q.ax, q.ay, q.w, q.h, Math.round(cx - w / 2), Math.round(top), Math.round(w), Math.max(1, Math.round(h)));
+    if (clip) g.restore();
   }
   g.globalAlpha = 1;
 }
@@ -342,7 +342,7 @@ function show() {
 function pick(p) { Object.assign(state, p); show(); }
 for (const p of PRESETS) { const b = document.createElement("button"); b.textContent = p.name; b.dataset.key = p.key; b.onclick = () => pick(p); $("presets").append(b); }
 for (const id of ["yh", "y0", "g", "hour", "walk"]) $(id).oninput = () => { state[id] = +$(id).value; if (id !== "hour" && id !== "walk") state.key = "own"; if (id === "walk") $("auto").checked = false; show(); };
-for (const id of ["stand", "hills", "layers"]) $(id).onchange = () => { state[id] = $(id).checked; };
+for (const id of ["hills"]) $(id).onchange = () => { state[id] = $(id).checked; };
 for (const [key, sc] of Object.entries(SCENES)) { const b = document.createElement("button"); b.textContent = sc.name; b.dataset.key = key; b.onclick = () => { state.scene = key; show(); }; $("scenes").append(b); }
 const NARROW = matchMedia("(max-width: 760px)").matches;
 for (const [key, sc] of NARROW ? [] : Object.entries(SCENES)) {
@@ -356,7 +356,13 @@ const image = (src) => new Promise((ok) => { const i = new Image(); i.onload = (
   await Promise.all(Object.entries(SCENES).map(async ([key, sc]) => {
     const [ground, atlas, meta] = await Promise.all([image(`horizon/${key}_ground.png`), image(`horizon/${key}_atlas.png`), fetch(`horizon/${key}.json?v=` + Date.now()).then((r) => r.json())]);
     sc.sprites = meta.sprites.map((q, i) => ({...q, i})).sort((a, b) => a.foot - b.foot || a.i - b.i);      // far ones first; on one row, in the game's own order
-    sc.atlas = atlas; sc.cx = meta.size[0] / 2; sc.lv = meta.lv; sc.step = meta.step; sc.grid = meta.grid; sc.levels = await image(`horizon/${key}_levels.png`); sc.ground = ground;
+    sc.atlas = atlas; sc.cx = meta.size[0] / 2; sc.lv = meta.lv; sc.step = meta.step; sc.grid = meta.grid; sc.levels = await image(`horizon/${key}_levels.png`);
+    // (the land's height at a spot of the ground picture, from the map: a pixel a tile, red 128 + its level)
+    const mc = document.createElement("canvas"); mc.width = sc.levels.width; mc.height = sc.levels.height;
+    const mg = mc.getContext("2d"); mg.drawImage(sc.levels, 0, 0);
+    const md = mg.getImageData(0, 0, mc.width, mc.height).data;
+    sc.levelAt = (x, row) => { const i = Math.floor((x - sc.grid[0]) / sc.grid[2]), j = Math.floor((row - sc.grid[1]) / sc.grid[2]);
+      const v = i < 0 || j < 0 || i >= mc.width || j >= mc.height ? 0 : md[(j * mc.width + i) * 4]; return v ? v - 128 : null; }; sc.ground = ground;
   }));
   show(); requestAnimationFrame(tick);
 })();

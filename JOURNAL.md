@@ -1698,6 +1698,24 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 174: the sky page, audited
+
+"Also audit your own demo. It looks buggy as HELL". I had been fixing what was pointed at and looking at one or two
+pictures each time. An audit this time: every place at four places of the walk, every preset and switch, night, the
+side by side section, a phone: about fifty pictures, looked at full size. Found and fixed:
+- deep water was a stack of its own rim (the height map had the water's bed: water is at sea level);
+- the half-things at the picture's edges (the staged ground was as wide as the picture: now wider);
+- you, side on and thin, in the village (the building left you so: turned to face us);
+- a smeared band and blocks of one colour where land passes the horizon (pale and run together now);
+- things jumping about on the bent ground as you walk (kept on whole pixels: not in the bend);
+- a tree behind a hill drawn over the hill (land that stands higher in front of a thing now hides it, up to its top);
+- someone in a far pit standing on the grass under it (the pit's rim hides its floor far off, and them with it; near
+  you they are seen, as the game cuts the ground away), which I broke twice on the way: "near" has to be judged by
+  where the thing is drawn, not by where its foot is on the ground;
+- the tilted camera, the backdrop and the two compare switches: most of what was left wrong was in them, and the
+  curved view is the one chosen. Taken out: three presets, one switch, and one box of notes instead of two.
+Lesson: after each change to a page like this, the whole set of pictures again, not the one that was wrong.
+
 ## Iteration 173: over the horizon and down behind it
 
 "It should not disappear at the top. It should go behind. Up, then down. Like animalcrossing". The bend took the

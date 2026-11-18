@@ -75,7 +75,7 @@ GRAB = """async () => {
   const mg = map.getContext("2d"); mg.fillStyle = "#000"; mg.fillRect(0, 0, tw, th);
   for (let j = 0; j < th; j++) for (let i = 0; i < tw; i++) {
     if (!tile(tx0 + i, ty0 + j)) continue;
-    const L = levelAt(tx0 + i, ty0 + j); levels.add(L);
+    const L = DEPTH_OF[gndAt(tx0 + i, ty0 + j)] ? 0 : levelAt(tx0 + i, ty0 + j); levels.add(L);      // (water: its face is at sea level, whatever its bed. Its bed's depth made a deep pond a stack of its own rim)
     mg.fillStyle = `rgb(${128 + L},0,0)`; mg.fillRect(i, j, 1, 1);
   }
   const faces = [], grid = [Math.round(ox + tx0 * S), Math.round(oy + ty0 * S), S];
@@ -112,13 +112,15 @@ def village(game):
     """Two houses of two floors with roofs north of you (tests/e2e/test_e2e_floors.py builds them), a fence, trees."""
     from test_e2e_floors import house
     x, y = game.pos()
-    game.stamp(-11, -26, ["." * 23] * 46)
-    scatter(game, random.Random(9), range(-26, 20, 2), 23, keep=range(-22, 0))
+    game.stamp(-14, -27, ["." * 29] * 50)                    # (wider than the picture: what the world had there is not left in halves at its edges)
+    scatter(game, random.Random(9), range(-26, 20, 2), 29, keep=range(-22, 0))
     house(game, x - 2, y - 9)
     house(game, x + 3, y - 20)
     game.stamp(-8, -6, ["T...T", ".....", "#####"])
     game.stamp(-9, -19, ["T.T.T.T"])
     game.rpc("dev_teleport", x=x, y=y, z=0)
+    game.sleep(600)
+    game.js("turn('S')")                                    # (facing us: the building left you side on)
     return x, y
 
 
@@ -131,8 +133,8 @@ def hills(game):
 def under(game):
     """A room dug four down with a stair up to the west, you in it; north of it a hill with a cave and its mouth."""
     x, y = game.pos()
-    game.stamp(-11, -26, ["." * 23] * 46)
-    scatter(game, random.Random(5), range(-26, 20, 2), 23, keep=range(-18, 6))
+    game.stamp(-14, -27, ["." * 29] * 50)
+    scatter(game, random.Random(5), range(-26, 20, 2), 29, keep=range(-18, 6))
     game.stamp(-2, -1, ["....."] * 3, levels=["ddddd"] * 3)
     game.stamp(-6, 0, ["...."], levels=["0abc"])
     game.stamp(-8, -16, ["." * 16] * 7, levels=["4" * 16] * 7)
