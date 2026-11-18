@@ -1706,8 +1706,9 @@ wall a thin separate piece, half see-through with the haze. Green: a filler colo
 fixing those, ribs of stripes: the wall pixels were given to the highest level. What it is now: the capture writes
 the land's height a pixel a tile (not a picture of which level each pixel shows), and the shader, for each pixel,
 goes down from the greatest height a third of a level at a time: which spot of the ground would be seen here at
-that height, and is the land there that high? Its top if that is its height, its side if it is higher (near, the
-game's own painted wall; far, the colour of the land over it, plain and in shade). The land is solid: no sky under
+that height, and is the land there that high? Its top if that is its height, its side if it is higher: the game's
+own painted wall, found where it hangs from its tile's south edge (near, as painted; far, its bands run together:
+the colour of the land over it made a pit's wall grass green). The land is solid: no sky under
 a terrace, a far hill is a block over the horizon. Past the picture: the air's colour. Looked at the mountain from
 four places and the hill behind the dug room. The page online is updated with it.
 
