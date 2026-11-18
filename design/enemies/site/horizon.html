@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 30.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 31.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -132,6 +132,7 @@ void place(float r, out float y, out float t) {      // (t is 1 beyond the horiz
 }
 float landLean(float t) { return 1. - .5 * pow(t, 1.5); }    // how much of the land's height shows where it leans back, far off (most of it: with half, a far mountain lay flat)
 uniform float uRef;                                          // the land's height where you stand: the camera is at your height, as in the game
+uniform float uFlatFar;                                      // (to compare: 1 = a cliff's side stands straight far off, as page 24 to 30 had it)
 uniform float uTall;                                         // how tall a level is drawn, as a share of the game's 8 px ("looks soo flat")
 // How far up the screen a height over the ground is drawn (px), from the camera's own: as tall as "Block height"
 // says, leaning back far off.
@@ -149,7 +150,7 @@ in vec3 aPos; in vec2 aUV; in float aShade, aFar; out vec2 vUV; out float vT, vS
 // (a cliff's side slopes near you; far off it stands straight again: there each sloping end made a terrace a bevelled brick)
 void main() {
   float y, t, y1, t1; place(aPos.y, y1, t1);
-  float zz = mix(aPos.z, aFar, smoothstep(.15, .6, t1)), row = aPos.y - min(zz, 0.); place(row, y, t);
+  float zz = mix(aPos.z, aFar, uFlatFar * smoothstep(.15, .6, t1)), row = aPos.y - min(zz, 0.); place(row, y, t);
   gl_Position = vec4((uRes.x * .5 + aPos.x - uCx) / uRes.x * 2. - 1., (y + rise(zz, t)) / uRes.y * 2. - 1., depth(row, zz < 0. ? .0004 : 0.), 1.);
   vUV = aUV; vT = t; vShade = aShade;
 }`;
@@ -264,7 +265,11 @@ function shapes(sc) {
     const low = (v) => v !== null && v < L, ONLY = new URLSearchParams(location.search).get("only");      // (?only=tops or ?only=walls: one kind of shape alone, to look at it)
     // One piece with four corners, each [x, ground row, height, lit]; its painting is the tile's own (the game draws a
     // top `h` px up the picture from its square), or what `uv` says.
-    const piece = (a, b, c, d, uv = (x, r, hh) => [x + dX, r - h + dY]) => { for (const [x, r, hh, lit, far = hh] of [a, b, c, b, d, c]) land.push(x, r, hh, ...uv(x, r, hh), lit, far); };      // (far: its height far off, where a side does not slope)
+    // (Beside higher land the game paints that land's side over this tile's edge, a few px a level: lying flat on
+    // this tile it was a pale bracket at the foot of a hill, "what are those weird corners". This tile's painting
+    // is taken from further in there.)
+    const over = (v) => v !== null && v > L && L >= 0 ? Math.min(S / 2, 6 + 3 * (v - L)) : 0, oW = over(west), oE = over(east);
+    const piece = (a, b, c, d, uv = (x, r, hh) => [Math.max(X + oW, Math.min(X + S - oE, x)) + dX, r - h + dY]) => { for (const [x, r, hh, lit, far = hh] of [a, b, c, b, d, c]) land.push(x, r, hh, ...uv(x, r, hh), lit, far); };      // (far: its height far off, where a side does not slope)
     // Its top: each step of its width, in four strips north to south (so that it bends). The flat middle wears
     // the game's painting; a step of a cliff's side is the cliff's earth, one colour (8 px in from the side, where
     // the game paints the cliff), darker the lower it is. Where higher land stands north, the first strip is in
@@ -376,7 +381,7 @@ function view(box, get) {
       for (const [prog, mesh, tex, img] of [[P.land, g.land, g.ground, sc.ground], [P.card, g.cards, g.atlas, sc.atlas]]) {
         const u = prog.u; gl.useProgram(prog.pr);
         gl.uniform2f(u.uRes, vw, H); gl.uniform1f(u.uBottom, s.bottom); gl.uniform1f(u.uMode, s.mode); gl.uniform1f(u.uYh, s.yh / 100); gl.uniform1f(u.uY0, s.y0 / 100);
-        gl.uniform1f(u.uG, s.g / 100); gl.uniform1f(u.uCx, sc.cx); gl.uniform1f(u.uFar, 5200); gl.uniform1f(u.uTall, s.tall / 100); gl.uniform1f(u.uRef, s.mode ? Math.round(heightAt(sc, sc.cx, s.bottom - .3 * H) * s.tall / 100) / (s.tall / 100) : 0);
+        gl.uniform1f(u.uG, s.g / 100); gl.uniform1f(u.uCx, sc.cx); gl.uniform1f(u.uFar, 5200); gl.uniform1f(u.uTall, s.tall / 100); if (u.uFlatFar) gl.uniform1f(u.uFlatFar, new URLSearchParams(location.search).get('flatfar') ? 1 : 0); gl.uniform1f(u.uRef, s.mode ? Math.round(heightAt(sc, sc.cx, s.bottom - .3 * H) * s.tall / 100) / (s.tall / 100) : 0);
         gl.uniform3f(u.uLight, ...light); gl.uniform3f(u.uAir, ...air); gl.uniform2f(u.uSrc, img.width, img.height);
         gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(u.uTex, 0);
         gl.bindVertexArray(mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, mesh.n);
