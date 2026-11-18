@@ -16,7 +16,7 @@
     box-shadow:inset var(--q) var(--q) 0 var(--hi), inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 var(--lo), calc(-1 * var(--q)) 0 var(--edge), var(--q) 0 var(--edge), 0 calc(-1 * var(--q)) var(--edge), 0 var(--q) var(--edge); }
   h2 { margin:0 0 8px; font-size:24px; color:var(--on); }
   .view { position:relative; aspect-ratio:1100 / 650; box-shadow:0 0 0 var(--q) var(--edge); overflow:hidden; }
-  .view canvas { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; }
+  .view canvas { position:absolute; inset:0; width:100%; height:100%; }
   .bar { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 12px; }
   button { font:inherit; color:var(--ink); background:var(--hi); border:0; padding:6px 12px 8px; cursor:pointer;
     box-shadow:inset var(--q) var(--q) 0 #655d8a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #332d4f, 0 0 0 var(--q) var(--edge); }
@@ -34,7 +34,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">(Page 6.) A sky over the world. Now: the curved far view, now with the land itself in levels (hills and mountains stand), tried on buildings and under ground. Before that: The fog strip is gone, and the curved world was flat: now the ground bends and what stands on it stays standing, with mountains behind. Made from a real frame of the game, taken in two parts: the ground, and each of the 549 things on it. Nothing here is in the game.</div>
+  <div class="sub">(Page 7.) A sky over the world. Now: the curved far view, now with the land itself in levels (hills and mountains stand), tried on buildings and under ground. Before that: The fog strip is gone, and the curved world was flat: now the ground bends and what stands on it stays standing, with mountains behind. Made from a real frame of the game, taken in two parts: the ground, and each of the 549 things on it. Nothing here is in the game.</div>
   <div class="box">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -106,17 +106,24 @@ const fOf = (s, t) => s.mode === 1 ? Math.asin(t) * (1 + s.g / 100 * t * t) : t 
 const depthOf = (s, y) => { const y0 = Math.min(s.y0, s.yh - 2) / 100, yh = s.yh / 100; return (s.mode !== 1 && s.mode !== 3) || y <= y0 ? y : y0 + (yh - y0) * fOf(s, (y - y0) / (yh - y0)); };
 const VERT = "attribute vec2 p; void main() { gl_Position = vec4(p, 0., 1.); }";
 const FRAG = `precision highp float;
-uniform sampler2D uTex, uMap; uniform vec2 uRes, uSrc; uniform float uBottom, uMode, uYh, uY0, uG, uT, uHour, uCx, uHills, uHigh, uLow, uStep, uLayers; uniform vec3 uGrid; uniform vec2 uMapSize;
+uniform sampler2D uTex, uMap; uniform vec2 uRes, uSrc; uniform float uBottom, uMode, uYh, uY0, uG, uT, uHour, uCx, uHills, uHigh, uLow, uStep, uLayers, uK; uniform vec3 uGrid; uniform vec2 uMapSize;
 float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
   return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
 vec3 pick(vec3 day, vec3 dusk, vec3 night) { float a = smoothstep(.5, .7, uHour), b = smoothstep(.7, .84, uHour); return mix(mix(day, dusk, a), night, b); }
 float ridge(float x, float seed, float f) { return noise(vec2(x * f + seed, seed)) * .6 + noise(vec2(x * f * 2.7 + seed, 3.)) * .28 + noise(vec2(x * f * 6.1, seed)) * .12; }
+// The game's picture at a spot of it, averaged over what one pixel of this canvas covers of it. The picture is 1100
+// wide; the canvas is as many pixels as the window gives it (uK of them to one of the picture's). When the page was
+// always drawn 1100 wide and the browser made it fit, a window of another width dropped rows and columns: a wall's
+// bands came out as stripes of uneven height, edges as squares.
 vec3 land(float row, float x, float spread) {
+  float tall = max(spread, 1. / uK), wide = 1. / uK;
+  bool exact = uK > .999 && uK < 1.001 && spread < 1.5;
   vec3 c = vec3(0.);
-  for (int i = 0; i < 5; i++) { float r = row - spread * (float(i) / 4. - .5);
-    c += texture2D(uTex, vec2((spread < 1.5 ? floor(x) + .5 : x) / uSrc.x, (spread < 1.5 ? floor(r) + .5 : r) / uSrc.y)).rgb; }
-  return c / 5.;
+  for (int i = 0; i < 5; i++) for (int j = 0; j < 2; j++) {
+    float r = row - tall * (float(i) / 4. - .5) * (exact ? 0. : 1.), q = x + wide * (float(j) - .5) * (exact ? 0. : .5);
+    c += texture2D(uTex, vec2((exact ? floor(q) + .5 : q) / uSrc.x, (exact ? floor(r) + .5 : r) / uSrc.y)).rgb; }
+  return c / 10.;
 }
 // A row of the screen (px from its bottom) -> how far along the flat ground that is (px), where in the bend (t, 0 to 1),
 // how much ground one screen row holds there (spread) and how much wider the land is drawn (tilted)
@@ -133,7 +140,7 @@ float along(float py, out float t, out float spread, out float wide) {
 }
 float lean(float t, float wide) { return uMode > 2.5 ? 1. / wide : 1. - .5 * pow(t, 1.6); }      // a thing standing far away: how much of its height shows
 void main() {
-  vec2 p = gl_FragCoord.xy, a = floor(p / 3.) * 3.;
+  vec2 p = gl_FragCoord.xy / uK, a = floor(p / 3.) * 3.;        // (p: in the picture's own pixels, whatever the canvas has)
   float y = p.y / uRes.y, yh = uYh;
   bool bent = (uMode > .5 && uMode < 1.5) || uMode > 2.5;
   vec3 zen = pick(vec3(.33, .6, .93), vec3(.27, .3, .58), vec3(.05, .07, .19)), hor = pick(vec3(.78, .9, .98), vec3(.99, .68, .42), vec3(.17, .21, .44));
@@ -220,6 +227,11 @@ function view(box, get) {
       gl.uniform1i(u("uTex"), 0); gl.uniform1i(u("uMap"), 1);
       src = [sc.ground.width, sc.ground.height]; },
     draw(t) { const s = get();
+      // the canvases have the pixels the screen gives this box, no more and no fewer: nothing is left for the browser to resize
+      const cw = Math.max(200, Math.round(box.clientWidth * (window.devicePixelRatio || 1))), k = cw / W;
+      if (canvas.width !== cw) { canvas.width = over.width = cw; canvas.height = over.height = Math.round(H * k); }
+      gl.viewport(0, 0, canvas.width, canvas.height); gl.uniform1f(u("uK"), k);
+      g2.setTransform(k, 0, 0, k, 0, 0); g2.imageSmoothingEnabled = Math.abs(k - Math.round(k)) > .01; g2.imageSmoothingQuality = "high";
       const sc = SCENES[s.scene]; if (!sc.ground) return;
       if (shown !== s.scene) { shown = s.scene; this.load(sc); }
       gl.uniform2f(u("uRes"), W, H); gl.uniform2f(u("uSrc"), ...src); gl.uniform1f(u("uBottom"), s.bottom); gl.uniform1f(u("uMode"), s.mode); gl.uniform1f(u("uCx"), sc.cx);
@@ -234,7 +246,7 @@ function view(box, get) {
 // What stands, put back on the ground as it is drawn now: far ones first. Its foot is a row of the ground; that row's
 // place on the screen is found from the bend, and it is drawn upright there, smaller with distance.
 function things(g, s, sc) {
-  g.clearRect(0, 0, W, H); g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, W, H);
   const y0 = Math.min(s.y0, s.yh - 2) / 100, yh = s.yh / 100, bent = s.mode === 1 || s.mode === 3;
   for (const q of sc.sprites) {
     const d = (s.bottom - q.foot) / H, gap = q.foot - (q.y + q.h);   // how far along the ground its foot is, in screen heights; how high over its foot it is (a floor upstairs)

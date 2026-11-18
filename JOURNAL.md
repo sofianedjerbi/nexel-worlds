@@ -1698,6 +1698,18 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 170: the page drawn at the window's own size
+
+"Also underground there's weird stripes" (and before it "squares"). I had been looking at the page 1104 px wide,
+where a pixel of the canvas is a pixel of the screen. The user's picture of it was 777 wide: the canvases were
+always 1100 x 650 and the browser made them fit, with no smoothing (image-rendering: pixelated, as for the game).
+At another width that drops or doubles rows and columns: a wall's bands of a few pixels come out as stripes of
+uneven height, edges as squares. So what I fixed twice in the shader was partly not there. Now each canvas has the
+pixels its box has on the screen, the shader works in the picture's own pixels and averages what one canvas pixel
+covers of it, and what stands is drawn smoothed when the size is not a whole multiple. Looked at 792 wide, 1104
+wide and on a phone's size (332 wide, 3 px a px). Lesson: look at a page at the sizes it will be seen at, and ask
+for the width when a picture of it comes back smaller than mine.
+
 ## Iteration 169: far walls as painted, and taller blocks
 
 "Still look like weird squares that hide space. Also feel free to add more height to blocks". The squares: far off,
