@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 17.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 21.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -75,7 +75,8 @@
       <li><b>Height and shade.</b> A level is 8 pixels high in the game today (half a tile), and from above that reads flat. Here a level is drawn half as tall again ("Block height", up to two and a half times), each wall is lit at its top and darker to its foot, and land under a cliff is in its shade. Two places are also shown as the game itself draws them with 14-pixel levels. Either would change the whole game's look, not only the curve.</li>
       <li><b>The sky</b> is the hour's: sun or moon on its way across, clouds, stars. The two rows of far hills are painted, not the world's own.</li>
       <li><b>Short or far.</b> Short view holds about 1.6 times the bent band's height in land; far view about 3.8 times, which is about 20 more tiles to draw.</li>
-      <li><b>Not right yet.</b> The sides of a cliff that face east or west have no wall (the game never paints one, seen from above). A tile whose top the game's picture hides behind higher land wears that land's painting. Someone in a far pit is hidden by its rim. Aiming with the mouse in the bent band, and names over heads there, are not tried.</li>
+      <li><b>A cliff's sides.</b> Seen from above, the game paints the east and west sides of a cliff as a narrow strip. Here that strip is the side itself: it slopes from the upper land down to the lower, in shade, so a cliff has sides as well as a front.</li>
+      <li><b>Not right yet.</b> A tile whose top the game's picture hides behind higher land wears that land's painting. Someone in a far pit is hidden by its rim. Aiming with the mouse in the bent band, and names over heads there, are not tried.</li>
     </ul>
   </div>
 </main>
@@ -203,30 +204,47 @@ void main() {
 // each is taken from. Cards: one for each thing that stands, far ones first.
 function shapes(sc) {
   const [gx, gy, S] = sc.grid, st = sc.step, land = [], cards = [], iw = sc.ground.width, ih = sc.ground.height;
+  // A tile's height along its width, at its west side, a little in, a little in from the east, and its east side:
+  // its own, but down to the land beside it at a side where that land is lower (the cliff's side slopes there)
+  const edge = (i, j) => { const L = sc.tile(i, j), w = sc.tile(i - 1, j), e = sc.tile(i + 1, j); return [w !== null && w < L ? w * st : L * st, L * st, L * st, e !== null && e < L ? e * st : L * st]; };
   for (let j = 0; j < sc.mh; j++) for (let i = 0; i < sc.mw; i++) {
     const L = sc.tile(i, j); if (L === null) continue;
     const X = gx + i * S, Y = gy + j * S, h = L * st;
     if (X + S <= 0 || X >= iw || Y - h < 0 || Y + S - h > ih) continue;        // (its painting is not all in the picture: left out, not smeared from the picture's edge)
-    // One piece: from ground row r0 at height h0 to row r1 at height h1. inL, inR: how far in from the tile's sides
-    // its painting is taken (px); s0, s1: how lit it is at each end.
-    const quad = (r0, h0, r1, h1, inL = 0, inR = 0, s0 = 1, s1 = 1) => {
-      for (const [x, r, hh, sh] of [[X, r0, h0, s0], [X + S, r0, h0, s0], [X, r1, h1, s1], [X + S, r0, h0, s0], [X + S, r1, h1, s1], [X, r1, h1, s1]])
-        land.push(x, r, hh, x === X ? X + inL : X + S - inR, r - hh, sh); };
     const north = sc.tile(i, j - 1), south = sc.tile(i, j + 1), west = sc.tile(i - 1, j), east = sc.tile(i + 1, j);
     const low = (v) => v !== null && v < L, ONLY = new URLSearchParams(location.search).get("only");      // (?only=tops or ?only=walls: one kind of shape alone, to look at it)
-    // Its top. The game rounds a cliff's outer corners: the corner of the tile's painting is cut away there and shows
-    // the grass below, which up at this height was a small square of another green at every corner ("corners are
-    // weird"). On a side where the tile is such a corner its painting is taken a little in, so the corner is square,
-    // as its wall is. And where higher land stands north of it, its first strip is in that land's shade.
-    // (15 px: the cut is four of the land's pixels, 12; at 9 its tip was left, a green dot at each corner)
-    const cornerL = low(west) && (low(south) || low(north)) ? 15 : 0, cornerR = low(east) && (low(south) || low(north)) ? 15 : 0;
-    if (ONLY !== "walls") for (let q = 0; q < 4; q++) quad(Y + q * S / 4, h, Y + (q + 1) * S / 4, h, cornerL, cornerR, q === 0 && north !== null && north > L ? .74 : 1, 1);
-    // Its wall, a strip a level, lit at its top and darker to its foot. Its painting is taken from the tile's middle
-    // and spread over its width: at its two sides the game paints the grass rim turning the corner, which on an
-    // upright wall was a green line down each corner. A wall is bands across: nothing is lost.
-    if (ONLY !== "tops" && low(south)) for (let k = L; k > south; k--) {
-      const lit = (v) => .7 + .26 * (v - south) / (L - south);
-      quad(Y + S, k * st, Y + S, (k - 1) * st, 10, 10, lit(k), lit(k - 1));
+    // One piece with four corners, each [x, ground row, height, lit]; its painting is the tile's own (the game draws a
+    // top `h` px up the picture from its square), or what `uv` says.
+    const piece = (a, b, c, d, uv = (x, r, hh) => [x, r - h]) => { for (const [x, r, hh, lit] of [a, b, c, b, d, c]) land.push(x, r, hh, ...uv(x, r, hh), lit); };
+    // Its top, in three across. Where the land west or east of it is lower, the game paints that side of the tile as
+    // a narrow strip of cliff: seen from above, that is all a side wall is. Left flat at the tile's height it gave a
+    // cliff no side at all ("corners are weird, and looks soo flat"): here that strip is the cliff's side, sloping
+    // from the tile's height down to the land beside it, in shade. The tile's rounded corner, which the game cuts
+    // out of its painting to show the grass below, then lies down at that grass's height, where it belongs.
+    // And where higher land stands north of it, its first strip is in that land's shade.
+    const W = 12, xs = [X, X + W, X + S - W, X + S], hs = edge(i, j);
+    if (ONLY !== "walls") for (let q = 0; q < 4; q++) for (let c = 0; c < 3; c++) {
+      const r0 = Y + q * S / 4, r1 = r0 + S / 4, side = hs[c] !== hs[c + 1], l0 = q === 0 && north !== null && north > L ? .74 : 1;
+      if (!side) { piece([xs[c], r0, hs[c], l0], [xs[c + 1], r0, hs[c + 1], l0], [xs[c], r1, hs[c], 1], [xs[c + 1], r1, hs[c + 1], 1]); continue; }
+      // (a side: the cliff's earth, taken from one column of the strip the game paints there, 8 px in, so that its
+      // sawtooth rim is not smeared down the slope like a twisted rope; light at the top, darker to the foot)
+      const col = c === 0 ? X + 8 : X + S - 9, lo = Math.min(hs[c], hs[c + 1]), sh = (v) => v > lo ? .9 : .66;
+      piece([xs[c], r0, hs[c], sh(hs[c])], [xs[c + 1], r0, hs[c + 1], sh(hs[c + 1])], [xs[c], r1, hs[c], sh(hs[c])], [xs[c + 1], r1, hs[c + 1], sh(hs[c + 1])], () => [col, Y + S / 2 - h]);      // (one colour a tile: rows of it lay slanted down the slope, as streaks)
+    }
+    // Walls: upright, along the tile's south edge, wherever its own edge stands higher than the edge of the tile
+    // south of it: the whole edge where that tile is lower (the cliff's front), or only a corner of it where one of
+    // the two has a sloping side and the other has not (left open, that was a hole the shape of a wedge at the end
+    // of a wall). Lit at the top and darker to the foot. A wall's painting is taken from the tile's middle and
+    // spread over its width: at its two sides the game paints the grass rim turning the corner, which on an upright
+    // wall was a green line down each corner. A wall is bands across: nothing is lost.
+    const under = south === null ? null : edge(i, j + 1);
+    if (ONLY !== "tops" && under) {
+      const foot = Math.min(...under), span = Math.max(1, h - foot), lit = (v) => .7 + .26 * Math.max(0, Math.min(1, (v - foot) / span));
+      const uv = (x, r, hh) => [X + 10 + (x - X) / S * (S - 20), r - hh];
+      for (let c = 0; c < 3; c++) {
+        const t0 = hs[c], t1 = hs[c + 1], b0 = Math.min(t0, under[c]), b1 = Math.min(t1, under[c + 1]);
+        if (t0 > b0 || t1 > b1) piece([xs[c], Y + S, t0, lit(t0)], [xs[c + 1], Y + S, t1, lit(t1)], [xs[c], Y + S, b0, lit(b0)], [xs[c + 1], Y + S, b1, lit(b1)], uv);
+      }
     }
   }
   for (const q of sc.sprites) {

@@ -1744,6 +1744,15 @@ stretch, what stands on high land goes up with it, a floor upstairs does not). A
 light at its top and darker to its foot, and the strip of land under a cliff is in its shade. With real shapes
 each of these was a few lines.
 
+"Still imperfect => then fix it": the list I had given (no east or west walls, a pale stripe, dots). Seen from
+above the game paints a cliff's east or west side as a 12 px strip on the upper tile. That strip is now the side
+itself: it slopes from the tile's height to the land beside it. Three tries. As painted, the strip's sawtooth rim
+lay smeared down the slope (a twisted rope), and where a sloping tile met one that does not slope there was a
+wedge of sky: every south edge is now closed against the edge of the tile south of it, whatever their shapes
+(`edge(i, j)`: a tile's height at four points of its width). Then one column of the strip: streaks. Then one
+colour of earth a tile, light at the top and dark at the foot: clean. The pale stripe was the strip's outer 5 px,
+which the side no longer uses; the corner inset is gone with it (the rounded corner now lies on the slope).
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
