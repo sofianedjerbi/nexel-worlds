@@ -1853,6 +1853,25 @@ A depth is squeezed in the bend as the ground's rows are (a height leans instead
 no longer matched the room's depth far off and the floor, with you, went behind the rim again.
 Looked at: both dug rooms as the page opens, flat, from the stair, and from 300, 700 and 1200 px south.
 
+"Weird down border here. Audit your 3d rendering and ensure it is properly working, and we want to make sure the
+block is real 3d block rendering". The border: a strip of nothing under a dug floor seen from outside, in the
+bend. I had left out the part of the floor its rim hides near you; far off more of it is in view. The whole floor
+is made again (the thin lines that cut was for were the game's painting, fixed since by `painted`).
+The audit, as two tools that stay:
+- A hole detector. `?audit=1` paints magenta wherever no shape is drawn under the horizon, and
+  design/enemies/horizon_holes.py counts it over every place, both curved views, eleven walk positions, a grid of
+  spots stood on in play (both sets of shapes of a dug room), at a computer's width and a phone's: about 600
+  views. First run: 10 with holes, all one thing, the cut-away floor south of a dug room when it lies on the
+  horizon (one long piece cut the corner of the horizon's curve: now in strips, as a tile's top is). Now 0. (The
+  last 10 px under the horizon line are not counted: flat pieces cut that curve a little short everywhere; it
+  shows as the air's own colour.)
+- "Show the shapes": the land with no painting, each face in the colour of its kind (top, wall facing south, step
+  of a cliff's side, under the ground) and a line along every tile's edge and every level of a wall. What it
+  shows: every tile is a top at its own height, a front where the tile south is lower, stepped sides where the
+  tile beside is a level or two lower; a dug room is a floor below and a wall. What a block does not have: a
+  north face (never in view), and east and west faces as upright walls: this view looks straight north and has
+  no perspective, so an upright east or west wall has no width on the screen. The stepped side stands in for it.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
