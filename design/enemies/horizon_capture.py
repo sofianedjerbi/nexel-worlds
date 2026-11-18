@@ -66,24 +66,20 @@ GRAB = """async () => {
   const atlas = document.createElement("canvas"); atlas.width = aw; atlas.height = ay + shelf + 1;
   const ag = atlas.getContext("2d");
   for (const it of items) { ag.drawImage(it.c, it.ax, it.ay); out.push({x: it.x, y: it.y, w: it.c.width, h: it.c.height, ax: it.ax, ay: it.ay, foot: it.foot}); }
-  // The land's height, tile by tile, as the picture has it: a picture of the same size where each pixel says which
-  // level's top it shows (128 + level; 255: a wall's face). The land is drawn a level higher every 8 art px, so the
-  // top of tile (x, y) at level L is the tile's square moved up by L steps, and where it stands higher than the tile
-  // south of it, its wall hangs from its lower edge down to that one's height. Painted north to south, as the land is.
-  const map = document.createElement("canvas"); map.width = cv.width; map.height = cv.height;
-  const mg = map.getContext("2d"), [ox, oy] = screenOrigin(S), step = shOf(1) * zoom, levels = new Set(), faces = [];
-  mg.fillStyle = "#000"; mg.fillRect(0, 0, map.width, map.height);
-  const tx0 = Math.floor(-ox / S) - 1, ty0 = Math.floor(-oy / S) - 14, tw = Math.ceil(cv.width / S) + 2, th = Math.ceil(cv.height / S) + 30;
-  for (let ty = ty0; ty <= ty0 + th; ty++) for (let tx = tx0; tx <= tx0 + tw; tx++) {
-    if (!tile(tx, ty)) continue;
-    const L = levelAt(tx, ty), Ls = tile(tx, ty + 1) ? levelAt(tx, ty + 1) : L, X = Math.round(ox + tx * S), Y = Math.round(oy + ty * S);
-    levels.add(L);
-    mg.fillStyle = `rgb(${128 + L},${128 + L},${128 + L})`; mg.fillRect(X, Y - L * step, S, S);
-    if (L > Ls) { mg.fillStyle = "#fff"; mg.fillRect(X, Y + S - L * step, S, (L - Ls) * step);
-      faces.push({x: X, y: Y + S - L * step, w: S, h: (L - Ls) * step, ax: X, ay: Y + S - L * step, foot: Y + S, g: 1}); }
+  // The land's height, tile by tile: a small picture, a pixel a tile, red 128 + the tile's level (0: no land known).
+  // With where its first tile is on the ground picture (at sea level) and a tile's size, the page knows how high the
+  // land is at any spot of the ground, and so which level's sheet it is on and where earth lies under it.
+  const [ox, oy] = screenOrigin(S), step = shOf(1) * zoom, levels = new Set();
+  const tx0 = Math.floor(-ox / S) - 1, ty0 = Math.floor(-oy / S) - 2, tw = Math.ceil(cv.width / S) + 2, th = Math.ceil(cv.height / S) + 22;
+  const map = document.createElement("canvas"); map.width = tw; map.height = th;
+  const mg = map.getContext("2d"); mg.fillStyle = "#000"; mg.fillRect(0, 0, tw, th);
+  for (let j = 0; j < th; j++) for (let i = 0; i < tw; i++) {
+    if (!tile(tx0 + i, ty0 + j)) continue;
+    const L = levelAt(tx0 + i, ty0 + j); levels.add(L);
+    mg.fillStyle = `rgb(${128 + L},0,0)`; mg.fillRect(i, j, 1, 1);
   }
-  return {ground, atlas: atlas.toDataURL("image/png"), levels: map.toDataURL("image/png"), sprites: [...out, ...faces.filter((f) => f.x < cv.width && f.x + f.w > 0 && f.y < cv.height && f.y + f.h > 0)],
-          size: [cv.width, cv.height], lv: [...levels].sort((a, b) => b - a), step};
+  const faces = [], grid = [Math.round(ox + tx0 * S), Math.round(oy + ty0 * S), S];
+  return {ground, atlas: atlas.toDataURL("image/png"), levels: map.toDataURL("image/png"), sprites: out, size: [cv.width, cv.height], lv: [...levels].sort((a, b) => b - a), step, grid};
 }"""
 SETUP = "rpc('dev_time', {phase: .3}); setOpt('names', false); setOpt('hints', false); setOpt('shader', 'natural'); setOpt('reflect', 0); setOpt('clouds', 0); setOpt('above', 'cut')"
 
@@ -91,7 +87,7 @@ SETUP = "rpc('dev_time', {phase: .3}); setOpt('names', false); setOpt('hints', f
 def save(name, got):
     for part in ("ground", "atlas", "levels"):
         (OUT / f"{name}_{part}.png").write_bytes(base64.b64decode(got[part].split(",")[1]))
-    (OUT / f"{name}.json").write_text(json.dumps({"size": got["size"], "sprites": got["sprites"], "lv": got["lv"], "step": got["step"]}))
+    (OUT / f"{name}.json").write_text(json.dumps({"size": got["size"], "sprites": got["sprites"], "lv": got["lv"], "step": got["step"], "grid": got["grid"]}))
     print(name, got["size"], len(got["sprites"]), "things; levels", got["lv"], flush=True)
 
 

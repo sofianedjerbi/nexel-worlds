@@ -1698,6 +1698,19 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 168: the horizon without holes
+
+The user, with a picture of the mountain: "Horizon line is bugged: empty space under tiles, green stuff on
+corners..". Three wrong things in the page's levels. Sky under far terraces: each level was a thin sheet and its
+wall a thin separate piece, half see-through with the haze. Green: a filler colour where the picture ran out. Then,
+fixing those, ribs of stripes: the wall pixels were given to the highest level. What it is now: the capture writes
+the land's height a pixel a tile (not a picture of which level each pixel shows), and the shader, for each pixel,
+goes down from the greatest height a third of a level at a time: which spot of the ground would be seen here at
+that height, and is the land there that high? Its top if that is its height, its side if it is higher (near, the
+game's own painted wall; far, the colour of the land over it, plain and in shade). The land is solid: no sky under
+a terrace, a far hill is a block over the horizon. Past the picture: the air's colour. Looked at the mountain from
+four places and the hill behind the dug room. The page online is updated with it.
+
 ## Iteration 167: the land in levels on the curve
 
 "there's a huge issue with layers, some things looks flat, the whole world is in 3d.. leverage that ! upper layers
