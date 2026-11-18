@@ -190,8 +190,8 @@ function* xrayPicture(tx, key, near) {
   const xa = Math.min(tx - (XRAY.box >> 1), ...dug.map((d) => d[0] - 1)), w = Math.max(tx + (XRAY.box >> 1), ...dug.map((d) => d[0] + 1)) - xa + 1, W = w * 16;
   // (cap: nothing of the picture is higher than APART layers over the highest ground of the place: far under the land
   // its walls are not painted up to the land's top, hundreds of layers of them that nothing shows)
-  const cap = Math.max(...floors.values()) + APART;
-  const ya = xray.row * 16 - shOf(xray.L) - (D >> 1) - 6, y = Math.min(ya, ...dug.map((d) => d[1] * 16 - shOf(Math.min(cap, Math.max(2, topAt(d[0], d[1]), topAt(d[0], d[1] - 1)))) - 8)), h = Math.max(ya + D + 22, ...dug.map((d) => d[1] * 16 - shOf(d[2]) + 26)) - y;
+  const cap = Math.max(...floors.values()) + APART, low = Math.min(...floors.values());
+  const ya = xray.row * 16 - shOf(xray.L) - (D >> 1) - 6, y = Math.min(ya, ...dug.map((d) => d[1] * 16 - shOf(Math.min(cap, Math.max(2, topAt(d[0], d[1]), topAt(d[0], d[1] - 1)))) - 8)), h = Math.max(ya + D + 22, ...dug.map((d) => d[1] * 16 - shOf(Math.max(low, d[2] - APART)) + 26)) - y;   // (down to the foot of a floor's front: xraycut.js 4)
   let lo = Math.min(99, ...floor.values()), hi = -99, edged = [];
   for (let ty = xray.row - 14; ty <= xray.row + 14; ty++) for (let x = xa - 1; x <= xa + w; x++) { const l = Math.min(cap, Math.max(-APART, levelAt(x, ty))); lo = Math.min(lo, l); hi = Math.max(hi, l); }
   const y0 = Math.max(xray.row - 14, (y + shOf(lo) >> 4) - 1), y1 = Math.min(xray.row + 14, y + h + shOf(hi) >> 4);   // every row of tiles that can be drawn in it
@@ -260,12 +260,12 @@ function* xrayPicture(tx, key, near) {
   const seen = new Uint8Array(W * h), m = new Uint32Array(W * h), wm = new Uint32Array(W * h);
   let any = 0;
   for (let f = 0; f < seen.length; f++) if ((see.cover[f] || XRAY.whole) && see.state[f] === 1) seen[f] = 1;
-  const {px: earth, cut, line, deep, cols} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint});   // (the earth cut through and the cut's edge; of seen, the land over a room is taken back: xraycut.js)
+  const {px: earth, cut, line, deep, cols, fronts} = xrayCut({W, h, w, R, y, see, seen, floor, floors, place, rocks, paint, ground, at: [tx, row]});   // (the earth cut through and the cut's edge; of seen, the land over a room is taken back: xraycut.js)
   for (let f = 0; f < seen.length; f++) if (seen[f]) { any++; m[f] = 0xff000000; if (see.wet[f]) wm[f] = 0xff000000; }
   const og = over.getContext("2d"); og.globalCompositeOperation = "destination-in"; og.drawImage(pxCanvas(m, W, h), 0, 0);
   og.globalCompositeOperation = "source-over"; og.drawImage(pxCanvas(earth, W, h), 0, 0);
   const mouths = [...floor.keys()].filter((k) => { const [fx, fy] = k.split(",").map(Number); return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => topAt(fx + dx, fy + dy) < topAt(fx, fy)); }).sort().join(" ");
-  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, line, deep, cols, any, rock: rocks, floor, cut, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};
+  return {key, x: R.x * 16, y, w: W, h, over, wet: pxCanvas(wm, W, h), seen, line, deep, cols, any, rock: rocks, floor, cut, fronts, mouths, place: floors, lev: see.lev, depth: underDepths(floor), rx: R.x, ry: R.y, rw: w, rh: R.h};
 }
 
 // The circle itself, over the land and under everything standing on it (in the other views: drawXrayWhole)

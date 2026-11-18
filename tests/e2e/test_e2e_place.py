@@ -5,6 +5,10 @@ it and who is not. (Its edge, its light, its walls: test_e2e_underground.py.)"""
 from test_e2e_digging import DRAWN, SEEN
 from test_e2e_underground import DOWN, PIC
 
+# is a px of the picture one of its lines? [x, y, level: a tile as drawn; ax, ay: the px in it]
+LINE = """([x, y, lv, ax, ay]) => { const P = xray.pic, X = x * 16 + ax - P.x, Y = y * 16 - shOf(lv) + ay - P.y;
+  return xrayEdges(P).getContext('2d').getImageData(X, Y, 1, 1).data[3] > 0; }"""
+
 
 def test_what_is_dug_under_high_ground_is_seen_and_no_more_one_block_dug_opens_one_block(game):
     """"im breaking only 1 bloc why the whole column is deleted ??": doben4's tunnel under a mountain. Behind every
@@ -89,4 +93,53 @@ def test_dug_down_at_a_tunnels_end_the_tunnel_over_you_is_still_seen(game):
     assert game.js(f"[1, 2, 3, 4].map((d) => seenUnder({X} - d, {y}))") == [-4, -4, -4, -4]
     seen, r, g, b = game.js(PIC, [X - 3, y, -4, 8, 8])       # its floor, three tiles from you: on the screen, earth
     assert seen and r > g, [seen, r, g, b]
+    assert not game.errors
+
+
+def test_a_floor_too_high_to_climb_shows_its_front_its_layers_and_its_edge(game):
+    """"still hardly understandable: why can't i go up ? why cant i climb right ?", in a hole at the end of a tunnel
+    that goes down a layer a tile: height is how far up the screen a floor is drawn, and nothing else said it. The
+    floor two layers over yours was a tile on along a strip of earth, the wall behind you the same brown as the
+    floor. Told in words it was "explicit guiding.. it should be intuitive, visible". A floor higher than the one
+    beside it shows its front, the layers it stands on, each with its seam; where that is two or more nobody climbs
+    it and its edge has a line; and a floor is lighter than a wall, as far down as it goes."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(1, -4, ["." * 9] * 9, levels=["3" * 9] * 9)                # high ground, three layers
+    game.stamp(0, 0, ["......."], levels=["dddddd3"], roofs=["0777770"], heads=["0222220"])   # a tunnel under it
+    X = x + 5                                                 # its end: dug down there, three layers under its floor
+    game.rpc("dev_col", tiles=[[X, y]], col=[-7, -2, 3])
+    game.rpc("dev_teleport", x=X, y=y, z=-7)
+    game.wait(f"myAt && myAt.x === {X} && myAt.z === -7", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.wait("xray.mix >= 1 && !xray.old", 8000)
+    px, line, lum = lambda *a: game.js(PIC, list(a)), lambda *a: game.js(LINE, list(a)), lambda p: p[1] + p[2] + p[3]
+    floor, front = px(X - 1, y, -4, 6, 8), px(X - 1, y, -4, 6, 20)     # the tunnel's last tile, west of you: its floor; under it, its front
+    assert floor[0] and front[0] and lum(floor) > 1.3 * lum(front), (floor, front)
+    rows = [lum(px(X - 1, y, -4, 6, 16 + a)) for a in range(24)]      # three layers of it, down to your floor: a seam under each
+    assert rows[7] < .85 * rows[4] and rows[15] < .85 * rows[12], rows
+    assert line(X - 1, y, -4, 6, 39) and not px(X - 1, y, -4, 6, 40)[0]     # ...and there the cut ends
+    assert line(X - 1, y, -4, 15, 8) and line(X - 1, y, -4, 15, 20) and line(X - 1, y, -4, 15, 36)   # its edge beside you: down its floor's side and its front's
+    assert not line(X - 2, y, -4, 15, 8) and not line(X - 1, y, -4, 6, 15) and not line(X - 1, y, -4, 6, 16)   # none between two tiles you walk, none between a floor and its own front
+    wall, soil = game.js("[colsOf(hillSheet(-12)).bands, colsOf(dugSheet('soil', 12)).top]")    # far down: a floor is told from a wall, a wall's seam from the wall
+    assert sum(soil[:3]) > 1.6 * sum(wall[1][:3]) and sum(wall[2][:3]) < .75 * sum(wall[1][:3]), (wall, soil)
+    assert not game.errors
+
+
+def test_the_floor_you_stand_on_is_seen_under_a_higher_floor_drawn_over_it(game):
+    """Two layers are a tile up the screen: a floor two layers over yours and a tile in front of it is drawn on your
+    own tile. Down a hole at the north end of a tunnel you stood on the tunnel's floor, to look at, and it went on
+    south of you. Your own floor is seen, and what is drawn under it, layers higher, has its edge."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(1, -4, ["." * 9] * 9, levels=["3" * 9] * 9)
+    X = x + 5
+    for d, f in enumerate([-8, -6, -5, -4]):                  # a tunnel going down north, then two layers at once: you, there
+        game.rpc("dev_col", tiles=[[X, y - 2 + d]], col=[f, f + 3, 3])
+    game.rpc("dev_teleport", x=X, y=y - 2, z=-8)
+    game.wait(f"myAt && myAt.y === {y - 2} && myAt.z === -8", 8000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.wait("xray.mix >= 1 && !xray.old", 8000)
+    assert game.js(f"(() => {{ const P = xray.pic, f = ({y - 2} * 16 + 64 + 8 - P.y) * P.w + {X} * 16 + 8 - P.x; return [P.seen[f], P.lev[f]]; }})()") == [1, -8]
+    assert game.js(LINE, [X, y - 2, -8, 8, 16]) and not game.js(LINE, [X, y - 2, -8, 8, 8])
     assert not game.errors

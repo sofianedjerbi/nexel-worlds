@@ -223,13 +223,13 @@ function dugSheet(name, d) {
   const img = IMG[name], c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
   const g = c.getContext("2d"); g.drawImage(img, 0, 0);
   const im = g.getImageData(0, 0, c.width, c.height), px = im.data, wall = name !== "soil";
-  const f = [Math.max(.45, 1 - .075 * d), Math.max(.38, 1 - .09 * d), Math.max(.3, 1 - .11 * d)];      // (deeper: darker, still warm brown)
+  const f = wall ? [Math.max(.45, 1 - .075 * d), Math.max(.38, 1 - .09 * d), Math.max(.3, 1 - .11 * d)] : [Math.max(.62, 1 - .0475 * d), Math.max(.57, 1 - .054 * d), Math.max(.5, 1 - .0625 * d)];      // (deeper: darker, still warm brown; a floor less than a wall: far down they were two browns a fifth apart, and where you walk was not told from what stops you)
   for (let i = 0; i < px.length; i += 4) {
     if (!px[i + 3]) continue;
     if (px[i + 1] > px[i] + 8) { const l = (px[i] + px[i + 1] + px[i + 2]) / 3; [px[i], px[i + 1], px[i + 2]] = EARTH[l > 170 && !wall ? 0 : l > 130 || wall && l > 100 ? 1 : 2]; }   // (green: earth; on a wall no light line)
     for (let j = 0; j < 3; j++) px[i + j] *= f[j];
   }
-  g.putImageData(im, 0, 0);
+  g.putImageData(im, 0, 0); c.dug = wall ? d + 1 : 0;
   return (dugSheets[name + d] = c);
 }
 // Beside a dug floor (south, east, west; the corners south), the px of a tile at sea level or over it that are out

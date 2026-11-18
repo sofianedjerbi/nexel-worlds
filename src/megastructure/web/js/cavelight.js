@@ -41,7 +41,7 @@ function underPx(P) {
   if (P.under) return P.under;
   P.under = [];
   const fl = new Uint8Array(P.rw * P.rh), m = new Uint32Array(P.w * P.h);
-  for (const k of [...P.floor.keys(), ...P.cut]) { const [x, y] = k.split(",").map(Number), i = x - P.rx, j = y - P.ry; if (i >= 0 && i < P.rw && j >= 0 && j < P.rh) fl[j * P.rw + i] = 1; }
+  for (const k of [...P.floor.keys(), ...P.cut, ...P.fronts]) { const [x, y] = k.split(",").map(Number), i = x - P.rx, j = y - P.ry; if (i >= 0 && i < P.rw && j >= 0 && j < P.rh) fl[j * P.rw + i] = 1; }
   for (let f = 0; f < P.seen.length; f++) if (P.seen[f]) {
     const i = Math.floor((P.x + f % P.w) / 16) - P.rx, j = Math.floor((P.y + (f / P.w | 0) + shOf(P.lev[f])) / 16) - P.ry;
     if (i >= 0 && i < P.rw && j >= 0 && j < P.rh && fl[j * P.rw + i]) { P.under.push(f); m[f] = 0xff000000; }

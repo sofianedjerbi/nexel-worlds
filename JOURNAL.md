@@ -2645,3 +2645,40 @@ hard to understand . how did he get there ? where's the exit ? why the tunnel is
   gone, shadow and all; three layers under a tunnel's end the tunnel's five tiles are of the place and on the
   screen. My digging tests turn you by `face`, not by an arrow held 0.2 s (it walked a tile, one run in ten).
   472 unit; 247 browser, one at its second try (that arrow).
+
+## Iteration 162: a dug place read at a glance: fronts, seams, edges
+
+The user, on the picture of iteration 161 (the tunnel back in it, doben4 in the hole at its end, the dev grid on):
+"still hardly understandable: why can't i go up ? why cant i climb right ?" I started on a message ("Too high: 2
+layers up") and on putting dug stone back to make a step. They cut it short: "a message is explicit guiding.. it
+should be intuitive, visible". Both dropped.
+
+- What the picture said. Height is how far up the screen a floor is drawn (a layer: 8 px) and nothing else told it.
+  A tunnel that goes down west a layer a tile was a strip of earth going up across the screen; the floor two layers
+  over his, east of him, was drawn a tile up and a tile on, the next tile of a diagonal path; the wall behind him,
+  three layers, was the brown of the floor (on the screen 86,65,44 against 70,46,28: far down both sheets were at
+  their darkest, a fifth apart, and the cave's light halves that). North read as floor, east as the way on.
+- Fronts (xraycut.js, 4). A floor higher than the floor of the place beside it (east, west, open onto it), rock in
+  front of it, shows its front: the layers it stands on, down to that floor's level. A stair seen from its side has
+  its steps' fronts; the side of the hole is a wall two layers high with the tunnel's floor on top. Not under a
+  floor whose foot is hidden by ground that is not cut (the top step of an open stair: the front lay on the meadow).
+- Seams, floors (tiles.js, relief.js colsOf). Dug walls: the line between two layers is told from them, the more
+  the deeper (x .86 at the top, x .62 from eight down): a wall's layers are counted, a block each. Dug floors
+  darken less than walls (x .62 at eight down, was x .45): unlit, floor to wall 1.28 -> 1.78. One place for both
+  painters (the land's pits, the cut's walls, the build cursor's keyhole).
+- Edges (xraycut.js ledge). The line was where the cut ends. It is also, in the place, the edge of a floor or of its
+  front two layers or more over what is drawn beside it or under it: nobody climbs that. Its shadow falls on the
+  lower side only, the foot of it. None at a step of one layer ("there shouldn't be a line where player can travel").
+- Your own floor (xraycut.js, 5). Two layers are a tile up the screen: a floor two layers over yours and a tile in
+  front is drawn on your own tile. Down a hole at the NORTH end of a tunnel you stood, to look at, on the tunnel's
+  floor. Your tile's own px are laid over it; what is drawn under it, higher, has its edge.
+- Looked at on a copy of the live save at doben4's spot, and on a throwaway world, old painter beside new: a tunnel
+  east-west, north-south both ways, a room with a shelf and a pit, an open trench, pits from the meadow, a way
+  through a hill, night. Two things found there: a front laid on the meadow in front of an open stair's top step;
+  seams too hard in a shallow pit in daylight (so: by depth). The painter: 22 -> 24 ms a picture at a quarter of
+  the CPU (within its noise).
+- Left, and said: a ledge in FRONT of you (south) has no front to show, it faces away. It has its edge and your
+  floor is seen; how high it is is not told.
+- Tests: test_e2e_place.py + 2 (the front, its seams, its edge, floor against wall far down; your own floor at a
+  tunnel's north end). The outline test's line under an open stair's second step is under that step's front.
+  473 unit, 251 browser (none at a second try).

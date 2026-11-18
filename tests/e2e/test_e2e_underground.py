@@ -134,8 +134,9 @@ def test_the_outline_goes_round_the_place_itself_and_is_the_usual_view(game):
     assert not line(X, y - 1, 0, 8, 0) and not line(X, y - 1, 0, 8, 8) and not line(x + 9, y, -4, 8, 8)   # a tile out: nothing
     assert not line(X, y, -4, 8, 8) and not line(X, y, 0, 8, 12) and not line(x + 2, y, -2, 8, 8) and not line(x + 2, y, 0, 8, 6)   # across it, the stair's wall too: nothing
     # "there shouldn't be a line where player can travel to outside": none where you step off the stair's top step
-    # onto the meadow, west of it or in front of it; under the next step there is one (two layers up is a wall)
-    assert not line(x + 1, y, -1, 0, 8) and not line(x + 1, y, -1, 8, 15) and line(x + 2, y, -2, 8, 15)
+    # onto the meadow, west of it or in front of it; under the next step there is one (two layers up is a wall):
+    # under its front, a layer of it, down to the step after it (test_e2e_place.py)
+    assert not line(x + 1, y, -1, 0, 8) and not line(x + 1, y, -1, 8, 15) and line(x + 2, y, -2, 8, 23) and not line(x + 2, y, -2, 8, 15)
     # "the first step of the stairs look awkward": it lay whole on the meadow, a flat square. The step up in front of
     # it is not cut through: the meadow's own edge, as on the land; and the next step's side has its line under it
     assert not game.js(PIC, [x + 1, y, -1, 8, 12])[0] and not game.js("([x, y]) => xray.pic.rock[(y - xray.pic.ry) * xray.pic.rw + x - xray.pic.rx]", [x + 1, y + 1])
