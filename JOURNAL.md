@@ -1698,6 +1698,17 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 171: a far wall is its own wall
+
+The user, with a close-up of the mountain's far terraces: "Sidewalls still look like squares here". Right, and not
+the window's size this time: under each far rim hung a pale square of the terrace's own top. Heights are tried a
+third of a level at a time, and far off one try is several tiles of ground, so the spot found was inside the land,
+and its wall was looked for at that tile's edge: the wrong place, a patch of top. Now, from the spot, the shader
+walks south to the last tile still that high (the land's front), finds the height at which the eye meets the wall
+hanging from that edge, and paints the wall there as the game painted it; if that height is over the land's top the
+eye passes over the edge and the top is seen, at its own height. Far walls are the dark cliff faces the near ones
+are. What is left is the world's own shape: a cliff is made of tiles, so its foot is a line of steps.
+
 ## Iteration 170: the page drawn at the window's own size
 
 "Also underground there's weird stripes" (and before it "squares"). I had been looking at the page 1104 px wide,

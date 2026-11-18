@@ -34,7 +34,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">(Page 7.) A sky over the world. Now: the curved far view, now with the land itself in levels (hills and mountains stand), tried on buildings and under ground. Before that: The fog strip is gone, and the curved world was flat: now the ground bends and what stands on it stays standing, with mountains behind. Made from a real frame of the game, taken in two parts: the ground, and each of the 549 things on it. Nothing here is in the game.</div>
+  <div class="sub">(Page 8.) A sky over the world. Now: the curved far view, now with the land itself in levels (hills and mountains stand), tried on buildings and under ground. Before that: The fog strip is gone, and the curved world was flat: now the ground bends and what stands on it stays standing, with mountains behind. Made from a real frame of the game, taken in two parts: the ground, and each of the 549 things on it. Nothing here is in the game.</div>
   <div class="box">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -139,8 +139,18 @@ float along(float py, out float t, out float spread, out float wide) {
   return (y0 + (yh - y0) * f) * uRes.y;
 }
 float lean(float t, float wide) { return uMode > 2.5 ? 1. / wide : 1. - .5 * pow(t, 1.6); }      // a thing standing far away: how much of its height shows
+// For the pixel P: the spot of the ground (a row of the picture, at sea level) that is seen there at height h over it
+vec2 P; float PY;
+float seen(float h, out float tt, out float sp, out float wd) {
+  float py = P.y - h, d;
+  for (int k = 0; k < 3; k++) { d = along(py, tt, sp, wd); py = P.y - h * lean(tt, wd); }
+  d = along(py, tt, sp, wd); PY = py;
+  return uBottom - d;
+}
+float levelOf(vec2 tc) { return tc.x < 0. || tc.y < 0. || tc.x >= uMapSize.x || tc.y >= uMapSize.y ? -1. : texture2D(uMap, (tc + .5) / uMapSize).r * 255.; }
 void main() {
   vec2 p = gl_FragCoord.xy / uK, a = floor(p / 3.) * 3.;        // (p: in the picture's own pixels, whatever the canvas has)
+  P = p;
   float y = p.y / uRes.y, yh = uYh;
   bool bent = (uMode > .5 && uMode < 1.5) || uMode > 2.5;
   vec3 zen = pick(vec3(.33, .6, .93), vec3(.27, .3, .58), vec3(.05, .07, .19)), hor = pick(vec3(.78, .9, .98), vec3(.99, .68, .42), vec3(.17, .21, .44));
@@ -155,25 +165,28 @@ void main() {
     float tt, sp, wd, d = along(p.y, tt, sp, wd), row = uBottom - d, x = clamp(uCx + (p.x - uRes.x * .5) * wd, 1., uSrc.x - 1.);
     if (row >= 1. && !(uMode > .5 && y >= yh)) { c = land(row, x, sp); t = tt; hit = true; }
   } else for (int i = 0; i < 72; i++) {
-    float h = uHigh - float(i) * uStep / 3., py = p.y - h, tt, sp, wd, d;
+    float h = uHigh - float(i) * uStep / 3., tt, sp, wd;
     if (h < uLow - .5 || hit) break;
-    for (int k = 0; k < 3; k++) { d = along(py, tt, sp, wd); py = p.y - h * lean(tt, wd); }
-    d = along(py, tt, sp, wd);
-    if (py / uRes.y >= yh || tt > .975 || py < 0.) continue;   // (that spot is over the horizon, or under the screen)
-    float ground = uBottom - d, x = clamp(uCx + (p.x - uRes.x * .5) * wd, 1., uSrc.x - 1.);
+    float ground = seen(h, tt, sp, wd);
+    if (PY / uRes.y >= yh || tt > .975 || PY < 0.) continue;   // (that spot is over the horizon, or under the screen)
+    float x = clamp(uCx + (p.x - uRes.x * .5) * wd, 1., uSrc.x - 1.);
     vec2 tc = floor((vec2(x, ground) - uGrid.xy) / uGrid.z);
-    if (tc.x < 0. || tc.y < 0. || tc.x >= uMapSize.x || tc.y >= uMapSize.y) continue;
-    float v = texture2D(uMap, (tc + .5) / uMapSize).r * 255., top = (v - 128.) * uStep;
+    float v = levelOf(tc), top = (v - 128.) * uStep;
     if (v < .5 || top < h - .5) continue;
-    if (ground - h < 1.) continue;
-    // (its top; or its side: near, the game's own painting of the wall is right there in the picture; far off that
-    // is a few rows and its bands were stripes: the wall's own colours run together instead)
-    // (a wall is upright: the game painted it hanging from the south edge of its tile, so that is where its pixels are,
-    // whatever the bend does to the ground behind it)
-    float edge = uGrid.y + (tc.y + 1.) * uGrid.z;
-    float wallRow = edge - (h + (edge - ground) / max(.2, sp * lean(tt, wd)));
-    c = top > h + .5 ? land(wallRow, x, 1. / max(.3, lean(tt, wd))) : land(ground - h, x, sp);      // (h is tried a third of a level at a time: the height at which the eye meets the wall itself is worked back from how far past its edge the try fell)
-    t = tt; hit = true;
+    // Land this high is seen here. Heights are tried a third of a level at a time, and far off one try is several
+    // tiles of ground: the spot found is somewhere inside that land, not where the eye first meets it. So: its front,
+    // the south edge of the last tile south of the spot that is still this high (its wall hangs from there); then the
+    // height at which the eye meets that wall. If that is under its top, the wall is seen, at that height of it, as
+    // the game painted it. If it is over its top, the eye passes over the edge: the top is seen, where it is at its
+    // own height. (Without this a far wall was painted with a square of the terrace's top: "sidewalls still look
+    // like squares".)
+    vec2 te = tc; float topE = top;
+    for (int j = 0; j < 20; j++) { float v2 = levelOf(te + vec2(0., 1.)), t2 = (v2 - 128.) * uStep; if (v2 < .5 || t2 < h - .5) break; te.y += 1.; topE = t2; }
+    float edge = uGrid.y + (te.y + 1.) * uGrid.z, he = h, g = ground, t3 = tt, s3 = sp, w3 = wd;
+    for (int k = 0; k < 4; k++) { he += (edge - g) / max(.2, s3 * lean(t3, w3)); g = seen(he, t3, s3, w3); }
+    if (he <= topE + .5) { if (edge - he < 1.) continue; c = land(edge - he, x, 1. / max(.3, lean(t3, w3))); }
+    else { g = seen(topE, t3, s3, w3); if (g - topE < 1.) continue; c = land(g - topE, x, s3); }
+    t = t3; hit = true;
   }
   bool sky = uMode > .5 && !hit && y >= yh;
   if (!sky) {
