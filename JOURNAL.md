@@ -1830,6 +1830,14 @@ flecks and yellow corners on the bank's tiles (down a sheer edge the game paints
 the tile's corner round, showing the river behind: those tiles take their painting 16 px in from that side, 9
 from a sheer north edge). Looked at from three spots beside the canyon, standing there in play.
 
+"Top left and top right still contain blank pixel": the pale pixels at those tiles' corners (the round cut is
+wider than the 9 px I took): 16 px in on every side of a tile with a sheer edge. And, seen in my own overview
+while checking it, on the taller mountain: a wide band of nothing under the horizon when you look down from the
+top over low land. The land is right (seen from a height, low land far off is under the horizon line); the sky
+was not: its horizon stayed at the bend's line. It is now sea level's as seen from where you stand, lower the
+higher you are: from the top, a wide sky and far hills over the plain below. (First try, dropped: let the camera's
+height count less to the horizon. The band went, and the sky with it from the mountain's side.)
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole

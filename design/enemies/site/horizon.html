@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 35.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 36.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -377,18 +377,22 @@ function view(box, get) {
       const cw = Math.max(200, Math.round(box.clientWidth * Math.min(2, window.devicePixelRatio || 1))), k = cw / vw;
       if (canvas.width !== cw) { canvas.width = cw; canvas.height = Math.round(H * k); }
       const cxv = s.me ? Math.max(vw / 2, Math.min(sc.ground.width - vw / 2, Math.round(s.me.x))) : sc.cx;      // (on a narrow screen the view follows you sideways)
+      // The camera's height: the land's where you stand. And the sky's horizon: sea level's, as seen from that height,
+      // so lower on the screen the higher you stand (.5: how much of a height shows at the horizon, `landLean`). Left
+      // at the bend's own line, low land seen from a mountain ended far under it, with a wide band of nothing between.
+      const ref = s.mode ? Math.round(heightAt(sc, s.me ? s.me.x : sc.cx, s.me ? s.me.r : s.bottom - .3 * H) * s.tall / 100) / (s.tall / 100) : 0;
       const g = placeOf(s.scene), hr = s.hour / 100, dusk = ease(.5, .7, hr), night = ease(.7, .84, hr);
       const light = mixc(mixc([1, 1, 1], [1, .9, .8], dusk), [.5, .58, .86], night), air = mixc(mixc([.78, .9, .98], [.99, .68, .42], dusk), [.17, .21, .44], night);
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(...air, 1); gl.clearDepth(1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.disable(gl.DEPTH_TEST);
-      if (s.mode) { gl.useProgram(P.sky.pr); gl.uniform2f(P.sky.u.uRes, vw, H); gl.uniform1f(P.sky.u.uYh, s.yh / 100); gl.uniform1f(P.sky.u.uT, t); gl.uniform1f(P.sky.u.uHour, hr);
+      if (s.mode) { gl.useProgram(P.sky.pr); gl.uniform2f(P.sky.u.uRes, vw, H); gl.uniform1f(P.sky.u.uYh, s.yh / 100 - ref * (s.tall / 100) * .5 / H); gl.uniform1f(P.sky.u.uT, t); gl.uniform1f(P.sky.u.uHour, hr);
         gl.uniform1f(P.sky.u.uHills, s.hills ? 1 : 0); gl.uniform1f(P.sky.u.uK, k); gl.bindVertexArray(sky.vao); gl.drawArrays(gl.TRIANGLES, 0, sky.n); }
       gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
       for (const [prog, mesh, tex, img] of [[P.land, g.land, g.ground, sc.ground], [P.card, g.cards, g.atlas, sc.atlas]]) {
         const u = prog.u; gl.useProgram(prog.pr);
         gl.uniform2f(u.uRes, vw, H); gl.uniform1f(u.uBottom, s.bottom); gl.uniform1f(u.uMode, s.mode); gl.uniform1f(u.uYh, s.yh / 100); gl.uniform1f(u.uY0, s.y0 / 100);
-        gl.uniform1f(u.uG, s.g / 100); gl.uniform1f(u.uCx, cxv); gl.uniform1f(u.uFar, 5200); gl.uniform1f(u.uTall, s.tall / 100); if (u.uFlatFar) gl.uniform1f(u.uFlatFar, new URLSearchParams(location.search).get('flatfar') ? 1 : 0); gl.uniform1f(u.uRef, s.mode ? Math.round(heightAt(sc, s.me ? s.me.x : sc.cx, s.me ? s.me.r : s.bottom - .3 * H) * s.tall / 100) / (s.tall / 100) : 0);
+        gl.uniform1f(u.uG, s.g / 100); gl.uniform1f(u.uCx, cxv); gl.uniform1f(u.uFar, 5200); gl.uniform1f(u.uTall, s.tall / 100); if (u.uFlatFar) gl.uniform1f(u.uFlatFar, new URLSearchParams(location.search).get('flatfar') ? 1 : 0); gl.uniform1f(u.uRef, ref);
         gl.uniform3f(u.uLight, ...light); gl.uniform3f(u.uAir, ...air); gl.uniform2f(u.uSrc, img.width, img.height);
         gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(u.uTex, 0);
         gl.bindVertexArray(mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, mesh.n);
