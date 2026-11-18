@@ -58,14 +58,15 @@ GRAB = """async () => {
     // (Its foot is a row of the ground as it lies flat, sea level's: the land's own height at its tile is added back,
     // so the page knows both where on the ground it is and how high over that it stands.)
     const bottom = Y + y1 + 1, foot = Math.round(p ? bottom + liftOf(p) : o.spr ? bottom + liftAt(o.x, o.ty) : Math.max(bottom + liftAt(Math.round(x), y), sy(y) + S));
-    items.push({c: piece, x: X + x0, y: Y + y0, foot, built: !o.spr && !p});      // (built: a piece of something bigger: a wall, a floor, a roof)
+    const lift = Math.round(p ? liftOf(p) : o.spr ? liftAt(o.x, o.ty) : liftAt(Math.round(x), y));      // (how high the land it stands on is drawn, px: the voxel page puts it at that height)
+    items.push({c: piece, x: X + x0, y: Y + y0, foot, lift, built: !o.spr && !p});      // (built: a piece of something bigger: a wall, a floor, a roof)
     og.clearRect(X, Y, w, h);
   }
   let aw = 2048, ax = 0, ay = 0, shelf = 0; const out = [];
   for (const it of items) { if (ax + it.c.width > aw) { ax = 0; ay += shelf + 1; shelf = 0; } it.ax = ax; it.ay = ay; ax += it.c.width + 1; shelf = Math.max(shelf, it.c.height); }
   const atlas = document.createElement("canvas"); atlas.width = aw; atlas.height = ay + shelf + 1;
   const ag = atlas.getContext("2d");
-  for (const it of items) { ag.drawImage(it.c, it.ax, it.ay); out.push({x: it.x, y: it.y, w: it.c.width, h: it.c.height, ax: it.ax, ay: it.ay, foot: it.foot, ...(it.built ? {b: 1} : {})}); }
+  for (const it of items) { ag.drawImage(it.c, it.ax, it.ay); out.push({x: it.x, y: it.y, w: it.c.width, h: it.c.height, ax: it.ax, ay: it.ay, foot: it.foot, l: it.lift, ...(it.built ? {b: 1} : {})}); }
   // The land's height, tile by tile: a small picture, a pixel a tile, red 128 + the tile's level (0: no land known).
   // With where its first tile is on the ground picture (at sea level) and a tile's size, the page knows how high the
   // land is at any spot of the ground, and so which level's sheet it is on and where earth lies under it.
@@ -83,6 +84,41 @@ GRAB = """async () => {
   const faces = [], grid = [Math.round(ox + tx0 * S), Math.round(oy + ty0 * S), S];
   return {ground, atlas: atlas.toDataURL("image/png"), levels: map.toDataURL("image/png"), sprites: out, size: [cv.width, cv.height], lv: [...levels].sort((a, b) => b - a), step, grid, tile0: [tx0, ty0], at: [myAt.x, myAt.y, myAt.z]};
 }"""
+# The land as it is in the world, for the page that draws it as blocks (site/voxel.html): for every tile of the same
+# grid as the level map, its column of cells (cells.js: the heights where it changes, solid up to the first, empty up
+# to the second...) and, for each height you could stand at, the painting of a plain tile of that ground at that
+# height: the game's own drawTile, asked for a tile with the same ground all round it, so that it has no rim and no
+# cut corner. One picture of all the different ones, 16 px each. And the colours of a wall, a level at a time.
+VOX = """() => {
+  const S = 16 * zoom, [ox, oy] = screenOrigin(S);
+  const tx0 = Math.floor(-ox / S) - 1, ty0 = Math.floor(-oy / S) - 2, tw = Math.ceil(cv.width / S) + 2, th = Math.ceil(cv.height / S) + 22;
+  const mask0 = window.maskOf, peek0 = peek, one = document.createElement("canvas"); one.width = one.height = 16;
+  const og = one.getContext("2d", {willReadFrequently: true}), seen = new Map(), cells = [], cols = [], tops = [], zs = new Set();
+  window.maskOf = () => 255;
+  try {
+    for (let j = 0; j < th; j++) for (let i = 0; i < tw; i++) {
+      const x = tx0 + i, y = ty0 + j;
+      if (!tile(x, y)) { cols.push(null); tops.push(null); continue; }
+      const c = [...colAt(x, y)], mine = [];
+      for (let q = 0; q < c.length; q += 2) {
+        zs.add(c[q]);
+        peek = new Map([[x + "," + y, c[q]]]);
+        og.clearRect(0, 0, 16, 16); drawTile(x, y, {g: og, ox: 0, oy: 0});
+        const d = og.getImageData(0, 0, 16, 16).data;
+        if (d[3] < 200 && d[16 * 8 * 4 + 35] < 200) { mine.push(-1); continue; }      // (nothing painted: water, drawn by the game under the land)
+        let key = ""; for (let k = 0; k < d.length; k += 4) key += String.fromCharCode(d[k], d[k + 1], d[k + 2]);
+        if (!seen.has(key)) { seen.set(key, cells.length); const copy = document.createElement("canvas"); copy.width = copy.height = 16; copy.getContext("2d").drawImage(one, 0, 0); cells.push(copy); }
+        mine.push(seen.get(key));
+      }
+      cols.push(c); tops.push(mine);
+    }
+  } finally { window.maskOf = mask0; peek = peek0; }
+  const per = 32, atlas = document.createElement("canvas"); atlas.width = per * 16; atlas.height = Math.ceil(cells.length / per) * 16;
+  const ag = atlas.getContext("2d"); cells.forEach((c, k) => ag.drawImage(c, (k % per) * 16, Math.floor(k / per) * 16));
+  const walls = {}, lo = Math.min(...zs) - 1, hi = Math.max(...zs);
+  for (let z = lo; z <= hi; z++) walls[z] = colsOf(hillSheet(z)).bands.map((b) => b.slice(0, 3).map(Math.round));
+  return {w: tw, h: th, cols, tops, walls, per, n: cells.length, atlas: atlas.toDataURL("image/png")};
+}"""
 SETUP = "rpc('dev_time', {phase: .3}); setOpt('names', false); setOpt('hints', false); setOpt('shader', 'natural'); setOpt('reflect', 0); setOpt('clouds', 0); setOpt('above', 'cut')"
 
 
@@ -91,6 +127,12 @@ def save(name, got):
         (OUT / f"{name}_{part}.png").write_bytes(base64.b64decode(got[part].split(",")[1]))
     (OUT / f"{name}.json").write_text(json.dumps({"size": got["size"], "sprites": got["sprites"], "lv": got["lv"], "step": got["step"], "grid": got["grid"], "tile0": got["tile0"]}))
     print(name, got["size"], len(got["sprites"]), "things; levels", got["lv"], flush=True)
+
+
+def save_vox(name, vox):
+    (OUT / f"{name}_tops.png").write_bytes(base64.b64decode(vox.pop("atlas").split(",")[1]))
+    (OUT / f"{name}_vox.json").write_text(json.dumps(vox, separators=(",", ":")))
+    print(name, "blocks:", vox["w"], "x", vox["h"], "tiles,", vox["n"], "different tops", flush=True)
 
 
 def scatter(game, rnd, rows, width, keep=()):
@@ -190,10 +232,12 @@ def main():
                 at = stage(game)
                 game.sleep(6000)
                 save(name, game.js(GRAB))
+                save_vox(name, game.js(VOX))
                 if name == "village":                               # the same village from inside the near house, downstairs
                     game.rpc("dev_teleport", x=at[0], y=at[1] - 6, z=0)
                     game.sleep(4000)
                     save("inside", game.js(GRAB))
+                    save_vox("inside", game.js(VOX))
                 pg.close()
             b.close()
     finally:

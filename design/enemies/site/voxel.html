@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexel Worlds · the land as blocks</title>
+<style>
+  :root { --q:3px; --ink:#f3e6cf; --soft:#b9a48a; --night:#1d1a2b; --panel:#2f2a44; --hi:#4a4368; --lo:#17142a; --edge:#0d0b18; --gold:#ffd36a; --on:#fff1a8; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--night); color:var(--ink); font:16px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; padding:32px 16px 64px; }
+  main { width:min(1140px, 100%); margin:0 auto; }
+  h1 { margin:0; font-size:34px; letter-spacing:2px; color:var(--on); text-shadow:var(--q) var(--q) 0 #5b3f36; }
+  h1 em { font-style:normal; color:var(--gold); }
+  .sub { color:var(--soft); margin:8px 0 24px; }
+  .box { background:var(--panel); padding:16px 18px; margin-bottom:18px;
+    box-shadow:inset var(--q) var(--q) 0 var(--hi), inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 var(--lo), calc(-1 * var(--q)) 0 var(--edge), var(--q) 0 var(--edge), 0 calc(-1 * var(--q)) var(--edge), 0 var(--q) var(--edge); }
+  h2 { margin:0 0 8px; font-size:24px; color:var(--on); }
+  .view { position:relative; aspect-ratio:1100 / 650; box-shadow:0 0 0 var(--q) var(--edge); overflow:hidden; }
+  .view canvas { position:absolute; inset:0; width:100%; height:100%; }
+  .bar { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 12px; }
+  button { font:inherit; color:var(--ink); background:var(--hi); border:0; padding:6px 12px 8px; cursor:pointer;
+    box-shadow:inset var(--q) var(--q) 0 #655d8a, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #332d4f, 0 0 0 var(--q) var(--edge); }
+  button.on { background:var(--gold); color:#3b2a22; box-shadow:inset var(--q) var(--q) 0 #ffe9a8, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c99a3a, 0 0 0 var(--q) var(--edge); }
+  .knobs { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:8px 24px; margin-top:14px; }
+  label { display:flex; align-items:center; gap:10px; color:var(--soft); }
+  label span { flex:none; width:118px; } label b { flex:none; width:44px; text-align:right; color:var(--ink); font-weight:normal; }
+  input[type=range] { flex:1; accent-color:var(--gold); }
+  .four { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .four > div { cursor:pointer; } .four p { margin:6px 0 0; color:var(--soft); font-size:14px; } .four p b { color:var(--on); font-weight:normal; }
+  ul { margin:6px 0 0; padding-left:20px; } li { margin:4px 0; } li b { color:var(--on); font-weight:normal; }
+  .try { display:flex; flex-direction:column; }
+  /* A phone: the picture first and as wide as the screen, the buttons in rows that slide sideways, one view */
+  @media (max-width:760px) {
+    body { padding:12px 0 40px; font-size:15px; }
+    h1 { font-size:22px; padding:0 12px; } .sub { padding:0 12px; margin:4px 0 10px; font-size:13px; line-height:1.4; }
+    .box { padding:12px; margin-bottom:10px; box-shadow:none; }
+    .try { padding:0 0 12px; } .try h2 { display:none; } .try .view { order:-1; box-shadow:none; margin-bottom:10px; }
+    .bar { flex-wrap:nowrap; overflow-x:auto; margin:0; padding:3px 12px 9px; gap:8px; scrollbar-width:none; } .bar::-webkit-scrollbar { display:none; }
+    .bar button { flex:none; white-space:nowrap; padding:7px 11px 9px; }
+    .knobs { padding:0 12px; margin-top:4px; grid-template-columns:1fr; gap:10px; } label { font-size:14px; } label span { width:112px; white-space:nowrap; } input[type=range] { height:28px; }
+    .side { display:none; } h2 { font-size:19px; } ul { padding-left:18px; } li { font-size:14px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>NEXEL <em>WORLDS</em></h1>
+  <div class="sub">The land as blocks. Every cell of the world that is solid is a block with a top and a front, drawn from the world's own cells (not from a picture of it); what stands is flat and faces you. A try on this computer; nothing here is in the game yet. (Blocks, page 1.)</div>
+  <div class="box try">
+    <h2>Walk in it</h2>
+    <div class="bar" id="scenes"></div>
+    <div class="view" id="main"></div>
+    <div class="knobs">
+      <label><span>Curved world</span><input type="checkbox" id="curve" checked></label>
+      <label><span>See through</span><input type="checkbox" id="xray" checked></label>
+      <label><span>Show the shapes</span><input type="checkbox" id="shapes"></label>
+      <label><span>Block height</span><input type="range" id="tall" min="100" max="250" step="10" value="150"><b></b></label>
+      <label><span>Hour</span><input type="range" id="hour" min="0" max="100" value="30"><b></b></label>
+    </div>
+    <p style="color:var(--soft);margin:12px 0 0">Arrows or WASD, or drag on the picture. You go up or down a block at a step, fall into holes, and walk into caves where they are open.</p>
+  </div>
+  <div class="box">
+    <h2>What this is</h2>
+    <ul>
+      <li><b>The world's own cells.</b> The game keeps the land as columns of cells, solid or empty: a hill is cells, a cave is empty cells under solid ones, a dug room is a column cut low. This page takes those columns as they are and makes a block's top wherever a solid cell has an empty one over it, and its front wherever the cell south of it is empty.</li>
+      <li><b>Its own paint.</b> A top is the game's painting of a plain tile of that ground at that height, a front is the wall colours of its level. Nothing is cut out of a finished picture, so there is no rim, corner or cut-away to undo.</li>
+      <li><b>Seeing through.</b> Where blocks stand between you and the eye (a cave's roof, a room's rim, a hill you are behind), those higher than your feet are not drawn in a round window on you. One rule for every case.</li>
+      <li><b>Not blocks:</b> trees, animals, you and what is built (walls, floors, roofs of a house) are still flat pictures standing at their place.</li>
+      <li><b>Not there:</b> a block's east, west and north faces. The eye looks straight north with no perspective: an upright east or west face has no width.</li>
+    </ul>
+  </div>
+</main>
+<script>
+"use strict";
+const SCENES = {under: {name: "A dug room and a cave"}, hills: {name: "A mountain"}};
+const H = 650, S = 48, ST = 24;                               // a view's height; a tile; a level (px of the picture, 3 a px of the art)
+const $ = (id) => document.getElementById(id);
+const PLACE = `
+uniform vec2 uRes; uniform float uBottom, uMode, uYh, uY0, uG, uCx, uFar;
+float curve(float t) { return asin(t) * (1. + uG * t * t); }
+void place(float r, out float y, out float t) {      // (t is 1 beyond the horizon too: as deep in the air as the horizon)
+  float d = (uBottom - r) / uRes.y, y0 = min(uY0, uYh - .02); t = 0.;
+  if (uMode < .5 || d <= y0) { y = d * uRes.y; return; }
+  float want = (d - y0) / (uYh - y0), most = curve(.999);
+  float past = max(0., want - most) * (uYh - y0) * uRes.y;      // px of ground beyond the horizon
+  if (want >= most) want = max(0., most - 3. * (want - most));
+  float lo = 0., hi = .999;
+  for (int i = 0; i < 22; i++) { float m = (lo + hi) * .5; if (curve(m) < want) lo = m; else hi = m; }
+  // Beyond the horizon the ground falls away, a pixel down for each pixel further: a hill there shows its top over
+  // the line, then sinks. (Without this a mountain behind the horizon stood whole in the sky, its terraces piled
+  // like bricks with animals on them: "Wtf is happening at the horizon".)
+  y = (y0 + (uYh - y0) * lo) * uRes.y - past; t = past > 0. ? 1. : lo;
+}
+float landLean(float t) { return 1. - .5 * pow(t, 1.5); }    // how much of a height shows where the land leans back, far off
+uniform float uRef, uTall;                                   // your own height (the camera's), px; how tall a level is drawn
+float rise(float z, float t) { return (z - uRef) * uTall * landLean(t); }
+// In front: what is further south, and what is higher (the eye is south and above). The same for all that is drawn.
+float depth(float r, float z, float lead) { return clamp((uBottom - r - z) / uFar - lead, -.98, .98); }
+`;
+// A block's face. aPos: x, its row on the ground, its height (px). aUV: its paint (px of the sheet). aLoc: where in
+// its tile (px) and aAO: what stands over it (1 north, 2 west, 4 east), for the shade at a wall's foot. aKind: 0 a
+// top, 1 a front.
+const LAND_V = `#version 300 es
+precision highp float;
+in vec3 aPos; in vec2 aUV, aLoc; in float aAO, aKind; out vec2 vUV, vLoc, vScr; out float vT, vAO, vKind; out vec3 vAt;` + PLACE + `
+void main() {
+  float y, t; place(aPos.y, y, t);
+  vec2 s = vec2(uRes.x * .5 + aPos.x - uCx, y + rise(aPos.z, t));
+  gl_Position = vec4(s / uRes * 2. - 1., depth(aPos.y, aPos.z, 0.), 1.);
+  vUV = aUV; vLoc = aLoc; vAO = aAO; vKind = aKind; vT = t; vAt = aPos; vScr = s;
+}`;
+// Seeing through (uYou: you on the screen, x, y, and how wide the window is; uFeet: your row and your height): a
+// block's px that is higher than your feet, not north of you, and in the window, is not drawn.
+const LAND_F = `#version 300 es
+precision highp float;
+uniform sampler2D uTex; uniform vec2 uSrc; uniform vec3 uLight, uAir, uYou; uniform vec2 uFeet; uniform float uShow, uCut;
+in vec2 vUV, vLoc, vScr; in float vT, vAO, vKind; in vec3 vAt; out vec4 o;
+void main() {
+  vec2 q = floor(vScr / 3.) * 3. + 1.5;
+  bool cut = uYou.z > 0. && vAt.z > uFeet.y + 1. && vAt.y > uFeet.x - 50. && distance(q, uYou.xy) < uYou.z;
+  if (cut != (uCut > .5)) discard;                            // (uCut: the other way round, only what is cut: to mark where the window opened something)
+  int k = int(vKind + .5), ao = int(vAO + .5);
+  vec3 c = texture(uTex, vUV / uSrc).rgb;
+  if (uShow > .5) { c = k == 0 ? vec3(.55, .78, .44) : vec3(.74, .5, .36); if (vAt.z < .5 * float(1 - k) - 0.) c = k == 0 ? vec3(.84, .74, .52) : c * .8;
+    vec2 g = min(vLoc, (k == 0 ? vec2(48.) : vec2(48., 24.)) - vLoc); if (min(g.x, g.y) < 1.) c *= .6; }
+  float sh = 1.;
+  if (k == 0) {                                               // a top: in the shade of what stands north of it, and a line of it beside what stands west or east
+    if ((ao & 1) != 0 && vLoc.y < 12.) sh *= .7 + .075 * floor(vLoc.y / 3.);
+    // (as wide and as dark beside a block that stands west or east as under one that stands north: an upright west or
+    // east face has no width in this view, so its shade on the land beside it is all that tells a drop there)
+    if ((ao & 2) != 0 && vLoc.x < 12.) sh *= .7 + .075 * floor(vLoc.x / 3.);
+    if ((ao & 4) != 0 && vLoc.x > 36.) sh *= .7 + .075 * floor((47.99 - vLoc.x) / 3.);
+    if (((ao & 16) != 0 && vLoc.y > 45.) || ((ao & 32) != 0 && vLoc.x < 3.) || ((ao & 64) != 0 && vLoc.x > 45.)) sh *= .86;      // its own edge, where the land beside it is lower: a line, so a block reads as one
+  } else {                                                    // a front: darker beside a block that stands out west or east of it
+    if ((ao & 2) != 0 && vLoc.x < 6.) sh *= .8 + .1 * floor(vLoc.x / 3.);
+    if ((ao & 4) != 0 && vLoc.x > 42.) sh *= .8 + .1 * floor((48. - vLoc.x) / 3.);
+  }
+  if ((ao & 8) != 0) sh *= .62;                               // under a roof: a cave's own dark
+  o = vec4(mix(c * uLight * sh, uAir, smoothstep(.55, 1., vT) * .5), 1.);
+}`;
+// What stands: a flat picture facing you. aFoot: its row; aCx: its middle; aOff: this corner from the middle of its
+// foot; aLift: the height it stands at; aOwn: how high over that its own foot is; aBuilt: a piece of a house.
+const CARD_V = `#version 300 es
+precision highp float;
+in float aFoot, aCx, aLift, aOwn, aBuilt; in vec2 aOff, aUV; out vec2 vUV; out float vT;` + PLACE + `
+void main() {
+  float y, t; place(aFoot, y, t);
+  float small = 1. - .38 * pow(t, 1.5), back = 1. - .5 * pow(t, 1.6), built = step(.5, aBuilt), up = aOwn * mix(landLean(t), back, built) + aOff.y * mix(small, back, built);
+  gl_Position = vec4((uRes.x * .5 + aCx - uCx + aOff.x * mix(small, 1., built)) / uRes.x * 2. - 1., (y + rise(aLift, t) + up) / uRes.y * 2. - 1., depth(aFoot, aLift + aOwn + aOff.y, .0012), 1.);
+  vUV = aUV; vT = t;
+}`;
+const CARD_F = `#version 300 es
+precision highp float;
+uniform sampler2D uTex; uniform vec2 uSrc; uniform vec3 uLight, uAir; in vec2 vUV; in float vT; out vec4 o;
+void main() { vec4 c = texture(uTex, vUV / uSrc); if (c.a < .5) discard; o = vec4(mix(c.rgb * uLight, uAir, smoothstep(.6, 1., vT) * .4), 1.); }`;
+const SKY_V = `#version 300 es
+in vec2 p; void main() { gl_Position = vec4(p, .999, 1.); }`;
+const SKY_F = `#version 300 es
+precision highp float;
+uniform vec2 uRes; uniform float uYh, uT, uHour, uHills, uK, uAudit; out vec4 o;
+float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
+  return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
+vec3 pick(vec3 day, vec3 dusk, vec3 night) { float a = smoothstep(.5, .7, uHour), b = smoothstep(.7, .84, uHour); return mix(mix(day, dusk, a), night, b); }
+float ridge(float x, float seed, float f) { return noise(vec2(x * f + seed, seed)) * .6 + noise(vec2(x * f * 2.7 + seed, 3.)) * .28 + noise(vec2(x * f * 6.1, seed)) * .12; }
+void main() {
+  vec2 a = floor(gl_FragCoord.xy / uK / 3.) * 3.;             // (the sky is made of the land's own pixels: 3 of the picture's)
+  vec3 zen = pick(vec3(.33, .6, .93), vec3(.27, .3, .58), vec3(.05, .07, .19)), hor = pick(vec3(.78, .9, .98), vec3(.99, .68, .42), vec3(.17, .21, .44));
+  float yh = uYh, up = (a.y / uRes.y - yh) / (1. - yh), px = a.y - yh * uRes.y;
+  vec3 c = mix(hor, zen, pow(clamp(up, 0., 1.), .7));
+  float night = smoothstep(.72, .84, uHour), way = night > .5 ? (uHour - .78) / .22 : uHour / .72;
+  vec2 sun = vec2(uRes.x * (.12 + .76 * way), uRes.y * (yh + (1. - yh) * (.25 + .55 * sin(way * 3.1416))));
+  float disc = length(a + 1.5 - sun);
+  c = mix(c, night > .5 ? vec3(.92, .94, 1.) : vec3(1., .95, .7), step(disc, night > .5 ? 13. : 17.));
+  c += (night > .5 ? vec3(.2, .24, .4) : vec3(.5, .4, .2)) * smoothstep(90., 15., disc) * .5;
+  vec2 q = vec2(a.x * .004 + uT * .012, up * 3.2);
+  float cl = noise(q) * .55 + noise(q * 2.3 + 4.1) * .3 + noise(q * 5.1 + 9.) * .15;
+  c = mix(c, pick(vec3(1.), vec3(1., .82, .72), vec3(.3, .34, .56)), step(.56, cl) * (.9 - .5 * up));
+  c = mix(c, pick(vec3(.86, .92, 1.), vec3(.9, .62, .6), vec3(.22, .26, .46)), step(.5, cl) * (1. - step(.56, cl)) * .7);
+  c += step(.9975, hash(a)) * night * (1. - step(.5, cl)) * (.6 + .4 * sin(uT * 3. + a.x));
+  if (uHills > .5) {
+    float m1 = 34. + 92. * ridge(a.x, 11., .0035), m2 = 12. + 40. * ridge(a.x, 47., .007);
+    if (px < m1) c = mix(pick(vec3(.5, .62, .78), vec3(.52, .36, .5), vec3(.1, .13, .3)), hor, .12 + .3 * (1. - px / m1));
+    if (px < m1 && px > m1 - 12. && ridge(a.x, 11., .0035) > .56) c = mix(c, vec3(1.), .55 * (1. - smoothstep(.7, .86, uHour)));
+    if (px < m2) c = mix(pick(vec3(.4, .6, .5), vec3(.5, .36, .34), vec3(.08, .13, .22)), hor, .18);
+  }
+  if (px < 0.) c = uAudit > .5 && px < -10. ? vec3(1., 0., 1.) : hor;      /* (the last 10 px under the line are the air: a tile's top is flat pieces, and cuts the horizon's own curve a little short) */                                       // (under the horizon line where no land is known: the air)
+  o = vec4(c, 1.);
+}`;
+// ---- the world's cells ----
+// A column (cells.js): the heights where it changes, from the bottom: solid up to c[0], empty up to c[1], solid up to c[2]...
+const colHas = (c, z) => { for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
+function world(sc) {
+  const col = (i, j) => (i < 0 || j < 0 || i >= sc.vox.w || j >= sc.vox.h ? null : sc.vox.cols[j * sc.vox.w + i]);
+  const solid = (i, j, z) => { const c = col(i, j); return c ? colHas(c, z) : false; };
+  // where you can stand on a tile coming from height z: the highest top not more than a block up, with two cells of room over it
+  const land = (i, j, z) => { const c = col(i, j); if (!c) return null; let best = null;
+    for (let q = 0; q < c.length; q += 2) if (c[q] <= z + 1 && (q + 1 >= c.length || c[q + 1] - c[q] >= 2)) best = c[q];
+    return best; };
+  return {col, solid, land};
+}
+// The blocks' faces, and the sheet they are painted from: the tops the game painted, then a strip of fronts, a level each
+function build(sc) {
+  const {w, h, cols, tops, walls, per} = sc.vox, [gx, gy] = sc.grid, W = sc.world, v = [];
+  // The sheet: every paint three times its size (a px of the art is three of the picture), each in a slot of its own
+  // with its edge px drawn out 4 px round it, so that far off, where the sheet is read smaller and smoothed, a
+  // tile does not take in its neighbour's paint. Slots: the tops, then a front a level, then water.
+  const zs = Object.keys(walls).map(Number).sort((a, b) => a - b), SLOT = 56, ACROSS = 18, count = sc.vox.n + zs.length + 1;
+  const sheet = document.createElement("canvas"); sheet.width = ACROSS * SLOT; sheet.height = Math.ceil(count / ACROSS) * SLOT;
+  const g = sheet.getContext("2d"); g.imageSmoothingEnabled = false;
+  const slot = (k) => [(k % ACROSS) * SLOT + 4, Math.floor(k / ACROSS) * SLOT + 4];
+  const put = (k, src, sx, sy, sw, sh) => { const [x, y] = slot(k), w = sw * 3, hh = sh * 3;
+    g.drawImage(src, sx, sy, sw, sh, x, y, w, hh);
+    g.drawImage(sheet, x, y, w, 1, x, y - 4, w, 4); g.drawImage(sheet, x, y + hh - 1, w, 1, x, y + hh, w, 4);
+    g.drawImage(sheet, x, y - 4, 1, hh + 8, x - 4, y - 4, 4, hh + 8); g.drawImage(sheet, x + w - 1, y - 4, 1, hh + 8, x + w, y - 4, 4, hh + 8); };
+  for (let k = 0; k < sc.vox.n; k++) put(k, sc.tops, (k % per) * 16, Math.floor(k / per) * 16, 16, 16);
+  const one = document.createElement("canvas"); one.width = one.height = 16; const og = one.getContext("2d");
+  zs.forEach((z, k) => { const [lit, mid, dark] = walls[z].map((c) => `rgb(${c})`);      // a front: lit at its top, dark at its foot
+    og.fillStyle = mid; og.fillRect(0, 0, 16, 8); og.fillStyle = lit; og.fillRect(0, 0, 16, 1); og.fillStyle = dark; og.fillRect(0, 6, 16, 2); put(sc.vox.n + k, one, 0, 0, 16, 8); });
+  og.fillStyle = "#6fb6d8"; og.fillRect(0, 0, 16, 16); og.fillStyle = "#8fcbe6"; for (const [x, y] of [[3, 4], [10, 9], [5, 13]]) og.fillRect(x, y, 4, 1);
+  put(count - 1, one, 0, 0, 16, 16);
+  const wallAt = (z) => sc.vox.n + Math.max(0, zs.indexOf(Math.max(zs[0], Math.min(zs[zs.length - 1], z))));
+  const face = (pts, kind, ao) => { for (const k of [0, 1, 2, 1, 3, 2]) { const p = pts[k]; v.push(p[0], p[1], p[2], p[3], p[4], p[5], p[6], ao, kind); } };
+  const lowest = zs[0];
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const c = cols[j * w + i]; if (!c) continue;
+    const X = gx + i * S, Y = gy + j * S;
+    for (let q = 0; q < c.length; q += 2) {
+      const z = c[q], zp = z * ST, cell = tops[j * w + i][q / 2];
+      const [u0, v0] = slot(cell < 0 ? count - 1 : cell);
+      // what stands over it: 1 north, 2 west, 4 east (shade); 8: land over it (a cave's floor, in the dark);
+      // 16 south, 32 west, 64 east: lower there (its own edge, a line)
+      const lower = (di, dj) => { const cc = W.col(i + di, j + dj); return cc !== null && !colHas(cc, z); };
+      const ao = (W.solid(i, j - 1, z + 1) ? 1 : 0) | (W.solid(i - 1, j, z + 1) ? 2 : 0) | (W.solid(i + 1, j, z + 1) ? 4 : 0) | (q + 1 < c.length ? 8 : 0) | (lower(0, 1) ? 16 : 0) | (lower(-1, 0) ? 32 : 0) | (lower(1, 0) ? 64 : 0);
+      for (let s = 0; s < 4; s++) { const a = s * 12, b = a + 12;      // its top, in four strips north to south (so that it bends)
+        face([[X, Y + a, zp, u0, v0 + a, 0, a], [X + S, Y + a, zp, u0 + 48, v0 + a, 48, a], [X, Y + b, zp, u0, v0 + b, 0, b], [X + S, Y + b, zp, u0 + 48, v0 + b, 48, b]], 0, ao); }
+      // its front, a cell at a time, wherever the cell south of it is empty
+      const bottom = q === 0 ? lowest - 1 : c[q - 1];
+      for (let zc = z; zc > bottom; zc--) {
+        if (W.solid(i, j + 1, zc) || W.col(i, j + 1) === null) continue;
+        const cs = W.col(i, j + 1), k = wallAt(zc), a2 = (W.solid(i - 1, j + 1, zc) ? 2 : 0) | (W.solid(i + 1, j + 1, zc) ? 4 : 0) | (cs[cs.length - 1] > zc ? 8 : 0), t = zc * ST, f = t - ST;      // (8: it looks into a cave)
+        const [wu, wv] = slot(k);
+        face([[X, Y + S, t, wu, wv, 0, 0], [X + S, Y + S, t, wu + 48, wv, 48, 0], [X, Y + S, f, wu, wv + 24, 0, 24], [X + S, Y + S, f, wu + 48, wv + 24, 48, 24]], 1, a2);
+      }
+    }
+  }
+  const cards = [];
+  for (const q of sc.sprites) { if (q === sc.me) continue;
+    const cx = q.x + q.w / 2, own = q.foot - (q.y + q.h) - q.l;
+    for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]) cards.push(q.foot, cx, (dx - .5) * q.w, dy * q.h, q.l, own, q.b ? 1 : 0, q.ax + .5 + dx * (q.w - 1), q.ay + .5 + (1 - dy) * (q.h - 1)); }
+  return {land: new Float32Array(v), cards: new Float32Array(cards), sheet};
+}
+// ---- drawing ----
+const box = $("main"), canvas = document.createElement("canvas"); box.append(canvas);
+const gl = canvas.getContext("webgl2", {antialias: true, alpha: false, stencil: true});
+function program(vs, fs) {
+  const pr = gl.createProgram();
+  for (const [type, text] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) { const s = gl.createShader(type); gl.shaderSource(s, text); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); gl.attachShader(pr, s); }
+  gl.linkProgram(pr); if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+  const u = {}; for (let i = 0; i < gl.getProgramParameter(pr, gl.ACTIVE_UNIFORMS); i++) { const n = gl.getActiveUniform(pr, i).name; u[n] = gl.getUniformLocation(pr, n); }
+  return {pr, u, at: (n) => gl.getAttribLocation(pr, n)};
+}
+const P = {land: program(LAND_V, LAND_F), card: program(CARD_V, CARD_F), sky: program(SKY_V, SKY_F),
+  fill: program(`#version 300 es\nin vec2 p; void main() { gl_Position = vec4(p, .9985, 1.); }`, `#version 300 es\nprecision highp float; uniform vec3 uCol; out vec4 o; void main() { o = vec4(uCol, 1.); }`)};
+function array(prog, data, parts, usage = gl.STATIC_DRAW) {
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao); const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, data, usage);
+  const width = parts.reduce((n, q) => n + q[1], 0); let off = 0;
+  for (const [name, n] of parts) { const loc = prog.at(name); if (loc >= 0) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, width * 4, off * 4); } off += n; }
+  return {vao, buf, n: data.length / width};
+}
+function texture(img, far = false) {      // (far: read smaller and smoothed where the land is far, sharp near)
+  const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  if (far) { gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, 2); gl.generateMipmap(gl.TEXTURE_2D); }
+  for (const [k, val] of [[gl.TEXTURE_MIN_FILTER, far ? gl.LINEAR_MIPMAP_LINEAR : gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, val);
+  return t;
+}
+const CARD = [["aFoot", 1], ["aCx", 1], ["aOff", 2], ["aLift", 1], ["aOwn", 1], ["aBuilt", 1], ["aUV", 2]];
+const sky = array(P.sky, new Float32Array([-1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1]), [["p", 2]]), youBuf = array(P.card, new Float32Array(54), CARD, gl.DYNAMIC_DRAW), fill = array(P.fill, new Float32Array([-1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1]), [["p", 2]]);
+const state = {scene: "under", hole: 0};
+const keys = new Set(), drag = {on: false, x: 0, y: 0, dx: 0, dy: 0};
+// You: where you are (px of the picture: x, your row), the height you stand at (cells) and the one you are drawn at
+function walk(sc, dt, t) {
+  const at = sc.at, [gx, gy] = sc.grid, W = sc.world, tileOf = (x, r) => [Math.floor((x - gx) / S), Math.floor((r - 1 - gy) / S)];
+  let dx = (keys.has("ArrowRight") || keys.has("d") ? 1 : 0) - (keys.has("ArrowLeft") || keys.has("a") || keys.has("q") ? 1 : 0), dy = (keys.has("ArrowDown") || keys.has("s") ? 1 : 0) - (keys.has("ArrowUp") || keys.has("w") || keys.has("z") ? 1 : 0);
+  if (drag.on && Math.hypot(drag.dx, drag.dy) > 14) { const a = Math.atan2(drag.dy, drag.dx); dx = Math.cos(a); dy = Math.sin(a); }
+  const n = Math.hypot(dx, dy); at.hop = 0;
+  if (n) {
+    const step = 190 * Math.min(.05, dt) / n;
+    const go = (x, r) => { const [i, j] = tileOf(x, r), [i0, j0] = tileOf(at.x, at.r); if (i === i0 && j === j0) return true; const z = W.land(i, j, at.z); if (z === null) return false; at.z = z; return true; };
+    if (go(at.x + dx * step, at.r)) at.x += dx * step;
+    if (go(at.x, at.r + dy * step)) at.r += dy * step;
+    if (dx) at.left = dx < 0; at.hop = Math.floor(t * 9) % 2 ? 3 : 0;
+  }
+  at.zs += (at.z - at.zs) * Math.min(1, dt * 14);            // (drawn going up or down a block, not jumping to it)
+  // Are you hidden? The eye is south and above: a cell that is as far south of you as it is high over your middle
+  // is on the line to it. Then the window opens wide; if not it stays shut.
+  const [i, j] = tileOf(at.x, at.r); let hid = false;
+  for (let k = 1; k <= 40 && !hid; k++) { const zc = at.z + 1 + Math.ceil(k / 2), jj = Math.floor((at.r - 1 + (k / 2 + .4) * ST * state.tall / 100 - gy) / S); hid = W.solid(i, jj, zc) || W.solid(i, jj, zc + 1); }
+  state.hole += ((hid && $("xray").checked ? 1 : 0) - state.hole) * Math.min(1, dt * 8);
+}
+function draw(t) {
+  const sc = SCENES[state.scene]; if (!sc.gpu) return;
+  const vw = box.clientWidth < 620 ? 600 : 1100, curved = $("curve").checked, s = {mode: curved ? 1 : 0, yh: curved ? .84 : 1, y0: curved ? .34 : 1, g: 1.4, tall: state.tall / 100};
+  if (box.dataset.vw !== String(vw)) { box.dataset.vw = vw; box.style.aspectRatio = `${vw} / ${H}`; }
+  const cw = Math.max(200, Math.round(box.clientWidth * Math.min(2, devicePixelRatio || 1))), k = cw / vw;
+  if (canvas.width !== cw) { canvas.width = cw; canvas.height = Math.round(H * k); }
+  const at = sc.at, px = Math.round(at.x), pr = Math.round(at.r), ref = Math.round(at.zs * ST * s.tall) / s.tall;
+  const bottom = Math.min(sc.ground[1], pr + Math.round(.4 * H)), cx = Math.max(vw / 2, Math.min(sc.ground[0] - vw / 2, px));
+  const hr = state.hour / 100, ease = (a, b, x) => { const q = Math.max(0, Math.min(1, (x - a) / (b - a))); return q * q * (3 - 2 * q); }, mixc = (a, b, q) => a.map((v, i) => v + (b[i] - v) * q);
+  const dusk = ease(.5, .7, hr), night = ease(.7, .84, hr), light = mixc(mixc([1, 1, 1], [1, .9, .8], dusk), [.5, .58, .86], night), air = mixc(mixc([.78, .9, .98], [.99, .68, .42], dusk), [.17, .21, .44], night);
+  gl.viewport(0, 0, canvas.width, canvas.height); gl.clearColor(...air, 1); gl.clearDepth(1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.disable(gl.DEPTH_TEST);
+  if (s.mode) { const u = P.sky.u; gl.useProgram(P.sky.pr); gl.uniform2f(u.uRes, vw, H); gl.uniform1f(u.uYh, s.yh); gl.uniform1f(u.uT, t); gl.uniform1f(u.uHour, hr); gl.uniform1f(u.uHills, 1); gl.uniform1f(u.uK, k); if (u.uAudit) gl.uniform1f(u.uAudit, 0);
+    gl.bindVertexArray(sky.vao); gl.drawArrays(gl.TRIANGLES, 0, 6); }
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
+  const common = (prog, tex, w, h) => { const u = prog.u; gl.useProgram(prog.pr);
+    gl.uniform2f(u.uRes, vw, H); gl.uniform1f(u.uBottom, bottom); gl.uniform1f(u.uMode, s.mode); gl.uniform1f(u.uYh, s.yh); gl.uniform1f(u.uY0, s.y0); gl.uniform1f(u.uG, s.g); gl.uniform1f(u.uCx, cx); gl.uniform1f(u.uFar, 7000);
+    gl.uniform1f(u.uTall, s.tall); gl.uniform1f(u.uRef, ref); gl.uniform3f(u.uLight, ...light); gl.uniform3f(u.uAir, ...air); gl.uniform2f(u.uSrc, w, h);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(u.uTex, 0); return u; };
+  // you on the screen (near you the ground is not bent: your row is your height on the screen), and the window on you
+  const you = [vw / 2 + px - cx, (bottom - pr) + (at.zs * ST - ref) * s.tall + 22];
+  const u = common(P.land, sc.gpu.sheet, sc.gpu.sw, sc.gpu.sh);
+  gl.uniform3f(u.uYou, you[0], you[1], state.hole > .02 ? 34 + 86 * state.hole : 0); gl.uniform2f(u.uFeet, pr, at.zs * ST); gl.uniform1f(u.uShow, $("shapes").checked ? 1 : 0);
+  gl.uniform1f(u.uCut, 0); gl.bindVertexArray(sc.gpu.land.vao); gl.drawArrays(gl.TRIANGLES, 0, sc.gpu.land.n);
+  // Where the window cut blocks away and nothing is behind them (the inside of the ground, which has no faces): earth,
+  // dark, as a cut through it. The blocks cut are drawn once more to mark those px, then the earth is laid on the marked
+  // px that are still empty.
+  if (state.hole > .02) {
+    gl.enable(gl.STENCIL_TEST); gl.stencilMask(255); gl.clearStencil(0); gl.clear(gl.STENCIL_BUFFER_BIT);
+    gl.stencilFunc(gl.ALWAYS, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE); gl.colorMask(false, false, false, false); gl.depthMask(false); gl.disable(gl.DEPTH_TEST);
+    gl.uniform1f(u.uCut, 1); gl.drawArrays(gl.TRIANGLES, 0, sc.gpu.land.n);
+    gl.colorMask(true, true, true, true); gl.enable(gl.DEPTH_TEST); gl.stencilFunc(gl.EQUAL, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+    gl.useProgram(P.fill.pr); gl.uniform3f(P.fill.u.uCol, .24 * light[0], .17 * light[1], .15 * light[2]); gl.bindVertexArray(fill.vao); gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.depthMask(true); gl.disable(gl.STENCIL_TEST);
+  }
+  common(P.card, sc.gpu.atlas, sc.atlas.width, sc.atlas.height);
+  gl.bindVertexArray(sc.gpu.cards.vao); gl.drawArrays(gl.TRIANGLES, 0, sc.gpu.cards.n);
+  if (sc.me) { const q = sc.me, v = [];
+    for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]) { const fx = at.left ? 1 - dx : dx; v.push(pr, px, (dx - .5) * q.w, dy * q.h, at.zs * ST, at.hop, 0, q.ax + .5 + fx * (q.w - 1), q.ay + .5 + (1 - dy) * (q.h - 1)); }
+    gl.bindVertexArray(youBuf.vao); gl.bindBuffer(gl.ARRAY_BUFFER, youBuf.buf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Float32Array(v)); gl.drawArrays(gl.TRIANGLES, 0, 6); }
+}
+// ---- the page ----
+function show() {
+  document.querySelectorAll("#scenes button").forEach((b) => b.classList.toggle("on", b.dataset.key === state.scene));
+  state.tall = +$("tall").value; state.hour = +$("hour").value;
+  $("tall").parentNode.querySelector("b").textContent = state.tall + "%"; $("hour").parentNode.querySelector("b").textContent = state.hour < 72 ? "day" : "night";
+}
+for (const [key, sc] of Object.entries(SCENES)) { const b = document.createElement("button"); b.textContent = sc.name; b.dataset.key = key; b.onclick = () => { state.scene = key; show(); }; $("scenes").append(b); }
+for (const id of ["tall", "hour"]) $(id).oninput = show;
+addEventListener("keydown", (e) => { if (e.target.tagName === "INPUT" && e.target.type !== "checkbox" && e.target.type !== "range") return; keys.add(e.key.length === 1 ? e.key.toLowerCase() : e.key); if (e.key.startsWith("Arrow")) e.preventDefault(); });
+addEventListener("keyup", (e) => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key)); addEventListener("blur", () => keys.clear());
+box.style.touchAction = "none";
+box.addEventListener("pointerdown", (e) => { drag.on = true; drag.x = e.clientX; drag.y = e.clientY; drag.dx = drag.dy = 0; box.setPointerCapture(e.pointerId); });
+box.addEventListener("pointermove", (e) => { if (drag.on) { drag.dx = e.clientX - drag.x; drag.dy = e.clientY - drag.y; } });
+for (const ev of ["pointerup", "pointercancel"]) box.addEventListener(ev, () => { drag.on = false; });
+const image = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src + "?v=" + Date.now(); });
+(async () => {
+  await Promise.all(Object.entries(SCENES).map(async ([key, sc]) => {
+    const [atlas, tops, meta, vox] = await Promise.all([image(`horizon/${key}_atlas.png`), image(`horizon/${key}_tops.png`), fetch(`horizon/${key}.json?v=` + Date.now()).then((r) => r.json()), fetch(`horizon/${key}_vox.json?v=` + Date.now()).then((r) => r.json())]);
+    Object.assign(sc, {atlas, tops, vox, grid: meta.grid, ground: meta.size, sprites: meta.sprites.map((q, i) => ({...q, i})).sort((a, b) => a.foot - b.foot || a.i - b.i)});
+    sc.world = world(sc);
+    // you: the one the game had in the middle of its picture
+    sc.me = sc.sprites.filter((q) => !q.b && q.w > 34 && q.w < 50 && q.h > 38 && q.h < 58 && Math.abs(q.x + q.w / 2 - meta.size[0] / 2) < 8).sort((a, b) => Math.abs(a.foot - 1300) - Math.abs(b.foot - 1300))[0] || null;
+    const z = sc.me ? Math.round(sc.me.l / ST) : 0;
+    sc.at = {x: sc.me ? sc.me.x + sc.me.w / 2 : meta.size[0] / 2, r: sc.me ? sc.me.foot : 1300, z, zs: z, hop: 0, left: false};
+    const m = build(sc);
+    sc.gpu = {land: array(P.land, m.land, [["aPos", 3], ["aUV", 2], ["aLoc", 2], ["aAO", 1], ["aKind", 1]]), cards: array(P.card, m.cards, CARD), sheet: texture(m.sheet, true), sw: m.sheet.width, sh: m.sheet.height, atlas: texture(atlas), faces: m.land.length / 54};
+  }));
+  show(); requestAnimationFrame(tick);
+})();
+let last = 0;
+function tick(ms) { const t = ms / 1000; walk(SCENES[state.scene], t - (last || t), t); last = t; draw(t); requestAnimationFrame(tick); }
+</script>
+</body>
+</html>

@@ -1872,6 +1872,37 @@ The audit, as two tools that stay:
   north face (never in view), and east and west faces as upright walls: this view looks straight north and has
   no perspective, so an upright east or west wall has no width on the screen. The stepped side stands in for it.
 
+## Iteration: the land as blocks (a first page)
+
+The user, after I advised blocks for the land but not "full voxels": "I think we should go for the full voxel
+rendering. Why? Because we have so much issues with 2d-based rendering of caves. It will make the xray view more
+intuitive and easy. We'll keep the other sprites 2d-facing camera". Decided: the land is drawn as blocks, from
+the world's cells; what stands stays a flat picture facing you.
+It fits what the world already is: cells.js keeps a tile as a column of cells, solid or empty (a cave: empty
+cells under solid ones). Nothing had to be invented, only drawn as it is kept.
+Hypothesis: drawn from the cells, with paint a face (not cut out of the game's flat picture), the corner, rim and
+cut-away cases of the sky page do not exist; and seeing through is one rule.
+Change. design/enemies/horizon_capture.py also takes, from the game itself: every tile's column; for every height
+you could stand at, the game's own painting of a plain tile of that ground at that height (drawTile asked with the
+same ground all round: no rim, no cut corner), the different ones on one sheet; a wall's three colours a level
+(relief.js colsOf). design/enemies/site/voxel.html (local): a top wherever a solid cell has an empty one over it,
+a front wherever the cell south is empty; shade under and beside what stands higher, dark under a roof, a line on
+a block's own edge; the same bend, sky and flat standing pictures as the sky page; you walk by the cells (a block
+up or down, a fall, into a cave where it is open, two cells of room over your head).
+Seeing through: a block's px that is higher than your feet, not north of you, and inside a round window on you is
+not drawn; where nothing is behind it (the inside of the ground has no faces) dark earth is laid, by the stencil.
+The window opens when a cell stands on the line from you to the eye. One rule: the dug room's rim, the cave's
+roof, a hill you are behind. No cut-away set of shapes, no painted-over ground.
+Measured: about 7900 faces a place; walked by key on a computer's width and a phone's: out of the dug room by its
+stair, in at the cave's mouth and through it (the window opens on entering, shuts outside), up the mountain. No
+page errors. Not measured: frame time on the phone itself, motion frame by frame.
+Self-critical: slopes that face east, west or north have no face to show (no perspective): they read by shade
+alone, and that is thin. The window is a hard circle. Tops are plain: the game's grass rims are gone, the land is
+blockier than the game today. Not in the game: the game's own renderer, mouse aiming, building, shadows and
+shaders all still stand on the flat picture.
+Next: the user's look at it; then what it would take in the game (a land renderer on the GPU fed by blocks'
+columns as they change).
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
