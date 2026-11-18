@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 34.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 35.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -272,7 +272,7 @@ function shapes(sc) {
     // is taken from further in there.)
     // (And at a sheer drop, where this tile has no stepped side: the game paints the cliff's own side down that
     // edge and cuts the tile's corner round, showing what is behind, a river's yellow at a canyon's edge.)
-    const over = (v) => v === null || L < 0 ? 0 : v > L ? Math.min(S / 2, 6 + 3 * (v - L)) : L > 0 && L - v > 2 ? 16 : 0, oW = over(west), oE = over(east), oN = north !== null && L > 0 && L - north > 2 ? 9 : 0;      // (oN: the same along its north edge, a thin line of the river's colour)
+    const over = (v) => v === null || L < 0 ? 0 : v > L ? Math.min(S / 2, 6 + 3 * (v - L)) : L > 0 && L - v > 2 ? 16 : 0, oN = north !== null && L > 0 && L - north > 2 ? 16 : 0, oW = Math.max(over(west), oN), oE = Math.max(over(east), oN);      // (oN: the same along its north edge, a thin line of the river's colour)
     const piece = (a, b, c, d, uv = (x, r, hh) => [Math.max(X + oW, Math.min(X + S - oE, x)) + dX, Math.max(r, Y + oN) - h + dY]) => { for (const [x, r, hh, lit, far = hh] of [a, b, c, b, d, c]) land.push(x, r, hh, ...uv(x, r, hh), lit, far); };      // (far: its height far off, where a side does not slope)
     // Its top: each step of its width, in four strips north to south (so that it bends). The flat middle wears
     // the game's painting; a step of a cliff's side is the cliff's earth, one colour (8 px in from the side, where
