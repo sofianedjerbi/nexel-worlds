@@ -1776,6 +1776,12 @@ each, darker the lower: every edge is upright or level. `edge(i, j)` gives a til
 cut where its steps and those of the tile south of it change, so each piece is a rectangle (the code that cut
 slopes by level is gone).
 
+"Corners still has weird shadow angles". Walls drawn alone (?only=walls) showed a dark green patch under every
+wall, cut at a slant at its corners. It was the game's own painting, taken with the wall: the game rounds a wall's
+lower corners (up to 18 px in) and paints the shaded grass of the cliff's foot over the last 7 px of each level.
+A wall now takes the middle third of its tile and not those 7 rows. And my shade under a cliff was one smooth
+fade the whole tile wide: it is four flat bands of one land pixel, only as wide as the cliff above.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole

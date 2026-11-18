@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 27.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 28.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -215,6 +215,7 @@ function shapes(sc) {
   // pixel (3 px) each: the cliff's side. (It was a smooth slope: its ends were slanted lines, on walls too, and
   // nothing else in this picture is slanted: "Can you improve edges".) Every edge is upright or level.
   const RIB = 4, PX = 3, W = RIB * PX;
+  const FOOT = 7;      // px at the foot of a level of wall that the game paints as grass in shade
   const edge = (i, j) => { const L = sc.tile(i, j), w = sc.tile(i - 1, j), e = sc.tile(i + 1, j), h = L * st, out = [];
     const lw = w !== null && w < L ? w * st : null, le = e !== null && e < L ? e * st : null;
     if (lw !== null) for (let q = 0; q < RIB; q++) out.push([q * PX, (q + 1) * PX, Math.round(lw + (h - lw) * (q + 1) / (RIB + 1)), q]);
@@ -259,9 +260,17 @@ function shapes(sc) {
     // the game paints the cliff), darker the lower it is. Where higher land stands north, the first strip is in
     // its shade. Far off a side's steps stand at the tile's height again (there they made each terrace a brick).
     const hs = edge(i, j);
-    if (ONLY !== "walls") for (const [xa, xb, hh, rib] of hs) for (let q = 0; q < 4; q++) {
-      const r0 = Y + q * S / 4, r1 = r0 + S / 4, l0 = q === 0 && north !== null && north > L ? .74 : 1;
-      if (rib < 0) { piece([X + xa, r0, hh, l0], [X + xb, r0, hh, l0], [X + xa, r1, hh, 1], [X + xb, r1, hh, 1]); continue; }
+    // (the shade under a cliff: four bands of one land pixel, each one flat, lighter away from the cliff, and only
+    // as wide as the cliff above stands over this tile. It was one smooth fade the whole tile wide.)
+    const shaded = north !== null && north > L, above = shaded ? edge(i, j - 1).find((q) => q[3] < 0) : null, rows = [];
+    if (shaded) for (let q = 0; q < 4; q++) rows.push([Y + q * PX, Y + (q + 1) * PX, .7 + .075 * q]);
+    for (let q = 0; q < 4; q++) { const a = Y + q * S / 4, b = a + S / 4; if (!shaded || q > 0) rows.push([a, b, 1]); else rows.push([Y + 4 * PX, b, 1]); }
+    if (ONLY !== "walls") for (const [xa, xb, hh, rib] of hs) for (const [r0, r1, l0] of rows) {
+      if (rib < 0) {
+        const cuts = l0 < 1 ? [xa, Math.max(xa, Math.min(xb, above[0])), Math.max(xa, Math.min(xb, above[1])), xb] : [xa, xb];
+        for (let c = 0; c + 1 < cuts.length; c++) if (cuts[c + 1] > cuts[c]) { const l = l0 < 1 && c !== 1 ? 1 : l0;
+          piece([X + cuts[c], r0, hh, l], [X + cuts[c + 1], r0, hh, l], [X + cuts[c], r1, hh, l], [X + cuts[c + 1], r1, hh, l]); }
+        continue; }
       const col = xa < S / 2 ? X + 8 : X + S - 9, sh = .6 + .09 * rib;
       piece([X + xa, r0, hh, sh, h], [X + xb, r0, hh, sh, h], [X + xa, r1, hh, sh, h], [X + xb, r1, hh, sh, h], () => [col + dX, Y + S / 2 - h + dY]);
     }
@@ -280,7 +289,9 @@ function shapes(sc) {
       for (let k = L; k * st > foot; k--) {
         const from = bandFrom(i, j, k); if (!from) continue;
         const hi = k * st, lo = hi - st, wX = gx + from[0] * S, wY = gy + from[1] * S, ff = cl(fb, lo, hi);
-        const uv = (x, r, hh) => [wX + 10 + (x - X) / S * (S - 20), wY + S - Math.max(hh, lo)];
+        // (from the tile's middle third: the game rounds a wall's lower corners, and that cut, up to 18 px in, showing the
+        // grass behind, was a slanted dark patch at each wall's foot: "corners still has weird shadow angles")
+        const uv = (x, r, hh) => [wX + 18 + (x - X) / S * (S - 36), wY + S - (lo + FOOT + (Math.max(hh, lo) - lo) * (st - FOOT) / st)];      // (not the last rows of a level: there the game paints the shaded grass at the cliff's foot, a dark green patch under each wall)
         for (const [xa, xb, top, bot] of parts) {
           const t = cl(top, lo, hi), bt = cl(bot, lo, t), b2 = bt <= bot ? bt - 2 : bt;
           if (t > bt || hi > ff) piece([xa, Y + S, t, lit(t), hi], [xb, Y + S, t, lit(t), hi], [xa, Y + S, b2, lit(bt), ff], [xb, Y + S, b2, lit(bt), ff], uv);
