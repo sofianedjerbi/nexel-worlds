@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 29.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 30.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -133,6 +133,14 @@ void place(float r, out float y, out float t) {      // (t is 1 beyond the horiz
 float landLean(float t) { return 1. - .5 * pow(t, 1.5); }    // how much of the land's height shows where it leans back, far off (most of it: with half, a far mountain lay flat)
 uniform float uRef;                                          // the land's height where you stand: the camera is at your height, as in the game
 uniform float uTall;                                         // how tall a level is drawn, as a share of the game's 8 px ("looks soo flat")
+// How far up the screen a height over the ground is drawn (px), from the camera's own: as tall as "Block height"
+// says, leaning back far off.
+// What is under the ground (a dug room, its walls, whoever stands in it) is not lifted at all: it is put where the
+// game's picture has it, that many rows further south, on the ground. The game shows a room by painting it over
+// the ground south of it, and that ground is drawn here wearing that painting; so the room, drawn as a hole of
+// its own depth, was drawn twice, and you stood on one floor with your shadow on the other, or went behind the
+// rim ("underground vision is completely broken"). On the picture's rows, room, floor, shadow and you are one.
+float rise(float z, float t) { return (max(z, 0.) - uRef) * uTall * landLean(t); }
 float depth(float r, float lead) { return clamp((uBottom - r) / uFar - lead, -.98, .98); }      // nearer along the ground: in front
 `;
 const LAND_V = `#version 300 es
@@ -140,8 +148,9 @@ precision highp float;
 in vec3 aPos; in vec2 aUV; in float aShade, aFar; out vec2 vUV; out float vT, vShade;` + PLACE + `
 // (a cliff's side slopes near you; far off it stands straight again: there each sloping end made a terrace a bevelled brick)
 void main() {
-  float y, t; place(aPos.y, y, t);
-  gl_Position = vec4((uRes.x * .5 + aPos.x - uCx) / uRes.x * 2. - 1., (y + (mix(aPos.z, aFar, smoothstep(.15, .6, t)) - uRef) * uTall * landLean(t)) / uRes.y * 2. - 1., depth(aPos.y, 0.), 1.);
+  float y, t, y1, t1; place(aPos.y, y1, t1);
+  float zz = mix(aPos.z, aFar, smoothstep(.15, .6, t1)), row = aPos.y - min(zz, 0.); place(row, y, t);
+  gl_Position = vec4((uRes.x * .5 + aPos.x - uCx) / uRes.x * 2. - 1., (y + rise(zz, t)) / uRes.y * 2. - 1., depth(row, zz < 0. ? .0004 : 0.), 1.);
   vUV = aUV; vT = t; vShade = aShade;
 }`;
 const LAND_F = `#version 300 es
@@ -155,13 +164,13 @@ const CARD_V = `#version 300 es
 precision highp float;
 in float aFoot, aCx, aLift, aOwn, aBuilt; in vec2 aOff, aUV; out vec2 vUV; out float vT;` + PLACE + `
 void main() {
-  float y, t; place(aFoot, y, t);
+  float y, t, row = aFoot - min(aLift, 0.) - min(aOwn, 0.); place(row, y, t);
   float small = 1. - .38 * pow(t, 1.5), back = 1. - .5 * pow(t, 1.6), built = step(.5, aBuilt);
   float sx = uRes.x * .5 + aCx - uCx + aOff.x * mix(small, 1., built);
   // (aLift: the height of the land it stands on, drawn as tall as the land is; aOwn: how high over that it is itself, a floor upstairs)
-  float sy = y + (aLift - uRef) * uTall * landLean(t) + aOwn * mix(landLean(t), back, built) + aOff.y * mix(small, back, built);
+  float sy = y + rise(aLift, t) + max(aOwn, 0.) * mix(landLean(t), back, built) + aOff.y * mix(small, back, built);
   // (in front of the ground it stands on; and someone down a hole near you is seen in it, as the game cuts the ground away for them)
-  float z = aLift < 0. && t == 0. ? -.99 : depth(aFoot, .0015);
+  float z = depth(row, aLift < 0. ? .003 : .0015);
   gl_Position = vec4(sx / uRes.x * 2. - 1., sy / uRes.y * 2. - 1., z, 1.);
   vUV = aUV; vT = t;
 }`;
@@ -217,7 +226,8 @@ function shapes(sc) {
   const RIB = 4, PX = 3, W = RIB * PX;
   const FOOT = 7;      // px at the foot of a level of wall that the game paints as grass in shade
   const edge = (i, j) => { const L = sc.tile(i, j), w = sc.tile(i - 1, j), e = sc.tile(i + 1, j), h = L * st, out = [];
-    const lw = w !== null && w < L ? w * st : null, le = e !== null && e < L ? e * st : null;
+    // (only over the ground: a side that goes down into a dug room is in the game's painting of the room already)
+    const side = (v) => v !== null && v < L && L > 0 ? Math.max(v, 0) * st : null, lw = side(w), le = side(e);
     if (lw !== null) for (let q = 0; q < RIB; q++) out.push([q * PX, (q + 1) * PX, Math.round(lw + (h - lw) * (q + 1) / (RIB + 1)), q]);
     out.push([lw !== null ? W : 0, le !== null ? S - W : S, h, -1]);
     if (le !== null) for (let q = RIB - 1; q >= 0; q--) out.push([S - (q + 1) * PX, S - q * PX, Math.round(le + (h - le) * (q + 1) / (RIB + 1)), q]);

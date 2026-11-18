@@ -1786,6 +1786,17 @@ fade the whole tile wide: it is four flat bands of one land pixel, only as wide 
 step of the cliff's side there is now one band more than under the step before (1, 2, 3, 4, then four under the
 flat edge): the shade ends round, in the land's pixels, as the cliff's own stepped corner does.
 
+"Underground vision is completely broken". It was, as the page opens (you in the dug room, in the bend), and I
+had not seen it: my pictures turn "walk by itself" off and walk, which is not what the page shows first. You were
+gone from the room, or stood a floor above your shadow; the taller room was crushed. Cause, read off the level
+grid and the game's own picture: the game shows a dug room by painting it over the ground south of it (it cuts
+that ground away). Here that ground is drawn wearing that painting, and the room was also drawn as a hole of its
+own depth (deeper since "Block height"): two floors, you on one, your shadow on the other, the hole's floor behind
+its own rim. Now nothing under the ground is lifted: a floor, a wall's part under the ground and whoever stands
+there are put where the game's picture has them, that many rows further south, on the ground. Room, floor, shadow
+and you are one picture again, in the bend and far off. No stepped sides down into a room (the painting has them).
+Rule for me: photograph each place as the page opens it, before anything else.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
