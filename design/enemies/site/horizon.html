@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 14.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 15.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -285,7 +285,8 @@ function view(box, get) {
 }
 const state = {...PRESETS[2], hour: 30, walk: 55, stand: true, hills: true, layers: true, scene: "meadow"};
 // (in a house or under ground the camera stays on you while the walk goes by itself: that is where you look)
-const bottomOf = (walk, scene) => ((scene === "inside" || scene.startsWith("under")) && $("auto").checked ? 1545 : 2580 - walk / 100 * 1250);
+// (a whole pixel of the picture at a time: at parts of a pixel the land's sharp pixels moved by two, then three, then two: a shake)
+const bottomOf = (walk, scene) => ((scene === "inside" || scene.startsWith("under")) && $("auto").checked ? 1545 : Math.round(2580 - walk / 100 * 1250));
 const $ = (id) => document.getElementById(id);
 const views = [view($("main"), () => ({...state, bottom: bottomOf(state.walk, state.scene)}))];
 function show() {

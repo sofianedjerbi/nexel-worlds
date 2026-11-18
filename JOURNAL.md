@@ -1724,6 +1724,15 @@ the grass rim turning the corner, a few px wide; on an upright wall that is a gr
 painting is now taken from the middle of its tile and spread over its width (a wall is bands across: nothing is
 lost). One line of the shapes; no rule.
 
+Then: "Go check motion by capturing different moment". Until now only still pictures. 24 and 36 moments of the
+walk, 3 px apart, of five places, the sky's clock held still. First measure (what changes and changes back between
+three moments) was no use: a sharp picture that only slides scores high on it. Second: where nothing is bent, each
+moment slid back by its 3 px against the one before: 0.01 of 255 on average, 0.04 at worst: it only slides. In the
+bend and at the horizon, how much one moment differs from the next: even, the worst within a tenth of the usual: no
+thing appears or goes in one step. One thing found and fixed: the walk moved the picture by parts of a pixel, and
+the land's sharp pixels then moved by two, three, two: a shake of every tree. The camera goes a whole pixel at a
+time. Looked at four moments of the horizon three times enlarged: terraces and trees move as one.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
