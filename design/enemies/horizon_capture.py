@@ -75,7 +75,9 @@ GRAB = """async () => {
   const mg = map.getContext("2d"); mg.fillStyle = "#000"; mg.fillRect(0, 0, tw, th);
   for (let j = 0; j < th; j++) for (let i = 0; i < tw; i++) {
     if (!tile(tx0 + i, ty0 + j)) continue;
-    const L = DEPTH_OF[gndAt(tx0 + i, ty0 + j)] ? 0 : levelAt(tx0 + i, ty0 + j); levels.add(L);      // (water: its face is at sea level, whatever its bed. Its bed's depth made a deep pond a stack of its own rim)
+    // (water is at the height the game paints it: its bed's. It was put at sea level, whatever its bed, for the
+    // page's first way of drawing; with real shapes that made a river on a mountain a canyon twelve levels deep.)
+    const L = levelAt(tx0 + i, ty0 + j); levels.add(L);
     mg.fillStyle = `rgb(${128 + L},0,0)`; mg.fillRect(i, j, 1, 1);
   }
   const faces = [], grid = [Math.round(ox + tx0 * S), Math.round(oy + ty0 * S), S];

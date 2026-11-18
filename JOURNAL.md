@@ -1814,6 +1814,15 @@ everywhere". Three things.
 Known: your shadow stays where the game had you (it is in the ground's picture); no walking frames (one picture,
 turned and hopping); trees and walls do not stop you.
 
+"Weird shapes here": three pillars at the top of the mountain, before a grey wall. Read off the level grid: the
+world has a real canyon there, a river at level 0 between banks at 12 (I had guessed the capture's "water at sea
+level" made it up; captured again with water at the game's own height: the same, it is the land), and along its
+south bank a crest one tile wide that runs on the diagonal: three tiles at 12 that touch only at their corners,
+land at 11 on one side, the canyon on the other. Three separate blocks is what they are; the game paints each as
+a round knob. What was wrong was mine: the side of a cliff went all the way down in four steps, so on the canyon's
+side each block had steps three levels high. A side now goes down one level at most; under that the cliff is
+sheer. (Capture: water is at the height the game paints it.)
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
