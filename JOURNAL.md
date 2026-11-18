@@ -1698,6 +1698,17 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 173: over the horizon and down behind it
+
+"It should not disappear at the top. It should go behind. Up, then down. Like animalcrossing". The bend took the
+ground up to the horizon line and stopped: a thing reaching the line was dropped. On a log the world goes on round
+and down the far side. So past the horizon a thing is placed where one as far short of the horizon would be, but
+behind the ground: only what of it is over the horizon line is drawn, less and less as it goes. Houses first lose
+their door, then their walls, then the roof sinks. High land the same, in the shader: for a pixel over the horizon
+with nothing of the near side in it, the far side's spot at each height, and the land there if it is that high (in
+one plain tone: it is far). A house's pieces are drawn solid (paled like trees, one showed through another: a house
+twice). Looked at a walk away from the two houses in five steps, and from the hill with the cave.
+
 ## Iteration 172: far trees keep their shape; the page on a phone
 
 "At horizon tree appear compressed. Also fix your demo online so it show good on phone". Trees: far things were
