@@ -45,7 +45,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 33.)</div>
+  <div class="sub">A sky over the world: the ground curves away to a horizon, and the land and everything on it stand. Made from real frames of the game; nothing here is in the game yet. (Page 34.)</div>
   <div class="box try">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -229,7 +229,8 @@ function shapes(sc) {
   const edge = (i, j) => { const L = sc.tile(i, j), w = sc.tile(i - 1, j), e = sc.tile(i + 1, j), h = L * st, out = [];
     // (only over the ground: a side that goes down into a dug room is in the game's painting of the room already)
     // (and never more than a level down: the side of a cliff twelve levels high, in four steps, was four pillars)
-    const side = (v) => v !== null && v < L && L > 0 ? Math.max(v, 0, L - 1) * st : null, lw = side(w), le = side(e);
+    // (and none at a sheer drop of more than two levels: on a canyon's wall each tile's step was a dark notch at its top)
+    const side = (v) => v !== null && v < L && L > 0 && L - v <= 2 ? Math.max(v, 0, L - 1) * st : null, lw = side(w), le = side(e);
     if (lw !== null) for (let q = 0; q < RIB; q++) out.push([q * PX, (q + 1) * PX, Math.round(lw + (h - lw) * (q + 1) / (RIB + 1)), q]);
     out.push([lw !== null ? W : 0, le !== null ? S - W : S, h, -1]);
     if (le !== null) for (let q = RIB - 1; q >= 0; q--) out.push([S - (q + 1) * PX, S - q * PX, Math.round(le + (h - le) * (q + 1) / (RIB + 1)), q]);
@@ -269,8 +270,10 @@ function shapes(sc) {
     // (Beside higher land the game paints that land's side over this tile's edge, a few px a level: lying flat on
     // this tile it was a pale bracket at the foot of a hill, "what are those weird corners". This tile's painting
     // is taken from further in there.)
-    const over = (v) => v !== null && v > L && L >= 0 ? Math.min(S / 2, 6 + 3 * (v - L)) : 0, oW = over(west), oE = over(east);
-    const piece = (a, b, c, d, uv = (x, r, hh) => [Math.max(X + oW, Math.min(X + S - oE, x)) + dX, r - h + dY]) => { for (const [x, r, hh, lit, far = hh] of [a, b, c, b, d, c]) land.push(x, r, hh, ...uv(x, r, hh), lit, far); };      // (far: its height far off, where a side does not slope)
+    // (And at a sheer drop, where this tile has no stepped side: the game paints the cliff's own side down that
+    // edge and cuts the tile's corner round, showing what is behind, a river's yellow at a canyon's edge.)
+    const over = (v) => v === null || L < 0 ? 0 : v > L ? Math.min(S / 2, 6 + 3 * (v - L)) : L > 0 && L - v > 2 ? 16 : 0, oW = over(west), oE = over(east), oN = north !== null && L > 0 && L - north > 2 ? 9 : 0;      // (oN: the same along its north edge, a thin line of the river's colour)
+    const piece = (a, b, c, d, uv = (x, r, hh) => [Math.max(X + oW, Math.min(X + S - oE, x)) + dX, Math.max(r, Y + oN) - h + dY]) => { for (const [x, r, hh, lit, far = hh] of [a, b, c, b, d, c]) land.push(x, r, hh, ...uv(x, r, hh), lit, far); };      // (far: its height far off, where a side does not slope)
     // Its top: each step of its width, in four strips north to south (so that it bends). The flat middle wears
     // the game's painting; a step of a cliff's side is the cliff's earth, one colour (8 px in from the side, where
     // the game paints the cliff), darker the lower it is. Where higher land stands north, the first strip is in

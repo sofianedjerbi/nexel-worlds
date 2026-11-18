@@ -1823,6 +1823,13 @@ a round knob. What was wrong was mine: the side of a cliff went all the way down
 side each block had steps three levels high. A side now goes down one level at most; under that the cliff is
 sheer. (Capture: water is at the height the game paints it.)
 
+"There's still weird artefact in the upper right corner" (the canyon, from beside it in play). Three, all of one
+kind, the game's flat painting of a sheer cliff taken as if it were a tile's top or a wall: a dark notch at the top
+of each tile of the far wall (its one-level stepped side: none now at a drop of more than two levels); orange
+flecks and yellow corners on the bank's tiles (down a sheer edge the game paints the cliff's own side, and cuts
+the tile's corner round, showing the river behind: those tiles take their painting 16 px in from that side, 9
+from a sheer north edge). Looked at from three spots beside the canyon, standing there in play.
+
 ## Iteration 175: the horizon itself
 
 "Everything looks broken at horizon level. Fix everything. Take multiple pictures". The audit before looked at whole
