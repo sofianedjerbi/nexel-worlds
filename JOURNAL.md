@@ -1698,6 +1698,18 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 165: the curved world, with things standing on it
+
+"sky strip = ugly. the curved: good, but everything is... flat. add more relief. can you improve sky strip or suggest
+something else". The first page bent the whole picture, so a far tree was pressed flat into the grass. The frame is
+now taken in two parts (design/enemies/horizon_capture.py: the ground with its shadows, and each of the 549 things
+that stand, cut out, with where its foot is), and the page bends the ground only: each thing is put back on it
+upright at the place the bend gives its foot, smaller with distance, and the last ones stand against the sky. Two
+rows of far mountains past the horizon. In place of the fog strip: a tilted camera (the ground leans back and narrows,
+lines run to a point: more depth, but the land's pixels are no longer square) and a backdrop (nothing bends, the land
+ends behind a line of woods with hills behind). "Things stand" can be unticked to see the first way. Looked at by
+day and at dusk. Still a page; nothing in the game.
+
 ## Iteration 164: a sky over the world, shown before it is built
 
 "whats frustrating in this game is that you don't see the sky", then: "try to make this game curved in a animal
