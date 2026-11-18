@@ -34,7 +34,7 @@
 <body>
 <main>
   <h1>NEXEL <em>WORLDS</em></h1>
-  <div class="sub">A sky over the world. Third page: the curved far view is the one kept, tried here on buildings and under ground. Before that: The fog strip is gone ("ugly"), and the curved world was flat: now the ground bends and what stands on it stays standing, with mountains behind. Made from a real frame of the game, taken in two parts: the ground, and each of the 549 things on it. Nothing here is in the game.</div>
+  <div class="sub">A sky over the world. Fourth page: the curved far view, now with the land itself in levels (hills and mountains stand), tried on buildings and under ground. Before that: The fog strip is gone ("ugly"), and the curved world was flat: now the ground bends and what stands on it stays standing, with mountains behind. Made from a real frame of the game, taken in two parts: the ground, and each of the 549 things on it. Nothing here is in the game.</div>
   <div class="box">
     <h2>Try it</h2>
     <div class="bar" id="scenes"></div>
@@ -48,11 +48,12 @@
       <label><span>Walk north</span><input type="range" id="walk" min="0" max="100"><b></b></label>
       <label><span>Walk by itself</span><input type="checkbox" id="auto" checked></label>
       <label><span>Things stand</span><input type="checkbox" id="stand" checked></label>
-      <label><span>Mountains</span><input type="checkbox" id="hills" checked></label>
+      <label><span>Land in levels</span><input type="checkbox" id="layers" checked></label>
+      <label><span>Painted hills</span><input type="checkbox" id="hills" checked></label>
     </div>
   </div>
   <div class="box">
-    <h2>Four places, in the curved far view</h2>
+    <h2>Five places, in the curved far view</h2>
     <div class="four" id="four"></div>
   </div>
   <div class="box">
@@ -60,7 +61,8 @@
     <ul>
       <li><b>Where you are, nothing changes.</b> The lower part of the screen is not bent: it is today's picture, tile for tile. Standing in a dug room, the hole is cut open around you exactly as now; standing in a house, its upper floor and roof are cut away exactly as now. Digging, building, the build cursor, stairs and ladders all happen there. So the curve does not fight the building system: it only touches what is far.</li>
       <li><b>Far houses stand.</b> A house is already drawn piece by piece (each wall, each floor and roof cell, each ladder), so each piece is put back on the bent ground at its own tile, a floor as high over the ground as it is built. Two-storey houses come out whole and stand up against the sky. (My first try made far pieces narrower: a house came apart in strips. On a log far things keep their width and only lean away.)</li>
-      <li><b>Far hills go flat.</b> The hill with the cave north of the dug room is pressed into a slab. The land's height is part of the ground picture, so it is bent with it. To stand, the land would have to be put back a level at a time, as it is already drawn a level at a time. This is the real work.</li>
+      <li><b>The land stands, level by level.</b> "The whole world is in 3d.. leverage that": the world knows the height of every tile, and the game already draws each level a step higher than the one under it. So here each level is its own sheet on the curve: bent with the ground, then raised by its own height; and where a level ends over lower land, its wall is put back upright like a house's. The hill with the cave now stands over the horizon, mouth and all; the mountain rises in terraces and takes the sky, as a mountain in front of you does. Untick "Land in levels" to see it pressed flat as before.</li>
+      <li><b>What is still rough.</b> Far up a mountain the terraces are a few pixels each and read as stripes: the game would draw them, not resample a picture. A tree that stands behind a hill is drawn over it (the page puts everything that stands on top of the land; the game would sort them with the levels). A pit far away shows its back wall and little of its floor.</li>
       <li><b>The build cursor far away.</b> Planning a wall up in the bent band means aiming through the bend. The cursor can be kept to the flat part, or the bend undone for it.</li>
       <li><b>A deep place far away.</b> Scroll the walk by hand in "Under ground": the dug room seen from far is squashed while you stand tall in it. In the game you are never far from yourself, but another player's pit is: it reads as a dark slot.</li>
     </ul>
@@ -84,6 +86,7 @@ const SCENES = {
   meadow: {name: "Meadow", say: "Trees, ponds, animals: nothing built."},
   village: {name: "Two houses", say: "Two floors each, walls upstairs, a roof, seen from outside. Every wall, floor and roof piece is put back standing."},
   inside: {name: "Inside a house", say: "You stand downstairs in the near house: the game has cut its upper floor and roof away, as it does today."},
+  hills: {name: "A mountain", say: "The world's own mountain, thirteen levels of terraces, as the game made it. Each level is lifted on the curve; its walls stand."},
   under: {name: "Under ground", say: "You stand in a room dug four down, a stair up to the west; north of you a hill with a cave in it."},
 };
 const PRESETS = [
@@ -99,7 +102,7 @@ const fOf = (s, t) => s.mode === 1 ? Math.asin(t) * (1 + s.g / 100 * t * t) : t 
 const depthOf = (s, y) => { const y0 = Math.min(s.y0, s.yh - 2) / 100, yh = s.yh / 100; return (s.mode !== 1 && s.mode !== 3) || y <= y0 ? y : y0 + (yh - y0) * fOf(s, (y - y0) / (yh - y0)); };
 const VERT = "attribute vec2 p; void main() { gl_Position = vec4(p, 0., 1.); }";
 const FRAG = `precision highp float;
-uniform sampler2D uTex; uniform vec2 uRes, uSrc; uniform float uBottom, uMode, uYh, uY0, uG, uT, uHour, uCx, uHills;
+uniform sampler2D uTex, uMap; uniform vec2 uRes, uSrc; uniform float uBottom, uMode, uYh, uY0, uG, uT, uHour, uCx, uHills, uLv[14], uLvN, uStep, uLayers;
 float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
   return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
@@ -111,26 +114,47 @@ vec3 land(float row, float x, float spread) {
     c += texture2D(uTex, vec2((spread < 1.5 ? floor(x) + .5 : x) / uSrc.x, (spread < 1.5 ? floor(r) + .5 : r) / uSrc.y)).rgb; }
   return c / 5.;
 }
+// A row of the screen (px from its bottom) -> how far along the flat ground that is (px), where in the bend (t, 0 to 1),
+// how much ground one screen row holds there (spread) and how much wider the land is drawn (tilted)
+float along(float py, out float t, out float spread, out float wide) {
+  float y = py / uRes.y, yh = uYh, y0 = min(uY0, yh - .02); t = 0.; spread = 1.; wide = 1.;
+  bool bent = (uMode > .5 && uMode < 1.5) || uMode > 2.5;
+  if (!bent || y <= y0) return py;
+  t = min((y - y0) / (yh - y0), .9995);
+  float f, df;
+  if (uMode < 1.5) { f = asin(t) * (1. + uG * t * t); df = (1. / sqrt(max(1e-4, 1. - t * t))) * (1. + uG * t * t) + asin(t) * 2. * uG * t; }
+  else { float c = 1. - 1. / (3. + uG * 1.4); f = t / (1. - c * t); df = 1. / ((1. - c * t) * (1. - c * t)); wide = 1. + (f - t) * .35; }
+  spread = df;
+  return (y0 + (yh - y0) * f) * uRes.y;
+}
+float lean(float t, float wide) { return uMode > 2.5 ? 1. / wide : 1. - .5 * pow(t, 1.6); }      // a thing standing far away: how much of its height shows
 void main() {
   vec2 p = gl_FragCoord.xy, a = floor(p / 3.) * 3.;
-  float y = p.y / uRes.y, yh = uYh, y0 = min(uY0, yh - .02), d = p.y, spread = 1., t = 0., wide = 1.;
+  float y = p.y / uRes.y, yh = uYh;
   bool bent = (uMode > .5 && uMode < 1.5) || uMode > 2.5;
   vec3 zen = pick(vec3(.33, .6, .93), vec3(.27, .3, .58), vec3(.05, .07, .19)), hor = pick(vec3(.78, .9, .98), vec3(.99, .68, .42), vec3(.17, .21, .44));
   vec3 light = pick(vec3(1.), vec3(1., .9, .8), vec3(.5, .58, .86));
-  bool sky = uMode > .5 && y >= yh;
-  if (bent && y > y0 && !sky) {
-    t = (y - y0) / (yh - y0);
-    float f, df;
-    if (uMode < 1.5) { f = asin(t) * (1. + uG * t * t); df = (1. / sqrt(max(1e-4, 1. - t * t))) * (1. + uG * t * t) + asin(t) * 2. * uG * t; }
-    else { float c = 1. - 1. / (3. + uG * 1.4); f = t / (1. - c * t); df = 1. / ((1. - c * t) * (1. - c * t)); wide = 1. + (f - t) * .35; }
-    d = (y0 + (yh - y0) * f) * uRes.y; spread = df;
+  // The land is in levels, each drawn a step higher than the one under it. Bent, each level is its own sheet: the
+  // ground's bend, then raised by its height (less of it far away, where it leans back). From the highest down, the
+  // first level whose sheet has land at this pixel is what is seen: a far hill stands up, over the horizon if it is high.
+  vec3 c; bool hit = false; float t = 0., spread = 1., wide = 1.;
+  for (int i = 0; i < 14; i++) {
+    if (float(i) >= uLvN || hit) break;
+    float lift = uLv[i] * uStep, py = p.y - lift, tt, sp, wd, d;
+    if (!bent) { if (i > 0) break; py = p.y; }
+    for (int k = 0; k < 3; k++) { d = along(py, tt, sp, wd); if (bent) py = p.y - lift * lean(tt, wd); }
+    d = along(py, tt, sp, wd);
+    if ((py / uRes.y >= yh || tt > .965) && uMode > .5) continue;   // (that level's sheet has gone over the horizon here: its last sliver is a smear, left out)
+    float row = uBottom - d - (bent ? lift : 0.), x = uCx + (p.x - uRes.x * .5) * wd;
+    if (row < 1. || x < 1. || x > uSrc.x - 1.) continue;
+    if (bent && uLayers > .5) { float v = texture2D(uMap, vec2((floor(x) + .5) / uSrc.x, (floor(row) + .5) / uSrc.y)).r * 255.; if (abs(v - 128. - uLv[i]) > .5) continue; }
+    c = land(row, x, sp); t = tt; hit = true;
   }
-  vec3 c;
+  bool sky = uMode > .5 && !hit && y >= yh;
   if (!sky) {
-    float row = uBottom - d, x = uCx + (p.x - uRes.x * .5) * wide;
-    c = row > 1. && x > 1. && x < uSrc.x - 1. ? land(row, x, spread) : vec3(.74, .84, .44);
+    if (!hit) c = vec3(.74, .84, .44);
     c *= light;
-    c = mix(c, hor * mix(1., .92, light.b - light.r), smoothstep(.55, 1., t) * .6);      // the far land pales into the air
+    c = mix(c, hor * mix(1., .92, light.b - light.r), smoothstep(.55, 1., t) * .6);
     c *= 1. - .08 * t * t;
   } else {
     float up = (a.y / uRes.y - yh) / (1. - yh), px = a.y - yh * uRes.y;
@@ -145,12 +169,11 @@ void main() {
     c = mix(c, pick(vec3(1.), vec3(1., .82, .72), vec3(.3, .34, .56)), step(.56, cl) * (.9 - .5 * up));
     c = mix(c, pick(vec3(.86, .92, 1.), vec3(.9, .62, .6), vec3(.22, .26, .46)), step(.5, cl) * (1. - step(.56, cl)) * .7);
     c += step(.9975, hash(a)) * night * (1. - step(.5, cl)) * (.6 + .4 * sin(uT * 3. + a.x));
-    // far mountains, then nearer hills, in the air's colour; a backdrop has a line of woods before them
     if (uHills > .5) {
       float m1 = 34. + 92. * ridge(a.x, 11., .0035), m2 = 12. + 40. * ridge(a.x, 47., .007);
       if (uMode > 1.5 && uMode < 2.5) { m1 += 26.; m2 += 20.; }
       if (px < m1) c = mix(pick(vec3(.5, .62, .78), vec3(.52, .36, .5), vec3(.1, .13, .3)), hor, .12 + .3 * (1. - px / m1));
-      if (px < m1 && px > m1 - 12. && ridge(a.x, 11., .0035) > .56) c = mix(c, vec3(1.), .55 * (1. - smoothstep(.7, .86, uHour)));      // snow on the high ones
+      if (px < m1 && px > m1 - 12. && ridge(a.x, 11., .0035) > .56) c = mix(c, vec3(1.), .55 * (1. - smoothstep(.7, .86, uHour)));
       if (px < m2) c = mix(pick(vec3(.4, .6, .5), vec3(.5, .36, .34), vec3(.08, .13, .22)), hor, .18);
     }
     if (uMode > 1.5 && uMode < 2.5) {
@@ -168,17 +191,21 @@ function view(box, get) {
   const pr = gl.createProgram(); gl.attachShader(pr, mk(gl.VERTEX_SHADER, VERT)); gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, FRAG)); gl.linkProgram(pr); gl.useProgram(pr);
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
   const loc = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  const u = (n) => gl.getUniformLocation(pr, n), tex = gl.createTexture();
+  const u = (n) => gl.getUniformLocation(pr, n), tex = gl.createTexture(), map = gl.createTexture();
   let src = null, shown = null;
   return {
-    load(ground) { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, ground);
-      for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
-      src = [ground.width, ground.height]; },
+    load(sc) {
+      const put = (unit, t, img, how) => { gl.activeTexture(unit); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, how], [gl.TEXTURE_MAG_FILTER, how], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v); };
+      put(gl.TEXTURE0, tex, sc.ground, gl.LINEAR); put(gl.TEXTURE1, map, sc.levels, gl.NEAREST);
+      gl.uniform1i(u("uTex"), 0); gl.uniform1i(u("uMap"), 1);
+      src = [sc.ground.width, sc.ground.height]; },
     draw(t) { const s = get();
       const sc = SCENES[s.scene]; if (!sc.ground) return;
-      if (shown !== s.scene) { shown = s.scene; this.load(sc.ground); }
+      if (shown !== s.scene) { shown = s.scene; this.load(sc); }
       gl.uniform2f(u("uRes"), W, H); gl.uniform2f(u("uSrc"), ...src); gl.uniform1f(u("uBottom"), s.bottom); gl.uniform1f(u("uMode"), s.mode); gl.uniform1f(u("uCx"), sc.cx);
       gl.uniform1f(u("uYh"), s.yh / 100); gl.uniform1f(u("uY0"), s.y0 / 100); gl.uniform1f(u("uG"), s.g / 100); gl.uniform1f(u("uT"), t); gl.uniform1f(u("uHour"), s.hour / 100); gl.uniform1f(u("uHills"), s.hills ? 1 : 0);
+      const lv = s.layers ? sc.lv : [0]; gl.uniform1fv(u("uLv"), new Float32Array(14).map((_, i) => lv[i] || 0)); gl.uniform1f(u("uLvN"), Math.min(14, lv.length)); gl.uniform1f(u("uStep"), sc.step); gl.uniform1f(u("uLayers"), s.layers ? 1 : 0);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       things(g2, s, sc);
       const dusk = Math.max(0, Math.min(1, (s.hour - 50) / 20)), night = Math.max(0, Math.min(1, (s.hour - 70) / 14));
@@ -205,12 +232,13 @@ function things(g, s, sc) {
     const cx = W / 2 + (q.x + q.w / 2 - sc.cx) / wide, w = q.w * size, h = q.h * size * squash * lean, lift = gap * size * squash * lean;
     if (cx < -80 || cx > W + 80) continue;
     g.globalAlpha = 1 - .5 * Math.max(0, Math.min(1, (t - .6) / .4));
-    g.drawImage(sc.atlas, q.ax, q.ay, q.w, q.h, Math.round(cx - w / 2), Math.round(H - y * H - h - lift), Math.round(w), Math.max(1, Math.round(h)));
+    if (q.g && !s.layers && bent && d > y0) continue;          // (the land as one flat sheet: its walls are in the sheet)
+    g.drawImage(q.g ? sc.ground : sc.atlas, q.ax, q.ay, q.w, q.h, Math.round(cx - w / 2), Math.round(H - y * H - h - lift), Math.round(w), Math.max(1, Math.round(h)));
   }
   g.globalAlpha = 1;
 }
 // The camera: the screen's bottom row is a row of the picture; walking north moves it up.
-const state = {...PRESETS[2], hour: 30, walk: 55, stand: true, hills: true, scene: "meadow"};
+const state = {...PRESETS[2], hour: 30, walk: 55, stand: true, hills: true, layers: true, scene: "hills"};
 // (in a house or under ground the camera stays on you while the walk goes by itself: that is where you look)
 const bottomOf = (walk, scene) => ((scene === "inside" || scene === "under") && $("auto").checked ? 1545 : 2580 - walk / 100 * 1250);
 const $ = (id) => document.getElementById(id);
@@ -226,20 +254,20 @@ function show() {
 function pick(p) { Object.assign(state, p); show(); }
 for (const p of PRESETS) { const b = document.createElement("button"); b.textContent = p.name; b.dataset.key = p.key; b.onclick = () => pick(p); $("presets").append(b); }
 for (const id of ["yh", "y0", "g", "hour", "walk"]) $(id).oninput = () => { state[id] = +$(id).value; if (id !== "hour" && id !== "walk") state.key = "own"; if (id === "walk") $("auto").checked = false; show(); };
-for (const id of ["stand", "hills"]) $(id).onchange = () => { state[id] = $(id).checked; };
+for (const id of ["stand", "hills", "layers"]) $(id).onchange = () => { state[id] = $(id).checked; };
 for (const [key, sc] of Object.entries(SCENES)) { const b = document.createElement("button"); b.textContent = sc.name; b.dataset.key = key; b.onclick = () => { state.scene = key; show(); }; $("scenes").append(b); }
 for (const [key, sc] of Object.entries(SCENES)) {
   const d = document.createElement("div"), box = document.createElement("div"); box.className = "view";
   d.append(box); d.insertAdjacentHTML("beforeend", `<p><b>${sc.name}.</b> ${sc.say}</p>`); d.onclick = () => { pick(PRESETS[2]); state.scene = key; show(); scrollTo({top: 0, behavior: "smooth"}); };
   $("four").append(d);
-  views.push(view(box, () => ({...PRESETS[2], scene: key, hour: state.hour, stand: state.stand, hills: state.hills, bottom: bottomOf(state.walk, key)})));
+  views.push(view(box, () => ({...PRESETS[2], scene: key, hour: state.hour, stand: state.stand, hills: state.hills, layers: state.layers, bottom: bottomOf(state.walk, key)})));
 }
 const image = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src + "?v=" + Date.now(); });
 (async () => {
   await Promise.all(Object.entries(SCENES).map(async ([key, sc]) => {
     const [ground, atlas, meta] = await Promise.all([image(`horizon/${key}_ground.png`), image(`horizon/${key}_atlas.png`), fetch(`horizon/${key}.json?v=` + Date.now()).then((r) => r.json())]);
     sc.sprites = meta.sprites.map((q, i) => ({...q, i})).sort((a, b) => a.foot - b.foot || a.i - b.i);      // far ones first; on one row, in the game's own order
-    sc.atlas = atlas; sc.cx = meta.size[0] / 2; sc.ground = ground;
+    sc.atlas = atlas; sc.cx = meta.size[0] / 2; sc.lv = meta.lv; sc.step = meta.step; sc.levels = await image(`horizon/${key}_levels.png`); sc.ground = ground;
   }));
   show(); requestAnimationFrame(tick);
 })();

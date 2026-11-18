@@ -1698,6 +1698,20 @@ Tests: 136 unit + 31 end-to-end, 3 full e2e runs green after the fixes.
   two that were heard by less than one step of 16 bits. The page's other candidates stay in `music/doors.py`.
 - Measured: the files compared sample by sample; audio tests, the door test and the sound tests pass.
 
+## Iteration 167: the land in levels on the curve
+
+"there's a huge issue with layers, some things looks flat, the whole world is in 3d.. leverage that ! upper layers
+etc !". The hill was pressed flat because the page bent the land as one picture. The world knows every tile's
+height, and the picture is made of levels each a step (8 art px) higher: so the capture now also writes, for each
+pixel of the ground picture, which level's top it shows (a picture of the same size, from levelAt), and each wall
+(a level ending over lower land) as a standing piece cut from the ground picture, with its foot on the tile's
+line. The page's shader takes the levels from the highest down: each is its own sheet, bent with the ground then
+raised by its height (less of it far away, where things lean back), and the first sheet with land at a pixel is
+what is seen; what stands (things, houses, walls of the land) has its foot on the flat ground and its height over
+it. A real mountain (seed 12, thirteen levels of terraces) and the hill with the cave: both stand, the hill over the
+horizon. Rough: far terraces are stripes (a resampled picture), what stands behind a hill is drawn over it (the page
+does not sort things with levels), a far pit is its back wall. "Land in levels" can be unticked to compare.
+
 ## Iteration 166: the curve tried on houses and under ground
 
 "curved far view is really good ! try to showcase the underground view with this, i think it might be hard to make
