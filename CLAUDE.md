@@ -11,7 +11,7 @@ Humans may join as spectators or players, but the design target is AI agents.
 - Autonomy: never stop to ask for permission; make sensible decisions, log them, keep going.
   Only stop for something destructive outside the project folder or anything that needs credentials.
 - Work in ~/megastructure. Commit at each working milestone with clear messages and push with
-  `git push` (remote: private GitHub repo sofianedjerbi/megastructure). Use the `gh` CLI for any
+  `git push` (remote: private GitHub repo sofianedjerbi/nexel-worlds). Use the `gh` CLI for any
   GitHub operations (issues for known bugs/ideas, releases per milestone).
 
 ## Architecture (agent-first, not vision-first)
