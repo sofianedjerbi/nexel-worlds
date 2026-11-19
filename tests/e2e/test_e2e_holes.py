@@ -140,10 +140,12 @@ def test_no_stump_one_tile_wide_is_left_standing_alone_beside_a_cut(game):
     assert fill_px(game) == 0 and not game.errors
 
 
-def test_on_a_gorges_floor_you_are_in_a_hole_its_walls_go_down_darker_and_its_floor_is_not_the_plateaus(game):
+def test_on_a_gorges_floor_you_are_in_a_hole_its_wall_is_one_face_and_its_floor_is_not_the_plateaus(game):
     """A natural gorge, three rows of floor between two plateaus eight high ("the canyon floor has no depth... a rug
     on the plateau"). You are in it as in a hole that was dug: all of the floor round you is shown, not a tile of
-    it; the far wall is seen down to its foot, darker there than the plateau's top and darker than at its own top;
+    it; the far wall is seen down to its foot, darker than the plateau's top, and one tone from its top to its foot
+    (it went down darker a level at a time: on a cliff that runs on a slant, each column two levels lower on the
+    screen than the last, that was a grid of grey squares, "this wall look so weird"; the gorge's depth is its floor's);
     the floor is darker than the same meadow out in the open. An open meadow under one cliff is no gorge."""
     game.flat()
     game.clear_area(14)
@@ -157,7 +159,7 @@ def test_on_a_gorges_floor_you_are_in_a_hole_its_walls_go_down_darker_and_its_fl
     foot = mid(game.js(LAND, [[x + 1, y - 1, 0, ax, -4] for ax in (2, 5, 8, 11, 14)]))      # the far wall's lowest level, over the floor's far edge
     high = mid(game.js(LAND, [[x + 1, y - 1, 7, ax, -4] for ax in (2, 5, 8, 11, 14)]))      # ...and its highest but one
     top, floor, open_ = game.js(LAND, [[x + 6, y + 3, 8, 8, 8], [x + 2, y, 0, 8, 8], [x - 9, y, 0, 8, 8]])
-    assert sum(foot) < sum(top) - 60 and sum(foot) < sum(high) - 25, (foot, high, top)
+    assert sum(foot) < sum(top) - 60 and foot == high, (foot, high, top)
     assert green(open_) and sum(floor) < sum(open_) - 25, (floor, open_)
     assert fill_px(game) == 0 and not game.errors
 

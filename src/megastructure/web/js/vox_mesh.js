@@ -21,6 +21,11 @@
 const VoxMesh = (() => {
   const BYTES = 16, BIAS = 8, STRIPS = 4;
   const has = (c, z) => { for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };      // is a column's cell z solid?
+  // One rock a block (cfg.rock: {from, lo, n}; none: a cell's paint is its level's): a block whose top is at level `from` or over has, in its
+  // cells from `lo` up to there, the paint of the levels from `from` on, n of them in turn: stone down to the ground, not stone over earth.
+  // top: its block's top (topOf: of the block the cell z of a column is in) -> the level whose strip of the sheets the cell has
+  const rock = (cfg, top, z) => { const r = cfg.rock; return r && top >= r.from && z < r.from && z >= r.lo ? r.from + (z - r.lo) % r.n : z; };
+  const topOf = (c, z) => { if (c) for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return c[i]; return z; };
   const pick = (x, y, z, n) => (Math.imul(x, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(z, 83492791)) >>> 5 & (n - 1);      // one of n (a power of 2), the same each time
   // Lists of faces, a list a page -> {data, pages: [[page, first corner, corners]...], n}: their corners as the GPU takes them
   function pack(faces, cfg) {
@@ -46,9 +51,10 @@ const VoxMesh = (() => {
   }
   // -> {data, pages: [[page, first corner, corners]...], n, sides, shapes}: the tops and their fronts page by page;
   // water goes with page 0. shapes: the shapes met (the engine asks the host for their profiles)
-  function build(ch, host, cfg, strip) {
+  function build(ch, host, cfg, strip0) {
     const N = cfg.size, T = cfg.cell, K = cfg.tuck, faces = [[]], add = (p, f) => (faces[p] || (faces[p] = [])).push(f), shapes = new Set();
     const solid = (x, y, z) => { const c = host.column(x, y); return !!c && has(c, z); };
+    const strip = (zc, top = zc) => strip0(rock(cfg, top, zc)), stripAt = (x, y, zc) => strip(zc, topOf(host.column(x, y), zc));      // (a cell's strip: by its block's top)
     const shape = (x, y, z) => { const s = host.shape(x, y, z); shapes.add(s); return s; };
     // How dark a face is by where it is (a corner's twelfth byte; the engine's shader lays the dark of a cave on by it).
     // Out of doors, `slot`: how deep down a narrow hole the level z of (x, y) is, in steps (5 at the most). Along the
@@ -78,6 +84,16 @@ const VoxMesh = (() => {
       let best = 0, ways = 0;
       for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) for (let k = 1; k <= 4; k++) { const c = host.column(x + dx * k, y + dy * k); if (!c || has(c, z + 1)) break; if (c[c.length - 1] <= z + 1) { ways++; if (!best || k < best) best = k; break; } }
       return ways > 1 ? best : 0;
+    };
+    // How dark the front of the cell zc of (x, y) is. It looks into a cave: `inward`. Down a hole that was dug: `slot`, level by level.
+    // A gorge's wall: none (its floor has the gorge's dark, a top's above). By its level, how far under the rim, a cliff that runs on a slant
+    // (each column two levels lower on the screen than the last) was a grid of squares; darker at each column's own foot instead, a square at
+    // every foot. (A wall under water seen through: none, the water's tint is its dark.)
+    const foot = (x, y, zc) => {
+      const s = host.column(x, y + 1); if (!s) return 0;
+      if (s[s.length - 1] > zc) return inward(x, y + 1, floorOf(s, zc));
+      if (host.water(x, y + 1) && clear) return 0;
+      const f = floorOf(s, zc); return f < cfg.dug ? slot(x, y + 1, zc, zc, f) : 0;
     };
     // does the cell zc of (x, y) show a side toward dx: cfg.side px of it (0: none)? Where the land beside it is not
     // solid there and has no land over it (a cave); none where that land is not known, and none at the water's own
@@ -132,17 +148,19 @@ const VoxMesh = (() => {
         // block, then this block's: one face with its seams, lit as a front is (a line down every column, or a side lit as a side, made a cliff a grid of crates).
         for (const dx of [-1, 1]) for (let zc = z, I = inset(x, y, z, dx), o = out(x, y, z, dx); o && zc > (q ? c[q - 1] : -1e9) && out(x, y, zc, dx); zc--) {
           const cb = host.column(x + dx, y), two = zc - 1 > (q ? c[q - 1] : -1e9) && out(x, y, zc - 1, dx) ? 2 : 0, x0 = dx < 0 ? X + I - o : X + T - I, lined = [[dx < 0 ? 0 : o - 1, 1, 4], [dx < 0 ? 1 : 0, o - 1, 0]];
-          const beside = (lv) => solid(x + dx, y - 1, lv) && !solid(x + dx, y, lv);      // (the front of the column north on that side is what is seen beside the side there: a level is cfg.up px, a tile two of them)
+          // (what is seen beside the side at level lv of the row r's south edge: going north on that side, a tile two levels up the picture, the first column
+          // that stands as high as the eye's line there: its front, rock; or one whose top the line meets: lower land. However far north the wall goes on: a cliff that runs two tiles south a tile east had its lines)
+          const beside = (lv, r = y - 1) => { for (let k = 0; k < 8; k++) { const cn = host.column(x + dx, r - k); if (!cn) return false; const t = host.water(x + dx, r - k) ? Math.max(wtop(x + dx, r - k), cn[cn.length - 1]) : cn[cn.length - 1]; if (t >= lv - 2 * k) return true; if (t >= lv - 2 * k - 2) return false; } return false; };
           // (1: it faces east; 2: of a wall two levels high or more. For the sun: vox_light.js)
           if (zc === z) { const cr = host.crown ? host.crown(shape(x, y, z))[dx < 0 ? 0 : 1] : 0, dk = cb ? slot(x + dx, y, z, z, floorOf(cb, z)) : 0;
             // (...and under a higher block north of this one, that block's own front a level more: its foot ends two px short of the tile's edge there, and nothing was behind them: a dark dot at the corner)
-            if (beside(z) && beside(z - 1)) for (const lv of n ? [z + 1, z, z - 1] : [z, z - 1]) add(0, [x0, Y, lv * cfg.up, o, 0, x0 - X, 0, cfg.up, 0, 1, strip(lv), 0, 0, pick(lv > z ? x : x + dx, y - 1, lv, cfg.variants)]);
+            if (beside(z) && beside(z - 1) && !solid(x + dx, y, z - 1)) for (const lv of n ? [z + 1, z, z - 1] : [z, z - 1]) add(0, [x0, Y, lv * cfg.up, o, 0, x0 - X, 0, cfg.up, 0, 1, lv > z ? stripAt(x, y - 1, lv) : strip(lv, z), 0, 0, pick(lv > z ? x : x + dx, y - 1, lv, cfg.variants), 0, foot(x, y, lv)]);
             // (under a higher block north of it the side goes on K px as its top does: that block's front ends its foot short of the tile's edge, and the two px of the side there were a hole, a dark dot at the corner)
             else for (const [a, w, b4] of lined) if (w > 0) add(0, [x0 + a, Y + (n ? -K : cr), z * cfg.up, w, T - (n ? -K : cr), 0, n ? -K : cr, T, (dx > 0 ? 1 : 0) | two | b4, 3, strip(z), 0, 0, 0, 0, dk]);
             sides++; }
           if (south && !solid(x + dx, y + 1, zc) && !out(x, y + 1, zc, dx) && !(host.water(x, y + 1) && zc <= wfloor(x, y + 1)))
-            if (beside(zc - 2)) add(0, [x0, Y + T, zc * cfg.up, o, 0, x0 - X, 0, cfg.up, solid(x + dx, y, zc - 1) || solid(x, y + 1, zc - 1) ? 16 : 0, 1, strip(zc), 0, 0, pick(x, y, zc, cfg.variants)]);
-            else for (const [a, w, b4] of lined) if (w > 0) add(0, [x0 + a, Y + T, zc * cfg.up, w, 0, 0, 0, cfg.up, (solid(x + dx, y, zc - 1) || solid(x, y + 1, zc - 1) ? 16 : 0) | (dx > 0 ? 32 : 0) | b4, 4, strip(zc), 0, 0, 0]);      // (32: it faces east: of the tile west of it, for the cut)
+            if (beside(zc, y)) add(0, [x0, Y + T, zc * cfg.up, o, 0, x0 - X, 0, cfg.up, solid(x + dx, y, zc - 1) || solid(x, y + 1, zc - 1) ? 16 : 0, 1, strip(zc, z), 0, 0, pick(x, y, zc, cfg.variants), 0, foot(x, y, zc)]);
+            else for (const [a, w, b4] of lined) if (w > 0) add(0, [x0 + a, Y + T, zc * cfg.up, w, 0, 0, 0, cfg.up, (solid(x + dx, y, zc - 1) || solid(x, y + 1, zc - 1) ? 16 : 0) | (dx > 0 ? 32 : 0) | b4, 4, strip(zc, z), 0, 0, 0]);      // (32: it faces east: of the tile west of it, for the cut)
         }
         // down its cells: a front where the cell south is empty; a sliver of one where the block south is set in
         // at a side and this one is not (dx: which side)
@@ -152,12 +170,12 @@ const VoxMesh = (() => {
         for (const dx of [-1, 1]) if (host.column(x + dx, y + 1)) for (let zc = z; zc > bottom && !solid(x + dx, y + 1, zc) && !(host.water(x + dx, y + 1) && zc <= wfloor(x + dx, y + 1)); zc--) {
           if (!has(south, zc) || !solid(x + dx, y, zc)) continue;
           const sid = shape(x, y + 1, zc);
-          if (sid) add(p, [dx < 0 ? X : X + T - K, Y + T, zc * cfg.up, K, 0, dx < 0 ? 0 : T - K, 0, cfg.up, 0, 1, strip(zc), 0, sid, pick(x, y, zc, cfg.variants)]);
+          if (sid) add(p, [dx < 0 ? X : X + T - K, Y + T, zc * cfg.up, K, 0, dx < 0 ? 0 : T - K, 0, cfg.up, 0, 1, strip(zc, z), 0, sid, pick(x, y, zc, cfg.variants), 0, foot(x, y, zc)]);
         }
         for (let zc = z; zc > low; zc--) {
           if (has(south, zc)) continue;
           // (8: it looks into a cave. 16: its foot, nothing of the front under it. 32, 64: a bank's front beside it, west, east: its foot is square there)
-          add(p, [X, Y + T, zc * cfg.up, T, 0, 0, 0, cfg.up, (south[south.length - 1] > zc ? 8 : 0) | (zc - 1 <= low || has(south, zc - 1) ? 16 : 0) | (out(x, y, zc, -1) ? 32 : 0) | (out(x, y, zc, 1) ? 64 : 0), 1, strip(zc), shape(x, y, zc), 0, pick(x, y, zc, cfg.variants), 0, south[south.length - 1] > zc ? inward(x, y + 1, floorOf(south, zc)) : sea && clear ? 0 : slot(x, y + 1, zc, zc, floorOf(south, zc))]);      // (a wall under water seen through: the water's tint is its dark)
+          add(p, [X, Y + T, zc * cfg.up, T, 0, 0, 0, cfg.up, (south[south.length - 1] > zc ? 8 : 0) | (zc - 1 <= low || has(south, zc - 1) ? 16 : 0) | (out(x, y, zc, -1) ? 32 : 0) | (out(x, y, zc, 1) ? 64 : 0), 1, strip(zc, z), shape(x, y, zc), 0, pick(x, y, zc, cfg.variants), 0, foot(x, y, zc)]);
         }
       }
     }
@@ -177,5 +195,5 @@ const VoxMesh = (() => {
     ch.ranges = mesh.pages; ch.faces = mesh.n; ch.sides = mesh.sides;
   }
   function drop(ch) { const gl = VoxGL.gl; if (gl && ch.vao) { gl.deleteVertexArray(ch.vao); gl.deleteBuffer(ch.buf); } }
-  return {build, pack, upload, drop, has, pick, BIAS};
+  return {build, pack, upload, drop, has, pick, rock, topOf, BIAS};
 })();

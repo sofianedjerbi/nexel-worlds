@@ -30,7 +30,7 @@ const VoxLight = (() => {
   const TOR = 16;
   // (vGround: where the px is, px of paint in the ring, and its height in px; vFlat: on the screen, were it flat)
   const FS = `
-uniform sampler2D uTops, uCast; uniform vec4 uSun, uGlass, uCloud; uniform vec3 uCastAt, uShade; uniform vec2 uCastLv, uCloudO; uniform float uTor, uTopMax, uCastOn, uRip, uLo, uLand, uFire, uDepth;
+uniform sampler2D uTops, uCast; uniform vec4 uSun, uGlass, uCloud; uniform vec3 uCastAt, uShade, uRock; uniform vec2 uCastLv, uCloudO; uniform float uTor, uTopMax, uCastOn, uRip, uLo, uLand, uFire, uDepth;
 // (vGround: the engine's, vox_engine.js: in the roll, read at the middle of a px of paint)
 bool noSun = false;                                             // (the engine's: this px is of a tile cut open for your sake: lit evenly as the place is, no shadow of the sun, no cloud's)
 bool inShade;                                                  // (lit: this px is in a shadow: no cloud's shadow on it too)
@@ -89,7 +89,8 @@ vec3 lit(vec3 c, vec3 plain, int kind, int bits, float lip) {
     for (int k = 1; k <= 5; k++) {
       float wet, h = topAt(tile - vec2(0., float(k)), wet), dd = at.y - (tile.y - float(k) + 1.) * uCell;
       if (wet > .5 || h <= 0. || dd >= h * uUp) continue;
-      float strip = clamp(floor(dd / uUp) + 1., uLo, uLo + uStrips - 1.) - uLo, r = uUp - 1. - floor(mod(dd, uUp));
+      float lv = floor(dd / uUp) + 1.; if (h >= uRock.x && lv < uRock.x && lv >= uRock.y) lv = uRock.x + mod(lv - uRock.y, uRock.z);      // (one rock a block: vox_mesh.js rock)
+      float strip = clamp(lv, uLo, uLo + uStrips - 1.) - uLo, r = uUp - 1. - floor(mod(dd, uUp));
       // (fainter than what stands is seen in it, and fainter still on the rows the ripple slides: bands, not a slab)
       c = mix(c, texture(uFronts, vec2(clamp(mod(at.x, uCell), .01, far) / (uVars * uCell), (strip * uUp + r + .5) / (uStrips * uUp))).rgb, uGlass.x * (at.x == floor(vGround.x) + .5 ? .5 : .25));
       break;
@@ -104,6 +105,8 @@ vec3 lit(vec3 c, vec3 plain, int kind, int bits, float lip) {
     if (kind == 1) g.y = ceil(g.y - (uInset + 1.) / uCell) + .5 / uCell; }      // (a front stands uInset px in from its tile's edge: asked for in the row at its foot, as a lip is: the wall's own tiles beside it are not in its way)
   // (a front's px in a column where higher land stands at its foot, a wall's inner corner: asked for from beside that land,
   // on its open side: in its shadow with the sun behind it. It was a lit strip two px wide down the corner, inside the shadow)
+  // (a front's px along its tile's two sides, where its block's cap is set in: asked for from uInset px in, as the face beside them. Asked each for itself, the strip that goes on with a slanted cliff's rock was a dark line down a lit wall, a lit one down a dark wall)
+  if (kind == 1) g.x = clamp(g.x, floor(g.x) + (uInset + .5) / uCell, floor(g.x) + 1. - (uInset + .5) / uCell);
   if (front && kind != 4) { vec2 rt = floor(g); float top = z0 + .02;
     if (high(tileAt(rt)) > top) { bool we = high(tileAt(rt - vec2(1., 0.))) <= top, ea = high(tileAt(rt + vec2(1., 0.))) <= top;
       if (we && (!ea || g.x - rt.x < .5)) g.x = rt.x - .5 / uCell; else if (ea) g.x = rt.x + 1. + .5 / uCell; } }
@@ -154,9 +157,9 @@ float cnoise(vec2 q) { ivec2 i = ivec2(floor(q)); vec2 f = fract(q); f = f * f *
 float cloud(vec2 px, float par) { vec2 w = px / uCell * .055 + uCloud.yz; float s = smoothstep(.57, .63, cnoise(w) * .55 + cnoise(w * 2.1 + 7.3) * .3 + cnoise(w * 4.3 + 1.7) * .15);
   return floor(s + (mod(par, 2.) < .5 ? .67 : .33)) * uCloud.x; }
 // The land's depth (uDepth: on), with or without the sun: each a multiply of the land's own paint, never another paint.
-//   Height as light: a level of the world a little brighter and warmer than the one under it, from level 0 (as it is
-//     painted) up to level 4 (no more: high stone went to white), and under level 0 darker and cooler down to four levels (a deep pit's floor is darker than a shallow one's); a wall's front by the height of each of its px, so it darkens down to its foot a level at
-//     a time, as its sheet's bands go. By the world's height, not the eye's: nothing changes as you climb.
+//   Height as light: a top a little brighter and warmer a level of the world, from level 0 (as it is
+//     painted) up to level 4 (no more: high stone went to white); tops only: a wall is one tone from its rim to the ground (a cliff that runs on a slant shows each column two
+//     levels lower than the one beside it: a step a level made it a grid of squares). Under level 0 darker and cooler down to four levels, tops and walls (a deep pit's floor is darker than a shallow one's, its wall darkens down to it). By the world's height, not the eye's: nothing changes as you climb.
 //   A face's side: a front (it faces south) a little darker than a top; a wall's side that faces west or east lighter
 //     toward the sun and darker away from it, by how far to that side the sun is (none at noon): all of a side one face.
 //   Contact shade: the ground at the foot of higher land north, west or east of it darker for two px (the higher the
@@ -174,6 +177,7 @@ vec3 deep(vec3 c, int kind, int bits, float lip, bool contact) {
   if (uDepth < .5 || kind == 2 || kind > 4) return c;
   float z = vGround.z / uUp, w, lv = kind == 0 ? ceil(z - .01) : floor(z + .01), up = clamp(lv, 0., 4.), down = clamp(-lv, 0., 4.);
   if ((bits & 8) != 0) down = 0.;                               // (under a roof the place has its own dark: darker again by its depth, a floor was the colour of the earth cut round it)
+  if (kind != 0 || lip >= 0.) up = 0.;                           // (a wall has one tone from rim to foot: a top's level is what you stand on, a wall's is not)
   c *= (vec3(1.) + vec3(.013, .012, .009) * up) * (vec3(1.) - vec3(.05, .05, .042) * down);
   if (!contact || (bits & 128) != 0 || ((bits & 8) != 0 && kind < 2)) return c;      // (under a roof: its height only, no side to the sun, no shade at a foot: the place has its own dark)
   if (kind == 1 || (kind == 0 && lip >= 0.)) return c * FRONT;      // (a front, and a top's own lip of wall)
@@ -247,7 +251,7 @@ vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
         if (slots.get(s) !== ch || !ch.lit) { put(gl, s, ch.tops); slots.set(s, ch); ch.lit = true; }
         most = Math.max(most, ch.most);
       }
-      gl.uniform3f(u.uShade, sun.shade[0], sun.shade[1], sun.shade[2]); gl.uniform1f(u.uTor, side); gl.uniform1f(u.uTopMax, most); gl.uniform1f(u.uLo, cfg.levels[0]);
+      gl.uniform3f(u.uShade, sun.shade[0], sun.shade[1], sun.shade[2]); gl.uniform1f(u.uTor, side); gl.uniform1f(u.uTopMax, most); gl.uniform1f(u.uLo, cfg.levels[0]); gl.uniform3f(u.uRock, cfg.rock ? cfg.rock.from : 1e9, cfg.rock ? cfg.rock.lo : 0, cfg.rock ? cfg.rock.n : 1);
       const glass = sun.glass && sun.glass.alpha > 0 ? sun.glass : null;
       gl.uniform4f(u.uGlass, glass ? glass.alpha : 0, glass ? glass.wave : 0, 0, glass ? glass.ripple : 0);
       gl.uniform1f(u.uCastOn, sun.cast ? 1 : 0); gl.uniform1f(u.uLand, sun.land === false ? 0 : 1); gl.uniform1f(u.uFire, sun.fire || 0);

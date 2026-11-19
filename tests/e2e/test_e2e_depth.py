@@ -1,6 +1,7 @@
 """The land's depth (the settings' Picture page: Depth, on by default; vox_light.js `deep`, sunland.js): with no
 shader, the sun's shadows on the land, shade at the foot of higher land, higher land a little lighter. Each on top of
 the land's own paint: off, the picture is the one painted, to the px; open ground at level 0 is never changed."""
+from test_e2e_digging import DRAWN, LAND, earth
 from test_e2e_sunland import RESET, twice
 
 # one frame drawn three times: with the depth off, with all of the sun's code out of the frame, with the depth on -> a hash of every px of each
@@ -144,4 +145,30 @@ def test_a_straight_walls_shadow_has_a_straight_edge(game):
         game.js("setOpt('landshade', true)")
         edge = [next((i for i, (p, q) in enumerate(zip(a, b)) if p - q < -30), None) for a, b in zip(on, off)]
         assert None not in edge and max(edge) - min(edge) <= 1, (phase, sorted(set(edge)))
+    game.js(RESET)
+
+
+def test_a_cliff_that_runs_on_a_slant_is_one_rock_face(game):
+    """A stone cliff eight levels high whose edge goes a tile south for every tile east ("this wall look so weird": a
+    grid of grey squares, stone over orange earth in a staircase). Each of its columns is drawn a tile, two levels,
+    lower than the one west of it: side by side on one row of the screen are a level of one and the level two higher
+    of the next. They are one colour (a wall has its rock's one tone: no step of light a level, not in the paint, not
+    in the depth), and a block whose top is stone is stone at its foot. An earth block beside it is earth."""
+    game.flat()                                                  # (it reads art px of fronts by where the flat picture has them)
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.375)                             # (noon: no shadow of one column on the next)
+    game.stamp(2, 2, ["." * 6] * 6, levels=["".join("8" if j <= i else "0" for i in range(6)) for j in range(6)])
+    game.stamp(-6, 3, ["..."] * 2, levels=["333"] * 2)
+    game.wait(DRAWN, 8000); game.sleep(900)
+    mid = lambda px: sorted(px, key=sum)[len(px) // 2]           # (a face's body, whatever fleck one px of it is)
+    wall = lambda i, lv: mid(game.js(LAND, [[x + 2 + i, y + 3 + i, lv, ax, 3] for ax in (4, 6, 8, 10, 12)]))      # column i's front, its level lv
+    for i in (1, 2, 3):
+        for lv in (1, 2, 4, 6):
+            a, b = wall(i, lv), wall(i + 1, lv + 2)              # the same row of the screen, two columns
+            assert a == b, (i, lv, a, b)
+    foot, high = wall(2, 1), wall(2, 8)
+    assert foot == high and max(foot) - min(foot) < 30 and not earth(foot), (foot, high)      # stone down to the ground, one tone
+    low = mid(game.js(LAND, [[x - 5, y + 5, 1, ax, 3] for ax in (4, 6, 8, 10, 12)]))
+    assert earth(low), low                                       # (a block whose top is grass: earth)
     game.js(RESET)

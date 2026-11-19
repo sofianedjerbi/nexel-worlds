@@ -14,11 +14,16 @@
 //   One rock a wall: the pack has a wall for each of its three sheets (grass, levels 1-2: orange earth; dark grass,
 //     3-4: grey-brown earth; stone, 5 and up). A wall four levels high was grey-brown over orange, two palettes down one face.
 //     Earth is one rock here: every wall of levels 1 to 4 has the first sheet's wall (EARTH), and the px of wall in
-//     the second sheet's caps (their lip, their sides) are painted in it too; stone over earth is a real layer, at
-//     one height all along a cliff.
+//     the second sheet's caps (their lip, their sides) are painted in it too.
+//   One tone a rock: a level's sheet is a touch brighter than the one under it (tiles.js hillSheet: terraces read as
+//     steps), and that is for tops. A wall has its rock's one tone at every level (earth: EARTH's; stone: STONE's), its
+//     lip in the top's paint too: on a cliff that runs on a slant each column is drawn two levels lower than the one
+//     beside it, and a tone a level made it a grid of grey squares ("this wall look so weird"). And one rock from rim
+//     to foot: a block whose top is stone is stone down to the ground (voxels.js cfg.rock: the engine picks a cell's
+//     strip by its block's top), so stone never meets earth in a staircase along such a cliff.
 const VoxPaint = (() => {
   const rgb = (c) => (255 << 24 | (c[2] | 0) << 16 | (c[1] | 0) << 8 | (c[0] | 0)) >>> 0;
-  const EARTH = 2, bands = (z) => colsOf(hillSheet(z > EARTH && z < 5 ? EARTH : z)).bands, sheetOf = (z) => hillSheet(z < 0 ? z : Math.max(1, z));
+  const EARTH = 2, STONE = 8, wallOf = (z) => (z > 4 ? STONE : z > 0 ? EARTH : z), bands = (z) => colsOf(hillSheet(wallOf(z))).bands, sheetOf = (z) => hillSheet(z < 0 ? z : Math.max(1, z));
   // the px of wall (browns: more red than green) of a sheet whose wall is not EARTH's -> EARTH's, lightest to darkest
   const browns = (sheet) => { const d = sheetData(sheet), [cx, cy] = blobCell(N_ | E_ | W_ | NE | NW), set = new Set(); for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { const v = d.px[(cy * 16 + j) * d.w + cx * 16 + i]; if (v >>> 24 === 255 && (v & 255) > (v >>> 8 & 255)) set.add(v); }
     return [...set].sort((a, b) => (a & 255) - (b & 255)); };
@@ -80,6 +85,7 @@ const VoxPaint = (() => {
   }
   // ...and its lip: down each px across, how many px from the tile's south end are not the top's ground but the
   // wall under it (what the sheet leaves empty, and the sheet's own px there that its plain cell has no colour of)
+  const lips = new Map();
   function lip(id) {
     const out = new Uint8Array(16); if (!id) return out;
     const [a, sheet, q] = cells[id], d = sheetData(sheet), [ix, iy] = blobCell(255), plain = new Set();
@@ -90,6 +96,8 @@ const VoxPaint = (() => {
   function rim(x, y, z, px, at, stride) {
     const id = shape(x, y, z); if (!id) return;
     const a = cells[id][0], q = cells[id][2], d = sheetData(sheetOf(z)), [ix, iy] = blobCell(255), [L, M, D] = bands(z).map(rgb), map = earth(z), own = (v) => (map && map.get(v)) || v;
+    // (its lip, the sheet's own px of wall under the top's ground: in the wall's one tone, the same px of that rock's sheet)
+    const ref = map || wallOf(z) === Math.min(z, 12) ? null : sheetData(hillSheet(wallOf(z))), lp = ref ? lips.get(id) || lips.set(id, lip(id)).get(id) : null;
     const north = colHas(colAt(x, y - 1), z) ? 0 : Math.min(2, z - 1 - topAt(x, y - 1));      // the far side of a drop of more than a level: its dark line that much thicker, a px a level
     const deep = !colHas(colAt(x, y - 1), z) && z - topAt(x, y - 1) >= 4;
     for (let i = 0; i < 16; i++) {
@@ -97,7 +105,7 @@ const VoxPaint = (() => {
       for (let j = 0, top = -1; j < 16; j++) {
         const o = at + j * stride + i;
         if (a[j * 16 + i]) {
-          const v = own(cellPx(d, q, i, j));
+          const v = lp && j > 15 - lp[i] ? cellPx(ref, q, i, j) : own(cellPx(d, q, i, j));
           if (top < 0) top = j;
           if (j > top && j <= top + north && j < 8) px[o] = deep ? D : own(cellPx(d, q, i, top));      // (a drop of four levels or more, a gorge's near rim: the wall's own dark)
           else if (v !== d.px[(iy * 16 + j) * d.w + ix * 16 + i]) px[o] = v;

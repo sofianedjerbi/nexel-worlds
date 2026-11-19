@@ -18,6 +18,7 @@ const VoxSection = (() => {
   // cut: {x, y, w, h, px} (vox_engine.js) -> {data, pages, n, tops, fronts, banks}: its corners, px from the cut's corner tile
   function build(host, cfg, strip, cut) {
     const T = cfg.cell, U = cfg.up, has = VoxMesh.has, list = [], out = {tops: 0, fronts: 0, banks: 0, shapes: new Set()};
+    const strip0 = strip; strip = (z, c) => strip0(VoxMesh.rock(cfg, VoxMesh.topOf(c, z), z));      // (a cell's strip: by its block's top, as the land's faces have it: vox_mesh.js)
     const shape = (x, y, z) => { const id = host.shape(x, y, z); out.shapes.add(id); return id; };
     const W = cut.w + 2, cols = new Array(W * (cut.h + 2)), col = (x, y) => { const k = (y - cut.y + 1) * W + x - cut.x + 1; let c = cols[k]; if (c === undefined) cols[k] = c = host.water(x, y) ? null : host.column(x, y); return c; };      // (the cut's tiles and the ring round them)
     // the level a tile is cut down to (1e9: it is not), and is its cell z still there
@@ -48,11 +49,11 @@ const VoxSection = (() => {
       if (c > 1e8 || !mine) continue;
       const top = mine[mine.length - 1];
       if (has(mine, c) && has(mine, c + 1)) {
-        list.push([X, Y, c * U, T, T, 0, 0, T, (left(x, y - 1, c) ? 0 : 1) | (left(x - 1, y, c) ? 0 : 2) | (left(x + 1, y, c) ? 0 : 4) | (left(x, y + 1, c) ? 0 : 16), 5, strip(c), shape(x, y, c), 0, VoxMesh.pick(x, y, c, cfg.variants)]); out.tops++;      // (its block's shape there: a hill's edge is set in)
+        list.push([X, Y, c * U, T, T, 0, 0, T, (left(x, y - 1, c) ? 0 : 1) | (left(x - 1, y, c) ? 0 : 2) | (left(x + 1, y, c) ? 0 : 4) | (left(x, y + 1, c) ? 0 : 16), 5, strip(c, mine), shape(x, y, c), 0, VoxMesh.pick(x, y, c, cfg.variants)]); out.tops++;      // (its block's shape there: a hill's edge is set in)
       }
       const north = col(x, y - 1);
       if (north) for (let z = c + 1, to = Math.min(north[north.length - 1], lv(x, y - 1), c + DEEP); z <= to; z++) if (has(north, z) && has(mine, z)) {
-        list.push([X, Y, z * U, T, 0, 0, 0, U, dark | (z === c + 1 && has(mine, c) ? 16 : 0), 1, strip(z), 0, 0, VoxMesh.pick(x, y - 1, z, cfg.variants)]); out.fronts++;
+        list.push([X, Y, z * U, T, 0, 0, 0, U, dark | (z === c + 1 && has(mine, c) ? 16 : 0), 1, strip(z, north), 0, 0, VoxMesh.pick(x, y - 1, z, cfg.variants)]); out.fronts++;
       }
       for (const dx of [-1, 1]) {
         const wall = col(x + dx, y); if (!wall) continue;
@@ -63,9 +64,9 @@ const VoxSection = (() => {
         for (let zc = to; zc > c; zc--) {
           if (!cell(zc)) continue;
           for (const [a, w, b4] of [[dx < 0 ? S - 1 : 0, 1, 4], [dx < 0 ? 0 : 1, S - 1, 0]]) {
-            if (w > 0 && !cell(zc + 1)) { list.push([(dx < 0 ? X : X + T - S) + a, Y, zc * U, w, T, 0, 0, T, (dx < 0 ? 1 : 0) | 2 | dark | b4, 3, strip(zc), 0, 0, 0]); out.banks += b4 ? 1 : 0; }
+            if (w > 0 && !cell(zc + 1)) { list.push([(dx < 0 ? X : X + T - S) + a, Y, zc * U, w, T, 0, 0, T, (dx < 0 ? 1 : 0) | 2 | dark | b4, 3, strip(zc, wall), 0, 0, 0]); out.banks += b4 ? 1 : 0; }
             // (cfg.inset px into the wall's tile: the land's own front leaves its side's px empty at a cave's mouth)
-            if (w > 0 && !left(x, y + 1, zc) && !left(x + dx, y + 1, zc)) list.push([b4 ? (dx < 0 ? X + S - 1 : X + T - S) : dx < 0 ? X - cfg.inset : X + T - S + 1, Y + T, zc * U, b4 ? 1 : S - 1 + cfg.inset, 0, 0, 0, U, dark | (zc === c + 1 && shape(x + dx, y, zc) ? 16 : 0) | (dx < 0 ? 32 : 0) | b4, 4, strip(zc), 0, 0, 0]);
+            if (w > 0 && !left(x, y + 1, zc) && !left(x + dx, y + 1, zc)) list.push([b4 ? (dx < 0 ? X + S - 1 : X + T - S) : dx < 0 ? X - cfg.inset : X + T - S + 1, Y + T, zc * U, b4 ? 1 : S - 1 + cfg.inset, 0, 0, 0, U, dark | (zc === c + 1 && shape(x + dx, y, zc) ? 16 : 0) | (dx < 0 ? 32 : 0) | b4, 4, strip(zc, wall), 0, 0, 0]);
           }
         }
       }
