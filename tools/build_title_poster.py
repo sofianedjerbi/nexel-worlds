@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src" / "megastructure" / "web" / "assets"
 SIZES = {"title_poster.webp": (864, 480), "title_poster_s.webp": (480, 480)}     # (art px: a desk's screen to 2592 x 1440; a phone's, either way up)
-BUILT = "(() => { for (const b of blocks.values()) if (!b.relief || b.reliefGen || b.reliefDirty) return false; return blocks.size > 0 && !dirtyTiles.length; })()"
+BUILT = "(() => { for (const b of blocks.values()) if (!Voxels.made(b)) return false; return blocks.size > 0 && !dirtyTiles.length; })()"      # (the land is blocks: voxels.js)
 SHOT = """async () => { const S = TitleScene.S; clearInterval(S.timer);
   cam.x = camT.x = S.ox + S.C.centre[0]; cam.y = camT.y = S.oy + S.C.centre[1] + TITLE_DY;
   for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) window[f] = () => null;
