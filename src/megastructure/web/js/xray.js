@@ -130,7 +130,10 @@ function xrayFind(tx) {
   // a row: a tile further south needs less taken off), or null: it hides none)
   const hides = (x, ty) => {
     const lv = levelAt(x, ty), rows = lv >= L + 2 && place.get(x); let low = null;
-    if (rows) for (const gy of rows) { const f = floors.get(x + "," + gy), up = lv - f; if (gy < ty && up > 1 && up > 2 * (ty - gy) - 2) { const need = f + 2 * (ty - gy) - 2; low = low === null ? need : Math.min(low, need); } }
+    // (the cut is a section through solid blocks, vox_section.js: a floor with land between it and this tile that is
+    // not cut, and stands a tile's height or more over the eye's line there, stays hidden whatever is cut here: `shut`)
+    const shut = (gy, f) => { for (let t = gy + 1; t < ty; t++) { const h = levelAt(x, t); if (h < L + 2 && h >= f + 2 * (t - gy) && !floors.has(x + "," + t)) return true; } return false; };
+    if (rows) for (const gy of rows) { const f = floors.get(x + "," + gy), up = lv - f; if (gy < ty && up > 1 && up > 2 * (ty - gy) - 2 && !shut(gy, f)) { const need = f + 2 * (ty - gy) - 2; low = low === null ? need : Math.min(low, need); } }
     return low;
   };
   const sight = (x, ty) => hides(x, ty) !== null;

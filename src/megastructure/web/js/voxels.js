@@ -60,8 +60,9 @@ const Voxels = (() => {
       for (const k of all.keys()) { const [x, y] = k.split(",").map(Number); x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
       const w = x1 - x0 + 1, h = y1 - y0 + 1, px = new Uint8Array(w * h * 4);
       for (const [k, lv] of all) { const [x, y] = k.split(",").map(Number), i = ((y - y0) * w + x - x0) * 4, v = lv + 32768; px[i] = v & 255; px[i + 1] = v >> 8; px[i + 2] = 255; px[i + 3] = 255; }
-      cutOf = {x: x0, y: y0, w, h, px, ver, earth: [.3, .21, .17]};
+      cutOf = {x: x0, y: y0, w, h, px, ver, earth: [.3, .21, .17], line: [.2, .14, .13]};      // (a block's sliced top, and the line along its edge at a drop)
     }
+    cutOf.fill = api.probe ? [1, 0, 1] : null;                // (probe: what the faces of the cut leave empty is counted, api.fillPx: none, tests)
     cutOf.a = cur ? 1 : xray.a;                              // (the cursor's is there at once; the place's comes with how hidden you are)
     return cutOf;
   }
@@ -80,6 +81,8 @@ const Voxels = (() => {
       // hidden (behind a hill, down a hole, under a roof: xray.js says how much, and which tiles are cut how low):
       // the land is cut open over the place you are in
       cut: cutMap(), sun});                                      // (sun: with a shader on, the sun on the land, sun.js)
+    if (api.probe) { const gl = VoxGL.gl, w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, px = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      let n = 0; for (let i = 0; i < px.length; i += 4) if (px[i] === 255 && !px[i + 1] && px[i + 2] === 255) n++; api.fillPx = n; }
     ctx.imageSmoothingEnabled = false; ctx.drawImage(pic, 0, 0, W, H);
   }
   // Away from the land (state.js), going: what is behind the land, laid over it that much: the engine's own picture
@@ -90,5 +93,6 @@ const Voxels = (() => {
     ctx.globalAlpha = a; ctx.drawImage(pic, 0, 0, W, H); ctx.globalAlpha = 1;
     return true;
   }
-  return {made, work, frame, veil, engine};
+  const api = {made, work, frame, veil, engine, probe: false, fillPx: 0};
+  return api;
 })();

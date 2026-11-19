@@ -21,6 +21,28 @@ const VoxMesh = (() => {
   const BYTES = 16, BIAS = 8, STRIPS = 4;
   const has = (c, z) => { for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };      // is a column's cell z solid?
   const pick = (x, y, z, n) => (Math.imul(x, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(z, 83492791)) >>> 5 & (n - 1);      // one of n (a power of 2), the same each time
+  // Lists of faces, a list a page -> {data, pages: [[page, first corner, corners]...], n}: their corners as the GPU takes them
+  function pack(faces, cfg) {
+    // (a face that lies on the ground, a top, a bank's, the water, is STRIPS pieces north to south, so that it bends with the ground: vox_curve.js)
+    const quads = (list) => list.reduce((s, f) => s + (f[4] ? STRIPS : 1), 0);
+    const n = faces.reduce((s, f) => s + (f ? f.length : 0), 0), data = new ArrayBuffer(faces.reduce((s, f) => s + (f ? quads(f) : 0), 0) * 6 * BYTES), i16 = new Int16Array(data), u8 = new Uint8Array(data), pages = [];      // (low byte first, as every machine a browser runs on has it)
+    // a face: its corner (X, Y, Z), w px across, d px deep (lying: a top) or `tall` px down (hanging: a front); (ux, uy): where in its tile its corner is
+    let at = 0;
+    faces.forEach((list, p) => {
+      if (!list || !list.length) return;
+      pages.push([p, at / BYTES, quads(list) * 6]);
+      for (const f of list) {
+        const X = f[0], Y = f[1], Z = f[2], w = f[3], d = f[4], ux = f[5] + BIAS, uy = f[6] + BIAS, len = d || f[7], m = d ? STRIPS : 1, own = f[14] || 0;
+        // (a piece: its six corners; t: px along it from its far edge, or down from its top)
+        for (let k = 0; k < m; k++) for (let c = 0, a = Math.round(len * k / m), b = Math.round(len * (k + 1) / m); c < 6; c++, at += BYTES) {
+          const x = c === 1 || c > 2 && c < 5 ? w : 0, t = c < 2 || c === 3 ? a : b, h = at >> 1;
+          i16[h] = X + x; i16[h + 1] = d ? Y + t : Y; i16[h + 2] = d ? Z : Z - t;
+          u8[at + 6] = ux + x; u8[at + 7] = uy + t; u8[at + 8] = f[8]; u8[at + 9] = f[9]; u8[at + 10] = f[10]; u8[at + 12] = f[11]; u8[at + 13] = f[12]; u8[at + 14] = f[13]; u8[at + 15] = own;
+        }
+      }
+    });
+    return {data, pages, n};
+  }
   // -> {data, pages: [[page, first corner, corners]...], n, sides, shapes}: the tops and their fronts page by page;
   // water goes with page 0. shapes: the shapes met (the engine asks the host for their profiles)
   function build(ch, host, cfg, strip) {
@@ -60,11 +82,16 @@ const VoxMesh = (() => {
         const z = c[q], open = q + 1 === c.length, over = (dx, dy) => solid(x + dx, y + dy, z + 1);
         const n = over(0, -1), w = over(-1, 0), e = over(1, 0), nc = host.column(x, y - 1);
         // (a cave's mouth: the floor in it ends where the walls' feet beside it do, and the ground before it goes on under it)
-        const tn = n || (open && !!nc && has(nc, z) && nc[nc.length - 1] > z) ? K : 0, cut = !open && south && south[south.length - 1] === z ? cfg.inset : 0;
+        // (...as far as that floor ends short, no more: two tops at one height, one over the other, were stripes when the cave is cut open)
+        const tn = n ? K : open && !!nc && has(nc, z) && nc[nc.length - 1] > z ? cfg.inset : 0, cut = !open && south && south[south.length - 1] === z ? cfg.inset : 0;
         // round a top. 1 north, 2 west, 4 east: a block stands over it there (it goes on under it; the shadow at
         // that wall's foot). 8: land over it (a cave's floor, in the dark). 128: what floats on water
-        add(p, [X - (w ? K : 0), Y - tn, z * cfg.up, T + (w ? K : 0) + (e ? K : 0), T + tn - cut, w ? -K : 0, -tn, T, (n ? 1 : 0) | (w ? 2 : 0) | (e ? 4 : 0) | (open ? 0 : 8), 0, strip(z + 1),
+        const top = (x0, wd, y1, ux) => add(p, [x0, Y - tn, z * cfg.up, wd, y1 + tn, ux, -tn, T, (n ? 1 : 0) | (w ? 2 : 0) | (e ? 4 : 0) | (open ? 0 : 8), 0, strip(z + 1),
           (open && w ? Math.max(-K, reach(x - 1, y, z + 1, 1)) : -inset(x - 1, y, z + 1, 1)) + BIAS, (open && e ? Math.max(-K, reach(x + 1, y, z + 1, -1)) : -inset(x + 1, y, z + 1, -1)) + BIAS, n ? shape(x, y - 1, z + 1) : 0, shape(x, y, z)]);      // (last: its own shape, for the sun: under it the top's paint is its wall, vox_light.js)
+        // (a mouth's floor goes on under the walls beside it only up to where the ground before the mouth goes on under them: K px
+        // from its south end. Both were there at one height, in stripes)
+        if (cut && (w || e)) { top(X, T, T - cut, 0); if (w) top(X - K, K, T - K, -K); if (e) top(X + T, K, T - K, T); }
+        else top(X - (w ? K : 0), T + (w ? K : 0) + (e ? K : 0), T - cut, w ? -K : 0);
         // its banks, west and east, a level at a time down the wall: the strip of its top that the level over it
         // leaves in view (where it does not lean, over water: the px the level over it is set in more than it is),
         // and its front unless the wall goes on south at least as far out. (They start where the
@@ -97,25 +124,7 @@ const VoxMesh = (() => {
         }
       }
     }
-    // (a face that lies on the ground, a top, a bank's, the water, is STRIPS pieces north to south, so that it bends with the ground: vox_curve.js)
-    const quads = (list) => list.reduce((s, f) => s + (f[4] ? STRIPS : 1), 0);
-    const n = faces.reduce((s, f) => s + (f ? f.length : 0), 0), data = new ArrayBuffer(faces.reduce((s, f) => s + (f ? quads(f) : 0), 0) * 6 * BYTES), view = new DataView(data), pages = [];
-    let at = 0;
-    faces.forEach((list, p) => {
-      if (!list || !list.length) return;
-      pages.push([p, at / BYTES, quads(list) * 6]);
-      // a face: its corner (X, Y, Z), w px across, d px deep (lying: a top) or `tall` px down (hanging: a front); (ux, uy): where in its tile its corner is
-      for (const [X, Y, Z, w, d, ux, uy, tall, bits, kind, st, a, b, v, own] of list) {
-        const corner = (dx, t) => {                             // (t: px along it from its far edge, or down from its top)
-          view.setInt16(at, X + dx * w, true); view.setInt16(at + 2, d ? Y + t : Y, true); view.setInt16(at + 4, d ? Z : Z - t, true);
-          view.setUint8(at + 6, ux + dx * w + BIAS); view.setUint8(at + 7, uy + t + BIAS); view.setUint8(at + 8, bits); view.setUint8(at + 9, kind); view.setUint8(at + 10, st);
-          view.setUint8(at + 12, a); view.setUint8(at + 13, b); view.setUint8(at + 14, v); view.setUint8(at + 15, own || 0);
-          at += BYTES;
-        };
-        for (let k = 0, m = d ? STRIPS : 1; k < m; k++) { const a = Math.round((d || tall) * k / m), b = Math.round((d || tall) * (k + 1) / m); corner(0, a); corner(1, a); corner(0, b); corner(1, a); corner(1, b); corner(0, b); }
-      }
-    });
-    return {data, pages, n, sides, shapes};
+    return {...pack(faces, cfg), sides, shapes};
   }
   // The faces handed to the GPU (the chunk's own buffer, filled again when its land changed)
   function upload(ch, mesh, prog) {
@@ -131,5 +140,5 @@ const VoxMesh = (() => {
     ch.ranges = mesh.pages; ch.faces = mesh.n; ch.sides = mesh.sides;
   }
   function drop(ch) { const gl = VoxGL.gl; if (gl && ch.vao) { gl.deleteVertexArray(ch.vao); gl.deleteBuffer(ch.buf); } }
-  return {build, upload, drop, has, BIAS};
+  return {build, pack, upload, drop, has, pick, BIAS};
 })();

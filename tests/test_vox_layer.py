@@ -13,7 +13,7 @@ import pytest
 WEB = Path(__file__).parent.parent / "src" / "megastructure" / "web"
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
-FILES = [str(WEB / "js" / f"vox_{n}.js") for n in ("gl", "curve", "sky", "pages", "mesh", "models", "light", "mark", "engine")]
+FILES = [str(WEB / "js" / f"vox_{n}.js") for n in ("gl", "curve", "sky", "pages", "mesh", "section", "models", "light", "mark", "engine")]
 
 # A chunk of 4 x 4 tiles, flat at 0, with: a hill two high on (1,1) and (2,1); south of the first a roof at 3 over
 # empty cells (a cave: its floor 0, empty up to 2, solid at 3); water on (3,3). Nothing is known round it.
@@ -156,3 +156,66 @@ def test_a_mark_is_a_box_of_the_land_its_top_its_front_and_its_corners():
     out = run()
     box, flat = (4 + 1) + (4 * 2 + 2) * 2, 4 + (4 * 2) * 2
     assert out["marked"] == out["corners"] + (box + flat) * 6
+
+
+# The land cut open (view.cut) is a section through blocks: vox_section.js. A chunk of 8 x 8 tiles, all solid up to 3,
+# with a room in (2,2): its floor 0, empty up to 2, a roof at 3. The cut: the room down to its floor, the tile south of
+# it down to 0 too, the next one down to 2 (the eye's line: two levels a tile).
+CUT = r"""
+const vm = require("vm"), fs = require("fs"), seen = {corners: 0};
+const gl = new Proxy({}, {get: (t, k) => typeof k !== "string" ? undefined : k === "drawArrays" ? (m, first, n) => { seen.corners += n; }
+  : /^[A-Z_0-9]+$/.test(k) ? 1 : k.startsWith("drawingBuffer") ? 64 : () => ({})});
+const canvas = () => ({width: 0, height: 0, addEventListener() {}, getContext: (kind) => kind === "webgl2" ? gl : new Proxy({}, {get: () => () => {}, set: () => true})});
+const box = {document: {createElement: canvas}, performance: {now: () => 0}, console};
+vm.createContext(box);
+vm.runInContext(process.argv.slice(1).map((f) => fs.readFileSync(f, "utf8")).join("\n") + "\nthis.Vox = Vox; this.VoxSection = VoxSection;", box);
+const land = {"2,2": [0, 2, 3]};
+const host = {column: (x, y) => (x < 0 || y < 0 || x > 7 || y > 7 ? null : land[x + "," + y] || [3]), water: () => false, paintTop() {}, paintFront() {},
+  shape: () => 0, profile: () => new Uint8Array(16), band: () => 2, side: () => ({band: [200, 150, 100], body: [180, 130, 100], foot: [140, 100, 80], shadow: [80, 64, 134, .3]})};
+const cfg = {size: 8, cell: 16, up: 8, levels: [-2, 4], variants: 2, under: [0, 0, 0, .8], sea: [0, 0, 1], tuck: 6, inset: 2, bands: 5};
+const cutOf = (x, y, w, h, at) => { const px = new Uint8Array(w * h * 4); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const lv = at(x + i, y + j); if (lv === null) continue; const v = lv + 32768, o = (j * w + i) * 4; px[o] = v & 255; px[o + 1] = v >> 8; px[o + 2] = 255; px[o + 3] = 255; } return {x, y, w, h, px, ver: "a", a: 1, earth: [.3, .2, .2]}; };
+const cut = cutOf(2, 2, 1, 3, (x, y) => [0, 0, 2][y - 2]), strip = (z) => Math.max(-2, Math.min(4, z)) + 2;
+const m = box.VoxSection.build(host, cfg, strip, cut), out = {tops: m.tops, fronts: m.fronts, banks: m.banks, n: m.n, corners: m.pages.reduce((s, p) => s + p[2], 0)};
+// each piece of a face: [x, y, z, kind, bits] of its first corner (16 bytes a corner; px from the cut's corner tile)
+const view16 = new DataView(m.data); out.faces = [];
+for (let at = 0; at < m.data.byteLength; at += 16 * 6) out.faces.push([view16.getInt16(at, true), view16.getInt16(at + 2, true), view16.getInt16(at + 4, true), view16.getUint8(at + 9), view16.getUint8(at + 8)]);
+const engine = box.Vox.create(host, cfg), view = {w: 640, h: 360, pw: 640, ph: 360, ox: 0, oy: 0, tile: 48, row: 2, clear: [0, 0, 0], light: [1, 1, 1], water: null, chunks: [{cx: 0, cy: 0}]};
+engine.ready(); engine.work([{cx: 0, cy: 0}], 1e9);
+engine.draw(view); out.plain = seen.corners; seen.corners = 0; engine.draw({...view, cut}); out.open = seen.corners; out.made = engine.section.faces;
+// what making it again costs, as walking a tile makes it: the widest place there is (29 x 29 tiles of cave under 12
+// levels of rock, and the six rows south of it cut for the eye's line)
+const deep = {column: (x, y) => (x >= 0 && x < 29 && y >= 0 && y < 29 ? [0, 2, 12] : [12]), water: () => false, shape: () => 0, band: () => 2};
+const big = cutOf(0, 0, 29, 35, (x, y) => (y < 29 ? 0 : Math.min(12, 2 * (y - 29)))), {performance} = require("perf_hooks"), times = [];
+for (let k = 0; k < 30; k++) { const t0 = performance.now(); out.big = box.VoxSection.build(deep, cfg, strip, big).n; times.push(performance.now() - t0); }
+out.ms = times.sort((a, b) => a - b)[5];
+console.log(JSON.stringify(out));
+"""
+
+
+def cut_run():
+    r = subprocess.run([NODE, "-e", CUT, "--", *FILES], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-1500:]
+    return json.loads(r.stdout)
+
+
+def test_the_land_cut_open_is_a_section_with_the_walls_of_the_hole_and_the_tops_of_what_is_sliced():
+    out = cut_run()
+    # the wall north of the room: the chunk has its two cells that look into the room; the cut lifts the roof off, and
+    # the cell behind the roof (level 3) is seen: one front, at the room's north edge, in a cave's dark (bit 8)
+    assert out["fronts"] == 1 and [0, 0, 24, 1, 8] in out["faces"], out
+    # the tiles south of the room are solid and sliced: a top each, the cut's kind (5), at 0 and at 2; the higher
+    # one drops to the lower north of it: a line along that side (bit 1); none where the land beside it still stands
+    assert out["tops"] == 2 and [0, 16, 0, 5, 0] in out["faces"] and [0, 32, 16, 5, 1] in out["faces"], out
+    # west and east of the room and of the tile cut to 0, the rock stands three levels over the cut: its levels 1 and
+    # 2 lean out a bank each (2 px a level), on the cut tile: 2 x 2 x 2; none beside the tile cut to 2 (one level
+    # stands over it: a wall's top level does not lean)
+    assert out["banks"] == 8 and out["n"] == 11, out
+    assert out["corners"] == (2 + 8) * 4 * 6 + 1 * 6             # (what lies is four strips, as the land's: it bends with it)
+    # drawn: the land twice (what is left, then what was left out, to mark it), the cut's faces once, the fill
+    assert out["made"] == 11 and out["open"] == 2 * out["plain"] + out["corners"] + 6, out
+
+
+def test_making_the_section_again_when_the_cut_changes_tile_costs_under_two_ms():
+    out = cut_run()
+    assert out["big"] > 500, out                                 # (its north wall ten levels over the cave's own, the sliced tops south of it, the banks)
+    assert out["ms"] < 2, out
