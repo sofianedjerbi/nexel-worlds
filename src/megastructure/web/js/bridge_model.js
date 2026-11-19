@@ -5,7 +5,7 @@
 // front under it), and where a post stands in water, the sheet's foam at its foot.
 // The deck is UP art px over the water, its planks two px thick: under it, the water in its shade. Where it runs
 // onto land of its own height its last four planks step down to it, a px a plank; two posts stand on the bank at
-// its mouth. Where it ends in the water (a pier) two posts stand in the water past its end. A long one has a
+// its mouth. Where it meets land of another height (a wall) its deck goes on to the wall's set-in side. Where it ends in the water (a pier) two posts stand in the water past its end. A long one has a
 // pair of thin posts where two of its tiles meet. What stands on a bridge stands on its deck (up: relief.js lifts it).
 const BridgeModel = (() => {
   const UP = 4, THICK = 2, RISE = 2;                  // the deck over the water; a plank's thickness; a post over the deck
@@ -27,6 +27,7 @@ const BridgeModel = (() => {
       ewFill: Models.rows(["EDDD", "EDDD", "EDDD", "EDDD", "EDDD"], pal), nsFill: Models.rows(["ADDDDDDDDDDDDA", "ADDDDDDDDDDDDA", "ADDDDDDDDDDDDA"], pal),   // (planks on, between two decks)
       // (beside a deck that runs north-south: half of a thin post, the deck's own line its other side)
       sideTop: [Models.rows(["AA", "AB", "AB"], pal), Models.rows(["AA", "BA", "BA"], pal)], side: [Models.rows(["AD", "AD", "AD", "AD", "AD", "AD", "AD", "KD"], pal), Models.rows(["DA", "DA", "DA", "DA", "DA", "DA", "DA", "DK"], pal)],
+      plank: Models.rows(["D"], pal),                                                              // (a px of plank: what goes on to a wall)
       shade: Models.room(1, 1, (g, u, v) => { g.fillStyle = "rgba(80,64,134,.25)"; g.fillRect(u, v, 1, 1); }),
     };
   }
@@ -70,6 +71,10 @@ const BridgeModel = (() => {
       const e = past(x, y, ew, k);
       if (e === "bank") pair(k < 0 ? (ew ? -4 : -3) : 16, base, 4, false);
       if (e === "water") pair(k < 0 ? (ew ? -4 : -3) : 16, base, UP + RISE, true);
+      // (land of another height: its side is set in two px from its tile's, and the deck stopped at the tile's: water between
+      // them. The deck goes on those two px, to the wall, under the land's own edge)
+      if (e === "wall") { const z = hs[k < 0 ? 0 : 3], h = Math.min(THICK, z), at = k < 0 ? -2 : 16;
+        out.push(ew ? {x: at, y: 3, z: base + z - h, w: 2, d: 11, h, top: [...P.plank, 1], front: [P.ewFront[0] + 1, P.ewFront[1]]} : {x: 1, y: at, z: base + z - h, w: 14, d: 2, h, top: [...P.plank, 1], front: P.nsFront}); }
     }
     if (past(x, y, ew, -1) === "bridge") { for (const s of [0, 1]) if (!beside(s ? 1 : -1)) ew ? post(out, -2, s ? 14 : 0, base, UP + 1, true, true) : out.push({x: s ? 15 : -1, y: -2, z: base, w: 2, d: 3, h: UP + 1, top: P.sideTop[s], front: [P.side[s][0], P.side[s][1] + 7 - UP]}); }
     return out;

@@ -73,3 +73,33 @@ def test_models_cost_little_of_a_frame(game):
     ms = game.js("new Promise((ok) => { const out = [], of = window.frame; window.frame = (now) => { const a = performance.now(); of(now); out.push(performance.now() - a); if (out.length >= 90) { window.frame = of; ok(out); } }; })")
     ms.sort()
     assert ms[len(ms) // 2] < 6 and ms[int(len(ms) * .95)] < 12, ms[-5:]
+
+
+def test_a_body_is_behind_the_posts_in_front_of_it_and_before_the_ones_behind(game):
+    """Bodies are drawn over the land's picture: a bridge's posts were under anybody. What is drawn of a body on the
+    deck, two tiles meeting under it, leaves the near side's posts (south of its feet) as they are, and covers the
+    far side's (north of them) and the planks it stands on."""
+    game.flat()                                                  # (it reads art px of the model north of you)
+    x, y = pond(game)
+    seen = game.js("""([x, y]) => { const S = TS(), [ox, oy] = screenOrigin(S), sx = (v) => ox + v * S, sy = Curve.sy(oy, S), p = {x: x - .5, y, e: {kind: 'chicken', id: -1}};
+      frame(performance.now());
+      const px = (ax, ay) => { const d = ctx.getImageData(Math.round((ox + x * S + (ax + .5) * zoom) * DPR), Math.round((oy + y * S + (ay + .5) * zoom) * DPR), 1, 1).data; return [d[0], d[1], d[2]]; };
+      const spots = [[-1, 12], [-1, -2], [-6, 4]], was = spots.map((s) => px(...s)), cut = clipModels(p, sx, sy);
+      ctx.fillStyle = '#f0f'; ctx.fillRect(ox + (x - 2) * S, oy + (y - 2) * S, 4 * S, 4 * S); if (cut) ctx.restore();
+      return [cut, was, spots.map((s) => px(...s))]; }""", [x, y])
+    cut, was, now = seen
+    assert cut and now[0] == was[0] and near(was[0], [196, 154, 108], 60), seen      # the near post, where two tiles meet: not drawn over
+    assert now[1] == [255, 0, 255] and now[2] == [255, 0, 255], seen                  # the far one, and the deck under the body: drawn over
+    assert not game.errors
+
+
+def test_a_click_on_a_plank_picks_the_bridges_tile_at_the_decks_height(game):
+    """The deck is four px over the water: its far planks are drawn over the tile north of it. Pointing at any px of
+    the deck's top is pointing at the bridge's tile (where its planks step down to the bank too), flat or in the curved world."""
+    x, y = pond(game)
+    pick = """([x, y, ax, ay]) => { const S = TS(), [ox, oy] = screenOrigin(S), sy = Curve.sy(oy, S), up = liftAt(x, y), q = tileAtScreen(ox + x * S + (ax + .5) * zoom, sy.row(y + (ay + .5) / 16, up) + .5); return [q.x - x, q.y - y]; }"""
+    spots = [[x + d, y, ax, ay] for d in (0, -4, 4) for ax, ay in ((1, 0), (9, 3), (9, 8), (14, 13))]
+    assert game.js("Curve.on") and [game.js(pick, s) for s in spots] == [[0, 0]] * len(spots)
+    game.flat()
+    assert [game.js(pick, s) for s in spots] == [[0, 0]] * len(spots)
+    assert not game.errors

@@ -72,12 +72,34 @@ function clipBehind(p, sx, sy, S, part = 0) {
   ctx.clip();
   return true;
 }
+// ...and behind what stands in front of them as a model (models.js: a bridge's posts): a box whose south side is
+// south of their feet and whose top is over what they stand on hides what is drawn behind its top and its front.
+// (On a bridge's deck: in front of the posts of its far side, behind the near ones'; the planks under their feet
+// hide nothing of them.) The boxes of a tile that can hide, kept until the land changes: [x, y, w, d, z, h] art px of the world
+const MODEL_BOXES = new Map(); let modelsAt = -1;
+function clipModels(p, sx, sy) {
+  if (modelsAt !== landVer) { modelsAt = landVer; MODEL_BOXES.clear(); }
+  const x = Math.round(p.x), y = Math.round(p.y), foot = p.y * 16 + 12, on = (p.e && p.e.kind ? liftOf(p) : liftAt(x, y)) / zoom, base = sy.bent ? 0 : sy(0);
+  const at = (g, up) => (sy.bent ? sy.row(g / 16, up * zoom) : base + (g - up) * zoom);      // (a spot of the ground, art px, and a height over it: where it is on the screen)
+  let any = false;
+  for (let ty = y - 1; ty <= y + 1; ty++) for (let tx = x - 1; tx <= x + 1; tx++) {
+    const key = tx + "," + ty; let list = MODEL_BOXES.get(key);
+    if (list === undefined) { const m = Models.at(tx, ty); MODEL_BOXES.set(key, list = m ? m.filter((b) => b.h > 0 && b.front).map((b) => [tx * 16 + b.x, ty * 16 + b.y, b.w, b.d, b.z, b.h]) : null); }
+    if (list) for (const [bx, by, w, d, z, h] of list) if (by + d > foot && z + h > on + .5 && bx < p.x * 16 + 20 && bx + w > p.x * 16 - 4) {
+      if (!any) { ctx.save(); any = true; }
+      const left = sx(0) + bx * zoom, top = at(by, z + h);
+      ctx.beginPath(); ctx.rect(-1e4, -1e4, 3e4, 3e4); ctx.rect(left, top, w * zoom, at(by + d, z) - top); ctx.clip("evenodd");
+    }
+  }
+  return any;
+}
 // Drawn behind the ground in front of it, and through the rock the x-ray circle sees through (xray.js): as hidden as
 // ever, and over that what the rock hides of it, as faint as the circle is there (whole in its clear middle).
 // draw(a): draws it, a: how strong
 function drawBehind(p, sx, sy, S, draw) {
-  const shows = xrayShows(p), cut = clipBehind(p, sx, sy, S, shows > .98 ? 1 : 0);
+  const shows = xrayShows(p), cut = clipBehind(p, sx, sy, S, shows > .98 ? 1 : 0), posts = clipModels(p, sx, sy);
   draw(1);
+  if (posts) ctx.restore();
   if (cut) ctx.restore();
   if (cut && shows > .02 && shows <= .98) { clipBehind(p, sx, sy, S, 2); draw(shows); ctx.restore(); }
 }

@@ -3,7 +3,7 @@ tunnel, a room: the land cut open over the place you are in; the light in it, by
 and by night. (The dug look itself, and build mode's digging: test_e2e_digging.py; caves under hills:
 test_e2e_caves.py.)"""
 
-from test_e2e_digging import DRAWN, GREEN_ON_SCREEN, LAND, SEEN, cut, earth
+from test_e2e_digging import DRAWN, GREEN_ON_SCREEN, LAND, SEEN, cut, earth, sliced
 
 
 def test_a_stair_dug_under_a_hill_is_a_burrow_in_the_bank_not_floors_lying_on_the_hill(game):
@@ -30,7 +30,7 @@ def test_a_stair_dug_under_a_hill_is_a_burrow_in_the_bank_not_floors_lying_on_th
     steps = game.js(LAND, [[x + d, y, f, 8, 8] for d, f in ((-9, -6), (-8, -6), (-7, -5), (-6, -4), (-5, -3))])
     assert all(earth(c) for c in steps), steps                # every floor of it, where it is drawn: under you, yours, the one you came down
     south = game.js(LAND, [[X, y + 1, -4, 8, 8]])[0]
-    assert cut(south), south                                  # ...and no floor a tile south of the stair: the ground in front, cut open
+    assert sliced(south), south                                # ...and no floor a tile south of the stair: the ground in front, cut open
     assert not game.errors
 
 
@@ -50,7 +50,7 @@ def test_earth_left_between_two_tunnels_is_the_nearer_ones_back_wall_not_a_strip
     game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
     assert game.js(f"[seenUnder({X}, {y}), seenUnder({X}, {y + 1}), seenUnder({X}, {y + 2})]") == [-4, None, -4]
     far, between, near = game.js(LAND, [[X, y, -4, 8, 8], [X, y + 1, -4, 8, 8], [X, y + 2, -4, 8, 8]])
-    assert earth(far) and earth(near) and cut(between), (far, between, near)
+    assert earth(far) and earth(near) and sliced(between), (far, between, near)
     assert game.js(GREEN_ON_SCREEN, [[X, y, 4], [X, y + 1, 4], [X, y + 2, 4]]) == [0, 0, 0]
     assert not game.errors
 

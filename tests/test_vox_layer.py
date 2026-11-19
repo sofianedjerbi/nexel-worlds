@@ -175,7 +175,7 @@ const host = {column: (x, y) => (x < 0 || y < 0 || x > 7 || y > 7 ? null : land[
 const cfg = {size: 8, cell: 16, up: 8, levels: [-2, 4], variants: 2, under: [0, 0, 0, .8], sea: [0, 0, 1], tuck: 6, inset: 2, bands: 5};
 const cutOf = (x, y, w, h, at) => { const px = new Uint8Array(w * h * 4); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const lv = at(x + i, y + j); if (lv === null) continue; const v = lv + 32768, o = (j * w + i) * 4; px[o] = v & 255; px[o + 1] = v >> 8; px[o + 2] = 255; px[o + 3] = 255; } return {x, y, w, h, px, ver: "a", a: 1, earth: [.3, .2, .2]}; };
 const cut = cutOf(2, 2, 1, 3, (x, y) => [0, 0, 2][y - 2]), strip = (z) => Math.max(-2, Math.min(4, z)) + 2;
-const m = box.VoxSection.build(host, cfg, strip, cut), out = {tops: m.tops, fronts: m.fronts, banks: m.banks, n: m.n, corners: m.pages.reduce((s, p) => s + p[2], 0)};
+const m = box.VoxSection.build(host, cfg, strip, cut), out = {tops: m.tops, fronts: m.fronts, banks: m.banks, lit: m.lit.reduce((s, v) => s + v, 0), n: m.n, corners: m.pages.reduce((s, p) => s + p[2], 0)};
 // each piece of a face: [x, y, z, kind, bits] of its first corner (16 bytes a corner; px from the cut's corner tile)
 const view16 = new DataView(m.data); out.faces = [];
 for (let at = 0; at < m.data.byteLength; at += 16 * 6) out.faces.push([view16.getInt16(at, true), view16.getInt16(at + 2, true), view16.getInt16(at + 4, true), view16.getUint8(at + 9), view16.getUint8(at + 8)]);
@@ -206,13 +206,15 @@ def test_the_land_cut_open_is_a_section_with_the_walls_of_the_hole_and_the_tops_
     # the tiles south of the room are solid and sliced: a top each, the cut's kind (5), at 0 and at 2; the higher
     # one drops to the lower north of it: a line along that side (bit 1); none where the land beside it still stands
     assert out["tops"] == 2 and [0, 16, 0, 5, 0] in out["faces"] and [0, 32, 16, 5, 1] in out["faces"], out
-    # west and east of the room and of the tile cut to 0, the rock stands three levels over the cut: its levels 1 and
-    # 2 lean out a bank each (2 px a level), on the cut tile: 2 x 2 x 2; none beside the tile cut to 2 (one level
-    # stands over it: a wall's top level does not lean)
-    assert out["banks"] == 8 and out["n"] == 11, out
-    assert out["corners"] == (2 + 8) * 4 * 6 + 1 * 6             # (what lies is four strips, as the land's: it bends with it)
+    # west and east of the room and of the tile cut to 0, the rock stands three levels over the cut: its level 2
+    # leans out a bank (2 px), on the cut tile; its level 1 no further (a way one tile wide, a wall on each side: two
+    # px a side at the most, the floor is the main thing): 2 x 2; none beside the tile cut to 2 (one level stands
+    # over it: a wall's top level does not lean)
+    assert out["banks"] == 4 and out["n"] == 7, out
+    assert out["lit"] == 0                                       # (no wall of it out of doors: all in the cave's dark)
+    assert out["corners"] == (2 + 4) * 4 * 6 + 1 * 6             # (what lies is four strips, as the land's: it bends with it)
     # drawn: the land twice (what is left, then what was left out, to mark it), the cut's faces once, the fill
-    assert out["made"] == 11 and out["open"] == 2 * out["plain"] + out["corners"] + 6, out
+    assert out["made"] == 7 and out["open"] == 2 * out["plain"] + out["corners"] + 6, out
 
 
 def test_making_the_section_again_when_the_cut_changes_tile_costs_under_two_ms():

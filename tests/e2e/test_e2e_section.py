@@ -29,6 +29,7 @@ def test_the_wall_north_of_a_cut_floor_is_drawn_as_the_lands_front_not_the_fill(
     tunnel's own two cells of wall, and the four over them that no face of the land's was made for: they were one
     flat dark slab). Nothing is left
     for the fill; and without the faces of the cut, it is: the count is not blind."""
+    game.flat()                                                  # (it reads art px of a wall three tiles up the picture: whole px on the flat one)
     game.clear_area(12)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)
@@ -45,7 +46,7 @@ def test_the_wall_north_of_a_cut_floor_is_drawn_as_the_lands_front_not_the_fill(
     assert earth(floor), floor                                                             # the tunnel's floor
     assert fill_px(game) == 0
     # ...and with no faces made for the cut, the same place is thousands of px of fill
-    game.js("(() => { VoxSection.build = () => ({...VoxMesh.pack([[]]), shapes: []}); return 1; })()")
+    game.js("(() => { VoxSection.build = () => ({...VoxMesh.pack([[]]), shapes: [], lit: []}); return 1; })()")
     under(game, x - 2, y, -6)
     assert game.js("Voxels.engine.section.faces") == 0 and fill_px(game) > 2000
     assert not game.errors
@@ -66,10 +67,11 @@ def test_no_px_is_left_to_the_fill_in_two_rooms_one_over_the_other(game):
     assert game.js("Voxels.engine.section.faces") > 20 and fill_px(game) == 0
     back = game.js(LAND, [[X, y, lv, 8, 3] for lv in (1, -1, -3)])                          # the wall behind your room, on up toward the hill's top
     assert all(c != FILL and c[0] > c[1] + 8 for c in back), back
-    # the tile south of your floor is solid and cut down to it: its sliced top, the cut's colour (nine down: half a
-    # tile of it shows before the meadow in front; the next ones, two levels higher a tile on, are drawn in that row)
+    # the tile south of your floor is solid and cut down to it: its sliced top (nine down: half a tile of it shows
+    # before the meadow in front; the next ones, two levels higher a tile on, are drawn in that row). It is earth as
+    # that level's front has it, in the day's light: the cut face of the ground, not a dark slab (a pit before the room)
     sliced = game.js(LAND, [[X, y + 1, -9, 8, 3]])[0]
-    assert sliced == FILL, sliced
+    assert sliced != FILL and not cut(sliced) and earth(sliced), sliced
     under(game, X + 2, y, -6)
     assert fill_px(game) == 0
     assert not game.errors
@@ -94,3 +96,55 @@ def test_no_px_is_left_to_the_fill_on_a_stair_under_a_hill_and_behind_a_hill(gam
     game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
     assert game.js("xray.pic.cut.size") > 6 and fill_px(game) == 0
     assert not game.errors
+
+
+def test_the_front_of_a_hole_is_one_straight_edge_and_a_higher_floor_stands_on_its_block(game):
+    """The pit, the hole under the tunnel and the tunnel's steps (test_e2e_stacked.py), from the lowest room. Each
+    column was cut for its own floor: a dark square south of every step, a sill under the lowest floor alone ("a pit
+    in front of the room"). The tiles in front are cut to the lowest of the row, all of them: one edge; a step's
+    floor stands on its block, whose front is seen under it down to that edge: earth, as any front."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(1, -4, ["." * 9] * 9, levels=["3" * 9] * 9)
+    X = x + 4
+    for i, col in ((-1, [-9, -4, 3]), (0, [-9, -7, -6, -4, 3]), (1, [-8, -7, -6, -4, 3]), (2, [-6, -4, 3]), (3, [-5, -3, 3])):
+        game.rpc("dev_col", tiles=[[X + i, y]], col=col)
+    under(game, X, y, -9)
+    front = game.js(f"[-1, 0, 1, 2, 3].map((i) => [1, 2, 3].map((j) => xray.pic.cut.get(({X} + i) + ',' + ({y} + j))))")
+    assert front == [[-9, -7, -5]] * 5, front                     # every column, a row at a time: as low as the lowest room needs
+    assert fill_px(game) == 0
+    # under the tunnel's floor (six down) and its step (five down), south of them: the front of the block they are on
+    block = game.js(LAND, [[X + 2, y + 1, -7, 8, 3], [X + 2, y + 1, -8, 8, 3], [X + 3, y + 1, -6, 8, 3], [X + 3, y + 1, -8, 8, 3]])
+    assert all(c != FILL and c[0] > c[1] + 8 and c[0] > c[2] + 8 for c in block), block
+    floors = game.js(LAND, [[X + 2, y, -6, 8, 8], [X + 3, y, -5, 8, 8]])          # (and their floors over it, where they were)
+    assert all(earth(c) for c in floors), floors
+    # no dark earth anywhere in the row in front of the place: not the cut's flat colour, not a void
+    row = game.js(LAND, [[X + i, y + 1, -9, ax, 3] for i in (-1, 0, 1, 2, 3) for ax in (2, 8, 13)])
+    assert all(c != FILL and sum(c) > 230 for c in row), row
+    assert not game.errors
+
+
+def test_one_wall_has_one_light(game):
+    """A tunnel six down that opens into a pit at its east end, you in it. Its north wall and the pit's are one wall:
+    the pit's is out of doors, so all of it is in the day's light, the tunnel's own two cells of wall as the cells
+    cut through over them (they were in the cave's dark beside the pit's lit front: a seam down the wall). A room
+    with no wall out of doors keeps the cave's dark."""
+    game.flat()                                                  # (art px of a wall up the picture, as above)
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(-5, 0, ["." * 6], levels=["f" * 6], roofs=["6" * 6], heads=["2" * 6]); game.stamp(1, 0, ["."], levels=["f"])
+    under(game, x - 2, y, -6)
+    mid = lambda px: sorted(px, key=sum)[len(px) // 2]            # (a level's body, whatever fleck one px of it is)
+    at = lambda tx, lv: mid(game.js(LAND, [[tx, y, lv, ax, 2] for ax in (1, 4, 7, 10, 13)]))
+    for lv in (-1, -3, -5):                                      # over the tunnel (cut through), the tunnel's own cell, and the pit's wall beside them
+        tunnel, pit = at(x - 1, lv), at(x + 1, lv)
+        assert abs(sum(tunnel) - sum(pit)) <= 12, (lv, tunnel, pit)
+    lit = at(x - 1, -1)
+    game.stamp(3, 0, ["."], levels=["f"], roofs=["6"], heads=["2"])            # (you are two tiles west of where you came) the pit roofed over: no wall of the place is out of doors
+    game.wait(f"roofAt({x + 1}, {y}) === 6", 8000)
+    under(game, x - 3, y, -6)
+    dark = at(x - 1, -1)
+    assert sum(dark) < sum(lit) - 25, (dark, lit)
+    assert fill_px(game) == 0 and not game.errors

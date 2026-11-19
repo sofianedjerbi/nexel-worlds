@@ -62,6 +62,7 @@ const Voxels = (() => {
       for (const [k, lv] of all) { const [x, y] = k.split(",").map(Number), i = ((y - y0) * w + x - x0) * 4, v = lv + 32768; px[i] = v & 255; px[i + 1] = v >> 8; px[i + 2] = 255; px[i + 3] = 255; }
       cutOf = {x: x0, y: y0, w, h, px, ver, earth: [.3, .21, .17], line: [.2, .14, .13]};      // (a block's sliced top, and the line along its edge at a drop)
     }
+    cutOf.slab = api.slab;                                    // (slab: a sliced top in the cut's one flat colour, as it was: to compare)
     cutOf.fill = api.probe ? [1, 0, 1] : null;                // (probe: what the faces of the cut leave empty is counted, api.fillPx: none, tests)
     cutOf.a = cur ? 1 : xray.a;                              // (the cursor's is there at once; the place's comes with how hidden you are)
     return cutOf;
@@ -93,6 +94,6 @@ const Voxels = (() => {
     ctx.globalAlpha = a; ctx.drawImage(pic, 0, 0, W, H); ctx.globalAlpha = 1;
     return true;
   }
-  const api = {made, work, frame, veil, engine, probe: false, fillPx: 0};
+  const api = {made, work, frame, veil, engine, probe: false, fillPx: 0, slab: false};
   return api;
 })();

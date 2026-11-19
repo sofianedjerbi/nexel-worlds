@@ -15,7 +15,7 @@
 // comes; far: tiles south to look for ground drawn up over you; near: how far from your tile (tiles) the place you
 // are in goes
 // wide: how far from your tile ground that was dug, or is under a roof, is of that place (all of a cave, a tunnel)
-const XRAY = {r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, near: 4.1, wide: 14};
+const XRAY = {even: true, r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, near: 4.1, wide: 14};
 // how strong, the height you stand at, your row, the window's centre (tiles, as drawn), how long you've been hidden,
 // and what was found for where you are (pic: {key, floor: "x,y" -> the place's floor under a roof, rock: the tiles
 // of the rock in the way, place: the tiles of the place, cut: "x,y" -> the level that tile is cut down to})
@@ -159,5 +159,19 @@ function xrayFind(tx) {
   // (and your own tile first: a higher floor of the place south of you, drawn up over where you stand, is cut down
   // to your floor as any ground in front of you is: you stood in a dark column with no floor under you)
   for (let ty = row + 1; ty <= row + XRAY.far; ty++) { const k = tx + "," + ty, f = floor.get(k); if (f !== undefined && (f - L) * RELIEF_STEP - (ty - row - 1) * 16 > RELIEF_STEP) lower(k, L); }
+  // The front of the hole is one straight edge. Each column's own cut ended at its own row (a stair: a sliced square
+  // south of every step, a sill under the lowest floor alone). Row by row going south, the tiles in front of the
+  // place that are side by side (cut for the eye's line, or south of one that is, or of a floor under a roof) are
+  // all cut to the lowest of them: a higher floor stands on its block, whose front is seen down to that edge.
+  if (XRAY.even && cut.size) {
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const k of cut.keys()) { const [x, ty] = k.split(",").map(Number); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, ty); y1 = Math.max(y1, ty); }
+    for (let ty = y0; ty <= y1 + XRAY.far; ty++) for (let x = x0, run = []; x <= x1 + 1; x++) {
+      const k = x + "," + ty, n = x + "," + (ty - 1);
+      if (x <= x1 && !floors.has(k) && (cut.has(k) || floor.has(n) || (cut.has(n) && !floors.has(n)))) { run.push(x); continue; }
+      const low = Math.min(...run.filter((v) => cut.has(v + "," + ty)).map((v) => cut.get(v + "," + ty)));      // (none of them cut: Infinity, nothing is)
+      for (const v of run) if (levelAt(v, ty) > low) { lower(v + "," + ty, low); rock.add(v + "," + ty); }
+      run = [];
+    }
+  }
   xray.pic = {key, floor, rock, cut, all, place: new Set(floors.keys())};
 }
