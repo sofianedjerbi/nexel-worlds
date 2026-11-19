@@ -24,7 +24,7 @@ const Voxels = (() => {
   // (the look of the sides, all the host's: under: a cave's mouth is dark; tuck, inset: the hill sheets' cells leave
   // up to 6 px empty at a corner, 2 along a side; bands: a wall that faces west or east leans out a level at a time
   // (voxpaint.js: 2 px), 5 levels at the most)
-  const engine = Vox.create(host, {size: B, cell: P, up: RELIEF_STEP, levels: [-9, 12], variants: 4, under: [.16, .12, .15, .9], sea: [.42, .7, .84], tuck: 6, inset: 2, bands: 5});
+  const engine = Vox.create(host, {size: B, cell: P, up: RELIEF_STEP, levels: [-9, 12], variants: 4, under: [.16, .12, .15, .9], sea: [.42, .7, .84], tuck: 6, inset: 2, bands: 5, dug: 0});
   const made = (b) => engine.made(b.bx, b.by) && !!b.water;      // a block of tiles is ready to be shown: its faces, and its sea (water.js)
   // (the one place the land's px change: a tile drawn again is a tile the engine paints again)
   const drawTile0 = drawTile;

@@ -126,25 +126,28 @@ def test_the_front_of_a_hole_is_one_straight_edge_and_a_higher_floor_stands_on_i
 
 
 def test_one_wall_has_one_light(game):
-    """A tunnel six down that opens into a pit at its east end, you in it. Its north wall and the pit's are one wall:
-    the pit's is out of doors, so all of it is in the day's light, the tunnel's own two cells of wall as the cells
-    cut through over them (they were in the cave's dark beside the pit's lit front: a seam down the wall). A room
-    with no wall out of doors keeps the cave's dark."""
+    """A tunnel six down that opens into a pit three tiles wide at its east end, you in it. Its north wall and the
+    pit's are one wall: the pit's is out of doors, so all of it is in the day's light, the tunnel's own two cells of
+    wall as the cells cut through over them (they were in the cave's dark beside the pit's lit front: a seam down the
+    wall). A room with no wall out of doors keeps the cave's dark. (A pit one tile wide is a shaft, dark the deeper
+    it goes: no daylight for the tunnel either; test_e2e_holes.py.)"""
     game.flat()                                                  # (art px of a wall up the picture, as above)
     game.clear_area(12)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)
-    game.stamp(-5, 0, ["." * 6], levels=["f" * 6], roofs=["6" * 6], heads=["2" * 6]); game.stamp(1, 0, ["."], levels=["f"])
+    game.stamp(-5, 0, ["." * 6], levels=["f" * 6], roofs=["6" * 6], heads=["2" * 6]); game.stamp(1, -1, ["..."] * 3, levels=["fff"] * 3)
     under(game, x - 2, y, -6)
     mid = lambda px: sorted(px, key=sum)[len(px) // 2]            # (a level's body, whatever fleck one px of it is)
-    at = lambda tx, lv: mid(game.js(LAND, [[tx, y, lv, ax, 2] for ax in (1, 4, 7, 10, 13)]))
-    for lv in (-1, -3, -5):                                      # over the tunnel (cut through), the tunnel's own cell, and the pit's wall beside them
-        tunnel, pit = at(x - 1, lv), at(x + 1, lv)
+    at = lambda tx, ty, lv: mid(game.js(LAND, [[tx, ty, lv, ax, 2] for ax in (1, 4, 7, 10, 13)]))
+    for lv in (-1, -3):                                          # over the tunnel (cut through), and the pit's wall beside it (a row further north)
+        tunnel, pit = at(x - 1, y, lv), at(x + 2, y - 1, lv)
         assert abs(sum(tunnel) - sum(pit)) <= 12, (lv, tunnel, pit)
-    lit = at(x - 1, -1)
-    game.stamp(3, 0, ["."], levels=["f"], roofs=["6"], heads=["2"])            # (you are two tiles west of where you came) the pit roofed over: no wall of the place is out of doors
+    cell = at(x - 1, y, -5)                                      # the tunnel's own cell of wall: no cave's dark on it (a third of the way to near black)
+    assert sum(cell) > sum(at(x + 2, y - 1, -5)) - 30, cell
+    lit = at(x - 1, y, -1)
+    game.stamp(3, -1, ["..."] * 3, levels=["fff"] * 3, roofs=["666"] * 3, heads=["222"] * 3)            # (you are two tiles west of where you came) the pit roofed over: no wall of the place is out of doors
     game.wait(f"roofAt({x + 1}, {y}) === 6", 8000)
     under(game, x - 3, y, -6)
-    dark = at(x - 1, -1)
+    dark = at(x - 1, y, -1)
     assert sum(dark) < sum(lit) - 25, (dark, lit)
     assert fill_px(game) == 0 and not game.errors

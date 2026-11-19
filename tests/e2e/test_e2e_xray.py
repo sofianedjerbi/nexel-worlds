@@ -66,7 +66,7 @@ def test_what_is_there_shows_without_the_rock_in_front(game):
     game.stamp(-6, -4, ["." * 13] * 9, levels=["8" * 13] * 4 + ["0" * 13] + ["8" * 13] * 4)
     game.sleep(700); game.wait(BUILT, 20000); game.wait("xray.a > .95", 20000)
     x, y = game.pos()
-    area = f"{x} - 1, {y} - 2, {x} + 2, {y} + 1"            # the cliff behind you and your row
+    area = f"{x} - 1 + 5 / 16, {y} - 2, {x} + 2 - 5 / 16, {y} + 1"            # the cliff behind you and your row (not the 4 px at each side: the plateau is cut where it covers you and a tile each side, no more, and the wall of that cut stands there, leaning as walls do: xray.js `seen`)
     on, off = frames(game, f"return [box(shot('on'), {area}), box(shot('off'), {area})];")
     assert on != off
     game.stamp(-6, 1, ["." * 13] * 4, levels=["0" * 13] * 4)         # the plateau in front, gone
@@ -146,14 +146,16 @@ def test_the_place_you_are_in_shows_not_only_what_is_behind_you(game):
     your own row and north of it. The circle saw through the rock south of your row only: it stopped dead at your feet
     and at your side, and showed nothing of where you were heading. The rock seen through is what stands on the line
     of sight to the place you are in (the ground you could walk to from where you stand): the bank beside you and in
-    front of you are of it, the ground ahead shows, the meadow it is, and all of your own tile shows."""
+    front of you are of it, the ground ahead shows, the meadow it is, and all of your own tile shows. (The bank is cut
+    where it covers you and the tiles round you, not all of it: the rest of it stands a tile on, and its side leans
+    over the ground ahead, a band a level: more than half of that tile is meadow, it was nine tenths.)"""
     for side in (1, -1):
         x, y = stamp_levels(game, lambda i, j: 6 if side * i + j >= 1 else 0)
         ahead = f"{x + side}, {y - 1}, {x + side + 1}, {y}"                       # the ground a step on, round the bank's corner
         mine = f"{x}, {y}, {x + 1}, {y + 1}"
         out = frames(game, f"""const A = shot('on'), Z = shot('off'), a = box(A, {ahead}); let n = 0;
           for (let i = 0; i < a.length; i += 3) if (a[i + 1] > a[i] + 12) n++;
-          return [differ(a, box(Z, {ahead})) > 0, n / (a.length / 3) > .9, differ(box(A, {mine}), box(Z, {mine})) > 0, xrayRock({x + side}, {y}), xrayRock({x}, {y + 1})];""")
+          return [differ(a, box(Z, {ahead})) > 0, n / (a.length / 3) > .5, differ(box(A, {mine}), box(Z, {mine})) > 0, xrayRock({x + side}, {y}), xrayRock({x}, {y + 1})];""")
         assert out == [True, True, True, True, True], (side, out)
     game.clear_area(12)
     assert not game.errors
@@ -168,7 +170,7 @@ def test_a_rock_that_stands_apart_stays_whole(game):
     game.stamp(1, -2, ["."], levels=["6"])
     game.sleep(700); game.wait(BUILT, 20000); game.wait("xray.a > .95", 20000)
     x, y = game.pos()
-    area = f"{x} + 1, {y} - 3, {x} + 2, {y}"                 # the pillar's column, under the wall's top
+    area = f"{x} + 1, {y} - 3, {x} + 2 - 5 / 16, {y}"        # the pillar's column, under the wall's top (not its last px east: the wall is cut a tile each side of you, and the side of that cut stands there)
     on, off, rock = frames(game, f"return [box(shot('on'), {area}), box(shot('off'), {area}), [xrayRock({x + 1}, {y - 2}), xrayRock({x}, {y + 1})]];")
     assert on != off and rock == [False, True]
     game.stamp(-5, 1, ["." * 11] * 3, levels=["0" * 11] * 3)  # the wall in front, gone
@@ -212,7 +214,7 @@ def test_creatures_behind_the_rock_are_seen_and_those_on_it_go_with_it(game):
     drawn (it would stand in the air, over you)."""
     game.clear_area(10)
     game.stamp(-6, 1, ["." * 13] * 3, levels=["6" * 13] * 3)  # a wall in front of you, six layers
-    behind, on_rock = game.spawn("cow", 2, 0, still=600), game.spawn("chicken", -2, 1, still=600)   # beside you; on the wall
+    behind, on_rock = game.spawn("cow", 1, 0, still=600), game.spawn("chicken", -1, 1, still=600)   # beside you; on the wall, where it is cut away (a tile each side of you: it was all of the wall)
     game.sleep(1500)
     assert game.js("xray.a") > .95
     assert game.js(f"[xrayShows(ents.get('cow{behind}')) > .95, xrayOverBody(ents.get('chicken{on_rock}')) > .95]") == [True, True]

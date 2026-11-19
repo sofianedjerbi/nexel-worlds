@@ -110,7 +110,7 @@ def test_the_floor_you_stand_on_is_seen_under_a_higher_floor_drawn_over_it(game)
     game.wait(f"myAt && myAt.y === {y - 2} && myAt.z === -8", 8000)
     game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
     assert game.js(f"[seenUnder({X}, {y - 2}), seenUnder({X}, {y - 1})]") == [-8, -6]
-    mine = game.js(LAND, [[X, y - 2, -8, 8, 8]])[0]
+    mine = game.js(LAND, [[X, y - 2, -8, 8, 4]])[0]             # (its far half: across its middle is the edge of the higher floor south of it, drawn half a tile up: a px of line where it drops to yours, vox_engine.js)
     assert earth(mine), mine
     assert not game.errors
 

@@ -27,7 +27,8 @@
 //         sea: [r, g, b] water when no picture of it is given, and the look of a drop that has no face in view:
 //         tuck: px a top goes on under a higher block beside it (as many as a shape leaves empty at the most),
 //         inset: px of those a straight side leaves empty (the wall's foot is that far in), bands: the levels of
-//         a wall that stand out a bank each at the most (under them it goes straight down)}
+//         a wall that stand out a bank each at the most (under them it goes straight down), dug: the level under
+//         which a narrow hole is darker the deeper it goes (vox_mesh.js; left out: no hole is)}
 //
 //   what it gives:
 //     ready()            can it draw at all (WebGL 2, its program)
@@ -126,16 +127,16 @@ void main() {
   // (a bank, kinds 3 and 4, lies over the ground beside its wall: it belongs to its wall's tile, half a tile on. A
   // top's px under a neighbour (vLoc: 8 more than where it is in its tile) are inside that neighbour: of its tile.)
   // What is higher than its tile's cut is left out; the faces of the cut itself (uSec: vox_section.js) are all there.
-  bool open = false, front = abs(vMeta.y - 1.) < .5, bank = vMeta.y > 2.5 && vMeta.y < 4.5, on = false, day = false, into = false;
+  bool open = false, front = abs(vMeta.y - 1.) < .5, bank = vMeta.y > 2.5 && vMeta.y < 4.5, on = false, day = false, into = false, other = false;
   if (uCutBox.z > 0.) {
-    vec2 tl = floor((vWorld - vec2(bank ? ((int(vMeta.x + .5) & (vMeta.y > 3.5 ? 32 : 1)) != 0 ? uCell * .5 : -uCell * .5) : 0., front || vMeta.y > 3.5 ? .5 : 0.)) / uCell), q = floor(vScr / uK);
-    on = uCutBox.z > mod(q.x, 2.) * .5 + mod(q.x + q.y, 2.) * .25 + .125;
+    vec2 tl = floor((vWorld - vec2(bank ? ((int(vMeta.x + .5) & (vMeta.y > 3.5 ? 32 : 1)) != 0 ? uCell * .5 : -uCell * .5) : 0., front || vMeta.y > 3.5 ? .5 : 0.)) / uCell), q = mod(floor(vFlat / uK + .001), 2.);
+    on = uCutBox.z > ((q.x == q.y ? q.x : 3. - q.x) + .5) / 4.;      // (it comes a px of paint in four at a time, on the land's own grid of px: a checker at half, never a stripe)
     if (uSec > .5) { open = true; cut = !on; }
     else {
       float lv = cutLv(tl);
       // (a front that looks into a tile that is cut open is seen with it: the wall at the back of a cave)
       into = front && cutLv(tl + vec2(0., 1.)) < 1e4; open = lv < 1e4 || into;
-      vec2 s = tl + vec2(0., 1.); if (front && on && s.x >= 0. && s.y >= 0. && s.x < uCutBox.x && s.y < uCutBox.y) { float a = texelFetch(uCutMap, ivec2(s), 0).a; day = a > .25 && a < .75; }      // (a front of the land's in a hole of the cut that has a wall out of doors: the day's light, as all its walls)
+      vec2 s = tl + vec2(0., 1.); if (front && on && s.x >= 0. && s.y >= 0. && s.x < uCutBox.x && s.y < uCutBox.y) { float a = floor(texelFetch(uCutMap, ivec2(s), 0).a * 255. + .5), head = mod(a, 128.); day = a >= 128.; other = head > 0. && vAt.y > cutLv(s) + head + .02; }      // (a front of the land's in a hole of the cut that has a wall out of doors: the day's light, as all its walls)
       if (on && vAt.y > lv + .02) cut = true;
     }
   }
@@ -166,6 +167,8 @@ void main() {
       // (not of a wall that is cut away down to here)
       vec2 own = floor((vWorld - loc) / uCell + .5); bool gw = on && cutLv(own - vec2(1., 0.)) < vAt.y + .5, ge = on && cutLv(own + vec2(1., 0.)) < vAt.y + .5, gn = on && cutLv(own - vec2(0., 1.)) < vAt.y + .5;
       if (uSec > .5) { gw = false; ge = false; gn = false; }
+      // (...and along a side where the land beside it is cut lower than it: the line of a cut edge, the wall's foot colour. A roof lifted off shows where it was)
+      if (on && uSec < .5 && ((x < 1. && loc.x >= 0. && cutLv(own - vec2(1., 0.)) < vAt.y - .5) || (x > uCell - 2. && loc.x < uCell && cutLv(own + vec2(1., 0.)) < vAt.y - .5) || (y < 1. && loc.y >= 0. && cutLv(own - vec2(0., 1.)) < vAt.y - .5) || (y > uCell - 2. && cutLv(own + vec2(0., 1.)) < vAt.y - .5))) c = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb;
       if (((bits & 2) != 0 && !gw && x == vMore.x - 8.) || ((bits & 4) != 0 && !ge && uCell - 1. - x == vMore.y - 8.) || ((bits & 1) != 0 && !gn && y == -texelFetch(uFoot, ivec2(int(clamp(x, 0., far)), int(vMore.z)), 0).r * 255.)) c = shadow(c);
     }
   } else if (kind == 1) {
@@ -184,12 +187,15 @@ void main() {
   // under a roof: a cave's own dark. Seen from outside, at its mouth, nearly all of it; seen through the window on
   // who is in it, a third: the place is to be seen
   if (uSec > .5) { o = vec4(((bits & 8) != 0 ? mix(c, uUnder.rgb, uUnder.a * .38) : c) * uLight, 1.); return; }      // (the faces of the cut: bit 8, in the dark of the place; else the day's light, as painted)
-  if ((bits & 8) != 0 && kind < 2 && !day) c = mix(c, uUnder.rgb, uUnder.a * (open || (uWin.z > 0. && distance((floor(vScr / uK) + .5) * uK, uWin.xy) < uWin.z) ? .38 : 1.));
+  // (vMeta.w, vox_mesh.js: under a roof, how far in from the open it is: the dark comes on inward, the ground is seen going in under an overhang;
+  // out of doors, how deep down a narrow hole: darker a step at a time. A hollow over the room that is cut open: darker than that room's walls)
+  if ((bits & 8) != 0 && kind < 2 && !day) c = mix(c, uUnder.rgb, uUnder.a * (other ? .8 : open || (uWin.z > 0. && distance((floor(vScr / uK) + .5) * uK, uWin.xy) < uWin.z) ? .38 : vMeta.w > 0. ? min(1., .25 + .2 * vMeta.w) : 1.));
+  else if ((kind < 2 || kind == 3) && vMeta.w > 0.) c = mix(c, uUnder.rgb, uUnder.a * .15 * min(vMeta.w, 5.));
   o = vec4(sunlit(c, plain.r < 0. ? c : plain, kind, bits, kind == 0 && (bits & 128) == 0 ? floor(loc.y) + texelFetch(uFoot, ivec2(int(clamp(loc.x, 0., far)), int(vMore.w)), 0).g * 255. - uCell : -1.) * uLight, 1.);                 // (the sun, if the view has one: vox_light.js)
 }`;
   function create(host, cfg) {
     const chunks = new Map(), key = (cx, cy) => cx + "," + cy, N = cfg.size, [lo, hi] = cfg.levels;
-    let cutTex = null, cutVer = null, sec = {}, prog = null, fill = null, quad = null, fronts = null, sea = null, failed = false;
+    let cutTex = null, cutVer = null, sec = {}, prog = null, fill = null, fronts = null, sea = null, failed = false;
     const keep = {};                                            // (the models' sheet, vox_models.js)
     const light = VoxLight.create(cfg);                         // (the sun: vox_light.js)
     const pending = new Set([0]);                               // shapes met by the faces made, not yet in the shapes' sheet
@@ -227,7 +233,7 @@ void main() {
       fronts = fronts || VoxPages.fronts(host, cfg, lo, hi);
       // the cut, and its faces (vox_section.js), made again when it changed
       const open = v.cut && v.cut.a > 0 ? v.cut : null, fresh = open && (!cutTex || cutVer !== open.ver);
-      if (fresh) { const t0 = performance.now(), m = VoxSection.build(host, cfg, strip, open); for (const id of m.shapes) pending.add(id); VoxMesh.upload(sec, m, prog); sec.lit = m.lit; sec.ms = performance.now() - t0; }
+      if (fresh) { const t0 = performance.now(), m = VoxSection.build(host, cfg, strip, open); for (const id of m.shapes) pending.add(id); VoxMesh.upload(sec, m, prog); sec.lit = m.lit; sec.room = m.room; sec.ms = performance.now() - t0; }
       gl.useProgram(prog.pr);
       gl.uniform2f(u.uRes, v.w, v.h); gl.uniform1f(u.uK, k); gl.uniform1f(u.uCell, cfg.cell); gl.uniform1f(u.uUp, cfg.up); gl.uniform1f(u.uSide, N * cfg.cell);
       const cu = v.curve; gl.uniform4f(u.uCurve, cu ? cu.y0 : 0, cu ? cu.yh : 0, cu ? cu.ref : 0, cu ? cu.lean : 0); gl.uniform1f(u.uLine, cu ? cu.line : 0);
@@ -254,40 +260,15 @@ void main() {
         for (const [p, first, count] of ch.ranges) { const pg = ch.pages[p]; if (!pg || !pg.tex) continue; gl.bindTexture(gl.TEXTURE_2D, pg.tex); gl.drawArrays(gl.TRIANGLES, first, count); }
         VoxModels.draw(ch);
       } };
-      if (fresh) {                                              // the cut's picture, handed over when it changed
-        gl.activeTexture(gl.TEXTURE5); cutTex = cutTex || gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, cutTex); cutVer = open.ver;
-        const px = open.px.slice(); sec.lit.forEach((v, i) => { if (v) px[i * 4 + 3] = 128; });      // (its fourth byte: half, a tile whose north wall is in the day's light: vox_section.js)
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, open.w, open.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
-        for (const [k2, val] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k2, val);
-      }
+      if (fresh) { cutTex = VoxSection.hand(gl, open, sec, cutTex); cutVer = open.ver; }      // (the cut's picture, handed over when it changed)
       if (open) { gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, cutTex); }
       gl.uniform1i(u.uCutMap, 5); gl.uniform3f(u.uCutBox, open ? open.w : 0, open ? open.h : 0, open ? open.a : 0);
       gl.activeTexture(gl.TEXTURE0);
       gl.uniform1f(u.uCut, 0); gl.uniform1f(u.uSec, 0); all();
-      // the faces of the cut; a sliced top wins over a top of the land at its own height
-      if (open) {
-        gl.uniform2f(u.uO, v.ox + open.x * v.tile, v.oy + open.y * v.tile); gl.uniform1f(u.uRow, open.y - v.row); gl.uniform2f(u.uChunk, 0, 0); light.at(gl, u, v, open.x / N, open.y / N);
-        gl.uniform1f(u.uSec, 1); gl.uniform1f(u.uSlab, open.slab ? 1 : 0); gl.uniform3f(u.uEarth, ...open.earth); gl.uniform3f(u.uEdge, ...(open.line || open.earth));
-        gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-1, -2); gl.bindVertexArray(sec.vao);
-        for (const [, first, count] of sec.ranges) gl.drawArrays(gl.TRIANGLES, first, count);
-        gl.disable(gl.POLYGON_OFFSET_FILL); gl.uniform1f(u.uSec, 0);
-      }
+      if (open) VoxSection.draw(gl, u, v, open, sec, () => light.at(gl, u, v, open.x / N, open.y / N));      // (the faces of the cut)
       // Where the window left blocks out and nothing is behind them: the cut's colour. What was left out is drawn once
-      // more, only to mark those px; then the colour is laid on the marked px that are still empty.
-      if (win || open) {
-        const earth = win ? win.earth : open.fill || open.earth;
-        gl.enable(gl.STENCIL_TEST); gl.stencilMask(255); gl.clearStencil(0); gl.clear(gl.STENCIL_BUFFER_BIT);
-        gl.stencilFunc(gl.ALWAYS, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE); gl.colorMask(false, false, false, false); gl.depthMask(false); gl.disable(gl.DEPTH_TEST);
-        gl.uniform1f(u.uCut, 1); all();
-        gl.colorMask(true, true, true, true); gl.enable(gl.DEPTH_TEST); gl.stencilFunc(gl.EQUAL, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
-        if (!quad) { quad = {vao: gl.createVertexArray(), buf: gl.createBuffer()}; gl.bindVertexArray(quad.vao); gl.bindBuffer(gl.ARRAY_BUFFER, quad.buf);
-          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW); gl.enableVertexAttribArray(fill.at("p")); gl.vertexAttribPointer(fill.at("p"), 2, gl.FLOAT, false, 0, 0); }
-        gl.useProgram(fill.pr); gl.uniform3f(fill.u.uCol, earth[0] * v.light[0], earth[1] * v.light[1], earth[2] * v.light[2]);
-        // (with a horizon, only under the line where level ground meets the sky: over it, where a cut leaves nothing, the sky is what is behind: over the top of a cave's far wall that stands at the horizon)
-        if (cu) { const dh = gl.drawingBufferHeight; gl.enable(gl.SCISSOR_TEST); gl.scissor(0, 0, gl.drawingBufferWidth, Math.max(0, Math.round(dh - cu.line * dh / v.h))); }
-        gl.bindVertexArray(quad.vao); gl.drawArrays(gl.TRIANGLES, 0, 6); gl.disable(gl.SCISSOR_TEST);
-        gl.depthMask(true); gl.disable(gl.STENCIL_TEST);
-      }
+      // more, only to mark those px; then the colour is laid on the marked px that are still empty (vox_section.js).
+      if (win || open) VoxSection.fill(gl, u, v, win ? win.earth : open.fill || open.earth, all, fill);
       VoxMark.draw(v, k, cfg);                                  // (marks: boxes over the land, vox_mark.js)
       gl.bindVertexArray(null);
       return VoxGL.el;

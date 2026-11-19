@@ -28,12 +28,20 @@ const VoxSection = (() => {
     // front of the land's, out of doors). Where such a wall has a part out of doors, all of it takes the day's
     // light (lit: a cut tile whose north wall does; the engine tells the land's own fronts there); a hole with no
     // wall out of doors keeps the cave's dark (bit 8)
-    const lit = new Uint8Array(cut.w * cut.h), stands = (x, y) => { const c = col(x, y); return c ? Math.min(c[c.length - 1], lv(x, y)) : -1e9; };
+    // (a tile down a hole one tile wide, in the ground: walls right beside it north and south, or west and east: its walls are in the hole's own dark, vox_mesh.js)
+    const up2 = (x, y, z) => { const c = col(x, y); return !!c && has(c, z + 2); }, shaft = (x, y, z) => z < cfg.dug && ((up2(x, y - 1, z) && up2(x, y + 1, z)) || (up2(x - 1, y, z) && up2(x + 1, y, z)));
+    const lit = new Uint8Array(cut.w * cut.h), room = new Uint8Array(cut.w * cut.h), stands = (x, y) => { const c = col(x, y); return c ? Math.min(c[c.length - 1], lv(x, y)) : -1e9; };
     for (let j = 0; j < cut.h; j++) for (let i = -1, run = [], day = false; i <= cut.w + 1; i++) {
       const x = cut.x + i, y = cut.y + j, mine = i <= cut.w ? col(x, y) : null, north = mine && col(x, y - 1);
-      if (north && stands(x, y - 1) > stands(x, y)) { run.push(i); day = day || stands(x, y - 1) > mine[mine.length - 1]; continue; }
+      if (north && stands(x, y - 1) > stands(x, y)) { run.push(i); day = day || (stands(x, y - 1) > mine[mine.length - 1] && !shaft(x, y, mine[mine.length - 1])); continue; }
       if (day && run.some((k) => k >= 0 && k < cut.w && lv(cut.x + k, cut.y + j) < 1e8)) lit.fill(1);      // (...and so every wall of that hole: its steps' fronts are as its back wall)
       run = []; day = false;
+    }
+    // (a cut tile with a room over its floor, its roof lifted off: how high that room is. A cut with none is out of doors, all of it)
+    for (let j = 0, any = false; j < cut.h; j++) for (let i = 0; i < cut.w; i++) {
+      const c = lv(cut.x + i, cut.y + j), mine = c < 1e8 ? col(cut.x + i, cut.y + j) : null, q = mine ? mine.indexOf(c) : -1;
+      if (q >= 0 && q % 2 === 0 && q + 1 < mine.length) { room[j * cut.w + i] = Math.min(100, mine[q + 1] - c); any = true; }
+      if (j === cut.h - 1 && i === cut.w - 1 && !any) lit.fill(1);
     }
     for (let j = 0; j < cut.h; j++) for (let i = 0; i < cut.w; i++) {
       const x = cut.x + i, y = cut.y + j, c = lv(x, y), mine = col(x, y), X = i * T, Y = j * T, dark = lit[j * cut.w + i] ? 0 : 8;
@@ -57,14 +65,46 @@ const VoxSection = (() => {
           if (!has(wall, zc) || !has(wall, zc + 1)) { edge = 0; continue; }
           if (!has(mine, zc) && top <= zc) { edge = 0; continue; }      // (open air beside it: the chunk's own bank is there)
           const o = reach(zc), w = o - edge, x0 = dx < 0 ? X + edge : X + T - o, bits = (dx < 0 ? 1 : 0) | 2 | dark;
-          if (w > 0) { list.push([x0, Y, zc * U, w, T, 0, 0, T, bits, 3, strip(zc), 0, 0, 0]); out.banks++; }
+          if (w > 1) { list.push([x0, Y, zc * U, w, T, 0, 0, T, bits, 3, strip(zc), 0, 0, 0]); out.banks++; }      // (a px wide, in dug ground: a line across the floor behind it, no wall's face)
           // (its front, where neither the hole's wall nor the land goes on south of it at that level)
           if (o > 0 && !left(x, y + 1, zc) && !(left(x + dx, y + 1, zc) && left(x + dx, y + 1, zc + 1))) list.push([dx < 0 ? X - cfg.inset : X + T - o, Y + T, zc * U, o + cfg.inset, 0, 0, 0, U, dark | (zc === c + 1 && shape(x + dx, y, zc) ? 16 : 0), 4, strip(zc), 0, 0, 0]);      // (cfg.inset px into the wall's tile: the land's own front leaves its side's px empty at a cave's mouth)
           edge = o;
         }
       }
     }
-    return {...VoxMesh.pack([list]), ...out, lit};
+    return {...VoxMesh.pack([list]), ...out, lit, room};
   }
-  return {build, DEEP};
+  // The engine's part of it (vox_engine.js draw). The cut's picture as the GPU takes it: its fourth byte says of a cut
+  // tile: 128, its north wall is in the day's light; and how high its room is over its floor (levels; 0: none)
+  function hand(gl, open, sec, tex) {
+    gl.activeTexture(gl.TEXTURE5); tex = tex || gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+    const px = open.px.slice(); sec.lit.forEach((v, i) => { px[i * 4 + 3] = (v ? 128 : 0) + sec.room[i]; });
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, open.w, open.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    for (const [k, val] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, val);
+    return tex;
+  }
+  // The faces of the cut, after the land's; a sliced top wins over a top of the land at its own height. at(): the light's place for them
+  function draw(gl, u, v, open, sec, at) {
+    gl.uniform2f(u.uO, v.ox + open.x * v.tile, v.oy + open.y * v.tile); gl.uniform1f(u.uRow, open.y - v.row); gl.uniform2f(u.uChunk, 0, 0); at();
+    gl.uniform1f(u.uSec, 1); gl.uniform1f(u.uSlab, open.slab ? 1 : 0); gl.uniform3f(u.uEarth, ...open.earth); gl.uniform3f(u.uEdge, ...(open.line || open.earth));
+    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-1, -2); gl.bindVertexArray(sec.vao);
+    for (const [, first, count] of sec.ranges) gl.drawArrays(gl.TRIANGLES, first, count);
+    gl.disable(gl.POLYGON_OFFSET_FILL); gl.uniform1f(u.uSec, 0);
+  }
+  // The colour `earth` on the px where land was left out and nothing at all is behind: all(): draws the land; fill: the program of one colour
+  let quad = null;
+  function fill(gl, u, v, earth, all, prog) {
+    gl.enable(gl.STENCIL_TEST); gl.stencilMask(255); gl.clearStencil(0); gl.clear(gl.STENCIL_BUFFER_BIT);
+    gl.stencilFunc(gl.ALWAYS, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE); gl.colorMask(false, false, false, false); gl.depthMask(false); gl.disable(gl.DEPTH_TEST);
+    gl.uniform1f(u.uCut, 1); all();
+    gl.colorMask(true, true, true, true); gl.enable(gl.DEPTH_TEST); gl.stencilFunc(gl.EQUAL, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+    if (!quad) { quad = {vao: gl.createVertexArray(), buf: gl.createBuffer()}; gl.bindVertexArray(quad.vao); gl.bindBuffer(gl.ARRAY_BUFFER, quad.buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW); gl.enableVertexAttribArray(prog.at("p")); gl.vertexAttribPointer(prog.at("p"), 2, gl.FLOAT, false, 0, 0); }
+    gl.useProgram(prog.pr); gl.uniform3f(prog.u.uCol, earth[0] * v.light[0], earth[1] * v.light[1], earth[2] * v.light[2]);
+    // (with a horizon, only under the line where level ground meets the sky: over it, where a cut leaves nothing, the sky is what is behind: over the top of a cave's far wall that stands at the horizon)
+    if (v.curve) { const dh = gl.drawingBufferHeight; gl.enable(gl.SCISSOR_TEST); gl.scissor(0, 0, gl.drawingBufferWidth, Math.max(0, Math.round(dh - v.curve.line * dh / v.h))); }
+    gl.bindVertexArray(quad.vao); gl.drawArrays(gl.TRIANGLES, 0, 6); gl.disable(gl.SCISSOR_TEST);
+    gl.depthMask(true); gl.disable(gl.STENCIL_TEST);
+  }
+  return {build, hand, draw, fill, DEEP};
 })();
