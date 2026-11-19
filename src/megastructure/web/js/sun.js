@@ -1,7 +1,7 @@
 // What a shader adds to the world itself (the settings' Shaders page; the picture's glow and colours are shader.js):
 // "we want real shaders, reflection, not just color hue tweaks, shadows, like minecraft".
 //   Shadows: every tree, wall, thing, animal and person throws its own shape on the ground, away from the sun: long
-//     to the west in the morning, short at noon, long to the east in the evening, faint at night.
+//     to the west in the morning, short at noon, long to the east in the evening; at night none but a fire's.
 //   Reflections: what stands by the water is seen in it upside down, under its feet, rippling.
 // Both are made from the very sprites the frame is about to draw (render.js calls Sun.draw with its sorted list, the
 // ground already painted, nothing standing on it yet): each is drawn once more through a transform onto a layer the
@@ -10,7 +10,7 @@
 // layer meanwhile, so whatever draws a body or a wall draws its shadow too, with no code of its own.
 
 const Sun = (() => {
-  const SHADE = {alpha: .3, night: .1, color: "#1d2440", reach: 1.5, fall: .45, fire: 6, byFire: .36};      // fire: tiles a fire lights; byFire: how dark a shadow it throws   // reach: a shadow's length sideways at sunrise, in heights; fall: towards you, always
+  const SHADE = {alpha: .3, night: 0, color: "#1d2440", reach: 1.5, fall: .45, fire: 6, byFire: .36};      // fire: tiles a fire lights; byFire: how dark a shadow it throws   // reach: a shadow's length sideways at sunrise, in heights; fall: towards you, always
   const GLASS = {alpha: .5, ripple: 1, wave: .9, speed: 2.2};                     // ripple: art px a row slides; wave: how tight; speed
   let layer = null, lg = null, casting = false;
   // Where a sprite stands: its lowest row that is not empty (most have empty rows under them), in art px from its top

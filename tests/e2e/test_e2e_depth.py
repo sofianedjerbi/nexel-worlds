@@ -68,3 +68,62 @@ def test_the_depth_costs_little_of_a_frame(game):
     ms.sort()
     assert ms[len(ms) // 2] < 7 and ms[int(len(ms) * .95)] < 14, ms[-5:]      # (the bar of the shader's sun: test_e2e_sunland.py)
     game.js(RESET)
+
+
+# each device row of a part of the flat ground [x0, y0, x1, y1] (tiles): its px as the sum of red, green and blue, read in the frame it was drawn in
+ROWS = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+  const S = TS(), [ox, oy] = screenOrigin(S), w = Math.round((x1 - x0) * S * DPR), h = Math.round((y1 - y0) * S * DPR);
+  const d = cv.getContext("2d").getImageData(Math.round((ox + x0 * S) * DPR), Math.round((oy + y0 * S) * DPR), w, h).data, out = [];
+  for (let r = 0; r < h; r++) { const row = []; for (let i = 0; i < w; i++) { const k = (r * w + i) * 4; row.push(d[k] + d[k + 1] + d[k + 2]); } out.push(row); }
+  ok(out); })))"""
+
+
+def test_a_step_of_one_level_throws_a_shadow_all_along_it_away_from_the_sun(game):
+    """A terrace is a step: the ground under a riser one level high is in its shadow on the side away from the sun, in
+    every row of the riser's length (no gaps: it was dashes, then nothing), and not on the sun's side."""
+    game.flat(); game.clear_area(9)
+    game.stamp(-1, -5, ["..."] * 4, levels=["111"] * 4)         # a terrace one level up, north of you: its risers run north-south
+    x, y = game.pos()
+    east, west = [x + 2 + 3 / 16, y - 4.5, x + 2 + 8 / 16, y - 2.5], [x - 1 - 8 / 16, y - 4.5, x - 1 - 3 / 16, y - 2.5]
+    for phase, far, near in ((.68, east, west), (.06, west, east)):      # evening: the sun in the west; morning: in the east
+        game.rpc("dev_time", phase=phase); game.sleep(1200)
+        on = [game.js(ROWS, r) for r in (far, near)]
+        game.js("setOpt('landshade', false)"); game.sleep(600)
+        off = [game.js(ROWS, r) for r in (far, near)]
+        game.js("setOpt('landshade', true)")
+        gaps = [i for i, (a, b) in enumerate(zip(on[0], off[0])) if min(p - q for p, q in zip(a, b)) > -30]
+        assert not gaps, (phase, gaps[:8], len(on[0]))           # away from the sun: shadow px in every row along the riser
+        lit = max(abs(p - q) for a, b in zip(on[1], off[1]) for p, q in zip(a, b))
+        assert lit < 3, (phase, lit)                             # the sun's side: none
+    game.js(RESET)
+
+
+def test_an_inner_corner_is_no_darker_than_one_walls_shadow(game):
+    """Two walls' shadows that meet in a corner are one shadow: no px there is darker than a px in the shadow of one wall
+    alone (dark squares sat in the inner corners of terraces)."""
+    game.flat(); game.clear_area(9)
+    game.stamp(-2, -5, ["...."] * 4, levels=["1111", "0001", "0001", "0001"])      # a step along the north and the east: the corner is inside, north-east
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.06); game.sleep(1200)           # morning: both throw their shadow into it
+    corner, one = [x + .4, y - 4 + 2 / 16, x + 1 - 3 / 16, y - 4 + 8 / 16], [x + .4, y - 2.6, x + 1 - 3 / 16, y - 2.1]
+    on = [game.js(ROWS, r) for r in (corner, one)]
+    game.js("setOpt('depth', false)"); game.sleep(600)
+    plain = [game.js(ROWS, r) for r in (corner, one)]
+    by = [[p / max(q, 1) for a, b in zip(o, pl) for p, q in zip(a, b)] for o, pl in zip(on, plain)]
+    assert min(by[1]) < .9, min(by[1])                           # (one wall's shadow is there)
+    assert min(by[0]) > min(by[1]) - .03, (min(by[0]), min(by[1]))
+    game.js(RESET)
+
+
+def test_a_body_in_a_trees_shadow_is_darker_than_beside_it(game):
+    """What stands in the shadow of what stands is in it (only the land's shadow darkened a body)."""
+    from test_e2e_sunland import LIT
+    game.flat(); game.clear_area(8)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.1); game.sleep(1200)           # morning: a tree's shadow lies long to the west, a little south
+    me = [x + .3, y - .2, x + .7, y + .3]
+    beside = game.js(LIT, me)
+    game.stamp(2, -1, ["T"]); game.sleep(700)                   # a tree north-east of you: you stand in its shadow
+    under = game.js(LIT, me)
+    assert under < beside - 10, (beside, under)
+    game.js(RESET)

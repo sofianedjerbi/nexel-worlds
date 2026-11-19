@@ -59,7 +59,7 @@ const SunLand = (() => {
           const qy = Math.abs(up) < .28 ? (up < -.05 ? -.28 : .28) : up;                // (level with the fire: still a shape on the ground, not a line)
           return o.slab || o.wall ? box(o, sx, sy, qx, qy, false) : lay(qx, qy, fy, sunk(o), 0);
         };
-        for (const [lv, some] of by) for (const [via, blue] of fires.length ? [[sun, 255], [fire, 96]] : [[sun, 255]]) {
+        for (const [lv, some] of by) for (const [via, blue] of [[sun, 255], [fire, 96]].filter((v, i) => (i ? fires.length : alpha > 0))) {      // (at night: the fires' only, the moon throws none)
           if (n && !kept) { all.clearRect(0, 0, gw, gh); all.drawImage(one.canvas, 0, 0); kept = true; }      // (more than one: each made on `one`, gathered on `all`)
           one.setTransform(1, 0, 0, 1, 0, 0); one.globalCompositeOperation = "source-over"; one.clearRect(0, 0, gw, gh); one.setTransform(1 / z, 0, 0, 1 / z, -x0 / z, -y0 / z);
           if (!K.cast(some, sx, sy, S, t, now, via, one, north)) continue;
@@ -122,14 +122,32 @@ const SunLand = (() => {
     if (up === undefined) { up = shadowUp((o.p ? o.p.x : o.x) + .5, K.rowOf(o) + .9, K.levelOf(o), kx, ky); if (!o.p) ups.set(k, up); }
     return up;
   }
+  // Is a body's foot (bx, by, on the flat picture) in the shadow of what stands on its level near it? What is built: in
+  // its shadow's outline (`box`); a thing: in its picture laid over, taken as a stem under a crown. By where they are:
+  // nothing is read back from a picture (reading the shadows' own picture each frame cost three ms of the frame).
+  function under(o, bx, by, list, sx, sy, S, kx, ky) {
+    const lv = K.levelOf(o);
+    for (const q of list) if (q !== o && !q.p && q.far === undefined && q.x !== undefined && Math.abs(q.x - o.p.x) < 5 && Math.abs(K.rowOf(q) - o.p.y) < 4 && (q.spr || q.wall || q.slab) && K.levelOf(q) === lv) {
+      if (q.slab || q.wall) {
+        const b = box(q, sx, sy, kx, ky, false), P_ = b ? b.poly : []; let in_ = false;
+        for (let a = 0, c = P_.length - 1; a < P_.length; c = a++) if ((P_[a][1] > by) !== (P_[c][1] > by) && bx < (P_[c][0] - P_[a][0]) * (by - P_[a][1]) / (P_[c][1] - P_[a][1]) + P_[a][0]) in_ = !in_;
+        if (in_) return true;
+      } else if (q.spr[0].src) {
+        const sp = q.spr, H = sp[4] * zoom, u = (by - (sy(K.rowOf(q), q.x) + S * .94)) / ky;      // (how high on it the px is that shades the foot)
+        if (u >= 0 && u <= H && Math.abs(bx - (sx(q.x) + (sp[5] + sp[3] / 2) * zoom + kx * u)) <= (u < H * .35 ? 3 * zoom : sp[3] * zoom * .4)) return true;
+      }
+    }
+    return false;
+  }
   // (bodies, things, and what is built: walls, floors, roofs, what stands on them)
   function shade(list, sx, sy, S, t, now) {
     if (!sunNow) return;
     try {
       const [kx, ky] = sunNow.dir, dark = new Map(), near = [], lg = K.lg, stands = (o) => o.far === undefined && (o.p || ((o.spr || o.wall || o.row !== undefined) && o.x !== undefined));
-      const cols = new Map();
-      if (sunNow.alpha && sunNow.land) for (const o of list) if (stands(o)) {
-        let up = upOf(o, kx, ky);
+      const cols = new Map(), flat = sy.bent ? Curve.sy(sy.base, S, true) : sy;
+      if (sunNow.alpha) for (const o of list) if (stands(o)) {
+        let up = sunNow.land ? upOf(o, kx, ky) : 0;
+        if (o.p && up < 40 && under(o, sx(o.p.x) + S / 2, bodyY(o.p, flat) + 13 * zoom, list, sx, flat, S, kx, ky)) up = 40;      // (in the shadow of what stands: all of it, once)
         if (o.wall || o.row !== undefined) { const c = colsOf(o, kx, ky); up = Math.max(...c); if (up >= 2) cols.set(o, c); }
         if (up >= 2) { dark.set(o, up); near.push(o.p ? o.p.x : o.x, K.rowOf(o)); }
       }

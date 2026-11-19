@@ -61,16 +61,18 @@ const Shader = (() => {
       if (wet > 0.) {
         vec2 wp = floor((wpx - uOrigin) / uTile * 16.), cw = wp / 16. * .055 + vec2(3.1 - uT * .011, 1.7 + uT * .004);
         c = mix(c, uSky, min(wet * .24, .6));
-        c += wet * uDay * .1 * smoothstep(.5, .66, noise(cw) * .55 + noise(cw * 2.1 + 7.3) * .3 + noise(cw * 4.3 + 1.7) * .15);
+        c += wet * uDay * .1 * smoothstep(.57, .66, noise(cw) * .55 + noise(cw * 2.1 + 7.3) * .3 + noise(cw * 4.3 + 1.7) * .15);
         float h = hash(wp), twinkle = .5 + .5 * sin(uT * (2. + h * 3.) + h * 40.);
         c += wet * uSun * step(.962, h) * twinkle * smoothstep(.38, .68, noise(vec2(wp.x * .05 - uT * .14, wp.y * .13 + uT * .03)));
       }
       c = 1. - (1. - c) * (1. - g * uGlow);                    // the glow, laid on as light is
       // Low sun: shafts of light across the picture, from the sun's side, drifting, dying away as they go
       if (uRays > 0.) {
-        float across = dot(px, vec2(uRayDir.y, -uRayDir.x)), gone = dot(px / uRes - uRayFrom, uRayDir);
-        float beam = smoothstep(.5, .8, noise(vec2(across * .006, uT * .035)) * .7 + noise(vec2(across * .019 + 5., uT * .06)) * .3);
-        c += uRays * beam * vec3(1., .84, .58) * (1. - smoothstep(.1, 1.15, gone));
+        // (in the land's own px: none, half, whole, and one px in two between two of them, as the clouds' shadows are. It was a smooth fade over a pixel picture)
+        vec2 ap = floor((px - uOrigin) / uTile * 16.), rp = (ap + .5) * uTile / 16. + uOrigin;
+        float across = dot(rp, vec2(uRayDir.y, -uRayDir.x)), gone = dot(rp / uRes - uRayFrom, uRayDir);
+        float beam = smoothstep(.5, .8, noise(vec2(across * .006, uT * .035)) * .7 + noise(vec2(across * .019 + 5., uT * .06)) * .3) * (1. - smoothstep(.1, 1.15, gone));
+        c += uRays * vec3(1., .84, .58) * floor(beam * 2. + (mod(ap.x + ap.y, 2.) < .5 ? .67 : .33)) * .5;
       }
       float l = dot(c, vec3(.299, .587, .114));
       c = (mix(vec3(l), c, uSat) - .5) * uCon + .5;
