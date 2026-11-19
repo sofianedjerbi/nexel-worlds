@@ -118,7 +118,7 @@ const VoxMesh = (() => {
         if (wet) add(clear ? VoxWater.PAGE : 0, [X - tw, Y - tn, wz * cfg.up, T + tw + te, T + tn, -tw, -tn, T, VoxWater.near(host, cfg, x, y), 2, 0, ...VoxWater.deep(host, cfg, x, y)]);
         else {      // (not along a side where the land is lower and no water, a pit beside the shore: its rim leaves px see-through there, and the water showed in them: a pale line along the pit floor's edge)
           const dry = (dx, dy) => { const n = host.column(x + dx, y + dy); return !!n && n[n.length - 1] < 0 && !host.water(x + dx, y + dy) ? K : 0; }, dn = dry(0, -1) || (host.water(x, y - 1) ? 0 : dry(-1, -1) || dry(1, -1)), dw = dry(-1, 0), de = dry(1, 0);
-          const f = [X + dw, Y - 1 + dn, -1, T - dw - de, T + 1 - dn, dw, dn, T, 0, 2, 0, 0, 0, 0]; add(0, f); if (clear) add(VoxWater.PAGE, f);      // (seen through: once more, with those faces)
+          const f = [X + dw, Y - 1 + dn, -1, T - dw - de, T + 1 - dn, dw, dn, T, 0, 2, 0, VoxWater.shore(host, cfg, x, y), 0, 0]; add(0, f); if (clear) add(VoxWater.PAGE, f);      // (seen through: once more, with those faces)
         }
       }
       // (water has no top of its own but its face; under that its tile is a block as the land's are: its sides where what is beside it is lower; its bed)
@@ -148,9 +148,10 @@ const VoxMesh = (() => {
         // block, then this block's: one face with its seams, lit as a front is (a line down every column, or a side lit as a side, made a cliff a grid of crates).
         for (const dx of [-1, 1]) for (let zc = z, I = inset(x, y, z, dx), o = out(x, y, z, dx); o && zc > (q ? c[q - 1] : -1e9) && out(x, y, zc, dx); zc--) {
           const cb = host.column(x + dx, y), two = zc - 1 > (q ? c[q - 1] : -1e9) && out(x, y, zc - 1, dx) ? 2 : 0, x0 = dx < 0 ? X + I - o : X + T - I, lined = [[dx < 0 ? 0 : o - 1, 1, 4], [dx < 0 ? 1 : 0, o - 1, 0]];
+          // (...a column that stands lower than this block is no part of its face: a nearer block, taller, has its line over the farther front: a stair's front ran into the plateau's a tile nearer)
           // (what is seen beside the side at level lv of the row r's south edge: going north on that side, a tile two levels up the picture, the first column
           // that stands as high as the eye's line there: its front, rock; or one whose top the line meets: lower land. However far north the wall goes on: a cliff that runs two tiles south a tile east had its lines)
-          const beside = (lv, r = y - 1) => { for (let k = 0; k < 8; k++) { const cn = host.column(x + dx, r - k); if (!cn) return false; const t = host.water(x + dx, r - k) ? Math.max(wtop(x + dx, r - k), cn[cn.length - 1]) : cn[cn.length - 1]; if (t >= lv - 2 * k) return true; if (t >= lv - 2 * k - 2) return false; } return false; };
+          const beside = (lv, r = y - 1) => { for (let k = 0; k < 8; k++) { const cn = host.column(x + dx, r - k); if (!cn) return false; const t = host.water(x + dx, r - k) ? Math.max(wtop(x + dx, r - k), cn[cn.length - 1]) : cn[cn.length - 1]; if (t >= lv - 2 * k) return t >= z - 2 * (y - 1 - r + k); if (t >= lv - 2 * k - 2) return false; } return false; };
           // (1: it faces east; 2: of a wall two levels high or more. For the sun: vox_light.js)
           if (zc === z) { const cr = host.crown ? host.crown(shape(x, y, z))[dx < 0 ? 0 : 1] : 0, dk = cb ? slot(x + dx, y, z, z, floorOf(cb, z)) : 0;
             // (...and under a higher block north of this one, that block's own front a level more: its foot ends two px short of the tile's edge there, and nothing was behind them: a dark dot at the corner)

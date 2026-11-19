@@ -11,6 +11,9 @@
 // Off: none of this; the water is water.js's picture on one face, as it was.
 const WaterBed = (() => {
   const REACH = 2, cfg = {clear: false, dark: 4};                         // (cfg: the engine's cfg.water)
+  // The tint over a bed, by its depth (0: none; 1 to 3 levels): water.js's own hues, thicker: a pond one level deep is
+  // water at every hour, never a pit of pale sand. BAND: the first rows of a wall under water, that much of its colour
+  const TINT = [[176, 236, 226, .08], [104, 204, 208, .52], [70, 174, 204, .66], [44, 132, 188, .8]], BAND = .86;
   let tint = null, beds = new Map(), bedsAt = -1, pad = null, legs = null;
   const shown = new Map(), pending = new Set();                  // the depth each bed was painted with; tiles that changed since the last look
   const isWater = (x, y) => { const g = gndAt(x, y); return !!g && (wet(g) || g === ":"); };
@@ -33,7 +36,14 @@ const WaterBed = (() => {
     if (!pad) { const c = document.createElement("canvas"); c.width = c.height = 16; pad = c.getContext("2d", {willReadFrequently: true}); }
     const d = topAt(x, y) - z; shown.set(key(x, y), d);
     bedTile(pad, x, y, Math.max(1, Math.min(4, d)), 0, 0, () => 0, () => false);
-    const data = new Uint32Array(pad.getImageData(0, 0, 16, 16).data.buffer);
+    const img = pad.getImageData(0, 0, 16, 16).data, data = new Uint32Array(img.buffer), hd = hash(x, y, 41);
+    // what floats on it (tiles.js: shore water's pads, reeds and rocks) shades the bed: its own shape, a px east, baked
+    // (the bed is drawn a level's px down the picture for each level it lies deep: so is the shade)
+    if (gndAt(x, y) === "~" && hd < .09 && (hd < .015 || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isLand(gndAt(x + dx, y + dy))))) {
+      pad.clearRect(0, 0, 16, 16); pad.drawImage(IMG.water_objects, [8, 9, 10, 11, 6, 7, 0][Math.floor(hash(x, y, 42) * 7)] * 16, 0, 16, 16, 0, 0, 16, 16);
+      const on = pad.getImageData(0, 0, 16, 16).data;
+      for (let j = 0; j < 16; j++) for (let i = 0; i < 15; i++) if (on[(j * 16 + i) * 4 + 3] > 127) { const q = (j * 16 + i + 1) * 4; img[q] *= .74; img[q + 1] *= .8; img[q + 2] *= .86; }
+    }
     for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[at + j * stride + i] = data[j * 16 + i] | 0xff000000;
   }
   // A tile was drawn again: the beds within reach of it may have changed
@@ -61,10 +71,11 @@ const WaterBed = (() => {
     if (on !== cfg.clear) { cfg.clear = on; shown.clear(); pending.clear(); engine.forget(() => false); }
     if (!on) return null;
     if (!tint) { const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)), deepest = WATER.tint[4], sand = hex(WATER.sand[4]);
-      tint = new Float32Array([...WATER.tint.slice(0, 4).map(([r, g, b, a], i) => [r / 255, g / 255, b / 255, a + i * .04]),
-        [...deepest.slice(0, 3).map((v, i) => (v * deepest[3] + sand[i] * (1 - deepest[3])) / 255), 1], [...hex(WATER.sand[0]).map((v) => v / 255), 1]].flat()); }
+      tint = new Float32Array([...TINT.map(([r, g, b, a]) => [r / 255, g / 255, b / 255, a]),
+        [...deepest.slice(0, 3).map((v, i) => (v * deepest[3] + sand[i] * (1 - deepest[3])) / 255), 1], [...hex(WATER.sand[0]).map((v) => v / 255), BAND],
+        ...WATER.sand.map((h) => [...hex(h).map((v) => v / 255), 1])].flat()); }
     const l = lightAt((((clock.phase || 0) % 1) + 1) % 1), night = Math.max(0, Math.min(1, (1 - (.3 * l[0] + .59 * l[1] + .11 * l[2]) / 255) / .36));
-    return {t, tint, bend: opt("shimmer") ? 1.4 : 0, light: opt("shimmer") ? 1 : 0, far: [5, 16, .8], night, dark: [.46, .58, .62], foam: .55, foamAt: 1, shade: [.7, .8, .92]};
+    return {t, tint, bend: opt("shimmer") ? 1.4 : 0, light: opt("shimmer") ? 1 : 0, far: [5, 16, .8], night, dark: [.38, .58, .54], foam: .55, foamAt: 1, shade: [.7, .8, .92]};
   }
   // A swimmer's body under the surface (swim.js): its px of the sheet, tinted as the water over it is and fainter the deeper the water
   function under(sheet, a, b, w, h, x, y, z, tx, ty) {

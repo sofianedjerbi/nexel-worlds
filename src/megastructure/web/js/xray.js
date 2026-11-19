@@ -53,6 +53,8 @@ function xrayAt(x, y) {
 const xrayOn = (tx, ty) => xrayAt(tx, ty - shOf(levelAt(tx, ty)) / 16);      // ...at what stands on a tile
 // What stands on land that is cut away under it goes with it: how much it fades (0: it stays)
 const xrayCutAt = (tx, ty) => (xray.a > .01 && xray.pic ? xray.pic.cut.get(tx + "," + ty) : undefined);
+// In a hole (all of the place is opened): its floors are lit evenly (the land's own, out of doors, keep the sun's shadow: the engine's cutLv), the land's and what stands on them: no shadow of the sun (vox_engine.js noSun, sunland.js shade)
+const xrayLit = (tx, ty) => { const k = tx + "," + ty; return xray.a > .01 && !!xray.pic && !!xray.pic.hole && (xray.pic.floor.has(k) || xray.pic.cut.get(k) === 30000); };
 const xrayOver = (tx, ty) => { const c = xrayCutAt(tx, ty); return c !== undefined && levelAt(tx, ty) > c ? xray.a : 0; };
 // ...and the ground over the place you are in, under it: left out as that rock is (behind.js: neither hides anybody)
 const xrayGone = (tx, ty) => xrayRock(tx, ty) || seenUnder(tx, ty) !== undefined;
@@ -149,6 +151,8 @@ function xrayFind(tx, x0 = tx, x1 = tx) {
   for (const [k, h] of floor) { const [x, ty] = k.split(",").map(Number); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!floor.has((x + dx) + "," + (ty + dy))) { if (levelAt(x + dx, ty + dy) > h + 1) walled++; else free++; } }
   const low = new Set(); for (const [k, h] of floors) { const [x, ty] = k.split(",").map(Number); if (h < 0 || (h === levelAt(x, ty) && xrayGorge(x, ty, h))) low.add(k); }      // (the floors of a hole out of doors: dug, or a gorge's)
   const hole = (low.has(tx + "," + row) || floor.has(tx + "," + row)) && free <= walled;
+  // (a gorge's floor goes on a tile past where it is a gorge, the same ground at the same height: its two ends. Left out, the wall in front of each end stood alone, a post with a cap of its own at each end of the cut)
+  if (hole) for (const k of [...low]) { const [x, ty] = k.split(",").map(Number), h = floors.get(k); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = (x + dx) + "," + (ty + dy); if (floors.get(n) === h && h === levelAt(x + dx, ty + dy)) low.add(n); } }
   // Not in a hole (behind a hill, under an overhang): the cut is as small as your body needs. In the column or two
   // you stand in, each tile from yours south is cut down to the eye's line to your feet (two levels a row) if it has
   // land on that line's way to your body (up to five levels over it: what is higher hides nothing of you), a roof
@@ -214,5 +218,5 @@ function xrayFind(tx, x0 = tx, x1 = tx) {
       run = [];
     }
   }
-  xray.pic = {key, floor, rock, cut, all, place: new Set(floors.keys())};
+  xray.pic = {key, floor, rock, cut, all, place: new Set(floors.keys()), hole: true};
 }

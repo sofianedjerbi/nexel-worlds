@@ -49,7 +49,7 @@ const VoxSection = (() => {
       if (c > 1e8 || !mine) continue;
       const top = mine[mine.length - 1];
       if (has(mine, c) && has(mine, c + 1)) {
-        list.push([X, Y, c * U, T, T, 0, 0, T, (left(x, y - 1, c) ? 0 : 1) | (left(x - 1, y, c) ? 0 : 2) | (left(x + 1, y, c) ? 0 : 4) | (left(x, y + 1, c) ? 0 : 16), 5, strip(c, mine), shape(x, y, c), 0, VoxMesh.pick(x, y, c, cfg.variants)]); out.tops++;      // (its block's shape there: a hill's edge is set in)
+        list.push([X, Y, c * U, T, T, 0, 0, T, (left(x, y - 1, c) ? 0 : 1) | (left(x - 1, y, c) ? 0 : 2) | (left(x + 1, y, c) ? 0 : 4) | (left(x, y + 1, c) ? 0 : 16), 5, strip(c, mine), 0, 0, VoxMesh.pick(x, y, c, cfg.variants)]); out.tops++;      // (its block's shape there: a hill's edge is set in)
       }
       const north = col(x, y - 1);
       if (north) for (let z = c + 1, to = Math.min(north[north.length - 1], lv(x, y - 1), c + DEEP); z <= to; z++) if (has(north, z) && has(mine, z)) {
@@ -64,7 +64,8 @@ const VoxSection = (() => {
         for (let zc = to; zc > c; zc--) {
           if (!cell(zc)) continue;
           for (const [a, w, b4] of [[dx < 0 ? S - 1 : 0, 1, 4], [dx < 0 ? 0 : 1, S - 1, 0]]) {
-            if (w > 0 && !cell(zc + 1)) { list.push([(dx < 0 ? X : X + T - S) + a, Y, zc * U, w, T, 0, 0, T, (dx < 0 ? 1 : 0) | 2 | dark | b4, 3, strip(zc, wall), 0, 0, 0]); out.banks += b4 ? 1 : 0; }
+            const n0 = has(col(x + dx, y - 1) || [], zc) ? 0 : cfg.inset;      // (the wall's north end: its top is set in that far, and the strip stood over its back rim, a post)
+            if (w > 0 && !cell(zc + 1)) { list.push([(dx < 0 ? X : X + T - S) + a, Y + n0, zc * U, w, T - n0, 0, n0, T, (dx < 0 ? 1 : 0) | 2 | dark | b4, 3, strip(zc, wall), 0, 0, 0]); out.banks += b4 ? 1 : 0; }
             // (cfg.inset px into the wall's tile: the land's own front leaves its side's px empty at a cave's mouth)
             if (w > 0 && !left(x, y + 1, zc) && !left(x + dx, y + 1, zc)) list.push([b4 ? (dx < 0 ? X + S - 1 : X + T - S) : dx < 0 ? X - cfg.inset : X + T - S + 1, Y + T, zc * U, b4 ? 1 : S - 1 + cfg.inset, 0, 0, 0, U, dark | (zc === c + 1 && shape(x + dx, y, zc) ? 16 : 0) | (dx < 0 ? 32 : 0) | b4, 4, strip(zc, wall), 0, 0, 0]);
           }
@@ -90,13 +91,22 @@ const VoxSection = (() => {
     for (const [, first, count] of sec.ranges) gl.drawArrays(gl.TRIANGLES, first, count);
     gl.disable(gl.POLYGON_OFFSET_FILL); gl.uniform1f(u.uSec, 0);
   }
-  // The colour `earth` on the px where land was left out and nothing at all is behind: all(): draws the land; fill: the program of one colour
-  let quad = null;
-  function fill(gl, u, v, earth, all, prog) {
+  // The opening, a px at a time: after the land is drawn, what was left out is drawn once more (all(): draws the land) only to mark the px where
+  // it would have been in front of what is seen now: the px seen through the opening. In a cut (again) the land is then drawn once more on those
+  // px alone, uOpen: with no shadow of the sun (vox_engine.js noSun: what is opened for your sake is lit evenly; whole tiles of the cut were, and
+  // the ground beside the opening lost the shadow of the land that still stands: a light square in a slab's shadow, a light notch in a hill's)
+  function mark(gl, u, all, again) {
     gl.enable(gl.STENCIL_TEST); gl.stencilMask(255); gl.clearStencil(0); gl.clear(gl.STENCIL_BUFFER_BIT);
-    gl.stencilFunc(gl.ALWAYS, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE); gl.colorMask(false, false, false, false); gl.depthMask(false); gl.disable(gl.DEPTH_TEST);
-    gl.uniform1f(u.uCut, 1); all();
-    gl.colorMask(true, true, true, true); gl.enable(gl.DEPTH_TEST); gl.stencilFunc(gl.EQUAL, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+    gl.stencilFunc(gl.ALWAYS, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE); gl.colorMask(false, false, false, false); gl.depthMask(false);
+    gl.uniform1f(u.uCut, 1); all(); gl.uniform1f(u.uCut, 0);
+    gl.colorMask(true, true, true, true); gl.depthMask(true); gl.stencilFunc(gl.EQUAL, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+    if (again) { gl.uniform1f(u.uOpen, 1); all(); gl.uniform1f(u.uOpen, 0); }
+    gl.disable(gl.STENCIL_TEST);
+  }
+  // The colour `earth` on the marked px where nothing at all is behind what was left out; fill: the program of one colour
+  let quad = null;
+  function fill(gl, u, v, earth, prog) {
+    gl.enable(gl.STENCIL_TEST); gl.stencilFunc(gl.EQUAL, 1, 255); gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP); gl.depthMask(false);
     if (!quad) { quad = {vao: gl.createVertexArray(), buf: gl.createBuffer()}; gl.bindVertexArray(quad.vao); gl.bindBuffer(gl.ARRAY_BUFFER, quad.buf);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW); gl.enableVertexAttribArray(prog.at("p")); gl.vertexAttribPointer(prog.at("p"), 2, gl.FLOAT, false, 0, 0); }
     gl.useProgram(prog.pr); gl.uniform3f(prog.u.uCol, earth[0] * v.light[0], earth[1] * v.light[1], earth[2] * v.light[2]);
@@ -105,5 +115,5 @@ const VoxSection = (() => {
     gl.bindVertexArray(quad.vao); gl.drawArrays(gl.TRIANGLES, 0, 6); gl.disable(gl.SCISSOR_TEST);
     gl.depthMask(true); gl.disable(gl.STENCIL_TEST);
   }
-  return {build, hand, draw, fill, DEEP};
+  return {build, hand, draw, mark, fill, DEEP};
 })();

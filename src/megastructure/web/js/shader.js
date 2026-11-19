@@ -37,7 +37,7 @@ const Shader = (() => {
       c += (texture2D(uA, uv + uStep * 3.231).rgb + texture2D(uA, uv - uStep * 3.231).rgb) * .0703;
       gl_FragColor = vec4(c, 1.); }`;
   const FINAL = HEAD + `\n#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#endif\nuniform sampler2D uB, uC; uniform vec2 uRes, uOrigin; uniform vec3 uTint;
-    uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK, uWater, uDay, uRays;
+    uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK, uWater, uDay, uRays, uGlint;
     uniform sampler2D uW; uniform vec3 uSky, uSun; uniform vec2 uRayDir, uRayFrom; uniform vec4 uBend;
     float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
@@ -62,8 +62,9 @@ const Shader = (() => {
         vec2 wp = floor((wpx - uOrigin) / uTile * 16.), cw = wp / 16. * .055 + vec2(3.1 - uT * .011, 1.7 + uT * .004);
         c = mix(c, uSky, min(wet * .24, .6));
         c += wet * uDay * .1 * smoothstep(.57, .66, noise(cw) * .55 + noise(cw * 2.1 + 7.3) * .3 + noise(cw * 4.3 + 1.7) * .15);
-        float h = hash(wp), twinkle = .5 + .5 * sin(uT * (2. + h * 3.) + h * 40.);
-        c += wet * uSun * step(.962, h) * twinkle * smoothstep(.38, .68, noise(vec2(wp.x * .05 - uT * .14, wp.y * .13 + uT * .03)));
+        // (the glitter: dashes two px long, as the surface's own glints are, on or off, in the band of water under the sun (uGlint: where it is, across the picture). A px in 26 anywhere, fading in and out: snow on a pond)
+        float h = hash(vec2(floor(wp.x / 3.), wp.y)), twinkle = step(.55, .5 + .5 * sin(uT * (2. + h * 3.) + h * 40.));
+        c += wet * uSun * step(.972, h) * step(mod(wp.x, 3.), 1.5) * twinkle * step(abs(q.x - uGlint), .2) * smoothstep(.38, .68, noise(vec2(wp.x * .05 - uT * .14, wp.y * .13 + uT * .03)));
       }
       c = 1. - (1. - c) * (1. - g * uGlow);                    // the glow, laid on as light is
       // Low sun: shafts of light across the picture, from the sun's side, drifting, dying away as they go
@@ -169,6 +170,7 @@ const Shader = (() => {
         gl.uniform3f(u.uSky, sky[0] / 255, sky[1] / 255, sky[2] / 255);
         gl.uniform1f(u.uRays, plain && !under ? .17 * k * low * Math.min(1, day * 1.4) * opt("rays") / 100 : 0);
         gl.uniform2f(u.uRayDir, (way < 0 ? -1 : 1) * .84, .54); gl.uniform2f(u.uRayFrom, way < 0 ? 1 : 0, 0);
+        gl.uniform1f(u.uGlint, .88 - .76 * (phase < .75 ? phase / .75 : (phase - .75) / .25));      // (curve.js: where the sky has its sun, its moon)
       });
     } catch (e) { bad = true; if (el) el.style.display = "none"; console.warn("shader: off (" + e.message + ")"); }
   }
@@ -187,13 +189,14 @@ const Shader = (() => {
     wg.setTransform(DPR, 0, 0, DPR, 0, 0); wg.imageSmoothingEnabled = false;
     home = ctx; ctx = wg;
   }
+  // (soft: half a cast shadow's dark at the most: at .85 pale stone under a cloud was blue-grey, half the screen)
   // How dark the clouds' shadows are now (0: none: no shader, night, or you are under a roof). The land draws them
   // at its height (sunland.js hands this to the engine) and what stands is as dark as its ground (Sun.shade).
   function clouds() {
     const look = SHADERS[opt("shader")]; if (!look || bad) return 0;
     const tint = lightAt(clock.phase || 0), day = 1 - Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36);
     const under = typeof myAt !== "undefined" && myAt && typeof coveredAt === "function" && coveredAt(myAt.x, myAt.y, myAt.z);
-    return under ? 0 : Math.min(1, .85 * opt("shaderk") / 100 * day * opt("clouds") / 100);
+    return under ? 0 : Math.min(1, .45 * opt("shaderk") / 100 * day * opt("clouds") / 100);
   }
   const layers = () => [el, words].filter((c) => c && c.style.display === "block");      // (zoom.js: they glide with the picture)
   return {frame, over, layers, clouds, get el() { return el; }, get words() { return words; }, get works() { return !bad; }};

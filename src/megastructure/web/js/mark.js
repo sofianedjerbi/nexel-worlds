@@ -26,8 +26,9 @@ const Marks = (() => {
       if (slab && it.z !== undefined) z0 = surf - 1;                                    // a block built: its own cell
       else if (L !== null && !solidAt(q.x, q.y, surf)) { z0 = surf - 1; drop = settleAt(q.x, q.y, surf - 1); }      // the build cursor in the air: its cell there, and the ground under it
       else if (L !== null && landSolid(q.x, q.y, surf + 1)) z0 = surf - 1;              // ...in the ground: the block it is on
-      else if (thing || (it.ghost === "dirt" && it.z === undefined && L === null && !FILLS.dirt[gndAt(q.x, q.y)])) { z0 = surf; z1 = surf + (thing ? TALL : 1); }   // what will stand there, or the ground raised: the cell over the surface
+      else if (thing || (it.ghost === "dirt" && it.z === undefined && L === null && !FILLS.dirt[gndAt(q.x, q.y)])) { z0 = p.face && q === p ? front : surf; z1 = surf + (thing ? TALL : 1); }   // what will stand there, or the ground raised: the cell over the surface
       else if (!deck && lv(q.x, q.y + 1) >= surf) flat = true;                            // level ground, or higher land before it: its front is not seen, its top alone
+      // (pointed at by its wall's face, mouse.js: what will stand on it is shown from the wall's foot up, the face under the pointer in the box)
       out.push({x: q.x, y: q.y, z0, z1, colour: bad ? RED : it.ghost ? GREEN : WHITE, west: side(-1), east: side(1), drop, flat, ...(drop !== undefined ? {fill: .4} : {})});      // (a cell in the air: washed more, its front darker: a box at a glance; it read as a flat square)
     }
     return out;
@@ -36,7 +37,7 @@ const Marks = (() => {
   function aim(a, tile, now) {
     // (the mouse over ground you would only walk to, nothing in hand for it: its tile's top all the same, faint: where the pointer is in the land, in a pit, on a hill)
     const walk = !!(a && a.it && a.it.walk && !a.it.ghost && !Build.on), faint = walk && typeof inputMode !== "undefined" && inputMode === "mouse" && mouse.in;
-    const dt = Math.min(.1, (now - (at || now)) / 1000), want = forced || (faint ? [{x: a.p.x, y: a.p.y, z0: lv(a.p.x, a.p.y), z1: lv(a.p.x, a.p.y), colour: WHITE, flat: true, fill: 0, most: .4}] : a && a.it && (Build.on || tile || a.it.ghost) && !walk ? cells(a.p, a.it) : []);
+    const dt = Math.min(.1, (now - (at || now)) / 1000), want = forced || (faint ? [a.p.face ? {...cells(a.p, {})[0], fill: 0, most: .4} : {x: a.p.x, y: a.p.y, z0: lv(a.p.x, a.p.y), z1: lv(a.p.x, a.p.y), colour: WHITE, flat: true, fill: 0, most: .4}] : a && a.it && (Build.on || tile || a.it.ghost) && !walk ? cells(a.p, a.it) : []);
     at = now;
     const grow = Math.sin(now / 1000 * 4.5) > .3 ? 1 : 0, k = 1 - Math.exp(-dt * 22);
     if (want.length) {

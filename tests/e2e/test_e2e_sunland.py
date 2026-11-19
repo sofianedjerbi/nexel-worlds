@@ -270,7 +270,7 @@ def test_a_clouds_shadow_lies_on_the_land_and_what_stands_and_not_under_a_roof(g
     game.js("setOpt('clouds', 100); setOpt('shadows', 0); setOpt('shimmer', false)"); game.sleep(500)
     # where a cloud's shadow is deep now, near you (the field drifts a tile in five seconds)
     spot = game.js("""() => { const c = Sun.given().cloud, p = myPos(); let best = null;
-      for (let dy = -14; dy <= 14; dy++) for (let dx = -14; dx <= 14; dx++) { const k = Math.min(...[0, 1, 2, 3].map((i) => VoxLight.cloud({k: c.k, drift: [c.drift[0] - i * .11, c.drift[1] + i * .04]}, p.x + dx, p.y + dy, P)));
+      for (let dy = -14; dy <= 14; dy++) for (let dx = -14; dx <= 14; dx++) { const k = Math.min(...[0, 1, 2, 3].flatMap((i) => [[0, 0], [-2, 0], [-1, 1], [-2, 1], [1, -1]].map(([ox, oy]) => VoxLight.cloud({k: c.k, drift: [c.drift[0] - i * .11, c.drift[1] + i * .04]}, p.x + dx + ox, p.y + dy + oy, P))));      // (...over the patch of ground read beside it and the tree too: the clouds are small)
         if (!best || k > best[2]) best = [p.x + dx, p.y + dy, k]; }
       return best; }""")
     assert spot[2] > .3, spot                                    # (dark there now and for the next thirty seconds)

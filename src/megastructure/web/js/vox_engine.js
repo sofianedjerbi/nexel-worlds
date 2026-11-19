@@ -112,13 +112,14 @@ void main() {
   // is a sliver past, its variant. vLoc is VoxMesh.BIAS px more than where the px is in its tile.
   const FS = `#version 300 es
 precision highp float;
-uniform sampler2D uPage, uFronts, uSides, uWater, uFoot; uniform vec2 uWaterO, uWaterSize; uniform float uWaterK, uStrips, uSea, uCell, uUp, uSide, uVars, uK, uCut, uInset; uniform vec3 uLight, uWin, uSeaCol, uCutBox; uniform float uSec; uniform sampler2D uCutMap; uniform vec2 uWinAt; uniform vec4 uUnder;
+uniform sampler2D uPage, uFronts, uSides, uWater, uFoot; uniform vec2 uWaterO, uWaterSize; uniform float uWaterK, uStrips, uSea, uCell, uUp, uSide, uVars, uK, uCut, uInset; uniform vec3 uLight, uWin, uSeaCol, uCutBox; uniform float uSec, uOpen; uniform sampler2D uCutMap; uniform vec2 uWinAt; uniform vec4 uUnder;
 in vec3 vGround0; in vec2 vLoc0, vScr, vAt, vWorld, vFlat0; vec3 vGround; vec2 vLoc, vFlat; in float vPast; uniform float uLine; uniform vec4 uCurve; uniform vec2 uO; flat in vec2 vTile, vRows; flat in vec4 vMeta, vMore; out vec4 o;
 // the host's shadow (of the level in the face's strip) over a colour
 vec3 shadow(vec3 c) { vec4 s = texelFetch(uSides, ivec2(2, int(vMeta.z)), 0); return mix(c, s.rgb, s.a); }
 uniform sampler2D uModel; uniform vec2 uModelSize;              // (models, vox_models.js: their sheet)
 uniform vec2 uRes;${VoxLight.FS}${VoxCurve.FS}${VoxWater.FS}
-float cutLv(vec2 t) { if (t.x < 0. || t.y < 0. || t.x >= uCutBox.x || t.y >= uCutBox.y) return 1e5; vec4 m = texelFetch(uCutMap, ivec2(t), 0); return m.b > .5 ? m.r * 255. + m.g * 65280. - 32768. : 1e5; }      // the level a tile (counted from the cut's corner) is cut down to; 1e5: it is not cut
+bool cutIn = false;                                             // (cutLv: ...and is that tile a floor of the hole you are in)
+float cutLv(vec2 t) { cutIn = false; if (t.x < 0. || t.y < 0. || t.x >= uCutBox.x || t.y >= uCutBox.y) return 1e5; vec4 m = texelFetch(uCutMap, ivec2(t), 0); cutIn = m.b > .9; return m.b > .5 ? m.r * 255. + m.g * 65280. - 32768. : 1e5; }      // the level a tile (counted from the cut's corner) is cut down to; 1e5: it is not cut
 void main() {
   // (where the px is, as its face's corners say: vLoc in its tile, vFlat on the flat picture, vGround on the ground. In the roll, vox_curve.js, read at the
   // middle of the px of paint this px of the screen is in: the paint, the sun's shadows and the land's depth are whole px of paint there, squeezed with their rows)
@@ -133,15 +134,15 @@ void main() {
   // (a bank, kinds 3 and 4, lies over the ground beside its wall: it belongs to its wall's tile, half a tile on. A
   // top's px under a neighbour (vLoc: 8 more than where it is in its tile) are inside that neighbour: of its tile.)
   // What is higher than its tile's cut is left out; the faces of the cut itself (uSec: vox_section.js) are all there.
-  bool open = false, front = abs(vMeta.y - 1.) < .5, bank = vMeta.y > 2.5 && vMeta.y < 4.5, on = false, day = false, into = false, other = false;
+  bool open = false, front = abs(vMeta.y - 1.) < .5, bank = vMeta.y > 2.5 && vMeta.y < 4.5, on = false, day = false, into = false, other = false, mouth = false;
   if (uCutBox.z > 0.) {
-    vec2 tl = floor((vWorld - vec2(bank ? ((int(vMeta.x + .5) & (vMeta.y > 3.5 ? 32 : 1)) != 0 ? uCell * .5 : -uCell * .5) : 0., front || vMeta.y > 3.5 ? .5 : 0.)) / uCell), q = mod(floor(vec2(vFlat.x, vScr.y - uO.y) / uK + .001), 2.); noSun = cutLv(tl) < 1e4;      // (vox_light.js: no sun's shadow in what is cut open)
+    vec2 tl = floor((vWorld - vec2(bank ? ((int(vMeta.x + .5) & (vMeta.y > 3.5 ? 32 : 1)) != 0 ? uCell * .5 : -uCell * .5) : 0., front || vMeta.y > 3.5 ? .5 : 0.)) / uCell), q = mod(floor(vec2(vFlat.x, vScr.y - uO.y) / uK + .001), 2.); noSun = cutLv(tl) < 1e4 && (cutIn || uOpen > .5);      // (vox_light.js: no sun's shadow in what is cut open: the floors under a roof of a hole you are in, and of the other cut tiles the px seen through the opening, uOpen: vox_section.js mark. Not the ground beside it, still in the shadow of the land that stands: a light square in a slab's shadow)
     on = uCutBox.z > (q.x == q.y ? .2 : .6);      // (it comes in two steps, a checker of px of paint as they are drawn, then whole. One px in four first, on the flat picture's rows: a lattice of dots, and stripes where the roll squeezes the rows)
     if (uSec > .5) { open = true; cut = !on; }
     else {
       float lv = cutLv(tl);
       // (a front that looks into a tile that is cut open is seen with it: the wall at the back of a cave)
-      into = front && cutLv(tl + vec2(0., 1.)) < 1e4; open = lv < 1e4 || into;
+      into = front && cutLv(tl + vec2(0., 1.)) < 1e4; open = lv < 1e4 || into; mouth = on && bank && cutLv(tl + vec2(0., 1.)) < 1e4;      // (mouth: the front of a wall's side that looks into a cut tile: its foot square too. Set in, it left two px of the dark behind it: a black tick at each end of a room's floor line)
       vec2 s = tl + vec2(0., 1.); if (front && on && s.x >= 0. && s.y >= 0. && s.x < uCutBox.x && s.y < uCutBox.y) { float a = floor(texelFetch(uCutMap, ivec2(s), 0).a * 255. + .5), head = mod(a, 128.); day = a >= 128.; other = head > 0. && vAt.y > cutLv(s) + head + .02; }      // (a front of the land's in a hole of the cut that has a wall out of doors: the day's light, as all its walls)
       if (on && vAt.y > lv + .02) cut = true;
       if (on && bank && abs(cutLv(floor((vWorld - vec2(0., vMeta.y > 3.5 ? .5 : 0.)) / uCell)) - 3e4) < .5) cut = true;      // (a bank lying on the open floor of a hole you are in: its wall is seen straight, the floor whole to the cut's edge. Leaning, each level's strip ended at its own row: lines down the floor's sides, "a messy tray")
@@ -159,11 +160,11 @@ void main() {
   // (of a top in the roll: the row of its paint that its tile's height says, the same whatever the frame; its shadows and its depth are that row's)
   if (roll && kind == 0) { float i = floor((vScr.y - vRows.x) / uK); if (vRows.y > 0. && vRows.y < uCell && i >= 0. && i < vRows.y) { float dy = rollPick(i, vRows.y, uCell) + 8.5 - vLoc.y; vLoc.y += dy; vGround.y += dy; vFlat.y += dy * uK; } }
   vec3 c, plain = vec3(-1.); float far = uCell - .01, wa = 1.; vec2 loc = vLoc - 8., tile = vTile + 8.;
-  if (kind == 5) {                                              // a block's sliced top: what the knife made is one flat colour, its level's darkest (the host's line at a wall's foot): the inside of the ground, never grass, never a wall's paint (as a front is painted it read as a hill's own wall); darker along a drop
-    float x = floor(loc.x), y = floor(loc.y);
-    if (y >= uCell - texelFetch(uFoot, ivec2(int(clamp(x, 0., far)), int(vMore.x)), 0).r * 255.) discard;      // (none of its block here)
-    vec3 e = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb;
-    o = vec4((((bits & 2) != 0 && x < 1.) || ((bits & 4) != 0 && x > uCell - 2.) || ((bits & 1) != 0 && y < 1.) || ((bits & 16) != 0 && y > uCell - 2.) ? shadow(e) : e) * uLight, 1.); return;
+  if (kind == 5) {                                              // a block's sliced top: the rock seen inside, a cross-section: its front's own body and flecks (the rows of a front between its top and its seam, a variant every five rows: no seam, so no wall's strata), the whole square (a cut is straight: no cap, no lip, no rounded corner), a touch darker than the wall beside it (CUT, one tone everywhere), its level's dark line along a drop. (It was one flat colour: in stone a blank grey slab)
+    float x = floor(clamp(loc.x, 0., far)), y = floor(clamp(loc.y, 0., far));
+    vec3 e = texture(uFronts, vec2((mod(vMore.z + floor(y / 5.) + floor(y / 5.) * floor(x / 8.), uVars) * uCell + mod(x + 5. * floor(y / 5.), uCell) + .5) / (uVars * uCell), (vMeta.z * uUp + 1.5 + mod(y, 5.)) / (uStrips * uUp))).rgb;
+    if (((bits & 2) != 0 && x < 1.) || ((bits & 4) != 0 && x > uCell - 2.) || ((bits & 1) != 0 && y < 1.) || ((bits & 16) != 0 && y > uCell - 2.)) e = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb * .8;
+    o = vec4(e * vec3(.8, .8, .83) * uLight, 1.); return;
   }
   if (kind == 0) {
     vec4 t = texture(uPage, (tile + clamp(loc + wbend(bits), .01, far)) / uSide);
@@ -176,8 +177,8 @@ void main() {
       vec2 own = floor((vWorld - loc) / uCell + .5); bool gw = on && cutLv(own - vec2(1., 0.)) < vAt.y + .5, ge = on && cutLv(own + vec2(1., 0.)) < vAt.y + .5, gn = on && cutLv(own - vec2(0., 1.)) < vAt.y + .5;
       if (uSec > .5) { gw = false; ge = false; gn = false; }
       // (...and along a side where the land beside it is cut lower than it: the edge of a cut, two px of the wall's foot colour: the ground's inside. A roof lifted off shows where it was)
-      if (on && uSec < .5 && ((x < 2. && loc.x >= 0. && cutLv(own - vec2(1., 0.)) < vAt.y - .5) || (x > uCell - 3. && loc.x < uCell && cutLv(own + vec2(1., 0.)) < vAt.y - .5) || (y < 2. && loc.y >= 0. && cutLv(own - vec2(0., 1.)) < vAt.y - .5) || (y > uCell - 3. && cutLv(own + vec2(0., 1.)) < vAt.y - .5))) c = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb;
-      if (((bits & 2) != 0 && !gw && x == vMore.x - 8.) || ((bits & 4) != 0 && !ge && uCell - 1. - x == vMore.y - 8.) || ((bits & 1) != 0 && !gn && y == -texelFetch(uFoot, ivec2(int(clamp(x, 0., far)), int(vMore.z)), 0).r * 255.)) c = shadow(c);
+      if (on && uSec < .5 && ((x < 2. && loc.x >= 0. && cutLv(own - vec2(1., 0.)) < vAt.y - .5) || (x > uCell - 3. && loc.x < uCell && cutLv(own + vec2(1., 0.)) < vAt.y - .5) || (y < 2. && loc.y >= 0. && cutLv(own - vec2(0., 1.)) < vAt.y - .5) || (y > uCell - 3. && cutLv(own + vec2(0., 1.)) < vAt.y - .5))) c = texelFetch(uSides, ivec2(1, int(vMeta.z) - (uRock.x > 0. && abs(vAt.y - uRock.x + 1.) < .5 ? 1 : 0)), 0).rgb;      // (a top's strip is the level's over it, for the shadow at a wall's foot: the last level under stone (uRock, vox_light.js) had stone's, a grey frame on brown earth)
+      if ((bits & 64) == 0 && (((bits & 2) != 0 && !gw && x == vMore.x - 8.) || ((bits & 4) != 0 && !ge && uCell - 1. - x == vMore.y - 8.) || ((bits & 1) != 0 && !gn && y == -texelFetch(uFoot, ivec2(int(clamp(x, 0., far)), int(vMore.z)), 0).r * 255.))) c = shadow(c);      // (not a bed's, bit 64: vox_water.js)
     }
   } else if (kind == 1) {
     int i = int(clamp(loc.x, 0., far)); float r = floor(clamp(loc.y, 0., uUp - .01)), f = texelFetch(uFoot, ivec2(i, int(vMore.x)), 0).r * 255.;
@@ -193,7 +194,7 @@ void main() {
     float r = floor(clamp(loc.y, 0., uUp - .01)), sunny = uDepth > .5 ? clamp(((bits & (kind == 3 ? 1 : 32)) != 0 ? -uSun.x : uSun.x) * 2.5, 0., 1.) : 0.;
     c = texelFetch(uSides, ivec2((bits & 4) != 0 ? 1 : kind == 4 ? (r == uUp - 1. ? 1 : 3) : mod(floor(loc.y), 8.) < 3. ? 0 : 3, int(vMeta.z)), 0).rgb;
     if ((bits & 4) != 0) c = mix(c, texelFetch(uSides, ivec2(3, int(vMeta.z)), 0).rgb, sunny);
-    if (kind == 4 && (bits & 16) != 0) { if (r >= uUp - uInset) discard; if (r == uUp - uInset - 1.) c = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb; }
+    if (kind == 4 && (bits & 16) != 0 && !mouth) { if (r >= uUp - uInset) discard; if (r == uUp - uInset - 1.) c = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb; }
   } else { vec4 w = wface(loc, bits); c = w.rgb; wa = w.a; }    // (water: the view's picture at its level; or seen through: vox_water.js)
   // under a roof: a cave's own dark. Seen from outside, at its mouth, nearly all of it; seen through the window on
   // who is in it, a third: the place is to be seen
@@ -203,7 +204,7 @@ void main() {
   if ((bits & 8) != 0 && kind < 2 && !day) c = mix(roofed(c, kind), uUnder.rgb, uUnder.a * (other ? .8 : open || (uWin.z > 0. && distance((floor(vScr / uK) + .5) * uK, uWin.xy) < uWin.z) ? .38 : vMeta.w > 0. ? min(1., .25 + .2 * vMeta.w) : 1.));
   else if ((kind < 2 || kind == 3) && vMeta.w > 0.) c = mix(c, uUnder.rgb, uUnder.a * .15 * min(vMeta.w, 5.));
   if (day) { o = vec4(deep(c, kind, bits & ~8, -1., true) * uLight, 1.); return; }      // (a wall of the land's in a hole lit as the day: the land's depth, and no shadow of the sun)
-  o = vec4(wshade(sunlit(c, plain.r < 0. ? c : plain, kind, bits, kind == 0 && (bits & 128) == 0 ? floor(loc.y) + texelFetch(uFoot, ivec2(int(clamp(loc.x, 0., far)), int(vMore.w)), 0).g * 255. - uCell : -1.), c, kind, bits) * uLight, 1.) * wa;      // (the sun, if the view has one: vox_light.js)
+  o = wout(vec4(wshade(sunlit(c, plain.r < 0. ? c : plain, kind, bits, kind == 0 && (bits & 128) == 0 ? floor(loc.y) + texelFetch(uFoot, ivec2(int(clamp(loc.x, 0., far)), int(vMore.w)), 0).g * 255. - uCell : -1.), c, kind, bits) * uLight, 1.) * wa);      // (the sun, if the view has one: vox_light.js)
 }`;
   function create(host, cfg) {
     const chunks = new Map(), key = (cx, cy) => cx + "," + cy, N = cfg.size, [lo, hi] = cfg.levels;
@@ -282,10 +283,11 @@ void main() {
       gl.uniform1i(u.uCutMap, 5); gl.uniform3f(u.uCutBox, open ? open.w : 0, open ? open.h : 0, open ? open.a : 0);
       gl.activeTexture(gl.TEXTURE0);
       gl.uniform1f(u.uCut, 0); gl.uniform1f(u.uSec, 0); all();
+      if (win || open) VoxSection.mark(gl, u, all, !!open);     // (the px seen through what was left out, marked; in a cut, the land there once more with no shadow of the sun on it)
       if (open) VoxSection.draw(gl, u, v, open, sec, () => light.at(gl, u, v, open.x / N, open.y / N));      // (the faces of the cut)
       // Where the window left blocks out and nothing is behind them: the cut's colour. What was left out is drawn once
       // more, only to mark those px; then the colour is laid on the marked px that are still empty (vox_section.js).
-      if (win || open) VoxSection.fill(gl, u, v, win ? win.earth : open.fill || open.earth, all, fill);
+      if (win || open) VoxSection.fill(gl, u, v, win ? win.earth : open.fill || open.earth, fill);
       if (VoxWater.pass(gl, u, v, prog.pr, true)) { all(true); VoxWater.pass(gl, u, v, prog.pr, false); }      // (water seen through: over all of the land)
       VoxMark.draw(v, k, cfg);                                  // (marks: boxes over the land, vox_mark.js)
       gl.bindVertexArray(null);

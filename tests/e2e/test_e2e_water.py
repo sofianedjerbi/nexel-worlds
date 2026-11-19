@@ -39,7 +39,7 @@ def test_shallow_water_shows_its_bed_tinted_and_deep_water_is_not_seen_through(g
     tx, ty = x - 8, y - 6 + row
     assert game.js(f"WaterBed.depth({tx}, {ty})") == 1 and game.js(f"topAt({tx}, {ty})") == 0      # (the bed is for the eye: the tile is at its level, as ever)
     got = game.js(MOST, [tx + .3, ty + .6, tx + .8, ty + .95])
-    sand, tint, a = (236, 220, 174), (136, 224, 214), .26                        # water.js: the sand a level down, the tint over it and how much of it
+    sand, tint, a = (236, 220, 174), (104, 204, 208), .52                        # water.js: the sand a level down; waterbed.js: the tint over it and how much of it
     want = [s * (1 - a) + t * a for s, t in zip(sand, tint)]
     assert all(abs(g - w) <= 4 for g, w in zip(got, want)), (got, want)
     deep = game.js(MOST, [x + 4, y - 4.5, x + 5, y - 3.5])
@@ -90,8 +90,58 @@ def test_a_swimmers_body_under_the_water_is_tinted(game):
       await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(ok)))); WaterBed.under = u0; return out; }"""
     on = game.js(seen, True)
     assert on["n"] >= 2 and on["drawn"] and on["sheet"], on                      # on: the body under the face is drawn by the water's own hand
-    tint = {1: (136, 224, 214), 2: (78, 188, 208)}[game.js(f"WaterBed.depth({x}, {y - 1})")]      # (water.js: the tint of water one and two levels deep)
+    tint = {1: (104, 204, 208), 2: (70, 174, 204)}[game.js(f"WaterBed.depth({x}, {y - 1})")]      # (waterbed.js: the tint of water one and two levels deep)
     far = lambda c: sum(abs(a - b) for a, b in zip(c, tint))
     assert far(on["drawn"]) < far(on["sheet"]) - 30, on                          # ...tinted: nearer the water's colour than the sheet's own px are
     assert game.js(seen, False)["n"] == 0                                        # off: not at all (the body dimly seen, as it was)
     game.js(RESET)
+
+
+def test_water_one_level_deep_is_clearly_bluer_than_dry_ground_at_noon_and_at_low_sun(game):
+    """A pond one level deep is water at every hour: never a pit of pale sand ("cream water reads as sand")."""
+    game.flat(); game.clear_area(10); game.js(RESET); game.js("(() => { setOpt('shimmer', false); setOpt('shader', 'off'); return 1; })()")
+    game.stamp(-8, -6, ["~" * 4] * 2); game.stamp(-3, -6, ["," * 3] * 3)         # a pond (all of it by its banks: one deep), bare earth beside it
+    x, y = game.pos(); game.wait(READY, 20000)
+    assert game.js(f"WaterBed.depth({x - 7}, {y - 5})") == 1
+    for phase in (.375, .65):
+        game.rpc("dev_time", phase=phase); game.sleep(900)
+        w, d = game.js(MOST, [x - 7.5, y - 5, x - 5.5, y - 4.15]), game.js(MOST, [x - 2.5, y - 5.5, x - .5, y - 4.5])
+        assert (w[2] - w[0]) - (d[2] - d[0]) >= 50 and w[2] >= w[0] - 5 and w[1] > w[0] + 15, (phase, w, d)      # blue over red: far more than the earth's; and no cream
+    game.rpc("dev_time", phase=.3); game.js(RESET)
+
+
+def test_a_bed_step_under_water_is_one_colour_no_checker(game):
+    """The front of a step of the bed, seen through the water: a band of one colour, its first two rows a step darker. No dither."""
+    plain(game)
+    game.stamp(-9, -7, ["~" * 6] * 6); x, y = game.pos(); game.wait(READY, 20000); game.sleep(600)
+    tx, ty = x - 7, y - 6                                                         # two deep (no land beside it), the tile north of it one deep: the step's front is rows 8 to 15 of its face
+    assert game.js(f"[WaterBed.depth({tx}, {ty}), WaterBed.depth({tx}, {ty - 1})]") == [2, 1]
+    grab = """([tx, ty, r0, n]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const S = TS(), [ox, oy] = screenOrigin(S), k = S / 16, out = [];
+      for (let j = 0; j < n; j++) { const row = []; for (let i = 0; i < 16; i++) { const d = ctx.getImageData(Math.round((ox + tx * S + (i + .5) * k) * DPR), Math.round((oy + ty * S + (r0 + j + .5) * k) * DPR), 1, 1).data; row.push(d[0] + ',' + d[1] + ',' + d[2]); } out.push(row); }
+      ok(out); })))"""
+    for col in (tx, tx + 1, tx + 2):
+        rows = game.js(grab, [col, ty, 8, 8])
+        assert all(len(set(r)) == 1 for r in rows), rows                          # every row of the front: one colour from side to side
+        v = [sum(map(int, r[0].split(","))) for r in rows]                        # (a row may differ from the next by a unit: the water is less seen through the further north it is)
+        assert max(v[2:]) - min(v[2:]) <= 3 and abs(v[0] - v[1]) <= 3 and v[2] - v[0] >= 12, rows      # six rows of one colour under two of a darker one
+    game.js(RESET)
+
+
+BRIGHT = """async ([b64, x0, y0, x1, y1]) => { const im = await createImageBitmap(await (await fetch('data:image/png;base64,' + b64)).blob()), c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+  const g = c.getContext('2d'); g.drawImage(im, 0, 0); const S = TS(), [ox, oy] = screenOrigin(S), k = im.width / innerWidth, X = Math.round((ox + x0 * S) * k), Y = Math.round((oy + y0 * S) * k), w = Math.round((x1 - x0) * S * k), h = Math.round((y1 - y0) * S * k);
+  const d = g.getImageData(X, Y, w, h).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.min(d[i], d[i + 1], d[i + 2]) > 228) n++; return n / (w * h); }"""
+
+
+def test_the_shaders_glitter_is_a_few_dashes_not_snow_on_the_water(game):
+    """Natural: the sun's glitter on water is rare dashes in the band under the sun; it was white specks all over, like snow."""
+    import base64
+    game.flat(); game.clear_area(12); game.js(RESET); game.rpc("dev_time", phase=.375)
+    game.stamp(-10, -8, ["~" * 21] * 6); x, y = game.pos(); game.wait(READY, 20000)
+    game.js("(() => { setOpt('shader', 'natural'); return 1; })()"); game.sleep(1500)
+    worst = 0
+    for _ in range(4):
+        shot = base64.b64encode(game.page.screenshot()).decode()
+        worst = max(worst, game.js(BRIGHT, [shot, x - 9.5, y - 7.5, x + 10.5, y - 2.5])); game.sleep(350)
+    game.js("(() => { setOpt('shader', 'off'); return 1; })()")
+    assert worst < .005, worst                                                   # white px on the water (the surface's own glints with them): under 0.5 % (it is 0.3; it was 0.8 to 1)

@@ -62,7 +62,7 @@ const Voxels = (() => {
       let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
       for (const k of all.keys()) { const [x, y] = k.split(",").map(Number); x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
       const w = x1 - x0 + 1, h = y1 - y0 + 1, px = new Uint8Array(w * h * 4);
-      for (const [k, lv] of all) { const [x, y] = k.split(",").map(Number), i = ((y - y0) * w + x - x0) * 4, v = lv + 32768; px[i] = v & 255; px[i + 1] = v >> 8; px[i + 2] = 255; px[i + 3] = 255; }
+      for (const [k, lv] of all) { const [x, y] = k.split(",").map(Number), i = ((y - y0) * w + x - x0) * 4, v = lv + 32768; px[i] = v & 255; px[i + 1] = v >> 8; px[i + 2] = pic && xrayLit(x, y) ? 255 : 200; px[i + 3] = 255; }      // (third byte: cut; 255: a floor of the hole you are in, lit evenly: no shadow of the sun, vox_engine.js noSun)
       cutOf = {x: x0, y: y0, w, h, px, ver, earth: [.3, .21, .17]};      // (the colour where nothing at all is behind: there should be none)
     }
     cutOf.fill = api.probe ? [1, 0, 1] : null;                // (probe: what the faces of the cut leave empty is counted, api.fillPx: none, tests)

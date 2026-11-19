@@ -191,7 +191,7 @@ def test_a_bridge_far_north_bends_with_the_water_and_who_is_on_it_stands_on_its_
     for dy, ay in ((-1, 3), (1, 10)):                            # the water north and south of it, not planks
         # (the palest of five px across: one px alone was now and then a pebble under the water or a ripple's line, greyer than the pond: (141, 157, 152))
         w = max((game.js(AT, [x, by + dy, i, ay, 0]) for i in (4, 6, 8, 10, 12)), key=min)
-        assert min(w) > 130 and not alike(w, PLANK, 30), (dy, w)   # (a shallow pond: pale over its sand; seen through, tinted a step more in its middle)
+        assert min(w) > 100 and w[2] > w[0] and not alike(w, PLANK, 30), (dy, w)   # (a shallow pond: water's colour over its sand; seen through, tinted a step more in its middle)
     game.spawn("cow", 0, -3, still=9999)
     game.tick(2)
     game.sleep(500)

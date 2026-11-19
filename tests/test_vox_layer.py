@@ -105,13 +105,13 @@ def test_the_engine_runs_with_none_of_the_game_and_makes_the_faces_the_cells_say
     # east: each shows its thin side (cfg.side px: its dark line and its wall, two faces): a strip beside its top, and a
     # front a level where it ends south (the hill's: two levels each; the roof's: one)
     assert out["ledges"] == 4
-    # (...but the roof's east one: what is seen beside it there is the front of the hill's second tile, the same rock:
-    # its px are front, one face, with no line)
-    assert out["faces"] == 16 + 1 + 1 + 3 + 5 + 4 * 2 + (2 + 2 + 1) * 2 + 1
+    # (the roof's east one too: what is seen beside it there is the front of the hill's second tile, the same rock, but that
+    # tile stands lower than the roof: the nearer, taller block has its line over the farther front: two faces)
+    assert out["faces"] == 16 + 1 + 1 + 3 + 5 + 4 * 2 + (2 + 2 + 1) * 2 + 2
     # all of it drawn, six corners a face; a face that lies on the ground (the 16 tops, the water and the three under
     # the shore, what floats: 21; the four sides' strips, two faces each; a model's two tops) is four strips north to south, so that it
-    # bends with the ground (vox_curve.js); the 5 fronts, the sides' 11 and the model's front are one piece
-    assert out["faces"] == 45 and out["corners"] == (29 * 4 + 16) * 6 + (2 * 4 + 1) * 6
+    # bends with the ground (vox_curve.js); the 5 fronts, the sides' 12 and the model's front are one piece
+    assert out["faces"] == 46 and out["corners"] == (29 * 4 + 17) * 6 + (2 * 4 + 1) * 6
     assert out["bent"] == out["corners"] + 6                     # (curved, under a sky: the same faces, and the sky's)
     assert out["fronts"] == [z for z in range(-2, 5) for _ in range(2)]      # the fronts' sheet: a level a strip, two variants
     assert out["sides"] == list(range(-2, 5))                    # the ledges' colours: a level a row
@@ -123,23 +123,23 @@ def test_a_tile_that_changed_is_painted_again_with_the_tiles_round_it_and_its_ch
     # column with its two tops; not the chunk's other seven
     assert out["again"] == 10
     # its two fronts are gone; the hill's other tile now drops west as well as east: four sides still
-    assert out["after"] == 16 + 1 + 1 + 3 + 3 + 4 * 2 + (2 + 2 + 1) * 2 + 1 and out["ledgesAfter"] == 4
+    assert out["after"] == 16 + 1 + 1 + 3 + 3 + 4 * 2 + (2 + 2 + 1) * 2 + 2 and out["ledgesAfter"] == 4
     assert out["left"] == 0                                      # (and a chunk let go of is gone)
 
 
 def test_models_are_boxes_of_two_faces_made_again_with_their_tile():
     out = run()
     assert out["models"] == 3                                    # a box: its top and its front; a flat thing: its top
-    assert out["faces"] == 45                                    # (the land's faces are the land's alone)
+    assert out["faces"] == 46                                    # (the land's faces are the land's alone)
     assert out["posted"] == 5 and out["repaint"] == 5            # a box more on the tile that was touched: two faces more (painted again: it and the three round it that the chunk has, the cave's two tops)
-    assert out["bare"] == 0 and out["bareCorners"] == (29 * 4 + 16) * 6      # none left: nothing of them is drawn
+    assert out["bare"] == 0 and out["bareCorners"] == (29 * 4 + 17) * 6      # none left: nothing of them is drawn
     assert out["sheets"] == 1                                    # the sheet is asked for once, however many frames
 
 
 def test_a_host_with_no_models_is_drawn_as_before():
     out = run(plain=True)
     assert out["models"] == 0 and out["posted"] == 0 and out["sheets"] == 0
-    assert out["faces"] == 45 and out["corners"] == (29 * 4 + 16) * 6
+    assert out["faces"] == 46 and out["corners"] == (29 * 4 + 17) * 6
 
 
 def test_the_roll_is_one_function_for_the_gpu_and_for_what_is_drawn_over_its_picture():
@@ -226,8 +226,9 @@ def test_the_land_cut_open_is_a_section_with_the_walls_of_the_hole_and_the_tops_
     assert out["banks"] == 6 and out["n"] == 15, out
     assert out["lit"] == 0                                       # (no wall of it out of doors: all in the cave's dark)
     assert out["corners"] == (2 + 12) * 4 * 6 + 1 * 6             # (what lies is four strips, as the land's: it bends with it)
-    # drawn: the land twice (what is left, then what was left out, to mark it), the cut's faces once, the fill
-    assert out["made"] == 15 and out["open"] == 2 * out["plain"] + out["corners"] + 6, out
+    # drawn: the land three times (what is left; what was left out, to mark the px seen through the opening; the land on
+    # those px again, with no shadow of the sun: vox_section.js mark), the cut's faces once, the fill
+    assert out["made"] == 15 and out["open"] == 3 * out["plain"] + out["corners"] + 6, out
 
 
 def test_making_the_section_again_when_the_cut_changes_tile_costs_under_two_ms():

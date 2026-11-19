@@ -121,7 +121,7 @@ def test_the_front_of_a_hole_is_one_straight_edge_and_a_higher_floor_stands_on_i
     assert all(earth(c) for c in floors), floors
     # no dark earth anywhere in the row in front of the place: not the cut's flat colour, not a void
     row = game.js(LAND, [[X + i, y + 1, -9, ax, 3] for i in (-1, 0, 1, 2, 3) for ax in (2, 8, 13)])
-    assert all(c != FILL and sum(c) > 230 for c in row), row
+    assert all(c != FILL and sum(c) > 200 for c in row), sorted(set(map(tuple, row)))      # (the sliced rock's body, and its dark flecks: nine down, [99, 70, 57])
     assert not game.errors
 
 
@@ -151,3 +151,42 @@ def test_one_wall_has_one_light(game):
     dark = at(x - 1, y, -1)
     assert sum(dark) < sum(lit) - 25, (dark, lit)
     assert fill_px(game) == 0 and not game.errors
+
+
+def test_a_sliced_top_is_the_rock_seen_inside_not_one_flat_colour(game):
+    """On the floor of a gorge in stone, the wall in front of you cut down to the floor: its sliced top is eight tiles
+    of rock. It was one flat colour (the level's wall-foot line: in stone a blank grey slab, "untextured"); it is the
+    rock's own body with its flecks, a touch darker than the wall that still stands north of you, the same rock."""
+    game.flat()                                                  # (art px of a wall a level up the picture: whole px on the flat one)
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(-4, -1, ["." * 8] * 3, levels=["6" * 8, "0" * 8, "6" * 8])
+    under(game, x, y, 0)
+    assert game.js(f"[-3, -2, -1, 0, 1, 2].every((i) => xray.pic.cut.get(({x} + i) + ',' + ({y} + 1)) === 0)")
+    top = [tuple(c) for c in game.js(LAND, [[x + i, y + 1, 0, ax, ay] for i in (-2, -1, 0, 1) for ax in range(1, 15) for ay in range(2, 14)])]
+    assert len(set(top)) >= 3, set(top)                           # its body, its light flecks, its dark ones
+    mid = lambda px: sorted(px, key=sum)[len(px) // 2]
+    body, wall = mid(top), mid(game.js(LAND, [[x + i, y, 2, ax, 3] for i in (-2, -1, 0, 1) for ax in range(1, 15)]))
+    assert max(body) - min(body) < 30 and max(wall) - min(wall) < 30, (body, wall)      # stone, both: grey
+    assert sum(wall) - 90 < sum(body) < sum(wall) - 15, (body, wall)                    # darker than the wall beside it, not black
+    assert fill_px(game) == 0 and not game.errors
+
+
+def test_the_ground_beside_the_opening_keeps_the_shadow_of_the_land_that_stands(game):
+    """Under a slab on nothing (an overhang), in the morning: the slab is cut over your column alone, and the ground
+    under its south row is in its shadow, your column's tile as the one beside it. The whole tile of the cut was lit
+    evenly ("a light square in the slab's shadow"): only the px seen through the opening are (vox_section.js mark)."""
+    game.flat()
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.3)
+    game.stamp(-1, -1, ["...."] * 3, levels=["0000"] * 3, roofs=["4444"] * 3, heads=["3333"] * 3)
+    under(game, x, y, 0)
+    assert game.js(f"xray.pic.cut.get('{x},{y + 1}')") == 0 and not game.js("!!xray.pic.hole")
+    mid = lambda px: sorted(px, key=sum)[len(px) // 2]
+    at = lambda tx, ty: mid(game.js(LAND, [[tx, ty, 0, ax, ay] for ax in (2, 5, 8, 11, 14) for ay in (9, 11, 13)]))
+    mine, beside, open_ = at(x, y + 1), at(x + 1, y + 1), at(x - 4, y + 1)
+    assert abs(sum(mine) - sum(beside)) <= 40, (mine, beside)     # one shadow, across the cut's edge (the roof's own dark is a little less where it is lifted off)
+    assert sum(mine) < sum(open_) - 90, (mine, open_)             # ...and it is a shadow: the meadow in the sun is far lighter
+    assert not game.errors

@@ -117,9 +117,15 @@ vec3 lit(vec3 c, vec3 plain, int kind, int bits, float lip) {
     // tile beside it was asked for a tile further, inside the next wall of a narrow way: dark dashes down the lit side)
     else if (high(tileAt(floor(g))) > z0 + .02) g.x = east ? floor(g.x) + 1. + .5 / uCell : floor(g.x) - .5 / uCell;
   }
-  // (a front: by the ground at its foot: in the shadow that lies there, as high as what throws it stands. A band straight up
-  // the wall: asked for at each px's own height it was a wedge widening down every cliff beside a corner)
-  if (!dark && uLand > .5 && uSun.z > 0.) { dark = front && kind == 1 ? block(g, min(z0, high(tileAt(floor(g)))), d) > z0 : shaded(g, z0, d); if (dark && kind == 2) much *= .5; }      // (the land's shadow on water: half, the water shows the land in it there)
+  // (a front: each px from where it is, its column's foot at its own height: the shadow of what stands beside the wall climbs
+  // it to where the sun's line clears that land's top: one edge across the wall's columns. Asked by the ground at its foot alone
+  // a column was all dark or all lit: a wall split in two tones down a straight line, dark rectangles on a far cliff)
+  // (...but the wall's own turn, land within three tiles of the px's column toward the sun, as by the ground at its foot: where its
+  // shadow lies there the px is dark up to that land's top: the face is turned from the sun. At its own height a cliff that runs on
+  // a slant was a row of dark wedges, one a column)
+  if (!dark && front && kind == 1 && uLand > .5 && uSun.z > 0. && abs(d.x) > 1e-4) { vec2 rt = floor(g); float fl = min(z0, high(tileAt(rt))), D = d.x > 0. ? rt.x + 1. - g.x : g.x - rt.x;
+    for (float k = 1.; k < 4.; k++) { float hn = high(tileAt(rt + vec2(sign(d.x) * k, 0.))); if (hn > fl + (D + k - 1.) / abs(d.x)) { dark = hn > z0; break; } } }
+  if (!dark && uLand > .5 && uSun.z > 0.) { dark = shaded(g, z0, d); if (dark && kind == 2) much *= .5; }      // (the land's shadow on water: half, the water shows the land in it there)
   if (!dark && uCastOn > .5) {
     float by = 0.;
     if (kind == 7) by = texture(uCast, (vFlat - uCastAt.xy) / (vec2(textureSize(uCast, 0)) * uCastAt.z)).a > .25 ? 1. : 0.;
@@ -150,12 +156,9 @@ vec3 lit(vec3 c, vec3 plain, int kind, int bits, float lip) {
 float chash(ivec2 q) { uint n = uint(q.x) * 374761393u + uint(q.y) * 668265263u; n = (n ^ (n >> 13u)) * 1274126177u; return float((n ^ (n >> 16u)) & 65535u) / 65535.; }
 float cnoise(vec2 q) { ivec2 i = ivec2(floor(q)); vec2 f = fract(q); f = f * f * (3. - 2. * f);
   return mix(mix(chash(i), chash(i + ivec2(1, 0)), f.x), mix(chash(i + ivec2(0, 1)), chash(i + ivec2(1, 1)), f.x), f.y); }
-// (px: the px of paint on the ground. Two shades, none and the cloud's, and one px in two between them: a cloud's
-// shadow has an edge of whole px, as every shadow has. Few and small, as the sky's clouds are: it was half the land in nested rings)
-// (par: which px of two is the darker at an edge: counted on the face itself. Counted on the ground under the sun's line
-// it was slanted stripes down a front, whose rows are not the ground's)
-float cloud(vec2 px, float par) { vec2 w = px / uCell * .055 + uCloud.yz; float s = smoothstep(.57, .63, cnoise(w) * .55 + cnoise(w * 2.1 + 7.3) * .3 + cnoise(w * 4.3 + 1.7) * .15);
-  return floor(s + (mod(par, 2.) < .5 ? .67 : .33)) * uCloud.x; }
+// (px: the px of paint on the ground. Two shades, none and the cloud's, and a plain edge of whole px between them (one px in two
+// along it was a ribbed band round every cloud). Few and small, as the sky's clouds are: it was half the land in nested rings, then one blob over half the screen)
+float cloud(vec2 px, float par) { vec2 w = px / uCell * .16 + uCloud.yz; return cnoise(w) * .55 + cnoise(w * 2.1 + 7.3) * .3 + cnoise(w * 4.3 + 1.7) * .15 >= .62 ? uCloud.x : 0.; }
 // The land's depth (uDepth: on), with or without the sun: each a multiply of the land's own paint, never another paint.
 //   Height as light: a top a little brighter and warmer a level of the world, from level 0 (as it is
 //     painted) up to level 4 (no more: high stone went to white); tops only: a wall is one tone from its rim to the ground (a cliff that runs on a slant shows each column two
@@ -179,7 +182,7 @@ vec3 deep(vec3 c, int kind, int bits, float lip, bool contact) {
   if ((bits & 8) != 0) down = 0.;                               // (under a roof the place has its own dark: darker again by its depth, a floor was the colour of the earth cut round it)
   if (kind != 0 || lip >= 0.) up = 0.;                           // (a wall has one tone from rim to foot: a top's level is what you stand on, a wall's is not)
   c *= (vec3(1.) + vec3(.013, .012, .009) * up) * (vec3(1.) - vec3(.05, .05, .042) * down);
-  if (!contact || (bits & 128) != 0 || ((bits & 8) != 0 && kind < 2)) return c;      // (under a roof: its height only, no side to the sun, no shade at a foot: the place has its own dark)
+  if (!contact || (bits & 128) != 0 || (kind == 0 && (bits & 64) != 0) || ((bits & 8) != 0 && kind < 2)) return c;      // (under a roof: its height only, no side to the sun, no shade at a foot: the place has its own dark)
   if (kind == 1 || (kind == 0 && lip >= 0.)) return c * FRONT;      // (a front, and a top's own lip of wall)
   if (kind > 2) { float s = clamp(((bits & (kind == 3 ? 1 : 32)) != 0 ? -uSun.x : uSun.x) * 2.5, -1., 1.); return c * (s > 0. ? vec3(1. + .05 * s) : vec3(1.) + vec3(.22, .21, .15) * s); }
   vec2 tile = floor((vGround.xy - vLoc + 8.) / uCell + .5), l = floor(vLoc - 8.);
@@ -280,9 +283,8 @@ vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
     return a + (hash(ix + 1, iy) - a) * fx + (b + (hash(ix + 1, iy + 1) - b) * fx - a - (hash(ix + 1, iy) - a) * fx) * fy;
   }
   function cloud(c, x, y, cell) {
-    const px = Math.floor(x * cell), py = Math.floor(y * cell), wx = px / cell * .055 + c.drift[0], wy = py / cell * .055 + c.drift[1];
-    const n = noise(wx, wy) * .55 + noise(wx * 2.1 + 7.3, wy * 2.1 + 7.3) * .3 + noise(wx * 4.3 + 1.7, wy * 4.3 + 1.7) * .15, q = Math.max(0, Math.min(1, (n - .57) / .06));
-    return Math.floor(q * q * (3 - 2 * q) + ((((px + py) % 2) + 2) % 2 < .5 ? .67 : .33)) * c.k;
+    const px = Math.floor(x * cell), py = Math.floor(y * cell), wx = px / cell * .16 + c.drift[0], wy = py / cell * .16 + c.drift[1];
+    return noise(wx, wy) * .55 + noise(wx * 2.1 + 7.3, wy * 2.1 + 7.3) * .3 + noise(wx * 4.3 + 1.7, wy * 4.3 + 1.7) * .15 >= .62 ? c.k : 0;
   }
   return {create, FS, TOR, cloud};
 })();

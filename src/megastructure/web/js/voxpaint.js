@@ -29,33 +29,39 @@ const VoxPaint = (() => {
     return [...set].sort((a, b) => (a & 255) - (b & 255)); };
   const earths = new Map(), earth = (z) => { if (!(z > EARTH && z < 5)) return null; let m = earths.get(z); if (!m) { const to = browns(hillSheet(EARTH)); m = new Map(browns(hillSheet(z)).map((v, i) => [v, to[Math.min(i, to.length - 1)]])); earths.set(z, m); } return m; };
   const ids = new Map(), cells = [null];                        // a shape: [what of it is drawn, its sheet, the sheet's cell (cx, cy) each quarter of it is: NW, NE, SW, SE]; 0: the whole square
-  // A narrow top (no land as high west and east of it, or north and south): the sheet's own cell for it is all rim (a
-  // pillar's top was a button, a ridge a hedge: the sheet's rim is 7 px a side, a tile has 16). It is made of the sheet's edge cells instead, a quarter each, each as if the land went on on its far
-  // sides, and across the narrow way the rim is slimmed: of the edge cell's px from the outside in only SLIM are
-  // kept (the empty px, one of the wall, the dark green, one of the mid green; then its flat middle), so a top one
-  // tile wide has 6 px of its own flat green across. An outer corner is its two edge cells mitred, the corner's own
-  // px left out (the sheet's corner cell is rounded six px: four of them were a ball). Else the sheet's cell, four times
+  // A narrow top (a tile in no 2 x 2 of land as high: a pillar, a wall one tile wide, its ends, an L, a T, a plus, a ring): the
+  // sheet's own cell for it is all rim (a pillar's top was a button, a ridge a hedge, a plus a muddle: the sheet's rim is 7 px a
+  // side, a tile has 16). It is made of the sheet's straight edge cells instead, a quarter each, and the rim is slimmed: of
+  // the edge cell's px from the outside in only SLIM are kept (west: the empty px, two of the wall, the dark green, one of the
+  // mid green; north: the sheet's own four rows, its line that dips as on a wide top; then its flat middle), so a run one tile
+  // wide is ONE top, 6 px of flat green across from end to end. A quarter: 'a' land goes on to its side (west or east): its north
+  // or south edge; 'b' land goes on north or south: its side's edge; 'o' neither: an end's corner, the two edges mitred, the
+  // corner's own px left out ('q': not left out: a step of a stair, flat-fronted); 'c' both: a joint's inner corner, each arm's
+  // rim turning into the other's along the mitre. Else (a wide top) the sheet's cell, four times
   const QUARTER = [[N_, W_, NW, NE, SW], [N_, E_, NE, NW, SE], [S_, W_, SW, SE, NW], [S_, E_, SE, SW, NE]];      // (its two sides, its corner, then the corner past each side)
-  const SLIM = {x: [0, 1, 3, 4, 5, 8, 8, 8], n: [0, 2, 3, 6, 6, 6, 6, 6], s: [6, 9, 10, 11, 12, 13, 14, 15]};      // (west: the px of the edge cell that px 0..7 is; north; south, px 8..15)
-  function quarters(m) {
-    const r = reduce(m), one = blobCell(m), nx = !(r & (W_ | E_)), ny = !(r & (N_ | S_));
-    if (!(nx || ny)) return [one, one, one, one];
-    const q = QUARTER.map(([a, b, ab, pa, pb]) => { const na = 255 & ~(a | ab | pa), nb = 255 & ~(b | ab | pb);
-      return r & (a | b) ? blobCell((r & a ? 255 : na) & (r & b ? 255 : nb) & ~(r & ab ? 0 : ab)) : [...blobCell(na), ...blobCell(nb)]; });      // (an outer corner: the cell of each of its two edges)
-    q.nx = nx; q.ny = ny; return q;
+  const SLIM = {x: [0, 1, 3, 4, 5, 8, 8, 8], n: [0, 1, 2, 3, 6, 6, 6, 6], s: [6, 9, 10, 11, 12, 13, 14, 15], q: [6, 6, 6, 6, 9, 10, 14, 15]};      // (west: the px of the edge cell that px 0..7 is; north; south, px 8..15; q: a step's south: its tread goes on to two px of its edge, with none of the sheet's lip of wall: the riser under it is its wall)
+  function quarters(m, step) {
+    const r = reduce(m & 255), one = blobCell(r);
+    if (r & 240) return [one, one, one, one];
+    const q = QUARTER.map(([a, b, ab, pa, pb]) => ({k: r & a ? (r & b ? "c" : "b") : r & b ? "a" : step && a === S_ ? "q" : "o", A: blobCell(255 & ~(a | ab | pa)), B: blobCell(255 & ~(b | ab | pb))}));
+    q.slim = true; return q;
   }
   // which px of the sheet a shape's px (i, j) is: [cell x, cell y, px, px] (null: none, an outer corner's own px), and that px in a sheet's data
   function cellAt(q, i, j) {
-    const c = q[(j >> 3) * 2 + (i >> 3)], si = !q.nx ? i : i < 8 ? SLIM.x[i] : 15 - SLIM.x[15 - i], sj = !q.ny ? j : j < 8 ? SLIM.n[j] : SLIM.s[j - 8];
-    if (c.length < 4) return [c[0], c[1], si, sj];
-    const di = (i < 8 ? i : 15 - i) - 2, dj = j < 8 ? j - 1 : 15 - j - 2;      // (px in from where its side's edge starts, its north's, its south's)
-    return di + dj < 2 ? null : (j < 8 ? dj < di : dj <= di) ? [c[0], c[1], i, sj] : [c[2], c[3], si, j];
+    const c = q[(j >> 3) * 2 + (i >> 3)];
+    if (!q.slim) return [c[0], c[1], i, j];
+    const si = i < 8 ? SLIM.x[i] : 15 - SLIM.x[15 - i], sj = j < 8 ? SLIM.n[j] : SLIM[c.k === "q" ? "q" : "s"][j - 8], ni = i < 8 ? i : 15 - i, nj = j < 8 ? j : 15 - j;
+    let a = c.k === "a";
+    if (c.k === "c") a = ni * (j < 8 ? 4 : 7) < nj * 5;      // (an inner corner: the rim there is the px near the corner, by the arm it goes on along)
+    else if (c.k !== "b" && !a) { const di = ni - 2, dj = j < 8 ? j - 1 : nj - 2;      // (px in from where its side's edge starts, its north's, its south's)
+      if (c.k === "o" && di + dj < 2) return null; a = j < 8 ? dj < di : dj <= di; }
+    return a ? [c.A[0], c.A[1], i, sj] : [c.B[0], c.B[1], si, j];
   }
   const cellPx = (d, q, i, j) => { const c = cellAt(q, i, j); return c ? d.px[(c[1] * 16 + c[3]) * d.w + c[0] * 16 + c[2]] : 0; };
   // -> [what of the top of a tile whose neighbours are m is drawn (16 x 16), its quarters]: also what hides who stands behind it (behind.js)
   function cap(sheet, m) {
-    const q = quarters(m);
-    if (q[0] === q[3]) return [cellAlpha(sheet, q[0][0], q[0][1]), q];
+    const q = quarters(m, m & 256);
+    if (!q.slim) return [cellAlpha(sheet, q[0][0], q[0][1]), q];
     const a = new Uint8Array(256); for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { const c = cellAt(q, i, j); a[j * 16 + i] = c ? cellAlpha(sheet, c[0], c[1])[c[3] * 16 + c[2]] : 0; }
     return [a, q];
   }
@@ -67,7 +73,8 @@ const VoxPaint = (() => {
       if (!blockOf(nx, ny) || (z <= 0 && wet(gndAt(nx, ny) || ".")) || colHas(colAt(nx, ny), z)) m |= AROUND[k + 2];
     }
     if (reduce(m) === 255) return 0;
-    const sheet = sheetOf(z), [cx, cy] = blobCell(m), q = quarters(m), key = (z <= 2 ? 0 : z <= 4 ? 1 : 2) * 4096 + (q[0] === q[3] ? cy * 64 + cx : 2048 + reduce(m));      // (the three sheets: tiles.js hillSheet)
+    if (!(reduce(m) & 240) && m & N_ && !(m & S_) && topAt(x, y - 1) === z + 1 && topAt(x, y + 1) === z - 1) m |= 256;      // (a step of a stair one tile wide going up north: flat-fronted)
+    const sheet = sheetOf(z), [cx, cy] = blobCell(m & 255), q = quarters(m, m & 256), key = (z <= 2 ? 0 : z <= 4 ? 1 : 2) * 4096 + (q.slim ? 2048 + reduce(m & 255) + (m & 256) : cy * 64 + cx);      // (the three sheets: tiles.js hillSheet)
     if (!ids.has(key)) { if (cells.length > 255) return 0; ids.set(key, cells.length); cells.push([cap(sheet, m)[0], sheet, q]); }
     return ids.get(key);
   }
@@ -98,8 +105,8 @@ const VoxPaint = (() => {
     const a = cells[id][0], q = cells[id][2], d = sheetData(sheetOf(z)), [ix, iy] = blobCell(255), [L, M, D] = bands(z).map(rgb), map = earth(z), own = (v) => (map && map.get(v)) || v;
     // (its lip, the sheet's own px of wall under the top's ground: in the wall's one tone, the same px of that rock's sheet)
     const ref = map || wallOf(z) === Math.min(z, 12) ? null : sheetData(hillSheet(wallOf(z))), lp = ref ? lips.get(id) || lips.set(id, lip(id)).get(id) : null;
-    const north = colHas(colAt(x, y - 1), z) ? 0 : Math.min(2, z - 1 - topAt(x, y - 1));      // the far side of a drop of more than a level: its dark line that much thicker, a px a level
-    const deep = !colHas(colAt(x, y - 1), z) && z - topAt(x, y - 1) >= 4;
+    const north = q.slim || colHas(colAt(x, y - 1), z) ? 0 : Math.min(2, z - 1 - topAt(x, y - 1));      // the far side of a drop of more than a level: its dark line that much thicker, a px a level
+    const deep = !colHas(colAt(x, y - 1), z) && z - topAt(x, y - 1) >= 4;      // (not a narrow top's: its rim is slimmed already, and the wall's dark was a salmon line across a stair's cap)
     for (let i = 0; i < 16; i++) {
       let last = 15; while (last >= 0 && !a[last * 16 + i]) last--;
       for (let j = 0, top = -1; j < 16; j++) {

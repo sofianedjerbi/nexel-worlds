@@ -112,7 +112,10 @@ const SunLand = (() => {
     return c;
   }
   // (a slab's top is a floor at one height: all in the shadow where the shadow stands that high, else lit; its front, and a wall, by height)
-  const slabTops = (o, c, fy) => { const h = o.slab ? shOf(o.z) * zoom - liftAt(o.x, K.rowOf(o)) : 1e9; return c.map((u) => (u < 2 ? 1e5 : u * zoom >= h ? -1e5 : fy - Math.round(u) * zoom)); };
+  // (a wall that goes on south: the px across its thickness are its top going on, at the wall's height, not a front: in the shadow
+  // only where the shadow stands that high. By height, a cliff's shadow was a dark band across the corners of a house at its foot)
+  const slabTops = (o, c, fy) => { const h = o.slab ? shOf(o.z) * zoom - liftAt(o.x, K.rowOf(o)) : 1e9, on = o.wall && Structures.WALLS.includes(combAt(o.x, K.rowOf(o) + 1) || "-");
+    return c.map((u, i) => (u < 2 ? 1e5 : u * zoom >= h || (on && i >= 5 && i < 11 && u >= 12) ? -1e5 : on && i >= 5 && i < 11 ? 1e5 : fy - Math.round(u) * zoom)); };
   const ups = new Map(); let upsOf = "";
   function upOf(o, kx, ky) {                                  // (kept for what stands on a tile, until the land or the sun moves on)
     const key = landVer + "|" + Math.round(kx * 50) + "|" + Math.round(ky * 50), k = o.p ? "" : o.x + "," + K.rowOf(o);
@@ -143,7 +146,7 @@ const SunLand = (() => {
   function shade(list, sx, sy, S, t, now) {
     if (!sunNow) return;
     try {
-      const [kx, ky] = sunNow.dir, dark = new Map(), near = [], lg = K.lg, cutAt = (o) => typeof xrayCutAt === "function" && xrayCutAt(Math.round(o.p ? o.p.x : o.x), Math.round(K.rowOf(o))) !== undefined,      // (in what is cut open for your sake: lit evenly, as the land there is)
+      const [kx, ky] = sunNow.dir, dark = new Map(), near = [], lg = K.lg, cutAt = (o) => typeof xrayLit === "function" && xrayLit(Math.round(o.p ? o.p.x : o.x), Math.round(K.rowOf(o))),      // (in what is cut open for your sake: lit evenly, as the land there is)
         stands = (o) => o.far === undefined && (o.p || ((o.spr || o.wall || o.row !== undefined) && o.x !== undefined)) && !cutAt(o) && !(o.p && xray.a > .01 && myAt && Math.round(o.p.x) === myAt.x && Math.round(o.p.y) === myAt.y);
       const cols = new Map(), flat = sy.bent ? Curve.sy(sy.base, S, true) : sy;
       if (sunNow.alpha) for (const o of list) if (stands(o)) {
