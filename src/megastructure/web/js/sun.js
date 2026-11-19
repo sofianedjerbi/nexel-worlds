@@ -180,9 +180,11 @@ const Sun = (() => {
     cast(list, sx, sy, S, t, now, (fx, fy, o) => { const up = Math.max(0, levelOf(o)) * RELIEF_STEP * zoom, y = rowOf(o), x = Math.round(o.p ? o.p.x : o.x); let a = Math.ceil(y), b; while (a < y + 5 && !DEPTH_OF[gndAt(x, a)]) a++; for (b = a; b < a + 12 && DEPTH_OF[gndAt(x, b)]; b++);
       if (b === a) return null; const line = fy + (sy.up && up ? sy.up(y, 0) - sy.up(y, up) : up), m = [1, 0, 0, -1, 0, 2 * line]; m.low = 2 * line - (sy.row ? sy.row(b, 0) : sy(b)); return m; });
     lg.globalCompositeOperation = "destination-in"; lg.fill(wet);                    // ...and only where there is water
+    // (in the water's own colour, faint: over water seen through, a boat's was a grey copy of the boat under it)
+    lg.globalCompositeOperation = "source-atop"; lg.fillStyle = "rgba(96,186,200,.6)"; lg.fillRect(0, 0, W, H); lg.globalCompositeOperation = "source-over";
     // onto the picture a row of art pixels at a time, each slid a little: the ripple (fixed to the land, not to the screen)
     const z = zoom, y0 = sy.base === undefined ? sy(0) : sy.base, first = Math.floor((Math.max(0, top) - y0) / z), last = Math.ceil((Math.min(H, bottom) - y0) / z);
-    ctx.globalAlpha = Math.min(.95, GLASS.alpha * opt("reflect") / 100);
+    ctx.globalAlpha = Math.min(.95, GLASS.alpha * .7 * opt("reflect") / 100);
     for (let r = first; r < last; r++) {
       const Y = y0 + r * z, slide = Math.round(Math.sin(r * GLASS.wave + t * GLASS.speed) * GLASS.ripple) * z;
       ctx.drawImage(layer, 0, Math.round(Y * DPR), layer.width, Math.round(z * DPR), slide, Y, W, z);

@@ -145,3 +145,21 @@ def test_the_shaders_glitter_is_a_few_dashes_not_snow_on_the_water(game):
         worst = max(worst, game.js(BRIGHT, [shot, x - 9.5, y - 7.5, x + 10.5, y - 2.5])); game.sleep(350)
     game.js("(() => { setOpt('shader', 'off'); return 1; })()")
     assert worst < .005, worst                                                   # white px on the water (the surface's own glints with them): under 0.5 % (it is 0.3; it was 0.8 to 1)
+
+
+def test_water_up_on_a_plateau_has_a_bank_and_water_beside_a_dug_bank_has_a_side(game):
+    """A pond flush with a plateau's top ("a hard rectangle pasted on grass, no shore"): the land round it has its rim
+    along the water, as along any drop (voxpaint.js shape), the water going on under it. And a pond whose south bank
+    was dug away: the water has a side over the pit, its own colour (it ended in a straight edge over its bed's sand)."""
+    game.flat()
+    game.clear_area(12)
+    x, y = game.pos()
+    game.stamp(2, -3, ["." * 5] * 4, levels=["2" * 5] * 4); game.stamp(3, -2, ["~~~"] * 2, levels=["222"] * 2)
+    game.stamp(-6, -3, ["~~~", "~~~"]); game.stamp(-6, -1, ["..."], levels=["b" * 3])
+    game.wait("dirtyTiles.length === 0", 8000); game.sleep(600)
+    assert game.js(f"[VoxPaint.shape({x} + 2, {y} - 2, 2), VoxPaint.shape({x} + 4, {y} - 3, 2), VoxPaint.shape({x} + 4, {y}, 2)].every((s) => s > 0)")
+    assert game.js(f"topAt({x} + 3, {y} - 2)") == 2
+    # the water's side: under the pond's south edge, over the pit: blue-green, not sand
+    from test_e2e_digging import LAND
+    r, g, b = game.js(LAND, [[x - 5, y - 1, 0, 8, 3]])[0]
+    assert b > r + 20 and g > r + 20, (r, g, b)

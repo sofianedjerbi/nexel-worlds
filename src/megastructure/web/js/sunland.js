@@ -70,10 +70,10 @@ const SunLand = (() => {
         }
         if (n) { pic = (kept ? all : one).canvas; at = {x: x0, y: y0, scale: z}; }
       }
-      const c = SHADE.color, glass = on ? Math.min(.95, GLASS.alpha * opt("reflect") / 100) : 0, clouds = Shader.clouds();
+      const c = SHADE.color, glass = on ? Math.min(.95, GLASS.alpha * opt("reflect") / 100) : 0, clouds = Shader.clouds(), rays = Shader.rays();
       return sunNow = {dir: [kx, ky], alpha: opt("shadows") ? alpha : 0, shade: [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255), cast: pic, castAt: at, castLevels: [lo, hi], land, depth,
         fire: Math.min(.9, SHADE.byFire * dark * much),            // (how dark a fire's shadow is)
-        cloud: clouds > 0 ? {k: clouds, drift: [-t * .011, t * .004]} : null,      // (the clouds' shadows: on the land at its height; on what stands: `shade`)
+        rays: rays && {k: rays.k, dir: rays.dir, t}, cloud: clouds > 0 ? {k: clouds, drift: Sun.still || [-t * .011, t * .004]} : null,      // (the clouds' shadows: on the land at its height; on what stands: `shade`)
         glass: glass > 0 ? {alpha: glass, wave: GLASS.wave, ripple: GLASS.ripple, phase: (t * GLASS.speed) % (Math.PI * 2)} : null};
     } catch (e) { said(e); return null; }
   }
@@ -191,6 +191,7 @@ const SunLand = (() => {
     if (o.p ? coveredAt(Math.round(x), Math.round(y), Floors.standOf(o.p, Math.round(x), Math.round(y))) : o.row === undefined && roofAt(Math.round(x), Math.round(y)) > 1) return 0;
     return VoxLight.cloud(sunNow.cloud, x + .5 - kx * z, y + .9 - ky * z, P);
   }
+  // (Sun.still, for the tests: [x, y]: the clouds' field held there, no drift)
   // (for the tests: the shadows handed to the land this frame, as a picture the screen's size; in a curved world it is the flat one)
   const layerData = () => { if (!sunNow || !sunNow.cast) return []; const c = sunNow.cast, a = sunNow.castAt, lg = K.lg; K.ready(); lg.setTransform(1, 0, 0, 1, 0, 0); lg.imageSmoothingEnabled = false; lg.drawImage(c, a.x * DPR, a.y * DPR, c.width * a.scale * DPR, c.height * a.scale * DPR); return lg.getImageData(0, 0, K.layer.width, K.layer.height).data; };
   Object.assign(Sun, {cast, shade, layerData, given: () => sunNow});      // (given: what the engine was handed this frame, for the tests)

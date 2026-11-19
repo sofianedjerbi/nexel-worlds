@@ -111,19 +111,22 @@ const VoxMesh = (() => {
     for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) {
       const x = ch.cx * N + lx, y = ch.cy * N + ly, c = host.column(x, y), X = lx * T, Y = ly * T;
       if (!c) continue;
+      const south0 = host.column(x, y + 1);
       const wet = host.water(x, y), wz = wet ? wtop(x, y) : 0, bed = wet && VoxWater.bed(cfg, wz - c[c.length - 1]);      // (bed: seen through, its column ends under its face: the bottom, drawn as land is)
-      if (wet || (c.length === 1 && c[0] === 0 && [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => host.water(x + dx, y + dy))))) {      // (water; a shore: the water under it)
+      const ct = c[c.length - 1]; if (wet || [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => host.water(x + dx, y + dy) && wtop(x + dx, y + dy) === ct))) {      // (water; a shore: the water under it)
         const tw = wet && solid(x - 1, y, wz + 1) ? K : 0, te = wet && solid(x + 1, y, wz + 1) ? K : 0, tn = wet && solid(x, y - 1, wz + 1) ? K : 0;
         // (under a shore's top, and under what floats: a px lower, so that two faces are never at one depth)
         if (wet) add(clear ? VoxWater.PAGE : 0, [X - tw, Y - tn, wz * cfg.up, T + tw + te, T + tn, -tw, -tn, T, VoxWater.near(host, cfg, x, y), 2, 0, ...VoxWater.deep(host, cfg, x, y)]);
         else {      // (not along a side where the land is lower and no water, a pit beside the shore: its rim leaves px see-through there, and the water showed in them: a pale line along the pit floor's edge)
-          const dry = (dx, dy) => { const n = host.column(x + dx, y + dy); return !!n && n[n.length - 1] < 0 && !host.water(x + dx, y + dy) ? K : 0; }, dn = dry(0, -1) || (host.water(x, y - 1) ? 0 : dry(-1, -1) || dry(1, -1)), dw = dry(-1, 0), de = dry(1, 0);
-          const f = [X + dw, Y - 1 + dn, -1, T - dw - de, T + 1 - dn, dw, dn, T, 0, 2, 0, VoxWater.shore(host, cfg, x, y), 0, 0]; add(0, f); if (clear) add(VoxWater.PAGE, f);      // (seen through: once more, with those faces)
+          const dry = (dx, dy) => { const n = host.column(x + dx, y + dy); return !!n && n[n.length - 1] < ct && !host.water(x + dx, y + dy) ? K : 0; }, dn = dry(0, -1) || (host.water(x, y - 1) ? 0 : dry(-1, -1) || dry(1, -1)), dw = dry(-1, 0), de = dry(1, 0);
+          const f = [X + dw, Y - 1 + dn, ct * cfg.up - 1, T - dw - de, T + 1 - dn, dw, dn, T, 0, 2, 0, VoxWater.shore(host, cfg, x, y), 0, 0]; add(0, f); if (clear) add(VoxWater.PAGE, f);      // (seen through: once more, with those faces)
         }
       }
+      // (the water's own side, seen through: where the land south of it is lower than its face and no water, a bank dug away: a face down to its bed. vox_water.js: its last byte 255)
+      if (wet && clear && south0 && !host.water(x, y + 1) && Math.max(ct, south0[south0.length - 1]) < wz) add(VoxWater.PAGE, [X, Y + T, wz * cfg.up, T, 0, 0, 0, (wz - Math.max(ct, south0[south0.length - 1])) * cfg.up, 0, 2, 0, wz - ct, 0, 0, 255]);
       // (water has no top of its own but its face; under that its tile is a block as the land's are: its sides where what is beside it is lower; its bed)
       if (wet && ch.decor && ch.decor[ly * N + lx]) add(0, [X, Y + 1, wz * cfg.up + 1, T, T, 0, 0, T, 128, 0, 0, 0, 0, 255]);
-      const south = host.column(x, y + 1);
+      const south = south0;
       for (let q = c.length - 1, p = bed ? 1 : 0; q >= 0; q -= 2, p++) {      // (a bed's paint: a page on, its tile's first is what floats: vox_pages.js)
         const z = c[q], open = q + 1 === c.length, over = (dx, dy) => solid(x + dx, y + dy, z + 1);
         const n = over(0, -1), w = over(-1, 0), e = over(1, 0), nc = host.column(x, y - 1);

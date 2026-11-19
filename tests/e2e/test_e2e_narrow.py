@@ -1,7 +1,7 @@
 """Three things a reviewer's pictures showed wrong, each read off the picture:
 a run of land one tile wide is ONE top (voxpaint.js quarters: it was a cap a tile, dark dashes between them);
-a front in the shadow of land beside it is dark up to where the sun's line clears that land, the edge climbing the
-wall from column to column (vox_light.js lit: a column was all dark or all lit by the shadow at its foot);
+a front in the shadow of land beside it has one tone, the shadow lying on the ground at its foot (vox_light.js lit:
+a front takes no shadow; a column was all dark or all lit by the shadow at its foot, then wedges, then rectangles);
 the mouse on the wall of a pit shows that wall's block down to its foot, the pointer in the box (mouse.js, mark.js:
 the box was the far rim's top, a tile and a half over the pointer)."""
 from test_e2e_mark import AT, mode
@@ -35,10 +35,11 @@ def test_a_wall_one_tile_wide_has_one_top_from_end_to_end(game):
     game.js("(() => { Curve.force = null; return 1; })()")
 
 
-def test_a_shadow_climbs_a_front_to_one_edge_across_its_columns(game):
+def test_a_front_in_the_shadow_of_land_beside_it_is_one_tone_and_the_ground_at_its_foot_takes_the_shadow(game):
     """A wall four high facing you, a pillar nine high four tiles west of it in the row at its foot, the sun low in the
-    west: the pillar's shadow lies along the wall's foot. In each of the wall's first two columns the front is dark low
-    and lit high (not a column all dark, a column all lit), and the edge is higher in the column nearer the pillar."""
+    west: the pillar's shadow lies along the wall's foot, on the ground. The front has one tone, column by column and
+    level by level (the sun is never south: a front takes no shadow. A shadow that climbed it was a column all dark
+    beside a column all lit, then a row of wedges, then lighter rectangles: vox_light.js)."""
     game.clear_area(9)
     x, y = game.pos()
     game.stamp(0, -4, ["...."], levels=["4444"]); game.stamp(-4, -3, ["."], levels=["9"])
@@ -46,13 +47,10 @@ def test_a_shadow_climbs_a_front_to_one_edge_across_its_columns(game):
     assert game.js("Sun.given().dir[0]") > .5                    # (the sun is in the west: shadows fall east)
     rows = [5, 13, 21, 29]                                       # px up the front: one in each level, clear of its seam
     got = game.js(PX, [[x + c, y - 4, ax, 16, (h + .5) / 8] for c in (0, 1, 3) for h in rows for ax in (5, 7, 9, 11)])
-    col = lambda n: [sum(lum(c) for c in got[n * 16 + k * 4:n * 16 + k * 4 + 4]) / 4 for k in range(4)]
-    near, next_, far = col(0), col(1), col(2)
-    lit = far[3]                                                 # (the far column's top level: the shadow is not that high there)
-    darks = [sum(1 for v in c if v < lit - 6) for c in (near, next_)]
-    assert 1 <= darks[1] <= darks[0] <= 3, (darks, near, next_, far)      # each: dark at its foot, lit at its top; higher nearer the pillar
-    assert near[0] < lit - 6 and near[3] > lit - 6 and next_[0] < lit - 6 and next_[3] > lit - 6, (near, next_, far)
-    game.rpc("dev_time", phase=.3); game.js("(() => { Curve.force = null; return 1; })()")
+    tones = [sorted(lum(c) for c in got[k * 4:k * 4 + 4])[1] for k in range(12)]      # each column's four levels (the body's tone: not a fleck of the rock's own): near the pillar, next, far
+    assert max(tones) - min(tones) < 1, tones                    # one face
+    foot = game.js(PX, [[x + c, y - 3, 8, 8, 0] for c in (0, 3)] + [[x + 8, y - 3, 8, 8, 0]])
+    assert min(lum(foot[0]), lum(foot[1])) < lum(foot[2]) - 6, foot      # the ground at its foot, where a shadow lies along it: dark
 
 
 def test_the_mouse_on_a_pits_wall_shows_a_box_the_pointer_is_in(game):
@@ -64,12 +62,14 @@ def test_the_mouse_on_a_pits_wall_shows_a_box_the_pointer_is_in(game):
     ready(game, .3)
     game.give(dirt=3)
     px, py = game.js(AT, [x - 5, y - 1, 8, 16, -1.4])            # (on the face of the rim's block north of the pit, a level and a half down it)
-    for item, top in ((None, 0), ("dirt", 1)):
+    for item in (None, "dirt"):                                   # (the box is the one cell of the wall the pointer is on; with earth in hand, the cell it would go in is marked too)
         game.hold_item(item)
         game.page.mouse.move(px - 9, py - 7); game.page.mouse.move(px - 2, py - 1); game.page.mouse.move(px, py)
-        game.wait("Marks.list.length === 1 && ['x', 'y', 'z0', 'z1'].every((f) => Math.abs(Marks.list[0][f] - Marks.list[0].to[f]) < .01)", timeout=4000)
-        m = game.js("(() => { const m = Marks.list[0].to; return [m.x, m.y, m.z0, m.z1, !!m.flat]; })()")
-        assert m == [x - 5, y - 1, -3, top, False], (item, m)
-        x0, y0 = game.js(AT, [m[0], m[1], 0, 0, m[3]]); x1, y1 = game.js(AT, [m[0], m[1], 16, 16, m[2]])
-        assert x0 <= px < x1 and y0 <= py < y1, (item, (px, py), (x0, y0, x1, y1))      # the pointer is in the box's picture
+        game.wait("Marks.list.length >= 1 && Marks.list.every((k) => ['x', 'y', 'z0', 'z1'].every((f) => Math.abs(k[f] - k.to[f]) < .01))", timeout=4000)
+        marks = game.js("Marks.list.map((k) => [k.to.x, k.to.y, k.to.z0, k.to.z1])")
+        on = []
+        for m in marks:
+            x0, y0 = game.js(AT, [m[0], m[1], 0, 0, m[3]]); x1, y1 = game.js(AT, [m[0], m[1], 16, 16, m[2]])
+            if x0 <= px < x1 and y0 <= py < y1: on.append(m)
+        assert on and on[0][:2] == [x - 5, y - 1] and on[0][3] - on[0][2] == 1, (item, (px, py), marks)      # the pointer is in a box, a cell tall, of the wall's own column
     game.page.mouse.move(5, 5); game.js("(() => { Curve.force = null; return 1; })()")

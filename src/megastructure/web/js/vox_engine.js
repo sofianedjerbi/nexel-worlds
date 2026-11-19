@@ -71,7 +71,7 @@
 //                                 its colour, cast: null or a picture of the view's size with the shadows of what
 //                                 stands, land: false for no shadows of the land itself, glass: null or {alpha, wave, ripple, phase}:
 //                                 the land seen in the water, fire: how dark a shadow marked a fire's is, cloud: null or
-//                                 {k, drift: [x, y]}: the clouds' shadows, depth: true for the land's depth}
+//                                 {k, drift: [x, y]}: the clouds' shadows, rays: null or {k, dir: [x, y], t}: the low sun's shafts on the tops, depth: true for the land's depth}
 //     models             how many faces of models are made (the land's: faces)
 //
 //   models, what stands in the land and is not a block of it (a bridge's deck, a post): if the host has
@@ -198,7 +198,7 @@ void main() {
   } else { vec4 w = wface(loc, bits); c = w.rgb; wa = w.a; }    // (water: the view's picture at its level; or seen through: vox_water.js)
   // under a roof: a cave's own dark. Seen from outside, at its mouth, nearly all of it; seen through the window on
   // who is in it, a third: the place is to be seen
-  if (uSec > .5) { o = vec4(((bits & 8) != 0 ? mix(roofed(deep(c, kind, bits, -1., true), kind), uUnder.rgb, uUnder.a * .38) : deep(c, kind, bits & ~8, -1., true)) * uLight, 1.); return; }      // (the faces of the cut: bit 8, in the dark of the place; else the day's light, with the land's depth as the wall out of doors beside them has it)
+  if (uSec > .5) { o = vec4(((bits & 8) != 0 ? mix(roofed(deep(c, kind, bits, -1., true), kind), uUnder.rgb, uUnder.a * .38) : kind == 1 && (bits & 128) != 0 ? c * vec3(.8, .8, .83) : deep(c, kind, bits & ~8, -1., true)) * uLight, 1.); return; }      // (a front of the cut that rises from a sliced top, bit 128, is the same slice through the same rock: its one tone. The faces of the cut: bit 8, in the dark of the place; else the day's light, with the land's depth as the wall out of doors beside them has it)
   // (vMeta.w, vox_mesh.js: under a roof, how far in from the open it is: the dark comes on inward, the ground is seen going in under an overhang;
   // out of doors, how deep down a narrow hole: darker a step at a time. A hollow over the room that is cut open: darker than that room's walls)
   if ((bits & 8) != 0 && kind < 2 && !day) c = mix(roofed(c, kind), uUnder.rgb, uUnder.a * (other ? .8 : open || (uWin.z > 0. && distance((floor(vScr / uK) + .5) * uK, uWin.xy) < uWin.z) ? .38 : vMeta.w > 0. ? min(1., .25 + .2 * vMeta.w) : 1.));

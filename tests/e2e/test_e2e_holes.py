@@ -188,3 +188,38 @@ def test_the_first_frame_of_a_cut_is_a_checker_of_whole_px_of_paint_in_the_roll_
     assert rolled and thin == 0 and odd == 0, out
     assert cut > 500 and .25 < cut / (cut + kept) < .75, out      # the checker: half of what changes, at once
     assert not game.errors
+
+
+def test_a_pillar_that_covers_you_keeps_its_foot_a_block_with_a_front(game):
+    """Right behind a pillar four high, and behind a wall one tile thick ("a cut pillar is a dark square on the grass"):
+    the block is not cut to the ground: a level of it is left standing, its foot, whose front is the land's own
+    (earth), the slice on top of it. A plateau is cut to the eye's line to your feet, as ever."""
+    game.flat()
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(0, 1, ["."], levels=["4"])
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
+    assert game.js("[...xray.pic.cut].map(([k, v]) => k + ':' + v)") == [f"{x},{y + 1}:1"] and fill_px(game) == 0
+    front = mid(game.js(LAND, [[x, y + 1, 1, ax, 3] for ax in (4, 6, 8, 10, 12)]))      # (its one level's front, south of it)
+    assert earth(front), front
+    game.stamp(-2, 1, ["." * 5], levels=["4" * 5])                # a wall one tile thick
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
+    assert game.js(f"xray.pic.cut.get('{x},{y + 1}')") == 1 and fill_px(game) == 0
+
+
+def test_no_cut_opens_while_you_fall(game):
+    """Off a plateau four high onto ground right behind a wall six high: a fall. In the air nothing is cut open (the
+    cut came for the ground you were to land on while you were drawn up at the rim: "a one-tile slot through the
+    terraces"); landed, behind the wall, it comes."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.stamp(-2, -2, ["." * 5] * 3, levels=["4" * 5] * 3); game.stamp(-2, 2, ["." * 5], levels=["6" * 5])
+    game.rpc("dev_teleport", x=x, y=y, z=4); game.wait(f"myAt && myAt.y === {y} && myAt.z === 4", 8000); game.wait(DRAWN, 8000); game.sleep(400)
+    assert game.js("xray.a") == 0
+    game.js("(() => { window.__air = 0; window.__fell = 0; window.__iv = setInterval(() => { const p = ents.get('agent' + myId); if (p && p.fall && !p.fall.done) { window.__fell++; window.__air = Math.max(window.__air, xray.a); } }, 8); return 1; })()")
+    game.hold(["s"], 350)
+    game.wait(SEEN, 20000)
+    air, fell = game.js("(() => { clearInterval(window.__iv); return [window.__air, window.__fell]; })()")
+    assert fell > 2 and air == 0, (air, fell)
+    assert game.pos() == (x, y + 1)

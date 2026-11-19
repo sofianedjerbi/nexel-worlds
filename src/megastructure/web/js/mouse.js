@@ -30,7 +30,7 @@ function tileAtScreen(mx, my) {                        // -> {x, y, fy: how far 
   for (let y = row(Curve.inv(my + reach) + reach + eye), end = row(Curve.inv(my) - reach - eye) - 1; y >= end; y--) {
     const up = aimLift(x, y), top = at(y, up), foot = at(y + 1, up);
     if (my >= top && my < foot) return {x, y, fy: (my - top) / (foot - top)};
-    if (my >= foot && my < at(y + 1, aimLift(x, y + 1))) return {x, y, fy: .999, face: true};      // (face: its wall's face is what is pointed at: the mark is that block down to its foot, mark.js: its top alone was a box on the far rim of a pit, a tile and a half over the pointer)
+    if (my >= foot && my < at(y + 1, aimLift(x, y + 1))) return {x, y, fy: .999, face: true, down: Math.max(0, Math.floor((my - foot) / (RELIEF_STEP * zoom)))};      // (down: which cell of the face, levels under its top)      // (face: its wall's face is what is pointed at: the mark is that block down to its foot, mark.js: its top alone was a box on the far rim of a pit, a tile and a half over the pointer)
   }
   const y = row(Curve.inv(my)), top = at(y, 0);
   return {x, y, fy: Math.max(0, Math.min(.999, (my - top) / Math.max(1, at(y + 1, 0) - top)))};

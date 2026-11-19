@@ -102,7 +102,7 @@ function drawBlobLayer(g, sheet, x, y, pred, ox, oy, decor) {
   const m = maskOf(x, y, pred), [cx, cy] = blobCell(m);
   let sx = cx * 16, sy = cy * 16;
   if (decor && reduce(m) === 255 && hash(x, y, 3) < decor) {       // plain interior: sprinkle decor variants
-    sx = Math.floor(hash(x, y, 4) * (sheet === IMG.grass ? 6 : 5)) * 16; sy = (5 + (hash(x, y, 5) < .5 ? 0 : 1)) * 16;
+    sx = Math.floor((decor > .3 && sheet !== IMG.grass ? hash(x, y, 4) ** 3 : hash(x, y, 4)) * (sheet === IMG.grass ? 6 : 5)) * 16; sy = (5 + (hash(x, y, 5) < .5 ? 0 : 1)) * 16;      // (stone: mostly its fine specks, the first three; its big pale blobs seldom)
   }
   g.drawImage(sheet, sx, sy, 16, 16, ox, oy, 16, 16);
 }
@@ -157,7 +157,7 @@ function drawTile(x, y, to = null) {                 // (to: somewhere else than
   // relief: each level lays its hill sheet (grass, darker grass, then stone) over the tiles at least that high; the
   // sheets' edge tiles carry the cliff face, so a plateau shows its south cliff and a soft rim round the rest
   // (looked at from the top level down: under one that is solid all over, nothing is laid)
-  for (; k >= 1; k--) { drawBlobLayer(g, hillSheet(k), x, y, up, ox, oy, k < 3 ? .25 : .1); if (cellSolid(g.img[g.n - 1], g.at[g.n - 1] % 4096, g.at[g.n - 1] >> 12)) break; }
+  for (; k >= 1; k--) { drawBlobLayer(g, hillSheet(k), x, y, up, ox, oy, k < 3 ? .25 : k < 5 ? .1 : .45); if (cellSolid(g.img[g.n - 1], g.at[g.n - 1] % 4096, g.at[g.n - 1] >> 12)) break; }
   const hills = g.n, covered = k >= 1;
   if (!covered) {                                    // (water tiles stay clear: water.js draws the sea under the land)
     if (gr === ":") Bridge.lay(g, x, y, ox, oy);      // (bridge.js: planks across the way it runs, posts at its ends)
@@ -253,12 +253,12 @@ function hillSheet(k) {
   if (k <= 0) return dugSheet("hill1", -k);
   k = Math.min(k, 12);                                // (the mountains' top: one sheet for all that is built higher)
   if (hillSheets[k]) return hillSheets[k];
-  const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 0 ? 1 : k <= 4 ? [1.015, 1.03, 1.04, 1.06][k - 1] : .92 + .024 * Math.min(k - 5, 3);      // (the greens an even step lighter a level across the two sheets: level 3 was darker than level 2) (stone: no lighter than the sheet's own from level 8 up: at 12 its top was a blank pale plate, its rim bleached with it)
+  const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 4 ? [1.015, 1.03, 1.04, 1.06][k - 1] : 1.042 ** (k - 12);      // (the greens an even step lighter a level across the two sheets: level 3 was darker than level 2) (stone: the sheet's own at 12, the mountains' top, and a clear step darker each level down to 5, a touch cooler: never lighter than the sheet (at 12 its top was a blank pale plate, its rim bleached with it), and a terrace is told from the next by its top alone, from where no wall of it is seen. Its walls: one tone, voxpaint.js)
   if (f === 1) return hillSheets[k] = img;
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
   const g = c.getContext("2d"); g.drawImage(img, 0, 0);
   const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
-  for (let i = 0; i < px.length; i += 4) for (let j = 0; j < 3; j++) px[i + j] = Math.min(255, px[i + j] * f);
+  for (let i = 0; i < px.length; i += 4) for (let j = 0; j < 3; j++) px[i + j] = Math.min(255, px[i + j] * (j === 2 && f < 1 ? f ** .85 : f));
   g.putImageData(d, 0, 0);
   return hillSheets[k] = c;
 }

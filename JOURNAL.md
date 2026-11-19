@@ -3481,3 +3481,37 @@ a notch with grass at its bottom and a 1 px line at its edge.
   on a diagonal each column is two levels off its neighbour. Next: no step a level on a wall, a wall's
   material by its column's top.
 - Not measured: the new water's GPU cost at a phone's size (the noise was larger than the 2 ms asked for).
+
+## Iteration 183: the third and fourth audits: a wall takes no cast shadow, a mountain's tops carry its height
+
+Two more rounds of the loop (an agent that changes nothing looks, others fix, I merge and run the whole suite).
+- Third audit: "no longer flat or wedding-cake"; the user's canyon wall "one rock face at every hour"; one
+  fault at a glance (a blank grey slab the cut left at that wall's foot) and fifteen on a look. Fixed: what a
+  cut slices is the rock's own paint, darker, with its flecks (I had accepted "cut earth is one flat colour":
+  wrong once walls were stone); the cut clears the sun only on the px seen through it; narrow land (a wall,
+  an L, a plus, a ring) is one top; north-south stairs have a tread and a riser; water with no dither at all,
+  its shallows with a tint of their own (the first audit's "reads as sand" had come back), foam one broken
+  line at a wall's foot.
+- Fourth audit: three faults at a glance, all on the user's own wall and mountain, two of them mine from the
+  round before: lighter rectangles on the wall at morning (my compromise for shade on a face), and the
+  mountain flatter than before from west and north (the cap that stopped high stone bleaching also took the
+  tone off its terraces).
+- Shade on a cliff's face had been patched four times (wedges, a column all or nothing, wedges again, an
+  exception that drew rectangles): the third special case and past it. The method was wrong: a face that looks
+  south is never in the sun here. Now it takes ONE tone, no cast shadow, no cloud; the machinery is out of
+  vox_light.js, not switched off. The saw teeth under the natural look were the cloud field sliding with
+  height on a face. Rays are the land's own now, on lit tops only.
+- The mountain: a level of stone has its tone on its TOP only (about 4 % a level, darker low, never over the
+  sheet's own), a solid band of shade at a step's foot on every side, a dark first px where a stone top drops
+  north, the pack's own stone decor on 45 % of tiles. Stone walls come out about 11 % darker.
+- Also: a pillar that covers you keeps a level standing; nothing opens while you fall; a pond on a plateau
+  has a bank; water has a side where a bank is dug away; the hover's box is the cell under the pointer.
+- Measured: 529 unit. Whole browser suite, three workers, after each merge: 326 of 327, then 331 of 332. The
+  one failure each time was a test, not the picture (a cloud that drifts off its spot: it holds the clouds
+  still now; an aim test written for a column-tall box while another agent made the box one cell).
+- Self-critical: both regressions of the fourth audit were mine to see before a reviewer did: I landed the
+  compromise knowing it left bands. Tests agents add are often weak by their own word (they pass on the old
+  code): I say so to the user rather than count them.
+- Left: a gorge's south hill is one dark mat; the cut's edge moves a tile at a time as you walk; a hard square
+  round an islet under the natural look; dug stairs; a shaft reads as a trench; the overhang's rectangle; a
+  floor dug into a cliff by water is lit as grass.

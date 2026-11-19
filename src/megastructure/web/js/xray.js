@@ -15,7 +15,7 @@
 // comes; far: tiles south to look for ground drawn up over you; near: how far from your tile (tiles) the place you
 // are in goes
 // wide: how far from your tile ground that was dug, or is under a roof, is of that place (all of a cave, a tunnel)
-const XRAY = {gorge: 4, side: 0, even: true, r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, near: 4.1, wide: 14};
+const XRAY = {gorge: 4, side: 0, stub: 1, even: true, r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, near: 4.1, wide: 14};
 // how strong, the height you stand at, your row, the window's centre (tiles, as drawn), how long you've been hidden,
 // and what was found for where you are (pic: {key, floor: "x,y" -> the place's floor under a roof, rock: the tiles
 // of the rock in the way, place: the tiles of the place, cut: "x,y" -> the level that tile is cut down to})
@@ -115,6 +115,7 @@ function xrayLook(dt) {
   }
   if (f) {
     xray.t = want > 0 ? xray.t + dt : 0;
+    if (xray.a <= .01 && (p.fall || jumpOf(p))) { want = 0; xray.t = 0; }      // (in the air, a hop or a fall: nothing opens before you have landed)
     if (xray.t < XRAY.wait && xray.a <= .01 && !f.roof) want = 0;      // (a moment behind something: not yet)
     if (xray.t > 0 || xray.a > .01) {
       xray.L = f.L; xray.row = f.row; xray.x = f.px; xray.y = f.py - shOf(f.L) / 16 - f.mid;   // (its centre: your body, where it is drawn)
@@ -129,7 +130,7 @@ function xrayLook(dt) {
 // What goes with the window where you are: the place's floors under a roof and the rock in the way. Worked out when
 // your tile, your height or the land changes, not each frame.
 function xrayFind(tx, x0 = tx, x1 = tx) {
-  const key = [tx, xray.row, xray.L, Floors.ver, landVer, x0, x1, XRAY.side].join();
+  const key = [tx, xray.row, xray.L, Floors.ver, landVer, x0, x1, XRAY.side, XRAY.stub].join();
   if (xray.pic && xray.pic.key === key) return;
   // the rock seen through: on the line of sight to a tile of your place (south of it in its column, and high enough
   // to be drawn over it: two layers a row), and of the mass that hides you (gone through from what is over your tile
@@ -161,7 +162,9 @@ function xrayFind(tx, x0 = tx, x1 = tx) {
   if (!hole) {
     const cut = new Map(), rock = new Set(), own = tx + "," + row; tx = x0;
     for (let x = x0 - XRAY.side; x <= x1 + XRAY.side; x++) for (let ty = row; ty <= row + XRAY.far; ty++) {
-      const feet = L + 2 * (ty - row) - 2, c = ty === row ? L : feet, col = colAt(x, ty); let any = false;
+      const feet = L + 2 * (ty - row) - 2, col = colAt(x, ty); let any = false;
+      // (one block alone that covers you, a pillar, a wall one tile thick: not cut to the ground, a dark square on the grass: a level of it is left, its foot, with its front and its sides, the slice on top of it)
+      const lone = ty > row && colHas(col, feet + 1) && ((ty === row + 1 && topAt(x, ty + 1) <= L + 1) || (topAt(x - 1, ty) <= feet && topAt(x + 1, ty) <= feet)), c = ty === row ? L : feet + (lone ? XRAY.stub : 0);
       for (let z = c + 1; z <= feet + 5 && !any; z++) any = colHas(col, z);
       if (any) { const k = x + "," + ty; cut.set(k, c); if ((ty > row || x < x0 || x > x1) && !(floors.get(k) <= c)) rock.add(k); }      // (rock: not a tile you can stand on under what is cut off it, a roof's: stepping onto it you are seen)
     }

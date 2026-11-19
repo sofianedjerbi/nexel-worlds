@@ -54,6 +54,7 @@ void main() {
     const ink = [INK[0], INK[1], INK[2], .45 * m.a], col = [r, gr, b, m.a], dim = [r * .9, gr * .9, b * .9, m.a], nw = [0, 0, top], sw = [0, T, top], fw = [0, T, foot];
     // a level line (west to east) at a point, and an upright or lengthwise one between two, each a px
     const level = (q, oy, c, dot) => rect(q, -g, oy, T + 2 * g, 1, c, dot), edge = (a, b2, ox, c, o0 = -g, o1 = g, dot = 0) => piece(a, b2, ox, o0, 1, o1 - o0, c, dot);
+    if (m.face) { level(sw, 0, col); level(fw, -1, col); level(fw, 0, ink); edge(sw, fw, 0, col, 0, 0); edge([T, T, top], [T, T, foot], -1, col, 0, 0); return out; }      // (a wall's face alone, one cell of it: its four edges)
     if (flat) { level(sw, -2, [INK[0], INK[1], INK[2], .3 * m.a]); edge([T, 0, top], [T, T, top], -2, [INK[0], INK[1], INK[2], .3 * m.a], 1, -2); }      // (a top alone: shade inside it, south and east)
     level(nw, -g + 1, ink); level(flat ? sw : fw, g, ink);                                       // ink under the far edge and under the foot
     level(nw, -g, col); level(sw, g - 1, flat ? col : dim);                                      // the top: its far edge, its near one (where it meets the front)
@@ -68,8 +69,8 @@ void main() {
     }
     // a cell in the air: a dotted line down from the middle of its foot to the ground under it, and a small square there
     if (m.drop !== undefined && m.drop < m.z0) {
-      const d = m.drop * cfg.up, c = [r, gr, b, m.a * .9], h = T / 4;
-      piece([T / 2, T, foot], [T / 2, T / 2, d], 0, g + 1, 1, -g - 1, c, 1);
+      const d = m.drop * cfg.up, c = [r, gr, b, m.a * .9], h = 0;      // (a thin whole line, and the cell's whole footprint on the ground: a dotted line to a small square read as a block floating at the horizon)
+      piece([T / 2, T, foot], [T / 2, T, d], 0, g + 1, 1, -g - 1, c, 0);
       rect([h, h, d], 0, 0, T - 2 * h, 1, c); rect([h, T - h, d], 0, -1, T - 2 * h, 1, c); edge([h, h, d], [h, T - h, d], 0, c, 0, 0); edge([T - h, h, d], [T - h, T - h, d], -1, c, 0, 0);
     }
     return out;

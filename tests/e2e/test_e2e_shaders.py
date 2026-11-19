@@ -202,10 +202,13 @@ def test_the_shaders_light_the_water_send_rays_at_low_sun_and_a_fire_throws_shad
     dull = game.js(fx, pond)
     assert lit[1] > dull[1] + 4, (lit, dull)                    # noon: the sky's blue lies in the water
     game.rpc("dev_time", phase=.05); game.sleep(1200)           # the sun low in the east: shafts of light from that side
-    corner = [.55, .0, 1, .45]
-    rays = game.js(fx, corner)
+    # (they lie on the land's lit tops, in the land's own px: vox_light.js; never on a wall or on water. They were laid over the
+    # finished picture, a hatch over water and walls. Bands that drift over the land: where one is now is not the test's to say)
+    whole = [0, 0, 1, 1]
+    rays, given = game.js(fx, whole), game.js("Sun.given().rays")
+    assert given and given["k"] > 0 and given["dir"][0] < 0, given      # handed to the land, from the east
     game.js("setOpt('rays', 0)"); game.sleep(600)
-    assert rays[0] > game.js(fx, corner)[0] + 1.5, rays
+    assert game.js("Sun.given().rays") is None and rays[0] >= game.js(fx, whole)[0] - .05, rays      # none; and they were light, never dark
     game.rpc("dev_time", phase=.87); game.sleep(1500)           # night: the tree's shadow lies away from the fire, to the west
     # (one frame drawn with the shadows and without: the fire's light flickers from a frame to the next by as much as
     # its shadow darkens this part, which is what made this test fail one run in three)

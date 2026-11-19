@@ -37,8 +37,8 @@ const Shader = (() => {
       c += (texture2D(uA, uv + uStep * 3.231).rgb + texture2D(uA, uv - uStep * 3.231).rgb) * .0703;
       gl_FragColor = vec4(c, 1.); }`;
   const FINAL = HEAD + `\n#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#endif\nuniform sampler2D uB, uC; uniform vec2 uRes, uOrigin; uniform vec3 uTint;
-    uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK, uWater, uDay, uRays, uGlint;
-    uniform sampler2D uW; uniform vec3 uSky, uSun; uniform vec2 uRayDir, uRayFrom; uniform vec4 uBend;
+    uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK, uWater, uDay, uGlint;
+    uniform sampler2D uW; uniform vec3 uSky, uSun; uniform vec4 uBend;
     float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
       return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
@@ -57,7 +57,9 @@ const Shader = (() => {
       if (uBend.w > .5 && px.y < uBend.x) { float d = uBend.x - uBend.y, r = (uBend.x - px.y) / d; wpx.y = uBend.x - 2. * d * (1. - sqrt(max(0., 1. - r))); }
       // Water (sun.js gives where it is seen): the sky's colour of the hour lies in it, clouds pass over it, and the
       // sun (the moon) glitters on it, a pixel of the land at a time, in drifting patches
-      float wet = uWater > 0. ? texture2D(uW, q).r * uWater : 0.;
+      // (where it is, a px of the land at a time, there or not: the small picture read smooth was a soft halo round every islet and pad)
+      vec2 am = (floor((px - uOrigin) / uTile * 16.) + .5) * uTile / 16. + uOrigin;
+      float wet = uWater > 0. ? step(.5, texture2D(uW, vec2(am.x / uRes.x, 1. - am.y / uRes.y)).r) * uWater : 0.;
       if (wet > 0.) {
         vec2 wp = floor((wpx - uOrigin) / uTile * 16.), cw = wp / 16. * .055 + vec2(3.1 - uT * .011, 1.7 + uT * .004);
         c = mix(c, uSky, min(wet * .24, .6));
@@ -67,14 +69,6 @@ const Shader = (() => {
         c += wet * uSun * step(.972, h) * step(mod(wp.x, 3.), 1.5) * twinkle * step(abs(q.x - uGlint), .2) * smoothstep(.38, .68, noise(vec2(wp.x * .05 - uT * .14, wp.y * .13 + uT * .03)));
       }
       c = 1. - (1. - c) * (1. - g * uGlow);                    // the glow, laid on as light is
-      // Low sun: shafts of light across the picture, from the sun's side, drifting, dying away as they go
-      if (uRays > 0.) {
-        // (in the land's own px: none, half, whole, and one px in two between two of them, as the clouds' shadows are. It was a smooth fade over a pixel picture)
-        vec2 ap = floor((px - uOrigin) / uTile * 16.), rp = (ap + .5) * uTile / 16. + uOrigin;
-        float across = dot(rp, vec2(uRayDir.y, -uRayDir.x)), gone = dot(rp / uRes - uRayFrom, uRayDir);
-        float beam = smoothstep(.5, .8, noise(vec2(across * .006, uT * .035)) * .7 + noise(vec2(across * .019 + 5., uT * .06)) * .3) * (1. - smoothstep(.1, 1.15, gone));
-        c += uRays * vec3(1., .84, .58) * floor(beam * 2. + (mod(ap.x + ap.y, 2.) < .5 ? .67 : .33)) * .5;
-      }
       float l = dot(c, vec3(.299, .587, .114));
       c = (mix(vec3(l), c, uSat) - .5) * uCon + .5;
       c = c * uTint + uLift;
@@ -157,7 +151,7 @@ const Shader = (() => {
         gl.uniform1f(u.uVig, look.vig * k * opt("corners") / 100); gl.uniform1f(u.uScan, Math.min(.8, look.scan * k * mine("scan")));
         for (const [name, what] of [["uCurve", "curve"], ["uMask", "mask"], ["uShift", "shift"], ["uTape", "tape"], ["uGrid", "grid"]]) gl.uniform1f(u[name], (look[what] || 0) * k * mine(what));
         gl.uniform1f(u.uPal, look.pal || 0); gl.uniform1f(u.uPalK, k);
-        // the light on water, and the low sun's shafts: not on the old screens (a look with `pal` or `tape`)
+        // the light on water: not on the old screens (a look with `pal` or `tape`)
         const plain = !look.pal && !look.tape, water = plain && !under && typeof Sun !== "undefined" ? Sun.water : null;
         gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, wtex); gl.uniform1i(u.uW, 3);
         if (water) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, water);
@@ -168,8 +162,6 @@ const Shader = (() => {
         // the sky the water shows: blue by day, the hour's own colour when the sun is low, deep blue at night
         const sky = mix(mix([120, 190, 250], hour, low * .85), [44, 62, 140], 1 - day);
         gl.uniform3f(u.uSky, sky[0] / 255, sky[1] / 255, sky[2] / 255);
-        gl.uniform1f(u.uRays, plain && !under ? .17 * k * low * Math.min(1, day * 1.4) * opt("rays") / 100 : 0);
-        gl.uniform2f(u.uRayDir, (way < 0 ? -1 : 1) * .84, .54); gl.uniform2f(u.uRayFrom, way < 0 ? 1 : 0, 0);
         gl.uniform1f(u.uGlint, .88 - .76 * (phase < .75 ? phase / .75 : (phase - .75) / .25));      // (curve.js: where the sky has its sun, its moon)
       });
     } catch (e) { bad = true; if (el) el.style.display = "none"; console.warn("shader: off (" + e.message + ")"); }
@@ -198,6 +190,16 @@ const Shader = (() => {
     const under = typeof myAt !== "undefined" && myAt && typeof coveredAt === "function" && coveredAt(myAt.x, myAt.y, myAt.z);
     return under ? 0 : Math.min(1, .45 * opt("shaderk") / 100 * day * opt("clouds") / 100);
   }
+  // The low sun's shafts of light (null: none: no shader, an old screen's look, the sun high, night, under a roof): how much, and
+  // which way they run. They lie on the land's lit tops (sunland.js hands this to the engine, vox_light.js): never on a wall or on water.
+  function rays() {
+    const look = SHADERS[opt("shader")]; if (!look || bad || look.pal || look.tape) return null;
+    const phase = (((clock.phase || 0) % 1) + 1) % 1, way = phase < .75 ? phase / .75 * 2 - 1 : 0, low = Math.max(0, Math.min(1, (Math.abs(way) - .5) / .4));
+    const tint = lightAt(phase), day = 1 - Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36);
+    const under = typeof myAt !== "undefined" && myAt && typeof coveredAt === "function" && coveredAt(myAt.x, myAt.y, myAt.z);
+    const k = under ? 0 : .17 * opt("shaderk") / 100 * low * Math.min(1, day * 1.4) * opt("rays") / 100;
+    return k > 0 ? {k, dir: [(way < 0 ? -1 : 1) * .84, .54]} : null;
+  }
   const layers = () => [el, words].filter((c) => c && c.style.display === "block");      // (zoom.js: they glide with the picture)
-  return {frame, over, layers, clouds, get el() { return el; }, get words() { return words; }, get works() { return !bad; }};
+  return {frame, over, layers, clouds, rays, get el() { return el; }, get words() { return words; }, get works() { return !bad; }};
 })();

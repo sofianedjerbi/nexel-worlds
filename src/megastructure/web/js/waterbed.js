@@ -25,7 +25,9 @@ const WaterBed = (() => {
     if (!c) {
       let d = REACH;
       for (let r = REACH - 1; r > 0; r--) for (let k = -r; k < r; k++) if (!isWater(x + k, y - r) || !isWater(x + r, y + k) || !isWater(x - k, y + r) || !isWater(x - r, y - k)) d = r;
-      beds.set(key(x, y), c = [topAt(x, y) - Math.max(d, DEPTH_OF[gndAt(x, y)] || 1)]);
+      // (under a bridge: as deep as the water it crosses, beside it: its own kind says nothing, and its bed was a paler square under the deck)
+      const own = DEPTH_OF[gndAt(x, y)] || Math.max(1, ...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => DEPTH_OF[gndAt(x + dx, y + dy)] || 0));
+      beds.set(key(x, y), c = [topAt(x, y) - Math.max(d, own)]);
     }
     return c;
   }

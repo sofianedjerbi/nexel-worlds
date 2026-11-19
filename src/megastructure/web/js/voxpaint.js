@@ -23,7 +23,7 @@
 //     strip by its block's top), so stone never meets earth in a staircase along such a cliff.
 const VoxPaint = (() => {
   const rgb = (c) => (255 << 24 | (c[2] | 0) << 16 | (c[1] | 0) << 8 | (c[0] | 0)) >>> 0;
-  const EARTH = 2, STONE = 8, wallOf = (z) => (z > 4 ? STONE : z > 0 ? EARTH : z), bands = (z) => colsOf(hillSheet(wallOf(z))).bands, sheetOf = (z) => hillSheet(z < 0 ? z : Math.max(1, z));
+  const EARTH = 2, STONE = 9, wallOf = (z) => (z > 4 ? STONE : z > 0 ? EARTH : z), bands = (z) => colsOf(hillSheet(wallOf(z))).bands, sheetOf = (z) => hillSheet(z < 0 ? z : Math.max(1, z));
   // the px of wall (browns: more red than green) of a sheet whose wall is not EARTH's -> EARTH's, lightest to darkest
   const browns = (sheet) => { const d = sheetData(sheet), [cx, cy] = blobCell(N_ | E_ | W_ | NE | NW), set = new Set(); for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { const v = d.px[(cy * 16 + j) * d.w + cx * 16 + i]; if (v >>> 24 === 255 && (v & 255) > (v >>> 8 & 255)) set.add(v); }
     return [...set].sort((a, b) => (a & 255) - (b & 255)); };
@@ -70,7 +70,7 @@ const VoxPaint = (() => {
     let m = 0;
     for (let k = 0; k < 24; k += 3) {                             // (not lower: land not come yet, a solid cell, the water beside a shore)
       const nx = x + AROUND[k], ny = y + AROUND[k + 1];
-      if (!blockOf(nx, ny) || (z <= 0 && wet(gndAt(nx, ny) || ".")) || colHas(colAt(nx, ny), z)) m |= AROUND[k + 2];
+      if (!blockOf(nx, ny) || (z <= 0 && wet(gndAt(nx, ny) || ".")) || (colHas(colAt(nx, ny), z) && !(z > 0 && topAt(nx, ny) === z && wet(gndAt(nx, ny) || ".")))) m |= AROUND[k + 2];      // (water up on a hill, its face at this top's height: lower, the top has its rim along it: a bank)
     }
     if (reduce(m) === 255) return 0;
     if (!(reduce(m) & 240) && m & N_ && !(m & S_) && topAt(x, y - 1) === z + 1 && topAt(x, y + 1) === z - 1) m |= 256;      // (a step of a stair one tile wide going up north: flat-fronted)
@@ -105,8 +105,8 @@ const VoxPaint = (() => {
     const a = cells[id][0], q = cells[id][2], d = sheetData(sheetOf(z)), [ix, iy] = blobCell(255), [L, M, D] = bands(z).map(rgb), map = earth(z), own = (v) => (map && map.get(v)) || v;
     // (its lip, the sheet's own px of wall under the top's ground: in the wall's one tone, the same px of that rock's sheet)
     const ref = map || wallOf(z) === Math.min(z, 12) ? null : sheetData(hillSheet(wallOf(z))), lp = ref ? lips.get(id) || lips.set(id, lip(id)).get(id) : null;
-    const north = q.slim || colHas(colAt(x, y - 1), z) ? 0 : Math.min(2, z - 1 - topAt(x, y - 1));      // the far side of a drop of more than a level: its dark line that much thicker, a px a level
-    const deep = !colHas(colAt(x, y - 1), z) && z - topAt(x, y - 1) >= 4;      // (not a narrow top's: its rim is slimmed already, and the wall's dark was a salmon line across a stair's cap)
+    const drop = q.slim || colHas(colAt(x, y - 1), z) ? 0 : z - topAt(x, y - 1), north = Math.min(2, drop - 1);      // the far side of a drop of more than a level: its dark line that much thicker, a px a level
+    const deep = !colHas(colAt(x, y - 1), z) && z - topAt(x, y - 1) >= 4, line = drop > 0 && z > 4;      // (not a narrow top's: its rim is slimmed already, and the wall's dark was a salmon line across a stair's cap) (line: stone's far edge at any drop: its first px the wall's own dark: the sheet's pale edge there told no step from the north)
     for (let i = 0; i < 16; i++) {
       let last = 15; while (last >= 0 && !a[last * 16 + i]) last--;
       for (let j = 0, top = -1; j < 16; j++) {
@@ -114,7 +114,8 @@ const VoxPaint = (() => {
         if (a[j * 16 + i]) {
           const v = lp && j > 15 - lp[i] ? cellPx(ref, q, i, j) : own(cellPx(d, q, i, j));
           if (top < 0) top = j;
-          if (j > top && j <= top + north && j < 8) px[o] = deep ? D : own(cellPx(d, q, i, top));      // (a drop of four levels or more, a gorge's near rim: the wall's own dark)
+          if (j === top && line && j < 8) px[o] = D;
+          else if (j > top && j <= top + north && j < 8) px[o] = deep ? D : own(cellPx(d, q, i, top));      // (a drop of four levels or more, a gorge's near rim: the wall's own dark)
           else if (v !== d.px[(iy * 16 + j) * d.w + ix * 16 + i]) px[o] = v;
         } else px[o] = last < 0 || j < last ? 0 : j === last + 1 ? L : M;      // (outside its shape: see-through; but under its last px, down to the tile's end: its wall)
       }

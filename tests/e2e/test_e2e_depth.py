@@ -2,7 +2,7 @@
 shader, the sun's shadows on the land, shade at the foot of higher land, higher land a little lighter. Each on top of
 the land's own paint: off, the picture is the one painted, to the px; open ground at level 0 is never changed."""
 from test_e2e_digging import DRAWN, LAND, earth
-from test_e2e_sunland import RESET, twice
+from test_e2e_sunland import RESET, look, twice
 
 # one frame drawn three times: with the depth off, with all of the sun's code out of the frame, with the depth on -> a hash of every px of each
 HASHES = """() => new Promise((ok) => requestAnimationFrame((T) => {
@@ -48,15 +48,68 @@ def test_a_blocks_foot_is_darker_than_open_ground_which_is_as_it_is_painted(game
     game.js(RESET)
 
 
-def test_stone_stays_stone_and_higher_land_is_only_a_little_lighter(game):
-    game.clear_area(10)
-    game.stamp(-2, 6, ["....."] * 5, levels=["66666"] * 5)      # a stone top six levels up (drawn three tiles up the picture)
+# the middle tone (the median px's light) of each part [x0, y0, x1, y1] (tiles of the flat picture) of one frame
+MID = """(boxes) => new Promise((ok) => requestAnimationFrame((T) => {
+  const S = TS(), [ox, oy] = screenOrigin(S);
+  ok(boxes.map(([x0, y0, x1, y1]) => { const d = ctx.getImageData(Math.round((ox + x0 * S) * DPR), Math.round((oy + y0 * S) * DPR), Math.round((x1 - x0) * S * DPR), Math.round((y1 - y0) * S * DPR)).data, l = [];
+    for (let i = 0; i < d.length; i += 4) l.push(.299 * d[i] + .587 * d[i + 1] + .114 * d[i + 2]); l.sort((a, b) => a - b); return l[l.length >> 1]; })); }))"""
+
+
+def test_stone_stays_stone_and_each_terrace_of_it_is_a_clear_step_lighter(game):
+    """Seen from where no wall of it faces you a stone mountain was beige sheets: its tops tell the height. Each level's
+    top is a clear step lighter than the one under it (in its paint: tiles.js hillSheet; the depth adds none to stone)."""
+    game.clear_area(12)
+    game.stamp(-6, 6, ["............"] * 4, levels=["666677778888"] * 4)      # three stone terraces side by side, south of you
     x, y = game.pos()
-    game.rpc("dev_time", phase=.37); game.sleep(1200)
-    on, off = game.js(RGB, [x - .5, y + 5 - .5, x + .5, y + 5 + .5])      # the middle of its top
+    game.rpc("dev_time", phase=.375); game.sleep(1200)
+    on, off = game.js(RGB, [x - 5, y + 7 - 3, x - 3, y + 9 - 3])      # the middle of the lowest one's top (six levels: drawn three tiles up)
     assert max(off) - min(off) < 30, off                        # (stone: grey)
-    by = [a / b for a, b in zip(on, off)]
-    assert all(1.0 < k < 1.1 for k in by) and max(by) / min(by) < 1.04, (on, off, by)      # a small step of light, its hue kept
+    assert all(abs(a - b) < .01 for a, b in zip(on, off)), (on, off)      # the depth: no light of its own on stone (it went to white)
+    low, mid, high = game.js(MID, [[x - 5, y + 7 - 3, x - 3, y + 9 - 3], [x - 1, y + 7 - 3.5, x + 1, y + 9 - 3.5], [x + 3, y + 7 - 4, x + 5, y + 9 - 4]])
+    assert mid >= low * 1.04 and high >= mid * 1.04, (low, mid, high)      # a step seen at a glance, a level
+    assert high < 200, high                                      # (and never lighter than the stone sheet's own top)
+    game.js(RESET)
+
+
+# the mean colour [r, g, b] of a part [x0, y0, x1, y1] (tiles of the flat picture) of the land's own picture (the engine's: no light of the hour on it)
+LAND_RGB = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame((T) => {
+  const raf = window.requestAnimationFrame; window.requestAnimationFrame = () => 0;
+  try { frame(T); const S = TS(), [ox, oy] = screenOrigin(S), c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height; const g = c.getContext("2d"); g.drawImage(VoxGL.el, 0, 0);
+    const d = g.getImageData(Math.round((ox + x0 * S) * DPR), Math.round((oy + y0 * S) * DPR), Math.round((x1 - x0) * S * DPR), Math.round((y1 - y0) * S * DPR)).data, s = [0, 0, 0];
+    for (let i = 0; i < d.length; i += 4) for (let j = 0; j < 3; j++) s[j] += d[i + j]; ok(s.map((v) => v / d.length * 4)); }
+  finally { window.requestAnimationFrame = raf; raf(frame); } }))"""
+
+
+def test_a_front_has_one_tone_at_every_hour_whatever_stands_beside_it(game):
+    """The sun is never south: a south face is never in the sun, and takes no shadow, the land's or a cloud's. (Laid on
+    a front four ways, a shadow drew triangles, split columns, wedges and lighter rectangles on a cliff.)"""
+    game.clear_area(10)
+    game.stamp(-1, 2, ["..", ".."], levels=["33", "33"])        # a block three high south of you (where the picture is flat),
+    game.stamp(-3, 2, ["."] * 3, levels=["6"] * 3); game.stamp(2, 2, ["."] * 3, levels=["6"] * 3)      # a pillar twice as high a tile west and east of it
+    x, y = game.pos()
+    front, gap = [x - .8, y + 4 - 1.2, x + .8, y + 4 - .3], [x - 2 + .3, y + 3 + .3, x - 2 + .7, y + 3 + .8]
+    look(game, "natural"); game.js("setOpt('clouds', 100)")
+    tones = []
+    for phase in (.1, .3, .5, .65):
+        game.rpc("dev_time", phase=phase); game.sleep(900)
+        tones.append(game.js(LAND_RGB, front))
+    assert all(max(t[j] for t in tones) - min(t[j] for t in tones) <= 1 for j in range(3)), tones
+    game.js("setOpt('clouds', 0)"); game.rpc("dev_time", phase=.1); game.sleep(900)
+    ground, = twice(game, [gap], "shadows", 0)
+    assert ground[0] < ground[1] - 4, ground                     # (and the pillars do throw a shadow: on the ground between)
+    game.js(RESET)
+
+
+def test_the_ground_behind_a_step_is_darker_along_it(game):
+    """A terrace seen from behind (its wall faces away) had nothing to tell it by: the lower ground north of it is
+    shaded for a few px along the step's far edge."""
+    game.clear_area(8)
+    game.stamp(-2, 3, ["....."] * 2, levels=["11111"] * 2)      # a step one level high, south of you: you look at its back
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.375); game.sleep(1200)
+    band, north = twice(game, [[x - 1, y + 2 + 7 / 16, x + 1, y + 2 + 11 / 16], [x - 1, y + 2, x + 1, y + 2 + 5 / 16]], "depth", False)
+    assert band[0] < band[1] - 8, band                          # the last px of the ground before the step's top hides it
+    assert north[0] == north[1], north                          # and no further
     game.js(RESET)
 
 

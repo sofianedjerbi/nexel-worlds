@@ -53,7 +53,7 @@ const VoxSection = (() => {
       }
       const north = col(x, y - 1);
       if (north) for (let z = c + 1, to = Math.min(north[north.length - 1], lv(x, y - 1), c + DEEP); z <= to; z++) if (has(north, z) && has(mine, z)) {
-        list.push([X, Y, z * U, T, 0, 0, 0, U, dark | (z === c + 1 && has(mine, c) ? 16 : 0), 1, strip(z, north), 0, 0, VoxMesh.pick(x, y - 1, z, cfg.variants)]); out.fronts++;
+        list.push([X, Y, z * U, T, 0, 0, 0, U, dark | (z === c + 1 && has(mine, c) ? 16 : 0) | (has(mine, c) && has(mine, c + 1) ? 128 : 0), 1, strip(z, north), 0, 0, VoxMesh.pick(x, y - 1, z, cfg.variants)]); out.fronts++;
       }
       for (const dx of [-1, 1]) {
         const wall = col(x + dx, y); if (!wall) continue;

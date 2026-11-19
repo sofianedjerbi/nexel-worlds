@@ -66,6 +66,7 @@ float wseen(float sy, vec3 D) {
 vec4 wface(vec2 loc, int near) {
   vec4 s = uSea > .5 ? texture(uWater, (vFlat + vec2(0., wlift() * uK) - uWaterO) / uWaterK / uWaterSize) : vec4(uSeaCol, 1.);
   if (uWL.x < .5) return vec4(s.rgb, 1.);
+  if (vMore.w > 254.5) return vec4(mix(uWT[int(clamp(vMore.x, 1., 4.))].rgb, uWNight, uWL.w) * .8, .9);      // (the water's own side, where a bank was dug away: its tint, a step darker)
   if (uWPass < .5) return vec4(uWT[5].rgb, 1.);                 // (under a shore's top, with the land: the sand under its edge)
   if (uSea < .5) s = vec4(0.);
   vec2 g = floor(vGround.xy), l = floor(loc); float d = 1., wall = 0.;
