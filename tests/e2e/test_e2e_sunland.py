@@ -176,7 +176,7 @@ def test_in_the_bend_a_trees_shadow_lies_at_its_foot(game):
     far(game)
     game.rpc("dev_time", phase=.06)
     game.sleep(1200)
-    foot, north = tile_box(game, x + 2, y - 5, .55, 1.3), tile_box(game, x + 5, y - 5)      # west of its foot (its shadow goes on south a little); and east of it, the sun's side
+    foot, north = tile_box(game, x + 2, y - 5, .7, 1.7), tile_box(game, x + 5, y - 5)       # west of its foot (its shadow goes on south a little: more of a row, now that a row there is a third taller; the shadow lies on whole px of the paint); and east of it, the sun's side
     plain = [game.js(BOX, r) for r in (foot, north)]
     look(game, "natural")
     on = [game.js(BOX, r) for r in (foot, north)]
@@ -193,8 +193,8 @@ def test_in_the_bend_with_no_sun_asked_for_the_land_is_as_it_is_drawn(game):
     game.js("setOpt('shimmer', false)")
     game.rpc("dev_time", phase=.3)
     game.sleep(1200)
-    a, b = tile_box(game, x - 5, y - 8, 0, 0), tile_box(game, x, y - 3, 1, 1)
-    part = [a[0], a[1], b[2], b[3]]                               # the land from the block's far side to near you: bent, no sky in it
+    a, b = tile_box(game, x - 5, y - 5, 0, 0), tile_box(game, x, y - 3, 1, 1)
+    part = [a[0], a[1], b[2], b[3]]                               # the land from the block's foot to near you: bent, no sky in it (its far side is past the horizon, where a row's place comes down again: the box began under the block's shadow)
     off = game.js(BOXPX, part)
     assert off == game.js(BOXPX, part)
     game.js("setOpt('clouds', 0); setOpt('shader', 'natural'); setOpt('shaderk', 0)"); game.sleep(700)

@@ -42,7 +42,7 @@ def test_on_where_you_stand_nothing_moves_and_far_rows_go_up_to_a_horizon(game):
     x, y = game.pos()
     curved(game)
     c = game.js("Curve.c")
-    assert 0 < c["yh"] < c["y0"] < 400                           # (the horizon in the upper part of the screen; the bend starts over you)
+    assert 0 < c["yh"] < c["line"] < c["y0"] < 400               # (the horizon in the upper part of the screen, under the top of its parabola: vox_curve.js's floor; the bend starts over you)
     for dx, dy in ((0, 0), (1, 0), (-2, 1), (3, 4), (0, 5)):
         assert close(game.js(PROJ, [x + dx, y + dy]), game.js(FLAT, [x + dx, y + dy])), (dx, dy)
         px, py, _, _ = game.js(FLAT, [x + dx, y + dy])
@@ -50,8 +50,8 @@ def test_on_where_you_stand_nothing_moves_and_far_rows_go_up_to_a_horizon(game):
         assert (got["x"], got["y"]) == (x + dx, y + dy)
     tall = [game.js(PROJ, [x, y - k]) for k in range(1, 5)]      # (four rows north: before the horizon, Near)
     sizes = [foot - top for _, _, top, foot in tall]
-    assert all(a >= b for a, b in zip(sizes, sizes[1:])) and sizes[0] > 50 and sizes[-1] < 30, sizes
-    assert all(top >= c["yh"] - 1e-6 for _, _, top, _ in tall)
+    assert all(a >= b for a, b in zip(sizes, sizes[1:])) and sizes[0] > 50 and sizes[-1] < 36, sizes      # (a gentler roll than it was: a row is never under a quarter of itself)
+    assert all(top >= c["line"] - 1e-6 for _, _, top, _ in tall)
 
 
 def test_a_click_in_the_bend_finds_the_tile_drawn_there(game):
@@ -198,7 +198,7 @@ def test_a_bridge_far_north_bends_with_the_water_and_who_is_on_it_stands_on_its_
       return {lift: liftOf(p) / zoom, y: bodyY(p, sy), deck: Curve.y(oy + (p.y + 13 / 16) * S, 4 * zoom), water: Curve.y(oy + (p.y + 13 / 16) * S, 0)}; }""")
     assert got["lift"] == 4
     feet = got["y"] + 16 * 4                                     # (a tile under where its picture starts)
-    assert abs(feet - got["deck"]) <= 1 and got["water"] - feet >= 10, got      # on the deck (four art px over the water), not in the water
+    assert abs(feet - got["deck"]) <= 2.5 and got["water"] - feet >= 10, got    # on the deck (four art px over the water), not in the water (on a whole px of the paint: half of one off, at the most)
 
 
 def test_a_tunnel_that_runs_north_into_the_bend_is_cut_open_to_its_floor_and_a_click_finds_what_is_drawn(game):
@@ -216,7 +216,7 @@ def test_a_tunnel_that_runs_north_into_the_bend_is_cut_open_to_its_floor_and_a_c
     game.wait("xray.a > .95 && xray.pic && xray.pic.cut.size > 5", timeout=8000)
     far = y - 6                                                  # four tiles north of you, in the tunnel
     assert game.js(f"xray.pic.cut.has('{x},{far}')")
-    assert game.js(f"Curve.y(screenOrigin()[1] + {far} * TS(), 0) > screenOrigin()[1] + {far} * TS() + 60")      # (in the bend)
+    assert game.js(f"Curve.y(screenOrigin()[1] + {far} * TS(), 0) > screenOrigin()[1] + {far} * TS() + 25")      # (in the bend)
     floor, top = game.js(AT, [x, far, 8, 8, 0]), game.js(AT, [x + 2, far, 8, 8, 32])
     assert sum(floor) < sum(top) - 60, (floor, top)              # the floor under its roof's dark, not the hill's lit top
     assert top[1] > top[0] and top[1] > top[2]                   # (the hill's top beside it: grass, at its own height)
@@ -266,10 +266,7 @@ def test_on_the_mountain_a_new_player_wakes_on_there_is_a_horizon(browser, tmp_p
         g = open_game(browser, f"http://127.0.0.1:{port}", zoom=3)
         find = """() => { const p = myPos(); for (let r = 0; r < 28; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = p.x + dx, y = p.y + dy, t = topAt(x, y);
           if (Math.max(Math.abs(dx), Math.abs(dy)) === r && tile(x, y) && tile(x, y - 6) && t >= 3 && !wet(gndAt(x, y))) return [x, y, t]; } return null; }"""
-        for _ in range(40):                                       # (a new player wakes at its foot: on to its side, three levels up; the land round the spawn comes a block at a time)
-            spot = g.js(find)
-            if spot: break
-            g.sleep(250)
+        spot = next((at for at in (g.js(find) or g.sleep(250) for _ in range(40)) if at), None)      # (a new player wakes at its foot: on to its side, three levels up; the land round the spawn comes a block at a time)
         assert spot, "no mountain round the spawn"
         g.rpc("dev_teleport", x=spot[0], y=spot[1], z=spot[2])
         g.wait(f"myPos().x === {spot[0]} && myPos().y === {spot[1]} && cam.lift > 0 && !arrivingNow", timeout=15000)
@@ -298,3 +295,4 @@ def test_a_click_on_a_far_body_finds_the_body_not_the_tile_behind_its_head(game)
     game.flat()
     flat = game.js("([a, b]) => tileAtScreen(a, b)", [head[0], game.js(f"screenOrigin()[1] + {head[3]} * TS() + 8")])
     assert (flat["x"], flat["y"]) == (head[2], head[3])          # (flat: its tile says it, as ever)
+

@@ -24,7 +24,7 @@ void main() {
   // (the far hills, the further ones and the clouds slide past as you go, each slower than the one before it, by whole px;
   // under the line, where no land is known: the nearer hills' own colour, not a pale band)
   float ax1 = a.x + floor(uShift * .6), axc = a.x + floor(uShift * .3);
-  if (up <= 0.) { o = vec4(uAudit > .5 ? vec3(1., 0., 1.) : mix(uNear, uLow, .18), 1.); return; }
+  if (up <= 0.) { o = vec4(uAudit > .5 && up < 0. ? vec3(1., 0., 1.) : mix(uNear, uLow, .18), 1.); return; }      // (the first px under the line is the hills' still: the land's last row is on the land's own px, up to half a px off the line)
   // the sky's colour: seven flat bands, the top of each checkered into the next
   float g = pow(clamp(up / band, 0., 1.), .7) * 6., i = mod(a.x, 2.) + mod(a.y, 2.) * 2., dither = i < .5 ? 0. : i < 1.5 ? .5 : i < 2.5 ? .75 : .25;
   vec3 c = mix(uLow, uTop, min(6., floor(g + dither * .5)) / 6.);

@@ -52,7 +52,7 @@ seen.corners = 0; engine.draw({...view, curve, sky: {line: 60, t: 1, shift: 0, t
 out.bent = seen.corners; seen.corners = 0;
 // ...and what the shader is given says what the function says: the GLSL, read as JS, at every px of flat ground,
 // for land under the eye, at its height and over it
-const js = C.GLSL.replace("uniform vec4 uCurve;", "").replace("float curveY(float f, float h, out float past)", "function curveY(f, h)").replace(/float /g, "let ")
+const js = C.GLSL.replace("uniform vec4 uCurve; uniform float uFloor;", "").replace(/uFloor/g, "(c.floor || 0)").replace("float curveY(float f, float h, out float past)", "function curveY(f, h)").replace(/float /g, "let ")
   .replace(/\bmax\(/g, "Math.max(").replace(/uCurve\.x/g, "c.y0").replace(/uCurve\.y/g, "c.yh").replace(/uCurve\.z/g, "c.ref").replace(/uCurve\.w/g, "c.lean");
 { const gpu = new Function("c", "let past; " + js + "; return (f, h) => [curveY(f, h), past];")(curve), E = C.edge(curve), top = (h, slope) => { let best = 1e9; for (let f = 500; f > -4000; f -= 1) best = Math.min(best, C.y(curve, f, h + slope * Math.max(0, curve.y0 + curve.ref - f))); return best; };
   const r = out.curve = {worst: 0, flat: true, up: true, back: 0, edge: E, line: C.y(curve, E + curve.ref, curve.ref), low: C.y(curve, E - 40, -40), high: C.line(curve, curve.ref + 30), highest: top(curve.ref + 30, 0),
@@ -64,6 +64,14 @@ const js = C.GLSL.replace("uniform vec4 uCurve;", "").replace("float curveY(floa
     if (d <= 0 && Math.abs(y - (f - h)) > 1e-9) r.flat = false;                         // before the roll's start: the flat picture, exactly
     if (!past) { if (y > last + 1e-6) r.up = false; if (!up) r.back = Math.max(r.back, Math.abs(C.inv(curve, y) - (f - h))); last = y; }
   } }
+// a floor (vox_curve.js): the horizon is where a row is still a quarter of itself; the rows of tiles (48 px of the
+// picture, 3 a px of paint, the flat picture's px counted from 1) are whole px of paint tall, and the rows of paint
+// a height shows are some of the tile's 16, in order, the same whatever the frame
+{ const cf = {y0: 200, yh: 60, ref: 0, lean: .6, floor: .25}, gpu = new Function("c", "let past; " + js + "; return (f, h) => [curveY(f, h), past];")(cf), E = C.edge(cf);
+  const r = out.floor = {worst: 0, edge: E, line: C.line(cf), at: C.y(cf, E, 0), squeeze: [C.squeeze(cf, 300), C.squeeze(cf, E + .001), C.squeeze(cf, E - 500)], heights: [], whole: true, picks: true, back: 0, down: C.y(cf, E - 48, 0) - C.y(cf, E, 0)};
+  for (const h of [-40, 0, 24, 60]) for (let f = 500; f > -700; f -= .5) { const [g, past] = gpu(f, h); r.worst = Math.max(r.worst, Math.abs(C.y(cf, f, h) - g), Math.abs(past - C.past(cf, f, h))); if (!past && !h) r.back = Math.max(r.back, Math.abs(C.inv(cf, C.y(cf, f, 0)) - f)); }
+  for (const o of [1, 2, 3, 17.5]) for (let f = o + 48 * 5; f - 48 > E; f -= 48) { const n = (C.snap(cf, f, 0, o, 3) - C.snap(cf, f - 48, 0, o, 3)) / 3; if (Math.abs(n - Math.round(n)) > 1e-9) r.whole = false; if (o === 1) r.heights.push(Math.round(n)); }
+  for (let n = 1; n <= 16; n++) for (let i = 0, last = -1; i < n; i++) { const j = C.rows(i, n, 16); if (j <= last || j > 15 || j !== Math.floor(j)) r.picks = false; last = j; } }
 // marks (vox_mark.js): a box two levels high, a flat square, and one that is not there (a: 0), over the same view
 engine.draw({...view, marks: [{x: 1, y: 1, z0: 0, z1: 2, colour: [1, 1, 1], a: 1, fill: .2}, {x: 2, y: 2, z0: 0, z1: 0, colour: [1, 1, 1], a: 1, fill: .2}, {x: 0, y: 0, z0: 0, z1: 1, colour: [1, 0, 0], a: 0}]});
 out.marked = seen.corners; seen.corners = 0;
@@ -151,11 +159,13 @@ def test_the_roll_is_one_function_for_the_gpu_and_for_what_is_drawn_over_its_pic
 
 def test_a_mark_is_a_box_of_the_land_its_top_its_front_and_its_corners():
     """vox_mark.js: a cell shown as a box is its top's wash in four strips (it bends with the ground) and its front's
-    in one, a bracket of two arms at each of its four outer corners and a tick each side where the top meets the
-    front, each with a px of ink under it; a flat square has no front and no ticks; one with no strength is not drawn."""
+    in one; a line of ink under its far edge and under its foot; the four edges of its top; the two uprights of its
+    front and the front's foot. A flat square (a tile's top) has no front: its four edges, the ink, and two lines of
+    shade inside it. Each is drawn twice: what is in view, then what the land hides (dotted, through the land). One
+    with no strength is not drawn."""
     out = run()
-    box, flat = (4 + 1) + (4 * 2 + 2) * 2, 4 + (4 * 2) * 2
-    assert out["marked"] == out["corners"] + (box + flat) * 6
+    box, flat = (4 + 1) + 2 + 4 + 3, 4 + 2 + 2 + 4
+    assert out["marked"] == out["corners"] + (box + flat) * 6 * 2
 
 
 # The land cut open (view.cut) is a section through blocks: vox_section.js. A chunk of 8 x 8 tiles, all solid up to 3,
@@ -221,3 +231,18 @@ def test_making_the_section_again_when_the_cut_changes_tile_costs_under_two_ms()
     out = cut_run()
     assert out["big"] > 500, out                                 # (its north wall ten levels over the cave's own, the sliced tops south of it, the banks)
     assert out["ms"] < 2, out
+
+
+def test_with_a_floor_the_horizon_is_where_a_row_is_a_quarter_of_itself_and_rows_are_whole_px_of_paint():
+    """vox_curve.js, "things 6-9 tiles north are squashed into the horizon band... never scale pixel art": with
+    floor .25 the roll's horizon is where level ground is squeezed to a quarter (D * floor^2 under the parabola's
+    top), what is past it comes down again at once, the shader's lines say the same, and a tile's row, put on whole
+    px of the paint, is a whole number of them tall, from 16 down to 4 and never under: the rows of paint it shows
+    are picked by its height alone (some of its 16, in order, none twice)."""
+    f = run()["floor"]
+    assert f["worst"] < 1e-9 and f["back"] < 1e-6, f
+    assert abs(f["edge"] - (200 - 2 * 140 * .75)) < 1e-9 and abs(f["line"] - (60 + 140 * .0625)) < 1e-9 and abs(f["at"] - f["line"]) < 1e-9
+    assert f["squeeze"][0] == 1 and abs(f["squeeze"][1] - .25) < 1e-4 and f["squeeze"][2] == .25
+    assert f["down"] > 0                                         # past the horizon: down again, behind it
+    assert f["whole"] and f["picks"]
+    assert f["heights"][0] == 16 and f["heights"] == sorted(f["heights"], reverse=True) and min(f["heights"]) >= 4, f["heights"]

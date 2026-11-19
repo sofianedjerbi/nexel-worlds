@@ -31,7 +31,7 @@ const VoxLight = (() => {
   // (vGround: where the px is, px of paint in the ring, and its height in px; vFlat: on the screen, were it flat)
   const FS = `
 uniform sampler2D uTops, uCast; uniform vec4 uSun, uGlass, uCloud; uniform vec3 uCastAt, uShade; uniform vec2 uCastLv, uCloudO; uniform float uTor, uTopMax, uCastOn, uRip, uLo, uLand, uFire, uDepth;
-in vec3 vGround;
+// (vGround: the engine's, vox_engine.js: in the roll, read at the middle of a px of paint)
 bool inShade;                                                  // (lit: this px is in a shadow: no cloud's shadow on it too)
 vec4 tileAt(vec2 tile) { return texelFetch(uTops, ivec2(mod(tile, uTor)), 0); }
 float high(vec4 h) { return floor(h.r * 255. + .5) + floor(h.g * 255. + .5) * 256. - 32768.; }
@@ -137,13 +137,16 @@ float cloud(vec2 px) { vec2 w = px / uCell * .055 + uCloud.yz; float s = smooths
 //     wall the darker; west and east: from the foot of the wall's bank), an inner corner darker still.
 // Under a roof only the height; not the water (it is the sky's), not what floats. contact: with the shade (a px in a shadow has
 // none: a shadow is dark once).
+const vec3 FRONT = vec3(.88, .89, .93);                           // a front: the side of the land turned to the eye, a little darker than a top
+// (a front under a roof: the cave's dark is laid on that, so that a wall in the dark is darker than the same wall in the day's light: the engine's own lines)
+vec3 roofed(vec3 c, int kind) { return uDepth > .5 && kind == 1 ? c * FRONT : c; }
 vec3 deep(vec3 c, int kind, int bits, float lip, bool contact) {
   if (uDepth < .5 || kind == 2 || kind > 4) return c;
   float z = vGround.z / uUp, w, lv = kind == 0 ? ceil(z - .01) : floor(z + .01), up = clamp(lv, 0., 6.), down = clamp(-lv, 0., 4.);
-  if ((bits & 136) != 0) down = 0.;                             // (under a roof the place has its own dark: darker again by its depth, a floor was the colour of the earth cut round it)
+  if ((bits & 8) != 0) down = 0.;                               // (under a roof the place has its own dark: darker again by its depth, a floor was the colour of the earth cut round it)
   c *= (vec3(1.) + vec3(.013, .012, .009) * up) * (vec3(1.) - vec3(.05, .05, .042) * down);
   if (!contact || (bits & 128) != 0 || ((bits & 8) != 0 && kind < 2)) return c;      // (under a roof: its height only, no side to the sun, no shade at a foot: the place has its own dark)
-  if (kind == 1 || (kind == 0 && lip >= 0.)) return c * vec3(.88, .89, .93);      // (a front, and a top's own lip of wall)
+  if (kind == 1 || (kind == 0 && lip >= 0.)) return c * FRONT;      // (a front, and a top's own lip of wall)
   if (kind > 2) { float s = clamp(((bits & (kind == 3 ? 1 : 32)) != 0 ? -uSun.x : uSun.x) * 2.5, -1., 1.); return c * (s > 0. ? vec3(1. + .05 * s) : vec3(1.) + vec3(.22, .21, .15) * s); }
   vec2 tile = floor((vGround.xy - vLoc + 8.) / uCell + .5), l = floor(vLoc - 8.);
   float L = ceil(z - .01), a = 0., n = topAt(tile + vec2(0., -1.), w) - L, we = topAt(tile + vec2(-1., 0.), w) - L, ea = topAt(tile + vec2(1., 0.), w) - L;

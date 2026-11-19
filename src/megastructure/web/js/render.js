@@ -4,7 +4,8 @@
 //  Frame
 // =====================================================================================
 let lastT = performance.now(), arrivingNow = true;
-const LAND_MS = 3;
+const LAND_MS = 3, HOLD_MS = 2500;
+let goodAt = 0;                // when the land where you are was last all there (a frame drawn whole)
 const HIT_HEART = [".oo.oo.", "owrorro", "orrrrro", ".orrro.", "..oro..", "...o..."];      // the small heart beside a blow's number (2 px a pixel)
 const pileSince = new Map();   // when each pile on the ground was first shown (its hover starts from rest)
 function frame(now) {
@@ -88,19 +89,25 @@ function frame(now) {
   // underneath: plain dark (what hasn't come yet is not the sea). The sea is painted on it where there is sea
   // (water.js: its bottom is under every water tile and every shore), the land over that
   // (away from the land, state.js: under it the screen is that dark, earth; over it, the sky. Going: the land fades to it)
-  const SKY = "#a8d8ea"; ctx.fillStyle = away.high ? SKY : "#2b2420";
-  ctx.fillRect(0, 0, W, H);
-  xrayLook(dt);                                      // (hidden, behind a mountain, down a hole or under a roof: a window on you, xray.js)
-  // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor((away.a >= 1 ? away.y : cam.y + away.shift) / B)));
   const allShown = vis.every((b) => !onScreen(b) || Voxels.made(b));
   arrivingNow = (arrivingNow || !hereBlock || !Voxels.made(hereBlock)) && !allShown;   // (from arriving until all of it is ready)
   const worldReady = !arrivingNow;
+  // A long way at once (a teleport, waking again after a death): until the land there has come, the screen keeps the
+  // picture it had ("one blank frame after a teleport": with no block of the land there yet, nothing was "not
+  // ready", and a frame of sky over bare ground colour was shown, then the dark). Held for HOLD_MS at the most
+  // once some of the land there is ready; after that, the sky and what has come, piece by piece. Never a flat fill.
+  const lacking = !!me && (!hereBlock || !worldReady), late = lacking && goodAt > 0 && now - goodAt >= HOLD_MS && (now - goodAt >= 4 * HOLD_MS || vis.some((b) => onScreen(b) && Voxels.made(b)));      // (...and while none of it has come at all, four times as long: a busy machine)
+  if (!lacking) goodAt = now; else if (!late && goodAt > 0) { slowFrame(dt, false); return; }
+  const SKY = "#a8d8ea"; ctx.fillStyle = away.high ? SKY : "#2b2420";
+  ctx.fillRect(0, 0, W, H);
+  xrayLook(dt);                                      // (hidden, behind a mountain, down a hole or under a roof: a window on you, xray.js)
+  // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   slowFrame(dt, worldReady && !fresh);
   // y-sorted sprites: objects and creatures
   const list = [];
   // (forEach, and what is out of view left first: a pair was made a frame for every thing of every block in view)
-  for (const b of vis) if (Voxels.made(b) && worldReady) b.objs.forEach((c, i) => {   // (things show with their ground, not before)
+  for (const b of vis) if (Voxels.made(b) && (worldReady || late)) b.objs.forEach((c, i) => {   // (things show with their ground, not before)
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3 || hiddenAt(x, y) || (away.a > 0 && Math.abs(standAt(x, y) - away.z) > APART)) return;   // (hidden: in a cave, seen from outside: under its roof; away: on the land you left)
     if (c === "l") { list.push({y, x, fx: () => Climb.drawLadder(x, y, standAt(x, y), sx, sy, S)}); return; }   // (a ladder: up to what it leans on, climbing.js)
@@ -120,17 +127,19 @@ function frame(now) {
   if (worldReady) Floors.draw(vis, list, sx, sy, S, t, now);                 // (what is built over the land: floors, roofs, what stands on them: floors.js)
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   // (past the horizon, curve.js: it goes down behind it, cut at the horizon line of the ground it stands on; no shadow)
-  if (sy.bent) for (const o of list) { const up = o.p ? liftOf(o.p) : o.x === undefined ? 0 : liftAt(Math.round(o.x), o.ty === undefined ? Math.round(o.y) : o.ty); o.clip = sy.clip(o.y, up); if (sy.gone(o.y, up)) o.far = o.clip; }
+  if (sy.bent) for (const o of list) { const up = o.p ? liftOf(o.p) : o.x === undefined ? 0 : liftAt(Math.round(o.x), o.ty === undefined ? Math.round(o.y) : o.ty); o.clip = sy.clip(o.y, up); if (sy.gone(o.y, up)) o.far = o.clip;
+    // (...and with only a sliver of it left over its ground, it is not drawn at all: no caps sitting on the horizon)
+    if (o.clip !== undefined) { const bb = o.spr && spriteBounds(o.spr[0], o.spr[1], o.spr[2], o.spr[3], o.spr[4]), top = o.spr ? sy(o.ty, o.x) + (o.spr[6] + (bb ? bb[1] : 0)) * zoom : o.p ? bodyY(o.p, sy) : -1e9; o.hide = o.clip - top < Math.max(CURVE.short, sy.far(o.y, up) ? (bb ? bb[3] - bb[1] : P) * .45 : 0) * zoom; } }      // (past the horizon: under half of it)
   // (the land is drawn once what stands on it is known: with the land's depth or a shader on, their shadows fall on it as it stands, sunland.js)
   Voxels.frame(away.a < 1 ? vis : [], ox, oy, S, t, away.high, Sun.cast(list, vis, sx, sy, S, t, now));      // the land and the sea, as blocks
   if (away.a > 0 && away.a < 1 && !Voxels.veil(ox, oy, S, t, away.a, away.sky)) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
-  if (!worldReady) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }
+  if (!worldReady && !late) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }      // (the first arrival: under the first screen's picture, all of it at once)
   // (a shader's shadows and reflections of all of it, on the ground, under what stands there: sun.js)
   Sun.draw(list, vis, sx, sy, S, t, now);
   for (const o of list) {
     selMeasure(o);
-    if (o.far !== undefined && o.pile) continue;
-    if (o.clip !== undefined) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, Math.max(0, o.clip)); ctx.clip(); }
+    if ((o.far !== undefined && o.pile) || o.hide) continue;
+    if (o.clip !== undefined) { ctx.save(); const x = o.p ? o.p.x : o.x; if (x === undefined) { ctx.beginPath(); ctx.rect(0, 0, W, Math.max(0, o.clip)); ctx.clip(); } else Curve.mask(o.clip, sx(x), ox); }      // (cut along the ground before it: curve.js)
     if (o.spr) {
       const [img, a, b2, w, h, dx, dy] = o.spr, key = pops.size || shakes.size ? o.x + "," + o.ty : "";   // (its name: made only while something bounces or shakes)
       let px = sx(o.x) + dx * zoom, py = sy(o.ty, o.x) + dy * zoom, ww = w * zoom, hh = h * zoom;

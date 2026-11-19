@@ -260,12 +260,7 @@ const Build = (() => {
     if (S.on && !me) { S.plans.clear(); toggle(false); }                    // (you fell, or the game went: out of the mode)
     if (!S.on || !S.at) return;
     const L = level(), x = sx(S.at.x), y = top(S.at, L), c = 5 * z, w = 2 * z, cube = buried(S.at, L), Hh = Sz + (cube ? RELIEF_STEP * z : 0), mx = (myPos() || S.at).x, _ = (S.rect = {x, y, w: Sz, h: Hh, under: mx !== S.at.x, right: mx < S.at.x}), blink = Math.floor(t * 3) % 2 ? "#fff1a8" : "#ffffff";
-    if (!onIt(S.at, L) && !solidAt(S.at.x, S.at.y, L)) {      // in the air: its shadow on what is under it, and the line down to it
-      const under = settleAt(S.at.x, S.at.y, L), y0 = top(S.at, under);
-      ctx.fillStyle = "rgba(40,30,50,.22)"; ctx.fillRect(x + 2 * z, y0 + 2 * z, Sz - 4 * z, Sz - 4 * z);
-      ctx.fillStyle = "rgba(91,63,54,.5)"; for (let yy = y + Sz; yy < y0 + Sz / 2; yy += 3 * z) ctx.fillRect(x + Sz / 2 - z / 2, yy, z, 2 * z);
-    }
-    // (the cursor itself: the cell it is on, a box in the land: mark.js)
+    // (the cursor itself: the cell it is on, a box in the land; in the air, with a dotted line down to the ground under it and a small square there: mark.js)
     const s = myPos();
     if (s) Keyhole.mark(x, y, Hh, L - myZ(s.x, s.y), cube, sx, sy, S.rect.right);   // (where it is beside you, on you; how far over your head or under your feet: keyhole.js)
   }

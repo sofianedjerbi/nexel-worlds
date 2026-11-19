@@ -91,19 +91,20 @@ const Vox = (() => {
   const VS = `#version 300 es
 in vec3 aPos; in vec2 aLoc; in vec4 aMeta, aMore;
 uniform vec2 uRes, uO, uChunk, uTorO; uniform float uK, uRow, uCell, uUp;
-out vec3 vGround; out vec2 vLoc, vScr, vAt, vWorld, vFlat; out float vPast; flat out vec2 vTile; flat out vec4 vMeta, vMore;
-` + VoxCurve.GLSL + `
+out vec3 vGround0; out vec2 vLoc0, vScr, vAt, vWorld, vFlat0; out float vPast; flat out vec2 vTile, vRows; flat out vec4 vMeta, vMore;
+` + VoxCurve.VS + `
 void main() {
   vec2 f = uO + aPos.xy * uK; float past;                       // (where its spot of the ground is, flat; then bent: vox_curve.js)
-  vec2 p = vec2(f.x, curveY(f.y, aPos.z * uK, past));           // (a height: that far up the picture)
-  vFlat = vec2(f.x, f.y - aPos.z * uK); vPast = past;           // (where it would be flat: the water's picture is laid flat)
+  vec2 p = vec2(f.x, rollY(f.y, aPos.z * uK, past));            // (a height: that far up the picture; bent: on a whole px of the paint)
+  vFlat0 = vec2(f.x, f.y - aPos.z * uK); vPast = past;           // (where it would be flat: the water's picture is laid flat)
+  float t0 = f.y - (aLoc.y - 8.) * uK, pp; vRows.x = rollY(t0, aPos.z * uK, pp); vRows.y = (rollY(t0 + uCell * uK, aPos.z * uK, pp) - vRows.x) / uK;      // (its tile's row as it is drawn: where it starts, how many px of paint tall)
   // in front: what is further south, and what is higher; what is past the horizon is behind all that is before it
   float near = (aPos.y + aPos.z) / uCell + uRow - (2. * past + past * past / (uCurve.x - uCurve.y + 1.)) / (uK * uCell);
   gl_Position = vec4(p.x / uRes.x * 2. - 1., 1. - p.y / uRes.y * 2., clamp(-near / 700., -1., 1.), 1.);
-  vLoc = aLoc; vTile = aPos.xy - aLoc; vMeta = aMeta; vMore = aMore; vScr = p;
+  vLoc0 = aLoc; vTile = aPos.xy - aLoc; vMeta = aMeta; vMore = aMore; vScr = p;
   vAt = vec2(aPos.y / uCell + uRow, aPos.z / uUp);              // its row (from the eye's) and its level
   vWorld = aPos.xy + uChunk;                                    // where it is on the ground, px from the cut's corner
-  vGround = vec3(aPos.xy + uTorO, aPos.z);                      // ...and in the ring of heights, with its height (vox_light.js)
+  vGround0 = vec3(aPos.xy + uTorO, aPos.z);                      // ...and in the ring of heights, with its height (vox_light.js)
 }`;
   // vMeta: what is round the face (bits: vox_mesh.js), its kind (0 top, 1 front, 2 water, 3 and 4 a bank's top and
   // front), its strip of the sheets; vMore: where the feet of the walls west and east of a top are; a front's shape, the shape it
@@ -111,13 +112,17 @@ void main() {
   const FS = `#version 300 es
 precision highp float;
 uniform sampler2D uPage, uFronts, uSides, uWater, uFoot; uniform vec2 uWaterO, uWaterSize; uniform float uWaterK, uStrips, uSea, uCell, uUp, uSide, uVars, uK, uCut, uInset; uniform vec3 uLight, uWin, uSeaCol, uCutBox, uEarth, uEdge; uniform float uSec, uSlab; uniform sampler2D uCutMap; uniform vec2 uWinAt; uniform vec4 uUnder;
-in vec2 vLoc, vScr, vAt, vWorld, vFlat; in float vPast; uniform float uLine; flat in vec2 vTile; flat in vec4 vMeta, vMore; out vec4 o;
+in vec3 vGround0; in vec2 vLoc0, vScr, vAt, vWorld, vFlat0; vec3 vGround; vec2 vLoc, vFlat; in float vPast; uniform float uLine; uniform vec4 uCurve; uniform vec2 uO; flat in vec2 vTile, vRows; flat in vec4 vMeta, vMore; out vec4 o;
 // the host's shadow (of the level in the face's strip) over a colour
 vec3 shadow(vec3 c) { vec4 s = texelFetch(uSides, ivec2(2, int(vMeta.z)), 0); return mix(c, s.rgb, s.a); }
 uniform sampler2D uModel; uniform vec2 uModelSize;              // (models, vox_models.js: their sheet)
-uniform vec2 uRes;${VoxLight.FS}
+uniform vec2 uRes;${VoxLight.FS}${VoxCurve.FS}
 float cutLv(vec2 t) { if (t.x < 0. || t.y < 0. || t.x >= uCutBox.x || t.y >= uCutBox.y) return 1e5; vec4 m = texelFetch(uCutMap, ivec2(t), 0); return m.b > .5 ? m.r * 255. + m.g * 65280. - 32768. : 1e5; }      // the level a tile (counted from the cut's corner) is cut down to; 1e5: it is not cut
 void main() {
+  // (where the px is, as its face's corners say: vLoc in its tile, vFlat on the flat picture, vGround on the ground. In the roll, vox_curve.js, read at the
+  // middle of the px of paint this px of the screen is in: the paint, the sun's shadows and the land's depth are whole px of paint there, squeezed with their rows)
+  vLoc = vLoc0; vFlat = vFlat0; vGround = vGround0; bool roll = uCurve.x > uCurve.y;
+  if (roll) { vLoc.y = rollRow(vLoc0.y, vScr.y, uO.y, uK); vFlat.y = rollRow(vFlat0.y, vScr.y, uO.y, uK); vGround.yz = vec2(rollRow(vGround0.y, vScr.y, uO.y, uK), rollRow(vGround0.z, vScr.y, uO.y, uK)); }
   // well past the horizon (vox_curve.js): behind it, seen only over the line where the land meets the sky (it comes
   // down for good, and showed through whatever opens the land in front of it)
   if (vPast > 24. * uK && vScr.y > uLine) discard;
@@ -148,6 +153,8 @@ void main() {
     o = vec4(sunlit(m.rgb, m.rgb, 7, 0, -1.) * uLight, 1.); return;
   }
   int bits = int(vMeta.x + .5), kind = int(vMeta.y + .5);
+  // (of a top in the roll: the row of its paint that its tile's height says, the same whatever the frame; its shadows and its depth are that row's)
+  if (roll && kind == 0) { float i = floor((vScr.y - vRows.x) / uK); if (vRows.y > 0. && vRows.y < uCell && i >= 0. && i < vRows.y) { float dy = rollPick(i, vRows.y, uCell) + 8.5 - vLoc.y; vLoc.y += dy; vGround.y += dy; vFlat.y += dy * uK; } }
   vec3 c, plain = vec3(-1.); float far = uCell - .01; vec2 loc = vLoc - 8., tile = vTile + 8.;
   if (kind == 5) {                                              // a block's sliced top: the earth of its level, as its fronts have it; a line along a drop
     float x = floor(loc.x), y = floor(loc.y);
@@ -186,10 +193,10 @@ void main() {
   }
   // under a roof: a cave's own dark. Seen from outside, at its mouth, nearly all of it; seen through the window on
   // who is in it, a third: the place is to be seen
-  if (uSec > .5) { o = vec4(((bits & 8) != 0 ? mix(deep(c, kind, bits, -1., true), uUnder.rgb, uUnder.a * .38) : deep(c, kind, bits & ~8, -1., true)) * uLight, 1.); return; }      // (the faces of the cut: bit 8, in the dark of the place; else the day's light, with the land's depth as the wall out of doors beside them has it)
+  if (uSec > .5) { o = vec4(((bits & 8) != 0 ? mix(roofed(deep(c, kind, bits, -1., true), kind), uUnder.rgb, uUnder.a * .38) : deep(c, kind, bits & ~8, -1., true)) * uLight, 1.); return; }      // (the faces of the cut: bit 8, in the dark of the place; else the day's light, with the land's depth as the wall out of doors beside them has it)
   // (vMeta.w, vox_mesh.js: under a roof, how far in from the open it is: the dark comes on inward, the ground is seen going in under an overhang;
   // out of doors, how deep down a narrow hole: darker a step at a time. A hollow over the room that is cut open: darker than that room's walls)
-  if ((bits & 8) != 0 && kind < 2 && !day) c = mix(c, uUnder.rgb, uUnder.a * (other ? .8 : open || (uWin.z > 0. && distance((floor(vScr / uK) + .5) * uK, uWin.xy) < uWin.z) ? .38 : vMeta.w > 0. ? min(1., .25 + .2 * vMeta.w) : 1.));
+  if ((bits & 8) != 0 && kind < 2 && !day) c = mix(roofed(c, kind), uUnder.rgb, uUnder.a * (other ? .8 : open || (uWin.z > 0. && distance((floor(vScr / uK) + .5) * uK, uWin.xy) < uWin.z) ? .38 : vMeta.w > 0. ? min(1., .25 + .2 * vMeta.w) : 1.));
   else if ((kind < 2 || kind == 3) && vMeta.w > 0.) c = mix(c, uUnder.rgb, uUnder.a * .15 * min(vMeta.w, 5.));
   if (day) { o = vec4(deep(c, kind, bits & ~8, -1., true) * uLight, 1.); return; }      // (a wall of the land's in a hole lit as the day: the land's depth, and no shadow of the sun)
   o = vec4(sunlit(c, plain.r < 0. ? c : plain, kind, bits, kind == 0 && (bits & 128) == 0 ? floor(loc.y) + texelFetch(uFoot, ivec2(int(clamp(loc.x, 0., far)), int(vMore.w)), 0).g * 255. - uCell : -1.) * uLight, 1.);                 // (the sun, if the view has one: vox_light.js)
@@ -237,7 +244,7 @@ void main() {
       if (fresh) { const t0 = performance.now(), m = VoxSection.build(host, cfg, strip, open); for (const id of m.shapes) pending.add(id); VoxMesh.upload(sec, m, prog); sec.lit = m.lit; sec.room = m.room; sec.ms = performance.now() - t0; }
       gl.useProgram(prog.pr);
       gl.uniform2f(u.uRes, v.w, v.h); gl.uniform1f(u.uK, k); gl.uniform1f(u.uCell, cfg.cell); gl.uniform1f(u.uUp, cfg.up); gl.uniform1f(u.uSide, N * cfg.cell);
-      const cu = v.curve; gl.uniform4f(u.uCurve, cu ? cu.y0 : 0, cu ? cu.yh : 0, cu ? cu.ref : 0, cu ? cu.lean : 0); gl.uniform1f(u.uLine, cu ? cu.line : 0);
+      const cu = v.curve; gl.uniform4f(u.uCurve, cu ? cu.y0 : 0, cu ? cu.yh : 0, cu ? cu.ref : 0, cu ? cu.lean : 0); gl.uniform1f(u.uLine, cu ? cu.line : 0); gl.uniform1f(u.uFloor, cu ? cu.floor || 0 : 0);
       gl.uniform1f(u.uStrips, fronts.n); gl.uniform3f(u.uLight, v.light[0], v.light[1], v.light[2]);
       gl.uniform1i(u.uPage, 0); gl.uniform1i(u.uFronts, 1); gl.uniform1i(u.uWater, 2); gl.uniform1i(u.uSides, 3); gl.uniform1i(u.uFoot, 4);
       gl.uniform4f(u.uUnder, ...cfg.under); gl.uniform1f(u.uVars, cfg.variants); gl.uniform1f(u.uInset, cfg.inset); gl.uniform3f(u.uSeaCol, ...cfg.sea);
@@ -274,9 +281,7 @@ void main() {
       gl.bindVertexArray(null);
       return VoxGL.el;
     }
-    return {ready, touch, work, made, forget, draw, get section() { return {faces: sec.faces || 0, ms: sec.ms || 0}; }, get chunks() { return chunks.size; }, get faces() { let n = 0; for (const ch of chunks.values()) n += ch.faces; return n; },
-            get sides() { let n = 0; for (const ch of chunks.values()) n += ch.sides || 0; return n; },
-      get models() { let n = 0; for (const ch of chunks.values()) n += VoxModels.count(ch); return n; }};
+    return {ready, touch, work, made, forget, draw, get section() { return {faces: sec.faces || 0, ms: sec.ms || 0}; }, get chunks() { return chunks.size; }, get faces() { let n = 0; for (const ch of chunks.values()) n += ch.faces; return n; }, get sides() { let n = 0; for (const ch of chunks.values()) n += ch.sides || 0; return n; }, get models() { let n = 0; for (const ch of chunks.values()) n += VoxModels.count(ch); return n; }};
   }
   return {create};
 })();
