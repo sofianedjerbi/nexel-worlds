@@ -3381,3 +3381,35 @@ computer hung: "this is unacceptable. pay attention to what you're doing !!".
 - Left: the land looks flat with no shader (five looks on the mockup page for the user to pick); under ground
   the cut is a brown slab, not a section with walls (an agent is on it); banks are not in the aim's outline;
   bridges (bodies behind posts, a deck into higher land); from a tower the far land is not watched.
+
+## Iteration 180: under ground is a section through blocks, and the light agrees with the roll
+
+The user: "the 3d world still look very flat. that is very very ugly. be critic", then a loop: "is the 3d voxel
+rendering finished ? perfect ? good looking ? keep iterating until you don't find anything when launching an audit
+agent. pay attention to the computer freezing !!". My answer was no, three times over.
+- Under ground (engine: vox_section.js). The cut removed blocks and painted one flat brown where they were: a
+  deep place was a slab. Now what a knife would leave is drawn: the walls of the hole (the face of the rock
+  beside a cut cell, in the land's own front paint a level), the tops of what is sliced, in the earth's paint;
+  the flat fill paints 0 px in 36 staged views (counted; 27,504 with the section stubbed). Round 2: the cut's
+  front is one straight row (tiles in front side by side cut to the lowest: no squares beside a stair), one
+  light a hole (daylight if any of its walls is out of doors), 2 px banks in a one-wide place.
+- Bridges: a body is cut by a model's box south of its feet (behind.js clipModels); a deck runs the 2 px on to
+  a wall.
+- The light on the roll: a thing that sinks at the horizon throws the shadow of what is seen of it; cloud
+  shadows are the land's own, in world space (they break at a cliff, none under a roof; the post shader's flat
+  field is gone, and what stands is as dark as the ground at its foot); what is built throws one outline and
+  is shaded a px column at a time; fire shadows go through the same picture as the sun's; sun.js split
+  (sunland.js). Two tests compared frames taken at different moments (a fire flickers): they draw one frame
+  twice now.
+- Measured: 518 unit; the whole browser suite on the merged copy, three workers, nothing else running: 293
+  passed, one on a second try (test_e2e_tall, far under the land). 6 min 44.
+- The suite's time: I told the user fixed sleeps were a third of it. Durations say no: the slow tests wait on
+  the world's own time (music pieces 45 s and 34 s, walking and climbing at 10 ticks a second). The saving is
+  not to run all of it for a change (the files it touches, two workers, a minute), and, later, a faster clock
+  for the test server.
+- Not decided, on the mockup page (now on GitHub Pages, repo nexel-worlds-mockups: the user is often not at the
+  Mac): the land with no shader is flat; five looks (?depth=1..5 stays in the code as a hidden switch to try
+  them live). Water: six looks being drawn.
+- Left: a body in a house's or a tree's shade is not dark; a dash at every riser's foot on terraces at
+  evening; far bushes over a cliff that stands above the horizon; a busy 2 x 2 patch under a dug room's stair;
+  the aim's box has no banks; from a tower the far land is not watched.

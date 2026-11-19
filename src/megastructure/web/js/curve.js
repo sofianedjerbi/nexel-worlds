@@ -59,7 +59,7 @@ const Curve = (() => {
     const lost = (y) => { if (!k) return 0; const d = k.y0 - (oy + (y + A) * S - k.ref), q = 1 - d / (2 * (k.y0 - k.yh)); return q >= CURVE.fade ? 0 : Math.min(1, 1 - q / CURVE.fade) ** 2 * CURVE.depth * S; };
     const at = (y, lift) => { const flat = oy + y * S - lift; if (!k) return flat; const v = VoxCurve.y(k, oy + (y + A) * S, lift) - A * S; return Math.abs(v - flat) < 1e-9 ? flat : Math.round(v + lost(y)); };
     const f = (y, x) => at(y, x === undefined ? 0 : liftOf({x, y}));
-    f.base = oy; f.bent = !!k; f.row = row; f.up = at;
+    f.base = oy; f.bent = !!k; f.row = row; f.up = at; f.lost = lost;      // (lost: sunland.js cuts a shadow as its thing is cut)
     const top = k ? k.yh : 0, edge = k ? VoxCurve.edge(k) : 0;
     f.inv = (py) => ((k && py < top ? edge - (top - py) : VoxCurve.inv(k, py)) - oy) / S;
     f.out = (u) => { const F = oy + u * S; return k && F < edge ? top - (edge - F) : VoxCurve.warp(k, F); };

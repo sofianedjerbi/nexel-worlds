@@ -161,8 +161,8 @@ const Floors = (() => {
         if (hole && covers(x, y, z, kind === "roof")) hidden = true;
         if (hole) veils++;
         const edge = (aa) => outline(kind, x, y, z, sx, sy, aa), paint = (fn, e = () => {}) => (hole ? () => holed(fn, a, cx, cy, R, e) : () => fn(a));
-        list.push({y: key - .005, x, fx: paint((aa) => cell(kind, x, y, z, sx, sy, S, aa), edge)});
-        if (ch) list.push({y: key, x, fx: paint((aa) => thing(ch, x, y, z, sx, sy, S, t, now, aa))});
+        list.push({y: key - .005, x, row: y, slab: kind, z, fx: paint((aa) => cell(kind, x, y, z, sx, sy, S, aa), edge)});      // (row: its tile's, for its shadow: sun.js; slab, z: a block, its height: sunland.js)
+        if (ch) list.push({y: key, x, row: y, z, fx: paint((aa) => thing(ch, x, y, z, sx, sy, S, t, now, aa))});
       }
     }
     seen += ((hidden ? 1 : 0) - seen) * Math.min(1, step / FADE);

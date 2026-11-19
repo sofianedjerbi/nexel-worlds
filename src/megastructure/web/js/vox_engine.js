@@ -68,7 +68,8 @@
 //                                 ground a shadow goes on for each px of height (east, south), alpha, shade: [r, g, b]
 //                                 its colour, cast: null or a picture of the view's size with the shadows of what
 //                                 stands, land: false for no shadows of the land itself, glass: null or {alpha, wave, ripple, phase}:
-//                                 the land seen in the water}
+//                                 the land seen in the water, fire: how dark a shadow marked a fire's is, cloud: null or
+//                                 {k, drift: [x, y]}: the clouds' shadows}
 //     models             how many faces of models are made (the land's: faces)
 //
 //   models, what stands in the land and is not a block of it (a bridge's deck, a post): if the host has

@@ -54,7 +54,7 @@ def test_a_shader_gives_things_a_shadow_that_follows_the_sun_and_a_reflection_in
     game.rpc("dev_time", phase=.06)                             # early morning: the sun in the east
     game.sleep(1200)
     plain = [game.js(lit, r) for r in (west, east, pond)]
-    game.js("setOpt('shader', 'natural')")
+    game.js("setOpt('clouds', 0); setOpt('shader', 'natural')")      # (no clouds: their shadows are in the land's own picture, and drift)
     game.sleep(800)
     on = [game.js(lit, r) for r in (west, east, pond)]
     assert on[0] < plain[0] - 3 and abs(on[1] - plain[1]) < 1.5, (plain, on)      # its shadow lies to the west, none to the east
@@ -79,7 +79,7 @@ def test_nothing_is_reflected_in_water_that_a_hill_hides(game):
     game.clear_area(8)
     game.stamp(-3, -3, ["~~~~~~~", "~~~~~~~", ".......", ".......", "......."], levels=["0000000", "0000000", "5555555", "5555555", "5555555"])
     game.rpc("dev_time", phase=.3)
-    game.js("setOpt('shimmer', false); setOpt('shadows', 0); setOpt('reflect', 0); setOpt('shader', 'natural')")
+    game.js("setOpt('shimmer', false); setOpt('shadows', 0); setOpt('reflect', 0); setOpt('clouds', 0); setOpt('shader', 'natural')")      # (no clouds: their shadows drift over the land's own picture)
     game.sleep(1200)
     x, y = game.pos()
     grab = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -150,24 +150,30 @@ def test_what_is_written_in_the_world_is_drawn_over_a_shader_not_through_it(game
     # "your shaders make text bubble unreadable and too bright": a bubble went through the glow with the rest
     game.clear_area(5)
     game.js("setOpt('names', false)")
-    ink = """() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+    # One frame drawn twice, with what is said and without it: `sum` is the light of the meadow over your head with it,
+    # `bare` without. (It was two frames seconds apart: whatever else moved there in between, the curved world's sky
+    # at first, was taken for the bubble: one run in three failed.)
+    ink = """() => new Promise((ok) => requestAnimationFrame((T) => {
       const count = (c) => { if (!c) return -1; const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 200) n++; return n; };
-      const S = TS(), [ox, oy] = screenOrigin(S), p = ents.get("agent" + myId);
-      const d = cv.getContext("2d").getImageData(Math.round((ox + p.x * S - 3 * S) * DPR), Math.round((oy + p.y * S - 5 * S) * DPR), Math.round(7 * S * DPR), Math.round(4 * S * DPR)).data;
-      let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
-      ok({sum, words: count(Shader.words), shown: Shader.words ? getComputedStyle(Shader.words).display : "none", said: bubbles.length}); })))"""
-    bare = game.js(ink)                                         # the meadow over your head, nothing said
+      const S = TS(), [ox, oy] = screenOrigin(S), p = ents.get("agent" + myId), raf = window.requestAnimationFrame, said = bubbles.slice(); window.requestAnimationFrame = () => 0;
+      const lit = () => { const d = cv.getContext("2d").getImageData(Math.round((ox + p.x * S - 3 * S) * DPR), Math.round((oy + p.y * S - 3.5 * S) * DPR), Math.round(7 * S * DPR), Math.round(3 * S * DPR)).data;
+        let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2]; return sum; };
+      const out = {said: said.length};
+      try { frame(T); out.sum = lit(); out.words = count(Shader.words); out.shown = Shader.words ? getComputedStyle(Shader.words).display : "none"; bubbles.length = 0; frame(T); out.bare = lit(); }
+      finally { bubbles.length = 0; bubbles.push(...said); window.requestAnimationFrame = raf; raf(frame); }
+      ok(out); }))"""
     game.act("say", text="hello there, a long line to see")
     game.wait("bubbles.length > 0")
     game.sleep(400)
     plain = game.js(ink)
-    assert plain["said"] and plain["sum"] != bare["sum"] and plain["shown"] == "none", (bare, plain)     # no shader: the bubble is on the picture
-    game.js("setOpt('shader', 'soft'); setOpt('shadows', 0)"); game.sleep(600)
+    by = abs(plain["sum"] - plain["bare"])
+    assert plain["said"] and by > 20000 and plain["shown"] == "none", plain     # no shader: the bubble is on the picture
+    game.js("setOpt('shader', 'soft'); setOpt('shadows', 0); setOpt('clouds', 0)"); game.sleep(600)
     on = game.js(ink)
-    assert on["said"] and abs(on["sum"] - bare["sum"]) < abs(plain["sum"] - bare["sum"]) / 8 and on["words"] > 300 and on["shown"] == "block", (bare, plain, on)    # a shader: not in what it repaints, over it
+    assert on["said"] and abs(on["sum"] - on["bare"]) < by / 8 and on["words"] > 300 and on["shown"] == "block", (plain, on)    # a shader: not in what it repaints, over it
     game.js("setOpt('shader', 'off')"); game.sleep(400)
     off = game.js(ink)
-    assert off["shown"] == "none" and abs(off["sum"] - bare["sum"]) > abs(plain["sum"] - bare["sum"]) / 2, (bare, plain, off)
+    assert off["said"] and off["shown"] == "none" and abs(off["sum"] - off["bare"]) > by / 2, (plain, off)
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
 
 
@@ -199,13 +205,11 @@ def test_the_shaders_light_the_water_send_rays_at_low_sun_and_a_fire_throws_shad
     game.js("setOpt('rays', 0)"); game.sleep(600)
     assert rays[0] > game.js(fx, corner)[0] + 1.5, rays
     game.rpc("dev_time", phase=.87); game.sleep(1500)           # night: the tree's shadow lies away from the fire, to the west
-    lit2 = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
-      const S = TS(), [ox, oy] = screenOrigin(S), d = cv.getContext("2d").getImageData(Math.round((ox + x0 * S) * DPR), Math.round((oy + y0 * S) * DPR), Math.round((x1 - x0) * S * DPR), Math.round((y1 - y0) * S * DPR)).data;
-      let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2]; ok(sum / d.length * 4 / 3); })))"""
-    west = [tx - 2, ty + .3, tx, ty + 1.1]
-    shaded = game.js(lit2, west)
-    game.js("setOpt('shadows', 0)"); game.sleep(600)
-    assert game.js(lit2, west) > shaded + 1, shaded             # (little, in numbers: the night darkens all of it afterwards)
+    # (one frame drawn with the shadows and without: the fire's light flickers from a frame to the next by as much as
+    # its shadow darkens this part, which is what made this test fail one run in three)
+    from test_e2e_sunland import twice
+    (shaded, bare), = twice(game, [[tx - 2, ty + .3, tx, ty + 1.1]], "shadows", 0)
+    assert bare > shaded + .3, (shaded, bare)                   # (little, in numbers: the night darkens all of it afterwards, and a thin tree's is a line; but it is the same frame: nothing else differs)
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
 
 

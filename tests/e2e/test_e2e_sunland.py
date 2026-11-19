@@ -13,7 +13,7 @@ RESET = "for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); lo
 
 
 def look(game, name, wait=800):
-    game.js(f"setOpt('shader', '{name}')")
+    game.js(f"setOpt('clouds', 0); setOpt('shader', '{name}')")      # (no clouds unless a test is about them: they drift over the land's own picture)
     game.sleep(wait)
 
 
@@ -85,7 +85,7 @@ def test_with_no_shader_and_with_no_sun_asked_for_the_land_is_as_it_is_painted(g
     game.sleep(1200)
     off = game.js(PX, part)
     assert off == game.js(PX, part)                              # (it is still: two frames are the same)
-    game.js("setOpt('shader', 'natural'); setOpt('shaderk', 0)"); game.sleep(700)
+    game.js("setOpt('clouds', 0); setOpt('shader', 'natural'); setOpt('shaderk', 0)"); game.sleep(700)
     assert game.js(PX, part) == off                              # strength 0: nothing of the sun
     game.js("setOpt('shaderk', 100); setOpt('shadows', 0); setOpt('reflect', 0)"); game.sleep(700)
     assert game.js(PX, part) == off                              # no shadows asked for: every px as it was
@@ -191,10 +191,96 @@ def test_in_the_bend_with_no_sun_asked_for_the_land_is_as_it_is_drawn(game):
     part = [a[0], a[1], b[2], b[3]]                               # the land from the block's far side to near you: bent, no sky in it
     off = game.js(BOXPX, part)
     assert off == game.js(BOXPX, part)
-    game.js("setOpt('shader', 'natural'); setOpt('shaderk', 0)"); game.sleep(700)
+    game.js("setOpt('clouds', 0); setOpt('shader', 'natural'); setOpt('shaderk', 0)"); game.sleep(700)
     assert game.js(BOXPX, part) == off
     game.js("setOpt('shaderk', 100); setOpt('shadows', 0); setOpt('reflect', 0)"); game.sleep(700)
     assert game.js(BOXPX, part) == off
     game.js("setOpt('shadows', 100)"); game.sleep(700)
     assert game.js(BOXPX, part) != off
+    game.js(RESET)
+
+
+# ---- one frame drawn twice: with the game as it is, and with a setting changed (a fire flickers, a cloud drifts, a
+# body sways: two frames a moment apart differ by as much as a faint shadow does; the same frame drawn twice does not) ----
+# -> for each part [x0, y0, x1, y1] (tiles of flat ground): [its mean light as it is, with the setting changed, as it is again]
+TWICE = """([boxes, name, value]) => new Promise((ok) => requestAnimationFrame((T) => {
+  const raf = window.requestAnimationFrame, was = opt(name), out = boxes.map(() => []); window.requestAnimationFrame = () => 0;
+  const S = TS(), [ox, oy] = screenOrigin(S);
+  const lit = () => boxes.forEach(([x0, y0, x1, y1], n) => { const d = ctx.getImageData(Math.round((ox + x0 * S) * DPR), Math.round((oy + y0 * S) * DPR), Math.round((x1 - x0) * S * DPR), Math.round((y1 - y0) * S * DPR)).data;
+    let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2]; out[n].push(sum / d.length * 4 / 3); });
+  try { frame(T); lit(); setOpt(name, value); frame(T); lit(); setOpt(name, was); frame(T); lit(); } finally { setOpt(name, was); window.requestAnimationFrame = raf; raf(frame); }
+  ok(out); }))"""
+
+
+def twice(game, boxes, name, value):
+    out = game.js(TWICE, [boxes, name, value])
+    assert all(abs(a - c) < 1e-9 for a, _, c in out), out          # (the same frame drawn again is the same picture)
+    return [(a, b) for a, b, _ in out]
+
+
+def test_what_is_built_in_a_cliffs_shadow_is_dark_on_the_shaded_side_only(game):
+    """A house half in a cliff's shadow was dark a piece at a time (a tile of wall all dark, the next all lit). Each
+    px across it is in the shadow as high as the shadow stands there: by the cliff all of the wall, further on its
+    foot only, past the shadow's end none of it."""
+    game.clear_area(10)
+    game.stamp(-5, 2, ["WWWWWW"])                               # a wall east-west, south of you (where the picture is flat)
+    game.stamp(1, 0, ["..", "..", "..", ".."], levels=["44"] * 4)      # a cliff at its east end
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.08)                             # morning: the cliff's shadow lies west, along the wall
+    look(game, "natural", 1000)
+    front = lambda tx, a, b: [tx + a, y + 2 + .1, tx + b, y + 2 + .7]
+    near, mid, far_ = twice(game, [front(x, .1, .9), front(x - 1, .1, .9), front(x - 4, .1, .9)], "shadows", 0)
+    assert near[0] < near[1] - 8, near                          # by the cliff: dark
+    assert abs(far_[0] - far_[1]) < .01, far_                   # past the shadow's end: as it is painted
+    # the tile the shadow's line crosses: its east half darker than its west half, by the shadow alone
+    for tx in (x - 1, x - 2):
+        west, east = twice(game, [front(tx, .05, .45), front(tx, .55, .95)], "shadows", 0)
+        assert west[1] - west[0] <= east[1] - east[0] + .01, (tx, west, east)      # never darker further from the cliff
+    game.js(RESET)
+
+
+def test_a_fires_shadow_lies_away_from_the_fire_on_the_level_of_what_throws_it(game):
+    game.clear_area(8)
+    game.stamp(-6, -1, ["........", "........", "........"], levels=["00111000", "00111000", "00111000"])      # a low terrace,
+    game.stamp(-3, 0, ["T"], levels=["1"]); game.stamp(0, 1, ["^"])                                                  # a tree on it, a fire east of it (south of you)
+    x, y = game.pos()
+    tx, ty = x - 3, y
+    game.js("setOpt('shimmer', false); setOpt('corners', 0)")
+    game.rpc("dev_time", phase=.87)
+    look(game, "natural", 1500)
+    up = game.js("RELIEF_STEP / P")                              # (the terrace is drawn that much of a tile up)
+    west, east, low = twice(game, [[tx - 1, ty + .3 - up, tx + .1, ty + 1.2 - up], [tx + .9, ty + .3 - up, tx + 1.9, ty + 1.2 - up], [tx - 3, ty + .2, tx - 1.3, ty + 1.3]], "shadows", 0)
+    assert west[0] < west[1] - .3, west                         # west of the tree, away from the fire: its shadow
+    assert abs(east[0] - east[1]) < .01, east                   # between it and the fire: none
+    assert abs(low[0] - low[1]) < .01, low                      # and it does not go on over the lower ground past the terrace's edge
+    game.js(RESET)
+
+
+def test_a_clouds_shadow_lies_on_the_land_and_what_stands_and_not_under_a_roof(game):
+    """The clouds' shadows are the land's own (vox_light.js) and what stands is as dark as its ground (sunland.js);
+    under a roof there is none."""
+    game.rpc("dev_time", phase=.3)
+    look(game, "natural", 800)
+    game.js("setOpt('clouds', 100); setOpt('shadows', 0); setOpt('shimmer', false)"); game.sleep(500)
+    # where a cloud's shadow is deep now, near you (the field drifts a tile in five seconds)
+    spot = game.js("""() => { const c = Sun.given().cloud, p = myPos(); let best = null;
+      for (let dy = -14; dy <= 14; dy++) for (let dx = -14; dx <= 14; dx++) { const k = Math.min(...[0, 1, 2, 3].map((i) => VoxLight.cloud({k: c.k, drift: [c.drift[0] - i * .11, c.drift[1] + i * .04]}, p.x + dx, p.y + dy, P)));
+        if (!best || k > best[2]) best = [p.x + dx, p.y + dy, k]; }
+      return best; }""")
+    assert spot[2] > .3, spot                                    # (dark there now and for the next thirty seconds)
+    cx, cy = spot[0], spot[1]
+    game.rpc("dev_teleport", x=cx, y=cy + 2, z=0); game.wait(f"myAt && myAt.x === {cx} && myAt.y === {cy + 2}", 8000)
+    game.clear_area(6)
+    game.stamp(0, -2, ["T"])                                    # a tree at the spot
+    game.wait("dirtyTiles.length === 0", 20000); game.sleep(600)
+    ground, tree = twice(game, [[cx - 2, cy + .2, cx - 1, cy + 1], [cx + .2, cy - .6, cx + .8, cy + .2]], "clouds", 0)
+    assert ground[0] < ground[1] - 4, ground                     # the land is darker under the cloud
+    assert tree[0] < tree[1] - .5, tree                           # and so is the tree that stands there
+    game.stamp(-3, -4, ["." * 7] * 5, levels=["4" * 7] * 5)     # a hill over the spot, a cave in it, its mouth south
+    game.stamp(-2, -3, ["." * 5] * 3, levels=["0" * 5] * 3, roofs=["4" * 5] * 3, heads=["2" * 5] * 3)
+    game.stamp(0, -1, ["."], levels=["0"], roofs=["4"], heads=["2"])
+    game.rpc("dev_teleport", x=cx, y=cy, z=0); game.wait(f"myAt && myAt.x === {cx} && myAt.y === {cy}", 8000)
+    game.wait("dirtyTiles.length === 0", 20000); game.wait("coveredAt(myAt.x, myAt.y, myAt.z)"); game.sleep(900)
+    inside, = twice(game, [[cx - 6, cy - 5, cx + 6, cy + 4]], "clouds", 0)
+    assert abs(inside[0] - inside[1]) < 1e-9, inside             # under the roof: no cloud's shadow on anything
     game.js(RESET)

@@ -9,6 +9,7 @@
 //     in its own shadow (a wall of two levels or more); one that faces it asks from the foot of the wall. A front (it faces south, and the sun
 //     is never south) only asks sideways: what stands west or east of it in its row.
 //     What is under a roof (a cave's floor) has no sun and no shadow.
+//   Clouds' shadows (sun.cloud): see `cloud` below.
 //     sun.land false: none of this (the shadows of what stands still fall as below).
 //   Shadows of what stands (sun.cast): the user of the engine hands a picture of the flat view (sun.castAt: {x, y, scale}:
 //     its corner in the view and how many px of the screen a px of it is; left out: it is the view's size), in which the
@@ -29,28 +30,49 @@ const VoxLight = (() => {
   const TOR = 16;
   // (vGround: where the px is, px of paint in the ring, and its height in px; vFlat: on the screen, were it flat)
   const FS = `
-uniform sampler2D uTops, uCast; uniform vec4 uSun, uGlass; uniform vec3 uCastAt; uniform vec2 uCastLv; uniform vec3 uShade; uniform float uTor, uTopMax, uCastOn, uRip, uLo, uLand;
+uniform sampler2D uTops, uCast; uniform vec4 uSun, uGlass, uCloud; uniform vec3 uCastAt, uShade; uniform vec2 uCastLv, uCloudO; uniform float uTor, uTopMax, uCastOn, uRip, uLo, uLand, uFire; uniform vec2 uDepth;
 in vec3 vGround;
-float topAt(vec2 tile, out float wet) { vec4 h = texelFetch(uTops, ivec2(mod(tile, uTor)), 0); wet = h.b; return floor(h.r * 255. + .5) + floor(h.g * 255. + .5) * 256. - 32768.; }
+bool inShade;                                                  // (lit: this px is in a shadow: no cloud's shadow on it too)
+vec4 tileAt(vec2 tile) { return texelFetch(uTops, ivec2(mod(tile, uTor)), 0); }
+float high(vec4 h) { return floor(h.r * 255. + .5) + floor(h.g * 255. + .5) * 256. - 32768.; }
+float topAt(vec2 tile, out float wet) { vec4 h = tileAt(tile); wet = h.b; return high(h); }
+// is the spot p (tiles) of a tile under its top's cap? (its shape: the px it leaves empty at its south end and its sides)
+bool capped(vec2 p, vec2 tile, float id) { vec2 l = clamp((p - tile) * uCell, 0., uCell - .01); return l.y < uCell - texelFetch(uFoot, ivec2(int(l.x), int(id)), 0).r * 255.; }
 // from p (tiles) at level z0 toward the sun (d: tiles a level up): does the land stand in the way?
-bool shaded(vec2 p, float z0, vec2 d) {
+// A block's top level is its cap's shape (rounded corners, sides set in), under it the whole square. Only a wall
+// throws a shadow: land that stands two levels or more over the tile before it on the line. Steps of one level are a
+// slope, not a ladder of bands (the sun is steeper than any stair): the first of them darkens its foot, four px at the most.
+// (off: px the spot was moved to get to p: a px that goes on under the wall beside it is that much nearer its foot)
+bool shaded(vec2 p, float z0, vec2 d, float off) {
   if (z0 >= uTopMax) return false;
   vec2 tile = floor(p), st = sign(d), inv = 1. / max(abs(d), 1e-6), tm = mix(p - tile, tile + 1. - p, step(0., d)) * inv;
+  float own = ceil(z0 - .01), was = own;
   for (int i = 0; i < 20; i++) {
-    float t, w;
-    if (tm.x < tm.y) { t = tm.x; tm.x += inv.x; tile.x += st.x; } else { t = tm.y; tm.y += inv.y; tile.y += st.y; }
+    float t, run;                                               // (run: px of ground a level, square to the side it comes in by)
+    if (tm.x < tm.y) { t = tm.x; tm.x += inv.x; tile.x += st.x; run = abs(d.x) * uCell; } else { t = tm.y; tm.y += inv.y; tile.y += st.y; run = abs(d.y) * uCell; }
     if (z0 + t >= uTopMax) return false;
-    if (topAt(tile, w) > z0 + t + .02) return true;
+    vec4 at = tileAt(tile); float h = high(at), id = floor(at.a * 255. + .5), t1 = min(h - z0, min(tm.x, tm.y)), rise = h - was; was = h;
+    if (h <= z0 + t + .02 || (rise < 1.5 && (h - own > 1.5 || t * run + off > 4.))) continue;
+    if (id > 0. && z0 + t > h - 1. && !capped(p + d * (t + .001), tile, id) && !capped(p + d * (t + t1) * .5, tile, id) && !capped(p + d * (t1 - .001), tile, id)) continue;
+    return true;
   }
   return false;
 }
+// the shadow of what stands, lying on level L, where the px's line to the sun is t levels on: 0 none, 1 the sun's, 2 a fire's
+float lies(float L, float t) {
+  vec2 q = vFlat - vec2(uSun.x * t * uUp, uSun.y * t * uUp + t * uUp) * uK, at = (q - uCastAt.xy) / (vec2(textureSize(uCast, 0)) * uCastAt.z);      // (on the flat picture)
+  if (at.y < 0. || at.x < 0. || at.x > 1. || at.y > 1.) return 0.;      // (north of the picture: none there, not its edge's)
+  vec4 s = texture(uCast, at);
+  return s.a > .25 && floor(s.rg * 255. / 16.) == vec2(mod(L + 32768., 16.), mod(floor((L + 32768.) / 16.), 16.)) ? (s.b < .7 ? 2. : 1.) : 0.;
+}
 // (lip: a top's px that is its wall, the top of its front: 0 or more, the px it is under the top's last)
 // (plain: its colour before the host's own shadow at a wall's foot was laid on it: the sun's shadow is laid on that, once)
-vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
+vec3 lit(vec3 c, vec3 plain, int kind, int bits, float lip) {
   if (uSun.w < .5 || ((bits & 8) != 0 && kind < 2)) return c;
   vec2 g = (floor(vGround.xy) + .5) / uCell, d = -uSun.xy * uUp / uCell; float z0 = vGround.z / uUp, far = uCell - .01;
   // (a top, the water: a px that goes on under the block beside it is asked for at its own tile's edge: at that wall's foot)
-  if (kind == 0 || kind == 2) g = (vGround.xy - vLoc + 8. + clamp(floor(vLoc - 8.) + .5, vec2(.5), vec2(uCell - .5))) / uCell;
+  float off = 0.;
+  if (kind == 0 || kind == 2) { vec2 at = floor(vLoc - 8.) + .5, in_ = clamp(at, vec2(.5), vec2(uCell - .5)); off = length(at - in_); g = (vGround.xy - vLoc + 8. + in_) / uCell; }
   if (kind == 2 && uGlass.x > 0.) {                             // the land north of the water, in it
     vec2 at = vec2(floor(vGround.x) + .5 - floor(sin(floor(vGround.y) * uGlass.y + uRip) * uGlass.w + .5), floor(vGround.y) + .5), tile = floor(at / uCell);
     for (int k = 1; k <= 5; k++) {
@@ -62,45 +84,89 @@ vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
       break;
     }
   }
-  if (uSun.z <= 0.) return c;
+  if (uSun.z <= 0. && uFire <= 0.) return c;
   if (kind == 2) plain = c;
-  float much = uSun.z;
-  bool dark = false, front = kind == 1 || kind == 4, lies = kind == 0 || kind == 2; vec2 gt = g; float zt = z0;      // (gt, zt: as a top, for the shadows of what stands: a top's lip takes them as its top does, to the tile's end)
+  float much = uSun.z, w;
+  bool dark = false, front = kind == 1 || kind == 4, flat_ = kind == 0 || kind == 2; vec2 gt = g; float zt = z0;      // (gt, zt: as a top, for the shadows of what stands: a top's lip takes them as its top does, to the tile's end)
   if (lip >= 0.) { front = true; kind = 1; g.y = ceil(g.y) + .5 / uCell; z0 -= (lip + .5) / uUp; d.y = 0.; }
   else if (front) { g.y = (floor(vGround.y + .5) + .5) / uCell; z0 = (floor(vGround.z) + .5) / uUp; d.y = 0.; }
   if (kind == 3 && uLand > .5) {
     bool east = (bits & 1) != 0;
-    if (abs(uSun.x) > .2 && (uSun.x > 0.) == east && (bits & 2) != 0) dark = true;      // (a wall of one level shows too little of its side: it stays as painted)
+    if (abs(uSun.x) > .2 && (uSun.x > 0.) == east) { if ((bits & 2) == 0) return c; dark = true; }      // (it faces away: in its own shadow. A wall of one level shows too little of its side: it stays as painted)
     else g.x = east ? floor(g.x) + 1. + .5 / uCell : floor(g.x) - .5 / uCell;
   }
-  if (!dark && uLand > .5) { dark = shaded(g, z0, d); if (dark && kind == 2) much *= .5; }      // (the land's shadow on water: half, the water shows the land in it there)
-  if (!dark && uCastOn > .5 && (lies || kind == 7)) {
-    vec2 size = vec2(textureSize(uCast, 0)) * uCastAt.z;
-    if (kind == 7) dark = texture(uCast, (vFlat - uCastAt.xy) / size).a > .25;
-    else for (int i = -3; i < 7; i++) {
-      float L = ceil(zt - .01) + float(i), t = L - zt, w;
+  if (!dark && uLand > .5 && uSun.z > 0.) { dark = shaded(g, z0, d, off); if (dark && kind == 2) much *= .5; }      // (the land's shadow on water: half, the water shows the land in it there)
+  if (!dark && uCastOn > .5) {
+    float by = 0.;
+    if (kind == 7) by = texture(uCast, (vFlat - uCastAt.xy) / (vec2(textureSize(uCast, 0)) * uCastAt.z)).a > .25 ? 1. : 0.;
+    else if ((kind == 3 || (kind == 4 && (uSun.x > 0.) != ((bits & 32) != 0))) && uLand > .5) {      // a wall's side that faces the sun (its banks' tops and fronts): the shadow lying at its foot goes on up it
+      float L = topAt(floor(g), w);
+      if (L < z0 + .01 && L >= uCastLv.x && L <= uCastLv.y) by = lies(L, L - z0) == 1. ? 1. : 0.;
+    } else if (flat_) for (int i = -3; i < 7 && by == 0.; i++) {
+      float L = ceil(zt - .01) + float(i);
       if (L < uCastLv.x) continue;
       if (L > uCastLv.y) break;
       // (a level under this one: only the shadow that goes on under this land, the upper part of what stands at a wall's foot)
       if (i < 0 && topAt(floor(gt + uSun.xy * uUp / uCell * float(-i)), w) <= L) continue;
-      vec2 q = vFlat - vec2(uSun.x * t * uUp, uSun.y * t * uUp + t * uUp) * uK;      // (on the flat picture: where the point that far along the line is)
-      vec2 at = (q - uCastAt.xy) / size; if (at.y < 0. || at.x < 0. || at.x > 1. || at.y > 1.) continue;      // (north of the picture: none there, not its edge's)
-      vec4 s = texture(uCast, at);
-      if (s.a > .25 && floor(s.rg * 255. / 16.) == vec2(mod(L + 32768., 16.), mod(floor((L + 32768.) / 16.), 16.))) { dark = true; break; }
+      by = lies(L, L - zt);
+      if (by == 2. && i != 0) by = 0.;                           // (a fire's: on its own level only)
     }
+    if (by > 0.) { dark = true; if (by == 2.) much = uFire; }
   }
-  return dark ? mix(plain, uShade, much) : c;
+  inShade = dark && much > 0.;
+  return inShade ? mix(plain, uShade, much) : c;
+}
+// The clouds' shadows (uCloud: how dark, and how far they have drifted). They lie on the land at its height, where
+// the sun's line through the px meets the ground's level 0: a cloud's edge breaks at a cliff as a shadow does. None
+// under a roof, none on what is in a shadow already (a shadow is dark once). The field is made of whole numbers'
+// hashes, so VoxLight.cloud (for what stands on the land: it is as dark as the ground at its foot) is the same one.
+float chash(ivec2 q) { uint n = uint(q.x) * 374761393u + uint(q.y) * 668265263u; n = (n ^ (n >> 13u)) * 1274126177u; return float((n ^ (n >> 16u)) & 65535u) / 65535.; }
+float cnoise(vec2 q) { ivec2 i = ivec2(floor(q)); vec2 f = fract(q); f = f * f * (3. - 2. * f);
+  return mix(mix(chash(i), chash(i + ivec2(1, 0)), f.x), mix(chash(i + ivec2(0, 1)), chash(i + ivec2(1, 1)), f.x), f.y); }
+float cloud(vec2 w) { w = w * .055 + uCloud.yz; return smoothstep(.5, .64, cnoise(w) * .55 + cnoise(w * 2.1 + 7.3) * .3 + cnoise(w * 4.3 + 1.7) * .15) * uCloud.x; }
+// Looks of the land being tried (uDepth: which, and the level of the eye). 2: height as light: a level over the eye a
+// little brighter and warmer, under it darker and cooler, and a wall's front in three steps down to its foot.
+// 1: the ground at a wall's foot darker for three px (north, west, east of it: the higher the wall the darker; and
+// where a higher block stands in front, just over its far edge), an inner corner darker still; a top's last row of
+// ground before a drop lighter. Each one multiply of the paint.
+vec3 deep(vec3 c, int kind, int bits, float lip) {
+  int mode = int(uDepth.x + .5); float z = vGround.z / uUp, w;
+  if (mode == 0 || ((bits & 8) != 0 && kind < 2) || kind > 4) return c;
+  vec2 o = kind == 0 ? (vGround.xy - vLoc + 8.) / uCell : floor(vec2(vGround.x, vGround.y - .5) / uCell), tile = floor(o + .5), l = floor(vLoc - 8.);
+  float L = kind == 0 ? ceil(z - .01) : topAt(tile, w);
+  if ((mode & 2) != 0 && kind != 2) {                         // (not the water: it is the sky's)
+    float dz = clamp(L - uDepth.y, -5., 5.);
+    c *= dz > 0. ? vec3(1. + .04 * dz, 1. + .034 * dz, 1. + .01 * dz) : vec3(1. + .05 * dz, 1. + .042 * dz, 1. + .02 * dz);
+    if (kind == 1 || (kind == 0 && lip >= 0.)) { float F = topAt(tile + vec2(0., 1.), w), f = ((kind == 0 ? L - .1 : z) - F) / max(L - F, 1.); c *= f > .66 ? 1. : f > .33 ? .92 : .84; }
+  }
+  if ((mode & 1) != 0 && kind == 0 && (bits & 128) == 0 && lip < 0.) {
+    float a = 0., n = topAt(tile + vec2(0., -1.), w) - L, we = topAt(tile + vec2(-1., 0.), w) - L, ea = topAt(tile + vec2(1., 0.), w) - L, so = topAt(tile + vec2(0., 1.), w) - L;
+    if (n > 0. && l.y < 3.) a += (.75 + .25 * min(n, 3.)) * (.3 - .1 * max(l.y, 0.));
+    if (we > 0. && l.x < 3.) a += (.75 + .25 * min(we, 3.)) * (.3 - .1 * max(l.x, 0.));
+    if (ea > 0. && l.x > uCell - 4.) a += (.75 + .25 * min(ea, 3.)) * (.3 - .1 * (uCell - 1. - min(l.x, uCell - 1.)));
+    // (a higher block in front: the two px of this ground just over its far edge, and two more under its cap's own rim)
+    for (int k = 1; k <= 3; k++) { float h = topAt(tile + vec2(0., float(k)), w) - L, gap = float(k) * uCell - h * uUp - l.y + 1.; if (h > 0. && gap >= 0. && gap < 4.) a += (.75 + .25 * min(h, 3.)) * (gap < 3. ? .26 : .12); }
+    c *= mix(vec3(1.), vec3(.5, .52, .66), min(a, .7));
+    if (a == 0. && ((so < 0. && lip == -1.) || (we < 0. && l.x == 2.) || (ea < 0. && l.x == uCell - 3.))) c = min(c * 1.12, vec3(1.));
+  }
+  return c;
+}
+vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
+  c = deep(c, kind, bits, lip); plain = deep(plain, kind, bits, lip);
+  inShade = false; c = lit(c, plain, kind, bits, lip);
+  if (uCloud.x <= 0. || inShade || ((bits & 8) != 0 && kind < 2)) return c;
+  return c * mix(vec3(1.), vec3(.74, .78, .9), cloud(floor(vGround.xy - uSun.xy * max(vGround.z, 0.)) / uCell + uCloudO));
 }`;
   function create(cfg) {
     const N = cfg.size, side = TOR * N, slots = new Map(), blank = new Uint8Array(N * N * 4);
     let tex = null, cast = null;
     const slot = (cx, cy) => (((cy % TOR) + TOR) % TOR) * TOR + ((cx % TOR) + TOR) % TOR;
-    // A chunk's heights, made with its faces: a tile's highest top (+ 32768, low byte first), blue: water
+    // A chunk's heights, made with its faces: a tile's highest top (+ 32768, low byte first), blue: water, alpha: that top's shape
     function tops(ch, host) {
       const px = ch.tops || (ch.tops = new Uint8Array(N * N * 4)); let most = -1e9;
       for (let ly = 0, i = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++, i += 4) {
         const x = ch.cx * N + lx, y = ch.cy * N + ly, c = host.column(x, y), wet = !!c && host.water(x, y), v = c ? (wet ? 0 : c[c.length - 1]) + 32768 : 0;
-        px[i] = v & 255; px[i + 1] = v >> 8; px[i + 2] = wet ? 255 : 0; px[i + 3] = 255;
+        px[i] = v & 255; px[i + 1] = v >> 8; px[i + 2] = wet ? 255 : 0; px[i + 3] = c && !wet ? host.shape(x, y, c[c.length - 1]) : 0;
         if (c) most = Math.max(most, v - 32768);
       }
       ch.most = most; ch.lit = false;
@@ -130,7 +196,8 @@ vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
       gl.uniform3f(u.uShade, sun.shade[0], sun.shade[1], sun.shade[2]); gl.uniform1f(u.uTor, side); gl.uniform1f(u.uTopMax, most); gl.uniform1f(u.uLo, cfg.levels[0]);
       const glass = sun.glass && sun.glass.alpha > 0 ? sun.glass : null;
       gl.uniform4f(u.uGlass, glass ? glass.alpha : 0, glass ? glass.wave : 0, 0, glass ? glass.ripple : 0);
-      gl.uniform1f(u.uCastOn, sun.cast ? 1 : 0); gl.uniform1f(u.uLand, sun.land === false ? 0 : 1);
+      gl.uniform1f(u.uCastOn, sun.cast ? 1 : 0); gl.uniform1f(u.uLand, sun.land === false ? 0 : 1); gl.uniform1f(u.uFire, sun.fire || 0); gl.uniform2f(u.uDepth, sun.depth ? sun.depth[0] : 0, sun.depth ? sun.depth[1] : 0);
+      const cl = sun.cloud || null; gl.uniform4f(u.uCloud, cl ? cl.k : 0, cl ? cl.drift[0] : 0, cl ? cl.drift[1] : 0, 0);
       if (sun.cast) {
         const a = sun.castAt || {x: 0, y: 0, scale: v.w / sun.cast.width}; gl.uniform3f(u.uCastAt, a.x, a.y, a.scale);
         const lv = sun.castLevels || [-1e4, 1e4]; gl.uniform2f(u.uCastLv, lv[0], lv[1]);
@@ -142,10 +209,22 @@ vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
     // Before a chunk's faces: where it is in the ring (px of paint), and the ripple's place at its rows
     function at(gl, u, v, cx, cy) {
       const T = N * cfg.cell, g = v.sun && v.sun.glass;
-      gl.uniform2f(u.uTorO, (((cx % TOR) + TOR) % TOR) * T, (((cy % TOR) + TOR) % TOR) * T);
+      gl.uniform2f(u.uTorO, (((cx % TOR) + TOR) % TOR) * T, (((cy % TOR) + TOR) % TOR) * T); gl.uniform2f(u.uCloudO, Math.floor(cx / TOR) * TOR * N, Math.floor(cy / TOR) * TOR * N);
       if (g) gl.uniform1f(u.uRip, (g.phase + Math.floor(cy / TOR) * TOR * T * g.wave) % (Math.PI * 2));
     }
     return {tops, drop, frame, at};
   }
-  return {create, FS, TOR};
+  // The clouds' field as the land has it (the GLSL above, number for number): how dark a cloud's shadow is on the
+  // ground at (x, y), tiles; c: the view's sun.cloud
+  const hash = (x, y) => { let n = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return ((n ^ (n >>> 16)) & 65535) / 65535; };
+  function noise(x, y) {
+    const ix = Math.floor(x), iy = Math.floor(y), s = (v) => v * v * (3 - 2 * v), fx = s(x - ix), fy = s(y - iy), a = hash(ix, iy), b = hash(ix, iy + 1);
+    return a + (hash(ix + 1, iy) - a) * fx + (b + (hash(ix + 1, iy + 1) - b) * fx - a - (hash(ix + 1, iy) - a) * fx) * fy;
+  }
+  function cloud(c, x, y, cell) {
+    const wx = Math.floor(x * cell) / cell * .055 + c.drift[0], wy = Math.floor(y * cell) / cell * .055 + c.drift[1];
+    const n = noise(wx, wy) * .55 + noise(wx * 2.1 + 7.3, wy * 2.1 + 7.3) * .3 + noise(wx * 4.3 + 1.7, wy * 4.3 + 1.7) * .15, q = Math.max(0, Math.min(1, (n - .5) / .14));
+    return q * q * (3 - 2 * q) * c.k;
+  }
+  return {create, FS, TOR, cloud};
 })();

@@ -1,7 +1,7 @@
 // Shaders (the settings' Shaders page): "add nice shaders in the settings menu, like minecraft shaders". The game is
 // painted on a 2D canvas; a shader takes that finished picture each frame and repaints it on a WebGL canvas laid
 // exactly over it (#fx): bright things glow (lamps and fires at night, water's light, snow), the colours are graded,
-// cloud shadows drift over the land, the corners darken. The 2D canvas under it is untouched: Off, and it is as before.
+// the corners darken (the clouds' shadows are the land's own: vox_light.js, sunland.js). The 2D canvas under it is untouched: Off, and it is as before.
 // The interface is not on the canvas, so no shader touches it.
 //   A shader is a row of SHADERS: how much of each effect. Strength takes all of it from none (0) to as written (100).
 //   The passes: bright parts to a quarter-size picture, blurred twice (a tight glow, then a wide one), then the final one.
@@ -36,8 +36,8 @@ const Shader = (() => {
       c += (texture2D(uA, uv + uStep * 1.385).rgb + texture2D(uA, uv - uStep * 1.385).rgb) * .316;
       c += (texture2D(uA, uv + uStep * 3.231).rgb + texture2D(uA, uv - uStep * 3.231).rgb) * .0703;
       gl_FragColor = vec4(c, 1.); }`;
-  const FINAL = HEAD + `uniform sampler2D uB, uC; uniform vec2 uRes, uOrigin; uniform vec3 uTint;
-    uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uCloud, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK, uWater, uDay, uRays;
+  const FINAL = HEAD + `\n#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#endif\nuniform sampler2D uB, uC; uniform vec2 uRes, uOrigin; uniform vec3 uTint;
+    uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK, uWater, uDay, uRays;
     uniform sampler2D uW; uniform vec3 uSky, uSun; uniform vec2 uRayDir, uRayFrom; uniform vec4 uBend;
     float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
@@ -52,16 +52,9 @@ const Shader = (() => {
       vec2 off = vec2(uShift / uRes.x, 0.);
       vec3 c = vec3(texture2D(uA, q + off).r, texture2D(uA, q).g, texture2D(uA, q - off).b), g = texture2D(uB, q).rgb * .6 + texture2D(uC, q).rgb * .7;
       vec2 px = vec2(q.x, 1. - q.y) * uRes, wpx = px;
-      // (the curved world, curve.js; uBend: where the bend starts, the horizon, its stretch, on: what is locked to the land is
-      // where the land is drawn: its place in the flat picture found back from the bend; over the horizon is sky: no
-      // cloud's shadow)
-      float land = 1.;
-      if (uBend.w > .5 && px.y < uBend.x) { float d = uBend.x - uBend.y, r = (uBend.x - px.y) / d; land = step(r, 1.); wpx.y = uBend.x - 2. * d * (1. - sqrt(max(0., 1. - r))); }
-      if (uCloud * land > 0.) {                                       // cloud shadows: fixed to the land, an art pixel at a time, drifting east
-        vec2 w = floor((wpx - uOrigin) / uTile * 16.) / 16. * .055 + vec2(-uT * .011, uT * .004);
-        float n = noise(w) * .55 + noise(w * 2.1 + 7.3) * .3 + noise(w * 4.3 + 1.7) * .15;
-        c *= mix(vec3(1.), vec3(.74, .78, .9), smoothstep(.5, .64, n) * uCloud);
-      }
+      // (the curved world, curve.js; uBend: where the roll starts, the horizon, -, on: the light on the water is locked
+      // to the land: its place in the flat picture is found back from the roll, the inverse of vox_curve.js (water lies at height 0))
+      if (uBend.w > .5 && px.y < uBend.x) { float d = uBend.x - uBend.y, r = (uBend.x - px.y) / d; wpx.y = uBend.x - 2. * d * (1. - sqrt(max(0., 1. - r))); }
       // Water (sun.js gives where it is seen): the sky's colour of the hour lies in it, clouds pass over it, and the
       // sun (the moon) glitters on it, a pixel of the land at a time, in drifting patches
       float wet = uWater > 0. ? texture2D(uW, q).r * uWater : 0.;
@@ -174,7 +167,6 @@ const Shader = (() => {
         gl.uniform3f(u.uSky, sky[0] / 255, sky[1] / 255, sky[2] / 255);
         gl.uniform1f(u.uRays, plain && !under ? .17 * k * low * Math.min(1, day * 1.4) * opt("rays") / 100 : 0);
         gl.uniform2f(u.uRayDir, (way < 0 ? -1 : 1) * .84, .54); gl.uniform2f(u.uRayFrom, way < 0 ? 1 : 0, 0);
-        gl.uniform1f(u.uCloud, !under ? Math.min(1, .85 * k * day * opt("clouds") / 100) : 0);
       });
     } catch (e) { bad = true; if (el) el.style.display = "none"; console.warn("shader: off (" + e.message + ")"); }
   }
@@ -193,6 +185,14 @@ const Shader = (() => {
     wg.setTransform(DPR, 0, 0, DPR, 0, 0); wg.imageSmoothingEnabled = false;
     home = ctx; ctx = wg;
   }
+  // How dark the clouds' shadows are now (0: none: no shader, night, or you are under a roof). The land draws them
+  // at its height (sunland.js hands this to the engine) and what stands is as dark as its ground (Sun.shade).
+  function clouds() {
+    const look = SHADERS[opt("shader")]; if (!look || bad) return 0;
+    const tint = lightAt(clock.phase || 0), day = 1 - Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36);
+    const under = typeof myAt !== "undefined" && myAt && typeof coveredAt === "function" && coveredAt(myAt.x, myAt.y, myAt.z);
+    return under ? 0 : Math.min(1, .85 * opt("shaderk") / 100 * day * opt("clouds") / 100);
+  }
   const layers = () => [el, words].filter((c) => c && c.style.display === "block");      // (zoom.js: they glide with the picture)
-  return {frame, over, layers, get el() { return el; }, get words() { return words; }, get works() { return !bad; }};
+  return {frame, over, layers, clouds, get el() { return el; }, get words() { return words; }, get works() { return !bad; }};
 })();
