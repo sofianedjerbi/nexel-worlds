@@ -12,6 +12,7 @@ def test_a_stair_dug_under_a_hill_is_a_burrow_in_the_bank_not_floors_lying_on_th
     on the hill. "everything should have the same view ! ... an unique 'player is hided, xray on' view": under a hill
     as under the meadow you are seen through what hides you, and the stair's floors are of the place you are in, each
     at its own depth: earth on the screen, there, under you and over you."""
+    game.js("setOpt('depth', false)")                         # (the land as it is painted: these colours and shades were measured with no sun; the land's depth has its own tests)
     game.clear_area(12)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)
@@ -85,6 +86,7 @@ def test_light_is_one_shade_under_a_roof_no_edge_along_the_tunnel(game):
     a flat shade darker from the roof's edge on, a line down the wall where the roof starts, and a stair of light and
     dark along the floor. Under a roof the land has one shade, a cave's own dark (vox_engine.js): the tunnel's floor
     is the same all along, and darker than the same floor under the sky at the stair's foot."""
+    game.js("setOpt('depth', false)")                         # (the land as it is painted: these colours and shades were measured with no sun; the land's depth has its own tests)
     game.clear_area(14)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)

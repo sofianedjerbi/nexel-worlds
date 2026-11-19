@@ -14,6 +14,7 @@ def at_row(game, name):
 
 
 def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
+    game.js("setOpt('depth', false)")                         # (the land as it is painted, to tell a shader's sun from: the land's depth, on by default, has its own tests)
     assert game.js("[opt('shader'), !!Shader.el, Sun.shades()]") == ["off", False, False]            # nothing of it until asked for
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab")
     assert game.js("[...document.querySelectorAll('#menu .row .name')].map((e) => e.textContent)") == ["Shader", "Strength", "Glow", "Shadows", "Shadow length", "Land shadows", "Water reflections", "Light on water", "Sun rays", "Cloud shadows", "Dark corners"]
@@ -40,6 +41,7 @@ def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
 
 
 def test_a_shader_gives_things_a_shadow_that_follows_the_sun_and_a_reflection_in_water(game):
+    game.js("setOpt('depth', false)")                         # (the land as it is painted, to tell a shader's sun from: the land's depth, on by default, has its own tests)
     game.clear_area(8)
     game.stamp(-6, -1, ["...........", ".T.........", "~~~~~~~~~~~", "~~~~~~~~~~~", "..........."])      # a tree, a pond under it
     x, y = game.pos()

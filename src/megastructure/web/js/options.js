@@ -19,6 +19,7 @@ const OPT_DEFAULT = {
   shimmer: true,          // the water's moving light and small waves
   curve: "far",           // the ground bends away to a horizon, with a sky over it (curve.js): off (the flat picture), near, far
   floats: true,           // hearts lost, things gained, written over heads
+  depth: true,            // the land's depth: the sun's shadows, shade at a wall's foot, higher land lighter (sunland.js, vox_light.js); off: the land as it is painted
   // shaders (shader.js): which look (off, or a key of SHADERS), how much of it, how much glow, cloud shadows, dark corners
   shader: "off", shaderk: 100, glow: 100, clouds: 100, corners: 100,
   // (sun.js: what stands throws a shadow, and is seen in the water. Each is how much of it, 0 to 200: 0 is none)

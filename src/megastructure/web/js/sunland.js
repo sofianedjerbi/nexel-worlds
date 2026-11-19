@@ -1,8 +1,8 @@
-// The sun on the land (the second half of sun.js; the engine's side is vox_light.js). With a shader on, the frame hands
+// The sun on the land (the second half of sun.js; the engine's side is vox_light.js). With the land's depth on (the settings' Picture page, on by default) or a shader, the frame hands
 // the engine, before the land is drawn, where the sun is and a picture of the shadows of what stands: each lying flat
 // on the level its foot is on, that level written in its px. The land takes each where it truly falls: on its own
 // level, down a cliff, up a step, never over a wall. (They were laid flat over the finished picture.)
-//   Sun.cast   render.js, before the land: what the engine is to know of the sun (voxels.js), null with no shader
+//   Sun.cast   render.js, before the land: what the engine is to know of the sun (voxels.js), null with neither
 //   Sun.shade  render.js, after what stands is drawn: the land's shadow on what stands in it
 // By a fire at night what stands near it is lit by the fire: its shadow lies away from the fire, longer the further
 // it stands, in the same picture (its px say so: the land takes it on its own level, as dark as a fire's is).
@@ -27,11 +27,10 @@ const SunLand = (() => {
   function cast(list, vis, sx, sy0, S, t, now) {
     const sy = sy0.bent ? Curve.sy(sy0.base, S, true) : sy0, north = sy0.bent ? Math.ceil(Curve.over() / zoom) * zoom : 0;
     fires = []; sunNow = null;
-    // (DEPTH, relief.js: looks of the land being tried, with no shader. 1: the sun's shadows always; 2: a wall's foot
-    // darker, a top's edge lighter; 3: height as light; 5: all three. The engine draws 2 and 3: vox_light.js)
-    const on = !!SHADERS[opt("shader")] && opt("shaderk") > 0, look = [0, 0, 1, 2, 0, 3][DEPTH] || 0, me = ents.get("agent" + myId), eye = me ? Math.round(liftOf(me) / zoom / RELIEF_STEP) : 0;
-    if (!on && (DEPTH === 2 || DEPTH === 3)) return sunNow = {dir: [0, .45], alpha: 0, shade: [0, 0, 0], cast: null, land: false, depth: [look, eye]};
-    if (!on && DEPTH !== 1 && DEPTH !== 5) return null;
+    // (the land's depth, the settings' Picture page: the sun's shadows and the land's own shade, with no shader too.
+    // A shader adds the clouds, what is seen in the water, its glow and colours: shader.js, Sun.draw)
+    const on = !!SHADERS[opt("shader")] && opt("shaderk") > 0, depth = !!opt("depth");
+    if (!on && !depth) return null;
     try {
       const {dark, much, long, alpha, kx, ky} = hour(), land = !!opt("landshade");
       if (dark > .35 && opt("shadows")) {                       // (the fires, on the flat picture)
@@ -72,7 +71,7 @@ const SunLand = (() => {
         if (n) { pic = (kept ? all : one).canvas; at = {x: x0, y: y0, scale: z}; }
       }
       const c = SHADE.color, glass = on ? Math.min(.95, GLASS.alpha * opt("reflect") / 100) : 0, clouds = Shader.clouds();
-      return sunNow = {dir: [kx, ky], alpha: opt("shadows") ? alpha : 0, shade: [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255), cast: pic, castAt: at, castLevels: [lo, hi], land, depth: [look, eye],
+      return sunNow = {dir: [kx, ky], alpha: opt("shadows") ? alpha : 0, shade: [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255), cast: pic, castAt: at, castLevels: [lo, hi], land, depth,
         fire: Math.min(.9, SHADE.byFire * dark * much),            // (how dark a fire's shadow is)
         cloud: clouds > 0 ? {k: clouds, drift: [-t * .011, t * .004]} : null,      // (the clouds' shadows: on the land at its height; on what stands: `shade`)
         glass: glass > 0 ? {alpha: glass, wave: GLASS.wave, ripple: GLASS.ripple, phase: (t * GLASS.speed) % (Math.PI * 2)} : null};

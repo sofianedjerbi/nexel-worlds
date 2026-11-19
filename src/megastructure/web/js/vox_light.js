@@ -30,7 +30,7 @@ const VoxLight = (() => {
   const TOR = 16;
   // (vGround: where the px is, px of paint in the ring, and its height in px; vFlat: on the screen, were it flat)
   const FS = `
-uniform sampler2D uTops, uCast; uniform vec4 uSun, uGlass, uCloud; uniform vec3 uCastAt, uShade; uniform vec2 uCastLv, uCloudO; uniform float uTor, uTopMax, uCastOn, uRip, uLo, uLand, uFire; uniform vec2 uDepth;
+uniform sampler2D uTops, uCast; uniform vec4 uSun, uGlass, uCloud; uniform vec3 uCastAt, uShade; uniform vec2 uCastLv, uCloudO; uniform float uTor, uTopMax, uCastOn, uRip, uLo, uLand, uFire, uDepth;
 in vec3 vGround;
 bool inShade;                                                  // (lit: this px is in a shadow: no cloud's shadow on it too)
 vec4 tileAt(vec2 tile) { return texelFetch(uTops, ivec2(mod(tile, uTor)), 0); }
@@ -41,18 +41,19 @@ bool capped(vec2 p, vec2 tile, float id) { vec2 l = clamp((p - tile) * uCell, 0.
 // from p (tiles) at level z0 toward the sun (d: tiles a level up): does the land stand in the way?
 // A block's top level is its cap's shape (rounded corners, sides set in), under it the whole square. Only a wall
 // throws a shadow: land that stands two levels or more over the tile before it on the line. Steps of one level are a
-// slope, not a ladder of bands (the sun is steeper than any stair): the first of them darkens its foot, four px at the most.
-// (off: px the spot was moved to get to p: a px that goes on under the wall beside it is that much nearer its foot)
-bool shaded(vec2 p, float z0, vec2 d, float off) {
+// slope, not a ladder of bands (the sun is steeper than any stair): they throw none (a strip of four px at each one's
+// foot was a row of dashes up a stair at evening, and dark squares in the inner corners of terraces; the foot of a
+// step has its shade from the land's depth: deep, below).
+bool shaded(vec2 p, float z0, vec2 d) {
   if (z0 >= uTopMax) return false;
   vec2 tile = floor(p), st = sign(d), inv = 1. / max(abs(d), 1e-6), tm = mix(p - tile, tile + 1. - p, step(0., d)) * inv;
-  float own = ceil(z0 - .01), was = own;
+  float was = ceil(z0 - .01);
   for (int i = 0; i < 20; i++) {
-    float t, run;                                               // (run: px of ground a level, square to the side it comes in by)
-    if (tm.x < tm.y) { t = tm.x; tm.x += inv.x; tile.x += st.x; run = abs(d.x) * uCell; } else { t = tm.y; tm.y += inv.y; tile.y += st.y; run = abs(d.y) * uCell; }
+    float t;
+    if (tm.x < tm.y) { t = tm.x; tm.x += inv.x; tile.x += st.x; } else { t = tm.y; tm.y += inv.y; tile.y += st.y; }
     if (z0 + t >= uTopMax) return false;
     vec4 at = tileAt(tile); float h = high(at), id = floor(at.a * 255. + .5), t1 = min(h - z0, min(tm.x, tm.y)), rise = h - was; was = h;
-    if (h <= z0 + t + .02 || (rise < 1.5 && (h - own > 1.5 || t * run + off > 4.))) continue;
+    if (h <= z0 + t + .02 || rise < 1.5) continue;
     if (id > 0. && z0 + t > h - 1. && !capped(p + d * (t + .001), tile, id) && !capped(p + d * (t + t1) * .5, tile, id) && !capped(p + d * (t1 - .001), tile, id)) continue;
     return true;
   }
@@ -71,8 +72,7 @@ vec3 lit(vec3 c, vec3 plain, int kind, int bits, float lip) {
   if (uSun.w < .5 || ((bits & 8) != 0 && kind < 2)) return c;
   vec2 g = (floor(vGround.xy) + .5) / uCell, d = -uSun.xy * uUp / uCell; float z0 = vGround.z / uUp, far = uCell - .01;
   // (a top, the water: a px that goes on under the block beside it is asked for at its own tile's edge: at that wall's foot)
-  float off = 0.;
-  if (kind == 0 || kind == 2) { vec2 at = floor(vLoc - 8.) + .5, in_ = clamp(at, vec2(.5), vec2(uCell - .5)); off = length(at - in_); g = (vGround.xy - vLoc + 8. + in_) / uCell; }
+  if (kind == 0 || kind == 2) { vec2 at = floor(vLoc - 8.) + .5, in_ = clamp(at, vec2(.5), vec2(uCell - .5)); g = (vGround.xy - vLoc + 8. + in_) / uCell; }
   if (kind == 2 && uGlass.x > 0.) {                             // the land north of the water, in it
     vec2 at = vec2(floor(vGround.x) + .5 - floor(sin(floor(vGround.y) * uGlass.y + uRip) * uGlass.w + .5), floor(vGround.y) + .5), tile = floor(at / uCell);
     for (int k = 1; k <= 5; k++) {
@@ -95,7 +95,7 @@ vec3 lit(vec3 c, vec3 plain, int kind, int bits, float lip) {
     if (abs(uSun.x) > .2 && (uSun.x > 0.) == east) { if ((bits & 2) == 0) return c; dark = true; }      // (it faces away: in its own shadow. A wall of one level shows too little of its side: it stays as painted)
     else g.x = east ? floor(g.x) + 1. + .5 / uCell : floor(g.x) - .5 / uCell;
   }
-  if (!dark && uLand > .5 && uSun.z > 0.) { dark = shaded(g, z0, d, off); if (dark && kind == 2) much *= .5; }      // (the land's shadow on water: half, the water shows the land in it there)
+  if (!dark && uLand > .5 && uSun.z > 0.) { dark = shaded(g, z0, d); if (dark && kind == 2) much *= .5; }      // (the land's shadow on water: half, the water shows the land in it there)
   if (!dark && uCastOn > .5) {
     float by = 0.;
     if (kind == 7) by = texture(uCast, (vFlat - uCastAt.xy) / (vec2(textureSize(uCast, 0)) * uCastAt.z)).a > .25 ? 1. : 0.;
@@ -123,39 +123,49 @@ vec3 lit(vec3 c, vec3 plain, int kind, int bits, float lip) {
 float chash(ivec2 q) { uint n = uint(q.x) * 374761393u + uint(q.y) * 668265263u; n = (n ^ (n >> 13u)) * 1274126177u; return float((n ^ (n >> 16u)) & 65535u) / 65535.; }
 float cnoise(vec2 q) { ivec2 i = ivec2(floor(q)); vec2 f = fract(q); f = f * f * (3. - 2. * f);
   return mix(mix(chash(i), chash(i + ivec2(1, 0)), f.x), mix(chash(i + ivec2(0, 1)), chash(i + ivec2(1, 1)), f.x), f.y); }
-float cloud(vec2 w) { w = w * .055 + uCloud.yz; return smoothstep(.5, .64, cnoise(w) * .55 + cnoise(w * 2.1 + 7.3) * .3 + cnoise(w * 4.3 + 1.7) * .15) * uCloud.x; }
-// Looks of the land being tried (uDepth: which, and the level of the eye). 2: height as light: a level over the eye a
-// little brighter and warmer, under it darker and cooler, and a wall's front in three steps down to its foot.
-// 1: the ground at a wall's foot darker for three px (north, west, east of it: the higher the wall the darker; and
-// where a higher block stands in front, just over its far edge), an inner corner darker still; a top's last row of
-// ground before a drop lighter. Each one multiply of the paint.
-vec3 deep(vec3 c, int kind, int bits, float lip) {
-  int mode = int(uDepth.x + .5); float z = vGround.z / uUp, w;
-  if (mode == 0 || ((bits & 8) != 0 && kind < 2) || kind > 4) return c;
-  vec2 o = kind == 0 ? (vGround.xy - vLoc + 8.) / uCell : floor(vec2(vGround.x, vGround.y - .5) / uCell), tile = floor(o + .5), l = floor(vLoc - 8.);
-  float L = kind == 0 ? ceil(z - .01) : topAt(tile, w);
-  if ((mode & 2) != 0 && kind != 2) {                         // (not the water: it is the sky's)
-    float dz = clamp(L - uDepth.y, -5., 5.);
-    c *= dz > 0. ? vec3(1. + .04 * dz, 1. + .034 * dz, 1. + .01 * dz) : vec3(1. + .05 * dz, 1. + .042 * dz, 1. + .02 * dz);
-    if (kind == 1 || (kind == 0 && lip >= 0.)) { float F = topAt(tile + vec2(0., 1.), w), f = ((kind == 0 ? L - .1 : z) - F) / max(L - F, 1.); c *= f > .66 ? 1. : f > .33 ? .92 : .84; }
-  }
-  if ((mode & 1) != 0 && kind == 0 && (bits & 128) == 0 && lip < 0.) {
-    float a = 0., n = topAt(tile + vec2(0., -1.), w) - L, we = topAt(tile + vec2(-1., 0.), w) - L, ea = topAt(tile + vec2(1., 0.), w) - L, so = topAt(tile + vec2(0., 1.), w) - L;
-    if (n > 0. && l.y < 3.) a += (.75 + .25 * min(n, 3.)) * (.3 - .1 * max(l.y, 0.));
-    if (we > 0. && l.x < 3.) a += (.75 + .25 * min(we, 3.)) * (.3 - .1 * max(l.x, 0.));
-    if (ea > 0. && l.x > uCell - 4.) a += (.75 + .25 * min(ea, 3.)) * (.3 - .1 * (uCell - 1. - min(l.x, uCell - 1.)));
-    // (a higher block in front: the two px of this ground just over its far edge, and two more under its cap's own rim)
-    for (int k = 1; k <= 3; k++) { float h = topAt(tile + vec2(0., float(k)), w) - L, gap = float(k) * uCell - h * uUp - l.y + 1.; if (h > 0. && gap >= 0. && gap < 4.) a += (.75 + .25 * min(h, 3.)) * (gap < 3. ? .26 : .12); }
-    c *= mix(vec3(1.), vec3(.5, .52, .66), min(a, .7));
-    if (a == 0. && ((so < 0. && lip == -1.) || (we < 0. && l.x == 2.) || (ea < 0. && l.x == uCell - 3.))) c = min(c * 1.12, vec3(1.));
-  }
-  return c;
+// (px: the px of paint on the ground. Three shades only, none, half, whole, and one px in two between two of them:
+// a cloud's shadow has an edge of whole px, as every shadow has; it was a smooth stain)
+float cloud(vec2 px) { vec2 w = px / uCell * .055 + uCloud.yz; float s = smoothstep(.5, .64, cnoise(w) * .55 + cnoise(w * 2.1 + 7.3) * .3 + cnoise(w * 4.3 + 1.7) * .15) * 2.;
+  return floor(s + (mod(px.x + px.y, 2.) < .5 ? .67 : .33)) * .5 * uCloud.x; }
+// The land's depth (uDepth: on), with or without the sun: each a multiply of the land's own paint, never another paint.
+//   Height as light: a level of the world a little brighter and warmer than the one under it, from level 0 (as it is
+//     painted) up to level 6, and under level 0 darker and cooler down to four levels (a deep pit's floor is darker than a shallow one's); a wall's front by the height of each of its px, so it darkens down to its foot a level at
+//     a time, as its sheet's bands go. By the world's height, not the eye's: nothing changes as you climb.
+//   A face's side: a front (it faces south) a little darker than a top; a wall's side that faces west or east lighter
+//     toward the sun and darker away from it, by how far to that side the sun is (none at noon): all of a side one face.
+//   Contact shade: the ground at the foot of higher land north, west or east of it darker for three px (the higher the
+//     wall the darker; west and east: from the foot of the wall's bank), an inner corner darker still.
+// Under a roof only the height; not the water (it is the sky's), not what floats. contact: with the shade (a px in a shadow has
+// none: a shadow is dark once).
+vec3 deep(vec3 c, int kind, int bits, float lip, bool contact) {
+  if (uDepth < .5 || kind == 2 || kind > 4) return c;
+  float z = vGround.z / uUp, w, lv = kind == 0 ? ceil(z - .01) : floor(z + .01), up = clamp(lv, 0., 6.), down = clamp(-lv, 0., 4.);
+  if ((bits & 136) != 0) down = 0.;                             // (under a roof the place has its own dark: darker again by its depth, a floor was the colour of the earth cut round it)
+  c *= (vec3(1.) + vec3(.013, .012, .009) * up) * (vec3(1.) - vec3(.05, .05, .042) * down);
+  if (!contact || (bits & 128) != 0 || ((bits & 8) != 0 && kind < 2)) return c;      // (under a roof: its height only, no side to the sun, no shade at a foot: the place has its own dark)
+  if (kind == 1 || (kind == 0 && lip >= 0.)) return c * vec3(.88, .89, .93);      // (a front, and a top's own lip of wall)
+  if (kind > 2) { float s = clamp(((bits & (kind == 3 ? 1 : 32)) != 0 ? -uSun.x : uSun.x) * 2.5, -1., 1.); return c * (s > 0. ? vec3(1. + .05 * s) : vec3(1.) + vec3(.22, .21, .15) * s); }
+  vec2 tile = floor((vGround.xy - vLoc + 8.) / uCell + .5), l = floor(vLoc - 8.);
+  float L = ceil(z - .01), a = 0., n = topAt(tile + vec2(0., -1.), w) - L, we = topAt(tile + vec2(-1., 0.), w) - L, ea = topAt(tile + vec2(1., 0.), w) - L;
+  // (px from the wall's foot: a front's foot is uInset px in from its tile's edge, and so are its two ends where the wall ends)
+  float dn = l.y + uInset, dw = (bits & 2) != 0 ? l.x - (vMore.x - 8.) : l.x + uInset, de = (bits & 4) != 0 ? uCell - 1. - l.x - (vMore.y - 8.) : uCell - 1. - l.x + uInset;
+  // (a px that goes on under a wall, round the corner of its foot, is drawn by the tile on the corner's other side too,
+  // at the same depth: there neither takes any, so the two are one colour as they are painted)
+  float nw = topAt(tile + vec2(-1., -1.), w) - L, ne = topAt(tile + vec2(1., -1.), w) - L, T = uCell - 6.;
+  bool ends = (l.x < uInset && we <= 0. && nw <= 0.) || (l.x >= uCell - uInset && ea <= 0. && ne <= 0.);
+  if ((l.y < 0. && ((l.x < 6. && nw <= 0.) || (l.x >= T && ne <= 0.))) || (l.x < 0. && ((l.y < 6. && nw <= 0.) || (l.y >= T && topAt(tile + vec2(-1., 1.), w) <= L)))
+    || (l.x >= uCell && ((l.y < 6. && ne <= 0.) || (l.y >= T && topAt(tile + vec2(1., 1.), w) <= L)))) return c;
+  if (n > 0. && dn < 3. && !ends) a = (.75 + .25 * min(n, 3.)) * (.3 - .1 * max(dn, 0.));
+  bool low = l.y >= uCell - uInset;                             // (a wall's side ends uInset px short of its tile's south edge, where no wall goes on south of it)
+  if (we > 0. && dw < 3. && !(low && topAt(tile + vec2(-1., 1.), w) <= L)) a = max(a, (.75 + .25 * min(we, 3.)) * (.3 - .1 * max(dw, 0.))) + min(a, .08);
+  if (ea > 0. && de < 3. && !(low && topAt(tile + vec2(1., 1.), w) <= L)) a = max(a, (.75 + .25 * min(ea, 3.)) * (.3 - .1 * max(de, 0.))) + min(a, .08);
+  return c * mix(vec3(1.), vec3(.55, .55, .62), min(a, .6));      // (two walls' shade is the darker of the two and a little more in their corner, not their sum: a narrow trench's floor is not a slab of grey)
 }
 vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
-  c = deep(c, kind, bits, lip); plain = deep(plain, kind, bits, lip);
+  c = deep(c, kind, bits, lip, true); plain = deep(plain, kind, bits, lip, false);
   inShade = false; c = lit(c, plain, kind, bits, lip);
   if (uCloud.x <= 0. || inShade || ((bits & 8) != 0 && kind < 2)) return c;
-  return c * mix(vec3(1.), vec3(.74, .78, .9), cloud(floor(vGround.xy - uSun.xy * max(vGround.z, 0.)) / uCell + uCloudO));
+  return c * mix(vec3(1.), vec3(.74, .78, .9), cloud(floor(vGround.xy - uSun.xy * max(vGround.z, 0.)) + uCloudO * uCell));
 }`;
   function create(cfg) {
     const N = cfg.size, side = TOR * N, slots = new Map(), blank = new Uint8Array(N * N * 4);
@@ -177,7 +187,7 @@ vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
     function frame(gl, u, v, chunks) {
       const sun = v.sun || null;
       gl.uniform4f(u.uSun, sun ? sun.dir[0] : 0, sun ? sun.dir[1] : 0, sun ? sun.alpha : 0, sun ? 1 : 0);
-      gl.uniform1i(u.uTops, 7); gl.uniform1i(u.uCast, 8);
+      gl.uniform1i(u.uTops, 7); gl.uniform1i(u.uCast, 8); gl.uniform1f(u.uDepth, sun && sun.depth ? 1 : 0);
       if (!sun) return;
       gl.activeTexture(gl.TEXTURE7);
       if (!tex) {
@@ -196,7 +206,7 @@ vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
       gl.uniform3f(u.uShade, sun.shade[0], sun.shade[1], sun.shade[2]); gl.uniform1f(u.uTor, side); gl.uniform1f(u.uTopMax, most); gl.uniform1f(u.uLo, cfg.levels[0]);
       const glass = sun.glass && sun.glass.alpha > 0 ? sun.glass : null;
       gl.uniform4f(u.uGlass, glass ? glass.alpha : 0, glass ? glass.wave : 0, 0, glass ? glass.ripple : 0);
-      gl.uniform1f(u.uCastOn, sun.cast ? 1 : 0); gl.uniform1f(u.uLand, sun.land === false ? 0 : 1); gl.uniform1f(u.uFire, sun.fire || 0); gl.uniform2f(u.uDepth, sun.depth ? sun.depth[0] : 0, sun.depth ? sun.depth[1] : 0);
+      gl.uniform1f(u.uCastOn, sun.cast ? 1 : 0); gl.uniform1f(u.uLand, sun.land === false ? 0 : 1); gl.uniform1f(u.uFire, sun.fire || 0);
       const cl = sun.cloud || null; gl.uniform4f(u.uCloud, cl ? cl.k : 0, cl ? cl.drift[0] : 0, cl ? cl.drift[1] : 0, 0);
       if (sun.cast) {
         const a = sun.castAt || {x: 0, y: 0, scale: v.w / sun.cast.width}; gl.uniform3f(u.uCastAt, a.x, a.y, a.scale);
@@ -222,9 +232,9 @@ vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
     return a + (hash(ix + 1, iy) - a) * fx + (b + (hash(ix + 1, iy + 1) - b) * fx - a - (hash(ix + 1, iy) - a) * fx) * fy;
   }
   function cloud(c, x, y, cell) {
-    const wx = Math.floor(x * cell) / cell * .055 + c.drift[0], wy = Math.floor(y * cell) / cell * .055 + c.drift[1];
+    const px = Math.floor(x * cell), py = Math.floor(y * cell), wx = px / cell * .055 + c.drift[0], wy = py / cell * .055 + c.drift[1];
     const n = noise(wx, wy) * .55 + noise(wx * 2.1 + 7.3, wy * 2.1 + 7.3) * .3 + noise(wx * 4.3 + 1.7, wy * 4.3 + 1.7) * .15, q = Math.max(0, Math.min(1, (n - .5) / .14));
-    return q * q * (3 - 2 * q) * c.k;
+    return Math.floor(q * q * (3 - 2 * q) * 2 + ((((px + py) % 2) + 2) % 2 < .5 ? .67 : .33)) * .5 * c.k;
   }
   return {create, FS, TOR, cloud};
 })();

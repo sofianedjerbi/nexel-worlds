@@ -70,7 +70,7 @@
 //                                 its colour, cast: null or a picture of the view's size with the shadows of what
 //                                 stands, land: false for no shadows of the land itself, glass: null or {alpha, wave, ripple, phase}:
 //                                 the land seen in the water, fire: how dark a shadow marked a fire's is, cloud: null or
-//                                 {k, drift: [x, y]}: the clouds' shadows}
+//                                 {k, drift: [x, y]}: the clouds' shadows, depth: true for the land's depth}
 //     models             how many faces of models are made (the land's: faces)
 //
 //   models, what stands in the land and is not a block of it (a bridge's deck, a post): if the host has
@@ -186,11 +186,12 @@ void main() {
   }
   // under a roof: a cave's own dark. Seen from outside, at its mouth, nearly all of it; seen through the window on
   // who is in it, a third: the place is to be seen
-  if (uSec > .5) { o = vec4(((bits & 8) != 0 ? mix(c, uUnder.rgb, uUnder.a * .38) : c) * uLight, 1.); return; }      // (the faces of the cut: bit 8, in the dark of the place; else the day's light, as painted)
+  if (uSec > .5) { o = vec4(((bits & 8) != 0 ? mix(deep(c, kind, bits, -1., true), uUnder.rgb, uUnder.a * .38) : deep(c, kind, bits & ~8, -1., true)) * uLight, 1.); return; }      // (the faces of the cut: bit 8, in the dark of the place; else the day's light, with the land's depth as the wall out of doors beside them has it)
   // (vMeta.w, vox_mesh.js: under a roof, how far in from the open it is: the dark comes on inward, the ground is seen going in under an overhang;
   // out of doors, how deep down a narrow hole: darker a step at a time. A hollow over the room that is cut open: darker than that room's walls)
   if ((bits & 8) != 0 && kind < 2 && !day) c = mix(c, uUnder.rgb, uUnder.a * (other ? .8 : open || (uWin.z > 0. && distance((floor(vScr / uK) + .5) * uK, uWin.xy) < uWin.z) ? .38 : vMeta.w > 0. ? min(1., .25 + .2 * vMeta.w) : 1.));
   else if ((kind < 2 || kind == 3) && vMeta.w > 0.) c = mix(c, uUnder.rgb, uUnder.a * .15 * min(vMeta.w, 5.));
+  if (day) { o = vec4(deep(c, kind, bits & ~8, -1., true) * uLight, 1.); return; }      // (a wall of the land's in a hole lit as the day: the land's depth, and no shadow of the sun)
   o = vec4(sunlit(c, plain.r < 0. ? c : plain, kind, bits, kind == 0 && (bits & 128) == 0 ? floor(loc.y) + texelFetch(uFoot, ivec2(int(clamp(loc.x, 0., far)), int(vMore.w)), 0).g * 255. - uCell : -1.) * uLight, 1.);                 // (the sun, if the view has one: vox_light.js)
 }`;
   function create(host, cfg) {

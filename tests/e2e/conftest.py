@@ -81,6 +81,7 @@ def circle_view(game):
 def game(request, browser, server):
     """A new player, daytime, standing in the middle of a cleared 21x21 meadow with no animals nearby."""
     g = open_game(browser, server)
+    g.js("opt('depth') || setOpt('depth', true)")       # (the land's depth, on as a player has it: a test that turned it off to look at the land as painted does not leave it off for the next)
     g.clear_area()
     if request.node.path.name == "test_e2e_sound.py":     # (the music's tests were written at the old pace of this
         g.sleep(750)                                      #  set-up, 0.75 s of sleeps: the first screen's piece has receded by then)

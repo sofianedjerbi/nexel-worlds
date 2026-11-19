@@ -7,9 +7,7 @@
 // top, darker at its foot), in the colours of that layer's own sheet, the pack's ink at the very foot.
 
 // A layer is half a tile high: two layers, one tile (a cave two blocks high is as tall as you are)
-// (DEPTH: a look of the land being tried, ?depth=1..5 in the page's address: sunland.js says what each is. 0: none)
-const DEPTH = +(new URLSearchParams(location.search).get("depth") || window.DEPTH_LOOK || 0);
-const RELIEF_STEP = DEPTH === 4 ? 12 : 8;                    // art px a level
+const RELIEF_STEP = 8;                                        // art px a level
 const shOf = (L) => RELIEF_STEP * L;                          // how far up a level is drawn (a pit's, down): every layer the same step
 
 // Where a body stands in its tile, a person or a creature alike: STAND art px higher than its sheet puts it. The

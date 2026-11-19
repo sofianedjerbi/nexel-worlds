@@ -167,6 +167,7 @@ def test_a_stair_dug_down_is_cut_square_and_seen_whole_with_no_gap_as_you_walk_i
     all of its tile. And going down, it flashed at every step ("when going down/up blocks it flashes"): the steps two
     behind you were out of what is seen through. The whole stair stays seen: on the screen every step near you is
     earth, the ones over you too, not the meadow in front of it and not the dark of ground cut open."""
+    game.js("setOpt('depth', false)")                         # (the land as it is painted: these colours and shades were measured with no sun; the land's depth has its own tests)
     game.clear_area(12)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)

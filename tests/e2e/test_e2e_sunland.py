@@ -18,6 +18,7 @@ def look(game, name, wait=800):
 
 
 def test_a_cliff_throws_its_shadow_on_the_ground_away_from_the_sun(game):
+    game.js("setOpt('depth', false)")                         # (the land as it is painted, to tell a shader's sun from: the land's depth, on by default, has its own tests)
     game.flat()                                                  # (it measures parts of the picture north of you by the flat picture's px, and two frames px for px: the curved world's sky moves)
     game.clear_area(8)
     game.stamp(-1, -3, ["..", ".."], levels=["33", "33"])      # a block of land three high, north of you
@@ -43,6 +44,7 @@ def test_a_cliff_throws_its_shadow_on_the_ground_away_from_the_sun(game):
 
 
 def test_the_shadow_of_what_stands_is_not_on_a_wall_and_what_stands_in_shadow_is_in_it(game):
+    game.js("setOpt('depth', false)")                         # (the land as it is painted, to tell a shader's sun from: the land's depth, on by default, has its own tests)
     game.clear_area(8)
     x, y = game.pos()
     tx, ty = x + 3, y - 2
@@ -75,6 +77,7 @@ def test_the_shadow_of_what_stands_is_not_on_a_wall_and_what_stands_in_shadow_is
 
 
 def test_with_no_shader_and_with_no_sun_asked_for_the_land_is_as_it_is_painted(game):
+    game.js("setOpt('depth', false)")                         # (the land as it is painted, to tell a shader's sun from: the land's depth, on by default, has its own tests)
     game.flat()                                                  # (it measures parts of the picture north of you by the flat picture's px, and two frames px for px: the curved world's sky moves)
     game.clear_area(8)
     game.stamp(-4, -4, ["...", "..."], levels=["231", "220"])  # land with fronts, banks and feet, and no one on it
@@ -142,6 +145,7 @@ def far(game):
 
 
 def test_in_the_bend_a_cliff_shadows_the_ground_where_the_curve_draws_it(game):
+    game.js("setOpt('depth', false)")                         # (the land as it is painted, to tell a shader's sun from: the land's depth, on by default, has its own tests)
     game.clear_area(10)
     game.stamp(-1, -7, ["..", "..", ".."], levels=["33", "33", "33"])      # a block of land three high, in the bent part of the screen
     x, y = game.pos()
@@ -165,6 +169,7 @@ def test_in_the_bend_a_cliff_shadows_the_ground_where_the_curve_draws_it(game):
 
 
 def test_in_the_bend_a_trees_shadow_lies_at_its_foot(game):
+    game.js("setOpt('depth', false)")                         # (the land as it is painted, to tell a shader's sun from: the land's depth, on by default, has its own tests)
     game.clear_area(10)
     game.stamp(3, -5, ["T"])
     x, y = game.pos()
@@ -180,6 +185,7 @@ def test_in_the_bend_a_trees_shadow_lies_at_its_foot(game):
 
 
 def test_in_the_bend_with_no_sun_asked_for_the_land_is_as_it_is_drawn(game):
+    game.js("setOpt('depth', false)")                         # (the land as it is painted, to tell a shader's sun from: the land's depth, on by default, has its own tests)
     game.clear_area(10)
     game.stamp(-4, -7, ["...", "..."], levels=["231", "220"])
     x, y = game.pos()

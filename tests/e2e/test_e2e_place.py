@@ -166,6 +166,7 @@ def test_a_floor_stands_on_its_wall_whatever_is_under_it_and_nothing_of_the_plac
     going on east. What is open onto your room is of the place at its own height, step or no step: the tunnel three
     layers over your hole, your hole under it. (Its front, a wall under the higher floor, was painted with the cut
     through the ground; the land is blocks now.)"""
+    game.js("setOpt('depth', false)")                         # (the land as it is painted: these colours and shades were measured with no sun; the land's depth has its own tests)
     game.clear_area(12)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)

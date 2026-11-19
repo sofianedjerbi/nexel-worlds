@@ -3413,3 +3413,36 @@ agent. pay attention to the computer freezing !!". My answer was no, three times
 - Left: a body in a house's or a tree's shade is not dark; a dash at every riser's foot on terraces at
   evening; far bushes over a cliff that stands above the horizon; a busy 2 x 2 patch under a dug room's stair;
   the aim's box has no banks; from a tower the far land is not watched.
+
+## Iteration 181: the first audit said no; depth is the land's own now
+
+An agent that changed no code took its own pictures of the landed game and ranked what it saw: "Not finished, and
+not good looking as a 3D world": with no shader the land is a flat contour map, water reads as sand, holes are
+the weakest part (a shaft 8 deep looks 1 deep, an overhang is a black box, a hill you stand north of is pressed
+flat). 11 faults at a glance, 12 more on a look. Good and not to touch: the sky, the night, sprites and their
+shadows, the bridge, houses, a south cliff, the phone.
+- Holes (an agent, from the reviewer's own stagings): land is cut only for your tile and the eight round it,
+  the whole place only when you are in a hole (I had only ever tested the cut where it was needed: a hill that
+  covered nothing of you was cut too); a narrow hole's walls darken a step at a time with depth; under a roof
+  open two ways the dark comes on inward (ground is seen under an overhang); the cut fades in a 2 x 2 checker
+  of art px, not screen columns; a 1 px line where a roof was lifted. Five older tests moved their sample (the
+  cut has side walls now); one is weaker than before (meadow ahead: .9 of a tile to .5).
+- Depth, the user's pick from the mockup page ("Go with 1+2+3 ... but pay attention to weird artefacts"): with
+  no shader the land has the hour's sun (blocks shade blocks, shadows on what they hit), a front a little
+  darker, a wall's side lighter to the sun and darker away, 3 px of shade at a wall's foot (the darker of two,
+  none in a cast shadow), and a level's height as a small step of light by WORLD level. A row "Depth" turns
+  it off: then the picture is the one with all sun code removed, to the px (hash). The mockup's artefacts,
+  each taken out: the stone mountain as a lawn (it painted the grass sheet at every height), colours pumping
+  as you climb (it was relative to you), a bar floating north of a block, the edge light, the ramps on fronts,
+  the ladder of dashes on terraces. A shader adds clouds, reflections, glow, rays.
+- Found by the whole suite after the merge, and mine to fix: under a roof the height step made a deep tunnel's
+  floor (87, 70, 56) the colour of the earth cut round it: no height step under a roof (the place has its
+  own dark). A test that searched land that had not come yet: it waits.
+- Measured: 520 unit. Whole browser suite on the merged copy, two workers: 299 passed, 2 failed (the two above;
+  both pass now, with the 38 tests of the five files round them), 3 on a second try.
+- Self-critical: on the user's own mountain depth changes little: steps of one level cast nothing (I asked for
+  that, to be rid of dashes that were a bug, not a shadow). To give back: a short whole shadow a step.
+- Left, from the audit: blocks as wedding cakes (four shapes being drawn for the mockup page), water (six looks
+  on the page, waiting for the pick; a pond above sea level is mended in that copy), land squeezed at the
+  horizon at parts of a px and the aim that reads flat (an agent is on both), smooth wedges of shade on a cliff
+  (not reproduced).

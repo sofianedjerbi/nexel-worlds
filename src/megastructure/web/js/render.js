@@ -121,7 +121,7 @@ function frame(now) {
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   // (past the horizon, curve.js: it goes down behind it, cut at the horizon line of the ground it stands on; no shadow)
   if (sy.bent) for (const o of list) { const up = o.p ? liftOf(o.p) : o.x === undefined ? 0 : liftAt(Math.round(o.x), o.ty === undefined ? Math.round(o.y) : o.ty); o.clip = sy.clip(o.y, up); if (sy.gone(o.y, up)) o.far = o.clip; }
-  // (the land is drawn once what stands on it is known: with a shader on, their shadows fall on it as it stands, sun.js)
+  // (the land is drawn once what stands on it is known: with the land's depth or a shader on, their shadows fall on it as it stands, sunland.js)
   Voxels.frame(away.a < 1 ? vis : [], ox, oy, S, t, away.high, Sun.cast(list, vis, sx, sy, S, t, now));      // the land and the sea, as blocks
   if (away.a > 0 && away.a < 1 && !Voxels.veil(ox, oy, S, t, away.a, away.sky)) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
   if (!worldReady) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }
@@ -170,7 +170,7 @@ function frame(now) {
     }
     if (o.clip !== undefined) ctx.restore();
   }
-  Sun.shade(list, sx, sy, S, t, now);                // (with a shader on: what stands in the land's shadow is in it, sun.js)
+  Sun.shade(list, sx, sy, S, t, now);                // (what stands in the land's shadow is in it, sunland.js)
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
     const px = sx(f.x), py = sy(f.y, f.x), tall = "TF".includes(combAt(f.x, f.y) || "");
     if (sy.far(f.y, liftAt(f.x, f.y))) continue;

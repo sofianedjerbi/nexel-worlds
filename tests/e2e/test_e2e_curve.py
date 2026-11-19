@@ -265,8 +265,12 @@ def test_on_the_mountain_a_new_player_wakes_on_there_is_a_horizon(browser, tmp_p
                 time.sleep(.1)
         g = open_game(browser, f"http://127.0.0.1:{port}", zoom=3)
         # (where a new player wakes is at its foot: on to its side, three levels up)
-        spot = g.js("""() => { const p = myPos(); for (let r = 0; r < 28; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = p.x + dx, y = p.y + dy, t = topAt(x, y);
-          if (Math.max(Math.abs(dx), Math.abs(dy)) === r && tile(x, y) && tile(x, y - 6) && t >= 3 && !wet(gndAt(x, y))) return [x, y, t]; } return null; }""")
+        find = """() => { const p = myPos(); for (let r = 0; r < 28; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = p.x + dx, y = p.y + dy, t = topAt(x, y);
+          if (Math.max(Math.abs(dx), Math.abs(dy)) === r && tile(x, y) && tile(x, y - 6) && t >= 3 && !wet(gndAt(x, y))) return [x, y, t]; } return null; }"""
+        for _ in range(40):                                       # (the land round the spawn comes a block at a time: the search reads what has come)
+            spot = g.js(find)
+            if spot: break
+            g.sleep(250)
         assert spot, "no mountain round the spawn"
         g.rpc("dev_teleport", x=spot[0], y=spot[1], z=spot[2])
         g.wait(f"myPos().x === {spot[0]} && myPos().y === {spot[1]} && cam.lift > 0 && !arrivingNow", timeout=15000)

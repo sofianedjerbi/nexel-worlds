@@ -253,7 +253,6 @@ function hillSheet(k) {
   if (k <= 0) return dugSheet("hill1", -k);
   k = Math.min(k, 12);                                // (the mountains' top: one sheet for all that is built higher)
   if (hillSheets[k]) return hillSheets[k];
-  if (DEPTH === 3 || DEPTH === 5) return hillSheets[k] = IMG.hill1;      // (a look being tried: one sheet at every height, the height is told by light: vox_light.js)
   const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 0 ? 1 : k <= 4 ? 1 + .04 * ((k - 1) % 2) : .92 + .024 * (k - 5);
   if (f === 1) return hillSheets[k] = img;
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;

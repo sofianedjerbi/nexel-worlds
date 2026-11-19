@@ -165,6 +165,7 @@ def test_a_rock_that_stands_apart_stays_whole(game):
     """Behind a wall, with a pillar standing in the meadow behind you: the pillar hides ground you could walk to, but
     it is not the rock that hides you. It stays, whole: it shows as the land has it with the wall in front
     taken away (cut out like the wall, its foot was a square of the wall's own top in the middle of the grass)."""
+    game.js("setOpt('depth', false)")                         # (the land as it is painted: with its depth on, the sun's shadows are part of what is compared and counted here)
     game.clear_area(12)
     game.stamp(-5, 1, ["." * 11] * 3, levels=["6" * 11] * 3)
     game.stamp(1, -2, ["."], levels=["6"])
@@ -212,6 +213,7 @@ def test_creatures_behind_the_rock_are_seen_and_those_on_it_go_with_it(game):
     out; one on the rock was there, then gone. The rock in front is cut away a tile at a time: a creature behind it
     with you, on the ground of the place you are in, is drawn whole, once; one on the rock that is cut away is not
     drawn (it would stand in the air, over you)."""
+    game.js("setOpt('depth', false)")                         # (the land as it is painted: with its depth on, the sun's shadows are part of what is compared and counted here)
     game.clear_area(10)
     game.stamp(-6, 1, ["." * 13] * 3, levels=["6" * 13] * 3)  # a wall in front of you, six layers
     behind, on_rock = game.spawn("cow", 1, 0, still=600), game.spawn("chicken", -1, 1, still=600)   # beside you; on the wall, where it is cut away (a tile each side of you: it was all of the wall)

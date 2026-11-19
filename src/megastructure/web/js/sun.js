@@ -202,7 +202,7 @@ const Sun = (() => {
       if (opt("reflect") && water) reflections(list, water, sx, sy, S, t, now);
     } catch (e) { if (!Sun.said) { Sun.said = true; console.warn("sun: " + e.message); } }
   }
-  const shades = () => !!SHADERS[opt("shader")] && opt("shaderk") > 0 && opt("shadows") > 0;      // are shadows being drawn?
+  const shades = () => ((!!SHADERS[opt("shader")] && opt("shaderk") > 0) || !!opt("depth")) && opt("shadows") > 0;      // are shadows being drawn? (by a shader, or as the land's depth: sunland.js)
   // (kit: for sunland.js, the other half of this: the shadows the land takes. It adds Sun.cast, Sun.shade, Sun.layerData)
   const kit = {ready, cast, levelOf, rowOf, measure(list, sx, sy, S, t, now) { ready(); clean = true; for (const o of list) if (o.p && !o.far) standsAtY(o.p, sx, sy, S, t, now); clean = false; }, get lg() { return lg; }, get layer() { return layer; }};
   return {draw, shades, kit, get water() { return mask; }, SHADE, GLASS, get casting() { return casting; }};

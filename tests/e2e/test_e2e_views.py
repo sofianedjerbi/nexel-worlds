@@ -59,6 +59,7 @@ def test_behind_a_hill_you_are_seen_the_same_way_whichever_view(game):
     front of you cut away: whichever view is picked (they still say how a built roof over you is shown), it is as
     much cut, the same tiles, and the screen round you is the same."""
     game.flat()                                                  # (it compares whole pictures taken one after the other: the curved world's sky moves)
+    game.js("setOpt('depth', false)")                         # (...and so does the sun: with the land's depth its shadows are a px on from one picture to the next)
     x, y = game.pos()
     game.stamp(-2, 1, ["....."] * 2, levels=["33333"] * 2)  # a rise three layers high just south of you
     game.wait("xray.a > .98", 8000); game.sleep(400)
