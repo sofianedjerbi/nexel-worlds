@@ -131,10 +131,15 @@ float cnoise(vec2 q) { ivec2 i = ivec2(floor(q)); vec2 f = fract(q); f = f * f *
   return mix(mix(chash(i), chash(i + ivec2(1, 0)), f.x), mix(chash(i + ivec2(0, 1)), chash(i + ivec2(1, 1)), f.x), f.y); }
 // (px: the px of paint on the ground. Two shades, none and the cloud's, and a plain edge of whole px between them (one px in two
 // along it was a ribbed band round every cloud). Few and small, as the sky's clouds are: it was half the land in nested rings, then one blob over half the screen)
-float cloud(vec2 px) { vec2 w = px / uCell * .16 + uCloud.yz; return cnoise(w) * .55 + cnoise(w * 2.1 + 7.3) * .3 + cnoise(w * 4.3 + 1.7) * .15 >= .62 ? uCloud.x : 0.; }
+// (No small one: three octaves over one threshold left a blob under three tiles in every two, "a blue-grey oval with nothing casting it". A cloud is a crest of the wide field, a
+// corner of its grid whose hash is over CREST: 1 there, the others low, so where it is over the threshold it is four tiles across or more; a second octave bends its edge.)
+float crest(ivec2 q) { float h = chash(q); return h >= .74 ? 1. : h * .6; }
+float cbase(vec2 q) { ivec2 i = ivec2(floor(q)); vec2 f = fract(q); f = f * f * (3. - 2. * f);
+  return mix(mix(crest(i), crest(i + ivec2(1, 0)), f.x), mix(crest(i + ivec2(0, 1)), crest(i + ivec2(1, 1)), f.x), f.y); }
+float cloud(vec2 px) { vec2 w = px / uCell * .16 + uCloud.yz; return cbase(w) * .75 + cnoise(w * 2.1 + 7.3) * .25 >= .72 ? uCloud.x : 0.; }
 // The land's depth (uDepth: on), with or without the sun: each a multiply of the land's own paint, never another paint.
 //   Height as light: a top a little brighter and warmer a level of the world, from level 0 (as it is
-//     painted) up to level 4 (grass; stone's steps are in its sheets, tiles.js hillSheet: darker the lower, never over the sheet's own); tops only: a wall is one tone from its rim to the ground (a cliff that runs on a slant shows each column two
+//     painted) up to level 4 (grass, and a high block that is no rock, a stair's step: its top's strip is the last earth level's, vox_mesh.js; stone's steps are in its sheets, tiles.js hillSheet: darker the lower, never over the sheet's own); tops only: a wall is one tone from its rim to the ground (a cliff that runs on a slant shows each column two
 //     levels lower than the one beside it: a step a level made it a grid of squares). Under level 0 darker and cooler down to four levels, tops and walls (a deep pit's floor is darker than a shallow one's, its wall darkens down to it). By the world's height, not the eye's: nothing changes as you climb.
 //   A face's side: a front (it faces south) a little darker than a top; a wall's side that faces west or east lighter
 //     toward the sun and darker away from it, by how far to that side the sun is (none at noon): all of a side one face.
@@ -151,7 +156,7 @@ vec3 roofed(vec3 c, int kind) { return uDepth > .5 && kind == 1 ? c * FRONT : c;
 float sh(float d, float n) { return d < (n > 1.5 ? 4. : 3.) ? .22 + .11 * min(n, 3.) : 0.; }
 vec3 deep(vec3 c, int kind, int bits, float lip, bool contact) {
   if (uDepth < .5 || kind == 2 || kind > 4) return c;
-  float z = vGround.z / uUp, w, lv = kind == 0 ? ceil(z - .01) : floor(z + .01), up = lv > 4.5 ? 0. : clamp(lv, 0., 4.), down = clamp(-lv, 0., 4.);
+  float z = vGround.z / uUp, w, lv = kind == 0 ? ceil(z - .01) : floor(z + .01), up = lv > 4.5 && vMeta.z + uLo > 4.5 ? 0. : clamp(lv, 0., 4.), down = clamp(-lv, 0., 4.);
   if ((bits & 8) != 0) down = 0.;                               // (under a roof the place has its own dark: darker again by its depth, a floor was the colour of the earth cut round it)
   if (kind != 0 || lip >= 0.) up = 0.;                           // (a wall has one tone from rim to foot: a top's level is what you stand on, a wall's is not)
   c *= (vec3(1.) + vec3(.013, .012, .009) * up) * (vec3(1.) - vec3(.05, .05, .042) * down);
@@ -165,7 +170,8 @@ vec3 deep(vec3 c, int kind, int bits, float lip, bool contact) {
   // (a px that goes on under a wall, round the corner of its foot, is drawn by the tile on the corner's other side too,
   // at the same depth: there neither takes any, so the two are one colour as they are painted)
   float nw = topAt(tile + vec2(-1., -1.), w) - L, ne = topAt(tile + vec2(1., -1.), w) - L, T = uCell - 6.;
-  bool ends = (l.x < uInset && we <= 0. && nw <= 0.) || (l.x >= uCell - uInset && ea <= 0. && ne <= 0.);
+  // (...and where the land beside the top is lower its rim is along that side, six px of the sheet's own darks: the shade over them was a dark square at the end of every foot's band)
+  bool ends = (l.x < (we < 0. ? 6. : uInset) && we <= 0. && nw <= 0.) || (l.x >= (ea < 0. ? T : uCell - uInset) && ea <= 0. && ne <= 0.);
   if ((l.y < 0. && ((l.x < 6. && nw <= 0.) || (l.x >= T && ne <= 0.))) || (l.x < 0. && ((l.y < 6. && nw <= 0.) || (l.y >= T && topAt(tile + vec2(-1., 1.), w) <= L)))
     || (l.x >= uCell && ((l.y < 6. && ne <= 0.) || (l.y >= T && topAt(tile + vec2(1., 1.), w) <= L)))) return c;
   if (n > 0. && !ends) a = sh(dn, n);
@@ -254,13 +260,14 @@ vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
   // The clouds' field as the land has it (the GLSL above, number for number): how dark a cloud's shadow is on the
   // ground at (x, y), tiles; c: the view's sun.cloud
   const hash = (x, y) => { let n = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) >>> 0; n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0; return ((n ^ (n >>> 16)) & 65535) / 65535; };
-  function noise(x, y) {
-    const ix = Math.floor(x), iy = Math.floor(y), s = (v) => v * v * (3 - 2 * v), fx = s(x - ix), fy = s(y - iy), a = hash(ix, iy), b = hash(ix, iy + 1);
-    return a + (hash(ix + 1, iy) - a) * fx + (b + (hash(ix + 1, iy + 1) - b) * fx - a - (hash(ix + 1, iy) - a) * fx) * fy;
+  const crest = (h) => (h >= .74 ? 1 : h * .6);
+  function noise(x, y, f = (h) => h) {
+    const ix = Math.floor(x), iy = Math.floor(y), s = (v) => v * v * (3 - 2 * v), fx = s(x - ix), fy = s(y - iy), a = f(hash(ix, iy)), b = f(hash(ix, iy + 1)), c = f(hash(ix + 1, iy)), d = f(hash(ix + 1, iy + 1));
+    return a + (c - a) * fx + (b + (d - b) * fx - a - (c - a) * fx) * fy;
   }
   function cloud(c, x, y, cell) {
     const px = Math.floor(x * cell), py = Math.floor(y * cell), wx = px / cell * .16 + c.drift[0], wy = py / cell * .16 + c.drift[1];
-    return noise(wx, wy) * .55 + noise(wx * 2.1 + 7.3, wy * 2.1 + 7.3) * .3 + noise(wx * 4.3 + 1.7, wy * 4.3 + 1.7) * .15 >= .62 ? c.k : 0;
+    return noise(wx, wy, crest) * .75 + noise(wx * 2.1 + 7.3, wy * 2.1 + 7.3) * .25 >= .72 ? c.k : 0;
   }
   return {create, FS, TOR, cloud};
 })();

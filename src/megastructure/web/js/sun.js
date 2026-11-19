@@ -125,61 +125,49 @@ const Sun = (() => {
     } finally { clean = false; casting = false; parts.length = Math.min(parts.length, dust); puffs.length = Math.min(puffs.length, puff); ctx = main; lg = lay; lg.setTransform(DPR, 0, 0, DPR, 0, 0); lg.globalAlpha = 1; g.globalAlpha = 1; }
     return n;
   }
-  function seenWater(vis, sx, sy, S) {
-    if (!vis.some((b) => b.water && b.water.any)) return null;
-    const [vx, vy, vw, vh] = viewRect(2), wet = new Path2D();
-    let any = false, top = H, bottom = 0;
-    // Water that is seen: higher ground to the south is drawn up the screen over what lies behind it ("player reflection
-    // is visible even if player is standing on a mountain, because there's water under it"). A water tile shows down to
-    // where the nearest land south of it begins on the screen: all of it by a shore, none of it behind a hill.
-    for (let y = vy; y <= vy + vh; y++) for (let x = vx; x <= vx + vw; x++) if (DEPTH_OF[gndAt(x, y)]) {
-      const up = liftAt(x, y), row = sy.row || ((r, l) => sy(r) - l), Y = row(y, up);         // (the tile itself, as tall as it is drawn: curve.js)
-      let cut = row(y + 1, up);
-      for (let k = 1; k <= 12 && cut > Y; k++) { const g = gndAt(x, y + k); if (g && !DEPTH_OF[g]) cut = Math.min(cut, row(y + k, liftAt(x, y + k))); }
-      if (cut <= Y) continue;
-      wet.rect(sx(x), Y, S, cut - Y); any = true; top = Math.min(top, Y); bottom = Math.max(bottom, cut);
-    }
-    return any ? {wet, top, bottom} : null;
-  }
-  // The seen water as a small picture, white where it is (a quarter of the screen's size): shader.js lays the sky, the
-  // clouds and the sun's glitter on the water through it. What swims or floats in it is cut out: no glitter on a head.
-  // Its own shape is cut, drawn small in black (it was a box round it: "patch is visible anywhere in the sea anytime",
-  // a square of water with no sky on it round whoever swam).
-  let maskCv = null, mask = null, cutCv = null;
-  function waterMask(list, water, sx, sy, S, t, now) {
-    mask = null;
-    if (!water) return;
-    if (!maskCv) { maskCv = document.createElement("canvas"); cutCv = document.createElement("canvas"); }
-    const w = Math.ceil(W / 4), h = Math.ceil(H / 4), g = maskCv.getContext("2d"), c = cutCv.getContext("2d");
-    for (const cvs of [maskCv, cutCv]) if (cvs.width !== w || cvs.height !== h) { cvs.width = w; cvs.height = h; }
-    g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#000"; g.fillRect(0, 0, w, h);
-    g.setTransform(.25, 0, 0, .25, 0, 0); g.fillStyle = "#fff"; g.fill(water.wet);
-    const swim = list.filter((o) => (o.p ? DEPTH_OF[gndAt(Math.round(o.p.x), Math.round(o.p.y))] : o.spr && DEPTH_OF[gndAt(o.x, o.ty)]));
-    if (swim.length) {
+  // The seen water as a small picture, white where it is, a px of it a px of the art: the engine's own (vox_water.js
+  // mask: the px where it drew the water's face, so it ends where the water does, round an islet, a pad, a pile; made
+  // on the GPU in targets of its own and read back, the land's picture is not drawn again), and what stands, swims or
+  // floats before it cut out in its own shape: no glitter on a head, no sky on a tree's crown. shader.js lays the sky,
+  // the clouds and the sun's glitter on the water through it; what is seen in the water is kept only where it is.
+  let maskCv = null, mask = null, img = null;
+  const masks = () => !!SHADERS[opt("shader")] && opt("shaderk") > 0 && !!(opt("reflect") || opt("waterlight"));      // (voxels.js asks the engine for it)
+  function waterMask(list, sx, sy, S, t, now) {
+    const m = Voxels.engine.wmask; if (!m) return;
+    if (!maskCv) maskCv = document.createElement("canvas");
+    const g = maskCv.getContext("2d");
+    if (maskCv.width !== m.w || maskCv.height !== m.h) { maskCv.width = m.w; maskCv.height = m.h; img = null; }
+    if (!img) img = new ImageData(m.w, m.h);
+    img.data.set(m.px); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.putImageData(img, 0, 0); g.imageSmoothingEnabled = false;
+    const x0 = m.x, y0 = m.y, z = m.k, w = m.w, h = m.h;
+    g.setTransform(1 / z, 0, 0, 1 / z, -x0 / z, -y0 / z);
+    // (all that stands: a tree on an islet, its crown over the water behind it, was washed with the sky)
+    const over = list.filter((o) => (o.p || o.spr || o.fx) && o.far === undefined && !(o.p && xrayOverBody(o.p) > .98));
+    if (over.length) {
       const main = ctx, dust = parts.length, puff = puffs.length;
-      c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "source-over"; c.clearRect(0, 0, w, h); c.setTransform(.25, 0, 0, .25, 0, 0); c.imageSmoothingEnabled = false;
-      ctx = c; casting = true;                               // (a copy of each, as a shadow is drawn: no dust, no sound of it)
+      g.globalCompositeOperation = "destination-out"; ctx = g; casting = true;      // (a copy of each, as a shadow is drawn: no dust, no sound of it)
       try {
-        for (const o of swim) {
-          if (o.spr) { const [img, a, b, sw, sh, dx, dy] = o.spr; c.drawImage(img, a, b, sw, sh, Math.round(sx(o.x) + dx * zoom), Math.round(sy(o.ty, o.x) + dy * zoom), sw * zoom, sh * zoom); }
-          else drawEntity({...o.p}, sx, sy, S, t, now);
+        for (const o of over) {
+          g.save();
+          if (o.spr) { const [img, a, b, sw, sh, dx, dy] = o.spr; g.drawImage(img, a, b, sw, sh, Math.round(sx(o.x) + dx * zoom), Math.round(sy(rowOf(o), o.x) + dy * zoom), sw * zoom, sh * zoom); }
+          else if (o.p) drawEntity({...o.p}, sx, sy, S, t, now); else o.fx();
+          g.restore();
         }
-      } finally { casting = false; parts.length = Math.min(parts.length, dust); puffs.length = Math.min(puffs.length, puff); ctx = main; }
-      c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "source-in"; c.fillStyle = "#000"; c.fillRect(0, 0, w, h);
-      g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(cutCv, 0, 0);
+      } finally { casting = false; parts.length = Math.min(parts.length, dust); puffs.length = Math.min(puffs.length, puff); ctx = main; g.globalCompositeOperation = "source-over"; }
     }
-    mask = maskCv;
+    mask = {cv: maskCv, x: x0, y: y0, w: w * z, h: h * z};
   }
-  function reflections(list, water, sx, sy, S, t, now) {
-    const {wet, top, bottom} = water;
+  function reflections(list, sx, sy, S, t, now) {
     ready();
     // turned over about where the water's level is under its foot: what stands on a cliff over the water is seen as far
     // under the shore as it is over it, under the cliff's own picture in the water (vox_light.js); on the shore: about its foot
     // (in a curved world, curve.js: as far under as the curve draws the land over the water there: a height is as tall far off as near, what is over the eye a little more)
     // Only in the water it stands by: the first south of it in its column, to where that ends (far rows are close together: its picture went on into the next pond)
-    cast(list, sx, sy, S, t, now, (fx, fy, o) => { const up = Math.max(0, levelOf(o)) * RELIEF_STEP * zoom, y = rowOf(o), x = Math.round(o.p ? o.p.x : o.x); let a = Math.ceil(y), b; while (a < y + 5 && !DEPTH_OF[gndAt(x, a)]) a++; for (b = a; b < a + 12 && DEPTH_OF[gndAt(x, b)]; b++);
-      if (b === a) return null; const line = fy + (sy.up && up ? sy.up(y, 0) - sy.up(y, up) : up), m = [1, 0, 0, -1, 0, 2 * line]; m.low = 2 * line - (sy.row ? sy.row(b, 0) : sy(b)); return m; });
-    lg.globalCompositeOperation = "destination-in"; lg.fill(wet);                    // ...and only where there is water
+    let top = H, bottom = 0;
+    const n = cast(list, sx, sy, S, t, now, (fx, fy, o) => { const up = Math.max(0, levelOf(o)) * RELIEF_STEP * zoom, y = rowOf(o), x = Math.round(o.p ? o.p.x : o.x); let a = Math.ceil(y), b; while (a < y + 5 && !DEPTH_OF[gndAt(x, a)]) a++; for (b = a; b < a + 12 && DEPTH_OF[gndAt(x, b)]; b++);
+      if (b === a) return null; const line = fy + (sy.up && up ? sy.up(y, 0) - sy.up(y, up) : up), m = [1, 0, 0, -1, 0, 2 * line]; m.low = 2 * line - (sy.row ? sy.row(b, 0) : sy(b)); top = Math.min(top, line - 6 * S); bottom = Math.max(bottom, line + 6 * S); return m; });
+    if (!n) return;
+    lg.globalCompositeOperation = "destination-in"; lg.imageSmoothingEnabled = false; lg.drawImage(mask.cv, mask.x, mask.y, mask.w, mask.h);      // ...and only where there is water
     // (in the water's own colour, faint: over water seen through, a boat's was a grey copy of the boat under it)
     lg.globalCompositeOperation = "source-atop"; lg.fillStyle = "rgba(96,186,200,.6)"; lg.fillRect(0, 0, W, H); lg.globalCompositeOperation = "source-over";
     // onto the picture a row of art pixels at a time, each slid a little: the ripple (fixed to the land, not to the screen)
@@ -199,13 +187,14 @@ const Sun = (() => {
     mask = null;
     if (!SHADERS[opt("shader")] || !opt("shaderk")) return;
     try {
-      const water = opt("reflect") || opt("waterlight") ? seenWater(vis, sx, sy, S) : null;
-      waterMask(opt("waterlight") ? list : [], opt("waterlight") ? water : null, sx, sy, S, t, now);
-      if (opt("reflect") && water) reflections(list, water, sx, sy, S, t, now);
+      if (!(opt("reflect") || opt("waterlight")) || !vis.some((b) => b.water && b.water.any)) return;
+      waterMask(list, sx, sy, S, t, now);
+      if (mask && opt("reflect")) reflections(list, sx, sy, S, t, now);
+      if (!opt("waterlight")) mask = null;
     } catch (e) { if (!Sun.said) { Sun.said = true; console.warn("sun: " + e.message); } }
   }
   const shades = () => ((!!SHADERS[opt("shader")] && opt("shaderk") > 0) || !!opt("depth")) && opt("shadows") > 0;      // are shadows being drawn? (by a shader, or as the land's depth: sunland.js)
   // (kit: for sunland.js, the other half of this: the shadows the land takes. It adds Sun.cast, Sun.shade, Sun.layerData)
   const kit = {ready, cast, levelOf, rowOf, measure(list, sx, sy, S, t, now) { ready(); clean = true; for (const o of list) if (o.p && !o.far) standsAtY(o.p, sx, sy, S, t, now); clean = false; }, get lg() { return lg; }, get layer() { return layer; }};
-  return {draw, shades, kit, get water() { return mask; }, SHADE, GLASS, get casting() { return casting; }};
+  return {draw, shades, kit, masks, get water() { return mask; }, SHADE, GLASS, get casting() { return casting; }};
 })();

@@ -53,23 +53,22 @@ def test_a_front_in_the_shadow_of_land_beside_it_is_one_tone_and_the_ground_at_i
     assert min(lum(foot[0]), lum(foot[1])) < lum(foot[2]) - 6, foot      # the ground at its foot, where a shadow lies along it: dark
 
 
-def test_the_mouse_on_a_pits_wall_shows_a_box_the_pointer_is_in(game):
-    """A pit three deep; the mouse on its north wall's face, with nothing in hand and with earth: the box is that
-    wall's block, from its top (earth: the cell that would be put on it) down to the pit's floor: the pointer is in it."""
+def test_the_mouse_on_a_pits_wall_shows_one_box_the_cell_acted_on_and_a_tick_where_it_points(game):
+    """A pit three deep; the mouse on its north wall's face, with nothing in hand and with earth: ONE box, the cell the
+    click acts on (the rim block's top; with earth the cell over it), and a tick on the wall's face at the cell the
+    pointer is on. (A second box on the face was "two separate boxes: not one cell under the pointer".)"""
     game.clear_area(8)
     x, y = game.pos()
     game.stamp(-5, 0, [".."] * 2, levels=["cc"] * 2)
     ready(game, .3)
     game.give(dirt=3)
     px, py = game.js(AT, [x - 5, y - 1, 8, 16, -1.4])            # (on the face of the rim's block north of the pit, a level and a half down it)
-    for item in (None, "dirt"):                                   # (the box is the one cell of the wall the pointer is on; with earth in hand, the cell it would go in is marked too)
+    for item, cell in ((None, [x - 5, y - 1, 0, 0]), ("dirt", [x - 5, y - 1, 0, 1])):
         game.hold_item(item)
         game.page.mouse.move(px - 9, py - 7); game.page.mouse.move(px - 2, py - 1); game.page.mouse.move(px, py)
         game.wait("Marks.list.length >= 1 && Marks.list.every((k) => ['x', 'y', 'z0', 'z1'].every((f) => Math.abs(k[f] - k.to[f]) < .01))", timeout=4000)
         marks = game.js("Marks.list.map((k) => [k.to.x, k.to.y, k.to.z0, k.to.z1])")
-        on = []
-        for m in marks:
-            x0, y0 = game.js(AT, [m[0], m[1], 0, 0, m[3]]); x1, y1 = game.js(AT, [m[0], m[1], 16, 16, m[2]])
-            if x0 <= px < x1 and y0 <= py < y1: on.append(m)
-        assert on and on[0][:2] == [x - 5, y - 1] and on[0][3] - on[0][2] == 1, (item, (px, py), marks)      # the pointer is in a box, a cell tall, of the wall's own column
+        assert marks == [cell], (item, marks)
+        tick = game.js("Marks.list[0].to.tick"); y0 = game.js(AT, [x - 5, y - 1, 8, 16, tick])[1]; y1 = game.js(AT, [x - 5, y - 1, 8, 16, tick - 1])[1]
+        assert y0 <= py < y1, (item, tick, py, y0, y1)           # the tick's cell of the face is the one the pointer is on
     game.page.mouse.move(5, 5); game.js("(() => { Curve.force = null; return 1; })()")

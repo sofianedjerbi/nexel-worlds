@@ -165,8 +165,11 @@ def test_a_stair_dug_down_is_cut_square_and_seen_whole_with_no_gap_as_you_walk_i
     """A stair dug east, a tile wide. Each step had a dark bar down its side and a green line beside it ("still got the
     weird green line issue"): the bar was the rim of a hill, drawn on a dug step. Dug ground is cut square: a step is
     all of its tile. And going down, it flashed at every step ("when going down/up blocks it flashes"): the steps two
-    behind you were out of what is seen through. The whole stair stays seen: on the screen every step near you is
-    earth, the ones over you too, not the meadow in front of it and not the dark of ground cut open."""
+    behind you were out of what is seen through. The steps stay of the place, and on the screen the step you are on
+    and the one before and after it are earth, whole, not the meadow in front of them and not the dark of ground cut
+    open. (A stair open to the sky is seen past a keyhole, xray.js: your step and where the next one goes; this test
+    asked for all six steps, the whole trench cut open. The tiles of the keyhole come and go a checker at a time as
+    you walk, voxels.js `fade`: no flash.)"""
     game.js("setOpt('depth', false)")                         # (the land as it is painted: these colours and shades were measured with no sun; the land's depth has its own tests)
     game.clear_area(12)
     x, y = game.pos()
@@ -182,8 +185,8 @@ def test_a_stair_dug_down_is_cut_square_and_seen_whole_with_no_gap_as_you_walk_i
     # stepping off the step three down (your height is already the next one's): the steps over you are still of the place
     assert game.js(f"[1, 2, 3, 4, 5, 6].every((k) => xrayPlace({x + 3}, {y}, -4).z.get(({x} + k) + ',' + {y}) === -k)")
     green = game.js(GREEN_ON_SCREEN, [[x + k, y, k] for k in range(1, 7)])
-    assert green[1:] == [0] * 5, green                         # seen whole: no meadow in any of them (but the first: the step up in front of it is the way out, its edge as on the land)
-    steps = game.js(LAND, [[x + k, y, -k, 8, 8] for k in range(1, 7)])       # the three you came down, yours, the two under you
+    assert green[2:5] == [0] * 3, green                        # seen whole: no meadow in the step you are on, the one you came down, the one under you
+    steps = game.js(LAND, [[x + k, y, -k, 8, 8] for k in range(3, 6)])
     assert all(earth(c) for c in steps), steps
     assert not game.errors
 

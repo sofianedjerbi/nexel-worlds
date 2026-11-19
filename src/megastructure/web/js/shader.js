@@ -38,7 +38,7 @@ const Shader = (() => {
       gl_FragColor = vec4(c, 1.); }`;
   const FINAL = HEAD + `\n#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#endif\nuniform sampler2D uB, uC; uniform vec2 uRes, uOrigin; uniform vec3 uTint;
     uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK, uWater, uDay, uGlint;
-    uniform sampler2D uW; uniform vec3 uSky, uSun; uniform vec4 uBend;
+    uniform sampler2D uW; uniform vec3 uSky, uSun; uniform vec4 uBend, uWBox;
     float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
       return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
@@ -57,9 +57,9 @@ const Shader = (() => {
       if (uBend.w > .5 && px.y < uBend.x) { float d = uBend.x - uBend.y, r = (uBend.x - px.y) / d; wpx.y = uBend.x - 2. * d * (1. - sqrt(max(0., 1. - r))); }
       // Water (sun.js gives where it is seen): the sky's colour of the hour lies in it, clouds pass over it, and the
       // sun (the moon) glitters on it, a pixel of the land at a time, in drifting patches
-      // (where it is, a px of the land at a time, there or not: the small picture read smooth was a soft halo round every islet and pad)
-      vec2 am = (floor((px - uOrigin) / uTile * 16.) + .5) * uTile / 16. + uOrigin;
-      float wet = uWater > 0. ? step(.5, texture2D(uW, vec2(am.x / uRes.x, 1. - am.y / uRes.y)).r) * uWater : 0.;
+      // (where it is: sun.js's picture of it, a px of it a px of the art (uWBox: its corner on the screen, its size), there or not)
+      vec2 am = ((floor((px - uOrigin) / uTile * 16.) + .5) * uTile / 16. + uOrigin - uWBox.xy) / uWBox.zw;
+      float wet = uWater > 0. ? step(.5, texture2D(uW, vec2(am.x, 1. - am.y)).a) * uWater : 0.;
       if (wet > 0.) {
         vec2 wp = floor((wpx - uOrigin) / uTile * 16.), cw = wp / 16. * .055 + vec2(3.1 - uT * .011, 1.7 + uT * .004);
         c = mix(c, uSky, min(wet * .24, .6));
@@ -154,13 +154,13 @@ const Shader = (() => {
         // the light on water: not on the old screens (a look with `pal` or `tape`)
         const plain = !look.pal && !look.tape, water = plain && !under && typeof Sun !== "undefined" ? Sun.water : null;
         gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, wtex); gl.uniform1i(u.uW, 3);
-        if (water) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, water);
+        if (water) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, water.cv); gl.uniform4f(u.uWBox, water.x, water.y, water.w, water.h); }
         const phase = (((clock.phase || 0) % 1) + 1) % 1, [m0, m1, f] = dayAt(phase), hour = mix(rgbOf(m0[1]), rgbOf(m1[1]), f);
         gl.uniform1f(u.uWater, water ? k * opt("waterlight") / 100 : 0); gl.uniform1f(u.uDay, day);
         gl.uniform3f(u.uSun, (.3 + .5 * day) * (day > .5 ? 1 : .6), (.36 + .4 * day) * (day > .5 ? 1 : .75), (.5 + .1 * day));
         const way = phase < .75 ? phase / .75 * 2 - 1 : 0, low = Math.max(0, Math.min(1, (Math.abs(way) - .5) / .4));
         // the sky the water shows: blue by day, the hour's own colour when the sun is low, deep blue at night
-        const sky = mix(mix([120, 190, 250], hour, low * .85), [44, 62, 140], 1 - day);
+        const sky = mix(mix([120, 190, 250], hour, low * .45), [44, 62, 140], 1 - day);      // (less of the hour's: all of its orange in blue-green water was grey-olive)
         gl.uniform3f(u.uSky, sky[0] / 255, sky[1] / 255, sky[2] / 255);
         gl.uniform1f(u.uGlint, .88 - .76 * (phase < .75 ? phase / .75 : (phase - .75) / .25));      // (curve.js: where the sky has its sun, its moon)
       });

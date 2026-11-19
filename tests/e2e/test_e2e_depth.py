@@ -66,7 +66,7 @@ def test_stone_stays_stone_and_each_terrace_of_it_is_a_clear_step_lighter(game):
     assert max(off) - min(off) < 30, off                        # (stone: grey)
     assert all(abs(a - b) < .01 for a, b in zip(on, off)), (on, off)      # the depth: no light of its own on stone (it went to white)
     low, mid, high = game.js(MID, [[x - 5, y + 7 - 3, x - 3, y + 9 - 3], [x - 1, y + 7 - 3.5, x + 1, y + 9 - 3.5], [x + 3, y + 7 - 4, x + 5, y + 9 - 4]])
-    assert mid >= low * 1.04 and high >= mid * 1.04, (low, mid, high)      # a step seen at a glance, a level
+    assert mid >= low * 1.025 and high >= mid * 1.025, (low, mid, high)      # a step a level (2.5 %: with 4 % the lowest stone top was the wall's grey, tiles.js ROCK_TONE; the edge is told by the rim line and the foot band too)
     assert high < 200, high                                      # (and never lighter than the stone sheet's own top)
     game.js(RESET)
 
@@ -224,4 +224,32 @@ def test_a_cliff_that_runs_on_a_slant_is_one_rock_face(game):
     assert foot == high and max(foot) - min(foot) < 30 and not earth(foot), (foot, high)      # stone down to the ground, one tone
     low = mid(game.js(LAND, [[x - 5, y + 5, 1, ax, 3] for ax in (4, 6, 8, 10, 12)]))
     assert earth(low), low                                       # (a block whose top is grass: earth)
+    game.js(RESET)
+
+
+def test_a_stone_top_is_far_lighter_than_its_wall_at_every_level_and_its_foot_band_is_between(game):
+    """ "Low stone tops are nearly the wall's grey: the terraces read as one murky mass": terraces of stone from level 5 to
+    12 rising north. At every level the top is 12 % lighter or more than the front under it (a wall is the shaded face,
+    one tone: tiles.js ROCK_TONE), a step lighter than the terrace under it, never lighter than the sheet's own; and the
+    band of shade at a wall's foot is darker than the top it lies on and lighter than the wall."""
+    game.flat()                                                  # (it reads rows of art px by where the flat picture has them)
+    game.clear_area(14)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.375)
+    assert game.js("[opt('shader'), opt('depth')]") == ["off", True]
+    tops, fronts, bands = [], [], []
+    for L0 in (5, 9):                                            # (four at a time: the view is eleven tiles high)
+        game.stamp(-9, 2, ["." * 7] * 4, levels=[str("0123456789ABC"[L0 + 3 - j]) * 7 for j in range(4)])      # (west of you: land that hides you is cut open)
+        game.wait(DRAWN, 8000); game.sleep(1200)
+        rows = []
+        for i in range(4):
+            r0 = y + 5 - i - (L0 + i) / 2                          # (its row on the flat picture: a level is half a tile up)
+            rows += [[x - 8, r0 + .3, x - 4, r0 + .6], [x - 8, r0 + 1.12, x - 4, r0 + 1.3], [x - 8, r0 + .01, x - 4, r0 + .17]]      # its top's middle, its front's body, the band at the foot of the wall north of it
+        got = game.js(MID, rows); tops += got[0::3]; fronts += got[1::3]; bands += got[2::3]
+    for i in range(8):
+        assert tops[i] * .88 >= fronts[i], (5 + i, tops[i], fronts[i])
+        if i: assert tops[i] >= tops[i - 1] * 1.02, (5 + i, tops)
+        if i % 4 < 3: assert fronts[i] + 3 < bands[i] < tops[i] - 6, (5 + i, fronts[i], bands[i], tops[i])
+    assert tops[-1] < 200 and max(fronts) - min(fronts) < 1.5, (tops, fronts)      # (the sheet's own tone at the top; a wall: one tone at every level)
+    print("stone luminance, levels 5..12: tops", [round(v, 1) for v in tops], "fronts", [round(v, 1) for v in fronts], "bands", [round(v, 1) for v in bands])
     game.js(RESET)

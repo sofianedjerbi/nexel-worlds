@@ -24,7 +24,8 @@ const VoxMesh = (() => {
   // One rock a block (cfg.rock: {from, lo, n}; none: a cell's paint is its level's): a block whose top is at level `from` or over has, in its
   // cells from `lo` up to there, the paint of the levels from `from` on, n of them in turn: stone down to the ground, not stone over earth.
   // top: its block's top (topOf: of the block the cell z of a column is in) -> the level whose strip of the sheets the cell has
-  const rock = (cfg, top, z) => { const r = cfg.rock; return r && top >= r.from && z < r.from && z >= r.lo ? r.from + (z - r.lo) % r.n : z; };
+  // (on: the host says its tile is rock, host.rock(x, y); not: a block as high that is no rock, a stair's step, a pillar: the paint of the last level under `from` up to its top)
+  const rock = (cfg, top, z, on = true) => { const r = cfg.rock; return !r || top < r.from ? z : !on ? Math.min(z, r.from - 1) : z < r.from && z >= r.lo ? r.from + (z - r.lo) % r.n : z; };
   const topOf = (c, z) => { if (c) for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return c[i]; return z; };
   const pick = (x, y, z, n) => (Math.imul(x, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(z, 83492791)) >>> 5 & (n - 1);      // one of n (a power of 2), the same each time
   // Lists of faces, a list a page -> {data, pages: [[page, first corner, corners]...], n}: their corners as the GPU takes them
@@ -54,7 +55,8 @@ const VoxMesh = (() => {
   function build(ch, host, cfg, strip0) {
     const N = cfg.size, T = cfg.cell, K = cfg.tuck, faces = [[]], add = (p, f) => (faces[p] || (faces[p] = [])).push(f), shapes = new Set();
     const solid = (x, y, z) => { const c = host.column(x, y); return !!c && has(c, z); };
-    const strip = (zc, top = zc) => strip0(rock(cfg, top, zc)), stripAt = (x, y, zc) => strip(zc, topOf(host.column(x, y), zc));      // (a cell's strip: by its block's top)
+    const isRock = (x, y) => !host.rock || host.rock(x, y); let rk = true;      // (rk: the tile whose faces are being made)
+    const strip = (zc, top = zc, on = rk) => strip0(rock(cfg, top, zc, on)), stripAt = (x, y, zc) => strip(zc, topOf(host.column(x, y), zc), isRock(x, y));      // (a cell's strip: by its block's top)
     const shape = (x, y, z) => { const s = host.shape(x, y, z); shapes.add(s); return s; };
     // How dark a face is by where it is (a corner's twelfth byte; the engine's shader lays the dark of a cave on by it).
     // Out of doors, `slot`: how deep down a narrow hole the level z of (x, y) is, in steps (5 at the most). Along the
@@ -111,6 +113,7 @@ const VoxMesh = (() => {
     for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) {
       const x = ch.cx * N + lx, y = ch.cy * N + ly, c = host.column(x, y), X = lx * T, Y = ly * T;
       if (!c) continue;
+      rk = isRock(x, y);
       const south0 = host.column(x, y + 1);
       const wet = host.water(x, y), wz = wet ? wtop(x, y) : 0, bed = wet && VoxWater.bed(cfg, wz - c[c.length - 1]);      // (bed: seen through, its column ends under its face: the bottom, drawn as land is)
       const ct = c[c.length - 1]; if (wet || [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => host.water(x + dx, y + dy) && wtop(x + dx, y + dy) === ct))) {      // (water; a shore: the water under it)
@@ -118,8 +121,10 @@ const VoxMesh = (() => {
         // (under a shore's top, and under what floats: a px lower, so that two faces are never at one depth)
         if (wet) add(clear ? VoxWater.PAGE : 0, [X - tw, Y - tn, wz * cfg.up, T + tw + te, T + tn, -tw, -tn, T, VoxWater.near(host, cfg, x, y), 2, 0, ...VoxWater.deep(host, cfg, x, y)]);
         else {      // (not along a side where the land is lower and no water, a pit beside the shore: its rim leaves px see-through there, and the water showed in them: a pale line along the pit floor's edge)
-          const dry = (dx, dy) => { const n = host.column(x + dx, y + dy); return !!n && n[n.length - 1] < ct && !host.water(x + dx, y + dy) ? K : 0; }, dn = dry(0, -1) || (host.water(x, y - 1) ? 0 : dry(-1, -1) || dry(1, -1)), dw = dry(-1, 0), de = dry(1, 0);
-          const f = [X + dw, Y - 1 + dn, ct * cfg.up - 1, T - dw - de, T + 1 - dn, dw, dn, T, 0, 2, 0, VoxWater.shore(host, cfg, x, y), 0, 0]; add(0, f); if (clear) add(VoxWater.PAGE, f);      // (seen through: once more, with those faces)
+          const dry = (dx, dy) => { const n = host.column(x + dx, y + dy); return !!n && n[n.length - 1] < ct && !host.water(x + dx, y + dy) ? K : 0; }, dn = dry(0, -1), dw = dry(-1, 0), de = dry(1, 0), far = host.water(x, y - 1) ? 0 : 1, nw = Math.max(dw, far * dry(-1, -1)), ne = Math.max(de, far * dry(1, -1)), sv = VoxWater.shore(host, cfg, x, y);
+          // (lower land only past a north corner: that corner's px, no more. All of its north rows left out, a ridge a tile wide between a pond and a drop showed the bed's sand in them, bare: cream tabs along the pond's sides)
+          const piece = (x0, y0, w, h) => { const f = [X + x0, Y - 1 + y0, ct * cfg.up - 1, w, h, x0, y0, T, 0, 2, 0, sv, 0, 0]; add(0, f); if (clear) add(VoxWater.PAGE, f); };      // (seen through: once more, with those faces)
+          if (dn || (nw === dw && ne === de)) piece(dw, dn, T - dw - de, T + 1 - dn); else { piece(nw, 0, T - nw - ne, K); piece(dw, K, T - dw - de, T + 1 - K); }
         }
       }
       // (the water's own side, seen through: where the land south of it is lower than its face and no water, a bank dug away: a face down to its bed. vox_water.js: its last byte 255)
@@ -136,7 +141,7 @@ const VoxMesh = (() => {
         // round a top. 1 north, 2 west, 4 east: a block stands over it there (it goes on under it; the shadow at
         // that wall's foot). 8: land over it (a cave's floor, in the dark). 128: what floats on water
         const dark = open ? (cfg.gorge && z >= cfg.dug ? Math.min(2, slot(x, y, z + 1, z + 1, z)) : 0) : inward(x, y, z);                // (a floor out of doors is as it is painted, however deep: it is where you stand; a gorge's, two steps at the most: it was as bright as the plateau over it, "a rug on the plateau")
-        const top = (x0, wd, y1, ux) => add(p, [x0, Y - tn, z * cfg.up, wd, y1 + tn, ux, -tn, T, (n ? 1 : 0) | (w ? 2 : 0) | (e ? 4 : 0) | (open ? 0 : 8) | (bed ? 64 : 0), 0, strip(z + 1),
+        const top = (x0, wd, y1, ux) => add(p, [x0, Y - tn, z * cfg.up, wd, y1 + tn, ux, -tn, T, (n ? 1 : 0) | (w ? 2 : 0) | (e ? 4 : 0) | (open ? 0 : 8) | (bed ? 64 : 0), 0, strip(z + 1, z + 1, rk || !cfg.rock || z < cfg.rock.from),      // (a high top that is no rock: the last earth level's strip, so the light knows it: vox_light.js deep)
           (open && w ? Math.max(-K, reach(x - 1, y, z + 1, 1)) : -inset(x - 1, y, z + 1, 1)) + BIAS, (open && e ? Math.max(-K, reach(x + 1, y, z + 1, -1)) : -inset(x + 1, y, z + 1, -1)) + BIAS, n ? shape(x, y - 1, z + 1) : 0, shape(x, y, z), dark]);      // (its own shape, for the sun: under it the top's paint is its wall, vox_light.js; last: how dark, above)
         // (a mouth's floor goes on under the walls beside it only up to where the ground before the mouth goes on under them: K px
         // from its south end. Both were there at one height, in stripes)

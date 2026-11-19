@@ -154,17 +154,19 @@ def test_one_wall_has_one_light(game):
 
 
 def test_a_sliced_top_is_the_rock_seen_inside_not_one_flat_colour(game):
-    """On the floor of a gorge in stone, the wall in front of you cut down to the floor: its sliced top is eight tiles
+    """On the floor of a gorge in stone, the wall in front of you, one tile thick, cut where it hides you and the floor beside you (a keyhole,
+    xray.js: all eight tiles of it were cut to the floor, a dark mat; a wall one tile thick keeps a level, its foot): its sliced top is three tiles
     of rock. It was one flat colour (the level's wall-foot line: in stone a blank grey slab, "untextured"); it is the
     rock's own body with its flecks, a touch darker than the wall that still stands north of you, the same rock."""
     game.flat()                                                  # (art px of a wall a level up the picture: whole px on the flat one)
     game.clear_area(12)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)
-    game.stamp(-4, -1, ["." * 8] * 3, levels=["6" * 8, "0" * 8, "6" * 8])
+    game.stamp(-4, -3, ["." * 8] * 7, levels=["6" * 8] * 3 + ["0" * 8] + ["6" * 8] * 3)      # (three tiles thick: stone is a mass, a wall one tile thick is earth: voxpaint.js rocky)
     under(game, x, y, 0)
-    assert game.js(f"[-3, -2, -1, 0, 1, 2].every((i) => xray.pic.cut.get(({x} + i) + ',' + ({y} + 1)) === 0)")
-    top = [tuple(c) for c in game.js(LAND, [[x + i, y + 1, 0, ax, ay] for i in (-2, -1, 0, 1) for ax in range(1, 15) for ay in range(2, 14)])]
+    lv = game.js(f"[-1, 0, 1].map((i) => xray.pic.cut.get(({x} + i) + ',' + ({y} + 1)))")
+    assert lv[0] == lv[1] == lv[2] and lv[1] in (0, 1) and game.js("xray.pic.cut.size") < 20, lv      # (a keyhole: the three tiles at you, to the floor; a wall one tile thick would keep a level)
+    top = [tuple(c) for c in game.js(LAND, [[x + i, y + 1, lv[1], ax, ay] for i in (-1, 0, 1) for ax in range(1, 15) for ay in range(2, 14)])]
     assert len(set(top)) >= 3, set(top)                           # its body, its light flecks, its dark ones
     mid = lambda px: sorted(px, key=sum)[len(px) // 2]
     body, wall = mid(top), mid(game.js(LAND, [[x + i, y, 2, ax, 3] for i in (-2, -1, 0, 1) for ax in range(1, 15)]))

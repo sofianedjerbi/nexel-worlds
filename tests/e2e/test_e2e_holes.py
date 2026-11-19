@@ -3,7 +3,7 @@ vox_engine.js): a hole reads as a hole, the ground goes in under an overhang, an
 (An audit of the landed game: "an 8-deep shaft looks 1 deep from outside and like a brown tower from inside, an
 overhang is a black box, and hills you stand north of get flattened or boxed".)"""
 
-from test_e2e_digging import DRAWN, LAND, SEEN, earth
+from test_e2e_digging import DRAWN, HIDE, LAND, SEEN, earth
 from test_e2e_section import fill_px, under
 
 mid = lambda px: sorted(px, key=sum)[len(px) // 2]              # (a face's body, whatever fleck one px of it is)
@@ -142,8 +142,9 @@ def test_no_stump_one_tile_wide_is_left_standing_alone_beside_a_cut(game):
 
 def test_on_a_gorges_floor_you_are_in_a_hole_its_wall_is_one_face_and_its_floor_is_not_the_plateaus(game):
     """A natural gorge, three rows of floor between two plateaus eight high ("the canyon floor has no depth... a rug
-    on the plateau"). You are in it as in a hole that was dug: all of the floor round you is shown, not a tile of
-    it; the far wall is seen down to its foot, darker than the plateau's top, and one tone from its top to its foot
+    on the plateau"). You are in it as in a hole that was dug, open to the sky: seen past a KEYHOLE in the wall in front of you,
+    you and the floor where your next step goes, not a tile of it and not the whole gorge (all of it was opened: "a hard
+    rectangular window" with a sill a screen wide; this test asked for seven columns of it); the far wall is seen down to its foot, darker than the plateau's top, and one tone from its top to its foot
     (it went down darker a level at a time: on a cliff that runs on a slant, each column two levels lower on the
     screen than the last, that was a grid of grey squares, "this wall look so weird"; the gorge's depth is its floor's);
     the floor is darker than the same meadow out in the open. An open meadow under one cliff is no gorge."""
@@ -154,11 +155,15 @@ def test_on_a_gorges_floor_you_are_in_a_hole_its_wall_is_one_face_and_its_floor_
     game.stamp(-7, -5, ["." * 15] * 11, levels=["8" * 15] * 4 + ["0" * 15] * 3 + ["8" * 15] * 4)
     game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(400)
     assert game.js(f"[xrayGorge({x}, {y}, 0), xrayGorge({x}, {y + 9}, 0)]") == [True, False]
-    cols = set(game.js("[...xray.pic.cut.keys()].map((k) => +k.split(',')[0])"))
-    assert cols >= set(range(x - 3, x + 4)), cols                       # the place, not your column
+    tiles = [tuple(map(int, k.split(","))) for k in game.js("[...xray.pic.cut.keys()]")]
+    assert 3 <= len({t[0] for t in tiles}) and all(abs(t[0] - x) <= 2 and t[1] > y + 1 for t in tiles) and len(tiles) < 24 and not game.js("!!xray.pic.hole"), tiles      # a keyhole in the south wall: wider than your column, no wider than two tiles each side
+    assert max(t[1] for t in tiles if t[0] == x) > max(t[1] for t in tiles if abs(t[0] - x) == 2), tiles      # ...deepest at you, its sides stepping in
+    seen = game.js(LAND, [[x, y, 0, 8, 12], [x - 1, y, 0, 8, 12], [x + 1, y, 0, 8, 12], [x, y - 1, 0, 8, 8], [x, y + 1, 0, 8, 12], [x - 2, y - 1, 0, 8, 8], [x + 2, y - 1, 0, 8, 8]])
+    assert all(green(c) for c in seen), seen                            # your tile, and the floor round it where you step
+    assert not green(game.js(LAND, [[x + 5, y, 0, 8, 8]])[0])           # five tiles along: the wall stands in front of the floor, as it is
     foot = mid(game.js(LAND, [[x + 1, y - 1, 0, ax, -4] for ax in (2, 5, 8, 11, 14)]))      # the far wall's lowest level, over the floor's far edge
     high = mid(game.js(LAND, [[x + 1, y - 1, 7, ax, -4] for ax in (2, 5, 8, 11, 14)]))      # ...and its highest but one
-    top, floor, open_ = game.js(LAND, [[x + 6, y + 3, 8, 8, 8], [x + 2, y, 0, 8, 8], [x - 9, y, 0, 8, 8]])
+    top, floor, open_ = game.js(LAND, [[x + 6, y + 3, 8, 8, 8], [x + 1, y - 1, 0, 8, 8], [x - 9, y, 0, 8, 8]])
     assert sum(foot) < sum(top) - 60 and foot == high, (foot, high, top)
     assert green(open_) and sum(floor) < sum(open_) - 25, (floor, open_)
     assert fill_px(game) == 0 and not game.errors
@@ -223,3 +228,48 @@ def test_no_cut_opens_while_you_fall(game):
     air, fell = game.js("(() => { clearInterval(window.__iv); return [window.__air, window.__fell]; })()")
     assert fell > 2 and air == 0, (air, fell)
     assert game.pos() == (x, y + 1)
+
+
+def test_a_tile_that_joins_the_cut_comes_in_on_its_own_a_checker_of_px_and_nothing_else_moves(game):
+    """The keyhole follows you: a tile that joins the cut fades in by itself (web/js/voxels.js `fade`, 120 ms, the
+    engine's checker of px of paint), the rest of the picture as it was ("its edge jumps by whole tiles while
+    walking"). A tile of the wall five along is added to the cut: at once nothing changes; 50 ms on, some of its px
+    are cut and some not, and no px changed outside its column; then it is all there."""
+    game.flat()                                                  # (px are compared tile by tile: the flat picture)
+    game.clear_area(14)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(-7, -5, ["." * 15] * 11, levels=["8" * 15] * 4 + ["0" * 15] * 3 + ["8" * 15] * 4)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(500)
+    out = game.js("""async ([tx, ty]) => { const look = window.xrayLook, keep = {}; window.xrayLook = () => {}; for (const f of %s) { keep[f] = window[f]; window[f] = () => null; } parts.length = puffs.length = 0;
+      const T = performance.now(), shot = () => { frame(T); return ctx.getImageData(0, 0, cv.width, cv.height).data; }, nap = (ms) => new Promise((done) => setTimeout(done, ms));
+      const S = TS(), [ox] = screenOrigin(S), k = S / 16, x0 = (ox + tx * S - 2 * k) * DPR, x1 = (ox + (tx + 1) * S + 2 * k) * DPR, w = cv.width;
+      const diff = (a, b) => { let inside = 0, outside = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) { const px = (i / 4) %% w; if (px >= x0 && px < x1) inside++; else outside++; } return [inside, outside]; };
+      const before = shot(); xray.pic.cut.set(tx + ',' + ty, 6); const first = shot(); await nap(50); const half = shot(); await nap(300); const whole = shot();
+      xray.pic.cut.delete(tx + ',' + ty); window.xrayLook = look; Object.assign(window, keep);
+      return [diff(before, first), diff(first, half), diff(half, whole), diff(before, whole)]; }""" % HIDE, [x + 5, y + 2])
+    first, half, rest, whole = out
+    assert first == [0, 0], out                                  # the frame it joins: not there yet
+    assert half[0] > 50 and half[1] == 0, out                    # 50 ms on: coming, in its own column alone
+    assert rest[0] > 50 and whole[0] > half[0], out             # ...and the rest of it after (elsewhere the sun's shadows have moved on by then: not counted)
+    assert not game.errors
+
+
+def test_after_a_fall_into_a_canyon_the_cut_is_a_notch_in_the_walls_between_the_eye_and_you(game):
+    """Off a plateau onto the floor of a canyon whose other side rises in terraces toward the eye ("on landing in the
+    canyon's river a one-tile-wide blue slot fades in through the terraces"). Landed, the cut comes: only tiles south
+    of you (between the eye and you), no further than two columns from yours, none lower than the eye's line to your
+    feet (two levels a row), fewer the further from your column; the plateau you fell from is whole."""
+    game.clear_area(14)
+    x, y = game.pos()
+    game.stamp(-4, -2, ["." * 9] * 3, levels=["4" * 9] * 3); game.stamp(-4, 2, ["." * 9] * 5, levels=["4" * 9, "6" * 9] + ["8" * 9] * 3)
+    game.rpc("dev_teleport", x=x, y=y, z=4); game.wait(f"myAt && myAt.y === {y} && myAt.z === 4", 8000); game.wait(DRAWN, 8000); game.sleep(400)
+    assert game.js("xray.a") == 0
+    game.hold(["s"], 350)
+    game.wait(SEEN, 20000); game.sleep(300)
+    assert game.pos() == (x, y + 1)
+    tiles = [(*map(int, k.split(",")), lv) for k, lv in game.js("[...xray.pic.cut]")]
+    assert tiles and all(ty > y + 1 and abs(tx - x) <= 2 and lv >= 2 * (ty - y - 1) - 2 for tx, ty, lv in tiles), tiles
+    per = [sum(1 for t in tiles if abs(t[0] - x) == d) for d in (0, 1, 2)]
+    assert per[0] >= 3 and per[0] * 2 >= per[1] >= per[2] and len(tiles) < 24, (per, tiles)      # a notch, deepest in your column
+    assert game.js(f"xrayShows(ents.get('agent' + myId)) > .95") and fill_px(game) == 0 and not game.errors

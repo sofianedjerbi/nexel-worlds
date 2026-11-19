@@ -41,7 +41,7 @@ void main() {
   let prog = null, vao = null, buf = null, bad = false;
   // -> the corners of a mark's faces: x, y (px of paint in its tile), z (px up), then a shift on the screen (px of paint), its colour, is it dotted
   function build(m, cfg) {
-    const T = cfg.cell, top = m.z1 * cfg.up, foot = m.z0 * cfg.up, g = m.grow || 0, out = [], flat = !!m.flat || top - foot < .5, [r, gr, b] = m.colour;
+    const T = cfg.cell, top = m.z1 * cfg.up, foot = m.z0 * cfg.up + (m.lift || 0), g = -(m.grow || 0), out = [], flat = !!m.flat || top - foot < .5, [r, gr, b] = m.colour;
     // a piece between two points of the land a and b ([x, y, z]), from the shift (ox, oy) at a to (ox, oy + oh) at b, w px across
     const piece = (a, b2, ox, oy, w, oh, c, dot = 0) => { for (const [i, j] of SIX) { const q = j ? b2 : a; out.push(q[0], q[1], q[2], ox + i * w, oy + j * oh, c[0], c[1], c[2], c[3], dot); } };
     const rect = (q, ox, oy, w, h, c, dot = 0) => piece(q, q, ox, oy, w, h, c, dot);
@@ -54,12 +54,13 @@ void main() {
     const ink = [INK[0], INK[1], INK[2], .45 * m.a], col = [r, gr, b, m.a], dim = [r * .9, gr * .9, b * .9, m.a], nw = [0, 0, top], sw = [0, T, top], fw = [0, T, foot];
     // a level line (west to east) at a point, and an upright or lengthwise one between two, each a px
     const level = (q, oy, c, dot) => rect(q, -g, oy, T + 2 * g, 1, c, dot), edge = (a, b2, ox, c, o0 = -g, o1 = g, dot = 0) => piece(a, b2, ox, o0, 1, o1 - o0, c, dot);
-    if (m.face) { level(sw, 0, col); level(fw, -1, col); level(fw, 0, ink); edge(sw, fw, 0, col, 0, 0); edge([T, T, top], [T, T, foot], -1, col, 0, 0); return out; }      // (a wall's face alone, one cell of it: its four edges)
-    if (flat) { level(sw, -2, [INK[0], INK[1], INK[2], .3 * m.a]); edge([T, 0, top], [T, T, top], -2, [INK[0], INK[1], INK[2], .3 * m.a], 1, -2); }      // (a top alone: shade inside it, south and east)
-    level(nw, -g + 1, ink); level(flat ? sw : fw, g, ink);                                       // ink under the far edge and under the foot
-    level(nw, -g, col); level(sw, g - 1, flat ? col : dim);                                      // the top: its far edge, its near one (where it meets the front)
+    // (every line is in the box: its tile across, from its top's far edge to its foot. A px out as it breathed and the ink under its foot were an overhang and a double line on a block's edge)
+    if (m.tick !== undefined) rect([T / 2 - 2, T, m.tick * cfg.up - cfg.up / 2], 0, 0, 4, 1, [r, gr, b, m.a * .8]);      // (the place on a wall's face that is pointed at, where the box is the cell over it: a dash)
+    if (flat) { level(sw, -3, [INK[0], INK[1], INK[2], .3 * m.a]); edge([T, 0, top], [T, T, top], -2, [INK[0], INK[1], INK[2], .3 * m.a], 1, -3); }      // (a top alone: shade inside it, south and east)
+    level(nw, -g + 1, ink); level(flat ? sw : fw, g - 1, ink);                                   // ink under the far edge and under the foot
+    level(nw, -g, col); level(sw, flat ? g - 2 : g - 1, flat ? col : dim);                       // the top: its far edge, its near one (where it meets the front)
     edge(nw, sw, -g, col); edge([T, 0, top], [T, T, top], g - 1, col);                           // ...its west and its east
-    if (!flat) { edge(sw, fw, -g, dim, g, g); edge([T, T, top], [T, T, foot], g - 1, dim, g, g); level(fw, g - 1, dim); }      // the front: its two uprights, its foot
+    if (!flat) { edge(sw, fw, -g, dim, g, g); edge([T, T, top], [T, T, foot], g - 1, dim, g, g); level(fw, g - 2, dim); }      // the front: its two uprights, its foot
     // a side in view (a bank beside the wall, a step of `m.step` px a level down to `west` or `east` px at its foot): its
     // edge, stepped as the bank is, at the block's far end and at its near one, and the line of its foot on the land beside it
     for (const [w, x, sg] of [[m.west, 0, -1], [m.east, T, 1]]) if (w > 0 && !flat) {

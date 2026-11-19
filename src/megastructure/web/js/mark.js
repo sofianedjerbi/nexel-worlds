@@ -13,8 +13,10 @@ const Marks = (() => {
   const WHITE = [1, .973, .91], RED = [.91, .376, .31], GREEN = [.6, .9, .55], TALL = 2;      // (TALL: levels a thing that stands takes: a tile)
   let shown = [], at = 0, forced = null;
   const lv = (x, y) => aimLift(x, y) / zoom / RELIEF_STEP;      // the level a tile is aimed at (on a bridge's deck: half a level and a bit)
-  // a wall's face under the pointer (mouse.js): the one cell of it that is pointed at, its face alone (the whole wall up to what would stand on it was a box a tile and a half over the rim of a pit)
-  const faceOf = (p, colour) => { const z1 = Math.max(lv(p.x, p.y + 1) + 1, lv(p.x, p.y) - (p.down || 0)); return {x: p.x, y: p.y, z0: z1 - 1, z1, colour, face: true, fill: 0}; };
+  // One aim, ONE box: the cell the click acts on (a second box on the wall's face under the pointer was "two boxes, not one cell under the pointer").
+  // a wall's face under the pointer (mouse.js): where on it, for the box's tick: the level of the top of the cell pointed at (none: not by a face)
+  const tickOf = (p) => (p.face ? Math.max(lv(p.x, p.y + 1) + 1, lv(p.x, p.y) - (p.down || 0)) : undefined);
+  const lift = (z0) => (z0 >= -1 ? 2 : 0);      // (a wall of the land ends its foot 2 px short of its tile's edge, voxpaint.js: the box's foot is the wall's; dug ground is cut square)
   // -> the cells of an aim {p, it}: [{x, y, z0, z1, colour}], or none
   function cells(p, it) {
     const out = [], thing = it.ghost && !it.ghostGround && it.ghost !== "seed" && !FILLS[it.ghost], slab = it.ghost === "roof" || it.ghost === "plank";
@@ -23,15 +25,14 @@ const Marks = (() => {
       const bad = it.ok === false || (it.bad || []).some((b) => b.x === q.x && b.y === q.y), L = Build.on ? Build.level() : null;
       const surf = it.z !== undefined ? it.z : L !== null ? L : lv(q.x, q.y), deck = it.z === undefined && L === null && Models.up(q.x, q.y) > 0;
       const front = deck ? surf - .25 : Math.min(surf - 1, Math.max(lv(q.x, q.y + 1), surf - 12));      // a block's front: down to the land before it
-      let z0 = front, z1 = surf, drop, flat = false;
-      const side = (dx) => { const n = z1 - Math.max(z0, lv(q.x + dx, q.y)); return n > 0 && z1 === surf && drop === undefined ? Math.min(n, 5) * 2 : 0; };      // (a block of the land with a bank that way: voxpaint.js, 2 px a level, 5 levels)
+      let z0 = front, z1 = surf, drop, flat = false, air = slab || deck, tick;
       if (slab && it.z !== undefined) z0 = surf - 1;                                    // a block built: its own cell
-      else if (L !== null && !solidAt(q.x, q.y, surf)) { z0 = surf - 1; drop = settleAt(q.x, q.y, surf - 1); }      // the build cursor in the air: its cell there, and the ground under it
+      else if (L !== null && !solidAt(q.x, q.y, surf)) { z0 = surf - 1; drop = settleAt(q.x, q.y, surf - 1); air = true; }      // the build cursor in the air: its cell there, and the ground under it
       else if (L !== null && landSolid(q.x, q.y, surf + 1)) z0 = surf - 1;              // ...in the ground: the block it is on
-      else if (thing || (it.ghost === "dirt" && it.z === undefined && L === null && !FILLS.dirt[gndAt(q.x, q.y)])) { z0 = surf; z1 = surf + (thing ? TALL : 1); if (p.face && q === p) out.push(faceOf(p, bad ? RED : GREEN)); }   // what will stand there, or the ground raised: the cell over the surface
+      else if (thing || (it.ghost === "dirt" && it.z === undefined && L === null && !FILLS.dirt[gndAt(q.x, q.y)])) { z0 = surf; z1 = surf + (thing ? TALL : 1); air = true; if (q === p) tick = tickOf(p); }   // what will stand there, or the ground raised: the cell over the surface
       else if (!deck && lv(q.x, q.y + 1) >= surf) flat = true;                            // level ground, or higher land before it: its front is not seen, its top alone
-      // (pointed at by its wall's face, mouse.js: what will stand on it is shown from the wall's foot up, the face under the pointer in the box)
-      out.push({x: q.x, y: q.y, z0, z1, colour: bad ? RED : it.ghost ? GREEN : WHITE, west: side(-1), east: side(1), drop, flat, ...(drop !== undefined ? {fill: .4} : {})});      // (a cell in the air: washed more, its front darker: a box at a glance; it read as a flat square)
+      // (a block's side that is a bank in view: no line of its own, the box is its tile's and the bank's thin side is in it. lift: its front's foot)
+      out.push({x: q.x, y: q.y, z0, z1, colour: bad ? RED : it.ghost ? GREEN : WHITE, drop, flat, tick, lift: air || flat ? 0 : lift(z0), ...(drop !== undefined ? {fill: .4} : {})});      // (a cell in the air: washed more, its front darker: a box at a glance; it read as a flat square)
     }
     return out;
   }
@@ -39,7 +40,7 @@ const Marks = (() => {
   function aim(a, tile, now) {
     // (the mouse over ground you would only walk to, nothing in hand for it: its tile's top all the same, faint: where the pointer is in the land, in a pit, on a hill)
     const walk = !!(a && a.it && a.it.walk && !a.it.ghost && !Build.on), faint = walk && typeof inputMode !== "undefined" && inputMode === "mouse" && mouse.in;
-    const dt = Math.min(.1, (now - (at || now)) / 1000), want = forced || (faint ? [a.p.face ? {...faceOf(a.p, WHITE), most: .4} : {x: a.p.x, y: a.p.y, z0: lv(a.p.x, a.p.y), z1: lv(a.p.x, a.p.y), colour: WHITE, flat: true, fill: 0, most: .4}] : a && a.it && (Build.on || tile || a.it.ghost) && !walk ? cells(a.p, a.it) : []);
+    const dt = Math.min(.1, (now - (at || now)) / 1000), want = forced || (faint ? [{tick: tickOf(a.p), x: a.p.x, y: a.p.y, z0: lv(a.p.x, a.p.y), z1: lv(a.p.x, a.p.y), colour: WHITE, flat: true, fill: 0, most: .4}] : a && a.it && (Build.on || tile || a.it.ghost) && !walk ? cells(a.p, a.it) : []);
     at = now;
     const grow = Math.sin(now / 1000 * 4.5) > .3 ? 1 : 0, k = 1 - Math.exp(-dt * 22);
     if (want.length) {

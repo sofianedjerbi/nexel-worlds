@@ -248,17 +248,19 @@ function dugFoot(px, o, W, x, y, lv) {
 }
 // Level k's sheet: grass (1-2), darker grass (3-4), stone above; each layer up a touch brighter, so terraces of the
 // same sheet still read as steps. At sea level and under: a hole's walls, earth
-const hillSheets = {};
+// (stone: a top a step darker each level under 12, .825 of the sheet's own at 5: light enough that the lowest top is far lighter than a wall; its wall: one tone,
+// darker than the darkest top and cooler, so a top is told from the face under it by value and by hue: with the tops down to .75 and the wall at .88 the low terraces were one grey mass)
+const hillSheets = {}, ROCK_TONE = {step: .025, wall: [.79, .81, .87]};
 function hillSheet(k) {
   if (k <= 0) return dugSheet("hill1", -k);
-  k = Math.min(k, 12);                                // (the mountains' top: one sheet for all that is built higher)
+  const rock = k === "rock"; if (!rock) k = Math.min(k, 12);      // (the mountains' top: one sheet for all that is built higher) ("rock": stone's wall, voxpaint.js)
   if (hillSheets[k]) return hillSheets[k];
-  const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 4 ? [1.015, 1.03, 1.04, 1.06][k - 1] : 1.042 ** (k - 12);      // (the greens an even step lighter a level across the two sheets: level 3 was darker than level 2) (stone: the sheet's own at 12, the mountains' top, and a clear step darker each level down to 5, a touch cooler: never lighter than the sheet (at 12 its top was a blank pale plate, its rim bleached with it), and a terrace is told from the next by its top alone, from where no wall of it is seen. Its walls: one tone, voxpaint.js)
+  const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 4 ? [1.015, 1.03, 1.04, 1.06][k - 1] : rock ? 0 : 1 - ROCK_TONE.step * (12 - k);      // (the greens an even step lighter a level across the two sheets: level 3 was darker than level 2) (stone: the sheet's own at 12, the mountains' top, and a clear step darker each level down to 5, a touch cooler: never lighter than the sheet (at 12 its top was a blank pale plate, its rim bleached with it), and a terrace is told from the next by its top alone, from where no wall of it is seen. Its walls: one tone, voxpaint.js)
   if (f === 1) return hillSheets[k] = img;
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
   const g = c.getContext("2d"); g.drawImage(img, 0, 0);
   const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
-  for (let i = 0; i < px.length; i += 4) for (let j = 0; j < 3; j++) px[i + j] = Math.min(255, px[i + j] * (j === 2 && f < 1 ? f ** .85 : f));
+  for (let i = 0; i < px.length; i += 4) for (let j = 0; j < 3; j++) px[i + j] = Math.min(255, px[i + j] * (rock ? ROCK_TONE.wall[j] : j === 2 && f < 1 ? f ** .85 : f));
   g.putImageData(d, 0, 0);
   return hillSheets[k] = c;
 }

@@ -98,3 +98,28 @@ def test_blocks_cost_little_of_a_frame(game):
     ms = game.js("new Promise((ok) => { const out = [], of = window.frame; window.frame = (now) => { const a = performance.now(); of(now); out.push(performance.now() - a); if (out.length >= 90) { window.frame = of; ok(out); } }; })")
     ms.sort()
     assert ms[len(ms) // 2] < 6 and ms[int(len(ms) * .95)] < 12, ms[-5:]
+
+
+def test_a_stair_that_climbs_past_level_four_is_one_material_along_its_flight(game):
+    """ "An earth staircase's fifth step turns into a grey stone column with a hard joint: two objects": stone is a mass,
+    not a height (voxpaint.js rocky). A stair from level 3 to 7, two tiles wide, alone on the meadow: every step's front is
+    earth and its top is grass, the fifth as the fourth. The same steps up the flank of a stone plateau are stone with it,
+    and a pillar six high alone is earth."""
+    game.flat()                                                  # (it reads art px of faces by where the flat picture has them)
+    game.clear_area(14)
+    x, y = game.pos()
+    game.stamp(-6, 3, ["....."] * 2, levels=["34567"] * 2)       # the stair, south of you
+    game.stamp(2, 2, ["....."] * 4, levels=["77777"] * 3 + ["00567"])      # a plateau of stone, steps up its south flank
+    game.stamp(-9, 4, ["."], levels=["6"])
+    game.rpc("dev_time", phase=.375); blocks(game); game.sleep(600)
+    grey = lambda c: max(c) - min(c) < 30
+    stair = [game.js(PX, [x - 6 + i, y + 4, 8, 16 + 3, 3 + i]) for i in range(5)]      # each step's front, 3 px under its rim
+    assert all(earth(c) for c in stair), stair
+    assert len({tuple(c) for c in stair}) <= 2, stair                 # (one wall: its body, or a fleck of it)
+    tops = [game.js(PX, [x - 6 + i, y + 3, 8, 10, 3 + i]) for i in range(5)]
+    assert all(green(c) for c in tops), tops
+    assert game.js("([a, b]) => [0, 1, 2, 3, 4].map((i) => VoxPaint.rocky(a + i, b))", [x - 6, y + 3]) == [False] * 5
+    flank = [game.js(PX, [x + 4 + i, y + 5, 8, 16 + 3, 5 + i]) for i in range(3)]
+    assert all(grey(c) and not earth(c) for c in flank), flank       # joined to the mass: stone
+    assert grey(game.js(PX, [x + 4, y + 4, 8, 16 + 3, 7]))           # (the plateau's own front)
+    assert earth(game.js(PX, [x - 9, y + 4, 8, 16 + 3, 6])) and green(game.js(PX, [x - 9, y + 4, 8, 8, 6]))      # a pillar alone: earth, grass on it

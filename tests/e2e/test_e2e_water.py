@@ -32,7 +32,7 @@ def plain(game):
 
 def test_shallow_water_shows_its_bed_tinted_and_deep_water_is_not_seen_through(game):
     plain(game)
-    game.stamp(-8, -6, ["~" * 5] * 4); game.stamp(2, -6, [")" * 5] * 4)          # a pond one level deep at its banks; a piece of the deep
+    game.stamp(-8, -6, ["~" * 5] * 4); game.stamp(1, -9, [")" * 9] * 9)         # a pond one level deep at its banks; a piece of the deep (wide: the dark is four tiles from a bank or more, waterbed.js)
     x, y = game.pos(); game.wait(READY, 20000); game.sleep(600)
     # a pond's tile by its west bank with nothing floating on it: its own bed shows in its south half (a bed one deep is drawn a level down the picture)
     row = next(j for j in range(1, 4) if game.js(f"hash({x - 8}, {y - 6 + j}, 41) >= .09"))
@@ -42,7 +42,8 @@ def test_shallow_water_shows_its_bed_tinted_and_deep_water_is_not_seen_through(g
     sand, tint, a = (236, 220, 174), (104, 204, 208), .52                        # water.js: the sand a level down; waterbed.js: the tint over it and how much of it
     want = [s * (1 - a) + t * a for s, t in zip(sand, tint)]
     assert all(abs(g - w) <= 4 for g, w in zip(got, want)), (got, want)
-    deep = game.js(MOST, [x + 4, y - 4.5, x + 5, y - 3.5])
+    assert game.js(f"[WaterBed.depth({x + 5}, {y - 4}), WaterBed.depth({x + 2}, {y - 4}), WaterBed.depth({x + 1}, {y - 4})]") == [4, 2, 2]      # its middle; nearer its bank one basin, to the bank (its kind is deeper than a rim)
+    deep = game.js(MOST, [x + 5, y - 4.8, x + 6, y - 4.1])
     assert all(abs(g - w) <= 3 for g, w in zip(deep, (72, 115, 150))), deep      # the deep: water.js's own deep colour, all of it
     game.js("(() => { setOpt('clearwater', false); return 1; })()"); game.wait(READY, 20000); game.sleep(600)
     assert game.js(MOST, [tx + .3, ty + .6, tx + .8, ty + .95]) != got           # (off: another picture there)
@@ -111,7 +112,7 @@ def test_water_one_level_deep_is_clearly_bluer_than_dry_ground_at_noon_and_at_lo
 
 
 def test_a_bed_step_under_water_is_one_colour_no_checker(game):
-    """The front of a step of the bed, seen through the water: a band of one colour, its first two rows a step darker. No dither."""
+    """The front of a step of the bed, seen through the water: a band of one colour, its first row a touch darker (a shelf's line, not a box's edge). No dither."""
     plain(game)
     game.stamp(-9, -7, ["~" * 6] * 6); x, y = game.pos(); game.wait(READY, 20000); game.sleep(600)
     tx, ty = x - 7, y - 6                                                         # two deep (no land beside it), the tile north of it one deep: the step's front is rows 8 to 15 of its face
@@ -124,7 +125,7 @@ def test_a_bed_step_under_water_is_one_colour_no_checker(game):
         rows = game.js(grab, [col, ty, 8, 8])
         assert all(len(set(r)) == 1 for r in rows), rows                          # every row of the front: one colour from side to side
         v = [sum(map(int, r[0].split(","))) for r in rows]                        # (a row may differ from the next by a unit: the water is less seen through the further north it is)
-        assert max(v[2:]) - min(v[2:]) <= 3 and abs(v[0] - v[1]) <= 3 and v[2] - v[0] >= 12, rows      # six rows of one colour under two of a darker one
+        assert max(v[1:]) - min(v[1:]) <= 3 and 4 <= v[1] - v[0] <= 30, rows      # seven rows of one colour under one a little darker
     game.js(RESET)
 
 
@@ -163,3 +164,52 @@ def test_water_up_on_a_plateau_has_a_bank_and_water_beside_a_dug_bank_has_a_side
     from test_e2e_digging import LAND
     r, g, b = game.js(LAND, [[x - 5, y - 1, 0, 8, 3]])[0]
     assert b > r + 20 and g > r + 20, (r, g, b)
+
+
+def test_a_pillar_and_an_islet_standing_in_a_pond_do_not_change_the_bed_round_them(game):
+    """The bed is deeper by the distance to the water's banks, not to what stands in it: a step down round every pillar
+    and islet, each with its lip and its shadow, was a quilt of squares. A tile beside the pillar is as deep, and the
+    same colour, as one three tiles from it at the same distance from the bank."""
+    plain(game)
+    game.stamp(-10, -9, ["~" * 12] * 8); x, y = game.pos(); game.wait(READY, 20000)
+    X, Y = x - 10, y - 9                                                          # the pond's corner
+    before = game.js("([X, Y]) => { const o = []; for (let j = 0; j < 8; j++) for (let i = 0; i < 12; i++) o.push(WaterBed.depth(X + i, Y + j)); return o; }", [X, Y])
+    assert before == [1 if i in (0, 11) or j in (0, 7) else 2 for j in range(8) for i in range(12)]      # a rim one deep, then one basin
+    game.stamp(-6, -6, ["-"], levels=["3"]); game.stamp(-2, -6, ["..", ".."])      # a stone pillar, an islet of four tiles
+    game.wait(READY, 20000); game.sleep(700)
+    after = game.js("([X, Y]) => { const o = []; for (let j = 0; j < 8; j++) for (let i = 0; i < 12; i++) o.push(WaterBed.depth(X + i, Y + j)); return o; }", [X, Y])
+    land = {(4, 3), (8, 3), (9, 3), (8, 4), (9, 4)}
+    assert all(a == (0 if (i % 12, i // 12) in land else b) for i, (a, b) in enumerate(zip(after, before))), after
+    row = Y + 5                                                                   # a row of the basin south of them: its tiles show their own bed in their south half
+    cols = [c for c in range(X + 2, X + 10) if game.js(f"hash({c}, {row}, 41) >= .09")]      # (nothing floating on them)
+    seen = {c: tuple(game.js(MOST, [c + .2, row + .55, c + .8, row + .95])) for c in cols}
+    assert len(cols) >= 4 and len(set(seen.values())) == 1, seen                  # under the pillar's column and three tiles from it: one colour
+    game.stamp(-10, -9, ["." * 12] * 8, levels=["0" * 12] * 8); game.js(RESET)
+
+
+def test_under_a_shader_the_sky_in_the_water_ends_at_an_islets_own_edge(game):
+    """Natural: the sky's tint lies on the px where the water's face is seen and on no other. It was laid through a
+    picture of the water a rectangle a tile: a square of water with no sky in it round each islet. Along the four
+    lines through an islet's middle: the last px of water before its edge has the tint, the first px of the islet has none,
+    and its edge is inside its tile's square."""
+    game.flat(); game.clear_area(10); game.js(RESET); game.rpc("dev_time", phase=.375)
+    game.stamp(-9, -8, ["~" * 9] * 7); game.stamp(-5, -5, ["."]); x, y = game.pos(); game.wait(READY, 20000)
+    game.js("(() => { setOpt('shimmer', false); setOpt('clouds', 0); setOpt('glow', 0); setOpt('reflect', 0); setOpt('shader', 'natural'); return 1; })()"); game.wait("!!Sun.water", 8000); game.sleep(1500)
+    scan = """([tx, ty, dx, dy]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const S = TS(), [ox, oy] = screenOrigin(S), k = S / 16, c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; const g = c.getContext('2d', {willReadFrequently: true}); g.drawImage(Shader.el, 0, 0);
+      const out = [];
+      for (let n = -12; n < 9; n++) {                                           // art px along the line, from 12 px outside the tile to its middle
+        const i = dx > 0 ? n : dx < 0 ? 15 - n : 8, j = dy > 0 ? n : dy < 0 ? 15 - n : 8, X = Math.round((ox + tx * S + (i + .5) * k) * DPR), Y = Math.round((oy + ty * S + (j + .5) * k) * DPR);
+        const a = ctx.getImageData(X, Y, 1, 1).data, b = g.getImageData(X, Y, 1, 1).data;
+        out.push([n, a[0], a[1], a[2], Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2])]);
+      }
+      ok(out); })))"""
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        line = game.js(scan, [x - 5, y - 5, dx, dy])
+        wet = lambda p: p[3] > p[1] + 12 and p[2] > p[1]                          # (the land's own picture there: water is blue over red; the islet's foam, earth and grass are not)
+        edge = next(i for i, p in enumerate(line) if not wet(p))
+        assert edge >= 2 and line[edge][0] >= 1, (dx, dy, line)                   # the islet's edge: inside its tile's square, water before it
+        assert line[edge - 1][4] >= 8 and line[edge - 2][4] >= 8, (dx, dy, line)  # the water up to it: the sky in it
+        assert all(p[4] <= 3 for p in line[edge:edge + 3]), (dx, dy, line)        # the islet from its first px: none
+    game.js("(() => { setOpt('shader', 'off'); setOpt('clouds', 100); setOpt('glow', 100); setOpt('reflect', 100); return 1; })()"); game.js(RESET)
+    game.stamp(-9, -8, ["." * 9] * 7)

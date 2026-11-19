@@ -23,11 +23,32 @@
 //     strip by its block's top), so stone never meets earth in a staircase along such a cliff.
 const VoxPaint = (() => {
   const rgb = (c) => (255 << 24 | (c[2] | 0) << 16 | (c[1] | 0) << 8 | (c[0] | 0)) >>> 0;
-  const EARTH = 2, STONE = 9, wallOf = (z) => (z > 4 ? STONE : z > 0 ? EARTH : z), bands = (z) => colsOf(hillSheet(wallOf(z))).bands, sheetOf = (z) => hillSheet(z < 0 ? z : Math.max(1, z));
+  const EARTH = 2, STONE = "rock", wallOf = (z) => (z > 4 ? STONE : z > 0 ? EARTH : z), bands = (z) => colsOf(hillSheet(wallOf(z))).bands, sheetOf = (z) => hillSheet(z < 0 ? z : Math.max(1, z));
   // the px of wall (browns: more red than green) of a sheet whose wall is not EARTH's -> EARTH's, lightest to darkest
   const browns = (sheet) => { const d = sheetData(sheet), [cx, cy] = blobCell(N_ | E_ | W_ | NE | NW), set = new Set(); for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { const v = d.px[(cy * 16 + j) * d.w + cx * 16 + i]; if (v >>> 24 === 255 && (v & 255) > (v >>> 8 & 255)) set.add(v); }
     return [...set].sort((a, b) => (a & 255) - (b & 255)); };
   const earths = new Map(), earth = (z) => { if (!(z > EARTH && z < 5)) return null; let m = earths.get(z); if (!m) { const to = browns(hillSheet(EARTH)); m = new Map(browns(hillSheet(z)).map((v, i) => [v, to[Math.min(i, to.length - 1)]])); earths.set(z, m); } return m; };
+  // Stone is a mass, not a height: a block is stone where its top is at level 5 or over AND its tile is in a 3 x 3 of tiles all that high (`core`: a mountain, a plateau, a terrace
+  // along one), or joined to one by three tiles as high at the most (a mountain's tip, the end of a cliff that runs on a slant, a stair up its flank). A stair that climbs past level 4
+  // on its own, a pillar, a wall one or two tiles thick stay earth to their top, grass on it: a staircase's fifth step was a grey column, two objects.
+  // rocky: is the tile's high block stone; level: the level whose paint the block with its top at z has there (4: the highest earth). The engine: host.rock, voxels.js
+  let seen = -1; const mass = new Map(), cores = new Map(), REACH = 3;
+  function core(x, y) {
+    const k = x + "," + y; let r = cores.get(k); if (r !== undefined) return r;
+    r = false; for (let oy = -2; oy <= 0 && !r; oy++) for (let ox = -2; ox <= 0 && !r; ox++) { r = true; for (let j = 0; j < 3 && r; j++) for (let i = 0; i < 3 && r; i++) r = topAt(x + ox + i, y + oy + j) > 4; }
+    cores.set(k, r); return r;
+  }
+  function rocky(x, y) {
+    if (topAt(x, y) < 5) return false;
+    if (seen !== landVer) { mass.clear(); cores.clear(); seen = landVer; }
+    const k = x + "," + y; let r = mass.get(k); if (r !== undefined) return r;
+    r = core(x, y);
+    for (let at = [x, y], d = 0, met = new Set([k]); !r && d < REACH; d++) { const next = [];
+      for (let i = 0; i < at.length && !r; i += 2) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = at[i] + dx, ny = at[i + 1] + dy, nk = nx + "," + ny; if (met.has(nk) || topAt(nx, ny) < 5) continue; met.add(nk); if (core(nx, ny)) { r = true; break; } next.push(nx, ny); }
+      at = next; }
+    mass.set(k, r); return r;
+  }
+  const level = (x, y, z) => (z > 4 && !rocky(x, y) ? 4 : z);
   const ids = new Map(), cells = [null];                        // a shape: [what of it is drawn, its sheet, the sheet's cell (cx, cy) each quarter of it is: NW, NE, SW, SE]; 0: the whole square
   // A narrow top (a tile in no 2 x 2 of land as high: a pillar, a wall one tile wide, its ends, an L, a T, a plus, a ring): the
   // sheet's own cell for it is all rim (a pillar's top was a button, a ridge a hedge, a plus a muddle: the sheet's rim is 7 px a
@@ -74,7 +95,7 @@ const VoxPaint = (() => {
     }
     if (reduce(m) === 255) return 0;
     if (!(reduce(m) & 240) && m & N_ && !(m & S_) && topAt(x, y - 1) === z + 1 && topAt(x, y + 1) === z - 1) m |= 256;      // (a step of a stair one tile wide going up north: flat-fronted)
-    const sheet = sheetOf(z), [cx, cy] = blobCell(m & 255), q = quarters(m, m & 256), key = (z <= 2 ? 0 : z <= 4 ? 1 : 2) * 4096 + (q.slim ? 2048 + reduce(m & 255) + (m & 256) : cy * 64 + cx);      // (the three sheets: tiles.js hillSheet)
+    const zz = level(x, y, z), sheet = sheetOf(zz), [cx, cy] = blobCell(m & 255), q = quarters(m, m & 256), key = (zz <= 2 ? 0 : zz <= 4 ? 1 : 2) * 4096 + (q.slim ? 2048 + reduce(m & 255) + (m & 256) : cy * 64 + cx);      // (the three sheets: tiles.js hillSheet)
     if (!ids.has(key)) { if (cells.length > 255) return 0; ids.set(key, cells.length); cells.push([cap(sheet, m)[0], sheet, q]); }
     return ids.get(key);
   }
@@ -102,11 +123,11 @@ const VoxPaint = (() => {
   }
   function rim(x, y, z, px, at, stride) {
     const id = shape(x, y, z); if (!id) return;
-    const a = cells[id][0], q = cells[id][2], d = sheetData(sheetOf(z)), [ix, iy] = blobCell(255), [L, M, D] = bands(z).map(rgb), map = earth(z), own = (v) => (map && map.get(v)) || v;
+    const zz = level(x, y, z), a = cells[id][0], q = cells[id][2], d = sheetData(sheetOf(zz)), [ix, iy] = blobCell(255), [L, M, D] = bands(zz).map(rgb), map = earth(zz), own = (v) => (map && map.get(v)) || v;
     // (its lip, the sheet's own px of wall under the top's ground: in the wall's one tone, the same px of that rock's sheet)
-    const ref = map || wallOf(z) === Math.min(z, 12) ? null : sheetData(hillSheet(wallOf(z))), lp = ref ? lips.get(id) || lips.set(id, lip(id)).get(id) : null;
+    const ref = map || wallOf(zz) === zz ? null : sheetData(hillSheet(wallOf(zz))), lp = ref ? lips.get(id) || lips.set(id, lip(id)).get(id) : null;
     const drop = q.slim || colHas(colAt(x, y - 1), z) ? 0 : z - topAt(x, y - 1), north = Math.min(2, drop - 1);      // the far side of a drop of more than a level: its dark line that much thicker, a px a level
-    const deep = !colHas(colAt(x, y - 1), z) && z - topAt(x, y - 1) >= 4, line = drop > 0 && z > 4;      // (not a narrow top's: its rim is slimmed already, and the wall's dark was a salmon line across a stair's cap) (line: stone's far edge at any drop: its first px the wall's own dark: the sheet's pale edge there told no step from the north)
+    const deep = !colHas(colAt(x, y - 1), z) && z - topAt(x, y - 1) >= 4, line = drop > 0 && zz > 4;      // (not a narrow top's: its rim is slimmed already, and the wall's dark was a salmon line across a stair's cap) (line: stone's far edge at any drop: its first px the wall's own dark: the sheet's pale edge there told no step from the north)
     for (let i = 0; i < 16; i++) {
       let last = 15; while (last >= 0 && !a[last * 16 + i]) last--;
       for (let j = 0, top = -1; j < 16; j++) {
@@ -139,5 +160,5 @@ const VoxPaint = (() => {
     return ink || (ink = [80, 64, 134, .25]);
   }
   const side = (z) => { const b = bands(z), s = shadow(); return {band: b[0], body: b[1], foot: b[2], shadow: z > 4 || z <= 0 ? [s[0], s[1], s[2], 0] : s}; };      // (the stone sheet has no shadow px; nor has a hole's wall)
-  return {shape, profile, crown, lip, rim, front, side, shadow, cap};
+  return {shape, profile, crown, lip, rim, front, side, shadow, cap, rocky, level};
 })();

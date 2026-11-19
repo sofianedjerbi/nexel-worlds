@@ -188,7 +188,7 @@ def test_the_shaders_light_the_water_send_rays_at_low_sun_and_a_fire_throws_shad
     game.js("setOpt('shimmer', false); setOpt('clouds', 0); setOpt('corners', 0)")
     assert game.js("Sun.water") is None                         # no shader: nothing is worked out
     game.js("setOpt('shader', 'natural')"); game.sleep(800)
-    assert game.js("!!Sun.water && Sun.water.width === Math.ceil(W / 4)")       # where the water is seen, for the sky, the clouds and the glitter
+    assert game.js("!!Sun.water && Sun.water.cv.width === Math.ceil(W / zoom) + 1")       # where the water is seen, for the sky, the clouds and the glitter: a px of it a px of the art (the engine's own mask of the water's face)
     fx = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
       const c = document.createElement("canvas"); c.width = 60; c.height = 40; const g = c.getContext("2d");
       g.drawImage(Shader.el, x0 * Shader.el.width, y0 * Shader.el.height, (x1 - x0) * Shader.el.width, (y1 - y0) * Shader.el.height, 0, 0, 60, 40);
