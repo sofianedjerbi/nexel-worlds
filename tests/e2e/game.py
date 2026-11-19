@@ -48,9 +48,11 @@ class Game:
         page.on("pageerror", lambda e: self.errors.append(str(e)))
 
     # ---- session
-    def join(self, name, zoom=4):
+    def join(self, name, zoom=4, curve=False):
+        """(curve: the settings' Curved world. Off here unless asked for: these tests look for things where the flat
+        picture has them; the curved one has its own, test_e2e_curve.py)"""
         self.page.add_init_script(SOCKETS)
-        self.page.goto(f"{self.url}/?zoom={zoom}")
+        self.page.goto(f"{self.url}/?zoom={zoom}&curve={1 if curve else 0}")
         self.page.wait_for_function("typeof ready !== 'undefined'")
         self.page.click("#name")
         self.page.keyboard.type(name)

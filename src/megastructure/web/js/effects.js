@@ -233,7 +233,7 @@ function drawPuffs(sx, sy, dt) {
     const k = p.age / p.life, r = p.r + p.grow * k;     // (art px)
     p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97;
     if (behindHill(p.x, p.y)) continue;                 // (behind a hill: not seen)
-    const cx = sx(p.x), cy = sy(p.y) - liftFrom(p), a = (1 - k) * .85;
+    const cx = sx(p.x), cy = syUp(sy, p.y, liftFrom(p)), a = (1 - k) * .85;
     ctx.fillStyle = `rgba(246,240,228,${a})`; pixelOval(cx, cy, r, r);
     if (r >= 2) { ctx.fillStyle = `rgba(150,128,116,${a * .6})`; pixelOval(cx, cy, r, r, 0, 0, true); }    // its edge, one art pixel
   }
@@ -252,7 +252,7 @@ function drawEffects(sx, sy, S, dt) {
     }
     ctx.globalAlpha = Math.min(1, 3.3 * (1 - p.age / p.life));
     ctx.fillStyle = p.c;
-    ctx.fillRect(Math.round(sx(p.x)), Math.round(sy(p.y) - liftFrom(p)), p.s * z, p.s * z);
+    ctx.fillRect(Math.round(sx(p.x)), Math.round(syUp(sy, p.y, liftFrom(p))), p.s * z, p.s * z);
   }
   ctx.globalAlpha = 1;
   const now = performance.now();

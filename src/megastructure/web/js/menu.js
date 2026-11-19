@@ -35,14 +35,15 @@ const MENU_PAGES = [
     choice("Sharpness", "sharp", [["auto", "Auto"], ["full", "Full"], ["light", "Light"]]),
     slider("Light at night", "night", {hear: null}),
     choice("Particles", "particles", [["all", "All"], ["fewer", "Fewer"], ["none", "None"]]),
-    toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
+    choice("Curved world", "curve", [["off", "Off"], ["near", "Near"], ["far", "Far"]]), toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
     choice("What hides you", "above", VIEWS.map((v) => [v.key, v.name]))]],
   // (shader.js, sun.js) Which shader, then that shader's own settings (they change with it, and each shader keeps
   // its own), then what all of them share: how much of each thing, 0 (none) to 200
   ["Shaders", () => [
     choice("Shader", "shader", [["off", "Off"], ...Object.entries(SHADERS).map(([k, v]) => [k, v.name])]),
     ...lookRows(SHADERS[opt("shader")]),
-    slider("Strength", "shaderk", {hear: null}), ...[["Glow", "glow"], ["Shadows", "shadows"], ["Shadow length", "shadowlen"], ["Water reflections", "reflect"],
+    slider("Strength", "shaderk", {hear: null}), ...[["Glow", "glow"], ["Shadows", "shadows"], ["Shadow length", "shadowlen"]].map(([name, key]) => slider(name, key, {max: 200, step: 20, hear: null})),
+    toggle("Land shadows", "landshade"), ...[["Water reflections", "reflect"],
       ["Light on water", "waterlight"], ["Sun rays", "rays"], ["Cloud shadows", "clouds"], ["Dark corners", "corners"]].map(([name, key]) => slider(name, key, {max: 200, step: 20, hear: null}))]],
   ["Screen", [
     toggle("Speech bubbles", "bubbles"), toggle("Names over heads", "names"),

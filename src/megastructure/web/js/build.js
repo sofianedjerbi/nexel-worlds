@@ -236,7 +236,7 @@ const Build = (() => {
 
   // What is drawn of it: every plan as a ghost of its piece (a red one: it could not be done), and the cursor
   function draw(sx, sy, Sz, t) {
-    const z = zoom, top = (p, L) => sy(p.y) - shOf(L) * z;                 // (each at its own height)
+    const z = zoom, top = (p, L) => syUp(sy, p.y, shOf(L) * z);                 // (each at its own height)
     for (const [k, j] of S.plans) {
       if (j.state === "bad" && now() - j.t > BAD_MS) { S.plans.delete(k); continue; }
       const x = sx(j.x), y = top(j, j.z), a = j.state === "doing" ? .75 : .5, ch = PLACEABLE_BLOCK[j.item];

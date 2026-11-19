@@ -24,12 +24,21 @@ const VoxPaint = (() => {
     }
     if (reduce(m) === 255) return 0;
     const sheet = sheetOf(z), [cx, cy] = blobCell(m), key = (z <= 2 ? 0 : z <= 4 ? 1 : 2) * 4096 + cy * 64 + cx;      // (the three sheets: tiles.js hillSheet)
-    if (!ids.has(key)) { if (cells.length > 255) return 0; ids.set(key, cells.length); cells.push([cellAlpha(sheet, cx, cy)]); }
+    if (!ids.has(key)) { if (cells.length > 255) return 0; ids.set(key, cells.length); cells.push([cellAlpha(sheet, cx, cy), sheet, cx, cy]); }
     return ids.get(key);
   }
   function profile(id) {
     const out = new Uint8Array(16), a = id ? cells[id][0] : null;
     if (a) for (let i = 0; i < 16; i++) { let j = 15; while (j >= 0 && !a[j * 16 + i]) j--; out[i] = 15 - j; }
+    return out;
+  }
+  // ...and its lip: down each px across, how many px from the tile's south end are not the top's ground but the
+  // wall under it (what the sheet leaves empty, and the sheet's own px there that its plain cell has no colour of)
+  function lip(id) {
+    const out = new Uint8Array(16); if (!id) return out;
+    const [a, sheet, cx, cy] = cells[id], d = sheetData(sheet), [ix, iy] = blobCell(255), plain = new Set();
+    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) plain.add(d.px[(iy * 16 + j) * d.w + ix * 16 + i]);
+    for (let i = 0; i < 16; i++) { let j = 15; while (j >= 0 && (!a[j * 16 + i] || !plain.has(d.px[(cy * 16 + j) * d.w + cx * 16 + i]))) j--; out[i] = j < 0 ? 0 : 15 - j; }      // (a column with none of the ground: no lip, it is not a south edge)
     return out;
   }
   function rim(x, y, z, px, at, stride) {
@@ -69,5 +78,5 @@ const VoxPaint = (() => {
   }
   const side = (z) => { const b = bands(z), s = shadow(); return {band: b[0], body: b[1], foot: b[2], shadow: z > 4 || z <= 0 ? [s[0], s[1], s[2], 0] : s}; };      // (the stone sheet has no shadow px; nor has a hole's wall)
   const band = (z) => (z <= 0 ? 1 : 2);                         // (dug ground: a px, so a hole's floor is not narrowed)
-  return {shape, profile, rim, front, side, band, shadow};
+  return {shape, profile, lip, rim, front, side, band, shadow};
 })();

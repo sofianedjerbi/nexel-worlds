@@ -26,13 +26,13 @@ function selMeasure(o) {
   if (o && selKey && (o.p ? "e" + o.p.e.kind + o.p.e.id : o.spr ? o.x + "," + o.ty : null) === selKey) selRec = [Infinity, Infinity, -Infinity, -Infinity];
 }
 // the aimed thing's key for the next frame, and its measured box (in tiles) if this frame drew it
-function selTarget(p, it, ox, oy, S) {
+function selTarget(p, it, ox, oy, S, sy) {
   const key = !it || it.info || it.walk ? null : it.ent ? "e" + it.ent.e.kind + it.ent.e.id
     : !it.ghost && !(it.foot && it.foot.length > 1) && combAt(p.x, p.y) ? p.x + "," + p.y : null;
   const got = key && selDrawn && selDrawn.key === key ? selDrawn.rect : null;
   selKey = key; selDrawn = null;
   const z = zoom;
-  return got && {x0: (got[0] - ox - z) / S, y0: (got[1] - oy - z) / S, x1: (got[2] - ox + z) / S, y1: (got[3] - oy + z) / S};
+  return got && {x0: (got[0] - ox - z) / S, y0: sy.inv(got[1] - z), x1: (got[2] - ox + z) / S, y1: sy.inv(got[3] + z)};      // (the rows drawn there: sy gives them back, curve.js)
 }
 
 function drawSelector(box, sx, sy, now) {
@@ -51,8 +51,8 @@ function drawSelector(box, sx, sy, now) {
   }
   if (!sel) return;
   const z = zoom, grow = Math.sin(now / 1000 * 4.5) > .3 ? z : 0;   // a one-pixel breath
-  const x0 = Math.round(sx(sel.x0) / z) * z - grow, y0 = Math.round(sy(sel.y0) / z) * z - grow;
-  const x1 = Math.round(sx(sel.x1) / z) * z + grow, y1 = Math.round(sy(sel.y1) / z) * z + grow;
+  const x0 = Math.round(sx(sel.x0) / z) * z - grow, y0 = Math.round(sy.out(sel.y0) / z) * z - grow;
+  const x1 = Math.round(sx(sel.x1) / z) * z + grow, y1 = Math.round(sy.out(sel.y1) / z) * z + grow;
   const arm = Math.max(2, Math.min(5, Math.floor(Math.min(x1 - x0, y1 - y0) / z / 3))) * z;
   const corners = (dx, dy) => {
     for (const [cx, cy, sx2, sy2] of [[x0, y0, 1, 1], [x1 - z, y0, -1, 1], [x0, y1 - z, 1, -1], [x1 - z, y1 - z, -1, -1]]) {

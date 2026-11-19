@@ -3307,3 +3307,41 @@ standing", "parallelize with subagents when possible".
 - Left: the curve and the sky in the game, and the shaders for blocks, are being built by agents on copies; the
   first screen's still picture is of the old land (tools/build_title_poster.py to run again); no light model
   under ground (a fire lights as any other).
+
+## Iteration 178: the world bends to a horizon with a sky, and the light knows the blocks
+
+"Revise shader for the new voxel world"; the curve was phase 3 of the plan the user approved ("curved far view is
+really good"). Three agents on copies, merged by hand, each sent back at least once after I opened its pictures.
+- The curve (engine: vox_curve.js, vox_sky.js; game: curve.js). Under a line on the screen the picture is the
+  flat one to the pixel; north of it rows squeeze to a horizon, and a sky is drawn behind (bands, sun or moon,
+  clouds, stars, far hills, by the hour). One function, in JS and in the vertex shader, checked against each
+  other px by px in test_vox_layer.py. Setting "Curved world": Off / Near / Far, Far by default (2.2 times the
+  ground before the horizon; 8 to 15 more rows watched). Half of a height above the eye squeezes with its row
+  and half stands (all standing made far hills stumps and terraces stripes; all squeezing folds). Sprites are
+  never scaled: they keep their size and sink behind the line. Aiming walks the column tile by tile (the 6-tile
+  limit is gone). Faces that lie on the ground are 4 strips so they bend.
+- The light (engine: vox_light.js). With a shader on: blocks shade blocks (a picture of the tiles' tops, each px
+  of land walks toward the sun, at most 20 tiles), a sprite's shadow lies on what it truly hits (down a cliff,
+  up a step, never on a wall's front), who stands in a cliff's shade is dark up to where the shade reaches, the
+  land is seen in the water (faint, in the ripple's rows). One direction for all, sun.js's own. Shader off: the
+  picture is the same to the pixel (tested, also bent). A row "Land shadows".
+  Round 1 was sent back: sprite shadows had gone (the picture handed to the engine was a cleared one when a
+  second level's group drew nothing; the level was written in low bits that the browser's rounding changed),
+  the reflection was a brown slab. A plateau I called wrongly shaded was under a cloud: its audit now has clouds
+  off in both columns.
+- Sides, round 3: a bank never takes more than half of the tile it leans over, a quarter where the other side
+  is higher too (a one-tile way between tall walls had no ground left); a 1 px hole on the canyon's wall by the
+  river. A drop that faces north is still not shown by the mesh: nothing of it is in view; the land's shadows
+  are what tells it now.
+- Measured: 506 unit. Browser 275 passed, 1 fails and is true (two rooms in one column). Frame on this Mac's
+  GPU, forced to finish (upper bounds): flat and no shader 1.5 ms; Far 3 ms; Far and Natural 7 to 10 ms. No
+  phone measured.
+- Changed for the player without being asked: a thing is mirrored only in water within five rows south of it
+  (a mirror ran over a far shore into the next pond).
+- Self-critical: the older browser tests still open the page with the curve off; only test_e2e_curve.py and
+  three of test_e2e_sunland.py look at the bent picture, and that is the default a player sees. One curve test
+  compared a meadow px with a random tuft and failed alone: fixed after an agent found it, not before.
+- Left: far houses pile up at the horizon (built pieces keep their size on squeezed rows): to decide with the
+  user. Zigzag shade on staircases at low sun, square shade corners, shade does not climb a wall's face, houses
+  not shaded by the land, fire shadows flat, clouds slide over cliffs, sun.js is at 300 lines, the title's
+  still picture is of the old land.

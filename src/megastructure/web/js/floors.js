@@ -81,7 +81,7 @@ const Floors = (() => {
   const alpha = (x, y, z) => { const h = hides(x, y, z); return !h ? 1 : opt("above") === "cut" || opt("above") === "outline" ? 0 : h; };
   // A block's top as its edges, in the pack's ink: the sides no block of its kind goes on from (the outline view)
   function outline(kind, x, y, z, sx, sy, a) {
-    const q = zoom, px = sx(x), top = sy(y) - shOf(z) * q, same = (dx, dy) => !!get(x + dx, y + dy, z);
+    const q = zoom, px = sx(x), top = syUp(sy, y, shOf(z) * q), same = (dx, dy) => !!get(x + dx, y + dy, z);
     ctx.globalAlpha = a; ctx.fillStyle = Structures.INK;
     if (!same(0, -1)) ctx.fillRect(px, top, 16 * q, q);
     if (!same(0, 1)) ctx.fillRect(px, top + 15 * q, 16 * q, q);
@@ -92,7 +92,7 @@ const Floors = (() => {
 
   // One block: its top (unless a block is on it), its south face (unless one goes on south of it)
   function cell(kind, x, y, z, sx, sy, S, a) {
-    const q = zoom, px = sx(x), top = sy(y) - shOf(z) * q, same = (dx, dy) => { const c = get(x + dx, y + dy, z); return !!c && c[0] === kind; };
+    const q = zoom, px = sx(x), top = syUp(sy, y, shOf(z) * q), same = (dx, dy) => { const c = get(x + dx, y + dy, z); return !!c && c[0] === kind; };
     const r = (col, X, Y, W_, H_) => { ctx.fillStyle = col; ctx.fillRect(px + X * q, top + Y * q, W_ * q, H_ * q); };
     ctx.globalAlpha = a;
     if (kind === "stairs") { ctx.globalAlpha = 1; return Climb.drawStep(x, y, z, px, top, a); }   // (a step of a flight: climbing.js)
@@ -119,7 +119,7 @@ const Floors = (() => {
   }
   // What stands on a block: a wall, a door (structures.js), or a thing as it is drawn on the ground, a block's height up
   function thing(ch, x, y, z, sx, sy, S, t, now, a) {
-    const at = (yy) => sy(yy) - shOf(z) * zoom;
+    const at = (yy) => syUp(sy, yy, shOf(z) * zoom);
     if (Structures.WALLS.includes(ch)) return Structures.drawWall(ch, x, y, sx, at, S, now, a, z);
     if (ch === "l") return Climb.drawLadder(x, y, z, sx, sy, S, a);
     const spr = objectSprite(ch, x, y, t); if (!spr) return;
@@ -144,9 +144,9 @@ const Floors = (() => {
     const foot = me_ ? bodyY(me_, sy) + (cl ? cl.dy * S - cl.lift * q : 0) + S - 2 * q : 0, bx = sx(myx);
     const h = cl ? cl.h : me_ ? Math.max(standOf(me_, Math.floor(me_.x), Math.floor(me_.y)), standOf(me_, Math.ceil(me_.x), Math.ceil(me_.y))) : 0;
     const before = (y, z) => me_ && z > h && y > myy + .3;               // in front of you, and over your feet
-    const covers = (x, y, z, roof) => { const top = sy(y) - shOf(z) * q; return before(y, z) && sx(x) < bx + S - 3 * q && sx(x) + S > bx + 3 * q && top - (roof ? 7 * q : 0) < foot && top + S + 8 * q > foot - 18 * q; };
+    const covers = (x, y, z, roof) => { const top = syUp(sy, y, shOf(z) * q); return before(y, z) && sx(x) < bx + S - 3 * q && sx(x) + S > bx + 3 * q && top - (roof ? 7 * q : 0) < foot && top + S + 8 * q > foot - 18 * q; };
     const cx = bx + S / 2, cy = foot - 9 * q, R = XR * S;
-    const near = (x, y, z) => { const top = sy(y) - shOf(z) * q - 8 * q, l = sx(x) - 12 * q; return before(y, z) && Math.max(l - cx, 0, cx - l - S - 24 * q) ** 2 + Math.max(top - cy, 0, cy - top - S - 32 * q) ** 2 < R * R; };
+    const near = (x, y, z) => { const top = syUp(sy, y, shOf(z) * q) - 8 * q, l = sx(x) - 12 * q; return before(y, z) && Math.max(l - cx, 0, cx - l - S - 24 * q) ** 2 + Math.max(top - cy, 0, cy - top - S - 32 * q) ** 2 < R * R; };
     const tnow = performance.now(), step = Math.min(.1, (tnow - drawnAt) / 1000); drawnAt = tnow;
     let hidden = false;
     veils = 0;

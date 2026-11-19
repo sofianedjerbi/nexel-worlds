@@ -12,12 +12,18 @@ function aimLift(x, y) {
   return FLOORS && myAt && Floors.any(x, y) ? shOf(settleNear(x, y, myAt.z)) * zoom : liftAt(x, y);
 }
 function tileAtScreen(mx, my) {                        // -> {x, y, fy: how far down the tile, 0 to 1}
-  const S = TS(), [ox, oy] = screenOrigin(S), x = Math.floor((mx - ox) / S), y = Math.floor((my - oy) / S);
-  for (let j = 6; j > 0; j--) {                        // a level drawn higher (relief.js): the tile shown here, frontmost
-    const top = oy + (y + j) * S - aimLift(x, y + j);
-    if (my >= top && my < top + S) return {x, y: y + j, fy: (my - top) / S};
+  const S = TS(), [ox, oy] = screenOrigin(S), x = Math.floor((mx - ox) / S), at = (y, up) => Curve.y(oy + y * S, up), row = (f) => Math.floor((f - oy) / S);
+  // The column's tiles from the nearest that could be drawn there to the furthest (a level is drawn higher or lower:
+  // relief.js; a row far north nearer the horizon: curve.js): the first whose top is under the pointer, or whose
+  // front is, down to the land south of it. (It looked six tiles south and at tops alone: a pit was not undone.)
+  const reach = (APART / 2 + 1) * S, eye = Curve.c ? Math.abs(Curve.c.ref) : 0;
+  for (let y = row(Curve.inv(my + reach) + reach + eye), end = row(Curve.inv(my) - reach - eye) - 1; y >= end; y--) {
+    const up = aimLift(x, y), top = at(y, up), foot = at(y + 1, up);
+    if (my >= top && my < foot) return {x, y, fy: (my - top) / (foot - top)};
+    if (my >= foot && my < at(y + 1, aimLift(x, y + 1))) return {x, y, fy: .999};
   }
-  return {x, y, fy: (my - oy) / S - y};
+  const y = row(Curve.inv(my)), top = at(y, 0);
+  return {x, y, fy: Math.max(0, Math.min(.999, (my - top) / Math.max(1, at(y + 1, 0) - top)))};
 }
 cv.addEventListener("mousemove", (e) => {
   if (Math.abs(e.clientX - mouse.x) + Math.abs(e.clientY - mouse.y) > 4) inputMode = "mouse";   // the mouse is back

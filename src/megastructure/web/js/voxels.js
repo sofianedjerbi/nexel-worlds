@@ -19,7 +19,7 @@ const Voxels = (() => {
       try { drawTile0(x, y, {px, o: at, w: stride}); } finally { maskOf.plain = false; peek = was; one.clear(); }
       if (!wet(gndAt(x, y) || ".")) VoxPaint.rim(x, y, z, px, at, stride);
     },
-    paintFront: VoxPaint.front, shape: VoxPaint.shape, profile: VoxPaint.profile, side: VoxPaint.side, band: VoxPaint.band,
+    paintFront: VoxPaint.front, shape: VoxPaint.shape, profile: VoxPaint.profile, lip: VoxPaint.lip, side: VoxPaint.side, band: VoxPaint.band,
   };
   // (the look of the sides, all the host's: under: a cave's mouth is dark; tuck, inset: the hill sheets' cells leave
   // up to 6 px empty at a corner, 2 along a side; bands: a wall that faces west or east leans out a level at a time
@@ -65,7 +65,7 @@ const Voxels = (() => {
     cutOf.a = cur ? 1 : xray.a;                              // (the cursor's is there at once; the place's comes with how hidden you are)
     return cutOf;
   }
-  function frame(vis, ox, oy, S, t, high) {
+  function frame(vis, ox, oy, S, t, high, sun = null) {
     if (!engine.ready()) return;
     engine.forget((cx, cy) => blocks.has(bkey(cx, cy)));
     // the sea: water.js makes its picture as ever (on a canvas of its own, waterCv); it is not laid on the game's
@@ -74,10 +74,12 @@ const Voxels = (() => {
     ctx = off; try { drawWater(vis.filter(made), ox, oy, t); } finally { ctx = keep; }
     const pic = engine.draw({w: W, h: H, pw: cv.width, ph: cv.height, ox, oy, tile: S, row: cam.y, chunks: here(vis), light: [1, 1, 1],
       clear: high ? [.659, .847, .918] : [.169, .141, .125],      // (the sky, or the dark of what has not come: as render.js fills)
+      // (the curved world, curve.js: the ground bends to a horizon, the sky over it; far under the land, state.js away: earth, no sky)
+      curve: Curve.c, sky: Curve.on && (away.a < 1 || high) ? Curve.sky(t) : null,
       water: waterView ? {canvas: waterCv, x: ox + waterView.x * zoom, y: oy + waterView.y * zoom, scale: zoom} : null,
       // hidden (behind a hill, down a hole, under a roof: xray.js says how much, and which tiles are cut how low):
       // the land is cut open over the place you are in
-      cut: cutMap()});
+      cut: cutMap(), sun});                                      // (sun: with a shader on, the sun on the land, sun.js)
     ctx.imageSmoothingEnabled = false; ctx.drawImage(pic, 0, 0, W, H);
   }
   return {made, work, frame, engine};

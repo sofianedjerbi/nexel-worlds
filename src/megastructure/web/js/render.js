@@ -29,13 +29,14 @@ function frame(now) {
       if (Math.abs(dx) < Math.abs(dy)) p.x += Math.sign(dx) * Math.min(step, Math.abs(dx)); else p.y += Math.sign(dy) * Math.min(step, Math.abs(dy));
     } else { p.x += dx / d * step; p.y += dy / d * step; }
   }
+  cam.lift = 0;                                      // (art px the camera is lifted with you: the eye's height, curve.js)
   if (me && myId !== null) {
     const p = ents.get("agent" + myId);
     if (p) {                                         // (you are drawn lifted on high ground: centre that; falling: you, not the ground you left; jump.js)
       const fall = falling(p, now);
       const pan = Build.pan(dt);                      // (build mode: half way to the cursor)
       const cl = Climb.climbOf(p);                    // (on a ladder: where the body is drawn, climbing.js)
-      cam.x = camT.x = p.x + pan.x + (cl ? cl.dx : 0); cam.y = camT.y = p.y + pan.y + (cl ? cl.dy : 0) - (liftOf(p) / zoom + (cl ? cl.lift : 0) + (fall ? fall.body : 0) + fallShake(now)) / P;
+      cam.x = camT.x = p.x + pan.x + (cl ? cl.dx : 0); cam.lift = liftOf(p) / zoom + (cl ? cl.lift : 0) + (fall ? fall.body : 0) + fallShake(now); cam.y = camT.y = p.y + pan.y + (cl ? cl.dy : 0) - cam.lift / P;
       // (the land drawn where you are drawn, found: a tile within APART layers' rows of you, in your column or two each
       // side, whose top is there, or the wall between two; none: you are away from it, state.js. Under it if the land
       // round your tile is over you, else over it; high: far over the land beside you, a tower's top, a pillar's)
@@ -80,22 +81,22 @@ function frame(now) {
   const [ox, oy] = screenOrigin(S);
   // world to screen. sy(y, x): give the x too and the point is lifted with the ground there (relief.js): everything
   // standing in the world goes through this, so on high ground it is drawn, picked up, killed... where you see it
-  const sx = (x) => ox + x * S, sy = (y, x) => oy + y * S - (x === undefined ? 0 : liftOf({x, y}));
+  // (the curved world, curve.js: a row far north is drawn nearer the horizon; x and heights are as ever. Off, sy is
+  // oy + y * S less the lift)
+  Curve.frame(ox, oy, S, now);
+  const sx = (x) => ox + x * S, sy = Curve.sy(oy, S);
   // underneath: plain dark (what hasn't come yet is not the sea). The sea is painted on it where there is sea
   // (water.js: its bottom is under every water tile and every shore), the land over that
   // (away from the land, state.js: under it the screen is that dark, earth; over it, the sky. Going: the land fades to it)
   const SKY = "#a8d8ea"; ctx.fillStyle = away.high ? SKY : "#2b2420";
   ctx.fillRect(0, 0, W, H);
   xrayLook(dt);                                      // (hidden, behind a mountain, down a hole or under a roof: a window on you, xray.js)
-  Voxels.frame(away.a < 1 ? vis : [], ox, oy, S, t, away.high);      // the land and the sea, as blocks
-  if (away.a > 0 && away.a < 1) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor((away.a >= 1 ? away.y : cam.y + away.shift) / B)));
   const allShown = vis.every((b) => !onScreen(b) || Voxels.made(b));
   arrivingNow = (arrivingNow || !hereBlock || !Voxels.made(hereBlock)) && !allShown;   // (from arriving until all of it is ready)
   const worldReady = !arrivingNow;
   slowFrame(dt, worldReady && !fresh);
-  if (!worldReady) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }
   // y-sorted sprites: objects and creatures
   const list = [];
   // (forEach, and what is out of view left first: a pair was made a frame for every thing of every block in view)
@@ -118,10 +119,18 @@ function frame(now) {
   drawOrbs(sx, sy, S, dt, list);
   if (worldReady) Floors.draw(vis, list, sx, sy, S, t, now);                 // (what is built over the land: floors, roofs, what stands on them: floors.js)
   list.sort((a, b) => a.y - b.y || a.x - b.x);
+  // (past the horizon, curve.js: it goes down behind it, cut at the horizon line of the ground it stands on; no shadow)
+  if (sy.bent) for (const o of list) { const up = o.p ? liftOf(o.p) : o.x === undefined ? 0 : liftAt(Math.round(o.x), o.ty === undefined ? Math.round(o.y) : o.ty); if (sy.far(o.y, up)) o.far = sy.cut(up); }
+  // (the land is drawn once what stands on it is known: with a shader on, their shadows fall on it as it stands, sun.js)
+  Voxels.frame(away.a < 1 ? vis : [], ox, oy, S, t, away.high, Sun.cast(list, vis, sx, sy, S, t, now));      // the land and the sea, as blocks
+  if (away.a > 0 && away.a < 1) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  if (!worldReady) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }
   // (a shader's shadows and reflections of all of it, on the ground, under what stands there: sun.js)
   Sun.draw(list, vis, sx, sy, S, t, now);
   for (const o of list) {
     selMeasure(o);
+    if (o.far !== undefined && o.pile) continue;
+    if (o.far !== undefined) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, Math.max(0, o.far)); ctx.clip(); }
     if (o.spr) {
       const [img, a, b2, w, h, dx, dy] = o.spr, key = pops.size || shakes.size ? o.x + "," + o.ty : "";   // (its name: made only while something bounces or shakes)
       let px = sx(o.x) + dx * zoom, py = sy(o.ty, o.x) + dy * zoom, ww = w * zoom, hh = h * zoom;
@@ -157,12 +166,14 @@ function frame(now) {
     else if (o.fx) o.fx();
     else {
       const over = xrayOverBody(o.p);                // (xray.js) on the rock the circle sees through: it fades with it
-      if (over > .98) continue;
-      drawBehind(o.p, sx, sy, S, (k) => { ctx.globalAlpha = k * (1 - over); drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1; });   // (behind a hill: cut at its edge)
+      if (over <= .98) drawBehind(o.p, sx, sy, S, (k) => { ctx.globalAlpha = k * (1 - over); drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1; });   // (behind a hill: cut at its edge)
     }
+    if (o.far !== undefined) ctx.restore();
   }
+  Sun.shade(list, sx, sy, S, t, now);                // (with a shader on: what stands in the land's shadow is in it, sun.js)
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
     const px = sx(f.x), py = sy(f.y, f.x), tall = "TF".includes(combAt(f.x, f.y) || "");
+    if (sy.far(f.y, liftAt(f.x, f.y))) continue;
     if (px < -S * 2 || py < -S * 3 || px > W + S || py > H + S) continue;
     drawFire(px, py, S, t, f.x, f.y);
     if (tall) { drawFire(px - S * .3, py - S * .9, S, t + 1, f.x + 7, f.y); drawFire(px + S * .3, py - S * 1.4, S, t + 2, f.x, f.y + 5); }
@@ -183,11 +194,11 @@ function frame(now) {
   drawSelector(Build.on ? null : box, sx, sy, now);     // (in build mode the cursor is the selector: build.js)
   Build.draw(sx, sy, S, t);                         // (what is planned, and the cursor: build.js)
   if (Build.on) Prompts.build();                    // (the keys beside what they act on: prompts.js)
-  else Prompts.show(box && {x: sx(box.x0), y: sy(box.y0), w: (box.x1 - box.x0) * S, h: (box.y1 - box.y0) * S}, faceRows);
+  else Prompts.show(box && {x: sx(box.x0), y: sy.out(box.y0), w: (box.x1 - box.x0) * S, h: sy.out(box.y1) - sy.out(box.y0)}, faceRows);
   Shader.over(true);                               // (with a shader on, what is written goes over it, untouched: shader.js)
-  for (const o of list) if (o.p && o.p.e.kind === "agent") { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
-  for (const o of list) if (o.p && o.p.e.kind !== "agent" && o.p.e.name) drawNameplate(o.p, sx, sy, S);     // (a named animal: /name)
-  for (const o of list) if (o.p && ANIMALS[o.p.e.kind]) drawEmote(o.p, sx, sy, S);
+  for (const o of list) if (o.p && o.p.e.kind === "agent" && o.far === undefined) { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
+  for (const o of list) if (o.p && o.p.e.kind !== "agent" && o.p.e.name && o.far === undefined) drawNameplate(o.p, sx, sy, S);     // (a named animal: /name)
+  for (const o of list) if (o.p && ANIMALS[o.p.e.kind] && o.far === undefined) drawEmote(o.p, sx, sy, S);
   drawProgress(sx, sy, S);
   floats = opt("floats") ? floats.filter((f) => t - f.t < 1.4) : [];
   ctx.textAlign = "center"; ctx.font = "18px SproutPixel";
@@ -223,18 +234,19 @@ function drawIntent(p, it, sx, sy, S, t, ox, oy) {
     ctx.globalAlpha = 1;
     for (const q of it.steps ? [] : it.foot || [p]) {
       ctx.fillStyle = it.ok && !(it.bad || []).some((b) => b.x === q.x && b.y === q.y) ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)";
-      ctx.fillRect(sx(q.x), it.z !== undefined ? sy(q.y) - shOf(it.z) * zoom : sy(q.y, q.x), S, S);
+      const up = it.z !== undefined ? shOf(it.z) * zoom : liftAt(q.x, q.y);
+      ctx.fillRect(sx(q.x), sy.row(q.y, up), S, sy.tall(q.y, up));      // (the tile itself, as tall as it is drawn: curve.js)
     }
   }
   // what the selector goes around, in tiles: the aimed creature, person or thing as it was just drawn (selector.js),
   // or a structure's whole footprint
   if (!it || it.info || it.walk) return null;
   const bad = it.ok === false;
-  const drawn = selTarget(p, it, ox, oy, S);
+  const drawn = selTarget(p, it, ox, oy, S, sy);
   if (drawn) return {...drawn, bad};
   if (it.ent) return {x0: it.ent.x, y0: it.ent.y, x1: it.ent.x + 1, y1: it.ent.y + 1, bad};   // until it's been drawn once
-  const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y), up = (it.z !== undefined ? shOf(it.z) * zoom : liftAt(p.x, p.y)) / S;   // (as drawn)
-  return {x0: Math.min(...xs), y0: Math.min(...ys) - up, x1: Math.max(...xs) + 1, y1: Math.max(...ys) + 1 - up, bad};
+  const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y), up = it.z !== undefined ? shOf(it.z) * zoom : liftAt(p.x, p.y);   // (as drawn)
+  return {x0: Math.min(...xs), y0: sy.inv(sy.row(Math.min(...ys), up)), x1: Math.max(...xs) + 1, y1: sy.inv(sy.row(Math.max(...ys) + 1, up)), bad};
 }
 
 function outlined(text, x, y, color) {

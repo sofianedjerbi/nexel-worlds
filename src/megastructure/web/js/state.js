@@ -84,9 +84,10 @@ const sendSpec = (o) => spec && spec.readyState === 1 && spec.send(JSON.stringif
 // t: when it was worked out (not this moment's: nobody plays, the first screen: the camera alone says where)
 const away = {on: false, a: 0, y: 0, shift: 0, sky: false, high: false, t: -1e9};
 function viewRect(margin) {
-  const w = Math.ceil(W / TS()) + margin * 2, h = Math.ceil(H / TS()) + margin * 2, x = Math.floor(cam.x - w / 2), y = Math.floor(cam.y - h / 2);
+  const more = typeof Curve === "undefined" ? 0 : Math.min(40, Math.ceil(Curve.over() / TS()));      // (the curved world shows further north: curve.js)
+  const w = Math.ceil(W / TS()) + margin * 2, h = Math.ceil(H / TS()) + margin * 2 + more, x = Math.floor(cam.x - w / 2), y = Math.floor(cam.y - (h - more) / 2) - more;
   if (!me || performance.now() - away.t > 250) return [x, y, w, h];
-  const near = Math.floor(cam.y + away.shift - h / 2), far = Math.floor(away.y - h / 2), top = Math.min(near, far);
+  const near = Math.floor(cam.y + away.shift - (h - more) / 2) - more, far = Math.floor(away.y - (h - more) / 2) - more, top = Math.min(near, far);
   return away.a >= 1 ? [x, far, w, h] : [x, top, w, Math.max(near, far) + h - top];
 }
 setInterval(() => {

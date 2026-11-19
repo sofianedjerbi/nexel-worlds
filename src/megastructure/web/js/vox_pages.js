@@ -45,7 +45,8 @@ const VoxPages = (() => {
     return {tex: VoxGL.texture({px, w, h: n * cfg.up}), sides: VoxGL.texture({px: side, w: 4, h: n}), n, lo, hi, prof: {px: new Uint32Array(cfg.cell * 256), seen: new Set(), tex: null, stale: true}};
   }
   function shapes(prof, host, cfg, ids) {
-    for (const id of ids) if (!prof.seen.has(id)) { prof.seen.add(id); prof.px.set(host.profile(id), id * cfg.cell); prof.stale = true; }
+    for (const id of ids) if (!prof.seen.has(id)) { prof.seen.add(id); prof.px.set(host.profile(id), id * cfg.cell); prof.stale = true;
+      if (host.lip) host.lip(id).forEach((v, i) => { prof.px[id * cfg.cell + i] |= v << 8; }); }      // (green: its lip, for the sun)
     if (prof.stale) { prof.tex = VoxGL.texture({px: prof.px, w: cfg.cell, h: 256}, prof.tex); prof.stale = false; }
   }
   function drop(ch) { const gl = VoxGL.gl; if (gl) for (const pg of ch.pages) if (pg && pg.tex) gl.deleteTexture(pg.tex); }

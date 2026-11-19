@@ -27,13 +27,13 @@ function frontEdge(tx, row, from, least, far, skip) {
   const memo = far === 8 ? EDGES[skip ? 1 : 0] : null, key = ((tx & 32767) * 32768 + (row & 32767)) * 4194304 + (from + 1024) * 2048 + least + 1024;   // (heights go 512 each way; tiles 32768 apart are never kept at once)
   const kept = memo && memo.get(key);
   if (kept) return kept;
-  const edge = new Float64Array(16).fill(Infinity);
+  const edge = new Float64Array(16).fill(Infinity); edge.up = new Float64Array(16);      // (up: art px that edge is drawn up from its row: a row is bent, a height is not, curve.js)
   for (let ty = row + 1; ty <= row + far; ty++) {
     const lv = levelAt(tx, ty);
     if (lv < least || (skip && skip(tx, ty))) continue;
     for (let k = from + 1; k <= lv; k++) {
       const top = k < 0 ? FLAT_TOP : cellTop(hillSheet(k), ...blobCell(maskOf(tx, ty, (cc, gg, ux, uy) => levelAt(ux, uy) >= k))), Y = ty * 16 - shOf(k);   // (dug: cut square, relief.js)
-      for (let i = 0; i < 16; i++) if (top[i] < 16) edge[i] = Math.min(edge[i], Y + top[i]);
+      for (let i = 0; i < 16; i++) if (top[i] < 16 && Y + top[i] < edge[i]) { edge[i] = Y + top[i]; edge.up[i] = shOf(k); }
     }
   }
   if (memo) memo.set(key, edge);
@@ -50,13 +50,13 @@ const CLIP_TO = [], CLIP_FROM = [];                        // (a body's columns,
 function clipBehind(p, sx, sy, S, part = 0) {
   const x = Math.round(p.x), y = Math.round(p.y);
   const L = hollow(x, y) ? Floors.standOf(p, x, y) : standAt(x, y);   // (between two tiles: the ground they are over: past its edge, a jump is on the higher one; under a roof: the floor they are on, behind the ground in front as in a hole)
-  const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, feet = sy(p.y + 1) - shOf(L) * zoom + (4 - STAND) * zoom, row = Math.floor(p.y), base = sy(0), n = x1 - x0 + 1;
-  const at = (e) => (e === Infinity ? 1e4 : base + e * zoom);   // (an edge, in art px of the world: where it is on the screen)
+  const x0 = Math.floor(p.x) - 2, x1 = Math.ceil(p.x) + 2, feet = syUp(sy, p.y, shOf(L) * zoom) + S + (4 - STAND) * zoom, row = Math.floor(p.y), base = sy.bent ? 0 : sy(0), n = x1 - x0 + 1;
+  const at = (e, i) => (e[i] === Infinity ? 1e4 : sy.bent ? sy.row((e[i] + e.up[i]) / 16, e.up[i] * zoom) : base + e[i] * zoom);   // (an edge, in art px of the world: where it is on the screen)
   let any = part === 2;
   for (let c = 0; c < n; c++) {                           // (the top of the higher ground in front, at each px of each column)
     const to = CLIP_TO[c] = frontEdge(x0 + c, row, L, L + 1, 8, part ? xrayGone : null);
     CLIP_FROM[c] = part === 2 ? frontEdge(x0 + c, row, L, L + 1, 8, null) : null;
-    for (let i = 0; i < 16 && !any; i++) any = at(to[i]) < feet;                        // (reaching up to their feet, or their shadow)
+    for (let i = 0; i < 16 && !any; i++) any = at(to, i) < feet;                        // (reaching up to their feet, or their shadow)
   }
   if (!any) return false;
   ctx.save(); ctx.beginPath();
@@ -65,7 +65,7 @@ function clipBehind(p, sx, sy, S, part = 0) {
     const to = CLIP_TO[c], from = CLIP_FROM[c];
     for (let i = 0, j; i < 16; i = j) {                    // (a run of px with the same edge: one strip)
       for (j = i + 1; j < 16 && to[j] === to[i] && (!from || from[j] === from[i]); j++);
-      const top = from ? at(from[i]) : -1e4, foot = at(to[i]);
+      const top = from ? at(from, i) : -1e4, foot = at(to, i);
       if (foot > top) ctx.rect(sx(x0 + c) + i * zoom, top, (j - i) * zoom, foot - top);
     }
   }
@@ -90,11 +90,11 @@ function tileBehind(x, y) {
   const i = (y - b.by * B) * B + x - b.bx * B;
   let v = b.behind.get(i);
   if (v === undefined) {
-    v = false; const L = standAt(x, y);
-    for (let tx = x - 1; tx <= x + 1 && !v; tx++) for (let ty = y + 1; ty <= y + 8 && !v; ty++) v = (levelAt(tx, ty) - L) * RELIEF_STEP > (ty - y - 1) * 16;
+    v = 0; const L = standAt(x, y);      // (2: behind it on the flat screen; 1: only where rows are closer together, in the bend of the curved world)
+    for (let tx = x - 1; tx <= x + 1 && v < 2; tx++) for (let ty = y + 1; ty <= y + 8 && v < 2; ty++) v = Math.max(v, (levelAt(tx, ty) - L) * RELIEF_STEP > (ty - y - 1) * 16 ? 2 : levelAt(tx, ty) > L ? 1 : 0);
     b.behind.set(i, v);
   }
-  return v;
+  return v === 2 || (v === 1 && Curve.on);
 }
 // Is the spot (x, y: tiles, with fractions) behind higher ground drawn up over it? (Dust and sparks there aren't shown.)
 // Higher ground: on the level nothing is behind anything. (It compared 0 with less than 0 there, and a row too far:

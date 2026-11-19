@@ -16,7 +16,7 @@ def at_row(game, name):
 def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
     assert game.js("[opt('shader'), !!Shader.el, Sun.shades()]") == ["off", False, False]            # nothing of it until asked for
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab")
-    assert game.js("[...document.querySelectorAll('#menu .row .name')].map((e) => e.textContent)") == ["Shader", "Strength", "Glow", "Shadows", "Shadow length", "Water reflections", "Light on water", "Sun rays", "Cloud shadows", "Dark corners"]
+    assert game.js("[...document.querySelectorAll('#menu .row .name')].map((e) => e.textContent)") == ["Shader", "Strength", "Glow", "Shadows", "Shadow length", "Land shadows", "Water reflections", "Light on water", "Sun rays", "Cloud shadows", "Dark corners"]
     game.press("ArrowRight", 500)                               # the first look
     assert game.js("[opt('shader'), Shader.works, getComputedStyle(Shader.el).display, Shader.el.width === cv.width, Shader.el.height === cv.height]") == ["natural", True, "block", True, True]
     game.press("Escape"); game.press("Escape")

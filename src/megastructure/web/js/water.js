@@ -141,7 +141,8 @@ let waterCv = null, waterView = null;                             // (waterView:
 function drawWater(vis, ox, oy, t) {
   waterView = null;
   if (!causticPat) { causticPat = causticPattern(); wavePat = wavePattern(); }
-  const vx = Math.floor(-ox / zoom) - 1, vy = Math.floor(-oy / zoom) - 1, vw = Math.ceil(W / zoom) + 3, vh = Math.ceil(H / zoom) + 3;   // the view, in art px
+  const more = Math.ceil(Curve.over() / zoom);                    // (the curved world shows a little further north: curve.js)
+  const vx = Math.floor(-ox / zoom) - 1, vy = Math.floor(-oy / zoom) - 1 - more, vw = Math.ceil(W / zoom) + 3, vh = Math.ceil(H / zoom) + 3 + more;   // the view, in art px
   let g = null, ux0 = 1e9, uy0 = 1e9, ux1 = -1e9, uy1 = -1e9;       // (and the part of it with water in it)
   const drift = (pat, dx, dy, alpha, x, y, w, h) => {               // a tiling pattern, slid by whole pixels
     if (!opt("shimmer")) return;                                   // (the settings' Water shimmer)

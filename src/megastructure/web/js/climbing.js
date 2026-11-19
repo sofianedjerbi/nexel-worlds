@@ -104,7 +104,7 @@ const Climb = (() => {
     // (its top: against a thing north of it, just over that thing's front edge; south of it, poking over its far edge
     // (the rest is behind it); beside it, along its side; leaning on nothing, two layers up)
     const edge = !L ? -shOf(top) : L.dy < 0 ? -shOf(top) - 2 : L.dy > 0 ? 16 - shOf(top) - 6 : -shOf(top) + 2;
-    const X = sx(x) + (4 + shift) * q, y0 = sy(y) - shOf(z) * q + 14 * q, y1 = sy(y) + edge * q;
+    const X = sx(x) + (4 + shift) * q, y0 = syUp(sy, y, shOf(z) * q) + 14 * q, y1 = syUp(sy, y, shOf(top) * q) + (edge + shOf(top)) * q;
     ctx.globalAlpha = a;
     for (let yy = y0 - 3 * q; yy > y1 + q; yy -= 4 * q) { ctx.fillStyle = RAIL; ctx.fillRect(X + 2 * q, yy, 4 * q, q); ctx.fillStyle = RUNG; ctx.fillRect(X + 2 * q, yy - q, 4 * q, q); }
     for (const rx of [0, 6]) {
@@ -170,7 +170,7 @@ const Climb = (() => {
   }
   function ghostFlight(f, sx, sy, S, ok) {
     for (const [x, y, g, t] of f) for (let z = g + 1; z <= t; z++) Floors.cell("stairs", x, y, z, sx, sy, S, .55);
-    for (const [x, y, , t] of f) { ctx.fillStyle = ok ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)"; ctx.fillRect(sx(x), sy(y) - shOf(t) * zoom, S, S); }
+    for (const [x, y, , t] of f) { ctx.fillStyle = ok ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)"; ctx.fillRect(sx(x), syUp(sy, y, shOf(t) * zoom), S, S); }
   }
   return {openAt, climb, lean, onLadder, pace, paceOf, climbOf, flight, drawLadder, drawStep, intent, ghostFlight};
 })();

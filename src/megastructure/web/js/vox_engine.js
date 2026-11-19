@@ -13,6 +13,9 @@
 //     shape(x, y, z) -> the shape of the tile's cell z, a number under 256 (0: the whole square), and
 //     profile(id)   -> that shape: for each px across, how many px the block leaves empty at its south end
 //                      (cfg.cell: that px across has none of it). paintTop leaves the same px see-through
+//     lip(id)       -> (if it has it) that shape's lip: for each px across, how many px at its south end are not the
+//                      top's ground but the wall under it (paintTop paints the wall's first px there): the sun takes
+//                      them for the wall
 //     band(z)       -> px the level z of a wall that faces west or east stands out under the level over it (its
 //                      bank; 0: none)
 //     side(z)       -> the colours of a wall's level z that faces west or east: {band: [r, g, b] its bank's top,
@@ -50,6 +53,16 @@
 //                                 byte first): nothing of that tile higher than that is drawn. ver: changes when
 //                                 px does. a: how far it has come, 0 to 1 (it comes a px in four at a time).
 //                                 earth: as the window's.
+//                          curve: null (flat), or {y0, yh, ref, sink, soft, g, lean, line}: the ground bends away to a
+//                                 horizon (vox_curve.js says what each is, and where a point is then drawn).
+//                                 line: where the land meets the sky (px from the top): what is well past the
+//                                 horizon (a tile and a half) has come down behind it, and is drawn only over it
+//                          sky: null, or what vox_sky.js draws behind the land in place of `clear`
+//                          sun: null (the land as it is painted), or the sun on it (vox_light.js): {dir: [x, y] px of
+//                                 ground a shadow goes on for each px of height (east, south), alpha, shade: [r, g, b]
+//                                 its colour, cast: null or a picture of the view's size with the shadows of what
+//                                 stands, land: false for no shadows of the land itself, glass: null or {alpha, wave, ripple, phase}:
+//                                 the land seen in the water}
 //     models             how many faces of models are made (the land's: faces)
 //
 //   models, what stands in the land and is not a block of it (a bridge's deck, a post): if the host has
@@ -59,6 +72,7 @@
 //
 // Where a point is: x right, y south, z up. On the screen a height is drawn `up` px of paint a level up the
 // picture, a px of paint being tile / cell px of the screen: (ox + x * tile, oy + y * tile - z * up * tile / cell).
+// With a curve: (ox + x * tile, VoxCurve.y(curve, oy + y * tile, z * up * tile / cell)).
 //
 // What a block shows of itself. Its top: the host's paint, its shape (the px the host leaves see-through). South:
 // its front, cell by cell down, cut to that shape, its foot the host's line. West, east: an upright face has no
@@ -68,15 +82,20 @@
 const Vox = (() => {
   const VS = `#version 300 es
 in vec3 aPos; in vec2 aLoc; in vec4 aMeta, aMore;
-uniform vec2 uRes, uO, uChunk; uniform float uK, uRow, uCell, uUp;
-out vec2 vLoc, vScr, vAt, vWorld; flat out vec2 vTile; flat out vec4 vMeta, vMore;
+uniform vec2 uRes, uO, uChunk, uTorO; uniform float uK, uRow, uCell, uUp;
+out vec3 vGround; out vec2 vLoc, vScr, vAt, vWorld, vFlat; out float vPast; flat out vec2 vTile; flat out vec4 vMeta, vMore;
+` + VoxCurve.GLSL + `
 void main() {
-  vec2 p = uO + vec2(aPos.x, aPos.y - aPos.z) * uK;             // (a height: that far up the picture)
-  float near = (aPos.y + aPos.z) / uCell + uRow;                // in front: what is further south, and what is higher
+  vec2 f = uO + aPos.xy * uK; float past;                       // (where its spot of the ground is, flat; then bent: vox_curve.js)
+  vec2 p = vec2(f.x, curveY(f.y, aPos.z * uK, past));           // (a height: that far up the picture)
+  vFlat = vec2(f.x, f.y - aPos.z * uK); vPast = past;           // (where it would be flat: the water's picture is laid flat)
+  // in front: what is further south, and what is higher; what is past the horizon is behind all that is before it
+  float near = (aPos.y + aPos.z) / uCell + uRow - past / (uK * uCell) * (2. * uCurve.w + 1.);
   gl_Position = vec4(p.x / uRes.x * 2. - 1., 1. - p.y / uRes.y * 2., clamp(-near / 700., -1., 1.), 1.);
   vLoc = aLoc; vTile = aPos.xy - aLoc; vMeta = aMeta; vMore = aMore; vScr = p;
   vAt = vec2(aPos.y / uCell + uRow, aPos.z / uUp);              // its row (from the eye's) and its level
   vWorld = aPos.xy + uChunk;                                    // where it is on the ground, px from the cut's corner
+  vGround = vec3(aPos.xy + uTorO, aPos.z);                      // ...and in the ring of heights, with its height (vox_light.js)
 }`;
   // vMeta: what is round the face (bits: vox_mesh.js), its kind (0 top, 1 front, 2 water, 3 and 4 a bank's top and
   // front), its strip of the sheets; vMore: where the feet of the walls west and east of a top are; a front's shape, the shape it
@@ -84,11 +103,15 @@ void main() {
   const FS = `#version 300 es
 precision highp float;
 uniform sampler2D uPage, uFronts, uSides, uWater, uFoot; uniform vec2 uWaterO, uWaterSize; uniform float uWaterK, uStrips, uSea, uCell, uUp, uSide, uVars, uK, uCut, uInset; uniform vec3 uLight, uWin, uSeaCol, uCutBox; uniform sampler2D uCutMap; uniform vec2 uWinAt; uniform vec4 uUnder;
-in vec2 vLoc, vScr, vAt, vWorld; flat in vec2 vTile; flat in vec4 vMeta, vMore; out vec4 o;
+in vec2 vLoc, vScr, vAt, vWorld, vFlat; in float vPast; uniform float uLine; flat in vec2 vTile; flat in vec4 vMeta, vMore; out vec4 o;
 // the host's shadow (of the level in the face's strip) over a colour
 vec3 shadow(vec3 c) { vec4 s = texelFetch(uSides, ivec2(2, int(vMeta.z)), 0); return mix(c, s.rgb, s.a); }
 uniform sampler2D uModel; uniform vec2 uModelSize;              // (models, vox_models.js: their sheet)
+uniform vec2 uRes;${VoxLight.FS}
 void main() {
+  // well past the horizon (vox_curve.js): behind it, seen only over the line where the land meets the sky (it comes
+  // down for good, and showed through whatever opens the land in front of it)
+  if (vPast > 24. * uK && vScr.y > uLine) discard;
   // the window (uWin: its middle and radius; uWinAt: the row and level of who is seen through it), a px of paint at a time
   bool cut = uWin.z > 0. && vAt.y > uWinAt.y + .02 && vAt.x > uWinAt.x - 1. && distance((floor(vScr / uK) + .5) * uK, uWin.xy) < uWin.z;
   // the land cut open (uCutBox: its picture's size in tiles, and how far it has come): a front belongs to the tile north of its edge
@@ -108,15 +131,15 @@ void main() {
   if (vMeta.y > 6.5) {                                          // a model's face (kind 7): its px of the sheet, as it is (vLoc: half px)
     vec4 m = texture(uModel, vLoc / 2. / uModelSize);
     if (m.a < .02) discard;                                     // (a half see-through px: over the water's picture, a shadow on the water)
-    if (m.a < .98) m.rgb = mix(uSea > .5 ? texture(uWater, (vScr - uWaterO) / uWaterK / uWaterSize).rgb : vec3(.42, .7, .84), m.rgb, m.a);
-    o = vec4(m.rgb * uLight, 1.); return;
+    if (m.a < .98) m.rgb = mix(uSea > .5 ? texture(uWater, (vFlat - uWaterO) / uWaterK / uWaterSize).rgb : vec3(.42, .7, .84), m.rgb, m.a);
+    o = vec4(sunlit(m.rgb, m.rgb, 7, 0, -1.) * uLight, 1.); return;
   }
   int bits = int(vMeta.x + .5), kind = int(vMeta.y + .5);
-  vec3 c; float far = uCell - .01; vec2 loc = vLoc - 8., tile = vTile + 8.;
+  vec3 c, plain = vec3(-1.); float far = uCell - .01; vec2 loc = vLoc - 8., tile = vTile + 8.;
   if (kind == 0) {
     vec4 t = texture(uPage, (tile + clamp(loc, .01, far)) / uSide);
     if (t.a < .5) discard;
-    c = t.rgb;
+    c = t.rgb; plain = c;
     float x = floor(loc.x), y = floor(loc.y);
     if ((bits & 128) == 0) {                                    // (128: what floats on water, as painted)
       // the shadow at the foot of a wall: west and east of it past the wall's bank, north at a front's foot
@@ -132,17 +155,18 @@ void main() {
     c = texelFetch(uSides, ivec2(kind == 3 ? 0 : 3, int(vMeta.z)), 0).rgb;
     if (kind == 4 && (bits & 16) != 0) { float r = floor(clamp(loc.y, 0., uUp - .01)); if (r >= uUp - uInset) discard; if (r == uUp - uInset - 1.) c = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb; }
   } else {
-    c = uSea > .5 ? texture(uWater, (vScr - uWaterO) / uWaterK / uWaterSize).rgb : uSeaCol;
+    c = uSea > .5 ? texture(uWater, (vFlat - uWaterO) / uWaterK / uWaterSize).rgb : uSeaCol;
   }
   // under a roof: a cave's own dark. Seen from outside, at its mouth, nearly all of it; seen through the window on
   // who is in it, a third: the place is to be seen
   if ((bits & 8) != 0 && kind < 2) c = mix(c, uUnder.rgb, uUnder.a * (open || (uWin.z > 0. && distance((floor(vScr / uK) + .5) * uK, uWin.xy) < uWin.z) ? .38 : 1.));
-  o = vec4(c * uLight, 1.);
+  o = vec4(sunlit(c, plain.r < 0. ? c : plain, kind, bits, kind == 0 && (bits & 128) == 0 ? floor(loc.y) + texelFetch(uFoot, ivec2(int(clamp(loc.x, 0., far)), int(vMore.w)), 0).g * 255. - uCell : -1.) * uLight, 1.);                 // (the sun, if the view has one: vox_light.js)
 }`;
   function create(host, cfg) {
     const chunks = new Map(), key = (cx, cy) => cx + "," + cy, N = cfg.size, [lo, hi] = cfg.levels;
     let cutTex = null, cutVer = null, prog = null, fill = null, quad = null, fronts = null, sea = null, failed = false;
     const keep = {};                                            // (the models' sheet, vox_models.js)
+    const light = VoxLight.create(cfg);                         // (the sun: vox_light.js)
     const pending = new Set([0]);                               // shapes met by the faces made, not yet in the shapes' sheet
     const FILL = [`#version 300 es\nin vec2 p; void main() { gl_Position = vec4(p, .9995, 1.); }`, `#version 300 es\nprecision highp float; uniform vec3 uCol; out vec4 o; void main() { o = vec4(uCol, 1.); }`];
     const strip = (z) => Math.max(lo, Math.min(hi, z)) - lo;
@@ -162,21 +186,23 @@ void main() {
         for (let n = 0; ch.todo.length && (n++ < 24 || performance.now() < until);) { const i = ch.todo.pop(); VoxPages.tile(ch, host, cfg, i % N, i / N | 0); }
         if (ch.todo.length) return;                             // (out of time: the rest next frame)
         VoxPages.upload(ch, cfg);
-        if (ch.stale) { const mesh = VoxMesh.build(ch, host, cfg, strip); for (const id of mesh.shapes) pending.add(id); VoxMesh.upload(ch, mesh, prog); VoxModels.make(ch, host, cfg, prog); ch.stale = false; ch.ready = true; }
+        if (ch.stale) { const mesh = VoxMesh.build(ch, host, cfg, strip); for (const id of mesh.shapes) pending.add(id); VoxMesh.upload(ch, mesh, prog); VoxModels.make(ch, host, cfg, prog); light.tops(ch, host); ch.stale = false; ch.ready = true; }
         if (performance.now() >= until) return;
       }
     }
     const made = (cx, cy) => { const ch = chunks.get(key(cx, cy)); return !!ch && ch.ready; };
-    function forget(keep) { for (const [k, ch] of chunks) if (!keep(ch.cx, ch.cy)) { VoxPages.drop(ch); VoxMesh.drop(ch); VoxModels.drop(ch); chunks.delete(k); } }
+    function forget(keep) { for (const [k, ch] of chunks) if (!keep(ch.cx, ch.cy)) { VoxPages.drop(ch); VoxMesh.drop(ch); VoxModels.drop(ch); light.drop(ch); chunks.delete(k); } }
     function draw(v) {
       const gl = VoxGL.gl, u = prog.u, k = v.tile / cfg.cell;
       VoxGL.fit(v.pw, v.ph);
       gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
       gl.clearColor(v.clear[0], v.clear[1], v.clear[2], 1); gl.clearDepth(1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.disable(gl.BLEND);
+      if (v.sky) VoxSky.draw(v.sky, v.w, v.h, v.pw, k);
       fronts = fronts || VoxPages.fronts(host, cfg, lo, hi);
       gl.useProgram(prog.pr);
       gl.uniform2f(u.uRes, v.w, v.h); gl.uniform1f(u.uK, k); gl.uniform1f(u.uCell, cfg.cell); gl.uniform1f(u.uUp, cfg.up); gl.uniform1f(u.uSide, N * cfg.cell);
+      const cu = v.curve; gl.uniform4f(u.uCurve, cu ? cu.y0 : 0, cu ? cu.yh : 0, cu ? cu.ref : 0, cu ? cu.sink : 0); gl.uniform3f(u.uRoll, cu ? cu.soft : 1, cu ? cu.g : 0, cu ? cu.lean : 0); gl.uniform1f(u.uLine, cu ? cu.line : 0);
       gl.uniform1f(u.uStrips, fronts.n); gl.uniform3f(u.uLight, v.light[0], v.light[1], v.light[2]);
       gl.uniform1i(u.uPage, 0); gl.uniform1i(u.uFronts, 1); gl.uniform1i(u.uWater, 2); gl.uniform1i(u.uSides, 3); gl.uniform1i(u.uFoot, 4);
       gl.uniform4f(u.uUnder, ...cfg.under); gl.uniform1f(u.uVars, cfg.variants); gl.uniform1f(u.uInset, cfg.inset); gl.uniform3f(u.uSeaCol, ...cfg.sea);
@@ -188,12 +214,14 @@ void main() {
         gl.uniform2f(u.uWaterO, v.water.x, v.water.y); gl.uniform1f(u.uWaterK, v.water.scale); gl.uniform2f(u.uWaterSize, v.water.canvas.width, v.water.canvas.height);
       }
       VoxModels.bind(host, keep, u);
+      light.frame(gl, u, v, chunks);
       gl.activeTexture(gl.TEXTURE0);
       const win = v.window && v.window.r > 0 ? v.window : null;
       gl.uniform3f(u.uWin, win ? win.x : 0, win ? win.y : 0, win ? win.r : 0); gl.uniform2f(u.uWinAt, win ? win.row - v.row : 0, win ? win.z : 0);
       const all = () => { for (const {cx, cy} of v.chunks) {
         const ch = chunks.get(key(cx, cy)); if (!ch || !ch.ready) continue;
         gl.uniform2f(u.uO, v.ox + cx * N * v.tile, v.oy + cy * N * v.tile); gl.uniform1f(u.uRow, cy * N - v.row); gl.uniform2f(u.uChunk, (cx * N - (v.cut ? v.cut.x : 0)) * cfg.cell, (cy * N - (v.cut ? v.cut.y : 0)) * cfg.cell);
+        light.at(gl, u, v, cx, cy);
         gl.bindVertexArray(ch.vao);
         for (const [p, first, count] of ch.ranges) { const pg = ch.pages[p]; if (!pg || !pg.tex) continue; gl.bindTexture(gl.TEXTURE_2D, pg.tex); gl.drawArrays(gl.TRIANGLES, first, count); }
         VoxModels.draw(ch);

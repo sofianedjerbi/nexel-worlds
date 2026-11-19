@@ -38,7 +38,7 @@ const Shader = (() => {
       gl_FragColor = vec4(c, 1.); }`;
   const FINAL = HEAD + `uniform sampler2D uB, uC; uniform vec2 uRes, uOrigin; uniform vec3 uTint;
     uniform float uGlow, uSat, uCon, uVig, uLift, uScan, uCloud, uTile, uT, uArt, uCurve, uMask, uShift, uTape, uGrid, uPal, uPalK, uWater, uDay, uRays;
-    uniform sampler2D uW; uniform vec3 uSky, uSun; uniform vec2 uRayDir, uRayFrom;
+    uniform sampler2D uW; uniform vec3 uSky, uSun; uniform vec2 uRayDir, uRayFrom; uniform vec4 uBend;
     float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f);
       return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y); }
@@ -51,9 +51,14 @@ const Shader = (() => {
       q.x += uTape * ((hash(vec2(row, floor(uT * 24.))) - .5) * .0016 + .012 * (1. - smoothstep(0., .035, abs(fract(uT * .09) - (1. - q.y)))));
       vec2 off = vec2(uShift / uRes.x, 0.);
       vec3 c = vec3(texture2D(uA, q + off).r, texture2D(uA, q).g, texture2D(uA, q - off).b), g = texture2D(uB, q).rgb * .6 + texture2D(uC, q).rgb * .7;
-      vec2 px = vec2(q.x, 1. - q.y) * uRes;
-      if (uCloud > 0.) {                                       // cloud shadows: fixed to the land, an art pixel at a time, drifting east
-        vec2 w = floor((px - uOrigin) / uTile * 16.) / 16. * .055 + vec2(-uT * .011, uT * .004);
+      vec2 px = vec2(q.x, 1. - q.y) * uRes, wpx = px;
+      // (the curved world, curve.js; uBend: where the bend starts, the horizon, its stretch, on: what is locked to the land is
+      // where the land is drawn: its place in the flat picture found back from the bend; over the horizon is sky: no
+      // cloud's shadow)
+      float land = 1.;
+      if (uBend.w > .5 && px.y < uBend.x) { float d = uBend.x - uBend.y, r = (uBend.x - px.y) / d, m = min(1., r); land = step(r, 1.); wpx.y = uBend.x - d * asin(m) * (1. + uBend.z * m * m); }
+      if (uCloud * land > 0.) {                                       // cloud shadows: fixed to the land, an art pixel at a time, drifting east
+        vec2 w = floor((wpx - uOrigin) / uTile * 16.) / 16. * .055 + vec2(-uT * .011, uT * .004);
         float n = noise(w) * .55 + noise(w * 2.1 + 7.3) * .3 + noise(w * 4.3 + 1.7) * .15;
         c *= mix(vec3(1.), vec3(.74, .78, .9), smoothstep(.5, .64, n) * uCloud);
       }
@@ -61,7 +66,7 @@ const Shader = (() => {
       // sun (the moon) glitters on it, a pixel of the land at a time, in drifting patches
       float wet = uWater > 0. ? texture2D(uW, q).r * uWater : 0.;
       if (wet > 0.) {
-        vec2 wp = floor((px - uOrigin) / uTile * 16.), cw = wp / 16. * .055 + vec2(3.1 - uT * .011, 1.7 + uT * .004);
+        vec2 wp = floor((wpx - uOrigin) / uTile * 16.), cw = wp / 16. * .055 + vec2(3.1 - uT * .011, 1.7 + uT * .004);
         c = mix(c, uSky, min(wet * .24, .6));
         c += wet * uDay * .1 * smoothstep(.5, .66, noise(cw) * .55 + noise(cw * 2.1 + 7.3) * .3 + noise(cw * 4.3 + 1.7) * .15);
         float h = hash(wp), twinkle = .5 + .5 * sin(uT * (2. + h * 3.) + h * 40.);
@@ -147,7 +152,7 @@ const Shader = (() => {
       pass(P.final, scene, null, w, h, (u) => {
         gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, a.tex); gl.uniform1i(u.uB, 1);
         gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, c.tex); gl.uniform1i(u.uC, 2);
-        gl.uniform2f(u.uRes, W, H); gl.uniform2f(u.uOrigin, ox, oy); gl.uniform1f(u.uTile, S); gl.uniform1f(u.uT, t); gl.uniform1f(u.uArt, zoom * DPR);
+        gl.uniform2f(u.uRes, W, H); gl.uniform2f(u.uOrigin, ox, oy); gl.uniform1f(u.uTile, S); { const cu = Curve.c; gl.uniform4f(u.uBend, cu ? cu.y0 : 0, cu ? cu.yh : 0, cu ? cu.g : 0, cu ? 1 : 0); } gl.uniform1f(u.uT, t); gl.uniform1f(u.uArt, zoom * DPR);
         // (by day the whole meadow is bright: a full glow there is a white-out; it is for the dark)
         // (this shader's own settings: options.js lookOpt, a share of what it has; warmth and haze are added to it)
         const mine = (what) => lookOpt(what) / 100, warm = lookOpt("warm", 0) / 100 * k, haze = lookOpt("haze", 0) / 100 * k;

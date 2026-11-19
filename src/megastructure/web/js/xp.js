@@ -49,7 +49,7 @@ function drawOrbs(sx, sy, S, dt, list) {
       o.x += dx / d * Math.min(d, sp * dt); o.y += dy / d * Math.min(d, sp * dt); o.h *= .85;
       o.lift += (liftOf(p) - o.lift) * Math.min(1, dt * 12);   // (up or down to the height you're drawn at, smoothly)
     }
-    const cx = Math.round(sx(o.x) / z) * z, cy = Math.round((sy(o.y) - o.lift - o.h * S * .5) / z) * z;
+    const cx = Math.round(sx(o.x) / z) * z, cy = Math.round((syUp(sy, o.y, o.lift) - o.h * S * .5) / z) * z;
     const shape = o.big ? ORB_BIG : ORB, flick = Math.sin(o.age * 14 + o.seed) > 0;
     list.push({y: o.y - .45, x: o.x, fx: () => drawOrb(cx, cy, shape, flick)});
   }
@@ -61,7 +61,7 @@ function drawOrbs(sx, sy, S, dt, list) {
     if (!p || k >= 1) { magnets.splice(i, 1); if (p) sfx("collect", p.tx, p.ty); continue; }
     const e = k * k, x = m.x + (p.x + .5 - m.x) * e, y = m.y + (p.y + .3 - UP - m.y) * e - Math.sin(k * Math.PI) * .35;
     const sz = DROP * z, lift = m.lift + (liftOf(p) - m.lift) * e, a = k > .7 ? (1 - k) / .3 : 1;   // (as it lay, never smaller: it fades as it is caught)
-    list.push({y: y - .45, x, fx: () => { ctx.globalAlpha = a; ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(sy(y) - lift - sz / 2), sz, sz); ctx.globalAlpha = 1; }});
+    list.push({y: y - .45, x, fx: () => { ctx.globalAlpha = a; ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(syUp(sy, y, lift) - sz / 2), sz, sz); ctx.globalAlpha = 1; }});
   }
 }
 

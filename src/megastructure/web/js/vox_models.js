@@ -20,7 +20,7 @@
 // A corner is 14 bytes: x, y, z (px in the chunk, shorts), where it is in the sheet (half px, shorts), then as the
 // land's corners: bits (none), kind (7), nothing.
 const VoxModels = (() => {
-  const BYTES = 14;
+  const BYTES = 14, STRIPS = 4;                                // (a top is that many pieces north to south, so that it bends with the ground: vox_curve.js)
   // -> {data, n}: the faces of the boxes of a chunk's tiles
   function build(ch, host, cfg) {
     const N = cfg.size, T = cfg.cell, faces = [];
@@ -33,19 +33,19 @@ const VoxModels = (() => {
         if (b.front && b.h > 0) faces.push([X, Y + b.d, b.z + b.h, b.w, b.h, 1, b.front]);
       }
     }
-    const data = new ArrayBuffer(faces.length * 6 * BYTES), view = new DataView(data);
+    const quads = faces.reduce((s, f) => s + (f[5] ? 1 : STRIPS), 0), data = new ArrayBuffer(quads * 6 * BYTES), view = new DataView(data);
     let at = 0;
     for (const [X, Y, Z, w, t, front, [u, v, flat]] of faces) {
       // a top lies flat (its far edge, then its near one); a front hangs from its top edge
-      const corner = (dx, dv) => {
-        view.setInt16(at, X + dx * w, true); view.setInt16(at + 2, front ? Y : Y + dv * t, true); view.setInt16(at + 4, front ? Z - dv * t : Z, true);
-        view.setInt16(at + 6, flat ? u * 2 + 1 : (u + dx * w) * 2, true); view.setInt16(at + 8, flat ? v * 2 + 1 : (v + dv * t) * 2, true);
+      const corner = (dx, q) => {                               // (q: px along it from its far edge, or down from its top)
+        view.setInt16(at, X + dx * w, true); view.setInt16(at + 2, front ? Y : Y + q, true); view.setInt16(at + 4, front ? Z - q : Z, true);
+        view.setInt16(at + 6, flat ? u * 2 + 1 : (u + dx * w) * 2, true); view.setInt16(at + 8, flat ? v * 2 + 1 : (v + q) * 2, true);
         view.setUint8(at + 10, 0); view.setUint8(at + 11, 7); view.setUint8(at + 12, 0);
         at += BYTES;
       };
-      corner(0, 0); corner(1, 0); corner(0, 1); corner(1, 0); corner(1, 1); corner(0, 1);
+      for (let k = 0, m = front ? 1 : STRIPS; k < m; k++) { const a = Math.round(t * k / m), b = Math.round(t * (k + 1) / m); corner(0, a); corner(1, a); corner(0, b); corner(1, a); corner(1, b); corner(0, b); }
     }
-    return {data, n: faces.length};
+    return {data, n: faces.length, quads};
   }
   // A chunk's models made again and handed to the GPU (a buffer of their own: none where a chunk has no model)
   function make(ch, host, cfg, prog) {
@@ -60,7 +60,7 @@ const VoxModels = (() => {
       }
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, m.buf); gl.bufferData(gl.ARRAY_BUFFER, mesh.data, gl.STATIC_DRAW);
-    m.n = mesh.n;
+    m.n = mesh.n; m.quads = mesh.quads;
   }
   // Before a frame's chunks: the sheet, on the fourth texture unit (`keep`: where the engine keeps it)
   function bind(host, keep, u) {
@@ -77,7 +77,7 @@ const VoxModels = (() => {
     const gl = VoxGL.gl, m = ch.models;
     if (!m || !m.n) return;
     gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-1, -2);
-    gl.bindVertexArray(m.vao); gl.drawArrays(gl.TRIANGLES, 0, m.n * 6);
+    gl.bindVertexArray(m.vao); gl.drawArrays(gl.TRIANGLES, 0, m.quads * 6);
     gl.disable(gl.POLYGON_OFFSET_FILL);
   }
   function drop(ch) { const gl = VoxGL.gl, m = ch.models; if (gl && m) { gl.deleteVertexArray(m.vao); gl.deleteBuffer(m.buf); } ch.models = null; }

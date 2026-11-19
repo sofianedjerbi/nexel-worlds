@@ -13,7 +13,7 @@ import pytest
 WEB = Path(__file__).parent.parent / "src" / "megastructure" / "web"
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
-FILES = [str(WEB / "js" / f"vox_{n}.js") for n in ("gl", "pages", "mesh", "models", "engine")]
+FILES = [str(WEB / "js" / f"vox_{n}.js") for n in ("gl", "curve", "sky", "pages", "mesh", "models", "light", "engine")]
 
 # A chunk of 4 x 4 tiles, flat at 0, with: a hill two high on (1,1) and (2,1); south of the first a roof at 3 over
 # empty cells (a cave: its floor 0, empty up to 2, solid at 3); water on (3,3). Nothing is known round it.
@@ -26,7 +26,7 @@ const gl = new Proxy({}, {get: (t, k) => typeof k !== "string" ? undefined : k =
 const canvas = () => ({width: 0, height: 0, addEventListener() {}, getContext: (kind) => kind === "webgl2" ? gl : new Proxy({}, {get: () => () => {}, set: () => true})});
 const box = {document: {createElement: canvas}, performance: {now: () => 0}, console};
 vm.createContext(box);
-vm.runInContext(process.argv.slice(1).map((f) => fs.readFileSync(f, "utf8")).join("\n") + "\nthis.Vox = Vox;", box);
+vm.runInContext(process.argv.slice(1).map((f) => fs.readFileSync(f, "utf8")).join("\n") + "\nthis.Vox = Vox; this.VoxCurve = VoxCurve;", box);
 const plain = process.env.VOX_PLAIN === "1", models = {"0,3": [{x: 0, y: 2, z: 2, w: 4, d: 11, h: 2, top: [0, 0], front: [4, 0]}, {x: 0, y: 13, z: 0, w: 4, d: 3, h: 0, top: [8, 0, 1]}]};
 const land = {"1,1": [2], "2,1": [2], "1,2": [0, 2, 3], "3,3": [-1]};
 const host = {
@@ -45,6 +45,26 @@ const out = {ready: engine.ready(), before: engine.made(0, 0)};
 engine.work([{cx: 0, cy: 0}], 1e9);
 out.made = engine.made(0, 0); out.faces = engine.faces; out.ledges = engine.sides; out.painted = seen.painted; out.models = engine.models;
 engine.draw(view); out.corners = seen.corners; out.fronts = seen.fronts; out.sides = seen.sides;
+seen.corners = 0; engine.draw({...view, sun: {dir: [-1, .45], alpha: .3, shade: [.1, .1, .3], cast: null, glass: {alpha: .5, wave: .9, ripple: 1, phase: 0}}}); out.sunCorners = seen.corners;      // the sun on it (vox_light.js)
+// the curved world (vox_curve.js): the same view bent and with a sky is drawn as well (the sky: one face more)
+const C = box.VoxCurve, curves = [{y0: 200, yh: 60, ref: 24, sink: 2, soft: 48, g: 0, lean: .5, line: 84}, {y0: 200, yh: 60, ref: 24, sink: 2, soft: 48, g: 1.2, lean: .5, line: 84}];
+seen.corners = 0; engine.draw({...view, curve: curves[1], sky: {line: 60, t: 1, shift: 0, top: [0, 0, 1], low: [1, 1, 1], cloud: [1, 1, 1], far: [0, 0, 0], near: [0, 0, 0], orb: [1, 1, 0], at: [.5, .5, 5], stars: 0}});
+out.bent = seen.corners; seen.corners = 0;
+// ...and what the shader is given says what the function says: the GLSL, read as JS, at every px of flat ground,
+// for land under the eye, at its height and over it, with no stretch and with one
+const js = C.GLSL.replace("uniform vec4 uCurve; uniform vec3 uRoll;", "").replace(/uRoll\.z/g, "c.lean").replace(/uRoll\.x/g, "c.soft").replace(/uRoll\.y/g, "c.g").replace("float curveY(float f, float h, out float past)", "function curveY(f, h)").replace(/float |int /g, "let ")
+  .replace(/\bsin\(/g, "Math.sin(").replace(/\basin\(/g, "Math.asin(").replace(/\bmax\(/g, "Math.max(").replace(/uCurve\.x/g, "c.y0").replace(/uCurve\.y/g, "c.yh").replace(/uCurve\.z/g, "c.ref").replace(/uCurve\.w/g, "c.sink");
+out.curve = curves.map((curve) => {
+  const gpu = new Function("c", "let past; " + js + "; return (f, h) => [curveY(f, h), past];")(curve), E = C.edge(curve);
+  const r = {worst: 0, flat: true, up: true, back: 0, edge: E, line: C.y(curve, E + curve.ref, curve.ref), low: C.y(curve, E - 40, -40), high: C.y(curve, E + curve.ref, curve.ref + 30),
+    off: C.y(null, 123.5, 3), past: [C.past(curve, E + curve.ref + 1, curve.ref), C.past(curve, E + curve.ref - 7, curve.ref + 50), C.past(curve, E - 7, 0)]};
+  for (const h of [-40, 0, 24, 60]) for (let f = 500, last = 1e9; f > -700; f -= .5) {
+    const y = C.y(curve, f, h), [g, past] = gpu(f, h), s = f - Math.min(h, curve.ref);      // (s: where the bend looks at it)
+    r.worst = Math.max(r.worst, Math.abs(y - g), Math.abs(past - C.past(curve, f, h)));
+    if (s - .5 * Math.max(0, h - curve.ref) >= curve.y0 && Math.abs(y - (f - h)) > 1e-9) r.flat = false;      // under the bend's start: the flat picture, exactly
+    if (!past) { if (y > last + 1e-6) r.up = false; r.back = Math.max(r.back, Math.abs(C.inv(curve, C.warp(curve, s)) - s)); last = y; }
+  }
+  return r; });
 models["0,3"].push({x: 0, y: 0, z: 0, w: 4, d: 3, h: 6, top: [0, 0], front: [0, 0]}); engine.touch(0, 3); engine.work([{cx: 0, cy: 0}], 1e9);      // a post is put on the tile
 out.posted = engine.models; out.repaint = seen.painted - out.painted; seen.painted = out.painted;
 delete models["0,3"]; engine.touch(0, 3); engine.work([{cx: 0, cy: 0}], 1e9); out.bare = engine.models;      // ...and all of it taken away
@@ -76,7 +96,11 @@ def test_the_engine_runs_with_none_of_the_game_and_makes_the_faces_the_cells_say
     # out a bank, a top and a front each (its top level does not: the roof one high has none either)
     assert out["ledges"] == 2
     assert out["faces"] == 16 + 1 + 1 + 3 + 5 + 2 * 2
-    assert out["corners"] == (out["faces"] + out["models"]) * 6  # all of it drawn, six corners a face
+    # all of it drawn, six corners a face; a face that lies on the ground (the 16 tops, the water and the three under
+    # the shore, what floats, the two banks' tops: 23; a model's two tops) is four strips north to south, so that it
+    # bends with the ground (vox_curve.js); the 7 fronts and the model's front are one piece
+    assert out["faces"] == 30 and out["corners"] == (23 * 4 + 7) * 6 + (2 * 4 + 1) * 6
+    assert out["bent"] == out["corners"] + 6                     # (curved, under a sky: the same faces, and the sky's)
     assert out["fronts"] == [z for z in range(-2, 5) for _ in range(2)]      # the fronts' sheet: a level a strip, two variants
     assert out["sides"] == list(range(-2, 5))                    # the ledges' colours: a level a row
 
@@ -94,11 +118,35 @@ def test_models_are_boxes_of_two_faces_made_again_with_their_tile():
     assert out["models"] == 3                                    # a box: its top and its front; a flat thing: its top
     assert out["faces"] == 16 + 1 + 1 + 3 + 5 + 2 * 2            # (the land's faces are the land's alone)
     assert out["posted"] == 5 and out["repaint"] == 1            # a box more on the tile that was touched: two faces more
-    assert out["bare"] == 0 and out["bareCorners"] == out["faces"] * 6      # none left: nothing of them is drawn
+    assert out["bare"] == 0 and out["bareCorners"] == (23 * 4 + 7) * 6      # none left: nothing of them is drawn
     assert out["sheets"] == 1                                    # the sheet is asked for once, however many frames
 
 
 def test_a_host_with_no_models_is_drawn_as_before():
     out = run(plain=True)
     assert out["models"] == 0 and out["posted"] == 0 and out["sheets"] == 0
-    assert out["faces"] == 16 + 1 + 1 + 3 + 5 + 2 * 2 and out["corners"] == out["faces"] * 6
+    assert out["faces"] == 16 + 1 + 1 + 3 + 5 + 2 * 2 and out["corners"] == (23 * 4 + 7) * 6
+
+
+def test_the_bend_is_one_function_for_the_gpu_and_for_what_is_drawn_over_its_picture():
+    """vox_curve.js: under the line where the bend starts the picture is the flat one exactly; over it the rows go up
+    to the horizon and never back; the place found back from the screen is the place drawn there; and the shader's
+    own lines, read as JS, give the same px as the function everywhere, for land under the eye, level with it and
+    over it. With no stretch, and with one: then more ground is seen before the horizon."""
+    near, far = run()["curve"]
+    for c in (near, far):
+        assert c["flat"] and c["up"]
+        assert c["worst"] < 1e-4 and c["back"] < .02, c       # (px; the stretch is found by halving: a hundredth of a px at the horizon)
+        # the row on the horizon is drawn on the line: at the eye's height, and lower land too (it is looked down on);
+        # land 30 px higher than the eye stands half of that over the line (it leans back)
+        assert abs(c["line"] - 60) < 1e-4 and abs(c["low"] - 60) < 1e-4 and abs(c["high"] - 45) < 1e-4, c
+        assert c["off"] == 120.5                                 # no curve: flat
+        assert c["past"] == [0, 7, 7]
+    assert abs((200 - far["edge"]) / (200 - near["edge"]) - 2.2) < 1e-9      # (a stretch of 1.2: 2.2 times the ground in the bend)
+
+
+def test_the_sun_on_the_land_is_the_engines_own_and_adds_no_face():
+    """vox_light.js: asked for a sun (view.sun), the engine draws the same faces, lit by its own program: nothing of
+    the game is needed for it."""
+    out = run()
+    assert out["sunCorners"] == out["corners"]

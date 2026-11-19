@@ -17,11 +17,12 @@ const OPT_DEFAULT = {
   shake: true,            // the ground shakes when a fall hurts
   glide: true,            // a zoom level glides into the next
   shimmer: true,          // the water's moving light and small waves
+  curve: "far",           // the ground bends away to a horizon, with a sky over it (curve.js): off (the flat picture), near, far
   floats: true,           // hearts lost, things gained, written over heads
   // shaders (shader.js): which look (off, or a key of SHADERS), how much of it, how much glow, cloud shadows, dark corners
   shader: "off", shaderk: 100, glow: 100, clouds: 100, corners: 100,
   // (sun.js: what stands throws a shadow, and is seen in the water. Each is how much of it, 0 to 200: 0 is none)
-  shadows: 100, shadowlen: 100, reflect: 100, waterlight: 100, rays: 100,
+  shadows: 100, shadowlen: 100, landshade: true, reflect: 100, waterlight: 100, rays: 100,      // (landshade: the land's own shadows on the land, vox_light.js)
   // each shader's own settings ("feel free to add per-shader settings"): shader -> {what: how much}, where it is not
   // as the shader comes (lookOpt, below)
   looks: {},

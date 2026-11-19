@@ -15,7 +15,10 @@ const shOf = (L) => RELIEF_STEP * L;                          // how far up a le
 // brink, a tile short of a wall to the north. So: feet 5 px over the bottom, in line with the rocks and crops beside
 // it, the body in the middle of its tile. UP: the same in tiles (its dust, what flies to it, where it is looked for).
 const STAND = 3, UP = STAND / 16;
-const bodyY = (p, sy) => sy(p.y) - liftOf(p) - STAND * zoom;      // a body's place on screen (the top of its tile, lifted with the ground it stands on, and STAND)
+// Where what is on row y, `lift` px up, is drawn: sy(y) - lift on the flat picture; in the bend of the curved world a
+// height is part of where a thing is (curve.js: render.js's sy says it, sy.up)
+const syUp = (sy, y, lift) => (sy.up ? sy.up(y, lift) : sy(y) - lift);
+const bodyY = (p, sy) => syUp(sy, p.y, liftOf(p)) - STAND * zoom;      // a body's place on screen (the top of its tile, lifted with the ground it stands on, and STAND)
 
 // Something flying off from a spot (a puff, a spark, debris): it keeps the height of where it started, however it
 // drifts (it doesn't step up and down with the tiles it passes over)
