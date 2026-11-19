@@ -114,7 +114,7 @@ def test_a_dug_floor_is_earth_with_no_grass_at_the_foot_of_its_walls(game):
 
 
 # the land under the build cursor (the cursor itself not drawn): the colour in the middle of its tile as drawn
-UNDER_CURSOR = """() => { const draw = Build.draw; Build.draw = () => null; frame(performance.now()); Build.draw = draw;
+UNDER_CURSOR = """() => { const draw = Build.draw; Build.draw = () => null; for (const m of Marks.list) m.a = 0; frame(performance.now()); Build.draw = draw;      // (nor the cursor's own box: mark.js)
   const r = Build.S.rect; return Array.from(ctx.getImageData(Math.round((r.x + r.w / 2) * DPR), Math.round((r.y + r.w / 2) * DPR), 1, 1).data).slice(0, 3); }"""
 
 

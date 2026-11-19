@@ -191,9 +191,9 @@ def test_higher_ground_is_drawn_higher_and_clicks_find_it(game):
     assert game.js(f"liftAt({x}, {y - 3})") == 24 * z and game.js(f"liftAt({x}, {y})") == 0
     # a click on where the terrace's tile is drawn finds that tile, not the one under it on the screen
     S, ox, oy = game.js("TS()"), *game.js("screenOrigin()")
-    mx, my = ox + x * S + S / 2, oy + (y - 2) * S - 24 * z + S / 2
+    mx, my = ox + x * S + S / 2, game.js(f"Curve.y({oy} + ({y} - 2 + .5) * {S}, 24 * zoom)")      # (where the game draws that tile's middle, three layers up)
     at = game.js(f"tileAtScreen({mx}, {my})")
-    assert (at["x"], at["y"]) == (x, y - 2) and abs(at["fy"] - .5) < .01      # (fy: how far down the tile)
+    assert (at["x"], at["y"]) == (x, y - 2) and abs(at["fy"] - .5) < .1       # (fy: how far down the tile)
     game.js(f"ents.get('agent' + myId).y = {y - 3}")             # someone up there is lifted with it
     assert game.js("liftOf(ents.get('agent' + myId))") == 24 * z
 

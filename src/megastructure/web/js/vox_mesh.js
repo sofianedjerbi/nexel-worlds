@@ -37,8 +37,10 @@ const VoxMesh = (() => {
       // (never past its fair share of the tile it leans over: a quarter of it where the land on that tile's other
       // side is higher too (a way between two walls, a pit's floor: half of the ground is left), else half of it.
       // What is left of the wall goes straight down)
-      return o && Math.min(o, inset(x, y, zc, dx) + T / (solid(x + 2 * dx, y, c[c.length - 1] + 1) ? 4 : 2));
+      const most = inset(x, y, zc, dx) + T / (solid(x + 2 * dx, y, c[c.length - 1] + 1) ? 4 : 2); clipped = o > most;
+      return o && Math.min(o, most);
     };
+    let clipped = false;                                        // (the last bank asked for did not fit: its wall is higher than it tells)
     // how far in from its tile's side toward dx the cell's shape starts (px), and where a bank's foot is: px past that side
     const prof = new Map(), inset = (x, y, z, dx) => { const id = shape(x, y, z); let pr = prof.get(id), i = 0; if (!pr) prof.set(id, pr = host.profile(id)); while (i < T && pr[dx < 0 ? i : T - 1 - i] >= T) i++; return i; };
     const reach = (x, y, zc, dx) => { const o = out(x, y, zc, dx); return o ? o - inset(x, y, zc, dx) : -K; };
@@ -69,10 +71,14 @@ const VoxMesh = (() => {
         // block's own side is: its shape's.)
         for (const dx of [-1, 1]) for (let zc = z - 1, edge = inset(x, y, z, dx); zc > (q ? c[q - 1] : -1e9) && !solid(x + dx, y, zc); zc--) {
           const o = out(x, y, zc, dx), I = inset(x, y, zc, dx), b = Math.min(edge, I - o); if (!o && !(zc > 0 && host.water(x + dx, y))) break;      // (edge, b: px in from the tile's side: what is over this level reaches that far out; this level, to there)
-          if (b < edge) { add(0, [dx < 0 ? X + b : X + T - edge, Y, zc * cfg.up, edge - b, T, 0, 0, T, (dx > 0 ? 1 : 0) | (zc < z - 1 || (zc - 1 > (q ? c[q - 1] : -1e9) && !solid(x + dx, y, zc - 1)) ? 2 : 0), 3, strip(zc), 0, 0, 0]); sides++; }      // (1: it faces east; 2: of a wall two levels high or more. For the sun: vox_light.js)
+          // (a bank that did not fit: the px of it furthest out is the wall's foot colour, 4: more wall than it tells goes straight down there)
+          if (b < edge) { const bt = (dx > 0 ? 1 : 0) | (zc < z - 1 || (zc - 1 > (q ? c[q - 1] : -1e9) && !solid(x + dx, y, zc - 1)) ? 2 : 0), dark = o && (clipped || (zc - 1 > (q ? c[q - 1] : -1e9) && !solid(x + dx, y, zc - 1) && out(x, y, zc - 1, dx) && clipped)) ? 1 : 0, w = edge - b - dark;
+            if (w > 0) add(0, [dx < 0 ? X + b + dark : X + T - edge, Y, zc * cfg.up, w, T, 0, 0, T, bt, 3, strip(zc), 0, 0, 0]);
+            if (dark) add(0, [dx < 0 ? X + b : X + T - b - 1, Y, zc * cfg.up, 1, T, 0, 0, T, bt | 4, 3, strip(zc), 0, 0, 0]);
+            sides++; }      // (1: it faces east; 2: of a wall two levels high or more. For the sun: vox_light.js)
           edge = b;
           if (o && south && !solid(x + dx, y + 1, zc) && out(x, y + 1, zc, dx) < o && !(zc <= 0 && host.water(x, y + 1)))
-            add(0, [dx < 0 ? X + b : X + T - I, Y + T, zc * cfg.up, I - b, 0, 0, 0, cfg.up, solid(x + dx, y, zc - 1) || solid(x, y + 1, zc - 1) ? 16 : 0, 4, strip(zc), 0, 0, 0]);
+            add(0, [dx < 0 ? X + b : X + T - I, Y + T, zc * cfg.up, I - b, 0, 0, 0, cfg.up, (solid(x + dx, y, zc - 1) || solid(x, y + 1, zc - 1) ? 16 : 0) | (dx > 0 ? 32 : 0), 4, strip(zc), 0, 0, 0]);      // (32: it faces east: of the tile west of it, for the cut)
         }
         // down its cells: a front where the cell south is empty; a sliver of one where the block south is set in
         // at a side and this one is not (dx: which side)

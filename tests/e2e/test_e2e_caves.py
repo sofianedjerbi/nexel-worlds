@@ -32,6 +32,7 @@ def test_an_opening_is_as_wide_and_as_high_as_the_empty_cells_on_each_side(game)
     face is open there, a cave's dark mouth, across both tiles (no wall at their seam), two layers high, not three;
     beside it and over it the hill's front, earth. (A hill's east, west and north sides have no face of their
     own with blocks: an opening there does not show from outside.)"""
+    game.flat()                                                  # (it counts the art px of faces north of you: whole px on the flat picture only)
     game.clear_area(9)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)
@@ -129,6 +130,7 @@ def test_standing_behind_a_hill_it_hides_you(game):
 def test_an_opening_higher_up_a_south_wall_is_up_the_wall(game):
     """A cave whose floor is a layer above the ground in front: its opening is up the wall: a layer of the hill's front
     under it, the cave's dark mouth, the front again over it."""
+    game.flat()                                                  # (it counts the art px of faces north of you: whole px on the flat picture only)
     game.clear_area(9)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)

@@ -36,8 +36,9 @@ function zoomLeg() {
     const fx = Shader.layers().map((c) => c.animate([{transform: `scale(${a})`}, {transform: `scale(${b})`}], {duration: ZOOM.ms, easing: "cubic-bezier(.3, .6, .4, 1)", fill: "forwards"}));
     an.onfinish = () => { done(); an.cancel(); fx.forEach((f) => f.cancel()); };      // (finish comes before the frame is drawn: the new size and the plain canvas show together)
   };
-  if (next > zoom) glide(1, next / zoom, () => { zoom = next; zoomLeg(); });
-  else { const from = zoom / next; zoom = next; glide(from, 1, zoomLeg); }
+  // (the curved world's roll is not magnified with the picture: it is put where the magnified picture has it, and let back: curve.js)
+  if (next > zoom) glide(1, next / zoom, () => { Curve.rezoom(next / zoom); zoom = next; zoomLeg(); });
+  else { const from = zoom / next; zoom = next; Curve.rezoom(1 / from); glide(from, 1, zoomLeg); }
 }
 // The wheel. A mouse wheel sends one event of about 100 px a notch; a trackpad sends dozens of small ones for one
 // swipe, and goes on sending while the swipe dies away; a pinch on a trackpad is a wheel with Ctrl held, in small steps.

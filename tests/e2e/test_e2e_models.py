@@ -21,6 +21,7 @@ def pond(game):
 def test_a_bridge_is_a_deck_over_the_water(game):
     """Its planks are four px over the water (the flat one's lay on it): the deck's top is drawn four px up the
     picture, its lit front edge and its dark one under it, then the water in its shade; north of it, water."""
+    game.flat()                                                  # (it counts the art px of faces north of you: whole px on the flat picture only)
     x, y = pond(game)
     assert game.js("Voxels.engine.models") > 40                  # a box a plank, their fronts, posts
     px = lambda ax, ay, dx=0: game.js(PX, [x + dx, y, ax, ay])

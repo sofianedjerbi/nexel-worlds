@@ -75,12 +75,20 @@ const Voxels = (() => {
     const pic = engine.draw({w: W, h: H, pw: cv.width, ph: cv.height, ox, oy, tile: S, row: cam.y, chunks: here(vis), light: [1, 1, 1],
       clear: high ? [.659, .847, .918] : [.169, .141, .125],      // (the sky, or the dark of what has not come: as render.js fills)
       // (the curved world, curve.js: the ground bends to a horizon, the sky over it; far under the land, state.js away: earth, no sky)
-      curve: Curve.c, sky: Curve.on && (away.a < 1 || high) ? Curve.sky(t) : null,
+      marks: Marks.list, curve: Curve.c, sky: Curve.on && (away.a < 1 || high || away.sky) ? Curve.sky(t) : null,
       water: waterView ? {canvas: waterCv, x: ox + waterView.x * zoom, y: oy + waterView.y * zoom, scale: zoom} : null,
       // hidden (behind a hill, down a hole, under a roof: xray.js says how much, and which tiles are cut how low):
       // the land is cut open over the place you are in
       cut: cutMap(), sun});                                      // (sun: with a shader on, the sun on the land, sun.js)
     ctx.imageSmoothingEnabled = false; ctx.drawImage(pic, 0, 0, W, H);
   }
-  return {made, work, frame, engine};
+  // Away from the land (state.js), going: what is behind the land, laid over it that much: the engine's own picture
+  // with no land in it (its sky, or the dark of the earth): one sky, whatever the hour. -> was it done (the curved world on)
+  function veil(ox, oy, S, t, a, sky) {
+    if (!Curve.on || !engine.ready()) return false;
+    const pic = engine.draw({w: W, h: H, pw: cv.width, ph: cv.height, ox, oy, tile: S, row: cam.y, chunks: [], light: [1, 1, 1], clear: [.169, .141, .125], water: null, cut: null, curve: Curve.c, sky: sky ? Curve.sky(t) : null});
+    ctx.globalAlpha = a; ctx.drawImage(pic, 0, 0, W, H); ctx.globalAlpha = 1;
+    return true;
+  }
+  return {made, work, frame, veil, engine};
 })();

@@ -17,6 +17,16 @@ function tileAtScreen(mx, my) {                        // -> {x, y, fy: how far 
   // relief.js; a row far north nearer the horizon: curve.js): the first whose top is under the pointer, or whose
   // front is, down to the land south of it. (It looked six tiles south and at tops alone: a pit was not undone.)
   const reach = (APART / 2 + 1) * S, eye = Curve.c ? Math.abs(Curve.c.ref) : 0;
+  // Who stands in the roll is drawn as big as ever on rows a few px tall: under the pointer, it is who is meant, not
+  // the tile behind its head (the nearest, if two). Near you, where a body is on its own tile, the tile says it.
+  if (Curve.on && !Build.on) {
+    const sy = Curve.sy(oy, S); let who = null;
+    for (const p of ents.values()) if (p.e && !(p.e.kind === "agent" && p.e.id === myId)) {
+      const bx = ox + p.x * S, lift = liftOf(p), by = bodyY(p, sy);
+      if (mx >= bx && mx < bx + S && my >= by && my < by + S && Math.abs(by - (oy + p.y * S - lift - STAND * zoom)) > 1 && !sy.gone(p.y, lift) && (!who || p.y > who.y)) who = p;
+    }
+    if (who) return {x: Math.round(who.x), y: Math.round(who.y), fy: .5};
+  }
   for (let y = row(Curve.inv(my + reach) + reach + eye), end = row(Curve.inv(my) - reach - eye) - 1; y >= end; y--) {
     const up = aimLift(x, y), top = at(y, up), foot = at(y + 1, up);
     if (my >= top && my < foot) return {x, y, fy: (my - top) / (foot - top)};

@@ -18,6 +18,7 @@ def look(game, name, wait=800):
 
 
 def test_a_cliff_throws_its_shadow_on_the_ground_away_from_the_sun(game):
+    game.flat()                                                  # (it measures parts of the picture north of you by the flat picture's px, and two frames px for px: the curved world's sky moves)
     game.clear_area(8)
     game.stamp(-1, -3, ["..", ".."], levels=["33", "33"])      # a block of land three high, north of you
     x, y = game.pos()
@@ -74,6 +75,7 @@ def test_the_shadow_of_what_stands_is_not_on_a_wall_and_what_stands_in_shadow_is
 
 
 def test_with_no_shader_and_with_no_sun_asked_for_the_land_is_as_it_is_painted(game):
+    game.flat()                                                  # (it measures parts of the picture north of you by the flat picture's px, and two frames px for px: the curved world's sky moves)
     game.clear_area(8)
     game.stamp(-4, -4, ["...", "..."], levels=["231", "220"])  # land with fronts, banks and feet, and no one on it
     x, y = game.pos()
@@ -93,6 +95,7 @@ def test_with_no_shader_and_with_no_sun_asked_for_the_land_is_as_it_is_painted(g
 
 
 def test_the_land_north_of_water_is_seen_in_it(game):
+    game.flat()                                                  # (it measures parts of the picture north of you by the flat picture's px, and two frames px for px: the curved world's sky moves)
     game.clear_area(8)
     game.stamp(-4, -5, ["........", "~~~~~~~~", "~~~~~~~~", "~~~~~~~~"], levels=["33333333"] + ["0" * 8] * 3)      # a cliff, a pond at its foot
     x, y = game.pos()

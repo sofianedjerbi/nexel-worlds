@@ -29,9 +29,9 @@ def test_a_block_dug_under_a_tunnels_floor_changes_that_block_and_the_tunnel_sta
     assert game.js(f"JSON.stringify(colAt({X + 1}, {y}))") == "[-8,-7,-6,-4,3]"            # the tunnel's floor is where it was; the wall has one block out, your new room
     assert game.js(f"seenUnder({X + 2}, {y})") == -6                                         # ...and the tunnel goes on past it
     who = lambda z: game.js(f"(() => {{ const p = {{x: {X + 1}, y: {y}, e: {{kind: 'chicken', id: -1}}, zAt: {{x: {X + 1}, y: {y}, z: {z}}}}}; return [xrayShows(p) > .9, xrayOverBody(p) > .9]; }})()")
-    assert [who(-6), who(-8), who(3)] == [[True, False], [True, False], [False, False]]      # who stands on the tunnel's floor there is seen, as who is in your new room; not who is up on the land
+    assert [who(-6), who(-8), who(3)] == [[True, False], [True, False], [False, True]]       # who stands on the tunnel's floor there is seen, as who is in your new room; not who is up on the land: that land is cut away under their feet, they go with it (test_e2e_place.py)
     game.rpc("dev_teleport", x=X + 2, y=y, z=-6)              # from the tunnel, over it: the same column
     game.wait(f"myAt && myAt.x === {X + 2} && myAt.z === -6", 8000)
     game.wait(f"{DRAWN} && xray.pic && xray.pic.floor.get('{X + 1},{y}') === -6", 20000)
-    assert [who(-6), who(-8), who(3)] == [[True, False], [True, False], [False, False]]
+    assert [who(-6), who(-8), who(3)] == [[True, False], [True, False], [False, True]]
     assert not game.errors

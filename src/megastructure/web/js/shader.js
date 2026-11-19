@@ -56,7 +56,7 @@ const Shader = (() => {
       // where the land is drawn: its place in the flat picture found back from the bend; over the horizon is sky: no
       // cloud's shadow)
       float land = 1.;
-      if (uBend.w > .5 && px.y < uBend.x) { float d = uBend.x - uBend.y, r = (uBend.x - px.y) / d, m = min(1., r); land = step(r, 1.); wpx.y = uBend.x - d * asin(m) * (1. + uBend.z * m * m); }
+      if (uBend.w > .5 && px.y < uBend.x) { float d = uBend.x - uBend.y, r = (uBend.x - px.y) / d; land = step(r, 1.); wpx.y = uBend.x - 2. * d * (1. - sqrt(max(0., 1. - r))); }
       if (uCloud * land > 0.) {                                       // cloud shadows: fixed to the land, an art pixel at a time, drifting east
         vec2 w = floor((wpx - uOrigin) / uTile * 16.) / 16. * .055 + vec2(-uT * .011, uT * .004);
         float n = noise(w) * .55 + noise(w * 2.1 + 7.3) * .3 + noise(w * 4.3 + 1.7) * .15;
@@ -152,7 +152,7 @@ const Shader = (() => {
       pass(P.final, scene, null, w, h, (u) => {
         gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, a.tex); gl.uniform1i(u.uB, 1);
         gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, c.tex); gl.uniform1i(u.uC, 2);
-        gl.uniform2f(u.uRes, W, H); gl.uniform2f(u.uOrigin, ox, oy); gl.uniform1f(u.uTile, S); { const cu = Curve.c; gl.uniform4f(u.uBend, cu ? cu.y0 : 0, cu ? cu.yh : 0, cu ? cu.g : 0, cu ? 1 : 0); } gl.uniform1f(u.uT, t); gl.uniform1f(u.uArt, zoom * DPR);
+        gl.uniform2f(u.uRes, W, H); gl.uniform2f(u.uOrigin, ox, oy); gl.uniform1f(u.uTile, S); { const cu = Curve.c; gl.uniform4f(u.uBend, cu ? cu.y0 : 0, cu ? cu.yh : 0, 0, cu ? 1 : 0); } gl.uniform1f(u.uT, t); gl.uniform1f(u.uArt, zoom * DPR);
         // (by day the whole meadow is bright: a full glow there is a white-out; it is for the dark)
         // (this shader's own settings: options.js lookOpt, a share of what it has; warmth and haze are added to it)
         const mine = (what) => lookOpt(what) / 100, warm = lookOpt("warm", 0) / 100 * k, haze = lookOpt("haze", 0) / 100 * k;

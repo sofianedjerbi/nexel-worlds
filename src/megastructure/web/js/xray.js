@@ -56,17 +56,21 @@ const xrayCutAt = (tx, ty) => (xray.a > .01 && xray.pic ? xray.pic.cut.get(tx + 
 const xrayOver = (tx, ty) => { const c = xrayCutAt(tx, ty); return c !== undefined && levelAt(tx, ty) > c ? xray.a : 0; };
 // ...and the ground over the place you are in, under it: left out as that rock is (behind.js: neither hides anybody)
 const xrayGone = (tx, ty) => xrayRock(tx, ty) || seenUnder(tx, ty) !== undefined;
-// Someone on that rock fades with it, and so does who walks over the roof of the place you are in (not who is in it)
+// A tile of the place may have two of its rooms, one over the other (pic.all: every floor of the place there; pic.floor:
+// the one that is seen, the cut goes down to it). Who stands on any of them is of the place: shown, never faded.
+const xrayTop = (x, y) => { const a = xray.a > .01 && xray.pic ? xray.pic.all.get(x + "," + y) : undefined; return a ? a[a.length - 1] : undefined; };
+// Who stands on land that is cut away under their feet goes with it (they would stand in the air), and only they:
+// on the rock in the way, on the roof of the place. A step from whole land onto cut land: little by little.
 function xrayOverBody(p) {
-  const x = Math.round(p.x), y = Math.round(p.y), f = seenUnder(x, y);
-  if (f === undefined) return xrayOver(x, y);
-  return Floors.standOf(p, x, y) > f + 1 ? xray.a : 0;
+  const at = (x, y) => { const c = xrayCutAt(x, y), top = xrayTop(x, y), h = Floors.standOf(p, x, y); return c !== undefined && h > c && !(top !== undefined && h <= top + 1) ? xray.a : 0; };
+  const x0 = Math.floor(p.x), y0 = Math.floor(p.y), fx = p.x - x0, fy = p.y - y0;
+  return fx > .001 ? at(x0, Math.round(p.y)) * (1 - fx) + at(x0 + 1, Math.round(p.y)) * fx : fy > .001 ? at(x0, y0) * (1 - fy) + at(x0, y0 + 1) * fy : at(x0, y0);
 }
 // Someone on the ground behind that rock: how clearly they show through it (0: hidden as ever, 1: whole). (Under a
-// roof of the place you are in: on its floor, not who walks over it)
+// roof of the place you are in: on one of its floors, not who walks over it)
 function xrayShows(p) {
-  const x = Math.round(p.x), y = Math.round(p.y), f = seenUnder(x, y);
-  if (f !== undefined) return Floors.standOf(p, x, y) <= f + 1 ? xray.a : 0;
+  const x = Math.round(p.x), y = Math.round(p.y), top = xrayTop(x, y);
+  if (seenUnder(x, y) !== undefined) return Floors.standOf(p, x, y) <= top + 1 ? xray.a : 0;
   return !xrayRock(x, y) && xray.pic && xray.pic.place.has(x + "," + y) ? xray.a : 0;
 }
 
@@ -117,11 +121,16 @@ function xrayFind(tx) {
   // the rock seen through: on the line of sight to a tile of your place (south of it in its column, and high enough
   // to be drawn over it: two layers a row), and of the mass that hides you (gone through from what is over your tile
   // and the two beside it, tile to tile)
-  const L = xray.L, row = xray.row, {cols: place, z: floors} = xrayPlace(tx, row, L), mass = new Map(), todo = [];
-  // (-> the lowest ground of the place it hides, or null: it hides none)
+  const L = xray.L, row = xray.row, {cols: place, z: floors, by} = xrayPlace(tx, row, L), mass = new Map(), todo = [];
+  // (a tile with two rooms of the place, one over the other: every floor it has there, lowest first; the one that
+  // is seen is the highest you are not under: from the lower room, that room; from the upper one, its own floor, whole)
+  const all = new Map();
+  for (const [k, h] of floors) { const a = [...new Set([h, ...(by.get(k) || [])])].sort((p, q) => p - q), at = a.filter((f) => f <= L + 1); all.set(k, a); floors.set(k, at.length ? at[at.length - 1] : a[0]); }
+  // (-> how low it must be cut for the eye to see the floors of the place it hides (the eye looks down two levels
+  // a row: a tile further south needs less taken off), or null: it hides none)
   const hides = (x, ty) => {
     const lv = levelAt(x, ty), rows = lv >= L + 2 && place.get(x); let low = null;
-    if (rows) for (const gy of rows) { const f = floors.get(x + "," + gy), up = lv - f; if (gy < ty && up > 1 && up > 2 * (ty - gy) - 2) low = low === null ? f : Math.min(low, f); }
+    if (rows) for (const gy of rows) { const f = floors.get(x + "," + gy), up = lv - f; if (gy < ty && up > 1 && up > 2 * (ty - gy) - 2) { const need = f + 2 * (ty - gy) - 2; low = low === null ? need : Math.min(low, need); } }
     return low;
   };
   const sight = (x, ty) => hides(x, ty) !== null;
@@ -147,5 +156,5 @@ function xrayFind(tx) {
   // (and your own tile first: a higher floor of the place south of you, drawn up over where you stand, is cut down
   // to your floor as any ground in front of you is: you stood in a dark column with no floor under you)
   for (let ty = row + 1; ty <= row + XRAY.far; ty++) { const k = tx + "," + ty, f = floor.get(k); if (f !== undefined && (f - L) * RELIEF_STEP - (ty - row - 1) * 16 > RELIEF_STEP) lower(k, L); }
-  xray.pic = {key, floor, rock, cut, place: new Set(floors.keys())};
+  xray.pic = {key, floor, rock, cut, all, place: new Set(floors.keys())};
 }

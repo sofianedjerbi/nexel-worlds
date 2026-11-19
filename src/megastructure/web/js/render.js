@@ -120,17 +120,17 @@ function frame(now) {
   if (worldReady) Floors.draw(vis, list, sx, sy, S, t, now);                 // (what is built over the land: floors, roofs, what stands on them: floors.js)
   list.sort((a, b) => a.y - b.y || a.x - b.x);
   // (past the horizon, curve.js: it goes down behind it, cut at the horizon line of the ground it stands on; no shadow)
-  if (sy.bent) for (const o of list) { const up = o.p ? liftOf(o.p) : o.x === undefined ? 0 : liftAt(Math.round(o.x), o.ty === undefined ? Math.round(o.y) : o.ty); if (sy.far(o.y, up)) o.far = sy.cut(up); }
+  if (sy.bent) for (const o of list) { const up = o.p ? liftOf(o.p) : o.x === undefined ? 0 : liftAt(Math.round(o.x), o.ty === undefined ? Math.round(o.y) : o.ty); o.clip = sy.clip(o.y, up); if (sy.gone(o.y, up)) o.far = o.clip; }
   // (the land is drawn once what stands on it is known: with a shader on, their shadows fall on it as it stands, sun.js)
   Voxels.frame(away.a < 1 ? vis : [], ox, oy, S, t, away.high, Sun.cast(list, vis, sx, sy, S, t, now));      // the land and the sea, as blocks
-  if (away.a > 0 && away.a < 1) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  if (away.a > 0 && away.a < 1 && !Voxels.veil(ox, oy, S, t, away.a, away.sky)) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
   if (!worldReady) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }
   // (a shader's shadows and reflections of all of it, on the ground, under what stands there: sun.js)
   Sun.draw(list, vis, sx, sy, S, t, now);
   for (const o of list) {
     selMeasure(o);
     if (o.far !== undefined && o.pile) continue;
-    if (o.far !== undefined) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, Math.max(0, o.far)); ctx.clip(); }
+    if (o.clip !== undefined) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, Math.max(0, o.clip)); ctx.clip(); }
     if (o.spr) {
       const [img, a, b2, w, h, dx, dy] = o.spr, key = pops.size || shakes.size ? o.x + "," + o.ty : "";   // (its name: made only while something bounces or shakes)
       let px = sx(o.x) + dx * zoom, py = sy(o.ty, o.x) + dy * zoom, ww = w * zoom, hh = h * zoom;
@@ -168,7 +168,7 @@ function frame(now) {
       const over = xrayOverBody(o.p);                // (xray.js) on the rock the circle sees through: it fades with it
       if (over <= .98) drawBehind(o.p, sx, sy, S, (k) => { ctx.globalAlpha = k * (1 - over); drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1; });   // (behind a hill: cut at its edge)
     }
-    if (o.far !== undefined) ctx.restore();
+    if (o.clip !== undefined) ctx.restore();
   }
   Sun.shade(list, sx, sy, S, t, now);                // (with a shader on: what stands in the land's shadow is in it, sun.js)
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
@@ -191,7 +191,8 @@ function frame(now) {
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
   const box = aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null;
-  drawSelector(Build.on ? null : box, sx, sy, now);     // (in build mode the cursor is the selector: build.js)
+  Marks.aim(aim, !!(box && box.tile), now);            // (a block, a cell: its box in the land, mark.js; drawn with the next frame's land)
+  drawSelector(Build.on || (box && box.tile) ? null : box, sx, sy, now);     // (what stands: the selector round its picture)
   Build.draw(sx, sy, S, t);                         // (what is planned, and the cursor: build.js)
   if (Build.on) Prompts.build();                    // (the keys beside what they act on: prompts.js)
   else Prompts.show(box && {x: sx(box.x0), y: sy.out(box.y0), w: (box.x1 - box.x0) * S, h: sy.out(box.y1) - sy.out(box.y0)}, faceRows);
@@ -232,12 +233,7 @@ function drawIntent(p, it, sx, sy, S, t, ox, oy) {
     const gx = it.anchor ? it.anchor.x : p.x, gy = it.anchor ? it.anchor.y : p.y;
     if (spr) { const [img, a2, b2, w2, h2, dx2, dy2] = spr; ctx.drawImage(img, a2, b2, w2, h2, sx(gx) + dx2 * zoom, sy(gy, gx) + dy2 * zoom, w2 * zoom, h2 * zoom); }
     ctx.globalAlpha = 1;
-    for (const q of it.steps ? [] : it.foot || [p]) {
-      ctx.fillStyle = it.ok && !(it.bad || []).some((b) => b.x === q.x && b.y === q.y) ? "rgba(120,220,120,.25)" : "rgba(230,80,70,.3)";
-      const up = it.z !== undefined ? shOf(it.z) * zoom : liftAt(q.x, q.y);
-      ctx.fillRect(sx(q.x), sy.row(q.y, up), S, sy.tall(q.y, up));      // (the tile itself, as tall as it is drawn: curve.js)
-    }
-  }
+  }      // (the cells it would go in: mark.js, as boxes in the land)
   // what the selector goes around, in tiles: the aimed creature, person or thing as it was just drawn (selector.js),
   // or a structure's whole footprint
   if (!it || it.info || it.walk) return null;
@@ -246,7 +242,7 @@ function drawIntent(p, it, sx, sy, S, t, ox, oy) {
   if (drawn) return {...drawn, bad};
   if (it.ent) return {x0: it.ent.x, y0: it.ent.y, x1: it.ent.x + 1, y1: it.ent.y + 1, bad};   // until it's been drawn once
   const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y), up = it.z !== undefined ? shOf(it.z) * zoom : liftAt(p.x, p.y);   // (as drawn)
-  return {x0: Math.min(...xs), y0: sy.inv(sy.row(Math.min(...ys), up)), x1: Math.max(...xs) + 1, y1: sy.inv(sy.row(Math.max(...ys) + 1, up)), bad};
+  return {x0: Math.min(...xs), y0: sy.inv(sy.row(Math.min(...ys), up)), x1: Math.max(...xs) + 1, y1: sy.inv(sy.row(Math.max(...ys) + 1, up)), bad, tile: true};      // (tile: a block of the land, not something that stands: shown as its box, mark.js)
 }
 
 function outlined(text, x, y, color) {

@@ -34,8 +34,10 @@ def test_what_is_dug_under_high_ground_is_seen_and_no_more_one_block_dug_opens_o
 def test_who_walks_over_a_tunnel_goes_with_its_roof_shadow_and_all_and_who_is_beside_it_stays(game):
     """"mobs dispawn on top of tunnel. they should only if they cover the visible part of the tunnel. and their shadow
     should dispawn also": whoever stood over the place was not drawn, and their shadow lay there by itself. The roof
-    is lifted off all of the place you are in (xray.js: cut): who stands on that roof goes with it, shadow and all
-    (they would stand in the air); who stands on the land a tile beside it, which is whole, is as anyone on the land."""
+    is lifted off all of the place you are in (xray.js: cut): who stands on land that is cut away under their feet
+    goes with it, shadow and all (they would stand in the air), and only they: who stands on the same hill two tiles
+    from the cut, on land that is whole, is as anyone on the land; who walks from the one onto the other fades over
+    the crossing."""
     game.clear_area(12)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)
@@ -53,6 +55,10 @@ def test_who_walks_over_a_tunnel_goes_with_its_roof_shadow_and_all_and_who_is_be
     fade = lambda hen: game.js(f"xrayOverBody(ents.get('chicken{hen}'))")
     assert game.js(f"[seenUnder({X}, {y}), xrayCutAt({X}, {y - 2}), ents.get('chicken{over}').ty, ents.get('chicken{beside}').ty]") == [-4, None, y, y - 2]
     assert fade(over) > .9 and fade(beside) == 0, (fade(over), fade(beside))
+    # one that walks from the whole land onto the roof goes little by little over the crossing: no pop
+    step = lambda fy: game.js(f"xrayOverBody({{x: {X}, y: {fy}, e: {{kind: 'chicken', id: -1}}, zAt: {{x: {X}, y: Math.round({fy}), z: 3}}}})")
+    walk = [step(y - 1 + q / 4) for q in range(5)]
+    assert walk[0] == 0 and walk[4] > .9 and walk == sorted(walk) and 0 < walk[1] < walk[2] < walk[3] < walk[4], walk
     game.js("setOpt('shader', 'natural')")                    # their shadows: the second one's is there, the first's is gone with it
     game.wait("Sun.shades() === true", 8000); game.sleep(400)
     # (the shadows' px over the high ground round the two hens, with both, without the one beside, without the one over: one moment)

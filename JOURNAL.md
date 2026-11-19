@@ -3345,3 +3345,39 @@ really good"). Three agents on copies, merged by hand, each sent back at least o
   user. Zigzag shade on staircases at low sun, square shade corners, shade does not climb a wall's face, houses
   not shaded by the land, fire shadows flat, clouds slide over cliffs, sun.js is at 300 lines, the title's
   still picture is of the old land.
+
+## Iteration 179: a horizon on every slope (the rolling log), the aim marks the block, and what I broke on the way
+
+The user on the landed game: "i dont see the horizon at all !! search how it is computed on animal crossing";
+"block selection is messy. it is still 2d. make the hint highlight the 3d block properly"; and, after his
+computer hung: "this is unacceptable. pay attention to what you're doing !!".
+- The horizon. Reproduced: on seed 12's terraces the whole screen was land. My curve let land higher than you
+  "stand up" from its row: a slope rising north climbed faster than the bend came down. Animal Crossing's
+  (Nintendo's name: the rolling log; developers' reconstructions agree): the world stays flat and every point,
+  whatever its height, is pushed down by the square of its distance. Rebuilt on that (vox_curve.js): y = flat
+  - height + d * d / (4 D), heights never scaled; the sky is behind everything, anchored to the level horizon,
+  no gliding line. One departure: d also counts 0.6 of a height over the eye, else a slope of 0.4 px a px had
+  its horizon off the screen again (the formula is checked in test_vox_layer.py for four slopes). Far now shows
+  little more land than flat: the price. Things on a row squeezed under half a tile sink behind their ground
+  line (a far house is a roof on the line, not a pile).
+- The aim (engine: vox_mark.js; game: mark.js). A box drawn by the engine with the land's depth and the roll:
+  the block from its top down to the land in front, or the empty cell a thing will take; brackets, a wash,
+  red when it cannot be done. The cell shown is the cell changed (tested). The 2D square is gone.
+- Hidden (an agent's round): two rooms in one column (the place keeps every floor of a tile; the test that was
+  left failing passes, with one value changed to agree with the next rule); who walks over your place fades
+  only where the land under their feet is cut away (the user's earlier rule), blending over the crossing; a
+  cut only as low as the line of sight needs.
+- The browser tests now open the game as a player has it (Far); ten are left flat, each with its reason.
+- Broken by me on the way: three agents ran browser suites at once, with headless Chromes left over: load 108,
+  the user's game would not load. Killed; every agent now has limits in its brief (two workers, its own files,
+  one run at a time, no whole suite) and I check the load first. And for two minutes audio.js did not load: I
+  named a helper `heard`, a name it already had. I had not grepped.
+- Also: no sound is started before the page is touched (the console filled with warnings on a page that reloads
+  itself), the title's still picture is of the blocks.
+- Measured: 511 unit; browser, in batches of five files on two workers: 70 passed of the ten files run after
+  the merge (curve, mark, stacked, place, blocks, digging, xray, build, moving, models). The whole suite has
+  not been run in one go since the merge: to do when no agent uses a browser, with durations, to cut its
+  280 s of fixed sleeps.
+- Left: the land looks flat with no shader (five looks on the mockup page for the user to pick); under ground
+  the cut is a brown slab, not a section with walls (an agent is on it); banks are not in the aim's outline;
+  bridges (bodies behind posts, a deck into higher land); from a tower the far land is not watched.

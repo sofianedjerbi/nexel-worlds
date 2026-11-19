@@ -253,7 +253,7 @@ const Build = (() => {
         ctx.globalAlpha = 1;
       }
       ctx.fillStyle = j.state === "bad" ? "rgba(230,80,70,.4)" : j.take ? "rgba(255,150,60,.3)" : j.state === "doing" ? "rgba(255,241,168,.35)" : "rgba(140,190,255,.28)";
-      ctx.fillRect(x, y, Sz, Sz);
+      ctx.fillRect(x, sy.row ? sy.row(j.y, shOf(j.z) * z) : y, Sz, sy.tall ? sy.tall(j.y, shOf(j.z) * z) : Sz);      // (the tile as tall as it is drawn: curve.js)
       if (j.dig) { ctx.fillStyle = "rgba(60,36,30,.5)"; ctx.fillRect(x + 2 * z, y + 2 * z, 12 * z, 12 * z); ctx.fillStyle = "rgba(36,22,24,.55)"; ctx.fillRect(x + 4 * z, y + 5 * z, 8 * z, 8 * z); }   // (a hole to dig: dark, deeper in its middle)
       else if (j.take) { ctx.fillStyle = "#b5532a"; for (let i = 4; i < 12; i++) { ctx.fillRect(x + i * z, y + i * z, z, z); ctx.fillRect(x + (15 - i) * z, y + i * z, z, z); } }     // (to come down: a cross)
     }
@@ -265,16 +265,7 @@ const Build = (() => {
       ctx.fillStyle = "rgba(40,30,50,.22)"; ctx.fillRect(x + 2 * z, y0 + 2 * z, Sz - 4 * z, Sz - 4 * z);
       ctx.fillStyle = "rgba(91,63,54,.5)"; for (let yy = y + Sz; yy < y0 + Sz / 2; yy += 3 * z) ctx.fillRect(x + Sz / 2 - z / 2, yy, z, 2 * z);
     }
-    ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fillRect(x, y, Sz, Sz);
-    if (cube) { ctx.fillStyle = "rgba(255,255,255,.3)"; ctx.fillRect(x, y + Sz, Sz, Hh - Sz); ctx.fillStyle = "rgba(91,63,54,.7)"; ctx.fillRect(x, y + Sz - z, Sz, z); }   // (a block in the ground: a box, its top and, lit, its front, a layer high: where that front is beside you is how high the block is. It was its top alone, a flat square a layer up the wall, "+1" beside it: "+1 mean whaT ? +1 above player ?")
-    ctx.fillStyle = "#5b3f36";                        // the cursor: four corners, in the game's ink with a light line inside
-    for (const [cx, cy, hx, hy] of [[x - w, y - w, 1, 1], [x + Sz + w, y - w, -1, 1], [x - w, y + Hh + w, 1, -1], [x + Sz + w, y + Hh + w, -1, -1]]) {
-      ctx.fillRect(Math.min(cx, cx + hx * (c + w)), Math.min(cy, cy + hy * 2 * w), c + w, 2 * w); ctx.fillRect(Math.min(cx, cx + hx * 2 * w), Math.min(cy, cy + hy * (c + w)), 2 * w, c + w);
-    }
-    ctx.fillStyle = blink;
-    for (const [cx, cy, hx, hy] of [[x, y, 1, 1], [x + Sz, y, -1, 1], [x, y + Hh, 1, -1], [x + Sz, y + Hh, -1, -1]]) {
-      ctx.fillRect(Math.min(cx, cx + hx * c), Math.min(cy, cy + hy * w), c, w); ctx.fillRect(Math.min(cx, cx + hx * w), Math.min(cy, cy + hy * c), w, c);
-    }
+    // (the cursor itself: the cell it is on, a box in the land: mark.js)
     const s = myPos();
     if (s) Keyhole.mark(x, y, Hh, L - myZ(s.x, s.y), cube, sx, sy, S.rect.right);   // (where it is beside you, on you; how far over your head or under your feet: keyhole.js)
   }

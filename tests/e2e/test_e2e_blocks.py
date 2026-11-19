@@ -18,6 +18,7 @@ def blocks(game):
 def test_the_land_is_drawn_as_blocks_where_it_was_painted(game):
     """A hill three high north of you: its top is where things on it are drawn, its front hangs under its south edge,
     and the ground before it is still the meadow."""
+    game.flat()                                                  # (it counts the art px of faces north of you: whole px on the flat picture only)
     x, y = game.pos()
     game.stamp(-2, -5, ["....."] * 2, levels=["33333"] * 2)
     blocks(game)
@@ -29,6 +30,7 @@ def test_the_land_is_drawn_as_blocks_where_it_was_painted(game):
 
 def test_land_that_changes_is_made_again(game):
     """A hill stamped while the land is blocks is there at once: its tiles painted again, its block's faces made again."""
+    game.flat()                                                  # (it counts the art px of faces north of you: whole px on the flat picture only)
     x, y = game.pos()
     blocks(game)
     before = game.js("Voxels.engine.faces")
@@ -45,6 +47,7 @@ def test_a_block_shows_its_sides_where_the_land_drops(game):
     """A hill three high: every side of it tells its height. Its top has the sheet's lip along the edges where the
     land is lower (earth round the grass, west, east and north as well as south); west and east, where no face is in
     view, its lower levels lean out a bank each over the ground beside it; the ground is green past them."""
+    game.flat()                                                  # (it counts the art px of faces north of you: whole px on the flat picture only)
     x, y = game.pos()
     game.stamp(-2, -5, ["....."] * 2, levels=["33333"] * 2)
     blocks(game)

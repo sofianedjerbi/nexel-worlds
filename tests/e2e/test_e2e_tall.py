@@ -64,5 +64,7 @@ def test_high_over_the_land_the_sky_is_behind_you(game):
     game.wait(f"myAt && myAt.x === {x + 3} && myAt.z === 200", 8000)
     game.wait(f"{DRAWN} && away.high", 20000); game.sleep(600)
     assert game.js("[!!blockOf(myAt.x, myAt.y), topAt(myAt.x, myAt.y)]") == [True, 200]
-    assert all(p == [168, 216, 234] for p in game.js(SCREEN, [[.1, .1], [.9, .1], [.1, .9]]))
+    # (the curved world's own sky, or under its horizon the far hills' colour: no land, no earth's dark; flat, it was one colour, [168, 216, 234])
+    got = game.js(SCREEN, [[.1, .1], [.9, .1], [.1, .9]])
+    assert all(p[2] > p[0] + 20 or min(p) > 225 or (p[1] > p[0] and p[2] > p[0]) for p in got), got
     assert not game.errors

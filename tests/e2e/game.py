@@ -48,11 +48,11 @@ class Game:
         page.on("pageerror", lambda e: self.errors.append(str(e)))
 
     # ---- session
-    def join(self, name, zoom=4, curve=False):
-        """(curve: the settings' Curved world. Off here unless asked for: these tests look for things where the flat
-        picture has them; the curved one has its own, test_e2e_curve.py)"""
+    def join(self, name, zoom=4, curve=None):
+        """(curve: the settings' Curved world: None, as the game has it for a player (Far); False: the flat picture,
+        for a test that cannot be about the curved one; "near", "far": that one)"""
         self.page.add_init_script(SOCKETS)
-        self.page.goto(f"{self.url}/?zoom={zoom}&curve={1 if curve else 0}")
+        self.page.goto(f"{self.url}/?zoom={zoom}" + ("" if curve is None else f"&curve={curve or 0}"))
         self.page.wait_for_function("typeof ready !== 'undefined'")
         self.page.click("#name")
         self.page.keyboard.type(name)
@@ -82,6 +82,12 @@ class Game:
         # takes 0.7 s, and a test that looked at the canvas's animations meanwhile counted it with its own)
         self.js("(() => { for (const a of cv.getAnimations()) a.finish(); return 1; })()")
         self.settle("!arrivingNow")
+
+    def flat(self):
+        """The flat picture for this page (the settings' Curved world off): for a test that counts the art px of a
+        face far north of you, which are whole px only there. A last resort: each use says why."""
+        self.js("(() => { Curve.force = 'off'; return 1; })()")
+        self.wait("!Curve.on")
 
     def js(self, expr, arg=None):
         return self.page.evaluate(expr, arg) if arg is not None else self.page.evaluate(expr)

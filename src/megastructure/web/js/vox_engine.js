@@ -53,11 +53,14 @@
 //                                 byte first): nothing of that tile higher than that is drawn. ver: changes when
 //                                 px does. a: how far it has come, 0 to 1 (it comes a px in four at a time).
 //                                 earth: as the window's.
-//                          curve: null (flat), or {y0, yh, ref, sink, soft, g, lean, line}: the ground bends away to a
-//                                 horizon (vox_curve.js says what each is, and where a point is then drawn).
-//                                 line: where the land meets the sky (px from the top): what is well past the
-//                                 horizon (a tile and a half) has come down behind it, and is drawn only over it
+//                          curve: null (flat), or {y0, yh, ref, lean, line}: the land rolls away to a horizon
+//                                 (vox_curve.js says what each is, and where a point is then drawn).
+//                                 line: where level land meets the sky (px from the top): what is well past its
+//                                 horizon (a tile and a half) has come down behind the roll, and is drawn only
+//                                 over that line (a far height that still stands over it)
 //                          sky: null, or what vox_sky.js draws behind the land in place of `clear`
+//                          marks: none, or [{x, y, z0, z1, colour, a, grow, fill}...]: cells shown as boxes with
+//                                 the land's depth (what is aimed at): vox_mark.js
 //                          sun: null (the land as it is painted), or the sun on it (vox_light.js): {dir: [x, y] px of
 //                                 ground a shadow goes on for each px of height (east, south), alpha, shade: [r, g, b]
 //                                 its colour, cast: null or a picture of the view's size with the shadows of what
@@ -90,7 +93,7 @@ void main() {
   vec2 p = vec2(f.x, curveY(f.y, aPos.z * uK, past));           // (a height: that far up the picture)
   vFlat = vec2(f.x, f.y - aPos.z * uK); vPast = past;           // (where it would be flat: the water's picture is laid flat)
   // in front: what is further south, and what is higher; what is past the horizon is behind all that is before it
-  float near = (aPos.y + aPos.z) / uCell + uRow - past / (uK * uCell) * (2. * uCurve.w + 1.);
+  float near = (aPos.y + aPos.z) / uCell + uRow - (2. * past + past * past / (uCurve.x - uCurve.y + 1.)) / (uK * uCell);
   gl_Position = vec4(p.x / uRes.x * 2. - 1., 1. - p.y / uRes.y * 2., clamp(-near / 700., -1., 1.), 1.);
   vLoc = aLoc; vTile = aPos.xy - aLoc; vMeta = aMeta; vMore = aMore; vScr = p;
   vAt = vec2(aPos.y / uCell + uRow, aPos.z / uUp);              // its row (from the eye's) and its level
@@ -115,16 +118,19 @@ void main() {
   // the window (uWin: its middle and radius; uWinAt: the row and level of who is seen through it), a px of paint at a time
   bool cut = uWin.z > 0. && vAt.y > uWinAt.y + .02 && vAt.x > uWinAt.x - 1. && distance((floor(vScr / uK) + .5) * uK, uWin.xy) < uWin.z;
   // the land cut open (uCutBox: its picture's size in tiles, and how far it has come): a front belongs to the tile north of its edge
-  bool open = false, front = abs(vMeta.y - 1.) < .5;
+  // (a bank, kinds 3 and 4, lies over the ground beside its wall: it belongs to its wall's tile, half a tile on. A
+  // top's px under a neighbour (vLoc: 8 more than where it is in its tile) are inside that neighbour: where that one
+  // is cut open they are not seen at all, however low they lie)
+  bool open = false, front = abs(vMeta.y - 1.) < .5, bank = vMeta.y > 2.5 && vMeta.y < 4.5, tuck = vMeta.y < .5 && (vLoc.x < 8. || vLoc.y < 8. || vLoc.x >= uCell + 8.);
   if (uCutBox.z > 0.) {
-    vec2 tl = floor((vWorld - vec2(0., front ? .5 : 0.)) / uCell);
+    vec2 tl = floor((vWorld - vec2(bank ? ((int(vMeta.x + .5) & (vMeta.y > 3.5 ? 32 : 1)) != 0 ? uCell * .5 : -uCell * .5) : 0., front || vMeta.y > 3.5 ? .5 : 0.)) / uCell);
     // (a front that looks into a tile that is cut open is seen with it: the wall at the back of a cave)
     if (front && tl.x >= 0. && tl.y + 1. >= 0. && tl.x < uCutBox.x && tl.y + 1. < uCutBox.y) open = texelFetch(uCutMap, ivec2(tl) + ivec2(0, 1), 0).b > .5;
     if (tl.x >= 0. && tl.y >= 0. && tl.x < uCutBox.x && tl.y < uCutBox.y) {
       vec4 m = texelFetch(uCutMap, ivec2(tl), 0);
       vec2 q = floor(vScr / uK);
       open = open || m.b > .5;
-      if (open && vAt.y > m.r * 255. + m.g * 65280. - 32768. + .02 && uCutBox.z > mod(q.x, 2.) * .5 + mod(q.x + q.y, 2.) * .25 + .125) cut = true;
+      if (open && (tuck && m.b > .5 || vAt.y > m.r * 255. + m.g * 65280. - 32768. + .02) && uCutBox.z > mod(q.x, 2.) * .5 + mod(q.x + q.y, 2.) * .25 + .125) cut = true;
     }
   }
   if (cut != (uCut > .5)) discard;                              // (uCut: the other way round, only what is left out: to mark where the window opened something)
@@ -152,7 +158,7 @@ void main() {
     if (((bits & 32) != 0 && i < 8) || ((bits & 64) != 0 && i > 7)) f = min(f, uInset);
     if ((bits & 16) != 0) { if (r >= uUp - f) discard; if (r == uUp - f - 1.) c = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb; }      // its foot: where its block's shape ends, a line
   } else if (kind > 2) {                                        // a bank: its top; its front, and that one's foot
-    c = texelFetch(uSides, ivec2(kind == 3 ? 0 : 3, int(vMeta.z)), 0).rgb;
+    c = texelFetch(uSides, ivec2(kind == 3 ? ((bits & 4) != 0 ? 1 : 0) : 3, int(vMeta.z)), 0).rgb;      // (4: the last px of a bank that did not fit: the wall's foot colour)
     if (kind == 4 && (bits & 16) != 0) { float r = floor(clamp(loc.y, 0., uUp - .01)); if (r >= uUp - uInset) discard; if (r == uUp - uInset - 1.) c = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb; }
   } else {
     c = uSea > .5 ? texture(uWater, (vFlat - uWaterO) / uWaterK / uWaterSize).rgb : uSeaCol;
@@ -202,7 +208,7 @@ void main() {
       fronts = fronts || VoxPages.fronts(host, cfg, lo, hi);
       gl.useProgram(prog.pr);
       gl.uniform2f(u.uRes, v.w, v.h); gl.uniform1f(u.uK, k); gl.uniform1f(u.uCell, cfg.cell); gl.uniform1f(u.uUp, cfg.up); gl.uniform1f(u.uSide, N * cfg.cell);
-      const cu = v.curve; gl.uniform4f(u.uCurve, cu ? cu.y0 : 0, cu ? cu.yh : 0, cu ? cu.ref : 0, cu ? cu.sink : 0); gl.uniform3f(u.uRoll, cu ? cu.soft : 1, cu ? cu.g : 0, cu ? cu.lean : 0); gl.uniform1f(u.uLine, cu ? cu.line : 0);
+      const cu = v.curve; gl.uniform4f(u.uCurve, cu ? cu.y0 : 0, cu ? cu.yh : 0, cu ? cu.ref : 0, cu ? cu.lean : 0); gl.uniform1f(u.uLine, cu ? cu.line : 0);
       gl.uniform1f(u.uStrips, fronts.n); gl.uniform3f(u.uLight, v.light[0], v.light[1], v.light[2]);
       gl.uniform1i(u.uPage, 0); gl.uniform1i(u.uFronts, 1); gl.uniform1i(u.uWater, 2); gl.uniform1i(u.uSides, 3); gl.uniform1i(u.uFoot, 4);
       gl.uniform4f(u.uUnder, ...cfg.under); gl.uniform1f(u.uVars, cfg.variants); gl.uniform1f(u.uInset, cfg.inset); gl.uniform3f(u.uSeaCol, ...cfg.sea);
@@ -251,6 +257,7 @@ void main() {
         gl.bindVertexArray(quad.vao); gl.drawArrays(gl.TRIANGLES, 0, 6);
         gl.depthMask(true); gl.disable(gl.STENCIL_TEST);
       }
+      VoxMark.draw(v, k, cfg);                                  // (marks: boxes over the land, vox_mark.js)
       gl.bindVertexArray(null);
       return VoxGL.el;
     }
