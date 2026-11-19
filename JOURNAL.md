@@ -3446,3 +3446,38 @@ shadows, the bridge, houses, a south cliff, the phone.
   on the page, waiting for the pick; a pond above sea level is mended in that copy), land squeezed at the
   horizon at parts of a px and the aim that reads flat (an agent is on both), smooth wedges of shade on a cliff
   (not reproduced).
+
+## Iteration 182: two audits later: steps cast, a cut reads as a cut, a thin side, water you see through
+
+The loop the user set ("keep iterating until you don't find anything when launching an audit agent") ran two more
+rounds. The second reviewer: not finished: the mountain a flat contour map from three of its four sides, and the
+cut "invents shapes" (a plateau read as an L-hill, a hill as a U): my own change (cut only round you) had left
+a notch with grass at its bottom and a 1 px line at its edge.
+- Light: a step of one level casts like any wall (I had asked for it gone to be rid of dashes that were a bug:
+  two tops at one depth asked the shadow from different places; that was also the user's "Shadow has weird
+  dents", from a mockup picture older than the fix); a front is shaded a column at a time by the shadow at its
+  foot (triangles on cliffs went); fewer cloud shadows, two shades; a body in a tree's shade is dark; no moon
+  shadows; no sun shadow inside a cut.
+- The cut: one language. Behind land only your own column is opened, to your feet, its sides dark earth with a
+  2 px frame; a stump a tile wide left alone goes with it; under a slab only the roof over you. A gorge's
+  floor is a hole: its walls down to their foot, darker with depth. Reverses three older tests (a tree, a
+  creature, the ground ahead seen through a hill): XRAY.side = 1 brings the width back.
+- The side of a block, the user's pick of four on the mockup page ("Go with side 4 then"): no lean; a wall's
+  side is two 1 px faces in the cap's own inset (a dark line, a px of wall, lit toward the sun); one earth for
+  walls of levels 1 to 4, stone over it from 5; a small flat cap on a one-tile top. A failing test turned out
+  to be the clock (two pictures a second apart, a side's light moves a shade a tick), not stale land: 90
+  random edits against the same world made from nothing, 0 px, twice.
+- Water, the user's words: "I wanted it transparent like those Minecraft shaders so we can see the depth. What
+  we have right now is good for water" (my six looks before had repainted the surface: not what was asked).
+  Nothing is under a water tile in this world (a kind: shallow, mid, deep, abyss): the bed is derived for the
+  picture only (waterbed.js), drawn as blocks, today's water over it see-through, thicker by depth in whole
+  steps. "Go with 10." A row "Clear water"; off is today's to the px (hash). Water off level 0 is mended.
+- Measured: 528 unit. Whole browser suite on the merged copy, three workers: 315 passed, 3 failed: the first
+  screen's still picture (rebuilt: it was of the old sides and water), a step of making land at 5.1 ms under
+  load (passes alone), the land's mirror in water (the picked water is clear near you: the test now asks for
+  a faint mirror, not a strong one). After: those three files pass.
+- The user's canyon wall ("this wall look so weird"): the line down every column and the dots are gone; it is
+  still squares, because the height step, the gorge's dark and the stone-over-earth line all go by level, and
+  on a diagonal each column is two levels off its neighbour. Next: no step a level on a wall, a wall's
+  material by its column's top.
+- Not measured: the new water's GPU cost at a phone's size (the noise was larger than the 2 ms asked for).

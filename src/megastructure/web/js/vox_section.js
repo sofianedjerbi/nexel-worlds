@@ -10,8 +10,8 @@
 //     or its own cut), and the cut tile was solid there too (no face of the chunk's): its south face, a front a
 //     level, the host's own paint of that level (kind 1, the whole square; bit 8: in a cave's dark), its foot's line
 //     on the lowest (bit 16)
-//   west and east: such a wall leans as every wall of the land does: a bank a level (kind 3), on the cut tile, and
-//     the bank's front (kind 4) where the wall or the hole ends south of it
+//   west and east: such a wall shows its thin side as every wall of the land does (vox_mesh.js): a strip (kind 3) on
+//     the cut tile, and its front (kind 4) where the wall or the hole ends south of it
 // Water is left alone. A wall is made `DEEP` levels up from the cut at the most (more is never in one view).
 const VoxSection = (() => {
   const DEEP = 64;
@@ -57,18 +57,16 @@ const VoxSection = (() => {
       for (const dx of [-1, 1]) {
         const wall = col(x + dx, y); if (!wall) continue;
         const to = Math.min(wall[wall.length - 1], lv(x + dx, y), c + DEEP);
-        // (how far the wall's cell zc stands out: a band for each cell of it left over that one, as the land's walls;
-        // a quarter of the tile at the most: a hole is narrow; an eighth where a wall stands on its other side too: a
-        // way one tile wide, the floor is the main thing)
-        const most = stands(x - dx, y) > c + 1 ? T / 8 : T / 4, reach = (zc) => { let o = 0; for (let n = 0; n < cfg.bands && zc + 1 + n <= to && has(wall, zc + 1 + n); n++) o += host.band(zc + n); return Math.min(o, most); };
-        for (let zc = to - 1, edge = 0; zc > c; zc--) {
-          if (!has(wall, zc) || !has(wall, zc + 1)) { edge = 0; continue; }
-          if (!has(mine, zc) && top <= zc) { edge = 0; continue; }      // (open air beside it: the chunk's own bank is there)
-          const o = reach(zc), w = o - edge, x0 = dx < 0 ? X + edge : X + T - o, knife = has(mine, zc) ? 4 : 0, bits = (dx < 0 ? 1 : 0) | 2 | dark | knife;
-          if (w > 1) { list.push([x0, Y, zc * U, w, T, 0, 0, T, bits, 3, strip(zc), 0, 0, 0]); out.banks++; }      // (a px wide, in dug ground: a line across the floor behind it, no wall's face)
-          // (its front, where neither the hole's wall nor the land goes on south of it at that level)
-          if (o > 0 && !left(x, y + 1, zc) && !(left(x + dx, y + 1, zc) && left(x + dx, y + 1, zc + 1))) list.push([dx < 0 ? X - cfg.inset : X + T - o, Y + T, zc * U, o + cfg.inset, 0, 0, 0, U, dark | (zc === c + 1 && shape(x + dx, y, zc) ? 16 : 0), 4, strip(zc), 0, 0, 0]);      // (cfg.inset px into the wall's tile: the land's own front leaves its side's px empty at a cave's mouth)
-          edge = o;
+        // (its side, as the land's walls have it, vox_mesh.js: cfg.side px on the cut tile, the outer px its dark line (bit 4):
+        // a strip at the height of the wall's highest cell there, a front a level where neither the hole's wall nor the land goes on south)
+        const S = cfg.side, cell = (zc) => zc <= to && has(wall, zc) && (has(mine, zc) || top > zc);      // (open air beside it: the chunk's own side is there)
+        for (let zc = to; zc > c; zc--) {
+          if (!cell(zc)) continue;
+          for (const [a, w, b4] of [[dx < 0 ? S - 1 : 0, 1, 4], [dx < 0 ? 0 : 1, S - 1, 0]]) {
+            if (w > 0 && !cell(zc + 1)) { list.push([(dx < 0 ? X : X + T - S) + a, Y, zc * U, w, T, 0, 0, T, (dx < 0 ? 1 : 0) | 2 | dark | b4, 3, strip(zc), 0, 0, 0]); out.banks += b4 ? 1 : 0; }
+            // (cfg.inset px into the wall's tile: the land's own front leaves its side's px empty at a cave's mouth)
+            if (w > 0 && !left(x, y + 1, zc) && !left(x + dx, y + 1, zc)) list.push([b4 ? (dx < 0 ? X + S - 1 : X + T - S) : dx < 0 ? X - cfg.inset : X + T - S + 1, Y + T, zc * U, b4 ? 1 : S - 1 + cfg.inset, 0, 0, 0, U, dark | (zc === c + 1 && shape(x + dx, y, zc) ? 16 : 0) | (dx < 0 ? 32 : 0) | b4, 4, strip(zc), 0, 0, 0]);
+          }
         }
       }
     }

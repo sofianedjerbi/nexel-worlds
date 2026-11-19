@@ -1,15 +1,16 @@
 // VOX: a chunk of columns as faces. A top wherever a solid cell has an empty one over it, a front wherever the cell
 // south of it is empty. An upright east, west or north face is never in view (the eye looks north from above,
-// straight), so a wall that faces west or east leans: under its top level each level stands out host.band(z) px
-// more (cfg.bands levels at the most, then straight down), and what shows of each is real faces: a strip of its
-// top beside the wall at its own height (a bank, wider the higher the wall), and its own narrow front where the
-// wall ends south. Never toward water.
+// straight), so a wall that faces west or east shows a thin side instead: cfg.side px wide for its whole height
+// (its outer px a dark line), in the px its block's cap leaves empty along that side, so the block is no wider than
+// its tile: a box seen a little from both sides. Not at the water's own level.
 // A block has a shape (host.shape, host.profile): the px of its tile it leaves empty along the sides where the
 // land is lower (a rounded corner, an edge set in). So that what is behind shows there: a top goes on `cfg.tuck` px
 // under the higher blocks north, west and east of it; a front is only drawn where its block has px over it, and
 // its foot ends where its block's shape does; a block whose south neighbour is set in at a side shows a sliver of
 // its own front past it.
-// Water (host.water) is one face at height 0, and what is under it is not drawn; a tile at height 0 beside water
+// Water (host.water) is one face at the level host.waterTop says (0 if it has none) in place of its tile's top; under
+// it its tile is a block as any other (its sides, where the land beside it is lower); seen through (vox_water.js) a
+// column that ends under the face is its bed: a top, bit 64; a tile at height 0 beside water
 // has the water's face under its top as well (a host may leave a shore see-through), and a water tile whose paint
 // is not empty (ch.decor: vox_pages.js) has a top over its water.
 // A corner of a face is 16 bytes: x, y (px in the chunk), z (px up: cfg.up a level), then where it is in its tile
@@ -48,7 +49,6 @@ const VoxMesh = (() => {
   function build(ch, host, cfg, strip) {
     const N = cfg.size, T = cfg.cell, K = cfg.tuck, faces = [[]], add = (p, f) => (faces[p] || (faces[p] = [])).push(f), shapes = new Set();
     const solid = (x, y, z) => { const c = host.column(x, y); return !!c && has(c, z); };
-    const rise = (x, y, z, most) => { let n = 0; while (n < most && solid(x, y, z + 1 + n)) n++; return n; };      // the solid cells of (x, y) over level z
     const shape = (x, y, z) => { const s = host.shape(x, y, z); shapes.add(s); return s; };
     // How dark a face is by where it is (a corner's twelfth byte; the engine's shader lays the dark of a cave on by it).
     // Out of doors, `slot`: how deep down a narrow hole the level z of (x, y) is, in steps (5 at the most). Along the
@@ -79,39 +79,36 @@ const VoxMesh = (() => {
       for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) for (let k = 1; k <= 4; k++) { const c = host.column(x + dx * k, y + dy * k); if (!c || has(c, z + 1)) break; if (c[c.length - 1] <= z + 1) { ways++; if (!best || k < best) best = k; break; } }
       return ways > 1 ? best : 0;
     };
-    // how far the cell zc of (x, y) stands out toward dx (px): a band for each solid cell over it, cfg.bands at the
-    // most. None where the land beside it is solid there, has land over it (a cave), is water or is not known
+    // does the cell zc of (x, y) show a side toward dx: cfg.side px of it (0: none)? Where the land beside it is not
+    // solid there and has no land over it (a cave); none where that land is not known, and none at the water's own
+    // level (a shore has its own edge; a cliff over water has its side)
     const out = (x, y, zc, dx) => {
       const c = host.column(x + dx, y);
-      if (!c || has(c, zc) || c[c.length - 1] > zc || host.water(x + dx, y) || !solid(x, y, zc)) return 0;
-      const r = rise(x, y, zc, cfg.bands); let o = 0; for (let n = r - 1; n >= 0; n--) o += host.band(zc + n);
-      // (never past its fair share of the tile it leans over: a quarter of it where the land on that tile's other
-      // side is higher too (a way between two walls, a pit's floor: half of the ground is left), else half of it.
-      // What is left of the wall goes straight down)
-      const most = inset(x, y, zc, dx) + T / (solid(x + 2 * dx, y, c[c.length - 1] + 1) ? 4 : 2); clipped = o > most;
-      return o && Math.min(o, most);
+      return !c || has(c, zc) || c[c.length - 1] > zc || (host.water(x + dx, y) && zc <= wtop(x + dx, y)) || !solid(x, y, zc) ? 0 : cfg.side;
     };
-    let clipped = false;                                        // (the last bank asked for did not fit: its wall is higher than it tells)
     // how far in from its tile's side toward dx the cell's shape starts (px), and where a bank's foot is: px past that side
     const prof = new Map(), inset = (x, y, z, dx) => { const id = shape(x, y, z); let pr = prof.get(id), i = 0; if (!pr) prof.set(id, pr = host.profile(id)); while (i < T && pr[dx < 0 ? i : T - 1 - i] >= T) i++; return i; };
     const reach = (x, y, zc, dx) => { const o = out(x, y, zc, dx); return o ? o - inset(x, y, zc, dx) : -K; };
+    // the level a water tile's face is at, and the level under which nothing of what is beside it is seen (its face; or its bed, where the water is seen through: vox_water.js)
+    const clear = VoxWater.on(cfg), wtop = (x, y) => (host.waterTop ? host.waterTop(x, y) : 0), wfloor = (x, y) => { const c = host.column(x, y); return clear && c ? Math.min(wtop(x, y), c[c.length - 1]) : wtop(x, y); };
     let sides = 0;
     for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) {
       const x = ch.cx * N + lx, y = ch.cy * N + ly, c = host.column(x, y), X = lx * T, Y = ly * T;
       if (!c) continue;
-      const wet = host.water(x, y);
+      const wet = host.water(x, y), wz = wet ? wtop(x, y) : 0, bed = wet && VoxWater.bed(cfg, wz - c[c.length - 1]);      // (bed: seen through, its column ends under its face: the bottom, drawn as land is)
       if (wet || (c.length === 1 && c[0] === 0 && [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => host.water(x + dx, y + dy))))) {      // (water; a shore: the water under it)
-        const tw = wet && solid(x - 1, y, 1) ? K : 0, te = wet && solid(x + 1, y, 1) ? K : 0, tn = wet && solid(x, y - 1, 1) ? K : 0;
+        const tw = wet && solid(x - 1, y, wz + 1) ? K : 0, te = wet && solid(x + 1, y, wz + 1) ? K : 0, tn = wet && solid(x, y - 1, wz + 1) ? K : 0;
         // (under a shore's top, and under what floats: a px lower, so that two faces are never at one depth)
-        if (wet) add(0, [X - tw, Y - tn, 0, T + tw + te, T + tn, -tw, -tn, T, 0, 2, 0, 0, 0, 0]);
+        if (wet) add(clear ? VoxWater.PAGE : 0, [X - tw, Y - tn, wz * cfg.up, T + tw + te, T + tn, -tw, -tn, T, VoxWater.near(host, cfg, x, y), 2, 0, ...VoxWater.deep(host, cfg, x, y)]);
         else {      // (not along a side where the land is lower and no water, a pit beside the shore: its rim leaves px see-through there, and the water showed in them: a pale line along the pit floor's edge)
           const dry = (dx, dy) => { const n = host.column(x + dx, y + dy); return !!n && n[n.length - 1] < 0 && !host.water(x + dx, y + dy) ? K : 0; }, dn = dry(0, -1) || (host.water(x, y - 1) ? 0 : dry(-1, -1) || dry(1, -1)), dw = dry(-1, 0), de = dry(1, 0);
-          add(0, [X + dw, Y - 1 + dn, -1, T - dw - de, T + 1 - dn, dw, dn, T, 0, 2, 0, 0, 0, 0]);
+          const f = [X + dw, Y - 1 + dn, -1, T - dw - de, T + 1 - dn, dw, dn, T, 0, 2, 0, 0, 0, 0]; add(0, f); if (clear) add(VoxWater.PAGE, f);      // (seen through: once more, with those faces)
         }
       }
-      if (wet) { if (ch.decor && ch.decor[ly * N + lx]) add(0, [X, Y + 1, 1, T, T, 0, 0, T, 128, 0, 0, 0, 0, 255]); continue; }
+      // (water has no top of its own but its face; under that its tile is a block as the land's are: its sides where what is beside it is lower; its bed)
+      if (wet && ch.decor && ch.decor[ly * N + lx]) add(0, [X, Y + 1, wz * cfg.up + 1, T, T, 0, 0, T, 128, 0, 0, 0, 0, 255]);
       const south = host.column(x, y + 1);
-      for (let q = c.length - 1, p = 0; q >= 0; q -= 2, p++) {
+      for (let q = c.length - 1, p = bed ? 1 : 0; q >= 0; q -= 2, p++) {      // (a bed's paint: a page on, its tile's first is what floats: vox_pages.js)
         const z = c[q], open = q + 1 === c.length, over = (dx, dy) => solid(x + dx, y + dy, z + 1);
         const n = over(0, -1), w = over(-1, 0), e = over(1, 0), nc = host.column(x, y - 1);
         // (a cave's mouth: the floor in it ends where the walls' feet beside it do, and the ground before it goes on under it)
@@ -120,33 +117,39 @@ const VoxMesh = (() => {
         // round a top. 1 north, 2 west, 4 east: a block stands over it there (it goes on under it; the shadow at
         // that wall's foot). 8: land over it (a cave's floor, in the dark). 128: what floats on water
         const dark = open ? (cfg.gorge && z >= cfg.dug ? Math.min(2, slot(x, y, z + 1, z + 1, z)) : 0) : inward(x, y, z);                // (a floor out of doors is as it is painted, however deep: it is where you stand; a gorge's, two steps at the most: it was as bright as the plateau over it, "a rug on the plateau")
-        const top = (x0, wd, y1, ux) => add(p, [x0, Y - tn, z * cfg.up, wd, y1 + tn, ux, -tn, T, (n ? 1 : 0) | (w ? 2 : 0) | (e ? 4 : 0) | (open ? 0 : 8), 0, strip(z + 1),
+        const top = (x0, wd, y1, ux) => add(p, [x0, Y - tn, z * cfg.up, wd, y1 + tn, ux, -tn, T, (n ? 1 : 0) | (w ? 2 : 0) | (e ? 4 : 0) | (open ? 0 : 8) | (bed ? 64 : 0), 0, strip(z + 1),
           (open && w ? Math.max(-K, reach(x - 1, y, z + 1, 1)) : -inset(x - 1, y, z + 1, 1)) + BIAS, (open && e ? Math.max(-K, reach(x + 1, y, z + 1, -1)) : -inset(x + 1, y, z + 1, -1)) + BIAS, n ? shape(x, y - 1, z + 1) : 0, shape(x, y, z), dark]);      // (its own shape, for the sun: under it the top's paint is its wall, vox_light.js; last: how dark, above)
         // (a mouth's floor goes on under the walls beside it only up to where the ground before the mouth goes on under them: K px
         // from its south end. Both were there at one height, in stripes)
-        if (cut && (w || e)) { top(X, T, T - cut, 0); if (w) top(X - K, K, T - K, -K); if (e) top(X + T, K, T - K, T); }
+        if (wet && !bed && open) { /* the water's face is its top */ } else if (cut && (w || e)) { top(X, T, T - cut, 0); if (w) top(X - K, K, T - K, -K); if (e) top(X + T, K, T - K, T); }
         else top(X - (w ? K : 0), T + (w ? K : 0) + (e ? K : 0), T - cut, w ? -K : 0);
-        // its banks, west and east, a level at a time down the wall: the strip of its top that the level over it
-        // leaves in view (where it does not lean, over water: the px the level over it is set in more than it is),
-        // and its front unless the wall goes on south at least as far out. (They start where the
-        // block's own side is: its shape's.)
-        for (const dx of [-1, 1]) for (let zc = z - 1, edge = inset(x, y, z, dx); zc > (q ? c[q - 1] : -1e9) && !solid(x + dx, y, zc); zc--) {
-          const o = out(x, y, zc, dx), I = inset(x, y, zc, dx), b = Math.min(edge, I - o); if (!o && !(zc > 0 && host.water(x + dx, y))) break;      // (edge, b: px in from the tile's side: what is over this level reaches that far out; this level, to there)
-          // (a bank that did not fit: the px of it furthest out is the wall's foot colour, 4: more wall than it tells goes straight down there)
-          if (b < edge) { const cb = host.column(x + dx, y), dk = cb ? slot(x + dx, y, zc, zc, floorOf(cb, zc)) : 0; const bt = (dx > 0 ? 1 : 0) | (zc < z - 1 || (zc - 1 > (q ? c[q - 1] : -1e9) && !solid(x + dx, y, zc - 1)) ? 2 : 0), dark = o && (clipped || (zc - 1 > (q ? c[q - 1] : -1e9) && !solid(x + dx, y, zc - 1) && out(x, y, zc - 1, dx) && clipped)) ? 1 : 0, w = edge - b - dark;
-            if (w > 0) add(0, [dx < 0 ? X + b + dark : X + T - edge, Y, zc * cfg.up, w, T, 0, 0, T, bt, 3, strip(zc), 0, 0, 0, 0, dk]);
-            if (dark) add(0, [dx < 0 ? X + b : X + T - b - 1, Y, zc * cfg.up, 1, T, 0, 0, T, bt | 4, 3, strip(zc), 0, 0, 0, 0, dk]);
-            sides++; }      // (1: it faces east; 2: of a wall two levels high or more. For the sun: vox_light.js)
-          edge = b;
-          if (o && south && !solid(x + dx, y + 1, zc) && out(x, y + 1, zc, dx) < o && !(zc <= 0 && host.water(x, y + 1)))
-            add(0, [dx < 0 ? X + b : X + T - I, Y + T, zc * cfg.up, I - b, 0, 0, 0, cfg.up, (solid(x + dx, y, zc - 1) || solid(x, y + 1, zc - 1) ? 16 : 0) | (dx > 0 ? 32 : 0), 4, strip(zc), 0, 0, 0]);      // (32: it faces east: of the tile west of it, for the cut)
+        // its sides, west and east: a strip beside its top at the top's own height (kind 3; from where its cap starts:
+        // host.crown, a rounded corner) and, where the wall ends south, a front a level down to its foot (kind 4).
+        // Each is two faces: its outer px (bit 4: the wall's dark line) and the rest (the wall). The line is the block's
+        // outline: only where what is seen beside it is lower land. Where the wall goes on a tile further north on that
+        // side (a cliff that runs on a slant: each of its columns set back a tile), what is beside the side is that
+        // column's front, the same rock: there the side's px are front (kind 1), that column's own levels going on to meet this
+        // block, then this block's: one face with its seams, lit as a front is (a line down every column, or a side lit as a side, made a cliff a grid of crates).
+        for (const dx of [-1, 1]) for (let zc = z, I = inset(x, y, z, dx), o = out(x, y, z, dx); o && zc > (q ? c[q - 1] : -1e9) && out(x, y, zc, dx); zc--) {
+          const cb = host.column(x + dx, y), two = zc - 1 > (q ? c[q - 1] : -1e9) && out(x, y, zc - 1, dx) ? 2 : 0, x0 = dx < 0 ? X + I - o : X + T - I, lined = [[dx < 0 ? 0 : o - 1, 1, 4], [dx < 0 ? 1 : 0, o - 1, 0]];
+          const beside = (lv) => solid(x + dx, y - 1, lv) && !solid(x + dx, y, lv);      // (the front of the column north on that side is what is seen beside the side there: a level is cfg.up px, a tile two of them)
+          // (1: it faces east; 2: of a wall two levels high or more. For the sun: vox_light.js)
+          if (zc === z) { const cr = host.crown ? host.crown(shape(x, y, z))[dx < 0 ? 0 : 1] : 0, dk = cb ? slot(x + dx, y, z, z, floorOf(cb, z)) : 0;
+            // (...and under a higher block north of this one, that block's own front a level more: its foot ends two px short of the tile's edge there, and nothing was behind them: a dark dot at the corner)
+            if (beside(z) && beside(z - 1)) for (const lv of n ? [z + 1, z, z - 1] : [z, z - 1]) add(0, [x0, Y, lv * cfg.up, o, 0, x0 - X, 0, cfg.up, 0, 1, strip(lv), 0, 0, pick(lv > z ? x : x + dx, y - 1, lv, cfg.variants)]);
+            // (under a higher block north of it the side goes on K px as its top does: that block's front ends its foot short of the tile's edge, and the two px of the side there were a hole, a dark dot at the corner)
+            else for (const [a, w, b4] of lined) if (w > 0) add(0, [x0 + a, Y + (n ? -K : cr), z * cfg.up, w, T - (n ? -K : cr), 0, n ? -K : cr, T, (dx > 0 ? 1 : 0) | two | b4, 3, strip(z), 0, 0, 0, 0, dk]);
+            sides++; }
+          if (south && !solid(x + dx, y + 1, zc) && !out(x, y + 1, zc, dx) && !(host.water(x, y + 1) && zc <= wfloor(x, y + 1)))
+            if (beside(zc - 2)) add(0, [x0, Y + T, zc * cfg.up, o, 0, x0 - X, 0, cfg.up, solid(x + dx, y, zc - 1) || solid(x, y + 1, zc - 1) ? 16 : 0, 1, strip(zc), 0, 0, pick(x, y, zc, cfg.variants)]);
+            else for (const [a, w, b4] of lined) if (w > 0) add(0, [x0 + a, Y + T, zc * cfg.up, w, 0, 0, 0, cfg.up, (solid(x + dx, y, zc - 1) || solid(x, y + 1, zc - 1) ? 16 : 0) | (dx > 0 ? 32 : 0) | b4, 4, strip(zc), 0, 0, 0]);      // (32: it faces east: of the tile west of it, for the cut)
         }
         // down its cells: a front where the cell south is empty; a sliver of one where the block south is set in
         // at a side and this one is not (dx: which side)
         const bottom = q === 0 ? -1e9 : c[q - 1];
         if (!south) continue;                                   // (the land south is not known yet: its fronts come when it is)
-        const sea = host.water(x, y + 1), low = Math.max(q === 0 ? south[0] : bottom, sea ? 0 : -1e9);      // (no front under the water's face)
-        for (const dx of [-1, 1]) if (host.column(x + dx, y + 1)) for (let zc = z; zc > bottom && !solid(x + dx, y + 1, zc) && !(zc <= 0 && host.water(x + dx, y + 1)); zc--) {
+        const sea = host.water(x, y + 1), low = Math.max(q === 0 ? south[0] : bottom, sea ? wfloor(x, y + 1) : -1e9);      // (no front under the water's face)
+        for (const dx of [-1, 1]) if (host.column(x + dx, y + 1)) for (let zc = z; zc > bottom && !solid(x + dx, y + 1, zc) && !(host.water(x + dx, y + 1) && zc <= wfloor(x + dx, y + 1)); zc--) {
           if (!has(south, zc) || !solid(x + dx, y, zc)) continue;
           const sid = shape(x, y + 1, zc);
           if (sid) add(p, [dx < 0 ? X : X + T - K, Y + T, zc * cfg.up, K, 0, dx < 0 ? 0 : T - K, 0, cfg.up, 0, 1, strip(zc), 0, sid, pick(x, y, zc, cfg.variants)]);
@@ -154,7 +157,7 @@ const VoxMesh = (() => {
         for (let zc = z; zc > low; zc--) {
           if (has(south, zc)) continue;
           // (8: it looks into a cave. 16: its foot, nothing of the front under it. 32, 64: a bank's front beside it, west, east: its foot is square there)
-          add(p, [X, Y + T, zc * cfg.up, T, 0, 0, 0, cfg.up, (south[south.length - 1] > zc ? 8 : 0) | (zc - 1 <= low || has(south, zc - 1) ? 16 : 0) | (out(x, y, zc, -1) ? 32 : 0) | (out(x, y, zc, 1) ? 64 : 0), 1, strip(zc), shape(x, y, zc), 0, pick(x, y, zc, cfg.variants), 0, south[south.length - 1] > zc ? inward(x, y + 1, floorOf(south, zc)) : slot(x, y + 1, zc, zc, floorOf(south, zc))]);
+          add(p, [X, Y + T, zc * cfg.up, T, 0, 0, 0, cfg.up, (south[south.length - 1] > zc ? 8 : 0) | (zc - 1 <= low || has(south, zc - 1) ? 16 : 0) | (out(x, y, zc, -1) ? 32 : 0) | (out(x, y, zc, 1) ? 64 : 0), 1, strip(zc), shape(x, y, zc), 0, pick(x, y, zc, cfg.variants), 0, south[south.length - 1] > zc ? inward(x, y + 1, floorOf(south, zc)) : sea && clear ? 0 : slot(x, y + 1, zc, zc, floorOf(south, zc))]);      // (a wall under water seen through: the water's tint is its dark)
         }
       }
     }

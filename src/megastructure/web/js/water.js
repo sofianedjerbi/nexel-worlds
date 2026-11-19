@@ -165,17 +165,17 @@ function drawWater(vis, ox, oy, t) {
     ux0 = Math.min(ux0, x0); uy0 = Math.min(uy0, y0); ux1 = Math.max(ux1, x1); uy1 = Math.max(uy1, y1);
     const bw = x1 - x0, bh = y1 - y0;
     g.save(); g.beginPath(); g.rect(x0, y0, bw, bh); g.clip();
-    // the bottom, in strips that slide: refraction
-    for (let ly = Math.floor((y0 - Y) / 16); ly * 16 < y1 - Y; ly++) if (w.rows[ly]) for (let k = 0; k < 16; k += st) {
+    // the bottom, in strips that slide: refraction (clear water, waterbed.js: the engine draws the bed, the tint and the foam; here only the waves and the glints)
+    const clear = WaterBed.on;
+    if (!clear) for (let ly = Math.floor((y0 - Y) / 16); ly * 16 < y1 - Y; ly++) if (w.rows[ly]) for (let k = 0; k < 16; k += st) {
       const py = ly * 16 + k, dx = Math.round(Math.sin(t * 1.5 + (Y + py) * .09) * WATER.wobble);
       g.drawImage(w.bed, 16 + x0 - X + dx, 16 + py, bw, st, x0, Y + py, bw, st);
     }
     g.globalCompositeOperation = "lighter";        // light through the surface, on the bottom
-    drift(causticPat, t * 5, t * 3, WATER.caustics[0], x0, y0, bw, bh);
-    drift(causticPat, -t * 4, t * 6, WATER.caustics[1], x0, y0, bw, bh);
+    if (!clear) { drift(causticPat, t * 5, t * 3, WATER.caustics[0], x0, y0, bw, bh); drift(causticPat, -t * 4, t * 6, WATER.caustics[1], x0, y0, bw, bh); }
     g.globalCompositeOperation = "source-over";
     g.globalAlpha = 1;
-    g.drawImage(w.canvas, x0 - X, y0 - Y, bw, bh, x0, y0, bw, bh);  // the water itself
+    if (!clear) g.drawImage(w.canvas, x0 - X, y0 - Y, bw, bh, x0, y0, bw, bh);  // the water itself
     drift(wavePat, t * 4, Math.sin(t * .6) * 2, WATER.waves[0], x0, y0, bw, bh);         // the surface
     drift(wavePat, 32 - t * 2.5, 21 + Math.cos(t * .5) * 2, WATER.waves[1], x0, y0, bw, bh);
     g.fillStyle = WATER.foam;
@@ -186,7 +186,7 @@ function drawWater(vis, ox, oy, t) {
       g.fillRect(X + gx, Y + gy, 2, 1);
       if (s > .95) { g.fillRect(X + gx, Y + gy - 1, 1, 3); g.globalAlpha = .5; g.fillRect(X + gx - 1, Y + gy, 4, 1); }
     }
-    for (const [lx, ly, side, h] of w.foam) {      // foam along the shore, coming in and going out
+    if (!clear) for (const [lx, ly, side, h] of w.foam) {      // foam along the shore, coming in and going out
       const wave = Math.sin(t * 1.4 + h * 6.28), inset = wave > .2 ? 2 : 1, px = X + lx * 16, py = Y + ly * 16;
       const a = 2 + Math.floor(h * 5), len = 16 - a - Math.floor(h * 3);          // not a ruled line: it starts and stops
       for (const [off, alpha] of [[0, .5 + .35 * wave], [1, .22 + .15 * wave]]) {  // a bright line, a paler one behind it

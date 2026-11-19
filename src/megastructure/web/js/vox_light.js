@@ -32,6 +32,7 @@ const VoxLight = (() => {
   const FS = `
 uniform sampler2D uTops, uCast; uniform vec4 uSun, uGlass, uCloud; uniform vec3 uCastAt, uShade; uniform vec2 uCastLv, uCloudO; uniform float uTor, uTopMax, uCastOn, uRip, uLo, uLand, uFire, uDepth;
 // (vGround: the engine's, vox_engine.js: in the roll, read at the middle of a px of paint)
+bool noSun = false;                                             // (the engine's: this px is of a tile cut open for your sake: lit evenly as the place is, no shadow of the sun, no cloud's)
 bool inShade;                                                  // (lit: this px is in a shadow: no cloud's shadow on it too)
 vec4 tileAt(vec2 tile) { return texelFetch(uTops, ivec2(mod(tile, uTor)), 0); }
 float high(vec4 h) { return floor(h.r * 255. + .5) + floor(h.g * 255. + .5) * 256. - 32768.; }
@@ -52,7 +53,10 @@ float block(vec2 p, float z0, vec2 d) {
     if (z0 + t >= uTopMax) return -1e5;
     vec4 at = tileAt(tile); float h = high(at), id = floor(at.a * 255. + .5), t1 = min(h - z0, min(tm.x, tm.y));
     if (h <= z0 + t + .02) continue;
-    if (id > 0. && z0 + t > h - 1. && !capped(p + d * (t + .001), tile, id) && !capped(p + d * (t + t1) * .5, tile, id) && !capped(p + d * (t1 - .001), tile, id)) continue;
+    // (in its top level: only where the line goes under its cap, asked for a px at a time along it. Asked at three places,
+    // a line that went in at a cap's set-in side and under it between two of them was let through: a notch in the
+    // shadow's edge at every tile along a wall)
+    if (id > 0. && z0 + t > h - 1.) { bool in_ = false; for (int k = 0; k < 12 && !in_; k++) in_ = capped(p + d * mix(t + .001, t1 - .001, float(k) / 11.), tile, id); if (!in_) continue; }
     return h;
   }
   return -1e5;
@@ -200,6 +204,7 @@ vec3 deep(vec3 c, int kind, int bits, float lip, bool contact) {
 }
 vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
   c = deep(c, kind, bits, lip, true); plain = deep(plain, kind, bits, lip, false);
+  if (noSun) return c;
   vec3 lone = c; inShade = false; c = lit(c, plain, kind, bits, lip);
   if (uCloud.x <= 0. || ((bits & 8) != 0 && kind < 2)) return c;
   // (in a shadow under a cloud: the darker of the two, not both. With no cloud on it a cliff's shadow was a lighter wedge on the cloud's)
@@ -214,7 +219,7 @@ vec3 sunlit(vec3 c, vec3 plain, int kind, int bits, float lip) {
     function tops(ch, host) {
       const px = ch.tops || (ch.tops = new Uint8Array(N * N * 4)); let most = -1e9;
       for (let ly = 0, i = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++, i += 4) {
-        const x = ch.cx * N + lx, y = ch.cy * N + ly, c = host.column(x, y), wet = !!c && host.water(x, y), v = c ? (wet ? 0 : c[c.length - 1]) + 32768 : 0;
+        const x = ch.cx * N + lx, y = ch.cy * N + ly, c = host.column(x, y), wet = !!c && host.water(x, y), wz = wet && host.waterTop ? host.waterTop(x, y) : 0, v = c ? (wet ? (VoxWater.on(cfg) ? Math.min(wz, c[c.length - 1]) : wz) : c[c.length - 1]) + 32768 : 0;      // (water: its face's level; seen through, vox_water.js: its bed's)
         px[i] = v & 255; px[i + 1] = v >> 8; px[i + 2] = wet ? 255 : 0; px[i + 3] = c && !wet ? host.shape(x, y, c[c.length - 1]) : 0;
         if (c) most = Math.max(most, v - 32768);
       }

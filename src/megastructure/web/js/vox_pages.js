@@ -19,9 +19,11 @@ const VoxPages = (() => {
     if (host.water(x, y)) {                                     // (water: what the host paints on it, if anything: what floats there)
       const pg = page(ch, 0, side), at = ly * cfg.cell * side + lx * cfg.cell; let any = 0;
       for (let j = 0; j < cfg.cell; j++) pg.px.fill(0, at + j * side, at + j * side + cfg.cell);
-      host.paintTop(x, y, 0, pg.px, at, side);
+      host.paintTop(x, y, host.waterTop ? host.waterTop(x, y) : 0, pg.px, at, side);
       for (let j = 0; j < cfg.cell && !any; j++) for (let i = 0; i < cfg.cell; i++) if (pg.px[at + j * side + i] >>> 24) { any = 1; break; }
       (ch.decor || (ch.decor = new Uint8Array(cfg.size * cfg.size)))[ly * cfg.size + lx] = any; pg.stale = true;
+      // (seen through, vox_water.js: its bed, a column that ends under its face: painted as the land's tops are, a page on)
+      if (VoxWater.bed(cfg, (host.waterTop ? host.waterTop(x, y) : 0) - c[c.length - 1])) for (const [z, p] of topsOf(c)) { const bp = page(ch, p + 1, side); host.paintTop(x, y, z, bp.px, at, side); bp.stale = true; }
       return;
     }
     for (const [z, p] of topsOf(c)) { const pg = page(ch, p, side); host.paintTop(x, y, z, pg.px, ly * cfg.cell * side + lx * cfg.cell, side); pg.stale = true; }

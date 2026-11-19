@@ -109,7 +109,7 @@ def test_the_land_north_of_water_is_seen_in_it(game):
     seen = [game.js(LIT, r) for r in (near, far)]
     game.js("setOpt('reflect', 0)"); game.sleep(700)
     bare = [game.js(LIT, r) for r in (near, far)]
-    assert abs(seen[0] - bare[0]) > 4 and abs(seen[1] - bare[1]) < 1, (seen, bare)
+    assert abs(seen[0] - bare[0]) > 1 and abs(seen[1] - bare[1]) < .5, (seen, bare)      # (water seen through, waterbed.js: near you the mirror is faint, the bed is what shows)
     game.js(RESET)
 
 

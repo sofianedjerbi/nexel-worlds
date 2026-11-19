@@ -212,6 +212,7 @@ def test_ground_redrawn_while_a_block_is_first_made_is_made_again(game):
     assert part
     game.wait(made, 20000); game.sleep(400)
     tile = f"""(() => {{ const keep = {{}}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) {{ keep[f] = window[f]; window[f] = () => null; }}
+      clock = Object.assign({{}}, clock, {{phase: .3}});          // (the hour held: a wall's side is lighter the further to its side the sun is, a shade of it every tick: the two pictures are seconds apart)
       frame(performance.now()); Object.assign(window, keep); const S = TS(), [ox, oy] = screenOrigin(S);
       return [Voxels.engine.faces, Array.from(ctx.getImageData(Math.round((ox + {x + 7} * S) * DPR), Math.round((oy + {ty} * S - shOf(3) * zoom) * DPR), Math.round(S * DPR), Math.round(2.5 * S * DPR)).data).join()]; }})()"""
     shown = game.js(tile)

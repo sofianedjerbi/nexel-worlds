@@ -13,7 +13,7 @@ import pytest
 WEB = Path(__file__).parent.parent / "src" / "megastructure" / "web"
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
-FILES = [str(WEB / "js" / f"vox_{n}.js") for n in ("gl", "curve", "sky", "pages", "mesh", "section", "models", "light", "mark", "engine")]
+FILES = [str(WEB / "js" / f"vox_{n}.js") for n in ("gl", "curve", "water", "sky", "pages", "mesh", "section", "models", "light", "mark", "engine")]
 
 # A chunk of 4 x 4 tiles, flat at 0, with: a hill two high on (1,1) and (2,1); south of the first a roof at 3 over
 # empty cells (a cave: its floor 0, empty up to 2, solid at 3); water on (3,3). Nothing is known round it.
@@ -35,11 +35,10 @@ const host = {
   paintTop: (x, y, z, px, at, stride) => { seen.painted++; px[at] = 0xff00ff00; },
   paintFront: (z, v, px, at, stride) => { seen.fronts.push(z); px[at] = 0xff0000ff; },
   shape: (x, y, z) => (z > 0 ? 1 : 0), profile: (id) => new Uint8Array(16).fill(id ? 2 : 0),
-  band: (z) => 2,
   side: (z) => { seen.sides.push(z); return {band: [200, 150, 100], body: [180, 130, 100], foot: [140, 100, 80], shadow: [80, 64, 134, .3]}; },
 };
 if (!plain) { host.models = (x, y) => models[x + "," + y] || null; host.modelSheet = () => { seen.sheets = (seen.sheets || 0) + 1; return {px: new Uint32Array(16 * 16), w: 16, h: 16}; }; }
-const engine = box.Vox.create(host, {size: 4, cell: 16, up: 8, levels: [-2, 4], variants: 2, under: [0, 0, 0, .8], sea: [0, 0, 1], tuck: 6, inset: 2, bands: 5});
+const engine = box.Vox.create(host, {size: 4, cell: 16, up: 8, levels: [-2, 4], variants: 2, under: [0, 0, 0, .8], sea: [0, 0, 1], tuck: 6, inset: 2, side: 2});
 const view = {w: 640, h: 360, pw: 640, ph: 360, ox: 0, oy: 0, tile: 48, row: 2, clear: [0, 0, 0], light: [1, 1, 1], water: null, chunks: [{cx: 0, cy: 0}]};
 const out = {ready: engine.ready(), before: engine.made(0, 0)};
 engine.work([{cx: 0, cy: 0}], 1e9);
@@ -102,40 +101,45 @@ def test_the_engine_runs_with_none_of_the_game_and_makes_the_faces_the_cells_say
     # fronts: the hill's two tiles, two cells each over what is south of them (the cave's empty cells; the plain);
     # the roof's one cell over the plain south of it. None on the chunk's last row (what is south is not known),
     # none into the water.
-    # sides: the hill drops two levels west of its first tile and east of its second: there its lower level leans
-    # out a bank, a top and a front each (its top level does not: the roof one high has none either)
-    assert out["ledges"] == 2
-    assert out["faces"] == 16 + 1 + 1 + 3 + 5 + 2 * 2
+    # sides: the hill drops two levels west of its first tile and east of its second, and the roof one level west and
+    # east: each shows its thin side (cfg.side px: its dark line and its wall, two faces): a strip beside its top, and a
+    # front a level where it ends south (the hill's: two levels each; the roof's: one)
+    assert out["ledges"] == 4
+    # (...but the roof's east one: what is seen beside it there is the front of the hill's second tile, the same rock:
+    # its px are front, one face, with no line)
+    assert out["faces"] == 16 + 1 + 1 + 3 + 5 + 4 * 2 + (2 + 2 + 1) * 2 + 1
     # all of it drawn, six corners a face; a face that lies on the ground (the 16 tops, the water and the three under
-    # the shore, what floats, the two banks' tops: 23; a model's two tops) is four strips north to south, so that it
-    # bends with the ground (vox_curve.js); the 7 fronts and the model's front are one piece
-    assert out["faces"] == 30 and out["corners"] == (23 * 4 + 7) * 6 + (2 * 4 + 1) * 6
+    # the shore, what floats: 21; the four sides' strips, two faces each; a model's two tops) is four strips north to south, so that it
+    # bends with the ground (vox_curve.js); the 5 fronts, the sides' 11 and the model's front are one piece
+    assert out["faces"] == 45 and out["corners"] == (29 * 4 + 16) * 6 + (2 * 4 + 1) * 6
     assert out["bent"] == out["corners"] + 6                     # (curved, under a sky: the same faces, and the sky's)
     assert out["fronts"] == [z for z in range(-2, 5) for _ in range(2)]      # the fronts' sheet: a level a strip, two variants
     assert out["sides"] == list(range(-2, 5))                    # the ledges' colours: a level a row
 
 
-def test_a_tile_that_changed_is_painted_again_alone_and_its_chunks_faces_made_again():
+def test_a_tile_that_changed_is_painted_again_with_the_tiles_round_it_and_its_chunks_faces_made_again():
     out = run()
-    assert out["again"] == 1                                     # one tile, one top
-    # its two fronts are gone; the hill's other tile now drops west as well as east: two ledges still
-    assert out["after"] == 16 + 1 + 1 + 3 + 3 + 2 * 2 and out["ledgesAfter"] == 2
+    # the tile and the eight round it (a top's lip and shape are by its neighbours): nine tiles, one of them the cave's
+    # column with its two tops; not the chunk's other seven
+    assert out["again"] == 10
+    # its two fronts are gone; the hill's other tile now drops west as well as east: four sides still
+    assert out["after"] == 16 + 1 + 1 + 3 + 3 + 4 * 2 + (2 + 2 + 1) * 2 + 1 and out["ledgesAfter"] == 4
     assert out["left"] == 0                                      # (and a chunk let go of is gone)
 
 
 def test_models_are_boxes_of_two_faces_made_again_with_their_tile():
     out = run()
     assert out["models"] == 3                                    # a box: its top and its front; a flat thing: its top
-    assert out["faces"] == 16 + 1 + 1 + 3 + 5 + 2 * 2            # (the land's faces are the land's alone)
-    assert out["posted"] == 5 and out["repaint"] == 1            # a box more on the tile that was touched: two faces more
-    assert out["bare"] == 0 and out["bareCorners"] == (23 * 4 + 7) * 6      # none left: nothing of them is drawn
+    assert out["faces"] == 45                                    # (the land's faces are the land's alone)
+    assert out["posted"] == 5 and out["repaint"] == 5            # a box more on the tile that was touched: two faces more (painted again: it and the three round it that the chunk has, the cave's two tops)
+    assert out["bare"] == 0 and out["bareCorners"] == (29 * 4 + 16) * 6      # none left: nothing of them is drawn
     assert out["sheets"] == 1                                    # the sheet is asked for once, however many frames
 
 
 def test_a_host_with_no_models_is_drawn_as_before():
     out = run(plain=True)
     assert out["models"] == 0 and out["posted"] == 0 and out["sheets"] == 0
-    assert out["faces"] == 16 + 1 + 1 + 3 + 5 + 2 * 2 and out["corners"] == (23 * 4 + 7) * 6
+    assert out["faces"] == 45 and out["corners"] == (29 * 4 + 16) * 6
 
 
 def test_the_roll_is_one_function_for_the_gpu_and_for_what_is_drawn_over_its_picture():
@@ -181,8 +185,8 @@ vm.createContext(box);
 vm.runInContext(process.argv.slice(1).map((f) => fs.readFileSync(f, "utf8")).join("\n") + "\nthis.Vox = Vox; this.VoxSection = VoxSection;", box);
 const land = {"2,2": [0, 2, 3]};
 const host = {column: (x, y) => (x < 0 || y < 0 || x > 7 || y > 7 ? null : land[x + "," + y] || [3]), water: () => false, paintTop() {}, paintFront() {},
-  shape: () => 0, profile: () => new Uint8Array(16), band: () => 2, side: () => ({band: [200, 150, 100], body: [180, 130, 100], foot: [140, 100, 80], shadow: [80, 64, 134, .3]})};
-const cfg = {size: 8, cell: 16, up: 8, levels: [-2, 4], variants: 2, under: [0, 0, 0, .8], sea: [0, 0, 1], tuck: 6, inset: 2, bands: 5};
+  shape: () => 0, profile: () => new Uint8Array(16), side: () => ({band: [200, 150, 100], body: [180, 130, 100], foot: [140, 100, 80], shadow: [80, 64, 134, .3]})};
+const cfg = {size: 8, cell: 16, up: 8, levels: [-2, 4], variants: 2, under: [0, 0, 0, .8], sea: [0, 0, 1], tuck: 6, inset: 2, side: 2};
 const cutOf = (x, y, w, h, at) => { const px = new Uint8Array(w * h * 4); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const lv = at(x + i, y + j); if (lv === null) continue; const v = lv + 32768, o = (j * w + i) * 4; px[o] = v & 255; px[o + 1] = v >> 8; px[o + 2] = 255; px[o + 3] = 255; } return {x, y, w, h, px, ver: "a", a: 1, earth: [.3, .2, .2]}; };
 const cut = cutOf(2, 2, 1, 3, (x, y) => [0, 0, 2][y - 2]), strip = (z) => Math.max(-2, Math.min(4, z)) + 2;
 const m = box.VoxSection.build(host, cfg, strip, cut), out = {tops: m.tops, fronts: m.fronts, banks: m.banks, lit: m.lit.reduce((s, v) => s + v, 0), n: m.n, corners: m.pages.reduce((s, p) => s + p[2], 0)};
@@ -194,7 +198,7 @@ engine.ready(); engine.work([{cx: 0, cy: 0}], 1e9);
 engine.draw(view); out.plain = seen.corners; seen.corners = 0; engine.draw({...view, cut}); out.open = seen.corners; out.made = engine.section.faces;
 // what making it again costs, as walking a tile makes it: the widest place there is (29 x 29 tiles of cave under 12
 // levels of rock, and the six rows south of it cut for the eye's line)
-const deep = {column: (x, y) => (x >= 0 && x < 29 && y >= 0 && y < 29 ? [0, 2, 12] : [12]), water: () => false, shape: () => 0, band: () => 2};
+const deep = {column: (x, y) => (x >= 0 && x < 29 && y >= 0 && y < 29 ? [0, 2, 12] : [12]), water: () => false, shape: () => 0};
 const big = cutOf(0, 0, 29, 35, (x, y) => (y < 29 ? 0 : Math.min(12, 2 * (y - 29)))), {performance} = require("perf_hooks"), times = [];
 for (let k = 0; k < 30; k++) { const t0 = performance.now(); out.big = box.VoxSection.build(deep, cfg, strip, big).n; times.push(performance.now() - t0); }
 out.ms = times.sort((a, b) => a - b)[5];
@@ -216,15 +220,14 @@ def test_the_land_cut_open_is_a_section_with_the_walls_of_the_hole_and_the_tops_
     # the tiles south of the room are solid and sliced: a top each, the cut's kind (5), at 0 and at 2; the higher
     # one drops to the lower north of it: a line along that side (bit 1); none where the land beside it still stands
     assert out["tops"] == 2 and [0, 16, 0, 5, 0] in out["faces"] and [0, 32, 16, 5, 1] in out["faces"], out
-    # west and east of the room and of the tile cut to 0, the rock stands three levels over the cut: its level 2
-    # leans out a bank (2 px), on the cut tile; its level 1 no further (a way one tile wide, a wall on each side: two
-    # px a side at the most, the floor is the main thing): 2 x 2; none beside the tile cut to 2 (one level stands
-    # over it: a wall's top level does not lean)
-    assert out["banks"] == 4 and out["n"] == 7, out
+    # west and east of the room, of the tile cut to 0 and of the tile cut to 2, the rock stands over the cut: its
+    # thin side (cfg.side px: its dark line and its wall, two faces), a strip on the cut tile at the height of the
+    # wall's top: 3 x 2
+    assert out["banks"] == 6 and out["n"] == 15, out
     assert out["lit"] == 0                                       # (no wall of it out of doors: all in the cave's dark)
-    assert out["corners"] == (2 + 4) * 4 * 6 + 1 * 6             # (what lies is four strips, as the land's: it bends with it)
+    assert out["corners"] == (2 + 12) * 4 * 6 + 1 * 6             # (what lies is four strips, as the land's: it bends with it)
     # drawn: the land twice (what is left, then what was left out, to mark it), the cut's faces once, the fill
-    assert out["made"] == 7 and out["open"] == 2 * out["plain"] + out["corners"] + 6, out
+    assert out["made"] == 15 and out["open"] == 2 * out["plain"] + out["corners"] + 6, out
 
 
 def test_making_the_section_again_when_the_cut_changes_tile_costs_under_two_ms():

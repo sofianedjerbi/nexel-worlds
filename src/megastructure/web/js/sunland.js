@@ -143,7 +143,8 @@ const SunLand = (() => {
   function shade(list, sx, sy, S, t, now) {
     if (!sunNow) return;
     try {
-      const [kx, ky] = sunNow.dir, dark = new Map(), near = [], lg = K.lg, stands = (o) => o.far === undefined && (o.p || ((o.spr || o.wall || o.row !== undefined) && o.x !== undefined));
+      const [kx, ky] = sunNow.dir, dark = new Map(), near = [], lg = K.lg, cutAt = (o) => typeof xrayCutAt === "function" && xrayCutAt(Math.round(o.p ? o.p.x : o.x), Math.round(K.rowOf(o))) !== undefined,      // (in what is cut open for your sake: lit evenly, as the land there is)
+        stands = (o) => o.far === undefined && (o.p || ((o.spr || o.wall || o.row !== undefined) && o.x !== undefined)) && !cutAt(o) && !(o.p && xray.a > .01 && myAt && Math.round(o.p.x) === myAt.x && Math.round(o.p.y) === myAt.y);
       const cols = new Map(), flat = sy.bent ? Curve.sy(sy.base, S, true) : sy;
       if (sunNow.alpha) for (const o of list) if (stands(o)) {
         let up = sunNow.land ? upOf(o, kx, ky) : 0;

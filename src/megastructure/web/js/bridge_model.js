@@ -49,9 +49,12 @@ const BridgeModel = (() => {
     const f = slim ? P.slim : wet ? P.pile : P.post, w = slim ? 3 : 4;
     out.push({x, y, z, w, d: 3, h, top: slim ? P.slimTop : P.postTop, front: [f[0], f[1] + 8 - h]});
     if (wet) out.push({x, y: y + 3, z, w, d: 1, h: 0, top: slim ? P.slimFoam : P.foam});
+    if (wet) for (let k = 1; k <= pileDeep; k++) out.push({x, y, z: z - 8 * k, w, d: 3, h: 8, front: f});      // (clear water, waterbed.js: it goes down to the bed)
   }
+  let pileDeep = 0;
   function at(x, y) {
     if (!is(x, y)) return null;
+    pileDeep = WaterBed.depth(x, y);
     const ew = Bridge.ew(x, y), hs = planks(x, y, ew), out = [], base = topAt(x, y) * RELIEF_STEP;
     // (a bridge two tiles wide is rows of bridges that run east-west: one deck, the planks go on to the next row's)
     const beside = (k) => ew && is(x, y + k) && Bridge.ew(x, y + k), wide = beside(1);

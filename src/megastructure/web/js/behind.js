@@ -2,16 +2,17 @@
 
 // A sheet cell as a top edge: for each of its 16 px columns, the first row that is drawn (16: none of it)
 const cellTops = new Map();
-function cellTop(sheet, cx, cy) {
+function cellTop(sheet, cx, cy, mask) {
   let m = cellTops.get(sheet); if (!m) cellTops.set(sheet, m = new Map());
-  const key = cx * 100 + cy;
+  const key = mask === undefined ? cx * 100 + cy : 10000 + mask;      // (mask: the top of a tile with those neighbours, as the land draws it: a narrow top is not the sheet's cell, voxpaint.js)
   if (!m.has(key)) {
-    const a = cellAlpha(sheet, cx, cy), top = new Uint8Array(16).fill(16);
+    const a = mask === undefined ? cellAlpha(sheet, cx, cy) : VoxPaint.cap(sheet, mask)[0], top = new Uint8Array(16).fill(16);
     for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) if (a[j * 16 + i]) { top[i] = j; break; }
     m.set(key, top);
   }
   return m.get(key);
 }
+const capTop = (sheet, mask) => cellTop(sheet, 0, 0, reduce(mask));
 // The top edge of the higher ground drawn up from in front of a tile (south of row `row`, in column tx), at each of
 // the column's 16 px, in art px of the world (Infinity: none there). Every layer of that ground in its own shape
 // (cellTop), from the layer over `from` (the height it is seen from) up; only ground at least `least` high counts;
@@ -32,7 +33,7 @@ function frontEdge(tx, row, from, least, far, skip) {
     const lv = levelAt(tx, ty);
     if (lv < least || (skip && skip(tx, ty))) continue;
     for (let k = from + 1; k <= lv; k++) {
-      const top = k < 0 ? FLAT_TOP : cellTop(hillSheet(k), ...blobCell(maskOf(tx, ty, (cc, gg, ux, uy) => levelAt(ux, uy) >= k))), Y = ty * 16 - shOf(k);   // (dug: cut square, relief.js)
+      const top = k < 0 ? FLAT_TOP : capTop(hillSheet(k), maskOf(tx, ty, (cc, gg, ux, uy) => levelAt(ux, uy) >= k)), Y = ty * 16 - shOf(k);   // (dug: cut square, relief.js)
       for (let i = 0; i < 16; i++) if (top[i] < 16 && Y + top[i] < edge[i]) { edge[i] = Y + top[i]; edge.up[i] = shOf(k); }
     }
   }

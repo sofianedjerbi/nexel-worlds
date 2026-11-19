@@ -37,8 +37,9 @@ def test_land_that_changes_is_made_again(game):
     game.stamp(-1, -4, ["..."], levels=["222"])
     game.wait("dirtyTiles.length === 0")
     game.sleep(400)
-    # three tiles, two cells of front each; and at each end of it the lower level's bank, its top and its front
-    assert game.js("Voxels.engine.faces") == before + 6 + 4
+    # three tiles, two cells of front each; and at each end of it its thin side (its dark line and its wall: two
+    # faces): a strip beside its top and a front a level
+    assert game.js("Voxels.engine.faces") == before + 6 + 2 * (1 + 2) * 2
     front = game.js(AT, [x, y - 4, 16 + 3])
     assert front[0] > front[1] + 15
 
@@ -46,26 +47,28 @@ def test_land_that_changes_is_made_again(game):
 def test_a_block_shows_its_sides_where_the_land_drops(game):
     """A hill three high: every side of it tells its height. Its top has the sheet's lip along the edges where the
     land is lower (earth round the grass, west, east and north as well as south); west and east, where no face is in
-    view, its lower levels lean out a bank each over the ground beside it; the ground is green past them."""
+    view, it shows a thin side for its whole height, in the px its cap leaves empty (the block is no wider than its
+    tile); the ground is green past it."""
     game.flat()                                                  # (it counts the art px of faces north of you: whole px on the flat picture only)
     x, y = game.pos()
     game.stamp(-2, -5, ["....."] * 2, levels=["33333"] * 2)
     blocks(game)
-    assert game.js("Voxels.engine.sides") >= 8                  # two rows, two sides, two levels that lean out
+    assert game.js("Voxels.engine.sides") >= 4                  # two rows, two sides
     at = lambda *q: game.js(PX, list(q))
     lip = [at(x - 2, y - 4, 3, 6, 3), at(x + 2, y - 4, 12, 6, 3)]      # its west tile's top, its east tile's: the lip
     assert all(earth(c) for c in lip) and green(at(x, y - 4, 8, 6, 3)), lip
-    # the ground west of its south row: its banks' fronts on its last px, the meadow past them; east the same
-    side = [at(x - 3, y - 4, 15, 11, 0), at(x + 3, y - 4, 0, 11, 0)]
-    past = [at(x - 3, y - 4, 4, 12, 0), at(x + 3, y - 4, 11, 12, 0)]
+    # beside its south row's top, in its own tile: its side (the wall), west and east; the tile past it is the meadow
+    side = [at(x - 2, y - 4, 1, 8, 3), at(x + 2, y - 4, 14, 8, 3)]
+    past = [at(x - 3, y - 4, 15, 8, 3), at(x + 3, y - 4, 0, 8, 3)]
     assert all(earth(c) for c in side) and not any(earth(c) for c in past), (side, past)
-    # a hill one high has its lip (west, north) and no bank
+    # a hill one high has its lip (west, north) and its side too, at each end: every block is a box
     before, faces = game.js("Voxels.engine.sides"), game.js("Voxels.engine.faces")
     game.stamp(-2, 3, ["..."], levels=["111"])
-    game.wait("dirtyTiles.length === 0 && Voxels.engine.faces > %d" % faces)
-    assert game.js("Voxels.engine.sides") == before
+    # (waited for, not looked at once: the stamp's three tiles come one by one, and the faces are made again at each: one side was there before the other)
+    game.wait("dirtyTiles.length === 0 && Voxels.engine.faces > %d && Voxels.engine.sides === %d" % (faces, before + 2))
     lip, far, top = at(x - 2, y + 3, 3, 8, 1), at(x - 1, y + 3, 8, 1, 1), at(x - 1, y + 3, 8, 6, 1)
-    assert earth(lip) and not earth(at(x - 3, y + 3, 4, 8, 0)) and green(top) and green(far) and sum(far) < sum(top) - 30, (lip, far, top)      # (north: the sheet's dark line)
+    grass = lambda c: c[1] > c[0] + 8 and c[1] > c[2] + 15      # (its top's px may be one of the meadow's light patches: yellower, still grass)
+    assert earth(lip) and not earth(at(x - 3, y + 3, 4, 8, 0)) and grass(top) and green(far) and sum(far) < sum(top) - 30, (lip, far, top)      # (north: the sheet's dark line)
 
 
 def test_a_shader_and_the_night_are_over_the_blocks_as_over_the_painted_land(game):

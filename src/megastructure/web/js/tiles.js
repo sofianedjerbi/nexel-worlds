@@ -253,7 +253,7 @@ function hillSheet(k) {
   if (k <= 0) return dugSheet("hill1", -k);
   k = Math.min(k, 12);                                // (the mountains' top: one sheet for all that is built higher)
   if (hillSheets[k]) return hillSheets[k];
-  const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 0 ? 1 : k <= 4 ? 1 + .04 * ((k - 1) % 2) : .92 + .024 * (k - 5);
+  const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 0 ? 1 : k <= 4 ? [1.015, 1.03, 1.04, 1.06][k - 1] : .92 + .024 * (k - 5);      // (the greens an even step lighter a level across the two sheets: level 3 was darker than level 2)
   if (f === 1) return hillSheets[k] = img;
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
   const g = c.getContext("2d"); g.drawImage(img, 0, 0);

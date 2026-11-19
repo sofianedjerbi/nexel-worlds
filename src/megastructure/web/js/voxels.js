@@ -9,31 +9,34 @@ const Voxels = (() => {
   const one = new Map();
   let off = null;
   const host = {
-    column: (x, y) => (blockOf(x, y) ? colAt(x, y) : null),
+    column: (x, y) => (blockOf(x, y) ? WaterBed.column(x, y) : null),      // (clear water, waterbed.js: a water tile's is its bed)
+    waterTop: (x, y) => topAt(x, y),                            // (a hole that filled, a pool up on a hill: its face at its own height)
     water: (x, y) => { const g = gndAt(x, y) || "."; return wet(g) || g === ":"; },      // (under a bridge too: its deck is a model over it)
     models: Models.at, modelSheet: Models.sheet,                 // (models.js: what stands in the land as boxes)
     // (maskOf.plain: as if land as high lay all round it, so it has no rim and no cut corner; peek: the height
     // it is drawn at, cells.js. Then its lip, where the land beside it is lower: voxpaint.js. Water: what floats)
     paintTop(x, y, z, px, at, stride) {
-      const was = peek; maskOf.plain = true; peek = one; one.set(x + "," + y, z);
+      const g0 = gndAt(x, y) || ".", sea = wet(g0) || g0 === ":"; if (sea && WaterBed.on && z < topAt(x, y)) return WaterBed.paintBed(x, y, z, px, at, stride);
+      const was = peek; maskOf.plain = true; peek = one; one.set(x + "," + y, sea ? 0 : z);      // (what floats on water: painted as at level 0, whatever its own)
       try { drawTile0(x, y, {px, o: at, w: stride}); } finally { maskOf.plain = false; peek = was; one.clear(); }
       if (!wet(gndAt(x, y) || ".")) VoxPaint.rim(x, y, z, px, at, stride);
     },
-    paintFront: VoxPaint.front, shape: VoxPaint.shape, profile: VoxPaint.profile, lip: VoxPaint.lip, side: VoxPaint.side, band: VoxPaint.band,
+    paintFront: VoxPaint.front, shape: VoxPaint.shape, profile: VoxPaint.profile, crown: VoxPaint.crown, lip: VoxPaint.lip, side: VoxPaint.side,
   };
   // (the look of the sides, all the host's: under: a cave's mouth is dark; tuck, inset: the hill sheets' cells leave
-  // up to 6 px empty at a corner, 2 along a side; bands: a wall that faces west or east leans out a level at a time
-  // (voxpaint.js: 2 px), 5 levels at the most)
-  const engine = Vox.create(host, {size: B, cell: P, up: RELIEF_STEP, levels: [-9, 12], variants: 4, under: [.16, .12, .15, .9], sea: [.42, .7, .84], tuck: 6, inset: 2, bands: 5, dug: 0, gorge: 4});
+  // up to 6 px empty at a corner, 2 along a side; side: a wall that faces west or east shows 2 px of its side,
+  // in those px: a dark line and a px of wall)
+  const engine = Vox.create(host, {size: B, cell: P, up: RELIEF_STEP, levels: [-9, 12], variants: 4, under: [.16, .12, .15, .9], sea: [.42, .7, .84], tuck: 6, inset: 2, side: 2, dug: 0, gorge: 4, water: WaterBed.cfg});
   const made = (b) => engine.made(b.bx, b.by) && !!b.water;      // a block of tiles is ready to be shown: its faces, and its sea (water.js)
   // (the one place the land's px change: a tile drawn again is a tile the engine paints again)
   const drawTile0 = drawTile;
-  drawTile = function (x, y, to = null) { drawTile0(x, y, to); if (!to) engine.touch(x, y); };
+  drawTile = function (x, y, to = null) { drawTile0(x, y, to); if (!to) { engine.touch(x, y); WaterBed.changed(x, y); } };
   const here = (list) => list.filter((b) => b.px).map((b) => ({cx: b.bx, cy: b.by}));
   // Blocks coming in or changed, within what is left of the frame's time for the land (render.js)
   // (and each one's sea, made again when its tiles changed: water.js says if there is anything to do)
   function work(coming, until) {
     if (dirtyTiles.length || !engine.ready()) return;
+    WaterBed.flush(engine.touch);                               // (clear water: the beds round what changed)
     engine.work(here(coming), until);
     for (const b of coming) if (b.px && engine.made(b.bx, b.by) && b.seaAt !== b.ver) { for (const _ of waterSteps(b)); b.seaAt = b.ver; if (performance.now() >= until) return; }
   }
@@ -72,12 +75,13 @@ const Voxels = (() => {
     // the sea: water.js makes its picture as ever (on a canvas of its own, waterCv); it is not laid on the game's
     // canvas but handed to the engine, which paints the water's faces from it
     const keep = ctx; off = off || document.createElement("canvas").getContext("2d");
+    const wlook = WaterBed.view(engine, t);                     // (clear water, waterbed.js)
     ctx = off; try { drawWater(vis.filter(made), ox, oy, t); } finally { ctx = keep; }
     const pic = engine.draw({w: W, h: H, pw: cv.width, ph: cv.height, ox, oy, tile: S, row: cam.y, chunks: here(vis), light: [1, 1, 1],
       clear: high ? [.659, .847, .918] : [.169, .141, .125],      // (the sky, or the dark of what has not come: as render.js fills)
       // (the curved world, curve.js: the ground bends to a horizon, the sky over it; far under the land, state.js away: earth, no sky)
       marks: Marks.list, curve: Curve.c, sky: Curve.on && (away.a < 1 || high || away.sky) ? Curve.sky(t) : null,
-      water: waterView ? {canvas: waterCv, x: ox + waterView.x * zoom, y: oy + waterView.y * zoom, scale: zoom} : null,
+      wlook, water: waterView ? {canvas: waterCv, x: ox + waterView.x * zoom, y: oy + waterView.y * zoom, scale: zoom} : null,
       // hidden (behind a hill, down a hole, under a roof: xray.js says how much, and which tiles are cut how low):
       // the land is cut open over the place you are in
       cut: cutMap(), sun});                                      // (sun: with a shader on, the sun on the land, sun.js)

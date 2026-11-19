@@ -63,9 +63,8 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   const row = DIR_ROW(p), col = Math.floor(now / (dash ? 70 : 140)) % 8, cellX = x - 16 * z, cellY = y - 18 * z + SWIM.sink * z + bob, wl = y + 14 * z;
   const back = [-p.fx, -p.fy], fi = row * 8 + col;
   wearFx("back", e, sheet, fi, cellX, cellY, z, now, moving, back);
-  ctx.globalAlpha = .28;                                     // legs and feet, seen through the water
-  ctx.drawImage(sheet, col * 48, row * 48 + SWIM.line, 48, 7, cellX, cellY + SWIM.line * z, 48 * z, 7 * z);
-  ctx.globalAlpha = 1;
+  if (WaterBed.on) WaterBed.under(sheet, col * 48, row * 48 + SWIM.line, 48, 12, cellX, cellY + SWIM.line * z, z, Math.round(p.x), Math.round(p.y));      // (clear water: the body under the face, tinted by its depth)
+  else { ctx.globalAlpha = .28; ctx.drawImage(sheet, col * 48, row * 48 + SWIM.line, 48, 7, cellX, cellY + SWIM.line * z, 48 * z, 7 * z); ctx.globalAlpha = 1; }      // legs and feet, seen through the water
   ctx.drawImage(sheet, col * 48, row * 48, 48, SWIM.line, cellX, cellY, 48 * z, SWIM.line * z);          // head and shoulders
   wearFx("front", e, sheet, fi, cellX, cellY, z, now, moving, back);
   const wide = (7 + stroke % 2 + (dash ? 1 : 0)) * z, cx = x + 8 * z;         // the ring of foam at the waterline, breathing with the stroke

@@ -127,3 +127,21 @@ def test_a_body_in_a_trees_shadow_is_darker_than_beside_it(game):
     under = game.js(LIT, me)
     assert under < beside - 10, (beside, under)
     game.js(RESET)
+
+
+def test_a_straight_walls_shadow_has_a_straight_edge(game):
+    """Along a straight wall the shadow's outer edge is as far from the wall in every row: no notch at each tile's joint
+    ("shadow has weird dents")."""
+    game.flat(); game.clear_area(9)
+    game.stamp(3, -5, ["."] * 6, levels=["3"] * 6)              # a wall six tiles long, north-south, east of you
+    x, y = game.pos()
+    part = [x + 1, y - 3.5, x + 3, y - 0.5]                      # the ground west of it, clear of its two ends
+    for phase in (.1, .2, .3):
+        game.rpc("dev_time", phase=phase); game.sleep(1200)    # morning: its shadow lies west
+        on = game.js(ROWS, part)
+        game.js("setOpt('landshade', false)"); game.sleep(600)
+        off = game.js(ROWS, part)
+        game.js("setOpt('landshade', true)")
+        edge = [next((i for i, (p, q) in enumerate(zip(a, b)) if p - q < -30), None) for a, b in zip(on, off)]
+        assert None not in edge and max(edge) - min(edge) <= 1, (phase, sorted(set(edge)))
+    game.js(RESET)
