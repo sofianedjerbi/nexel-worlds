@@ -111,7 +111,7 @@ void main() {
   // is a sliver past, its variant. vLoc is VoxMesh.BIAS px more than where the px is in its tile.
   const FS = `#version 300 es
 precision highp float;
-uniform sampler2D uPage, uFronts, uSides, uWater, uFoot; uniform vec2 uWaterO, uWaterSize; uniform float uWaterK, uStrips, uSea, uCell, uUp, uSide, uVars, uK, uCut, uInset; uniform vec3 uLight, uWin, uSeaCol, uCutBox, uEarth, uEdge; uniform float uSec, uSlab; uniform sampler2D uCutMap; uniform vec2 uWinAt; uniform vec4 uUnder;
+uniform sampler2D uPage, uFronts, uSides, uWater, uFoot; uniform vec2 uWaterO, uWaterSize; uniform float uWaterK, uStrips, uSea, uCell, uUp, uSide, uVars, uK, uCut, uInset; uniform vec3 uLight, uWin, uSeaCol, uCutBox; uniform float uSec; uniform sampler2D uCutMap; uniform vec2 uWinAt; uniform vec4 uUnder;
 in vec3 vGround0; in vec2 vLoc0, vScr, vAt, vWorld, vFlat0; vec3 vGround; vec2 vLoc, vFlat; in float vPast; uniform float uLine; uniform vec4 uCurve; uniform vec2 uO; flat in vec2 vTile, vRows; flat in vec4 vMeta, vMore; out vec4 o;
 // the host's shadow (of the level in the face's strip) over a colour
 vec3 shadow(vec3 c) { vec4 s = texelFetch(uSides, ivec2(2, int(vMeta.z)), 0); return mix(c, s.rgb, s.a); }
@@ -134,8 +134,8 @@ void main() {
   // What is higher than its tile's cut is left out; the faces of the cut itself (uSec: vox_section.js) are all there.
   bool open = false, front = abs(vMeta.y - 1.) < .5, bank = vMeta.y > 2.5 && vMeta.y < 4.5, on = false, day = false, into = false, other = false;
   if (uCutBox.z > 0.) {
-    vec2 tl = floor((vWorld - vec2(bank ? ((int(vMeta.x + .5) & (vMeta.y > 3.5 ? 32 : 1)) != 0 ? uCell * .5 : -uCell * .5) : 0., front || vMeta.y > 3.5 ? .5 : 0.)) / uCell), q = mod(floor(vFlat / uK + .001), 2.);
-    on = uCutBox.z > ((q.x == q.y ? q.x : 3. - q.x) + .5) / 4.;      // (it comes a px of paint in four at a time, on the land's own grid of px: a checker at half, never a stripe)
+    vec2 tl = floor((vWorld - vec2(bank ? ((int(vMeta.x + .5) & (vMeta.y > 3.5 ? 32 : 1)) != 0 ? uCell * .5 : -uCell * .5) : 0., front || vMeta.y > 3.5 ? .5 : 0.)) / uCell), q = mod(floor(vec2(vFlat.x, vScr.y - uO.y) / uK + .001), 2.);
+    on = uCutBox.z > (q.x == q.y ? .2 : .6);      // (it comes in two steps, a checker of px of paint as they are drawn, then whole. One px in four first, on the flat picture's rows: a lattice of dots, and stripes where the roll squeezes the rows)
     if (uSec > .5) { open = true; cut = !on; }
     else {
       float lv = cutLv(tl);
@@ -143,6 +143,7 @@ void main() {
       into = front && cutLv(tl + vec2(0., 1.)) < 1e4; open = lv < 1e4 || into;
       vec2 s = tl + vec2(0., 1.); if (front && on && s.x >= 0. && s.y >= 0. && s.x < uCutBox.x && s.y < uCutBox.y) { float a = floor(texelFetch(uCutMap, ivec2(s), 0).a * 255. + .5), head = mod(a, 128.); day = a >= 128.; other = head > 0. && vAt.y > cutLv(s) + head + .02; }      // (a front of the land's in a hole of the cut that has a wall out of doors: the day's light, as all its walls)
       if (on && vAt.y > lv + .02) cut = true;
+      if (on && bank && abs(cutLv(floor((vWorld - vec2(0., vMeta.y > 3.5 ? .5 : 0.)) / uCell)) - 3e4) < .5) cut = true;      // (a bank lying on the open floor of a hole you are in: its wall is seen straight, the floor whole to the cut's edge. Leaning, each level's strip ended at its own row: lines down the floor's sides, "a messy tray")
     }
   }
   if (cut != (uCut > .5)) discard;                              // (uCut: the other way round, only what is left out: to mark where the window opened something)
@@ -156,13 +157,11 @@ void main() {
   // (of a top in the roll: the row of its paint that its tile's height says, the same whatever the frame; its shadows and its depth are that row's)
   if (roll && kind == 0) { float i = floor((vScr.y - vRows.x) / uK); if (vRows.y > 0. && vRows.y < uCell && i >= 0. && i < vRows.y) { float dy = rollPick(i, vRows.y, uCell) + 8.5 - vLoc.y; vLoc.y += dy; vGround.y += dy; vFlat.y += dy * uK; } }
   vec3 c, plain = vec3(-1.); float far = uCell - .01; vec2 loc = vLoc - 8., tile = vTile + 8.;
-  if (kind == 5) {                                              // a block's sliced top: the earth of its level, as its fronts have it; a line along a drop
+  if (kind == 5) {                                              // a block's sliced top: what the knife made is one flat colour, its level's darkest (the host's line at a wall's foot): the inside of the ground, never grass, never a wall's paint (as a front is painted it read as a hill's own wall); darker along a drop
     float x = floor(loc.x), y = floor(loc.y);
     if (y >= uCell - texelFetch(uFoot, ivec2(int(clamp(x, 0., far)), int(vMore.x)), 0).r * 255.) discard;      // (none of its block here)
-    // (a front's px, a px a px: its body over the top's far part, the whole of it, with its seam, along the near edge. uSlab: the cut's one colour instead)
-    float fy = y < uCell - uUp ? min(mod(y, uUp), uUp - 2.) : y - (uCell - uUp);
-    vec3 e = uSlab > .5 ? uEarth : texture(uFronts, vec2((vMore.z * uCell + clamp(loc.x, .01, far)) / (uVars * uCell), (vMeta.z * uUp + fy + .5) / (uStrips * uUp))).rgb;
-    o = vec4((((bits & 2) != 0 && x < 1.) || ((bits & 4) != 0 && x > uCell - 2.) || ((bits & 1) != 0 && y < 1.) || ((bits & 16) != 0 && y > uCell - 2.) ? (uSlab > .5 ? uEdge : texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb) : e) * uLight, 1.); return;
+    vec3 e = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb;
+    o = vec4((((bits & 2) != 0 && x < 1.) || ((bits & 4) != 0 && x > uCell - 2.) || ((bits & 1) != 0 && y < 1.) || ((bits & 16) != 0 && y > uCell - 2.) ? shadow(e) : e) * uLight, 1.); return;
   }
   if (kind == 0) {
     vec4 t = texture(uPage, (tile + clamp(loc, .01, far)) / uSide);
@@ -174,8 +173,8 @@ void main() {
       // (not of a wall that is cut away down to here)
       vec2 own = floor((vWorld - loc) / uCell + .5); bool gw = on && cutLv(own - vec2(1., 0.)) < vAt.y + .5, ge = on && cutLv(own + vec2(1., 0.)) < vAt.y + .5, gn = on && cutLv(own - vec2(0., 1.)) < vAt.y + .5;
       if (uSec > .5) { gw = false; ge = false; gn = false; }
-      // (...and along a side where the land beside it is cut lower than it: the line of a cut edge, the wall's foot colour. A roof lifted off shows where it was)
-      if (on && uSec < .5 && ((x < 1. && loc.x >= 0. && cutLv(own - vec2(1., 0.)) < vAt.y - .5) || (x > uCell - 2. && loc.x < uCell && cutLv(own + vec2(1., 0.)) < vAt.y - .5) || (y < 1. && loc.y >= 0. && cutLv(own - vec2(0., 1.)) < vAt.y - .5) || (y > uCell - 2. && cutLv(own + vec2(0., 1.)) < vAt.y - .5))) c = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb;
+      // (...and along a side where the land beside it is cut lower than it: the edge of a cut, two px of the wall's foot colour: the ground's inside. A roof lifted off shows where it was)
+      if (on && uSec < .5 && ((x < 2. && loc.x >= 0. && cutLv(own - vec2(1., 0.)) < vAt.y - .5) || (x > uCell - 3. && loc.x < uCell && cutLv(own + vec2(1., 0.)) < vAt.y - .5) || (y < 2. && loc.y >= 0. && cutLv(own - vec2(0., 1.)) < vAt.y - .5) || (y > uCell - 3. && cutLv(own + vec2(0., 1.)) < vAt.y - .5))) c = texelFetch(uSides, ivec2(1, int(vMeta.z)), 0).rgb;
       if (((bits & 2) != 0 && !gw && x == vMore.x - 8.) || ((bits & 4) != 0 && !ge && uCell - 1. - x == vMore.y - 8.) || ((bits & 1) != 0 && !gn && y == -texelFetch(uFoot, ivec2(int(clamp(x, 0., far)), int(vMore.z)), 0).r * 255.)) c = shadow(c);
     }
   } else if (kind == 1) {

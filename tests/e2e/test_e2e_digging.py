@@ -151,7 +151,7 @@ LAND = """(spots) => { const keep = {}; for (const f of %s) { keep[f] = window[f
   Object.assign(window, keep); return out; }""" % HIDE
 cut = lambda c: sum(c) < 220 and c[0] >= c[1]                  # the ground cut open with nothing behind, a cave's mouth: dark earth
 earth = lambda c: c[0] > c[1] + 8 and not cut(c)               # a dug floor, a front: earth, lighter than the cut
-sliced = lambda c: c[0] > c[1] + 30 and c[0] > c[2] + 40       # ground cut through where you are hidden: the top of a sliced block, earth as its front has it, browner than any floor (vox_section.js; it was the cut's flat dark)
+sliced = lambda c: c[0] > c[1] + 25 and c[0] > c[2] + 35       # ground cut through where you are hidden: the top of a sliced block, one flat colour, the dark of its level's wall (its foot's line), browner than any floor (vox_section.js; painted as a front it read as a hill's own wall)
 green = lambda c: c[1] > c[0] + 12                             # the meadow
 # the screen without anybody on it: in each of the tiles [x, y, depth] as drawn, how many px are greener than earth
 GREEN_ON_SCREEN = """(tiles) => { const keep = {}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) { keep[f] = window[f]; window[f] = () => null; }

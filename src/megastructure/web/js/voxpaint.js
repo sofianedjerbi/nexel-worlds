@@ -43,9 +43,10 @@ const VoxPaint = (() => {
   }
   function rim(x, y, z, px, at, stride) {
     const id = shape(x, y, z); if (!id) return;
-    const a = cells[id][0], d = sheetData(sheetOf(z)), [ix, iy] = blobCell(255), [L, M] = bands(z).map(rgb);
+    const a = cells[id][0], d = sheetData(sheetOf(z)), [ix, iy] = blobCell(255), [L, M, D] = bands(z).map(rgb);
     let cx = 0, cy = 0; for (const [k, v] of ids) if (v === id) { cx = k % 64; cy = (k >> 6) % 64; }
     const north = colHas(colAt(x, y - 1), z) ? 0 : Math.min(2, z - 1 - topAt(x, y - 1));      // the far side of a drop of more than a level: its dark line that much thicker, a px a level
+    const deep = !colHas(colAt(x, y - 1), z) && z - topAt(x, y - 1) >= 4;
     for (let i = 0; i < 16; i++) {
       let last = 15; while (last >= 0 && !a[last * 16 + i]) last--;
       for (let j = 0, own = -1; j < 16; j++) {
@@ -53,7 +54,7 @@ const VoxPaint = (() => {
         if (a[j * 16 + i]) {
           const v = d.px[(cy * 16 + j) * d.w + cx * 16 + i];
           if (own < 0) own = j;
-          if (j > own && j <= own + north && j < 8) px[o] = d.px[(cy * 16 + own) * d.w + cx * 16 + i];
+          if (j > own && j <= own + north && j < 8) px[o] = deep ? D : d.px[(cy * 16 + own) * d.w + cx * 16 + i];      // (a drop of four levels or more, a gorge's near rim: the wall's own dark: the far wall read as a cliff rising beyond the plateau)
           else if (v !== d.px[(iy * 16 + j) * d.w + ix * 16 + i]) px[o] = v;
         } else px[o] = last < 0 || j < last ? 0 : j === last + 1 ? L : M;      // (outside its shape: see-through; but under its last px, down to the tile's end: its wall)
       }

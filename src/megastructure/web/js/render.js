@@ -235,12 +235,14 @@ function drawIntent(p, it, sx, sy, S, t, ox, oy) {
     const up = it.z !== undefined && !it.draw, built = !up && !it.draw && Structures.WALLS.includes(PLACEABLE_BLOCK[it.ghost] || "-");        // (a wall, a door: as it will stand, structures.js)
     if (it.draw) it.draw(sx, sy, S);                   // (stairs, a ladder: drawn as they will be, climbing.js)
     else if (up && !it.ghostGround) (it.ghost === "roof" || it.ghost === "plank" ? Floors.cell(it.ghost, p.x, p.y, it.z, sx, sy, S, .6) : Floors.thing(PLACEABLE_BLOCK[it.ghost], p.x, p.y, it.z, sx, sy, S, t, 0, .6));   // (over the ground: floors.js)
-    if (built) Structures.drawWall(PLACEABLE_BLOCK[it.ghost], p.x, p.y, sx, sy, S, 0, .6);
     const spr = built || it.draw || (up && !it.ghostGround) ? null : it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
       : it.ghost === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(p.x, p.y)] * 16, 16, 16, 0, -2]
       : objectSprite(PLACEABLE_BLOCK[it.ghost], it.anchor ? it.anchor.x : p.x, it.anchor ? it.anchor.y : p.y, t);
     const gx = it.anchor ? it.anchor.x : p.x, gy = it.anchor ? it.anchor.y : p.y;
-    if (spr) { const [img, a2, b2, w2, h2, dx2, dy2] = spr; ctx.drawImage(img, a2, b2, w2, h2, sx(gx) + dx2 * zoom, sy(gy, gx) + dy2 * zoom, w2 * zoom, h2 * zoom); }
+    const paint = (a) => { ctx.globalAlpha = .7 * a; if (built) Structures.drawWall(PLACEABLE_BLOCK[it.ghost], p.x, p.y, sx, sy, S, 0, .6);
+      if (spr) { const [img, a2, b2, w2, h2, dx2, dy2] = spr; ctx.drawImage(img, a2, b2, w2, h2, sx(gx) + dx2 * zoom, sy(gy, gx) + dy2 * zoom, w2 * zoom, h2 * zoom); } };
+    // (down a pit, behind a hill: cut at the edge of the land in front as what stands there is, behind.js: a wall's ghost aimed into a pit stood out over the grass south of its rim)
+    if ((built || spr) && tileBehind(gx, gy)) drawBehind({x: gx, y: gy, e: {}}, sx, sy, S, paint); else paint(1);
     ctx.globalAlpha = 1;
   }      // (the cells it would go in: mark.js, as boxes in the land)
   // what the selector goes around, in tiles: the aimed creature, person or thing as it was just drawn (selector.js),

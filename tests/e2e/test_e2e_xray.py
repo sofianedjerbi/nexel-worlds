@@ -72,7 +72,16 @@ def test_what_is_there_shows_without_the_rock_in_front(game):
     game.stamp(-6, 1, ["." * 13] * 4, levels=["0" * 13] * 4)         # the plateau in front, gone
     game.sleep(700); game.wait(BUILT, 20000); game.wait("xray.a === 0", 20000)
     gone = frames(game, f"return box(shot('off'), {area});")
-    assert differ(on, gone) < .02, differ(on, gone)
+    # (a way one tile wide between two walls eight high is a gorge: its walls and its floor are darker the deeper, as a
+    # hole's that was dug (vox_mesh.js `slot`), and the open cliff is not. The same px but for that dark: each one is
+    # the open cliff's px or that px gone toward the dark by one share for its three colours)
+    dark, bad = (41, 31, 38), 0
+    for i in range(0, len(on), 3):
+        a, b = on[i:i + 3], gone[i:i + 3]
+        if a == b: continue
+        t = [(b[c] - a[c]) / (b[c] - dark[c]) for c in range(3) if abs(b[c] - dark[c]) > 12]
+        if not t or min(t) < .05 or max(t) > .8 or max(t) - min(t) > .12: bad += 1
+    assert bad / (len(on) // 3) < .02, bad / (len(on) // 3)
     assert not game.errors
 
 
@@ -148,14 +157,21 @@ def test_the_place_you_are_in_shows_not_only_what_is_behind_you(game):
     of sight to the place you are in (the ground you could walk to from where you stand): the bank beside you and in
     front of you are of it, the ground ahead shows, the meadow it is, and all of your own tile shows. (The bank is cut
     where it covers you and the tiles round you, not all of it: the rest of it stands a tile on, and its side leans
-    over the ground ahead, a band a level: more than half of that tile is meadow, it was nine tenths.)"""
+    over the ground ahead, a band a level: more than half of that tile is meadow, it was nine tenths.)
+    That is XRAY.side 1, a tile each side of you. The game has 0: the cut is your body's own column, as small as you
+    need ("the cut invents shapes": three tiles wide, a plateau read as an L-shaped hill and a hill as a U): your own
+    tile shows, the bank beside you stands."""
     for side in (1, -1):
         x, y = stamp_levels(game, lambda i, j: 6 if side * i + j >= 1 else 0)
+        mine = f"{x}, {y}, {x + 1}, {y + 1}"
+        assert frames(game, f"const A = shot('on'), Z = shot('off'); return [differ(box(A, {mine}), box(Z, {mine})) > 0, xrayRock({x + side}, {y}), xrayRock({x}, {y + 1})];") == [True, False, True]
+        game.js("(() => { XRAY.side = 1; xray.pic = null; return 1; })()")
         ahead = f"{x + side}, {y - 1}, {x + side + 1}, {y}"                       # the ground a step on, round the bank's corner
         mine = f"{x}, {y}, {x + 1}, {y + 1}"
         out = frames(game, f"""const A = shot('on'), Z = shot('off'), a = box(A, {ahead}); let n = 0;
           for (let i = 0; i < a.length; i += 3) if (a[i + 1] > a[i] + 12) n++;
           return [differ(a, box(Z, {ahead})) > 0, n / (a.length / 3) > .5, differ(box(A, {mine}), box(Z, {mine})) > 0, xrayRock({x + side}, {y}), xrayRock({x}, {y + 1})];""")
+        game.js("(() => { XRAY.side = 0; xray.pic = null; return 1; })()")
         assert out == [True, True, True, True, True], (side, out)
     game.clear_area(12)
     assert not game.errors
@@ -168,11 +184,11 @@ def test_a_rock_that_stands_apart_stays_whole(game):
     game.js("setOpt('depth', false)")                         # (the land as it is painted: with its depth on, the sun's shadows are part of what is compared and counted here)
     game.clear_area(12)
     game.stamp(-5, 1, ["." * 11] * 3, levels=["6" * 11] * 3)
-    game.stamp(1, -2, ["."], levels=["6"])
+    game.stamp(0, -2, ["."], levels=["6"])
     game.sleep(700); game.wait(BUILT, 20000); game.wait("xray.a > .95", 20000)
     x, y = game.pos()
-    area = f"{x} + 1, {y} - 3, {x} + 2 - 5 / 16, {y}"        # the pillar's column, under the wall's top (not its last px east: the wall is cut a tile each side of you, and the side of that cut stands there)
-    on, off, rock = frames(game, f"return [box(shot('on'), {area}), box(shot('off'), {area}), [xrayRock({x + 1}, {y - 2}), xrayRock({x}, {y + 1})]];")
+    area = f"{x} + 3 / 16, {y} - 3, {x} + 1 - 3 / 16, {y}"   # the pillar's column, yours, under the wall's top (not its px at each side: the wall is cut over your own column, and the sides of that cut stand there, with the cut's edge)
+    on, off, rock = frames(game, f"return [box(shot('on'), {area}), box(shot('off'), {area}), [xrayRock({x}, {y - 2}), xrayRock({x}, {y + 1})]];")
     assert on != off and rock == [False, True]
     game.stamp(-5, 1, ["." * 11] * 3, levels=["0" * 11] * 3)  # the wall in front, gone
     game.sleep(700); game.wait(BUILT, 20000)
@@ -216,7 +232,7 @@ def test_creatures_behind_the_rock_are_seen_and_those_on_it_go_with_it(game):
     game.js("setOpt('depth', false)")                         # (the land as it is painted: with its depth on, the sun's shadows are part of what is compared and counted here)
     game.clear_area(10)
     game.stamp(-6, 1, ["." * 13] * 3, levels=["6" * 13] * 3)  # a wall in front of you, six layers
-    behind, on_rock = game.spawn("cow", 1, 0, still=600), game.spawn("chicken", -1, 1, still=600)   # beside you; on the wall, where it is cut away (a tile each side of you: it was all of the wall)
+    behind, on_rock = game.spawn("cow", 1, 0, still=600), game.spawn("chicken", 0, 1, still=600)   # beside you; on the wall, where it is cut away (your own column: it was a tile each side of you, and before that all of the wall)
     game.sleep(1500)
     assert game.js("xray.a") > .95
     assert game.js(f"[xrayShows(ents.get('cow{behind}')) > .95, xrayOverBody(ents.get('chicken{on_rock}')) > .95]") == [True, True]
@@ -247,5 +263,6 @@ def test_what_is_cut_away_is_found_again_only_when_you_change_tile(game):
     # (No more than tiles walked, and one; on a busy machine the server falls behind, your screen takes you a tile
     # back and on again, and that tile is found twice, rightly; and land that comes in beside you as you walk makes
     # the tile you are on be found again, rightly too. Three more than the tiles are let; every frame would be forty.)
-    assert found and len(found) <= moved + 3, (found, moved)
+    # (and the cut is your body's own column: the two you stand across while you cross from one to the next: three a tile)
+    assert found and len(found) <= 3 * moved + 3, (found, moved)
     assert not game.errors

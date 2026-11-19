@@ -101,3 +101,88 @@ def test_a_cut_comes_a_whole_px_of_paint_at_a_time_never_in_stripes(game):
     assert cells > 60 and mixed == 0 and odd == 0, out           # every px of paint: one picture or the other, whole
     assert .3 < cut_cells / cells < .7, out                      # ...half of them each
     assert not game.errors
+
+
+green = lambda c: c[1] > c[0] + 12                              # the meadow, a hill's grass
+
+
+def test_a_plateau_that_covers_you_is_cut_over_your_own_column_and_what_the_knife_made_is_earth_not_grass(game):
+    """Right behind a plateau three high ("the cut invents shapes": cut three tiles wide and to the ground, with a
+    px of line at its edges, it read as an L-shaped hill). The cut is your own column, the rows of it that cover
+    you; the block it slices has a top of earth, the dark of a wall, never the plateau's grass; and the plateau
+    beside the cut ends in two px of that earth, then its grass as it was."""
+    game.flat()
+    game.clear_area(12)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(-2, 1, ["." * 5] * 3, levels=["3" * 5] * 3)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
+    assert game.js("[...xray.pic.cut].map(([k, v]) => k + ':' + v)") == [f"{x},{y + 1}:0", f"{x},{y + 2}:2"]
+    cut_top, edge, grass = game.js(LAND, [[x, y + 2, 2, 8, 3], [x + 1, y + 1, 3, 0, 8], [x + 1, y + 1, 3, 8, 8]])
+    assert not green(cut_top) and cut_top[0] > cut_top[1] + 25, cut_top      # the sliced block's top: earth
+    assert not green(edge) and green(grass), (edge, grass)                # the cut's edge on the plateau beside it; and its grass
+    assert sum(cut_top) < sum(grass) - 60, (cut_top, grass)               # ...dark: the ground's inside
+    assert fill_px(game) == 0 and not game.errors
+
+
+def test_no_stump_one_tile_wide_is_left_standing_alone_beside_a_cut(game):
+    """A wall one row deep. Two tiles wide: cut over your column, the other tile would stand alone, a pillar that
+    is not there: it goes with the cut. Five wide: the two tiles east of you are a piece of the wall, they stay;
+    so does the one west, held by the tile beyond it."""
+    game.clear_area(12)
+    x, y = game.pos()
+    game.stamp(0, 1, [".."], levels=["33"])
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
+    assert sorted(game.js("[...xray.pic.cut.keys()]")) == sorted([f"{x + 1},{y + 1}", f"{x},{y + 1}"])
+    game.stamp(-2, 1, ["....."], levels=["33333"])
+    game.wait(DRAWN, 8000); game.sleep(600); game.wait(SEEN, 20000)
+    assert game.js("[...xray.pic.cut.keys()]") == [f"{x},{y + 1}"]
+    assert fill_px(game) == 0 and not game.errors
+
+
+def test_on_a_gorges_floor_you_are_in_a_hole_its_walls_go_down_darker_and_its_floor_is_not_the_plateaus(game):
+    """A natural gorge, three rows of floor between two plateaus eight high ("the canyon floor has no depth... a rug
+    on the plateau"). You are in it as in a hole that was dug: all of the floor round you is shown, not a tile of
+    it; the far wall is seen down to its foot, darker there than the plateau's top and darker than at its own top;
+    the floor is darker than the same meadow out in the open. An open meadow under one cliff is no gorge."""
+    game.flat()
+    game.clear_area(14)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(-7, -5, ["." * 15] * 11, levels=["8" * 15] * 4 + ["0" * 15] * 3 + ["8" * 15] * 4)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(400)
+    assert game.js(f"[xrayGorge({x}, {y}, 0), xrayGorge({x}, {y + 9}, 0)]") == [True, False]
+    cols = set(game.js("[...xray.pic.cut.keys()].map((k) => +k.split(',')[0])"))
+    assert cols >= set(range(x - 3, x + 4)), cols                       # the place, not your column
+    foot = mid(game.js(LAND, [[x + 1, y - 1, 0, ax, -4] for ax in (2, 5, 8, 11, 14)]))      # the far wall's lowest level, over the floor's far edge
+    high = mid(game.js(LAND, [[x + 1, y - 1, 7, ax, -4] for ax in (2, 5, 8, 11, 14)]))      # ...and its highest but one
+    top, floor, open_ = game.js(LAND, [[x + 6, y + 3, 8, 8, 8], [x + 2, y, 0, 8, 8], [x - 9, y, 0, 8, 8]])
+    assert sum(foot) < sum(top) - 60 and sum(foot) < sum(high) - 25, (foot, high, top)
+    assert green(open_) and sum(floor) < sum(open_) - 25, (floor, open_)
+    assert fill_px(game) == 0 and not game.errors
+
+
+def test_the_first_frame_of_a_cut_is_a_checker_of_whole_px_of_paint_in_the_roll_too(game):
+    """A cut that opens came a px in four first: a lattice of dots, and, where the curved world squeezes the rows,
+    thin stripes for a frame. Its first step is the checker: along every row of the screen, in the rolled picture,
+    no run of the cut picture or of the whole one is narrower than a px of paint between two of the other."""
+    game.clear_area(12)
+    game.stamp(-3, 1, ["." * 7] * 4, levels=["6" * 7] * 4)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
+    out = game.js("""(() => { const look = window.xrayLook, keep = {}; window.xrayLook = () => {}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) { keep[f] = window[f]; window[f] = () => null; } parts.length = puffs.length = 0;
+      const k = Math.round(zoom * DPR), w = 40 * k, h = Math.round(H * DPR * .6), x0 = Math.floor(W / 2 * DPR / k) * k - 20 * k;
+      const shot = (a) => { xray.a = a; frame(performance.now()); return ctx.getImageData(x0, 0, w, h).data; };
+      const whole = shot(0), first = shot(.25), open = shot(1); xray.a = 1; window.xrayLook = look; Object.assign(window, keep);
+      const at = (d, i) => d[i * 4] * 65536 + d[i * 4 + 1] * 256 + d[i * 4 + 2];
+      let thin = 0, cut = 0, kept = 0, odd = 0;
+      for (let j = 0; j < h; j++) { let run = 0, cls = 0, before = 0;
+        for (let i = 0; i <= w; i++) { const o = j * w + i, c = i === w || at(whole, o) === at(open, o) ? 0 : at(first, o) === at(open, o) ? 1 : at(first, o) === at(whole, o) ? 2 : 3;
+          if (c === 3) odd++; if (c === 1) cut++; if (c === 2) kept++;
+          if (c === cls) { run++; continue; }
+          if (cls && before && c && run < k) thin++;      // (a run with the other picture on both its sides)
+          before = cls; cls = c; run = 1; } }
+      return [thin, cut, kept, odd, Curve.on]; })()""")
+    thin, cut, kept, odd, rolled = out
+    assert rolled and thin == 0 and odd == 0, out
+    assert cut > 500 and .25 < cut / (cut + kept) < .75, out      # the checker: half of what changes, at once
+    assert not game.errors

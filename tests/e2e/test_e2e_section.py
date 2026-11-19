@@ -94,7 +94,7 @@ def test_no_px_is_left_to_the_fill_on_a_stair_under_a_hill_and_behind_a_hill(gam
     game.clear_area(12)
     game.stamp(-3, 1, ["." * 7] * 3, levels=["5" * 7] * 3)                                # behind a hill
     game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
-    assert game.js("xray.pic.cut.size") > 6 and fill_px(game) == 0
+    assert game.js("xray.pic.cut.size") >= 3 and fill_px(game) == 0      # (your own column, the three rows of it)
     assert not game.errors
 
 

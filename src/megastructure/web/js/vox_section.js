@@ -64,7 +64,7 @@ const VoxSection = (() => {
         for (let zc = to - 1, edge = 0; zc > c; zc--) {
           if (!has(wall, zc) || !has(wall, zc + 1)) { edge = 0; continue; }
           if (!has(mine, zc) && top <= zc) { edge = 0; continue; }      // (open air beside it: the chunk's own bank is there)
-          const o = reach(zc), w = o - edge, x0 = dx < 0 ? X + edge : X + T - o, bits = (dx < 0 ? 1 : 0) | 2 | dark;
+          const o = reach(zc), w = o - edge, x0 = dx < 0 ? X + edge : X + T - o, knife = has(mine, zc) ? 4 : 0, bits = (dx < 0 ? 1 : 0) | 2 | dark | knife;
           if (w > 1) { list.push([x0, Y, zc * U, w, T, 0, 0, T, bits, 3, strip(zc), 0, 0, 0]); out.banks++; }      // (a px wide, in dug ground: a line across the floor behind it, no wall's face)
           // (its front, where neither the hole's wall nor the land goes on south of it at that level)
           if (o > 0 && !left(x, y + 1, zc) && !(left(x + dx, y + 1, zc) && left(x + dx, y + 1, zc + 1))) list.push([dx < 0 ? X - cfg.inset : X + T - o, Y + T, zc * U, o + cfg.inset, 0, 0, 0, U, dark | (zc === c + 1 && shape(x + dx, y, zc) ? 16 : 0), 4, strip(zc), 0, 0, 0]);      // (cfg.inset px into the wall's tile: the land's own front leaves its side's px empty at a cave's mouth)
@@ -86,7 +86,7 @@ const VoxSection = (() => {
   // The faces of the cut, after the land's; a sliced top wins over a top of the land at its own height. at(): the light's place for them
   function draw(gl, u, v, open, sec, at) {
     gl.uniform2f(u.uO, v.ox + open.x * v.tile, v.oy + open.y * v.tile); gl.uniform1f(u.uRow, open.y - v.row); gl.uniform2f(u.uChunk, 0, 0); at();
-    gl.uniform1f(u.uSec, 1); gl.uniform1f(u.uSlab, open.slab ? 1 : 0); gl.uniform3f(u.uEarth, ...open.earth); gl.uniform3f(u.uEdge, ...(open.line || open.earth));
+    gl.uniform1f(u.uSec, 1);
     gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-1, -2); gl.bindVertexArray(sec.vao);
     for (const [, first, count] of sec.ranges) gl.drawArrays(gl.TRIANGLES, first, count);
     gl.disable(gl.POLYGON_OFFSET_FILL); gl.uniform1f(u.uSec, 0);

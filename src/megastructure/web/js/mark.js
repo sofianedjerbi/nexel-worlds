@@ -28,19 +28,21 @@ const Marks = (() => {
       else if (L !== null && landSolid(q.x, q.y, surf + 1)) z0 = surf - 1;              // ...in the ground: the block it is on
       else if (thing || (it.ghost === "dirt" && it.z === undefined && L === null && !FILLS.dirt[gndAt(q.x, q.y)])) { z0 = surf; z1 = surf + (thing ? TALL : 1); }   // what will stand there, or the ground raised: the cell over the surface
       else if (!deck && lv(q.x, q.y + 1) >= surf) flat = true;                            // level ground, or higher land before it: its front is not seen, its top alone
-      out.push({x: q.x, y: q.y, z0, z1, colour: bad ? RED : it.ghost ? GREEN : WHITE, west: side(-1), east: side(1), drop, flat});
+      out.push({x: q.x, y: q.y, z0, z1, colour: bad ? RED : it.ghost ? GREEN : WHITE, west: side(-1), east: side(1), drop, flat, ...(drop !== undefined ? {fill: .4} : {})});      // (a cell in the air: washed more, its front darker: a box at a glance; it read as a flat square)
     }
     return out;
   }
   // Once a frame (render.js): what is aimed at now, or nothing; `tile`: it is a tile or a block (not something that stands)
   function aim(a, tile, now) {
-    const dt = Math.min(.1, (now - (at || now)) / 1000), want = forced || (a && a.it && (Build.on || tile || a.it.ghost) && !(a.it.walk && !a.it.ghost && !Build.on) ? cells(a.p, a.it) : []);
+    // (the mouse over ground you would only walk to, nothing in hand for it: its tile's top all the same, faint: where the pointer is in the land, in a pit, on a hill)
+    const walk = !!(a && a.it && a.it.walk && !a.it.ghost && !Build.on), faint = walk && typeof inputMode !== "undefined" && inputMode === "mouse" && mouse.in;
+    const dt = Math.min(.1, (now - (at || now)) / 1000), want = forced || (faint ? [{x: a.p.x, y: a.p.y, z0: lv(a.p.x, a.p.y), z1: lv(a.p.x, a.p.y), colour: WHITE, flat: true, fill: 0, most: .4}] : a && a.it && (Build.on || tile || a.it.ghost) && !walk ? cells(a.p, a.it) : []);
     at = now;
     const grow = Math.sin(now / 1000 * 4.5) > .3 ? 1 : 0, k = 1 - Math.exp(-dt * 22);
     if (want.length) {
       const one = want.length === 1 && shown.length === 1 && shown[0].a > .05 && Math.abs(want[0].x - shown[0].x) + Math.abs(want[0].y - shown[0].y) <= 4;
       const a0 = shown.length ? shown[0].a : 0;
-      shown = want.map((w) => { const m = {...w, a: Math.min(1, a0 + dt * 8), grow, fill: w.fill ?? .16, to: w}; if (one) for (const f of ["x", "y", "z0", "z1"]) m[f] = shown[0][f] + (w[f] - shown[0][f]) * k; return m; });
+      shown = want.map((w) => { const m = {...w, a: Math.min(w.most || 1, a0 + dt * 8), grow, fill: w.fill ?? .16, to: w}; if (one) for (const f of ["x", "y", "z0", "z1"]) m[f] = shown[0][f] + (w[f] - shown[0][f]) * k; return m; });
     } else { for (const m of shown) m.a -= dt * 6; shown = shown.filter((m) => m.a > 0); }
   }
   return {aim, cells, get list() { return shown; }, set force(v) { forced = v; }};

@@ -64,12 +64,13 @@ const VoxMesh = (() => {
     // (an overhang, a way through: light comes in; a cave with one mouth is dark from its mouth on).
     const floorOf = (c, z) => { let f = c[0]; for (let i = 2; i < c.length && c[i] < z; i += 2) f = c[i]; return f; };      // (a column's floor under its cell z)
     const wall = (x, y, lvl) => { const c = host.column(x, y); if (c) for (let i = 0; i < c.length; i += 2) if (lvl <= c[i]) return i === 0 || lvl > c[i - 1] ? c[i] : null; return null; };
+    const shut = (x, y, floor) => { let n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) for (let k = 1; k <= 6; k++) { const c = host.column(x + dx * k, y + dy * k); if (c && c[c.length - 1] >= floor + cfg.gorge) { n++; break; } } return n >= 6; };
     const slot = (x, y, z, lvl, floor = z) => {
-      let best = 0; if (!(floor < cfg.dug)) return 0;
+      let best = 0; const dug = floor < cfg.dug; if (!dug && !(cfg.gorge && shut(x, y, floor))) return 0;      // (cfg.gorge: a natural hole too, a canyon: where walls that many levels over its floor shut six or more of the eight ways off it, each within six tiles: little sky is seen from there; counted from the lower wall's top)
       for (const [dx, dy] of [[0, 1], [1, 0]]) {
         let w = 1, low = 1e9;
-        for (const s of [-1, 1]) { let t = null, k = 1; for (; k <= 4 && t === null; k++) t = wall(x + s * dx * k, y + s * dy * k, lvl); if (t === null) { low = null; break; } w += k - 2; low = Math.min(low, t); }
-        if (low !== null) { low = Math.min(low, cfg.dug); best = Math.max(best, Math.floor((low - z + 1) * Math.min(10, low - floor) / (4 * w * w))); }
+        for (const s of [-1, 1]) { let t = null, k = 1; for (; k <= (dug ? 4 : 6) && t === null; k++) t = wall(x + s * dx * k, y + s * dy * k, lvl); if (t === null) { low = null; break; } w += k - 2; low = Math.min(low, t); }
+        if (low !== null) { if (dug) low = Math.min(low, cfg.dug); best = Math.max(best, Math.floor((low - z + 1) * Math.min(10, low - floor) / (4 * (dug ? w * w : 9)))); }      // (a gorge: by its depth alone, as one three tiles wide: its width changes tile by tile, and its wall was a patchwork)
       }
       return Math.max(0, Math.min(5, best));
     };
@@ -102,7 +103,11 @@ const VoxMesh = (() => {
       if (wet || (c.length === 1 && c[0] === 0 && [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => host.water(x + dx, y + dy))))) {      // (water; a shore: the water under it)
         const tw = wet && solid(x - 1, y, 1) ? K : 0, te = wet && solid(x + 1, y, 1) ? K : 0, tn = wet && solid(x, y - 1, 1) ? K : 0;
         // (under a shore's top, and under what floats: a px lower, so that two faces are never at one depth)
-        if (wet) add(0, [X - tw, Y - tn, 0, T + tw + te, T + tn, -tw, -tn, T, 0, 2, 0, 0, 0, 0]); else add(0, [X, Y - 1, -1, T, T + 1, 0, 0, T, 0, 2, 0, 0, 0, 0]);
+        if (wet) add(0, [X - tw, Y - tn, 0, T + tw + te, T + tn, -tw, -tn, T, 0, 2, 0, 0, 0, 0]);
+        else {      // (not along a side where the land is lower and no water, a pit beside the shore: its rim leaves px see-through there, and the water showed in them: a pale line along the pit floor's edge)
+          const dry = (dx, dy) => { const n = host.column(x + dx, y + dy); return !!n && n[n.length - 1] < 0 && !host.water(x + dx, y + dy) ? K : 0; }, dn = dry(0, -1) || (host.water(x, y - 1) ? 0 : dry(-1, -1) || dry(1, -1)), dw = dry(-1, 0), de = dry(1, 0);
+          add(0, [X + dw, Y - 1 + dn, -1, T - dw - de, T + 1 - dn, dw, dn, T, 0, 2, 0, 0, 0, 0]);
+        }
       }
       if (wet) { if (ch.decor && ch.decor[ly * N + lx]) add(0, [X, Y + 1, 1, T, T, 0, 0, T, 128, 0, 0, 0, 0, 255]); continue; }
       const south = host.column(x, y + 1);
@@ -114,7 +119,7 @@ const VoxMesh = (() => {
         const tn = n ? K : open && !!nc && has(nc, z) && nc[nc.length - 1] > z ? cfg.inset : 0, cut = !open && south && south[south.length - 1] === z ? cfg.inset : 0;
         // round a top. 1 north, 2 west, 4 east: a block stands over it there (it goes on under it; the shadow at
         // that wall's foot). 8: land over it (a cave's floor, in the dark). 128: what floats on water
-        const dark = open ? 0 : inward(x, y, z);                // (a floor out of doors is as it is painted, however deep: it is where you stand)
+        const dark = open ? (cfg.gorge && z >= cfg.dug ? Math.min(2, slot(x, y, z + 1, z + 1, z)) : 0) : inward(x, y, z);                // (a floor out of doors is as it is painted, however deep: it is where you stand; a gorge's, two steps at the most: it was as bright as the plateau over it, "a rug on the plateau")
         const top = (x0, wd, y1, ux) => add(p, [x0, Y - tn, z * cfg.up, wd, y1 + tn, ux, -tn, T, (n ? 1 : 0) | (w ? 2 : 0) | (e ? 4 : 0) | (open ? 0 : 8), 0, strip(z + 1),
           (open && w ? Math.max(-K, reach(x - 1, y, z + 1, 1)) : -inset(x - 1, y, z + 1, 1)) + BIAS, (open && e ? Math.max(-K, reach(x + 1, y, z + 1, -1)) : -inset(x + 1, y, z + 1, -1)) + BIAS, n ? shape(x, y - 1, z + 1) : 0, shape(x, y, z), dark]);      // (its own shape, for the sun: under it the top's paint is its wall, vox_light.js; last: how dark, above)
         // (a mouth's floor goes on under the walls beside it only up to where the ground before the mouth goes on under them: K px

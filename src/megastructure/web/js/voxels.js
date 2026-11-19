@@ -24,7 +24,7 @@ const Voxels = (() => {
   // (the look of the sides, all the host's: under: a cave's mouth is dark; tuck, inset: the hill sheets' cells leave
   // up to 6 px empty at a corner, 2 along a side; bands: a wall that faces west or east leans out a level at a time
   // (voxpaint.js: 2 px), 5 levels at the most)
-  const engine = Vox.create(host, {size: B, cell: P, up: RELIEF_STEP, levels: [-9, 12], variants: 4, under: [.16, .12, .15, .9], sea: [.42, .7, .84], tuck: 6, inset: 2, bands: 5, dug: 0});
+  const engine = Vox.create(host, {size: B, cell: P, up: RELIEF_STEP, levels: [-9, 12], variants: 4, under: [.16, .12, .15, .9], sea: [.42, .7, .84], tuck: 6, inset: 2, bands: 5, dug: 0, gorge: 4});
   const made = (b) => engine.made(b.bx, b.by) && !!b.water;      // a block of tiles is ready to be shown: its faces, and its sea (water.js)
   // (the one place the land's px change: a tile drawn again is a tile the engine paints again)
   const drawTile0 = drawTile;
@@ -60,9 +60,8 @@ const Voxels = (() => {
       for (const k of all.keys()) { const [x, y] = k.split(",").map(Number); x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
       const w = x1 - x0 + 1, h = y1 - y0 + 1, px = new Uint8Array(w * h * 4);
       for (const [k, lv] of all) { const [x, y] = k.split(",").map(Number), i = ((y - y0) * w + x - x0) * 4, v = lv + 32768; px[i] = v & 255; px[i + 1] = v >> 8; px[i + 2] = 255; px[i + 3] = 255; }
-      cutOf = {x: x0, y: y0, w, h, px, ver, earth: [.3, .21, .17], line: [.2, .14, .13]};      // (a block's sliced top, and the line along its edge at a drop)
+      cutOf = {x: x0, y: y0, w, h, px, ver, earth: [.3, .21, .17]};      // (the colour where nothing at all is behind: there should be none)
     }
-    cutOf.slab = api.slab;                                    // (slab: a sliced top in the cut's one flat colour, as it was: to compare)
     cutOf.fill = api.probe ? [1, 0, 1] : null;                // (probe: what the faces of the cut leave empty is counted, api.fillPx: none, tests)
     cutOf.a = cur ? 1 : xray.a;                              // (the cursor's is there at once; the place's comes with how hidden you are)
     return cutOf;
@@ -94,6 +93,6 @@ const Voxels = (() => {
     ctx.globalAlpha = a; ctx.drawImage(pic, 0, 0, W, H); ctx.globalAlpha = 1;
     return true;
   }
-  const api = {made, work, frame, veil, engine, probe: false, fillPx: 0, slab: false};
+  const api = {made, work, frame, veil, engine, probe: false, fillPx: 0};
   return api;
 })();

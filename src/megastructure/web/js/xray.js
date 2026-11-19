@@ -1,6 +1,6 @@
 // The one way you are seen when you are hidden: behind a wall or a mountain, down a hole, under a roof (a cave under
 // a hill, a tunnel dug under the meadow). The land is blocks (voxels.js) and is always drawn as it is; where you are
-// hidden the land is cut open over the whole place you are in: its roof is left out, the land in front of it down
+// hidden in a hole (under a roof, in dug ground, on a gorge's floor) the land is cut open over the whole place you are in; behind a hill or under an overhang, over your own column alone (xrayFind): its roof is left out, the land in front of it down
 // to its floor, and the rock round it down to its ceiling, so the place is seen with its walls standing (the engine
 // does that, a tile at a time: vox_engine.js `cut`). This file says when you are hidden and how much (xrayLook),
 // which tiles are cut and how low (xrayFind), and what else goes with it: the place you are in (the ground you could walk or drop to from where you
@@ -15,7 +15,7 @@
 // comes; far: tiles south to look for ground drawn up over you; near: how far from your tile (tiles) the place you
 // are in goes
 // wide: how far from your tile ground that was dug, or is under a roof, is of that place (all of a cave, a tunnel)
-const XRAY = {even: true, r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, near: 4.1, wide: 14};
+const XRAY = {gorge: 4, side: 0, even: true, r: 3.1, core: .42, body: 18, from: .5, full: .6, wait: .15, far: 12, near: 4.1, wide: 14};
 // how strong, the height you stand at, your row, the window's centre (tiles, as drawn), how long you've been hidden,
 // and what was found for where you are (pic: {key, floor: "x,y" -> the place's floor under a roof, rock: the tiles
 // of the rock in the way, place: the tiles of the place, cut: "x,y" -> the level that tile is cut down to})
@@ -74,6 +74,15 @@ function xrayShows(p) {
   return !xrayRock(x, y) && xray.pic && xray.pic.place.has(x + "," + y) ? xray.a : 0;
 }
 
+// A natural hole: ground from which little sky is seen: of the eight ways off it, six or more meet a wall no further
+// than six tiles off, XRAY.gorge levels or more over it (the floor of a canyon, a crevice; not an open valley, a way
+// between two low hills, the foot of a cliff with a rock behind you). You are in it as in a hole that was dug: all
+// of it is shown. (vox_mesh.js has the same rule for how dark it is: `shut`.)
+function xrayGorge(x, y, h) {
+  let n = 0;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) for (let k = 1; k <= 6; k++) if (topAt(x + dx * k, y + dy * k) >= h + XRAY.gorge) { n++; break; }
+  return n >= 6;
+}
 // How far (art px) the ground south of a tile rises over the foot of its row (py: the row as drawn) at height L
 function xrayCover(tx, row, py, L) {
   let cover = 0;
@@ -97,7 +106,7 @@ function xrayLook(dt) {
       const under = roofAt(tx, row) > 0 && coveredAt(tx, row, L);
       // (down a hole that was dug, behind its rim: at once too, however little of you the rim hides: you are IN the pit, seen on its floor, not a head at its edge)
       const cover = xrayCover(tx, row, py, L) - 2 - STAND;
-      roof = roof || under; hidden += part * (under || (L < 0 && cover > 0) ? 1 : Math.max(0, Math.min(1, cover / XRAY.body)));
+      roof = roof || under; hidden += part * (under || ((L < 0 || xrayGorge(tx, row, L)) && cover > 0) ? 1 : Math.max(0, Math.min(1, cover / XRAY.body)));
     }
     want = Math.max(0, Math.min(1, (hidden - XRAY.from) / (XRAY.full - XRAY.from)));
     f = {px, py, L, row, mid: .5 + UP, roof};
@@ -107,7 +116,7 @@ function xrayLook(dt) {
     if (xray.t < XRAY.wait && xray.a <= .01 && !f.roof) want = 0;      // (a moment behind something: not yet)
     if (xray.t > 0 || xray.a > .01) {
       xray.L = f.L; xray.row = f.row; xray.x = f.px; xray.y = f.py - shOf(f.L) / 16 - f.mid;   // (its centre: your body, where it is drawn)
-      xrayFind(Math.round(f.px));
+      xrayFind(Math.round(f.px), Math.floor(f.px + .125), Math.ceil(f.px - .125));      // (and your body: the one or two columns it is in)
     }
   }
   xray.a += (want - xray.a) * (1 - Math.exp(-dt / .09));
@@ -117,8 +126,8 @@ function xrayLook(dt) {
 
 // What goes with the window where you are: the place's floors under a roof and the rock in the way. Worked out when
 // your tile, your height or the land changes, not each frame.
-function xrayFind(tx) {
-  const key = [tx, xray.row, xray.L, Floors.ver, landVer].join();
+function xrayFind(tx, x0 = tx, x1 = tx) {
+  const key = [tx, xray.row, xray.L, Floors.ver, landVer, x0, x1, XRAY.side].join();
   if (xray.pic && xray.pic.key === key) return;
   // the rock seen through: on the line of sight to a tile of your place (south of it in its column, and high enough
   // to be drawn over it: two layers a row), and of the mass that hides you (gone through from what is over your tile
@@ -138,8 +147,24 @@ function xrayFind(tx) {
   // the rest of it stands, cut round you.
   let walled = 0, free = 0;
   for (const [k, h] of floor) { const [x, ty] = k.split(",").map(Number); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!floor.has((x + dx) + "," + (ty + dy))) { if (levelAt(x + dx, ty + dy) > h + 1) walled++; else free++; } }
-  const hole = (L < 0 || floor.has(tx + "," + row)) && free <= walled;
-  const seen = (x, gy) => (Math.abs(x - tx) <= 1 && Math.abs(gy - row) <= 1) || (hole && (floor.has(x + "," + gy) || floors.get(x + "," + gy) < 0));
+  const low = new Set(); for (const [k, h] of floors) { const [x, ty] = k.split(",").map(Number); if (h < 0 || (h === levelAt(x, ty) && xrayGorge(x, ty, h))) low.add(k); }      // (the floors of a hole out of doors: dug, or a gorge's)
+  const hole = (low.has(tx + "," + row) || floor.has(tx + "," + row)) && free <= walled;
+  // Not in a hole (behind a hill, under an overhang): the cut is as small as your body needs. In the column or two
+  // you stand in, each tile from yours south is cut down to the eye's line to your feet (two levels a row) if it has
+  // land on that line's way to your body (up to five levels over it: what is higher hides nothing of you), a roof
+  // too. Nothing beside you is cut (three tiles wide and to the ground, a plateau read as an L-shaped hill, a hill as
+  // a U). A stump one tile wide the cut would leave standing alone beside it goes with it.
+  if (!hole) {
+    const cut = new Map(), rock = new Set(), own = tx + "," + row; tx = x0;
+    for (let x = x0 - XRAY.side; x <= x1 + XRAY.side; x++) for (let ty = row; ty <= row + XRAY.far; ty++) {
+      const feet = L + 2 * (ty - row) - 2, c = ty === row ? L : feet, col = colAt(x, ty); let any = false;
+      for (let z = c + 1; z <= feet + 5 && !any; z++) any = colHas(col, z);
+      if (any) { const k = x + "," + ty; cut.set(k, c); if ((ty > row || x < x0 || x > x1) && !(floors.get(k) <= c)) rock.add(k); }      // (rock: not a tile you can stand on under what is cut off it, a roof's: stepping onto it you are seen)
+    }
+    for (const [k, c] of [...cut]) { const [x, ty] = k.split(",").map(Number); if (ty > row) for (const dx of [-1, 1]) { const h = topAt(x + dx, ty), n = (x + dx) + "," + ty; if (!cut.has(n) && h > c && topAt(x + 2 * dx, ty) <= c && topAt(x + dx, ty - 1) < h && topAt(x + dx, ty + 1) < h) { cut.set(n, c); rock.add(n); } } }
+    xray.pic = {key, floor: new Map([...floor].filter(([k, h]) => k === own || (cut.has(k) && h <= cut.get(k) && !rock.has(k)))), rock, cut, all, place: new Set(floors.keys())}; return;
+  }
+  const seen = (x, gy) => (Math.abs(x - tx) <= 1 && Math.abs(gy - row) <= 1) || (hole && (floor.has(x + "," + gy) || low.has(x + "," + gy)));
   for (const k of [...floor.keys()]) { const [x, ty] = k.split(",").map(Number); if (!seen(x, ty)) floor.delete(k); }      // (a roof that is not lifted: what is under it stays under it)
   // (-> how low it must be cut for the eye to see the floors of the place it hides (the eye looks down two levels
   // a row: a tile further south needs less taken off), or null: it hides none)
@@ -171,7 +196,7 @@ function xrayFind(tx) {
   }
   // (the open floors of a hole you are in, a pit's: nothing is over them to cut; they are of the cut all the same, cut
   // "down" to far over them, so that the cut's walls know the hole has walls out of doors: vox_section.js, one light)
-  if (hole) for (const [k, h] of floors) if (h < 0 && !floor.has(k) && !cut.has(k)) cut.set(k, 30000);
+  if (hole) for (const k of low) if (!floor.has(k) && !cut.has(k)) cut.set(k, 30000);
   // (and your own tile first: a higher floor of the place south of you, drawn up over where you stand, is cut down
   // to your floor as any ground in front of you is: you stood in a dark column with no floor under you)
   for (let ty = row + 1; ty <= row + XRAY.far; ty++) { const k = tx + "," + ty, f = floor.get(k); if (f !== undefined && (f - L) * RELIEF_STEP - (ty - row - 1) * 16 > RELIEF_STEP) lower(k, L); }

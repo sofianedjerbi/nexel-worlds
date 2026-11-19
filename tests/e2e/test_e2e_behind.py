@@ -18,11 +18,17 @@ def test_a_tree_behind_a_hill_is_hidden_by_it_and_shows_in_the_circle(game):
     far, near = (x - 7, x - 5), (x - 2, x - .25)                    # two tiles of your row, and what is drawn over them: out of the circle, and in it beside you
     circle = lambda on: (game.js(f"(() => {{ XRAY.from = {'.5' if on else '9'}; XRAY.full = {'.6' if on else '10'}; return 1; }})()"), game.sleep(700))
     circle(False); bare_far, bare_near = look(*far), look(*near)    # no tree yet
-    circle(True); seen_near = look(*near)
+    # (the hill is cut over your own column, XRAY.side 0: "the cut invents shapes", three tiles wide a hill read as a U.
+    # A tile each side of you, XRAY.side 1, is the cut this test was written for: what is beside you shows through)
+    side = lambda n: (game.js(f"(() => {{ XRAY.side = {n}; return 1; }})()"), game.sleep(700))
+    circle(True); seen_near = look(*near); side(1); wide_near = look(*near); side(0)
     game.stamp(-6, 0, ["T....T"])                                   # a tree on each
     game.sleep(1200)
     assert game.js(f"combAt({x - 6}, {y}) === 'T' && combAt({x - 1}, {y}) === 'T' && tileBehind({x - 6}, {y})")
-    assert look(*near) != seen_near                                 # in the circle: the tree, through the hill
+    assert look(*near) == seen_near                                 # beside your column: behind the hill that stands there
+    side(1)
+    assert look(*near) != wide_near                                 # in the cut: the tree, through the hill
+    side(0)
     assert look(*far) == bare_far                                   # out of it: hidden, as if it were not there
     circle(False)
     assert look(*far) == bare_far and look(*near) == bare_near      # without the circle: both hidden
