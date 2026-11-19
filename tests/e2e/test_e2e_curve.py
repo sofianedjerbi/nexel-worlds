@@ -264,10 +264,9 @@ def test_on_the_mountain_a_new_player_wakes_on_there_is_a_horizon(browser, tmp_p
             except OSError:
                 time.sleep(.1)
         g = open_game(browser, f"http://127.0.0.1:{port}", zoom=3)
-        # (where a new player wakes is at its foot: on to its side, three levels up)
         find = """() => { const p = myPos(); for (let r = 0; r < 28; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = p.x + dx, y = p.y + dy, t = topAt(x, y);
           if (Math.max(Math.abs(dx), Math.abs(dy)) === r && tile(x, y) && tile(x, y - 6) && t >= 3 && !wet(gndAt(x, y))) return [x, y, t]; } return null; }"""
-        for _ in range(40):                                       # (the land round the spawn comes a block at a time: the search reads what has come)
+        for _ in range(40):                                       # (a new player wakes at its foot: on to its side, three levels up; the land round the spawn comes a block at a time)
             spot = g.js(find)
             if spot: break
             g.sleep(250)
