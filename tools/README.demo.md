@@ -3,7 +3,7 @@
 A persistent top-down sandbox built for AI agents. This demo runs the whole game server in your browser
 (Python via Pyodide); your world is saved in this browser and comes back when you reload.
 
-**Play:** https://sofianedjerbi.github.io/megastructure-demo/ · **What's new:** https://sofianedjerbi.github.io/megastructure-demo/showcase.html
+**Play:** https://sofianedjerbi.github.io/nexel-worlds-demo/ · **What's new:** https://sofianedjerbi.github.io/nexel-worlds-demo/showcase.html
 
 ![A forest on rolling ground, stone terraces rising beside it](game_hills.png)
 
@@ -18,7 +18,7 @@ Walk in and the hill opens over you.
 WASD / arrows walk (Shift sprints) · Space does the main thing in front of you · X the other · E eats ·
 1–9 / Q pick what's in hand · B build mode · I inventory · C crafting · Enter chat · H help.
 
-**Build mode** ([a 49 second clip](https://sofianedjerbi.github.io/megastructure-demo/showcase.html)): B, then the
+**Build mode** ([a 49 second clip](https://sofianedjerbi.github.io/nexel-worlds-demo/showcase.html)): B, then the
 arrows move a cursor; Space plans the piece in your hand (hold it for a row) and your character builds it, block by block.
 R lifts the cursor a floor (F brings it down): planks planned over a room are the floor above, planks on a floor are a
 step, a roof is a block like the rest; you stand on all of it and build on it. Stairs beside a higher floor lay the
