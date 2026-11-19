@@ -1,7 +1,8 @@
 """What hides you, four ways (options.js: VIEWS). "depth visualisation is unintuitive", and the user wanted several
-to try: V goes from one to the next, and the Picture page has them. Cut away: what is over you (the house you are in;
-in build mode, all over the cursor's floor) is not drawn, nor what is in front of you; outline: their edges only;
-faded: faint; circle: faint over you, and a circle round you seen through what is in front (as it was)."""
+to try: V goes from one to the next, and the Picture page has them. Cut away: what is built over you (the house you
+are in; in build mode, all over the cursor's floor) is not drawn; outline: its edges only; faded: faint; circle:
+faint over you. (They were ways of showing the land in front of you too: the land is blocks now, and behind it you
+are seen one way, whichever view: the last test.)"""
 
 from test_e2e_floors import go, house
 
@@ -52,22 +53,24 @@ def test_in_a_house_what_is_over_you_is_cut_away_outlined_or_faint(game):
     game.press("b")
 
 
-def test_behind_a_hill_the_rock_in_front_is_gone_its_edges_drawn_or_faint(game):
-    """The ground in front drawn over you (xray.js): the circle clears it towards you; the other views, all over its
-    picture: gone (cut away, outline: and its edges drawn), or a share of it (faded)."""
+def test_behind_a_hill_you_are_seen_the_same_way_whichever_view(game):
+    """The ground in front drawn over you (xray.js): the views were four ways of showing that too (the rock gone, its
+    edges drawn, faint, a circle). The land is blocks now and hidden behind it you are seen one way, the rock in
+    front of you cut away: whichever view is picked (they still say how a built roof over you is shown), it is as
+    much cut, the same tiles, and the screen round you is the same."""
     x, y = game.pos()
     game.stamp(-2, 1, ["....."] * 2, levels=["33333"] * 2)  # a rise three layers high just south of you
-    game.wait("xray.a > .9", 8000)
-    at = lambda: game.js("[xrayAt(xray.x, xray.y), xrayAt(xray.x + 2.5, xray.y)]")
-    shot = """() => new Promise((ok) => requestAnimationFrame(() => { const c = cv.getContext('2d'), S = TS(), [ox, oy] = screenOrigin(S);
-      const d = c.getImageData(Math.round((ox + (myPos().x - 2) * S) * DPR), Math.round((oy + (myPos().y - 1) * S) * DPR), Math.round(5 * S * DPR), Math.round(3 * S * DPR)).data;
-      let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] === 0x75 && d[i + 1] === 0x4c && d[i + 2] === 0x60) n++; ok(n); }))"""
+    game.wait("xray.a > .98", 8000); game.sleep(400)
+    shot = """() => { const keep = {}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) { keep[f] = window[f]; window[f] = () => null; }
+      parts.length = puffs.length = 0; frame(performance.now()); Object.assign(window, keep); const S = TS(), [ox, oy] = screenOrigin(S);
+      const d = ctx.getImageData(Math.round((ox + (myPos().x - 4) * S) * DPR), Math.round((oy + (myPos().y - 4) * S) * DPR), Math.round(9 * S * DPR), Math.round(7 * S * DPR)).data;
+      let a = 2166136261; for (let i = 0; i < d.length; i++) a = Math.imul(a ^ d[i], 16777619);
+      return [+xray.a.toFixed(2), [...xray.pic.cut].sort().join(' '), a >>> 0]; }"""
     got = {}
     for v in ("circle", "cut", "faded", "outline"):
         game.js(f"setOpt('above', '{v}')")
         game.sleep(300)
-        got[v] = [round(a, 2) for a in at()] + [game.js(shot)]
-    assert got["circle"][0] > .9 and got["circle"][1] < got["circle"][0], got     # the circle: clear by you, less so further out
-    assert got["cut"][:2] == [1, 1] and got["outline"][:2] == [1, 1] and got["faded"][:2] == [.65, .65], got
-    assert got["outline"][2] > got["cut"][2] + 20, got       # the rock's edges, in the walls' ink
+        got[v] = game.js(shot)
+    assert got["circle"][0] > .98 and f"{x},{y + 1},0" in got["circle"][1], got   # the rise in front of you: cut down to your ground
+    assert got["cut"] == got["circle"] and got["faded"] == got["circle"] and got["outline"] == got["circle"], got
     assert not game.errors

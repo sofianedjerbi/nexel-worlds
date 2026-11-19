@@ -67,11 +67,11 @@ function frame(now) {
   const [qx, qy, qw, qh] = viewRect(0), onScreen = (b) => b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh + 6 && (b.by + 1) * B > qy;
   const [ax, ay, aw, ah] = viewRect(6), rank = (b) => (onScreen(b) ? 0 : vis.includes(b) ? 1 : 2);
   const coming = inRect(ax, ay, aw, ah + 6).sort((a, b) => rank(a) - rank(b));
-  const landFrom = performance.now(), landUntil = landFrom + (arrivingNow ? 12 : coming.some((b) => !b.relief && onScreen(b)) ? LAND_MS * 2.5 : LAND_MS);
+  const landFrom = performance.now(), landUntil = landFrom + (arrivingNow ? 12 : coming.some((b) => !Voxels.made(b) && onScreen(b)) ? LAND_MS * 2.5 : LAND_MS);
   const fresh = coming.find((b) => !b.drawn);
   if (fresh) { if (arrivingNow && onScreen(fresh)) renderBlock(fresh); else startBlock(fresh); }   // (arriving: whole, at once)
   for (let n = 0; dirtyTiles.length && (n++ & 15 || performance.now() < landUntil);) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
-  reliefWork(coming, landUntil);
+  Voxels.work(coming, landUntil);                    // (the land is blocks: voxels.js)
   const landMs = performance.now() - landFrom;
 
   const S = TS();
@@ -84,26 +84,22 @@ function frame(now) {
   // underneath: plain dark (what hasn't come yet is not the sea). The sea is painted on it where there is sea
   // (water.js: its bottom is under every water tile and every shore), the land over that
   // (away from the land, state.js: under it the screen is that dark, earth; over it, the sky. Going: the land fades to it)
-  const SKY = "#a8d8ea"; ctx.fillStyle = away.high ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H);
-  if (away.a < 1) {                                  // (away: no land is drawn: what is on the screen there is rows from where you are)
-    drawWater(vis.filter((b) => b.relief), ox, oy, t);    // the sea: its bottom, its depth, its light (water.js); the land goes over it
-    for (const b of vis) if (b.canvas) drawBlockRelief(b, sx, sy, S);   // (each level lifted a little: relief.js)
-    drawCaves(vis, sx, sy);                            // (the caves' mouths, on their hills)
-  }
+  const SKY = "#a8d8ea"; ctx.fillStyle = away.high ? SKY : "#2b2420";
+  ctx.fillRect(0, 0, W, H);
+  xrayLook(dt);                                      // (hidden, behind a mountain, down a hole or under a roof: a window on you, xray.js)
+  Voxels.frame(away.a < 1 ? vis : [], ox, oy, S, t, away.high);      // the land and the sea, as blocks
   if (away.a > 0 && away.a < 1) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
-  xrayLook(dt); drawXray(sx, sy);                    // (hidden, behind a mountain, down a hole or under a roof: seen through it, xray.js)
-  Keyhole.draw(sx, sy);                              // (the build cursor's own tile, where the ground hides it: keyhole.js)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor((away.a >= 1 ? away.y : cam.y + away.shift) / B)));
-  const allShown = vis.every((b) => !onScreen(b) || b.relief);
-  arrivingNow = (arrivingNow || !hereBlock || !hereBlock.relief) && !allShown;   // (from arriving until all of it is ready)
+  const allShown = vis.every((b) => !onScreen(b) || Voxels.made(b));
+  arrivingNow = (arrivingNow || !hereBlock || !Voxels.made(hereBlock)) && !allShown;   // (from arriving until all of it is ready)
   const worldReady = !arrivingNow;
   slowFrame(dt, worldReady && !fresh);
   if (!worldReady) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }
   // y-sorted sprites: objects and creatures
   const list = [];
   // (forEach, and what is out of view left first: a pair was made a frame for every thing of every block in view)
-  for (const b of vis) if (b.relief && worldReady) b.objs.forEach((c, i) => {   // (things show with their ground, not before)
+  for (const b of vis) if (Voxels.made(b) && worldReady) b.objs.forEach((c, i) => {   // (things show with their ground, not before)
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3 || hiddenAt(x, y) || (away.a > 0 && Math.abs(standAt(x, y) - away.z) > APART)) return;   // (hidden: in a cave, seen from outside: under its roof; away: on the land you left)
     if (c === "l") { list.push({y, x, fx: () => Climb.drawLadder(x, y, standAt(x, y), sx, sy, S)}); return; }   // (a ladder: up to what it leans on, climbing.js)
@@ -112,7 +108,7 @@ function frame(now) {
   });
   // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
   occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
-  const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && b.relief); };
+  const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && Voxels.made(b)); };
   // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
   const apart = (p) => away.a > 0 && Math.abs(liftOf(p) / zoom / RELIEF_STEP - away.z) > APART;   // (away from the land, state.js: who is on the land you left is not drawn with it; on land that is drawn, anyone is)
   for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p) && !apart(p)) { const cl = Climb.climbOf(p); list.push({y: cl ? cl.y : p.y + .01 + Floors.rise(p) * Floors.K, p}); }   // (on a ladder: in front of it)
@@ -179,7 +175,6 @@ function frame(now) {
   drawXp();
   foodPreview();
   drawPlucks(sx, sy, S, now);
-  drawUnderDark(vis, sx, sy, t);                     // (under a roof, a cave's or a tunnel's: dark past where light reaches, cavelight.js)
   drawNight(vis, sx, sy, S, t);
   drawGrid(sx, sy, S);                             // (/grid: debug.js)
   updateActions();

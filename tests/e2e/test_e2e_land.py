@@ -1,27 +1,24 @@
-"""Land coming in: only what shows is painted, a little a frame, in the page, and it is the same land to the pixel."""
+"""Land coming in: only what shows is painted, a little a frame, in the page, and it is the same land to the pixel;
+its blocks (voxels.js, vox_engine.js) are made a few tiles at a time."""
 
 LV = "0123456789ABC"
 # a mountain of terraces twelve layers high, 13 tiles across
 MOUNTAIN = ["".join(LV[max(0, 12 - 2 * max(abs(dx), abs(dy)))] for dx in range(-6, 7)) for dy in range(-6, 7)]
 
-# every block's ground and raised picture, drawn again from nothing: a hash of each
-SIG = """() => { const hash = (c) => { if (!c) return 0; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let a = 2166136261;
-    for (let i = 0; i < d.length; i++) a = Math.imul(a ^ d[i], 16777619); return a >>> 0; };
-  return [...blocks.values()].filter((b) => b.canvas).sort((p, q) => p.by - q.by || p.bx - q.bx).map((b) => {
+# every block's ground, its px painted again from nothing: a hash of each, and how many cells were laid for it
+SIG = """() => { const hash = (px) => { let a = 2166136261; for (let i = 0; i < px.length; i++) a = Math.imul(a ^ px[i], 16777619); return a >>> 0; };
+  return [...blocks.values()].filter((b) => b.px).sort((p, q) => p.by - q.by || p.bx - q.bx).map((b) => {
     let n = 0; const o = window.layCell; window.layCell = function (...a) { n++; return o(...a); };
     for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) drawTile(b.bx * B + lx, b.by * B + ly);
-    window.layCell = o; buildRelief(b);
-    return {key: [hash(b.canvas), hash(b.relief.flat), b.relief.up, b.relief.minLv, (b.relief.box || []).join()].join(':'), n}; }); }"""
+    window.layCell = o; return {key: hash(b.px), n}; }); }"""
 
 
 def test_only_what_shows_is_painted_and_the_land_is_the_same(game):
-    """A tile is painted from its last solid layer, and a level's tiles hidden under the level above are passed over
-    (tiles.js, relief.js). The pictures are the same to the pixel as with every layer laid (nothing taken for
-    solid); a block cost 42 ms to build at the foot of a twelve-layer mountain, on a fast machine."""
+    """A tile is painted from its last solid layer (tiles.js). The px are the same as with every layer laid (nothing
+    taken for solid); a block cost 42 ms to build at the foot of a twelve-layer mountain, on a fast machine."""
     game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN)
     pond(game)                                                   # a pond, and a pit under it
     game.sleep(900)
-    game.js(SIG)                                                 # (read once first: Chrome paints a canvas another way once it has been read)
     quick = game.js(SIG)
     game.js("(() => { window.__solid = cellSolid; window.cellSolid = () => false; return 1; })()")
     whole = game.js(SIG)
@@ -31,21 +28,20 @@ def test_only_what_shows_is_painted_and_the_land_is_the_same(game):
     assert game.js(SIG) == quick                                              # ...and drawn again, the same
 
 
-PAGE = """() => { const P = CanvasRenderingContext2D.prototype, od = P.drawImage, op = P.putImageData, out = [];
-  for (const b of blocks.values()) { if (!b.px || !b.relief) continue;
+# each block's px against its tiles laid on a canvas (diff: px that are not the same; near: the same but for a shade),
+# and what making its blocks again from nothing draws on a canvas or puts on one
+PAGE = """() => { const P = CanvasRenderingContext2D.prototype, od = P.drawImage, op = P.putImageData, out = [], E = Voxels.engine;
+  for (const b of blocks.values()) { if (!b.px || !Voxels.made(b)) continue;
     const c = document.createElement('canvas'); c.width = c.height = BW; const g = c.getContext('2d', {willReadFrequently: true});
     for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) drawTile(b.bx * B + lx, b.by * B + ly, {g, ox: lx * 16, oy: ly * 16});
-    const d = new Uint8Array(g.getImageData(0, 0, BW, BW).data.buffer), p = new Uint8Array(b.px.buffer); let diff = 0, near = 0, shown = 0, draws = 0, puts = 0;
+    const d = new Uint8Array(g.getImageData(0, 0, BW, BW).data.buffer), p = new Uint8Array(b.px.buffer); let diff = 0, near = 0, draws = 0, puts = 0, top = -99;
     for (let i = 0; i < d.length; i += 4) { const solid = d[i + 3] === 255 && p[i + 3] === 255, by = Math.max(Math.abs(d[i] - p[i]), Math.abs(d[i + 1] - p[i + 1]), Math.abs(d[i + 2] - p[i + 2]));
       if (solid ? by > 1 : Math.abs(d[i + 3] - p[i + 3]) > 1) diff++; else if (by) near++; }
+    for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) top = Math.max(top, topAt(b.bx * B + lx, b.by * B + ly));
+    const faces = E.faces;
     P.drawImage = function (...a) { draws++; return od.apply(this, a); }; P.putImageData = function (...a) { puts++; return op.apply(this, a); };
-    b.groundAt = -1; buildRelief(b); P.drawImage = od; P.putImageData = op;
-    const cv = b.canvas, s = new Uint32Array(cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data.buffer), f = b.relief.flat;
-    if (!f) { for (let i = 0; i < s.length; i++) if (s[i] !== b.px[i]) shown++; }      // (nothing raised: its ground)
-    else { const it = reliefSteps({x: b.bx * B, y: b.by * B, w: B, h: B, solid: b.solid}, b.px); let r; do r = it.next(); while (!r.done);
-      const up = r.value.out, o = (b.relief.up - shOf(b.relief.minLv)) * BW;           // (its raised px alone; where its ground starts in the picture)
-      for (let i = 0; i < s.length; i++) if (s[i] !== (up[i] >>> 24 ? up[i] : i >= o ? b.px[i - o] : 0)) shown++; }
-    out.push({diff, near, shown, draws, puts, raised: !!f, levels: b.relief.maxLv - b.relief.minLv, water: b.water.any}); }
+    E.forget((cx, cy) => cx !== b.bx || cy !== b.by); E.work([{cx: b.bx, cy: b.by}], performance.now() + 60000); P.drawImage = od; P.putImageData = op;
+    out.push({diff, near, draws, puts, top, made: E.made(b.bx, b.by), same: E.faces === faces, water: b.water.any}); }
   return out; }"""
 
 
@@ -61,26 +57,21 @@ def pond(game):
 
 
 def test_the_land_is_painted_in_the_page_and_handed_to_the_gpu_whole(game):
-    """A block's ground and its raised picture are px worked out in the page, made one canvas, once (tiles.js,
-    relief.js: the raised ground and, where there is none, the ground: a frame paints a block once, not land under land). Put together by the GPU a piece at a time (a mask, the ground drawn into it, a few rows put and a few
-    rows drawn, on canvases used again for the next level), a phone showed the mask itself on cliff tops: black
-    tiles, which no desktop drew. The px are the tiles as a canvas lays them (a sheet's see-through shadow rounds a
-    step differently here and there, as it does from one canvas to another); and building a block draws on no
-    canvas: its one picture is put, once."""
+    """A block's ground is px worked out in the page (tiles.js), and its blocks' tops and fronts are made from such
+    px and handed to the GPU as they are (voxels.js, vox_pages.js). Put together by the GPU a piece at a time (a
+    mask, the ground drawn into it, a few rows put and a few rows drawn, on canvases used again for the next
+    level), a phone showed the mask itself on cliff tops: black tiles, which no desktop drew. The px are the tiles
+    as a canvas lays them (a sheet's see-through shadow rounds a step differently here and there, as it does from
+    one canvas to another); and making a block of land draws on no canvas and puts nothing on one."""
     game.stamp(-48, -48, ["." * 97] * 97)                    # (every block in view a plain meadow first: a stair another test
     game.wait("dirtyTiles.length === 0", 30000)              #  left open nearby has the foot of the tile behind it in the block's px only: 194 px "differ")
     game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN)
     pond(game)
     game.sleep(900)
     blocks = game.js(PAGE)
-    assert len(blocks) >= 2 and max(b["levels"] for b in blocks) >= 12
-    assert all(b["diff"] == 0 and b["shown"] == 0 and b["near"] < 2000 for b in blocks), blocks
-    dry = [b for b in blocks if not b["water"]]
-    # (every block without water; there was "and there is one": a player who wakes by a lake has none, and the rule
-    # for all blocks below holds them)
-    land = lambda b: 1 if b["raised"] or not b["levels"] else 2   # (2: higher ground beside it and none of it in the block: its ground alone is shown)
-    assert any(b["raised"] for b in blocks) and all(b["draws"] == 0 and b["puts"] == land(b) for b in dry), blocks
-    assert all(b["puts"] <= land(b) + 1 and b["draws"] <= 1 for b in blocks), blocks      # (water: its tint, a px a tile, blown up)
+    assert len(blocks) >= 2 and max(b["top"] for b in blocks) >= 12
+    assert all(b["diff"] == 0 and b["near"] < 2000 for b in blocks), blocks
+    assert all(b["made"] and b["same"] and b["draws"] == 0 and b["puts"] == 0 for b in blocks), blocks
 
 
 COBBLES = ["..........", ".________.", ".___.._...", ".._..._...", ".._.._____", ".._......_", ".._......_", ".........."]
@@ -112,14 +103,18 @@ def test_no_cobble_is_cut_at_a_tiles_edge(game):
     game.stamp(2, -9, ["." * 10] * 8)
 
 
-def test_a_blocks_raised_ground_is_built_in_small_steps(game):
-    """No step of building a block is long (they were up to 10 ms each on a fast machine: a late frame on a slow one)."""
+def test_a_block_of_land_is_made_in_small_steps(game):
+    """No step of making a block of land is long (they were up to 10 ms each on a fast machine: a late frame on a slow
+    one): its tiles are painted a few at a time, as much as the frame has time for (vox_engine.js work)."""
     game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN)
     game.sleep(900)
-    worst = game.js("""(() => { let worst = 0, steps = 0; for (const b of blocks.values()) { if (!b.canvas) continue;
-      for (let r = 0; r < 3; r++) { let w = 0, n = 0; const it = blockRelief(b); for (;;) { const t0 = performance.now(), s = it.next(); w = Math.max(w, performance.now() - t0); n++; if (s.done) break; } if (!r || w < worst) worst = w; steps = Math.max(steps, n); } }
+    worst = game.js("""(() => { const E = Voxels.engine; let worst = 0, steps = 0;
+      for (const b of blocks.values()) { if (!b.px || !Voxels.made(b)) continue;
+        for (let r = 0; r < 3; r++) { let w = 0, n = 0; E.forget((cx, cy) => cx !== b.bx || cy !== b.by);
+          while (!E.made(b.bx, b.by) && n < 5000) { const t0 = performance.now(); E.work([{cx: b.bx, cy: b.by}], 0); w = Math.max(w, performance.now() - t0); n++; }
+          if (!r || w < worst) worst = w; steps = Math.max(steps, n); } }
       return [worst, steps]; })()""")
-    assert worst[0] < 5 and worst[1] > 100, worst                # (the mountain's block: over a hundred steps, none long)
+    assert worst[0] < 5 and 40 < worst[1] < 5000, worst          # (a block: over forty steps, none long)
 
 
 def test_a_blocks_water_is_made_again_only_when_it_changed(game):
@@ -135,7 +130,7 @@ def test_a_blocks_water_is_made_again_only_when_it_changed(game):
     game.sleep(900)
     game.js(f"(() => {{ const b = tileIdx({px + 1}, {py})[0]; window.__b = b; window.__w = b.water; return b.water.any; }})()")
     assert game.js("__w.any") is True and game.js(f"tileIdx({cx}, {py})[0] === __b && tileIdx({px}, {py + 2})[0] === __b") is True
-    built = "!dirtyTiles.length && !__b.reliefGen && !__b.reliefDirty"
+    built = "!dirtyTiles.length && Voxels.made(__b) && __b.seaAt === __b.ver"
     game.stamp(cx - x, py - y, ["_"])                            # its block is built again
     game.sleep(500); game.wait(built)
     assert game.js("__b.water === __w") is True
@@ -148,7 +143,7 @@ GLIDE = """() => new Promise((ok) => { follow = null; const out = [], of = windo
   window.frame = function (now) { const s = (performance.now() - t0) / 1000; cam.x = camT.x = x0 + 7 * s; cam.y = camT.y = y0 + 7 * s;
     const t = performance.now(); of(now); const js = performance.now() - t;
     const [qx, qy, qw, qh] = viewRect(0); let miss = 0;
-    for (const b of blocks.values()) if (!b.relief && b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh && (b.by + 1) * B > qy) miss++;
+    for (const b of blocks.values()) if (!Voxels.made(b) && b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh && (b.by + 1) * B > qy) miss++;
     out.push([js, miss]); if (s > 6) { window.frame = of; ok(out); } }; })"""
 
 

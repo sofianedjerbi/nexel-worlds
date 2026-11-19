@@ -50,7 +50,7 @@ const Structures = (() => {
     const cap = (X0, X1) => { r(top, X0, 1, X1 - X0, 3); r(ink, X0, 0, X1 - X0, 1); };
     ctx.globalAlpha = a;
     if (sideDoor(x, y, at)) {                               // seen from above: its posts, its leaf, the doorway's shadow under it
-      [.3, .2, .1].forEach((al, k) => r(`rgba(${SHADE},${al})`, 3 - k, 4, 10 + 2 * k, 8));
+      [.3, .2, .1].forEach((al, k) => r(`rgba(30,20,28,${al})`, 3 - k, 4, 10 + 2 * k, 8));
       for (const Y of [0, 12]) { r(ink, L, Y, 6, 4); r(top, L + 1, Y + (Y ? 0 : 1), 4, 3); }
       if ((a >= 1 ? doorFrame(x, y, at) : 5) >= 3) { r(INK, 6, 4, 4, 8); r("#90625d", 7, 4, 2, 8); r("#e8cfa6", 7, 9, 1, 1); }       // shut: across the way
       else { r(INK, R, 3, 5, 4); r("#90625d", R, 4, 4, 2); }                                                                   // open: swung back from its post

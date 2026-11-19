@@ -1,15 +1,12 @@
 """Regressions for higher ground drawn higher (relief.js), the world-to-screen lift, smooth fly-ins, no frame waiting
 on drawing new ground, caves (a roof like a house's) and pits."""
 
-import json
+from test_e2e_digging import LAND, earth
 
 
 def terrace(game, h=3, dy=-4, rows=3):
     game.stamp(-2, dy, ["....."] * rows, levels=[str(h) * 5] * rows)
 
-
-# a block's raised ground alone (what is shown, b.relief.flat, has its ground under it: relief.js)
-RAISED = "((b) => { const it = reliefSteps({x: b.bx * B, y: b.by * B, w: B, h: B, solid: b.solid}, b.px); let r; do r = it.next(); while (!r.done); return r.value.flat; })"
 
 def test_every_layer_is_the_same_step_up(game):
     """Level 1 is raised too: +1 always looks like +1 (it used to be drawn flat, so two +1s looked like a +2)."""
@@ -63,44 +60,29 @@ def test_picked_up_items_fly_smoothly_on_high_ground(game):
 
 
 def test_walls_have_no_dark_line_at_their_foot(game):
-    """The ink line under high walls looked like a black underline: gone."""
+    """The ink line under high walls looked like a black underline: gone. On the screen a terrace's front, from its
+    top edge to a little under its foot, has earth and none of the pack's ink."""
     terrace(game)
     game.sleep(800)
     x, y = game.pos()
-    found = game.js(f"""(() => {{ const b = blocks.get(bkey(Math.floor({x} / B), Math.floor({y - 2} / B)));
-      buildRelief(b); const c = {RAISED}(b); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-      for (let i = 0; i < d.length; i += 4) if (d[i + 3] && d[i] === 80 && d[i + 1] === 64 && d[i + 2] === 134) return true;
-      return false; }})()""")
-    assert found is False
-
-
-def test_sides_show_a_ledge_per_layer(game):
-    """A +3 one tile wide shows earth ledges on both sides, a layer each (the side of a +3 looked like a +1)."""
-    game.stamp(-3, -6, [".......", "......."] * 2, levels=["0001000", "0001000", "0003000", "0003000"])
-    game.sleep(800)
-    x, y = game.pos()
-    width = lambda yy: game.js(f"""(() => {{ const b = blocks.get(bkey(Math.floor({x} / B), Math.floor({yy} / B))); buildRelief(b);
-      const c = {RAISED}(b), lx = ({x} - b.bx * B) * 16, ly = ({yy} - b.by * B) * 16 + 8 + b.relief.up - shOf(1);   // (level 1's row in the block's raised picture)
-      const d = c.getContext('2d').getImageData(lx - 12, ly, 40, 1).data; let n = 0;
-      for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n; }})()""")
-    high, low = width(y - 3), width(y - 5)
-    assert high - low >= 2 * 2 * 3 - 2, (high, low, game.js('dirtyTiles.length'))   # a +3 strip: two ledges of 3 px each side more than a +1
+    ink, front = game.js(f"""(() => {{ const keep = {{}}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) {{ keep[f] = window[f]; window[f] = () => null; }}
+      frame(performance.now()); Object.assign(window, keep); const S = TS(), [ox, oy] = screenOrigin(S);
+      const d = ctx.getImageData(Math.round((ox + ({x} - 2) * S) * DPR), Math.round((oy + ({y} - 1 - 26 / 16) * S) * DPR), Math.round(5 * S * DPR), Math.round(28 / 16 * S * DPR)).data; let ink = 0, front = 0;
+      for (let i = 0; i < d.length; i += 4) {{ if (d[i] === 80 && d[i + 1] === 64 && d[i + 2] === 134) ink++; if (d[i] > d[i + 1] + 8) front++; }}
+      return [ink, front / (d.length / 4)]; }})()""")
+    assert ink == 0 and front > .7, (ink, front)
 
 
 def test_running_into_new_ground_never_stalls_a_frame(game):
-    """Raised ground and new blocks are drawn in steps within a budget: no frame waits on a whole block (sprinting
-    froze the game for 70-130 ms)."""
+    """New land is made in steps within a budget (voxels.js work): no frame waits on a whole block (sprinting froze the
+    game for 70-130 ms). (How long a step is: test_e2e_land.py.)"""
     x, y = game.pos()
     ms = game.js(f"""new Promise((res) => {{
-      for (const b of blocks.values()) b.reliefDirty = true;
+      Voxels.engine.forget(() => false);                       // (the land round you to be made again too, as blocks)
       rpc('dev_teleport', {{x: -10, y: 190}});
       const f = []; (function step(t) {{ f.push(t); if (f.length < 150) requestAnimationFrame(step); else res(f); }})(performance.now()); }})""")
     gaps = sorted(b - a for a, b in zip(ms, ms[1:]))
     assert gaps[-1] < 60, gaps[-5:]
-    t = game.js("""(() => { let worst = 0; for (const b of blocks.values()) { if (!b.canvas) continue;
-      const it = blockRelief(b); while (true) { const t0 = performance.now(), r = it.next(); worst = Math.max(worst, performance.now() - t0); if (r.done) break; } }
-      return worst; })()""")
-    assert t < 12, t                                            # a step is small: it fits the frame's budget
 
 
 def test_a_cave_is_its_mountain_from_outside_and_seen_through_it_inside(game):
@@ -178,7 +160,10 @@ def test_a_pickaxe_cuts_a_tunnel_into_a_wall(game):
     game.face(0, -1)
     assert "Dig into the hill" in game.actions()
     game.press(" ", 1500)
-    assert game.js(f"surfacesAt({x}, {y - 1})") == [0, 3] and game.js(f"shownVoids({x}, {y - 1}, 0, 1)") == [[1, 1]]
+    assert game.js(f"surfacesAt({x}, {y - 1})") == [0, 3]
+    game.wait("dirtyTiles.length === 0", 8000); game.sleep(400)
+    hole, beside = game.js(LAND, [[x, y - 1, 0, 8, 12], [x + 1, y - 1, 0, 8, 12]])
+    assert earth(beside) and not earth(hole), (hole, beside)  # the face is open there: the tunnel's floor in it, the hill's front beside it
     game.js("selectItem(null)")
     game.hold(["w"], 300)
     game.sleep(600)
@@ -207,23 +192,35 @@ def test_a_frame_paints_the_screen_a_few_times_over_not_ten(game):
     assert not game.errors
 
 
-def test_ground_redrawn_while_a_block_is_first_built_builds_it_again(game):
-    """A block's raised ground is built in steps over a few frames. Its ground redrawn meanwhile (the block beside
-    it arriving changes its edge) was only noted for a block that had been built before: on a first build the note
-    was dropped, and the block kept land worked out without its neighbour (a column of flat ground along that edge)."""
+def test_ground_redrawn_while_a_block_is_first_made_is_made_again(game):
+    """A block of land is made in steps over a few frames (vox_engine.js work). Its ground redrawn meanwhile (the
+    block beside it arriving changes its edge) was only noted for a block that had been built before: on a first
+    build the note was dropped, and the block kept land worked out without its neighbour. A tile that changes while
+    its block is first being made is made again: what is shown is what is made from nothing afterwards."""
     game.clear_area(8)
     game.stamp(2, -3, ["....."] * 5, levels=["33333"] * 5)
     game.sleep(900)
     x, y = game.pos()
-    game.js(f"""(() => {{ const t = tileIdx({x + 7}, {y - 1}), b = t[0];
-      b.relief = null; b.reliefGen = blockRelief(b); b.reliefGen.next();      // as if just arrived: its first build under way
-      b.lv[t[1]] = String.fromCharCode(SEA + 3); drawTile({x + 7}, {y - 1});   // ...and its land turns out higher here
-      window.__b = b; return 1; }})()""")
-    game.sleep(900)
-    sig = "(() => { const c = __b.relief.flat; return c ? Array.from(c.getContext('2d').getImageData(0, 0, c.width, c.height).data).reduce((h, v) => (h * 31 + v) | 0, 7) : 0; })()"
-    shown = game.js(sig)
-    game.js("(() => { buildRelief(__b); return 1; })()")
-    assert shown == game.js(sig) and shown != 0
+    ty = y - 1 if (y - 1) % 32 else y                        # (a tile that is not in its block's first row: painted before the block is whole)
+    made = "Voxels.made(__b) && dirtyTiles.length === 0"
+    part = game.js(f"""(() => {{ const t = tileIdx({x + 7}, {ty}), b = t[0], E = Voxels.engine;
+      E.forget(() => false);                                   // as if just arrived: nothing of it made
+      for (let n = Math.ceil((B * B - t[1]) / 24); n > 0; n--) E.work([{{cx: b.bx, cy: b.by}}], 0);      // its first build under way, that tile painted
+      const part = !E.made(b.bx, b.by);
+      b.lv[t[1]] = String.fromCharCode(SEA + 3); drawTile({x + 7}, {ty});   // ...and its land turns out higher here
+      window.__b = b; return part; }})()""")
+    assert part
+    game.wait(made, 20000); game.sleep(400)
+    tile = f"""(() => {{ const keep = {{}}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) {{ keep[f] = window[f]; window[f] = () => null; }}
+      frame(performance.now()); Object.assign(window, keep); const S = TS(), [ox, oy] = screenOrigin(S);
+      return [Voxels.engine.faces, Array.from(ctx.getImageData(Math.round((ox + {x + 7} * S) * DPR), Math.round((oy + {ty} * S - shOf(3) * zoom) * DPR), Math.round(S * DPR), Math.round(2.5 * S * DPR)).data).join()]; }})()"""
+    shown = game.js(tile)
+    game.js("(() => { Voxels.engine.forget(() => false); return 1; })()")
+    game.sleep(100); game.wait(made, 20000); game.sleep(400)
+    again = game.js(tile)
+    assert shown[0] == again[0] and shown[1] == again[1], (shown[0], again[0])
+    top = game.js(LAND, [[x + 7, ty, 3, 8, 8], [x + 7, ty, 3, 8, 20]])
+    assert not earth(top[0]) and earth(top[1]), top          # (its top, three layers up; its front under it)
 
 
 def test_told_it_missed_events_the_page_asks_for_its_land_again(game):

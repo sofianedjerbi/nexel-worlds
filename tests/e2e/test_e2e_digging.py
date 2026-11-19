@@ -1,7 +1,8 @@
 """Digging down in build mode (web/js/build.js, keyhole.js, tiles.js). "depth visualisation is unintuitive", and of
 five mockups the user chose "Earth and a keyhole": dug ground is earth, a shade darker a layer down; where the ground
 hides the cursor only its own column is seen through; beside it, how far down it is. By keys: Q sinks the cursor a
-layer into the ground, E brings it back, X digs the room to stand there: a way down is a tunnel, a step at a time."""
+layer into the ground, E brings it back, X digs the room to stand there: a way down is a tunnel, a step at a time.
+(The land is blocks, voxels.js: what is seen of it is read off the screen, LAND.)"""
 
 GRASS = 0xff70d4c0                                             # (the meadow's green, #c0d470, as a block's px has it)
 GREEN = f"""([x, y, rows, cols]) => {{ const b = blockOf(x, y), o = (y - b.by * B) * 16 * BW + (x - b.bx * B) * 16; let n = 0;
@@ -26,7 +27,6 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
         game.press("q", 120)
         assert game.js("Build.level()") == -depth and rows()["B"][0] == f"BUILD · -{depth} · leave"
     assert rows()["X"] == ["Plan the step before it first", "bad"]      # (three down, beside you: shut in)
-    game.wait("Keyhole.shown", 3000)                           # (in the ground: the block the cursor is on, faint)
     game.press("x")
     assert game.js("Build.S.plans.size") == 0
     game.press("b")
@@ -113,9 +113,16 @@ def test_a_dug_floor_is_earth_with_no_grass_at_the_foot_of_its_walls(game):
     assert not game.errors
 
 
+# the land under the build cursor (the cursor itself not drawn): the colour in the middle of its tile as drawn
+UNDER_CURSOR = """() => { const draw = Build.draw; Build.draw = () => null; frame(performance.now()); Build.draw = draw;
+  const r = Build.S.rect; return Array.from(ctx.getImageData(Math.round((r.x + r.w / 2) * DPR), Math.round((r.y + r.w / 2) * DPR), 1, 1).data).slice(0, 3); }"""
+
+
 def test_the_keyhole_shows_the_cursor_where_the_ground_in_front_hides_it(game):
     """Down a hole the grass in front is drawn over the floor: the cursor's own tile is seen through, and no more (the
-    x-ray circle that went round it is yours alone); on the ground, where nothing hides it, there is none."""
+    cut that shows you when you are hidden is yours alone); on the ground, where nothing hides it, the land is
+    as it is. (The land painted flat, keyhole.js painted that tile cut open; with blocks it is read off the screen:
+    under the cursor, the pit's floor, earth, not the meadow in front of it.)"""
     game.clear_area(8)
     x, y = game.pos()
     game.stamp(-1, 2, ["..."] * 3, levels=["ccc"] * 3)
@@ -123,15 +130,28 @@ def test_the_keyhole_shows_the_cursor_where_the_ground_in_front_hides_it(game):
     game.press("b")
     game.js(f"Build.S.at = {{x: {x}, y: {y + 4}}}")           # the pit's south row: under the grass in front
     assert game.js("Build.level()") == -3
-    game.wait("Keyhole.shown", 3000)
+    game.sleep(600)                                            # (the view goes half way to the cursor)
+    under = game.js(UNDER_CURSOR)
     assert game.js("xray.a") < .1
+    assert earth(under), under                                 # its floor, three down: seen through the grass in front
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y}}}")
-    game.wait("!Keyhole.shown", 3000)
+    game.sleep(600)
+    assert green(game.js(UNDER_CURSOR))                        # on the meadow: the meadow
     game.press("b")
     assert not game.errors
 
 
-SEEN = "xray.a > .95 && !xray.job && xray.pic && xray.pic.any > 0"
+SEEN = "xray.a > .95 && !!xray.pic"                           # hidden, the land cut open over the place you are in (xray.js)
+HIDE = "['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']"
+# the screen without anybody on it: the land's colour [r, g, b] at each [x, y, lv, ax, ay]: tile (x, y) as drawn at
+# level lv, the art px (ax, ay) from its corner
+LAND = """(spots) => { const keep = {}; for (const f of %s) { keep[f] = window[f]; window[f] = () => null; }
+  parts.length = puffs.length = 0; frame(performance.now()); const S = TS(), [ox, oy] = screenOrigin(S), k = S / 16;
+  const out = spots.map(([x, y, lv, ax, ay]) => Array.from(ctx.getImageData(Math.round((ox + x * S + (ax + .5) * k) * DPR), Math.round((oy + y * S - shOf(lv) * zoom + (ay + .5) * k) * DPR), 1, 1).data).slice(0, 3));
+  Object.assign(window, keep); return out; }""" % HIDE
+cut = lambda c: sum(c) < 220 and c[0] >= c[1]                  # the ground cut open with nothing behind, a cave's mouth: dark earth
+earth = lambda c: c[0] > c[1] + 8 and not cut(c)               # a dug floor, a front: earth, lighter than the cut
+green = lambda c: c[1] > c[0] + 12                             # the meadow
 # the screen without anybody on it: in each of the tiles [x, y, depth] as drawn, how many px are greener than earth
 GREEN_ON_SCREEN = """(tiles) => { const keep = {}; for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) { keep[f] = window[f]; window[f] = () => null; }
   frame(performance.now()); const S = TS(), [ox, oy] = screenOrigin(S), out = [];
@@ -142,29 +162,27 @@ GREEN_ON_SCREEN = """(tiles) => { const keep = {}; for (const f of ['drawEntity'
 
 def test_a_stair_dug_down_is_cut_square_and_seen_whole_with_no_gap_as_you_walk_it(game):
     """A stair dug east, a tile wide. Each step had a dark bar down its side and a green line beside it ("still got the
-    weird green line issue"): the bar was the rim of a hill, drawn on a dug step; the line, a gap two px wide in the
-    picture of the stair seen through the meadow in front, where the step's rounded shape ended. Dug ground is cut
-    square: a step is all of its tile. And going down, it flashed at every step ("when going down/up blocks it
-    flashes"): the steps two behind you were out of what is seen through; two pictures were put on the land each
-    faint, which showed between them. The whole stair stays seen; the pictures are added up before they are drawn."""
+    weird green line issue"): the bar was the rim of a hill, drawn on a dug step. Dug ground is cut square: a step is
+    all of its tile. And going down, it flashed at every step ("when going down/up blocks it flashes"): the steps two
+    behind you were out of what is seen through. The whole stair stays seen: on the screen every step near you is
+    earth, the ones over you too, not the meadow in front of it and not the dark of ground cut open."""
     game.clear_area(12)
     x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
     game.stamp(1, 0, ["......"], levels=["abcdef"])
     game.rpc("dev_teleport", x=x + 4, y=y, z=-4)
     game.wait(f"myAt && myAt.x === {x + 4} && myAt.z === -4", 8000)
-    game.wait(DRAWN, 8000); game.wait(SEEN, 20000)
+    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
     even = game.js(f"""() => {{ const out = []; for (let k = 1; k <= 6; k++) {{ const b = blockOf({x} + k, {y}), o = ({y} - b.by * B) * 16 * BW + ({x} + k - b.bx * B) * 16, sum = [0, 0];
       for (let j = 0; j < 16; j++) for (let i = 1; i < 14; i++) if (i < 7 || i > 8) {{ const v = b.px[o + j * BW + i]; sum[i < 7 ? 0 : 1] += (v & 255) + (v >> 8 & 255) + (v >> 16 & 255); }}
       out.push(sum[1] / sum[0] * 6 / 5 > .95); }} return out; }}""")
     assert even == [True] * 6                                  # each step: earth all over its tile, no dark rim down its lower side
-    green = game.js(GREEN_ON_SCREEN, [[x + k, y, k] for k in range(1, 7)])
-    assert green[0] > 0 and green[1:] == [0] * 5              # seen whole: no meadow in any of them, but the first: the step up in front of it is the way out, its edge as on the land
     # stepping off the step three down (your height is already the next one's): the steps over you are still of the place
     assert game.js(f"[1, 2, 3, 4, 5, 6].every((k) => xrayPlace({x + 3}, {y}, -4).z.get(({x} + k) + ',' + {y}) === -k)")
-    # a picture coming over the one before, half way: the two make a whole one
-    alpha = game.js("""() => { XRAY.turn = 1e9; xray.old = xray.pic; xray.mix = .5; frame(performance.now()); const P = xray.pic, f = P.seen.indexOf(1);
-      const a = xray.cw.getContext('2d').getImageData(f % P.w, f / P.w | 0, 1, 1).data[3]; XRAY.turn = .12; xray.old = null; xray.mix = 1; return a; }""")
-    assert alpha >= 253
+    green = game.js(GREEN_ON_SCREEN, [[x + k, y, k] for k in range(1, 7)])
+    assert green[1:] == [0] * 5, green                         # seen whole: no meadow in any of them (but the first: the step up in front of it is the way out, its edge as on the land)
+    steps = game.js(LAND, [[x + k, y, -k, 8, 8] for k in range(1, 7)])       # the three you came down, yours, the two under you
+    assert all(earth(c) for c in steps), steps
     assert not game.errors
 
 
@@ -193,23 +211,25 @@ def test_a_tunnel_keeps_its_roof_from_above_and_is_seen_through_it_from_inside(g
     assert not game.errors
 
 
-def test_under_ground_you_see_what_light_shows_a_fire_however_far(game):
+def test_under_ground_you_see_all_of_the_place_a_fire_however_far(game):
     """"underground vision should display as much as player can see, it is player vision. if fire is here, player see
-    it, so it should be visible": what was seen of a tunnel stopped four tiles from you, all of it as bright as day
-    ("there's no gradient"), and a fire a little further on was not drawn. All of the place on the screen is seen;
-    how bright, light says (cavelight.js): daylight a few tiles in from its mouth, you, a fire; the rest dark."""
+    it, so it should be visible": what was seen of a tunnel stopped four tiles from you, and a fire a little further
+    on was not drawn. All of the place is seen: nine tiles on, the fire's tile is of the place, its floor is on the
+    screen, earth, not the meadow over it, and who stands by the fire is seen."""
     game.clear_area(16)
     x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
     game.stamp(-8, 0, ["............^..."], levels=["abcddddddddddddd"], roofs=["0000444444444444"], heads=["0000222222222222"])
     game.rpc("dev_teleport", x=x - 5, y=y, z=-4)             # at the foot of the stair, the tunnel's mouth
     game.wait(f"myAt && myAt.x === {x - 5} && myAt.z === -4", 8000)
     game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
-    fire, mid = x + 4, x                                       # the fire nine tiles from you; between it and you, five tiles in
+    fire = x + 4                                               # the fire, nine tiles from you
     assert game.js(f"[combAt({fire}, {y}), seenUnder({fire}, {y}), hiddenAt({fire}, {y}), standAt({fire}, {y})]") == ["^", -4, False, -4]
-    dark = f"""(X) => {{ const P = xray.pic, f = ({y} * 16 - shOf(-4) + 8 - P.y) * P.w + X * 16 + 8 - P.x; return [!!P.deep[f], +(P.img.data[f * 4 + 3] / 255).toFixed(2)]; }}"""
-    at_mouth, between, by_fire = (game.js(dark, X) for X in (x - 4, mid, fire))
-    assert at_mouth[0] and between[0] and by_fire[0]           # (floor under the roof, in the picture)
-    assert at_mouth[1] < .15 and by_fire[1] < .1 and between[1] > .25, (at_mouth, between, by_fire)
+    by, mid = game.js(LAND, [[fire - 1, y, -4, 8, 8], [x, y, -4, 8, 8]])          # the floor beside the fire, and half way to it
+    assert earth(by) and earth(mid), (by, mid)
+    assert game.js(GREEN_ON_SCREEN, [[fire, y, 4], [fire - 1, y, 4]]) == [0, 0]
+    who = game.js(f"(() => {{ const p = {{x: {fire - 1}, y: {y}, e: {{kind: 'chicken', id: -1}}, zAt: {{x: {fire - 1}, y: {y}, z: -4}}}}; return [xrayShows(p) > .9, unseen(p)]; }})()")
+    assert who == [True, False], who
     assert not game.errors
 
 

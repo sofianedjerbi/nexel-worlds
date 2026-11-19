@@ -98,7 +98,7 @@ def test_nothing_is_reflected_in_water_that_a_hill_hides(game):
 def test_a_shadow_adds_no_dust_or_spray_and_a_swimmer_has_none(game):
     # "particle shadow create weird patterns.. especially the one when sprinting in water": drawing a body again for
     # its shadow and its reflection threw up its dust and its spray again
-    game.clear_area(8)
+    game.clear_area(15)                                             # (all the screen, and four tiles on: a tree left at its edge has a shadow too, and "nothing on the layer" was then by luck of where you woke)
     game.stamp(1, -1, ["~~~~~~~", "~~~~~~~", "~~~~~~~"])
     count = """(ms) => new Promise((ok) => { let n = 0, seen = new Set(); const t0 = performance.now();
       const tick = () => { for (const q of parts) if (!seen.has(q)) { seen.add(q); n++; } if (performance.now() - t0 < ms) requestAnimationFrame(tick); else ok(n); };
@@ -119,6 +119,7 @@ def test_a_shadow_adds_no_dust_or_spray_and_a_swimmer_has_none(game):
     game.rpc("dev_teleport", x=game.home[0], y=game.home[1]); game.sleep(600)
     assert game.js(lit) > 20                                        # on land: your shadow is on the layer
     game.rpc("dev_teleport", x=game.home[0] + 4, y=game.home[1]); game.sleep(600)
+    game.wait(f"(() => {{ const p = ents.get('agent' + myId); return !!p && p.x === {game.home[0] + 4} && p.y === {game.home[1]} && parts.length === 0; }})()", 8000)   # (there, as drawn, and the spray of getting there gone: on a busy machine 0.6 s was not always enough)
     assert game.js("DEPTH_OF[gndAt(myPos().x, myPos().y)] > 0")     # in the water: nothing of you on it
     assert game.js(lit) == 0, game.js(lit)
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")

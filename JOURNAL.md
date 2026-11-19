@@ -3257,3 +3257,53 @@ up... but i cannot."
 - Tests: test_e2e_stacked.py: the foot of the upper floor and the top of the opening have the line, the opening
   and the middle of the floor none (fails on the code before). 475 unit; browser 251 passed in the full run, one
   failed there twice and passes alone (a shout's bubble).
+
+## Iteration 177: the land is blocks
+
+"Make this a voxel world viewed as a top down in animal crossing style." Then: "remove entirely the old mode, keep
+only block ... old mode should be saved in git" (tag `flat-land`), "make sure this our engine is properly separated
+as a different layer from the rest - like a library", "blocks should be 3d, every single one", "blocks such as
+bridges should be low-poly modelized", "make the 3d xray look better and fully show the full cave where player is
+standing", "parallelize with subagents when possible".
+- Hypothesis: the world is already cells (cells.js). Drawn as the cells are, by the GPU, with paint a face, the
+  two painters of the land (relief.js lifting a flat picture; xray.js and four more files painting it again where
+  you are hidden) and their special cases are not needed.
+- The engine, VOX: js/vox_gl.js, vox_pages.js, vox_mesh.js, vox_models.js, vox_engine.js. A layer of its own: it
+  names no global of the game (tests/test_vox_layer.py runs it under node with none of the game, a made-up world
+  and a GPU that counts). The host says what a tile's column is, what is water, paints a top, a front, gives a
+  cell's shape and a wall's colours, and boxes for models. It draws on a canvas of its own that is never shown:
+  js/voxels.js (the one file that knows both) lays its picture on the game's canvas where the land was painted,
+  so shadows, what stands, the night and a shader find the land there as before. Where a point is on the screen
+  did not change (a level 8 art px up): bodies, aiming, building are where they were.
+- A block: its top where a solid cell has an empty one over it, its front where the cell south is empty. Its
+  paint is the tileset's (js/voxpaint.js): the cap has the hill sheet's own shape and lip where the land is
+  lower, the front its wall colours with a seam a level, a wall that faces west or east leans out 2 px a level
+  (an upright one has no width seen from the south), and the only shade is the pack's own shadow px at a wall's
+  foot. Two rounds by an agent, with an audit by another between them that took its own pictures: the first
+  round's trays, square frames and shader ramps went.
+- Bridges are models: a box a plank over the water, posts, steps down to the bank (js/models.js, bridge_model.js).
+  Who crosses stands on the deck (relief.js liftAt, liftOf add Models.up).
+- Hidden: the land is cut open, a tile at a time (vox_engine.js `cut`, a picture a tile a px of the level each
+  is cut down to). xray.js is logic only now: when you are hidden, the place you are in (all of a cave or a
+  tunnel, 14 tiles), and which tiles are cut how low: over a floor under a roof all that is over it; the tile
+  straight south of a floor down to it; the rock on the line of sight; a higher floor of the place drawn over
+  your own tile. The rock north of the place and beside it stays: the back wall stands. The build cursor's tile
+  is cut the same way where the ground hides it (it was keyhole.js's painting). It comes a px in four at a time.
+- Gone: relief.js's painter (the height helpers and colsOf stay), xraycut.js, xrayviews.js, cavelight.js, the
+  mouths of caves.js, Keyhole.draw, the Land setting that was there while it was built.
+- Found by the user on the preview and fixed: grass tiles on sand were green squares (a top was painted as if the
+  same GROUND lay all round it: now only as if land as HIGH did, tiles.js maskOf.plain); a square round a swimmer
+  with a shader on (sun.js cut a box out of the water's mask: now the swimmer's own shape); black dots at the
+  corners of side strips (holes in the first round's faces).
+- Tests: 494 unit. Browser: 257 passed, 2 fail and are left failing because they are true: two rooms in one
+  column (who stands on the upper floor is not shown: xrayShows knows one floor a tile), and a one-tile way
+  between two tall walls, whose leaning banks cover all of its ground. An agent went through the 53 tests the
+  old painters' going broke: 24 rewritten to the same behaviour on blocks, 9 a helper, 12 deleted (they pinned a
+  painter that is gone), then a second round against the tile-wise cut.
+- Self-critical: I told the user twice that I could not reproduce the swimmer's square before asking what his
+  settings were; a line of state from his console found it at once. A drop that faces north is still only a
+  darker line. Who walks on the roof of your tunnel is now gone with the roof, wherever they are over it: the
+  user's earlier rule was only where they cover what shows.
+- Left: the curve and the sky in the game, and the shaders for blocks, are being built by agents on copies; the
+  first screen's still picture is of the old land (tools/build_title_poster.py to run again); no light model
+  under ground (a fire lights as any other).

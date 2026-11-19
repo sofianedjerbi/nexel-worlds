@@ -151,7 +151,7 @@ function drawTile(x, y, to = null) {                 // (to: somewhere else than
   const b = blockOf(x, y);
   if (!b || !(to || b.px)) return;
   const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, ox = to ? to.ox : lx * 16, oy = to ? to.oy : ly * 16;
-  const c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y), up = (cc, gg, tx, ty) => levelAt(tx, ty) >= k, dug = lv < 0 && !wet(gr);
+  const c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y), up = (cc, gg, tx, ty) => maskOf.plain || levelAt(tx, ty) >= k,      /* (maskOf.plain, voxels.js: a block's top is painted as if land as high lay all round it: no rim of its level, no cut corner; its ground, grass on sand, keeps its own edges) */ dug = lv < 0 && !wet(gr);
   let k = lv;
   g.n = 0;
   // relief: each level lays its hill sheet (grass, darker grass, then stone) over the tiles at least that high; the
@@ -200,7 +200,6 @@ function drawTile(x, y, to = null) {                 // (to: somewhere else than
   dugFoot(px, o, W, x, y, lv);
   if (to) return;
   (b.solid || (b.solid = new Uint8Array(B * B)))[i] = first < 0 ? 0 : 1;   // (relief.js: under a tile solid all over, nothing shows)
-  b.reliefDirty = true;                              // (its stacked levels are rebuilt from these px: relief.js)
   b.ver = (b.ver || 0) + 1; landVer++;
 }
 // what's laid on the ground: tilled soil (wet or not), floors, ash, cobble
@@ -237,7 +236,7 @@ function dugSheet(name, d) {
 // line. They are that wall's earth (the floor's own, a tile a shade along a stair: a dashed line). A dug tile has
 // none: its shape is all of it
 function dugFoot(px, o, W, x, y, lv) {
-  if (lv < 0) return;
+  if (lv < 0 || maskOf.plain) return;
   let a = null, v = 0;
   for (const [dx, dy, at] of [[0, 1, (q, r) => [q, 15 - r]], [1, 0, (q, r) => [15 - r, q]], [-1, 0, (q, r) => [r, q]], [1, 1, (q, r) => [15 - (q & 7), 15 - r]], [-1, 1, (q, r) => [q & 7, 15 - r]]]) {
     if (levelAt(x + dx, y + dy) >= 0 || wet(gndAt(x + dx, y + dy) || "~")) continue;
@@ -279,8 +278,8 @@ function edgeSheet(name) {
   g.putImageData(d, 0, 0);
   return edgeSheets[name] = c;
 }
-// A block's ground: its px (b.px), every tile of it painted a little a frame, or at once. What is shown of it is a
-// canvas made of them when its raised picture is, and in it (b.canvas: relief.js)
+// A block's ground: its px (b.px), every tile of it painted a little a frame, or at once. (The land that is shown is
+// blocks, painted a tile at a time from the same painter: voxels.js.)
 function startBlock(b) {
   b.px = new Uint32Array(BW * BW); b.drawn = true;
   for (let ly = B - 1; ly >= 0; ly--) for (let lx = B - 1; lx >= 0; lx--) dirtyTiles.push(b.bx * B + lx, b.by * B + ly);
@@ -289,10 +288,4 @@ function renderBlock(b) {
   b.px = new Uint32Array(BW * BW);
   for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) drawTile(b.bx * B + lx, b.by * B + ly);
   b.drawn = true;
-}
-// px as a canvas, made once and never drawn on again
-function pxCanvas(px, w, h) {
-  const c = document.createElement("canvas"); c.width = w; c.height = h;
-  c.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(px.buffer, px.byteOffset, w * h * 4), w, h), 0, 0);
-  return c;
 }

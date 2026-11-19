@@ -162,30 +162,33 @@ def test_walls_are_thin_and_hide_nothing_and_a_side_door_has_its_leaf_and_shadow
     between two posts, the doorway's shadow under it (the dark of the game's holes); it opens for whoever is by it."""
     game.clear_area(8)
     x, y = game.pos()
-    game.stamp(3, -3, ["W", "+", "W"])                         # a run going north, a door in its middle
-    game.stamp(-3, -3, ["W+W"])                                # one in a run going east: the door from the front
-    game.stamp(-4, 2, ["WWW"])                                 # and a wall south of open ground
-    game.sleep(900)
-    assert game.js("([x, y]) => [Structures.sideDoor(x + 3, y - 2), Structures.sideDoor(x - 2, y - 3), Structures.sideDoor(x + 3, y - 3)]", [x, y]) == [True, False, False]
-    lum = "([dx, dy, up]) => { const t = TS(), d = ctx.getImageData(Math.round(cv.width / 2 + dx * t), Math.round(cv.height / 2 + (dy - up) * t), 1, 1).data; return d[0] + d[1] + d[2]; }"
-    grass = game.js(lum, [6, -2, 0])
-    game.wait(f"({lum})([3, -2, .25]) < {grass - 150}", 5000)  # (on a busy machine the stamped tiles take a few frames)
-    assert game.js(lum, [3, -2, .25]) < grass - 150 and game.js(lum, [2.78, -2, .25]) < grass - 60     # the leaf across the way; its shadow beside it, on the ground
-    assert abs(game.js(lum, [-3, 1, 0]) - grass) < 40          # the tile north of a wall: its ground, nothing over it
-    game.rpc("dev_teleport", x=x - 3, y=y + 1)                 # standing there, behind the wall: nothing of it is seen through
-    game.sleep(700)
-    px = game.js("(() => { const d = ctx.getImageData(Math.round(cv.width / 2 + TS() * .3), Math.round(cv.height / 2 + TS()), 1, 1).data; return [d[0], d[1], d[2]]; })()")
-    assert px in ([170, 121, 89], [144, 98, 93], [220, 185, 138]), px       # the wall just south of you: its planks' own colours, not thinned
-    # a lower corner is joined as an upper one is: where a wall comes down onto a front, its band runs into the
-    # front's cap (there was the cap's dark line across it: "lower corners should be linked to upper")
-    game.rpc("dev_stamp", x=x - 4, y=y + 4, rows=["W..", "WWW"])          # (a place in the world: you are no longer where you woke)
-    game.rpc("dev_teleport", x=x - 3, y=y + 4)
-    game.sleep(900)
-    join = game.js("(() => { const t = TS(), z = t / 16, d = ctx.getImageData(Math.round(cv.width / 2 - t + 7.5 * z - t / 2), Math.round(cv.height / 2 + t - t / 2 - 3.5 * z), 1, 1).data; return [d[0], d[1], d[2]]; })()")
-    assert join == [196, 154, 108], join                       # the cap's own colour where the band meets it, not its outline
-    game.rpc("dev_teleport", x=x + 3, y=y - 2)                 # in the doorway: its leaf is back against a post
-    game.sleep(900)
-    assert game.js("doors.get(myPos().x + ',' + myPos().y)") == 1 and not game.errors
+    try:
+        game.stamp(3, -3, ["W", "+", "W"])                         # a run going north, a door in its middle
+        game.stamp(-3, -3, ["W+W"])                                # one in a run going east: the door from the front
+        game.stamp(-4, 2, ["WWW"])                                 # and a wall south of open ground
+        game.sleep(900)
+        assert game.js("([x, y]) => [Structures.sideDoor(x + 3, y - 2), Structures.sideDoor(x - 2, y - 3), Structures.sideDoor(x + 3, y - 3)]", [x, y]) == [True, False, False]
+        lum = "([dx, dy, up]) => { const t = TS(), d = ctx.getImageData(Math.round(cv.width / 2 + dx * t), Math.round(cv.height / 2 + (dy - up) * t), 1, 1).data; return d[0] + d[1] + d[2]; }"
+        grass = game.js(lum, [6, -2, 0])
+        game.wait(f"({lum})([3, -2, .25]) < {grass - 150}", 5000)  # (on a busy machine the stamped tiles take a few frames)
+        assert game.js(lum, [3, -2, .25]) < grass - 150 and game.js(lum, [2.78, -2, .25]) < grass - 60     # the leaf across the way; its shadow beside it, on the ground
+        assert abs(game.js(lum, [-3, 1, 0]) - grass) < 40          # the tile north of a wall: its ground, nothing over it
+        game.rpc("dev_teleport", x=x - 3, y=y + 1)                 # standing there, behind the wall: nothing of it is seen through
+        game.sleep(700)
+        px = game.js("(() => { const d = ctx.getImageData(Math.round(cv.width / 2 + TS() * .3), Math.round(cv.height / 2 + TS()), 1, 1).data; return [d[0], d[1], d[2]]; })()")
+        assert px in ([170, 121, 89], [144, 98, 93], [220, 185, 138]), px       # the wall just south of you: its planks' own colours, not thinned
+        # a lower corner is joined as an upper one is: where a wall comes down onto a front, its band runs into the
+        # front's cap (there was the cap's dark line across it: "lower corners should be linked to upper")
+        game.rpc("dev_stamp", x=x - 4, y=y + 4, rows=["W..", "WWW"])          # (a place in the world: you are no longer where you woke)
+        game.rpc("dev_teleport", x=x - 3, y=y + 4)
+        game.sleep(900)
+        join = game.js("(() => { const t = TS(), z = t / 16, d = ctx.getImageData(Math.round(cv.width / 2 - t + 7.5 * z - t / 2), Math.round(cv.height / 2 + t - t / 2 - 3.5 * z), 1, 1).data; return [d[0], d[1], d[2]]; })()")
+        assert join == [196, 154, 108], join                       # the cap's own colour where the band meets it, not its outline
+        game.rpc("dev_teleport", x=x + 3, y=y - 2)                 # in the doorway: its leaf is back against a post
+        game.sleep(900)
+        assert game.js("doors.get(myPos().x + ',' + myPos().y)") == 1 and not game.errors
+    finally:                                                   # (the land as it was, whatever happened: a door left there is on the screen of the tests that wake here after)
+        game.rpc("dev_stamp", x=x - 6, y=y - 5, rows=["." * 13] * 12)
 
 
 def test_x_breaks_anything_and_digs_holes(game):
@@ -217,11 +220,9 @@ def test_x_breaks_anything_and_digs_holes(game):
     assert game.js("Build.rows()")[3] == ["X", "Dig a hole"]
     game.press("x")
     game.wait(f"surfacesAt({x - 1}, {y + 2})[0] === -2 && Build.S.plans.size === 0", 20000)
-    # two layers down the hole's floor is behind the grass in front of it: its own tile is seen through, a keyhole
-    # (keyhole.js; "the selector become unvisible, it should trigger xray too"), and nothing else: no x-ray circle
-    game.wait("Keyhole.shown", 3000)
+    # two layers down the hole's floor is behind the grass in front of it: the window on you is yours alone, it does
+    # not open on the cursor (that the cursor's own tile is seen there: test_e2e_digging.py, the keyhole)
+    game.sleep(300)
     assert game.js("xray.a") < .1
-    game.js(f"Build.S.at = {{x: {x + 3}, y: {y + 3}}}")
-    game.wait("!Keyhole.shown", 3000)
     game.press("b")
     assert game.inv("dirt") == 3 and game.inv("stone") == 3 and not game.errors      # (the rock's two, and the deeper layer is stone)

@@ -40,14 +40,14 @@ def test_far_under_the_land_the_screen_is_where_you_are_not_the_land_rows_away(g
     for depth, row, far in ((-20, y, False), (-60, y + 3, True), (-500, y + 6, True)):
         game.rpc("dev_teleport", x=x + 4, y=row, z=depth)
         game.wait(f"myAt && myAt.y === {row} && myAt.z === {depth}", 8000)
-        game.wait(f"{DRAWN} && away.a === {1 if far else 0}", 20000); game.wait(SEEN, 20000); game.wait("xray.mix >= 1 && !xray.old", 8000)
+        game.wait(f"{DRAWN} && away.a === {1 if far else 0}", 20000); game.wait(SEEN, 20000); game.sleep(300)
         px = game.js(SCREEN, spots)
         if far:
             assert all(p == [43, 36, 32] for p in px), (depth, px)                       # earth: none of the land's green
         else:
             assert all(g > r for r, g, b in px), (depth, px)                             # the meadow, as ever
-        st = game.js("({mine: !!blockOf(myAt.x, myAt.y), floor: xray.pic.floor.size, h: xray.pic.h, seen: seenUnder(myAt.x, myAt.y), shows: xrayShows(ents.get('agent' + myId)) > .9})")
-        assert st == {"mine": True, "floor": 6, "h": st["h"], "seen": depth, "shows": True} and st["h"] < 400, (depth, st)   # your tiles are here; the picture is the room's, not the land's height; you are seen
+        st = game.js("({mine: !!blockOf(myAt.x, myAt.y), floor: xray.pic.floor.size, seen: seenUnder(myAt.x, myAt.y), shows: xrayShows(ents.get('agent' + myId)) > .9})")
+        assert st == {"mine": True, "floor": 6, "seen": depth, "shows": True}, (depth, st)   # your tiles are here; the corridor is the place you are in; you are seen
         body = game.js("""() => { const S = TS(), [ox, oy] = screenOrigin(S), p = ents.get('agent' + myId), at = () => Array.from(ctx.getImageData(Math.round((ox + (p.x + .5) * S) * DPR), Math.round((oy + (p.y + .45) * S - liftOf(p)) * DPR), 1, 1).data).slice(0, 3).join();
           frame(performance.now()); const on = at(), keep = drawEntity; drawEntity = () => null; frame(performance.now()); const off = at(); drawEntity = keep; return on !== off; }""")
         assert body, depth                                    # (and drawn: at five hundred you were not)

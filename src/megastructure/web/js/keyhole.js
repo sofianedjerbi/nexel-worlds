@@ -11,39 +11,7 @@
 // tile and a half south of its hole, on the grass.) The user's pick of five, 2026-11-16, "1 · Earth and a keyhole":
 // the x-ray circle that went round the cursor showed the grass round the hole too, and the cursor seemed on it.
 const Keyhole = (() => {
-  const pics = new Map();
-  let shown = false, marks = null;                    // (drawn in the last frame; the mark on you, where it is: tests)
-  function pic(d) {                                   // a dug floor d layers down, 16 px
-    if (pics.has(d)) return pics.get(d);
-    const c = document.createElement("canvas"), g = c.getContext("2d"), [cx, cy] = blobCell(255);
-    c.width = c.height = 16;
-    g.drawImage(dugSheet("soil", d), cx * 16, cy * 16, 16, 16, 0, 0, 16, 16);
-    g.fillStyle = "rgba(43,30,38,.45)"; g.fillRect(0, 0, 16, 3);          // (the shaft's wall over it: shade at its top, its sides)
-    g.fillStyle = "rgba(43,30,38,.22)"; g.fillRect(0, 3, 16, 2); g.fillRect(0, 0, 1, 16); g.fillRect(15, 0, 1, 16);
-    pics.set(d, c);
-    return c;
-  }
-  function draw(sx, sy) {                             // (render.js: over the land, under what stands on it)
-    const p = Build.on && Build.S.at;
-    shown = false;
-    if (!p) return;
-    const L = Build.level(), land = levelAt(p.x, p.y), inGround = land > L, cover = xrayCover(p.x, p.y, p.y, L), dug = !landSolid(p.x, p.y, L + 1);
-    if ((!inGround && cover <= 0) || seenUnder(p.x, p.y) === L) return;   // (it shows as it is; or it is of the place you are in, seen already: xray.js)
-    shown = true;
-    const Z = inGround ? (dug ? Math.min(land, ceilAt(p.x, p.y, L)) : L) : Math.max(L, levelAt(p.x, p.y - 1)), S = TS(), x = sx(p.x), yF = sy(p.y) - shOf(L) * zoom, y0 = sy(p.y) - shOf(Z) * zoom;
-    const top = inGround ? y0 : Math.min(y0, yF + S - cover * zoom), d = Math.max(0, -L), [cx, cy] = blobCell(255), front = inGround && !dug ? RELIEF_STEP * zoom : 0;
-    ctx.globalAlpha = dug ? 1 : .7;                      // (faint: in the ground, not dug yet; a tunnel under its roof is dug)
-    ctx.save(); ctx.beginPath(); ctx.rect(x, top, S, yF + S + front - top); ctx.clip();
-    for (let y = y0 - S; y + S > top; y -= S) ctx.drawImage(dugSheet("soil", d), cx * 16, cy * 16, 16, 16, x, y, S, S);   // (over the wall: the floor north of it, as a pit's goes on)
-    for (let z = Z; z > L; z--) {                     // the wall behind: lit at its top, dark at its foot
-      const b = colsOf(hillSheet(z)).bands, Y = y0 + (Z - z) * RELIEF_STEP * zoom;
-      for (let r = 0; r < RELIEF_STEP; r++) { const c = b[r ? (r === RELIEF_STEP - 1 ? 2 : 1) : 0]; ctx.fillStyle = `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`; ctx.fillRect(x, Y + r * zoom, S, zoom); }
-    }
-    ctx.drawImage(pic(d), x, yF, S, S);
-    for (let r = 0, b = colsOf(hillSheet(L)).bands; r < front / zoom; r++) { const c = b[r ? (r === RELIEF_STEP - 1 ? 2 : 1) : 0]; ctx.fillStyle = `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`; ctx.fillRect(x, yF + S + r * zoom, S, zoom); }   // (a block not dug yet: its front under its top, the layer it is: a block, not a square)
-    ctx.fillStyle = "rgba(43,30,38,.35)"; ctx.fillRect(x, top, zoom, yF + S + front - top); ctx.fillRect(x + S - zoom, top, zoom, yF + S + front - top);   // (its sides: cut)
-    ctx.restore(); ctx.globalAlpha = 1;
-  }
+  let marks = null;                                   // (the mark on you, where it is: tests)
   // how far the cursor is under you (or over you), in layers: a tag at its left (its keys are at its right: prompts.js)
   function tag(x, y, S, n, right) {                   // (right: at the cursor's right, with its E and Q: you stand at its left, prompts.js)
     const text = (n > 0 ? "+" : "") + n;
@@ -74,5 +42,5 @@ const Keyhole = (() => {
       }
     }
   }
-  return {draw, tag, rel, mark, get shown() { return shown; }, get marks() { return marks; }};
+  return {tag, rel, mark, get marks() { return marks; }};
 })();

@@ -116,19 +116,30 @@ const Sun = (() => {
   }
   // The seen water as a small picture, white where it is (a quarter of the screen's size): shader.js lays the sky, the
   // clouds and the sun's glitter on the water through it. What swims or floats in it is cut out: no glitter on a head.
-  let maskCv = null, mask = null;
-  function waterMask(list, water, sx, sy, S) {
+  // Its own shape is cut, drawn small in black (it was a box round it: "patch is visible anywhere in the sea anytime",
+  // a square of water with no sky on it round whoever swam).
+  let maskCv = null, mask = null, cutCv = null;
+  function waterMask(list, water, sx, sy, S, t, now) {
     mask = null;
     if (!water) return;
-    if (!maskCv) maskCv = document.createElement("canvas");
-    const w = Math.ceil(W / 4), h = Math.ceil(H / 4), g = maskCv.getContext("2d");
-    if (maskCv.width !== w || maskCv.height !== h) { maskCv.width = w; maskCv.height = h; }
+    if (!maskCv) { maskCv = document.createElement("canvas"); cutCv = document.createElement("canvas"); }
+    const w = Math.ceil(W / 4), h = Math.ceil(H / 4), g = maskCv.getContext("2d"), c = cutCv.getContext("2d");
+    for (const cvs of [maskCv, cutCv]) if (cvs.width !== w || cvs.height !== h) { cvs.width = w; cvs.height = h; }
     g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#000"; g.fillRect(0, 0, w, h);
     g.setTransform(.25, 0, 0, .25, 0, 0); g.fillStyle = "#fff"; g.fill(water.wet);
-    g.fillStyle = "#000";
-    for (const o of list) {
-      if (o.p && DEPTH_OF[gndAt(Math.round(o.p.x), Math.round(o.p.y))]) g.fillRect(sx(o.p.x) - S * .25, bodyY(o.p, sy) - S * .6, S * 1.5, S * 1.9);
-      else if (o.spr && DEPTH_OF[gndAt(o.x, o.ty)]) g.fillRect(sx(o.x) - S * .1, sy(o.ty, o.x) - S * .6, S * 1.2, S * 1.7);
+    const swim = list.filter((o) => (o.p ? DEPTH_OF[gndAt(Math.round(o.p.x), Math.round(o.p.y))] : o.spr && DEPTH_OF[gndAt(o.x, o.ty)]));
+    if (swim.length) {
+      const main = ctx, dust = parts.length, puff = puffs.length;
+      c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "source-over"; c.clearRect(0, 0, w, h); c.setTransform(.25, 0, 0, .25, 0, 0); c.imageSmoothingEnabled = false;
+      ctx = c; casting = true;                               // (a copy of each, as a shadow is drawn: no dust, no sound of it)
+      try {
+        for (const o of swim) {
+          if (o.spr) { const [img, a, b, sw, sh, dx, dy] = o.spr; c.drawImage(img, a, b, sw, sh, Math.round(sx(o.x) + dx * zoom), Math.round(sy(o.ty, o.x) + dy * zoom), sw * zoom, sh * zoom); }
+          else drawEntity({...o.p}, sx, sy, S, t, now);
+        }
+      } finally { casting = false; parts.length = Math.min(parts.length, dust); puffs.length = Math.min(puffs.length, puff); ctx = main; }
+      c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "source-in"; c.fillStyle = "#000"; c.fillRect(0, 0, w, h);
+      g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(cutCv, 0, 0);
     }
     mask = maskCv;
   }
@@ -181,7 +192,7 @@ const Sun = (() => {
     if (!SHADERS[opt("shader")] || !opt("shaderk")) return;
     try {
       const water = opt("reflect") || opt("waterlight") ? seenWater(vis, sx, sy, S) : null;
-      waterMask(opt("waterlight") ? list : [], opt("waterlight") ? water : null, sx, sy, S);
+      waterMask(opt("waterlight") ? list : [], opt("waterlight") ? water : null, sx, sy, S, t, now);
       if (opt("reflect") && water) reflections(list, water, sx, sy, S, t, now);
       if (opt("shadows")) shadows(list, vis, sx, sy, S, t, now);
     } catch (e) { if (!Sun.said) { Sun.said = true; console.warn("sun: " + e.message); } }
