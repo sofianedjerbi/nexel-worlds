@@ -42,6 +42,7 @@ const SOUND = {
 let audio = null, soundOut = null, musicOut = null, muted = localStorage.getItem("megastructure-muted") === "1";
 const sounds = {manifest: null, loading: null, buffers: new Map(), lastVariant: {}, lastAt: {}, voices: 0, warned: new Set()};
 
+const awake = () => !!audio && audio.state === "running";      // (a browser holds the sound until the page is touched, and says so in its console for each one started before: none is)
 function ac() {
   if (!audio) {
     audio = new (window.AudioContext || window.webkitAudioContext)();
@@ -61,7 +62,7 @@ function soundLevels() {
   soundOut.gain.value = SOUND.master * opt("master") / 100; musicOut.gain.value = opt("master") / 100 * opt("music") / 100;
 }
 // start audio on the first gesture, not inside the first frame that plays a sound (creating it stalls ~100 ms)
-for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!muted) { ac(); loadSounds(); } }, {once: true, capture: true});
+for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!muted) { ac().resume(); loadSounds(); } }, {once: true, capture: true});
 
 // The manifest (what exists, which file, which family), then every file in the background.
 function loadSounds() {
@@ -121,6 +122,7 @@ async function stream(tr, done) {
   }
   let next = 0;                                            // where the next part starts, in the context's own samples
   while (tr.on && tr.run === run) {
+    if (!awake()) { await pause(300); continue; }          // (not touched yet: the music waits)
     const i = tr.at, buf = await piece(m.files[i]);
     if (!tr.on || tr.run !== run) return;
     if (!buf) { await pause(3000); continue; }             // (no network just now: again in a moment)
@@ -240,7 +242,7 @@ function sfx(name, x, y, reach) {
     ({vol, pan} = h);
   }
   const now = performance.now(), gap = SOUND.minGap[name] ?? SOUND.minGap.default;
-  if (now - (sounds.lastAt[name] || -1e9) < gap || sounds.voices >= SOUND.maxVoices) return;
+  if (now - (sounds.lastAt[name] || -1e9) < gap || sounds.voices >= SOUND.maxVoices || !awake()) return;
   let k = Math.floor(Math.random() * s.files.length);
   if (s.files.length > 1 && k === sounds.lastVariant[name]) k = (k + 1) % s.files.length;       // never the same variant twice running
   const buf = sounds.buffers.get(s.files[k]);

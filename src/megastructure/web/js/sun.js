@@ -51,7 +51,7 @@ const Sun = (() => {
         drawEntity({...p}, sx, sy, S, t, now);
         lg.restore();
         const x0 = Math.max(0, Math.round((sx(p.x) - S) * DPR)), y0 = Math.max(0, Math.round((y - 2 * S) * DPR)), w = Math.round(3 * S * DPR), h = Math.round(4 * S * DPR);
-        const d = lg.getImageData(x0, y0, w, h).data;
+        const rg = Object.assign(document.createElement("canvas"), {width: w, height: h}).getContext("2d", {willReadFrequently: true}); rg.drawImage(layer, x0, y0, w, h, 0, 0, w, h); const d = rg.getImageData(0, 0, w, h).data;      // (a small copy made to be read: the layer is the GPU's)
         let row = h - 1;
         const painted = (r) => { for (let i = 0; i < w; i++) if (d[(r * w + i) * 4 + 3] > 60) return true; return false; };
         while (row > 0 && !painted(row)) row--;

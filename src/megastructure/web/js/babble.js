@@ -30,6 +30,7 @@ function babble(name, text, x, y, shout) {
   const bufs = s.files.map((f) => sounds.buffers.get(f)).filter((b) => b instanceof AudioBuffer);
   if (!bufs.length) { s.files.forEach(loadSoundFile); return 0; }      // still downloading: silent this once
   let made = 0;
+  if (!awake()) return 0;                                   // (audio.js: the page is not touched yet)
   try {
     const a = ac(), t0 = a.currentTime + .02, base = voiceOf(name) + (shout ? SHOUT.up : 0), letters = [...String(text).toLowerCase()];
     const out = a.createGain(), p = a.createStereoPanner(), asks = /\?\s*$/.test(text);
