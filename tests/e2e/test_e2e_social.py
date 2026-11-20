@@ -9,8 +9,7 @@ def friend(browser, server, game):
     """A second player standing two tiles east of the first."""
     g = open_game(browser, server)
     x, y = game.pos()
-    g.rpc("dev_teleport", x=x + 2, y=y)
-    g.sleep(1200)
+    g.rpc("dev_teleport", x=x + 2, y=y); g.arrive()
     yield g
     errors = g.errors
     g.page.close()

@@ -26,10 +26,10 @@ def test_with_the_depth_off_the_picture_is_the_one_painted_to_the_px(game):
     game.clear_area(8)
     game.stamp(-5, -4, ["...", "..."], levels=["333", "333"]); game.stamp(2, -3, ["T"]); game.stamp(-4, 2, [".."], levels=["11"])
     x, y = game.pos()
-    game.rpc("dev_time", phase=.1); game.sleep(1200)
+    game.hour(.1)
     for spot in ((x, y), (x + 9, y + 4)):
         game.rpc("dev_teleport", x=spot[0], y=spot[1], z=0); game.wait(f"myAt && myAt.x === {spot[0]} && myAt.y === {spot[1]}", 8000)
-        game.wait("dirtyTiles.length === 0", 20000); game.sleep(900)
+        game.rest(); game.sleep(900)                             # (the sleep is kept: with rest() alone the frame drawn with the depth off was not the one drawn with no sun in it, one run in three with two browsers at work, never alone: not found why)
         h = game.js(HASHES)
         assert h["off"] == h["none"], h                         # off: as with no sun at all in the frame
         assert h["on"] != h["off"], h                           # (and on, it is there)
@@ -40,7 +40,7 @@ def test_a_blocks_foot_is_darker_than_open_ground_which_is_as_it_is_painted(game
     game.clear_area(8)
     game.stamp(-1, 2, ["..."], levels=["111"])                  # a block one level high, south of you (where the picture is flat)
     x, y = game.pos()
-    game.rpc("dev_time", phase=.3); game.sleep(1200)
+    game.hour(.3)
     assert game.js("[opt('shader'), opt('depth'), Sun.shades()]") == ["off", True, True]
     foot, open_, mine = twice(game, [[x - .6, y + 3 - 2 / 16, x + .6, y + 3 + 1 / 16], [x + 4, y + 2, x + 6, y + 4], [x + 1.2, y - .4, x + 2.2, y + .6]], "depth", False)
     assert foot[0] < foot[1] - 8, foot                          # the ground at its foot: shaded
@@ -61,7 +61,7 @@ def test_stone_stays_stone_and_each_terrace_of_it_is_a_clear_step_lighter(game):
     game.clear_area(12)
     game.stamp(-6, 6, ["............"] * 4, levels=["666677778888"] * 4)      # three stone terraces side by side, south of you
     x, y = game.pos()
-    game.rpc("dev_time", phase=.375); game.sleep(1200)
+    game.hour(.375); game.sleep(1200)                           # (the sleep is kept: with hour() alone the highest terrace was once read no lighter than the middle one: not found why)
     on, off = game.js(RGB, [x - 5, y + 7 - 3, x - 3, y + 9 - 3])      # the middle of the lowest one's top (six levels: drawn three tiles up)
     assert max(off) - min(off) < 30, off                        # (stone: grey)
     assert all(abs(a - b) < .01 for a, b in zip(on, off)), (on, off)      # the depth: no light of its own on stone (it went to white)
@@ -91,10 +91,10 @@ def test_a_front_has_one_tone_at_every_hour_whatever_stands_beside_it(game):
     look(game, "natural"); game.js("setOpt('clouds', 100)")
     tones = []
     for phase in (.1, .3, .5, .65):
-        game.rpc("dev_time", phase=phase); game.sleep(900)
+        game.hour(phase)
         tones.append(game.js(LAND_RGB, front))
     assert all(max(t[j] for t in tones) - min(t[j] for t in tones) <= 1 for j in range(3)), tones
-    game.js("setOpt('clouds', 0)"); game.rpc("dev_time", phase=.1); game.sleep(900)
+    game.js("setOpt('clouds', 0)"); game.hour(.1)
     ground, = twice(game, [gap], "shadows", 0)
     assert ground[0] < ground[1] - 4, ground                     # (and the pillars do throw a shadow: on the ground between)
     game.js(RESET)
@@ -106,7 +106,7 @@ def test_the_ground_behind_a_step_is_darker_along_it(game):
     game.clear_area(8)
     game.stamp(-2, 3, ["....."] * 2, levels=["11111"] * 2)      # a step one level high, south of you: you look at its back
     x, y = game.pos()
-    game.rpc("dev_time", phase=.375); game.sleep(1200)
+    game.hour(.375)
     band, north = twice(game, [[x - 1, y + 2 + 7 / 16, x + 1, y + 2 + 11 / 16], [x - 1, y + 2, x + 1, y + 2 + 5 / 16]], "depth", False)
     assert band[0] < band[1] - 8, band                          # the last px of the ground before the step's top hides it
     assert north[0] == north[1], north                          # and no further
@@ -116,7 +116,7 @@ def test_the_ground_behind_a_step_is_darker_along_it(game):
 def test_the_depth_costs_little_of_a_frame(game):
     game.clear_area(8)
     game.stamp(-6, -5, ["......", "......", "~~~~~~"], levels=["332211", "332211", "000000"]); game.stamp(2, -3, ["T.T", "...", "T.T"])
-    game.rpc("dev_time", phase=.08); game.sleep(1000)
+    game.hour(.08)
     assert game.js("opt('depth') && opt('shader') === 'off'")
     ms = game.js("new Promise((ok) => { const out = [], of = window.frame; window.frame = (now) => { const a = performance.now(); of(now); out.push(performance.now() - a); if (out.length >= 90) { window.frame = of; ok(out); } }; })")
     ms.sort()
@@ -140,9 +140,9 @@ def test_a_step_of_one_level_throws_a_shadow_all_along_it_away_from_the_sun(game
     x, y = game.pos()
     east, west = [x + 2 + 3 / 16, y - 4.5, x + 2 + 8 / 16, y - 2.5], [x - 1 - 8 / 16, y - 4.5, x - 1 - 3 / 16, y - 2.5]
     for phase, far, near in ((.68, east, west), (.06, west, east)):      # evening: the sun in the west; morning: in the east
-        game.rpc("dev_time", phase=phase); game.sleep(1200)
+        game.hour(phase)
         on = [game.js(ROWS, r) for r in (far, near)]
-        game.js("setOpt('landshade', false)"); game.sleep(600)
+        game.js("setOpt('landshade', false)"); game.rest()
         off = [game.js(ROWS, r) for r in (far, near)]
         game.js("setOpt('landshade', true)")
         gaps = [i for i, (a, b) in enumerate(zip(on[0], off[0])) if min(p - q for p, q in zip(a, b)) > -30]
@@ -158,10 +158,10 @@ def test_an_inner_corner_is_no_darker_than_one_walls_shadow(game):
     game.flat(); game.clear_area(9)
     game.stamp(-2, -5, ["...."] * 4, levels=["1111", "0001", "0001", "0001"])      # a step along the north and the east: the corner is inside, north-east
     x, y = game.pos()
-    game.rpc("dev_time", phase=.06); game.sleep(1200)           # morning: both throw their shadow into it
+    game.hour(.06)           # morning: both throw their shadow into it
     corner, one = [x + .4, y - 4 + 2 / 16, x + 1 - 3 / 16, y - 4 + 8 / 16], [x + .4, y - 2.6, x + 1 - 3 / 16, y - 2.1]
     on = [game.js(ROWS, r) for r in (corner, one)]
-    game.js("setOpt('depth', false)"); game.sleep(600)
+    game.js("setOpt('depth', false)"); game.rest()
     plain = [game.js(ROWS, r) for r in (corner, one)]
     by = [[p / max(q, 1) for a, b in zip(o, pl) for p, q in zip(a, b)] for o, pl in zip(on, plain)]
     assert min(by[1]) < .9, min(by[1])                           # (one wall's shadow is there)
@@ -174,10 +174,10 @@ def test_a_body_in_a_trees_shadow_is_darker_than_beside_it(game):
     from test_e2e_sunland import LIT
     game.flat(); game.clear_area(8)
     x, y = game.pos()
-    game.rpc("dev_time", phase=.1); game.sleep(1200)           # morning: a tree's shadow lies long to the west, a little south
+    game.hour(.1)           # morning: a tree's shadow lies long to the west, a little south
     me = [x + .3, y - .2, x + .7, y + .3]
     beside = game.js(LIT, me)
-    game.stamp(2, -1, ["T"]); game.sleep(700)                   # a tree north-east of you: you stand in its shadow
+    game.stamp(2, -1, ["T"]); game.rest()                   # a tree north-east of you: you stand in its shadow
     under = game.js(LIT, me)
     assert under < beside - 10, (beside, under)
     game.js(RESET)
@@ -191,9 +191,9 @@ def test_a_straight_walls_shadow_has_a_straight_edge(game):
     x, y = game.pos()
     part = [x + 1, y - 3.5, x + 3, y - 0.5]                      # the ground west of it, clear of its two ends
     for phase in (.1, .2, .3):
-        game.rpc("dev_time", phase=phase); game.sleep(1200)    # morning: its shadow lies west
+        game.hour(phase)    # morning: its shadow lies west
         on = game.js(ROWS, part)
-        game.js("setOpt('landshade', false)"); game.sleep(600)
+        game.js("setOpt('landshade', false)"); game.rest()
         off = game.js(ROWS, part)
         game.js("setOpt('landshade', true)")
         edge = [next((i for i, (p, q) in enumerate(zip(a, b)) if p - q < -30), None) for a, b in zip(on, off)]
@@ -248,6 +248,15 @@ def test_a_stone_top_is_far_lighter_than_its_wall_at_every_level_and_its_foot_ba
         got = game.js(MID, rows); tops += got[0::3]; fronts += got[1::3]; bands += got[2::3]
     for i in range(8):
         assert tops[i] * .88 >= fronts[i], (5 + i, tops[i], fronts[i])
+        if i and tops[i] < tops[i - 1] * 1.02:
+            # (what else is there, said in the run's warnings whether or not the second try passes: one terrace's top read
+            # 155.3, darker than the one under it, on the first try of two runs in three of this file's group, never
+            # alone, always for a player who woke at -16, 21: this world is shared by a worker's tests, and what one left is not known here)
+            import warnings
+            warnings.warn("a stone top darker than the one under it: " + str(game.js("""([x0, y0]) => ({me: myPos(), phase: clock.phase, xray: xray.a,
+              things: [...ents.values()].filter((p) => p.e && p.x >= x0 - 1 && p.x <= x0 + 7 && p.y >= y0 - 7 && p.y <= y0 + 4).map((p) => [p.e.kind, Math.round(p.x), Math.round(p.y)]),
+              built: (() => { const o = []; for (let j = -7; j < 4; j++) for (let i = 0; i < 7; i++) for (let z = 0; z < 16; z++) { const c = Floors.get(x0 + i, y0 + j, z); if (c) o.push([i, j, z, c[0]]); } return o.slice(0, 12); })(),
+              land: [0, 1, 2, 3].map((j) => [combAt(x0 + 3, y0 + j), floorAt(x0 + 3, y0 + j), roofAt(x0 + 3, y0 + j)])})""", [x - 9, y + 2])), stacklevel=1)
         if i: assert tops[i] >= tops[i - 1] * 1.02, (5 + i, tops)
         if i % 4 < 3: assert fronts[i] + 3 < bands[i] < tops[i] - 6, (5 + i, fronts[i], bands[i], tops[i])
     assert tops[-1] < 200 and max(fronts) - min(fronts) < 1.5, (tops, fronts)      # (the sheet's own tone at the top; a wall: one tone at every level)

@@ -19,8 +19,7 @@ def test_a_bridge_has_water_under_it_and_posts_at_its_ends(game):
     all over, no shore between them; its ends are the pack's end pieces with their posts, in foam where the end is
     out in the water."""
     x, y = game.pos()
-    game.stamp(3, -13, BRIDGES, levels=FLAT)
-    game.sleep(900)
+    game.stamp(3, -13, BRIDGES, levels=FLAT); game.rest()
     at = lambda dx, dy, px=0, py=0: game.js(TILE, [x + 3 + dx, y - 13 + dy, px, py])
     post, foam = [220, 185, 138, 255], [243, 244, 231, 255]
     assert at(2, 2)["solid"] and at(8, 2)["solid"] and at(4, 5)["solid"]                   # the land at its ends: no see-through edge
@@ -47,8 +46,7 @@ def test_a_gate_is_seen_from_the_side_in_a_fence_that_runs_north_and_south(game)
     high, between the posts over and under it; it opens through five frames with its hinge on one side; a fence's
     rails go on to a gate beside it, not to one over or under it."""
     x, y = game.pos()
-    game.stamp(3, -8, PEN, levels=["0" * 5] * 4)
-    game.sleep(600)
+    game.stamp(3, -8, PEN, levels=["0" * 5] * 4); game.rest()
     g = game.js(GATES, [x + 3, y - 8])
     assert g["side"] == [0, 16, 32, 32] and g["front"] == [0, 0, 16, 16], g                # shut: the side-on one, the one from the front
     assert all(a % 32 == 0 and b % 32 == 0 for a, b in g["opening"]) and g["opening"][-1] == [128, 128], g      # opening: every other cell, to the last
@@ -57,9 +55,10 @@ def test_a_gate_is_seen_from_the_side_in_a_fence_that_runs_north_and_south(game)
     # a gate opens for someone beside it, not for a hen ("chickens shouldn't be able to open the doors": the hen
     # could not go through, animals work no gate, but the gate swung open at it)
     game.spawn("chicken", 5, -4, still=900)                    # a hen under the pen's front gate, outside
-    game.stamp(1, 0, ["g"])                                    # and a gate beside you
-    game.sleep(900)
+    game.stamp(1, 0, ["g"]); game.rest()                                    # and a gate beside you
     swung = lambda gx, gy: game.js("([x, y]) => doors.get(x + ',' + y) || 0", [gx, gy])
+    game.settle("([x, y]) => doors.get((x + 1) + ',' + y) === 1 && [...ents.values()].some((p) => p.e && p.e.kind === 'chicken' && Math.round(p.x) === x + 5 && Math.round(p.y) === y - 4)", [x, y])      # (the hen has come with a tick, the gate beside you has swung open: it slept 0.9 s)
+    game.sleep(300)                                            # (...and a gate that swings at a hen has had the time to)
     assert game.js("([x, y]) => [...ents.values()].some((p) => p.e && p.e.kind === 'chicken' && Math.round(p.x) === x && Math.round(p.y) === y)", [x + 5, y - 4])
     assert swung(x + 5, y - 5) == 0 and swung(x + 1, y) == 1
     game.rpc("dev_creatures", clear=40)
@@ -78,8 +77,7 @@ def test_a_tree_on_the_brink_of_a_hill_stands_back_from_it(game):
     north edge, nor in the middle. And the same from water ("weird tree at sea border": a shore tile is cut as a
     hill's edge is, bank and foam where the cliff's face would be)."""
     x, y = game.pos()
-    game.stamp(3, -8, HILL, levels=HIGH)
-    game.sleep(900)
+    game.stamp(3, -8, HILL, levels=HIGH); game.rest()
     back = lambda dx, dy: game.js("([x, y]) => brink(x, y)", [x + 3 + dx, y - 8 + dy])
     assert back(3, 2) == [0, 0] and back(3, 1) == [0, 0]                                  # the middle, the north edge
     assert back(1, 5) == [-4, 0] and back(4, 5) == [0, -8]                                # by water: to its east, to its south
@@ -97,8 +95,7 @@ def test_a_chair_is_turned_to_the_table_or_the_fire_it_is_set_at(game):
     to it ("the right chair in the firecamp is turned at the wrong side"). A chair faces a table or a fire a tile
     or two from it (web/js/world_decor.js chairFaces); with neither near, east as before."""
     x, y = game.pos()
-    game.stamp(3, -8, SEATS, levels=["0" * 7] * 5)
-    game.sleep(600)
+    game.stamp(3, -8, SEATS, levels=["0" * 7] * 5); game.rest()
     faces = lambda dx, dy: game.js("([x, y]) => [chairFaces(x, y), objectSprite('h', x, y, 0)[1]]", [x + 3 + dx, y - 8 + dy])
     assert faces(0, 0) == ["E", 64] and faces(4, 0) == ["W", 80]                           # by the fire: both towards it
     assert faces(1, 2) == ["S", 96] and faces(1, 4) == ["N", 112] and faces(6, 3) == ["E", 64]      # over and under a table; on its own
@@ -118,14 +115,12 @@ def test_tilled_soil_is_furrows_not_a_line_round_a_patch(game):
     a tilled tile is furrows over the whole of it (web/js/furrows.js): a darker line every 4 px, the same on a
     field's rim as in its middle, and no line down the tile. Up on a hill, on grass, the patch is kept."""
     x, y = game.pos()
-    game.stamp(3, -8, FIELD, levels=["0" * 5] * 5)
-    game.sleep(700)
+    game.stamp(3, -8, FIELD, levels=["0" * 5] * 5); game.rest()
     rim, mid = game.js(DARK, [x + 4, y - 6]), game.js(DARK, [x + 5, y - 6])                # the field's west side, its middle
     for t in (rim, mid):
         # furrows across; nothing down it (the patch's edge was 16 in a column; the soil's own specks under it are a few)
         assert all(t["rows"][r] >= 8 for r in (3, 7, 11, 15)) and max(t["cols"]) <= 10, t
-    game.stamp(3, -8, FIELD, levels=["2" * 5] * 5)
-    game.sleep(900)
+    game.stamp(3, -8, FIELD, levels=["2" * 5] * 5); game.rest()
     assert max(game.js(DARK, [x + 4, y - 6])["cols"]) >= 12                                # on a hill: the patch's own edge
     game.stamp(3, -8, ["." * 5] * 5, levels=["0" * 5] * 5)
 
@@ -144,8 +139,7 @@ def test_a_house_is_under_what_stands_before_it(game):
     place, each wall at its own row (web/js/structures.js): you before its door are drawn after it. And a mailbox with a
     letter in it shows the whole of the letter's bubble (the sheet's rows 62 to 88: it was cut from 64)."""
     x, y = game.pos()
-    game.stamp(-2, -4, HOUSE, levels=["0" * 5] * 4)            # its door straight over you
-    game.sleep(1200)
+    game.stamp(-2, -4, HOUSE, levels=["0" * 5] * 4); game.rest()            # its door straight over you
     assert game.js(ORDER) == ["front", "me"]                   # its walls, each drawn in its place: you after them
     letter = game.js("([x, y]) => { const was = mailAt; mailAt = new Set([x + ',' + y]); const s = objectSprite('X', x, y, .6); mailAt = was; return [s[2], s[2] + s[4], s[6] + s[4]]; }", [x + 3, y])
     assert letter[0] <= 62 and letter[1] >= 89 and letter[2] == 16, letter                 # all of it; its foot where it was

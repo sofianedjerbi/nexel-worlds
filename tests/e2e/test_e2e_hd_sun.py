@@ -12,7 +12,7 @@ def hd(browser, server):
     g.js("setOpt('names', false); setOpt('hints', false)")
     g.rpc("dev_creatures", clear=60)
     g.clear_area(12)
-    g.sleep(1200)
+    g.rest()                                                 # (the land made and shown: it slept 1.2 s)
     return g
 
 
@@ -23,9 +23,10 @@ LIGHT = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, 
 
 
 def settled(g):
-    g.sleep(350)
-    g.wait("!HdLook.busy")
-    g.sleep(250)
+    """The land made again and shown (game.py rest: nothing being built, its water made once more, three frames since).
+    It slept 0.35 s, waited for the build to be over and slept 0.25 s: on a busy machine the build had not begun after
+    the first sleep, or the picture was not drawn yet after the second, and the old one was read."""
+    g.rest()
 
 
 def sides(g, x, y):
@@ -49,7 +50,7 @@ def test_a_cast_shadow_lies_on_the_suns_far_side_by_day_and_is_absent_at_night(b
         g.stamp(0, -3, ["%"])
         wx, wy = x, y - 3
         for phase, shaded in ((.1, "west"), (.62, "east"), (.9, None)):
-            g.rpc("dev_time", phase=phase)
+            g.hour(phase)
             g.wait(f"Math.abs((clock.phase || 0) - {phase}) < .02")
             settled(g)
             west, east = sides(g, wx, wy)
@@ -102,7 +103,7 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
     g = hd(browser, server)
     try:
         x, y = g.pos()
-        g.rpc("dev_time", phase=.9)                                           # (night: the shadow under you alone, no cloud, no sun)
+        g.hour(.9)                                           # (night: the shadow under you alone, no cloud, no sun)
         g.wait("Math.abs((clock.phase || 0) - .9) < .02")
         g.stamp(-3, -3, ["T.b", "...", "M.C"])
         for dx, dy in ((3, 2), (-2, -1), (0, 0)):                             # (walked about: the paints are no longer in the order a new land makes them)
@@ -114,10 +115,13 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
             window.__sh.push(n); if (HdLook.busy) window.__busy++; if (window.__sh.length < 150) requestAnimationFrame(f); };
           requestAnimationFrame(f); return 1; })()""")
         g.sleep(150)
-        g.stamp(6, -6, ["M"])                                                 # (a rock, away from you: the land's version changes)
+        # (rocks, away from you, along a row 25 tiles long: the land's version changes, in more than one of its chunks. It was
+        # one rock: that one chunk was sometimes made again within a single frame's share, and then nothing was "made over
+        # frames" for this test to watch: "builds 8 -> 9, frames it was being made: 0")
+        g.stamp(-12, -6, ["M" + "." * 11 + "M" + "." * 11 + "M"])
         g.wait("window.__sh.length >= 150", 15000)
         got = g.js("window.__sh")
-        assert g.js("HdLook.builds > window.__b0 && window.__busy > 0"), "the land was not made again over frames"
+        assert g.js("HdLook.builds > window.__b0 && window.__busy > 0"), f"the land was not made again over frames: builds before, now, frames it was being made, its version: {g.js('[window.__b0, HdLook.builds, window.__busy, landVer]')}"
         assert got[0] > 60 and max(got) - min(got) <= 4, (got[0], min(got), max(got))
     finally:
         g.page.close()

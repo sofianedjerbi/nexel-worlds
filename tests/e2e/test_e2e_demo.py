@@ -10,6 +10,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[2] / "tools"))
 from build_pages import build  # noqa: E402
+from conftest import needs_sounds  # noqa: E402
+
+pytestmark = needs_sounds                                    # (the build takes the sounds with it)
 
 
 @pytest.fixture(scope="module")

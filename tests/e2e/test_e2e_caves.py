@@ -113,8 +113,7 @@ def test_standing_behind_a_hill_it_hides_you(game):
     game.clear_area(9)
     game.js("(() => { XRAY.from = 1e9; XRAY.full = 2e9; return 1; })()")
     x, y = game.pos()
-    game.stamp(-3, 1, ["......."] * 4, levels=["4444444"] * 4)                         # a hill just south of you
-    game.sleep(900)
+    game.stamp(-3, 1, ["......."] * 4, levels=["4444444"] * 4); game.rest()                         # a hill just south of you
     game.rpc("dev_time", phase=.4)
     # where your body is on screen, the hill's top is drawn (as beside you), not you
     at = lambda dx, dy=.6: game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), c = document.querySelector('canvas');

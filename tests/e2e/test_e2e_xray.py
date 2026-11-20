@@ -39,8 +39,7 @@ def test_behind_a_mountain_you_are_seen_through_it(game):
     """Behind a wall or a mountain you were cut at its edge: gone. The rock in front of you is cut away (xray.js): you
     show, on the ground you stand on; out from behind it, the rock is back."""
     game.clear_area(10)
-    game.stamp(-5, 1, ["." * 11] * 4, levels=["66666666666"] * 4)   # a wall 6 layers high, right in front (south) of you
-    game.sleep(900)
+    game.stamp(-5, 1, ["." * 11] * 4, levels=["66666666666"] * 4); game.rest(); game.settle('xray.a > .998')   # a wall 6 layers high, right in front (south) of you
     look = """(() => { const k = DPR, w = Math.round(48 * k), d = ctx.getImageData(Math.round(W / 2 * k) - w / 2, Math.round(H / 2 * k) - w / 2, w, w).data;
       return Array.from(d); })()"""
     assert game.js("xray.a") > .95
@@ -110,8 +109,7 @@ def test_the_cut_never_touches_ground_that_already_shows(game):
     covers; a pixel further back, where the ground shows anyway, is the same cut or not (it was cut
     out in whole tile columns with a margin: seams and dark lines in open ground and open water)."""
     game.clear_area(10)
-    game.stamp(-3, 1, ["." * 7] * 2, levels=["3333333"] * 2)
-    game.sleep(1200)
+    game.stamp(-3, 1, ["." * 7] * 2, levels=["3333333"] * 2); game.rest(); game.settle('xray.a > .998')
     x, y = game.pos()
     assert game.js("xray.a") > .95
     shows, covered = f"{x} - 3, {y} - 4, {x} + 4, {y} - 1 + 8 / 16", f"{x} - 1, {y} - 3 / 16, {x} + 2, {y} + 1"   # behind the wall's top edge (a block's top goes to its tile's edge: three layers, a tile and a half up); under it
@@ -133,8 +131,7 @@ def test_the_side_of_a_cliff_beside_open_water_is_not_seen_through(game):
             front, side = 1 <= j <= 3 and -3 <= i <= 1, -3 <= j <= 0 and 3 <= i <= 4       # the plateau in front of you; a wall to the east
             r += "." if front or side else "~"; l += "6" if front or side else "0"
         rows.append(r); lv.append(l)
-    game.stamp(-6, -4, rows, levels=lv)
-    game.sleep(1500)
+    game.stamp(-6, -4, rows, levels=lv); game.rest(); game.settle('xray.a > .998')
     x, y = game.pos()
     assert game.js("xray.a") > .95
     # the open water beside the wall, under its side, and the water under the plateau in front
@@ -212,12 +209,10 @@ def test_things_on_the_rock_in_front_of_you_fade_with_it(game):
     game.act("drop", item="wood")
     game.sleep(300)
     px, py = game.pos()
-    game.rpc("dev_teleport", x=px, y=py - 1)                  # a tile north of the pile...
-    game.sleep(700)
+    game.rpc("dev_teleport", x=px, y=py - 1); game.arrive()                  # a tile north of the pile...
     x, y = game.pos()
     assert (x, y) == (px, py - 1)
-    game.stamp(-3, 1, ["." * 7] * 3, levels=["6666666"] * 3)  # ...and the ground under it, and beside it, goes up six layers
-    game.sleep(1300)
+    game.stamp(-3, 1, ["." * 7] * 3, levels=["6666666"] * 3); game.rest(); game.settle('xray.a > .998')  # ...and the ground under it, and beside it, goes up six layers
     assert game.js("xray.a") > .95 and game.js(f"groundItems.some(([ix, iy]) => ix === {px} && iy === {py})")
     assert game.js(f"xrayOver({px}, {py})") > .98             # on rock that is cut away: not drawn at all
     drawn = game.js(f"""(() => {{ const raf = window.requestAnimationFrame; window.requestAnimationFrame = () => 0; let n = 0;
@@ -254,8 +249,7 @@ def test_what_is_cut_away_is_found_again_only_when_you_change_tile(game):
     """The place you are in, the rock in the way and how low each tile is cut are kept (xray.js xrayFind): standing still nothing is worked out
     again; walking along behind a wall, once a tile."""
     game.clear_area(10)
-    game.stamp(-7, 1, ["." * 15] * 3, levels=["6" * 15] * 3)
-    game.sleep(1200)
+    game.stamp(-7, 1, ["." * 15] * 3, levels=["6" * 15] * 3); game.rest(); game.settle('xray.a > .998')
     assert game.js("xray.a") > .95
     game.js("(() => { window.__found = []; let last = xray.pic; (function f() { if (xray.pic !== last) { last = xray.pic; window.__found.push(last && last.key); } requestAnimationFrame(f); })(); return 1; })()")
     game.sleep(800)

@@ -10,8 +10,7 @@ def test_a_tree_behind_a_hill_is_hidden_by_it_and_shows_in_the_circle(game):
     """A tree standing behind a hill was drawn over the hill, as if it stood on top of it (only bodies were cut at a
     hill's edge). Now the hill hides it; in the x-ray circle, beside you behind that hill, it shows through."""
     game.clear_area(10)
-    game.stamp(-8, 1, ["." * 17] * 3, levels=["6" * 17] * 3)       # a wall six layers high right in front of you: its top is drawn over your row
-    game.sleep(1200)
+    game.stamp(-8, 1, ["." * 17] * 3, levels=["6" * 17] * 3); game.rest()       # a wall six layers high right in front of you: its top is drawn over your row
     x, y = game.pos()
     look = lambda x0, x1: game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), k = DPR, X = Math.round((ox + {x0} * S) * k), Y = Math.round((oy + ({y} - 2) * S) * k);
       return Array.from(ctx.getImageData(X, Y, Math.round(({x1} - {x0}) * S * k), Math.round(3 * S * k)).data); }})()""")
@@ -22,8 +21,7 @@ def test_a_tree_behind_a_hill_is_hidden_by_it_and_shows_in_the_circle(game):
     # A tile each side of you, XRAY.side 1, is the cut this test was written for: what is beside you shows through)
     side = lambda n: (game.js(f"(() => {{ XRAY.side = {n}; return 1; }})()"), game.sleep(700))
     circle(True); seen_near = look(*near); side(1); wide_near = look(*near); side(0)
-    game.stamp(-6, 0, ["T....T"])                                   # a tree on each
-    game.sleep(1200)
+    game.stamp(-6, 0, ["T....T"]); game.rest()                                   # a tree on each
     assert game.js(f"combAt({x - 6}, {y}) === 'T' && combAt({x - 1}, {y}) === 'T' && tileBehind({x - 6}, {y})")
     assert look(*near) == seen_near                                 # beside your column: behind the hill that stands there
     side(1)
@@ -39,14 +37,12 @@ def test_a_tree_behind_a_ledge_is_cut_at_its_edge(game):
     """Behind a ledge two layers high the foot of a tree is hidden and its crown shows over the ledge."""
     game.clear_area(10)
     game.js("(() => { XRAY.from = 9; XRAY.full = 10; return 1; })()")
-    game.stamp(2, 1, ["...."] * 2, levels=["2222"] * 2)               # a ledge, east of you: its top is drawn over the row behind it
-    game.sleep(1200)
+    game.stamp(2, 1, ["...."] * 2, levels=["2222"] * 2); game.rest()               # a ledge, east of you: its top is drawn over the row behind it
     x, y = game.pos()
     look = lambda ty, h: game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), k = DPR;
       return Array.from(ctx.getImageData(Math.round((ox + {x + 3} * S) * k), Math.round((oy + {ty} * S) * k), Math.round(S * k), Math.round({h} * S * k)).data); }})()""")
     foot, crown = look(y + .5, .5), look(y - 1, 1)                  # (the ledge's edge is set in a few px from the top of the tile)
-    game.stamp(3, 0, ["T"])
-    game.sleep(1200)
+    game.stamp(3, 0, ["T"]); game.rest()
     assert game.js(f"combAt({x + 3}, {y}) === 'T'")
     assert look(y + .5, .5) == foot                                 # its tile: under the ledge's top, as before
     assert look(y - 1, 1) != crown                                  # over the ledge: its crown

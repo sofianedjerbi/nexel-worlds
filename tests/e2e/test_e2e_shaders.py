@@ -21,8 +21,7 @@ def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
     game.press("ArrowRight", 500)                               # the first look
     assert game.js("[opt('shader'), Shader.works, getComputedStyle(Shader.el).display, Shader.el.width === cv.width, Shader.el.height === cv.height]") == ["natural", True, "block", True, True]
     game.press("Escape"); game.press("Escape")
-    game.js("setOpt('shader', 'golden')")                       # (Natural keeps the colours: a graded one, to see it act)
-    game.sleep(300)
+    game.js("setOpt('shader', 'golden')"); game.rest()                       # (Natural keeps the colours: a graded one, to see it act)
     look = """(() => { const c = document.createElement("canvas"); c.width = 40; c.height = 30; const g = c.getContext("2d");
       g.drawImage(Shader.el, 0, 0, 40, 30); const fx = [...g.getImageData(0, 0, 40, 30).data];
       g.drawImage(cv, 0, 0, 40, 30); const plain = [...g.getImageData(0, 0, 40, 30).data];
@@ -35,7 +34,7 @@ def test_a_shader_repaints_the_picture_and_off_is_as_before(game):
     game.js("setOpt('shaderk', 0); setOpt('clouds', 0); window.shot = null; requestAnimationFrame(() => requestAnimationFrame(() => { window.shot = " + look + "; }))")
     game.wait("window.shot")
     assert game.js("shot")[0] < 2, game.js("shot")              # strength 0: the picture as it is
-    game.js("setOpt('shader', 'off')"); game.sleep(200)
+    game.js("setOpt('shader', 'off')"); game.rest()
     assert game.js("getComputedStyle(Shader.el).display") == "none"
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
 
@@ -53,25 +52,25 @@ def test_a_shader_gives_things_a_shadow_that_follows_the_sun_and_a_reflection_in
       ok(sum / d.length * 4 / 3); })))"""
     west, east, pond = [tx - 2, ty + .4, tx, ty + 1], [tx + 1, ty + .4, tx + 3, ty + 1], [tx - .5, ty + 1.1, tx + 1.5, ty + 2.6]
     game.js("setOpt('shimmer', false)")                         # (still water: what is measured is the reflection, not a wave)
-    game.rpc("dev_time", phase=.06)                             # early morning: the sun in the east
-    game.sleep(1200)
+    game.hour(.06)                             # early morning: the sun in the east
     plain = [game.js(lit, r) for r in (west, east, pond)]
-    game.js("setOpt('clouds', 0); setOpt('shader', 'natural')")      # (no clouds: their shadows are in the land's own picture, and drift)
-    game.sleep(800)
+    # (no clouds: their shadows are in the land's own picture, and drift. And no shafts of the low sun: at this hour their
+    # bands lie on the lit ground, 6 to 22 lighter where one is, and drift: with one on the ground east of the tree, that
+    # ground was not "as without the shader": one run in five on any machine. They have their own test, below)
+    game.js("setOpt('clouds', 0); setOpt('rays', 0); setOpt('shader', 'natural')"); game.rest()
     on = [game.js(lit, r) for r in (west, east, pond)]
     assert on[0] < plain[0] - 3 and abs(on[1] - plain[1]) < 1.5, (plain, on)      # its shadow lies to the west, none to the east
     assert game.js("Sun.shades()") is True                      # (and the pale mark under you is not drawn: you have a shadow)
-    game.js("setOpt('reflect', 0)"); game.sleep(600)        # the tree is in the water under it: the water without it is not the same
+    game.js("setOpt('reflect', 0)"); game.rest()        # the tree is in the water under it: the water without it is not the same
     bare = game.js(lit, pond)
     assert abs(on[2] - bare) > 1 and abs(game.js(lit, pond) - bare) < .3, (on, bare)
-    game.rpc("dev_time", phase=.7)                              # evening: the other side
-    game.sleep(1200)
-    game.js("setOpt('shader', 'off')"); game.sleep(600)
+    game.hour(.7)                              # evening: the other side
+    game.js("setOpt('shader', 'off')"); game.rest()
     plain = [game.js(lit, r) for r in (west, east)]
-    game.js("setOpt('shader', 'natural')"); game.sleep(800)
+    game.js("setOpt('shader', 'natural')"); game.rest()
     on = [game.js(lit, r) for r in (west, east)]
     assert on[1] < plain[1] - 3 and abs(on[0] - plain[0]) < 1.5, (plain, on)
-    game.js("setOpt('shadows', 0)"); game.sleep(600)
+    game.js("setOpt('shadows', 0)"); game.rest()
     assert game.js(lit, east) > on[1] + 3                       # (the hour's light moves on meanwhile: lighter than shaded, not equal to before)
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
 
@@ -81,8 +80,7 @@ def test_nothing_is_reflected_in_water_that_a_hill_hides(game):
     game.clear_area(8)
     game.stamp(-3, -3, ["~~~~~~~", "~~~~~~~", ".......", ".......", "......."], levels=["0000000", "0000000", "5555555", "5555555", "5555555"])
     game.rpc("dev_time", phase=.3)
-    game.js("setOpt('shimmer', false); setOpt('shadows', 0); setOpt('reflect', 0); setOpt('clouds', 0); setOpt('shader', 'natural')")      # (no clouds: their shadows drift over the land's own picture)
-    game.sleep(1200)
+    game.js("setOpt('shimmer', false); setOpt('shadows', 0); setOpt('reflect', 0); setOpt('clouds', 0); setOpt('shader', 'natural')"); game.rest()      # (no clouds: their shadows drift over the land's own picture)
     x, y = game.pos()
     grab = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
       const a = Math.round(x0 * DPR), b = Math.round(y0 * DPR), d = cv.getContext("2d").getImageData(a, b, Math.round((x1 - x0) * DPR), Math.round((y1 - y0) * DPR)).data;
@@ -92,7 +90,7 @@ def test_nothing_is_reflected_in_water_that_a_hill_hides(game):
     box = game.js("(() => { const S = TS(), [ox, oy] = screenOrigin(S), p = ents.get('agent' + myId), sy = (yy) => oy + yy * S; const fy = bodyY(p, sy) + 14 * zoom, fx = ox + p.x * S; return [fx - S, fy, fx + 2 * S, fy + 2 * S]; })()")
     assert game.js("liftOf({x: %d, y: %d})" % (x, y)) > 0
     off = game.js(grab, box)
-    game.js("setOpt('reflect', 100)"); game.sleep(800)
+    game.js("setOpt('reflect', 100)"); game.rest()
     assert game.js(grab, box) == off
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
 
@@ -106,7 +104,7 @@ def test_a_shadow_adds_no_dust_or_spray_and_a_swimmer_has_none(game):
       const tick = () => { for (const q of parts) if (!seen.has(q)) { seen.add(q); n++; } if (performance.now() - t0 < ms) requestAnimationFrame(tick); else ok(n); };
       requestAnimationFrame(tick); })"""
     def swim():
-        game.rpc("dev_teleport", x=game.home[0], y=game.home[1]); game.sleep(500)
+        game.rpc("dev_teleport", x=game.home[0], y=game.home[1]); game.arrive()
         game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
         game.sleep(600)
         n = game.js(count, 1500)
@@ -114,13 +112,13 @@ def test_a_shadow_adds_no_dust_or_spray_and_a_swimmer_has_none(game):
         return n
     game.home = game.pos()
     plain = swim()
-    game.js("setOpt('shader', 'natural')"); game.sleep(500)
+    game.js("setOpt('shader', 'natural')"); game.rest()
     shaded = swim()
     assert plain > 5 and shaded < plain * 1.5, (plain, shaded)      # as much spray as without (it came three times over)
     lit = """() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => { let seen = 0; const d = Sun.layerData(); for (let i = 3; i < d.length; i += 4) if (d[i]) seen++; ok(seen); })))"""
-    game.rpc("dev_teleport", x=game.home[0], y=game.home[1]); game.sleep(600)
+    game.rpc("dev_teleport", x=game.home[0], y=game.home[1]); game.arrive()
     assert game.js(lit) > 20                                        # on land: your shadow is on the layer
-    game.rpc("dev_teleport", x=game.home[0] + 4, y=game.home[1]); game.sleep(600)
+    game.rpc("dev_teleport", x=game.home[0] + 4, y=game.home[1]); game.arrive()
     game.wait(f"(() => {{ const p = ents.get('agent' + myId); return !!p && p.x === {game.home[0] + 4} && p.y === {game.home[1]} && parts.length === 0; }})()", 8000)   # (there, as drawn, and the spray of getting there gone: on a busy machine 0.6 s was not always enough)
     assert game.js("DEPTH_OF[gndAt(myPos().x, myPos().y)] > 0")     # in the water: nothing of you on it
     assert game.js(lit) == 0, game.js(lit)
@@ -170,10 +168,10 @@ def test_what_is_written_in_the_world_is_drawn_over_a_shader_not_through_it(game
     plain = game.js(ink)
     by = abs(plain["sum"] - plain["bare"])
     assert plain["said"] and by > 20000 and plain["shown"] == "none", plain     # no shader: the bubble is on the picture
-    game.js("setOpt('shader', 'soft'); setOpt('shadows', 0); setOpt('clouds', 0)"); game.sleep(600)
+    game.js("setOpt('shader', 'soft'); setOpt('shadows', 0); setOpt('clouds', 0)"); game.rest()
     on = game.js(ink)
     assert on["said"] and abs(on["sum"] - on["bare"]) < by / 8 and on["words"] > 300 and on["shown"] == "block", (plain, on)    # a shader: not in what it repaints, over it
-    game.js("setOpt('shader', 'off')"); game.sleep(400)
+    game.js("setOpt('shader', 'off')"); game.rest()
     off = game.js(ink)
     assert off["said"] and off["shown"] == "none" and abs(off["sum"] - off["bare"]) > by / 2, (plain, off)
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
@@ -187,7 +185,7 @@ def test_the_shaders_light_the_water_send_rays_at_low_sun_and_a_fire_throws_shad
     tx, ty = x - 5, y
     game.js("setOpt('shimmer', false); setOpt('clouds', 0); setOpt('corners', 0)")
     assert game.js("Sun.water") is None                         # no shader: nothing is worked out
-    game.js("setOpt('shader', 'natural')"); game.sleep(800)
+    game.js("setOpt('shader', 'natural')"); game.rest()
     assert game.js("!!Sun.water && Sun.water.cv.width === Math.ceil(W / zoom) + 1")       # where the water is seen, for the sky, the clouds and the glitter: a px of it a px of the art (the engine's own mask of the water's face)
     fx = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
       const c = document.createElement("canvas"); c.width = 60; c.height = 40; const g = c.getContext("2d");
@@ -195,21 +193,26 @@ def test_the_shaders_light_the_water_send_rays_at_low_sun_and_a_fire_throws_shad
       const d = g.getImageData(0, 0, 60, 40).data; let sum = 0, blue = 0; for (let i = 0; i < d.length; i += 4) { sum += d[i] + d[i + 1] + d[i + 2]; blue += d[i + 2] - d[i]; }
       ok([sum / 2400, blue / 2400]); })))"""
     pond = game.js("(() => { const S = TS(), [ox, oy] = screenOrigin(S); return [(ox + %d * S) / W, (oy + %d * S) / H, (ox + %d * S) / W, (oy + %d * S) / H]; })()" % (x - 5, y + 2, x + 3, y + 4))
-    game.rpc("dev_time", phase=.37); game.sleep(1200)
+    game.hour(.37)
     lit = game.js(fx, pond)
-    game.js("setOpt('waterlight', 0)"); game.sleep(600)
+    game.js("setOpt('waterlight', 0)"); game.rest()
     assert game.js("Sun.water") is None
     dull = game.js(fx, pond)
     assert lit[1] > dull[1] + 4, (lit, dull)                    # noon: the sky's blue lies in the water
-    game.rpc("dev_time", phase=.05); game.sleep(1200)           # the sun low in the east: shafts of light from that side
+    game.hour(.05)           # the sun low in the east: shafts of light from that side
     # (they lie on the land's lit tops, in the land's own px: vox_light.js; never on a wall or on water. They were laid over the
     # finished picture, a hatch over water and walls. Bands that drift over the land: where one is now is not the test's to say)
-    whole = [0, 0, 1, 1]
-    rays, given = game.js(fx, whole), game.js("Sun.given().rays")
+    given = game.js("Sun.given().rays")
     assert given and given["k"] > 0 and given["dir"][0] < 0, given      # handed to the land, from the east
-    game.js("setOpt('rays', 0)"); game.sleep(600)
-    assert game.js("Sun.given().rays") is None and rays[0] >= game.js(fx, whole)[0] - .05, rays      # none; and they were light, never dark
-    game.rpc("dev_time", phase=.87); game.sleep(1500)           # night: the tree's shadow lies away from the fire, to the west
+    # (one frame drawn with the shafts and without, sunland's twice: it compared the picture now with the one 0.6 s on,
+    # and at dawn the whole picture grows lighter by the second, 2 a second of 480: where the bands added less than
+    # that, the later picture without them was the lighter one. More so the longer a busy machine made the wait)
+    from test_e2e_sunland import twice
+    (rays, none), = twice(game, [[x - 8, y - 5, x + 8, y + 5]], "rays", 0)
+    assert rays >= none, (rays, none)                           # they are light, never dark
+    game.js("setOpt('rays', 0)"); game.rest()
+    assert game.js("Sun.given().rays") is None                  # none
+    game.hour(.87)           # night: the tree's shadow lies away from the fire, to the west
     # (one frame drawn with the shadows and without: the fire's light flickers from a frame to the next by as much as
     # its shadow darkens this part, which is what made this test fail one run in three)
     from test_e2e_sunland import twice

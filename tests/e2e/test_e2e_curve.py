@@ -66,8 +66,7 @@ def test_a_click_in_the_bend_finds_the_tile_drawn_there(game):
             got = game.js("([a, b]) => tileAtScreen(a, b)", [px, at])
             assert (got["x"], got["y"]) == (x + dx, y + dy), (dx, dy, at, got)
     game.stamp(-2, -5, ["....."] * 2, levels=["33333"] * 2)
-    game.wait("dirtyTiles.length === 0")
-    game.sleep(500)
+    game.rest()
     for dx, dy in ((0, -4), (1, -5), (-2, -4)):
         px, py, top, foot = game.js(PROJ, [x + dx, y + dy])
         got = game.js("([a, b]) => tileAtScreen(a, b)", [px, py])
@@ -160,8 +159,7 @@ def test_a_bank_bends_with_the_land(game):
     curved(game, "far")
     for dy in (2, -5):                                           # one in the flat part, south of you; one far in the bend
         game.stamp(2, dy, ["..."] * 2, levels=["333"] * 2)
-    game.wait("dirtyTiles.length === 0")
-    game.sleep(600)
+    game.rest()
     assert game.js("Voxels.engine.sides") > 0
     assert game.js(f"Curve.y(screenOrigin()[1] + ({y} - 4) * TS(), 0) > screenOrigin()[1] + ({y} - 4) * TS() + 30")      # (it is in the bend: far lower down the screen than flat)
     # in the hill's west column, its second row: its top (its far part: the near part is its lip); the bank of its second level (the first 2 px of the tile,
@@ -182,8 +180,7 @@ def test_a_bridge_far_north_bends_with_the_water_and_who_is_on_it_stands_on_its_
     x, y = game.pos()
     curved(game, "far")
     game.stamp(-4, -5, POND)
-    game.wait("dirtyTiles.length === 0")
-    game.sleep(800)
+    game.rest()
     by = y - 3                                                   # the bridge's row
     assert game.js("Voxels.engine.models") > 40 and game.js(f"liftAt({x}, {by}) / zoom") == 4
     deck = [game.js(AT, [x + dx, by, 1, 8, 4]) for dx in (-2, 0, 2)]

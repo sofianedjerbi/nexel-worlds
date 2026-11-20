@@ -69,8 +69,7 @@ def test_a_creature_comes_up_a_step_as_you_do(game):
     """Creatures stand on the land as people do (sim/bodies.py): one hops up a layer, the screen shows it at its
     height (they kept to the level they were on: you on a step, a tusker rammed the step)."""
     game.clear_area(10)
-    game.stamp(-1, -1, ["..."] * 3, levels=["111"] * 3)          # you, on ground a layer up
-    game.sleep(500)
+    game.stamp(-1, -1, ["..."] * 3, levels=["111"] * 3); game.rest()          # you, on ground a layer up
     game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     boar = game.spawn("tusker", 4, 0)                            # (it sees four tiles)
     game.wait(f"[...ents.values()].some((q) => q.e && q.e.id === {boar} && q.e.z === 1)", 6000)   # it charged, up the step

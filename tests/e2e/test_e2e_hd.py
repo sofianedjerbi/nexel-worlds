@@ -10,7 +10,7 @@ def hd(browser, server):
     g.js("setOpt('names', false); setOpt('hints', false)")
     g.rpc("dev_creatures", clear=60)
     g.clear_area(12)
-    g.sleep(1200)
+    g.rest()
     return g
 
 
@@ -19,8 +19,7 @@ def test_the_pointer_aims_at_the_tile_drawn_under_it(browser, server):
     g = hd(browser, server)
     try:
         x, y = g.pos()
-        g.stamp(3, -2, ["..."] * 2, levels=["222"] * 2)             # (a raised step too: its top, not the land behind it)
-        g.sleep(1500)
+        g.stamp(3, -2, ["..."] * 2, levels=["222"] * 2); g.rest()             # (a raised step too: its top, not the land behind it)
         for dx, dy in [(0, 2), (-3, 1), (2, -1), (4, -2), (-2, -3)]:
             got = g.js("""([x, y]) => { const z = Voxels.host.column(x, y).at(-1), p = HdLook.screenOf(x + .5, y + .5, z);
               return p && tileAtScreen(p[0], p[1]); }""", [x + dx, y + dy])
@@ -36,11 +35,9 @@ def test_walking_down_a_stair_under_a_roof_keeps_you_seen(browser, server):
     try:
         x, y = g.pos()
         g.stamp(-1, -6, ["..."] * 6, levels=["666"] * 6)
-        g.stamp(0, -5, ["."] * 5, levels=["5", "4", "3", "2", "1"], roofs=["", "", "6", "6", "6"], heads=["", "", "2", "2", "2"])
-        g.sleep(1500)
+        g.stamp(0, -5, ["."] * 5, levels=["5", "4", "3", "2", "1"], roofs=["", "", "6", "6", "6"], heads=["", "", "2", "2", "2"]); g.rest()
         for i in range(5):
-            g.rpc("dev_teleport", x=x, y=y - 5 + i, z=5 - i)
-            g.sleep(1800)                                          # (the cut opens round you in a little over a second)
+            g.rpc("dev_teleport", x=x, y=y - 5 + i, z=5 - i); g.arrive()    # (the cut opens round you in a little over a second)
             seen = g.js("HdLook.catSeen()")
             assert seen > .8, (i, seen, g.js("({u: HdLook.u, pit: HdLook.pit})"))
     finally:
@@ -62,7 +59,7 @@ def test_two_walls_side_by_side_touch_and_a_bridge_is_drawn(browser, server):
         x, y = g.pos()
         join = [[x + 3 + d / 16, y - 2, 1] for d in range(-4, 5)]    # (the walls' face: the south edge of row y - 3, a level up)
         assert all(green(g.js(AT, p)) for p in join)                 # (the meadow there, before)
-        g.stamp(2, -3, ["%%"]); g.stamp(-4, 2, ["~~~", "~:~", "~~~"]); g.sleep(1800)
+        g.stamp(2, -3, ["%%"]); g.stamp(-4, 2, ["~~~", "~:~", "~~~"]); g.rest()
         seen = [g.js(AT, p) for p in join]
         assert not any(green(c) for c in seen), seen
         top = g.js(f"Voxels.host.waterTop({x - 3}, {y + 3})")
@@ -78,7 +75,7 @@ def test_the_build_cursor_is_on_the_tile_you_point_at(browser, server):
     g = hd(browser, server)
     try:
         x, y = g.pos()
-        g.stamp(3, -2, ["..."] * 2, levels=["222"] * 2); g.sleep(1500)
+        g.stamp(3, -2, ["..."] * 2, levels=["222"] * 2); g.rest()
         g.page.keyboard.press("b"); g.sleep(400)
         for dx, dy, z in [(-2, 1, 0), (4, -2, 2), (1, -3, 0)]:
             p = g.js("([x, y, z]) => HdLook.screenOf(x + .5, y + .5, z)", [x + dx, y + dy, z])
@@ -97,8 +94,8 @@ def test_the_night_is_darker_than_the_day_but_for_your_lamp(browser, server):
     try:
         x, y = g.pos()
         lum = lambda dx: sum(g.js(AT, [x + dx + .5, y + 2.5, 0]))
-        g.rpc("dev_time", phase=.3); g.sleep(1500); day = lum(9)
-        g.rpc("dev_time", phase=.9); g.sleep(1500); night, near = lum(9), lum(0)
+        g.hour(.3); day = lum(9)
+        g.hour(.9); night, near = lum(9), lum(0)
         assert night < .7 * day and near > night + 30, (day, night, near)
     finally:
         g.page.close()
@@ -124,7 +121,7 @@ def test_a_bed_is_its_own_picture_px_for_px_with_a_top_a_side_and_a_shadow(brows
     try:
         x, y = g.pos()
         bx, by = x + 1, y - 2
-        g.stamp(1, -2, ["B"]); g.sleep(1500)
+        g.stamp(1, -2, ["B"]); g.rest()
         lean0, w0, off, foot = g.js(CARD, [bx, by, 0])
         assert (lean0, w0, off) == (0, 16, 0)
         assert g.js(CARD, [bx, by, 140])[:3] == [0, 16, 0]
@@ -155,12 +152,12 @@ def test_a_built_house_has_its_roof_outside_and_is_open_inside(browser, server):
         room = [[x0 + 1, y0 + 1, 0], [x0 + 2, y0 + 1, 0]]
         assert g.js(PUT, [[[x0 + i, y0 + j, 3, "roof"] for j in (2, 1, 0) for i in range(4)], room]) == []
         over = [x0 + 1.5, y0 + 1.5, 3]                                      # (a point of the roof's top, over the room)
-        g.rpc("dev_teleport", x=x, y=y, z=0); g.sleep(2200)
+        g.rpc("dev_teleport", x=x, y=y, z=0); g.arrive()
         out = g.js(AT, over)
         assert g.js(ROOF, [x0 + 1, y0 + 1]) and not green(out), out                # outside: the roof, drawn
         wall = max(b["z"] + b["h"] for b in g.js("([x, y]) => HdThings.at(x, y)", [x0, y0 + 1]) if b["z"] < 16)
         assert wall == 16                                                    # (the wall under it: up to the roof block's underside)
-        g.rpc("dev_teleport", x=x0 + 1, y=y0 + 1, z=0); g.sleep(2200)
+        g.rpc("dev_teleport", x=x0 + 1, y=y0 + 1, z=0); g.arrive()
         inside = g.js(AT, over)
         assert not g.js(ROOF, [x0 + 1, y0 + 1]) and not g.js(ROOF, [x0 + 3, y0 + 2]), "the roof is still there inside"
         assert far(out, inside) and g.js("HdLook.catSeen()") > .8, (out, inside)
@@ -175,7 +172,7 @@ def test_the_aim_goes_round_the_piece_as_it_is_drawn(browser, server):
     g = hd(browser, server)
     try:
         x, y = g.pos()
-        g.stamp(1, -1, ["C"]); g.stamp(-2, -1, ["W"]); g.sleep(1500)
+        g.stamp(1, -1, ["C"]); g.stamp(-2, -1, ["W"]); g.rest()
         z = g.js("zoom")
         p = g.js("([x, y]) => { const s = objectSprite('C', x, y, 0), c = HdThings.card('C', x, y, s), f = HdLook.screenOf(x + .5, y + c.y, 0); return [f[0], f[1] - 5 * zoom, c.b]; }", [x + 1, y - 1])
         g.page.mouse.move(p[0], p[1]); g.sleep(600)

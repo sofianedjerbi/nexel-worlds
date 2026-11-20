@@ -28,5 +28,5 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 # the end-to-end suite drives real Chrome against a fresh server and takes minutes: run it with `pytest -m e2e`
-markers = ["e2e: plays the game in Chrome against a fresh server"]
+markers = ["e2e: plays the game in Chrome against a fresh server", "quick: one short e2e test a file, a minute in all (tests/e2e/README.md)"]
 addopts = "-m 'not e2e' -n 6"

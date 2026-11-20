@@ -6,8 +6,7 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     rising; where you land, dust, and what it cost you shown there (a flash, the number, the ground shaking). It
     was a hop: one arc in the time of a step, and nothing to say it had hurt."""
     game.clear_area(10)
-    game.stamp(-1, -1, ["..."] * 3, levels=["888"] * 3)       # a tower eight layers high under you
-    game.sleep(700)
+    game.stamp(-1, -1, ["..."] * 3, levels=["888"] * 3); game.rest()       # a tower eight layers high under you
     game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     x, y = game.pos()
     game.js("""(() => { window.__f = []; const o = fallOf;
@@ -34,13 +33,11 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
 
 def test_a_drop_of_two_layers_is_still_a_hop_and_three_a_short_fall(game):
     game.clear_area(10)
-    game.stamp(-1, -1, ["..."] * 3, levels=["222"] * 3)
-    game.sleep(600)
+    game.stamp(-1, -1, ["..."] * 3, levels=["222"] * 3); game.rest()
     x, y = game.pos()
     step = lambda f: game.js(f"(() => {{ const p = {{x: {x + 1} + {f}, y: {y}, tx: {x + 2}, ty: {y}, fx: 1, fy: 0}}; return [fallOf(p, 1000) !== null, jumpOf(p) !== null]; }})()")
     assert step(.6) == [False, True]                           # two layers: the hop's arc
-    game.stamp(-1, -1, ["..."] * 3, levels=["333"] * 3)
-    game.sleep(600)
+    game.stamp(-1, -1, ["..."] * 3, levels=["333"] * 3); game.rest()
     assert step(.3) == [True, True] and step(.6)[0]            # three: a fall (it walks to the edge, then drops)
     assert game.server()["hp"] == 20
 
@@ -51,11 +48,9 @@ def test_dust_shows_on_level_ground_and_not_behind_a_ledge(game):
     game.clear_area(8)
     x, y = game.pos()
     assert game.js(f"[behindHill({x} + .5, {y} + .85), behindHill({x} + .5, {y} + .2)]") == [False, False]
-    game.stamp(-1, 1, ["..."], levels=["111"])                 # a ledge a layer high in front of you: its top covers the lower half of your tile
-    game.sleep(500)
+    game.stamp(-1, 1, ["..."], levels=["111"]); game.rest()                 # a ledge a layer high in front of you: its top covers the lower half of your tile
     assert game.js(f"[behindHill({x} + .5, {y} + .85), behindHill({x} + .5, {y} + .2)]") == [True, False]
-    game.stamp(-1, 1, ["..."], levels=["000"])
-    game.sleep(400)
+    game.stamp(-1, 1, ["..."], levels=["000"]); game.rest()
     n = game.js("(() => { parts.length = 0; return 1; })()")
     shown = game.js(f"""(() => {{ burst({x}, {y} + .35, 'dust', 8, {{g: 0, life: 3}}); let n = 0; const f = ctx.fillRect;
       ctx.fillRect = function (...a) {{ if (ctx.fillStyle === PCOL.dust[0] || ctx.fillStyle === PCOL.dust[1]) n++; return f.apply(ctx, a); }};

@@ -13,15 +13,25 @@ def test_a_cliff_throws_its_shadow_on_the_low_land_away_from_the_sun(browser, se
     g = hd(browser, server)
     x, y = g.pos()
     g.stamp(-1, -4, ["..."] * 2, levels=["444"] * 2)                # a cliff 4 levels high, 3 tiles wide, north of you
+    # (the land made with the cliff in it before the hour is changed. Asked for at once, the hour came while the land was
+    # still being made for the cliff: one run in six that land was shown with no shadow of the morning on it, landAt
+    # saying there was one, until the sun had moved an eighth of a tile on, 1.3 s later (hd.js: the land made is marked as
+    # made for the new hour; hd_sun.js: the shadows painted into it were the hour's before). A jump of the hour is the
+    # tests' own: in play the hour moves a step at a time)
+    g.rest()
     for phase, dark, lit in ((.2, -3, 3), (.68, 3, -3)):             # morning: its shadow lies west; evening: east
-        g.rpc("dev_time", phase=phase)
-        settled(g)
+        g.hour(phase)
         assert g.js(f"[HdSun.landAt({x + dark}, {y - 3}), HdSun.landAt({x + lit}, {y - 3})]") == [True, False], phase
+        # ... and is seen on the screen: each tile against itself with no shadows. (It was the tile in the shadow against the
+        # one in the sun, 7 % darker asked for: two tiles of meadow differ by up to 3 % by what grows on them, and the
+        # morning's shadow darkens its tile by 7.4 %: where you woke decided, one run in four on any machine)
         a, b = g.js(LIGHT, [x + dark, y - 3, 0]), g.js(LIGHT, [x + lit, y - 3, 0])
-        assert a < b * .93, (phase, a, b)                              # ... and is seen on the screen
+        g.js("setOpt('shadows', 0)"); settled(g)
+        a0, b0 = g.js(LIGHT, [x + dark, y - 3, 0]), g.js(LIGHT, [x + lit, y - 3, 0])
+        g.js("setOpt('shadows', 100)"); settled(g)
+        assert a < a0 * .95 and b > b0 * .99, (phase, a, a0, b, b0)
         assert not g.js(f"HdSun.landAt({x}, {y - 3})")                # the cliff's own top takes none
-    g.rpc("dev_time", phase=.9)
-    settled(g)
+    g.hour(.9)
     assert not g.js(f"HdSun.landAt({x - 3}, {y - 3}) || HdSun.landAt({x + 3}, {y - 3})")      # none at night
 
 
@@ -48,8 +58,7 @@ def test_a_tunnel_one_level_under_the_meadow_opens_a_small_trench_not_the_whole_
     try:
         x, y = g.pos()
         z = g.js(f"topAt({x}, {y})")
-        g.stamp(-9, -6, ["." * 19] * 13, levels=[(str(z) if 0 <= z <= 9 else "0") * 19] * 13)
-        g.sleep(600)
+        g.stamp(-9, -6, ["." * 19] * 13, levels=[(str(z) if 0 <= z <= 9 else "0") * 19] * 13); g.rest()
         z = g.js(f"topAt({x}, {y})")
         g.rpc("dev_col", tiles=[[x + i, y] for i in range(-3, 4)], col=[z - 3, z - 1, z])
         g.sleep(800)

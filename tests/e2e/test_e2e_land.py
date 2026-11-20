@@ -94,8 +94,7 @@ def test_no_cobble_is_cut_at_a_tiles_edge(game):
     on a path that runs, turns, forks and widens every stone is whole, one of the pack's (5 to 7 px wide, 5 or 6
     high, its four corners off), and every cobbled tile has some."""
     x, y = game.pos()
-    game.stamp(2, -9, COBBLES, levels=["0" * 10] * 8)
-    game.sleep(600)
+    game.stamp(2, -9, COBBLES, levels=["0" * 10] * 8); game.rest()
     stones = game.js(STONES, [x + 2, y - 9, 10, 8])
     cut = [s for s in stones if not (s[0] in (5, 6, 7) and s[1] in (5, 6) and s[2] == s[0] * s[1] - 4)]
     tiles = sum(row.count("_") for row in COBBLES)
@@ -106,8 +105,7 @@ def test_no_cobble_is_cut_at_a_tiles_edge(game):
 def test_a_block_of_land_is_made_in_small_steps(game):
     """No step of making a block of land is long (they were up to 10 ms each on a fast machine: a late frame on a slow
     one): its tiles are painted a few at a time, as much as the frame has time for (vox_engine.js work)."""
-    game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN)
-    game.sleep(900)
+    game.stamp(-6, -18, ["." * 13] * 13, levels=MOUNTAIN); game.rest()
     worst = game.js("""(() => { const E = Voxels.engine; let worst = 0, steps = 0;
       for (const b of blocks.values()) { if (!b.px || !Voxels.made(b)) continue;
         for (let r = 0; r < 3; r++) { let w = 0, n = 0; E.forget((cx, cy) => cx !== b.bx || cy !== b.by);
@@ -126,8 +124,7 @@ def test_a_blocks_water_is_made_again_only_when_it_changed(game):
     px -= max(0, px % 32 + 3 - 32)
     py -= max(0, py % 32 + 3 - 32)
     cx = px - 6 if px % 32 >= 6 else px + 7                      # a cobbled tile, away from the water, in its block
-    game.stamp(px - x, py - y, ["~~~", "~~~"])
-    game.sleep(900)
+    game.stamp(px - x, py - y, ["~~~", "~~~"]); game.rest()
     game.js(f"(() => {{ const b = tileIdx({px + 1}, {py})[0]; window.__b = b; window.__w = b.water; return b.water.any; }})()")
     assert game.js("__w.any") is True and game.js(f"tileIdx({cx}, {py})[0] === __b && tileIdx({px}, {py + 2})[0] === __b") is True
     built = "!dirtyTiles.length && Voxels.made(__b) && __b.seaAt === __b.ver"

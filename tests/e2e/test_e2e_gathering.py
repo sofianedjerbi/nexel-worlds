@@ -138,8 +138,7 @@ def test_what_is_up_a_cliff_is_out_of_reach(game):
     assert not any("flower" in r[1].lower() for r in game.js("availableActions()"))
     game.press("Space", 400)
     assert game.tile(0, -1) == "f" and "Out of reach" in game.js("$('toastt').textContent")
-    game.stamp(0, -1, ["f"], levels=["2"])
-    game.sleep(300)
+    game.stamp(0, -1, ["f"], levels=["2"]); game.rest()
     assert any("flower" in r[1].lower() for r in game.js("availableActions()"))
     game.press("Space", 500)
     assert game.tile(0, -1) != "f" and game.inv("flower") == 1

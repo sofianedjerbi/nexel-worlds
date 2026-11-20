@@ -35,8 +35,7 @@ def test_land_that_changes_is_made_again(game):
     blocks(game)
     before = game.js("Voxels.engine.faces")
     game.stamp(-1, -4, ["..."], levels=["222"])
-    game.wait("dirtyTiles.length === 0")
-    game.sleep(400)
+    game.rest()
     # three tiles, two cells of front each; and at each end of it its thin side (its dark line and its wall: two
     # faces): a strip beside its top and a front a level
     assert game.js("Voxels.engine.faces") == before + 6 + 2 * (1 + 2) * 2
@@ -82,8 +81,7 @@ def test_a_shader_and_the_night_are_over_the_blocks_as_over_the_painted_land(gam
     night = game.js(AT, [x + 3, y, 0])
     assert sum(night) < sum(day) * .8, (day, night)
     game.rpc("dev_time", phase=.3)
-    game.js("setOpt('shader', 'natural')")
-    game.sleep(500)
+    game.js("setOpt('shader', 'natural')"); game.rest()
     look = "(() => { const c = document.createElement('canvas'); c.width = 8; c.height = 8; const g = c.getContext('2d'); g.drawImage(Shader.el, Shader.el.width / 2 + 100, Shader.el.height / 2, 8, 8, 0, 0, 8, 8); const d = g.getImageData(4, 4, 1, 1).data; return [d[0], d[1], d[2]]; })()"
     game.js("window.shot = null; requestAnimationFrame(() => requestAnimationFrame(() => { window.shot = " + look + "; }))")      # (read in the frame it was drawn in)
     game.wait("window.shot")

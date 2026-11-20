@@ -42,6 +42,41 @@ SOCKETS = """(() => { const log = window.__sockets = [], WS = window.WebSocket, 
     const send = this.send.bind(this); this.send = (d) => { if (u === '/agent' && log.filter((r) => r[1] === u && r[2] === 'send').length < 4) log.push([at(), u, 'send', String(d).slice(0, 60)]); return send(d); }; } }; })()"""
 
 
+# The land's work, seen from the page (the engine says nothing of what it has still to make: its pieces are counted as
+# they are made): the frame in which a tile was painted, a chunk's faces or the cut's were built, a sea was made.
+WATCH = """(() => { if (window.__land) return 1; const L = window.__land = {frame: 0, at: 0}, did = () => { L.at = L.frame; };
+  const count = () => { L.frame++; requestAnimationFrame(count); }; requestAnimationFrame(count);
+  for (const n of ['drawTile', 'renderBlock', 'startBlock']) { const f = window[n]; if (typeof f === 'function') window[n] = function (...a) { did(); return f.apply(this, a); }; }
+  if (typeof waterSteps === 'function') { const f = waterSteps; window.waterSteps = function* (...a) { did(); yield* f.apply(this, a); }; }
+  for (const [o, n] of [[typeof VoxPages !== 'undefined' && VoxPages, 'tile'], [typeof VoxMesh !== 'undefined' && VoxMesh, 'build'], [typeof VoxSection !== 'undefined' && VoxSection, 'build']])
+    if (o && typeof o[n] === 'function') { const f = o[n]; try { o[n] = function (...a) { did(); return f.apply(this, a); }; } catch (e) { /* not ours to wrap: the frames alone say */ } }
+  return 1; })()"""
+# The land at rest: all of it on the screen come, nothing of it left to draw or to make, you and the eye where you are going (it glides there for a second after a
+# teleport), and `n` frames drawn since the last piece of the land was, nothing fading in or out
+# (what hides you seen through, the land left behind: xray.a, away.a, Floors.seen: the same for `n` frames);
+# and a tick heard from the server since (who is where, what lies on the ground, a door: they come with the tick, 0.1 s)
+# (frames, not ms: a busy machine draws fewer in a second, and the land is made a little a frame)
+REST = """([n, ms]) => new Promise((ok) => { const L = window.__land, f0 = L.frame, t0 = performance.now(), hd = typeof HdLook !== 'undefined' && HdLook.live, w0 = Voxels.wver, c0 = clock;
+  const here = () => { const p = ents.get('agent' + myId); if (p && (p.x !== p.tx || p.y !== p.ty)) return false;      // (you, drawn where you are; and every block of land on the screen come and made)
+    const [x, y, w, h] = viewRect(0); for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (!b || !Voxels.made(b)) return false; }
+    return true; };
+  const fades = () => [xray.a, away.a, typeof Floors !== 'undefined' && Floors.seen || 0]; let was = fades(), calm = 0;
+  // (the HD look: making its land is work; and what stands and the shadows on the land are looked for four times a second,
+  // hd.js: once more since the last of the work, then the frames)
+  const quarter = () => Math.floor(performance.now() / 250); let q0 = quarter(), at0 = L.at, crossed = !hd;
+  const look = () => { if (hd) { if (HdLook.busy || L.at !== at0) { L.at = at0 = L.frame; q0 = quarter(); crossed = false; } else if (!crossed && quarter() !== q0) { crossed = true; L.at = at0 = L.frame; } }
+    const since = L.frame - Math.max(L.at, f0), v = fades(); calm = v.every((a, i) => Math.abs(a - was[i]) < .002) ? calm + 1 : 0; was = v;
+    if (since >= n && crossed && calm >= n && here() && (clock !== c0 || performance.now() - t0 > 1000) && dirtyTiles.length === 0 && !arrivingNow && Math.abs(cam.x - camT.x) < .004 && Math.abs(cam.y - camT.y) < .004 && !(hd && (HdLook.busy || Voxels.wver === w0))) ok(null);     // (the HD look makes its water ten times a second: once more since)
+    else if (performance.now() - t0 > ms) ok([L.frame - f0, L.frame - L.at, dirtyTiles.length, arrivingNow, cam.x - camT.x, cam.y - camT.y, calm, here()]);
+    else requestAnimationFrame(look); }; look(); })"""
+# Nothing asked of the server and not yet answered, nothing being done, you standing where you are going, no
+# panel still sliding: a key's doing is done. (A blinking mark that never ends is not waited for.)
+QUIET = """() => !Object.keys(pending).length && !busy && !pendingAct && !myAction && !progress && !pred && walking === null && !refreshing
+  && (() => { const p = ents.get('agent' + myId); return !p || (p.x === p.tx && p.y === p.ty); })()
+  && document.getAnimations().every((a) => a.playState !== 'running' || !a.effect || a.effect.getComputedTiming().iterations === Infinity)"""
+FRAMES = "(n) => new Promise((ok) => { const f = () => (n-- > 0 ? requestAnimationFrame(f) : ok(1)); f(); })"
+
+
 class Game:
     def __init__(self, page, url):
         self.page, self.url, self.errors = page, url, []
@@ -100,7 +135,48 @@ class Game:
         self.page.wait_for_function(expr, timeout=timeout)
 
     def sleep(self, ms):
+        """Time that has to pass in the game (a walk, a swing, a fade). Not for "until it is drawn": rest(), hour(),
+        frames(); not for "until the server has it": wait()."""
         self.page.wait_for_timeout(ms)
+
+    def frames(self, n=2):
+        """Until `n` more frames are drawn (what was set on the page is in the picture of the next one)."""
+        self.js(FRAMES, n)
+
+    def rest(self, frames=3, timeout=20000):
+        """Until the land is at rest: all of it drawn and made, and `frames` frames drawn since (after land was
+        stamped, a setting changed what is drawn, a teleport: where a sleep of 0.6 to 1.2 s was, too short on a busy
+        machine and too long on an idle one). Then the picture can be read."""
+        self.js(WATCH)
+        late = self.js(REST, [frames, timeout])
+        if late:
+            warnings.warn(f"the land was not at rest after {timeout} ms: frames, frames since its last piece, tiles to draw, arriving, the eye's way to go, frames nothing faded, the land on the screen all come: {late}", stacklevel=2)
+
+    def arrive(self, timeout=8000):
+        """After a teleport: until you are drawn where the server has you, and the land there is at rest."""
+        s = self.server()
+        try:
+            self.page.wait_for_function("([x, y]) => { const p = ents.get('agent' + myId), s = myPos(); return !!p && !!s && s.x === x && s.y === y && Math.abs(p.x - x) < .01 && Math.abs(p.y - y) < .01 && Math.abs(cam.x - camT.x) < .01 && Math.abs(cam.y - camT.y) < .01; }",
+                                        arg=[s["x"], s["y"]], timeout=timeout)
+        except NotYet as e:
+            raise AssertionError(f"not drawn where the server has you, {s['x']}, {s['y']}: " + str(self.js("(() => { const p = ents.get('agent' + myId); return [p && [p.x, p.y, p.tx, p.ty], myPos(), [cam.x, cam.y], [camT.x, camT.y]]; })()"))) from e
+        self.rest()
+
+    def hour(self, phase, timeout=20000):
+        """The time of day (0 sunrise, .375 noon, .75 nightfall), back when the page has it and has drawn the land
+        by it: the server says the hour with its next tick, 0.1 s on or more."""
+        if self.js("typeof HdLook !== 'undefined' && HdLook.live"):
+            # (the HD look: the land made as it is before the hour jumps. A jump that came while the land was being made
+            # for a stamp left that land without the new hour's shadows until the sun had moved an eighth of a tile on,
+            # 1.3 s: hd.js marks the land as made for the new hour, hd_sun.js painted the hour's before into it. In play
+            # the hour moves a step at a time)
+            self.rest()
+        self.rpc("dev_time", phase=phase)
+        try:
+            self.page.wait_for_function("(p) => Math.abs((((clock.phase || 0) - p) % 1 + 1.5) % 1 - .5) < .004", arg=phase, timeout=timeout)
+        except NotYet as e:
+            raise AssertionError(f"the hour {phase} did not come to the page: {self.js('[clock.phase, clock.tick, clock.time]')}") from e
+        self.rest()
 
     # ---- the world around us
     def pos(self):
@@ -136,6 +212,13 @@ class Game:
         # A sleep let them go; a fall's dust was counted with the stamp's, a wall read through it)
         self.js("(() => { parts.length = 0; puffs.length = 0; pops.clear(); return 1; })()")
 
+    def heard(self):
+        """Until the page has a tick the server made after now (the next one: 0.1 s at most on an idle machine)."""
+        t = self.rpc("ping").get("tick")
+        if t is None:
+            return self.tick(2)
+        self.settle(f"clock.tick > {t}")
+
     def tick(self, n=1):
         """Until the world has said `n` more ticks to the page (what a tick carries: who is where, what lies on the ground)."""
         for _ in range(n):
@@ -146,10 +229,20 @@ class Game:
         """Flat meadow around us, no animals near (they wander into tests), nothing lying on the ground (left by one)."""
         self.rpc("dev_creatures", clear=40)
         self.stamp(-r, -r, ["." * (2 * r + 1)] * (2 * r + 1))
-        self.tick(2)
+        # (a tick made after the clearing, and the meadow made: a test's own land is not stamped into chunks still being
+        # painted for the clearing. It waited two ticks of whatever came, 0.15 to 0.25 s: most of the painting, by chance)
+        self.rest()
 
     def spawn(self, kind, dx, dy, still=0):
-        return self.rpc("dev_creatures", kind=kind, dx=dx, dy=dy, still=still)["spawned"]
+        """A creature beside you; back when the page has it (it comes with the next tick: a key pressed before that
+        acted on nothing)."""
+        cid = self.rpc("dev_creatures", kind=kind, dx=dx, dy=dy, still=still)["spawned"]
+        if cid is not None:
+            try:
+                self.page.wait_for_function(f"ents.has({json.dumps(kind + str(cid))})", timeout=1500)
+            except NotYet:
+                pass                 # (out of what this screen is told of: as it was)
+        return cid
 
     def lucky(self):
         """Every creature leaves all it can (its drops are by chance: sim/entities.py), for as long as this server runs."""
@@ -174,16 +267,27 @@ class Game:
 
     def hold_item(self, name):
         self.js(f"selectItem({json.dumps(name)})")
-        self.sleep(100)
+        self.frames(2)
 
     def face(self, dx, dy):
         self.js(f"(() => {{ const p = ents.get('agent' + myId); p.fx = {dx}; p.fy = {dy}; }})()")
-        self.sleep(100)          # let a frame redraw the hints
+        self.frames(2)           # let a frame redraw the hints
 
     # ---- keys
     def press(self, key, wait=300):
+        """A key, then until what it did is done (QUIET), `wait` ms at the most: a key that only moves a mark or opens
+        a panel is done in two frames, one that asks the server when it has answered. (It slept `wait` whatever the
+        key: 0.3 s x 490 presses.) A wait of more than 0.4 s is slept whole: it was written for something the page
+        does not say it is doing (a pile flying into your hands, the dust of a dig, a door swinging)."""
         self.page.keyboard.press(key)
-        self.sleep(wait)
+        if 60 < wait <= 400:
+            self.frames(2)
+            try:
+                self.page.wait_for_function(QUIET, timeout=wait)
+            except NotYet:
+                pass
+        elif wait:
+            self.sleep(wait)
 
     def hold(self, keys, ms):
         for k in keys:

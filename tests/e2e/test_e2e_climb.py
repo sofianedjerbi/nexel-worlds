@@ -28,14 +28,12 @@ def test_stairs_are_laid_with_one_press_and_walked_up(game):
     drawn = game.js("""() => new Promise((ok) => { const was = Climb.drawStep, ups = []; Climb.drawStep = function (...a) { ups.push(a.slice(0, 3)); return was(...a); };
       requestAnimationFrame(() => requestAnimationFrame(() => { Climb.drawStep = was; ok(ups.length); })); })""")
     assert drawn >= 2                                          # each step drawn as a step: treads, risers, stringers (it was a plank block)
-    game.rpc("dev_teleport", x=x - 1, y=y - 2, z=0)
-    game.sleep(600)
+    game.rpc("dev_teleport", x=x - 1, y=y - 2, z=0); game.arrive()
     for key, want in (("ArrowUp", (x - 1, y - 3, 1)), ("ArrowRight", (x, y - 3, 2)), ("ArrowUp", (x, y - 4, 3))):
         assert step(game, key) == want
     assert game.js("myAt.z") == 3 and not game.errors
     # in build mode: a flight down from the floor's other end, planned with Space and laid by your character
-    game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0)
-    game.sleep(600)
+    game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0); game.arrive()
     game.press("b")
     game.js(f"Build.S.at = {{x: {x + 1}, y: {y - 3}}}")       # (beside the first flight's top step: this one comes straight out)
     assert game.js("Build.hint(Build.S.at).text") == "Plan stairs (2 steps)"
@@ -55,8 +53,7 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     game.press(game.js(SLOT, "ladder"))
     game.face(1, 0)
     assert "Needs something taller behind" in game.actions()
-    game.rpc("dev_teleport", x=x, y=y - 1, z=0)
-    game.sleep(600)
+    game.rpc("dev_teleport", x=x, y=y - 1, z=0); game.arrive()
     game.face(0, -1)
     game.press("Space", 700)
     assert game.js(f"combAt({x}, {y - 2})") == "l" and game.inv("ladder") == 1
@@ -84,8 +81,7 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     # up a ladder at the cliff's side: nothing hides you, the x-ray circle stays shut (it took your height from the
     # ground under you, and opened half way up)
     game.rpc("dev_stamp", x=x - 3, y=y - 3, rows=["l"])
-    game.rpc("dev_teleport", x=x - 3, y=y - 3, z=0)
-    game.sleep(900)
+    game.rpc("dev_teleport", x=x - 3, y=y - 3, z=0); game.arrive()
     game.js("() => { window.__xr = 0; const t0 = performance.now(); const f = () => { __xr = Math.max(__xr, xray.a); if (performance.now() - t0 < 1800) requestAnimationFrame(f); }; requestAnimationFrame(f); }")
     game.hold(["ArrowRight"], 90)
     game.sleep(1900)
@@ -93,13 +89,12 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     # up a ladder behind a block: hidden behind it at the foot, you are seen through it in a circle, as through a hill,
     # and on top the circle is gone (it was a see-through stripe down the block, then nothing: you were lost behind it)
     game.rpc("dev_stamp", x=x + 6, y=y - 3, rows=["W"])
-    game.rpc("dev_teleport", x=x + 6, y=y - 2, z=0)
-    game.sleep(400)
+    game.rpc("dev_teleport", x=x + 6, y=y - 2, z=0); game.arrive()
     game.give(plank=2)
     assert game.rpc("act", tool="place", args={"x": x + 6, "y": y - 3, "item": "plank", "z": 3})["ok"]
     game.rpc("dev_stamp", x=x + 6, y=y - 4, rows=["l"])
-    game.rpc("dev_teleport", x=x + 6, y=y - 4, z=0)
-    game.sleep(900)
+    game.rpc("dev_teleport", x=x + 6, y=y - 4, z=0); game.arrive()
+    game.settle("Floors.seen > .9")                             # (the circle opens over a moment: it slept 0.9 s)
     assert game.js("Floors.seen") > .9                          # (at the foot, behind it)
     game.js("""() => { window.__v = 0; window.__over = []; const t0 = performance.now(); const f = () => { __v = Math.max(__v, Floors.seen);
       const c = Climb.climbOf(ents.get('agent' + myId)); if (c && !c.on) __over.push(c.y);

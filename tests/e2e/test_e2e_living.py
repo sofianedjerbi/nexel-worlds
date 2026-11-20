@@ -132,8 +132,7 @@ def test_dying_wakes_you_by_your_bed(game):
     game.press("Space", 1600)                                # lie down: it becomes where you wake up
     assert game.server()["spawn"]
     bed = game.server()["spawn"]
-    game.rpc("dev_teleport", x=bed[0] + 30, y=bed[1])
-    game.sleep(800)
+    game.rpc("dev_teleport", x=bed[0] + 30, y=bed[1]); game.arrive()
     game.rpc("dev_damage", n=500)
     game.sleep(1500)
     s = game.server()

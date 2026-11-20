@@ -12,9 +12,9 @@ PX = LIT.replace("let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i]
 RESET = "for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()"
 
 
-def look(game, name, wait=800):
+def look(game, name, wait=None):
     game.js(f"setOpt('clouds', 0); setOpt('rays', 0); setOpt('shader', '{name}')")      # (no clouds, no shafts of the low sun unless a test is about them: they drift over the land's own picture)
-    game.sleep(wait)
+    game.rest()                                                  # (it slept `wait` ms: 0.3 to 1.2 s)
 
 
 def test_a_cliff_throws_its_shadow_on_the_ground_away_from_the_sun(game):
@@ -24,18 +24,16 @@ def test_a_cliff_throws_its_shadow_on_the_ground_away_from_the_sun(game):
     game.stamp(-1, -3, ["..", ".."], levels=["33", "33"])      # a block of land three high, north of you
     x, y = game.pos()
     west, east = [x - 2.8, y - 2.9, x - 1.3, y - 2.1], [x + 1.3, y - 2.9, x + 2.8, y - 2.1]      # the ground beside it
-    game.rpc("dev_time", phase=.06)                             # morning: the sun in the east
-    game.sleep(1200)
+    game.hour(.06)                             # morning: the sun in the east
     plain = [game.js(LIT, r) for r in (west, east)]
     look(game, "natural")
     on = [game.js(LIT, r) for r in (west, east)]
     assert on[0] < plain[0] - 8 and abs(on[1] - plain[1]) < 1.5, (plain, on)      # in shadow west of it, in the sun east of it
-    game.js("setOpt('landshade', false)"); game.sleep(600)   # the settings' Land shadows, off: none
+    game.js("setOpt('landshade', false)"); game.rest()   # the settings' Land shadows, off: none
     assert abs(game.js(LIT, west) - plain[0]) < 1.5
     game.js("setOpt('landshade', true)")
     look(game, "off", 300)
-    game.rpc("dev_time", phase=.7)                              # evening: the other side
-    game.sleep(1200)
+    game.hour(.7)                              # evening: the other side
     plain = [game.js(LIT, r) for r in (west, east)]
     look(game, "natural")
     on = [game.js(LIT, r) for r in (west, east)]
@@ -54,8 +52,7 @@ def test_the_shadow_of_what_stands_is_not_on_a_wall_and_what_stands_in_shadow_is
     game.stamp(-8, 3, ["l"], levels=["1"])                       # (and south of it, on another level, a thing that throws no shadow: the others keep theirs)
     front = [tx - 1.9, ty + 1.2, tx - .1, ty + 1.75]             # (not its last px: the ground shows at a front's foot, and takes the shadow)
     open_ = [tx - 8 - 2, ty + .6, tx - 8, ty + 1.7]
-    game.rpc("dev_time", phase=.06)
-    game.sleep(1200)
+    game.hour(.06)
     plain = [game.js(LIT, r) for r in (front, open_)]
     look(game, "natural")
     on = [game.js(LIT, r) for r in (front, open_)]
@@ -64,7 +61,7 @@ def test_the_shadow_of_what_stands_is_not_on_a_wall_and_what_stands_in_shadow_is
     # a tree in the shadow of a cliff is as dark as the ground it stands on: lit, it was a bright thing in the shade
     game.stamp(-2, 2, [".."] * 4, levels=["44"] * 4); game.stamp(-3, 4, ["T"])
     tree = [x - 2.85, y + 3.3, x - 2.15, y + 4.2]                # (its crown: nothing of the ground in it)
-    game.js("setOpt('landshade', false)"); game.sleep(700)
+    game.js("setOpt('landshade', false)"); game.rest()
     lit = game.js(LIT, tree)
     game.js("setOpt('landshade', true)")
     for _ in range(12):                                         # (the cliff's faces are made a little a frame: read till it is there)
@@ -84,15 +81,14 @@ def test_with_no_shader_and_with_no_sun_asked_for_the_land_is_as_it_is_painted(g
     x, y = game.pos()
     part = [x - 5, y - 5.5, x - .5, y - 1.5]
     game.js("setOpt('shimmer', false)")
-    game.rpc("dev_time", phase=.3)                              # (plain day: the hour lays no colour of its own over the picture)
-    game.sleep(1200)
+    game.hour(.3)                              # (plain day: the hour lays no colour of its own over the picture)
     off = game.js(PX, part)
     assert off == game.js(PX, part)                              # (it is still: two frames are the same)
-    game.js("setOpt('clouds', 0); setOpt('shader', 'natural'); setOpt('shaderk', 0)"); game.sleep(700)
+    game.js("setOpt('clouds', 0); setOpt('shader', 'natural'); setOpt('shaderk', 0)"); game.rest()
     assert game.js(PX, part) == off                              # strength 0: nothing of the sun
-    game.js("setOpt('shaderk', 100); setOpt('shadows', 0); setOpt('reflect', 0)"); game.sleep(700)
+    game.js("setOpt('shaderk', 100); setOpt('shadows', 0); setOpt('reflect', 0)"); game.rest()
     assert game.js(PX, part) == off                              # no shadows asked for: every px as it was
-    game.js("setOpt('shadows', 100)"); game.sleep(700)
+    game.js("setOpt('shadows', 100)"); game.rest()
     assert game.js(PX, part) != off                              # ...and with them, it is not
     game.js(RESET)
 
@@ -107,7 +103,7 @@ def test_the_land_north_of_water_is_seen_in_it(game):
     game.rpc("dev_time", phase=.3)
     look(game, "natural", 1200)
     seen = [game.js(LIT, r) for r in (near, far)]
-    game.js("setOpt('reflect', 0)"); game.sleep(700)
+    game.js("setOpt('reflect', 0)"); game.rest()
     bare = [game.js(LIT, r) for r in (near, far)]
     assert abs(seen[0] - bare[0]) > 1 and abs(seen[1] - bare[1]) < .5, (seen, bare)      # (water seen through, waterbed.js: near you the mirror is faint, the bed is what shows)
     game.js(RESET)
@@ -152,15 +148,13 @@ def test_in_the_bend_a_cliff_shadows_the_ground_where_the_curve_draws_it(game):
     far(game)
     assert game.js("([y]) => { const S = TS(), [, oy] = screenOrigin(S); return Curve.y(oy + y * S, 0) > oy + y * S + 4; }", [y - 5])      # (that row is bent: drawn lower than flat)
     west, east = tile_box(game, x - 2, y - 5), tile_box(game, x + 1, y - 5)
-    game.rpc("dev_time", phase=.06)                             # morning: its shadow lies west of it
-    game.sleep(1200)
+    game.hour(.06)                             # morning: its shadow lies west of it
     plain = [game.js(BOX, r) for r in (west, east)]
     look(game, "natural")
     on = [game.js(BOX, r) for r in (west, east)]
     assert on[0] < plain[0] - 8 and abs(on[1] - plain[1]) < 1.5, (plain, on)
     look(game, "off", 300)
-    game.rpc("dev_time", phase=.7)                              # evening: east of it
-    game.sleep(1200)
+    game.hour(.7)                              # evening: east of it
     plain = [game.js(BOX, r) for r in (west, east)]
     look(game, "natural")
     on = [game.js(BOX, r) for r in (west, east)]
@@ -174,8 +168,7 @@ def test_in_the_bend_a_trees_shadow_lies_at_its_foot(game):
     game.stamp(3, -5, ["T"])
     x, y = game.pos()
     far(game)
-    game.rpc("dev_time", phase=.06)
-    game.sleep(1200)
+    game.hour(.06)
     foot, north = tile_box(game, x + 2, y - 5, .7, 1.7), tile_box(game, x + 5, y - 5)       # west of its foot (its shadow goes on south a little: more of a row, now that a row there is a third taller; the shadow lies on whole px of the paint); and east of it, the sun's side
     plain = [game.js(BOX, r) for r in (foot, north)]
     look(game, "natural")
@@ -191,17 +184,16 @@ def test_in_the_bend_with_no_sun_asked_for_the_land_is_as_it_is_drawn(game):
     x, y = game.pos()
     far(game)
     game.js("setOpt('shimmer', false)")
-    game.rpc("dev_time", phase=.3)
-    game.sleep(1200)
+    game.hour(.3)
     a, b = tile_box(game, x - 5, y - 5, 0, 0), tile_box(game, x, y - 3, 1, 1)
     part = [a[0], a[1], b[2], b[3]]                               # the land from the block's foot to near you: bent, no sky in it (its far side is past the horizon, where a row's place comes down again: the box began under the block's shadow)
     off = game.js(BOXPX, part)
     assert off == game.js(BOXPX, part)
-    game.js("setOpt('clouds', 0); setOpt('shader', 'natural'); setOpt('shaderk', 0)"); game.sleep(700)
+    game.js("setOpt('clouds', 0); setOpt('shader', 'natural'); setOpt('shaderk', 0)"); game.rest()
     assert game.js(BOXPX, part) == off
-    game.js("setOpt('shaderk', 100); setOpt('shadows', 0); setOpt('reflect', 0)"); game.sleep(700)
+    game.js("setOpt('shaderk', 100); setOpt('shadows', 0); setOpt('reflect', 0)"); game.rest()
     assert game.js(BOXPX, part) == off
-    game.js("setOpt('shadows', 100)"); game.sleep(700)
+    game.js("setOpt('shadows', 100)"); game.rest()
     assert game.js(BOXPX, part) != off
     game.js(RESET)
 
@@ -267,7 +259,7 @@ def test_a_clouds_shadow_lies_on_the_land_and_what_stands_and_not_under_a_roof(g
     under a roof there is none."""
     game.rpc("dev_time", phase=.3)
     look(game, "natural", 800)
-    game.js("setOpt('clouds', 100); setOpt('shadows', 0); setOpt('shimmer', false)"); game.sleep(500)
+    game.js("setOpt('clouds', 100); setOpt('shadows', 0); setOpt('shimmer', false)"); game.rest()
     # where a cloud's shadow is deep now, near you. The field is held still for the test (Sun.still, sunland.js: it drifts a
     # tile in five seconds, and under load the small cloud had left its spot before the picture was read)
     spot = game.js("""() => { const c = Sun.given().cloud, p = myPos(); let best = null; Sun.still = c.drift.slice();
@@ -279,7 +271,7 @@ def test_a_clouds_shadow_lies_on_the_land_and_what_stands_and_not_under_a_roof(g
     game.rpc("dev_teleport", x=cx, y=cy + 2, z=0); game.wait(f"myAt && myAt.x === {cx} && myAt.y === {cy + 2}", 8000)
     game.clear_area(6)
     game.stamp(0, -2, ["T"])                                    # a tree at the spot
-    game.wait("dirtyTiles.length === 0", 20000); game.sleep(600)
+    game.rest()
     ground, tree = twice(game, [[cx - 2, cy + .2, cx - 1, cy + 1], [cx + .2, cy - .6, cx + .8, cy + .2]], "clouds", 0)
     assert ground[0] < ground[1] - 4, ground                     # the land is darker under the cloud
     assert tree[0] < tree[1] - .5, tree                           # and so is the tree that stands there

@@ -16,7 +16,7 @@ def phone(browser, server, w=390, h=844):
     g.js("setOpt('names', false); setOpt('hints', false)")
     g.rpc("dev_creatures", clear=60)
     g.clear_area(12)
-    g.sleep(1200)
+    g.rest()
     cdp = ctx.new_cdp_session(g.page)
     g.touch = lambda kind, pts=(): cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": [{"x": x, "y": y, "id": i} for i, (x, y) in enumerate(pts)]})
     return ctx, g
@@ -33,7 +33,7 @@ def test_the_land_is_the_size_the_zoom_says_and_fills_a_screen_held_upright(brow
         assert abs(me[0] - 195) < 2 and 380 < me[1] < 470, me          # you: in the middle
         assert g.js("HdLook.catSeen()") > .8                           # and drawn there, px for px
         assert g.js("HdLook.sky(0).line") < .3 * 844                   # the sky: under three tenths of the screen (it was two fifths)
-        g.stamp(0, 10, ["%"]); g.sleep(1800)                           # a wall ten rows south of you, near the bottom: drawn (nothing was past six rows)
+        g.stamp(0, 10, ["%"]); g.rest()                           # a wall ten rows south of you, near the bottom: drawn (nothing was past six rows)
         foot = g.js("([x, y]) => HdLook.screenOf(x + .5, y + 11, 0)", [x, y])
         assert 600 < foot[1] < 844, foot
         seen = g.js(AT, [x - 2.5, y + 10.5, 0]), g.js(AT, [x + .5, y + 10.68, 1])      # (the wall's front: a wall is a thin box in the middle of its tile, hd_things.js, not a card at its south edge)

@@ -56,13 +56,11 @@ def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
     game.js("setOpt('above', 'circle')")                       # (the view that fades what is over you: test_e2e_views.py has the rest)
     game.clear_area(8)
     x, y = game.pos()
-    game.stamp(2, -3, ["WWWW", "W..W", "WW+W"])               # walls and a door, no roof: nothing draws one by itself
-    game.sleep(700)
+    game.stamp(2, -3, ["WWWW", "W..W", "WW+W"]); game.rest()               # walls and a door, no roof: nothing draws one by itself
     assert game.js("FLOORS") is True and game.js(ROW, [x + 2, y - 3, 4]) == "...."
     # what was wrong in the clip: a door that looked like a window in hand and as a plan, a floor that let the grass through
     assert game.js("objectSprite('+', 0, 0, 0)[0] === IMG.door && fullIcon('door') !== fullIcon('wood_wall')")
-    game.stamp(-3, 2, ["nn"])
-    game.sleep(600)
+    game.stamp(-3, 2, ["nn"]); game.rest()
     solid = game.js("""([x, y]) => { const [b, i] = tileIdx(x, y), o = (i / B | 0) * 16 * BW + (i % B) * 16; let n = 0, green = 0;
       for (let j = 0; j < 16; j++) for (let k = 0; k < 16; k++) { const v = b.px[o + j * BW + k]; if (v >>> 24 === 255) n++; if ((v & 0xffffff) === (112 << 16 | 212 << 8 | 192)) green++; } return [n, green]; }""", [x - 3, y + 2])
     assert solid == [256, 0], solid                            # a floor tile: solid all over, no grass in it
@@ -90,12 +88,10 @@ def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
     game.wait(f"({ROW})([{x + 2}, {y - 2}, 4]) === '..r.' && Build.S.plans.size === 0", 30000)
     assert game.inv("roof") == 2
     game.press("b")
-    game.rpc("dev_teleport", x=x, y=y)                         # (the work may have left you under it: reach counts height)
-    game.sleep(700)
+    game.rpc("dev_teleport", x=x, y=y); game.arrive()                         # (the work may have left you under it: reach counts height)
     assert game.js("([x, y]) => [Floors.alpha(x + 4, y - 2, 3), Floors.alpha(x + 2, y - 3, 3)]", [x, y]) == [1, 1]      # from outside: all of it
     assert game.server()["sheltered"] is False
-    game.rpc("dev_teleport", x=x + 4, y=y - 2, z=0)            # under it (on the ground: without a height you are set down on top, on the roof)
-    game.sleep(900)
+    game.rpc("dev_teleport", x=x + 4, y=y - 2, z=0); game.arrive()            # under it (on the ground: without a height you are set down on top, on the roof)
     assert game.server()["sheltered"] is True and not game.errors
     assert game.js("([x, y]) => [Floors.alpha(x + 4, y - 2, 3), Floors.alpha(x + 2, y - 3, 3)]", [x, y]) == [.12, .12]  # from under it: seen through, the whole roof
     assert game.server()["z"] == 0 and game.js(f"solidAt({x + 4}, {y - 2}, 3) && !solidAt({x + 4}, {y - 2}, 2)")      # a block: it can be stood on
@@ -165,27 +161,23 @@ def test_walls_are_thin_and_hide_nothing_and_a_side_door_has_its_leaf_and_shadow
     try:
         game.stamp(3, -3, ["W", "+", "W"])                         # a run going north, a door in its middle
         game.stamp(-3, -3, ["W+W"])                                # one in a run going east: the door from the front
-        game.stamp(-4, 2, ["WWW"])                                 # and a wall south of open ground
-        game.sleep(900)
+        game.stamp(-4, 2, ["WWW"]); game.rest()                                 # and a wall south of open ground
         assert game.js("([x, y]) => [Structures.sideDoor(x + 3, y - 2), Structures.sideDoor(x - 2, y - 3), Structures.sideDoor(x + 3, y - 3)]", [x, y]) == [True, False, False]
         lum = "([dx, dy, up]) => { const t = TS(), d = ctx.getImageData(Math.round(cv.width / 2 + dx * t), Math.round(cv.height / 2 + (dy - up) * t), 1, 1).data; return d[0] + d[1] + d[2]; }"
         grass = game.js(lum, [6, -2, 0])
         game.wait(f"({lum})([3, -2, .25]) < {grass - 150}", 5000)  # (on a busy machine the stamped tiles take a few frames)
         assert game.js(lum, [3, -2, .25]) < grass - 150 and game.js(lum, [2.78, -2, .25]) < grass - 60     # the leaf across the way; its shadow beside it, on the ground
         assert abs(game.js(lum, [-3, 1, 0]) - grass) < 40          # the tile north of a wall: its ground, nothing over it
-        game.rpc("dev_teleport", x=x - 3, y=y + 1)                 # standing there, behind the wall: nothing of it is seen through
-        game.sleep(700)
+        game.rpc("dev_teleport", x=x - 3, y=y + 1); game.arrive()                 # standing there, behind the wall: nothing of it is seen through
         px = game.js("(() => { const d = ctx.getImageData(Math.round(cv.width / 2 + TS() * .3), Math.round(cv.height / 2 + TS()), 1, 1).data; return [d[0], d[1], d[2]]; })()")
         assert px in ([170, 121, 89], [144, 98, 93], [220, 185, 138]), px       # the wall just south of you: its planks' own colours, not thinned
         # a lower corner is joined as an upper one is: where a wall comes down onto a front, its band runs into the
         # front's cap (there was the cap's dark line across it: "lower corners should be linked to upper")
         game.rpc("dev_stamp", x=x - 4, y=y + 4, rows=["W..", "WWW"])          # (a place in the world: you are no longer where you woke)
-        game.rpc("dev_teleport", x=x - 3, y=y + 4)
-        game.sleep(900)
+        game.rpc("dev_teleport", x=x - 3, y=y + 4); game.arrive()
         join = game.js("(() => { const t = TS(), z = t / 16, d = ctx.getImageData(Math.round(cv.width / 2 - t + 7.5 * z - t / 2), Math.round(cv.height / 2 + t - t / 2 - 3.5 * z), 1, 1).data; return [d[0], d[1], d[2]]; })()")
         assert join == [196, 154, 108], join                       # the cap's own colour where the band meets it, not its outline
-        game.rpc("dev_teleport", x=x + 3, y=y - 2)                 # in the doorway: its leaf is back against a post
-        game.sleep(900)
+        game.rpc("dev_teleport", x=x + 3, y=y - 2); game.arrive()                 # in the doorway: its leaf is back against a post
         assert game.js("doors.get(myPos().x + ',' + myPos().y)") == 1 and not game.errors
     finally:                                                   # (the land as it was, whatever happened: a door left there is on the screen of the tests that wake here after)
         game.rpc("dev_stamp", x=x - 6, y=y - 5, rows=["." * 13] * 12)

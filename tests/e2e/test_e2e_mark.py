@@ -44,8 +44,7 @@ def test_the_hint_is_the_block_its_top_at_its_level_and_its_front_down_to_the_la
     game.hold_item("hoe")
     mode(game, curve)
     game.stamp(2, -5, ["...."] * 3, levels=["3333"] * 3)
-    game.wait("dirtyTiles.length === 0")
-    game.sleep(500)
+    game.rest()
     point(game, x + 3, y - 3, 3)
     assert game.js(MARK) == [[x + 3, y - 3, 0, 3]]               # the block, from its top down to the land before it
     for ax, dx in ((1, -1), (15, 1)):                            # (every line is in the block: it breathes a px inward; its foot is the wall's, 2 px short of the tile's edge)
@@ -85,8 +84,7 @@ def test_the_box_is_the_four_edges_of_its_top_and_the_two_uprights_and_the_foot_
     mode(game, "off")
     game.js("(() => { setOpt('shader', 'off'); return 1; })()")
     game.stamp(2, -5, ["...."] * 3, levels=["3333"] * 3)
-    game.wait("dirtyTiles.length === 0")
-    game.sleep(500)
+    game.rest()
     bx, by = x + 3, y - 3
     # (a breath is a px INTO the box: no line of it is ever outside its block; its corners' own px are not there then)
     top = line(game, bx, by, [(a, 0, 0, 1) for a in range(1, 15)] + [(a, 15, 0, -1) for a in range(1, 15)] + [(0, a, 1, 0) for a in range(1, 15)] + [(15, a, -1, 0) for a in range(1, 15)], 3)
@@ -111,8 +109,7 @@ def test_what_nearer_land_hides_of_the_hint_is_dotted_through_the_land_not_absen
     mode(game, "off")
     game.js("(() => { setOpt('shader', 'off'); return 1; })()")
     game.stamp(2, -4, ["...."] * 3, levels=["3333"] * 3)
-    game.wait("dirtyTiles.length === 0")
-    game.sleep(500)
+    game.rest()
     edge = lambda bx: line(game, bx, y - 5, [(a, 0, 0, 0) for a in range(1, 15)] + [(0, a, 0, 0) for a in range(1, 15)], 0)      # (its far and its west edge's own px: read at rest)
     rest = lambda: (game.wait("Marks.list[0].grow === 1", timeout=4000), game.wait("Marks.list[0].grow === 0", timeout=4000))      # (the start of a rest: it breathes a px inward, .6 s in 1.4)
     hid, mid = edge(x + 3), game.js(AT, [x + 3, y - 5, 8.5, 8.5, 0])
@@ -160,7 +157,7 @@ def test_one_aim_is_one_box_and_every_line_of_it_is_in_its_block(game):
     mode(game, "off")
     game.js("(() => { setOpt('shader', 'off'); return 1; })()")
     game.stamp(2, -5, ["...."] * 3, levels=["3333"] * 3)
-    game.wait("dirtyTiles.length === 0"); game.sleep(500)
+    game.rest()
     game.give(dirt=3, wood_wall=2)
     bx, by = x + 3, y - 3
     px, py = game.js(AT, [bx, by, 8, 16 + 12, 3])                 # (on its front, a level and a half down from its rim)

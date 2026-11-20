@@ -14,9 +14,8 @@ lum = lambda c: .3 * c[0] + .59 * c[1] + .11 * c[2]
 
 def ready(game, phase):
     game.js("(() => { setOpt('shader', 'off'); setOpt('depth', true); return 1; })()")
-    game.rpc("dev_time", phase=phase)
     mode(game, "off")
-    game.wait("dirtyTiles.length === 0", timeout=20000); game.sleep(900)
+    game.hour(phase)                                             # (on the page, and the land drawn by it: the hour was asked for and 0.9 s slept)
 
 
 def test_a_wall_one_tile_wide_has_one_top_from_end_to_end(game):

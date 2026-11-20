@@ -136,8 +136,7 @@ def test_walking_off_a_cliff_you_fall_and_a_long_fall_hurts(game):
     game.clear_area(6)
     x, y = game.pos()
     game.stamp(-2, -6, ["....."] * 3, levels=["66666"] * 3)
-    game.rpc("dev_teleport", x=x, y=y - 4)                   # up on it (dev_teleport: on top)
-    game.sleep(900)
+    game.rpc("dev_teleport", x=x, y=y - 4); game.arrive()                   # up on it (dev_teleport: on top)
     assert game.server()["z"] == 6 and game.js("myAt.z") == 6
     game.rpc("dev_needs", hp=20, hunger=17)                    # (not healing by itself)
     hp = game.server()["hp"]
@@ -155,13 +154,12 @@ def test_a_pickaxe_cuts_a_tunnel_into_a_wall(game):
     game.hold_item("pickaxe")
     game.clear_area(4)
     x, y = game.pos()
-    game.stamp(-2, -3, ["....."] * 3, levels=["33333"] * 3)  # a hill 3 high, its south face in front of you
-    game.sleep(600)
+    game.stamp(-2, -3, ["....."] * 3, levels=["33333"] * 3); game.rest()  # a hill 3 high, its south face in front of you
     game.face(0, -1)
     assert "Dig into the hill" in game.actions()
     game.press(" ", 1500)
     assert game.js(f"surfacesAt({x}, {y - 1})") == [0, 3]
-    game.wait("dirtyTiles.length === 0", 8000); game.sleep(400)
+    game.rest()
     hole, beside = game.js(LAND, [[x, y - 1, 0, 8, 12], [x + 1, y - 1, 0, 8, 12]])
     assert earth(beside) and not earth(hole), (hole, beside)  # the face is open there: the tunnel's floor in it, the hill's front beside it
     game.js("selectItem(null)")
@@ -177,8 +175,7 @@ def test_a_frame_paints_the_screen_a_few_times_over_not_ten(game):
     frame. The water is put together small and blown up once (water.js); a block's raised ground and its caves are
     painted only where they have something."""
     game.clear_area(10)
-    game.stamp(-16, -10, ["~" * 33] * 21)
-    game.sleep(1500)
+    game.stamp(-16, -10, ["~" * 33] * 21); game.rest()
     screens = game.js("""(() => { const scr = cv.width * cv.height; let px = 0;
       const area = (x, y, w, h) => { const m = ctx.getTransform(), x0 = m.a * x + m.e, y0 = m.d * y + m.f, x1 = m.a * (x + w) + m.e, y1 = m.d * (y + h) + m.f;
         return Math.max(0, Math.min(Math.max(x0, x1), cv.width) - Math.max(Math.min(x0, x1), 0)) * Math.max(0, Math.min(Math.max(y0, y1), cv.height) - Math.max(Math.min(y0, y1), 0)); };
@@ -198,8 +195,7 @@ def test_ground_redrawn_while_a_block_is_first_made_is_made_again(game):
     build the note was dropped, and the block kept land worked out without its neighbour. A tile that changes while
     its block is first being made is made again: what is shown is what is made from nothing afterwards."""
     game.clear_area(8)
-    game.stamp(2, -3, ["....."] * 5, levels=["33333"] * 5)
-    game.sleep(900)
+    game.stamp(2, -3, ["....."] * 5, levels=["33333"] * 5); game.rest()
     x, y = game.pos()
     ty = y - 1 if (y - 1) % 32 else y                        # (a tile that is not in its block's first row: painted before the block is whole)
     made = "Voxels.made(__b) && dirtyTiles.length === 0"
@@ -241,8 +237,7 @@ def test_a_sprite_behind_a_ledge_is_cut_along_the_ledges_own_edge(game):
     behind it show."""
     game.clear_area(8)
     lv = ["1110000", "1110000", "1110000", "1111000", "1111100", "1111110", "1111111"]   # a ledge west and south of you, its edge in steps
-    game.stamp(-3, -2, ["." * 7] * 7, levels=lv)
-    game.sleep(1000)
+    game.stamp(-3, -2, ["." * 7] * 7, levels=lv); game.rest()
     r = game.js("""(() => { const p = ents.get('agent' + myId), S = TS(), [ox, oy] = screenOrigin(S);
       const sx = (x) => ox + x * S, sy = (y, x) => oy + y * S - (x === undefined ? 0 : liftOf({x, y})), strips = [];
       ctx.rect = function (x, y, w, h) { strips.push([x, y + h]); return CanvasRenderingContext2D.prototype.rect.call(ctx, x, y, w, h); };

@@ -2,8 +2,8 @@
 
 
 def test_a_house_shelters_you_and_doors_keep_animals_out(game):
-    game.stamp(-2, -2, ["WWWWW", "W...W", "W...W", "W...W", "WW+WW"])
-    game.sleep(1200)
+    game.stamp(-2, -2, ["WWWWW", "W...W", "W...W", "W...W", "WW+WW"]); game.rest()
+    game.settle("$('mode').innerText.includes('sheltered')")    # (the page asks the server how you are every 0.7 s: it slept 1.2 s)
     assert game.server()["sheltered"]
     assert "sheltered" in game.js("$('mode').innerText")
     x, y = game.pos()
@@ -12,8 +12,8 @@ def test_a_house_shelters_you_and_doors_keep_animals_out(game):
     assert game.pos() == (x, y + 3)
     game.wait("sounds.manifest", 20000)
     assert "gate" in game.js("Object.keys(sounds.lastAt)")    # the door was heard opening ("a door that open/close noise")...
-    game.rpc("dev_teleport", x=x, y=y)
-    game.sleep(800)
+    game.rpc("dev_teleport", x=x, y=y); game.arrive()
+    game.settle("'door_close' in sounds.lastAt")                # (it shuts a moment after you left: it slept 0.8 s)
     assert "door_close" in game.js("Object.keys(sounds.lastAt)")   # ...and, nobody by it any more, closing
     hen = game.spawn("chicken", 0, 3)
     game.rpc("dev_skip", seconds=40)

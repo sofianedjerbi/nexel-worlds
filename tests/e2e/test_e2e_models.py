@@ -39,8 +39,7 @@ def test_a_bridge_taken_away_takes_its_model_with_it(game):
     x, y = pond(game)
     n = game.js("Voxels.engine.models")
     game.stamp(-4, -6, ["~" * 9] * 5)
-    game.wait("dirtyTiles.length === 0")
-    game.sleep(400)
+    game.rest()
     assert game.js("Voxels.engine.models") < n - 40
     assert not near(game.js(PX, [x, y, 1, 4]), PLANK, 30)
 

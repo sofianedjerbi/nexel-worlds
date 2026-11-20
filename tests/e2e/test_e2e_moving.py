@@ -88,8 +88,7 @@ def test_swimming_never_goes_tile_by_tile(game):
     """Nobody sprints in water. Sprint held (a phone's stick pushed far), your screen swam at sprint speed, got a
     tile ahead of the server and waited for it, at every tile."""
     game.clear_area(14)
-    game.stamp(-12, -1, ["~" * 25] * 3)
-    game.sleep(400)
+    game.stamp(-12, -1, ["~" * 25] * 3); game.rest()
     page = game.page
     game.start_recording()
     page.keyboard.down("Shift")
@@ -203,8 +202,7 @@ def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
     on the ground under you, and no slower than a step. (Seen frame by frame it hung: the step took half as long
     again, the body near the top of its arc for most of it, legs going; and it ended with a 2 px snap.)"""
     game.clear_area(6)
-    game.stamp(1, -1, ["..."] * 3, levels=["111"] * 3)        # ground a layer up, east of you
-    game.sleep(600)
+    game.stamp(1, -1, ["..."] * 3, levels=["111"] * 3); game.rest()        # ground a layer up, east of you
     x, y = game.pos()
     # your feet and your shadow over the lower ground (art px), f of the way across, going east (up) or west (down)
     at = lambda f, to: game.js(f"""(() => {{ const j = jumpOf({{x: {x} + {f}, y: {y}, tx: {to}, ty: {y}, fx: {1 if to > x else -1}, fy: 0}});

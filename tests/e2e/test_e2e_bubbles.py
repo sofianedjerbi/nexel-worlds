@@ -2,6 +2,8 @@
 
 import os
 
+from conftest import needs_sounds
+
 SHOT = os.environ.get("BUBBLE_SHOTS")        # a folder to keep a picture of each scene in
 
 SAY = "(text, ago = 0, shout = false) => bubbles.push({name: me, text, t: performance.now() / 1000 - ago, shout})"
@@ -57,6 +59,7 @@ def test_bubbles_are_pixels_pile_up_and_come_down(game):
     assert not game.errors
 
 
+@needs_sounds
 def test_what_is_typed_in_capitals_is_shouted(game):
     """A shout needed "!" before it. Now a line in capitals is one (three letters or more: "OK" is talk), and it is a
     yell: each syllable held longer and falling, through a breaking curve and an echo (babble.js SHOUT)."""

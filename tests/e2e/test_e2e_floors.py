@@ -53,8 +53,7 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     game.wait(f"!!Floors.get({x + 2}, {y - 4}, 2) && Build.S.plans.size === 0", 30000)
     game.press("b")
     assert game.inv("plank") == 9 and not game.errors
-    game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0)            # before the door
-    game.sleep(700)
+    game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0); game.arrive()            # before the door
     for key, to in (("ArrowUp", (3, -2, 0)), ("ArrowUp", (3, -3, 0)), ("ArrowLeft", (2, -3, 1)), ("ArrowUp", (2, -4, 2)), ("ArrowRight", (3, -4, 3))):
         game.hold([key], 90)                                   # (a tap: a tile)
         game.sleep(500)
@@ -185,8 +184,7 @@ def test_earth_raises_the_ground_and_planks_go_on_from_a_floor(game):
     assert game.inv("dirt") == 2 and not game.errors
     # a floor that goes on from a block: by hand, from the block you stand on
     game.rpc("dev_stamp", x=x + 3, y=y + 3, rows=["W"])
-    game.rpc("dev_teleport", x=x + 3, y=y + 4, z=0)
-    game.sleep(600)
+    game.rpc("dev_teleport", x=x + 3, y=y + 4, z=0); game.arrive()
     assert game.rpc("act", tool="place", args={"x": x + 3, "y": y + 3, "item": "plank", "z": 3})["ok"]       # one block on a wall
     game.rpc("dev_stamp", x=x + 4, y=y + 4, rows=["nn"])
     game.rpc("dev_teleport", x=x + 4, y=y + 5, z=0)
@@ -194,8 +192,7 @@ def test_earth_raises_the_ground_and_planks_go_on_from_a_floor(game):
         assert game.rpc("act", tool="place", args={"x": step[0], "y": step[1], "item": "plank", "z": step[2]})["ok"]
     assert game.rpc("act", tool="place", args={"x": x + 5, "y": y + 3, "item": "plank", "z": 3})["error"] == "bad_target"      # (not beside a block: nothing holds it)
     assert game.rpc("act", tool="place", args={"x": x + 4, "y": y + 3, "item": "plank", "z": 3})["ok"]
-    game.rpc("dev_teleport", x=x + 4, y=y + 3, z=3)
-    game.sleep(700)
+    game.rpc("dev_teleport", x=x + 4, y=y + 3, z=3); game.arrive()
     game.press(game.js(SLOT, "plank"))
     game.face(0, -1)                                           # the air to the north, at your feet's height
     assert "Lay planks" in game.actions()

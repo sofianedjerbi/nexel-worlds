@@ -44,8 +44,7 @@ def test_at_night_the_lights_are_whole_pixels_in_steps(game):
     time: on the screen each art px of the lit ground is one colour, the light falls off in a few steps, and where
     there is no light the night's blue is the same everywhere."""
     game.stamp(3, 0, ["^"])
-    game.rpc("dev_time", phase=.88)
-    game.sleep(1200)
+    game.hour(.88)
     seen = game.js("""() => new Promise((ok) => requestAnimationFrame(() => { const z = zoom * DPR, c = cv.getContext('2d'), s = myPos();
       const S = TS(), [ox, oy] = screenOrigin(S), gx = Math.round((ox + (s.x + 3) * S + S / 2) * DPR), gy = Math.round((oy + s.y * S + S / 2) * DPR);     // the fire, on the canvas
       const x0 = gx - ((gx - Math.round(ox * DPR)) % z + z) % z, y0 = gy + 20 * z - ((gy - Math.round(oy * DPR)) % z + z) % z;                           // an art px of the land, under it
