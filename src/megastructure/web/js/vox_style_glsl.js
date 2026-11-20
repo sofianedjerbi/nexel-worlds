@@ -8,7 +8,7 @@ const VoxStyleGLSL = (() => {
   void main() { vec3 q = p; float dn = max(0., ctr.z - 1. - q.z); q.y -= bend * dn * dn; gl_Position = m * vec4(q, 1.); vu = uv; va = a; ve = e; wp = p; }`;
   const FS = `#version 300 es
   precision mediump float; in vec2 vu; in vec4 va; in float ve; in vec3 wp; uniform sampler2D t, wt; uniform vec3 lamp, eye, fogc;
-  uniform vec4 ub; uniform float wa, und, dep, sk, ovd, lr, day, amb, fn, ff, roof, rim, strata, dith, veil, chk, tm, dk, rd; uniform vec4 wv; uniform vec4 wtn[5]; uniform vec3 mc; out vec4 o;
+  uniform vec4 ub; uniform float wa, und, dep, sk, ovd, lr, day, amb, fn, ff, roof, rim, strata, dith, veil, chk, tm, dk, rd, sun, shp; uniform vec4 wv; uniform vec4 wtn[5]; uniform vec3 mc; out vec4 o;
   uniform vec2 vp; float hsh(vec2 v) { return fract(sin(dot(v, vec2(12.99, 78.23))) * 43758.5); }
   float bit(float v, float k) { return mod(floor(v / k), 2.); }
   vec3 rk(vec2 g, float d0, float kd) {   // natural strata: bands of uneven thickness and tone, earth near the meadow, stone deeper (g.y down = deeper)
@@ -31,9 +31,10 @@ const VoxStyleGLSL = (() => {
     if (rd > .5 && (wp.z < lamp.z + .3 || wp.y < lamp.y - .55 || distance(gl_FragCoord.xy, mc.xy) > mc.z || mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.)) discard;   // (rd: a model south of you and over your feet, drawn again over you: one px in two of it, in a disc round you)
     float hd = distance(wp.xz, lamp.xz), va2 = veil > 0. ? mix(veil, 1., smoothstep(2.5, 6.5, hd)) : 1.;
     if (chk > .5 && hd < 4.5 && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard;
-    vec4 c = texture(t, vu / ${AW}.); if (kind > 7.5 && (c.a < .5 || (kind > 8.5 && kind < 9.5 && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.))) discard; if (kind > 9.5) { o = vec4(.2, .15, .3, .3); return; } if (c.a < .5) c = vec4(.42, .32, .25, 1.);   // (8: a model's face, host.models: a bridge's planks; its see-through px are holes; 9: a ghost of one, view.ghosts: one px in two; 10: a shadow on the ground, box.shade: a flat shade laid over the land)
+    vec4 c = texture(t, vu / ${AW}.); if (kind > 7.5 && (c.a < .5 || (kind > 8.5 && kind < 9.5 && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.))) discard; if (kind > 9.5) { float sa = c.a * 255., rm = sa < 200. && sa > 150. ? 1. : 0., fx = sa > 240. || sa < 176. ? 1. : sun; if (rm != shp || fx < .03) discard; o = vec4(.2, .15, .3, .3 * fx * (1. - .45 * rm)); return; } if (c.a < .5) c = vec4(.42, .32, .25, 1.);   // (8: a model's face, host.models: a bridge's planks; its see-through px are holes; 9: a ghost of one, view.ghosts: one px in two; 10: a shadow on the ground, box.shade: a flat shade laid over the land; its paint's alpha says which: 255 a shade that is always there, 224 the sun's (as dark as sun), 192 the sun's soft rim, 160 a rim that is always there; shp: which are drawn now, 0 the full ones, 1 the rims)
     float d = distance(wp, lamp) / lr, lan = clamp(1.15 - d * d, 0., 1.);
-    float l = max(va.y * day, amb + (1. - amb) * lan) * va.x;
+    float kx = floor(va.x * 20. + .05) / 20.;   // (a face's light and the shade of its corners: in whole steps; it ran smooth from corner to corner: a blurred halo on the ground round every block)
+    float l = max(va.y * day, amb + (1. - amb) * lan) * kx;
     if (dith > .5) { float b = mod(floor(gl_FragCoord.x / 2.), 2.) * 2. + mod(floor(gl_FragCoord.y / 2.), 2.); l = floor(l * 4. + (b + .5) / 4.) / 4. + .12; }
     vec3 warm = mix(vec3(1.), vec3(1.1, .97, .8), lan * (1. - va.y));
     vec3 col = c.rgb * l * warm;
@@ -50,12 +51,12 @@ const VoxStyleGLSL = (() => {
         if ((bit(ve, 32.) > .5 && lu.y < 2.) || (bit(ve, 64.) > .5 && lu.x > 14.) || (bit(ve, 128.) > .5 && lu.y > 14.) || (bit(ve, 256.) > .5 && lu.x < 2.)) col = vec3(.85, .68, .48);
         float r = 0.; if (bit(ve, 1.) > .5 && lu.y < 1.) r = 1.; if (bit(ve, 2.) > .5 && lu.x > 15.) r = 1.; if (bit(ve, 4.) > .5 && lu.y > 15.) r = 1.; if (bit(ve, 8.) > .5 && lu.x < 1.) r = 1.;
         col = mix(col, vec3(.95, .75, .5) * (.5 + lan), r * .8);
-      } else if (kind < .5) { col = bit(ve, 16384.) > .5 ? c.rgb * .3 : bit(ve, 8192.) > .5 ? fl() * .75 : ub.w > .5 ? mix(c.rgb * max(day * .85, amb), base * vec3(1.42, 1.2, .98) * clamp(dot(c.rgb, vec3(.33)) / max(.05, dot(rf, vec3(.33))), .84, 1.1) * (amb + (1. - amb) * lan) * warm, dk) * va.x * .92 : rk(floor(vec2((wp.x + wp.z) * 16., -wp.y * 16.)), dep + (lamp.y - .6) / .5, 1. / 8.) * l * warm * .6; }   // a wall: the strata in world height (one band pattern, not per level)
+      } else if (kind < .5) { col = bit(ve, 16384.) > .5 ? c.rgb * .3 : bit(ve, 8192.) > .5 ? fl() * .75 : ub.w > .5 ? mix(c.rgb * max(day * .85, amb), base * vec3(1.42, 1.2, .98) * clamp(dot(c.rgb, vec3(.33)) / max(.05, dot(rf, vec3(.33))), .84, 1.1) * (amb + (1. - amb) * lan) * warm, dk) * kx * .92 : rk(floor(vec2((wp.x + wp.z) * 16., -wp.y * 16.)), dep + (lamp.y - .6) / .5, 1. / 8.) * l * warm * .6; }   // a wall: the strata in world height (one band pattern, not per level)
       else {                                                      // a floor: a step down has a lit lip, a step up shades its foot
-        col = ub.w > .5 ? c.rgb * (1.02 + .22 * lan) * mix(vec3(1.), vec3(1.08, 1., .86), lan) + vec3(.07, .045, .02) * lan : c.rgb * (.75 + .6 * lan) * vec3(1.12, 1., .8) + vec3(.2, .13, .05) * lan;   // your space: lighter and warmer, a lantern's glow (?hd: a little: it was half as bright again and yellow, and a room's grass floor by you burnt to a plain yellow slab)
+        float ls = floor(lan * 3. + .5) / 3.; col = ub.w > .5 ? c.rgb * (.86 + .16 * ls) * mix(vec3(1.), vec3(1.05, 1., .9), ls) : c.rgb * (.75 + .6 * lan) * vec3(1.12, 1., .8) + vec3(.2, .13, .05) * lan;   // your space: lighter and warmer, a lantern's glow (?hd: a little, in three flat steps as the rock round it: it was half as bright again and yellow, and a room's grass floor by you burnt to a plain yellow slab; then a quarter brighter than its paint: the treads of a stair of earth were bright yellow blocks in the dark)
         float ue = min(min(mix(9., lu.y, bit(ve, 512.)), mix(9., 15. - lu.x, bit(ve, 1024.))), min(mix(9., 15. - lu.y, bit(ve, 2048.)), mix(9., lu.x, bit(ve, 4096.))));
         if (ue < 3.) col *= .45 + .15 * floor(ue);
-        if (va.w > (lamp.y - .6) / .5 - 3. && ((bit(ve, 1.) > .5 && lu.y < 1.) || (bit(ve, 2.) > .5 && lu.x > 15.) || (bit(ve, 4.) > .5 && lu.y > 15.) || (bit(ve, 8.) > .5 && lu.x < 1.))) col = mix(col, vec3(1., .93, .75), .85);   // (only near your level: no lines far below)
+        if (va.w > (lamp.y - .6) / .5 - 3. && ((bit(ve, 1.) > .5 && lu.y < 1.) || (bit(ve, 2.) > .5 && lu.x > 15.) || (bit(ve, 4.) > .5 && lu.y > 15.) || (bit(ve, 8.) > .5 && lu.x < 1.))) col = mix(col, vec3(1., .93, .75), .35);   // (only near your level: no lines far below; faint: at .85 each tread of a stair was a bright yellow block)
       }
       if (va.y > .5 && kind < 1.5) col = mix(col, c.rgb * vec3(.9, 1., 1.15) * .85, .6);   // the daylight of the way up
     } else if (kind > 1.5 && kind < 2.5) {                              // a sliced top: the land over you
@@ -75,7 +76,7 @@ const VoxStyleGLSL = (() => {
       if (wtn[4].a > .5) { vec4 tn = wtn[int(clamp(ve, 0., 4.))]; col = mix(tn.rgb * max(l, .6), wc.rgb, wc.a * .45); o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), max(tn.a, wc.a * .45)); return; }   // (light.wtint: clear water: a tint and how much of it for water 0..4 levels deep (ve), the bed showing through; the game's picture of the water, its waves and glints, over it)
       o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * (ub.w > .5 ? .4 : 1.)), wa); return;   // (?hd: the far sea stays blue to the horizon)
     }
-    if (kind > 6.5 && kind < 7.5) col = (texture(t, (vu + vec2(-4., -4.)) / ${AW}.).rgb + texture(t, (vu + vec2(4., -4.)) / ${AW}.).rgb + texture(t, (vu + vec2(-4., 4.)) / ${AW}.).rgb + texture(t, (vu + vec2(4., 4.)) / ${AW}.).rgb) * .25 * va.x * max(day, .35);   // (?hd: the land past the box: its own tint, flat, in the haze)
+    if (kind > 6.5 && kind < 7.5) col = (texture(t, (vu + vec2(-4., -4.)) / ${AW}.).rgb + texture(t, (vu + vec2(4., -4.)) / ${AW}.).rgb + texture(t, (vu + vec2(-4., 4.)) / ${AW}.).rgb + texture(t, (vu + vec2(4., 4.)) / ${AW}.).rgb) * .25 * kx * max(day, .35);   // (?hd: the land past the box: its own tint, flat, in the haze)
     col = mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)));
     if (veil > 0.) col *= mix(ovd, 1., smoothstep(2.5, 6.5, hd)); o = vec4(col, va2);
   }`;

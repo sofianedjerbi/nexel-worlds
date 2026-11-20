@@ -10,8 +10,9 @@
 //   HdThings.at(x, y) -> the boxes of the tile; is(c) -> a char that is boxes (no billboard); card(c, x, y, spr, X);
 //   loose(x, y) -> [[char, z]...]: what stands on a built block and is not boxes; key() -> changes when the boxes must be made again
 const HdThings = (() => {
-  const SW = 1024, SH = 512, sheet = {px: new Uint32Array(SW * SH), w: SW, id: "hd"}, rooms = new Map(), pixs = new Map(), UP = RELIEF_STEP, KF = Math.cos(36 * Math.PI / 180), LEAN = 0, plans = new Set();   // (KF: a front's px on the screen a px of its height, hd.js cam.pitch; LEAN: px a top's row leans, a px off the middle: none, it read as broken; plans: walls only planned, "x,y,z")
+  const SW = 1024, SH = 1024, sheet = {px: new Uint32Array(SW * SH), w: SW, id: "hd"}, rooms = new Map(), pixs = new Map(), UP = RELIEF_STEP, LEAN = 0, PITCH = 4, plans = new Set();   // (KF: a front's px on the screen a px of its height, hd.js cam.pitch; LEAN: px a top's row leans, a px off the middle: none, it read as broken; PITCH: px a roof rises a tile; plans: walls only planned, "x,y,z")
   let nx = 0, ny = 0, tall = 0, ids = 0, scratch = null;
+  const KF = () => Math.cos(HdLook.cam.pitch * Math.PI / 180);   // (a front's px on the screen a px of its height: the eye's pitch, 36 degrees, up to 52 on a screen held upright: it was 36 always, and a wall's 12 rows of planks were squeezed into 9 px on a phone)
   // room for w x h px of paint in the sheet, filled once by fill(put(i, j, px)) -> [u, v]
   function room(key, w, h, fill) {
     let p = rooms.get(key); if (p) return p;
@@ -43,7 +44,7 @@ const HdThings = (() => {
   function push(out, b) {
     for (let i = 0; i < b.w; i += 16) for (let j = 0; j < b.d; j += 16) for (let k = 0; k < (b.fh ? 1 : Math.max(1, b.h)); k += 16) {      // (fh: its front is that many rows of paint, whatever its height: one piece)
       const w = Math.min(16, b.w - i), d = Math.min(16, b.d - j), h = b.fh ? b.h : Math.min(16, b.h - k), o = (p, a, c) => (p ? [p[0] + a, p[1] + c] : null);
-      out.push({x: b.x + i, y: b.y + j, z: b.z + b.h - k - h, w, d, h, fh: b.fh, shade: b.shade, sheet, top: k === 0 ? o(b.top, i, j) : null, front: j + 16 >= b.d ? o(b.front, i, k) : null, west: i === 0 ? o(b.west, j, k) : null, east: i + 16 >= b.w ? o(b.east, j, k) : null});
+      out.push({x: b.x + i, y: b.y + j, z: b.z + b.h - k - h, w, d, h, fh: b.fh, shade: b.shade, tilt: b.tilt, k: b.k, sheet, top: k === 0 ? o(b.top, i, j) : null, front: j + 16 >= b.d ? o(b.front, i, k) : null, west: i === 0 ? o(b.west, j, k) : null, east: i + 16 >= b.w ? o(b.east, j, k) : null});
     }
   }
   // ---- furniture: a card (see the top). CARD: char -> [r0, rS, r2]: its top's first row, its front's first row, the row under its foot. PLAIN: char -> the row under its foot where that is not its last row (a coop's ramp runs on past its legs)
@@ -67,17 +68,19 @@ const HdThings = (() => {
   const shaded = (c) => isObject(c) && !is(c) && !"f;\"wgVl".includes(c);      // (all that stands; not what is boxes, what is flat or thin, what floats)
   // the row of a thing's sprite that is under its foot (its last row with a px): where it stands on the ground, and where its shadow lies
   function foot(c, spr) { if (CARD[c]) return CARD[c][2]; if (PLAIN[c] !== undefined) return PLAIN[c]; const P = pix(spr[0], spr[1], spr[2], spr[3], spr[4]), has = (j) => { for (let i = 0; i < P.w; i++) if (solid(P.px[j * P.w + i])) return true; return false; }; let r = P.h; while (r > 1 && !has(r - 1)) r--; return r; }
-  function shade(out, c, x, y, base) {
+  function shade(out, c, x, y, base, L) {      // (L: it stands on the ground at that level: the hour's shadow too, hd_sun.js)
     const spr = objectSprite(c, x, y, 0); if (!spr || !spr[0] || !spr[0].width) return;
     const P = pix(spr[0], spr[1], spr[2], spr[3], spr[4]), r2 = foot(c, spr);
     const [c0, c1] = span(P, r2 - 4, r2), tall = P.h >= 40 && !CARD[c] && PLAIN[c] === undefined, w = tall ? 22 : c1 - c0 + 4, d = CARD[c] ? 11 : tall ? 9 : 8, mid = (c0 + c1) / 2;      // (a tree: its crown's, wider than its trunk)
     push(out, {x: Math.round(spr[5] + mid - w / 2), y: spr[6] + r2 - d + 4, z: base + .5, w, d, h: 0, top: oval(w, d), shade: true});
+    if (L !== undefined && c !== "^" && c !== "x") HdSun.thing(out, x, y, L, P, spr[5], spr[6], r2);
   }
+  const cast = (out, x, y, zl, r, h0, h1, built) => { if (!ghosting && (built || zl === floorAt(x, y))) HdSun.box(out, x, y, built ? floorAt(x, y) : zl, r, h0, h1, built); };   // (what is built throws the shadow of the box it is, a px wider so that a run's are one)
   // the shadow of what moves (a body, what lies on the ground): boxes for the engine's view.ghosts, w x d px round a point, z px up
   function shadow(w, d, z) { const l = []; push(l, {x: -Math.round(w / 2), y: -Math.round(d / 2), z, w, d, h: 0, top: oval(w, d), shade: true}); return l; }
   // a rug, a blanket: flat on the ground, its picture the top of a box with no height
   function decal(out, c, x, y, base) { const spr = objectSprite(c, x, y, 0); if (!spr || !spr[0] || !spr[0].width) return; push(out, {x: spr[5] - 1, y: spr[6] - 1, z: base + .5, w: spr[3] + 2, d: spr[4] + 2, h: 0, top: flat(0xff000000, spr[3] + 2, spr[4] + 2, 0xff000000), shade: true}); push(out, {x: spr[5], y: spr[6], z: base + 1, w: spr[3], d: spr[4], h: 0, top: cut(pix(spr[0], spr[1], spr[2], spr[3], spr[4]), 0, spr[3], 0, spr[4])}); }
-  // ---- walls, doors: thin, in the middle of their tile (structures.js: the band's 6 px), a top to each. h: its height in px of the land: 12 rows of planks as its picture (12 / KF px); under a built block 16 px, up to it (13 rows)
+  // ---- walls, doors: thin, in the middle of their tile (structures.js: the band's 6 px), a top to each. h: its height in px of the land: 12 rows of planks as its picture (12 / KF() px); under a built block 16 px, up to it (13 rows)
   const tints = new Map(), L0 = 5, R0 = 11;
   function tint(c, x, y, at) {   // a wall's ink and its cap's colour: off the game's own picture of it
     let t = tints.get(c); if (t) return t;
@@ -93,17 +96,17 @@ const HdThings = (() => {
   const doorsAt = new Map(), doorOpen = (x, y) => doorsAt.set(x + "," + y, [x, y]) && [[0, 0], [0, -1], [0, 1], [1, 0], [-1, 0]].some(([dx, dy]) => occupied.has((x + dx) + "," + (y + dy)));
   function wall(out, c, x, y, zl, h) {
     const n = isWall(x, y - 1, zl), s = isWall(x, y + 1, zl), w = isWall(x - 1, y, zl), e = isWall(x + 1, y, zl), T = tint(c, x, y, zl), z = zl * UP;
-    const rows = (hh) => Math.max(1, Math.round(hh * KF));
-    const part = (x0, x1, y0, y1, hh, ed, front, pc = c) => push(out, {x: x0, y: y0, z, w: x1 - x0, d: y1 - y0, h: hh, fh: rows(hh), top: flat(T.cap, x1 - x0, y1 - y0, T.ink, ed), front: front ? planks(pc, x0, x1 - x0, rows(hh)) : null,
-      west: x0 === 0 ? null : flat(planksTone(pc), Math.min(16, y1 - y0), rows(hh), T.ink, "n"), east: x1 === 16 ? null : flat(planksTone(pc), Math.min(16, y1 - y0), rows(hh), T.ink, "n")});
+    const rows = (hh) => Math.max(1, Math.round(hh * KF()));
+    const part = (x0, x1, y0, y1, hh, ed, front, pc = c) => { cast(out, x, y, zl, [x0 - 1, y0 - 1, x1 + 1, y1 + 1], 0, hh); push(out, {x: x0, y: y0, z, w: x1 - x0, d: y1 - y0, h: hh, fh: rows(hh), top: flat(T.cap, x1 - x0, y1 - y0, T.ink, ed), front: front ? planks(pc, x0, x1 - x0, rows(hh)) : null,
+      west: x0 === 0 ? null : flat(planksTone(pc), Math.min(16, y1 - y0), rows(hh), T.ink, "n"), east: x1 === 16 ? null : flat(planksTone(pc), Math.min(16, y1 - y0), rows(hh), T.ink, "n")}); };
     if (c === "+" && Structures.sideDoor(x, y, zl)) {      // a door in a run north-south: two posts, its leaf between them (open: swung away)
       part(L0, R0, 0, 4, h, "we", true); part(L0, R0, 12, 16, h, "wes", true);
       if (!doorOpen(x, y)) { const D = pix(IMG.door, 80, 0, 16, 16), lv = D.px[8 * 16 + 6]; push(out, {x: 6, y: 4, z, w: 4, d: 8, h: h * .9, fh: rows(h * .9), top: flat(lv, 4, 8, T.ink, "we"), west: flat(lv, 8, rows(h * .9), T.ink, "n"), east: flat(lv, 8, rows(h * .9), T.ink, "n")}); }
       return;
     }
     if (c === "+") {                                        // a door in a run east-west: the pack's door as it is drawn, the wall's planks over it up to what it holds
-      const D = pix(IMG.door, (doorOpen(x, y) ? 0 : 5) * 16, 0, 16, 16), hh = h < 12 || Math.abs(h - 16) < .5 ? h : 16 / KF, fh = rows(hh);      // (free: its own 16 rows; under a block: the 13 that fit, from its foot up)
-      push(out, {x: 0, y: L0, z, w: 16, d: 6, h: hh, fh, top: flat(T.cap, 16, 6, T.ink, "ns"), front: cut(D, 0, 16, 16 - fh, 16), west: flat(T.ink, 6, fh, T.ink), east: flat(T.ink, 6, fh, T.ink)});
+      const D = pix(IMG.door, (doorOpen(x, y) ? 0 : 5) * 16, 0, 16, 16), hh = h < 12 || Math.abs(h - 16) < .5 ? h : 16 / KF(), fh = rows(hh);      // (free: its own 16 rows; under a block: the 13 that fit, from its foot up)
+      cast(out, x, y, zl, [-1, L0 - 1, 17, R0 + 1], 0, hh); push(out, {x: 0, y: L0, z, w: 16, d: 6, h: hh, fh, top: flat(T.cap, 16, 6, T.ink, "ns"), front: cut(D, 0, 16, 16 - fh, 16), west: flat(T.ink, 6, fh, T.ink), east: flat(T.ink, 6, fh, T.ink)});
       return;
     }
     const x0 = w ? 0 : L0, x1 = e ? 16 : R0;
@@ -116,26 +119,32 @@ const HdThings = (() => {
   function fence(out, x, y, base) {
     const spr = fenceSprite(x, y), P = pix(spr[0], spr[1], spr[2], 16, 16), dy = spr[6], f = (dx, ddy) => "#+g".includes(combAt(x + dx, y + ddy) || "-");
     const rail = P.px[8 * 16 + 7] || P.px[6 * 16 + 7], dark = P.px[12 * 16 + 5] || rail, Y1 = 12;
-    push(out, {x: 5, y: Y1 - 4, z: base, w: 6, d: 4, h: 12 / KF, fh: 12, top: cut(P, 5, 11, 2, 6), front: cut(P, 5, 11, 2, 14), west: side(P, 5, 11, 2, 14, 4, 0), east: side(P, 5, 11, 2, 14, 4, 1)});
-    for (const [on, c0, c1] of [[f(-1, 0), 0, 5], [f(1, 0), 11, 16]]) if (on) push(out, {x: c0, y: Y1 - 3, z: base, w: c1 - c0, d: 2, h: 12 / KF, fh: 12, top: null, front: cut(P, c0, c1, 2, 14)});
-    for (const [on, y0, y1] of [[f(0, -1), 0, Y1 - 4], [f(0, 1), Y1, 16]]) if (on) for (const rz of [3, 8]) push(out, {x: 6, y: y0, z: base + rz / KF, w: 4, d: y1 - y0, h: 2 / KF, fh: 2, top: flat(rail, 4, y1 - y0, dark, "we"), west: flat(dark, Math.min(16, y1 - y0), 2, dark), east: flat(dark, Math.min(16, y1 - y0), 2, dark)});   // (a rail from above: its two edges dark, so it reads between the posts)
+    // (a run north-south: a post on every other tile, the rails through between them: a post is 12 px high and a tile 9 px deep on the screen, a post a tile was one mush of posts)
+    const run = f(0, -1) && f(0, 1) && !f(-1, 0) && !f(1, 0) && combAt(x, y) === "#", post = !run || !(y & 1), L = base / UP, sun = (r, h0, h1) => cast(out, x, y, L, r, h0, h1);
+    if (post) { sun([4, Y1 - 5, 12, Y1 + 1], 0, 12 / KF()); push(out, {x: 5, y: Y1 - 4, z: base, w: 6, d: 4, h: 12 / KF(), fh: 12, top: cut(P, 5, 11, 2, 6), front: cut(P, 5, 11, 2, 14), west: side(P, 5, 11, 2, 14, 4, 0), east: side(P, 5, 11, 2, 14, 4, 1)}); }
+    for (const [on, c0, c1] of [[f(-1, 0), 0, 5], [f(1, 0), 11, 16]]) if (on) { for (const rz of [3, 8]) sun([c0, Y1 - 3, c1, Y1 - 1], rz / KF(), (rz + 2) / KF()); push(out, {x: c0, y: Y1 - 3, z: base, w: c1 - c0, d: 2, h: 12 / KF(), fh: 12, top: null, front: cut(P, c0, c1, 2, 14)}); }
+    for (const [on, y0, y1] of post ? [[f(0, -1), 0, Y1 - 4], [f(0, 1), Y1, 16]] : [[true, 0, 16]]) if (on) for (const rz of [3, 8]) { sun([6, y0, 10, y1], rz / KF(), (rz + 2) / KF());
+      push(out, {x: 6, y: y0, z: base + rz / KF(), w: 3, d: y1 - y0, h: 2 / KF(), fh: 2, top: flat(rail, 3, y1 - y0, dark, "we"), west: flat(dark, Math.min(16, y1 - y0), 2, dark), east: flat(dark, Math.min(16, y1 - y0), 2, dark)}); }   // (a rail from above: its two edges dark, so it reads between the posts)
   }
   // a gate in a run north-south: its leaf along the run, a thin box as high as the posts beside it (open: none); the posts are the fences' own
   function sideGate(out, x, y, base) {
     if (doorOpen(x, y)) return; const P = pix(IMG.gates, 0, 0, 16, 16), lum = (v) => (v & 255) + (v >> 8 & 255) + (v >> 16 & 255); let wood = 0, dark = 0;
     for (let i = 0; i < 256; i++) { const v = P.px[i]; if (!solid(v)) continue; if (!wood || lum(v) > lum(wood)) wood = v; if (!dark || lum(v) < lum(dark)) dark = v; }      // (the gate's own lightest wood and its line)
-    push(out, {x: 6, y: -4, z: base + 2 / KF, w: 4, d: 24, h: 9 / KF, fh: 9, top: flat(wood, 4, 24, dark, "wens"), front: flat(wood, 4, 9, dark, "wens"), west: flat(wood, 24, 9, dark, "ns"), east: flat(wood, 24, 9, dark, "ns")});
+    push(out, {x: 6, y: -4, z: base + 2 / KF(), w: 4, d: 24, h: 9 / KF(), fh: 9, top: flat(wood, 4, 24, dark, "wens"), front: flat(wood, 4, 9, dark, "wens"), west: flat(wood, 24, 9, dark, "ns"), east: flat(wood, 24, 9, dark, "ns")});
   }
   // ---- built blocks (floors.js): a floor's planks, a step, a roof's shingles. The game's own picture of the block: its 16 rows the top, the rows under them its face
   const hid = (x, y, z) => Floors.alpha(x, y, z) < 1;        // (over your head, or over the build cursor's level: not drawn, as the game's own rule has it)
   function block(out, kind, x, y, z) {
     const g = (dx, dy, dz = 0) => { const c = Floors.get(x + dx, y + dy, z + dz); return c && !hid(x + dx, y + dy, z + dz) ? c[0] : ""; }, same = (dx, dy) => g(dx, dy) === kind;
-    if (kind === "roof") {                                  // shingles: each row a step of 4 px up to the ridge half way down its run (2 steps at the most); its eave the front
+    if (kind === "roof") {                                  // shingles: a real roof, two pitched faces: up from its north edge to the ridge (the pack's ridge row: half way down its run), down from it to the eave; the eave its front, the gable its sides
       let up = 0, down = 0; while (up < 14 && same(0, -up - 1)) up++; while (down < 14 && same(0, down + 1)) down++;
-      const w = same(-1, 0), e = same(1, 0), rise = Math.min(up, down, 2) * 4, h = 7 + rise;
-      const P = shotOf("roof" + [up, down, w, e], 16, 30, () => Structures.drawRoof(0, 7, 16, up, down, w, e));
-      const eave = room(P.key + "e" + h, 16, h, (put) => { const E = pix(IMG.house_roof, 16, 64, 16, 7); for (let j = 0; j < h; j++) for (let i = 0; i < 16; i++) put(i, j, E.px[Math.min(6, j) * 16 + i]); });
-      push(out, {x: 0, y: 0, z: z * UP - 7, w: 16, d: 16, h, top: cut(P, 0, 16, 7, 23), front: eave, west: w ? null : side({px: sheet.px, w: SW, key: P.key + "e" + h + "S"}, eave[0], eave[0] + 16, eave[1], eave[1] + h, 16, 0), east: e ? null : side({px: sheet.px, w: SW, key: P.key + "e" + h + "S"}, eave[0], eave[0] + 16, eave[1], eave[1] + h, 16, 1)});
+      const w = same(-1, 0), e = same(1, 0), n = up + down + 1, yr = Math.floor((n - 1) / 2) + .5, pk = PITCH * n / 2, hat = (v) => Math.round(v <= yr ? pk * v / yr : pk * (n - v) / (n - yr));
+      cast(out, x, y, 0, [-1, -1, 17, 17], 0, (z - floorAt(x, y)) * UP + hat(up + .5), true);
+      const P = shotOf("roof" + [up, down, w, e], 16, 30, () => Structures.drawRoof(0, 7, 16, up, down, w, e)), E = pix(IMG.house_roof, 16, 64, 16, 7);
+      const eave = room("eave", 16, 7, (put) => { for (let j = 0; j < 7; j++) for (let i = 0; i < 16; i++) put(i, j, E.px[j * 16 + i]); }), S = {px: sheet.px, w: SW, key: "eaveS"};
+      for (const [y0, y1] of up === Math.floor(yr) ? [[0, 8], [8, 16]] : [[0, 16]]) { const d = y1 - y0, last = y1 === 16;
+        push(out, {x: 0, y: y0, z: z * UP - 7, w: 16, d, h: 7, tilt: [hat(up + y0 / 16), hat(up + y1 / 16)], k: up + y0 / 16 < yr ? .7 : 1, top: cut(P, 0, 16, 7 + y0, 7 + y1), front: last && !down ? eave : null,
+          west: w ? null : side(S, eave[0], eave[0] + 16, eave[1], eave[1] + 7, d, 0), east: e ? null : side(S, eave[0], eave[0] + 16, eave[1], eave[1] + 7, d, 1)}); }
       if (!up) push(out, {x: 0, y: -7, z: z * UP - 2, w: 16, d: 7, h: 2, top: cut(P, 0, 16, 0, 7)});      // (its scalloped far edge: over the wall's back)
       return;
     }
@@ -147,6 +156,7 @@ const HdThings = (() => {
         push(out, {x: x0, y: y0, z: (z - 1) * UP, w, d, h, top: cut(P, x0, x0 + w, y0, y0 + d), front: cut(P, x0, x0 + w, 24 - h, 24), west: flat(tone, d, h, tone), east: flat(tone, d, h, tone)}); }
       return;
     }
+    cast(out, x, y, 0, [-1, -1, 17, 17], 0, (z - floorAt(x, y)) * UP, true);
     const P = shotOf(stairs ? "st" + [x, y, z, Floors.ver, landVer] : "cell" + kind + bits, 16, 24, () => Floors.cell(kind, x, y, z, () => 0, () => shOf(z), 16, 1));
     const tone = P.px[20 * 16 + 7] || P.px[8 * 16 + 7] || 0xff5d6290;
     push(out, {x: 0, y: 0, z: (z - 1) * UP, w: 16, d: 16, h: UP, top: g(0, 0, 1) ? null : cut(P, 0, 16, 0, 16), front: g(0, 1) ? null : cut(P, 0, 16, 16, 24), west: g(-1, 0) ? null : flat(tone, 16, UP, tone), east: g(1, 0) ? null : flat(tone, 16, UP, tone)});
@@ -158,13 +168,13 @@ const HdThings = (() => {
       const cells = Floors.cells(x, y); let over = 0, cutLow = false;
       if (cells) for (const zc of cells.keys()) if (zc > zl && zc <= zl + Floors.STOREY) { over = zc; cutLow = hid(x, y, zc); }
       const p = myPos();      // (inside, the roof open: the walls south of you a low stub, as the cut leaves the rock south of your space; the others to their own height)
-      wall(out, c, x, y, zl, cutLow ? (p && y > p.y ? 4 : 16) : over ? (over - 1 - zl) * UP : 12 / KF);
+      wall(out, c, x, y, zl, cutLow ? (p && y > p.y ? 4 : 16) : over ? (over - 1 - zl) * UP : 12 / KF());
     } else if (c === "#") fence(out, x, y, zl * UP); else if (c === "g") sideGate(out, x, y, zl * UP);
     else decal(out, c, x, y, zl * UP);
   }
   function at(x, y) {
     const out = [], c = combAt(x, y), cells = Floors.cells(x, y);
-    if (c && is(c, x, y)) stand(out, c, x, y, floorAt(x, y)); else if (c && shaded(c)) shade(out, c, x, y, floorAt(x, y) * UP);      // (on the tile's lowest ground: in a cave, on its floor)
+    if (c && is(c, x, y)) stand(out, c, x, y, floorAt(x, y)); else if (c && shaded(c)) shade(out, c, x, y, floorAt(x, y) * UP, floorAt(x, y));      // (on the tile's lowest ground: in a cave, on its floor)
     if (cells) for (const [z, [kind, ch]] of cells) { if (hid(x, y, z)) continue; block(out, kind, x, y, z); if (ch && is(ch)) stand(out, ch, x, y, z); else if (ch && shaded(ch)) shade(out, ch, x, y, z * UP); }
     return out.length ? out : null;
   }
@@ -181,6 +191,6 @@ const HdThings = (() => {
   }
   function loose(x, y) { const cells = Floors.cells(x, y), out = []; if (cells) for (const [z, [, ch]] of cells) if (ch && !is(ch) && !hid(x, y, z)) out.push([ch, z]); return out; }
   // what the pieces hang on beside the land: what is built, where you are under it, the build cursor's level, who stands by a door
-  function key() { const s = myAt; let d = ""; if (doorsAt.size > 300) doorsAt.clear(); for (const [x, y] of doorsAt.values()) if ("+g".includes(combAt(x, y) || "-") && doorOpen(x, y)) d += x + "," + y + ";"; return [Floors.ver, s ? [s.x, s.y, s.z] : "", Build.on ? Build.level() : "", sheet.id, d].join("|"); }
-  return {at, is, loose, key, painted, ghost, pieced, card, shadow, foot, plans, CARD, sheet};
+  function key() { const s = myAt; let d = ""; if (doorsAt.size > 300) doorsAt.clear(); for (const [x, y] of doorsAt.values()) if ("+g".includes(combAt(x, y) || "-") && doorOpen(x, y)) d += x + "," + y + ";"; return [Floors.ver, s ? [s.x, s.y, s.z] : "", Build.on ? Build.level() : "", sheet.id, d, HdSun.key(), HdLook.cam.pitch].join("|"); }
+  return {at, is, loose, key, painted, ghost, pieced, card, shadow, foot, plans, CARD, sheet, room, pix};
 })();

@@ -9,7 +9,7 @@
 #menu .hh { display:flex; align-items:center; justify-content:space-between; height:calc(13 * var(--q)); padding:0 calc(2 * var(--q)); }
 #menu .hh span, #menu .hf, #menu .hf span { display:flex; align-items:center; gap:calc(3 * var(--q)); color:var(--ink2); cursor:pointer; }
 #menu .hf { justify-content:center; height:calc(15 * var(--q)); padding-top:calc(3 * var(--q)); cursor:default; white-space:nowrap; }
-#menu .hf span { margin-left:calc(4 * var(--q)); }
+#menu .hf span { margin-left:calc(4 * var(--q)); } #menu .hf i { font-style:normal; }
 #menu kbd { flex:none; display:flex; align-items:center; justify-content:center; min-width:calc(11 * var(--q)); height:calc(11 * var(--q)); padding:0 calc(3 * var(--q)) var(--q); font:inherit; color:var(--ink);
   background:#fbf0d6; box-shadow:inset var(--q) var(--q) 0 #fffaf0, inset calc(-1 * var(--q)) calc(-2 * var(--q)) 0 #cfad84, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
 #menu .tabs { display:flex; gap:calc(3 * var(--q)); padding:calc(3 * var(--q)) calc(2 * var(--q)) 0; }

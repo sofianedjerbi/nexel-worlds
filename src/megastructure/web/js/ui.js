@@ -88,8 +88,9 @@ let hudU = 2, hudTall = 1, hudK = 2.5, hudSig = "";   // (hudK: CSS px an art pi
 function hudFit() {
   const d = window.devicePixelRatio || 1, st = document.documentElement.style, h = $("hud").offsetHeight, was = hudU;
   let n = Math.max(1, Math.round(2 * d));
-  while (n > 1 && ((BAR * 32 - 2) * n / d > innerWidth - 16 || (h && h + 30 * (n / d - was) > innerHeight * hudTall))) n--;
-  hudU = n / d; hudK = Math.min(2.5, Math.max(1, Math.floor((innerWidth - 34) * d / 198)) / d);   // (two rows of ten icons: 99 art px each)
+  const low = document.body.classList.contains("touch") && innerHeight < 520 && innerWidth > innerHeight, tall = low ? Math.min(hudTall, .2) : hudTall;   // (a phone on its side: a fifth of its height: the HUD took the bottom third of the land)
+  while (n > 1 && ((BAR * 32 - 2) * n / d > innerWidth - 16 || (h && h + 30 * (n / d - was) > innerHeight * tall))) n--;
+  hudU = n / d; hudK = Math.min(low ? 5 / 3 : 2.5, Math.max(1, Math.floor((innerWidth - 34) * d / 198)) / d);   // (two rows of ten icons: 99 art px each)
   const small = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520, land = small ? 2 : 3;
   const item = Math.max(1, Math.min(Math.round(land * d), Math.floor(1.6 * n)));    // (11 px of it in a hole of 16: its edge px are empty)
   const book = bookPx();   // the recipe book's pixel (--q): the land's (a screen pixel more under a thumb), less while its 272 x 160 would not fit (index.html: worked out there first, before the first picture)

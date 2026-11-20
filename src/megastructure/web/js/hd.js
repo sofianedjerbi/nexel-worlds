@@ -10,7 +10,7 @@ const HdLook = (() => {
   const urlLook = new URLSearchParams(location.search).get("look"), EASE = 1.2, GROW = .4, R = 24;
   const cfg = {levels: [-9, 12], variants: 4, up: RELIEF_STEP, rock: {from: 5, lo: -512, n: 4}};
   const cam = {kind: "persp", pitch: 36, fov: 26};
-  const api = {get active() { return (urlLook || opt("look")) === "hd"; }, get on() { return this.active && !!me && myId !== null; }, u: 0, ms: 0, build: 0, box: null, force: null, cam, bend: .03, blur: 1, faces: 0, builds: 0};
+  const api = {get active() { return (urlLook || opt("look")) === "hd"; }, get on() { return this.active && !!me && myId !== null; }, u: 0, ms: 0, build: 0, get busy() { return !!gen; }, box: null, force: null, cam, bend: .03, blur: 1, faces: 0, builds: 0};
   let ul = 0, wd = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), u = 0, back = null, art = null, fx = null, lit = null, hl = 0, hy = 0, lad = {}, lv = 0, at = [0, 0];
   const sprs = new Map(), things = new Map(), piles = new Map();
   const Z = () => zoom * DPR;   // (canvas px an art px: `zoom` CSS px, as the classic picture's. It was `zoom` canvas px: on a dense screen, a phone's, the land half the size and twice as far as it would show)
@@ -126,14 +126,15 @@ const HdLook = (() => {
           : pb ? box([snap(pb.x), snap(pb.y), snap(pb.w) + px, snap(pb.h) + px]) : spr && spr[0] ? box(rectOf(spr, a.x, a.y)) : quad(a.x, a.y, shown(a.x, a.y)); corners(c, it.ok === false ? "#e8554a" : "#fff8e8"); r = bound(c); }
       Prompts.show(r, faceRows); api.aim = r;
     }
-    for (const s of seen.list) if (s.q && s.q.e && (s.q.e.kind === "agent" || s.q.e.name)) drawNameplate(s.q, sx, sy, S);
+    const ny = (y) => fy(y) - Math.max(0, 12 - 3 * zoom), nsy = Object.assign(ny, {up: ny, out: ny});   // (a name: higher where an art px is small, a phone's 2 px: the letters are 18 px whatever the zoom, and seen from behind a body's ears were in its name)
+    for (const s of seen.list) if (s.q && s.q.e && (s.q.e.kind === "agent" || s.q.e.name)) drawNameplate(s.q, sx, nsy, S);
     for (const s of seen.list) if (s.q && s.q.e && (ANIMALS[s.q.e.kind] || !bubbles.some((b) => b.name === s.q.e.name))) drawEmote(s.q, sx, sy, S);
     drawProgress(sx, sy, S); drawBubbles(sx, sy, S, t); ctx.textAlign = "start";
   }
   // what is planned (build mode) and what the aim would put: see-through pieces in the land, each where and as it will stand (hd_things.js): a wall, a floor's planks, a roof, a flight of stairs, a bed
   function pieces(list) {
     const out = [], big = (k) => (k === "mossback" ? [30, 8] : ANIMALS[k] && ANIMALS[k].fw === 32 ? [16, 5] : [9, 4]), add = (item, x, y, z, steps) => { const l = HdThings.ghost(item, x, y, z, steps); if (l) out.push(...l); };
-    for (const s of list) if (s.q || s.pile) { const [w, d] = s.pile ? [8, 3] : big(s.q.e && s.q.e.kind); for (const b of HdThings.shadow(w, d, s.z * RELIEF_STEP + .5)) out.push([s.x, s.y + (s.pile ? .08 : .42), b]); }   // (the shadow under each body and each pile: on the ground where its feet are drawn)
+    for (const s of list) if (s.q || s.pile) { const [w, d] = s.pile ? [8, 3] : big(s.q.e && s.q.e.kind); for (const b of HdThings.shadow(w, d, s.z * RELIEF_STEP + .5)) out.push([s.x, s.y + (s.pile ? .08 : .42), b]); if (s.q) HdSun.body(out, s); }   // (the shadow under each body and each pile: on the ground where its feet are drawn)
     HdThings.plans.clear(); if (Build.on) for (const j of Build.S.plans.values()) if (!j.take && !j.dig && j.state !== "bad" && "W%+".includes(PLACEABLE_BLOCK[j.item] || "-")) HdThings.plans.add(j.x + "," + j.y + "," + (j.up ? j.z : floorAt(j.x, j.y)));   // (planned walls join each other)
     if (Build.on) for (const j of Build.S.plans.values()) if (!j.take && !j.dig && j.state !== "bad") add(j.item, j.x, j.y, j.up ? j.z : undefined, j.steps);
     const a = Build.on ? Build.aim() : aimedTile(), it = a && a.it; if (a && a.p && it && it.ghost && it.ok !== false && !it.info && !it.walk) add(it.ghost, a.p.x, a.p.y, it.z !== undefined && !it.draw ? it.z : undefined, it.steps);
@@ -170,12 +171,13 @@ const HdLook = (() => {
       const r2 = cd || c === "g" ? 0 : HdThings.foot(c, s), plain = cd || c === "g" ? null : {fy: r2, card: {b: spriteBounds(s[0], s[1], s[2], s[3], s[4]) || [0, 0, s[3], s[4]]}};   // (each stands where its foot is in its tile, as the game has it: they stood at the tile's south edge, their feet half a tile north of their shadow)
       list.push(Object.assign(cd ? {} : thing(s), cd, {x: x + .5, y: y + (cd ? cd.y : plain ? (s[6] + r2) / 16 : 1), z, lamp: c === "^" || c === "x" ? 2 : 0, flat: c === "g", tx: x, ty: y, card: cd}, plain));   // (flat: a gate: a standing face of the land a tile wide, vox_style.js)
     };
+    const dk = ul * ul * (3 - 2 * ul) * Math.max(0, Math.min(1, (dep - 6) / 4)), gone = (x, y) => (inBox(x, y) && floorAt(x, y) > L + 2) || (dk > .3 && floorAt(x, y) > L + 6);   // (deep under a roof the sky is the dark of the earth: what stands on the surface past the cut is not drawn: bushes peeked over the far earth's edge, lit, in the dark)
     for (let y = ty - R; y <= ty + south; y++) for (let x = tx - R; x <= tx + R; x++) {
-      if (inBox(x, y) && floorAt(x, y) > L + 2) continue;   // (on land the slice took away; in a cave: on its floor, the tile's lowest ground)
+      if (gone(x, y)) continue;   // (on land the slice took away; in a cave: on its floor, the tile's lowest ground)
       const c = combAt(x, y), up = Floors.any(x, y) ? HdThings.loose(x, y) : null; if (up) for (const [ch, z] of up) stood(ch, x, y, z);   // (what stands on a built block)
       if (c && isObject(c) && !HdThings.is(c, x, y)) stood(c, x, y, floorAt(x, y));      // (not the boxes of the land: hd_things.js)
     }
-    for (const [ix, iy, pile] of groundItems) if (Math.abs(ix - tx) <= R && iy >= ty - R && iy <= ty + south && !(inBox(ix, iy) && floorAt(ix, iy) > L + 2)) {   // what lies on the ground: its small icons as the game lays them (loot.js), a px a px (they were not drawn in this look)
+    for (const [ix, iy, pile] of groundItems) if (Math.abs(ix - tx) <= R && iy >= ty - R && iy <= ty + south && !gone(ix, iy)) {   // what lies on the ground: its small icons as the game lays them (loot.js), a px a px (they were not drawn in this look)
       const names = Object.keys(pile).slice(0, 3), k = names.join(); let c = piles.get(k);
       if (!c) { c = document.createElement("canvas"); c.width = 24; c.height = 16; const g = c.getContext("2d"); names.forEach((n, i) => { const [dx, dy] = pileAt(i, names.length); g.drawImage(ghostIcon(n), 7 + dx, 3 + dy); }); piles.set(k, c); }
       list.push({canvas: c, fx: 12, fy: 14 + Math.round(Math.sin(now / 1000 * 2.4 + ix * 1.3 + iy) + 1), still: true, d: true, pile: true, x: ix + .5, y: iy + .7, z: floorAt(ix, iy)});   // (it hovers, as in the classic picture: 0 to 2 px, a whole px at a time)
@@ -186,9 +188,9 @@ const HdLook = (() => {
     }
     list.sort((a, b) => a.y - b.y);
     const snap = (v) => Math.round(v * 16) / 16;
-    const sky = typeof Curve !== "undefined" && Curve.on ? api.sky(now / 1000) : null, bd = backdrop(w, h, sky, ul * ul * (3 - 2 * ul) * Math.max(0, Math.min(1, (dep - 6) / 4)), tx, ty);   // (the sky stays over the far land down to 6 levels; from 10 down none of it, no sun: the dark of the earth)
+    const sky = typeof Curve !== "undefined" && Curve.on ? api.sky(now / 1000) : null, bd = backdrop(w, h, sky, dk, tx, ty);   // (the sky stays over the far land down to 6 levels; from 10 down none of it, no sun: the dark of the earth)
     const wl = WaterBed.view(Voxels.engine, now / 1000), day = 1, ed = h / (32 * Math.tan(cam.fov * Math.PI / 360));   // (the eye's distance: fog counts from there)
-    const el = ul * ul * (3 - 2 * ul), light = {amb: mix(.8, .62, el), lr: mix(8, 6.5, el), day, sk: .85, fog: [mix(ed + 4, ed + 8, el), mix(ed + 22, ed + 34, el)], fogc: mix(bd.low, [.5, .45, .4], el * .6), clear: [0, 0, 0], ca: 0, dark: el,
+    const el = ul * ul * (3 - 2 * ul), light = {amb: mix(.8, .62, el), lr: mix(8, 6.5, el), day, sk: .85, fog: [mix(ed + 4, ed + 8, el), mix(ed + 22, ed + 34, el)], fogc: mix(bd.low, [.5, .45, .4], el * .6), clear: [0, 0, 0], ca: 0, dark: el, sun: HdSun.sun,
       roof: .6, rim: mix(.25, .6, el), under: true, wa: .92, wtint: wl && wl.tint ? wl.tint.subarray(0, 20) : null, ub: box ? [box.n, box.w, box.s, 1] : [-9, -9, -9, 1]};
     let pic = eng.draw({w, h, cam, at: [snap(p.x + .5), snap(p.y + .5), L + .5], bend: api.bend, t: now / 1000, light,
       water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y} : null, dep, sprites: list, ghosts: pieces(list), hour: hour(w, h, list, el)});
@@ -213,6 +215,7 @@ const HdLook = (() => {
     return x1 > x0 ? {x: x0, y: y0, w: x1 - x0, h: y1 - y0} : null;
   }
   // what is under the pointer (client px): the nearest top drawn there, as the land shows it (a top the cut took away: at the cut)
+  api.cut = (x, y, t) => !!api.box && t > lv + 2 && y - at[1] >= -api.box.n && y - at[1] <= api.box.s && Math.abs(x - at[0]) <= api.box.w;   // (land the cut took away)
   const shown = (x, y) => { const t = topAt(x, y); return seen && seen.box && t > seen.L + 2 && y - seen.ty >= -seen.box.n && y - seen.ty <= seen.box.s && Math.abs(x - seen.tx) <= seen.box.w ? seen.L + 2 : t; };
   api.screenOf = (x, y, z) => { if (!eng || !seen) return null; const a = eng.at(x, y, z); return a && [a[0] * zoom / seen.k, a[1] * zoom / seen.k]; };
   // -> the tile under the pointer: from the south (the nearest) north, the first whose south front or whose top is under it (a front: face, down: levels under its top, as mouse.js). zf: its height, if not the land's as shown (build mode)

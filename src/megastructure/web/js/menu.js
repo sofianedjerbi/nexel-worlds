@@ -80,7 +80,7 @@ function drawMenu() {
   el.innerHTML = `<div class="win"><div class="hh"><b>Settings</b><span data-go="back"><kbd>Esc</kbd>back</span></div>`
     + `<div class="tabs">${MENU_PAGES.map(([name], i) => `<div class="tab${i === MENU.page ? " on" : ""}" data-page="${i}">${name}</div>`).join("")}</div>`
     + `<div class="well">${menuRows().map((r, i) => `<div class="row${i === MENU.at ? " on" : ""}${JSON.stringify(r.get()) !== JSON.stringify(r.def) ? " own" : ""}" data-i="${i}"><div class="name">${r.name}</div><div class="ctl">${ctl(r)}</div></div>`).join("")}</div>`
-    + `<div class="hf">${MENU.said || `<kbd>←</kbd><kbd>→</kbd>change<kbd>Tab</kbd>next page<span data-go="reset"><kbd>R</kbd>as it came</span>`}</div></div>`;
+    + `<div class="hf">${MENU.said || `<kbd>←</kbd><kbd>→</kbd><i class="konly">change</i><kbd>Tab</kbd><i class="konly">next page</i><span data-go="reset"><kbd>R</kbd>as it came</span>`}</div></div>`;
   const now = el.querySelector(".well"), on = now.querySelector(".row.on");
   now.scrollTop = top;
   if (on) { const a = on.offsetTop - now.offsetTop, b = a + on.offsetHeight; if (a < now.scrollTop) now.scrollTop = a - 4; else if (b > now.scrollTop + now.clientHeight) now.scrollTop = b - now.clientHeight + 4; }

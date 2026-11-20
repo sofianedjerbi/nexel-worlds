@@ -157,7 +157,9 @@
   body.touch #joinbox input { font-size:18px; }  /* (16px+ or iOS zooms in on focus) */
   body.touch #actions, body.touch #help, body.touch #helpbtn, body.touch #prompts { display:none !important; }   /* (#prompts: the keys beside what you face: a phone has none, its A and B say it) */
   body.touch #hud { transform-origin:bottom left; bottom:calc(8px + env(safe-area-inset-bottom)); }
-  body.touch .slot .k { display:none; }   /* (a slot's key: there are no keys) */
+  body.touch .slot .k, body.touch #bag .cell .k, body.touch :is(#goalhint, #goals) kbd, body.touch #menu :is(.hh, .hf, .row.big) kbd, body.touch #menu .konly, body.touch #bagkeys kbd, body.touch #bag .bkey.konly { display:none; }   /* (a slot's key, the keys in a window's foot: there are no keys; what a foot's word does is done by tapping the word) */
+  body.touch #bag .bkey { padding:0 calc(3 * var(--q)); height:calc(9 * var(--q)); background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #f8edd4, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #b8946a; color:var(--ink); }
+  @media (max-height:520px) and (orientation:landscape) { body.touch #xpwrap { margin:0 0 2px; } body.touch #hud { gap:1px; bottom:calc(2px + env(safe-area-inset-bottom)); } }   /* (a phone on its side: the HUD close) */
   body.touch #xyz { top:calc(62px + env(safe-area-inset-top)) !important; font-size:12px !important; }  /* (/coords, /perf: under the buttons at the top) */
   @media (max-width:600px) { body.touch #side { display:none; } }
   body.touch #vitals { min-width:max-content; gap:10px; } body.touch #hud .hudrow { justify-content:center; }

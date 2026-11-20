@@ -102,7 +102,7 @@ function bagDraw(now) {
     if (dx) tip.style.transform = `translateX(calc(-50% + ${Math.round(dx / q) * q}px))`;
   }
   const keys = $("bagkeys"), use = name ? bagUses(name, isWorn) : ""; keys.innerHTML = "";
-  const key = (cap, word, fn, off) => { const k = document.createElement("span"); k.className = "bkey" + (off ? " off" : ""); k.innerHTML = `<kbd>${cap}</kbd>${word}`; if (fn && !off) k.onclick = fn; keys.appendChild(k); };
+  const key = (cap, word, fn, off) => { const k = document.createElement("span"); k.className = "bkey" + (off ? " off" : "") + (fn ? "" : " konly"); k.innerHTML = `<kbd>${cap}</kbd>${word}`; if (fn && !off) k.onclick = fn; keys.appendChild(k); };
   if (bagMove != null) { key("X", "put down", bagCarry); key("Esc", "let go", () => { bagMove = null; bagDraw(true); }); }
   else {
     key("Enter", isWorn ? "take off" : "hold", bagHold, !name);

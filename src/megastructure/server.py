@@ -19,7 +19,7 @@ from websockets.exceptions import ConnectionClosed
 from .cells import HIGH, LOW
 from .devtools import dev_op
 from .gate import Gate
-from .sim import TICK_HZ, TOOL_SPECS, ActionError, Simulation
+from .sim import DAY_TICKS, TICK_HZ, TOOL_SPECS, ActionError, Simulation
 from .sim.constants import FOOD_MAX, HP_MAX, EAT_PACE, SPRINT_FOOD, SWIM_PACE
 from .tiles import FOOD, RECIPES
 from .views import Views
@@ -58,6 +58,8 @@ class GameServer(Views):
         world_dir.mkdir(parents=True, exist_ok=True)
         self.gate = Gate(accounts, world_dir) if accounts else None   # a world that asks who you are (gate.py)
         self.sim = Simulation(world_dir / "world.sqlite", seed=seed, event_log=world_dir / "events.jsonl")
+        if self.sim.store.get_meta("tick", None) is None:   # a new world starts in the morning (a fifth of a day in), not at sunrise: its first picture was the rose-blue of dawn, which reads as dusk
+            self.sim.tick = self.sim.world.tick = DAY_TICKS // 5
         self.conns: dict[int, object] = {}  # agent id -> connection
         self.notify: dict[int, object] = {}  # agent id -> callable(dict) pushing a message to that agent
         self.spectators: dict = {}  # queue -> watched rect (x, y, w, h) or None
