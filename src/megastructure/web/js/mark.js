@@ -26,7 +26,8 @@ const Marks = (() => {
       const surf = it.z !== undefined ? it.z : L !== null ? L : lv(q.x, q.y), deck = it.z === undefined && L === null && Models.up(q.x, q.y) > 0;
       const front = deck ? surf - .25 : Math.min(surf - 1, Math.max(lv(q.x, q.y + 1), surf - 12));      // a block's front: down to the land before it
       let z0 = front, z1 = surf, drop, flat = false, air = slab || deck, tick;
-      if (slab && it.z !== undefined) z0 = surf - 1;                                    // a block built: its own cell
+      if (it.cell !== undefined) { z0 = it.cell - 1; z1 = it.cell; }      // (a pickaxe into a wall: the cell it takes, at your body's height, not the top of the hill over it)
+      else if (slab && it.z !== undefined) z0 = surf - 1;                                    // a block built: its own cell
       else if (L !== null && !solidAt(q.x, q.y, surf)) { z0 = surf - 1; drop = settleAt(q.x, q.y, surf - 1); air = true; }      // the build cursor in the air: its cell there, and the ground under it
       else if (L !== null && landSolid(q.x, q.y, surf + 1)) z0 = surf - 1;              // ...in the ground: the block it is on
       else if (thing || (it.ghost === "dirt" && it.z === undefined && L === null && !FILLS.dirt[gndAt(q.x, q.y)])) { z0 = surf; z1 = surf + (thing ? TALL : 1); air = true; if (q === p) tick = tickOf(p); }   // what will stand there, or the ground raised: the cell over the surface
@@ -42,6 +43,8 @@ const Marks = (() => {
     const walk = !!(a && a.it && a.it.walk && !a.it.ghost && !Build.on), faint = walk && typeof inputMode !== "undefined" && inputMode === "mouse" && mouse.in;
     const dt = Math.min(.1, (now - (at || now)) / 1000), want = forced || (faint ? [{tick: tickOf(a.p), x: a.p.x, y: a.p.y, z0: lv(a.p.x, a.p.y), z1: lv(a.p.x, a.p.y), colour: WHITE, flat: true, fill: 0, most: .4}] : a && a.it && (Build.on || tile || a.it.ghost) && !walk ? cells(a.p, a.it) : []);
     at = now;
+    const up = !forced && typeof DigUp !== "undefined" && typeof inputMode !== "undefined" && inputMode === "keys" ? DigUp.aim() : null;      // (R's cell, digup.js: the block it will take, at its own height, its edges alone)
+    if (up) want.push({x: up.x, y: up.y, z0: up.z - 1, z1: up.z, colour: WHITE, fill: 0, lift: 0, dot: true});
     const grow = Math.sin(now / 1000 * 4.5) > .3 ? 1 : 0, k = 1 - Math.exp(-dt * 22);
     if (want.length) {
       const one = want.length === 1 && shown.length === 1 && shown[0].a > .05 && Math.abs(want[0].x - shown[0].x) + Math.abs(want[0].y - shown[0].y) <= 4;
