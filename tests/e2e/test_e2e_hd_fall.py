@@ -29,14 +29,14 @@ def test_the_edge_over_a_drop_that_hurts_has_a_dark_rim_and_a_step_has_none(brow
     mid = g.js(PX, [x + 1.5, y - .5, 9])
     east, north = g.js(PX, [x + 1.97, y - .5, 9]), g.js(PX, [x + 1.5, y - .97, 9])
     step = g.js(PX, [x - .97, y - .5, 9])
-    assert east < mid * .72 and north < mid * .72, (mid, east, north)   # the cliff's rim: dark
-    assert step > mid * .8, (mid, step)                                 # the step's edge: as the top is
+    assert east < mid * .5 and north < mid * .5, (mid, east, north)     # the cliff's rim: dark
+    assert step > mid * .7 and east < step * .65, (mid, step, east)     # the step's edge: the cap's own outline, no more (374 of 484; the rim 187)
 
 
 def test_off_a_cliff_the_eye_stays_while_you_fall_and_comes_down_with_no_jump(browser, server):
     g = hd(browser, server)
     x, y = cliff(g)
-    assert g.js("HdLook.level") == [9, 9]
+    g.wait("HdLook.level[1] === 9", timeout=4000)                       # (the eye come up to you)
     g.js(REC)
     g.page.keyboard.down("ArrowUp")
     g.wait(f"myPos().y <= {y - 2} && !falling(ents.get('agent' + myId), performance.now())", timeout=8000)

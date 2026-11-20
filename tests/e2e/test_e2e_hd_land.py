@@ -98,7 +98,7 @@ def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at
             g.sleep(500)
             assert base < 53 and g.js("HdLook.cam.pitch") == 68, (w, h, base)
             assert g.js("HdLook.bare()") == 0, (w, h, g.js("HdLook.bare()"))          # (no px of the backdrop under the horizon: it was a flat blue hole a quarter of a phone held sideways)
-            assert g.js("HdLook.bodies()") == [["chicken", z - 24]], g.js("HdLook.bodies()")   # (it was drawn up on the grass)
+            assert [b for b in g.js("HdLook.bodies()") if b[0] != "agent"] == [["chicken", z - 24]], g.js("HdLook.bodies()")   # (not another test's player up on the land: it failed beside any test that stands near; it was drawn up on the grass)
             assert g.js("HdLook.catSeen()") > .8
             g.wait("!HdLook.busy && HdLook.u === 1")
             g.sleep(300)
