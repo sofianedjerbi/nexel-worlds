@@ -30,7 +30,7 @@ const Marks = (() => {
       else if (slab && it.z !== undefined) z0 = surf - 1;                                    // a block built: its own cell
       else if (L !== null && !solidAt(q.x, q.y, surf)) { z0 = surf - 1; drop = settleAt(q.x, q.y, surf - 1); air = true; }      // the build cursor in the air: its cell there, and the ground under it
       else if (L !== null && landSolid(q.x, q.y, surf + 1)) z0 = surf - 1;              // ...in the ground: the block it is on
-      else if (thing || (it.ghost === "dirt" && it.z === undefined && L === null && !FILLS.dirt[gndAt(q.x, q.y)])) { z0 = surf; z1 = surf + (thing ? TALL : 1); air = true; if (q === p) tick = tickOf(p); }   // what will stand there, or the ground raised: the cell over the surface
+      else if (thing || (LAND_BLOCKS.has(it.ghost) && it.z === undefined && L === null && !FILLS.dirt[gndAt(q.x, q.y)])) { z0 = surf; z1 = surf + (thing ? TALL : 1); air = true; if (q === p) tick = tickOf(p); }   // what will stand there, or the ground raised: the cell over the surface
       else if (!deck && lv(q.x, q.y + 1) >= surf) flat = true;                            // level ground, or higher land before it: its front is not seen, its top alone
       // (a block's side that is a bank in view: no line of its own, the box is its tile's and the bank's thin side is in it. lift: its front's foot)
       out.push({x: q.x, y: q.y, z0, z1, colour: bad ? RED : it.ghost ? GREEN : WHITE, drop, flat, tick, lift: air || flat ? 0 : lift(z0), ...(drop !== undefined ? {fill: .4} : {})});      // (a cell in the air: washed more, its front darker: a box at a glance; it read as a flat square)

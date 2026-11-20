@@ -221,4 +221,4 @@ def test_x_breaks_anything_and_digs_holes(game):
     game.sleep(300)
     assert game.js("xray.a") < .1
     game.press("b")
-    assert game.inv("dirt") == 3 and game.inv("stone") == 3 and not game.errors      # (the rock's two, and the deeper layer is stone)
+    assert game.inv("dirt") == 3 and game.inv("stone") == 2 and game.inv("stone_block") == 1 and not game.errors      # (the rock gives two stones; the deeper layer is stone: its block)

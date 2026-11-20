@@ -93,6 +93,9 @@ def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at
             z = g.js(f"topAt({x}, {y})")
             base = g.js("HdLook.cam.pitch")
             assert g.js("HdLook.bare()") == 0, (w, h, "surface")
+            # (whole land round you first. The three of this test wake a few tiles from each other, some runs: the room of the one before, at the same depth, was one room with yours, and its pit, cut
+            # north of your room, was read as a cut that "stayed" there: 2 runs in 9 alone, the third always at (-16, 17))
+            g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-12, 13) for i in range(-14, 15)], col=[z])
             g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[z - 24, z - 21, z])   # a room 7 x 5 under 21 levels of land
             g.sleep(800)
             g.rpc("dev_teleport", x=x, y=y, z=z - 24)

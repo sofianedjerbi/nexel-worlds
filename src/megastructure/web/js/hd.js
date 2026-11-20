@@ -37,8 +37,17 @@ const HdLook = (() => {
   const solidAt = (c, z) => { for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   // a bank's top: the pack's shore tile has a white line of foam along the water's edge, where the classic picture's water laps. Here the water lies a level under the bank:
   // the line stood up on the rim, a bright white line along a pond. Its white px take the earth px next inward.
+  // a floor under the land (a cave's, a dug room's, a stair's tread): the rock's own paint from the tileset, and its texture: earth (the soil sheet, as dug ground has it), stone where the block is stone, most tiles one of the sheet's
+  // speckled ones (its fine specks mostly, its pale blobs seldom). It was the tile's paint as on the surface: a cave under a meadow had a floor of grass, lit warm: flat yellow; dug ground the sheet's plain tile on every tile: one flat colour
+  function under(x, y, z, px, at, st) {
+    const g0 = gndAt(x, y); if (topAt(x, y) <= z || (g0 !== "." && g0 !== ",")) return false;
+    const lv = VoxPaint.level(x, y, z), d = sheetData(lv >= 5 ? hillSheet(lv) : dugSheet("soil", Math.max(0, Math.min(3, -lv)))), [bx, by] = blobCell(255), pl = hash(x, y, 3) >= .8;   // (no darker than three layers down: under a roof the lantern is the light)
+    const sx = pl ? bx * 16 : Math.floor(hash(x, y, 4) ** 2 * 5) * 16, sy = pl ? by * 16 : (5 + (hash(x, y, 5) < .5 ? 0 : 1)) * 16;
+    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[at + j * st + i] = d.px[(sy + j) * d.w + sx + i];
+    VoxPaint.rim(x, y, z, px, at, st); return true;
+  }
   function shore(x, y, z, px, at, st) {
-    const H0 = Voxels.host; H0.paintTop(x, y, z, px, at, st); if (H0.water(x, y)) return;
+    const H0 = Voxels.host; if (under(x, y, z, px, at, st)) return; H0.paintTop(x, y, z, px, at, st); if (H0.water(x, y)) return;
     const white = (v) => (v >>> 24) > 127 && (v & 255) > 214 && (v >> 8 & 255) > 214 && (v >> 16 & 255) > 205;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (H0.water(x + dx, y + dy)) for (let n = 0; n < 16; n++) for (let k = 0; k < 4; k++) {
       const q = (m) => at + (dx ? n : dy > 0 ? 15 - m : m) * st + (dy ? n : dx > 0 ? 15 - m : m); if (!white(px[q(k)])) continue;
@@ -166,9 +175,9 @@ const HdLook = (() => {
     if (gen) { const b0 = performance.now(); while (performance.now() - b0 < (hurry || st ? 5 : 2.5)) if (gen.next().done) { gen = null; break; } api.build = Math.max(api.build, performance.now() - b0); slice1 = performance.now() - b0; api.slice = Math.max(api.slice, slice1); api.water = eng.water;   // (the chunks that are new or changed, a tile a step, 2.5 ms a frame (5 in a pit); what was drawn stays till it is done; a pit that opens or shuts: up to 8 ms a frame)
       if (!gen) { shownG = genG; if (genG === wantG && since) { api.lag = performance.now() - since; since = 0; } } }
     // the eye's level follows yours: a step over some 150 ms; a FALL: the eye stays while your body is in the air (the land steady, the body coming down it; at most 9 levels over where you will land), then comes
-    // down to you slow at both ends (a spring: .4 s for 12 levels). (Over 8 levels it went there in one frame: off the gorge's rim more than half the picture changed at once, your body in the top quarter of it)
+    // down to you slow at both ends (a spring, critically damped, its exact answer for any frame's length: .4 s for 12 levels. Stepped a frame at a time it ran away when a frame took over 83 ms: a slow phone). (Over 8 levels it went there in one frame: off the gorge's rim more than half the picture changed at once, your body in the top quarter of it)
     { const fl = falling(p, now), air = fl && fl.air, far = camL !== null && Math.abs(L - camL); if (air) camV = 0;
-      if (camL === null || far > 40) { camL = L; camV = 0; } else if (air) camL = Math.max(Math.min(camL, L + 9), camL - 40 * dt); else if (far > 3 || camV) { camV += (144 * (L - camL) - 24 * camV) * dt; camL += camV * dt; if (Math.abs(L - camL) < .07 && Math.abs(camV) < 1) { camL = L; camV = 0; } }
+      if (camL === null || far > 40) { camL = L; camV = 0; } else if (air) camL = Math.max(Math.min(camL, L + 9), camL - 40 * dt); else if (far > 3 || camV) { const e = camL - L, a = camV + 12 * e, q = Math.exp(-12 * dt); camL = L + (e + a * dt) * q; camV = (camV - 12 * a * dt) * q; if (Math.abs(L - camL) < .07 && Math.abs(camV) < 1) { camL = L; camV = 0; } }
       else camL = far < .07 ? L : camL + (L - camL) * (1 - Math.exp(-dt / .1)); }
     const list = [];
     const stood = (c, x, y, z, gh) => {      // a thing that stands: furniture as its card (hd_things.js: px for px, its top leaning with where it is on the screen), the rest a billboard

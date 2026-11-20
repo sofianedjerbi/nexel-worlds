@@ -13,7 +13,7 @@ function openCraft() { $("craft").style.display = "block"; craftOpened(); }
 // item icons from the sheets: [image name, sx, sy]
 const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in column 0, produce in column 1, materials in 2-3
   wood: ["items", 32, 48], plank: ["items", 32, 64], stone: ["items", 32, 80], ingot: ["items", 48, 64], fiber: ["gen", "fiber"],
-  ore: ["gen", "ore"], path: ["cobble", 16, 16], dirt: ["soil", 0, 80], seed: ["items", 0, 128],
+  ore: ["gen", "ore"], path: ["cobble", 16, 16], dirt: ["hill1", 16, 32, 14, 14], stone_block: ["hill3", 16, 32, 14, 14], seed: ["items", 0, 128],
   axe: ["items", 32, 0], pickaxe: ["gen", "pickaxe"], hoe: ["items", 48, 0], watering_can: ["items", 32, 16], spear: ["gen", "spear"], sword: ["gen", "sword"],
   torch: ["gen", "torch"], rope: ["gen", "rope"], name_tag: ["gen", "name_tag"], ladder: ["gen", "ladder"], stairs: ["gen", "stairs"],
   berries: ["items", 32, 160], fruit: ["items", 32, 96], mushroom: ["nature", 16, 0], egg: ["items", 48, 176], milk: ["items", 64, 0],
@@ -25,6 +25,10 @@ const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in co
   sign: ["signs", 0, 0], flag: ["gen", "flag"], bed: ["furniture", 0, 16, 16, 32], chair: ["furniture", 64, 32],
   table: ["furniture", 48, 48], plant: ["furniture", 48, 0, 16, 32], clock: ["furniture", 96, 48], rug: ["furniture", 0, 80], well: ["well", 0, 0, 32, 32], coop: ["coop", 160, 80, 32, 44], picnic_blanket: ["blanket", 2, 8, 44, 32], basket: ["basket", 0, 0], trough: ["barn", 0, 0], hay: ["barn", 0, 16],
 };
+// A block of the land in your pack is drawn as a block, as the game shows one: 14 x 14 px cut from its sheet's own
+// plateau where its south edge runs straight: the top, its lip, the wall under it. No px changed. (A pebble and a
+// speck of soil are materials' pictures: "breaked blocks should stay blocks in inventory: not items".)
+FILLS.stone_block = FILLS.dirt; FILL_HELP.stone_block = "Stone fills holes and shallow water";      // (as earth does: tiles.py FILLERS)
 // An item's picture is 16 x 16 art pixels, and wherever it shows, an art pixel is a whole number of screen pixels:
 // the land's own on the ground (zoom; loot.js), the frames' own in the HUD (--u: hudFit below). A thing bigger than a tile (a
 // boat, a bed, a well) is made smaller by whole pixels, never squeezed: each n x n block becomes one pixel, of the

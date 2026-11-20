@@ -14,6 +14,7 @@ import sqlite3
 
 from .. import tiles as T
 from ..floors import KINDS, Floors
+from ..landblocks import LAND_BLOCKS, Placed
 from ..gen import HIGH, LOW, col_floor, col_runs, col_solid, col_top
 from ..tiles import BLOCKS, DIRS, GROUNDS, PLACEABLE, B
 from .entities import ActionError
@@ -21,7 +22,7 @@ from .entities import ActionError
 STOREY = 3                                        # a floor is this many layers over the one under it
 RESTS_ON = ("wood_wall", "stone_wall", "door")    # what holds a block up from under, a storey below it
 UPSTAIRS = ("wood_wall", "stone_wall", "door", "fence", "gate", "chair", "table", "bed", "plant", "clock", "rug", "ladder")
-EARTH = "dirt"                                    # the piece that raises the land a layer
+EARTH = LAND_BLOCKS                               # the pieces that raise the land a layer: a block of earth, of stone
 
 
 class Storeys:
@@ -29,6 +30,7 @@ class Storeys:
 
     def open_floors(self, store):
         self.floors = Floors(store)
+        self.placed = Placed(store)                     # (land put down where it would be the other kind: landblocks.py)
         if not store.get_meta("floors"):                # once: a world from when roofs were tiles over tiles
             self.old_roofs(store)
             store.set_meta("floors", 1)
@@ -124,6 +126,7 @@ class Storeys:
         """Everything built over the tile goes (the land there is being laid out anew: dev tools)."""
         for z in list(self.floors.at.get((x, y), {})):
             self.set_block(x, y, z, None, cause="dig")
+        self.placed.clear(x, y)
 
     def lay_block(self, a, x, y, z, item):
         """Put a block of the pack in the cell (x, y, z)."""
@@ -200,8 +203,8 @@ class Storeys:
         a.bump("dug")
         return {"got": {kind: 1}}
 
-    def raise_land(self, a, x, y):
-        """A block of earth on the land: the ground there comes up a layer, as digging takes it down one."""
+    def raise_land(self, a, x, y, item):
+        """A block of earth or stone on the land: the ground there comes up a layer, as digging takes it down one."""
         for again in (False, True):
             top = self.world.top(x, y)
             if self.world.col(x, y) != col_solid(top) or top >= HIGH:
@@ -215,7 +218,8 @@ class Storeys:
         if self.world.block(x, y) == "flower":
             a.add("flower")
             self.world.set(x, y, block="none")
-        a.add(EARTH, -1)
+        a.add(item, -1)
+        self.placed.put(x, y, top + 1, item)             # (dug again it is this block, whatever the height)
         self.set_cell(x, y, top + 1, True, by=a, cause="place")
         a.bump("placed")
         return {"level": top + 1}
@@ -227,7 +231,7 @@ class Storeys:
         the built block you face, a roof a storey over the tile), a thing for a built block, earth for the land.
         -> the action, or None (building.py goes on)."""
         item = str(args.get("item", ""))
-        if item not in KINDS and item not in PLACEABLE and item != EARTH and item != "stairs":
+        if item not in KINDS and item not in PLACEABLE and item not in EARTH and item != "stairs":
             return None
         x, y = self.target(a, args, flat=True)
         if item == "stairs":                             # (a flight of them, down from the higher place beside: climbing.py)
@@ -238,9 +242,11 @@ class Storeys:
         on_land = self.floors.get(x, y, s) is None       # ...which is the land's own, not a built block
         if item == "ladder" and on_land and not self.leans(x, y, s):
             raise ActionError("bad_target", "a ladder goes against something taller beside it")
-        if item == EARTH:
+        if item in EARTH:
+            if not a.count(item):
+                raise ActionError("missing_item", f"you have no {item}")
             land = on_land and s == self.world.top(x, y) and self.world.block(x, y) in ("none", "flower")
-            return self.raise_land(a, x, y) if land and self.world.ground(x, y) in T.LAND else None
+            return self.raise_land(a, x, y, item) if land and self.world.ground(x, y) in T.LAND else None
         if item in KINDS:
             if item == "plank" and on_land and s == self.world.level(x, y):
                 return None                              # (the ground itself: a floor laid in it, a bridge)

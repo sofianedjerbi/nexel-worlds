@@ -69,7 +69,7 @@ def test_the_owners_pocket_is_shut_and_a_pickaxe_cuts_steps_up_out_of_it(world):
     assert not r["ok"] and "dig dir=up" in r["detail"] and "z=-11" in r["detail"]        # the refusal says what makes a step of it
     cols = {(x, y): w.col(x, y) for x in range(-33, -19) for y in range(-8, 1)}
     r = run(s, a, "dig", {"dir": "up", "with": "pickaxe"})                               # the tread over your head: that cell, no other
-    assert r["ok"] and r["cell"] == [-26, -3, -11] and r["got"] == {"stone": 1}
+    assert r["ok"] and r["cell"] == [-26, -3, -11] and r["got"] == {"stone_block": 1}
     assert w.col(-26, -3) == cols[-26, -3] & ~(1 << (-11 - LOW))
     r = run(s, a, "dig", {"dir": "E", "z": -11, "with": "pickaxe"})                      # the wall at your head's height: that cell
     assert r["ok"] and r["cell"] == [-25, -3, -11] and w.col(-25, -3) == cols[-25, -3] & ~(1 << (-11 - LOW))

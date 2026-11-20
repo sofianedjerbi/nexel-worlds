@@ -37,4 +37,6 @@ const SOLID = new Set("TFbM*H#%^&CBhLpKWXYJqZeyUvtR");
 const WALKABLE_GROUND = new Set(":.,o_'un-");
 const LABEL = {name_tag: "name tag", wood_wall: "wooden wall", wet_tilled: "watered soil", watering_can: "watering can", fruit_tree: "fruit tree", berry_bush: "berry bush", stone_wall: "stone wall", ripe_crop: "ripe wheat", crop: "young wheat",
   cooked_meat: "cooked meat", deep_water: "deep water", mid_water: "deeper water", abyss: "the deep", picnic_blanket: "picnic blanket", hay_bale: "hay bale"};
+LABEL.stone_block = "stone block";
+const LAND_BLOCKS = new Set(["dirt", "stone_block"]);      // the land's own blocks in your pack: dug out, put back (landblocks.py)
 const label = (n) => LABEL[n] || String(n).replace("_", " ");
