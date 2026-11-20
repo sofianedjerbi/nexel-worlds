@@ -66,7 +66,7 @@ function drawMenu() {
   const el = $("menu"), well = el.querySelector(".well"), top = well ? well.scrollTop : 0;
   if (MENU.view === "main") {
     el.innerHTML = `<div class="win small"><div class="hh"><b>Menu</b><span data-go="close"><kbd>Esc</kbd>back</span></div><div class="well">`
-      + MENU_MAIN.map(([name, key], i) => `<div class="row big${i === MENU.at ? " on" : ""}" data-i="${i}"><div class="name">${name}</div>${key ? `<kbd>${key}</kbd>` : ""}</div>`).join("")
+      + MENU_MAIN.map(([name, key], i) => `<div class="row big${i === MENU.at ? " on" : ""}${name === "Help" ? " konly" : ""}" data-i="${i}"><div class="name">${name}</div>${key ? `<kbd>${key}</kbd>` : ""}</div>`).join("")
       + `</div><div class="hf">The world does not stop</div></div>`;
     return;
   }
@@ -78,7 +78,7 @@ function drawMenu() {
     return MENU.grab === r.action ? `<div class="pick"><span>press a key</span></div>` : `<kbd>${keyCap(v)}</kbd>`;
   };
   el.innerHTML = `<div class="win"><div class="hh"><b>Settings</b><span data-go="back"><kbd>Esc</kbd>back</span></div>`
-    + `<div class="tabs">${MENU_PAGES.map(([name], i) => `<div class="tab${i === MENU.page ? " on" : ""}" data-page="${i}">${name}</div>`).join("")}</div>`
+    + `<div class="tabs">${MENU_PAGES.map(([name], i) => `<div class="tab${i === MENU.page ? " on" : ""}${name === "Keys" ? " konly" : ""}" data-page="${i}">${name}</div>`).join("")}</div>`
     + `<div class="well">${menuRows().map((r, i) => `<div class="row${i === MENU.at ? " on" : ""}${JSON.stringify(r.get()) !== JSON.stringify(r.def) ? " own" : ""}" data-i="${i}"><div class="name">${r.name}</div><div class="ctl">${ctl(r)}</div></div>`).join("")}</div>`
     + `<div class="hf">${MENU.said || `<kbd>←</kbd><kbd>→</kbd><i class="konly">change</i><kbd>Tab</kbd><i class="konly">next page</i><span data-go="reset"><kbd>R</kbd>as it came</span>`}</div></div>`;
   const now = el.querySelector(".well"), on = now.querySelector(".row.on");
@@ -137,7 +137,14 @@ window.addEventListener("keydown", (e) => {                 // (before every oth
 }, true);
 window.addEventListener("keyup", (e) => { if (MENU.open) e.stopImmediatePropagation(); }, true);
 const menuBarAt = (e, bar) => { const b = bar.getBoundingClientRect(), r = menuRows()[MENU.drag]; return lo(r) + Math.max(0, Math.min(1, (e.clientX - b.left) / b.width)) * (r.max - lo(r)); };
+// A finger in the list: it may be scrolling it. Nothing is done until it lifts where it came down (the click), or
+// slides along a bar (the list could not be scrolled on a phone: its rows past the seventh were out of reach).
 $("menu").addEventListener("pointerdown", (e) => {
+  if (e.pointerType !== "touch" || !e.target.closest(".well")) return menuTap(e);
+  const bar = e.target.closest(".bar"); MENU.tap = true; MENU.slid = false; MENU.x = e.clientX; MENU.drag = bar ? +bar.closest(".row").dataset.i : null;
+});
+$("menu").addEventListener("click", (e) => { if (!MENU.tap) return; MENU.tap = false; if (!MENU.slid && e.target.closest(".win")) menuTap(e); MENU.drag = null; });
+function menuTap(e) {
   const row = e.target.closest(".row"), go = e.target.closest("[data-go]"), tab = e.target.closest(".tab");
   if (!e.target.closest(".win") || (go && go.dataset.go === "close")) return closeMenu();
   if (go) return go.dataset.go === "back" ? menuBack() : menuReset();
@@ -146,9 +153,9 @@ $("menu").addEventListener("pointerdown", (e) => {
   const i = +row.dataset.i, bar = e.target.closest(".bar"), side = e.target.closest("[data-d]");
   if (bar) { MENU.drag = i; menuChange(i, 0, menuBarAt(e, bar)); }
   else menuChange(i, side ? +side.dataset.d : 0);
-});
-addEventListener("pointermove", (e) => { if (!MENU.open || MENU.drag === null) return; const bar = $("menu").querySelector(`.row[data-i="${MENU.drag}"] .bar`); if (bar) menuChange(MENU.drag, 0, menuBarAt(e, bar)); });
-addEventListener("pointerup", () => { MENU.drag = null; });
+}
+addEventListener("pointermove", (e) => { if (!MENU.open || MENU.drag === null) return; if (MENU.tap && !MENU.slid && !(MENU.slid = Math.abs(e.clientX - MENU.x) > 6)) return; const bar = $("menu").querySelector(`.row[data-i="${MENU.drag}"] .bar`); if (bar) menuChange(MENU.drag, 0, menuBarAt(e, bar)); });
+addEventListener("pointerup", () => { if (!MENU.tap) MENU.drag = null; }); addEventListener("pointercancel", () => { MENU.drag = null; MENU.tap = false; });
 $("menubtn").onclick = () => openMenu();
 addEventListener("keydown", (e) => {                         // Esc while you only watch (a player's Esc: keyboard.js)
   if (e.key === "Escape" && !me && !titleOpen() && !helpOpen() && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) openMenu();

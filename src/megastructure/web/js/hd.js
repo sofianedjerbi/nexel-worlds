@@ -7,18 +7,18 @@
 // billboards of their own sprites (objectSprite), px for px; furniture, walls, fences, built floors and roofs: small 3D
 // pieces in the land (hd_things.js), a built house open over your head; you and the others: drawEntity at zoom 1.
 const HdLook = (() => {
-  const urlLook = new URLSearchParams(location.search).get("look"), EASE = 1.2, GROW = .4, R = 24;
+  const urlLook = new URLSearchParams(location.search).get("look"), EASE = .2, GROW = .4, R = 24;
   const cfg = {levels: [-9, 12], variants: 4, up: RELIEF_STEP, rock: {from: 5, lo: -512, n: 4}};
   const cam = {kind: "persp", pitch: 36, fov: 26};
   const api = {get active() { return (urlLook || opt("look")) === "hd"; }, get on() { return this.active && !!me && myId !== null; }, u: 0, ms: 0, build: 0, get busy() { return !!gen; }, box: null, force: null, cam, bend: .03, blur: 1, faces: 0, builds: 0};
-  let ul = 0, wd = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), u = 0, back = null, art = null, fx = null, lit = null, hl = 0, hy = 0, lad = {}, lv = 0, at = [0, 0];
+  let ul = 0, wd = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), u = 0, back = null, art = null, fx = null, lit = null, hl = 0, hy = 0, lad = {}, lv = 0, at = [0, 0], genBox = "", wantBox = "", since = 0, hurry = false, cand = null, candKey = "";
   const sprs = new Map(), things = new Map(), piles = new Map();
   const Z = () => zoom * DPR;   // (canvas px an art px: `zoom` CSS px, as the classic picture's. It was `zoom` canvas px: on a dense screen, a phone's, the land half the size and twice as far as it would show)
   const mix = (a, b, k) => Array.isArray(a) ? a.map((v, i) => v + (b[i] - v) * k) : a + (b - a) * k;
   function ent(p, now) {      // (a person or a creature, drawn by the game at zoom 1: one art px a px)
     const T = P, w = T * 4, h = T * 5, base = h - T * 1.5;
     let pc = sprs.get(p) || document.createElement("canvas"); sprs.set(p, pc); if (pc.width !== w || pc.height !== h) { pc.width = w; pc.height = h; }
-    const g = pc.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); g.imageSmoothingEnabled = false;
+    const g = pc.getContext("2d", {willReadFrequently: true}); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); g.imageSmoothingEnabled = false;   // (its px are read each frame: its shadow is its shape now, hd_sun.js)
     const keep = ctx, kz = zoom, sx = (x) => w / 2 - T / 2 + (x - p.x) * T, sy = Object.assign((y) => base + (y - p.y) * T, {up: (y) => base + (y - p.y) * T});
     ctx = g; zoom = 1; try { drawEntity(p, sx, sy, T, now / 1000, now); } catch (e) { /* (nothing to draw) */ } finally { ctx = keep; zoom = kz; }
     return {canvas: pc, fx: w / 2, fy: Math.round(base + T * .5)};
@@ -31,6 +31,17 @@ const HdLook = (() => {
   }
   const topAt = (x, y) => { const c = Voxels.host.column(x, y); return c && c.length ? c[c.length - 1] : 0; };
   const solidAt = (c, z) => { for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
+  // a bank's top: the pack's shore tile has a white line of foam along the water's edge, where the classic picture's water laps. Here the water lies a level under the bank:
+  // the line stood up on the rim, a bright white line along a pond. Its white px take the earth px next inward.
+  function shore(x, y, z, px, at, st) {
+    const H0 = Voxels.host; H0.paintTop(x, y, z, px, at, st); if (H0.water(x, y)) return;
+    const white = (v) => (v >>> 24) > 127 && (v & 255) > 214 && (v >> 8 & 255) > 214 && (v >> 16 & 255) > 205;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (H0.water(x + dx, y + dy)) for (let n = 0; n < 16; n++) for (let k = 0; k < 4; k++) {
+      const q = (m) => at + (dx ? n : dy > 0 ? 15 - m : m) * st + (dy ? n : dx > 0 ? 15 - m : m); if (!white(px[q(k)])) continue;
+      let m = k + 1; while (m < 8 && white(px[q(m)])) m++; px[q(k)] = px[q(m)]; }
+    for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) if (H0.water(x + dx, y + dy)) for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) {   // (a corner's)
+      const q = (a, b) => at + (dy > 0 ? 15 - b : b) * st + (dx > 0 ? 15 - a : a); if (white(px[q(i, j)])) px[q(i, j)] = px[q(5, 5)]; }
+  }
   function roofed(x, y, L) {   // land over the level you stand at, with air under it (a roof, not a wall beside you)
     const c = Voxels.host.column(x, y); if (!c || solidAt(c, L + 1)) return 0;
     for (let z = L + 2; z <= L + 9; z++) if (solidAt(c, z)) return 1; return 0;
@@ -84,8 +95,9 @@ const HdLook = (() => {
   function hour(w, h, list, el) {
     const ph = clock.phase || 0, tint = lightAt(ph).map((v) => v + (255 - v) * el), wash = washAt(ph), dark = Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36);
     if (wash[3] * (1 - el) <= .004 && dark <= .01) return null;
+    const lift = opt("night") / 100 * .6; if (dark <= .2) return {wash: [wash[0], wash[1], wash[2], wash[3] * (1 - el)], tint: tint.map((v) => Math.round(v + (255 - v) * lift))};   // (no lamp shows: one colour, a px of it: it was a picture the screen's size sent to the GPU every frame of a morning)
     lit = lit || document.createElement("canvas"); if (lit.width !== w || lit.height !== h) { lit.width = w; lit.height = h; }
-    const q = lit.getContext("2d"), lift = opt("night") / 100 * .6; q.globalAlpha = 1; q.globalCompositeOperation = "source-over"; q.fillStyle = `rgb(${tint.map((v) => Math.round(v + (255 - v) * lift)).join()})`; q.fillRect(0, 0, w, h);
+    const q = lit.getContext("2d"); q.globalAlpha = 1; q.globalCompositeOperation = "source-over"; q.fillStyle = `rgb(${tint.map((v) => Math.round(v + (255 - v) * lift)).join()})`; q.fillRect(0, 0, w, h);
     if (dark > .2) { q.globalCompositeOperation = "lighter"; const k = (dark - .2) / .8;
       for (const s of list) if (s.lamp) { const a = eng.at(s.x, s.y, s.z); if (a) lamp(q, a[0], a[1] - 8, s.lamp > 1 ? 64 : 42, s.lamp > 1 ? "rgb(255,176,96)" : "rgb(255,222,170)", (s.lamp > 1 ? 1.15 : .45) * k, [0, 0]); } }
     q.globalAlpha = 1; return {wash: [wash[0], wash[1], wash[2], wash[3] * (1 - el)], lit};
@@ -156,15 +168,18 @@ const HdLook = (() => {
     const roof = shut(tx, ty, L), want = api.force !== null ? api.force : Math.max(roof, (wd = walled(tx, ty, L)) ? 1 : 0);
     ul = roof > ul ? Math.min(roof, ul + dt / EASE) : Math.max(roof, ul - dt / EASE);   // (the light goes under ground only under a roof)
     u = want > u ? Math.min(want, u + dt / EASE) : Math.max(want, u - dt / EASE); api.u = u;
-    const e = u * u * (3 - 2 * u), gr = Math.min(1, ul / GROW), gs = gr * gr * (3 - 2 * gr), b0 = [1, 3, Math.max(2, Math.round(e * (wd + 1)))], b1 = [1 + e * (R - 10), 1 + e * R, 1 + e * R].map((v, i) => Math.round(mix(b0[i], v, gs))),
+    // (the cut is made for where you ARE, the frame you are covered: its size by how shut in you are now, not eased. It grew with an ease of 1.2 s, a land made again at each size: "a lot of time to trigger". Only the light eases, a fifth of a second)
+    const e = want, gr = Math.min(1, roof / GROW), gs = gr * gr * (3 - 2 * gr), b0 = [1, 3, Math.max(2, Math.round(e * (wd + 1)))], b1 = [1 + e * (R - 10), 1 + e * R, 1 + e * R].map((v, i) => Math.round(mix(b0[i], v, gs))),
       box = e < .08 ? null : {n: b1[0], w: b1[1], s: b1[2]},   // (walls alone: a small box round you; a roof: the whole cut-away, grown from the small one tile by tile as the roof closes over you (it came all at once))
         // (the cut-away: south and across all, north 14 tiles, so the land beyond it, the surface, sinks to the horizon under the sky at any depth; beyond it the land whole, its terraces, the sky)
       inBox = (x, y) => !!box && y - ty >= -box.n && y - ty <= box.s && Math.abs(x - tx) <= box.w, dep = Math.max(0, topAt(tx, ty) - L);
-    eng = eng || VoxStyle.create(Object.assign({}, Voxels.host, {models: (x, y) => { const a = Models.at(x, y), b = api.box && floorAt(x, y) > lv + 2 && y - at[1] >= -api.box.n && y - at[1] <= api.box.s && Math.abs(x - at[0]) <= api.box.w ? null : HdThings.at(x, y); return a && b ? a.concat(b) : a || b; }}), cfg);   // (what is built and put down: small 3D pieces, hd_things.js)
-    if (ver !== landVer) { eng.forget(); ver = landVer; key = ""; }
+    eng = eng || VoxStyle.create(Object.assign({}, Voxels.host, {paintTop: shore, models: (x, y) => { const a = Models.at(x, y), b = api.box && floorAt(x, y) > lv + 2 && y - at[1] >= -api.box.n && y - at[1] <= api.box.s && Math.abs(x - at[0]) <= api.box.w ? null : HdThings.at(x, y); return a && b ? a.concat(b) : a || b; }}), cfg);   // (what is built and put down: small 3D pieces, hd_things.js)
+    if (ver !== landVer || eng.lost) { eng.forget(); ver = landVer; key = ""; }
     const k = [tx, ty, L, JSON.stringify(box), HdThings.key()].join();
-    if (k !== key && !gen) { gen = eng.steps(tx, ty, L, L + 2, {r: R, deep: 20, over: 0, under: true, sea: 1, cut: box || {n: -9, s: -9, w: -9}}); key = k; api.box = box; lv = L; at = [tx, ty]; api.build = 0; api.builds++; }   // (one land at a time: the next is made when this one is done, so a box that grows is shown at each size it was made at)
-    if (gen) { const b0 = performance.now(); while (performance.now() - b0 < 6) if (gen.next().done) { gen = null; break; } api.build = Math.max(api.build, performance.now() - b0); api.water = eng.water; }   // (the land made again a few rows a frame, ~6 ms; what was drawn stays till it is done)
+    const bk = JSON.stringify(box); if (bk !== wantBox) { wantBox = bk; since = now; }   // (since: when the cut wanted last changed; api.lag: ms from then to the land with that cut drawn)
+    if (k !== key && !gen) { gen = eng.steps(tx, ty, L, L + 2, {r: R, rx: Math.min(R, Math.ceil(w / 32 * 1.4) + 3), rs: south + 1, deep: 20, over: 0, under: true, sea: 1, cut: box || {n: -9, s: -9, w: -9}}); key = k; genBox = bk; hurry = bk !== JSON.stringify(api.box); api.box = box; lv = L; at = [tx, ty]; api.build = 0; api.builds++; }   // (one land at a time: the next is made when this one is done)
+    if (gen) { const b0 = performance.now(); while (performance.now() - b0 < (hurry ? 14 : 4)) if (gen.next().done) { gen = null; break; } api.build = Math.max(api.build, performance.now() - b0); api.water = eng.water;   // (the land made again a few rows a frame, ~4 ms; what was drawn stays till it is done; a cut that opens or shuts: at once, up to 14 ms a frame)
+      if (!gen) { if (genBox === wantBox && since) { api.lag = performance.now() - since; since = 0; } } }
     const list = [];
     const stood = (c, x, y, z) => {      // a thing that stands: furniture as its card (hd_things.js: px for px, its top leaning with where it is on the screen), the rest a billboard
       const s = objectSprite(c, x, y, now / 1000); if (!s || !s[0] || !s[0].width) return; const cd = HdThings.card(c, x, y, s);
@@ -172,11 +187,13 @@ const HdLook = (() => {
       list.push(Object.assign(cd ? {} : thing(s), cd, {x: x + .5, y: y + (cd ? cd.y : plain ? (s[6] + r2) / 16 : 1), z, lamp: c === "^" || c === "x" ? 2 : 0, flat: c === "g", tx: x, ty: y, card: cd}, plain));   // (flat: a gate: a standing face of the land a tile wide, vox_style.js)
     };
     const dk = ul * ul * (3 - 2 * ul) * Math.max(0, Math.min(1, (dep - 6) / 4)), gone = (x, y) => (inBox(x, y) && floorAt(x, y) > L + 2) || (dk > .3 && floorAt(x, y) > L + 6);   // (deep under a roof the sky is the dark of the earth: what stands on the surface past the cut is not drawn: bushes peeked over the far earth's edge, lit, in the dark)
-    for (let y = ty - R; y <= ty + south; y++) for (let x = tx - R; x <= tx + R; x++) {
+    const ck = [tx, ty, L, landVer, Floors.ver, bk, dk > .3, Math.floor(now / 250)].join();   // (what stands: looked for four times a second and when you or the land move, not on 2400 tiles every frame)
+    if (ck !== candKey) { candKey = ck; cand = []; for (let y = ty - R; y <= ty + south; y++) for (let x = tx - R; x <= tx + R; x++) {
       if (gone(x, y)) continue;   // (on land the slice took away; in a cave: on its floor, the tile's lowest ground)
-      const c = combAt(x, y), up = Floors.any(x, y) ? HdThings.loose(x, y) : null; if (up) for (const [ch, z] of up) stood(ch, x, y, z);   // (what stands on a built block)
-      if (c && isObject(c) && !HdThings.is(c, x, y)) stood(c, x, y, floorAt(x, y));      // (not the boxes of the land: hd_things.js)
-    }
+      const c = combAt(x, y), up = Floors.any(x, y) ? HdThings.loose(x, y) : null; if (up) for (const [ch, z] of up) cand.push([ch, x, y, z]);   // (what stands on a built block)
+      if (c && isObject(c) && !HdThings.is(c, x, y)) cand.push([c, x, y, floorAt(x, y)]);      // (not the boxes of the land: hd_things.js)
+    } }
+    for (const [c, x, y, z] of cand) stood(c, x, y, z);
     for (const [ix, iy, pile] of groundItems) if (Math.abs(ix - tx) <= R && iy >= ty - R && iy <= ty + south && !gone(ix, iy)) {   // what lies on the ground: its small icons as the game lays them (loot.js), a px a px (they were not drawn in this look)
       const names = Object.keys(pile).slice(0, 3), k = names.join(); let c = piles.get(k);
       if (!c) { c = document.createElement("canvas"); c.width = 24; c.height = 16; const g = c.getContext("2d"); names.forEach((n, i) => { const [dx, dy] = pileAt(i, names.length); g.drawImage(ghostIcon(n), 7 + dx, 3 + dy); }); piles.set(k, c); }
@@ -197,14 +214,15 @@ const HdLook = (() => {
     if (!pic) return;
     seen = {tx, ty, L, box, k: 1, me: list.find((q) => q.top), list}; horizon(tx, ty, L, dt);
     api.faces = eng.faces; api.models = eng.models; if (!document.body.classList.contains("touch")) pic = post(pic, w, h);   // (a phone: no lens: two blurs of the whole picture a frame, and canvases laid on each other, which a phone has drawn wrong)
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
-    const z = Z(); ctx.drawImage(bd.canvas, 0, 0, w * z, h * z);
+    // the land's picture over the backdrop at the art's own size, then ONE picture laid on the screen (they were two, each the whole screen: 2.6 million px a frame on a phone)
+    const bg = bd.canvas.getContext("2d"); bg.save();
     if (el > .05) {   // under a roof: the sky stays as a band over the earth's far edge, a ridge in whole steps of 2 art px (the earth's silhouette), lower as you go deeper
-      const top = Math.round(Math.min(h * .16, 4 + dep * 1.5) * el), sx = Math.round(p.x * 2); ctx.beginPath(); ctx.moveTo(0, h * z);
-      for (let x = 0; x <= w; x += 2) { const n = Math.sin((x + sx) * .071) * 2.5 + Math.sin((x + sx) * .023 + 1.3) * 3.5, y = Math.max(0, top + Math.round(n / 2) * 2); ctx.lineTo(x * z, y * z); ctx.lineTo((x + 2) * z, y * z); }
-      ctx.lineTo(w * z, h * z); ctx.closePath(); ctx.clip();
+      const top = Math.round(Math.min(h * .16, 4 + dep * 1.5) * el), sx = Math.round(p.x * 2); bg.beginPath(); bg.moveTo(0, h);
+      for (let x = 0; x <= w; x += 2) { const n = Math.sin((x + sx) * .071) * 2.5 + Math.sin((x + sx) * .023 + 1.3) * 3.5, y = Math.max(0, top + Math.round(n / 2) * 2); bg.lineTo(x, y); bg.lineTo(x + 2, y); }
+      bg.lineTo(w, h); bg.closePath(); bg.clip();
     }
-    ctx.drawImage(pic, 0, 0, w * z, h * z); ctx.restore();
+    bg.drawImage(pic, 0, 0); bg.restore();
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false; const z = Z(); ctx.drawImage(bd.canvas, 0, 0, w * z, h * z); ctx.restore();
     written(p, now);
     api.ms = performance.now() - t0;
   }

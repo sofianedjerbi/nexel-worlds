@@ -10,6 +10,7 @@
 //   HdSun.thing(out, x, y, L, P, dx, dy, r2): a standing sprite's (P: its px, hd_things.js pix; (dx, dy): where it is in its tile; r2: the row under its foot)
 //   HdSun.box(out, x, y, L, [x0, y0, x1, y1], h0, h1): a box's (px of its tile; heights in px over the ground)
 //   HdSun.body(out, s): a body's, each frame (s: hd.js's sprite of it) -> [[x, y, box]...] into out
+//   HdSun.land(out, x, y): the land's own on a tile (a cliff's, a terrace's, a hill's); landAt(x, y): is there one (tests)
 const HdSun = (() => {
   const UP = RELIEF_STEP, bms = new Map(), sils = new Map(), SUN = [0xe0000000, 0xc0000000], LAMP = [0xff000000, 0xa0000000];   // (a full px, a rim px: vox_style_glsl.js kind 10)
   let H = {on: false, night: false, kx: 0, ky: 0, sun: 0}, sid = "";
@@ -43,40 +44,78 @@ const HdSun = (() => {
       rooms.set(c, any ? HdThings.room("sun" + kk + "#" + c, 16, 16, (put) => { for (let b = 0; b < 16; b++) for (let a = 0; a < 16; a++) put(a, b, px(X + i * 16 + a, Y + j * 16 + b)); }) : null); } return rooms.get(c); }};
     bms.set(kk, bm); return bm;
   }
-  // the top a shadow lies on at a tile, for what stands at level L: null: none (water, a wall, a cliff, under what is built, land the cut took away)
-  const ground = (X, Y, L) => { const c = Voxels.host.column(X, Y); if (!c || !c.length || Voxels.host.water(X, Y) || Floors.any(X, Y)) return null; const t = c[c.length - 1]; return t - L > 1 || t - L < -4 || HdLook.cut(X, Y, t) ? null : t; };
+  // what a shadow lies on at a tile, for what stands at level L (none given: whatever is topmost): the land's top, or the top of what is built there (a floor's planks; a roof: its
+  // pitch, hd_things.js) -> {z, roof}, or null: none (water, a step, land the cut took away, a house open over your head, a top too far over or under L; a wall or a cliff's face never)
+  function surface(X, Y, L) {
+    const c = Voxels.host.column(X, Y); if (!c || !c.length || Voxels.host.water(X, Y)) return null;
+    let t = c[c.length - 1], roof = null; const cells = Floors.any(X, Y) && Floors.cells(X, Y);
+    if (cells && cells.size) { let top = -1e9, kind = ""; for (const [z, [k]] of cells) if (z > top) { top = z; kind = k; }
+      if (kind === "stairs" || Floors.alpha(X, Y, top) < 1) return null; if (L === undefined || top - L <= 1) { t = top; if (kind === "roof") roof = HdThings.pitch(X, Y, top); } }   // (what is built high over L: the ground under it, seen under an eave: a lit strip lay along a house's foot)
+    else if (HdLook.cut(X, Y, t)) return null;
+    return L !== undefined && (t - L > 1 || t - L < -4) ? null : {z: t, roof};
+  }
+  // a piece of a shadow on a tile's surface: px a0..a1, b0..b1 of that tile, (ox, oy): the tile's corner in the caller's px; on a roof it leans with the pitch, in two at the ridge
+  function piece(out, s, ox, oy, a0, a1, b0, b1, ch, wx, wy, at) {
+    const R = s.roof, cutY = R && R.split && b0 < 8 && b1 > 8 ? [[b0, 8], [8, b1]] : [[b0, b1]];
+    for (const [c0, c1] of cutY) { const b = {x: ox + a0, y: oy + c0, z: s.z * UP + .5, w: a1 - a0, d: c1 - c0, h: 0, top: ch, win: [wx, wy + c0 - b0], shade: true, sheet: HdThings.sheet};
+      if (R) b.tilt = [R.hat(R.up + c0 / 16), R.hat(R.up + c1 / 16)]; out.push(at ? [at[0], at[1], b] : b); }
+  }
   // lay a picture: (px, py): where its (0, 0) is, px from the tile (x, y)'s corner -> boxes for the engine, each a tile's (or a part of one), relative to (x, y)
   function lay(out, x, y, L, bm, px, py, wrap) {
     for (let ty = Math.floor(py / 16); ty * 16 < py + bm.h; ty++) for (let tx = Math.floor(px / 16); tx * 16 < px + bm.w; tx++) {
-      const z = ground(x + tx, y + ty, L); if (z === null) continue;
+      const s = surface(x + tx, y + ty, L); if (!s) continue;
       const x0 = Math.max(px, tx * 16), x1 = Math.min(px + bm.w, tx * 16 + 16), y0 = Math.max(py, ty * 16), y1 = Math.min(py + bm.h, ty * 16 + 16);
       for (let cj = (y0 - py) >> 4; cj * 16 < y1 - py; cj++) for (let ci = (x0 - px) >> 4; ci * 16 < x1 - px; ci++) {
         const ch = bm.chunk(ci, cj); if (!ch) continue;
         const a0 = Math.max(x0, px + ci * 16), a1 = Math.min(x1, px + ci * 16 + 16), b0 = Math.max(y0, py + cj * 16), b1 = Math.min(y1, py + cj * 16 + 16);
-        const b = {x: a0, y: b0, z: z * UP + .5, w: a1 - a0, d: b1 - b0, h: 0, top: ch, win: [a0 - px - ci * 16, b0 - py - cj * 16], shade: true, sheet: HdThings.sheet};
-        out.push(wrap ? [x, y, b] : b);
+        piece(out, s, tx * 16, ty * 16, a0 - tx * 16, a1 - tx * 16, b0 - ty * 16, b1 - ty * 16, ch, a0 - px - ci * 16, b0 - py - cj * 16, wrap && [x, y]);
       }
     }
   }
-  const open = (x, y, L) => { const c = Voxels.host.column(x, y); return !!c && c.length > 0 && c[c.length - 1] <= L && !Floors.any(x, y); };   // (under the sky: no land and nothing built over it)
+  // The land's own shadow: a cliff, a terrace, a hill throws the hour's shadow on the land under it (the classic picture had it). For a tile's surface, px by px: is some
+  // column towards the sun, two levels or more over it, between the px and the sun? (a px h px under a top is in its shadow when the px, moved h back along the sun's
+  // way, is on that top's tile.) The same tone and the same soft rim as the things' shadows, on tops only (never a wedge on a wall's face); kept until the land or the sun moves on.
+  const lands = new Map(), tops = new Map(); let lkey = "";
+  const topOf = (x, y) => { const k = x + "," + y; let t = tops.get(k); if (t === undefined) { const c = Voxels.host.column(x, y); t = c && c.length ? c[c.length - 1] : null; tops.set(k, t); } return t; };
+  function land(out, x, y) {
+    if (!H.on) return; const k0 = [landVer, Floors.ver, H.kx, H.ky, HdThings.sheet.id].join(); if (k0 !== lkey || lands.size > 8000) { lands.clear(); tops.clear(); lkey = k0; }
+    const s = surface(x, y); if (!s) return; const k = x + "," + y + "," + s.z; let ch = lands.get(k);
+    // (the columns asked: a column further each way than the shadows reach: the px just outside the tile are asked too, for the rim: without them each tile's shadow had a rim of its own, light lines between tiles)
+    if (ch === undefined) { ch = null; const src = [], sg = H.kx < 0 ? 1 : -1, nx = Math.ceil(96 * Math.abs(H.kx) / 16), ny = Math.ceil(96 * H.ky / 16);
+      for (let j = -1; j <= ny + 1; j++) for (let i = -1; i <= nx + 1; i++) { if (!i && !j) continue; const T = topOf(x + sg * i, y - j); if (T !== null && T - s.z >= 2) src.push([sg * i * 16, -j * 16, Math.min(12, T - s.z) * UP]); }
+      if (src.length) { const span = (g, o, v) => (v ? [(g - o - 16) / v, (g - o) / v].sort((p, q) => p - q) : g >= o && g < o + 16 ? [0, 1e9] : [1, 0]);
+        const dark = (gx, gy) => { for (const [ox, oy, hh] of src) { const p = span(gx + .5, ox, H.kx), q = span(gy + .5, oy, H.ky); if (Math.max(p[0], q[0], 0) < Math.min(p[1], q[1], hh)) return true; } return false; };
+        const m = new Uint8Array(18 * 18); let any = false, str = ""; for (let b = -1; b <= 16; b++) for (let a = -1; a <= 16; a++) if (dark(a, b)) m[(b + 1) * 18 + a + 1] = 1;
+        const v = (a, b) => (!m[(b + 1) * 18 + a + 1] ? 0 : m[(b + 1) * 18 + a] && m[(b + 1) * 18 + a + 2] && m[b * 18 + a + 1] && m[(b + 2) * 18 + a + 1] ? 1 : 2);
+        for (let b = 0; b < 16; b++) for (let a = 0; a < 16; a++) { const q = v(a, b); str += q; if (q) any = true; }
+        if (any) ch = HdThings.room("ls" + str, 16, 16, (put) => { for (let b = 0; b < 16; b++) for (let a = 0; a < 16; a++) { const q = v(a, b); put(a, b, q ? SUN[q - 1] : 0); } }); }
+      lands.set(k, ch); }
+    if (ch) piece(out, s, 0, 0, 0, 16, 0, 16, ch, 0, 0);
+  }
+  // is a tile's top in the land's shadow at its middle (tests)
+  const landAt = (x, y) => { hour(); const o = []; land(o, x, y); return o.length > 0; };
+  const open = (x, y, L, roofed) => { const c = Voxels.host.column(x, y); if (!c || !c.length || c[c.length - 1] > L) return false; const cells = !roofed && Floors.any(x, y) && Floors.cells(x, y); if (cells) for (const z of cells.keys()) if (z > L) return false; return true; };   // (under the sky: no land and nothing built over it)
   function thing(out, x, y, L, P, dx, dy, r2) {
     if (!open(x, y, L)) return; const v = way(x + .5, y + (dy + r2) / 16); if (!v) return;
     const bm = picture("t" + P.key + "," + r2, dx, dy + r2, v, (put) => { for (let j = 0; j < Math.min(P.h, r2); j++) for (let i = 0; i < P.w; i++) if ((P.px[j * P.w + i] >>> 24) >= 128) put(i, 0, r2 - 1 - j, r2 - j); });
     if (bm) lay(out, x, y, L, bm, bm.x + ((dx >> 4) << 4), bm.y + (((dy + r2) >> 4) << 4));
   }
   function box(out, x, y, L, r, h0, h1, built) {      // (built: a block of a floor or a roof: it is what is over its own tile)
-    if (!built && !open(x, y, L)) return; const v = way(x + .5, y + .5); if (!v) return;
+    if (!built && !open(x, y, L, true)) return; const v = way(x + .5, y + .5); if (!v) return;   // (a wall under its own roof throws its shadow too: there was a lit strip between a house's foot and its roof's shadow; indoors nothing takes it)
     const bm = picture("b" + [r[2] - r[0], r[3] - r[1], Math.round(h0), Math.round(h1)], r[0], r[1], v, (put) => { for (let j = 0; j < r[3] - r[1]; j++) for (let i = 0; i < r[2] - r[0]; i++) put(i, j, Math.round(h0), Math.round(h1)); });
     if (bm) lay(out, x, y, L, bm, bm.x + ((r[0] >> 4) << 4), bm.y + ((r[1] >> 4) << 4));
   }
+  // a body's: the shape it has NOW (its pose, the way it faces: its own picture this frame; it was the shape it had when first seen), thrown from its feet
   function body(out, s) {
     const kind = s.q.e ? s.q.e.kind || "agent" : "agent", X = Math.floor(s.x), Y = Math.floor(s.y + .42); if (!open(X, Y, s.z)) return; const v = way(s.x, s.y); if (!v) return;
-    let S = sils.get(kind);
-    if (!S) { const c = s.canvas, d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data, px = []; let low = 0;
-      for (let j = 0; j < c.height; j++) for (let i = 0; i < c.width; i++) if (d[(j * c.width + i) * 4 + 3] >= 128) { px.push([i - s.fx, j]); low = Math.max(low, j); }
-      if (!px.length) return; S = px.map(([i, j]) => [i, low - j]); sils.set(kind, S); }
-    const bm = picture("e" + kind, 0, 0, v, (put) => { for (const [i, h] of S) put(i, 0, h, h + 1); });
+    const c = s.canvas, d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let hsh = 0, n = 0;
+    for (let i = 3, k = 0; i < d.length; i += 4, k++) if (d[i] >= 128) { hsh = (Math.imul(hsh, 31) + k) | 0; n++; }
+    if (!n) return; const sk = kind + hsh + "," + n; let S = sils.get(sk);
+    if (!S) { const px = []; let low = 0; for (let j = 0; j < c.height; j++) for (let i = 0; i < c.width; i++) if (d[(j * c.width + i) * 4 + 3] >= 128) { px.push([i - s.fx, j]); low = Math.max(low, j); }
+      if (sils.size > 300) sils.clear(); S = px.map(([i, j]) => [i, low - j]); sils.set(sk, S); }
+    if (bms.size > 1500) bms.clear();
+    const bm = picture("e" + sk, 0, 0, v, (put) => { for (const [i, h] of S) put(i, 0, h, h + 1); });
     if (bm) lay(out, X, Y, s.z, bm, bm.x + Math.round((s.x - X) * 16), bm.y + Math.round((s.y + .42 - Y) * 16), true);
   }
-  return {key, thing, box, body, way, get sun() { return H.on ? H.sun : 1; }, get hour() { return H; }};
+  return {key, thing, box, body, way, land, landAt, surface, get sun() { return H.on ? H.sun : 1; }, get hour() { return H; }};
 })();

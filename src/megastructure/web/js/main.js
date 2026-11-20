@@ -18,7 +18,12 @@ function chatLine(text, cls = "", who = null) {
   log.appendChild(d); while (log.childElementCount > CHAT_KEEP) log.firstElementChild.remove();
   log.scrollTop = log.scrollHeight;
 }
-setInterval(() => { for (const d of $("chatlog").children) d.classList.toggle("old", Date.now() - d.dataset.t > opt("chat") * 1000); }, 500);      // (the settings' A chat line stays)
+// A phone: two short lines top left, gone after a few seconds (they lay over the top left quarter of the screen for as
+// long as the welcome stayed); a tap on them opens what was said, a tap anywhere else shuts it, and the line to write in.
+const chatSmall = () => document.body.classList.contains("touch") && (innerWidth <= 600 || innerHeight <= 520), chatKeep = () => (chatSmall() ? Math.min(opt("chat"), 6) : opt("chat"));
+$("chatlog").addEventListener("click", () => { const b = $("chatbox"); if (chatSmall() && !b.classList.contains("open")) { b.classList.toggle("peek"); $("chatlog").scrollTop = 1e9; } });
+addEventListener("pointerdown", (e) => { const b = $("chatbox"); if (e.target.closest("#chatbox, #tTalk") || !chatSmall()) return; b.classList.remove("peek"); if (b.classList.contains("open")) closeChat(); }, true);
+setInterval(() => { for (const d of $("chatlog").children) d.classList.toggle("old", Date.now() - d.dataset.t > chatKeep() * 1000); }, 500);      // (the settings' A chat line stays)
 // What you sent before comes back with the arrows ("implement up/down arrow to browse chat/command history"): Up goes
 // back through it, Down forward again, and past the newest the line you were writing is there as you left it. Begun
 // from a "/", only the commands come back. It is kept from one visit to the next (the last SAID_KEEP lines).
@@ -46,7 +51,7 @@ function saidAdd(line) {
   localStorage.setItem("megastructure-said", JSON.stringify(said));
 }
 $("say").addEventListener("input", () => { saidAt = null; });
-function openChat(prefix = "") { saidAt = null; $("chatbox").classList.add("open"); const i = $("say"); i.value = prefix; i.focus(); $("chatlog").scrollTop = 1e9; askTools(); suggest(); }   // (complete.js)
+function openChat(prefix = "") { saidAt = null; $("chatbox").classList.remove("peek"); $("chatbox").classList.add("open"); const i = $("say"); i.value = prefix; i.focus(); $("chatlog").scrollTop = 1e9; askTools(); suggest(); }   // (complete.js)
 function closeChat() { $("chatbox").classList.remove("open"); $("say").blur(); suggest(); }
 $("say").addEventListener("keydown", (e) => {
   e.stopPropagation();

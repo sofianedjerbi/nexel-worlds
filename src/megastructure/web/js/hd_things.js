@@ -134,11 +134,13 @@ const HdThings = (() => {
   }
   // ---- built blocks (floors.js): a floor's planks, a step, a roof's shingles. The game's own picture of the block: its 16 rows the top, the rows under them its face
   const hid = (x, y, z) => Floors.alpha(x, y, z) < 1;        // (over your head, or over the build cursor's level: not drawn, as the game's own rule has it)
+  // a roof tile's place in its run north-south: up, down: tiles of roof north and south of it; yr: where the ridge is (tiles from the run's north edge); hat(v): px the roof stands over its eave there; split: the ridge crosses this tile
+  function pitch(x, y, z) { const same = (dy) => { const c = Floors.get(x, y + dy, z); return !!c && c[0] === "roof" && !hid(x, y + dy, z); }; let up = 0, down = 0; while (up < 14 && same(-up - 1)) up++; while (down < 14 && same(down + 1)) down++;
+    const n = up + down + 1, yr = Math.floor((n - 1) / 2) + .5, pk = PITCH * n / 2; return {up, down, yr, split: up === Math.floor(yr), hat: (v) => Math.round(v <= yr ? pk * v / yr : pk * (n - v) / (n - yr))}; }
   function block(out, kind, x, y, z) {
     const g = (dx, dy, dz = 0) => { const c = Floors.get(x + dx, y + dy, z + dz); return c && !hid(x + dx, y + dy, z + dz) ? c[0] : ""; }, same = (dx, dy) => g(dx, dy) === kind;
     if (kind === "roof") {                                  // shingles: a real roof, two pitched faces: up from its north edge to the ridge (the pack's ridge row: half way down its run), down from it to the eave; the eave its front, the gable its sides
-      let up = 0, down = 0; while (up < 14 && same(0, -up - 1)) up++; while (down < 14 && same(0, down + 1)) down++;
-      const w = same(-1, 0), e = same(1, 0), n = up + down + 1, yr = Math.floor((n - 1) / 2) + .5, pk = PITCH * n / 2, hat = (v) => Math.round(v <= yr ? pk * v / yr : pk * (n - v) / (n - yr));
+      const {up, down, yr, hat} = pitch(x, y, z), w = same(-1, 0), e = same(1, 0);
       cast(out, x, y, 0, [-1, -1, 17, 17], 0, (z - floorAt(x, y)) * UP + hat(up + .5), true);
       const P = shotOf("roof" + [up, down, w, e], 16, 30, () => Structures.drawRoof(0, 7, 16, up, down, w, e)), E = pix(IMG.house_roof, 16, 64, 16, 7);
       const eave = room("eave", 16, 7, (put) => { for (let j = 0; j < 7; j++) for (let i = 0; i < 16; i++) put(i, j, E.px[j * 16 + i]); }), S = {px: sheet.px, w: SW, key: "eaveS"};
@@ -175,7 +177,8 @@ const HdThings = (() => {
   function at(x, y) {
     const out = [], c = combAt(x, y), cells = Floors.cells(x, y);
     if (c && is(c, x, y)) stand(out, c, x, y, floorAt(x, y)); else if (c && shaded(c)) shade(out, c, x, y, floorAt(x, y) * UP, floorAt(x, y));      // (on the tile's lowest ground: in a cave, on its floor)
-    if (cells) for (const [z, [kind, ch]] of cells) { if (hid(x, y, z)) continue; block(out, kind, x, y, z); if (ch && is(ch)) stand(out, ch, x, y, z); else if (ch && shaded(ch)) shade(out, ch, x, y, z * UP); }
+    if (cells) for (const [z, [kind, ch]] of cells) { if (hid(x, y, z)) continue; block(out, kind, x, y, z); if (ch && is(ch)) stand(out, ch, x, y, z); else if (ch && shaded(ch)) shade(out, ch, x, y, z * UP, z); }
+    if (!ghosting) HdSun.land(out, x, y);      // (the land's own shadow on this tile: a cliff's, a terrace's)
     return out.length ? out : null;
   }
   // What is only planned, or would be put where you aim (build.js, intent.js): the same boxes, see-through (`ghost`: the engine draws one px in two of it).
@@ -192,5 +195,5 @@ const HdThings = (() => {
   function loose(x, y) { const cells = Floors.cells(x, y), out = []; if (cells) for (const [z, [, ch]] of cells) if (ch && !is(ch) && !hid(x, y, z)) out.push([ch, z]); return out; }
   // what the pieces hang on beside the land: what is built, where you are under it, the build cursor's level, who stands by a door
   function key() { const s = myAt; let d = ""; if (doorsAt.size > 300) doorsAt.clear(); for (const [x, y] of doorsAt.values()) if ("+g".includes(combAt(x, y) || "-") && doorOpen(x, y)) d += x + "," + y + ";"; return [Floors.ver, s ? [s.x, s.y, s.z] : "", Build.on ? Build.level() : "", sheet.id, d, HdSun.key(), HdLook.cam.pitch].join("|"); }
-  return {at, is, loose, key, painted, ghost, pieced, card, shadow, foot, plans, CARD, sheet, room, pix};
+  return {at, is, loose, key, painted, ghost, pieced, card, shadow, foot, plans, CARD, sheet, room, pix, pitch};
 })();

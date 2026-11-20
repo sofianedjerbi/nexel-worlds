@@ -14,13 +14,34 @@ function touchUI() {
   const btns = el("div", "tbtns", "");
   for (const [id, label] of [["tA", "A"], ["tB", "B"]]) el("div", id, `<span class="cap"></span><span class="lbl">${label}</span>`, btns);
   const ctx_ = el("div", "tctx", "");
+  el("div", "tUp", "Up", ctx_); el("div", "tDown", "Down", ctx_); el("div", "tBuild", "Build", ctx_);   // (build mode, build.js: a phone had no way into it, nor a layer up or down)
   el("div", "tEat", "Eat", ctx_); el("div", "tPick", "Pick up", ctx_);
   const top = el("div", "ttop", "");
   el("div", "tBag", "Items", top); el("div", "tCraft", "Craft", top); el("div", "tTalk", "Talk", top); el("div", "tMenu", "Menu", top);   // (Menu: the settings, leaving: a phone has no Esc, and had no way to them once in the world)
   return {btns, ctx_};
 }
 
+// A disc cut in art px, n across: a dark rim, a face, a lighter px up and left, a lip under it (ring: only the rim, a
+// faint face: the stick's base). The page shows it at three screen px an art px: no round thing is drawn smooth.
+function padDisc(n, face, ring) {
+  const c = document.createElement("canvas"), g = c.getContext("2d"), lip = ring ? 0 : 2, r = n / 2, R = r - lip / 2; c.width = n; c.height = n;
+  const far = (x, y, cy) => Math.hypot(x + .5 - r, y + .5 - cy);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const d = far(x, y, R), core = d <= R - 1;
+    if (d > R && far(x, y, R + lip) > R) continue;
+    g.fillStyle = ring ? (core ? "rgba(40,28,24,.22)" : "rgba(255,248,232,.6)") : !core ? "#5b3f36" : d > R - 2 && x + y < n - lip ? "#fff8e6" : face;
+    g.fillRect(x, y, 1, 1);
+  }
+  return `url(${c.toDataURL()})`;
+}
+const PAD_KEY = {N: "arrowup", S: "arrowdown", W: "arrowleft", E: "arrowright"};
+let padDir = null;                            // (build mode: the way the cursor is being pushed)
 function setDir(dir, run) {
+  if (Build.on || padDir) {                   // build mode: the stick moves the cursor, as the arrows do (build.js)
+    const to = Build.on ? dir : null;
+    if (to !== padDir) { if (padDir) dispatchEvent(new KeyboardEvent("keyup", {key: PAD_KEY[padDir]})); padDir = to; if (to) Build.onKey(PAD_KEY[to], {}); }
+    if (Build.on) return;
+  }
   for (const k of ["arrowup", "arrowdown", "arrowleft", "arrowright"]) keys.delete(k);
   if (dir) keys.add({N: "arrowup", S: "arrowdown", W: "arrowleft", E: "arrowright"}[dir]);
   runKey = !!run;
@@ -93,8 +114,13 @@ if (TOUCH) {
   };
   for (const ev of ["pointerup", "pointercancel"]) pad.addEventListener(ev, release);
 
-  holdButton($("tA"), () => { if (me) useFacing(false); });
-  holdButton($("tB"), () => { if (me) useFacing(true); });
+  holdButton($("tA"), () => { if (!me) return; if (Build.on) Build.click(Build.S.at, false); else useFacing(false); });
+  holdButton($("tB"), () => { if (!me) return; if (Build.on) Build.click(Build.S.at, true); else useFacing(true); });
+  tapButton($("tBuild"), () => Build.toggle()); tapButton($("tUp"), () => Build.onKey("e", {})); tapButton($("tDown"), () => Build.onKey("q", {}));
+  $("tA").style.backgroundImage = padDisc(28, "#f7e7c6"); $("tB").style.backgroundImage = padDisc(22, "#e3d3b8"); knob.style.backgroundImage = padDisc(20, "#f7e7c6"); base.style.backgroundImage = padDisc(50, "", true);
+  $("craftfind").placeholder = "Search"; $("say").placeholder = "Say something…";                     // (no Enter, no Esc: the keyboard's own key sends, a tap elsewhere gives up)
+  for (const ev of ["gesturestart", "dblclick"]) document.addEventListener(ev, (e) => e.preventDefault(), {passive: false});   // (no pinch or double tap of the page itself)
+  document.addEventListener("contextmenu", (e) => { if (!/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) e.preventDefault(); });      // (a long press: no menu of the browser's)
   tapButton($("tEat"), () => useSelected());
   tapButton($("tPick"), () => act("pick_up", {}));
   tapButton($("tBag"), () => toggleBag());
@@ -115,15 +141,16 @@ if (TOUCH) {
   setInterval(() => {
     if (!me) return;
     const rows = availableActions(), get = (k) => rows.find((r) => r[0] === k);
-    const a = get("Space"), b = get("X"), s = [a && a[1], a && a[2], b && b[1], !!get("E"), !!get("F")].join("|");
+    const a = Build.on ? rows[1] : get("Space"), b = get("X"), bd = Build.on || get(capOf("build")), s = [a && a[1], a && a[2], b && b[1], !!get("E"), !!get("F"), Build.on, !!bd].join("|");
     if (s !== sig) {
       sig = s;
       $("tA").querySelector(".cap").textContent = a ? a[1] : "";
       $("tA").classList.toggle("bad", !!(a && a[2])); $("tA").classList.toggle("idle", !a);
       $("tB").querySelector(".cap").textContent = b ? b[1] : "";
       $("tB").classList.toggle("idle", !b);
-      $("tEat").style.display = get("E") ? "block" : "none";
-      $("tPick").style.display = get("F") ? "block" : "none";
+      $("tEat").style.display = get("E") ? "flex" : "none";
+      $("tPick").style.display = get("F") ? "flex" : "none";
+      $("tBuild").style.display = bd ? "flex" : "none"; $("tBuild").textContent = Build.on ? "Done" : "Build"; $("tUp").style.display = $("tDown").style.display = Build.on ? "flex" : "none";
     }
     if (hudFit()) return;                                      // (the bar's pixel changed: measured at the next turn)
     const hud = $("hud"), w = Math.max(hud.scrollWidth, $("vitals").scrollWidth), h = hud.offsetHeight;

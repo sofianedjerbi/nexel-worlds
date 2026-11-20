@@ -94,9 +94,12 @@ function hudFit() {
   const small = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520, land = small ? 2 : 3;
   const item = Math.max(1, Math.min(Math.round(land * d), Math.floor(1.6 * n)));    // (11 px of it in a hole of 16: its edge px are empty)
   const book = bookPx();   // the recipe book's pixel (--q): the land's (a screen pixel more under a thumb), less while its 272 x 160 would not fit (index.html: worked out there first, before the first picture)
-  if (hudSig === (hudSig = [n, d, item, book].join())) return false;
+  const up = small && innerHeight > innerWidth, [bw, bh] = up ? [116, 272] : small ? [270, 150] : [224, 162];   // (--b: the inventory's, bag.js. A phone held upright: five cells across, a finger each; on its side its buttons beside it: phone.css)
+  let bag = up ? Math.round(3.4 * d) : book; while (bag > 1 && (bw * bag / d > innerWidth - 12 || bh * bag / d > innerHeight - 12)) bag--;
+  if (hudSig === (hudSig = [n, d, item, book, bag, up].join())) return false;
+  let cq = Math.round(2.4 * d); while (cq > 1 && (162 * cq / d > innerWidth - 12 || 326 * cq / d > innerHeight - 12)) cq--;      // (--cq: the recipe book's, upright: the list over the page)
+  st.setProperty("--cq", cq / d + "px"); document.body.classList.toggle("upright", up); st.setProperty("--p2", Math.max(1, Math.round(2 * d)) / d + "px");
   st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px"); st.setProperty("--w", Math.max(1, Math.round(book * .7)) / d + "px");
-  let bag = book; while (bag > 1 && (224 * bag / d > innerWidth - 12 || 162 * bag / d > innerHeight - 12)) bag--;       // (--b: the inventory's, bag.js)
   st.setProperty("--b", bag / d + "px");   // (--w: what Tab shows, who.js: a size under the book's)
   return hudU !== was;
 }
@@ -229,7 +232,7 @@ let toastTimer;
 const NOTE_MS = 6000;                                  // a note shows a little less long than what someone said
 // (a guide, a message with a key in it, shows and goes: it is not kept in the chat. The keys are beside what they do)
 function toast(msg, bad, stay = NOTE_MS, chat = !msg.includes("`")) {             // (msg may be dressed: **bold**, a new line, `K` a key; main.js rich. stay: ms it shows)
-  if (me && chat && typeof chatLine === "function") { chatLine(msg, bad ? "note bad" : "note sys"); $("chatlog").lastElementChild.dataset.t = Date.now() - (opt("chat") * 1000 - stay); }
+  if (me && chat && typeof chatLine === "function") { chatLine(msg, bad ? "note bad" : "note sys"); $("chatlog").lastElementChild.dataset.t = Date.now() - (chatKeep() * 1000 - Math.min(stay, chatSmall() ? chatKeep() * 1000 : stay)); }
   if (bad) sfx("buzz"); $("toastt").textContent = typeof plain === "function" ? plain(msg) : msg; const t = $("toast"); t.style.display = "block"; $("toastt").style.color = bad ? "var(--warn)" : "var(--ink)"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3200); }
 
 

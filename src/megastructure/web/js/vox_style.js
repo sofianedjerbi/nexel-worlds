@@ -8,7 +8,7 @@
 //   view: {w, h, cam: {kind: "persp"|"iso"|"obl", pitch, fov, yaw}, at: [x, y, z], bend, light: {amb, lr, day,
 //          fog: [near, far], fogc: [r, g, b], clear, roof, rim, strata, dither, veil, checker, sun: how dark the sun's shadows are, 0..1}, water: {canvas, x, y},
 //          t, sprites: [{canvas, x, y, z, fx, fy}] (its foot at px (fx, fy) of its canvas, drawn px for px),
-//          hour: {wash: [r, g, b, a], lit: canvas} the hour's light, laid here over what was drawn and not over the air}
+//          hour: {wash: [r, g, b, a], lit: canvas | tint: [r, g, b]} the hour's light, laid here over what was drawn and not over the air}
 const VoxStyle = (() => {
   const H = .5, SL = 64, C = 16, AW = SL * C, N = 10;
   const {VS, FS, SV, SF} = VoxStyleGLSL;      // (the shaders: vox_style_glsl.js)
@@ -27,13 +27,13 @@ const VoxStyle = (() => {
   ];
   const solidC = (c, z) => { if (!c) return false; for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   function create(host, cfg) {
-    let el = null, skies = [], holes = [], lastM = null, lastB = [0, 0], msh = null, gl = null, pr = null, sp = null, tex = null, wtx = null, htx = null, bufs = {}, stale = true, cost = 0, spill = false, wipe = false, mk = false;
+    let el = null, skies = [], holes = [], lastM = null, lastB = [0, 0], msh = null, gl = null, pr = null, sp = null, tex = null, wtx = null, htx = null, bufs = {}, stale = true, cost = 0, spill = false, wipe = false, mk = false, lost = false, wat = null; const dirty = [], one = new Uint32Array(C * C);   // (lost: the paints ran out while a frame's own (a shadow's, a ghost's) were asked: the land drawn has lost its paints, the host makes it again)
     // the paints: A the ones the land now drawn was made with (and what is drawn each frame over it: shadows, ghosts), B the ones of a land being made (A's and its new ones; after a wipe from none); B becomes A when that land is done
     let A = {slots: new Map(), px: new Uint32Array(AW * AW)}, B = null, spare = new Uint32Array(AW * AW); const cnt = {main: 0, model: 0, shade: 0, shade2: 0, ghost: 0, water: 0, over: 0}, U = {};
     function slot(key, paint) {
       const {slots, px} = mk && B ? B : A; let s = slots.get(key); if (s !== undefined) return s;   // (mk: the land being made is asking)
-      if (slots.size >= SL * SL) { slots.clear(); px.fill(0); spill = true; }   // (full: all its paints go; the land being made is made again, steps)
-      s = slots.size; slots.set(key, s); const at = (s / SL | 0) * C * AW + (s % SL) * C; paint(px, at, AW); if (!mk) stale = true; return s;
+      if (slots.size >= SL * SL) { slots.clear(); px.fill(0); spill = true; stale = true; if (mk && B) B.full = true; if (!mk) lost = true; }   // (full: all its paints go; the land being made is made again, steps)
+      s = slots.size; slots.set(key, s); const at = (s / SL | 0) * C * AW + (s % SL) * C; paint(px, at, AW); if (!mk) dirty.push(s); else if (B) B.add.push(s); return s;   // (a new paint is sent alone, 16 x 16 px: the whole sheet, a million px, was sent again for each)
     }
     function start() {
       if (gl) return true;
@@ -51,12 +51,18 @@ const VoxStyle = (() => {
         const v = q.map((g3, n) => [...gp(...g3), (sl % SL) * C + win[0] + [ins, w - ins, w - ins, ins][n], (sl / SL | 0) * C + win[1] + [ins, ins, h - ins, h - ins][n], k, 1, b.shade ? 10 : b.ghost ? 9 : 8, Z1, 0]); for (const n of [0, 1, 2, 0, 2, 3]) dst.push(...v[n]); };
       face(b.top, b.w, b.d, [[X, Y, Zn], [X1, Y, Zn], [X1, Y1, Zs], [X, Y1, Zs]], b.k || 1); const fh = b.fh || b.h; if (b.h) { face(b.front, b.w, fh, [[X, Y1, Zs], [X1, Y1, Zs], [X1, Y1, Z0], [X, Y1, Z0]], .85);
         face(b.west, b.d, fh, [[X, Y, Zn], [X, Y1, Zs], [X, Y1, Z0], [X, Y, Z0]], .68); face(b.east, b.d, fh, [[X1, Y1, Zs], [X1, Y, Zn], [X1, Y, Z0], [X1, Y1, Z0]], .74); } };   // (b.sheet: a paint sheet of its own, {px, w, id}; west, east: its sides, d x h px; fh: its front and sides are that many rows of paint over its height; win: [i, j]: its paint is 16 x 16 px and the face shows it from px (i, j) on; a shade's paint is read a hair inside its edges: at an edge it took a px of the paint beside it in the atlas, a thin dark line on the ground; tilt: [n, s]: its top a slope: px its north and its south edge are over its height (a roof's pitch); k: its top's light)
+    // a top's paint: the host's; the px it leaves see-through (a cap's inset sides and tucked corners: the classic picture shows the wall there) take the block's own wall tone, stone on stone
+    // (they were one earth brown on every block: a brown strip down the west side of each stone step, brown corners, a mountain's terraces a lattice)
+    const tones = new Map(), tmp = new Uint32Array(C * C);
+    const tone = (lv) => { let v = tones.get(lv); if (v === undefined) { host.paintFront(lv, 0, tmp, 0, C); const n = new Map(); for (let i = 0; i < C * cfg.up; i++) n.set(tmp[i], (n.get(tmp[i]) || 0) + 1); v = [...n].sort((a, b) => b[1] - a[1])[0][0]; tones.set(lv, v); } return v; };
+    function topPaint(x, y, z, px, at, st) { host.paintTop(x, y, z, px, at, st); if (!host.paintFront) return; let v = 0;
+      for (let j = 0; j < C; j++) for (let i = 0; i < C; i++) if ((px[at + j * st + i] >>> 24) < 128) px[at + j * st + i] = v || (v = tone(lim(VoxMesh.rock(cfg, z, z, !host.rock || host.rock(x, y))))); }
     function build(...a) { for (const _ of steps(...a)); }
     function* steps(cx, cy, L, ceil, o) {   // (?hd: the same, a row of tiles a step: the caller spreads it over frames)
       const t0 = performance.now(), cols = new Map(), r = o.r, deep = o.deep; spill = false;
       // (the paints and the land that names them change together: while a land is being made, over frames, the one still drawn keeps the paints it was made with. They were wiped at once, forget(), and sent as they were painted: the land shown turned to bare earth and to other tiles' paints until the new one was done: each time land came in as you walked)
       // What is drawn each frame over the land (a shadow, a ghost) asks for its paints meanwhile: they are A's, sent as they come. (They were one set with the land's: after a wipe a shadow's paint was named a slot the picture still shown had another paint in: shadows and ghosts flickered other tiles' px until the land was done.)
-      if (wipe || o.again) { spare.fill(0); B = {slots: new Map(), px: spare}; wipe = false; } else { spare.set(A.px); B = {slots: new Map(A.slots), px: spare}; } mk = true;
+      if (wipe || o.again) { spare.fill(0); B = {slots: new Map(), px: spare, add: [], full: true}; wipe = false; } else { spare.set(A.px); B = {slots: new Map(A.slots), px: spare, add: [], full: false}; } mk = true;
       const col = (x, y) => { const k = x + "," + y; if (!cols.has(k)) cols.set(k, host.column(x, y)); return cols.get(k); };
       const inBox = (x, y) => Math.abs(x - cx) <= r && Math.abs(y - cy) <= r;
       const cut = new Map();   // (under: the slice height, one field: a tile of your space its floor + 2, a rock tile the nearest space tile's (ties: the lower))
@@ -66,6 +72,8 @@ const VoxStyle = (() => {
         for (let z = L - deep + 1; z <= L + 6 && z < t; z++) if (!solidC(c, z)) return z - 1; return null; };
       const reach = new Map(), st = [[cx, cy, L]];   // (your own space: tiles walked to from you, a step or a short drop, their floors)
       while (o.under && st.length) { const [x, y, f0] = st.pop(), k = x + "," + y; if (reach.has(k)) continue; const f = floorOf(x, y); if (f === null || Math.abs(f - f0) > 2) continue; reach.set(k, f); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) st.push([x + dx, y + dy, f]); }
+      const room = new Set(), grp = new Set();   // (the floors of your space that are a room's: 4 or more tiles on one level together; the rest are treads and landings of a stair)
+      for (const [k0, f0] of reach) { if (grp.has(k0)) continue; const g = [k0]; grp.add(k0); for (let i = 0; i < g.length; i++) { const [x, y] = g[i].split(",").map(Number); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = (x + dx) + "," + (y + dy); if (!grp.has(n) && reach.get(n) === f0) { grp.add(n); g.push(n); } } } if (g.length >= 4) for (const k of g) room.add(k); }
       let fr = [...reach].map(([k, f]) => [k, f + 2]), dd = 0; const dist = new Map(); for (const [k, v] of fr) { cut.set(k, v); dist.set(k, 0); }
       while (fr.length) { const nx = new Map(); for (const [k, v] of fr) { const [x, y] = k.split(",").map(Number);
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = (x + dx) + "," + (y + dy); if (cut.has(n) || !inBox(x + dx, y + dy)) continue; nx.set(n, Math.min(v, nx.has(n) ? nx.get(n) : 1e9)); } }
@@ -89,7 +97,7 @@ const VoxStyle = (() => {
           const nc = col(nx, ny); let sky = (f === 0 ? z >= open : !nc || z > nc[nc.length - 1]) ? 1 : 0;
           let s, kind = f === 0 ? 1 : 0, e = 0;
           if (f === 0) {
-            const isCut = cut && solidC(c, z + 1), zt = isCut ? open : z; s = isCut && o.cut ? front(x, y, z, top) : slot(x + "," + y + "," + zt, (px, at, st) => host.paintTop(x, y, zt, px, at, st));   // (?hd: the cut shows the rock: its front's paint)
+            const isCut = cut && solidC(c, z + 1), zt = isCut ? open : z; s = isCut && o.cut ? front(x, y, z, top) : slot(x + "," + y + "," + zt, (px, at, st) => topPaint(x, y, zt, px, at, st));   // (?hd: the cut shows the rock: its front's paint)
             [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if (!solid(x + dx, y + dy, z)) e |= b; });
             if (isCut) kind = 2;
             else if (o.under) [[0, -1, 512], [1, 0, 1024], [0, 1, 2048], [-1, 0, 4096]].forEach(([dx, dy, b]) => { if (solid(x + dx, y + dy, z + 1)) e |= b; });   // (a step up at that edge: its foot in shade)
@@ -97,6 +105,7 @@ const VoxStyle = (() => {
             if (isCut) [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if ((e & b) && !(o.under ? reach.has((x + dx) + "," + (y + dy)) : airNear(x + dx, y + dy, z))) e &= ~b; });   // (a gold edge only on the edge of your own space)   // (a lit rim only where your space is, not on a step of the cut)
             const hz = isCut && !o.cut ? hol(x, y) : null;
             if (hz !== null) { e |= 16; holes.push([x, y, hz]); [[0, -1, 32], [1, 0, 64], [0, 1, 128], [-1, 0, 256]].forEach(([dx, dy, b]) => { if (hol(x + dx, y + dy) === null) e |= b; }); }
+            if (o.under && !isCut && reach.get(x + "," + y) === z && !room.has(x + "," + y)) e |= 16384;   // (a stair's tread or a small landing: no glow on it, vox_style_glsl.js)
             if (o.under && sky && !isCut) skies.push([x, y, z]);
           } else {
             s = front(x, y, z, top);
@@ -106,13 +115,15 @@ const VoxStyle = (() => {
           quad(dst, x, y, z - 1, F, F.k, sky, kind, z, e, s, solid, f === 0);
         }
       };
-      for (let y = cy - r; y <= cy + r; y++) { mk = false; yield; mk = true; for (let x = cx - r; x <= cx + r; x++) {
+      // (a cell under the lowest air of its own column and of the four beside it has no face: the levels start there, not 20 under your feet: a tenth of the cells. o.rx, o.rs: columns across and rows south made, what the screen shows)
+      const rx = Math.min(r, o.rx || r), lowOf = (x, y) => { const c = col(x, y); return c && c.length ? Math.min(c[0], cutOf(x, y, ceil)) : -1e9; };
+      for (let y = cy - r; y <= cy + Math.min(r, o.rs || r); y++) { mk = false; yield; mk = true; for (let x = cx - rx; x <= cx + rx; x++) {
         const c = col(x, y); if (!c) continue; { const ms = host.models && host.models(x, y); if (ms) for (const b of ms) model(x, y, b, b.shade ? out.shade : out.model); }
         const wet = host.water && host.water(x, y), wz = wet ? (host.waterTop ? host.waterTop(x, y) : 0) : null;
         const solid = (a, b, z) => solidIn(a, b, z, ceil);
         const cz = cutOf(x, y, ceil);
         if (o.under && Math.abs(x - cx) <= 8 && Math.abs(y - cy) <= 6 && !solidC(c, L + 1)) for (let z = L + 2, sd = false; z <= Math.max(ceil, cz) + 8 && z < c[c.length - 1]; z++) { if (solidC(c, z - 1) && z - 1 > L) sd = true; if (sd && !solidC(c, z) && solidC(c, z - 1)) { holes.push([x, y, z, 1]); break; } }   // (a cave over your own space: its outline)
-        for (let z = L - deep + 1; z <= Math.max(ceil, cz, wet ? wz + 1 : -1e9); z++) {   // (?hd: a pond whose face is over the cut still has its face)
+        for (let z = Math.max(L - deep + 1, o.box ? -1e9 : Math.min(lowOf(x, y), lowOf(x - 1, y), lowOf(x + 1, y), lowOf(x, y - 1), lowOf(x, y + 1))); z <= Math.max(ceil, cz, wet ? wz + 1 : -1e9); z++) {   // (?hd: a pond whose face is over the cut still has its face)
           if (!solid(x, y, z)) { if (wet && z === wz + 1) quad(out.water, x, y, z - 2, FACES[0], 1, 1, 3, z, Math.max(0, wz - c[c.length - 1]), 0, null, true); continue; }   // (e: how deep the water is here, levels)
           faces(x, y, z, solid, out.main, z === cz, o.box);
         }
@@ -129,11 +140,11 @@ const VoxStyle = (() => {
           put([[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]], 1); if (land) put([[x, y + h, z], [x + w, y + h, z], [x + w, y + h, z - 10], [x, y + h, z - 10]], .8); } }
       if (spill && !o.again) { yield* steps(cx, cy, L, ceil, Object.assign({}, o, {again: true})); return; }   // (the paints ran out while it was made: faces made before that had another face's paint (a meadow all earth, a black hole): once more, from none)
       if (start()) for (const k in out) { const d = new Float32Array(out[k]); cnt[k] = d.length / N; gl.bindBuffer(gl.ARRAY_BUFFER, bufs[k]); gl.bufferData(gl.ARRAY_BUFFER, d, gl.STATIC_DRAW); }
-      spare = A.px; A = B; B = null; mk = false; stale = true;
+      spare = A.px; if (B.full || B.add.length > 500) stale = true; else dirty.push(...B.add); A = B; B = null; mk = false;   // (only the paints this land added are sent)
       cost = performance.now() - t0;
     }
     function quad(out, x, y, z, F, k, sky, kind, lv, e, s, solid, isTop) {
-      const u0 = (s % SL) * C, v0 = (s / SL | 0) * C, top = isTop ? 0 : C - cfg.up, UV = [[0, top], [C, top], [C, C], [0, C]], vs = [];
+      const u0 = (s % SL) * C, v0 = (s / SL | 0) * C, top = isTop ? 0 : C - cfg.up, I = .01, UV = [[I, top + I], [C - I, top + I], [C - I, C - I], [I, C - I]], vs = [];   // (read a hair inside its paint: at an edge a row of px took the paint beside it in the sheet: a bright line across a stone terrace)
       for (let i = 0; i < 4; i++) {
         const q = F.q[i]; let ao = 1;
         if (solid) {
@@ -173,16 +184,17 @@ const VoxStyle = (() => {
       gl.viewport(0, 0, RW, RH); gl.clearColor(...L.clear, L.ca ?? 1); gl.clearStencil(0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND); gl.depthMask(true);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
       const near = (t) => { for (const [a, b] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, a, b); };
-      const send = () => { if (stale) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, AW, AW, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(A.px.buffer)); near(); stale = false; } }; send();
+      const send = () => { if (stale) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, AW, AW, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(A.px.buffer)); near(); stale = false; dirty.length = 0; }
+        for (const sl of dirty) { const at = (sl / SL | 0) * C * AW + (sl % SL) * C; for (let j = 0; j < C; j++) one.set(A.px.subarray(at + j * AW, at + j * AW + C), j * C); gl.texSubImage2D(gl.TEXTURE_2D, 0, (sl % SL) * C, (sl / SL | 0) * C, C, C, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(one.buffer)); } dirty.length = 0; }; send();
       const W = v.water; gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, wtx);
-      if (W && W.canvas && W.canvas.width) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, W.canvas); near(); }
+      if (W && W.canvas && W.canvas.width && (!wat || Math.abs((v.t || 0) - wat[4]) > .1 || !v.t)) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, W.canvas); near(); wat = [W.x, W.y, W.canvas.width, W.canvas.height, v.t || 0]; }   // (ten times a second, with where it was then: it was sent every frame, a quarter of a million px)
       gl.activeTexture(gl.TEXTURE0);
       const {m, eye} = matrix(v); lastM = m; lastB = [v.bend || 0, v.at[1]]; const lamp = gp(...v.at);
       gl.useProgram(pr); const u = (n) => U[n] || (U[n] = gl.getUniformLocation(pr, n));
       gl.uniformMatrix4fv(u("m"), false, m); gl.uniform1i(u("t"), 0); gl.uniform1i(u("wt"), 2); gl.uniform3fv(u("lamp"), [lamp[0], lamp[1] + .6, lamp[2]]); gl.uniform3fv(u("eye"), eye);
       gl.uniform3fv(u("ctr"), lamp); gl.uniform1f(u("bend"), v.bend || 0); gl.uniform3fv(u("fogc"), L.fogc); gl.uniform2fv(u("vp"), [RW, RH]);
       for (const [n, x] of [["lr", L.lr], ["day", L.day], ["amb", L.amb], ["fn", L.fog[0]], ["ff", L.fog[1]], ["roof", L.roof], ["rim", L.rim], ["strata", L.strata || 0], ["dith", L.dither ? 1 : 0], ["und", L.under ? 1 : 0],  ["wa", L.wa ?? .62], ["dep", v.dep || 0], ["veil", 0], ["sk", L.sk], ["ovd", L.ovd || 1], ["chk", 0], ["tm", v.t || 0], ["dk", L.dark || 0], ["rd", 0]]) gl.uniform1f(u(n), x);
-      gl.uniform4fv(u("wtn[0]"), L.wtint || new Float32Array(20)); gl.uniform4fv(u("ub"), L.ub || [0, 0, 0, 0]); gl.uniform4fv(u("wv"), W && W.canvas && W.canvas.width ? [W.x, W.y, W.canvas.width, W.canvas.height] : [0, 0, 0, 0]);
+      gl.uniform4fv(u("wtn[0]"), L.wtint || new Float32Array(20)); gl.uniform4fv(u("ub"), L.ub || [0, 0, 0, 0]); gl.uniform4fv(u("wv"), W && W.canvas && W.canvas.width && wat ? wat.slice(0, 4) : [0, 0, 0, 0]);
       { const d = [], sd = []; for (const [x, y, b] of v.ghosts || []) model(x, y, b, b.shade ? sd : d); cnt.ghost = d.length / N; cnt.shade2 = sd.length / N; for (const [k, l] of [["ghost", d], ["shade2", sd]]) if (l.length) { gl.bindBuffer(gl.ARRAY_BUFFER, bufs[k]); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(l), gl.STREAM_DRAW); }
         send(); }   // (view.ghosts: [[x, y, box]...], what is only planned, and the shadows of what moves: made each frame)
       pass("main"); pass("model"); pass("ghost"); gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
@@ -219,12 +231,13 @@ const VoxStyle = (() => {
         for (const [nm, sz, off] of [["p", 3, 0], ["uv", 2, 12]]) { const l = gl.getAttribLocation(sp, nm); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, sz, gl.FLOAT, false, 20, off); }
         if (a > .004) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([hr.wash[0] * a, hr.wash[1] * a, hr.wash[2] * a, 255])); gl.blendColor(0, 0, 0, a); quad(gl.DST_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA); }
         if (hr.lit) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, hr.lit); quad(gl.DST_COLOR, gl.ZERO); }
+        else if (hr.tint) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([hr.tint[0], hr.tint[1], hr.tint[2], 255])); quad(gl.DST_COLOR, gl.ZERO); }   // (hour.tint: the light one colour all over)
         gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.activeTexture(gl.TEXTURE0); gl.useProgram(pr);
       }
       cost = performance.now() - t0;
       return el;
     }
-    return {build, steps, get water() { return cnt.water; }, draw, forget() { wipe = true; }, get cost() { return cost; }, get skies() { return skies; }, get holes() { return holes; },
+    return {build, steps, get water() { return cnt.water; }, draw, forget() { wipe = true; }, get lost() { const l = lost; lost = false; return l; }, get cost() { return cost; }, get skies() { return skies; }, get holes() { return holes; },
       at(x, y, z) { if (!lastM) return null; const f = project(lastM, x, y, z); return [(f[0] * .5 + .5) * el.width, (.5 - f[1] * .5) * el.height]; }, get faces() { return (cnt.main + cnt.model + cnt.over) / 6; }, get models() { return cnt.model / 6; }};
   }
   return {create};
