@@ -24,6 +24,7 @@ def under(game, x, y, z):
 
 
 def test_the_wall_north_of_a_cut_floor_is_drawn_as_the_lands_front_not_the_fill(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """A tunnel six down under the meadow, you in it. Its roof is lifted off: north of its floor the rock still
     stands up to the meadow, six levels, and its south face is there, earth in bands as any cliff's front (the
     tunnel's own two cells of wall, and the four over them that no face of the land's was made for: they were one
@@ -53,6 +54,7 @@ def test_the_wall_north_of_a_cut_floor_is_drawn_as_the_lands_front_not_the_fill(
 
 
 def test_no_px_is_left_to_the_fill_in_two_rooms_one_over_the_other(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """The worst of the flat fill: a pit with a hole under a tunnel (test_e2e_stacked.py), from the lower room and
     from the tunnel. The land is cut open, and every px of what was left out has a face behind it: a floor, a wall
     of the hole, a sliced top."""
@@ -99,6 +101,7 @@ def test_no_px_is_left_to_the_fill_on_a_stair_under_a_hill_and_behind_a_hill(gam
 
 
 def test_the_front_of_a_hole_is_one_straight_edge_and_a_higher_floor_stands_on_its_block(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """The pit, the hole under the tunnel and the tunnel's steps (test_e2e_stacked.py), from the lowest room. Each
     column was cut for its own floor: a dark square south of every step, a sill under the lowest floor alone ("a pit
     in front of the room"). The tiles in front are cut to the lowest of the row, all of them: one edge; a step's
@@ -126,6 +129,7 @@ def test_the_front_of_a_hole_is_one_straight_edge_and_a_higher_floor_stands_on_i
 
 
 def test_one_wall_has_one_light(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """A tunnel six down that opens into a pit three tiles wide at its east end, you in it. Its north wall and the
     pit's are one wall: the pit's is out of doors, so all of it is in the day's light, the tunnel's own two cells of
     wall as the cells cut through over them (they were in the cave's dark beside the pit's lit front: a seam down the

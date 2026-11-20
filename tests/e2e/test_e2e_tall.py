@@ -33,6 +33,7 @@ def test_far_under_the_land_the_screen_is_where_you_are_not_the_land_rows_away(g
     at five hundred you were not there at all. Within two dozen layers of the land drawn round you, nothing changes;
     further, that land is not drawn: earth, and the place you are in, seen as anywhere under a roof."""
     game.clear_area(12)
+    game.js("Underground.force = 0")   # (the land as the game paints it: the underground view, underground.js, is laid over it)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)
     corridor(game, x + 2, y, -20); corridor(game, x + 2, y + 3, -60); corridor(game, x + 2, y + 6, -500)

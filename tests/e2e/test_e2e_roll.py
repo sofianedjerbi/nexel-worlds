@@ -50,7 +50,7 @@ def test_in_the_roll_a_tiles_row_is_a_whole_number_of_px_of_its_paint_and_each_i
     game.wait("Math.abs(cam.y - myPos().y) < .01 && !arrivingNow && dirtyTiles.length === 0")
     game.sleep(400)
     got = game.js(SAME, [x + 2, y, 11, flat])
-    assert got["bad"] == [] and got["seen"] >= 6 and 3 <= got["least"] <= 8, got
+    assert got["bad"] == [] and got["seen"] >= 6 and 8 <= got["least"] <= 12, got   # (horizon 3: a row is never under half of itself)
 
 
 def test_walking_north_twelve_frames_the_rows_shown_are_the_ones_each_tiles_height_says(game):

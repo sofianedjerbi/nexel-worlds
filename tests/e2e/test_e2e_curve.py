@@ -50,7 +50,7 @@ def test_on_where_you_stand_nothing_moves_and_far_rows_go_up_to_a_horizon(game):
         assert (got["x"], got["y"]) == (x + dx, y + dy)
     tall = [game.js(PROJ, [x, y - k]) for k in range(1, 5)]      # (four rows north: before the horizon, Near)
     sizes = [foot - top for _, _, top, foot in tall]
-    assert all(a >= b for a, b in zip(sizes, sizes[1:])) and sizes[0] > 50 and sizes[-1] < 36, sizes      # (a gentler roll than it was: a row is never under a quarter of itself)
+    assert all(a >= b for a, b in zip(sizes, sizes[1:])) and sizes[0] > 50 and sizes[-1] < 40, sizes      # (a gentler roll than it was: a row is never under a quarter of itself)
     assert all(top >= c["line"] - 1e-6 for _, _, top, _ in tall)
 
 
@@ -119,7 +119,7 @@ def test_a_body_far_north_stands_on_the_bent_land(game):
     c, feet = got["c"], got["y"] + 16 * 4                        # (its feet: a tile under where its picture starts)
     assert c["yh"] < feet < c["y0"], got
     assert top - 1 <= feet <= foot + 1, (got, top, foot)         # on its own tile, as that tile is drawn
-    assert got["y"] > got["flat"] + 15, got                      # (the flat picture had it higher up: its row is nearer now)
+    assert got["y"] > got["flat"] + 8, got                       # (the flat picture had it higher up: its row is nearer now)
     # and it is drawn there, as big as ever: a cow's pale body somewhere in its tile's column over its feet
     seen = game.js("""([x, y]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => { const d = ctx.getImageData(Math.round((x - 40) * DPR), Math.round((y - 70) * DPR), Math.round(80 * DPR), Math.round(80 * DPR)).data; let n = 0;
       for (let i = 0; i < d.length; i += 4) if (!(d[i + 1] > d[i] + 15 && d[i + 1] > d[i + 2] + 15)) n++; ok(n / (DPR * DPR)); })))""", [px, foot])

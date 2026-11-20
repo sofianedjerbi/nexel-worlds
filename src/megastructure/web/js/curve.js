@@ -25,7 +25,7 @@
 // art": the land near the horizon is whole px of its paint, and readable: vox_curve.js). tuft, short: what goes down
 // behind the roll is cut along the grass of the ground before it, tufts up to `tuft` art px tall, and is not drawn
 // at all once under `short` art px of it are left.
-const CURVE = {near: {from: .55, horizon: .8, floor: .25}, far: {from: .55, horizon: .86, floor: .25}, lean: .6, foot: 13 / 16, fade: .5, depth: 1.5, tuft: 2, short: 6};
+const CURVE = {near: {from: .55, horizon: .8, floor: .5}, far: {from: .55, horizon: .86, floor: .5}, lean: .3, foot: 13 / 16, fade: .5, depth: 1.5, tuft: 2, short: 6};
 const CURVE_SKY = {      // each: by day, at dusk and dawn, at night
   top: [[.33, .6, .93], [.27, .3, .58], [.05, .07, .19]], low: [[.78, .9, .98], [.99, .68, .42], [.17, .21, .44]],
   cloud: [[1, 1, 1], [1, .82, .72], [.3, .34, .56]], far: [[.5, .62, .78], [.52, .36, .5], [.1, .13, .3]], near: [[.4, .6, .5], [.5, .36, .34], [.08, .13, .22]],

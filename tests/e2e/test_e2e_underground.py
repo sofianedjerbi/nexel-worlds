@@ -7,6 +7,7 @@ from test_e2e_digging import DRAWN, GREEN_ON_SCREEN, LAND, SEEN, cut, earth, sli
 
 
 def test_a_stair_dug_under_a_hill_is_a_burrow_in_the_bank_not_floors_lying_on_the_hill(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """doben4's stair, dug west from a pit, under a hill that rises as it goes down ("this is very weird and ugly !"):
     under a hill a view of its own drew each floor alone where it is drawn, tiles south of the stair, squares of earth
     on the hill. "everything should have the same view ! ... an unique 'player is hided, xray on' view": under a hill
@@ -36,6 +37,7 @@ def test_a_stair_dug_under_a_hill_is_a_burrow_in_the_bank_not_floors_lying_on_th
 
 
 def test_earth_left_between_two_tunnels_is_the_nearer_ones_back_wall_not_a_strip_of_meadow(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """Two tunnels side by side, four down, joined at one end: the earth between them hides the far one and is left
     out; where it stood the land as drawn showed, a strip of meadow between two floors, and the nearer tunnel was a
     floor lying on the grass. Then it was cut level with the floors: a row nobody dug, shown as gone. The earth
@@ -82,6 +84,7 @@ def test_at_night_a_fire_under_a_roof_lights_nothing_of_the_meadow_over_it(game)
 
 
 def test_light_is_one_shade_under_a_roof_no_edge_along_the_tunnel(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """"See how lightning is cut ? Uniformise it with a real lightning model": the earth cut through over a tunnel was
     a flat shade darker from the roof's edge on, a line down the wall where the roof starts, and a stair of light and
     dark along the floor. Under a roof the land has one shade, a cave's own dark (vox_engine.js): the tunnel's floor

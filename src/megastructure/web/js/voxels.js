@@ -107,6 +107,6 @@ const Voxels = (() => {
     ctx.globalAlpha = a; ctx.drawImage(pic, 0, 0, W, H); ctx.globalAlpha = 1;
     return true;
   }
-  const api = {made, work, frame, veil, engine, probe: false, fillPx: 0};
+  const api = {made, work, frame, veil, engine, host, probe: false, fillPx: 0};      // (host: the underground view, underground.js)
   return api;
 })();

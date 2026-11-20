@@ -3515,3 +3515,52 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - Left: a gorge's south hill is one dark mat; the cut's edge moves a tile at a time as you walk; a hard square
   round an islet under the natural look; dug stairs; a shaft reads as a trench; the overhang's rectangle; a
   floor dug into a cliff by water is lit as grass.
+
+## Iteration 184: under ground, the HD-2D slice for real (the approved "Your cave" look)
+
+- Hypothesis. The look the user approved on the mockup page (doben4's cave, commit 19c2741: natural wavy strata on
+  the cut, a warm lit tunnel, the slice growing in from the screen's edges) can be the game's own view under ground,
+  in place of a `?style25` mockup switch, without the five debug looks.
+- Which state. The backups of the mockup's painter after the approval (step1..4) all carry a later "flood": every
+  rock tile cut at the height of the nearest tile of your space. Re-shot at the page's spots it opens your whole
+  staircase as tall stepped cliffs (step1, room and half: unlike the page). Step1 with the cut of the approved pass
+  (a column is cut at the top of the air near your level) gives the page's layout: same strata, same lit space and
+  outlines, one sign. Kept from later: one depth sign (your own column), a cave over your space dashed, the view
+  on whole or not at all. Still unlike the page: the walls of your space are lower (cut at your level + 2) and the
+  picture sits about a level lower; at "half" (the stair) your tile reads as a dark tunnel, the page's stair was lit.
+  The ceiling of 4 and the old ceiling probe were tried: both made your own room a dark hollow, worse.
+- Change. vox_under.js (engine side, names no game global, in test_vox_layer.py's list): the painter, perspective
+  camera only; no iso/oblique camera, dither, checker, veil, box, land kept over you. underground.js (game side):
+  on when the cut is on (xray.a) and land is over your own tile, off in a place open to the sky round you at your
+  level (a canyon: today's view kept) and on the surface. voxels.js gives the host to it. Not brought: style25.js,
+  vox_style.js, under3d.js, vox_persp.js.
+- Measured. doben's save, port 7796: room, half, deep on (a = 1), the surface off; build 11-20 ms when you change
+  tile, under 1 ms a frame for the rest (post filters excepted). Tests: 533 unit. Browser: underground, xray,
+  section, holes, caves, stacked, digging, tall, edits, floors: all pass but one that fails on the code before too
+  (holes: a tile joining the cut comes in alone). Eight that read the cut's own px (underground 3, section 4, tall
+  1) now turn the new view off first (Underground.force = 0): they pin the game's painting under it.
+- Next. The user looks at game_room/half/deep; the stair at "half" and the wall height of your space to match the
+  page; a browser test of the new view itself (on under a roof, off in a canyon and on the meadow); a phone.
+
+## Iteration 185: your own space opened tile by tile: every tread lit, you never behind a wall
+
+- Hypothesis (the coordinator, on game_half of 174: "the stair is a thin dark slot, the cat cut in half"). Your own
+  connected space needs its own cut: the variant-A cut (air near your level) left the rock over each tread and the
+  wall in front of you.
+- Change (vox_under.js). A flood from your tile, 8 tiles at the most, each step a floor within 2 levels of the last
+  (the floor nearest the one you come from: a cave under you is not your floor). Each tile of it is cut just over
+  its own floor (floor + 2 kept the roof of a one-high tunnel: at "deep" you were a silhouette behind it); the two
+  tiles south of it (the camera's side) are cut to its floor. Rock elsewhere keeps the variant-A cut.
+- Measured. game_half: the treads of the stair lit and distinct, you whole; game_room and game_deep: the page's
+  layout, you whole (deep now matches the page closely); game_walk: 4 frames under ground down the stair, each with
+  the treads lit (the first 2 are open to the sky: the game's view). Unlike the page: at "half" the hall west of the
+  stair is a dark hollow (the page's was a lit grey stair), and the stair rising east shows as tall stepped blocks.
+  533 unit; browser underground, section, tall, holes, xray: 36 passed.
+- Next. The user's look at game_half/walk; the dark hollow west of the stair.
+
+## Iteration 186: horizon option 3, and the whole suite on both
+
+- Hypothesis. The user picked horizon option 3 on the mockup page: far rows never under half of their 16 px (floor .5) and high land leans half as much (lean .3), so the mountain near the horizon keeps its steps.
+- Change. curve.js CURVE floor .25 -> .5, lean .6 -> .3. Tests pinned to the old roll loosened (test_e2e_curve sizes and body offset, test_e2e_roll least row 8..12); five test_e2e_place tests that read the game's own cut painting turn the underground view off first (Underground.force = 0), like section/underground/tall.
+- Measured. Unit 533 passed; whole browser suite -n 3: 332 passed + 8 fixed as above (re-run 23 passed).
+- Next. A browser test of the underground view itself (on under a roof, off in a canyon, off on the meadow); the treads west of the stair still dark in the half-way view.

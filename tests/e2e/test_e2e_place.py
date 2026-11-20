@@ -6,6 +6,7 @@ from test_e2e_digging import DRAWN, LAND, SEEN, earth, green
 
 
 def test_what_is_dug_under_high_ground_is_seen_and_no_more_one_block_dug_opens_one_block(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """"im breaking only 1 bloc why the whole column is deleted ??": doben4's tunnel under a mountain. What is of the
     place is what was dug: one block dug at the tunnel's end and that tile's floor is of the place, a layer lower for
     the block under it, the tile past it not; the land over it is still there in the world, and the new floor is on the screen, earth."""
@@ -74,6 +75,7 @@ def test_who_walks_over_a_tunnel_goes_with_its_roof_shadow_and_all_and_who_is_be
 
 
 def test_dug_down_at_a_tunnels_end_the_tunnel_over_you_is_still_seen(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """"see doben4 position ? the topology of the space is.. hard to understand . how did he get there ? where's the
     exit ? why the tunnel is invisible ??": the place seen was what you could walk or drop to. Two layers under a
     tunnel's floor, in the hole dug at its end, the tunnel is a wall to climb: it went from the picture, and you
@@ -96,6 +98,7 @@ def test_dug_down_at_a_tunnels_end_the_tunnel_over_you_is_still_seen(game):
 
 
 def test_the_floor_you_stand_on_is_seen_under_a_higher_floor_drawn_over_it(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """Two layers are a tile up the screen: a floor two layers over yours and a tile in front of it is drawn on your
     own tile. Down a hole at the north end of a tunnel you stood on the tunnel's floor, to look at, and it went on
     south of you. Your own floor is seen: on the screen, where you stand, earth, a floor."""
@@ -139,6 +142,7 @@ def test_a_step_is_shut_from_a_room_too_low_to_jump_in_and_open_from_beside_it(g
 
 
 def test_a_tunnel_dug_under_a_tunnel_the_upper_one_is_seen_on_to_its_way_out(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """"see doben4 position ? the cave extend and has an exit, but im unable to see it. sucks.": he had dug a tunnel
     under his tunnel, from a pit at its end. A tile was of the place at one height: where the upper tunnel is over
     the lower one it was not gone through, and none of it was seen past there, the way out with it. A tile that is
@@ -160,6 +164,7 @@ def test_a_tunnel_dug_under_a_tunnel_the_upper_one_is_seen_on_to_its_way_out(gam
 
 
 def test_a_floor_stands_on_its_wall_whatever_is_under_it_and_nothing_of_the_place_is_seen_through(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """"the vizualisation issue is still bad. as doben4 i still dont see the exit. i dont see how to go up, where to
     dig to escape": a hole with a low nook, and his tunnel going by three layers over the hole's floor, rock between
     the two. The tunnel's floor was drawn against the nook's, the same earth, a line between: the floor he stood on
