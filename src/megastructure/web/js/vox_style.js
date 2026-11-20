@@ -87,7 +87,7 @@ const VoxStyle = (() => {
     }
     // this frame's sprites as one list of vertices (x, y, z, u, v, sil) and its runs: [first vertex, count, how: 0 as the land hides it, 1 over all, 2 its faint shape first where a wall hides it]
     function sprites(v, m, L, mp) {
-      const RW = v.w, RH = v.h, me = (v.sprites || []).find((s) => s.top), late = (s) => !!me && s.y > me.y, PX = (f) => [(f[0] * .5 + .5) * RW, (.5 - f[1] * .5) * RH];
+      const RW = v.w, RH = v.h, me = (v.sprites || []).find((s) => s.top), late = (s) => !!me && (s.ty !== undefined && !s.flat ? s.ty > Math.floor(me.y) : s.y > me.y), PX = (f) => [(f[0] * .5 + .5) * RW, (.5 - f[1] * .5) * RH];
       const order = [[], [], []]; for (const s of v.sprites || []) order[s.top ? 1 : late(s) ? 2 : 0].push(s);   // (?hd: you (top) are drawn after the water: you stand in it, not under it; what stands south of you after you, and where it covers you a checker of it)
       const d = new Float32Array((order[0].length + order[1].length + order[2].length + 1) * 6 * SV6), runs = [[], [], []], ups = []; let n = 0;
       for (let g = 0; g < 3; g++) for (const s of order[g]) {
@@ -96,9 +96,9 @@ const VoxStyle = (() => {
         const x0 = fx - s.fx, y0 = fy - s.fy, X = (px) => px / RW * 2 - 1, Y = (py) => 1 - py / RH * 2, z = s.d ? f[2] - .0004 : project(m, s.x, s.y + .45, s.z + .3)[2];
         let q = [[X(x0), Y(y0), z], [X(x0 + w), Y(y0), z], [X(x0 + w), Y(y0 + h), z], [X(x0), Y(y0 + h), z]], box = [x0, y0, x0 + w, y0 + h];
         if (s.flat) { q = [[-s.fx, s.fy], [w - s.fx, s.fy], [w - s.fx, s.fy - h], [-s.fx, s.fy - h]].map(([i, j]) => project(m, s.x + i / C, s.y, s.z + j / cfg.up)); const p0 = PX(q[0]), p1 = PX(q[2]); box = [p0[0], p0[1], p1[0], p1[1]]; q.forEach((c) => { c[2] -= .0004; }); }   // (a standing face in the land: its sprite a px of paint an art px of the land, as the land's own fronts)
-        const over = mp && s !== me && s.y > me.y && box[0] < mp[0] + 6 && box[2] > mp[0] - 6 && box[1] < mp[1] - 2 && box[3] > mp[1] - 15, how = s.top ? 1 : s.d ? 0 : 2;
+        const over = mp && s !== me && late(s) && box[0] < mp[0] + 6 && box[2] > mp[0] - 6 && box[1] < mp[1] - 2 && box[3] > mp[1] - 15, how = s.top ? 1 : s.d ? 0 : 2;
         const r = runs[g], lr = r[r.length - 1]; if (lr && lr[2] === how && how < 2) lr[1] += 6; else r.push([n / SV6, 6, how]);
-        for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = q[i][0]; d[n++] = q[i][1]; d[n++] = q[i][2]; d[n++] = (a.x + [0, 1, 1, 0][i] * a.w) / SW; d[n++] = (a.y + [0, 0, 1, 1][i] * a.h) / SW; d[n++] = over ? 2 : 0; }
+        for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = q[i][0]; d[n++] = q[i][1]; d[n++] = q[i][2]; d[n++] = (a.x + [0, 1, 1, 0][i] * a.w) / SW; d[n++] = (a.y + [0, 0, 1, 1][i] * a.h) / SW; d[n++] = s.ghost ? 3 : over ? 2 : 0; }
       }
       const quad = n / SV6; for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = [-1, 1, 1, -1][i]; d[n++] = [1, 1, -1, -1][i]; d[n++] = 0; d[n++] = [0, 1, 1, 0][i]; d[n++] = [0, 0, 1, 1][i]; d[n++] = 0; }   // (the last six: the whole picture, for the hour's light)
       return {d, runs, ups, quad, me};

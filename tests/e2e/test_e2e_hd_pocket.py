@@ -1,0 +1,69 @@
+"""The HD look under ground shows the way (hd.js, vox_style_land.js, vox_style_glsl.js): a floor you cannot walk to from
+where you are (a stair's treads two levels up, the passage past a wall) is drawn where it is, at its own height, cold
+(grey-blue, no warm light); the floor over your head is a see-through checker of it; and going under a roof the eye
+tilts over some 400 ms, never in a few frames."""
+
+from test_e2e_hd_sun import hd, settled
+
+# a tile's top as it is on the screen: [mean r, g, b, px warm (red well over blue), px cold (blue not under red)] of the px inside its four corners' box
+TOP = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => HdLook.screenOf(x + a, y + b, z)), k = devicePixelRatio;
+  const x0 = Math.ceil(Math.max(c[0][0], c[3][0]) * k) + 4, x1 = Math.floor(Math.min(c[1][0], c[2][0]) * k) - 4, y0 = Math.ceil(c[0][1] * k) + 4, y1 = Math.floor(c[2][1] * k) - 4;
+  const d = HdLook.read(x0, y0, x1 - x0, y1 - y0).data, s = [0, 0, 0, 0, 0], n = d.length / 4;
+  for (let i = 0; i < d.length; i += 4) { s[0] += d[i] / n; s[1] += d[i + 1] / n; s[2] += d[i + 2] / n; if (d[i] > d[i + 2] + 40) s[3]++; else if (d[i + 2] >= d[i] - 6) s[4]++; }
+  return s.map(Math.round); }"""
+
+
+def pocket(g):
+    """A passage 14 down, four tiles long; over its two east tiles a floor three levels up (a slab one level thick),
+    which goes on east: the stair you cannot reach from under it. -> (x, y, z): the passage's east end"""
+    x, y = g.pos()
+    z = g.js(f"topAt({x}, {y})")
+    g.rpc("dev_col", tiles=[[x - 3, y], [x - 2, y]], col=[z - 14, z - 12, z])
+    g.rpc("dev_col", tiles=[[x - 1, y], [x, y]], col=[z - 14, z - 12, z - 11, z - 9, z])
+    g.rpc("dev_col", tiles=[[x + 1, y], [x + 2, y], [x + 3, y]], col=[z - 11, z - 9, z])
+    g.sleep(800)
+    g.rpc("dev_teleport", x=x, y=y, z=z - 14)
+    g.wait("HdLook.u > .95 && HdLook.pit > 10 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=6000)
+    settled(g)
+    return x, y, z
+
+
+def test_in_a_pocket_under_a_higher_floor_that_floor_is_drawn_cold_and_the_one_over_you_is_a_checker(browser, server):
+    g = hd(browser, server)
+    g.rpc("dev_time", phase=.3)
+    x, y, z = pocket(g)
+    # the floor past the wall, three levels up: drawn (the land over it is cut away, the floor itself is left), and cold
+    assert g.js(f"HdLook.cut({x + 1}, {y}, {z - 10}) && !HdLook.cut({x + 1}, {y}, {z - 11})")
+    assert g.js(f"HdLook.cut({x + 3}, {y}, {z - 8}) && !HdLook.cut({x + 3}, {y}, {z - 11})")   # (three tiles off it lay under a sliced top of rock: opened from its own ceiling up)
+    mine, other = g.js(TOP, [x - 3, y, z - 14]), g.js(TOP, [x + 1, y, z - 11])
+    assert mine[0] > mine[2] + 40, mine                               # your own floor: warm
+    assert other[2] >= other[0] - 6 and other[3] == 0, other          # the other: no warm px at all
+    assert sum(other[:3]) > 150, other                                # ... and not black: it is seen
+    # the floor over the passage (the tile west of yours): one px in two of it, cold, the warm floor under it showing through
+    over = g.js(TOP, [x - 1, y, z - 11])
+    assert over[3] > 20 and over[4] > 20 and .5 < over[3] / over[4] < 2, over
+    assert g.js("HdLook.catSeen()") > .8
+
+
+def test_going_under_a_roof_and_out_the_eye_tilts_over_many_frames(browser, server):
+    g = hd(browser, server)
+    x, y = g.pos()
+    z = g.js(f"topAt({x}, {y})")
+    g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[z - 14, z - 11, z])
+    g.sleep(800)
+    base = g.js("HdLook.cam.pitch")
+    g.js("(() => { window.__p = []; const f = () => { __p.push(HdLook.cam.pitch); requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()")
+    g.rpc("dev_teleport", x=x, y=y, z=z - 14)
+    g.wait("HdLook.cam.pitch === 68", timeout=6000)
+    g.sleep(200)
+    p = g.js("__p.splice(0)")
+    mid = sorted(set(round(v, 2) for v in p if base + .01 < v < 67.99))
+    steps = [b - a for a, b in zip(p, p[1:])]
+    assert len(mid) >= 10, (len(mid), mid)                           # (it was most of the way in 8 frames)
+    assert min(steps) >= 0 and max(steps) < (68 - base) / 6, max(steps)      # (one way, no jump)
+    g.rpc("dev_teleport", x=x + 12, y=y, z=z)                        # out: it waits a moment (a roof's edge walked along does not tilt the eye at every tile), then eases back
+    g.wait(f"HdLook.cam.pitch === {base}", timeout=6000)
+    p = g.js("__p.splice(0)")
+    mid = sorted(set(round(v, 2) for v in p if base + .01 < v < 67.99))
+    steps = [b - a for a, b in zip(p, p[1:])]
+    assert len(mid) >= 10 and max(steps) <= 0 and min(steps) > -(68 - base) / 6, (len(mid), min(steps))

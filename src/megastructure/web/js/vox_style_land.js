@@ -93,6 +93,14 @@ const VoxStyleLand = (() => {
         if (reachA[i] !== NO) { const c = col(cx - r + x, cy - r + y); let z = reachA[i] + 1; while (z <= tp && !solidC(c, z)) z++; h = z - 1; }   // (your space: from its ceiling up)
         if (h < tp) cutA[i] = h; else if (ext >= pt.cap && vl < tp) veilA[i] = vl; else continue;
         box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y); box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y); }
+      // OTHER SPACES: a hollow under the rock the cut leaves (a passage beside yours, the next treads of a stair, the room past a wall), up to 8 levels of rock over it: opened from its own ceiling up, so its
+      // floor shows where it is, at its own height, in the look of a floor you cannot walk to (it lay hidden under a sliced top: nothing said where the way on was)
+      if (pt) for (let i = 0; i < D * D; i++) if (cutA[i] !== NO && reachA[i] === NO) { const c = col(cx - r + i % D, cy - r + (i / D | 0)), h = cutA[i]; if (!solidC(c, h)) continue; const tp = c[c.length - 1];
+        let f = h; while (f < h + 2 && solidC(c, f + 1)) f++; if (f < tp && !solidC(c, f + 1)) { cutA[i] = f; continue; }   // (the cut ran a level or two under a floor: through a stair's tread: that floor is left)
+        let z = h - 1; while (z >= h - 8 && solidC(c, z)) z--; if (z >= h - 8) cutA[i] = z; }
+      // THE FLOOR OVER YOUR HEAD: a tile of your space whose ceiling is the underside of another floor (a stair's treads over a passage, a room over a room): that floor's block, up to 3 levels thick, is drawn at its own
+      // height, see-through (a 2x2 checker, kind 4): you see you are under it -> [its lowest level drawn, its top], or null
+      const slab = (x, y) => { const i = at(x, y); if (!roofed(i) || cutA[i] === NO) return null; const c = col(x, y), tp = c[c.length - 1]; let f = cutA[i] + 1; if (!solidC(c, f)) return null; const z0 = f; while (f < tp && solidC(c, f + 1)) f++; return f < tp && f - reachA[i] <= 8 ? [Math.max(z0, f - 2), f] : null; };
       for (const i of reached) if (reachA[i] !== NO && roofed(i)) { const x = i % D, y = i / D | 0; box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y); box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y); }
       const sliced = (x, y) => { const i = at(x, y); return i >= 0 && cutA[i] !== NO && solidC(col(x, y), cutA[i] + 1); };   // (its top as drawn is a slice through the rock, not a floor)
       const cutOf = (x, y, top) => { const i = at(x, y); return i >= 0 && cutA[i] !== NO ? cutA[i] : top; };
@@ -113,7 +121,7 @@ const VoxStyleLand = (() => {
             const nc = col(nx, ny); let sky = (f === 0 ? z >= open : !nc || z > nc[nc.length - 1]) ? 1 : 0, s, kind = f === 0 ? 1 : 0, e = vl;
             if (f === 0) {
               const isCut = isC && solidC(c, z + 1), zt = isCut ? open : z; s = isCut ? front(x, y, z, top, true) : topSlot(x, y, zt, (px, at, st) => topPaint(x, y, zt, px, at, st));   // (a terrace of the pit shows the rock: its front's paint, no lip)
-              if (isCut) { kind = 2; sky = 0; }
+              if (isCut) { kind = 2; sky = 0; [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z)) e |= b; }); }   // (a cut top's edge over a face going down: a darker px, the shader's)
               else { [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && (sky || solidIn(x + dx, y + dy, z - 1))) e |= b; });   // (a lip: under a roof only at a step of one level, one you can take; a drop of two or more has none)
                 if (!sky) [[0, -1, 512], [1, 0, 1024], [0, 1, 2048], [-1, 0, 4096]].forEach(([dx, dy, b]) => { if (solidIn(x + dx, y + dy, z + 1) && !hop(x, y, x + dx, y + dy, z)) e |= b; });   // (a floor under a roof: a WALL at that edge (too high to jump, or no room to): its foot in shade; a step you can take has none)
                 if (!sky && reachOf(x, y) !== z) e |= 64; else if (!sky && dropA[vi]) e |= 128; }   // (ONE floor rule under the land: every floor of your space the same warm light, a room's or a stair's (they were two, by how many tiles lay on one level: a floor changed its light as you walked); 64: a floor under the land that is NOT of your space, you cannot walk to it: bare rock, no light, no lip; 128: one you can only drop to: dimmer)
@@ -131,6 +139,9 @@ const VoxStyleLand = (() => {
             if (!solidIn(x, y, z)) { if (wt && z === wz + 1) { quad(out.water, x, y, z - 2, FACES[0], 1, 1, 3, z, Math.max(0, wz - c[c.length - 1]), 0, null, true); wet++; } continue; }   // (e: how deep the water is here, levels)
             faces(x, y, z, out.main, z === cz);
           }
+          const sb = slab(x, y); if (sb) for (let z = sb[0]; z <= sb[1]; z++) for (const f of z === sb[1] ? [0, 2, 4, 5] : [2, 4, 5]) { const F = FACES[f], nx = x + F.n[0], ny = y + F.n[1], ns = f ? slab(nx, ny) : null; if (f && (solidIn(nx, ny, z) || (ns && z >= ns[0] && z <= ns[1]))) continue;
+            let e = 0; if (!f) [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { const n = slab(x + dx, y + dy); if (!n || n[1] !== z) e |= b; });   // (its outer edges: a pale px)
+            quad(out.main, x, y, z - 1, F, F.k, 0, 4, z, e, f ? front(x, y, z, sb[1]) : topSlot(x, y, sb[1], (px, at, st) => topPaint(x, y, sb[1], px, at, st)), null, f === 0); }
         }
         const ch = {sig: sigOf(bx, by), mk: host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "", lo, low, L, wet}; for (const k of KINDS) ch[k] = new Float32Array(out[k]); return ch;
       }
