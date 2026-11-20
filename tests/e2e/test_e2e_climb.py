@@ -120,7 +120,7 @@ def test_out_of_your_own_shaft_by_keys(game):
         game.press("x", 100)
         game.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)    # one press, one layer
         assert game.server()["z"] == -depth
-    assert "Dig into the wall" in game.actions() and "hill" not in game.actions()      # (a hole in a meadow: no hill)
+    assert game.js("facingNow(false).it.text") == "Dig into the wall" and game.actions() == ""      # (a hole in a meadow: no hill. Not written while the way out is shown: its key alone, wayshow.js)
     game.press(game.js(SLOT, "ladder"))
     for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
         game.face(dx, dy)
@@ -139,7 +139,7 @@ def test_out_of_your_own_shaft_by_keys(game):
 
 
 AIM = "(() => { const c = DigUp.aim(); return c && [c.x, c.y, c.z, c.text]; })()"
-MARKED = "([x, y, z]) => Marks.list.some((m) => m.to.x === x && m.to.y === y && m.to.z1 === z && m.to.z0 === z - 1)"
+WAYBOX = "([x, y, z]) => { const n = WayShow.cur && WayShow.cur.next; return !!n && n.x === x && n.y === y && n.z === z; }"
 
 
 def test_out_of_your_own_shaft_with_a_pickaxe_alone(game):
@@ -162,14 +162,14 @@ def test_out_of_your_own_shaft_with_a_pickaxe_alone(game):
     while z < 0:
         if (X, z) == (x + 1, -3):                              # on the first step, the land over you: the tree north, on top of the wall
             game.face(0, -1)
-            game.wait("$('prompts').innerText.includes('Dig on')", 3000)
+            game.wait("facingNow(false) && facingNow(false).it.text === 'Dig on'", 3000)   # (what Space would do there; while the way out is shown its own key alone is written: wayshow.js)
             assert "Chop" not in game.actions(), game.actions()
             game.face(1, 0)
         aim = game.js(AIM)
         if aim:
             assert aim[:3] == ([X, y, z + 2] if game.js(f"solidAt({X}, {y}, {z + 2})") else [X + 1, y, z + 2]), (X, z, aim)
-            game.wait(f"$('prompts').innerText.includes('{aim[3]}')", 3000)          # said beside the wall, with its key
-            game.page.wait_for_function(MARKED, arg=aim[:3], timeout=3000)           # and marked: that cell, at its own height
+            game.wait("document.getElementById('waycap') && document.getElementById('waycap').style.display === 'block' && document.getElementById('waycap').textContent === 'R'", 3000)   # its key, beside the block (the way out, shown)
+            game.page.wait_for_function(WAYBOX, arg=aim[:3], timeout=3000)           # and marked: that cell, at its own height
             said.append(aim[3])
             game.press("r", 100)
             game.wait(f"!solidAt({aim[0]}, {aim[1]}, {aim[2]}) && !myAction", 8000)

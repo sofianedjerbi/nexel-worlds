@@ -88,7 +88,7 @@ def test_out_of_your_own_shaft_with_the_thumbs(browser, server):
         for depth in (1, 2, 3, 4):
             tap("tB")
             g.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
-        assert g.server()["z"] == -4 and "Dig into the wall" in g.js("$('tA').innerText")
+        assert g.server()["z"] == -4 and g.js("facingNow(false).it.text") == "Dig into the wall"      # (not on the button while the way out is shown: its own button alone, wayshow.js)
         g.js("selectItem('ladder')")
         g.wait("$('tA').innerText.includes('Place ladder')", 3000)
         tap("tA")

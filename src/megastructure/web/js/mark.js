@@ -44,7 +44,7 @@ const Marks = (() => {
     const dt = Math.min(.1, (now - (at || now)) / 1000), want = forced || (faint ? [{tick: tickOf(a.p), x: a.p.x, y: a.p.y, z0: lv(a.p.x, a.p.y), z1: lv(a.p.x, a.p.y), colour: WHITE, flat: true, fill: 0, most: .4}] : a && a.it && (Build.on || tile || a.it.ghost) && !walk ? cells(a.p, a.it) : []);
     at = now;
     const up = !forced && typeof DigUp !== "undefined" && typeof inputMode !== "undefined" && inputMode === "keys" ? DigUp.aim() : null;      // (R's cell, digup.js: the block it will take, at its own height, its edges alone)
-    if (up) want.push({x: up.x, y: up.y, z0: up.z - 1, z1: up.z, colour: WHITE, fill: 0, lift: 0, dot: true});
+    if (up && !up.way) want.push({x: up.x, y: up.y, z0: up.z - 1, z1: up.z, colour: WHITE, fill: 0, lift: 0, dot: true});      // (the way out has its own box on its block: wayshow.js)
     const grow = Math.sin(now / 1000 * 4.5) > .3 ? 1 : 0, k = 1 - Math.exp(-dt * 22);
     if (want.length) {
       const one = want.length === 1 && shown.length === 1 && shown[0].a > .05 && Math.abs(want[0].x - shown[0].x) + Math.abs(want[0].y - shown[0].y) <= 4;
