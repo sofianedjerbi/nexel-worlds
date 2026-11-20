@@ -59,13 +59,12 @@ def test_letters_through_a_mailbox(game, friend):
     assert "come see my farm" in friend.js("$('letters').innerText")
 
 
-def test_watching_as_a_spectator(browser, server, game):
+def test_following_someone_by_their_link(browser, server, game):
     page = browser.new_page(viewport={"width": 1000, "height": 700})
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
-    page.goto(server)
+    page.goto(f"{server}/?follow={game.name}")
     page.wait_for_function("typeof ready !== 'undefined'")
-    page.click("#watch")
     page.wait_for_function("blocks.size > 0", timeout=8000)
     page.wait_for_timeout(1500)
     assert game.name in page.evaluate("$('agents').innerText")
@@ -154,9 +153,8 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     game.sleep(900)
     assert game.toast() == "Goal done: Pick berries"
     page = browser.new_page()                                                      # someone watching
-    page.goto(server)
+    page.goto(f"{server}/?follow={game.name}")                                     # (by the link that follows someone: no menu)
     page.wait_for_function("typeof agents !== 'undefined' && agents.some((a) => a.online)", timeout=15000)
-    page.click("#watch")                                                           # (past the first screen's menu: "Just watch")
     assert page.evaluate("$('side').getBoundingClientRect().width") > 100 and page.evaluate("$('brand').innerText").startswith("NEXEL WORLDS")
     assert page.evaluate("$('who').getBoundingClientRect().width") == 0 and "help (H)" in page.evaluate("$('brand').innerText")
     page.close()

@@ -48,11 +48,6 @@ def test_the_first_screen_shows_an_island_of_its_own_at_once(browser, server):
     vols = page.evaluate("[heard(cam.x, cam.y, 12, 'People').vol, heard(cam.x + 6, cam.y, 12, 'Work').vol, heard(cam.x + 20, cam.y, 12, 'Work'), SOUND.scene.People, SOUND.scene.rest, SOUND.music]")
     assert vols[0] == vols[3] and abs(vols[1] - vols[4] / 2) < 1e-9 and vols[2] is None and vols[4] < vols[3] < vols[5], vols
     assert page.evaluate("document.querySelector('#joinbox .logo') !== null && titleOpen()")
-    page.click("#watch")                                            # just watch: the island is forgotten, the world's own land comes
-    page.wait_for_function("!TitleScene.on && blocks.size > 0 && !arrivingNow", timeout=20000)
-    assert page.evaluate("[...blocks.values()].every((b) => Math.abs(b.bx) < 20 && Math.abs(b.by) < 20)") and not any(c[1] in ("Mira", "Pip") for c in page.evaluate(CAST))
-    assert {"watch", "region"} <= set(page.evaluate(ASKED)) and page.evaluate("[cam.x, cam.y]") == [0, 0]
-    assert page.evaluate("ears === null && heard(0, 0, 12, 'Work') === null")                            # (and its ears: nobody hears the world for you)
     page.close()
     assert not errors, errors
 

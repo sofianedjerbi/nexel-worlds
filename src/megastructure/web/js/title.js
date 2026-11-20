@@ -1,13 +1,13 @@
 // The first screen: the classic menu (css/title.css). A list played with the arrows and Enter, or the mouse: who
-// you are (Left and Right change it), Wake up, Just watch, Help, Sound. Your character stands in the window beside
+// you are (Left and Right change it), Wake up, Help, Sound. Your character stands in the window beside
 // the field your name is written in, in the colour that name will have in the world (a colour comes from a name).
 // The name used to float over a character standing outside the window: "player name position is awkward".
 // A world that asks who you are (account.js) shows two steps before that one, one at a time: your email, then the
 // code mailed to it. Each step has its own field and its own rows; the others are not on the screen.
 
 const TITLE = {at: 1, step: "me", first: {me: "join", mail: "sendcode", code: "login"}, field: {me: "name", mail: "email", code: "code"},
-  steps: {me: ["racepick", "join", "watch", "titlehelp", "titlesound", "titleopts", "logout"], mail: ["sendcode", "watch", "titlehelp", "titlesound", "titleopts"],
-    code: ["login", "startover", "watch", "titlehelp", "titlesound", "titleopts"]},
+  steps: {me: ["racepick", "join", "titlehelp", "titlesound", "titleopts", "logout"], mail: ["sendcode", "titlehelp", "titlesound", "titleopts"],
+    code: ["login", "startover", "titlehelp", "titlesound", "titleopts"]},
   get rows() { return this.steps[this.step].filter((id) => id !== "logout" || ACCOUNT.session); }};
 const titleOpen = () => $("joinbox").style.display !== "none" && !me;
 function titleDraw() {
@@ -39,7 +39,6 @@ function titleMe(now) {                                      // you, breathing, 
 const TITLE_GO = {
   racepick() { TITLE.at = TITLE.rows.indexOf("join"); titleGo(TITLE.at); },
   join() { const n = $("name").value.trim(); if (n) { joinGame(n); titleDraw(); } else { $("name").classList.add("need"); $("name").focus(); } },
-  watch() { $("joinbox").style.display = "none"; titleDraw(); },
   titlehelp() { $("helpbtn").click(); },
   titlesound() { setMuted(!muted); titleDraw(); },
   titleopts() { openMenu("opts"); },                         // (menu.js: the settings)

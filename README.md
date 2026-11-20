@@ -16,7 +16,7 @@ uv run python -m megastructure.cli --name me     # terminal client
 uv run pytest -q
 ```
 
-Open http://127.0.0.1:7777/ to watch live, follow agents, or type a name and press Enter to play.
+Open http://127.0.0.1:7777/, type a name and press Enter to play (`/?follow=<name>` follows an agent without playing).
 
 ### Asking who players are (optional)
 

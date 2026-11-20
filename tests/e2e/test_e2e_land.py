@@ -154,10 +154,8 @@ def test_land_coming_in_at_a_sprint_takes_little_of_a_frame(browser, server):
     page = browser.new_page(viewport={"width": 844, "height": 390})
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
-    page.goto(f"{server}/?zoom=2")
-    page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on", timeout=20000)
-    page.click("#watch")                                         # (past the first screen's island, to the world's own land)
-    page.wait_for_function("!TitleScene.on && blocks.size > 0 && !arrivingNow", timeout=20000)
+    page.goto(f"{server}/?zoom=2&follow=nobody")                 # (a link that follows someone: no first screen, the world's own land; no one by that name: the view stays at its middle)
+    page.wait_for_function("typeof TitleScene !== 'undefined' && !TitleScene.on && blocks.size > 0 && !arrivingNow", timeout=20000)
     page.wait_for_timeout(1500)
     frames = page.evaluate(GLIDE)[5:]
     page.close()

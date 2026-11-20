@@ -39,7 +39,6 @@
   button:hover { filter:brightness(1.08); }
   button.ghost { background:#e9cfa2; color:var(--ink); border-color:#c9a27a; }
   #joinbox .row { display:flex; gap:8px; } #joinbox input { flex:1; }
-  #joinbox .watch { margin-top:10px; }
   #where { color:var(--ink2); margin-bottom:3px; }
   #doing { color:#b0692a; min-height:16px; }
   #hotbar { display:flex; gap:calc(2 * var(--u)); flex-wrap:nowrap; justify-content:center; }

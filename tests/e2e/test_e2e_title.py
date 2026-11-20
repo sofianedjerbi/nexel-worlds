@@ -34,7 +34,7 @@ def test_the_first_screen_is_a_menu_played_with_the_keys(browser, server):
     assert js("myRace") == "bunny" and js("$('name').value") == "Ash" and js("document.querySelector('#racepick button.on').dataset.race") == "bunny"
     page.keyboard.press("ArrowLeft")
     assert js("myRace") == "cat"
-    for want in ("join", "watch", "titlehelp", "titlesound"):
+    for want in ("join", "titlehelp", "titlesound"):
         page.keyboard.press("ArrowDown")
         assert js(ON) == want
     was = js("muted")
@@ -43,12 +43,7 @@ def test_the_first_screen_is_a_menu_played_with_the_keys(browser, server):
     page.keyboard.press("Enter")
     if SHOT:
         page.screenshot(path=f"{SHOT}/title.png")
-    page.keyboard.press("ArrowUp"); page.keyboard.press("ArrowUp")
-    assert js(ON) == "watch"
-    page.keyboard.press("Enter")                                           # just watch: the menu goes, the brand is back
-    assert js("$('joinbox').style.display") == "none" and js("getComputedStyle($('brand')).display") != "none"
-    page.click("#brand")                                                   # and comes back from the brand
-    assert js("document.body.classList.contains('title')")
+    assert js("document.getElementById('watch') === null")                # (no "Just watch": you play)
     page.click("#join")
     page.wait_for_function("me === 'Ash' && meObs", timeout=25000)
     assert js("$('joinbox').style.display") == "none" and not js("document.body.classList.contains('title')")
@@ -60,21 +55,21 @@ def test_the_first_screen_fits_a_phone(browser, server):
     """"Make the homepage more mobile friendly: better menu design (don't change desktop)". Upright: the name, the
     line, the window, one under the other. On its side the window was taller than the screen: the game's name was off
     it and its line ran behind the window; it is beside the name now, whole. Under a thumb the list is buttons: Wake up
-    across the window, the others two abreast, each a finger high (they were lines of text 34 px high)."""
+    across the window, the others (Sound, Settings) two abreast, each a finger high (they were lines of text 34 px high)."""
     box = """(() => { const b = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom].map(Math.round); };
-      return [b(document.querySelector('#joinbox .menu')), b(document.querySelector('#joinbox .logo')), b($('join')), b($('splash')), b($('watch')), b($('titlesound')), b($('titleopts'))]; })()"""
+      return [b(document.querySelector('#joinbox .menu')), b(document.querySelector('#joinbox .logo')), b($('join')), b($('splash')), b($('titlesound')), b($('titleopts'))]; })()"""
     for w, h in ((390, 844), (844, 390), (740, 360)):
         page = browser.new_page(viewport={"width": w, "height": h}, has_touch=True, is_mobile=True)
         page.goto(server)
         page.wait_for_function("typeof ready !== 'undefined' && document.querySelectorAll('#racepick button').length === 5")
-        menu, logo, join, say, watch, sound, opts = r = page.evaluate(box)
+        menu, logo, join, say, sound, opts = r = page.evaluate(box)
         assert menu[0] >= 0 and menu[1] >= 0 and menu[2] <= w and menu[3] <= h and logo[1] >= 0 and logo[0] >= 0, (w, h, r)     # all of it on the screen
         if w < h:
             assert logo[3] <= say[1] + 2 and say[3] <= menu[1], r           # the name, the line, the window: one under the other
         else:
             assert logo[2] <= menu[0] and say[2] <= menu[0] and logo[3] <= say[1] + 2, r    # the name and its line beside the window, not behind it
         assert join[3] - join[1] >= 48 and join[0] <= menu[0] + 14 and join[2] >= menu[2] - 14, r     # Wake up: across the window, a thumb high
-        assert watch[3] - watch[1] >= 44 and opts[3] - opts[1] >= 44 and watch[1] == sound[1] and watch[2] <= sound[0] and opts[1] >= watch[3] and opts[2] - opts[0] >= menu[2] - menu[0] - 28, r   # the others: two abreast, the one left over across
+        assert sound[3] - sound[1] >= 44 and opts[3] - opts[1] >= 44 and sound[1] == opts[1] and sound[2] <= opts[0] and sound[1] >= join[3], r   # the others: two abreast, under Wake up
         assert page.evaluate("getComputedStyle($('join')).backgroundColor") == "rgb(255, 241, 168)"       # (lit, whatever row the keys would be on)
         assert not page.evaluate("/Tab/.test($('splash').textContent)")     # (no key to hold on a phone)
         if SHOT:
@@ -83,7 +78,7 @@ def test_the_first_screen_fits_a_phone(browser, server):
     page = browser.new_page(viewport={"width": 1280, "height": 760})       # a desk's screen: the list as it was
     page.goto(server)
     page.wait_for_function("typeof ready !== 'undefined' && document.querySelectorAll('#racepick button').length === 5")
-    assert page.evaluate("[getComputedStyle(document.querySelector('#joinbox .menu')).display, getComputedStyle($('watch')).backgroundColor, $('watch').getBoundingClientRect().width > 250]") == ["flex", "rgba(0, 0, 0, 0)", True]
+    assert page.evaluate("[getComputedStyle(document.querySelector('#joinbox .menu')).display, getComputedStyle($('titlehelp')).backgroundColor, $('titlehelp').getBoundingClientRect().width > 250]") == ["flex", "rgba(0, 0, 0, 0)", True]
     page.close()
 
 
@@ -98,7 +93,7 @@ def test_the_first_screen_is_itself_before_any_script_has_come(browser, server):
     js = page.evaluate
     assert js("[document.body.classList.contains('title'), document.body.classList.contains('touch'), typeof TITLE]") == [True, True, "undefined"]
     shown = lambda q: js(f"(() => {{ const e = document.querySelector('{q}'), r = e.getBoundingClientRect(); return getComputedStyle(e).display !== 'none' && r.width > 0 && r.height > 0; }})()")
-    assert shown("#joinbox .menu") and shown("#name") and shown("#join") and shown("#watch") and not shown("#brand") and not shown("#side") and not shown("#email")
+    assert shown("#joinbox .menu") and shown("#name") and shown("#join") and shown("#titlesound") and not shown("#brand") and not shown("#side") and not shown("#email")
     menu = js("(() => { const e = document.querySelector('#joinbox .menu'), r = e.getBoundingClientRect(), c = getComputedStyle(e); return [Math.round(r.width), Math.round(r.bottom), c.backgroundColor, c.boxShadow !== 'none']; })()")
     assert menu[0] >= 280 and menu[1] <= 844 and menu[2] == "rgb(232, 207, 166)" and menu[3], menu      # its window, with its edge
     assert js("document.getElementById('join').getBoundingClientRect().height") >= 48

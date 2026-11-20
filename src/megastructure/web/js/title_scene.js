@@ -10,7 +10,7 @@
 // one of its people, then another. Its sounds are the game's own (an axe, a tree coming down, water, their voices),
 // heard from the middle of the view and kept under the music.
 // Its people are their own (title_cast.js): they choose what to do, and no two visits are the same.
-// It stops when you wake up or choose to watch: the land is forgotten and the world's own is asked for.
+// It stops when you wake up: the land is forgotten and the world's own is asked for.
 
 const TitleScene = (() => {
   const OX = -8000, OY = -8000, M = typeof TITLE_MAP === "undefined" ? null : TITLE_MAP, DAY = 2000, DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
@@ -103,7 +103,7 @@ const TitleScene = (() => {
     sea(); step();
     S.timer = setInterval(step, 100);
   }
-  function stop() {                                          // you wake up, or watch: the island is forgotten, the world's land is asked for
+  function stop() {                                          // you wake up: the island is forgotten, the world's land is asked for
     if (!S.on) return;
     S.on = false; clearInterval(S.timer); ears = null;
     ents.clear(); blocks.clear(); dirtyTiles.length = 0; requested.clear(); lastWatch = ""; arrivingNow = true; fireAt = [];

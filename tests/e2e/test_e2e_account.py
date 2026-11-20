@@ -60,7 +60,7 @@ def test_you_log_in_with_a_code_mailed_to_you(browser, door):
     js = page.evaluate
     shown = "[...document.querySelectorAll('#joinbox .menu > *')].filter((e) => e.offsetParent).map((e) => e.id || e.querySelector('input').id)"
     assert js("TITLE.step") == "mail" and js("document.activeElement.id") == "email"
-    assert js(shown) == ["email", "sendcode", "watch", "titlehelp", "titlesound", "titleopts"]                 # one step on the screen: no name, no races yet
+    assert js(shown) == ["email", "sendcode", "titlehelp", "titlesound", "titleopts"]                 # one step on the screen: no name, no races yet
     page.keyboard.type("not an email")
     page.keyboard.press("Enter")
     page.wait_for_function("$('email').classList.contains('need')")
@@ -68,14 +68,14 @@ def test_you_log_in_with_a_code_mailed_to_you(browser, door):
     page.fill("#email", "Milo@Example.com")
     page.keyboard.press("Enter")
     page.wait_for_function("TITLE.step === 'code'")
-    assert js(shown) == ["code", "login", "startover", "watch", "titlehelp", "titlesound", "titleopts"] and js("document.activeElement.id") == "code"
+    assert js(shown) == ["code", "login", "startover", "titlehelp", "titlesound", "titleopts"] and js("document.activeElement.id") == "code"
     code = service.mailer.codes["milo@example.com"]
     page.keyboard.type(f"{(int(code) + 1) % 10 ** 6:06d}")                                        # a wrong one: said, and the field is yours again
     page.wait_for_function("$('code').classList.contains('need') && $('code').value === ''")
     assert js("TITLE.step") == "code" and "not the code" in js("$('toastt').textContent")
     page.keyboard.type(code)                                                                      # six digits: no key to press
     page.wait_for_function("TITLE.step === 'me' && document.activeElement.id === 'name'")
-    assert js(shown) == ["name", "raceslot", "join", "watch", "titlehelp", "titlesound", "titleopts", "logout"] and js("$('logoutv').textContent") == "Milo@Example.com"
+    assert js(shown) == ["name", "raceslot", "join", "titlehelp", "titlesound", "titleopts", "logout"] and js("$('logoutv').textContent") == "Milo@Example.com"
     assert js("!$('name').readOnly")
     assert js(HELLO, {"name": "Thief", "token": "x"})["error"] == "login_needed"                  # the door: no ticket, no way in
     assert js(HELLO, {"name": "Thief", "token": "x", "ticket": "made.up"})["error"] == "bad_ticket"
@@ -106,5 +106,5 @@ def test_a_world_without_accounts_asks_nothing(browser, server):
     page.goto(server)
     page.wait_for_function("typeof ready !== 'undefined'")
     assert page.evaluate("TITLE.step") == "me" and page.evaluate("getComputedStyle($('logout')).display") == "none"
-    assert page.evaluate("TITLE.rows") == ["racepick", "join", "watch", "titlehelp", "titlesound", "titleopts"]
+    assert page.evaluate("TITLE.rows") == ["racepick", "join", "titlehelp", "titlesound", "titleopts"]
     page.close()

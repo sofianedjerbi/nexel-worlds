@@ -3564,3 +3564,8 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - Change. curve.js CURVE floor .25 -> .5, lean .6 -> .3. Tests pinned to the old roll loosened (test_e2e_curve sizes and body offset, test_e2e_roll least row 8..12); five test_e2e_place tests that read the game's own cut painting turn the underground view off first (Underground.force = 0), like section/underground/tall.
 - Measured. Unit 533 passed; whole browser suite -n 3: 332 passed + 8 fixed as above (re-run 23 passed).
 - Next. A browser test of the underground view itself (on under a roof, off in a canyon, off on the meadow); the treads west of the stair still dark in the half-way view.
+
+## Iteration 174: no "Just watch"
+- Asked: "remove just watch option from the entire game". The first screen's row is gone (index.html, title.js rows and handler, main.js, a dead style); the demo's "What's new" row now sits before Help (tools/build_pages.py looked for the Just watch button). On a phone, Sound and Settings stand two abreast under Wake up.
+- Kept: a link `/?follow=<name>` still follows an agent without playing (the agents are the players; README says so). Tests that went past the menu by "Just watch" now come by that link (social, zoom, land); the brand-brings-the-menu-back check went with the row.
+- Tests: 533 unit; title, title scene, account, zoom, land, social in Chrome pass (the glide's frame-time and the speech test failed under -n 2 and in a checkout without sounds, pass alone).

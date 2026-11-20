@@ -49,9 +49,8 @@ def test_the_keys_of_the_main_row_zoom_on_any_layout_and_for_a_watcher_too(game,
     assert game.js("zoom") == 3
     game.page.keyboard.press("Escape")
     page = browser.new_page(viewport={"width": 1000, "height": 700})            # someone who only watches
-    page.goto(server + "/?zoom=3")
+    page.goto(f"{server}/?zoom=3&follow={game.name}")
     page.wait_for_function("typeof ready !== 'undefined'")
-    page.click("#watch")
     page.keyboard.press("Minus")
     page.wait_for_function("zoom === 2", timeout=2000)
     page.keyboard.press("Minus")                               # a watcher may see wide

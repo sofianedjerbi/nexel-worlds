@@ -56,9 +56,9 @@ def build(out: Path):
     shutil.copy(ROOT / "design" / "enemies" / "site" / "horizon.html", out / "horizon.html")
     shutil.copytree(ROOT / "design" / "enemies" / "site" / "horizon", out / "horizon")
     page = (out / "index.html").read_text()
-    box = '<button class="item" id="watch"><span>Just watch</span></button>'      # (the first screen's menu: one row more, online)
-    assert box in page, "the join box changed"
-    (out / "index.html").write_text(page.replace(box, box + '\n    <a class="item" href="showcase.html"><span>What\'s new</span></a>'))
+    box = '<button class="item" id="titlehelp">'      # (the first screen's menu: one row more online, before Help)
+    assert page.count(box) == 1, "the join box changed"
+    (out / "index.html").write_text(page.replace(box, '<a class="item" href="showcase.html"><span>What\'s new</span></a>\n    ' + box))
     music_page(out)
     stamp(out)
     (out / ".nojekyll").write_text("")
