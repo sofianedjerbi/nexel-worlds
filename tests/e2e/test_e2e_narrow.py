@@ -23,10 +23,16 @@ def test_a_wall_one_tile_wide_has_one_top_from_end_to_end(game):
     top, from the first tile's middle to the last one's, no px is darker than the flat green (no rim, no dash at a joint)."""
     game.clear_area(8)
     x, y = game.pos()
-    game.stamp(2, -4, ["...."], levels=["3333"]); game.stamp(-4, -3, ["."] * 4, levels=["3"] * 4)
+    # (where no tile of the run has one of the grass's tufts on it, which the meadow puts on three tiles in ten by the
+    # tile's own place, tiles.js drawBlobLayer: a tuft's darker green in the rows read was "a dash", where you woke
+    # deciding: four runs in six once the players woke elsewhere. README.md rule 3)
+    bare = "([x, y, dx, dy]) => [0, 1, 2, 3].every((k) => hash(x + k * dx, y + k * dy, 3) >= .3)"
+    ex, ey = next((i, j) for j in (-4, -5, -3, -2, -1) for i in (2, 1, 3, 4) if game.js(bare, [x + i, y + j, 1, 0]))      # (twenty places and more: one is bare, but for one run in some hundreds)
+    sx, sy = next((i, j) for i in (-4, -5, -6, -3, -7, -8) for j in (-3, -4, -2, -1) if game.js(bare, [x + i, y + j, 0, 1]))
+    game.stamp(ex, ey, ["...."], levels=["3333"]); game.stamp(sx, sy, ["."] * 4, levels=["3"] * 4)
     ready(game, .375)
-    ew = game.js(PX, [[x + 2, y - 4, 8 + i, j + .5, 3] for j in (5, 6, 7) for i in range(49)])
-    ns = game.js(PX, [[x - 4, y - 3, i + .5, 8 + j, 3] for i in (6, 8, 9) for j in range(49)])
+    ew = game.js(PX, [[x + ex, y + ey, 8 + i, j + .5, 3] for j in (5, 6, 7) for i in range(49)])
+    ns = game.js(PX, [[x + sx, y + sy, i + .5, 8 + j, 3] for i in (6, 8, 9) for j in range(49)])
     for name, row in (("west-east", ew), ("north-south", ns)):
         flat = sorted(lum(c) for c in row)[len(row) // 2]
         dark = [i for i, c in enumerate(row) if lum(c) < flat - 10]

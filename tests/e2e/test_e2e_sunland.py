@@ -95,6 +95,7 @@ def test_with_no_shader_and_with_no_sun_asked_for_the_land_is_as_it_is_painted(g
     game.js(RESET)
 
 
+@pytest.mark.realtime
 def test_the_land_north_of_water_is_seen_in_it(game):
     game.flat()                                                  # (it measures parts of the picture north of you by the flat picture's px, and two frames px for px: the curved world's sky moves)
     game.clear_area(8)

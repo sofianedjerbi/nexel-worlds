@@ -35,7 +35,8 @@ function nearby(pick) {
 // What an argument can be: [{put, hint}] (none: it is yours to write: a number, a text)
 function valuesOf(cmd, key, what) {
   const inv = meObs ? meObs.self.inventory : {};
-  if (/^\w+(\|\w+)+$/.test(what)) return what.split("|").map((v) => ({put: v, hint: {N: "north", E: "east", S: "south", W: "west"}[v] || ""}));
+  const alts = /^\w+(\|\w+)+(?=$|,)/.exec(what);                 // ("N|E|S|W", and "N|E|S|W, or up (...)": the list is what is listed; dig's said more and had no list any more)
+  if (alts) return alts[0].split("|").map((v) => ({put: v, hint: {N: "north", E: "east", S: "south", W: "west"}[v] || ""}));
   if (what.startsWith("bool")) return [{put: "true", hint: ""}];
   if (key === "recipe") return Object.keys(recipes).map((r) => ({put: r, hint: fmt(recipes[r].inputs)}));
   if ((key === "item" && cmd !== "take") || key === "with")       // what you carry (to eat: what can be eaten)

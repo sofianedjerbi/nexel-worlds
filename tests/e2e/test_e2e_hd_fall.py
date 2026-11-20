@@ -3,6 +3,7 @@ hurts has a dark rim (a step has none); walking off it the eye stays while you f
 frame of it a jump; and what stands in front of you is one px in two round you, you behind it."""
 
 
+import pytest
 from test_e2e_hd_sun import hd
 
 # a px of the land's top at (x, y, z), a tile's fraction in: the sum of r, g, b
@@ -20,6 +21,7 @@ def cliff(g):
     return x, y
 
 
+@pytest.mark.realtime
 def test_the_edge_over_a_drop_that_hurts_has_a_dark_rim_and_a_step_has_none(browser, server):
     g = hd(browser, server)
     g.js("setOpt('shader', 'off'); setOpt('clouds', 0); setOpt('shadows', 0)")
@@ -33,6 +35,7 @@ def test_the_edge_over_a_drop_that_hurts_has_a_dark_rim_and_a_step_has_none(brow
     assert step > mid * .7 and east < step * .65, (mid, step, east)     # the step's edge: the cap's own outline, no more (374 of 484; the rim 187)
 
 
+@pytest.mark.realtime
 def test_off_a_cliff_the_eye_stays_while_you_fall_and_comes_down_with_no_jump(browser, server):
     g = hd(browser, server)
     x, y = cliff(g)

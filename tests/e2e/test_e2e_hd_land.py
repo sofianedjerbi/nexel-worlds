@@ -106,6 +106,8 @@ def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at
             assert g.js("HdLook.catSeen()") > .8
             g.wait("!HdLook.busy && HdLook.u === 1")
             g.sleep(300)
+            # (the pit as it stays: on a busy machine the land north of the room was still cut, 0.3 s after the look said it was done, one run in three with two browsers at work)
+            g.settle(f"HdLook.cut({x}, {y + 4}, {z}) && !HdLook.cut({x}, {y + 14}, {z}) && !HdLook.cut({x}, {y - 3}, {z})")
             cuts = g.js(f"[HdLook.cut({x}, {y + 4}, {z}), HdLook.cut({x}, {y + 14}, {z}), HdLook.cut({x}, {y - 3}, {z})]")
             assert cuts == [True, False, False], (w, h, cuts)   # (the south side steps up 3 levels a tile: the land's top is back 10 tiles south at most; it was 16)
         finally:
