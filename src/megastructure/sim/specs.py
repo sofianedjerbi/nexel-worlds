@@ -27,10 +27,13 @@ TOOL_SPECS = {
                  "-512); over a hollow you fall in (a fall of more than 3 layers hurts: 5 hp a layer). You can jump "
                  "onto ground one layer higher; higher than that is a wall: dig toward it with a pickaxe to take out "
                  "the block in front of you (a tunnel). Caves are empty space under the hills (in_cave in your stats)"},
-    "dig": {"args": {**DIR_ARG, "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)", "z": "int (optional): the height of something built over the ground"},
+    "dig": {"args": {"dir": "N|E|S|W, or up (the block over your own head)", "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)",
+                     "z": "int (optional): the height of something built over the ground, or of the block of land to dig (in front of you: from your z to your z + 2)"},
             "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground (needs a hoe); with z on bare ground, the ground there comes down a layer (a hole: faster with a pickaxe). By hand, "
                     "wood takes 4x and stone 6x as long as with an axe / pickaxe; ore needs a pickaxe. A built block in front of you (a step, "
-                    "the floor you stand level with) comes back into your pack, what stands on it first"},
+                    "the floor you stand level with) comes back into your pack, what stands on it first. "
+                    "Out of a hole, or up through the land, cut a step: dig dir=up (the block over your head, if there is one), dig the block in front at z = your z + 2 "
+                    "(your head's height), then step that way: you jump onto the block left under it. Again for each layer"},
     "place": {"args": {**DIR_ARG, "item": "str", "text": "str (what a sign or a flag says, optional)", "z": "int (optional): a height, to build over the ground"},
               "desc": "place an item: furniture/walls/etc. as blocks; dirt fills holes or water, and on open ground raises it a layer; path lays cobble, plank makes a bridge (water) or floor (land); "
                       "roof lays a roof block over that tile, a storey up (3 layers: it rests on a wall or door under it, or holds to a block beside it; you can stand on it; under a roof you are sheltered). "

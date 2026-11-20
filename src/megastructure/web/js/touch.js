@@ -15,7 +15,7 @@ function touchUI() {
   for (const [id, label] of [["tA", "A"], ["tB", "B"]]) el("div", id, `<span class="cap"></span><span class="lbl">${label}</span>`, btns);
   const ctx_ = el("div", "tctx", "");
   el("div", "tUp", "Up", ctx_); el("div", "tDown", "Down", ctx_); el("div", "tBuild", "Build", ctx_);   // (build mode, build.js: a phone had no way into it, nor a layer up or down)
-  el("div", "tEat", "Eat", ctx_); el("div", "tPick", "Pick up", ctx_);
+  el("div", "tDig", "Dig up", ctx_); el("div", "tEat", "Eat", ctx_); el("div", "tPick", "Pick up", ctx_);
   const top = el("div", "ttop", "");
   el("div", "tBag", "Items", top); el("div", "tCraft", "Craft", top); el("div", "tTalk", "Talk", top); el("div", "tMenu", "Menu", top);   // (Menu: the settings, leaving: a phone has no Esc, and had no way to them once in the world)
   return {btns, ctx_};
@@ -128,7 +128,7 @@ if (TOUCH) {
   $("craftfind").placeholder = "Search"; $("say").placeholder = "Say something…";                     // (no Enter, no Esc: the keyboard's own key sends, a tap elsewhere gives up)
   for (const ev of ["gesturestart", "dblclick"]) document.addEventListener(ev, (e) => e.preventDefault(), {passive: false});   // (no pinch or double tap of the page itself)
   document.addEventListener("contextmenu", (e) => { if (!/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) e.preventDefault(); });      // (a long press: no menu of the browser's)
-  tapButton($("tEat"), () => useSelected());
+  tapButton($("tEat"), () => useSelected()); holdButton($("tDig"), () => DigUp.run());      // (digup.js: the way out of a hole)
   tapButton($("tPick"), () => act("pick_up", {}));
   tapButton($("tBag"), () => toggleBag());
   tapButton($("tCraft"), () => toggleCraft());
@@ -148,14 +148,14 @@ if (TOUCH) {
   setInterval(() => {
     if (!me) return;
     const rows = availableActions(), get = (k) => rows.find((r) => r[0] === k);
-    const a = Build.on ? rows[1] : get("Space"), b = get("X"), bd = Build.on || get(capOf("build")), s = [a && a[1], a && a[2], b && b[1], !!get("E"), !!get("F"), Build.on, !!bd].join("|");
+    const a = Build.on ? rows[1] : get("Space"), b = get("X"), up = !Build.on && rows.find((r) => r[0] === capOf("up") && r[3]), bd = Build.on || get(capOf("build")), s = [a && a[1], a && a[2], b && b[1], up && up[1], !!get("E"), !!get("F"), Build.on, !!bd].join("|");
     if (s !== sig) {
       sig = s;
       $("tA").querySelector(".cap").textContent = a ? a[1] : "";
       $("tA").classList.toggle("bad", !!(a && a[2])); $("tA").classList.toggle("idle", !a);
       $("tB").querySelector(".cap").textContent = b ? b[1] : "";
       $("tB").classList.toggle("idle", !b);
-      $("tEat").style.display = get("E") ? "flex" : "none";
+      $("tEat").style.display = get("E") ? "flex" : "none"; $("tDig").style.display = up ? "flex" : "none"; $("tDig").textContent = up ? up[1] : "Dig up";
       $("tPick").style.display = get("F") ? "flex" : "none";
       $("tBuild").style.display = bd ? "flex" : "none"; $("tBuild").textContent = Build.on ? "Done" : "Build"; $("tUp").style.display = $("tDown").style.display = Build.on ? "flex" : "none";
     }

@@ -5,7 +5,11 @@ And a hole dug beside you: `dig` aimed at a tile's ground with its height (`z`) 
 a layer at a time, by hand or faster with a pickaxe (build mode's X on bare ground: web/js/build.js). Or a cell inside
 the land that is open on a side (beside a hole, a tunnel's end): it goes and what is over it stays, a roof. So a way
 down is dug as a tunnel, the room to stand in a step at a time ("like minecraft ... l shape tunnels. this enforce me
-to dig huge columns"): build mode's X with the cursor in the ground."""
+to dig huge columns"): build mode's X with the cursor in the ground.
+And up: `dig` with dir "up" takes the cell over your own head (dig_over). With the cell in front of you at your head's
+height (`dig` with dir and z: your z + 2) that is a step: head room to jump, and the block to jump onto. So whoever
+can dig is never shut in: a stair is cut up out of any hole, two cells a layer, by hand too ("how do i climb up?
+why i cant??": under their own stair a pickaxe dug level and down, and nothing dug upward)."""
 
 from ..gen import LOW
 from ..tiles import BLOCKS, DEEPER, DEPTH, GROUNDS
@@ -50,6 +54,17 @@ class Underground:
                 return None
         return self._lower(a, x, y, z, self.held(a, args) == "pickaxe")
 
+    def dig_over(self, a: Agent, args):
+        """`dig` with dir "up": the cell over your own head (your z + 2: the one that stops a jump). Land: it goes, what
+        is over it stays. Something built (a floor, a step of stairs): it comes back into your pack, as from beside."""
+        x, y, z = a.x, a.y, self.height(a) + 2
+        if self.floors.get(x, y, z) is not None:
+            return self.take_block(a, x, y, z, self.held(a, args))
+        if not self.world.solid(x, y, z):
+            raise ActionError("bad_target", f"nothing over your head to dig. For a step up: dig the block in front of you at "
+                                            f"your head's height (dig with dir and z={z}), then step onto the block under it")
+        return self._lower(a, x, y, z, self.held(a, args) == "pickaxe", inside=True)
+
     def open_cell(self, x: int, y: int, z: int) -> bool:
         """A cell of the land with air on a side of it (over it, under it, beside it): it can be dug."""
         w = self.world
@@ -59,8 +74,10 @@ class Underground:
     def _lower(self, a: Agent, x: int, y: int, z: int, pick: bool, inside: bool = False):
         self.reach(a, x, y, z=z)
         h = self.height(a)
-        if inside and not (abs(x - a.x) + abs(y - a.y) == 1 and h <= z <= h + 2):   # (in front of you: not through the land)
-            raise ActionError("out_of_range", "a cell inside the land is dug from beside it, from your feet to your head")
+        over = (x, y, z) == (a.x, a.y, h + 2)                # (the cell over your own head: dig_over)
+        if inside and not over and not (abs(x - a.x) + abs(y - a.y) == 1 and h <= z <= h + 2):   # (in front of you: not through the land)
+            raise ActionError("out_of_range", "a cell inside the land is dug from beside it, from your feet to your head, "
+                                              "or over your own head (dir: up)")
         for again in (False, True):
             if z <= DEEPEST:
                 raise ActionError("cannot_dig", "this is as deep as it goes")
@@ -78,7 +95,7 @@ class Underground:
         self.tire(a, "dig")
         self.set_cell(x, y, z, False, by=a, cause="dig")
         a.bump("dug")
-        return {"got": {got: 1}, "level": max(s for s in self.world.surfaces(x, y) if s < z) if any(s < z for s in self.world.surfaces(x, y)) else z - 1}
+        return {"got": {got: 1}, "cell": [x, y, z], "level": max(s for s in self.world.surfaces(x, y) if s < z) if any(s < z for s in self.world.surfaces(x, y)) else z - 1}
 
     def _diggable_down(self, a: Agent) -> bool:
         g, b = self.world.get(a.x, a.y)
