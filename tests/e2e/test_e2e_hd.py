@@ -160,7 +160,7 @@ def test_a_built_house_has_its_roof_outside_and_is_open_inside(browser, server):
         g.rpc("dev_teleport", x=x0 + 1, y=y0 + 1, z=0); g.arrive()
         inside = g.js(AT, over)
         assert not g.js(ROOF, [x0 + 1, y0 + 1]) and not g.js(ROOF, [x0 + 3, y0 + 2]), "the roof is still there inside"
-        assert far(out, inside) and g.js("HdLook.catSeen()") > .8, (out, inside)
+        assert sum(abs(p - q) for p, q in zip(out, inside)) > 20 and g.js("HdLook.catSeen()") > .8, (out, inside)   # (the roof's wood, then the north wall's planks seen crisp: nothing nearer than ten tiles is under the lens now)
     finally:
         g.page.close()
 

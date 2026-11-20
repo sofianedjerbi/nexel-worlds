@@ -211,7 +211,7 @@ function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);
   if (FOODS.includes(name)) return act("eat", {item: name});
   if (WEAR[name]) return act("wear", {item: name});
-  toast(`Face a tile and press Space (or click it) to use the ${label(name)}.`);
+  toast(TOUCH ? `Face a tile and tap the big button to use the ${label(name)}.` : `Face a tile and press ${capOf("use")} (or click it) to use the ${label(name)}.`);
 }
 let mailAtTile = null;   // the mailbox the panel is open on (posting and taking aim at it exactly)
 function openMailPanel(p) {

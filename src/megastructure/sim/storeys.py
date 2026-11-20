@@ -232,6 +232,8 @@ class Storeys:
         x, y = self.target(a, args, flat=True)
         if item == "stairs":                             # (a flight of them, down from the higher place beside: climbing.py)
             return self.lay_stairs(a, x, y)
+        if item == "ladder" and self.ladder_spot(a, x, y):   # (facing a wall: on your own tile, against it: climbing.py)
+            return self.stand_ladder(a)
         s = self.surface(a, x, y, args.get("z"))         # (the height it is about: named, or the ground nearest your own)
         on_land = self.floors.get(x, y, s) is None       # ...which is the land's own, not a built block
         if item == "ladder" and on_land and not self.leans(x, y, s):

@@ -20,9 +20,9 @@ const VoxStyle = (() => {
   function look(e, c) { const z = norm(sub(e, c)), x = norm(cross([0, 1, 0], z)), y = cross(z, x); return new Float32Array([x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot(x, e), -dot(y, e), -dot(z, e), 1]); }
   const gp = (x, y, z) => [x, z * H, y], same = (a, b) => { if (!a || !b || a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; };
   function create(host, cfg) {
-    let el = null, lastM = null, lastB = [0, 0], gl = null, pr = null, sp = null, tex = null, wtx = null, htx = null, ltx = null, atx = null, stale = true, cost = 0, spill = false, wipe = false, mk = false, lost = false, wat = null, fresh = true, calls = 0, why = "";
+    let el = null, lastM = null, lastB = [0, 0], gl = null, pr = null, sp = null, tex = null, wtx = null, htx = null, ltx = null, atx = null, stx = null, otx = null, sver = 0, sorg = [0, 0, 1], sAt = 0, sBusy = false, sKey = "", space = null, rev = null, rvx = 0, stale = true, cost = 0, spill = false, wipe = false, mk = false, lost = false, wat = null, fresh = true, calls = 0, why = "";
     let pit = null, clip = [-1e9, 1e9, -1e9, 1e9], wet = 0, far = new Float32Array(0), made = 0, again = true, lastU = null, lastS = null, lastG = null, lastD = null, hk = "", lk = "";
-    const dirty = [], row = new Uint32Array(AW * C), U = {}, units = {}, cnt = {main: 0, model: 0, far: 0, ghost: 0, shade: 0, shade2: 0, water: 0}, bufs = {};
+    const dirty = [], row = new Uint32Array(AW * C), glow = new Map(), U = {}, units = {}, cnt = {main: 0, model: 0, far: 0, ghost: 0, shade: 0, shade2: 0, water: 0}, bufs = {};
     // the paints: A the ones the land now drawn was made with (and what is drawn each frame over it: shadows, ghosts), B the ones of a land being made (A's and its new ones; after a wipe from none); B becomes A when that land is done
     // (B is made when the land being made first asks for a paint A has not: a land made again with nothing new in it copies nothing)
     let A = {slots: new Map(), px: new Uint32Array(AW * AW), n: 0}, B = null, spare = new Uint32Array(AW * AW), fromNone = false;
@@ -38,9 +38,9 @@ const VoxStyle = (() => {
       if (gl) return true;
       el = document.createElement("canvas"); gl = el.getContext("webgl2", {antialias: false, depth: true, stencil: true, preserveDrawingBuffer: true}); if (!gl) return false;
       const prog = (vs, fs, names) => { const p = gl.createProgram(); for (const [ty, s] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) { const sh = gl.createShader(ty); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); gl.attachShader(p, sh); } names.forEach((n, i) => gl.bindAttribLocation(p, i, n)); gl.linkProgram(p); return p; };
-      pr = prog(VS, FS, ["p", "uv", "a", "e"]); sp = prog(SV, SF, ["p", "uv", "s"]); [tex, wtx, htx, ltx, atx] = [0, 0, 0, 0, 0].map(() => gl.createTexture());
+      pr = prog(VS, FS, ["p", "uv", "a", "e"]); sp = prog(SV, SF, ["p", "uv", "s"]); [tex, wtx, htx, ltx, atx, stx, otx] = [0, 0, 0, 0, 0, 0, 0].map(() => gl.createTexture());
       // a list of faces on the GPU: what was made (stat) and after it room for what changes by the frame (its tail)
-      for (const k of ["land", "shade", "water", "spr"]) { const b = bufs[k] = {buf: gl.createBuffer(), vao: gl.createVertexArray(), n: 0, cap: 0, stat: new Float32Array(0)}; gl.bindVertexArray(b.vao); gl.bindBuffer(gl.ARRAY_BUFFER, b.buf);
+      for (const k of ["land", "old", "shade", "water", "spr"]) { const b = bufs[k] = {buf: gl.createBuffer(), vao: gl.createVertexArray(), n: 0, cap: 0, stat: new Float32Array(0)}; gl.bindVertexArray(b.vao); gl.bindBuffer(gl.ARRAY_BUFFER, b.buf);
         (k === "spr" ? [[3, 0], [2, 12], [1, 20]] : [[3, 0], [2, 12], [4, 20], [1, 36]]).forEach(([sz, off], i) => { gl.enableVertexAttribArray(i); gl.vertexAttribPointer(i, sz, gl.FLOAT, false, (k === "spr" ? SV6 : N) * 4, off); }); }
       gl.bindVertexArray(null); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, atx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SW, SW, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); near(); gl.activeTexture(gl.TEXTURE0);
       return true;
@@ -56,9 +56,16 @@ const VoxStyle = (() => {
     function* steps(...a) {   // (a tile a step: the caller spreads it over frames; only while it runs do the paints asked for go to the land being made)
       const t0 = performance.now(), g = land.steps(...a); let r;
       for (let u0 = t0, what = "first";;) { mk = true; try { r = g.next(); } finally { mk = false; } const u1 = performance.now(); units[what] = Math.max(units[what] || 0, u1 - u0); if (r.done) break; yield; u0 = performance.now(); what = r.value || "tile"; }   // (units: the longest step of each kind, ms: what a frame can be held by)
-      const tS = performance.now(), R = r.value, q = R.parts; pit = R.pit; clip = R.clip; wet = R.wet; far = q.far; made = R.made;
+      const tS = performance.now(), R = r.value, q = R.parts, pit0 = pit; pit = R.pit; space = R.space; sBusy = true; clip = R.clip; wet = R.wet; far = q.far; made = R.made;
+      // THE PIT CHANGED (it opens, it shuts, another floor of a tile is yours): the land drawn till now is kept (old) and both are drawn for a third of a second: the new one inside a ring round you that grows from the
+      // nearest tile that changed to the farthest (shutting: the old one inside a ring that shrinks), as much of the picture each frame. It was one frame: a fifth of the px at once, the light with them (and a pit grew in five sizes, each a land made again)
+      const ch = []; if (gl && pit0 && lastM && cnt.main) { const top = (x, y) => { const c = host.column(x, y); return c && c.length ? c[c.length - 1] : 0; }, of = (pp, x, y) => { const i = x - pp.x, j = y - pp.y, v = i < 0 || j < 0 || i >= pp.D || j >= pp.D ? -32768 : pp.cut[j * pp.D + i]; return v === -32768 ? null : v; };
+        for (const pp of [pit0, pit]) if (pp.n) for (let i = 0; i < pp.D * pp.D; i++) if (pp.cut[i] !== -32768) { const x = pp.x + i % pp.D, y = pp.y + (i / pp.D | 0), a = of(pit0, x, y), b = of(pit, x, y); if (a !== b && (pp === pit || b === null)) ch.push([x, y, a === null ? top(x, y) : a, b === null ? top(x, y) : b]); } }
+      if (ch.length && !(rev && rev.ch.length * 2 >= ch.length)) { [bufs.old, bufs.land] = [bufs.land, bufs.old];   // (while one such change is shown a smaller one waits for nothing: it is there at once, a tile or two; the first goes on)
+        rev = {ch, n: cnt.main + cnt.model + cnt.far, shut: pit.n < pit0.n, t0: -1}; }
       if (start()) { fill(bufs.land, cat(q.main, q.model), far); fill(bufs.shade, q.shade, new Float32Array(0)); fill(bufs.water, cat(q.water, q.sea), new Float32Array(0)); }
       Object.assign(cnt, {main: q.main.length / N, model: q.model.length / N, far: far.length / N, shade: q.shade.length / N, water: (q.water.length + q.sea.length) / N});
+      if (B && B.full && rev && !rev.own) { [tex, otx] = [otx, tex]; rev.own = true; }   // (this land's paints were all made again, each at a new place: the old land keeps the old sheet)
       if (B) { spare = A.px; if (B.full || B.add.length > 500) stale = true; else dirty.push(...B.add); A = {slots: B.slots, px: B.px, n: B.n}; B = null; }   // (only the paints this land added are sent)
       again = true; lastG = lastD = null; cost = performance.now() - t0; units.send = Math.max(units.send || 0, performance.now() - tS);
     }
@@ -87,7 +94,7 @@ const VoxStyle = (() => {
     }
     // this frame's sprites as one list of vertices (x, y, z, u, v, sil) and its runs: [first vertex, count, how: 0 as the land hides it, 1 over all, 2 its faint shape first where a wall hides it]
     function sprites(v, m, L, mp) {
-      const RW = v.w, RH = v.h, me = (v.sprites || []).find((s) => s.top), late = (s) => !!me && s.y > me.y, PX = (f) => [(f[0] * .5 + .5) * RW, (.5 - f[1] * .5) * RH];
+      const RW = v.w, RH = v.h, me = (v.sprites || []).find((s) => s.top), late = (s) => !!me && (s.ty !== undefined && !s.flat ? s.ty > Math.floor(me.y) : s.y > me.y), PX = (f) => [(f[0] * .5 + .5) * RW, (.5 - f[1] * .5) * RH];
       const order = [[], [], []]; for (const s of v.sprites || []) order[s.top ? 1 : late(s) ? 2 : 0].push(s);   // (?hd: you (top) are drawn after the water: you stand in it, not under it; what stands south of you after you, and where it covers you a checker of it)
       const d = new Float32Array((order[0].length + order[1].length + order[2].length + 1) * 6 * SV6), runs = [[], [], []], ups = []; let n = 0;
       for (let g = 0; g < 3; g++) for (const s of order[g]) {
@@ -96,15 +103,28 @@ const VoxStyle = (() => {
         const x0 = fx - s.fx, y0 = fy - s.fy, X = (px) => px / RW * 2 - 1, Y = (py) => 1 - py / RH * 2, z = s.d ? f[2] - .0004 : project(m, s.x, s.y + .45, s.z + .3)[2];
         let q = [[X(x0), Y(y0), z], [X(x0 + w), Y(y0), z], [X(x0 + w), Y(y0 + h), z], [X(x0), Y(y0 + h), z]], box = [x0, y0, x0 + w, y0 + h];
         if (s.flat) { q = [[-s.fx, s.fy], [w - s.fx, s.fy], [w - s.fx, s.fy - h], [-s.fx, s.fy - h]].map(([i, j]) => project(m, s.x + i / C, s.y, s.z + j / cfg.up)); const p0 = PX(q[0]), p1 = PX(q[2]); box = [p0[0], p0[1], p1[0], p1[1]]; q.forEach((c) => { c[2] -= .0004; }); }   // (a standing face in the land: its sprite a px of paint an art px of the land, as the land's own fronts)
-        const over = mp && s !== me && s.y > me.y && box[0] < mp[0] + 6 && box[2] > mp[0] - 6 && box[1] < mp[1] - 2 && box[3] > mp[1] - 15, how = s.top ? 1 : s.d ? 0 : 2;
+        const over = mp && s !== me && late(s) && box[0] < mp[0] + 6 && box[2] > mp[0] - 6 && box[1] < mp[1] - 2 && box[3] > mp[1] - 15, how = s.top ? 1 : s.d ? 0 : 2;
         const r = runs[g], lr = r[r.length - 1]; if (lr && lr[2] === how && how < 2) lr[1] += 6; else r.push([n / SV6, 6, how]);
-        for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = q[i][0]; d[n++] = q[i][1]; d[n++] = q[i][2]; d[n++] = (a.x + [0, 1, 1, 0][i] * a.w) / SW; d[n++] = (a.y + [0, 0, 1, 1][i] * a.h) / SW; d[n++] = over ? 2 : 0; }
+        for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = q[i][0]; d[n++] = q[i][1]; d[n++] = q[i][2]; d[n++] = (a.x + [0, 1, 1, 0][i] * a.w) / SW; d[n++] = (a.y + [0, 0, 1, 1][i] * a.h) / SW; d[n++] = s.ghost ? 3 : over ? 2 : 0; }
       }
       const quad = n / SV6; for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = [-1, 1, 1, -1][i]; d[n++] = [1, 1, -1, -1][i]; d[n++] = 0; d[n++] = [0, 1, 1, 0][i]; d[n++] = [0, 0, 1, 1][i]; d[n++] = 0; }   // (the last six: the whole picture, for the hour's light)
       return {d, runs, ups, quad, me};
     }
+    // THE LIGHT OF YOUR SPACE: a number a tile (glow: tile -> [its floor's level, warm 0..1, dim 0..1]) the land's painter reads for each floor under the land (a small picture, a px a tile: stx). It goes to what the last land found
+    // (space.cls: 1 walked to: warm; 2 dropped to: warm and dim; else cold) over 300 ms in six steps: a floor that joins your space warms, one that leaves it cools. It was baked in the faces: every floor flipped in one frame
+    function light(now) {
+      if (!sBusy) return; const k = Math.min(.1, Math.max(0, now - sAt)) / .3, sp = space, first = !glow.size, D = sp ? sp.D : sorg[2]; sAt = now; sBusy = false; if (sp) sorg = [sp.x, sp.y, D];
+      const cls = (i, j, lv) => { if (!sp || i < 0 || j < 0 || i >= D || j >= D) return 0; const c = sp.cls[j * D + i]; return (c === 1 || c === 2) && sp.lvl[j * D + i] === lv ? c : 0; };
+      if (sp) for (let i = 0; i < D * D; i++) { const lv = sp.lvl[i], c = cls(i % D, i / D | 0, lv); if (!c) continue; const key = (sp.x + i % D) + "," + (sp.y + (i / D | 0)), g = glow.get(key); if (!g || g[0] !== lv) glow.set(key, [lv, first ? 1 : 0, first && c === 2 ? 1 : 0]); }
+      const px = new Uint8Array(D * D * 4); let h = "";
+      for (const [key, g] of glow) { const [x, y] = key.split(",").map(Number), i = x - sorg[0], j = y - sorg[1], on = cls(i, j, g[0]), w = on ? 1 : 0, d = on === 2 ? 1 : 0;
+        g[1] += Math.max(-k, Math.min(k, w - g[1])); g[2] += Math.max(-k, Math.min(k, d - g[2])); if (g[1] !== w || g[2] !== d) sBusy = true; if (!on && g[1] <= 0) { glow.delete(key); continue; }
+        if (i >= 0 && j >= 0 && i < D && j < D) { const o = (j * D + i) * 4; px[o] = Math.round(g[1] * 6) * 42.5; px[o + 1] = (g[0] + 1024) % 256; px[o + 2] = Math.round(g[2] * 6) * 42.5; h += o + ":" + px[o] + "," + px[o + 1] + "," + px[o + 2] + ";"; } }
+      h += sorg; if (h === sKey) return; sKey = h; sver++;
+      gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, stx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, D, D, 0, gl.RGBA, gl.UNSIGNED_BYTE, px); near(); gl.activeTexture(gl.TEXTURE0);
+    }
     function draw(v) {
-      if (!start()) return null;
+      if (!start()) return null; light(v.t || 0);
       const t0 = performance.now(), L = v.light, RW = v.w, RH = v.h, W = v.water, hr = v.hour, sized = el.width !== RW || el.height !== RH;
       if (sized) { el.width = RW; el.height = RH; }
       const {m, eye} = matrix(v); lastM = m; lastB = [v.bend || 0, v.at[1]]; const lamp = gp(...v.at);
@@ -115,7 +135,9 @@ const VoxStyle = (() => {
       const wup = !!(W && W.canvas && W.canvas.width && wet && (!wat || (W.ver !== undefined ? W.ver !== wat[5] : Math.abs((v.t || 0) - wat[4]) > .1 || !v.t)));   // (the water's picture: when the host made a new one (ver), ten times a second; with no water in the land, never)
       const wv = W && W.canvas && W.canvas.width && wet ? (wup ? [W.x, W.y, W.canvas.width, W.canvas.height] : wat.slice(0, 4)) : [0, 0, 0, 0];
       const un = new Float32Array([RW, RH, ...m, ...eye, ...lamp, v.bend || 0, ...L.fogc, L.lr, L.day, L.amb, L.fog[0], L.fog[1], L.rim, L.wa ?? .62, v.dep || 0, L.sun ?? 1,
-        ...(L.wtint || new Float32Array(20)), ...wv, ...disc, ...clip, ...L.clear, L.ca ?? 1, ...(hr ? [1, ...hr.wash, ...(hr.tint || [-1, -1, -1]), hr.lit ? (hr.lit._v === undefined ? NaN : hr.lit._v) : -1] : [0])]);
+        ...(L.wtint || new Float32Array(20)), ...wv, ...disc, ...clip, ...L.clear, L.ca ?? 1, sver, ...sorg, rvx, ...(hr ? [1, ...hr.wash, ...(hr.tint || [-1, -1, -1]), hr.lit ? (hr.lit._v === undefined ? NaN : hr.lit._v) : -1] : [0])]);
+      rvx = 0; if (rev && !mp) rev = null; if (rev) { const t = v.t || 0; if (rev.t0 < 0) { rev.t0 = t; let lo = 1e9, hi = 0; for (const [x, y, a, b] of rev.ch) for (const z of [a, b]) { const f = project(m, x + .5, y + .5, z), d = Math.hypot((f[0] * .5 + .5) * RW - mp[0], (.5 - f[1] * .5) * RH - mp[1]); if (d < lo) lo = d; if (d > hi) hi = d; } rev.r0 = Math.max(0, lo - 20); rev.r1 = Math.min(hi + 20, Math.hypot(Math.max(mp[0], RW - mp[0]), Math.max(mp[1], RH - mp[1])) + 4); rev.T = rev.r1 - rev.r0 < 70 ? .2 : .4; if (rev.r0 >= rev.r1) rev = null; }   // (no further than the picture's corners; the ring's radius grows evenly: on a screen wider than high that is about as many px a frame)
+        const k = rev ? (t - rev.t0) / rev.T : 1, kk = rev && rev.shut ? 1 - k : k; if (k >= 1) rev = null; else rvx = Math.max(.5, rev.r0 + (rev.r1 - rev.r0) * Math.max(0, kk)); }
       const gA = new Float32Array(gh), dA = new Float32Array(sd), gSame = same(gA, lastG), dSame = same(dA, lastD);
       why = again ? "land" : sized ? "size" : stale || dirty.length ? "paints" : S.ups.length ? "pictures" : wup ? "water" : !gSame ? "ghosts" : !dSame ? "shadows" : !same(S.d, lastS) ? "sprites" : !same(un, lastU) ? "view " + un.findIndex((x, i) => !lastU || x !== lastU[i]) : "";   // (why this frame is drawn again; "": it is the last one)
       if (!why) { fresh = false; cost = performance.now() - t0; return el; }   // (nothing changed: the picture drawn last frame is this frame's)
@@ -127,17 +149,18 @@ const VoxStyle = (() => {
       if (dirty.length) { const rows = new Map(); for (const sl of dirty) { const j = sl / SL | 0, i = sl % SL, r = rows.get(j); if (r) { r[0] = Math.min(r[0], i); r[1] = Math.max(r[1], i); } else rows.set(j, [i, i]); }   // (new paints: each row of the sheet's slots in one piece, not a piece a paint)
         for (const [j, [i0, i1]] of rows) { const w = (i1 - i0 + 1) * C; for (let k = 0; k < C; k++) row.set(A.px.subarray((j * C + k) * AW + i0 * C, (j * C + k) * AW + i0 * C + w), k * w); gl.texSubImage2D(gl.TEXTURE_2D, 0, i0 * C, j * C, w, C, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(row.buffer, 0, w * C * 4)); } dirty.length = 0; }
       if (wup) { gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, wtx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, W.canvas); near(); wat = [W.x, W.y, W.canvas.width, W.canvas.height, v.t || 0, W.ver]; }   // (with where it was then)
-      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, wtx); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, atx);
+      gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, stx); gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, wtx); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, atx);
       for (const c of S.ups) gl.texSubImage2D(gl.TEXTURE_2D, 0, c._a.x, c._a.y, gl.RGBA, gl.UNSIGNED_BYTE, c);
       gl.activeTexture(gl.TEXTURE0);
       gl.useProgram(pr); const u = (n) => U[n] || (U[n] = gl.getUniformLocation(pr, n)), us = (n) => U["s" + n] || (U["s" + n] = gl.getUniformLocation(sp, n));
-      gl.uniformMatrix4fv(u("m"), false, m); gl.uniform1i(u("t"), 0); gl.uniform1i(u("wt"), 2); gl.uniform3fv(u("lamp"), [lamp[0], lamp[1] + .6, lamp[2]]); gl.uniform3fv(u("eye"), eye);
+      gl.uniformMatrix4fv(u("m"), false, m); gl.uniform1i(u("t"), 0); gl.uniform1i(u("wt"), 2); gl.uniform1i(u("gw"), 3); gl.uniform3fv(u("go"), sorg);   // (not "st": the sprites' names are kept under "s" + name) gl.uniform3fv(u("lamp"), [lamp[0], lamp[1] + .6, lamp[2]]); gl.uniform3fv(u("eye"), eye);
       gl.uniform3fv(u("ctr"), lamp); gl.uniform1f(u("bend"), v.bend || 0); gl.uniform3fv(u("fogc"), L.fogc); gl.uniform2fv(u("vp"), [RW, RH]); gl.uniform4fv(u("cl"), clip);
       for (const [n, x] of [["lr", L.lr], ["day", L.day], ["amb", L.amb], ["fn", L.fog[0]], ["ff", L.fog[1]], ["rim", L.rim], ["wa", L.wa ?? .62], ["dep", v.dep || 0], ["rd", 0], ["sun", L.sun ?? 1], ["shp", 0]]) gl.uniform1f(u(n), x);
       gl.uniform4fv(u("wtn[0]"), L.wtint || new Float32Array(20)); gl.uniform4fv(u("wv"), wv); gl.uniform3fv(u("mc"), disc);
       gl.useProgram(sp); gl.uniform1i(us("t"), 1); gl.uniform3fv(us("mc"), disc); gl.useProgram(pr);
       const go = (b, from, n) => { if (n > 0) { gl.bindVertexArray(b.vao); gl.drawArrays(gl.TRIANGLES, from, n); calls++; } };
-      go(bufs.land, 0, cnt.main + cnt.model + cnt.far + cnt.ghost);   // (the land, what stands in it as boxes, the far land, the ghosts: one list)
+      if (rev) { gl.uniform2f(u("rv"), rvx, rev.shut ? 1 : -1); if (rev.own) gl.bindTexture(gl.TEXTURE_2D, otx); go(bufs.old, 0, rev.n); if (rev.own) gl.bindTexture(gl.TEXTURE_2D, tex); } gl.uniform2f(u("rv"), rvx, rev ? (rev.shut ? -1 : 1) : 0);
+      go(bufs.land, 0, cnt.main + cnt.model + cnt.far + cnt.ghost); if (rev) gl.uniform2f(u("rv"), 0, 0);   // (the land, what stands in it as boxes, the far land, the ghosts: one list)
       gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
       // the shadows: each px of the land shaded once, however many lie on it (a stencil): first all their full px, then their soft rims where no full one lies
       gl.enable(gl.STENCIL_TEST); gl.stencilFunc(gl.NOTEQUAL, 1, 1); gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
@@ -164,7 +187,10 @@ const VoxStyle = (() => {
       gl.bindVertexArray(null); cost = performance.now() - t0;
       return el;
     }
-    return {build, steps, touch: land.touch, get water() { return cnt.water; }, draw, forget() { wipe = true; land.clear(); }, get lost() { const l = lost; lost = false; return l; }, get cost() { return cost; }, pitAt(x, y) { if (!pit || !pit.n) return undefined; const i = x - pit.x, j = y - pit.y; if (i < 0 || j < 0 || i >= pit.D || j >= pit.D) return undefined; const v = pit.cut[j * pit.D + i]; return v === -32768 ? undefined : v; }, get pit() { return pit ? pit.n : 0; }, get stamp() { return land.stamp; }, get made() { return made; }, get fresh() { return fresh; }, get calls() { return calls; }, get why() { return why; }, units,
+    return {build, steps, touch: land.touch, get water() { return cnt.water; }, draw, forget() { wipe = true; land.clear(); }, get lost() { const l = lost; lost = false; return l; }, get cost() { return cost; }, pitAt(x, y) { if (!pit || !pit.n) return undefined; const i = x - pit.x, j = y - pit.y; if (i < 0 || j < 0 || i >= pit.D || j >= pit.D) return undefined; const v = pit.cut[j * pit.D + i]; return v === -32768 ? undefined : v; }, get pit() { return pit ? pit.n : 0; }, get wipe() { return rev ? [rev.shut ? -1 : 1, rev.ch.length, Math.round(rev.r0 || 0), Math.round(rev.r1 || 0), Math.round(rvx)] : null; },   // (tests: a land taking another's place now: [1 opening | -1 shutting, tiles that changed, the ring from, to, now: px])
+      spaceAt(x, y) { const sp = space, i = sp ? x - sp.x : -1, j = sp ? y - sp.y : -1; return sp && i >= 0 && j >= 0 && i < sp.D && j < sp.D && sp.cls[j * sp.D + i] && sp.lvl[j * sp.D + i] !== -32768 ? [sp.lvl[j * sp.D + i], sp.cls[j * sp.D + i]] : null; },   // (tests: a tile of your space: [its floor's level, 1 walked to | 2 dropped to | 3 dropped from])
+      get stamp() { return land.stamp; }, get made() { return made; }, get fresh() { return fresh; }, get calls() { return calls; }, get why() { return why; }, units,
+      bare(y0) { const w = el ? el.width : 0, h = el ? el.height - y0 : 0; if (!gl || w <= 0 || h <= 0) return 0; const b = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, b); let n = 0; for (let i = 3; i < b.length; i += 4) if (!b[i]) n++; return n; },   // (tests: px of the picture from row y0 down where no land is drawn: the backdrop shows there)
       at(x, y, z) { if (!lastM) return null; const f = project(lastM, x, y, z); return [(f[0] * .5 + .5) * el.width, (.5 - f[1] * .5) * el.height]; }, get faces() { return (cnt.main + cnt.model) / 6; }, get models() { return cnt.model / 6; }};
   }
   return {create};

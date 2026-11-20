@@ -69,3 +69,43 @@ def test_crafting_on_a_phone_takes_the_screen_and_a_tap_makes_a_lit_card(browser
         assert g.js(shown) == "visible,visible,visible" and not g.errors
     finally:
         ctx.close()
+
+
+def test_out_of_your_own_shaft_with_the_thumbs(browser, server):
+    """As by keys: B digs down a layer a tap, A puts the ladder where you stand, the stick climbs out. And leaving
+    build mode with plans waiting names no key (it said "B to go on building")."""
+    ctx, g = touch_game(browser, server, 390, 844)
+    try:
+        mid = lambda i: g.js(f"(() => {{ const r = $('{i}').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()")
+        tap = lambda i: (g.page.touchscreen.tap(*mid(i)), g.sleep(150))
+        g.give(pickaxe=1, ladder=1, plank=2)
+        g.js("selectItem('pickaxe')")
+        x, y = g.pos()
+        g.face(1, 0)
+        g.wait("$('tB').innerText.includes('Dig down')", 3000)
+        for depth in (1, 2, 3, 4):
+            tap("tB")
+            g.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
+        assert g.server()["z"] == -4 and "Dig into the wall" in g.js("$('tA').innerText")
+        g.js("selectItem('ladder')")
+        g.wait("$('tA').innerText.includes('Place ladder')", 3000)
+        tap("tA")
+        g.wait(f"combAt({x}, {y}) === 'l'", 5000)
+        g.touch("touchStart", 80, 600)                                        # the stick, east: up the ladder
+        for i in range(1, 6):
+            g.touch("touchMove", 80 + i * 8, 600)
+            g.sleep(30)
+        g.wait(f"myAt && myAt.x === {x + 1} && myAt.z === 0", 6000)
+        g.touch("touchEnd")
+        g.sleep(300)
+        s = g.server()
+        assert (s["x"], s["y"], s["z"]) == (x + 1, y, 0)
+        g.js("selectItem('plank')")
+        g.wait("$('tBuild').style.display === 'flex'", 3000)
+        tap("tBuild")
+        g.js("Build.S.plans.set('far', {x: Build.S.at.x + 40, y: Build.S.at.y, z: 0, item: 'plank', state: 'todo', tried: true}); $('toast').style.display = 'none'")
+        tap("tBuild")
+        assert not g.js("Build.on") and "building" not in g.toast() and g.js("$('tBuild').style.display") == "flex"     # (its button stays up while plans wait)
+        assert not g.errors, g.errors
+    finally:
+        ctx.close()

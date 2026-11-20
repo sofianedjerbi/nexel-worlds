@@ -104,3 +104,35 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     assert game.server()["z"] == 3 and game.js("__v") > .9 and game.js("Floors.seen") < .05      # (gone, on top)
     over = game.js("__over")                                    # stepping over onto the block: drawn after it, on it (it was drawn
     assert over and min(over) > (y - 3) + 3 * game.js("Floors.K")   # under the block till the step was done)
+
+
+def test_out_of_your_own_shaft_by_keys(game):
+    """X digs down a layer a press (every second X cut the wall at your feet: two presses a layer). Four down, in a
+    shaft one tile wide, a ladder in hand: whichever wall you face, Space puts it where you stand (it was "Needs
+    something taller behind" three ways of four); walking into the wall climbs out onto its top."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.give(pickaxe=1, ladder=1)
+    game.press(game.js(SLOT, "pickaxe"))
+    game.face(0, 1)
+    game.wait("$('actions').innerText.includes('Dig down')", 3000)      # on open ground nothing is faced: X's row is in the corner
+    for depth in (1, 2, 3, 4):
+        game.press("x", 100)
+        game.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)    # one press, one layer
+        assert game.server()["z"] == -depth
+    assert "Dig into the wall" in game.actions() and "hill" not in game.actions()      # (a hole in a meadow: no hill)
+    game.press(game.js(SLOT, "ladder"))
+    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+        game.face(dx, dy)
+        game.wait("$('prompts').innerText.includes('Place ladder')", 3000)
+        aim = game.js("(() => { const a = aimedTile(); return [a.p.x, a.p.y, a.it.ok, a.it.z]; })()")
+        assert aim == [x, y, True, -4], (dx, dy, aim)          # the ghost: on your own tile, at your feet
+    game.press("Space", 100)
+    game.wait(f"combAt({x}, {y}) === 'l'", 5000)
+    assert game.inv("ladder") == 0 and "way" not in game.actions()     # (on your ladder: nothing red said)
+    hp = game.server()["hp"]
+    game.hold(["ArrowLeft"], 90)
+    game.wait(f"myAt && myAt.x === {x - 1} && myAt.z === 0", 6000)
+    game.sleep(300)
+    s = game.server()
+    assert (s["x"], s["y"], s["z"], s["hp"]) == (x - 1, y, 0, hp) and not game.errors

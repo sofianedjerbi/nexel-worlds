@@ -129,7 +129,8 @@ def test_too_far_is_too_far(game):
 
 def test_what_is_up_a_cliff_is_out_of_reach(game):
     """Reach is a circle round you and height is distance too (a layer is half a tile): a flower on a pillar in front
-    of you, six layers up, is three tiles above you. It is not offered, Space says why, and nothing happens; two
+    of you, six layers up, is three tiles above you. It is not offered, and Space does nothing and says nothing (it
+    said "Out of reach" in red: what your hand cannot get to is not spoken of, the picture shows the cliff); two
     layers up, you pick it. A flower two tiles off and one across is within the circle; two and two is its corner."""
     game.clear_area(8)
     game.stamp(0, -1, ["f"], levels=["6"])
@@ -137,7 +138,7 @@ def test_what_is_up_a_cliff_is_out_of_reach(game):
     game.sleep(500)
     assert not any("flower" in r[1].lower() for r in game.js("availableActions()"))
     game.press("Space", 400)
-    assert game.tile(0, -1) == "f" and "Out of reach" in game.js("$('toastt').textContent")
+    assert game.tile(0, -1) == "f" and "Out of reach" not in game.js("$('toastt').textContent") and "reach" not in game.actions()
     game.stamp(0, -1, ["f"], levels=["2"]); game.rest()
     assert any("flower" in r[1].lower() for r in game.js("availableActions()"))
     game.press("Space", 500)

@@ -22,7 +22,7 @@ const FILL_TEXT = {",": "Fill with dirt", "~": "Raise the bottom", "(": "Raise t
 const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
 const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C", well: "Y", coop: "J", picnic_blanket: "m", basket: "q", trough: "e", hay: "y"};
 PLACEABLE_BLOCK.roof = "roof"; PLACEABLE_BLOCK.stairs = "stairs"; PLACEABLE_BLOCK.ladder = "l";                       // (in hand a roof is something you place: not a thing on the tile, a block over it: floors.js)
-const HARVEST = {t: "Dig up stump", U: "Chop tree", v: "Cut bush", e: "Take down trough", y: "Take hay bale", Y: "Take down well", J: "Take down coop", m: "Roll up blanket", q: "Take basket", X: "Take down mailbox", V: "Take boat", W: "Take down wall", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take plant",
+const HARVEST = {t: "Dig up stump", U: "Chop tree", v: "Cut bush", e: "Take down trough", y: "Take hay bale", Y: "Take down well", J: "Take down coop", m: "Roll up blanket", q: "Take basket", X: "Take down mailbox", V: "Take boat", W: "Take down wall", l: "Take ladder", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take plant",
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", R: "Mine rock wall", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
@@ -66,6 +66,7 @@ function intent(p, shift) {
   const [c, g] = t, flower = c === "f", ent = entityAt(p);
   const res = intent0(p, shift, t, c, g, flower, ent, s);
   if (res && foot && !res.foot && !res.walk && !res.here) res.foot = foot;
+  if (res && !res.ent && res.z === undefined && !res.walk && !res.here) res.at = floorAt(p.x, p.y);   // (what is on a tile lies on its lowest ground: its height, for your reach. It was the tile's ground nearest you: "Pick flower" from a stair 24 layers over the flower)
   return res;
 }
 const CAN_SIZE = 12;
@@ -200,7 +201,7 @@ const standsAt = (o) => (o.e && o.e.z !== undefined ? o.e.z : floorAt(o.tx, o.ty
 function inReach(p, it, flat = it.flat) {                       // (it.flat: a wall you dig into is at your own height, whatever is on top of it)
   const s = myPos(); if (!s) return false;
   const tiles = it.foot && !it.from ? it.foot : [p];            // a structure: any of its tiles will do
-  const reach = it.attack ? it.near : USE_R, z = it.ent ? standsAt(it.ent) : it.z;
+  const reach = it.attack ? it.near : USE_R, z = it.ent ? standsAt(it.ent) : it.z !== undefined ? it.z : it.at;
   return tiles.some((q) => reaches(q.x, q.y, reach, z, flat))
     && !(it.foot && it.from && it.foot.some((q) => q.x === s.x && q.y === s.y));   // not standing in a new structure's spot
 }
@@ -224,5 +225,6 @@ async function perform(p, it) {
 }
 function clickTile(p, shift) {
   p = aimAt(p, shift);
-  perform(p, intent(p, shift));
+  const it = intent(p, shift);
+  perform((it && it.own) || p, it);                  // (a ladder against the wall you point at: on your own tile, climbing.js)
 }
