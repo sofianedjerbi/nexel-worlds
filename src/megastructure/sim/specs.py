@@ -27,7 +27,7 @@ TOOL_SPECS = {
                  "-512); over a hollow you fall in (a fall of more than 3 layers hurts: 5 hp a layer). You can jump "
                  "onto ground one layer higher; higher than that is a wall: dig toward it with a pickaxe to take out "
                  "the block in front of you (a tunnel). Caves are empty space under the hills (in_cave in your stats)"},
-    "dig": {"args": {"dir": "N|E|S|W, or up (the block over your own head)", "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)",
+    "dig": {"args": {"dir": "N|E|S|W|up", "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)",
                      "z": "int (optional): the height of something built over the ground, or of the block of land to dig (in front of you: from your z to your z + 2)"},
             "desc": "dig the adjacent block (tree, rock, bush, wall...) or till the ground (needs a hoe); with z on bare ground, the ground there comes down a layer (a hole: faster with a pickaxe). By hand, "
                     "wood takes 4x and stone 6x as long as with an axe / pickaxe; ore needs a pickaxe. A built block in front of you (a step, "

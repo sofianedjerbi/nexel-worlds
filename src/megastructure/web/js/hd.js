@@ -115,7 +115,7 @@ const HdLook = (() => {
         const cs = !e && seen.list.find((s) => s.card && s.tx === a.x && s.ty === a.y), cf = cs && api.screenOf(cs.x, cs.y, cs.z), pb = !e && !cs && c0 && HdThings.is(c0, a.x, a.y) ? boxed(a.x, a.y, seen.L * RELIEF_STEP) || boxed(a.x, a.y) : null;   // (round the piece as it is drawn: a card's own px, the boxes' corners)
         const c = e ? box([snap(f[0] - 8 * px), snap(f[1] - 12 * px), 16 * px, 16 * px]) : cs && cf ? box([snap(cf[0] - (cs.fx - cs.card.b[0]) * px), snap(cf[1] - (cs.fy - cs.card.b[1]) * px), (cs.card.b[2] - cs.card.b[0]) * px, (cs.card.b[3] - cs.card.b[1]) * px])
           : pb ? box([snap(pb.x), snap(pb.y), snap(pb.w) + px, snap(pb.h) + px]) : spr && spr[0] ? box(rectOf(spr, a.x, a.y)) : quad(a.x, a.y, shown(a.x, a.y)); corners(c, it.ok === false ? "#e8554a" : "#fff8e8"); r = bound(c); }
-      Prompts.show(r, faceRows); api.aim = r;
+      WayShow.paint(ctx, api.screenOf, px, now, 1); Prompts.show(r, WayShow.rows(faceRows)); api.aim = r;   // (the way out of the ground, shown: wayshow.js)
     }
     if (!words) return;
     const ny = (y) => fy(y) - Math.max(0, 12 - 3 * zoom), nsy = Object.assign(ny, {up: ny, out: ny});   // (a name: higher where an art px is small, a phone's 2 px: the letters are 18 px whatever the zoom, and seen from behind a body's ears were in its name)
@@ -207,7 +207,7 @@ const HdLook = (() => {
     const wl = WaterBed.view(Voxels.engine, now / 1000), day = 1, ed = h / (32 * Math.tan(cam.fov * Math.PI / 360));   // (the eye's distance: fog counts from there)
     const light = {amb: .8, lr: 8, day, fog: [ed + 4, ed + 22], fogc: low, clear: [0, 0, 0], ca: 0, sun: HdSun.sun, rim: .25, wa: .92, wtint: wl && wl.tint ? wl.tint.subarray(0, 20) : null};
     let pic = eng.draw({w, h, cam, at: [snap(p.x + .5), snap(p.y + .5), Math.round(camL * 8) / 8 + .5], bend: api.bend, t: now / 1000, light,
-      water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y, ver: Voxels.wver} : null, dep, sprites: list, ghosts: pieces(list), hour: hour(w, h, list, 0)});
+      water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y, ver: Voxels.wver} : null, dep, sprites: list, way: WayShow.land(), ghosts: pieces(list), hour: hour(w, h, list, 0)});
     if (!pic) { noGL = true; return; }
     seen = {tx, ty, L, k: 1, me: list.find((q) => q.top), list, at: [snap(p.x + .5), snap(p.y + .5), L]}; horizon(tx, ty, L + dep, dt);   // (the horizon is the surface's, however deep you are)   // (at: where the eye looks: you, to a px of the land: your own name is written from there)
     api.faces = eng.faces; api.models = eng.models;

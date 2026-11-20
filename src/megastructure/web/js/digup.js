@@ -9,7 +9,7 @@
 const DigUp = (() => {
   // -> the cell R would dig right now {x, y, z, text}, or null
   function aim() {
-    const s = typeof myPos === "function" ? myPos() : null, q = s && facingTile();
+    const s = typeof myPos === "function" ? myPos() : null, w = s && WayShow.want(), q = w ? w.q : s && facingTile();   // (the way out is shown and its next block is R's: that one, whichever way you face: wayshow.js)
     if (!q || !meObs || Build.on || inHand() !== "pickaxe") return null;
     const h = myZ(s.x, s.y), roof = solidAt(s.x, s.y, h + 2), wall = solidAt(q.x, q.y, h + 2);
     if (!landSolid(q.x, q.y, h + 1) || (!roof && !wall)) return null;            // (no wall; or one you hop onto as it is)
@@ -20,6 +20,7 @@ const DigUp = (() => {
   function run() {
     const c = aim();
     if (!c || walking || myAction || pendingAct) return;
+    const w = WayShow.want(); if (w) turn(w.d);
     actTarget = {x: c.x, y: c.y};
     act("dig", {dir: "N", z: c.z, with: "pickaxe"});
   }

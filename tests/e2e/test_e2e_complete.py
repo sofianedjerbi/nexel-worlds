@@ -30,7 +30,7 @@ def test_a_command_is_built_with_tab_and_the_arrows(game):
     page.keyboard.press("Tab")
     assert game.js(LINE) == "/dig " and game.js(ROWS) == ["dir=", "with=", "z="]      # (z: the height of something built over the ground)
     page.keyboard.press("Tab")
-    assert game.js(LINE) == "/dig dir=" and game.js(ROWS) == ["N", "E", "S", "W"]
+    assert game.js(LINE) == "/dig dir=" and game.js(ROWS) == ["N", "E", "S", "W", "up"]
     for key in ("ArrowDown", "ArrowDown", "ArrowUp"):
         page.keyboard.press(key)
     assert game.js("$('sayhelp').querySelector('.on b').textContent") == "E"
