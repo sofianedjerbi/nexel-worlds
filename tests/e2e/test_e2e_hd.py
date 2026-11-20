@@ -49,7 +49,7 @@ def test_walking_down_a_stair_under_a_roof_keeps_you_seen(browser, server):
 
 # the colour of the screen at a point of the land (x, y: tiles, z: levels), as the HD camera draws it: [r, g, b]
 AT = """([x, y, z]) => { const p = HdLook.screenOf(x, y, z), k = cv.width / innerWidth;
-  return Array.from(ctx.getImageData(Math.round(p[0] * k), Math.round(p[1] * k), 1, 1).data).slice(0, 3); }"""
+  return Array.from(HdLook.read(Math.round(p[0] * k), Math.round(p[1] * k), 1, 1).data).slice(0, 3); }"""
 green = lambda c: c[1] > c[0] + 20 and c[1] > c[2] + 20
 
 
@@ -107,7 +107,7 @@ def test_the_night_is_darker_than_the_day_but_for_your_lamp(browser, server):
 far = lambda a, b: sum(abs(p - q) for p, q in zip(a, b)) > 40
 # the colour of the screen `up` art px over a point of the land
 UP = """([x, y, z, up]) => { const p = HdLook.screenOf(x, y, z), k = cv.width / innerWidth;
-  return Array.from(ctx.getImageData(Math.round(p[0] * k), Math.round((p[1] - up * zoom) * k), 1, 1).data).slice(0, 3); }"""
+  return Array.from(HdLook.read(Math.round(p[0] * k), Math.round((p[1] - up * zoom) * k), 1, 1).data).slice(0, 3); }"""
 # a bed's card (hd_things.js) for a place X art px right of the screen's middle: [its lean, its width, how many of its px are not the sprite's own]
 CARD = """([x, y, X]) => { const s = objectSprite('B', x, y, 0), c = HdThings.card('B', x, y, s, X), g = c.canvas.getContext('2d').getImageData(0, 0, c.canvas.width, c.canvas.height).data;
   const q = document.createElement('canvas'); q.width = 16; q.height = 32; const h = q.getContext('2d'); h.drawImage(s[0], s[1], s[2], 16, 32, 0, 0, 16, 32); const d = h.getImageData(0, 0, 16, 32).data;

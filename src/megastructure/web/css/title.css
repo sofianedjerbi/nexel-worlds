@@ -79,5 +79,5 @@ body.booting #joinbox #join::after { content:""; position:absolute; left:0; bott
 #poster { position:fixed; z-index:0; max-width:none; image-rendering:pixelated; pointer-events:none; opacity:0; transition:opacity .35s ease-out; }
 #poster.in { opacity:1; }
 body:not(.title) #poster, body.scene #poster { visibility:hidden; transition:visibility 0s .8s; }
-canvas#c { transition:opacity .7s ease-out; }
-body.title:not(.scene) canvas#c { opacity:0; }
+canvas#c, canvas#hd { transition:opacity .7s ease-out; }
+body.title:not(.scene) canvas#c, body.title:not(.scene) canvas#hd { opacity:0; }

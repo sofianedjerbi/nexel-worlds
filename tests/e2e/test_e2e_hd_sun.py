@@ -19,7 +19,7 @@ def hd(browser, server):
 # the mean light of a tile's top as it is on the screen (the px inside its four corners' box, a px in)
 LIGHT = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => HdLook.screenOf(x + a, y + b, z)), k = devicePixelRatio;
   const x0 = Math.ceil(Math.max(c[0][0], c[3][0]) * k) + 1, x1 = Math.floor(Math.min(c[1][0], c[2][0]) * k) - 1, y0 = Math.ceil(c[0][1] * k) + 1, y1 = Math.floor(c[2][1] * k) - 1;
-  const d = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data; let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] + d[i + 1] + d[i + 2]; return s / (d.length / 4); }"""
+  const d = HdLook.read(x0, y0, x1 - x0, y1 - y0).data; let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] + d[i + 1] + d[i + 2]; return s / (d.length / 4); }"""
 
 
 def settled(g):
@@ -109,8 +109,8 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
             g.rpc("dev_teleport", x=x + dx, y=y + dy, z=0)
             settled(g)
         g.js("""(() => { const p = myPos(), a = HdLook.screenOf(p.x + .5, p.y + .92, topAt(p.x, p.y)), k = devicePixelRatio, X = Math.round(a[0] * k), Y = Math.round(a[1] * k);
-          const mid = ctx.getImageData(X, Y, 1, 1).data; window.__sh = []; window.__b0 = HdLook.builds; window.__busy = 0;
-          const f = () => { const d = ctx.getImageData(X - 24 * k, Y - 9 * k, 48 * k, 18 * k).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - mid[0]) + Math.abs(d[i + 1] - mid[1]) + Math.abs(d[i + 2] - mid[2]) < 12) n++;
+          const mid = HdLook.read(X, Y, 1, 1).data; window.__sh = []; window.__b0 = HdLook.builds; window.__busy = 0;
+          const f = () => { const d = HdLook.read(X - 24 * k, Y - 9 * k, 48 * k, 18 * k).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - mid[0]) + Math.abs(d[i + 1] - mid[1]) + Math.abs(d[i + 2] - mid[2]) < 12) n++;
             window.__sh.push(n); if (HdLook.busy) window.__busy++; if (window.__sh.length < 150) requestAnimationFrame(f); };
           requestAnimationFrame(f); return 1; })()""")
         g.sleep(150)

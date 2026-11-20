@@ -8,7 +8,7 @@ const VoxStyleGLSL = (() => {
   void main() { vec3 q = p; float dn = max(0., ctr.z - 1. - q.z); q.y -= bend * dn * dn; gl_Position = m * vec4(q, 1.); vu = uv; va = a; ve = e; wp = p; }`;
   const FS = `#version 300 es
   precision mediump float; in vec2 vu; in vec4 va; in float ve; in vec3 wp; uniform sampler2D t, wt; uniform vec3 lamp, eye, fogc;
-  uniform vec4 ub; uniform float wa, und, dep, sk, ovd, lr, day, amb, fn, ff, roof, rim, strata, dith, veil, chk, tm, dk, rd, sun, shp; uniform vec4 wv; uniform vec4 wtn[5]; uniform vec3 mc; out vec4 o;
+  uniform vec4 ub, cl; uniform float wa, und, dep, sk, ovd, lr, day, amb, fn, ff, roof, rim, strata, dith, veil, chk, tm, dk, rd, sun, shp; uniform vec4 wv; uniform vec4 wtn[5]; uniform vec3 mc; out vec4 o;
   uniform vec2 vp; float hsh(vec2 v) { return fract(sin(dot(v, vec2(12.99, 78.23))) * 43758.5); }
   float bit(float v, float k) { return mod(floor(v / k), 2.); }
   vec3 rk(vec2 g, float d0, float kd) {   // natural strata: bands of uneven thickness and tone, earth near the meadow, stone deeper (g.y down = deeper)
@@ -28,6 +28,7 @@ const VoxStyleGLSL = (() => {
   vec3 fl() { float b = clamp(floor((dep + (lamp.y - .6) / .5 - va.w) / 4.) / 3., 0., 1.); return mix(vec3(.46, .36, .27), vec3(.4, .38, .38), b); }   // flat rock: one tone per depth band
   void main() {
     float kind = va.z; vec2 lu = mod(vu, 16.);
+    if (!(kind > 6.5 && kind < 7.5) && !(kind > 2.5 && kind < 3.5 && ve > 8.5) && !(kind > 8.5 && kind < 9.5) && (wp.x < cl.x + .001 || wp.x > cl.y - .001 || wp.z < cl.z + .001 || wp.z > cl.w + .001)) discard;   // (cl: the columns and rows of the land asked for: the lists are whole chunks of 8 x 8 tiles (vox_style_land.js), what is outside is left out here; not the far patches, not a ghost)
     if (rd > .5 && (wp.z < lamp.z + .3 || wp.y < lamp.y - .55 || distance(gl_FragCoord.xy, mc.xy) > mc.z || mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.)) discard;   // (rd: a model south of you and over your feet, drawn again over you: one px in two of it, in a disc round you)
     float hd = distance(wp.xz, lamp.xz), va2 = veil > 0. ? mix(veil, 1., smoothstep(2.5, 6.5, hd)) : 1.;
     if (chk > .5 && hd < 4.5 && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard;
@@ -81,8 +82,8 @@ const VoxStyleGLSL = (() => {
     if (veil > 0.) col *= mix(ovd, 1., smoothstep(2.5, 6.5, hd)); o = vec4(col, va2);
   }`;
   const SV = `#version 300 es
-  in vec3 p; in vec2 uv; out vec2 vu; void main() { gl_Position = vec4(p, 1.); vu = uv; }`;
+  in vec3 p; in vec2 uv; in float s; out vec2 vu; out float sil; void main() { gl_Position = vec4(p, 1.); vu = uv; sil = s; }`;
   const SF = `#version 300 es
-  precision mediump float; in vec2 vu; uniform sampler2D t; uniform float sil; uniform vec3 mc; out vec4 o; void main() { vec4 c = texture(t, vu); if (c.a < .5) discard; if (sil > 1.5 && distance(gl_FragCoord.xy, mc.xy) < mc.z && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard; o = sil > .5 && sil < 1.5 ? vec4(.95, .8, .55, .4) : c; }`;   // (sil 2: what stands in front of you: one px in two of it, a 2x2 checker, in a disc round you (mc), so you are seen through it; the rest of it whole)
+  precision mediump float; in vec2 vu; in float sil; uniform sampler2D t; uniform vec3 mc; out vec4 o; void main() { vec4 c = texture(t, vu); if (c.a < .5) discard; if (sil > 1.5 && distance(gl_FragCoord.xy, mc.xy) < mc.z && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard; o = sil > .5 && sil < 1.5 ? vec4(.95, .8, .55, .4) : c; }`;   // (sil 2: what stands in front of you: one px in two of it, a 2x2 checker, in a disc round you (mc), so you are seen through it; the rest of it whole)
   return {AW, VS, FS, SV, SF};
 })();

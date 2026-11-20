@@ -119,7 +119,7 @@ const Shader = (() => {
   }
   // Called at the end of each frame (render.js): ox, oy where the world's corner is on the screen, S a tile's size, t seconds
   function frame(ox, oy, S, t) {
-    const look = SHADERS[opt("shader")];
+    const look = HdLook.live ? null : SHADERS[opt("shader")];   // (the HD look has its own light and its own canvas: no shader over it)
     if (!look || bad) { for (const c of [el, words]) if (c && c.style.display !== "none") c.style.display = "none"; return; }
     try {
       if (!el) start();
@@ -173,7 +173,7 @@ const Shader = (() => {
   let words = null, wg = null, home = null;
   function over(on) {
     if (home) { ctx = home; home = null; }                   // (always back first, whatever happened in between)
-    if (!on || !SHADERS[opt("shader")] || bad || !el) return;
+    if (!on || HdLook.live || !SHADERS[opt("shader")] || bad || !el) return;
     if (!words) { words = document.createElement("canvas"); words.id = "fxwords"; el.after(words); wg = words.getContext("2d"); }
     if (words.width !== cv.width || words.height !== cv.height) { words.width = cv.width; words.height = cv.height; words.style.width = cv.style.width; words.style.height = cv.style.height; }
     if (words.style.display !== "block") words.style.display = "block";

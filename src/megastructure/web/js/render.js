@@ -76,7 +76,7 @@ function frame(now) {
   Voxels.work(coming, landUntil);                    // (the land is blocks: voxels.js)
   const landMs = performance.now() - landFrom;
 
-  const S = TS();
+  const S = TS(), hd = HdLook.live;                  // (hd: the HD look draws the world itself, on a canvas of its own (hd.js, hd_view.js): here nothing is painted for it: no sky, no land, no sun, no night; `ctx` is a canvas of one px meanwhile, what is still drawn goes nowhere)
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.imageSmoothingEnabled = false;
   const [ox, oy] = screenOrigin(S);
@@ -100,14 +100,14 @@ function frame(now) {
   const lacking = !!me && (!hereBlock || !worldReady), late = lacking && goodAt > 0 && now - goodAt >= HOLD_MS && (now - goodAt >= 4 * HOLD_MS || vis.some((b) => onScreen(b) && Voxels.made(b)));      // (...and while none of it has come at all, four times as long: a busy machine)
   if (!lacking) goodAt = now; else if (!late && goodAt > 0) { slowFrame(dt, false); return; }
   const SKY = "#a8d8ea"; ctx.fillStyle = away.high ? SKY : "#2b2420";
-  ctx.fillRect(0, 0, W, H);
+  if (!hd) ctx.fillRect(0, 0, W, H);
   xrayLook(dt);                                      // (hidden, behind a mountain, down a hole or under a roof: a window on you, xray.js)
   // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
   slowFrame(dt, worldReady && !fresh);
   // y-sorted sprites: objects and creatures
   const list = [];
   // (forEach, and what is out of view left first: a pair was made a frame for every thing of every block in view)
-  for (const b of vis) if (Voxels.made(b) && (worldReady || late)) b.objs.forEach((c, i) => {   // (things show with their ground, not before)
+  if (!hd) for (const b of vis) if (Voxels.made(b) && (worldReady || late)) b.objs.forEach((c, i) => {   // (things show with their ground, not before)
     const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
     if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3 || hiddenAt(x, y) || (away.a > 0 && Math.abs(standAt(x, y) - away.z) > APART)) return;   // (hidden: in a cave, seen from outside: under its roof; away: on the land you left)
     if (c === "l") { list.push({y, x, fx: () => Climb.drawLadder(x, y, standAt(x, y), sx, sy, S)}); return; }   // (a ladder: up to what it leans on, climbing.js)
@@ -131,11 +131,11 @@ function frame(now) {
     // (...and with only a sliver of it left over its ground, it is not drawn at all: no caps sitting on the horizon)
     if (o.clip !== undefined) { const bb = o.spr && spriteBounds(o.spr[0], o.spr[1], o.spr[2], o.spr[3], o.spr[4]), top = o.spr ? sy(o.ty, o.x) + (o.spr[6] + (bb ? bb[1] : 0)) * zoom : o.p ? bodyY(o.p, sy) : -1e9; o.hide = o.clip - top < Math.max(CURVE.short, sy.far(o.y, up) ? (bb ? bb[3] - bb[1] : P) * .45 : 0) * zoom; } }      // (past the horizon: under half of it)
   // (the land is drawn once what stands on it is known: with the land's depth or a shader on, their shadows fall on it as it stands, sunland.js)
-  Voxels.frame(away.a < 1 ? vis : [], ox, oy, S, t, away.high, Sun.cast(list, vis, sx, sy, S, t, now));      // the land and the sea, as blocks
-  if (away.a > 0 && away.a < 1 && !Voxels.veil(ox, oy, S, t, away.a, away.sky)) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  if (hd) Voxels.still(vis, ox, oy, t); else Voxels.frame(away.a < 1 ? vis : [], ox, oy, S, t, away.high, Sun.cast(list, vis, sx, sy, S, t, now));      // the land and the sea, as blocks
+  if (!hd && away.a > 0 && away.a < 1 && !Voxels.veil(ox, oy, S, t, away.a, away.sky)) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
   if (!worldReady && !late) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }      // (the first arrival: under the first screen's picture, all of it at once)
   // (a shader's shadows and reflections of all of it, on the ground, under what stands there: sun.js)
-  Sun.draw(list, vis, sx, sy, S, t, now);
+  if (!hd) Sun.draw(list, vis, sx, sy, S, t, now);
   for (const o of list) {
     selMeasure(o);
     if ((o.far !== undefined && o.pile) || o.hide) continue;
@@ -179,7 +179,7 @@ function frame(now) {
     }
     if (o.clip !== undefined) ctx.restore();
   }
-  Sun.shade(list, sx, sy, S, t, now);                // (what stands in the land's shadow is in it, sunland.js)
+  if (!hd) Sun.shade(list, sx, sy, S, t, now);                // (what stands in the land's shadow is in it, sunland.js)
   for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
     const px = sx(f.x), py = sy(f.y, f.x), tall = "TF".includes(combAt(f.x, f.y) || "");
     if (sy.far(f.y, liftAt(f.x, f.y))) continue;
@@ -195,7 +195,7 @@ function frame(now) {
   drawXp();
   foodPreview();
   drawPlucks(sx, sy, S, now);
-  drawNight(vis, sx, sy, S, t);
+  if (!hd) drawNight(vis, sx, sy, S, t);
   drawGrid(sx, sy, S);                             // (/grid: debug.js)
   updateActions();
   const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
@@ -203,7 +203,7 @@ function frame(now) {
   Marks.aim(aim, !!(box && box.tile), now);            // (a block, a cell: its box in the land, mark.js; drawn with the next frame's land)
   drawSelector(Build.on || (box && box.tile) ? null : box, sx, sy, now);     // (what stands: the selector round its picture)
   Build.draw(sx, sy, S, t);                         // (what is planned, and the cursor: build.js)
-  if (Build.on) Prompts.build();                    // (the keys beside what they act on: prompts.js)
+  if (hd) { /* (its own: hd.js written) */ } else if (Build.on) Prompts.build();                    // (the keys beside what they act on: prompts.js)
   else Prompts.show(box && {x: sx(box.x0), y: sy.out(box.y0), w: (box.x1 - box.x0) * S, h: sy.out(box.y1) - sy.out(box.y0)}, faceRows);
   Shader.over(true);                               // (with a shader on, what is written goes over it, untouched: shader.js)
   for (const o of list) if (o.p && o.p.e.kind === "agent" && o.far === undefined) { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }

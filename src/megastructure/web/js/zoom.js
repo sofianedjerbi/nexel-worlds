@@ -33,7 +33,7 @@ function zoomLeg() {
   const glide = (a, b, done) => {
     const an = cv.animate([{transform: `scale(${a})`}, {transform: `scale(${b})`}], {duration: ZOOM.ms, easing: "cubic-bezier(.3, .6, .4, 1)", fill: "forwards"});
     // (a shader's picture and what is written over it lie over this one: they glide with it)
-    const fx = Shader.layers().map((c) => c.animate([{transform: `scale(${a})`}, {transform: `scale(${b})`}], {duration: ZOOM.ms, easing: "cubic-bezier(.3, .6, .4, 1)", fill: "forwards"}));
+    const fx = Shader.layers().concat(HdLook.live && HdView.el ? [HdView.el] : []).map((c) => c.animate([{transform: `scale(${a})`}, {transform: `scale(${b})`}], {duration: ZOOM.ms, easing: "cubic-bezier(.3, .6, .4, 1)", fill: "forwards"}));
     an.onfinish = () => { done(); an.cancel(); fx.forEach((f) => f.cancel()); };      // (finish comes before the frame is drawn: the new size and the plain canvas show together)
   };
   // (the curved world's roll is not magnified with the picture: it is put where the magnified picture has it, and let back: curve.js)

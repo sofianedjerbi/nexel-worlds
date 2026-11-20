@@ -5,7 +5,7 @@ land ran out under you, and what stood more than six rows south of you was not d
 from game import Game, new_name
 
 AT = """([x, y, z]) => { const p = HdLook.screenOf(x, y, z), k = cv.width / innerWidth;
-  return Array.from(ctx.getImageData(Math.round(p[0] * k), Math.round(p[1] * k), 1, 1).data).slice(0, 3); }"""
+  return Array.from(HdLook.read(Math.round(p[0] * k), Math.round(p[1] * k), 1, 1).data).slice(0, 3); }"""
 meadow = lambda c: c[1] > c[0] and c[1] > c[2] + 50          # (the meadow's green; a wall is grey)
 
 
@@ -82,5 +82,38 @@ def test_a_pinch_with_one_finger_on_the_sticks_side_zooms_and_does_not_walk(brow
         g.wait(f"myPos().x > {pos[0]}", 4000)
         g.touch("touchEnd")
         assert not g.errors, g.errors
+    finally:
+        ctx.close()
+
+
+# What 60 frames ask of the GPU: the largest picture any WebGL draw paints into, the draws of a frame that was drawn, how often something
+# the screen's size was painted on a 2D canvas, how many frames were not drawn at all
+COST = """() => new Promise((done) => { const P = WebGL2RenderingContext.prototype, D = CanvasRenderingContext2D.prototype, C = {gl: 0, calls: 0, big: 0, same: 0, n: 0, draws: 0};
+  const keep = [P.drawArrays, D.drawImage, D.fillRect, D.clearRect], area = (g, px) => { const t = g.getTransform(); if (Math.min(px * Math.abs(t.a * t.d), g.canvas.width * g.canvas.height) > 300000) C.big++; };
+  P.drawArrays = function (...a) { const v = this.getParameter(this.VIEWPORT); C.gl = Math.max(C.gl, v[2] * v[3]); C.draws++; return keep[0].apply(this, a); };
+  D.drawImage = function (...a) { area(this, a.length >= 9 ? a[7] * a[8] : a.length >= 5 ? a[3] * a[4] : a[0].width * a[0].height); return keep[1].apply(this, a); };
+  D.fillRect = function (...a) { area(this, a[2] * a[3]); return keep[2].apply(this, a); }; D.clearRect = function (...a) { area(this, a[2] * a[3]); return keep[3].apply(this, a); };
+  const f1 = frame; frame = function (now) { const d0 = C.draws; f1(now); C.n++; if (HdLook.drew) C.calls = Math.max(C.calls, C.draws - d0); else C.same++;
+    if (C.n >= 60) { frame = f1; [P.drawArrays, D.drawImage, D.fillRect, D.clearRect] = keep; done(C); } }; })"""
+
+
+def test_a_frame_costs_a_phone_little_one_small_picture_nothing_the_screens_size_few_draws_few_chunks(browser, server):
+    """"Very laggy on phone": the classic frame was still painted under this look (its sky through a shader at the screen's size,
+    1.3 million px; its pictures sent to the GPU every frame), and the look's own picture was laid on the game's canvas at that
+    size; every tile walked made the whole land again."""
+    ctx, g = phone(browser, server)
+    try:
+        g.wait("HdLook.live && !HdLook.busy && HdView.el")
+        assert g.js("[HdView.el.width, HdView.el.height, HdView.el.style.width, HdView.el.nextElementSibling === cv, getComputedStyle(HdView.el).imageRendering]") == [195, 422, "390px", True, "pixelated"]   # ONE canvas for the world, an art px a px, under the game's
+        c = g.page.evaluate(COST)
+        assert 0 < c["gl"] <= 195 * 422, c            # no WebGL draw into anything bigger than the art's own picture (the classic sky: 780 x 1688)
+        assert 0 < c["calls"] <= 10, c                 # a frame's draws (they were 25, and the classic picture's)
+        assert c["big"] <= 20, c                       # the game's canvas: wiped when what is written changed, not each frame (it was 4 screens of px a frame)
+        assert c["same"] >= 3, c                       # and a frame in which nothing moved is not drawn again
+        assert g.js("Voxels.engine.made(Math.floor(myAt.x / 32) + 3, Math.floor(myAt.y / 32)) === false")   # (the classic engine makes no land meanwhile)
+        b0 = g.js("HdLook.builds"); g.stamp(1, 0, ["%"]); g.wait(f"HdLook.builds > {b0} && !HdLook.busy")
+        assert 1 <= g.js("HdLook.made") <= 9, g.js("HdLook.made")       # a tile changed: its chunk and the ones round it, not the land (some 40 chunks)
+        x, y = g.pos(); b0 = g.js("HdLook.builds"); g.page.keyboard.down("a"); g.wait(f"myAt.x <= {x - 1}"); g.page.keyboard.up("a"); g.wait(f"HdLook.builds > {b0} && !HdLook.busy")
+        assert g.js("HdLook.made") <= 16 and g.js("HdLook.catSeen()") > .8, g.js("HdLook.made")   # a tile walked: only the chunks coming into view (a column or a row of them at the most, and where a tile just changed)
     finally:
         ctx.close()

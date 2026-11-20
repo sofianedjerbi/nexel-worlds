@@ -12,7 +12,7 @@
 //   HdSun.body(out, s): a body's, each frame (s: hd.js's sprite of it) -> [[x, y, box]...] into out
 //   HdSun.land(out, x, y): the land's own on a tile (a cliff's, a terrace's, a hill's); landAt(x, y): is there one (tests)
 const HdSun = (() => {
-  const UP = RELIEF_STEP, bms = new Map(), sils = new Map(), SUN = [0xe0000000, 0xc0000000], LAMP = [0xff000000, 0xa0000000];   // (a full px, a rim px: vox_style_glsl.js kind 10)
+  const UP = RELIEF_STEP, bms = new Map(), sils = new Map(), poses = new Map(), SUN = [0xe0000000, 0xc0000000], LAMP = [0xff000000, 0xa0000000];   // (a full px, a rim px: vox_style_glsl.js kind 10)
   let H = {on: false, night: false, kx: 0, ky: 0, sun: 0}, sid = "";
   function hour() {
     const h = SunLand.hour(), want = !!opt("shadows") && !!opt("depth");
@@ -83,8 +83,12 @@ const HdSun = (() => {
     // (the columns asked: a column further each way than the shadows reach: the px just outside the tile are asked too, for the rim: without them each tile's shadow had a rim of its own, light lines between tiles)
     if (ch === undefined) { ch = null; const src = [], sg = H.kx < 0 ? 1 : -1, nx = Math.ceil(96 * Math.abs(H.kx) / 16), ny = Math.ceil(96 * H.ky / 16);
       for (let j = -1; j <= ny + 1; j++) for (let i = -1; i <= nx + 1; i++) { if (!i && !j) continue; const T = topOf(x + sg * i, y - j); if (T !== null && T - s.z >= 2) src.push([sg * i * 16, -j * 16, Math.min(12, T - s.z) * UP]); }
-      if (src.length) { const span = (g, o, v) => (v ? [(g - o - 16) / v, (g - o) / v].sort((p, q) => p - q) : g >= o && g < o + 16 ? [0, 1e9] : [1, 0]);
-        const dark = (gx, gy) => { for (const [ox, oy, hh] of src) { const p = span(gx + .5, ox, H.kx), q = span(gy + .5, oy, H.ky); if (Math.max(p[0], q[0], 0) < Math.min(p[1], q[1], hh)) return true; } return false; };
+      if (src.length) { const kx = H.kx, ky = H.ky, ns = src.length, sx = new Float32Array(ns), sy = new Float32Array(ns), sh = new Float32Array(ns); src.forEach((q, i) => { sx[i] = q[0]; sy[i] = q[1]; sh[i] = q[2]; });
+        // (is a ground px in the shadow of one of the columns: the stretch of the sun's ray over that column's tile, across and along, within its height. In plain numbers: it made two lists and sorted them for every px of every column: most of the script's time when land came in)
+        const dark = (gx, gy) => { gx += .5; gy += .5; for (let i = 0; i < ns; i++) { let p0, p1, q0, q1;
+          if (kx) { const a = (gx - sx[i] - 16) / kx, b = (gx - sx[i]) / kx; p0 = a < b ? a : b; p1 = a < b ? b : a; } else if (gx >= sx[i] && gx < sx[i] + 16) { p0 = 0; p1 = 1e9; } else continue;
+          if (ky) { const a = (gy - sy[i] - 16) / ky, b = (gy - sy[i]) / ky; q0 = a < b ? a : b; q1 = a < b ? b : a; } else if (gy >= sy[i] && gy < sy[i] + 16) { q0 = 0; q1 = 1e9; } else continue;
+          if (Math.max(p0, q0, 0) < Math.min(p1, q1, sh[i])) return true; } return false; };
         const m = new Uint8Array(18 * 18); let any = false, str = ""; for (let b = -1; b <= 16; b++) for (let a = -1; a <= 16; a++) if (dark(a, b)) m[(b + 1) * 18 + a + 1] = 1;
         const v = (a, b) => (!m[(b + 1) * 18 + a + 1] ? 0 : m[(b + 1) * 18 + a] && m[(b + 1) * 18 + a + 2] && m[b * 18 + a + 1] && m[(b + 2) * 18 + a + 1] ? 1 : 2);
         for (let b = 0; b < 16; b++) for (let a = 0; a < 16; a++) { const q = v(a, b); str += q; if (q) any = true; }
@@ -108,11 +112,13 @@ const HdSun = (() => {
   // a body's: the shape it has NOW (its pose, the way it faces: its own picture this frame; it was the shape it had when first seen), thrown from its feet
   function body(out, s) {
     const kind = s.q.e ? s.q.e.kind || "agent" : "agent", X = Math.floor(s.x), Y = Math.floor(s.y + .42); if (!open(X, Y, s.z)) return; const v = way(s.x, s.y); if (!v) return;
-    const c = s.canvas, d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let hsh = 0, n = 0;
+    const c = s.canvas, pk = c._h === undefined ? undefined : kind + c._h; let sk = pk === undefined ? undefined : poses.get(pk), S = sk ? sils.get(sk) : null;   // (a picture made by the same calls as one looked at before (canvas._h, hd.js): its shape is known: its px were read and counted every frame)
+    if (sk === undefined || (sk && !S)) { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let hsh = 0, n = 0;
     for (let i = 3, k = 0; i < d.length; i += 4, k++) if (d[i] >= 128) { hsh = (Math.imul(hsh, 31) + k) | 0; n++; }
-    if (!n) return; const sk = kind + hsh + "," + n; let S = sils.get(sk);
-    if (!S) { const px = []; let low = 0; for (let j = 0; j < c.height; j++) for (let i = 0; i < c.width; i++) if (d[(j * c.width + i) * 4 + 3] >= 128) { px.push([i - s.fx, j]); low = Math.max(low, j); }
-      if (sils.size > 300) sils.clear(); S = px.map(([i, j]) => [i, low - j]); sils.set(sk, S); }
+    sk = n ? kind + hsh + "," + n : null; if (pk !== undefined) { if (poses.size > 600) poses.clear(); poses.set(pk, sk); } S = sk ? sils.get(sk) : null;
+    if (sk && !S) { const px = []; let low = 0; for (let j = 0; j < c.height; j++) for (let i = 0; i < c.width; i++) if (d[(j * c.width + i) * 4 + 3] >= 128) { px.push([i - s.fx, j]); low = Math.max(low, j); }
+      if (sils.size > 300) sils.clear(); S = px.map(([i, j]) => [i, low - j]); sils.set(sk, S); } }
+    if (!sk) return;
     if (bms.size > 1500) bms.clear();
     const bm = picture("e" + sk, 0, 0, v, (put) => { for (const [i, h] of S) put(i, 0, h, h + 1); });
     if (bm) lay(out, X, Y, s.z, bm, bm.x + Math.round((s.x - X) * 16), bm.y + Math.round((s.y + .42 - Y) * 16), true);

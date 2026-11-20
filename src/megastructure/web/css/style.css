@@ -10,6 +10,8 @@
     font:18px/22px SproutPixel, monospace; font-synthesis:none; user-select:none; }
   * { font-weight:normal !important; }
   canvas#c { position:fixed; inset:0; display:block; image-rendering:pixelated; cursor:url(../assets/cursor.png) 4 2, auto; }
+  canvas#hd { position:fixed; left:0; top:0; display:none; image-rendering:pixelated; pointer-events:none; }      /* (js/hd_view.js: the HD look's world, a px of it an art px, under the game's canvas) */
+  #hdperf { position:fixed; left:4px; top:4px; z-index:99; padding:3px 5px; background:#3b2a25; color:#fff1d6; border:2px solid #1f1614; font:12px/1.25 monospace; white-space:pre; pointer-events:none; }
   canvas#c.act { cursor:url(../assets/cursor_point.png) 10 2, pointer; }
   body, button, .slot, .rc, .ag { cursor:url(../assets/cursor.png) 4 2, auto; }
   .panel { position:fixed; border:calc(8 * var(--u3)) solid transparent; border-image:url(../assets/panel.png) 9 fill / calc(9 * var(--u3)) stretch;   /* (3 px a pixel, in whole screen pixels) */
