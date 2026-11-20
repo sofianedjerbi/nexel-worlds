@@ -35,14 +35,14 @@ const VoxStyleGLSL = (() => {
       bool lip = (bit(ve, 1.) > .5 && lu.y < 1.) || (bit(ve, 2.) > .5 && lu.x > 15.) || (bit(ve, 4.) > .5 && lu.y > 15.) || (bit(ve, 8.) > .5 && lu.x < 1.);
       float de = min(mix(9., lu.y, bit(ve, 64.)), min(mix(9., 15. - lu.x, bit(ve, 128.)), mix(9., lu.x, bit(ve, 256.))));   // (its edge over a drop of two or more)
       vec3 cc = cold(c.rgb) * (1.15 - .5 * cd); if (ue < 3.) cc *= ue < 2. ? .45 : .7; if (lip) cc = mix(cc, vec3(.8, .88, 1.), .45);
-      vec3 wc = (c.rgb * (1.02 + .2 * ls) * vec3(1.08, 1., .85) + vec3(.04, .025, .01) * ls) * (1. + .05 * dl) * (1. - .22 * vs.b);   // (the floor's own paint under the warm light; a floor is a little lighter each level over yours, darker each level under: a floor two levels up is not the next step; vs.b: one you can only drop to: dimmer)
+      vec3 wc = c.rgb * vec3(1., .9, .7) * (.8 + .1 * (step(.3, lan) + step(.75, lan))) * (1. + .04 * clamp(dl, -4., 4.)) * (1. - .22 * vs.b);   // (the floor's own paint under the warm light, in three calm steps with distance from you: 5 tiles, 7, the rest; never over the paint's own tones: it was lit up to 1.3 times: a pale floor, stone, sand, was one flat yellow, its texture gone; a floor is a little lighter each level over yours, darker each level under: a floor two levels up is not the next step; vs.b: one you can only drop to: dimmer)
       if (ue < 7.) wc *= ue < 3. ? .3 : .5 + .1 * floor(ue - 3.); if (lip) wc = mix(wc, vec3(1., .93, .75), .5);   // (the foot of a wall you cannot climb: a dark rim 3 px wide, then its shade 4 px out on your floor: it is seen whichever way the wall faces; a step you can take has the light lip)
       col = mix(cc, wc, w); if (de < 2.) col *= .42;
     } else if (kind < 1.5 && kind > .5 && rim > 0.) {            // a top at a drop: its lip catches the light
       if (bit(ve, 4.) > .5 && lu.y > 15.) col = mix(col, vec3(1., .94, .78), rim * .7);
       if (bit(ve, 1.) > .5 && lu.y < 1.) col *= 1. - rim * .5;
-      float dr = min(min(mix(9., lu.y, bit(ve, 64.)), mix(9., 15. - lu.x, bit(ve, 128.))), min(mix(9., lu.x, bit(ve, 256.)), mix(9., 15. - lu.y, bit(ve, 2048.))));
-      if (dr < 2.) col = c.rgb * l * (dr < 1. ? .5 : .68);   // (the edge over a drop that hurts, three levels or more: a dark rim two px wide all along it, no light lip: a step down has the lip, a cliff has the rim. A fall of 12 looked like the next terrace)
+      float dn = min(mix(9., lu.y, bit(ve, 64.)), mix(9., 15. - lu.y, bit(ve, 2048.))), dr = min(dn, min(mix(9., 15. - lu.x, bit(ve, 128.)), mix(9., lu.x, bit(ve, 256.))));
+      if (dr < 2.) col = c.rgb * l * (dr < 1. || dn < 2. ? .5 : .68);   // (a north or south edge: its two px one tone: the eye looks along them, the two are one px of the picture or little more, and which of the two tones it took hung on a fraction of a level of the eye's height: the rim flickered as the eye rose) (the edge over a drop that hurts, three levels or more: a dark rim two px wide all along it, no light lip: a step down has the lip, a cliff has the rim. A fall of 12 looked like the next terrace)
     } else if (kind < .5 && va.y > .5) col *= 1. - .1 * (bit(ve, 64.) + 2. * bit(ve, 128.));   // (and the cliff's face darker every two levels down)
     if (kind > 2.5 && kind < 3.5) {                              // water: the game's own picture of it over a tint (the picture is the clear water, its bed showing: only a little of it over the sea tint)
       vec2 w = (vec2(wp.x, wp.z) * 16. - wv.xy) / wv.zw; vec4 wc = wv.z > 0. ? texture(wt, w) : vec4(0.);
