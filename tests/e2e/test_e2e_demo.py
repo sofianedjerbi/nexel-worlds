@@ -60,3 +60,32 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     page.wait_for_function("!!document.querySelector('#poster.in') && document.getElementById('poster').currentSrc.startsWith('data:image/webp') && document.getElementById('poster').naturalWidth === 480", timeout=5000)
     assert page.evaluate("document.fonts.check('18px SproutPixel') && !performance.getEntriesByType('resource').some((e) => /sprout-pixel/.test(e.name))")   # (and its letters)
     phone.close()
+
+
+def test_a_phone_plays_the_demo_in_the_hd_look(browser, site):
+    """The demo is what a phone plays, and the HD look had never been run in it: in, the land drawn round you, the
+    thumb's stick walks, and the page says nothing went wrong."""
+    ctx = browser.new_context(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True, device_scale_factor=3)
+    page, errors = ctx.new_page(), []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.on("console", lambda m: m.type == "error" and errors.append(m.text))
+    try:
+        page.goto(site, wait_until="commit")
+        page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0 && !document.body.classList.contains('booting')", timeout=90000)
+        page.fill("#name", "thumbs")
+        page.touchscreen.tap(*page.evaluate("(() => { const r = document.getElementById('join').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()"))
+        page.wait_for_function("meObs !== null && !!myPos() && HdLook.on && HdLook.faces > 500 && HdLook.catSeen() > .8", timeout=30000)
+        assert page.evaluate("zoom === 2 && !!document.getElementById('tMenu') && getComputedStyle(document.getElementById('prompts')).display === 'none'")
+        cdp = ctx.new_cdp_session(page)
+        touch = lambda kind, x=0, y=0: cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": [] if kind == "touchEnd" else [{"x": x, "y": y}]})
+        for way in (1, -1):                                         # east, then back west: one of the two is open ground
+            touch("touchStart", 90, 600)
+            for i in range(1, 6):
+                touch("touchMove", 90 + way * i * 8, 600)
+                page.wait_for_timeout(30)
+            page.wait_for_timeout(1200)
+            touch("touchEnd")
+        page.wait_for_function("HdLook.builds > 1 && HdLook.catSeen() > .8", timeout=8000)      # (the land was made again as you went, and you are still drawn on it)
+        assert not errors, errors
+    finally:
+        ctx.close()

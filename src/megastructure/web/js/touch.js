@@ -1,8 +1,8 @@
 // Touch: the game on a phone. Only on touch screens (body.touch); the keyboard and mouse play stays as it was.
 //   Left thumb: a joystick wherever it lands on the left of the screen (pushed far, you sprint).
 //   Right thumb: the main button (Space: act on what you face, held it keeps going) and the other one (X), each
-//   labelled with what it will do right now; eat and pick up show up when you can. Items (the inventory), craft and talk at the top.
-//   Two fingers on the world pinch to zoom; a tap on a tile is a click (as with a mouse).
+//   labelled with what it will do right now; eat and pick up show up when you can. Items (the inventory), craft, talk and the menu at the top.
+//   Two fingers on the world pinch to zoom; a tap on a tile is a click (as with a mouse), on the stick's side too.
 
 const TOUCH = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window || new URLSearchParams(location.search).has("touch");
 const STICK_DEAD = 12, STICK_RUN = 64;       // CSS px from where the thumb landed: below this nothing, beyond it sprint
@@ -16,7 +16,7 @@ function touchUI() {
   const ctx_ = el("div", "tctx", "");
   el("div", "tEat", "Eat", ctx_); el("div", "tPick", "Pick up", ctx_);
   const top = el("div", "ttop", "");
-  el("div", "tBag", "Items", top); el("div", "tCraft", "Craft", top); el("div", "tTalk", "Talk", top);
+  el("div", "tBag", "Items", top); el("div", "tCraft", "Craft", top); el("div", "tTalk", "Talk", top); el("div", "tMenu", "Menu", top);   // (Menu: the settings, leaving: a phone has no Esc, and had no way to them once in the world)
   return {btns, ctx_};
 }
 
@@ -47,15 +47,29 @@ if (TOUCH) {
   if (Math.min(innerWidth, innerHeight) < 520 && !new URLSearchParams(location.search).get("zoom") && !localStorage.getItem("megastructure-zoom")) zoom = 2;
   const {btns} = touchUI(), pad = $("pad"), base = $("stickbase"), knob = $("stickknob");
 
+  // Two fingers on the world pinch. One of them often lands on the stick's side (it is the left of the screen, most of
+  // a phone held upright: that pinch walked you away and did not zoom): two fingers down within 0.3 s of each other,
+  // the stick not yet pushed, are a pinch, and the stick stays out of it.
+  const fingers = new Map(), PINCH_MS = 300; let pinch = null, worldAt = -1e9;
+  const pinched = (e) => {
+    if (!fingers.has(e.pointerId)) return;
+    fingers.set(e.pointerId, e);
+    if (fingers.size !== 2) { pinch = null; return; }
+    const [a, b] = [...fingers.values()], d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    if (!pinch) pinch = d;
+    else if (d / pinch > 1.35 || d / pinch < 1 / 1.35) { zoomBy(d > pinch ? 1 : -1); pinch = d; }
+  };
   pad.addEventListener("pointerdown", (e) => {
     if (!me || stick) return;
     e.preventDefault(); pad.setPointerCapture(e.pointerId);
-    stick = {id: e.pointerId, x: e.clientX, y: e.clientY, dir: null};
+    stick = {id: e.pointerId, x: e.clientX, y: e.clientY, dir: null, t: performance.now(), pinch: fingers.size === 1 && performance.now() - worldAt < PINCH_MS};
+    if (stick.pinch) { fingers.set(e.pointerId, e); return; }
     base.style.left = knob.style.left = e.clientX + "px"; base.style.top = knob.style.top = e.clientY + "px";
     pad.classList.add("on"); inputMode = "keys";
   });
   pad.addEventListener("pointermove", (e) => {
     if (!stick || e.pointerId !== stick.id) return;
+    if (stick.pinch) return pinched(e);
     let dx = e.clientX - stick.x, dy = e.clientY - stick.y;
     const d = Math.hypot(dx, dy), max = STICK_RUN + 10;
     if (d > max) { dx *= max / d; dy *= max / d; }
@@ -67,11 +81,15 @@ if (TOUCH) {
       dir = h ? (dx > 0 ? "E" : "W") : (dy > 0 ? "S" : "N");
     }
     const run = d > (runKey ? STICK_RUN - 14 : STICK_RUN);     // (sticky: a thumb resting on the line doesn't flick between the two)
+    if (dir) stick.went = true;
     if (dir !== stick.dir || run !== runKey) { stick.dir = dir; setDir(dir, run); }
   });
   const release = (e) => {
     if (!stick || e.pointerId !== stick.id) return;
-    stick = null; pad.classList.remove("on"); setDir(null, false);
+    const s = stick; stick = null; pad.classList.remove("on"); setDir(null, false); fingers.delete(e.pointerId); pinch = null;
+    // a short touch that pushed nothing: a tap on the tile under it, as anywhere else on the world (the stick's side is
+    // the left of the screen: held upright, no tile left of you could be tapped)
+    if (me && e.type === "pointerup" && !s.pinch && !s.went && performance.now() - s.t < 350) { const q = tileAtScreen(s.x, s.y); if (Build.on) Build.click(q, false); else clickTile(q, false); }
   };
   for (const ev of ["pointerup", "pointercancel"]) pad.addEventListener(ev, release);
 
@@ -82,18 +100,14 @@ if (TOUCH) {
   tapButton($("tBag"), () => toggleBag());
   tapButton($("tCraft"), () => toggleCraft());
   tapButton($("tTalk"), () => openChat());
+  tapButton($("tMenu"), () => openMenu());
 
-  // pinch to zoom, two fingers on the world
-  const fingers = new Map(); let pinch = null;
-  cv.addEventListener("pointerdown", (e) => { if (e.pointerType === "touch") fingers.set(e.pointerId, e); });
-  cv.addEventListener("pointermove", (e) => {
-    if (!fingers.has(e.pointerId)) return;
-    fingers.set(e.pointerId, e);
-    if (fingers.size !== 2) { pinch = null; return; }
-    const [a, b] = [...fingers.values()], d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-    if (!pinch) pinch = d;
-    else if (d / pinch > 1.35 || d / pinch < 1 / 1.35) { zoomBy(d > pinch ? 1 : -1); pinch = d; }
+  cv.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "touch") return;
+    fingers.set(e.pointerId, e); worldAt = performance.now();
+    if (stick && !stick.pinch && !stick.dir && worldAt - stick.t < PINCH_MS) { stick.pinch = true; pad.classList.remove("on"); fingers.set(stick.id, {clientX: stick.x, clientY: stick.y}); }
   });
+  cv.addEventListener("pointermove", pinched);
   for (const ev of ["pointerup", "pointercancel"]) cv.addEventListener(ev, (e) => { fingers.delete(e.pointerId); pinch = null; });
 
   // The buttons say what they'll do, and the HUD fits the screen (the controls go above it when it's narrow)

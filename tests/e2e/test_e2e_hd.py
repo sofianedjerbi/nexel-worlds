@@ -102,3 +102,90 @@ def test_the_night_is_darker_than_the_day_but_for_your_lamp(browser, server):
         assert night < .7 * day and near > night + 30, (day, night, near)
     finally:
         g.page.close()
+
+
+far = lambda a, b: sum(abs(p - q) for p, q in zip(a, b)) > 40
+# the colour of the screen `up` art px over a point of the land
+UP = """([x, y, z, up]) => { const p = HdLook.screenOf(x, y, z), k = cv.width / innerWidth;
+  return Array.from(ctx.getImageData(Math.round(p[0] * k), Math.round((p[1] - up * zoom) * k), 1, 1).data).slice(0, 3); }"""
+# a bed's card (hd_things.js) for a place X art px right of the screen's middle: [its lean, its width, how many of its px are not the sprite's own]
+CARD = """([x, y, X]) => { const s = objectSprite('B', x, y, 0), c = HdThings.card('B', x, y, s, X), g = c.canvas.getContext('2d').getImageData(0, 0, c.canvas.width, c.canvas.height).data;
+  const q = document.createElement('canvas'); q.width = 16; q.height = 32; const h = q.getContext('2d'); h.drawImage(s[0], s[1], s[2], 16, 32, 0, 0, 16, 32); const d = h.getImageData(0, 0, 16, 32).data;
+  let off = 0; if (c.canvas.width === 16) for (let i = 0; i < d.length; i += 4) if (d[i + 3] >= 128 && (d[i] !== g[i] || d[i + 1] !== g[i + 1] || d[i + 2] !== g[i + 2])) off++;
+  return [c.lean, c.canvas.width, off, c.y]; }"""
+
+
+def test_a_bed_is_its_own_picture_px_for_px_with_a_top_a_side_and_a_shadow(browser, server):
+    """Furniture was its flat picture stood up on tilted ground; then boxes that squeezed its art. A bed is a card
+    (hd_things.js): every px of it is the sprite's own, wherever it is on the screen (it leant off to a side: it read
+    as broken); on the screen its foot board and its blanket are there, one over the other, and a shadow lies on the
+    ground under it."""
+    g = hd(browser, server)
+    try:
+        x, y = g.pos()
+        bx, by = x + 1, y - 2
+        g.stamp(1, -2, ["B"]); g.sleep(1500)
+        lean0, w0, off, foot = g.js(CARD, [bx, by, 0])
+        assert (lean0, w0, off) == (0, 16, 0)
+        assert g.js(CARD, [bx, by, 140])[:3] == [0, 16, 0]
+        board, blanket = g.js(UP, [bx + .5, by + foot, 0, 2]), g.js(UP, [bx + .5, by + foot, 0, 9])
+        assert not green(board) and far(board, blanket), (board, blanket)
+        assert any(b.get("shade") for b in g.js("([x, y]) => HdThings.at(x, y)", [bx, by]))
+        shade, meadow = [g.js(AT, [bx + d, by + foot + .12, 0]) for d in (.3, .5, .7)], [g.js(AT, [bx + d, by + 2.6, 0]) for d in (.3, .5, .7)]
+        assert max(map(sum, shade)) < max(map(sum, meadow)) - 40, (shade, meadow)
+    finally:
+        g.page.close()
+
+
+PUT = """async ([list, stand]) => { const bad = [];
+  for (const [x, y, z, item] of list) { const s = stand.find((q) => (q[0] - x) ** 2 + (q[1] - y) ** 2 + ((z - q[2]) * .5) ** 2 <= 6 && !(q[0] === x && q[1] === y));
+    await rpc('dev_teleport', {x: s[0], y: s[1], z: s[2]}); const r = await rpc('act', {tool: 'place', args: {x, y, item, z}}); if (!r.ok) bad.push([x, y, z, item, r.detail || r.error]); } return bad; }"""
+ROOF = "([x, y]) => (HdThings.at(x, y) || []).some((b) => b.z >= 16)"
+
+
+def test_a_built_house_has_its_roof_outside_and_is_open_inside(browser, server):
+    """Walls, a door, a roof laid block by block (floors.js). From outside the roof is drawn, over walls that stand
+    up to it; inside it the roof is open (the game's own rule for what is over your head) and you see the room."""
+    g = hd(browser, server)
+    try:
+        x, y = g.pos()
+        x0, y0 = x - 1, y - 5
+        g.stamp(-1, -5, ["WWWW", "WnnW", "W+WW"])
+        g.rpc("dev_give", items={"roof": 12})
+        room = [[x0 + 1, y0 + 1, 0], [x0 + 2, y0 + 1, 0]]
+        assert g.js(PUT, [[[x0 + i, y0 + j, 3, "roof"] for j in (2, 1, 0) for i in range(4)], room]) == []
+        over = [x0 + 1.5, y0 + 1.5, 3]                                      # (a point of the roof's top, over the room)
+        g.rpc("dev_teleport", x=x, y=y, z=0); g.sleep(2200)
+        out = g.js(AT, over)
+        assert g.js(ROOF, [x0 + 1, y0 + 1]) and not green(out), out                # outside: the roof, drawn
+        wall = max(b["z"] + b["h"] for b in g.js("([x, y]) => HdThings.at(x, y)", [x0, y0 + 1]) if b["z"] < 16)
+        assert wall == 16                                                    # (the wall under it: up to the roof block's underside)
+        g.rpc("dev_teleport", x=x0 + 1, y=y0 + 1, z=0); g.sleep(2200)
+        inside = g.js(AT, over)
+        assert not g.js(ROOF, [x0 + 1, y0 + 1]) and not g.js(ROOF, [x0 + 3, y0 + 2]), "the roof is still there inside"
+        assert far(out, inside) and g.js("HdLook.catSeen()") > .8, (out, inside)
+    finally:
+        g.page.close()
+
+
+def test_the_aim_goes_round_the_piece_as_it_is_drawn(browser, server):
+    """Pointing at a chest (a card) and at a wall (a box in the land): the aim's corners go round what is drawn, not
+    round the old flat picture's place: the chest's own px (14 wide, 11 high), the wall's box (a tile wide, its cap
+    over its front)."""
+    g = hd(browser, server)
+    try:
+        x, y = g.pos()
+        g.stamp(1, -1, ["C"]); g.stamp(-2, -1, ["W"]); g.sleep(1500)
+        z = g.js("zoom")
+        p = g.js("([x, y]) => { const s = objectSprite('C', x, y, 0), c = HdThings.card('C', x, y, s), f = HdLook.screenOf(x + .5, y + c.y, 0); return [f[0], f[1] - 5 * zoom, c.b]; }", [x + 1, y - 1])
+        g.page.mouse.move(p[0], p[1]); g.sleep(600)
+        r, b = g.js("HdLook.aim"), p[2]
+        assert r and abs(r["w"] - (b[2] - b[0] - 1) * z) <= z and abs(r["h"] - (b[3] - b[1] - 1) * z) <= z, (r, b)
+        assert r["x"] - z <= p[0] <= r["x"] + r["w"] + z and r["y"] - z <= p[1] <= r["y"] + r["h"] + z, (r, p)
+        q = g.js("([x, y]) => HdLook.screenOf(x + .5, y + .6, 1)", [x - 2, y - 1])
+        g.page.keyboard.down("Shift"); g.page.mouse.move(q[0] + 1, q[1]); g.page.mouse.move(q[0], q[1]); g.sleep(600)      # (Shift: take it down: the wall itself is aimed at)
+        r = g.js("HdLook.aim"); g.page.keyboard.up("Shift")
+        assert g.js("([x, y]) => { const a = aimedTile(); return a && a.p.x === x && a.p.y === y; }", [x - 2, y - 1]), "the pointer on a wall's front names the wall"
+        assert r and 5 * z <= r["w"] <= 8 * z and 12 * z <= r["h"] <= 22 * z and r["x"] - z <= q[0] <= r["x"] + r["w"] + z, (r, q)
+    finally:
+        g.page.close()

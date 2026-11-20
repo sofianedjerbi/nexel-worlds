@@ -7,86 +7,11 @@
 //              outside is air), under: the cut drawn as rock in strata (light.under too), over: tiles round of the land over ceil to keep (a veil), 0: none}
 //   view: {w, h, cam: {kind: "persp"|"iso"|"obl", pitch, fov, yaw}, at: [x, y, z], bend, light: {amb, lr, day,
 //          fog: [near, far], fogc: [r, g, b], clear, roof, rim, strata, dither, veil, checker}, water: {canvas, x, y},
-//          t, sprites: [{canvas, x, y, z, fx, fy}] (its foot at px (fx, fy) of its canvas, drawn px for px)}
+//          t, sprites: [{canvas, x, y, z, fx, fy}] (its foot at px (fx, fy) of its canvas, drawn px for px),
+//          hour: {wash: [r, g, b, a], lit: canvas} the hour's light, laid here over what was drawn and not over the air}
 const VoxStyle = (() => {
   const H = .5, SL = 64, C = 16, AW = SL * C, N = 10;
-  const VS = `#version 300 es
-  in vec3 p; in vec2 uv; in vec4 a; in float e; uniform mat4 m; uniform vec3 ctr; uniform float bend; out vec2 vu; out vec4 va; out float ve; out vec3 wp;
-  void main() { vec3 q = p; float dn = max(0., ctr.z - 1. - q.z); q.y -= bend * dn * dn; gl_Position = m * vec4(q, 1.); vu = uv; va = a; ve = e; wp = p; }`;
-  const FS = `#version 300 es
-  precision mediump float; in vec2 vu; in vec4 va; in float ve; in vec3 wp; uniform sampler2D t, wt; uniform vec3 lamp, eye, fogc;
-  uniform vec4 ub; uniform float wa, und, dep, sk, ovd, lr, day, amb, fn, ff, roof, rim, strata, dith, veil, chk, tm, dk; uniform vec4 wv; out vec4 o;
-  uniform vec2 vp; float hsh(vec2 v) { return fract(sin(dot(v, vec2(12.99, 78.23))) * 43758.5); }
-  float bit(float v, float k) { return mod(floor(v / k), 2.); }
-  vec3 rk(vec2 g, float d0, float kd) {   // natural strata: bands of uneven thickness and tone, earth near the meadow, stone deeper (g.y down = deeper)
-    float b = g.y + floor(3. * sin(g.x * .09 + floor(g.y / 23.)) + 2. * sin(g.x * .031 + 1.7)), bd = floor(b / 11.), lb = b - bd * 11.;
-    if (lb < (hsh(vec2(bd, 1.)) - .5) * 8.) { bd -= 1.; lb += 11.; } else if (lb >= 11. + (hsh(vec2(bd + 1., 1.)) - .5) * 8.) { bd += 1.; lb -= 11.; }
-    float bdep = d0 + bd * 11. * kd, bn = hsh(vec2(bd, 3.));
-    float st = step(bn, clamp((bdep - 1.) / 8., 0., .85)), sh = hsh(vec2(bd, 5.)), hu = hsh(vec2(bd, 6.));
-    sh = floor(sh * 5.) / 4. + (hsh(g) > .92 ? .2 : 0.) - (hsh(g + 3.) > .95 ? .15 : 0.);
-    vec3 ea = mix(vec3(.62, .41, .24), vec3(.36, .23, .14), sh), sa = mix(vec3(.56, .51, .45), vec3(.28, .27, .29), sh) * (hu < .33 ? vec3(1.08, .96, .84) : hu < .66 ? vec3(.92, .97, 1.06) : vec3(1.));
-    vec3 col = mix(ea, sa, st); float lo = lb - (hsh(vec2(bd, 1.)) - .5) * 8.;
-    if (lo < 1. && hsh(vec2(bd, 9.)) > .4 && hsh(vec2(floor((g.x + bd * 7.) / 6.), bd)) > .35) col *= .62;   // a seam: on some boundaries only, broken
-    vec2 pc = floor(g / 7.); float ph = hsh(pc); vec2 pp = mod(g, 7.) - floor(vec2(hsh(pc + 7.), hsh(pc + 9.)) * 4. + 1.);
-    if (ph > .68 && pp.x >= 0. && pp.x < 2. && pp.y >= 0. && pp.y < 2. - step(.84, ph)) col = (st > .5 ? vec3(.58, .55, .5) : vec3(.66, .52, .37)) * (pp.y < 1. ? 1.1 : .78);   // a pebble
-    if (ub.w > .5) { vec3 base = mix(vec3(.5, .38, .28), vec3(.47, .45, .43), smoothstep(2., 12., bdep)); col = base * (.92 + .16 * clamp(dot(col, vec3(.33)) / .45 - .5, 0., 1.)); }   // (?hd: calm: one earth tone fading to one stone tone, the bands a faint 15% texture)
-    return col;
-  }
-  vec3 fl() { float b = clamp(floor((dep + (lamp.y - .6) / .5 - va.w) / 4.) / 3., 0., 1.); return mix(vec3(.46, .36, .27), vec3(.4, .38, .38), b); }   // flat rock: one tone per depth band
-  void main() {
-    float kind = va.z; vec2 lu = mod(vu, 16.);
-    float hd = distance(wp.xz, lamp.xz), va2 = veil > 0. ? mix(veil, 1., smoothstep(2.5, 6.5, hd)) : 1.;
-    if (chk > .5 && hd < 4.5 && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard;
-    vec4 c = texture(t, vu / ${AW}.); if (kind > 7.5 && c.a < .5) discard; if (c.a < .5) c = vec4(.42, .32, .25, 1.);   // (8: a model's face, host.models: a bridge's planks; its see-through px are holes)
-    float d = distance(wp, lamp) / lr, lan = clamp(1.15 - d * d, 0., 1.);
-    float l = max(va.y * day, amb + (1. - amb) * lan) * va.x;
-    if (dith > .5) { float b = mod(floor(gl_FragCoord.x / 2.), 2.) * 2. + mod(floor(gl_FragCoord.y / 2.), 2.); l = floor(l * 4. + (b + .5) / 4.) / 4. + .12; }
-    vec3 warm = mix(vec3(1.), vec3(1.1, .97, .8), lan * (1. - va.y));
-    vec3 col = c.rgb * l * warm;
-    vec2 bq = wp.xz - lamp.xz; float bj = .5 * mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) - (kind < .5 ? 1. : 0.);   // (?hd: the slice only in its box round you, ub: tiles north, across, south, on; edge a 2x2 checker; the box's cut sides strata too)
-    if (und > .5 && kind < 2.5 && !(ub.w > .5 && kind > .5 && kind < 1.5 && va.y > .5) && (ub.w < .5 || kind > 1.5 || (bq.y >= -ub.x - .5 + bj && abs(bq.x) <= ub.y + .5 - bj && bq.y <= ub.z + .5 - bj))) {                                // under ground: a slice through the earth, your space hollowed in it
-      vec2 b0 = vu - lu; vec3 rf = (texture(t, (b0 + vec2(3.5, 9.5)) / ${AW}.).rgb + texture(t, (b0 + vec2(11.5, 11.5)) / ${AW}.).rgb + texture(t, (b0 + vec2(5.5, 13.5)) / ${AW}.).rgb + texture(t, (b0 + vec2(13.5, 15.5)) / ${AW}.).rgb) * .25, base = mix(vec3(.5, .38, .28), vec3(.47, .45, .43), smoothstep(2., 12., dep + (5. - lamp.z * 16.) / 16. * 1.6));   // (?hd: a front's own flat tone, and the rock's calm tone by depth)
-      if (kind > 1.5) {                                          // the cut: dark earth near the surface, stone deeper, in strata
-        vec2 g = floor(wp.xz * 16.); col = bit(ve, 8192.) > .5 ? fl() : rk(g, dep + (5. - lamp.z * 16.) / 16. * 1.6, 1.6 / 16.);   // (far from your space: plain flat rock)
-        vec2 sc = gl_FragCoord.xy / vp - .5; col *= .7 * (1. - .9 * dot(sc, sc));                // darker and flat, darker to the screen's edges
-        if (ub.w > .5) {   // (?hd: the cut is rock: the tileset's own front, its 8 rows twice a tile, each tile's a little off its neighbour's (no planks). Under a roof (dk): one calm tone by depth, the front's lines faint on it, your lantern's light on it in three flat steps, five tiles round you (it was rings to the screen's edge, a checker at each: a target), beyond it flat rock; no roof: the rock as it is, in the day's light)
-          float oy = mod(lu.y + floor(hsh(floor(wp.xz)) * 8.), 8.), q = distance(wp.xz, lamp.xz) / 5.5, g4 = floor(clamp(1. - q * q, 0., 1.) * 3. + .5) / 3.; vec3 rc = texture(t, (b0 + vec2(lu.x, 8. + oy)) / ${AW}.).rgb;
-          col = mix(rf * .82, base * (.44 + .4 * g4) * mix(vec3(1.), vec3(1.1, .98, .84), g4), dk) * clamp(dot(rc, vec3(.33)) / max(.05, dot(rf, vec3(.33))), .92 - .06 * dk, 1.06 + .04 * dk); }
-        if (bit(ve, 16.) > .5) col = c.rgb * .13 * (mod(g.x + g.y, 2.) < 1. ? 1. : .8) + vec3(.02);   // a cave on another level: dark, its floor faint
-        if ((bit(ve, 32.) > .5 && lu.y < 2.) || (bit(ve, 64.) > .5 && lu.x > 14.) || (bit(ve, 128.) > .5 && lu.y > 14.) || (bit(ve, 256.) > .5 && lu.x < 2.)) col = vec3(.85, .68, .48);
-        float r = 0.; if (bit(ve, 1.) > .5 && lu.y < 1.) r = 1.; if (bit(ve, 2.) > .5 && lu.x > 15.) r = 1.; if (bit(ve, 4.) > .5 && lu.y > 15.) r = 1.; if (bit(ve, 8.) > .5 && lu.x < 1.) r = 1.;
-        col = mix(col, vec3(.95, .75, .5) * (.5 + lan), r * .8);
-      } else if (kind < .5) { col = bit(ve, 16384.) > .5 ? c.rgb * .3 : bit(ve, 8192.) > .5 ? fl() * .75 : ub.w > .5 ? mix(c.rgb * max(day * .85, amb), base * 1.08 * clamp(dot(c.rgb, vec3(.33)) / max(.05, dot(rf, vec3(.33))), .84, 1.1) * (amb + (1. - amb) * lan) * warm, dk) * va.x * .92 : rk(floor(vec2((wp.x + wp.z) * 16., -wp.y * 16.)), dep + (lamp.y - .6) / .5, 1. / 8.) * l * warm * .6; }   // a wall: the strata in world height (one band pattern, not per level)
-      else {                                                      // a floor: a step down has a lit lip, a step up shades its foot
-        col = c.rgb * (ub.w > .5 ? 1.05 + .5 * lan : .75 + .6 * lan) * vec3(1.12, 1., .8) + vec3(.2, .13, .05) * lan;   // your space: lighter and warmer, a lantern's glow
-        float ue = min(min(mix(9., lu.y, bit(ve, 512.)), mix(9., 15. - lu.x, bit(ve, 1024.))), min(mix(9., 15. - lu.y, bit(ve, 2048.)), mix(9., lu.x, bit(ve, 4096.))));
-        if (ue < 3.) col *= .45 + .15 * floor(ue);
-        if (va.w > (lamp.y - .6) / .5 - 3. && ((bit(ve, 1.) > .5 && lu.y < 1.) || (bit(ve, 2.) > .5 && lu.x > 15.) || (bit(ve, 4.) > .5 && lu.y > 15.) || (bit(ve, 8.) > .5 && lu.x < 1.))) col = mix(col, vec3(1., .93, .75), .85);   // (only near your level: no lines far below)
-      }
-      if (va.y > .5 && kind < 1.5) col = mix(col, c.rgb * vec3(.9, 1., 1.15) * .85, .6);   // the daylight of the way up
-    } else if (kind > 1.5 && kind < 2.5) {                              // a sliced top: the land over you
-      col = c.rgb * mix(roof, 1., va.y * sk) * mix(vec3(.9, .85, 1.), vec3(1.), va.y * sk);
-      float r = 0.; if (bit(ve, 1.) > .5 && lu.y < 1.) r = 1.; if (bit(ve, 2.) > .5 && lu.x > 15.) r = 1.;
-      if (bit(ve, 4.) > .5 && lu.y > 15.) r = 1.; if (bit(ve, 8.) > .5 && lu.x < 1.) r = 1.;
-      if (r > 0. && rim > 0.) col = mix(col, vec3(1., .9, .68), rim);
-    } else if (kind < 1.5 && kind > .5 && rim > 0.) {            // a top at a drop: its lip catches the light
-      if (bit(ve, 4.) > .5 && lu.y > 15.) col = mix(col, vec3(1., .94, .78), rim * .7);
-      if (bit(ve, 1.) > .5 && lu.y < 1.) col *= 1. - rim * .5;
-    }
-    if (kind > 5.5 && strata > 0.) { float s = mod(va.w, 2.); col *= s < 1. ? 1. : 1. - strata; if (lu.y > 15.) col *= .7; col = mix(col, col * vec3(.85, .9, 1.1), clamp(-va.w / 10., 0., .6)); }
-    if (kind > 2.5 && kind < 3.5) {                              // water: the game's own picture of it over a tint (?hd: the picture is the clear water, its bed showing: only a little of it over the sea tint)
-      vec2 w = (vec2(wp.x, wp.z) * 16. - wv.xy) / wv.zw; vec4 wc = wv.z > 0. ? texture(wt, w) : vec4(0.);
-      vec3 sea = vec3(.36, .64, .8) * max(l, .6);
-      col = mix(sea, wc.rgb, wc.a * (ub.w > .5 ? .3 : .8)); o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * (ub.w > .5 ? .4 : 1.)), wa); return;   // (?hd: the far sea stays blue to the horizon)
-    }
-    if (kind > 6.5 && kind < 7.5) col = (texture(t, (vu + vec2(-4., -4.)) / ${AW}.).rgb + texture(t, (vu + vec2(4., -4.)) / ${AW}.).rgb + texture(t, (vu + vec2(-4., 4.)) / ${AW}.).rgb + texture(t, (vu + vec2(4., 4.)) / ${AW}.).rgb) * .25 * va.x * max(day, .35);   // (?hd: the land past the box: its own tint, flat, in the haze)
-    col = mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)));
-    if (veil > 0.) col *= mix(ovd, 1., smoothstep(2.5, 6.5, hd)); o = vec4(col, va2);
-  }`;
-  const SV = `#version 300 es
-  in vec3 p; in vec2 uv; out vec2 vu; void main() { gl_Position = vec4(p, 1.); vu = uv; }`;
-  const SF = `#version 300 es
-  precision mediump float; in vec2 vu; uniform sampler2D t; uniform float sil; out vec4 o; void main() { vec4 c = texture(t, vu); if (c.a < .5) discard; if (sil > 1.5 && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard; o = sil > .5 && sil < 1.5 ? vec4(.95, .8, .55, .4) : c; }`;   // (sil 2: what stands in front of you: one px in two of it, a 2x2 checker, so you are seen through it)
+  const {VS, FS, SV, SF} = VoxStyleGLSL;      // (the shaders: vox_style_glsl.js)
   function mul(a, b) { const r = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k]; r[i * 4 + j] = s; } return r; }
   const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   const norm = (a) => { const l = Math.hypot(...a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }, dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -102,8 +27,8 @@ const VoxStyle = (() => {
   ];
   const solidC = (c, z) => { if (!c) return false; for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   function create(host, cfg) {
-    let el = null, skies = [], holes = [], lastM = null, lastB = [0, 0], msh = null, gl = null, pr = null, sp = null, tex = null, wtx = null, bufs = {}, stale = true, cost = 0, spill = false;
-    const atlas = new Uint32Array(AW * AW), slots = new Map(), cnt = {main: 0, water: 0, over: 0}, U = {};
+    let el = null, skies = [], holes = [], lastM = null, lastB = [0, 0], msh = null, gl = null, pr = null, sp = null, tex = null, wtx = null, htx = null, bufs = {}, stale = true, cost = 0, spill = false, hold = false, wipe = false;
+    const atlas = new Uint32Array(AW * AW), slots = new Map(), cnt = {main: 0, model: 0, shade: 0, shade2: 0, ghost: 0, water: 0, over: 0}, U = {};
     function slot(key, paint) {
       let s = slots.get(key); if (s !== undefined) return s;
       if (slots.size >= SL * SL) { slots.clear(); atlas.fill(0); spill = true; }   // (full: all its paints go; the land being made is made again, steps)
@@ -113,14 +38,23 @@ const VoxStyle = (() => {
       if (gl) return true;
       el = document.createElement("canvas"); gl = el.getContext("webgl2", {antialias: false, depth: true, preserveDrawingBuffer: true}); if (!gl) return false;
       const prog = (vs, fs) => { const p = gl.createProgram(); for (const [ty, s] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) { const sh = gl.createShader(ty); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); gl.attachShader(p, sh); } gl.linkProgram(p); return p; };
-      pr = prog(VS, FS); sp = prog(SV, SF); tex = gl.createTexture(); wtx = gl.createTexture();
-      for (const k of ["main", "water", "over", "spr"]) bufs[k] = gl.createBuffer();
+      pr = prog(VS, FS); sp = prog(SV, SF); tex = gl.createTexture(); wtx = gl.createTexture(); htx = gl.createTexture();
+      for (const k of ["main", "model", "shade", "shade2", "ghost", "water", "over", "spr"]) bufs[k] = gl.createBuffer();
       return true;
     }
     const lim = (z) => Math.max(cfg.levels[0], Math.min(cfg.levels[1], z));
+    // what stands in the land as boxes (host.models: a bridge's deck and posts): a top and a south front each, its paint from the host's sheet px for px into a slot
+    const sheet = () => { if (!msh) { const q = host.modelSheet(); msh = q.px ? q : {px: new Uint32Array(q.getContext("2d").getImageData(0, 0, q.width, q.height).data.buffer), w: q.width}; } return msh; };
+    const model = (x, y, b, dst) => { const X = x + b.x / C, Y = y + b.y / C, X1 = X + b.w / C, Y1 = Y + b.d / C, Z0 = b.z / cfg.up, Z1 = (b.z + b.h) / cfg.up;
+      const face = (uv, w, h, q, k) => { if (!uv) return; w = Math.min(C, w); h = Math.min(C, h); const sl = slot("m" + (b.sheet ? b.sheet.id : "") + uv + "," + w + "," + h, (px, at, st) => { const m = b.sheet || sheet(); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) px[at + j * st + i] = m.px[(uv[2] ? uv[1] : uv[1] + j) * m.w + (uv[2] ? uv[0] : uv[0] + i)]; });
+        const v = q.map((g3, n) => [...gp(...g3), (sl % SL) * C + [0, w, w, 0][n], (sl / SL | 0) * C + [0, 0, h, h][n], k, 1, b.shade ? 10 : b.ghost ? 9 : 8, Z1, 0]); for (const n of [0, 1, 2, 0, 2, 3]) dst.push(...v[n]); };
+      face(b.top, b.w, b.d, [[X, Y, Z1], [X1, Y, Z1], [X1, Y1, Z1], [X, Y1, Z1]], 1); const fh = b.fh || b.h; if (b.h) { face(b.front, b.w, fh, [[X, Y1, Z1], [X1, Y1, Z1], [X1, Y1, Z0], [X, Y1, Z0]], .85);
+        face(b.west, b.d, fh, [[X, Y, Z1], [X, Y1, Z1], [X, Y1, Z0], [X, Y, Z0]], .68); face(b.east, b.d, fh, [[X1, Y1, Z1], [X1, Y, Z1], [X1, Y, Z0], [X1, Y1, Z0]], .74); } };   // (b.sheet: a paint sheet of its own, {px, w, id}; west, east: its sides, d x h px; fh: its front and sides are that many rows of paint over its height)
     function build(...a) { for (const _ of steps(...a)); }
     function* steps(cx, cy, L, ceil, o) {   // (?hd: the same, a row of tiles a step: the caller spreads it over frames)
       const t0 = performance.now(), cols = new Map(), r = o.r, deep = o.deep; spill = false;
+      // (the paints and the land that names them change together: while a land is being made, over frames, the one still drawn keeps the paints it was made with. They were wiped at once, forget(), and sent as they were painted: the land shown turned to bare earth and to other tiles' paints until the new one was done: each time land came in as you walked)
+      hold = true; if (wipe) { slots.clear(); atlas.fill(0); wipe = false; }
       const col = (x, y) => { const k = x + "," + y; if (!cols.has(k)) cols.set(k, host.column(x, y)); return cols.get(k); };
       const inBox = (x, y) => Math.abs(x - cx) <= r && Math.abs(y - cy) <= r;
       const cut = new Map();   // (under: the slice height, one field: a tile of your space its floor + 2, a rock tile the nearest space tile's (ties: the lower))
@@ -139,7 +73,7 @@ const VoxStyle = (() => {
         for (let j = 1; j <= 2; j++) { const f = reach.get(x + "," + (y - j)); if (f !== undefined) { cut.set(k, Math.min(cut.get(k), f)); break; } } }
       for (const [k, d] of dist) if (d > 2) cut.set(k, L + 2); else if (d === 2 && !reach.has(k)) cut.set(k, Math.max(L, Math.min(L + 4, cut.get(k))));   // (far: one height, your ceiling; the ring by it within 2 levels of it)
       const solidIn = (x, y, z, top) => { top = cutOf(x, y, top); if (!inBox(x, y)) return !o.box && z <= top && solidC(col(x, y), z); if (z <= L - deep) return !o.box; return z <= top && solidC(col(x, y), z); };
-      const out = {main: [], water: [], over: []}; skies = []; holes = [];
+      const out = {main: [], model: [], shade: [], water: [], over: []}; skies = []; holes = [];
       const hol = (x, y) => { if (!o.under || !inR(x, y)) return null; const c = col(x, y); if (!c) return null; const open = c[c.length - 1], cz = cutOf(x, y, ceil);   // (a cave on another level: the level you would stand at)
         for (let z = L; z <= cz; z++) if (!solidC(c, z)) return null;
         for (let z = L - 8; z < open && z <= cz + 8; z++) if ((z < L || z > cz) && !solidC(c, z)) return z; return null; };
@@ -170,20 +104,14 @@ const VoxStyle = (() => {
           quad(dst, x, y, z - 1, F, F.k, sky, kind, z, e, s, solid, f === 0);
         }
       };
-      // what stands in the land as boxes (host.models: a bridge's deck and posts): a top and a south front each, its paint from the host's sheet px for px into a slot
-      const sheet = () => { if (!msh) { const q = host.modelSheet(); msh = q.px ? q : {px: new Uint32Array(q.getContext("2d").getImageData(0, 0, q.width, q.height).data.buffer), w: q.width}; } return msh; };
-      const model = (x, y, b) => { const X = x + b.x / C, Y = y + b.y / C, X1 = X + b.w / C, Y1 = Y + b.d / C, Z0 = b.z / cfg.up, Z1 = (b.z + b.h) / cfg.up;
-        const face = (uv, w, h, q, k) => { if (!uv) return; w = Math.min(C, w); h = Math.min(C, h); const sl = slot("m" + uv + "," + w + "," + h, (px, at, st) => { const m = sheet(); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) px[at + j * st + i] = m.px[(uv[2] ? uv[1] : uv[1] + j) * m.w + (uv[2] ? uv[0] : uv[0] + i)]; });
-          const v = q.map((g3, n) => [...gp(...g3), (sl % SL) * C + [0, w, w, 0][n], (sl / SL | 0) * C + [0, 0, h, h][n], k, 1, 8, Z1, 0]); for (const n of [0, 1, 2, 0, 2, 3]) out.main.push(...v[n]); };
-        face(b.top, b.w, b.d, [[X, Y, Z1], [X1, Y, Z1], [X1, Y1, Z1], [X, Y1, Z1]], 1); if (b.h) face(b.front, b.w, b.h, [[X, Y1, Z1], [X1, Y1, Z1], [X1, Y1, Z0], [X, Y1, Z0]], .85); };
       for (let y = cy - r; y <= cy + r; y++) { yield; for (let x = cx - r; x <= cx + r; x++) {
-        const c = col(x, y); if (!c) continue; { const ms = host.models && host.models(x, y); if (ms) for (const b of ms) model(x, y, b); }
+        const c = col(x, y); if (!c) continue; { const ms = host.models && host.models(x, y); if (ms) for (const b of ms) model(x, y, b, b.shade ? out.shade : out.model); }
         const wet = host.water && host.water(x, y), wz = wet ? (host.waterTop ? host.waterTop(x, y) : 0) : null;
         const solid = (a, b, z) => solidIn(a, b, z, ceil);
         const cz = cutOf(x, y, ceil);
         if (o.under && Math.abs(x - cx) <= 8 && Math.abs(y - cy) <= 6 && !solidC(c, L + 1)) for (let z = L + 2, sd = false; z <= Math.max(ceil, cz) + 8 && z < c[c.length - 1]; z++) { if (solidC(c, z - 1) && z - 1 > L) sd = true; if (sd && !solidC(c, z) && solidC(c, z - 1)) { holes.push([x, y, z, 1]); break; } }   // (a cave over your own space: its outline)
         for (let z = L - deep + 1; z <= Math.max(ceil, cz, wet ? wz + 1 : -1e9); z++) {   // (?hd: a pond whose face is over the cut still has its face)
-          if (!solid(x, y, z)) { if (wet && z === wz + 1) quad(out.water, x, y, z - 2, FACES[0], 1, 1, 3, z, 0, 0, null, true); continue; }
+          if (!solid(x, y, z)) { if (wet && z === wz + 1) quad(out.water, x, y, z - 2, FACES[0], 1, 1, 3, z, Math.max(0, wz - c[c.length - 1]), 0, null, true); continue; }   // (e: how deep the water is here, levels)
           faces(x, y, z, solid, out.main, z === cz, o.box);
         }
         if (o.over && Math.abs(x - cx) <= o.over && Math.abs(y - cy) <= o.over) {
@@ -195,10 +123,11 @@ const VoxStyle = (() => {
         // (?hd: past the box, to the horizon, in patches: the sea's flat face where the sea is (or nothing is known); where land is, the land's own tint at its height, flat, a skirt south of it: no sea inland)
         for (const [j, h, mj] of seg) for (const [i, w, mi] of seg) { if (mi && mj) continue; const x = cx + i, y = cy + j, mx = x + (w >> 1), my = y + (h >> 1), c = host.column(mx, my), land = c && c.length && !(host.water && host.water(mx, my));
           const z = land ? c[c.length - 1] : o.sea, sl = land ? slot(mx + "," + my + "," + z, (px, at, st) => host.paintTop(mx, my, z, px, at, st)) : 0, u0 = land ? (sl % SL) * C + 8 : 0, v0 = land ? (sl / SL | 0) * C + 8 : 0;
-          const put = (q, k) => { const v = q.map(([a, b, d]) => [...gp(a, b, d), u0, v0, k, 1, land ? 7 : 3, z, 0]); for (const n of [0, 1, 2, 0, 2, 3]) (land ? out.main : out.water).push(...v[n]); };
+          const put = (q, k) => { const v = q.map(([a, b, d]) => [...gp(a, b, d), u0, v0, k, 1, land ? 7 : 3, z, 9]); for (const n of [0, 1, 2, 0, 2, 3]) (land ? out.main : out.water).push(...v[n]); };
           put([[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]], 1); if (land) put([[x, y + h, z], [x + w, y + h, z], [x + w, y + h, z - 10], [x, y + h, z - 10]], .8); } }
       if (spill && !o.again) { slots.clear(); atlas.fill(0); yield* steps(cx, cy, L, ceil, Object.assign({}, o, {again: true})); return; }   // (the paints ran out while it was made: faces made before that had another face's paint (a meadow all earth, a black hole): once more, from none)
       if (start()) for (const k in out) { const d = new Float32Array(out[k]); cnt[k] = d.length / N; gl.bindBuffer(gl.ARRAY_BUFFER, bufs[k]); gl.bufferData(gl.ARRAY_BUFFER, d, gl.STATIC_DRAW); }
+      hold = false; stale = true;
       cost = performance.now() - t0;
     }
     function quad(out, x, y, z, F, k, sky, kind, lv, e, s, solid, isTop) {
@@ -242,7 +171,7 @@ const VoxStyle = (() => {
       gl.viewport(0, 0, RW, RH); gl.clearColor(...L.clear, L.ca ?? 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND); gl.depthMask(true);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
       const near = (t) => { for (const [a, b] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, a, b); };
-      if (stale) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, AW, AW, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(atlas.buffer)); near(); stale = false; }
+      if (stale && !hold) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, AW, AW, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(atlas.buffer)); near(); stale = false; }
       const W = v.water; gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, wtx);
       if (W && W.canvas && W.canvas.width) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, W.canvas); near(); }
       gl.activeTexture(gl.TEXTURE0);
@@ -250,11 +179,13 @@ const VoxStyle = (() => {
       gl.useProgram(pr); const u = (n) => U[n] || (U[n] = gl.getUniformLocation(pr, n));
       gl.uniformMatrix4fv(u("m"), false, m); gl.uniform1i(u("t"), 0); gl.uniform1i(u("wt"), 2); gl.uniform3fv(u("lamp"), [lamp[0], lamp[1] + .6, lamp[2]]); gl.uniform3fv(u("eye"), eye);
       gl.uniform3fv(u("ctr"), lamp); gl.uniform1f(u("bend"), v.bend || 0); gl.uniform3fv(u("fogc"), L.fogc); gl.uniform2fv(u("vp"), [RW, RH]);
-      for (const [n, x] of [["lr", L.lr], ["day", L.day], ["amb", L.amb], ["fn", L.fog[0]], ["ff", L.fog[1]], ["roof", L.roof], ["rim", L.rim], ["strata", L.strata || 0], ["dith", L.dither ? 1 : 0], ["und", L.under ? 1 : 0],  ["wa", L.wa ?? .62], ["dep", v.dep || 0], ["veil", 0], ["sk", L.sk], ["ovd", L.ovd || 1], ["chk", 0], ["tm", v.t || 0], ["dk", L.dark || 0]]) gl.uniform1f(u(n), x);
-      gl.uniform4fv(u("ub"), L.ub || [0, 0, 0, 0]); gl.uniform4fv(u("wv"), W && W.canvas && W.canvas.width ? [W.x, W.y, W.canvas.width, W.canvas.height] : [0, 0, 0, 0]);
-      pass("main");
+      for (const [n, x] of [["lr", L.lr], ["day", L.day], ["amb", L.amb], ["fn", L.fog[0]], ["ff", L.fog[1]], ["roof", L.roof], ["rim", L.rim], ["strata", L.strata || 0], ["dith", L.dither ? 1 : 0], ["und", L.under ? 1 : 0],  ["wa", L.wa ?? .62], ["dep", v.dep || 0], ["veil", 0], ["sk", L.sk], ["ovd", L.ovd || 1], ["chk", 0], ["tm", v.t || 0], ["dk", L.dark || 0], ["rd", 0]]) gl.uniform1f(u(n), x);
+      gl.uniform4fv(u("wtn[0]"), L.wtint || new Float32Array(20)); gl.uniform4fv(u("ub"), L.ub || [0, 0, 0, 0]); gl.uniform4fv(u("wv"), W && W.canvas && W.canvas.width ? [W.x, W.y, W.canvas.width, W.canvas.height] : [0, 0, 0, 0]);
+      { const d = [], sd = []; for (const [x, y, b] of v.ghosts || []) model(x, y, b, b.shade ? sd : d); cnt.ghost = d.length / N; cnt.shade2 = sd.length / N; for (const [k, l] of [["ghost", d], ["shade2", sd]]) if (l.length) { gl.bindBuffer(gl.ARRAY_BUFFER, bufs[k]); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(l), gl.STREAM_DRAW); }
+        if (stale && !hold) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, AW, AW, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(atlas.buffer)); stale = false; } }   // (view.ghosts: [[x, y, box]...], what is only planned, and the shadows of what moves: made each frame)
+      pass("main"); pass("model"); pass("ghost"); gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); pass("shade"); pass("shade2"); gl.depthMask(true); gl.disable(gl.BLEND);
       // the sprites: px for px, their foot snapped to a whole px, over everything (you are never lost under ground)
-      const me = (v.sprites || []).find((s) => s.top), mf = me && project(m, me.x, me.y, me.z), PX = (f) => [(f[0] * .5 + .5) * RW, (.5 - f[1] * .5) * RH], mp = mf && PX(mf);
+      const me = (v.sprites || []).find((s) => s.top), mf = me && project(m, me.x, me.y, me.z), PX = (f) => [(f[0] * .5 + .5) * RW, (.5 - f[1] * .5) * RH], mp = mf && PX(mf), disc = mp ? [mp[0], RH - mp[1] + 1, 12] : [0, 0, 0];   // (the disc round you: what covers you is seen through there only)
       const spr = (s) => {   // (?hd: you (top) are drawn after the water: you stand in it, not under it; what stands south of you after you, and where it covers you a checker of it)
         const f = project(m, s.x, s.y, s.z), fx = Math.round((f[0] * .5 + .5) * RW), fy = Math.round((.5 - f[1] * .5) * RH), w = s.canvas.width, h = s.canvas.height;
         const x0 = fx - s.fx, y0 = fy - s.fy, X = (px) => px / RW * 2 - 1, Y = (py) => 1 - py / RH * 2, z = s.d ? f[2] - .0004 : L.under ? project(m, s.x, s.y + .45, s.z + .3)[2] : f[2] - .002;
@@ -266,7 +197,7 @@ const VoxStyle = (() => {
         gl.uniform1i(gl.getUniformLocation(sp, "t"), 1);
         gl.bindBuffer(gl.ARRAY_BUFFER, bufs.spr); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(d), gl.STREAM_DRAW);
         for (const [nm, sz, off] of [["p", 3, 0], ["uv", 2, 12]]) { const l = gl.getAttribLocation(sp, nm); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, sz, gl.FLOAT, false, 20, off); }
-        const sil = gl.getUniformLocation(sp, "sil"); gl.uniform1f(sil, over ? 2 : 0);
+        const sil = gl.getUniformLocation(sp, "sil"); gl.uniform1f(sil, over ? 2 : 0); gl.uniform3fv(gl.getUniformLocation(sp, "mc"), disc);
         if (L.under && !s.d && !s.top) { gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.uniform1f(sil, 1); gl.drawArrays(gl.TRIANGLES, 0, 6); gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.uniform1f(sil, 0); }   // (hidden by a wall: a faint shape of you)
         if ((!L.under && !s.d) || s.top) gl.disable(gl.DEPTH_TEST); gl.drawArrays(gl.TRIANGLES, 0, 6); gl.enable(gl.DEPTH_TEST); gl.activeTexture(gl.TEXTURE0); gl.useProgram(pr);
       };
@@ -274,13 +205,22 @@ const VoxStyle = (() => {
       if (v.sprites) for (const s of v.sprites) if (!s.top && !late(s)) spr(s);
       gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
       pass("water"); gl.depthMask(true); gl.disable(gl.BLEND);
-      if (me) spr(me); if (v.sprites) for (const s of v.sprites) if (!s.top && late(s)) spr(s);
+      if (me) { spr(me); pass("model", () => { gl.uniform1f(u("rd"), 1); gl.uniform3fv(u("mc"), disc); }); gl.uniform1f(u("rd"), 0); } if (v.sprites) for (const s of v.sprites) if (!s.top && late(s)) spr(s);
       if (L.veil || L.checker) { gl.enable(gl.BLEND); gl.depthMask(false); pass("over", () => { gl.uniform1f(u("veil"), L.veil || 1); gl.uniform1f(u("chk"), L.checker ? 1 : 0); gl.uniform1f(u("roof"), 1); }); gl.depthMask(true); gl.disable(gl.BLEND); }
+      if (v.hour) {   // the hour's light, here and not on a canvas of the page's (it was four of them laid on each other every frame, the last cut out by this picture: slow on a phone, and a phone has drawn such chains wrong): a wash of the hour's colour where something is drawn, then all of it times the light's picture (the lamps in it)
+        const hr = v.hour, a = hr.wash[3], quad = (sf, df) => { near(); gl.blendFuncSeparate(sf, df, gl.ZERO, gl.ONE); gl.drawArrays(gl.TRIANGLES, 0, 6); };
+        gl.useProgram(sp); gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, htx); gl.uniform1i(gl.getUniformLocation(sp, "t"), 1); gl.uniform1f(gl.getUniformLocation(sp, "sil"), 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, bufs.spr); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 1, 2, 0, 2, 3].flatMap((i) => [[-1, 1], [1, 1], [1, -1], [-1, -1]][i].concat(0, [0, 1, 1, 0][i], [0, 0, 1, 1][i]))), gl.STREAM_DRAW);
+        for (const [nm, sz, off] of [["p", 3, 0], ["uv", 2, 12]]) { const l = gl.getAttribLocation(sp, nm); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, sz, gl.FLOAT, false, 20, off); }
+        if (a > .004) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([hr.wash[0] * a, hr.wash[1] * a, hr.wash[2] * a, 255])); gl.blendColor(0, 0, 0, a); quad(gl.DST_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA); }
+        if (hr.lit) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, hr.lit); quad(gl.DST_COLOR, gl.ZERO); }
+        gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.activeTexture(gl.TEXTURE0); gl.useProgram(pr);
+      }
       cost = performance.now() - t0;
       return el;
     }
-    return {build, steps, get water() { return cnt.water; }, draw, forget() { slots.clear(); atlas.fill(0); stale = true; }, get cost() { return cost; }, get skies() { return skies; }, get holes() { return holes; },
-      at(x, y, z) { if (!lastM) return null; const f = project(lastM, x, y, z); return [(f[0] * .5 + .5) * el.width, (.5 - f[1] * .5) * el.height]; }, get faces() { return (cnt.main + cnt.over) / 6; }};
+    return {build, steps, get water() { return cnt.water; }, draw, forget() { wipe = true; }, get cost() { return cost; }, get skies() { return skies; }, get holes() { return holes; },
+      at(x, y, z) { if (!lastM) return null; const f = project(lastM, x, y, z); return [(f[0] * .5 + .5) * el.width, (.5 - f[1] * .5) * el.height]; }, get faces() { return (cnt.main + cnt.model + cnt.over) / 6; }, get models() { return cnt.model / 6; }};
   }
   return {create};
 })();
