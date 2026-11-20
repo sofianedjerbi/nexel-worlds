@@ -84,19 +84,32 @@ const BAR = 10;
 // The bar's (--u) is a screen pixel less, and again, while its ten slots would not fit across, or the HUD would take
 // more than hudTall of the height (a phone: touch.js); the item's is no more than fits the frame. Nothing is scaled.
 // --q is the recipe book's own (craft.js): everything in it is a number of them.
-let hudU = 2, hudTall = 1, hudK = 2.5, hudSig = "";   // (hudK: CSS px an art pixel of the hearts and the food: 2.5, less where the two rows would not fit across)
+let hudU = 2, hudTall = 1, hudK = 2.5, hudSig = "", hudSide = false, hudEdge = null;   // (hudK: CSS px an art pixel of the hearts and the food: 2.5, less where the two rows would not fit across)
+// A phone on its side: the hearts, the food and the experience stand at the bar's left, in its height (hudSide): one band,
+// 14% of the height at most, a slot 40 CSS px at least. (Stacked over the bar they took a fifth of a screen 390 px high.) Where the
+// screen is not wide enough for that beside the thumbs' buttons (and its notch: hudEdge measures the safe area), they stay over it.
 function hudFit() {
-  const d = window.devicePixelRatio || 1, st = document.documentElement.style, h = $("hud").offsetHeight, was = hudU;
+  const d = window.devicePixelRatio || 1, st = document.documentElement.style, was = hudU, touch = document.body.classList.contains("touch");
   let n = Math.max(1, Math.round(2 * d));
-  const low = document.body.classList.contains("touch") && innerHeight < 520 && innerWidth > innerHeight, tall = low ? Math.min(hudTall, .2) : hudTall;   // (a phone on its side: a fifth of its height: the HUD took the bottom third of the land)
-  while (n > 1 && ((BAR * 32 - 2) * n / d > innerWidth - 16 || (h && h + 30 * (n / d - was) > innerHeight * tall))) n--;
-  hudU = n / d; hudK = Math.min(low ? 5 / 3 : 2.5, Math.max(1, Math.floor((innerWidth - 34) * d / 198)) / d);   // (two rows of ten icons: 99 art px each)
+  const low = touch && innerHeight < 520 && innerWidth > innerHeight, tall = low ? Math.min(hudTall, .2) : hudTall;   // (a phone on its side: a fifth of its height: the HUD took the bottom third of the land)
+  let side = false;
+  if (low) {
+    if (!hudEdge) { hudEdge = document.createElement("div"); hudEdge.style.cssText = "position:fixed;visibility:hidden;pointer-events:none;left:0;top:0;width:calc(env(safe-area-inset-left) + env(safe-area-inset-right));height:env(safe-area-inset-bottom)"; document.body.appendChild(hudEdge); }
+    const u3 = Math.max(1, Math.round(3 * d)) / d, room = innerWidth - hudEdge.offsetWidth - 56 * u3 - 12, vit = 99 * Math.max(1, Math.round(4 / 3 * d)) / d + 8;
+    const fits = (m) => 30 * m / d + 4 <= innerHeight * .14 && vit + (BAR * 32 - 2) * m / d <= room;      // (its own height: the home bar's inset under it is not the HUD's)
+    let m = n; while (m > 1 && !fits(m)) m--;
+    if (30 * m / d >= 40 && fits(m)) { side = true; n = m; }
+  }
+  if (side !== hudSide) { hudSide = side; document.body.classList.toggle("hudside", side); }
+  const h = $("hud").offsetHeight;
+  while (!side && n > 1 && ((BAR * 32 - 2) * n / d > innerWidth - 16 || (h && h + 30 * (n / d - was) > innerHeight * tall))) n--;
+  hudU = n / d; hudK = side ? Math.max(1, Math.round(4 / 3 * d)) / d : Math.min(low ? 5 / 3 : 2.5, Math.max(1, Math.floor((innerWidth - 34) * d / 198)) / d);   // (two rows of ten icons: 99 art px each)
   const small = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520, land = small ? 2 : 3;
   const item = Math.max(1, Math.min(Math.round(land * d), Math.floor(1.6 * n)));    // (11 px of it in a hole of 16: its edge px are empty)
   const book = bookPx();   // the recipe book's pixel (--q): the land's (a screen pixel more under a thumb), less while its 272 x 160 would not fit (index.html: worked out there first, before the first picture)
-  const up = small && innerHeight > innerWidth, [bw, bh] = up ? [116, 272] : small ? [270, 150] : [224, 162];   // (--b: the inventory's, bag.js. A phone held upright: five cells across, a finger each; on its side its buttons beside it: phone.css)
+  const up = small && innerHeight > innerWidth, [bw, bh] = up ? [116, 299] : small ? [270, 150] : [224, 162];   // (--b: the inventory's, bag.js. A phone held upright: five cells across, a finger each; on its side its buttons beside it: phone.css)
   let bag = up ? Math.round(3.4 * d) : book; while (bag > 1 && (bw * bag / d > innerWidth - 12 || bh * bag / d > innerHeight - 12)) bag--;
-  if (hudSig === (hudSig = [n, d, item, book, bag, up].join())) return false;
+  if (hudSig === (hudSig = [n, d, item, book, bag, up, side].join())) return false;
   let cq = Math.round(2.4 * d); while (cq > 1 && (162 * cq / d > innerWidth - 12 || 326 * cq / d > innerHeight - 12)) cq--;      // (--cq: the recipe book's, upright: the list over the page)
   st.setProperty("--cq", cq / d + "px"); document.body.classList.toggle("upright", up); st.setProperty("--p2", Math.max(1, Math.round(2 * d)) / d + "px");
   st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px"); st.setProperty("--w", Math.max(1, Math.round(book * .7)) / d + "px");

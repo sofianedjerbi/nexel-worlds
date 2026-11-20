@@ -42,7 +42,7 @@ def test_walking_down_a_stair_under_a_roof_keeps_you_seen(browser, server):
             g.rpc("dev_teleport", x=x, y=y - 5 + i, z=5 - i)
             g.sleep(1800)                                          # (the cut opens round you in a little over a second)
             seen = g.js("HdLook.catSeen()")
-            assert seen > .8, (i, seen, g.js("({u: HdLook.u, box: HdLook.box})"))
+            assert seen > .8, (i, seen, g.js("({u: HdLook.u, pit: HdLook.pit})"))
     finally:
         g.page.close()
 

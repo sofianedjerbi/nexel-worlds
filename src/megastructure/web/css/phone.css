@@ -85,7 +85,9 @@ body.touch #goalhelp { display:none; }                           /* (the help is
    under the cells as four buttons. On its side: the ten across, the buttons down its right. ---- */
 body.touch #bagkeys { font-size:calc(6 * var(--q)); gap:calc(2 * var(--q)); }
 body.touch #bag .bkey { flex:1; justify-content:center; height:calc(16 * var(--q)); padding:0 0 var(--q); box-shadow:inset var(--q) var(--q) 0 #fff8e6, inset calc(-1 * var(--q)) calc(-2 * var(--q)) 0 #d9bd8f, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; background:#f3e5c2; }
-body.upright #bag { width:calc(114 * var(--q)); height:calc(268 * var(--q)); bottom:0; }
+body.upright #bag { width:calc(114 * var(--q)); height:calc(295 * var(--q)); bottom:0; } body.upright #bag .bkey { height:calc(17 * var(--q)); }
+#bagnote { display:none; } body.upright #bagnote { display:block; height:calc(26 * var(--q)); margin:calc(3 * var(--q)) calc(3 * var(--q)) 0; overflow:hidden; font-size:calc(9 * var(--q)); line-height:calc(10 * var(--q)); }   /* (the cursor's thing, its name and its line: under the cells, on none of them) */
+#bagnote i { display:block; font-style:normal; font-size:calc(6 * var(--q)); line-height:calc(8 * var(--q)); color:var(--ink2); }
 body.upright #bag .btip { white-space:normal; width:max-content; max-width:calc(100 * var(--q)); }
 body.upright #bag .bgrid { grid-template-columns:repeat(5, calc(18 * var(--q))); }
 body.upright #bag .bhead { flex-wrap:wrap; height:auto; margin-right:calc(2 * var(--q)); row-gap:var(--q); }
@@ -125,3 +127,12 @@ body.touch #deathloot .dslot { width:calc(11 * var(--u3) + 12px); height:calc(11
 body.touch #deathloot span { right:0; bottom:-2px; font-size:12px; line-height:12px; text-shadow:1px 0 0 var(--ink), -1px 0 0 var(--ink), 0 1px 0 var(--ink), 0 -1px 0 var(--ink), 1px 1px 0 var(--ink), -1px 1px 0 var(--ink), 1px -1px 0 var(--ink), -1px -1px 0 var(--ink); }
 body.touch #death { z-index:8; } body.touch #death .dbar { border-radius:0; }
 body.touch :is(#bagclose, #craftclose) { width:calc(19 * var(--q)); height:calc(19 * var(--q)); top:calc(4 * var(--q)); right:calc(4 * var(--q)); }
+
+/* ---- a phone on its side, wide enough (body.hudside, ui.js hudFit): the hearts over the food over the experience at the bar's left, in the bar's own height; the whole of it between the screen's left and the thumbs' buttons ---- */
+body.hudside #hud { display:grid !important; grid-template:auto auto auto / auto auto; grid-template-areas:"st st" "vit bar" "xp bar"; column-gap:8px; row-gap:1px; align-items:center; align-content:end;
+  left:env(safe-area-inset-left); right:calc(56 * var(--u3) + 12px + env(safe-area-inset-right)); transform:none !important; }
+body.hudside:not(.playing) #hud { display:none !important; }
+body.hudside #status { grid-area:st; } body.hudside #hud .hudrow { grid-area:bar; }
+body.hudside #vitals { grid-area:vit; flex-direction:column; align-items:flex-start; align-self:end; gap:1px; padding:0; min-width:0; }
+body.hudside #xpwrap { grid-area:xp; margin:0; align-self:start; }
+body.hudside #xplevel { left:auto; right:calc(-1 * var(--i)); bottom:calc(8 * var(--i)); }

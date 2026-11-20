@@ -79,10 +79,12 @@ function facingNow(alt) {
   const here = {x: s.x, y: s.y}, under = combAt(s.x, s.y);           // something growing under your feet
   if (!alt && under && !GROUND.has(under) && !SOLID.has(under)) { const it = intent(here, false); if (useful(it)) return {p: here, it}; }
   const faced = intent(q, alt);
-  if (useful(faced) && inReach(q, faced)) return {p: q, it: faced};
+  const hs = myZ(s.x, s.y), level = (t, it) => it.flat || it.ent || it.z !== undefined || Math.abs(settleNear(t.x, t.y, hs) - hs) <= 2;   // (what grows on ground three levels over or under you is not offered: "Pick flower" from the bottom of a shaft, under the flower)
+  if (useful(faced) && inReach(q, faced) && level(q, faced)) return {p: q, it: faced};
   // a pickaxe in hand, facing higher ground with nothing on it: cut into it (it comes down a layer)
   if (inHand() === "pickaxe" && landSolid(q.x, q.y, myZ(s.x, s.y) + 1) && GROUND.has(combAt(q.x, q.y)))
-    return {p: q, it: {text: "Dig into the hill", flat: true, run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
+    return {p: q, it: {text: topAt(s.x, s.y) > hs ? "Dig on" : "Dig into the hill", flat: true,   // (under the land there is no hill: the tunnel goes on)
+      run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
   // X with a pickaxe and nothing else to use it on: dig down where you stand
   if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !":n".includes(under))
     return {p: here, it: {text: "Dig down", here: true, run: () => act("dig_down", {with: "pickaxe"})}};
@@ -94,7 +96,7 @@ function facingNow(alt) {
     ring.push({x: s.x + dx, y: s.y + dy, d: Math.max(Math.abs(dx), Math.abs(dy)) + Math.abs(dx) * .01 + Math.abs(dy) * .01 - (dx * p0.fx + dy * p0.fy) * .1});
   }
   ring.sort((a, b) => a.d - b.d);
-  for (const q of ring) { const p = {x: q.x, y: q.y}, it = intent(p, alt); if (useful(it)) return {p, it}; }
+  for (const q of ring) { const p = {x: q.x, y: q.y}, it = intent(p, alt); if (useful(it) && level(p, it)) return {p, it}; }
   return faced && !faced.walk ? {p: q, it: useful(faced) ? {...faced, ok: false, text: TOO_HIGH} : faced} : null;   // (in front of you, but up a cliff or down one)
 }
 // The tile hints are drawn for: where the mouse points, or the tile you face when playing by keyboard.

@@ -94,7 +94,9 @@ function bagDraw(now) {
   $("bagbar").replaceChildren(...[...Array(BAR)].map((_, i) => bagCell({zone: "bar", i}, slots[i] || null, inv[slots[i]])));
   $("bagpage").textContent = pages > 1 ? `Pack · ${bagPage + 1} of ${pages}` : "Pack";
   const name = bagItem(bagAt), isWorn = bagAt.zone === "wear", cur = el.querySelector(".cell.cur");
-  if (name && cur) {                                 // the label on the cursor's cell: over it (under it, for what you wear), moved along to stay inside the window
+  const note = $("bagnote"), upright = document.body.classList.contains("upright");   // (a phone held upright: every cell is a finger wide and the window is the screen: the label lay on the row over the cursor's. It has a place of its own, under the cells)
+  note.innerHTML = upright && name ? `${esc(capital(label(name)))}${!isWorn && inv[name] > 1 ? " x" + inv[name] : ""}<i>${esc(BLURB[name] || "")}</i>` : "";
+  if (name && cur && !upright) {                     // the label on the cursor's cell: over it (under it, for what you wear), moved along to stay inside the window
     const n = isWorn ? 1 : inv[name] || 0;
     cur.insertAdjacentHTML("beforeend", `<div class="btip${isWorn ? " down" : ""}">${esc(capital(label(name)))}${n > 1 ? " x" + n : ""}<i>${esc(BLURB[name] || "")}</i></div>`);
     const tip = cur.lastChild, t = tip.getBoundingClientRect(), w = el.getBoundingClientRect(), q = parseFloat(getComputedStyle(el).getPropertyValue("--q")) || 3, pad = 4 * q;

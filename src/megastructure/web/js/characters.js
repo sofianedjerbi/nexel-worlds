@@ -147,7 +147,7 @@ function drawBody(p, sx, sy, S, t, now) {
         return;
       }
     }
-    if (swimsAt(p, e)) { drawSwimmer(p, e, sheetImg, x, y, z, now, sx, sy); return; }      // (swim.js)
+    if (swimsAt(p, e) && !(j && j.air)) { drawSwimmer(p, e, sheetImg, x, y, z, now, sx, sy); return; }      // (swim.js; still in the air of a fall over water: not swimming yet: the swimmer lay on the water at once, its name still coming down from the rim)
     p.swam = false;
     drawWake(p, now, sx, sy, z);                      // (just out of the water: their wake fades where it lies)
     if (e.sail) {                                     // in a boat: the hull, a wake when moving, and the sailor sitting in it
@@ -203,8 +203,10 @@ function drawBody(p, sx, sy, S, t, now) {
   }
 }
 function drawNameplate(p, sx, sy, S) {
-  if (!opt("names")) return;
   const e = p.e, o = overBody(p, S), x = Math.round(sx(p.x) + S / 2 + o[0]), y = Math.round(bodyY(p, sy) + o[1] - 9 * zoom);
+  if (e.kind === "agent" && e.id === myId && ctx !== HdView.sink()) { const nw = opt("names") ? e.name.length * 5.5 + 2 : 0, top = y + 9 * zoom - Math.max(0, 12 - 3 * zoom);   // (you and your name, two boxes: no key's row is written there, prompts.js)
+    Prompts.keep = [{x: x - S / 2, y: top, w: S, h: S + Math.max(0, 12 - 3 * zoom) + 2 * zoom}, {x: x - nw, y: y - 18, w: 2 * nw, h: 24}]; }
+  if (!opt("names")) return;
   if (x < -S || x > W + S || y < -S || y > H + S) return;
   ctx.font = "18px SproutPixel"; ctx.textAlign = "center";
   if (!(e.kind === "agent" && speaking(e.name))) outlined(e.name, x, y, me && e.name === me ? "#fff1a8" : "#fff8e8");   // (speaking: the name is on the bubbles, bubbles.js)

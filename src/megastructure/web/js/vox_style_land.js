@@ -1,17 +1,16 @@
 // VOX: the 2.5D look's land as faces (vox_style.js draws them). No game global: the host is the engine's own.
 // The land is kept in CHUNKS of 8 x 8 tiles, each its own lists of faces. A land asked for again (you walked a tile,
 // a tile changed) makes only the chunks that are new or no longer good: the ones coming into view, the ones a tile
-// changed in (touch), the ones the cut round you lies on. The rest are kept as they are. What is good:
-//   a chunk away from the cut hangs on the world alone (its columns, its paints, host.chunkKey: what stands in it);
-//   a chunk the cut touches (o.cut's box, your own space) hangs on where you are too: made again each time;
+// changed in (touch), the ones the open pit over your space changed on. The rest are kept as they are. What is good:
+//   a chunk hangs on the world (its columns, its paints, host.chunkKey: what stands in it) and on the pit's numbers on its own tiles (steps);
 //   the far land and sea (o.sea), patches measured from you: made again each time, a list of their own (far).
 // The lists are not cut to the rows and columns asked: the painter leaves out what is outside them (uniform cl).
-//   VoxStyleLand.create(host, cfg, P) -> {steps(cx, cy, L, ceil, o) (a generator: a tile a step; its last
-//     value: null, or {parts: {main, model, shade, water, over, far, sea: Float32Array}, clip: [x0, x1, y0, y1], wet,
-//     skies, holes, made: chunks made}), touch(x, y), clear()}
+//   VoxStyleLand.create(host, cfg, P) -> {steps(cx, cy, L, o) (a generator: a tile a step; its last
+//     value: {parts: {main, model, shade, water, far, sea: Float32Array}, clip: [x0, x1, y0, y1], wet,
+//     made: chunks made, pit: {x, y, D, cut: a level a tile (-32768: whole), n: tiles cut}}), touch(x, y), clear()}
 //   P (the paints, vox_style.js): {SL, C, slot(key, paint) -> its place, unslot(key), start(again), spill() -> did they run out}
 const VoxStyleLand = (() => {
-  const H = .5, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water", "over"];
+  const H = .5, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"];
   const gp = (x, y, z) => [x, z * H, y];
   const FACES = [
     {n: [0, 0, 1], k: 1, q: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]]},
@@ -60,87 +59,73 @@ const VoxStyleLand = (() => {
       }
       for (const i of [0, 1, 2, 0, 2, 3]) out.push(...vs[i]);
     }
-    function* steps(cx, cy, L, ceil, o) {
-      const cols = new Map(), r = o.r, deep = o.deep, whole = !!o.box || !o.cut || !!o.over, fresh = new Map(); let made = 0;   // (whole: a caller with no box round you (underground.js): the cut is the whole land: every chunk each time)
+    // THE OPEN PIT (o.pit: {k: levels the eye's line climbs a tile south, cap, reach, g: how far it has grown, tiles}). The land is drawn whole, as on the surface.
+    // Your space: the tiles walked to from yours (reach steps, a floor step of 2). Over each the land is taken away from its ceiling up; south of each a level more
+    // a tile (the eye's line: nothing stands between the eye and your floor), east and west a wall of two levels, then three a tile; north of it nothing: that wall stands whole.
+    // Past cap tiles south the wall left is a checker round you (veil). One field of numbers, a tile a number: a chunk hangs on its own numbers alone.
+    function* steps(cx, cy, L, o) {
+      const cols = new Map(), r = o.r, deep = o.deep, pt = o.pit && o.pit.g > 0 ? o.pit : null, fresh = new Map(); let made = 0;
       const col = (x, y) => { const k = x + "," + y; if (!cols.has(k)) cols.set(k, host.column(x, y)); return cols.get(k); };
       const inBox = (x, y) => Math.abs(x - cx) <= r && Math.abs(y - cy) <= r;
-      // (under: the slice height, one field over the box round you: a tile of your space its floor + 2, a rock tile the nearest space tile's (ties: the lower). In rows of numbers, a tile a number: they were lists by name, made again for 2400 tiles each time: 4 ms of one step)
-      const D = 2 * r + 1, NO = -32768, DIR = [[1, 0], [-1, 0], [0, 1], [0, -1]], at = (x, y) => (Math.abs(x - cx) <= r && Math.abs(y - cy) <= r ? (y - cy + r) * D + x - cx + r : -1);
-      const reachA = new Int16Array(D * D).fill(NO), cutA = new Int16Array(D * D).fill(NO), distA = new Uint8Array(D * D).fill(255), roomA = new Uint8Array(D * D), reached = [];
-      const reachOf = (x, y) => { const i = at(x, y); return i < 0 || reachA[i] === NO ? undefined : reachA[i]; }, isRoom = (x, y) => { const i = at(x, y); return i >= 0 && roomA[i] === 1; };
-      const inR = (x, y) => !o.cut || (y - cy >= -o.cut.n && y - cy <= o.cut.s && Math.abs(x - cx) <= o.cut.w);   // (?hd: the slice only in a box round you; outside it the whole land)
-      const cutOf = (x, y, top) => { if (o.under && top < 1e8 && !inR(x, y)) { const c = col(x, y); return c ? c[c.length - 1] : top; } if (!o.under || top > 1e8 || !reached.length) return top; const v = cutA[at(Math.max(cx - r, Math.min(cx + r, x)), Math.max(cy - r, Math.min(cy + r, y)))]; return v === NO ? top : v; };
-      const floorOf = (x, y) => { const c = col(x, y); if (!c || !inBox(x, y)) return null; const t = c[c.length - 1];   // (a hollow's floor near your level, if the tile is one)
-        for (let z = L - deep + 1; z <= L + 6 && z < t; z++) if (!solidC(c, z)) return z - 1; return null; };
-      const st = [cx, cy, L];   // (your own space: tiles walked to from you, a step or a short drop, their floors)
-      while (o.under && st.length) { const f0 = st.pop(), y = st.pop(), x = st.pop(), i = at(x, y); if (i < 0 || reachA[i] !== NO) continue; const f = floorOf(x, y); if (f === null || Math.abs(f - f0) > 2) continue; reachA[i] = f; reached.push(i); for (const [dx, dy] of DIR) st.push(x + dx, y + dy, f); }
+      const D = 2 * r + 1, NO = -32768, BIG = 32767, DIR = [[1, 0], [-1, 0], [0, 1], [0, -1]], at = (x, y) => (inBox(x, y) ? (y - cy + r) * D + x - cx + r : -1);
+      const reachA = new Int16Array(D * D).fill(NO), cutA = new Int16Array(D * D).fill(NO), veilA = new Int16Array(D * D).fill(NO), roomA = new Uint8Array(D * D), rowG = new Int16Array(D * D).fill(BIG), reached = [];
+      const topOf = (x, y) => { const c = col(x, y); return c && c.length ? c[c.length - 1] : NO; };
+      const floorOf = (x, y, f0) => { const c = col(x, y); if (!c || !c.length) return null; if (host.water && host.water(x, y) && host.waterTop) { const w = host.waterTop(x, y); if (w >= c[c.length - 1]) return Math.abs(w - f0) <= 2 ? w : null; }
+        for (const dz of [0, 1, -1, 2, -2]) if (solidC(c, f0 + dz) && !solidC(c, f0 + dz + 1)) return f0 + dz; return null; };
+      if (pt) { let fr = [[cx, cy, L]]; reachA[at(cx, cy)] = L; reached.push(at(cx, cy));
+        for (let d = 1; d <= Math.min(pt.reach, pt.g) && fr.length; d++) { const nx = []; for (const [x, y, f0] of fr) for (const [dx, dy] of DIR) { const i = at(x + dx, y + dy); if (i < 0 || reachA[i] !== NO) continue; const f = floorOf(x + dx, y + dy, f0); if (f === null) continue; reachA[i] = f; reached.push(i); nx.push([x + dx, y + dy, f]); } fr = nx; } }
+      const roofed = (i) => i >= 0 && reachA[i] !== NO && topOf(cx - r + i % D, cy - r + (i / D | 0)) > reachA[i], reachOf = (x, y) => { const i = at(x, y); return roofed(i) ? reachA[i] : undefined; }, isRoom = (x, y) => { const i = at(x, y); return i >= 0 && roomA[i] === 1; };
       const grp = new Uint8Array(D * D), next = (i, fn) => { const x = i % D, y = i / D | 0; for (const [dx, dy] of DIR) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < D && Y < D) fn(Y * D + X); } };   // (the floors of your space that are a room's: 4 or more tiles on one level together; the rest are treads and landings of a stair)
       for (const i0 of reached) { if (grp[i0]) continue; const g = [i0]; grp[i0] = 1; for (let n = 0; n < g.length; n++) next(g[n], (j) => { if (!grp[j] && reachA[j] === reachA[i0]) { grp[j] = 1; g.push(j); } }); if (g.length >= 4) for (const i of g) roomA[i] = 1; }
-      let fr = reached.slice(), dd = 0; const nv = new Int16Array(D * D).fill(32767); for (const i of fr) { cutA[i] = reachA[i] + 2; distA[i] = 0; }
-      while (fr.length) { const nx = []; for (const i of fr) { const v = cutA[i]; next(i, (j) => { if (distA[j] !== 255) return; if (nv[j] === 32767) nx.push(j); if (v < nv[j]) nv[j] = v; }); }
-        fr = nx; dd++; for (const j of fr) { cutA[j] = nv[j]; distA[j] = dd; } }
-      const far = (x, y) => { const i = at(x, y); return !o.cut && (i < 0 || distA[i] === 255 ? 9 : distA[i]) > 2; };   // (beyond 2 tiles: one flat height for the whole box, the lowest cut near you: no edges far off)
-      if (reached.length) for (let i = 0; i < D * D; i++) if (distA[i] > 0 && distA[i] <= 2) { const x = i % D, y = i / D | 0;   // (the camera's side: rock south of your space cut at its floor, the treads show)
-        for (let j = 1; j <= 2; j++) { const f = y - j >= 0 ? reachA[i - j * D] : NO; if (f !== NO) { cutA[i] = Math.min(cutA[i], f); break; } } }
-      if (reached.length) for (let i = 0; i < D * D; i++) { const d = distA[i]; if (d === 255) continue; if (d > 2) cutA[i] = L + 2; else if (d === 2 && reachA[i] === NO) cutA[i] = Math.max(L, Math.min(L + 4, cutA[i])); }   // (far: one height, your ceiling; the ring by it within 2 levels of it)
-      const solidIn = (x, y, z, top) => { top = cutOf(x, y, top); if (!inBox(x, y)) return !o.box && z <= top && solidC(col(x, y), z); if (z <= L - deep) return !o.box; return z <= top && solidC(col(x, y), z); };
-      const front = (x, y, z, top) => { const lv = lim(VoxMesh.rock(cfg, top, z, !host.rock || host.rock(x, y))), v = VoxMesh.pick(x, y, z, cfg.variants); return slot("f" + lv + "," + v, (px, at, st) => host.paintFront(lv, v, px, at + (C - cfg.up) * st, st)); };
-      const rx = Math.min(r, o.rx || r), X0 = cx - rx, X1 = cx + rx, Y0 = cy - r, Y1 = cy + Math.min(r, o.rs || r), sig = [cx, cy, L, ceil, o.cut ? [o.cut.n, o.cut.s, o.cut.w] : ""].join();
-      // is a chunk on the cut: the cut's box, or a tile of your own space, within a tile of it
-      const onCut = (bx, by) => { const x0 = bx * CH - 1, y0 = by * CH - 1, x1 = x0 + CH + 1, y1 = y0 + CH + 1; if (o.cut && o.cut.n > -9 && x1 >= cx - o.cut.w && x0 <= cx + o.cut.w && y1 >= cy - o.cut.n && y0 <= cy + o.cut.s) return true;
-        for (const i of reached) { const x = cx - r + i % D, y = cy - r + (i / D | 0); if (x >= x0 && x <= x1 && y >= y0 && y <= y1) return true; } return false; };
-      const good = (ch, bx, by) => !!ch && ch.mk === (host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "") && (whole || onCut(bx, by) ? ch.sig === sig : ch.sig === "" && (ch.low ? ch.L === L : ch.lo - 1 > L - deep));
+      const ext = pt ? Math.min(pt.cap, pt.g + 1) : 0, S = (d) => Math.floor((d - 1) * pt.k) - 1, box = [BIG, BIG, -BIG, -BIG];
+      for (const i of reached) { const x = i % D, F = reachA[i]; for (let dx = -ext; dx <= ext; dx++) { const X = x + dx; if (X < 0 || X >= D) continue; const v = F + (dx ? 3 * Math.abs(dx) - 1 : 0), j = i + dx; if (v < rowG[j]) rowG[j] = v; } }
+      // (land under the eye's line hides nothing: left whole; what is over it is cut a level under the line, so your floor's own edge shows)
+      if (pt) for (let i = 0; i < D * D; i++) { const x = i % D, y = i / D | 0, tp = topOf(cx - r + x, cy - r + y); if (tp === NO) continue; let h = BIG, vl = BIG;
+        for (let d = 0; d <= ext + 12 && y - d >= 0; d++) { const g = rowG[i - d * D]; if (g === BIG || (d && tp <= g + Math.max(0, S(d) + 1))) continue; const v = g + (d ? S(d) : 0); if (d <= ext) { if (v < h) h = v; } else if (v < vl) vl = v; }
+        if (reachA[i] !== NO && reachA[i] > h + 2) reachA[i] = NO;   // (a tile walked to that stands over the eye's line to a lower one, the meadow over your own tunnel: land as any other)
+        if (reachA[i] !== NO) { const c = col(cx - r + x, cy - r + y); let z = reachA[i] + 1; while (z <= tp && !solidC(c, z)) z++; h = z - 1; }   // (your space: from its ceiling up)
+        if (h < tp) cutA[i] = h; else if (ext >= pt.cap && vl < tp) veilA[i] = vl; else continue;
+        box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y); box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y); }
+      for (const i of reached) if (reachA[i] !== NO && roofed(i)) { const x = i % D, y = i / D | 0; box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y); box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y); }
+      const cutOf = (x, y, top) => { const i = at(x, y); return i >= 0 && cutA[i] !== NO ? cutA[i] : top; };
+      const solidIn = (x, y, z) => { const c = col(x, y); if (!inBox(x, y)) return solidC(c, z); if (z <= L - deep) return true; return !!c && z <= cutOf(x, y, 1e9) && solidC(c, z); };
+      const front = (x, y, z, top, two) => { const lv = lim(VoxMesh.rock(cfg, top, z, !host.rock || host.rock(x, y))), v = VoxMesh.pick(x, y, z, cfg.variants); return slot((two ? "F" : "f") + lv + "," + v, (px, at, st) => { host.paintFront(lv, v, px, at + (C - cfg.up) * st, st); if (two) host.paintFront(lv, v, px, at, st); }); };   // (two: its rows twice: a tile's whole top)
+      const hop = (x0, y0, x1, y1, h) => { const a = col(x0, y0), b = col(x1, y1); return !!a && !!b && solidC(a, h) && !solidC(a, h + 1) && !solidC(a, h + 2) && solidC(b, h + 1) && !solidC(b, h + 2); };   // (the game's own rule: from a floor at h a jump up one level, room over it and over your head)
+      const rx = Math.min(r, o.rx || r), X0 = cx - rx, X1 = cx + rx, Y0 = cy - r, Y1 = cy + Math.min(r, o.rs || r);
+      // what a chunk hangs on of the pit: the numbers of its own tiles and the ring round them ("": the pit is not on it)
+      const sigOf = (bx, by) => { const x0 = bx * CH - 1 - cx + r, y0 = by * CH - 1 - cy + r; if (box[0] > box[2] || x0 > box[2] || x0 + CH + 1 < box[0] || y0 > box[3] || y0 + CH + 1 < box[1]) return ""; let s = "";
+        for (let y = y0; y <= y0 + CH + 1; y++) for (let x = x0; x <= x0 + CH + 1; x++) { const i = x >= 0 && y >= 0 && x < D && y < D ? y * D + x : -1; s += i < 0 ? ";" : (cutA[i] === NO ? "" : cutA[i]) + (veilA[i] === NO ? "" : "v" + veilA[i]) + (roofed(i) ? "r" + reachA[i] + (roomA[i] ? "R" : "") : "") + ";"; } return s; };
+      const good = (ch, bx, by) => !!ch && ch.mk === (host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "") && ch.sig === sigOf(bx, by) && (ch.low ? ch.L === L : ch.lo - 1 > L - deep);
       function* chunk(bx, by) {
-        const out = {main: [], model: [], shade: [], water: [], over: []}, skies = [], holes = [], on = whole || onCut(bx, by); let lo = 1e9, low = false, wet = 0;
-        const hol = (x, y) => { if (!o.under || !inR(x, y)) return null; const c = col(x, y); if (!c) return null; const open = c[c.length - 1], cz = cutOf(x, y, ceil);   // (a cave on another level: the level you would stand at)
-          for (let z = L; z <= cz; z++) if (!solidC(c, z)) return null;
-          for (let z = L - 8; z < open && z <= cz + 8; z++) if ((z < L || z > cz) && !solidC(c, z)) return z; return null; };
-        const airNear = (x, y, z) => { const c = col(x, y); if (!c) return true; for (let k = L; k <= z; k++) if (!solidC(c, k)) return true; return false; };
-        const faces = (x, y, z, solid, dst, isC, box) => {
-          const c = col(x, y), open = c[c.length - 1], top = VoxMesh.topOf(c, z);
+        const out = {main: [], model: [], shade: [], water: []}; let lo = 1e9, low = false, wet = 0;
+        const faces = (x, y, z, dst, isC) => {
+          const c = col(x, y), open = c[c.length - 1], top = VoxMesh.topOf(c, z), vi = at(x, y), vl = vi >= 0 && veilA[vi] !== NO && z > veilA[vi] ? 32 : 0;
           for (let f = 0; f < 6; f++) {
             const F = FACES[f], nx = x + F.n[0], ny = y + F.n[1], nz = z + F.n[2];
-            if (f === 1 || solid(nx, ny, nz)) continue;
-            const nc = col(nx, ny); let sky = (f === 0 ? z >= open : !nc || z > nc[nc.length - 1]) ? 1 : 0;
-            let s, kind = f === 0 ? 1 : 0, e = 0;
+            if (f === 1 || solidIn(nx, ny, nz)) continue;
+            const nc = col(nx, ny); let sky = (f === 0 ? z >= open : !nc || z > nc[nc.length - 1]) ? 1 : 0, s, kind = f === 0 ? 1 : 0, e = vl;
             if (f === 0) {
-              const isCut = isC && solidC(c, z + 1), zt = isCut ? open : z; s = isCut && o.cut ? front(x, y, z, top) : topSlot(x, y, zt, (px, at, st) => topPaint(x, y, zt, px, at, st));   // (?hd: the cut shows the rock: its front's paint)
-              [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if (!solid(x + dx, y + dy, z)) e |= b; });
-              if (isCut) kind = 2;
-              else if (o.under) [[0, -1, 512], [1, 0, 1024], [0, 1, 2048], [-1, 0, 4096]].forEach(([dx, dy, b]) => { if (solid(x + dx, y + dy, z + 1)) e |= b; });   // (a step up at that edge: its foot in shade)
-              if (isCut) sky = o.under ? 0 : 1;
-              if (isCut) [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if ((e & b) && !(o.under ? reachOf(x + dx, y + dy) !== undefined : airNear(x + dx, y + dy, z))) e &= ~b; });   // (a lit rim only where your space is, not on a step of the cut)
-              const hz = isCut && !o.cut ? hol(x, y) : null;
-              if (hz !== null) { e |= 16; holes.push([x, y, hz]); [[0, -1, 32], [1, 0, 64], [0, 1, 128], [-1, 0, 256]].forEach(([dx, dy, b]) => { if (hol(x + dx, y + dy) === null) e |= b; }); }
-              if (o.under && !isCut && reachOf(x, y) === z && !isRoom(x, y)) e |= 16384;   // (a stair's tread or a small landing: no glow on it, vox_style_glsl.js)
-              if (o.under && sky && !isCut) skies.push([x, y, z]);
-            } else {
-              s = front(x, y, z, top);
-              if (box && !inBox(nx, ny)) kind = 6;
-            }
-            if (o.under && (far(x, y) || (f > 1 && far(nx, ny)))) e |= 8192; if (o.under && f > 1 && inR(x, y) && reachOf(x, y) === z) e |= 16384;   // (far: flat rock; a step's riser: dark)
-            quad(dst, x, y, z - 1, F, F.k, sky, kind, z, e, s, solid, f === 0);
+              const isCut = isC && solidC(c, z + 1), zt = isCut ? open : z; s = isCut ? front(x, y, z, top, true) : topSlot(x, y, zt, (px, at, st) => topPaint(x, y, zt, px, at, st));   // (a terrace of the pit shows the rock: its front's paint, no lip)
+              if (isCut) { kind = 2; sky = 0; }
+              else { [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && (sky || solidIn(x + dx, y + dy, z - 1))) e |= b; });   // (a lip: under a roof only at a step of one level, one you can take; a drop of two or more has none)
+                if (!sky) [[0, -1, 512], [1, 0, 1024], [0, 1, 2048], [-1, 0, 4096]].forEach(([dx, dy, b]) => { if (solidIn(x + dx, y + dy, z + 1) && !hop(x, y, x + dx, y + dy, z)) e |= b; });   // (a floor under a roof: a WALL at that edge (too high to jump, or no room to): its foot in shade; a step you can take has none)
+                if (reachOf(x, y) === z && !isRoom(x, y)) e |= 16; }   // (a stair's tread or a small landing: no glow on it, vox_style_glsl.js)
+            } else { s = front(x, y, z, top); if (!sky && !solidC(c, z + 1) && hop(nx, ny, x, y, z - 1)) e |= 16; }   // (the riser of a step you can take: light, the tread's own tone; any other face is a wall)
+            quad(dst, x, y, z - 1, F, F.k, sky, kind, z, e, s, solidIn, f === 0);
           }
         };
         // (a cell under the lowest air of its own column and of the four beside it has no face: the levels start there, not 20 under your feet: a tenth of the cells)
-        const lowOf = (x, y) => { const c = col(x, y); return c && c.length ? Math.min(c[0], cutOf(x, y, ceil)) : -1e9; };
-        for (let y = by * CH; y < by * CH + CH; y++) for (let x = bx * CH; x < bx * CH + CH; x++) { {
-          const c = col(x, y); if (!c) continue; yield; { const ms = host.models && host.models(x, y); if (ms) for (const b of ms) model(x, y, b, b.shade ? out.shade : out.model); }
+        const lowOf = (x, y) => { const c = col(x, y); return c && c.length ? Math.min(c[0], cutOf(x, y, 1e9)) : -1e9; };
+        for (let y = by * CH; y < by * CH + CH; y++) for (let x = bx * CH; x < bx * CH + CH; x++) {
+          const c = col(x, y); if (!c) continue; yield; const cz = cutOf(x, y, c[c.length - 1]); { const ms = host.models && host.models(x, y, cz); if (ms) for (const b of ms) model(x, y, b, b.shade ? out.shade : out.model); }   // (cz: the land's top there as it is drawn: what stands on land the pit took is the host's to leave out)
           const wt = host.water && host.water(x, y), wz = wt ? (host.waterTop ? host.waterTop(x, y) : 0) : null;
-          const solid = (a, b, z) => solidIn(a, b, z, ceil);
-          const cz = cutOf(x, y, ceil);
-          if (o.under && Math.abs(x - cx) <= 8 && Math.abs(y - cy) <= 6 && !solidC(c, L + 1)) for (let z = L + 2, sd = false; z <= Math.max(ceil, cz) + 8 && z < c[c.length - 1]; z++) { if (solidC(c, z - 1) && z - 1 > L) sd = true; if (sd && !solidC(c, z) && solidC(c, z - 1)) { holes.push([x, y, z, 1]); break; } }   // (a cave over your own space: its outline)
-          const z0 = o.box ? -1e9 : Math.min(lowOf(x, y), lowOf(x - 1, y), lowOf(x + 1, y), lowOf(x, y - 1), lowOf(x, y + 1)); if (z0 < lo) lo = z0; if (z0 - 1 <= L - deep) low = true;   // (low: the 20 levels under your feet cut it short: it hangs on your level)
-          for (let z = Math.max(L - deep + 1, z0); z <= Math.max(ceil, cz, wt ? wz + 1 : -1e9); z++) {   // (?hd: a pond whose face is over the cut still has its face)
-            if (!solid(x, y, z)) { if (wt && z === wz + 1) { quad(out.water, x, y, z - 2, FACES[0], 1, 1, 3, z, Math.max(0, wz - c[c.length - 1]), 0, null, true); wet++; } continue; }   // (e: how deep the water is here, levels)
-            faces(x, y, z, solid, out.main, z === cz, o.box);
+          const z0 = Math.min(lowOf(x, y), lowOf(x - 1, y), lowOf(x + 1, y), lowOf(x, y - 1), lowOf(x, y + 1)); if (z0 < lo) lo = z0; if (z0 - 1 <= L - deep) low = true;   // (low: the 20 levels under your feet cut it short: it hangs on your level)
+          for (let z = Math.max(L - deep + 1, z0); z <= Math.max(cz, wt ? wz + 1 : -1e9); z++) {
+            if (!solidIn(x, y, z)) { if (wt && z === wz + 1) { quad(out.water, x, y, z - 2, FACES[0], 1, 1, 3, z, Math.max(0, wz - c[c.length - 1]), 0, null, true); wet++; } continue; }   // (e: how deep the water is here, levels)
+            faces(x, y, z, out.main, z === cz);
           }
-          if (o.over && Math.abs(x - cx) <= o.over && Math.abs(y - cy) <= o.over) {
-            const so = (a, b, z) => z > ceil && solidIn(a, b, z, 1e9) && Math.abs(a - cx) <= o.over && Math.abs(b - cy) <= o.over;
-            for (let z = ceil + 1; z <= c[c.length - 1]; z++) if (so(x, y, z)) faces(x, y, z, so, out.over, false, false);
-          }
-        } }
-        const ch = {sig: on ? sig : "", mk: host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "", lo, low, L, wet, skies, holes}; for (const k of KINDS) ch[k] = new Float32Array(out[k]); return ch;
+        }
+        const ch = {sig: sigOf(bx, by), mk: host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "", lo, low, L, wet}; for (const k of KINDS) ch[k] = new Float32Array(out[k]); return ch;
       }
       // past the box, to the horizon, in patches: the sea's flat face where the sea is (or nothing is known); where land is, the land's own tint at its height, flat, a skirt south of it: no sea inland
       function* patches() { const fl = [], fs = []; if (o.sea === undefined) return [fl, fs]; const seg = []; for (let s = -r; s <= r; s += 8) seg.push([s, Math.min(8, r + 1 - s), 1]); for (let k = 0; k < 5; k++) seg.push([r + 1 + 8 * k, 8, 0], [-r - 8 - 8 * k, 8, 0]);
@@ -156,14 +141,14 @@ const VoxStyleLand = (() => {
         const need = want.filter(([bx, by]) => !good(store.get(bx + "," + by), bx, by)); yield "scan";
         for (const [bx, by] of need) { fresh.set(bx + "," + by, yield* chunk(bx, by)); made++; }
         const [fl, fs] = yield* patches();
-        if (P.spill() && !o.again) { making = false; return yield* steps(cx, cy, L, ceil, Object.assign({}, o, {again: true})); }   // (the paints ran out while it was made: faces made before that had another face's paint (a meadow all earth, a black hole): once more, from none)
+        if (P.spill() && !o.again) { making = false; return yield* steps(cx, cy, L, Object.assign({}, o, {again: true})); }   // (the paints ran out while it was made: faces made before that had another face's paint (a meadow all earth, a black hole): once more, from none)
         const list = want.map(([bx, by]) => fresh.get(bx + "," + by) || store.get(bx + "," + by)).filter(Boolean), parts = {far: new Float32Array(fl), sea: new Float32Array(fs)}; let wet = 0;
         const near = list.slice().reverse();   // (the land's own faces: the chunks nearest the eye first (the south ones), so the GPU drops the px of what is behind them before painting them; it was far to near: every hidden px painted, then painted over)
         for (const k of KINDS) { const l = k === "main" ? near : list; let n = 0; for (const ch of l) n += ch[k].length; const d = new Float32Array(n); n = 0; for (const ch of l) { d.set(ch[k], n); n += ch[k].length; } parts[k] = d; }
         for (const ch of list) wet += ch.wet;
         for (const [k, ch] of fresh) if (!late.has(k)) store.set(k, ch);   // (a tile changed in it while it was made: not kept, made again next time)
         if (store.size > 400) { const keep = new Set(want.map(([bx, by]) => bx + "," + by)); for (const k of store.keys()) if (!keep.has(k)) store.delete(k); }
-        return {parts, clip: [X0, X1 + 1, Y0, Y1 + 1], wet, made, skies: list.flatMap((ch) => ch.skies), holes: list.flatMap((ch) => ch.holes)};
+        return {parts, clip: [X0, X1 + 1, Y0, Y1 + 1], wet, made, pit: {x: cx - r, y: cy - r, D, cut: cutA, n: reached.length ? cutA.reduce((a, v) => a + (v !== NO), 0) : 0}};
       } finally { making = false; }
     }
     return {steps, touch, model, clear() { store.clear(); }, get stamp() { return stamp; }};

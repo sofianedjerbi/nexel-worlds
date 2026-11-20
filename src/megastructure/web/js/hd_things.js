@@ -133,7 +133,15 @@ const HdThings = (() => {
     push(out, {x: 6, y: -4, z: base + 2 / KF(), w: 4, d: 24, h: 9 / KF(), fh: 9, top: flat(wood, 4, 24, dark, "wens"), front: flat(wood, 4, 9, dark, "wens"), west: flat(wood, 24, 9, dark, "ns"), east: flat(wood, 24, 9, dark, "ns")});
   }
   // ---- built blocks (floors.js): a floor's planks, a step, a roof's shingles. The game's own picture of the block: its 16 rows the top, the rows under them its face
-  const hid = (x, y, z) => Floors.alpha(x, y, z) < 1;        // (over your head, or over the build cursor's level: not drawn, as the game's own rule has it)
+  // inside a house, the land's own rule (the open pit, vox_style_land.js): what is built over YOUR ROOM is not drawn (the roofed tiles walked to from yours on your level; a wall, a door stop it),
+  // nor what is over the tiles right beside it and south of it (the eye's side); the north wall, its storeys and the roof over it stand whole: the room's back. (It was all that is over your head, the house a low tray.) Build mode: the game's rule, over the cursor's level
+  let roomK = "", room0 = null, roomZ = 0, roomS = 0;
+  function roomNow() { const p = myPos(); if (!p) return null; const L = myZ(p.x, p.y), k = [p.x, p.y, L, Floors.ver, landVer].join(); if (k === roomK) return room0; roomK = k; room0 = null; roomZ = L; roomS = -1e9;
+    const over = (x, y) => { const c = Floors.cells(x, y); if (c) for (const z of c.keys()) if (z > L) return true; return false; }; if (!over(p.x, p.y)) return null;
+    const seen = new Set([p.x + "," + p.y]), q = [[p.x, p.y, 0]];
+    for (let n = 0; n < q.length && q.length < 120; n++) { const [x, y, d] = q[n]; if (d < 10) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy, k2 = X + "," + Y; if (seen.has(k2) || !over(X, Y) || [0, 1, 2, 3].some((dz) => Structures.WALLS.includes(Floors.thingAt(X, Y, L - dz) || "-"))) continue; seen.add(k2); q.push([X, Y, d + 1]); } }
+    room0 = new Map(); for (const [x, y] of q) { roomS = Math.max(roomS, y); for (let dx = -1; dx <= 1; dx++) room0.set(x + dx, Math.min(room0.has(x + dx) ? room0.get(x + dx) : 1e9, y)); } return room0; }   // (a column -> the room's northmost row in it or beside it)
+  const hid = (x, y, z) => { if (Build.on) return Floors.alpha(x, y, z) < 1; const r = roomNow(); if (!r || z <= roomZ) return false; const n = r.get(x); return n !== undefined && y >= n && y - n <= 14; };
   // a roof tile's place in its run north-south: up, down: tiles of roof north and south of it; yr: where the ridge is (tiles from the run's north edge); hat(v): px the roof stands over its eave there; split: the ridge crosses this tile
   function pitch(x, y, z) { const same = (dy) => { const c = Floors.get(x, y + dy, z); return !!c && c[0] === "roof" && !hid(x, y + dy, z); }; let up = 0, down = 0; while (up < 14 && same(-up - 1)) up++; while (down < 14 && same(down + 1)) down++;
     const n = up + down + 1, yr = Math.floor((n - 1) / 2) + .5, pk = PITCH * n / 2; return {up, down, yr, split: up === Math.floor(yr), hat: (v) => Math.round(v <= yr ? pk * v / yr : pk * (n - v) / (n - yr))}; }
@@ -170,7 +178,7 @@ const HdThings = (() => {
       const cells = Floors.cells(x, y); let over = 0, cutLow = false;
       if (cells) for (const zc of cells.keys()) if (zc > zl && zc <= zl + Floors.STOREY) { over = zc; cutLow = hid(x, y, zc); }
       const p = myPos();      // (inside, the roof open: the walls south of you a low stub, as the cut leaves the rock south of your space; the others to their own height)
-      wall(out, c, x, y, zl, cutLow ? (p && y > p.y ? 4 : 16) : over ? (over - 1 - zl) * UP : 12 / KF());
+      wall(out, c, x, y, zl, cutLow ? (Build.on ? p && y > p.y : y > roomS) ? 4 : 16 : over ? (over - 1 - zl) * UP : 12 / KF());   // (a stub: the room's south wall alone)
     } else if (c === "#") fence(out, x, y, zl * UP); else if (c === "g") sideGate(out, x, y, zl * UP);
     else decal(out, c, x, y, zl * UP);
   }

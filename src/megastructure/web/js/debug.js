@@ -35,8 +35,14 @@ function showXYZ() {
     const aim = me && aimedTile();
     t = `X ${myAt.x}  Y ${myAt.y}  Z ${myAt.z}` + (aim ? `   ·   aim ${aim.p.x}, ${aim.p.y}  z ${topAt(aim.p.x, aim.p.y)}` : "");
   }
-  if (DEBUG.perf && PERF.text) t += (t ? "\n" : "") + PERF.text;
+  const hp = document.getElementById("hdperf");                // (the HD look's own readout, hd_view.js: ?perf=1 or /perf. With it this one's lines are not written too: there were two, one on the other)
+  const hd = !!hp && (HdLook.live || !DEBUG.perf); if (hp) hp.style.display = hd ? "" : "none";   // (the classic look with /perf: this one's lines, the other put away)
+  if (DEBUG.perf && PERF.text && !hd) t += (t ? "\n" : "") + PERF.text;
   if (t !== xyzText) { xyzText = t; $("xyz").textContent = t; }
+  if (hd) {                                                    // one place: top left, under the goals (their tab or their card) and, on a phone, under the two lines of chat
+    let top = 4; for (const id of ["goals", "goalhint", ...(chatSmall() ? ["chatlog"] : [])]) { const e = $(id); if (e && e.offsetHeight) top = Math.max(top, e.getBoundingClientRect().bottom + 6); }
+    top = Math.round(top) + "px"; if (hp.style.top !== top) hp.style.top = top;
+  }
 }
 // Called at the end of each frame (render.js) with when it began, what the script did in it and how much of that was
 // building land: summed up every second

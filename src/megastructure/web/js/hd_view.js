@@ -73,26 +73,19 @@ const HdView = (() => {
   let chk = null, chkOf = "", chkPat = null;
   function checker(col) { if (col === chkOf) return chkPat; chk = chk || document.createElement("canvas").getContext("2d"); chk.canvas.width = chk.canvas.height = 4; chk.fillStyle = col; chk.fillRect(0, 0, 2, 2); chk.fillRect(2, 2, 2, 2); chkOf = col; return chkPat = g.createPattern(chk.canvas, "repeat"); }
   // the picture of this frame on #hd: the backdrop (under the horizon, past the bend: the air's haze; the sea's tint only over the columns where the sea is really there, past the last land
-  // you see; the sky's rows; deep under a roof the dark of the earth, k), the land's picture over it. Only when one of them is new.
-  //   o: {w, h, pic, fresh: the land's picture was drawn again, sky, k, runs: [[x0, x1]...] the sea's columns, ridge: [top, sx] | null, hy, blur, lens}
+  // you see; the sky's rows), the land's picture over it. Only when one of them is new.
+  //   o: {w, h, pic, fresh: the land's picture was drawn again, sky, runs: [[x0, x1]...] the sea's columns, hy, blur, lens}
   function show(o) {
     const {w, h} = o, line = o.sky ? Math.round(o.sky.line / zoom) : 0, low = o.sky ? o.sky.low : [.62, .78, .86]; fit(w, h);
     if (line > 0) skyOf(w, line, o.sky);
-    const key = [line > 0 ? skyVer : 0, line, low.map((v) => Math.round(v * 255)), o.runs, o.k.toFixed(3), o.ridge || "", o.blur, o.lens, o.marks, zoom].join("|");
+    const key = [line > 0 ? skyVer : 0, line, low.map((v) => Math.round(v * 255)), o.runs, o.blur, o.lens, o.marks, zoom].join("|");
     if (!o.fresh && key === lastKey) return false; lastKey = key;
     const tint = (c, a) => `rgb(${low.map((v, i) => Math.round((v * (1 - a) + c[i] * a) * 255)).join()})`;
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.imageSmoothingEnabled = false; g.fillStyle = tint([.8, .84, .8], .45); g.fillRect(0, 0, w, h);
     g.fillStyle = tint([.36, .64, .8], .65); for (const [run, px] of o.runs) { g.fillRect(run, 0, px - run, h); for (const ex of [run - 8, px]) { g.save(); g.translate(ex, 0); g.fillStyle = checker(g.fillStyle); g.fillRect(0, 0, 8, h); g.restore(); } }   // (its two ends: a 2x2 checker, 8 px: one fill of a pattern; it was 400 small ones)
     if (line > 0 && sk) g.drawImage(sk.canvas, 0, 0);
-    if (o.k > 0) { g.fillStyle = `rgba(30,23,21,${o.k.toFixed(3)})`; g.fillRect(0, 0, w, h); }
     const pic = o.lens ? (o.fresh || !art || art.width !== w || art.height !== h ? post(o.pic, w, h, o.hy, o.blur) : art) : o.pic;   // (a phone: no lens: two blurs of the whole picture a frame)
-    g.save();
-    if (o.ridge) {   // under a roof: the sky stays as a band over the earth's far edge, a ridge in whole steps of 2 art px (the earth's silhouette), lower as you go deeper
-      const [top, sx] = o.ridge; g.beginPath(); g.moveTo(0, h);
-      for (let x = 0; x <= w; x += 2) { const n = Math.sin((x + sx) * .071) * 2.5 + Math.sin((x + sx) * .023 + 1.3) * 3.5, y = Math.max(0, top + Math.round(n / 2) * 2); g.lineTo(x, y); g.lineTo(x + 2, y); }
-      g.lineTo(w, h); g.closePath(); g.clip();
-    }
-    g.drawImage(pic, 0, 0); g.restore();
+    g.drawImage(pic, 0, 0);
     if (recM && o.marks) { g.setTransform(1 / zoom, 0, 0, 1 / zoom, 0, 0); recM.play(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; }
     return true;
   }

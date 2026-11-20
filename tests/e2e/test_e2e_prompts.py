@@ -34,3 +34,27 @@ def test_what_you_face_has_its_key_beside_it(game):
     side = game.js(PART, "side")
     assert side[4].startswith("Space") and "Chop tree" not in game.js("$('actions').innerText")
     assert not game.errors
+
+
+def test_no_row_is_written_on_you_or_on_another_row(game):
+    """Facing west the rows lay across your face; under the build cursor Q's row lay on Space's."""
+    hit = """(() => { const k = Prompts.keep, r = (c) => { const e = document.querySelector('#prompts .' + c); if (!e || !e.innerText.trim()) return null; const b = e.getBoundingClientRect(); return {x: b.left, y: b.top, w: b.width, h: b.height}; },
+      on = (a, b) => Array.isArray(b) ? b.some((c) => on(a, c)) : !!a && !!b && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h, s = r('side'), u = r('up'), d = r('down');
+      return [!!s, !!k, on(s, k), on(u, k), on(d, k), on(s, u), on(s, d)]; })()"""
+    game.clear_area(8)
+    game.stamp(-1, 0, ["T"])                                   # a tree west of you
+    game.press("ArrowLeft", 400)
+    game.wait("$('prompts').innerText.includes('Chop tree')", 3000)
+    for d in (0, 1, 1, -1, -1, -1, -1):                          # as it is, then to both ends of the zoom
+        game.js(f"(() => {{ if ({d}) zoomBy({d}); return 1; }})()")
+        game.sleep(500)
+        assert game.js(hit) == [True, True, False, False, False, False, False], (d, game.js("zoom"), game.js(hit))
+    game.give(wood_wall=4)
+    game.hold_item("wood_wall")
+    game.press("b"); game.sleep(200)
+    for key in ("ArrowRight", "ArrowRight", "ArrowLeft", "ArrowLeft", "ArrowLeft", "ArrowLeft", "ArrowDown"):
+        game.press(key, 150)
+        game.settle(f"{hit}.slice(2).every((v) => !v)")              # (the view pans half way to the cursor: once it is there)
+        assert game.js(hit)[2:] == [False] * 5, (key, game.js(hit), game.js("[Prompts.keep, Build.S.rect, Build.S.at, myPos(), ...['side', 'up', 'down'].map((c) => document.querySelector('#prompts .' + c).style.transform)]"))
+    game.press("b")
+    assert not game.errors

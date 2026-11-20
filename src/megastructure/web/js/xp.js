@@ -101,7 +101,7 @@ function drawXpBar(k, level) {
   // as wide as the HUD: the bar's ten slots, or the hearts and the food where those are wider (a phone). Worked out,
   // not measured: measured, it kept the width of a bar that had since been made smaller to fit (hudFit, ui.js)
   const cv = $("xpbar"), dpr = window.devicePixelRatio || 1, thumbs = document.body.classList.contains("touch");
-  const bar = Math.max((BAR * 32 - 2) * hudU, 198 * Math.max(1, Math.round(hudK * dpr)) / dpr + (thumbs ? 18 : 8));
+  const bar = hudSide ? 99 * Math.max(1, Math.round(hudK * dpr)) / dpr : Math.max((BAR * 32 - 2) * hudU, 198 * Math.max(1, Math.round(hudK * dpr)) / dpr + (thumbs ? 18 : 8));
   const SC0 = Math.max(1, Math.round(XP_K * dpr)), w = Math.max(40, Math.floor(bar * dpr / SC0 + 1e-6)), h = TRACK[3];
   const lv = level ? String(level) : "";
   if ($("xplevel").textContent !== lv) $("xplevel").textContent = lv;

@@ -48,10 +48,17 @@ function setDir(dir, run) {
   syncWalk();
 }
 
+// A button here acts when the finger lands (no wait for it to lift). The click the browser sends after that same touch
+// belongs to the button: it went to whatever had come up under the finger (held upright, the inventory's and the
+// book's "x" open right under Items and Craft: they opened and shut on one tap). That one click is taken out.
+let tapEat = null;                            // {id: the pointer that pressed a button, until: once lifted, its click is due before this}
+addEventListener("pointerup", (e) => { if (tapEat && e.pointerId === tapEat.id) tapEat.until = performance.now() + 120; }, true);
+addEventListener("pointercancel", (e) => { if (tapEat && e.pointerId === tapEat.id) tapEat = null; }, true);
+addEventListener("click", (e) => { const t = tapEat; if (!t || !t.until) return; tapEat = null; if (performance.now() < t.until) { e.stopPropagation(); e.preventDefault(); } }, true);
 function holdButton(e, fn) {                  // a press acts at once; held, it acts again once done (chopping on)
   let t = null;
   e.addEventListener("pointerdown", (ev) => {
-    ev.preventDefault(); e.setPointerCapture(ev.pointerId); e.classList.add("down");
+    ev.preventDefault(); e.setPointerCapture(ev.pointerId); e.classList.add("down"); tapEat = {id: ev.pointerId, until: 0};
     inputMode = "keys"; fn(); clearInterval(t);
     t = setInterval(() => { if (!myAction && !pendingAct) fn(); }, 220);   // (never cutting short work in progress)
   });
@@ -59,7 +66,7 @@ function holdButton(e, fn) {                  // a press acts at once; held, it 
   for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) e.addEventListener(ev, up);
 }
 function tapButton(e, fn) {
-  e.addEventListener("pointerdown", (ev) => { ev.preventDefault(); ev.stopPropagation(); e.classList.add("down"); fn(); });
+  e.addEventListener("pointerdown", (ev) => { ev.preventDefault(); ev.stopPropagation(); e.classList.add("down"); tapEat = {id: ev.pointerId, until: 0}; fn(); });
   for (const ev of ["pointerup", "pointercancel", "pointerleave"]) e.addEventListener(ev, () => e.classList.remove("down"));
 }
 
@@ -156,7 +163,7 @@ if (TOUCH) {
     const hud = $("hud"), w = Math.max(hud.scrollWidth, $("vitals").scrollWidth), h = hud.offsetHeight;
     const k = Math.min(1, (innerWidth - 16) / (w || 1));       // (the vitals alone too wide: a very narrow screen)
     hud.style.transform = k < 1 ? `translateX(${(innerWidth - w * k) / 2}px) scale(${k})` : "";   // (wider than the screen, it starts at its left)
-    const narrow = innerWidth - w * k < 2 * 190;               // no room for the thumbs beside the hotbar
+    const narrow = !hudSide && innerWidth - w * k < 2 * 190;               // no room for the thumbs beside the hotbar
     document.body.style.setProperty("--tbot", (narrow ? h * k + 18 : 12) + "px");
   }, 200);
 }
