@@ -46,7 +46,7 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
     c = game.js(CUR)
     assert c["trapped"] and c["now"] == "up" and c["cap"] == "R" and c["way"] == "E", c
     assert c["digs"][0] == [x + 1, y, -2, "up"] and len(c["digs"]) == 5, c    # the first step's block (the sky is over you), then two a layer; the last layer is a hop
-    assert game.actions() == "" and game.js("Marks.list.length") == 0, game.actions()      # one key: the block's (no row beside what you face, no bracket, nothing in the corner)
+    assert game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") == "RDigastep" and game.js("Marks.list.length") == 0, game.actions()      # one key: the block's, and in the corner with its word (no row beside what you face, no bracket)
     presses = 0
     for _ in range(24):
         c = game.js(CUR)
@@ -135,7 +135,7 @@ def test_shut_in_with_a_plank_in_hand_or_with_nothing_the_shown_key_gets_you_out
     game.wait("myAt && myAt.z === -3 && WayShow.cur && WayShow.cur.now && !WayShow.busy", 6000)
     game.frames(3)
     assert game.js("inHand()") == (hands if hands == "plank" else None)
-    assert game.js(CAP) == "R" and not game.js(ON_ME) and game.actions() == "", (game.js(CAP), game.actions())
+    assert game.js(CAP) == "R" and not game.js(ON_ME) and game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") == "RDigastep", (game.js(CAP), game.actions())
     presses, seen = 0, []
     for _ in range(20):
         game.wait("!WayShow.busy && !myAction && !pendingAct && !walking", 6000)
@@ -143,7 +143,7 @@ def test_shut_in_with_a_plank_in_hand_or_with_nothing_the_shown_key_gets_you_out
         cap = game.js(CAP)
         if cap is None:
             break
-        assert not game.js(ON_ME) and game.actions() == "", (cap, game.actions())      # (one key on the screen: no "Lay floor", no other digging, no red line)
+        assert not game.js(ON_ME) and game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") in ("", "RDigastep", "RDigup"), (cap, game.actions())      # (one key on the screen: no "Lay floor", no other digging, no red line)
         presses += 1
         seen.append(cap)
         if cap in KEYS:

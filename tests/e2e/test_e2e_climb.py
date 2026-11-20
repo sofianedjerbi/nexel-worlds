@@ -120,7 +120,7 @@ def test_out_of_your_own_shaft_by_keys(game):
         game.press("x", 100)
         game.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)    # one press, one layer
         assert game.server()["z"] == -depth
-    assert game.js("facingNow(false).it.text") == "Dig into the wall" and game.actions() == ""      # (a hole in a meadow: no hill. Not written while the way out is shown: its key alone, wayshow.js)
+    assert game.js("facingNow(false).it.text") == "Dig into the wall" and "Dig into" not in game.actions()      # (a hole in a meadow: no hill. Not written while the way out is shown: its key alone, wayshow.js)
     game.press(game.js(SLOT, "ladder"))
     for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
         game.face(dx, dy)

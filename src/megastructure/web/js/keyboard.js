@@ -130,7 +130,7 @@ function availableActions() {
   if (Build.on) return Build.rows();
   const s = myPos(), rows = [];
   const way = WayShow.offer(), m0 = facingIntent(false), a0 = facingIntent(true), main = m0 && wayHides(way, m0, "use") ? null : m0, alt = a0 && wayHides(way, a0, "alt") ? null : a0;
-  if (way && way.key) rows.push([capOf(way.key), way.text, "", true, true]);                 // (the fifth: by keys it is beside its block already; a phone's button says it)
+  if (way && way.key) rows.push([capOf(way.key), way.text, "way", true, true]);              // (the fifth: its cap is by its block; its word is in the corner, lit; a phone's button says it)
   if (main && !main.it.info && main.it.ok !== false) rows.push([capOf("use"), main.it.text, "", true]);      // (the keys as the settings have them: options.js; true: what you face)
   else if (main && placingItem()) rows.push([capOf("use"), main.it.text, "bad", true]);           // why it can't go there
   if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push([capOf("alt"), alt.it.text, "", true]);
@@ -147,10 +147,10 @@ function availableActions() {
 // The corner: what is not beside what it acts on (prompts.js): in build mode its name and Esc; by keys, all but
 // what you face
 function updateActions() {
-  const all = availableActions().filter((r) => !r[4]), keys = inputMode === "keys", aim = keys && !Build.on ? facingIntent(false) : null;
+  const all = availableActions(), keys = inputMode === "keys", aim = keys && !Build.on ? facingIntent(false) : null;
   const beside = !!aim && !aim.it.info && !aim.it.walk;      // (something you face is marked: its keys go beside it. Nothing is: they stay in the corner. X's "Dig down" on open meadow was shown nowhere)
-  faceRows = Build.on || !keys || !beside ? [] : all.filter((r) => r[3]);
-  const corner = Build.on ? all.filter(([k]) => k === "B" || k === "Esc") : keys && beside ? all.filter((r) => !r[3]) : all;
+  faceRows = Build.on || !keys || !beside ? [] : all.filter((r) => r[3] && !r[4]);
+  const corner = Build.on ? all.filter(([k]) => k === "B" || k === "Esc") : keys && beside ? all.filter((r) => !r[3] || r[4]) : all;      // (the way out's key: on its block, and here with its word: "R Dig up": "which key ?")
   const html = corner.map(([k, t, cls]) => `<div class="${cls || ""}"><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
   if (html === actionsHtml) return;
   actionsHtml = html;
