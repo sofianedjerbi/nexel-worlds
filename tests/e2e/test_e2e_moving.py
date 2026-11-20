@@ -188,6 +188,7 @@ def test_hop_down_off_a_hill_edge(game):
     assert s["x"] > low and s["x"] >= x - 2 and game.js(f"levelAt({s['x']}, {s['y']})") == 1 and game.pos() == (s["x"], s["y"])
 
 
+@pytest.mark.realtime
 def test_higher_ground_is_drawn_higher_and_clicks_find_it(game):
     # a terrace three layers up just north of you: drawn 18 art px higher (relief.js, 6 a layer), you on it too
     game.stamp(-2, -4, ["....."] * 3, levels=["33333"] * 3)

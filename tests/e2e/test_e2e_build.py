@@ -181,6 +181,7 @@ def test_walls_are_thin_and_hide_nothing_and_a_side_door_has_its_leaf_and_shadow
         join = game.js("(() => { const t = TS(), z = t / 16, d = ctx.getImageData(Math.round(cv.width / 2 - t + 7.5 * z - t / 2), Math.round(cv.height / 2 + t - t / 2 - 3.5 * z), 1, 1).data; return [d[0], d[1], d[2]]; })()")
         assert join == [196, 154, 108], join                       # the cap's own colour where the band meets it, not its outline
         game.rpc("dev_teleport", x=x + 3, y=y - 2); game.arrive()                 # in the doorway: its leaf is back against a post
+        game.settle("doors.get(myPos().x + ',' + myPos().y) === 1")              # (it swings open over a few frames: read when it has; it was read at 0.9, one run in ten on a busy machine)
         assert game.js("doors.get(myPos().x + ',' + myPos().y)") == 1 and not game.errors
     finally:                                                   # (the land as it was, whatever happened: a door left there is on the screen of the tests that wake here after)
         game.rpc("dev_stamp", x=x - 6, y=y - 5, rows=["." * 13] * 12)
