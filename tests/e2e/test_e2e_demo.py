@@ -10,15 +10,17 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[2] / "tools"))
 from build_pages import build  # noqa: E402
-from conftest import needs_sounds  # noqa: E402
-
-pytestmark = needs_sounds                                    # (the build takes the sounds with it)
 
 
 @pytest.fixture(scope="module")
 def site(tmp_path_factory):
     out = tmp_path_factory.mktemp("pages") / "dist"
-    build(out)
+    # (one build at a time: the first one makes the sounds where there are none (a new worktree), and two workers
+    # making them at once read each other's half-written files: "No such file ... eat_1.flac")
+    import fcntl
+    with open(tmp_path_factory.getbasetemp().parent / "pages.lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        build(out)
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(out))
     handler.log_message = lambda *a: None
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)

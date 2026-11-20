@@ -1,7 +1,7 @@
 # The browser tests
 
 Real Chrome against a fresh server on a temporary world (`conftest.py`), one new player a test, standing on a cleared
-meadow (`game` fixture; `game.py` is what a test can do).
+meadow (`game` fixture; `game.py` is what a test can do, `waits.py` how it waits).
 
 ## Running
 
@@ -13,8 +13,9 @@ meadow (`game` fixture; `game.py` is what a test can do).
 - `-m e2e` is needed (the default run leaves these out). `PYTHONPATH=src` in a worktree, or the venv plays the live game's code.
 - An agent runs **the files it touched and `quick`**, at `-n 2`, five files at the most, one run at a time; never the
   whole folder (several agents doing that froze the machine).
-- The sounds are built files (`tools/build_audio.py` -> `src/megastructure/web/audio/`, not in git). A worktree has
-  none: the sound tests skip, the two that need them say so. Link the main checkout's folder to run them.
+- The sounds are built files (`tools/build_audio.py` -> `src/megastructure/web/audio/`, not in git). A new worktree
+  has none: the tests that need them skip (they waited a minute for them) until they are built; the demo's test
+  builds them the first time it runs.
 - `--durations=20` says where the time went. A test that needed its second try is listed at the end
   ("tried a second time", with what the first try said): one that is often there is not sound.
 

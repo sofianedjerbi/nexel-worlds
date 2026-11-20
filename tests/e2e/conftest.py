@@ -13,10 +13,10 @@ import pytest
 from game import Game, new_name
 
 ROOT = Path(__file__).parents[2]
-# The sounds are built files, not in git (tools/build_audio.py): a worktree has none. A test that waits for them says
-# so at once (one waited a minute for them, twice, and the demo's build stopped on the first missing file).
+# The sounds are built files, not in git (tools/build_audio.py; the demo's test builds them): a new worktree has none.
+# A test that waits for them says so at once (one waited a minute for them, twice).
 needs_sounds = pytest.mark.skipif(not (ROOT / "src" / "megastructure" / "web" / "audio" / "sfx.json").exists(),
-                                  reason="no sounds built: uv run python tools/build_audio.py (or link the main checkout's src/megastructure/web/audio)")
+                                  reason="no sounds built: uv run python tools/build_audio.py")
 
 
 # `-m "e2e and quick"`: one short test of each file that has one (not the demo: it fetches Pyodide; nothing that times
