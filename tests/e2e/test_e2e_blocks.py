@@ -1,6 +1,8 @@
 """The land is blocks (voxels.js and the engine in vox_*.js): the world's cells drawn as blocks by the GPU, laid on
 the game's canvas, where everything else is drawn over it."""
 
+import pytest
+
 # the colour of the game's canvas at a point of the world: a tile's middle, `up` art px over where its top is drawn
 AT = """([x, y, dy]) => { const S = TS(), [ox, oy] = screenOrigin(S), d = ctx.getImageData(Math.round((ox + x * S + S / 2) * DPR), Math.round((oy + y * S + S / 2 - liftAt(x, y) + dy * zoom) * DPR), 1, 1).data; return [d[0], d[1], d[2]]; }"""
 
@@ -89,6 +91,7 @@ def test_a_shader_and_the_night_are_over_the_blocks_as_over_the_painted_land(gam
     assert seen[1] > 100 and seen[1] > seen[2], seen             # the meadow, through the shader
 
 
+@pytest.mark.realtime
 def test_blocks_cost_little_of_a_frame(game):
     """Standing still on land that is there, a frame's own work stays small with the land as blocks."""
     blocks(game)

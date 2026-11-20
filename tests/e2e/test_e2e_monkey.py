@@ -1,5 +1,6 @@
 """Chaos: random keys and clicks for a while, then everything must still agree and run smoothly."""
 
+import pytest
 import random
 
 KEYS = ["w", "a", "s", "d", "Space", "x", "e", "q", "0", "1", "2", "3", "c", "b", "Escape", "f", "+", "-", "h"]
@@ -29,6 +30,7 @@ def test_random_play_keeps_screen_and_server_in_step(game):
     assert m["tick_ms_max"] < 60, m
 
 
+@pytest.mark.realtime
 def test_smooth_frames_while_sprinting(game):
     game.js("""(() => { window.__gaps = []; let last = performance.now();
       (function f(n) { __gaps.push(n - last); last = n; if (__gaps.length < 400) requestAnimationFrame(f); })(last); })()""")

@@ -37,6 +37,10 @@ REST = """([n, ms]) => new Promise((ok) => { const L = window.__land, f0 = L.fra
 QUIET = """() => !Object.keys(pending).length && !busy && !pendingAct && !myAction && !progress && !pred && walking === null && !refreshing
   && (() => { const p = ents.get('agent' + myId); return !p || (p.x === p.tx && p.y === p.ty); })()
   && document.getAnimations().every((a) => a.playState !== 'running' || !a.effect || a.effect.getComputedTiming().iterations === Infinity)"""
+# Nothing of the land left to make: no tile to draw, every block on the screen made, the HD look not at work
+MADE = """() => typeof dirtyTiles === 'undefined' || !me || (dirtyTiles.length === 0 && !(typeof HdLook !== 'undefined' && HdLook.live && HdLook.busy) && (() => {
+  const [x, y, w, h] = viewRect(0); for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (!b || !Voxels.made(b)) return false; }
+  return true; })())"""
 FRAMES = "(n) => new Promise((ok) => { const f = () => (n-- > 0 ? requestAnimationFrame(f) : ok(1)); f(); })"
 
 
@@ -64,9 +68,14 @@ class Waits:
             raise AssertionError(f"not drawn where the server has you, {s['x']}, {s['y']}: " + str(self.js("(() => { const p = ents.get('agent' + myId); return [p && [p.x, p.y, p.tx, p.ty], myPos(), [cam.x, cam.y], [camT.x, camT.y]]; })()"))) from e
         self.rest()
 
-    def hour(self, phase, timeout=20000):
+    def hour(self, phase, timeout=20000, still=False):
         """The time of day (0 sunrise, .375 noon, .75 nightfall), back when the page has it and has drawn the land
-        by it: the server says the hour with its next tick, 0.1 s on or more."""
+        by it: the server says the hour with its next tick, 0.1 s on or more.
+        still: and the page's hour stays that one, to the next hour(): for two pictures taken a moment apart that
+        are compared px by px (a setting on, then off, the land made again between them). With the sun low the light
+        changes by the second, and on a busy machine the moment is long: the sun's side of a step "had a shadow"
+        (11 to 43 units of 255), two runs in three with two browsers at work, never alone."""
+        self.js("(() => { if (window.__sun) { onTick = window.__sun; window.__sun = null; } return 1; })()")
         if self.js("typeof HdLook !== 'undefined' && HdLook.live"):
             # (the HD look: the land made as it is before the hour jumps. A jump that came while the land was being made
             # for a stamp left that land without the new hour's shadows until the sun had moved an eighth of a tile on,
@@ -78,6 +87,8 @@ class Waits:
             self.page.wait_for_function("(p) => Math.abs((((clock.phase || 0) - p) % 1 + 1.5) % 1 - .5) < .004", arg=phase, timeout=timeout)
         except NotYet as e:
             raise AssertionError(f"the hour {phase} did not come to the page: {self.js('[clock.phase, clock.tick, clock.time]')}") from e
+        if still:
+            self.js("(p) => { const real = window.__sun = onTick; onTick = (d) => { d.phase = p; real(d); }; clock.phase = p; return 1; }", phase)
         self.rest()
 
     def heard(self):

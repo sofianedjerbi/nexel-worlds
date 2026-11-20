@@ -1,6 +1,7 @@
 """The land's depth (the settings' Picture page: Depth, on by default; vox_light.js `deep`, sunland.js): with no
 shader, the sun's shadows on the land, shade at the foot of higher land, higher land a little lighter. Each on top of
 the land's own paint: off, the picture is the one painted, to the px; open ground at level 0 is never changed."""
+import pytest
 from test_e2e_digging import DRAWN, LAND, earth
 from test_e2e_sunland import RESET, look, twice
 
@@ -113,6 +114,7 @@ def test_the_ground_behind_a_step_is_darker_along_it(game):
     game.js(RESET)
 
 
+@pytest.mark.realtime
 def test_the_depth_costs_little_of_a_frame(game):
     game.clear_area(8)
     game.stamp(-6, -5, ["......", "......", "~~~~~~"], levels=["332211", "332211", "000000"]); game.stamp(2, -3, ["T.T", "...", "T.T"])
@@ -140,7 +142,7 @@ def test_a_step_of_one_level_throws_a_shadow_all_along_it_away_from_the_sun(game
     x, y = game.pos()
     east, west = [x + 2 + 3 / 16, y - 4.5, x + 2 + 8 / 16, y - 2.5], [x - 1 - 8 / 16, y - 4.5, x - 1 - 3 / 16, y - 2.5]
     for phase, far, near in ((.68, east, west), (.06, west, east)):      # evening: the sun in the west; morning: in the east
-        game.hour(phase)
+        game.hour(phase, still=True)                             # (the two pictures at one hour: waits.py)
         on = [game.js(ROWS, r) for r in (far, near)]
         game.js("setOpt('landshade', false)"); game.rest()
         off = [game.js(ROWS, r) for r in (far, near)]

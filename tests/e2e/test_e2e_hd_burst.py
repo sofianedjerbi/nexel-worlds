@@ -4,6 +4,7 @@ seen from the room: the floors you dropped FROM), so the pit is not cut again; o
 time over a third of a second: the stair behind you cools. Every frame of that walk is looked at: the share of the
 picture's px that jump, and the step of its mean light, stay near the walk's own scroll."""
 
+import pytest
 from test_e2e_hd_sun import hd, settled
 
 # every frame of the land's own canvas (#hd, a px an art px): [mean light, share of px whose light moved by more than 28, the eye's pitch, your tile's x]
@@ -28,6 +29,7 @@ def stair(g):
     return x, y, z
 
 
+@pytest.mark.realtime
 def test_walking_a_stair_and_dropping_into_the_room_at_its_foot_recuts_nothing_and_no_frame_flashes(browser, server):
     g = hd(browser, server)
     g.rpc("dev_time", phase=.3)

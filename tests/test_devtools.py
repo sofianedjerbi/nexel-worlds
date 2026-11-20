@@ -54,3 +54,34 @@ def test_clearing_the_ground_for_a_test_takes_what_lies_on_it_too(world):
     assert (a.x + 2, a.y) in sim.items
     dev_op(sim, a, "dev_creatures", {"clear": 40})
     assert (a.x + 2, a.y) not in sim.items and (a.x + 60, a.y) in sim.items and not sim.creatures
+
+
+def test_the_worlds_clock_is_paced_only_by_the_dev_tool_and_the_server_ticks_by_it(world, tmp_path):
+    """dev_pace (the browser tests' clock, tests/e2e/clock.py): the server makes that many times its ticks a second;
+    a world nobody paced ticks ten times a second, as ever."""
+    import asyncio
+
+    from megastructure.server import GameServer
+    from megastructure.sim import TICK_HZ
+
+    sim, a = world
+    assert not hasattr(sim, "clock_rate")                    # (not there until asked for: the server reads 1)
+    assert dev_op(sim, a, "dev_pace", {"pace": 4}) == {"pace": 4.0}
+    assert dev_op(sim, a, "dev_pace", {"pace": 1000})["pace"] == 16 and dev_op(sim, a, "dev_pace", {"pace": 0})["pace"] == .25
+
+    def ticks(pace, secs=.6):
+        gs = GameServer(tmp_path / f"w{pace}", seed=3)
+        if pace:
+            dev_op(gs.sim, None, "dev_pace", {"pace": pace})
+
+        async def play():
+            loop, t0 = asyncio.create_task(gs.tick_loop()), gs.sim.tick
+            await asyncio.sleep(secs)
+            gs.stopping.set()
+            await loop
+            return gs.sim.tick - t0
+        n = asyncio.run(play())
+        gs.sim.close()
+        return n / secs / TICK_HZ
+
+    assert .7 < ticks(None) < 1.3 and 3 < ticks(4) < 5

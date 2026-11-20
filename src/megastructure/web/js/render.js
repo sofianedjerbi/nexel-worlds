@@ -4,7 +4,7 @@
 //  Frame
 // =====================================================================================
 let lastT = performance.now(), arrivingNow = true;
-const LAND_MS = 3, HOLD_MS = 2500;
+const LAND_MS = 3 * (window.__pace || 1), HOLD_MS = 2500;      // (__pace: only in the browser tests, whose pages' clocks run faster, tests/e2e/clock.py: the land's share of a frame is the machine's time, not the game's)
 let goodAt = 0;                // when the land where you are was last all there (a frame drawn whole)
 const HIT_HEART = [".oo.oo.", "owrorro", "orrrrro", ".orrro.", "..oro..", "...o..."];      // the small heart beside a blow's number (2 px a pixel)
 const pileSince = new Map();   // when each pile on the ground was first shown (its hover starts from rest)
@@ -69,7 +69,7 @@ function frame(now) {
   const [qx, qy, qw, qh] = viewRect(0), onScreen = (b) => b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh + 6 && (b.by + 1) * B > qy;
   const [ax, ay, aw, ah] = viewRect(6), rank = (b) => (onScreen(b) ? 0 : vis.includes(b) ? 1 : 2);
   const coming = inRect(ax, ay, aw, ah + 6).sort((a, b) => rank(a) - rank(b));
-  const landFrom = performance.now(), landUntil = landFrom + (arrivingNow ? 12 : coming.some((b) => !Voxels.made(b) && onScreen(b)) ? LAND_MS * 2.5 : LAND_MS);
+  const landFrom = performance.now(), landUntil = landFrom + (arrivingNow ? LAND_MS * 4 : coming.some((b) => !Voxels.made(b) && onScreen(b)) ? LAND_MS * 2.5 : LAND_MS);
   const fresh = coming.find((b) => !b.drawn);
   if (fresh) { if (arrivingNow && onScreen(fresh)) renderBlock(fresh); else startBlock(fresh); }   // (arriving: whole, at once)
   for (let n = 0; dirtyTiles.length && (n++ & 15 || performance.now() < landUntil);) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }

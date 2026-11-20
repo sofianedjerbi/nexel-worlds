@@ -92,7 +92,7 @@ class GameServer(Views):
             if dt > 50:
                 log.warning("slow tick %d: %.0f ms (step %.0f ms, chunks %d -> %d)", self.sim.tick, dt,
                             (t1 - t0) * 1000, chunks0, len(self.sim.world.chunks))
-            nxt += period
+            nxt += period / getattr(self.sim, "clock_rate", 1)      # (pace: the browser tests' clock, devtools.py dev_pace: only with --dev)
             # In the browser (no threads) land is made in the time to spare, 8 ms at a time, the loop turning three times
             # between two (heard, answered, sent): what the tick said leaves first and the page is answered meanwhile
             # (made in one go, both waited 65 ms behind the land, one tick in six; more on a phone).

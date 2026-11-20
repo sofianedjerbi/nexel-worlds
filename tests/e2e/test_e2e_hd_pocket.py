@@ -3,6 +3,7 @@ where you are (a stair's treads two levels up, the passage past a wall) is drawn
 (grey-blue, no warm light); the floor over your head is a see-through checker of it; and going under a roof the eye
 tilts over some 400 ms, never in a few frames."""
 
+import pytest
 from test_e2e_hd_sun import hd, settled
 
 # a tile's top as it is on the screen: [mean r, g, b, px warm (red well over blue), px cold (blue not under red)] of the px inside its four corners' box
@@ -28,6 +29,7 @@ def pocket(g):
     return x, y, z
 
 
+@pytest.mark.realtime
 def test_in_a_pocket_under_a_higher_floor_that_floor_is_drawn_cold_and_the_one_over_you_is_a_checker(browser, server):
     g = hd(browser, server)
     g.rpc("dev_time", phase=.3)

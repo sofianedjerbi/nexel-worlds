@@ -1,7 +1,8 @@
 # The browser tests
 
 Real Chrome against a fresh server on a temporary world (`conftest.py`), one new player a test, standing on a cleared
-meadow (`game` fixture; `game.py` is what a test can do, `waits.py` how it waits).
+meadow (`game` fixture; `game.py` is what a test can do, `waits.py` how it waits), the game's time running four times
+as fast (`clock.py`), every page shut when its test is over (`pages.py`).
 
 ## Running
 
@@ -18,6 +19,35 @@ meadow (`game` fixture; `game.py` is what a test can do, `waits.py` how it waits
   builds them the first time it runs.
 - `--durations=20` says where the time went. A test that needed its second try is listed at the end
   ("tried a second time", with what the first try said): one that is often there is not sound.
+
+## The tests' clock
+
+The game's time runs `PACE` (4) times as fast in a test: the world makes forty ticks a second (the dev tool
+`dev_pace`), and each page's clocks, timers, frame times, style-sheet animations and sound card are multiplied before
+any of its code runs (`clock.py`, `clock_sound.py`). Nothing of the game knows: a walk is still five tiles a second
+of its own time, a piece of music still thirty-five seconds of its own. To the game it is a machine four times slower:
+fifteen frames to one of its seconds, four times as long to the server and back.
+
+- `game.sleep(ms)`, `page.wait_for_timeout(ms)`, `game.hold(keys, ms)`: ms of the **game's** time. (A sleep is at
+  least 60 ms of the machine's, and lasts until the land is made: what a sleep also gave was time to the machine.)
+- **`@pytest.mark.realtime`** (or `pytestmark`): the test runs at the game's own pace, as all did. For a test that
+  measures the machine (what a frame costs, frames a second, a lag in ms), that looks at every frame of a movement
+  (no stop, no jump: at 15 frames a second of the game's time there are both), that taps a key and counts on the
+  answer coming within a tick, or that has a clock that is not the page's (a second server, the demo's worker).
+  A test that fails on the fast clock and passes with `E2E_PACE=1` is one of these: mark it, do not stretch it.
+- `E2E_PACE=1 pytest ...`: the whole run as it was. `E2E_AHEAD=0`: no page loaded ahead (below).
+- The day goes at the machine's pace on a page that plays (`clock.py` `DAY`): the hour moves on from the last
+  `dev_time` as fast as it does at the game's own pace. Land made again between two pictures takes the machine's
+  time, and took four times as much of the day: the light of dawn and of a low sun moved between them.
+- What takes the machine's time takes it still (land made, a picture read): the land's share of a frame is the
+  machine's (`render.js` `LAND_MS` reads the tests' pace: the one line of the game that knows).
+
+## Pages
+
+- The `browser` fixture counts the pages and contexts a test opens and shuts what it left open (`pages.py`). A page
+  left open was a player left awake where the next players woke: drawn on their screens, counted with who was there.
+- The next test's page loads while this one plays, and waits at the first screen (`browser.ahead`, `take`): a new page
+  as ever, but not new-born. A test about the first screen itself opens its own (`browser.new_page`).
 
 ## Groups (five files a run)
 
@@ -47,10 +77,13 @@ By area, for "the files I touched and their neighbours":
    - anything else the server or the page does: `game.wait("<what you are about to assert>")`, or `game.settle(...)`
      when the assert that follows should say what is wrong in its own words.
    - what is set on the page and read from the next picture: `game.frames(2)`.
-   - `game.sleep(ms)` is for time that has to pass *in the game*: a walk, a swing, a fade whose middle is the test.
+   - `game.sleep(ms)` is for time that has to pass *in the game*: a walk, a swing, a fade whose middle is the test
+     (ms of the game's time: the tests' clock, above).
 2. **Two pictures to compare are one frame drawn twice** (`twice` in `test_e2e_sunland.py`, `HASHES` in
    `test_e2e_depth.py`), not two frames a moment apart: the hour moves on (at dawn the whole picture grows lighter
-   by the second), fires flicker, clouds and the low sun's shafts drift.
+   by the second), fires flicker, clouds and the low sun's shafts drift. Where they have to be two frames (a setting
+   changed and the land made again between them): `game.hour(phase, still=True)`, and the page's hour stays that one
+   until the next `hour()`.
 3. **What a test does not measure is turned off or kept out of the way**: `clouds`, `rays`, `shimmer` to 0; and what the
    world puts down by a tile's own place (a leaf on shore water, one tile in eleven) is looked for before the spot
    is chosen: a new player wakes somewhere else every run.

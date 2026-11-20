@@ -2,6 +2,8 @@
 away from the sun; the shadow of what stands falls on the land it is thrown on and never on a wall; what stands in
 the land's shadow is in it; the land north of water is seen in it. With no shader the land is as it is painted."""
 
+import pytest
+
 # the mean light of a part of the world's flat ground [x0, y0, x1, y1] (tiles) on the game's own canvas, read in the frame it was drawn in
 LIT = """([x0, y0, x1, y1]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
   const S = TS(), [ox, oy] = screenOrigin(S), a = Math.round((ox + x0 * S) * DPR), b = Math.round((oy + y0 * S) * DPR);
@@ -24,7 +26,7 @@ def test_a_cliff_throws_its_shadow_on_the_ground_away_from_the_sun(game):
     game.stamp(-1, -3, ["..", ".."], levels=["33", "33"])      # a block of land three high, north of you
     x, y = game.pos()
     west, east = [x - 2.8, y - 2.9, x - 1.3, y - 2.1], [x + 1.3, y - 2.9, x + 2.8, y - 2.1]      # the ground beside it
-    game.hour(.06)                             # morning: the sun in the east
+    game.hour(.06, still=True)                 # morning: the sun in the east (and it stays there: the pictures that follow are compared with this one, waits.py)
     plain = [game.js(LIT, r) for r in (west, east)]
     look(game, "natural")
     on = [game.js(LIT, r) for r in (west, east)]
@@ -33,7 +35,7 @@ def test_a_cliff_throws_its_shadow_on_the_ground_away_from_the_sun(game):
     assert abs(game.js(LIT, west) - plain[0]) < 1.5
     game.js("setOpt('landshade', true)")
     look(game, "off", 300)
-    game.hour(.7)                              # evening: the other side
+    game.hour(.7, still=True)                  # evening: the other side
     plain = [game.js(LIT, r) for r in (west, east)]
     look(game, "natural")
     on = [game.js(LIT, r) for r in (west, east)]
@@ -109,6 +111,7 @@ def test_the_land_north_of_water_is_seen_in_it(game):
     game.js(RESET)
 
 
+@pytest.mark.realtime
 def test_the_sun_on_the_land_costs_little_of_a_frame(game):
     game.clear_area(8)
     game.stamp(-6, -5, ["......", "......", "~~~~~~"], levels=["332211", "332211", "000000"]); game.stamp(2, -3, ["T.T", "...", "T.T"])

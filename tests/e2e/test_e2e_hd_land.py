@@ -4,6 +4,7 @@ Deep under the land the eye looks steeply down (68 degrees): the pit is a hole w
 and who is in the room with you is drawn at the room's level."""
 
 
+import pytest
 from conftest import Game, new_name
 from test_e2e_hd_sun import LIGHT, hd, settled
 
@@ -11,6 +12,7 @@ AT_ = """([x, y, z]) => { const p = HdLook.screenOf(x, y, z), k = cv.width / inn
   return Array.from(HdLook.read(Math.round(p[0] * k), Math.round(p[1] * k), 1, 1).data).slice(0, 3); }"""
 
 
+@pytest.mark.realtime
 def test_a_cliff_throws_its_shadow_on_the_low_land_away_from_the_sun(browser, server):
     g = hd(browser, server)
     x, y = g.pos()
@@ -37,6 +39,7 @@ def test_a_cliff_throws_its_shadow_on_the_low_land_away_from_the_sun(browser, se
     assert not g.js(f"HdSun.landAt({x - 3}, {y - 3}) || HdSun.landAt({x + 3}, {y - 3})")      # none at night
 
 
+@pytest.mark.realtime
 def test_under_a_roof_an_open_pit_shows_a_bright_floor_and_the_meadow_stays(browser, server):
     g = hd(browser, server)
     x, y = g.pos()
@@ -77,6 +80,7 @@ def test_a_tunnel_one_level_under_the_meadow_opens_a_small_trench_not_the_whole_
         g.page.close()
 
 
+@pytest.mark.realtime
 def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at_your_level(browser, server):
     for w, h, touch, zoom in ((1440, 900, False, 3), (390, 844, True, 2), (844, 390, True, 2)):
         ctx = browser.new_context(viewport={"width": w, "height": h}, device_scale_factor=3 if touch else 2, has_touch=touch, is_mobile=touch)

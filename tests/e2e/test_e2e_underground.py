@@ -3,6 +3,7 @@ tunnel, a room: the land cut open over the place you are in; the light in it, by
 and by night. (The dug look itself, and build mode's digging: test_e2e_digging.py; caves under hills:
 test_e2e_caves.py.)"""
 
+import pytest
 from test_e2e_digging import DRAWN, GREEN_ON_SCREEN, LAND, SEEN, cut, earth, sliced
 
 
@@ -83,6 +84,7 @@ def test_at_night_a_fire_under_a_roof_lights_nothing_of_the_meadow_over_it(game)
     assert not game.errors
 
 
+@pytest.mark.realtime
 def test_light_is_one_shade_under_a_roof_no_edge_along_the_tunnel(game):
     game.js("Underground.force = 0")   # (the cut as the game paints it: the underground view, underground.js, is laid over it)
     """"See how lightning is cut ? Uniformise it with a real lightning model": the earth cut through over a tunnel was

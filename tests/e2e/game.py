@@ -10,8 +10,9 @@ import os
 import time
 import warnings
 
+import clock
 from playwright.sync_api import TimeoutError as NotYet
-from waits import QUIET, Waits
+from waits import MADE, QUIET, Waits
 
 
 SERVER_LOG = None        # the test server's log (conftest.py)
@@ -45,16 +46,14 @@ SOCKETS = """(() => { const log = window.__sockets = [], WS = window.WebSocket, 
 
 class Game(Waits):
     def __init__(self, page, url):
-        self.page, self.url, self.errors = page, url, []
+        self.page, self.url, self.errors, self.loaded = page, url, [], None
         page.on("pageerror", lambda e: self.errors.append(str(e)))
 
     # ---- session
     def join(self, name, zoom=4, curve=None, look="classic"):
         """(curve: the settings' Curved world: None, as the game has it for a player (Far); False: the flat picture,
         for a test that cannot be about the curved one; "near", "far": that one)"""
-        self.page.add_init_script(SOCKETS)
-        # (look: the settings' Look; the tests that came before the HD look pin the classic picture's px: classic unless asked)
-        self.page.goto(f"{self.url}/?zoom={zoom}&look={look}" + ("" if curve is None else f"&curve={curve or 0}"))
+        self.load(zoom, curve, look)
         self.page.wait_for_function("typeof ready !== 'undefined'")
         self.page.click("#name")
         self.page.keyboard.type(name)
@@ -79,11 +78,22 @@ class Game(Waits):
                 lines = SERVER_LOG.read_text(errors="replace").splitlines()
                 said = [ln[:200] for ln in lines if name in ln or "Traceback" in ln or "ERROR" in ln or "Error" in ln][-12:] + ["...the log's end:"] + [ln[:160] for ln in lines[-14:]]
             raise AssertionError(f"{name} did not get in: {state}; page errors: {self.errors}; server: {said}") from e
+        self.js(clock.DAY)
         self.rpc("dev_time", phase=.3)
         # (awake: the land there and drawn; and the picture all there, not still coming in over the first screen's: that
         # takes 0.7 s, and a test that looked at the canvas's animations meanwhile counted it with its own)
         self.js("(() => { for (const a of cv.getAnimations()) a.finish(); return 1; })()")
         self.settle("!arrivingNow")
+
+    def load(self, zoom=4, curve=None, look="classic", wait="load"):
+        """The page asked for (once: join() asks, unless it was asked for ahead, pages.py). -> self"""
+        # (look: the settings' Look; the tests that came before the HD look pin the classic picture's px: classic unless asked)
+        ask = f"{self.url}/?zoom={zoom}&look={look}" + ("" if curve is None else f"&curve={curve or 0}")
+        if self.loaded != ask:
+            self.page.add_init_script(SOCKETS)
+            self.page.goto(ask, wait_until=wait)
+            self.loaded = ask
+        return self
 
     def flat(self):
         """The flat picture for this page (the settings' Curved world off): for a test that counts the art px of a
@@ -104,6 +114,13 @@ class Game(Waits):
         """Time that has to pass in the game (a walk, a swing, a fade). Not for "until it is drawn": rest(), hour(),
         frames(); not for "until the server has it": wait()."""
         self.page.wait_for_timeout(ms)
+        if clock.now != 1 and ms >= 200:
+            # (on the tests' clock a sleep is a quarter of itself: the game's time. What it also gave was the machine's
+            # time: land being made, which takes what it takes. Until that is done, then; the whole sleep at the most)
+            try:
+                self.page.wait_for_function(MADE, timeout=ms - clock.real(ms))
+            except NotYet:
+                pass
 
     # ---- the world around us
     def pos(self):
@@ -212,7 +229,7 @@ class Game(Waits):
     def hold(self, keys, ms):
         for k in keys:
             self.page.keyboard.down(k)
-        self.sleep(ms)
+        clock.held(self.page, ms)            # (the game's time to the ms: a tap of 90 ms is a tile, one of 240 is two)
         for k in reversed(keys):
             self.page.keyboard.up(k)
 

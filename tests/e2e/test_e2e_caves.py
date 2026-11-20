@@ -48,6 +48,7 @@ def test_an_opening_is_as_wide_and_as_high_as_the_empty_cells_on_each_side(game)
     assert earth(over) and earth(beside) and earth(far), (over, beside, far)     # the third layer over it, and the face on each side of it
 
 
+@pytest.mark.realtime
 def test_in_a_cave_you_are_seen_through_the_hill_as_anywhere_you_are_hidden(game):
     game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """A cave had a view of its own: opened for good while you were in it, its floor flat in the hill's top, shadowed
@@ -86,6 +87,7 @@ def test_walking_into_a_hill_from_behind_it_you_stay_on_the_ground_and_in_sight(
     assert game.js(f"xrayGone({x}, {y + 6})") and not game.js(f"xrayGone({x + 3}, {y + 5})")   # the hill in front of the tunnel is seen through; where it hides nothing of the place, it stays
 
 
+@pytest.mark.realtime
 def test_a_cave_wider_than_the_screen_round_you_is_seen_whole_and_who_is_at_its_far_end(game):
     game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """What was seen of a cave was as wide as the circle (nine tiles) unless the ground was dug: a cave eighteen tiles

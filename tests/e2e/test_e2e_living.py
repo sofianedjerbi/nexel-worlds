@@ -1,5 +1,7 @@
 """Living: eating, fighting animals (on the move), deaths, beds, fire."""
 
+import pytest
+
 
 def test_eating_takes_three_bites_and_stops_when_full(game):
     game.give(bread=2)
@@ -19,6 +21,7 @@ def test_eating_takes_three_bites_and_stops_when_full(game):
         assert "full" in game.toast()
 
 
+@pytest.mark.realtime
 def test_eating_your_hands_are_full(game):
     """While you eat you can walk, nothing else: Space on a tree beside you asks for nothing and shows no swing, F
     picks nothing up, and the tree stands; once it is eaten the same keys work. (A player chopped and punched with
@@ -48,6 +51,7 @@ def test_eating_your_hands_are_full(game):
     assert game.js("__asked") == ["eat", "dig", "pick_up", "dig"] and not game.errors   # (the first dig: the one asked past the page)
 
 
+@pytest.mark.realtime
 def test_you_eat_while_you_walk(game):
     """Eating is done with the hands: E on the move doesn't stop you, the bites show on a walking you (to others
     too), and setting off doesn't end a meal begun standing. (You stood still for every bite.)"""
@@ -189,6 +193,7 @@ def test_loot_next_to_you_comes_to_you(game):
     assert game.inv("meat") == 1 and game.pos() == (x, y)
 
 
+@pytest.mark.realtime
 def test_a_drop_shows_once_not_twice(game):
     """What a creature drops hops out, lands, and only then shows as the pile: never the pile and the hopping drop at
     once (the pile was matched by its sort position, not its tile, so both were drawn)."""
@@ -213,6 +218,7 @@ def test_a_drop_shows_once_not_twice(game):
     assert abs(ys[rest] - ys[rest - 1]) <= 1, ys[rest - 6:rest + 2]   # the hop hands over to the pile without a jump
 
 
+@pytest.mark.realtime
 def test_several_drops_land_together_without_blinking(game):
     """A cow drops meat and milk: each hops out and lands; none blinks out before the pile shows (they hand over to
     the pile together, all at rest where they landed)."""

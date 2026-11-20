@@ -1,6 +1,7 @@
 """On a phone: the joystick walks, the main button (held) chops what you face, the HUD fits the screen."""
 
 
+import pytest
 from game import Game, new_name
 
 
@@ -71,6 +72,7 @@ def test_crafting_on_a_phone_takes_the_screen_and_a_tap_makes_a_lit_card(browser
         ctx.close()
 
 
+@pytest.mark.realtime
 def test_out_of_your_own_shaft_with_the_thumbs(browser, server):
     """As by keys: B digs down a layer a tap, A puts the ladder where you stand, the stick climbs out. And leaving
     build mode with plans waiting names no key (it said "B to go on building")."""

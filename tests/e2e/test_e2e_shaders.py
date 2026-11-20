@@ -2,6 +2,8 @@
 screens' lines), and what a shader adds to the world: shadows that follow the sun, reflections, light on water, rays,
 a fire's shadows. Each shader's own settings."""
 
+import pytest
+
 ROW = "document.querySelector('#menu .row.on .name').textContent"
 
 
@@ -146,6 +148,7 @@ def test_the_old_school_shaders_draw_their_lines(game):
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); localStorage.clear()")
 
 
+@pytest.mark.realtime
 def test_what_is_written_in_the_world_is_drawn_over_a_shader_not_through_it(game):
     # "your shaders make text bubble unreadable and too bright": a bubble went through the glow with the rest
     game.clear_area(5)

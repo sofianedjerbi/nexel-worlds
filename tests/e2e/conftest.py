@@ -9,8 +9,10 @@ import sys
 import time
 from pathlib import Path
 
+import clock
 import pytest
 from game import Game, new_name
+from pages import Pages
 
 ROOT = Path(__file__).parents[2]
 # The sounds are built files, not in git (tools/build_audio.py; the demo's test builds them): a new worktree has none.
@@ -91,6 +93,15 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(pytest.mark.flaky(reruns=1))   #  a new player on a cleared meadow: and it is said, tests/conftest.py)
 
 
+def pace_of(item) -> float:
+    return 1.0 if item.get_closest_marker("realtime") else clock.PACE
+
+
+def pytest_runtest_protocol(item, nextitem):
+    """What the test after this one will play on, for the page that is loaded ahead (pages.py)."""
+    clock.coming = pace_of(nextitem) if nextitem is not None and "game" in getattr(nextitem, "fixturenames", ()) else None
+
+
 def free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -125,16 +136,37 @@ def browser():
     except Exception as e:  # noqa: BLE001 - no Chrome here: skip the suite rather than fail it
         pw.stop()
         pytest.skip(f"Chrome is needed for the end-to-end suite: {e}")
-    yield b
+    yield Pages(b)                                        # (its pages on the tests' clock, counted and shut: pages.py)
     b.close()
     pw.stop()
 
 
 def open_game(browser, server, name=None, zoom=4) -> Game:
-    page = browser.new_page(viewport={"width": 1200, "height": 800})
-    g = Game(page, server)
+    g = (zoom == 4 and browser.take()) or Game(browser.new_page(viewport={"width": 1200, "height": 800}), server)
+    if g.url != server:                                   # (asked for ahead, for another world: test_e2e_curve.py has one of its own)
+        g.page.close()
+        g = Game(browser.new_page(viewport={"width": 1200, "height": 800}), server)
     g.join(name or new_name(), zoom)
     return g
+
+
+_world_pace = {}         # a world's address -> the pace it was last given
+
+
+@pytest.fixture(autouse=True)
+def pace(request):
+    """The game's time runs clock.PACE times as fast in this test, in its world and on its pages (clock.py); a test
+    marked `realtime` has it as it is."""
+    clock.now = pace_of(request.node)
+    if "server" in request.fixturenames:
+        url = request.getfixturevalue("server")
+        if _world_pace.get(url, 1.0) != clock.now:
+            clock.set_world(url, clock.now)
+            _world_pace[url] = clock.now
+    yield
+    if "browser" in request.fixturenames:                 # (a page left open is a player left awake in the next test's world: pages.py)
+        request.getfixturevalue("browser").shut()
+    clock.now = 1.0
 
 
 @pytest.fixture
@@ -148,6 +180,8 @@ def circle_view(game):
 def game(request, browser, server):
     """A new player, daytime, standing in the middle of a cleared 21x21 meadow with no animals nearby."""
     g = open_game(browser, server)
+    browser.ahead(lambda page: Game(page, server).load(4, wait="commit"))      # (the next test's page comes while this one plays: pages.py)
+    g.rpc("dev_luck", luck=1)                             # (a test before made every drop sure, lucky(): for as long as the server runs)
     g.js("opt('depth') || setOpt('depth', true)")       # (the land's depth, on as a player has it: a test that turned it off to look at the land as painted does not leave it off for the next)
     g.clear_area()
     if request.node.path.name == "test_e2e_sound.py":     # (the music's tests were written at the old pace of this

@@ -1,5 +1,7 @@
 """Moving: walking and sprinting speeds, taps, turning with two keys held, and the screen agreeing with the server."""
 
+import pytest
+
 
 def speed(rec, skip_ms=300):
     """Tiles per second over a recording, ignoring the start."""
@@ -26,6 +28,7 @@ def test_walk_and_sprint_speeds(game):
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
+@pytest.mark.realtime
 def test_taps_move_one_tile_and_never_snap_back(game):
     x0, _ = game.pos()
     for hold in (20, 60, 120):
@@ -84,6 +87,7 @@ def stops(rec, ms=60):
     return out
 
 
+@pytest.mark.realtime
 def test_swimming_never_goes_tile_by_tile(game):
     """Nobody sprints in water. Sprint held (a phone's stick pushed far), your screen swam at sprint speed, got a
     tile ahead of the server and waited for it, at every tile."""
@@ -102,6 +106,7 @@ def test_swimming_never_goes_tile_by_tile(game):
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
+@pytest.mark.realtime
 def test_late_ticks_do_not_stop_you(game):
     """The server's word comes late and in lumps (a phone, a slow line): you walk on at your own pace (you were only
     ever allowed a tile ahead of its last word: sprinting, you stopped at every tile), and you end where it has you."""
@@ -128,6 +133,7 @@ def test_late_ticks_do_not_stop_you(game):
     assert game.pos() == (game.server()["x"], game.server()["y"])
 
 
+@pytest.mark.realtime
 def test_two_keys_never_slide_diagonally(game):
     for first, second in (("d", "w"), ("s", "a")):
         game.start_recording()

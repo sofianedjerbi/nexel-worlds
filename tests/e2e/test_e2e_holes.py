@@ -3,6 +3,7 @@ vox_engine.js): a hole reads as a hole, the ground goes in under an overhang, an
 (An audit of the landed game: "an 8-deep shaft looks 1 deep from outside and like a brown tower from inside, an
 overhang is a black box, and hills you stand north of get flattened or boxed".)"""
 
+import pytest
 from test_e2e_digging import DRAWN, HIDE, LAND, SEEN, earth
 from test_e2e_section import fill_px, under
 
@@ -144,6 +145,7 @@ def test_no_stump_one_tile_wide_is_left_standing_alone_beside_a_cut(game):
     assert fill_px(game) == 0 and not game.errors
 
 
+@pytest.mark.realtime
 def test_on_a_gorges_floor_you_are_in_a_hole_its_wall_is_one_face_and_its_floor_is_not_the_plateaus(game):
     game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """A natural gorge, three rows of floor between two plateaus eight high ("the canyon floor has no depth... a rug
@@ -237,6 +239,7 @@ def test_no_cut_opens_while_you_fall(game):
     assert game.pos() == (x, y + 1)
 
 
+@pytest.mark.realtime
 def test_a_tile_that_joins_the_cut_comes_in_on_its_own_a_checker_of_px_and_nothing_else_moves(game):
     game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """The keyhole follows you: a tile that joins the cut fades in by itself (web/js/voxels.js `fade`, 120 ms, the

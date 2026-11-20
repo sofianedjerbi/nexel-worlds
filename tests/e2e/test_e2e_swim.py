@@ -1,5 +1,6 @@
 """Water in Chrome: it has depth and is drawn as a see-through layer; you swim on any of it, with a wake behind."""
 
+import pytest
 import os
 
 SHOT = os.environ.get("WILD_SHOTS")
@@ -63,6 +64,7 @@ def test_swimming_sounds_like_swimming_not_like_walking(game):
     assert not game.errors
 
 
+@pytest.mark.realtime
 def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
     """Shift in the water did nothing (nobody sprinted there). Now it is a sprint: twice a swim, and the water halves
     both (2.5 tiles a second swimming, 5 at a sprint: "speed in water should be decreased, half of ground speed"), with

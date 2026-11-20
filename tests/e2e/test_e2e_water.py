@@ -1,6 +1,7 @@
 """Clear water (the settings' Picture page, on by default; waterbed.js, vox_water.js): the water is seen through to a
 bed drawn as blocks, tinted by its depth; deep water is not seen through; off, it is the one painted face it was;
 a bed is made again when the land near it changes; a swimmer's body under the face is tinted."""
+import pytest
 import random
 
 READY = "(() => { const [vx, vy, vw, vh] = viewRect(2); for (let y = vy; y <= vy + vh; y += 8) for (let x = vx; x <= vx + vw; x += 8) { const b = blockOf(x, y); if (b && b.px && !Voxels.made(b)) return false; } return dirtyTiles.length === 0; })()"
@@ -50,6 +51,7 @@ def test_shallow_water_shows_its_bed_tinted_and_deep_water_is_not_seen_through(g
     game.js(RESET)
 
 
+@pytest.mark.realtime
 def test_off_the_water_is_one_painted_face_and_on_again_off_again_it_is_the_same_picture(game):
     plain(game)
     game.stamp(-8, -6, ["~" * 6] * 4); game.stamp(-2, -6, ["..."] * 2, levels=["333"] * 2); game.wait(READY, 20000); game.rest()
@@ -111,6 +113,7 @@ def test_water_one_level_deep_is_clearly_bluer_than_dry_ground_at_noon_and_at_lo
     game.rpc("dev_time", phase=.3); game.js(RESET)
 
 
+@pytest.mark.realtime
 def test_a_bed_step_under_water_is_one_colour_no_checker(game):
     """The front of a step of the bed, seen through the water: a band of one colour, its first row a touch darker (a shelf's line, not a box's edge). No dither."""
     plain(game)

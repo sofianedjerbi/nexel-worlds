@@ -1,6 +1,7 @@
 """The roll's land is whole px of its paint, and a long way at once never shows a blank frame (web/js/vox_curve.js,
 curve.js, render.js): the reviewer's "things 6-9 tiles north are squashed into the horizon band" and "one blank
 frame after a teleport"."""
+import pytest
 from test_e2e_curve import curved
 
 # ---- whole px of the paint in the roll ("things 6-9 tiles north are squashed into the horizon band... its pixel art
@@ -71,6 +72,7 @@ def test_walking_north_twelve_frames_the_rows_shown_are_the_ones_each_tiles_heig
     assert len({f[3] for f in got}) >= 6, got                    # (you did walk: the camera was somewhere else in most frames)
 
 
+@pytest.mark.realtime
 def test_after_a_teleport_the_screen_keeps_its_picture_until_the_land_there_has_come(game):
     """ "One blank frame after a teleport": sixty tiles at once, the land there not known yet: no frame of sky over
     bare ground colour, no dark one. Frame by frame: while the land where you are has not come, the picture is the

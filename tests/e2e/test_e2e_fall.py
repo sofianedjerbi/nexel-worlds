@@ -1,6 +1,9 @@
 """Falling from a height in Chrome (js/jump.js): you come down by your own weight, with the wind, and land in dust."""
 
+import pytest
 
+
+@pytest.mark.realtime
 def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     """Eight layers down: about a third of a second in the air, faster and faster, the camera with you, the wind
     rising; where you land, dust, and what it cost you shown there (a flash, the number, the ground shaking). It

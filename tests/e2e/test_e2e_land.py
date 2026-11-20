@@ -1,6 +1,8 @@
 """Land coming in: only what shows is painted, a little a frame, in the page, and it is the same land to the pixel;
 its blocks (voxels.js, vox_engine.js) are made a few tiles at a time."""
 
+import pytest
+
 LV = "0123456789ABC"
 # a mountain of terraces twelve layers high, 13 tiles across
 MOUNTAIN = ["".join(LV[max(0, 12 - 2 * max(abs(dx), abs(dy)))] for dx in range(-6, 7)) for dy in range(-6, 7)]
@@ -102,6 +104,7 @@ def test_no_cobble_is_cut_at_a_tiles_edge(game):
     game.stamp(2, -9, ["." * 10] * 8)
 
 
+@pytest.mark.realtime
 def test_a_block_of_land_is_made_in_small_steps(game):
     """No step of making a block of land is long (they were up to 10 ms each on a fast machine: a late frame on a slow
     one): its tiles are painted a few at a time, as much as the frame has time for (vox_engine.js work)."""
@@ -144,6 +147,7 @@ GLIDE = """() => new Promise((ok) => { follow = null; const out = [], of = windo
     out.push([js, miss]); if (s > 6) { window.frame = of; ok(out); } }; })"""
 
 
+@pytest.mark.realtime
 def test_land_coming_in_at_a_sprint_takes_little_of_a_frame(browser, server):
     """Watching, the camera glides ten tiles a second into new land for six seconds: all the land is there when it
     comes on the screen, and building it never takes a frame (it took 9-13 ms of some on a fast machine, 36 ms on a

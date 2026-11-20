@@ -247,6 +247,7 @@ def test_a_staircase_that_rises_north_for_forty_rows_has_its_horizon_and_the_sky
         assert all(sky_px(c) for c in got), (m, per, got)
 
 
+@pytest.mark.realtime
 def test_on_the_mountain_a_new_player_wakes_on_there_is_a_horizon(browser, tmp_path_factory):
     """Seed 12 wakes you by a terraced mountain. On its side the top of the screen is the sky, Near and Far (the
     staircase above is the land rising north)."""

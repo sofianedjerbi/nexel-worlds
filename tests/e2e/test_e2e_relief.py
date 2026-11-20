@@ -1,6 +1,7 @@
 """Regressions for higher ground drawn higher (relief.js), the world-to-screen lift, smooth fly-ins, no frame waiting
 on drawing new ground, caves (a roof like a house's) and pits."""
 
+import pytest
 from test_e2e_digging import LAND, earth
 
 
@@ -73,6 +74,7 @@ def test_walls_have_no_dark_line_at_their_foot(game):
     assert ink == 0 and front > .7, (ink, front)
 
 
+@pytest.mark.realtime
 def test_running_into_new_ground_never_stalls_a_frame(game):
     """New land is made in steps within a budget (voxels.js work): no frame waits on a whole block (sprinting froze the
     game for 70-130 ms). (How long a step is: test_e2e_land.py.)"""
@@ -85,6 +87,7 @@ def test_running_into_new_ground_never_stalls_a_frame(game):
     assert gaps[-1] < 60, gaps[-5:]
 
 
+@pytest.mark.realtime
 def test_a_cave_is_its_mountain_from_outside_and_seen_through_it_inside(game):
     """A cave is drawn as the mountain over it, like a house's roof: what's in it is not seen. Walk in and you are
     seen through the mountain, as anywhere you are hidden (xray.js): you, the cave, what is in it; the mountain stays

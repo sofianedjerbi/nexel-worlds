@@ -2,6 +2,7 @@
 first: a bridge (bridge_model.js), a deck of planks over the water on posts. "blocks such as bridges should be
 low-poly modelized"."""
 
+import pytest
 from test_e2e_blocks import blocks
 
 # the colour of the game's canvas at an art px (ax, ay) of the tile (x, y), counted on the flat (no height)
@@ -65,6 +66,7 @@ def test_who_stands_on_a_bridge_stands_on_its_deck(game):
     assert game.js(lift) == [x - 5, y, 0]
 
 
+@pytest.mark.realtime
 def test_models_cost_little_of_a_frame(game):
     """With a bridge in view, a frame's own work stays small."""
     pond(game)

@@ -1,7 +1,10 @@
 """Zoom (zoom.js): "zooming is hard, uninturitive and ugly". The wheel is counted in distance, a level glides into the
 next, a sign shows where you are, a player's view stops at 2, the level is kept."""
 
+import pytest
 
+
+@pytest.mark.realtime
 def test_a_wheel_notch_is_one_level_and_a_trackpad_swipe_is_not_a_dozen(game):
     page = game.page
     page.mouse.move(600, 300)
