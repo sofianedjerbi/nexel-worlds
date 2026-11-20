@@ -153,7 +153,7 @@ const HdLook = (() => {
     // (the pit: wanted whole the frame land hides you; it grows a tile at a time, 14 in a quarter of a second, each land made with the size it has by then: a fast machine shows every size, a slow one a few)
     const kS = Math.tan(want * Math.PI / 180) * 2, cov0 = api.force !== null ? api.force > 0 : hidden(tx, ty, L, kS), cov = cov0 || (api.force === null && now - covAt < HOLD), dep = Math.max(0, topAt(tx, ty) - L);
     if (cov0) covAt = now;   // (the pit shuts 300 ms after the land last hid you, with the eye's tilt)
-    grow = cov ? Math.min(CAP, grow + dt / GROW * CAP) : Math.max(0, grow - dt / GROW * CAP); api.u = grow / CAP; const st = Math.ceil(grow);
+    grow = cov ? Math.min(CAP, grow + dt / GROW * CAP) : Math.max(0, grow - dt / GROW * CAP); api.u = grow / CAP; const st = cov ? CAP : 0;   // (the pit is made once, whole; the painter opens it round you over a third of a second (vox_style.js `rev`). It was made again at each of 20 sizes: a slow machine showed three of them)
     eng = eng || VoxStyle.create(Object.assign({}, Voxels.host, {paintTop: shore, models: (x, y, cz) => { const a = Models.at(x, y), b = floorAt(x, y) > cz ? null : HdThings.at(x, y); return a && b ? a.concat(b) : a || b; },   // (what stands on land the pit took away goes with it)
       chunkKey: (x0, y0, n) => { let c = built.get(x0 + "," + y0); if (!c || c[0] !== Floors.ver) { let f = ""; for (let y = y0; y < y0 + n && !f; y++) for (let x = x0; x < x0 + n; x++) if (Floors.any(x, y)) { f = "f"; break; } if (built.size > 2000) built.clear(); built.set(x0 + "," + y0, c = [Floors.ver, f]); } const fl = c[1];   // (what stands in a chunk hangs on the hour, what is built, open doors; where you are only if something is built in it: a roof over your head is open. And on the blocks of the world that have come, its own and the ones beside it)
         return (fl ? keyNear : keyFar) + fl + [[0, 0], [-1, 0], [n, 0], [0, -1], [0, n]].map(([i, j]) => (blockOf(x0 + i, y0 + j) ? 1 : 0)).join(""); }}), cfg);   // (what is built and put down: small 3D pieces, hd_things.js)
@@ -161,7 +161,7 @@ const HdLook = (() => {
     keyNear = HdThings.key(); keyFar = HdThings.key(false); const rx = Math.min(R, Math.ceil(w / 32 * 1.4) + 3), k = [tx, ty, L, st, kS.toFixed(2), keyNear, eng.stamp, rx, south].join();
     const wg = cov ? CAP : 0; if (wg !== wantG) { wantG = wg; since = now; }   // (since: when land came over you or left; api.lag: ms from then to the land with the whole pit, or none, drawn)
     if (k !== key && !gen) { gen = eng.steps(tx, ty, L, {r: R, rx, rs: south + 1, deep: 20, sea: 1, pit: st ? {k: kS, kc: stage ? kS * .6 : kS, cap: CAP, reach: 24, g: st} : null}); key = k; genG = st; hurry = st !== shownG; api.build = 0; api.builds++; }   // (one land at a time: the next is made when this one is done)
-    if (gen) { const b0 = performance.now(); while (performance.now() - b0 < (hurry ? 8 : st ? 5 : 2.5)) if (gen.next().done) { gen = null; break; } api.build = Math.max(api.build, performance.now() - b0); slice1 = performance.now() - b0; api.slice = Math.max(api.slice, slice1); api.water = eng.water;   // (the chunks that are new or changed, a tile a step, 2.5 ms a frame (5 in a pit); what was drawn stays till it is done; a pit that opens or shuts: up to 8 ms a frame)
+    if (gen) { const b0 = performance.now(); while (performance.now() - b0 < (hurry || st ? 5 : 2.5)) if (gen.next().done) { gen = null; break; } api.build = Math.max(api.build, performance.now() - b0); slice1 = performance.now() - b0; api.slice = Math.max(api.slice, slice1); api.water = eng.water;   // (the chunks that are new or changed, a tile a step, 2.5 ms a frame (5 in a pit); what was drawn stays till it is done; a pit that opens or shuts: up to 8 ms a frame)
       if (!gen) { shownG = genG; if (genG === wantG && since) { api.lag = performance.now() - since; since = 0; } } }
     camL = camL === null || Math.abs(L - camL) > 8 ? L : Math.abs(L - camL) < .07 ? L : camL + (L - camL) * (1 - Math.exp(-dt / .1));   // (the eye's level follows yours over some 150 ms: a step off a ledge moved the whole view in one frame; a px of the art at a time)
     const list = [];
@@ -217,6 +217,9 @@ const HdLook = (() => {
     return x1 > x0 ? {x: x0, y: y0, w: x1 - x0, h: y1 - y0} : null;
   }
   // what is under the pointer (client px): the nearest top drawn there, as the land shows it (a top the cut took away: at the cut)
+  Object.defineProperty(api, "wipe", {get: () => (eng ? eng.wipe : null)});
+  Object.defineProperty(api, "level", {get: () => [seen ? seen.L : null, camL]});   // (tests: your level as the picture has it, and the eye's)
+  api.pitAt = (x, y) => (eng ? eng.pitAt(x, y) : undefined); api.spaceAt = (x, y) => (eng ? eng.spaceAt(x, y) : null);   // (tests: the level the pit cuts a tile at, or none; a tile of your space, vox_style.js)
   api.cut = (x, y, t) => { const c = eng ? eng.pitAt(x, y) : undefined; return c !== undefined && t > c; };   // (land the pit took away)
   const shown = (x, y) => { const t = topAt(x, y), c = eng ? eng.pitAt(x, y) : undefined; return c !== undefined && c < t ? c : t; };
   api.screenOf = (x, y, z) => { if (!eng || !seen) return null; const a = eng.at(x, y, z); return a && [a[0] * zoom / seen.k, a[1] * zoom / seen.k]; };
