@@ -41,7 +41,9 @@ const VoxStyleGLSL = (() => {
     } else if (kind < 1.5 && kind > .5 && rim > 0.) {            // a top at a drop: its lip catches the light
       if (bit(ve, 4.) > .5 && lu.y > 15.) col = mix(col, vec3(1., .94, .78), rim * .7);
       if (bit(ve, 1.) > .5 && lu.y < 1.) col *= 1. - rim * .5;
-    }
+      float dr = min(min(mix(9., lu.y, bit(ve, 64.)), mix(9., 15. - lu.x, bit(ve, 128.))), min(mix(9., lu.x, bit(ve, 256.)), mix(9., 15. - lu.y, bit(ve, 2048.))));
+      if (dr < 2.) col = c.rgb * l * (dr < 1. ? .5 : .68);   // (the edge over a drop that hurts, three levels or more: a dark rim two px wide all along it, no light lip: a step down has the lip, a cliff has the rim. A fall of 12 looked like the next terrace)
+    } else if (kind < .5 && va.y > .5) col *= 1. - .1 * (bit(ve, 64.) + 2. * bit(ve, 128.));   // (and the cliff's face darker every two levels down)
     if (kind > 2.5 && kind < 3.5) {                              // water: the game's own picture of it over a tint (the picture is the clear water, its bed showing: only a little of it over the sea tint)
       vec2 w = (vec2(wp.x, wp.z) * 16. - wv.xy) / wv.zw; vec4 wc = wv.z > 0. ? texture(wt, w) : vec4(0.);
       vec3 sea = vec3(.36, .64, .8) * max(l, .6);
