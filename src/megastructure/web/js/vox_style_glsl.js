@@ -9,7 +9,7 @@ const VoxStyleGLSL = (() => {
     if (a.z > .5 && a.z < 1.5 && a.y < .5) { vec2 tl = floor(p.xz - step(8., mod(uv, 16.)) + .5) - go.xy; if (tl.x >= 0. && tl.y >= 0. && tl.x < go.z && tl.y < go.z) vs = texelFetch(gw, ivec2(tl), 0); } }`;   // (vs: the light of your space on this tile (vox_style.js `light`), for a floor under the land: its tile is its corner less where in its paint that corner is)
   const FS = `#version 300 es
   precision mediump float; in vec2 vu; in vec4 va, vs; in float ve; in vec3 wp; uniform sampler2D t, wt; uniform vec3 lamp, eye, fogc, mc;
-  uniform vec4 cl, wv, wtn[5]; uniform float wa, dep, lr, day, amb, fn, ff, rim, rd, sun, shp; uniform vec2 rv; out vec4 o;
+  uniform vec4 cl, wv, wtn[5]; uniform float wa, dep, lr, day, amb, fn, ff, rim, rd, sun, shp, cd; uniform vec2 rv; out vec4 o;
   float bit(float v, float k) { return mod(floor(v / k), 2.); }
   vec3 cold(vec3 c) { return mix(vec3(dot(c, vec3(.3, .59, .11))), c, .3) * vec3(.74, .82, .96); }   // (not reachable from here: grey-blue)
   void main() {
@@ -34,7 +34,7 @@ const VoxStyleGLSL = (() => {
       float ue = min(min(mix(9., lu.y, bit(ve, 512.)), mix(9., 15. - lu.x, bit(ve, 1024.))), min(mix(9., 15. - lu.y, bit(ve, 2048.)), mix(9., lu.x, bit(ve, 4096.))));
       bool lip = (bit(ve, 1.) > .5 && lu.y < 1.) || (bit(ve, 2.) > .5 && lu.x > 15.) || (bit(ve, 4.) > .5 && lu.y > 15.) || (bit(ve, 8.) > .5 && lu.x < 1.);
       float de = min(mix(9., lu.y, bit(ve, 64.)), min(mix(9., 15. - lu.x, bit(ve, 128.)), mix(9., lu.x, bit(ve, 256.))));   // (its edge over a drop of two or more)
-      vec3 cc = cold(c.rgb) * 1.15; if (ue < 3.) cc *= ue < 2. ? .45 : .7; if (lip) cc = mix(cc, vec3(.8, .88, 1.), .45);
+      vec3 cc = cold(c.rgb) * (1.15 - .5 * cd); if (ue < 3.) cc *= ue < 2. ? .45 : .7; if (lip) cc = mix(cc, vec3(.8, .88, 1.), .45);
       vec3 wc = (c.rgb * (1.02 + .2 * ls) * vec3(1.08, 1., .85) + vec3(.04, .025, .01) * ls) * (1. + .05 * dl) * (1. - .22 * vs.b);   // (the floor's own paint under the warm light; a floor is a little lighter each level over yours, darker each level under: a floor two levels up is not the next step; vs.b: one you can only drop to: dimmer)
       if (ue < 7.) wc *= ue < 3. ? .3 : .5 + .1 * floor(ue - 3.); if (lip) wc = mix(wc, vec3(1., .93, .75), .5);   // (the foot of a wall you cannot climb: a dark rim 3 px wide, then its shade 4 px out on your floor: it is seen whichever way the wall faces; a step you can take has the light lip)
       col = mix(cc, wc, w); if (de < 2.) col *= .42;

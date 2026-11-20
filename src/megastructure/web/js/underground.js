@@ -72,7 +72,7 @@ const Underground = (() => {
       g.fillStyle = `rgba(${m.colour.map((v) => Math.round(v * 255)).join()},${(.95 * m.a).toFixed(2)})`;
       for (const [u, v] of [[T[0], T[1]], [T[1], T[2]], [T[3], T[0]], [T[2], T[3]], ...(m.flat ? [] : [[T[3], F[0]], [T[2], F[1]], [F[0], F[1]]])]) line(u, v);
     }
-    g.restore();
+    g.restore(); WayShow.paint(g, (x, y, z) => eng.at(x, y, z), 1, now, zoom);   // (the way out, shown: wayshow.js)
   }
   function after() {
     if (HdLook.active || !me || myId === null || !Voxels.engine.ready()) return;
