@@ -12,7 +12,7 @@
 const HdThings = (() => {
   const SW = 1024, SH = 1024, sheet = {px: new Uint32Array(SW * SH), w: SW, id: "hd"}, rooms = new Map(), pixs = new Map(), UP = RELIEF_STEP, LEAN = 0, PITCH = 4, plans = new Set();   // (KF: a front's px on the screen a px of its height, hd.js cam.pitch; LEAN: px a top's row leans, a px off the middle: none, it read as broken; PITCH: px a roof rises a tile; plans: walls only planned, "x,y,z")
   let nx = 0, ny = 0, tall = 0, ids = 0, scratch = null;
-  const KF = () => Math.cos(HdLook.cam.pitch * Math.PI / 180);   // (a front's px on the screen a px of its height: the eye's pitch, 36 degrees, up to 52 on a screen held upright: it was 36 always, and a wall's 12 rows of planks were squeezed into 9 px on a phone)
+  const KF = () => Math.cos((HdLook.cam.base || HdLook.cam.pitch) * Math.PI / 180);   // (a front's px on the screen a px of its height: the eye's pitch, 36 degrees, up to 52 on a screen held upright: it was 36 always, and a wall's 12 rows of planks were squeezed into 9 px on a phone)
   // room for w x h px of paint in the sheet, filled once by fill(put(i, j, px)) -> [u, v]
   function room(key, w, h, fill) {
     let p = rooms.get(key); if (p) return p;

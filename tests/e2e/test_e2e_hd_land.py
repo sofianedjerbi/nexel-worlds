@@ -1,5 +1,7 @@
 """The HD look's land (hd.js, hd_sun.js, vox_style.js): a cliff throws the hour's shadow on the low land on the sun's
-far side; under a roof a room's floor is warm and brighter than the rock of the open pit round it, the pit opens within a quarter of a second or so and the meadow stays as it is."""
+far side; under a roof a room's floor is warm and brighter than the rock of the open pit round it, the pit opens within a quarter of a second or so and the meadow stays as it is.
+Deep under the land the eye looks steeply down (68 degrees): the pit is a hole with walls all round, land is drawn out to the screen's edges (no backdrop under the horizon) on a desk and on a phone held both ways,
+and who is in the room with you is drawn at the room's level."""
 
 
 from conftest import Game, new_name
@@ -64,3 +66,34 @@ def test_a_tunnel_one_level_under_the_meadow_opens_a_small_trench_not_the_whole_
             assert not g.js(f"HdLook.cut({x + dx}, {y + dy}, {z})")
     finally:
         g.page.close()
+
+
+def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at_your_level(browser, server):
+    for w, h, touch, zoom in ((1440, 900, False, 3), (390, 844, True, 2), (844, 390, True, 2)):
+        ctx = browser.new_context(viewport={"width": w, "height": h}, device_scale_factor=3 if touch else 2, has_touch=touch, is_mobile=touch)
+        try:
+            g = Game(ctx.new_page(), server)
+            g.join(new_name("dp"), zoom, look="hd")
+            g.rpc("dev_creatures", clear=60)
+            g.sleep(800)
+            x, y = g.pos()
+            z = g.js(f"topAt({x}, {y})")
+            base = g.js("HdLook.cam.pitch")
+            assert g.js("HdLook.bare()") == 0, (w, h, "surface")
+            g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[z - 24, z - 21, z])   # a room 7 x 5 under 21 levels of land
+            g.sleep(800)
+            g.rpc("dev_teleport", x=x, y=y, z=z - 24)
+            g.wait("HdLook.u > .95 && HdLook.pit > 40 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=5000)
+            g.spawn("chicken", 1, 0, still=300)
+            g.wait("HdLook.bodies().length > 0", timeout=4000)
+            g.sleep(500)
+            assert base < 53 and g.js("HdLook.cam.pitch") == 68, (w, h, base)
+            assert g.js("HdLook.bare()") == 0, (w, h, g.js("HdLook.bare()"))          # (no px of the backdrop under the horizon: it was a flat blue hole a quarter of a phone held sideways)
+            assert g.js("HdLook.bodies()") == [["chicken", z - 24]], g.js("HdLook.bodies()")   # (it was drawn up on the grass)
+            assert g.js("HdLook.catSeen()") > .8
+            g.wait("!HdLook.busy && HdLook.u === 1")
+            g.sleep(300)
+            cuts = g.js(f"[HdLook.cut({x}, {y + 4}, {z}), HdLook.cut({x}, {y + 14}, {z}), HdLook.cut({x}, {y - 3}, {z})]")
+            assert cuts == [True, False, False], (w, h, cuts)   # (the south side steps up 3 levels a tile: the land's top is back 10 tiles south at most; it was 16)
+        finally:
+            ctx.close()

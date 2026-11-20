@@ -48,7 +48,8 @@ class Building:
             a.add(got)
             self.set_cell(x, y, z, False, by=a, cause="dig")
             return {"got": {got: 1}, "cell": [x, y, z]}
-        self.reach(a, x, y)                                # (anything else is on the tile's ground: too high up, or down, is out of reach)
+        self.reach(a, x, y, z=self.world.level(x, y))      # (anything else is on the tile's ground, its lowest: too high up, or down, is out of reach. It was the
+                                                           #  ground there nearest your own height: a flower was picked from a stair 24 layers over it)
         if block.name == "none" and ground.liquid:           # the bottom of the water: a layer deeper
             return (yield from self.deepen(a, x, y))
         if block.name == "none":

@@ -105,3 +105,54 @@ def test_a_hole_is_dug_beside_you_a_layer_at_a_time(world):
     from megastructure.sim import Creature
     s.creatures[99] = Creature(99, "chicken", x, y + 1, 4, z=0)
     assert run(s, a, "dig", {"dir": "S", "z": 0, "with": "pickaxe"})["error"] == "occupied"
+
+
+import pytest
+
+
+@pytest.mark.parametrize("d", ["N", "E", "S", "W"])
+@pytest.mark.parametrize("deep", [2, 3, 4, 7, 12])
+def test_a_ladder_facing_a_wall_goes_on_your_own_tile_and_takes_you_out(world, d, deep):
+    """At the bottom of your own one-tile shaft, a ladder in hand: facing any of the four walls it is put where you
+    stand, against that wall, and walking into the wall climbs out onto its top."""
+    from megastructure.tiles import DIRS
+    s, a = world
+    x, y = a.x, a.y
+    s.world.set(x, y, level=-deep)
+    a.z = -deep
+    a.add("ladder")
+    r = run(s, a, "place", {"dir": d, "item": "ladder"})
+    assert r["ok"] and r["at"] == [x, y] and r["z"] == -deep
+    assert s.world.block(x, y) == "ladder" and a.count("ladder") == 0
+    dx, dy = DIRS[d]
+    hp = a.hp
+    assert run(s, a, "step", {"dir": d})["ok"] and (a.x, a.y, s.height(a)) == (x + dx, y + dy, 0)
+    assert run(s, a, "step", {"dir": {"N": "S", "S": "N", "E": "W", "W": "E"}[d]})["ok"] and s.height(a) == -deep and a.hp == hp
+
+
+def test_a_ladder_on_your_own_tile_is_refused_when_nothing_is_taller(world):
+    s, a = world
+    x, y = a.x, a.y
+    a.add("ladder", 3)
+    s.world.set(x + 1, y, level=1)                              # a step: hopped, no ladder (and none on top of it either)
+    assert run(s, a, "place", {"dir": "E", "item": "ladder"})["error"] == "bad_target"
+    assert run(s, a, "place", {"dir": "W", "item": "ladder"})["error"] == "bad_target"      # flat ground, nothing beside it
+    s.world.set(x, y - 1, level=13)                             # higher than a ladder goes
+    assert run(s, a, "place", {"dir": "N", "item": "ladder"})["error"] == "bad_target"
+    assert s.world.block(x, y) == "none" and a.count("ladder") == 3
+    s.world.set(x, y - 1, level=2)
+    s.world.set(x, y, block="chair")                            # something where you stand: no room for its foot
+    assert run(s, a, "place", {"dir": "N", "item": "ladder"})["error"] == "occupied"
+    s.world.set(x, y, block="flower")                           # a flower there is picked
+    assert run(s, a, "place", {"dir": "N", "item": "ladder"})["ok"] and a.count("flower") == 1 and s.world.block(x, y) == "ladder"
+
+
+def test_what_is_on_a_tile_is_reached_at_its_own_ground(world):
+    """A flower at the bottom of a pit beside you, eight layers down: out of reach (the tile's ground nearest your
+    height was what counted: any ledge of that tile near you would do)."""
+    s, a = world
+    x, y = a.x, a.y
+    s.world.set(x + 1, y, level=-8, block="flower")
+    assert run(s, a, "dig", {"dir": "E"})["error"] == "out_of_range"
+    s.world.set(x + 1, y, level=-2, block="flower")
+    assert run(s, a, "dig", {"dir": "E"})["ok"] and a.count("flower") == 1

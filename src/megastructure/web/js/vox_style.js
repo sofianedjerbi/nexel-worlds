@@ -165,6 +165,7 @@ const VoxStyle = (() => {
       return el;
     }
     return {build, steps, touch: land.touch, get water() { return cnt.water; }, draw, forget() { wipe = true; land.clear(); }, get lost() { const l = lost; lost = false; return l; }, get cost() { return cost; }, pitAt(x, y) { if (!pit || !pit.n) return undefined; const i = x - pit.x, j = y - pit.y; if (i < 0 || j < 0 || i >= pit.D || j >= pit.D) return undefined; const v = pit.cut[j * pit.D + i]; return v === -32768 ? undefined : v; }, get pit() { return pit ? pit.n : 0; }, get stamp() { return land.stamp; }, get made() { return made; }, get fresh() { return fresh; }, get calls() { return calls; }, get why() { return why; }, units,
+      bare(y0) { const w = el ? el.width : 0, h = el ? el.height - y0 : 0; if (!gl || w <= 0 || h <= 0) return 0; const b = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, b); let n = 0; for (let i = 3; i < b.length; i += 4) if (!b[i]) n++; return n; },   // (tests: px of the picture from row y0 down where no land is drawn: the backdrop shows there)
       at(x, y, z) { if (!lastM) return null; const f = project(lastM, x, y, z); return [(f[0] * .5 + .5) * el.width, (.5 - f[1] * .5) * el.height]; }, get faces() { return (cnt.main + cnt.model) / 6; }, get models() { return cnt.model / 6; }};
   }
   return {create};

@@ -62,8 +62,9 @@ function facingIntent(alt) {
 function facingNow(alt) {
   const q = facingTile(), s = myPos(); if (!q || !s) return null;
   if (!alt && placingItem()) {
-    if (entityAt(q)) return {p: q, it: {text: "Something is in the way", ok: false, ghost: selected}};
     const it = intent(q, false);
+    if (it && it.own) return it.none ? null : {p: it.own, it};          // (a ladder, facing a wall: it goes where you stand, against it: climbing.js)
+    if (entityAt(q)) return {p: q, it: {text: "Something is in the way", ok: false, ghost: selected}};
     return it ? {p: q, it: it.ok === false || inReach(q, it) ? it : {...it, ok: false, text: TOO_HIGH}} : null;
   }
   const reach = reachOf(inHand()), dist = (o) => Math.abs(o.tx - s.x) + Math.abs(o.ty - s.y);
@@ -79,11 +80,13 @@ function facingNow(alt) {
   const here = {x: s.x, y: s.y}, under = combAt(s.x, s.y);           // something growing under your feet
   if (!alt && under && !GROUND.has(under) && !SOLID.has(under)) { const it = intent(here, false); if (useful(it)) return {p: here, it}; }
   const faced = intent(q, alt);
-  const hs = myZ(s.x, s.y), level = (t, it) => it.flat || it.ent || it.z !== undefined || Math.abs(settleNear(t.x, t.y, hs) - hs) <= 2;   // (what grows on ground three levels over or under you is not offered: "Pick flower" from the bottom of a shaft, under the flower)
+  const hs = myZ(s.x, s.y), level = (t, it) => it.flat || it.ent || it.z !== undefined || it.at !== undefined || Math.abs(settleNear(t.x, t.y, hs) - hs) <= 2;   // (what grows on ground three levels over or under you is not offered: "Pick flower" from the bottom of a shaft, under the flower)
   if (useful(faced) && inReach(q, faced) && level(q, faced)) return {p: q, it: faced};
   // a pickaxe in hand, facing higher ground with nothing on it: cut into it (it comes down a layer)
-  if (inHand() === "pickaxe" && landSolid(q.x, q.y, myZ(s.x, s.y) + 1) && GROUND.has(combAt(q.x, q.y)))
-    return {p: q, it: {text: topAt(s.x, s.y) > hs ? "Dig on" : "Dig into the hill", flat: true,   // (under the land there is no hill: the tunnel goes on)
+  // (Space only. It took X too, and came before X's own "dig down": in a hole every second X cut the wall at your
+  // feet and not the floor: two presses a layer, nothing to see on the odd one.) Its name: in a hole there is no hill
+  if (!alt && inHand() === "pickaxe" && landSolid(q.x, q.y, myZ(s.x, s.y) + 1) && GROUND.has(combAt(q.x, q.y)))
+    return {p: q, it: {text: topAt(s.x, s.y) > hs ? "Dig on" : inHole(s, q, hs) ? "Dig into the wall" : "Dig into the hill", flat: true,   // (under the land there is no hill: the tunnel goes on)
       run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
   // X with a pickaxe and nothing else to use it on: dig down where you stand
   if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !":n".includes(under))
@@ -97,7 +100,14 @@ function facingNow(alt) {
   }
   ring.sort((a, b) => a.d - b.d);
   for (const q of ring) { const p = {x: q.x, y: q.y}, it = intent(p, alt); if (useful(it) && level(p, it)) return {p, it}; }
-  return faced && !faced.walk ? {p: q, it: useful(faced) ? {...faced, ok: false, text: TOO_HIGH} : faced} : null;   // (in front of you, but up a cliff or down one)
+  // (what is in front of you but up a cliff or down one is not offered, and not refused in red either ("Out of
+  // reach" for a flower three layers up): nothing is said of what your hand cannot get to)
+  return faced && !faced.walk && !useful(faced) && inReach(q, faced) ? {p: q, it: faced} : null;
+}
+// You stand in a hole: land at your body's height behind you too, or on both sides (a pit, a trench: not a hill's foot)
+function inHole(s, q, h) {
+  const dx = q.x - s.x, dy = q.y - s.y, wall = (x, y) => landSolid(s.x + x, s.y + y, h + 1);
+  return wall(-dx, -dy) || (wall(dy, dx) && wall(-dy, -dx));
 }
 // The tile hints are drawn for: where the mouse points, or the tile you face when playing by keyboard.
 function aimedTile() {
@@ -105,8 +115,8 @@ function aimedTile() {
   if (Build.on) return Build.aim();                  // (build mode: the cursor's tile, whatever you play with)
   if (inputMode === "keys") return facingIntent(false);
   if (!mouse.in) return null;
-  const p = aimAt(tileAtScreen(mouse.x, mouse.y), keys.has("shift"));
-  return {p, it: intent(p, keys.has("shift"))};
+  const p = aimAt(tileAtScreen(mouse.x, mouse.y), keys.has("shift")), it = intent(p, keys.has("shift"));
+  return {p: (it && it.own) || p, it};
 }
 // Bottom right: what you can do right now, each with its key. Rebuilt every frame, written only when it changes.
 let actionsHtml = "", faceRows = [];               // (faceRows: what Space and X do to what you face, beside it: prompts.js)
@@ -128,9 +138,10 @@ function availableActions() {
 // The corner: what is not beside what it acts on (prompts.js): in build mode its name and Esc; by keys, all but
 // what you face
 function updateActions() {
-  const all = availableActions(), keys = inputMode === "keys";
-  faceRows = Build.on || !keys ? [] : all.filter((r) => r[3]);
-  const corner = Build.on ? all.filter(([k]) => k === "B" || k === "Esc") : keys ? all.filter((r) => !r[3]) : all;
+  const all = availableActions(), keys = inputMode === "keys", aim = keys && !Build.on ? facingIntent(false) : null;
+  const beside = !!aim && !aim.it.info && !aim.it.walk;      // (something you face is marked: its keys go beside it. Nothing is: they stay in the corner. X's "Dig down" on open meadow was shown nowhere)
+  faceRows = Build.on || !keys || !beside ? [] : all.filter((r) => r[3]);
+  const corner = Build.on ? all.filter(([k]) => k === "B" || k === "Esc") : keys && beside ? all.filter((r) => !r[3]) : all;
   const html = corner.map(([k, t, cls]) => `<div class="${cls || ""}"><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
   if (html === actionsHtml) return;
   actionsHtml = html;
@@ -138,7 +149,8 @@ function updateActions() {
 }
 function useFacing(alt) {
   const f = facingNow(alt);                        // (a key pressed: as things are this instant, not as kept)
-  if (!f || f.it.info) return toast(f ? f.it.text : "Nothing within reach.", !f);
+  if (!f) return;                                  // (nothing there to act on: no row beside it, the button blank; it said "Nothing within reach." at each press, eight in a row in the chat)
+  if (f.it.info) return toast(f.it.text);
   if (f.it.ok === false) return toast(f.it.text, true);
   if (walking && !isQuick(f)) return;             // Space never stops you: work that takes time waits until you stand
   perform(f.p, f.it);

@@ -21,13 +21,14 @@ const VoxStyleGLSL = (() => {
     float l = max(va.y * day, amb + (1. - amb) * lan) * kx;
     vec3 col = c.rgb * l * mix(vec3(1.), vec3(1.1, .97, .8), lan * (1. - va.y));
     // under the land's top (a face the sky does not reach: a cave's wall, a face or a terrace of the pit): the day's light at the land's top, level by level down to your lantern's at your floor; never dark
-    float up = clamp((va.w - (lamp.y - .6) / .5) / max(dep, 1.), 0., 1.); vec3 pit = mix(vec3(1.14, 1., .82), vec3(max(day * .95, amb)), up);
-    if (kind > 1.5 && kind < 2.5) col = c.rgb * pit * .85 + vec3(.03, .02, .01);                    // a terrace of the pit: cut earth, cut stone: a little darker than the faces, no lip
+    float up = clamp((va.w - (lamp.y - .6) / .5) / 14., 0., 1.); vec3 pit = mix(vec3(1.14, 1., .82), vec3(max(day * .95, amb)), up);
+    if (kind > 1.5 && kind < 2.5) col = c.rgb * pit * (mod(lu.x + lu.y, 8.) < 2. ? .68 : .78) * (va.x < .9 ? .92 : 1.) + vec3(.03, .02, .01);                    // a terrace of the pit, a sliced top: cut earth, cut stone: darker than the faces, hatched (two px in eight, in art px, faint: a finer, darker one swirled where the land is near the eye): a cut reads as a cut, never as ground
     else if (kind < .5 && va.y < .5) col = bit(ve, 16.) > .5 ? mix(c.rgb, vec3(.8, .62, .43), .6) * (.95 + .15 * ls) : c.rgb * pit * kx + vec3(.03, .02, .01);   // a wall; the riser of a step you can take: the tread's tone, a wall is rock
-    else if (kind < 1.5 && kind > .5 && va.y < .5) {                          // a floor under a roof, open now: lit warm (a room's bright, the tone that was approved; a stair's tread or landing its own tone), a lit lip at a step down, shade at the foot of a step up
-      float trd = bit(ve, 16.); col = mix(c.rgb * (1.05 + .3 * ls) * vec3(1.1, 1., .82) + vec3(.1, .065, .025) * ls, c.rgb * (1.05 + .2 * ls) * vec3(1.08, 1., .86), trd);
+    else if (kind < 1.5 && kind > .5 && va.y < .5 && bit(ve, 64.) > .5) col = c.rgb * pit * .66 + vec3(.03, .02, .01);   // a floor under the land you cannot walk to (a stair's treads over a dead end, a ledge two levels up): bare rock in the pit's own light, darker than its walls: never the warm lit floor of your space
+    else if (kind < 1.5 && kind > .5 && va.y < .5) {                          // a floor of YOUR space under a roof, open now: lit warm, one rule for a room's and a stair's, a lit lip at a step down, shade at the foot of a step up
+      float dl = clamp(va.w - (lamp.y - .6) / .5 + .5, -4., 6.); col = (c.rgb * (1.02 + .2 * ls) * vec3(1.08, 1., .85) + vec3(.04, .025, .01) * ls) * (1. + .05 * dl);   // (the floor's own paint under the warm light: it was washed to one flat orange; and a floor is a little lighter each level over yours, darker each level under: a floor two levels up is not the next step)
       float ue = min(min(mix(9., lu.y, bit(ve, 512.)), mix(9., 15. - lu.x, bit(ve, 1024.))), min(mix(9., 15. - lu.y, bit(ve, 2048.)), mix(9., lu.x, bit(ve, 4096.))));
-      if (ue < 3.) col *= .45 + .15 * floor(ue);
+      if (bit(ve, 128.) > .5) col *= .78; if (ue < 4.) col *= ue < 1. ? .3 : .42 + .12 * floor(ue);   // (the foot of a wall: a dark line, then shade)
       if ((bit(ve, 1.) > .5 && lu.y < 1.) || (bit(ve, 2.) > .5 && lu.x > 15.) || (bit(ve, 4.) > .5 && lu.y > 15.) || (bit(ve, 8.) > .5 && lu.x < 1.)) col = mix(col, vec3(1., .93, .75), .5);
     } else if (kind < 1.5 && kind > .5 && rim > 0.) {            // a top at a drop: its lip catches the light
       if (bit(ve, 4.) > .5 && lu.y > 15.) col = mix(col, vec3(1., .94, .78), rim * .7);
@@ -46,6 +47,6 @@ const VoxStyleGLSL = (() => {
   const SV = `#version 300 es
   in vec3 p; in vec2 uv; in float s; out vec2 vu; out float sil; void main() { gl_Position = vec4(p, 1.); vu = uv; sil = s; }`;
   const SF = `#version 300 es
-  precision mediump float; in vec2 vu; in float sil; uniform sampler2D t; uniform vec3 mc; out vec4 o; void main() { vec4 c = texture(t, vu); if (c.a < .5) discard; if (sil > 1.5 && distance(gl_FragCoord.xy, mc.xy) < mc.z && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard; o = sil > .5 && sil < 1.5 ? vec4(.95, .8, .55, .4) : c; }`;   // (sil 2: what stands in front of you: one px in two of it, a 2x2 checker, in a disc round you (mc), so you are seen through it; the rest of it whole)
+  precision mediump float; in vec2 vu; in float sil; uniform sampler2D t; uniform vec3 mc; out vec4 o; void main() { vec4 c = texture(t, vu); if (c.a < .5) discard; float dm = distance(gl_FragCoord.xy, mc.xy + vec2(0., 8.)); if (sil > 1.5 && (dm < mc.z - 2. || (dm < mc.z + 2. && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.))) discard; o = sil > .5 && sil < 1.5 ? vec4(.95, .8, .55, .4) : c; }`;   // (sil 2: what stands in front of you: a hole in it round you (mc), its rim a 2x2 checker, so you are seen whole through it. It was one px in two of it over you: behind a tree you were not seen)
   return {AW, VS, FS, SV, SF};
 })();

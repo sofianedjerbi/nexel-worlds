@@ -58,3 +58,37 @@ def test_no_row_is_written_on_you_or_on_another_row(game):
         assert game.js(hit)[2:] == [False] * 5, (key, game.js(hit), game.js("[Prompts.keep, Build.S.rect, Build.S.at, myPos(), ...['side', 'up', 'down'].map((c) => document.querySelector('#prompts .' + c).style.transform)]"))
     game.press("b")
     assert not game.errors
+
+
+def test_only_what_your_hand_gets_to_is_offered(game):
+    """A flower six layers up a pillar, one six layers down a pit, a tusker six layers up: no row, nothing in red,
+    and Space says nothing. A flower three layers up is picked (the server takes it). A pickaxe at a hill's foot
+    digs into the hill; on open meadow X digs down, said in the corner (nothing is faced to say it beside)."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.press("ArrowDown", 300)
+    for dx, dy, lv in ((-1, 0, "6"), (0, 1, "f")):
+        game.stamp(dx, dy, ["f"], levels=[lv])
+        game.face(dx, dy)
+        game.sleep(400)
+        assert game.actions() == "", (lv, game.actions())
+        game.js("$('toast').style.display = 'none'")
+        game.press("Space", 300)
+        assert game.toast() == "" and game.inv("flower") == 0
+        game.stamp(dx, dy, ["."], levels=["0"])
+    game.stamp(1, 0, ["f"], levels=["3"])
+    game.face(1, 0)
+    game.wait("$('prompts').innerText.includes('Pick flower')", 3000)
+    game.press("Space", 100)
+    game.wait("(meObs.self.inventory.flower || 0) === 1", 4000)
+    game.give(pickaxe=1)
+    game.hold_item("pickaxe")
+    game.wait("$('prompts').innerText.includes('Dig into the hill')", 3000)
+    game.face(-1, 0)
+    game.wait("$('prompts').innerText.trim() === '' && $('actions').innerText.includes('Dig down')", 3000)
+    game.js("selectItem(null)")
+    game.stamp(-1, 0, ["."], levels=["6"])
+    game.spawn("tusker", -1, 0, still=600)
+    game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'tusker')", 4000)
+    game.sleep(400)
+    assert "tusker" not in game.actions() and not game.errors

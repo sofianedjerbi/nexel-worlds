@@ -4,7 +4,8 @@ A ladder stands on a tile (on the ground, or on a floor somebody built) against 
 with a floor on it, a terrace, a roof, a cliff. Walk into that taller thing from the ladder and you climb: you come
 out on the lowest place up there you can stand on, if the ladder's own tile is open all the way (a floor over the
 ladder needs a hole in it, a hatch). Walk off the top onto the ladder and you climb down: no fall, however high.
-Only people climb; animals don't.
+Only people climb; animals don't. Placed while you face a wall two layers or more higher than you (a pit's side,
+a cliff's foot), it goes on your own tile, against that wall (ladder_spot); else on the tile you aim at.
 
 Stairs are a flight of steps, laid with one press: put them on a tile beside a higher place (a floor's edge, a
 terrace, a ledge, 2 to 7 layers up) and they go down from it towards you, a step a tile and a layer lower each,
@@ -52,6 +53,40 @@ class Climbing:
     def leans(self, x, y, z) -> bool:
         """A ladder at height z on (x, y) has something to climb onto: two layers up or more."""
         return any((s := self.climb_to(z, x, y, x + dx, y + dy)) is not None and s >= z + 2 for dx, dy in DIRS.values())
+
+    def ladder_spot(self, a, x, y) -> bool:
+        """A ladder in hand, a wall in front of you two layers or more higher than where you stand (and no more than
+        a ladder goes): the ladder goes on YOUR OWN tile, against that wall, whichever of the four ways it is. (It
+        went on the tile you faced only: at the bottom of your own one-tile shaft every way is a wall, and you were
+        shut in with a ladder in your hand.)"""
+        h = self.height(a)
+        if abs(x - a.x) + abs(y - a.y) != 1 or not self.world.solid(x, y, h + 1):
+            return False
+        s = self.climb_to(h, a.x, a.y, x, y)
+        return s is not None and s >= h + 2
+
+    def stand_ladder(self, a):
+        """The ladder put where you stand (ladder_spot): on the ground of your tile, or on the built block under you."""
+        x, y, h = a.x, a.y, self.height(a)
+        if self.floors.get(x, y, h) is not None:
+            return (yield from self.put_on(a, x, y, h, LADDER))
+        if not a.count(LADDER):
+            raise ActionError("missing_item", "you have no ladder")
+        for again in (False, True):
+            if h != self.world.level(x, y) or GROUNDS[self.world.get(x, y)[0]].liquid:
+                raise ActionError("bad_target", "a ladder's foot needs the tile's own ground")
+            if self.world.block(x, y) not in ("none", "flower"):
+                raise ActionError("occupied", f"there is a {self.world.block(x, y).replace('_', ' ')} where you stand")
+            if (a.x, a.y, self.height(a)) != (x, y, h) or not self.leans(x, y, h):
+                raise ActionError("changed", "something changed there")
+            if not again:
+                yield from self.wait(a, 0.3)
+        if self.world.block(x, y) == "flower":
+            a.add("flower")
+        a.add(LADDER, -1)
+        self.set_tile(x, y, block=LADDER, by=a, cause="place")
+        a.bump("placed")
+        return {"at": [x, y], "z": h}
 
     def on_ladder(self, x0, y0, h0, x, y, h) -> bool:
         """A step from (x0, y0, h0) to (x, y, h) taken on a ladder (climbing or coming down it): no fall."""

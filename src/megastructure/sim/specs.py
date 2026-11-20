@@ -34,7 +34,7 @@ TOOL_SPECS = {
     "place": {"args": {**DIR_ARG, "item": "str", "text": "str (what a sign or a flag says, optional)", "z": "int (optional): a height, to build over the ground"},
               "desc": "place an item: furniture/walls/etc. as blocks; dirt fills holes or water, and on open ground raises it a layer; path lays cobble, plank makes a bridge (water) or floor (land); "
                       "roof lays a roof block over that tile, a storey up (3 layers: it rests on a wall or door under it, or holds to a block beside it; you can stand on it; under a roof you are sheltered). "
-                      "stairs put beside a place 2 to 7 layers higher lay the whole flight down from it (a stairs a step); a ladder goes against something taller and is climbed by walking into it. "
+                      "stairs put beside a place 2 to 7 layers higher lay the whole flight down from it (a stairs a step); a ladder goes against something taller and is climbed by walking into it (placed facing a wall 2 to 12 layers higher than you, it stands on your own tile against that wall). "
                       "With z, plank or roof is a block in that cell (on the block under it: a step; or a storey over a wall; or beside a block), and a wall, door, bed... stands on the block built at that height"},
     "unroof": {"args": {**DIR_ARG}, "desc": "take the block built over that tile (a roof, a floor) back into your pack"},
     "pick_up": {"args": {"item": "str (optional)"}, "desc": "pick up items on your tile"},

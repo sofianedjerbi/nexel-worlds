@@ -56,13 +56,13 @@ const HdView = (() => {
   }
   // the lens: far rows (the 48 art px under the horizon, hy) a little soft, the rest crisp; a faint bloom of the light parts; no vignette
   // (it was the top three tenths of the screen, wherever the horizon: looked at from close, or on a screen held upright, the land near you was a blur)
-  function post(pic, w, h, hy, blur) {
+  function post(pic, w, h, hy, blur, near) {
     art = art || document.createElement("canvas"); fx = fx || document.createElement("canvas");
     for (const c of [art, fx]) if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     const a = art.getContext("2d"), f = fx.getContext("2d"); a.globalCompositeOperation = "source-over"; a.clearRect(0, 0, w, h); a.drawImage(pic, 0, 0);
-    if (blur > 0 && hy + 48 > 0) {
+    const span = Math.min(48, near - hy); if (blur > 0 && hy + span > 0 && span >= 4) {   // (near: the row ten tiles north of you: nothing nearer is ever soft. Zoomed in, or with the eye steep, the band reached the land round you)
       f.globalCompositeOperation = "source-over"; f.clearRect(0, 0, w, h); f.filter = `blur(${blur}px)`; f.drawImage(pic, 0, 0); f.filter = "none";
-      f.globalCompositeOperation = "destination-in"; const gr = f.createLinearGradient(0, hy, 0, hy + 48);
+      f.globalCompositeOperation = "destination-in"; const gr = f.createLinearGradient(0, hy, 0, hy + span);
       gr.addColorStop(0, "rgba(0,0,0,.85)"); gr.addColorStop(1, "rgba(0,0,0,0)"); f.fillStyle = gr; f.fillRect(0, 0, w, h);
       a.globalCompositeOperation = "source-atop"; a.drawImage(fx, 0, 0);
     }
@@ -84,7 +84,7 @@ const HdView = (() => {
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.imageSmoothingEnabled = false; g.fillStyle = tint([.8, .84, .8], .45); g.fillRect(0, 0, w, h);
     g.fillStyle = tint([.36, .64, .8], .65); for (const [run, px] of o.runs) { g.fillRect(run, 0, px - run, h); for (const ex of [run - 8, px]) { g.save(); g.translate(ex, 0); g.fillStyle = checker(g.fillStyle); g.fillRect(0, 0, 8, h); g.restore(); } }   // (its two ends: a 2x2 checker, 8 px: one fill of a pattern; it was 400 small ones)
     if (line > 0 && sk) g.drawImage(sk.canvas, 0, 0);
-    const pic = o.lens ? (o.fresh || !art || art.width !== w || art.height !== h ? post(o.pic, w, h, o.hy, o.blur) : art) : o.pic;   // (a phone: no lens: two blurs of the whole picture a frame)
+    const pic = o.lens ? (o.fresh || !art || art.width !== w || art.height !== h ? post(o.pic, w, h, o.hy, o.blur, o.near === undefined ? 1e9 : o.near) : art) : o.pic;   // (a phone: no lens: two blurs of the whole picture a frame)
     g.drawImage(pic, 0, 0);
     if (recM && o.marks) { g.setTransform(1 / zoom, 0, 0, 1 / zoom, 0, 0); recM.play(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; }
     return true;

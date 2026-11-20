@@ -184,7 +184,7 @@ const Build = (() => {
     if (on === S.on || (on && !me)) return;
     S.on = on; S.hold = null; S.plane = null; S.deep = null; held(null); document.body.classList.toggle("building", on);
     if (on) { S.at = facingTile() || myPos(); const s = myPos(), z = s ? myZ(s.x, s.y) : 0, c = s ? [z + 2, z + 1].find((t) => landSolid(S.at.x, S.at.y, t)) : undefined, r = ride(S.at); if (c < r) S.deep = c; else if (c > r) S.plane = c; work(); }   // (in front of you, at your own height: see above; its keys are by the cursor: prompts.js)
-    else { S.pan = {x: 0, y: 0}; if (todo().length) toast(`${todo().length} plans wait: B to go on building`); }      // (the plans stay where they are)
+    else { S.pan = {x: 0, y: 0}; if (todo().length && !TOUCH) toast(`${todo().length} plans wait: ${capOf("build")} to go on building`); }      // (a phone has no B: its Build button stays up while plans wait, touch.js; the plans stay where they are)
   }
   function drop() { const n = todo().length; for (const [k, j] of S.plans) if (j.state !== "doing") S.plans.delete(k); toast(`${n} plans dropped`); }
   function move(dir) {

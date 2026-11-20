@@ -3,6 +3,7 @@
 //   A ladder stands against something taller beside it (a wall with a floor on it, a terrace, a roof, a cliff):
 //   walk into that from the ladder and you climb out on top; walk back off and you climb down, no fall. It is drawn
 //   from its foot up to the top it leads to, two rails and their rungs, in the wood of the pack's houses.
+//   Put while you face a wall two layers or more over you, it goes on your own tile, against that wall (`own`).
 //   Stairs are a flight laid with one press: beside a higher place, steps a tile each, a layer lower each, down to
 //   the ground. A step is drawn as a block of planks with its tread: the nose lit where you come up from, the next
 //   riser's shadow at the back.
@@ -152,6 +153,17 @@ const Climb = (() => {
     ctx.globalAlpha = 1;
   }
 
+  // A ladder in hand, and p is a wall right in front of you, two layers or more over where you stand (and no more
+  // than a ladder goes): the ladder goes on YOUR OWN tile, against it (the server: Climbing.ladder_spot). -> the
+  // height you stand at, or null. (It went on the tile you aimed at only: at the bottom of your own one-tile shaft
+  // every tile you face is a wall: "Needs something taller behind", with a ladder in hand.) Not in build mode: its
+  // cursor plans a ladder on the cursor's tile.
+  function own(p, s) {
+    const h = myZ(s.x, s.y);
+    if (Build.on || Math.abs(p.x - s.x) + Math.abs(p.y - s.y) !== 1 || !solidAt(p.x, p.y, h + 1)) return null;
+    const top = climb(h, s.x, s.y, p.x, p.y);
+    return top !== null && top >= h + 2 ? h : null;
+  }
   // What a click or a key means with stairs or a ladder in hand (intent.js asks first); nothing: not these
   function intent(p, shift) {
     const it = selected && !shift ? selected : null, s = myPos();
@@ -162,6 +174,13 @@ const Climb = (() => {
       const ok = have >= f.length;
       return {text: ok ? `Build stairs (${f.length} step${f.length > 1 ? "s" : ""})` : `The flight takes ${f.length} stairs`, ghost: it, ok, near: 1, steps: f,
         draw: (sx, sy, S) => ghostFlight(f, sx, sy, S, ok), run: (d) => act("place", {dir: d, item: it})};
+    }
+    const h = own(p, s);
+    if (h !== null) {                                   // (the wall you face: the ladder on your own tile, against it)
+      const b = FLOORS ? Floors.get(s.x, s.y, h) : null, was = b ? b[1] : h === groundAt(s.x, s.y) && !wet(gndAt(s.x, s.y)) ? combAt(s.x, s.y) : "-", ok = !was || GROUND.has(was) || was === "f";
+      if (was === "l") return {text: "", info: true, none: true, own: {x: s.x, y: s.y}};      // (your ladder is there already: nothing to put, nothing to say)
+      return {text: ok ? "Place ladder" : "Something is in the way", ghost: it, ok, near: 1, z: h, flat: true, own: {x: s.x, y: s.y},
+        draw: (sx, sy, S) => drawLadder(s.x, s.y, h, sx, sy, S, .6), run: () => act("place", {dir: dirTo(p), item: it})};
     }
     const z = settleNear(p.x, p.y, myZ(s.x, s.y)), c = FLOORS ? Floors.get(p.x, p.y, z) : null, on = c ? c[1] : z === groundAt(p.x, p.y) ? combAt(p.x, p.y) : "";
     if ((on && !GROUND.has(on) && on !== "f") || !openAt(p.x, p.y, z)) return {text: "Something is in the way", ghost: it, ok: false, z};

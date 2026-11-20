@@ -181,7 +181,7 @@
     display:flex; align-items:center; justify-content:center; touch-action:none; filter:drop-shadow(0 3px 0 rgba(60,40,30,.3)); }
   #tA { width:84px; height:84px; right:0; bottom:8px; } #tB { width:62px; height:62px; right:96px; bottom:0; background:#e3d3b8; }
   #tA.down, #tB.down, #tctx div.down, #ttop div.down { border-bottom-width:3px; transform:translateY(3px); }
-  #tA.idle, #tB.idle { opacity:.55; } #tA.bad { background:#f3c7b8; }
+  #tA.idle, #tB.idle { opacity:.55; } #tA.bad { background-color:#f3c7b8; }
   #tA .lbl, #tB .lbl { font-size:26px; color:var(--ink); } #tB .lbl { font-size:20px; }
   #tA .cap, #tB .cap { position:absolute; bottom:100%; margin-bottom:6px; right:-4px; white-space:nowrap; color:#fff8e8; font-size:16px; pointer-events:none;
     text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
