@@ -197,11 +197,21 @@ function reaches(x, y, r, z, flat) {
   const h = myZ(s.x, s.y), dz = flat ? 0 : ((z === undefined ? settleNear(x, y, h) : z) - h) * LAYER;
   return (x - s.x) ** 2 + (y - s.y) ** 2 + dz * dz <= (r + .5) ** 2;
 }
+// What stands at height z on p is behind the land for you at s: higher, your own tile is shut over your head on the way
+// up to it; lower, its tile is shut over it (sim/bodies.py land_between: nothing is reached through the land)
+function landBetween(s, p, z) {
+  const h = myZ(s.x, s.y);
+  if (z > h) { for (let c = h + 2; c <= z + 1; c++) if (solidAt(s.x, s.y, c)) return true; return false; }
+  if (p.x === s.x && p.y === s.y) return false;
+  for (let c = z + 1; c <= h + 1; c++) if (solidAt(p.x, p.y, c)) return true;
+  return false;
+}
 const standsAt = (o) => (o.e && o.e.z !== undefined ? o.e.z : floorAt(o.tx, o.ty));   // someone's height: a person's own; a creature's, the lowest ground under it
 function inReach(p, it, flat = it.flat) {                       // (it.flat: a wall you dig into is at your own height, whatever is on top of it)
   const s = myPos(); if (!s) return false;
   const tiles = it.foot && !it.from ? it.foot : [p];            // a structure: any of its tiles will do
   const reach = it.attack ? it.near : USE_R, z = it.ent ? standsAt(it.ent) : it.z !== undefined ? it.z : it.at;
+  if (!flat && !it.ent && it.z === undefined && it.at !== undefined && !it.ghost && landBetween(s, p, it.at)) return false;   // (a tree from a tunnel four layers under it)
   return tiles.some((q) => reaches(q.x, q.y, reach, z, flat))
     && !(it.foot && it.from && it.foot.some((q) => q.x === s.x && q.y === s.y));   // not standing in a new structure's spot
 }

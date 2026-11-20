@@ -85,8 +85,8 @@ function facingNow(alt) {
   // a pickaxe in hand, facing higher ground with nothing on it: cut into it (it comes down a layer)
   // (Space only. It took X too, and came before X's own "dig down": in a hole every second X cut the wall at your
   // feet and not the floor: two presses a layer, nothing to see on the odd one.) Its name: in a hole there is no hill
-  if (!alt && inHand() === "pickaxe" && landSolid(q.x, q.y, myZ(s.x, s.y) + 1) && GROUND.has(combAt(q.x, q.y)))
-    return {p: q, it: {text: topAt(s.x, s.y) > hs ? "Dig on" : inHole(s, q, hs) ? "Dig into the wall" : "Dig into the hill", flat: true,   // (under the land there is no hill: the tunnel goes on)
+  if (!alt && inHand() === "pickaxe" && landSolid(q.x, q.y, hs + 1) && (GROUND.has(combAt(q.x, q.y)) || floorAt(q.x, q.y) !== hs + 1))      // (...or what is on it stands elsewhere: on the hill over your tunnel)
+    return {p: q, it: {text: topAt(s.x, s.y) > hs ? "Dig on" : inHole(s, q, hs) ? "Dig into the wall" : "Dig into the hill", flat: true, cell: hs + 1,   // (under the land there is no hill: the tunnel goes on)
       run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
   // X with a pickaxe and nothing else to use it on: dig down where you stand
   if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !":n".includes(under))
@@ -99,7 +99,7 @@ function facingNow(alt) {
     ring.push({x: s.x + dx, y: s.y + dy, d: Math.max(Math.abs(dx), Math.abs(dy)) + Math.abs(dx) * .01 + Math.abs(dy) * .01 - (dx * p0.fx + dy * p0.fy) * .1});
   }
   ring.sort((a, b) => a.d - b.d);
-  for (const q of ring) { const p = {x: q.x, y: q.y}, it = intent(p, alt); if (useful(it) && level(p, it)) return {p, it}; }
+  for (const q of ring) { const p = {x: q.x, y: q.y}, it = intent(p, alt); if (useful(it) && level(p, it) && inReach(p, it)) return {p, it}; }      // (inReach: not through the land: "Chop tree" from a tunnel four layers under it)
   // (what is in front of you but up a cliff or down one is not offered, and not refused in red either ("Out of
   // reach" for a flower three layers up): nothing is said of what your hand cannot get to)
   return faced && !faced.walk && !useful(faced) && inReach(q, faced) ? {p: q, it: faced} : null;
@@ -128,6 +128,8 @@ function availableActions() {
   if (main && !main.it.info && main.it.ok !== false) rows.push([capOf("use"), main.it.text, "", true]);      // (the keys as the settings have them: options.js; true: what you face)
   else if (main && placingItem()) rows.push([capOf("use"), main.it.text, "bad", true]);           // why it can't go there
   if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push([capOf("alt"), alt.it.text, "", true]);
+  const up = DigUp.aim();                                   // (the way out of a hole: the cell over your head, then the step: digup.js)
+  if (up) rows.push([capOf("up"), up.text, "", true]);
   if (selected && FOODS.includes(selected)) rows.push([capOf("eat"), `Eat ${label(selected)}`]);
   if (selected && WEAR[selected]) rows.push([capOf("eat"), `Wear ${label(selected)}`]);
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push([capOf("pick"), "Pick up"]);
@@ -186,6 +188,7 @@ function closePanels() {
 const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   " ": () => useFacing(false),
   x: () => useFacing(true),
+  r: () => DigUp.run(),
   f: () => act("pick_up", {}),
   e: () => useSelected(),
   q: () => cycleHand(1),
@@ -227,7 +230,7 @@ addEventListener("keydown", (e) => {
   }
   if (k === "tab") { e.preventDefault(); if (!e.repeat) { drawWho(); document.body.classList.add("tab"); } return; }   // held: the day, you, who is awake (style.css)
   const fn = SHORTCUTS[u];
-  if (fn) { e.preventDefault(); if (!(e.repeat && u !== " " && u !== "x")) fn(); }
+  if (fn) { e.preventDefault(); if (!(e.repeat && u !== " " && u !== "x" && u !== "r")) fn(); }
 });
 addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase();

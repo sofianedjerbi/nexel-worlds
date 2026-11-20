@@ -111,3 +111,48 @@ def test_out_of_your_own_shaft_with_the_thumbs(browser, server):
         assert not g.errors, g.errors
     finally:
         ctx.close()
+
+
+def test_out_of_your_own_shaft_with_the_thumbs_and_a_pickaxe_alone(browser, server):
+    """As by keys (test_e2e_climb.py): no ladder. "Dig up" is a button of its own over A and B, there when it is the
+    way out, saying what it takes: the step in front of you, the cell over your head."""
+    ctx, g = touch_game(browser, server, 390, 844)
+    try:
+        mid = lambda i: g.js(f"(() => {{ const r = $('{i}').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()")
+        tap = lambda i: (g.page.touchscreen.tap(*mid(i)), g.sleep(150))
+        g.give(pickaxe=1)
+        g.js("selectItem('pickaxe')")
+        x, y = g.pos()
+        g.face(1, 0)
+        g.wait("$('tB').innerText.includes('Dig down')", 3000)
+        assert g.js("$('tDig').style.display") != "flex"                       # on the meadow: no such button
+        for depth in (1, 2, 3):
+            tap("tB")
+            g.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
+        X, z, said = x, -3, []
+        while z < 0:
+            aim = g.js("(() => { const c = DigUp.aim(); return c && [c.x, c.y, c.z, c.text]; })()")
+            if aim:
+                g.wait(f"$('tDig').style.display === 'flex' && $('tDig').innerText === '{aim[3]}'", 3000)
+                said.append(aim[3])
+                tap("tDig")
+                g.wait(f"!solidAt({aim[0]}, {aim[1]}, {aim[2]}) && !myAction", 8000)
+            else:
+                g.touch("touchStart", 80, 600)                                # the stick, east: up the step
+                for i in range(1, 6):
+                    g.touch("touchMove", 80 + i * 8, 600)
+                    g.sleep(30)
+                try:
+                    g.wait(f"myAt && myAt.z > {z}", 6000)
+                except Exception:                                             # (what there is when it does not come)
+                    raise AssertionError(g.js(f"JSON.stringify({{me: [myAt.x - {x}, myAt.y - {y}, myAt.z], said: {said!r}, cols: [0, 1, 2].map((k) => surfacesAt({x} + k, {y})), walking: !!walking, act: !!myAction, toast: $('toast').innerText}})"))
+                g.touch("touchEnd")
+                g.wait("!walking", 3000)
+                X, z = g.js("[myAt.x, myAt.z]")
+        assert said == ["Dig a step", "Dig up", "Dig a step"], said             # (the last step is a hop: the sky is over it)
+        g.wait("!walking && (!pred || performance.now() > pred.until)", 4000)
+        s = g.server()
+        assert (s["y"], s["z"]) == (y, 0) and s["x"] >= x + 3
+        assert not g.errors, g.errors
+    finally:
+        ctx.close()

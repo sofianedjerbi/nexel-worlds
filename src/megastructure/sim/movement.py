@@ -36,7 +36,12 @@ class Movement:
     def why_not(self, a: Agent, x: int, y: int) -> str:
         land = self.landing(a, x, y)
         if land is None and self.can_enter(a, x, y):
-            return "a wall, too high to jump (dig into it: dig with a pickaxe)"
+            h = self.height(a)                              # (what would make a step of it, said with the cells: an agent reads this)
+            if self.world.solid(a.x, a.y, h + 2):
+                return ("a step with no room over your head to jump (dig dir=up takes the block over your head; "
+                        f"then the block in front at z={h + 2} if there is one; then step)")
+            return (f"a wall, too high to jump (a step up: dig the block in front at your head's height, z={h + 2}, "
+                    "then step; or dig into it at your own height: dig with a pickaxe)")
         return self.thing(x, y, land).replace("_", " ") if land is not None and self.floors.get(x, y, land) else self.describe(x, y)
 
     def fell(self, a: Agent, layers: int) -> dict:

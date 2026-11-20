@@ -66,6 +66,12 @@ const Underground = (() => {
         if (grp.some((r) => r[0] === q[0] + dx && r[1] === q[1] + dy)) continue; const u = eng.at(q[0] + a0, q[1] + b0, q[2] - 1), v = eng.at(q[0] + a1, q[1] + b1, q[2] - 1);
         const n = Math.max(Math.abs(v[0] - u[0]), Math.abs(v[1] - u[1])) | 0; for (let i = 0; i <= n; i += 1) if (i % 4 < 2) g.fillRect(Math.round(u[0] + (v[0] - u[0]) * i / n), Math.round(u[1] + (v[1] - u[1]) * i / n), 1, 1); }
     }
+    for (const m of Marks.list) {   // what you aim at (mark.js): the cell a dig takes, as the block it is, at its own height: its top's edges, its front's (this view had no aim at all); dot: R's cell, dotted (digup.js)
+      const c = (dx, dy, z) => eng.at(m.x + dx, m.y + dy, z), T = [c(0, 0, m.z1), c(1, 0, m.z1), c(1, 1, m.z1), c(0, 1, m.z1)], F = [c(0, 1, m.z0), c(1, 1, m.z0)]; if (!T[0]) continue;
+      const line = (u, v) => { const n = Math.max(1, Math.max(Math.abs(v[0] - u[0]), Math.abs(v[1] - u[1])) | 0); for (let i = 0; i <= n; i++) if (!m.dot || i % 2 === 0) g.fillRect(Math.round(u[0] + (v[0] - u[0]) * i / n), Math.round(u[1] + (v[1] - u[1]) * i / n), 1, 1); };
+      g.fillStyle = `rgba(${m.colour.map((v) => Math.round(v * 255)).join()},${(.95 * m.a).toFixed(2)})`;
+      for (const [u, v] of [[T[0], T[1]], [T[1], T[2]], [T[3], T[0]], [T[2], T[3]], ...(m.flat ? [] : [[T[3], F[0]], [T[2], F[1]], [F[0], F[1]]])]) line(u, v);
+    }
     g.restore();
   }
   function after() {

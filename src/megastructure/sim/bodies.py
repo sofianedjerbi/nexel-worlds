@@ -71,6 +71,15 @@ class Bodies:
             z = min(self.world.surfaces(x, y), key=lambda s: abs(s - h))
         return (x - a.x) ** 2 + (y - a.y) ** 2 + ((z - h) * LAYER) ** 2 <= (r + .5) ** 2
 
+    def land_between(self, a, x: int, y: int, z: int) -> bool:
+        """What stands at height z on (x, y) is behind the land for `a`: higher than it, its own tile is shut over its
+        head on the way up to there; lower, the thing's tile is shut over the thing. (A hand goes up your own open
+        column and over, or down the open one in front: a tree was chopped from a tunnel four layers under it.)"""
+        h = self.height(a)
+        if z > h:
+            return any(self.world.solid(a.x, a.y, c) for c in range(h + 2, z + 2))
+        return (x, y) != (a.x, a.y) and any(self.world.solid(x, y, c) for c in range(z + 1, h + 2))
+
     def reach(self, a, x: int, y: int, r: float = TARGET_R, z: int | None = None):
         if not self.near(a, x, y, r, z):
             raise ActionError("out_of_range", f"({x},{y}) is out of reach: {r} tiles round you, height counted "

@@ -136,3 +136,49 @@ def test_out_of_your_own_shaft_by_keys(game):
     game.sleep(300)
     s = game.server()
     assert (s["x"], s["y"], s["z"], s["hp"]) == (x - 1, y, 0, hp) and not game.errors
+
+
+AIM = "(() => { const c = DigUp.aim(); return c && [c.x, c.y, c.z, c.text]; })()"
+MARKED = "([x, y, z]) => Marks.list.some((m) => m.to.x === x && m.to.y === y && m.to.z1 === z && m.to.z0 === z - 1)"
+
+
+def test_out_of_your_own_shaft_with_a_pickaxe_alone(game):
+    """"how do i climb up? why i cant??": four down in a shaft a tile wide, a pickaxe and no ladder: Space dug level,
+    X dug down, nothing dug upward. R (Dig up) takes the cell in front of you at your head's height ("Dig a step"),
+    you walk up onto the block under it; then the cell over your head ("Dig up") and the next step: a stair out, a
+    layer each time. The cell it will take is marked, at its own height. And under the land, the tree on top of the
+    wall you face, three up, is not offered ("Chop tree (slow)" with the aim on a tunnel wall): the wall is."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.stamp(1, -1, ["T"])
+    game.give(pickaxe=1)
+    game.press(game.js(SLOT, "pickaxe"))
+    game.face(1, 0)
+    game.wait("($('actions').innerText + $('prompts').innerText).includes('Dig down')", 3000)
+    for depth in (1, 2, 3, 4):
+        game.press("x", 100)
+        game.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
+    X, z, said = x, -4, []
+    while z < 0:
+        if (X, z) == (x + 1, -3):                              # on the first step, the land over you: the tree north, on top of the wall
+            game.face(0, -1)
+            game.wait("$('prompts').innerText.includes('Dig on')", 3000)
+            assert "Chop" not in game.actions(), game.actions()
+            game.face(1, 0)
+        aim = game.js(AIM)
+        if aim:
+            assert aim[:3] == ([X, y, z + 2] if game.js(f"solidAt({X}, {y}, {z + 2})") else [X + 1, y, z + 2]), (X, z, aim)
+            game.wait(f"$('prompts').innerText.includes('{aim[3]}')", 3000)          # said beside the wall, with its key
+            game.page.wait_for_function(MARKED, arg=aim[:3], timeout=3000)           # and marked: that cell, at its own height
+            said.append(aim[3])
+            game.press("r", 100)
+            game.wait(f"!solidAt({aim[0]}, {aim[1]}, {aim[2]}) && !myAction", 8000)
+        else:
+            game.hold(["ArrowRight"], 90)
+            game.wait(f"myAt && myAt.z > {z} && !walking", 6000)
+            X, z = game.js("[myAt.x, myAt.z]")
+    assert said == ["Dig a step", "Dig up", "Dig a step", "Dig up", "Dig a step"], said    # (the last step is a hop: the sky is over it)
+    game.wait("!walking && (!pred || performance.now() > pred.until)", 4000)
+    srv = game.server()
+    assert (srv["y"], srv["z"], srv["hp"]) == (y, 0, 20) and srv["x"] >= x + 4
+    assert game.js(f"[1, 2, 3].map((k) => surfacesAt({x} + k, {y})[0])") == [-3, -2, -1] and not game.errors

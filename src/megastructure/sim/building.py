@@ -33,6 +33,8 @@ class Building:
         return g if b == "none" else f"{b} on {g}"
 
     def _tool_dig(self, a, args):
+        if str(args.get("dir", "")).lower() == "up":       # (the cell over your own head: underground.py)
+            return (yield from self.dig_over(a, args))
         up = self.dig_up(a, args) or self.dig_land(a, args)   # (a block built over the ground, or what stands on one: storeys.py;
         if up is not None:                                     #  the land's own top at a height: a hole, underground.py)
             return (yield from up)
@@ -40,7 +42,8 @@ class Building:
         g, b = self.world.get(x, y)
         block, ground = BLOCKS[b], GROUNDS[g]
         z = self.height(a) + 1                             # the cell in front of you, at your body's height
-        if block.name == "none" and self.world.solid(x, y, z) and self.held(a, args) == "pickaxe":
+        bare = block.name == "none" or self.world.level(x, y) != z      # (what stands on the tile is not on this cell: up on the hill over your tunnel, a tree was chopped for the wall)
+        if bare and self.world.solid(x, y, z) and self.held(a, args) == "pickaxe":
             yield from self.wait(a, 1.0)                   # into a wall: that cell goes (a step cut down, or a tunnel)
             if not self.world.solid(x, y, z) or self.height(a) + 1 != z:
                 raise ActionError("changed", "something changed there")
@@ -50,6 +53,8 @@ class Building:
             return {"got": {got: 1}, "cell": [x, y, z]}
         self.reach(a, x, y, z=self.world.level(x, y))      # (anything else is on the tile's ground, its lowest: too high up, or down, is out of reach. It was the
                                                            #  ground there nearest your own height: a flower was picked from a stair 24 layers over it)
+        if block.name != "none" and self.land_between(a, x, y, self.world.level(x, y)):
+            raise ActionError("out_of_range", f"the {block.name.replace('_', ' ')} at ({x},{y}) is behind the land: nothing is reached through it")
         if block.name == "none" and ground.liquid:           # the bottom of the water: a layer deeper
             return (yield from self.deepen(a, x, y))
         if block.name == "none":

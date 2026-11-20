@@ -11,19 +11,21 @@ const HdLook = (() => {
   const cfg = {levels: [-9, 12], variants: 4, up: RELIEF_STEP, rock: {from: 5, lo: -512, n: 4}};
   const cam = {kind: "persp", pitch: 36, fov: 26};
   const api = {get active() { return (urlLook || opt("look")) === "hd"; }, get on() { return this.active && !!me && myId !== null; }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen; }, get pit() { return eng ? eng.pit : 0; }, force: null, cam, bend: .03, blur: 1, faces: 0, builds: 0};
-  let camL = null, pitN = null, stage = 0, tilt = 0, flip = 0, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), lit = null, hl = 0, hy = 0, since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0;
+  let camL = null, pitN = null, stage = 0, tilt = 0, flip = 0, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), lit = null, hl = 0, hy = 0, since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, camV = 0;
   const sprs = new Map(), lads = new Map(), things = new Map(), piles = new Map(), built = new Map();
   const Z = () => zoom * DPR;   // (canvas px an art px: `zoom` CSS px, as the classic picture's. It was `zoom` canvas px: on a dense screen, a phone's, the land half the size and twice as far as it would show)
   const mix = (a, b, k) => Array.isArray(a) ? a.map((v, i) => v + (b[i] - v) * k) : a + (b - a) * k;
-  function ent(p, now) {      // (a person or a creature, drawn by the game at zoom 1: one art px a px)
-    const T = P, j = jumping(p, now), w = T * 4, h = T * 5 + (j ? Math.max(0, Math.ceil(j.body)) : 0), base = h - T * 1.5;   // (taller for a fall: the body and its name stay together)
+  function ent(p, now, z) {   // (a person or a creature, drawn by the game at zoom 1: one art px a px; z: the level it is put at)
+    // (a FALL: the game says the body's height over the straight line between the two tiles' grounds (the classic picture's lift). Here a body stands at one tile's level, z: its height over THAT.
+    // It was the game's number as it is: walking to a rim 12 high you rose 48 px into the air, then dropped 96 px in one frame as the fall began)
+    const T = P, j = jumping(p, now), fl = j && falling(p, now), off = fl ? liftOf(p) / zoom - z * RELIEF_STEP : 0, up = j ? Math.max(0, Math.ceil((j.body + off) * (fl ? Math.cos(cam.pitch * Math.PI / 180) : 1))) : 0, fo = fl ? Math.round(j.body) - up : 0, w = T * 4, h = T * 5 + up, base = h - T * 1.5 + fo;   // (a height as this eye sees it: its cosine; taller for a fall: the body and its name stay together)
     let pc = sprs.get(p) || document.createElement("canvas"); sprs.set(p, pc); if (pc.width !== w || pc.height !== h) { pc.width = w; pc.height = h; }
     const g = pc.getContext("2d", {willReadFrequently: true}); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); g.imageSmoothingEnabled = false;   // (its px are read each frame: its shadow is its shape now, hd_sun.js)
     const keep = ctx, kz = zoom, sx = (x) => w / 2 - T / 2 + (x - p.x) * T, sy = Object.assign((y) => base + (y - p.y) * T, {up: (y) => base + (y - p.y) * T});
     const rc = pc._r || (pc._r = HdView.recorder(g, false)); rc.reset();   // (what was asked of its canvas, as one number: the same as last frame: the same picture: not sent to the GPU again, its shadow not looked for again)
     ctx = rc.proxy; zoom = 1; try { drawEntity(p, sx, sy, T, now / 1000, now); } catch (e) { /* (nothing to draw) */ } finally { ctx = keep; zoom = kz; }
     if (rc.hash !== pc._h) { pc._h = rc.hash; pc._v = (pc._v || 0) + 1; }
-    return {canvas: pc, fx: w / 2, fy: Math.round(base + T * .5)};
+    return {canvas: pc, fx: w / 2, fy: Math.round(h - T), fo};
   }
   function thing(spr) {       // (a thing's sprite on a canvas of its own, once: its foot the middle of its tile's bottom)
     const [img, sx, sy, sw, sh, dx, dy] = spr, k = (img.src || img.id || "") + "|" + sx + "," + sy + "," + sw + "," + sh;
@@ -83,7 +85,7 @@ const HdLook = (() => {
   // (two parts. marks: what is pointed at and planned (corners, ghosts, the build cursor), all in whole art px: on the world's own canvas with the land (hd_view.js marks): they move with every step you take,
   // and the game's canvas, the screen's size, was wiped and painted again for them each frame. words: the letters, on the game's canvas: yours stand still while you walk)
   function written(p, now, words) {
-    const S = TS(), art = (a) => a && [Math.round(a[0] / zoom) * zoom, Math.round(a[1] / zoom) * zoom], F = art(api.screenOf(...seen.at)), who = (v, ax) => { for (const s of seen.list) if (s.q && s.q[ax] === v) return s === seen.me ? F : art(api.screenOf(s.x, s.y, s.z)); return null; };   // (art: a body's place as its picture has it, a whole art px: its name stands still over it (it slid a px or two against it at every step, and the canvas was wiped and painted again for that))
+    const S = TS(), art = (a) => a && [Math.round(a[0] / zoom) * zoom, Math.round(a[1] / zoom) * zoom], F = art(api.screenOf(...seen.at)), who = (v, ax) => { for (const s of seen.list) if (s.q && s.q[ax] === v) { const a = s === seen.me ? F : art(api.screenOf(s.x, s.y, s.z)); return a && s.fo && ax === "y" ? [a[0], a[1] + s.fo * zoom] : a; } return null; };   // (fo: falling: its name with its body, ent)   // (art: a body's place as its picture has it, a whole art px: its name stands still over it (it slid a px or two against it at every step, and the canvas was wiped and painted again for that))
     const sx = (x) => { const a = who(x, "x"); return a ? a[0] - S / 2 : F[0] - S / 2 + (x - p.x) * S; }, fy = (y) => { const a = who(y, "y"); return a ? a[1] - S / 2 : F[1] - S / 2 + (y - p.y) * S; }, sy = Object.assign(fy, {up: fy, out: fy});
     const px = zoom / seen.k, t = now / 1000, snap = (v) => Math.round(v / px) * px, quad = (x, y, z) => [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => api.screenOf(x + a, y + b, z));
     // (all of it in whole art px) corners: a quad's four corners, a third of each side; fill: a tile's face, row by row; ghost: a thing's own sprite where it would stand; rectOf: the px its picture takes
@@ -163,7 +165,11 @@ const HdLook = (() => {
     if (k !== key && !gen) { gen = eng.steps(tx, ty, L, {r: R, rx, rs: south + 1, deep: 20, sea: 1, pit: st ? {k: kS, kc: stage ? kS * .6 : kS, cap: CAP, reach: 24, g: st} : null}); key = k; genG = st; hurry = st !== shownG; api.build = 0; api.builds++; }   // (one land at a time: the next is made when this one is done)
     if (gen) { const b0 = performance.now(); while (performance.now() - b0 < (hurry || st ? 5 : 2.5)) if (gen.next().done) { gen = null; break; } api.build = Math.max(api.build, performance.now() - b0); slice1 = performance.now() - b0; api.slice = Math.max(api.slice, slice1); api.water = eng.water;   // (the chunks that are new or changed, a tile a step, 2.5 ms a frame (5 in a pit); what was drawn stays till it is done; a pit that opens or shuts: up to 8 ms a frame)
       if (!gen) { shownG = genG; if (genG === wantG && since) { api.lag = performance.now() - since; since = 0; } } }
-    camL = camL === null || Math.abs(L - camL) > 8 ? L : Math.abs(L - camL) < .07 ? L : camL + (L - camL) * (1 - Math.exp(-dt / .1));   // (the eye's level follows yours over some 150 ms: a step off a ledge moved the whole view in one frame; a px of the art at a time)
+    // the eye's level follows yours: a step over some 150 ms; a FALL: the eye stays while your body is in the air (the land steady, the body coming down it; at most 9 levels over where you will land), then comes
+    // down to you slow at both ends (a spring: .4 s for 12 levels). (Over 8 levels it went there in one frame: off the gorge's rim more than half the picture changed at once, your body in the top quarter of it)
+    { const fl = falling(p, now), air = fl && fl.air, far = camL !== null && Math.abs(L - camL); if (air) camV = 0;
+      if (camL === null || far > 40) { camL = L; camV = 0; } else if (air) camL = Math.max(Math.min(camL, L + 9), camL - 40 * dt); else if (far > 3 || camV) { camV += (144 * (L - camL) - 24 * camV) * dt; camL += camV * dt; if (Math.abs(L - camL) < .07 && Math.abs(camV) < 1) { camL = L; camV = 0; } }
+      else camL = far < .07 ? L : camL + (L - camL) * (1 - Math.exp(-dt / .1)); }
     const list = [];
     const stood = (c, x, y, z, gh) => {      // a thing that stands: furniture as its card (hd_things.js: px for px, its top leaning with where it is on the screen), the rest a billboard
       if (c === "l") { const k = [x, y, z, landVer, Floors.ver].join(), ln = Climb.lean(x, y, z); let lc = lads.get(k); if (!lc) { if (lads.size > 60) lads.clear(); const a = HdThings.painted(48, 128, () => Climb.drawLadder(x, y, z, (X) => 16 + (X - x) * 16, (Y) => 96 + (Y - y) * 16 + shOf(z), 16, 1)); lc = document.createElement("canvas"); lc.width = 48; lc.height = 128;
@@ -192,8 +198,8 @@ const HdLook = (() => {
     for (const q of ents.values()) if (q.x !== undefined && Math.abs(q.x - p.x) < 16 && Math.abs(q.y - p.y) < 12) {
       const qx = Math.round(q.x), qy = Math.round(q.y), z = q === p ? L : FLOORS && Floors.any(qx, qy) ? Floors.standOf(q, qx, qy) : q.e && typeof q.e.z === "number" && !H0.water(qx, qy) ? q.e.z : topAt(qx, qy);   // (on a built floor: at its height; in a cave: at the level the server has them. They were put on the land's top: a friend in your room stood on the grass over it)
       if (q !== p && z < shown(qx, qy)) { const c = H0.column(qx, qy); let over = false; for (let zz = z + 1; zz <= shown(qx, qy) && !over; zz++) over = solidAt(c, zz); if (over) continue; }   // (under land that is not open: not seen, nor their name)
-      const s = ent(q, now);
-      list.push({canvas: s.canvas, fx: s.fx, fy: s.fy, x: q.x + .5, y: q.y + .5, z, d: q !== p, top: q === p, q, lamp: q.e && q.e.kind === "agent" ? (q === p && dep > 0 ? 2 : 1) : 0});   // (under the land your lantern is the light)   // (you: never hidden by land)
+      const s = ent(q, now, z);
+      list.push({canvas: s.canvas, fx: s.fx, fy: s.fy, fo: s.fo, x: q.x + .5, y: q.y + .5, z, d: q !== p, top: q === p, q, lamp: q.e && q.e.kind === "agent" ? (q === p && dep > 0 ? 2 : 1) : 0});   // (under the land your lantern is the light)   // (you: never hidden by land)
     }
     list.sort((a, b) => a.y - b.y);
     const snap = (v) => Math.round(v * 16) / 16;
