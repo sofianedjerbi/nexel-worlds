@@ -17,6 +17,7 @@ const OPT_DEFAULT = {
   shake: true,            // the ground shakes when a fall hurts
   glide: true,            // a zoom level glides into the next
   shimmer: true,          // the water's moving light and small waves
+  look: "hd",            // the land's look: hd (a tilted 3D camera, one look on the surface and under ground: hd.js), classic (the flat top-down picture)
   curve: "far",           // the ground bends away to a horizon, with a sky over it (curve.js): off (the flat picture), near, far
   floats: true,           // hearts lost, things gained, written over heads
   clearwater: true,       // the water is seen through, to its bed (waterbed.js, vox_water.js); off: the water as one painted face

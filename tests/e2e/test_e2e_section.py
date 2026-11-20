@@ -158,6 +158,7 @@ def test_one_wall_has_one_light(game):
 
 
 def test_a_sliced_top_is_the_rock_seen_inside_not_one_flat_colour(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """On the floor of a gorge in stone, the wall in front of you, one tile thick, cut where it hides you and the floor beside you (a keyhole,
     xray.js: all eight tiles of it were cut to the floor, a dark mat; a wall one tile thick keeps a level, its foot): its sliced top is three tiles
     of rock. It was one flat colour (the level's wall-foot line: in stone a blank grey slab, "untextured"); it is the
@@ -180,6 +181,7 @@ def test_a_sliced_top_is_the_rock_seen_inside_not_one_flat_colour(game):
 
 
 def test_the_ground_beside_the_opening_keeps_the_shadow_of_the_land_that_stands(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """Under a slab on nothing (an overhang), in the morning: the slab is cut over your column alone, and the ground
     under its south row is in its shadow, your column's tile as the one beside it. The whole tile of the cut was lit
     evenly ("a light square in the slab's shadow"): only the px seen through the opening are (vox_section.js mark)."""

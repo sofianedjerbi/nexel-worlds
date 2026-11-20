@@ -48,11 +48,12 @@ class Game:
         page.on("pageerror", lambda e: self.errors.append(str(e)))
 
     # ---- session
-    def join(self, name, zoom=4, curve=None):
+    def join(self, name, zoom=4, curve=None, look="classic"):
         """(curve: the settings' Curved world: None, as the game has it for a player (Far); False: the flat picture,
         for a test that cannot be about the curved one; "near", "far": that one)"""
         self.page.add_init_script(SOCKETS)
-        self.page.goto(f"{self.url}/?zoom={zoom}" + ("" if curve is None else f"&curve={curve or 0}"))
+        # (look: the settings' Look; the tests that came before the HD look pin the classic picture's px: classic unless asked)
+        self.page.goto(f"{self.url}/?zoom={zoom}&look={look}" + ("" if curve is None else f"&curve={curve or 0}"))
         self.page.wait_for_function("typeof ready !== 'undefined'")
         self.page.click("#name")
         self.page.keyboard.type(name)

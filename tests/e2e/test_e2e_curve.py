@@ -207,6 +207,7 @@ def test_a_tunnel_that_runs_north_into_the_bend_is_cut_open_to_its_floor_and_a_c
     too: its floor is drawn where the function puts a point of that tile at the floor's height, darker than the
     hill's top beside it; a click there finds the tunnel's tile, a click on the hill beside it the hill, and a click
     on the meadow further north than the hill that tile."""
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     game.clear_area(10)
     x, y = game.pos()
     game.stamp(-2, -12, ["....."] * 11, levels=["44444"] * 11)

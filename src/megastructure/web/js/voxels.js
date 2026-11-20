@@ -87,17 +87,18 @@ const Voxels = (() => {
     const keep = ctx; off = off || document.createElement("canvas").getContext("2d");
     const wlook = WaterBed.view(engine, t);                     // (clear water, waterbed.js)
     ctx = off; try { drawWater(vis.filter(made), ox, oy, t); } finally { ctx = keep; }
-    const pic = engine.draw({w: W, h: H, pw: cv.width, ph: cv.height, ox, oy, tile: S, row: cam.y, chunks: here(vis), light: [1, 1, 1],
+    const pic = engine.draw({w: W, h: H, pw: cv.width, ph: cv.height, ox, oy, tile: S, row: cam.y, chunks: HdLook.on ? [] : here(vis), light: [1, 1, 1],   // (the HD look draws the land itself where you play, hd.js: here only the sky; the first screen, a spectator: the land as ever)
+     
       clear: high ? [.659, .847, .918] : [.169, .141, .125],      // (the sky, or the dark of what has not come: as render.js fills)
       // (the curved world, curve.js: the ground bends to a horizon, the sky over it; far under the land, state.js away: earth, no sky)
-      marks: Marks.list, curve: Curve.c, sky: Curve.on && (away.a < 1 || high || away.sky) ? Curve.sky(t) : null,
+      marks: Marks.list, curve: Curve.c, sky: Curve.on && (away.a < 1 || high || away.sky) ? HdLook.sky(t) : null,   // (HdLook.sky: the game's sky, its horizon where the HD land's is)
       wlook, wmask: Sun.masks(), water: waterView ? {canvas: waterCv, x: ox + waterView.x * zoom, y: oy + waterView.y * zoom, scale: zoom} : null,
       // hidden (behind a hill, down a hole, under a roof: xray.js says how much, and which tiles are cut how low):
       // the land is cut open over the place you are in
-      cut: cutMap(), sun});                                      // (sun: with a shader on, the sun on the land, sun.js)
+      cut: HdLook.on ? null : cutMap(), sun});                                      // (sun: with a shader on, the sun on the land, sun.js)
     if (api.probe) { const gl = VoxGL.gl, w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, px = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
       let n = 0; for (let i = 0; i < px.length; i += 4) if (px[i] === 255 && !px[i + 1] && px[i + 2] === 255) n++; api.fillPx = n; }
-    ctx.imageSmoothingEnabled = false; ctx.drawImage(pic, 0, 0, W, H);
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(pic, 0, 0, W, H); api.pic = pic;   // (pic: the HD look takes its sky from it, hd.js: nothing stands in it yet)
   }
   // Away from the land (state.js), going: what is behind the land, laid over it that much: the engine's own picture
   // with no land in it (its sky, or the dark of the earth): one sky, whatever the hour. -> was it done (the curved world on)

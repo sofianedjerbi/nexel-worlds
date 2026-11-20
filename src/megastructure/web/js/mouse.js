@@ -12,6 +12,7 @@ function aimLift(x, y) {
   return FLOORS && myAt && Floors.any(x, y) ? shOf(settleNear(x, y, myAt.z)) * zoom : liftAt(x, y);
 }
 function tileAtScreen(mx, my) {                        // -> {x, y, fy: how far down the tile, 0 to 1}
+  if (HdLook.on) { const q = HdLook.pick(mx, my, Build.on ? (x, y) => Build.level({x, y}) : null); if (q) return q; }   // (the HD camera: the top or the front under the pointer, hd.js; build mode: at the cursor's height)
   const S = TS(), [ox, oy] = screenOrigin(S), x = Math.floor((mx - ox) / S), at = (y, up) => Curve.y(oy + y * S, up), row = (f) => Math.floor((f - oy) / S);
   // The column's tiles from the nearest that could be drawn there to the furthest (a level is drawn higher or lower:
   // relief.js; a row far north nearer the horizon: curve.js): the first whose top is under the pointer, or whose

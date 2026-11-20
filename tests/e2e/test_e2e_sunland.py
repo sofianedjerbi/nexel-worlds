@@ -283,6 +283,7 @@ def test_a_clouds_shadow_lies_on_the_land_and_what_stands_and_not_under_a_roof(g
     ground, tree = twice(game, [[cx - 2, cy + .2, cx - 1, cy + 1], [cx + .2, cy - .6, cx + .8, cy + .2]], "clouds", 0)
     assert ground[0] < ground[1] - 4, ground                     # the land is darker under the cloud
     assert tree[0] < tree[1] - .5, tree                           # and so is the tree that stands there
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     game.stamp(-3, -4, ["." * 7] * 5, levels=["4" * 7] * 5)     # a hill over the spot, a cave in it, its mouth south
     game.stamp(-2, -3, ["." * 5] * 3, levels=["0" * 5] * 3, roofs=["4" * 5] * 3, heads=["2" * 5] * 3)
     game.stamp(0, -1, ["."], levels=["0"], roofs=["4"], heads=["2"])

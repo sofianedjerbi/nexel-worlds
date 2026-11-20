@@ -170,7 +170,8 @@ def test_a_stair_dug_down_is_cut_square_and_seen_whole_with_no_gap_as_you_walk_i
     open. (A stair open to the sky is seen past a keyhole, xray.js: your step and where the next one goes; this test
     asked for all six steps, the whole trench cut open. The tiles of the keyhole come and go a checker at a time as
     you walk, voxels.js `fade`: no flash.)"""
-    game.js("setOpt('depth', false)")                         # (the land as it is painted: these colours and shades were measured with no sun; the land's depth has its own tests)
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
+    game.js("setOpt('depth', false)")                        # (the land as it is painted: these colours and shades were measured with no sun; the land's depth has its own tests)
     game.clear_area(12)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)
@@ -221,6 +222,7 @@ def test_under_ground_you_see_all_of_the_place_a_fire_however_far(game):
     it, so it should be visible": what was seen of a tunnel stopped four tiles from you, and a fire a little further
     on was not drawn. All of the place is seen: nine tiles on, the fire's tile is of the place, its floor is on the
     screen, earth, not the meadow over it, and who stands by the fire is seen."""
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     game.clear_area(16)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)

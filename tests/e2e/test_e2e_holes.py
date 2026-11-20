@@ -10,6 +10,7 @@ mid = lambda px: sorted(px, key=sum)[len(px) // 2]              # (a face's body
 
 
 def test_a_shafts_far_wall_goes_down_into_the_dark_and_from_inside_you_stand_on_its_floor(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """A shaft one tile wide, eight deep, and a pit one deep beside it. From the south, on the meadow: the two levels
     of its north wall the eye sees are darker than the pit's wall, the lower one darker again (it was two bands of
     the same earth, a crate one deep). From inside: the land south of you is cut for you, you and your floor are
@@ -52,6 +53,7 @@ def test_the_ground_is_seen_going_in_under_an_overhang(game):
 
 
 def test_a_hill_that_does_not_cover_you_is_not_touched_and_one_that_does_is_cut_round_you_alone(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """A plateau three high, seven tiles wide. Standing three rows north of it (it covers nothing of you), every px
     of it is as it is from far away: no cut at all ("standing north of a hill wrecks it"). Right behind it: the cut
     is the tiles that cover you and the ones beside them, none further along the hill."""
@@ -77,6 +79,7 @@ def test_a_hill_that_does_not_cover_you_is_not_touched_and_one_that_does_is_cut_
 
 
 def test_a_cut_comes_a_whole_px_of_paint_at_a_time_never_in_stripes(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """Half way in, the cut is a checker of px of paint (art px: zoom px of the screen), on the land's own grid: each
     px of paint is all the cut picture or all the whole one, and none stands alone in its row as a stripe thinner
     than itself ("thin vertical stripes thinner than an art pixel")."""
@@ -107,6 +110,7 @@ green = lambda c: c[1] > c[0] + 12                              # the meadow, a 
 
 
 def test_a_plateau_that_covers_you_is_cut_over_your_own_column_and_what_the_knife_made_is_earth_not_grass(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """Right behind a plateau three high ("the cut invents shapes": cut three tiles wide and to the ground, with a
     px of line at its edges, it read as an L-shaped hill). The cut is your own column, the rows of it that cover
     you; the block it slices has a top of earth, the dark of a wall, never the plateau's grass; and the plateau
@@ -141,6 +145,7 @@ def test_no_stump_one_tile_wide_is_left_standing_alone_beside_a_cut(game):
 
 
 def test_on_a_gorges_floor_you_are_in_a_hole_its_wall_is_one_face_and_its_floor_is_not_the_plateaus(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """A natural gorge, three rows of floor between two plateaus eight high ("the canyon floor has no depth... a rug
     on the plateau"). You are in it as in a hole that was dug, open to the sky: seen past a KEYHOLE in the wall in front of you,
     you and the floor where your next step goes, not a tile of it and not the whole gorge (all of it was opened: "a hard
@@ -170,6 +175,7 @@ def test_on_a_gorges_floor_you_are_in_a_hole_its_wall_is_one_face_and_its_floor_
 
 
 def test_the_first_frame_of_a_cut_is_a_checker_of_whole_px_of_paint_in_the_roll_too(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """A cut that opens came a px in four first: a lattice of dots, and, where the curved world squeezes the rows,
     thin stripes for a frame. Its first step is the checker: along every row of the screen, in the rolled picture,
     no run of the cut picture or of the whole one is narrower than a px of paint between two of the other."""
@@ -196,6 +202,7 @@ def test_the_first_frame_of_a_cut_is_a_checker_of_whole_px_of_paint_in_the_roll_
 
 
 def test_a_pillar_that_covers_you_keeps_its_foot_a_block_with_a_front(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """Right behind a pillar four high, and behind a wall one tile thick ("a cut pillar is a dark square on the grass"):
     the block is not cut to the ground: a level of it is left standing, its foot, whose front is the land's own
     (earth), the slice on top of it. A plateau is cut to the eye's line to your feet, as ever."""
@@ -231,11 +238,13 @@ def test_no_cut_opens_while_you_fall(game):
 
 
 def test_a_tile_that_joins_the_cut_comes_in_on_its_own_a_checker_of_px_and_nothing_else_moves(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """The keyhole follows you: a tile that joins the cut fades in by itself (web/js/voxels.js `fade`, 120 ms, the
     engine's checker of px of paint), the rest of the picture as it was ("its edge jumps by whole tiles while
     walking"). A tile of the wall five along is added to the cut: at once nothing changes; 50 ms on, some of its px
     are cut and some not, and no px changed outside its column; then it is all there."""
     game.flat()                                                  # (px are compared tile by tile: the flat picture)
+    game.js("setOpt('depth', false)")                         # (and pictures 50 ms apart: with the land's depth the sun's shadows are a px on from one to the next, anywhere on the screen: it failed two times in three)
     game.clear_area(14)
     x, y = game.pos()
     game.rpc("dev_time", phase=.4)

@@ -4,7 +4,7 @@
 // your own column), the outline of a cave over your space dashed. Drawn at the art's own size and laid on the game's
 // canvas zoom times bigger: every art px a whole square of px, you drawn px for px by the game's own drawEntity.
 // It comes on whole (never half of two pictures): it grows in from the screen's edges, a hard stepped edge.
-// On the surface and in a place open to the sky round you at your level (a canyon) the game's own view is kept.
+// On the surface the game's own view (behind a hill too: its keyhole); IN the ground (a cave, a hole, a canyon: xray.pic.hole, .pit) this one, sky-lit where open.
 const Underground = (() => {
   const EASE = .3, CEIL = 2, CAM = {pitch: 38, fov: 26}, O = {r: 16, deep: 10};
   const LIGHT = {amb: .3, lr: 6.5, fog: [16, 32], fogc: [.06, .045, .04], clear: [.05, .04, .035]};
@@ -55,7 +55,7 @@ const Underground = (() => {
       for (let i = 0; i < 4; i++) { const s = (x * 7 + y * 13 + i * 31) % 97, my = y0 + (s * 5 + now / 40 * (1 + i % 2)) % (yb - y0); g.fillRect(x0 + (s * 3 + Math.round(Math.sin(now / 900 + s) * 2)) % Math.max(1, Math.abs(x1 - x0)), Math.round(my), 1, 1); }
     }
     g.globalCompositeOperation = "source-over";
-    sign(g, "-" + dep, fx + 10, fy - 26);
+    if (dep >= 1) sign(g, "-" + dep, fx + 10, fy - 26);
     const seen = new Set(), hk = new Map(eng.holes.map((h) => [h[0] + "," + h[1], h]));
     for (const h of eng.holes) { if (seen.has(h[0] + "," + h[1])) continue; const grp = [], st = [h];
       while (st.length) { const q = st.pop(), k = q[0] + "," + q[1]; if (seen.has(k)) continue; seen.add(k); grp.push(q);
@@ -69,17 +69,16 @@ const Underground = (() => {
     g.restore();
   }
   function after() {
-    if (!me || myId === null || !Voxels.engine.ready()) return;
+    if (HdLook.active || !me || myId === null || !Voxels.engine.ready()) return;
     const now = performance.now(), dt = Math.min(.1, (now - last) / 1000); last = now;
     const p = ents.get("agent" + myId); if (!p) return;
     const L = xray.L, tx = Math.round(p.x), ty = Math.round(p.y);
     const oc = Voxels.host.column(tx, ty) || [], dep = Math.max(0, (oc[oc.length - 1] | 0) - L);   // (how deep: levels from your feet up to the meadow over you, your own tile)
-    let want = api.force !== null ? api.force : xray.a > .5 && dep >= 1 ? 1 : 0;   // (whole as soon as land is over you)
+    let want = api.force !== null ? api.force : xray.a > .5 && xray.pic && (xray.pic.hole || xray.pic.pit) ? 1 : 0;   // (whole wherever you are IN the ground: a cave, a tunnel, a pit, a trench, a canyon; merely behind a hill, on the surface: the game's own keyhole)
     eng = eng || VoxUnder.create(Voxels.host, cfg);
     if (want || a) {
       if (ver !== landVer) { eng.forget(); ver = landVer; key = ""; }
       const k = [tx, ty, L].join(); if (k !== key) { eng.build(tx, ty, L, L + CEIL, O); key = k; api.build = eng.cost; }
-      if (api.force === null && eng.skies.filter(([x, y, z]) => z <= L && Math.abs(x - tx) <= 4 && Math.abs(y - ty) <= 4).length > 12) want = 0;   // (a canyon, open round you at your level: the game's view)
     }
     a = want > a ? Math.min(want, a + dt / EASE) : Math.max(want, a - dt / EASE); api.a = a; api.on = a > 0; if (!a) return;
     const t0 = performance.now(), sf = sprite(p, now), sprs = [{canvas: sf.canvas, fx: sf.fx, fy: sf.fy, x: p.x + .5, y: p.y + .5, z: L}];

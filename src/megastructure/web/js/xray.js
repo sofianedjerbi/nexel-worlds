@@ -186,7 +186,7 @@ function xrayFind(tx, x0 = tx, x1 = tx) {
     // beside you a cut would show that rock's inside alone, a dark slab)
     if (!pit && cut.size >= XRAY.tall * (x1 - x0 + 1)) { const more = []; for (const [x, sx] of [[x0, -1], [x1, 1]]) for (let dx = 1; dx <= XRAY.key && topAt(x + sx * dx, row) <= L + XRAY.over[dx]; dx++) more.push([x + sx * dx, row, L, XRAY.over[dx], false]); open(more); }
     if (!pit) for (const [k, c] of [...cut]) { const [x, ty] = k.split(",").map(Number); if (ty > row) for (const dx of [-1, 1]) { const h = topAt(x + dx, ty), n = (x + dx) + "," + ty; if (!cut.has(n) && h > c && topAt(x + 2 * dx, ty) <= c && topAt(x + dx, ty - 1) < h && topAt(x + dx, ty + 1) < h) { cut.set(n, c); rock.add(n); } } }
-    xray.pic = {key, floor: new Map([...floor].filter(([k, h]) => k === own || (cut.has(k) && h <= cut.get(k) && !rock.has(k)))), rock, cut, all, place: new Set(floors.keys())}; return;
+    xray.pic = {key, floor: new Map([...floor].filter(([k, h]) => k === own || (cut.has(k) && h <= cut.get(k) && !rock.has(k)))), rock, cut, all, place: new Set(floors.keys()), pit}; return;
   }
   const seen = (x, gy) => (Math.abs(x - tx) <= 1 && Math.abs(gy - row) <= 1) || (hole && (floor.has(x + "," + gy) || low.has(x + "," + gy)));
   for (const k of [...floor.keys()]) { const [x, ty] = k.split(",").map(Number); if (!seen(x, ty)) floor.delete(k); }      // (a roof that is not lifted: what is under it stays under it)

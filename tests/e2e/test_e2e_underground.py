@@ -103,3 +103,27 @@ def test_light_is_one_shade_under_a_roof_no_edge_along_the_tunnel(game):
     assert max(abs(a - b) for c in (mine, on) for a, b in zip(c, first)) <= 12, (first, mine, on)
     assert sum(first) < .8 * sum(sky), (sky, first)
     assert not game.errors
+
+
+def test_walking_down_a_stair_under_a_roof_the_underground_view_comes_on_and_stays_on(game):
+    """The owner's cave: a stair going west down from the meadow under a roof ("the view still does not work... the
+    game should have the same consistent hd-2d view everywhere"). Walked the real way (keys, no force): on the meadow
+    the game's view; at the stair's open head, under the roof, at its foot: the slice through the earth (underground.js),
+    drawn over the whole screen: strata, no meadow green round you."""
+    game.clear_area(14)
+    x, y = game.pos()
+    game.rpc("dev_time", phase=.4)
+    game.stamp(-8, 0, ["........"], levels=["ddddcba0"], roofs=["44440000"], heads=["22220000"])
+    game.wait(DRAWN, 8000); game.sleep(600)
+    assert game.js("[Underground.on, xray.a]") == [False, 0]
+    seen = []
+    for _ in range(8):
+        game.hold(["ArrowLeft"], 330); game.sleep(500)
+        seen.append(game.js("[Math.round(ents.get('agent' + myId).x), xray.L, xray.a > .5, Underground.a]"))
+    down = [s for s in seen if s[2]]
+    assert down and all(s[3] > 0 for s in down), seen       # wherever the cut is on: the new view, never the old flat cut
+    assert seen[-1][1] <= -3 and seen[-1][3] == 1, seen
+    green = game.js("""(() => { const d = ctx.getImageData(0, 0, cv.width, cv.height).data; let g = 0, n = 0;
+      for (let i = 0; i < d.length; i += 4 * 97) { n++; if (d[i + 1] > 150 && d[i + 1] > d[i] + 30 && d[i + 1] > d[i + 2] + 40) g++; } return g / n; })()""")
+    assert green < .02, green                                  # the strata over the screen, not the meadow
+    assert not game.errors

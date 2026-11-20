@@ -58,6 +58,7 @@ def test_behind_a_mountain_you_are_seen_through_it(game):
 
 
 def test_what_is_there_shows_without_the_rock_in_front(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """In a canyon, the plateau in front is drawn up over you, over the canyon, and over the cliff behind you. The
     circle showed the canyon's floor alone: above you the front plateau's top layer was still there, over the cliff
     behind. What shows is the land without that plateau: the cliff behind you, down to its foot. Checked
@@ -86,6 +87,7 @@ def test_what_is_there_shows_without_the_rock_in_front(game):
 
 
 def test_the_hidden_ground_shows_and_nothing_changes_away_from_it(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """In a nook open to the north, walls west, east and south of you: the ground the rock in front hides shows,
     the channel behind you, the meadow it is down its middle; and away from you the land is the same, cut or not.
     (It had painted the rock too: first the walls beside you with a tall face down to the cut, walls that are not
@@ -103,6 +105,7 @@ def test_the_hidden_ground_shows_and_nothing_changes_away_from_it(game):
 
 
 def test_the_cut_never_touches_ground_that_already_shows(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """Behind a wall three layers high: its top covers you and half of the row behind you. Cut away, it shows what it
     covers; a pixel further back, where the ground shows anyway, is the same cut or not (it was cut
     out in whole tile columns with a margin: seams and dark lines in open ground and open water)."""
@@ -118,6 +121,7 @@ def test_the_cut_never_touches_ground_that_already_shows(game):
 
 
 def test_the_side_of_a_cliff_beside_open_water_is_not_seen_through(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """Only rock in front of you is seen through, and only where it is drawn over something. A cliff's side sticks
     out a few px over the tile beside it: with the circle on, the water showed through that edge and its corners,
     though nothing hides that water."""
@@ -178,6 +182,7 @@ def test_the_place_you_are_in_shows_not_only_what_is_behind_you(game):
 
 
 def test_a_rock_that_stands_apart_stays_whole(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """Behind a wall, with a pillar standing in the meadow behind you: the pillar hides ground you could walk to, but
     it is not the rock that hides you. It stays, whole: it shows as the land has it with the wall in front
     taken away (cut out like the wall, its foot was a square of the wall's own top in the middle of the grass)."""
@@ -225,6 +230,7 @@ def test_things_on_the_rock_in_front_of_you_fade_with_it(game):
 
 
 def test_creatures_behind_the_rock_are_seen_and_those_on_it_go_with_it(game):
+    game.js("Underground.force = 0")   # (the cut as the game paints it, under the underground view: underground.js)
     """A creature behind the rock with you showed whole in the middle of the circle and not at all a step further
     out; one on the rock was there, then gone. The rock in front is cut away a tile at a time: a creature behind it
     with you, on the ground of the place you are in, is drawn whole, once; one on the rock that is cut away is not
