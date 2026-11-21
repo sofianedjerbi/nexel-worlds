@@ -117,7 +117,7 @@ def test_in_a_trench_two_deep_under_the_open_sky_the_floor_you_stand_on_is_seen_
     """(the owner in the open trench at their cave's mouth, at the surface's pitch: "perspective is just bugged. i should have xray here": the trench's south wall hid the floor, the cat stood as if on the meadow.)
     Whenever land is between the eye and your feet the window is on your floor, at any pitch: the floor's px are drawn, the land in front of them is not; and what you see there is what a click picks."""
     g = hd(browser, server)
-    g.js("setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
+    g.js("setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0); Target.off = true")   # (the boxes of what the keys act on lie on the floor read here, from the first frame: target.js)
     g.hour(.3, still=True)
     x, y = g.pos()
     z = g.js(f"topAt({x}, {y})")
