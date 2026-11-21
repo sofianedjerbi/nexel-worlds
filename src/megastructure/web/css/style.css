@@ -53,7 +53,7 @@
      land's pixel: as it lies on the ground). The frame is put whole (in nine pieces, between two screen pixels, the
      joints showed) */
   .slot { width:calc(30 * var(--u)); height:calc(30 * var(--u)); flex:none; border:calc(5 * var(--u)) solid transparent;
-    background:url(../assets/slot.png) 0 0 / 100% 100% no-repeat border-box;
+    background:var(--slotdark, url(../assets/slot.png)) 0 0 / 100% 100% no-repeat border-box;   /* (dark wood; the slot in hand alone lit: ui.js) */
     image-rendering:pixelated; position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .slot.sel { background-image:var(--slotsel, url(../assets/slot_sel.png)); width:calc(34 * var(--u)); height:calc(34 * var(--u)); margin:calc(-2 * var(--u));
     transform:translateY(calc(-2 * var(--u))); z-index:1; }   /* (the slot in hand: two art px bigger each side, lifted, its frame lit: ui.js) */
