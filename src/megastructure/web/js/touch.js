@@ -59,8 +59,8 @@ function holdButton(e, fn) {                  // a press acts at once; held, it 
   let t = null;
   e.addEventListener("pointerdown", (ev) => {
     ev.preventDefault(); e.setPointerCapture(ev.pointerId); e.classList.add("down"); tapEat = {id: ev.pointerId, until: 0};
-    inputMode = "keys"; fn(); clearInterval(t);
-    t = setInterval(() => { if (!myAction && !pendingAct) fn(); }, 220);   // (never cutting short work in progress)
+    inputMode = "keys"; fn(false); clearInterval(t);
+    t = setInterval(() => { if (!myAction && !pendingAct) fn(true); }, 220);   // (never cutting short work in progress)
   });
   const up = () => { clearInterval(t); t = null; e.classList.remove("down"); };
   for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) e.addEventListener(ev, up);
@@ -121,7 +121,9 @@ if (TOUCH) {
   };
   for (const ev of ["pointerup", "pointercancel"]) pad.addEventListener(ev, release);
 
-  holdButton($("tA"), () => { if (!me) return; if (Build.on) Build.click(Build.S.at, false); else useFacing(false); });
+  // (build mode: A held while the stick moves the cursor is a row, as Space held is: it was a tap a block. Held still it places once: a second one would go on top of the first)
+  holdButton($("tA"), (again) => { if (!me) return; if (!Build.on) useFacing(false); else if (!again) { Build.click(Build.S.at, false); Build.S.hold = " "; } });
+  for (const ev of ["pointerup", "pointercancel"]) $("tA").addEventListener(ev, () => { if (Build.S.hold === " ") Build.S.hold = null; });
   holdButton($("tB"), () => { if (!me) return; if (Build.on) Build.click(Build.S.at, true); else useFacing(true); });
   tapButton($("tBuild"), () => Build.toggle()); tapButton($("tUp"), () => Build.onKey("e", {})); tapButton($("tDown"), () => Build.onKey("q", {}));
   $("tA").style.backgroundImage = padDisc(28, "#f7e7c6"); $("tB").style.backgroundImage = padDisc(22, "#e3d3b8"); knob.style.backgroundImage = padDisc(20, "#f7e7c6"); base.style.backgroundImage = padDisc(50, "", true);
@@ -131,6 +133,9 @@ if (TOUCH) {
   tapButton($("tEat"), () => useSelected()); holdButton($("tDig"), () => DigUp.run());      // (digup.js: the way out of a hole)
   tapButton($("tPick"), () => act("pick_up", {}));
   tapButton($("tBag"), () => toggleBag());
+  // (on its side Talk and Menu stand beside the goals, phone.css: where the goals end, known as soon as they are laid out: measured five times a second, Menu moved under the finger that was coming down on it)
+  const beside = () => { const r = Math.round($("goalhint").getBoundingClientRect().right); if (r > 0) document.body.style.setProperty("--goalsr", r + "px"); };      // (the goals shut, a window open over them: they stay where they were)
+  new ResizeObserver(beside).observe($("goalhint"));
   tapButton($("tCraft"), () => toggleCraft());
   tapButton($("tTalk"), () => openChat());
   tapButton($("tMenu"), () => openMenu());

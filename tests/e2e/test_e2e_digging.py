@@ -22,7 +22,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     game.face(0, 1)                                           # (facing south: the cursor starts on the tile in front. Turned, not by a key: an arrow held a fifth of a second walks a tile on a busy machine)
     game.press("b")
     rows = lambda: {r[0]: r[1:] for r in game.js("Build.rows()")}
-    assert game.js("Build.level()") == 0 and rows()["Q E"][0] == "A layer down, up" and rows()["X"][0] == "Dig a hole"
+    assert game.js("Build.level()") == 0 and rows()["Q E"][0] == "A layer down, up" and rows()["X"][0] == "Break"
     for depth in (1, 2, 3):
         game.press("q", 120)
         assert game.js("Build.level()") == -depth and rows()["Z"][0] == f"BUILD · -{depth} · leave"
@@ -34,10 +34,10 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     game.rpc("dev_teleport", x=x, y=y, z=-3)
     game.wait(f"myAt && myAt.x === {x} && myAt.z === -3", 8000); game.wait(DRAWN, 8000)
     game.face(0, 1); game.press("b")
-    assert game.js("[[Build.S.at.x, Build.S.at.y], Build.level()]") == [[x, y + 1], -1] and rows()["X"][0] == "Dig the block"   # the block in front of your eyes: it is dug by itself
+    assert game.js("[[Build.S.at.x, Build.S.at.y], Build.level()]") == [[x, y + 1], -1] and rows()["X"][0] == "Break"   # the block in front of your eyes: it is dug by itself
     game.press("x")
     game.wait(f"surfacesAt({x}, {y + 1}).join() === '-2,0' && Build.S.plans.size === 0", 30000)
-    assert game.js("Build.level()") == -2 and rows()["X"][0] == "Dig a hole"     # (the cursor is on the one under it now)
+    assert game.js("Build.level()") == -2 and rows()["X"][0] == "Break"     # (the cursor is on the one under it now)
     game.press("x")                                           # ...dug too: the room, and the land over it left
     game.wait(f"surfacesAt({x}, {y + 1}).join() === '-3,0' && Build.S.plans.size === 0", 30000)
     assert game.inv("stone_block") == 2                      # (the blocks themselves: landblocks.py)
@@ -64,7 +64,7 @@ def test_blocks_are_planned_ahead_each_where_the_one_before_it_will_have_made_ro
     for k in range(3):                                         # three blocks at your legs' height, one behind the other: none of them dug yet
         if k:
             game.press("ArrowDown", 120)
-        assert game.js("Build.level()") == -2 and rows()["X"][0] == "Dig the block", (k, rows())
+        assert game.js("Build.level()") == -2 and rows()["X"][0] == "Break", (k, rows())
         game.press("x", 120); sizes.append(game.js("Build.S.plans.size"))
     assert sizes == [1, 2, 3]
     game.press("ArrowDown", 120); game.press("ArrowDown", 120)  # two tiles on from the last: nothing planned beside it
@@ -252,7 +252,7 @@ def test_the_cursor_starts_on_the_block_in_front_of_your_eyes(game):
     x, y = game.pos()
     game.stamp(-6, -2, ["." * 6] * 5, levels=["7" * 6] * 5)                # high ground west of you, seven layers
     game.stamp(1, 0, ["."], levels=["1"])                                   # a step up east of you
-    for key, front, level, text in (((-1, 0), [x - 1, y], 2, "Dig the block"), ((1, 0), [x + 1, y], 1, "Dig a hole"), ((0, 1), [x, y + 1], 0, "Dig a hole")):
+    for key, front, level, text in (((-1, 0), [x - 1, y], 2, "Break"), ((1, 0), [x + 1, y], 1, "Break"), ((0, 1), [x, y + 1], 0, "Break")):
         game.face(*key)
         game.press("b")
         at, lv, rows = game.js("[[Build.S.at.x, Build.S.at.y], Build.level(), Object.fromEntries(Build.rows().map((r) => [r[0], r[1]]))]")

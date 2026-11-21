@@ -88,9 +88,10 @@ function facingNow(alt) {
   if (!alt && inHand() === "pickaxe" && landSolid(q.x, q.y, hs + 1) && (GROUND.has(combAt(q.x, q.y)) || floorAt(q.x, q.y) !== hs + 1))      // (...or what is on it stands elsewhere: on the hill over your tunnel)
     return {p: q, it: {text: topAt(s.x, s.y) > hs ? "Dig on" : inHole(s, q, hs) ? "Dig into the wall" : "Dig into the hill", flat: true, cell: hs + 1,   // (under the land there is no hill: the tunnel goes on)
       run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
-  // X with a pickaxe and nothing else to use it on: dig down where you stand
-  if (alt && inHand() === "pickaxe" && under && GROUND.has(under) && !":n".includes(under))
-    return {p: here, it: {text: "Dig down", here: true, run: () => act("dig_down", {with: "pickaxe"})}};
+  // X and nothing else to use it on: dig down where you stand, with the pickaxe in hand or by hand (slower: the server
+  // always allowed it). Bare-handed on the meadow X answered "Needs a hoe": a hoe tills, and X digs. A hoe in hand tills
+  if (alt && inHand() !== "hoe" && under && GROUND.has(under) && !":n".includes(under) && (inHand() === "pickaxe" || !wet(under)))
+    return {p: here, it: {text: "Dig down", here: true, run: () => act("dig_down", inHand() === "pickaxe" ? {with: "pickaxe"} : {})}};
   for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it) && inReach(p, it)) return {p, it}; }
   // then anything within reach (USE_R): nearest first, in front of you before behind
   const p0 = ents.get("agent" + myId), ring = [];

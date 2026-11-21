@@ -84,3 +84,41 @@ def test_the_hd_looks_readout_is_the_only_one_and_lies_on_nothing(browser, serve
         assert not g.errors
     finally:
         ctx.close()
+
+
+
+# the buttons of the HUD, the way's cap, you and the way's next block on the screen: [[id, text, x, y, w, h]], cap text, your tile's box, the block's box
+HUD = """(() => { const box = (e) => { const r = e.getBoundingClientRect(); return [e.id, e.textContent.trim(), Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]; };
+  const cap = document.getElementById('waycap'), s = myPos(), z = myZ(s.x, s.y), n = WayShow.cur && WayShow.cur.now, sq = (x, y, lv) => { const q = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([i, j]) => HdLook.screenOf(x + i, y + j, lv));
+    const xs = q.map((v) => v[0]), ys = q.map((v) => v[1]); return [Math.min(...xs), Math.min(...ys) - 24, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys) + 24]; };
+  return {btns: [...document.querySelectorAll('#ttop div, #tctx div, #tbtns div, #goalhint')].filter((e) => e.getClientRects().length).map(box), cap: cap && cap.style.display === 'block' ? cap.textContent : null,
+    lit: [...document.querySelectorAll('#tDig.way, #tA.way, #tB.way')].map((e) => e.textContent.trim()), me: sq(s.x, s.y, z), next: n ? sq(n.x, n.y, n.z) : null}; })()"""
+
+
+def test_the_way_out_s_word_is_written_once_and_the_hud_leaves_you_and_its_block_alone(browser, server):
+    """The fifth audit, phones: "Dig a step" twice (a big cap beside the block and the button), the cap over the
+    dots; on its side the four buttons at the top lay over the room you stand in. One label: the lit button. No
+    button on your tile or on the way's next block; on its side the middle of the top is the land's."""
+    from game import Game, new_name
+    for w, h in ((390, 844), (844, 390)):
+        ctx = browser.new_context(viewport={"width": w, "height": h}, has_touch=True, is_mobile=True, device_scale_factor=3)
+        g = Game(ctx.new_page(), server)
+        try:
+            g.join(new_name("ph"), 3, look="hd")
+            g.clear_area()
+            for depth in (1, 2, 3):
+                assert g.rpc("act", tool="dig_down", args={})["ok"]
+                g.wait(f"myAt && myAt.z === {-depth} && !myAction", 12000)
+            g.wait("WayShow.cur && WayShow.cur.now && !WayShow.busy && document.querySelector('#tDig.way')", 8000)
+            g.rest()
+            s = g.js(HUD)
+            assert s["lit"] == ["Dig a step"] and not (s["cap"] or "").strip(), s                    # the word once: on its button, lit
+            hit = lambda b, r: b[2] < r[0] + r[2] and r[0] < b[2] + b[4] and b[3] < r[1] + r[3] and r[1] < b[3] + b[5]
+            assert not [b[0] for b in s["btns"] if hit(b, s["me"]) or hit(b, s["next"])], s           # nothing on you, nothing on the block
+            if w > h:
+                top = [b for b in s["btns"] if b[3] < 60]
+                assert len(top) == 5 and not [b[0] for b in top if b[2] < w / 2 + 130 and b[2] + b[4] > w / 2 - 130], top     # goals, Talk, Menu at the left, Items, Craft at the right: the middle is clear
+                assert all(b[4] >= 44 and b[5] >= 44 for b in top), top
+            assert not g.errors, g.errors
+        finally:
+            ctx.close()

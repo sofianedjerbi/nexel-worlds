@@ -107,3 +107,34 @@ def test_the_islands_people_choose_what_they_do(browser, server):
     assert one["did"] != two["did"] and one["said"] != two["said"]                                                # another visit, another play
     page.close()
     assert not errors, errors
+
+
+
+# every bubble drawn, and the boxes of what the first screen writes (title_scene.js `hides`): [[x, y, w, h] of each bubble], [boxes], bubbles in all
+SPOKEN = """(() => { TitleScene.hides(0, 0, 1, 1); return {drawn: bubbles.filter((b) => b.at).map((b) => [b.at[0], b.at[1], b.w, b.h, b.name]), boxes: TitleScene.boxes.map((b) => [b.x, b.y, b.w, b.h]), all: bubbles.length}; })()"""
+
+
+def test_nobody_s_words_or_name_are_drawn_under_the_name_of_the_game_its_line_or_its_window(browser, server):
+    """The fifth audit, upright phone: the line "Step aside. No, further." lay across a bubble cut off by the logo, a
+    scrap of another stuck out under it. Everybody speaks at once here, eye after eye: what would lie on the logo, the
+    line or the window is not drawn (nor their name there); the others are, and none of them touches those boxes."""
+    for w, h in ((390, 844), (1280, 760)):
+        page = browser.new_page(viewport={"width": w, "height": h})
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.goto(server)
+        page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene')", timeout=15000)
+        drawn = hidden = 0
+        for who in range(5):                                     # the eye on each of them in turn: they come under every box
+            page.evaluate("""(i) => { const S = TitleScene.S, p = S.people[i % S.people.length]; cam.x = camT.x = S.ox + p.x; cam.y = camT.y = S.oy + p.y; S.till = S.tick + 1e6; S.eye = p; bubbles.length = 0;
+              S.people.forEach((q) => S.say(q, 'Did you water the wheat today?')); window.__f = 0; return 1; }""", who)
+            page.wait_for_function("++window.__f > 12", polling="raf")
+            s = page.evaluate(SPOKEN)
+            assert len(s["boxes"]) == 3, s["boxes"]
+            for x, y, bw, bh, name in s["drawn"]:
+                assert not any(x < b[0] + b[2] and b[0] < x + bw and y - 22 < b[1] + b[3] and b[1] < y + bh + 8 for b in s["boxes"]), (w, name, [x, y, bw, bh], s["boxes"])     # (its name's tab is over it, its tail under it)
+            drawn += len(s["drawn"]); hidden += s["all"] - len(s["drawn"])
+        assert drawn >= 3 and hidden >= 1, (w, drawn, hidden)
+        logo = page.evaluate("(() => { const b = TitleScene.boxes[0]; return [TitleScene.hides(b.x + 10, b.y + 10, 40, 20), TitleScene.hides(-500, -500, 10, 10)]; })()")
+        assert logo == [True, False] and not errors, errors
+        page.close()

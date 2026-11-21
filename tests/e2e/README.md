@@ -59,7 +59,7 @@ By area, for "the files I touched and their neighbours":
 | light | depth, sunland, shaders, daylight, narrow, water |
 | hidden | xray, holes, underground, caves, behind, views, stacked |
 | HD look | hd, hd_land, hd_sun, hd_phone, hd_window |
-| building | build, building, floors, place, digging, climb, mark, edges |
+| building | build, buildghost, building, floors, place, digging, climb, mark, edges |
 | moving, living | moving, fall, swim, living, gathering, wild, boss, flee, wear, races, monkey |
 | screens | ui, menu, bag, bookkeys, craft_search, help, prompts, complete, ask, bubbles, social, zoom, frame, models |
 | first screen, phone, sound | title, title_scene, account, demo, bundle, phone, phone_taps, touch, sound, world |

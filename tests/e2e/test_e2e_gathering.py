@@ -23,7 +23,7 @@ def test_flowers_around_and_under_you(game):
     assert game.tile(0, 0) == "." and game.inv("flower") == 1
     game.press("Space", 500)                                 # then the diagonal one
     assert game.tile(1, 1) == "." and game.inv("flower") == 2
-    assert game.actions() == ""                              # nothing left to do here
+    assert game.actions() == "X | Dig down"                  # nothing left to pick here (X by hand digs down, as anywhere)
 
 
 def test_space_never_stops_you(game):

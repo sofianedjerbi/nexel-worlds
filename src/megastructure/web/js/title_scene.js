@@ -113,7 +113,16 @@ const TitleScene = (() => {
     bubbles.length = 0; emotes.clear(); mailAt = new Set(); troughAt = new Set();
     if (!me) { cam.x = camT.x = 0; cam.y = camT.y = 0; }
   }
-  return {start, stop, step, get on() { return S.on; }, S};
+  // What the first screen writes on the page (the game's name, its line, its window): what one of the island's people says, and their name, is not drawn under them
+  // ("text over text": the line lay across a bubble cut off by the name, and a bubble's scrap stuck out under it). (x, y, w, h: css px) -> it would lie on one of them
+  let boxes = [], boxesAt = -1e9;
+  function hides(x, y, w, h) {
+    if (!S.on) return false;
+    if (performance.now() - boxesAt > 300) { boxesAt = performance.now(); boxes = [".logo", "#splash", ".menu"].map((q) => { const e = $("joinbox").querySelector(q), r = document.createRange(); if (!e) return null; r.selectNodeContents(e);
+      const a = q === ".menu" ? e.getBoundingClientRect() : r.getBoundingClientRect(); return a.width ? {x: a.left - 8, y: a.top - 8, w: a.width + 16, h: a.height + 16} : null; }).filter(Boolean); }
+    return boxes.some((b) => x < b.x + b.w && b.x < x + w && y < b.y + b.h && b.y < y + h);
+  }
+  return {start, stop, step, hides, get boxes() { return boxes; }, get on() { return S.on; }, S};
 })();
 // It plays from the moment the pictures are loaded, while the first screen shows (not when you came to follow someone)
 ready.then(() => { if ($("joinbox").style.display !== "none" && !new URLSearchParams(location.search).get("follow")) TitleScene.start(); if (!TitleScene.on) document.body.classList.add("scene"); });   // (no island: the land as it comes)

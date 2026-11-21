@@ -47,6 +47,7 @@ def serve_http(connection, request, accounts=None):
             return _answer(request, f.read_bytes(), CONTENT_TYPES[f.suffix], "no-cache" if f.suffix == ".json" else STATIC[folder], (str(f), f.stat().st_mtime_ns))
         if folder == "audio" and name == "sfx.json":
             logging.getLogger(__name__).warning("no sound effects built: run `uv run python tools/build_audio.py`")
+            return Response(204, "No Content", Headers([("Cache-Control", "no-cache")]), b"")   # (a state, not a missing file: the page plays without them (audio.js), and its console has no error. It was a 404: every page of a new checkout had one)
     return connection.respond(404, "not found\n")
 
 STATIC = {"assets": "max-age=3600", "js": "no-cache", "css": "no-cache",   # folder -> Cache-Control

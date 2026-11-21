@@ -80,10 +80,13 @@ def test_farming_hoe_seed_water_harvest(game):
 
 
 def test_tilling_needs_a_hoe(game):
+    """Without a hoe nothing is tilled; and X does not answer "Needs a hoe" in red: X digs down, by hand too."""
     game.face(1, 0)
-    assert "Needs a hoe" in game.js("intent(facingTile(), true).text")
-    game.press("x", 400)
-    assert game.tile(1, 0) == "."
+    assert "Needs a hoe" in game.js("intent(facingTile(), true).text")       # (asked of that tile alone)
+    assert game.js("facingNow(true).it.text") == "Dig down"
+    game.press("x", 100)
+    game.wait("myAt && myAt.z === -1 && !myAction", 20000)
+    assert game.tile(1, 0) == "." and "hoe" not in game.toast()
 
 
 def test_paths_and_planks(game):

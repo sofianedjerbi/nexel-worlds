@@ -36,7 +36,7 @@ def test_stairs_are_laid_with_one_press_and_walked_up(game):
     game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0); game.arrive()
     game.press("b")
     game.js(f"Build.S.at = {{x: {x + 1}, y: {y - 3}}}")       # (beside the first flight's top step: this one comes straight out)
-    assert game.js("Build.hint(Build.S.at).text") == "Plan stairs (2 steps)"
+    assert game.js("Build.hint(Build.S.at).text") == "Build stairs (2 steps)"
     game.press("Space")
     game.wait(f"surfacesAt({x + 1}, {y - 3})[0] === 2 && surfacesAt({x + 1}, {y - 2})[0] === 1 && Build.S.plans.size === 0", 20000)
     game.press("b")
