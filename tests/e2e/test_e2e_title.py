@@ -102,14 +102,17 @@ def test_the_first_screen_is_itself_before_any_script_has_come(browser, server):
 
 def test_wake_up_says_the_world_is_still_coming(browser, server):
     """The demo's world takes seconds to come (Python in the page): Wake up pressed meanwhile showed nothing for
-    fourteen seconds. The row says so while it waits, and is itself again when the world is there."""
+    fourteen seconds. The row says so while it waits, and is itself again when the world is there. The strip at its
+    foot is as long as the share of the world that has come (local.js says it in px: --boot-w), on a dark track."""
     page = browser.new_page(viewport={"width": 1280, "height": 760})
     page.goto(server)
     page.wait_for_function("typeof ready !== 'undefined' && typeof TITLE !== 'undefined'")
     label = "document.querySelector('#join span').textContent"
     assert page.evaluate(label) == "Wake up"
     page.evaluate("(() => { document.body.classList.add('booting'); agentWs = {readyState: 0}; titleDraw(); })()")       # (as in the demo: asked to join, the socket not open yet)
-    assert page.evaluate(label) == "Waking the world…" and page.evaluate("getComputedStyle($('join'), '::after').animationName") == "booting"
+    assert page.evaluate(label) == "Waking the world…" and page.evaluate("getComputedStyle($('join'), '::after').width") == "0px"
+    page.evaluate("$('join').style.setProperty('--boot-w', '96px')")
+    assert page.evaluate("[getComputedStyle($('join'), '::after').width, getComputedStyle($('join'), '::after').animationName, getComputedStyle($('join'), '::before').width === $('join').clientWidth + 'px']") == ["96px", "none", True]
     page.evaluate("(() => { document.body.classList.remove('booting'); agentWs = null; titleDraw(); })()")
     assert page.evaluate(label) == "Wake up" and page.evaluate("getComputedStyle($('join'), '::after').content") == "none"
     page.close()

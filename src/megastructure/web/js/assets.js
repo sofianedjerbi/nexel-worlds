@@ -9,12 +9,18 @@ const ANIMAL_SHEETS = ["chicken_brown", "chicken_red", "chicken_blue", "chicken_
 const ASSETS = [...ANIMAL_SHEETS, "thin_fall", "stump_thin", "fruit_bare", "barn", "well", "coop", "blanket", "basket", "mailbox", "boats", "deep_mask", "house_walls", "house_roof", "gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "hearts", "sliders", "hill1", "hill2", "hill3", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
   "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen", "tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling"];
 let GEN = {};
+// A build that sends the pictures as one file (web_bundle.py: the online demo, a server started with --bundle) says so
+// in the page: ASSET_PACK = {url, files: {name: [where, how long]}, blob: the file, coming}. One request, not seventy; each picture's bytes are
+// its file's. If the pack does not come, the files are asked for one by one, as in development.
+const SHEET_PACK = window.ASSET_PACK ? ASSET_PACK.blob : Promise.resolve(null);       // (asked for by the page itself, before this script had come)
+const fromPack = (name, type) => SHEET_PACK.then((b) => { const at = b && ASSET_PACK.files[name]; return at ? b.slice(at[0], at[0] + at[1], type) : null; });
 function loadImg(n) {   // decoded up front: a sheet decoded lazily on first draw stalls that frame (~100 ms)
-  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => { if (n === "character") IMG[n] = ToolArt.extend(i); res(i); }); i.onerror = rej; i.src = `assets/${n}.png`;
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => { if (n === "character") IMG[n] = ToolArt.extend(i); res(i); }); i.onerror = rej;
+    if (window.ASSET_PACK) fromPack(n + ".png", "image/png").then((b) => { i.src = b ? URL.createObjectURL(b) : `assets/${n}.png`; }); else i.src = `assets/${n}.png`;
     if (n !== "character") IMG[n] = i; });       // (the character sheet is only there once the rows of its other tools are under it: tool_art.js)
 }
 const ready = Promise.all([...ASSETS.map(loadImg),
-  fetch("assets/gen.txt").then((r) => r.text()).then((t) => t.trim().split("\n").forEach((n, i) => GEN[n] = i)),
+  fromPack("gen.txt", "text/plain").then((b) => b ? b.text() : fetch("assets/gen.txt").then((r) => r.text())).then((t) => t.trim().split("\n").forEach((n, i) => GEN[n] = i)),
   document.fonts.load("18px SproutPixel")]);
 
 // The ground sheets share one 11x5 "blob" layout. Work out which neighbours each cell connects to from
