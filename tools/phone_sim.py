@@ -65,12 +65,12 @@ def server(saves, port):
 class Phone:
     """A page with a recorder, touch by CDP, the CPU's rate set only while a scenario plays."""
 
-    def __init__(self, ctx, url, rate, line):
+    def __init__(self, ctx, url, rate, line, dev=True):
         from game import Game
         ctx.add_init_script(RECORD)
         self.page = ctx.new_page()
         self.cdp = ctx.new_cdp_session(self.page)
-        self.g, self.rate, self.url = Game(self.page, url), rate, url
+        self.g, self.rate, self.url, self.dev = Game(self.page, url), rate, url, dev
         if line != "none":
             r, trip = LINES[line]
             self.cdp.send("Network.enable")
@@ -123,7 +123,7 @@ def wake(g, name):
 def join(ph, name):
     g = ph.g
     wake(g.load(2), name)
-    g.rpc("dev_time", phase=.3)
+    _ = ph.dev and g.rpc("dev_time", phase=.3)               # (--url: a build of its own, the demo's: no dev tools)
     g.js("setOpt('names', false); setOpt('hints', false)")
 
 
@@ -147,7 +147,7 @@ def scene(ph, name, secs, profile):
         r["profile"] = ph.title_prof if profile else None   # (its top functions: the island's frames)
         r["wall_s"] = round(time.time() - t0, 1)
         return r
-    g.clear_area(12)
+    _ = ph.dev and g.clear_area(12)
     if name == "stand":
         return ph.record(lambda: time.sleep(secs), profile)
     if name in ("walk", "sprint"):
@@ -183,7 +183,6 @@ def stats(r):
            "long": [len(r["long"]), round(sum(d for _, d in r["long"])), round(max([d for _, d in r["long"]], default=0))],
            "draws": q([h[2] for h in hd], .5), "faces": q([h[3] for h in hd], .5), "land_ms_p95": q([h[4] for h in hd], .95),
            "heap_mb": [round(r["f"][0][2]), round(r["f"][-1][2])] if r["f"] else None, "went": r.get("went"), **woke(r)}
-
 
 
 def table(res):
@@ -235,6 +234,7 @@ def main():
     p.add_argument("--device", default="", choices=["", "android"])
     p.add_argument("--bench", action="store_true", help="only the benchmark: this machine's (or the phone's) score")
     p.add_argument("--at", default="", help="x,y: play there (a teleport after waking), the same place every run")
+    p.add_argument("--url", default="", help="a page served already (the demo's dist/ build): no server of its own, no dev tools (stand, walk, sprint, title)")
     p.add_argument("--saves", default="")
     p.add_argument("--out", default="")
     p.add_argument("--dir", default=str(OUT))
@@ -244,7 +244,7 @@ def main():
     port = free_port()
     saves = a.saves or tempfile.mkdtemp(prefix="phone_sim")
     Path(saves).mkdir(parents=True, exist_ok=True)
-    proc, pw, browser = None if a.bench else server(saves, port), sync_playwright().start(), None
+    proc, pw, browser = None if a.bench or a.url else server(saves, port), sync_playwright().start(), None
     try:
         if a.device == "android":                            # (adb: Chrome's DevTools socket here, and the phone's localhost:port to this server)
             subprocess.run(["adb", "forward", "tcp:9222", "localabstract:chrome_devtools_remote"], check=True)
@@ -261,7 +261,7 @@ def main():
         print(json.dumps(head), flush=True)
         if a.bench:
             return
-        ph = Phone(ctx, f"http://127.0.0.1:{port}", rate, a.line)
+        ph = Phone(ctx, a.url.rstrip("/") or f"http://127.0.0.1:{port}", rate, a.line, not a.url)
         join(ph, f"sim{os.getpid() % 1000}")
         if a.at:                                             # (one place every run: where a new player wakes changes, and with it what is round them)
             x, y = map(int, a.at.split(","))

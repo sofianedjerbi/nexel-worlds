@@ -70,12 +70,14 @@ const HdLevel = (() => {
   const wallAt = (x, y, z, s, f) => { const d = Math.max(1, f.T - f.B); return [x, f.y - Math.max(0, Math.min(d, z - f.B)) * Math.min(.4, 1 / d), f.T]; };
   // cut(g, me, a, zs): nothing drawn on g after it (till g.restore) lies on your body: its own px are cut out of the marks (me: your sprite {canvas, fx, fy}, a: its foot on g, zs: g's units an art px). A box at your tile covered all of you
   // body(me, a, zs) -> your sprite's box on g ({x, y, w, h}: the bounds of its own px): no key's box is drawn in it, and one it covers most of is not drawn at all (target.js: it framed your head)
-  const runs = new WeakMap();
+  const runs = new WeakMap(), poses = new Map();
   function runsOf(c) {   // (a sprite's own px: runs of a row [x, y, n, ...], and their bounds b [x0, y0, x1, y1])
     if (!c || !c.width) return null; let r = runs.get(c); if (r && r.v === c._v) return r;
+    const pk = c._h === undefined ? null : c.width + "x" + c.height + ":" + c._h, kept = pk && poses.get(pk);   // (a picture made by the same calls as one read before (canvas._h, hd.js): the same px. A walk's eight poses were read back from the canvas at every change: an eighth of a phone's sprint)
+    if (kept) { runs.set(c, r = {v: c._v, l: kept.l, b: kept.b}); return r; }
     const w = c.width, d = c.getContext("2d", {willReadFrequently: true}).getImageData(0, 0, w, c.height).data, l = [], b = [1e9, 1e9, -1, -1];
     for (let j = 0; j < c.height; j++) { let i0 = -1; for (let i = 0; i <= w; i++) { const on = i < w && d[(j * w + i) * 4 + 3] >= 128; if (on && i0 < 0) i0 = i; else if (!on && i0 >= 0) { l.push(i0, j, i - i0); b[0] = Math.min(b[0], i0); b[1] = Math.min(b[1], j); b[2] = Math.max(b[2], i); b[3] = Math.max(b[3], j + 1); i0 = -1; } } }
-    runs.set(c, r = {v: c._v, l, b: b[2] >= 0 ? b : null}); return r;
+    runs.set(c, r = {v: c._v, l, b: b[2] >= 0 ? b : null}); if (pk) { if (poses.size > 400) poses.clear(); poses.set(pk, r); } return r;
   }
   function cut(g, me, a, zs) {
     const r = me && a && runsOf(me.canvas); if (!r) return;

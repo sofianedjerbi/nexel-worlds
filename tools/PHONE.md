@@ -18,6 +18,12 @@ Two ways: a phone simulated on this Mac (`tools/phone_sim.py`), and the real pho
 - **GPU**: Chrome cannot slow a GPU. `--gpu soft` draws with SwiftShader (the CPU doing the GPU's work): far slower
   than this Mac's GPU, a pessimistic stand-in. `hw` is the Mac's GPU: its GPU ms say what is drawn, not a phone's time.
 - **Line**: `--line 4g|fast3g` (the lines of `tools/perf_serve.py`).
+- **The demo itself**: `--url http://127.0.0.1:PORT` plays a page served already (the demo's build:
+  `python tools/build_pages.py DIR`, then `python -m http.server PORT` in DIR): its Python server in the page's worker,
+  no dev tools, so `title,stand,walk,sprint` only, wherever the new player wakes.
+- **The rate drifts**: on 2026-11-21 this Mac's BENCH was 11 ms (21.9 when `REF` was set), so `low` slowed it x27, twice
+  the Geekbench ratio (x12.7), and Chrome's throttle is worse than linear past x10 (a land of 6 chunks: 7 ms at x1,
+  61 at x8, 407 at x27). For numbers comparable with older ones, a fixed `--cpu 13`.
 - **Place**: `--at 40,40` plays there (a teleport after waking). A new player wakes somewhere else each run, and what
   is round them (trees, water) moved walk's fps from 36 to 55 between two runs of the same code: to compare two versions,
   the same place, a fixed `--cpu` rate, and the runs of the two taken in turn (the Mac is shared: a run alone can be
