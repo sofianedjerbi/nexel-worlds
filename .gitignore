@@ -26,3 +26,4 @@ src/megastructure/web/audio/
 music/samples/
 .perf/
 .cache/
+.claude/worktrees/
