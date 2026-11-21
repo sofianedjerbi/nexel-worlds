@@ -28,6 +28,16 @@ def go(g, x, y, z=None, wait="!HdLook.busy"):
     return g.js(STATE)
 
 
+def tidy(g, x, y):
+    """The meadow as it was round (x, y), nobody on it: the world is the next test's too (a hill left standing laid its shadow on another test's stone)."""
+    g.rpc("dev_teleport", x=x, y=y, z=0)
+    g.arrive()
+    g.rpc("dev_creatures", clear=40)
+    g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-14, 15) for i in range(-14, 15)], col=[0])     # (whole land: a stamp lays a meadow over a room, it does not fill it)
+    g.stamp(-14, -14, ["." * 29] * 29)
+    g.rest()
+
+
 def test_on_a_small_hill_and_behind_it_no_window_opens_and_behind_it_you_show_through(browser, server):
     g = hd(browser, server)
     calm(g)
@@ -42,6 +52,7 @@ def test_on_a_small_hill_and_behind_it_no_window_opens_and_behind_it_you_show_th
     assert .05 < behind["seen"] < .6, behind                               # hidden where the hill is in front, one px in two of you through it (it was 1: all of you, over a hill opened like a box)
     front = go(g, x + 4, y + 5)
     assert front["n"] == 0 and front["seen"] > .9, front
+    tidy(g, x, y)
 
 
 def test_behind_a_wall_you_built_your_body_is_behind_it_not_on_it(browser, server):
@@ -59,6 +70,7 @@ def test_behind_a_wall_you_built_your_body_is_behind_it_not_on_it(browser, serve
     assert s["n"] == 0 and s["pitch"] < 36.1 and .3 < s["seen"] < .9, s    # your head over the wall whole, the rest through it (it was 1: the whole cat, feet on the wall's top)
     lv = go(g, x, y - 1, 2)                                                # ON it
     assert lv["seen"] > .9 and lv["n"] == 0, lv
+    tidy(g, x, y)
 
 
 def test_in_a_pit_seen_from_the_side_the_floor_shows_through_a_veil_of_the_meadow(browser, server):
@@ -67,15 +79,24 @@ def test_in_a_pit_seen_from_the_side_the_floor_shows_through_a_veil_of_the_meado
     x, y = g.pos()
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in (-1, 0, 1) for i in (3, 4, 5)], col=[-4])     # a pit 3 x 3, four deep
     g.rest()
-    s = go(g, x + 4, y, -4, "HdLook.win.a === 1 && !HdLook.busy")
-    assert s["pitch"] < 36.1 and s["n"] >= 6 and s["seen"] > .9, s        # the side view (its north row shows from the side), the window on it, you whole over the veil
-    pairs = [[g.js(AT_, [x + i + .5 + o / 16, y + 1.5, -4]) for o in (0, 2)] for i in (3, 5)]      # its south row's floor: behind the pit's south wall
-    assert all(sum(green(c) for c in p) == 1 for p in pairs), pairs       # one px in two the meadow in front of it, one the floor
-    g.js("(() => { HdLook.veil = 0; return 1; })()"); g.frames(2)
-    assert not any(green(c) for p in [[g.js(AT_, [x + i + .5 + o / 16, y + 1.5, -4]) for o in (0, 2)] for i in (3, 5)] for c in p)
-    g.js("(() => { HdLook.veil = 1; return 1; })()"); g.frames(2)
+    s = go(g, x + 4, y + 1, -4, "HdLook.win.a === 1 && !HdLook.busy")       # its south row: behind the pit's south wall
+    g.js("(() => { WayShow.paint = () => {}; return 1; })()"); g.frames(3)  # (the way out's marks run over these px)
+    assert s["pitch"] < 36.1 and s["n"] >= 3 and s["seen"] > .9, s        # the side view (its north row shows from the side), the window on it, you whole
+    P = {"west": [x + 3.5, y + 1.5, -4], "east": [x + 5.5, y + 1.5, -4], "mine": [x + 4.2, y + 1.85, -4]}     # the floor beside you, each side; a corner of your own tile
+    read = lambda: {k: g.js(AT_, v) for k, v in P.items()}
+    on = read()
+    g.js("(() => { HdLook.veil = 0; return 1; })()"); g.frames(3)
+    off = read()
+    g.js("(() => { HdLook.veil = 1; return 1; })()"); g.frames(3)
+    tint = lambda k: (on[k][1] - on[k][0]) - (off[k][1] - off[k][0])
+    assert not any(green(c) for c in list(on.values()) + list(off.values())), (on, off)      # the floor's own px, with the veil too (the first veil was a dark checker: one px in two was grass)
+    assert max(tint("west"), tint("east")) >= 6, (on, off)                 # a little of the meadow's green over the floor: seen through the ground (one side may be your way: clear)
+    assert all(sum(on[k]) >= sum(off[k]) - 12 for k in on), (on, off)      # and never darker for it
+    assert on["mine"] == off["mine"], (on, off)                            # your own tile: clear
     grass = lambda c: c[1] >= c[0] and c[1] > c[2] + 40
-    assert grass(g.js(AT_, [x + 4.5, y + 4.5, 0])) and grass(g.js(AT_, [x + 4.5 + 2 / 16, y + 4.5, 0]))    # the meadow south of it: whole
+    south = [g.js(AT_, [x + dx + .5, y + 4.5, 0]) for dx in (1, 7)]
+    assert all(grass(c) for c in south), south                             # the meadow south of it: whole
+    tidy(g, x, y)
 
 
 def test_the_eye_tilts_by_one_rule(browser, server):
@@ -109,6 +130,7 @@ def test_the_eye_tilts_by_one_rule(browser, server):
         got.append((name, tz, round(s["pitch"]), round(g.js("HdLevel.shows"), 1)))
     want = [(name, at[2], 68 if steep else 36) for name, at, steep in table]
     assert [v[:3] for v in got] == want, got
+    tidy(g, x, y)
 
 
 def test_a_tunnel_is_not_opened_from_afar_nor_from_the_hill_over_it(browser, server):
@@ -124,29 +146,46 @@ def test_a_tunnel_is_not_opened_from_afar_nor_from_the_hill_over_it(browser, ser
     assert top["n"] == 0 and top["seen"] > .9, top
     inside = go(g, x + 8, y, 0, "HdLook.win.a === 1 && !HdLook.busy")
     assert inside["n"] >= 9 and inside["seen"] > .9, inside
+    tidy(g, x, y)
 
 
 def test_a_fire_under_the_land_does_not_light_the_meadow_and_who_stands_over_your_room_has_the_ground_under_them(browser, server):
     g = hd(browser, server)
     g.js("setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
     x, y = g.pos()
-    g.spawn("chicken", 1, 2, still=900)                                   # (on the meadow, before the room is under it)
+    cid = g.spawn("chicken", 1, 2, still=4000)                             # (on the meadow, before the room is under it; it stays)
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[-14, -11, 0])
     g.give(campfire=1)
     g.rest()
-    go(g, x, y, -14, "HdLook.win.a === 1 && !HdLook.busy")
+    west = lambda: go(g, x - 3, y, -14, "HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.9")     # the room's west end: your own lantern does not reach its east end
+    g.hour(.9, still=True)
+    west()
+    lum = lambda c: c[0] + c[1] + c[2]
+    P = {"meadow": [x + 4.5, y + 3.5, 0], "floor": [x + 3.5, y + 1.5, -14]}   # the meadow two tiles from where the fire will be, as the screen has them; the room's floor beside it
+    read = lambda: {k: lum(g.js(AT_, v)) for k, v in P.items()}
+    dark = read()                                                          # the SAME px before the fire and with it (two px of a meadow differ by its tufts, and the fire flickers: it was one px against another, with a margin)
+    go(g, x, y, -14)
     r = g.js("(a) => rpc('act', a)", {"tool": "place", "args": {"x": x + 2, "y": y, "item": "campfire", "z": -14}})
     assert r.get("ok"), r
-    g.hour(.9, still=True)
-    g.wait("HdLook.cam.pitch > 67.9 && !HdLook.busy"); g.rest()
-    lum = lambda c: c[0] + c[1] + c[2]
-    near, far = (lum(g.js(AT_, [x + dx + .5, y + 3.5, 0])) for dx in (4, 6))     # the meadow two tiles from the fire as the screen has them, and four (the meadow is nearer the eye than the room: 23 px a tile; the fire's light reached 64)
-    assert abs(near - far) <= 12, (near, far)                              # (it was a warm ring on the grass, 14 levels over the fire)
-    assert lum(g.js(AT_, [x + 1.5, y + .5, -14])) > far + 20               # the room's floor by the fire: lit (the fire flickers: 38 to 90 over the meadow)
+    west()
+    lit = dark
+    for _ in range(60):                                                    # until its light is in the picture (the server's tick, the tile on the page, the light's picture made again)
+        g.frames(3)
+        lit = read()
+        if lit["floor"] > dark["floor"] + 15:
+            break
+    state = g.js(f"[clock.phase, HdLook.win.a, HdLook.cam.pitch, combAt({x + 2}, {y}), HdLook.stands()]")
+    assert lit["floor"] > dark["floor"] + 15, (dark, lit, state)           # the room's floor by the fire: lit
+    assert abs(lit["meadow"] - dark["meadow"]) <= 6, (dark, lit, state)    # the meadow over it: as it was (it had a warm ring, 14 levels over the fire)
     # somebody on the meadow over the room
     g.hour(.3, still=True)
-    g.wait("HdLook.bodies().length === 1"); g.rest()
-    assert g.js("HdLook.bodies()")[0][1] == 0, g.js("HdLook.bodies()")     # drawn at the meadow's level
-    pair = [g.js(AT_, [x + 1.5 + o / 16, y + 2.5, 0]) for o in (0, 2)]
-    assert sum(green(c) for c in pair) == 1, pair                         # the grass under its feet: one px in two of it stays (it hung in the room's picture, nothing under it)
-    assert not green(g.js(AT_, [x - 1.5, y + 2.5, 0])) and not green(g.js(AT_, [x - 1.5 + 2 / 16, y + 2.5, 0]))    # a tile of the roof nobody stands on: lifted
+    key = f"chicken{cid}"
+    g.wait(f"ents.has('{key}') && HdLook.bodies().some((b) => b[0] === 'chicken')", timeout=8000)
+    g.rest()
+    b = g.js(f"(() => {{ const q = ents.get('{key}'); return [Math.round(q.x), Math.round(q.y), q.e.z, q.x, q.y]; }})()")
+    assert b[:3] == [x + 1, y + 2, 0], (b, g.js("HdLook.bodies()"))        # where it was put, on the meadow: over the room's south rows, where the land's top is inside the window on the screen
+    pair = [g.js(AT_, [b[0] + .5 + o / 16, b[1] + .9, 0]) for o in (-7, -5)]     # its tile's south-west corner: not its body
+    grass = lambda c: c[1] >= c[0] and c[1] > c[2] + 40                    # (a meadow's px: its green, and its pale tufts: (210, 225, 119) was "not green", once in eight runs)
+    assert sum(grass(c) for c in pair) == 1, (pair, b, g.js("[HdLook.bodies(), HdLook.win.a, HdLook.win.n]"))     # the grass under its feet: one px in two of it stays (it hung in the room's picture, nothing under it)
+    assert not grass(g.js(AT_, [x - 1.5, y + 2.5, 0])) and not grass(g.js(AT_, [x - 1.5 + 2 / 16, y + 2.5, 0]))    # a tile of the roof nobody stands on: lifted
+    tidy(g, x, y)

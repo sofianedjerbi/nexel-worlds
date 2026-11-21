@@ -99,9 +99,15 @@ def test_the_aim_on_a_cave_s_wall_is_on_the_cell_you_hit(browser, server):
     g.rpc("dev_teleport", x=x - 3, y=y, z=1)                               # the room's west end
     g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
     g.hold_item("pickaxe")
-    for _ in range(2):                                                     # (the first press puts the shown way out away)
+    AIM = "HdLook.aim && aimedTile() && aimedTile().it && aimedTile().it.cell === 2"
+    for _ in range(8):                                                     # (a press puts the shown way out away; standing still brings it back, and while it is shown nothing is aimed at: on a busy machine it was back before the aim was read: {aim: None, way: 9})
         g.hold(["ArrowLeft"], 250)
-    g.wait("HdLook.aim && aimedTile() && aimedTile().it && aimedTile().it.cell === 2", timeout=4000)
+        if g.js(f"!!({AIM})"):
+            break
+    try:
+        g.wait(AIM, timeout=4000)
+    except Exception:                                                      # (what the page has when the aim is not there: it failed "under load" with nothing said)
+        raise AssertionError(g.js("(() => { const a = aimedTile(), p = myPos(), e = ents.get('agent' + myId); return {aim: HdLook.aim, it: a && a.it, at: a && a.p, pos: p, f: [e.fx, e.fy], z: myAt && myAt.z, held: typeof held !== 'undefined' ? held : null, way: WayShow.cur && WayShow.cur.path.length, pitch: HdLook.cam.pitch, win: HdLook.win.a, act: typeof myAction !== 'undefined' && myAction}; })()")) from None
     g.rest()
     a = g.js("HdLook.aim")
     c = [g.js(f"HdLook.screenOf({x - 4 + i}, {y + j}, 2)") for i, j in ((0, 0), (1, 1))]     # the wall's cell at your level: its top, one level over your floor

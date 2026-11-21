@@ -41,7 +41,7 @@ def test_a_stair_s_treads_are_warm_steps_lighter_at_the_top_and_the_floor_is_a_g
     calm(g)
     x, y = stair(g)
     at(g, x + 5, y, -5)
-    g.js("(() => { HdLook.veil = 0; return 1; })()"); g.frames(2)               # (the treads' own px: with the veil of the meadow south of them, one px in two of each is grass: test_e2e_hd_behind.py)
+    g.js("(() => { HdLook.veil = 0; return 1; })()"); g.frames(3)               # (the treads' own light: the veil of the meadow south of them lays a little of its green over the open ones: test_e2e_hd_behind.py)
     treads = {i: g.js(TILE, [x + i, y, -i]) for i in (2, 3, 4, 7, 8)}          # 2 to 4 under the open sky, 7 and 8 under the land
     assert all(warm(c) for c in treads.values()), treads                         # steps you can walk: warm earth, the open ones too (they were (106, 90, 85): grey)
     assert lum(treads[2]) > lum(treads[3]) > lum(treads[4]) and lum(treads[2]) > lum(treads[4]) * 1.1 and lum(treads[7]) > lum(treads[8]), treads    # the top ones lighter: down is read

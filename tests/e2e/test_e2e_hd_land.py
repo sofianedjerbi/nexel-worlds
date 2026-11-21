@@ -128,11 +128,8 @@ def test_in_a_trench_two_deep_under_the_open_sky_the_floor_you_stand_on_is_seen_
     g.rest()
     assert g.js("HdLook.cam.pitch") == base and g.js("HdLook.level[0]") == z - 2      # (the surface's pitch: nothing tilts)
     green = lambda c: c[1] > c[0] + 15 and c[1] > c[2] + 40
-    seen = [[g.js(AT_, [x + dx + .5 + o / 16, y + .5, z - 2]) for o in (0, 2)] for dx in (-1, 1)]
-    assert all(sum(green(c) for c in pair) == 1 for pair in seen), seen    # (the floor beside you: its own px, through a VEIL of the meadow south of it: one px in two of each, 2 x 2 (it was all floor: the floor read as lying on the meadow))
-    g.js("(() => { HdLook.veil = 0; return 1; })()"); g.frames(2)
-    assert not any(green(g.js(AT_, [x + dx + .5, y + .5, z - 2])) for dx in (-1, 1))      # (no veil: the floor's own px, not the grass)
-    g.js("(() => { HdLook.veil = 1; return 1; })()"); g.frames(2)
+    seen = [g.js(AT_, [x + dx + .5, y + .5, z - 2]) for dx in (-1, 1)]
+    assert not any(green(c) for c in seen), seen                      # (the floor beside you: its own px, not the grass of the land south of it)
     for dx in (-1, 1):                                                # ... and a click there is that floor's tile (it picked the rim north of the trench)
         p = g.js(f"(() => {{ const a = HdLook.screenOf({x + dx + .5}, {y + .5}, {z - 2}), q = HdLook.pick(a[0], a[1]); return q && [q.x, q.y]; }})()")
         assert p == [x + dx, y], (dx, p)
