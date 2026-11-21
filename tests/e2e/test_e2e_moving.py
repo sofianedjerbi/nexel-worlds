@@ -209,22 +209,24 @@ def test_higher_ground_is_drawn_higher_and_clicks_find_it(game):
 
 
 def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
-    """Up or down a layer: one arc from the middle of a tile to the middle of the next, clear of the edge, your shadow
-    on the ground under you, and no slower than a step. (Seen frame by frame it hung: the step took half as long
-    again, the body near the top of its arc for most of it, legs going; and it ended with a 2 px snap.)"""
+    """Up or down a layer: a crouch on the ground it leaves, one arc from there to the ground it lands on, clear of the
+    edge, a landing; your shadow on the ground under you, and no slower than a step. (Seen frame by frame it hung:
+    the step took half as long again, the body near the top of its arc for most of it, legs going; and it ended with
+    a 2 px snap. Then "Jump looks unnatural": it left the ground the instant the step began, stiff.)"""
     game.clear_area(6)
     game.stamp(1, -1, ["..."] * 3, levels=["111"] * 3); game.rest()        # ground a layer up, east of you
     x, y = game.pos()
+    L = game.js("RELIEF_STEP")                                # (art px a layer: a block)
     # your feet and your shadow over the lower ground (art px), f of the way across, going east (up) or west (down)
     at = lambda f, to: game.js(f"""(() => {{ const j = jumpOf({{x: {x} + {f}, y: {y}, tx: {to}, ty: {y}, fx: {1 if to > x else -1}, fy: 0}});
-      return {{feet: j.body + {f} * 8, shadow: j.ground + {f} * 8}}; }})()""")
+      return {{feet: j.body + {f} * {L}, shadow: j.ground + {f} * {L}, squash: j.squash}}; }})()""")
     for to in (x + 1, x):
         way = [at(f / 50, to) for f in range(1, 50)]
-        assert way[0]["feet"] < 1.2 and abs(way[-1]["feet"] - 8) < 1.2                      # from the ground, onto the ground
-        assert max(abs(b["feet"] - a["feet"]) for a, b in zip(way, way[1:])) < 1.2          # one smooth arc: no snap anywhere
-        assert all(abs(q["shadow"]) < 1e-6 for q in way[:24]) and all(abs(q["shadow"] - 8) < 1e-6 for q in way[25:])
-        assert all(q["feet"] >= 8 for q in way[24:])                                        # over the higher ground: never inside it
-        assert max(q["feet"] for q in way) > 9                                              # clear of the edge
+        assert abs(way[0]["feet"]) < 1e-6 and abs(way[-1]["feet"] - L) < 1e-6 and way[0]["squash"] and way[-1]["squash"]   # on the ground at both ends, squashed: a crouch, a landing
+        assert max(abs(b["feet"] - a["feet"]) for a, b in zip(way, way[1:])) < L / 8          # one smooth arc: no snap anywhere
+        assert all(abs(q["shadow"]) < 1e-6 for q in way[:24]) and all(abs(q["shadow"] - L) < 1e-6 for q in way[25:])
+        assert all(q["feet"] >= L - 1e-6 for q in way[24:])                                        # over the higher ground: never inside it
+        assert max(q["feet"] for q in way) > L + 1                                          # clear of the edge
     assert game.js(f"jumpOf({{x: {x} - .5, y: {y}, tx: {x} - 1, ty: {y}, fx: -1, fy: 0}})") is None   # on the level: no hop
     game.start_recording()                                    # and it takes the time of a step: up the step (J as you set off) and on, at walking pace
     game.page.keyboard.down("d"); game.page.keyboard.press("j")

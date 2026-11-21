@@ -25,7 +25,7 @@ const HdLook = (() => {
     const rc = pc._r || (pc._r = HdView.recorder(g, false)); rc.reset();   // (what was asked of its canvas, as one number: the same as last frame: the same picture: not sent to the GPU again, its shadow not looked for again)
     ctx = rc.proxy; zoom = 1; p._hd = api.n; try { drawEntity(p, sx, sy, T, now / 1000, now); } catch (e) { /* (nothing to draw) */ } finally { ctx = keep; zoom = kz; }
     if (rc.hash !== pc._h) { pc._h = rc.hash; pc._v = (pc._v || 0) + 1; }
-    return {canvas: pc, fx: w / 2, fy: Math.round(h - T), fo};
+    return {canvas: pc, fx: w / 2, fy: Math.round(h - T), fo, air: j ? Math.max(0, j.body - j.ground) : 0};   // (air: art px over the ground under it, in a jump or a fall: its shadow shrinks)
   }
   function thing(spr) {       // (a thing's sprite on a canvas of its own, once: its foot the middle of its tile's bottom)
     const [img, sx, sy, sw, sh, dx, dy] = spr, k = (img.src || img.id || "") + "|" + sx + "," + sy + "," + sw + "," + sh;
@@ -136,7 +136,7 @@ const HdLook = (() => {
   // what is planned (build mode) and what the aim would put: see-through pieces in the land, each where and as it will stand (hd_things.js): a wall, a floor's planks, a roof, a flight of stairs, a bed
   function pieces(list) {
     const out = [], big = (k) => (k === "mossback" ? [30, 8] : ANIMALS[k] && ANIMALS[k].fw === 32 ? [16, 5] : [9, 4]), add = (item, x, y, z, steps) => { const l = HdThings.ghost(item, x, y, z, steps); if (l) out.push(...l); };
-    for (const s of list) if (s.q || s.pile) { const [w, d] = s.pile ? [8, 3] : big(s.q.e && s.q.e.kind); for (const b of HdThings.shadow(w, d, (s.zs === undefined ? s.z : s.zs) * RELIEF_STEP + .5)) out.push([s.x, s.y + (s.pile ? .08 : .42), b]); if (s.q) HdSun.body(out, s); }   // (the shadow under each body and each pile: on the ground where its feet are drawn)
+    for (const s of list) if (s.q || s.pile) { const [w0, d0] = s.pile ? [8, 3] : big(s.q.e && s.q.e.kind), k = Math.min(1, (s.air || 0) / RELIEF_STEP), w = Math.max(3, Math.round(w0 * (1 - .5 * k))), d = Math.max(2, Math.round(d0 * (1 - .4 * k))); for (const b of HdThings.shadow(w, d, (s.zs === undefined ? s.z : s.zs) * RELIEF_STEP + .5)) out.push([s.x, s.y + (s.pile ? .08 : .42), b]); if (s.q) HdSun.body(out, s); }   // (the shadow under each body and each pile: on the ground where its feet are drawn; in the air, smaller the higher it is: half as wide a block up)
     HdThings.plans.clear(); if (Build.on) for (const j of Build.S.plans.values()) if (!j.take && !j.dig && j.state !== "bad" && "W%+".includes(PLACEABLE_BLOCK[j.item] || "-")) HdThings.plans.add(j.x + "," + j.y + "," + (j.up ? j.z : floorAt(j.x, j.y)));   // (planned walls join each other)
     if (Build.on) for (const j of Build.S.plans.values()) if (!j.take && !j.dig && j.state !== "bad") add(j.item, j.x, j.y, j.up ? j.z : undefined, j.steps);
     const a = Build.on ? Build.aim() : aimedTile(), it = a && a.it; if (a && a.p && it && it.ghost && it.ok !== false && !it.info && !it.walk) add(it.ghost, a.p.x, a.p.y, it.z !== undefined && !it.draw ? it.z : undefined, it.steps);
@@ -234,7 +234,7 @@ const HdLook = (() => {
       if (q !== p && z < topAt(qx, qy)) { const c = H0.column(qx, qy), b = winMap().get(qx + "," + qy); let over = false; for (let zz = z + 1; zz <= topAt(qx, qy) && !over; zz++) over = solidAt(c, zz); if (over && !(b && z >= b[0] - 1 && z <= b[1])) continue; }
       if (q !== p && wmB.size) { const b = wmB.get(qx + "," + qy), a = !b && eng.at(q.x + .5, q.y + .5, z); if (!(b ? z >= b[0] - 1 && z <= b[1] : Math.abs(z - L) <= 1) && (b || (a && wr && a[0] + 6 > wr[0] && a[0] - 6 < wr[2] && a[1] > wr[1] && a[1] - 14 < wr[3]))) continue; }   // (not in your space: on the window's tile at another level, or its body in the window's box: hidden, its name with it. It was drawn, the ground under its feet kept one px in two: a hen over your head read as in the cave with you)   // (under land the window is not on: not seen, nor their name)
       const s = ent(q, now, z);
-      list.push({canvas: s.canvas, fx: s.fx, fy: s.fy, fo: s.fo, x: q.x + .5, y: q.y + .5, z, zh: q === p ? Lf + liftD : undefined, zs: q === p ? L : z, d: q !== p, top: q === p, on: true, q, lamp: q.e && q.e.kind === "agent" ? (q === p && dep > 0 ? 2 : 1) : 0});   // (under the land your lantern is the light)   // (you: never hidden by land)
+      list.push({canvas: s.canvas, fx: s.fx, fy: s.fy, fo: s.fo, air: s.air, x: q.x + .5, y: q.y + .5, z, zh: q === p ? Lf + liftD : undefined, zs: q === p ? L : z, d: q !== p, top: q === p, on: true, q, lamp: q.e && q.e.kind === "agent" ? (q === p && dep > 0 ? 2 : 1) : 0});   // (under the land your lantern is the light)   // (you: never hidden by land)
       const wk = q.wake && q.wake.length && wakePicture(q, now);   // (a swimmer's wake: a picture of its own lying on the water, no shadow)
       if (wk) list.push({canvas: wk.canvas, fx: wk.fx, fy: wk.fy, x: q.x + .5, y: q.y + .5, z, lie: true});
     }

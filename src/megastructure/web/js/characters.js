@@ -135,7 +135,8 @@ function drawBody(p, sx, sy, S, t, now) {
         }
       } else frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
     }
-    if (j && ANIM[anim] <= ANIM.run) [anim, frame] = p.jpose || (p.jpose = [anim, frame]);   // in the air: the pose it took off in
+    if (j && ANIM[anim] <= ANIM.run) [anim, frame] = p.jpose || (p.jpose = [anim, frame]);   // crouched, landing: the pose it took off in
+    if (j && j.tuck && ANIM[anim] <= ANIM.run) { anim = "run"; frame = 2; }                // in the air: legs tucked (the run's stride)
     if (j && j.air && ANIM[anim] <= ANIM.run) { anim = "run"; frame = Math.floor(now / FALL.flail) % 2 ? 2 : 6; }   // falling: its legs going
     if (tool === "sleep" && action.dir && DIRV[action.dir]) {
       // tucked into the bed: head on the pillow, the bed's blanket drawn over the body
@@ -169,7 +170,10 @@ function drawBody(p, sx, sy, S, t, now) {
     // the weapon of a cut or a thrust: in front of the body, behind it when they face away
     const arm = () => blow && ctx.drawImage(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, 48, 48, cellX, cellY, 48 * z, 48 * z);
     if (p.fy < 0) arm();
-    ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
+    if (j && j.squash && ANIM[anim] <= ANIM.run) {   // crouched to jump, or landing: the top of the body a row down over the hips (whole art px, nothing scaled)
+      ctx.drawImage(sheetImg, sxx, syy + SQUASH_ROW, 48, 48 - SQUASH_ROW, cellX, cellY + SQUASH_ROW * z, 48 * z, (48 - SQUASH_ROW) * z);
+      ctx.drawImage(sheetImg, sxx, syy, 48, SQUASH_ROW, cellX, cellY + z, 48 * z, SQUASH_ROW * z);
+    } else ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
     wearFx("front", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);
     if (p.fy >= 0) arm();
     if (tool === "eat" && action.item && p.fy >= 0) {   // the food, half size and crisp, held up to the mouth

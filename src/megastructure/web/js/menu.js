@@ -37,7 +37,7 @@ const MENU_PAGES = [
     toggle("Goals card", {get: () => !goalsOff, set: (v) => { goalsOff = !v; localStorage.setItem("megastructure-goals-off", v ? "0" : "1"); drawGoals(); }, def: false}),
     f3Row()]],
   ["Keys", [
-    choice("Sprint", "sprint", [["hold", "Hold Shift"], ["toggle", "Shift once"]]),
+    choice("Sprint", "sprint", [["hold", "Hold Shift"], ["toggle", "Shift once"]]), toggle("Auto-jump", "autojump"),
     ...Object.entries(KEY_ACTIONS).map(([action, [, name]]) => ({name, kind: "key", action, get: () => keyOf(action), set: () => {}, def: KEY_ACTIONS[action][0]}))]],
 ];
 const MENU_MAIN = [

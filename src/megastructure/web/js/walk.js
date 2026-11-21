@@ -14,13 +14,16 @@ const LEAD = [2, 4];         // tiles ahead of the server: from the first you sl
 
 function mark(x, y) { const n = ++trailN; trail.push({x, y, n}); return [x, y, n]; }
 
-// JUMP (options.js "jump"): walking into a step stops you ("player size should be 2 blocks ... also add a key to
-// jump"); the key hops you up onto it, if both cells over it are empty (cells.js landAt). Walking, it is the step
-// ahead of the tile you are on: your screen may walk onto it (`spring`, here) and the server's walk takes it after
-// you (sim/movement.py _tool_jump `at`). Standing, the step you face (or the way out's next step: wayshow.js), now.
-// On the level, a hop where you stand, nothing more (jump.js HOP).
+// JUMP (options.js "jump"): AUTO-JUMP (options.js "autojump", on unless turned off: "Jump looks unnatural. Add
+// automatic jump by default"): walking into a step with room over it (both cells over it empty, cells.js landAt) you
+// jump up it as you come to it, at the walk's pace, no stop, no key; the server's walk is told (`jump`) and takes it
+// after you. Off, walking into a step stops you ("player size should be 2 blocks ... also add a key to jump"); the key
+// hops you up onto it. Walking, it is the step ahead of the tile you are on: your screen may walk onto it (`spring`,
+// here) and the server's walk takes it after you (sim/movement.py _tool_jump `at`). Standing, the step you face (or
+// the way out's next step: wayshow.js), now. On the level, a hop where you stand, nothing more (jump.js HOP).
 const spring = new Map();    // "x,y" -> until: the steps your screen may hop onto (several: J pressed again, a step on, before the first is reached)
-const springs = (x, y) => performance.now() < (spring.get(x + "," + y) || 0);
+const autoJump = () => !!opt("autojump");
+const springs = (x, y) => (!!walking && autoJump()) || performance.now() < (spring.get(x + "," + y) || 0);
 // -> the step a jump would take you up now {x, y, d, way: it is the way out's}, or null (keyboard.js: the corner's "Jump")
 function stepAhead() {
   const p = ents.get("agent" + myId); if (!p || !me || !meObs || Build.on) return null;
@@ -39,7 +42,7 @@ function jumpKey() {
   spring.set(s.x + "," + s.y, now + 3000);
   if (s.way) turn(s.d);
   jumpGoing = !walking;
-  rpc("act", {tool: "jump", args: walking ? {at: [s.x, s.y]} : {dir: s.d, at: [s.x, s.y]}}).then(() => { jumpGoing = false; if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk(); });   // (a walk the server ended at the step: on again, up it)
+  rpc("act", {tool: "jump", args: walking ? {at: [s.x, s.y]} : {dir: s.d, at: [s.x, s.y], jump: autoJump()}}).then(() => { jumpGoing = false; if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk(); });   // (a walk the server ended at the step: on again, up it)
 }
 let jumpGoing = false;
 
@@ -56,12 +59,13 @@ function syncWalk() {
     if (p && p.walking) {
       p.walking = false;
       pred = {x: p.tx, y: p.ty, until: now + 2000};
-      args.at = mark(p.tx, p.ty); if (prev.run) args.run = true;
+      args.at = mark(p.tx, p.ty); if (prev.run) args.run = true; if (autoJump()) args.jump = true;   // (the way there may go up a step: jumped)
     }
     rpc("act", {tool: "stop", args});
     return;
   }
   const [dx, dy] = DIRV[want.dir], args = want.run ? {dir: want.dir, run: true, push: true} : {dir: want.dir, push: true};   // (push: held against a step it waits for the jump key: sim/movement.py walk)
+  if (autoJump()) args.jump = true;              // (jump: up every step it comes to, as your screen does)
   if (p) {
     const [ox, oy] = prev && p.walking ? DIRV[prev.dir] : [0, 0];
     const line = (ox || oy) && !(ox * dy - oy * dx), back = line && (ox !== dx || oy !== dy);

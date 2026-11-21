@@ -21,6 +21,19 @@ const VoxStyleLand = (() => {
     {n: [-1, 0, 0], k: .7, q: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]]},
   ];
   const cat = (l) => { let n = 0; for (const a of l) n += a.length; const d = new Float32Array(n); n = 0; for (const a of l) { d.set(a, n); n += a.length; } return d; };
+  // A WAY INTO THE LAND, SEEN FROM ANY SIDE: the eye looks north, so a cave's or a tunnel's mouth that opens north, east or west has its face hidden. Its shade is laid in the
+  // paint of the tops round it (m, a top's mouth bits: 1 << d the ground in front of a mouth on its side d, 16 << d the land's top over a mouth that opens on side d; d 0 N, 1 E, 2 S, 3 W):
+  // dark toward the mouth over the whole tile, in whole art px, four steps of a 2x2 dither, its corners lighter (a south mouth's ground too, as its face shows). Made with the paint, never by the frame.
+  // (Of three tried, mockups "Cave mouths you can see from every side": the ground alone was hidden by the hill itself; a 6-px band on the top was too faint from the meadow)
+  const MD = [[0, -1], [1, 0], [0, 1], [-1, 0]], MK = [.38, .52, .68, .84];
+  function mouthShade(px, at, st, m) {
+    for (let j = 0; j < C; j++) for (let i = 0; i < C; i++) { let k = 1;
+      for (let d = 0; d < 4; d++) { if (!(m >> d & 17)) continue;
+        const e = [j, 15 - i, 15 - j, i][d], a = d & 1 ? j : i, t = e + Math.max(0, Math.abs(a - 7.5) - 4.5), s = Math.floor(t / 4 + ((i >> 1) + (j >> 1) & 1) * .5);
+        if (s < 4) k = Math.min(k, MK[s]); }
+      if (k < 1) { const o = at + j * st + i, q = px[o], b = 1 - (1 - k) * .75;   // (a cool shade: its blue kept a little more)
+        px[o] = (q & 0xff000000) | Math.round((q >>> 16 & 255) * b) << 16 | Math.round((q >>> 8 & 255) * k) << 8 | Math.round((q & 255) * k); } }
+  }
   const solidC = (c, z) => { if (!c) return false; for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   function create(host, cfg, P) {
     const SL = P.SL, store = new Map(), tops = new Map(), late = new Set(), farOf = new Map(), farDirty = []; let msh = null, making = false, stamp = 0, farN = 0, into = null, wantK = null, fars = 0;   // (farOf: the far land's patches made, by where they are: "bx,by" (8 tiles) -> "x,y,w,h" -> faces; farDirty: boxes of tiles changed since)
@@ -40,7 +53,7 @@ const VoxStyleLand = (() => {
     function topPaint(x, y, z, px, at, st) { host.paintTop(x, y, z, px, at, st); if (!host.paintFront) return; let v = 0;
       for (let j = 0; j < C; j++) for (let i = 0; i < C; i++) if ((px[at + j * st + i] >>> 24) < 128) px[at + j * st + i] = v || (v = tone(lim(VoxMesh.rock(cfg, z, z, !host.rock || host.rock(x, y))))); }
     // a tile's own paints (its top at each height it was asked at): named by its tile, so a tile that changed gets new ones
-    const topSlot = (x, y, z, paint) => { const k = x + "," + y + "," + z; return slot(k, (px, at, st) => { const t = x + "," + y; let l = tops.get(t); if (!l) tops.set(t, l = []); if (!l.includes(k)) l.push(k); paint(px, at, st); }); };
+    const topSlot = (x, y, z, paint, m) => { const k = x + "," + y + "," + z + (m ? "m" + m : ""); return slot(k, (px, at, st) => { const t = x + "," + y; let l = tops.get(t); if (!l) tops.set(t, l = []); if (!l.includes(k)) l.push(k); paint(px, at, st); }); };
     // a tile changed (its ground, its height, what stands as boxes on it): its paints, the paints of the tiles beside it (their rims and lips), and the chunks within six tiles of it (a block is stone by the land three tiles off; a cliff's shadow lies some tiles from it) are no longer good
     function touch(x, y) {
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const t = (x + dx) + "," + (y + dy), l = tops.get(t); if (l) { for (const k of l) P.unslot(k); tops.delete(t); } }
@@ -83,6 +96,11 @@ const VoxStyleLand = (() => {
       // (it was any floor within two levels: a stair's treads two levels over a dead end were "your space", lit and lipped as the next step)
       const floorOf = (x0, y0, x, y, f0) => { const c = col(x, y); if (!c || !c.length) return null; if (host.water && host.water(x, y) && host.waterTop) { const w = host.waterTop(x, y); if (w >= c[c.length - 1]) return Math.abs(w - f0) <= 1 ? w : null; }
         if (solidC(c, f0 + 1)) return hop(x0, y0, x, y, f0) || (host.water && host.water(x0, y0) && !solidC(c, f0 + 2)) ? f0 + 1 : null; for (let dz = 0; dz <= 8; dz++) if (solidC(c, f0 - dz)) return f0 - dz + (dz > 1 ? .5 : 0); return null; };
+      // A MOUTH: from the open floor f on (ox, oy) a step by the game's own walk into (mx, my) lands under land (a roof over your head), and on from there, straight in, under land again:
+      // a way in. A wall (no step in), a ledge of one tile over the ground (no way on from under it), water: none
+      const inTo = (x0, y0, x, y, f) => { if (host.water && host.water(x, y)) return null; const g = floorOf(x0, y0, x, y, f); return g !== null && g % 1 === 0 && topOf(x, y) > g + 1 ? g : null; };
+      const mouth = (ox, oy, f, mx, my) => { if (host.water && host.water(ox, oy)) return false; const g = inTo(ox, oy, mx, my, f); return g !== null && inTo(mx, my, 2 * mx - ox, 2 * my - oy, g) !== null; };
+      const mouths = (x, y, z) => { let m = 0; for (let d = 0; d < 4; d++) { const X = x + MD[d][0], Y = y + MD[d][1], t = topOf(X, Y); if (t > z + 1 && mouth(x, y, z, X, Y)) m |= 1 << d; else if (d !== 2 && t < z - 1 && mouth(X, Y, t, x, y)) m |= 16 << d; } return m; };   // (this top under the sky: in front of a mouth on side d, or over one that opens on side d; the eye sees a south one's face)
       // from a floor at f0 on (x0, y0): the floors of (x, y) over it (up to 8 levels) from which a step lands on f0: the way you came down by
       const upsOf = (x0, y0, x, y, f0) => { const c = col(x, y), l = []; if (c) for (let j = 0; j < c.length; j += 2) { const f = c[j]; if (f > f0 && f <= f0 + 8) { const g = floorOf(x, y, x0, y0, f); if (g !== null && Math.floor(g) === f0) l.push(f); } } return l; };
       // YOUR SPACE, three passes: 1 where you can WALK, there and back; 2 from there where you can only drop to and on from there; 3 the floors you could have dropped FROM, and on from those (the stair over the room you
@@ -122,7 +140,7 @@ const VoxStyleLand = (() => {
             if (f === 1 || solidIn(nx, ny, nz)) continue;
             const nc = col(nx, ny); let sky = (f === 0 ? z >= open : !nc || z > nc[nc.length - 1]) ? 1 : 0, s, kind = f === 0 ? 1 : 0, e = 0;
             if (f === 0) {
-              s = topSlot(x, y, z, (px, at, st) => topPaint(x, y, z, px, at, st));
+              const mo = sky ? mouths(x, y, z) : 0; s = topSlot(x, y, z, (px, at, st) => { topPaint(x, y, z, px, at, st); if (mo) mouthShade(px, at, st, mo); }, mo);
               { [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && (sky || solidIn(x + dx, y + dy, z - 1))) e |= b; });   // (a lip: under a roof only at a step of one level, one you can take; a drop of two or more has none)
                 if (sky) [[0, -1, 64], [1, 0, 128], [-1, 0, 256], [0, 1, 2048]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && !solidIn(x + dx, y + dy, z - 1) && !solidIn(x + dx, y + dy, z - 2)) e |= b; });   // (a top under the sky: its edge over a drop of three levels or more, one that hurts: a dark rim, the shader's; a step has the light lip)
                 if (!sky) [[0, -1, 64], [1, 0, 128], [-1, 0, 256]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && !solidIn(x + dx, y + dy, z - 1)) e |= b; });   // (a floor under a roof: its edge over a drop of two levels or more, north, east, west (its south one shows the wall's face): a thick dark rim: from above a wall that faces east or west is not seen at all)
