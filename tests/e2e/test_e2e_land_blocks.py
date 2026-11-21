@@ -80,3 +80,38 @@ def test_on_a_phone_the_pack_and_the_book_show_the_blocks(browser, server):
         assert not g.errors
     finally:
         ctx.close()
+
+
+def test_in_build_mode_space_puts_the_block_at_the_cursor_and_x_takes_it(game):
+    """"why cant i place block in that mode also ??": Z (under A: the hand stays on WASD; B still does it) is build
+    mode; a stone block in hand, Space puts it where the cursor is: on the ground, then on that block (a wall two
+    high), then a tile on at the same height, in the air, held by the block beside it; X takes the top one back."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.give(stone_block=4)
+    game.hold_item("stone_block")
+    game.face(1, 0)
+    game.press("z")
+    game.wait("Build.on", 3000)
+    rows = game.js("Build.rows()")
+    assert rows[0][0] == "Z" and rows[1][:2] == ["Space", "Place stone block"], rows
+    for z in (1, 2):
+        game.press("Space", 100)
+        game.wait(f"landSolid({x + 1}, {y}, {z}) && Build.S.plans.size === 0 && !myAction", 12000)
+    assert game.js(f"topAt({x + 1}, {y})") == 2 and game.js("Build.level()") == 2
+    game.press("ArrowUp", 100)                                    # a tile north, the cursor on the ground there: up to the wall's height
+    game.press("e", 100)
+    game.js("Build.S.plane = 2")                                  # (E goes a storey at a time in the air: the cell beside the wall's top is named here)
+    assert game.js("Build.hint(Build.S.at).text") == "Place stone block" and game.js("Build.hint(Build.S.at).z") == 2
+    game.press("Space", 100)
+    game.wait(f"landSolid({x + 1}, {y - 1}, 2) && !landSolid({x + 1}, {y - 1}, 1) && Build.S.plans.size === 0 && !myAction", 12000)
+    game.js("Build.S.plane = 3")                                  # in the open air over it: on top of the block there, still a place
+    game.press("ArrowUp", 100)
+    assert game.js("Build.hint(Build.S.at).ok") is False and "holds" in game.js("Build.hint(Build.S.at).text")      # nothing beside that cell
+    game.press("ArrowDown", 100); game.press("ArrowDown", 100)    # back onto the wall
+    game.js("Build.S.plane = null")
+    game.press("x", 100)
+    game.wait(f"topAt({x + 1}, {y}) === 1 && Build.S.plans.size === 0 && !myAction", 12000)
+    game.press("b")                                               # (its first key leaves it too)
+    s = game.server()
+    assert not game.js("Build.on") and s["inventory"].get("stone_block") == 2 and not game.errors, s["inventory"]

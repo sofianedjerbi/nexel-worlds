@@ -136,7 +136,10 @@ def test_out_of_your_own_shaft_with_the_thumbs_and_a_pickaxe_alone(browser, serv
                 g.wait(f"$('tDig').style.display === 'flex' && $('tDig').innerText === '{aim[3]}'", 3000)
                 said.append(aim[3])
                 tap("tDig")
-                g.wait(f"!solidAt({aim[0]}, {aim[1]}, {aim[2]}) && !myAction", 8000)
+                try:
+                    g.wait(f"!solidAt({aim[0]}, {aim[1]}, {aim[2]}) && !myAction", 8000)
+                except Exception:                                             # (what there is when it does not come)
+                    raise AssertionError(g.js(f"JSON.stringify({{aim: {aim!r}, said: {said!r}, me: [myAt.x - {x}, myAt.y - {y}, myAt.z], now: WayShow.cur && WayShow.cur.now, walking: !!walking, act: !!myAction, pending: !!pendingAct, pred: !!pred && performance.now() < pred.until, dig: [$('tDig').style.display, $('tDig').className], toast: $('toast').innerText}})") + " server " + str(g.server()["z"]))
             else:
                 g.touch("touchStart", 80, 600)                                # the stick, east: up the step
                 for i in range(1, 6):

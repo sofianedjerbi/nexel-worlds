@@ -142,7 +142,7 @@ def test_the_cell_shown_is_the_cell_the_action_changes(game):
     game.press("b")
     game.js(f"(() => {{ Build.S.at = {{x: {x - 1}, y: {y - 1}}}; return 1; }})()")
     game.wait(f"Marks.list.length === 1 && Marks.list[0].to.x === {x - 1}")
-    assert game.js(MARK) == [[x - 1, y - 1, -1, 0]]              # the block the cursor is on
+    assert game.js(MARK) == [[x - 1, y - 1, 0, 1]]               # earth in hand: the cell it will go in, on the block the cursor is on (build mode places the land's blocks too)
     game.press("x")
     game.wait(f"topAt({x - 1}, {y - 1}) === -1", timeout=10000)  # ...is the block that is dug
 

@@ -116,3 +116,30 @@ def test_the_agents_are_told():
     tools, book = tools_text(), recipes_text()
     assert "stone_block" in tools and "not a material" in tools and "stone_block" in RULES
     assert "stone = 1 stone_block" in book
+
+
+def test_a_block_goes_into_any_empty_cell_with_something_solid_beside_it(world):
+    """Build mode's Space with earth or stone in hand ("why cant i place block in that mode also ??"): place with
+    x, y, z. A wall two high, a roof from its top (a cell in the air beside a block), a hole in it shut again. Not in
+    the open air, not where you stand, not out of reach; dug again it is the block that was put."""
+    sim, a = world
+    flat(sim, a, 0, r=6)
+    a.add("stone_block", 6)
+    x, y = a.x + 1, a.y
+    for z in (1, 2):                                                      # a wall two high, east of you
+        r = run(sim, a, "place", {"x": x, "y": y, "z": z, "item": "stone_block"})
+        assert r["ok"] and sim.world.solid(x, y, z), r
+    assert sim.world.top(x, y) == 2 and sim.placed.kind(x, y, 1) == "stone_block"
+    r = run(sim, a, "place", {"x": x, "y": y - 1, "z": 2, "item": "stone_block"})      # a roof: in the air, held by the wall's top beside it
+    assert r["ok"] and r["cell"] == [x, y - 1, 2] and sim.world.solid(x, y - 1, 2) and not sim.world.solid(x, y - 1, 1)
+    assert sim.world.surfaces(x, y - 1) == [0, 2]                         # the ground under it is still there to stand on
+    r = run(sim, a, "place", {"x": x, "y": y + 2, "z": 2, "item": "stone_block"})      # in the open air: nothing holds it
+    assert not r["ok"] and r["error"] == "bad_target" and a.count("stone_block") == 3
+    r = run(sim, a, "place", {"x": a.x, "y": a.y, "z": 1, "item": "stone_block"})      # your own body's cell
+    assert not r["ok"] and r["error"] == "occupied"
+    r = run(sim, a, "place", {"x": x, "y": y, "z": 2, "item": "stone_block"})          # a cell that is full
+    assert not r["ok"] and r["error"] == "occupied"
+    assert not run(sim, a, "place", {"x": a.x + 6, "y": a.y, "z": 1, "item": "stone_block"})["ok"]      # out of reach
+    assert run(sim, a, "dig", {"x": x, "y": y - 1, "z": 2})["got"] == {"stone_block": 1}                 # the roof, taken back
+    r = run(sim, a, "place", {"x": x - 2, "y": y, "z": 1, "item": "stone_block"})      # west of you, on the open ground, named by its height: the ground comes up
+    assert r["ok"] and sim.world.top(x - 2, y) == 1

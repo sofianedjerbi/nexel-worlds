@@ -150,7 +150,7 @@ function updateActions() {
   const all = availableActions(), keys = inputMode === "keys", aim = keys && !Build.on ? facingIntent(false) : null;
   const beside = !!aim && !aim.it.info && !aim.it.walk;      // (something you face is marked: its keys go beside it. Nothing is: they stay in the corner. X's "Dig down" on open meadow was shown nowhere)
   faceRows = Build.on || !keys || !beside ? [] : all.filter((r) => r[3] && !r[4]);
-  const corner = Build.on ? all.filter(([k]) => k === "B" || k === "Esc") : keys && beside ? all.filter((r) => !r[3] || r[4]) : all;      // (the way out's key: on its block, and here with its word: "R Dig up": "which key ?")
+  const corner = Build.on ? all.filter(([k]) => k === capOf("build") || k === "Esc") : keys && beside ? all.filter((r) => !r[3] || r[4]) : all;      // (the way out's key: on its block, and here with its word: "R Dig up": "which key ?")
   const html = corner.map(([k, t, cls]) => `<div class="${cls || ""}"><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
   if (html === actionsHtml) return;
   actionsHtml = html;
@@ -207,7 +207,8 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   m: () => { setMuted(!muted); toast(`Sound **${muted ? "off" : "on"}** \`${capOf("mute")}\``); },
   h: () => $("helpbtn").click(), "?": () => $("helpbtn").click(),
   g: () => toggleGoals(),                            // (goals.js: the goals' card, or away again)
-  b: () => Build.toggle(),                           // (build.js: plan with a cursor, your character builds)
+  z: () => Build.toggle(),                           // (build.js: plan with a cursor, your character builds)
+  b: () => Build.toggle(),                           // (its first key, still)
   v: () => nextView(),                               // (options.js: how what hides you is shown, the next way)
   f3: () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; },
   t: () => openChat(),

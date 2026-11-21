@@ -20,7 +20,7 @@ def test_a_wall_is_planned_with_a_cursor_and_built_by_keys_alone(game):
     game.press("ArrowRight"); game.press("ArrowRight")         # the cursor moves; you do not
     assert game.js("[Build.S.at.x, Build.S.at.y]") == [x + 2, y + 1] and game.pos() == (x, y)
     rows = game.js("Build.rows()")                             # the corner: the mode's name, and only the keys that do something here
-    assert [r[0] for r in rows] == ["B", "Space", "Q E", "X"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"     # (Q E: the cursor a floor down, up)
+    assert [r[0] for r in rows] == ["Z", "Space", "Q E", "X"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"     # (Q E: the cursor a floor down, up)
     assert rows[3][1] == "Dig a hole"                          # (X on bare ground: a hole)
     assert all(len(r[1]) <= 26 for r in rows)                  # (short: a long line ran under the bar)
     kb.down("Space")                                           # held: a row of four
@@ -109,7 +109,7 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     x, y = game.pos()
     kb = game.page.keyboard
     game.press(game.js(SLOT, "wood_wall"))
-    assert ["B", "Build mode: plan a lot"] in game.js("availableActions()")           # a piece in hand: B is said
+    assert ["Z", "Build mode: plan a lot"] in game.js("availableActions()")           # a piece in hand: B is said
     game.press("b")
     assert game.js("Build.rows()")[3] == ["X", "Dig a hole"]                           # nothing built here: X digs
     kb.down("ArrowRight"); game.sleep(700); kb.up("ArrowRight")                        # an arrow held: at once, then at the cursor's own pace
@@ -121,7 +121,7 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     kb.up("Space")
     game.press("b")                                            # out of the mode at once: the plans wait where they are
     left = game.js("Build.S.plans.size")
-    assert left >= 2 and ["B", f"Build: {game.js('Build.waiting()')} plans wait"] in game.js("availableActions()")
+    assert left >= 2 and ["Z", f"Build: {game.js('Build.waiting()')} plans wait"] in game.js("availableActions()")
     game.sleep(1500)
     assert game.js("Build.S.plans.size") >= left - 1           # (nothing is built while you are out of it, but the one begun)
     game.press("b")                                            # back in: the work goes on

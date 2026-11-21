@@ -224,6 +224,30 @@ class Storeys:
         a.bump("placed")
         return {"level": top + 1}
 
+    def put_land(self, a, x, y, z, item):
+        """A block of earth or stone into the empty cell (x, y, z): anywhere within reach where something solid is
+        beside it (under it, over it, on one of its four sides: land, or a built block): a wall of stone two high, a
+        roof from wall to wall, a hole in a cliff shut again ("why cant i place block in that mode also ??": earth
+        went on open ground only). Not into a cell somebody stands in, nor onto water or onto what stands on a tile."""
+        w, near = self.world, ((0, 0, -1), (0, 0, 1), (1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0))
+        self.reach(a, x, y, z=z)
+        for again in (False, True):
+            if not LOW < z <= HIGH or w.solid(x, y, z) or self.floors.get(x, y, z) is not None:
+                raise ActionError("occupied", "that cell is not empty")
+            if not any(w.solid(x + i, y + j, z + k) or self.floors.get(x + i, y + j, z + k) is not None for i, j, k in near):
+                raise ActionError("bad_target", "a block goes against something solid: the ground, a wall, another block")
+            if z == w.top(x, y) + 1 and (w.block(x, y) != "none" or w.ground(x, y) not in T.LAND):
+                raise ActionError("occupied", "something is on that ground (or it is water: place without z fills it)")
+            if any(self.height(b) < z <= self.height(b) + 2 for b in self.bodies_on(x, y)):
+                raise ActionError("occupied", "someone is standing there")
+            if not again:
+                yield from self.wait(a, 0.3)
+        a.add(item, -1)
+        self.placed.put(x, y, z, item)
+        self.set_cell(x, y, z, True, by=a, cause="place")
+        a.bump("placed")
+        return {"cell": [x, y, z]}
+
     # ============================================================== the tools' way in (building.py)
 
     def place_up(self, a, args):
@@ -245,7 +269,9 @@ class Storeys:
         if item in EARTH:
             if not a.count(item):
                 raise ActionError("missing_item", f"you have no {item}")
-            land = on_land and s == self.world.top(x, y) and self.world.block(x, y) in ("none", "flower")
+            if "z" in args and not (s == self.world.top(x, y) + 1 and self.world.col(x, y) == col_solid(s - 1)):
+                return self.put_land(a, x, y, s, item)   # (a cell named by its height, not the open ground's next layer)
+            land = on_land and s in (self.world.top(x, y), self.world.top(x, y) + 1) and self.world.block(x, y) in ("none", "flower")
             return self.raise_land(a, x, y, item) if land and self.world.ground(x, y) in T.LAND else None
         if item in KINDS:
             if item == "plank" and on_land and s == self.world.level(x, y):
