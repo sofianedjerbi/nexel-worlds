@@ -15,7 +15,8 @@ let GEN = {};
 const SHEET_PACK = window.ASSET_PACK ? ASSET_PACK.blob : Promise.resolve(null);       // (asked for by the page itself, before this script had come)
 const fromPack = (name, type) => SHEET_PACK.then((b) => { const at = b && ASSET_PACK.files[name]; return at ? b.slice(at[0], at[0] + at[1], type) : null; });
 function loadImg(n) {   // decoded up front: a sheet decoded lazily on first draw stalls that frame (~100 ms)
-  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => { if (n === "character") IMG[n] = ToolArt.extend(i); res(i); }); i.onerror = rej;
+  window.ASSETS_OF = (window.ASSETS_OF || 0) + 1;                   // (how many have come: the wait's cat, loading.js)
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => { window.ASSETS_IN = (window.ASSETS_IN || 0) + 1; if (n === "character") IMG[n] = ToolArt.extend(i); res(i); }); i.onerror = rej;
     if (window.ASSET_PACK) fromPack(n + ".png", "image/png").then((b) => { i.src = b ? URL.createObjectURL(b) : `assets/${n}.png`; }); else i.src = `assets/${n}.png`;
     if (n !== "character") IMG[n] = i; });       // (the character sheet is only there once the rows of its other tools are under it: tool_art.js)
 }

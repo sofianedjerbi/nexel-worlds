@@ -43,6 +43,10 @@ def build(out: Path):
     line, mark = '<script src="js/splash.js"></script>\n', '<div id="help"></div>'      # (the line under the name: chosen as the page is read, not swapped a second later)
     assert page.count(line) == 1 and page.count(mark) == 1, "index.html no longer has its splash line or its help"
     page = page.replace(line, "").replace(mark, "<script>\n" + (out / "js" / "splash.js").read_text() + "</script>\n" + mark)
+    line = '<script src="js/loading.js"></script>\n'           # (the wait's cat: in the page, run as it is read, not in the script it waits for)
+    assert page.count(line) == 1, "index.html no longer has its loading scene"
+    page = page.replace(line, "<script>\n" + (out / "js" / "loading.js").read_text() + "</script>\n")
+    (out / "js" / "loading.js").unlink()
     names = web_bundle.SCRIPT.findall(page)
     page, files = web_bundle.packed(out, page)               # one script, one pack of pictures, the styles in the page
     for name, body in files.items():
