@@ -84,7 +84,7 @@ const VoxStyle = (() => {
       const P = new Float32Array(16); P[0] = 1 / t / (RW / RH); P[5] = 1 / t; P[10] = (f + n) / (n - f); P[11] = -1; P[14] = 2 * f * n / (n - f);
       return {m: mul(P, look(eye, at)), eye};
     }
-    const project = (m, x, y, z) => { const dn = Math.max(0, lastB[1] - 1 - y), p = gp(x, y, z - lastB[0] * dn * dn / H),   // (sunk with the bend north of you, as the shader sinks the land: what stands there stood in the air past the bend, and the aim was off)
+    const project = (m, x, y, z) => { const dn = Math.max(0, lastB[1] - 1 - y), p = gp(x, y, z - lastB[0] * VoxStyleGLSL.sink(dn) / H),   // (sunk with the bend north of you, as the shader sinks the land: what stands there stood in the air past the bend, and the aim was off)
       w = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15]; return [(m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12]) / w, (m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13]) / w, (m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14]) / w]; };   // (the same sums, no arrays made: a few hundred a frame)
     // the sprites' sheet: each canvas has a place in it (shelves), its picture sent there when it is new or changed (canvas._v); full: all places given again
     const shelf = {x: 0, y: 0, h: 0, ep: 1};

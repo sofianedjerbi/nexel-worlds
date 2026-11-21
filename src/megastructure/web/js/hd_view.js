@@ -9,7 +9,7 @@
 // perf: each frame to the debug screen (f3.js: F3, ?perf=1), and its section about this look: its ms, the longest
 // piece of land made, draw calls, how many frames were drawn at all, the pictures' sizes. (It had a box of its own.)
 const HdView = (() => {
-  let el = null, g = null, sk = null, skyKey = "", skyVer = 0, art = null, fx = null, one = null, lastKey = "", wordsKey = null, wordsAt = 0, tmp = null;
+  let el = null, g = null, sk = null, skyKey = "", skyVer = 0, one = null, lastKey = "", wordsKey = null, wordsAt = 0, tmp = null;
   const Z = () => zoom * DPR, PAINT = new Set(["fillRect", "clearRect", "strokeRect", "fillText", "strokeText", "drawImage", "fill", "stroke", "putImageData"]), ids = new WeakMap(), strs = new Map(); let nid = 0;
   const sink = () => one || (one = document.createElement("canvas").getContext("2d"));   // (a canvas of one px: what the classic frame still paints goes there)
   // a 2D context that notes what is asked of it: a number for all of it (hash), and the calls themselves. dry: nothing is painted (what sets a state is passed on: a text is measured as it will be drawn); play() paints them
@@ -55,38 +55,23 @@ const HdView = (() => {
     sk.globalAlpha = 1; sk.globalCompositeOperation = "source-over"; sk.imageSmoothingEnabled = false; sk.drawImage(VoxGL.el, 0, 0);
     sk.globalAlpha = ws[3]; sk.fillStyle = `rgb(${ws.slice(0, 3).join()})`; sk.fillRect(0, 0, w, h); sk.globalAlpha = 1; sk.globalCompositeOperation = "multiply"; sk.fillStyle = `rgb(${light.join()})`; sk.fillRect(0, 0, w, h); sk.globalCompositeOperation = "source-over";
   }
-  // the lens: far rows (the 48 art px under the horizon, hy) a little soft, the rest crisp; a faint bloom of the light parts; no vignette
-  // (it was the top three tenths of the screen, wherever the horizon: looked at from close, or on a screen held upright, the land near you was a blur)
-  function post(pic, w, h, hy, blur, near) {
-    art = art || document.createElement("canvas"); fx = fx || document.createElement("canvas");
-    for (const c of [art, fx]) if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
-    const a = art.getContext("2d"), f = fx.getContext("2d"); a.globalCompositeOperation = "source-over"; a.clearRect(0, 0, w, h); a.drawImage(pic, 0, 0);
-    const span = Math.min(48, near - hy); if (blur > 0 && hy + span > 0 && span >= 4) {   // (near: the row ten tiles north of you: nothing nearer is ever soft. Zoomed in, or with the eye steep, the band reached the land round you)
-      f.globalCompositeOperation = "source-over"; f.clearRect(0, 0, w, h); f.filter = `blur(${blur}px)`; f.drawImage(pic, 0, 0); f.filter = "none";
-      f.globalCompositeOperation = "destination-in"; const gr = f.createLinearGradient(0, hy, 0, hy + span);
-      gr.addColorStop(0, "rgba(0,0,0,.85)"); gr.addColorStop(1, "rgba(0,0,0,0)"); f.fillStyle = gr; f.fillRect(0, 0, w, h);
-      a.globalCompositeOperation = "source-atop"; a.drawImage(fx, 0, 0);
-    }
-    f.globalCompositeOperation = "source-over"; f.clearRect(0, 0, w, h); f.filter = "brightness(.55) contrast(8) blur(4px)"; f.drawImage(pic, 0, 0); f.filter = "none";
-    a.globalCompositeOperation = "lighter"; a.globalAlpha = .07; a.drawImage(fx, 0, 0); a.globalAlpha = 1; a.globalCompositeOperation = "source-over";
-    return art;
-  }
-  let chk = null, chkOf = "", chkPat = null;
+  // (NO LENS: the far rows were blurred 1 px and a 4 px bloom of the light parts laid over all of it, on a desktop: every rim and every far wall a soft smear, pixel art
+  //  no longer whole art px: "cheap 3D". The haze of the far land is the land's own painter's, in its own px; nothing here blurs the picture)
+  let chk = null, chkOf = "", chkPat = null, bk = null, pic = null;
   function checker(col) { if (col === chkOf) return chkPat; chk = chk || document.createElement("canvas").getContext("2d"); chk.canvas.width = chk.canvas.height = 4; chk.fillStyle = col; chk.fillRect(0, 0, 2, 2); chk.fillRect(2, 2, 2, 2); chkOf = col; return chkPat = g.createPattern(chk.canvas, "repeat"); }
   // the picture of this frame on #hd: the backdrop (under the horizon, past the bend: the air's haze; the sea's tint only over the columns where the sea is really there, past the last land
   // you see; the sky's rows), the land's picture over it. Only when one of them is new.
-  //   o: {w, h, pic, fresh: the land's picture was drawn again, sky, runs: [[x0, x1]...] the sea's columns, hy, blur, lens}
+  //   o: {w, h, pic, fresh: the land's picture was drawn again, sky, runs: [[x0, x1]...] the sea's columns, marks}
   function show(o) {
     const {w, h} = o, line = o.sky ? Math.round(o.sky.line / zoom) : 0, low = o.sky ? o.sky.low : [.62, .78, .86]; fit(w, h);
     if (line > 0) skyOf(w, h, line, o.sky);
-    const key = [line > 0 ? skyVer : 0, line, low.map((v) => Math.round(v * 255)), o.runs, o.blur, o.lens, o.marks, zoom].join("|");
+    const key = [line > 0 ? skyVer : 0, line, low.map((v) => Math.round(v * 255)), o.runs, o.marks, zoom].join("|");
     if (!o.fresh && key === lastKey) return false; lastKey = key;
-    const tint = (c, a) => `rgb(${low.map((v, i) => Math.round((v * (1 - a) + c[i] * a) * 255)).join()})`;
+    const tint = (c, a) => `rgb(${low.map((v, i) => Math.round((v * (1 - a) + c[i] * a) * 255)).join()})`; bk = [[.8, .84, .8, .45], [.36, .64, .8, .65]].map((c) => low.map((v, i) => Math.round((v * (1 - c[3]) + c[i] * c[3]) * 255)));   // (bk: the backdrop's two colours, the air's and the sea's: where no land is drawn; tests count them)
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.imageSmoothingEnabled = false; g.fillStyle = tint([.8, .84, .8], .45); g.fillRect(0, 0, w, h);
     if (line > 0 && sk) g.drawImage(sk.canvas, 0, 0);
     g.fillStyle = tint([.36, .64, .8], .65); for (const [run, px] of o.runs) { g.fillRect(run, line, px - run, h - line); for (const ex of [run - 8, px]) { g.save(); g.translate(ex, 0); g.fillStyle = checker(g.fillStyle); g.fillRect(0, line, 8, h - line); g.restore(); } }   // (under the sky's line only: the sky over the sea is the sky)   // (its two ends: a 2x2 checker, 8 px: one fill of a pattern; it was 400 small ones)
-    const pic = o.lens ? (o.fresh || !art || art.width !== w || art.height !== h ? post(o.pic, w, h, o.hy, o.blur, o.near === undefined ? 1e9 : o.near) : art) : o.pic;   // (a phone: no lens: two blurs of the whole picture a frame)
-    g.drawImage(pic, 0, 0);
+    g.drawImage(o.pic, 0, 0); pic = o.pic;   // (the land's picture as it is: nothing over it but the marks)
     if (recM && o.marks) { g.setTransform(1 / zoom, 0, 0, 1 / zoom, 0, 0); recM.play(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; }
     return true;
   }
@@ -110,5 +95,5 @@ const HdView = (() => {
     PF.n = PF.drawn = PF.slice = PF.words = PF.ms = 0;
     return r;
   }, "perf");
-  return {sink, recorder, words, marks, dump: () => (rec ? rec.ops.map((v) => (Array.isArray(v) ? v.map((x) => (typeof x === "object" ? "#" : x)).join() : String(v))).join(" ") : ""), show, hide, read, perf, get el() { return el; }};
+  return {sink, recorder, words, marks, dump: () => (rec ? rec.ops.map((v) => (Array.isArray(v) ? v.map((x) => (typeof x === "object" ? "#" : x)).join() : String(v))).join(" ") : ""), show, hide, read, perf, get el() { return el; }, get backdrop() { return bk; }, get pic() { return pic; }};
 })();

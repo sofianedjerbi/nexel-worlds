@@ -38,11 +38,15 @@ const VoxPaint = (() => {
     r = false; for (let oy = -2; oy <= 0 && !r; oy++) for (let ox = -2; ox <= 0 && !r; ox++) { r = true; for (let j = 0; j < 3 && r; j++) for (let i = 0; i < 3 && r; i++) r = topAt(x + ox + i, y + oy + j) > 4; }
     cores.set(k, r); return r;
   }
+  // CUT IN STONE: a tile lower than 5 in a stone mass (its stone on two facing sides, a cut at most three tiles wide: a trench, a stair dug in a mountain, a gorge through one; or on all four within four
+  // tiles: a pit) is that stone at any height (2): its floor, its steps, its walls: a cut shows the rock it is cut in. It was earth by its height: brown steps and a tan floor inside a grey stone hill
+  const cut = (x, y) => { const s = [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dy]) => { for (let d = 1; d <= 4; d++) if (topAt(x + dx * d, y + dy * d) > 4) return rocky(x + dx * d, y + dy * d) ? d : 9; return 9; });
+    return s[0] + s[2] <= 4 || s[1] + s[3] <= 4 || Math.max(...s) <= 4; };
   function rocky(x, y) {
     const m = matAt(x, y); if (m) return m === "s" ? 2 : false;   // (a block put there: stone at any height (2), earth on a mountain: what was put, not what the height says)
-    if (topAt(x, y) < 5) return false;
     if (seen !== landVer) { mass.clear(); cores.clear(); seen = landVer; }
     const k = x + "," + y; let r = mass.get(k); if (r !== undefined) return r;
+    if (topAt(x, y) < 5) { r = cut(x, y) ? 2 : false; mass.set(k, r); return r; }
     r = core(x, y);
     for (let at = [x, y], d = 0, met = new Set([k]); !r && d < REACH; d++) { const next = [];
       for (let i = 0; i < at.length && !r; i += 2) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = at[i] + dx, ny = at[i + 1] + dy, nk = nx + "," + ny; if (met.has(nk) || topAt(nx, ny) < 5) continue; met.add(nk); if (core(nx, ny)) { r = true; break; } next.push(nx, ny); }
@@ -164,7 +168,7 @@ const VoxPaint = (() => {
       px[at + j * stride + i] = c;
     }
     if (stone) {      // STONE: blocks: two joints a level, a level's joints half a block from the one over it; each block lit along its top and its west edge; a crack now and then
-      const J = dim(m.dark, .82), x0 = (v * 5 + (z & 1) * 4 + 3) % 8;
+      const J = dim(m.dark, .82), x0 = (v * 5 + (z & 1) * 4 + 3) % 8; for (let i = 0; i < 16; i++) put(i, n - 1, J);   // (its course's foot the joints' dark, all across: the stone sheet's darkest band is its body's tone, a level had no line under it and its only lines were its 1-px upright joints: streaks)
       for (let i = 0; i < 16; i++) { if (h(i, 0, 70) < .8) put(i, 0, m.light); if ((i - x0 + 16) % 8 === 0) for (let j = 0; j < n - 1; j++) { put(i, j, J); put(i + 1, j, m.light); } }
       for (let k = 0; k < 2; k++) if (h(k, 1, 71) < .45) { let i = (h(k, 2, 72) * 16) | 0, j = 2; while (j < n - 2) { put(i, j, J); i += h(i, j, 73) < .5 ? 1 : 0; j++; } }
     } else {      // EARTH: a stratum (a wavy line of the darkest, now and then broken), pebbles (two px of the lightest over two of the darkest)

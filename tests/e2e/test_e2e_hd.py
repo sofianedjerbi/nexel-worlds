@@ -49,7 +49,7 @@ def test_walking_down_a_stair_under_a_roof_keeps_you_seen(browser, server):
 # the colour of the screen at a point of the land (x, y: tiles, z: levels), as the HD camera draws it: [r, g, b]
 AT = """([x, y, z]) => { const p = HdLook.screenOf(x, y, z), k = cv.width / innerWidth;
   return Array.from(HdLook.read(Math.round(p[0] * k), Math.round(p[1] * k), 1, 1).data).slice(0, 3); }"""
-green = lambda c: c[1] > c[0] + 20 and c[1] > c[2] + 20
+green = lambda c: c[1] > c[0] + 12 and c[1] > c[2] + 20   # (the meadow is 192, 212, 112: 20 over red exactly once the desktop's bloom no longer lit it)
 
 
 def test_two_walls_side_by_side_touch_and_a_bridge_is_drawn(browser, server):

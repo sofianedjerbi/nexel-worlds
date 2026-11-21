@@ -10,8 +10,8 @@ const HdLook = (() => {
   const urlLook = new URLSearchParams(location.search).get("look"), GROW = .25, EASE = .4, HOLD = 300, CAP = 20, R = 24;
   const cfg = {levels: [-9, 12], variants: 4, up: RELIEF_STEP, rock: {from: 5, lo: -512, n: 4}};
   const cam = {kind: "persp", pitch: 36, fov: 26};
-  const api = {get active() { return (urlLook || opt("look")) === "hd"; }, eye: null, get on() { return this.active && (!!this.eye || (!!me && myId !== null)); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: 68, nowin: false, force: null, cam, bend: .03, blur: 1, faces: 0, builds: 0, n: 0};
-  let camL = null, pitN = null, stage = 0, tilt = 0, flip = 0, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), lit = null, hl = 0, hy = 0, since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, camV = 0;
+  const api = {get active() { return (urlLook || opt("look")) === "hd"; }, eye: null, get on() { return this.active && (!!this.eye || (!!me && myId !== null)); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: 68, nowin: false, force: null, cam, bend: .03, faces: 0, builds: 0, n: 0};
+  let camL = null, pitN = null, stage = 0, tilt = 0, flip = 0, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), lit = null, hl = 0, hy = 0, since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, camV = 0, genAt = null, landAt = null, held = false, heldAt = 0;
   const sprs = new Map(), lads = new Map(), things = new Map(), piles = new Map(), built = new Map(), stoodOf = new Map();
   const Z = () => zoom * DPR;   // (canvas px an art px: `zoom` CSS px, as the classic picture's. It was `zoom` canvas px: on a dense screen, a phone's, the land half the size and twice as far as it would show)
   const mix = (a, b, k) => Array.isArray(a) ? a.map((v, i) => v + (b[i] - v) * k) : a + (b - a) * k;
@@ -34,6 +34,7 @@ const HdLook = (() => {
     return {canvas: c, fx: 8 - dx, fy: 16 - dy, still: true, d: true};
   }
   const topAt = (x, y) => { const c = Voxels.host.column(x, y); return c && c.length ? c[c.length - 1] : 0; };
+  const come = (x, y) => { for (let j = y - 12; j <= y + 6; j += 9) for (let i = x - 10; i <= x + 10; i += 10) if (!blockOf(i, j)) return false; return true; };   // (the blocks of the world round (x, y) are here: a land made before they came has nothing there)
   // where a tile's thing stands: the game has it on the tile's lowest ground. What grows under the sky (a tree, a bush, a flower, a crop) over a room dug under it: on the land's top, where it grew; while the x-ray window is on that tile it is not drawn (after)
   // (flowers stood on a cave's floor, a tree in a tunnel)
   const standAt = (c, x, y) => ("TFUtbvHf;\"w".includes(c) ? Math.max(topAt(x, y), floorAt(x, y)) : floorAt(x, y));
@@ -176,9 +177,12 @@ const HdLook = (() => {
     if (eng.lost) { eng.forget(); key = ""; }   // (a tile that changed: drawTile, below: its chunk alone is made again. It was the whole land, and all its paints, at every change)
     keyNear = HdThings.key(); keyFar = HdThings.key(false); const rx = Math.min(R, Math.ceil(w / 32 * 1.4) + 3), k = [tx, ty, L, st, keyNear, eng.stamp, rx, south].join();
     const wg = cov ? CAP : 0; if (wg !== wantG) { wantG = wg; since = now; }   // (since: when land came over you or left; api.lag: ms from then to the land made with your space's window, or with none)
-    if (k !== key && !gen) { gen = eng.steps(tx, ty, L, {r: R, rx, rs: south + 1, deep: 20, sea: 1, win: st ? {reach: 24} : {reach: 7, walk: true}}); key = k; genG = st; hurry = st !== shownG; api.build = 0; api.builds++; }   // (one land at a time: the next is made when this one is done)
-    if (gen) { const b0 = performance.now(); while (performance.now() - b0 < (p.rush ? 12 : hurry || st ? 5 : 2.5)) if (gen.next().done) { gen = null; break; } api.build = Math.max(api.build, performance.now() - b0); slice1 = performance.now() - b0; api.slice = Math.max(api.slice, slice1); api.water = eng.water;   // (the chunks that are new or changed, a tile a step, 2.5 ms a frame (5 under the land); what was drawn stays till it is done)
-      if (!gen) { shownG = genG; if (genG === wantG && since) { api.lag = performance.now() - since; since = 0; } } }
+    if (k !== key && !gen) { gen = eng.steps(tx, ty, L, {r: R, rx, rs: south + 1, deep: 20, sea: 1, win: st ? {reach: 24} : {reach: 7, walk: true}}); key = k; genG = st; hurry = st !== shownG; api.build = 0; api.builds++; genAt = come(tx, ty) ? [tx, ty] : null; }   // (one land at a time: the next is made when this one is done)
+    if (gen) { const b0 = performance.now(); while (performance.now() - b0 < (p.rush || held ? 12 : hurry || st ? 5 : 2.5)) if (gen.next().done) { gen = null; break; } api.build = Math.max(api.build, performance.now() - b0); slice1 = performance.now() - b0; api.slice = Math.max(api.slice, slice1); api.water = eng.water;   // (the chunks that are new or changed, a tile a step, 2.5 ms a frame (5 under the land); what was drawn stays till it is done)
+      if (!gen) { shownG = genG; landAt = genAt; if (genG === wantG && since) { api.lag = performance.now() - since; since = 0; } } }
+    // NEVER THE LAND UNPAINTED: after a teleport, waking again, arriving, the picture on the screen stays as it was (no new frame: the land, you, the words) until a land made HERE is done, with the blocks
+    // round you come (2.5 s at the most). For 0.3 to 1 s the trees and you stood on the backdrop's flat grey and the sea's blue band, the land not made yet
+    held = !p.free && (!landAt || Math.abs(landAt[0] - tx) > 8 || Math.abs(landAt[1] - ty) > 8); if (!held) heldAt = 0; else if (!heldAt) heldAt = now; if (held && now - heldAt > 2500) held = false;
     // the eye's level follows yours: a step over some 150 ms; a FALL: the eye stays while your body is in the air (the land steady, the body coming down it; at most 9 levels over where you will land), then comes
     // down to you slow at both ends (a spring, critically damped, its exact answer for any frame's length: .4 s for 12 levels. Stepped a frame at a time it ran away when a frame took over 83 ms: a slow phone). (Over 8 levels it went there in one frame: off the gorge's rim more than half the picture changed at once, your body in the top quarter of it)
     { const fl = falling(p, now), air = fl && fl.air, far = camL !== null && Math.abs(Lf - camL); if (air) camV = 0;
@@ -230,7 +234,8 @@ const HdLook = (() => {
     seen = {tx, ty, L, lift, k: 1, me: list.find((q) => q.top), list, at: [snap(p.x + .5), snap(p.y + .5), Lf]}; horizon(tx, ty, L + dep); hl = Math.max(8, eyeLine([snap(p.x + .5), snap(p.y + .5), Math.round(camL * 8) / 8 + .5], w, h) + 2);   // (the horizon is the surface's, however deep you are)   // (at: where the eye looks: you, to a px of the land: your own name is written from there)
     api.faces = eng.faces; api.models = eng.models;
     // the land's picture over the backdrop on the world's own canvas, at the art's own size (hd_view.js): put together only when one of them is new; under a roof the sky stays as a band over the earth's far edge
-    api.drew = HdView.show({w, h, pic, marks: HdView.marks(() => written(p, now, false)), fresh: eng.fresh, sky, runs: seaRuns(w, tx, ty, [snap(p.x), snap(p.y), L, h, cam.pitch].join()), hy, near: (eng.at(tx + .5, ty - 10, L + dep) || [0, 1e9])[1], blur: api.blur, lens: !document.body.classList.contains("touch")});
+    api.held = held; if (held) { api.ms = performance.now() - t0; return; }   // (the last picture stays: see `held`)
+    api.drew = HdView.show({w, h, pic, marks: HdView.marks(() => written(p, now, false)), fresh: eng.fresh, sky, runs: seaRuns(w, tx, ty, [snap(p.x), snap(p.y), L, h, cam.pitch].join())});
     wrote = HdView.words(() => written(p, now, true), now);
     api.ms = performance.now() - t0;
   }

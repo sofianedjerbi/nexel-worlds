@@ -9,7 +9,8 @@ const VoxStyleWin = (() => {
   const H = .5, FAR = "255.9";
   const MV = `#version 300 es
   in vec3 p; uniform mat4 m; uniform vec3 ctr; uniform float bend; out highp float vw;
-  void main() { vec3 q = p; float dn = max(0., ctr.z - 1. - q.z); q.y -= bend * dn * dn; gl_Position = m * vec4(q, 1.); vw = gl_Position.w; }`;   // (bent north of you as the land is)
+  ${VoxStyleGLSL.SINK}
+  void main() { vec3 q = p; float dn = max(0., ctr.z - 1. - q.z); q.y -= bend * sink(dn); gl_Position = m * vec4(q, 1.); vw = gl_Position.w; }`;   // (bent north of you as the land is)
   const MF = `#version 300 es
   precision highp float; in highp float vw; out vec4 o;
   void main() { float f = clamp(vw, 0., ${FAR}) * 256., hi = floor(f / 256.), lo = floor(f - hi * 256.); o = vec4(hi / 255., lo / 255., hi / 255., lo / 255.); }`;   // (tiles from the eye, a 256th of a tile exact, in two bytes)
