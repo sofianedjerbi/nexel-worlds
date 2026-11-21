@@ -216,14 +216,19 @@ def test_a_cliff_that_runs_on_a_slant_is_one_rock_face(game):
     game.stamp(2, 2, ["." * 6] * 6, levels=["".join("8" if j <= i else "0" for i in range(6)) for j in range(6)])
     game.stamp(-6, 3, ["..."] * 2, levels=["333"] * 2)
     game.wait(DRAWN, 8000); game.sleep(900)
-    mid = lambda px: sorted(px, key=sum)[len(px) // 2]           # (a face's body, whatever fleck one px of it is)
-    wall = lambda i, lv: mid(game.js(LAND, [[x + 2 + i, y + 3 + i, lv, ax, 3] for ax in (4, 6, 8, 10, 12)]))      # column i's front, its level lv
+    # (a face's tone: the mean of three rows across it: a wall is the pack's cliff px in blobs, stone in blocks with joints
+    # (voxpaint.js front), the same px in every row whatever its place across: one px, or the middle of five, was a blob's
+    # on one column and a joint's on the next)
+    mean = lambda px: [round(sum(c[k] for c in px) / len(px)) for k in range(3)]
+    wall = lambda i, lv: mean(game.js(LAND, [[x + 2 + i, y + 3 + i, lv, ax, ay] for ax in range(16) for ay in (2, 3, 4)]))      # column i's front, its level lv
+    same = lambda a, b: max(abs(p - q) for p, q in zip(a, b)) <= 6     # (a step of light a level was 10 % and more)
     for i in (1, 2, 3):
         for lv in (1, 2, 4, 6):
             a, b = wall(i, lv), wall(i + 1, lv + 2)              # the same row of the screen, two columns
-            assert a == b, (i, lv, a, b)
+            assert same(a, b), (i, lv, a, b)
     foot, high = wall(2, 1), wall(2, 8)
-    assert foot == high and max(foot) - min(foot) < 30 and not earth(foot), (foot, high)      # stone down to the ground, one tone
+    assert same(foot, high) and max(foot) - min(foot) < 30 and not earth(foot), (foot, high)      # stone down to the ground, one tone
+    mid = lambda px: sorted(px, key=sum)[len(px) // 2]
     low = mid(game.js(LAND, [[x - 5, y + 5, 1, ax, 3] for ax in (4, 6, 8, 10, 12)]))
     assert earth(low), low                                       # (a block whose top is grass: earth)
     game.js(RESET)
