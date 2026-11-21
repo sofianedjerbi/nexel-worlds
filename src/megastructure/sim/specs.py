@@ -18,14 +18,15 @@ LEGEND = {
 DIR_ARG = {"dir": "N|E|S|W"}
 
 TOOL_SPECS = {
-    "step": {"args": {**DIR_ARG, "run": "bool (optional, sprint: 2x speed)"}, "desc": "move one tile"},
-    "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped"},
+    "step": {"args": {**DIR_ARG, "run": "bool (optional, sprint: 2x speed)"}, "desc": "move one tile on the level or down (a step one layer up stops you: jump)"},
+    "jump": {"args": {"dir": "N|E|S|W (optional)"}, "desc": "jump up onto the step one layer higher that way (the cell over it, and over your head, must be empty); with no dir or on the level, a hop where you stand"},
+    "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped (a step up blocks it: jump)"},
     "stop": {"args": {}, "desc": "stop the current action"},   # (a player's screen also says walk's `from`, stop's `at`: Movement.follow)
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)", "z": "int (optional): a height there, a floor built over a room"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
     "dig_down": {"args": {"with": "pickaxe"}, "desc": "dig down where you stand (by hand, or faster with a pickaxe in hand). The block "
                  "under your feet goes into your pack (a block of the land: dirt, or stone_block) and you come down with it, on a hill or into a pit below sea level (down to "
                  "-512); over a hollow you fall in (a fall of more than 3 layers hurts: 5 hp a layer). You can jump "
-                 "onto ground one layer higher; higher than that is a wall: dig toward it with a pickaxe to take out "
+                 "onto ground one layer higher (jump); higher than that is a wall: dig toward it with a pickaxe to take out "
                  "the block in front of you (a tunnel). Caves are empty space under the hills (in_cave in your stats)"},
     "dig": {"args": {"dir": "N|E|S|W|up", "with": "tool in hand (optional: axe, pickaxe, hoe; default bare hands)",
                      "z": "int (optional): the height of something built over the ground, or of the block of land to dig (in front of you: from your z to your z + 2)"},
@@ -35,7 +36,7 @@ TOOL_SPECS = {
                     "wood takes 4x and stone 6x as long as with an axe / pickaxe; ore needs a pickaxe. A built block in front of you (a step, "
                     "the floor you stand level with) comes back into your pack, what stands on it first. "
                     "Out of a hole, or up through the land, cut a step: dig dir=up (the block over your head, if there is one), dig the block in front at z = your z + 2 "
-                    "(your head's height), then step that way: you jump onto the block left under it. Again for each layer"},
+                    "(your head's height), then jump that way: you land on the block left under it. Again for each layer"},
     "place": {"args": {**DIR_ARG, "item": "str", "text": "str (what a sign or a flag says, optional)", "z": "int (optional): a height, to build over the ground"},
               "desc": "place an item: furniture/walls/etc. as blocks; a block of the land (dirt, stone_block) fills holes or water, and on open ground raises it a layer (dug again it is the same block); path lays cobble, plank makes a bridge (water) or floor (land); "
                       "roof lays a roof block over that tile, a storey up (3 layers: it rests on a wall or door under it, or holds to a block beside it; you can stand on it; under a roof you are sheltered). "

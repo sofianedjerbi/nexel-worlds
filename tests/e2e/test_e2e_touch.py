@@ -145,11 +145,13 @@ def test_out_of_your_own_shaft_with_the_thumbs_and_a_pickaxe_alone(browser, serv
                 for i in range(1, 6):
                     g.touch("touchMove", 80 + i * 8, 600)
                     g.sleep(30)
+                g.touch("touchEnd")                                           # (walking into the step stops you: the Jump button)
+                g.wait("$('tJump').style.display === 'flex'", 3000)
+                tap("tJump")
                 try:
                     g.wait(f"myAt && myAt.z > {z}", 6000)
                 except Exception:                                             # (what there is when it does not come)
                     raise AssertionError(g.js(f"JSON.stringify({{me: [myAt.x - {x}, myAt.y - {y}, myAt.z], said: {said!r}, cols: [0, 1, 2].map((k) => surfacesAt({x} + k, {y})), walking: !!walking, act: !!myAction, toast: $('toast').innerText}})"))
-                g.touch("touchEnd")
                 g.wait("!walking", 3000)
                 X, z = g.js("[myAt.x, myAt.z]")
         assert said == ["Dig a step", "Dig up", "Dig a step"], said             # (the last step is a hop: the sky is over it)

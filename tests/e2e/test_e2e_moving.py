@@ -165,7 +165,9 @@ def test_you_jump_up_a_layer_but_not_two(game):
     # north of you: a ledge one layer up (2 rows), then ground three layers up
     game.stamp(-3, -6, ["......."] * 5, levels=["3333333"] * 3 + ["1111111"] * 2)
     x, y = game.pos()
-    game.hold(["w"], 1100)                                      # one tile, a jump up, along the ledge, then the wall
+    game.page.keyboard.down("w")                                # one tile, a jump up (J: walking into it stops you), along the ledge, then the wall
+    game.sleep(100); game.page.keyboard.press("j"); game.sleep(1000)
+    game.page.keyboard.up("w")
     game.sleep(500)
     s = game.server()
     assert (s["x"], s["y"]) == (x, y - 3) and game.pos() == (s["x"], s["y"])
@@ -182,7 +184,9 @@ def test_hop_down_off_a_hill_edge(game):
     s = game.server()
     assert s["x"] <= x - 3 and game.js(f"levelAt({s['x']}, {s['y']})") == 0 and game.pos() == (s["x"], s["y"])
     low = s["x"]
-    game.hold(["d"], 700)                                       # and a jump back up the same edge
+    game.page.keyboard.down("d")                                # and a jump back up the same edge (J)
+    game.sleep(100); game.page.keyboard.press("j"); game.sleep(600)
+    game.page.keyboard.up("d")
     game.sleep(500)
     s = game.server()
     assert s["x"] > low and s["x"] >= x - 2 and game.js(f"levelAt({s['x']}, {s['y']})") == 1 and game.pos() == (s["x"], s["y"])
@@ -222,7 +226,8 @@ def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
         assert all(q["feet"] >= 8 for q in way[24:])                                        # over the higher ground: never inside it
         assert max(q["feet"] for q in way) > 9                                              # clear of the edge
     assert game.js(f"jumpOf({{x: {x} - .5, y: {y}, tx: {x} - 1, ty: {y}, fx: -1, fy: 0}})") is None   # on the level: no hop
-    game.start_recording()                                    # and it takes the time of a step: up the step and on, at walking pace
+    game.start_recording()                                    # and it takes the time of a step: up the step (J as you set off) and on, at walking pace
+    game.page.keyboard.down("d"); game.page.keyboard.press("j")
     game.hold(["d"], 700)
     rec = game.recording()
     game.sleep(500)

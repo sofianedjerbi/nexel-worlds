@@ -8,6 +8,7 @@
 // what looked wrong before was the hang: a step and a half long, the body near the top of its arc for most of it.
 
 const JUMP = {over: 2, off: 1};      // art px the arc clears the edge by: going up, coming down
+const HOP = {ms: 320, px: 6};        // a hop on the level: how long, how high (art px)
 
 // -> null on the level, or {body, ground: art px over the straight line (its feet, its shadow)}
 function jumpOf(p) {
@@ -109,6 +110,10 @@ function jumping(p, now = performance.now()) {
   if (now - p.bounce < FALL.bounce[1] * 1000 && !jumpOf(p)) {                 // a heavy landing: up a little off the ground, and down
     const k = (now - p.bounce) / 1000 / FALL.bounce[1];
     return {body: Math.sin(k * Math.PI) * FALL.bounce[0], ground: 0, air: false};
+  }
+  if (now - p.hop < HOP.ms && !jumpOf(p)) {                                   // the jump key on the level: a hop on the spot (walk.js jumpKey; others: their `jump` event, state.js)
+    const k = (now - p.hop) / HOP.ms;
+    return {body: Math.round(Math.sin(k * Math.PI) * HOP.px), ground: 0, air: false};
   }
   const j = jumpOf(p), tx = Math.round(p.x), ty = Math.round(p.y);
   if (j && p.jfrom === undefined) { p.jfrom = Floors.standOf(p, tx, ty); burst(p.x, p.y + .35 - UP, "dust", 3, {up: .8, spread: 1.6, g: 3, life: .3}); }

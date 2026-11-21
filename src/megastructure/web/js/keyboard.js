@@ -147,6 +147,7 @@ function availableActions() {
   if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push([capOf("alt"), alt.it.text, "", true]);
   const up = way && way.key === "up" ? null : DigUp.aim();      // (the way out of a hole: the cell over your head, then the step: digup.js. Not hidden while the way out is shown: R digs all the same, and a phone's "Dig a step" was gone from under the finger)
   if (up) rows.push([capOf("up"), up.text, "", true]);
+  if (!(way && way.key === "jump") && stepAhead()) rows.push([capOf("jump"), "Jump"]);      // (a step in front you can hop onto: walking into it stops you, walk.js)
   if (selected && FOODS.includes(selected)) rows.push([capOf("eat"), `Eat ${label(selected)}`]);
   if (selected && WEAR[selected]) rows.push([capOf("eat"), `Wear ${label(selected)}`]);
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push([capOf("pick"), "Pick up"]);
@@ -209,6 +210,7 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   " ": () => useFacing(false),
   x: () => useFacing(true),
   r: () => DigUp.run(),
+  j: () => jumpKey(),                                // (walk.js: up onto the step in front, or a hop)
   f: () => act("pick_up", {}),
   e: () => useSelected(),
   q: () => cycleHand(1),

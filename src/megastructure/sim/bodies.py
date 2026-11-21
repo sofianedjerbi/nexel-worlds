@@ -1,8 +1,11 @@
 """Bodies: whoever stands in the world, a person or a creature, stands on the same land in the same way.
 
-The land is cells (world.py). A body has a tile and the height it stands at (z), and goes from a tile to the next by
-one rule: a jump up a layer where there is room for it, a step in at its own height otherwise, coming down on the
-ground under it there (a fall, however far). Under a hill it is in a cave, at the height it walked in at.
+The land is cells (world.py). A body has a tile and the height it stands at (z), and is one cell tall (the cell
+z + 1: "1 block = player"). It goes from a tile to the next by one rule: a step in at its own height where that cell
+is empty, coming down on the ground under it there (a fall, however far); a jump up a layer onto a step with room
+over it (and over your own head to make it). A person jumps when they mean to (the `jump` tool, a key: walking into
+a step stops you, as in Minecraft; stairs are walked up); a creature hops on its own. Under a hill it is in a cave,
+at the height it walked in at.
 Who may go where is each kind's own business (people: Movement, with water, boats and falls that hurt; creatures:
 Animals, which take no door and no fall that would hurt them); where they end up, and how far they reach, is here."""
 
@@ -26,25 +29,41 @@ class Bodies:
         """Land over its head (not a floor or a roof somebody built: storeys.py)."""
         return bool(self.land_col(b.x, b.y) >> (self.height(b) - LOW + 1))
 
-    def landing(self, b, x: int, y: int) -> int | None:
-        """The height a step to the neighbouring (x, y) lands at, or None (a wall). Where the cell at your body's
-        height is solid there you jump up onto it if it is ground (nothing over it, nor over your own head: under a
-        low ceiling there is no jumping out through it); where it is empty you step in at your own height and come
-        down on whatever ground is under you there (a fall, however far)."""
-        return self.lands(self.height(b), b.x, b.y, x, y, climbs=hasattr(b, "inventory"))
+    def landing(self, b, x: int, y: int, jump: bool | None = None) -> int | None:
+        """The height a step to the neighbouring (x, y) lands at, or None (a wall). Where the cell at your body's height
+        is solid it is a step: you jump up onto it if you jump (`jump`; None: a creature always does, a person when
+        they sprang for that tile: springs) and the cell over it is empty, and the one over your own head (under a low
+        ceiling there is no jumping out through it); where it is empty you step in at your own height and come down
+        on whatever ground is under you (a fall, however far)."""
+        person = hasattr(b, "inventory")
+        if jump is None:
+            jump = not person or self.springs(b, x, y)
+        return self.lands(self.height(b), b.x, b.y, x, y, climbs=person, jump=jump)
 
-    def lands(self, h: int, x0: int, y0: int, x: int, y: int, climbs: bool = False) -> int | None:
-        """...the same, for anyone standing at height h on (x0, y0) (the way somewhere is worked out with it). With
-        `climbs` (people): on a ladder, where the step would be a wall or nowhere to stand, up it (climbing.py)."""
-        if self.world.solid(x, y, h + 1):                # (a jump: room over it, and over your own head to make it)
-            land = None if self.world.solid(x, y, h + 2) or self.world.solid(x0, y0, h + 2) else h + 1
-        else:
-            land = max(z for z in self.world.surfaces(x, y) if z <= h)
+    def springs(self, b, x: int, y: int) -> bool:
+        """`b` jumped for the step onto (x, y) a moment ago (Movement._tool_jump: a.spring)."""
+        return self.tick <= getattr(b, "spring", {}).get((x, y), -1)
+
+    def lands(self, h: int, x0: int, y0: int, x: int, y: int, climbs: bool = False, jump: bool = True) -> int | None:
+        """...the same, for anyone standing at height h on (x0, y0) (the way somewhere is worked out with it: `jump`,
+        the way may jump). With `climbs` (people): on a ladder, where the step would be a wall or nowhere to stand, up
+        it (climbing.py)."""
+        w = self.world
+        jump = jump or self.stairs_at(x, y, h + 1) or self.stairs_at(x0, y0, h)     # (stairs are walked up: onto a step of them, or off the top one)
+        if w.solid(x, y, h + 1):                         # a step: a jump, with room over it and over your own head to make it
+            land = h + 1 if jump and not w.solid(x, y, h + 2) and not w.solid(x0, y0, h + 2) else None
+        else:                                            # in at your height, down onto the ground there (a fall)
+            land = max(z for z in w.surfaces(x, y) if z <= h)
         if climbs and self.thing(x0, y0, h) == "ladder" and (land is None or not self.open_at(x, y, land)):
             up = self.climb_to(h, x0, y0, x, y)
             if up is not None:
                 return up
         return land
+
+    def stairs_at(self, x: int, y: int, z: int) -> bool:
+        """A step of a flight of stairs is the built block at height z there (storeys.py)."""
+        cell = self.floors.get(x, y, z)
+        return cell is not None and cell[0] == "stairs"
 
     def safe_step(self, b, x: int, y: int) -> bool:
         """A step to the neighbouring (x, y) that is no wall and no fall that hurts: one a body takes of itself."""

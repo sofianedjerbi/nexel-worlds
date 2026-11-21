@@ -27,7 +27,7 @@ CAP = """(() => { const e = document.getElementById('waycap'); if (!e || e.style
 @pytest.mark.quick
 def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_gets_you_out(game):
     """Four down in a shaft a tile wide, a pickaxe in hand: the blocks to break are marked, the next one carries its
-    key; R breaks it whichever way you face; where the way is a step, you walk it. On the meadow nothing is shown.
+    key; R breaks it whichever way you face; where the way is a step up, its key is J and you jump it. On the meadow nothing is shown.
     (The classic look: its under-ground view draws the same marks.)"""
     game.clear_area(10)
     x, y = game.pos()
@@ -46,7 +46,7 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
     assert c["trapped"] and c["now"] == "up" and c["cap"] == "R" and c["way"] == "E", c
     assert c["digs"][0] == [x + 1, y, -2, "up"] and len(c["digs"]) == 5, c    # the first step's block (the sky is over you), then two a layer; the last layer is a hop
     assert game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") == "RDigastep", game.actions()      # one key: the block's, and in the corner with its word (no row beside what you face)
-    presses = 0
+    presses = jumps = 0
     for _ in range(24):
         c = game.js(CUR)
         if not c["shown"]:
@@ -58,12 +58,17 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
             game.wait(f"!solidAt({cell[0]}, {cell[1]}, {cell[2]}) && !myAction", 8000)
         else:
             at = game.js("[myAt.x, myAt.y, myAt.z]")
-            game.hold([KEYS[c["way"]]], 90)
+            if game.js("(WayShow.offer() || {}).key") == "jump":       # a step up: the jump key, the way's (walking into it stops you)
+                jumps += c["cap"] == "J"
+                game.press("j", 0)
+            else:
+                game.hold([KEYS[c["way"]]], 90)
             game.wait(f"myAt && (myAt.x !== {at[0]} || myAt.y !== {at[1]}) && !walking", 4000)
         game.wait("!WayShow.busy", 4000)
         game.frames(2)
     s = game.server()
     assert s["z"] == 0 and s["hp"] == 20 and presses <= 12, (s["z"], presses)       # five blocks and the steps between, the last open ones too: shown until you stand on the grass
+    assert jumps >= 3, jumps                                                        # (each step up of the stair: its cap the jump key)
     game.frames(3)
     c = game.js(CUR)
     assert not c["shown"] and c["cap"] == "" and not game.errors, c
@@ -148,19 +153,19 @@ def test_shut_in_with_a_plank_in_hand_or_with_nothing_the_shown_key_gets_you_out
         cap = game.js(CAP)
         if cap is None:
             break
-        assert not game.js(ON_ME) and game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") in ("", "RDigastep", "RDigup"), (cap, game.actions())      # (one key on the screen: no "Lay floor", no other digging, no red line)
+        assert not game.js(ON_ME) and game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") in ("", "RDigastep", "RDigup", "JJump"), (cap, game.actions())      # (one key on the screen: no "Lay floor", no other digging, no red line)
         presses += 1
         seen.append(cap)
-        if cap in KEYS:
+        if cap in KEYS or cap == "J":                                              # (an arrow: a step on; J: a step up, jumped)
             at = game.js("[myAt.x, myAt.y, myAt.z]")
-            game.hold([KEYS[cap]], 90)
+            game.press("j", 0) if cap == "J" else game.hold([KEYS[cap]], 90)
             game.wait(f"myAt && (myAt.x !== {at[0]} || myAt.y !== {at[1]}) && !walking", 4000)
         else:
             cell = game.js("(() => { const n = WayShow.cur.now; return [n.x, n.y, n.z]; })()")
             game.press({"R": "r", "Space": "Space", "X": "x"}[cap], 100)
             game.wait(f"!solidAt({cell[0]}, {cell[1]}, {cell[2]}) && !myAction", 12000)
     s = game.server()
-    assert s["z"] == 0 and s["hp"] == 20 and seen.count("R") == 3 and presses <= 8, (s["z"], seen)      # a block for the first step, two for the next, the last is a hop
+    assert s["z"] == 0 and s["hp"] == 20 and seen.count("R") == 3 and presses <= 8, (s["z"], seen)      # a block for the first step, two for the next, the last is a jump
     assert s["inventory"].get("plank", 0) == (3 if hands == "plank" else 0) and not game.errors, s["inventory"]
 
 

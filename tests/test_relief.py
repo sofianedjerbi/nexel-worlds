@@ -19,7 +19,9 @@ def test_you_jump_up_a_layer_and_step_down(world):
     sim, a = world
     plateau(sim, a)
     assert run(sim, a, "step", {"dir": "N"})["ok"]                                   # under its south edge
-    assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.world.level(a.x, a.y) == 1   # a jump up
+    r = run(sim, a, "step", {"dir": "N"})                                            # walking into a step stops you
+    assert not r["ok"] and "jump" in r["detail"] and sim.world.level(a.x, a.y) == 0
+    assert run(sim, a, "jump", {"dir": "N"})["ok"] and sim.world.level(a.x, a.y) == 1   # a jump up
     assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.world.level(a.x, a.y) == 1   # along the top
     assert run(sim, a, "step", {"dir": "S"})["ok"] and run(sim, a, "step", {"dir": "S"})["ok"]
     assert sim.world.level(a.x, a.y) == 0                                            # and back down
@@ -29,7 +31,7 @@ def test_two_layers_up_is_a_wall_until_you_dig_into_it(world):
     sim, a = world
     plateau(sim, a, h=2)
     run(sim, a, "step", {"dir": "N"})
-    r = run(sim, a, "step", {"dir": "N"})
+    r = run(sim, a, "jump", {"dir": "N"})
     assert not r["ok"] and "wall" in r["detail"]
     a.add("pickaxe")
     r = run(sim, a, "dig", {"dir": "N", "with": "pickaxe"})          # the cell in front of you goes: a tunnel
@@ -54,7 +56,7 @@ def test_going_up_is_slower_than_walking_on_the_level(world):
     sim, a = world
     plateau(sim, a)
     run(sim, a, "step", {"dir": "N"})
-    assert run(sim, a, "step", {"dir": "N"})["ok"]           # a jump up
+    assert run(sim, a, "jump", {"dir": "N"})["ok"]           # a jump up
     up = a.ready - sim.tick
     assert run(sim, a, "step", {"dir": "N"})["ok"]           # on along the level
     assert up > a.ready - sim.tick
@@ -119,8 +121,8 @@ def test_you_walk_on_a_cave_or_in_under_it(world):
     assert sim.world.surfaces(x + 1, y) == [0, 2] and not sim.world.solid(x + 1, y, 1) and sim.world.solid(x + 1, y, 2)
     assert run(sim, a, "step", {"dir": "E"})["ok"] and sim.in_cave(a) and sim.height(a) == 0     # in at its mouth
     assert run(sim, a, "step", {"dir": "W"})["ok"] and not sim.in_cave(a)                         # and out
-    assert run(sim, a, "step", {"dir": "N"})["ok"] and run(sim, a, "step", {"dir": "E"})["ok"] and sim.height(a) == 1
-    assert run(sim, a, "step", {"dir": "S"})["ok"] and sim.height(a) == 2 and not sim.in_cave(a)  # up onto the hill, over it
+    assert run(sim, a, "jump", {"dir": "N"})["ok"] and run(sim, a, "step", {"dir": "E"})["ok"] and sim.height(a) == 1
+    assert run(sim, a, "jump", {"dir": "S"})["ok"] and sim.height(a) == 2 and not sim.in_cave(a)  # up onto the hill, over it
     assert run(sim, a, "step", {"dir": "E"})["ok"] and sim.height(a) == 2                         # along it
     assert run(sim, a, "step", {"dir": "E"})["ok"] and run(sim, a, "step", {"dir": "E"})["ok"]    # and off its end
     assert sim.height(a) == 0 and a.hp == 20
@@ -186,10 +188,52 @@ def test_no_jumping_up_out_through_a_low_ceiling(world):
     sim.world.set(x, y - 1, level=0, roof=2)                 # a cave one cell high under a hill 2 high...
     sim.world.set(x, y - 2, level=1)                         # ...the ground behind it a layer up
     assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.in_cave(a) and sim.height(a) == 0
-    r = run(sim, a, "step", {"dir": "N"})
+    r = run(sim, a, "jump", {"dir": "N"})
     assert not r["ok"] and (a.x, a.y) == (x, y - 1)          # the rock over your head: no jump
     sim.world.set_cell(x, y - 1, 2, False)                   # its roof taken off: now you can
-    assert run(sim, a, "step", {"dir": "N"})["ok"] and sim.height(a) == 1
+    assert not run(sim, a, "step", {"dir": "N"})["ok"]       # (not by walking into it)
+    assert run(sim, a, "jump", {"dir": "N"})["ok"] and sim.height(a) == 1
+
+
+def test_jump_on_the_level_is_a_hop_and_while_walking_it_takes_the_step(world):
+    """"no auto step-up ... add a key to jump": on flat ground the jump is a hop where you stand (nothing changes).
+    Said while walking (a player's screen: `at`, the step it jumps for), the walk goes on and takes that step when
+    it comes to it; without it the walk stops at the step. move_to jumps by itself (a way asked for)."""
+    sim, a = world
+    x, y = a.x, a.y
+    r = run(sim, a, "jump", {})
+    assert r["ok"] and r["hopped"] and (a.x, a.y, sim.height(a)) == (x, y, 0)
+    assert run(sim, a, "jump", {"dir": "E"})["hopped"] and (a.x, a.y) == (x, y)          # nothing to jump onto that way
+    for i in range(3, 8):
+        sim.world.set(x + i, y, level=1)                     # a step three tiles east
+    sim.submit(a, "walk", {"dir": "E"})
+    sim.step()
+    done = []
+    sim.submit(a, "jump", {"at": [x + 3, y]}, on_done=done.append)
+    assert done and done[0]["ok"] and a.action and a.action.tool == "walk"     # (said at once: the walk goes on)
+    for _ in range(30):
+        sim.step()
+        if a.x == x + 4:
+            break
+    assert a.x == x + 4 and sim.height(a) == 1               # up it, and on along the top
+    a.x, a.y, a.z = x + 2, y, 0
+    r = run(sim, a, "walk", {"dir": "E"})                    # no jump: the walk stops at the step
+    assert r["stopped"] == "blocked" and (a.x, a.y) == (x + 2, y) and "jump" in r["blocked_by"]
+    assert run(sim, a, "move_to", {"x": x + 5, "y": y})["ok"] and sim.height(a) == 1     # a way asked for jumps
+
+
+def test_a_jump_tapped_while_the_world_is_still_coming_to_where_you_stopped_is_not_lost(world):
+    """A phone: the stick let go (`stop` with `at`, the world a stride or two behind the screen), then the Jump button
+    at the step in front of the screen. The jump makes the way first, then jumps: it was said "spring" to a stop
+    that was not going there, and nothing climbed (tests/e2e/test_e2e_touch.py, one run in two)."""
+    sim, a = world
+    x, y = a.x, a.y
+    for i in range(3, 8):
+        sim.world.set(x + i, y, level=1)                     # a step three tiles east
+    sim.submit(a, "stop", {"at": [x + 2, y, 1]})             # the screen stopped two tiles on, at the step's foot
+    sim.step()
+    r = run(sim, a, "jump", {"dir": "E", "at": [x + 3, y]})
+    assert r["ok"] and r.get("jumped") and (a.x, sim.height(a)) == (x + 3, 1), r
 
 
 def test_the_world_retraces_the_way_a_screen_walked(world):

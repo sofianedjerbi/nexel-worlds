@@ -114,7 +114,7 @@ def test_dig_down_and_climb_back_out(game):
     game.act("dig_down", **{"with": "pickaxe"})
     game.wait(f"floorAt({x}, {y}) === -1 && !myAction", 8000)
     game.js("selectItem(null)")
-    game.hold(["w"], 260)                                    # a jump up, north, out of the pit
+    game.face(0, -1); game.press("j", 0)                     # a jump up (J), north, out of the pit
     game.sleep(900)
     s = game.server()
     assert s["x"] == x and s["y"] < y and game.pos() == (s["x"], s["y"])

@@ -43,12 +43,15 @@ function surfacesAt(x, y) {                 // every height you can stand at, lo
 }
 // as Movement.height: the ground at or under z here (the lowest ground, if none is)
 function settleAt(x, y, z) { const s = surfacesAt(x, y), under = s.filter((v) => v <= z); return under.length ? under[under.length - 1] : s[0]; }
-// as Movement.landing: the height a step from height h onto (x, y) lands at, or null (a wall). Where the cell at
-// your body's height is solid you jump up onto it if it's ground (and nothing is over your head); where it's empty you step in and come down on the
-// ground under you there (a fall, however far)
-function landAt(h, x, y, fx, fy) {       // (fx, fy: the tile you step from: a jump needs room over your head there)
+// as Movement.landing: the height a step from height h onto (x, y) lands at, or null (a wall). A body is one cell
+// (h + 1). Where that cell is solid there it is a step: you jump up onto it if you jump (`jump`: false, a walk that
+// did not: walk.js springs) and nothing is over it nor over your head; where it's empty you step in and come down
+// on the ground under you there (a fall, however far)
+function landAt(h, x, y, fx, fy, jump = true) {       // (fx, fy: the tile you step from: a jump needs room over your head there)
   let z = h;
-  if (solidAt(x, y, h + 1)) z = solidAt(x, y, h + 2) || (fx !== undefined && solidAt(fx, fy, h + 2)) ? null : h + 1;
+  const stair = (sx, sy, sz) => { const c = FLOORS && sx !== undefined ? Floors.get(sx, sy, sz) : null; return !!c && c[0] === "stairs"; };
+  jump = jump || stair(x, y, h + 1) || stair(fx, fy, h);      // (stairs are walked up: onto a step of them, or off the top one)
+  if (solidAt(x, y, h + 1)) z = !jump || solidAt(x, y, h + 2) || (fx !== undefined && solidAt(fx, fy, h + 2)) ? null : h + 1;
   else while (!solidAt(x, y, z)) z--;
   if (fx !== undefined && FLOORS && Floors.thingAt(fx, fy, h) === "l" && (z === null || !Climb.openAt(x, y, z))) {   // (on a ladder, into a wall: up it, climbing.js)
     const up = Climb.climb(h, fx, fy, x, y);

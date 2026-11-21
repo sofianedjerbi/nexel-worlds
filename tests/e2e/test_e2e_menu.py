@@ -100,7 +100,7 @@ def test_a_key_can_be_changed_and_the_game_follows(game):
     assert game.js("[keyOf('bag'), document.querySelector('#menu .row.on kbd').textContent]") == ["p", "P"]
     at_row(game, "Craft"); game.press("Enter"); game.press("p")   # a key another action has: they change places
     assert game.js("[keyOf('craft'), keyOf('bag')]") == ["p", "c"]
-    at_row(game, "Pick up"); game.press("Enter"); game.press("j")
+    at_row(game, "Pick up"); game.press("Enter"); game.press("k")      # (J: the jump's)
     game.press("Escape"); game.press("Escape")
     game.press("p"); assert game.js("isOpen('craft')")
     game.press("p"); assert not game.js("isOpen('craft')")
@@ -111,9 +111,9 @@ def test_a_key_can_be_changed_and_the_game_follows(game):
     game.act("drop", item="plank", n=1)
     game.wait("groundItems.length > 0")
     game.sleep(300)
-    assert "J" in game.js("$('actions').textContent")           # the hint names the new key
+    assert "K" in game.js("$('actions').textContent")           # the hint names the new key
     game.press("f"); game.sleep(400); assert game.inv("plank") == 0
-    game.press("j"); game.wait("meObs.self.inventory.plank === 1")
+    game.press("k"); game.wait("meObs.self.inventory.plank === 1")
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter")      # the settings open on the page you left
     assert game.js(ROW) == "Sprint"
     game.press("ArrowRight")                                    # Shift once
