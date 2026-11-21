@@ -26,6 +26,9 @@ const HdLevel = (() => {
   }
   function over(x, y, L, k, n = 20) { let m = 0; for (let d = 1; d <= n; d++) { const c = col(x, y + d), e = L + (d - .5) * k; if (!c || !c.length || matAt(x, y + d)) continue; for (let i = 0; i < c.length; i += 2) if (c[i] > e && (i ? c[i - 1] : -1e9) < e + k) m = Math.max(m, i && c[i - 1] > e ? 99 : c[i] - e); } return m > 0 && topAt(x, y) > L ? 99 : m; }
   const under = (x, y, L) => topAt(x, y) > L;
+  // clear(tx, ty, L, n) -> the pitch (degrees) at which the eye's line to your feet passes over the land of the n tiles south of you, counting land as it rises over your head (a tile a level over it
+  //   counts whole, one at your head's height not at all, between in proportion: no jump in the pitch as you walk; .4 a level over your feet's line: your feet and their shadow, not the land's lip on them); 0: none over your head
+  function clear(tx, ty, L, n) { let m = 0; for (let d = 1; d <= n; d++) { const t = topAt(tx, ty + d) - L, w = Math.max(0, Math.min(1, t - 1)); if (w > 0 && !matAt(tx, ty + d)) m = Math.max(m, w * (t + .4) / (d - .5)); } return m ? Math.atan(m * RELIEF_STEP / 16) * 180 / Math.PI : 0; }
   let sk = "", sv = 0;
   const RAYS = Array.from({length: 16}, (_, a) => Array.from({length: 6}, (__, d) => [Math.round(Math.cos(a * Math.PI / 8) * (d + 1)), Math.round(Math.sin(a * Math.PI / 8) * (d + 1))]));
   function steep(tx, ty, L, ver) {   // (sv: how many of the 16 ways out of here run into land two levels over your feet within 6 tiles. It was a ring two tiles away: a room five wide stayed side-on, you a ghost on the grass south of it)
@@ -77,5 +80,5 @@ const HdLevel = (() => {
     const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); for (let i = 0; i < r.l.length; i += 3) g.rect((x0 + r.l[i]) * zs, (y0 + r.l[i + 1]) * zs, r.l[i + 2] * zs, zs); g.clip("evenodd");
   }
   const body = (me, a, zs) => { const r = me && a && runsOf(me.canvas); if (!r || !r.b) return null; const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; return {x: (x0 + r.b[0]) * zs, y: (y0 + r.b[1]) * zs, w: (r.b[2] - r.b[0]) * zs, h: (r.b[3] - r.b[1]) * zs}; };
-  return {of, steep, own, rim, over, under, lift, shut, raise, wall, wallAt, cut, body, get shows() { return sv; }};
+  return {of, steep, own, rim, over, under, clear, lift, shut, raise, wall, wallAt, cut, body, get shows() { return sv; }};
 })();
