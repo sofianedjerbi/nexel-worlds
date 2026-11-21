@@ -32,7 +32,7 @@ def room(g, flowers=False):
 def inside(g, x, y):
     g.rpc("dev_teleport", x=x, y=y, z=1)
     g.wait("HdLook.win.a === 1 && HdLook.win.n >= 21 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
-    g.js("(() => { WayShow.paint = () => {}; return 1; })()")       # (the way out's marks are painted over these px)
+    g.js("(() => { WayShow.paint = () => {}; Target.off = true; return 1; })()")       # (the way out's marks and the keys' boxes are painted over these px)
     g.rest()
 
 
