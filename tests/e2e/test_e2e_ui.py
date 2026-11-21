@@ -255,11 +255,9 @@ def test_what_the_game_says_is_a_line_of_the_chat_not_a_sign_at_the_top(game):
     """"all errors messages and shit show up on top of screen.. can't you just show them beautifully in the chat ?":
     while you play, a word from the game is a marked line of the chat (red for a no), the same one twice is counted,
     and the sign at the top is not shown."""
-    game.press("`", 300)
-    game.press("`", 300)
-    game.js("(() => { toast('Too far: get closer.', true); return 1; })()")
+    game.js("(() => { toast('In hand: **Dirt**'); toast('In hand: **Dirt**'); toast('Too far: get closer.', true); return 1; })()")
     lines = game.js("[...$('chatlog').children].map((d) => [d.className, d.textContent])")
-    assert ["note sys", "Empty hands ×2"] in lines and lines[-1] == ["note bad", "Too far: get closer."], lines
+    assert ["note sys", "In hand: Dirt ×2"] in lines and lines[-1] == ["note bad", "Too far: get closer."], lines
     assert game.js("getComputedStyle($('toast')).display") == "none" and game.toast() == "Too far: get closer."
     assert game.js("getComputedStyle($('chatlog').lastElementChild, '::before').width") == "6px"      # its mark
     n = game.js("$('chatlog').children.length")
