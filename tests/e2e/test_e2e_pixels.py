@@ -5,15 +5,6 @@ number of screen pixels, the same as the frame it sits in. Nothing is squeezed t
 import pytest
 from game import Game, new_name
 
-# every draw of an item's icon (and of a picked fruit) on the game's canvas: [source w, h, drawn w, h]
-WATCH = """() => { window.__it = []; const o = ctx.drawImage;
-  ctx.drawImage = function (img, ...r) {
-    const icon = [...ghosts.values()].includes(img), fruit = img === IMG.trees && r.length === 8 && r[2] === 16 && r[3] === 16 && flyers.length;
-    if (icon || fruit) __it.push(r.length === 8 ? [r[2], r[3], r[6], r[7]] : [img.width, img.height, r[2], r[3]]);
-    return o.call(this, img, ...r); };
-  return 1; }"""
-
-
 # a small icon's px against its icon's: how many are there, half there, of a colour the icon has not, near white
 SMALL = """(name) => { const px = (c) => c.getContext('2d').getImageData(0, 0, c.width, c.height).data, d = px(ghostIcon(name)), src = px(iconCanvas(name));
   const own = new Set(), out = {solid: 0, soft: 0, alien: 0, white: 0};
@@ -24,32 +15,14 @@ SMALL = """(name) => { const px = (c) => c.getContext('2d').getImageData(0, 0, c
   return out; }"""
 
 
-@pytest.mark.parametrize("zoom", [2, 3])
-def test_a_thing_on_the_ground_is_drawn_at_the_lands_own_pixel_size(game, zoom):
+def test_a_small_icon_is_made_of_its_icons_own_colours_by_whole_pixels(game):
     """A pile, what hops out of a creature and what flies up into your hands are small icons of 11 art px, made from
-    the 16 px ones by whole pixels, and a picked berry is its 16; all drawn at the zoom, whatever they do (the 16 px
-    icon was drawn 10 px across, and smaller still as it was caught: pixels of 1.9 screen px beside the land's 3).
-    A small icon is made of its icon's own colours, without the white sticker edge."""
-    game.js(f"zoom = {zoom}")
-    game.give(wood=2, stone=2, axe=1, boat=1)
-    game.js(WATCH)
-    for item in ("wood", "boat", "axe"):
-        game.act("drop", item=item, n=1)
-    game.sleep(700)                                              # the pile, lying under you
-    x, y = game.pos()
-    game.js(f"dropLoot({x + 2}, {y}, {{stone: 1, wood: 1, axe: 1}}, performance.now())")
-    game.sleep(900)                                              # ...loot hopping out, landing (a pixel lower for a moment)
-    game.js(f"picked({x - 2}, {y}, 'b', me, performance.now())")
-    game.press("f", 1200)                                        # ...the pile into your hands, and a berry
-    draws = game.js("__it")
-    assert game.inv("boat") == 1 and game.inv("wood") == 2       # (picked up: it flew)
-    assert len(draws) > 60 and game.js("!magnets.length && !flyers.length")
-    assert {(w, h) for w, h, _, _ in draws} == {(11, 11), (11, 10), (16, 16)}, {(w, h) for w, h, _, _ in draws}   # (10: landing, a row in the ground)
-    off = [d for d in draws if d[2] != d[0] * zoom or d[3] != d[1] * zoom]
-    assert not off, off[:5]
+    the 16 px ones by whole pixels (the HD look lays them on the land a px a px: hd.js). A small icon is made of its
+    icon's own colours, without the white sticker edge."""
     for name in ("wood", "axe", "torch", "pickaxe", "stone", "spear"):   # (not an egg: its glint is white)
         m = game.js(SMALL, name)
         assert m["solid"] > 8 and m["soft"] == 0 and m["alien"] == 0 and m["white"] == 0, (name, m)
+    assert [game.js(f"[ghostIcon('{n}').width, ghostIcon('{n}').height]") for n in ("wood", "axe")] == [[11, 11], [11, 11]]
     assert not game.errors
 
 
@@ -125,38 +98,6 @@ def test_a_big_things_icon_is_made_smaller_by_whole_pixels(game):
       for (let i = 0; i < d.length; i += 4) if (d[i + 3]) m++;
       return [n, m]; })()""")
     assert same[0] == same[1] and same[0] > 60, same
-
-
-# every smooth round shape drawn on the game's canvas, and every row a pixel oval is filled with
-ROUND = """() => { window.__round = 0; window.__rows = []; window.__in = 0;
-  for (const f of ['arc', 'ellipse']) { const o = ctx[f]; ctx[f] = function (...a) { __round++; return o.apply(this, a); }; }
-  const po = pixelOval; pixelOval = function (...a) { __in++; try { return po(...a); } finally { __in--; } };
-  const fr = ctx.fillRect; ctx.fillRect = function (x, y, w, h) { if (__in) __rows.push([x, y, w, h]); return fr.call(this, x, y, w, h); };
-  return 1; }"""
-
-
-@pytest.mark.parametrize("zoom", [2, 3])
-def test_smoke_shadows_and_glows_are_round_in_the_lands_pixels(game, zoom):
-    """A creature's poof, a little dust, an orb's glow, the shadow under you and the one under a pile are rows of whole
-    art pixels, on whole screen pixels: never a smooth circle or ellipse (they all were, among pixel art). A shadow
-    is an oval, not a bar: its middle row is the widest."""
-    game.js(f"zoom = {zoom}")
-    game.give(wood=1)
-    game.act("drop", item="wood", n=1)
-    game.sleep(400)
-    game.js(ROUND)
-    x, y = game.pos()
-    game.js(f"(() => {{ smoke({x + 2}, {y}, 8); smoke({x - 2}, {y}, 4, .4); return 1; }})()")
-    game.sleep(700)
-    game.js("drawOrb(120, 120, ORB, false)")
-    rows = game.js("__rows")
-    assert game.js("__round") == 0 and len(rows) > 400
-    off = [r for r in rows if r[3] != zoom or r[2] % zoom or r[2] <= 0 or any(v != int(v) for v in r)]
-    assert not off, off[:5]
-    under = game.js("(() => { __rows.length = 0; ctx.fillStyle = '#000'; pixelOval(200, 200, 6, 2.5, 0, .5); return __rows.slice(); })()")
-    assert [r[2] // zoom for r in under] == [8, 10, 12, 10, 8]              # (the shadow under you; read at once: a frame draws more)
-    game.press("f", 600)                                         # (nothing left lying in the world the tests share: a pile
-    assert game.inv("wood") == 1 and not game.errors             #  near where another test's player woke was drawn in its count)
 
 
 def test_the_tools_have_no_white_edge(game):

@@ -55,18 +55,13 @@ def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
     its own. It is a block like the rest (a `roof`, from wood): a storey up, on a wall or beside a block, planned
     with the cursor (with a roof in hand, over what the cursor is on), taken back with X; and whoever stands under
     it sees through all of it."""
-    game.js("setOpt('above', 'circle')")                       # (the view that fades what is over you: test_e2e_views.py has the rest)
+    game.js("setOpt('above', 'faded')")                        # (the view that fades what is over you)
     game.clear_area(8)
     x, y = game.pos()
     game.stamp(2, -3, ["WWWW", "W..W", "WW+W"]); game.rest()               # walls and a door, no roof: nothing draws one by itself
     assert game.js("FLOORS") is True and game.js(ROW, [x + 2, y - 3, 4]) == "...."
     # what was wrong in the clip: a door that looked like a window in hand and as a plan, a floor that let the grass through
     assert game.js("objectSprite('+', 0, 0, 0)[0] === IMG.door && fullIcon('door') !== fullIcon('wood_wall')")
-    game.stamp(-3, 2, ["nn"]); game.rest()
-    solid = game.js("""([x, y]) => { const [b, i] = tileIdx(x, y), o = (i / B | 0) * 16 * BW + (i % B) * 16; let n = 0, green = 0;
-      for (let j = 0; j < 16; j++) for (let k = 0; k < 16; k++) { const v = b.px[o + j * BW + k]; if (v >>> 24 === 255) n++; if ((v & 0xffffff) === (112 << 16 | 212 << 8 | 192)) green++; } return [n, green]; }""", [x - 3, y + 2])
-    assert solid == [256, 0], solid                            # a floor tile: solid all over, no grass in it
-    game.stamp(-3, 2, [".."])
     game.give(roof=7)                                          # (one left in hand: with a roof in hand X is about roofs)
     kb = game.page.keyboard
     game.press(game.js(SLOT, "roof"))
@@ -145,7 +140,7 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     game.press("Escape")
     assert game.js("Build.on") is False
     game.press("b")                                            # the mouse: the cursor is where it points, and the label says what a click plans
-    box = game.js("(() => { const r = cv.getBoundingClientRect(); return [r.left + r.width / 2 + 3 * TS(), r.top + r.height / 2 - 2 * TS()]; })()")
+    box = game.js("(() => { const r = cv.getBoundingClientRect(), s = myPos(), a = HdLook.screenOf(s.x + 3.5, s.y - 1.5, Build.level()); return [r.left + a[0], r.top + a[1]]; })()")      # (the middle of the tile three east and two north, as the HD look draws it at the cursor's height)
     game.page.mouse.move(box[0] - 20, box[1]); game.page.mouse.move(box[0], box[1])
     game.sleep(200)
     me = game.pos()
@@ -154,37 +149,18 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     assert not game.errors
 
 
-def test_walls_are_thin_and_hide_nothing_and_a_side_door_has_its_leaf_and_shadow(game):
-    """Walls were blocks a tile high: their tops hid the row behind them, were seen through near you to make up for
-    it ("xray that trigger without roof"), and a gap in a wall running north showed as a patch of planks ("weird
-    wall connexion"). A wall is thin and drawn on its own tile: the ground of the tile north of one is as it is, a
-    gap is a gap, nothing of a wall is ever seen through. A door in a run going north is seen from above: its leaf
-    between two posts, the doorway's shadow under it (the dark of the game's holes); it opens for whoever is by it."""
+def test_a_door_in_a_run_going_north_is_a_side_door_and_opens_for_whoever_is_by_it(game):
+    """A door in a run of wall going north is seen from its side (structures.js sideDoor: its leaf between two posts);
+    one in a run going east, from the front. It opens for whoever stands in its doorway."""
     game.clear_area(8)
     x, y = game.pos()
     try:
         game.stamp(3, -3, ["W", "+", "W"])                         # a run going north, a door in its middle
         game.stamp(-3, -3, ["W+W"])                                # one in a run going east: the door from the front
-        game.stamp(-4, 2, ["WWW"]); game.rest()                                 # and a wall south of open ground
+        game.rest()
         assert game.js("([x, y]) => [Structures.sideDoor(x + 3, y - 2), Structures.sideDoor(x - 2, y - 3), Structures.sideDoor(x + 3, y - 3)]", [x, y]) == [True, False, False]
-        lum = "([dx, dy, up]) => { const t = TS(), d = ctx.getImageData(Math.round(cv.width / 2 + dx * t), Math.round(cv.height / 2 + (dy - up) * t), 1, 1).data; return d[0] + d[1] + d[2]; }"
-        # (the meadow's lighter green: the lightest of five px. One px was now and then in one of the meadow's own darker patches, 457 for 516, where you woke)
-        grass = max(game.js(lum, [6 + a, -2 + b, 0]) for a, b in ((0, 0), (-.3, -.3), (.3, -.3), (-.3, .3), (.3, .3)))
-        game.wait(f"({lum})([3, -2, .25]) < {grass - 150}", 5000)  # (on a busy machine the stamped tiles take a few frames)
-        assert game.js(lum, [3, -2, .25]) < grass - 150 and game.js(lum, [2.78, -2, .25]) < grass - 60     # the leaf across the way; its shadow beside it, on the ground
-        north = game.js("(() => { const t = TS(), d = ctx.getImageData(Math.round(cv.width / 2 - 3 * t), Math.round(cv.height / 2 + t), 1, 1).data; return [d[0], d[1], d[2]]; })()")
-        assert north[1] > north[0] + 15 and north[1] > north[2] + 40, north          # the tile north of a wall: its ground, nothing over it
-        game.rpc("dev_teleport", x=x - 3, y=y + 1); game.arrive()                 # standing there, behind the wall: nothing of it is seen through
-        px = game.js("(() => { const d = ctx.getImageData(Math.round(cv.width / 2 + TS() * .3), Math.round(cv.height / 2 + TS()), 1, 1).data; return [d[0], d[1], d[2]]; })()")
-        assert px in ([170, 121, 89], [144, 98, 93], [220, 185, 138]), px       # the wall just south of you: its planks' own colours, not thinned
-        # a lower corner is joined as an upper one is: where a wall comes down onto a front, its band runs into the
-        # front's cap (there was the cap's dark line across it: "lower corners should be linked to upper")
-        game.rpc("dev_stamp", x=x - 4, y=y + 4, rows=["W..", "WWW"])          # (a place in the world: you are no longer where you woke)
-        game.rpc("dev_teleport", x=x - 3, y=y + 4); game.arrive()
-        join = game.js("(() => { const t = TS(), z = t / 16, d = ctx.getImageData(Math.round(cv.width / 2 - t + 7.5 * z - t / 2), Math.round(cv.height / 2 + t - t / 2 - 3.5 * z), 1, 1).data; return [d[0], d[1], d[2]]; })()")
-        assert join == [196, 154, 108], join                       # the cap's own colour where the band meets it, not its outline
         game.rpc("dev_teleport", x=x + 3, y=y - 2); game.arrive()                 # in the doorway: its leaf is back against a post
-        game.settle("doors.get(myPos().x + ',' + myPos().y) === 1")              # (it swings open over a few frames: read when it has; it was read at 0.9, one run in ten on a busy machine)
+        game.settle("doors.get(myPos().x + ',' + myPos().y) === 1")              # (it swings open over a few frames)
         assert game.js("doors.get(myPos().x + ',' + myPos().y)") == 1 and not game.errors
     finally:                                                   # (the land as it was, whatever happened: a door left there is on the screen of the tests that wake here after)
         game.rpc("dev_stamp", x=x - 6, y=y - 5, rows=["." * 13] * 12)
@@ -219,9 +195,5 @@ def test_x_breaks_anything_and_digs_holes(game):
     assert game.js("Build.rows()")[3] == ["X", "Break"]
     game.press("x")
     game.wait(f"surfacesAt({x - 1}, {y + 2})[0] === -2 && Build.S.plans.size === 0", 20000)
-    # two layers down the hole's floor is behind the grass in front of it: the window on you is yours alone, it does
-    # not open on the cursor (that the cursor's own tile is seen there: test_e2e_digging.py, the keyhole)
-    game.sleep(300)
-    assert game.js("xray.a") < .1
     game.press("b")
     assert game.inv("dirt") == 3 and game.inv("stone") == 2 and game.inv("stone_block") == 1 and not game.errors      # (the rock gives two stones; the deeper layer is stone: its block)

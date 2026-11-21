@@ -55,7 +55,7 @@ const VIEWS = [{key: "cut", name: "Cut away"}, {key: "faded", name: "Faded"}];
 function nextView() {
   const i = VIEWS.findIndex((v) => v.key === opt("above")), v = VIEWS[(i + 1) % VIEWS.length];
   setOpt("above", v.key);
-  toast(`What hides you: **${v.name}** \`V\``);
+  toast(`What is built over you: **${v.name}** \`V\``);
 }
 
 // The sound families of audio.js (SOUND.mix) under the settings' sliders.

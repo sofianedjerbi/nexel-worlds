@@ -106,6 +106,7 @@ function frame(now) {
   drawDying(sx, sy, S, t, now); drawEffects(sx, sy, S, dt); drawPuffs(sx, sy, dt); drawPlucks(sx, sy, S, now);
   drawXp();
   foodPreview();
+  swingDoors(t);
   updateActions();
   Build.tick();                                      // (plans that could not be done go; out of the mode when you are gone: build.js)
   floats = opt("floats") ? floats.filter((f) => t - f.t < 1.4) : [];
@@ -115,4 +116,13 @@ function outlined(text, x, y, color) {
   ctx.fillStyle = "#5b3f36";
   for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) ctx.fillText(text, x + a, y + b);
   ctx.fillStyle = color; ctx.fillText(text, x, y);
+}
+// Doors and gates near you swing open for whoever is by them, with their sound (structures.js doorFrame, sprites.js
+// gate): the HD look draws them open or shut by itself (hd_things.js); here their state and the latch's sound go on.
+// The doors round you are looked for twice a second, ticked every frame.
+let doorList = [], doorScan = -1e9;
+function swingDoors(t) {
+  const s = me && myPos(), now = performance.now(); if (!s) return;
+  if (now - doorScan > 500) { doorScan = now; doorList = []; for (let y = s.y - 12; y <= s.y + 12; y++) for (let x = s.x - 16; x <= s.x + 16; x++) { const c = combAt(x, y); if (c === "+" || c === "g") doorList.push([x, y, c]); } }
+  for (const [x, y, c] of doorList) if (combAt(x, y) === c) { if (c === "+") Structures.doorFrame(x, y); else objectSprite("g", x, y, t); }
 }

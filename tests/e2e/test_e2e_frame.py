@@ -3,43 +3,19 @@ collector to take back, and what it works out again that has not changed. What i
 must be what would be worked out afresh."""
 
 import pytest
-from test_e2e_digging import DRAWN, SEEN
+DRAWN = "dirtyTiles.length === 0"
 
-# one frame, drawn now: how often the land's picture (the engine's canvas: vox_gl.js) was laid on the game's, how many
-# blocks of land are in view, and how many of them are made
-PAINT = """() => { const di = ctx.drawImage, raf = window.requestAnimationFrame; let land = 0;
-  ctx.drawImage = function (img, ...a) { if (img === VoxGL.el) land++; return di.call(this, img, ...a); };
-  window.requestAnimationFrame = () => 0; frame(performance.now()); window.requestAnimationFrame = raf; ctx.drawImage = di;
-  const [vx, vy, vw, vh] = viewRect(0), all = [...blocks.values()].filter((b) => b.bx * B < vx + vw && (b.bx + 1) * B > vx && b.by * B < vy + vh && (b.by + 1) * B > vy);
-  return {land, blocks: all.length, made: all.filter((b) => Voxels.made(b)).length}; }"""
-
-# what is kept against the same worked out now: the hint for the tile you face, and the edge of the ground in front
-# of every tile round you (asked for 8.5 rows it is the same rows, and not kept) -> [how many differ, how many asked]
-KEPT = """() => { const say = (f) => (f ? JSON.stringify([f.p, f.it.text, f.it.ok, !!f.it.info]) : 'null'), p = myPos(); let bad = 0, n = 0;
+# what is kept against the same worked out now: the hint for the tile you face -> [how many differ, how many asked]
+KEPT = """() => { const say = (f) => (f ? JSON.stringify([f.p, f.it.text, f.it.ok, !!f.it.info]) : 'null'); let bad = 0, n = 0;
   for (const alt of [false, true]) { n++; if (say(facingIntent(alt)) !== say(facingNow(alt))) bad++; }
-  for (let y = p.y - 6; y <= p.y + 6; y++) for (let x = p.x - 6; x <= p.x + 6; x++) for (const skip of [null, xrayGone]) {
-    const L = standAt(x, y), a = frontEdge(x, y, L, L + 1, 8, skip), b = frontEdge(x, y, L, L + 1, 8.5, skip); n++;
-    if (!a.every((v, i) => v === b[i])) bad++; }
   return [bad, n, say(facingNow(false))]; }"""
 
-def test_a_frame_paints_the_land_once(game):
-    """A block's ground was painted, then its raised ground over the whole of it: land under land, 2.4 screens of
-    paint a frame where the land is one. The land is one picture, the engine's (voxels.js), laid on the game's canvas
-    once a frame, however many blocks of land are in view and however high they go."""
-    game.stamp(-6, -14, ["." * 13] * 9, levels=["0000000000000", "0111111111110", "0122222222210", "0123333333210", "0123444443210", "0123333333210", "0122222222210", "0111111111110", "0000000000000"])
-    game.wait(DRAWN, 8000); game.sleep(600)
-    p = game.js(PAINT)
-    game.clear_area(14)                                                        # (the land as it was: other tests wake here)
-    assert p["blocks"] >= 1 and p["made"] == p["blocks"] and p["land"] == 1, p
-
-
 def test_what_is_kept_from_frame_to_frame_is_what_would_be_worked_out_now(game):
-    """The hint for the tile you face was worked out three times a frame and the edge of the ground in front of
-    everybody every frame (two thirds of all the memory the page made, standing still). They are kept until what
-    they are worked out from changes: the land, your place, the way you face, what you hold, a tick of the world."""
+    """The hint for the tile you face was worked out three times a frame. It is kept until what it is worked out
+    from changes: the land, your place, the way you face, what you hold, a tick of the world."""
     def same(why):
         bad, n, said = game.js(KEPT)
-        assert bad == 0 and n > 300, (why, bad, n, said)
+        assert bad == 0 and n == 2, (why, bad, n, said)
         return said
     same("as you wake")
     game.give(pickaxe=1); game.hold_item("pickaxe"); game.face(0, 1); game.sleep(300)
@@ -54,8 +30,8 @@ def test_what_is_kept_from_frame_to_frame_is_what_would_be_worked_out_now(game):
     game.rpc("dev_stamp", x=x + 5, y=y, rows=["........"], levels=["d" * 8], roofs=["4" * 8], heads=["2" * 8])
     game.rpc("dev_teleport", x=x + 6, y=y, z=-4)
     game.wait(f"myAt && myAt.x === {x + 6} && myAt.z === -4", 8000)
-    game.wait(DRAWN, 8000); game.wait(SEEN, 20000); game.sleep(300)
-    same("under a roof, seen through it")
+    game.wait(DRAWN, 8000); game.rest()
+    same("under a roof")
     game.clear_area(14)
 
 

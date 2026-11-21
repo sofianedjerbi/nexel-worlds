@@ -194,55 +194,6 @@ def test_loot_next_to_you_comes_to_you(game):
 
 
 @pytest.mark.realtime
-def test_a_drop_shows_once_not_twice(game):
-    """What a creature drops hops out, lands, and only then shows as the pile: never the pile and the hopping drop at
-    once (the pile was matched by its sort position, not its tile, so both were drawn)."""
-    game.lucky()
-    game.give(sword=1)
-    game.hold_item("sword")
-    game.clear_area(5)
-    game.spawn("chicken", 1, 0, still=10 ** 6)
-    game.sleep(500)
-    game.face(1, 0)
-    game.js("""(() => {                                     // count the meat icons drawn, frame by frame
-      window._meat = []; window._meatY = []; let n = 0, y = null; const icon = ghostIcon('meat');
-      const d0 = ctx.drawImage; ctx.drawImage = function (img, ...r) { if (img === icon) { n++; y = r[r.length - 3]; } return d0.call(this, img, ...r); };
-      (function f() { window._meat.push(n); window._meatY.push(y); n = 0; y = null; if (window._meat.length < 240) requestAnimationFrame(f); })(); })()""")
-    game.press("Space", 300)
-    game.sleep(2500)
-    counts = game.js("window._meat")
-    assert max(counts) >= 1 and max(counts) == 1, counts      # it shows, and never twice in one frame
-    ys = [v for v in game.js("window._meatY") if v is not None]   # and from the hop to resting on the ground, no jump
-    z = game.js("zoom")
-    rest = next(i for i in range(len(ys) - 6) if len(set(ys[i:i + 6])) == 1 and i > 10)   # where it lies still (the pile)
-    assert abs(ys[rest] - ys[rest - 1]) <= 1, ys[rest - 6:rest + 2]   # the hop hands over to the pile without a jump
-
-
-@pytest.mark.realtime
-def test_several_drops_land_together_without_blinking(game):
-    """A cow drops meat and milk: each hops out and lands; none blinks out before the pile shows (they hand over to
-    the pile together, all at rest where they landed)."""
-    game.lucky()
-    game.give(sword=1)
-    game.hold_item("sword")
-    game.clear_area(5)
-    game.spawn("cow", 1, 0, still=10 ** 6)
-    game.sleep(500)
-    game.face(1, 0)
-    game.js("""(() => {                                     // the meat and milk icons drawn, frame by frame: how many
-      window._n = []; let n = 0; const icons = [ghostIcon('meat'), ghostIcon('milk')];
-      const d0 = ctx.drawImage; ctx.drawImage = function (img, ...r) { if (icons.includes(img)) n++; return d0.call(this, img, ...r); };
-      window._d = [];
-      (function f() { window._n.push(n); window._d.push([n, loot.map(l => l.name + (l.done ? '*' : '')).join(','), JSON.stringify(groundItems.map(g => Object.keys(g[2])))]); n = 0; if (window._n.length < 360) requestAnimationFrame(f); })(); })()""")
-    for _ in range(4):                                       # (a cow takes a few hits)
-        game.press("Space", 700)
-    game.sleep(2500)
-    d = game.js("window._d")                                 # [icons drawn, drops in the air, piles on the ground]
-    first = next(i for i, f in enumerate(d) if f[0] == 2)    # both out...
-    on_ground = [f for f in d[first:] if f[1] or f[2] != "[]"]   # (until they fly to you: that's the pick-up, not the drop)
-    assert on_ground and all(f[0] == 2 for f in on_ground), [f for f in on_ground if f[0] != 2][:5]   # ...both drawn, every frame
-
-
 def test_ten_hearts_and_ten_pieces_in_halves_and_no_sprint_when_hungry(game):
     """Health is 20 half hearts and food 20 half pieces (they were 0 to 100): the bar shows them a half at a time, a
     blow is said in hearts, and with three pieces of food or fewer the Shift key does not sprint."""

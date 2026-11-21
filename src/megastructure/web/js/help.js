@@ -5,7 +5,7 @@
 
 const HELP = [
   ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Alt"], "Turn without walking"], [["G"], "Goals: show or hide"]]],
-  ["See", [[["+", "−"], "Zoom (or the wheel)"], [["V"], "What hides you: next way"]]],
+  ["See", [[["+", "−"], "Zoom (or the wheel)"], [["V"], "What is built over you"]]],
   ["Do", [[["Space"], "Use what you face"], [["X"], "Other use: milk, till"], [["F"], "Pick up"], [["E"], "Eat"],
     [["Click"], "Space there. Shift: X"]]],
   ["Carry", [[["1-9", "Q"], "Take in hand"], [["`"], "Empty your hands"], [["Space"], "Place what you hold"],

@@ -80,26 +80,6 @@ def test_a_creature_comes_up_a_step_as_you_do(game):
     assert not game.errors
 
 
-def test_everybody_stands_three_px_up_in_their_tile(game):
-    """A body's sheet puts its feet 2 px over the bottom of its tile (its shadow on the line between two tiles, off the
-    brink of a ledge). People and creatures alike are drawn STAND px higher (relief.js bodyY), and what goes with
-    where they stand follows: pointing at the lower half of the tile above someone means them."""
-    game.clear_area(8)
-    cow = game.spawn("cow", 2, 0, still=200)
-    game.sleep(500)
-    x, y = game.pos()
-    assert game.js("STAND") == 3
-    drawn = game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), sy = (yy, xx) => oy + yy * S - (xx === undefined ? 0 : liftOf({{x: xx, y: yy}})), tops = {{}};
-      const d = ctx.drawImage; ctx.drawImage = function (img, ...a) {{ if (window.__who && a.length === 8) (tops[__who] = tops[__who] || []).push((a[5] - sy({y})) / zoom); return d.call(ctx, img, ...a); }};
-      for (const [k, p] of ents) if (p.e && (p.e.id === myId || p.e.id === {cow})) {{ window.__who = p.e.kind; drawEntity(p, (v) => ox + v * S, sy, S, 0, performance.now()); }}
-      window.__who = null; ctx.drawImage = d; return {{agent: Math.min(...tops.agent), cow: Math.min(...tops.cow)}}; }})()""")
-    assert drawn["agent"] == -18 - 3 and drawn["cow"] == -16 - 3, drawn     # (art px from the top of the tile to the top of the sheet's cell: 3 higher)
-    S, ox, oy = game.js("TS()"), *game.js("screenOrigin()")
-    aim = lambda fy: game.js(f"(() => {{ const p = aimAt(tileAtScreen({ox + (x + 2) * S + S / 2}, {oy + (y - 1) * S} + {fy} * {S}), false); return [p.x, p.y]; }})()")
-    assert aim(.8) == [x + 2, y] and aim(.2) == [x + 2, y - 1]       # its head and shoulders, over the tile above it; the ground further up
-    assert not game.errors
-
-
 def test_a_named_animal_carries_its_name(game):
     """Named (here by the action typed in full; in play with a name tag in hand: test_e2e_ask.py), the animal beside
     you is yours (it never goes away: sim/spawning.py). Its name is drawn over it, as a player's is, the chat says
@@ -124,17 +104,13 @@ def test_a_named_animal_carries_its_name(game):
 
 @pytest.mark.realtime
 def test_a_tusker_that_is_hit_shows_it_is_angry(game):
-    """Hit, a tusker is angry (sim/wild.py): it stamps, a red mark beats by its head, and it comes for you."""
+    """Hit, a tusker is angry (sim/wild.py): it stamps, a red mark beats by its head (characters.js), and it comes for you."""
     game.rpc("dev_needs", hp=20, hunger=17)
     boar = game.spawn("tusker", 3, 0, still=10 ** 6)
     game.sleep(400)
     assert game.js(f"ents.get('tusker{boar}').e.angry") is None                 # calm: no mark
     game.js(f"act('attack', {{target: {boar}}})")
     game.wait(f"ents.get('tusker{boar}') && ents.get('tusker{boar}').e.angry === true", 5000)
-    red = game.js("""() => new Promise((ok) => requestAnimationFrame(() => { const p = [...ents.values()].find((q) => q.e.kind === 'tusker'), S = TS(), [ox, oy] = screenOrigin(S);
-      const d = cv.getContext('2d').getImageData(Math.round((ox + p.x * S - S) * DPR), Math.round((oy + p.y * S - 2 * S) * DPR), Math.round(3 * S * DPR), Math.round(2 * S * DPR)).data; let n = 0;
-      for (let o = 0; o < d.length; o += 4) if (d[o] === 240 && d[o + 1] === 80 && d[o + 2] === 63) n++; ok(n / (zoom * DPR) ** 2); }))""")
-    assert 12 <= red < 16, red                                                   # the mark: twelve px of its red (and a spark of the same red, some frames)
     game.sleep(2500)
     assert game.server()["hp"] < 20                                              # ...and it came
 

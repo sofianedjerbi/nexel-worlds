@@ -85,5 +85,5 @@ const Structures = (() => {
     if (!up) piece(0, 9, 7, top - 7 * z);
     if (!down) piece(4, 0, 7, top + 16 * z);
   }
-  return {WALLS, INK, drawWall, drawRoof, sideDoor};
+  return {WALLS, INK, drawWall, drawRoof, sideDoor, doorFrame};
 })();

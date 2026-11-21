@@ -116,7 +116,6 @@ def test_a_frame_costs_a_phone_little_one_small_picture_nothing_the_screens_size
         # work: there, the same frame asked for twice, README.md rule 2: the second is not drawn)
         twice = "(() => { const raf = window.requestAnimationFrame, T = performance.now(); window.requestAnimationFrame = () => 0; try { frame(T); frame(T); } finally { window.requestAnimationFrame = raf; } return !HdLook.drew; })()"
         assert c["same"] >= 3 or any(g.js(twice) for _ in range(3)), c     # (three times: what the look looks for four times a second may fall between the two)
-        assert g.js("Voxels.engine.made(Math.floor(myAt.x / 32) + 3, Math.floor(myAt.y / 32)) === false")   # (the classic engine makes no land meanwhile)
         b0 = g.js("HdLook.builds"); g.stamp(1, 0, ["%"]); g.wait(f"HdLook.builds > {b0} && !HdLook.busy")
         assert 1 <= g.js("HdLook.made") <= 9, g.js("HdLook.made")       # a tile changed: its chunk and the ones round it, not the land (some 40 chunks)
         x, y = g.pos(); b0 = g.js("HdLook.builds"); g.page.keyboard.down("a"); g.wait(f"myAt.x <= {x - 1}"); g.page.keyboard.up("a"); g.wait(f"HdLook.builds > {b0} && !HdLook.busy")

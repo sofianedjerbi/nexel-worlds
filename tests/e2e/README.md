@@ -55,13 +55,12 @@ By area, for "the files I touched and their neighbours":
 
 | area | files |
 | --- | --- |
-| land, picture | blocks, land, relief, pixels, edits, curve, roll, tall, section |
-| light | depth, sunland, shaders, daylight, narrow, water |
-| hidden | xray, holes, underground, caves, behind, views, stacked |
+| land, picture | land, relief, pixels, edits, curve, tall, water, models |
+| hidden, light | views, stacked, daylight |
 | HD look | hd, hd_land, hd_sun, hd_sky, hd_phone, hd_window, hd_stair, hd_trench, hd_behind, hd_paints |
-| building | build, buildghost, building, floors, place, digging, climb, mark, edges |
+| building | build, buildghost, building, floors, digging, climb, edges, wayout, wayshow, target |
 | moving, living | moving, fall, swim, living, gathering, wild, boss, flee, wear, races, monkey |
-| screens | ui, menu, bag, bookkeys, craft_search, help, prompts, complete, ask, bubbles, social, zoom, frame, models |
+| screens | ui, menu, bag, bookkeys, craft_search, help, prompts, complete, ask, bubbles, social, zoom, frame, f3 |
 | first screen, phone, sound | title, title_scene, account, demo, bundle, phone, phone_taps, touch, sound, world |
 
 ## Rules

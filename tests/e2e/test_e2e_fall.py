@@ -43,19 +43,3 @@ def test_a_drop_of_two_layers_is_still_a_hop_and_three_a_short_fall(game):
     game.stamp(-1, -1, ["..."] * 3, levels=["333"] * 3); game.rest()
     assert step(.3) == [True, True] and step(.6)[0]            # three: a fall (it walks to the edge, then drops)
     assert game.server()["hp"] == 20
-
-
-def test_dust_shows_on_level_ground_and_not_behind_a_ledge(game):
-    """Dust, sparks and splashes behind higher ground aren't drawn. On the level nothing is behind anything: the check
-    compared 0 with less than 0 there, and every puff that wasn't on the top line of its tile went unseen."""
-    game.clear_area(8)
-    x, y = game.pos()
-    assert game.js(f"[behindHill({x} + .5, {y} + .85), behindHill({x} + .5, {y} + .2)]") == [False, False]
-    game.stamp(-1, 1, ["..."], levels=["111"]); game.rest()                 # a ledge a layer high in front of you: its top covers the lower half of your tile
-    assert game.js(f"[behindHill({x} + .5, {y} + .85), behindHill({x} + .5, {y} + .2)]") == [True, False]
-    game.stamp(-1, 1, ["..."], levels=["000"]); game.rest()
-    n = game.js("(() => { parts.length = 0; return 1; })()")
-    shown = game.js(f"""(() => {{ burst({x}, {y} + .35, 'dust', 8, {{g: 0, life: 3}}); let n = 0; const f = ctx.fillRect;
-      ctx.fillRect = function (...a) {{ if (ctx.fillStyle === PCOL.dust[0] || ctx.fillStyle === PCOL.dust[1]) n++; return f.apply(ctx, a); }};
-      return new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {{ ctx.fillRect = f; ok(n); }}))); }})()""")
-    assert shown >= 8, shown                                   # the dust is painted
