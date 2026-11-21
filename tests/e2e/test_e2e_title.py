@@ -115,36 +115,50 @@ def test_wake_up_says_the_world_is_still_coming(browser, server):
     page.close()
 
 
-def test_the_island_is_there_at_once_as_a_still_picture_and_comes_in_over_it(browser, server):
+def test_the_island_is_there_at_once_as_a_still_picture_and_comes_in_over_it_in_the_hd_look(browser, server):
     """"I want the demo background to load beautifully asap": behind the first screen's window there was the sea's flat
     colour until every picture of the game had come (seven seconds on a slow line), then the island a block at a
     time. Its still picture is asked for first of all (tools/build_title_poster.py: what the game paints at the
-    island's first moment, nobody on it) and put on the very pixels the island will be drawn at; the island comes in
-    over it once all of it is painted, the view held still until it has: nothing jumps."""
-    # where the still picture has a line (a px unlike the one beside it) on land, not water (it moves): the share of
-    # those px the island as drawn has too, on the same screen px; and the same count a single art px aside (far less)
-    same = """async () => { const img = document.getElementById('poster'), r = img.getBoundingClientRect(), z = r.width / img.naturalWidth;
-      const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
-      const p = g.getImageData(0, 0, c.width, c.height).data, k = cv.width / innerWidth, d = ctx.getImageData(0, 0, cv.width, cv.height).data; let same = 0, aside = 0, n = 0;
-      const eq = (i, j) => d[i] === p[j] && d[i + 1] === p[j + 1] && d[i + 2] === p[j + 2];
-      for (let y = 4; y < innerHeight; y += 3) for (let x = 4; x < innerWidth; x += 3) {
-        const px = Math.floor((x - r.left) / z), py = Math.floor((y - r.top) / z); if (px < 1 || py < 0 || px >= c.width - 1 || py >= c.height) continue;
-        const i = (Math.floor(y * k) * cv.width + Math.floor(x * k)) * 4, j = (py * c.width + px) * 4;
-        if (p[j + 2] > p[j] || (p[j] === p[j + 4] && p[j + 1] === p[j + 5] && p[j + 2] === p[j + 6])) continue;
-        n++; if (eq(i, j)) same++; if (eq(i, j - 4)) aside++; }
-      return [n, same / n, aside / n, z, cam.x - TitleScene.S.ox - TitleScene.S.C.centre[0], cam.y - TitleScene.S.oy - TitleScene.S.C.centre[1] - TITLE_DY]; }"""
+    island's first moment, nobody on it); the island comes in over it once all of it is made, the view held still
+    until it has, the name and the window where they were.
+    "Update main menu to the new voxel view": the island was the flat picture of the classic look, the game's own look
+    came only once you had woken up. It is drawn by the HD look (hd.js: its eye on the middle of the view): the tilted
+    land, its sky over it; so is its still picture. And you wake up from it into the world, in the same look."""
+    # the HD look's picture as the screen shows it: how many colours, how blue its top row is (sky), how green its lower half (meadow)
+    seen = """() => { const d = HdLook.read(0, 0, cv.width, cv.height).data, w = cv.width, h = cv.height, kinds = new Set(); let sky = 0, land = 0, n = 0, clear = 0;
+      for (let i = 0; i < d.length; i += 4 * 97) { kinds.add(d[i] >> 3 << 10 | d[i + 1] >> 3 << 5 | d[i + 2] >> 3); if (d[i + 3] === 0) clear++; }
+      for (let x = 2; x < w; x += 7) { const a = (2 * w + x) * 4, b = (Math.floor(h * .7) * w + x) * 4; n++; if (d[a + 2] >= d[a] && d[a + 2] > 150) sky++; if (d[b + 1] > d[b + 2] + 20) land++; }
+      return {kinds: kinds.size, sky: sky / n, land: land / n, clear}; }"""
+    boxes = "[document.querySelector('#joinbox .logo'), document.querySelector('#joinbox .menu'), $('join')].map((e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; })"
+    still = "Math.abs(cam.x - TitleScene.S.ox - TitleScene.S.C.centre[0]) + Math.abs(cam.y - TitleScene.S.oy - TitleScene.S.C.centre[1] - TITLE_DY)"
     for kw, zoom, small in ((dict(viewport={"width": 1281, "height": 760}), 3, False), (dict(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True, device_scale_factor=3), 2, True),
                             (dict(viewport={"width": 844, "height": 390}, has_touch=True, is_mobile=True, device_scale_factor=3), 2, True)):
         page = browser.new_page(**kw)
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
         page.route("**/js/title_scene.js*", lambda r: (page.wait_for_timeout(700), r.continue_()))        # (the island's own script late: its picture is there before it)
         page.goto(server, wait_until="commit")
         page.wait_for_function("!!document.querySelector('#poster.in')", timeout=5000)
         js = page.evaluate
-        assert js("[typeof TitleScene, document.body.classList.contains('scene'), getComputedStyle(document.getElementById('c')).opacity, document.getElementById('poster').currentSrc.includes('_s.webp')]") == ["undefined", False, "0", small]
+        assert js("[typeof TitleScene, document.body.classList.contains('scene'), getComputedStyle(document.getElementById('c')).opacity, /title_hd_s\\.webp/.test(document.getElementById('poster').currentSrc), /title_hd\\.webp/.test(document.getElementById('poster').currentSrc)]") == ["undefined", False, "0", small, not small]
+        # the still picture is the HD look's: sky along its top, a whole number of screen px an art px
+        img = js("""(() => { const img = document.getElementById('poster'), c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = 4; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+          const d = g.getImageData(0, 0, c.width, 1).data; let sky = 0; for (let x = 0; x < c.width; x++) if (d[x * 4 + 2] >= d[x * 4] && d[x * 4 + 2] > 150) sky++; return [sky / c.width, img.getBoundingClientRect().width / img.naturalWidth]; })()""")
+        assert img[0] > .9 and img[1] == zoom, img
+        before = js(boxes)
         page.wait_for_function("document.body.classList.contains('scene')", timeout=30000)
-        n, share, aside, z, dx, dy = js(same)
-        assert n > 1500 and share > .65 and share > aside + .2 and z == zoom and abs(dx) + abs(dy) < 1e-6, (kw["viewport"], n, share, aside, z, dx, dy)   # the same pixels (but for who lives there, and what the wind moves); the view has not moved
-        page.wait_for_function("getComputedStyle(document.getElementById('c')).opacity === '1' && getComputedStyle(document.getElementById('poster')).visibility === 'hidden'", timeout=5000)
-        page.wait_for_function("Math.abs(cam.x - TitleScene.S.ox - TitleScene.S.C.centre[0]) + Math.abs(cam.y - TitleScene.S.oy - TitleScene.S.C.centre[1] - TITLE_DY) > .05", timeout=20000)   # then the view goes after someone, as ever
+        assert js(still) < 1e-6 and js(boxes) == before, (kw["viewport"], js(still), before, js(boxes))      # the view has not moved; the name and the window are where they were
+        assert js("[HdLook.live, HdLook.builds > 0, getComputedStyle(document.getElementById('hd')).display, !!HdLook.eye, Curve.on]") == [True, True, "block", True, True]
+        got = js(seen)
+        assert got["kinds"] > 40 and got["clear"] == 0 and got["sky"] > .8 and got["land"] > .5, (kw["viewport"], got)      # drawn, all of it: the sky over the land (not the clear colour, not one flat colour)
+        page.wait_for_function("getComputedStyle(document.getElementById('hd')).opacity === '1' && getComputedStyle(document.getElementById('poster')).visibility === 'hidden'", timeout=5000)
+        page.wait_for_function(still + " > .05", timeout=20000)   # then the view goes after someone, as ever
+        assert js(boxes) == before
+        if not small:                                             # the menu still works: you wake up, in the world, in the same look, its eye on you
+            page.fill("#name", "Hedy")
+            page.click("#join")
+            page.wait_for_function("me === 'Hedy' && meObs && !TitleScene.on && HdLook.eye === null && HdLook.live && !HdLook.busy && !arrivingNow", timeout=25000)
+            assert js("$('joinbox').style.display") == "none" and js("[...blocks.values()].every((b) => b.bx > -200 && b.by > -200)")
+            assert js(seen)["kinds"] > 20
         page.close()
-
+        assert not errors, errors

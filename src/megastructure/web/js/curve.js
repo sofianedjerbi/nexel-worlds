@@ -38,7 +38,7 @@ const Curve = (() => {
   // the roll as the magnified picture had it, let back to its own place: zoom.js)
   function frame(ox, oy, S, now) {
     const m = CURVE[force === null ? opt("curve") : force];
-    if (!m || (typeof TitleScene !== "undefined" && TitleScene.on)) { c = null; return; }      // (the first screen's island is drawn on the very px of its still picture: flat)
+    if (!m || (typeof TitleScene !== "undefined" && TitleScene.on && !HdLook.live)) { c = null; return; }      // (the first screen's island in the classic look is drawn on the very px of its still picture: flat; in the HD look it has its sky)
     const z = zoom, snap = (v) => Math.round(v / z) * z, mid = H / 2;
     if (!ZOOM.busy) zs = Math.abs(zs - 1) < .004 ? 1 : zs + (1 - zs) * .14;
     const line = snap(mid + (H * (1 - m.horizon) - mid) * zs), y0 = snap(mid + (H * (1 - m.from) - mid) * zs), q = m.floor || 0;

@@ -31,6 +31,7 @@ function bookPx() { const d = devicePixelRatio || 1, small = document.body.class
 // screenOrigin, at the zoom the game starts with; title_scene.js starts its view TITLE_DY tiles under the island's
 // middle). It comes in softly when it has come, and the island comes in over it once it is painted (title.css):
 // there was the sea's flat colour behind the window until every picture of the game had come.
+// (The picture is the HD look's, hd.js: the tilted land and its sky, as the island is then drawn; its middle on the screen's. The flat one's px were the island's own.)
 const TITLE_DY = 4 * Math.sin(1);
 (() => { const qs = new URLSearchParams(location.search), saved = +localStorage.getItem("megastructure-zoom"), small = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520;
   if (qs.get("follow")) return;                              // (you came to follow someone: the world's own land)
@@ -38,7 +39,7 @@ const TITLE_DY = 4 * Math.sin(1);
   const fit = () => { const w = img.naturalWidth, h = img.naturalHeight; img.style.width = w * z + "px";
     img.style.left = Math.round(innerWidth / 2 - 8 * z) - z * (w / 2 - 8) + "px"; img.style.top = Math.round(innerHeight / 2 - 8 * z) - Math.round(f * z) - z * (h / 2 - 8 - Math.round(f)) + "px"; };
   img.id = "poster"; img.alt = ""; img.fetchPriority = "high"; img.onload = () => { fit(); addEventListener("resize", fit); img.classList.add("in"); };
-  img.src = small ? "assets/title_poster_s.webp" : "assets/title_poster.webp"; document.body.appendChild(img); })();
+  img.src = small ? "assets/title_hd_s.webp" : "assets/title_hd.webp"; document.body.appendChild(img); })();
 </script>
 <canvas id="c"></canvas>
 <div id="hover"></div>

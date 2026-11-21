@@ -3797,3 +3797,32 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - Tests: tests/test_land_blocks.py (a wall two high, a roof cell held from its side, refused in the open air, in your own body, in a full cell, out of reach; taken back it is the block). tests/e2e/test_e2e_land_blocks.py (Z, Space twice: a wall two high; the cell beside its top; X takes the top back; B leaves). The key's letter in test_e2e_build, digging, prompts; test_e2e_mark: with earth in hand the mark is the cell it will go in.
 - Left, plainly: the words are still "Plan ..." for pieces and "Dig a hole" for X (not "Place" / "Break"); no ghost of a land block is drawn at the cursor (its box and the words only), no crack or red outline on what X will take; for a roof the cursor has to be lifted from a tile inside (E from the ground is a storey: 3; from a wall's top it is 5): found by trying, nothing shows it; the land's painter draws a stone block put on the meadow with a grass top. One browser test (the phone's shaft by "Dig up") needed its second try twice in about seven runs; it now prints the state when it fails; not understood.
 
+
+## Iteration 206: the first screen is in the HD look
+
+**Asked.** "Update main menu to the new voxel view also". An audit: "flat title screen". The island behind the menu was drawn by the classic painter (flat, top-down), and its still picture (`title_poster*.webp`) was that same flat picture: the game's look came only once you had woken up.
+
+**Hypothesis.** The HD look needs no player, only a place to look at. If `hd.js` takes an eye from the first screen, the island is drawn by the very renderer of the game (no second painter), and the still picture can be made by it too.
+
+**Change.**
+- `hd.js`: `HdLook.eye` (a function -> `{x, y, z, free, rush}`). With it the look is on with nobody awake: the eye looks at that place, at its level, at the surface's pitch, no x-ray window, nothing aimed at; names and what is said are still written. `rush`: the land is made 12 ms a frame while nothing shows (2.5 in play). Others in water stand at its face (they stood on the bed: the island's duck was under the pond; so was any other swimmer in the world).
+- `title_scene.js`: gives the eye (the middle of the view, the meadow's level), takes it back when you wake up; the open sea is asked for as far as this eye sees (30 tiles: it was the flat screen's rectangle, and bands of nothing stood north of the island); the island is let in once the HD land is made.
+- `curve.js`: the first screen has its sky and horizon in the HD look (it was kept flat for the old still picture's px).
+- The still picture: `tools/build_title_poster.py` renders the HD look's own canvas (nobody on it, lossless) to new files `assets/title_hd.webp` (864x480, 116 KB) and `title_hd_s.webp` (480x480, no lens as a phone draws, 50 KB); `index.html` and `tools/build_pages.py` name them (two names each, nothing else). `title_poster.webp` / `_s` are no longer used (left in place: another session has edits to them).
+
+**Measured** (my own server copy; phone pages 390x844 and 844x390 at DPR 3, CPU x4; desk 1440x900):
+- first paint (name and menu): 96-112 ms before and after; still picture in: 91-116 ms (phone), 53 ms (desk).
+- island in over it: phone 1.60 / 1.62 s before -> 1.83 / 2.12 s after (it was 2.7 / 3.2 s before `rush`); desk 0.74 -> 0.66 s. No layout change when it comes (the test compares the name's and the window's boxes).
+- script a frame on the phone pages: mean 4.2 / 3.3 ms before -> 3.3 / 3.6 ms after (p95 5.1 / 4.5 -> 6.1 / 6.6); desk 1.2 -> 1.7 ms.
+- pictures: `t_title_{desk,port,land}.png`, `t_title_before_*`, `t_title_port_poster.png` (the still alone), `t_title_demo_390.png` (the demo build served locally, no CDN).
+- tests: unit 632 passed; `test_e2e_title.py` + `test_e2e_title_scene.py` 8 passed (the still-picture test rewritten for the HD look: sky along the top, land below, no clear px, boxes unmoved, then Wake up into the world with the eye back on you); quick 54 passed 1 skipped; hd, swim, curve, hd_phone, sound 33 passed 5 skipped.
+
+**Still weak.**
+- The still picture and the live island are not on the same px (a perspective picture depends on the screen's shape; upright the eye is at 52 degrees, the still at 36): the horizon moves by up to some 70 screen px during the 0.7 s cross-fade. The flat picture was exact.
+- 0.2-0.5 s later on a throttled phone than the flat island; the desk's still is twice the old one's bytes (the sky's dither and the lens blur, lossless).
+- Names and bubbles of the island's people run under the game's name and its line on a phone (as before, more of them now that the eye sees further).
+- Someone behind the house has their name over its roof (as in play).
+- On a screen wider than about 2460 px the HD land ends 24 tiles each side (so does the game's).
+- `test_e2e_demo.py` not run (it fetches Pyodide from a CDN); the demo build was checked served locally instead.
+
+**Next.** A still per screen shape (or the eye's pitch held at 36 on the first screen) if the cross-fade's jump is seen; move the line under the name out of the way of the bubbles.

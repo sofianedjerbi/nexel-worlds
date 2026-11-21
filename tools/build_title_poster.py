@@ -1,5 +1,6 @@
-"""The first screen's island as a still picture (web/assets/title_poster.webp, and _s for a small phone): what the
-game itself paints at the island's first moment, nobody on it, one art pixel a pixel. The page shows it at once, in
+"""The first screen's island as a still picture (web/assets/title_hd.webp, and _s for a small phone): what the
+game itself paints at the island's first moment in its HD look (hd.js: the tilted land, its shadows, its sky), nobody
+on it, one art pixel a pixel. (title_poster.webp and _s were the flat picture of the classic look: no longer shown.) The page shows it at once, in
 the very place the island will be drawn (index.html), and the island comes in over it (title_scene.js): the first
 screen had the sea's flat colour behind its window until every picture of the game had come.
 
@@ -22,13 +23,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src" / "megastructure" / "web" / "assets"
-SIZES = {"title_poster.webp": (864, 480), "title_poster_s.webp": (480, 480)}     # (art px: a desk's screen to 2592 x 1440; a phone's, either way up)
-BUILT = "(() => { for (const b of blocks.values()) if (!Voxels.made(b)) return false; return blocks.size > 0 && !dirtyTiles.length; })()"      # (the land is blocks: voxels.js)
+SIZES = {"title_hd.webp": (864, 480), "title_hd_s.webp": (480, 480)}     # (art px: a desk's screen to 2592 x 1440; a phone's, either way up)
+BUILT = "document.body.classList.contains('scene') && HdLook.live && HdLook.builds > 0 && !HdLook.busy && !dirtyTiles.length"      # (the HD look has made its land: hd.js)
 SHOT = """async () => { const S = TitleScene.S; clearInterval(S.timer);
   cam.x = camT.x = S.ox + S.C.centre[0]; cam.y = camT.y = S.oy + S.C.centre[1] + TITLE_DY;
-  for (const f of ['drawEntity', 'drawNameplate', 'drawEmote', 'drawSelector', 'drawIntent']) window[f] = () => null;
-  bubbles.length = 0; emotes.clear();
-  frame(performance.now()); frame(performance.now());
+  ents.clear(); bubbles.length = 0; emotes.clear();
+  for (let i = 0; i < 400 && (i < 3 || HdLook.busy); i++) frame(performance.now());
+  const cv = HdView.el, ctx = cv.getContext('2d');           // (the HD look's own canvas, an art px a px: hd_view.js)
   const a = ctx.getImageData(0, 0, cv.width, cv.height).data, url = cv.toDataURL('image/webp', 1), img = new Image();   // (both before the game paints its next frame)
   img.src = url; await img.decode();
   const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
@@ -54,7 +55,7 @@ def build():
             browser = pw.chromium.launch(channel="chrome", headless=True)
             for name, (w, h) in SIZES.items():
                 page = browser.new_page(viewport={"width": w, "height": h}, device_scale_factor=1)
-                page.goto(f"http://127.0.0.1:{port}/?zoom=1")
+                page.goto(f"http://127.0.0.1:{port}/?zoom=1" + ("&touch=1" if name.endswith("_s.webp") else ""))      # (a phone's picture has no lens, hd_view.js: as a phone draws it, and two thirds the size)
                 page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on", timeout=30000)
                 page.wait_for_function(BUILT, timeout=60000)
                 out = page.evaluate(SHOT)
