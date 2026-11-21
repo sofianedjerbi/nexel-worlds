@@ -148,7 +148,7 @@ if (TOUCH) {
   setInterval(() => {
     if (!me) return;
     const rows = availableActions(), get = (k) => rows.find((r) => r[0] === k);
-    const a = Build.on ? rows[1] : get("Space"), b = get("X"), up = !Build.on && rows.find((r) => r[0] === capOf("up") && r[3]), bd = Build.on || get(capOf("build")), s = [a && a[1], a && a[2], b && b[1], up && up[1], !!get("E"), !!get("F"), Build.on, !!bd].join("|");
+    const a = Build.on ? rows[1] : get("Space"), b = get("X"), up = !Build.on && rows.find((r) => r[0] === capOf("up") && r[3]), bd = true, s = [a && a[1], a && a[2], b && b[1], up && up[1], !!get("E"), !!get("F"), Build.on, !!bd].join("|");
     if (s !== sig) {
       sig = s;
       $("tA").querySelector(".cap").textContent = a ? a[1] : "";

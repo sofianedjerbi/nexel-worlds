@@ -9,7 +9,8 @@ to dig huge columns"): build mode's X with the cursor in the ground.
 And up: `dig` with dir "up" takes the cell over your own head (dig_over). With the cell in front of you at your head's
 height (`dig` with dir and z: your z + 2) that is a step: head room to jump, and the block to jump onto. So whoever
 can dig is never shut in: a stair is cut up out of any hole, two cells a layer, by hand too ("how do i climb up?
-why i cant??": under their own stair a pickaxe dug level and down, and nothing dug upward)."""
+why i cant??": under their own stair a pickaxe dug level and down, and nothing dug upward).
+What is dug is the block itself, in your pack (take_land)."""
 
 from ..gen import LOW
 from ..tiles import BLOCKS, DEEPER, DEPTH, GROUNDS
@@ -65,6 +66,14 @@ class Underground:
                                             f"your head's height (dig with dir and z={z}), then step onto the block under it")
         return self._lower(a, x, y, z, self.held(a, args) == "pickaxe", inside=True)
 
+    def take_land(self, a: Agent, x: int, y: int, z: int, cause: str = "dig") -> str:
+        """The cell of the land goes into the pack as the block it is (earth, stone: landblocks.py), to be put back
+        as it was; stones are made of a stone block (the recipe `stone`). -> the item."""
+        got = self.placed.take(x, y, z)
+        a.add(got)
+        self.set_cell(x, y, z, False, by=a, cause=cause)
+        return got
+
     def open_cell(self, x: int, y: int, z: int) -> bool:
         """A cell of the land with air on a side of it (over it, under it, beside it): it can be dug."""
         w = self.world
@@ -90,10 +99,8 @@ class Underground:
         if z == self.world.level(x, y) and self.world.block(x, y) == "flower":
             a.add("flower")
             self.world.set(x, y, block="none")
-        got = "stone" if z > 1 or z < 0 else "dirt"
-        a.add(got)
         self.tire(a, "dig")
-        self.set_cell(x, y, z, False, by=a, cause="dig")
+        got = self.take_land(a, x, y, z)
         a.bump("dug")
         return {"got": {got: 1}, "cell": [x, y, z], "level": max(s for s in self.world.surfaces(x, y) if s < z) if any(s < z for s in self.world.surfaces(x, y)) else z - 1}
 
@@ -117,6 +124,5 @@ class Underground:
         if not self._diggable_down(a) or (a.x, a.y) != (x, y):
             raise ActionError("changed", "something changed here")
         z = self.height(a)
-        a.add("stone" if z < 0 or z > 1 else "dirt", 1)
-        self.set_cell(x, y, z, False, by=a, cause="dig_down")
-        return {"level": self.height(a), **self.fell(a, z - self.height(a))}
+        got = self.take_land(a, x, y, z, cause="dig_down")
+        return {"got": {got: 1}, "level": self.height(a), **self.fell(a, z - self.height(a))}

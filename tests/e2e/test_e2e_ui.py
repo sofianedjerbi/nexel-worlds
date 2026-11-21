@@ -104,10 +104,9 @@ def test_the_recipe_book_is_driven_by_keys(game):
     assert game.js("craftFocus") == names[0] and game.js("craftPage") == 0
     game.press("End", 150)
     assert game.js("craftFocus") == names[-1]
-    game.press("ArrowUp", 80)
-    game.press("ArrowUp", 80)
-    game.press("ArrowUp", 80)
-    assert game.js("craftFocus") == names[-4] and game.js("craftPage") == 0            # (back up over the page's edge)
+    for _ in range(4):                                                                 # (nine names: four on the second page)
+        game.press("ArrowUp", 80)
+    assert game.js("craftFocus") == names[-5] and game.js("craftPage") == 0            # (back up over the page's edge)
     for key, kind in (("e", "Tools"), ("ArrowRight", "Build"), ("Tab", "Home"), ("q", "Build"), ("ArrowLeft", "Tools")):
         game.press(key, 150)
         assert game.js("craftTab") == kind, key

@@ -14,7 +14,7 @@
 // is done without a mouse: every button has its key, written on it while you play by keys (`kbd`: keyboard.js).
 
 const RECIPE_GROUPS = [
-  ["Basics", "workbench", ["workbench", "campfire", "torch", "rope", "plank", "path", "boat", "mailbox"]],
+  ["Basics", "workbench", ["workbench", "campfire", "torch", "rope", "plank", "stone", "path", "boat", "mailbox"]],
   ["Tools", "pickaxe", ["axe", "pickaxe", "hoe", "watering_can", "spear", "sword"]],
   ["Build", "wood_wall", ["wood_wall", "door", "roof", "stairs", "ladder", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
   ["Home", "bed", ["bed", "chair", "table", "plant", "clock", "rug", "well", "coop", "trough", "hay", "name_tag", "picnic_blanket", "basket", "cooked_meat", "bread", "ingot"]],

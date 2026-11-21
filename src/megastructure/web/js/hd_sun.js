@@ -51,7 +51,7 @@ const HdSun = (() => {
     let t = c[c.length - 1], roof = null; const cells = Floors.any(X, Y) && Floors.cells(X, Y);
     if (cells && cells.size) { let top = -1e9, kind = ""; for (const [z, [k]] of cells) if (z > top) { top = z; kind = k; }
       if (kind === "stairs" || Floors.alpha(X, Y, top) < 1) return null; if (L === undefined || top - L <= 1) { t = top; if (kind === "roof") roof = HdThings.pitch(X, Y, top); } }   // (what is built high over L: the ground under it, seen under an eave: a lit strip lay along a house's foot)
-    else if (HdLook.cut(X, Y, t)) return null;
+    
     return L !== undefined && (t - L > 1 || t - L < -4) ? null : {z: t, roof};
   }
   // a piece of a shadow on a tile's surface: px a0..a1, b0..b1 of that tile, (ox, oy): the tile's corner in the caller's px; on a roof it leans with the pitch, in two at the ridge

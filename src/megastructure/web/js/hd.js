@@ -1,16 +1,16 @@
 // The HD look (the default land view; Settings, Picture, Look: HD or Classic): ONE look on the surface and under ground. The land round you is drawn by VoxStyle
 // (vox_style.js) at the art's own size, a tilted perspective, every face from the tileset, on a canvas of its own the page shows
 // zoom times bigger (hd_view.js). Behind it the game's own sky (its curved horizon's). With it on the classic frame paints nothing (render.js).
-// Going down nothing switches: the surface is always drawn as it is (meadow, trees, sky, the day's light). When land hides you (a roof over you, or land
-// in the eye's line to your feet) an OPEN PIT is cut over your own space, terraced towards the eye (vox_style_land.js `steps`): it grows from your tile
-// over a quarter of a second and shuts the same way; its faces are the land's own, the day's light at the top, your lantern's at the bottom. Trees, bushes, crops: upright
+// Going down nothing switches: the land is always drawn whole, as it is (meadow, trees, sky, the day's light). When land hides you (a roof over you, or land
+// in the eye's line to your feet) you are seen through an X-RAY WINDOW: a hole of your own space's shape (its floors' boxes seen from the eye, vox_style_win.js; a rim of one px in two, a dark line,
+// the ground's section along its top edge), through which the land between the eye and your space is not drawn. Nothing is cut out of the land; it fades in over a tenth of a second, and is there before you step under the land (your space is looked for from the surface too). Trees, bushes, crops: upright
 // billboards of their own sprites (objectSprite), px for px; furniture, walls, fences, built floors and roofs: small 3D
 // pieces in the land (hd_things.js), a built house open over your head; you and the others: drawEntity at zoom 1.
 const HdLook = (() => {
-  const urlLook = new URLSearchParams(location.search).get("look"), GROW = .4, EASE = .4, HOLD = 300, CAP = 20, R = 24, STEEP = 68;
+  const urlLook = new URLSearchParams(location.search).get("look"), GROW = .25, EASE = .4, HOLD = 300, CAP = 20, R = 24;
   const cfg = {levels: [-9, 12], variants: 4, up: RELIEF_STEP, rock: {from: 5, lo: -512, n: 4}};
   const cam = {kind: "persp", pitch: 36, fov: 26};
-  const api = {get active() { return (urlLook || opt("look")) === "hd"; }, get on() { return this.active && !!me && myId !== null; }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen; }, get pit() { return eng ? eng.pit : 0; }, force: null, cam, bend: .03, blur: 1, faces: 0, builds: 0};
+  const api = {get active() { return (urlLook || opt("look")) === "hd"; }, get on() { return this.active && !!me && myId !== null; }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: 68, nowin: false, force: null, cam, bend: .03, blur: 1, faces: 0, builds: 0};
   let camL = null, pitN = null, stage = 0, tilt = 0, flip = 0, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), lit = null, hl = 0, hy = 0, since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, camV = 0;
   const sprs = new Map(), lads = new Map(), things = new Map(), piles = new Map(), built = new Map();
   const Z = () => zoom * DPR;   // (canvas px an art px: `zoom` CSS px, as the classic picture's. It was `zoom` canvas px: on a dense screen, a phone's, the land half the size and twice as far as it would show)
@@ -78,16 +78,15 @@ const HdLook = (() => {
     const lk = [base, dark.toFixed(3), lamps, api.builds].join(), out = {wash: [wash[0], wash[1], wash[2], wash[3] * (1 - el)], lit}; if (lk === lit._k) return out; lit._k = lk; lit._v = (lit._v || 0) + 1;   // (the same lamps at the same places: the picture there is this frame's: not painted, not sent again)
     const q = lit.getContext("2d"); q.globalAlpha = 1; q.globalCompositeOperation = "source-over"; q.fillStyle = `rgb(${tint.map((v) => Math.round(v + (255 - v) * lift)).join()})`; q.fillRect(0, 0, w, h);
     if (dark > .2) { q.globalCompositeOperation = "lighter"; const k = (dark - .2) / .8;
-      for (const s of list) if (s.lamp) { const a = eng.at(s.x, s.y, s.z), cl = s.top && s.lamp > 1; if (!a) continue; if (cl) { q.save(); pitPath(q, Math.floor(s.x), Math.floor(s.y), s.z); q.clip(); }   // (your lantern under the land lights the pit, not the grass round its mouth: it was a ring by distance on the screen)
+      for (const s of list) if (s.lamp) { const a = eng.at(s.x, s.y, s.z), cl = s.top && s.lamp > 1; if (!a) continue; if (cl) { q.save(); winPath(q, Math.floor(s.x), Math.floor(s.y)); q.clip(); }   // (your lantern under the land lights what the window shows, not the grass round it: it was a ring by distance on the screen)
         lamp(q, a[0], a[1] - 8, s.lamp > 1 ? 64 : 42, s.lamp > 1 ? "rgb(255,176,96)" : "rgb(255,222,170)", (s.lamp > 1 ? 1.15 : .45) * k, [0, 0]); if (cl) q.restore(); } }
     q.globalAlpha = 1; return out;
   }
-  // the px of the picture the open pit takes round (tx, ty): each cut tile's top as drawn, your floor's level under it, the walls north and beside it: a path on q
-  function pitPath(q, tx, ty, L) {
+  // the px of the picture the window shows round (tx, ty): each of its tiles' floor, and the walls north and beside it up to its ceiling: a path on q
+  function winPath(q, tx, ty) {
     q.beginPath(); const quad = (l) => { const a = l.map((v) => eng.at(...v)); let ar = 0; for (let i = 0; i < 4; i++) ar += a[i][0] * a[(i + 1) % 4][1] - a[(i + 1) % 4][0] * a[i][1]; if (ar < 0) a.reverse(); q.moveTo(...a[0]); for (let i = 1; i < 4; i++) q.lineTo(...a[i]); q.closePath(); };
-    for (let y = ty - 7; y <= ty + 5; y++) for (let x = tx - 6; x <= tx + 6; x++) { const c = eng.pitAt(x, y); if (c === undefined) continue;
-      if (shown(x, y + 1) <= c + 1) for (const z of c > L ? [c, L] : [c]) quad([[x, y, z], [x + 1, y, z], [x + 1, y + 1, z], [x, y + 1, z]]);
-      for (const [dx, dy, e] of [[0, -1, [[x, y], [x + 1, y]]], [-1, 0, [[x, y], [x, y + 1]]], [1, 0, [[x + 1, y], [x + 1, y + 1]]]]) { const t = shown(x + dx, y + dy); if (t > c && (!dx || shown(x, y + 1) <= c + 1)) quad([[...e[0], c], [...e[1], c], [...e[1], t], [...e[0], t]]); } }   // (a cut tile behind land that stands south of it: not seen, not lit: the grass there was)
+    for (const [x, y, lo, hi] of eng.win.tiles) if (Math.abs(x - tx) <= 9 && Math.abs(y - ty) <= 9) { quad([[x, y, lo], [x + 1, y, lo], [x + 1, y + 1, lo], [x, y + 1, lo]]);
+      for (const e of [[[x, y], [x + 1, y]], [[x, y], [x, y + 1]], [[x + 1, y], [x + 1, y + 1]]]) quad([[...e[0], lo], [...e[1], lo], [...e[1], hi], [...e[0], hi]]); }
   }
   // what is written and pointed at, over the picture, by the game's own painters (names, a health bar, an emote, what is said, a progress bar): they were
   // drawn at the classic picture's places, under this one. Their sx, sy: someone's own place as this camera has it (found by its x, its y), else measured from you.
@@ -154,25 +153,24 @@ const HdLook = (() => {
     const w = Math.ceil(cv.width / Z()), h = Math.ceil(cv.height / Z());
     // a screen held upright: the eye looks from higher (36 to 52 degrees), or half of it was sky and the land ran out under you; and what stands south of you is drawn as far as the screen shows (it was 6 rows: trees came in half way up a tall screen)
     const base = 36 + 16 * Math.max(0, Math.min(1, h / w - 1)), k0 = Math.tan(base * Math.PI / 180) * 2; south = Math.min(R, Math.ceil(h / 32 / Math.sin(base * Math.PI / 180)) + 3 + Math.ceil(Math.max(0, topAt(tx, ty) - L) * .45));   // (deep in a pit the land's top south of you is nearer the eye: more rows of it show)
-    // the more the land shuts you in, the steeper the eye looks down: 68 degrees under a roof of land (two levels or more), or with 6 levels of land over the eye's line south of you (a gorge under the open sky). A deep pit is then a
-    // hole seen from above, walls all round, and needs little widening. (At 36 degrees a pit 24 deep was cut 16 tiles south along the eye's own line: its terraces seen edge on, none of them, and the land's top half the screen at your feet.) It eases over 300 ms.
+    // the more the land shuts you in, the steeper the eye looks down (api.steep): 68 degrees under a roof of land (two levels or more), or with 6 levels of land over the eye's line south of you (a gorge under the open sky). The window is then a
+    // hole seen from above, your room's walls all round it, and what is between the eye and you is a few tiles of land, not a hillside. It eases over 400 ms.
     const over = Math.max(0, topAt(tx, ty) - L); let enc = 0; for (let d = 1; d <= CAP; d++) enc = Math.max(enc, topAt(tx, ty + d) - L - 1 - (d - .5) * k0);
-    const sw = stage ? +(over >= 1 || enc >= 5) : +(over >= 2 || enc >= 6);   // (two pitches, not one a level: the pit is cut for the pitch, and would be cut again at every step of a stair. A shallow place keeps the surface's pitch and the pit it had)
+    const sw = stage ? +(over >= 1 || enc >= 5) : +(over >= 2 || enc >= 6);   // (two pitches, not one a level: the eye would tilt at every step of a stair. A shallow place keeps the surface's pitch)
     if (sw === stage) flip = now; else if (sw || now - flip > HOLD) { stage = sw; flip = now; }   // (back to the surface's pitch only after 300 ms of open sky: along a roof's edge the eye went up and down at every tile)
-    // (the eye tilts over 400 ms, slow at both ends, the pit growing with it: it was most of the way in 8 frames, one sudden change)
-    const want = base + (STEEP - base) * stage; tilt = pitN === null ? stage : Math.max(0, Math.min(1, tilt + (stage ? 1 : -1) * Math.min(dt, .034) / EASE)); pitN = base + (STEEP - base) * tilt * tilt * (3 - 2 * tilt); cam.pitch = pitN; cam.base = base; cam.want = want;
-    // (the pit: wanted whole the frame land hides you; it grows a tile at a time, 14 in a quarter of a second, each land made with the size it has by then: a fast machine shows every size, a slow one a few)
+    // (the eye tilts over 400 ms, slow at both ends, the window opening with it: it was most of the way in 8 frames, one sudden change)
+    const want = base + (api.steep - base) * stage; tilt = pitN === null ? stage : Math.max(0, Math.min(1, tilt + (stage ? 1 : -1) * Math.min(dt, .034) / EASE)); pitN = base + (api.steep - base) * tilt * tilt * (3 - 2 * tilt); cam.pitch = pitN; cam.base = base; cam.want = want;
     const kS = Math.tan(want * Math.PI / 180) * 2, cov0 = api.force !== null ? api.force > 0 : hidden(tx, ty, L, kS), cov = cov0 || (api.force === null && now - covAt < HOLD), dep = Math.max(0, topAt(tx, ty) - L);
-    if (cov0) covAt = now;   // (the pit shuts 300 ms after the land last hid you, with the eye's tilt)
-    grow = cov ? Math.min(CAP, grow + dt / GROW * CAP) : Math.max(0, grow - dt / GROW * CAP); api.u = grow / CAP; const st = cov ? CAP : 0;   // (the pit is made once, whole; the painter opens it round you over a third of a second (vox_style.js `rev`). It was made again at each of 20 sizes: a slow machine showed three of them)
-    eng = eng || VoxStyle.create(Object.assign({}, Voxels.host, {paintTop: shore, models: (x, y, cz) => { const a = Models.at(x, y), b = floorAt(x, y) > cz ? null : HdThings.at(x, y); return a && b ? a.concat(b) : a || b; },   // (what stands on land the pit took away goes with it)
+    if (cov0) covAt = now;   // (the window shuts 300 ms after the land last hid you, with the eye's tilt)
+    grow = cov ? Math.min(CAP, grow + dt / GROW * CAP) : Math.max(0, grow - dt / GROW * CAP); api.u = grow / CAP; const st = cov ? CAP : 0;   // (u: how open the window is as this file counts it; the painter eases its own, vox_style.js)
+    eng = eng || VoxStyle.create(Object.assign({}, Voxels.host, {paintTop: shore, models: (x, y, cz) => { const a = Models.at(x, y), b = floorAt(x, y) > cz ? null : HdThings.at(x, y); return a && b ? a.concat(b) : a || b; },
       chunkKey: (x0, y0, n) => { let c = built.get(x0 + "," + y0); if (!c || c[0] !== Floors.ver) { let f = ""; for (let y = y0; y < y0 + n && !f; y++) for (let x = x0; x < x0 + n; x++) if (Floors.any(x, y)) { f = "f"; break; } if (built.size > 2000) built.clear(); built.set(x0 + "," + y0, c = [Floors.ver, f]); } const fl = c[1];   // (what stands in a chunk hangs on the hour, what is built, open doors; where you are only if something is built in it: a roof over your head is open. And on the blocks of the world that have come, its own and the ones beside it)
         return (fl ? keyNear : keyFar) + fl + [[0, 0], [-1, 0], [n, 0], [0, -1], [0, n]].map(([i, j]) => (blockOf(x0 + i, y0 + j) ? 1 : 0)).join(""); }}), cfg);   // (what is built and put down: small 3D pieces, hd_things.js)
     if (eng.lost) { eng.forget(); key = ""; }   // (a tile that changed: drawTile, below: its chunk alone is made again. It was the whole land, and all its paints, at every change)
-    keyNear = HdThings.key(); keyFar = HdThings.key(false); const rx = Math.min(R, Math.ceil(w / 32 * 1.4) + 3), k = [tx, ty, L, st, kS.toFixed(2), keyNear, eng.stamp, rx, south].join();
+    keyNear = HdThings.key(); keyFar = HdThings.key(false); const rx = Math.min(R, Math.ceil(w / 32 * 1.4) + 3), k = [tx, ty, L, st, keyNear, eng.stamp, rx, south].join();
     const wg = cov ? CAP : 0; if (wg !== wantG) { wantG = wg; since = now; }   // (since: when land came over you or left; api.lag: ms from then to the land with the whole pit, or none, drawn)
-    if (k !== key && !gen) { gen = eng.steps(tx, ty, L, {r: R, rx, rs: south + 1, deep: 20, sea: 1, pit: st ? {k: kS, kc: stage ? kS * .6 : kS, cap: CAP, reach: 24, g: st} : null}); key = k; genG = st; hurry = st !== shownG; api.build = 0; api.builds++; }   // (one land at a time: the next is made when this one is done)
-    if (gen) { const b0 = performance.now(); while (performance.now() - b0 < (hurry || st ? 5 : 2.5)) if (gen.next().done) { gen = null; break; } api.build = Math.max(api.build, performance.now() - b0); slice1 = performance.now() - b0; api.slice = Math.max(api.slice, slice1); api.water = eng.water;   // (the chunks that are new or changed, a tile a step, 2.5 ms a frame (5 in a pit); what was drawn stays till it is done; a pit that opens or shuts: up to 8 ms a frame)
+    if (k !== key && !gen) { gen = eng.steps(tx, ty, L, {r: R, rx, rs: south + 1, deep: 20, sea: 1, win: st ? {reach: 24} : {reach: 7, walk: true}}); key = k; genG = st; hurry = st !== shownG; api.build = 0; api.builds++; }   // (one land at a time: the next is made when this one is done)
+    if (gen) { const b0 = performance.now(); while (performance.now() - b0 < (hurry || st ? 5 : 2.5)) if (gen.next().done) { gen = null; break; } api.build = Math.max(api.build, performance.now() - b0); slice1 = performance.now() - b0; api.slice = Math.max(api.slice, slice1); api.water = eng.water;   // (the chunks that are new or changed, a tile a step, 2.5 ms a frame (5 under the land); what was drawn stays till it is done)
       if (!gen) { shownG = genG; if (genG === wantG && since) { api.lag = performance.now() - since; since = 0; } } }
     // the eye's level follows yours: a step over some 150 ms; a FALL: the eye stays while your body is in the air (the land steady, the body coming down it; at most 9 levels over where you will land), then comes
     // down to you slow at both ends (a spring, critically damped, its exact answer for any frame's length: .4 s for 12 levels. Stepped a frame at a time it ran away when a frame took over 83 ms: a slow phone). (Over 8 levels it went there in one frame: off the gorge's rim more than half the picture changed at once, your body in the top quarter of it)
@@ -188,10 +186,8 @@ const HdLook = (() => {
       const r2 = cd || c === "g" ? 0 : HdThings.foot(c, s), plain = cd || c === "g" ? null : {fy: r2, card: {b: spriteBounds(s[0], s[1], s[2], s[3], s[4]) || [0, 0, s[3], s[4]]}};   // (each stands where its foot is in its tile, as the game has it: they stood at the tile's south edge, their feet half a tile north of their shadow)
       list.push(Object.assign(cd ? {} : thing(s), cd, {x: x + .5, y: y + (cd ? cd.y : plain ? (s[6] + r2) / 16 : 1), z, lamp: c === "^" || c === "x" ? 2 : 0, flat: c === "g", tx: x, ty: y, card: cd}, plain));   // (flat: a gate: a standing face of the land a tile wide, vox_style.js)
     };
-    const gone = (x, y) => api.cut(x, y, floorAt(x, y));   // (what stands on land the pit took away)
     const ck = [tx, ty, L, landVer, Floors.ver, api.builds, !!gen, Math.floor(now / 250)].join();   // (what stands: looked for four times a second and when you or the land move, not on 2400 tiles every frame)
     if (ck !== candKey) { candKey = ck; cand = []; for (let y = ty - R; y <= ty + south; y++) for (let x = tx - R; x <= tx + R; x++) {
-      if (gone(x, y)) continue;   // (on land the slice took away; in a cave: on its floor, the tile's lowest ground)
       const c = combAt(x, y), up = Floors.any(x, y) ? HdThings.loose(x, y) : null; if (up) for (const [ch, z] of up) cand.push([ch, x, y, z]);   // (what stands on a built block)
       if (c && isObject(c) && !HdThings.is(c, x, y)) cand.push([c, x, y, floorAt(x, y)]);      // (not the boxes of the land: hd_things.js)
     } }
@@ -199,14 +195,14 @@ const HdLook = (() => {
     // a ladder that would be put (the aim's, on your own tile in a shaft; build mode's plans): the ladder's own standing face where it will stand, as tall as its wall, pale (it was an upright picture laid over the frame: at 68 degrees two tiles over the pit's rim, and not where the ladder comes)
     { const a = Build.on ? Build.aim() : aimedTile(), it = a && a.it, q = it && (it.own || a.p); if (q && it.ghost === "ladder" && it.z !== undefined && it.ok !== false && !it.info) stood("l", q.x, q.y, it.z, true);
       if (Build.on) for (const j of Build.S.plans.values()) if (j.item === "ladder" && !j.take && j.state !== "bad") stood("l", j.x, j.y, j.z, true); }
-    for (const [ix, iy, pile] of groundItems) if (Math.abs(ix - tx) <= R && iy >= ty - R && iy <= ty + south && !gone(ix, iy)) {   // what lies on the ground: its small icons as the game lays them (loot.js), a px a px (they were not drawn in this look)
+    for (const [ix, iy, pile] of groundItems) if (Math.abs(ix - tx) <= R && iy >= ty - R && iy <= ty + south) {   // what lies on the ground: its small icons as the game lays them (loot.js), a px a px (they were not drawn in this look)
       const names = Object.keys(pile).slice(0, 3), k = names.join(); let c = piles.get(k);
       if (!c) { c = document.createElement("canvas"); c.width = 24; c.height = 16; const g = c.getContext("2d"); names.forEach((n, i) => { const [dx, dy] = pileAt(i, names.length); g.drawImage(ghostIcon(n), 7 + dx, 3 + dy); }); piles.set(k, c); }
       list.push({canvas: c, fx: 12, fy: 14 + Math.round(Math.sin(now / 1000 * 2.4 + ix * 1.3 + iy) + 1), still: true, d: true, pile: true, x: ix + .5, y: iy + .7, z: floorAt(ix, iy)});   // (it hovers, as in the classic picture: 0 to 2 px, a whole px at a time)
     }
     for (const q of ents.values()) if (q.x !== undefined && Math.abs(q.x - p.x) < 16 && Math.abs(q.y - p.y) < 12) {
       const qx = Math.round(q.x), qy = Math.round(q.y), z = q === p ? L : FLOORS && Floors.any(qx, qy) ? Floors.standOf(q, qx, qy) : q.e && typeof q.e.z === "number" && !H0.water(qx, qy) ? q.e.z : topAt(qx, qy);   // (on a built floor: at its height; in a cave: at the level the server has them. They were put on the land's top: a friend in your room stood on the grass over it)
-      if (q !== p && z < shown(qx, qy)) { const c = H0.column(qx, qy); let over = false; for (let zz = z + 1; zz <= shown(qx, qy) && !over; zz++) over = solidAt(c, zz); if (over) continue; }   // (under land that is not open: not seen, nor their name)
+      if (q !== p && z < topAt(qx, qy)) { const c = H0.column(qx, qy), b = winMap().get(qx + "," + qy); let over = false; for (let zz = z + 1; zz <= topAt(qx, qy) && !over; zz++) over = solidAt(c, zz); if (over && !(b && z >= b[0] - 1 && z <= b[1])) continue; }   // (under land the window is not on: not seen, nor their name)
       const s = ent(q, now, z);
       list.push({canvas: s.canvas, fx: s.fx, fy: s.fy, fo: s.fo, x: q.x + .5, y: q.y + .5, z, d: q !== p, top: q === p, q, lamp: q.e && q.e.kind === "agent" ? (q === p && dep > 0 ? 2 : 1) : 0});   // (under the land your lantern is the light)   // (you: never hidden by land)
     }
@@ -216,7 +212,7 @@ const HdLook = (() => {
     const wl = WaterBed.view(Voxels.engine, now / 1000), day = 1, ed = h / (32 * Math.tan(cam.fov * Math.PI / 360));   // (the eye's distance: fog counts from there)
     const light = {amb: .8, lr: 8, day, fog: [ed + 4, ed + 22], fogc: low, clear: [0, 0, 0], ca: 0, sun: HdSun.sun, rim: .25, wa: .92, wtint: wl && wl.tint ? wl.tint.subarray(0, 20) : null};
     let pic = eng.draw({w, h, cam, at: [snap(p.x + .5), snap(p.y + .5), Math.round(camL * 8) / 8 + .5], bend: api.bend, t: now / 1000, light,
-      water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y, ver: Voxels.wver} : null, dep, sprites: list, way: WayShow.land(), ghosts: pieces(list), hour: hour(w, h, list, 0)});
+      water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y, ver: Voxels.wver} : null, dep, win: api.nowin ? 0 : 1, sprites: list, way: WayShow.land(), ghosts: pieces(list), hour: hour(w, h, list, 0)});
     if (!pic) { noGL = true; return; }
     seen = {tx, ty, L, k: 1, me: list.find((q) => q.top), list, at: [snap(p.x + .5), snap(p.y + .5), L]}; horizon(tx, ty, L + dep, dt);   // (the horizon is the surface's, however deep you are)   // (at: where the eye looks: you, to a px of the land: your own name is written from there)
     api.faces = eng.faces; api.models = eng.models;
@@ -232,17 +228,19 @@ const HdLook = (() => {
     return x1 > x0 ? {x: x0, y: y0, w: x1 - x0, h: y1 - y0} : null;
   }
   // what is under the pointer (client px): the nearest top drawn there, as the land shows it (a top the cut took away: at the cut)
-  Object.defineProperty(api, "wipe", {get: () => (eng ? eng.wipe : null)});
   Object.defineProperty(api, "level", {get: () => [seen ? seen.L : null, camL]});   // (tests: your level as the picture has it, and the eye's)
-  api.pitAt = (x, y) => (eng ? eng.pitAt(x, y) : undefined); api.spaceAt = (x, y) => (eng ? eng.spaceAt(x, y) : null);   // (tests: the level the pit cuts a tile at, or none; a tile of your space, vox_style.js)
-  api.cut = (x, y, t) => { const c = eng ? eng.pitAt(x, y) : undefined; return c !== undefined && t > c; };   // (land the pit took away)
-  const shown = (x, y) => { const t = topAt(x, y), c = eng ? eng.pitAt(x, y) : undefined; return c !== undefined && c < t ? c : t; };
+  api.spaceAt = (x, y) => (eng ? eng.spaceAt(x, y) : null); api.winAt = (x, y) => winMap().get(x + "," + y) || null;   // (tests: a tile of your space, vox_style.js; a tile of the window: [floor, ceiling])
+  let wmV = -1, wm = new Map(); const winMap = () => { const w = eng ? eng.win : null; if (!w || !w.n || w.a <= 0) { if (wm.size) wm = new Map(); wmV = -1; return wm; } if (w.tiles !== wmV) { wmV = w.tiles; wm = new Map(); for (const [x, y, lo, hi] of w.tiles) { const k = x + "," + y, o = wm.get(k); wm.set(k, o ? [Math.min(o[0], lo), Math.max(o[1], hi)] : [lo, hi]); } } return wm; };   // (the window's tiles now: "x,y" -> [floor, ceiling])
+  // a tile's height as the picture shows it: the land's top; in the window your space's floor, and the top of the wall beside it (its ceiling's height): the aim's corners go there, not up on the meadow over it
+  const shown = (x, y) => { const t = topAt(x, y), m = winMap(), b = m.get(x + "," + y); if (b) return Math.min(t, b[0]); for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) { const n = m.get((x + dx) + "," + (y + dy)); if (n && n[1] < t) return n[1]; } return t; };
   api.screenOf = (x, y, z) => { if (!eng || !seen) return null; const a = eng.at(x, y, z); return a && [a[0] * zoom / seen.k, a[1] * zoom / seen.k]; };
-  // -> the tile under the pointer: from the south (the nearest) north, the first whose south front or whose top is under it (a front: face, down: levels under its top, as mouse.js). zf: its height, if not the land's as shown (build mode)
+  // -> the tile under the pointer: what the window shows first (your space's floors, the fronts of the walls north of them: the land over them is not drawn, so it is not pointed at); then from the south (the nearest) north, the first whose south front or whose top is under it (a front: face, down: levels under its top, as mouse.js). zf: its height, if not the land's as shown (build mode)
   api.pick = (mx, my, zf) => {
     if (!eng || !seen) return null;
     const inq = (P, q) => { let s = 0; for (let i = 0; i < 4; i++) { const a = q[i], b = q[(i + 1) % 4], c = (b[0] - a[0]) * (P[1] - a[1]) - (b[1] - a[1]) * (P[0] - a[0]); if (c && s && Math.sign(c) !== s) return false; if (c) s = Math.sign(c); } return true; };
-    const zo = (x, y) => (zf ? zf(x, y) : shown(x, y)), part = (q) => Math.max(0, Math.min(.999, (my - Math.min(q[0][1], q[1][1])) / Math.max(1, Math.max(q[2][1], q[3][1]) - Math.min(q[0][1], q[1][1]))));
+    const wmp = winMap(), flr = (x, y) => { const b = wmp.get(x + "," + y), t = topAt(x, y); return b ? Math.min(t, b[0]) : t; }, zo = (x, y) => (zf ? zf(x, y) : flr(x, y)), part = (q) => Math.max(0, Math.min(.999, (my - Math.min(q[0][1], q[1][1])) / Math.max(1, Math.max(q[2][1], q[3][1]) - Math.min(q[0][1], q[1][1]))));
+    if (!zf && wmp.size) for (const [x, y, lo, hi] of eng.win.tiles.slice().sort((a, b) => b[1] - a[1])) { const q = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]].map(([a, b]) => api.screenOf(a, b, lo)); if (q.every((v) => v) && inq([mx, my], q)) return {x, y, fy: part(q)};
+      if (!wmp.has(x + "," + (y - 1)) && topAt(x, y - 1) > lo) { const f = [[x, y, Math.min(hi, topAt(x, y - 1))], [x + 1, y, Math.min(hi, topAt(x, y - 1))], [x + 1, y, lo], [x, y, lo]].map((v) => api.screenOf(...v)); if (f.every((v) => v) && inq([mx, my], f)) return {x, y: y - 1, fy: .999, face: true, down: Math.floor(part(f) * (Math.min(hi, topAt(x, y - 1)) - lo))}; } }
     for (let y = seen.ty + south; y >= seen.ty - R; y--) for (let x = seen.tx - R; x <= seen.tx + R; x++) {
       if (!zf) { const c0 = combAt(x, y), pb = c0 && "W%+#g".includes(c0) && HdThings.is(c0, x, y) ? boxed(x, y) : null; if (pb && mx >= pb.x && mx <= pb.x + pb.w && my >= pb.y && my <= pb.y + pb.h) return {x, y, fy: .5}; }   // (a wall, a fence: what stands as boxes is pointed at where it is drawn: the pointer on a wall's front named the ground behind it)
       const z = zo(x, y), zs = zf ? z : zo(x, y + 1);

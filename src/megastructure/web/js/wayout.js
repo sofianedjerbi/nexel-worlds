@@ -7,7 +7,7 @@
 //       enter(x, y, z): you may stand there; can(x, y, h, dx, dy): a step is cut here (digup.js offers it);
 //       on(x, y, z): the wall in front is dug on; down(x, y, z): the floor under you is dug}
 // The moves are the game's (sim/bodies.py lands, sim/underground.py): a step level, up one with room over both
-// heads, down however far (a fall over 3 hurts: dear), a ladder (the game's step). And with a pickaxe:
+// heads, down however far (a fall over 3 hurts: very dear), a ladder (the game's step). And with a pickaxe:
 //   cut a step ("up": R): the cell over your head, the cell in front at your head's height, then the hop;
 //   dig on ("use": Space): the cell in front at your body's height, then the step in;
 //   dig down ("alt": X): the cell you stand on.
@@ -17,12 +17,15 @@
 // one). The way is found again each time the land changes, and its first move is always true.
 const WayOut = (() => {
   const WAYS = [[1, 0, "E"], [-1, 0, "W"], [0, -1, "N"], [0, 1, "S"]], TURN = .01,      // (of two ways as good: the one that goes straight on; east or west first: a stair seen from its side; south last: its blocks stand between the eye and you)
-     DIG = 30, FALL = 3, R = 28, SKY = 150;
+     DIG = 30, FALL = 3, HURT = 100, R = 28, SKY = 150;      // (HURT: a level of a fall that costs hearts: more than three blocks: the way shown is not one that hurts while a stair can be cut. It was 6: out of a shaft in the stone mountain the way dropped six into the river)
   const key = (x, y, z) => ((x + 32768) * 65536 + (y + 32768)) * 2048 + (z + 1024);
-  // out: under the open sky and not walled in (of the 49 tiles round it, 12 at most stand higher than a hop)
+  // out: under the open sky and not walled in (of the 49 tiles round it, 12 at most stand higher than a hop), nor at
+  // the bottom of a gorge or a wide pit (of 49 tiles looked at 9 around, half at most stand over three higher: the
+  // river between two cliffs of twelve was "out", and nothing was ever shown to who fell in)
   function out(W, x, y, z) {
     if (W.top(x, y) > z) return false;
     let n = 0; for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) if (W.top(x + i, y + j) > z + 1 && ++n > 12) return false;
+    n = 0; for (let j = -9; j <= 9; j += 3) for (let i = -9; i <= 9; i += 3) if (W.top(x + i, y + j) > z + 3 && ++n > 24) return false;
     return true;
   }
   const stepOf = (W) => W.step || ((h, x, y, fx, fy) => { if (W.solid(x, y, h + 1)) return W.solid(x, y, h + 2) || W.solid(fx, fy, h + 2) ? null : h + 1; let z = h; while (!W.solid(x, y, z)) z--; return z; });
@@ -41,7 +44,7 @@ const WayOut = (() => {
     const relax = (x, y, z, c, from, d, digs) => { const k = key(x, y, z), b = best.get(k); if (b && b.c <= c) return;
       if (from.nd) for (let a = from; a; a = a.from) if (a.digs && a.digs.some((e) => e.x === x && e.y === y && e.z === z)) return;      // (the block you would stand on was broken on the way here: a stair that turns back over itself)
       const v = {x, y, z, c, from, d, digs, nd: from.nd + (digs ? 1 : 0)}; best.set(k, v); q.push(c + h(z), v); };
-    const fall = (a, b) => (a - b > FALL ? 6 * (a - b - FALL) : 0), drop = (x, y, z) => { while (!W.solid(x, y, z)) z--; return z; };
+    const fall = (a, b) => (a - b > FALL ? HURT * (a - b - FALL) : 0), drop = (x, y, z) => { while (!W.solid(x, y, z)) z--; return z; };
     while (q.size) {
       const v = q.pop()[1], {x, y, z} = v; if (best.get(key(x, y, z)) !== v) continue;
       if (out(W, x, y, z)) return {goal: v, sky, n, capped: false};
@@ -73,15 +76,27 @@ const WayOut = (() => {
     const a = yield* run(W, s, false, o.walk || 3000, 0, 0, o.d);
     let g = a.goal, n = a.n; const trapped = !g && !a.capped && a.sky < SKY;
     if (!g) { const b = yield* run(W, s, true, o.dig || 6000, 0, 0, o.d); g = b.goal; n += b.n;
-      if (!g && b.capped) { let zt = 1e9; for (let j = -R; j <= R; j += 2) for (let i = -R; i <= R; i += 2) zt = Math.min(zt, W.top(s.x + i, s.y + j));
+      if (!g && b.capped) { const tops = []; for (let j = -9; j <= 9; j += 3) for (let i = -9; i <= 9; i += 3) tops.push(W.top(s.x + i, s.y + j));      // (the level to climb to: where half the land round you is no more than three higher: `out`. It was the lowest top within reach: in a gorge, its own floor: no pull, no way)
+        const zt = tops.sort((p, q) => q - p)[24] - 3;
         const c = yield* run(W, s, true, o.far || 12000, 2 * DIG, zt, o.d); g = c.goal; n += c.n; } }
     const path = g ? pathOf(g) : null;
     return {out: false, trapped, path, n, blocks: path ? path.reduce((t, p) => t + p.digs.length, 0) : 0, sky: path ? path.findIndex((p) => W.top(p.x, p.y) <= p.z) : -1};
+  }
+  // Is this way (one found before, or the rest of it) still a way, the land as it is now? wayshow.js keeps the way it
+  // showed while it is one: found anew at every step, two ways as good took turns (up a step of a stair being cut
+  // out of the gorge, back down it, sixty times), and a search was run a tile.
+  function holds(W, path) {
+    const step = stepOf(W), enter = W.enter || (() => true), drop = (x, y, z) => { while (!W.solid(x, y, z)) z--; return z; }, end = path[path.length - 1];
+    for (let i = 1; i < path.length; i++) { const a = path[i - 1], b = path[i], left = b.digs.filter((c) => W.solid(c.x, c.y, c.z));
+      if (left.some((c) => !W.land(c.x, c.y, c.z)) || !enter(b.x, b.y, b.z)) return false;
+      if (!left.length) { if (b.down || step(a.z, b.x, b.y, a.x, a.y) !== b.z) return false; }
+      else if (b.down ? b.z !== drop(b.x, b.y, a.z - 1) : left[0].key === "up" ? b.z !== a.z + 1 || !W.solid(b.x, b.y, b.z) : b.z !== drop(b.x, b.y, a.z)) return false; }
+    return path.length > 1 && out(W, end.x, end.y, end.z);
   }
   // ...and all at once (tests)
   function now(W, s, o) { const g = find(W, s, o); for (;;) { const r = g.next(); if (r.done) return r.value; } }
   // what a hand does, in order: [{t: "dig", x, y, z, key, d} | {t: "step", d, x, y, z}]
   const moves = (path) => (path || []).flatMap((p) => [...p.digs.map((c) => ({t: "dig", ...c, d: c.d})), ...(p.d && !p.down ? [{t: "step", d: p.d, x: p.x, y: p.y, z: p.z}] : [])]);
-  return {find, now, moves, out, DIG};
+  return {find, now, moves, out, holds, DIG};
 })();
 if (typeof module !== "undefined") module.exports = WayOut;

@@ -113,26 +113,33 @@ function inHole(s, q, h) {
 function aimedTile() {
   if (!me) return null;
   if (Build.on) return Build.aim();                  // (build mode: the cursor's tile, whatever you play with)
-  if (inputMode === "keys") return facingIntent(false);
+  if (inputMode === "keys") { const a = facingIntent(false); return a && wayHides(WayShow.offer(), a, "use") ? null : a; }      // (the way out is shown: no bracket on a wall to dig: "two brackets, two Space")
   if (!mouse.in) return null;
   const p = aimAt(tileAtScreen(mouse.x, mouse.y), keys.has("shift")), it = intent(p, keys.has("shift"));
   return {p: (it && it.own) || p, it};
 }
+// While the way out of the ground is shown (wayshow.js) nothing else is offered for what you face: "Space Dig into the
+// wall" two levels under the grass, "Space Dig on / X Dig down" written on its dots, "Lay floor" in the pocket with a
+// plank in hand. But what also gets you up: a ladder or stairs in hand, where they can go (the keys still do what
+// they did: only the words are put away).
+const wayHides = (way, f, key) => !!way && !(way.key !== key && f.it.ok !== false && /ladder|stairs/i.test(f.it.text));
 // Bottom right: what you can do right now, each with its key. Rebuilt every frame, written only when it changes.
 let actionsHtml = "", faceRows = [];               // (faceRows: what Space and X do to what you face, beside it: prompts.js)
 function availableActions() {
   if (!me || !meObs) return [];
   if (Build.on) return Build.rows();
   const s = myPos(), rows = [];
-  const main = facingIntent(false), alt = facingIntent(true);
+  const way = WayShow.offer(), m0 = facingIntent(false), a0 = facingIntent(true), main = m0 && wayHides(way, m0, "use") ? null : m0, alt = a0 && wayHides(way, a0, "alt") ? null : a0;
+  if (way && way.key) rows.push([capOf(way.key), way.text, "way", true, true]);              // (the fifth: its cap is by its block; its word is in the corner, lit; a phone's button says it)
   if (main && !main.it.info && main.it.ok !== false) rows.push([capOf("use"), main.it.text, "", true]);      // (the keys as the settings have them: options.js; true: what you face)
   else if (main && placingItem()) rows.push([capOf("use"), main.it.text, "bad", true]);           // why it can't go there
   if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push([capOf("alt"), alt.it.text, "", true]);
-  const up = DigUp.aim();                                   // (the way out of a hole: the cell over your head, then the step: digup.js)
+  const up = way ? null : DigUp.aim();                                   // (the way out of a hole: the cell over your head, then the step: digup.js)
   if (up) rows.push([capOf("up"), up.text, "", true]);
   if (selected && FOODS.includes(selected)) rows.push([capOf("eat"), `Eat ${label(selected)}`]);
   if (selected && WEAR[selected]) rows.push([capOf("eat"), `Wear ${label(selected)}`]);
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push([capOf("pick"), "Pick up"]);
+  if (way) return rows;
   if (Build.waiting()) rows.push([capOf("build"), `Build: ${Build.waiting()} plans wait`]);      // (build.js: said where it helps, a piece in hand or plans left)
   else if (placingItem() && !FOOT[PLACEABLE_BLOCK[selected]]) rows.push([capOf("build"), "Build mode: plan a lot"]);
   return rows;   // only what you can do right here, right now (all the other keys are in the help, H)
@@ -142,14 +149,16 @@ function availableActions() {
 function updateActions() {
   const all = availableActions(), keys = inputMode === "keys", aim = keys && !Build.on ? facingIntent(false) : null;
   const beside = !!aim && !aim.it.info && !aim.it.walk;      // (something you face is marked: its keys go beside it. Nothing is: they stay in the corner. X's "Dig down" on open meadow was shown nowhere)
-  faceRows = Build.on || !keys || !beside ? [] : all.filter((r) => r[3]);
-  const corner = Build.on ? all.filter(([k]) => k === "B" || k === "Esc") : keys && beside ? all.filter((r) => !r[3]) : all;
+  faceRows = Build.on || !keys || !beside ? [] : all.filter((r) => r[3] && !r[4]);
+  const corner = Build.on ? all.filter(([k]) => k === capOf("build") || k === "Esc") : keys && beside ? all.filter((r) => !r[3] || r[4]) : all;      // (the way out's key: on its block, and here with its word: "R Dig up": "which key ?")
   const html = corner.map(([k, t, cls]) => `<div class="${cls || ""}"><span class="key">${esc(k)}</span>${esc(t)}</div>`).join("");
   if (html === actionsHtml) return;
   actionsHtml = html;
   const el = $("actions"); el.innerHTML = html; el.style.display = html ? "block" : "none";
 }
 function useFacing(alt) {
+  if (DigUp.route(alt ? "alt" : "use")) return;    // (the way out's next block is this key's: that block, whatever you hold or face: digup.js)
+  WayShow.mine();
   const f = facingNow(alt);                        // (a key pressed: as things are this instant, not as kept)
   if (!f) return;                                  // (nothing there to act on: no row beside it, the button blank; it said "Nothing within reach." at each press, eight in a row in the chat)
   if (f.it.info) return toast(f.it.text);
@@ -198,7 +207,8 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   m: () => { setMuted(!muted); toast(`Sound **${muted ? "off" : "on"}** \`${capOf("mute")}\``); },
   h: () => $("helpbtn").click(), "?": () => $("helpbtn").click(),
   g: () => toggleGoals(),                            // (goals.js: the goals' card, or away again)
-  b: () => Build.toggle(),                           // (build.js: plan with a cursor, your character builds)
+  z: () => Build.toggle(),                           // (build.js: plan with a cursor, your character builds)
+  b: () => Build.toggle(),                           // (its first key, still)
   v: () => nextView(),                               // (options.js: how what hides you is shown, the next way)
   f3: () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; },
   t: () => openChat(),

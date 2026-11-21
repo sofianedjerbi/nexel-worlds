@@ -84,7 +84,7 @@ const particles = (n) => (opt("particles") === "none" ? 0 : opt("particles") ===
 // Walking (WASD, the arrows), the bar's numbers, Shift, Tab, Enter and Esc stay what they are, and so do the keys of
 // the windows (the book's, the inventory's, build mode's).
 const KEY_ACTIONS = {use: [" ", "Use what you face"], alt: ["x", "Other use"], pick: ["f", "Pick up"], eat: ["e", "Eat or wear"], next: ["q", "Next thing in hand"],
-  hands: ["`", "Empty your hands"], craft: ["c", "Craft"], bag: ["i", "Inventory"], build: ["b", "Build mode"], up: ["r", "Dig up"], talk: ["t", "Talk"], mute: ["m", "Sound on or off"]};
+  hands: ["`", "Empty your hands"], craft: ["c", "Craft"], bag: ["i", "Inventory"], build: ["z", "Build mode"], up: ["r", "Dig up"], talk: ["t", "Talk"], mute: ["m", "Sound on or off"]};
 const KEY_FIXED = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "shift", "tab", "enter", "escape", "control", "alt", "meta", "capslock",
   "h", "?", "g", "v", "f3", "/", "+", "=", "-", "_", ..."0123456789"]);
 const keyOf = (action) => opt("keys")[action] || KEY_ACTIONS[action][0];

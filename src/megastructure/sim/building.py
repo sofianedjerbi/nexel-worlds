@@ -47,9 +47,7 @@ class Building:
             yield from self.wait(a, 1.0)                   # into a wall: that cell goes (a step cut down, or a tunnel)
             if not self.world.solid(x, y, z) or self.height(a) + 1 != z:
                 raise ActionError("changed", "something changed there")
-            got = "stone" if z > 1 or z < 0 else "dirt"
-            a.add(got)
-            self.set_cell(x, y, z, False, by=a, cause="dig")
+            got = self.take_land(a, x, y, z)               # (the block itself, earth or stone: underground.py)
             return {"got": {got: 1}, "cell": [x, y, z]}
         self.reach(a, x, y, z=self.world.level(x, y))      # (anything else is on the tile's ground, its lowest: too high up, or down, is out of reach. It was the
                                                            #  ground there nearest your own height: a flower was picked from a stair 24 layers over it)
