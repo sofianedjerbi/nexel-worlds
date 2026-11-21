@@ -6,6 +6,8 @@ READY = "(() => { const [vx, vy, vw, vh] = viewRect(2); for (let y = vy; y <= vy
 DEPTHS = "([X, Y]) => { const o = []; for (let j = 0; j < 8; j++) for (let i = 0; i < 12; i++) o.push(WaterBed.depth(X + i, Y + j)); return o; }"
 
 
+RESET = "(() => { setOpt('clearwater', true); setOpt('shimmer', true); return 1; })()"
+
 def test_a_pillar_and_an_islet_standing_in_a_pond_do_not_change_the_bed_round_them(game):
     """The bed is deeper by the distance to the water's banks, not to what stands in it: a step down round every pillar
     and islet was a quilt of squares. A tile beside the pillar is as deep as one three tiles from it at the same
