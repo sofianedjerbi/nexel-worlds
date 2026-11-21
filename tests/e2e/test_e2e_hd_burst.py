@@ -52,7 +52,7 @@ def test_walking_a_stair_and_dropping_into_the_room_at_its_foot_the_window_stays
     # the window after the drop is the window before it (it was another space, another hole: a quarter of the picture in one frame)
     cut1 = g.js(CUT, box)
     changed = [k for k in set(cut0) | set(cut1) if cut0.get(k) != cut1.get(k)]
-    assert len(cut0) >= 18 and len(changed) <= 2, (len(cut0), changed)        # (the six roofed treads, the room's twelve tiles)
+    assert len(cut0) >= 17 and len(changed) <= 2, (len(cut0), changed)        # (the five roofed treads, the room's twelve tiles: the third tread's roof is none thick, [z-3, z, z]: under the open sky, out of the window, which is only under a roof of land)
     # the stair is still of your space, as floors you cannot walk to; the room is walked
     assert g.js(f"HdLook.spaceAt({x - 6}, {y})") == [z - 6, 3]
     assert g.js(f"HdLook.spaceAt({x - 10}, {y})") == [z - 10, 1]

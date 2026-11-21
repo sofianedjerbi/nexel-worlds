@@ -1,6 +1,8 @@
 """Building up: a floor laid on the walls of a room, steps of blocks, the room upstairs (web/js/floors.js, build.js;
 the server: sim/storeys.py)."""
 
+import pytest
+
 SLOT = "(n) => String((slots.indexOf(n) + 1) % 10)"           # the key of the bar's slot that holds it
 # the blocks at height z over w x h tiles: p planks, r roof, or the char of what stands on the block
 CELLS = "([x, y, w, h, z]) => { let s = ''; for (let j = 0; j < h; j++) { for (let i = 0; i < w; i++) { const c = Floors.get(x + i, y + j, z); s += c ? c[1] || c[0][0] : '.'; } s += '/'; } return s; }"
@@ -152,6 +154,7 @@ def test_you_see_the_floor_you_are_on_and_fall_off_its_edge(game):
     assert not game.errors
 
 
+@pytest.mark.realtime      # (taps of a tile, a hop onto the raised block: at four times the pace a key let go 60 ms of the machine's late was 240 of the game's, a second tile: "(21, 0) == (20, 1)" on a busy machine)
 def test_earth_raises_the_ground_and_planks_go_on_from_a_floor(game):
     """The land is blocks too: earth in hand, Space on open ground, and the ground there comes up a layer, grass and
     all (digging takes it down one); again, another. In build mode: a row of it. And standing on a built floor with
