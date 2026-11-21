@@ -139,12 +139,12 @@ def test_a_blocks_water_is_made_again_only_when_it_changed(game):
     assert game.js("__b.water !== __w && __b.water.any && __b.water.foam.length > __w.foam.length") is True
 
 
-GLIDE = """() => new Promise((ok) => { follow = null; const out = [], of = window.frame, x0 = cam.x, y0 = cam.y, t0 = performance.now();
-  window.frame = function (now) { const s = (performance.now() - t0) / 1000; cam.x = camT.x = x0 + 7 * s; cam.y = camT.y = y0 + 7 * s;
+GLIDE = """() => new Promise((ok) => { follow = null; const out = [], of = window.__frame0 || (window.__frame0 = window.frame), x0 = cam.x, y0 = cam.y, t0 = performance.now(); let done = false;
+  window.frame = function (now) { if (done) return of(now); const s = (performance.now() - t0) / 1000; cam.x = camT.x = x0 + 7 * s; cam.y = camT.y = y0 + 7 * s;
     const t = performance.now(); of(now); const js = performance.now() - t;
     const [qx, qy, qw, qh] = viewRect(0); let miss = 0;
     for (const b of blocks.values()) if (!Voxels.made(b) && b.bx * B < qx + qw && (b.bx + 1) * B > qx && b.by * B < qy + qh && (b.by + 1) * B > qy) miss++;
-    out.push([js, miss]); if (s > 6) { window.frame = of; ok(out); } }; })"""
+    out.push([js, miss]); if (s > 6) { done = true; window.frame = of; ok(out); } }; })"""   # (the page's own frame kept once (__frame0), and a glide that is done only passes on: a second glide hung, its frame put away by the first one's, which a frame already asked for still ran)
 
 
 @pytest.mark.realtime
