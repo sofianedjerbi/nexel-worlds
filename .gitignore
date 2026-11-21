@@ -26,3 +26,6 @@ src/megastructure/web/audio/
 music/samples/
 .perf/
 .cache/
+
+# tools/lookcheck.py: shots and the accepted set
+.lookcheck/

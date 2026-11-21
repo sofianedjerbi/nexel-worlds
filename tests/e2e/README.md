@@ -17,6 +17,14 @@ as fast (`clock.py`), every page shut when its test is over (`pages.py`).
 - The sounds are built files (`tools/build_audio.py` -> `src/megastructure/web/audio/`, not in git). A new worktree
   has none: the tests that need them skip (they waited a minute for them) until they are built; the demo's test
   builds them the first time it runs.
+- **What to run for a change**: `tools/affected.py` prints the e2e (and unit) test files your changes ask for (git's
+  changes since main and the working tree's, or the files given), from the JS globals and file names each test names;
+  `--why` says why each is there, `--run` runs them at `-n 3`, then the quick set. A helper here (game.py, waits.py)
+  asks for the quick set only.
+- **How the HD look looks**: `tools/lookcheck.py` shoots 16 fixed scenes (desk and phone) on its own server copy, the
+  page's clock frozen (the same code gives the same px), in about 70 s; writes `.lookcheck/last/sheet.png` (a changed
+  scene in a red frame with its %), `diff_*.png`, and a one-line table against `.lookcheck/accepted/` (gitignored).
+  `--only meadow,cave` for some, `--accept` to make the shots the accepted ones.
 - `--durations=20` says where the time went. A test that needed its second try is listed at the end
   ("tried a second time", with what the first try said): one that is often there is not sound.
 
