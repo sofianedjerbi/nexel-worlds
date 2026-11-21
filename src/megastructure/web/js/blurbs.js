@@ -90,6 +90,7 @@ const BLURB = {
   fiber: "Grass with ambitions.",
   ore: "A rock with a secret inside.",
   dirt: "The ground, now portable.",
+  stone_block: "A piece of the mountain. Break it for stones.",
   seed: "A plant, some assembly required.",
   berries: "Small, sweet, gone in a second.",
   fruit: "Fell from a tree. Regrets nothing.",

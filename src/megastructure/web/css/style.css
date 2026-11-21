@@ -154,12 +154,13 @@
     background:#f7e7c6; border:2px solid var(--ink); border-bottom-width:4px; border-radius:4px; text-shadow:none; }
   #prompts div.bad { color:#ffb0a0; }
   /* ---- the way out of the ground: the key on the next block to break (wayshow.js); on a phone its button blinks ---- */
-  #waycap { position:fixed; left:0; top:0; z-index:3; display:none; pointer-events:none; min-width:28px; padding:0 6px; text-align:center; font-size:18px; line-height:20px; white-space:nowrap;
+  #waycap { position:fixed; left:0; top:0; z-index:3; display:none; pointer-events:none; min-width:36px; padding:2px 8px; text-align:center; font-size:24px; line-height:26px; white-space:nowrap;
     color:var(--ink); background:#fff1a8; border:2px solid var(--ink); border-bottom-width:4px; border-radius:4px; box-shadow:0 0 0 2px #fff8e8; animation:waycap .66s steps(1) infinite; }
   #waycap i { display:inline-block; width:0; height:0; border:6px solid transparent; margin-right:6px; }
   #waycap i.E { border-left-color:var(--ink); border-right-width:0; } #waycap i.W { border-right-color:var(--ink); border-left-width:0; }
-  #waycap i.N { border-bottom-color:var(--ink); border-top-width:0; } #waycap i.S { border-top-color:var(--ink); border-bottom-width:0; }
-  @keyframes waycap { 50% { background:#ffffff; } }
+  #waycap i.N { border-bottom-color:var(--ink); border-top-width:0; } #waycap i.S { border-top-color:var(--ink); border-bottom-width:0; } #waycap i.go { margin:4px 2px; border-width:7px; }   /* (the next move is a step: the way to go, alone) */
+  @keyframes waycap { 50% { background:#ffffff; box-shadow:0 0 0 4px #fff8e8, 0 0 0 6px var(--ink); } }   /* (big, and it beats: "which key ?") */
+  #actions div.way { color:#fff1a8; font-size:22px; line-height:32px; } #actions div.way .key { animation:waycap .66s steps(1) infinite; background:#fff1a8; }
   #tA.way, #tB.way, #tctx div.way { animation:wayb .66s steps(1) infinite; } @keyframes wayb { 50% { filter:brightness(1.35); } }
   /* ---- touch screens (touch.js): a joystick on the left, two buttons on the right, a few at the top ---- */
   body.touch { touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; }

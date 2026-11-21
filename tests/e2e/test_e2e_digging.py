@@ -25,7 +25,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     assert game.js("Build.level()") == 0 and rows()["Q E"][0] == "A layer down, up" and rows()["X"][0] == "Dig a hole"
     for depth in (1, 2, 3):
         game.press("q", 120)
-        assert game.js("Build.level()") == -depth and rows()["B"][0] == f"BUILD · -{depth} · leave"
+        assert game.js("Build.level()") == -depth and rows()["Z"][0] == f"BUILD · -{depth} · leave"
     assert rows()["X"] == ["Plan the step before it first", "bad"]      # (three down, beside you: shut in)
     game.press("x")
     assert game.js("Build.S.plans.size") == 0
@@ -40,7 +40,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     assert game.js("Build.level()") == -2 and rows()["X"][0] == "Dig a hole"     # (the cursor is on the one under it now)
     game.press("x")                                           # ...dug too: the room, and the land over it left
     game.wait(f"surfacesAt({x}, {y + 1}).join() === '-3,0' && Build.S.plans.size === 0", 30000)
-    assert game.inv("stone") == 2
+    assert game.inv("stone_block") == 2                      # (the blocks themselves: landblocks.py)
     game.press("b")
     assert not game.errors
 

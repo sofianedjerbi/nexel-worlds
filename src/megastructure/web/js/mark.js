@@ -30,7 +30,7 @@ const Marks = (() => {
       else if (slab && it.z !== undefined) z0 = surf - 1;                                    // a block built: its own cell
       else if (L !== null && !solidAt(q.x, q.y, surf)) { z0 = surf - 1; drop = settleAt(q.x, q.y, surf - 1); air = true; }      // the build cursor in the air: its cell there, and the ground under it
       else if (L !== null && landSolid(q.x, q.y, surf + 1)) z0 = surf - 1;              // ...in the ground: the block it is on
-      else if (thing || (it.ghost === "dirt" && it.z === undefined && L === null && !FILLS.dirt[gndAt(q.x, q.y)])) { z0 = surf; z1 = surf + (thing ? TALL : 1); air = true; if (q === p) tick = tickOf(p); }   // what will stand there, or the ground raised: the cell over the surface
+      else if (thing || (LAND_BLOCKS.has(it.ghost) && it.z === undefined && L === null && !FILLS.dirt[gndAt(q.x, q.y)])) { z0 = surf; z1 = surf + (thing ? TALL : 1); air = true; if (q === p) tick = tickOf(p); }   // what will stand there, or the ground raised: the cell over the surface
       else if (!deck && lv(q.x, q.y + 1) >= surf) flat = true;                            // level ground, or higher land before it: its front is not seen, its top alone
       // (a block's side that is a bank in view: no line of its own, the box is its tile's and the bank's thin side is in it. lift: its front's foot)
       out.push({x: q.x, y: q.y, z0, z1, colour: bad ? RED : it.ghost ? GREEN : WHITE, drop, flat, tick, lift: air || flat ? 0 : lift(z0), ...(drop !== undefined ? {fill: .4} : {})});      // (a cell in the air: washed more, its front darker: a box at a glance; it read as a flat square)
@@ -44,7 +44,7 @@ const Marks = (() => {
     const dt = Math.min(.1, (now - (at || now)) / 1000), want = forced || (faint ? [{tick: tickOf(a.p), x: a.p.x, y: a.p.y, z0: lv(a.p.x, a.p.y), z1: lv(a.p.x, a.p.y), colour: WHITE, flat: true, fill: 0, most: .4}] : a && a.it && (Build.on || tile || a.it.ghost) && !walk ? cells(a.p, a.it) : []);
     at = now;
     const up = !forced && typeof DigUp !== "undefined" && typeof inputMode !== "undefined" && inputMode === "keys" ? DigUp.aim() : null;      // (R's cell, digup.js: the block it will take, at its own height, its edges alone)
-    if (up) want.push({x: up.x, y: up.y, z0: up.z - 1, z1: up.z, colour: WHITE, fill: 0, lift: 0, dot: true});
+    if (up && !up.way) want.push({x: up.x, y: up.y, z0: up.z - 1, z1: up.z, colour: WHITE, fill: 0, lift: 0, dot: true});      // (the way out has its own box on its block: wayshow.js)
     const grow = Math.sin(now / 1000 * 4.5) > .3 ? 1 : 0, k = 1 - Math.exp(-dt * 22);
     if (want.length) {
       const one = want.length === 1 && shown.length === 1 && shown[0].a > .05 && Math.abs(want[0].x - shown[0].x) + Math.abs(want[0].y - shown[0].y) <= 4;

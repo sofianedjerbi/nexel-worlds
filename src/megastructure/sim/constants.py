@@ -7,7 +7,7 @@ def sec(seconds: float) -> int:
     """Durations are specified in seconds and converted here, so the tick rate never changes game pace."""
     return max(1, round(seconds * TICK_HZ))
 
-DAY_TICKS = sec(600)   # a 10-minute day
+DAY_TICKS = sec(1200)  # a 20-minute day
 
 STEP = sec(0.2)        # walking speed: 5 tiles per second
 EAT_PACE = 2           # and so does a tile walked while eating (the two add up: a tile swum while eating takes four times as long)

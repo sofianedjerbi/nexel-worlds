@@ -17,6 +17,13 @@ BRIGHT = """(() => { const c = WayShow.cur, n = c && c.next; if (!n) return 0; c
   for (let i = 0; i < d.length; i += 4) if (d[i] > 245 && d[i + 1] > 235 && d[i + 2] > 160) m++; return m; })()"""
 
 
+# the cap lies on you or on your name (prompts.js keep)
+ON_ME = """(() => { const e = document.getElementById('waycap'); if (!e || e.style.display !== 'block') return false; const b = e.getBoundingClientRect();
+  return (Prompts.keep || []).some((k) => b.x < k.x + k.w && k.x < b.x + b.width && b.y < k.y + k.h && k.y < b.y + b.height); })()"""
+# what the SCREEN says to do: the one cap: a key's name, or an arrow (its way)
+CAP = """(() => { const e = document.getElementById('waycap'); if (!e || e.style.display !== 'block') return null; const i = e.querySelector('i'); return e.textContent || (i ? i.className.split(' ')[0] : ''); })()"""
+
+
 @pytest.mark.quick
 def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_gets_you_out(game):
     """Four down in a shaft a tile wide, a pickaxe in hand: the blocks to break are marked, the next one carries its
@@ -39,11 +46,7 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
     c = game.js(CUR)
     assert c["trapped"] and c["now"] == "up" and c["cap"] == "R" and c["way"] == "E", c
     assert c["digs"][0] == [x + 1, y, -2, "up"] and len(c["digs"]) == 5, c    # the first step's block (the sky is over you), then two a layer; the last layer is a hop
-    game.hold_item(None)                                           # empty hands: the blocks stay, grey, no key (R would do nothing)
-    game.wait("WayShow.cur && WayShow.cur.grey", 3000)
-    game.frames(3)
-    assert game.js(CUR)["cap"] == "" and game.js("DigUp.aim()") is None
-    game.press(game.js(SLOT, "pickaxe"))
+    assert game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") == "RDigastep" and game.js("Marks.list.length") == 0, game.actions()      # one key: the block's, and in the corner with its word (no row beside what you face, no bracket)
     presses = 0
     for _ in range(24):
         c = game.js(CUR)
@@ -61,9 +64,7 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
         game.wait("!WayShow.busy", 4000)
         game.frames(2)
     s = game.server()
-    assert s["z"] >= -2 and s["hp"] == 20 and presses <= 10, (s["z"], presses)      # five blocks and the steps between: the last two steps are open, nothing is shown for them
-    game.hold([KEYS["E"]], 250)
-    game.wait("myAt && myAt.z === 0 && !walking", 4000)
+    assert s["z"] == 0 and s["hp"] == 20 and presses <= 12, (s["z"], presses)       # five blocks and the steps between, the last open ones too: shown until you stand on the grass
     game.frames(3)
     c = game.js(CUR)
     assert not c["shown"] and c["cap"] == "" and not game.errors, c
@@ -108,10 +109,51 @@ def test_in_the_hd_picture_the_next_block_has_its_dashed_box_and_its_key_on_it(b
     g.frames(4)
     c = g.js(CUR)
     assert c["trapped"] and c["cap"] == "R" and c["digs"][0] == [x + 1, y, -1, "up"], c
-    assert abs(c["off"][0]) <= 12 and -50 <= c["off"][1] <= 12, c            # the key: on that block
+    assert 12 < abs(c["off"][0]) <= 90 and -50 <= c["off"][1] <= 60 and not g.js(ON_ME), c            # the key: beside that block, not on it, nor on you or your name
     assert g.js(BRIGHT) > 40, g.js(BRIGHT)                                   # its dashed box is in the picture
     assert "Dig on" not in g.actions() and "Dig into" not in g.actions(), g.actions()   # beside what you face: no other key than the block's
     g.press("r", 100)
     g.wait(f"!solidAt({x + 1}, {y}, -1) && !myAction", 8000)
     assert g.js("(() => { const p = ents.get('agent' + myId); return [p.fx, p.fy]; })()") == [1, 0]    # turned to it
     assert not g.errors
+
+
+@pytest.mark.parametrize("hands", ["plank", "nothing"])
+def test_shut_in_with_a_plank_in_hand_or_with_nothing_the_shown_key_gets_you_out(game, hands):
+    """"Grey boxes. A tiny dark square over my name. No key works": three down in a shaft a tile wide. With a plank
+    in hand and the pickaxe in the bar, and with no pickaxe at all: the block carries its key all the same, that key
+    breaks it (with the pickaxe you carry; by hand, slower), no other key is offered, and doing only what the cap
+    says (a key, or the arrow's way) ends on the grass. No plank is laid on the way."""
+    game.clear_area(10)
+    x, y = game.pos()
+    if hands == "plank":
+        game.give(pickaxe=1, plank=3)
+        game.hold_item("plank")
+    game.stamp(0, 0, ["."], levels=["c"])
+    game.rpc("dev_teleport", x=x, y=y)
+    game.arrive()
+    game.wait("myAt && myAt.z === -3 && WayShow.cur && WayShow.cur.now && !WayShow.busy", 6000)
+    game.frames(3)
+    assert game.js("inHand()") == (hands if hands == "plank" else None)
+    assert game.js(CAP) == "R" and not game.js(ON_ME) and game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") == "RDigastep", (game.js(CAP), game.actions())
+    presses, seen = 0, []
+    for _ in range(20):
+        game.wait("!WayShow.busy && !myAction && !pendingAct && !walking", 6000)
+        game.frames(3)
+        cap = game.js(CAP)
+        if cap is None:
+            break
+        assert not game.js(ON_ME) and game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") in ("", "RDigastep", "RDigup"), (cap, game.actions())      # (one key on the screen: no "Lay floor", no other digging, no red line)
+        presses += 1
+        seen.append(cap)
+        if cap in KEYS:
+            at = game.js("[myAt.x, myAt.y, myAt.z]")
+            game.hold([KEYS[cap]], 90)
+            game.wait(f"myAt && (myAt.x !== {at[0]} || myAt.y !== {at[1]}) && !walking", 4000)
+        else:
+            cell = game.js("(() => { const n = WayShow.cur.now; return [n.x, n.y, n.z]; })()")
+            game.press({"R": "r", "Space": "Space", "X": "x"}[cap], 100)
+            game.wait(f"!solidAt({cell[0]}, {cell[1]}, {cell[2]}) && !myAction", 12000)
+    s = game.server()
+    assert s["z"] == 0 and s["hp"] == 20 and seen.count("R") == 3 and presses <= 8, (s["z"], seen)      # a block for the first step, two for the next, the last is a hop
+    assert s["inventory"].get("plank", 0) == (3 if hands == "plank" else 0) and not game.errors, s["inventory"]

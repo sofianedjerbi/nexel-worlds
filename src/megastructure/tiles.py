@@ -167,6 +167,7 @@ FILLERS = {
     "path": {g: "cobble" for g in LAND},
     "plank": {"water": "bridge", **{g: "floor" for g in LAND}},
 }
+FILLERS["stone_block"] = FILLERS["dirt"]      # a block of the land, earth or stone: it fills as it raises (sim/storeys.py, landblocks.py)
 SEED_GROUNDS = {"tilled", "wet_tilled"}  # seeds only take on tilled soil
 
 # food points each food gives back (20 is the bar full: a piece on it is 2): snacks are a piece or so, a cooked meal
@@ -210,6 +211,7 @@ RECIPES = {
         Recipe("roof", {"wood": 1}, {"roof": 2}, 3),
         Recipe("ladder", {"wood": 2}, {"ladder": 1}, 3),
         Recipe("stairs", {"wood": 1}, {"stairs": 2}, 3),   # a step each: a flight up a storey takes two (sim/climbing.py)       # shingles: a block laid a storey up, on walls or beside a block (sim/storeys.py)
+        Recipe("stone", {"stone_block": 1}, {"stone": 2}, 2),   # a block of the land broken up: the material (a block dug is the block: landblocks.py)
         Recipe("path", {"stone": 2}, {"path": 2}, 3),
         Recipe("fence", {"wood": 2}, {"fence": 1}, 3),
         Recipe("door", {"wood": 3}, {"door": 1}, 4),
