@@ -4155,3 +4155,8 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - Earth into water: the mark sits on the new bed under the water; the bed rises at once (waterbed.js: a tile shallower than 5 of its 8 neighbours is a raised mound).
 - Build mode at a wall: the X box no longer lays lines on the next tile top.
 - Tests: hd_marks, target, wayshow, water, buildghost 46 passed; quick 63.
+
+## Iteration 235: one renderer: the classic view is deleted
+- The look option, its menu row and ?look= are gone; render.js paints nothing (265 -> 128 lines); 15 js files deleted (xray, behind, underground, vox_under, mark, selector, shader, sun and the old WebGL engine). src -3364 lines, tests -4238. Browser tests 466 -> 319; whole suite 7.5 min at -n 3.
+- Doors and gates now open and sound in the HD look (they only ticked inside the classic painter). Pixels unchanged on meadow, stair, room, swim.
+- Open: effects, floats, fire, hopping drops and XP orbs were never drawn in the HD look; way out of a shaft with a pickaxe never digs its next block (climb/touch tests); hd_burst and hd_fall fail on main too since the holes-and-marks merge.
