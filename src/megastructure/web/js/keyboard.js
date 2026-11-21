@@ -114,11 +114,14 @@ function inHole(s, q, h) {
 function aimedTile() {
   if (!me) return null;
   if (Build.on) return Build.aim();                  // (build mode: the cursor's tile, whatever you play with)
-  if (inputMode === "keys") { const a = facingIntent(false); return a && wayHides(WayShow.offer(), a, "use") ? null : a; }      // (the way out is shown: no bracket on a wall to dig: "two brackets, two Space")
+  if (byKeys()) { const a = facingIntent(false); return a && wayHides(WayShow.offer(), a, "use") ? null : a; }      // (the way out is shown: no bracket on a wall to dig: "two brackets, two Space")
   if (!mouse.in) return null;
   const p = aimAt(tileAtScreen(mouse.x, mouse.y), keys.has("shift")), it = intent(p, keys.has("shift"));
   return {p: (it && it.own) || p, it};
 }
+// The keys are what you play with: once pressed, or while the mouse is not over the land (on arrival nothing was
+// aimed until the first press or step, and Space acted on the tile you face all the same)
+const byKeys = () => inputMode === "keys" || !mouse.in;
 // While the way out of the ground is shown (wayshow.js) nothing else is offered for what you face: "Space Dig into the
 // wall" two levels under the grass, "Space Dig on / X Dig down" written on its dots, "Lay floor" in the pocket with a
 // plank in hand. But what also gets you up: a ladder or stairs in hand, where they can go (the keys still do what
@@ -135,7 +138,7 @@ function availableActions() {
   if (main && !main.it.info && main.it.ok !== false) rows.push([capOf("use"), main.it.text, "", true]);      // (the keys as the settings have them: options.js; true: what you face)
   else if (main && placingItem()) rows.push([capOf("use"), main.it.text, "bad", true]);           // why it can't go there
   if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push([capOf("alt"), alt.it.text, "", true]);
-  const up = way ? null : DigUp.aim();                                   // (the way out of a hole: the cell over your head, then the step: digup.js)
+  const up = way && way.key === "up" ? null : DigUp.aim();      // (the way out of a hole: the cell over your head, then the step: digup.js. Not hidden while the way out is shown: R digs all the same, and a phone's "Dig a step" was gone from under the finger)
   if (up) rows.push([capOf("up"), up.text, "", true]);
   if (selected && FOODS.includes(selected)) rows.push([capOf("eat"), `Eat ${label(selected)}`]);
   if (selected && WEAR[selected]) rows.push([capOf("eat"), `Wear ${label(selected)}`]);
@@ -148,7 +151,7 @@ function availableActions() {
 // The corner: what is not beside what it acts on (prompts.js): in build mode its name and Esc; by keys, all but
 // what you face
 function updateActions() {
-  const all = availableActions(), keys = inputMode === "keys", aim = keys && !Build.on ? facingIntent(false) : null;
+  const all = availableActions(), keys = byKeys(), aim = keys && !Build.on ? facingIntent(false) : null;
   const beside = !!aim && !aim.it.info && !aim.it.walk;      // (something you face is marked: its keys go beside it. Nothing is: they stay in the corner. X's "Dig down" on open meadow was shown nowhere)
   faceRows = Build.on || !keys || !beside ? [] : all.filter((r) => r[3] && !r[4]);
   const corner = Build.on ? all.filter(([k]) => k === capOf("build") || k === "Esc") : keys && beside ? all.filter((r) => !r[3] || r[4]) : all;      // (the way out's key: on its block, and here with its word: "R Dig up": "which key ?")

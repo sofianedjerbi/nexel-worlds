@@ -12,7 +12,7 @@
 //   - Space does something to that block ("use": till it, lay a floor in it, a thing put on it): cream, its edges;
 //   - a cell nothing stands under: a dotted line down to the ground under it and its shadow there, one px in two;
 // `cells()` is the one answer to "which cell": what is drawn is what the key sends (tests: the drawn cell is the
-// cell that changes). `target(key)`: the cell of Space ("use"), X ("alt") or R ("up").
+// cell that changes). X's block under you: its own mark, round your feet (`feet`). `target(key)`: the cell of Space ("use"), X ("alt") or R ("up").
 const Target = (() => {
   const INK = "#5b3f36", CREAM = "#fff8e8", TAKE = "#ff9d3c", RED = "#e8554a";
   const api = {drew: [], opts: {}};
@@ -28,12 +28,17 @@ const Target = (() => {
       else add("use", solidAt(p.x, p.y, L) ? "use" : "place", p.x, p.y, L, {ok: it.ok !== false, flat: !!it.ghost && solidAt(p.x, p.y, L)});
       return out;
     }
-    const keys = typeof inputMode !== "undefined" && inputMode === "keys", a = aimedTile(), it = a && a.it, p = a && a.p, h = myZ(s.x, s.y);
-    const alt = keys ? facingIntent(true) : null, up = keys ? DigUp.aim() : null, way = keys && WayShow.offer();
-    if (alt && alt.it.here && !(way && way.key)) add("alt", "break", s.x, s.y, h, {mine: true});                       // X: the block you stand on
-    if (up && !up.way) add("up", "break", up.x, up.y, up.z);                                            // R: the block at your head (the way out has its own: wayshow.js)
-    if (it && p && tile(p.x, p.y) && !it.info && !it.walk) {
+    // (the keys act whether the way out is shown or not: what each would take is drawn; the way's own block is drawn by wayshow.js: one mark. keyboard.js `useFacing`, digup.js `route`)
+    const keys = byKeys(), h = myZ(s.x, s.y), way = keys ? WayShow.offer() : null, wc = WayShow.cur, nx = wc && wc.next, now = wc && wc.now;
+    const ways = (x, y, z) => !!nx && nx.x === x && nx.y === y && nx.z === z;
+    const a = keys ? facingIntent(false) : aimedTile(), it = a && a.it, p = a && a.p, alt = keys ? facingIntent(true) : null, up = keys ? DigUp.aim() : null;
+    if ((way && way.key === "alt") || (alt && alt.it.here)) add("alt", "break", s.x, s.y, h, {mine: true});      // X: the block you stand on (its own mark: under you)
+    if (up) add("up", "break", up.x, up.y, up.z, {way: ways(up.x, up.y, up.z)});                                   // R: the block it cuts
+    if (way && way.key === "use" && now) add("use", "break", now.x, now.y, now.z, {way: ways(now.x, now.y, now.z)});
+    else if (it && p && tile(p.x, p.y) && !it.info && !it.walk) {
+      const wetFill = !!it.ghostGround && wet(gndAt(p.x, p.y) || "");
       if (it.cell !== undefined) add("use", "break", p.x, p.y, it.cell);                                // a pickaxe into a wall: the cell at your body
+      else if (wetFill) add("use", "use", p.x, p.y, topAt(p.x, p.y), {ok: it.ok !== false, flat: true});   // (earth into water: the tile's water gets shallower, its bed seldom shows it: the water's face, not a block standing on it)
       else if (LAND_BLOCKS.has(it.ghost)) add("use", "place", p.x, p.y, it.z !== undefined ? it.z : topAt(p.x, p.y) + 1, {ok: it.ok !== false, item: it.ghost});
       else if (!api.opts.thing && !it.ent && !it.steps) add("use", "use", p.x, p.y, it.z !== undefined ? it.z : api.opts.shown ? api.opts.shown(p.x, p.y) : settleNear(p.x, p.y, h), {ok: it.ok !== false, flat: true});
     }
@@ -92,15 +97,30 @@ const Target = (() => {
     if (!full(0, 0, -1)) { const g0 = settleAt(x, y, z0); if (g0 < z0) { line(P, [x + .5, y + .5, z0], [x + .5, y + .5, g0], col, true, c); face(P, [[0, 0], [1, 0], [1, 1], [0, 1]].map(([i, j]) => [x + i, y + j, g0]), INK, .5, CHECK); } }   // (its foot's place: a shadow of the cell, one px in two)
     return {x, y, z, kind: c.kind, held, seen};
   }
+  // X's block, under your feet: its top hatched round you at your floor (nothing on your body), and a stepped arrow down beside it
+  const DOWN = ["..###..", "..#o#..", "..#o#..", "###o###", "#ooooo#", ".#ooo#.", "..#o#..", "...#..."];
+  function feet(P, c) {
+    const g = P.g, u = P.u, T = [[0, .45], [1, .45], [1, 1], [0, 1]].map(([i, j]) => [c.x + i, c.y + j, c.z]), pe = ents.get("agent" + myId), ft = pe && P.at(pe.x + .5, pe.y + .5, c.z), west = !!pe && pe.fx > 0, E = P.at(c.x + (west ? 0 : 1), c.y + .7, c.z);   // (the floor round your feet, its front half: the whole top was a box round your body; the arrow on the side you do not face: there is what Space takes)
+    g.save(); if (ft) { g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); g.rect(R(P, ft[0]) - 7 * u, R(P, ft[1]) - 22 * u, 14 * u, 25 * u); g.clip("evenodd"); }
+    face(P, T, TAKE, .9, HATCH); for (let i = 0; i < 4; i++) line(P, T[i], T[(i + 1) % 4], TAKE, false, null);
+    g.restore();
+    if (E) DOWN.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== ".") { g.fillStyle = ch === "#" ? INK : TAKE; g.fillRect(R(P, E[0]) + (west ? i - 9 : i + 2) * u, R(P, E[1]) + (j - 5) * u, u, u); } }));
+  }
+  // a rect (the canvas's units) lies on a box drawn, or on the way's block (your own name is not written there: characters.js)
+  api.over = (x, y, w, h) => [...api.drew.map((d) => d.r), typeof WayShow !== "undefined" && WayShow.block].some((r) => r && x < r.x + r.w && r.x < x + w && y < r.y + r.h && r.y < y + h);
   // once a frame, in the marks pass: g, what a painter of marks needs (HdLook.art()), opts: {thing: what is aimed at stands (its own brackets), shown(x, y): a tile's level as the picture has it}
   api.paint = (g, art, opts = {}) => {
     api.opts = opts; api.drew = [];
     if (!art || api.off) return;   // (off: tests that count a ghost's own px)
     const s = myPos(), open = HdLook.win && HdLook.win.n && HdLook.win.a > 0, P = {g, u: art.u, at: art.at, behind: open ? null : art.behind, ex: s ? s.x + .5 : 0};
     for (const c of cells().sort((a, b) => a.y - b.y || (a.kind === "break") - (b.kind === "break") || a.z - b.z)) {
-      if (c.kind === "place" && c.item && !c.drawn) BuildGhost.block(g, P.at, P.u, c.x, c.y, c.z, c.item, .6, c.ok === false, P.behind);
-      if (c.mine) continue;   // (X's block under your feet: no box on you; the key says it)
-      api.drew.push({...box(P, c), key: c.key, px: P.at(c.x, c.y, c.z), u: P.u});
+      const Q = P, px = P.at(c.x, c.y, c.z);
+      if (c.kind === "place" && c.item && !c.drawn) BuildGhost.block(g, Q.at, Q.u, c.x, c.y, c.z, c.item, .6, c.ok === false, Q.behind);
+      if (c.mine) { feet(P, c); api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, mine: true, px, u: P.u}); continue; }
+      if (c.way) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, way: true, px, u: P.u}); continue; }   // (wayshow.js draws that block)
+      const d = {...box(Q, c), key: c.key, px, u: P.u}, q = [0, 1].flatMap((i) => [0, 1].flatMap((j) => [0, 1].map((k) => P.at(c.x + i, c.y + j, c.z - k)))).filter((v) => v);
+      if (q.length) { const xs = q.map((v) => v[0]), ys = q.map((v) => v[1]); d.r = {x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys)}; }
+      api.drew.push(d);
     }
   };
   return api;

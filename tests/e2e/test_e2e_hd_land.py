@@ -118,7 +118,7 @@ def test_in_a_trench_two_deep_under_the_open_sky_the_floor_you_stand_on_is_seen_
     Then a window cut the south wall away and the floor was drawn south of the rim: "a drawer pulled out onto the grass".) Two levels under the land round you the eye looks from above:
     the floor shows inside the trench's rim, as it is (no window under the open sky), and what you see there is what a click picks."""
     g = hd(browser, server)
-    g.js("setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
+    g.js("setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0); Target.off = true")   # (the boxes of what the keys act on lie on the floor read here, from the first frame: target.js)
     g.hour(.3, still=True)
     x, y = g.pos()
     z = g.js(f"topAt({x}, {y})")

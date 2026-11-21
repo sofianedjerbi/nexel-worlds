@@ -7,7 +7,7 @@
 //     that grows while it is dug); the ones after it: an orange pip on the way, where their step is (nine boxes in
 //     a shaft were a heap, and over a meadow they floated);
 //   - ONE key cap: beside that block the key that breaks it (a phone: its button's word; the button blinks), or,
-//     when the next move is a step, an arrow beside its tile. Never on the block, on you or on your name;
+//     when the next move is a step, an arrow beside its tile. Never on the block, on you, on your name or on a key's box (target.js);
 //   - where the way comes under the open sky: a few rays and a glint; off the screen: an arrow at its edge.
 // The key shown breaks the block whatever is in your hand and whichever way you face (digup.js `route`): with the
 // pickaxe if you carry one anywhere, by hand if not (slower). Once it has been shown to somebody trapped it stays
@@ -78,7 +78,7 @@ const WayShow = (() => {
   function pin(r, html, pref, not) {
     if (!cap) { cap = document.createElement("div"); cap.id = "waycap"; document.body.appendChild(cap); }
     if (html !== capKey) { capKey = html; cap.innerHTML = html; cap.style.display = "block"; capSize = [cap.offsetWidth, cap.offsetHeight]; }
-    const [w, h] = capSize, G = 6, keep = [...(Prompts.keep || []), ...(not ? [not] : [])], my = r.y + r.h / 2 - h / 2, mx = r.x + r.w / 2 - w / 2, at = {right: [r.x + r.w + G, my], left: [r.x - G - w, my], over: [mx, r.y - G - h], under: [mx, r.y + r.h + G]};
+    const [w, h] = capSize, G = 6, keep = [...(Prompts.keep || []), ...(not ? [not] : []), ...Target.drew.map((d) => d.r).filter((v) => v)], my = r.y + r.h / 2 - h / 2, mx = r.x + r.w / 2 - w / 2, at = {right: [r.x + r.w + G, my], left: [r.x - G - w, my], over: [mx, r.y - G - h], under: [mx, r.y + r.h + G]};
     const bad = ([x, y]) => x < 4 || y < 4 || x + w > innerWidth - 4 || y + h > innerHeight - 4 || keep.some((k) => x < k.x + k.w && k.x < x + w && y < k.y + k.h && k.y < y + h);
     const p = at[pref.find((k) => !bad(at[k])) || pref[0]];
     cap.style.transform = `translate(${Math.round(p[0])}px, ${Math.round(p[1])}px)`; capAt = fno;
@@ -86,7 +86,7 @@ const WayShow = (() => {
   const bound = (q, css) => { const xs = q.map((v) => v[0] * css), ys = q.map((v) => v[1] * css), x = Math.min(...xs), y = Math.min(...ys); return {x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y}; };
   // The picture of it, on g: at(x, y, z) -> where a point of the world is on g, u: an art px there, css: g's units -> css px
   function paint(g, at, u, now, css) {
-    if (!cur) return; const t = now / 1000, me0 = myPos(), R = (v) => Math.round(v / u) * u, beat = Math.floor(t * 3) % 2, solid = (c) => solidAt(c.x, c.y, c.z);
+    api.block = null; if (!cur) return; const t = now / 1000, me0 = myPos(), R = (v) => Math.round(v / u) * u, beat = Math.floor(t * 3) % 2, solid = (c) => solidAt(c.x, c.y, c.z);
     const rect = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(R(x), R(y), w * u, h * u); };
     const line = (a, b, col, dash, ph) => { const n = Math.max(1, Math.round(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) / u)); for (let i = 0; i <= n; i++) { g.fillStyle = !dash || (((i + ph) % 4) + 4) % 4 < 2 ? col : INK; g.fillRect(R(a[0] + (b[0] - a[0]) * i / n), R(a[1] + (b[1] - a[1]) * i / n), u, u); } };      // (dash: two px of the colour, two of ink: seen on any ground)
     const fill = (q, col) => { g.fillStyle = col; for (let y = R(q[0][1]); y < q[3][1]; y += u) { const k = (y - q[0][1]) / ((q[3][1] - q[0][1]) || 1), l = R(q[0][0] + (q[3][0] - q[0][0]) * k), r = R(q[1][0] + (q[2][0] - q[1][0]) * k); g.fillRect(l, y, r - l, u); } };
@@ -126,7 +126,7 @@ const WayShow = (() => {
       // (a block north or south of you lies behind you or on you in the picture, and nothing is drawn on you: the cap says which way it is)
       const E = [[T[0], T[1]], [T[1], T[2]], [T[3], T[2]], [T[0], T[3]], [T[3], B[0]], [T[2], B[1]], [B[0], B[1]]];
       for (const [a, b] of E) { line(a, b, col, true, ph); line([a[0], a[1] - u], [b[0], b[1] - u], col, true, ph); }                 // (its dashes two px thick, marching)
-      box = bound([...T, ...B], css); const word = touching() ? (c.key === "up" ? "" : c.key === "use" ? "A" : "B") : capOf(c.key), turn = c.x === me0.x && c.y !== me0.y ? `<i class="${c.y < me0.y ? "N" : "S"}${word ? "" : " go"}"></i>` : "";      // (a phone: R's word is on its button, lit, and nowhere else: "Dig a step" stood twice, the cap's over the dots)
+      box = api.block = bound([...T, ...B], css); const word = touching() ? (c.key === "up" ? "" : c.key === "use" ? "A" : "B") : capOf(c.key), turn = c.x === me0.x && c.y !== me0.y ? `<i class="${c.y < me0.y ? "N" : "S"}${word ? "" : " go"}"></i>` : "";      // (a phone: R's word is on its button, lit, and nowhere else: "Dig a step" stood twice, the cap's over the dots)
       if (c === cur.now && (word || turn)) pin(box, turn + esc(word), ft && (T[0][0] + T[1][0]) / 2 < ft[0] - u ? ["left", "over", "right", "under"] : ["right", "over", "left", "under"]);
     }
     if (!cur.now && P[1].d) { const b = P[1], q = [at(b.x, b.y, b.z), at(b.x + 1, b.y, b.z), at(b.x + 1, b.y + 1, b.z), at(b.x, b.y + 1, b.z)];      // (the next move is a step: the way to go, beside its tile)

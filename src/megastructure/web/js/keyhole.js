@@ -33,7 +33,8 @@ const Keyhole = (() => {
     marks = null;
     if (!p || n > 4 || n < (cube ? -1 : 1)) return;
     const X = Math.round(sx(p.x)), Y = Math.round(bodyY(p, sy)) + (16 - RELIEF_STEP * n) * z, S = TS(), H = RELIEF_STEP * z;
-    marks = {n, x: X - 3 * z, y: Y, h: H};
+    marks = {n, x: X - 3 * z, y: Y, h: H, drawn: !HdLook.on};
+    if (HdLook.on) return;      // (the HD look: the cursor is a box in the land at its level, target.js; brackets round your own cat were a fourth mark for two cells)
     for (const [col, g] of [["#5b3f36", z], ["#fff1a8", 0]]) {
       ctx.fillStyle = col;
       for (const [bx, d] of [[X - 3 * z, 1], [X + S + 2 * z, -1]]) {

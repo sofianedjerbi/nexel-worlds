@@ -10,6 +10,7 @@ def test_a_tree_behind_a_hill_is_hidden_by_it_and_shows_in_the_circle(game):
     """A tree standing behind a hill was drawn over the hill, as if it stood on top of it (only bodies were cut at a
     hill's edge). Now the hill hides it; in the x-ray circle, beside you behind that hill, it shows through."""
     game.clear_area(10)
+    game.js("(() => { mouse.in = true; mouse.x = mouse.y = -9999; return 1; })()")   # (no aim drawn: it follows you by keys from the first frame, and the tree beside you is aimed at once it stands)
     game.stamp(-8, 1, ["." * 17] * 3, levels=["6" * 17] * 3); game.rest()       # a wall six layers high right in front of you: its top is drawn over your row
     x, y = game.pos()
     look = lambda x0, x1: game.js(f"""(() => {{ const S = TS(), [ox, oy] = screenOrigin(S), k = DPR, X = Math.round((ox + {x0} * S) * k), Y = Math.round((oy + ({y} - 2) * S) * k);
