@@ -78,7 +78,6 @@ function drawBubbles(sx, sy, S, t) {
       w = Math.max(...mine.map((b) => b.w));
     const top = foot - Math.max(...mine.map((b) => b.up + b.h)) - 11 * q;     // (with the name's tab)
     if (tx < -w || tx > W + w || foot < -20 || top > H) continue;
-    if (typeof TitleScene !== "undefined" && TitleScene.hides(Math.max(4, Math.min(W - 4 - w, snap(tx - w / 2))), top, w, foot + 3 * q - top)) { for (const b of mine) b.at = b.up = undefined; continue; }      // (the first screen: not under its name, its line, its window)
     piles.push({mine, tx, foot, w, top, y: p.y, name});
   }
   piles.sort((a, b) => b.y - a.y);                           // the nearest to the bottom of the screen keep their place
@@ -90,6 +89,8 @@ function drawBubbles(sx, sy, S, t) {
       if (!hit) break;
       const lift = pile.foot + 3 * q - (hit.t - 4); pile.foot -= lift; pile.top -= lift;
     }
+    // (the first screen: not under its name, its line, its window, title_scene.js. Asked HERE, where the pile will be drawn: asked before it was raised over another's, a pile clear of the line was then lifted under it)
+    if (typeof TitleScene !== "undefined" && TitleScene.hides(Math.min(...pile.mine.map(x0)), pile.top, pile.w, pile.foot + 3 * q - pile.top)) { for (const b of pile.mine) b.at = b.up = undefined; continue; }
     placed.push({l: Math.min(...pile.mine.map(x0)), r: Math.min(...pile.mine.map(x0)) + pile.w, t: pile.top, b: pile.foot + 3 * q});
     pile.mine.forEach((b, n) => {
       const since = t - b.t, jolt = b.shout && since < .5 ? (Math.floor(since * 30) % 2 ? q : -q) : 0;      // (a shout: its bubble shakes as it lands)
