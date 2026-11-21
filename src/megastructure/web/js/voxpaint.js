@@ -143,13 +143,33 @@ const VoxPaint = (() => {
       }
     }
   }
+  // the pack's own cliff px: the two rows of a sheet's south edge cell over its foot (its wall: light and mid in blobs, the darkest in
+  // them), and its lightest and darkest px. A front's body is laid from them (it was one flat tone with a fleck in twelve px: a slab)
+  const mots = new Map(), lum = (v) => (v & 255) * .3 + (v >>> 8 & 255) * .59 + (v >>> 16 & 255) * .11;
+  function mottle(z) {
+    const sheet = hillSheet(wallOf(z)); let m = mots.get(sheet); if (m) return m;
+    const d = sheetData(sheet), [cx, cy] = blobCell(N_ | E_ | W_ | NE | NW), f = colsOf(sheet).foot, rows = [], seen = new Set();
+    for (const j of [f - 3, f - 2]) { const r = new Uint32Array(16); for (let i = 0; i < 16; i++) { r[i] = d.px[(cy * 16 + j) * d.w + cx * 16 + i]; if (r[i] >>> 24 === 255) seen.add(r[i]); else r[i] = 0; } rows.push(r); }
+    const cols = [...seen].sort((a, b) => lum(b) - lum(a)), M0 = rgb(bands(z)[1]);
+    for (const r of rows) for (let i = 0; i < 16; i++) if (!r[i]) r[i] = cols[1] || M0;
+    m = {rows, light: cols[0] || M0, dark: cols[cols.length - 1] || M0}; mots.set(sheet, m); return m;
+  }
+  const dim = (v, k) => (255 << 24 | ((v >>> 16 & 255) * k) << 16 | ((v >>> 8 & 255) * k) << 8 | (v & 255) * k) >>> 0;
   function front(z, v, px, at, stride) {
-    const [L, M, D] = bands(z).map(rgb), n = RELIEF_STEP, h = (i, j, s) => hash(i + v * 16, j + z * 8, s);
-    for (let j = 0; j < n; j++) for (let i = 0; i < 16; i++) {
-      let c = j === n - 1 ? D : M;
-      if (j === n - 2 && h(i >> 1, 0, 61) < .3) c = D;            // the seam swells, two px wide
-      else if (j > 0 && j < n - 2 && h(i - (i + j) % 3, j, 62) < .08) c = h(i - (i + j) % 3, j, 63) < .6 ? L : D;      // flecks: three px, light or dark
+    const [L, M, D] = bands(z).map(rgb), n = RELIEF_STEP, h = (i, j, s) => hash(i + v * 16, j + z * 8, s), m = mottle(z), stone = wallOf(z) === STONE, put = (i, j, c) => { if (i >= 0 && i < 16 && j >= 0 && j < n) px[at + j * stride + i] = c; };
+    const sh = [0, 1, 2, 3].map((k) => (h(k, 0, 64) * 16) | 0);
+    for (let j = 0; j < n; j++) for (let i = 0; i < 16; i++) {      // the body: the pack's two rows, a pair of rows from its own place across, a blob a few px wide
+      let c = m.rows[(j >> 1) & 1][(i + sh[(j >> 1) & 3]) & 15];
+      if (j === n - 1) c = D; else if (j === n - 2 && h(i >> 1, 0, 61) < .3) c = D;      // the seam at a level's foot (levels are counted), it swells, two px wide
       px[at + j * stride + i] = c;
+    }
+    if (stone) {      // STONE: blocks: two joints a level, a level's joints half a block from the one over it; each block lit along its top and its west edge; a crack now and then
+      const J = dim(m.dark, .82), x0 = (v * 5 + (z & 1) * 4 + 3) % 8;
+      for (let i = 0; i < 16; i++) { if (h(i, 0, 70) < .8) put(i, 0, m.light); if ((i - x0 + 16) % 8 === 0) for (let j = 0; j < n - 1; j++) { put(i, j, J); put(i + 1, j, m.light); } }
+      for (let k = 0; k < 2; k++) if (h(k, 1, 71) < .45) { let i = (h(k, 2, 72) * 16) | 0, j = 2; while (j < n - 2) { put(i, j, J); i += h(i, j, 73) < .5 ? 1 : 0; j++; } }
+    } else {      // EARTH: a stratum (a wavy line of the darkest, now and then broken), pebbles (two px of the lightest over two of the darkest)
+      if (h(0, 1, 65) < .6) { const st = 2 + ((h(0, 2, 66) * 2) | 0); for (let i = 0; i < 16; i++) if (h(i >> 2, 3, 67) < .85) put(i, st + (h(i >> 2, 4, 68) < .35 ? 1 : 0), m.dark); }
+      for (let j = 1; j < n - 3; j++) for (let i = 0; i < 15; i += 2) if (h(i, j, 69) < .07) { put(i + (j & 1), j, L); put(i + (j & 1) + 1, j, L); put(i + (j & 1), j + 1, D); put(i + (j & 1) + 1, j + 1, m.dark); }
     }
   }
   // (the pack's shadow: the see-through px at the foot of hill1's south edge, as dark as it is there)

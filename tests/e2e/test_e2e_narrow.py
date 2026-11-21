@@ -52,10 +52,10 @@ def test_a_front_in_the_shadow_of_land_beside_it_is_one_tone_and_the_ground_at_i
     game.stamp(0, -4, ["...."], levels=["4444"]); game.stamp(-4, -3, ["."], levels=["9"])
     ready(game, .68)
     assert game.js("Sun.given().dir[0]") > .5                    # (the sun is in the west: shadows fall east)
-    rows = [5, 13, 21, 29]                                       # px up the front: one in each level, clear of its seam
-    got = game.js(PX, [[x + c, y - 4, ax, 16, (h + .5) / 8] for c in (0, 1, 3) for h in rows for ax in (5, 7, 9, 11)])
-    tones = [sorted(lum(c) for c in got[k * 4:k * 4 + 4])[1] for k in range(12)]      # each column's four levels (the body's tone: not a fleck of the rock's own): near the pillar, next, far
-    assert max(tones) - min(tones) < 1, tones                    # one face
+    rows = [6, 14, 22, 30]                                       # px up the front: one in each level, its second row: clear of its seam, its stratum and the shade at the wall's foot
+    got = game.js(PX, [[x + c, y - 4, ax + .5, 16, (h + .5) / 8] for c in (0, 1, 3) for h in rows for ax in range(16)])
+    tones = [sum(lum(c) for c in got[k * 16:k * 16 + 16]) / 16 for k in range(12)]      # each column's four levels, the mean of a row across (the rock is the pack's cliff px in blobs, a pebble now and then, the same px in every row whatever its place: voxpaint.js front): near the pillar, next, far
+    assert max(tones) - min(tones) < 12, [round(t) for t in tones]    # one face (a pebble moves a row's mean by 4; a shadow that climbed it: 30 and more)
     foot = game.js(PX, [[x + c, y - 3, 8, 8, 0] for c in (0, 3)] + [[x + 8, y - 3, 8, 8, 0]])
     assert min(lum(foot[0]), lum(foot[1])) < lum(foot[2]) - 6, foot      # the ground at its foot, where a shadow lies along it: dark
 
