@@ -129,8 +129,12 @@ function xrayLook(dt) {
 
 // What goes with the window where you are: the place's floors under a roof and the rock in the way. Worked out when
 // your tile, your height or the land changes, not each frame.
+// (the land it reads: the blocks round you, each with how often the world changed a tile of it (tiles.js setTile). It was landVer, bumped by any tile
+// DRAWN anywhere: walking, each block coming in at the screen's edge is drawn over a hundred frames, and under a roof all of this was found again each of them)
+const xrayLand = (tx, row) => { let s = ""; for (let by = Math.floor((row - 26) / B); by <= Math.floor((row + 40) / B); by++) for (let bx = Math.floor((tx - 26) / B); bx <= Math.floor((tx + 26) / B); bx++) { const b = blocks.get(bkey(bx, by)); s += b ? (b.xid || (b.xid = ++xrayLand.n)) + "." + (b.edits || 0) + ";" : "-;"; } return s; };   // (xid: the block itself: one sent again is new)
+xrayLand.n = 0;
 function xrayFind(tx, x0 = tx, x1 = tx) {
-  const key = [tx, xray.row, xray.L, Floors.ver, landVer, x0, x1, XRAY.side, XRAY.stub, XRAY.key, XRAY.rise, XRAY.over, XRAY.tall].join();
+  const key = [tx, xray.row, xray.L, Floors.ver, xrayLand(tx, xray.row), x0, x1, XRAY.side, XRAY.stub, XRAY.key, XRAY.rise, XRAY.over, XRAY.tall].join();
   if (xray.pic && xray.pic.key === key) return;
   // the rock seen through: on the line of sight to a tile of your place (south of it in its column, and high enough
   // to be drawn over it: two layers a row), and of the mass that hides you (gone through from what is over your tile

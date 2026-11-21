@@ -229,6 +229,7 @@ def main():
     p.add_argument("--profile", default="", help="scenarios (a,b) to take a CPU profile of: their top functions")
     p.add_argument("--device", default="", choices=["", "android"])
     p.add_argument("--bench", action="store_true", help="only the benchmark: this machine's (or the phone's) score")
+    p.add_argument("--at", default="", help="x,y: play there (a teleport after waking), the same place every run")
     p.add_argument("--saves", default="")
     p.add_argument("--out", default="")
     p.add_argument("--dir", default=str(OUT))
@@ -257,6 +258,10 @@ def main():
             return
         ph = Phone(ctx, f"http://127.0.0.1:{port}", rate, a.line)
         join(ph, f"sim{os.getpid() % 1000}")
+        if a.at:                                             # (one place every run: where a new player wakes changes, and with it what is round them)
+            x, y = map(int, a.at.split(","))
+            ph.g.rpc("dev_teleport", x=x, y=y)
+            ph.g.arrive()
         runs = {}
         for name in a.only.split(","):
             t0 = time.time()

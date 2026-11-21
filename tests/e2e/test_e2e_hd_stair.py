@@ -154,3 +154,30 @@ def test_depth_is_told_inside_the_window(browser, server):
     assert strata[14][2][1] < strata[14][2][strata[14][0] - 3] * .7, strata[14]
     for d in (4, 14):
         assert all(abs(p - q) <= 6 for a, b in zip(seen[d][3], seen[d][4]) for p, q in zip(a, b)), seen[d][3:5]                    # the grass beside the hole is the meadow's own px, not a step darker (a shade outside the rim read as a block standing on the grass)
+
+
+# a frame's work done again for nothing, counted: the GL canvas resized, the card of a thing that stands still looked for (trees, boats, fires move: theirs are new pictures), frames drawn
+COUNT = """(() => { const C = window.__c = {frames: 0, resize: 0, card: 0}, fit = VoxGL.fit, card = HdThings.card, perf = HdView.perf;
+  VoxGL.fit = (w, h) => { const e = VoxGL.el; if (e && (e.width !== w || e.height !== h)) C.resize++; return fit(w, h); };
+  HdThings.card = (...a) => { if (!"TFV^xX".includes(a[0])) C.card++; return card(...a); }; HdView.perf = (...a) => { C.frames++; return perf(...a); }; return 1; })()"""
+
+
+def test_down_a_stair_no_canvas_is_made_again_and_what_stands_is_not_looked_for_again(browser, server):
+    """A slow phone's frame was much work done again for nothing (iteration 225). Walking down a stair the horizon moves
+    with you: the sky's GL canvas was resized to each new line, its drawing buffer made again (58 times in 322 frames);
+    now it keeps the picture's size. And each thing that stands had its card, its foot and its bounds looked for again,
+    every frame (18 a frame on a meadow): now only when its picture changes."""
+    g = hd(browser, server)
+    x, y = stair(g)
+    g.stamp(-6, -5, ["f.f.f.f.f.f.f.f.f"])
+    g.rest()
+    g.js(COUNT)
+    walk(g, "ArrowRight", f"myPos().x >= {x + 18}")
+    c = g.js("window.__c")
+    assert c["frames"] > 30 and c["resize"] == 0, c
+    g.rpc("dev_teleport", x=x - 1, y=y)                                          # (back on the meadow by the flowers, standing: what comes into sight is looked for once)
+    g.arrive()
+    g.js("Object.assign(window.__c, {frames: 0, card: 0})")
+    g.frames(30)
+    c = g.js("window.__c")
+    assert c["frames"] >= 30 and c["card"] == 0 and c["resize"] == 0, c         # (nine flowers and the world's: it was all of them, every frame)

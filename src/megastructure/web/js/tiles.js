@@ -31,6 +31,7 @@ const PICK = {F: "U", b: "v"};
 function setTile(x, y, comb, gnd, who = null, col = null, mat = null) {    // (col: its column of cells, when sent: cells.js; mat: the block put on its top, "s" stone, "d" earth, "" none: matAt)
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
   if (!b) return;
+  b.edits = (b.edits || 0) + 1;              // (what the world changed in this block: xray.js's key. landVer counts drawing too: a block coming in moves it for a hundred frames)
   const i = (y - by * B) * B + (x - bx * B);
   const relief = col !== null && !colSame(col, colAt(x, y));
   if (mat !== null) { if (mat) (b.mat || (b.mat = {}))[i] = mat; else if (b.mat) delete b.mat[i]; }

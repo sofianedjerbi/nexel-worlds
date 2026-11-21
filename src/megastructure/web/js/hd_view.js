@@ -10,16 +10,16 @@
 // piece of land made, draw calls, how many frames were drawn at all, the pictures' sizes. (It had a box of its own.)
 const HdView = (() => {
   let el = null, g = null, sk = null, skyKey = "", skyVer = 0, art = null, fx = null, one = null, lastKey = "", wordsKey = null, wordsAt = 0, tmp = null;
-  const Z = () => zoom * DPR, PAINT = new Set(["fillRect", "clearRect", "strokeRect", "fillText", "strokeText", "drawImage", "fill", "stroke", "putImageData"]), ids = new WeakMap(); let nid = 0;
+  const Z = () => zoom * DPR, PAINT = new Set(["fillRect", "clearRect", "strokeRect", "fillText", "strokeText", "drawImage", "fill", "stroke", "putImageData"]), ids = new WeakMap(), strs = new Map(); let nid = 0;
   const sink = () => one || (one = document.createElement("canvas").getContext("2d"));   // (a canvas of one px: what the classic frame still paints goes there)
   // a 2D context that notes what is asked of it: a number for all of it (hash), and the calls themselves. dry: nothing is painted (what sets a state is passed on: a text is measured as it will be drawn); play() paints them
   function recorder(real, dry) {
     const ops = [], fns = {}; let h = 0;
-    const mix = (v) => { h = Math.imul(h ^ v, 16777619) | 0; }, str = (s) => { for (let i = 0; i < s.length; i++) mix(s.charCodeAt(i)); };
+    const mix = (v) => { h = Math.imul(h ^ v, 16777619) | 0; }, str = (s) => { let n = strs.get(s); if (n === undefined) { if (strs.size > 4000) strs.clear(); n = 0; for (let i = 0; i < s.length; i++) n = Math.imul(n ^ s.charCodeAt(i), 16777619) | 0; strs.set(s, n); } mix(n); };   // (a string's own number, kept: a colour, a font, a call's name were hashed a char at a time, each of them each frame)
     const val = (a) => { if (typeof a === "number") mix((a * 64) | 0); else if (typeof a === "string") str(a); else if (a && typeof a === "object") { let id = ids.get(a); if (!id) ids.set(a, id = ++nid); mix(id); mix(a._v || a.naturalWidth || a.width || 0); } else mix(a ? 1 : 2); };
     const proxy = new Proxy(real, {
       get(t, k) { const v = t[k]; if (typeof v !== "function") return v; return fns[k] || (fns[k] = (...a) => { str(k); for (const x of a) val(x); if (dry) ops.push(k, a); if (!dry || !PAINT.has(k)) return t[k].apply(t, a); }); },
-      set(t, k, v) { str(k); val(v); if (dry) ops.push("=" + k, v); t[k] = v; return true; }});
+      set(t, k, v) { str(k); val(v); if (dry) ops.push("=" + k, v); if (k !== "font" || t[k] !== v) t[k] = v; return true; }});   // (a font set again to itself was parsed again: each name and bubble, each frame)
     return {proxy, reset() { ops.length = 0; h = 0; }, get hash() { return h; }, get ops() { return ops; }, play() { for (let i = 0; i < ops.length; i += 2) { const k = ops[i]; if (k[0] === "=") real[k.slice(1)] = ops[i + 1]; else real[k].apply(real, ops[i + 1]); } }};
   }
   // what is written over the picture, on the game's canvas: fn paints it with `ctx`. It is asked each frame, painted only when it is not what is there (and four times a second whatever)
@@ -44,14 +44,17 @@ const HdView = (() => {
   }
   function hide() { if (el && el.style.display !== "none") { el.style.display = "none"; wordsKey = null; } }
   // the game's sky, the rows over the horizon, with the hour's light the game lays over its frame: made w x line px, when it is not the one there
-  function skyOf(w, line, sky) {
+  let skyH = 0;
+  function skyOf(w, line, sky, h) {
     const ph = clock.phase || 0, ws = washAt(ph), lf = opt("night") / 100 * .6, light = lightAt(ph).map((v) => Math.round(v + (255 - v) * lf)), step = sky.stars > 0 ? .1 : .5, tq = Math.floor(sky.t / step);   // (clouds drift a px in 2.5 s: twice a second; stars twinkle: ten times)
     const c8 = (q) => q.map((v) => Math.round(v * 255)), k = [w, line, W, zoom, tq, Math.floor(sky.shift), Math.floor(sky.shift * .6), Math.floor(sky.shift * .3), c8(sky.top), c8(sky.low), c8(sky.cloud), c8(sky.far), c8(sky.near), c8(sky.orb), sky.at.map((v) => Math.round(v * 500)), Math.round(sky.stars * 50), ws.map((v) => Math.round(v * 100) / 100), light].join();
     if (k === skyKey) return; const gl = VoxGL.gl; if (!gl) return; skyKey = k; skyVer++;
-    sk = sk || document.createElement("canvas").getContext("2d"); if (sk.canvas.width !== w || sk.canvas.height !== line) { sk.canvas.width = w; sk.canvas.height = line; }
-    VoxGL.fit(w, line); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, line); gl.disable(gl.BLEND);
+    // (both canvases as tall as the highest line yet, in steps of 32 rows, the sky in their top `line` rows (the GL's bottom ones): the horizon eases with your height, and each new line resized two canvases,
+    // the GL's drawing buffer made again, every frame of a stair. Not the picture's height: the GL canvas is read back whole into the 2D one, four times the px for nothing on a slow phone)
+    if (skyH < line || skyH > Math.max(32, h + 32)) skyH = Math.ceil(line / 32) * 32; const H0 = skyH; sk = sk || document.createElement("canvas").getContext("2d"); if (sk.canvas.width !== w || sk.canvas.height !== H0) { sk.canvas.width = w; sk.canvas.height = H0; }
+    VoxGL.fit(w, H0); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, line); gl.disable(gl.BLEND);
     VoxSky.draw(Object.assign({}, sky, {line, t: tq * step}), W / zoom, line, W / zoom, 1);   // (a px of it a px of the paint: as the picture the screen's size had them, zoom x density px each)
-    sk.globalAlpha = 1; sk.globalCompositeOperation = "source-over"; sk.imageSmoothingEnabled = false; sk.drawImage(VoxGL.el, 0, 0);
+    sk.globalAlpha = 1; sk.globalCompositeOperation = "source-over"; sk.imageSmoothingEnabled = false; sk.drawImage(VoxGL.el, 0, H0 - line, w, line, 0, 0, w, line);
     sk.globalAlpha = ws[3]; sk.fillStyle = `rgb(${ws.slice(0, 3).join()})`; sk.fillRect(0, 0, w, line); sk.globalAlpha = 1; sk.globalCompositeOperation = "multiply"; sk.fillStyle = `rgb(${light.join()})`; sk.fillRect(0, 0, w, line); sk.globalCompositeOperation = "source-over";
   }
   // the lens: far rows (the 48 art px under the horizon, hy) a little soft, the rest crisp; a faint bloom of the light parts; no vignette
@@ -77,13 +80,13 @@ const HdView = (() => {
   //   o: {w, h, pic, fresh: the land's picture was drawn again, sky, runs: [[x0, x1]...] the sea's columns, hy, blur, lens}
   function show(o) {
     const {w, h} = o, line = o.sky ? Math.round(o.sky.line / zoom) : 0, low = o.sky ? o.sky.low : [.62, .78, .86]; fit(w, h);
-    if (line > 0) skyOf(w, line, o.sky);
+    if (line > 0) skyOf(w, line, o.sky, h);
     const key = [line > 0 ? skyVer : 0, line, low.map((v) => Math.round(v * 255)), o.runs, o.blur, o.lens, o.marks, zoom].join("|");
     if (!o.fresh && key === lastKey) return false; lastKey = key;
     const tint = (c, a) => `rgb(${low.map((v, i) => Math.round((v * (1 - a) + c[i] * a) * 255)).join()})`;
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.imageSmoothingEnabled = false; g.fillStyle = tint([.8, .84, .8], .45); g.fillRect(0, 0, w, h);
     g.fillStyle = tint([.36, .64, .8], .65); for (const [run, px] of o.runs) { g.fillRect(run, 0, px - run, h); for (const ex of [run - 8, px]) { g.save(); g.translate(ex, 0); g.fillStyle = checker(g.fillStyle); g.fillRect(0, 0, 8, h); g.restore(); } }   // (its two ends: a 2x2 checker, 8 px: one fill of a pattern; it was 400 small ones)
-    if (line > 0 && sk) g.drawImage(sk.canvas, 0, 0);
+    if (line > 0 && sk) g.drawImage(sk.canvas, 0, 0, w, line, 0, 0, w, line);
     const pic = o.lens ? (o.fresh || !art || art.width !== w || art.height !== h ? post(o.pic, w, h, o.hy, o.blur, o.near === undefined ? 1e9 : o.near) : art) : o.pic;   // (a phone: no lens: two blurs of the whole picture a frame)
     g.drawImage(pic, 0, 0);
     if (recM && o.marks) { g.setTransform(1 / zoom, 0, 0, 1 / zoom, 0, 0); recM.play(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; }

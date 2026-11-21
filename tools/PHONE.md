@@ -18,6 +18,10 @@ Two ways: a phone simulated on this Mac (`tools/phone_sim.py`), and the real pho
 - **GPU**: Chrome cannot slow a GPU. `--gpu soft` draws with SwiftShader (the CPU doing the GPU's work): far slower
   than this Mac's GPU, a pessimistic stand-in. `hw` is the Mac's GPU: its GPU ms say what is drawn, not a phone's time.
 - **Line**: `--line 4g|fast3g` (the lines of `tools/perf_serve.py`).
+- **Place**: `--at 40,40` plays there (a teleport after waking). A new player wakes somewhere else each run, and what
+  is round them (trees, water) moved walk's fps from 36 to 55 between two runs of the same code: to compare two versions,
+  the same place, a fixed `--cpu` rate, and the runs of the two taken in turn (the Mac is shared: a run alone can be
+  slowed by others' work; its GPU ms going up says so).
 - **Scenarios** (`--only stand,walk,...`, `--secs 5` each): stand; walk and sprint (the touch stick pushed 40 / 80 px,
   east then west); stair (down a dug stair into a room under the land); swim (across deep water); title (the page
   loaded, the first screen, Wake up, until the land is drawn). Each is set up at full speed, then played slowed.
