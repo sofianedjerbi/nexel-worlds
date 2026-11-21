@@ -47,8 +47,10 @@ def test_the_page_names_one_script_and_the_pack_holds_each_picture_as_its_file()
     assert page.count("<script src=") == 1 and f'<script src="{js_name}">' in page and '<link rel="stylesheet"' not in page
     assert js_name.startswith("js/game.") and pack_name.startswith("assets/pack.") and web_bundle.mark(js) in js_name and web_bundle.mark(pack) in pack_name
     assert page.index("window.ASSET_PACK") < page.index("</head>") < page.index(js_name)
-    _, table = web_bundle.pack(WEB)
+    _, table, need = web_bundle.pack(WEB)
     assert len(table) > 60 and "gen.txt" in table
+    late = web_bundle.late(WEB)                 # (the sheets the first screen never shows: after all the others, past what it waits for)
+    assert "emoji.png" in late and "character.png" not in late and all((table[n][0] >= need) == (n in late) for n in table)
     for name, (at, size) in table.items():
         assert pack[at:at + size] == (WEB / "assets" / name).read_bytes(), name
     assert "url(../" not in page and "url(assets/panel.png)" in page          # (the styles are in the page: their pictures from where the page is)

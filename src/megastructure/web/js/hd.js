@@ -129,7 +129,7 @@ const HdLook = (() => {
     }
     if (!words) { ctx.restore(); return; }
     const ny = (y) => fy(y) - Math.max(0, 12 - 3 * zoom), nsy = Object.assign(ny, {up: ny, out: ny});   // (a name: higher where an art px is small, a phone's 2 px: the letters are 18 px whatever the zoom, and seen from behind a body's ears were in its name)
-    for (const s of seen.list) if (s.q && s.q.e && (s.q.e.kind === "agent" || s.q.e.name)) drawNameplate(s.q, sx, nsy, S);
+    for (const s of seen.list) if (s.q && s.q.e && (s.q.e.kind === "agent" || s.q.e.name) && (s.top || !api.hidden(s.q.x + .5, s.q.y + .5, s.z))) drawNameplate(s.q, sx, nsy, S);   // (not over a roof its body is behind)
     for (const s of seen.list) if (s.q && s.q.e && (ANIMALS[s.q.e.kind] || !bubbles.some((b) => b.name === s.q.e.name))) drawEmote(s.q, sx, sy, S);
     drawProgress(sx, sy, S); HdFx.words(seen, api.screenOf); drawBubbles(sx, sy, S, t); ctx.textAlign = "start";   // (hearts lost, things gained: over heads, hd_fx.js)
   }
@@ -274,6 +274,17 @@ const HdLook = (() => {
   api.markOf = (x, y, z) => api.screenOf(x, y, HdLevel.raise(z, seen));   // (where a mark of yours is: lifted with you in a hole, hd_level.js raise)
   api.art = () => (seen ? {u: zoom / seen.k, at: api.markOf, behind: (x, y, Z0) => { const z = HdLevel.raise(Z0, seen), k = eyeRise(cam.pitch), y0 = Math.floor(y); for (let d = 1; d <= 8; d++) if (topAt(Math.floor(x), y0 + d) > z + (y0 + d - y) * k) return true; return false; }, wall: (x, y, z) => { const f = HdLevel.wall(x, y, z, seen); return f ? (X, Y, Z) => api.screenOf(...HdLevel.wallAt(X, Y, Z, seen, f)) : null; },
     body: seen.me ? HdLevel.body(seen.me, api.screenOf(seen.me.x, seen.me.y, seen.me.z), zoom / seen.k) : null} : null);   // (wall: a cell in the wall between the eye and you -> where its places are drawn, hd_level.js wallAt; body: your sprite's box)
+  // is a body on (x, y) at level Z0 hidden to its head by what stands south of it, as the eye sees it: the land, and what is built (a house's walls and roof, HdThings' boxes, levels over the tile's floor)?
+  // (bubbles.js: what someone says is not hung over a roof they are behind. Heights kept half a second: a tile's boxes are not made again each frame)
+  const tall = new Map(); let tallAt = 0;
+  const standing = (x, y) => { const key = x + "," + y; let t = tall.get(key); if (t === undefined) { t = topAt(x, y); for (const b of HdThings.at(x, y) || []) t = Math.max(t, floorAt(x, y) + (b.z + (b.h || 0)) / RELIEF_STEP); tall.set(key, t); } return t; };
+  api.hidden = (x, y, Z0) => {
+    if (!seen || !eng) return false;
+    if (performance.now() - tallAt > 500) { tall.clear(); tallAt = performance.now(); }
+    const z = HdLevel.raise(Z0, seen) + 1, k = eyeRise(cam.pitch), x0 = Math.floor(x), y0 = Math.floor(y);
+    for (let d = 1; d <= 8; d++) if (standing(x0, y0 + d) > z + (y0 + d - y) * k) return true;
+    return false;
+  };
   api.screenOf = (x, y, z) => { if (!eng || !seen) return null; const a = eng.at(x, y, z); return a && [a[0] * zoom / seen.k, a[1] * zoom / seen.k]; };
   // -> the tile under the pointer: what the window shows first (your space's floors, the fronts of the walls north of them: the land over them is not drawn, so it is not pointed at); then from the south (the nearest) north, the first whose south front or whose top is under it (a front: face, down: levels under its top, as mouse.js). zf: its height, if not the land's as shown (build mode)
   api.pick = (mx, my, zf) => {

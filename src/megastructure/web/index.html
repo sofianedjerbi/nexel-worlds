@@ -7,6 +7,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<style>
+/* THE WAIT (#boot): the first thing on the screen, and nothing else, until the island is painted (title_scene.js: body.scene);
+   then it fades and the title is under it. In the page itself, its pictures too (the cat's run, 0.6 KB; a strip of
+   meadow): it moves from the first picture, before any file has come. Whole art px (--bootpx, said below); its steps are
+   the compositor's (transform), so the cat runs on while the page's thread is busy making the game. The owner: "the
+   loading screen looks bad, can't you just show the loading and nothing else first so it doesn't look stuck?" */
+:root { --bootpx:4px; --bootf:3px; }
+#boot { position:fixed; inset:0; z-index:2147483000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:calc(5 * var(--bootpx)); background:#2b2320; transition:opacity .35s ease-out; }
+#boot.done { opacity:0; pointer-events:none; }
+#boot .run { position:relative; width:calc(64 * var(--bootpx)); height:calc(22 * var(--bootpx)); overflow:hidden; }
+#boot .cat { position:absolute; left:calc(24 * var(--bootpx)); top:0; width:calc(16 * var(--bootpx)); height:calc(18 * var(--bootpx)); overflow:hidden; z-index:1; }
+#boot i { display:block; height:100%; image-rendering:pixelated; will-change:transform; }
+#boot .cat i { width:calc(128 * var(--bootpx)); background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=) 0 0 / 100% 100%; animation:bootstep .64s steps(8) infinite; }
+#boot .ground { position:absolute; left:0; bottom:0; width:100%; height:calc(5 * var(--bootpx)); overflow:hidden; }
+#boot .ground i { width:calc(80 * var(--bootpx)); background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAFCAYAAABM6GxJAAAAR0lEQVR42mM8cKXgPwMFgOXllzcMDAwMDM9efGaQkuDFqgibHEyMCSYgJcHL8OzFZ6wGYJODGciETRBmAzFyLLhsxWYINjkA2L8jXCzX210AAAAASUVORK5CYII=) 0 0 / calc(16 * var(--bootpx)) 100% repeat-x; animation:bootground .64s steps(16) infinite; }
+@keyframes bootstep { to { transform:translateX(-100%); } }
+@keyframes bootground { to { transform:translateX(-20%); } }
+#boot .bar { box-sizing:border-box; width:calc(64 * var(--bootpx)); height:calc(7 * var(--bootpx)); padding:var(--bootpx); background:#6b4a3a; }
+#boot .bar > div { height:100%; background:#b8946a; box-shadow:inset 0 var(--bootpx) 0 #9a6f55; }
+#boot .bar b { display:block; height:100%; width:0; background:#e0b84e; box-shadow:inset 0 var(--bootpx) 0 #fff1a8; }
+#boot .say { font-family:SproutPixel, monospace; font-size:calc(9 * var(--bootf)); line-height:calc(9 * var(--bootf)); color:#fbf0d6; white-space:nowrap; }
+</style>
+<script>
+// the wait's art px: a whole number of screen px, as big as a phone held upright or a desk lets it be
+(() => { const d = devicePixelRatio || 1, st = document.documentElement.style, fit = () => {
+  const n = Math.max(2, Math.min(Math.floor(innerWidth * d * .7 / 64), Math.floor(innerHeight * d * .4 / 44), Math.round(6 * d)));
+  st.setProperty("--bootpx", n / d + "px"); st.setProperty("--bootf", Math.max(1, Math.round(n * 2 / 3)) / d + "px"); };
+  fit(); addEventListener("resize", fit); })();
+</script>
 <link rel="preload" href="assets/sprout-pixel.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/help.css">
@@ -16,6 +45,31 @@
 <link rel="stylesheet" href="css/phone.css">
 </head>
 <body>
+<div id="boot"><div class="run"><div class="cat"><i></i></div><div class="ground"><i></i></div></div><div class="bar"><div><b id="bootfill"></b></div></div><div class="say" id="bootsay">Loading...</div></div>
+<script>
+// How much of the first screen has come, honestly and never back: the bytes of the game's script and of the pictures the
+// title needs (the demo's pack streams them: web_bundle.py, ASSET_PACK.need), the pictures decoded (assets.js), the island
+// begun and made (title_scene.js). Gone when the island is painted, or when there is no title to wait for.
+(() => {
+  const el = document.getElementById("boot"), fill = document.getElementById("bootfill"), say = document.getElementById("bootsay");
+  let shown = 0, cols = -1, watched = false;
+  const part = () => {
+    const P = window.ASSET_PACK, of = window.ASSETS_OF || 0, dec = of ? (window.ASSETS_IN || 0) / of : 0, ran = typeof titleDraw === "function";
+    const island = typeof TitleScene === "object" && TitleScene.on ? (typeof blocks === "object" && blocks.size ? 1 : .5) : 0;
+    if (P && P.need) return .7 * (Math.min(P.got || 0, P.need) + (ran ? P.js : 0)) / (P.need + P.js) + .2 * dec + .1 * island;
+    return .85 * dec + .1 * island;
+  };
+  const draw = () => {
+    shown = Math.max(shown, Math.min(1, part()));
+    const n = Math.floor(shown * 62);
+    if (n !== cols) { cols = n; fill.style.width = `calc(${n} * var(--bootpx))`; say.textContent = "Loading... " + Math.floor(shown * 100) + "%"; }
+    if (!watched && typeof ready === "object" && ready.catch) { watched = true; ready.catch(end); }      // (the pictures could not come: the page as it is, not a wait for ever)
+  };
+  const tick = setInterval(draw, 100);
+  function end() { if (el.classList.contains("done")) return; clearInterval(tick); shown = 1; cols = -1; draw(); el.classList.add("done"); setTimeout(() => el.remove(), 400); }
+  new MutationObserver(() => { const c = document.body.classList; if (c.contains("scene") || !c.contains("title")) end(); }).observe(document.body, {attributes: true, attributeFilter: ["class"]});
+})();
+</script>
 <script>
 // Before the first picture, with no file to wait for: is this a phone (touch.js goes on from there), and the pixel of
 // the windows (ui.js keeps it up). So the first screen is itself at once: it was a page of bare text, the game's
@@ -26,20 +80,8 @@ function bookPx() { const d = devicePixelRatio || 1, small = document.body.class
   document.body.classList.add("title");                     // (the first screen: title.js keeps it; said here, not in the tag, which the server writes the accounts' address into)
   document.body.classList.toggle("touch", matchMedia("(pointer: coarse)").matches || "ontouchstart" in window || new URLSearchParams(location.search).has("touch"));
   const n = bookPx(); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", n / d + "px"); st.setProperty("--w", Math.max(1, Math.round(n * .7)) / d + "px"); })();
-// The island behind the first screen, as a still picture (tools/build_title_poster.py), asked for before anything else
-// and put, a whole number of screen pixels an art pixel, on the very pixels the game will draw the island at (state.js:
-// screenOrigin, at the zoom the game starts with; title_scene.js starts its view TITLE_DY tiles under the island's
-// middle). It comes in softly when it has come, and the island comes in over it once it is painted (title.css):
-// there was the sea's flat colour behind the window until every picture of the game had come.
-// (The picture is the HD look's, hd.js: the tilted land and its sky, as the island is then drawn; its middle on the screen's. The flat one's px were the island's own.)
+// (the first screen starts its view TITLE_DY tiles under the island's middle: title_scene.js)
 const TITLE_DY = 4 * Math.sin(1);
-(() => { const qs = new URLSearchParams(location.search), saved = +localStorage.getItem("megastructure-zoom"), small = document.body.classList.contains("touch") && Math.min(innerWidth, innerHeight) < 520;
-  if (qs.get("follow")) return;                              // (you came to follow someone: the world's own land)
-  const z = +qs.get("zoom") || (saved >= 1 && saved === Math.round(saved) ? saved : small ? 2 : 3), img = new Image(), f = TITLE_DY % 1 * 16;
-  const fit = () => { const w = img.naturalWidth, h = img.naturalHeight; img.style.width = w * z + "px";
-    img.style.left = Math.round(innerWidth / 2 - 8 * z) - z * (w / 2 - 8) + "px"; img.style.top = Math.round(innerHeight / 2 - 8 * z) - Math.round(f * z) - z * (h / 2 - 8 - Math.round(f)) + "px"; };
-  img.id = "poster"; img.alt = ""; img.fetchPriority = "high"; img.onload = () => { fit(); addEventListener("resize", fit); img.classList.add("in"); };
-  img.src = small ? "assets/title_hd_s.webp" : "assets/title_hd.webp"; document.body.appendChild(img); })();
 </script>
 <canvas id="c"></canvas>
 <div id="hover"></div>
@@ -69,7 +111,6 @@ const TITLE_DY = 4 * Math.sin(1);
     <button class="item step-me" id="logout"><span>Log out</span><span class="soft" id="logoutv"></span></button>
   </div>
 </div>
-<script src="js/loading.js"></script>
 <div id="help"></div>
 <div id="menu"></div>
 <div id="goals"><div class="gh"><b>Goals</b><span id="goalcount"></span><span class="gf" id="goalhide"><kbd>G</kbd>hide</span><span class="gf" id="goalhelp"><kbd>H</kbd>help</span></div><div id="goallist"></div></div>

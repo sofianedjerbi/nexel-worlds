@@ -84,6 +84,31 @@ def test_the_first_screen_fits_a_phone(browser, server):
     page.close()
 
 
+def test_the_first_screen_reads_as_a_newcomer_sees_it(browser, server):
+    """Home audit (desk 1440x900, a phone upright and on its side): the name, its line and the window never lie on
+    one another and are whole on the screen; Wake up is a button across the window, a thumb high, on the screen; the
+    line under the name is a tip, never larger than the window's own letters; on a big desk the window's pixel is 3 px
+    (it was a third of the screen's height, its letters 18 px)."""
+    box = """(() => { const b = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom].map(Math.round); };
+      return {menu: b(document.querySelector('#joinbox .menu')), logo: b(document.querySelector('#joinbox .logo')), say: b($('splash')), join: b($('join')),
+        sayPx: parseFloat(getComputedStyle($('splash')).fontSize), menuPx: parseFloat(getComputedStyle(document.querySelector('#joinbox .menu')).fontSize)}; })()"""
+    apart = lambda a, b: a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
+    for w, h, touch in ((1440, 900, False), (390, 844, True), (844, 390, True)):
+        page = browser.new_page(viewport={"width": w, "height": h}, has_touch=touch, is_mobile=touch)
+        page.goto(server)
+        page.wait_for_function("typeof ready !== 'undefined' && document.querySelectorAll('#racepick button').length === 5")
+        page.evaluate("$('splash').textContent = 'Somebody\\'s chickens got out again, and the duck knows why.'")      # (a long one)
+        r = page.evaluate(box)
+        for k in ("menu", "logo", "say", "join"):
+            assert r[k][0] >= 0 and r[k][1] >= 0 and r[k][2] <= w and r[k][3] <= h, (w, h, k, r)
+        assert apart(r["logo"], r["menu"]) and apart(r["say"], r["menu"]) and apart(r["logo"], r["say"]), (w, h, r)
+        assert r["join"][3] - r["join"][1] >= 48 and r["join"][2] - r["join"][0] >= (r["menu"][2] - r["menu"][0]) * .8, (w, h, r)
+        assert r["sayPx"] <= r["menuPx"] * 1.01, (w, h, r)
+        if not touch:
+            assert r["menuPx"] >= 27 and page.evaluate("getComputedStyle($('join')).backgroundColor") == "rgb(255, 241, 168)", r     # (lit: the row the keys are on at first)
+        page.close()
+
+
 def test_the_first_screen_is_itself_before_any_script_has_come(browser, server):
     """"Instant loading": on a phone's slow line the page was bare text for as long as its seventy scripts took (eight
     seconds measured): the game's own bar over its name, a list without its window, no field for your name. What the
@@ -120,12 +145,14 @@ def test_wake_up_says_the_world_is_still_coming(browser, server):
     page.close()
 
 
-def test_the_island_is_there_at_once_as_a_still_picture_and_comes_in_over_it_in_the_hd_look(browser, server):
+def test_the_wait_is_alone_until_the_island_is_whole_then_the_island_in_the_hd_look(browser, server):
     """"I want the demo background to load beautifully asap": behind the first screen's window there was the sea's flat
     colour until every picture of the game had come (seven seconds on a slow line), then the island a block at a
     time. Its still picture is asked for first of all (tools/build_title_poster.py: what the game paints at the
     island's first moment, nobody on it); the island comes in over it once all of it is made, the view held still
     until it has, the name and the window where they were.
+    "The loading screen looks bad, can't you just show the loading and nothing else first": the still picture is gone;
+    the wait (index.html #boot) is alone over everything until the island is whole, then the title, as it was.
     "Update main menu to the new voxel view": the island was the flat picture of the classic look, the game's own look
     came only once you had woken up. It is drawn by the HD look (hd.js: its eye on the middle of the view): the tilted
     land, its sky over it; so is its still picture. And you wake up from it into the world, in the same look."""
@@ -146,13 +173,11 @@ def test_the_island_is_there_at_once_as_a_still_picture_and_comes_in_over_it_in_
         held = []
         page.route("**/js/title_scene.js*", lambda r: held.append(r))
         page.goto(server, wait_until="commit")
-        page.wait_for_function("!!document.querySelector('#poster.in')", timeout=5000)
+        page.wait_for_function("typeof titleDraw === 'function'", timeout=10000)
         js = page.evaluate
-        assert js("[typeof TitleScene, document.body.classList.contains('scene'), getComputedStyle(document.getElementById('c')).opacity, /title_hd_s\\.webp/.test(document.getElementById('poster').currentSrc), /title_hd\\.webp/.test(document.getElementById('poster').currentSrc)]") == ["undefined", False, "0", small, not small]
-        # the still picture is the HD look's: sky along its top, a whole number of screen px an art px
-        img = js("""(() => { const img = document.getElementById('poster'), c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = 4; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
-          const d = g.getImageData(0, 0, c.width, 1).data; let sky = 0; for (let x = 0; x < c.width; x++) if (d[x * 4 + 2] >= d[x * 4] && d[x * 4 + 2] > 150) sky++; return [sky / c.width, img.getBoundingClientRect().width / img.naturalWidth]; })()""")
-        assert img[0] > .9 and img[1] == zoom, img
+        # nothing but the wait on the screen: every corner and the middle are its own, the island hidden under it
+        assert js("[typeof TitleScene, document.body.classList.contains('scene'), getComputedStyle(document.getElementById('c')).opacity, !!document.getElementById('poster')]") == ["undefined", False, "0", False]
+        assert js("[[2, 2], [innerWidth - 3, 2], [2, innerHeight - 3], [innerWidth - 3, innerHeight - 3], [innerWidth / 2, innerHeight / 2]].every(([x, y]) => document.elementFromPoint(x, y).closest('#boot'))")
         before = js(boxes)
         assert held, "the island's script was not asked for"
         for r in held:
@@ -162,7 +187,7 @@ def test_the_island_is_there_at_once_as_a_still_picture_and_comes_in_over_it_in_
         assert js("[HdLook.live, HdLook.builds > 0, getComputedStyle(document.getElementById('hd')).display, !!HdLook.eye, Curve.on]") == [True, True, "block", True, True]
         got = js(seen)
         assert got["kinds"] > 40 and got["clear"] == 0 and got["sky"] > .8 and got["land"] > .5, (kw["viewport"], got)      # drawn, all of it: the sky over the land (not the clear colour, not one flat colour)
-        page.wait_for_function("getComputedStyle(document.getElementById('hd')).opacity === '1' && getComputedStyle(document.getElementById('poster')).visibility === 'hidden'", timeout=5000)
+        page.wait_for_function("getComputedStyle(document.getElementById('hd')).opacity === '1' && !document.getElementById('boot')", timeout=5000)
         page.wait_for_function(still + " > .05", timeout=20000)   # then the view goes after someone, as ever
         assert js(boxes) == before
         if not small:                                             # the menu still works: you wake up, in the world, in the same look, its eye on you
