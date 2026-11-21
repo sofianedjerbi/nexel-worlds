@@ -24,13 +24,13 @@ def test_every_file_loads_and_each_action_plays_its_own_sound(game):
     for item, face, sound in (("fence", (0, -1), "place_post"), ("rug", (0, 1), "place_soft"), ("path", (-1, 0), "place_path")):
         game.hold_item(item)
         game.face(*face)
-        game.press("Space", 800)
+        game.press("e", 800)
         assert sound in played(game), f"placing a {item} should play {sound}: {sorted(played(game))}"
 
     cow = game.spawn("cow", 1, 0, still=30)           # hit a cow: the blow, and the cow answers
     game.face(1, 0)
     game.hold_item(None)
-    game.press("Space", 900)
+    game.press("e", 900)
     assert {"hit", "moo"} <= played(game), sorted(played(game))
     assert cow
 

@@ -37,12 +37,12 @@ def test_a_tree_falls_and_ore_sends_orbs(game):
     game.hold_item("axe")
     game.stamp(1, 0, ["T"])
     game.face(1, 0)
-    game.press("Space", 0)
+    game.press("e", 0)
     game.wait("HdFx.last.falls > 0", 8000)                        # the felling, drawn
     game.hold_item("pickaxe")
     game.stamp(0, 1, ["*"])
     game.face(0, 1)
-    game.press("Space", 0)
+    game.press("e", 0)
     game.wait("HdFx.last.orbs > 0", 6000)
 
 
@@ -53,7 +53,7 @@ def test_a_burning_fence_has_flames(game):
     before = game.js(FLAMES, [x - 1, y])
     game.hold_item("torch")
     game.face(-1, 0)
-    game.press("Space", 0)
+    game.press("e", 0)
     game.wait("fireAt.length > 0", 4000)
     game.wait(f"({FLAMES})([{x - 1}, {y}]) > 20", 3000)
     assert before <= 5

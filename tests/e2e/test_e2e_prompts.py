@@ -32,7 +32,7 @@ def test_what_you_face_has_its_key_beside_it(game):
     game.press("ArrowRight", 400)
     game.wait("$('prompts').innerText.includes('Chop tree')", 3000)
     side = game.js(PART, "side")
-    assert side[4].startswith("Space") and "Chop tree" not in game.js("$('actions').innerText")
+    assert side[4].startswith("E") and "Chop tree" not in game.js("$('actions').innerText")
     assert not game.errors
 
 
@@ -73,13 +73,13 @@ def test_only_what_your_hand_gets_to_is_offered(game):
         game.sleep(400)
         assert game.actions() == said, (lv, game.actions())      # (X digs the block you face: the pillar's at your feet; nothing of a floor six down, nor of the flower)
         game.js("$('toast').style.display = 'none'")
-        game.press("Space", 300)
+        game.press("e", 300)
         assert game.toast() == "" and game.inv("flower") == 0
         game.stamp(dx, dy, ["."], levels=["0"])
     game.stamp(1, 0, ["f"], levels=["3"])
     game.face(1, 0)
     game.wait("$('prompts').innerText.includes('Pick flower')", 3000)
-    game.press("Space", 100)
+    game.press("e", 100)
     game.wait("(meObs.self.inventory.flower || 0) === 1", 4000)
     game.give(pickaxe=1)
     game.hold_item("pickaxe")

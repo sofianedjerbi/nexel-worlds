@@ -9,7 +9,7 @@ def test_a_sign_is_written_as_it_goes_up(game):
     game.give(sign=2)
     game.hold_item("sign")
     game.face(0, -1)
-    game.press("Space", 300)
+    game.press("e", 300)
     game.wait(ASKING)
     assert "sign say" in game.js("$('asktitle').textContent") and game.tile(0, -1) != "?"      # not up yet
     game.page.keyboard.type("wasd Fresh eggs")                 # (its letters are the box's: nobody walks)
@@ -20,11 +20,11 @@ def test_a_sign_is_written_as_it_goes_up(game):
     assert game.tile(0, -1) == "?" and game.pos() == at and game.inv("sign") == 1
     game.hold_item(None)
     game.face(0, -1)
-    game.press("Space", 700)                                   # reading it
+    game.press("e", 700)                                   # reading it
     assert "wasd Fresh eggs" in game.toast()
     game.hold_item("sign")                                     # Esc: no sign goes up
     game.face(1, 0)
-    game.press("Space", 300)
+    game.press("e", 300)
     game.wait(ASKING)
     game.page.keyboard.press("Escape")
     game.sleep(600)
@@ -37,7 +37,7 @@ def test_an_animal_is_named_with_a_name_tag(game):
     game.hold_item("name_tag")
     game.face(1, 0)
     game.sleep(300)
-    game.press("Space", 300)
+    game.press("e", 300)
     game.wait(ASKING)
     assert game.js("$('asktitle').textContent") == "Name the cow"
     game.page.keyboard.type("Daisy")

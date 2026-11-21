@@ -1,6 +1,6 @@
 """The jump ("player size should be 2 blocks, so 2 blocks to destroy needed; also add a key to jump"; then "Jump looks
 unnatural. Add automatic jump by default"): walking into a step jumps you up it (auto-jump, a setting); with it off
-walking into a step stops you and the jump key (J) hops you up it, on a phone its button; the way out of the ground
+walking into a step stops you and the jump key (Space) hops you up it, on a phone its button; the way out of the ground
 shows it on a step. The jump is a crouch, an arc that clears the step, a landing."""
 
 import pytest
@@ -38,7 +38,7 @@ def test_auto_jump_is_on_by_default_and_walking_into_a_step_jumps_up_it(game):
 
 @pytest.mark.quick
 def test_walking_into_a_step_stops_you_and_the_jump_key_climbs_it(game):
-    """Auto-jump off (the settings' Keys page): the step stops you and J climbs it."""
+    """Auto-jump off (the settings' Keys page): the step stops you and Space climbs it."""
     step_east(game)
     x, y = game.pos()
     assert game.js(AUTO, False) is False
@@ -53,22 +53,22 @@ def walk_into_a_step_then_jump(game, x, y):
     game.rest()
     assert game.pos() == (x + 1, y) and game.server()["x"] == x + 1 and game.server()["z"] == 0     # stopped at the step
     game.frames(2)
-    assert "Jump" in game.actions() and "J" in game.js("$('actions').innerText")   # the corner: J Jump
-    game.page.keyboard.down("d")                             # walking into it, J: up it, and on
-    game.press("j", 0)
+    assert "Jump" in game.actions() and "Space" in game.js("$('actions').innerText")   # the corner: Space Jump
+    game.page.keyboard.down("d")                             # walking into it, Space: up it, and on
+    game.press("Space", 0)
     game.sleep(300)
     game.page.keyboard.up("d")
     game.rest()
     s = game.server()
     assert s["x"] >= x + 2 and s["z"] == 1 and game.pos()[0] == s["x"], (s["x"], s["z"], game.pos())
-    game.rpc("dev_teleport", x=x + 1, y=y, z=0)              # standing, facing it: J alone
+    game.rpc("dev_teleport", x=x + 1, y=y, z=0)              # standing, facing it: Space alone
     game.arrive()
     game.face(1, 0)
-    game.press("j", 0)
+    game.press("Space", 0)
     game.wait(f"meObs.self.x === {x + 2} && meObs.self.z === 1", 4000)
     game.rpc("dev_teleport", x=x - 2, y=y, z=0)              # on the level: a hop where you stand, nothing more
     game.arrive()
-    game.press("j", 0)
+    game.press("Space", 0)
     hop = game.js("(() => { const p = ents.get('agent' + myId); return [performance.now() - p.hop < 400, myPos().x]; })()")
     assert hop == [True, x - 2]
     assert not game.errors, game.errors
@@ -149,7 +149,7 @@ def test_the_way_out_shows_the_jump_key_on_its_step(game):
     game.frames(3)
     assert "Jump" in game.js("$('actions').innerText")
     cap = game.js("(() => { const e = document.getElementById('waycap'); return e && e.style.display === 'block' ? e.innerText : ''; })()")
-    assert "J" in cap, cap
-    game.press("j", 0)
+    assert "Space" in cap, cap
+    game.press("Space", 0)
     game.wait(f"meObs.self.x === {x + 3} && meObs.self.z === 1", 4000)
     assert not game.errors, game.errors
