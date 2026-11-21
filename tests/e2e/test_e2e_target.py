@@ -190,9 +190,16 @@ def test_with_the_way_out_shown_each_key_has_its_mark_and_takes_that_cell(browse
     assert not game.errors
 
 
-def test_earth_into_water_marks_the_waters_face_not_a_block_on_it(browser, server):
-    """Mid water, earth in hand: Space makes that tile's water shallower (its bed seldom shows it). What is drawn is
-    that tile's face, flat: it was a block standing on the water, and nothing like it came."""
+# the mean brightness of a tile's face on the HD picture (its middle, the marks off)
+LIGHT = """([x, y, z]) => { const a = HdLook.screenOf(x + .2, y + .2, z), b = HdLook.screenOf(x + .8, y + .8, z), k = devicePixelRatio;
+  const d = HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), Math.max(1, Math.round((b[0] - a[0]) * k)), Math.max(1, Math.round((b[1] - a[1]) * k))).data; let s = 0;
+  for (let i = 0; i < d.length; i += 4) s += d[i] + d[i + 1] + d[i + 2]; return s / (d.length / 4); }"""
+
+
+def test_earth_into_water_marks_its_new_bed_and_the_bed_rises_at_once(browser, server):
+    """Mid water, earth in hand: Space makes that tile's water shallower. The mark lies flat where its bed will be,
+    seen through the water (it was a block on the water, then a square on its face); after the press the tile's bed
+    is a level up at once and the water there is lighter (a7 T3: the basin's floor kept it 2 deep, nothing changed)."""
     game = hd(browser, server)
     game.give(dirt=2)
     stage(game, "water")
@@ -200,10 +207,40 @@ def test_earth_into_water_marks_the_waters_face_not_a_block_on_it(browser, serve
     game.hold_item("dirt")
     game.face(1, 0)
     c = drawn(game, " ")
-    assert c["kind"] == "use" and (c["x"], c["y"], c["z"]) == (x + 1, y, game.js(f"topAt({x + 1}, {y})")), c
-    assert game.js(f"gndAt({x + 1}, {y})") == "("
+    top = game.js(f"topAt({x + 1}, {y})")
+    assert game.js(f"gndAt({x + 1}, {y})") == "(" and game.js(f"WaterBed.depth({x + 1}, {y})") == 2
+    assert c["kind"] == "use" and (c["x"], c["y"], c["z"]) == (x + 1, y, top - 1), c      # (on the bed it will have, a level under the face)
+    game.js("(() => { Target.off = true; setOpt('shimmer', false); return 1; })()")
+    game.frames(3)
+    was = game.js(LIGHT, [x + 1, y, top])
     game.press(" ", 300)
     game.wait(f"gndAt({x + 1}, {y}) === '~'", 8000)             # (the tile drawn is the tile that changed)
+    game.wait(f"WaterBed.depth({x + 1}, {y}) === 1", 2000)
+    game.frames(3)
+    now = game.js(LIGHT, [x + 1, y, top])
+    assert now > was + 20, (was, now)
+    assert not game.errors
+
+
+def test_build_mode_at_a_wall_x_box_lays_nothing_on_the_next_tiles_top(browser, server):
+    """Build mode beside a two-high wall three tiles long: X's box is the middle tile's top block. The tile south of
+    it hides its sides and its foot: they were drawn on that tile's grass (one orange line whole, one in dots), a
+    box round a green square: "a grass square inside the column" (a7 T4)."""
+    game = hd(browser, server)
+    game.give(dirt=2)
+    stage(game, "wall")
+    game.hold_item("dirt")
+    game.press("z")
+    game.wait("Build.on", 3000)
+    game.frames(3)
+    t = game.js("Target.target('alt')")
+    assert t["kind"] == "break" and game.js(f"topAt({t['x']}, {t['y'] + 1})") == t["z"], t
+    # the next tile's top, all but its two first rows and its last (its north edge is the box's own front edge)
+    n = game.js("""([x, y, z, c]) => { const a = HdLook.screenOf(x, y, z), b = HdLook.screenOf(x + 1, y + 1, z), k = devicePixelRatio, u = HdLook.art().u * k;
+      const X = Math.round(a[0] * k - u), Y = Math.round(a[1] * k + 2 * u), d = HdLook.read(X, Y, Math.round((b[0] - a[0]) * k + 2 * u), Math.max(1, Math.round((b[1] - a[1]) * k - 3 * u))).data; let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - c[0]) + Math.abs(d[i + 1] - c[1]) + Math.abs(d[i + 2] - c[2]) < 40) n++; return n; }""", [t["x"], t["y"] + 1, t["z"], TAKE])
+    assert n == 0, n
+    assert game.js(ON_TOP, [t["x"], t["y"], t["z"], TAKE]) > 20                     # (its own top: hatched, as ever)
     assert not game.errors
 
 
