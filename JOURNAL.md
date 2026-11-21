@@ -3980,3 +3980,16 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
   2. HD look: with the window open, px of the meadow just north of it differ by a unit of 255 from the same frame with no window (the soft light's end).
   3. A key tapped for less than a frame does nothing (walk.js: the stop says the tile you stand on). Small: a hand is slower than a frame.
 - Self-critical. Not reproduced, mended by rule and by reading: tall (a sleep, then a picture read: now `rest()`), curve's flat picture (its assert now says what it saw). Curve's bridge failed once in twelve with a darker plank px (155, 117, 92): the cause not found, its assert now prints the px round it. The suite was never run whole by me.
+
+## Iteration 218: every key that would act has its mark, the way out shown or not (audit A7 targeting faults)
+- Hypothesis: the 8 unclear cases of audit A7 are in the picture only (every key changed the intended cell).
+- Changes: target.js draws Space/R/X's cells while the way-out guide is up (the guide's own block stays its one mark);
+  X has its own mark: the floor round your feet hatched orange, a stepped arrow down beside it, nothing on your body;
+  earth into water marks the water's face (the bed seldom rises: no block standing on the water); the aim is there
+  from the first frame (keyboard.js `byKeys`: keys unless the mouse is on the land); build mode draws no brackets on
+  you in the HD look (keyhole.js); your own name is not written over a key's box or the way's block (characters.js);
+  R's row/"Dig a step" button is no longer hidden while the guide's next key is Space (the phone's tap went to nothing);
+  the guide's key cap avoids the keys' boxes.
+- Measured: 10 cases x 2 screens: 8 clear, 2 partly (tunnel: R and Space are two faint dotted boxes in the rock;
+  ledge unchanged). Marks pass 0.1 ms median on the phone page at CPU x4. Tests: target 17, five files 44, quick 59, unit 660.
+- Next: build mode over water still shows a block box on the water; the tunnel's boxes inside rock are faint.

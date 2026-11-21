@@ -208,6 +208,7 @@ function drawNameplate(p, sx, sy, S) {
     Prompts.keep = [{x: x - S / 2, y: top, w: S, h: S + Math.max(0, 12 - 3 * zoom) + 2 * zoom}, {x: x - nw, y: y - 18, w: 2 * nw, h: 24}]; }
   if (!opt("names")) return;
   if (x < -S || x > W + S || y < -S || y > H + S || (typeof TitleScene !== "undefined" && TitleScene.hides(x - e.name.length * 6, y - 18, e.name.length * 12, 24))) return;      // (the first screen: no name under what it writes, title_scene.js)
+  if (e.kind === "agent" && e.id === myId && Target.over(x - e.name.length * 6, y - 18, e.name.length * 12, 24)) return;      // (your name on the block a key takes, the way's: a box with your name in it, you twice. You are the cat under it)
   ctx.font = "18px SproutPixel"; ctx.textAlign = "center";
   if (!(e.kind === "agent" && speaking(e.name))) outlined(e.name, x, y, me && e.name === me ? "#fff1a8" : "#fff8e8");   // (speaking: the name is on the bubbles, bubbles.js)
   if (e.kind === "agent" && e.hp < HP_MAX) { ctx.fillStyle = "#5b3f36"; ctx.fillRect(x - 16, y + 4, 32, 5); ctx.fillStyle = e.hp > .4 * HP_MAX ? "#6aa66f" : "#d9473a"; ctx.fillRect(x - 15, y + 5, 30 * e.hp / HP_MAX, 3); }
