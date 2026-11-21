@@ -10,7 +10,7 @@ function characterSheet(tint, src = IMG.character) {   // recolour the cream bod
   const key = tint + (src === IMG.character ? "" : ":" + src.src);
   if (tinted.has(key)) return tinted.get(key);
   const c = document.createElement("canvas"); c.width = src.width; c.height = src.height;
-  const g = c.getContext("2d"); g.drawImage(src, 0, 0);
+  const g = c.getContext("2d", {willReadFrequently: true}); g.drawImage(src, 0, 0);
   const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
   const tr = parseInt(tint.slice(1, 3), 16), tg = parseInt(tint.slice(3, 5), 16), tb = parseInt(tint.slice(5, 7), 16);
   for (let i = 0; i < px.length; i += 4) {

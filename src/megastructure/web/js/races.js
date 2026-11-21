@@ -3,10 +3,12 @@
 // animation. Designed in design/enemies/site/races.html. Clothes are painted on afterwards (wear.js).
 
 const Races = (() => {
-  const rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const rgb0 = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const RGB = new Map(), rgb = (h) => { let v = RGB.get(h); if (!v) RGB.set(h, v = rgb0(h)); return v; };   // (a colour's numbers, read once: they were parsed again for every px painted)
   const BASE = {a: "#5c4e92", b: "#f3f2c0", c: "#e8b5ac", d: "#ddd5de", e: "#f3d8c5", f: "#766daa", g: "#eae178"};
   const CLASS = Object.fromEntries(Object.entries(BASE).map(([k, h]) => [rgb(h).join(), k]));
   const CELL = 48, DIRS = ["down", "up", "right", "left"];
+  const classes = (d) => { const o = new Array(CELL * CELL); for (let i = 0; i < CELL * CELL; i++) o[i] = d[i * 4 + 3] ? CLASS[d[i * 4] + "," + d[i * 4 + 1] + "," + d[i * 4 + 2]] || "?" : null; return o; };   // (a frame's px as colour classes: null empty, "?" none of the cat's)
   const RACES = [
     {key: "cat", name: "Cat", col: {},
       text: "The player as it is today: pointed ears with pink inside, whiskers, a collar with a bell.", head() {}},
@@ -96,7 +98,7 @@ const Races = (() => {
     // What is in the frame: the body, and on the swings a tool, its arc and sometimes a hand apart from the body. The
     // head is measured on the body alone (the piece that wears the collar). Measured on everything, a raised axe was
     // taken for the head: ears were put on it, the head came out as a slab, the tool above the head was wiped.
-    const raw = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL && d[(y * CELL + x) * 4 + 3] ? CLASS[[d[(y * CELL + x) * 4], d[(y * CELL + x) * 4 + 1], d[(y * CELL + x) * 4 + 2]].join()] || "?" : null;
+    const px = classes(d), raw = (x, y) => (x >= 0 && y >= 0 && x < CELL && y < CELL ? px[y * CELL + x] : null);   // (each px's class found once: it was a string made and looked up at every look, hundreds of thousands a sheet)
     const body = new Uint8Array(CELL * CELL), stack = [];
     const own = (x, y) => { const c = raw(x, y); return c && c !== "?"; };
     for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (raw(x, y) === "f") { body[y * CELL + x] = 1; stack.push([x, y]); }
@@ -195,13 +197,18 @@ const Races = (() => {
   }
   // One person's sheet: their race, with their own tint mixed into its body colour. It carries, per frame, the grid of
   // colour classes and the measurements of the head, for the clothes.
-  const sheets = new Map();
-  let baseData = null, analysis = null;
+  // (made a few frames a step: `made(..., false)` starts it and says null until it is done (wear.js works the steps between frames); raceSheet makes it at once)
+  const sheets = new Map(), jobs = new Map();
+  let baseData = null, analysis = null, measuring = null;
   const blend = (h, tint, k) => "#" + rgb(h).map((v, i) => Math.round(v * (1 - k) + rgb(tint)[i] * k).toString(16).padStart(2, "0")).join("");
-  function raceSheet(key, tint, bot) {             // bot: the race's robot (an AI player)
+  function made(key, tint, bot, now = true) {             // bot: the race's robot (an AI player)
     const found = RACES.find((r) => r.key === key), race = found && bot ? robot(found) : found, id = (bot ? "bot:" : "") + key + tint;
     if (!race || (key === "cat" && !bot)) return characterSheet(tint);
     if (sheets.has(id)) return sheets.get(id);
+    let job = jobs.get(id); if (!job) jobs.set(id, job = steps(race, tint, id));
+    if (!now) return null; while (!job.next().done); return sheets.get(id);
+  }
+  function* steps(race, tint, id) {
     const W = IMG.character.width, H = IMG.character.height, cols = W / CELL, rows = H / CELL;
     const frame = (r, c) => { const d = new Uint8ClampedArray(CELL * CELL * 4);
       for (let y = 0; y < CELL; y++) d.set(baseData.subarray(((r * CELL + y) * W + c * CELL) * 4, ((r * CELL + y) * W + c * CELL + CELL) * 4), y * CELL * 4);
@@ -210,8 +217,10 @@ const Races = (() => {
       const b = document.createElement("canvas"); b.width = W; b.height = H;
       const g = b.getContext("2d"); g.drawImage(IMG.character, 0, 0);
       baseData = g.getImageData(0, 0, W, H).data;
-      analysis = [];
-      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) analysis.push(analyse(frame(r, c), r, c));
+    }
+    if (!analysis) {                               // (the cat's frames measured once, whoever's sheet asks first: the others wait for it)
+      measuring = measuring || (function* () { const a = []; for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { a.push(analyse(frame(r, c), r, c)); if (a.length % 8 === 0) yield; } analysis = a; })();
+      while (!analysis && !measuring.next().done) yield;
     }
     const mix = race.mix || {b: .35, d: .3};     // a little of the person's colour, in the body and its shade (a robot: less, it is steel)
     const mine = {...race, col: {...race.col, ...Object.fromEntries(Object.entries(mix).map(([k, m]) => [k, blend(race.col[k] || BASE[k], tint, m)]))}};
@@ -223,12 +232,14 @@ const Races = (() => {
       const d = frame(r, c);
       out.grids.push(remake(d, analysis[r * cols + c], mine));
       for (let y = 0; y < CELL; y++) img.data.set(d.subarray(y * CELL * 4, (y + 1) * CELL * 4), ((r * CELL + y) * W + c * CELL) * 4);
+      if (out.grids.length % 8 === 0) yield;
     }
-    out.getContext("2d").putImageData(img, 0, 0);
-    sheets.set(id, out);
-    return out;
+    out.getContext("2d", {willReadFrequently: true}).putImageData(img, 0, 0);
+    sheets.set(id, out); jobs.delete(id);
   }
-  return {RACES, raceSheet};
+  // the sheets asked for and not made: worked on until `until` (performance.now) -> are there more
+  function work(until) { for (const [id, job] of jobs) { while (performance.now() < until) if (job.next().done) { jobs.delete(id); break; } if (performance.now() >= until) break; } return jobs.size > 0; }
+  return {RACES, raceSheet: (key, tint, bot) => made(key, tint, bot), made, work};
 })();
 const raceSheet = Races.raceSheet;
 
@@ -247,7 +258,7 @@ function drawRacePick() {
     b.type = "button"; b.dataset.race = r.key; b.title = r.name; b.className = r.key === myRace ? "on" : "";
     const c = document.createElement("canvas"); c.width = c.height = 24;
     const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
-    const paint = () => g.drawImage(raceSheet(r.key, "#f3f2c0"), 12, 10, 24, 24, 0, 0, 24, 24);
+    const paint = () => { const s = typeof wornReady === "function" && wornReady("#f3f2c0", null, r.key, false); if (s) g.drawImage(s, 12, 10, 24, 24, 0, 0, 24, 24); else setTimeout(paint, 60); };   // (its sheet made between frames: wear.js)
     if (later && r.key !== myRace) setTimeout(paint, 40 * i); else paint();
     b.appendChild(c);
     b.onclick = () => pickRace(r.key);

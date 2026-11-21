@@ -31,8 +31,8 @@ function titleStep() {                                       // the step the acc
 function titleMe(now) {                                      // you, breathing, as the world will draw you
   const c = $("titleme");
   if (titleOpen() && TITLE.step === "me" && IMG.character && IMG.character.complete && IMG.character.width) {
-    const g = c.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, 24, 26);
-    try { g.drawImage(wornSheet(agentTint($("name").value.trim() || "you"), null, myRace), (Math.floor(now / 140) % 8) * 48 + 12, 9, 24, 26, 0, 0, 24, 26); } catch (e) { /* sheets still loading */ }
+    const g = c.getContext("2d"), s = wornReady(agentTint($("name").value.trim() || "you"), null, myRace); g.imageSmoothingEnabled = false;   // (a race's sheet not made yet: made between frames, wear.js)
+    if (s) { g.clearRect(0, 0, 24, 26); try { g.drawImage(s, (Math.floor(now / 140) % 8) * 48 + 12, 9, 24, 26, 0, 0, 24, 26); } catch (e) { /* sheets still loading */ } }
   }
   requestAnimationFrame(titleMe);
 }

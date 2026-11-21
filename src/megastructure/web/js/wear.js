@@ -11,11 +11,13 @@ const WEAR = {
   sparkle_charm: ["effect", "sparkle"], firefly_charm: ["effect", "fireflies"], leaf_charm: ["effect", "leaves"], heart_charm: ["effect", "hearts"], flame_charm: ["effect", "flame"], frost_charm: ["effect", "frost"], halo_charm: ["effect", "halo"], spore_charm: ["effect", "spores"], flower_charm: ["effect", "flowers"],
 };
 const WearParts = (() => {
-  const rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const rgb0 = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const RGB = new Map(), rgb = (h) => { let v = RGB.get(h); if (!v) RGB.set(h, v = rgb0(h)); return v; };   // (a colour's numbers, read once: they were parsed again for every px painted)
   // The player's own colours: outline, body, blush, shade, cheek, collar, bell.
   const BASE = {a: "#5c4e92", b: "#f3f2c0", c: "#e8b5ac", d: "#ddd5de", e: "#f3d8c5", f: "#766daa", g: "#eae178"};
   const CLASS = Object.fromEntries(Object.entries(BASE).map(([k, h]) => [rgb(h).join(), k]));
   const CELL = 48, DIRS = ["down", "up", "right", "left"];
+  const classes = (d) => { const o = new Array(CELL * CELL); for (let i = 0; i < CELL * CELL; i++) o[i] = d[i * 4 + 3] ? CLASS[d[i * 4] + "," + d[i * 4 + 1] + "," + d[i * 4 + 2]] || "?" : null; return o; };   // (a frame's px as colour classes: null empty, "?" none of the cat's)
   // A top, pants or shoes entry maps the player's colour classes in its rows to new colours ("a" recolours the outline: armor).
   const TOPS = [
     {id: "none", name: "Collar and bell"},
@@ -101,7 +103,7 @@ const WearParts = (() => {
   function analyse(d, row) {                      // d: one 48 x 48 frame's pixels
     // The head is measured on the body alone: the piece that wears the collar, not the tool, its arc or a hand apart
     // from the body (measured on everything, a raised axe was taken for the head, and a hat jumped onto it).
-    const at = (x, y) => x >= 0 && y >= 0 && x < CELL && y < CELL && d[(y * CELL + x) * 4 + 3] ? CLASS[[d[(y * CELL + x) * 4], d[(y * CELL + x) * 4 + 1], d[(y * CELL + x) * 4 + 2]].join()] || "?" : null;
+    const px = classes(d), at = (x, y) => (x >= 0 && y >= 0 && x < CELL && y < CELL ? px[y * CELL + x] : null);   // (each px's class found once: it was a string made and looked up at every look, hundreds of thousands a sheet)
     const body = new Uint8Array(CELL * CELL), stack = [];
     const mine = (x, y) => { const c = at(x, y); return c && c !== "?"; };
     for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) if (at(x, y) === "f") { body[y * CELL + x] = 1; stack.push([x, y]); }
@@ -147,28 +149,34 @@ const WearParts = (() => {
   }
   // The sheet for one person: their tinted sheet (sprites.js) with what they wear painted on, built once per outfit.
   // It carries, per frame, the pixels just outside the dressed player (for the auras) and the top of the head.
-  const sheets = new Map();
-  let analysis = null;
-  function wornSheet(tint, worn, race = "cat", bot = false) {      // bot: an AI player, drawn as its race's robot
-    const plain = raceSheet(race, tint, bot);              // (races.js; the cat's is sprites.js characterSheet)
-    if (!worn) return plain;
+  // (made a few frames a step, between frames (pump): `ready` says null until it is done, and a body is drawn once its sheet is there. Made in one go,
+  // a person's first sight held a slow phone still for over a second: the first screen's islanders, each one coming into view)
+  const sheets = new Map(), jobs = new Map();
+  let analysis = null, measuring = null, pumping = false;
+  function made(tint, worn, race = "cat", bot = false, now = true) {      // bot: an AI player, drawn as its race's robot
+    if (!worn) { const plain = Races.made(race, tint, bot, now); if (!plain && !pumping) pump(); return plain; }   // (races.js; the cat's is sprites.js characterSheet)
     const o = {head: "none", top: "none", pants: "none", shoes: "none"};
     for (const [slot, item] of Object.entries(worn)) if (WEAR[item] && slot in o) o[slot] = WEAR[item][1];
     const key = tint + race + (bot ? "bot" : "") + Object.values(o).join();
     if (sheets.has(key)) return sheets.get(key);
+    let job = jobs.get(key); if (!job) { jobs.set(key, job = steps(tint, o, race, bot, key)); if (!pumping) pump(); }
+    if (!now) return null; while (!job.next().done); return sheets.get(key);
+  }
+  function* steps(tint, o, race, bot, key) {
+    let plain; while (!(plain = Races.made(race, tint, bot, false))) { Races.work(performance.now() + 2); yield; }
     const W = plain.width, H = plain.height, cols = W / CELL, rows = H / CELL;
     const frame = (data, r, c) => { const d = new Uint8ClampedArray(CELL * CELL * 4);
       for (let y = 0; y < CELL; y++) d.set(data.subarray(((r * CELL + y) * W + c * CELL) * 4, ((r * CELL + y) * W + c * CELL + CELL) * 4), y * CELL * 4);
       return d; };
-    if (!analysis) {
-      const b = document.createElement("canvas"); b.width = W; b.height = H;
-      const bg = b.getContext("2d"); bg.drawImage(IMG.character, 0, 0);
-      const data = bg.getImageData(0, 0, W, H).data;
-      analysis = [];
-      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) analysis.push(analyse(frame(data, r, c), r));
+    if (!analysis && !plain.an) {                  // (the cat's own frames measured, once: a race's sheet carries its own)
+      measuring = measuring || (function* () { const b = document.createElement("canvas"); b.width = W; b.height = H;
+        const bg = b.getContext("2d"); bg.drawImage(IMG.character, 0, 0);
+        const data = bg.getImageData(0, 0, W, H).data, a = [];
+        for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { a.push(analyse(frame(data, r, c), r)); if (a.length % 8 === 0) yield; } analysis = a; })();
+      while (!analysis && !measuring.next().done) yield;
     }
     const out = document.createElement("canvas"); out.width = W; out.height = H;
-    const g = out.getContext("2d"); g.drawImage(plain, 0, 0);
+    const g = out.getContext("2d", {willReadFrequently: true}); g.drawImage(plain, 0, 0);
     const img = g.getImageData(0, 0, W, H);
     out.edges = []; out.tops = [];
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
@@ -179,11 +187,17 @@ const WearParts = (() => {
       for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++)
         if (!solid(x, y) && (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1))) edge.push([x, y]);
       out.edges.push(edge); out.tops.push(A.top);
+      if (i % 8 === 7) yield;
     }
     g.putImageData(img, 0, 0);
-    sheets.set(key, out);
-    return out;
+    sheets.set(key, out); jobs.delete(key);
   }
-  return {TOPS, PANTS, SHOES, HEADS, rgb, wornSheet};
+  // the steps of the sheets asked for, when the page is idle (at most 8 ms at a time: never a long task), until none is left
+  function pump(dl) {
+    pumping = true; const until = performance.now() + (dl && !dl.didTimeout ? Math.max(1, Math.min(8, dl.timeRemaining())) : 8);
+    if (dl !== undefined) { for (const [k, job] of jobs) { while (performance.now() < until) if (job.next().done) { jobs.delete(k); break; } if (performance.now() >= until) break; } Races.work(until); }
+    if (jobs.size || Races.work(0)) { if (window.requestIdleCallback) requestIdleCallback(pump, {timeout: 100}); else setTimeout(() => pump(null), 16); } else pumping = false;
+  }
+  return {TOPS, PANTS, SHOES, HEADS, rgb, wornSheet: (tint, worn, race, bot) => made(tint, worn, race, bot), ready: (tint, worn, race, bot) => made(tint, worn, race, bot, false)};
 })();
-const wornSheet = WearParts.wornSheet;
+const wornSheet = WearParts.wornSheet, wornReady = WearParts.ready;

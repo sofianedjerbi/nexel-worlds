@@ -64,7 +64,7 @@ function drawBody(p, sx, sy, S, t, now) {
     // face the action's target
     if (action && action.dir && DIRV[action.dir]) { [p.fx, p.fy] = DIRV[action.dir]; }
     if (action && action.tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == action.tid); if (q) { p.fx = Math.sign(q.x - p.x); p.fy = p.fx ? 0 : Math.sign(q.y - p.y); } }
-    const sheetImg = wornSheet(agentTint(e.name), e.worn, e.race, e.bot);        // (wear.js: their sheet, dressed)
+    const sheetImg = wornReady(agentTint(e.name), e.worn, e.race, e.bot); if (!sheetImg) return;        // (wear.js: their sheet, dressed; not made yet: they show once it is, made between frames)
     let bob = j ? Math.round(j.body * z) : 0, anim = "idle", frame, lunge = 0, blow = null;
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
     // (the pale mark under you. With a shader's shadows you have a shadow of your own: no mark, sun.js)
