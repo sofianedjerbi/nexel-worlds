@@ -43,17 +43,31 @@ const HdLevel = (() => {
   // WHERE YOUR MARKS ARE DRAWN: with you. raise(z, s): a level of a cell a key acts on, as drawn while you are lifted (s: hd.js `seen`: L, lift, rim): your feet's level goes up by the lift, the rim's by none, the hole between
   // squeezed (the boxes and the way's block lay where the cell projects: on the grass south of a deep hole, faint, while you stood at its rim)
   const raise = (z, s) => (!s || !(s.lift > 0) ? z : z + s.lift * Math.max(0, Math.min(1, (s.rim - z) / Math.max(.001, s.rim - s.L))));
-  // THE WALL BETWEEN THE EYE AND YOU: wall(x, y, z, s) -> a cell (z: its top) in the land south of your hole, under its rim, while you are lifted: its face turned to you faces away from the eye, and
-  // whatever lift it got it projected onto the grass south of the rim (a shaft 3 deep: R's "Dig a step" box lay outside the hole). wallAt: a place of such a cell, drawn as that face folded up into
-  // the opening about its south edge: the rim's level on that edge, each level down a step north into the opening (at most the eye's own cot 68°, all of the hole's depth inside one tile); its depth into the wall: none
-  const wall = (x, y, z, s) => !!s && s.lift > 0 && y > s.ty && z <= s.rim && z > s.L;
-  const wallAt = (x, y, z, s) => { const d = Math.max(1, s.rim - s.L); return [x, s.ty + 1 - Math.max(0, Math.min(d, s.rim - z)) * Math.min(.4, 1 / d), s.rim]; };
+  // THE WALL BETWEEN THE EYE AND YOU: wall(x, y, z, s) -> the face a cell (z: its top) of the land south of you is drawn on, or null (drawn where it is). Seen from above (s.top: the eye looks down
+  // into your hole, room or shaft; or you are lifted), a cell over your feet in the land south of you is in a wall whose face turned to you faces away from the eye: its own place projects onto
+  // the grass south of the rim (a shaft 3 deep: R's "Dig a step" box lay outside the hole; a room 4 deep: the way's block and its key on the meadow: it was only while you were lifted).
+  // {y: the row of that wall (the first land south of you as high as the cell), T: its top}. wallAt: a place of such a cell, drawn on that face as you see it, stood in the opening on its top
+  // edge: its foot (your floor's level) on that edge, each level up a step north into the opening (at most the eye's own cot 68°, all of the wall's height inside one tile); its depth into the wall: none.
+  // (It was folded down from that edge, its foot farthest north: in a room the block at your floor's level lay on your body, cut away whole)
+  function wall(x, y, z, s) {
+    if (!s || !(s.lift > 0 || s.top) || y <= s.ty || z <= s.L) return null;
+    for (let j = s.ty + 1; j <= y; j++) { const T = topAt(x, j); if (T >= z) return {y: j, T}; }
+    return null;
+  }
+  const wallAt = (x, y, z, s, f) => { const d = Math.max(1, f.T - s.L); return [x, f.y - Math.max(0, Math.min(d, z - s.L)) * Math.min(.4, 1 / d), f.T]; };
   // cut(g, me, a, zs): nothing drawn on g after it (till g.restore) lies on your body: its own px are cut out of the marks (me: your sprite {canvas, fx, fy}, a: its foot on g, zs: g's units an art px). A box at your tile covered all of you
+  // body(me, a, zs) -> your sprite's box on g ({x, y, w, h}: the bounds of its own px): no key's box is drawn in it, and one it covers most of is not drawn at all (target.js: it framed your head)
   const runs = new WeakMap();
+  function runsOf(c) {   // (a sprite's own px: runs of a row [x, y, n, ...], and their bounds b [x0, y0, x1, y1])
+    if (!c || !c.width) return null; let r = runs.get(c); if (r && r.v === c._v) return r;
+    const w = c.width, d = c.getContext("2d", {willReadFrequently: true}).getImageData(0, 0, w, c.height).data, l = [], b = [1e9, 1e9, -1, -1];
+    for (let j = 0; j < c.height; j++) { let i0 = -1; for (let i = 0; i <= w; i++) { const on = i < w && d[(j * w + i) * 4 + 3] >= 128; if (on && i0 < 0) i0 = i; else if (!on && i0 >= 0) { l.push(i0, j, i - i0); b[0] = Math.min(b[0], i0); b[1] = Math.min(b[1], j); b[2] = Math.max(b[2], i); b[3] = Math.max(b[3], j + 1); i0 = -1; } } }
+    runs.set(c, r = {v: c._v, l, b: b[2] >= 0 ? b : null}); return r;
+  }
   function cut(g, me, a, zs) {
-    if (!me || !a || !me.canvas.width) return; const c = me.canvas; let r = runs.get(c);
-    if (!r || r.v !== c._v) { const w = c.width, d = c.getContext("2d", {willReadFrequently: true}).getImageData(0, 0, w, c.height).data, l = []; for (let j = 0; j < c.height; j++) { let i0 = -1; for (let i = 0; i <= w; i++) { const on = i < w && d[(j * w + i) * 4 + 3] >= 128; if (on && i0 < 0) i0 = i; else if (!on && i0 >= 0) { l.push(i0, j, i - i0); i0 = -1; } } } runs.set(c, r = {v: c._v, l}); }
+    const r = me && a && runsOf(me.canvas); if (!r) return;
     const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); for (let i = 0; i < r.l.length; i += 3) g.rect((x0 + r.l[i]) * zs, (y0 + r.l[i + 1]) * zs, r.l[i + 2] * zs, zs); g.clip("evenodd");
   }
-  return {of, steep, own, rim, over, under, lift, raise, wall, wallAt, cut, get shows() { return sv; }};
+  const body = (me, a, zs) => { const r = me && a && runsOf(me.canvas); if (!r || !r.b) return null; const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; return {x: (x0 + r.b[0]) * zs, y: (y0 + r.b[1]) * zs, w: (r.b[2] - r.b[0]) * zs, h: (r.b[3] - r.b[1]) * zs}; };
+  return {of, steep, own, rim, over, under, lift, raise, wall, wallAt, cut, body, get shows() { return sv; }};
 })();
