@@ -50,8 +50,8 @@ def test_on_a_small_hill_and_behind_it_no_window_opens_and_behind_it_you_show_th
     assert on["n"] == 0 and on["a"] == 0 and on["pitch"] < 36.1 and on["seen"] > .9, on
     assert green(g.js(AT_, [x + 5.5, y + 2.5, 4])), "the hill's top is its own grass"
     behind = go(g, x + 4, y)                                               # one tile north of it: behind it, not under it
-    assert behind["n"] == 0 and behind["a"] == 0 and behind["pitch"] < 36.1, behind
-    assert behind["seen"] > .9, behind                                     # in the disc opened round you, whole (it was one px in two of you in the disc's own px: a checker cat, audit A8 B5)
+    assert behind["n"] == 0 and behind["a"] == 0 and behind["pitch"] > 36.1, behind     # (land over your head south of you: the eye looks down over it, hd_level.js clear)
+    assert behind["seen"] > .9, behind                                     # whole (it was one px in two of you in the disc's own px: a checker cat, audit A8 B5)
     front = go(g, x + 4, y + 5)
     assert front["n"] == 0 and front["seen"] > .9, front
     tidy(g, x, y)
@@ -270,10 +270,10 @@ def test_the_ground_before_a_tunnel_s_mouth_has_no_shade_of_the_hole(browser, se
         g.rpc("dev_col", tiles=hill, col=[0])
 
 
-def test_behind_a_cliff_the_disc_round_you_is_opened_in_it(browser, server):
-    """Behind land taller than you (a cliff's back), on the surface: the disc that is opened in a roof or a tree in
-    front of you is opened in the land too: one px in two of it, the ground at your feet in the others, you whole in it.
-    (You were a faint checker on the cliff's face, a sixth of you, and saw nothing round you.) In front of it: nothing."""
+def test_behind_a_cliff_the_eye_looks_down_over_it_and_you_are_whole(browser, server):
+    """Behind land taller than you (a cliff's back), on the surface: the eye looks down as steeply as it must to see you
+    and the ground at your feet over it (hd_level.js clear). (You were a faint checker on the cliff's face, a sixth of
+    you; then a disc of one px in two in it: with cubes, a plateau over half the screen.) In front of it: as ever."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -285,11 +285,10 @@ def test_behind_a_cliff_the_disc_round_you_is_opened_in_it(browser, server):
         s = go(g, x + 6, y - 2)
         g.wait("HdLook.catSeen() > .9", timeout=4000)                      # (the disc opens over 120 ms)
         s = g.js(STATE)
-        assert s["n"] == 0 and s["pitch"] < 36.1 and s["seen"] > .9, s     # no window; all of you in the disc (it was one px in two, .16 before the disc)
-        assert g.js(GROUND, [x + 6, y - 2]) > .12                          # the meadow at your feet shows through the cliff (.15 with 8 px levels: a cliff of cubes covers more of the ground north of you, outside the disc)
-        assert g.js(GROUND, [x + 4, y - 2]) == 0                           # two tiles beside you: the cliff, whole
+        assert s["n"] == 0 and s["pitch"] > 60 and s["seen"] > .9, s        # no window; all of you, from above
+        assert g.js(GROUND, [x + 6, y - 2]) > .5                           # the meadow at your feet, seen as it is (through the disc it was a checker: .15)
         s = go(g, x + 6, y + 5)
-        assert s["seen"] > .95, s                                          # in front of it: whole, nothing opened
+        assert s["seen"] > .95 and s["pitch"] < 36.1, s                    # in front of it: whole, the surface's pitch
     finally:
         g.rpc("dev_col", tiles=hill, col=[0])
 

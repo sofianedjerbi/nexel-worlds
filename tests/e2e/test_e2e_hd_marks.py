@@ -139,9 +139,9 @@ def test_in_a_room_four_deep_the_marks_are_inside_its_opening_and_none_on_you(br
     tidy(g, x, y)
 
 
-def test_behind_a_slab_you_are_whole_in_the_disc(browser, server):
-    """Behind land five high (the owner's gorge at -58,47; the canyon's foot at 26,-36 on seed 12): the disc is opened
-    round you and you are drawn whole in it. It was one px in two of you in the disc's own px: a checker cat, always."""
+def test_behind_a_slab_you_are_whole(browser, server):
+    """Behind land five high (the owner's gorge at -58,47; the canyon's foot at 26,-36 on seed 12): you are drawn
+    whole, the eye looking down over the slab (hd_level.js clear). It was one px in two of you in the disc's own px: a checker cat, always."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -150,8 +150,8 @@ def test_behind_a_slab_you_are_whole_in_the_disc(browser, server):
     g.rest()
     try:
         go(g, x, y)
-        g.wait("HdLook.catSeen() > .9", timeout=4000)                      # (the disc opens over 120 ms; it was .41)
-        assert g.js("HdLook.cam.pitch") < 36.1 and g.js("HdLook.win.n") == 0
+        g.wait("HdLook.catSeen() > .9", timeout=4000)                      # (it was .41)
+        assert g.js("HdLook.cam.pitch") > 36.1 and g.js("HdLook.win.n") == 0
     finally:
         g.rpc("dev_col", tiles=slab, col=[0])
         tidy(g, x, y)
