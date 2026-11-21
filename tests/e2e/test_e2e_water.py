@@ -234,3 +234,37 @@ def test_under_a_shader_the_sky_in_the_water_ends_at_an_islets_own_edge(game):
         assert all(p[4] <= 3 for p in line[edge:edge + 3]), (dx, dy, line)        # the islet from its first px: none
     game.js("(() => { setOpt('shader', 'off'); setOpt('clouds', 100); setOpt('glow', 100); setOpt('reflect', 100); return 1; })()"); game.js(RESET)
     game.stamp(-9, -8, ["." * 9] * 7)
+
+
+def test_a_river_just_made_in_a_gorge_shows_its_water_round_you_in_the_hd_look(browser, server):
+    """A river laid where a meadow was (a gorge's floor, cliffs both sides: the eye from above): round you it is
+    water, its face tinted over its bed. A tile that became water kept its answer "land" (waterbed.js) until the beds'
+    next look, which waits for the tiles drawn to run out, and the HD look made its chunk from it at once: a slab at the
+    water's face round you, a flat beige strip (200, 165, 120), as long as what was made before that look (it changed
+    from run to run: tools/lookcheck.py's gorge). Here that look is held back until the land is made."""
+    from test_e2e_hd_sun import hd
+    from test_e2e_hd_trench import TILE
+    g = hd(browser, server)
+    g.hour(.3, still=True)
+    for o in ("clouds", "rays", "shimmer"):
+        g.js(f"setOpt('{o}', 0)")
+    g.js(RESET.replace("setOpt('shimmer', true); ", ""))
+    x, y = g.pos()
+    # the river's face on the tiles beside you, your own row and the one north of it (the south one: under its bank's lip from up here)
+    face = "([x, y, T]) => { const f = eval(T), o = []; for (const dy of [-1, 0]) for (const dx of [-4, -3, -2, 2, 3, 4]) o.push([dx, dy, ...f([x + dx, y + dy, 2])]); return o; }"
+    dry = lambda o: [c for c in o if c[4] <= c[2] + 25]                           # (water: blue over red)
+    # the meadow's columns as the land asks for them while it is made (kept); then the beds' next look held back
+    g.js("([x, y]) => { for (let j = y - 2; j <= y + 2; j++) for (let i = x - 12; i <= x + 12; i++) Voxels.host.column(i, j); const f0 = WaterBed.flush; window.__hold = () => { WaterBed.flush = f0; return 1; }; WaterBed.flush = () => {}; WayShow.paint = () => {}; return 1; }", [x, y])
+    g.stamp(-11, -11, ["." * 23] * 10 + ["(" * 23] * 3 + ["." * 23] * 10, levels=["9" * 23] * 10 + ["2" * 23] * 3 + ["6" * 23] * 10)
+    g.rpc("dev_teleport", x=x, y=y)
+    g.wait("HdLook.cam.pitch > 67.9 && !HdLook.busy && HdLook.level[0] === 2 && !dirtyTiles.length", 8000)      # (the tiles all drawn: the land made of them)
+    g.frames(3)
+    g.wait("!HdLook.busy && !dirtyTiles.length", 8000)
+    held = g.js(face, [x, y, TILE])
+    g.js("__hold()")
+    assert dry(held) == [], held                                                 # (it was (200, 165, 120) on your row, (170, 142, 104) north of it)
+    g.arrive()
+    g.rest()
+    got = g.js(face, [x, y, TILE])
+    assert dry(got) == [], got
+    g.js(RESET)

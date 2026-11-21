@@ -101,8 +101,11 @@ const WaterBed = (() => {
     }
     for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[at + j * stride + i] = data[j * 16 + i] | 0xff000000;
   }
-  // A tile was drawn again: the beds within reach of it may have changed
-  const changed = (x, y) => { if (cfg.clear) pending.push(x, y); };
+  // A tile was drawn again: the beds within reach of it may have changed (looked at in `flush`). What is kept of the
+  // tile itself is forgotten at once: is it water, its bed. The land is made again from it before the next flush
+  // (the HD look's chunk of it at once, hd.js; flush waits for the tiles drawn to run out): a tile that became water
+  // was still land there, a slab at the water's face, a flat beige strip round you in a gorge just made
+  const changed = (x, y) => { if (!cfg.clear) return; pending.push(x, y); forget(x, y, x, y, 0, "s"); forget(x, y, x, y, 0, "d"); };
   // ...looked at, before the land is made. What changed, a box a chunk (a block of land coming is B x B tiles drawn: one
   // box), and round it: the pieces of land within SMALL (s), the depths within LOOK (r, d) are forgotten; a bed in that
   // ring that was painted is worked out again, and if it is not as it was painted it is made again, with the tiles whose
