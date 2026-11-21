@@ -29,9 +29,11 @@ const xrayRock = (tx, ty) => !!xray.pic && xray.pic.rock.has(tx + "," + ty);
 // as far as XRAY.wide: all of the tunnel, the room or the cave on the screen ("underground vision should display as
 // much as player can see"; it stopped four tiles from you, a fire a little further on not seen); how much of it
 // light shows: cavelight.js
-function xrayPlace(tx, row, L) {
+function xrayPlace(tx, row, L) { const g = xrayPlaceSteps(tx, row, L); let r; while (!(r = g.next()).done); return r.value; }   // (at once: tests)
+function* xrayPlaceSteps(tx, row, L) {
   const far = XRAY.wide, h0 = settleNear(tx, row, L), cols = new Map(), z = new Map([[tx + "," + row, h0]]), todo = [[tx, row, h0]], by = new Map();   // (h0: your tile's own height: stepping off it down a stair, L is already the next one's)
-  while (todo.length) {
+  for (let n = 1; todo.length; n++) {
+    if (n % 32 === 0) yield;
     const [x, y, h, past] = todo.pop();
     if (!past) { if (!cols.has(x)) cols.set(x, []); cols.get(x).push(y); }
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -119,7 +121,7 @@ function xrayLook(dt) {
     if (xray.t < XRAY.wait && xray.a <= .01 && !f.roof) want = 0;      // (a moment behind something: not yet)
     if (xray.t > 0 || xray.a > .01) {
       xray.L = f.L; xray.row = f.row; xray.x = f.px; xray.y = f.py - shOf(f.L) / 16 - f.mid;   // (its centre: your body, where it is drawn)
-      xrayFind(Math.round(f.px), Math.floor(f.px + .125), Math.ceil(f.px - .125));      // (and your body: the one or two columns it is in)
+      xrayFind(Math.round(f.px), Math.floor(f.px + .125), Math.ceil(f.px - .125), HdLook.live ? 2 : Infinity);      // (and your body: the one or two columns it is in)
     }
   }
   xray.a += (want - xray.a) * (1 - Math.exp(-dt / .09));
@@ -133,13 +135,20 @@ function xrayLook(dt) {
 // DRAWN anywhere: walking, each block coming in at the screen's edge is drawn over a hundred frames, and under a roof all of this was found again each of them)
 const xrayLand = (tx, row) => { let s = ""; for (let by = Math.floor((row - 26) / B); by <= Math.floor((row + 40) / B); by++) for (let bx = Math.floor((tx - 26) / B); bx <= Math.floor((tx + 26) / B); bx++) { const b = blocks.get(bkey(bx, by)); s += b ? (b.xid || (b.xid = ++xrayLand.n)) + "." + (b.edits || 0) + ";" : "-;"; } return s; };   // (xid: the block itself: one sent again is new)
 xrayLand.n = 0;
-function xrayFind(tx, x0 = tx, x1 = tx) {
-  const key = [tx, xray.row, xray.L, Floors.ver, xrayLand(tx, xray.row), x0, x1, XRAY.side, XRAY.stub, XRAY.key, XRAY.rise, XRAY.over, XRAY.tall].join();
-  if (xray.pic && xray.pic.key === key) return;
+function xrayFind(tx, x0 = tx, x1 = tx, budget = Infinity) {
+  const k0 = [tx, xray.row, xray.L, Floors.ver, xrayLand(tx, xray.row)], k1 = [XRAY.side, XRAY.stub, XRAY.key, XRAY.rise, XRAY.over, XRAY.tall], key = [...k0, x0, x1, ...k1].join(), base = [...k0, ...k1].join();
+  if (xray.pic && (xray.pic.key === key || (xray.pic.hole && xray.pic.base === base))) return;   // (a hole's is not by the columns your body is in (x0, x1): under a roof it was found again three or four times a tile)
+  if (!xrayJob || xrayJob.key !== key) xrayJob = {key, g: xrayMake(tx, x0, x1, key, base)};
+  const until = performance.now() + budget; let r; do r = xrayJob.g.next(); while (!r.done && performance.now() < until);
+  if (r.done) { xray.pic = r.value; xrayJob = null; }
+}
+// (made a little at a time when a budget is given (the HD look's frame: its own window is drawn by the land's painter, hd.js; this one is for what stands, what is seen of you), the last one kept till then: under a roof it held a slow phone's frame 30 ms at each tile)
+let xrayJob = null;
+function* xrayMake(tx, x0, x1, key, base) {
   // the rock seen through: on the line of sight to a tile of your place (south of it in its column, and high enough
   // to be drawn over it: two layers a row), and of the mass that hides you (gone through from what is over your tile
   // and the two beside it, tile to tile)
-  const L = xray.L, row = xray.row, {cols: place, z: floors, by} = xrayPlace(tx, row, L), mass = new Map(), todo = [];
+  const L = xray.L, row = xray.row, {cols: place, z: floors, by} = yield* xrayPlaceSteps(tx, row, L), mass = new Map(), todo = [];
   // (a tile with two rooms of the place, one over the other: every floor it has there, lowest first; the one that
   // is seen is the highest you are not under: from the lower room, that room; from the upper one, its own floor, whole)
   const all = new Map();
@@ -190,7 +199,7 @@ function xrayFind(tx, x0 = tx, x1 = tx) {
     // beside you a cut would show that rock's inside alone, a dark slab)
     if (!pit && cut.size >= XRAY.tall * (x1 - x0 + 1)) { const more = []; for (const [x, sx] of [[x0, -1], [x1, 1]]) for (let dx = 1; dx <= XRAY.key && topAt(x + sx * dx, row) <= L + XRAY.over[dx]; dx++) more.push([x + sx * dx, row, L, XRAY.over[dx], false]); open(more); }
     if (!pit) for (const [k, c] of [...cut]) { const [x, ty] = k.split(",").map(Number); if (ty > row) for (const dx of [-1, 1]) { const h = topAt(x + dx, ty), n = (x + dx) + "," + ty; if (!cut.has(n) && h > c && topAt(x + 2 * dx, ty) <= c && topAt(x + dx, ty - 1) < h && topAt(x + dx, ty + 1) < h) { cut.set(n, c); rock.add(n); } } }
-    xray.pic = {key, floor: new Map([...floor].filter(([k, h]) => k === own || (cut.has(k) && h <= cut.get(k) && !rock.has(k)))), rock, cut, all, place: new Set(floors.keys()), pit}; return;
+    return {key, floor: new Map([...floor].filter(([k, h]) => k === own || (cut.has(k) && h <= cut.get(k) && !rock.has(k)))), rock, cut, all, place: new Set(floors.keys()), pit};
   }
   const seen = (x, gy) => (Math.abs(x - tx) <= 1 && Math.abs(gy - row) <= 1) || (hole && (floor.has(x + "," + gy) || low.has(x + "," + gy)));
   for (const k of [...floor.keys()]) { const [x, ty] = k.split(",").map(Number); if (!seen(x, ty)) floor.delete(k); }      // (a roof that is not lifted: what is under it stays under it)
@@ -207,7 +216,8 @@ function xrayFind(tx, x0 = tx, x1 = tx) {
   const sight = (x, ty) => hides(x, ty) !== null;
   const join = (x, ty) => { const k = x + "," + ty; if (!mass.has(k)) { mass.set(k, [x, ty]); todo.push([x, ty]); } };
   for (let x = tx - 1; x <= tx + 1; x++) if ((place.get(x) || []).includes(row)) for (let ty = row + 1; ty <= row + XRAY.far; ty++) if (sight(x, ty)) join(x, ty);
-  while (todo.length) {
+  for (let n = 1; todo.length; n++) {
+    if (n % 64 === 0) yield;
     const [x, ty] = todo.pop();
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (Math.abs(x + dx - tx) <= 14 && Math.abs(ty + dy - row) <= 20 && levelAt(x + dx, ty + dy) >= L + 2) join(x + dx, ty + dy);
   }
@@ -234,7 +244,7 @@ function xrayFind(tx, x0 = tx, x1 = tx) {
   // all cut to the lowest of them: a higher floor stands on its block, whose front is seen down to that edge.
   if (XRAY.even && cut.size) {
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const k of cut.keys()) { const [x, ty] = k.split(",").map(Number); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, ty); y1 = Math.max(y1, ty); }
-    for (let ty = y0; ty <= y1 + XRAY.far; ty++) for (let x = x0, run = []; x <= x1 + 1; x++) {
+    for (let ty = y0; ty <= y1 + XRAY.far; ty++, yield) for (let x = x0, run = []; x <= x1 + 1; x++) {
       const k = x + "," + ty, n = x + "," + (ty - 1);
       if (x <= x1 && !floors.has(k) && (cut.has(k) || floor.has(n) || (cut.has(n) && !floors.has(n)))) { run.push(x); continue; }
       const low = Math.min(...run.filter((v) => cut.has(v + "," + ty)).map((v) => cut.get(v + "," + ty)));      // (none of them cut: Infinity, nothing is)
@@ -242,5 +252,5 @@ function xrayFind(tx, x0 = tx, x1 = tx) {
       run = [];
     }
   }
-  xray.pic = {key, floor, rock, cut, all, place: new Set(floors.keys()), hole: true};
+  return {key, base, floor, rock, cut, all, place: new Set(floors.keys()), hole: true};
 }
