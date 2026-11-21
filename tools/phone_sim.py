@@ -131,17 +131,20 @@ def scene(ph, name, secs, profile):
     g, ms = ph.g, secs * 1000
     if name == "title":                                      # (the load itself slowed; START runs on the new page as soon as it has the recorder)
         def play():
-            g.page.wait_for_function("typeof titleDraw === 'function'", timeout=60000)
+            g.page.wait_for_function("typeof titleDraw === 'function' && document.body.classList.contains('scene')", timeout=60000)
+            shown, prof = g.js("performance.now()"), profile and (ph.cdp.send("Profiler.stop"), ph.cdp.send("Profiler.start"))   # (the island in: "title"; --profile: its frames alone)
             time.sleep(min(3, secs / 2))                     # (the first screen's own scene, played)
+            ph.title_prof = profile and ph.cdp.send("Profiler.stop")["profile"]; prof = profile and ph.cdp.send("Profiler.start")
             woke = g.js("performance.now()")                 # (the long tasks from Wake up on: stats "woke")
-            wake(g, f"sim{os.getpid() % 1000}t")
+            landed = wake(g, f"sim{os.getpid() % 1000}t") or g.js("performance.now()")   # (Wake up to the land drawn round you: "land_s")
             time.sleep(1)
-            return ["in", woke]
+            return ["in", woke, landed, shown]
         ph.slow(True)
         t0 = time.time()
         g.page.goto(ph.url + "/?zoom=2", wait_until="commit")
         g.page.wait_for_function("window.__sim", timeout=20000)
         r = ph.record(play, profile)
+        r["profile"] = ph.title_prof if profile else None   # (its top functions: the island's frames)
         r["wall_s"] = round(time.time() - t0, 1)
         return r
     g.clear_area(12)

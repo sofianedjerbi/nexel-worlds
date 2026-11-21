@@ -50,22 +50,33 @@ const WaterBed = (() => {
     for (let r = 1; r < R; r++) for (let k = -r; k < r; k++) if (land(x + k, y - r) || land(x + r, y + k) || land(x - k, y + r) || land(x - r, y - k)) return r;
     return R;
   }
-  // A water tile's depth by its banks and its kind
+  // A tile shallower than the water round it (5 of the 8 deeper): its bed is raised, a mound; it lies as deep as its kind
+  // says, the basin's floor and the smoothing do not take it back down (earth put in mid water: the bed rose a level
+  // and the picture did not change, the basin is 2 deep wherever it is 2 from a bank; a7 T3)
+  function raised(x, y, k) {
+    if (!k) return false;
+    let n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && (DEPTH_OF[gndAt(x + dx, y + dy)] || 0) > k) n++;
+    return n >= 5;
+  }
+  // A water tile's depth by its banks and its kind (kind: the tile's own, or one it would have: `would`)
+  function rawOf(x, y, kind) {
+    // (under a bridge: as deep as the water it crosses, beside it: its own kind says nothing, and its bed was a paler square under the deck)
+    const k = DEPTH_OF[kind] || 0;
+    if (raised(x, y, k)) return k;
+    let own = k || Math.max(1, ...N4.map(([dx, dy]) => DEPTH_OF[gndAt(x + dx, y + dy)] || 0));
+    if (own > 2 && bank(x, y, FAR) < FAR) own = 2;
+    return Math.max(bank(x, y, REACH), own);
+  }
   function raw(x, y) {
-    let g = G(x, y), d = g.r[gi];
-    if (d < 0) {
-      const i = gi;
-      // (under a bridge: as deep as the water it crosses, beside it: its own kind says nothing, and its bed was a paler square under the deck)
-      let own = DEPTH_OF[gndAt(x, y)] || Math.max(1, ...N4.map(([dx, dy]) => DEPTH_OF[gndAt(x + dx, y + dy)] || 0));
-      if (own > 2 && bank(x, y, FAR) < FAR) own = 2;
-      d = Math.max(bank(x, y, REACH), own); g.r[i] = d;
-    }
+    const g = G(x, y), i = gi; let d = g.r[i];
+    if (d < 0) g.r[i] = d = rawOf(x, y, gndAt(x, y));
     return d;
   }
   // ...smoothed: its bed's depth
-  function work(x, y) {
-    let d = raw(x, y);
-    if (bank(x, y, REACH) > 1) {                                // (not the rim: it is the bank's)
+  function work(x, y, kind) {
+    const own = kind === undefined; if (own) kind = gndAt(x, y);
+    let d = own ? raw(x, y) : rawOf(x, y, kind);
+    if (!raised(x, y, DEPTH_OF[kind] || 0) && bank(x, y, REACH) > 1) {                                // (not the rim: it is the bank's; not a mound)
       const n = [0, 0, 0, 0, 0]; let other = 0;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && isWater(x + dx, y + dy)) { const r = raw(x + dx, y + dy); n[r]++; if (r !== d) other++; }
       if (other >= 6) d = n.indexOf(Math.max(...n));
@@ -82,6 +93,8 @@ const WaterBed = (() => {
     return c;
   }
   const depth = (x, y) => (cfg.clear && isWater(x, y) ? topAt(x, y) - bed(x, y)[0] : 0);
+  // how deep the bed of tile (x, y) would lie were its kind `kind` (earth into water: where its bed goes; target.js marks it there). 0: no bed seen (land, clear water off)
+  const would = (x, y, kind) => (cfg.clear && wet(kind) ? work(x, y, kind) : 0);
   function column(x, y) {                                       // (asked for every tile and its neighbours as a chunk's faces are made: is it water, kept)
     if (!cfg.clear) return colAt(x, y);
     const g = G(x, y); let w = g.w[gi]; if (w < 0) w = g.w[gi] = isWater(x, y) ? 1 : 0;
@@ -101,8 +114,11 @@ const WaterBed = (() => {
     }
     for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[at + j * stride + i] = data[j * 16 + i] | 0xff000000;
   }
-  // A tile was drawn again: the beds within reach of it may have changed
-  const changed = (x, y) => { if (cfg.clear) pending.push(x, y); };
+  // A tile was drawn again: the beds within reach of it may have changed (looked at in `flush`). What is kept of the
+  // tile itself is forgotten at once: is it water, its bed. The land is made again from it before the next flush
+  // (the HD look's chunk of it at once, hd.js; flush waits for the tiles drawn to run out): a tile that became water
+  // was still land there, a slab at the water's face, a flat beige strip round you in a gorge just made
+  const changed = (x, y) => { if (!cfg.clear) return; pending.push(x, y); forget(x, y, x, y, 0, "s"); forget(x, y, x, y, 0, "d"); };
   // ...looked at, before the land is made. What changed, a box a chunk (a block of land coming is B x B tiles drawn: one
   // box), and round it: the pieces of land within SMALL (s), the depths within LOOK (r, d) are forgotten; a bed in that
   // ring that was painted is worked out again, and if it is not as it was painted it is made again, with the tiles whose
@@ -161,5 +177,5 @@ const WaterBed = (() => {
     legs.globalCompositeOperation = "source-atop"; legs.fillStyle = `rgba(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(bl * 255)},${Math.min(.85, al + .25)})`; legs.fillRect(0, 0, w, h);
     ctx.globalAlpha = Math.max(.25, .8 - .18 * d); ctx.drawImage(legs.canvas, 0, 0, w, h, x, y, w * z, h * z); ctx.globalAlpha = 1;
   }
-  return {cfg, column, paintBed, changed, flush, view, under, depth, get on() { return cfg.clear; }};
+  return {cfg, column, paintBed, changed, flush, view, under, depth, would, get on() { return cfg.clear; }};
 })();
