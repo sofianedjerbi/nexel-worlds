@@ -1,6 +1,6 @@
 """The HD look under ground does not flash (hd.js, vox_style.js, vox_style_land.js): walking down a stair and off its
 foot into a room two levels lower, your space is the same one all the way (the stair, the room, and the stair again
-seen from the room: the floors you dropped FROM), so the pit is not cut again; only the light changes, a floor at a
+seen from the room: the floors you dropped FROM), so the window on it is the same one; only the light changes, a floor at a
 time over a third of a second: the stair behind you cools. Every frame of that walk is looked at: the share of the
 picture's px that jump, and the step of its mean light, stay near the walk's own scroll."""
 
@@ -14,7 +14,7 @@ REC = """(() => { const c = document.createElement('canvas'), q = c.getContext('
       for (let i = 0; i < n; i++) { const l = (d[i * 4] * 3 + d[i * 4 + 1] * 6 + d[i * 4 + 2]) / 10; lum[i] = l; s += l; if (prev && Math.abs(l - prev[i]) > 28) big++; }
       __r.push([s / n, big / n, HdLook.cam.pitch, myPos().x]); prev = lum; }
     if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
-CUT = "([x0, x1, y0, y1]) => { const o = {}; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const c = HdLook.pitAt(x, y); if (c !== undefined) o[x + ',' + y] = c; } return o; }"
+CUT = "([x0, x1, y0, y1]) => { const o = {}; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const c = HdLook.winAt(x, y); if (c) o[x + ',' + y] = c.join(); } return o; }"   # (the window's tiles: floor, ceiling)
 
 
 def stair(g):
@@ -30,12 +30,12 @@ def stair(g):
 
 
 @pytest.mark.realtime
-def test_walking_a_stair_and_dropping_into_the_room_at_its_foot_recuts_nothing_and_no_frame_flashes(browser, server):
+def test_walking_a_stair_and_dropping_into_the_room_at_its_foot_the_window_stays_and_no_frame_flashes(browser, server):
     g = hd(browser, server)
     g.rpc("dev_time", phase=.3)
     x, y, z = stair(g)
     g.rpc("dev_teleport", x=x - 4, y=y, z=z - 4)
-    g.wait("HdLook.pit > 10 && !HdLook.busy && HdLook.cam.pitch > 67.5 && !HdLook.wipe", timeout=8000)
+    g.wait("HdLook.win.a === 1 && HdLook.win.n > 10 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
     settled(g)
     box = [x - 16, x + 2, y - 6, y + 9]
     cut0 = g.js(CUT, box)
@@ -45,14 +45,14 @@ def test_walking_a_stair_and_dropping_into_the_room_at_its_foot_recuts_nothing_a
     g.page.keyboard.down("ArrowLeft")
     g.wait(f"myPos().x <= {x - 10}", timeout=8000)
     g.page.keyboard.up("ArrowLeft")
-    g.wait("!HdLook.busy && !HdLook.wipe", timeout=6000)
+    g.wait("!HdLook.busy", timeout=6000)
     g.sleep(500)
     r = g.js("(() => { __on = false; return __r; })()")
     assert g.pos()[0] <= x - 10 and g.js("HdLook.level[0]") == z - 10
-    # the pit after the drop is the pit before it (it was another space, another pit: a quarter of the picture in one frame)
+    # the window after the drop is the window before it (it was another space, another hole: a quarter of the picture in one frame)
     cut1 = g.js(CUT, box)
     changed = [k for k in set(cut0) | set(cut1) if cut0.get(k) != cut1.get(k)]
-    assert len(cut0) > 40 and len(changed) <= 4, (len(cut0), changed)
+    assert len(cut0) >= 18 and len(changed) <= 2, (len(cut0), changed)        # (the six roofed treads, the room's twelve tiles)
     # the stair is still of your space, as floors you cannot walk to; the room is walked
     assert g.js(f"HdLook.spaceAt({x - 6}, {y})") == [z - 6, 3]
     assert g.js(f"HdLook.spaceAt({x - 10}, {y})") == [z - 10, 1]
