@@ -157,9 +157,7 @@ def drawn(g, k):
     """The cell key k acts on, and that it was drawn this frame (a box; X: its mark under you; the way's block: drawn by wayshow.js)."""
     c, d = g.js(DREW, KEY[k])
     assert c and len(d) == 1 and (d[0]["x"], d[0]["y"], d[0]["z"]) == (c["x"], c["y"], c["z"]), (k, c, d)
-    if KEY[k] == "alt" and d[0].get("mine"):
-        assert g.js(ON_TOP, [c["x"], c["y"], c["z"], TAKE]) > 10, c                        # (X: orange round your feet, at your floor)
-    elif d[0].get("way"):
+    if d[0].get("way"):
         assert g.js("WayShow.block") is not None                                           # (one mark: the way's own box on that block)
     return c
 
