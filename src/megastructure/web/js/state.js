@@ -66,7 +66,7 @@ function connectSpec() {
       if (d.rows) onRegion(d);
       else if (d.agents) { agents = d.agents; drawAgents(); if (document.body.classList.contains("tab")) drawWho(); }
       else if (d.recipes) { recipes = d.recipes; foodValue = d.food || {}; drawRecipes(); }
-      else if (d.tick_ms_p50 !== undefined) { metrics = d; drawStats(); }
+      else if (d.tick_ms_p50 !== undefined) { metrics = d; }      // (the debug screen reads them: panels.js)
       else if (d.who) accountNamed(d.name);                  // (account.js)
     }
   };

@@ -43,13 +43,11 @@ const TITLE_DY = 4 * Math.sin(1);
 </script>
 <canvas id="c"></canvas>
 <div id="hover"></div>
-<div id="xyz" style="position:fixed;top:10px;right:12px;z-index:5;font:inherit;font-size:15px;color:#fff6e0;text-shadow:0 1px 0 #3b2a22,1px 0 0 #3b2a22,-1px 0 0 #3b2a22,0 -1px 0 #3b2a22;pointer-events:none;white-space:pre;text-align:right"></div>
 <div class="panel" id="brand"><div class="in"><div class="t">NEXEL WORLDS</div><div class="s"><span id="clock">waking…</span> · <span id="mode">watching</span> · <span id="helpbtn" class="link">help (H)</span> · <span id="menubtn" class="link">menu (Esc)</span></div></div></div>
 <div class="panel" id="side"><div class="in"><h3>Awake</h3><div id="agents"></div></div></div>
 <div id="who"><div class="whead"><div class="cell" id="whosky"></div><b id="whoday"></b><span id="whohour"></span></div>
   <div id="whobar"><canvas id="whoband"></canvas><b id="whomark"></b></div>
   <div class="well" id="wholist"></div><div id="whofoot"><span id="whoat"></span><span id="whocount"></span></div></div>
-<div id="debug"></div>
 <div id="actions"></div>
 <div id="prompts"></div>
 <div id="joinbox" data-step="me">
@@ -171,6 +169,7 @@ const TITLE_DY = 4 * Math.sin(1);
 <script src="js/render.js"></script>
 <script src="js/daylight.js"></script>
 <script src="js/selector.js"></script>
+<script src="js/f3.js"></script>
 <script src="js/panels.js"></script>
 <script src="js/mouse.js"></script>
 <script src="js/agent.js"></script>

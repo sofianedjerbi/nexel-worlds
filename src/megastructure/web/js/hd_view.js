@@ -6,8 +6,8 @@
 //     whole art px) is on the world's canvas with the land (marks): it moves with every step, and wiped the screen-size canvas each frame;
 //   - the sky is the engine's own (vox_sky.js) made at the art's size, not the screen's, and only when its clouds, its hour or its line moved (skyOf);
 //   - the backdrop and the land's picture are put together here only when one of them changed (show).
-// ?perf=1 (or /perf in the chat): a small readout, top left: frames a second, the wait between frames and the script's time (ms, middle and worst of a hundred), the longest
-// piece of land made, draw calls, how many frames were drawn at all.
+// perf: each frame to the debug screen (f3.js: F3, ?perf=1), and its section about this look: its ms, the longest
+// piece of land made, draw calls, how many frames were drawn at all, the pictures' sizes. (It had a box of its own.)
 const HdView = (() => {
   let el = null, g = null, sk = null, skyKey = "", skyVer = 0, art = null, fx = null, one = null, lastKey = "", wordsKey = null, wordsAt = 0, tmp = null;
   const Z = () => zoom * DPR, PAINT = new Set(["fillRect", "clearRect", "strokeRect", "fillText", "strokeText", "drawImage", "fill", "stroke", "putImageData"]), ids = new WeakMap(); let nid = 0;
@@ -95,15 +95,19 @@ const HdView = (() => {
     tmp.imageSmoothingEnabled = false; tmp.clearRect(0, 0, cv.width, cv.height); if (el && el.style.display === "block") tmp.drawImage(el, 0, 0, el.width * Z(), el.height * Z()); tmp.drawImage(cv, 0, 0);
     return tmp.getImageData(x, y, w, h);
   }
-  // ?perf=1: what the frames cost, read off the screen (a phone has no console)
-  const PF = {url: new URLSearchParams(location.search).get("perf") === "1", get on() { return this.url || DEBUG.perf; }, box: null, gaps: [], js: [], last: 0, since: 0, drawn: 0, calls: 0, slice: 0, words: 0};
+  // the debug screen (f3.js): this look's share of a frame, from one time its text is written to the next
+  const PF = {n: 0, drawn: 0, calls: 0, slice: 0, words: 0, ms: 0};
   function perf(now, js, drawn, calls, slice, wrote) {
-    if (!PF.on) { if (PF.box) { PF.box.remove(); PF.box = null; PF.since = PF.last = 0; } return; } if (PF.last) PF.gaps.push(now - PF.last); PF.last = now; PF.js.push(js); if (drawn) { PF.drawn++; PF.calls = calls; } if (wrote) PF.words++; PF.slice = Math.max(PF.slice, slice); if (!PF.since) PF.since = now;
-    if (now - PF.since < 1000 || PF.gaps.length < 2) return;
-    if (!PF.box) { PF.box = document.createElement("div"); PF.box.id = "hdperf"; document.body.appendChild(PF.box); }
-    const at = (l, q) => { const s = l.slice().sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(s.length * q))].toFixed(1); }, n = PF.js.length;
-    PF.box.textContent = `${Math.round(PF.gaps.length * 1000 / (now - PF.since))} fps  frame ${at(PF.gaps, .5)} / ${at(PF.gaps, .99)} ms\nscript ${at(PF.js, .5)} / ${at(PF.js, .99)} ms  land ${PF.slice.toFixed(1)} ms\n${PF.calls} draws  drawn ${PF.drawn}/${n}  words ${PF.words}/${n}\n${el ? el.width + "x" + el.height : "-"} x${zoom}  screen ${cv.width}x${cv.height}`;
-    PF.gaps = []; PF.js = []; PF.since = now; PF.drawn = 0; PF.slice = 0; PF.words = 0;
+    if (!F3.on) return;
+    PF.n++; if (drawn) { PF.drawn++; PF.calls = calls; } if (wrote) PF.words++; PF.slice = Math.max(PF.slice, slice); PF.ms += HdLook.ms || 0;
+    F3.sample(now, js);
   }
+  F3.add("look", () => {
+    if (!HdLook.live) return [];
+    const n = PF.n || 1, r = [`HD look ${(PF.ms / n).toFixed(1)} ms  land ${PF.slice.toFixed(1)} ms  made ${HdLook.made || 0} chunks`,
+      `${PF.calls} draws  ${HdLook.faces || 0} faces  drawn ${PF.drawn}/${PF.n}  words ${PF.words}/${PF.n}`, `picture ${el ? el.width + "x" + el.height : "-"} x${zoom}`];
+    PF.n = PF.drawn = PF.slice = PF.words = PF.ms = 0;
+    return r;
+  }, "perf");
   return {sink, recorder, words, marks, dump: () => (rec ? rec.ops.map((v) => (Array.isArray(v) ? v.map((x) => (typeof x === "object" ? "#" : x)).join() : String(v))).join(" ") : ""), show, hide, read, perf, get el() { return el; }};
 })();

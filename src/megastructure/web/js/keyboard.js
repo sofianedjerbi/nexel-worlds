@@ -214,7 +214,7 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   z: () => Build.toggle(),                           // (build.js: plan with a cursor, your character builds)
   b: () => Build.toggle(),                           // (its first key, still)
   v: () => nextView(),                               // (options.js: how what hides you is shown, the next way)
-  f3: () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; },
+  f3: () => F3.toggle(),                             // (f3.js: the debug screen)
   t: () => openChat(),
   enter: () => openChat(),
   "/": () => openChat("/"),

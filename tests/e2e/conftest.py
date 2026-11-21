@@ -40,6 +40,7 @@ QUICK = {
     "depth": "test_the_ground_behind_a_step_is_darker_along_it",
     "digging": "test_a_dug_floor_is_earth_with_no_grass_at_the_foot_of_its_walls",
     "edges": "test_a_gate_is_seen_from_the_side_in_a_fence_that_runs_north_and_south",
+    "f3": "test_f3_opens_and_shuts_it_and_it_says_where_you_are_and_what_a_frame_costs",
     "fall": "test_dust_shows_on_level_ground_and_not_behind_a_ledge",
     "frame": "test_a_frame_paints_the_land_once",
     "gathering": "test_too_far_is_too_far",

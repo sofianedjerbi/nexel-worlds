@@ -12,6 +12,7 @@ const slider = (name, key, more = {}) => ({name, kind: "slider", min: 0, max: 10
 const toggle = (name, key, more = {}) => ({name, kind: "toggle", ...(typeof key === "string" ? kept(key) : key), ...more});
 const choice = (name, key, list) => ({name, kind: "choice", list, ...kept(key)});
 const debugRow = (name, what) => toggle(name, {get: () => DEBUG[what], set: (v) => { DEBUG[what] = v; localStorage.setItem("megastructure-" + what, v ? "1" : "0"); }, def: false});
+const f3Row = () => toggle("Debug screen (F3)", {get: () => F3.on, set: (v) => F3.set(v), def: false});      // (f3.js: where you are and what a frame costs, one screen)
 const lo = (r) => (typeof r.min === "function" ? r.min() : r.min);
 // The rows of the shader that is on: its colours, and what only it has (an old screen's lines, its bulge...)
 const LOOK_HAS = [["scan", "Lines"], ["curve", "Screen bulge"], ["mask", "Colour stripes"], ["shift", "Colour fringe"], ["tape", "Tape wobble"], ["grid", "Pixel grid"]];
@@ -50,7 +51,7 @@ const MENU_PAGES = [
     choice("A chat line stays", "chat", [[5, "5 seconds"], [10, "10 seconds"], [30, "30 seconds"], [600, "10 minutes"]]),
     toggle("Key hints", "hints"), toggle("Mouse tips", "tips"),
     toggle("Goals card", {get: () => !goalsOff, set: (v) => { goalsOff = !v; localStorage.setItem("megastructure-goals-off", v ? "0" : "1"); drawGoals(); }, def: false}),
-    debugRow("Coordinates", "coords"), debugRow("Tile grid", "grid"), debugRow("Performance", "perf")]],
+    f3Row(), debugRow("Tile grid", "grid")]],
   ["Keys", [
     choice("Sprint", "sprint", [["hold", "Hold Shift"], ["toggle", "Shift once"]]),
     ...Object.entries(KEY_ACTIONS).map(([action, [, name]]) => ({name, kind: "key", action, get: () => keyOf(action), set: () => {}, def: KEY_ACTIONS[action][0]}))]],

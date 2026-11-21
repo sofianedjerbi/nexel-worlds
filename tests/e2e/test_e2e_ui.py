@@ -177,9 +177,10 @@ def test_zoom_help_and_debug_keys(game):
     game.press("h", 200)
     assert game.js("$('help').style.display") == "block"
     game.press("h", 200)
-    game.press("F3", 300)
-    assert game.js("$('debug').style.display") == "block" and "ms/tick" in game.js("$('debug').innerText")
+    game.press("F3", 300)                              # the debug screen (f3.js), with the server's numbers
+    game.wait("(() => { const e = document.getElementById('f3'); return e && e.style.display !== 'none' ? e.innerText : ''; })().includes('ms/tick')")
     game.press("F3", 100)
+    assert not game.js("F3.on")
 
 
 def test_hover_hints_follow_the_mouse(game):
@@ -212,29 +213,31 @@ def test_actions_make_their_sounds(game):
 
 
 def test_coords_and_grid_are_typed_in_the_chat_line(game):
-    """/coords and /grid are debugging aids, off until asked for (js/debug.js); any other /word is still an action."""
+    """/coords and /grid are debugging aids, off until asked for (js/debug.js); any other /word is still an action.
+    /coords and /perf open the debug screen (f3.js), as F3 does."""
     say = lambda line: (game.page.keyboard.press("Enter"), game.page.keyboard.type(line), game.page.keyboard.press("Enter"), game.sleep(300))
-    game.js("(() => { DEBUG.coords = DEBUG.grid = false; return 1; })()")
+    text = "(() => { const e = document.getElementById('f3'); return e && e.style.display !== 'none' ? e.innerText : ''; })()"
+    game.js("(() => { F3.set(false); DEBUG.grid = false; return 1; })()")
     game.sleep(200)
     x, y = game.pos()
-    assert game.js("$('xyz').textContent") == ""
+    assert game.js(text) == ""
     say("/coords")
-    assert game.js("$('xyz').textContent").startswith(f"X {x}  Y {y}  Z 0") and game.js("localStorage.getItem('megastructure-coords')") == "1"
+    game.wait(text + f".includes('XYZ {x}.00 / {y}.00 / 0')")
+    assert game.js("localStorage.getItem('megastructure-f3')") == "1"
     say("/coords")
-    assert game.js("$('xyz').textContent") == ""
+    assert game.js(text) == ""
     lines = "(() => { let n = 0; ctx.strokeRect = function (...a) { n++; return CanvasRenderingContext2D.prototype.strokeRect.apply(ctx, a); }; return new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => { delete ctx.strokeRect; ok(n); }))); })()"
     assert game.js(lines) == 0
     say("/grid")
     assert game.js("DEBUG.grid") and game.js(lines) > 100      # a tile, an outline
     say("/grid")
     assert game.js(lines) == 0
-    say("/perf")                                               # what the last second cost
-    game.sleep(1300)
-    text = game.js("$('xyz').textContent")
-    assert " fps" in text and "script " in text and "ticks " in text and "world " in text and "blocks" in text, text
+    say("/perf")                                               # what the frames cost
+    game.wait(text + ".includes(' fps') && " + text + ".includes('ticks ')")
+    seen = game.js(text)
+    assert " fps" in seen and "script " in seen and "ticks " in seen and "world " in seen and "blocks" in seen, seen
     say("/perf")
-    game.sleep(100)
-    assert game.js("$('xyz').textContent") == ""
+    assert game.js(text) == ""
     game.stamp(0, -1, ["f"])
     say("/dig dir=N")                                          # (not one of ours: sent to the server)
     game.sleep(400)

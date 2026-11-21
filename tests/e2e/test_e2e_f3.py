@@ -1,0 +1,54 @@
+"""The debug screen (js/f3.js): one readout for the game and the machine, opened by F3, ?perf=1, ?debug=1, /coords,
+/perf. There were three made apart (the HD look's ?perf=1 box, /coords and /perf top right, F3's line of server
+numbers): they are its sections now, and gone as boxes of their own."""
+
+import pytest
+from game import Game, new_name
+
+TEXT = "(() => { const e = document.getElementById('f3'); return e && e.style.display !== 'none' ? e.innerText : ''; })()"
+OLD = "['xyz', 'debug', 'hdperf'].filter((id) => document.getElementById(id))"
+
+
+def test_f3_opens_and_shuts_it_and_it_says_where_you_are_and_what_a_frame_costs(game):
+    game.js("F3.set(false)")
+    assert game.js(TEXT) == "" and game.js(OLD) == []
+    x, y = game.pos()
+    game.press("F3", 100)
+    game.wait(f"{TEXT}.includes('XYZ {x}.00 / {y}.00 / 0') && {TEXT}.includes(' fps') && {TEXT}.includes('ms/tick')", 5000)
+    text = game.js(TEXT)
+    for words in ("Facing ", "Tile ", "Chunk ", "Time ", "Near ", "script ", "ticks ", "world "):
+        assert words in text, (words, text)
+    look = game.js("""(() => { const d = document.querySelector('#f3 .f3c div'), s = getComputedStyle(d); return [s.fontFamily, s.borderRadius, s.backgroundColor, s.textShadow]; })()""")
+    assert "SproutPixel" in look[0] and look[1] == "0px" and look[2].startswith("rgba(") and look[3].startswith("rgb("), look   # (the game's font on a see-through strip, a shadow; no rounded box)
+    assert game.js(OLD) == [] and game.js("localStorage.getItem('megastructure-f3')") == "1"
+    game.press("F3", 100)
+    assert game.js(TEXT) == "" and not game.js("F3.on")
+
+
+def test_off_it_is_never_made(game):
+    game.js("F3.set(false)")
+    game.page.reload()
+    game.wait("typeof F3 !== 'undefined' && typeof ready !== 'undefined'", 15000)
+    game.frames(3)
+    assert game.js("document.getElementById('f3')") is None and not game.js("F3.on")
+
+
+@pytest.mark.realtime
+def test_perf_in_the_address_opens_it_with_the_hd_looks_section_and_it_costs_little(browser, server):
+    page = browser.new_page(viewport={"width": 1200, "height": 800})
+    g = Game(page, server)
+    try:
+        page.goto(f"{server}/?zoom=4&look=hd&perf=1")
+        g.loaded = f"{server}/?zoom=4&look=hd"                   # (join keeps this page)
+        g.join(new_name("f3"), 4, look="hd")
+        g.wait(f"F3.on && {TEXT}.includes('HD look') && {TEXT}.includes(' fps') && {TEXT}.includes('XYZ ')", 8000)
+        assert g.js(OLD) == []
+        # what it costs a frame, on: its sample each frame and its text 4 times a second
+        cost = g.js("""(() => new Promise((ok) => { const s0 = F3.sample; let t = 0, n = 0, f0 = 0;
+          F3.sample = (...a) => { const b = performance.now(); s0(...a); t += performance.now() - b; };
+          const f = () => { if (++f0 < 90) requestAnimationFrame(f); else { F3.sample = s0; ok([t, f0]); } }; requestAnimationFrame(f); }))()""")
+        assert cost[0] / cost[1] < .3, cost
+        assert not g.errors
+    finally:
+        g.js("F3.set(false)")
+        page.close()

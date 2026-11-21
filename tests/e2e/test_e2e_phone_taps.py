@@ -67,20 +67,25 @@ def test_upright_the_inventorys_label_is_on_no_cell(browser, server):
         ctx.close()
 
 
-def test_the_hd_looks_readout_is_the_only_one_and_lies_on_nothing(browser, server):
-    """/perf in the HD look: two readouts were written, the new one on the old one and on the chat."""
+def test_the_debug_screen_is_the_only_readout_and_lies_under_the_goals_and_the_chat(browser, server):
+    """/perf in the HD look: two readouts were written, the new one on the old one and on the chat. Now one, the debug
+    screen (f3.js), opened on a phone by holding the goals' chip; its lines in the screen's width."""
     from game import Game, new_name
     ctx = browser.new_context(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True, device_scale_factor=3)
     try:
         g = Game(ctx.new_page(), server)
         g.join(new_name("pf"), 2, look="hd")
-        g.js("(() => { flip('perf', 'Performance'); return 1; })()")
-        g.wait("document.getElementById('hdperf') && $('hdperf').textContent.includes('fps')", 6000)
-        g.sleep(400)
+        g.js("F3.set(false)")
+        hold = "(k) => $('goalhint').dispatchEvent(new PointerEvent(k, {bubbles: true, pointerType: 'touch'}))"
+        g.js(hold, "pointerdown")
+        g.sleep(700)                                           # (half a second held)
+        g.js(hold, "pointerup")
+        g.wait("F3.on && $('f3').innerText.includes('fps') && $('f3').innerText.includes('HD look')", 6000)
         box = lambda s: g.js(BOX, s)
-        p, lows = box("#hdperf"), [b[1] + b[3] for b in (box("#goalhint"), box("#chatlog")) if b[3]]
-        assert g.js("$('xyz').textContent") == "" and p[1] >= max(lows) and p[0] >= 0 and p[0] + p[2] <= box("#ttop")[0], (p, lows)
-        g.js("(() => { flip('perf', 'Performance'); return 1; })()")
+        p, lows = box("#f3"), [b[1] + b[3] for b in (box("#goalhint"), box("#chatlog")) if b[3]]
+        widest = g.js("Math.max(...[...document.querySelectorAll('#f3 .f3c div')].map((d) => d.getBoundingClientRect().right))")
+        assert not g.js("['xyz', 'debug', 'hdperf'].filter((id) => document.getElementById(id))") and p[1] >= max(lows) and p[0] >= 0 and widest <= 390, (p, lows, widest)
+        g.js("F3.set(false)")
         assert not g.errors
     finally:
         ctx.close()

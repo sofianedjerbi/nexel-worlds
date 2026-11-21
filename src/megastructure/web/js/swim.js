@@ -14,24 +14,53 @@ function swimsAt(p, e) {
 }
 // The wake someone left: each mark two flecks of foam drifting apart and fading, in its own time. Drawn for a swimmer
 // and for someone who has just come out (characters.js): the marks behind them were all gone at once at the shore.
+// A mark fades out over the last part of its life in whole art px, never by a smooth alpha (the HD look draws a
+// body's picture with no blending: a px under half there was gone, one over it whole, so the wake ended in a pop):
+// it thins (one px in two, then one in four, by a 2x2 pattern of its own px) and its flecks shorten. Its last px
+// goes when its life ends.
+const WAKE_FADE = {from: .45, line: .3, bubble: .2};       // (part of a mark's life where it starts to thin: flecks, the churned line, bubbles)
+const wakeLeft = (a, from) => Math.max(0, Math.min(1, (1 - a) / (1 - from)));      // 1 until `from`, then down to 0 at its end
+const WAKE_2X2 = [.125, .625, .875, .375];                 // (a 2x2 pattern: a px is kept while what is left of it is over its number)
+function wakePx(x, y, w, h, left, z, seed) {               // a fleck of w x h art px, each kept while `left` is over its place in the pattern
+  if (left >= 1) { ctx.fillRect(x, y, w * z, h * z); return; }
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (left > WAKE_2X2[((i + seed) & 1) + ((j + (seed >> 1)) & 1) * 2]) ctx.fillRect(x + i * z, y + j * z, z, z);
+}
 function drawWake(p, now, sx, sy, z) {
-  if (!p.wake || !p.wake.length) return;
+  if (!p.wake || !p.wake.length || sy.apart) return;       // (apart: the HD look draws it on its own, wakePicture)
   while (p.wake.length && now - p.wake[0].t > (p.wake[0].dash ? SWIM.dashLife : SWIM.wakeLife)) p.wake.shift();
   for (const w of p.wake) {
-    const a = (now - w.t) / (w.dash ? SWIM.dashLife : SWIM.wakeLife), wx = Math.round(sx(w.x)) + 8 * z, wy = Math.round(sy(w.y, w.x)) + (13 - STAND) * z;
-    const d = Math.round(w.dash ? 3 + a * 13 : 2 + a * 7) * z;
-    ctx.globalAlpha = (1 - a) * .85;
+    const a = Math.min(1, (now - w.t) / (w.dash ? SWIM.dashLife : SWIM.wakeLife)), left = wakeLeft(a, WAKE_FADE.from); if (left <= 0) continue;
+    const wx = Math.round(sx(w.x)) + 8 * z, wy = Math.round(sy(w.y, w.x)) + (13 - STAND) * z;
+    const d = Math.round(w.dash ? 3 + a * 13 : 2 + a * 7), seed = (w.t / 45) | 0;
     ctx.fillStyle = a < .35 ? "#ffffff" : "#d8f4ff";
     for (let k = 0; k < (w.dash ? 2 : 1); k++) {             // (a sprint's: a second, shorter fleck inside the first and a little behind it: two broken lines a side)
-      const dk = d - k * 4 * z, len = (w.dash ? 4 - 2 * k : 2) * z, lag = k * 3 * z;
-      if (dk < 2 * z) break;
-      if (w.across) { ctx.fillRect(wx - dk - z, wy - w.fy * lag, z, len); ctx.fillRect(wx + dk, wy - w.fy * lag, z, len); }       // swimming up or down: foam to the left and right
-      else { ctx.fillRect(wx - z - w.fx * lag, wy - dk, len, z); ctx.fillRect(wx - z - w.fx * lag, wy + dk, len, z); }             // sideways: above and below
+      const dk = d - k * 4, len = Math.max(1, Math.round((w.dash ? 4 - 2 * k : 2) * Math.min(1, left * 1.5))), lag = k * 3;
+      if (dk < 2) break;
+      if (w.across) { wakePx(wx - (dk + 1) * z, wy - w.fy * lag * z, 1, len, left, z, seed); wakePx(wx + dk * z, wy - w.fy * lag * z, 1, len, left, z, seed + 1); }       // swimming up or down: foam to the left and right
+      else { wakePx(wx - (1 + w.fx * lag) * z, wy - dk * z, len, 1, left, z, seed); wakePx(wx - (1 + w.fx * lag) * z, wy + dk * z, len, 1, left, z, seed + 1); }             // sideways: above and below
     }
-    if (a < .3) ctx.fillRect(wx, wy, z, z);                                                            // bubbles where they just were
-    if (w.dash && a < .55) { ctx.fillStyle = "#ffffff"; const j = ((w.t / 45 | 0) % 3 - 1) * z; if (w.across) ctx.fillRect(wx + j - z, wy, 2 * z, 2 * z); else ctx.fillRect(wx - z, wy + j - z, 2 * z, 2 * z); }   // the churned line down the middle
+    const bub = wakeLeft(a / .3, WAKE_FADE.bubble); if (bub > 0) wakePx(wx, wy, 1, 1, bub, z, seed);                       // bubbles where they just were
+    const line = wakeLeft(a / .55, WAKE_FADE.line);
+    if (w.dash && line > 0) { ctx.fillStyle = "#ffffff"; const j = ((w.t / 45 | 0) % 3 - 1) * z; if (w.across) wakePx(wx + j - z, wy, 2, 2, line, z, seed); else wakePx(wx - z, wy + j - z, 2, 2, line, z, seed); }   // the churned line down the middle
   }
-  ctx.globalAlpha = 1;
+}
+// The HD look: a swimmer's wake as a picture of its own, as big as the wake is, laid flat on the water (hd.js,
+// vox_style.js `lie`: a px of it an art px of the water), with no shadow. It was drawn in the body's upright picture,
+// four tiles wide: cut in a straight line a tile and a half behind them. -> {canvas, fx, fy} (the swimmer's foot at
+// px fx, fy: the middle of their tile), or null
+const wakePics = new WeakMap();
+function wakePicture(p, now) {
+  if (!p.wake || !p.wake.length) return null;
+  let l = 0, r = 0, t = 0, b = 0;
+  for (const w of p.wake) { l = Math.min(l, w.x - p.x); r = Math.max(r, w.x - p.x); t = Math.min(t, w.y - p.y); b = Math.max(b, w.y - p.y); }
+  const q = (v) => Math.ceil((v * 16 + 28) / 16) * 16, L = q(-l), R = q(r), T = q(-t), B = q(b);   // (room for the flecks spreading, 16 px, and their length; whole tiles: not a new size each frame)
+  let c = wakePics.get(p); if (!c) { c = document.createElement("canvas"); wakePics.set(p, c); }
+  if (c.width !== L + R || c.height !== T + B) { c.width = L + R; c.height = T + B; }
+  const g = c.getContext("2d"); g.clearRect(0, 0, c.width, c.height);
+  const keep = ctx, kz = zoom, sx = (x) => L - 8 + (x - p.x) * 16, sy = (y) => T - 8 + (y - p.y) * 16;      // (as the body's picture has them: the foot 8 px under its tile's top)
+  ctx = g; zoom = 1; try { drawWake(p, now, sx, sy, 1); } finally { ctx = keep; zoom = kz; }
+  c._v = (c._v || 0) + 1;
+  return {canvas: c, fx: L, fy: T};
 }
 function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   const moving = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
