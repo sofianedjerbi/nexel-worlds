@@ -35,9 +35,10 @@ PAW = """(face) => { const p = ents.get('agent' + myId); p.fx = face[0]; p.fy = 
   const shot = (sel) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
     const keep = ctx, kz = zoom, ks = selected; ctx = g; zoom = 1; selected = sel; try { drawEntity(p, sx, sy, T, now / 1000, now); } finally { ctx = keep; zoom = kz; selected = ks; }
     return g.getImageData(0, 0, w, h).data; };
+  let n = 0, solid = 0; { const c = Held.art('dirt'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 3; i < d.length; i += 4) if (d[i] > 128) solid++; }
   const a = shot(null), b = shot('dirt'), box = [1e9, 1e9, -1, -1], body = [1e9, 1e9, -1, -1], add = (r, x, y) => { r[0] = Math.min(r[0], x); r[1] = Math.min(r[1], y); r[2] = Math.max(r[2], x); r[3] = Math.max(r[3], y); };
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const o = (y * w + x) * 4; if (a[o + 3] > 128) add(body, x, y); if (Math.abs(a[o] - b[o]) + Math.abs(a[o + 1] - b[o + 1]) + Math.abs(a[o + 2] - b[o + 2]) + Math.abs(a[o + 3] - b[o + 3]) > 30) add(box, x, y); }
-  return {box, body, cell: Math.round(sx(p.x)) - 16, at: Held.at(p)}; }"""
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const o = (y * w + x) * 4; if (a[o + 3] > 128) add(body, x, y); if (Math.abs(a[o] - b[o]) + Math.abs(a[o + 1] - b[o + 1]) + Math.abs(a[o + 2] - b[o + 2]) + Math.abs(a[o + 3] - b[o + 3]) > 30) { add(box, x, y); n++; } }
+  return {box, body, n, solid, cell: Math.round(sx(p.x)) - 16, at: Held.at(p)}; }"""
 
 
 def test_the_block_in_hand_is_at_the_paw_whichever_way_you_face_and_the_others_see_it(game):
@@ -52,7 +53,9 @@ def test_the_block_in_hand_is_at_the_paw_whichever_way_you_face_and_the_others_s
         assert ax <= x0 and x1 <= ax + 6, (face, r)                                    # in its 7 px at the paw...
         assert r["body"][1] + 4 <= y0 and y1 <= r["body"][3], (face, r)               # ...low on the body, not over the head
         if face == [0, -1]:
-            assert x1 - x0 < 6, (face, r)                                              # facing away: behind the body, a part of it shows
+            assert 0 < r["n"] < r["solid"] * .7, (face, r)                          # facing away: behind the body, a part of it shows
+        else:
+            assert r["n"] >= r["solid"] * .8, (face, r)                              # in front of it: all of it
     game.wait("ents.get('agent' + myId).e.held === 'dirt'")                            # the server has it, and sends it to who watches
     game.hold_item("bread") if game.inv("bread") else game.js("(() => { selected = null; $('hotbar').dataset.sig = ''; drawHotbar(meObs.self.inventory); return 1; })()")
     game.wait("!ents.get('agent' + myId).e.held", 4000)
