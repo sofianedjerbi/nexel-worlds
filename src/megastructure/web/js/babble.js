@@ -18,7 +18,7 @@ function voiceOf(name) { let h = 0; for (const c of String(name)) h = (h * 31 + 
 function babble(name, text, x, y, shout) {
   if (muted) return 0;
   const m = sounds.manifest;
-  if (!m) { loadSounds(); return 0; }
+  if (!m) { if (audio) loadSounds(); return 0; }      // (audio.js: not before the first key or tap)
   const s = m.sounds.say;
   if (!s) return 0;
   let vol = 1, pan = 0;

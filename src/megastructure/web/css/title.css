@@ -68,11 +68,12 @@ body.touch #joinbox #join, body.touch #joinbox #sendcode, body.touch #joinbox #l
   body.touch #joinbox .menu { left:auto; right:max(4vw, env(safe-area-inset-right)); top:50%; bottom:auto; transform:translateY(-50%); }
   body.touch #joinbox #titleme { width:calc(24 * var(--q)); height:calc(26 * var(--q)); }
 }
-/* the demo's world is still coming (local.js): a strip goes along the foot of Wake up, on any screen; pressed
+/* the demo's world is still coming (local.js): a strip along the foot of Wake up, on any screen, as long as the
+   share of the world that has come (--boot-w, whole art px; it ran from left to right and said nothing); pressed
    meanwhile it says so, and you are in as soon as the world is there (nothing showed for the fourteen seconds) */
 body.booting #joinbox #join { position:relative; overflow:hidden; }
-body.booting #joinbox #join::after { content:""; position:absolute; left:0; bottom:0; width:25%; height:calc(2 * var(--q)); background:#e0b84e; animation:booting 1.4s steps(14) infinite; }
-@keyframes booting { from { left:-25%; } to { left:100%; } }
+body.booting #joinbox #join::before { content:""; position:absolute; left:0; right:0; bottom:0; height:calc(2 * var(--q)); background:#6b4a3a; }
+body.booting #joinbox #join::after { content:""; position:absolute; left:0; bottom:0; width:var(--boot-w, 0px); height:calc(2 * var(--q)); background:#e0b84e; }
 
 /* The island behind the first screen: its still picture first (index.html puts it; it comes in softly), then the
    island itself over it, once all of it is painted (title_scene.js says so: body.scene), not a block at a time. */

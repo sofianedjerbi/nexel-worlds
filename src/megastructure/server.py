@@ -23,7 +23,7 @@ from .sim import DAY_TICKS, TICK_HZ, TOOL_SPECS, ActionError, Simulation
 from .sim.constants import FOOD_MAX, HP_MAX, EAT_PACE, SPRINT_FOOD, SWIM_PACE
 from .tiles import FOOD, RECIPES
 from .views import Views
-from .web_static import serve_http, web_stamp
+from .web_static import serve_http, set_bundle, web_stamp
 
 log = logging.getLogger("megastructure")
 PROTOCOL = 1
@@ -287,7 +287,9 @@ def main():
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--dev", action="store_true", help="enable dev_give for automated QA")
     p.add_argument("--accounts", default="", help="ask who players are: the account service, e.g. http://127.0.0.1:7780")
+    p.add_argument("--bundle", action="store_true", help="send the client as few files (web_bundle.py): for a phone or a far player")
     args = p.parse_args()
+    set_bundle(args.bundle)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     gs = GameServer(Path(args.saves) / args.world, seed=args.seed, dev=args.dev, accounts=args.accounts)
     asyncio.run(gs.run(args.host, args.port))

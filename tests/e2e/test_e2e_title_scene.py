@@ -25,7 +25,8 @@ def test_the_first_screen_shows_an_island_of_its_own_at_once(browser, server):
     cast = page.evaluate(CAST)
     names = sorted(c[1] for c in cast if c[0] == "agent")
     assert names == ["Lou", "Mira", "Nell", "Pip", "Tobi"] and sorted(c[0] for c in cast if c[0] != "agent") == ["chick", "chicken", "chicken", "chicken", "cow", "cow"]
-    look = "(() => { const c = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, kinds = new Set(); for (let i = 0; i < c.length; i += 4 * 97) kinds.add(c[i] >> 3 << 10 | c[i + 1] >> 3 << 5 | c[i + 2] >> 3); return kinds.size; })()"
+    page.wait_for_function("document.body.classList.contains('scene') && HdLook.live", timeout=10000)          # (drawn by the HD look, hd.js: its own canvas)
+    look = "(() => { const c = HdLook.read(0, 0, cv.width, cv.height).data, kinds = new Set(); for (let i = 0; i < c.length; i += 4 * 97) kinds.add(c[i] >> 3 << 10 | c[i + 1] >> 3 << 5 | c[i + 2] >> 3); return kinds.size; })()"
     assert page.evaluate(look) > 40                                 # drawn: land, water, things (not one colour)
     # (the dice are thrown anew at each visit, and in one of them Pip is coming ashore: for what follows, a play that is known)
     page.evaluate("(() => { TitleScene.stop(); document.getElementById('joinbox').style.display = ''; TitleScene.start(3); })()")

@@ -60,7 +60,7 @@ const TitleScene = (() => {
        at: a.aim ? [OX + a.aim[0], OY + a.aim[1]] : null, with: a.with || null, item: a.item || null, run: !!a.run, sail: !!a.sail, z: z(a), race: a.race, ...(a.worn ? {worn: a.worn} : {}), ...(a.swim ? {swim: true} : {})}
     : {kind: a.kind, id: a.id, x: OX + a.x, y: OY + a.y, z: z(a), hp: 10, love: a.loved > S.tick, scared: false};
   function sea() {                                           // open sea wherever the screen looks past the island's blocks
-    const [x, y, w, h] = viewRect(8);
+    const [vx, vy, vw, vh] = viewRect(8), far = HdLook.eye ? 30 : 0, x = Math.min(vx, cam.x - far), y = Math.min(vy, cam.y - far), w = Math.max(vx + vw, cam.x + far) - x, h = Math.max(vy + vh, cam.y + far) - y;   // (the HD look's eye sees far north, to its horizon)
     for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++)
       if (!blocks.has(bkey(bx, by))) onRegion({x: bx * B, y: by * B, w: B, h: B, ...M.sea});
   }
@@ -69,7 +69,7 @@ const TitleScene = (() => {
   // (My own count of the blocks that were painted said so a frame or two early: the screen was still dark.)
   function step() {
     S.tick++; S.phase = (.3 + S.tick / DAY) % 1;
-    if (!S.shown && (S.tick > 150 || (S.tick > 1 && !arrivingNow))) { S.shown = S.tick; requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.add("scene"))); }
+    if (!S.shown && (S.tick > 150 || (S.tick > 1 && !arrivingNow && (!HdLook.live || (HdLook.builds && !HdLook.busy))))) { S.shown = S.tick; requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.add("scene"))); }
     const now = S.due.filter(([at]) => at <= S.tick); S.due = S.due.filter(([at]) => at > S.tick);
     for (const [, fn] of now) fn();                          // what was felled or picked is grown again
     if (S.tick % 8 === 0) grow();
@@ -97,6 +97,9 @@ const TitleScene = (() => {
     for (const b of M.blocks) onRegion({...b, x: b.x + OX, y: b.y + OY});
     cam.x = camT.x = OX + S.C.centre[0]; cam.y = camT.y = OY + S.C.centre[1] + TITLE_DY;
     arrivingNow = true;                                      // (a land that is coming: shown whole, once it is all there)
+    // The HD look (hd.js) draws it, as it draws the world: its eye looks at the middle of the view, at the meadow's level, as it looks at you on the surface
+    // (the first screen was the flat picture: the look of the game came only once you had woken up)
+    const eye = {x: 0, y: 0, z: levelAt(cam.x, Math.round(OY + S.C.centre[1])) || 0, free: true}; HdLook.eye = () => { eye.x = cam.x; eye.y = cam.y; eye.rush = !S.shown; return eye; };   // (rush: nothing shows yet: the land is made 12 ms a frame)
     ears = () => ({x: cam.x, y: cam.y});                     // its sounds are heard from the middle of the view, under the music (audio.js)
     S.herd = [...herd("chicken", 3, 9101, S.C.pen, 14), ...herd("chick", 1, 9111, S.C.pen, 9), ...herd("cow", 2, 9121, S.C.meadow, 26)];
     S.people = TitleCast.wake(S);
@@ -105,7 +108,7 @@ const TitleScene = (() => {
   }
   function stop() {                                          // you wake up: the island is forgotten, the world's land is asked for
     if (!S.on) return;
-    S.on = false; clearInterval(S.timer); ears = null;
+    S.on = false; clearInterval(S.timer); ears = null; HdLook.eye = null;
     ents.clear(); blocks.clear(); dirtyTiles.length = 0; requested.clear(); lastWatch = ""; arrivingNow = true; fireAt = [];
     bubbles.length = 0; emotes.clear(); mailAt = new Set(); troughAt = new Set();
     if (!me) { cam.x = camT.x = 0; cam.y = camT.y = 0; }
