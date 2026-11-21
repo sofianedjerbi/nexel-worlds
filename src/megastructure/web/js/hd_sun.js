@@ -75,10 +75,10 @@ const HdSun = (() => {
   // The land's own shadow: a cliff, a terrace, a hill throws the hour's shadow on the land under it (the classic picture had it). For a tile's surface, px by px: is some
   // column towards the sun, two levels or more over it, between the px and the sun? (a px h px under a top is in its shadow when the px, moved h back along the sun's
   // way, is on that top's tile.) The same tone and the same soft rim as the things' shadows, on tops only (never a wedge on a wall's face); kept until the land or the sun moves on.
-  const lands = new Map(), tops = new Map(); let lkey = "";
+  const lands = new Map(), tops = new Map(); let lkey = null;
   const topOf = (x, y) => { const k = x + "," + y; let t = tops.get(k); if (t === undefined) { const c = Voxels.host.column(x, y); t = c && c.length ? c[c.length - 1] : null; tops.set(k, t); } return t; };
   function land(out, x, y) {
-    if (!H.on) return; const k0 = [landVer, Floors.ver, H.kx, H.ky, HdThings.sheet.id].join(); if (k0 !== lkey || lands.size > 8000) { lands.clear(); tops.clear(); lkey = k0; }
+    if (!H.on) return; const lk = lkey; if (!lk || lk[0] !== landVer || lk[1] !== Floors.ver || lk[2] !== H.kx || lk[3] !== H.ky || lk[4] !== HdThings.sheet.id || lands.size > 8000) { lands.clear(); tops.clear(); lkey = [landVer, Floors.ver, H.kx, H.ky, HdThings.sheet.id]; }   // (what it hangs on, looked at: a string was made of it for every tile asked)
     const s = surface(x, y); if (!s) return; const k = x + "," + y + "," + s.z; let ch = lands.get(k);
     // (the columns asked: a column further each way than the shadows reach: the px just outside the tile are asked too, for the rim: without them each tile's shadow had a rim of its own, light lines between tiles)
     if (ch === undefined) { ch = null; const src = [], sg = H.kx < 0 ? 1 : -1, nx = Math.ceil(96 * Math.abs(H.kx) / 16), ny = Math.ceil(96 * H.ky / 16);

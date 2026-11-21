@@ -32,6 +32,7 @@ const Voxels = (() => {
   // (the one place the land's px change: a tile drawn again is a tile the engine paints again)
   const drawTile0 = drawTile, FAR = [[-3, -3], [0, -3], [3, -3], [-3, 0], [3, 0], [-3, 3], [0, 3], [3, 3]];
   drawTile = function (x, y, to = null) { drawTile0(x, y, to); if (!to) { engine.touch(x, y); if (topAt(x, y) > 3) for (const [dx, dy] of FAR) engine.touch(x + dx, y + dy); WaterBed.changed(x, y); } };      // (high land: is a block stone is told by the land up to five tiles off, voxpaint.js rocky: their paint too)
+  { const a0 = arriveBlock; arriveBlock = function (b) { a0(b); WaterBed.changed(b.bx * B, b.by * B); WaterBed.changed(b.bx * B + B - 1, b.by * B + B - 1); }; }   // (a block come in the HD look: its beds, one box as its tiles drawn one by one made; this engine makes no land meanwhile: nothing of it to touch)
   const here = (list) => list.filter((b) => b.px).map((b) => ({cx: b.bx, cy: b.by}));
   // Blocks coming in or changed, within what is left of the frame's time for the land (render.js)
   // (and each one's sea, made again when its tiles changed: water.js says if there is anything to do)

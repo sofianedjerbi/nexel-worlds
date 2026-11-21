@@ -71,7 +71,8 @@ function frame(now) {
   const coming = inRect(ax, ay, aw, ah + 6).sort((a, b) => rank(a) - rank(b));
   const landFrom = performance.now(), landUntil = landFrom + (arrivingNow ? LAND_MS * 4 : coming.some((b) => !Voxels.made(b) && onScreen(b)) ? LAND_MS * 2.5 : LAND_MS);
   const fresh = coming.find((b) => !b.drawn);
-  if (fresh) { if (arrivingNow && onScreen(fresh)) renderBlock(fresh); else startBlock(fresh); }   // (arriving: whole, at once)
+  if (fresh && HdLook.live) { for (const b of coming) if (!b.drawn) arriveBlock(b); }   // (the HD look: nothing to paint, tiles.js)
+  else if (fresh) { if (arrivingNow && onScreen(fresh)) renderBlock(fresh); else startBlock(fresh); }   // (arriving: whole, at once)
   for (let n = 0; dirtyTiles.length && (n++ & 15 || performance.now() < landUntil);) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
   Voxels.work(coming, landUntil);                    // (the land is blocks: voxels.js)
   const landMs = performance.now() - landFrom;
@@ -173,6 +174,7 @@ function frame(now) {
       if (tileBehind(o.x, o.ty)) drawBehind({x: o.x, y: o.ty, e: {}}, sx, sy, S, draw); else draw(1);
     }
     else if (o.fx) o.fx();
+    else if (hd && o.p._hd === HdLook.n) { /* (the HD look drew them the last frame and draws them again this one, hd.js ent: here it was a second drawing of each, to a canvas of one px) */ }
     else {
       const over = xrayOverBody(o.p);                // (xray.js) on the rock the circle sees through: it fades with it
       if (over <= .98) drawBehind(o.p, sx, sy, S, (k) => { ctx.globalAlpha = k * (1 - over); drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1; });   // (behind a hill: cut at its edge)

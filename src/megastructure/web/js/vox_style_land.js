@@ -20,9 +20,11 @@ const VoxStyleLand = (() => {
     {n: [1, 0, 0], k: .78, q: [[1, 1, 1], [1, 0, 1], [1, 0, 0], [1, 1, 0]]},
     {n: [-1, 0, 0], k: .7, q: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]]},
   ];
+  const cat = (l) => { let n = 0; for (const a of l) n += a.length; const d = new Float32Array(n); n = 0; for (const a of l) { d.set(a, n); n += a.length; } return d; };
   const solidC = (c, z) => { if (!c) return false; for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   function create(host, cfg, P) {
-    const SL = P.SL, slot = P.slot, store = new Map(), tops = new Map(), late = new Set(); let msh = null, making = false, stamp = 0;
+    const SL = P.SL, store = new Map(), tops = new Map(), late = new Set(), farOf = new Map(), farDirty = []; let msh = null, making = false, stamp = 0, farN = 0, into = null, wantK = null, fars = 0;   // (farOf: the far land's patches made, by where they are: "bx,by" (8 tiles) -> "x,y,w,h" -> faces; farDirty: boxes of tiles changed since)
+    const slot = (k, paint) => { const s = P.slot(k, paint); if (into && P.mk) into.push(s); return s; };   // (into: the places of the paints a chunk or a far patch being made names: kept with it, P.use)
     const lim = (z) => Math.max(cfg.levels[0], Math.min(cfg.levels[1], z)), ck = (x, y) => Math.floor(x / CH) + "," + Math.floor(y / CH);
     // what stands in the land as boxes (host.models: a bridge's deck and posts): a top and a south front each, its paint from the host's sheet px for px into a slot
     const sheet = () => { if (!msh) { const q = host.modelSheet(); msh = q.px ? q : {px: new Uint32Array(q.getContext("2d").getImageData(0, 0, q.width, q.height).data.buffer), w: q.width}; } return msh; };
@@ -43,28 +45,35 @@ const VoxStyleLand = (() => {
     function touch(x, y) {
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const t = (x + dx) + "," + (y + dy), l = tops.get(t); if (l) { for (const k of l) P.unslot(k); tops.delete(t); } }
       for (let dy = -6; dy <= 6; dy += 6) for (let dx = -6; dx <= 6; dx += 6) { const k = ck(x + dx, y + dy); store.delete(k); if (making) late.add(k); }
-      stamp++;
+      stamp++; farDirty.push([x, y, x, y]);
     }
+    // every tile of a box touched, once: its paints and those round it, the chunks within six tiles of it (a block of land come in at once)
+    function touchBox(x0, y0, x1, y1) {
+      for (let y = y0 - 1; y <= y1 + 1; y++) for (let x = x0 - 1; x <= x1 + 1; x++) { const t = x + "," + y, l = tops.get(t); if (l) { for (const k of l) P.unslot(k); tops.delete(t); } }
+      for (let by = Math.floor((y0 - 6) / CH); by <= Math.floor((y1 + 6) / CH); by++) for (let bx = Math.floor((x0 - 6) / CH); bx <= Math.floor((x1 + 6) / CH); bx++) { const k = bx + "," + by; store.delete(k); if (making) late.add(k); }
+      stamp++; farDirty.push([x0, y0, x1, y1]);
+    }
+    // the far land's patches a changed tile reaches (what they read: the tiles round them, a tile's paint by its rock five tiles off) are made again; a patch is 8 tiles at most
+    const farForget = () => { for (const [x0, y0, x1, y1] of farDirty) for (let by = Math.floor((y0 - 16) / CH); by <= Math.floor((y1 + 7) / CH); by++) for (let bx = Math.floor((x0 - 16) / CH); bx <= Math.floor((x1 + 7) / CH); bx++) { const m = farOf.get(bx + "," + by); if (m) { farN -= m.size; farOf.delete(bx + "," + by); } } farDirty.length = 0; };
+    const farClear = () => { farOf.clear(); farDirty.length = 0; farN = 0; };
+    // (each face's corners: the three cells beside a corner that darken it, worked out once: they were made again as small arrays for every corner of every face)
+    const AOV = FACES.map((F) => F.q.map((q) => { const ax = F.n.map((a) => (a ? 0 : 1)), d = [q[0] * 2 - 1, q[1] * 2 - 1, q[2] * 2 - 1].map((v, j) => v * ax[j]);
+      const t = [0, 1, 2].filter((j) => ax[j]), a = [0, 0, 0], b = [0, 0, 0]; a[t[0]] = d[t[0]]; b[t[1]] = d[t[1]]; return [a, b, [a[0] + b[0], a[1] + b[1], a[2] + b[2]]]; })), AOK = [1, .84, .72, .62], TRI = [0, 1, 2, 0, 2, 3], vq = new Float64Array(40);
     function quad(out, x, y, z, F, k, sky, kind, lv, e, s, solid, isTop) {
-      const u0 = (s % SL) * C, v0 = (s / SL | 0) * C, top = isTop ? 0 : C - cfg.up, I = .01, UV = [[I, top + I], [C - I, top + I], [C - I, C - I], [I, C - I]], vs = [];   // (read a hair inside its paint: at an edge a row of px took the paint beside it in the sheet: a bright line across a stone terrace)
+      const u0 = (s % SL) * C, v0 = (s / SL | 0) * C, top = isTop ? 0 : C - cfg.up, I = .01, A = AOV[FACES.indexOf(F)], ox = x + F.n[0], oy = y + F.n[1], oz = z + 1 + F.n[2];   // (read a hair inside its paint: at an edge a row of px took the paint beside it in the sheet: a bright line across a stone terrace)
       for (let i = 0; i < 4; i++) {
-        const q = F.q[i]; let ao = 1;
-        if (solid) {
-          const ax = F.n.map((a) => (a ? 0 : 1)), d = [q[0] * 2 - 1, q[1] * 2 - 1, q[2] * 2 - 1].map((v, j) => v * ax[j]), o = [x + F.n[0], y + F.n[1], z + 1 + F.n[2]];
-          const t = [0, 1, 2].filter((j) => ax[j]), a = [0, 0, 0], b = [0, 0, 0]; a[t[0]] = d[t[0]]; b[t[1]] = d[t[1]];
-          const at = (v) => +solid(o[0] + v[0], o[1] + v[1], o[2] + v[2]), s1 = at(a), s2 = at(b), cc = at([a[0] + b[0], a[1] + b[1], a[2] + b[2]]);
-          ao = [1, .84, .72, .62][s1 && s2 ? 3 : s1 + s2 + cc];
-        }
-        vs.push([...gp(x + q[0], y + q[1], z + q[2]), u0 + UV[i][0], v0 + UV[i][1], k * ao, sky, kind, lv, e]);
+        const q = F.q[i], o = i * 10; let ao = 1;
+        if (solid) { const [a, b, c] = A[i], s1 = +solid(ox + a[0], oy + a[1], oz + a[2]), s2 = +solid(ox + b[0], oy + b[1], oz + b[2]), cc = +solid(ox + c[0], oy + c[1], oz + c[2]); ao = AOK[s1 && s2 ? 3 : s1 + s2 + cc]; }
+        vq[o] = x + q[0]; vq[o + 1] = (z + q[2]) * H; vq[o + 2] = y + q[1]; vq[o + 3] = u0 + (i === 0 || i === 3 ? I : C - I); vq[o + 4] = v0 + (i < 2 ? top + I : C - I); vq[o + 5] = k * ao; vq[o + 6] = sky; vq[o + 7] = kind; vq[o + 8] = lv; vq[o + 9] = e;
       }
-      if (!sky) { const m = (vs[0][5] + vs[1][5] + vs[2][5] + vs[3][5]) / 4; for (const v of vs) v[5] = m; }   // (a face of a cave: one tone a face. Its corners' shade ran in steps across each face: rows of dark spikes, a comb, along every cut edge)
-      for (const i of [0, 1, 2, 0, 2, 3]) out.push(...vs[i]);
+      if (!sky) { const m = (vq[5] + vq[15] + vq[25] + vq[35]) / 4; vq[5] = vq[15] = vq[25] = vq[35] = m; }   // (a face of a cave: one tone a face. Its corners' shade ran in steps across each face: rows of dark spikes, a comb, along every cut edge)
+      for (const i of TRI) for (let j = i * 10; j < i * 10 + 10; j++) out.push(vq[j]);
     }
     // YOUR SPACE AND THE WINDOW ON IT (o.win: {reach, walk: on the surface, for a cave's mouth or a hole beside you: where you can walk and drop to, not the floors you came down from}). The land is made WHOLE, always: under the land you are seen through a window, a mask the painter makes from a few boxes
     // (vox_style_win.js), not through a hole cut in these faces: no chunk hangs on where you are. Here only the boxes are found: the tiles walked to from yours (reach steps), each from its floor to its ceiling.
     function* steps(cx, cy, L, o) {
       const cols = new Map(), r = o.r, deep = o.deep, pt = o.win || null, fresh = new Map(); let made = 0;
-      const col = (x, y) => { const k = x + "," + y; if (!cols.has(k)) cols.set(k, host.column(x, y)); return cols.get(k); };
+      const col = (x, y) => { const k = x * 1048576 + y; let c = cols.get(k); if (c === undefined) { c = host.column(x, y); cols.set(k, c); } return c; };   // (a number for a key: a string was made for each of the land's many looks)
       const inBox = (x, y) => Math.abs(x - cx) <= r && Math.abs(y - cy) <= r;
       const D = 2 * r + 1, NO = -32768, BIG = 32767, DIR = [[1, 0], [-1, 0], [0, 1], [0, -1]], at = (x, y) => (inBox(x, y) ? (y - cy + r) * D + x - cx + r : -1);
       const reachA = new Int16Array(D * D).fill(NO), farA = new Uint8Array(D * D), nearA = new Uint8Array(D * D), clsA = new Uint8Array(D * D), lowA = new Int16Array(D * D).fill(BIG), reached = [], win = [];
@@ -141,11 +150,15 @@ const VoxStyleLand = (() => {
       // past the box, to the horizon, in patches: the sea's flat face where the sea is (or nothing is known); where land is, the land at its height, a skirt south, west and east of it: no sea inland.
       // Their px are the land's own at the land's own size (the shader, kind 7): a top an 8 x 8 quarter of a tile's paint, which quarter and which way round by the tile it lies on; a skirt its rock's front (e: 9 a top, 10 a south skirt, 11 a west or east one). They were the paint's mean colour: flat slabs.
       // Patches are 4 tiles across for the first 16 tiles past the box, 8 beyond (8 everywhere: a mountain's flank one smooth slab a patch wide); a top's paint is a tile of the patch at its height with its four neighbours as high (its middle tile was often a rim: a stripe of the rim's brown and green over the whole patch)
-      function* patches() { const fl = [], fs = []; if (o.sea === undefined) return [fl, fs]; const seg = []; for (let s = -r; s <= r; s += 4) seg.push([s, Math.min(4, r + 1 - s), 1]); for (let k = 0; k < 4; k++) seg.push([r + 1 + 4 * k, 4, 0], [-r - 4 - 4 * k, 4, 0]); for (let k = 0; k < 3; k++) seg.push([r + 17 + 8 * k, 8, 0], [-r - 24 - 8 * k, 8, 0]);
+      function* patches() { const fl = [], fs = []; if (o.sea === undefined) return [new Float32Array(0), new Float32Array(0)]; const seg = []; for (let s = -r; s <= r; s += 4) seg.push([s, Math.min(4, r + 1 - s), 1]); for (let k = 0; k < 4; k++) seg.push([r + 1 + 4 * k, 4, 0], [-r - 4 - 4 * k, 4, 0]); for (let k = 0; k < 3; k++) seg.push([r + 17 + 8 * k, 8, 0], [-r - 24 - 8 * k, 8, 0]);
         const rows = seg.filter(([j]) => j < r + 1 || j > r + 4).concat([1, 2, 3, 4].map((k) => [r + k, 1, 0])), one = seg.filter(([i]) => i < -r || i > r);   // (the first four rows south of the box a tile each, its own paint (e 8): tall land there stands at the screen's foot, a tile as big as a hand)
         for (let s = -r; s <= r; s++) one.push([s, 1, 1]);
         const tz = (x, y) => { const c = host.column(x, y); return c && c.length ? c[c.length - 1] : null; }, flat = (x, y, z) => tz(x - 1, y) === z && tz(x + 1, y) === z && tz(x, y - 1) === z && tz(x, y + 1) === z;
-        for (const [j, h, mj] of rows) { yield "far"; for (const [i, w, mi] of h === 1 ? one : seg) { if (mi && mj) continue; const x = cx + i, y = cy + j; let mx = x + (w >> 1), my = y + (h >> 1); const c = host.column(mx, my), land = c && c.length && !(host.water && host.water(mx, my));
+        for (const [j, h, mj] of rows) { yield "far"; if (farDirty.length) farForget(); for (const [i, w, mi] of h === 1 ? one : seg) { if (mi && mj) continue; const x = cx + i, y = cy + j, bk = Math.floor(x / CH) + "," + Math.floor(y / CH), fk = x + "," + y + "," + w + "," + h; let m = farOf.get(bk); const had = m && m.get(fk);
+          if (had) { P.use(had[2]); if (had[0].length) fl.push(had[0]); if (had[1].length) fs.push(had[1]); continue; } const a = [], b = []; into = []; fars++; patch(x, y, w, h, a, b); const f = [new Float32Array(a), new Float32Array(b), into]; into = null; if (!m) farOf.set(bk, m = new Map()); m.set(fk, f); farN++; if (a.length) fl.push(f[0]); if (b.length) fs.push(f[1]); if (farN % 6 === 0) yield "far"; }   // (a step: six patches made, not a row of them: a slow phone's frame waited for 27)
+          if (farN > 12000) farClear(); }   // (a patch's faces kept by where it is: walking, the patches 4, 8 tiles back are this one's; 4 ms of each land's 6 were the far land made again)
+        return [cat(fl), cat(fs)];
+        function patch(x, y, w, h, fl, fs) { let mx = x + (w >> 1), my = y + (h >> 1); const c = host.column(mx, my), land = c && c.length && !(host.water && host.water(mx, my));
           const Q = [[1, 1], [3, 1], [1, 3], [3, 3]].map(([a, b]) => [x + (w * a >> 2), y + (h * b >> 2)]).filter(([qx, qy]) => tz(qx, qy) !== null && !(host.water && host.water(qx, qy)));
           let z = land ? c[c.length - 1] : o.sea; if (land) for (const [qx, qy] of Q) z = Math.min(z, tz(qx, qy));   // (the lowest of five tiles: a patch as high as its highest stood over the land in front of it, a slab over a stair)
           if (land && !(tz(mx, my) === z && flat(mx, my, z))) { const q = Q.find(([qx, qy]) => tz(qx, qy) === z && flat(qx, qy, z)) || Q.find(([qx, qy]) => tz(qx, qy) === z); if (q) [mx, my] = q; }   // (a tile whose top is at z: one as high round it if there is one)
@@ -154,16 +167,16 @@ const VoxStyleLand = (() => {
           put([[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]], 1, sl, w * h === 1 && tz(x, y) === z ? 8 : 9);
           if (land) { const lo = (t) => Math.min(z - 10, t === null ? o.sea : t), s = lo(tz(mx, y + h)), wz = lo(tz(x - 1, my)), ez = lo(tz(x + w, my));   // (each skirt down to the land beside it: ten levels were a mountain's patches hung in the air over the meadow, the sky under them)
             put([[x, y + h, z], [x + w, y + h, z], [x + w, y + h, s], [x, y + h, s]], .8, fr, 10); put([[x, y, z], [x, y + h, z], [x, y + h, wz], [x, y, wz]], .7, fr, 11); put([[x + w, y + h, z], [x + w, y, z], [x + w, y, ez], [x + w, y + h, ez]], .78, fr, 11); } } }
-        return [fl, fs]; }
       const want = []; for (let by = Math.floor(Y0 / CH); by <= Math.floor(Y1 / CH); by++) for (let bx = Math.floor(X0 / CH); bx <= Math.floor(X1 / CH); bx++) want.push([bx, by]);
-      if (P.start(!!o.again)) store.clear();   // (a land made with its paints from none keeps no chunk made before: they name places of paints that are gone. The land was wiped (eng.lost: forget) while one was being made, that one's chunks were kept, and the next, from none, drew them with other tiles' paints: grey and green squares on a meadow, the mean colour, a shadow's black blades on the grass)
+      if (P.start(!!o.again)) { store.clear(); farClear(); }   // (a land made with its paints from none keeps no chunk made before: they name places of paints that are gone. The land was wiped (eng.lost: forget) while one was being made, that one's chunks were kept, and the next, from none, drew them with other tiles' paints: grey and green squares on a meadow, the mean colour, a shadow's black blades on the grass)
       making = true; late.clear();   // (the paints and the land that names them change together: vox_style.js)
       try {
-        const need = want.filter(([bx, by]) => !good(store.get(bx + "," + by), bx, by)); yield "scan";
-        for (const [bx, by] of need) { fresh.set(bx + "," + by, yield* chunk(bx, by)); made++; }
+        const need = want.filter(([bx, by]) => !good(store.get(bx + "," + by), bx, by)); wantK = new Set(want.map(([bx, by]) => bx + "," + by)); yield "scan";
+        for (const [bx, by] of want) { const ch = store.get(bx + "," + by); if (ch && !need.some((q) => q[0] === bx && q[1] === by)) P.use(ch.slots); }   // (the paints of the chunks kept: this land's too)
+        for (const [bx, by] of need) { into = []; const ch = yield* chunk(bx, by); ch.slots = into; into = null; fresh.set(bx + "," + by, ch); made++; }
         const [fl, fs] = yield* patches();
         if (P.spill() && !o.again) { making = false; return yield* steps(cx, cy, L, Object.assign({}, o, {again: true})); }   // (the paints ran out while it was made: faces made before that had another face's paint (a meadow all earth, a black hole): once more, from none)
-        const list = want.map(([bx, by]) => fresh.get(bx + "," + by) || store.get(bx + "," + by)).filter(Boolean), parts = {far: new Float32Array(fl), sea: new Float32Array(fs)}; let wet = 0;
+        const list = want.map(([bx, by]) => fresh.get(bx + "," + by) || store.get(bx + "," + by)).filter(Boolean), parts = {far: fl, sea: fs}; let wet = 0;
         const near = list.slice().reverse();   // (the land's own faces: the chunks nearest the eye first (the south ones), so the GPU drops the px of what is behind them before painting them; it was far to near: every hidden px painted, then painted over)
         for (const k of KINDS) { const l = k === "main" ? near : list; let n = 0; for (const ch of l) n += ch[k].length; const d = new Float32Array(n); n = 0; for (const ch of l) { d.set(ch[k], n); n += ch[k].length; } parts[k] = d; }
         for (const ch of list) wet += ch.wet;
@@ -172,7 +185,8 @@ const VoxStyleLand = (() => {
         return {parts, clip: [X0, X1 + 1, Y0, Y1 + 1], wet, made, space: pt ? {x: cx - r, y: cy - r, D, lvl: reachA, cls: clsA} : null, win};
       } finally { making = false; }
     }
-    return {steps, touch, model, clear() { store.clear(); }, get stamp() { return stamp; }};
+    return {steps, touch, touchBox, model, clear() { store.clear(); farClear(); }, evicted() { for (const k of [...store.keys()]) if (!wantK || !wantK.has(k)) store.delete(k); farClear(); },   // (paints given again: what was made with them and is not of this land goes)
+      get stamp() { return stamp; }, get fars() { return fars; }};   // (fars: far patches made, all told: tests)
   }
   return {create, N, CH};
 })();

@@ -10,7 +10,7 @@ const HdLook = (() => {
   const urlLook = new URLSearchParams(location.search).get("look"), GROW = .25, EASE = .4, HOLD = 300, CAP = 20, R = 24;
   const cfg = {levels: [-9, 12], variants: 4, up: RELIEF_STEP, rock: {from: 5, lo: -512, n: 4}};
   const cam = {kind: "persp", pitch: 36, fov: 26};
-  const api = {get active() { return (urlLook || opt("look")) === "hd"; }, eye: null, get on() { return this.active && (!!this.eye || (!!me && myId !== null)); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: 68, nowin: false, force: null, cam, bend: .03, blur: 1, faces: 0, builds: 0};
+  const api = {get active() { return (urlLook || opt("look")) === "hd"; }, eye: null, get on() { return this.active && (!!this.eye || (!!me && myId !== null)); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: 68, nowin: false, force: null, cam, bend: .03, blur: 1, faces: 0, builds: 0, n: 0};
   let camL = null, pitN = null, stage = 0, tilt = 0, flip = 0, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), lit = null, hl = 0, hy = 0, since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, camV = 0;
   const sprs = new Map(), lads = new Map(), things = new Map(), piles = new Map(), built = new Map(), stoodOf = new Map();
   const Z = () => zoom * DPR;   // (canvas px an art px: `zoom` CSS px, as the classic picture's. It was `zoom` canvas px: on a dense screen, a phone's, the land half the size and twice as far as it would show)
@@ -18,12 +18,12 @@ const HdLook = (() => {
   function ent(p, now, z) {   // (a person or a creature, drawn by the game at zoom 1: one art px a px; z: the level it is put at)
     // (a FALL: the game says the body's height over the straight line between the two tiles' grounds (the classic picture's lift). Here a body stands at one tile's level, z: its height over THAT.
     // It was the game's number as it is: walking to a rim 12 high you rose 48 px into the air, then dropped 96 px in one frame as the fall began)
-    const T = P, j = jumping(p, now), fl = j && falling(p, now), off = fl ? liftOf(p) / zoom - z * RELIEF_STEP : 0, up = j ? Math.max(0, Math.ceil((j.body + off) * (fl ? Math.cos(cam.pitch * Math.PI / 180) : 1))) : 0, fo = fl ? Math.round(j.body) - up : 0, w = T * 4, h = T * 5 + up, base = h - T * 1.5 + fo;   // (a height as this eye sees it: its cosine; taller for a fall: the body and its name stay together)
+    const T = P, j = jumping(p, now), fl = j && falling(p, now), off = fl ? liftOf(p) / zoom - z * RELIEF_STEP : 0, up = j ? Math.max(0, Math.ceil((j.body + off) * (fl ? Math.cos(cam.pitch * Math.PI / 180) : 1))) : 0, fo = fl ? Math.round(j.body) - up : 0, w = T * 4, h = Math.ceil((T * 5 + up) / 32) * 32, base = h - T * 1.5 + fo;   // (a height as this eye sees it: its cosine; taller for a fall: the body and its name stay together)   // (its canvas in steps of 32 rows, the body at its foot: down a stair every hop made it again, and its place in the sprites' sheet)
     let pc = sprs.get(p) || document.createElement("canvas"); sprs.set(p, pc); if (pc.width !== w || pc.height !== h) { pc.width = w; pc.height = h; }
     const g = pc.getContext("2d", {willReadFrequently: true}); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); g.imageSmoothingEnabled = false;   // (its px are read each frame: its shadow is its shape now, hd_sun.js)
     const keep = ctx, kz = zoom, sx = (x) => w / 2 - T / 2 + (x - p.x) * T, sy = Object.assign((y) => base + (y - p.y) * T, {up: (y) => base + (y - p.y) * T, apart: true});   // (apart: a swimmer's wake is not in it: swim.js wakePicture)
     const rc = pc._r || (pc._r = HdView.recorder(g, false)); rc.reset();   // (what was asked of its canvas, as one number: the same as last frame: the same picture: not sent to the GPU again, its shadow not looked for again)
-    ctx = rc.proxy; zoom = 1; try { drawEntity(p, sx, sy, T, now / 1000, now); } catch (e) { /* (nothing to draw) */ } finally { ctx = keep; zoom = kz; }
+    ctx = rc.proxy; zoom = 1; p._hd = api.n; try { drawEntity(p, sx, sy, T, now / 1000, now); } catch (e) { /* (nothing to draw) */ } finally { ctx = keep; zoom = kz; }
     if (rc.hash !== pc._h) { pc._h = rc.hash; pc._v = (pc._v || 0) + 1; }
     return {canvas: pc, fx: w / 2, fy: Math.round(h - T), fo};
   }
@@ -151,7 +151,7 @@ const HdLook = (() => {
   let eKey = "", eY = 0;
   function eyeLine(at, w, h) { const k = [cam.pitch.toFixed(2), cam.fov, api.bend, w, h].join(); if (k !== eKey) { let m = 1e9; for (let dn = 1; dn <= 120; dn++) { const a = eng.at(at[0], at[1] - dn, at[2] - .5); if (a && isFinite(a[1])) m = Math.min(m, a[1]); } eKey = k; eY = m < 1e8 ? m : 0; } return eY; }
   function after() {
-    const now = performance.now(), dt = Math.min(.1, (now - last) / 1000); last = now;
+    const now = performance.now(), dt = Math.min(.1, (now - last) / 1000); last = now; api.n++;   // (n: this look's frames: who it drew in the last one, ent)
     const p = api.eye ? api.eye() : ents.get("agent" + myId); if (!p) return;   // (api.eye: the first screen, title_scene.js: nobody is you: the eye looks at a place {x, y, z, free}: its level, the surface's pitch, no window, nothing aimed at)
     const H0 = Voxels.host, wet = (x, y) => H0.water && H0.water(x, y) && H0.waterTop ? H0.waterTop(x, y) : -1e9;   // (in water: you stand at its face)
     const t0 = performance.now(), [L, Lf] = p.free ? [p.z, p.z] : HdLevel.of(p, now), tx = Math.round(p.x), ty = Math.round(p.y);   // (your level, and the same between two tiles: hd_level.js. It was the land's top until the classic x-ray had opened: down a covered stair you were drawn on the grass over it)
@@ -277,7 +277,7 @@ const HdLook = (() => {
     return box ? [n ? ok / n : 0, out] : n ? ok / n : 0;
   };
   api.stands = () => (seen ? seen.list.filter((s) => s.tx !== undefined && !s.q).map((s) => [s.tx, s.ty, s.z]) : []);   // (tests: what stands, drawn this frame: [its tile, the level it stands at])
-  api.read = (...a) => HdView.read(...a); api.bodies = () => (seen ? seen.list.filter((s) => s.q && !s.top).map((s) => [s.q.e.kind, s.z]) : []); api.bare = () => (eng && seen ? eng.bare(Math.max(0, Math.ceil(hy) + 2)) : 0); api.raw = () => (eng ? eng.raw() : 0); api.fades = () => (seen ? seen.list.filter((s) => s.fade !== undefined).map((s) => [s.tx, s.ty, s.fade]) : []); api.blank = () => eng && eng.blank(); Object.defineProperty(api, "units", {get: () => eng && eng.units}); Object.defineProperty(api, "why", {get: () => eng && eng.why}); Object.defineProperty(api, "wrote", {get: () => wrote}); Object.defineProperty(api, "made", {get: () => (eng ? eng.made : 0)});   // (units: the longest step of each kind of the land's making; why: why the last frame was drawn again; made: chunks made by the last land)   // (px under the horizon where no land is drawn)
+  api.read = (...a) => HdView.read(...a); api.bodies = () => (seen ? seen.list.filter((s) => s.q && !s.top).map((s) => [s.q.e.kind, s.z]) : []); api.bare = () => (eng && seen ? eng.bare(Math.max(0, Math.ceil(hy) + 2)) : 0); api.raw = () => (eng ? eng.raw() : 0); api.fades = () => (seen ? seen.list.filter((s) => s.fade !== undefined).map((s) => [s.tx, s.ty, s.fade]) : []); api.blank = () => eng && eng.blank(); Object.defineProperty(api, "units", {get: () => eng && eng.units}); Object.defineProperty(api, "why", {get: () => eng && eng.why}); Object.defineProperty(api, "wrote", {get: () => wrote}); Object.defineProperty(api, "made", {get: () => (eng ? eng.made : 0)}); Object.defineProperty(api, "work", {get: () => (eng ? eng.work : null)});   // (units: the longest step of each kind of the land's making; why: why the last frame was drawn again; made: chunks made by the last land)   // (px under the horizon where no land is drawn)
   // a frame: with this look on and you in the world, what the classic frame still paints goes to a canvas of one px (its state is kept as ever: who walks, what is aimed at), then this look's picture; else the classic frame as ever
   { const f0 = frame; frame = function (now) {
     const t0 = performance.now(), keep = ctx; api.live = api.on && !noGL && Voxels.engine.ready() && !!(api.eye || ents.get("agent" + myId)); api.drew = wrote = false; slice1 = 0;
@@ -285,6 +285,7 @@ const HdLook = (() => {
     if (api.live) after(); else HdView.hide();
     HdView.perf(now, performance.now() - t0, api.drew, eng ? eng.calls : 0, slice1, wrote);
   };
-    const d0 = drawTile; drawTile = function (x, y, to = null) { d0(x, y, to); if (!to && eng) eng.touch(x, y); }; }   // (a tile of the land drawn again: its chunk of this land is made again, its paints painted again)
+    const d0 = drawTile; drawTile = function (x, y, to = null) { d0(x, y, to); if (!to && eng) eng.touch(x, y); };
+    const a0 = arriveBlock; arriveBlock = function (b) { a0(b); if (eng) eng.touchBox(b.bx * B, b.by * B, b.bx * B + B - 1, b.by * B + B - 1); }; }   // (a block come in at once: every tile of it as drawn again, tiles.js)   // (a tile of the land drawn again: its chunk of this land is made again, its paints painted again)
   return api;
 })();

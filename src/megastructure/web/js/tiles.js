@@ -152,6 +152,8 @@ let landVer = 0;                                    // (goes up whenever a tile 
 function drawTile(x, y, to = null) {                 // (to: somewhere else than its block's px: a canvas {g, ox, oy}, or px {px, o, w})
   const b = blockOf(x, y);
   if (!b || !(to || b.px)) return;
+  if (!to && HdLook.live) { b.ver = (b.ver || 0) + 1; landVer++; return; }   // (the HD look paints its own tops (to): a block's px are read by no picture; what was worked out from the tile is out of date)
+  if (!to && b.px === NOPX) b.px = new Uint32Array(BW * BW);
   const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, ox = to ? to.ox : lx * 16, oy = to ? to.oy : ly * 16;
   const c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y), up = (cc, gg, tx, ty) => maskOf.plain || levelAt(tx, ty) >= k,      /* (maskOf.plain, voxels.js: a block's top is painted as if land as high lay all round it: no rim of its level, no cut corner; its ground, grass on sand, keeps its own edges) */ dug = lv < 0 && !wet(gr);
   let k = lv;
@@ -288,6 +290,9 @@ function startBlock(b) {
   b.px = new Uint32Array(BW * BW); b.drawn = true;
   for (let ly = B - 1; ly >= 0; ly--) for (let lx = B - 1; lx >= 0; lx--) dirtyTiles.push(b.bx * B + lx, b.by * B + ly);
 }
+// ...in the HD look none of it is painted: the block is there at once (its tiles' bookkeeping: voxels.js, hd.js wrap this). It was 1024 tiles painted over frames, each one making the land again
+const NOPX = new Uint32Array(0);
+function arriveBlock(b) { b.px = NOPX; b.drawn = true; b.ver = (b.ver || 0) + 1; landVer++; }
 function renderBlock(b) {
   b.px = new Uint32Array(BW * BW);
   for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) drawTile(b.bx * B + lx, b.by * B + ly);

@@ -27,10 +27,10 @@ const Floors = (() => {
     ver++;
   }
   function load(b, d) {                               // a region's blocks (an old server's roof tiles: a storey over their ground)
-    b.built = new Map();
+    const had = !!(b.built && b.built.size); b.built = new Map();
     for (const [i, z, kind, ch] of d.floors || []) put(b, i, z, kind, ch);
     for (const i of d.roofs || []) put(b, i, b.lv[i].charCodeAt(0) - SEA + STOREY, "roof", "");
-    ver++;
+    if (had || b.built.size) ver++;   // (a block with nothing built, come in: nothing built changed. It was a new version of all that is built: the HD look's whole land made again at each block come in)
   }
   // The built cells of the tile's column (cells.js: what you walk on is the land and these): all of them, by height; is there one at z?
   const cells = (x, y) => (FLOORS && colOf(x, y)) || null, built = (x, y, z) => { const c = FLOORS && colOf(x, y); return !!c && c.has(z); };
