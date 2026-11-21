@@ -46,7 +46,7 @@ def test_in_a_pocket_under_a_higher_floor_that_floor_is_drawn_cold_and_the_one_o
     assert sum(other[:3]) > 150, other                                # ... and not black: it is seen
     # the floor over the passage (the tile west of yours): one px in two of it, cold, the warm floor under it showing through
     over = g.js(TOP, [x - 1, y, z - 11])
-    assert over[3] > 20 and over[4] > 20 and .3 < over[3] / over[4] < 3, over   # (both there: its cold px, and through it the warm wall and floor of your passage; its north px are under the window's section band, grey: more cold than warm)
+    assert over[3] > 20 and over[4] > 20 and .2 < over[3] / over[4] < 3, over   # (both there: its cold px, and through it the warm wall and floor of your passage; its north px are under the window's section band, grey: more cold than warm; 14 deep the wall is darker now, fewer of its px count as warm: .2, was .3)
     assert g.js("HdLook.catSeen()") > .8
 
 

@@ -86,7 +86,7 @@ def test_with_frames_of_any_length_the_eye_comes_to_you_and_never_past_and_the_w
     g.rest()
     wins = g.js(f"[!!HdLook.winAt({x + 8}, {y + 6}), !!HdLook.winAt({x + 8}, {y + 6 - 2}), !!HdLook.winAt({x + 8 + 12}, {y + 6})]")
     assert wins == [True, False, False], wins                           # (the window on your room; no tile of it north of the room or far beside it)
-    assert g.js("HdLook.level") == [z - 14, z - 14] and g.js("HdLook.catSeen()") > .8
+    assert g.js("HdLook.level") == [z - 14, z - 14, z - 14] and g.js("HdLook.catSeen()") > .8
 
 
 def test_a_tree_in_front_of_you_is_one_px_in_two_round_you(browser, server):

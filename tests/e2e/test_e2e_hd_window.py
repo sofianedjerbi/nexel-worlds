@@ -1,5 +1,5 @@
 """The x-ray window's manners in the HD look (vox_style_glsl.js, vox_style_win.js, vox_style_land.js, vox_style.js, hd.js):
-its rim is calm (the land a step darker: no checker, no black outline) and the section over its top edge is the ground's
+nothing is shaded outside it (its depth is told inside: test_e2e_hd_stair.py), its near edge is the land's lit lip, and the section over its top edge is the ground's
 own earth, not a grey bar; in a river between cliffs the hole is whole (no sliver of the south bank left in it, no path
 of the way's boxes through the bank); what grows on the meadow over your room does not stand on its floor; the aim on a
 wall is on the cell you hit, at your level; a block of stone or earth put down is drawn as what it is."""
@@ -33,7 +33,7 @@ def inside(g, x, y):
     g.rest()
 
 
-def test_the_window_s_rim_is_the_land_a_step_darker_and_its_section_is_earth(browser, server):
+def test_the_window_has_no_shade_outside_it_a_lit_lip_at_its_near_edge_and_its_section_is_earth(browser, server):
     g = hd(browser, server)
     g.hour(.3, still=True)
     for o in ("clouds", "rays", "shimmer"):
@@ -47,10 +47,8 @@ def test_the_window_s_rim_is_the_land_a_step_darker_and_its_section_is_earth(bro
     scan = [g.js(PX, [x + .5, y + 2 + i * .02, 4]) for i in range(50)]
     k = next(i for i, c in enumerate(scan) if c[1] > c[0])                 # (before it: the room, seen in the hole)
     south = scan[k:]
-    rim = [c for c in south if lum(c) < lum(meadow) * .93]
-    assert len(rim) >= 4, scan                                             # the rim is there ...
-    assert all(lum(c) > lum(meadow) * .7 and c[1] > c[0] for c in south), scan       # ... the meadow's own green a step darker: no dark px in it, no outline (it was a checker of dark px in a black line)
-    assert max(map(lum, rim)) - min(map(lum, rim)) < 40, rim               # ... one tone (the grass's own specks in it), not one px in two
+    assert len(south) >= 10 and all(c[1] > c[0] and lum(c) > lum(meadow) * .93 for c in south), scan    # outside the hole the meadow is the meadow: no shade round the rim (a shade outside it read as a block standing on the grass; before that a checker of dark px in a black line)
+    assert lum(south[0]) > lum(meadow) + 12 and lum(south[-1]) < lum(meadow) + 12, (south[0], south[-1], meadow)      # the hole's near edge: the land's lip, lit; then the grass as it is
     # over the window's top edge (the north wall's plane is y - 1): the section
     north = [g.js(PX, [x + .5, y - 1.5 + i * .02, 4]) for i in range(40)]
     earth = [c for c in north if c[0] > c[1] > c[2] and c[0] - c[2] > 30]

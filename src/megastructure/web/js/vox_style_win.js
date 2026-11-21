@@ -25,15 +25,15 @@ const VoxStyleWin = (() => {
     gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0); gl.bindVertexArray(null);
     let w = 0, h = 0, n = 0, tiles = [], ver = 0;
     // a tile's box, g tiles wider each way: its top and its four sides (the eye never comes in from under it)
-    function box(d, o, x, y, lo, hi, g, sky) {   // (g: wider by g to the north (the section's rows lie there), half of it west, east and south: the rim) (sky: a tile under the open sky: wider to the south only: north and beside it stand the walls of its hole, seen and not looked through: the rim lay on a gorge's far cliff)
-      const x0 = x - (sky ? 0 : g * .5), x1 = x + 1 + (sky ? 0 : g * .5), y0 = y - (sky ? 0 : g), y1 = y + 1 + g * .5, a = lo * H, b = hi * H, q = (...c) => { for (const i of [0, 1, 2, 0, 2, 3]) { d[o++] = c[i][0]; d[o++] = c[i][1]; d[o++] = c[i][2]; } };
+    function box(d, o, x, y, lo, hi, g, sky, gs) {   // (g: wider by g to the north (the section's rows lie there), half of it west, east and south: the rim) (sky: a tile under the open sky: wider to the south only: north and beside it stand the walls of its hole, seen and not looked through: the rim lay on a gorge's far cliff)
+      const x0 = x - (sky ? 0 : gs), x1 = x + 1 + (sky ? 0 : gs), y0 = y - (sky ? 0 : g), y1 = y + 1 + gs, a = lo * H, b = hi * H, q = (...c) => { for (const i of [0, 1, 2, 0, 2, 3]) { d[o++] = c[i][0]; d[o++] = c[i][1]; d[o++] = c[i][2]; } };
       q([x0, b, y0], [x1, b, y0], [x1, b, y1], [x0, b, y1]); q([x0, b, y1], [x1, b, y1], [x1, a, y1], [x0, a, y1]); q([x0, b, y0], [x1, b, y0], [x1, a, y0], [x0, a, y0]);
       q([x0, b, y0], [x0, b, y1], [x0, a, y1], [x0, a, y0]); q([x1, b, y0], [x1, b, y1], [x1, a, y1], [x1, a, y0]); return o;
     }
-    function set(list) {
+    function set(list, gn = .5) {
       tiles = list; n = list.length * 30; ver++; const d = new Float32Array(18 + n * 6); let o = 0;
       for (const i of [0, 1, 2, 0, 2, 3]) { d[o++] = [-1, 1, 1, -1][i]; d[o++] = [1, 1, -1, -1][i]; d[o++] = 0; }   // (the whole picture, for `back`)
-      for (const g of [0, .5]) for (const [x, y, lo, hi, sky] of list) o = box(d, o, x, y, lo, hi, g, sky);
+      for (const g of [0, gn]) for (const [x, y, lo, hi, sky] of list) o = box(d, o, x, y, lo, hi, g, sky, g ? .25 : 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, d, gl.DYNAMIC_DRAW);
     }
     function pass(m, ctr, bend, W, Hh) {

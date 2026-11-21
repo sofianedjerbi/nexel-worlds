@@ -2,7 +2,8 @@
 // AW px a side; a face's kind says how it is lit: 0 a wall, 1 a top, 3 water,
 // 7 far land, 8 a model's face, 9 a ghost, 10 a shadow) and the sprites' (SV, SF: px for px). No game global.
 // THE X-RAY WINDOW (WIN, in both painters; vox_style_win.js makes the mask mk: tiles from the eye to your space's air, and to the same a tile wider): land nearer than your space is left out (xr: how much, 0..1, a 2x2 dither that fills in);
-// round it a rim a quarter of a tile wide: the land's own px a step darker (a soft shade, no line: it was a dark checker in a black outline: loud, a selection); over the window's top edge the ground's section: up to 8 rows of the wall paint of the ground it is cut in (sp: earth's and stone's place in the paints; rf: the level stone starts at), shaded, under a line of the land's own top px; a floor over your head stays as a cold checker;
+// DEPTH is told inside it, the land is not cut for it (rz: the level of the land round your hole): over the window's top edge the ground's section, the wall paint of the ground it is cut in (sp: earth's and stone's place in the paints; rf: the level stone starts at), under a line of the land's own top px: thicker the deeper you are (up to 20 rows, bj of them at this depth), one tone with the wall under it, darker row by row down;
+// the walls darker every two levels down, a line every four; a shade inside the window along its north and west edges, longer the deeper a floor lies (a hole's own shade: a shade OUTSIDE it, round its rim, read as a block standing on the grass); deep floors dim but round you; the window's near edge a lit lip, as the land's own tops have at a drop; a floor over your head stays as a cold checker;
 // what stands there (a model, a sprite) keeps one px in two. Nothing is cut: outside the mask every px is the surface's.
 const VoxStyleGLSL = (() => {
   const AW = 1024;
@@ -12,22 +13,23 @@ const VoxStyleGLSL = (() => {
     if (a.z > .5 && a.z < 1.5 && a.y < .5) { vec2 tl = floor(p.xz - step(8., mod(uv, 16.)) + .5) - go.xy; if (tl.x >= 0. && tl.y >= 0. && tl.x < go.z && tl.y < go.z) vs = texelFetch(gw, ivec2(tl), 0); } }`;   // (vs: the light of your space on this tile (vox_style.js `light`), for a floor under the land: its tile is its corner less where in its paint that corner is)
   const FS = `#version 300 es
   precision mediump float; in vec2 vu; in vec4 va, vs; in float ve; in vec3 wp; in highp float vw; uniform sampler2D t, wt, mk; uniform vec3 lamp, eye, fogc, mc;
-  uniform vec4 cl, wv, wtn[5]; uniform float wa, dep, lr, day, amb, fn, ff, rim, rd, sun, shp, cd, xr; uniform vec3 sc; uniform vec4 sp; uniform float rf; out vec4 o;
+  uniform vec4 cl, wv, wtn[5]; uniform float wa, dep, lr, day, amb, fn, ff, rim, rd, sun, shp, cd, xr; uniform vec3 sc; uniform vec4 sp; uniform float rf, rz, bj; out vec4 o;
   float bit(float v, float k) { return mod(floor(v / k), 2.); }
   vec3 cold(vec3 c) { return mix(vec3(dot(c, vec3(.3, .59, .11))), c, .3) * vec3(.74, .82, .96); }   // (not reachable from here: grey-blue)
   void main() {
     float kind = va.z, ck = mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.); vec2 lu = mod(vu, 16.);
     if (!(kind > 6.5 && kind < 7.5) && !(kind > 2.5 && kind < 3.5 && ve > 8.5) && !(kind > 8.5 && kind < 9.5) && (wp.x < cl.x + .001 || wp.x > cl.y - .001 || wp.z < cl.z + .001 || wp.z > cl.w + .001)) discard;   // (cl: the columns and rows of the land asked for: the lists are whole chunks of 8 x 8 tiles (vox_style_land.js), what is outside is left out here; not the far patches, not a ghost)
-    float wn = 0.;   // (the window: 0 this px is the land's as ever, .25 the rim's shade, 2 a floor over your head, 3..10 the section, px over the window's top edge, 11 its top line)
-    if (xr > 0. && !(kind > 8.5 && kind < 9.5)) { ivec2 P = ivec2(gl_FragCoord.xy), M = textureSize(mk, 0) - 1; vec4 k4 = texelFetch(mk, P, 0); highp float di = k4.r * 255. + k4.g * 255. / 256., dz = k4.b * 255. + k4.a * 255. / 256.;
-      float bay = ck * .5 + mod(floor(gl_FragCoord.x / 2.), 2.) * .25 + .125, up = mod(va.w + 1280. - vs.g * 255., 256.); bool thing = kind > 7.5 && kind < 8.5;
+    float wn = 0., sj = 0.; highp float di = 0.;   // (the window: wn 0 this px is the land's as ever, 2 a floor over your head, 3 the section (sj: its row, counted up from the window's top edge), 11 its top line; sj -1: a px seen through the window, -2: the lip along its near edge)
+    if (xr > 0. && !(kind > 8.5 && kind < 9.5)) { ivec2 P = ivec2(gl_FragCoord.xy), M = textureSize(mk, 0) - 1; vec4 k4 = texelFetch(mk, P, 0); highp float dz = k4.b * 255. + k4.a * 255. / 256.;
+      di = k4.r * 255. + k4.g * 255. / 256.; float bay = ck * .5 + mod(floor(gl_FragCoord.x / 2.), 2.) * .25 + .125, up = mod(va.w + 1280. - vs.g * 255., 256.); bool thing = kind > 7.5 && kind < 8.5;
       if (dz > 0. && vw > dz && ((kind > 6.5 && kind < 7.5) || (kind > 2.5 && kind < 3.5 && ve > 8.5))) discard;   // (the far land and sea past the box: under the ground from here, the rock between has no faces: it showed through the rim as sky-blue px)
       // (a wall's face that lies in a box's own side, the back of your south wall: with what is in front; a top the eye's line only grazes at a box's edge, a floor, the water of a gorge: left)
       if (di > 0. && vw < di + (kind < .5 ? .06 : -.02)) { if (kind > .5 && kind < 1.5 && va.y < .5 && vs.r > 0. && up > .5 && up < 8.5) wn = 2.; else if (xr * (thing ? .5 : 1.) > bay) discard; }
       else if (dz > 0. && vw < dz - .05 && !thing && xr > bay - .5 * ck) {
-        int j = 0; if (di == 0.) for (int n = 1; n <= 8; n++) if (j == 0 && texelFetch(mk, max(P - ivec2(0, n), ivec2(0)), 0).rg != vec2(0.)) j = n;
-        if (j > 0) wn = texelFetch(mk, min(P + ivec2(0, 1), M), 0).ba == vec2(0.) ? 11. : 2. + float(j);
-        else if (j == 0) wn = .25; } }
+        int j = 0; if (di == 0.) for (int n = 1; n <= 20; n++) if (j == 0 && texelFetch(mk, max(P - ivec2(0, n), ivec2(0)), 0).rg != vec2(0.)) j = n;
+        if (j > 0) wn = texelFetch(mk, min(P + ivec2(0, 1), M), 0).ba == vec2(0.) ? 11. : 3.; sj = float(j);
+        if (j == 0) { wn = .25; if (di == 0. && (texelFetch(mk, min(P + ivec2(0, 1), M), 0).rg != vec2(0.) || texelFetch(mk, min(P + ivec2(0, 2), M), 0).rg != vec2(0.))) sj = -2.; } }
+      if (di > 0. && vw >= di - .02) sj = -1.; }   // (sj -1: a px seen through the window: of your space)
     bool cov = kind > 7.5 && kind < 8.5 && wp.z >= lamp.z + .3 && wp.y >= lamp.y - .55 && distance(gl_FragCoord.xy, mc.xy + vec2(0., 8.)) < mc.z + 2.;   // (a model's face south of you and over your feet, in the disc round your body)
     if (rd > .5 ? !cov || ck < 1. : cov) discard;   // (what covers you has a hole round you: you and what is behind it are drawn whole there, then (rd) one px in two of it again, 2x2: a checker disc on a roof, a wall, as on a tree (SF). It was the checker laid over you alone: you read as standing on the roof)
     vec4 c = texture(t, vu / ${AW}.); if (kind > 7.5 && (c.a < .5 || (kind > 8.5 && kind < 9.5 && ck < 1.))) discard; if (kind > 9.5) { float sa = c.a * 255., rm = sa < 200. && sa > 150. ? 1. : 0., fx = sa > 240. || sa < 176. ? 1. : sun; if (rm != shp || fx < .03) discard; o = vec4(.2, .15, .3, .3 * fx * (1. - .45 * rm)); return; } if (c.a < .5) c = vec4(.42, .32, .25, 1.);   // (8: a model's face, host.models: a bridge's planks; its see-through px are holes; 9: a ghost of one, view.ghosts: one px in two; 10: a shadow on the ground, box.shade: a flat shade laid over the land; its paint's alpha says which: 255 a shade that is always there, 224 the sun's (as dark as sun), 192 the sun's soft rim, 160 a rim that is always there; shp: which are drawn now, 0 the full ones, 1 the rims)
@@ -38,12 +40,12 @@ const VoxStyleGLSL = (() => {
     // under the land's top (a face the sky does not reach: a cave's wall, a shaft's): the day's light at the land's top, level by level down to your lantern's at your floor; never dark
     float up = clamp((va.w - (lamp.y - .6) / .5) / 14., 0., 1.); vec3 pit = mix(vec3(1.14, 1., .82), vec3(max(day * .95, amb)), max(up, 1. - clamp(dep, 0., 1.)));   // (dep: levels of land over you. Under the open sky, a gorge's floor, no lantern: a wall is the block's own material in the day's light. It was warm there too: grey stone cut brown, an earth wall in a stone mountain)
     if (wn > .5) { if (wn > 1.5 && wn < 2.5) { if (ck < 1.) discard; col = cold(c.rgb) * 1.12; if (lu.x < 1. || lu.y < 1. || lu.x > 15. || lu.y > 15.) col = vec3(.84, .9, 1.); }   // a floor over your head: cold, one px in two, its tiles edged pale: you are under it
-      else col = wn > 10.5 ? c.rgb * max(day * va.y, amb) * .8 : texelFetch(t, ivec2(va.w >= rf ? sp.zw : sp.xy) + ivec2(int(mod(floor(wp.x * 16.), 16.)), 18 - int(wn)), 0).rgb * (.86 - .03 * (wn - 3.)); o = vec4(col, 1.); return; }   // the section: the ground's own wall paint, darker row by row up; the land's own top px (grass, snow) as its last line (it was a flat grey band: a bar, not cut earth)
+      else col = wn > 10.5 ? c.rgb * max(day * va.y, amb) * .8 : texelFetch(t, ivec2(va.w >= rf ? sp.zw : sp.xy) + ivec2(int(mod(floor(wp.x * 16.), 16.)), 15 - int(mod(sj - 1., 8.))), 0).rgb * .66 * (1. - .045 * min(8., floor(max(0., rz - (lamp.y - .6) * 2. - 3.) * (1. - sj / bj) / 2.))); o = vec4(col, 1.); return; }   // the section: the ground's own wall paint, darker row by row up; the land's own top px (grass, snow) as its last line (it was a flat grey band: a bar, not cut earth)
     if (kind < .5 && va.y < .5) col = bit(ve, 16.) > .5 ? mix(c.rgb, vec3(.8, .62, .43), .6) * (.95 + .15 * ls) : c.rgb * pit * kx + vec3(.03, .02, .01);   // a wall; the riser of a step you can take: the tread's tone, a wall is rock
     else if (kind < 1.5 && kind > .5 && va.y < .5) {   // a floor under the land, open now. Of YOUR space (vs: how much, 0..1, eased by the painter: a floor that joins your space warms over 300 ms, one that leaves it cools): lit warm, one rule for a room's and a stair's, a lit lip at a step down, shade at a wall's foot.
       // One you cannot walk to from here (a stair's treads over a dead end, a passage past a wall): as it is, at its own height, but cold: grey-blue, no warm light; its lips pale: never the warm lit floor of your space
       float w = abs(mod(va.w + 1024., 256.) - vs.g * 255.) < .5 ? vs.r : 0., dl = clamp(va.w - (lamp.y - .6) / .5 + .5, -4., 6.);
-      float ue = min(min(mix(9., lu.y, bit(ve, 512.)), mix(9., 15. - lu.x, bit(ve, 1024.))), min(mix(9., 15. - lu.y, bit(ve, 2048.)), mix(9., lu.x, bit(ve, 4096.))));
+      float ue = min(min(mix(9., lu.y, bit(ve, 512.)), mix(9., 15. - lu.x, bit(ve, 1024.))), min(mix(9., 15. - lu.y + 4., bit(ve, 2048.)), mix(9., lu.x, bit(ve, 4096.))));
       bool lip = (bit(ve, 1.) > .5 && lu.y < 1.) || (bit(ve, 2.) > .5 && lu.x > 15.) || (bit(ve, 4.) > .5 && lu.y > 15.) || (bit(ve, 8.) > .5 && lu.x < 1.);
       float de = min(mix(9., lu.y, bit(ve, 64.)), min(mix(9., 15. - lu.x, bit(ve, 128.)), mix(9., lu.x, bit(ve, 256.))));   // (its edge over a drop of two or more)
       vec3 cc = cold(c.rgb) * (1.15 - .5 * cd); if (ue < 3.) cc *= ue < 2. ? .45 : .7; if (lip) cc = mix(cc, vec3(.8, .88, 1.), .45);
@@ -64,7 +66,14 @@ const VoxStyleGLSL = (() => {
       o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), wa); return;   // (the far sea stays blue to the horizon)
     }
     if (kind > 6.5 && kind < 7.5) col = (texture(t, (vu + vec2(-4., -4.)) / ${AW}.).rgb + texture(t, (vu + vec2(4., -4.)) / ${AW}.).rgb + texture(t, (vu + vec2(-4., 4.)) / ${AW}.).rgb + texture(t, (vu + vec2(4., 4.)) / ${AW}.).rgb) * .25 * kx * max(day, .35);   // (the land past the box: its own tint, flat, in the haze)
-    if (wn > .1) col *= .8;   // (the rim: the land a step darker)
+    if (sj < -1.5) col = mix(col, vec3(1., .94, .78), .4);   // (the near edge of the window: the land's lip, lit)
+    // what is seen through the window, by how deep it lies under the land round the hole (D, levels): a floor in the shade of the north and west edges (two tones, n px long, 7 at most: under half a tile, a passage one tile wide keeps a lit half), and dimmer past 2.5 and 4.5 tiles from you; a wall darker every two levels, a line every four
+    if (sj < -.5 && sj > -1.5) { float D = clamp(rz - wp.y * 2., 0., 16.);
+      if (kind > .5 && kind < 1.5 && D > .5) { ivec2 P = ivec2(gl_FragCoord.xy), M = textureSize(mk, 0) - 1; int n = int(min(7., 2. + D * .5));
+        bool o1 = texelFetch(mk, min(P + ivec2(0, n), M), 0).rg == vec2(0.) || texelFetch(mk, max(P - ivec2(n / 2, 0), ivec2(0)), 0).rg == vec2(0.), o2 = texelFetch(mk, min(P + ivec2(0, n / 2), M), 0).rg == vec2(0.) || texelFetch(mk, max(P - ivec2(n / 4, 0), ivec2(0)), 0).rg == vec2(0.);
+        col *= o2 ? .7 : o1 ? .85 : 1.;
+        float pd = distance(wp.xz, lamp.xz); col *= 1. - .25 * clamp((D - 3.) / 9., 0., 1.) * (pd < 2.5 ? 0. : pd < 4.5 ? .5 : 1.); }
+      else if (kind < .5) { col *= 1. - .045 * min(8., floor(D / 2.)); if (mod(wp.y * 2. + 1024., 4.) < .126) col *= .78; } }
     o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye))), 1.);
   }`;
   const SV = `#version 300 es
