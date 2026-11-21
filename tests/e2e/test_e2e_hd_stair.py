@@ -107,6 +107,12 @@ def deep_room(g, x, y, depth):
     g.rest()
 
 
+def spot(g, x, y, z):
+    """A floor's own colour at a place: the middle one, by its light, of seven px down the column. (One px was a speck
+    of the earth's own picture wherever you woke with one under it: the shallow room's far floor 362 for 399, one run in eight.)"""
+    return sorted((g.js(PX, [x, y + i * .08, z]) for i in range(-3, 4)), key=sum)[3]
+
+
 def test_depth_is_told_inside_the_window(browser, server):
     g = hd(browser, server)
     g.hour(.3, still=True)
@@ -119,7 +125,7 @@ def test_depth_is_told_inside_the_window(browser, server):
     for depth, dx in ((4, 0), (14, 12)):
         deep_room(g, x + dx, y, depth)
         cx = x + dx
-        near, far = g.js(PX, [cx + 1.5, y + .5, -depth]), g.js(PX, [cx - 2.5, y + 1.5, -depth])      # the floor beside you; the floor 3.5 tiles off, away from the walls' feet
+        near, far = spot(g, cx + 1.5, y + .5, -depth), spot(g, cx - 2.5, y + 1.5, -depth)      # the floor beside you; the floor 3.5 tiles off, away from the walls' feet
         # the section over the north edge: rows of earth counted up from the wall's top, in the room's middle column
         top = g.js(f"HdLook.screenOf({cx + .5}, {y - 2}, {-depth + 3})")
         col = g.js("([px, py]) => { const k = devicePixelRatio, o = []; for (let j = 2; j < 40; j++) o.push([...HdLook.read(Math.round(px * k), Math.round((py - j * zoom) * k), 1, 1).data.slice(0, 3)]); return o; }", top)

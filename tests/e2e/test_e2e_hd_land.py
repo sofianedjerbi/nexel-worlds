@@ -9,9 +9,12 @@ from conftest import Game, new_name
 from test_e2e_hd_sun import LIGHT, hd, settled
 
 # the picture now, kept under a name; two of them: the share of px that differ, the share that differ outside a box (px), the differing px's own box
+# (outside the box by more than a step of rounding: the window's soft light ends a little beyond its rim, and where the meadow's own light
+# was within half a unit of the next one, a unit of green came or went: rings of such px north of the room, 800 to 1200 of them by where you woke,
+# .0016 to .0025 of the screen against the .002 asked for. Nothing cut out of the land is a unit of 255)
 SNAP = "(k) => { (window.__s = window.__s || {})[k] = HdLook.read(0, 0, cv.width, cv.height); return 1; }"
 DIFF = """([a, b, bx]) => { const A = __s[a].data, B = __s[b].data, w = __s[a].width, h = __s[a].height; let n = 0, out = 0, x0 = w, y0 = h, x1 = -1, y1 = -1;
-  for (let i = 0; i < A.length; i += 4) if (A[i] !== B[i] || A[i + 1] !== B[i + 1] || A[i + 2] !== B[i + 2]) { n++; const x = i / 4 % w, y = i / 4 / w | 0; if (x < bx[0] || y < bx[1] || x > bx[2] || y > bx[3]) out++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  for (let i = 0; i < A.length; i += 4) if (A[i] !== B[i] || A[i + 1] !== B[i + 1] || A[i + 2] !== B[i + 2]) { n++; const x = i / 4 % w, y = i / 4 / w | 0; if ((x < bx[0] || y < bx[1] || x > bx[2] || y > bx[3]) && Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]) > 3) out++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
   return {share: n / (w * h), out: out / (w * h), box: [x0, y0, x1, y1]}; }"""
 # the px box of some points of the world [x, y, z], m px wider
 BOX = """([pts, m]) => { const k = devicePixelRatio, p = pts.map((v) => HdLook.screenOf(...v)); return [Math.min(...p.map((v) => v[0])) * k - m, Math.min(...p.map((v) => v[1])) * k - m, Math.max(...p.map((v) => v[0])) * k + m, Math.max(...p.map((v) => v[1])) * k + m]; }"""
@@ -178,16 +181,20 @@ def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at
             g = Game(ctx.new_page(), server)
             g.join(new_name("dp"), zoom, look="hd")
             g.rpc("dev_creatures", clear=60)
-            g.sleep(800)
+            g.rest()
             x, y = g.pos()
+            g.settle("HdLook.bare() === 0", timeout=8000)             # (the land out to the horizon come: more of it than rest() knows of, on a screen this size. It slept 0.8 s)
+            assert g.js("HdLook.bare()") == 0, (w, h, "surface")
+            z = g.js(f"topAt({x}, {y})")
+            # (whole land round you first. The three of this test wake a few tiles from each other, some runs: the room of the one before, at the same depth, was one room with yours, and its pit, cut
+            # north of your room, was read as a cut that "stayed" there: 2 runs in 9 alone, the third always at (-16, 17).
+            # And a meadow with nothing on it: the columns alone were laid out, and what stood there stayed. A pond's tiles in the room were no room (16 tiles of 35: the wait's 5 s),
+            # and the world's tree five tiles south of who woke at (-24, 8) stood between the eye and you: taken out of the picture by the window, you a checker behind it, catSeen .53 to .74)
+            g.stamp(-14, -12, ["." * 29] * 25, levels=[(str(z) if 0 <= z <= 9 else "0") * 29] * 25); g.rest()
             z = g.js(f"topAt({x}, {y})")
             base = g.js("HdLook.cam.pitch")
-            assert g.js("HdLook.bare()") == 0, (w, h, "surface")
-            # (whole land round you first. The three of this test wake a few tiles from each other, some runs: the room of the one before, at the same depth, was one room with yours, and its pit, cut
-            # north of your room, was read as a cut that "stayed" there: 2 runs in 9 alone, the third always at (-16, 17))
-            g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-12, 13) for i in range(-14, 15)], col=[z])
             g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[z - 24, z - 21, z])   # a room 7 x 5 under 21 levels of land
-            g.sleep(800)
+            g.settle(f"surfacesAt({x + 3}, {y + 2})[0] === {z - 24}")
             g.rpc("dev_teleport", x=x, y=y, z=z - 24)
             g.wait((WIN % 35) + " && HdLook.cam.pitch > 67.5", timeout=5000)
             g.spawn("chicken", 1, 0, still=300)

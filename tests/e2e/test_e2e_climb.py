@@ -6,6 +6,7 @@ SLOT = "(n) => String((slots.indexOf(n) + 1) % 10)"           # the key of the b
 def step(game, key):
     game.hold([key], 90)                                       # (a tap: a tile)
     game.sleep(550)
+    game.settle("!walking && !pred")                           # (the world come to where the screen stopped: on a busy machine it had not, after the sleep)
     s = game.server()
     return s["x"], s["y"], s["z"]
 

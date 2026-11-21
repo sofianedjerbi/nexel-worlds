@@ -27,8 +27,10 @@ def test_a_wall_one_tile_wide_has_one_top_from_end_to_end(game):
     # tile's own place, tiles.js drawBlobLayer: a tuft's darker green in the rows read was "a dash", where you woke
     # deciding: four runs in six once the players woke elsewhere. README.md rule 3)
     bare = "([x, y, dx, dy]) => [0, 1, 2, 3].every((k) => hash(x + k * dx, y + k * dy, 3) >= .3)"
-    ex, ey = next((i, j) for j in (-4, -5, -3, -2, -1) for i in (2, 1, 3, 4) if game.js(bare, [x + i, y + j, 1, 0]))      # (twenty places and more: one is bare, but for one run in some hundreds)
-    sx, sy = next((i, j) for i in (-4, -5, -6, -3, -7, -8) for j in (-3, -4, -2, -1) if game.js(bare, [x + i, y + j, 0, 1]))
+    # (every place of the cleared meadow's two sides where the run is on the screen, the nearest first. It was twenty
+    # places and StopIteration when none was bare: one whole run in four hundred tests' worth, .76 ** 20 and the places overlap)
+    ex, ey = next((i, j) for j in (-4, -5, -3, -2, -1, 1, 2, 3, 4, 5) for i in (2, 1, 3, 4) if game.js(bare, [x + i, y + j, 1, 0]))
+    sx, sy = next((i, j) for i in (-4, -5, -6, -3, -7, -8) for j in (-3, -4, -2, -1, 0, 1, 2) if game.js(bare, [x + i, y + j, 0, 1]))
     game.stamp(ex, ey, ["...."], levels=["3333"]); game.stamp(sx, sy, ["."] * 4, levels=["3"] * 4)
     ready(game, .375)
     ew = game.js(PX, [[x + ex, y + ey, 8 + i, j + .5, 3] for j in (5, 6, 7) for i in range(49)])

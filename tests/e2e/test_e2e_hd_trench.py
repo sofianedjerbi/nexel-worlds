@@ -7,7 +7,7 @@ never drawn as earth brown, and no px is drawn from one on ten walks down the st
 a darker lip."""
 
 import pytest
-from test_e2e_hd_stair import deep_room, stair
+from test_e2e_hd_stair import deep_room, spot, stair
 from test_e2e_hd_sun import hd
 from test_e2e_hd_window import PX, inside, room
 
@@ -18,6 +18,9 @@ TILE = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b
 # the brightest px of what stands on a tile (a box a tile wide, a tile high, over its floor's middle): r + g + b
 BRIGHT = """([x, y, z]) => { const a = HdLook.screenOf(x + .5, y + .6, z), k = devicePixelRatio, w = 14 * zoom * k, d = HdLook.read(Math.round(a[0] * k - w / 2), Math.round(a[1] * k - w), w, w).data; let m = 0;
   for (let i = 0; i < d.length; i += 4) m = Math.max(m, d[i] + d[i + 1] + d[i + 2]); return m; }"""
+# the colour most px of a piece of the land have (x0, y0 to x1, y1 at level z): the ground's own, whatever marks its picture has there
+MOST = """([x0, y0, x1, y1, z]) => { const a = HdLook.screenOf(x0, y0, z), b = HdLook.screenOf(x1, y1, z), k = devicePixelRatio, d = HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), Math.round((b[0] - a[0]) * k), Math.round((b[1] - a[1]) * k)).data, n = new Map();
+  for (let i = 0; i < d.length; i += 4) { const c = d[i] + ',' + d[i + 1] + ',' + d[i + 2]; n.set(c, (n.get(c) || 0) + 1); } return [...n].sort((p, q) => q[1] - p[1])[0][0].split(',').map(Number); }"""
 lum = lambda c: c[0] + c[1] + c[2]
 warm = lambda c: c[0] > c[1] > c[2] and c[0] - c[2] > 35
 
@@ -72,7 +75,7 @@ def test_what_stands_in_a_deep_room_is_as_dim_as_its_floor_and_you_are_not(brows
         g.js("(a) => rpc('act', a)", {"tool": "place", "args": {"x": tx, "y": ty, "item": "chest", "z": -depth}})
         g.wait(f"isObject(combAt({tx}, {ty})) && !myAction", timeout=8000)
         g.rest()
-        seen[depth] = (g.js(BRIGHT, [tx, ty, -depth]), lum(g.js(PX, [x + dx - 2.5, y + 1.5, -depth])), g.js("HdLook.catSeen()"))
+        seen[depth] = (g.js(BRIGHT, [tx, ty, -depth]), lum(spot(g, x + dx - 2.5, y + 1.5, -depth)), g.js("HdLook.catSeen()"))
     (m4, f4, me4), (m14, f14, me14) = seen[4], seen[14]
     assert f14 < f4 * .9, seen                                                   # (the deep room's far floor is dimmer: test_e2e_hd_stair.py)
     assert m14 < m4 * .9 and m14 > m4 * .6, seen                                 # and so is the chest on it (it glowed: the day's colours on a dim floor); still read
@@ -138,7 +141,9 @@ def test_on_grey_stone_the_hole_has_a_darker_lip_and_on_a_meadow_a_light_one(bro
         at(g, cx, y, lv - 5, 6)
         scan = [g.js(PX, [cx + 1.5, y + 1 + i * .02, lv]) for i in range(60)]     # south of the room: from the hole's edge out onto the ground
         k = next(i for i, c in enumerate(scan) if not warm(c))                   # (before it: the room's floor, seen in the hole)
-        out[name] = (scan[k], scan[-1], g.js(PX, [cx + 1.5, y + 3.5, lv]))
+        # (the ground beyond the lip and far from it: the colour most px of a piece of it have, a tile wide. One px, and
+        # the middle one of a row of eleven, were a mark of the stone's own picture, 447 for 495, wherever you woke with one under it: one run in six)
+        out[name] = (scan[k], g.js(MOST, [cx + 1, y + 2.15, cx + 2, y + 2.45, lv]), g.js(MOST, [cx + 1, y + 3.2, cx + 2, y + 3.8, lv]))
     lip, far, ground = out["stone"]
     assert max(ground) - min(ground) < 30, out                                   # (grey)
     assert lum(lip) < lum(ground) * .8 and lum(far) > lum(ground) * .93, out     # stone: its own px a good step darker along the hole's near edge, then the stone as it is

@@ -139,7 +139,10 @@ def test_the_island_is_there_at_once_as_a_still_picture_and_comes_in_over_it_in_
         page = browser.new_page(**kw)
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.route("**/js/title_scene.js*", lambda r: (page.wait_for_timeout(700), r.continue_()))        # (the island's own script late: its picture is there before it)
+        # (the island's own script late: its picture is there before it. Held until the picture has been looked at, not for
+        # 700 ms: on the tests' clock that was 175 ms of the machine's, and on a busy one the script was there first)
+        held = []
+        page.route("**/js/title_scene.js*", held.append)
         page.goto(server, wait_until="commit")
         page.wait_for_function("!!document.querySelector('#poster.in')", timeout=5000)
         js = page.evaluate
@@ -149,6 +152,9 @@ def test_the_island_is_there_at_once_as_a_still_picture_and_comes_in_over_it_in_
           const d = g.getImageData(0, 0, c.width, 1).data; let sky = 0; for (let x = 0; x < c.width; x++) if (d[x * 4 + 2] >= d[x * 4] && d[x * 4 + 2] > 150) sky++; return [sky / c.width, img.getBoundingClientRect().width / img.naturalWidth]; })()""")
         assert img[0] > .9 and img[1] == zoom, img
         before = js(boxes)
+        assert held, "the island's script was not asked for"
+        for r in held:
+            r.continue_()
         page.wait_for_function("document.body.classList.contains('scene')", timeout=30000)
         assert js(still) < 1e-6 and js(boxes) == before, (kw["viewport"], js(still), before, js(boxes))      # the view has not moved; the name and the window are where they were
         assert js("[HdLook.live, HdLook.builds > 0, getComputedStyle(document.getElementById('hd')).display, !!HdLook.eye, Curve.on]") == [True, True, "block", True, True]

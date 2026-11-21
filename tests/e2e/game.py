@@ -229,7 +229,13 @@ class Game(Waits):
     def hold(self, keys, ms):
         for k in keys:
             self.page.keyboard.down(k)
-        clock.held(self.page, ms)            # (the game's time to the ms: a tap of 90 ms is a tile, one of 240 is two)
+        t0 = time.time()
+        if ms <= 150:
+            # (a tap: and a frame drawn with the key down, since it is a frame that sets you out (walk.js walkOn): a key
+            # let go before one is a stop where you stand. 90 ms of the game's time are 22 of the machine's on the tests'
+            # clock, less than a frame of a busy one: "(8, -12, 6) == (8, -11, 0)", a tap down a ladder that did nothing)
+            self.frames(1)
+        clock.held(self.page, max(0, ms - (time.time() - t0) * 1000 * clock.now))   # (the game's time to the ms: a tap of 90 ms is a tile, one of 240 is two)
         for k in reversed(keys):
             self.page.keyboard.up(k)
 
