@@ -231,6 +231,7 @@ const HdLook = (() => {
   }
   // what is under the pointer (client px): the nearest top drawn there, as the land shows it (in the x-ray window: your space's floors, the land over them is not drawn)
   Object.defineProperty(api, "level", {get: () => [seen ? seen.L : null, camL, seen ? seen.at[2] : null]});   // (tests: your level as the picture has it, the eye's, and yours between two tiles)
+  api.forget = () => { if (eng) { eng.forget(); key = ""; } };   // (tests: the land and its paints wiped, as when the paints ran out (eng.lost), at once: while a land is being made too)
   api.spaceAt = (x, y) => (eng ? eng.spaceAt(x, y) : null); api.winAt = (x, y) => winMap().get(x + "," + y) || null;   // (tests: a tile of your space, vox_style.js; a tile of the window: [floor, ceiling])
   let wmV = -1, wm = new Map(); const winMap = () => { const w = eng ? eng.win : null; if (!w || !w.n || w.a <= 0) { if (wm.size) wm = new Map(); wmV = -1; return wm; } if (w.tiles !== wmV) { wmV = w.tiles; wm = new Map(); for (const [x, y, lo, hi] of w.tiles) { const k = x + "," + y, o = wm.get(k); wm.set(k, o ? [Math.min(o[0], lo), Math.max(o[1], hi)] : [lo, hi]); } } return wm; };   // (the window's tiles now: "x,y" -> [floor, ceiling])
   // a tile's height as the picture shows it: the land's top; in the window your space's floor, and the top of the wall beside it (its ceiling's height): the aim's corners go there, not up on the meadow over it
