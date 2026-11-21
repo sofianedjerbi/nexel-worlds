@@ -99,8 +99,8 @@ function frame(now) {
   // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
   occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
   Voxels.still(vis, ox, oy, t);                      // (the water's picture the HD look lays on its water, voxels.js)
-  // what moves on by itself and is not drawn by the HD look (yet): drops hopping out (their sound as they land), orbs flying to you, poofs, dust, plucked
-  // flowers: their state goes on here (drawn to the canvas of one px)
+  // what moves on by itself: drops hopping out (their sound as they land), orbs flying to you, poofs, dust, plucked flowers: their state goes on
+  // here (drawn to the canvas of one px); the HD look draws them (hd_fx.js)
   const none = [];
   drawLoot(sx, sy, S, now, none); drawOrbs(sx, sy, S, dt, none);
   drawDying(sx, sy, S, t, now); drawEffects(sx, sy, S, dt); drawPuffs(sx, sy, dt); drawPlucks(sx, sy, S, now);
