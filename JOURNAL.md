@@ -4019,7 +4019,11 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - Worse. In a deep 1x1 shaft (6) and on the lowest steps of a 1-wide stair, your body is behind the south rim: it is drawn one px in two on the meadow just south of the hole, not inside it. That is honest geometry, but it reads as "a ghost on the grass". A long 3-wide east-west trench tilts only because of the ten-of-sixteen count.
 - Tests changed: hd_behind (the pit/veil test is now "from above, floor inside the rim, grass south of it"; new test "shaft 6 darker than shaft 3"; tilt table: 1-wide stair -2, 3-wide stair -3/-5, pit, cave a tile in/three in are now from above); hd_land (the trench two deep: from above, no window, floor inside the rim, click picks it; the walk-in test now checks the eye tips once, one way); hd_stair (shaft bottom: no window; the cliff-foot spot is on the meadow, not on the stair); hd_trench (the open treads read at their north edge, the covered ones from in there; no veil); hd_window (river between cliffs: from above, no window).
 
-## Iteration 222: no ghost on the grass: in a hole seen from above you are drawn at its rim, whole, cut by it
+## Iteration 222: no mark under your own feet
+- Asked: "remove that weird ugly arrow under my character, that is always active. so bad" (screenshot: the orange hatched strip round the feet and the stepped down-arrow beside it, from iteration 220's X mark).
+- Change: target.js no longer draws X's cell (`feet()` unused); the cell is still recorded in `Target.drew` and the corner row "Dig down X" names it. Test: the X "orange round your feet" check is dropped.
+- Tests: target, hd_behind 26 passed.
+## Iteration 223: no ghost on the grass: in a hole seen from above you are drawn at its rim, whole, cut by it
 
 - Hypothesis. Since iteration 221 the eye looks from above in a hole and cuts nothing under the open sky. In a deep 1x1 shaft, on the low steps of a 1-wide stair and on a pit's south row, your feet are behind the south rim. You were drawn one px in two on the meadow just south of the hole: "a ghost on the grass". No pitch below 90 puts a deep 1x1 floor inside its rim.
 - Tried, on one sheet (`tmp/mockups/w9_ghost_variants.png`, desk 1440x900; `w9_ghost_variants_phone.png`, 390x844 DPR 3). Rows: shaft 3, 6, 12, 1-wide stair bottom, a stair's open top step going under a roof, 3-wide pit south row. Columns: now, (a), (b), (c).
