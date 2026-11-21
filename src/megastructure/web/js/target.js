@@ -38,7 +38,7 @@ const Target = (() => {
     else if (it && p && tile(p.x, p.y) && !it.info && !it.walk) {
       const wetFill = !!it.ghostGround && wet(gndAt(p.x, p.y) || "");
       if (it.cell !== undefined) add("use", "break", p.x, p.y, it.cell);                                // a pickaxe into a wall: the cell at your body
-      else if (wetFill) add("use", "use", p.x, p.y, topAt(p.x, p.y), {ok: it.ok !== false, flat: true});   // (earth into water: the tile's water gets shallower, its bed seldom shows it: the water's face, not a block standing on it)
+      else if (wetFill) add("use", "use", p.x, p.y, topAt(p.x, p.y) - WaterBed.would(p.x, p.y, it.ghostGround), {ok: it.ok !== false, flat: true});   // (earth into water: the tile's water gets shallower: the mark lies where its bed will be, seen through the water; the face when no bed is seen)
       else if (LAND_BLOCKS.has(it.ghost)) add("use", "place", p.x, p.y, it.z !== undefined ? it.z : topAt(p.x, p.y) + 1, {ok: it.ok !== false, item: it.ghost});
       else if (!api.opts.thing && !it.ent && !it.steps) add("use", "use", p.x, p.y, it.z !== undefined ? it.z : api.opts.shown ? api.opts.shown(p.x, p.y) : settleNear(p.x, p.y, h), {ok: it.ok !== false, flat: true});
     }
@@ -50,12 +50,13 @@ const Target = (() => {
   // ---- the painter: P = {g, u: an art px, at(x, y, z) -> px, behind(x, y, z), ex: the eye's x}
   const R = (P, v) => Math.round(v / P.u) * P.u;
   // a line between two places of the land, a px of paint at a time; hid: one px in two, fainter (behind a face, in the ground, behind land)
-  function line(P, a, b, col, hid, c) {
+  // drop: what is behind land is not drawn at all (a break box whose top shows: its edges behind the block in front lay on that block's top, a box round the next tile's grass: "a grass square inside the column", a7 T4)
+  function line(P, a, b, col, hid, c, drop) {
     const A = P.at(...a), B = P.at(...b); if (!A || !B) return;
     const g = P.g, u = P.u, n = Math.max(1, Math.round(Math.max(Math.abs(B[0] - A[0]), Math.abs(B[1] - A[1])) / u)), ph = Math.round((A[0] + A[1]) / u), e = .02;
     const at = (k) => !!(c && P.behind && P.behind(Math.max(c.x + e, Math.min(c.x + 1 - e, a[0] + (b[0] - a[0]) * k)), Math.max(c.y + e, Math.min(c.y + 1 - e, a[1] + (b[1] - a[1]) * k)), a[2] + (b[2] - a[2]) * k));
-    const hs = hid ? null : [0, .25, .5, .75, 1].map(at), on = [], off = [];   // (behind land: looked at five times a line, not at every px: the marks pass was .5 ms a frame on a phone)
-    for (let i = 0; i <= n; i++) { const k = i / n, h = hid || hs[Math.round(k * 4)]; if (h && (i + ph) % 2) continue; (h ? off : on).push(R(P, A[0] + (B[0] - A[0]) * k), R(P, A[1] + (B[1] - A[1]) * k)); }
+    const hs = hid && !drop ? null : [0, .25, .5, .75, 1].map(at), on = [], off = [];   // (behind land: looked at five times a line, not at every px: the marks pass was .5 ms a frame on a phone)
+    for (let i = 0; i <= n; i++) { const k = i / n, bh = !!hs && hs[Math.round(k * 4)], h = hid || bh; if (drop && bh) continue; if (h && (i + ph) % 2) continue; (h ? off : on).push(R(P, A[0] + (B[0] - A[0]) * k), R(P, A[1] + (B[1] - A[1]) * k)); }
     const put = (l, dy, cl, al) => { if (!l.length) return; g.globalAlpha = al; g.fillStyle = cl; for (let i = 0; i < l.length; i += 2) g.fillRect(l[i], l[i + 1] + dy, u, u); };
     put(on, u, INK, .7); put(on, 0, col, 1); put(off, 0, col, .6);
     g.globalAlpha = 1;
@@ -92,7 +93,8 @@ const Target = (() => {
     if (c.kind === "break" && !c.thing && !c.mine) for (const f of "TSWE") if (seen[f] || f === near) { face(P, FACES[f].slice(0, 4).map(at), INK, .28); face(P, FACES[f].slice(0, 4).map(at), TAKE, .9, HATCH); }
     if (c.kind !== "break") { const bh = P.behind && P.behind(x + .5, y + .5, z) ? CHECK : null; face(P, FACES.T.slice(0, 4).map(at), CREAM, c.drawn ? .25 : .4, bh); if (seen.S) face(P, FACES.S.slice(0, 4).map(at), INK, .18, bh); }   // (behind land: one px in two, as the ghost)
     if (held === "B") face(P, FACES.B.slice(0, 4).map(at), CREAM, .5, CHECK);   // (what holds it: the top under it)
-    for (const [a, b, fs] of EDGES) if (!c.mine || !fs.includes("T") || fs === "TS") line(P, at(a), at(b), col, !(seen[fs[0]] || seen[fs[1]] || (held && held !== "T" && fs.includes(held))), c.kind === "break" && fs.includes(near) ? null : c);
+    const drop = c.kind === "break" && seen.T;   // (its hatched top says which cell; what of it is behind land is that land's)
+    for (const [a, b, fs] of EDGES) if (!c.mine || !fs.includes("T") || fs === "TS") line(P, at(a), at(b), col, !(seen[fs[0]] || seen[fs[1]] || (held && held !== "T" && fs.includes(held))), c.kind === "break" && fs.includes(near) && !drop ? null : c, drop);
     // nothing under it: a dotted line from its foot down to the ground there, and its foot's place on that ground
     if (!full(0, 0, -1)) { const g0 = settleAt(x, y, z0); if (g0 < z0) { line(P, [x + .5, y + .5, z0], [x + .5, y + .5, g0], col, true, c); face(P, [[0, 0], [1, 0], [1, 1], [0, 1]].map(([i, j]) => [x + i, y + j, g0]), INK, .5, CHECK); } }   // (its foot's place: a shadow of the cell, one px in two)
     return {x, y, z, kind: c.kind, held, seen};
