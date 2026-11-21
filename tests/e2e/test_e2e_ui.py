@@ -186,7 +186,7 @@ def test_zoom_help_and_debug_keys(game):
 def test_hover_hints_follow_the_mouse(game):
     game.stamp(2, 0, ["M"])
     x, y = game.pos()
-    sx, sy = game.js("([x, y]) => { const S = TS(), [ox, oy] = screenOrigin(S); return [ox + x * S + S / 2, oy + y * S + S / 2]; }", [x + 2, y])
+    sx, sy = game.js("([x, y]) => { if (HdLook.on) return HdLook.screenOf(x + .5, y + .5, topAt(x, y)); const S = TS(), [ox, oy] = screenOrigin(S); return [ox + x * S + S / 2, oy + y * S + S / 2]; }", [x + 2, y])   # (the rock's tile's middle as the look draws it: the HD eye is not the flat one's, and a level is a cube)
     game.page.mouse.move(sx - 3, sy)
     game.page.mouse.move(sx, sy)
     game.sleep(200)

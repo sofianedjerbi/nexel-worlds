@@ -2,6 +2,8 @@
 
 import os
 
+from game import new_name
+
 SHOT = os.environ.get("TITLE_SHOTS")         # a folder to keep a picture of the screen in
 
 ON = "document.querySelector('#racepick.on, #joinbox .item.on').id"
@@ -164,9 +166,10 @@ def test_the_island_is_there_at_once_as_a_still_picture_and_comes_in_over_it_in_
         page.wait_for_function(still + " > .05", timeout=20000)   # then the view goes after someone, as ever
         assert js(boxes) == before
         if not small:                                             # the menu still works: you wake up, in the world, in the same look, its eye on you
-            page.fill("#name", "Hedy")
+            name = new_name("Hedy")                               # (a name of its own: the second try was turned away, "Hedy" taken by the first)
+            page.fill("#name", name)
             page.click("#join")
-            page.wait_for_function("me === 'Hedy' && meObs && !TitleScene.on && HdLook.eye === null && HdLook.live && !HdLook.busy && !arrivingNow", timeout=25000)
+            page.wait_for_function(f"me === '{name}' && meObs && !TitleScene.on && HdLook.eye === null && HdLook.live && !HdLook.busy && !HdLook.held && !arrivingNow", timeout=25000)   # (held: the island's last picture kept until the land you woke on is made, README.md rule 12)
             assert js("$('joinbox').style.display") == "none" and js("[...blocks.values()].every((b) => b.bx > -200 && b.by > -200)")
             assert js(seen)["kinds"] > 20
         page.close()

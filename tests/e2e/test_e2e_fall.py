@@ -30,8 +30,8 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     assert max(r[4] for r in air) == 1 and game.js("wind") is None                               # the wind while you fall, gone once you are down
     before, after = max(r[3] for r in rec if r[0] < air[0][0]), max(r[3] for r in rec if r[0] > air[-1][0])
     assert after >= before + 12, (before, after)                                                 # dust where you land
-    k = len(air) // 2                                                                            # the camera is on you as you fall
-    assert abs(air[k + 1][5] - (y - heights[k] / 16)) < .02                                      # (each frame's is read at the start of the next)
+    k = next(i for i in range(len(air) // 2, len(air) - 1) if air[i + 1][0] - air[i][0] <= 8)   # the camera is on you as you fall
+    assert abs(air[k + 1][5] - (y - heights[k] / 16)) < .02, (air[k], air[k + 1])                # (the body is asked for twice a frame: the camera is where the first put it, read by the second)
     assert game.js("fallQuake") is None and game.server()["hp"] < 16
     assert game.pos() == (game.server()["x"], game.server()["y"]) and not game.errors
 
