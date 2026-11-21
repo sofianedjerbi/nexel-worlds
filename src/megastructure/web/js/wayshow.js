@@ -19,7 +19,7 @@ const WayShow = (() => {
   const OUT = ["....##....", "...#oo#...", "..#oooo#..", ".#oooooo#.", "#oooooooo#", "####oo####", "...#oo#...", "...#oo#...", "...####..."];      // (the arrow up over the way's end, art px: ink round cream)
   const STILL = 2000, SLICE = 1.5, INK = "#5b3f36", DX = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
   let gen = null, genKey = "", res = null, posKey = "", stoodAt = 0, cur = null, cap = null, capKey = "", capAt = 0, capSize = [0, 0], capSide = "", fno = 0, landOf = null, landKey = "", lit = null, heading = null, led = false, follow = false, off = false;
-  const api = {ms: 0, n: 0, runs: 0, get res() { return res; }, get cur() { return cur; }, get busy() { return !!gen; }, get led() { return led; }};
+  const api = {ms: 0, n: 0, runs: 0, get res() { return res; }, get cur() { return fresh(); }, get busy() { return !!gen; }, get led() { return led; }};
   const W = {solid: (x, y, z) => solidAt(x, y, z), top: (x, y) => topAt(x, y), land: (x, y, z) => z > LOW + 2 && landSolid(x, y, z) && !Floors.built(x, y, z),
     step: (h, x, y, fx, fy) => landAt(h, x, y, fx, fy), ladder: (x, y, z, qx, qy, z2) => Climb.onLadder(x, y, z, qx, qy, z2),
     enter: (x, y, z) => { const c = Floors.get(x, y, z); return c && FLOORS ? !SOLID.has(c[1]) : z !== floorAt(x, y) || plainWalk(x, y); },
@@ -49,15 +49,27 @@ const WayShow = (() => {
     cur = null;
     if (res && res.path && res.trapped) led = true;
     if (res && res.path && (led || follow || (!off && now - stoodAt > STILL && roof))) { follow = !led;      // (standing still under a roof of land. Under the sky only when trapped (led): a gorge's river you swim along, a valley you walk out of, is no trap: "the escape detection triggers when swimming between canyons")      // (follow: shown to somebody standing in a cave: it stays while they walk it, out from under the roof too)
-      const i = res.path.findIndex((p) => p.x === s.x && p.y === s.y && p.z === h);                     // (a step along it: the rest of it, until the new one is found)
-      if (i >= 0 && i < res.path.length - 1) { const path = res.path.slice(i), solid = (c) => solidAt(c.x, c.y, c.z), digs = path.flatMap((p) => p.digs).filter(solid), first = path[1].digs.filter(solid)[0] || null;
-        cur = {path, digs, next: digs[0] || null, now: first, sky: res.sky - i, trapped: res.trapped}; heading = path[1].d || heading; }
+      cur = from(s, h); if (cur) heading = cur.path[1].d || heading;
     }
     hide(now);
   }
+  // The way from where you stand (s, h), the rest of the one found: a step along it, until the new one is found; null: you are not on it
+  function from(s, h) {
+    const i = res.path.findIndex((p) => p.x === s.x && p.y === s.y && p.z === h); if (i < 0 || i >= res.path.length - 1) return null;
+    const path = res.path.slice(i), solid = (c) => solidAt(c.x, c.y, c.z), digs = path.flatMap((p) => p.digs).filter(solid), first = path[1].digs.filter(solid)[0] || null;
+    return {path, digs, next: digs[0] || null, now: first, sky: res.sky - i, trapped: res.trapped};
+  }
+  // The way shown, as it is from where you stand NOW: a key pressed between two frames (you came down a level, the land changed) acted on the last frame's way: out of your own shaft, R dug
+  // at the cell three over your new feet, out of reach, and nothing happened (the way of the level above was still shown till the next frame)
+  function fresh() {
+    if (!cur) return cur; const s = myPos(), h = s && myZ(s.x, s.y), p = cur.path[0];
+    if (s && p.x === s.x && p.y === s.y && p.z === h) return cur;
+    return (cur = s && res && res.path ? from(s, h) : null);
+  }
   // The way's own key, for the corner, a phone's buttons and the press itself: null: no way is shown (the keys of what
   // you face are yours); {}: the next move is a step (no key); {key, text}: the next block's (keyboard.js, digup.js)
-  api.offer = () => { const n = cur && cur.now, s = n && myPos(); return n ? {key: n.key, text: n.key === "use" ? "Dig on" : n.key === "alt" ? "Dig down" : n.x === s.x && n.y === s.y ? "Dig up" : "Dig a step"} : cur || ((led || follow) && gen) ? {} : null; };
+  api.offer = () => { const n = fresh() && cur.now, s = myPos(), moved = !!s && s.x + "," + s.y + "," + myZ(s.x, s.y) !== posKey;      // (moved: since the last frame: the way from here is not looked for yet)
+    return n ? {key: n.key, text: n.key === "use" ? "Dig on" : n.key === "alt" ? "Dig down" : n.x === s.x && n.y === s.y ? "Dig up" : "Dig a step"} : cur || ((led || follow) && (gen || moved)) ? {} : null; };
   // A key of your own pressed in a cave you can walk out of: you are at work here: the way is put away until you have walked and stood again
   api.mine = () => { if (cur && !led) { off = true; follow = false; } };
   api.rows = (rows) => rows;      // (hd.js: the keys beside what you face: keyboard.js `wayHides` has taken out what the way replaces)
