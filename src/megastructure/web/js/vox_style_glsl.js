@@ -6,6 +6,8 @@
 // the walls of an open hole you stand in (ho) the same; a shade inside the window along its north and west edges, longer the deeper a floor lies (a hole's own shade: a shade OUTSIDE it, round its rim, read as a block standing on the grass); deep floors dim but round you; the window's near edge a lit lip, as the land's own tops have at a drop; a floor over your head stays as a cold checker;
 // what stands there (a model, a sprite) keeps one px in two; the ground under somebody standing over your window keeps one px in two (vl). Nothing is cut: outside the mask every px is the surface's.
 // A sunk top under the sky that is of your space (a trench's floor, a dug stair's tread: vox_style_land.js bit 131072) is a floor as one under the land is: warm, a lit lip at a step down, a dark line at the foot of a step up, no sun's shade on it in the window.
+// HIGHP in FS and SF: a phone's GPU (Apple, Mali, Adreno) runs mediump as half floats (11 bits, 65504 at most); a desk runs it as full ones. A face's bits (ve, to 262144) and its paint's px (vu, to 1024) were rounded there:
+// a top's lip and rim bits read wrong, a lit or dark line along whole rows of tiles at fixed rows of the screen, and px of the next paint ("line artefacts everywhere", the owner's phone). tests/e2e/test_e2e_hd_precision.py plays a phone's mediump here.
 // What stands in the window (SF): as dim as its floor (vk.x), and what the window takes away goes in four steps of a 2x2 dither (vk.y). A paint that is not there: the land's mean colour (em), its px marked (raw).
 const VoxStyleGLSL = (() => {
   // A LEVEL IS A CUBE: H tiles high (1: as tall as a tile is wide, the player's height), LV rows of paint a level (a side's slot is all of it: rows 16 - LV to 15)
@@ -19,7 +21,7 @@ const VoxStyleGLSL = (() => {
   void main() { vec3 q = p; float dn = max(0., ctr.z - 1. - q.z); q.y -= bend * sink(dn); gl_Position = m * vec4(q, 1.); vw = gl_Position.w; vu = uv; va = a; ve = e; wp = p; vs = vec4(0.);
     if (a.z > .5 && a.z < 1.5) { vec2 tl = floor(p.xz - step(8., mod(uv, 16.)) + .5) - go.xy; if (tl.x >= 0. && tl.y >= 0. && tl.x < go.z && tl.y < go.z) vs = texelFetch(gw, ivec2(tl), 0); } }`;   // (vs: the light of your space on this tile (vox_style.js `light`), for a floor under the land: its tile is its corner less where in its paint that corner is)
   const FS = `#version 300 es
-  precision mediump float; in vec2 vu; in vec4 va, vs; in float ve; in highp vec3 wp; in highp float vw; uniform sampler2D t, wt, mk; uniform vec3 lamp, eye, fogc, mc;
+  precision highp float; in vec2 vu; in vec4 va, vs; in float ve; in highp vec3 wp; in highp float vw; uniform sampler2D t, wt, mk; uniform vec3 lamp, eye, fogc, mc;
   uniform vec4 cl, wv, wtn[5]; uniform float wa, dep, lr, day, amb, fn, ff, rim, rd, sun, shp, cd, xr; uniform vec3 sc, bd[4]; uniform vec4 sp; uniform float rf, rz, ho, cp, bh; uniform vec3 em; out vec4 o;
   ${LVC}
   // STRATA: a wall of your hole by its level under the land round it (rz): each level one flat tone, a step darker than the one over it (to .3), every second one a little darker still: levels can be counted, deep is dark
@@ -112,7 +114,7 @@ const VoxStyleGLSL = (() => {
   const SV = `#version 300 es
   in vec3 p; in vec2 uv, k; in float s; out vec2 vu, vk; out float sil; void main() { gl_Position = vec4(p, 1.); vu = uv; sil = s; vk = k; }`;
   const SF = `#version 300 es
-  precision mediump float; in vec2 vu, vk; in float sil; uniform sampler2D t, mk; uniform vec3 mc; uniform float xr, hid; uniform vec2 nf; out vec4 o; void main() { vec4 c = texture(t, vu); if (c.a < .5) discard;
+  precision highp float; in vec2 vu, vk; in float sil; uniform sampler2D t, mk; uniform vec3 mc; uniform float xr, hid; uniform vec2 nf; out vec4 o; void main() { vec4 c = texture(t, vu); if (c.a < .5) discard;
     if (hid > .5) { if (hid > 1.5 && texelFetch(mk, ivec2(gl_FragCoord.xy), 0).rg != vec2(0.)) { o = c; return; } if (mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) > .5) discard; o = vec4(c.rgb * .82, c.a); return; }   // (hid: the part of you land hides (vox_style.js): one px in two, 2x2, dimmer: you are BEHIND it; 2: the window is open: inside it you are whole, over its veil)
     { float cx = mod(floor(gl_FragCoord.x / 2.), 2.), cy = mod(floor(gl_FragCoord.y / 2.), 2.); if (vk.y < mod(cx + cy, 2.) * .5 + cx * .25 + .125) discard; }   // (vk.y: how much of it is there: what the window takes away or gives back goes and comes in four steps of a 2x2 dither; vk.x: as dim as the floor it stands on)
     if (xr > 0.) { vec4 k4 = texelFetch(mk, ivec2(gl_FragCoord.xy), 0); highp float di = k4.r * 255. + k4.g * 255. / 256., z = gl_FragCoord.z * 2. - 1., w = 2. * nf.x * nf.y / (nf.x + nf.y - z * (nf.y - nf.x)); if (di > 0. && w < di + .06 && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard; }   // (WIN: what stands between the eye and your space: one px in two)

@@ -105,7 +105,7 @@ def pictures(web: Path) -> list[str]:
 
 def pack(web: Path) -> tuple[bytes, dict]:
     body, table = b"", {}
-    for name in pictures(web):
+    for name in sorted(pictures(web), key=lambda n: n != "character.png"):     # (the cat's sheet first: the wait's cat walks from the pack's first 21 KB, js/loading.js)
         raw = (web / "assets" / name).read_bytes()
         table[name] = [len(body), len(raw)]
         body += raw
@@ -121,14 +121,18 @@ def mark(*parts: bytes) -> str:
 
 def packed(web: Path, page: str | None = None, skip=(), inline_styles=True) -> tuple[str, dict[str, bytes]]:
     """The page with one script, its styles in it and the pack's table; and the files it now names: path -> bytes."""
+    import gzip
     page = (web / "index.html").read_text() if page is None else page
     js = script(web, page, skip).encode()
     body, table = pack(web)
     names = {"js": f"js/game.{mark(js)}.js", "pack": f"assets/pack.{mark(body)}.bin"}
     first = SCRIPT.search(page)
     assert first, "index.html names no script"
-    tell = (f'<script>window.ASSET_PACK = {json.dumps({"url": names["pack"], "files": table}, separators=(",", ":"))};\n'      # (the pack is asked for here, as the page is read)
-            'ASSET_PACK.blob = fetch(ASSET_PACK.url).then((r) => { if (!r.ok) throw new Error(r.status); return r.blob(); }).catch(() => null);</script>\n')
+    # (the pack is asked for here, as the page is read; its bytes counted as they come, and the script's when it has
+    #  come: the wait's cat walks as far, js/loading.js)
+    tell = (f'<script>window.ASSET_PACK = {json.dumps({"url": names["pack"], "files": table, "size": len(body), "js": len(gzip.compress(js))}, separators=(",", ":"))};\n'
+            'ASSET_PACK.got = 0; ASSET_PACK.blob = fetch(ASSET_PACK.url).then(async (r) => { if (!r.ok) throw new Error(r.status); if (!r.body) return r.blob();\n'
+            '  const rd = r.body.getReader(), parts = ASSET_PACK.parts = []; for (;;) { const {done, value} = await rd.read(); if (done) break; parts.push(value); ASSET_PACK.got += value.length; } return new Blob(parts); }).catch(() => null);</script>\n')
     page = page[:first.start()] + f'<script src="{names["js"]}"></script>\n' + SCRIPT.sub(lambda m: m.group(0) if m.group(1) in skip else "", page[first.start():])
     if inline_styles:
         page, n = STYLE.subn(lambda m: "<style>\n" + (web / "css" / m.group(1)).read_text().replace("url(../", "url(") + "</style>\n", page)
