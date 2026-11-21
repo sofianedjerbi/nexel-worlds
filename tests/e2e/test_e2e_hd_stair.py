@@ -9,9 +9,9 @@ its section thicker, no shade outside its rim."""
 import pytest
 from test_e2e_hd_sun import hd, settled
 
-# every frame: [your x, the eye's pitch, land over you, the window open on your tile, your body's y on the screen (px), the level drawn, the level the game has you at]
+# every frame: [your x, the eye's pitch, land over you, the window open on your tile (half its px or more), your body's y on the screen (px), the level drawn, the level the game has you at, how open the window is]
 REC = """(() => { window.__r = []; window.__on = true; const f = () => { const e = ents.get('agent' + myId), tx = Math.round(e.x), ty = Math.round(e.y), lv = HdLook.level, b = HdLook.screenOf(e.x + .5, e.y + .5, lv[2]);
-  if (b && myAt) __r.push([e.x, HdLook.cam.pitch, topAt(tx, ty) > myAt.z ? 1 : 0, HdLook.win.a === 1 && HdLook.winAt(tx, ty) ? 1 : 0, b[1], lv[0], myAt.z]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
+  if (b && myAt) __r.push([e.x, HdLook.cam.pitch, topAt(tx, ty) > myAt.z ? 1 : 0, HdLook.win.a >= .5 && HdLook.winAt(tx, ty) ? 1 : 0, b[1], lv[0], myAt.z, HdLook.win.a]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 PX = """([x, y, z]) => { const a = HdLook.screenOf(x, y, z), k = devicePixelRatio; return [...HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), 1, 1).data.slice(0, 3)]; }"""
 lum = lambda c: (c[0] * 3 + c[1] * 6 + c[2]) / 10
 
@@ -57,6 +57,8 @@ def test_down_a_covered_stair_the_window_is_open_on_every_frame_and_your_body_is
     assert len(under) > 60, len(under)                                           # (the eight covered steps and the passage)
     shut = [(round(v[0], 2), v[5], v[6]) for v in under if not v[3]]
     assert not shut, (len(shut), shut[:6])                                       # land over you: the window is open on your tile, that very frame
+    part = [i for i, v in enumerate(r) if v[2] and v[7] < 1]
+    assert len(part) <= 4, (len(part), part[:8])                                 # (where the search for your space was late: half its px that frame, all of them within three more; it was all in one frame: a pop)
     assert all(v[5] == v[6] for v in r), [(v[0], v[5], v[6]) for v in r if v[5] != v[6]][:6]    # drawn at the level the game has you at, never on the grass over it
     steps = [(round(a[0], 2), round(b[4] - a[4], 1)) for a, b in zip(r, r[1:]) if abs(b[4] - a[4]) > 4.5]
     assert not steps, steps[:8]                                                  # your body does not jump on the screen (it went 16 px at each tile's middle, and 100 at the roof)

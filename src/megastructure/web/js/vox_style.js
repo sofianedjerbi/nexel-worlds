@@ -1,5 +1,5 @@
 // VOX: the land in a "2.5D" look (the game's HD look, hd.js). It names no global of the game: the host is the
-// engine's own (vox_engine.js: column, paintTop, paintFront, rock, water, waterTop; chunkKey(x0, y0, n): what stands in a chunk hangs on).
+// engine's own (vox_engine.js: column, paintTop, paintFront, rock, water, waterTop; chunkKey(x0, y0, n): what stands in a chunk hangs on; put(x, y): the top block there was put by somebody).
 // Drawn at the art's own size (one px of the canvas = one art px; the page shows that canvas zoom times bigger),
 // every face painted from the tileset: a top by paintTop, a side by paintFront (its cfg.up rows, never stretched).
 //   VoxStyle.create(host, cfg) -> {build(x, y, L, o), steps(...) (the same over frames), touch(x, y), draw(view) -> canvas, win, cost, faces, fresh, calls}
@@ -14,7 +14,7 @@
 // What a frame costs the GPU: the land is ONE list (the chunks' faces, what stands, the far land, the frame's ghosts at its end), the shadows one, the water one;
 // the sprites are one list from one sheet of their pictures (a picture is sent when it changed, not each frame); a frame that is the last one again is not drawn at all (fresh: false).
 const VoxStyle = (() => {
-  const H = .5, SL = 64, C = 16, AW = SL * C, N = VoxStyleLand.N, SW = 1024, SV6 = 6, SECT = [[.17, .12, .13], [.5, .35, .26], [.43, .41, .42], [.21, .17, .18]];
+  const H = .5, SL = 64, C = 16, AW = SL * C, N = VoxStyleLand.N, SW = 1024, SV6 = 8, SECT = [[.17, .12, .13], [.5, .35, .26], [.43, .41, .42], [.21, .17, .18]];
   const {VS, FS, SV, SF} = VoxStyleGLSL;      // (the shaders: vox_style_glsl.js)
   function mul(a, b) { const r = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k]; r[i * 4 + j] = s; } return r; }
   const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -23,7 +23,7 @@ const VoxStyle = (() => {
   const gp = (x, y, z) => [x, z * H, y], same = (a, b) => { if (!a || !b || a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; };
   function create(host, cfg) {
     let el = null, lastM = null, lastB = [0, 0], gl = null, pr = null, sp = null, tex = null, wtx = null, htx = null, ltx = null, atx = null, stx = null, sver = 0, sorg = [0, 0, 1], sAt = 0, sBusy = false, sWay = null, cdv = 0, cdAt = 0, sKey = "", space = null, W_ = null, wxr = 0, wAt = 0, wKey = "", sectAt = [0, 0, 0, 0], winL = [], winN = 0, winJ = "", stale = true, cost = 0, spill = false, wipe = false, mk = false, lost = false, wat = null, fresh = true, calls = 0, why = "";
-    let clip = [-1e9, 1e9, -1e9, 1e9], wet = 0, far = new Float32Array(0), made = 0, again = true, lastU = null, lastS = null, lastG = null, lastD = null, hk = "", lk = "";
+    let wmap = new Map(), wrim = 0, over = false, mean = [.6, .66, .38], clip = [-1e9, 1e9, -1e9, 1e9], wet = 0, far = new Float32Array(0), made = 0, again = true, lastU = null, lastS = null, lastG = null, lastD = null, hk = "", lk = "";
     const dirty = [], row = new Uint32Array(AW * C), glow = new Map(), U = {}, units = {}, cnt = {main: 0, model: 0, far: 0, ghost: 0, shade: 0, shade2: 0, water: 0}, bufs = {};
     // the paints: A the ones the land now drawn was made with (and what is drawn each frame over it: shadows, ghosts), B the ones of a land being made (A's and its new ones; after a wipe from none); B becomes A when that land is done
     // (B is made when the land being made first asks for a paint A has not: a land made again with nothing new in it copies nothing)
@@ -32,18 +32,19 @@ const VoxStyle = (() => {
       if (mk && !B) { const s0 = fromNone ? undefined : A.slots.get(key); if (s0 !== undefined) return s0;
         if (fromNone) { spare.fill(0); B = {slots: new Map(), px: spare, add: [], full: true, n: 0}; } else { spare.set(A.px); B = {slots: new Map(A.slots), px: spare, add: [], full: false, n: A.n}; } }
       const S = mk ? B : A; let s = S.slots.get(key); if (s !== undefined) return s;   // (mk: the land being made is asking)
-      if (S.n >= SL * SL) { S.slots.clear(); S.px.fill(0); S.n = 0; spill = true; if (mk) B.full = true; else { lost = true; stale = true; } }   // (full: all its paints go; the land being made is made again, steps)
-      s = S.n++; S.slots.set(key, s); const at = (s / SL | 0) * C * AW + (s % SL) * C; paint(S.px, at, AW); if (!mk) dirty.push(s); else B.add.push(s); return s;   // (a new paint is sent alone: the whole sheet, a million px, was sent again for each)
+      if (S.n >= SL * SL && !mk) { s = SL * SL - 1; for (const [k0, v0] of S.slots) if (v0 === s) { S.slots.delete(k0); break; } if (!over) over = lost = true; }   // (the sheet of the land now SHOWN is full, and a paint is asked for outside a land's making (the window's section, a ghost): it takes the last place, and the land is made again from none behind the picture (lost). It was all its paints wiped at once: every face of the land shown read an empty paint for the second the making took: the painter drew that as one earth brown: "the whole meadow brown, seen once")
+      else { if (S.n >= SL * SL) { S.slots.clear(); S.px.fill(0); S.n = 0; spill = true; B.full = true; } s = S.n++; }   // (full while a land is made: its own paints go, never the shown land's; it is made again, steps)
+      S.slots.set(key, s); const at = (s / SL | 0) * C * AW + (s % SL) * C; paint(S.px, at, AW); { const q = S.px[at + 7 * AW + 7]; if ((q >>> 24) > 127) for (let i = 0; i < 3; i++) mean[i] += ((q >> 8 * i & 255) / 255 - mean[i]) * .03; } if (!mk) dirty.push(s); else B.add.push(s); return s;   // (a new paint is sent alone: the whole sheet, a million px, was sent again for each)
     }
     const land = VoxStyleLand.create(host, cfg, {SL, C, slot, unslot(k) { A.slots.delete(k); if (B) B.slots.delete(k); }, start(ag) { fromNone = wipe || ag; wipe = false; B = null; spill = false; }, spill: () => spill});
     function start() {
       if (gl) return true;
       el = document.createElement("canvas"); gl = el.getContext("webgl2", {antialias: false, depth: true, stencil: true, preserveDrawingBuffer: true}); if (!gl) return false;
       const prog = (vs, fs, names) => { const p = gl.createProgram(); for (const [ty, s] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) { const sh = gl.createShader(ty); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); gl.attachShader(p, sh); } names.forEach((n, i) => gl.bindAttribLocation(p, i, n)); gl.linkProgram(p); return p; };
-      pr = prog(VS, FS, ["p", "uv", "a", "e"]); sp = prog(SV, SF, ["p", "uv", "s"]); W_ = VoxStyleWin.create(gl); [tex, wtx, htx, ltx, atx, stx] = [0, 0, 0, 0, 0, 0].map(() => gl.createTexture());
+      pr = prog(VS, FS, ["p", "uv", "a", "e"]); sp = prog(SV, SF, ["p", "uv", "s", "k"]); W_ = VoxStyleWin.create(gl); [tex, wtx, htx, ltx, atx, stx] = [0, 0, 0, 0, 0, 0].map(() => gl.createTexture());
       // a list of faces on the GPU: what was made (stat) and after it room for what changes by the frame (its tail)
       for (const k of ["land", "shade", "water", "spr"]) { const b = bufs[k] = {buf: gl.createBuffer(), vao: gl.createVertexArray(), n: 0, cap: 0, stat: new Float32Array(0)}; gl.bindVertexArray(b.vao); gl.bindBuffer(gl.ARRAY_BUFFER, b.buf);
-        (k === "spr" ? [[3, 0], [2, 12], [1, 20]] : [[3, 0], [2, 12], [4, 20], [1, 36]]).forEach(([sz, off], i) => { gl.enableVertexAttribArray(i); gl.vertexAttribPointer(i, sz, gl.FLOAT, false, (k === "spr" ? SV6 : N) * 4, off); }); }
+        (k === "spr" ? [[3, 0], [2, 12], [1, 20], [2, 24]] : [[3, 0], [2, 12], [4, 20], [1, 36]]).forEach(([sz, off], i) => { gl.enableVertexAttribArray(i); gl.vertexAttribPointer(i, sz, gl.FLOAT, false, (k === "spr" ? SV6 : N) * 4, off); }); }
       gl.bindVertexArray(null); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, atx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SW, SW, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); near(); gl.activeTexture(gl.TEXTURE0);
       return true;
     }
@@ -61,7 +62,7 @@ const VoxStyle = (() => {
       const tS = performance.now(), R = r.value, q = R.parts; space = R.space; { const wj = R.win.join(); if (wj !== winJ) { winJ = wj; winL = R.win; winN++; } } sBusy = true; clip = R.clip; wet = R.wet; far = q.far; made = R.made;   // (the window's boxes: all that changes when your space does, and sent only then; no face of the land is made again for it)
       if (start()) { fill(bufs.land, cat(q.main, q.model), far); fill(bufs.shade, q.shade, new Float32Array(0)); fill(bufs.water, cat(q.water, q.sea), new Float32Array(0)); }
       Object.assign(cnt, {main: q.main.length / N, model: q.model.length / N, far: far.length / N, shade: q.shade.length / N, water: (q.water.length + q.sea.length) / N});
-      if (B) { spare = A.px; if (B.full || B.add.length > 500) stale = true; else dirty.push(...B.add); A = {slots: B.slots, px: B.px, n: B.n}; B = null; }   // (only the paints this land added are sent)
+      if (B) { spare = A.px; if (B.full || B.add.length > 500) stale = true; else dirty.push(...B.add); A = {slots: B.slots, px: B.px, n: B.n}; B = null; over = false; }   // (only the paints this land added are sent)
       again = true; lastG = lastD = null; cost = performance.now() - t0; units.send = Math.max(units.send || 0, performance.now() - tS);
     }
     // the camera: px of the canvas a tile is across at the eye's target = 16 (one art px a px)
@@ -87,22 +88,25 @@ const VoxStyle = (() => {
       if (shelf.y + c.height + 1 > SW) return null;
       a = c._a = {x: shelf.x, y: shelf.y, w: c.width, h: c.height, ep: shelf.ep, v: -1}; shelf.x += c.width + 1; shelf.h = Math.max(shelf.h, c.height); return a;
     }
-    // this frame's sprites as one list of vertices (x, y, z, u, v, sil) and its runs: [first vertex, count, how: 0 as the land hides it, 1 over all, 2 its faint shape first where a wall hides it]
+    // a sprite that stands in the window (a body, a chest, a mushroom in your room): as dim as the floor under it (the painter's own numbers for a floor, vox_style_glsl.js: by how deep it lies under the rim, and past 2.5 and 4.5 tiles from you); you: never
+    // (in a dim deep room they glowed: full day's colours on a floor at .6)
+    function dimOf(s, v) { const b = wmap.get(s.tx === undefined ? Math.floor(s.x) + "," + Math.floor(s.y) : s.tx + "," + s.ty); if (!b || s.z < b[0] - 1 || s.z > b[1]) return 1; const D = Math.max(0, Math.min(16, wrim - s.z)), pd = Math.hypot(s.x - v.at[0], s.y - v.at[1]); return Math.max(.7, (1 - .025 * Math.min(6, D)) * (1 - .25 * Math.max(0, Math.min(1, (D - 3) / 9)) * (pd < 2.5 ? 0 : pd < 4.5 ? .5 : 1))); }   // (never under .7: it is still read)
+    // this frame's sprites as one list of vertices (x, y, z, u, v, sil, dim, fade: how much of it is there, 0..1: a 2x2 dither in four steps) and its runs: [first vertex, count, how: 0 as the land hides it, 1 over all, 2 its faint shape first where a wall hides it]
     function sprites(v, m, L, mp) {
       const RW = v.w, RH = v.h, me = (v.sprites || []).find((s) => s.top), late = (s) => !!me && (s.ty !== undefined && !s.flat ? s.ty > Math.floor(me.y) : s.y > me.y), PX = (f) => [(f[0] * .5 + .5) * RW, (.5 - f[1] * .5) * RH];
       const order = [[], [], []]; for (const s of v.sprites || []) order[s.top ? 1 : late(s) ? 2 : 0].push(s);   // (?hd: you (top) are drawn after the water: you stand in it, not under it; what stands south of you after you, and where it covers you a checker of it)
       const d = new Float32Array((order[0].length + order[1].length + order[2].length + 1) * 6 * SV6), runs = [[], [], []], ups = []; let n = 0;
       for (let g = 0; g < 3; g++) for (const s of order[g]) {
-        const a = place(s.canvas); if (!a) return null; const ver = s.canvas._v !== undefined ? s.canvas._v : s.still ? 0 : NaN; if (a.v !== ver) { ups.push(s.canvas); a.v = ver; }   // (a still billboard is sent once; one with no _v and not still: each frame)
+        const a = place(s.canvas); if (!a) return null; const dm = s.top ? 1 : dimOf(s, v), ver = s.canvas._v !== undefined ? s.canvas._v : s.still ? 0 : NaN; if (a.v !== ver) { ups.push(s.canvas); a.v = ver; }   // (a still billboard is sent once; one with no _v and not still: each frame)
         const f = project(m, s.x, s.y, s.z), fx = Math.round((f[0] * .5 + .5) * RW), fy = Math.round((.5 - f[1] * .5) * RH), w = s.canvas.width, h = s.canvas.height;
         const x0 = fx - s.fx, y0 = fy - s.fy, X = (px) => px / RW * 2 - 1, Y = (py) => 1 - py / RH * 2, z = s.d ? f[2] - .0004 : project(m, s.x, s.y + .45, s.z + .3)[2];
         let q = [[X(x0), Y(y0), z], [X(x0 + w), Y(y0), z], [X(x0 + w), Y(y0 + h), z], [X(x0), Y(y0 + h), z]], box = [x0, y0, x0 + w, y0 + h];
         if (s.flat) { q = [[-s.fx, s.fy], [w - s.fx, s.fy], [w - s.fx, s.fy - h], [-s.fx, s.fy - h]].map(([i, j]) => project(m, s.x + i / C, s.y, s.z + j / cfg.up)); const p0 = PX(q[0]), p1 = PX(q[2]); box = [p0[0], p0[1], p1[0], p1[1]]; q.forEach((c) => { c[2] -= .0004; }); }   // (a standing face in the land: its sprite a px of paint an art px of the land, as the land's own fronts)
         const over = mp && s !== me && late(s) && box[0] < mp[0] + 6 && box[2] > mp[0] - 6 && box[1] < mp[1] - 2 && box[3] > mp[1] - 15, how = s.top ? 1 : s.d ? 0 : 2;
         const r = runs[g], lr = r[r.length - 1]; if (lr && lr[2] === how && how < 2) lr[1] += 6; else r.push([n / SV6, 6, how]);
-        for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = q[i][0]; d[n++] = q[i][1]; d[n++] = q[i][2]; d[n++] = (a.x + [0, 1, 1, 0][i] * a.w) / SW; d[n++] = (a.y + [0, 0, 1, 1][i] * a.h) / SW; d[n++] = s.ghost ? 3 : over ? 2 : 0; }
+        for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = q[i][0]; d[n++] = q[i][1]; d[n++] = q[i][2]; d[n++] = (a.x + [0, 1, 1, 0][i] * a.w) / SW; d[n++] = (a.y + [0, 0, 1, 1][i] * a.h) / SW; d[n++] = s.ghost ? 3 : over ? 2 : 0; d[n++] = dm; d[n++] = s.fade === undefined ? 1 : s.fade; }
       }
-      const quad = n / SV6; for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = [-1, 1, 1, -1][i]; d[n++] = [1, 1, -1, -1][i]; d[n++] = 0; d[n++] = [0, 1, 1, 0][i]; d[n++] = [0, 0, 1, 1][i]; d[n++] = 0; }   // (the last six: the whole picture, for the hour's light)
+      const quad = n / SV6; for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = [-1, 1, 1, -1][i]; d[n++] = [1, 1, -1, -1][i]; d[n++] = 0; d[n++] = [0, 1, 1, 0][i]; d[n++] = [0, 0, 1, 1][i]; d[n++] = 0; d[n++] = 1; d[n++] = 1; }   // (the last six: the whole picture, for the hour's light)
       return {d, runs, ups, quad, me};
     }
     // THE LIGHT OF YOUR SPACE: a number a tile (glow: tile -> [its floor's level, warm 0..1, dim 0..1]) the land's painter reads for each floor under the land (a small picture, a px a tile: stx). It goes to what the last land found
@@ -129,13 +133,14 @@ const VoxStyle = (() => {
       // what this frame is made of, before anything is sent: the ghosts and the moving shadows (view.ghosts: [[x, y, box]...], made each frame), the sprites, every number the painter takes
       const gh = [], sd = []; for (const [x, y, b] of v.ghosts || []) land.model(x, y, b, b.shade ? sd : gh);
       const mef = (v.sprites || []).find((s) => s.top), mf = mef && project(m, mef.x, mef.y, mef.z), mp = mf && [(mf[0] * .5 + .5) * RW, (.5 - mf[1] * .5) * RH], disc = mp ? [mp[0], RH - mp[1] + 1, 12] : [0, 0, 0];   // (the disc round you: what covers you is seen through there only)
-      let S = sprites(v, m, L, mp); if (!S) { shelf.x = shelf.y = shelf.h = 0; shelf.ep++; S = sprites(v, m, L, mp); if (!S) return el; }
       const wup = !!(W && W.canvas && W.canvas.width && wet && (!wat || (W.ver !== undefined ? W.ver !== wat[5] : Math.abs((v.t || 0) - wat[4]) > .1 || !v.t)));   // (the water's picture: when the host made a new one (ver), ten times a second; with no water in the land, never)
       const wv = W && W.canvas && W.canvas.width && wet ? (wup ? [W.x, W.y, W.canvas.width, W.canvas.height] : wat.slice(0, 4)) : [0, 0, 0, 0];
       const own = (v.own || []).filter((b) => !winL.some((t) => t[0] === b[0] && t[1] === b[1] && t[2] <= b[2] && t[3] > b[2])), winA = own.length ? winL.concat(own) : winL;   // (view.own: boxes that are yours whatever the last land's search found: your tile, where you came from: the window is on you the frame land covers you, not when the search is done)
-      const rimz = v.rim === undefined ? v.at[2] - .5 : v.rim, gn = Math.min(1.35, .5 + .06 * Math.max(0, rimz - (v.at[2] - .5)));   // (view.rim: the level of the land round your hole: how deep you are under it. The section over the window's north edge is thicker the deeper)
-      const wk = winN + "|" + (v.way ? v.way.key : "") + "|" + own.join() + "|" + gn, now = v.t || 0; if (wk !== wKey && (winA.length || wxr <= 0)) { wKey = wk; const roofed = (x, y, lv) => { const c = host.column(x, y); return !!c && c.length > 0 && c[c.length - 1] > lv; }; W_.set(v.way && winA.length ? winA.concat([...v.way.on].map(([k, lv]) => { const [x, y] = k.split(",").map(Number); return [x, y, lv, lv + 2]; }).filter((b) => roofed(b[0], b[1], b[2]))) : winA, gn); }   // (shut: the last window stays while it fades) (the way's floors under the land only: under the open sky its marks are seen as they are. Along a river in a gorge they were a path of boxes one tile wide through the bank: slivers of it left standing in the hole)
-      { const d = Math.min(.1, Math.max(0, now - wAt)) / .1; wAt = now; wxr = W_.n ? Math.max(0, Math.min(1, wxr + (v.win && winA.length ? d : -d))) : 0; if (v.win && own.length && v.dep > 0) wxr = 1; }   // (a roof over you and the search not done: open at once, no fade)
+      const rimz = v.rim === undefined ? v.at[2] - .5 : v.rim; let gn = Math.min(1.35, .5 + .06 * Math.max(0, rimz - (v.at[2] - .5)));
+      { const cx = Math.floor(v.at[0]), cy = Math.floor(v.at[1]), has = (y) => winA.some((t) => t[0] === cx && t[1] === y); let span = 1; for (const d of [-1, 1]) for (let y = cy + d; span < 6 && has(y); y += d) span++; gn = Math.min(gn, .25 + .25 * span); }   // (and never thicker than half the floor it lies over, north to south through your tile: over a passage one tile wide it was a slab of earth taller than the floor, the treads a thin line under it)   // (view.rim: the level of the land round your hole: how deep you are under it. The section over the window's north edge is thicker the deeper)
+      const wk = winN + "|" + (v.way ? v.way.key : "") + "|" + own.join() + "|" + gn, now = v.t || 0; if (wk !== wKey && (winA.length || wxr <= 0)) { wKey = wk; wmap = new Map(winA.map((t) => [t[0] + "," + t[1], [t[2], t[3]]])); const roofed = (x, y, lv) => { const c = host.column(x, y); return !!c && c.length > 0 && c[c.length - 1] > lv; }; W_.set(v.way && winA.length ? winA.concat([...v.way.on].map(([k, lv]) => { const [x, y] = k.split(",").map(Number); return [x, y, lv, lv + 2]; }).filter((b) => roofed(b[0], b[1], b[2]))) : winA, gn); }   // (shut: the last window stays while it fades) (the way's floors under the land only: under the open sky its marks are seen as they are. Along a river in a gorge they were a path of boxes one tile wide through the bank: slivers of it left standing in the hole)
+      { const d = Math.min(.1, Math.max(0, now - wAt)) / .1; wAt = now; wxr = W_.n ? Math.max(0, Math.min(1, wxr + (v.win && winA.length ? d : -d))) : 0; if (v.win && own.length && v.dep > 0) wxr = Math.max(wxr, .5); }   // (a roof over you and the search not done: half its px that very frame, the rest in three: it was all of it in one frame, a pop)
+      wrim = rimz; let S = sprites(v, m, L, mp); if (!S) { shelf.x = shelf.y = shelf.h = 0; shelf.ep++; S = sprites(v, m, L, mp); if (!S) return el; }
       { const fr = cfg.rock ? cfg.rock.from : cfg.levels[1], top = Math.round(v.at[2] - .5 + (v.dep || 0)), cl = (z) => Math.max(cfg.levels[0], Math.min(cfg.levels[1], z)), ws = (lv) => slot("f" + lv + ",0", (px, at, st) => host.paintFront(lv, 0, px, at + (C - cfg.up) * st, st));   // (the window's section: the wall paints of the ground it is cut in, earth and stone (the land's own slots for them): the painter lays their rows over the window's north edge)
         const e = host.paintFront ? ws(cl(Math.min(top, fr - 1))) : 0, r = host.paintFront ? ws(cl(Math.max(top, fr))) : 0; sectAt = [(e % SL) * C, (e / SL | 0) * C, (r % SL) * C, (r / SL | 0) * C]; }
       const un = new Float32Array([RW, RH, ...m, ...eye, ...lamp, v.bend || 0, ...L.fogc, L.lr, L.day, L.amb, L.fog[0], L.fog[1], L.rim, L.wa ?? .62, v.dep || 0, L.sun ?? 1,
@@ -157,7 +162,7 @@ const VoxStyle = (() => {
       gl.activeTexture(gl.TEXTURE0);
       gl.useProgram(pr); const u = (n) => U[n] || (U[n] = gl.getUniformLocation(pr, n)), us = (n) => U["s" + n] || (U["s" + n] = gl.getUniformLocation(sp, n));
       gl.uniformMatrix4fv(u("m"), false, m); gl.uniform1i(u("t"), 0); gl.uniform1i(u("wt"), 2); gl.uniform1i(u("gw"), 3); gl.uniform1i(u("mk"), 4); gl.uniform1f(u("xr"), wxr); gl.uniform3fv(u("sc"), (v.sect || SECT)[0]); gl.uniform4fv(u("sp"), sectAt); gl.uniform1f(u("rf"), cfg.rock ? cfg.rock.from : 1e9); gl.uniform3fv(u("go"), sorg); gl.uniform3fv(u("lamp"), [lamp[0], lamp[1] + .6, lamp[2]]); gl.uniform3fv(u("eye"), eye);   // ("gw", not "st": the sprites' names are kept under "s" + name)
-      gl.uniform3fv(u("ctr"), lamp); gl.uniform1f(u("bend"), v.bend || 0); gl.uniform3fv(u("fogc"), L.fogc); gl.uniform2fv(u("vp"), [RW, RH]); gl.uniform4fv(u("cl"), clip);
+      gl.uniform3fv(u("em"), mean); gl.uniform3fv(u("ctr"), lamp); gl.uniform1f(u("bend"), v.bend || 0); gl.uniform3fv(u("fogc"), L.fogc); gl.uniform2fv(u("vp"), [RW, RH]); gl.uniform4fv(u("cl"), clip);
       for (const [n, x] of [["lr", L.lr], ["day", L.day], ["amb", L.amb], ["fn", L.fog[0]], ["ff", L.fog[1]], ["rim", L.rim], ["wa", L.wa ?? .62], ["dep", v.dep || 0], ["rd", 0], ["sun", L.sun ?? 1], ["shp", 0], ["cd", cdv], ["rz", rimz], ["bj", Math.max(1, gn * 16 * Math.sin(v.cam.pitch * Math.PI / 180))]]) gl.uniform1f(u(n), x);
       gl.uniform4fv(u("wtn[0]"), L.wtint || new Float32Array(20)); gl.uniform4fv(u("wv"), wv); gl.uniform3fv(u("mc"), disc);
       gl.useProgram(sp); gl.uniform1i(us("t"), 1); gl.uniform1i(us("mk"), 4); gl.uniform2f(us("nf"), .5, 200); gl.uniform3fv(us("mc"), disc); gl.useProgram(pr);
@@ -193,6 +198,7 @@ const VoxStyle = (() => {
       spaceAt(x, y) { const sp = space, i = sp ? x - sp.x : -1, j = sp ? y - sp.y : -1; return sp && i >= 0 && j >= 0 && i < sp.D && j < sp.D && sp.cls[j * sp.D + i] && sp.lvl[j * sp.D + i] !== -32768 ? [sp.lvl[j * sp.D + i], sp.cls[j * sp.D + i]] : null; },   // (tests: a tile of your space: [its floor's level, 1 walked to | 2 dropped to | 3 dropped from])
       get stamp() { return land.stamp; }, get made() { return made; }, get fresh() { return fresh; }, get calls() { return calls; }, get why() { return why; }, units,
       bare(y0) { const w = el ? el.width : 0, h = el ? el.height - y0 : 0; if (!gl || w <= 0 || h <= 0) return 0; const b = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, b); let n = 0; for (let i = 3; i < b.length; i += 4) if (!b[i]) n++; return n; },   // (tests: px of the picture from row y0 down where no land is drawn: the backdrop shows there)
+      raw() { const w = el ? el.width : 0, h = el ? el.height : 0; if (!gl || w <= 0 || h <= 0) return 0; const b = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, b); let n = 0; for (let i = 3; i < b.length; i += 4) if (b[i] > 235 && b[i] < 255) n++; return n; }, blank() { A.px.fill(0); stale = true; },   // (tests: px of the picture drawn from a paint that is not there (the painter marks them: vox_style_glsl.js `raw`); blank: the shown land's paints taken away, as a lost sheet would be)
       at(x, y, z) { if (!lastM) return null; const f = project(lastM, x, y, z); return [(f[0] * .5 + .5) * el.width, (.5 - f[1] * .5) * el.height]; }, get faces() { return (cnt.main + cnt.model) / 6; }, get models() { return cnt.model / 6; }};
   }
   return {create};

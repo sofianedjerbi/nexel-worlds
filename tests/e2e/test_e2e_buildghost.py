@@ -111,7 +111,7 @@ def test_in_the_hd_look_the_ghost_is_the_block_in_its_own_paint_and_red_where_it
     g.wait("Build.on", 3000)
     g.frames(3)
     d = g.js("BuildGhost.drew")
-    assert d and d["ok"] and d["z"] == 1 and d["u"] == g.js("WayShow.u") and d["u"] >= 1, d       # (whole art px of this look)
+    assert d and d["ok"] and d["z"] == 1 and d["u"] == g.js("HdLook.art().u") and d["u"] >= 1 and g.js("WayShow.u === undefined"), d       # (whole art px of this look, from its own hook)
     soil = g.js(GHOST_PX)
     assert soil[0] > soil[1] > soil[2] and soil[0] - soil[2] > 40, soil                             # earth over the grass: warm (the grass is green: g over r)
     g.press("e", 100)
@@ -123,6 +123,51 @@ def test_in_the_hd_look_the_ghost_is_the_block_in_its_own_paint_and_red_where_it
     g.frames(3)
     grey = g.js(GHOST_PX)
     assert grey[0] < soil[0] - 25 and abs(grey[0] - grey[1]) < 25, (grey, soil)                     # stone: grey over the grass, not the earth's beige
+    assert not g.errors
+
+
+# the picture in a box of 16 art px round a place of it (px of the page): its px as numbers
+BOX = """([x, y, u]) => { const k = devicePixelRatio, w = 16 * u * k, q = HdLook.read(Math.round(x * k - w / 2), Math.round(y * k - w / 2), w, w).data, o = []; for (let i = 0; i < q.length; i += 4) o.push(q[i] << 16 | q[i + 1] << 8 | q[i + 2]); return o; }"""
+
+
+def test_a_ghost_behind_a_wall_is_not_drawn_through_it_and_the_window_does_not_open_on_a_wall_you_stand_by(browser, server):
+    """A wall three long, two high, of blocks of earth put down. Standing just south of it, or behind it, the x-ray window
+    stays shut (it opened on the ground behind the wall: a block lost its top); the ghost of a block behind the wall
+    keeps one px in two there (it was drawn whole, as if in front of the wall)."""
+    g = hd(browser, server)
+    x, y = g.pos()
+    g.give(dirt=10)
+    g.rpc("dev_teleport", x=x + 1, y=y - 1)
+    g.arrive()
+    for z in (1, 2):                                                             # (put, as a player puts them: the land's own ridge two high still has the window, test_e2e_hd_land.py)
+        for i in range(3):
+            g.js("(a) => rpc('act', a)", {"tool": "place", "args": {"x": x + i, "y": y - 2, "z": z, "item": "dirt"}})
+            g.wait(f"topAt({x + i}, {y - 2}) === {z} && !myAction", timeout=15000)
+    g.wait(f"[0, 1, 2].every((i) => matAt({x} + i, {y - 2}) === 'd')", timeout=4000)
+    g.rest()
+    for dx, dy in ((2, -1), (0, -1), (1, -3)):
+        g.rpc("dev_teleport", x=x + dx, y=y + dy)
+        g.arrive()
+        g.rest()
+        g.sleep(400)
+        assert g.js("HdLook.win.a") == 0 and not g.js(f"[0, 1, 2].some((i) => HdLook.winAt({x} + i, {y - 3}) || HdLook.winAt({x} + i, {y - 2}))"), (dx, dy, g.js("JSON.stringify(HdLook.win)"))
+    g.rpc("dev_teleport", x=x + 1, y=y)
+    g.arrive()
+    g.give(dirt=4)
+    g.hold_item("dirt")
+    seen = {}
+    for name, cy in (("behind", y - 3), ("front", y - 1)):
+        g.js(f"(() => {{ Build.toggle(true); Build.S.at = {{x: {x + 1}, y: {cy}}}; Build.S.plane = Build.S.deep = null; return 1; }})()")
+        g.wait("Build.on", 3000)
+        g.frames(3)
+        d = g.js("BuildGhost.drew")
+        assert d and d["ok"] and d["z"] == 1, (name, d)
+        on = g.js(BOX, [*d["at"], d["u"]])
+        g.js("Build.toggle(false)")
+        g.frames(3)
+        seen[name] = (d["hid"], sum(1 for p, q in zip(on, g.js(BOX, [*d["at"], d["u"]])) if p != q))     # (how many px the ghost changed there)
+    assert seen["behind"][0] is True and seen["front"][0] is False, seen
+    assert 0 < seen["behind"][1] < seen["front"][1] * .6, seen                  # behind the wall: one px in two of it, fainter
     assert not g.errors
 
 
