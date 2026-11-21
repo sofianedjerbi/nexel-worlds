@@ -26,12 +26,12 @@ def test_refill_the_can_at_a_well(game):
     game.give(well=1, watering_can=1)
     game.hold_item("well")
     game.face(0, -1)
-    game.press("Space", 900)
+    game.press("e", 900)
     game.server()
     game.hold_item("watering_can")
     game.face(0, -1)
     assert "Fill can" in game.actions()
-    game.press("Space", 1200)
+    game.press("e", 1200)
     assert game.server()["can"] == 12
 
 
@@ -39,7 +39,7 @@ def test_cooking_at_a_campfire(game):
     game.give(campfire=1, meat=1)
     game.hold_item("campfire")
     game.face(1, 0)
-    game.press("Space", 900)
+    game.press("e", 900)
     r = game.act("craft", recipe="cooked_meat")
     game.sleep(300)
     assert r["ok"] and game.inv("cooked_meat") == 1
@@ -49,7 +49,7 @@ def test_signs_say_what_you_wrote(game):
     game.give(sign=1)
     game.hold_item("sign")
     game.face(1, 0)
-    game.press("Space", 300)                               # a sign is written as it goes up (ask.js)
+    game.press("e", 300)                               # a sign is written as it goes up (ask.js)
     game.wait("$('ask').style.display === 'block' && document.activeElement === $('asktext')")
     game.page.keyboard.type("Ben's farm")
     game.page.keyboard.press("Enter")
@@ -57,7 +57,7 @@ def test_signs_say_what_you_wrote(game):
     assert game.tile(1, 0) == "?"
     game.press("0", 100)
     game.face(1, 0)
-    game.press("Space", 800)
+    game.press("e", 800)
     assert "Ben's farm" in game.toast()
 
 
@@ -77,7 +77,7 @@ def test_a_coop_collects_the_eggs(game):
     game.give(coop=1)
     game.hold_item("coop")
     game.face(0, -1)
-    game.press("Space", 900)
+    game.press("e", 900)
     game.spawn("chicken", 3, 0, still=10 ** 6)               # a hen nearby: it lays at the coop's door
     game.rpc("dev_time", phase=.05)                          # all day ahead
     game.rpc("dev_skip", seconds=400)
@@ -92,7 +92,7 @@ def test_food_tastes_better_on_a_picnic_blanket(game):
     game.rpc("dev_needs", hunger=4)
     game.hold_item("picnic_blanket")
     game.face(0, -1)
-    game.press("Space", 900)
+    game.press("e", 900)
     x, y = game.pos()
     game.js(f"act('move_to', {{x: {x}, y: {y - 1}}})")
     game.sleep(800)
@@ -114,7 +114,7 @@ def test_dig_down_and_climb_back_out(game):
     game.act("dig_down", **{"with": "pickaxe"})
     game.wait(f"floorAt({x}, {y}) === -1 && !myAction", 8000)
     game.js("selectItem(null)")
-    game.face(0, -1); game.press("j", 0)                     # a jump up (J), north, out of the pit
+    game.face(0, -1); game.press("Space", 0)                 # a jump up (Space), north, out of the pit
     game.sleep(900)
     s = game.server()
     assert s["x"] == x and s["y"] < y and game.pos() == (s["x"], s["y"])

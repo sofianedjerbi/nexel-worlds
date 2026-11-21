@@ -20,14 +20,14 @@ BRIGHT = """(() => { const c = WayShow.cur, n = c && c.next; if (!n) return 0; c
 # the cap lies on you or on your name (prompts.js keep)
 ON_ME = """(() => { const e = document.getElementById('waycap'); if (!e || e.style.display !== 'block') return false; const b = e.getBoundingClientRect();
   return (Prompts.keep || []).some((k) => b.x < k.x + k.w && k.x < b.x + b.width && b.y < k.y + k.h && k.y < b.y + b.height); })()"""
-# what the SCREEN says to do: the one cap: a key's name, or an arrow (its way)
-CAP = """(() => { const e = document.getElementById('waycap'); if (!e || e.style.display !== 'block') return null; const i = e.querySelector('i'); return e.textContent || (i ? i.className.split(' ')[0] : ''); })()"""
+# what the SCREEN says to do: the one cap: a key's name, or an arrow ("way:" and its way: the use key E is a letter of the ways too)
+CAP = """(() => { const e = document.getElementById('waycap'); if (!e || e.style.display !== 'block') return null; const i = e.querySelector('i'); return e.textContent || (i ? 'way:' + i.className.split(' ')[0] : ''); })()"""
 
 
 @pytest.mark.quick
 def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_gets_you_out(game):
     """Four down in a shaft a tile wide, a pickaxe in hand: the blocks to break are marked, the next one carries its
-    key; R breaks it whichever way you face; where the way is a step up, its key is J and you jump it. On the meadow nothing is shown.
+    key; R breaks it whichever way you face; where the way is a step up, its key is Space and you jump it. On the meadow nothing is shown.
     (The classic look: its under-ground view draws the same marks.)"""
     game.clear_area(10)
     x, y = game.pos()
@@ -54,13 +54,13 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
         presses += 1
         if c["now"]:
             cell = c["digs"][0]
-            game.press({"up": "r", "use": "Space", "alt": "x"}[c["now"]], 100)
+            game.press({"up": "r", "use": "e", "alt": "x"}[c["now"]], 100)
             game.wait(f"!solidAt({cell[0]}, {cell[1]}, {cell[2]}) && !myAction", 8000)
         else:
             at = game.js("[myAt.x, myAt.y, myAt.z]")
             if game.js("(WayShow.offer() || {}).key") == "jump":       # a step up: the jump key, the way's (walking into it stops you)
-                jumps += c["cap"] == "J"
-                game.press("j", 0)
+                jumps += c["cap"] == "Space"
+                game.press("Space", 0)
             else:
                 game.hold([KEYS[c["way"]]], 90)
             game.wait(f"myAt && (myAt.x !== {at[0]} || myAt.y !== {at[1]}) && !walking", 4000)
@@ -153,16 +153,16 @@ def test_shut_in_with_a_plank_in_hand_or_with_nothing_the_shown_key_gets_you_out
         cap = game.js(CAP)
         if cap is None:
             break
-        assert not game.js(ON_ME) and game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") in ("", "RDigastep", "RDigup", "JJump"), (cap, game.actions())      # (one key on the screen: no "Lay floor", no other digging, no red line)
+        assert not game.js(ON_ME) and game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") in ("", "RDigastep", "RDigup", "SpaceJump"), (cap, game.actions())      # (one key on the screen: no "Lay floor", no other digging, no red line)
         presses += 1
         seen.append(cap)
-        if cap in KEYS or cap == "J":                                              # (an arrow: a step on; J: a step up, jumped)
+        if cap.startswith("way:") or cap == "Space":                               # (an arrow: a step on; Space: a step up, jumped)
             at = game.js("[myAt.x, myAt.y, myAt.z]")
-            game.press("j", 0) if cap == "J" else game.hold([KEYS[cap]], 90)
+            game.press("Space", 0) if cap == "Space" else game.hold([KEYS[cap[4:]]], 90)
             game.wait(f"myAt && (myAt.x !== {at[0]} || myAt.y !== {at[1]}) && !walking", 4000)
         else:
             cell = game.js("(() => { const n = WayShow.cur.now; return [n.x, n.y, n.z]; })()")
-            game.press({"R": "r", "Space": "Space", "X": "x"}[cap], 100)
+            game.press({"R": "r", "E": "e", "X": "x"}[cap], 100)
             game.wait(f"!solidAt({cell[0]}, {cell[1]}, {cell[2]}) && !myAction", 12000)
     s = game.server()
     assert s["z"] == 0 and s["hp"] == 20 and seen.count("R") == 3 and presses <= 8, (s["z"], seen)      # a block for the first step, two for the next, the last is a jump

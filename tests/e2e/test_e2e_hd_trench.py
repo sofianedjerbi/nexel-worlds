@@ -115,11 +115,11 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
     for _ in range(10):
         for key, done in (("ArrowRight", f"myPos().x >= {x + 18}"), ("ArrowLeft", f"myPos().x <= {x}")):
             g.page.keyboard.down(key)
-            if key == "ArrowLeft":                                               # up the steps: J at each (walking into one stops you)
+            if key == "ArrowLeft":                                               # up the steps: Space at each (walking into one stops you)
                 for _ in range(200):
                     if g.js(done):
                         break
-                    g.page.keyboard.press("j")
+                    g.page.keyboard.press("Space")
                     g.page.wait_for_timeout(100)
             g.wait(done, timeout=20000)
             g.page.keyboard.up(key)

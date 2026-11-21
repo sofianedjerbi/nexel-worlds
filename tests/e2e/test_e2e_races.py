@@ -22,9 +22,9 @@ def test_every_race_is_drawn_and_dressed(game):
         if SHOT:
             game.page.screenshot(path=f"{SHOT}/race_{race}.png", clip={"x": 520, "y": 300, "width": 160, "height": 150})
     sizes = game.js("""(() => { const out = {};
-      for (const r of Races.RACES) { const s = wornSheet('#a9cdf2', null, r.key); out[r.key] = [s.width, s.height, r.key === 'cat' || s.grids.length === 288]; }
+      for (const r of Races.RACES) { const s = wornSheet('#a9cdf2', null, r.key); out[r.key] = [s.width, s.height, r.key === 'cat' || s.grids.length === 320]; }
       return out; })()""")
-    assert all(v == [384, 1728, True] for v in sizes.values()), sizes      # (the sheet's 24 rows and the 12 of tool_art.js)
+    assert all(v == [384, 1920, True] for v in sizes.values()), sizes      # (the sheet's 24 rows, the 12 of tool_art.js and the 4 of jump_art.js)
     for item in outfit:
         game.act("wear", item=item)
         game.sleep(600)

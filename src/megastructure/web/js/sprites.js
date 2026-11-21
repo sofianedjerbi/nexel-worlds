@@ -24,7 +24,7 @@ function characterSheet(tint, src = IMG.character) {   // recolour the cream bod
 }
 // premium character sheet: 8-frame rows, 4 directions each: down, up, right, left
 // (checked from the eye and collar-bell position; the pink spot is the inner ear, at the back)
-const ANIM = {idle: 0, walk: 4, run: 8, hoe: 12, axe: 16, water: 20, pickaxe: 24, sword: 28, spear: 32};   // water = watering can; the last three are drawn by tool_art.js
+const ANIM = {idle: 0, walk: 4, run: 8, hoe: 12, axe: 16, water: 20, pickaxe: 24, sword: 28, spear: 32, jump: 36};   // water = watering can; pickaxe, sword, spear are drawn by tool_art.js, the jump's poses by jump_art.js
 const DIR_ROW = (p) => (p.fy < 0 ? 1 : p.fx > 0 ? 2 : p.fx < 0 ? 3 : 0);
 let troughFullC = null;
 function troughFull() {                     // the feeding box with hay heaped in it (18 px tall: hay pokes out)

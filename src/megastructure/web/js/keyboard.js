@@ -1,13 +1,15 @@
 // Keyboard: the whole game is playable without a mouse.
-//   WASD / arrows walk (Shift sprints), Alt+direction turns on the spot, Space does the main action on the tile
-//   you face and X the alternative one (milk, take down, till). 1-9 / Q pick what's in your hand, 0 empties it.
+//   WASD / arrows walk (Shift sprints), Space jumps, Alt+direction turns on the spot, E does the main action on the
+//   tile you face (or eats, wears what you hold: facingNow) and X the alternative one (milk, take down, till).
+//   1-9 / Q pick what's in your hand, 0 empties it. (The keys are the settings': options.js KEY_ACTIONS.)
 //   C crafting and I inventory are navigated with the arrows, Enter uses, Esc closes. 1-9 and 0: the ten slots of
 //   your bar (an empty one: empty hands), ` empty hands.
 //   While the recipe book is open the keys are its own (craft.js): none of them acts on the world behind it (X took
 //   down what you faced, a number changed what you hold), but for the ones in BOOK_KEYS. One of the book and the
 //   inventory is open at a time. What a key does there is written on it (a cap on the button, `kbd`) while you
 //   play by keys (body.bykeys), and put away when the mouse moves.
-//   B: build mode (build.js): the arrows move a cursor, Space plans the piece in hand, your character builds.
+//   Z: build mode (build.js): the arrows move a cursor, Space plans the piece in hand, your character builds (its
+//   keys are its own: Space plans, X takes, Q E a layer; none of them walks you or jumps).
 
 const KEYDIR = {w: "N", arrowup: "N", s: "S", arrowdown: "S", a: "W", arrowleft: "W", d: "E", arrowright: "E"};
 const CODEDIR = {KeyW: "N", ArrowUp: "N", KeyS: "S", ArrowDown: "S", KeyA: "W", ArrowLeft: "W", KeyD: "E", ArrowRight: "E"};
@@ -29,7 +31,7 @@ function isQuick(f) {
   return !placingItem() && !!c && INSTANT_DIG.includes(c);
 }
 const useful = (it) => it && !it.walk && !it.info && it.ok !== false;
-// Who you're fighting: set when you hit someone or someone hits you, so Space keeps hitting them, not the tree beside.
+// Who you're fighting: set when you hit someone or someone hits you, so E keeps hitting them, not the tree beside.
 let foe = null;   // {key: entity key, until: ms}
 const FOE_MS = 8000;
 function entKey(name) {               // an attack event names agents by name and creatures as "kind#id"
@@ -42,10 +44,10 @@ function noteFight(e) {
   if (e.attacker === me) foe = {key: entKey(e.target), until: performance.now() + FOE_MS};
   else if (e.target === me) foe = {key: entKey(e.attacker), until: performance.now() + FOE_MS};
 }
-// What Space (alt = false) or X (alt = true) does, without having to turn first. Fighting comes first: the one
+// What E (alt = false) or X (alt = true) does, without having to turn first. Fighting comes first: the one
 // you're fighting, then any wild enemy within reach; then the tile you face; then other creatures within reach; then
 // anything next to you, preferring the direction you last walked. Falls back to a hint about the faced tile.
-// Holding something to place (a block, path, planks, dirt, seeds): Space puts it on the tile in front of you, and
+// Holding something to place (a block, path, planks, dirt, seeds): E puts it on the tile in front of you, and
 // only there (the ghost shows it, green or red). Walk to aim: a tap turns you and moves you a tile.
 const placingItem = () => selected && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed");
 // It is asked three times a frame (the corner's rows, the hint beside the tile, the aim): worked out once for a tick
@@ -59,7 +61,17 @@ function facingIntent(alt) {
   Object.assign(m, {clock, obs: meObs, land: landVer, built: Floors.ver, sel: selected, x: s && s.x, y: s && s.y, fx: p && p.fx, fy: p && p.fy, foe, hot, out});
   return out;
 }
+// Food or clothes in hand, E eats or wears them, unless what you face takes that very thing (`uses`: an animal fed,
+// a trough filled, a chest, a person given it: intent.js). The rest you face (a tree to chop, a flower) waits for
+// empty hands or a tool. (X still does what it does.)
+const eatsInHand = () => { const w = inHand(); return w && (FOODS.includes(w) || WEAR[w]) ? w : null; };
 function facingNow(alt) {
+  const f = facingAny(alt), w = !alt && eatsInHand(), q = facingTile();
+  if (!w || (f && f.it.uses && (f.it.uses !== "faced" || (q && f.p.x === q.x && f.p.y === q.y)))) return f;
+  const s = myPos();
+  return s && {p: {x: s.x, y: s.y}, it: {text: `${WEAR[w] ? "Wear" : "Eat"} ${label(w)}`, self: true, run: () => useSelected(w)}};
+}
+function facingAny(alt) {
   const q = facingTile(), s = myPos(); if (!q || !s) return null;
   if (!alt && placingItem()) {
     const it = intent(q, false);
@@ -83,7 +95,7 @@ function facingNow(alt) {
   const hs = myZ(s.x, s.y), level = (t, it) => it.flat || it.ent || it.z !== undefined || it.at !== undefined || Math.abs(settleNear(t.x, t.y, hs) - hs) <= 2;   // (what grows on ground three levels over or under you is not offered: "Pick flower" from the bottom of a shaft, under the flower)
   if (useful(faced) && inReach(q, faced) && level(q, faced)) return {p: q, it: faced};
   // a pickaxe in hand, facing higher ground with nothing on it: cut into it (it comes down a layer)
-  // (Space only. It took X too, and came before X's own "dig down": in a hole every second X cut the wall at your
+  // (E only. It took X too, and came before X's own "dig down": in a hole every second X cut the wall at your
   // feet and not the floor: two presses a layer, nothing to see on the odd one.) Its name: in a hole there is no hill
   if (!alt && inHand() === "pickaxe" && landSolid(q.x, q.y, hs + 1) && (GROUND.has(combAt(q.x, q.y)) || floorAt(q.x, q.y) !== hs + 1))      // (...or what is on it stands elsewhere: on the hill over your tunnel)
     return {p: q, it: {text: topAt(s.x, s.y) > hs ? "Dig on" : inHole(s, q, hs) ? "Dig into the wall" : "Dig into the hill", flat: true, cell: hs + 1,   // (under the land there is no hill: the tunnel goes on)
@@ -106,6 +118,7 @@ function facingNow(alt) {
   // reach" for a flower three layers up): nothing is said of what your hand cannot get to)
   return faced && !faced.walk && !useful(faced) && inReach(q, faced) ? {p: q, it: faced} : null;
 }
+const facedOnly = (a) => (a && a.it.self ? null : a);      // (E eats what you hold: nothing you face is marked for it, target.js; its row is in the corner)
 function digAhead(q, hs) {
   const wall = landSolid(q.x, q.y, hs + 1), z = wall ? hs + 1 : settleNear(q.x, q.y, hs), top = z === topAt(q.x, q.y), g = combAt(q.x, q.y);
   if (z < hs - 2 || entityAt(q) || (top && !(g && GROUND.has(g) && !":n".includes(g) && !wet(g)))) return null;
@@ -121,13 +134,13 @@ function inHole(s, q, h) {
 function aimedTile() {
   if (!me) return null;
   if (Build.on) return Build.aim();                  // (build mode: the cursor's tile, whatever you play with)
-  if (byKeys()) { const a = facingIntent(false); return a && wayHides(WayShow.offer(), a, "use") ? null : a; }      // (the way out is shown: no bracket on a wall to dig: "two brackets, two Space")
+  if (byKeys()) { const a = facedOnly(facingIntent(false)); return a && wayHides(WayShow.offer(), a, "use") ? null : a; }      // (the way out is shown: no bracket on a wall to dig: "two brackets, two Space")
   if (!mouse.in) return null;
   const p = aimAt(tileAtScreen(mouse.x, mouse.y), keys.has("shift")), it = intent(p, keys.has("shift"));
   return {p: (it && it.own) || p, it};
 }
 // The keys are what you play with: once pressed, or while the mouse is not over the land (on arrival nothing was
-// aimed until the first press or step, and Space acted on the tile you face all the same)
+// aimed until the first press or step, and E acted on the tile you face all the same)
 const byKeys = () => inputMode === "keys" || !mouse.in;
 // While the way out of the ground is shown (wayshow.js) nothing else is offered for what you face: "Space Dig into the
 // wall" two levels under the grass, "Space Dig on / X Dig down" written on its dots, "Lay floor" in the pocket with a
@@ -135,21 +148,20 @@ const byKeys = () => inputMode === "keys" || !mouse.in;
 // they did: only the words are put away).
 const wayHides = (way, f, key) => !!way && !(way.key !== key && f.it.ok !== false && /ladder|stairs/i.test(f.it.text));
 // Bottom right: what you can do right now, each with its key. Rebuilt every frame, written only when it changes.
-let actionsHtml = "", faceRows = [];               // (faceRows: what Space and X do to what you face, beside it: prompts.js)
+let actionsHtml = "", faceRows = [];               // (faceRows: what E and X do to what you face, beside it: prompts.js)
 function availableActions() {
   if (!me || !meObs) return [];
   if (Build.on) return Build.rows();
   const s = myPos(), rows = [];
   const way = WayShow.offer(), m0 = facingIntent(false), a0 = facingIntent(true), main = m0 && wayHides(way, m0, "use") ? null : m0, alt = a0 && wayHides(way, a0, "alt") ? null : a0;
   if (way && way.key) rows.push([capOf(way.key), way.text, "way", true, true]);              // (the fifth: its cap is by its block; its word is in the corner, lit; a phone's button says it)
-  if (main && !main.it.info && main.it.ok !== false) rows.push([capOf("use"), main.it.text, "", true]);      // (the keys as the settings have them: options.js; true: what you face)
+  if (main && main.it.self) rows.push([capOf("use"), main.it.text]);       // (eat, wear what you hold: in the corner, nothing faced is its)
+  else if (main && !main.it.info && main.it.ok !== false) rows.push([capOf("use"), main.it.text, "", true]);     // (the keys as the settings have them: options.js; true: what you face)
   else if (main && placingItem()) rows.push([capOf("use"), main.it.text, "bad", true]);           // why it can't go there
   if (alt && !alt.it.info && alt.it.ok !== false && (!main || alt.it.text !== main.it.text)) rows.push([capOf("alt"), alt.it.text, "", true]);
   const up = way && way.key === "up" ? null : DigUp.aim();      // (the way out of a hole: the cell over your head, then the step: digup.js. Not hidden while the way out is shown: R digs all the same, and a phone's "Dig a step" was gone from under the finger)
   if (up) rows.push([capOf("up"), up.text, "", true]);
   if (!(way && way.key === "jump") && stepAhead()) rows.push([capOf("jump"), "Jump"]);      // (a step in front you can hop onto: walking into it stops you, walk.js)
-  if (selected && FOODS.includes(selected)) rows.push([capOf("eat"), `Eat ${label(selected)}`]);
-  if (selected && WEAR[selected]) rows.push([capOf("eat"), `Wear ${label(selected)}`]);
   if (s && groundItems.some(([x, y]) => x === s.x && y === s.y)) rows.push([capOf("pick"), "Pick up"]);
   if (way) return rows;
   if (Build.waiting()) rows.push([capOf("build"), `Build: ${Build.waiting()} plans wait`]);      // (build.js: said where it helps, a piece in hand or plans left)
@@ -159,7 +171,7 @@ function availableActions() {
 // The corner: what is not beside what it acts on (prompts.js): in build mode its name and Esc; by keys, all but
 // what you face
 function updateActions() {
-  const all = availableActions(), keys = byKeys(), aim = keys && !Build.on ? facingIntent(false) : null;
+  const all = availableActions(), keys = byKeys(), aim = keys && !Build.on ? facedOnly(facingIntent(false)) : null;
   const beside = !!aim && !aim.it.info && !aim.it.walk;      // (something you face is marked: its keys go beside it. Nothing is: they stay in the corner. X's "Dig down" on open meadow was shown nowhere)
   faceRows = Build.on || !keys || !beside ? [] : all.filter((r) => r[3] && !r[4]);
   const corner = Build.on ? all.filter(([k]) => k === capOf("build") || k === "Esc") : keys && beside ? all.filter((r) => !r[3] || r[4]) : all;      // (the way out's key: on its block, and here with its word: "R Dig up": "which key ?")
@@ -168,14 +180,15 @@ function updateActions() {
   actionsHtml = html;
   const el = $("actions"); el.innerHTML = html; el.style.display = html ? "block" : "none";
 }
-function useFacing(alt) {
+function useFacing(alt, again) {
   if (DigUp.route(alt ? "alt" : "use")) return;    // (the way out's next block is this key's: that block, whatever you hold or face: digup.js)
   WayShow.mine();
   const f = facingNow(alt);                        // (a key pressed: as things are this instant, not as kept)
   if (!f) return;                                  // (nothing there to act on: no row beside it, the button blank; it said "Nothing within reach." at each press, eight in a row in the chat)
+  if (f.it.self) return again ? undefined : f.it.run();      // (eat, wear: walking or not; once a press, held or not)
   if (f.it.info) return toast(f.it.text);
   if (f.it.ok === false) return toast(f.it.text, true);
-  if (walking && !isQuick(f)) return;             // Space never stops you: work that takes time waits until you stand
+  if (walking && !isQuick(f)) return;             // E never stops you: work that takes time waits until you stand
   perform(f.p, f.it);
 }
 function turn(dir) {
@@ -206,13 +219,13 @@ function closePanels() {
   drawGoals();
 }
 
+const HELD = new Set(["e", "x", "r"]);       // held down, these go on (a row of hits, of digs); the others act once a press
 const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
-  " ": () => useFacing(false),
+  e: (ev) => useFacing(false, ev && ev.repeat),      // (food, clothes in hand: eaten, worn: facingNow)
   x: () => useFacing(true),
   r: () => DigUp.run(),
-  j: () => jumpKey(),                                // (walk.js: up onto the step in front, or a hop)
+  " ": () => jumpKey(),                              // (walk.js: up onto the step in front, or a hop)
   f: () => act("pick_up", {}),
-  e: () => useSelected(),
   q: () => cycleHand(1),
   "`": () => { selectItem(null); },
   c: () => { $("bag").style.display = "none"; toggleCraft(); },
@@ -235,6 +248,7 @@ addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (k === "shift") { keys.add("shift"); if (Build.on) return; if (opt("sprint") === "hold") runKey = true; else if (!e.repeat) runKey = !runKey; syncWalk(); return; }      // (the settings' Sprint; in build mode your character walks by itself)
   inputMode = "keys"; document.body.classList.add("bykeys");
+  if (k === " ") e.preventDefault();                   // (whatever it does: no scroll, no focused button pressed)
   if (k === "escape" && Build.on && !isOpen("craft") && !isOpen("bag") && !isOpen("mail")) { Build.onKey(k, e); return; }
   if (k === "escape") { if (isOpen("bag") && bagKey(k, e)) return; if (isOpen("craft") || isOpen("bag") || isOpen("mail")) closePanels(); else if (!isOpen("ask")) openMenu(); return; }      // (nothing to shut: the menu, menu.js)
   // an open panel takes the arrows, Enter and Space
@@ -253,10 +267,11 @@ addEventListener("keydown", (e) => {
   }
   if (k === "tab") { e.preventDefault(); if (!e.repeat) { drawWho(); document.body.classList.add("tab"); } return; }   // held: the day, you, who is awake (style.css)
   const fn = SHORTCUTS[u];
-  if (fn) { e.preventDefault(); if (!(e.repeat && u !== " " && u !== "x" && u !== "r")) fn(); }
+  if (fn) { e.preventDefault(); if (!e.repeat || HELD.has(u) || (u === " " && walking && !autoJump())) fn(e); }      // (Space held while walking: a jump each step, auto-jump off; on, a hop: walk.js)
 });
 addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase();
+  if (k === " " && me && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) e.preventDefault();      // (Space is the jump: it presses no button that has the focus, scrolls nothing)
   keys.delete(k);
   if (k === "shift") { keys.delete("shift"); if (opt("sprint") === "hold") runKey = false; }
   if (k === "tab") document.body.classList.remove("tab");

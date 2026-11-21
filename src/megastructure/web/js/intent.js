@@ -79,9 +79,9 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
     if (ent.e.kind !== "agent" && selected === "name_tag" && !shift)       // a name tag in hand: its name (ask.js)
       return {ent, text: ent.e.name ? `Rename ${ent.e.name}` : `Name the ${label(ent.e.kind)}`, near: USE_R, diag: true, run: () => nameAnimal(ent.e)};
     if (ANIMALS[ent.e.kind] && selected && FEEDS.includes(selected) && !shift)
-      return {ent, text: `Feed ${label(ent.e.kind)}`, near: USE_R, diag: true, run: () => act("feed", {target: ent.e.id, item: selected})};
+      return {ent, text: `Feed ${label(ent.e.kind)}`, near: USE_R, diag: true, uses: true, run: () => act("feed", {target: ent.e.id, item: selected})};
     if (ent.e.kind === "agent" && selected && !weapon && !shift)
-      return {ent, text: `Give to ${ent.e.name}`, near: 2, run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})};
+      return {ent, text: `Give to ${ent.e.name}`, near: 2, uses: "faced", run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})};
     if (shift) {                                       // shift: the peaceful thing
       if (ent.e.kind === "cow") return {ent, text: "Milk cow", near: USE_R, diag: true, run: () => act("milk", {target: ent.e.id})};
       if (ent.e.kind === "agent") return {ent, text: `${ent.e.name}: hold a thing to give it`, info: true};
@@ -104,10 +104,11 @@ function intent0(p, shift, t, c, g, flower, ent, s) {
   if (selected && !shift) {
     const it = selected, block = PLACEABLE_BLOCK[it];
     if ((block || FILLS[it] || it === "seed") && rimAt(p.x, p.y)) return {text: "Nothing stays on the edge of a hill", ghost: it, ok: false};
-    // containers first: clicking a chest, basket or trough with anything selected puts it in
-    if (c === "e" && it !== "torch") return FEEDS.includes(it) ? {text: "Fill trough", near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
+    // containers first: clicking a chest, basket or trough with anything selected puts it in (`uses`: what you hold
+    // goes there, so E does not eat it: keyboard.js facingNow; `uses` "faced": only the one you face)
+    if (c === "e" && it !== "torch") return FEEDS.includes(it) ? {text: "Fill trough", near: 1, uses: true, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
                                                      : {text: "Troughs take hay, grain or greens", ok: false};
-    if ((c === "C" || c === "q") && it !== "torch") return {text: `Store in ${c === "q" ? "basket" : "chest"}`, near: 1, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
+    if ((c === "C" || c === "q") && it !== "torch") return {text: `Store in ${c === "q" ? "basket" : "chest"}`, near: 1, uses: "faced", run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
     const free = !hasBlock && WALKABLE_GROUND.has(g);
     if (FOOT[block]) {
       const f = footprint(block, p.x, p.y, s.x, s.y);

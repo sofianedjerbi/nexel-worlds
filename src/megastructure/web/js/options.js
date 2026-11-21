@@ -27,7 +27,7 @@ const OPT_DEFAULT = {
   bubbles: true, names: true, chat: 10, hints: true, tips: true,
   // keys
   sprint: "hold",         // hold: while Shift is down; toggle: Shift once to run, once more to walk
-  autojump: true,         // walking into a step with room over it jumps up it by itself (walk.js); off: it stops you, J jumps
+  autojump: true,         // walking into a step with room over it jumps up it by itself (walk.js); off: it stops you, Space jumps
   keys: {},               // action -> key, where it is not the usual one (KEY_ACTIONS)
 };
 const OPT = {v: {...OPT_DEFAULT}};
@@ -36,9 +36,12 @@ for (const k of Object.keys(OPT.v)) if (!(k in OPT_DEFAULT) || typeof OPT.v[k] !
 const opt = (k) => OPT.v[k];
 function setOpt(k, v) {
   OPT.v[k] = v;
+  optSave();
+  optApply(k);
+}
+function optSave() {
   const changed = Object.fromEntries(Object.entries(OPT.v).filter(([key, val]) => JSON.stringify(val) !== JSON.stringify(OPT_DEFAULT[key])));
   localStorage.setItem("megastructure-options", JSON.stringify(changed));
-  optApply(k);
 }
 // What a setting changes at once (the rest is read where it is used).
 function optApply(k) {
@@ -68,8 +71,9 @@ const particles = (n) => (opt("particles") === "none" ? 0 : opt("particles") ===
 // The keys that can be changed: action -> [its usual key (as keyboard.js SHORTCUTS names it), what it is called].
 // Walking (WASD, the arrows), the bar's numbers, Shift, Tab, Enter and Esc stay what they are, and so do the keys of
 // the windows (the book's, the inventory's, build mode's).
-// (Jump: J. Every key round WASD has its action, and Shift sprints)
-const KEY_ACTIONS = {use: [" ", "Use what you face"], alt: ["x", "Other use"], jump: ["j", "Jump"], pick: ["f", "Pick up"], eat: ["e", "Eat or wear"], next: ["q", "Next thing in hand"],
+// (WASD walk, Space jumps, E uses what you face: a PC game's usual keys. E eats or wears what you hold too, there is
+// no eat key: keyboard.js facingNow. Every key round WASD has its action, and Shift sprints)
+const KEY_ACTIONS = {use: ["e", "Use, eat or wear"], alt: ["x", "Other use"], jump: [" ", "Jump"], pick: ["f", "Pick up"], next: ["q", "Next thing in hand"],
   hands: ["`", "Empty your hands"], craft: ["c", "Craft"], bag: ["i", "Inventory"], build: ["z", "Build mode"], up: ["r", "Dig up"], talk: ["t", "Talk"], mute: ["m", "Sound on or off"]};
 const KEY_FIXED = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "shift", "tab", "enter", "escape", "control", "alt", "meta", "capslock",
   "h", "?", "g", "v", "f3", "/", "+", "=", "-", "_", ..."0123456789"]);
@@ -89,6 +93,20 @@ function bindKey(action, k) {
   setOpt("keys", keys);
   return true;
 }
-// How a key is written on a cap: keyCap("x") -> "X"; of an action: capOf("use") -> "Space"
+// A player's own keys, kept from before the usual ones changed (Space used, J jumped, E ate): each is given again as
+// the menu gives it (bindKey: the action that had the key takes the one this had), over the usual keys of now, so no
+// two actions share a key. The eat key is dropped (E uses, and eats). Given again to what it made: the same.
+function keysAgain(own) {
+  const now = Object.fromEntries(Object.entries(KEY_ACTIONS).map(([a, [k]]) => [a, k]));
+  for (const [a, k] of Object.entries(own || {})) {
+    if (!(a in now) || typeof k !== "string" || KEY_FIXED.has(k) || (k.length > 1 && !/^f\d+$/.test(k))) continue;
+    const other = Object.keys(now).find((b) => b !== a && now[b] === k);
+    if (other) now[other] = now[a];
+    now[a] = k;
+  }
+  return Object.fromEntries(Object.entries(now).filter(([a, k]) => k !== KEY_ACTIONS[a][0]));
+}
+{ const k = keysAgain(OPT.v.keys); if (JSON.stringify(k) !== JSON.stringify(OPT.v.keys)) { OPT.v.keys = k; optSave(); } }
+// How a key is written on a cap: keyCap("x") -> "X"; of an action: capOf("jump") -> "Space"
 const keyCap = (k) => (k === " " ? "Space" : k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1));
 const capOf = (action) => keyCap(keyOf(action));

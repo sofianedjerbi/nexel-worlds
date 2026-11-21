@@ -97,7 +97,7 @@ def test_playing_by_keys_the_drawn_cell_is_the_cell_that_changes(browser, server
     game.frames(3)
     put, dig = game.js("Target.target('use')"), game.js("Target.target('alt')")
     assert put and put["kind"] == "place" and dig and dig["kind"] == "break", (put, dig)
-    assert changed(game, " ", x, y) == [(put["x"], put["y"], put["z"])]
+    assert changed(game, "e", x, y) == [(put["x"], put["y"], put["z"])]
     game.frames(3)
     dig = game.js("Target.target('alt')")                                                 # (X: the block you face, as it is now: the one just put there)
     assert changed(game, "x", x, y) == [(dig["x"], dig["y"], dig["z"])]
@@ -120,7 +120,7 @@ def test_in_a_cave_space_r_and_build_x_take_the_cells_drawn(browser, server):
     if "use" in cells:
         assert cells["use"]["z"] == game.js("myZ(myPos().x, myPos().y)") + 1
         u = cells["use"]
-        assert changed(game, " ", x, y) == [(u["x"], u["y"], u["z"])]
+        assert changed(game, "e", x, y) == [(u["x"], u["y"], u["z"])]
     up = game.js("Target.target('up')")
     if up:
         assert changed(game, "r", x, y) == [(up["x"], up["y"], up["z"])]
@@ -152,7 +152,7 @@ def test_a_cell_in_the_air_is_red_with_its_shadow_on_the_ground(browser, server)
 
 # what was drawn this frame for a key, and the cell it names: one call (README rule 9)
 DREW = """(k) => { frame(performance.now()); return [Target.target(k), Target.drew.filter((d) => d.key === k)]; }"""
-KEY = {" ": "use", "r": "up", "x": "alt"}
+KEY = {"e": "use", " ": "use", "r": "up", "x": "alt"}
 
 
 def drawn(g, k):
@@ -171,11 +171,11 @@ def test_the_first_frame_after_arriving_has_its_boxes(browser, server):
     game.hold_item("dirt")
     stage(game, "meadow")
     game.frames(2)
-    assert drawn(game, " ")["kind"] == "place" and drawn(game, "x")["kind"] == "break"
+    assert drawn(game, "e")["kind"] == "place" and drawn(game, "x")["kind"] == "break"
     assert not game.errors
 
 
-@pytest.mark.parametrize("s,item,keys", [("cave", "pickaxe", "r "), ("room", "dirt", " "), ("room", "pickaxe", "x")])
+@pytest.mark.parametrize("s,item,keys", [("cave", "pickaxe", "re"), ("room", "dirt", "e"), ("room", "pickaxe", "x")])
 def test_with_the_way_out_shown_each_key_has_its_mark_and_takes_that_cell(browser, server, s, item, keys):
     """A tunnel's end, a dug room: the way out of the ground is shown, and what Space, R and X would take is drawn all
     the same (it was only the guide: "what does Space hit?"), each the cell that changes."""
@@ -208,7 +208,7 @@ def test_earth_into_water_marks_its_new_bed_and_the_bed_rises_at_once(browser, s
     x, y = game.pos()
     game.hold_item("dirt")
     game.face(1, 0)
-    c = drawn(game, " ")
+    c = drawn(game, "e")
     top = game.js(f"topAt({x + 1}, {y})")
     assert game.js(f"gndAt({x + 1}, {y})") == "(" and game.js(f"WaterBed.depth({x + 1}, {y})") == 2
     assert c["kind"] == "use" and (c["x"], c["y"], c["z"]) == (x + 1, y, top - 1), c      # (on the bed it will have, a level under the face)
@@ -216,7 +216,7 @@ def test_earth_into_water_marks_its_new_bed_and_the_bed_rises_at_once(browser, s
     game.frames(3)
     seen = lambda: game.js(f"(() => {{ const L = {LIGHT}; return [L([{x + 1}, {y}, {top - 1}]), L([{x + 1}, {y}, {top - 2}])]; }})()")   # where the new bed's top is drawn, and under it (its south face once it is up): one frame's
     was = seen()
-    game.press(" ", 300)
+    game.press("e", 300)
     game.wait(f"gndAt({x + 1}, {y}) === '~'", 8000)             # (the tile drawn is the tile that changed)
     game.wait(f"WaterBed.depth({x + 1}, {y}) === 1 && !HdLook.busy", 2000)
     game.frames(3)

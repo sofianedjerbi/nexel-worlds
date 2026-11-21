@@ -33,11 +33,11 @@ def stair(g):
 def walk(g, key, done, jump=False):
     g.js(REC)
     g.page.keyboard.down(key)
-    if jump:                                                 # (up the steps: J at each, walking into one stops you)
+    if jump:                                                 # (up the steps: Space at each, walking into one stops you)
         for _ in range(120):
             if g.js(done):
                 break
-            g.page.keyboard.press("j")
+            g.page.keyboard.press("Space")
             g.page.wait_for_timeout(100)
     g.wait(done, timeout=12000)
     g.page.keyboard.up(key)

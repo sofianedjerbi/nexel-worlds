@@ -43,9 +43,9 @@ def test_letters_through_a_mailbox(game, friend):
     game.give(mailbox=1)
     game.hold_item("mailbox")
     game.face(1, 0)
-    game.press("Space", 800)
+    game.press("e", 800)
     game.press("0", 100)
-    game.press("Space", 500)                                 # open the mailbox panel
+    game.press("e", 500)                                 # open the mailbox panel
     assert game.js("$('mail').style.display") == "block"
     game.page.fill("#letter", "come see my farm")
     game.page.click("#postbtn")
@@ -78,7 +78,7 @@ def test_boat_launch_sail_and_moor(game):
     game.sleep(800)
     game.hold_item("boat")
     game.face(0, -1)
-    game.press("Space", 800)
+    game.press("e", 800)
     x, y = game.pos()
     assert game.tile(0, -1) == "V"
     game.js(f"act('move_to', {{x: {x}, y: {y - 1}}})")       # board
