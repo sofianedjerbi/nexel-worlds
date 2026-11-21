@@ -44,6 +44,7 @@ QUICK = {
     "frame": "test_a_frame_paints_the_land_once",
     "gathering": "test_too_far_is_too_far",
     "hd": "test_two_walls_side_by_side_touch_and_a_bridge_is_drawn",
+    "hd_behind": "test_on_a_small_hill_and_behind_it_no_window_opens_and_behind_it_you_show_through",
     "hd_land": "test_under_a_roof_an_open_pit_shows_a_bright_floor_and_the_meadow_stays",
     "hd_phone": "test_the_land_is_the_size_the_zoom_says_and_fills_a_screen_held_upright",
     "help": "test_the_help_is_a_window_of_short_pages",
