@@ -109,3 +109,18 @@ def test_a_trench_cut_in_stone_is_stone(browser, server):
       return [...n].sort((p, q) => q[1] - p[1]).slice(0, 3).map((p) => p[0]); }""", [int(ax) + 2, int(bx) - 2, int(ay) + 1, int(by) - 1])
     r, gg, b = map(int, px[0].split(","))
     assert abs(r - gg) < 25 and b - r > -12, px                     # stone's grey, not earth's brown (r over b by 40 and more)
+
+
+@pytest.mark.quick
+def test_natural_stone_is_a_cliff_and_a_laid_stone_block_has_courses(browser, server):
+    """The land's own stone (a mountain, a gorge's wall) is a cliff: no course line across every level's foot (it was
+    laid masonry, a mortar line under each course: "natural rock as bricks"); a stone block put down keeps its courses."""
+    g = hd(browser, server)
+    scene(g)
+    # each level 5..12, variant 0..3, natural then laid: [spread of its foot row's luminance, of its middle row's]
+    rows = g.js("""(() => { const out = [], L = (v) => .3 * (v & 255) + .59 * (v >>> 8 & 255) + .11 * (v >>> 16 & 255), sd = (a) => { const m = a.reduce((s, x) => s + x, 0) / a.length; return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / a.length); };
+      for (const built of [0, 1]) for (let z = 5; z <= 12; z++) for (let v = 0; v < 4; v++) { const px = new Uint32Array(16 * 8); VoxPaint.front(z, v, px, 0, 16, built);
+        const row = (j) => [...px.slice(j * 16, j * 16 + 16)].map(L); out.push([built, z, v, sd(row(7)), Math.min(...row(7)), Math.max(...row(7))]); } return out; })()""")
+    natural, laid = [r for r in rows if not r[0]], [r for r in rows if r[0]]
+    assert all(s > 6 for _, _, _, s, _, _ in natural), [r for r in natural if r[3] <= 6]       # a cliff's foot: broken, a ledge's undercut here, the rock there
+    assert all(s < .5 for _, _, _, s, _, _ in laid), [r for r in laid if r[3] >= .5]          # a laid block's: one joint line, all across

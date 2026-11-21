@@ -18,7 +18,8 @@ const Voxels = (() => {
       try { drawTile0(x, y, {px, o: at, w: stride}); } finally { maskOf.plain = false; peek = was; one.clear(); }
       if (!wet(gndAt(x, y) || ".")) VoxPaint.rim(x, y, z, px, at, stride);
     },
-    rock: VoxPaint.rocky,                                       // (is a tile's block stone, where its top is high enough: a mass of it, voxpaint.js)
+    built: (x, y) => matAt(x, y) === "s",                       // (a stone block put there: its sides laid courses; the land's own stone a cliff, voxpaint.js)
+    rock: VoxPaint.rocky,                                      // (is a tile's block stone, where its top is high enough: a mass of it, voxpaint.js)
     paintFront: VoxPaint.front, shape: VoxPaint.shape, profile: VoxPaint.profile, crown: VoxPaint.crown, lip: VoxPaint.lip, side: VoxPaint.side,
   };
   // (engine: can the land be drawn at all: WebGL 2, hd.js; forget: clear water turned on or off, waterbed.js)

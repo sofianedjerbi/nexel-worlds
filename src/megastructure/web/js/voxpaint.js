@@ -159,7 +159,28 @@ const VoxPaint = (() => {
     m = {rows, light: cols[0] || M0, dark: cols[cols.length - 1] || M0}; mots.set(sheet, m); return m;
   }
   const dim = (v, k) => (255 << 24 | ((v >>> 16 & 255) * k) << 16 | ((v >>> 8 & 255) * k) << 8 | (v & 255) * k) >>> 0;
-  function front(z, v, px, at, stride) {
+  // A CLIFF (natural stone's south face, a level): no courses. One or two fracture planes run down it, wandering a px
+  // now and then, at no fixed place; each lit along its west edge, the facets between them stepped in (darker) or out;
+  // its foot a ledge's undercut, darker than the joints (the stone sheet's D is its body's tone: no seam), one px or two (an overhang), broken in a gap or two where the rock runs on down, its top the ledge's lit edge, broken where
+  // a fracture crosses; a crack now and then. Laid blocks (a stone block put down: `built`) keep their courses: what
+  // was built is told from what was there.
+  function cliff(z, v, put, get, h, m, L, M, D, n) {
+    const J = dim(m.dark, .82), ins = (c) => dim(c, .9), fx = [], k = 1 + (h(0, 9, 80) < .55 ? 1 : 0);
+    for (let f = 0; f < k; f++) { let x = ((f * 8 + 2 + h(f, 9, 81) * 6) | 0) & 15; const j0 = h(f, 9, 82) < .35 ? 1 + ((h(f, 9, 83) * 4) | 0) : 0, col = []; for (let j = 0; j < n; j++) { if (j > j0 && h(f, j, 84) < .3) x += h(f, j, 85) < .5 ? -1 : 1; col.push(j >= j0 ? x : -9); } fx.push(col); }
+    const deep = [], lit = [];
+    const gaps = [[(h(7, 9, 97) * 14) | 0, 2 + (h(8, 9, 98) < .5)], h(9, 9, 99) < .4 ? [(h(10, 9, 100) * 14) | 0, 2] : [-9, 0]], U = dim(m.dark, .72);
+    for (let i = 0; i < 16; i++) { const r = h(i >> 1, 5, 86 + (i >> 2)); deep.push(gaps.some(([g, w]) => i >= g && i < g + w) ? 0 : r < .7 ? 1 : 2); lit.push(h(i >> 1, 6, 87) < .72 ? (h(i, 6, 88) < .2 ? 2 : 1) : 0); }
+    for (let j = 0; j < n; j++) for (let i = 0; i < 16; i++) {
+      let face = 0; for (const c of fx) if (c[j] >= 0 && i > c[j]) face++;
+      let c = get(i, j); if ((face + v + z) & 1) c = ins(c);
+      if (j === n - 1 && deep[i]) c = U; else if (j >= n - deep[i]) c = m.dark; else if (j === n - 1) c = get(i, j);
+      else if (j < lit[i]) c = m.light;
+      put(i, j, c);
+    }
+    for (const c of fx) for (let j = 0; j < n; j++) if (c[j] >= 0) { put(c[j], j, J); if (j < n - 1 && h(c[j], j, 89) < .7) put(c[j] + 1, j, m.light); }
+    if (h(1, 9, 90) < .5) { let i = (h(2, 9, 91) * 14) | 0, j = 2 + ((h(3, 9, 92) * 2) | 0); const dx = h(4, 9, 93) < .5 ? 1 : -1; for (let s = 0; s < 3; s++) { put(i, j, J); i += dx; j++; } }
+  }
+  function front(z, v, px, at, stride, built) {
     const [L, M, D] = bands(z).map(rgb), n = RELIEF_STEP, h = (i, j, s) => hash(i + v * 16, j + z * 8, s), m = mottle(z), stone = wallOf(z) === STONE, put = (i, j, c) => { if (i >= 0 && i < 16 && j >= 0 && j < n) px[at + j * stride + i] = c; };
     const sh = [0, 1, 2, 3].map((k) => (h(k, 0, 64) * 16) | 0);
     for (let j = 0; j < n; j++) for (let i = 0; i < 16; i++) {      // the body: the pack's two rows, a pair of rows from its own place across, a blob a few px wide
@@ -167,7 +188,8 @@ const VoxPaint = (() => {
       if (j === n - 1) c = D; else if (j === n - 2 && h(i >> 1, 0, 61) < .3) c = D;      // the seam at a level's foot (levels are counted), it swells, two px wide
       px[at + j * stride + i] = c;
     }
-    if (stone) {      // STONE: blocks: two joints a level, a level's joints half a block from the one over it; each block lit along its top and its west edge; a crack now and then
+    if (stone && !built) cliff(z, v, put, (i, j) => m.rows[(j >> 1) & 1][(i + sh[(j >> 1) & 3]) & 15], h, m, L, M, D, n);
+    else if (stone) {      // STONE BLOCKS (laid): two joints a level, a level's joints half a block from the one over it; each block lit along its top and its west edge; a crack now and then
       const J = dim(m.dark, .82), x0 = (v * 5 + (z & 1) * 4 + 3) % 8; for (let i = 0; i < 16; i++) put(i, n - 1, J);   // (its course's foot the joints' dark, all across: the stone sheet's darkest band is its body's tone, a level had no line under it and its only lines were its 1-px upright joints: streaks)
       for (let i = 0; i < 16; i++) { if (h(i, 0, 70) < .8) put(i, 0, m.light); if ((i - x0 + 16) % 8 === 0) for (let j = 0; j < n - 1; j++) { put(i, j, J); put(i + 1, j, m.light); } }
       for (let k = 0; k < 2; k++) if (h(k, 1, 71) < .45) { let i = (h(k, 2, 72) * 16) | 0, j = 2; while (j < n - 2) { put(i, j, J); i += h(i, j, 73) < .5 ? 1 : 0; j++; } }
