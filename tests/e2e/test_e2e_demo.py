@@ -1,6 +1,7 @@
 """The GitHub Pages demo: the static build runs the whole game in the tab (Pyodide) and keeps the world on reload."""
 
 import functools
+import re
 import http.server
 import sys
 import threading
@@ -44,9 +45,12 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     page.wait_for_function("blocks.size > 0", timeout=90000)       # Pyodide comes from the CDN on first load
     page.wait_for_function("!document.body.classList.contains('booting')", timeout=90000)
     assert "sfx.json" not in asked[:asked.index("py.zip")], "the sounds were asked for before the world had come"
-    # every script the page names has the build's mark: a page loaded again after a publish is the new build at once
-    marks = page.evaluate("[...document.scripts].filter((s) => s.getAttribute('src') && s.getAttribute('src').startsWith('js/')).map((s) => s.getAttribute('src').split('?v=')[1])")
-    assert len(marks) > 50 and all(marks) and len(set(marks)) == 1, marks[:5]
+    # the client is one script and one pack of pictures, each under its own mark (web_bundle.py): a page loaded again
+    # after a publish is the new build at once; and the strip at the foot of Wake up went all the way
+    names = page.evaluate("[...document.scripts].map((s) => s.getAttribute('src')).filter(Boolean)")
+    assert len(names) == 1 and re.fullmatch(r"js/game\.\w{10}\.js\?v=\w+", names[0]), names
+    assert not [n for n in asked if n.endswith(".png")] and sum(n.startswith("pack.") for n in asked) == 1, asked
+    assert page.evaluate("(() => { const j = document.getElementById('join'); return parseFloat(j.style.getPropertyValue('--boot-w')) >= j.clientWidth - 8 && bootTook.world > 0; })()")
     page.fill("#name", "visitor")
     page.click("#join")
     page.wait_for_function("meObs !== null", timeout=20000)
@@ -57,6 +61,16 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     page.reload()
     page.wait_for_function("blocks.size > 0", timeout=90000)
     page.wait_for_function("agents.some((a) => a.name === 'visitor')", timeout=5000)   # saved, asleep
+    # the next visit needs no line: the service worker has the page, its script and pictures, Python and the game
+    page.wait_for_function("window.swReady === true", timeout=60000)
+    assert page.evaluate("caches.keys()").count("nexel-sound") == 1 and len(page.evaluate("caches.keys()")) == 3
+    ctx.set_offline(True)
+    asked.clear()
+    page.reload()
+    page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0 && !document.body.classList.contains('booting') && !!navigator.serviceWorker.controller", timeout=60000)
+    page.wait_for_function("agents.some((a) => a.name === 'visitor')", timeout=5000)
+    assert page.evaluate("IMG.grass.naturalWidth === 176 && bootTook.world > 0")
+    ctx.set_offline(False)
     ctx.close()
     assert not errors, errors
     phone = browser.new_context(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True)       # a phone: its picture of the island is in the page itself

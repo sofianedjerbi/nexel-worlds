@@ -24,3 +24,5 @@ music/site/opus/
 src/megastructure/web/audio/
 # recorded instruments: fetched by music/fetch_samples.py
 music/samples/
+.perf/
+.cache/

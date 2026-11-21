@@ -85,6 +85,11 @@ def connect(path: str, deliver, closed) -> Socket:
     return ws
 
 
+def modules() -> list[str]:
+    """Every module loaded so far: which of Python's own files the game uses (tools/build_stdlib.py)."""
+    return sorted(sys.modules)
+
+
 def save():
     """Write everything to the database (the page then syncs it to IndexedDB)."""
     if game is not None:

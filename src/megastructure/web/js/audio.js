@@ -232,7 +232,7 @@ function heard(x, y, far, kind) {
 function sfx(name, x, y, reach) {
   if (muted || (typeof Sun !== "undefined" && Sun.casting)) return;      // (sun.js: a body drawn again for its shadow makes no sound)
   const m = sounds.manifest;
-  if (!m) { loadSounds(); return; }
+  if (!m) { if (audio) loadSounds(); return; }      // (not before the first key or tap: the island's own sounds asked for 4.9 MB of them on a line nobody had touched)
   const s = m.sounds[name];
   if (!s) { if (!sounds.warned.has(name)) { sounds.warned.add(name); console.warn(`sfx: unknown sound "${name}"`); } return; }
   let vol = 1, pan = 0;
@@ -284,7 +284,7 @@ function fallWind(k) {
 // Something was put down: each kind of block or ground has its own sound (music/sfx_map.json).
 function sfxPlaced(block, ground, x, y) {
   const m = sounds.manifest;
-  if (!m) { loadSounds(); return; }
+  if (!m) { if (audio) loadSounds(); return; }      // (not before the first key or tap: the island's own sounds asked for 4.9 MB of them on a line nobody had touched)
   sfx(m.place[block] || m.ground[ground] || "place", x, y);
 }
 
