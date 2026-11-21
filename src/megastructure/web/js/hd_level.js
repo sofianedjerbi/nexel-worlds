@@ -48,7 +48,9 @@ const HdLevel = (() => {
   // shut(tx, ty, L, k) -> the floor of your hole is HIDDEN from the eye: the open ground through your tile from north to south (tiles under L + 1: lower than your head), times k (levels the eye's line climbs a tile), is less than
   // the hole's depth under its rim. Only then do its walls tell its depth by going dark (vox_style_glsl.js ho): a shaft, a pit one or two wide across. A gorge five wide whose floor and far wall are seen
   // kept that dark too: its north wall black under its first level within six tiles of you, a black stepped slab, whenever you stood at its south bank (the rim, from the tiles beside you, 12 there)
-  function shut(tx, ty, L, k) { const d = rim(tx, ty, L) - L; if (d <= 0) return false; let w = 1; for (const s of [-1, 1]) for (let j = 1; j <= 12 && topAt(tx, ty + s * j) < L + 1; j++) w++; return w * k < d; }
+  // An OPEN hole only: under a roof (a tunnel, a cave) the window tells the depth inside, and the dark fell on whatever wall stood within six tiles of you: walking a tunnel
+  // into a hill, the hill's own face over the meadow outside went black under its first level, a black stepped slab round the mouth (as by a river beside its cliffs)
+  function shut(tx, ty, L, k) { const d = rim(tx, ty, L) - L; if (d <= 0 || under(tx, ty, L)) return false; let w = 1; for (const s of [-1, 1]) for (let j = 1; j <= 12 && topAt(tx, ty + s * j) < L + 1; j++) w++; return w * k < d; }
   // WHERE YOUR MARKS ARE DRAWN: with you. raise(z, s): a level of a cell a key acts on, as drawn while you are lifted (s: hd.js `seen`: L, lift, rim): your feet's level goes up by the lift, the rim's by none, the hole between
   // squeezed (the boxes and the way's block lay where the cell projects: on the grass south of a deep hole, faint, while you stood at its rim)
   const raise = (z, s) => (!s || !(s.lift > 0) ? z : z + s.lift * Math.max(0, Math.min(1, (s.rim - z) / Math.max(.001, s.rim - s.L))));

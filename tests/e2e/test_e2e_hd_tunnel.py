@@ -42,3 +42,29 @@ def test_in_and_out_of_a_tunnel_under_a_hill_the_eye_and_your_body_do_not_jump(b
         assert max(jumps) < 20, ys                                          # (a step's bob is 3 to 9 px: it was 43 up, then 43 down)
     finally:
         g.rpc("dev_col", tiles=hill, col=[0])
+
+
+# how dark the picture is at a place of the world: the light of its px (0..255)
+LUM = """([x, y, z]) => { const a = HdLook.screenOf(x, y, z), k = devicePixelRatio, d = HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), 1, 1).data; return .3 * d[0] + .59 * d[1] + .11 * d[2]; }"""
+
+
+def test_in_a_hill_s_tunnel_the_hill_s_face_outside_is_stone_not_black(browser, server):
+    """(The owner: "a big black stepped region where the cliff should be".) In a tunnel the walls within six tiles of
+    you went dark by the depth of the land over your floor (vox_style_glsl.js ho, hd_level.js shut), as a shaft's walls
+    do: but the hill's own face over the meadow outside is no wall of yours: it was black under its first level, a
+    stepped slab round the mouth. Under a roof the hole's dark is not laid: the window tells the depth inside."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    hill = [[x + i, y + j] for j in range(-9, -1) for i in range(-6, 7)]
+    g.rpc("dev_col", tiles=hill, col=[8])
+    g.rpc("dev_col", tiles=[[x, y + j] for j in range(-9, -1)], col=[0, 2, 8])
+    g.rest()
+    try:
+        go(g, x, y - 4, 0, "HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 78")    # in the tunnel, 3 tiles in
+        face = [[x + i + .5, y - 1, z + .5] for i in (-4, -3, -2, 2, 3, 4) for z in range(0, 7)]   # the hill's face over the meadow, beside the mouth
+        lum = [g.js(LUM, p) for p in face]
+        black = [p for p, v in zip(face, lum) if v < 20]
+        assert len(black) <= 2, (black, [round(v) for v in lum])        # stone (it was black: 0 to 10, most of it)
+    finally:
+        g.rpc("dev_col", tiles=hill, col=[0])
