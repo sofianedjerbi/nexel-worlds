@@ -111,7 +111,7 @@ const HdSun = (() => {
   }
   // a body's: the shape it has NOW (its pose, the way it faces: its own picture this frame; it was the shape it had when first seen), thrown from its feet
   function body(out, s) {
-    const kind = s.q.e ? s.q.e.kind || "agent" : "agent", X = Math.floor(s.x), Y = Math.floor(s.y + .42); if (!open(X, Y, s.z)) return; const v = way(s.x, s.y); if (!v) return;
+    const kind = s.q.e ? s.q.e.kind || "agent" : "agent", X = Math.floor(s.x), Y = Math.floor(s.y + .42), Z = s.zh ?? s.z; if (!open(X, Y, Z)) return; const v = way(s.x, s.y); if (!v) return;   // (Z: where the body stands as the land's depth has it (hd.js zh): a swimmer lifted to a river's rim cast its shadow on the bank)
     const c = s.canvas, pk = c._h === undefined ? undefined : kind + c._h; let sk = pk === undefined ? undefined : poses.get(pk), S = sk ? sils.get(sk) : null;   // (a picture made by the same calls as one looked at before (canvas._h, hd.js): its shape is known: its px were read and counted every frame)
     if (sk === undefined || (sk && !S)) { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let hsh = 0, n = 0;
     for (let i = 3, k = 0; i < d.length; i += 4, k++) if (d[i] >= 128) { hsh = (Math.imul(hsh, 31) + k) | 0; n++; }
@@ -121,7 +121,7 @@ const HdSun = (() => {
     if (!sk) return;
     if (bms.size > 1500) bms.clear();
     const bm = picture("e" + sk, 0, 0, v, (put) => { for (const [i, h] of S) put(i, 0, h, h + 1); });
-    if (bm) lay(out, X, Y, s.z, bm, bm.x + Math.round((s.x - X) * 16), bm.y + Math.round((s.y + .42 - Y) * 16), true);
+    if (bm) lay(out, X, Y, Z, bm, bm.x + Math.round((s.x - X) * 16), bm.y + Math.round((s.y + .42 - Y) * 16), true);
   }
   return {key, thing, box, body, way, land, landAt, surface, get sun() { return H.on ? H.sun : 1; }, get hour() { return H; }};
 })();

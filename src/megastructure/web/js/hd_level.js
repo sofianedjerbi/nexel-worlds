@@ -39,7 +39,13 @@ const HdLevel = (() => {
     trail = trail.filter((t) => t.length < 5 && (t[0] !== tx || t[1] !== ty) && Math.abs(t[0] - tx) + Math.abs(t[1] - ty) <= 3).slice(-3).concat([b]); return trail;   // (behind you: only what was under a roof; under the open sky the land there is as it is)
   }
   const rim = (tx, ty, L) => Math.max(L, topAt(tx, ty), topAt(tx + 1, ty), topAt(tx - 1, ty), topAt(tx, ty - 1), topAt(tx, ty + 1));   // (the level of the land round your hole: its rim)
-  const lift = (tx, ty, L, pitch) => Math.min(Math.max(0, rim(tx, ty, L) - L), over(tx, ty, L, Math.tan(pitch * Math.PI / 180) * 2, 1));
+  // (px: art px of you that are drawn under your feet's line and are what shows of you: a swimmer's head and its waterline, swim.js SWIM.sink. A body is lifted whole; a swimmer was lifted as a walker and
+  //  the rim cut its head at the eyes, all that showed of it ears: "no x-ray" at a cliff's foot in a river. Only when the rim hides you at all: in open water the swimmer is as it is)
+  const lift = (tx, ty, L, pitch, px = 0) => { const o = over(tx, ty, L, Math.tan(pitch * Math.PI / 180) * 2, 1); return Math.min(Math.max(0, rim(tx, ty, L) - L), o > 0 ? o + px / (8 * Math.cos(pitch * Math.PI / 180)) : 0); };
+  // shut(tx, ty, L, k) -> the floor of your hole is HIDDEN from the eye: the open ground through your tile from north to south (tiles under L + 2), times k (levels the eye's line climbs a tile), is less than
+  // the hole's depth under its rim. Only then do its walls tell its depth by going dark (vox_style_glsl.js ho): a shaft, a pit one or two wide across. A gorge five wide whose floor and far wall are seen
+  // kept that dark too: its north wall black under its first level within six tiles of you, a black stepped slab, whenever you stood at its south bank (the rim, from the tiles beside you, 12 there)
+  function shut(tx, ty, L, k) { const d = rim(tx, ty, L) - L; if (d <= 0) return false; let w = 1; for (const s of [-1, 1]) for (let j = 1; j <= 12 && topAt(tx, ty + s * j) < L + 2; j++) w++; return w * k < d; }
   // WHERE YOUR MARKS ARE DRAWN: with you. raise(z, s): a level of a cell a key acts on, as drawn while you are lifted (s: hd.js `seen`: L, lift, rim): your feet's level goes up by the lift, the rim's by none, the hole between
   // squeezed (the boxes and the way's block lay where the cell projects: on the grass south of a deep hole, faint, while you stood at its rim)
   const raise = (z, s) => (!s || !(s.lift > 0) ? z : z + s.lift * Math.max(0, Math.min(1, (s.rim - z) / Math.max(.001, s.rim - s.L))));
@@ -55,5 +61,5 @@ const HdLevel = (() => {
     if (!r || r.v !== c._v) { const w = c.width, d = c.getContext("2d", {willReadFrequently: true}).getImageData(0, 0, w, c.height).data, l = []; for (let j = 0; j < c.height; j++) { let i0 = -1; for (let i = 0; i <= w; i++) { const on = i < w && d[(j * w + i) * 4 + 3] >= 128; if (on && i0 < 0) i0 = i; else if (!on && i0 >= 0) { l.push(i0, j, i - i0); i0 = -1; } } } runs.set(c, r = {v: c._v, l}); }
     const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); for (let i = 0; i < r.l.length; i += 3) g.rect((x0 + r.l[i]) * zs, (y0 + r.l[i + 1]) * zs, r.l[i + 2] * zs, zs); g.clip("evenodd");
   }
-  return {of, steep, own, rim, over, under, lift, raise, wall, wallAt, cut, get shows() { return sv; }};
+  return {of, steep, own, rim, over, under, lift, shut, raise, wall, wallAt, cut, get shows() { return sv; }};
 })();
