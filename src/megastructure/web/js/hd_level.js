@@ -10,6 +10,8 @@
 //   steep(tx, ty, L, ver) -> is the eye to look from above (hd.js api.steep). ONE rule for every hole, pit, stair, trench, shaft, room, cave, tunnel: your feet two levels or more under the
 //     land round you: ten of the sixteen tiles two steps away (each as high as it or the tile between it and you) two levels over L. A wall or two beside you on the surface is not "round you".
 //     (It was "no tile of your floor shows from the side": a pit you fell into stayed side-on, a 3-wide stair tipped at its floor only. The land's shape, not a clock: hd.js holds 300 ms.)
+//   lift(tx, ty, L, pitch) -> levels your body is drawn higher in a hole seen from above (hd.js, times the tilt): the land of the tile just south of you over the eye's line to your feet (0..the rim): your feet on
+//     that rim's line, the rim cutting you. (Behind it you were one px in two on the meadow south of a shaft or a 1-wide stair: no pitch below 90 puts a deep 1x1 floor inside its rim. Not the floor: only you.)
 //   own(tx, ty, L, cov) -> the boxes of the x-ray window that are yours whatever the search for your space has found yet: your tile, floor to ceiling, and the covered tiles you just came from (vox_style.js adds the ones its window lacks)
 const HdLevel = (() => {
   const col = (x, y) => Voxels.host.column(x, y), topAt = (x, y) => { const c = col(x, y); return c && c.length ? c[c.length - 1] : 0; };
@@ -38,5 +40,6 @@ const HdLevel = (() => {
     trail = trail.filter((t) => t.length < 5 && (t[0] !== tx || t[1] !== ty) && Math.abs(t[0] - tx) + Math.abs(t[1] - ty) <= 3).slice(-3).concat([b]); return trail;   // (behind you: only what was under a roof; under the open sky the land there is as it is)
   }
   const rim = (tx, ty, L) => Math.max(L, topAt(tx, ty), topAt(tx + 1, ty), topAt(tx - 1, ty), topAt(tx, ty - 1), topAt(tx, ty + 1));   // (the level of the land round your hole: its rim)
-  return {of, steep, own, rim, over, under, get shows() { return sv; }};
+  const lift = (tx, ty, L, pitch) => Math.min(Math.max(0, rim(tx, ty, L) - L), over(tx, ty, L, Math.tan(pitch * Math.PI / 180) * 2, 1));
+  return {of, steep, own, rim, over, under, lift, get shows() { return sv; }};
 })();

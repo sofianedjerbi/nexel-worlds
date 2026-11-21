@@ -99,7 +99,8 @@ def test_in_a_hole_the_eye_looks_from_above_and_its_floor_lies_inside_its_rim(br
 
 def test_a_deep_shaft_is_darker_than_a_shallow_one(browser, server):
     """Shaft 3 and shaft 6 were the same picture (a cat in a brown box). From above, the wall strata of the north wall fill
-    more of the opening the deeper it is (3 px a level), darker downward: the opening of shaft 6 is darker than shaft 3's."""
+    more of the opening the deeper it is (3 px a level), darker downward: the opening of shaft 6 is darker than shaft 3's.
+    (You stand in both openings, drawn at the rim's line: your own px, cream and purple, are not counted.)"""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -107,13 +108,36 @@ def test_a_deep_shaft_is_darker_than_a_shallow_one(browser, server):
     g.rpc("dev_col", tiles=[[x + 7, y]], col=[-6])
     g.rest()
     LUM = """([x, y]) => { const a = HdLook.screenOf(x + .5, y, 0), b = HdLook.screenOf(x + .5, y + 1, 0), k = cv.width / innerWidth; let s = 0, n = 0;
-      for (let v = Math.ceil(a[1] * k) + 2; v < Math.floor(b[1] * k) - 2; v++) for (const dx of [-5, 5]) { const d = HdLook.read(Math.round(a[0] * k + dx), v, 1, 1).data; s += .3 * d[0] + .59 * d[1] + .11 * d[2]; n++; } return [s / n, n]; }"""
+      for (let v = Math.ceil(a[1] * k) + 2; v < Math.floor(b[1] * k) - 2; v++) for (let dx = -16; dx <= 16; dx += 2) { const d = HdLook.read(Math.round(a[0] * k + dx), v, 1, 1).data; if (d[0] > 185 || d[2] > d[1] + 8) continue; s += .3 * d[0] + .59 * d[1] + .11 * d[2]; n++; } return [s / n, n]; }"""
     out = {}
     for d, tx in ((3, x + 3), (6, x + 7)):
         s = go(g, tx, y, -d, "!HdLook.busy && HdLook.cam.pitch === 68")
         assert s["pitch"] == 68, s
         out[d] = g.js(LUM, [tx, y])
     assert out[6][1] >= 6 and out[6][0] < out[3][0] - 10, out
+    tidy(g, x, y)
+
+
+def test_in_a_shaft_six_deep_no_px_of_your_body_lies_outside_the_hole_s_opening(browser, server):
+    """(After the eye came to look from above: "a ghost on the grass".) No pitch below 90 puts a deep 1x1 floor inside its
+    rim: your body, behind the south rim, was drawn one px in two on the meadow just south of the hole. In a hole seen from
+    above you are drawn no deeper than the eye sees past the rim south of you (hd_level.js `lift`): your feet on that rim's
+    line, whole, every px of you that shows inside the hole's opening on the screen. The floor is not moved (no drawer)."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    g.rpc("dev_col", tiles=[[x + 3, y]], col=[-6])
+    g.rest()
+    s = go(g, x + 3, y, -6, "!HdLook.busy && HdLook.cam.pitch === 68")
+    assert s["pitch"] == 68 and s["n"] == 0, s
+    nw, se = g.js(f"HdLook.screenOf({x + 3}, {y}, 0)"), g.js(f"HdLook.screenOf({x + 4}, {y + 1}, 0)")
+    u = g.js("zoom")
+    seen, out = g.js("(b) => HdLook.catSeen(b)", [nw[0] - u, nw[1] - u, se[0] + u, se[1] + u])
+    assert seen > .6 and out == 0, (seen, out, nw, se)                     # (it was .44 seen, a checker of you under the rim)
+    south = [g.js(AT_, [x + 3 + i, y + 1.35, 0]) for i in (.3, .5, .7)]
+    assert all(green(c) for c in south), south                             # the meadow south of the rim: grass, nothing of you
+    floor = g.js(f"HdLook.screenOf({x + 3.5}, {y + .5}, -6)")
+    assert floor[1] > se[1], (floor, se)                                   # the floor itself is where it is: past the rim (hidden), not drawn inside it
     tidy(g, x, y)
 
 
