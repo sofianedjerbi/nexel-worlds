@@ -222,6 +222,20 @@ def test_jump_on_the_level_is_a_hop_and_while_walking_it_takes_the_step(world):
     assert run(sim, a, "move_to", {"x": x + 5, "y": y})["ok"] and sim.height(a) == 1     # a way asked for jumps
 
 
+def test_a_jump_tapped_while_the_world_is_still_coming_to_where_you_stopped_is_not_lost(world):
+    """A phone: the stick let go (`stop` with `at`, the world a stride or two behind the screen), then the Jump button
+    at the step in front of the screen. The jump makes the way first, then jumps: it was said "spring" to a stop
+    that was not going there, and nothing climbed (tests/e2e/test_e2e_touch.py, one run in two)."""
+    sim, a = world
+    x, y = a.x, a.y
+    for i in range(3, 8):
+        sim.world.set(x + i, y, level=1)                     # a step three tiles east
+    sim.submit(a, "stop", {"at": [x + 2, y, 1]})             # the screen stopped two tiles on, at the step's foot
+    sim.step()
+    r = run(sim, a, "jump", {"dir": "E", "at": [x + 3, y]})
+    assert r["ok"] and r.get("jumped") and (a.x, sim.height(a)) == (x + 3, 1), r
+
+
 def test_the_world_retraces_the_way_a_screen_walked(world):
     """A player's screen walks without waiting for the world (which may answer late) and says where it went: the tile
     it turned at (`walk`'s `from`), the tile it stopped on (`stop`'s `at`), numbered. The world makes them first, in

@@ -244,7 +244,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             # on the move and the walk goes on. If it needs time (chopping), it replaces the walk as usual.
             walk, a.action = a.action, act
             act.started_tick, act.ticks = self.tick, 1
-            self.passing = a
+            self.passing, self.passed = a, walk           # (passed: the movement it came in on: Movement._tool_jump)
             try:
                 next(act.gen)
             except StopIteration as stop:
@@ -259,10 +259,10 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             finally:
                 self.passing = None
             a.action = walk                           # it needs time: stop walking, then carry on with it
-            self.interrupt(a, f"replaced by {tool}")
+            self.interrupt(a, f"replaced by {tool}", way=tool == "jump")      # (a jump makes the way the screen walked first)
             a.action = act
             return act
-        self.interrupt(a, f"replaced by {tool}", way=tool in ("walk", "stop"), hands=tool not in MEANWHILE)
+        self.interrupt(a, f"replaced by {tool}", way=tool in ("walk", "stop", "jump"), hands=tool not in MEANWHILE)
         a.action = act
         return act
 

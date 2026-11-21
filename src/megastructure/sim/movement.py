@@ -127,10 +127,11 @@ class Movement:
         return {}
 
     def _tool_jump(self, a, args):
-        """Jump: up a layer onto the step `dir` of you (both cells over it empty: you are two cells tall). On the
-        level, or with no dir, a hop where you stand: nothing changes (as in Minecraft). With `at` ([x, y]: a player's
-        screen, the step it jumps for on the way it walks) or while walking, it is said at once and the walk takes the
-        step when it comes to it (a.spring, SPRING_S)."""
+        """Jump: up a layer onto the step `dir` of you (the cell over it empty, and over your head). On the level, or
+        with no dir, a hop where you stand: nothing changes (as in Minecraft). With `at` ([x, y]: a player's screen,
+        the step it jumps for): while walking that way it is said at once and the walk takes the step when it comes to
+        it (a.spring, SPRING_S); otherwise the way the screen walked is made first (it may be behind it: a stop's `at`
+        still on its way), then the jump. A tap is never lost to a world a stride behind the screen."""
         at = args.get("at")
         if isinstance(at, (list, tuple)) and len(at) == 2 and all(type(v) is int for v in at):
             x, y = at
@@ -143,11 +144,15 @@ class Movement:
         self.emit("jump", a.x, a.y, name=a.name)
         if x is None:
             return {"hopped": True}
-        if getattr(self, "passing", None) is a or abs(x - a.x) + abs(y - a.y) != 1:     # (walking: the walk takes it)
+        came = getattr(self, "passed", None) if getattr(self, "passing", None) is a else None
+        if came is not None and came.tool == "walk":     # (walking: the walk takes it)
             a.spring = {k: t for k, t in a.spring.items() if t >= self.tick}      # (several: a step on is jumped for before the first is reached)
             a.spring[(x, y)] = self.tick + sec(SPRING_S)
             return {"spring": [x, y]}
-        if not self.world.solid(x, y, self.height(a) + 1):
+        _, fall = yield from self.follow(a, args)        # (the way the screen walked, first: Movement.follow)
+        if fall:
+            return fall
+        if abs(x - a.x) + abs(y - a.y) != 1 or not self.world.solid(x, y, self.height(a) + 1):
             return {"hopped": True}                      # (no step there: a hop on the spot)
         def room():                                      # (before the stride and after it)
             if (a.x, a.y) == (x, y) or not self.can_go(a, x, y, jump=True):

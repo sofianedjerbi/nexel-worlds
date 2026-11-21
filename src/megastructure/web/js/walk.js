@@ -39,7 +39,7 @@ function jumpKey() {
   spring.set(s.x + "," + s.y, now + 3000);
   if (s.way) turn(s.d);
   jumpGoing = !walking;
-  rpc("act", {tool: "jump", args: walking ? {at: [s.x, s.y]} : {dir: s.d}}).then(() => { jumpGoing = false; if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk(); });   // (a walk the server ended at the step: on again, up it)
+  rpc("act", {tool: "jump", args: walking ? {at: [s.x, s.y]} : {dir: s.d, at: [s.x, s.y]}}).then(() => { jumpGoing = false; if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk(); });   // (a walk the server ended at the step: on again, up it)
 }
 let jumpGoing = false;
 
