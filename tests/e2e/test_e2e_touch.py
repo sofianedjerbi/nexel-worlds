@@ -141,13 +141,11 @@ def test_out_of_your_own_shaft_with_the_thumbs_and_a_pickaxe_alone(browser, serv
                 except Exception:                                             # (what there is when it does not come)
                     raise AssertionError(g.js(f"JSON.stringify({{aim: {aim!r}, said: {said!r}, me: [myAt.x - {x}, myAt.y - {y}, myAt.z], now: WayShow.cur && WayShow.cur.now, walking: !!walking, act: !!myAction, pending: !!pendingAct, pred: !!pred && performance.now() < pred.until, dig: [$('tDig').style.display, $('tDig').className], toast: $('toast').innerText}})") + " server " + str(g.server()["z"]))
             else:
-                g.touch("touchStart", 80, 600)                                # the stick, east: up the step
+                g.touch("touchStart", 80, 600)                                # the stick, east: up the step (auto-jump: by itself)
                 for i in range(1, 6):
                     g.touch("touchMove", 80 + i * 8, 600)
                     g.sleep(30)
-                g.touch("touchEnd")                                           # (walking into the step stops you: the Jump button)
-                g.wait("$('tJump').style.display === 'flex'", 3000)
-                tap("tJump")
+                g.touch("touchEnd")
                 try:
                     g.wait(f"myAt && myAt.z > {z}", 6000)
                 except Exception:                                             # (what there is when it does not come)

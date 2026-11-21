@@ -6,19 +6,31 @@
 // off in (no walking on air), and there is dust where it leaves the ground and where it lands.
 // It is quick: a hop takes the time of a step (walk.js: your screen doesn't slow down for it). Seen frame by frame,
 // what looked wrong before was the hang: a step and a half long, the body near the top of its arc for most of it.
+// And then ("Jump looks unnatural"): it left the ground the moment the step began and landed the moment it ended,
+// stiff, in the pose it stood in. Now a step up has three parts: a crouch on the ground it leaves (JUMP.crouch of the
+// step: squashed, a row of the body drawn under the rest: characters.js), the arc (legs tucked: the run's stride),
+// the landing on the top (squashed again). The arc is a thrown thing's, a parabola (a sine hangs at its top).
 
-const JUMP = {over: 2, off: 1};      // art px the arc clears the edge by: going up, coming down
-const HOP = {ms: 320, px: 6};        // a hop on the level: how long, how high (art px)
+const JUMP = {over: 2, off: 1, crouch: .14, land: .14};   // art px the arc clears the edge by (going up, coming down); the share of the step on the ground before it, after it
+const HOP = {ms: 240, px: 6, crouch: .12, land: .12};     // a hop on the level: how long, how high (art px), its crouch and landing
+const SQUASH_ROW = 26;                                    // a person's cell row at the hips: squashed, what is over it is drawn a row lower (characters.js)
 
-// -> null on the level, or {body, ground: art px over the straight line (its feet, its shadow)}
+// A thrown body's height at u (0 to 1) going from 0 to d art px: over the straight line, its peak `top` over the higher end, about
+const jumpArc = (u, d, top) => d * u + 4 * (Math.abs(d) / 2 + top) * u * (1 - u);
+// The parts of a jump at f (0 to 1 of its time): -> [u: how far through the air (0 to 1), squashed: on the ground, crouched or landing]
+const jumpPhase = (f, crouch, land) => (f < crouch ? [0, true] : f > 1 - land ? [1, true] : [(f - crouch) / (1 - crouch - land), false]);
+
+// -> null on the level, or {body, ground: art px over the straight line (its feet, its shadow), squash, tuck: in the air}
 function jumpOf(p) {
   const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
   if (ax === bx && ay === by) return null;
   const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by);
   if (la === lb || Climb.onLadder(ax, ay, la, bx, by, lb)) return null;          // (up or down a ladder: a straight climb)
   const f = ax === bx ? p.y - ay : p.x - ax, d = (lb - la) * RELIEF_STEP;        // how far across; px from the first to the second
-  const up = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0 === d > 0;   // going to the higher one?
-  return {body: (Math.abs(d) / 2 + (up ? JUMP.over : JUMP.off)) * 4 * f * (1 - f), ground: (f < .5 ? 0 : d) - d * f};
+  const fwd = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0;        // from the first to the second?
+  const g = fwd ? f : 1 - f, D = fwd ? d : -d, line = D * g;                     // the way it goes: how far along, px up by, the straight line
+  const [u, squash] = jumpPhase(g, JUMP.crouch, JUMP.land);
+  return {body: jumpArc(u, D, D > 0 ? JUMP.over : JUMP.off) - line, ground: (u < .5 ? 0 : D) - line, squash, tuck: !squash};
 }
 
 // A drop of FALL.from layers or more is a fall, not a hop. You walk to the edge on the ground you leave; from the edge
@@ -112,11 +124,12 @@ function jumping(p, now = performance.now()) {
     return {body: Math.sin(k * Math.PI) * FALL.bounce[0], ground: 0, air: false};
   }
   if (now - p.hop < HOP.ms && !jumpOf(p)) {                                   // the jump key on the level: a hop on the spot (walk.js jumpKey; others: their `jump` event, state.js)
-    const k = (now - p.hop) / HOP.ms;
-    return {body: Math.round(Math.sin(k * Math.PI) * HOP.px), ground: 0, air: false};
+    const [u, squash] = jumpPhase((now - p.hop) / HOP.ms, HOP.crouch, HOP.land);
+    return {body: Math.round(jumpArc(u, 0, HOP.px)), ground: 0, air: false, squash, tuck: !squash};
   }
   const j = jumpOf(p), tx = Math.round(p.x), ty = Math.round(p.y);
-  if (j && p.jfrom === undefined) { p.jfrom = Floors.standOf(p, tx, ty); burst(p.x, p.y + .35 - UP, "dust", 3, {up: .8, spread: 1.6, g: 3, life: .3}); }
+  if (j && j.tuck && p.jfrom === undefined) {   // (off the ground: dust where it leaves it, not while it crouches)
+    p.jfrom = Floors.standOf(p, tx, ty); burst(p.x, p.y + .35 - UP, "dust", 3, {up: .8, spread: 1.6, g: 3, life: .3}); }
   if (!j && p.jfrom !== undefined) {
     const down = Floors.standOf(p, tx, ty) < p.jfrom;
     smoke(p.x, p.y + .35 - UP, down ? 4 : 3, down ? .4 : .3); sfx(down ? "thud" : "step", tx, ty);
@@ -124,7 +137,9 @@ function jumping(p, now = performance.now()) {
   }
   return j;
 }
-// Its shadow, on the ground under it (x, y: where the body is drawn standing; z: the zoom)
+// Its shadow, on the ground under it (x, y: where the body is drawn standing; z: the zoom). (The HD look draws no px
+// of a sprite under half opaque (vox_style_glsl.js): there this is not seen; its shadow in the air is the sun's,
+// a shade under its feet that shrinks as it goes up: hd_sun.js body)
 function jumpShadow(j, x, y, S, z, wide = 5) {
   ctx.fillStyle = "rgba(40,30,50,.2)";
   pixelOval(x + S / 2, y - Math.round(j.ground * z) + S - 2 * z, Math.max(wide * .6, wide - (j.body - j.ground) / 6), 2, 0, .5);

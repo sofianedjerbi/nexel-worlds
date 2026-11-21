@@ -174,20 +174,23 @@ class Movement:
         steps, fall = yield from self.follow(a, args)            # (first, the way your screen has already walked: `from`)
         if fall:
             return {"steps": steps, "stopped": "fell", **fall}
+        j = True if args.get("jump") else None                   # (auto-jump: a player's screen walks up every step it comes to)
         # (a player's held key, `push`, against a step a jump would take: it goes on pushing, as in Minecraft, and the
         # jump key's spring takes the step at once: a walk that ended there had the world a stride behind the screen)
         against = lambda: args.get("push") and self.can_go(a, a.x + dx, a.y + dy, jump=True)
         while steps < 600:
-            if not self.can_go(a, a.x + dx, a.y + dy):
+            if not self.can_go(a, a.x + dx, a.y + dy, j):
                 if against():
                     yield
                     continue
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
             yield from self.pace(a, args)
-            if not self.can_go(a, a.x + dx, a.y + dy):
+            if not self.can_go(a, a.x + dx, a.y + dy, j):
                 if against():
                     continue
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
+            if j:
+                a.spring[(a.x + dx, a.y + dy)] = self.tick       # (Bodies.landing in move: the step is jumped)
             fall = self.move(a, a.x + dx, a.y + dy)
             steps += 1
             if fall:                                 # a fall that hurt: the walk ends where you landed
@@ -220,7 +223,7 @@ class Movement:
     def follow(self, a: Agent, args):
         """Make the way in a.via. -> (steps made, what a fall did to you). A tile that isn't straight ahead, or too
         far, or behind a wall: the way is given up (the screen then comes back to where the world has you)."""
-        steps = 0
+        steps, j = 0, True if args.get("jump") else None         # (`jump`: the screen walks up steps by itself: auto-jump)
         while a.via:
             x, y, n = a.via[0]
             dx, dy = x - a.x, y - a.y
@@ -229,13 +232,15 @@ class Movement:
                 a.via_done = n
                 continue
             to = (a.x + (dx > 0) - (dx < 0), a.y + (dy > 0) - (dy < 0))
-            if (dx and dy) or abs(dx) + abs(dy) > VIA_FAR or not self.can_go(a, *to):
+            if (dx and dy) or abs(dx) + abs(dy) > VIA_FAR or not self.can_go(a, *to, j):
                 self.via_drop(a)
                 break
             yield from self.pace(a, args)
-            if not self.can_go(a, *to):
+            if not self.can_go(a, *to, j):
                 self.via_drop(a)
                 break
+            if j:
+                a.spring[to] = self.tick
             fall = self.move(a, *to)
             steps += 1
             if fall:

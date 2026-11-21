@@ -222,6 +222,24 @@ def test_jump_on_the_level_is_a_hop_and_while_walking_it_takes_the_step(world):
     assert run(sim, a, "move_to", {"x": x + 5, "y": y})["ok"] and sim.height(a) == 1     # a way asked for jumps
 
 
+def test_auto_jump_a_walk_with_jump_goes_up_every_step_and_never_two(world):
+    """"Add automatic jump by default": a player's screen with auto-jump walks up a step as it comes to it and says so
+    (`jump` on its walk and its stop): the world walks up it after it, a run of steps too; a step of 2 still stops it."""
+    sim, a = world
+    x, y = a.x, a.y
+    for i in range(3, 7):
+        for j in range(i, 12):
+            sim.world.set(x + j, y, level=i - 2)             # a run of 4 steps from three tiles east, then level 4...
+    sim.world.set(x + 9, y, level=6)                         # ...and a wall two high at x + 9
+    r = run(sim, a, "walk", {"dir": "E", "push": True, "jump": True}, limit=200)
+    assert r["stopped"] == "blocked" and (a.x, sim.height(a)) == (x + 8, 4), (r, a.x, sim.height(a))
+    a.x, a.y, a.z = x, y, 0
+    sim.submit(a, "stop", {"at": [x + 5, y, 1], "jump": True})       # the screen let go up on the third step
+    for _ in range(40):
+        sim.step()
+    assert (a.x, sim.height(a)) == (x + 5, 3) and not a.via
+
+
 def test_a_jump_tapped_while_the_world_is_still_coming_to_where_you_stopped_is_not_lost(world):
     """A phone: the stick let go (`stop` with `at`, the world a stride or two behind the screen), then the Jump button
     at the step in front of the screen. The jump makes the way first, then jumps: it was said "spring" to a stop

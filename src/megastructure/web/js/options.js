@@ -27,6 +27,7 @@ const OPT_DEFAULT = {
   bubbles: true, names: true, chat: 10, hints: true, tips: true,
   // keys
   sprint: "hold",         // hold: while Shift is down; toggle: Shift once to run, once more to walk
+  autojump: true,         // walking into a step with room over it jumps up it by itself (walk.js); off: it stops you, J jumps
   keys: {},               // action -> key, where it is not the usual one (KEY_ACTIONS)
 };
 const OPT = {v: {...OPT_DEFAULT}};
