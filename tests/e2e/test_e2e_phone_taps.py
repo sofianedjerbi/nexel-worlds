@@ -67,7 +67,7 @@ def test_upright_the_inventorys_label_is_on_no_cell(browser, server):
         ctx.close()
 
 
-def test_the_debug_screen_is_the_only_readout_and_lies_under_the_goals_and_the_chat(browser, server):
+def test_the_debug_screen_is_the_only_readout_and_stands_over_the_top_left_with_the_goals_and_chat_hidden(browser, server):
     """/perf in the HD look: two readouts were written, the new one on the old one and on the chat. Now one, the debug
     screen (f3.js), opened on a phone by holding the goals' chip; its lines in the screen's width."""
     from game import Game, new_name
@@ -82,10 +82,12 @@ def test_the_debug_screen_is_the_only_readout_and_lies_under_the_goals_and_the_c
         g.js(hold, "pointerup")
         g.wait("F3.on && $('f3').innerText.includes('fps') && $('f3').innerText.includes('HD look')", 6000)
         box = lambda s: g.js(BOX, s)
-        p, lows = box("#f3"), [b[1] + b[3] for b in (box("#goalhint"), box("#chatlog")) if b[3]]
+        p = box("#f3")
         widest = g.js("Math.max(...[...document.querySelectorAll('#f3 .f3c div')].map((d) => d.getBoundingClientRect().right))")
-        assert not g.js("['xyz', 'debug', 'hdperf'].filter((id) => document.getElementById(id))") and p[1] >= max(lows) and p[0] >= 0 and widest <= 390, (p, lows, widest)
-        g.js("F3.set(false)")
+        hid = g.js("['goalhint', 'chatlog'].map((id) => getComputedStyle($(id)).visibility)")
+        assert not g.js("['xyz', 'debug', 'hdperf'].filter((id) => document.getElementById(id))") and p[1] <= 8 and p[0] >= 0 and widest <= 390 and hid == ["hidden", "hidden"], (p, widest, hid)   # (the top left, as F3 is; what it covers is hidden, not pushed down)
+        g.js("$('f3').click()")                                # (a tap on its lines closes it: the chip is under it)
+        g.wait("!F3.on && getComputedStyle($('goalhint')).visibility === 'visible'", 3000)
         assert not g.errors
     finally:
         ctx.close()

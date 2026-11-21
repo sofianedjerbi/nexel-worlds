@@ -4058,3 +4058,9 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - Pictures: tmp/mockups g3_0_start, g3_1_before (forced race at the spot, old code), g3_1_before_walk (the natural one), g3_1_after, g3_4_before/after (the corner, 4x).
 - Tests (final code): unit 666; hd_paints, hd, hd_sun, hd_window, hd_behind 28 passed; quick 60 passed, 2 skipped.
 - Weak: the black blades were not seen literally in my frames (no tree in view where the race came); they are the same mechanism (a top or a piece reading a shadow's slot). The shown sheet still fills and wipes itself often at ~3 500 of 4 096 slots on a big screen (each a full remake): a bigger sheet or freeing unslotted places would make the race rarer still.
+
+## Iteration 226: F3 stands over the top left; it does not push down
+- Asked: "goal shouldn't push everything down, it should handle properly the minecraft style f3 mode".
+- Was: f3.js put the debug screen under the goals chip/card (and on a phone under the chat), so the whole screen started lower and moved when the goals card opened.
+- Change: F3 always at the top left (top 4 px); while it is open `body.f3` hides the goals chip/card and, on a phone, the chat lines it covers. On a phone a tap on its lines closes it (the chip that opened it is hidden under it).
+- Looked at: title with ?perf=1 on desktop and upright phone (top-left, nothing pushed). Tests: f3, ui, menu, phone_taps (test renamed and rewritten for the new place).
