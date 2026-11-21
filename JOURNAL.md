@@ -4149,3 +4149,9 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - Water: a river stamped while tiles were still queued was built as dry land at the water face (waterbed.js cache race): changed() forgets the tile. Gorge scene repeats 0.00%.
 - Holes and marks (one rule: steep by 16 rays, raise/cut for marks, no window under open sky): no box over you, boxes at your lifted level, rooms top-down, no checker cat in gorges.
 - Tools: lookcheck.py (16 scenes, ~70 s), affected.py.
+
+## Iteration 234: marks in shallow shafts, water and walls (batch)
+- A cell in the wall between the eye and you is marked as that wall inner face folded into the opening (hd_level.js wall/wallAt; target.js, wayshow.js): no box on the grass by a 3-deep shaft.
+- Earth into water: the mark sits on the new bed under the water; the bed rises at once (waterbed.js: a tile shallower than 5 of its 8 neighbours is a raised mound).
+- Build mode at a wall: the X box no longer lays lines on the next tile top.
+- Tests: hd_marks, target, wayshow, water, buildghost 46 passed; quick 63.
