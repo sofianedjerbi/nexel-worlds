@@ -107,10 +107,12 @@ def test_dig_down_and_climb_back_out(game):
     game.hold_item("pickaxe")
     game.clear_area(3)
     x, y = game.pos()
-    game.face(1, 0)                                          # (nothing in front: X digs down)
+    game.face(1, 0)                                          # (nothing in front: X digs it down)
     assert "Dig down" in game.actions()
-    game.press("x", 2600)                                    # X: the ground goes down a layer, you with it
-    assert game.js(f"floorAt({x}, {y})") == -1 and game.pos() == (x, y)
+    game.press("x", 2600)                                    # X: the block you face goes down a layer, not the one under you
+    assert game.js(f"floorAt({x + 1}, {y})") == -1 and game.js(f"floorAt({x}, {y})") == 0 and game.pos() == (x, y)
+    game.act("dig_down", **{"with": "pickaxe"})
+    game.wait(f"floorAt({x}, {y}) === -1 && !myAction", 8000)
     game.js("selectItem(null)")
     game.face(0, -1); game.press("j", 0)                     # a jump up (J), north, out of the pit
     game.sleep(900)

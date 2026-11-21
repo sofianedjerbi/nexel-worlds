@@ -129,6 +129,7 @@ def test_depth_is_told_inside_the_window(browser, server):
     g.hour(.3, still=True)
     for o in ("clouds", "rays", "shimmer"):
         g.js(f"setOpt('{o}', 0)")
+    g.js("Target.off = true")                                        # (the keys' boxes lie on the floor read here: target.js)
     x, y = g.pos()
     g.stamp(-9, -9, ["." * 34] * 19)
     g.rest()

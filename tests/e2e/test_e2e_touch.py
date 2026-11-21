@@ -86,7 +86,7 @@ def test_out_of_your_own_shaft_with_the_thumbs(browser, server):
         g.face(1, 0)
         g.wait("$('tB').innerText.includes('Dig down')", 3000)
         for depth in (1, 2, 3, 4):
-            tap("tB")
+            g.act("dig_down", **{"with": "pickaxe"})                  # (the shaft, dug from on it: the button digs the block you face)
             g.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
         assert g.server()["z"] == -4 and g.js("facingNow(false).it.text") == "Dig into the wall"      # (not on the button while the way out is shown: its own button alone, wayshow.js)
         g.js("selectItem('ladder')")
@@ -127,7 +127,7 @@ def test_out_of_your_own_shaft_with_the_thumbs_and_a_pickaxe_alone(browser, serv
         g.wait("$('tB').innerText.includes('Dig down')", 3000)
         assert g.js("$('tDig').style.display") != "flex"                       # on the meadow: no such button
         for depth in (1, 2, 3):
-            tap("tB")
+            g.act("dig_down", **{"with": "pickaxe"})                  # (the shaft, dug from on it: the button digs the block you face)
             g.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
         X, z, said = x, -3, []
         while z < 0:

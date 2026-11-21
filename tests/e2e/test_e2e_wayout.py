@@ -36,9 +36,8 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
     game.rest()
     assert not game.js(CUR)["shown"]                               # on the surface: nothing
     game.face(0, 1)
-    game.wait("($('actions').innerText + $('prompts').innerText).includes('Dig down')", 3000)
-    for depth in (1, 2, 3, 4):
-        game.press("x", 100)
+    for depth in (1, 2, 3, 4):                                     # (the shaft, dug from on it: X digs the block you face)
+        game.act("dig_down", **{"with": "pickaxe"})
         game.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
     game.face(-1, 0)                                               # (looking west: the way goes east)
     game.wait("WayShow.cur && WayShow.cur.now && !WayShow.busy", 5000)
@@ -113,7 +112,7 @@ def test_in_the_hd_picture_the_next_block_has_its_dashed_box_and_its_key_on_it(b
     g.press(g.js(SLOT, "pickaxe"))
     g.face(0, 1)
     for depth in (1, 2, 3):
-        g.press("x", 100)
+        g.act("dig_down", **{"with": "pickaxe"})
         g.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
     g.face(-1, 0)
     g.wait("WayShow.cur && WayShow.cur.now && !WayShow.busy && !HdLook.busy", 6000)
@@ -184,7 +183,7 @@ def test_where_the_way_comes_out_is_one_clean_mark_and_the_land_is_not_opened_on
     g.give(pickaxe=1)
     g.press(g.js(SLOT, "pickaxe"))
     for depth in (1, 2, 3, 4):
-        g.press("x", 100)
+        g.act("dig_down", **{"with": "pickaxe"})
         g.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
     g.wait("WayShow.cur && WayShow.cur.now && !WayShow.busy && WayShow.out", 6000)
     g.rest()

@@ -32,7 +32,7 @@ def room(g, flowers=False):
 def inside(g, x, y):
     g.rpc("dev_teleport", x=x, y=y, z=1)
     g.wait("HdLook.win.a === 1 && HdLook.win.n >= 21 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
-    g.js("(() => { WayShow.paint = () => {}; return 1; })()")       # (the way out's marks are painted over these px)
+    g.js("(() => { WayShow.paint = () => {}; Target.off = true; return 1; })()")       # (the way out's marks and the keys' boxes are painted over these px)
     g.rest()
 
 
@@ -74,6 +74,30 @@ def test_in_a_river_between_cliffs_the_hole_is_whole(browser, server):
     # seen as it is, its south bank in front of its water (no box of the window on the banks nor on the river: it was a
     # strip of boxes along the river, then the river's floor laid south of the bank)
     assert g.js("HdLook.win.n") == 0 and g.js("HdLook.catSeen()") > .1
+
+
+# the mean light of the px round a place of the world (a 9 x 9 px square)
+LUM = """([x, y, z]) => { const a = HdLook.screenOf(x, y, z), k = devicePixelRatio, d = HdLook.read(Math.round(a[0] * k) - 4, Math.round(a[1] * k) - 4, 9, 9).data; let s = 0;
+  for (let i = 0; i < d.length; i += 4) s += .3 * d[i] + .59 * d[i + 1] + .11 * d[i + 2]; return s / (d.length / 4); }"""
+
+
+def test_swimming_at_the_foot_of_a_deep_river_s_bank_its_far_wall_is_stone_and_your_head_is_whole(browser, server):
+    """(A player fell 12 into a river five wide between stone cliffs and swam at its south bank: "no x-ray, black boxes".)
+    The bank beside you is 12 over the water: the hole's walls were darkened by its depth as a shaft's are (vox_style_glsl.js
+    ho): the far wall, whole in sight, black under its first level within six tiles of you, a black stepped slab. And you
+    were lifted as a walker is, your waterline under the rim: the rim cut your head at the eyes. The floor of this hole is
+    seen (hd_level.js shut): its walls are as they are; a swimmer is lifted to its waterline (hd_level.js lift)."""
+    g = hd(browser, server)
+    x, y = g.pos()
+    rows = ["." * 31] * 8 + ["~" * 31] * 5 + ["." * 31] * 8
+    g.stamp(-15, -12, rows, levels=["C" * 31] * 8 + ["0" * 31] * 5 + ["C" * 31] * 8)
+    g.rest()
+    g.rpc("dev_teleport", x=x, y=y)
+    g.wait("HdLook.cam.pitch === 68 && !HdLook.busy && HdLook.level[3] > 0", timeout=8000)
+    g.rest()
+    face = [g.js(LUM, [x + dx + .5, y - 4, 6]) for dx in (-3, -1, 1)]     # the north bank's face over the river, half way up, a few tiles from you
+    assert min(face) > 50, face                                           # (grey stone: it was 2, black)
+    assert g.js("HdLook.catSeen()") > .7, g.js("HdLook.level")            # (your head over the rim: it was .48, ears and eyes)
 
 
 def test_what_grows_on_the_meadow_over_your_room_is_not_on_its_floor(browser, server):

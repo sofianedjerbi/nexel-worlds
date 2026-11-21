@@ -94,7 +94,7 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
 
 
 def test_out_of_your_own_shaft_by_keys(game):
-    """X digs down a layer a press (every second X cut the wall at your feet: two presses a layer). Four down, in a
+    """Four down, in a
     shaft one tile wide, a ladder in hand: whichever wall you face, Space puts it where you stand (it was "Needs
     something taller behind" three ways of four); walking into the wall climbs out onto its top."""
     game.clear_area(8)
@@ -102,10 +102,9 @@ def test_out_of_your_own_shaft_by_keys(game):
     game.give(pickaxe=1, ladder=1)
     game.press(game.js(SLOT, "pickaxe"))
     game.face(0, 1)
-    game.wait("$('actions').innerText.includes('Dig down')", 3000)      # on open ground nothing is faced: X's row is in the corner
-    for depth in (1, 2, 3, 4):
-        game.press("x", 100)
-        game.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)    # one press, one layer
+    for depth in (1, 2, 3, 4):                                         # (the shaft, dug from on it: X digs the block you face, its box: keyboard.js digAhead)
+        game.act("dig_down", **{"with": "pickaxe"})
+        game.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
         assert game.server()["z"] == -depth
     assert game.js("facingNow(false).it.text") == "Dig into the wall" and "Dig into" not in game.actions()      # (a hole in a meadow: no hill. Not written while the way out is shown: its key alone, wayshow.js)
     game.press(game.js(SLOT, "ladder"))
@@ -141,9 +140,8 @@ def test_out_of_your_own_shaft_with_a_pickaxe_alone(game):
     game.give(pickaxe=1)
     game.press(game.js(SLOT, "pickaxe"))
     game.face(1, 0)
-    game.wait("($('actions').innerText + $('prompts').innerText).includes('Dig down')", 3000)
-    for depth in (1, 2, 3, 4):
-        game.press("x", 100)
+    for depth in (1, 2, 3, 4):                                         # (the shaft, dug from on it)
+        game.act("dig_down", **{"with": "pickaxe"})
         game.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
     X, z, said = x, -4, []
     while z < 0:
