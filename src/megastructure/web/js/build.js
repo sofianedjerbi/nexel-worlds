@@ -41,8 +41,8 @@ const Build = (() => {
   const BLOCK = (it) => it === "roof" || it === "plank";
   const planned = (x, y, z) => { const j = S.plans.get(x + "," + y + "," + z); return !!j && !j.take && j.up && (BLOCK(j.item) || LAND_BLOCKS.has(j.item)) && j.state !== "bad"; };     // a block that is only planned yet
   // A block of the land (earth, stone) for the cell (x, y, z): why it cannot go there, or nothing (as the server's put_land: empty, something solid beside it; or a block planned there)
-  const landFits = (x, y, z, soon = planned) => { const s = myPos(); return solidAt(x, y, z) ? "Something is there" : s && s.x === x && s.y === y && z > myZ(x, y) && z <= myZ(x, y) + 2 ? "You are standing there"
-    : [[0, 0, -1], [0, 0, 1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])].some(([i, j, k]) => solidAt(x + i, y + j, z + k) || soon(x + i, y + j, z + k)) ? "" : "Nothing holds it: put it against a block"; };
+  const landFits = (x, y, z, soon = planned) => { const s = myPos(); return solidAt(x, y, z) ? "Something is there" : s && s.x === x && s.y === y && z > myZ(x, y) && z <= myZ(x, y) + 2 ? "You stand there"
+    : [[0, 0, -1], [0, 0, 1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])].some(([i, j, k]) => solidAt(x + i, y + j, z + k) || soon(x + i, y + j, z + k)) ? "" : "Nothing holds it"; };     // (a few words: the ghost says it, red where it cannot go: buildghost.js. It was a red line across the screen: "Nothing holds it: put it against a block")
   const piece = () => (selected && meObs && meObs.self.inventory[selected] && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed") ? selected : null);
   const todo = () => [...S.plans.values()].filter((j) => j.state !== "bad");
 
@@ -58,22 +58,22 @@ const Build = (() => {
     if (it === "stairs" || it === "ladder") {          // (a flight, a ladder: as they will be, climbing.js)
       if (S.plans.has(key(p, L))) return {text: "Planned", ok: false, ghost: it};
       const say = Climb.intent(p, false) || {text: "Nothing can go there", ok: false};
-      return {...say, z: L, text: say.ok === false ? say.text : say.text.replace(/^(Place|Build) /, "Plan ")};
+      return {...say, z: L};
     }
     if (LAND_BLOCKS.has(it) && FLOORS) {              // earth, stone: the cell on top of what the cursor is on; the cursor in the air: the cell it is in ("why cant i place block in that mode also ??")
-      const z = on ? L + 1 : L, why = S.plans.has(key(p, z)) ? "Planned" : landFits(p.x, p.y, z);
+      const z = S.hold === " " && S.row !== undefined ? S.row : BuildGhost.cell(p, on ? L + 1 : L, planned), why = landFits(p.x, p.y, z);     // (on the one you planned there: the next one on top, no height key. A row, Space held: at the height of its first, so a roof is a row begun on a wall's top)
       return why ? {text: why, ok: false, ghost: it, z} : {text: `Place ${label(it)}`, ok: true, ghost: it, z};
     }
     if (BLOCK(it) && (FLOORS || it === "roof") && !(it === "plank" && on && !c && t && FILLS.plank[t[1]] && GROUND.has(t[0]))) {     // a block, for a cell
       const z = !on ? L : it === "roof" ? L + Floors.STOREY : L + 1, why = S.plans.has(key(p, z)) ? "Planned" : Floors.fits(p.x, p.y, z, planned);
-      return why ? {text: why, ok: false, ghost: it, z} : {text: `Plan ${label(it)}${on && it === "plank" ? " on top" : ""}`, ok: true, ghost: it, z};
+      return why ? {text: why, ok: false, ghost: it, z} : {text: `Place ${label(it)}${on && it === "plank" ? " on top" : ""}`, ok: true, ghost: it, z};
     }
     if (S.plans.has(key(p, L))) return {text: "Planned", ok: false, ghost: it};
     if (!on) return {text: solidAt(p.x, p.y, L) ? "Nothing can go there" : "No floor there: lay one", ok: false, ghost: it, z: L};
-    if (SWAP[it] && SWAP[it].includes(what)) return {text: `Plan ${label(it)} in its place`, ok: true, ghost: it, swap: true, ...(c ? {z: L} : {})};
-    if (c) return what ? {text: "Something is there", ok: false, ghost: it, z: L} : Floors.UP.has(PLACEABLE_BLOCK[it]) ? {text: `Plan ${label(it)}`, ok: true, ghost: it, z: L} : {text: "It needs the ground", ok: false, ghost: it, z: L};
+    if (SWAP[it] && SWAP[it].includes(what)) return {text: `Place ${label(it)} in its place`, ok: true, ghost: it, swap: true, ...(c ? {z: L} : {})};
+    if (c) return what ? {text: "Something is there", ok: false, ghost: it, z: L} : Floors.UP.has(PLACEABLE_BLOCK[it]) ? {text: `Place ${label(it)}`, ok: true, ghost: it, z: L} : {text: "It needs the ground", ok: false, ghost: it, z: L};
     const say = intent(p, false) || {text: "Nothing can go there", ok: false};
-    return {...say, text: say.ok === false ? say.text.replace(/^Can't place .* here$/, "Can't go there") : say.text.replace(/^(Place|Lay|Build|Plant|Launch) /, "Plan ")};
+    return {...say, text: say.ok === false ? say.text.replace(/^Can't place .* here$/, "Can't go there") : say.text};
   }
   // What X would take at p -> {z, what: its name, plan: the plan there}, or nothing. Where the piece in hand would
   // go first (a roof selected: the roof over the cursor), then what stands at the cursor's level, then the block it
@@ -81,7 +81,7 @@ const Build = (() => {
   // lowest block over it (the roof over a room)
   function taking(p) {
     const t = tile(p.x, p.y), L = level(p), on = onIt(p, L), h = piece() ? hint(p) : {};
-    const zs = [...new Set([selected === "roof" && on ? L + Floors.STOREY : undefined, h.z, L].filter((z) => z !== undefined))];
+    const zs = [...new Set([selected === "roof" && on ? L + Floors.STOREY : undefined, h.z !== undefined && planned(p.x, p.y, h.z - 1) ? h.z - 1 : undefined, h.z, L].filter((z) => z !== undefined))];
     for (const z of zs) { const j = S.plans.get(key(p, z)); if (j) return j.state === "doing" ? null : {z, what: "plan", plan: j}; }
     if (!t) return null;
     if (buried(p, L)) return {z: L, what: "ground", dig: true, tunnel: true, shut: !open(p.x, p.y, L, true)};   // (a block in the ground: air beside it, or a hole planned there?)
@@ -218,7 +218,8 @@ const Build = (() => {
     const s = myPos(), me = myZ(s.x, s.y), r = ride(p), out = [];
     for (let t = Math.max(LOWEST, me - DEEPEST); t < r; t++) { const z = under(p, t); if (z < r && out[out.length - 1] !== z) out.push(z); }
     out.push(r);
-    for (let z = r + 1; z <= me + UPMOST; z++) if (landSolid(p.x, p.y, z) || (FLOORS && (z - r) % Floors.STOREY === 0 && !landSolid(p.x, p.y, z + 1))) out.push(z);   // (over it: in the ground a layer at a time, as under it: a tunnel's roof, the block over that; in the air a storey at a time, where there is room over it. It was a storey at a time through the rock: E from a tunnel's floor went three layers up into it, "going up in tunnel really isn't intuitive")
+    const one = LAND_BLOCKS.has(piece());      // (earth, stone in hand: a level a press, the ghost goes up by one block. It went a storey: "E jumped to +2", no wall two high)
+    for (let z = r + 1; z <= me + UPMOST; z++) if (landSolid(p.x, p.y, z) || (FLOORS && (one ? z > r + 1 : (z - r) % Floors.STOREY === 0) && !landSolid(p.x, p.y, z + 1))) out.push(z);   // (over it: in the ground a layer at a time, as under it: a tunnel's roof, the block over that; in the air a storey at a time, where there is room over it. It was a storey at a time through the rock: E from a tunnel's floor went three layers up into it, "going up in tunnel really isn't intuitive")
     return out;
   }
   function lift(d) {
@@ -245,7 +246,7 @@ const Build = (() => {
 
   // What is drawn of it: every plan as a ghost of its piece (a red one: it could not be done), and the cursor
   function draw(sx, sy, Sz, t) {
-    const z = zoom, top = (p, L) => syUp(sy, p.y, shOf(L) * z);                 // (each at its own height)
+    const z = zoom, top = (p, L) => syUp(sy, p.y, shOf(L) * z); S.to = (x, y, L) => [sx(Math.floor(x)) + (x - Math.floor(x)) * Sz, top({y: Math.floor(y)}, L) + (y - Math.floor(y)) * Sz];                 // (each at its own height)
     for (const [k, j] of S.plans) {
       if (j.state === "bad" && now() - j.t > BAD_MS) { S.plans.delete(k); continue; }
       const x = sx(j.x), y = top(j, j.z), a = j.state === "doing" ? .75 : .5, ch = PLACEABLE_BLOCK[j.item];
@@ -287,10 +288,10 @@ const Build = (() => {
     const out = [[capOf("build"), up ? `BUILD · ${sign(up)} · leave` : "BUILD MODE · leave", "head"]];
     out.push([it.key || "Space", it.text, it.ok === false && !it.key ? "bad" : ""]);
     out.push(["Q E", "A layer down, up"]);
-    if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.shut ? "Plan the step before it first" : hit.tunnel ? "Dig the block" : hit.dig ? "Dig a hole" : hit.what === "roof" ? "Take the roof off" : hit.verb || `Take down ${hit.what}`, ...(hit.shut ? ["bad"] : [])]);
+    if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.shut ? "Plan the step before it first" : hit.dig ? "Break" : hit.verb || `Break ${hit.what}`, ...(hit.shut ? ["bad"] : [])]);
     if (n) out.push(["Esc", `Drop the ${n} plan${n > 1 ? "s" : ""}`]);
     return out;
   }
   const waiting = () => (!S.on && todo().length ? todo().length : 0);        // plans left on the ground, out of the mode
-  return {S, toggle, onKey, ways: () => { const L = level(), all = S.at && myPos() ? stops(S.at) : []; return {up: all.some((z) => z > L), down: all.some((z) => z < L)}; }, click, point, draw, pan, rows, hint, waiting, level, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
+  return {S, toggle, onKey, ways: () => { const L = level(), all = S.at && myPos() ? stops(S.at) : []; return {up: all.some((z) => z > L), down: all.some((z) => z < L)}; }, click, point, draw, pan, rows, hint, taking, waiting, level, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
 })();

@@ -37,6 +37,7 @@ const Prompts = (() => {
   // build mode: the cursor's keys (its rows but the mode's name, Esc, and Q E: those go at its left)
   function build() {
     const r = Build.S.rect, ways = Build.ways();
+    BuildGhost.paint();      // (a block of the land in hand: its ghost where it will go, what X will take: buildghost.js)
     show(r, Build.rows().filter(([k]) => ![capOf("build"), "B", "Esc", "Q E"].includes(k)), ways.up ? ["E", "Up"] : null, ways.down ? ["Q", "Down"] : null);
   }
   return {show, build, set keep(v) { keep = v; }, get keep() { return keep; }};

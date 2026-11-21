@@ -43,7 +43,7 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     game.press("q")                                            # down again: the cursor rides the ground
     assert game.js("[Build.S.plane, Build.S.deep, runKey]") == [None, None, False]
     at(2, -3)
-    assert game.js("Build.hint(Build.S.at).text") == "Plan plank on top"
+    assert game.js("Build.hint(Build.S.at).text") == "Place plank on top"
     game.press("Space")                                        # a step: planks on the floor
     game.wait(f"!!Floors.get({x + 2}, {y - 3}, 1) && Build.S.plans.size === 0", 30000)
     at(2, -4)

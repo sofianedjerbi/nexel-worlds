@@ -14,7 +14,7 @@ def test_build_mode_says_its_keys_by_the_cursor_and_nothing_in_the_chat(game):
     assert game.js("$('chatlog').children.length") == chat     # (it said its keys there each time)
     r = game.js("Build.S.rect")
     side, up, down = (game.js(PART, k) for k in ("side", "up", "down"))
-    assert "Pick a piece" in side[4] and "Dig a hole" in side[4] and abs(side[0] - (r["x"] + r["w"] + 10)) < 2   # at its right
+    assert "Pick a piece" in side[4] and "Break" in side[4] and abs(side[0] - (r["x"] + r["w"] + 10)) < 2   # at its right
     assert up[4].replace(" ", "") == "EUp" and down[4].replace(" ", "") == "QDown"     # at its left, E over Q
     assert up[1] < r["x"] and down[1] < r["x"] and up[3] < r["y"] + r["h"] / 2 < down[2]
     assert game.js("$('actions').textContent") == "ZBUILD MODE · leave"                  # the corner: only the mode (Z to leave: under A, the hand stays on WASD)
@@ -71,7 +71,7 @@ def test_only_what_your_hand_gets_to_is_offered(game):
         game.stamp(dx, dy, ["f"], levels=[lv])
         game.face(dx, dy)
         game.sleep(400)
-        assert game.actions() == "", (lv, game.actions())
+        assert game.actions() == "X | Dig down", (lv, game.actions())      # (X by hand digs down where you stand: nothing of the flower)
         game.js("$('toast').style.display = 'none'")
         game.press("Space", 300)
         assert game.toast() == "" and game.inv("flower") == 0

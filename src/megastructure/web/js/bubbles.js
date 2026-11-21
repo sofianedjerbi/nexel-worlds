@@ -78,6 +78,7 @@ function drawBubbles(sx, sy, S, t) {
       w = Math.max(...mine.map((b) => b.w));
     const top = foot - Math.max(...mine.map((b) => b.up + b.h)) - 11 * q;     // (with the name's tab)
     if (tx < -w || tx > W + w || foot < -20 || top > H) continue;
+    if (typeof TitleScene !== "undefined" && TitleScene.hides(Math.max(4, Math.min(W - 4 - w, snap(tx - w / 2))), top, w, foot + 3 * q - top)) { for (const b of mine) b.at = b.up = undefined; continue; }      // (the first screen: not under its name, its line, its window)
     piles.push({mine, tx, foot, w, top, y: p.y, name});
   }
   piles.sort((a, b) => b.y - a.y);                           // the nearest to the bottom of the screen keep their place

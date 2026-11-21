@@ -20,8 +20,8 @@ def test_a_wall_is_planned_with_a_cursor_and_built_by_keys_alone(game):
     game.press("ArrowRight"); game.press("ArrowRight")         # the cursor moves; you do not
     assert game.js("[Build.S.at.x, Build.S.at.y]") == [x + 2, y + 1] and game.pos() == (x, y)
     rows = game.js("Build.rows()")                             # the corner: the mode's name, and only the keys that do something here
-    assert [r[0] for r in rows] == ["Z", "Space", "Q E", "X"] and "BUILD" in rows[0][1] and rows[1][1] == "Plan wooden wall"     # (Q E: the cursor a floor down, up)
-    assert rows[3][1] == "Dig a hole"                          # (X on bare ground: a hole)
+    assert [r[0] for r in rows] == ["Z", "Space", "Q E", "X"] and "BUILD" in rows[0][1] and rows[1][1] == "Place wooden wall"     # (Q E: the cursor a floor down, up)
+    assert rows[3][1] == "Break"                          # (X on bare ground: a hole)
     assert all(len(r[1]) <= 26 for r in rows)                  # (short: a long line ran under the bar)
     kb.down("Space")                                           # held: a row of four
     for _ in range(3):
@@ -111,7 +111,7 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     game.press(game.js(SLOT, "wood_wall"))
     assert ["Z", "Build mode: plan a lot"] in game.js("availableActions()")           # a piece in hand: B is said
     game.press("b")
-    assert game.js("Build.rows()")[3] == ["X", "Dig a hole"]                           # nothing built here: X digs
+    assert game.js("Build.rows()")[3] == ["X", "Break"]                           # nothing built here: X digs
     kb.down("ArrowRight"); game.sleep(700); kb.up("ArrowRight")                        # an arrow held: at once, then at the cursor's own pace
     assert game.js("Build.S.at.x") - x >= 5
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y + 1}}}")
@@ -130,7 +130,7 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     game.press(game.js(SLOT, "door")); game.sleep(150)         # (Q went to the next piece: Q and E are the floors now; the bar's numbers)
     assert game.js("selected") == "door"                       # a door, on the last wall: planned in its place
     rows = game.js("Build.rows()")
-    assert rows[1][1] == "Plan door in its place" and ["X", "Take down wooden wall"] in rows
+    assert rows[1][1] == "Place door in its place" and ["X", "Break wooden wall"] in rows
     game.press("Space")
     game.wait(f"combAt({x + 6}, {y + 1}) === '+' && Build.S.plans.size === 0", 25000)
     assert game.inv("wood_wall") == 3 and game.inv("door") == 0                        # (the wall is back in your pack)
@@ -148,7 +148,7 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     game.page.mouse.move(box[0] - 20, box[1]); game.page.mouse.move(box[0], box[1])
     game.sleep(200)
     me = game.pos()
-    assert game.js("[Build.S.at.x, Build.S.at.y]") == [me[0] + 3, me[1] - 2] and game.js("$('hover').textContent") == "Plan wooden wall"
+    assert game.js("[Build.S.at.x, Build.S.at.y]") == [me[0] + 3, me[1] - 2] and game.js("$('hover').textContent") == "Place wooden wall"
     game.press("b")
     assert not game.errors
 
@@ -213,7 +213,7 @@ def test_x_breaks_anything_and_digs_holes(game):
     game.wait("Build.S.plans.size === 0", 30000)
     assert game.js(f"[0, 1, 2].map((i) => surfacesAt({x - 2} + i, {y + 2})[0])") == [-1, -1, -1]
     game.js(f"Build.S.at = {{x: {x - 1}, y: {y + 2}}}")       # again on one of them: a layer deeper
-    assert game.js("Build.rows()")[3] == ["X", "Dig a hole"]
+    assert game.js("Build.rows()")[3] == ["X", "Break"]
     game.press("x")
     game.wait(f"surfacesAt({x - 1}, {y + 2})[0] === -2 && Build.S.plans.size === 0", 20000)
     # two layers down the hole's floor is behind the grass in front of it: the window on you is yours alone, it does

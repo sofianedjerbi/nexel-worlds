@@ -16,6 +16,7 @@
 // way (cold, past a wall) is dimmed by the land's painter, and warms from where the way joins it (`land`).
 // The finder runs a slice a frame (SLICE ms), again only when your tile, your level or the land changed.
 const WayShow = (() => {
+  const OUT = ["....##....", "...#oo#...", "..#oooo#..", ".#oooooo#.", "#oooooooo#", "####oo####", "...#oo#...", "...#oo#...", "...####..."];      // (the arrow up over the way's end, art px: ink round cream)
   const STILL = 2000, FAR = 12, SLICE = 1.5, INK = "#5b3f36", DX = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
   let gen = null, genKey = "", res = null, posKey = "", stoodAt = 0, cur = null, cap = null, capKey = "", capAt = 0, capSize = [0, 0], fno = 0, landOf = null, landKey = "", lit = null, heading = null, led = false, follow = false, off = false;
   const api = {ms: 0, n: 0, runs: 0, get res() { return res; }, get cur() { return cur; }, get busy() { return !!gen; }, get led() { return led; }};
@@ -64,7 +65,7 @@ const WayShow = (() => {
   api.land = () => {
     if (!cur) return null; const k = genKey + "|" + cur.path.length + "|" + cur.digs.length; if (k === landKey) return landOf; landKey = k;
     let from = 0; cur.path.forEach((p, i) => { if (p.digs.some((c) => solidAt(c.x, c.y, c.z))) from = i; });
-    const on = new Map(); for (const p of cur.path.slice(from)) on.set(p.x + "," + p.y, p.z);
+    const on = new Map(); for (const p of cur.path.slice(from)) if (!p.digs.some((c) => solidAt(c.x, c.y, c.z))) on.set(p.x + "," + p.y, p.z);      // (not a step still to cut: the land was opened on rock there: a black wedge and a thin line on the grass where the way comes out, "a rendering glitch")
     return (landOf = {on, dim: cur.trapped ? 1 : 0, key: k});
   };
   const touching = () => document.body.classList.contains("touch");
@@ -85,7 +86,7 @@ const WayShow = (() => {
   const bound = (q, css) => { const xs = q.map((v) => v[0] * css), ys = q.map((v) => v[1] * css), x = Math.min(...xs), y = Math.min(...ys); return {x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y}; };
   // The picture of it, on g: at(x, y, z) -> where a point of the world is on g, u: an art px there, css: g's units -> css px
   function paint(g, at, u, now, css) {
-    if (!cur) return; const t = now / 1000, me0 = myPos(), R = (v) => Math.round(v / u) * u, beat = Math.floor(t * 3) % 2, solid = (c) => solidAt(c.x, c.y, c.z);
+    api.u = u; if (!cur) return; const t = now / 1000, me0 = myPos(), R = (v) => Math.round(v / u) * u, beat = Math.floor(t * 3) % 2, solid = (c) => solidAt(c.x, c.y, c.z);
     const rect = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(R(x), R(y), w * u, h * u); };
     const line = (a, b, col, dash, ph) => { const n = Math.max(1, Math.round(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) / u)); for (let i = 0; i <= n; i++) { g.fillStyle = !dash || (((i + ph) % 4) + 4) % 4 < 2 ? col : INK; g.fillRect(R(a[0] + (b[0] - a[0]) * i / n), R(a[1] + (b[1] - a[1]) * i / n), u, u); } };      // (dash: two px of the colour, two of ink: seen on any ground)
     const fill = (q, col) => { g.fillStyle = col; for (let y = R(q[0][1]); y < q[3][1]; y += u) { const k = (y - q[0][1]) / ((q[3][1] - q[0][1]) || 1), l = R(q[0][0] + (q[3][0] - q[0][0]) * k), r = R(q[1][0] + (q[2][0] - q[1][0]) * k); g.fillRect(l, y, r - l, u); } };
@@ -106,13 +107,15 @@ const WayShow = (() => {
       else if (i > far) { rect(p[0] - u + ox, p[1] - u + oy, 3, 3, INK); rect(p[0] + ox, p[1] + oy, 1, 1, on ? "#ffffff" : "#ffe08a"); }
       else if (on) { rect(p[0] - 3 * u + ox, p[1] - 3 * u + oy, 6, 6, INK); rect(p[0] - 2 * u + ox, p[1] - 2 * u + oy, 4, 4, "#ffffff"); }
       else { rect(p[0] - 2 * u + ox, p[1] - 2 * u + oy, 4, 4, INK); rect(p[0] - u + ox, p[1] - u + oy, 2, 2, "#ffe08a"); } });
-    // the open sky: rays down on the first place under it, a glint; off the screen or under a button of a phone: an arrow at the edge, pointing to it
-    const sk = cur.sky > 0 && cur.sky < P.length ? at(P[cur.sky].x + .5, P[cur.sky].y + .5, P[cur.sky].z) : null; let edge = null;
+    // OUT IS HERE: where the way ends on the surface, one mark in the dots' own colours: a big dot on the ground and an arrow up over it, bobbing (it was faint rays where the sky
+    // opens, unseen on grass, beside the wedge above); off the screen or under a button of a phone: an arrow at the edge, pointing to it
+    const end = P[P.length - 1], sk = at(end.x + .5, end.y + .5, end.z); let edge = null; api.out = null;
     if (sk) { const tch = touching(), m = 16, sx = sk[0] * css, sy = (sk[1] - 9 * u) * css, cl = (v, a, b) => Math.max(a, Math.min(b, v)); let x = cl(sx, m, innerWidth - m), y = cl(sy, m + (tch ? 44 : 0), innerHeight - (tch ? 150 : 100));
-      if (tch && x === sx && y === sy) for (const e of document.querySelectorAll("#tctx div, #tbtns div")) { const r = e.getBoundingClientRect(); if (r.width && sx > r.left - 8 && sx < r.right + 8 && sy > r.top - 30 && sy < r.bottom + 8) x = r.left - m; }
+      if (tch && x === sx && y === sy) for (const e of document.querySelectorAll("#tctx div, #tbtns div, #ttop div")) { const r = e.getBoundingClientRect(); if (r.width && sx > r.left - 8 && sx < r.right + 8 && sy > r.top - 30 && sy < r.bottom + 8) x = r.left - m; }
       if (x !== sx || y !== sy) edge = [x / css, y / css, Math.abs(sx - x) >= Math.abs(sy - y) ? [Math.sign(sx - x), 0] : [0, Math.sign(sy - y)]]; }
-    if (sk && !edge) { for (const k of [-1, 0, 1]) for (let j = 5; j < 22; j++) if ((j + Math.floor(t * 6) + k * 2) % 6 < 4) rect(sk[0] + (k * 5 + (j >> 1) - 5) * u, sk[1] - j * u, 1, 1, k ? "rgba(255,240,180,.75)" : "rgba(255,252,225,.95)");
-      const a = beat ? 3 : 2; rect(sk[0] - u, sk[1] - 9 * u, 2, 2, "#ffffff"); rect(sk[0] - a * u, sk[1] - 9 * u, 2 * a, 1, "#fff6c8"); rect(sk[0] - u, sk[1] - (8 + a) * u, 1, 2 * a, "#fff6c8"); }
+    if (sk && !edge) { const x = sk[0], y = sk[1], top = y - (beat ? 14 : 13) * u; api.out = [x * css, y * css];
+      rect(x - 4 * u, y - 4 * u, 8, 8, INK); rect(x - 3 * u, y - 3 * u, 6, 6, "#ffe08a"); rect(x - 2 * u, y - 2 * u, 4, 4, "#ff9d3c"); rect(x - u, y - u, 2, 2, "#fff8e8");
+      OUT.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== ".") rect(x + (i - 5) * u, top + j * u, 1, 1, ch === "#" ? INK : beat ? "#ffffff" : "#ffe08a"); })); }
     // the next block to break: the block itself; its crack grows while it is dug (by hand: three times as long)
     let box = null; const c = cur.next, T = c && [at(c.x, c.y, c.z), at(c.x + 1, c.y, c.z), at(c.x + 1, c.y + 1, c.z), at(c.x, c.y + 1, c.z)], B = c && [at(c.x, c.y + 1, c.z - 1), at(c.x + 1, c.y + 1, c.z - 1)];
     if (c && T.every((v) => v) && B.every((v) => v)) {
@@ -123,7 +126,8 @@ const WayShow = (() => {
       // (a block north or south of you lies behind you or on you in the picture, and nothing is drawn on you: the cap says which way it is)
       const E = [[T[0], T[1]], [T[1], T[2]], [T[3], T[2]], [T[0], T[3]], [T[3], B[0]], [T[2], B[1]], [B[0], B[1]]];
       for (const [a, b] of E) { line(a, b, col, true, ph); line([a[0], a[1] - u], [b[0], b[1] - u], col, true, ph); }                 // (its dashes two px thick, marching)
-      box = bound([...T, ...B], css); if (c === cur.now) pin(box, (c.x === me0.x && c.y !== me0.y ? `<i class="${c.y < me0.y ? "N" : "S"}"></i>` : "") + esc(touching() ? (c.key === "up" ? api.offer().text : c.key === "use" ? "A" : "B") : capOf(c.key)), ft && (T[0][0] + T[1][0]) / 2 < ft[0] - u ? ["left", "over", "right", "under"] : ["right", "over", "left", "under"]);
+      box = bound([...T, ...B], css); const word = touching() ? (c.key === "up" ? "" : c.key === "use" ? "A" : "B") : capOf(c.key), turn = c.x === me0.x && c.y !== me0.y ? `<i class="${c.y < me0.y ? "N" : "S"}${word ? "" : " go"}"></i>` : "";      // (a phone: R's word is on its button, lit, and nowhere else: "Dig a step" stood twice, the cap's over the dots)
+      if (c === cur.now && (word || turn)) pin(box, turn + esc(word), ft && (T[0][0] + T[1][0]) / 2 < ft[0] - u ? ["left", "over", "right", "under"] : ["right", "over", "left", "under"]);
     }
     if (!cur.now && P[1].d) { const b = P[1], q = [at(b.x, b.y, b.z), at(b.x + 1, b.y, b.z), at(b.x + 1, b.y + 1, b.z), at(b.x, b.y + 1, b.z)];      // (the next move is a step: the way to go, beside its tile)
       if (q.every((v) => v)) pin(bound(q, css), `<i class="${b.d} go"></i>`, b.d === "E" || b.d === "W" ? ["over", "under", b.d === "E" ? "right" : "left"] : ["right", "left", "over", "under"], box); }

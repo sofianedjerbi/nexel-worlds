@@ -157,3 +157,27 @@ def test_shut_in_with_a_plank_in_hand_or_with_nothing_the_shown_key_gets_you_out
     s = game.server()
     assert s["z"] == 0 and s["hp"] == 20 and seen.count("R") == 3 and presses <= 8, (s["z"], seen)      # a block for the first step, two for the next, the last is a hop
     assert s["inventory"].get("plank", 0) == (3 if hands == "plank" else 0) and not game.errors, s["inventory"]
+
+
+
+# the way's end on the screen: the middle of the mark's dot [r, g, b], and the land's boxes that would be opened on rock (a step still to cut)
+OUT = """(() => { const o = WayShow.out, k = devicePixelRatio, l = WayShow.land(); return {out: o, px: o ? [...HdLook.read(Math.round(o[0] * k), Math.round(o[1] * k), 1, 1).data.slice(0, 3)] : null,
+  rock: l ? [...l.on].filter(([key, z]) => { const [x, y] = key.split(',').map(Number); return solidAt(x, y, z + 1); }).map(([key]) => key) : null, end: WayShow.cur ? WayShow.cur.path[WayShow.cur.path.length - 1] : null}; })()"""
+
+
+def test_where_the_way_comes_out_is_one_clean_mark_and_the_land_is_not_opened_on_rock(browser, server):
+    """The fifth audit: "a black L-shaped hole with a stray thin line on the grass": the land's window was opened at
+    the last step of the stair, which was still rock. Now only steps already cut are opened, and where the way ends
+    on the grass there is the mark: a big dot in the dots' cream, an arrow up over it."""
+    g = hd(browser, server)
+    g.give(pickaxe=1)
+    g.press(g.js(SLOT, "pickaxe"))
+    for depth in (1, 2, 3, 4):
+        g.press("x", 100)
+        g.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
+    g.wait("WayShow.cur && WayShow.cur.now && !WayShow.busy && WayShow.out", 6000)
+    g.rest()
+    o = g.js(OUT)
+    assert o["rock"] == [] and o["end"]["z"] == 0, o                      # nothing opened where the stair is not cut yet; the way ends on the meadow
+    assert o["px"][0] > 240 and o["px"][1] > 225 and o["px"][2] > 180, o   # the dot's bright middle, at the way's end
+    assert not g.errors

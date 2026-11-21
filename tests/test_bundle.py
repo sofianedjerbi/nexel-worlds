@@ -82,6 +82,15 @@ def test_the_server_sends_text_packed_and_says_not_modified(monkeypatch):
     assert pack.status_code == 200 and pack.headers["Content-Type"] == "application/octet-stream" and len(pack.body) > 300000
 
 
+def test_no_sounds_built_is_said_without_an_error(monkeypatch, tmp_path):
+    """A checkout with no sounds built (they are not in git): the page asks for their list and plays without them.
+    The answer was a 404: an error in every page's console (the bundle's browser test failed on it)."""
+    (tmp_path / "audio").mkdir()
+    monkeypatch.setattr(web_static, "WEB", tmp_path)
+    r = web_static.serve_http(None, Ask("/audio/sfx.json"))
+    assert r.status_code == 204 and r.body == b""
+
+
 def test_nothing_the_game_uses_is_left_out_of_pythons_library(tmp_path):
     used = (ROOT / "tools" / "stdlib_used.txt").read_text().split()
     assert len(used) > 150 and "asyncio" in used and "json.decoder" in used

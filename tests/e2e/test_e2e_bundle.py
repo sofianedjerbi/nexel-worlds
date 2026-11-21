@@ -9,6 +9,7 @@ import socket
 import pytest
 
 from conftest import ROOT, free_port
+from game import new_name
 
 
 @pytest.fixture(scope="module")
@@ -33,19 +34,30 @@ def test_a_phone_plays_on_the_one_script_and_keeps_it(browser, bundled):
     page, errors, asked = ctx.new_page(), [], []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("console", lambda m: m.type == "error" and errors.append(m.text))
+    page.on("response", lambda r: r.status >= 400 and errors.append(f"{r.status} {r.url}"))      # (which file: the console says only "404")
     page.on("request", lambda r: r.url.startswith("http") and asked.append(r.url.split("/")[-1].split("?")[0]))      # (not the pictures cut from the pack: blob:)
     try:
         page.goto(bundled, wait_until="commit")
-        page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0", timeout=30000)
+        try:
+            page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0", timeout=30000)
+        except Exception:
+            raise AssertionError(f"the land did not come: {errors} asked {asked} scripts {page.evaluate('[...document.scripts].map((s) => s.getAttribute(`src`)).filter(Boolean).slice(0, 3)')}") from None
         scripts = page.evaluate("[...document.scripts].map((s) => s.getAttribute('src')).filter(Boolean)")
         assert len(scripts) == 1 and scripts[0].startswith("js/game."), scripts
         assert page.evaluate("document.querySelectorAll('link[rel=stylesheet]').length") == 0
         assert not [n for n in asked if n.endswith(".png") and n not in ("panel.png", "slot.png", "slot_sel.png", "cursor.png", "cursor_point.png")], asked   # (the sheets came in the pack)
         assert sum(n.startswith("pack.") for n in asked) == 1 and len(asked) < 25, asked
         assert page.evaluate("Object.keys(IMG).length > 60 && IMG.grass.naturalWidth === 176 && Object.keys(GEN).length > 5")
-        page.fill("#name", "packed")
+        page.fill("#name", new_name("packed"))                      # (a name of this try's own: at its second try "packed" was "already someone else", and it waited 30 s for a player who never got in)
         page.touchscreen.tap(*page.evaluate("(() => { const r = document.getElementById('join').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()"))
-        page.wait_for_function("meObs !== null && !!myPos() && HdLook.on && HdLook.faces > 500 && HdLook.catSeen() > .8", timeout=30000)
+        # (a new player wakes somewhere else every run: behind a tree, in a pond: seven tenths of the cat seen, for good: it waited 30 s for the rest and passed at its second try, elsewhere. A meadow first, as every other test has)
+        page.wait_for_function("meObs !== null && !!myPos()", timeout=30000)
+        page.evaluate("(async () => { const p = myPos(); await rpc('dev_creatures', {clear: 40}); await rpc('dev_stamp', {x: p.x - 8, y: p.y - 8, rows: Array(17).fill('.'.repeat(17)), levels: [], roofs: [], heads: []}); return 1; })()")
+        try:
+            page.wait_for_function("meObs !== null && !!myPos() && HdLook.on && HdLook.faces > 500 && HdLook.catSeen() > .8", timeout=30000)
+        except Exception:
+            raise AssertionError("not in, or not drawn: " + str(page.evaluate("({obs: meObs !== null, pos: typeof myPos === 'function' && !!meObs && myPos(), on: HdLook.on, live: HdLook.live, faces: HdLook.faces, cat: HdLook.on ? HdLook.catSeen() : null, busy: HdLook.busy, "
+                                 "join: document.getElementById('joinbox').style.display, said: (document.getElementById('joinerr') || {}).textContent, toast: document.getElementById('toast').textContent, name: document.getElementById('name').value})")) + f" {errors}") from None
         cdp = ctx.new_cdp_session(page)
         touch = lambda kind, x=0, y=0: cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": [] if kind == "touchEnd" else [{"x": x, "y": y}]})
         for way in (1, -1):                                         # east, then back west: one of the two is open ground
@@ -58,7 +70,12 @@ def test_a_phone_plays_on_the_one_script_and_keeps_it(browser, bundled):
         page.wait_for_function("HdLook.builds > 1 && HdLook.catSeen() > .8", timeout=8000)      # (the land was made again as you went, and you are still drawn on it)
         assert not errors, errors
         page.reload()                                               # again: the script and the pack are not fetched (kept for good under their own names)
-        page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0", timeout=30000)
+        try:
+            page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0", timeout=30000)
+        except Exception:
+            raise AssertionError("loaded again, the land did not come: " + str(page.evaluate("({state: document.readyState, blocks: typeof blocks === 'undefined' ? null : blocks.size, me: typeof me === 'undefined' ? null : me, scene: typeof TitleScene === 'undefined' ? null : [TitleScene.on, TitleScene.S.tick], "
+                                 "join: document.getElementById('joinbox').style.display, img: typeof IMG === 'undefined' ? null : Object.keys(IMG).length, pack: typeof ASSET_PACK === 'undefined' ? null : Object.keys(ASSET_PACK), ws: typeof ws === 'undefined' ? null : ws && ws.readyState, "
+                                 "res: performance.getEntriesByType('resource').map((e) => [e.name.split('/').pop().slice(0, 24), Math.round(e.duration), e.transferSize])})")) + f" {errors}") from None
         kept = page.evaluate("performance.getEntriesByType('resource').filter((e) => /game\\.|pack\\./.test(e.name)).map((e) => [e.name.split('/').pop(), e.transferSize])")
         assert len(kept) == 2 and all(size == 0 for _, size in kept), kept
         assert not errors, errors
