@@ -43,19 +43,17 @@ const HdView = (() => {
     if (el.style.display !== "block") { el.style.display = "block"; lastKey = ""; wordsKey = null; }
   }
   function hide() { if (el && el.style.display !== "none") { el.style.display = "none"; wordsKey = null; } }
-  // the game's sky, the rows over the horizon, with the hour's light the game lays over its frame: made w x line px, when it is not the one there
-  let skyH = 0;
-  function skyOf(w, line, sky, h) {
+  // the game's sky with the hour's light the game lays over its frame: made w x h px, when it is not the one there. Under its line (where the land ends higher than the eye's
+  // horizon: a hill top, a roof) the far land's own colour, as vox_sky.js has it: the sky stays where it is, the gap is land far off (it was the air's pale haze, or the sky moved down to the land)
+  function skyOf(w, h, line, sky) {
     const ph = clock.phase || 0, ws = washAt(ph), lf = opt("night") / 100 * .6, light = lightAt(ph).map((v) => Math.round(v + (255 - v) * lf)), step = sky.stars > 0 ? .1 : .5, tq = Math.floor(sky.t / step);   // (clouds drift a px in 2.5 s: twice a second; stars twinkle: ten times)
-    const c8 = (q) => q.map((v) => Math.round(v * 255)), k = [w, line, W, zoom, tq, Math.floor(sky.shift), Math.floor(sky.shift * .6), Math.floor(sky.shift * .3), c8(sky.top), c8(sky.low), c8(sky.cloud), c8(sky.far), c8(sky.near), c8(sky.orb), sky.at.map((v) => Math.round(v * 500)), Math.round(sky.stars * 50), ws.map((v) => Math.round(v * 100) / 100), light].join();
+    const c8 = (q) => q.map((v) => Math.round(v * 255)), k = [w, h, line, W, zoom, tq, Math.floor(sky.shift), Math.floor(sky.shift * .6), Math.floor(sky.shift * .3), c8(sky.top), c8(sky.low), c8(sky.cloud), c8(sky.far), c8(sky.near), c8(sky.orb), sky.at.map((v) => Math.round(v * 500)), Math.round(sky.stars * 50), ws.map((v) => Math.round(v * 100) / 100), light].join();
     if (k === skyKey) return; const gl = VoxGL.gl; if (!gl) return; skyKey = k; skyVer++;
-    // (both canvases as tall as the highest line yet, in steps of 32 rows, the sky in their top `line` rows (the GL's bottom ones): the horizon eases with your height, and each new line resized two canvases,
-    // the GL's drawing buffer made again, every frame of a stair. Not the picture's height: the GL canvas is read back whole into the 2D one, four times the px for nothing on a slow phone)
-    if (skyH < line || skyH > Math.max(32, h + 32)) skyH = Math.ceil(line / 32) * 32; const H0 = skyH; sk = sk || document.createElement("canvas").getContext("2d"); if (sk.canvas.width !== w || sk.canvas.height !== H0) { sk.canvas.width = w; sk.canvas.height = H0; }
-    VoxGL.fit(w, H0); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, line); gl.disable(gl.BLEND);
-    VoxSky.draw(Object.assign({}, sky, {line, t: tq * step}), W / zoom, line, W / zoom, 1);   // (a px of it a px of the paint: as the picture the screen's size had them, zoom x density px each)
-    sk.globalAlpha = 1; sk.globalCompositeOperation = "source-over"; sk.imageSmoothingEnabled = false; sk.drawImage(VoxGL.el, 0, H0 - line, w, line, 0, 0, w, line);
-    sk.globalAlpha = ws[3]; sk.fillStyle = `rgb(${ws.slice(0, 3).join()})`; sk.fillRect(0, 0, w, line); sk.globalAlpha = 1; sk.globalCompositeOperation = "multiply"; sk.fillStyle = `rgb(${light.join()})`; sk.fillRect(0, 0, w, line); sk.globalCompositeOperation = "source-over";
+    sk = sk || document.createElement("canvas").getContext("2d"); if (sk.canvas.width !== w || sk.canvas.height !== h) { sk.canvas.width = w; sk.canvas.height = h; }
+    VoxGL.fit(w, h); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h); gl.disable(gl.BLEND);
+    VoxSky.draw(Object.assign({}, sky, {line, t: tq * step}), W / zoom, h, W / zoom, 1);   // (a px of it a px of the paint: as the picture the screen's size had them, zoom x density px each)
+    sk.globalAlpha = 1; sk.globalCompositeOperation = "source-over"; sk.imageSmoothingEnabled = false; sk.drawImage(VoxGL.el, 0, 0);
+    sk.globalAlpha = ws[3]; sk.fillStyle = `rgb(${ws.slice(0, 3).join()})`; sk.fillRect(0, 0, w, h); sk.globalAlpha = 1; sk.globalCompositeOperation = "multiply"; sk.fillStyle = `rgb(${light.join()})`; sk.fillRect(0, 0, w, h); sk.globalCompositeOperation = "source-over";
   }
   // the lens: far rows (the 48 art px under the horizon, hy) a little soft, the rest crisp; a faint bloom of the light parts; no vignette
   // (it was the top three tenths of the screen, wherever the horizon: looked at from close, or on a screen held upright, the land near you was a blur)
@@ -80,13 +78,13 @@ const HdView = (() => {
   //   o: {w, h, pic, fresh: the land's picture was drawn again, sky, runs: [[x0, x1]...] the sea's columns, hy, blur, lens}
   function show(o) {
     const {w, h} = o, line = o.sky ? Math.round(o.sky.line / zoom) : 0, low = o.sky ? o.sky.low : [.62, .78, .86]; fit(w, h);
-    if (line > 0) skyOf(w, line, o.sky, h);
+    if (line > 0) skyOf(w, h, line, o.sky);
     const key = [line > 0 ? skyVer : 0, line, low.map((v) => Math.round(v * 255)), o.runs, o.blur, o.lens, o.marks, zoom].join("|");
     if (!o.fresh && key === lastKey) return false; lastKey = key;
     const tint = (c, a) => `rgb(${low.map((v, i) => Math.round((v * (1 - a) + c[i] * a) * 255)).join()})`;
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.imageSmoothingEnabled = false; g.fillStyle = tint([.8, .84, .8], .45); g.fillRect(0, 0, w, h);
-    g.fillStyle = tint([.36, .64, .8], .65); for (const [run, px] of o.runs) { g.fillRect(run, 0, px - run, h); for (const ex of [run - 8, px]) { g.save(); g.translate(ex, 0); g.fillStyle = checker(g.fillStyle); g.fillRect(0, 0, 8, h); g.restore(); } }   // (its two ends: a 2x2 checker, 8 px: one fill of a pattern; it was 400 small ones)
-    if (line > 0 && sk) g.drawImage(sk.canvas, 0, 0, w, line, 0, 0, w, line);
+    if (line > 0 && sk) g.drawImage(sk.canvas, 0, 0);
+    g.fillStyle = tint([.36, .64, .8], .65); for (const [run, px] of o.runs) { g.fillRect(run, line, px - run, h - line); for (const ex of [run - 8, px]) { g.save(); g.translate(ex, 0); g.fillStyle = checker(g.fillStyle); g.fillRect(0, line, 8, h - line); g.restore(); } }   // (under the sky's line only: the sky over the sea is the sky)   // (its two ends: a 2x2 checker, 8 px: one fill of a pattern; it was 400 small ones)
     const pic = o.lens ? (o.fresh || !art || art.width !== w || art.height !== h ? post(o.pic, w, h, o.hy, o.blur, o.near === undefined ? 1e9 : o.near) : art) : o.pic;   // (a phone: no lens: two blurs of the whole picture a frame)
     g.drawImage(pic, 0, 0);
     if (recM && o.marks) { g.setTransform(1 / zoom, 0, 0, 1 / zoom, 0, 0); recM.play(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; }

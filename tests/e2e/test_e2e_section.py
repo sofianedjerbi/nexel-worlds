@@ -141,8 +141,9 @@ def test_one_wall_has_one_light(game):
     game.rpc("dev_time", phase=.4)
     game.stamp(-5, 0, ["." * 6], levels=["f" * 6], roofs=["6" * 6], heads=["2" * 6]); game.stamp(1, -1, ["..."] * 3, levels=["fff"] * 3)
     under(game, x - 2, y, -6)
-    mid = lambda px: sorted(px, key=sum)[len(px) // 2]            # (a level's body, whatever fleck one px of it is)
-    at = lambda tx, ty, lv: mid(game.js(LAND, [[tx, ty, lv, ax, 2] for ax in (1, 4, 7, 10, 13)]))
+    # (a level's light: its lightest px, the paint's light colour as lit there. A wall is the pack's cliff px, light and mid in
+    # blobs, a stratum, pebbles (voxpaint.js front): its middle px of five was light on one tile, mid on the next)
+    at = lambda tx, ty, lv: max(game.js(LAND, [[tx, ty, lv, ax, ay] for ax in range(1, 15, 2) for ay in (1, 3, 5)]), key=sum)
     for lv in (-1, -3):                                          # over the tunnel (cut through), and the pit's wall beside it (a row further north)
         tunnel, pit = at(x - 1, y, lv), at(x + 2, y - 1, lv)
         assert abs(sum(tunnel) - sum(pit)) <= 12, (lv, tunnel, pit)

@@ -182,7 +182,9 @@ const HdThings = (() => {
     } else if (c === "#") fence(out, x, y, zl * UP); else if (c === "g") sideGate(out, x, y, zl * UP);
     else decal(out, c, x, y, zl * UP);
   }
-  function at(x, y) {
+  // (the sheet emptied while a tile's pieces were asked for: those asked before name places of the old sheet. Asked once more, all in the new one: an oval of shade read a shadow's black blades, or nothing)
+  const at = (x, y) => { const id = sheet.id, out = pieces(x, y); return sheet.id === id ? out : pieces(x, y); };
+  function pieces(x, y) {
     const out = [], c = combAt(x, y), cells = Floors.cells(x, y);
     if (c && is(c, x, y)) stand(out, c, x, y, floorAt(x, y)); else if (c && shaded(c)) shade(out, c, x, y, floorAt(x, y) * UP, floorAt(x, y));      // (on the tile's lowest ground: in a cave, on its floor)
     if (cells) for (const [z, [kind, ch]] of cells) { if (hid(x, y, z)) continue; block(out, kind, x, y, z); if (ch && is(ch)) stand(out, ch, x, y, z); else if (ch && shaded(ch)) shade(out, ch, x, y, z * UP, z); }

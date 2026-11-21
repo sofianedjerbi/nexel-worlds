@@ -14,7 +14,7 @@ const VoxStyleGLSL = (() => {
   void main() { vec3 q = p; float dn = max(0., ctr.z - 1. - q.z); q.y -= bend * dn * dn; gl_Position = m * vec4(q, 1.); vw = gl_Position.w; vu = uv; va = a; ve = e; wp = p; vs = vec4(0.);
     if (a.z > .5 && a.z < 1.5) { vec2 tl = floor(p.xz - step(8., mod(uv, 16.)) + .5) - go.xy; if (tl.x >= 0. && tl.y >= 0. && tl.x < go.z && tl.y < go.z) vs = texelFetch(gw, ivec2(tl), 0); } }`;   // (vs: the light of your space on this tile (vox_style.js `light`), for a floor under the land: its tile is its corner less where in its paint that corner is)
   const FS = `#version 300 es
-  precision mediump float; in vec2 vu; in vec4 va, vs; in float ve; in vec3 wp; in highp float vw; uniform sampler2D t, wt, mk; uniform vec3 lamp, eye, fogc, mc;
+  precision mediump float; in vec2 vu; in vec4 va, vs; in float ve; in highp vec3 wp; in highp float vw; uniform sampler2D t, wt, mk; uniform vec3 lamp, eye, fogc, mc;
   uniform vec4 cl, wv, wtn[5]; uniform float wa, dep, lr, day, amb, fn, ff, rim, rd, sun, shp, cd, xr; uniform vec3 sc, bd[4]; uniform vec4 sp; uniform float rf, rz, ho, cp, bh; uniform vec3 em; out vec4 o;
   // STRATA: a wall of your hole by its level under the land round it (rz): each level one flat tone, a step darker than the one over it (to .3), every second one a little darker still: levels can be counted, deep is dark
   float strat(float lv) { return max(.3, .92 - .08 * max(0., rz - lv)) * (mod(floor(lv + .5) + 1024., 2.) < .5 ? 1. : .9); }
@@ -22,11 +22,11 @@ const VoxStyleGLSL = (() => {
   vec3 cold(vec3 c) { return mix(vec3(dot(c, vec3(.3, .59, .11))), c, .3) * vec3(.74, .82, .96); }   // (not reachable from here: grey-blue)
   void main() {
     float kind = va.z, ck = mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.); vec2 lu = mod(vu, 16.);
-    if (!(kind > 6.5 && kind < 7.5) && !(kind > 2.5 && kind < 3.5 && ve > 8.5) && !(kind > 8.5 && kind < 9.5) && (wp.x < cl.x + .001 || wp.x > cl.y - .001 || wp.z < cl.z + .001 || wp.z > cl.w + .001)) discard;   // (cl: the columns and rows of the land asked for: the lists are whole chunks of 8 x 8 tiles (vox_style_land.js), what is outside is left out here; not the far patches, not a ghost)
+    if (!(abs(kind - 7.) < .5) && !(kind > 2.5 && kind < 3.5 && ve > 8.5) && !(kind > 8.5 && kind < 9.5) && (wp.x < cl.x + .001 || wp.x > cl.y - .001 || wp.z < cl.z + .001 || wp.z > cl.w + .001)) discard;   // (cl: the columns and rows of the land asked for: the lists are whole chunks of 8 x 8 tiles (vox_style_land.js), what is outside is left out here; not the far patches, not a ghost)
     float wn = 0., sj = 0., vl = 0.; highp float di = 0.;   // (the window: wn 0 this px is the land's as ever, 2 a floor over your head, 3 the section (sj: its row, counted up from the window's top edge), 11 its top line; sj -1: a px seen through the window, -2: the lip along its near edge, -3: a px beside its west or east edge)
     if (xr > 0. && !(kind > 8.5 && kind < 9.5)) { ivec2 P = ivec2(gl_FragCoord.xy), M = textureSize(mk, 0) - 1; vec4 k4 = texelFetch(mk, P, 0); highp float dz = k4.b * 255. + k4.a * 255. / 256.;
       di = k4.r * 255. + k4.g * 255. / 256.; float bay = ck * .5 + mod(floor(gl_FragCoord.x / 2.), 2.) * .25 + .125, up = mod(va.w + 1280. - vs.g * 255., 256.); bool thing = kind > 7.5 && kind < 8.5, ob = false; { vec3 tl = vec3(floor(wp.x - lu.x / 16. + .5), floor(wp.z - lu.y / 16. + .5), va.w); for (int n = 0; n < 4; n++) if (bd[n] == tl) ob = true; }   // (ob: somebody stands on this top, over your window: the ground under their feet stays as veil: they are up there, not in your room)
-      if (dz > 0. && vw > dz && ((kind > 6.5 && kind < 7.5) || (kind > 2.5 && kind < 3.5 && ve > 8.5))) discard;   // (the far land and sea past the box: under the ground from here, the rock between has no faces: it showed through the rim as sky-blue px)
+      if (dz > 0. && vw > dz && ((abs(kind - 7.) < .5) || (kind > 2.5 && kind < 3.5 && ve > 8.5))) discard;   // (the far land and sea past the box: under the ground from here, the rock between has no faces: it showed through the rim as sky-blue px)
       // (a wall's face that lies in a box's own side, the back of your south wall: with what is in front; a top the eye's line only grazes at a box's edge, a floor, the water of a gorge: left)
       if (di > 0. && vw < di + (kind < .5 ? .06 : -.02)) { if (kind > .5 && kind < 1.5 && va.y < .5 && vs.r > 0. && up > .5 && up < 8.5) wn = 2.;
         else if (ob && kind > .5 && kind < 1.5 && va.y > .5) { if (ck > .5) vl = 1.; else if (xr > bay) discard; }   // (ob: the ground under somebody standing on the land over your window stays, one px in two: they are up there, not in your room)
@@ -75,7 +75,11 @@ const VoxStyleGLSL = (() => {
       if (wtn[4].a > .5) { vec4 tn = wtn[int(clamp(ve, 0., 4.))]; col = mix(tn.rgb * max(l, .6), wc.rgb, wc.a * .45); o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), max(tn.a, wc.a * .45)); return; }   // (light.wtint: clear water: a tint and how much of it for water 0..4 levels deep (ve), the bed showing through; the game's picture of the water, its waves and glints, over it)
       o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), wa); return;   // (the far sea stays blue to the horizon)
     }
-    if (kind > 6.5 && kind < 7.5) col = (texture(t, (vu + vec2(-4., -4.)) / ${AW}.).rgb + texture(t, (vu + vec2(4., -4.)) / ${AW}.).rgb + texture(t, (vu + vec2(-4., 4.)) / ${AW}.).rgb + texture(t, (vu + vec2(4., 4.)) / ${AW}.).rgb) * .25 * kx * max(day, .35);   // (the land past the box: its own tint, flat, in the haze)
+    if (abs(kind - 7.) < .5) { highp vec2 b = floor((vu + .5) / 16.) * 16., w16 = floor(wp.xz * 16. + .001), m = mod(w16, 8.), lp; ivec2 ti = ivec2(floor(w16 / 16.)); uint hh = uint(ti.x) * 2654435761u ^ uint(ti.y) * 2246822519u; hh ^= hh >> 15u;
+      if ((hh & 1u) != 0u) m.x = 7. - m.x; if ((hh & 2u) != 0u) m.y = 7. - m.y; lp = vec2(float((hh >> 2u) & 1u), float((hh >> 3u) & 1u)) * 8. + m;
+      if (ve < 8.5) lp = mod(w16, 16.); if (ve > 9.5) { float s = mod(ve < 10.5 ? w16.x : w16.y, 16.); lp = vec2((hh & 1u) != 0u ? 15. - s : s, 8. + mod(floor(-wp.y * 16. + .001), 8.)); }
+      col = texture(t, (b + lp + .5) / ${AW}.).rgb * kx * max(day, .35); }   // (THE LAND PAST THE BOX, a px the land's own px (vox_style_land.js patches): a top a quarter of its paint, which one and which way round by its tile (one tile's paint over and over was a wallpaper of its flowers); a skirt its rock's front.
+    // Its test is abs(kind - 7.): "kind > 6.5 && kind < 7.5" was false for these px on the GPU (Metal) though each half was true: the far land never had this paint, it took the generic path: its paint's corner px, flat)
     if (sj < -1.5) { float mx = max(col.r, max(col.g, col.b)), mn = min(col.r, min(col.g, col.b)); bool pale = mx - mn < .15 || dot(col, vec3(.3, .59, .11)) > .82;   // (the near edge of the window: the land's lip, lit. On ground with no colour of its own or too pale for a light to show on it (grey stone, the mountains' pale top, bare dirt, ash) the lip is the ground's own px darker, two rows, and one px of it down the hole's sides (sj -3): there the hole was read only by what was in it)
       col = pale ? col * (sj < -2.5 ? .78 : .62) : sj < -2.5 ? col : mix(col, vec3(1., .94, .78), .4); }
     // what is seen through the window, by how deep it lies under the land round the hole (D, levels): a floor in the shade of the north and west edges (two tones, n px long, 7 at most: under half a tile, a passage one tile wide keeps a lit half), and dimmer past 2.5 and 4.5 tiles from you; a wall darker every two levels, a line every four
@@ -87,7 +91,7 @@ const VoxStyleGLSL = (() => {
       else if (kind < .5) col = c.rgb * strat(ceil(wp.y * 2. - .01)); }
     else if (ho > 0. && kind < .5 && va.y > .5 && wp.y * 2. < rz + .01 && distance(wp.xz, lamp.xz) < 6.) col = mix(col, c.rgb * l * strat(ceil(wp.y * 2. - .01)), ho);   // (the walls of an open hole you stand in, a shaft, a pit: the same strata, as the eye tips over it)
     if (vl > .5) col = c.rgb * max(day * va.y, amb);
-    o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye))), raw ? .97 : 1.);
+    o = vec4(mix(col, fogc, .55 * smoothstep(fn, ff, distance(wp, eye))), raw ? .97 : 1.);   // (the haze tints the far land, never more than half: it took it whole to the haze's one colour, the far land's px gone: pale flat slabs)
   }`;
   const SV = `#version 300 es
   in vec3 p; in vec2 uv, k; in float s; out vec2 vu, vk; out float sil; void main() { gl_Position = vec4(p, 1.); vu = uv; sil = s; vk = k; }`;

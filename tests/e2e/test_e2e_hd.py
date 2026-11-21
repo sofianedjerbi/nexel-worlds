@@ -66,7 +66,7 @@ def test_two_walls_side_by_side_touch_and_a_bridge_is_drawn(browser, server):
         assert not any(green(c) for c in seen), seen
         top = g.js(f"Voxels.host.waterTop({x - 3}, {y + 3})")
         deck, water = g.js(AT, [x - 2.5, y + 3.5, top]), g.js(AT, [x - 3.5, y + 2.5, top])
-        assert water[2] > water[0] + 30 and not deck[2] > deck[0] + 30, (deck, water)
+        assert water[2] > water[0] + 20 and not deck[2] > deck[0] + 20, (deck, water)          # (water over its bed: teal, blue 30 over red there, 1 or 2 either way by the bed wall under it, voxpaint.js front)
     finally:
         g.page.close()
 

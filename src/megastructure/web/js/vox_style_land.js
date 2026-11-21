@@ -138,16 +138,26 @@ const VoxStyleLand = (() => {
         }
         const ch = {mk: host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "", lo, low, L, wet}; for (const k of KINDS) ch[k] = new Float32Array(out[k]); return ch;
       }
-      // past the box, to the horizon, in patches: the sea's flat face where the sea is (or nothing is known); where land is, the land's own tint at its height, flat, a skirt south of it: no sea inland
-      function* patches() { const fl = [], fs = []; if (o.sea === undefined) return [fl, fs]; const seg = []; for (let s = -r; s <= r; s += 8) seg.push([s, Math.min(8, r + 1 - s), 1]); for (let k = 0; k < 5; k++) seg.push([r + 1 + 8 * k, 8, 0], [-r - 8 - 8 * k, 8, 0]);
-        for (const [j, h, mj] of seg) { yield "far"; for (const [i, w, mi] of seg) { if (mi && mj) continue; const x = cx + i, y = cy + j, mx = x + (w >> 1), my = y + (h >> 1), c = host.column(mx, my), land = c && c.length && !(host.water && host.water(mx, my));
-          const z = land ? c[c.length - 1] : o.sea, sl = land ? topSlot(mx, my, z, (px, at, st) => host.paintTop(mx, my, z, px, at, st)) : 0, u0 = land ? (sl % SL) * C + 8 : 0, v0 = land ? (sl / SL | 0) * C + 8 : 0;
-          const put = (q, k) => { const v = q.map(([a, b, d]) => [...gp(a, b, d), u0, v0, k, 1, land ? 7 : 3, z, 9]); for (const n of [0, 1, 2, 0, 2, 3]) (land ? fl : fs).push(...v[n]); };
-          put([[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]], 1); if (land) put([[x, y + h, z], [x + w, y + h, z], [x + w, y + h, z - 10], [x, y + h, z - 10]], .8); } }
+      // past the box, to the horizon, in patches: the sea's flat face where the sea is (or nothing is known); where land is, the land at its height, a skirt south, west and east of it: no sea inland.
+      // Their px are the land's own at the land's own size (the shader, kind 7): a top an 8 x 8 quarter of a tile's paint, which quarter and which way round by the tile it lies on; a skirt its rock's front (e: 9 a top, 10 a south skirt, 11 a west or east one). They were the paint's mean colour: flat slabs.
+      // Patches are 4 tiles across for the first 16 tiles past the box, 8 beyond (8 everywhere: a mountain's flank one smooth slab a patch wide); a top's paint is a tile of the patch at its height with its four neighbours as high (its middle tile was often a rim: a stripe of the rim's brown and green over the whole patch)
+      function* patches() { const fl = [], fs = []; if (o.sea === undefined) return [fl, fs]; const seg = []; for (let s = -r; s <= r; s += 4) seg.push([s, Math.min(4, r + 1 - s), 1]); for (let k = 0; k < 4; k++) seg.push([r + 1 + 4 * k, 4, 0], [-r - 4 - 4 * k, 4, 0]); for (let k = 0; k < 3; k++) seg.push([r + 17 + 8 * k, 8, 0], [-r - 24 - 8 * k, 8, 0]);
+        const rows = seg.filter(([j]) => j < r + 1 || j > r + 4).concat([1, 2, 3, 4].map((k) => [r + k, 1, 0])), one = seg.filter(([i]) => i < -r || i > r);   // (the first four rows south of the box a tile each, its own paint (e 8): tall land there stands at the screen's foot, a tile as big as a hand)
+        for (let s = -r; s <= r; s++) one.push([s, 1, 1]);
+        const tz = (x, y) => { const c = host.column(x, y); return c && c.length ? c[c.length - 1] : null; }, flat = (x, y, z) => tz(x - 1, y) === z && tz(x + 1, y) === z && tz(x, y - 1) === z && tz(x, y + 1) === z;
+        for (const [j, h, mj] of rows) { yield "far"; for (const [i, w, mi] of h === 1 ? one : seg) { if (mi && mj) continue; const x = cx + i, y = cy + j; let mx = x + (w >> 1), my = y + (h >> 1); const c = host.column(mx, my), land = c && c.length && !(host.water && host.water(mx, my));
+          const Q = [[1, 1], [3, 1], [1, 3], [3, 3]].map(([a, b]) => [x + (w * a >> 2), y + (h * b >> 2)]).filter(([qx, qy]) => tz(qx, qy) !== null && !(host.water && host.water(qx, qy)));
+          let z = land ? c[c.length - 1] : o.sea; if (land) for (const [qx, qy] of Q) z = Math.min(z, tz(qx, qy));   // (the lowest of five tiles: a patch as high as its highest stood over the land in front of it, a slab over a stair)
+          if (land && !(tz(mx, my) === z && flat(mx, my, z))) { const q = Q.find(([qx, qy]) => tz(qx, qy) === z && flat(qx, qy, z)) || Q.find(([qx, qy]) => tz(qx, qy) === z); if (q) [mx, my] = q; }   // (a tile whose top is at z: one as high round it if there is one)
+          const sl = land ? topSlot(mx, my, z, (px, at, st) => topPaint(mx, my, z, px, at, st)) : 0, fr = land && host.paintFront ? front(mx, my, z, z) : sl;
+          const put = (q, k, s, e) => { const u0 = land ? (s % SL) * C : 0, v0 = land ? (s / SL | 0) * C : 0, v = q.map(([a, b, d]) => [...gp(a, b, d), u0, v0, k, 1, land ? 7 : 3, z, e]); for (const n of [0, 1, 2, 0, 2, 3]) (land ? fl : fs).push(...v[n]); };
+          put([[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]], 1, sl, w * h === 1 && tz(x, y) === z ? 8 : 9);
+          if (land) { const lo = (t) => Math.min(z - 10, t === null ? o.sea : t), s = lo(tz(mx, y + h)), wz = lo(tz(x - 1, my)), ez = lo(tz(x + w, my));   // (each skirt down to the land beside it: ten levels were a mountain's patches hung in the air over the meadow, the sky under them)
+            put([[x, y + h, z], [x + w, y + h, z], [x + w, y + h, s], [x, y + h, s]], .8, fr, 10); put([[x, y, z], [x, y + h, z], [x, y + h, wz], [x, y, wz]], .7, fr, 11); put([[x + w, y + h, z], [x + w, y, z], [x + w, y, ez], [x + w, y + h, ez]], .78, fr, 11); } } }
         return [fl, fs]; }
       const want = []; for (let by = Math.floor(Y0 / CH); by <= Math.floor(Y1 / CH); by++) for (let bx = Math.floor(X0 / CH); bx <= Math.floor(X1 / CH); bx++) want.push([bx, by]);
-      if (o.again) store.clear();
-      P.start(!!o.again); making = true; late.clear();   // (the paints and the land that names them change together: vox_style.js)
+      if (P.start(!!o.again)) store.clear();   // (a land made with its paints from none keeps no chunk made before: they name places of paints that are gone. The land was wiped (eng.lost: forget) while one was being made, that one's chunks were kept, and the next, from none, drew them with other tiles' paints: grey and green squares on a meadow, the mean colour, a shadow's black blades on the grass)
+      making = true; late.clear();   // (the paints and the land that names them change together: vox_style.js)
       try {
         const need = want.filter(([bx, by]) => !good(store.get(bx + "," + by), bx, by)); yield "scan";
         for (const [bx, by] of need) { fresh.set(bx + "," + by, yield* chunk(bx, by)); made++; }

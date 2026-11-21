@@ -21,7 +21,7 @@ const F3 = (() => {
     on = !!v; localStorage.setItem("megastructure-f3", on ? "1" : "0");
     for (const k of ["perf", "coords"]) localStorage.removeItem("megastructure-" + k);   // (the two old switches: one now)
     if (!on) GpuTime.stop();
-    if (el) el.style.display = on ? "" : "none"; S.gaps = []; S.js = []; S.last = S.at = 0; painted = 0;
+    document.body.classList.toggle("f3", on); if (el) el.style.display = on ? "" : "none"; S.gaps = []; S.js = []; S.last = S.at = 0; painted = 0;
   }
   function sample(now, ms, land = 0) {
     if (!on) return;
@@ -39,6 +39,7 @@ const F3 = (() => {
   function make() {
     el = document.createElement("div"); el.id = "f3";
     el.innerHTML = '<div class="f3c f3game"></div><div class="f3c f3perf"></div>';
+    el.addEventListener("click", () => set(false));   // (a phone: the goals' chip that opened it is hidden under it: a tap on its lines closes it)
     document.body.appendChild(el);
   }
   function write(col, ls) {
@@ -48,11 +49,9 @@ const F3 = (() => {
   function paint(now) {
     const t0 = performance.now();
     if (!el) make();
-    el.style.display = "";
+    el.style.display = ""; document.body.classList.add("f3");
     write(el.children[0], lines("game")); write(el.children[1], lines("perf"));
-    // one place: under the goals (their chip or their card) and, on a phone, under the chat's lines and the buttons at the top
-    let top = 4; for (const id of ["goals", "goalhint", ...(typeof chatSmall === "function" && chatSmall() ? ["chatlog"] : [])]) { const e = $(id); if (e && e.offsetHeight) top = Math.max(top, e.getBoundingClientRect().bottom + 6); }
-    top = Math.round(top) + "px"; if (el.style.top !== top) el.style.top = top;
+    // the top left corner, always (the owner: "goal shouldn't push everything down": it was put under the goals and the chat); what it covers there (goals, chat) is hidden while it is open: body.f3 (style.css)
     S.cost = performance.now() - t0; S.at = now;
   }
   // a phone: hold the goals' chip (or card) for half a second

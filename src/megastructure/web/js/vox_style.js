@@ -36,7 +36,7 @@ const VoxStyle = (() => {
       else { if (S.n >= SL * SL) { S.slots.clear(); S.px.fill(0); S.n = 0; spill = true; B.full = true; } s = S.n++; }   // (full while a land is made: its own paints go, never the shown land's; it is made again, steps)
       S.slots.set(key, s); const at = (s / SL | 0) * C * AW + (s % SL) * C; paint(S.px, at, AW); { const q = S.px[at + 7 * AW + 7]; if ((q >>> 24) > 127) for (let i = 0; i < 3; i++) mean[i] += ((q >> 8 * i & 255) / 255 - mean[i]) * .03; } if (!mk) dirty.push(s); else B.add.push(s); return s;   // (a new paint is sent alone: the whole sheet, a million px, was sent again for each)
     }
-    const land = VoxStyleLand.create(host, cfg, {SL, C, slot, unslot(k) { A.slots.delete(k); if (B) B.slots.delete(k); }, start(ag) { fromNone = wipe || ag; wipe = false; B = null; spill = false; }, spill: () => spill});
+    const land = VoxStyleLand.create(host, cfg, {SL, C, slot, unslot(k) { A.slots.delete(k); if (B) B.slots.delete(k); }, start(ag) { fromNone = wipe || ag; wipe = false; B = null; spill = false; return fromNone; }, spill: () => spill});
     function start() {
       if (gl) return true;
       el = document.createElement("canvas"); gl = el.getContext("webgl2", {antialias: false, depth: true, stencil: true, preserveDrawingBuffer: true}); if (!gl) return false;
