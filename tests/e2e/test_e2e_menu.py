@@ -100,7 +100,7 @@ def test_a_key_can_be_changed_and_the_game_follows(game):
     assert game.js("[keyOf('bag'), document.querySelector('#menu .row.on kbd').textContent]") == ["p", "P"]
     at_row(game, "Craft"); game.press("Enter"); game.press("p")   # a key another action has: they change places
     assert game.js("[keyOf('craft'), keyOf('bag')]") == ["p", "c"]
-    at_row(game, "Pick up"); game.press("Enter"); game.press("k")      # (J: the jump's)
+    at_row(game, "Pick up"); game.press("Enter"); game.press("k")      # (a key no action has)
     game.press("Escape"); game.press("Escape")
     game.press("p"); assert game.js("isOpen('craft')")
     game.press("p"); assert not game.js("isOpen('craft')")
@@ -125,3 +125,18 @@ def test_a_key_can_be_changed_and_the_game_follows(game):
     game.press("Shift"); assert game.js("runKey") is True       # pressed and let go: still running
     game.press("Shift"); assert game.js("runKey") is False
     game.js("setOpt('sprint', 'hold'); localStorage.clear()")
+
+
+def test_keys_kept_from_before_the_remap_share_no_key(game):
+    """The usual keys changed (Space jumps, E uses and eats, no eat key): a player's own keys of before are given again
+    over the new ones as the menu gives them, so no two actions share a key; given again, they stay as they are."""
+    again = lambda keys: game.js("(k) => keysAgain(k)", keys)
+    assert game.js("[keyOf('use'), keyOf('jump'), 'eat' in KEY_ACTIONS]") == ["e", " ", False]
+    assert again({"eat": "t", "talk": "e"}) == {"talk": "e", "use": "t"}                # the eat key goes; talk keeps E, use takes T
+    assert again({"pick": " ", "use": "f"}) == {"pick": " ", "use": "f", "jump": "e"}   # Space was pick's, F use's: kept; jump on E
+    assert again({"use": "j", "jump": " "}) == {"use": "j"}                              # (use on J, jump on Space: as now)
+    assert again({"eat": "k"}) == {} and again({"mute": "v", "eat": 3}) == {}            # (V is a key of the game's own)
+    for keys in ({"eat": "t", "talk": "e"}, {"pick": " ", "use": "f"}, {"craft": "p", "bag": "c", "use": "k"}):
+        once = again(keys)
+        assert again(once) == once
+        assert game.js("(k) => new Set(Object.keys(KEY_ACTIONS).map((a) => k[a] || KEY_ACTIONS[a][0])).size === Object.keys(KEY_ACTIONS).length", once)

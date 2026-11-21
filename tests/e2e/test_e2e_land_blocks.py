@@ -52,7 +52,7 @@ def test_dug_land_is_a_block_in_the_pack_and_stones_are_made_of_it(game):
     game.hold_item("stone_block")
     game.face(-1, 0)
     assert "Raise the ground" in game.actions()
-    game.press("Space", 300)
+    game.press("e", 300)
     game.wait(f"topAt({x - 1}, {y}) === 1 && ({HAS})('stone_block') === 0", 8000)
     assert game.rpc("act", tool="dig", args={"dir": "W", "z": 1})["ok"]
     game.wait(f"({HAS})('stone_block') === 1 && topAt({x - 1}, {y}) === 0", 20000)

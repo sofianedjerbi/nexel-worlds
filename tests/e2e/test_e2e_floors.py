@@ -57,9 +57,9 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     assert game.inv("plank") == 9 and not game.errors
     game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0); game.arrive()            # before the door
     for key, to in (("ArrowUp", (3, -2, 0)), ("ArrowUp", (3, -3, 0)), ("ArrowLeft", (2, -3, 1)), ("ArrowUp", (2, -4, 2)), ("ArrowRight", (3, -4, 3))):
-        if to[2] > game.server()["z"]:                         # (up a block: walking into it stops you, J jumps it)
+        if to[2] > game.server()["z"]:                         # (up a block: walking into it stops you, Space jumps it)
             game.face(*{"ArrowUp": (0, -1), "ArrowDown": (0, 1), "ArrowLeft": (-1, 0), "ArrowRight": (1, 0)}[key])
-            game.press("j", 0)
+            game.press("Space", 0)
         else:
             game.hold([key], 90)                               # (a tap: a tile)
         game.sleep(500)
@@ -75,7 +75,7 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     assert game.js("[Build.level(), Build.S.deep, Build.S.plane]") == [3, None, None]
     game.press("b")
     game.press(game.js(SLOT, "wood_wall"))                     # upstairs, by hand: a wall on the floor before you
-    game.press("Space", 700)
+    game.press("e", 700)
     assert cells(game, x + 4, y - 4, 1, 1, 3) == "W/" and game.js(f"combAt({x + 4}, {y - 4})") == "n"      # (on the floor: the room under it is as it was)
     game.hold(["ArrowRight"], 90)
     game.sleep(450)
@@ -144,7 +144,7 @@ def test_you_see_the_floor_you_are_on_and_fall_off_its_edge(game):
     game.hold(["ArrowUp"], 90)                                                                      # a tile north: the bed is to the east
     game.sleep(500)
     game.face(1, 0)
-    game.press("Space", 1500)
+    game.press("e", 1500)
     assert game.server()["spawn"] == [x0 + 3, y0 + 1, 3]                                            # slept in: you wake upstairs
     go(game, x0 + 2, y0 - 2, 0)                                               # behind the house: two tiles north of its north wall
     assert alpha((x0 + 2, y0, 6), (x0 + 2, y0 + 3, 6)) == [1, 1]                                    # not seen through as a room is
@@ -169,9 +169,9 @@ def test_earth_raises_the_ground_and_planks_go_on_from_a_floor(game):
     game.press(game.js(SLOT, "dirt"))
     game.face(1, 0)
     assert "Raise the ground" in game.actions()
-    game.press("Space", 700)
+    game.press("e", 700)
     assert game.js(f"[topAt({x + 1}, {y}), combAt({x + 1}, {y})]") == [1, "."] and game.inv("dirt") == 5       # up a layer, its grass on it
-    game.press("j", 0)                                         # a jump up onto it (J: walking into it stops you)
+    game.press("Space", 0)                                     # a jump up onto it (Space: walking into it stops you)
     game.sleep(500)
     assert (game.server()["x"], game.server()["z"]) == (x + 1, 1)
     game.press("b")                                            # in build mode: a row of three, north of you
@@ -197,7 +197,7 @@ def test_earth_raises_the_ground_and_planks_go_on_from_a_floor(game):
     game.press(game.js(SLOT, "plank"))
     game.face(0, -1)                                           # the air to the north, at your feet's height
     assert "Lay planks" in game.actions()
-    game.press("Space", 700)
+    game.press("e", 700)
     assert game.js(f"!!Floors.get({x + 4}, {y + 2}, 3)") and game.inv("plank") == 0
     game.hold(["ArrowUp"], 90)
     game.sleep(500)

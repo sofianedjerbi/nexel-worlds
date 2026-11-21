@@ -27,7 +27,7 @@ def test_dressing_up(game):
     assert worn == {"head": "straw_hat", "top": "overalls", "pants": "denim", "shoes": "leather_boots", "effect": "flame_charm"}
     assert game.js("document.querySelectorAll('#wearing .slot').length") == 5
     sheet = game.js("(() => { const s = wornSheet(agentTint(me), [...ents.values()].find((q) => q.e && q.e.id === myId).e.worn); return [s.width, s.height, s.edges.length]; })()")
-    assert sheet == [384, 1728, 288]                          # every frame of the sheet dressed
+    assert sheet == [384, 1920, 320]                          # every frame of the sheet dressed
     shot(game, "dressed")
     game.hold(["d"], 500)
     shot(game, "dressed_walking")

@@ -139,7 +139,7 @@ function drawHotbar(inv) {
     const d = document.createElement("div"); d.className = "slot" + (name && name === selected ? " sel" : "");
     if (name) {
       d.appendChild(slotIcon(name));
-      const how = WEAR[name] ? " · E to wear" : FOODS.includes(name) ? " · E to eat, or feed animals" : name === "watering_can" ? ` · ${can}/${CAN_SIZE} water · click a crop; refill at a well or water`
+      const how = WEAR[name] ? ` · ${capOf("use")} to wear` : FOODS.includes(name) ? ` · ${capOf("use")} to eat, or feed animals` : name === "watering_can" ? ` · ${can}/${CAN_SIZE} water · click a crop; refill at a well or water`
         : (PLACEABLE_BLOCK[name] || FILLS[name] || name === "seed") ? " · select, click the ground to place" : name === "name_tag" ? " · select, use it on an animal to name it" : "";
       d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name) + how)}</span>`);
       if (name === "watering_can") d.insertAdjacentHTML("beforeend", `<span class="lvl"><i style="width:${Math.round(can / CAN_SIZE * 100)}%"></i></span>`);
@@ -212,7 +212,7 @@ function foodPreview() {
 function drawVitals(s) {
   drawIcons($("hearts"), "heart", s.hp);
   foodPreview();
-  const status = s.hunger <= 0 || (SPRINT_FOOD < 0 && s.hunger < 25) ? "Starving: eat something (E)" : s.hunger <= SPRINT_FOOD ? "Too hungry to sprint: eat something (E)" : "";
+  const status = s.hunger <= 0 || (SPRINT_FOOD < 0 && s.hunger < 25) ? `Starving: eat something (${capOf("use")})` : s.hunger <= SPRINT_FOOD ? `Too hungry to sprint: eat something (${capOf("use")})` : "";
   if (walking && walking.run !== sprinting()) syncWalk();          // (fed again, or not enough any more: the sprint follows)
   $("status").textContent = status; $("status").style.display = status ? "block" : "none";
 }

@@ -1,7 +1,7 @@
 // Touch: the game on a phone. Only on touch screens (body.touch); the keyboard and mouse play stays as it was.
 //   Left thumb: a joystick wherever it lands on the left of the screen (pushed far, you sprint).
-//   Right thumb: the main button (Space: act on what you face, held it keeps going) and the other one (X), each
-//   labelled with what it will do right now; eat and pick up show up when you can. Items (the inventory), craft, talk and the menu at the top.
+//   Right thumb: the main button (E: act on what you face, or eat, wear what you hold; held it keeps going) and the
+//   other one (X), each labelled with what it will do right now; jump and pick up show up when you can. Items (the inventory), craft, talk and the menu at the top.
 //   Two fingers on the world pinch to zoom; a tap on a tile is a click (as with a mouse), on the stick's side too.
 
 const TOUCH = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window || new URLSearchParams(location.search).has("touch");
@@ -15,7 +15,7 @@ function touchUI() {
   for (const [id, label] of [["tA", "A"], ["tB", "B"]]) el("div", id, `<span class="cap"></span><span class="lbl">${label}</span>`, btns);
   const ctx_ = el("div", "tctx", "");
   el("div", "tUp", "Up", ctx_); el("div", "tDown", "Down", ctx_); el("div", "tBuild", "Build", ctx_);   // (build mode, build.js: a phone had no way into it, nor a layer up or down)
-  el("div", "tJump", "Jump", ctx_); el("div", "tDig", "Dig up", ctx_); el("div", "tEat", "Eat", ctx_); el("div", "tPick", "Pick up", ctx_);
+  el("div", "tJump", "Jump", ctx_); el("div", "tDig", "Dig up", ctx_); el("div", "tPick", "Pick up", ctx_);
   const top = el("div", "ttop", "");
   el("div", "tBag", "Items", top); el("div", "tCraft", "Craft", top); el("div", "tTalk", "Talk", top); el("div", "tMenu", "Menu", top);   // (Menu: the settings, leaving: a phone has no Esc, and had no way to them once in the world)
   return {btns, ctx_};
@@ -122,7 +122,7 @@ if (TOUCH) {
   for (const ev of ["pointerup", "pointercancel"]) pad.addEventListener(ev, release);
 
   // (build mode: A held while the stick moves the cursor is a row, as Space held is: it was a tap a block. Held still it places once: a second one would go on top of the first)
-  holdButton($("tA"), (again) => { if (!me) return; if (!Build.on) useFacing(false); else if (!again) { Build.click(Build.S.at, false); Build.S.hold = " "; } });
+  holdButton($("tA"), (again) => { if (!me) return; if (!Build.on) useFacing(false, again); else if (!again) { Build.click(Build.S.at, false); Build.S.hold = " "; } });
   for (const ev of ["pointerup", "pointercancel"]) $("tA").addEventListener(ev, () => { if (Build.S.hold === " ") Build.S.hold = null; });
   holdButton($("tB"), () => { if (!me) return; if (Build.on) Build.click(Build.S.at, true); else useFacing(true); });
   tapButton($("tBuild"), () => Build.toggle()); tapButton($("tUp"), () => Build.onKey("e", {})); tapButton($("tDown"), () => Build.onKey("q", {}));
@@ -130,7 +130,7 @@ if (TOUCH) {
   $("craftfind").placeholder = "Search"; $("say").placeholder = "Say something…";                     // (no Enter, no Esc: the keyboard's own key sends, a tap elsewhere gives up)
   for (const ev of ["gesturestart", "dblclick"]) document.addEventListener(ev, (e) => e.preventDefault(), {passive: false});   // (no pinch or double tap of the page itself)
   document.addEventListener("contextmenu", (e) => { if (!/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) e.preventDefault(); });      // (a long press: no menu of the browser's)
-  tapButton($("tEat"), () => useSelected()); holdButton($("tDig"), () => DigUp.run());      // (digup.js: the way out of a hole)
+  holdButton($("tDig"), () => DigUp.run());      // (digup.js: the way out of a hole)
   tapButton($("tPick"), () => act("pick_up", {}));
   tapButton($("tJump"), () => jumpKey());                  // (walk.js: up the step in front; shown when there is one, held stick and all)
   tapButton($("tBag"), () => toggleBag());
@@ -154,15 +154,15 @@ if (TOUCH) {
   setInterval(() => {
     if (!me) return;
     const rows = availableActions(), get = (k) => rows.find((r) => r[0] === k);
-    const a = Build.on ? rows[1] : get("Space"), b = get("X"), up = !Build.on && rows.find((r) => r[0] === capOf("up") && r[3]), bd = true, s = [a && a[1], a && a[2], b && b[1], up && up[1], !!get("E"), !!get("F"), Build.on, !!bd, !!get(capOf("jump"))].join("|");
+    const a = Build.on ? rows[1] : get(capOf("use")), b = get(Build.on ? "X" : capOf("alt")), up = !Build.on && rows.find((r) => r[0] === capOf("up") && r[3]), bd = true, s = [a && a[1], a && a[2], b && b[1], up && up[1], !!get(capOf("pick")), Build.on, !!bd, !!get(capOf("jump"))].join("|");
     if (s !== sig) {
       sig = s;
       $("tA").querySelector(".cap").textContent = a ? a[1] : "";
       $("tA").classList.toggle("bad", !!(a && a[2])); $("tA").classList.toggle("idle", !a);
       $("tB").querySelector(".cap").textContent = b ? b[1] : "";
       $("tB").classList.toggle("idle", !b);
-      $("tEat").style.display = get("E") ? "flex" : "none"; $("tDig").style.display = up ? "flex" : "none"; $("tDig").textContent = up ? up[1] : "Dig up";
-      $("tPick").style.display = get("F") ? "flex" : "none"; $("tJump").style.display = get(capOf("jump")) ? "flex" : "none";
+      $("tDig").style.display = up ? "flex" : "none"; $("tDig").textContent = up ? up[1] : "Dig up";
+      $("tPick").style.display = get(capOf("pick")) ? "flex" : "none"; $("tJump").style.display = get(capOf("jump")) ? "flex" : "none";
       $("tBuild").style.display = bd ? "flex" : "none"; $("tBuild").textContent = Build.on ? "Done" : "Build"; $("tUp").style.display = $("tDown").style.display = Build.on ? "flex" : "none";
     }
     if (hudFit()) return;                                      // (the bar's pixel changed: measured at the next turn)

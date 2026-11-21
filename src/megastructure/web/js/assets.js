@@ -15,9 +15,9 @@ let GEN = {};
 const SHEET_PACK = window.ASSET_PACK ? ASSET_PACK.blob : Promise.resolve(null);       // (asked for by the page itself, before this script had come)
 const fromPack = (name, type) => SHEET_PACK.then((b) => { const at = b && ASSET_PACK.files[name]; return at ? b.slice(at[0], at[0] + at[1], type) : null; });
 function loadImg(n) {   // decoded up front: a sheet decoded lazily on first draw stalls that frame (~100 ms)
-  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => { if (n === "character") IMG[n] = ToolArt.extend(i); res(i); }); i.onerror = rej;
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => { if (n === "character") IMG[n] = JumpArt.extend(ToolArt.extend(i)); res(i); }); i.onerror = rej;
     if (window.ASSET_PACK) fromPack(n + ".png", "image/png").then((b) => { i.src = b ? URL.createObjectURL(b) : `assets/${n}.png`; }); else i.src = `assets/${n}.png`;
-    if (n !== "character") IMG[n] = i; });       // (the character sheet is only there once the rows of its other tools are under it: tool_art.js)
+    if (n !== "character") IMG[n] = i; });       // (the character sheet is only there once the rows of its other tools and of the jump are under it: tool_art.js, jump_art.js)
 }
 const ready = Promise.all([...ASSETS.map(loadImg),
   fromPack("gen.txt", "text/plain").then((b) => b ? b.text() : fetch("assets/gen.txt").then((r) => r.text())).then((t) => t.trim().split("\n").forEach((n, i) => GEN[n] = i)),

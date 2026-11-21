@@ -24,7 +24,7 @@ def test_stairs_are_laid_with_one_press_and_walked_up(game):
     game.press(game.js(SLOT, "stairs"))
     game.face(0, -1)                                           # facing the wall under the floor: the flight can't come at you, it runs along it
     assert "Build stairs (2 steps)" in game.actions()
-    game.press("Space", 900)
+    game.press("e", 900)
     assert game.js(f"[surfacesAt({x}, {y - 3}), surfacesAt({x - 1}, {y - 3})]") == [[2], [1]] and game.inv("stairs") == 2
     game.rpc("dev_teleport", x=x - 1, y=y - 2, z=0); game.arrive()
     for key, want in (("ArrowUp", (x - 1, y - 3, 1)), ("ArrowRight", (x, y - 3, 2)), ("ArrowUp", (x, y - 4, 3))):
@@ -53,7 +53,7 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     assert "Needs something taller behind" in game.actions()
     game.rpc("dev_teleport", x=x, y=y - 1, z=0); game.arrive()
     game.face(0, -1)
-    game.press("Space", 700)
+    game.press("e", 700)
     assert game.js(f"combAt({x}, {y - 2})") == "l" and game.inv("ladder") == 1
     hp = game.server()["hp"]
     assert step(game, "ArrowUp") == (x, y - 2, 0)              # onto the ladder
@@ -113,7 +113,7 @@ def test_out_of_your_own_shaft_by_keys(game):
         game.wait("$('prompts').innerText.includes('Place ladder')", 3000)
         aim = game.js("(() => { const a = aimedTile(); return [a.p.x, a.p.y, a.it.ok, a.it.z]; })()")
         assert aim == [x, y, True, -4], (dx, dy, aim)          # the ghost: on your own tile, at your feet
-    game.press("Space", 100)
+    game.press("e", 100)
     game.wait(f"combAt({x}, {y}) === 'l'", 5000)
     assert game.inv("ladder") == 0 and "way" not in game.actions()     # (on your ladder: nothing red said)
     hp = game.server()["hp"]
@@ -131,7 +131,7 @@ WAYBOX = "([x, y, z]) => { const n = WayShow.cur && WayShow.cur.next; return !!n
 def test_out_of_your_own_shaft_with_a_pickaxe_alone(game):
     """"how do i climb up? why i cant??": four down in a shaft a tile wide, a pickaxe and no ladder: Space dug level,
     X dug down, nothing dug upward. R (Dig up) takes the cell in front of you at your head's height ("Dig a step"),
-    J jumps you up onto the block under it; then the cell over your head ("Dig up") and the next step: a stair out, a
+    Space jumps you up onto the block under it; then the cell over your head ("Dig up") and the next step: a stair out, a
     layer each time. The cell it will take is marked, at its own height. And under the land, the tree on top of the
     wall you face, three up, is not offered ("Chop tree (slow)" with the aim on a tunnel wall): the wall is."""
     game.clear_area(8)
@@ -158,8 +158,8 @@ def test_out_of_your_own_shaft_with_a_pickaxe_alone(game):
             said.append(aim[3])
             game.press("r", 100)
             game.wait(f"!solidAt({aim[0]}, {aim[1]}, {aim[2]}) && !myAction", 8000)
-        else:                                                  # (walking into the step stops you: J jumps it)
-            game.press("j", 0)
+        else:                                                  # (walking into the step stops you: Space jumps it)
+            game.press("Space", 0)
             game.wait(f"myAt && myAt.z > {z} && !walking", 6000)
             X, z = game.js("[myAt.x, myAt.z]")
     assert said and set(said) <= {"Dig a step", "Dig up"}, said

@@ -85,7 +85,7 @@ def test_a_pickaxe_cuts_a_tunnel_into_a_wall(game):
     game.stamp(-2, -3, ["....."] * 3, levels=["33333"] * 3); game.rest()  # a hill 3 high, its south face in front of you
     game.face(0, -1)
     assert "Dig into the hill" in game.actions()
-    game.press(" ", 1500)
+    game.press("e", 1500)
     assert game.js(f"surfacesAt({x}, {y - 1})") == [0, 3]
     game.rest()
     game.js("selectItem(null)")

@@ -19,9 +19,9 @@ def click_tile(game, dx, dy, shift=False):
 def test_flowers_around_and_under_you(game):
     game.stamp(1, 1, ["f"])
     game.stamp(0, 0, ["f"])                                  # one under your feet too
-    game.press("Space", 500)                                 # underfoot first
+    game.press("e", 500)                                 # underfoot first
     assert game.tile(0, 0) == "." and game.inv("flower") == 1
-    game.press("Space", 500)                                 # then the diagonal one
+    game.press("e", 500)                                 # then the diagonal one
     assert game.tile(1, 1) == "." and game.inv("flower") == 2
     assert game.actions() == "X | Dig down"                  # nothing left to pick here (X by hand digs down, as anywhere)
 
@@ -31,16 +31,16 @@ def test_space_never_stops_you(game):
     game.stamp(4, -1, ["T"])
     game.page.keyboard.down("d")
     game.sleep(150)
-    game.press(" ", 250)                                     # Space on the flower: picked in passing
+    game.press("e", 250)                                     # E on the flower: picked in passing
     moving = game.js("walking !== null")
     game.sleep(300)
     assert moving and game.inv("flower") == 1
     x0, _ = game.pos()
-    game.page.keyboard.down(" ")                             # Space by the tree: chopping waits, you walk on
+    game.page.keyboard.down("e")                             # E by the tree: chopping waits, you walk on
     game.sleep(500)
     x1, _ = game.pos()
     moving = game.js("walking !== null")
-    game.page.keyboard.up(" ")
+    game.page.keyboard.up("e")
     game.page.keyboard.up("d")
     assert moving and x1 >= x0 + 2 and game.server()["x"] >= x0 + 2
 
@@ -64,11 +64,11 @@ def test_chop_by_hand_and_with_an_axe(game):
     game.face(1, 0)
     assert "Chop tree (slow)" in game.actions()                # (a verb and a thing: "interaction sentences are wayyyy too long")
     t0 = time.time()
-    game.press("Space", 0)
+    game.press("e", 0)
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === 't'", 8000)
     by_hand = time.time() - t0
     assert game.inv("wood") == 3
-    game.press("Space", 0)                                   # the stump: one more wood
+    game.press("e", 0)                                   # the stump: one more wood
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === '.'", 8000)
     assert game.inv("wood") == 4
     game.give(axe=1)
@@ -76,7 +76,7 @@ def test_chop_by_hand_and_with_an_axe(game):
     game.stamp(1, 0, ["T"])
     assert "Chop tree" in game.actions() and "(slow)" not in game.actions()
     t0 = time.time()
-    game.press("Space", 0)
+    game.press("e", 0)
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === 't'", 8000)
     assert time.time() - t0 < by_hand / 2
 
@@ -85,11 +85,11 @@ def test_rocks_and_ore(game):
     game.stamp(1, 0, ["*"])
     game.face(1, 0)
     assert "pickaxe" in game.actions() or "pickaxe" in game.js("intent(facingTile(), false).text")
-    game.press("Space", 400)
+    game.press("e", 400)
     assert game.tile(1, 0) == "*"                            # ore can't be mined without a pickaxe in hand
     game.give(pickaxe=1)
     game.hold_item("pickaxe")
-    game.press("Space", 0)
+    game.press("e", 0)
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === '.'", 8000)
     assert game.inv("ore") == 1 and game.inv("stone") >= 1
 
@@ -98,10 +98,10 @@ def test_bushes_and_fruit_trees_stay_and_bear_again(game):
     game.stamp(1, 0, ["b"])
     game.stamp(-1, 0, ["F"])
     game.face(1, 0)
-    game.press("Space", 600)
+    game.press("e", 600)
     assert game.tile(1, 0) == "v" and game.inv("berries") == 2
     game.face(-1, 0)
-    game.press("Space", 1500)
+    game.press("e", 1500)
     assert game.tile(-1, 0) == "U" and game.inv("fruit") == 3
     game.rpc("dev_skip", seconds=250)
     game.sleep(800)
@@ -137,11 +137,11 @@ def test_what_is_up_a_cliff_is_out_of_reach(game):
     game.face(0, -1)
     game.sleep(500)
     assert not any("flower" in r[1].lower() for r in game.js("availableActions()"))
-    game.press("Space", 400)
+    game.press("e", 400)
     assert game.tile(0, -1) == "f" and "Out of reach" not in game.js("$('toastt').textContent") and "reach" not in game.actions()
     game.stamp(0, -1, ["f"], levels=["2"]); game.rest()
     assert any("flower" in r[1].lower() for r in game.js("availableActions()"))
-    game.press("Space", 500)
+    game.press("e", 500)
     assert game.tile(0, -1) != "f" and game.inv("flower") == 1
     x, y = game.pos()
     assert game.js(f"[reaches({x + 2}, {y + 1}, USE_R), reaches({x + 2}, {y + 2}, USE_R), reaches({x + 1}, {y}, USE_R, myZ({x}, {y}) + 5)]") == [True, False, False]

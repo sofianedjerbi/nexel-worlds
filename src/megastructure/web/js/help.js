@@ -4,18 +4,18 @@
 // Esc shuts it. Its looks are css/help.css.
 
 const HELP = [
-  ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["J"], "Jump: up a step"], [["Alt"], "Turn without walking"], [["G"], "Goals: show or hide"]]],
+  ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Space"], "Jump: up a step"], [["Alt"], "Turn without walking"], [["G"], "Goals: show or hide"]]],
   ["See", [[["+", "−"], "Zoom (or the wheel)"], [["V"], "What is built over you"]]],
-  ["Do", [[["Space"], "Use what you face"], [["X"], "Other use: milk, till"], [["F"], "Pick up"], [["E"], "Eat"],
-    [["Click"], "Space there. Shift: X"]]],
-  ["Carry", [[["1-9", "Q"], "Take in hand"], [["`"], "Empty your hands"], [["Space"], "Place what you hold"],
+  ["Do", [[["E"], "Use what you face"], [["X"], "Other use: milk, till"], [["F"], "Pick up"], [["E"], "Food in hand: eat it"],
+    [["Click"], "E there. Shift: X"]]],
+  ["Carry", [[["1-9", "Q"], "Take in hand"], [["`"], "Empty your hands"], [["E"], "Place what you hold"],
     [["I"], "Inventory"], [["C"], "Craft"]]],
-  ["Build", [[["B"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],
+  ["Build", [[["Z"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],
     [["Q", "E"], "Cursor a layer down, up"]]],
   ["Talk", [[["Enter"], "Talk"], [["ABC"], "Shout: IN CAPITALS"], [["Tab"], "Hold: who is awake"],
     [["M"], "Sound on or off"], [["Esc"], "Menu and settings"]]],
 ];
-const HELP_ACT = {Space: "use", X: "alt", J: "jump", F: "pick", E: "eat", Q: "next", "`": "hands", I: "bag", C: "craft", B: "build", M: "mute"};
+const HELP_ACT = {E: "use", X: "alt", Space: "jump", F: "pick", Q: "next", "`": "hands", I: "bag", C: "craft", Z: "build", M: "mute"};
 let helpPage = 0;
 const helpOpen = () => $("help").style.display === "block";
 function drawHelp() {
