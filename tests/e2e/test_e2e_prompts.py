@@ -67,11 +67,11 @@ def test_only_what_your_hand_gets_to_is_offered(game):
     game.clear_area(8)
     x, y = game.pos()
     game.press("ArrowDown", 300)
-    for dx, dy, lv in ((-1, 0, "6"), (0, 1, "f")):
+    for dx, dy, lv, said in ((-1, 0, "6", "X | Dig the wall"), (0, 1, "f", "")):
         game.stamp(dx, dy, ["f"], levels=[lv])
         game.face(dx, dy)
         game.sleep(400)
-        assert game.actions() == "X | Dig down", (lv, game.actions())      # (X by hand digs down where you stand: nothing of the flower)
+        assert game.actions() == said, (lv, game.actions())      # (X digs the block you face: the pillar's at your feet; nothing of a floor six down, nor of the flower)
         game.js("$('toast').style.display = 'none'")
         game.press("Space", 300)
         assert game.toast() == "" and game.inv("flower") == 0

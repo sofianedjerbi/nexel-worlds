@@ -32,7 +32,8 @@ const Target = (() => {
     const keys = byKeys(), h = myZ(s.x, s.y), way = keys ? WayShow.offer() : null, wc = WayShow.cur, nx = wc && wc.next, now = wc && wc.now;
     const ways = (x, y, z) => !!nx && nx.x === x && nx.y === y && nx.z === z;
     const a = keys ? facingIntent(false) : aimedTile(), it = a && a.it, p = a && a.p, alt = keys ? facingIntent(true) : null, up = keys ? DigUp.aim() : null;
-    if ((way && way.key === "alt") || (alt && alt.it.here)) add("alt", "break", s.x, s.y, h, {mine: true});      // X: the block you stand on (its own mark: under you)
+    if (way && way.key === "alt") add("alt", "break", s.x, s.y, h, {mine: true});      // the way out's X: the block you stand on
+    else if (alt && alt.it.cell !== undefined) add("alt", "break", alt.p.x, alt.p.y, alt.it.cell);              // X: the block you face, its box (keyboard.js digAhead)
     if (up) add("up", "break", up.x, up.y, up.z, {way: ways(up.x, up.y, up.z)});                                   // R: the block it cuts
     if (way && way.key === "use" && now) add("use", "break", now.x, now.y, now.z, {way: ways(now.x, now.y, now.z)});
     else if (it && p && tile(p.x, p.y) && !it.info && !it.walk) {

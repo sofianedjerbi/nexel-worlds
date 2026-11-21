@@ -90,8 +90,9 @@ function facingNow(alt) {
       run: () => act("dig", {dir: dirTo(q), with: "pickaxe"})}};
   // X and nothing else to use it on: dig down where you stand, with the pickaxe in hand or by hand (slower: the server
   // always allowed it). Bare-handed on the meadow X answered "Needs a hoe": a hoe tills, and X digs. A hoe in hand tills
-  if (alt && inHand() !== "hoe" && under && GROUND.has(under) && !":n".includes(under) && (inHand() === "pickaxe" || !wet(under)))
-    return {p: here, it: {text: "Dig down", here: true, run: () => act("dig_down", inHand() === "pickaxe" ? {with: "pickaxe"} : {})}};
+  // X: the block you face, the one its box is on (it dug the one under you, with no mark: "it should dig the selected
+  // highlighted block, not under the player"). A wall at your feet: that cell; else the ground in front, a layer down.
+  if (alt && inHand() !== "hoe") { const d = digAhead(q, hs); if (d) return d; }
   for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, false); if (useful(it) && inReach(p, it)) return {p, it}; }
   // then anything within reach (USE_R): nearest first, in front of you before behind
   const p0 = ents.get("agent" + myId), ring = [];
@@ -104,6 +105,12 @@ function facingNow(alt) {
   // (what is in front of you but up a cliff or down one is not offered, and not refused in red either ("Out of
   // reach" for a flower three layers up): nothing is said of what your hand cannot get to)
   return faced && !faced.walk && !useful(faced) && inReach(q, faced) ? {p: q, it: faced} : null;
+}
+function digAhead(q, hs) {
+  const wall = landSolid(q.x, q.y, hs + 1), z = wall ? hs + 1 : settleNear(q.x, q.y, hs), top = z === topAt(q.x, q.y), g = combAt(q.x, q.y);
+  if (z < hs - 2 || entityAt(q) || (top && !(g && GROUND.has(g) && !":n".includes(g) && !wet(g)))) return null;
+  const pick = inHand() === "pickaxe";
+  return {p: q, it: {text: wall ? "Dig the wall" : "Dig down", flat: true, near: 1, cell: z, run: () => act("dig", {dir: dirTo(q), z, ...(pick ? {with: "pickaxe"} : {})})}};
 }
 // You stand in a hole: land at your body's height behind you too, or on both sides (a pit, a trench: not a hill's foot)
 function inHole(s, q, h) {
@@ -185,7 +192,7 @@ function cycleHand(step) {                       // Q: the next item of the hotb
   if (!have.length) return;
   const i = have.indexOf(selected), j = i + step;
   selectItem(j < 0 ? have[have.length - 1] : j >= have.length ? null : have[j]);
-  toast(selected ? `In hand: **${label(selected)}**` : "Empty hands");
+  if (selected) toast(`In hand: **${label(selected)}**`);      // (empty hands: the hotbar shows it, no line in the chat: "no need to write a chat message for empty hands")
 }
 const BOOK_KEYS = new Set(["c", "i", "m", "h", "?", "g", "f3", "t", "/", "+", "=", "-"]);   // what still does its usual thing with the recipe book open
 let capAt = null;
@@ -205,7 +212,7 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   f: () => act("pick_up", {}),
   e: () => useSelected(),
   q: () => cycleHand(1),
-  "`": () => { selectItem(null); toast("Empty hands"); },
+  "`": () => { selectItem(null); },
   c: () => { $("bag").style.display = "none"; toggleCraft(); },
   i: () => { if (isOpen("craft")) toggleCraft(); toggleBag(); },
   m: () => { setMuted(!muted); toast(`Sound **${muted ? "off" : "on"}** \`${capOf("mute")}\``); },
@@ -240,7 +247,7 @@ addEventListener("keydown", (e) => {
     return;
   }
   if (/^[0-9]$/.test(k) && meObs) {                 // a slot of your bar (0: the tenth); an empty one, or the one in hand again: empty hands
-    const n = slots[(+k + 9) % 10]; selectItem(n && selected !== n ? n : null); if (!selected) toast("Empty hands"); return;
+    const n = slots[(+k + 9) % 10]; selectItem(n && selected !== n ? n : null); return;
   }
   if (k === "tab") { e.preventDefault(); if (!e.repeat) { drawWho(); document.body.classList.add("tab"); } return; }   // held: the day, you, who is awake (style.css)
   const fn = SHORTCUTS[u];
