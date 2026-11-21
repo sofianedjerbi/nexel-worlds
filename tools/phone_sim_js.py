@@ -87,5 +87,13 @@ def woke(r):
     w = isinstance(r.get("went"), list) and isinstance(r["went"][1], list) and r["went"][1][1]
     if not w:
         return {}
-    gap, long = [f[1] for f in r["f"] if f[0] >= w], [d for t, d in r["long"] if t + d >= w]
-    return {"woke": {"fps": round(len(gap) / (sum(gap) / 1000), 1) if gap else 0, "over33": sum(g > 33.4 for g in gap), "long": [len(long), round(sum(long)), round(max(long, default=0))]}}
+    def part(a, b):
+        gap, long = [f[1] for f in r["f"] if a <= f[0] < b], [d for t, d in r["long"] if t + d >= a and t < b]
+        hd = [h for h in r["hd"] if a <= h[0] < b]           # (build: the land's making, ms in all; hd: the HD look's own script, ms in all)
+        return {"fps": round(len(gap) / (sum(gap) / 1000), 1) if gap else 0, "over33": sum(g > 33.4 for g in gap), "long": [len(long), round(sum(long)), round(max(long, default=0))],
+                "build_ms": round(sum(h[4] for h in hd)), "hd_ms": round(sum(h[1] for h in hd))}
+    out, wn = {"woke": part(w, 1e12)}, r["went"][1]
+    if len(wn) > 3:                                          # (the island shown till Wake up; Wake up to the land drawn, s)
+        out["title"], out["land_s"] = part(wn[3], w), round((wn[2] - w) / 1000, 2)
+        out["long200"] = [[round((t - wn[3]) / 1000, 2), round(d)] for t, d in r["long"] if d > 200]   # (s from the island shown: under 0 is the load)
+    return out
