@@ -56,6 +56,7 @@ function dropLoot(x, y, items, now) {
   });
 }
 
+const lootAt = (x, y) => loot.some((l) => l.x === x && l.y === y);   // (still hopping in there: the pile waits, hd.js)
 const LOOT_HOPS = [.16, .08];                 // after the hop out: two smaller bounces in place, this long
 const lootRests = (l, now) => (now - l.t0) / 1000 >= l.flight + LOOT_HOPS[0] + LOOT_HOPS[1];
 function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list, like everything on the ground
