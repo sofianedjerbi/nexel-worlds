@@ -3942,3 +3942,10 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - Looked at: both beats rendered on a test page (R, arrow + R, Space, a lone arrow). Not looked at in a played cave after the change.
 - Tests: wayout, phone_taps, prompts 15 passed; unit 657.
 - Next: the other prompts' keys (`#actions .key`, `#prompts .key`) still have rounded corners: same style if the owner likes this one.
+
+## Iteration 216: the arrow in the way out's key is made of art pixels
+- Asked: "make the triangle in the key look more like a pixelated triangle with game pixel concentration level".
+- Was: a triangle made of CSS borders: a smooth diagonal, finer than anything else on the screen.
+- Change (css/style.css): a stair of one art px a step (4 by 7 art px, heights 7 5 3 1), cut with clip-path in lengths of `--q`; one shape a direction (no turning: a quarter turn of a 4 x 7 box lands half a px off the grid).
+- Looked at: all four directions and the lone arrow rendered on a test page at 3x.
+- Tests: wayout, phone_taps, climb; unit.
