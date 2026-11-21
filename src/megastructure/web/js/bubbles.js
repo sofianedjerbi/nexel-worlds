@@ -7,7 +7,7 @@
 // state.js adds to `bubbles`; render.js calls drawBubbles last, over everything.
 
 const BUBBLE = {q: 2, life: 7, after: 3.5, most: 3, wide: 400, lines: 7, pitch: 20, padX: 8, padY: 6, gap: 2, fall: 12, fade: .25,
-  ink: "#5b3f36", paper: "#fff6e2", shout: "#ffe3a3", foot: "#ecd7b0", footShout: "#f2c877", shade: "rgba(60,40,30,.25)"};
+  ink: "#5b3f36", paper: "#fff6e2", shout: "#ffe3a3", foot: "#ecd7b0", footShout: "#f2c877", shade: "rgba(60,40,30,.25)", edge: 16};
 
 // The line as the rows it is written in (at most BUBBLE.lines, the last ending in … if there was more), and its size.
 function bubbleShape(b) {
@@ -76,9 +76,13 @@ function drawBubbles(sx, sy, S, t) {
     }
     const o = overBody(p, S), tx = snap(sx(p.x) + S / 2 + o[0]), foot = snap(bodyY(p, sy) + o[1] - (p.e.hp < HP_MAX ? 9 * zoom + 4 : 4 * zoom)) - 3 * q,     // (the tail's point: over the head, or over the health bar)
       w = Math.max(...mine.map((b) => b.w));
-    const top = foot - Math.max(...mine.map((b) => b.up + b.h)) - 11 * q;     // (with the name's tab)
-    if (tx < -w || tx > W + w || foot < -20 || top > H) continue;
-    piles.push({mine, tx, foot, w, top, y: p.y, name});
+    const top = foot - Math.max(...mine.map((b) => b.up + b.h)) - 11 * q, mid = bodyY(p, sy) + o[1] + S / 2;     // (with the name's tab; mid: the middle of the body)
+    // Said only by someone on the screen, a margin in from its edges ("dialogue shows even off-screen": a bubble was
+    // pushed in at the edge, or hung over nobody, its speaker below the screen or behind its side)
+    // (nor someone the eye does not see, behind a house: hd.js hidden)
+    const hid = name !== me && HdLook.live && HdLook.hidden(p.x + .5, p.y + .5, p.e.z !== undefined ? p.e.z : floorAt(Math.round(p.x), Math.round(p.y)));
+    if (hid || tx < BUBBLE.edge || tx > W - BUBBLE.edge || foot + 3 * q < BUBBLE.edge || mid > H - BUBBLE.edge) { for (const b of mine) b.at = b.up = undefined; continue; }
+    piles.push({mine, tx, foot, w, top, y: p.y, name, mid});
   }
   piles.sort((a, b) => b.y - a.y);                           // the nearest to the bottom of the screen keep their place
   const placed = [];
@@ -89,8 +93,10 @@ function drawBubbles(sx, sy, S, t) {
       if (!hit) break;
       const lift = pile.foot + 3 * q - (hit.t - 4); pile.foot -= lift; pile.top -= lift;
     }
-    // (the first screen: not under its name, its line, its window, title_scene.js. Asked HERE, where the pile will be drawn: asked before it was raised over another's, a pile clear of the line was then lifted under it)
-    if (typeof TitleScene !== "undefined" && TitleScene.hides(Math.min(...pile.mine.map(x0)), pile.top, pile.w, pile.foot + 3 * q - pile.top)) { for (const b of pile.mine) b.at = b.up = undefined; continue; }
+    // (the first screen: not under its name, its line, its window, title_scene.js, nor said by someone the window hides. Asked HERE, where the pile will be drawn: asked before it was raised over another's, a pile clear of the line was then lifted under it)
+    // (and whole on the screen: a pile raised over the top edge is not drawn cut)
+    const l0 = Math.min(...pile.mine.map(x0)), l = Math.min(l0, pile.tx - S / 2), r = Math.max(l0 + pile.w, pile.tx + S / 2);
+    if (pile.top < 4 || (typeof TitleScene !== "undefined" && TitleScene.hides(l, pile.top, r - l, pile.mid - pile.top))) { for (const b of pile.mine) b.at = b.up = undefined; continue; }
     placed.push({l: Math.min(...pile.mine.map(x0)), r: Math.min(...pile.mine.map(x0)) + pile.w, t: pile.top, b: pile.foot + 3 * q});
     pile.mine.forEach((b, n) => {
       const since = t - b.t, jolt = b.shout && since < .5 ? (Math.floor(since * 30) % 2 ? q : -q) : 0;      // (a shout: its bubble shakes as it lands)

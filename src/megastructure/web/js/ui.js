@@ -156,7 +156,7 @@ function drawHotbar(inv) {
 // Its name shows over the bar a moment when it changes ("the selected item in inventory isn't clear").
 let hotWas, nameTimer;
 function heldName(n) { const e = $("heldname"); e.textContent = label(n); e.classList.add("on"); clearTimeout(nameTimer); nameTimer = setTimeout(() => e.classList.remove("on"), 1400); }
-(() => { const im = new Image(); im.onload = () => {
+ready.then(() => { const im = IMG.slot; if (!im) return; (() => {   // (the frame from the pack: the demo asks for no picture on its own, web_bundle.py)
   const c = document.createElement("canvas"); c.width = c.height = 34; const g = c.getContext("2d"), cut = [[0, 15, 0, 15], [15, 1, 15, 4], [16, 14, 19, 15]];
   for (const [sx, sw, dx, dw] of cut) for (const [sy, sh, dy, dh] of cut) g.drawImage(im, sx, sy, sw, sh, dx, dy, dw, dh);
   const d = g.getImageData(0, 0, 34, 34), L = [255, 248, 232];
@@ -166,7 +166,7 @@ function heldName(n) { const e = $("heldname"); e.textContent = label(n); e.clas
   const e = document.createElement("canvas"); e.width = e.height = 30; const h = e.getContext("2d"); h.drawImage(im, 0, 0);
   const q = h.getImageData(0, 0, 30, 30), D = [91, 63, 54];
   for (let y = 0; y < 30; y++) for (let x = 0; x < 30; x++) if (x < 5 || y < 5 || x > 24 || y > 24) { const o = (y * 30 + x) * 4; for (let k = 0; k < 3; k++) q.data[o + k] = Math.round(q.data[o + k] * .45 + D[k] * .55); }
-  h.putImageData(q, 0, 0); document.documentElement.style.setProperty("--slotdark", `url(${e.toDataURL()})`); }; im.src = "assets/slot.png"; })();
+  h.putImageData(q, 0, 0); document.documentElement.style.setProperty("--slotdark", `url(${e.toDataURL()})`); })(); });
 // Hearts and food sit on the hotbar, ten of each, halves allowed: a heart is a tenth of full health, a piece a tenth
 // of full food (state.js: HP_MAX, FOOD_MAX; a part of a half shows as the half). Hearts are the UI pack's small hearts (full,
 // half, empty); food is an apple drawn here in the hearts' own palette (plum outline, rose, glint, a leaf; empty is
