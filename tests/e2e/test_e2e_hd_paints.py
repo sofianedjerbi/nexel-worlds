@@ -10,7 +10,7 @@ from conftest import Game, new_name
 
 def hd(browser, server):
     g = Game(browser.new_page(viewport={"width": 960, "height": 540}), server)
-    g.join(new_name(), 3, look="hd")
+    g.join(new_name(), 3)
     g.js("setOpt('names', false); setOpt('hints', false); setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
     g.rpc("dev_creatures", clear=60)
     g.clear_area(12)

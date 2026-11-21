@@ -133,7 +133,7 @@ def scene(g, rec):
     g.press("q", 1100); g.press("q", 1500)
     for k in ["ArrowLeft"] * 3 + ["ArrowDown"] * 2 + ["ArrowRight"] * 2:
         g.press(k, 260)
-    g.sleep(1200); where("the cursor " + str(g.js("[Build.S.at, Build.level(), xray.a > .5]")))
+    g.sleep(1200); where("the cursor " + str(g.js("[Build.S.at, Build.level(), HdLook.win.a > .5]")))
     cap("B: out of build mode"); g.press("b"); g.sleep(1300)
     cap("Nexel Worlds: a house, floor by floor"); g.sleep(3000)
     rec.stop()

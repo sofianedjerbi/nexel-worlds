@@ -46,7 +46,7 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
     c = game.js(CUR)
     assert c["trapped"] and c["now"] == "up" and c["cap"] == "R" and c["way"] == "E", c
     assert c["digs"][0] == [x + 1, y, -2, "up"] and len(c["digs"]) == 5, c    # the first step's block (the sky is over you), then two a layer; the last layer is a hop
-    assert game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") == "RDigastep" and game.js("Marks.list.length") == 0, game.actions()      # one key: the block's, and in the corner with its word (no row beside what you face, no bracket)
+    assert game.js("$('prompts').innerText.trim()") == "" and game.js("$('actions').innerText.replace(/\\s+/g, '')") == "RDigastep", game.actions()      # one key: the block's, and in the corner with its word (no row beside what you face)
     presses = 0
     for _ in range(24):
         c = game.js(CUR)

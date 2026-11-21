@@ -5,26 +5,23 @@ import warnings
 
 from playwright.sync_api import TimeoutError as NotYet
 
-# The land's work, seen from the page (the engine says nothing of what it has still to make: its pieces are counted as
-# they are made): the frame in which a tile was painted, a chunk's faces or the cut's were built, a sea was made.
+# The land's work, seen from the page: the frame in which a tile changed or a sea was made (the HD look's own work: HdLook.busy).
 WATCH = """(() => { if (window.__land) return 1; const L = window.__land = {frame: 0, at: 0}, did = () => { L.at = L.frame; };
   const count = () => { L.frame++; requestAnimationFrame(count); }; requestAnimationFrame(count);
-  for (const n of ['drawTile', 'renderBlock', 'startBlock']) { const f = window[n]; if (typeof f === 'function') window[n] = function (...a) { did(); return f.apply(this, a); }; }
+  { const f = drawTile; window.drawTile = function (...a) { did(); return f.apply(this, a); }; }
   if (typeof waterSteps === 'function') { const f = waterSteps; window.waterSteps = function* (...a) { did(); yield* f.apply(this, a); }; }
-  for (const [o, n] of [[typeof VoxPages !== 'undefined' && VoxPages, 'tile'], [typeof VoxMesh !== 'undefined' && VoxMesh, 'build'], [typeof VoxSection !== 'undefined' && VoxSection, 'build']])
-    if (o && typeof o[n] === 'function') { const f = o[n]; try { o[n] = function (...a) { did(); return f.apply(this, a); }; } catch (e) { /* not ours to wrap: the frames alone say */ } }
   return 1; })()"""
 # The land at rest: all of it on the screen come, nothing of it left to draw or to make, you and the eye where you are going (it glides there for a second after a
 # teleport), and `n` frames drawn since the last piece of the land was, nothing fading in or out
-# (what hides you seen through, the land left behind: xray.a, away.a, Floors.seen: the same for `n` frames);
+# (the land left behind: away.a, the same for `n` frames);
 # the HD look's eye come to your level (it rises to you over some frames, hd.js: a px read on the way is another px: a cliff's rim was read 187 or 254 by how far it had come);
 # and a tick heard from the server since (who is where, what lies on the ground, a door: they come with the tick, 0.1 s)
 # (frames, not ms: a busy machine draws fewer in a second, and the land is made a little a frame)
-REST = """([n, ms]) => new Promise((ok) => { const L = window.__land, f0 = L.frame, t0 = performance.now(), hd = typeof HdLook !== 'undefined' && HdLook.live, w0 = Voxels.wver, c0 = clock;
+REST = """([n, ms]) => new Promise((ok) => { const L = window.__land, f0 = L.frame, t0 = performance.now(), hd = HdLook.live, w0 = Voxels.wver, c0 = clock;
   const here = () => { const p = ents.get('agent' + myId); if (p && (p.x !== p.tx || p.y !== p.ty)) return false;      // (you, drawn where you are; and every block of land on the screen come and made)
     const [x, y, w, h] = viewRect(0); for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (!b || !Voxels.made(b)) return false; }
     return true; };
-  const fades = () => [xray.a, away.a, typeof Floors !== 'undefined' && Floors.seen || 0]; let was = fades(), calm = 0;
+  const fades = () => [away.a]; let was = fades(), calm = 0;
   // (the HD look: making its land is work; and what stands and the shadows on the land are looked for four times a second,
   // hd.js: once more since the last of the work, then the frames)
   const quarter = () => Math.floor(performance.now() / 250); let q0 = quarter(), at0 = L.at, crossed = !hd;
@@ -39,7 +36,7 @@ QUIET = """() => !Object.keys(pending).length && !busy && !pendingAct && !myActi
   && (() => { const p = ents.get('agent' + myId); return !p || (p.x === p.tx && p.y === p.ty); })()
   && document.getAnimations().every((a) => a.playState !== 'running' || !a.effect || a.effect.getComputedTiming().iterations === Infinity)"""
 # Nothing of the land left to make: no tile to draw, every block on the screen made, the HD look not at work
-MADE = """() => typeof dirtyTiles === 'undefined' || !me || (dirtyTiles.length === 0 && !(typeof HdLook !== 'undefined' && HdLook.live && HdLook.busy) && (() => {
+MADE = """() => typeof dirtyTiles === 'undefined' || !me || (dirtyTiles.length === 0 && !(HdLook.live && HdLook.busy) && (() => {
   const [x, y, w, h] = viewRect(0); for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (!b || !Voxels.made(b)) return false; }
   return true; })())"""
 FRAMES = "(n) => new Promise((ok) => { const f = () => (n-- > 0 ? requestAnimationFrame(f) : ok(1)); f(); })"
@@ -77,7 +74,7 @@ class Waits:
         changes by the second, and on a busy machine the moment is long: the sun's side of a step "had a shadow"
         (11 to 43 units of 255), two runs in three with two browsers at work, never alone."""
         self.js("(() => { if (window.__sun) { onTick = window.__sun; window.__sun = null; } return 1; })()")
-        if self.js("typeof HdLook !== 'undefined' && HdLook.live"):
+        if self.js("HdLook.live"):
             # (the HD look: the land made as it is before the hour jumps. A jump that came while the land was being made
             # for a stamp left that land without the new hour's shadows until the sun had moved an eighth of a tile on,
             # 1.3 s: hd.js marks the land as made for the new hour, hd_sun.js painted the hour's before into it. In play

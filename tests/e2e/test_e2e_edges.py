@@ -5,27 +5,17 @@ FLAT = ["0" * 12] * 11
 # pond with a pier that runs south from the land (x 4, rows 6 to 8), its end out in the water
 BRIDGES = ["....~~~.....", "....~~~.....", "...:::::....", "....~~~.....", "............", "............",
            ".~~~:~~~....", ".~~~:~~~....", ".~~~:~~~....", ".~~~~~~~....", "............"]
-# a tile's painted px: is it solid all over, the px asked for, and is there water under it
-TILE = """([x, y, px, py]) => { const [b, i] = tileIdx(x, y), lx = i % B, ly = i / B | 0, o = ly * 16 * BW + lx * 16; let solid = true;
-  for (let j = 0; j < 16; j++) for (let k = 0; k < 16; k++) if (b.px[o + j * BW + k] >>> 24 !== 255) solid = false;
-  const v = b.px[o + py * BW + px], {un} = waterStuff(b);
-  return {solid, px: [v & 255, v >> 8 & 255, v >> 16 & 255, v >>> 24], under: un[(ly + 2) * (B + 4) + lx + 2]}; }"""
+# is there water under a tile (water.js)
+TILE = """([x, y]) => { const [b, i] = tileIdx(x, y), lx = i % B, ly = i / B | 0, {un} = waterStuff(b); return {under: un[(ly + 2) * (B + 4) + lx + 2]}; }"""
 
 
 def test_a_bridge_has_water_under_it_and_posts_at_its_ends(game):
-    """Every tile of a bridge was the same planks. The land it ran onto was painted as a shore towards it, whose
-    edge is see-through with water behind: there was none (a bridge was not water), and the dark behind the world
-    showed, a black bar at each end. Now (web/js/bridge.js): water under every bridge; the land at its end is solid
-    all over, no shore between them; its ends are the pack's end pieces with their posts, in foam where the end is
-    out in the water."""
+    """A bridge was not water: the dark behind the world showed under it. Water is under every bridge and pier
+    (web/js/bridge.js, water.js)."""
     x, y = game.pos()
     game.stamp(3, -13, BRIDGES, levels=FLAT); game.rest()
-    at = lambda dx, dy, px=0, py=0: game.js(TILE, [x + 3 + dx, y - 13 + dy, px, py])
-    post, foam = [220, 185, 138, 255], [243, 244, 231, 255]
-    assert at(2, 2)["solid"] and at(8, 2)["solid"] and at(4, 5)["solid"]                   # the land at its ends: no see-through edge
+    at = lambda dx, dy: game.js(TILE, [x + 3 + dx, y - 13 + dy])
     assert all(at(dx, 2)["under"] > 0 for dx in range(3, 8)) and all(at(4, dy)["under"] > 0 for dy in (6, 7, 8))      # water under all of it
-    assert at(3, 2, 3, 1)["px"] == post and at(7, 2, 12, 1)["px"] == post and at(5, 2, 3, 1)["px"] != post           # a post at each end, none in the middle
-    assert at(4, 6, 1, 1)["px"] == post and at(4, 8, 4, 10)["px"] == foam                  # the pier: a post where it leaves the land, foam round the ones at its end
     game.stamp(3, -13, ["." * 12] * 11, levels=FLAT)
 
 
@@ -103,9 +93,9 @@ def test_a_chair_is_turned_to_the_table_or_the_fire_it_is_set_at(game):
 
 
 FIELD = [".....", ".ooo.", ".ooo.", ".ooo.", "....."]
-# a tile's px of the tilled sheet's darker tone: how many in each row, and in each column
-DARK = """([x, y]) => { const [b, i] = tileIdx(x, y), o = (i / B | 0) * 16 * BW + (i % B) * 16, rows = new Array(16).fill(0), cols = new Array(16).fill(0);
-  for (let j = 0; j < 16; j++) for (let k = 0; k < 16; k++) { const v = b.px[o + j * BW + k]; if ((v & 0xffffff) === (138 << 16 | 185 << 8 | 220)) { rows[j]++; cols[k]++; } }
+# a tile's px of the tilled sheet's darker tone, as the tile is painted (drawTile: the HD look's tops): how many in each row, and in each column
+DARK = """([x, y]) => { const px = new Uint32Array(256), rows = new Array(16).fill(0), cols = new Array(16).fill(0); drawTile(x, y, {px, o: 0, w: 16});
+  for (let j = 0; j < 16; j++) for (let k = 0; k < 16; k++) { const v = px[j * 16 + k]; if ((v & 0xffffff) === (138 << 16 | 185 << 8 | 220)) { rows[j]++; cols[k]++; } }
   return {rows, cols}; }"""
 
 
@@ -125,22 +115,8 @@ def test_tilled_soil_is_furrows_not_a_line_round_a_patch(game):
     game.stamp(3, -8, ["." * 5] * 5, levels=["0" * 5] * 5)
 
 
-HOUSE = ["WWWWW", "WnnnW", "WnnnW", "WW+WW"]
-# one frame: what was drawn of the house's front and of you, in the order it was drawn
-ORDER = """() => new Promise((ok) => { const seq = [], w = Structures.drawWall, e = window.drawEntity;
-  Structures.drawWall = function (...a) { seq.push('front'); return w(...a); };
-  window.drawEntity = function (p, ...a) { if (p.e.id === myId) seq.push('me'); return e(p, ...a); };
-  requestAnimationFrame(() => requestAnimationFrame(() => { Structures.drawWall = w; window.drawEntity = e; ok(seq.slice(-2)); })); })"""
-
-
-def test_a_house_is_under_what_stands_before_it(game):
-    """Houses were drawn last, over everything: the front wall hid the head of whoever stood before the door, and
-    the mailbox beside it ("house layer is weird, it goes above mailbox and players"). A house is drawn in its
-    place, each wall at its own row (web/js/structures.js): you before its door are drawn after it. And a mailbox with a
-    letter in it shows the whole of the letter's bubble (the sheet's rows 62 to 88: it was cut from 64)."""
+def test_a_mailbox_with_a_letter_shows_the_whole_of_its_bubble(game):
+    """A mailbox with a letter in it shows the whole of the letter's bubble (the sheet's rows 62 to 88: it was cut from 64)."""
     x, y = game.pos()
-    game.stamp(-2, -4, HOUSE, levels=["0" * 5] * 4); game.rest()            # its door straight over you
-    assert game.js(ORDER) == ["front", "me"]                   # its walls, each drawn in its place: you after them
     letter = game.js("([x, y]) => { const was = mailAt; mailAt = new Set([x + ',' + y]); const s = objectSprite('X', x, y, .6); mailAt = was; return [s[2], s[2] + s[4], s[6] + s[4]]; }", [x + 3, y])
     assert letter[0] <= 62 and letter[1] >= 89 and letter[2] == 16, letter                 # all of it; its foot where it was
-    game.stamp(-2, -4, ["." * 5] * 4)

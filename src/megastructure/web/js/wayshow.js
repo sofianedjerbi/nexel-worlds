@@ -97,11 +97,11 @@ const WayShow = (() => {
       for (let d = own ? 0 : 1; d <= 8; d++) if (top(x0, y0 + d) > z + Math.max(0, y0 + d - y) * k) return true; return false; };
   }
   // The picture of it, on g: at(x, y, z) -> where a point of the world is on g, u: an art px there, css: g's units -> css px
-  function paint(g, at, u, now, css) {
+  function paint(g, at, u, now, css, wall) {
     api.block = null; api.hidden = 0; if (!cur) return; const t = now / 1000, me0 = myPos(), R = (v) => Math.round(v / u) * u, beat = Math.floor(t * 3) % 2, solid = (c) => solidAt(c.x, c.y, c.z);
     const rect = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(R(x), R(y), w * u, h * u); };
     const line = (a, b, col, dash, ph) => { const n = Math.max(1, Math.round(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) / u)); for (let i = 0; i <= n; i++) { g.fillStyle = !dash || (((i + ph) % 4) + 4) % 4 < 2 ? col : INK; g.fillRect(R(a[0] + (b[0] - a[0]) * i / n), R(a[1] + (b[1] - a[1]) * i / n), u, u); } };      // (dash: two px of the colour, two of ink: seen on any ground)
-    const fill = (q, col) => { g.fillStyle = col; for (let y = R(q[0][1]); y < q[3][1]; y += u) { const k = (y - q[0][1]) / ((q[3][1] - q[0][1]) || 1), l = R(q[0][0] + (q[3][0] - q[0][0]) * k), r = R(q[1][0] + (q[2][0] - q[1][0]) * k); g.fillRect(l, y, r - l, u); } };
+    const fill = (q0, col) => { const q = q0[3][1] < q0[0][1] ? [q0[3], q0[2], q0[1], q0[0]] : q0; g.fillStyle = col; for (let y = R(q[0][1]); y < q[3][1]; y += u) { const k = (y - q[0][1]) / ((q[3][1] - q[0][1]) || 1), l = R(q[0][0] + (q[3][0] - q[0][0]) * k), r = R(q[1][0] + (q[2][0] - q[1][0]) * k); g.fillRect(l, y, r - l, u); } };
     const inq = (q, a, b) => { const l = [q[0][0] + (q[3][0] - q[0][0]) * b, q[0][1] + (q[3][1] - q[0][1]) * b], r = [q[1][0] + (q[2][0] - q[1][0]) * b, q[1][1] + (q[2][1] - q[1][1]) * b]; return [l[0] + (r[0] - l[0]) * a, l[1] + (r[1] - l[1]) * a]; };
     // (nothing of it is drawn on YOU: the block over your head, the one south of you lie on you in the picture: you stand in front of them, whole)
     const pe = ents.get("agent" + myId), ft = pe && at(pe.x + .5, pe.y + .5, myZ(me0.x, me0.y)), hid = hider(); let nh = 0;
@@ -131,8 +131,8 @@ const WayShow = (() => {
       rect(x - 4 * u, y - 4 * u, 8, 8, INK); rect(x - 3 * u, y - 3 * u, 6, 6, "#ffe08a"); rect(x - 2 * u, y - 2 * u, 4, 4, "#ff9d3c"); rect(x - u, y - u, 2, 2, "#fff8e8");
       OUT.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== ".") rect(x + (i - 5) * u, top + j * u, 1, 1, ch === "#" ? INK : beat ? "#ffffff" : "#ffe08a"); })); g.globalAlpha = 1; }
     // the next block to break: the block itself; its crack grows while it is dug (by hand: three times as long)
-    let box = null; const c = cur.next, T = c && [at(c.x, c.y, c.z), at(c.x + 1, c.y, c.z), at(c.x + 1, c.y + 1, c.z), at(c.x, c.y + 1, c.z)], B = c && [at(c.x, c.y + 1, c.z - 1), at(c.x + 1, c.y + 1, c.z - 1)];
-    if (c && T.every((v) => v) && B.every((v) => v)) { if (hid(c.x + .5, c.y + .5, c.z, false)) { nh++; g.globalAlpha = .5; }      // (behind land south of it: faint; the land it is part of does not hide it)
+    let box = null; const c = cur.next, W = c && wall && wall(c.x, c.y, c.z), A = W || at, T = c && [A(c.x, c.y, c.z), A(c.x + 1, c.y, c.z), A(c.x + 1, c.y + 1, c.z), A(c.x, c.y + 1, c.z)], B = c && [A(c.x, c.y + 1, c.z - 1), A(c.x + 1, c.y + 1, c.z - 1)];   // (wall(cell) -> its own at: in the wall between the eye and you it is drawn folded into the opening, hd_level.js wallAt)
+    if (c && T.every((v) => v) && B.every((v) => v)) { if (!W && hid(c.x + .5, c.y + .5, c.z, false)) { nh++; g.globalAlpha = .5; }      // (behind land south of it: faint; the land it is part of does not hide it)
       const F = [T[3], T[2], B[1], B[0]], col = beat ? "#ffffff" : "#fff1a8", ph = -Math.floor(t * 8), dug = progress && (myAction || pendingAct) && /^dig/.test(progress.tool) ? Math.min(1, (performance.now() - progress.t0) / progress.ms) : 0;
       fill(T, beat ? "rgba(255,190,70,.5)" : "rgba(255,150,40,.38)"); fill(F, `rgba(230,110,30,${(.46 + .3 * dug).toFixed(2)})`);
       const cr = (q, l) => l.map(([a, b]) => inq(q, a, b)), cracks = [cr(T, [[.18, .3], [.42, .48], [.36, .7], [.62, .62], [.82, .86]]), cr(F, [[.62, 0], [.55, .4], [.68, .7], [.6, 1]]), cr(T, [[.42, .48], [.7, .2], [.9, .34]]), cr(F, [[.55, .4], [.3, .55], [.2, 1]]), cr(T, [[.36, .7], [.12, .8]]), cr(F, [[.68, .7], [.9, .8]])];

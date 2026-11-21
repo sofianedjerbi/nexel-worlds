@@ -1,11 +1,9 @@
 """Work done for nothing in the HD look, counted (no clock): a block of land comes in whole, its tiles not painted for the
 classic picture (tiles.js arriveBlock: it was 1024 tiles painted over frames, each making the land again); the far land's
 patches are kept by where they are (vox_style_land.js); the paints' sheet gives the places of paints no longer used and
-is never wiped (vox_style.js evict); a person's sheet is made between frames (wear.js); under a roof the x-ray's place
-is found once a tile (xray.js)."""
+is never wiped (vox_style.js evict); a person's sheet is made between frames (wear.js)."""
 
 import pytest
-from test_e2e_hd_stair import stair, walk
 from test_e2e_hd_sun import hd
 
 DRAWN = """(() => { window.__d = 0; window.__a = 0; const d0 = drawTile, a0 = arriveBlock; drawTile = function (x, y, to) { if (!to) __d++; return d0.apply(this, arguments); };
@@ -53,14 +51,3 @@ def test_a_persons_sheet_is_made_between_frames(browser, server):
       for (let i = 0; i < 200 && !ask(); i++) await new Promise((done) => setTimeout(done, 20));
       window.requestIdleCallback = ric; const s = ask(); return [first === null, !!s && s.width === IMG.character.width, idle]; })()""")
     assert r[0] and r[1] and r[2] >= 2, r                           # (not made at once; made, in two turns or more)
-
-
-@pytest.mark.realtime
-def test_under_a_roof_the_xray_place_is_found_once_a_tile(browser, server):
-    g = hd(browser, server)
-    g.rpc("dev_time", phase=.3)
-    x, y = stair(g)
-    g.js("(() => { window.__x = 0; const m = xrayMake; xrayMake = function () { if (myPos().x >= %d) __x++; return m.apply(this, arguments); }; return 1; })()" % (x + 8))
-    walk(g, "ArrowRight", f"myPos().x >= {x + 18}")
-    n = g.js("__x")
-    assert 1 <= n <= 13, n                                         # (eleven tiles walked under the roof; it was three or four times a tile)

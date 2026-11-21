@@ -2,7 +2,7 @@
 
 import time
 
-SCREEN = "([x, y]) => { const S = TS(), [ox, oy] = screenOrigin(S); return [ox + x * S + S / 2, oy + y * S + S / 2]; }"
+SCREEN = "([x, y]) => { const r = cv.getBoundingClientRect(), a = HdLook.screenOf(x + .5, y + .5, topAt(x, y)); return [r.left + a[0], r.top + a[1]]; }"      # (the middle of a tile's top, as the HD look draws it)
 
 
 def click_tile(game, dx, dy, shift=False):

@@ -1,16 +1,16 @@
-// The HD look (the default land view; Settings, Picture, Look: HD or Classic): ONE look on the surface and under ground. The land round you is drawn by VoxStyle
+// The HD look (the game's only land view): ONE look on the surface and under ground. The land round you is drawn by VoxStyle
 // (vox_style.js) at the art's own size, a tilted perspective, every face from the tileset, on a canvas of its own the page shows
-// zoom times bigger (hd_view.js). Behind it the game's own sky (its curved horizon's). With it on the classic frame paints nothing (render.js).
+// zoom times bigger (hd_view.js). Behind it the game's own sky (its curved horizon's). The game's frame (render.js) moves who walks, loads the land and paints nothing of it.
 // Going down nothing switches: the land is always drawn whole, as it is (meadow, trees, sky, the day's light). When land hides you (a roof over you, or land
 // in the eye's line to your feet) you are seen through an X-RAY WINDOW: a hole of your own space's shape (its floors' boxes seen from the eye, vox_style_win.js; a rim of the land a step darker,
 // the ground's section, its own earth or stone, along its top edge), through which the land between the eye and your space is not drawn. Nothing is cut out of the land; it fades in over a tenth of a second, and is there before you step under the land (your space is looked for from the surface too). Trees, bushes, crops: upright
 // billboards of their own sprites (objectSprite), px for px; furniture, walls, fences, built floors and roofs: small 3D
 // pieces in the land (hd_things.js), a built house open over your head; you and the others: drawEntity at zoom 1.
 const HdLook = (() => {
-  const urlLook = new URLSearchParams(location.search).get("look"), GROW = .25, EASE = .4, HOLD = 300, CAP = 20, R = 24;
+  const GROW = .25, EASE = .4, HOLD = 300, CAP = 20, R = 24;
   const cfg = {levels: [-9, 12], variants: 4, up: RELIEF_STEP, rock: {from: 5, lo: -512, n: 4}};
   const cam = {kind: "persp", pitch: 36, fov: 26};
-  const api = {get active() { return (urlLook || opt("look")) === "hd"; }, eye: null, get on() { return this.active && (!!this.eye || (!!me && myId !== null)); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: 68, nowin: false, force: null, cam, bend: .03, faces: 0, builds: 0, n: 0};
+  const api = {eye: null, get on() { return !!this.eye || (!!me && myId !== null); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: 68, nowin: false, force: null, cam, bend: .03, faces: 0, builds: 0, n: 0};
   let camL = null, pitN = null, stage = 0, tilt = 0, flip = 0, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), lit = null, hl = 0, hy = 0, since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, camV = 0, genAt = null, landAt = null, held = false, heldAt = 0;
   const sprs = new Map(), lads = new Map(), things = new Map(), piles = new Map(), built = new Map(), stoodOf = new Map();
   const Z = () => zoom * DPR;   // (canvas px an art px: `zoom` CSS px, as the classic picture's. It was `zoom` canvas px: on a dense screen, a phone's, the land half the size and twice as far as it would show)
@@ -98,7 +98,7 @@ const HdLook = (() => {
     if (p.free && !words) return;
     const S = TS(), art = (a) => a && [Math.round(a[0] / zoom) * zoom, Math.round(a[1] / zoom) * zoom], F = art(api.screenOf(seen.at[0], seen.at[1], seen.at[2] + seen.lift)), who = (v, ax) => { for (const s of seen.list) if (s.q && s.q[ax] === v) { const a = s === seen.me ? F : art(api.screenOf(s.x, s.y, s.z)); return a && s.fo && ax === "y" ? [a[0], a[1] + s.fo * zoom] : a; } return null; };   // (fo: falling: its name with its body, ent)   // (art: a body's place as its picture has it, a whole art px: its name stands still over it (it slid a px or two against it at every step, and the canvas was wiped and painted again for that))
     const sx = (x) => { const a = who(x, "x"); return a ? a[0] - S / 2 : F[0] - S / 2 + (x - p.x) * S; }, fy = (y) => { const a = who(y, "y"); return a ? a[1] - S / 2 : F[1] - S / 2 + (y - p.y) * S; }, sy = Object.assign(fy, {up: fy, out: fy});
-    const px = zoom / seen.k, t = now / 1000, snap = (v) => Math.round(v / px) * px, quad = (x, y, z) => [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => api.screenOf(x + a, y + b, z));
+    const px = zoom / seen.k, t = now / 1000, snap = (v) => Math.round(v / px) * px, quad = (x, y, z) => [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => api.markOf(x + a, y + b, z));
     // (all of it in whole art px) corners: a quad's four corners, a third of each side; fill: a tile's face, row by row; ghost: a thing's own sprite where it would stand; rectOf: the px its picture takes
     const corners = (c, col) => { for (const [cl, o] of [["#5b3f36", px], [col, 0]]) { ctx.fillStyle = cl; c.forEach((a, i) => { for (const b of [c[(i + 1) % 4], c[(i + 3) % 4]]) { const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) * .3 / px)); for (let j = 0; j <= n; j++) ctx.fillRect(snap(a[0] + (b[0] - a[0]) * j / n * .3), snap(a[1] + (b[1] - a[1]) * j / n * .3) + o, px, px); } }); } };
     const fill = (c, col) => { ctx.fillStyle = col; const at = (a, b, y) => a[0] + (b[0] - a[0]) * (y - a[1]) / ((b[1] - a[1]) || 1); for (let y = snap(c[0][1]); y < c[3][1]; y += px) { const l = snap(at(c[0], c[3], y)), r = snap(at(c[1], c[2], y)); ctx.fillRect(l, y, r - l, px); } };
@@ -107,6 +107,7 @@ const HdLook = (() => {
     const ghost = (ch, x, y, a) => { const spr = ch && objectSprite(ch, x, y, t); if (!spr || !spr[0] || !spr[0].width) return; const r = rectOf(spr, x, y); ctx.globalAlpha = a; ctx.imageSmoothingEnabled = false; ctx.drawImage(spr[0], spr[1], spr[2], spr[3], spr[4], ...r); ctx.globalAlpha = 1; };
     // a cell of the land that would be dug into (keyboard.js `cell`: the wall beside you, at your level): its top, one level over your floor. (The corners sat on the wall's top: up at its ceiling, or on the meadow over it)
     const box = (r) => [[r[0], r[1]], [r[0] + r[2] - px, r[1]], [r[0] + r[2] - px, r[1] + r[3] - px], [r[0], r[1] + r[3] - px]], bound = (c) => { const xs = c.map((v) => v[0]), ys = c.map((v) => v[1]); return {x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys)}; };
+    if (!words) { ctx.save(); const m = seen.me; if (m) HdLevel.cut(ctx, m, api.screenOf(m.x, m.y, m.z), zoom / seen.k); }   // (no mark lies on your body: hd_level.js cut)
     if (words) { const at = Build.on && Build.S.at, s = at && myPos(), r = at && Build.S.rect; if (s && r) { const L1 = Build.level(); Keyhole.mark(r.x, r.y, r.h, L1 - myZ(s.x, s.y), landSolid(at.x, at.y, L1) && landSolid(at.x, at.y, L1 + 1), sx, sy, r.right); } }
     else if (Build.on) {   // build mode: what is planned, each on its own tile at its own height as this camera has it, and the cursor (the game drew them at the classic picture's places)
       for (const j of Build.S.plans.values()) { const c = quad(j.x, j.y, j.z); if (c.some((v) => !v)) continue;
@@ -124,9 +125,9 @@ const HdLook = (() => {
           : pb ? box([snap(pb.x), snap(pb.y), snap(pb.w) + px, snap(pb.h) + px]) : spr && spr[0] ? box(rectOf(spr, a.x, a.y, standAt(c0, a.x, a.y) > floorAt(a.x, a.y) ? standAt(c0, a.x, a.y) : undefined)) : null; thing = !!c;
         if (c) corners(c, it.ok === false ? "#e8554a" : "#fff8e8"); r = bound(c || quad(a.x, a.y, it.cell !== undefined ? it.cell : shown(a.x, a.y))); }
       Target.paint(ctx, api.art(), {thing, shown});   // (a cell of the land, what Space, X and R act on: boxes in the land, target.js; what stands keeps its brackets)
-      WayShow.paint(ctx, api.screenOf, px, now, 1); Prompts.show(r, WayShow.rows(faceRows)); api.aim = r;   // (the way out of the ground, shown: wayshow.js)
+      WayShow.paint(ctx, api.markOf, px, now, 1, api.art().wall); Prompts.show(r, WayShow.rows(faceRows)); api.aim = r;   // (the way out of the ground, shown: wayshow.js)
     }
-    if (!words) return;
+    if (!words) { ctx.restore(); return; }
     const ny = (y) => fy(y) - Math.max(0, 12 - 3 * zoom), nsy = Object.assign(ny, {up: ny, out: ny});   // (a name: higher where an art px is small, a phone's 2 px: the letters are 18 px whatever the zoom, and seen from behind a body's ears were in its name)
     for (const s of seen.list) if (s.q && s.q.e && (s.q.e.kind === "agent" || s.q.e.name)) drawNameplate(s.q, sx, nsy, S);
     for (const s of seen.list) if (s.q && s.q.e && (ANIMALS[s.q.e.kind] || !bubbles.some((b) => b.name === s.q.e.name))) drawEmote(s.q, sx, sy, S);
@@ -231,7 +232,7 @@ const HdLook = (() => {
     let pic = eng.draw({w, h, cam, at: [snap(p.x + .5), snap(p.y + .5), Math.round(camL * 8) / 8 + .5], bend: api.bend, t: now / 1000, light,
       water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y, ver: Voxels.wver} : null, dep, own, rim: HdLevel.rim(tx, ty, L), hole: tilt, hid: lift > 0 ? 0 : 1, behind: p.free || cov0 || lift > 0 ? 0 : HdEase.of("behind", HdLevel.over(tx, ty, L, kS) >= 2), win: api.nowin ? 0 : 1, sprites: list, way: WayShow.land(), ghosts: pieces(list), hour: hour(w, h, list, 0)});
     if (!pic) { noGL = true; return; }
-    seen = {tx, ty, L, lift, k: 1, me: list.find((q) => q.top), list, at: [snap(p.x + .5), snap(p.y + .5), Lf]}; horizon(tx, ty, L + dep); hl = Math.max(8, eyeLine([snap(p.x + .5), snap(p.y + .5), Math.round(camL * 8) / 8 + .5], w, h) + 2);   // (the horizon is the surface's, however deep you are)   // (at: where the eye looks: you, to a px of the land: your own name is written from there)
+    seen = {tx, ty, L, lift, rim: HdLevel.rim(tx, ty, L), k: 1, me: list.find((q) => q.top), list, at: [snap(p.x + .5), snap(p.y + .5), Lf]}; horizon(tx, ty, L + dep); hl = Math.max(8, eyeLine([snap(p.x + .5), snap(p.y + .5), Math.round(camL * 8) / 8 + .5], w, h) + 2);   // (the horizon is the surface's, however deep you are)   // (at: where the eye looks: you, to a px of the land: your own name is written from there)
     api.faces = eng.faces; api.models = eng.models;
     // the land's picture over the backdrop on the world's own canvas, at the art's own size (hd_view.js): put together only when one of them is new; under a roof the sky stays as a band over the earth's far edge
     api.held = held; if (held) { api.ms = performance.now() - t0; return; }   // (the last picture stays: see `held`)
@@ -246,14 +247,15 @@ const HdLook = (() => {
     return x1 > x0 ? {x: x0, y: y0, w: x1 - x0, h: y1 - y0} : null;
   }
   // what is under the pointer (client px): the nearest top drawn there, as the land shows it (in the x-ray window: your space's floors, the land over them is not drawn)
-  Object.defineProperty(api, "level", {get: () => [seen ? seen.L : null, camL, seen ? seen.at[2] : null]});   // (tests: your level as the picture has it, the eye's, and yours between two tiles)
+  Object.defineProperty(api, "level", {get: () => [seen ? seen.L : null, camL, seen ? seen.at[2] : null, seen ? seen.lift : 0, seen ? seen.rim : null]});   // (tests: your level as the picture has it, the eye's, yours between two tiles, how much you are lifted in a hole and its rim)
   api.forget = () => { if (eng) { eng.forget(); key = ""; } };   // (tests: the land and its paints wiped, as when the paints ran out (eng.lost), at once: while a land is being made too)
   api.spaceAt = (x, y) => (eng ? eng.spaceAt(x, y) : null); api.winAt = (x, y) => winMap().get(x + "," + y) || null;   // (tests: a tile of your space, vox_style.js; a tile of the window: [floor, ceiling])
   let wmV = -1, wm = new Map(); const winMap = () => { const w = eng ? eng.win : null; if (!w || !w.n || w.a <= 0) { if (wm.size) wm = new Map(); wmV = -1; return wm; } if (w.tiles !== wmV) { wmV = w.tiles; wm = new Map(); for (const [x, y, lo, hi] of w.tiles) { const k = x + "," + y, o = wm.get(k); wm.set(k, o ? [Math.min(o[0], lo), Math.max(o[1], hi)] : [lo, hi]); } } return wm; };   // (the window's tiles now: "x,y" -> [floor, ceiling])
   // a tile's height as the picture shows it: the land's top; in the window your space's floor, and the top of the wall beside it (its ceiling's height): the aim's corners go there, not up on the meadow over it
   const shown = (x, y) => { const t = topAt(x, y), m = winMap(), b = m.get(x + "," + y); if (b) return Math.min(t, b[0]); for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) { const n = m.get((x + dx) + "," + (y + dy)); if (n && n[1] < t) return n[1]; } return t; };
   // for what is drawn in the marks pass by others (buildghost.js): an art px there (u), a place's px (at), and is a place behind land as the eye sees it (land south of it over the eye's line to it: 2 tan(pitch) levels a tile)
-  api.art = () => (seen ? {u: zoom / seen.k, at: api.screenOf, behind: (x, y, z) => { const k = Math.tan(cam.pitch * Math.PI / 180) * 2, y0 = Math.floor(y); for (let d = 1; d <= 8; d++) if (topAt(Math.floor(x), y0 + d) > z + (y0 + d - y) * k) return true; return false; }} : null);
+  api.markOf = (x, y, z) => api.screenOf(x, y, HdLevel.raise(z, seen));   // (where a mark of yours is: lifted with you in a hole, hd_level.js raise)
+  api.art = () => (seen ? {u: zoom / seen.k, at: api.markOf, behind: (x, y, Z0) => { const z = HdLevel.raise(Z0, seen), k = Math.tan(cam.pitch * Math.PI / 180) * 2, y0 = Math.floor(y); for (let d = 1; d <= 8; d++) if (topAt(Math.floor(x), y0 + d) > z + (y0 + d - y) * k) return true; return false; }, wall: (x, y, z) => (HdLevel.wall(x, y, z, seen) ? (X, Y, Z) => api.screenOf(...HdLevel.wallAt(X, Y, Z, seen)) : null)} : null);   // (wall: a cell in the wall between the eye and you -> where its places are drawn, hd_level.js wallAt)
   api.screenOf = (x, y, z) => { if (!eng || !seen) return null; const a = eng.at(x, y, z); return a && [a[0] * zoom / seen.k, a[1] * zoom / seen.k]; };
   // -> the tile under the pointer: what the window shows first (your space's floors, the fronts of the walls north of them: the land over them is not drawn, so it is not pointed at); then from the south (the nearest) north, the first whose south front or whose top is under it (a front: face, down: levels under its top, as mouse.js). zf: its height, if not the land's as shown (build mode)
   api.pick = (mx, my, zf) => {
@@ -283,7 +285,7 @@ const HdLook = (() => {
   };
   api.stands = () => (seen ? seen.list.filter((s) => s.tx !== undefined && !s.q).map((s) => [s.tx, s.ty, s.z]) : []);   // (tests: what stands, drawn this frame: [its tile, the level it stands at])
   api.read = (...a) => HdView.read(...a); api.bodies = () => (seen ? seen.list.filter((s) => s.q && !s.top).map((s) => [s.q.e.kind, s.z]) : []); api.bare = () => (eng && seen ? eng.bare(Math.max(0, Math.ceil(hy) + 2)) : 0); api.raw = () => (eng ? eng.raw() : 0); api.fades = () => (seen ? seen.list.filter((s) => s.fade !== undefined).map((s) => [s.tx, s.ty, s.fade]) : []); api.blank = () => eng && eng.blank(); Object.defineProperty(api, "units", {get: () => eng && eng.units}); Object.defineProperty(api, "why", {get: () => eng && eng.why}); Object.defineProperty(api, "wrote", {get: () => wrote}); Object.defineProperty(api, "made", {get: () => (eng ? eng.made : 0)}); Object.defineProperty(api, "work", {get: () => (eng ? eng.work : null)});   // (units: the longest step of each kind of the land's making; why: why the last frame was drawn again; made: chunks made by the last land)   // (px under the horizon where no land is drawn)
-  // a frame: with this look on and you in the world, what the classic frame still paints goes to a canvas of one px (its state is kept as ever: who walks, what is aimed at), then this look's picture; else the classic frame as ever
+  // a frame: with this look live (WebGL 2, and you or an eye in the world), the game's frame (render.js) draws to a canvas of one px (who walks, the land coming in), then this look's picture
   { const f0 = frame; frame = function (now) {
     const t0 = performance.now(), keep = ctx; api.live = api.on && !noGL && Voxels.engine.ready() && !!(api.eye || ents.get("agent" + myId)); api.drew = wrote = false; slice1 = 0;
     if (api.live) ctx = HdView.sink(); try { f0(now); } finally { ctx = keep; }

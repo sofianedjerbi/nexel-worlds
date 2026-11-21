@@ -244,36 +244,11 @@ const Build = (() => {
   function point(p) { if (S.on && tile(p.x, p.y)) S.at = {x: p.x, y: p.y}; }      // (the mouse: the cursor is where it points, at the cursor's height: mouse.js)
   function click(p, alt) { point(p); S.row = undefined; if (alt) take(S.at); else plan(S.at); }
 
-  // What is drawn of it: every plan as a ghost of its piece (a red one: it could not be done), and the cursor
-  function draw(sx, sy, Sz, t) {
-    const z = zoom, top = (p, L) => syUp(sy, p.y, shOf(L) * z); S.to = (x, y, L) => [sx(Math.floor(x)) + (x - Math.floor(x)) * Sz, top({y: Math.floor(y)}, L) + (y - Math.floor(y)) * Sz];                 // (each at its own height)
-    for (const [k, j] of S.plans) {
-      if (j.state === "bad" && now() - j.t > BAD_MS) { S.plans.delete(k); continue; }
-      const x = sx(j.x), y = top(j, j.z), a = j.state === "doing" ? .75 : .5, ch = PLACEABLE_BLOCK[j.item];
-      if (j.take) { /* (what is there is seen: a cross over it, below) */ }
-      else if (j.steps) { if (j.state !== "doing" || !Floors.get(j.x, j.y, j.steps[0][3])) Climb.ghostFlight(j.steps, sx, sy, Sz, true); continue; }
-      else if (j.item === "ladder") Climb.drawLadder(j.x, j.y, j.z, sx, sy, Sz, a);
-      else if (j.up && LAND_BLOCKS.has(j.item)) { /* (the land's own block: its cell is washed, below) */ }
-      else if (j.up && BLOCK(j.item)) Floors.cell(j.item, j.x, j.y, j.z, sx, sy, Sz, a);
-      else if (j.up) Floors.thing(ch, j.x, j.y, j.z, sx, sy, Sz, t, 0, a);
-      else if (Structures.WALLS.includes(ch || "-")) Structures.drawWall(ch, j.x, j.y, sx, sy, Sz, 0, a);
-      else {
-        const spr = j.ground ? groundPreview(j.ground, j.x, j.y) : j.item === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(j.x, j.y)] * 16, 16, 16, 0, -2] : objectSprite(ch, j.x, j.y, t);
-        ctx.globalAlpha = a;
-        if (spr) ctx.drawImage(spr[0], spr[1], spr[2], spr[3], spr[4], x + spr[5] * z, y + spr[6] * z, spr[3] * z, spr[4] * z);
-        ctx.globalAlpha = 1;
-      }
-      ctx.fillStyle = j.state === "bad" ? "rgba(230,80,70,.4)" : j.take ? "rgba(255,150,60,.3)" : j.state === "doing" ? "rgba(255,241,168,.35)" : "rgba(140,190,255,.28)";
-      ctx.fillRect(x, sy.row ? sy.row(j.y, shOf(j.z) * z) : y, Sz, sy.tall ? sy.tall(j.y, shOf(j.z) * z) : Sz);      // (the tile as tall as it is drawn: curve.js)
-      if (j.dig) { ctx.fillStyle = "rgba(60,36,30,.5)"; ctx.fillRect(x + 2 * z, y + 2 * z, 12 * z, 12 * z); ctx.fillStyle = "rgba(36,22,24,.55)"; ctx.fillRect(x + 4 * z, y + 5 * z, 8 * z, 8 * z); }   // (a hole to dig: dark, deeper in its middle)
-      else if (j.take) { ctx.fillStyle = "#b5532a"; for (let i = 4; i < 12; i++) { ctx.fillRect(x + i * z, y + i * z, z, z); ctx.fillRect(x + (15 - i) * z, y + i * z, z, z); } }     // (to come down: a cross)
-    }
+  // Once a frame (render.js): a plan that could not be done is shown red a while, then goes; out of the mode when you are gone.
+  // (What is planned, and the cursor, are drawn by the HD look in the land: hd.js written, pieces; target.js)
+  function tick() {
+    for (const [k, j] of S.plans) if (j.state === "bad" && now() - j.t > BAD_MS) S.plans.delete(k);
     if (S.on && !me) { S.plans.clear(); toggle(false); }                    // (you fell, or the game went: out of the mode)
-    if (!S.on || !S.at) return;
-    const L = level(), x = sx(S.at.x), y = top(S.at, L), c = 5 * z, w = 2 * z, cube = buried(S.at, L), Hh = Sz + (cube ? RELIEF_STEP * z : 0), mx = (myPos() || S.at).x, _ = (S.rect = {x, y, w: Sz, h: Hh, under: mx !== S.at.x, right: mx < S.at.x}), blink = Math.floor(t * 3) % 2 ? "#fff1a8" : "#ffffff";
-    // (the cursor itself: the cell it is on, a box in the land; in the air, with a dotted line down to the ground under it and a small square there: mark.js)
-    const s = myPos();
-    if (s) Keyhole.mark(x, y, Hh, L - myZ(s.x, s.y), cube, sx, sy, S.rect.right);   // (where it is beside you, on you; how far over your head or under your feet: keyhole.js)
   }
   // The view, in build mode: half way from you to the cursor, eased (both stay on the screen)
   function pan(dt) {
@@ -293,5 +268,5 @@ const Build = (() => {
     return out;
   }
   const waiting = () => (!S.on && todo().length ? todo().length : 0);        // plans left on the ground, out of the mode
-  return {S, toggle, onKey, ways: () => { const L = level(), all = S.at && myPos() ? stops(S.at) : []; return {up: all.some((z) => z > L), down: all.some((z) => z < L)}; }, click, point, draw, pan, rows, hint, taking, waiting, level, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
+  return {S, toggle, onKey, ways: () => { const L = level(), all = S.at && myPos() ? stops(S.at) : []; return {up: all.some((z) => z > L), down: all.some((z) => z < L)}; }, click, point, tick, pan, rows, hint, taking, waiting, level, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
 })();

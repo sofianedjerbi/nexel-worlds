@@ -74,7 +74,7 @@ def test_the_debug_screen_is_the_only_readout_and_stands_over_the_top_left_with_
     ctx = browser.new_context(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True, device_scale_factor=3)
     try:
         g = Game(ctx.new_page(), server)
-        g.join(new_name("pf"), 2, look="hd")
+        g.join(new_name("pf"), 2)
         g.js("F3.set(false)")
         hold = "(k) => $('goalhint').dispatchEvent(new PointerEvent(k, {bubbles: true, pointerType: 'touch'}))"
         g.js(hold, "pointerdown")
@@ -111,7 +111,7 @@ def test_the_way_out_s_word_is_written_once_and_the_hud_leaves_you_and_its_block
         ctx = browser.new_context(viewport={"width": w, "height": h}, has_touch=True, is_mobile=True, device_scale_factor=3)
         g = Game(ctx.new_page(), server)
         try:
-            g.join(new_name("ph"), 3, look="hd")
+            g.join(new_name("ph"), 3)
             g.clear_area()
             for depth in (1, 2, 3):
                 assert g.rpc("act", tool="dig_down", args={})["ok"]

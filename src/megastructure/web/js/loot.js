@@ -55,7 +55,6 @@ function dropLoot(x, y, items, now) {
     loot.push({x, y, name, dx, dy, t0: now + 90 + i * 70, flight, vy: -LOOT_G * flight / 2});
   });
 }
-const lootAt = (x, y) => loot.some((l) => l.x === x && l.y === y);
 
 const LOOT_HOPS = [.16, .08];                 // after the hop out: two smaller bounces in place, this long
 const lootRests = (l, now) => (now - l.t0) / 1000 >= l.flight + LOOT_HOPS[0] + LOOT_HOPS[1];

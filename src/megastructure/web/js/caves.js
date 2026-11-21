@@ -1,7 +1,5 @@
-// Caves (client). The land is cells (cells.js); a cave is empty cells under solid ones, and nothing more. From outside
-// it is the hill over it; where its empty cells meet a face of the hill you can see, they show (an entry is only
-// that): this file. In it you are hidden by the hill, and seen as anyone hidden is: through it (xray.js). (The lifted
-// ground: relief.js.)
+// Caves (client). The land is cells (cells.js); a cave is empty cells under solid ones, and nothing more. In it you
+// are seen through the HD look's x-ray window (hd.js). Here: the height you stand at.
 
 // Your tile and the height you stand at, kept as the server keeps it (Movement.landing), once a frame
 function trackMe() {
@@ -18,13 +16,4 @@ function trackMe() {
     // a respawn; you then couldn't step off a height you weren't on)
     if (me.e && me.e.z !== undefined && me.e.x === x && me.e.y === y && Math.abs(me.x - x) < .001 && Math.abs(me.y - y) < .001 && !pred) myAt.z = settleAt(x, y, me.e.z);
   }
-}
-// Someone under a roof (a hill, the ground over a tunnel) is not seen, but in the place you are in, where it is shown
-// through what hides it (xray.js). You: never unseen (hidden, and seen through it). (You: by the height you're at;
-// the others, people and creatures, by the server's.)
-function unseen(p) {
-  const x = Math.round(p.x), y = Math.round(p.y);
-  if (!roofAt(x, y)) return false;
-  const mine = p.e.kind === "agent" && p.e.id === myId, z = mine && myAt ? settleNear(x, y, myAt.z) : p.e.z !== undefined ? p.e.z : floorAt(x, y);
-  return !mine && coveredAt(x, y, z) && seenUnder(x, y) === undefined;
 }

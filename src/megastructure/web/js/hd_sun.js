@@ -16,13 +16,13 @@ const HdSun = (() => {
   let H = {on: false, night: false, kx: 0, ky: 0, sun: 0}, sid = "";
   function hour() {
     const h = SunLand.hour(), want = !!opt("shadows") && !!opt("depth");
-    H = {on: want && h.alpha > .02, night: want && h.dark > .35, kx: Math.round(h.kx * 8) / 8, ky: Math.round(h.ky / .6 * 8) / 8, sun: Math.min(1, h.alpha / Sun.SHADE.alpha)};   // (ky: the ground is seen from 36 degrees: as long on the screen as the classic picture's)
+    H = {on: want && h.alpha > .02, night: want && h.dark > .35, kx: Math.round(h.kx * 8) / 8, ky: Math.round(h.ky / .6 * 8) / 8, sun: Math.min(1, h.alpha / SunLand.SHADE.alpha)};   // (ky: the ground is seen from 36 degrees: as long on the screen as the classic picture's)
     return H;
   }
   const key = () => { hour(); return H.on ? H.kx + "," + H.ky : H.night ? "n" + fireAt.length : "-"; };
   // the fire that lights (x, y) at night -> where its shadows go there [vx, vy], or null
   function lamp(x, y) {
-    let best = null, bd = Sun.SHADE.fire;
+    let best = null, bd = SunLand.SHADE.fire;
     const see = (fx, fy) => { const d = Math.hypot(x - fx, y - fy); if (d < bd && d > .2) { bd = d; best = [fx, fy]; } };
     for (const f of fireAt) see(f.x + .5, f.y + .5);
     for (let j = -6; j <= 6; j++) for (let i = -6; i <= 6; i++) { const c = combAt(Math.floor(x) + i, Math.floor(y) + j); if (c === "^" || c === "x") see(Math.floor(x) + i + .5, Math.floor(y) + j + .5); }

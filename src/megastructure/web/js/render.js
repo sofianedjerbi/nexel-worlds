@@ -1,4 +1,5 @@
-// The frame loop: terrain blocks, y-sorted sprites, characters, night lighting.
+// The frame loop: who walks, the camera, the land coming in, what moves on by itself. The world is drawn by the HD
+// look (hd.js) after it.
 
 // =====================================================================================
 //  Frame
@@ -6,8 +7,7 @@
 let lastT = performance.now(), arrivingNow = true;
 const LAND_MS = 3 * (window.__pace || 1), HOLD_MS = 2500;      // (__pace: only in the browser tests, whose pages' clocks run faster, tests/e2e/clock.py: the land's share of a frame is the machine's time, not the game's)
 let goodAt = 0;                // when the land where you are was last all there (a frame drawn whole)
-const HIT_HEART = [".oo.oo.", "owrorro", "orrrrro", ".orrro.", "..oro..", "...o..."];      // the small heart beside a blow's number (2 px a pixel)
-const pileSince = new Map();   // when each pile on the ground was first shown (its hover starts from rest)
+const WATCH = {x: 0, y: 0, z: 0, free: true};      // (the eye of who watches: render.js, hd.js)
 function frame(now) {
   requestAnimationFrame(frame);
   const began = performance.now();
@@ -32,6 +32,7 @@ function frame(now) {
   }
   cam.lift = 0;                                      // (art px the camera is lifted with you: the eye's height, curve.js)
   if (me && myId !== null) {
+    if (HdLook.eye && HdLook.eye.watch) HdLook.eye = null;      // (in the world now: the eye is on you)
     const p = ents.get("agent" + myId);
     if (p) {                                         // (you are drawn lifted on high ground: centre that; falling: you, not the ground you left; jump.js)
       const fall = falling(p, now);
@@ -57,6 +58,8 @@ function frame(now) {
       if (b) { camT.x = b.x; camT.y = b.y; if (!a) { cam.x = b.x; cam.y = b.y; } }
     }
     const k = 1 - Math.pow(.002, dt); cam.x += (camT.x - cam.x) * k; cam.y += (camT.y - cam.y) * k;
+    // watching, not in the world (?follow=, the first screen gone): the HD look's eye is the camera, at the land's top there (hd.js eye)
+    if (!HdLook.eye && $("joinbox").style.display === "none") HdLook.eye = Object.assign(() => Object.assign(WATCH, {x: cam.x, y: cam.y, z: topAt(Math.round(cam.x), Math.round(cam.y))}), {watch: true});
   }
   const [vx, vy, vw, vh0] = viewRect(2), vh = vh0 + 6;   // (+6 rows south: high ground there is drawn up into view)
   const inRect = (x, y, w, h) => { const out = []; for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b) out.push(b); } return out; };
@@ -70,196 +73,56 @@ function frame(now) {
   const [ax, ay, aw, ah] = viewRect(6), rank = (b) => (onScreen(b) ? 0 : vis.includes(b) ? 1 : 2);
   const coming = inRect(ax, ay, aw, ah + 6).sort((a, b) => rank(a) - rank(b));
   const landFrom = performance.now(), landUntil = landFrom + (arrivingNow ? LAND_MS * 4 : coming.some((b) => !Voxels.made(b) && onScreen(b)) ? LAND_MS * 2.5 : LAND_MS);
-  const fresh = coming.find((b) => !b.drawn);
-  if (fresh && HdLook.live) { for (const b of coming) if (!b.drawn) arriveBlock(b); }   // (the HD look: nothing to paint, tiles.js)
-  else if (fresh) { if (arrivingNow && onScreen(fresh)) renderBlock(fresh); else startBlock(fresh); }   // (arriving: whole, at once)
+  for (const b of coming) if (!b.drawn) arriveBlock(b);      // (a block come in: nothing to paint, the HD look makes its own land: tiles.js)
   for (let n = 0; dirtyTiles.length && (n++ & 15 || performance.now() < landUntil);) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
-  Voxels.work(coming, landUntil);                    // (the land is blocks: voxels.js)
+  Voxels.work(coming, landUntil);                    // (its beds and its sea: voxels.js)
   const landMs = performance.now() - landFrom;
 
-  const S = TS(), hd = HdLook.live;                  // (hd: the HD look draws the world itself, on a canvas of its own (hd.js, hd_view.js): here nothing is painted for it: no sky, no land, no sun, no night; `ctx` is a canvas of one px meanwhile, what is still drawn goes nowhere)
+  // The world is drawn by the HD look (hd.js, after this frame, on a canvas of its own): here nothing of it is painted.
+  // While it is live `ctx` is a canvas of one px (hd_view.js sink): what is still drawn below goes nowhere.
+  const S = TS();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.imageSmoothingEnabled = false;
   const [ox, oy] = screenOrigin(S);
-  // world to screen. sy(y, x): give the x too and the point is lifted with the ground there (relief.js): everything
-  // standing in the world goes through this, so on high ground it is drawn, picked up, killed... where you see it
-  // (the curved world, curve.js: a row far north is drawn nearer the horizon; x and heights are as ever. Off, sy is
-  // oy + y * S less the lift)
-  Curve.frame(ox, oy, S, now);
+  Curve.frame(ox, oy, S, now);                       // (the curved world's line: the HD look's sky, curve.js)
   const sx = (x) => ox + x * S, sy = Curve.sy(oy, S);
-  // underneath: plain dark (what hasn't come yet is not the sea). The sea is painted on it where there is sea
-  // (water.js: its bottom is under every water tile and every shore), the land over that
-  // (away from the land, state.js: under it the screen is that dark, earth; over it, the sky. Going: the land fades to it)
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor((away.a >= 1 ? away.y : cam.y + away.shift) / B)));
   const allShown = vis.every((b) => !onScreen(b) || Voxels.made(b));
   arrivingNow = (arrivingNow || !hereBlock || !Voxels.made(hereBlock)) && !allShown;   // (from arriving until all of it is ready)
   const worldReady = !arrivingNow;
   // A long way at once (a teleport, waking again after a death): until the land there has come, the screen keeps the
-  // picture it had ("one blank frame after a teleport": with no block of the land there yet, nothing was "not
-  // ready", and a frame of sky over bare ground colour was shown, then the dark). Held for HOLD_MS at the most
-  // once some of the land there is ready; after that, the sky and what has come, piece by piece. Never a flat fill.
+  // picture it had. Held for HOLD_MS at the most once some of the land there is ready; after that, what has come.
   const lacking = !!me && (!hereBlock || !worldReady), late = lacking && goodAt > 0 && now - goodAt >= HOLD_MS && (now - goodAt >= 4 * HOLD_MS || vis.some((b) => onScreen(b) && Voxels.made(b)));      // (...and while none of it has come at all, four times as long: a busy machine)
   if (!lacking) goodAt = now; else if (!late && goodAt > 0) { slowFrame(dt, false); return; }
-  const SKY = "#a8d8ea"; ctx.fillStyle = away.high ? SKY : "#2b2420";
-  if (!hd) ctx.fillRect(0, 0, W, H);
-  xrayLook(dt);                                      // (hidden, behind a mountain, down a hole or under a roof: a window on you, xray.js)
-  // arriving (connecting, waking, a long way): the screen shows once all of it is ready, at once, never piece by piece
-  slowFrame(dt, worldReady && !fresh);
-  // y-sorted sprites: objects and creatures
-  const list = [];
-  // (forEach, and what is out of view left first: a pair was made a frame for every thing of every block in view)
-  if (!hd) for (const b of vis) if (Voxels.made(b) && (worldReady || late)) b.objs.forEach((c, i) => {   // (things show with their ground, not before)
-    const x = b.bx * B + i % B, y = b.by * B + (i / B | 0);
-    if (x < vx - 2 || x > vx + vw + 2 || y < vy - 2 || y > vy + vh + 3 || hiddenAt(x, y) || (away.a > 0 && Math.abs(standAt(x, y) - away.z) > APART)) return;   // (hidden: in a cave, seen from outside: under its roof; away: on the land you left)
-    if (c === "l") { list.push({y, x, fx: () => Climb.drawLadder(x, y, standAt(x, y), sx, sy, S)}); return; }   // (a ladder: up to what it leans on, climbing.js)
-    if (Structures.WALLS.includes(c)) { list.push({y, x, wall: true, fx: () => Structures.drawWall(c, x, y, sx, sy, S, now)}); return; }   // (a wall, a door: structures.js)
-    const spr = objectSprite(c, x, y, t); if (spr) list.push({y: c === "m" ? y - 2 : y, ty: y, x, spr});
-  });
+  if (!HdLook.live && me) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }   // (no picture of the world: WebGL 2 missing, or not ready yet)
+  slowFrame(dt, worldReady);
   // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
   occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
-  const shownAt = (x, y) => { const b = blocks.get(bkey(Math.floor(Math.round(x) / B), Math.floor(Math.round(y) / B))); return !!(b && Voxels.made(b)); };
-  // (someone shows once the ground under them is here: before that their height is unknown, and they'd pop up)
-  const apart = (p) => away.a > 0 && Math.abs(liftOf(p) / zoom / RELIEF_STEP - away.z) > APART;   // (away from the land, state.js: who is on the land you left is not drawn with it; on land that is drawn, anyone is)
-  for (const p of ents.values()) if (p.e && worldReady && shownAt(p.x, p.y) && !unseen(p) && !apart(p)) { const cl = Climb.climbOf(p); list.push({y: cl ? cl.y : p.y + .01 + Floors.rise(p) * Floors.K, p}); }   // (on a ladder: in front of it)
-  for (const [ix, iy, pile] of groundItems) if (!hiddenAt(ix, iy)) list.push({y: iy - .01, x: ix, ty: iy, pile});   // (ty: its tile; y sorts)
-  if (pileSince.size) { const here = new Set(groundItems.map(([ix, iy]) => ix + "," + iy)); for (const k of pileSince.keys()) if (!here.has(k) || lootAt(...k.split(",").map(Number))) pileSince.delete(k); }
-  drawLoot(sx, sy, S, now, list);                   // (drops, orbs and magnet loot: in the same depth order)
-  drawOrbs(sx, sy, S, dt, list);
-  if (worldReady) Floors.draw(vis, list, sx, sy, S, t, now);                 // (what is built over the land: floors, roofs, what stands on them: floors.js)
-  list.sort((a, b) => a.y - b.y || a.x - b.x);
-  // (past the horizon, curve.js: it goes down behind it, cut at the horizon line of the ground it stands on; no shadow)
-  if (sy.bent) for (const o of list) { const up = o.p ? liftOf(o.p) : o.x === undefined ? 0 : liftAt(Math.round(o.x), o.ty === undefined ? Math.round(o.y) : o.ty); o.clip = sy.clip(o.y, up); if (sy.gone(o.y, up)) o.far = o.clip;
-    // (...and with only a sliver of it left over its ground, it is not drawn at all: no caps sitting on the horizon)
-    if (o.clip !== undefined) { const bb = o.spr && spriteBounds(o.spr[0], o.spr[1], o.spr[2], o.spr[3], o.spr[4]), top = o.spr ? sy(o.ty, o.x) + (o.spr[6] + (bb ? bb[1] : 0)) * zoom : o.p ? bodyY(o.p, sy) : -1e9; o.hide = o.clip - top < Math.max(CURVE.short, sy.far(o.y, up) ? (bb ? bb[3] - bb[1] : P) * .45 : 0) * zoom; } }      // (past the horizon: under half of it)
-  // (the land is drawn once what stands on it is known: with the land's depth or a shader on, their shadows fall on it as it stands, sunland.js)
-  if (hd) Voxels.still(vis, ox, oy, t); else Voxels.frame(away.a < 1 ? vis : [], ox, oy, S, t, away.high, Sun.cast(list, vis, sx, sy, S, t, now));      // the land and the sea, as blocks
-  if (!hd && away.a > 0 && away.a < 1 && !Voxels.veil(ox, oy, S, t, away.a, away.sky)) { ctx.globalAlpha = away.a; ctx.fillStyle = away.sky ? SKY : "#2b2420"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
-  if (!worldReady && !late) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }      // (the first arrival: under the first screen's picture, all of it at once)
-  // (a shader's shadows and reflections of all of it, on the ground, under what stands there: sun.js)
-  if (!hd) Sun.draw(list, vis, sx, sy, S, t, now);
-  for (const o of list) {
-    selMeasure(o);
-    if ((o.far !== undefined && o.pile) || o.hide) continue;
-    if (o.clip !== undefined) { ctx.save(); const x = o.p ? o.p.x : o.x; if (x === undefined) { ctx.beginPath(); ctx.rect(0, 0, W, Math.max(0, o.clip)); ctx.clip(); } else Curve.mask(o.clip, sx(x), ox); }      // (cut along the ground before it: curve.js)
-    if (o.spr) {
-      const [img, a, b2, w, h, dx, dy] = o.spr, key = pops.size || shakes.size ? o.x + "," + o.ty : "";   // (its name: made only while something bounces or shakes)
-      let px = sx(o.x) + dx * zoom, py = sy(o.ty, o.x) + dy * zoom, ww = w * zoom, hh = h * zoom;
-      const pop = pops.get(key);
-      if (pop !== undefined) {                       // newly placed: bounce in
-        const k = (now - pop) / 260;
-        if (k >= 1) pops.delete(key);
-        else { const sc = 1 + Math.sin(k * Math.PI) * .25 - (1 - k) * .3; const cx = px + ww / 2, by = py + hh; ww *= sc; hh *= sc; px = cx - ww / 2; py = by - hh; }
-      }
-      const sh = shakes.get(key);
-      if (sh !== undefined && o.spr[0] !== IMG.tree_anim) { const k = (now - sh) / 1000; if (k < .25) px += Math.round(Math.sin(k * 60) * (1 - k * 4) * 1.5) * zoom; }
-      const over = xrayOver(o.x, o.ty);              // (standing in the way of what the x-ray circle shows: it fades)
-      const draw = (k) => { ctx.globalAlpha = k * (1 - over); ctx.drawImage(img, a, b2, w, h, Math.round(px), Math.round(py), Math.round(ww), Math.round(hh)); ctx.globalAlpha = 1; };
-      if (tileBehind(o.x, o.ty)) drawBehind({x: o.x, y: o.ty, e: {}}, sx, sy, S, draw); else draw(1);   // (behind a hill: cut at its edge, behind.js)
-    }
-    else if (o.pile) {
-      if (lootAt(o.x, o.ty)) continue;                // its loot is still hopping in: the pile shows once it lands
-      const over = xrayOver(o.x, o.ty); if (over > .98) continue;   // (lying on rock the x-ray circle looks through: it fades with it)
-      // a gentle hover, smooth to the screen pixel (whole art pixels made it tick between three heights)
-      // (just landed: it starts from rest, where the drop came down, and eases into its hover: no jump)
-      const key = o.x + "," + o.ty; if (!pileSince.has(key)) pileSince.set(key, now);
-      const settle = smooth((now - pileSince.get(key)) / 700);
-      const names = Object.keys(o.pile).slice(0, 3), lift = settle * (Math.sin((now - pileSince.get(key)) / 1000 * 2.4 - Math.PI / 2) + 1) / 2;
-      const cx = sx(o.x) + S / 2, cy = sy(o.ty, o.x) + S / 2, bob = lift * 2 * zoom;
-      const draw = (k) => {                           // (each thing its small icon, a pixel of it a pixel of the land: loot.js)
-        ctx.globalAlpha = k * (1 - over);
-        ctx.fillStyle = `rgba(60,40,30,${.25 - lift * .1})`; pixelOval(cx, cy + 5 * zoom, 4 - lift * .8, 1.5, 0, .5);
-        names.forEach((n, i) => { const [dx, dy] = pileAt(i, names.length); ctx.drawImage(ghostIcon(n), Math.round(cx + (dx - DROP / 2) * zoom), Math.round((cy + (dy - DROP / 2) * zoom - bob) * DPR) / DPR, DROP * zoom, DROP * zoom); });
-        ctx.globalAlpha = 1;
-      };
-      if (tileBehind(o.x, o.ty)) drawBehind({x: o.x, y: o.ty, e: {}}, sx, sy, S, draw); else draw(1);
-    }
-    else if (o.fx) o.fx();
-    else if (hd && o.p._hd === HdLook.n) { /* (the HD look drew them the last frame and draws them again this one, hd.js ent: here it was a second drawing of each, to a canvas of one px) */ }
-    else {
-      const over = xrayOverBody(o.p);                // (xray.js) on the rock the circle sees through: it fades with it
-      if (over <= .98) drawBehind(o.p, sx, sy, S, (k) => { ctx.globalAlpha = k * (1 - over); drawEntity(o.p, sx, sy, S, t, now); ctx.globalAlpha = 1; });   // (behind a hill: cut at its edge)
-    }
-    if (o.clip !== undefined) ctx.restore();
-  }
-  if (!hd) Sun.shade(list, sx, sy, S, t, now);                // (what stands in the land's shadow is in it, sunland.js)
-  for (const f of fireAt) {                          // flames over whatever is burning (taller over trees)
-    const px = sx(f.x), py = sy(f.y, f.x), tall = "TF".includes(combAt(f.x, f.y) || "");
-    if (sy.far(f.y, liftAt(f.x, f.y))) continue;
-    if (px < -S * 2 || py < -S * 3 || px > W + S || py > H + S) continue;
-    drawFire(px, py, S, t, f.x, f.y);
-    if (tall) { drawFire(px - S * .3, py - S * .9, S, t + 1, f.x + 7, f.y); drawFire(px + S * .3, py - S * 1.4, S, t + 2, f.x, f.y + 5); }
-    if (Math.random() < dt * 6) parts.push({x: f.x + .2 + Math.random() * .6, y: f.y - (tall ? 1.6 : .3), vx: (Math.random() - .5) * .4, vy: -1.2, g: -.5, life: 1.2, age: 0, c: Math.random() < .5 ? "#6b6f73" : "#ffb454", s: 1});
-  }
-  selMeasure(null);
-  drawDying(sx, sy, S, t, now);
-  drawEffects(sx, sy, S, dt);
-  drawPuffs(sx, sy, dt);
+  Voxels.still(vis, ox, oy, t);                      // (the water's picture the HD look lays on its water, voxels.js)
+  // what moves on by itself and is not drawn by the HD look (yet): drops hopping out (their sound as they land), orbs flying to you, poofs, dust, plucked
+  // flowers: their state goes on here (drawn to the canvas of one px)
+  const none = [];
+  drawLoot(sx, sy, S, now, none); drawOrbs(sx, sy, S, dt, none);
+  drawDying(sx, sy, S, t, now); drawEffects(sx, sy, S, dt); drawPuffs(sx, sy, dt); drawPlucks(sx, sy, S, now);
   drawXp();
   foodPreview();
-  drawPlucks(sx, sy, S, now);
-  if (!hd) drawNight(vis, sx, sy, S, t);
-  drawGrid(sx, sy, S);                             // (/grid: debug.js)
+  swingDoors(t);
   updateActions();
-  const aim = aimedTile();          // the tile the mouse points at, or the one you face when playing by keyboard
-  const box = aim ? drawIntent(aim.p, aim.it, sx, sy, S, t, ox, oy) : null;
-  Marks.aim(aim, !!(box && box.tile), now);            // (a block, a cell: its box in the land, mark.js; drawn with the next frame's land)
-  drawSelector(Build.on || (box && box.tile) ? null : box, sx, sy, now);     // (what stands: the selector round its picture)
-  Build.draw(sx, sy, S, t);                         // (what is planned, and the cursor: build.js)
-  if (hd) { /* (its own: hd.js written) */ } else if (Build.on) Prompts.build();                    // (the keys beside what they act on: prompts.js)
-  else Prompts.show(box && {x: sx(box.x0), y: sy.out(box.y0), w: (box.x1 - box.x0) * S, h: sy.out(box.y1) - sy.out(box.y0)}, faceRows);
-  Shader.over(true);                               // (with a shader on, what is written goes over it, untouched: shader.js)
-  for (const o of list) if (o.p && o.p.e.kind === "agent" && o.far === undefined) { drawNameplate(o.p, sx, sy, S); if (!bubbles.some((b) => b.name === o.p.e.name)) drawEmote(o.p, sx, sy, S); }
-  for (const o of list) if (o.p && o.p.e.kind !== "agent" && o.p.e.name && o.far === undefined) drawNameplate(o.p, sx, sy, S);     // (a named animal: /name)
-  for (const o of list) if (o.p && ANIMALS[o.p.e.kind] && o.far === undefined) drawEmote(o.p, sx, sy, S);
-  drawProgress(sx, sy, S);
+  Build.tick();                                      // (plans that could not be done go; out of the mode when you are gone: build.js)
   floats = opt("floats") ? floats.filter((f) => t - f.t < 1.4) : [];
-  ctx.textAlign = "center"; ctx.font = "18px SproutPixel";
-  for (const f of floats) {
-    ctx.globalAlpha = 1 - (t - f.t) / 1.4;
-    const fx = Math.round(sx(f.x) + S / 2) - (f.heart ? 9 : 0), fy = Math.round(sy(f.y, f.x) - (t - f.t) * S * .7);
-    outlined(f.text, fx, fy, f.color);
-    if (f.heart) {                                     // health lost is said in hearts: the number, then a small heart
-      const hx = fx + Math.ceil(ctx.measureText(f.text).width / 2) + 4, hy = fy - 13;
-      HIT_HEART.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== ".") { ctx.fillStyle = ch === "o" ? "#5b3f36" : ch === "w" ? "#ffd9d0" : "#e8554a"; ctx.fillRect(hx + i * 2, hy + j * 2, 2, 2); } }));
-    }
-  }
-  ctx.globalAlpha = 1;
-  drawBubbles(sx, sy, S, t);                       // (what people say: bubbles.js)
-  ctx.textAlign = "start";
-  Shader.over(false);
-  Shader.frame(ox, oy, S, t);                      // (the settings' Shaders: the finished picture, repainted over itself: shader.js)
   perfFrame(now, performance.now() - began, landMs);   // (/perf: debug.js)
 }
-// Highlight what an action would hit: a ghost of what gets placed, tinted footprint, and an outline.
-function drawIntent(p, it, sx, sy, S, t, ox, oy) {
-  if (it && it.ghost) {
-    ctx.globalAlpha = .7;
-    const up = it.z !== undefined && !it.draw, built = !up && !it.draw && Structures.WALLS.includes(PLACEABLE_BLOCK[it.ghost] || "-");        // (a wall, a door: as it will stand, structures.js)
-    if (it.draw) it.draw(sx, sy, S);                   // (stairs, a ladder: drawn as they will be, climbing.js)
-    else if (up && !it.ghostGround) (it.ghost === "roof" || it.ghost === "plank" ? Floors.cell(it.ghost, p.x, p.y, it.z, sx, sy, S, .6) : Floors.thing(PLACEABLE_BLOCK[it.ghost], p.x, p.y, it.z, sx, sy, S, t, 0, .6));   // (over the ground: floors.js)
-    const spr = built || it.draw || (up && !it.ghostGround) ? null : it.ghostGround ? groundPreview(it.ghostGround, p.x, p.y)
-      : it.ghost === "seed" ? [IMG.crops, 0, CROP_ROW[cropSpecies(p.x, p.y)] * 16, 16, 16, 0, -2]
-      : objectSprite(PLACEABLE_BLOCK[it.ghost], it.anchor ? it.anchor.x : p.x, it.anchor ? it.anchor.y : p.y, t);
-    const gx = it.anchor ? it.anchor.x : p.x, gy = it.anchor ? it.anchor.y : p.y;
-    const paint = (a) => { ctx.globalAlpha = .7 * a; if (built) Structures.drawWall(PLACEABLE_BLOCK[it.ghost], p.x, p.y, sx, sy, S, 0, .6);
-      if (spr) { const [img, a2, b2, w2, h2, dx2, dy2] = spr; ctx.drawImage(img, a2, b2, w2, h2, sx(gx) + dx2 * zoom, sy(gy, gx) + dy2 * zoom, w2 * zoom, h2 * zoom); } };
-    // (down a pit, behind a hill: cut at the edge of the land in front as what stands there is, behind.js: a wall's ghost aimed into a pit stood out over the grass south of its rim)
-    if ((built || spr) && tileBehind(gx, gy)) drawBehind({x: gx, y: gy, e: {}}, sx, sy, S, paint); else paint(1);
-    ctx.globalAlpha = 1;
-  }      // (the cells it would go in: mark.js, as boxes in the land)
-  // what the selector goes around, in tiles: the aimed creature, person or thing as it was just drawn (selector.js),
-  // or a structure's whole footprint
-  if (!it || it.info || it.walk) return null;
-  const bad = it.ok === false;
-  const drawn = selTarget(p, it, ox, oy, S, sy);
-  if (drawn) return {...drawn, bad};
-  if (it.ent) return {x0: it.ent.x, y0: it.ent.y, x1: it.ent.x + 1, y1: it.ent.y + 1, bad};   // until it's been drawn once
-  const xs = (it.foot || [p]).map((q) => q.x), ys = (it.foot || [p]).map((q) => q.y), up = it.z !== undefined ? shOf(it.z) * zoom : liftAt(p.x, p.y);   // (as drawn)
-  return {x0: Math.min(...xs), y0: sy.inv(sy.row(Math.min(...ys), up)), x1: Math.max(...xs) + 1, y1: sy.inv(sy.row(Math.max(...ys) + 1, up)), bad, tile: true};      // (tile: a block of the land, not something that stands: shown as its box, mark.js)
-}
-
 function outlined(text, x, y, color) {
   ctx.fillStyle = "#5b3f36";
   for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) ctx.fillText(text, x + a, y + b);
   ctx.fillStyle = color; ctx.fillText(text, x, y);
+}
+// Doors and gates near you swing open for whoever is by them, with their sound (structures.js doorFrame, sprites.js
+// gate): the HD look draws them open or shut by itself (hd_things.js); here their state and the latch's sound go on.
+// The doors round you are looked for twice a second, ticked every frame.
+let doorList = [], doorScan = -1e9;
+function swingDoors(t) {
+  const s = me && myPos(), now = performance.now(); if (!s) return;
+  if (now - doorScan > 500) { doorScan = now; doorList = []; for (let y = s.y - 12; y <= s.y + 12; y++) for (let x = s.x - 16; x <= s.x + 16; x++) { const c = combAt(x, y); if (c === "+" || c === "g") doorList.push([x, y, c]); } }
+  for (const [x, y, c] of doorList) if (combAt(x, y) === c) { if (c === "+") Structures.doorFrame(x, y); else objectSprite("g", x, y, t); }
 }

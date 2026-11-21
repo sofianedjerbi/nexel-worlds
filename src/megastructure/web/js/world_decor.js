@@ -107,11 +107,6 @@ const BERRY_ICON = [[16, 64], [48, 64], [64, 64]];              // matching sing
 const chestOpen = new Map(), doors = new Map(), doorShut = new Map();      // (doorShut: when each door last closed, structures.js)
 let occupied = new Set();
 
-function drawFire(px, py, S, t, x, y) {            // the generated two-frame flame sprite, flickering per tile
-  const f = Math.floor(t * 8 + x * 3 + y) % 2 ? "fire1" : "fire0";
-  ctx.drawImage(IMG.gen, GEN[f] * 16, 0, 16, 16, Math.round(px), Math.round(py - 3 * zoom), S, S);
-}
-
 // A chair is turned to what it is set at: a table or a fire a tile or two from it (every chair faced east, the
 // sheet's first of four: of two chairs by a fire, one had its back to it). With neither near: east, as before.
 const CHAIR = {E: 64, W: 80, S: 96, N: 112};          // (the sheet's four chairs: where each is, by the way it faces)

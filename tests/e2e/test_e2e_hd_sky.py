@@ -26,7 +26,7 @@ def ridge(g, cx, cy, z0, r=8, rx=30, step=4):
 @pytest.mark.realtime
 def test_walking_past_a_tall_mountain_the_sky_does_not_move(browser, server):
     g = Game(browser.new_page(viewport={"width": 1440, "height": 900}), server)
-    g.join(new_name("sky"), 3, look="hd")
+    g.join(new_name("sky"), 3)
     g.js("setOpt('names', false); setOpt('hints', false)")
     g.rpc("dev_creatures", clear=60)
     x, y = g.pos()

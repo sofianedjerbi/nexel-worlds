@@ -6,7 +6,7 @@ from conftest import Game, new_name
 
 def hd(browser, server):
     g = Game(browser.new_page(viewport={"width": 960, "height": 540}), server)
-    g.join(new_name(), 3, look="hd")
+    g.join(new_name(), 3)
     g.js("setOpt('names', false); setOpt('hints', false)")
     g.rpc("dev_creatures", clear=60)
     g.clear_area(12)

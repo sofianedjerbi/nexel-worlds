@@ -1,5 +1,5 @@
 // The game's menu (Esc) and its settings: a window in the help's manner (css/menu.css). First a short list (back to the
-// game, settings, help, leave); the settings are four pages of rows, a row a name and what it is set to. The world does
+// game, settings, help, leave); the settings are pages of rows, a row a name and what it is set to. The world does
 // not stop behind it (others are in it). What a setting is and where it is kept: js/options.js.
 //   Up, Down: a row · Left, Right: change it · Enter: flip it, or change a key · Tab: the next page · R: this page
 //   as it came · Esc: back. Or the mouse: a click on a row, a drag on a bar.
@@ -11,17 +11,8 @@ const kept = (key) => ({get: () => opt(key), set: (v) => setOpt(key, v), def: OP
 const slider = (name, key, more = {}) => ({name, kind: "slider", min: 0, max: 100, step: 10, unit: "%", hear: key, ...(typeof key === "string" ? kept(key) : {}), ...more});
 const toggle = (name, key, more = {}) => ({name, kind: "toggle", ...(typeof key === "string" ? kept(key) : key), ...more});
 const choice = (name, key, list) => ({name, kind: "choice", list, ...kept(key)});
-const debugRow = (name, what) => toggle(name, {get: () => DEBUG[what], set: (v) => { DEBUG[what] = v; localStorage.setItem("megastructure-" + what, v ? "1" : "0"); }, def: false});
 const f3Row = () => toggle("Debug screen (F3)", {get: () => F3.on, set: (v) => F3.set(v), def: false});      // (f3.js: where you are and what a frame costs, one screen)
 const lo = (r) => (typeof r.min === "function" ? r.min() : r.min);
-// The rows of the shader that is on: its colours, and what only it has (an old screen's lines, its bulge...)
-const LOOK_HAS = [["scan", "Lines"], ["curve", "Screen bulge"], ["mask", "Colour stripes"], ["shift", "Colour fringe"], ["tape", "Tape wobble"], ["grid", "Pixel grid"]];
-function lookRows(look) {
-  if (!look) return [];
-  const row = (name, what, more = {}) => slider("· " + name, null, {get: () => lookOpt(what, more.def ?? 100), set: (v) => setLookOpt(what, v, more.def ?? 100), def: 100, max: 200, step: 20, hear: null, ...more});
-  return [...(look.pal ? [] : [row("Colour", "sat"), row("Warmth", "warm", {min: -100, max: 100, def: 0, unit: ""})]), row("Contrast", "con"), row("Haze", "haze", {min: 0, max: 100, def: 0}),
-    ...LOOK_HAS.filter(([what]) => look[what]).map(([what, name]) => row(name, what))];
-}
 const pageRows = (i) => { const rows = MENU_PAGES[i][1]; return typeof rows === "function" ? rows() : rows; };
 const HEAR = {master: "pick", steps: "step", work: "chop", fights: "hit", animals: "cluck", world: "water", ui: "pick"};      // a sound of the family, at its new level
 const MENU_PAGES = [
@@ -36,22 +27,15 @@ const MENU_PAGES = [
     choice("Sharpness", "sharp", [["auto", "Auto"], ["full", "Full"], ["light", "Light"]]),
     slider("Light at night", "night", {hear: null}),
     choice("Particles", "particles", [["all", "All"], ["fewer", "Fewer"], ["none", "None"]]),
-    choice("Look", "look", [["hd", "HD"], ["classic", "Classic"]]), choice("Curved world", "curve", [["off", "Off"], ["near", "Near"], ["far", "Far"]]), toggle("Depth", "depth"), toggle("Clear water", "clearwater"), toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
-    choice("What hides you", "above", VIEWS.map((v) => [v.key, v.name]))]],
-  // (shader.js, sun.js) Which shader, then that shader's own settings (they change with it, and each shader keeps
-  // its own), then what all of them share: how much of each thing, 0 (none) to 200
-  ["Shaders", () => [
-    choice("Shader", "shader", [["off", "Off"], ...Object.entries(SHADERS).map(([k, v]) => [k, v.name])]),
-    ...lookRows(SHADERS[opt("shader")]),
-    slider("Strength", "shaderk", {hear: null}), ...[["Glow", "glow"], ["Shadows", "shadows"], ["Shadow length", "shadowlen"]].map(([name, key]) => slider(name, key, {max: 200, step: 20, hear: null})),
-    toggle("Land shadows", "landshade"), ...[["Water reflections", "reflect"],
-      ["Light on water", "waterlight"], ["Sun rays", "rays"], ["Cloud shadows", "clouds"], ["Dark corners", "corners"]].map(([name, key]) => slider(name, key, {max: 200, step: 20, hear: null}))]],
+    choice("Curved world", "curve", [["off", "Off"], ["near", "Near"], ["far", "Far"]]), toggle("Depth", "depth"), toggle("Clear water", "clearwater"), toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
+    ...[["Shadows", "shadows"], ["Shadow length", "shadowlen"]].map(([name, key]) => slider(name, key, {max: 200, step: 20, hear: null})),
+    choice("What is built over you", "above", VIEWS.map((v) => [v.key, v.name]))]],
   ["Screen", [
     toggle("Speech bubbles", "bubbles"), toggle("Names over heads", "names"),
     choice("A chat line stays", "chat", [[5, "5 seconds"], [10, "10 seconds"], [30, "30 seconds"], [600, "10 minutes"]]),
     toggle("Key hints", "hints"), toggle("Mouse tips", "tips"),
     toggle("Goals card", {get: () => !goalsOff, set: (v) => { goalsOff = !v; localStorage.setItem("megastructure-goals-off", v ? "0" : "1"); drawGoals(); }, def: false}),
-    f3Row(), debugRow("Tile grid", "grid")]],
+    f3Row()]],
   ["Keys", [
     choice("Sprint", "sprint", [["hold", "Hold Shift"], ["toggle", "Shift once"]]),
     ...Object.entries(KEY_ACTIONS).map(([action, [, name]]) => ({name, kind: "key", action, get: () => keyOf(action), set: () => {}, def: KEY_ACTIONS[action][0]}))]],

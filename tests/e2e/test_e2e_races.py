@@ -119,10 +119,10 @@ def test_a_sword_cuts_across_and_a_spear_is_thrust(game):
         for way, (dx, dy) in {"down": (0, 1), "up": (0, -1), "right": (1, 0), "left": (-1, 0)}.items():
             game.face(dx, dy)
             for f in range(6):
-                drawn = game.js(f"""new Promise((done) => {{ const p = ents.get('agent' + myId), d0 = ctx.drawImage, out = [];
+                drawn = game.js(f"""new Promise((done) => {{ const p = ents.get('agent' + myId), P = CanvasRenderingContext2D.prototype, d0 = P.drawImage, out = [];
                   p.fx = {dx}; p.fy = {dy}; p.swing = {{t0: performance.now() - {f * 50 + 20}, with: '{kind}'}};
-                  ctx.drawImage = function (img, ...r) {{ if (r.length === 8 && r[2] === 48 && r[3] === 48 && (img.height === 192 || img.height > 1000)) out.push([img.height, r[0] / 48, r[1] / 48]); return d0.call(this, img, ...r); }};
-                  requestAnimationFrame(() => requestAnimationFrame(() => {{ ctx.drawImage = d0; window._hold = setInterval(() => {{ p.swing.t0 = performance.now() - {f * 50 + 20}; }}, 5); done(out); }})); }})""")
+                  P.drawImage = function (img, ...r) {{ if (r.length === 8 && r[2] === 48 && r[3] === 48 && (img.height === 192 || img.height > 1000)) out.push([img.height, r[0] / 48, r[1] / 48]); return d0.call(this, img, ...r); }};
+                  requestAnimationFrame(() => requestAnimationFrame(() => {{ P.drawImage = d0; window._hold = setInterval(() => {{ p.swing.t0 = performance.now() - {f * 50 + 20}; }}, 5); done(out); }})); }})""")
                 row = {"down": 0, "up": 1, "right": 2, "left": 3}[way]
                 assert [192, f, row] in drawn, (kind, way, f, drawn)                   # the weapon's frame, for the way faced
                 assert any(h > 1000 and r == row for h, c, r in drawn), drawn          # over the standing body, not the chop

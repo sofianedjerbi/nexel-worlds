@@ -102,7 +102,8 @@ const VoxStyleGLSL = (() => {
         col *= o2 ? .7 : o1 ? .85 : 1.;
         float pd = distance(wp.xz, lamp.xz); col *= 1. - .25 * clamp((D - 3.) / 9., 0., 1.) * (pd < 2.5 ? 0. : pd < 4.5 ? .5 : 1.); }
       else if (kind < .5) col = c.rgb * strat(ceil(wp.y * 2. - .01)); }
-    else if (ho > 0. && kind < .5 && va.y > .5 && wp.y * 2. < rz + .01 && distance(wp.xz, lamp.xz) < 6.) col = mix(col, c.rgb * l * strat(ceil(wp.y * 2. - .01)), ho);   // (the walls of an open hole you stand in, a shaft, a pit: the same strata, as the eye tips over it)
+    else if (ho > 0. && kind < .5 && va.y > .5 && wp.y * 2. < rz + .01 && distance(wp.xz, lamp.xz) < 6.) { float lv = ceil(wp.y * 2. - .01), t = max(0., rz - lv + 1.), S = max(0., rz - floor((lamp.y - .6) / .5 + .5));
+      col = mix(col, c.rgb * l * strat(lv) * max(.04, 1. - (.08 + .04 * S) * t) * (fract(wp.y * 2. + .001) < .3 ? .6 : 1.), ho); }   // (the walls of an open hole you stand in, a shaft, a pit: the same strata, as the eye tips over it; and DARKER THE DEEPER THE HOLE (S: its depth under its rim, t: this level's): you stand at its rim's line and hide its inside, so its walls tell it: 2 deep a light brown, 6 near black from its third level down, 12 black under its first; a thin dark line at the foot of each level: the strata counted)
     if (vl > .5) col = c.rgb * max(day * va.y, amb);
     o = vec4(mix(col, fogc, .55 * smoothstep(fn, ff, distance(wp, eye))), raw ? .97 : 1.);   // (the haze tints the far land, never more than half: it took it whole to the haze's one colour, the far land's px gone: pale flat slabs)
   }`;

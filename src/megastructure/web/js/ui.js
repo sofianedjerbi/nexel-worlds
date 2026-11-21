@@ -1,11 +1,5 @@
 // HUD: item icons, hotbar, bag, mail, toasts. (Crafting: craft.js)
 
-function groundPreview(g, x, y) {
-  if (g === "_") return [IMG.cobble, 16, 16, 16, 16, 0, 0];
-  if (g === "n") return [IMG.house_walls, 16, 16, 16, 16, 0, 0];
-  if (g === ":") return [IMG.bridge, 0, 32, 16, 16, 0, 0];
-  return [IMG.soil, 16, 16, 16, 16, 0, 0];
-}
 const fulls = new Map();                         // an item's icon, kept (what lies on the ground is a smaller one: ghostIcon, loot.js)
 const fullIcon = (n) => fulls.get(n) || (fulls.set(n, iconCanvas(n)), fulls.get(n));
 const slotIcon = (n) => smallCanvas(n);          // what a slot shows: the small picture, as on the ground, at the land's pixel (--i)

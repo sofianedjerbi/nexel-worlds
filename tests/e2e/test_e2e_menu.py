@@ -25,7 +25,7 @@ def test_esc_opens_the_menu_and_no_key_acts_behind_it(game):
     assert game.js("isOpen('bag')")
     game.press("Escape"); assert not game.js("isOpen('bag')") and not game.js("menuOpen()")      # Esc shuts a window first
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter")
-    assert game.js("[...document.querySelectorAll('#menu .tab')].map((e) => e.textContent)") == ["Sound", "Picture", "Shaders", "Screen", "Keys"]
+    assert game.js("[...document.querySelectorAll('#menu .tab')].map((e) => e.textContent)") == ["Sound", "Picture", "Screen", "Keys"]
     assert game.js("document.querySelectorAll('#menu .row').length") == 11
     game.press("Escape"); assert game.js("MENU.view") == "main"   # back to the list, then out
     game.press("Escape"); assert not game.js("menuOpen()")
@@ -71,7 +71,7 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
     game.js("fallQuake = {t0: performance.now(), amp: 5}; floats.push({x: 0, y: 0, text: '-1', color: '#fff', t: performance.now() / 1000})")
     game.sleep(200)
     assert game.js("[fallShake(performance.now()), floats.length]") == [0, 0]
-    game.press("Tab"); game.press("Tab")                        # Screen (past Shaders)
+    game.press("Tab")                                           # Screen
     for name, key in (("Speech bubbles", "bubbles"), ("Names over heads", "names"), ("Key hints", "hints"), ("Mouse tips", "tips")):
         at_row(game, name); game.press("Enter")
         assert game.js(f"opt('{key}')") is False
@@ -91,7 +91,7 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
 
 
 def test_a_key_can_be_changed_and_the_game_follows(game):
-    game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab"); game.press("Tab"); game.press("Tab")
+    game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab"); game.press("Tab")
     at_row(game, "Inventory"); game.press("Enter")
     assert game.js("document.querySelector('#menu .row.on .ctl').textContent") == "press a key"
     game.press("w")                                             # a key of the game's own: refused, and said

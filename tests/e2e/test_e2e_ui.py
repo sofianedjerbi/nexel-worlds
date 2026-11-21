@@ -212,12 +212,12 @@ def test_actions_make_their_sounds(game):
     assert {"rustle", "collect", "chop", "creak", "fallthud", "pick"} <= heard, heard     # (pick: the axe taken in hand)
 
 
-def test_coords_and_grid_are_typed_in_the_chat_line(game):
-    """/coords and /grid are debugging aids, off until asked for (js/debug.js); any other /word is still an action.
+def test_coords_and_perf_are_typed_in_the_chat_line(game):
+    """/coords and /perf are debugging aids, off until asked for (js/debug.js); any other /word is still an action.
     /coords and /perf open the debug screen (f3.js), as F3 does."""
     say = lambda line: (game.page.keyboard.press("Enter"), game.page.keyboard.type(line), game.page.keyboard.press("Enter"), game.sleep(300))
     text = "(() => { const e = document.getElementById('f3'); return e && e.style.display !== 'none' ? e.innerText : ''; })()"
-    game.js("(() => { F3.set(false); DEBUG.grid = false; return 1; })()")
+    game.js("(() => { F3.set(false); return 1; })()")
     game.sleep(200)
     x, y = game.pos()
     assert game.js(text) == ""
@@ -226,12 +226,6 @@ def test_coords_and_grid_are_typed_in_the_chat_line(game):
     assert game.js("localStorage.getItem('megastructure-f3')") == "1"
     say("/coords")
     assert game.js(text) == ""
-    lines = "(() => { let n = 0; ctx.strokeRect = function (...a) { n++; return CanvasRenderingContext2D.prototype.strokeRect.apply(ctx, a); }; return new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => { delete ctx.strokeRect; ok(n); }))); })()"
-    assert game.js(lines) == 0
-    say("/grid")
-    assert game.js("DEBUG.grid") and game.js(lines) > 100      # a tile, an outline
-    say("/grid")
-    assert game.js(lines) == 0
     say("/perf")                                               # what the frames cost
     game.wait(text + ".includes(' fps') && " + text + ".includes('ticks ')")
     seen = game.js(text)

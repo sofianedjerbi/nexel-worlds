@@ -8,8 +8,7 @@
 //   - what X will take, and the cursor's own cell: boxes in the land (target.js).
 // Stacking needs no height key: on a tile that has your block the cursor rides it (build.js `ride`), and on one you
 // only planned the next goes on top of the plan (`cell`). E and Q move the ghost one level (build.js `stops`).
-// Drawn with the cursor's keys (prompts.js `build`): in the HD look that is its marks pass, places by HdLook.screenOf;
-// in the classic picture by build.js's own (`S.to`). The HD look hands what a painter of marks needs (`HdLook.art()`: an art px, a place's px, is a place behind land): a ghost
+// Drawn with the cursor's keys (prompts.js `build`): the HD look's marks pass, places by HdLook.screenOf. The HD look hands what a painter of marks needs (`HdLook.art()`: an art px, a place's px, is a place behind land): a ghost
 // behind a wall keeps one px in two there, fainter (it was drawn through the wall, as if in front of it).
 const BuildGhost = (() => {
   const paints = new Map(), RED = [232, 85, 74], MOST = 9;
@@ -44,7 +43,7 @@ const BuildGhost = (() => {
   // once a frame, with the cursor's keys. api.drew: what was drawn of the cursor (tests): {x, y, z, ok} the ghost, take: X's cell
   api.paint = () => {
     api.drew = null;
-    const p = Build.on && meObs ? Build.S.at : null, art = HdLook.on ? HdLook.art() : null, at = p && (HdLook.on ? art && art.at : Build.S.to), a0 = at && at(p.x, p.y, Build.level()), a1 = a0 && at(p.x + 1, p.y, Build.level());
+    const p = Build.on && meObs ? Build.S.at : null, art = HdLook.on ? HdLook.art() : null, at = p && art && art.at, a0 = at && at(p.x, p.y, Build.level()), a1 = a0 && at(p.x + 1, p.y, Build.level());
     if (!a1 || a1[0] === a0[0]) return;
     const u = art ? art.u : zoom, bh = art && art.behind, t = performance.now() / 1000, land = (j) => !j.take && j.up && LAND_BLOCKS.has(j.item);
     for (const j of [...Build.S.plans.values()].filter(land).sort((a, b) => a.y - b.y || a.z - b.z)) block(ctx, at, u, j.x, j.y, j.z, j.item, j.state === "doing" ? .75 : .5, j.state === "bad", bh);
