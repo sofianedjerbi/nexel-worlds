@@ -84,6 +84,31 @@ def test_the_first_screen_fits_a_phone(browser, server):
     page.close()
 
 
+def test_the_first_screen_reads_as_a_newcomer_sees_it(browser, server):
+    """Home audit (desk 1440x900, a phone upright and on its side): the name, its line and the window never lie on
+    one another and are whole on the screen; Wake up is a button across the window, a thumb high, on the screen; the
+    line under the name is a tip, never larger than the window's own letters; on a big desk the window's pixel is 3 px
+    (it was a third of the screen's height, its letters 18 px)."""
+    box = """(() => { const b = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom].map(Math.round); };
+      return {menu: b(document.querySelector('#joinbox .menu')), logo: b(document.querySelector('#joinbox .logo')), say: b($('splash')), join: b($('join')),
+        sayPx: parseFloat(getComputedStyle($('splash')).fontSize), menuPx: parseFloat(getComputedStyle(document.querySelector('#joinbox .menu')).fontSize)}; })()"""
+    apart = lambda a, b: a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
+    for w, h, touch in ((1440, 900, False), (390, 844, True), (844, 390, True)):
+        page = browser.new_page(viewport={"width": w, "height": h}, has_touch=touch, is_mobile=touch)
+        page.goto(server)
+        page.wait_for_function("typeof ready !== 'undefined' && document.querySelectorAll('#racepick button').length === 5")
+        page.evaluate("$('splash').textContent = 'Somebody\\'s chickens got out again, and the duck knows why.'")      # (a long one)
+        r = page.evaluate(box)
+        for k in ("menu", "logo", "say", "join"):
+            assert r[k][0] >= 0 and r[k][1] >= 0 and r[k][2] <= w and r[k][3] <= h, (w, h, k, r)
+        assert apart(r["logo"], r["menu"]) and apart(r["say"], r["menu"]) and apart(r["logo"], r["say"]), (w, h, r)
+        assert r["join"][3] - r["join"][1] >= 48 and r["join"][2] - r["join"][0] >= (r["menu"][2] - r["menu"][0]) * .8, (w, h, r)
+        assert r["sayPx"] <= r["menuPx"] * 1.01, (w, h, r)
+        if not touch:
+            assert r["menuPx"] >= 27 and page.evaluate("getComputedStyle($('join')).backgroundColor") == "rgb(255, 241, 168)", r     # (lit: the row the keys are on at first)
+        page.close()
+
+
 def test_the_first_screen_is_itself_before_any_script_has_come(browser, server):
     """"Instant loading": on a phone's slow line the page was bare text for as long as its seventy scripts took (eight
     seconds measured): the game's own bar over its name, a list without its window, no field for your name. What the
