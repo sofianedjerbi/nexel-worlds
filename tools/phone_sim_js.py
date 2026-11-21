@@ -80,3 +80,12 @@ def top(profile, n=8):
     busy = (sum(own.values()) + meta.get("(garbage collector)", 0)) or 1
     rows = lambda d: [(k, round(v / 1000, 1), round(100 * v / busy, 1)) for k, v in sorted(d.items(), key=lambda kv: -kv[1])[:n]]
     return {"self": rows(own), "total": rows(inc), "meta_ms": {k: round(v / 1000) for k, v in meta.items() if v}, "busy_ms": round(busy / 1000)}
+
+
+def woke(r):
+    """The title from Wake up on: its frames' fps, how many over 33 ms, its long tasks (n, ms, longest); {} for the others"""
+    w = isinstance(r.get("went"), list) and isinstance(r["went"][1], list) and r["went"][1][1]
+    if not w:
+        return {}
+    gap, long = [f[1] for f in r["f"] if f[0] >= w], [d for t, d in r["long"] if t + d >= w]
+    return {"woke": {"fps": round(len(gap) / (sum(gap) / 1000), 1) if gap else 0, "over33": sum(g > 33.4 for g in gap), "long": [len(long), round(sum(long)), round(max(long, default=0))]}}

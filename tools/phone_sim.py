@@ -33,7 +33,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(ROOT / "tools"), str(ROOT / "tests" / "e2e")]
 from perf_serve import LINES  # noqa: E402
-from phone_sim_js import BENCH, PLOT, RECORD, START, STOP, top  # noqa: E402
+from phone_sim_js import BENCH, PLOT, RECORD, START, STOP, top, woke  # noqa: E402
 
 # The reference phones, in BENCH ms (median round). Set from this Mac (Apple M5, idle: BENCH 21.9 ms, 3 runs)
 # times the ratio of Geekbench 6 single-core scores (JS on one big core follows it): M5 ~4200; mid: a 2021 mid
@@ -133,9 +133,10 @@ def scene(ph, name, secs, profile):
         def play():
             g.page.wait_for_function("typeof titleDraw === 'function'", timeout=60000)
             time.sleep(min(3, secs / 2))                     # (the first screen's own scene, played)
+            woke = g.js("performance.now()")                 # (the long tasks from Wake up on: stats "woke")
             wake(g, f"sim{os.getpid() % 1000}t")
             time.sleep(1)
-            return "in"
+            return ["in", woke]
         ph.slow(True)
         t0 = time.time()
         g.page.goto(ph.url + "/?zoom=2&look=hd", wait_until="commit")
@@ -178,7 +179,8 @@ def stats(r):
            "script": [q(js, .5), q(js, .95), q(js, 1)], "gpu": [q(gpu, .5), q(gpu, .95), q(gpu, 1)] if gpu else "n/a",
            "long": [len(r["long"]), round(sum(d for _, d in r["long"])), round(max([d for _, d in r["long"]], default=0))],
            "draws": q([h[2] for h in hd], .5), "faces": q([h[3] for h in hd], .5), "land_ms_p95": q([h[4] for h in hd], .95),
-           "heap_mb": [round(r["f"][0][2]), round(r["f"][-1][2])] if r["f"] else None, "went": r.get("went")}
+           "heap_mb": [round(r["f"][0][2]), round(r["f"][-1][2])] if r["f"] else None, "went": r.get("went"), **woke(r)}
+
 
 
 def table(res):
@@ -276,7 +278,7 @@ def main():
         print(table(res), flush=True)
         out = Path(a.dir) / (a.out or f"p1_{a.preset}_{a.gpu}")
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.with_suffix(".json").write_text(json.dumps({"head": head, "stats": res, "frames": {k: {"gap": [round(f[1], 2) for f in r["f"]], "script": [round(h[1], 2) for h in r["hd"]], "gpu": [round(v, 2) for v in r["gpu"]]} for k, (r, s) in runs.items()}}))
+        out.with_suffix(".json").write_text(json.dumps({"head": head, "stats": res, "frames": {k: {"gap": [round(f[1], 2) for f in r["f"]], "script": [round(h[1], 2) for h in r["hd"]], "land": [round(h[4], 2) for h in r["hd"]], "hd": [round(h[5], 2) for h in r["hd"]], "gpu": [round(v, 2) for v in r["gpu"]]} for k, (r, s) in runs.items()}}))
         plot(ctx, runs, f"{a.preset} (CPU x{rate}, bench {mine:.0f} ms), GPU {a.gpu}: {gl[:60]}", out.with_suffix(".png"))
         print("wrote", out.with_suffix(".json"), out.with_suffix(".png"), flush=True)
     except Exception:  # noqa: BLE001 - said, then everything shut (os._exit would swallow it)
