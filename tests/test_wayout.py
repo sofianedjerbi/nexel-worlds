@@ -228,7 +228,29 @@ def test_at_the_bottom_of_a_gorge_you_are_not_out_and_the_way_up_hurts_nobody(wo
     assert s.height(a) == 0 and not s.world.covered(a.x, a.y, 0)
     r = find(s, a, r=38)
     assert not r["out"] and r["path"] and r["blocks"] > 0, (r["out"], r["blocks"])
+    assert not r["trapped"]                                  # (the floor goes on past your reach: you walk or swim along it)
+    assert find(s, a, r=38, sky=True)["path"] is None        # (and under the open sky the page asks only for a trap's way)
     falls = [p["z"] - q["z"] for p, q in zip(r["path"], r["path"][1:])]
     assert max(falls) <= 3, falls
     play(s, a, r["moves"], tool={})
     assert s.height(a) >= 11 and a.hp == 20 and find(s, a, r=38)["out"]
+
+
+def test_a_canyon_closed_at_both_ends_is_a_trap_and_one_open_past_your_reach_is_not(world):
+    """"The escape detection triggers when swimming between canyons": a gorge is no trap while it goes on. Trapped is
+    geometry: the floor you reach on foot (a river's face is a floor: you swim) is all inside your reach, no way out."""
+    s, a = world
+    flat(s, a)
+    for y in range(a.y - 40, a.y + 41):
+        for x in range(a.x - 40, a.x + 41):
+            if abs(y - a.y) > 1:
+                for z in range(1, 10):
+                    s.world.set_cell(x, y, z, True)
+    r = find(s, a, r=38, sky=True)
+    assert not r["out"] and not r["trapped"] and r["path"] is None, (r["out"], r["trapped"])
+    for y in range(a.y - 1, a.y + 2):
+        for x in (a.x - 20, a.x + 20):
+            for z in range(1, 10):
+                s.world.set_cell(x, y, z, True)
+    r = find(s, a, r=38, sky=True)
+    assert r["trapped"] and r["path"] and r["blocks"] > 0, (r["trapped"], r["blocks"])

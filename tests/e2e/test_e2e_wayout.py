@@ -70,23 +70,29 @@ def test_at_the_bottom_of_your_own_shaft_the_way_out_is_drawn_and_following_it_g
     assert not c["shown"] and c["cap"] == "" and not game.errors, c
 
 
+# from the frame you are at (x, y): the page's time then, and at the first frame the way is drawn (the game's ms)
+WATCH = """([x, y]) => { const w = window.__still = {at: null, shown: null, early: false}; (function f() { const s = myPos(), now = performance.now();
+  if (w.at === null && s && s.x === x && s.y === y) { w.at = now; w.early = !!WayShow.cur; } if (w.at !== null && w.shown === null && WayShow.cur) w.shown = now; if (w.shown === null) requestAnimationFrame(f); })(); }"""
+
+
 def test_in_a_cave_with_a_way_out_on_foot_nothing_is_drawn_until_you_stand_still(game):
-    """A tunnel under a hill, open at its east end: not trapped. Walking: nothing. Standing two seconds: the dots of
-    the way to the daylight, and no block to break."""
+    """A tunnel under a hill, open at its east end: not trapped. Arrived there: nothing; standing two seconds (the
+    game's, read on the page's own clock: a tap, then "nothing yet", then a wait, failed whenever the machine took two
+    of the game's seconds before the tap: it is half a second of the machine's on the tests' clock): the dots of the
+    way to the daylight, and no block to break. Walked out: nothing."""
     game.clear_area(10)
     x, y = game.pos()
-    game.stamp(-4, -1, ["....."] * 3, levels=["44440", "40000", "44440"], roofs=["00000", "04440", "00000"])   # three tiles of tunnel west of you into a hill of four; you at its mouth
-    game.rpc("dev_teleport", x=x - 3, y=y, z=0)
+    game.stamp(-6, -1, ["......."] * 3, levels=["4444440", "4000000", "4444440"], roofs=["0000000", "0444440", "0000000"])   # five tiles of tunnel west of you into a hill of four
+    game.js(WATCH, [x - 5, y])
+    game.rpc("dev_teleport", x=x - 5, y=y, z=0)
     game.arrive()
-    game.rest()
-    assert game.js(f"topAt({x - 3}, {y}) > 0")
-    game.hold(["ArrowRight"], 90)
-    game.wait(f"myAt && myAt.x === {x - 2} && !walking", 4000)
-    assert not game.js(CUR)["shown"]
-    game.wait("WayShow.cur", 6000)                                         # two seconds standing
+    assert game.js(f"topAt({x - 5}, {y}) > 0")
+    game.wait("window.__still.shown !== null", 8000)
+    w = game.js("window.__still")
+    assert not w["early"] and w["shown"] - w["at"] >= 1900, w                   # two seconds standing: nothing before
     c = game.js(CUR)
     assert not c["trapped"] and c["digs"] == [] and c["way"] == "E" and c["steps"] >= 2 and c["cap"] == "", c
-    game.hold(["ArrowRight"], 600)
+    game.hold(["ArrowRight"], 1200)
     game.wait("myAt && topAt(myAt.x, myAt.y) <= myAt.z && !walking", 4000)
     game.frames(3)
     assert not game.js(CUR)["shown"] and not game.errors
@@ -181,3 +187,34 @@ def test_where_the_way_comes_out_is_one_clean_mark_and_the_land_is_not_opened_on
     assert o["rock"] == [] and o["end"]["z"] == 0, o                      # nothing opened where the stair is not cut yet; the way ends on the meadow
     assert o["px"][0] > 240 and o["px"][1] > 225 and o["px"][2] > 180, o   # the dot's bright middle, at the way's end
     assert not g.errors
+
+
+def gorge(game, wide, closed=False):
+    """A river three wide between two cliffs seven over its face, `wide` long west to east; closed: a cliff at both ends."""
+    h, end = wide // 2, "9" if closed else "2"
+    game.stamp(-h, -10, ["." * wide] * 9 + ["~" * wide] * 3 + ["." * wide] * 9,
+               levels=["9" * wide] * 9 + [end + "2" * (wide - 2) + end] * 3 + ["9" * wide] * 9)
+
+
+@pytest.mark.parametrize("closed", [False, True])
+def test_swimming_in_a_gorge_that_goes_on_shows_nothing_and_one_closed_at_both_ends_shows_the_way(game, closed):
+    """"The escape detection triggers when swimming between canyons": a river between two cliffs, on past your reach
+    both ways: you swim along it, it is no trap. Treading water there three seconds: nothing is drawn (it was the stair
+    cut up the cliff, thirteen blocks). The same river shut by a cliff at both ends, twenty-one long: trapped, the way
+    out at once."""
+    game.clear_area(10)
+    x, y = game.pos()
+    gorge(game, 21 if closed else 71, closed)
+    game.rpc("dev_teleport", x=x, y=y)
+    game.arrive()
+    game.settle("WayShow.res && !WayShow.busy", timeout=8000)
+    if closed:
+        game.wait("WayShow.cur", 4000)
+        c = game.js(CUR)
+        assert c["trapped"] and c["digs"], c
+        return
+    res = game.js("(() => { const r = WayShow.res; return r && {out: r.out, trapped: r.trapped, path: !!r.path}; })()")
+    assert res == {"out": False, "trapped": False, "path": False}, res       # (in the gorge, not out; no trap; no stair looked for)
+    game.sleep(3000)                                                          # (the game's time: standing still in it)
+    game.frames(2)
+    assert not game.js(CUR)["shown"] and game.js(CAP) is None and not game.errors

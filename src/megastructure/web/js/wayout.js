@@ -12,12 +12,14 @@
 //   dig on ("use": Space): the cell in front at your body's height, then the step in;
 //   dig down ("alt": X): the cell you stand on.
 // A step costs 1, a block 30: so first WITHOUT digging (a real way out, however long, within reach: you are not
-// trapped), and only if there is none the way with the fewest blocks to break, then the shortest.
+// trapped), and only if there is none the way with the fewest blocks to break, then the shortest. Trapped is geometry:
+// no way out on foot AND the places you reach on foot are all inside your reach: a gorge's river that goes on past it
+// is no trap ("the escape detection triggers when swimming between canyons": you swim along it).
 // The land is read as it is now: a block broken on the way is not gone for the steps after it (but nobody stands on
 // one). The way is found again each time the land changes, and its first move is always true.
 const WayOut = (() => {
   const WAYS = [[1, 0, "E"], [-1, 0, "W"], [0, -1, "N"], [0, 1, "S"]], TURN = .01,      // (of two ways as good: the one that goes straight on; east or west first: a stair seen from its side; south last: its blocks stand between the eye and you)
-     DIG = 30, FALL = 3, HURT = 100, R = 28, SKY = 150;      // (HURT: a level of a fall that costs hearts: more than three blocks: the way shown is not one that hurts while a stair can be cut. It was 6: out of a shaft in the stone mountain the way dropped six into the river)
+     DIG = 30, FALL = 3, HURT = 100, R = 28;      // (HURT: a level of a fall that costs hearts: more than three blocks: the way shown is not one that hurts while a stair can be cut. It was 6: out of a shaft in the stone mountain the way dropped six into the river)
   const key = (x, y, z) => ((x + 32768) * 65536 + (y + 32768)) * 2048 + (z + 1024);
   // out: under the open sky and not walled in (of the 49 tiles round it, 12 at most stand higher than a hop), nor at
   // the bottom of a gorge or a wide pit (of 49 tiles looked at 9 around, half at most stand over three higher: the
@@ -36,23 +38,24 @@ const WayOut = (() => {
       pop() { const t = a[0], l = a.pop(); if (a.length) { a[0] = l; let i = 0; for (;;) { let m = i; const q = 2 * i + 1; if (q < a.length && a[q][0] < a[m][0]) m = q; if (q + 1 < a.length && a[q + 1][0] < a[m][0]) m = q + 1; if (m === i) break; [a[m], a[i]] = [a[i], a[m]]; i = m; } } return t; }};
   }
   // One search from s = {x, y, z}. dig: blocks may be broken. pull: 0, or how much a level still to climb (to zt) weighs
-  // (a hurried search for when the plain one ran out: straight up through solid rock). -> {goal, sky, capped, n}
+  // (a hurried search for when the plain one ran out: straight up through solid rock). -> {goal, sky, capped, edge: a place
+  // past your reach is a step away (what you reach goes on), n}
   function* run(W, s, dig, cap, pull, zt, d0) {
     const step = stepOf(W), enter = W.enter || (() => true), best = new Map(), q = heap(), h = (z) => (pull ? pull * Math.max(0, zt - z) : 0);
     const s0 = {x: s.x, y: s.y, z: s.z, c: 0, from: null, digs: null, d: d0 || null, nd: 0}; best.set(key(s.x, s.y, s.z), s0); q.push(h(s.z), s0);
-    let n = 0, sky = 0;
+    let n = 0, sky = 0, edge = false;
     const relax = (x, y, z, c, from, d, digs) => { const k = key(x, y, z), b = best.get(k); if (b && b.c <= c) return;
       if (from.nd) for (let a = from; a; a = a.from) if (a.digs && a.digs.some((e) => e.x === x && e.y === y && e.z === z)) return;      // (the block you would stand on was broken on the way here: a stair that turns back over itself)
       const v = {x, y, z, c, from, d, digs, nd: from.nd + (digs ? 1 : 0)}; best.set(k, v); q.push(c + h(z), v); };
     const fall = (a, b) => (a - b > FALL ? HURT * (a - b - FALL) : 0), drop = (x, y, z) => { while (!W.solid(x, y, z)) z--; return z; };
     while (q.size) {
       const v = q.pop()[1], {x, y, z} = v; if (best.get(key(x, y, z)) !== v) continue;
-      if (out(W, x, y, z)) return {goal: v, sky, n, capped: false};
-      if (++n > cap) return {goal: null, sky, n, capped: true};
+      if (out(W, x, y, z)) return {goal: v, sky, n, edge, capped: false};
+      if (++n > cap) return {goal: null, sky, n, edge, capped: true};
       if (n % 24 === 0) yield;
       if (W.top(x, y) <= z) sky++;
       for (const [dx, dy, d] of WAYS) {
-        const qx = x + dx, qy = y + dy; if (Math.abs(qx - s.x) > R || Math.abs(qy - s.y) > R) continue;
+        const qx = x + dx, qy = y + dy; if (Math.abs(qx - s.x) > R || Math.abs(qy - s.y) > R) { if (!dig && !edge) { const e = step(z, qx, qy, x, y); edge = e !== null && enter(qx, qy, e); } continue; }
         const z2 = step(z, qx, qy, x, y), c = v.c + (v.d && v.d !== d ? TURN : 0);
         if (z2 !== null) { if (enter(qx, qy, z2)) relax(qx, qy, z2, c + 1 + (z2 < z - 1 && W.ladder && W.ladder(x, y, z, qx, qy, z2) ? 0 : fall(z, z2)), v, d, null); }
         else if (dig && W.solid(qx, qy, z + 1) && (!W.can || W.can(x, y, z, dx, dy)) && enter(qx, qy, z + 1)) {      // a step cut: head room over you, then over it
@@ -64,7 +67,7 @@ const WayOut = (() => {
       }
       if (dig && W.land(x, y, z) && W.down && W.down(x, y, z)) { const z3 = drop(x, y, z - 1); if (z3 > s.z - 6) relax(x, y, z3, v.c + DIG + fall(z, z3), v, v.d, [{x, y, z, key: "alt", d: null}]); }
     }
-    return {goal: null, sky, n, capped: false};
+    return {goal: null, sky, n, edge, capped: false};
   }
   function pathOf(v) { const p = []; for (; v; v = v.from) p.unshift({x: v.x, y: v.y, z: v.z, d: v.from ? v.d : null, digs: v.digs || [], down: !!(v.from && v.from.x === v.x && v.from.y === v.y)}); return p; }
   // The whole of it, a piece at a time (a generator: `next()` does a few dozen places; the caller stops when its time
@@ -74,8 +77,8 @@ const WayOut = (() => {
   function* find(W, s, o = {}) {
     if (out(W, s.x, s.y, s.z)) return {out: true, trapped: false, path: null, blocks: 0, n: 0};
     const a = yield* run(W, s, false, o.walk || 3000, 0, 0, o.d);
-    let g = a.goal, n = a.n; const trapped = !g && !a.capped && a.sky < SKY;
-    if (!g) { const b = yield* run(W, s, true, o.dig || 6000, 0, 0, o.d); g = b.goal; n += b.n;
+    let g = a.goal, n = a.n; const trapped = !g && !a.capped && !a.edge;      // (it was "fewer than 150 places under the sky": a closed canyon was no trap, a long river's was one when narrow)
+    if (!g && (trapped || !o.sky)) { const b = yield* run(W, s, true, o.dig || 6000, 0, 0, o.d); g = b.goal; n += b.n;      // (o.sky: under the open sky only a trap's way is shown: no dig search for the rest)
       if (!g && b.capped) { const tops = []; for (let j = -9; j <= 9; j += 3) for (let i = -9; i <= 9; i += 3) tops.push(W.top(s.x + i, s.y + j));      // (the level to climb to: where half the land round you is no more than three higher: `out`. It was the lowest top within reach: in a gorge, its own floor: no pull, no way)
         const zt = tops.sort((p, q) => q - p)[24] - 3;
         const c = yield* run(W, s, true, o.far || 12000, 2 * DIG, zt, o.d); g = c.goal; n += c.n; } }
