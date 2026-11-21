@@ -48,6 +48,7 @@ def test_a_persons_sheet_is_made_between_frames(browser, server):
     g = hd(browser, server)
     r = g.js("""(async () => { let idle = 0; const ric = window.requestIdleCallback; window.requestIdleCallback = (f, o) => ric((d) => { idle++; f(d); }, o);
       const ask = () => wornReady('#123457', {head: 'straw_hat'}, 'bear', false), first = ask();
-      for (let i = 0; i < 200 && !ask(); i++) await new Promise((done) => setTimeout(done, 20));
+      for (let i = 0; i < 3000 && !ask(); i++) await new Promise((done) => setTimeout(done, 20));
       window.requestIdleCallback = ric; const s = ask(); return [first === null, !!s && s.width === IMG.character.width, idle]; })()""")
     assert r[0] and r[1] and r[2] >= 2, r                           # (not made at once; made, in two turns or more)
+    # (the loop is a wait, not a budget: 200 turns of 20 ms were a second of the machine's on the tests' clock, and a bear's dressed sheet takes 300 to 500 turns, before the cubes as after)

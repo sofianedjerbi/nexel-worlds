@@ -214,13 +214,15 @@ def test_earth_into_water_marks_its_new_bed_and_the_bed_rises_at_once(browser, s
     assert c["kind"] == "use" and (c["x"], c["y"], c["z"]) == (x + 1, y, top - 1), c      # (on the bed it will have, a level under the face)
     game.js("(() => { Target.off = true; setOpt('shimmer', false); return 1; })()")
     game.frames(3)
-    was = game.js(LIGHT, [x + 1, y, top])
+    seen = lambda: game.js(f"(() => {{ const L = {LIGHT}; return [L([{x + 1}, {y}, {top - 1}]), L([{x + 1}, {y}, {top - 2}])]; }})()")   # where the new bed's top is drawn, and under it (its south face once it is up): one frame's
+    was = seen()
     game.press(" ", 300)
     game.wait(f"gndAt({x + 1}, {y}) === '~'", 8000)             # (the tile drawn is the tile that changed)
-    game.wait(f"WaterBed.depth({x + 1}, {y}) === 1", 2000)
+    game.wait(f"WaterBed.depth({x + 1}, {y}) === 1 && !HdLook.busy", 2000)
     game.frames(3)
-    now = game.js(LIGHT, [x + 1, y, top])
-    assert now > was + 20, (was, now)
+    now = seen()
+    assert now[0] > was[0] and now[1] < was[1] - 40, (was, now)        # the bed a level up: its top under one level of water, lighter (by 7 to 17 of 490); its side face where the deeper bed was
+    # (a level is a cube now, 16 art px: read where the bed is, not the water's face, which shows the tile north's bed from this eye)
     assert not game.errors
 
 

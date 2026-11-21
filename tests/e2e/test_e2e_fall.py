@@ -14,17 +14,19 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     x, y = game.pos()
     game.js("""(() => { window.__f = []; const o = fallOf;
       fallOf = (p, now) => { const r = o(p, now); if (p === ents.get('agent' + myId)) __f.push([now, r ? (r.air ? 1 : 0) : -1, r ? r.body + liftOf(p) / zoom : 0, parts.length, wind ? 1 : 0, cam.y]); return r; }; return 1; })()""")
+    step, g = game.js("[RELIEF_STEP, FALL.g]")
+    T = (2 * 8 * step / g) ** .5 * 1000                                                          # ms in the air from eight layers (a level is a cube: 16 art px, 0.51 s)
     game.hold(["d"], 450)
-    game.sleep(250)
-    assert game.js("fallQuake !== null") and game.js("flashes.has('agent' + myId)")            # it hurt: the ground shakes, you flash
+    game.wait("fallQuake !== null && flashes.has('agent' + myId)", timeout=3000)                # it hurt: the ground shakes, you flash
     assert any(f["text"] == "-2.5" for f in game.js("floats"))                                  # (8 layers: 5 over what is safe, half a heart each)
     game.sleep(700)
     rec = game.js("__f")
     air = [r for r in rec if r[1] == 1]
-    assert 280 < air[-1][0] - air[0][0] < 440, air[-1][0] - air[0][0]                            # 0.36 s by the fall's own time, not a step's 0.2
+    assert .78 * T < air[-1][0] - air[0][0] < 1.22 * T, (air[-1][0] - air[0][0], T)               # by the fall's own time, not a step's 0.2
     heights = [r[2] for r in air]
-    drops = [a - b for a, b in zip(heights, heights[1:])]
-    assert heights[0] > 60 and all(d > 0 for d in drops) and drops[-1] > 2.5 * drops[1]          # from 64 px up, faster and faster
+    frames = [r for i, r in enumerate(air) if i == 0 or r[0] - air[i - 1][0] > 8]                # (a body is asked for twice a frame, ms apart: one height a frame)
+    drops = [a[2] - b[2] for a, b in zip(frames, frames[1:])]
+    assert heights[0] > 8 * step * .85 and all(d > 0 for d in drops) and drops[-1] > 2.5 * drops[1], (heights, [r[0] for r in air])          # from eight levels up, faster and faster
     assert max(r[4] for r in air) == 1 and game.js("wind") is None                               # the wind while you fall, gone once you are down
     before, after = max(r[3] for r in rec if r[0] < air[0][0]), max(r[3] for r in rec if r[0] > air[-1][0])
     assert after >= before + 12, (before, after)                                                 # dust where you land
