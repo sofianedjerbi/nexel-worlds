@@ -5,7 +5,7 @@ apart under me"); behind land (a hill, a wall you built) your body is hidden whe
 it one px in two (it was drawn whole over the wall: "I stand on it"); in a pit seen from the side the floor shows through
 no window under the open sky: from above its own south wall hides what is behind it, its floor lies inside its rim (it lay on
 the meadow, "a drawer pulled out"); the eye tilts by one rule (your feet two levels under the land round you); a tunnel is not opened from afar nor from the hill over it; a fire under the
-land does not light the meadow; who stands on the meadow over your room has its ground under them."""
+land does not light the meadow; under a roof who stands on the land over you is not seen (no mob through the ceiling), who is in your room is."""
 
 from test_e2e_hd_land import AT_
 from test_e2e_hd_sun import hd
@@ -193,11 +193,10 @@ def test_a_tunnel_is_not_opened_from_afar_nor_from_the_hill_over_it(browser, ser
     tidy(g, x, y)
 
 
-def test_a_fire_under_the_land_does_not_light_the_meadow_and_who_stands_over_your_room_has_the_ground_under_them(browser, server):
+def test_a_fire_under_the_land_does_not_light_the_meadow(browser, server):
     g = hd(browser, server)
     g.js("setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
     x, y = g.pos()
-    cid = g.spawn("chicken", 1, 2, still=4000)                             # (on the meadow, before the room is under it; it stays)
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[-14, -11, 0])
     g.give(campfire=1)
     g.rest()
@@ -221,17 +220,25 @@ def test_a_fire_under_the_land_does_not_light_the_meadow_and_who_stands_over_you
     state = g.js(f"[clock.phase, HdLook.win.a, HdLook.cam.pitch, combAt({x + 2}, {y}), HdLook.stands()]")
     assert lit["floor"] > dark["floor"] + 15, (dark, lit, state)           # the room's floor by the fire: lit
     assert abs(lit["meadow"] - dark["meadow"]) <= 6, (dark, lit, state)    # the meadow over it: as it was (it had a warm ring, 14 levels over the fire)
-    # somebody on the meadow over the room
-    g.hour(.3, still=True)
-    key = f"chicken{cid}"
-    g.wait(f"ents.has('{key}') && HdLook.bodies().some((b) => b[0] === 'chicken')", timeout=8000)
+    tidy(g, x, y)
+
+
+def test_under_a_roof_a_hen_on_the_land_over_you_is_not_drawn_a_hen_in_your_room_is(browser, server):
+    """A room 4 deep under a roof two thick; a hen on the meadow right over your head and one in the room with you. The one up
+    there was drawn in full colour over the window, the ground under its feet kept one px in two: "underground still shows mobs above me"."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    up = g.spawn("chicken", 0, -1, still=60000)                            # on the meadow (level 0), before the room is dug under it
+    g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[-4, -2, 0])
     g.rest()
-    b = g.js(f"(() => {{ const q = ents.get('{key}'); return [Math.round(q.x), Math.round(q.y), q.e.z, q.x, q.y]; }})()")
-    assert b[:3] == [x + 1, y + 2, 0], (b, g.js("HdLook.bodies()"))        # where it was put, on the meadow: over the room's south rows, where the land's top is inside the window on the screen
-    pair = [g.js(AT_, [b[0] + .5 + o / 16, b[1] + .9, 0]) for o in (-7, -5)]     # its tile's south-west corner: not its body
-    grass = lambda c: c[1] >= c[0] and c[1] > c[2] + 40                    # (a meadow's px: its green, and its pale tufts: (210, 225, 119) was "not green", once in eight runs)
-    assert sum(grass(c) for c in pair) == 1, (pair, b, g.js("[HdLook.bodies(), HdLook.win.a, HdLook.win.n]"))     # the grass under its feet: one px in two of it stays (it hung in the room's picture, nothing under it)
-    assert not grass(g.js(AT_, [x - 1.5, y + 2.5, 0])) and not grass(g.js(AT_, [x - 1.5 + 2 / 16, y + 2.5, 0]))    # a tile of the roof nobody stands on: lifted
+    go(g, x, y, -4, "HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.9")
+    down = g.spawn("chicken", 2, 0, still=60000)                           # at your level: in the room
+    g.wait(f"ents.has('chicken{up}') && HdLook.bodies().some((b) => b[0] === 'chicken' && b[1] === -4)", timeout=8000)
+    g.rest()
+    where = g.js(f"[['chicken{up}', 'chicken{down}'].map((k) => {{ const q = ents.get(k); return q && [Math.round(q.x), Math.round(q.y), q.e.z]; }}), HdLook.winAt({x}, {y - 1})]")
+    assert where[0] == [[x, y - 1, 0], [x + 2, y, -4]] and where[1], where       # one on the roof over the window's tile north of you, one on your floor
+    assert g.js("HdLook.bodies()") == [["chicken", -4]], where            # only the one in your room is drawn (and so no name, no mark for the one up there)
     tidy(g, x, y)
 
 
