@@ -12,6 +12,7 @@ body.title #brand, body.title #side { display:none; }
     0 calc(2 * var(--L)) 0 #5b3f36, var(--L) calc(2 * var(--L)) 0 #5b3f36, calc(-1 * var(--L)) calc(2 * var(--L)) 0 #5b3f36, 0 calc(3 * var(--L)) 0 rgba(43,35,32,.35); }
 #joinbox .logo em { font-style:normal; color:#ffd36a; display:block; }
 #joinbox .say { left:7vw; top:calc(13vh + 27 * var(--L)); max-width:40vw; font-size:calc(9 * var(--u3)); line-height:calc(11 * var(--u3)); color:#fff6e2; text-shadow:var(--u3) var(--u3) 0 #2b2320; pointer-events:none; }
+#joinbox .say { width:fit-content; padding:0 var(--u3); background:rgba(43,35,32,.62); box-decoration-break:clone; -webkit-box-decoration-break:clone; }   /* (read over any island: a dark strip of the ink behind its words, square, as the F3 lines: it was unreadable over trees and bubbles) */
 #joinbox .menu { right:8vw; top:50%; transform:translateY(-50%); width:calc(150 * var(--q)); padding:calc(5 * var(--q)); display:flex; flex-direction:column; gap:calc(3 * var(--q));
   color:var(--ink); font-size:calc(9 * var(--q)); line-height:calc(9 * var(--q)); background:#e8cfa6;
   box-shadow:inset var(--q) var(--q) 0 #fbf0d6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(4 * var(--q)) 0 rgba(60,40,30,.25); }

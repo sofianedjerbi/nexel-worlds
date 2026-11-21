@@ -99,22 +99,24 @@ def test_in_a_hole_the_eye_looks_from_above_and_its_floor_lies_inside_its_rim(br
 
 def test_a_deep_shaft_is_darker_than_a_shallow_one(browser, server):
     """Shaft 3 and shaft 6 were the same picture (a cat in a brown box). From above, the wall strata of the north wall fill
-    more of the opening the deeper it is (3 px a level), darker downward: the opening of shaft 6 is darker than shaft 3's.
-    (You stand in both openings, drawn at the rim's line: your own px, cream and purple, are not counted.)"""
+    more of the opening the deeper it is (3 px a level), and the walls of a hole are darker the deeper the hole is (vox_style_glsl.js:
+    2 deep light brown, 6 near black, 12 black): the opening of shaft 6 is much darker than shaft 3's, shaft 12's darker still.
+    (You stand in the openings, drawn at the rim's line: your own px, cream and purple, are not counted.)"""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
     g.rpc("dev_col", tiles=[[x + 3, y]], col=[-3])
     g.rpc("dev_col", tiles=[[x + 7, y]], col=[-6])
+    g.rpc("dev_col", tiles=[[x + 11, y]], col=[-12])
     g.rest()
     LUM = """([x, y]) => { const a = HdLook.screenOf(x + .5, y, 0), b = HdLook.screenOf(x + .5, y + 1, 0), k = cv.width / innerWidth; let s = 0, n = 0;
       for (let v = Math.ceil(a[1] * k) + 2; v < Math.floor(b[1] * k) - 2; v++) for (let dx = -16; dx <= 16; dx += 2) { const d = HdLook.read(Math.round(a[0] * k + dx), v, 1, 1).data; if (d[0] > 185 || d[2] > d[1] + 8) continue; s += .3 * d[0] + .59 * d[1] + .11 * d[2]; n++; } return [s / n, n]; }"""
     out = {}
-    for d, tx in ((3, x + 3), (6, x + 7)):
+    for d, tx in ((3, x + 3), (6, x + 7), (12, x + 11)):
         s = go(g, tx, y, -d, "!HdLook.busy && HdLook.cam.pitch === 68")
         assert s["pitch"] == 68, s
         out[d] = g.js(LUM, [tx, y])
-    assert out[6][1] >= 6 and out[6][0] < out[3][0] - 10, out
+    assert out[6][1] >= 6 and out[6][0] < out[3][0] - 25 and out[12][0] < out[6][0], out     # (it was 68 against 85: one picture)
     tidy(g, x, y)
 
 

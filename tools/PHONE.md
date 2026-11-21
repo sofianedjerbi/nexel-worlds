@@ -25,6 +25,10 @@ Two ways: a phone simulated on this Mac (`tools/phone_sim.py`), and the real pho
 - **Scenarios** (`--only stand,walk,...`, `--secs 5` each): stand; walk and sprint (the touch stick pushed 40 / 80 px,
   east then west); stair (down a dug stair into a room under the land); swim (across deep water); title (the page
   loaded, the first screen, Wake up, until the land is drawn). Each is set up at full speed, then played slowed.
+  The title's parts: `title` (the island shown till Wake up), `woke` (from Wake up on), each with fps, long tasks,
+  `build_ms` (the land's making) and `hd_ms` (the HD look's script); `land_s` (Wake up to the land drawn, s);
+  `long200` (tasks over 200 ms, s from the island shown: under 0 is the page's load). `went` holds timestamps, not
+  durations. `--profile title` profiles the island's frames alone.
 - **A frame**: its gap since the last, the script's ms, the HD look's draws and faces, the GPU's ms (the GPU's own
   clock: `js/gpu_time.js`), long tasks, the heap. `--profile stair,title`: a CPU profile of those, their top
   functions (self time, a canvas call named with the game's function that called it; and total time).
