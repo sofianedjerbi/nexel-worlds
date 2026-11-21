@@ -84,7 +84,7 @@ def test_build_mode_the_box_is_the_cell_space_and_x_change(browser, server, s):
 @pytest.mark.parametrize("s", ["meadow", "block", "ledge", "stair"])
 def test_playing_by_keys_the_drawn_cell_is_the_cell_that_changes(browser, server, s):
     """Out of build mode, earth in hand: Space raises the cell drawn (on the ground in front, on the block's top,
-    on the low ground past the ledge); X digs the block you stand on, drawn orange under your feet."""
+    on the low ground past the ledge); X digs the block you face, drawn orange on it."""
     game = hd(browser, server)
     game.give(dirt=6)
     stage(game, s)
@@ -98,6 +98,8 @@ def test_playing_by_keys_the_drawn_cell_is_the_cell_that_changes(browser, server
     put, dig = game.js("Target.target('use')"), game.js("Target.target('alt')")
     assert put and put["kind"] == "place" and dig and dig["kind"] == "break", (put, dig)
     assert changed(game, " ", x, y) == [(put["x"], put["y"], put["z"])]
+    game.frames(3)
+    dig = game.js("Target.target('alt')")                                                 # (X: the block you face, as it is now: the one just put there)
     assert changed(game, "x", x, y) == [(dig["x"], dig["y"], dig["z"])]
     assert not game.errors
 

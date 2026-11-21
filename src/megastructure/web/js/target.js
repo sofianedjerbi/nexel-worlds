@@ -33,7 +33,6 @@ const Target = (() => {
     const ways = (x, y, z) => !!nx && nx.x === x && nx.y === y && nx.z === z;
     const a = keys ? facingIntent(false) : aimedTile(), it = a && a.it, p = a && a.p, alt = keys ? facingIntent(true) : null, up = keys ? DigUp.aim() : null;
     if (way && way.key === "alt") add("alt", "break", s.x, s.y, h, {mine: true});      // the way out's X: the block you stand on
-    else if (alt && alt.it.cell !== undefined) add("alt", "break", alt.p.x, alt.p.y, alt.it.cell);              // X: the block you face, its box (keyboard.js digAhead)
     if (up) add("up", "break", up.x, up.y, up.z, {way: ways(up.x, up.y, up.z)});                                   // R: the block it cuts
     if (way && way.key === "use" && now) add("use", "break", now.x, now.y, now.z, {way: ways(now.x, now.y, now.z)});
     else if (it && p && tile(p.x, p.y) && !it.info && !it.walk) {
@@ -43,6 +42,7 @@ const Target = (() => {
       else if (LAND_BLOCKS.has(it.ghost)) add("use", "place", p.x, p.y, it.z !== undefined ? it.z : topAt(p.x, p.y) + 1, {ok: it.ok !== false, item: it.ghost});
       else if (!api.opts.thing && !it.ent && !it.steps) add("use", "use", p.x, p.y, it.z !== undefined ? it.z : api.opts.shown ? api.opts.shown(p.x, p.y) : settleNear(p.x, p.y, h), {ok: it.ok !== false, flat: true});
     }
+    if (!(way && way.key === "alt") && alt && alt.it.cell !== undefined) add("alt", "break", alt.p.x, alt.p.y, alt.it.cell);   // X: the block you face, its box (keyboard.js digAhead); after Space's: the same wall cell is one box, Space's
     return out;
   }
   api.cells = cells;
