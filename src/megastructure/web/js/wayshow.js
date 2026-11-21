@@ -34,7 +34,7 @@ const WayShow = (() => {
     if (!s) { led = follow = false; clear(); return hide(now); }
     const h = myZ(s.x, s.y), roof = topAt(s.x, s.y) > h, under = roof || !WayOut.out(W, s.x, s.y, h), pk      // (under a roof of land, or walled in: a shaft's bottom, the stair you are cutting out of it)
       = s.x + "," + s.y + "," + h;
-    if (pk !== posKey || walking) { posKey = pk; stoodAt = now; off = false; }
+    if (pk !== posKey || walking) { if (pk !== posKey) off = false; posKey = pk; stoodAt = now; }      // (put away: until you have WALKED: a key held against the wall you work on brought it back)
     if (!under) {      // (out, but for the last step up onto the surface, the way you were going: its dots, until you stand there)
       const d = (led || follow) && heading && DX[heading], q = d && {x: s.x + d[0], y: s.y + d[1]}, hd = heading, on = !!q && topAt(q.x, q.y) === h + 1 && landAt(h, q.x, q.y, s.x, s.y) === h + 1;
       if (!on) led = follow = false; clear();

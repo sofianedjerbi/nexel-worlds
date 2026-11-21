@@ -81,9 +81,9 @@ def test_under_a_roof_an_xray_window_shows_your_floor_and_every_px_outside_it_is
     c = g.js(AT_, [x + 2.5, y + 1.5, z - 14])
     assert c[1] > c[0] + 15 and c[1] > c[2] + 40, c                   # (no window: meadow green over your floor)
     window_off(g, False)
-    room = g.js(BOX, [[[x + i, y + j, z - 14 + k] for i in (-3, 4) for j in (-2, 3) for k in (0, 3)], 64])   # (the room as the eye has it, and its rim of half a tile, with a little room for the lens)
+    room = g.js(BOX, [[[x + i, y + j, z - 14 + k] for i in (-3, 4) for j in (-2, 3) for k in (0, 3)] + [[x + i, y - 2, z] for i in (-3, 4)], 64])   # (the room as the eye has it, its north wall up to the surface's line (the section, at the ground's true height), and its rim of half a tile, with a little room for the lens)
     d = g.js(DIFF, ["win", "whole", room])
-    assert .02 < d["share"] < .3 and d["out"] < .002, (d, room)        # (a room 7 x 5 is a sixth of this small screen)
+    assert .02 < d["share"] < .34 and d["out"] < .002, (d, room)        # (a room 7 x 5 is a sixth of this small screen)
     assert g.js("HdLook.catSeen()") > .8
 
 

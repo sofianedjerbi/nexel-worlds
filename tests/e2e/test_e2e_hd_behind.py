@@ -49,7 +49,7 @@ def test_on_a_small_hill_and_behind_it_no_window_opens_and_behind_it_you_show_th
     assert green(g.js(AT_, [x + 5.5, y + 2.5, 4])), "the hill's top is its own grass"
     behind = go(g, x + 4, y)                                               # one tile north of it: behind it, not under it
     assert behind["n"] == 0 and behind["a"] == 0 and behind["pitch"] < 36.1, behind
-    assert .05 < behind["seen"] < .6, behind                               # hidden where the hill is in front, one px in two of you through it (it was 1: all of you, over a hill opened like a box)
+    assert .05 < behind["seen"] < .8, behind                               # hidden where the hill is in front, one px in two of you through it, in the disc opened round you (it was 1: all of you, over a hill opened like a box)
     front = go(g, x + 4, y + 5)
     assert front["n"] == 0 and front["seen"] > .9, front
     tidy(g, x, y)
@@ -91,6 +91,15 @@ def test_in_a_pit_seen_from_the_side_the_floor_shows_through_a_veil_of_the_meado
     tint = lambda k: (on[k][1] - on[k][0]) - (off[k][1] - off[k][0])
     assert not any(green(c) for c in list(on.values()) + list(off.values())), (on, off)      # the floor's own px, with the veil too (the first veil was a dark checker: one px in two was grass)
     assert max(tint("west"), tint("east")) >= 6, (on, off)                 # a little of the meadow's green over the floor: seen through the ground (one side may be your way: clear)
+    # the veil's dark line along the hole's south edge goes and comes WITH the wash, in steps (it was all there over a half and gone under it: a pop when you stepped under a roof)
+    EDGE = """([x0, y0, n]) => { const o = []; for (let i = 0; i < n; i++) { const a = HdLook.screenOf(x0 + (i + .5) / 16, y0, 0), k = devicePixelRatio; o.push([...HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), 1, 1).data.slice(0, 3)]); } return o; }"""
+    def line(v):
+        g.js(f"(() => {{ HdLook.veil = {v}; return 1; }})()"); g.frames(3)
+        return g.js(EDGE, [x + 3, y + 2 + 1 / 32, 48])
+    none = line(0)
+    n = {v: sum(1 for a, b in zip(line(v), none) if sum(abs(p - q) for p, q in zip(a, b)) > 40) for v in (.3, .7, 1)}
+    g.js("(() => { HdLook.veil = 1; return 1; })()")
+    assert n[1] >= 30 and 4 <= n[.3] < n[.7] <= n[1] and n[.3] < .6 * n[1], n
     assert all(sum(on[k]) >= sum(off[k]) - 12 for k in on), (on, off)      # and never darker for it
     assert on["mine"] == off["mine"], (on, off)                            # your own tile: clear
     grass = lambda c: c[1] >= c[0] and c[1] > c[2] + 40
@@ -189,3 +198,54 @@ def test_a_fire_under_the_land_does_not_light_the_meadow_and_who_stands_over_you
     assert sum(grass(c) for c in pair) == 1, (pair, b, g.js("[HdLook.bodies(), HdLook.win.a, HdLook.win.n]"))     # the grass under its feet: one px in two of it stays (it hung in the room's picture, nothing under it)
     assert not grass(g.js(AT_, [x - 1.5, y + 2.5, 0])) and not grass(g.js(AT_, [x - 1.5 + 2 / 16, y + 2.5, 0]))    # a tile of the roof nobody stands on: lifted
     tidy(g, x, y)
+
+
+def test_the_ground_before_a_tunnel_s_mouth_has_no_shade_of_the_hole(browser, server):
+    """Standing in a tunnel through a hill, a tile from its mouth: the window's first box is the tile before the mouth,
+    under the open sky. The meadow seen through it is plain ground, not a floor in a hole: it took the hole's inner
+    shade, counted from the hill's top: a dark line on the grass beside the hill, at the ceiling's height."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    hill = [[x + i, y + j] for j in range(-3, 4) for i in range(4, 13)]
+    g.rpc("dev_col", tiles=hill, col=[6])
+    g.rpc("dev_col", tiles=[[x + i, y] for i in range(4, 13)], col=[0, 2, 6])
+    g.rest()
+    try:
+        s = go(g, x + 5, y, 0, "HdLook.win.a === 1 && !HdLook.busy")
+        g.js("(() => { WayShow.paint = () => {}; return 1; })()"); g.frames(3)
+        assert g.js(f"!!HdLook.winAt({x + 3}, {y})"), s                      # the tile before the mouth is of the window
+        P = [[x + 3 + i / 4, y - 1 + j / 8, 0] for i in (1, 2) for j in range(-3, 8)]     # the meadow north of it, beside the hill
+        on = [g.js(AT_, p) for p in P]
+        g.js("HdLook.nowin = true"); g.wait("HdLook.win.a === 0", timeout=4000); g.frames(2)
+        off = [g.js(AT_, p) for p in P]
+        g.js("HdLook.nowin = false")
+        bad = [(p, c, d) for p, c, d in zip(P, on, off) if any(abs(a - b) > 8 for a, b in zip(c, d))]
+        assert not bad, bad
+    finally:
+        g.rpc("dev_col", tiles=hill, col=[0])
+
+
+def test_behind_a_cliff_the_disc_round_you_is_opened_in_it(browser, server):
+    """Behind land taller than you (a cliff's back), on the surface: the disc that is opened in a roof or a tree in
+    front of you is opened in the land too: one px in two of it, you and the ground at your feet in the others.
+    (You were a faint checker on the cliff's face, a sixth of you, and saw nothing round you.) In front of it: nothing."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    hill = [[x + i, y + j] for j in range(-1, 4) for i in range(3, 10)]
+    g.rpc("dev_col", tiles=hill, col=[6])
+    g.rest()
+    GROUND = """([cx, cy]) => { let n = 0, gr = 0; const k = devicePixelRatio; for (let j = -14; j <= 0; j++) for (let i = -6; i <= 6; i++) { const a = HdLook.screenOf(cx + .5 + i / 8, cy + .5 + j / 8, 0), c = HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), 1, 1).data; n++; if (c[1] > c[0] + 15 && c[1] > c[2] + 40) gr++; } return gr / n; }"""
+    try:
+        s = go(g, x + 6, y - 2)
+        g.wait("HdLook.catSeen() > .36", timeout=4000)                     # (the disc opens over 120 ms)
+        s = g.js(STATE)
+        assert s["n"] == 0 and s["pitch"] < 36.1 and .36 < s["seen"] < .7, s      # no window; one px in two of you (it was .16)
+        assert g.js(GROUND, [x + 6, y - 2]) > .15                          # the meadow at your feet shows through the cliff
+        assert g.js(GROUND, [x + 4, y - 2]) == 0                           # two tiles beside you: the cliff, whole
+        s = go(g, x + 6, y + 5)
+        assert s["seen"] > .95, s                                          # in front of it: whole, nothing opened
+    finally:
+        g.rpc("dev_col", tiles=hill, col=[0])
+

@@ -4,7 +4,7 @@
 // how far from the eye the nearest of those boxes is (two numbers a px: the boxes as they are, and the same a little wider: the window's rim).
 // The land's painter (vox_style_glsl.js) then leaves out what is nearer than that: you look through a hole of your cave's own shape, straight to its floor
 // and walls; outside it the world is untouched. Walking moves nothing but the eye; a space that changed changes these few boxes, never the land.
-//   VoxStyleWin.create(gl) -> {set(tiles: [[x, y, lo, hi, sky: 1 under the open sky]...]), n, ver, tiles, pass(m, ctr, bend, w, h): the mask's picture is made (unit 4 holds it after), back(rgb): what is behind the land taken away}
+//   VoxStyleWin.create(gl) -> {set(tiles: [[x, y, lo, hi, sky: 1 under the open sky]...], per), n, ver, tiles, pass(m, ctr, bend, w, h): the mask's picture is made (unit 4 holds it after), back(rgb): what is behind the land taken away}
 const VoxStyleWin = (() => {
   const H = .5, FAR = "255.9";
   const MV = `#version 300 es
@@ -30,10 +30,10 @@ const VoxStyleWin = (() => {
       q([x0, b, y0], [x1, b, y0], [x1, b, y1], [x0, b, y1]); q([x0, b, y1], [x1, b, y1], [x1, a, y1], [x0, a, y1]); q([x0, b, y0], [x1, b, y0], [x1, a, y0], [x0, a, y0]);
       q([x0, b, y0], [x0, b, y1], [x0, a, y1], [x0, a, y0]); q([x1, b, y0], [x1, b, y1], [x1, a, y1], [x1, a, y0]); return o;
     }
-    function set(list, gn = .5) {
+    function set(list, per) {   // (per(tile) -> tiles its box is wider to the north: the section's rows lie there)
       tiles = list; n = list.length * 30; ver++; const d = new Float32Array(18 + n * 6); let o = 0;
       for (const i of [0, 1, 2, 0, 2, 3]) { d[o++] = [-1, 1, 1, -1][i]; d[o++] = [1, 1, -1, -1][i]; d[o++] = 0; }   // (the whole picture, for `back`)
-      for (const g of [0, gn]) for (const [x, y, lo, hi, sky] of list) o = box(d, o, x, y, lo, hi, g, sky, g ? .25 : 0);
+      for (const g of [0, 1]) for (const t of list) o = box(d, o, t[0], t[1], t[2], t[3], g ? per(t) : 0, t[4], g ? .25 : 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, d, gl.DYNAMIC_DRAW);
     }
     function pass(m, ctr, bend, W, Hh) {

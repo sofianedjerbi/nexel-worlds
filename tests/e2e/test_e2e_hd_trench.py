@@ -46,15 +46,16 @@ def test_a_stair_s_treads_are_warm_steps_lighter_at_the_top_and_the_floor_is_a_g
     assert all(warm(c) for c in treads.values()), treads                         # steps you can walk: warm earth, the open ones too (they were (106, 90, 85): grey)
     assert lum(treads[2]) > lum(treads[3]) > lum(treads[4]) and lum(treads[2]) > lum(treads[4]) * 1.1 and lum(treads[7]) > lum(treads[8]), treads    # the top ones lighter: down is read
     assert g.js("HdLook.raw()") == 0
-    # the passage at its foot, one tile wide, 14 deep, a roof three over its floor: the section over its north wall is thin, the floor a good part of what the hole shows
+    # the passage at its foot, one tile wide, 14 deep, a roof three over its floor: the section over its north wall is the ground's true height in strata, the floor wider than its own wall
     at(g, x + 17, y, -14)
     top = g.js(f"HdLook.screenOf({x + 17.5}, {y}, -11)")
     col = g.js("([px, py]) => { const k = devicePixelRatio, o = []; for (let j = 1; j < 40; j++) o.push([...HdLook.read(Math.round(px * k), Math.round((py - j * zoom) * k), 1, 1).data.slice(0, 3)]); return o; }", top)
     sect = next((i for i, c in enumerate(col) if c[1] > c[0] + 8), len(col))    # rows of earth over the wall's top, up to the meadow's green
     a, b, w = (g.js(f"HdLook.screenOf({x + 17.5}, {y + dy}, {z})")[1] / g.js("zoom") for dy, z in ((0, -14), (1, -14), (0, -11)))
     floor, wall = b - a, a - w
-    assert 3 <= sect <= 10, (sect, col)                                          # (it was 16 rows and more at this depth: a slab of earth over a thin line of floor)
-    assert floor / (floor + wall + sect) >= .4, (floor, wall, sect)
+    assert sect >= 24, (sect, col)                                               # (the ground over the passage's ceiling, 11 levels, at its true height from this eye, in strata: test_e2e_hd_stair.py. It was capped at half the floor: a passage 14 down read 2 down)
+    assert sum(col[1]) < sum(col[sect - 4]) * .7, col                            # darker down: one deep wall, not a slab of one tone lying over the floor
+    assert floor / (floor + wall) >= .5, (floor, wall, sect)
     assert warm(g.js(TILE, [x + 16, y, -14])) and g.js("HdLook.catSeen()") > .8
 
 
