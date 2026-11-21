@@ -49,7 +49,7 @@ def test_on_a_small_hill_and_behind_it_no_window_opens_and_behind_it_you_show_th
     assert green(g.js(AT_, [x + 5.5, y + 2.5, 4])), "the hill's top is its own grass"
     behind = go(g, x + 4, y)                                               # one tile north of it: behind it, not under it
     assert behind["n"] == 0 and behind["a"] == 0 and behind["pitch"] < 36.1, behind
-    assert .05 < behind["seen"] < .8, behind                               # hidden where the hill is in front, one px in two of you through it, in the disc opened round you (it was 1: all of you, over a hill opened like a box)
+    assert behind["seen"] > .9, behind                                     # in the disc opened round you, whole (it was one px in two of you in the disc's own px: a checker cat, audit A8 B5)
     front = go(g, x + 4, y + 5)
     assert front["n"] == 0 and front["seen"] > .9, front
     tidy(g, x, y)
@@ -142,8 +142,8 @@ def test_in_a_shaft_six_deep_no_px_of_your_body_lies_outside_the_hole_s_opening(
 
 
 def test_the_eye_tilts_by_one_rule(browser, server):
-    """Your feet two levels or more under the land round you (ten of the sixteen tiles two steps away, each as high as
-    it or the tile between: a wall or two beside you is not "round you"): from above; within one level of it: the surface's pitch. Every hole alike. The table: [where, its level, from above?], in the order walked."""
+    """Your feet two levels or more under the land round you (ten of sixteen straight ways out, 6 tiles long, run into
+    land two over your feet: a wall or two beside you is not "round you"): from above; within one level of it: the surface's pitch. Every hole alike. The table: [where, its level, from above?], in the order walked."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -234,8 +234,8 @@ def test_a_fire_under_the_land_does_not_light_the_meadow_and_who_stands_over_you
 
 
 def test_the_ground_before_a_tunnel_s_mouth_has_no_shade_of_the_hole(browser, server):
-    """Standing in a tunnel through a hill, a tile from its mouth: the window's first box is the tile before the mouth,
-    under the open sky. The meadow seen through it is plain ground, not a floor in a hole: it took the hole's inner
+    """Standing in a tunnel through a hill, a tile from its mouth: the tile before the mouth is under the open sky
+    and no box of the window (it was its first box). The meadow seen through it is plain ground, not a floor in a hole: it took the hole's inner
     shade, counted from the hill's top: a dark line on the grass beside the hill, at the ceiling's height."""
     g = hd(browser, server)
     calm(g)
@@ -247,7 +247,7 @@ def test_the_ground_before_a_tunnel_s_mouth_has_no_shade_of_the_hole(browser, se
     try:
         s = go(g, x + 5, y, 0, "HdLook.win.a === 1 && !HdLook.busy")
         g.js("(() => { WayShow.paint = () => {}; return 1; })()"); g.frames(3)
-        assert g.js(f"!!HdLook.winAt({x + 3}, {y})"), s                      # the tile before the mouth is of the window
+        assert not g.js(f"!!HdLook.winAt({x + 3}, {y})"), s                  # the tile before the mouth is under the open sky: not of the window (audit A8: the window on the open shaft you stepped out of drew its floor south of its rim)
         P = [[x + 3 + i / 4, y - 1 + j / 8, 0] for i in (1, 2) for j in range(-3, 8)]     # the meadow north of it, beside the hill
         on = [g.js(AT_, p) for p in P]
         g.js("HdLook.nowin = true"); g.wait("HdLook.win.a === 0", timeout=4000); g.frames(2)
@@ -261,7 +261,7 @@ def test_the_ground_before_a_tunnel_s_mouth_has_no_shade_of_the_hole(browser, se
 
 def test_behind_a_cliff_the_disc_round_you_is_opened_in_it(browser, server):
     """Behind land taller than you (a cliff's back), on the surface: the disc that is opened in a roof or a tree in
-    front of you is opened in the land too: one px in two of it, you and the ground at your feet in the others.
+    front of you is opened in the land too: one px in two of it, the ground at your feet in the others, you whole in it.
     (You were a faint checker on the cliff's face, a sixth of you, and saw nothing round you.) In front of it: nothing."""
     g = hd(browser, server)
     calm(g)
@@ -272,9 +272,9 @@ def test_behind_a_cliff_the_disc_round_you_is_opened_in_it(browser, server):
     GROUND = """([cx, cy]) => { let n = 0, gr = 0; const k = devicePixelRatio; for (let j = -14; j <= 0; j++) for (let i = -6; i <= 6; i++) { const a = HdLook.screenOf(cx + .5 + i / 8, cy + .5 + j / 8, 0), c = HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), 1, 1).data; n++; if (c[1] > c[0] + 15 && c[1] > c[2] + 40) gr++; } return gr / n; }"""
     try:
         s = go(g, x + 6, y - 2)
-        g.wait("HdLook.catSeen() > .36", timeout=4000)                     # (the disc opens over 120 ms)
+        g.wait("HdLook.catSeen() > .9", timeout=4000)                      # (the disc opens over 120 ms)
         s = g.js(STATE)
-        assert s["n"] == 0 and s["pitch"] < 36.1 and .36 < s["seen"] < .7, s      # no window; one px in two of you (it was .16)
+        assert s["n"] == 0 and s["pitch"] < 36.1 and s["seen"] > .9, s     # no window; all of you in the disc (it was one px in two, .16 before the disc)
         assert g.js(GROUND, [x + 6, y - 2]) > .15                          # the meadow at your feet shows through the cliff
         assert g.js(GROUND, [x + 4, y - 2]) == 0                           # two tiles beside you: the cliff, whole
         s = go(g, x + 6, y + 5)
