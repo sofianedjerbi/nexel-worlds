@@ -161,7 +161,12 @@ function heldName(n) { const e = $("heldname"); e.textContent = label(n); e.clas
   for (const [sx, sw, dx, dw] of cut) for (const [sy, sh, dy, dh] of cut) g.drawImage(im, sx, sy, sw, sh, dx, dy, dw, dh);
   const d = g.getImageData(0, 0, 34, 34), L = [255, 248, 232];
   for (let y = 0; y < 34; y++) for (let x = 0; x < 34; x++) if (x < 5 || y < 5 || x > 28 || y > 28) { const o = (y * 34 + x) * 4; for (let k = 0; k < 3; k++) d.data[o + k] = Math.round(d.data[o + k] * .62 + L[k] * .38); }
-  g.putImageData(d, 0, 0); document.documentElement.style.setProperty("--slotsel", `url(${c.toDataURL()})`); }; im.src = "assets/slot.png"; })();
+  g.putImageData(d, 0, 0); document.documentElement.style.setProperty("--slotsel", `url(${c.toDataURL()})`);
+  // every other slot's frame dark wood, the one in hand alone light ("use dark border everywhere and light for selected")
+  const e = document.createElement("canvas"); e.width = e.height = 30; const h = e.getContext("2d"); h.drawImage(im, 0, 0);
+  const q = h.getImageData(0, 0, 30, 30), D = [91, 63, 54];
+  for (let y = 0; y < 30; y++) for (let x = 0; x < 30; x++) if (x < 5 || y < 5 || x > 24 || y > 24) { const o = (y * 30 + x) * 4; for (let k = 0; k < 3; k++) q.data[o + k] = Math.round(q.data[o + k] * .45 + D[k] * .55); }
+  h.putImageData(q, 0, 0); document.documentElement.style.setProperty("--slotdark", `url(${e.toDataURL()})`); }; im.src = "assets/slot.png"; })();
 // Hearts and food sit on the hotbar, ten of each, halves allowed: a heart is a tenth of full health, a piece a tenth
 // of full food (state.js: HP_MAX, FOOD_MAX; a part of a half shows as the half). Hearts are the UI pack's small hearts (full,
 // half, empty); food is an apple drawn here in the hearts' own palette (plum outline, rose, glint, a leaf; empty is
