@@ -90,3 +90,40 @@ def test_a_sprint_in_the_water_is_twice_as_fast_and_leaves_a_longer_wake(game):
     assert 2 <= swum <= 3 and 4 <= dashed <= 6 and game.js("SWIM_PACE") == 2, (swum, dashed)   # 2.5 tiles a second, then five
     assert marks >= 18 and 8 <= slow <= 13 and ran is True, (slow, marks)                      # (its wake: a mark every 45 ms, not every 110)
     assert game.server()["swimming"] and not game.errors
+
+
+# The wake's picture as the HD look lays it on the water (swim.js wakePicture), read along the way they came: px of foam
+# in each band of 8 art px across, from where they are back to its end; and how far the marks reach (art px)
+WAKE = """(() => { const p = ents.get('agent' + myId), w = wakePicture(p, performance.now()); if (!w) return null;
+  const c = w.canvas, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, bands = [];
+  for (let x0 = w.fx; x0 - 8 >= 0; x0 -= 8) { let n = 0; for (let x = x0 - 8; x < x0; x++) for (let y = 0; y < c.height; y++) if (d[(y * c.width + x) * 4 + 3] > 0) n++; bands.push(n); }
+  const alpha = new Set(); for (let i = 3; i < d.length; i += 4) alpha.add(d[i]);
+  return {bands, reach: Math.max(...p.wake.map((m) => (p.x - m.x) * 16)), room: w.fx, alpha: [...alpha]}; })()"""
+
+
+@pytest.mark.realtime
+def test_a_sprints_wake_thins_out_to_nothing_at_its_end_and_is_not_cut(game):
+    """"When sprinting in water: particles are abruptly cut at the end". The HD look drew the wake in the swimmer's own
+    picture, four tiles wide: cut in a straight line a tile and a half behind them; and with no blending there, a
+    fleck's fading alpha was whole, then gone. Now it is a picture of its own on the water, as long as the wake, and a
+    mark thins out in whole px (a 2x2 pattern) and shortens over the last part of its life."""
+    game.clear_area(8)
+    s = game.server()
+    game.rpc("dev_needs", hp=20, hunger=20)
+    game.rpc("dev_stamp", x=s["x"] + 1, y=s["y"] - 4, rows=["(" * 40] * 9)
+    game.sleep(600)
+    game.hold(["d"], 600)
+    game.page.keyboard.down("Shift")
+    game.page.keyboard.down("d")
+    game.sleep(2200)                                           # (longer than a mark lives: the wake is whole, its end thinning)
+    w = game.js(WAKE)
+    game.page.keyboard.up("d")
+    game.page.keyboard.up("Shift")
+    assert w and w["reach"] > 6 * 16 and w["room"] >= w["reach"] + 16, w            # its picture holds all of it: nothing cut
+    assert set(w["alpha"]) <= {0, 255}, w["alpha"]                                 # whole px, no smooth alpha
+    b = [n for n in w["bands"]]
+    last = max(i for i, n in enumerate(b) if n)                                     # (its end, counted from them)
+    peak = max(b[: max(1, last // 2)])
+    tail = b[last - 3: last + 1]
+    assert peak > 0 and max(tail) <= .5 * peak and tail[-1] <= .25 * peak, (b, last)   # thinner and thinner to its end: no edge
+    assert not game.errors

@@ -11,7 +11,11 @@
   * { font-weight:normal !important; }
   canvas#c { position:fixed; inset:0; display:block; image-rendering:pixelated; cursor:url(../assets/cursor.png) 4 2, auto; }
   canvas#hd { position:fixed; left:0; top:0; display:none; image-rendering:pixelated; pointer-events:none; }      /* (js/hd_view.js: the HD look's world, a px of it an art px, under the game's canvas) */
-  #hdperf { position:fixed; left:4px; top:4px; z-index:99; padding:3px 5px; background:#3b2a25; color:#fff1d6; border:2px solid #1f1614; font:12px/1.25 monospace; white-space:pre; pointer-events:none; }
+  /* the debug screen (f3.js): lines of the pixel font, each on a strip of dark see-through, a shadow one art px (2 px at 18 px) down and right */
+  #f3 { position:fixed; left:4px; right:4px; top:4px; z-index:99; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:6px; pointer-events:none; color:#fff6e0; font:18px/20px SproutPixel, monospace; }
+  #f3 .f3c { display:flex; flex-direction:column; align-items:flex-start; } #f3 .f3perf { align-items:flex-end; }
+  #f3 .f3c div { padding:0 4px; background:rgba(24,16,20,.56); text-shadow:2px 2px 0 #2a1d22; white-space:pre; }
+  body.touch #f3 { flex-direction:column; gap:5px; font:9px/10px SproutPixel, monospace; } body.touch #f3 .f3perf { align-items:flex-start; } body.touch #f3 .f3c div { padding:0 2px; text-shadow:1px 1px 0 #2a1d22; }   /* (a phone: the font's own px, 3 of the screen's) */
   canvas#c.act { cursor:url(../assets/cursor_point.png) 10 2, pointer; }
   body, button, .slot, .rc, .ag { cursor:url(../assets/cursor.png) 4 2, auto; }
   .panel { position:fixed; border:calc(8 * var(--u3)) solid transparent; border-image:url(../assets/panel.png) 9 fill / calc(9 * var(--u3)) stretch;   /* (3 px a pixel, in whole screen pixels) */
@@ -134,7 +138,6 @@
   #sayhelp b { flex:none; font-weight:normal; color:#ffe6a8; } #sayhelp span { color:rgba(255,248,232,.55); overflow:hidden; text-overflow:ellipsis; }
   #sayhelp div.on { background:rgba(255,248,232,.17); } #sayhelp div.on span { color:rgba(255,248,232,.85); }
   #sayhelp div.note { cursor:default; }
-  #debug { position:fixed; right:12px; bottom:12px; display:none; color:#fff8e8; background:rgba(40,28,24,.6); padding:4px 8px; font-size:18px; z-index:3; }
   #vitals canvas.low { animation:jiggle .45s steps(2) infinite; }
   @keyframes jiggle { 0% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
   /* ---- what you can do right now, bottom right ---- */
@@ -143,7 +146,6 @@
   #actions div { display:flex; align-items:center; justify-content:flex-end; }
   #actions .key { order:2; display:inline-block; min-width:28px; padding:0 6px; margin-left:8px; text-align:center; line-height:18px; color:var(--ink);
     background:#f7e7c6; border:2px solid var(--ink); border-bottom-width:4px; border-radius:4px; text-shadow:none; }
-  #debug { bottom:auto; top:120px; }
   #actions div.bad { color:#ffb0a0; }
   #actions div.head { color:#fff1a8; }   /* (build mode's name, over its keys: build.js) */
   /* ---- the keys beside what they act on: the build cursor, what you face (prompts.js) ---- */
@@ -171,7 +173,6 @@
   body.touch .slot .k, body.touch #bag .cell .k, body.touch :is(#goalhint, #goals) kbd, body.touch #menu :is(.hh, .hf, .row.big) kbd, body.touch #menu .konly, body.touch #bagkeys kbd, body.touch #bag .bkey.konly { display:none; }   /* (a slot's key, the keys in a window's foot: there are no keys; what a foot's word does is done by tapping the word) */
   body.touch #bag .bkey { padding:0 calc(3 * var(--q)); height:calc(9 * var(--q)); background:#d9bd90; box-shadow:inset var(--q) var(--q) 0 #f8edd4, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #b8946a; color:var(--ink); }
   @media (max-height:520px) and (orientation:landscape) { body.touch #xpwrap { margin:0 0 2px; } body.touch #hud { gap:1px; bottom:calc(2px + env(safe-area-inset-bottom)); } }   /* (a phone on its side: the HUD close) */
-  body.touch #xyz { top:calc(62px + env(safe-area-inset-top)) !important; font-size:12px !important; }  /* (/coords, /perf: under the buttons at the top) */
   @media (max-width:600px) { body.touch #side { display:none; } }
   body.touch #vitals { min-width:max-content; gap:10px; } body.touch #hud .hudrow { justify-content:center; }
   body.touch #chatbox { width:min(460px, 60vw); bottom:calc(var(--tbot, 12px) + 150px); }

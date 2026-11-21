@@ -1,4 +1,4 @@
-// Side panels: who's awake, and the F3 debug overlay with server stats.
+// Side panels: who's awake; and the server's numbers on the debug screen (f3.js).
 
 // =====================================================================================
 //  Panels
@@ -15,7 +15,7 @@ function drawAgents() {
   });
   if (asleep) el.insertAdjacentHTML("beforeend", `<div class="ag off"><span class="n">+ ${asleep} asleep</span></div>`);
 }
-function drawStats() {
-  const m = metrics;
-  $("debug").textContent = `${m.agents_online} awake / ${m.agents_total} · ${m.tiles_changed} tiles changed · ${m.crafts} crafts · ${m.trades} gifts · ${m.deaths} deaths · ${m.tick_ms_p50} ms/tick`;
-}
+F3.add("server", () => {
+  const m = metrics; if (m.tick_ms_p50 === undefined) return ["Server -"];
+  return [`Server ${m.agents_online} awake / ${m.agents_total}  ${m.tick_ms_p50} ms/tick`, `${m.tiles_changed} tiles changed  ${m.crafts} crafts  ${m.trades} gifts  ${m.deaths} deaths`];
+});

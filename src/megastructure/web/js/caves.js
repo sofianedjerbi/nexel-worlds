@@ -18,7 +18,6 @@ function trackMe() {
     // a respawn; you then couldn't step off a height you weren't on)
     if (me.e && me.e.z !== undefined && me.e.x === x && me.e.y === y && Math.abs(me.x - x) < .001 && Math.abs(me.y - y) < .001 && !pred) myAt.z = settleAt(x, y, me.e.z);
   }
-  showXYZ();
 }
 // Someone under a roof (a hill, the ground over a tunnel) is not seen, but in the place you are in, where it is shown
 // through what hides it (xray.js). You: never unseen (hidden, and seen through it). (You: by the height you're at;

@@ -8,7 +8,7 @@
 //   view: {w, h, cam: {kind: "persp"|"iso"|"obl", pitch, fov, yaw}, at: [x, y, z], bend, dep: levels of land over your floor, light: {amb, lr, day,
 //          fog: [near, far], fogc: [r, g, b], clear, rim, sun: how dark the sun's shadows are, 0..1}, water: {canvas, x, y, ver},
 //          own: [[x, y, lo, hi, sky]...] boxes of the window that are yours whatever the search found (your tile, where you came from), rim: the level of the land round your hole (the depth told in the window, vox_style_glsl.js), behind: 0..1: land taller than you stands in front of you (the disc round you is opened in it, as in a roof or a tree), hole: 0..1: you are in a hole of the land looked at from above (its open walls get the strata too),
-//          t, veil: 0..1: how much of the veil (vox_style_glsl.js), clear: [[x, y, z]...] floors it is never on, sprites: [{canvas, x, y, z, fx, fy, on: stands on the land}] (its foot at px (fx, fy) of its canvas, drawn px for px; canvas._v: goes up when its picture changed),
+//          t, veil: 0..1: how much of the veil (vox_style_glsl.js), clear: [[x, y, z]...] floors it is never on, sprites: [{canvas, x, y, z, fx, fy, on: stands on the land, lie: lies flat on the land at level z (its canvas a px an art px of it), drawn after the water}] (its foot at px (fx, fy) of its canvas, drawn px for px; canvas._v: goes up when its picture changed),
 //          way: {on: Map "x,y" -> level, dim, key} | null (a way shown: `light`; its floors are in the window too), win: 0 | 1: the x-ray window shut or open (it goes there over 100 ms), sect: [ink, , , the dark behind the land]: the tone its rim is darkened to,
 //          hour: {wash: [r, g, b, a], lit: canvas | tint: [r, g, b]} the hour's light, laid here over what was drawn and not over the air}
 // What a frame costs the GPU: the land is ONE list (the chunks' faces, what stands, the far land, the frame's ghosts at its end), the shadows one, the water one;
@@ -94,15 +94,16 @@ const VoxStyle = (() => {
     // this frame's sprites as one list of vertices (x, y, z, u, v, sil, dim, fade: how much of it is there, 0..1: a 2x2 dither in four steps) and its runs: [first vertex, count, how: 0 as the land hides it, 1 you: whole where nothing hides you, one px in two where land does]
     function sprites(v, m, L, mp) {
       const RW = v.w, RH = v.h, me = (v.sprites || []).find((s) => s.top), late = (s) => !!me && (s.ty !== undefined && !s.flat ? s.ty > Math.floor(me.y) : s.y > me.y), PX = (f) => [(f[0] * .5 + .5) * RW, (.5 - f[1] * .5) * RH];
-      const order = [[], [], []]; for (const s of v.sprites || []) order[s.top ? 1 : late(s) ? 2 : 0].push(s);   // (?hd: you (top) are drawn after the water: you stand in it, not under it; what stands south of you after you, and where it covers you a checker of it)
-      const d = new Float32Array((order[0].length + order[1].length + order[2].length + 1) * 6 * SV6), runs = [[], [], []], ups = []; let n = 0;
-      for (let g = 0; g < 3; g++) for (const s of order[g]) {
+      const order = [[], [], [], []]; for (const s of v.sprites || []) order[s.lie ? 3 : s.top ? 1 : late(s) ? 2 : 0].push(s);   // (?hd: you (top) are drawn after the water: you stand in it, not under it; what stands south of you after you, and where it covers you a checker of it)   // (lie: on the water's face: after it (not tinted by it), before you (you are over it))
+      const d = new Float32Array((order[0].length + order[1].length + order[2].length + order[3].length + 1) * 6 * SV6), runs = [[], [], [], []], ups = []; let n = 0;
+      for (let g = 0; g < 4; g++) for (const s of order[g]) {
         const a = place(s.canvas); if (!a) return null; const dm = s.top ? 1 : dimOf(s, v), ver = s.canvas._v !== undefined ? s.canvas._v : s.still ? 0 : NaN; if (a.v !== ver) { ups.push(s.canvas); a.v = ver; }   // (a still billboard is sent once; one with no _v and not still: each frame)
         const f = project(m, s.x, s.y, s.z), fx = Math.round((f[0] * .5 + .5) * RW), fy = Math.round((.5 - f[1] * .5) * RH), w = s.canvas.width, h = s.canvas.height;
         const x0 = fx - s.fx, y0 = fy - s.fy, X = (px) => px / RW * 2 - 1, Y = (py) => 1 - py / RH * 2, z = s.d ? f[2] - .0004 : project(m, s.x, s.y + .4, s.z + 2)[2];   // (you: as far as the top of your own head, a hair south: the roof over your own tile and its floor's edge never hide you, a wall two levels high on the next tile does)
         let q = [[X(x0), Y(y0), z], [X(x0 + w), Y(y0), z], [X(x0 + w), Y(y0 + h), z], [X(x0), Y(y0 + h), z]], box = [x0, y0, x0 + w, y0 + h];
         if (s.flat) { q = [[-s.fx, s.fy], [w - s.fx, s.fy], [w - s.fx, s.fy - h], [-s.fx, s.fy - h]].map(([i, j]) => project(m, s.x + i / C, s.y, s.z + j / cfg.up)); const p0 = PX(q[0]), p1 = PX(q[2]); box = [p0[0], p0[1], p1[0], p1[1]]; q.forEach((c) => { c[2] -= .0004; }); }   // (a standing face in the land: its sprite a px of paint an art px of the land, as the land's own fronts)
-        const over = mp && s !== me && late(s) && box[0] < mp[0] + 6 && box[2] > mp[0] - 6 && box[1] < mp[1] - 2 && box[3] > mp[1] - 15, how = s.top ? 1 : 0;
+        if (s.lie) { q = [[-s.fx, -s.fy], [w - s.fx, -s.fy], [w - s.fx, h - s.fy], [-s.fx, h - s.fy]].map(([i, j]) => project(m, s.x + i / C, s.y + j / C, s.z)); const p0 = PX(q[0]), p1 = PX(q[2]); box = [p0[0], p0[1], p1[0], p1[1]]; q.forEach((c) => { c[2] -= .0002; }); }   // (lying on the land at level z: a px of paint an art px of the land, as the land's own tops: a swimmer's wake on the water)
+        const over = mp && s !== me && !s.lie && late(s) && box[0] < mp[0] + 6 && box[2] > mp[0] - 6 && box[1] < mp[1] - 2 && box[3] > mp[1] - 15, how = s.top ? 1 : 0;
         const r = runs[g], lr = r[r.length - 1]; if (lr && lr[2] === how) lr[1] += 6; else r.push([n / SV6, 6, how]);
         for (const i of [0, 1, 2, 0, 2, 3]) { d[n++] = q[i][0]; d[n++] = q[i][1]; d[n++] = q[i][2]; d[n++] = (a.x + [0, 1, 1, 0][i] * a.w) / SW; d[n++] = (a.y + [0, 0, 1, 1][i] * a.h) / SW; d[n++] = s.ghost ? 3 : over ? 2 : 0; d[n++] = dm; d[n++] = s.fade === undefined ? 1 : s.fade; }
       }
@@ -186,7 +187,7 @@ const VoxStyle = (() => {
         gl.activeTexture(gl.TEXTURE0); gl.useProgram(pr); };
       run(0);
       gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
-      go(bufs.water, 0, cnt.water); gl.depthMask(true); gl.disable(gl.BLEND);
+      go(bufs.water, 0, cnt.water); gl.depthMask(true); gl.disable(gl.BLEND); run(3);
       if (S.me) { run(1); if (cnt.model) { gl.uniform1f(u("rd"), 1); go(bufs.land, cnt.main, cnt.model); gl.uniform1f(u("rd"), 0); } } run(2);   // (rd: what stands as boxes south of you and over your feet, again over you: one px in two, in the disc)
       if (hr) {   // the hour's light, here and not on a canvas of the page's (it was four of them laid on each other every frame, the last cut out by this picture: slow on a phone, and a phone has drawn such chains wrong): a wash of the hour's colour where something is drawn, then all of it times the light's picture (the lamps in it)
         const a = hr.wash[3], quad = (t, sf, df) => { gl.bindTexture(gl.TEXTURE_2D, t); gl.blendFuncSeparate(sf, df, gl.ZERO, gl.ONE); go(bufs.spr, S.quad, 6); }, one = (t, c, k) => { if (k !== t._k) { gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([c[0], c[1], c[2], 255])); near(); t._k = k; } };

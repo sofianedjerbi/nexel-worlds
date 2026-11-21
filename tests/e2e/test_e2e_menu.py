@@ -80,14 +80,14 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
     assert game.js("opt('chat')") == 30
     at_row(game, "Goals card"); game.press("Enter")
     assert game.js("[goalsOff, localStorage.getItem('megastructure-goals-off')]") == [False, "0"]
-    at_row(game, "Coordinates"); game.press("Enter")
-    assert game.js("[DEBUG.coords, localStorage.getItem('megastructure-coords')]") == [True, "1"]
+    at_row(game, "Debug screen (F3)"); game.press("Enter")
+    assert game.js("[F3.on, localStorage.getItem('megastructure-f3')]") == [True, "1"]
     game.press("Escape"); game.press("Escape")
     game.act("say", text="hello there")
     game.sleep(700)
     assert game.js("bubbles.length") == 0                       # nothing over your head
-    assert game.js("$('xyz').textContent").startswith("X ")
-    game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); DEBUG.coords = false; localStorage.clear()")
+    game.wait("(() => { const e = document.getElementById('f3'); return e && e.style.display !== 'none' ? e.innerText : ''; })().includes('XYZ ')")
+    game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); F3.set(false); localStorage.clear()")
 
 
 def test_a_key_can_be_changed_and_the_game_follows(game):
