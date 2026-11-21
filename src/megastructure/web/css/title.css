@@ -76,14 +76,6 @@ body.booting #joinbox #join { position:relative; overflow:hidden; }
 body.booting #joinbox #join::before { content:""; position:absolute; left:0; right:0; bottom:0; height:calc(2 * var(--q)); background:#6b4a3a; }
 body.booting #joinbox #join::after { content:""; position:absolute; left:0; bottom:0; width:var(--boot-w, 0px); height:calc(2 * var(--q)); background:#e0b84e; }
 
-/* The island behind the first screen: its still picture first (index.html puts it; it comes in softly), then the
-   island itself over it, once all of it is painted (title_scene.js says so: body.scene), not a block at a time. */
-#poster { position:fixed; z-index:0; max-width:none; image-rendering:pixelated; pointer-events:none; opacity:0; transition:opacity .35s ease-out; }
-#poster.in { opacity:1; }
-/* the wait for the island (js/loading.js): the cat walking the meadow as the game comes, above the window; gone once the island is painted */
-#loading { position:fixed; z-index:3; image-rendering:pixelated; pointer-events:none; opacity:0; transition:opacity .3s ease-out; filter:drop-shadow(0 4px 0 rgba(60,40,30,.25)); }
-#loading.in { opacity:1; }
-#loading.out { opacity:0; }
-body:not(.title) #poster, body.scene #poster { visibility:hidden; transition:visibility 0s .8s; }
-canvas#c, canvas#hd { transition:opacity .7s ease-out; }
+/* The island behind the first screen: hidden until all of it is painted (title_scene.js says so: body.scene), not a
+   block at a time; the wait (index.html #boot) is over it until then, and fades to it. */
 body.title:not(.scene) canvas#c, body.title:not(.scene) canvas#hd { opacity:0; }

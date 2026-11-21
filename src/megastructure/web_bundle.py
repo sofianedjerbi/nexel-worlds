@@ -103,13 +103,22 @@ def pictures(web: Path) -> list[str]:
     return [n + ".png" for n in names] + ["gen.txt"]
 
 
-def pack(web: Path) -> tuple[bytes, dict]:
-    body, table = b"", {}
-    for name in sorted(pictures(web), key=lambda n: n != "character.png"):     # (the cat's sheet first: the wait's cat walks from the pack's first 21 KB, js/loading.js)
+def late(web: Path) -> set[str]:
+    """The sheets the first screen does not wait for (assets.js LATE)."""
+    m = re.search(r"const LATE = \[(.*?)\];", (web / "js" / "assets.js").read_text())
+    assert m, "assets.js no longer lists its late sheets"
+    return {n + ".png" for n in re.findall(r'"(\w+)"', m.group(1))}
+
+
+def pack(web: Path) -> tuple[bytes, dict, int]:
+    """The pictures one after the other -> the bytes, where each is, and how many bytes the first screen waits for:
+    the sheets it shows first, the ones it never shows (assets.js LATE) after them, as the page reads them as they come."""
+    body, table, after = b"", {}, late(web)
+    for name in sorted(pictures(web), key=lambda n: n in after):
         raw = (web / "assets" / name).read_bytes()
         table[name] = [len(body), len(raw)]
         body += raw
-    return body, table
+    return body, table, min([table[n][0] for n in after] or [len(body)])
 
 
 def mark(*parts: bytes) -> str:
@@ -124,15 +133,20 @@ def packed(web: Path, page: str | None = None, skip=(), inline_styles=True) -> t
     import gzip
     page = (web / "index.html").read_text() if page is None else page
     js = script(web, page, skip).encode()
-    body, table = pack(web)
+    body, table, need = pack(web)
     names = {"js": f"js/game.{mark(js)}.js", "pack": f"assets/pack.{mark(body)}.bin"}
     first = SCRIPT.search(page)
     assert first, "index.html names no script"
-    # (the pack is asked for here, as the page is read; its bytes counted as they come, and the script's when it has
-    #  come: the wait's cat walks as far, js/loading.js)
-    tell = (f'<script>window.ASSET_PACK = {json.dumps({"url": names["pack"], "files": table, "size": len(body), "js": len(gzip.compress(js))}, separators=(",", ":"))};\n'
-            'ASSET_PACK.got = 0; ASSET_PACK.blob = fetch(ASSET_PACK.url).then(async (r) => { if (!r.ok) throw new Error(r.status); if (!r.body) return r.blob();\n'
-            '  const rd = r.body.getReader(), parts = ASSET_PACK.parts = []; for (;;) { const {done, value} = await rd.read(); if (done) break; parts.push(value); ASSET_PACK.got += value.length; } return new Blob(parts); }).catch(() => null);</script>\n')
+    # (the pack is asked for here, as the page is read; its bytes counted as they come: the wait's bar, index.html #boot.
+    #  upto(n): the bytes so far once n of them are in: each picture is made as soon as its own have come, assets.js;
+    #  need: the first screen's share, the world starts to come after it, local.js)
+    tell = (f'<script>window.ASSET_PACK = {json.dumps({"url": names["pack"], "files": table, "size": len(body), "need": need, "js": len(gzip.compress(js))}, separators=(",", ":"))};\n'
+            'ASSET_PACK.got = 0; ASSET_PACK.parts = []; (() => { const P = ASSET_PACK, wait = [], all = (b) => wait.splice(0).forEach((w) => w[1](b));\n'
+            '  P.upto = (n) => P.got >= n && P.parts.length ? Promise.resolve(new Blob(P.parts)) : P.done ? P.blob : new Promise((ok) => wait.push([n, ok]));\n'
+            '  P.blob = fetch(P.url).then(async (r) => { if (!r.ok) throw new Error(r.status); if (!r.body) return r.blob();\n'
+            '    const rd = r.body.getReader(); for (;;) { const {done, value} = await rd.read(); if (done) break; P.parts.push(value); P.got += value.length;\n'
+            '      if (wait.some((w) => w[0] <= P.got)) { const b = new Blob(P.parts); for (let i = wait.length; i--;) if (wait[i][0] <= P.got) wait.splice(i, 1)[0][1](b); } }\n'
+            '    return new Blob(P.parts); }).catch(() => null).then((b) => { P.done = true; all(b); return b; }); })();</script>\n')
     page = page[:first.start()] + f'<script src="{names["js"]}"></script>\n' + SCRIPT.sub(lambda m: m.group(0) if m.group(1) in skip else "", page[first.start():])
     if inline_styles:
         page, n = STYLE.subn(lambda m: "<style>\n" + (web / "css" / m.group(1)).read_text().replace("url(../", "url(") + "</style>\n", page)

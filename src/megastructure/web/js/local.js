@@ -86,5 +86,6 @@ class LocalSocket {
 // answered a second later, the island came three seconds later), and the world starts as soon as the last of them has
 // arrived (the pack of pictures, asked for in the page's head: web_bundle.py). It waited for the first socket
 // (state.js): every picture decoded and the island made, 1.5 to 2.5 s of a phone's work with nothing on the line.
-(() => { const c = navigator.connection, slow = c && (c.saveData || /2g|3g/.test(c.effectiveType || "") || c.downlink < 5);
-  if (!slow) bootLocal(); else if (window.ASSET_PACK) ASSET_PACK.blob.then(bootLocal); })();
+// On any line now, the first screen's own bytes go first (ASSET_PACK.need: the pictures it shows; the ones it never
+// shows, the wild ones and the emotes, come with the world): Python's 1.5 MB shared the line with the title's pictures.
+(() => { const P = window.ASSET_PACK; if (!P) bootLocal(); else (P.upto ? P.upto(P.need) : P.blob).then(bootLocal); })();
