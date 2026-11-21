@@ -126,15 +126,17 @@ def test_depth_is_told_inside_the_window(browser, server):
     x, y = g.pos()
     g.stamp(-9, -9, ["." * 34] * 19)
     g.rest()
-    seen = {}
+    seen, strata = {}, {}
     for depth, dx in ((4, 0), (14, 12)):
         deep_room(g, x + dx, y, depth)
         cx = x + dx
         near, far = spot(g, cx + 1.5, y + .5, -depth), spot(g, cx - 2.5, y + 1.5, -depth)      # the floor beside you; the floor 3.5 tiles off, away from the walls' feet
         # the section over the north edge: rows of earth counted up from the wall's top, in the room's middle column
         top = g.js(f"HdLook.screenOf({cx + .5}, {y - 2}, {-depth + 3})")
-        col = g.js("([px, py]) => { const k = devicePixelRatio, o = []; for (let j = 2; j < 40; j++) o.push([...HdLook.read(Math.round(px * k), Math.round((py - j * zoom) * k), 1, 1).data.slice(0, 3)]); return o; }", top)
+        col = g.js("([px, py]) => { const k = devicePixelRatio, o = []; for (let j = 0; j < 56; j++) o.push([...HdLook.read(Math.round(px * k), Math.round((py - (j + .5) * zoom) * k), 1, 1).data.slice(0, 3)]); return o; }", top)
         rows = next((i for i, c in enumerate(col) if c[1] > c[0] + 8), len(col))                     # up to the first green px: the meadow
+        tones = [lum(c) for c in col[:rows]]
+        bands = 1 + sum(1 for a, b in zip(tones, tones[1:]) if abs(a - b) > 2)                       # the strata: flat tones, one a level
         spots = [[cx + 4.4, y - 1.5 + j * .7, 0] for j in range(5)] + [[cx - 3.4, y - 1.5 + j * .7, 0] for j in range(5)]     # the meadow a little east and west of the hole's edges
         out = [g.js(PX, p) for p in spots]
         g.js("HdLook.nowin = true")
@@ -142,9 +144,13 @@ def test_depth_is_told_inside_the_window(browser, server):
         g.frames(2)
         open_ = [g.js(PX, p) for p in spots]                                                          # the same px with the window shut
         g.js("HdLook.nowin = false")
+        strata[depth] = (rows, bands, tones)
         seen[depth] = (lum(near), lum(far), rows, out, open_, g.js('[HdLook.level, myPos(), HdLook.win.n, HdLook.cam.pitch, clock.phase]'), near, far)
     assert seen[14][1] < seen[14][0] * .9, seen[14]                 # deep: the floor away from you is dimmer than the floor round you
     assert seen[4][1] > seen[4][0] * .93, seen[4]                   # shallow: one light
-    assert seen[14][2] >= seen[4][2] + 6 and seen[4][2] >= 3, (seen[4][2], seen[14][2])      # the section is thicker the deeper the room
+    # the section over the north wall is as tall as the ground over the ceiling is from this eye (3 px a level at the steep pitch): 1 level over the room 4 deep, 11 over the one 14 deep: two pictures at a glance
+    # (it was 8 to 20 rows whatever the depth: 14 deep read 2 or 3 deep); in strata, a tone a level, darker level by level down: levels can be counted
+    assert strata[4][0] <= 6 and strata[14][0] >= 26 and strata[14][1] >= 8, strata
+    assert strata[14][2][1] < strata[14][2][strata[14][0] - 3] * .7, strata[14]
     for d in (4, 14):
         assert all(abs(p - q) <= 6 for a, b in zip(seen[d][3], seen[d][4]) for p, q in zip(a, b)), seen[d][3:5]                    # the grass beside the hole is the meadow's own px, not a step darker (a shade outside the rim read as a block standing on the grass)

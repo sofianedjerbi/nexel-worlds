@@ -2,7 +2,7 @@
 nothing is shaded outside it (its depth is told inside: test_e2e_hd_stair.py), its near edge is the land's lit lip, and the section over its top edge is the ground's
 own earth, not a grey bar; in a river between cliffs the hole is whole (no sliver of the south bank left in it, no path
 of the way's boxes through the bank); what grows on the meadow over your room does not stand on its floor; the aim on a
-wall is on the cell you hit, at your level; a block of stone or earth put down is drawn as what it is."""
+wall is on the cell you hit, at your level, and turning to a wall puts the shown way out away; a block of stone or earth put down is drawn as what it is."""
 
 from test_e2e_hd_pocket import TOP
 from test_e2e_hd_sun import hd
@@ -10,6 +10,9 @@ from test_e2e_hd_sun import hd
 # the px of the picture at a place of the world: [r, g, b]
 PX = """([x, y, z]) => { const a = HdLook.screenOf(x, y, z), k = devicePixelRatio; return [...HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), 1, 1).data.slice(0, 3)]; }"""
 FLOWERS = [(-1, -1), (-2, 0), (2, 0), (1, 1)]
+
+
+STATE = "(() => { const a = aimedTile(), p = myPos(), e = ents.get('agent' + myId); return {aim: HdLook.aim, it: a && a.it, at: a && a.p, pos: p, f: [e.fx, e.fy], z: myAt && myAt.z, way: WayShow.cur && WayShow.cur.path.length, led: WayShow.led, offer: WayShow.offer(), mode: inputMode, now: facingNow(false), hand: inHand(), busy: WayShow.busy, pitch: HdLook.cam.pitch, win: HdLook.win.a, act: typeof myAction !== 'undefined' && myAction}; })()"
 
 
 def room(g, flowers=False):
@@ -100,19 +103,41 @@ def test_the_aim_on_a_cave_s_wall_is_on_the_cell_you_hit(browser, server):
     g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
     g.hold_item("pickaxe")
     AIM = "HdLook.aim && aimedTile() && aimedTile().it && aimedTile().it.cell === 2"
-    for _ in range(8):                                                     # (a press puts the shown way out away; standing still brings it back, and while it is shown nothing is aimed at: on a busy machine it was back before the aim was read: {aim: None, way: 9})
-        g.hold(["ArrowLeft"], 250)
-        if g.js(f"!!({AIM})"):
-            break
+    g.hold(["ArrowLeft"], 250)                                             # (the way out, shown after two seconds standing, is put away when you turn to a wall: the test below; this one failed with it shown: {aim: None, way: 9})
     try:
         g.wait(AIM, timeout=4000)
     except Exception:                                                      # (what the page has when the aim is not there: it failed "under load" with nothing said)
-        raise AssertionError(g.js("(() => { const a = aimedTile(), p = myPos(), e = ents.get('agent' + myId); return {aim: HdLook.aim, it: a && a.it, at: a && a.p, pos: p, f: [e.fx, e.fy], z: myAt && myAt.z, held: typeof held !== 'undefined' ? held : null, way: WayShow.cur && WayShow.cur.path.length, pitch: HdLook.cam.pitch, win: HdLook.win.a, act: typeof myAction !== 'undefined' && myAction}; })()")) from None
+        raise AssertionError(g.js(STATE)) from None
     g.rest()
     a = g.js("HdLook.aim")
     c = [g.js(f"HdLook.screenOf({x - 4 + i}, {y + j}, 2)") for i, j in ((0, 0), (1, 1))]     # the wall's cell at your level: its top, one level over your floor
     want = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2]
     assert abs(a["x"] + a["w"] / 2 - want[0]) < 4 and abs(a["y"] + a["h"] / 2 - want[1]) < 4, (a, want)      # (it was round the wall's top, a level higher: 9 px up the screen)
+
+
+def test_turning_to_a_wall_puts_the_shown_way_out_away_and_the_wall_is_aimed_at(browser, server):
+    """Standing two seconds in a cave you can walk out of, the way out is shown, and while it is shown nothing you face
+    is offered (keyboard.js). Turning to a wall where you stand is work of your own: the way is put away, the wall's
+    cell is aimed at, and it stays so while you stand there (a key held against the wall brought the way back); it
+    comes back when you have walked and stood again. (It stayed: no bracket and no key on a cave's wall, for good.)"""
+    g = hd(browser, server)
+    x, y = room(g)
+    g.give(pickaxe=1)
+    g.rpc("dev_teleport", x=x - 3, y=y, z=1)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
+    g.hold_item("pickaxe")
+    g.wait("WayShow.cur && !WayShow.led && !aimedTile()", timeout=12000)
+    AIM = "!WayShow.cur && HdLook.aim && aimedTile() && aimedTile().it && aimedTile().it.cell === 2"
+    g.hold(["ArrowLeft"], 250)
+    try:
+        g.wait(AIM, timeout=4000)
+    except Exception:
+        raise AssertionError(g.js(STATE)) from None
+    g.hold(["ArrowLeft"], 500)
+    g.sleep(2600)                                                          # (time that has to pass in the game: longer than the two seconds that show the way)
+    assert g.js(AIM), g.js(STATE)
+    g.hold(["ArrowRight"], 250)
+    g.wait("WayShow.cur", timeout=12000)                                   # walked and stood: shown again
 
 
 def test_a_block_put_down_is_drawn_as_what_it_is(browser, server):

@@ -156,6 +156,7 @@ def test_a_ghost_behind_a_wall_is_not_drawn_through_it_and_the_window_does_not_o
     g.give(dirt=4)
     g.hold_item("dirt")
     seen = {}
+    g.js("(() => { Target.off = true; return 1; })()")                          # (the ghost's own px: not the cell's box, target.js)
     for name, cy in (("behind", y - 3), ("front", y - 1)):
         g.js(f"(() => {{ Build.toggle(true); Build.S.at = {{x: {x + 1}, y: {cy}}}; Build.S.plane = Build.S.deep = null; return 1; }})()")
         g.wait("Build.on", 3000)
