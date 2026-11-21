@@ -7,7 +7,7 @@
 //              win: {reach}: land hides you: your space is looked for, and the boxes of the x-ray window on it (vox_style_land.js), or none}
 //   view: {w, h, cam: {kind: "persp"|"iso"|"obl", pitch, fov, yaw}, at: [x, y, z], bend, dep: levels of land over your floor, light: {amb, lr, day,
 //          fog: [near, far], fogc: [r, g, b], clear, rim, sun: how dark the sun's shadows are, 0..1}, water: {canvas, x, y, ver},
-//          own: [[x, y, lo, hi, sky]...] boxes of the window that are yours whatever the search found (your tile, where you came from), rim: the level of the land round your hole (the depth told in the window, vox_style_glsl.js), behind: 0..1: land taller than you stands in front of you (the disc round you is opened in it, as in a roof or a tree), hole: 0..1: you are in a hole of the land looked at from above (its open walls get the strata too),
+//          own: [[x, y, lo, hi, sky]...] boxes of the window that are yours whatever the search found (your tile, where you came from), rim: the level of the land round your hole (the depth told in the window, vox_style_glsl.js), behind: 0..1: land taller than you stands in front of you (the disc round you is opened in it, as in a roof or a tree), hid: 0: what land hides of you is not drawn at all (in a hole seen from above you are drawn at its rim: hd.js lift), hole: 0..1: you are in a hole of the land looked at from above (its open walls get the strata too),
 //          t, sprites: [{canvas, x, y, z, fx, fy, on: stands on the land, lie: lies flat on the land at level z (its canvas a px an art px of it), drawn after the water}] (its foot at px (fx, fy) of its canvas, drawn px for px; canvas._v: goes up when its picture changed),
 //          way: {on: Map "x,y" -> level, dim, key} | null (a way shown: `light`; its floors are in the window too), win: 0 | 1: the x-ray window shut or open (it goes there over 100 ms), sect: [ink, , , the dark behind the land]: the tone its rim is darkened to,
 //          hour: {wash: [r, g, b, a], lit: canvas | tint: [r, g, b]} the hour's light, laid here over what was drawn and not over the air}
@@ -36,7 +36,7 @@ const VoxStyle = (() => {
       else { if (S.n >= SL * SL) { S.slots.clear(); S.px.fill(0); S.n = 0; spill = true; B.full = true; } s = S.n++; }   // (full while a land is made: its own paints go, never the shown land's; it is made again, steps)
       S.slots.set(key, s); const at = (s / SL | 0) * C * AW + (s % SL) * C; paint(S.px, at, AW); { const q = S.px[at + 7 * AW + 7]; if ((q >>> 24) > 127) for (let i = 0; i < 3; i++) mean[i] += ((q >> 8 * i & 255) / 255 - mean[i]) * .03; } if (!mk) dirty.push(s); else B.add.push(s); return s;   // (a new paint is sent alone: the whole sheet, a million px, was sent again for each)
     }
-    const land = VoxStyleLand.create(host, cfg, {SL, C, slot, unslot(k) { A.slots.delete(k); if (B) B.slots.delete(k); }, start(ag) { fromNone = wipe || ag; wipe = false; B = null; spill = false; }, spill: () => spill});
+    const land = VoxStyleLand.create(host, cfg, {SL, C, slot, unslot(k) { A.slots.delete(k); if (B) B.slots.delete(k); }, start(ag) { fromNone = wipe || ag; wipe = false; B = null; spill = false; return fromNone; }, spill: () => spill});
     function start() {
       if (gl) return true;
       el = document.createElement("canvas"); gl = el.getContext("webgl2", {antialias: false, depth: true, stencil: true, preserveDrawingBuffer: true}); if (!gl) return false;
@@ -180,7 +180,7 @@ const VoxStyle = (() => {
       gl.bindBuffer(gl.ARRAY_BUFFER, bufs.spr.buf); gl.bufferData(gl.ARRAY_BUFFER, S.d, gl.STREAM_DRAW);
       const run = (g) => { if (!S.runs[g].length) return; gl.useProgram(sp); gl.uniform1f(us("xr"), g === 1 ? 0 : wxr); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, atx);
         for (const [from, n, how] of S.runs[g]) {
-          if (how === 1) { gl.depthMask(false); gl.depthFunc(gl.GREATER); gl.uniform1f(us("hid"), wxr > 0 ? 2 : 1); go(bufs.spr, from, n); gl.uniform1f(us("hid"), 0); gl.depthFunc(gl.LEQUAL); }   // (YOU ARE BEHIND what is in front of you: where land hides you (a hill, a wall, a cliff: whatever the window is not on) one px in two of you, a little dimmer, the land's px between them; the rest of you whole. It was all of you over everything: behind a wall you stood on it)
+          if (how === 1 && v.hid !== 0) { gl.depthMask(false); gl.depthFunc(gl.GREATER); gl.uniform1f(us("hid"), wxr > 0 ? 2 : 1); go(bufs.spr, from, n); gl.uniform1f(us("hid"), 0); gl.depthFunc(gl.LEQUAL); }   // (YOU ARE BEHIND what is in front of you: where land hides you (a hill, a wall, a cliff: whatever the window is not on) one px in two of you, a little dimmer, the land's px between them; the rest of you whole. It was all of you over everything: behind a wall you stood on it)
           go(bufs.spr, from, n); gl.depthMask(true); }
         gl.activeTexture(gl.TEXTURE0); gl.useProgram(pr); };
       run(0);

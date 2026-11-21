@@ -156,8 +156,8 @@ const VoxStyleLand = (() => {
             put([[x, y + h, z], [x + w, y + h, z], [x + w, y + h, s], [x, y + h, s]], .8, fr, 10); put([[x, y, z], [x, y + h, z], [x, y + h, wz], [x, y, wz]], .7, fr, 11); put([[x + w, y + h, z], [x + w, y, z], [x + w, y, ez], [x + w, y + h, ez]], .78, fr, 11); } } }
         return [fl, fs]; }
       const want = []; for (let by = Math.floor(Y0 / CH); by <= Math.floor(Y1 / CH); by++) for (let bx = Math.floor(X0 / CH); bx <= Math.floor(X1 / CH); bx++) want.push([bx, by]);
-      if (o.again) store.clear();
-      P.start(!!o.again); making = true; late.clear();   // (the paints and the land that names them change together: vox_style.js)
+      if (P.start(!!o.again)) store.clear();   // (a land made with its paints from none keeps no chunk made before: they name places of paints that are gone. The land was wiped (eng.lost: forget) while one was being made, that one's chunks were kept, and the next, from none, drew them with other tiles' paints: grey and green squares on a meadow, the mean colour, a shadow's black blades on the grass)
+      making = true; late.clear();   // (the paints and the land that names them change together: vox_style.js)
       try {
         const need = want.filter(([bx, by]) => !good(store.get(bx + "," + by), bx, by)); yield "scan";
         for (const [bx, by] of need) { fresh.set(bx + "," + by, yield* chunk(bx, by)); made++; }
