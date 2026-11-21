@@ -133,7 +133,7 @@ const HdThings = (() => {
     push(out, {x: 6, y: -4, z: base + 2 / KF(), w: 4, d: 24, h: 9 / KF(), fh: 9, top: flat(wood, 4, 24, dark, "wens"), front: flat(wood, 4, 9, dark, "wens"), west: flat(wood, 24, 9, dark, "ns"), east: flat(wood, 24, 9, dark, "ns")});
   }
   // ---- built blocks (floors.js): a floor's planks, a step, a roof's shingles. The game's own picture of the block: its 16 rows the top, the rows under them its face
-  // inside a house, the land's own rule (the open pit, vox_style_land.js): what is built over YOUR ROOM is not drawn (the roofed tiles walked to from yours on your level; a wall, a door stop it),
+  // inside a house, the land's own rule (your space, vox_style_land.js): what is built over YOUR ROOM is not drawn (the roofed tiles walked to from yours on your level; a wall, a door stop it),
   // nor what is over the tiles right beside it and south of it (the eye's side); the north wall, its storeys and the roof over it stand whole: the room's back. (It was all that is over your head, the house a low tray.) Build mode: the game's rule, over the cursor's level
   let roomK = "", room0 = null, roomZ = 0, roomS = 0;
   function roomNow() { const p = myPos(); if (!p) return null; const L = myZ(p.x, p.y), k = [p.x, p.y, L, Floors.ver, landVer].join(); if (k === roomK) return room0; roomK = k; room0 = null; roomZ = L; roomS = -1e9;
@@ -177,7 +177,7 @@ const HdThings = (() => {
     if (Structures.WALLS.includes(c)) {
       const cells = Floors.cells(x, y); let over = 0, cutLow = false;
       if (cells) for (const zc of cells.keys()) if (zc > zl && zc <= zl + Floors.STOREY) { over = zc; cutLow = hid(x, y, zc); }
-      const p = myPos();      // (inside, the roof open: the walls south of you a low stub, as the cut leaves the rock south of your space; the others to their own height)
+      const p = myPos();      // (inside, the roof open: the walls south of you a low stub, you are seen over them; the others to their own height)
       wall(out, c, x, y, zl, cutLow ? (Build.on ? p && y > p.y : y > roomS) ? 4 : 16 : over ? (over - 1 - zl) * UP : 12 / KF());   // (a stub: the room's south wall alone)
     } else if (c === "#") fence(out, x, y, zl * UP); else if (c === "g") sideGate(out, x, y, zl * UP);
     else decal(out, c, x, y, zl * UP);

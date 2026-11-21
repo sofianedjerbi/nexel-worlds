@@ -1,7 +1,7 @@
 // VOX: the X-RAY WINDOW of the 2.5D look (vox_style.js draws with it). No game global.
 // Under the land nothing is taken out of the land's faces: the land is whole, as on the surface. What lets you see in is a MASK: the air of your space
 // (a box a tile: its floor up to its ceiling; vox_style_land.js `win`) seen from the eye, drawn first into a picture of its own, a px a px of the land's:
-// how far from the eye the nearest of those boxes is (two numbers a px: the boxes as they are, and the same a tile wider: the window's rim).
+// how far from the eye the nearest of those boxes is (two numbers a px: the boxes as they are, and the same a little wider: the window's rim).
 // The land's painter (vox_style_glsl.js) then leaves out what is nearer than that: you look through a hole of your cave's own shape, straight to its floor
 // and walls; outside it the world is untouched. Walking moves nothing but the eye; a space that changed changes these few boxes, never the land.
 //   VoxStyleWin.create(gl) -> {set(tiles: [[x, y, lo, hi, sky: 1 under the open sky]...]), n, ver, tiles, pass(m, ctr, bend, w, h): the mask's picture is made (unit 4 holds it after), back(rgb): what is behind the land taken away}
@@ -25,8 +25,8 @@ const VoxStyleWin = (() => {
     gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0); gl.bindVertexArray(null);
     let w = 0, h = 0, n = 0, tiles = [], ver = 0;
     // a tile's box, g tiles wider each way: its top and its four sides (the eye never comes in from under it)
-    function box(d, o, x, y, lo, hi, g, sky) {   // (sky: a tile under the open sky: wider to the south only: north and beside it stand the walls of its hole, seen and not looked through: the rim lay on a gorge's far cliff)
-      const x0 = x - (sky ? 0 : g), x1 = x + 1 + (sky ? 0 : g), y0 = y - (sky ? 0 : g), y1 = y + 1 + g, a = lo * H, b = hi * H, q = (...c) => { for (const i of [0, 1, 2, 0, 2, 3]) { d[o++] = c[i][0]; d[o++] = c[i][1]; d[o++] = c[i][2]; } };
+    function box(d, o, x, y, lo, hi, g, sky) {   // (g: wider by g to the north (the section's rows lie there), half of it west, east and south: the rim) (sky: a tile under the open sky: wider to the south only: north and beside it stand the walls of its hole, seen and not looked through: the rim lay on a gorge's far cliff)
+      const x0 = x - (sky ? 0 : g * .5), x1 = x + 1 + (sky ? 0 : g * .5), y0 = y - (sky ? 0 : g), y1 = y + 1 + g * .5, a = lo * H, b = hi * H, q = (...c) => { for (const i of [0, 1, 2, 0, 2, 3]) { d[o++] = c[i][0]; d[o++] = c[i][1]; d[o++] = c[i][2]; } };
       q([x0, b, y0], [x1, b, y0], [x1, b, y1], [x0, b, y1]); q([x0, b, y1], [x1, b, y1], [x1, a, y1], [x0, a, y1]); q([x0, b, y0], [x1, b, y0], [x1, a, y0], [x0, a, y0]);
       q([x0, b, y0], [x0, b, y1], [x0, a, y1], [x0, a, y0]); q([x1, b, y0], [x1, b, y1], [x1, a, y1], [x1, a, y0]); return o;
     }

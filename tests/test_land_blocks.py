@@ -24,8 +24,8 @@ def test_a_dug_cell_is_its_block_and_goes_back(world, level, item):
     r = run(sim, a, "dig", {"dir": "E", "z": level})
     assert r["ok"] and r["got"] == {item: 1} and a.inventory == {item: 1} and sim.world.top(x, y) == level - 1
     assert run(sim, a, "place", {"dir": "E", "item": item})["ok"]
-    assert sim.world.top(x, y) == level and not a.count(item) and not sim.placed.at      # the land as it was: nothing to remember
-    assert run(sim, a, "dig", {"dir": "E", "z": level})["got"] == {item: 1}
+    assert sim.world.top(x, y) == level and not a.count(item) and sim.placed.at == {(x, y): {level: item}}      # remembered as put: the picture draws a put block as what it is
+    assert run(sim, a, "dig", {"dir": "E", "z": level})["got"] == {item: 1} and not sim.placed.at
 
 
 def test_dig_down_and_a_tunnel_give_the_block(world):
@@ -143,3 +143,28 @@ def test_a_block_goes_into_any_empty_cell_with_something_solid_beside_it(world):
     assert run(sim, a, "dig", {"x": x, "y": y - 1, "z": 2})["got"] == {"stone_block": 1}                 # the roof, taken back
     r = run(sim, a, "place", {"x": x - 2, "y": y, "z": 1, "item": "stone_block"})      # west of you, on the open ground, named by its height: the ground comes up
     assert r["ok"] and sim.world.top(x - 2, y) == 1
+
+
+def test_a_put_block_is_told_to_the_screens_as_what_it_is(world):
+    """A stone block on a meadow was drawn as earth with a grass top (the picture knew the land by its height alone):
+    the tile's event and its region say what was put on its top; dug again, nothing."""
+    from megastructure.views import Views
+
+    class Screen(Views):
+        def __init__(self, sim):
+            self.sim = sim
+
+    sim, a = world
+    flat(sim, a, 3)
+    a.add("stone_block", 2); a.add("dirt", 1)
+    x, y = a.x + 1, a.y
+    mats = lambda: Screen(sim).region(a.x - 2, a.y - 2, 5, 5).get("mats", {})
+    last = lambda: [e for e in a.events if e["type"] == "tile" and (e["dx"], e["dy"]) == (1, 0)][-1]
+    assert mats() == {}
+    assert run(sim, a, "place", {"dir": "E", "item": "stone_block"})["ok"]
+    assert last()["mat"] == "s" and mats() == {str(2 * 5 + 3): "s"}
+    assert run(sim, a, "place", {"dir": "E", "item": "dirt"})["ok"] and sim.world.top(x, y) == 5        # earth on it: the top is earth now
+    assert last()["mat"] == "d" and mats() == {str(2 * 5 + 3): "d"}
+    assert run(sim, a, "dig", {"dir": "E", "z": 5})["got"] == {"dirt": 1} and last()["mat"] == "s"      # ... and the stone under it again
+    assert run(sim, a, "dig", {"dir": "E", "z": 4})["got"] == {"stone_block": 1}
+    assert last()["mat"] == "" and mats() == {} and not sim.placed.at                                   # the meadow as it was

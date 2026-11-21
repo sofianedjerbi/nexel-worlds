@@ -58,7 +58,7 @@ By area, for "the files I touched and their neighbours":
 | land, picture | blocks, land, relief, pixels, edits, curve, roll, tall, section |
 | light | depth, sunland, shaders, daylight, narrow, water |
 | hidden | xray, holes, underground, caves, behind, views, stacked |
-| HD look | hd, hd_land, hd_sun, hd_phone |
+| HD look | hd, hd_land, hd_sun, hd_phone, hd_window |
 | building | build, building, floors, place, digging, climb, mark, edges |
 | moving, living | moving, fall, swim, living, gathering, wild, boss, flee, wear, races, monkey |
 | screens | ui, menu, bag, bookkeys, craft_search, help, prompts, complete, ask, bubbles, social, zoom, frame, models |

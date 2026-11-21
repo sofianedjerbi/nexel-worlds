@@ -144,7 +144,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         info = {"x": x, "y": y, "ground": g, "block": b}
         if by is not None and by.action is not None:
             by.action.tiles.append(info)
-        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause, col=self.land_runs(x, y))
+        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause, col=(runs := self.land_runs(x, y)), mat=self.placed.mat(x, y, runs))
 
     def add_items(self, x, y, items: dict):
         if not items:

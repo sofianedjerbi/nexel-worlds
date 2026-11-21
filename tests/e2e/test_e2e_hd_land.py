@@ -74,7 +74,7 @@ def test_under_a_roof_an_xray_window_shows_your_floor_and_every_px_outside_it_is
     c = g.js(AT_, [x + 2.5, y + 1.5, z - 14])
     assert c[0] > c[2] + 40 and sum(c) > 300, c                       # (your floor is seen: warm, bright)
     # the same frame with no window: the land is whole (what is over your floor there is the meadow). The two pictures differ only where the window is: the room as the eye has it and its rim;
-    # everywhere else every px is the same px (the open pit took two thirds of the screen: cut rock in terraces)
+    # everywhere else every px is the same px (it was a crater: two thirds of the screen cut rock in terraces)
     g.js(SNAP, "win")
     window_off(g)
     g.js(SNAP, "whole")

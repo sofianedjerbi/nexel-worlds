@@ -74,6 +74,8 @@ function standAt(x, y) { const f = roofAt(x, y) > 0 ? seenUnder(x, y) : undefine
 // ...as the world has it, however it is drawn (what you can build on, take, climb): its lowest ground, where what is
 // on a tile lies (under a roof: in the hollow, seen through or not)
 const groundAt = floorAt;
+// the block somebody put on the tile's top (landblocks.py): "s" stone, "d" earth; "": none, the land is what its height says
+const matAt = (x, y) => { const b = blockOf(x, y); return (b && b.mat && b.mat[(y - b.by * B) * B + (x - b.bx * B)]) || ""; };
 const hiddenAt = (x, y) => roofAt(x, y) > 0 && seenUnder(x, y) === undefined;   // what lies on the lowest ground, under ground you're not in
 
 let myAt = null, myWas = null;             // your tile and the height you stand at (caves.js keeps it, as the server does); and the tile before

@@ -28,11 +28,12 @@ const dirtyTiles = [];                 // tiles to redraw (x, y), processed with
 function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }
 // picked plants: full -> bare (fruit flies to the picker); bare -> full when it grows back
 const PICK = {F: "U", b: "v"};
-function setTile(x, y, comb, gnd, who = null, col = null) {    // (col: its column of cells, when sent: cells.js)
+function setTile(x, y, comb, gnd, who = null, col = null, mat = null) {    // (col: its column of cells, when sent: cells.js; mat: the block put on its top, "s" stone, "d" earth, "" none: matAt)
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
   if (!b) return;
   const i = (y - by * B) * B + (x - bx * B);
   const relief = col !== null && !colSame(col, colAt(x, y));
+  if (mat !== null) { if (mat) (b.mat || (b.mat = {}))[i] = mat; else if (b.mat) delete b.mat[i]; }
   if (b.comb[i] === comb && b.gnd[i] === gnd && !relief) return;
   if (relief) {                              // the land changed: edges around redraw
     b.lv[i] = String.fromCharCode(SEA + colFloor(col));
@@ -67,12 +68,12 @@ function onRegion(d) {
     for (let i = 0; i < B * B; i++) {
       const c = col && col[i] !== undefined ? col[i] : colSolid(lv[i].charCodeAt(0) - SEA);
       if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && colSame(c, colAt(bx * B + i % B, by * B + (i / B | 0)))) continue;
-      setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, c);
+      setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, c, (d.mats && d.mats[i]) || "");
     }
     Floors.load(old, d);
     old.at = performance.now(); return;
   }
-  const b = {bx, by, comb, gnd, lv, col, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
+  const b = {bx, by, comb, gnd, lv, col, mat: d.mats || null, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
   Floors.load(b, d);                                 // (what is built over its land: floors.js)
   comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
   blocks.set(k, b);

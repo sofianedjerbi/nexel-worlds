@@ -39,6 +39,7 @@ const VoxPaint = (() => {
     cores.set(k, r); return r;
   }
   function rocky(x, y) {
+    const m = matAt(x, y); if (m) return m === "s" ? 2 : false;   // (a block put there: stone at any height (2), earth on a mountain: what was put, not what the height says)
     if (topAt(x, y) < 5) return false;
     if (seen !== landVer) { mass.clear(); cores.clear(); seen = landVer; }
     const k = x + "," + y; let r = mass.get(k); if (r !== undefined) return r;
@@ -48,7 +49,7 @@ const VoxPaint = (() => {
       at = next; }
     mass.set(k, r); return r;
   }
-  const level = (x, y, z) => (z > 4 && !rocky(x, y) ? 4 : z);
+  const level = (x, y, z) => (z < 5 && rocky(x, y) === 2 ? 5 + (z + 512) % 4 : z > 4 && !rocky(x, y) ? 4 : z);   // (a stone block put low: the stone level the engine gives its sides, vox_mesh.js rock)
   const ids = new Map(), cells = [null];                        // a shape: [what of it is drawn, its sheet, the sheet's cell (cx, cy) each quarter of it is: NW, NE, SW, SE]; 0: the whole square
   // A narrow top (a tile in no 2 x 2 of land as high: a pillar, a wall one tile wide, its ends, an L, a T, a plus, a ring): the
   // sheet's own cell for it is all rim (a pillar's top was a button, a ridge a hedge, a plus a muddle: the sheet's rim is 7 px a

@@ -3,7 +3,9 @@
 blocks -> item should be a craft": digging gave `stone`, the material, which nothing could put back.)
 The land keeps no material of its own: a cell is stone or earth by its height (natural). So a block put where the
 land would be the other kind is remembered here, in its own table of the save, until it is dug again: what you put
-down is what you get back. Only those cells are kept: a hole filled with its own earth leaves nothing."""
+down is what you get back. Every block put down is kept, also where the land would be that kind anyway: the picture
+draws a put block as what it is (`mat`: stone as stone on a meadow, earth as bare earth: a hut of stone blocks was
+drawn as an earth hut with a grass top), and the picture's own idea of the land is not this file's `natural`."""
 
 LAND_BLOCKS = ("dirt", "stone_block")
 
@@ -28,9 +30,14 @@ class Placed:
     def put(self, x: int, y: int, z: int, kind: str):
         """A block of the pack became the cell."""
         self.take(x, y, z)
-        if kind != natural(z):
-            self.at.setdefault((x, y), {})[z] = kind
-            self.db.execute("INSERT OR REPLACE INTO placed VALUES(?,?,?,?)", (x, y, z, kind))
+        self.at.setdefault((x, y), {})[z] = kind
+        self.db.execute("INSERT OR REPLACE INTO placed VALUES(?,?,?,?)", (x, y, z, kind))
+
+    def mat(self, x: int, y: int, runs: list) -> str:
+        """What a screen is told of the tile: the block put on its land's top (runs: the land's column as it is sent,
+        its last height the top): "s" stone, "d" earth, "" none was put: the land as its height says."""
+        col = self.at.get((x, y))
+        return {"stone_block": "s", "dirt": "d"}.get(col.get(runs[-1]), "") if col and runs else ""
 
     def take(self, x: int, y: int, z: int) -> str:
         """The cell is dug: the block it was; nothing is kept of it."""

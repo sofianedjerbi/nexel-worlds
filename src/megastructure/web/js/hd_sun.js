@@ -4,7 +4,7 @@
 // A shadow is a small picture ON THE GROUND, in whole art px of the ground (16 a tile), made once for a shape and an
 // hour's step: every px some px of the shape is thrown on, its outer px a softer rim. It is laid tile by tile, each
 // piece on that tile's own top (down a step, up a step; not on water, not on a wall or a cliff's face, not under a
-// roof, not on land the cut took away), by the engine's flat shade (vox_style.js `shade`: each px of the land is
+// roof, not on land the x-ray window leaves out), by the engine's flat shade (vox_style.js `shade`: each px of the land is
 // shaded once however many shadows lie on it).
 //   HdSun.key() -> changes when the shadows must be made again; .sun: how dark the sun's are now (0..1)
 //   HdSun.thing(out, x, y, L, P, dx, dy, r2): a standing sprite's (P: its px, hd_things.js pix; (dx, dy): where it is in its tile; r2: the row under its foot)
@@ -45,7 +45,7 @@ const HdSun = (() => {
     bms.set(kk, bm); return bm;
   }
   // what a shadow lies on at a tile, for what stands at level L (none given: whatever is topmost): the land's top, or the top of what is built there (a floor's planks; a roof: its
-  // pitch, hd_things.js) -> {z, roof}, or null: none (water, a step, land the cut took away, a house open over your head, a top too far over or under L; a wall or a cliff's face never)
+  // pitch, hd_things.js) -> {z, roof}, or null: none (water, a step, land the x-ray window leaves out, a house open over your head, a top too far over or under L; a wall or a cliff's face never)
   function surface(X, Y, L) {
     const c = Voxels.host.column(X, Y); if (!c || !c.length || Voxels.host.water(X, Y)) return null;
     let t = c[c.length - 1], roof = null; const cells = Floors.any(X, Y) && Floors.cells(X, Y);
