@@ -3,8 +3,8 @@ vox_style_land.js; hd.js). ONE question, "how much land is over the eye's line t
 on a small hill, or behind it, no x-ray window opens (the hill's top was opened onto the meadow behind it: "the hill fell
 apart under me"); behind land (a hill, a wall you built) your body is hidden where the land is in front and shows through
 it one px in two (it was drawn whole over the wall: "I stand on it"); in a pit seen from the side the floor shows through
-a veil of the meadow in front of it (it lay on the meadow, "a drawer pulled out"); the eye tilts by one rule (no tile of
-the floor you stand on shows from the side); a tunnel is not opened from afar nor from the hill over it; a fire under the
+no window under the open sky: from above its own south wall hides what is behind it, its floor lies inside its rim (it lay on
+the meadow, "a drawer pulled out"); the eye tilts by one rule (your feet two levels under the land round you); a tunnel is not opened from afar nor from the hill over it; a fire under the
 land does not light the meadow; who stands on the meadow over your room has its ground under them."""
 
 from test_e2e_hd_land import AT_
@@ -73,44 +73,53 @@ def test_behind_a_wall_you_built_your_body_is_behind_it_not_on_it(browser, serve
     tidy(g, x, y)
 
 
-def test_in_a_pit_seen_from_the_side_the_floor_shows_through_a_veil_of_the_meadow(browser, server):
+def test_in_a_hole_the_eye_looks_from_above_and_its_floor_lies_inside_its_rim(browser, server):
+    """(The fourth audit's "a drawer pulled out onto the grass": the x-ray window cut the hole's south wall away and its floor was
+    drawn where it projects, south of the rim, on the meadow; a veil of the meadow over it did not help.) In any hole two deep
+    or more the eye looks from above (68) and no window opens under the open sky: the hole's own south wall hides what is behind
+    it, so every px of the floor that shows lies inside the rim, and the meadow just south of the rim is grass."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in (-1, 0, 1) for i in (3, 4, 5)], col=[-4])     # a pit 3 x 3, four deep
     g.rest()
-    s = go(g, x + 4, y + 1, -4, "HdLook.win.a === 1 && !HdLook.busy")       # its south row: behind the pit's south wall
-    g.js("(() => { WayShow.paint = () => {}; return 1; })()"); g.frames(3)  # (the way out's marks run over these px)
-    assert s["pitch"] < 36.1 and s["n"] >= 3 and s["seen"] > .9, s        # the side view (its north row shows from the side), the window on it, you whole
-    P = {"west": [x + 3.5, y + 1.5, -4], "east": [x + 5.5, y + 1.5, -4], "mine": [x + 4.2, y + 1.85, -4]}     # the floor beside you, each side; a corner of your own tile
-    read = lambda: {k: g.js(AT_, v) for k, v in P.items()}
-    on = read()
-    g.js("(() => { HdLook.veil = 0; return 1; })()"); g.frames(3)
-    off = read()
-    g.js("(() => { HdLook.veil = 1; return 1; })()"); g.frames(3)
-    tint = lambda k: (on[k][1] - on[k][0]) - (off[k][1] - off[k][0])
-    assert not any(green(c) for c in list(on.values()) + list(off.values())), (on, off)      # the floor's own px, with the veil too (the first veil was a dark checker: one px in two was grass)
-    assert max(tint("west"), tint("east")) >= 6, (on, off)                 # a little of the meadow's green over the floor: seen through the ground (one side may be your way: clear)
-    # the veil's dark line along the hole's south edge goes and comes WITH the wash, in steps (it was all there over a half and gone under it: a pop when you stepped under a roof)
-    EDGE = """([x0, y0, n]) => { const o = []; for (let i = 0; i < n; i++) { const a = HdLook.screenOf(x0 + (i + .5) / 16, y0, 0), k = devicePixelRatio; o.push([...HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), 1, 1).data.slice(0, 3)]); } return o; }"""
-    def line(v):
-        g.js(f"(() => {{ HdLook.veil = {v}; return 1; }})()"); g.frames(3)
-        return g.js(EDGE, [x + 3, y + 2 + 1 / 32, 48])
-    none = line(0)
-    n = {v: sum(1 for a, b in zip(line(v), none) if sum(abs(p - q) for p, q in zip(a, b)) > 40) for v in (.3, .7, 1)}
-    g.js("(() => { HdLook.veil = 1; return 1; })()")
-    assert n[1] >= 30 and 4 <= n[.3] < n[.7] <= n[1] and n[.3] < .6 * n[1], n
-    assert all(sum(on[k]) >= sum(off[k]) - 12 for k in on), (on, off)      # and never darker for it
-    assert on["mine"] == off["mine"], (on, off)                            # your own tile: clear
-    grass = lambda c: c[1] >= c[0] and c[1] > c[2] + 40
-    south = [g.js(AT_, [x + dx + .5, y + 4.5, 0]) for dx in (1, 7)]
-    assert all(grass(c) for c in south), south                             # the meadow south of it: whole
+    for at in ((x + 4, y), (x + 4, y + 1)):                                # its middle; its south row, behind its south wall
+        s = go(g, *at, -4, "!HdLook.busy && HdLook.cam.pitch === 68")
+        g.js("(() => { WayShow.paint = () => {}; return 1; })()"); g.frames(3)
+        assert s["pitch"] == 68 and s["n"] == 0, s
+        assert s["seen"] > .1, s                                           # you: whole, or one px in two where the south wall is in front
+        south = [g.js(AT_, [x + i + .5, y + 2.35, 0]) for i in (3, 4, 5)]  # the meadow a third of a tile south of the rim: no floor hangs there
+        assert all(c[1] >= c[0] for c in south), (at, south)               # (grass, a flower's px too: never the floor's brown)
+        inside = [g.js(AT_, [x + i + .5, y - .5, -4]) for i in (3, 4, 5)]  # the floor's north row: drawn, inside the rim
+        rim = [g.js("([x, y, z]) => HdLook.screenOf(x, y, z)[1]", [x + 4.5, v, 0]) for v in (y - 1, y + 2)]
+        fl = g.js("([x, y, z]) => HdLook.screenOf(x, y, z)[1]", [x + 4.5, y - .5, -4])
+        assert rim[0] < fl < rim[1] and not any(green(c) for c in inside), (rim, fl, inside)
+    tidy(g, x, y)
+
+
+def test_a_deep_shaft_is_darker_than_a_shallow_one(browser, server):
+    """Shaft 3 and shaft 6 were the same picture (a cat in a brown box). From above, the wall strata of the north wall fill
+    more of the opening the deeper it is (3 px a level), darker downward: the opening of shaft 6 is darker than shaft 3's."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    g.rpc("dev_col", tiles=[[x + 3, y]], col=[-3])
+    g.rpc("dev_col", tiles=[[x + 7, y]], col=[-6])
+    g.rest()
+    LUM = """([x, y]) => { const a = HdLook.screenOf(x + .5, y, 0), b = HdLook.screenOf(x + .5, y + 1, 0), k = cv.width / innerWidth; let s = 0, n = 0;
+      for (let v = Math.ceil(a[1] * k) + 2; v < Math.floor(b[1] * k) - 2; v++) for (const dx of [-5, 5]) { const d = HdLook.read(Math.round(a[0] * k + dx), v, 1, 1).data; s += .3 * d[0] + .59 * d[1] + .11 * d[2]; n++; } return [s / n, n]; }"""
+    out = {}
+    for d, tx in ((3, x + 3), (6, x + 7)):
+        s = go(g, tx, y, -d, "!HdLook.busy && HdLook.cam.pitch === 68")
+        assert s["pitch"] == 68, s
+        out[d] = g.js(LUM, [tx, y])
+    assert out[6][1] >= 6 and out[6][0] < out[3][0] - 10, out
     tidy(g, x, y)
 
 
 def test_the_eye_tilts_by_one_rule(browser, server):
-    """No tile of the floor you stand on shows from the side (two levels of land or more over the eye's line to each):
-    from above; back when one shows again (under one level). The table: [where, its level, from above?], in the order walked."""
+    """Your feet two levels or more under the land round you (ten of the sixteen tiles two steps away, each as high as
+    it or the tile between: a wall or two beside you is not "round you"): from above; within one level of it: the surface's pitch. Every hole alike. The table: [where, its level, from above?], in the order walked."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -126,13 +135,13 @@ def test_the_eye_tilts_by_one_rule(browser, server):
     col([(x - 9 + i, y - 9 + j) for j in range(6) for i in (-1, 3)] + [(x - 9 + i, y - 10) for i in range(-1, 4)], [5])
     g.rest()
     table = [("meadow", (x, y, 0), False),
-             ("stair 1 wide", (x + 1, y - 5, -1), False), ("stair 1 wide", (x + 2, y - 5, -2), False), ("stair 1 wide", (x + 3, y - 5, -3), True), ("stair 1 wide", (x + 6, y - 5, -6), True),
+             ("stair 1 wide", (x + 1, y - 5, -1), False), ("stair 1 wide", (x + 2, y - 5, -2), True), ("stair 1 wide", (x + 3, y - 5, -3), True), ("stair 1 wide", (x + 6, y - 5, -6), True),
              ("stair 1 wide, back up", (x + 2, y - 5, -2), True), ("stair 1 wide, back up", (x + 1, y - 5, -1), False),      # (its hysteresis is the land's: out a step higher than in)
-             ("stair 3 wide", (x + 3, y + 3, -3), False), ("stair 3 wide", (x + 5, y + 3, -5), False), ("stair 3 wide, its floor", (x + 8, y + 3, -6), True),
-             ("meadow", (x, y, 0), False), ("pit 3 x 3, 4 deep", (x - 5, y, -4), False), ("pit, its south row", (x - 5, y + 1, -4), False),
+             ("stair 3 wide", (x + 3, y + 3, -3), True), ("stair 3 wide", (x + 5, y + 3, -5), True), ("stair 3 wide, its floor", (x + 8, y + 3, -6), True),
+             ("meadow", (x, y, 0), False), ("pit 3 x 3, 4 deep", (x - 5, y, -4), True), ("pit, its south row", (x - 5, y + 1, -4), True),
              ("meadow", (x, y, 0), False), ("shaft 6 deep", (x - 5, y - 6, -6), True),
              ("meadow", (x, y, 0), False), ("room 14 deep", (x - 7, y + 8, -14), True),
-             ("meadow", (x, y, 0), False), ("cave, a tile in", (x - 8, y - 4, 0), False), ("cave, three tiles in", (x - 8, y - 6, 0), False), ("cave, its end", (x - 8, y - 9, 0), True)]
+             ("meadow", (x, y, 0), False), ("cave, a tile in", (x - 8, y - 4, 0), True), ("cave, three tiles in", (x - 8, y - 6, 0), True), ("cave, its end", (x - 8, y - 9, 0), True)]
     got = []
     for name, (tx, ty, tz), steep in table:
         s = go(g, tx, ty, tz)

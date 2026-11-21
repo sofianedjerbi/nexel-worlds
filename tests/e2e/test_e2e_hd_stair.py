@@ -84,14 +84,14 @@ def test_a_shaft_and_its_way_out_are_one_view(browser, server):
         g.rpc("dev_col", tiles=[[x + i, y]], col=[-6 + i])                       # the stair cut out of it, open to the sky
     g.rpc("dev_teleport", x=x, y=y, z=-6)
     g.arrive()
-    g.wait("HdLook.cam.pitch > 67.9 && HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
+    g.wait("HdLook.cam.pitch > 67.9 && HdLook.win.n === 0 && !HdLook.busy", timeout=8000)      # (under the open sky no window: from above the shaft is seen as it is)
     for i, steep in ((2, True), (4, True), (5, False)):                          # levels -4, -2: walls of two beside you; -1: out
         g.rpc("dev_teleport", x=x + i, y=y, z=-6 + i)
         g.arrive()
         g.wait(f"HdLook.cam.pitch {'> 67.9' if steep else '< 36.1'}", timeout=8000)
     g.stamp(3, -4, ["...", "...", "..."], levels=["555", "555", "555"])          # a block of land five high, on the meadow: stand at its foot, south of it, then west
     g.rest()
-    for dx, dy in ((4, 0), (2, -3)):
+    for dx, dy in ((4, -1), (2, -3)):
         g.rpc("dev_teleport", x=x + dx, y=y + dy)
         g.arrive()
         g.sleep(900)

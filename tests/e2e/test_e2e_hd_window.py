@@ -68,17 +68,12 @@ def test_in_a_river_between_cliffs_the_hole_is_whole(browser, server):
     g.stamp(-15, -11, rows, levels=["9" * 31] * 10 + ["2" * 31] * 3 + ["6" * 31] * 10)
     g.rest()
     g.rpc("dev_teleport", x=x, y=y)
-    g.wait("HdLook.win.a === 1 && HdLook.win.n >= 9 && !HdLook.busy", timeout=8000)
-    g.settle("!!WayShow.land()", timeout=4000)                             # (the way out along the river, once it is found: its floors were boxes too)
+    g.wait("HdLook.cam.pitch === 68 && !HdLook.busy", timeout=8000)
     g.rest()
-    tiles = g.js("HdLook.win.tiles")
-    at = {(t[0], t[1]) for t in tiles}
-    # the bank hides the whole river from the eye: the three rows of water round you are of the hole, the middle one too
-    # (it was the tiles with a wall beside them only: the middle of the water was not, a strip of the bank stood there)
-    assert all((x + i, y + j) in at for i in (-1, 0, 1) for j in (-1, 0, 1)), sorted(at)
-    # ... and nothing of it further than your own reach of four steps: no path of boxes one tile wide along the river
-    assert max(abs(t[0] - x) + abs(t[1] - y) for t in tiles) <= 4, sorted(at)
-    assert all(y - 1 <= t[1] <= y + 1 for t in tiles), sorted(at)           # (water only: no box on the banks)
+    # four levels under the land round you: the eye looks from above, and under the open sky nothing is cut: the gorge is
+    # seen as it is, its south bank in front of its water (no box of the window on the banks nor on the river: it was a
+    # strip of boxes along the river, then the river's floor laid south of the bank)
+    assert g.js("HdLook.win.n") == 0 and g.js("HdLook.catSeen()") > .1
 
 
 def test_what_grows_on_the_meadow_over_your_room_is_not_on_its_floor(browser, server):

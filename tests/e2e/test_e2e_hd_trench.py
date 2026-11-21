@@ -12,6 +12,9 @@ from test_e2e_hd_sun import hd
 from test_e2e_hd_window import PX, inside, room
 
 # the mean colour of a tile's top as the screen has it (the px inside its four corners' box, two px in): [r, g, b]
+# the same of a tread's north edge only, the two art px under it across its middle half (from above the open trench's own south wall hides the rest of a deep tread)
+EDGE = """([x, y, z]) => { const a = HdLook.screenOf(x + .25, y, z), b = HdLook.screenOf(x + .75, y, z), k = devicePixelRatio, y0 = Math.round(a[1] * k) + zoom, n = 2 * zoom;
+  const d = HdLook.read(Math.round(a[0] * k), y0, Math.round((b[0] - a[0]) * k), n).data, s = [0, 0, 0]; for (let i = 0; i < d.length; i += 4) for (let j = 0; j < 3; j++) s[j] += d[i + j]; return s.map((v) => Math.round(v / (d.length / 4))); }"""
 TILE = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => HdLook.screenOf(x + a, y + b, z)), k = devicePixelRatio;
   const x0 = Math.ceil(Math.max(c[0][0], c[3][0]) * k) + 2 * zoom, x1 = Math.floor(Math.min(c[1][0], c[2][0]) * k) - 2 * zoom, y0 = Math.ceil(c[0][1] * k) + 2 * zoom, y1 = Math.floor(c[2][1] * k) - 2 * zoom;
   const d = HdLook.read(x0, y0, x1 - x0, y1 - y0).data, s = [0, 0, 0]; for (let i = 0; i < d.length; i += 4) for (let j = 0; j < 3; j++) s[j] += d[i + j]; return s.map((v) => Math.round(v / (d.length / 4))); }"""
@@ -41,8 +44,10 @@ def test_a_stair_s_treads_are_warm_steps_lighter_at_the_top_and_the_floor_is_a_g
     calm(g)
     x, y = stair(g)
     at(g, x + 5, y, -5)
-    g.js("(() => { HdLook.veil = 0; return 1; })()"); g.frames(3)               # (the treads' own light: the veil of the meadow south of them lays a little of its green over the open ones: test_e2e_hd_behind.py)
-    treads = {i: g.js(TILE, [x + i, y, -i]) for i in (2, 3, 4, 7, 8)}          # 2 to 4 under the open sky, 7 and 8 under the land
+    g.frames(3)
+    treads = {i: g.js(EDGE, [x + i, y, -i]) for i in (2, 3, 4)}
+    at(g, x + 7, y, -7)
+    treads.update({i: g.js(TILE, [x + i, y, -i]) for i in (7, 8)})     # 2 to 4 under the open sky (their north edge: no window under the sky, the trench's own south wall hides the rest), 7 and 8 under the land, from in there
     assert all(warm(c) for c in treads.values()), treads                         # steps you can walk: warm earth, the open ones too (they were (106, 90, 85): grey)
     assert lum(treads[2]) > lum(treads[3]) > lum(treads[4]) and lum(treads[2]) > lum(treads[4]) * 1.1 and lum(treads[7]) > lum(treads[8]), treads    # the top ones lighter: down is read
     assert g.js("HdLook.raw()") == 0

@@ -114,8 +114,9 @@ def test_a_tunnel_one_level_under_the_meadow_opens_a_small_trench_not_the_whole_
 
 
 def test_in_a_trench_two_deep_under_the_open_sky_the_floor_you_stand_on_is_seen_and_pointed_at(browser, server):
-    """(the owner in the open trench at their cave's mouth, at the surface's pitch: "perspective is just bugged. i should have xray here": the trench's south wall hid the floor, the cat stood as if on the meadow.)
-    Whenever land is between the eye and your feet the window is on your floor, at any pitch: the floor's px are drawn, the land in front of them is not; and what you see there is what a click picks."""
+    """(the owner in the open trench at their cave's mouth, at the surface's pitch: "perspective is just bugged. i should have xray here": the trench's south wall hid the floor, the cat stood as if on the meadow.
+    Then a window cut the south wall away and the floor was drawn south of the rim: "a drawer pulled out onto the grass".) Two levels under the land round you the eye looks from above:
+    the floor shows inside the trench's rim, as it is (no window under the open sky), and what you see there is what a click picks."""
     g = hd(browser, server)
     g.js("setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0)")
     g.hour(.3, still=True)
@@ -123,37 +124,32 @@ def test_in_a_trench_two_deep_under_the_open_sky_the_floor_you_stand_on_is_seen_
     z = g.js(f"topAt({x}, {y})")
     g.stamp(-9, -6, ["." * 19] * 13, levels=[(str(z) if 0 <= z <= 9 else "0") * 19] * 13); g.rest()
     z = g.js(f"topAt({x}, {y})")
-    base = g.js("HdLook.cam.pitch")
     g.rpc("dev_col", tiles=[[x + i, y] for i in range(-3, 4)], col=[z - 2])     # a trench one tile wide, two levels deep, open to the sky
     g.settle(f"topAt({x}, {y}) === {z - 2}")
     g.rpc("dev_teleport", x=x, y=y, z=z - 2)
-    g.wait(f"HdLook.win.a === 1 && !!HdLook.winAt({x}, {y}) && !HdLook.busy", timeout=4000)
+    g.wait("HdLook.cam.pitch === 68 && !HdLook.busy", timeout=4000)
     g.rest()
-    assert g.js("HdLook.cam.pitch") == base and g.js("HdLook.level[0]") == z - 2      # (the surface's pitch: nothing tilts)
+    assert g.js("HdLook.win.n") == 0 and g.js("HdLook.level[0]") == z - 2
     green = lambda c: c[1] > c[0] + 15 and c[1] > c[2] + 40
-    seen = [g.js(AT_, [x + dx + .5, y + .5, z - 2]) for dx in (-1, 1)]
-    assert not any(green(c) for c in seen), seen                      # (the floor beside you: its own px, not the grass of the land south of it)
+    seen = [g.js(AT_, [x + dx + .5, y + .25, z - 2]) for dx in (-1, 1)]
+    assert not any(green(c) for c in seen), seen                      # (the floor beside you, its north part: its own px, inside the rim)
     for dx in (-1, 1):                                                # ... and a click there is that floor's tile (it picked the rim north of the trench)
-        p = g.js(f"(() => {{ const a = HdLook.screenOf({x + dx + .5}, {y + .5}, {z - 2}), q = HdLook.pick(a[0], a[1]); return q && [q.x, q.y]; }})()")
+        p = g.js(f"(() => {{ const a = HdLook.screenOf({x + dx + .5}, {y + .25}, {z - 2}), q = HdLook.pick(a[0], a[1]); return q && [q.x, q.y]; }})()")
         assert p == [x + dx, y], (dx, p)
-    assert g.js("HdLook.catSeen()") > .8
-    window_off(g)
-    hid = [g.js(AT_, [x + dx + .5, y + .5, z - 2]) for dx in (-1, 1)]
-    assert all(green(c) for c in hid), hid                            # (with no window those px are the meadow south of the trench: it stands between the eye and the floor)
-    window_off(g, False)
-    for dx, dy in [(-7, 0), (7, 0), (5, -3), (-5, 5)]:                # (not the tiles over your head on the screen: the way out is marked there)
-        c = g.js(AT_, [x + dx + .5, y + dy + .5, z]); assert green(c), (dx, dy, c)   # (the meadow round the trench: as ever)
+    assert g.js("HdLook.catSeen()") > .3
+    for dx, dy in [(-7, 0), (7, 0), (5, -3), (-5, 5), (-1, 1), (1, 1)]:   # (the meadow round the trench, just south of its rim too: no floor hangs there)
+        c = g.js(AT_, [x + dx + .5, y + dy + .4, z]); assert c[1] >= c[0], (dx, dy, c)
 
 
-# every frame: [your body's tile x (the body as it is drawn, between two tiles: not the server's last), land is between the eye and your feet there (a roof, or the land south two levels over your floor), the window is on that tile and whole]
-FEET = """(() => { window.__d = []; window.__on = true; const f = () => { const p = ents.get('agent' + myId), x = Math.round(p.x), y = Math.round(p.y), L = HdLook.level[0];
-  __d.push([x, +(topAt(x, y) > L || topAt(x, y + 1) - L >= 2), +(!!HdLook.winAt(x, y) && HdLook.win.a >= .99)]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
+# every frame: [your body's tile x, the eye's pitch]
+FEET = """(() => { window.__d = []; window.__on = true; const f = () => { const p = ents.get('agent' + myId);
+  __d.push([Math.round(p.x), HdLook.cam.pitch]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 
 
 @pytest.mark.realtime
-def test_walking_into_a_trench_the_window_is_there_the_first_frame_your_feet_are_under_the_rim(browser, server):
-    """(the owner: "when entering the stairs down, the game think the player is still out of it so it gets no xray, a lil delay": 54 frames of the walk into their cave with land in front of the feet and
-    nothing looked through.) Your space is looked for from the surface too: the window is on a hole beside you before you step into it. Every frame of the walk in: none with your feet hidden and no window."""
+def test_walking_into_a_trench_the_eye_tips_once(browser, server):
+    """(the owner: "when entering the stairs down, the game think the player is still out of it so it gets no xray, a lil delay".) Walking from the meadow into a trench two deep the eye
+    tips to look from above, once, one way, as soon as your feet are two under the land round you: no frame goes back up."""
     g = hd(browser, server)
     x, y = g.pos()
     z = g.js(f"topAt({x}, {y})")
@@ -167,10 +163,12 @@ def test_walking_into_a_trench_the_window_is_there_the_first_frame_your_feet_are
     g.page.keyboard.down("ArrowLeft")
     g.wait(f"myPos().x <= {x}", timeout=8000)
     g.page.keyboard.up("ArrowLeft")
+    g.wait("HdLook.cam.pitch === 68", timeout=3000)
     d = g.js("(() => { __on = false; return __d; })()")
-    hid = [r for r in d if r[1]]
-    late = [r for r in hid if not r[2]]
-    assert len(hid) >= 10 and not late, (len(d), len(hid), late[:6])
+    p = [r[1] for r in d]
+    assert p[0] < 53 and all(b >= a for a, b in zip(p, p[1:])), p
+    first = next(r[0] for r in d if r[1] > p[0])
+    assert first <= x + 3, (first, x)                                 # (not before the trench)
 
 
 @pytest.mark.realtime

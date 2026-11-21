@@ -4,11 +4,12 @@
 //      "the game thinks the player is still out". And your body went a whole level at each tile's middle: 16 px down the screen and back, every step of a stair.)
 //   over(x, y, L, k) -> LEVELS OF LAND OVER THE EYE'S LINE to the feet of somebody on (x, y) at L (k: levels the line climbs a tile south, 2 tan(pitch)): 0: seen through the open air (or a cave's mouth);
 //     1: half a body hidden; 2 or more: all of it (99: the line runs into a ceiling, or into anything when a roof is over the feet: nothing of a body shows). A block somebody put (a wall you built) is not land. EVERY question of "does land hide this" is asked here (they were three: hd.js `hidden`, the land search's own, the tilt's walls).
-//   sunk(x, y, L, k, n) -> a tile under the open sky that is IN the land, not behind it: land over the line to it (more than half a body) AND land north of it too (two levels over it within six tiles): a pit, a trench,
-//     a dug stair's tread, a gorge's floor. Behind a hill, a ridge, a cliff, a wall: not. under(x, y, L, k): a roof over it, or sunk: there the x-ray window is; behind land you show through it (vox_style.js), nothing is opened.
-//   steep(tx, ty, L, was, k0, ver) -> is the eye to look from above (hd.js api.steep). ONE rule: the floor you stand on (the tiles at your level you can walk to within three steps) and the eye's line at the surface's pitch:
-//     when no tile of it shows from the side (two levels of land or more over the line to each: a whole body), the eye looks from above; back when one of them shows again (under one level). The land's shape, not a clock.
-//     (It was by the walls beside you: a stair one tile wide tipped at its second step, one three wide never, a pit at its first dig, a cave three tiles deep at its mouth.) ver: changes when the land does
+//   under(x, y, L) -> a roof over it (land over its floor): there, and only there, the x-ray window is. Under the open sky nothing is cut: from above a hole's own south wall hides what is
+//     behind it and its floor lies inside its rim (the window under the sky cut that wall away and drew the floor where it projects, south of the rim: "a drawer pulled out onto the grass"; a veil
+//     of the meadow laid over it did not mend it). Behind land you show through it one px in two (vox_style.js).
+//   steep(tx, ty, L, ver) -> is the eye to look from above (hd.js api.steep). ONE rule for every hole, pit, stair, trench, shaft, room, cave, tunnel: your feet two levels or more under the
+//     land round you: ten of the sixteen tiles two steps away (each as high as it or the tile between it and you) two levels over L. A wall or two beside you on the surface is not "round you".
+//     (It was "no tile of your floor shows from the side": a pit you fell into stayed side-on, a 3-wide stair tipped at its floor only. The land's shape, not a clock: hd.js holds 300 ms.)
 //   own(tx, ty, L, cov) -> the boxes of the x-ray window that are yours whatever the search for your space has found yet: your tile, floor to ceiling, and the covered tiles you just came from (vox_style.js adds the ones its window lacks)
 const HdLevel = (() => {
   const col = (x, y) => Voxels.host.column(x, y), topAt = (x, y) => { const c = col(x, y); return c && c.length ? c[c.length - 1] : 0; };
@@ -22,13 +23,13 @@ const HdLevel = (() => {
     const la = at(ax, ay), lb = at(bx, by), f = ax === bx ? p.y - ay : p.x - ax; return [L, Math.abs(la - lb) >= FALL.from ? L : la + (lb - la) * f];   // (a fall: the eye and the body have their own way down, hd.js)
   }
   function over(x, y, L, k, n = 20) { let m = 0; for (let d = 1; d <= n; d++) { const c = col(x, y + d), e = L + (d - .5) * k; if (!c || !c.length || matAt(x, y + d)) continue; for (let i = 0; i < c.length; i += 2) if (c[i] > e && (i ? c[i - 1] : -1e9) < e + k) m = Math.max(m, i && c[i - 1] > e ? 99 : c[i] - e); } return m > 0 && topAt(x, y) > L ? 99 : m; }
-  const sunk = (x, y, L, k, n) => { if (over(x, y, L, k, n) <= 1) return false; for (let d = 1; d <= 6; d++) if (topAt(x, y - d) >= L + 2) return true; return false; };
-  const under = (x, y, L, k) => topAt(x, y) > L || sunk(x, y, L, k);
+  const under = (x, y, L) => topAt(x, y) > L;
   let sk = "", sv = 0;
-  function steep(tx, ty, L, was, k0, ver) {
-    const key = [tx, ty, L, ver].join(); if (key !== sk) { sk = key; sv = 1e9; const seen = new Set([tx + "," + ty]); let fr = [[tx, ty]];
-      for (let n = 0; n <= 3 && sv > 0; n++) { const nx = []; for (const [x, y] of fr) { sv = Math.min(sv, over(x, y, L, k0)); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy, c = col(X, Y), q = X + "," + Y; if (!seen.has(q) && solid(c, L) && !solid(c, L + 1) && !solid(c, L + 2)) { seen.add(q); nx.push([X, Y]); } } } fr = nx; } }
-    return was ? sv >= 1 : sv >= 2;
+  function steep(tx, ty, L, ver) {
+    const key = [tx, ty, L, ver].join(); if (key !== sk) { sk = key; const t = [];
+      for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) if (Math.max(Math.abs(i), Math.abs(j)) === 2) { const h = (X, Y) => (matAt(X, Y) ? L : topAt(X, Y)); t.push(Math.max(h(tx + i, ty + j), h(tx + Math.trunc(i / 2), ty + Math.trunc(j / 2)))); }
+      t.sort((a, b) => a - b); sv = t[6] - L; }
+    return sv >= 2;
   }
   function own(tx, ty, L, cov) {
     if (!cov) { trail = []; return trail; }
@@ -37,5 +38,5 @@ const HdLevel = (() => {
     trail = trail.filter((t) => t.length < 5 && (t[0] !== tx || t[1] !== ty) && Math.abs(t[0] - tx) + Math.abs(t[1] - ty) <= 3).slice(-3).concat([b]); return trail;   // (behind you: only what was under a roof; under the open sky the land there is as it is)
   }
   const rim = (tx, ty, L) => Math.max(L, topAt(tx, ty), topAt(tx + 1, ty), topAt(tx - 1, ty), topAt(tx, ty - 1), topAt(tx, ty + 1));   // (the level of the land round your hole: its rim)
-  return {of, steep, own, rim, over, sunk, under, get shows() { return sv; }};
+  return {of, steep, own, rim, over, under, get shows() { return sv; }};
 })();
