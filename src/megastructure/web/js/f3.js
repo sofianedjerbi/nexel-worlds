@@ -6,7 +6,7 @@
 //   F3.add(name, fn, side)   fn() -> lines (strings); side "game" (left) or "perf" (right). Asked 4 times a second.
 //   F3.sample(now, ms, land) a frame: when it began and the script's ms (twice in a frame: the larger is kept)
 // Opened by F3, ?perf=1, ?debug=1, /coords, /perf, the menu's "Debug screen" row, or holding the goals chip on a
-// phone. Kept between visits. Off, it costs a test of one flag a frame.
+// phone. Kept between visits. Off, it costs a test of one flag a frame. The GPU's ms a frame: gpu_time.js.
 // Drawn in the game's pixel font: each line on a strip of dark see-through, its text with a shadow one art px down
 // and right (the font's px is 2 CSS px at 18 px), no rounded box. On a phone at 9 px, the font's own size: the two
 // columns one under the other, on the left.
@@ -20,12 +20,14 @@ const F3 = (() => {
   function set(v) {
     on = !!v; localStorage.setItem("megastructure-f3", on ? "1" : "0");
     for (const k of ["perf", "coords"]) localStorage.removeItem("megastructure-" + k);   // (the two old switches: one now)
+    if (!on) GpuTime.stop();
     if (el) el.style.display = on ? "" : "none"; S.gaps = []; S.js = []; S.last = S.at = 0; painted = 0;
   }
   function sample(now, ms, land = 0) {
     if (!on) return;
     if (now === S.now) { S.js[S.js.length - 1] = Math.max(S.js[S.js.length - 1], ms); }      // (the classic frame inside the HD look's: one frame)
     else { if (S.last) S.gaps.push(now - S.last); S.last = S.now = now; S.js.push(ms); S.land += land; S.n++; }
+    GpuTime.frame(now);                                                    // (the GPU's clock: one query a frame, gpu_time.js)
     if (now - painted >= 250) { painted = now; paint(now); }                // (the text 4 times a second)
   }
   function lines(side) {
@@ -63,7 +65,8 @@ const F3 = (() => {
   add("frames", () => {
     const g = S.gaps, n = S.js.length, secs = g.reduce((a, b) => a + b, 0) / 1000;
     const r = [`${secs ? Math.round(g.length / secs) : "-"} fps  frame ${at(g, .5).toFixed(1)} / ${at(g, .95).toFixed(1)} ms (median / p95)`,
-      `script ${at(S.js, .5).toFixed(1)} / ${at(S.js, .95).toFixed(1)} ms  land ${(n ? S.land / n : 0).toFixed(1)} ms`];
+      `script ${at(S.js, .5).toFixed(1)} / ${at(S.js, .95).toFixed(1)} ms  land ${(n ? S.land / n : 0).toFixed(1)} ms`,
+      GpuTime.ms === null ? `GPU n/a${GpuTime.ok ? " (waiting)" : "  (no timer on this GPU)"}` : `GPU ${GpuTime.ms.toFixed(1)} ms a frame (mean, ${GpuTime.contexts} canvases)`];
     S.gaps = []; S.js = []; S.land = 0; S.n = 0;
     return r;
   }, "perf");
