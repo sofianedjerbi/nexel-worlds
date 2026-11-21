@@ -83,7 +83,8 @@ def test_a_way_down_is_dug_as_a_tunnel_and_what_is_over_it_stays(world):
     assert dig(3, -2)["ok"] and s.world.surfaces(x + 3, y) == [-3, 0]                  # the room to stand in, a roof over it
     assert run(s, a, "step", {"dir": "E"})["ok"] and (a.x, s.height(a)) == (x + 3, -3) and s.world.covered(x + 3, y, -3)
     assert dig(5, -2)["ok"] is False and s.world.solid(x + 5, y, -2)                  # no air beside it: not dug
-    assert run(s, a, "step", {"dir": "W"})["ok"] and s.height(a) == -2               # and back up, a step at a time
+    r = run(s, a, "jump", {"dir": "W"})
+    assert r["ok"] and s.height(a) == -2, r                                          # and back up, a jump a step
 
 
 def test_a_hole_is_dug_beside_you_a_layer_at_a_time(world):

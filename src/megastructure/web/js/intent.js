@@ -10,7 +10,7 @@ function plainWalk(x, y) {
 }
 function walkable(x, y, fx, fy) {               // (fx, fy): where you come from: a layer up or down at most
   if (fx === undefined) return plainWalk(x, y);
-  const z = landAt(myZ(fx, fy), x, y, fx, fy), c = z === null ? null : Floors.get(x, y, z);     // (on a built block, what stands on it is what counts: floors.js)
+  const z = landAt(myZ(fx, fy), x, y, fx, fy, springs(x, y)), c = z === null ? null : Floors.get(x, y, z);     // (on a built block, what stands on it is what counts: floors.js)
   return z !== null && (c && FLOORS ? !SOLID.has(c[1]) : plainWalk(x, y));
 }
 // ---- what a click does, decided per tile (also shown as the cursor hint) ----------------

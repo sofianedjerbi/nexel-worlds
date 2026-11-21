@@ -55,7 +55,8 @@ def climb(s, a, d, tool=True, limit=80):
             r = run(s, a, "dig", {"dir": d, "z": h + 2, **args})
             assert r["ok"] and r["cell"] == [fx, fy, h + 2], r
         else:
-            assert run(s, a, "step", {"dir": d})["ok"] and s.height(a) == h + 1
+            assert not run(s, a, "step", {"dir": d})["ok"]                  # (walking into a step stops you)
+            assert run(s, a, "jump", {"dir": d})["ok"] and s.height(a) == h + 1
         n += 1
     return n
 
@@ -74,7 +75,7 @@ def test_the_owners_pocket_is_shut_and_a_pickaxe_cuts_steps_up_out_of_it(world):
     r = run(s, a, "dig", {"dir": "E", "z": -11, "with": "pickaxe"})                      # the wall at your head's height: that cell
     assert r["ok"] and r["cell"] == [-25, -3, -11] and w.col(-25, -3) == cols[-25, -3] & ~(1 << (-11 - LOW))
     assert all(w.col(*t) == c for t, c in cols.items() if t not in ((-26, -3), (-25, -3)))   # and nothing else moved
-    assert run(s, a, "step", {"dir": "E"})["ok"] and (a.x, s.height(a)) == (-25, -12)   # the step
+    assert run(s, a, "jump", {"dir": "E"})["ok"] and (a.x, s.height(a)) == (-25, -12)   # the step
     n = 3 + climb(s, a, "E")
     assert out(s, a) and s.height(a) == 0 and n == 30, n                         # three actions a layer at the most: bounded
     assert all(w.col(x, y) == c for (x, y), c in cols.items() if y != -3)                # the stair cut is a tile wide
@@ -89,15 +90,16 @@ def test_from_the_stairs_dug_out_foot_the_way_back_onto_the_treads_is_two_digs(w
     a.add("pickaxe")
     assert run(s, a, "step", {"dir": "E"})["ok"] and s.height(a) == -14                  # east: under the tread, not onto it
     assert run(s, a, "step", {"dir": "W"})["ok"]
-    assert run(s, a, "step", {"dir": "S"})["ok"] and s.height(a) == -13
+    assert run(s, a, "jump", {"dir": "S"})["ok"] and s.height(a) == -13
     r = run(s, a, "dig", {"dir": "up", "with": "pickaxe"})
     assert r["ok"] and r["cell"] == [-29, -2, -11]
     r = run(s, a, "dig", {"dir": "E", "z": -11, "with": "pickaxe"})
     assert r["ok"] and r["cell"] == [-28, -2, -11]
-    assert run(s, a, "step", {"dir": "E"})["ok"] and s.height(a) == -12
+    assert run(s, a, "jump", {"dir": "E"})["ok"] and s.height(a) == -12
     assert run(s, a, "step", {"dir": "N"})["ok"] and (a.x, a.y, s.height(a)) == (-28, -3, -12)   # on the tread
     for want in (-11, -11, -11, -11, -10, -9):
-        assert run(s, a, "step", {"dir": "E"})["ok"] and s.height(a) == want             # and up the owner's stair
+        h = s.height(a)
+        assert run(s, a, "jump" if want > h else "step", {"dir": "E"})["ok"] and s.height(a) == want    # and up the owner's stair
 
 
 def test_a_ladder_takes_you_onto_the_tread_once_there_is_head_room(world):

@@ -30,9 +30,15 @@ def stair(g):
     return x, y
 
 
-def walk(g, key, done):
+def walk(g, key, done, jump=False):
     g.js(REC)
     g.page.keyboard.down(key)
+    if jump:                                                 # (up the steps: J at each, walking into one stops you)
+        for _ in range(120):
+            if g.js(done):
+                break
+            g.page.keyboard.press("j")
+            g.page.wait_for_timeout(100)
     g.wait(done, timeout=12000)
     g.page.keyboard.up(key)
     g.wait("!HdLook.busy", timeout=6000)
@@ -64,7 +70,7 @@ def test_down_a_covered_stair_the_window_is_open_on_every_frame_and_your_body_is
     assert not steps, steps[:8]                                                  # your body does not jump on the screen (it went 16 px at each tile's middle, and 100 at the roof)
     assert turns(r) == 0 and r[0][1] < 37 and r[-1][1] > 67.9, (turns(r), r[0][1], r[-1][1])    # one tilt, on the way down
     # and back up: one tilt back, near the top
-    r = walk(g, "ArrowLeft", f"myPos().x <= {x}")
+    r = walk(g, "ArrowLeft", f"myPos().x <= {x}", jump=True)
     assert not [v for v in r if v[2] and not v[3]] and turns(r) == 0 and r[-1][1] < 36.1
     back = next(v[0] for v in r if v[1] < 67.9)
     assert back < x + 2.6, back - x                                              # the eye stays over the stair until its last steps

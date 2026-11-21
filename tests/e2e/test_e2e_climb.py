@@ -132,7 +132,7 @@ WAYBOX = "([x, y, z]) => { const n = WayShow.cur && WayShow.cur.next; return !!n
 def test_out_of_your_own_shaft_with_a_pickaxe_alone(game):
     """"how do i climb up? why i cant??": four down in a shaft a tile wide, a pickaxe and no ladder: Space dug level,
     X dug down, nothing dug upward. R (Dig up) takes the cell in front of you at your head's height ("Dig a step"),
-    you walk up onto the block under it; then the cell over your head ("Dig up") and the next step: a stair out, a
+    J jumps you up onto the block under it; then the cell over your head ("Dig up") and the next step: a stair out, a
     layer each time. The cell it will take is marked, at its own height. And under the land, the tree on top of the
     wall you face, three up, is not offered ("Chop tree (slow)" with the aim on a tunnel wall): the wall is."""
     game.clear_area(8)
@@ -160,8 +160,8 @@ def test_out_of_your_own_shaft_with_a_pickaxe_alone(game):
             said.append(aim[3])
             game.press("r", 100)
             game.wait(f"!solidAt({aim[0]}, {aim[1]}, {aim[2]}) && !myAction", 8000)
-        else:
-            game.hold(["ArrowRight"], 90)
+        else:                                                  # (walking into the step stops you: J jumps it)
+            game.press("j", 0)
             game.wait(f"myAt && myAt.z > {z} && !walking", 6000)
             X, z = game.js("[myAt.x, myAt.z]")
     assert said and set(said) <= {"Dig a step", "Dig up"}, said

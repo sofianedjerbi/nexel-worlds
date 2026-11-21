@@ -14,6 +14,35 @@ const LEAD = [2, 4];         // tiles ahead of the server: from the first you sl
 
 function mark(x, y) { const n = ++trailN; trail.push({x, y, n}); return [x, y, n]; }
 
+// JUMP (options.js "jump"): walking into a step stops you ("player size should be 2 blocks ... also add a key to
+// jump"); the key hops you up onto it, if both cells over it are empty (cells.js landAt). Walking, it is the step
+// ahead of the tile you are on: your screen may walk onto it (`spring`, here) and the server's walk takes it after
+// you (sim/movement.py _tool_jump `at`). Standing, the step you face (or the way out's next step: wayshow.js), now.
+// On the level, a hop where you stand, nothing more (jump.js HOP).
+const spring = new Map();    // "x,y" -> until: the steps your screen may hop onto (several: J pressed again, a step on, before the first is reached)
+const springs = (x, y) => performance.now() < (spring.get(x + "," + y) || 0);
+// -> the step a jump would take you up now {x, y, d, way: it is the way out's}, or null (keyboard.js: the corner's "Jump")
+function stepAhead() {
+  const p = ents.get("agent" + myId); if (!p || !me || !meObs || Build.on) return null;
+  const w = WayShow.offer(), wd = !walking && w && w.key === "jump" ? WayShow.cur.path[1].d : null;
+  const d = walking ? walking.dir : wd || Object.keys(DIRV).find((k) => DIRV[k][0] === p.fx && DIRV[k][1] === p.fy);
+  if (!d) return null;
+  const x = p.tx + DIRV[d][0], y = p.ty + DIRV[d][1], h = myZ(p.tx, p.ty);
+  return solidAt(x, y, h + 1) && landAt(h, x, y, p.tx, p.ty) === h + 1 ? {x, y, d, way: !!wd} : null;
+}
+function jumpKey() {
+  const p = ents.get("agent" + myId); if (!p || !me || !meObs || Build.on) return;
+  const s = stepAhead(), now = performance.now();
+  if (jumpGoing) return;                         // (a jump on its way: J pressed again does not cut it short, as a new action would)
+  if (!s) { p.hop = now; rpc("act", {tool: "jump", args: {}}); return; }      // (nothing to jump onto: a hop on the spot)
+  for (const [k, t] of spring) if (t < now) spring.delete(k);
+  spring.set(s.x + "," + s.y, now + 3000);
+  if (s.way) turn(s.d);
+  jumpGoing = !walking;
+  rpc("act", {tool: "jump", args: walking ? {at: [s.x, s.y]} : {dir: s.d}}).then(() => { jumpGoing = false; if (walking === null && [...keys].some((k) => KEYDIR[k])) syncWalk(); });   // (a walk the server ended at the step: on again, up it)
+}
+let jumpGoing = false;
+
 // Held keys (or the stick): one message when the direction or sprint changes, one when you let go.
 function syncWalk() {
   const k = [...keys].reverse().find((k) => KEYDIR[k]);
@@ -32,7 +61,7 @@ function syncWalk() {
     rpc("act", {tool: "stop", args});
     return;
   }
-  const [dx, dy] = DIRV[want.dir], args = want.run ? {dir: want.dir, run: true} : {dir: want.dir};
+  const [dx, dy] = DIRV[want.dir], args = want.run ? {dir: want.dir, run: true, push: true} : {dir: want.dir, push: true};   // (push: held against a step it waits for the jump key: sim/movement.py walk)
   if (p) {
     const [ox, oy] = prev && p.walking ? DIRV[prev.dir] : [0, 0];
     const line = (ox || oy) && !(ox * dy - oy * dx), back = line && (ox !== dx || oy !== dy);

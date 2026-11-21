@@ -6,7 +6,7 @@
 //       step(h, x, y, fx, fy) -> the level a step lands at | null (if not given: the game's rule, below);
 //       enter(x, y, z): you may stand there; can(x, y, h, dx, dy): a step is cut here (digup.js offers it);
 //       on(x, y, z): the wall in front is dug on; down(x, y, z): the floor under you is dug}
-// The moves are the game's (sim/bodies.py lands, sim/underground.py): a step level, up one with room over both
+// The moves are the game's (sim/bodies.py lands, sim/underground.py): a step level, up one (a jump: its key is shown on it, wayshow.js) with room over both
 // heads, down however far (a fall over 3 hurts: very dear), a ladder (the game's step). And with a pickaxe:
 //   cut a step ("up": R): the cell over your head, the cell in front at your head's height, then the hop;
 //   dig on ("use": Space): the cell in front at your body's height, then the step in;

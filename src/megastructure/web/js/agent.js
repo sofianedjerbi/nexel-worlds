@@ -64,7 +64,7 @@ const ASIDE = ["eat"];
 let myAside = null, pendingAside = null;
 // Eating, your hands are full: you can walk on and talk, nothing else until it is eaten (the server's rule: sim
 // MEANWHILE). Nothing is asked for meanwhile, and no swing is shown (intent.js perform).
-const MEANWHILE = ["walk", "stop", "step", "move_to", "say", "shout"];
+const MEANWHILE = ["walk", "stop", "step", "move_to", "say", "shout", "jump"];
 const eating = () => !!(pendingAside || myAside);
 let actTarget = null;   // the exact tile perform() aims at: sent as x, y instead of a direction
 function facingTo(p) {  // the direction to look when working on p (the bigger axis wins)

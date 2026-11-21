@@ -2,7 +2,7 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS, B
-from .constants import CLIMB_S, EAT_PACE, FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
+from .constants import CLIMB_S, EAT_PACE, FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRING_S, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
 
@@ -28,20 +28,24 @@ class Movement:
         """In the water without a boat (not on something built over it)."""
         return not a.sailing and GROUNDS[self.world.get(a.x, a.y)[0]].liquid and self.floors.get(a.x, a.y, self.height(a)) is None
 
-    def can_go(self, a: Agent, x: int, y: int) -> bool:
-        """From where `a` stands to the neighbouring (x, y): it isn't a wall, and where they'd land can be entered."""
-        land = self.landing(a, x, y)
+    def can_go(self, a: Agent, x: int, y: int, jump: bool | None = None) -> bool:
+        """From where `a` stands to the neighbouring (x, y): it isn't a wall, and where they'd land can be entered.
+        (jump: Bodies.landing)"""
+        land = self.landing(a, x, y, jump)
         return land is not None and self.can_enter(a, x, y, land)
 
-    def why_not(self, a: Agent, x: int, y: int) -> str:
-        land = self.landing(a, x, y)
+    def why_not(self, a: Agent, x: int, y: int, jump: bool | None = None) -> str:
+        land = self.landing(a, x, y, jump)
         if land is None and self.can_enter(a, x, y):
-            h = self.height(a)                              # (what would make a step of it, said with the cells: an agent reads this)
-            if self.world.solid(a.x, a.y, h + 2):
+            h, w = self.height(a), self.world               # (what would make a way of it, said with the cells: an agent reads this)
+            d = next((k for k, v in DIRS.items() if v == (x - a.x, y - a.y)), "that way")
+            if w.solid(a.x, a.y, h + 2):
                 return ("a step with no room over your head to jump (dig dir=up takes the block over your head; "
-                        f"then the block in front at z={h + 2} if there is one; then step)")
+                        f"then the block in front at z={h + 2} if there is one; then jump dir={d})")
+            if not w.solid(x, y, h + 2):
+                return f"a step up: jump onto it (jump dir={d}); walking into it stops you"
             return (f"a wall, too high to jump (a step up: dig the block in front at your head's height, z={h + 2}, "
-                    "then step; or dig into it at your own height: dig with a pickaxe)")
+                    f"then jump dir={d}; or dig into it at your own height: dig with a pickaxe)")
         return self.thing(x, y, land).replace("_", " ") if land is not None and self.floors.get(x, y, land) else self.describe(x, y)
 
     def fell(self, a: Agent, layers: int) -> dict:
@@ -65,6 +69,7 @@ class Movement:
             self.emit("moor", a.x, a.y, name=a.name)
         x0, y0, h0 = a.x, a.y, self.height(a)
         climb = -self.step_onto(a, x, y)             # (Bodies: where you land there)
+        a.spring.pop((x, y), None)                   # (a jump is for one step)
         if not a.sailing:                            # a tile on foot tires a little, at a sprint more, a jump up more still (needs.py)
             fast = bool(a.action) and self.sprints(a, a.action.args)
             self.tire(a, ("dash" if fast else "swim") if self.swimming(a) else "sprint" if fast else "walk")
@@ -121,6 +126,39 @@ class Movement:
         self.move(a, x, y)
         return {}
 
+    def _tool_jump(self, a, args):
+        """Jump: up a layer onto the step `dir` of you (both cells over it empty: you are two cells tall). On the
+        level, or with no dir, a hop where you stand: nothing changes (as in Minecraft). With `at` ([x, y]: a player's
+        screen, the step it jumps for on the way it walks) or while walking, it is said at once and the walk takes the
+        step when it comes to it (a.spring, SPRING_S)."""
+        at = args.get("at")
+        if isinstance(at, (list, tuple)) and len(at) == 2 and all(type(v) is int for v in at):
+            x, y = at
+            if abs(x - a.x) + abs(y - a.y) > VIA_FAR:
+                raise ActionError("out_of_range", "that step is too far to jump for")
+        elif args.get("dir") is not None:
+            x, y = self.target(a, args, flat=True)
+        else:
+            x = y = None
+        self.emit("jump", a.x, a.y, name=a.name)
+        if x is None:
+            return {"hopped": True}
+        if getattr(self, "passing", None) is a or abs(x - a.x) + abs(y - a.y) != 1:     # (walking: the walk takes it)
+            a.spring = {k: t for k, t in a.spring.items() if t >= self.tick}      # (several: a step on is jumped for before the first is reached)
+            a.spring[(x, y)] = self.tick + sec(SPRING_S)
+            return {"spring": [x, y]}
+        if not self.world.solid(x, y, self.height(a) + 1):
+            return {"hopped": True}                      # (no step there: a hop on the spot)
+        def room():                                      # (before the stride and after it)
+            if (a.x, a.y) == (x, y) or not self.can_go(a, x, y, jump=True):
+                raise ActionError("blocked", f"{args.get('dir') or 'that tile'} is {self.why_not(a, x, y, jump=True)}")
+        room()
+        yield from self.pace(a, args)
+        room()
+        a.spring[(x, y)] = self.tick
+        fall = self.move(a, x, y)
+        return {"jumped": True, "z": self.height(a), **fall}
+
     def _tool_walk(self, a, args):
         """Keep walking in a direction at a steady stride until blocked or replaced by another action
         (e.g. `stop`). Lets a held key move smoothly without a round trip per tile."""
@@ -131,11 +169,19 @@ class Movement:
         steps, fall = yield from self.follow(a, args)            # (first, the way your screen has already walked: `from`)
         if fall:
             return {"steps": steps, "stopped": "fell", **fall}
+        # (a player's held key, `push`, against a step a jump would take: it goes on pushing, as in Minecraft, and the
+        # jump key's spring takes the step at once: a walk that ended there had the world a stride behind the screen)
+        against = lambda: args.get("push") and self.can_go(a, a.x + dx, a.y + dy, jump=True)
         while steps < 600:
             if not self.can_go(a, a.x + dx, a.y + dy):
+                if against():
+                    yield
+                    continue
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
             yield from self.pace(a, args)
             if not self.can_go(a, a.x + dx, a.y + dy):
+                if against():
+                    continue
                 return {"steps": steps, "stopped": "blocked", "blocked_by": self.why_not(a, a.x + dx, a.y + dy)}
             fall = self.move(a, a.x + dx, a.y + dy)
             steps += 1
@@ -221,13 +267,14 @@ class Movement:
         while path:
             yield from self.pace(a, args)
             nx, ny = path[0][:2]
-            land = self.landing(a, nx, ny)
+            land = self.landing(a, nx, ny, jump=True)          # (a way asked for jumps where it goes up: moves, lands)
             if land is None or (self.height(a) - land > drop and not self.on_ladder(a.x, a.y, self.height(a), nx, ny, land)) or not ok(nx, ny, land):
                 replans += 1
                 path = way() if replans <= 2 else None
                 if path is None:
                     raise ActionError("blocked", f"path blocked at ({nx},{ny}); stopped at ({a.x},{a.y})")
                 continue
+            a.spring[(nx, ny)] = self.tick                       # (the way jumps where it goes up)
             self.move(a, nx, ny)
             path.pop(0)
             steps += 1

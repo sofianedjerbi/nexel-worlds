@@ -53,8 +53,8 @@ def play(s, a, moves, tool=None):
     tool = {"with": "pickaxe"} if tool is None else tool
     for m in moves:
         h = s.height(a)
-        if m["t"] == "step":
-            r = run(s, a, "step", {"dir": m["d"]})
+        if m["t"] == "step":                                 # (up a layer: the jump key, shown on it: wayshow.js)
+            r = run(s, a, "jump" if m["z"] > h else "step", {"dir": m["d"]})
             assert r["ok"] and (a.x, a.y, s.height(a)) == (m["x"], m["y"], m["z"]), (m, r, a.x, a.y, s.height(a))
         elif m["key"] == "alt":
             assert run(s, a, "dig_down", dict(tool))["ok"]

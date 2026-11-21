@@ -15,7 +15,7 @@ function touchUI() {
   for (const [id, label] of [["tA", "A"], ["tB", "B"]]) el("div", id, `<span class="cap"></span><span class="lbl">${label}</span>`, btns);
   const ctx_ = el("div", "tctx", "");
   el("div", "tUp", "Up", ctx_); el("div", "tDown", "Down", ctx_); el("div", "tBuild", "Build", ctx_);   // (build mode, build.js: a phone had no way into it, nor a layer up or down)
-  el("div", "tDig", "Dig up", ctx_); el("div", "tEat", "Eat", ctx_); el("div", "tPick", "Pick up", ctx_);
+  el("div", "tJump", "Jump", ctx_); el("div", "tDig", "Dig up", ctx_); el("div", "tEat", "Eat", ctx_); el("div", "tPick", "Pick up", ctx_);
   const top = el("div", "ttop", "");
   el("div", "tBag", "Items", top); el("div", "tCraft", "Craft", top); el("div", "tTalk", "Talk", top); el("div", "tMenu", "Menu", top);   // (Menu: the settings, leaving: a phone has no Esc, and had no way to them once in the world)
   return {btns, ctx_};
@@ -132,6 +132,7 @@ if (TOUCH) {
   document.addEventListener("contextmenu", (e) => { if (!/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) e.preventDefault(); });      // (a long press: no menu of the browser's)
   tapButton($("tEat"), () => useSelected()); holdButton($("tDig"), () => DigUp.run());      // (digup.js: the way out of a hole)
   tapButton($("tPick"), () => act("pick_up", {}));
+  tapButton($("tJump"), () => jumpKey());                  // (walk.js: up the step in front; shown when there is one, held stick and all)
   tapButton($("tBag"), () => toggleBag());
   // (on its side Talk and Menu stand beside the goals, phone.css: where the goals end, known as soon as they are laid out: measured five times a second, Menu moved under the finger that was coming down on it)
   const beside = () => { const r = Math.round($("goalhint").getBoundingClientRect().right); if (r > 0) document.body.style.setProperty("--goalsr", r + "px"); };      // (the goals shut, a window open over them: they stay where they were)
@@ -153,7 +154,7 @@ if (TOUCH) {
   setInterval(() => {
     if (!me) return;
     const rows = availableActions(), get = (k) => rows.find((r) => r[0] === k);
-    const a = Build.on ? rows[1] : get("Space"), b = get("X"), up = !Build.on && rows.find((r) => r[0] === capOf("up") && r[3]), bd = true, s = [a && a[1], a && a[2], b && b[1], up && up[1], !!get("E"), !!get("F"), Build.on, !!bd].join("|");
+    const a = Build.on ? rows[1] : get("Space"), b = get("X"), up = !Build.on && rows.find((r) => r[0] === capOf("up") && r[3]), bd = true, s = [a && a[1], a && a[2], b && b[1], up && up[1], !!get("E"), !!get("F"), Build.on, !!bd, !!get(capOf("jump"))].join("|");
     if (s !== sig) {
       sig = s;
       $("tA").querySelector(".cap").textContent = a ? a[1] : "";
@@ -161,7 +162,7 @@ if (TOUCH) {
       $("tB").querySelector(".cap").textContent = b ? b[1] : "";
       $("tB").classList.toggle("idle", !b);
       $("tEat").style.display = get("E") ? "flex" : "none"; $("tDig").style.display = up ? "flex" : "none"; $("tDig").textContent = up ? up[1] : "Dig up";
-      $("tPick").style.display = get("F") ? "flex" : "none";
+      $("tPick").style.display = get("F") ? "flex" : "none"; $("tJump").style.display = get(capOf("jump")) ? "flex" : "none";
       $("tBuild").style.display = bd ? "flex" : "none"; $("tBuild").textContent = Build.on ? "Done" : "Build"; $("tUp").style.display = $("tDown").style.display = Build.on ? "flex" : "none";
     }
     if (hudFit()) return;                                      // (the bar's pixel changed: measured at the next turn)

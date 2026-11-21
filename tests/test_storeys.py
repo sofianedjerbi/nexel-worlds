@@ -56,8 +56,8 @@ def test_a_second_floor_is_stood_on_and_built_on_by_steps_of_blocks(world):
     r = run(s, a, "move_to", {"x": x + 3, "y": y - 1})                             # the tile north of the steps: reached under the floor
     assert r["ok"] and s.height(a) == 0 and s.sheltered(a.x, a.y)
     a.x, a.y = x + 4, y + 1
-    for d, z in (("W", 1), ("N", 2), ("N", 3), ("E", 3)):                         # up the steps and onto the floor
-        assert run(s, a, "step", {"dir": d})["ok"] and s.height(a) == z, (d, z)
+    for d, z in (("W", 1), ("N", 2), ("N", 3), ("E", 3)):                         # up the steps (a jump each: blocks, not stairs) and onto the floor
+        assert run(s, a, "jump" if z > s.height(a) else "step", {"dir": d})["ok"] and s.height(a) == z, (d, z)
     assert (a.x, a.y) == (x + 4, y - 1)
     assert run(s, a, "place", {"dir": "E", "item": "wood_wall"})["ok"]            # a wall on the floor you stand on
     assert s.floors.get(x + 5, y - 1, 3) == ["plank", "wood_wall"] and s.world.block(x + 5, y - 1) == "none"
@@ -111,7 +111,7 @@ def test_earth_raises_the_land_a_layer(world):
     s.world.set(a.x + 1, a.y, ground="grass")
     assert run(s, a, "place", {"dir": "E", "item": "dirt"})["ok"]
     assert s.world.level(a.x + 1, a.y) == 1 and s.world.ground(a.x + 1, a.y) == "grass" and not s.floors.at   # the land itself, a layer up
-    assert run(s, a, "step", {"dir": "E"})["ok"] and s.height(a) == 1              # a jump up onto it
+    assert run(s, a, "jump", {"dir": "E"})["ok"] and s.height(a) == 1              # a jump up onto it
     assert run(s, a, "place", {"x": a.x, "y": a.y, "item": "dirt"})["error"] == "occupied"    # not under your own feet
     s.world.set(a.x + 1, a.y, block="rock")
     assert run(s, a, "place", {"dir": "E", "item": "dirt"})["error"] in ("occupied", "bad_target")

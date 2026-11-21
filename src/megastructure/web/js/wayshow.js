@@ -69,7 +69,9 @@ const WayShow = (() => {
   // The way's own key, for the corner, a phone's buttons and the press itself: null: no way is shown (the keys of what
   // you face are yours); {}: the next move is a step (no key); {key, text}: the next block's (keyboard.js, digup.js)
   api.offer = () => { const n = fresh() && cur.now, s = myPos(), moved = !!s && s.x + "," + s.y + "," + myZ(s.x, s.y) !== posKey;      // (moved: since the last frame: the way from here is not looked for yet)
-    return n ? {key: n.key, text: n.key === "use" ? "Dig on" : n.key === "alt" ? "Dig down" : n.x === s.x && n.y === s.y ? "Dig up" : "Dig a step"} : cur || ((led || follow) && (gen || moved)) ? {} : null; };
+    return n ? {key: n.key, text: n.key === "use" ? "Dig on" : n.key === "alt" ? "Dig down" : n.x === s.x && n.y === s.y ? "Dig up" : "Dig a step"} : cur && hops() ? {key: "jump", text: "Jump"} : cur || ((led || follow) && (gen || moved)) ? {} : null; };
+  // The next move is up a step: the jump key's (walk.js jumpKey: walking into it stops you)
+  const hops = () => !!cur && !cur.now && cur.path.length > 1 && !cur.path[1].down && cur.path[1].z === cur.path[0].z + 1;
   // A key of your own pressed in a cave you can walk out of: you are at work here: the way is put away until you have walked and stood again
   api.mine = () => { if (cur && !led) { off = true; follow = false; } };
   api.rows = (rows) => rows;      // (hd.js: the keys beside what you face: keyboard.js `wayHides` has taken out what the way replaces)
@@ -83,7 +85,7 @@ const WayShow = (() => {
   const touching = () => document.body.classList.contains("touch");
   function hide(now) {      // the cap, the button that blinks: gone when nothing drew them this frame
     if (cap && capKey && (!cur || fno - capAt > 2)) { cap.style.display = "none"; capKey = ""; }
-    const b = cur && cur.now && touching() ? {up: "tDig", use: "tA", alt: "tB"}[cur.now.key] : null;
+    const b = !touching() || !cur ? null : cur.now ? {up: "tDig", use: "tA", alt: "tB"}[cur.now.key] : hops() ? "tJump" : null;
     if (b !== lit) { for (const id of [lit, b]) { const e = id && document.getElementById(id); if (e) e.classList.toggle("way", id === b); } lit = b; }
   }
   // The one cap, BESIDE r (css px: the block's box, or the tile of the step): at the first of the sides in `pref` where it lies on nothing of you, of your name, of a key's box, nor off the screen.
@@ -158,7 +160,7 @@ const WayShow = (() => {
     }
     if (!cur.now && P[1].d && pe) { const b = P[1], [dx, dy] = DX[b.d], lv = typeof HdLook !== "undefined" && HdLook.level[2] !== null ? HdLook.level[2] : myZ(me0.x, me0.y), ex = pe.x + dx, ey = pe.y + dy;      // (the next move is a step: the way to go, beside the tile a step ahead of YOU as you are drawn (your eased place, your level between two tiles): it was beside the next tile of the way, a tile on at each step: it ran back to you and leapt a tile on, ten times a second at a sprint)
       const q = [at(ex, ey, lv), at(ex + 1, ey, lv), at(ex + 1, ey + 1, lv), at(ex, ey + 1, lv)];
-      if (q.every((v) => v)) pin(bound(q, css), `<i class="${b.d} go"></i>`, b.d === "E" || b.d === "W" ? ["over", "under", b.d === "E" ? "right" : "left"] : ["right", "left", "over", "under"], box, u * css); }
+      if (q.every((v) => v)) pin(bound(q, css), `<i class="${b.d}${hops() && !touching() ? "" : " go"}"></i>` + (hops() && !touching() ? esc(capOf("jump")) : ""), b.d === "E" || b.d === "W" ? ["over", "under", b.d === "E" ? "right" : "left"] : ["right", "left", "over", "under"], box, u * css); }
     g.restore(); api.hidden = nh; api.dots = pts.length;
     if (edge) { const [x, y, d] = edge, tri = (n, back, col) => { for (let i = 0; i < n; i++) rect(x - (i + back) * u * d[0] - (d[0] ? 0 : i * u), y - (i + back) * u * d[1] - (d[1] ? 0 : i * u), d[0] ? 1 : 2 * i + 1, d[1] ? 1 : 2 * i + 1, col); };
       tri(7, -1, INK); tri(5, 1, beat ? "#ffffff" : "#fff1a8"); }

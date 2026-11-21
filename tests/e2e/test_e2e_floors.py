@@ -57,7 +57,11 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
     assert game.inv("plank") == 9 and not game.errors
     game.rpc("dev_teleport", x=x + 3, y=y - 1, z=0); game.arrive()            # before the door
     for key, to in (("ArrowUp", (3, -2, 0)), ("ArrowUp", (3, -3, 0)), ("ArrowLeft", (2, -3, 1)), ("ArrowUp", (2, -4, 2)), ("ArrowRight", (3, -4, 3))):
-        game.hold([key], 90)                                   # (a tap: a tile)
+        if to[2] > game.server()["z"]:                         # (up a block: walking into it stops you, J jumps it)
+            game.face(*{"ArrowUp": (0, -1), "ArrowDown": (0, 1), "ArrowLeft": (-1, 0), "ArrowRight": (1, 0)}[key])
+            game.press("j", 0)
+        else:
+            game.hold([key], 90)                               # (a tap: a tile)
         game.sleep(500)
         s = game.server()
         assert (s["x"] - x, s["y"] - y, s["z"]) == to, (key, to, s["x"] - x, s["y"] - y, s["z"])
@@ -167,7 +171,7 @@ def test_earth_raises_the_ground_and_planks_go_on_from_a_floor(game):
     assert "Raise the ground" in game.actions()
     game.press("Space", 700)
     assert game.js(f"[topAt({x + 1}, {y}), combAt({x + 1}, {y})]") == [1, "."] and game.inv("dirt") == 5       # up a layer, its grass on it
-    game.hold(["ArrowRight"], 90)                              # a jump up onto it
+    game.press("j", 0)                                         # a jump up onto it (J: walking into it stops you)
     game.sleep(500)
     assert (game.server()["x"], game.server()["z"]) == (x + 1, 1)
     game.press("b")                                            # in build mode: a row of three, north of you
