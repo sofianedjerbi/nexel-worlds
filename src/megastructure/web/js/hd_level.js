@@ -49,12 +49,14 @@ const HdLevel = (() => {
   // {y: the row of that wall (the first land south of you as high as the cell), T: its top}. wallAt: a place of such a cell, drawn on that face as you see it, stood in the opening on its top
   // edge: its foot (your floor's level) on that edge, each level up a step north into the opening (at most the eye's own cot 68°, all of the wall's height inside one tile); its depth into the wall: none.
   // (It was folded down from that edge, its foot farthest north: in a room the block at your floor's level lay on your body, cut away whole)
+  // A cell at or under your feet south of you whose top that wall hides from the eye (the floor at its foot: X's box on it lay on the grass) is on the same face, under the wall's foot: B, the face's foot
   function wall(x, y, z, s) {
-    if (!s || !(s.lift > 0 || s.top) || y <= s.ty || z <= s.L) return null;
-    for (let j = s.ty + 1; j <= y; j++) { const T = topAt(x, j); if (T >= z) return {y: j, T}; }
+    if (!s || !(s.lift > 0 || s.top) || y <= s.ty) return null;
+    if (z > s.L) { for (let j = s.ty + 1; j <= y; j++) { const T = topAt(x, j); if (T >= z) return {y: j, T, B: s.L}; } return null; }
+    for (let j = y + 1; j <= y + 3; j++) { const T = topAt(x, j); if (T > z && T - z > (j - y - 1) * (s.ks || 5)) return {y: j, T, B: z - 1}; }   // (ks: levels the eye's line climbs a tile)
     return null;
   }
-  const wallAt = (x, y, z, s, f) => { const d = Math.max(1, f.T - s.L); return [x, f.y - Math.max(0, Math.min(d, z - s.L)) * Math.min(.4, 1 / d), f.T]; };
+  const wallAt = (x, y, z, s, f) => { const d = Math.max(1, f.T - f.B); return [x, f.y - Math.max(0, Math.min(d, z - f.B)) * Math.min(.4, 1 / d), f.T]; };
   // cut(g, me, a, zs): nothing drawn on g after it (till g.restore) lies on your body: its own px are cut out of the marks (me: your sprite {canvas, fx, fy}, a: its foot on g, zs: g's units an art px). A box at your tile covered all of you
   // body(me, a, zs) -> your sprite's box on g ({x, y, w, h}: the bounds of its own px): no key's box is drawn in it, and one it covers most of is not drawn at all (target.js: it framed your head)
   const runs = new WeakMap();
