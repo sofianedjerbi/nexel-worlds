@@ -47,7 +47,8 @@ def test_a_pit_below_sea_level_is_drawn_like_any_hole(game):
     game.clear_area(3)
     x, y = game.pos()
     game.face(1, 0)
-    game.press("x", 2600)                                    # X: down a layer where you stand
+    game.act("dig_down", **{"with": "pickaxe"})              # down a layer where you stand
+    game.sleep(2200)
     assert game.js(f"floorAt({x}, {y})") == -1 and game.js(f"liftAt({x}, {y})") < 0
     game.act("dig_down", **{"with": "pickaxe"})             # (X now faces the pit's side: it would cut into that)
     game.sleep(2200)

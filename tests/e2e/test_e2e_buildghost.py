@@ -90,13 +90,17 @@ def test_a_row_begun_on_a_wall_s_top_stays_at_its_height_a_roof(game):
 
 
 def test_x_by_hand_digs_down_and_does_not_ask_for_a_hoe(game):
-    """Bare hands on the meadow: X is "Dig down", and it digs (the server always allowed it, slower)."""
+    """Bare hands on the meadow: X is "Dig down", and it digs the block you face, the one its box is on (it dug the
+    one under you, unmarked: "it should dig the selected highlighted block, not under the player")."""
     game.clear_area(6)
+    x, y = game.pos()
     game.press("0", 200)
     game.face(1, 0)
     game.wait("$('actions').innerText.includes('Dig down')", 3000)
+    assert game.js("(() => { const t = Target.target('alt'); return t && [t.x, t.y, t.z]; })()") == [x + 1, y, 0]
     game.press("x", 100)
-    game.wait("myAt && myAt.z === -1 && !myAction", 20000)
+    game.wait(f"topAt({x + 1}, {y}) === -1 && !myAction", 20000)
+    assert game.js("myAt.z") == 0
     assert "hoe" not in game.toast() and game.inv("dirt") == 1 and not game.errors
 
 
