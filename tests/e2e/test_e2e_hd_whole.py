@@ -37,22 +37,40 @@ def made(g):
     g.frames(2)
 
 
+# each art row of a level's south face, from its top line to the next one's: [level, the luminance of its px row by row]
+def level_rows(g, x, y, levels, x0, x1):
+    out = []
+    for z in levels:
+        top, bot = g.js(ART, [x, y, z])[1], g.js(ART, [x, y, z - 1])[1]
+        r0, r1 = math.ceil(top - .5), math.ceil(bot - .5)            # (the rows whose middle is in it)
+        out.append((z, g.js(PXROWS, [x0, x1, r0, r1])))
+    return out
+
+
+PXROWS = """([x0, x1, y0, y1]) => { const d = HdView.el.getContext('2d').getImageData(x0, y0, x1 - x0, y1 - y0).data, w = x1 - x0, out = [];
+  for (let j = 0; j < y1 - y0; j++) { const r = []; for (let i = 0; i < w; i++) { const o = (j * w + i) * 4; r.push(.3 * d[o] + .59 * d[o + 1] + .11 * d[o + 2]); } out.push(r); } return out; }"""
+
+
 @pytest.mark.quick
-def test_a_stone_wall_shows_its_seam_on_every_level_and_nothing_blurs_the_picture(browser, server):
+def test_an_earth_wall_shows_its_seam_on_every_level_a_cliff_has_none_and_nothing_blurs_the_picture(browser, server):
     g = hd(browser, server)
     x, y = scene(g)
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in (-7, -6, -5) for i in range(-3, 5)], col=[9])   # stone: nine high, 8 x 3, its south face on row y - 4
+    g.rpc("dev_col", tiles=[[x + i, y + j] for j in (-3, -2) for i in range(-3, 5)], col=[4])       # earth four high in front of it, 8 x 2, its south face on row y - 1
     made(g)
-    (ax, _), (bx, _) = g.js(ART, [x - 2, y - 4, 0]), g.js(ART, [x + 4, y - 4, 0])
+    (ax, _), (bx, _) = g.js(ART, [x - 2, y - 1, 0]), g.js(ART, [x + 4, y - 1, 0])
     x0, x1, seams = int(ax) + 2, int(bx) - 2, []
-    for z in range(9, 0, -1):                                        # each level: from its top line to the next one's
-        top, bot = g.js(ART, [x, y - 4, z])[1], g.js(ART, [x, y - 4, z - 1])[1]
-        r0, r1 = math.ceil(top - .5), math.ceil(bot - .5)            # (the rows whose middle is in it)
-        rows = g.js(ROWS, [x0, x1, r0, r1])
-        mean = sum(rows[:-1]) / (len(rows) - 1)
-        seams.append((z, len(rows), min(range(len(rows)), key=lambda i: rows[i]), round(rows[-1] / mean, 2), rows[0] > rows[1]))
-    # every level: its last row the seam (its darkest, well under the rest), its first one lit (it was the nearest row: a level 6.4 px tall lost one or the other here and there)
-    assert all(d == n - 1 and k < .85 and lit for _, n, d, k, lit in seams), seams
+    for z, rows in level_rows(g, x, y - 1, range(4, 0, -1), x0, x1):      # EARTH: each level's last row its seam (its darkest, under the rest; it was the nearest row: a level 6.4 px tall lost it here and there)
+        m = [sum(r) / len(r) for r in rows]
+        mean = sum(m[:-1]) / (len(m) - 1)
+        seams.append((z, len(m), min(range(len(m)), key=lambda i: m[i]), round(m[-1] / mean, 2), m[0] > m[1]))
+    assert all(d == n - 1 and k < .9 for _, n, d, k, _ in seams), seams
+    # STONE, the land's own: a cliff: no level's foot row darker than its face along more than half its width (it was a seam all across: courses, stripes on a far face)
+    feet = []
+    for z, rows in level_rows(g, x, y - 4, range(9, 4, -1), x0, x1):
+        face = sorted(v for r in rows for v in r)[len(rows) * len(rows[0]) // 2]
+        feet.append((z, round(sum(v < .85 * face for v in rows[-1]) / len(rows[-1]), 2)))
+    assert all(f <= .5 for _, f in feet), feet
     # the picture on the screen is the land's own, px for px, under the sky (the marks aside: a share of them at most)
     diff = g.js("""(() => { const el = HdView.el, p = HdView.pic, w = el.width, h = el.height, c = document.createElement('canvas'); c.width = w; c.height = h;
       const q = c.getContext('2d'); q.drawImage(p, 0, 0); const a = q.getImageData(0, 0, w, h).data, b = el.getContext('2d').getImageData(0, 0, w, h).data; let n = 0, m = 0;
@@ -117,10 +135,11 @@ def test_natural_stone_is_a_cliff_and_a_laid_stone_block_has_courses(browser, se
     laid masonry, a mortar line under each course: "natural rock as bricks"); a stone block put down keeps its courses."""
     g = hd(browser, server)
     scene(g)
-    # each level 5..12, variant 0..3, natural then laid: [spread of its foot row's luminance, of its middle row's]
+    # each level 5..12, variant 0..3, natural then laid: [spread of its foot row's luminance, its foot row's mean over its body's]
     rows = g.js("""(() => { const out = [], L = (v) => .3 * (v & 255) + .59 * (v >>> 8 & 255) + .11 * (v >>> 16 & 255), sd = (a) => { const m = a.reduce((s, x) => s + x, 0) / a.length; return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / a.length); };
       for (const built of [0, 1]) for (let z = 5; z <= 12; z++) for (let v = 0; v < 4; v++) { const px = new Uint32Array(16 * 8); VoxPaint.front(z, v, px, 0, 16, built);
-        const row = (j) => [...px.slice(j * 16, j * 16 + 16)].map(L); out.push([built, z, v, sd(row(7)), Math.min(...row(7)), Math.max(...row(7))]); } return out; })()""")
+        const row = (j) => [...px.slice(j * 16, j * 16 + 16)].map(L); const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length; out.push([built, z, v, sd(row(7)), mean(row(7)) / mean([1, 2, 3, 4, 5].flatMap(row))]); } return out; })()""")
     natural, laid = [r for r in rows if not r[0]], [r for r in rows if r[0]]
-    assert all(s > 6 for _, _, _, s, _, _ in natural), [r for r in natural if r[3] <= 6]       # a cliff's foot: broken, a ledge's undercut here, the rock there
-    assert all(s < .5 for _, _, _, s, _, _ in laid), [r for r in laid if r[3] >= .5]          # a laid block's: one joint line, all across
+    assert all(s > 6 for _, _, _, s, _ in natural), [r for r in natural if r[3] <= 6]       # a cliff's foot: broken, a ledge's undercut here, the rock there
+    assert all(s < .5 for _, _, _, s, _ in laid), [r for r in laid if r[3] >= .5]          # a laid block's: one joint line, all across
+    assert all(k < .85 for _, _, _, _, k in laid), [r for r in laid if r[4] >= .85]          # (its joint: the seam of a course, well under its body)
