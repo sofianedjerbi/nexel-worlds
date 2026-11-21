@@ -169,13 +169,14 @@ function drawBody(p, sx, sy, S, t, now) {
     wearFx("back", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);      // a charm's effect (wear_items.js)
     // the weapon of a cut or a thrust: in front of the body, behind it when they face away
     const arm = () => blow && ctx.drawImage(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, 48, 48, cellX, cellY, 48 * z, 48 * z);
-    if (p.fy < 0) arm();
+    const hand = ANIM[anim] <= ANIM.run && !blow && tool !== "eat" && tool !== "sleep" && !(cl && cl.on) ? Held.art(mine ? selected : e.held) : null;   // what is in the paw (held.js)
+    if (p.fy < 0) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z); }
     if (j && j.squash && ANIM[anim] <= ANIM.run) {   // crouched to jump, or landing: the top of the body a row down over the hips (whole art px, nothing scaled)
       ctx.drawImage(sheetImg, sxx, syy + SQUASH_ROW, 48, 48 - SQUASH_ROW, cellX, cellY + SQUASH_ROW * z, 48 * z, (48 - SQUASH_ROW) * z);
       ctx.drawImage(sheetImg, sxx, syy, 48, SQUASH_ROW, cellX, cellY + z, 48 * z, SQUASH_ROW * z);
     } else ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
     wearFx("front", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);
-    if (p.fy >= 0) arm();
+    if (p.fy >= 0) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z); }
     if (tool === "eat" && action.item && p.fy >= 0) {   // the food, half size and crisp, held up to the mouth
       const pose = eatPose(k), food = biteIcon(action.item, pose.bites);
       if (food) {

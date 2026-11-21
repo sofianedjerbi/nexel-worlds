@@ -40,6 +40,7 @@ QUICK = {
     "fall": "test_a_drop_of_two_layers_is_still_a_hop_and_three_a_short_fall",
     "frame": "test_what_is_kept_from_frame_to_frame_is_what_would_be_worked_out_now",
     "gathering": "test_too_far_is_too_far",
+    "hand": "test_the_slot_in_hand_is_bigger_and_says_its_name",
     "hd": "test_two_walls_side_by_side_touch_and_a_bridge_is_drawn",
     "hd_behind": "test_on_a_small_hill_and_behind_it_no_window_opens_and_behind_it_you_show_through",
     "hd_land": "test_under_a_roof_an_open_pit_shows_a_bright_floor_and_the_meadow_stays",

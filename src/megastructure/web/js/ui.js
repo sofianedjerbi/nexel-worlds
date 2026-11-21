@@ -63,6 +63,7 @@ function bare(c) {
 function iconCanvas(name) {
   const c = document.createElement("canvas"); c.width = 16; c.height = 16; const g = c.getContext("2d", {willReadFrequently: BARE.has(name)});
   const ic = ICONS[name];
+  if (CubeIcon.is(name)) { const im = CubeIcon.px(name, 16); if (im) { g.putImageData(im, 0, 0); return c; } }      // a block: a cube (cube_icons.js)
   if (!ic && WEAR[name]) return wearIcon(name);          // clothes and armor draw their own (wear_items.js)
   if (!ic) { g.fillStyle = "#8a6a55"; g.fillRect(4, 4, 8, 8); return c; }
   if (ic[0] === "gen") { g.drawImage(IMG.gen, GEN[ic[1]] * 16, 0, 16, 16, 0, 0, 16, 16); return BARE.has(name) ? bare(c) : c; }
@@ -110,7 +111,7 @@ function hudFit() {
   if (hudSig === (hudSig = [n, d, item, book, bag, up, side].join())) return false;
   let cq = Math.round(2.4 * d); while (cq > 1 && (162 * cq / d > innerWidth - 12 || 326 * cq / d > innerHeight - 12)) cq--;      // (--cq: the recipe book's, upright: the list over the page)
   st.setProperty("--cq", cq / d + "px"); document.body.classList.toggle("upright", up); st.setProperty("--p2", Math.max(1, Math.round(2 * d)) / d + "px");
-  st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px"); st.setProperty("--w", Math.max(1, Math.round(book * .7)) / d + "px");
+  st.setProperty("--u", hudU + "px"); st.setProperty("--i", item / d + "px"); st.setProperty("--i2", (11 * (item + 1) <= 24 * n ? item + 1 : item) / d + "px"); st.setProperty("--u3", Math.max(1, Math.round(3 * d)) / d + "px"); st.setProperty("--q", book / d + "px"); st.setProperty("--w", Math.max(1, Math.round(book * .7)) / d + "px");
   st.setProperty("--b", bag / d + "px");   // (--w: what Tab shows, who.js: a size under the book's)
   return hudU !== was;
 }
@@ -130,6 +131,8 @@ function drawHotbar(inv) {
   const order = slotOrder(inv).slice(0, BAR);
   const extra = Object.keys(inv).filter((n) => !order.includes(n));
   const can = meObs ? meObs.self.can ?? CAN_SIZE : CAN_SIZE;
+  if (meObs) Held.sync(meObs.self);                  // (in your paw for the others too: held.js)
+  if (selected !== hotWas) { if (hotWas !== undefined && selected) heldName(selected); hotWas = selected; }
   const sig = JSON.stringify(inv) + order.join() + selected + can; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
   el.innerHTML = "";
   order.forEach((name, i) => {
@@ -148,6 +151,17 @@ function drawHotbar(inv) {
   });
   drawBag();                                         // (bag.js: the inventory, if it is open)
 }
+// The slot in hand: two art px bigger each side, lifted, its frame lit (the pack's frame with its middle drawn longer, its
+// wood lighter: whole px, nothing scaled; --slotsel), its icon a screen px bigger an art px if that fits (--i2, hudFit).
+// Its name shows over the bar a moment when it changes ("the selected item in inventory isn't clear").
+let hotWas, nameTimer;
+function heldName(n) { const e = $("heldname"); e.textContent = label(n); e.classList.add("on"); clearTimeout(nameTimer); nameTimer = setTimeout(() => e.classList.remove("on"), 1400); }
+(() => { const im = new Image(); im.onload = () => {
+  const c = document.createElement("canvas"); c.width = c.height = 34; const g = c.getContext("2d"), cut = [[0, 15, 0, 15], [15, 1, 15, 4], [16, 14, 19, 15]];
+  for (const [sx, sw, dx, dw] of cut) for (const [sy, sh, dy, dh] of cut) g.drawImage(im, sx, sy, sw, sh, dx, dy, dw, dh);
+  const d = g.getImageData(0, 0, 34, 34), L = [255, 248, 232];
+  for (let y = 0; y < 34; y++) for (let x = 0; x < 34; x++) if (x < 5 || y < 5 || x > 28 || y > 28) { const o = (y * 34 + x) * 4; for (let k = 0; k < 3; k++) d.data[o + k] = Math.round(d.data[o + k] * .62 + L[k] * .38); }
+  g.putImageData(d, 0, 0); document.documentElement.style.setProperty("--slotsel", `url(${c.toDataURL()})`); }; im.src = "assets/slot.png"; })();
 // Hearts and food sit on the hotbar, ten of each, halves allowed: a heart is a tenth of full health, a piece a tenth
 // of full food (state.js: HP_MAX, FOOD_MAX; a part of a half shows as the half). Hearts are the UI pack's small hearts (full,
 // half, empty); food is an apple drawn here in the hearts' own palette (plum outline, rose, glint, a leaf; empty is

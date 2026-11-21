@@ -20,6 +20,7 @@ const smallCanvas = (name) => {                // a fresh one each time (the HUD
 const ghostIcon = (n) => ghosts.get(n) || (ghosts.set(n, smallCanvas(n)), ghosts.get(n));     // the one the land draws from
 function smallPx(name) {
   if (smalls11.has(name)) return smalls11.get(name);
+  const cube = CubeIcon.is(name) && CubeIcon.px(name, DROP); if (cube) { smalls11.set(name, cube); return cube; }      // a block: its cube, made at this size (cube_icons.js)
   const ic = ICONS[name];
   if (ic && ic[0] !== "gen" && (ic[3] > 16 || ic[4] > 16)) {       // a big thing (a boat, a well): straight from its sprite
     smalls11.set(name, smallArt(IMG[ic[0]], ic[1], ic[2], ic[3], ic[4], DROP)); return smalls11.get(name);

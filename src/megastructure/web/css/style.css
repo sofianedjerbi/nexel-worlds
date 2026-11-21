@@ -55,7 +55,12 @@
   .slot { width:calc(30 * var(--u)); height:calc(30 * var(--u)); flex:none; border:calc(5 * var(--u)) solid transparent;
     background:url(../assets/slot.png) 0 0 / 100% 100% no-repeat border-box;
     image-rendering:pixelated; position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-  .slot.sel { background-image:url(../assets/slot_sel.png); }
+  .slot.sel { background-image:var(--slotsel, url(../assets/slot_sel.png)); width:calc(34 * var(--u)); height:calc(34 * var(--u)); margin:calc(-2 * var(--u));
+    transform:translateY(calc(-2 * var(--u))); z-index:1; }   /* (the slot in hand: two art px bigger each side, lifted, its frame lit: ui.js) */
+  .slot.sel canvas { width:calc(11 * var(--i2, var(--i))); height:calc(11 * var(--i2, var(--i))); }
+  #heldname { position:absolute; left:50%; bottom:100%; transform:translateX(-50%); margin-bottom:4px; white-space:nowrap; font-size:18px; line-height:18px; color:#fff8e8;
+    text-shadow:var(--rim); opacity:0; transition:opacity .25s; pointer-events:none; }   /* (the name of what you took in hand, a moment) */
+  #heldname.on { opacity:1; transition:none; }
   .slot canvas { width:calc(11 * var(--i)); height:calc(11 * var(--i)); flex:none; image-rendering:pixelated; }
   .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:18px; line-height:18px; color:#fff8e8; text-shadow:var(--rim); }
   .slot .lvl { position:absolute; left:8px; right:8px; bottom:5px; height:4px; background:#5b4038; border-radius:2px; overflow:hidden; }

@@ -47,6 +47,7 @@ class Agent:
     tired: float = 0.0         # tiredness, 0 to 4 (needs.py)
     # runtime only
     action: "Action | None" = field(default=None, repr=False)
+    held: str | None = field(default=None, repr=False)   # what is in the hand: a player's selected slot (server op `hold`): the others see it in the paw (views.py)
     aside: "Action | None" = field(default=None, repr=False)   # what the hands are doing meanwhile (constants.ASIDE: eating): it runs beside `action`
     ready: int = field(default=0, repr=False)   # first tick the next stride may start (movement cooldown)
     via: list = field(default_factory=list, repr=False)   # (x, y, n): tiles a player's screen has already walked to, to make in order (Movement.follow)

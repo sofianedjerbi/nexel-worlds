@@ -242,6 +242,8 @@ class GameServer(Views):
                             reply(mid, False, error=result.get("error"), detail=result.get("detail"), result=result)
 
                     self.sim.submit(agent, tool, args, on_done=done)
+                elif op == "hold":                                 # what is in your hand (the bar's selected slot): the others see it in your paw (views.py)
+                    agent.held = str(msg["item"])[:40] if msg.get("item") else None; reply(mid, held=agent.held)  # noqa: E702
                 elif op.startswith("dev_") and self.dev and not account:  # QA tools, only with --dev, never for who came by ticket
                     reply(mid, **dev_op(self.sim, agent, op, msg))
                 elif op == "tools":
@@ -250,8 +252,7 @@ class GameServer(Views):
                     reply(mid, recipes={k: {"inputs": r.inputs, "output": r.output, "station": r.station,
                                             "ticks": r.ticks} for k, r in RECIPES.items()})
                 else:
-                    reply(mid, False, error="unknown_op",
-                          detail="ops: hello, observe, act, tools, recipes, metrics, ping")
+                    reply(mid, False, error="unknown_op", detail="ops: hello, observe, act, hold, tools, recipes, metrics, ping")
         finally:
             if agent is not None and self.conns.get(agent.id) is ws:
                 del self.conns[agent.id]
