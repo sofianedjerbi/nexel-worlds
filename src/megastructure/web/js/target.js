@@ -97,7 +97,7 @@ const Target = (() => {
     if (!full(0, 0, -1)) { const g0 = settleAt(x, y, z0); if (g0 < z0) { line(P, [x + .5, y + .5, z0], [x + .5, y + .5, g0], col, true, c); face(P, [[0, 0], [1, 0], [1, 1], [0, 1]].map(([i, j]) => [x + i, y + j, g0]), INK, .5, CHECK); } }   // (its foot's place: a shadow of the cell, one px in two)
     return {x, y, z, kind: c.kind, held, seen};
   }
-  // X's block, under your feet: its top hatched round you at your floor (nothing on your body), and a stepped arrow down beside it
+  // X's block, under your feet: NOT drawn (the owner, 2026-11-21: "remove that weird ugly arrow under my character, that is always active"); the corner's "Dig down X" says it. feet() is kept unused for now
   const DOWN = ["..###..", "..#o#..", "..#o#..", "###o###", "#ooooo#", ".#ooo#.", "..#o#..", "...#..."];
   function feet(P, c) {
     const g = P.g, u = P.u, T = [[0, .45], [1, .45], [1, 1], [0, 1]].map(([i, j]) => [c.x + i, c.y + j, c.z]), pe = ents.get("agent" + myId), ft = pe && P.at(pe.x + .5, pe.y + .5, c.z), west = !!pe && pe.fx > 0, E = P.at(c.x + (west ? 0 : 1), c.y + .7, c.z);   // (the floor round your feet, its front half: the whole top was a box round your body; the arrow on the side you do not face: there is what Space takes)
@@ -116,7 +116,7 @@ const Target = (() => {
     for (const c of cells().sort((a, b) => a.y - b.y || (a.kind === "break") - (b.kind === "break") || a.z - b.z)) {
       const Q = P, px = P.at(c.x, c.y, c.z);
       if (c.kind === "place" && c.item && !c.drawn) BuildGhost.block(g, Q.at, Q.u, c.x, c.y, c.z, c.item, .6, c.ok === false, Q.behind);
-      if (c.mine) { feet(P, c); api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, mine: true, px, u: P.u}); continue; }
+      if (c.mine) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, mine: true, px, u: P.u}); continue; }
       if (c.way) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, way: true, px, u: P.u}); continue; }   // (wayshow.js draws that block)
       const d = {...box(Q, c), key: c.key, px, u: P.u}, q = [0, 1].flatMap((i) => [0, 1].flatMap((j) => [0, 1].map((k) => P.at(c.x + i, c.y + j, c.z - k)))).filter((v) => v);
       if (q.length) { const xs = q.map((v) => v[0]), ys = q.map((v) => v[1]); d.r = {x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys)}; }

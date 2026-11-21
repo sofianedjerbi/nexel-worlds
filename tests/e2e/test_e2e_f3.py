@@ -52,3 +52,19 @@ def test_perf_in_the_address_opens_it_with_the_hd_looks_section_and_it_costs_lit
     finally:
         g.js("F3.set(false)")
         page.close()
+
+
+def test_it_says_what_the_gpu_takes_a_frame_by_its_own_clock_or_n_a(game):
+    """The GPU's ms (js/gpu_time.js: a timer query a frame on every WebGL canvas): a phone's GPU fills px slowly, and
+    only its own clock says how long it took. Without the timer (Safari): "GPU n/a"."""
+    game.js("F3.set(true)")
+    try:
+        game.wait(f"{TEXT}.includes('GPU ')", 5000)
+        if game.js("GpuTime.ok"):
+            game.wait(f"/GPU \\d+\\.\\d ms a frame \\(mean, \\d+ canvases\\)/.test({TEXT})", 5000)
+            assert game.js("GpuTime.ms") >= 0 and game.js("GpuTime.contexts") >= 1
+        else:
+            assert "GPU n/a" in game.js(TEXT)
+        assert not game.errors
+    finally:
+        game.js("F3.set(false)")
