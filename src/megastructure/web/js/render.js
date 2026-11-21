@@ -42,11 +42,11 @@ function frame(now) {
       // (the land drawn where you are drawn, found: a tile within APART layers' rows of you, in your column or two each
       // side, whose top is there, or the wall between two; none: you are away from it, state.js. Under it if the land
       // round your tile is over you, else over it; high: far over the land beside you, a tower's top, a pillar's)
-      const z = liftOf(p) / zoom / RELIEF_STEP, tx = Math.round(p.x), ty = Math.round(p.y), r = ty - z / 2;
+      const z = liftOf(p) / zoom / RELIEF_STEP, tx = Math.round(p.x), ty = Math.round(p.y), lt = RELIEF_STEP / 16, r = ty - z * lt;   // (lt: tiles a level is drawn up)
       let found = null, high = topAt(tx, ty), low = 1e9;
-      for (const dx of [0, -1, 1, -2, 2]) for (let y2 = ty - APART / 2, last = null; y2 <= ty + APART / 2 && found === null; y2++) { const top = topAt(tx + dx, y2), r2 = y2 - top / 2; if (Math.abs(r2 - r) <= 1 || (last !== null && last < r && r < r2)) found = top; last = r2; }
+      for (const dx of [0, -1, 1, -2, 2]) for (let y2 = ty - APART * lt, last = null; y2 <= ty + APART * lt && found === null; y2++) { const top = topAt(tx + dx, y2), r2 = y2 - top * lt; if (Math.abs(r2 - r) <= 1 || (last !== null && last < r && r < r2)) found = top; last = r2; }
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const top = topAt(tx + dx, ty + dy); high = Math.max(high, top); low = Math.min(low, top); }
-      away.on = found === null; away.y = p.y + pan.y; away.shift = found !== null && Math.abs(found) > APART / 2 ? found / 2 : 0; away.sky = high - z <= APART; away.high = z - low > APART; away.z = z; away.t = now;
+      away.on = found === null; away.y = p.y + pan.y; away.shift = found !== null && Math.abs(found) > APART / 2 ? found * lt : 0; away.sky = high - z <= APART; away.high = z - low > APART; away.z = z; away.t = now;
     }
     else if (meObs) { cam.x = camT.x = meObs.self.x; cam.y = camT.y = meObs.self.y; away.on = away.high = false; away.y = cam.y; away.shift = 0; }
     away.a = Math.abs(cam.y - away.y) > 40 || Math.abs(+away.on - away.a) < .02 ? +away.on : away.a + (+away.on - away.a) * (1 - Math.exp(-dt / .12));   // (a jump a long way: at once)

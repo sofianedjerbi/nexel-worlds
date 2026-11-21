@@ -71,7 +71,7 @@ def test_a_mountain_past_the_box_is_painted_not_flat(browser, server):
     g.rest()
     g.wait("!HdLook.busy && HdLook.bare() === 0", 15000)
     # its face over the meadow's far edge (the bend takes the land down there: the screen's rows over that edge are the mountain's)
-    (ax, ay), (bx, _) = g.js(f"[HdLook.screenOf({x - 8}, {y - 24}, 12), HdLook.screenOf({x + 8}, {y - 24}, 12)]")
+    (ax, ay), (bx, _) = g.js(f"[HdLook.screenOf({x - 8}, {y - 24}, 6), HdLook.screenOf({x + 8}, {y - 24}, 6)]")      # (6: 96 px up, as the twelve 8 px levels it was)
     face = g.js(READ, [ax, bx, max(4, ay - 70), ay - 6])
     assert grey(face, 20), face                                          # the mountain, not the sky nor the meadow
     assert painted(face), face

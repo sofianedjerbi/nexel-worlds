@@ -97,9 +97,10 @@ const Floors = (() => {
         if (!get(x + 1, y, z)) r(ink, 15, 0, 1, 16);
       }
       if (!get(x, y + 1, z)) {                        // its face: a layer high, planks, the pack's ink under them
-        ctx.drawImage(IMG.house_walls, 56, 9, 16, 7, px, top + 16 * q, S, 7 * q); r(ink, 0, 23, 16, 1); r(ink, 0, 16, 16, 1);
-        if (!get(x - 1, y, z)) r(ink, 0, 16, 1, 8);
-        if (!get(x + 1, y, z)) r(ink, 15, 16, 1, 8);
+        const n = RELIEF_STEP; for (let j = 0; j < n - 1; j += 7) { const h = Math.min(7, n - 1 - j); ctx.drawImage(IMG.house_walls, 56, 9, 16, h, px, top + (16 + j) * q, S, h * q); }   // (a level's rows of planks: a cube's face, two courses)
+        r(ink, 0, 15 + n, 16, 1); r(ink, 0, 16, 16, 1);
+        if (!get(x - 1, y, z)) r(ink, 0, 16, 1, n);
+        if (!get(x + 1, y, z)) r(ink, 15, 16, 1, n);
       }
     }
     ctx.globalAlpha = 1;

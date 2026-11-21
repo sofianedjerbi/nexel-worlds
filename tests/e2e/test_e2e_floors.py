@@ -61,7 +61,7 @@ def test_a_second_floor_is_built_and_climbed_by_keys_alone(game):
         game.sleep(500)
         s = game.server()
         assert (s["x"] - x, s["y"] - y, s["z"]) == to, (key, to, s["x"] - x, s["y"] - y, s["z"])
-    assert game.js("myAt.z") == 3 and game.js("liftOf(ents.get('agent' + myId)) / zoom") == 24      # drawn where you stand: three layers up
+    assert game.js("myAt.z") == 3 and game.js("liftOf(ents.get('agent' + myId)) / zoom") == 48      # drawn where you stand: three layers up
     game.press("b")                                            # upstairs, the cursor down a floor: the room under it
     game.js(f"Build.S.at = {{x: {x + 3}, y: {y - 3}}}")
     assert game.js("Build.level()") == 3
@@ -134,7 +134,7 @@ def test_you_see_the_floor_you_are_on_and_fall_off_its_edge(game):
     go(game, x0 + 1, y0 + 2, 1)                                               # on the first step: the room still
     assert alpha(floor, roof) == [.12, .12]
     go(game, x0 + 2, y0 + 2, 3)                                               # upstairs
-    assert alpha(floor, roof, wall) == [1, .12, 1] and game.js("liftOf(ents.get('agent' + myId)) / zoom") == 24
+    assert alpha(floor, roof, wall) == [1, .12, 1] and game.js("liftOf(ents.get('agent' + myId)) / zoom") == 48
     # others see you up there: the server says your height
     assert game.js("ents.get('agent' + myId).e.z") == 3
     game.hold(["ArrowUp"], 90)                                                                      # a tile north: the bed is to the east

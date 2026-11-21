@@ -81,7 +81,7 @@ def test_with_frames_of_any_length_the_eye_comes_to_you_and_never_past_and_the_w
             assert turns == 0, (ms, lv, turns, r)                                  # (one way only: no swing)
     g.js(SLOW, 100)
     g.rpc("dev_teleport", x=x + 8, y=y + 6, z=z - 14)
-    g.wait(f"HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch === 68 && HdLook.level[1] === {z - 14}", timeout=20000)
+    g.wait(f"HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch === HdLook.steep && HdLook.level[1] === {z - 14}", timeout=20000)
     g.js(SLOW, 0)
     g.rest()
     wins = g.js(f"[!!HdLook.winAt({x + 8}, {y + 6}), !!HdLook.winAt({x + 8}, {y + 6 - 2}), !!HdLook.winAt({x + 8 + 12}, {y + 6})]")

@@ -97,7 +97,7 @@ def test_the_night_is_darker_than_the_day_but_for_your_lamp(browser, server):
         x, y = g.pos()
         lum = lambda dx: sum(g.js(AT, [x + dx + .5, y + 2.5, 0]))
         g.hour(.3); day = lum(9)
-        g.hour(.9); night, near = lum(9), lum(0)
+        g.hour(.9); night, near = lum(9), sum(g.js(AT, [x - .5, y + 1.5, 0]))      # (near: beside the box of the cell X digs, south of you: a cube now, its front lay on the px two tiles south)
         assert night < .7 * day and near > night + 30, (day, night, near)
     finally:
         g.page.close()
@@ -157,8 +157,8 @@ def test_a_built_house_has_its_roof_outside_and_is_open_inside(browser, server):
         g.rpc("dev_teleport", x=x, y=y, z=0); g.arrive()
         out = g.js(AT, over)
         assert g.js(ROOF, [x0 + 1, y0 + 1]) and not green(out), out                # outside: the roof, drawn
-        wall = max(b["z"] + b["h"] for b in g.js("([x, y]) => HdThings.at(x, y)", [x0, y0 + 1]) if b["z"] < 16)
-        assert wall == 16                                                    # (the wall under it: up to the roof block's underside)
+        wall = max(b["z"] + b["h"] for b in g.js("([x, y]) => HdThings.at(x, y)", [x0, y0 + 1]) if b["z"] < 32)
+        assert wall == 32                                                    # (the wall under it: up to the roof block's underside, two blocks of 16 px)
         g.rpc("dev_teleport", x=x0 + 1, y=y0 + 1, z=0); g.arrive()
         inside = g.js(AT, over)
         assert not g.js(ROOF, [x0 + 1, y0 + 1]) and not g.js(ROOF, [x0 + 3, y0 + 2]), "the roof is still there inside"

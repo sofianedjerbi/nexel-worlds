@@ -101,12 +101,12 @@ def test_no_frame_shows_the_land_unpainted_after_a_teleport(browser, server):
 def test_a_pit_floor_is_darker_than_the_meadow_by_day_and_by_night(browser, server):
     g = hd(browser, server)
     x, y = scene(g)
-    g.stamp(-6, -6, ["." * 5] * 5, levels=["00000", "0bbb0", "0bbb0", "0bbb0", "00000"])   # a pit 3 x 3, two deep, its middle at (x - 4, y - 4): five tiles from your lantern
+    g.stamp(-6, -6, ["." * 5] * 5, levels=["00000", "0aaa0", "0aaa0", "0aaa0", "00000"])   # a pit 3 x 3, a block deep (16 px: the two 8 px levels it was), its middle at (x - 4, y - 4): five tiles from your lantern
     out = []
     for phase in (.375, .9):
         g.hour(phase)
         made(g)
-        (ax, ay), (bx, by) = g.js(ART, [x - 5, y - 5, -2]), g.js(ART, [x - 2, y - 4, -2])   # (its north row: the south rim hides the rest from this eye)
+        (ax, ay), (bx, by) = g.js(ART, [x - 5, y - 5, -1]), g.js(ART, [x - 2, y - 4, -1])   # (its north row: the south rim hides the rest from this eye)
         floor = g.js(LUMS, [int(ax) + 1, int(bx) - 1, int(ay) + 1, int(by) - 1])
         (gx, gy), (hx, hy) = g.js(ART, [x + 2, y - 5, 0]), g.js(ART, [x + 6, y - 2, 0])
         grass = g.js(LUMS, [int(gx), int(hx), int(gy), int(hy)])

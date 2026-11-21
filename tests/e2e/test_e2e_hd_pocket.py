@@ -6,6 +6,8 @@ tilts over some 400 ms, never in a few frames."""
 import pytest
 from test_e2e_hd_sun import hd, settled
 
+STEEP = 78.6        # the eye's pitch from above (hd.js api.steep: 68 when a level was 8 px; tan 78.6 = 2 tan 68)
+
 # a tile's top as it is on the screen: [mean r, g, b, px warm (red well over blue), px cold (blue not under red)] of the px inside its four corners' box
 TOP = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => HdLook.screenOf(x + a, y + b, z)), k = devicePixelRatio;
   const x0 = Math.ceil(Math.max(c[0][0], c[3][0]) * k) + 4, x1 = Math.floor(Math.min(c[1][0], c[2][0]) * k) - 4, y0 = Math.ceil(c[0][1] * k) + 4, y1 = Math.floor(c[2][1] * k) - 4;
@@ -59,16 +61,16 @@ def test_going_under_a_roof_and_out_the_eye_tilts_over_many_frames(browser, serv
     base = g.js("HdLook.cam.pitch")
     g.js("(() => { window.__p = []; const f = () => { __p.push(HdLook.cam.pitch); requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()")
     g.rpc("dev_teleport", x=x, y=y, z=z - 14)
-    g.wait("HdLook.cam.pitch === 68", timeout=6000)
+    g.wait("HdLook.cam.pitch === HdLook.steep", timeout=6000)
     g.sleep(200)
     p = g.js("__p.splice(0)")
-    mid = sorted(set(round(v, 2) for v in p if base + .01 < v < 67.99))
+    mid = sorted(set(round(v, 2) for v in p if base + .01 < v < STEEP - .01))
     steps = [b - a for a, b in zip(p, p[1:])]
     assert len(mid) >= 10, (len(mid), mid)                           # (it was most of the way in 8 frames)
-    assert min(steps) >= 0 and max(steps) < (68 - base) / 6, max(steps)      # (one way, no jump)
+    assert min(steps) >= 0 and max(steps) < (STEEP - base) / 6, max(steps)      # (one way, no jump)
     g.rpc("dev_teleport", x=x + 12, y=y, z=z)                        # out: it waits a moment (a roof's edge walked along does not tilt the eye at every tile), then eases back
     g.wait(f"HdLook.cam.pitch === {base}", timeout=6000)
     p = g.js("__p.splice(0)")
-    mid = sorted(set(round(v, 2) for v in p if base + .01 < v < 67.99))
+    mid = sorted(set(round(v, 2) for v in p if base + .01 < v < STEEP - .01))
     steps = [b - a for a, b in zip(p, p[1:])]
-    assert len(mid) >= 10 and max(steps) <= 0 and min(steps) > -(68 - base) / 6, (len(mid), min(steps))
+    assert len(mid) >= 10 and max(steps) <= 0 and min(steps) > -(STEEP - base) / 6, (len(mid), min(steps))

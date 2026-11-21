@@ -14,7 +14,7 @@ def test_every_layer_is_the_same_step_up(game):
     game.stamp(-2, -4, ["....."] * 3, levels=["11111", "22222", "33333"])
     z = game.js("zoom")
     lifts = [game.js(f"liftAt({x}, {y + dy})") for dy in (-2, -3, -4)]
-    assert lifts == [24 * z, 16 * z, 8 * z] and game.js(f"liftAt({x}, {y})") == 0
+    assert lifts == [48 * z, 32 * z, 16 * z] and game.js(f"liftAt({x}, {y})") == 0      # (a level is a cube: 16 art px)
 
 
 def test_the_camera_centres_on_you_as_drawn(game):

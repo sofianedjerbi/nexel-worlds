@@ -6,7 +6,7 @@
 // and walls; outside it the world is untouched. Walking moves nothing but the eye; a space that changed changes these few boxes, never the land.
 //   VoxStyleWin.create(gl) -> {set(tiles: [[x, y, lo, hi, sky: 1 under the open sky]...], per), n, ver, tiles, pass(m, ctr, bend, w, h): the mask's picture is made (unit 4 holds it after), back(rgb): what is behind the land taken away}
 const VoxStyleWin = (() => {
-  const H = .5, FAR = "255.9";
+  const H = VoxStyleGLSL.H, FAR = "255.9";
   const MV = `#version 300 es
   in vec3 p; uniform mat4 m; uniform vec3 ctr; uniform float bend; out highp float vw;
   ${VoxStyleGLSL.SINK}

@@ -82,7 +82,7 @@ const HdSun = (() => {
     const s = surface(x, y); if (!s) return; const k = x + "," + y + "," + s.z; let ch = lands.get(k);
     // (the columns asked: a column further each way than the shadows reach: the px just outside the tile are asked too, for the rim: without them each tile's shadow had a rim of its own, light lines between tiles)
     if (ch === undefined) { ch = null; const src = [], sg = H.kx < 0 ? 1 : -1, nx = Math.ceil(96 * Math.abs(H.kx) / 16), ny = Math.ceil(96 * H.ky / 16);
-      for (let j = -1; j <= ny + 1; j++) for (let i = -1; i <= nx + 1; i++) { if (!i && !j) continue; const T = topOf(x + sg * i, y - j); if (T !== null && T - s.z >= 2) src.push([sg * i * 16, -j * 16, Math.min(12, T - s.z) * UP]); }
+      for (let j = -1; j <= ny + 1; j++) for (let i = -1; i <= nx + 1; i++) { if (!i && !j) continue; const T = topOf(x + sg * i, y - j); if (T !== null && (T - s.z) * UP >= 16) src.push([sg * i * 16, -j * 16, Math.min(96, (T - s.z) * UP)]); }
       if (src.length) { const kx = H.kx, ky = H.ky, ns = src.length, sx = new Float32Array(ns), sy = new Float32Array(ns), sh = new Float32Array(ns); src.forEach((q, i) => { sx[i] = q[0]; sy[i] = q[1]; sh[i] = q[2]; });
         // (is a ground px in the shadow of one of the columns: the stretch of the sun's ray over that column's tile, across and along, within its height. In plain numbers: it made two lists and sorted them for every px of every column: most of the script's time when land came in)
         const dark = (gx, gy) => { gx += .5; gy += .5; for (let i = 0; i < ns; i++) { let p0, p1, q0, q1;

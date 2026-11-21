@@ -17,7 +17,7 @@ function tileAtScreen(mx, my) {                        // -> {x, y, fy: how far 
   // The column's tiles from the nearest that could be drawn there to the furthest (a level is drawn higher or lower:
   // relief.js; a row far north nearer the horizon: curve.js): the first whose top is under the pointer, or whose
   // front is, down to the land south of it. (It looked six tiles south and at tops alone: a pit was not undone.)
-  const reach = (APART / 2 + 1) * S, eye = Curve.c ? Math.abs(Curve.c.ref) : 0;
+  const reach = (APART * RELIEF_STEP / 16 + 1) * S, eye = Curve.c ? Math.abs(Curve.c.ref) : 0;
   // Who stands in the roll is drawn as big as ever on rows a few px tall: under the pointer, it is who is meant, not
   // the tile behind its head (the nearest, if two). Near you, where a body is on its own tile, the tile says it.
   if (Curve.on && !Build.on) {

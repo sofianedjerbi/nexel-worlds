@@ -49,7 +49,7 @@ const BridgeModel = (() => {
     const f = slim ? P.slim : wet ? P.pile : P.post, w = slim ? 3 : 4;
     out.push({x, y, z, w, d: 3, h, top: slim ? P.slimTop : P.postTop, front: [f[0], f[1] + 8 - h]});
     if (wet) out.push({x, y: y + 3, z, w, d: 1, h: 0, top: slim ? P.slimFoam : P.foam});
-    if (wet) for (let k = 1; k <= pileDeep; k++) out.push({x, y, z: z - 8 * k, w, d: 3, h: 8, front: f});      // (clear water, waterbed.js: it goes down to the bed)
+    if (wet) for (let k = 8; k <= pileDeep * RELIEF_STEP; k += 8) out.push({x, y, z: z - k, w, d: 3, h: 8, front: f});      // (clear water, waterbed.js: it goes down to the bed, its 8 rows of paint again and again: a level is 16 px)
   }
   let pileDeep = 0;
   function at(x, y) {

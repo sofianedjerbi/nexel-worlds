@@ -6,9 +6,11 @@
 // ends over lower ground its wall is painted down to the ground below: solid earth, a band per layer (lit along its
 // top, darker at its foot), in the colours of that layer's own sheet, the pack's ink at the very foot.
 
-// A layer is half a tile high: two layers, one tile (a cave two blocks high is as tall as you are)
-const RELIEF_STEP = 8;                                        // art px a level
+// A layer is a CUBE: a tile high, as tall as you are (the cat's 16 rows): one block, one level, one body (vox_style_glsl.js H)
+const RELIEF_STEP = 16;                                       // art px a level
 const shOf = (L) => RELIEF_STEP * L;                          // how far up a level is drawn (a pit's, down): every layer the same step
+// Levels the eye's line climbs a tile south of what it looks at (the land's "behind" questions: hd_level.js, hd.js): a tile is 16 art px deep, a level RELIEF_STEP high
+const eyeRise = (pitch) => Math.tan(pitch * Math.PI / 180) * 16 / RELIEF_STEP;
 
 // Where a body stands in its tile, a person or a creature alike: STAND art px higher than its sheet puts it. The
 // sheets put the feet 2 px over the tile's bottom: the shadow on the line between two tiles, hanging off a ledge's

@@ -10,7 +10,7 @@
 //     made: chunks made, space: your space's floors and classes a tile, win: [[x, y, lo, hi]...] the boxes of the x-ray window (vox_style_win.js)}), touch(x, y), clear()}
 //   P (the paints, vox_style.js): {SL, C, slot(key, paint) -> its place, unslot(key), start(again), spill() -> did they run out}
 const VoxStyleLand = (() => {
-  const H = .5, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"];
+  const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"];
   const gp = (x, y, z) => [x, z * H, y];
   const FACES = [
     {n: [0, 0, 1], k: 1, q: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]]},

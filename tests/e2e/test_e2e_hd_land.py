@@ -8,6 +8,8 @@ import pytest
 from conftest import Game, new_name
 from test_e2e_hd_sun import LIGHT, hd, settled
 
+STEEP = 78.6        # the eye's pitch from above (hd.js api.steep: 68 when a level was 8 px; tan 78.6 = 2 tan 68)
+
 # the picture now, kept under a name; two of them: the share of px that differ, the share that differ outside a box (px), the differing px's own box
 # (outside the box by more than a step of rounding: the window's soft light ends a little beyond its rim, and where the meadow's own light
 # was within half a unit of the next one, a unit of green came or went: rings of such px north of the room, 800 to 1200 of them by where you woke,
@@ -127,7 +129,7 @@ def test_in_a_trench_two_deep_under_the_open_sky_the_floor_you_stand_on_is_seen_
     g.rpc("dev_col", tiles=[[x + i, y] for i in range(-3, 4)], col=[z - 2])     # a trench one tile wide, two levels deep, open to the sky
     g.settle(f"topAt({x}, {y}) === {z - 2}")
     g.rpc("dev_teleport", x=x, y=y, z=z - 2)
-    g.wait("HdLook.cam.pitch === 68 && !HdLook.busy", timeout=4000)
+    g.wait("HdLook.cam.pitch === HdLook.steep && !HdLook.busy", timeout=4000)
     g.rest()
     assert g.js("HdLook.win.n") == 0 and g.js("HdLook.level[0]") == z - 2
     green = lambda c: c[1] > c[0] + 15 and c[1] > c[2] + 40
@@ -163,7 +165,7 @@ def test_walking_into_a_trench_the_eye_tips_once(browser, server):
     g.page.keyboard.down("ArrowLeft")
     g.wait(f"myPos().x <= {x}", timeout=8000)
     g.page.keyboard.up("ArrowLeft")
-    g.wait("HdLook.cam.pitch === 68", timeout=3000)
+    g.wait("HdLook.cam.pitch === HdLook.steep", timeout=3000)
     d = g.js("(() => { __on = false; return __d; })()")
     p = [r[1] for r in d]
     assert p[0] < 53 and all(b >= a for a, b in zip(p, p[1:])), p
@@ -200,7 +202,7 @@ def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at
             g.spawn("chicken", 1, 0, still=300)
             g.wait("HdLook.bodies().length > 0", timeout=4000)
             g.sleep(500)
-            assert base < 53 and g.js("HdLook.cam.pitch") == 68, (w, h, base)
+            assert base < 53 and g.js("HdLook.cam.pitch") == STEEP, (w, h, base)
             assert g.js("HdLook.bare()") == 0, (w, h, g.js("HdLook.bare()"))          # (no px of the backdrop under the horizon: it was a flat blue hole a quarter of a phone held sideways)
             assert [b for b in g.js("HdLook.bodies()") if b[0] != "agent"] == [["chicken", z - 24]], g.js("HdLook.bodies()")   # (not another test's player up on the land: it failed beside any test that stands near; it was drawn up on the grass)
             assert g.js("HdLook.catSeen()") > .8

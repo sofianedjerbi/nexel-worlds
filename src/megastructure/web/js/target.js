@@ -23,7 +23,7 @@ const Target = (() => {
     const add = (key, kind, x, y, z, more) => { if (!out.some((c) => c.x === x && c.y === y && c.z === z && c.kind === "break")) out.push({key, kind, x, y, z, h: 1, ok: true, ...more}); };
     if (Build.on) {
       const p = Build.S.at, it = Build.hint(p), hit = Build.taking(p), L = Build.level();
-      if (hit && !hit.plan && !hit.shut) add("alt", "break", p.x, p.y, hit.dig || hit.up ? hit.z : hit.z + 2, hit.dig || hit.up ? {} : {h: 2, thing: true});
+      if (hit && !hit.plan && !hit.shut) add("alt", "break", p.x, p.y, hit.dig || hit.up ? hit.z : hit.z + 1, hit.dig || hit.up ? {} : {h: 1, thing: true});   // (a thing that stands: a block high, hd_things.js)
       if (it.ghost && it.z !== undefined && !it.steps && it.ghost !== "ladder") add("use", solidAt(p.x, p.y, it.z) ? "use" : "place", p.x, p.y, it.z, {ok: it.ok !== false, item: LAND_BLOCKS.has(it.ghost) ? it.ghost : null, drawn: LAND_BLOCKS.has(it.ghost)});
       else add("use", solidAt(p.x, p.y, L) ? "use" : "place", p.x, p.y, L, {ok: it.ok !== false, flat: !!it.ghost && solidAt(p.x, p.y, L)});
       return out;

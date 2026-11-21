@@ -68,7 +68,7 @@ def test_in_a_river_between_cliffs_the_hole_is_whole(browser, server):
     g.stamp(-15, -11, rows, levels=["9" * 31] * 10 + ["2" * 31] * 3 + ["6" * 31] * 10)
     g.rest()
     g.rpc("dev_teleport", x=x, y=y)
-    g.wait("HdLook.cam.pitch === 68 && !HdLook.busy", timeout=8000)
+    g.wait("HdLook.cam.pitch === HdLook.steep && !HdLook.busy", timeout=8000)
     g.rest()
     # four levels under the land round you: the eye looks from above, and under the open sky nothing is cut: the gorge is
     # seen as it is, its south bank in front of its water (no box of the window on the banks nor on the river: it was a
@@ -93,9 +93,9 @@ def test_swimming_at_the_foot_of_a_deep_river_s_bank_its_far_wall_is_stone_and_y
     g.stamp(-15, -12, rows, levels=["C" * 31] * 8 + ["0" * 31] * 5 + ["C" * 31] * 8)
     g.rest()
     g.rpc("dev_teleport", x=x, y=y)
-    g.wait("HdLook.cam.pitch === 68 && !HdLook.busy && HdLook.level[3] > 0", timeout=8000)
+    g.wait("HdLook.cam.pitch === HdLook.steep && !HdLook.busy && HdLook.level[3] > 0", timeout=8000)
     g.rest()
-    face = [g.js(LUM, [x + dx + .5, y - 4, 6]) for dx in (-3, -1, 1)]     # the north bank's face over the river, half way up, a few tiles from you
+    face = [g.js(LUM, [x + dx + .5, y - 4, 3]) for dx in (-3, -1, 1)]     # the north bank's face over the river, 48 px up (a level is 16 px: 6 was off the screen's top), a few tiles from you
     assert min(face) > 50, face                                           # (grey stone: it was 2, black)
     assert g.js("HdLook.catSeen()") > .7, g.js("HdLook.level")            # (your head over the rim: it was .48, ears and eyes)
 

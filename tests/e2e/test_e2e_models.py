@@ -35,6 +35,6 @@ def test_a_click_on_the_bridge_picks_the_bridges_tile(game):
     """Pointing at the middle of the bridge's tile, as the HD look draws it, is pointing at the bridge's tile (where its
     planks step down to the bank too)."""
     x, y = pond(game)
-    pick = """([x, y]) => { const c = Voxels.host.column(x, y), a = HdLook.screenOf(x + .5, y + .5, c[c.length - 1]), q = tileAtScreen(a[0], a[1]); return [q.x - x, q.y - y]; }"""      # (the middle of the tile's top as the HD look has it)
+    pick = """([x, y]) => { const c = Voxels.host.column(x, y), a = HdLook.screenOf(x + .5, y + .5, liftAt(x, y) / zoom / RELIEF_STEP), q = tileAtScreen(a[0], a[1]); return [q.x - x, q.y - y]; }"""      # (the middle of the tile's top as the HD look has it: the deck's, over the water: a level is 16 px, the bed under it is behind the bank)
     assert [game.js(pick, [x + d, y]) for d in (0, -4, 4)] == [[0, 0]] * 3
     assert not game.errors

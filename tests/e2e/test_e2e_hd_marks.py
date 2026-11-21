@@ -6,6 +6,8 @@ land the disc round you is opened and you are in it whole (it was a checker cat 
 from test_e2e_hd_behind import calm, go, tidy
 from test_e2e_hd_sun import hd
 
+STEEP = 78.6        # the eye's pitch from above (hd.js api.steep: 68 when a level was 8 px; tan 78.6 = 2 tan 68)
+
 
 def test_a_box_is_never_drawn_over_your_body(browser, server):
     """Build mode facing a wall two high north of you: X's box is the wall's cell over your head, drawn on the screen
@@ -40,7 +42,7 @@ def test_in_a_shaft_six_deep_the_marks_are_lifted_with_you(browser, server):
     g.give(pickaxe=1)
     g.rpc("dev_col", tiles=[[x + 3, y]], col=[-6])
     g.rest()
-    go(g, x + 3, y, -6, "!HdLook.busy && HdLook.cam.pitch === 68")
+    go(g, x + 3, y, -6, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
     g.hold_item("pickaxe")
     g.frames(3)
     L, _, _, lift, rim = g.js("HdLook.level")
@@ -67,7 +69,7 @@ def test_in_a_shaft_three_deep_a_box_in_the_south_wall_is_inside_the_opening(bro
     g.give(pickaxe=1)
     g.rpc("dev_col", tiles=[[x + 3, y]], col=[-3])
     g.rest()
-    go(g, x + 3, y, -3, "!HdLook.busy && HdLook.cam.pitch === 68")
+    go(g, x + 3, y, -3, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
     g.hold_item("pickaxe")
     g.face(0, 1)
     g.frames(3)
@@ -88,11 +90,11 @@ def test_a_room_five_by_four_four_deep_is_seen_from_above_with_you_inside_it(bro
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
-    g.rpc("dev_col", tiles=[[x + 2 + i, y + 2 + j] for j in range(4) for i in range(5)], col=[-4])
+    g.rpc("dev_col", tiles=[[x + 2 + i, y + 2 + j] for j in range(4) for i in range(5)], col=[-3])     # (three blocks deep)
     g.rest()
     for ty in (y + 3, y + 5):                                              # (its middle, its south row)
-        s = go(g, x + 4, ty, -4, "!HdLook.busy && HdLook.cam.pitch === 68")
-        assert s["pitch"] == 68 and s["n"] == 0, s
+        s = go(g, x + 4, ty, -3, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
+        assert s["pitch"] == STEEP and s["n"] == 0, s
         nw, se, u = g.js(f"HdLook.screenOf({x + 2}, {y + 2}, 0)"), g.js(f"HdLook.screenOf({x + 7}, {y + 6}, 0)"), g.js("zoom")
         seen, out = g.js("(b) => HdLook.catSeen(b)", [nw[0] - u, nw[1] - u, se[0] + u, se[1] + u])
         assert seen > .8 and out == 0, (ty - y, seen, out)
@@ -110,7 +112,7 @@ def test_in_a_room_four_deep_the_marks_are_inside_its_opening_and_none_on_you(br
     x, y = g.pos()
     g.rpc("dev_col", tiles=[[x + 2 + i, y + 2 + j] for j in range(4) for i in range(5)], col=[-4])
     g.rest()
-    go(g, x + 4, y + 4, -4, "!HdLook.busy && HdLook.cam.pitch === 68")
+    go(g, x + 4, y + 4, -4, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
     g.stamp(0, -1, ["r"], levels=["d"])                                                      # (a rug north of you: Space uses it, a box)
     g.rest()
     g.wait("WayShow.cur && WayShow.cur.next && WayShow.block", timeout=8000)

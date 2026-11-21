@@ -60,19 +60,20 @@ def test_down_a_covered_stair_the_window_is_open_on_every_frame_and_your_body_is
     part = [i for i, v in enumerate(r) if v[2] and v[7] < 1]
     assert len(part) <= 4, (len(part), part[:8])                                 # (where the search for your space was late: half its px that frame, all of them within three more; it was all in one frame: a pop)
     assert all(v[5] == v[6] for v in r), [(v[0], v[5], v[6]) for v in r if v[5] != v[6]][:6]    # drawn at the level the game has you at, never on the grass over it
-    steps = [(round(a[0], 2), round(b[4] - a[4], 1)) for a, b in zip(r, r[1:]) if abs(b[4] - a[4]) > 4.5]
-    assert not steps, steps[:8]                                                  # your body does not jump on the screen (it went 16 px at each tile's middle, and 100 at the roof)
+    steps = [(round(a[0], 2), round(b[4] - a[4], 1)) for a, b in zip(r, r[1:]) if abs(b[4] - a[4]) > 7]
+    assert not steps, steps[:8]                                                  # your body does not jump on the screen (it went 16 px at each tile's middle, and 100 at the roof; a level is 16 px now: a frame's way down a step is up to 6)
     assert turns(r) == 0 and r[0][1] < 37 and r[-1][1] > 67.9, (turns(r), r[0][1], r[-1][1])    # one tilt, on the way down
     # and back up: one tilt back, near the top
     r = walk(g, "ArrowLeft", f"myPos().x <= {x}")
-    assert not [v for v in r if v[2] and not v[3]] and turns(r) == 0 and r[-1][1] < 36.1
+    assert not [v for v in r if v[2] and not v[3]] and turns(r) == 0
+    g.wait("HdLook.cam.pitch < 36.1", timeout=4000)                               # (back to the surface's: the last step, a level under the land round it, is seen from above too: the tilt eases after it)
     back = next(v[0] for v in r if v[1] < 67.9)
     assert back < x + 2.6, back - x                                              # the eye stays over the stair until its last steps
 
 
 def test_a_shaft_and_its_way_out_are_one_view(browser, server):
     """Six down a shaft a tile wide: seen from above, as the tunnel dug out of it is (it was the side view, then, one
-    step on, the view from above); on a dug stair it stays so until the last step but one; at a cliff's foot on the
+    step on, the view from above); on a dug stair it stays so until the last step; at a cliff's foot on the
     surface the eye does not tilt."""
     g = hd(browser, server)
     g.rpc("dev_time", phase=.3)
@@ -85,7 +86,7 @@ def test_a_shaft_and_its_way_out_are_one_view(browser, server):
     g.rpc("dev_teleport", x=x, y=y, z=-6)
     g.arrive()
     g.wait("HdLook.cam.pitch > 67.9 && HdLook.win.n === 0 && !HdLook.busy", timeout=8000)      # (under the open sky no window: from above the shaft is seen as it is)
-    for i, steep in ((2, True), (4, True), (5, False)):                          # levels -4, -2: walls of two beside you; -1: out
+    for i, steep in ((2, True), (4, True), (5, True)):                           # levels -4, -2, -1: walls beside you as tall as you or more (a level is your height)
         g.rpc("dev_teleport", x=x + i, y=y, z=-6 + i)
         g.arrive()
         g.wait(f"HdLook.cam.pitch {'> 67.9' if steep else '< 36.1'}", timeout=8000)

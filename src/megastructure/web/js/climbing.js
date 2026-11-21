@@ -127,7 +127,7 @@ const Climb = (() => {
     const covered = solidAt(x, y, z + 1), front = !solidAt(x, y + 1, z), [dx, dy] = up;
     ctx.globalAlpha = a;
     if (dy < 0) {                                       // rising north: treads and risers face you
-      const rows = (covered ? 0 : 16) + (front ? 8 : 0), y0 = covered ? 16 : 0;
+      const rows = (covered ? 0 : 16) + (front ? RELIEF_STEP : 0), y0 = covered ? 16 : 0;   // (its face a level high: a cube's, two half steps in it)
       for (let k = 0; k < rows; k += 8) {
         r(RISER, 2, y0 + k, 12, 3); r(ink, 2, y0 + k, 12, 1);
         r(TREAD, 2, y0 + k + 3, 12, 5); r(LIGHT, 2, y0 + k + 7, 12, 1);
@@ -139,7 +139,7 @@ const Climb = (() => {
         r(TREAD, 2, 8, 12, 8); r(LIGHT, 2, 8, 12, 1);
         for (const X of [0, 14]) { r(ink, X, 0, 2, 16); r(STRINGER, X + (X ? 0 : 1), 0, 1, 16); }
       }
-      if (front) { r(STRINGER, 0, 16, 16, 8); r(ink, 0, 23, 16, 1); }
+      if (front) { r(STRINGER, 0, 16, 16, RELIEF_STEP); r(ink, 0, 15 + RELIEF_STEP, 16, 1); }
     } else {                                            // rising east or west: two treads across the tile, the lower one half a layer down
       const hi = dx > 0 ? 8 : 0, lo = 8 - hi;           // (the half nearer the top, the half nearer the foot: x of each)
       for (const [X, d] of [[hi, 0], [lo, 4]]) {
@@ -147,7 +147,7 @@ const Climb = (() => {
           r(TREAD, X, d + 2, 8, 12); r(dx > 0 ? LIGHT : RISER, X, d + 2, 1, 12); r(dx > 0 ? RISER : LIGHT, X + 7, d + 2, 1, 12);
           r(ink, X, d, 8, 1); r(STRINGER, X, d + 1, 8, 1); r(STRINGER, X, d + 14, 8, 1); r(ink, X, d + 15, 8, 1);   // (the stringers, along its sides)
         }
-        if (front) { const f0 = covered ? 16 : d + 16, f1 = 24; r(STRINGER, X, f0, 8, f1 - f0); if (!covered) r(LIGHT, X, f0, 8, 1); r(ink, X, 23, 8, 1); }
+        if (front) { const f0 = covered ? 16 : d + 16, f1 = 16 + RELIEF_STEP; r(STRINGER, X, f0, 8, f1 - f0); if (!covered) r(LIGHT, X, f0, 8, 1); r(ink, X, f1 - 1, 8, 1); }
       }
     }
     ctx.globalAlpha = 1;
