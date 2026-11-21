@@ -112,20 +112,17 @@ const HdLook = (() => {
         if (j.item !== "ladder" && !j.take && !j.dig && !HdThings.pieced(j.item, j.steps, j.up ? j.z : undefined)) ghost(PLACEABLE_BLOCK[j.item], j.x, j.y, j.state === "doing" ? .75 : .5);   // (pieces: in the land, see-through: pieces())
         fill(c, j.state === "bad" ? "rgba(230,80,70,.4)" : j.take ? "rgba(255,150,60,.3)" : j.state === "doing" ? "rgba(255,241,168,.35)" : "rgba(140,190,255,.28)"); if (j.dig) fill(c.map((v, i) => [v[0] + (c[(i + 2) % 4][0] - v[0]) * .2, v[1] + (c[(i + 2) % 4][1] - v[1]) * .2]), "rgba(60,36,30,.5)"); }
       const at = Build.S.at; if (at) { const c = quad(at.x, at.y, Build.level()), it = Build.aim().it, mx = (myPos() || at).x; if (it && it.ghost && it.ghost !== "ladder" && it.ok !== false && !HdThings.pieced(it.ghost, it.steps, it.draw ? undefined : it.z)) ghost(PLACEABLE_BLOCK[it.ghost], at.x, at.y, .7);
-        // the depth mark (mark.js's cells, as this camera has them): the cursor's cell as a box, its front edges; in the air a dotted line down to the ground under it and a small square there; each step of a flight; how far over or under you it is, beside it and on you (keyhole.js)
-        for (const m of Marks.list) { const col = `rgb(${m.colour.map((v) => Math.round(v * 255)).join()})`, S0 = api.screenOf;
-          if (m.z1 > m.z0 && !m.flat) { for (const dx of [0, 1]) edge(S0(m.x + dx, m.y + 1, m.z1), S0(m.x + dx, m.y + 1, m.z0), col); edge(S0(m.x, m.y + 1, m.z0), S0(m.x + 1, m.y + 1, m.z0), col); }
-          if (m.fill === 0 && m.to && m.to.fill === 0) { const q = quad(Math.round(m.x), Math.round(m.y), m.z1); if (q.every((v) => v)) corners(q, col); }
-          if (m.drop !== undefined && m.drop < m.z0) { edge(S0(m.x + .5, m.y + .5, m.z0), S0(m.x + .5, m.y + .5, m.drop), col, true); const q = [[.3, .3], [.7, .3], [.7, .7], [.3, .7]].map(([a, b]) => S0(m.x + a, m.y + b, m.drop)); if (q.every((v) => v)) fill(q, "rgba(91,63,54,.55)"); } }
-        corners(c, it && it.ok === false ? "#e8554a" : Math.floor(t * 3) % 2 ? "#fff1a8" : "#ffffff"); Build.S.rect = Object.assign(bound(c), {under: mx !== at.x, right: mx < at.x}); Prompts.build();
+        Build.S.rect = Object.assign(bound(c), {under: mx !== at.x, right: mx < at.x}); Prompts.build(); Target.paint(ctx, api.art());   // (the cursor's cell, the block X takes: boxes in the land, target.js)
         }
     } else {          // the aim: what stands there, round its picture; a ghost of what would be put; else the corners of the tile as the land shows it; its keys beside it (prompts.js)
-      const aim = aimedTile(), it = aim && aim.it, a = aim && aim.p, on = a && tile(a.x, a.y) && it && !it.info && !it.walk; let r = null;
+      const aim = aimedTile(), it = aim && aim.it, a = aim && aim.p, on = a && tile(a.x, a.y) && it && !it.info && !it.walk; let r = null, thing = false;
       if (on && it.ghost && it.ghost !== "ladder" && !HdThings.pieced(it.ghost, it.steps, it.draw ? undefined : it.z)) ghost(PLACEABLE_BLOCK[it.ghost], a.x, a.y, .7);
       if (on) { const e = it.ent && seen.list.find((s) => s.q && s.q.e === it.ent || s.q === it.ent), c0 = combAt(a.x, a.y), spr = !e && c0 && isObject(c0) && objectSprite(c0, a.x, a.y, t), f = e && api.screenOf(e.x, e.y, e.z);
         const cs = !e && seen.list.find((s) => s.card && s.tx === a.x && s.ty === a.y), cf = cs && api.screenOf(cs.x, cs.y, cs.z), pb = !e && !cs && c0 && HdThings.is(c0, a.x, a.y) ? boxed(a.x, a.y, seen.L * RELIEF_STEP) || boxed(a.x, a.y) : null;   // (round the piece as it is drawn: a card's own px, the boxes' corners)
         const c = e ? box([snap(f[0] - 8 * px), snap(f[1] - 12 * px), 16 * px, 16 * px]) : cs && cf ? box([snap(cf[0] - (cs.fx - cs.card.b[0]) * px), snap(cf[1] - (cs.fy - cs.card.b[1]) * px), (cs.card.b[2] - cs.card.b[0]) * px, (cs.card.b[3] - cs.card.b[1]) * px])
-          : pb ? box([snap(pb.x), snap(pb.y), snap(pb.w) + px, snap(pb.h) + px]) : spr && spr[0] ? box(rectOf(spr, a.x, a.y, standAt(c0, a.x, a.y) > floorAt(a.x, a.y) ? standAt(c0, a.x, a.y) : undefined)) : it.cell !== undefined ? quad(a.x, a.y, it.cell) : quad(a.x, a.y, shown(a.x, a.y)); corners(c, it.ok === false ? "#e8554a" : "#fff8e8"); r = bound(c); }
+          : pb ? box([snap(pb.x), snap(pb.y), snap(pb.w) + px, snap(pb.h) + px]) : spr && spr[0] ? box(rectOf(spr, a.x, a.y, standAt(c0, a.x, a.y) > floorAt(a.x, a.y) ? standAt(c0, a.x, a.y) : undefined)) : null; thing = !!c;
+        if (c) corners(c, it.ok === false ? "#e8554a" : "#fff8e8"); r = bound(c || quad(a.x, a.y, it.cell !== undefined ? it.cell : shown(a.x, a.y))); }
+      Target.paint(ctx, api.art(), {thing, shown});   // (a cell of the land, what Space, X and R act on: boxes in the land, target.js; what stands keeps its brackets)
       WayShow.paint(ctx, api.screenOf, px, now, 1); Prompts.show(r, WayShow.rows(faceRows)); api.aim = r;   // (the way out of the ground, shown: wayshow.js)
     }
     if (!words) return;

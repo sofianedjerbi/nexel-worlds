@@ -5,14 +5,14 @@
 //     put down: bare soil, the stone sheet; its front by the land's wall painter, voxpaint.js `front`), whole art px,
 //     at 60 %; red where it cannot go (nothing beside it, somebody in it, something there);
 //   - every block planned: the same, fainter: two planned on a tile are two blocks, one on the other;
-//   - what X will take: its cell in orange dashes (a block of the ground, a built block; what stands: its tile, two high).
+//   - what X will take, and the cursor's own cell: boxes in the land (target.js).
 // Stacking needs no height key: on a tile that has your block the cursor rides it (build.js `ride`), and on one you
 // only planned the next goes on top of the plan (`cell`). E and Q move the ghost one level (build.js `stops`).
 // Drawn with the cursor's keys (prompts.js `build`): in the HD look that is its marks pass, places by HdLook.screenOf;
 // in the classic picture by build.js's own (`S.to`). The HD look hands what a painter of marks needs (`HdLook.art()`: an art px, a place's px, is a place behind land): a ghost
 // behind a wall keeps one px in two there, fainter (it was drawn through the wall, as if in front of it).
 const BuildGhost = (() => {
-  const paints = new Map(), RED = [232, 85, 74], INK = "#5b3f36", TAKE = "#ff9d3c", MOST = 9;
+  const paints = new Map(), RED = [232, 85, 74], MOST = 9;
   // the next free cell from z up, over the blocks planned on that tile
   const cell = (p, z, planned) => { let n = z; while (n - z < MOST && planned(p.x, p.y, n)) n++; return n; };
   // a block's own paint, 16 x 24 art px: its top, then its front
@@ -40,16 +40,7 @@ const BuildGhost = (() => {
     face(q.T, 16, 0); face(q.F, 8, 16); g.globalAlpha = 1;
     return true;
   }
-  // what X will take: the edges of its cell, two px on, two off
-  function outline(g, at, u, x, y, z0, z1, t) {
-    const q = quads(at, x, y, z0, z1); if (!q) return;
-    const R = (v) => Math.round(v / u) * u, ph = Math.floor(t * 6), T = q.T, F = q.F;
-    for (const [a, b] of [[T[0], T[1]], [T[1], T[2]], [T[3], T[2]], [T[0], T[3]], [F[0], F[3]], [F[1], F[2]], [F[3], F[2]]]) {
-      const n = Math.max(1, Math.round(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) / u));
-      for (let i = 0; i <= n; i++) { g.fillStyle = (i + ph) % 4 < 2 ? TAKE : INK; g.fillRect(R(a[0] + (b[0] - a[0]) * i / n), R(a[1] + (b[1] - a[1]) * i / n), u, u); }
-    }
-  }
-  const api = {cell, paintOf, drew: null};
+  const api = {cell, paintOf, block, drew: null};
   // once a frame, with the cursor's keys. api.drew: what was drawn of the cursor (tests): {x, y, z, ok} the ghost, take: X's cell
   api.paint = () => {
     api.drew = null;
@@ -58,7 +49,7 @@ const BuildGhost = (() => {
     const u = art ? art.u : zoom, bh = art && art.behind, t = performance.now() / 1000, land = (j) => !j.take && j.up && LAND_BLOCKS.has(j.item);
     for (const j of [...Build.S.plans.values()].filter(land).sort((a, b) => a.y - b.y || a.z - b.z)) block(ctx, at, u, j.x, j.y, j.z, j.item, j.state === "doing" ? .75 : .5, j.state === "bad", bh);
     const it = Build.hint(p), hit = Build.taking(p); api.drew = {};
-    if (hit && !hit.plan && !hit.shut) { const tall = hit.dig || hit.up ? [hit.z - 1, hit.z] : [hit.z, hit.z + 2]; outline(ctx, at, u, p.x, p.y, tall[0], tall[1], t); api.drew.take = [p.x, p.y, tall[1]]; }
+    if (hit && !hit.plan && !hit.shut) api.drew.take = [p.x, p.y, hit.dig || hit.up ? hit.z : hit.z + 2];   // (its box: target.js)
     if (LAND_BLOCKS.has(it.ghost) && it.z !== undefined && block(ctx, at, u, p.x, p.y, it.z, it.ghost, .6, it.ok === false, bh)) Object.assign(api.drew, {x: p.x, y: p.y, z: it.z, ok: it.ok !== false, at: at(p.x + .5, p.y + .5, it.z), u, hid: !!bh && bh(p.x + .5, p.y + .5, it.z)});
   };
   return api;
