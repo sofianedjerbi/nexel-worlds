@@ -1,15 +1,6 @@
-// What is under the build cursor where the ground hides it (build.js): its own tile, and nothing else, is seen
-// through, a keyhole. Down in a hole the grass in front of it is drawn over its floor; in the ground (Q), or under a
-// cave's roof, the earth is over it. There its column is drawn as if cut open in front: the wall behind, a band a
-// layer as relief.js paints walls, from the top of the hole down to the floor the cursor is at, dug earth as deep as
-// it is (tiles.js: dugSheet). In the ground: the block the cursor is on and no more (what X would dig: its top,
-// faint: not dug yet; under a roof, the room that is dug, its floor and its wall), the land over it left as it is (it
-// was the whole column from the top of the land: a strip seventeen layers high under a mountain). Nothing where the
-// place you are in is seen through already (xray.js). The cursor over
-// it, and beside the cursor how far it is over your head or under your feet, in layers; level with you, nothing is
-// written: the layer of you it is level with is marked on you (mark). (A floor drawn alone, three layers down, showed a
-// tile and a half south of its hole, on the grass.) The user's pick of five, 2026-11-16, "1 · Earth and a keyhole":
-// the x-ray circle that went round the cursor showed the grass round the hole too, and the cursor seemed on it.
+// The build cursor beside you (build.js): how far it is over your head or under your feet, in layers, a tag at its
+// side (hd.js writes it with the cursor's keys); level with you, nothing is written. (Its cell is a box in the land:
+// target.js.)
 const Keyhole = (() => {
   let marks = null;                                   // (the mark on you, where it is: tests)
   // how far the cursor is under you (or over you), in layers: a tag at its left (its keys are at its right: prompts.js)
@@ -32,16 +23,8 @@ const Keyhole = (() => {
     const p = ents.get("agent" + myId), z = zoom;
     marks = null;
     if (!p || n > 4 || n < (cube ? -1 : 1)) return;
-    const X = Math.round(sx(p.x)), Y = Math.round(bodyY(p, sy)) + (16 - RELIEF_STEP * n) * z, S = TS(), H = RELIEF_STEP * z;
-    marks = {n, x: X - 3 * z, y: Y, h: H, drawn: !HdLook.on};
-    if (HdLook.on) return;      // (the HD look: the cursor is a box in the land at its level, target.js; brackets round your own cat were a fourth mark for two cells)
-    for (const [col, g] of [["#5b3f36", z], ["#fff1a8", 0]]) {
-      ctx.fillStyle = col;
-      for (const [bx, d] of [[X - 3 * z, 1], [X + S + 2 * z, -1]]) {
-        ctx.fillRect(bx - g, Y - g, z + 2 * g, H + 2 * g);
-        ctx.fillRect(Math.min(bx, bx + d * 2 * z) - g, Y - g, 3 * z + 2 * g, z + 2 * g); ctx.fillRect(Math.min(bx, bx + d * 2 * z) - g, Y + H - z - g, 3 * z + 2 * g, z + 2 * g);
-      }
-    }
+    const X = Math.round(sx(p.x)), Y = Math.round(bodyY(p, sy)) + (16 - RELIEF_STEP * n) * z, H = RELIEF_STEP * z;
+    marks = {n, x: X - 3 * z, y: Y, h: H, drawn: false};      // (no brackets on you: the cursor is a box in the land at its level, target.js)
   }
   return {tag, rel, mark, get marks() { return marks; }};
 })();

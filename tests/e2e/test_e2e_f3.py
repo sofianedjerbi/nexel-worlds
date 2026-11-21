@@ -38,9 +38,9 @@ def test_perf_in_the_address_opens_it_with_the_hd_looks_section_and_it_costs_lit
     page = browser.new_page(viewport={"width": 1200, "height": 800})
     g = Game(page, server)
     try:
-        page.goto(f"{server}/?zoom=4&look=hd&perf=1")
-        g.loaded = f"{server}/?zoom=4&look=hd"                   # (join keeps this page)
-        g.join(new_name("f3"), 4, look="hd")
+        page.goto(f"{server}/?zoom=4&perf=1")
+        g.loaded = f"{server}/?zoom=4"                   # (join keeps this page)
+        g.join(new_name("f3"), 4)
         g.wait(f"F3.on && {TEXT}.includes('HD look') && {TEXT}.includes(' fps') && {TEXT}.includes('XYZ ')", 8000)
         assert g.js(OLD) == []
         # what it costs a frame, on: its sample each frame and its text 4 times a second

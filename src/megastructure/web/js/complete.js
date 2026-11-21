@@ -11,7 +11,7 @@
 // player with bot commands". So the list, on a "/" and while a name is being typed, holds the page's own (debug.js);
 // an action of the server is listed once its name is written in full, and from there its arguments.
 let tools = null;                                    // the server's actions: name -> {args: {name: what it is}, desc}
-const LOCAL = {coords: "the debug screen (F3): where you are", grid: "every tile outlined, with its height", perf: "the debug screen (F3): what a frame costs"};
+const LOCAL = {coords: "the debug screen (F3): where you are", perf: "the debug screen (F3): what a frame costs"};
 const comp = {items: [], note: "", at: 0, from: 0, to: 0};
 
 function askTools() {

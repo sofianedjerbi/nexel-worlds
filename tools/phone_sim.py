@@ -122,7 +122,7 @@ def wake(g, name):
 
 def join(ph, name):
     g = ph.g
-    wake(g.load(2, look="hd"), name)
+    wake(g.load(2), name)
     g.rpc("dev_time", phase=.3)
     g.js("setOpt('names', false); setOpt('hints', false)")
 
@@ -139,7 +139,7 @@ def scene(ph, name, secs, profile):
             return ["in", woke]
         ph.slow(True)
         t0 = time.time()
-        g.page.goto(ph.url + "/?zoom=2&look=hd", wait_until="commit")
+        g.page.goto(ph.url + "/?zoom=2", wait_until="commit")
         g.page.wait_for_function("window.__sim", timeout=20000)
         r = ph.record(play, profile)
         r["wall_s"] = round(time.time() - t0, 1)

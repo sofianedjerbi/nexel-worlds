@@ -70,38 +70,3 @@ function lamp(g, cx, cy, r, color, a, shift) {
   }
   g.globalAlpha = 1;
 }
-// A light under a roof (a fire in a cave, someone in a tunnel) lights what is under that roof and no more. Where the
-// place it is in is seen through what hides it (xray.js): within that picture; hidden: nothing. (A fire in a tunnel
-// lit a ring of the meadow over it, and who hid under the ground at night glowed through it.) -> 0: under the sky,
-// 1: under a roof and seen, 2: hidden
-const underRoof = (x, y, z) => (roofAt(x, y) > 0 && coveredAt(x, y, z) ? (seenUnder(x, y) !== undefined ? 1 : 2) : 0);
-// The hour's light over the picture, and at night the lights in it (render.js, after the world is drawn)
-function drawNight(vis, sx, sy, S, t) {
-  const tint = lightAt(clock.phase || 0), wash = washAt(clock.phase || 0), dark = Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36);
-  if (wash[3] > .004) { ctx.globalAlpha = wash[3]; ctx.fillStyle = `rgb(${wash.slice(0, 3).join()})`; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }   // the hour's colour, thinly
-  if (dark <= .01) return;                                   // plain day
-  const base = sy.base === undefined ? sy(0) : sy.base;      // (the flat picture's origin: the land's own pixels count from it, curve.js)
-  const z = zoom, x0 = ((sx(0) % z) + z) % z - z, y0 = ((base % z) + z) % z - z, w = Math.ceil((W - x0) / z), h = Math.ceil((H - y0) / z);
-  const cv = LIGHT.cv, g = cv.getContext("2d");
-  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-  const lift = opt("night") / 100 * .6;                       // (the settings' Light at night: the dark, thinned)
-  g.globalCompositeOperation = "source-over"; g.fillStyle = `rgb(${tint.map((v) => Math.round(v + (255 - v) * lift)).join()})`; g.fillRect(0, 0, w, h);
-  if (dark > .2) {                                           // the lights: only once it is getting dark
-    g.globalCompositeOperation = "lighter";
-    const at = (px, py) => [(px - x0) / z, (py - y0) / z], shift = [Math.round((sx(0) - x0) / z) & 1, Math.round((base - y0) / z) & 1], k = (dark - .2) / .8;
-    for (const p of ents.values()) if (p.e && p.e.kind === "agent") {
-      const tx = Math.round(p.x), ty = Math.round(p.y), kind = underRoof(tx, ty, Floors.standOf(p, tx, ty)), draw = (on) => lamp(on, ...at(sx(p.x) + S / 2, bodyY(p, sy) + S / 2), 42, "rgb(255,222,170)", .45 * k, shift);
-      if (kind !== 2) draw(g);                                // (under a roof and seen, in the window on you: a light as any other)
-    }
-    const lights = [...fireAt];
-    for (const b of vis) b.objs.forEach((c, i) => { if (c === "^" || c === "x") lights.push({x: b.bx * B + i % B, y: b.by * B + (i / B | 0)}); });
-    for (const {x, y} of lights) {
-      const kind = underRoof(x, y, floorAt(x, y)), r = 64 + Math.round(3 * Math.sin(t * 9 + x * 7)), draw = (on) => lamp(on, ...at(sx(x) + S / 2, sy(y, x) + S / 2), r, "rgb(255,176,96)", 1.15 * k, shift);
-      if (kind !== 2) draw(g);
-    }
-  }
-  ctx.save();
-  ctx.globalCompositeOperation = "multiply"; ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(cv, x0, y0, w * z, h * z);
-  ctx.restore();
-}

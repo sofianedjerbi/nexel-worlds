@@ -13,7 +13,7 @@ import pytest
 WEB = Path(__file__).parent.parent / "src" / "megastructure" / "web"
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
-FILES = [str(WEB / "js" / f"vox_{n}.js") for n in ("gl", "curve", "water", "sky", "pages", "mesh", "section", "models", "light", "mark", "engine", "under", "style_glsl", "style_land", "style")]
+FILES = [str(WEB / "js" / f"vox_{n}.js") for n in ("gl", "curve", "water", "sky", "pages", "mesh", "section", "models", "light", "mark", "engine", "style_glsl", "style_land", "style")]
 
 # A chunk of 4 x 4 tiles, flat at 0, with: a hill two high on (1,1) and (2,1); south of the first a roof at 3 over
 # empty cells (a cave: its floor 0, empty up to 2, solid at 3); water on (3,3). Nothing is known round it.

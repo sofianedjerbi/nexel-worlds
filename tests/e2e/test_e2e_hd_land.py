@@ -177,7 +177,7 @@ def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at
         ctx = browser.new_context(viewport={"width": w, "height": h}, device_scale_factor=3 if touch else 2, has_touch=touch, is_mobile=touch)
         try:
             g = Game(ctx.new_page(), server)
-            g.join(new_name("dp"), zoom, look="hd")
+            g.join(new_name("dp"), zoom)
             g.rpc("dev_creatures", clear=60)
             g.rest()
             x, y = g.pos()

@@ -230,7 +230,7 @@ function heard(x, y, far, kind) {
 // Play a sound. With x, y it is in the world: quieter with distance, panned to its side, silent beyond SOUND.hearing
 // (or beyond `reach` tiles when given). Without, it is the player's own or the interface's.
 function sfx(name, x, y, reach) {
-  if (muted || (typeof Sun !== "undefined" && Sun.casting)) return;      // (sun.js: a body drawn again for its shadow makes no sound)
+  if (muted) return;
   const m = sounds.manifest;
   if (!m) { if (audio) loadSounds(); return; }      // (not before the first key or tap: the island's own sounds asked for 4.9 MB of them on a line nobody had touched)
   const s = m.sounds[name];

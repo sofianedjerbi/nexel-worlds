@@ -93,15 +93,6 @@ const Curve = (() => {
     // how much further north than the flat screen the rolled one shows before its horizon: px (Far: a little; in a
     // pit the land over you is nearer its horizon still: nothing more)
     over: () => (c ? Math.max(0, Math.ceil(-VoxCurve.edge(c))) + 2 : 0),
-    // What goes down behind the roll is cut (the canvas's clip, until its restore) not along a ruler but along the
-    // ground before it: grass, in tufts of whole px of paint that stay where they are on the land (x: where the
-    // thing is on the screen, ox: the land's; three tiles each side of it)
-    mask(clip, x, ox) {
-      const z = zoom, i0 = Math.floor((x - ox) / z) - 3 * P, tuft = (i) => { const h = Math.sin((i >> 1) * 12.9898) * 43758.5453; return Math.floor((h - Math.floor(h)) * (CURVE.tuft + 1.5)); };
-      ctx.beginPath(); ctx.moveTo(ox + i0 * z, -1e4);
-      for (let i = i0; i < i0 + 7 * P; i += 2) { const y = clip - Math.min(CURVE.tuft, tuft(i)) * z; ctx.lineTo(ox + i * z, y); ctx.lineTo(ox + (i + 2) * z, y); }
-      ctx.lineTo(ox + (i0 + 7 * P) * z, -1e4); ctx.clip();
-    },
     rezoom: (k) => { zs *= k; },                             // (the picture was magnified k times and is now drawn at that size: zoom.js)
     set audit(v) { audit = v; }, set force(v) { force = v; }};
 })();

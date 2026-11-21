@@ -50,10 +50,10 @@ class Game(Waits):
         page.on("pageerror", lambda e: self.errors.append(str(e)))
 
     # ---- session
-    def join(self, name, zoom=4, curve=None, look="classic"):
+    def join(self, name, zoom=4, curve=None):
         """(curve: the settings' Curved world: None, as the game has it for a player (Far); False: the flat picture,
         for a test that cannot be about the curved one; "near", "far": that one)"""
-        self.load(zoom, curve, look)
+        self.load(zoom, curve)
         self.page.wait_for_function("typeof ready !== 'undefined'")
         self.page.click("#name")
         self.page.keyboard.type(name)
@@ -85,10 +85,9 @@ class Game(Waits):
         self.js("(() => { for (const a of cv.getAnimations()) a.finish(); return 1; })()")
         self.settle("!arrivingNow")
 
-    def load(self, zoom=4, curve=None, look="classic", wait="load"):
+    def load(self, zoom=4, curve=None, wait="load"):
         """The page asked for (once: join() asks, unless it was asked for ahead, pages.py). -> self"""
-        # (look: the settings' Look; the tests that came before the HD look pin the classic picture's px: classic unless asked)
-        ask = f"{self.url}/?zoom={zoom}&look={look}" + ("" if curve is None else f"&curve={curve or 0}")
+        ask = f"{self.url}/?zoom={zoom}" + ("" if curve is None else f"&curve={curve or 0}")
         if self.loaded != ask:
             self.page.add_init_script(SOCKETS)
             self.page.goto(ask, wait_until=wait)

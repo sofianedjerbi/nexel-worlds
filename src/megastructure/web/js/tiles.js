@@ -149,12 +149,11 @@ function layCell(to, o, W, sheet, sx, sy, solid) {
 // is solid all over: on a plateau twelve layers high, the one that shows and not the thirteen under it.
 const LAID = {n: 0, img: [], at: [], drawImage(img, sx, sy) { this.img[this.n] = img; this.at[this.n++] = sy * 4096 + sx; }};
 let landVer = 0;                                    // (goes up whenever a tile of the land is drawn again: what was worked out from the land is out of date)
-function drawTile(x, y, to = null) {                 // (to: somewhere else than its block's px: a canvas {g, ox, oy}, or px {px, o, w})
+function drawTile(x, y, to = null) {                 // (to: where it is painted: a canvas {g, ox, oy}, or px {px, o, w}; none: the tile changed)
   const b = blockOf(x, y);
   if (!b || !(to || b.px)) return;
-  if (!to && HdLook.live) { b.ver = (b.ver || 0) + 1; landVer++; return; }   // (the HD look paints its own tops (to): a block's px are read by no picture; what was worked out from the tile is out of date)
-  if (!to && b.px === NOPX) b.px = new Uint32Array(BW * BW);
-  const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, ox = to ? to.ox : lx * 16, oy = to ? to.oy : ly * 16;
+  if (!to) { b.ver = (b.ver || 0) + 1; landVer++; return; }   // (the HD look paints its own tops (to): what was worked out from the tile is out of date)
+  const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, ox = to.ox, oy = to.oy;
   const c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y), up = (cc, gg, tx, ty) => maskOf.plain || levelAt(tx, ty) >= k,      /* (maskOf.plain, voxels.js: a block's top is painted as if land as high lay all round it: no rim of its level, no cut corner; its ground, grass on sand, keeps its own edges) */ dug = lv < 0 && !wet(gr);
   let k = lv;
   g.n = 0;
@@ -198,13 +197,10 @@ function drawTile(x, y, to = null) {                 // (to: somewhere else than
   while (first >= 0 && !cellSolid(g.img[order[first]], g.at[order[first]] % 4096, g.at[order[first]] >> 12)) first--;
   const at = (q) => [g.img[order[q]], g.at[order[q]] % 4096, g.at[order[q]] >> 12];
   if (to && to.g) { for (let q = Math.max(0, first); q < order.length; q++) { const [img, sx, sy] = at(q); to.g.drawImage(img, sx, sy, 16, 16, ox, oy, 16, 16); } return; }
-  const px = to ? to.px : b.px, W = to ? to.w : BW, o = to ? to.o : ly * 16 * BW + lx * 16;
+  const px = to.px, W = to.w, o = to.o;
   if (first < 0) for (let j = 0; j < 16; j++) px.fill(0, o + j * W, o + j * W + 16);   // (nothing solid all over it: what was there must go first)
   for (let q = Math.max(0, first); q < order.length; q++) layCell(px, o, W, ...at(q), q === first);
   dugFoot(px, o, W, x, y, lv);
-  if (to) return;
-  (b.solid || (b.solid = new Uint8Array(B * B)))[i] = first < 0 ? 0 : 1;   // (relief.js: under a tile solid all over, nothing shows)
-  b.ver = (b.ver || 0) + 1; landVer++;
 }
 // what's laid on the ground: tilled soil (wet or not), floors, ash, cobble
 // (tilled soil: furrows over the whole tile, furrows.js; up on a hill, on its grass, the pack's patch)
@@ -284,17 +280,7 @@ function edgeSheet(name) {
   g.putImageData(d, 0, 0);
   return edgeSheets[name] = c;
 }
-// A block's ground: its px (b.px), every tile of it painted a little a frame, or at once. (The land that is shown is
-// blocks, painted a tile at a time from the same painter: voxels.js.)
-function startBlock(b) {
-  b.px = new Uint32Array(BW * BW); b.drawn = true;
-  for (let ly = B - 1; ly >= 0; ly--) for (let lx = B - 1; lx >= 0; lx--) dirtyTiles.push(b.bx * B + lx, b.by * B + ly);
-}
-// ...in the HD look none of it is painted: the block is there at once (its tiles' bookkeeping: voxels.js, hd.js wrap this). It was 1024 tiles painted over frames, each one making the land again
+// A block come in: none of it is painted (the HD look paints the tops it shows: hd.js, voxels.js), the block is there at once
+// (its tiles' bookkeeping: voxels.js, hd.js wrap this)
 const NOPX = new Uint32Array(0);
 function arriveBlock(b) { b.px = NOPX; b.drawn = true; b.ver = (b.ver || 0) + 1; landVer++; }
-function renderBlock(b) {
-  b.px = new Uint32Array(BW * BW);
-  for (let ly = 0; ly < B; ly++) for (let lx = 0; lx < B; lx++) drawTile(b.bx * B + lx, b.by * B + ly);
-  b.drawn = true;
-}

@@ -13,7 +13,7 @@ meadow = lambda c: c[1] > c[0] and c[1] > c[2] + 50          # (the meadow's gre
 def phone(browser, server, w=390, h=844):
     ctx = browser.new_context(viewport={"width": w, "height": h}, has_touch=True, is_mobile=True, device_scale_factor=3)
     g = Game(ctx.new_page(), server)
-    g.join(new_name("hp"), 2, look="hd")
+    g.join(new_name("hp"), 2)
     g.js("setOpt('names', false); setOpt('hints', false)")
     g.rpc("dev_creatures", clear=60)
     g.clear_area(12)

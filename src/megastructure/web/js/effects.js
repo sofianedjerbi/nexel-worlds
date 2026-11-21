@@ -232,7 +232,6 @@ function drawPuffs(sx, sy, dt) {
     if (p.age < 0) continue;
     const k = p.age / p.life, r = p.r + p.grow * k;     // (art px)
     p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97;
-    if (behindHill(p.x, p.y)) continue;                 // (behind a hill: not seen)
     const cx = sx(p.x), cy = syUp(sy, p.y, liftFrom(p)), a = (1 - k) * .85;
     ctx.fillStyle = `rgba(246,240,228,${a})`; pixelOval(cx, cy, r, r);
     if (r >= 2) { ctx.fillStyle = `rgba(150,128,116,${a * .6})`; pixelOval(cx, cy, r, r, 0, 0, true); }    // its edge, one art pixel
@@ -244,7 +243,6 @@ function drawEffects(sx, sy, S, dt) {
     const p = parts[i]; p.age += dt;
     if (p.age > p.life) { parts.splice(i, 1); continue; }
     p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
-    if (behindHill(p.x, p.y)) continue;                 // (behind a hill: not seen)
     if (p.floor !== undefined && p.y > p.floor) {   // debris lands: a small bounce, then it rests and fades
       p.y = p.floor; p.vx *= .5;
       p.vy = Math.abs(p.vy) > 1.2 ? -p.vy * .3 : 0;

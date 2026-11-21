@@ -11,24 +11,18 @@ const OPT_DEFAULT = {
   often: "normal",        // how long the silences between two pieces of music are: often, normal, rarely
   // picture
   sharp: "auto",          // device px a CSS px: auto (2, and 1 on a machine that cannot keep up), full (2), light (1)
-  above: "outline",       // what hides you (a floor over you, a house or the ground in front): cut (away), outline, faded, circle (VIEWS; "make outline the default")
+  above: "cut",           // what is built over you: cut (away), faded (VIEWS; an old browser's outline is cut, its circle faded: floors.js)
   night: 0,               // how much the night is lit up, 0 (as it is) to 100
   particles: "all",       // all, fewer, none
   shake: true,            // the ground shakes when a fall hurts
   glide: true,            // a zoom level glides into the next
   shimmer: true,          // the water's moving light and small waves
-  look: "hd",            // the land's look: hd (a tilted 3D camera, one look on the surface and under ground: hd.js), classic (the flat top-down picture)
   curve: "far",           // the ground bends away to a horizon, with a sky over it (curve.js): off (the flat picture), near, far
   floats: true,           // hearts lost, things gained, written over heads
   clearwater: true,       // the water is seen through, to its bed (waterbed.js, vox_water.js); off: the water as one painted face
   depth: true,            // the land's depth: the sun's shadows, shade at a wall's foot, higher land lighter (sunland.js, vox_light.js); off: the land as it is painted
-  // shaders (shader.js): which look (off, or a key of SHADERS), how much of it, how much glow, cloud shadows, dark corners
-  shader: "off", shaderk: 100, glow: 100, clouds: 100, corners: 100,
-  // (sun.js: what stands throws a shadow, and is seen in the water. Each is how much of it, 0 to 200: 0 is none)
-  shadows: 100, shadowlen: 100, landshade: true, reflect: 100, waterlight: 100, rays: 100,      // (landshade: the land's own shadows on the land, vox_light.js)
-  // each shader's own settings ("feel free to add per-shader settings"): shader -> {what: how much}, where it is not
-  // as the shader comes (lookOpt, below)
-  looks: {},
+  // the sun's shadows (sunland.js, hd_sun.js): how dark, how long, 0 to 200
+  shadows: 100, shadowlen: 100,
   // interface
   bubbles: true, names: true, chat: 10, hints: true, tips: true,
   // keys
@@ -39,14 +33,6 @@ const OPT = {v: {...OPT_DEFAULT}};
 try { Object.assign(OPT.v, JSON.parse(localStorage.getItem("megastructure-options") || "{}")); } catch (e) { /* unreadable: the defaults */ }
 for (const k of Object.keys(OPT.v)) if (!(k in OPT_DEFAULT) || typeof OPT.v[k] !== typeof OPT_DEFAULT[k]) { if (k in OPT_DEFAULT) OPT.v[k] = OPT_DEFAULT[k]; else delete OPT.v[k]; }
 const opt = (k) => OPT.v[k];
-// A setting of the shader that is on: how much of what it has (a percentage of its own; `def` where it has none)
-const lookOpt = (what, def = 100) => { const m = OPT.v.looks[OPT.v.shader]; return m && what in m ? m[what] : def; };
-function setLookOpt(what, v, def = 100) {
-  const all = {...OPT.v.looks}, key = OPT.v.shader, m = {...(all[key] || {})};
-  if (v === def) delete m[what]; else m[what] = v;
-  if (Object.keys(m).length) all[key] = m; else delete all[key];
-  setOpt("looks", all);
-}
 function setOpt(k, v) {
   OPT.v[k] = v;
   const changed = Object.fromEntries(Object.entries(OPT.v).filter(([key, val]) => JSON.stringify(val) !== JSON.stringify(OPT_DEFAULT[key])));
@@ -62,12 +48,10 @@ function optApply(k) {
 }
 addEventListener("DOMContentLoaded", () => optApply());
 
-// What hides you, four ways to show it ("depth visualisation is unintuitive"; the user wanted several to try): what
-// is over you (the floors and the roof of the house you are in; in build mode, all over the cursor's floor: floors.js)
-// and what is in front of you or the cursor, drawn over it (a house, a tower, the ground in front of a hole or a
-// hill: floors.js, xray.js). Cut away: not drawn. Outline: only its edges. Faded: drawn faint. Circle: a circle round
-// you seen through it (as it was). V goes from one to the next (keyboard.js); the Picture page has them too.
-const VIEWS = [{key: "cut", name: "Cut away"}, {key: "outline", name: "Outline"}, {key: "faded", name: "Faded"}, {key: "circle", name: "Circle"}];
+// What is built over you, two ways to show it: the floors and the roof of the house you are in (in build mode, all over
+// the cursor's floor: floors.js) cut away, or drawn faint (hd_things.js). (Land over you: the HD look's x-ray window,
+// whatever this says.) V goes from one to the next (keyboard.js); the Picture page has them too.
+const VIEWS = [{key: "cut", name: "Cut away"}, {key: "faded", name: "Faded"}];
 function nextView() {
   const i = VIEWS.findIndex((v) => v.key === opt("above")), v = VIEWS[(i + 1) % VIEWS.length];
   setOpt("above", v.key);
