@@ -124,7 +124,7 @@ const HdLook = (() => {
           : pb ? box([snap(pb.x), snap(pb.y), snap(pb.w) + px, snap(pb.h) + px]) : spr && spr[0] ? box(rectOf(spr, a.x, a.y, standAt(c0, a.x, a.y) > floorAt(a.x, a.y) ? standAt(c0, a.x, a.y) : undefined)) : null; thing = !!c;
         if (c) corners(c, it.ok === false ? "#e8554a" : "#fff8e8"); r = bound(c || quad(a.x, a.y, it.cell !== undefined ? it.cell : shown(a.x, a.y))); }
       Target.paint(ctx, api.art(), {thing, shown});   // (a cell of the land, what Space, X and R act on: boxes in the land, target.js; what stands keeps its brackets)
-      WayShow.paint(ctx, api.markOf, px, now, 1); Prompts.show(r, WayShow.rows(faceRows)); api.aim = r;   // (the way out of the ground, shown: wayshow.js)
+      WayShow.paint(ctx, api.markOf, px, now, 1, api.art().wall); Prompts.show(r, WayShow.rows(faceRows)); api.aim = r;   // (the way out of the ground, shown: wayshow.js)
     }
     if (!words) { ctx.restore(); return; }
     const ny = (y) => fy(y) - Math.max(0, 12 - 3 * zoom), nsy = Object.assign(ny, {up: ny, out: ny});   // (a name: higher where an art px is small, a phone's 2 px: the letters are 18 px whatever the zoom, and seen from behind a body's ears were in its name)
@@ -250,7 +250,7 @@ const HdLook = (() => {
   const shown = (x, y) => { const t = topAt(x, y), m = winMap(), b = m.get(x + "," + y); if (b) return Math.min(t, b[0]); for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) { const n = m.get((x + dx) + "," + (y + dy)); if (n && n[1] < t) return n[1]; } return t; };
   // for what is drawn in the marks pass by others (buildghost.js): an art px there (u), a place's px (at), and is a place behind land as the eye sees it (land south of it over the eye's line to it: 2 tan(pitch) levels a tile)
   api.markOf = (x, y, z) => api.screenOf(x, y, HdLevel.raise(z, seen));   // (where a mark of yours is: lifted with you in a hole, hd_level.js raise)
-  api.art = () => (seen ? {u: zoom / seen.k, at: api.markOf, behind: (x, y, Z0) => { const z = HdLevel.raise(Z0, seen), k = Math.tan(cam.pitch * Math.PI / 180) * 2, y0 = Math.floor(y); for (let d = 1; d <= 8; d++) if (topAt(Math.floor(x), y0 + d) > z + (y0 + d - y) * k) return true; return false; }} : null);
+  api.art = () => (seen ? {u: zoom / seen.k, at: api.markOf, behind: (x, y, Z0) => { const z = HdLevel.raise(Z0, seen), k = Math.tan(cam.pitch * Math.PI / 180) * 2, y0 = Math.floor(y); for (let d = 1; d <= 8; d++) if (topAt(Math.floor(x), y0 + d) > z + (y0 + d - y) * k) return true; return false; }, wall: (x, y, z) => (HdLevel.wall(x, y, z, seen) ? (X, Y, Z) => api.screenOf(...HdLevel.wallAt(X, Y, Z, seen)) : null)} : null);   // (wall: a cell in the wall between the eye and you -> where its places are drawn, hd_level.js wallAt)
   api.screenOf = (x, y, z) => { if (!eng || !seen) return null; const a = eng.at(x, y, z); return a && [a[0] * zoom / seen.k, a[1] * zoom / seen.k]; };
   // -> the tile under the pointer: what the window shows first (your space's floors, the fronts of the walls north of them: the land over them is not drawn, so it is not pointed at); then from the south (the nearest) north, the first whose south front or whose top is under it (a front: face, down: levels under its top, as mouse.js). zf: its height, if not the land's as shown (build mode)
   api.pick = (mx, my, zf) => {

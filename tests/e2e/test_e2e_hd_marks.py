@@ -56,6 +56,32 @@ def test_in_a_shaft_six_deep_the_marks_are_lifted_with_you(browser, server):
     tidy(g, x, y)
 
 
+def test_in_a_shaft_three_deep_a_box_in_the_south_wall_is_inside_the_opening(browser, server):
+    """Shaft three deep (dug down with X), facing its south wall: you are hardly lifted, and the boxes of the cells in
+    that wall (Space's, R's "Dig a step": the way's block) lay on the grass south of the rim: that wall's face turned to
+    you faces away from the eye. They are drawn as that face folded up into the opening (hd_level.js wallAt): every px
+    of every box lies inside the hole's opening on the screen."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    g.give(pickaxe=1)
+    g.rpc("dev_col", tiles=[[x + 3, y]], col=[-3])
+    g.rest()
+    go(g, x + 3, y, -3, "!HdLook.busy && HdLook.cam.pitch === 68")
+    g.hold_item("pickaxe")
+    g.face(0, 1)
+    g.frames(3)
+    L, _, _, lift, rim = g.js("HdLook.level")
+    assert L == -3 and rim == 0 and 0 < lift < 1, (L, lift, rim)
+    nw, se = g.js(f"HdLook.screenOf({x + 3}, {y}, 0)"), g.js(f"HdLook.screenOf({x + 4}, {y + 1}, 0)")
+    boxes = g.js("Target.drew.filter((d) => d.r && d.y > %d).map((d) => d.r).concat(WayShow.block && WayShow.cur.next.y > %d ? [WayShow.block] : [])" % (y, y))
+    assert boxes, "a box in the south wall is drawn"
+    u = g.js("zoom")
+    for r in boxes:
+        assert nw[1] - u <= r["y"] and r["y"] + r["h"] <= se[1] + u and nw[0] - u <= r["x"] and r["x"] + r["w"] <= se[0] + u, (r, nw, se)
+    tidy(g, x, y)
+
+
 def test_a_room_five_by_four_four_deep_is_seen_from_above_with_you_inside_it(browser, server):
     """A room 5 x 4 dug 4 deep (open to the sky): the eye looks from above (the old ring two tiles out lay inside the
     room: side-on, 36), and on its south row your body is inside its opening on the screen, not a checker on the grass."""
