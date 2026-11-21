@@ -7,7 +7,7 @@ never drawn as earth brown, and no px is drawn from one on ten walks down the st
 a darker lip."""
 
 import pytest
-from test_e2e_hd_stair import deep_room, spot, stair
+from test_e2e_hd_stair import MOST, deep_room, spot, stair
 from test_e2e_hd_sun import hd
 from test_e2e_hd_window import PX, inside, room
 
@@ -18,9 +18,6 @@ TILE = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b
 # the brightest px of what stands on a tile (a box a tile wide, a tile high, over its floor's middle): r + g + b
 BRIGHT = """([x, y, z]) => { const a = HdLook.screenOf(x + .5, y + .6, z), k = devicePixelRatio, w = 14 * zoom * k, d = HdLook.read(Math.round(a[0] * k - w / 2), Math.round(a[1] * k - w), w, w).data; let m = 0;
   for (let i = 0; i < d.length; i += 4) m = Math.max(m, d[i] + d[i + 1] + d[i + 2]); return m; }"""
-# the colour most px of a piece of the land have (x0, y0 to x1, y1 at level z): the ground's own, whatever marks its picture has there
-MOST = """([x0, y0, x1, y1, z]) => { const a = HdLook.screenOf(x0, y0, z), b = HdLook.screenOf(x1, y1, z), k = devicePixelRatio, d = HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), Math.round((b[0] - a[0]) * k), Math.round((b[1] - a[1]) * k)).data, n = new Map();
-  for (let i = 0; i < d.length; i += 4) { const c = d[i] + ',' + d[i + 1] + ',' + d[i + 2]; n.set(c, (n.get(c) || 0) + 1); } return [...n].sort((p, q) => q[1] - p[1])[0][0].split(',').map(Number); }"""
 lum = lambda c: c[0] + c[1] + c[2]
 warm = lambda c: c[0] > c[1] > c[2] and c[0] - c[2] > 35
 

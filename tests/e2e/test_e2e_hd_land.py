@@ -190,7 +190,9 @@ def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at
             # north of your room, was read as a cut that "stayed" there: 2 runs in 9 alone, the third always at (-16, 17).
             # And a meadow with nothing on it: the columns alone were laid out, and what stood there stayed. A pond's tiles in the room were no room (16 tiles of 35: the wait's 5 s),
             # and the world's tree five tiles south of who woke at (-24, 8) stood between the eye and you: taken out of the picture by the window, you a checker behind it, catSeen .53 to .74)
-            g.stamp(-14, -12, ["." * 29] * 25, levels=[(str(z) if 0 <= z <= 9 else "0") * 29] * 25); g.rest()
+            g.stamp(-14, -12, ["." * 29] * 25, levels=[(str(z) if 0 <= z <= 9 else "0") * 29] * 25)
+            z = g.js(f"topAt({x}, {y})")
+            g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-12, 13) for i in range(-14, 15)], col=[z]); g.rest()
             z = g.js(f"topAt({x}, {y})")
             base = g.js("HdLook.cam.pitch")
             g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[z - 24, z - 21, z])   # a room 7 x 5 under 21 levels of land

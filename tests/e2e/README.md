@@ -92,3 +92,18 @@ By area, for "the files I touched and their neighbours":
 5. `game.press(key)` returns when what the key did is done (at most the `wait` given, 0.3 s if none); a wait over
    0.4 s is slept whole.
 6. A margin on a time (`< 5 ms a step`) measures the machine as much as the code: take the best of a few rounds.
+7. **One px of ground is not the ground.** The meadow has darker patches a tile wide and tufts, stone and a dug floor
+   have specks, water has a lily pad on some tiles: all by the tile's own place, and a player wakes somewhere else
+   every run. Read the colour most px of a piece have (`MOST` in `test_e2e_water.py`, `test_e2e_hd_trench.py`), or
+   the middle one of a few (`spot` in `test_e2e_hd_stair.py`); for "it is meadow", ask for green, not for the px of
+   another tile. A test that fails one run in six with a colour 10 % off is this.
+8. **`dev_col` lays out columns and leaves what stands**: the world's trees, a pond's water. "Whole land round you"
+   is `stamp` with `.` (a meadow, nothing on it). A tree five tiles south of a deep room hid the player in it; a
+   pond's tiles in the room were not the room.
+9. **Two reads that must agree are one `js` call** (a count, and the line that says it): the game goes on between two.
+10. **A script or a picture is held back by a gate, not by ms** (`page.route` keeps the request, the test lets it go
+    when it has looked): 700 ms are 175 on the tests' clock.
+11. `game.hold(keys, ms)` of a tap (150 ms and less) lasts until a frame was drawn with the key down: the walk sets
+    out in a frame (`walk.js`), and a tap let go before one is a stop where you stand.
+12. `rest()` knows the land of the flat screen's rectangle. The HD look on a big screen draws more (out to the
+    horizon): wait for what is asserted (`HdLook.bare() === 0`).

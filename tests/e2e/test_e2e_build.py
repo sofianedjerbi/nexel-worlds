@@ -121,7 +121,8 @@ def test_what_the_audit_of_build_mode_found_is_mended(game):
     kb.up("Space")
     game.press("b")                                            # out of the mode at once: the plans wait where they are
     left = game.js("Build.S.plans.size")
-    assert left >= 2 and ["Z", f"Build: {game.js('Build.waiting()')} plans wait"] in game.js("availableActions()")
+    # (the count and the line read at one moment: the plan begun was done between the two, "4 plans wait" asked of a line saying 3)
+    assert left >= 2 and game.js("(() => { const n = Build.waiting(); return availableActions().some((r) => r[0] === 'Z' && r[1] === `Build: ${n} plans wait`); })()"), game.js("availableActions()")
     game.sleep(1500)
     assert game.js("Build.S.plans.size") >= left - 1           # (nothing is built while you are out of it, but the one begun)
     game.press("b")                                            # back in: the work goes on
@@ -167,10 +168,12 @@ def test_walls_are_thin_and_hide_nothing_and_a_side_door_has_its_leaf_and_shadow
         game.stamp(-4, 2, ["WWW"]); game.rest()                                 # and a wall south of open ground
         assert game.js("([x, y]) => [Structures.sideDoor(x + 3, y - 2), Structures.sideDoor(x - 2, y - 3), Structures.sideDoor(x + 3, y - 3)]", [x, y]) == [True, False, False]
         lum = "([dx, dy, up]) => { const t = TS(), d = ctx.getImageData(Math.round(cv.width / 2 + dx * t), Math.round(cv.height / 2 + (dy - up) * t), 1, 1).data; return d[0] + d[1] + d[2]; }"
-        grass = game.js(lum, [6, -2, 0])
+        # (the meadow's lighter green: the lightest of five px. One px was now and then in one of the meadow's own darker patches, 457 for 516, where you woke)
+        grass = max(game.js(lum, [6 + a, -2 + b, 0]) for a, b in ((0, 0), (-.3, -.3), (.3, -.3), (-.3, .3), (.3, .3)))
         game.wait(f"({lum})([3, -2, .25]) < {grass - 150}", 5000)  # (on a busy machine the stamped tiles take a few frames)
         assert game.js(lum, [3, -2, .25]) < grass - 150 and game.js(lum, [2.78, -2, .25]) < grass - 60     # the leaf across the way; its shadow beside it, on the ground
-        assert abs(game.js(lum, [-3, 1, 0]) - grass) < 40          # the tile north of a wall: its ground, nothing over it
+        north = game.js("(() => { const t = TS(), d = ctx.getImageData(Math.round(cv.width / 2 - 3 * t), Math.round(cv.height / 2 + t), 1, 1).data; return [d[0], d[1], d[2]]; })()")
+        assert north[1] > north[0] + 15 and north[1] > north[2] + 40, north          # the tile north of a wall: its ground, nothing over it
         game.rpc("dev_teleport", x=x - 3, y=y + 1); game.arrive()                 # standing there, behind the wall: nothing of it is seen through
         px = game.js("(() => { const d = ctx.getImageData(Math.round(cv.width / 2 + TS() * .3), Math.round(cv.height / 2 + TS()), 1, 1).data; return [d[0], d[1], d[2]]; })()")
         assert px in ([170, 121, 89], [144, 98, 93], [220, 185, 138]), px       # the wall just south of you: its planks' own colours, not thinned

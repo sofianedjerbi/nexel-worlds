@@ -41,7 +41,7 @@ def test_far_under_the_land_the_screen_is_where_you_are_not_the_land_rows_away(g
     for depth, row, far in ((-20, y, False), (-60, y + 3, True), (-500, y + 6, True)):
         game.rpc("dev_teleport", x=x + 4, y=row, z=depth)
         game.wait(f"myAt && myAt.y === {row} && myAt.z === {depth}", 8000)
-        game.wait(f"{DRAWN} && away.a === {1 if far else 0}", 20000); game.wait(SEEN, 20000); game.sleep(300)
+        game.wait(f"{DRAWN} && away.a === {1 if far else 0}", 20000); game.wait(SEEN, 20000); game.rest()
         px = game.js(SCREEN, spots)
         if far:
             assert all(p == [43, 36, 32] for p in px), (depth, px)                       # earth: none of the land's green

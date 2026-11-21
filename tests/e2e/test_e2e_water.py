@@ -124,7 +124,13 @@ def test_a_bed_step_under_water_is_one_colour_no_checker(game):
       const S = TS(), [ox, oy] = screenOrigin(S), k = S / 16, out = [];
       for (let j = 0; j < n; j++) { const row = []; for (let i = 0; i < 16; i++) { const d = ctx.getImageData(Math.round((ox + tx * S + (i + .5) * k) * DPR), Math.round((oy + ty * S + (r0 + j + .5) * k) * DPR), 1, 1).data; row.push(d[0] + ',' + d[1] + ',' + d[2]); } out.push(row); }
       ok(out); })))"""
-    for col in (tx, tx + 1, tx + 2):
+    # (the pond's tiles of that row with nothing on the rows read. By a tile's own place the world puts a lily pad or a reed on one
+    # tile of open water in sixty-six (tiles.js), and on four in ten a glint of sun that twinkles whatever the shimmer is, two to
+    # four px of some row, a sixth of the time (water.js glints): who woke at (-21, 4) had one on the front, every run. README.md rule 3)
+    free = "([c, r]) => hash(c, r, 41) >= .09 && (hash(c, r, 20) >= .4 || Math.floor(hash(c, r, 22) * 13) + 2 < 8) && WaterBed.depth(c, r) === 2 && WaterBed.depth(c, r - 1) === 1"
+    cols = [c for c in (tx - 1, tx, tx + 1, tx + 2) if game.js(free, [c, ty])]
+    assert cols
+    for col in cols:
         rows = game.js(grab, [col, ty, 8, 8])
         assert all(len(set(r)) == 1 for r in rows), rows                          # every row of the front: one colour from side to side
         v = [sum(map(int, r[0].split(","))) for r in rows]                        # (a row may differ from the next by a unit: the water is less seen through the further north it is)
@@ -142,13 +148,16 @@ def test_the_shaders_glitter_is_a_few_dashes_not_snow_on_the_water(game):
     import base64
     game.flat(); game.clear_area(12); game.js(RESET); game.rpc("dev_time", phase=.375)
     game.stamp(-10, -8, ["~" * 21] * 6); x, y = game.pos(); game.wait(READY, 20000); game.rest()
+    # (the glitter's own px: what the shader adds to the white there is on that water without it, the lily pads and stones the world
+    # puts on it by the tiles' own places: 0.1 to 0.3 % by where you woke, of the 0.5 asked for)
+    base = game.js(BRIGHT, [base64.b64encode(game.page.screenshot()).decode(), x - 9.5, y - 7.5, x + 10.5, y - 2.5])
     game.js("(() => { setOpt('shader', 'natural'); return 1; })()"); game.rest()
     worst = 0
     for _ in range(4):
         shot = base64.b64encode(game.page.screenshot()).decode()
         worst = max(worst, game.js(BRIGHT, [shot, x - 9.5, y - 7.5, x + 10.5, y - 2.5])); game.sleep(350)
     game.js("(() => { setOpt('shader', 'off'); return 1; })()")
-    assert worst < .005, worst                                                   # white px on the water (the surface's own glints with them): under 0.5 % (it is 0.3; it was 0.8 to 1)
+    assert worst - base < .003, (worst, base)                                                   # white px on the water (the surface's own glints with them): under 0.5 % (it adds 0.01 to 0.18; it was 0.5 to 0.7 more)
 
 
 def test_water_up_on_a_plateau_has_a_bank_and_water_beside_a_dug_bank_has_a_side(game):
@@ -174,6 +183,7 @@ def test_a_pillar_and_an_islet_standing_in_a_pond_do_not_change_the_bed_round_th
     and islet, each with its lip and its shadow, was a quilt of squares. A tile beside the pillar is as deep, and the
     same colour, as one three tiles from it at the same distance from the bank."""
     plain(game)
+    game.stamp(-11, -10, ["."] * 10)                                              # (a bank west of the pond: its first column is the cleared meadow's last, and water there, the world's or a test's before, made that rim two deep)
     game.stamp(-10, -9, ["~" * 12] * 8); x, y = game.pos(); game.wait(READY, 20000); game.rest()
     X, Y = x - 10, y - 9                                                          # the pond's corner
     before = game.js("([X, Y]) => { const o = []; for (let j = 0; j < 8; j++) for (let i = 0; i < 12; i++) o.push(WaterBed.depth(X + i, Y + j)); return o; }", [X, Y])
@@ -202,6 +212,9 @@ def test_under_a_shader_the_sky_in_the_water_ends_at_an_islets_own_edge(game):
     # leaf on a line read, "the first px that is not water" was the leaf, not the islet: one run in three, on any machine)
     ix, iy = next(((i, j) for j in (-5, -4, -6) for i in (-5, -4, -6, -3, -7) if game.js(f"[[1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => hash({x + i} + a, {y + j} + b, 41) >= .09)")), (-5, -5))
     game.stamp(-9, -8, ["~" * 9] * 7); game.stamp(ix, iy, ["."]); game.wait(READY, 20000); game.rest()
+    # (no glint of sun on this water: four tiles in ten have one, two to four white px that twinkle a sixth of the time whatever
+    # the shimmer is (water.js): on a line read it was "the first px that is not water", four px before the islet. README.md rule 3)
+    game.js("(() => { for (const b of blocks.values()) if (b.water && b.water.glints) b.water.glints.length = 0; return 1; })()")
     game.js("(() => { setOpt('shimmer', false); setOpt('clouds', 0); setOpt('glow', 0); setOpt('reflect', 0); setOpt('shader', 'natural'); return 1; })()"); game.wait("!!Sun.water", 8000); game.sleep(1500)
     scan = """([tx, ty, dx, dy]) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
       const S = TS(), [ox, oy] = screenOrigin(S), k = S / 16, c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; const g = c.getContext('2d', {willReadFrequently: true}); g.drawImage(Shader.el, 0, 0);

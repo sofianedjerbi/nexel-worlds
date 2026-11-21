@@ -142,7 +142,7 @@ def test_the_island_is_there_at_once_as_a_still_picture_and_comes_in_over_it_in_
         # (the island's own script late: its picture is there before it. Held until the picture has been looked at, not for
         # 700 ms: on the tests' clock that was 175 ms of the machine's, and on a busy one the script was there first)
         held = []
-        page.route("**/js/title_scene.js*", held.append)
+        page.route("**/js/title_scene.js*", lambda r: held.append(r))
         page.goto(server, wait_until="commit")
         page.wait_for_function("!!document.querySelector('#poster.in')", timeout=5000)
         js = page.evaluate

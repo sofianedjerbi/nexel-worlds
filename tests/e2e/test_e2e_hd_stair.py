@@ -107,10 +107,15 @@ def deep_room(g, x, y, depth):
     g.rest()
 
 
+# the colour most px of a piece of the land have (x0, y0 to x1, y1 at level z): the ground's own, whatever marks its picture has there
+MOST = """([x0, y0, x1, y1, z]) => { const a = HdLook.screenOf(x0, y0, z), b = HdLook.screenOf(x1, y1, z), k = devicePixelRatio, d = HdLook.read(Math.round(a[0] * k), Math.round(a[1] * k), Math.round((b[0] - a[0]) * k), Math.round((b[1] - a[1]) * k)).data, n = new Map();
+  for (let i = 0; i < d.length; i += 4) { const c = d[i] + ',' + d[i + 1] + ',' + d[i + 2]; n.set(c, (n.get(c) || 0) + 1); } return [...n].sort((p, q) => q[1] - p[1])[0][0].split(',').map(Number); }"""
+
+
 def spot(g, x, y, z):
-    """A floor's own colour at a place: the middle one, by its light, of seven px down the column. (One px was a speck
-    of the earth's own picture wherever you woke with one under it: the shallow room's far floor 362 for 399, one run in eight.)"""
-    return sorted((g.js(PX, [x, y + i * .08, z]) for i in range(-3, 4)), key=sum)[3]
+    """A floor's own colour round a place: the one most px of a tile of it have. (One px, and the middle one of seven, were a speck or
+    a darker patch of the earth's own picture wherever you woke with one under it: the far floor 362 for 399, the near one 126 for 150.)"""
+    return g.js(MOST, [x - .5, y - .5, x + .5, y + .5, z])
 
 
 def test_depth_is_told_inside_the_window(browser, server):

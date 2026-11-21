@@ -32,7 +32,8 @@ def test_off_the_picture_is_the_flat_one(game):
         px, py, _, _ = game.js(FLAT, [x + dx, y + dy])
         got = game.js("([a, b]) => tileAtScreen(a, b)", [px, py])
         assert (got["x"], got["y"]) == (x + dx, y + dy)
-    assert green(game.js(PIXEL, [600, 4]))                       # no sky: the meadow goes to the top of the picture
+    top = game.js(PIXEL, [600, 4])
+    assert top[1] > top[0] and top[1] > top[2] + 60, (top, x, y, game.js("[Curve.on, clock.phase, opt('shader'), topAt(myPos().x, myPos().y - 6), combAt(myPos().x, myPos().y - 6), combAt(myPos().x, myPos().y - 7)]"))   # no sky: the meadow goes to the top of the picture (any of its greens: its pale patches are (210, 224, 119), not "green" by 15 over the red, where you woke with one there)
 
 
 def test_on_where_you_stand_nothing_moves_and_far_rows_go_up_to_a_horizon(game):
@@ -109,12 +110,12 @@ def test_a_body_far_north_stands_on_the_bent_land(game):
     tile as that tile is drawn, lower than the flat picture had it; not smaller."""
     game.clear_area(10)
     x, y = game.pos()
-    game.spawn("cow", 0, -3, still=9999)
+    cow = game.spawn("cow", 0, -3, still=9999)
     game.tick(2)
     curved(game, "far")
     px, py, top, foot = game.js(PROJ, [x, y - 3])
-    got = game.js("""() => { const p = [...ents.values()].find((q) => q.e && q.e.kind === 'cow'), S = TS(), [ox, oy] = screenOrigin(S), sy = Curve.sy(oy, S);
-      return {y: bodyY(p, sy), flat: oy + p.y * S - liftOf(p) - STAND * zoom, c: Curve.c, row: p.y}; }""")
+    got = game.js("""(id) => { const p = ents.get('cow' + id), S = TS(), [ox, oy] = screenOrigin(S), sy = Curve.sy(oy, S);
+      return {y: bodyY(p, sy), flat: oy + p.y * S - liftOf(p) - STAND * zoom, c: Curve.c, row: p.y}; }""", cow)
     c, feet = got["c"], got["y"] + 16 * 4                        # (its feet: a tile under where its picture starts)
     assert c["yh"] < feet < c["y0"], got
     assert top - 1 <= feet <= foot + 1, (got, top, foot)         # on its own tile, as that tile is drawn
@@ -183,17 +184,18 @@ def test_a_bridge_far_north_bends_with_the_water_and_who_is_on_it_stands_on_its_
     game.rest()
     by = y - 3                                                   # the bridge's row
     assert game.js("Voxels.engine.models") > 40 and game.js(f"liftAt({x}, {by}) / zoom") == 4
-    deck = [game.js(AT, [x + dx, by, 1, 8, 4]) for dx in (-2, 0, 2)]
-    assert all(alike(c, PLANK) for c in deck), deck              # its planks, where a point 4 px up on that row is drawn
+    # (five px across each tile, planks among them: one px was the dark line between two planks, (155, 117, 92), where the tile's own picture had it: who woke at (19, -11))
+    deck = [[game.js(AT, [x + dx, by, i, 8, 4]) for i in (1, 4, 8, 11, 14)] for dx in (-2, 0, 2)]
+    assert all(sum(alike(c, PLANK) for c in t) >= 2 for t in deck), deck
     for dy, ay in ((-1, 3), (1, 10)):                            # the water north and south of it, not planks
         # (the palest of five px across: one px alone was now and then a pebble under the water or a ripple's line, greyer than the pond: (141, 157, 152))
         w = max((game.js(AT, [x, by + dy, i, ay, 0]) for i in (4, 6, 8, 10, 12)), key=min)
         assert min(w) > 100 and w[2] > w[0] and not alike(w, PLANK, 30), (dy, w)   # (a shallow pond: water's colour over its sand; seen through, tinted a step more in its middle)
-    game.spawn("cow", 0, -3, still=9999)
+    cow = game.spawn("cow", 0, -3, still=9999)
     game.tick(2)
     game.sleep(500)
-    got = game.js("""() => { const p = [...ents.values()].find((q) => q.e && q.e.kind === 'cow'), S = TS(), [ox, oy] = screenOrigin(S), sy = Curve.sy(oy, S);
-      return {lift: liftOf(p) / zoom, y: bodyY(p, sy), deck: Curve.y(oy + (p.y + 13 / 16) * S, 4 * zoom), water: Curve.y(oy + (p.y + 13 / 16) * S, 0)}; }""")
+    got = game.js("""(id) => { const p = ents.get('cow' + id), S = TS(), [ox, oy] = screenOrigin(S), sy = Curve.sy(oy, S);
+      return {lift: liftOf(p) / zoom, y: bodyY(p, sy), deck: Curve.y(oy + (p.y + 13 / 16) * S, 4 * zoom), water: Curve.y(oy + (p.y + 13 / 16) * S, 0)}; }""", cow)
     assert got["lift"] == 4
     feet = got["y"] + 16 * 4                                     # (a tile under where its picture starts)
     assert abs(feet - got["deck"]) <= 2.5 and got["water"] - feet >= 10, got    # on the deck (four art px over the water), not in the water (on a whole px of the paint: half of one off, at the most)
@@ -284,11 +286,11 @@ def test_a_click_on_a_far_body_finds_the_body_not_the_tile_behind_its_head(game)
     head is drawn over the tile behind it. A click on its head means the cow, as a click on its tile does."""
     game.clear_area(10)
     x, y = game.pos()
-    game.spawn("cow", 2, -3, still=9999)
+    cow = game.spawn("cow", 2, -3, still=9999)                 # (asked for by its own number: "the cow" was now and then one of the world's, fourteen tiles north)
     game.tick(2)
     curved(game, "far")
-    head = game.js("""() => { const p = [...ents.values()].find((q) => q.e && q.e.kind === 'cow'), S = TS(), [ox, oy] = screenOrigin(S), sy = Curve.sy(oy, S);
-      return [ox + p.x * S + S / 2, bodyY(p, sy) + 3 * zoom, p.x, p.y]; }""")
+    head = game.js("""(id) => { const p = ents.get('cow' + id), S = TS(), [ox, oy] = screenOrigin(S), sy = Curve.sy(oy, S);
+      return [ox + p.x * S + S / 2, bodyY(p, sy) + 3 * zoom, p.x, p.y]; }""", cow)
     got = game.js("([a, b]) => tileAtScreen(a, b)", head[:2])
     assert (got["x"], got["y"]) == (head[2], head[3]), (got, head)
     assert game.js(f"VoxCurve.y(Curve.c, screenOrigin()[1] + {head[3]} * TS(), 0)") > head[1]      # (the px is over the cow's own tile as that tile is drawn: behind it)
