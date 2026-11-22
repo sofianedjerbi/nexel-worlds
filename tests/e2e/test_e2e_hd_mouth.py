@@ -30,11 +30,11 @@ def test_a_tunnel_mouth_facing_north_east_or_west_is_shaded_on_the_ground_before
     x, y = g.pos()
     hills = rect(x - 5, y + 2, x - 1, y + 4) + rect(x - 9, y - 4, x - 6, y - 2) + rect(x + 6, y - 4, x + 9, y - 2)
     holes = [[x - 4, y + 2], [x - 4, y + 3], [x - 6, y - 3], [x - 7, y - 3], [x + 6, y - 3], [x + 7, y - 3], [x - 2, y + 2]]
-    # (piece of a top: the part of its tile toward the mouth, away from its corners)
-    look = {"north front": [x - 4 + .2, y + 1 + .55, x - 4 + .8, y + 1 + .95, 0], "north top": [x - 4 + .2, y + 2 + .05, x - 4 + .8, y + 2 + .45, 3],
+    # (piece of a top: the part of its tile toward the mouth, away from its corners; a top's north piece from its 4th art px: the rim's dark rows along that edge are 2 or 3 as the eye's sub-px place falls, and the open alcove read 7 % darker than the filled one, one dark row more, in most runs, before any change of the mouth's shade)
+    look = {"north front": [x - 4 + .2, y + 1 + .55, x - 4 + .8, y + 1 + .95, 0], "north top": [x - 4 + .2, y + 2 + .25, x - 4 + .8, y + 2 + .45, 3],
             "east front": [x - 5 + .05, y - 3 + .2, x - 5 + .45, y - 3 + .8, 0], "east top": [x - 6 + .55, y - 3 + .2, x - 6 + .95, y - 3 + .8, 3],
             "west front": [x + 5 + .55, y - 3 + .2, x + 5 + .95, y - 3 + .8, 0], "west top": [x + 6 + .05, y - 3 + .2, x + 6 + .45, y - 3 + .8, 3],
-            "alcove front": [x - 2 + .2, y + 1 + .55, x - 2 + .8, y + 1 + .95, 0], "alcove top": [x - 2 + .2, y + 2 + .05, x - 2 + .8, y + 2 + .45, 3]}
+            "alcove front": [x - 2 + .2, y + 1 + .55, x - 2 + .8, y + 1 + .95, 0], "alcove top": [x - 2 + .2, y + 2 + .25, x - 2 + .8, y + 2 + .45, 3]}
     north = {"north front": [x - 4 + .2, y + 1 + .1, x - 4 + .8, y + 1 + .5, 0]}       # (behind its own hill from the eye on the meadow: read from a pit, the eye over it)
     read = "(() => { const P = " + PIECE + "; return Object.fromEntries(Object.entries(%s).map(([k, v]) => [k, Math.round(P(v))])); })()"
 
