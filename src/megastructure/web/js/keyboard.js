@@ -139,14 +139,14 @@ const marked = (a) => !!a && !a.it.info && !a.it.walk;
 function keyAim() {
   const m = facedOnly(facingIntent(false)), x0 = facingIntent(true), x = marked(x0) && x0.it.ok !== false && !x0.it.low ? x0 : null, q = facingTile();
   const at = (a) => !!a && !!q && a.p.x === q.x && a.p.y === q.y;
-  return marked(m) && (at(m) || m.it.own || placingItem()) ? m : at(x) ? x : marked(m) ? m : x || m;      // (own: a ladder against the wall you face goes where you stand)
+  const r = marked(m) && (at(m) || m.it.own || placingItem()) ? m : at(x) ? x : marked(m) ? m : x || m; return r && r === x ? {...r, brk: true} : r;      // (own: a ladder against the wall you face goes where you stand; brk: X's thing, its brackets orange: hd.js)
 }
 // Where the mouse points: what a right click there does (E's verb), else a left click (X's): mouse.js. alt: the left one's alone
 function mouseAim(alt) {
   const p = tileAtScreen(mouse.x, mouse.y), b = clickIntent(p, "break");
   if (alt) return b;
   const u = clickIntent(p, "use");
-  return u.it && !u.it.walk && !u.it.info ? u : b;
+  return u.it && !u.it.walk && !u.it.info ? u : b && {...b, brk: true};
 }
 // The keys are what you play with: once pressed, or while the mouse is not over the land (on arrival nothing was
 // aimed until the first press or step, and E acted on the tile you face all the same)
