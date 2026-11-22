@@ -173,6 +173,7 @@ const WayShow = (() => {
       const q = [at(ex, ey, lv), at(ex + 1, ey, lv), at(ex + 1, ey + 1, lv), at(ex, ey + 1, lv)];
       if (q.every((v) => v)) pin(bound(q, css), `<i class="${b.d}${hops() && !touching() ? "" : " go"}"></i>` + (hops() && !touching() ? esc(capOf("jump")) : ""), b.d === "E" || b.d === "W" ? ["over", "under", b.d === "E" ? "right" : "left"] : ["right", "left", "over", "under"], box, u * css); }
     g.restore(); api.hidden = nh; api.dots = pts.length;
+    if (cap && capKey && capAt !== fno) { cap.style.display = "none"; capKey = ""; }      // (drawn by nothing this frame: gone now, not left two frames where it was while you ran on)
     if (edge) { const [x, y, d] = edge, tri = (n, back, col) => { for (let i = 0; i < n; i++) rect(x - (i + back) * u * d[0] - (d[0] ? 0 : i * u), y - (i + back) * u * d[1] - (d[1] ? 0 : i * u), d[0] ? 1 : 2 * i + 1, d[1] ? 1 : 2 * i + 1, col); };
       tri(7, -1, INK); tri(5, 1, beat ? "#ffffff" : "#fff1a8"); }
   }

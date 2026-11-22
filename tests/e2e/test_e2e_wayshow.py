@@ -67,7 +67,8 @@ def test_sprinting_along_the_way_its_key_moves_with_you_never_a_jump(browser, se
     over and under that tile took turns as the keys' boxes came and went: 21 to 30 art px a frame. Now it is beside the
     tile a step ahead of you as you are drawn, its side kept: from one frame to the next it moves with you, within
     an art px, slow frames at its start too (the cap was placed against your body and name as the last frame drew them: it sat 30 px off, then leapt). A new
-    way found as you set off (the one shown went west, through a block) is a new cap, its arrow turned: not a jump of the cap."""
+    way found as you set off is a new cap, its arrow turned: not a jump of the cap; nor is a block's key, that stays by its block, nor an arrow the
+    other way (when the tunnel's end was no way out yet, the way shown was a stair cut south or a wall dug west: found again as you ran)."""
     ctx = None
     if screen == "phone":
         ctx, g = phone(browser, server)
@@ -81,7 +82,10 @@ def test_sprinting_along_the_way_its_key_moves_with_you_never_a_jump(browser, se
     rec = g.js("window.__rec")
     moved = abs(rec[-1][3] - rec[0][3]) + abs(rec[-1][4] - rec[0][4]) if rec else 0
     assert len(rec) > 20 and moved >= 8, (len(rec), moved)                 # (frames enough, and a sprint: tiles run)
-    jump = max([max(abs(a[0] - b[0]), abs(a[1] - b[1])) / a[2] for a, b in zip(rec, rec[1:]) if a[5] == b[5]] or [0])
+    along = '<i class="%s go"></i>' % ("N" if north else "E")
+    same = [(a, b) for a, b in zip(rec, rec[1:]) if a[5] == b[5] == along]      # (the step's arrow the way you run, from one frame to the next)
+    assert len(same) > 15, [v[5] for v in rec]
+    jump = max(max(abs(a[0] - b[0]), abs(a[1] - b[1])) / a[2] - 1 / a[2] for a, b in same)      # (less the css px the cap's place is rounded to)
     assert jump <= 1, (jump, [[round(v[0] / v[2]), round(v[1] / v[2])] for v in rec[:16]])
     assert not g.errors
     if ctx:
