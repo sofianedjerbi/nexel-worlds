@@ -46,35 +46,41 @@ const AimArt = (() => {
   }
   // a paw: rows of a (outline), b (fur), c (pad), "." left as it is, its top left at x, y
   function paw(d, rows, x, y) { rows.forEach((r, j) => [...r].forEach((ch, i) => { if (INK[ch] && x + i >= 0 && x + i < CELL && y + j >= 0 && y + j < CELL) d.set(INK[ch], ix(x + i, y + j)); })); return d; }
-  // an arm: fur two px thick from the shoulder (ax, ay) to the paw (bx, by), outlined all round, in front of the body
-  function limb(d, ax, ay, bx, by) {
-    const n = Math.max(Math.abs(bx - ax), Math.abs(by - ay)), fur = new Set(), tall = Math.abs(by - ay) > Math.abs(bx - ax);
-    for (let t = 0; t <= n; t++) { const x = Math.round(ax + (bx - ax) * t / (n || 1)), y = Math.round(ay + (by - ay) * t / (n || 1)); fur.add(x + "," + y); fur.add(tall ? x + 1 + "," + y : x + "," + (y + 1)); }
+  // an arm: fur two px thick from the shoulder (ax, ay) to the paw (bx, by) (and on to (cx, cy): a bent arm), outlined all round, in front of the body
+  function limb(d, ax, ay, bx, by, cx, cy) {
+    const fur = new Set(), seg = (ax, ay, bx, by) => { const n = Math.max(Math.abs(bx - ax), Math.abs(by - ay)), tall = Math.abs(by - ay) > Math.abs(bx - ax);
+      for (let t = 0; t <= n; t++) { const x = Math.round(ax + (bx - ax) * t / (n || 1)), y = Math.round(ay + (by - ay) * t / (n || 1)); fur.add(x + "," + y); fur.add(tall ? x + 1 + "," + y : x + "," + (y + 1)); } };
+    seg(ax, ay, bx, by); if (cx !== undefined) seg(bx, by, cx, cy);
     const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < CELL && y < CELL) d.set(c, ix(x, y)); };
     for (const k of fur) { const [x, y] = k.split(",").map(Number); for (const [u, v] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!fur.has(x + u + "," + (y + v))) put(x + u, y + v, INK.a); }
     for (const k of fur) { const [x, y] = k.split(",").map(Number); put(x, y, INK.b); }
-    return [bx, by];
+    return cx !== undefined ? [cx, cy] : [bx, by];
   }
   const edge = (d, y, s) => { if (s > 0) { for (let x = CELL - 1; x >= 0; x--) if (on(d, x, y)) return x; } else for (let x = 0; x < CELL; x++) if (on(d, x, y)) return x; return -1; };
   // side on, facing right (the left: the right's mirror). -> [frame, the paw's place]
   function side(d0, aim) {
-    const M0 = measure(d0), d = body(d0, M0, aim === "up" ? 1 : aim === "down" ? -1 : 0), M = measure(d), mid = Math.round((M.x0 + M.x1) / 2);
-    const o = aim === "ahead" ? d : head(d, M, aim === "up" ? -1 : 1, mid, CELL - 1), F = edge(o, M.k + 2, 1), S = edge(o, M.k - 3, 1);
-    const at = aim === "ahead" ? limb(o, F - 2, M.k + 1, F + 2, M.k + 1) : aim === "up" ? limb(o, F - 2, M.k + 1, S, M.top + 4) : limb(o, F - 2, M.k + 1, F + 1, M.bottom - 1);
+    const M0 = measure(d0), d = body(d0, M0, aim === "up" ? 1 : aim === "down" ? -1 : 0), M = measure(d), mid = Math.round((M.x0 + M.x1) / 2), s = aim === "up" ? -1 : 1;
+    // the head tilted: its front half a px; up, its front third a px more (a stair of whole px, not a cut; down, a beak pushed
+    // two px onto the paw was a jumble)
+    const o = aim === "ahead" ? d : ((h) => aim === "up" ? head(h, measure(h), s, mid + 3, CELL - 1) : h)(head(d, M, s, mid, CELL - 1)), F = edge(o, M.k + 2, 1), S = edge(o, M.k - 3, 1);
+    // down: the arm held out as ahead, its paw bent down at the ground before you (it ran across the body to the feet: crumpled; a lower arm is a leg)
+    const at = aim === "ahead" ? limb(o, F - 2, M.k + 1, F + 2, M.k + 1) : aim === "up" ? limb(o, F - 2, M.k + 1, S + 1, M.top + 3) : limb(o, F - 2, M.k + 1, F, M.k + 1, F, M.k + 2);
     return [o, at];
   }
   // facing us: the paw on the left of the picture (the paw a thing is held in, held.js)
   function facing(d0, aim) {
-    const M0 = measure(d0), d = body(d0, M0, aim === "up" ? 1 : aim === "down" ? -1 : 0), M = measure(d);
-    const o = aim === "ahead" ? d : eyes(d, M, aim === "up" ? -1 : 1), cx = Math.round((M.x0 + M.x1) / 2), L = edge(o, M.k + 3, -1);
+    const M0 = measure(d0), d = body(d0, M0, aim === "up" ? 1 : aim === "down" ? -1 : 0), M = measure(d), e = aim === "up" ? -1 : 1;
+    const o = aim === "ahead" ? d : eyes(eyes(d, M, e), M, e), cx = Math.round((M.x0 + M.x1) / 2), L = edge(o, M.k + 3, -1);
     if (aim === "ahead") { paw(o, [".aaa.", "abbba", "abcba", ".aaa."], cx - 5, M.k + 2); return [o, [cx - 3, M.k + 3]]; }
-    return [o, aim === "up" ? limb(o, L + 1, M.k + 2, M.x0 + 1, M.k - 4) : limb(o, L + 1, M.k + 2, L - 1, M.bottom - 1)];
+    // down: the paw before the belly, its pad at its foot, pointing at the ground (an arm to the feet was a third leg)
+    if (aim === "down") { paw(o, [".aa.", "abba", "abba", "acca", ".aa."], cx - 4, M.k); return [o, [cx - 2, M.k + 2]]; }
+    return [o, limb(o, L + 1, M.k + 2, M.x0, M.k - 5)];
   }
   // from behind: the paw on the right of the picture
   function back(d0, aim) {
     const M0 = measure(d0), d = body(d0, M0, aim === "up" ? 1 : aim === "down" ? -1 : 0), M = measure(d);
     const o = aim === "ahead" ? d : head(d, M, aim === "up" ? -1 : 1), R = edge(o, M.k + 3, 1);
-    return [o, aim === "ahead" ? limb(o, R - 2, M.k + 2, R + 1, M.k + 2) : aim === "up" ? limb(o, R - 2, M.k + 2, M.x1 - 2, M.k - 4) : limb(o, R - 2, M.k + 2, R, M.bottom - 1)];
+    return [o, aim === "ahead" ? limb(o, R - 2, M.k + 2, R + 1, M.k + 2) : aim === "up" ? limb(o, R - 2, M.k + 2, M.x1 - 1, M.k - 5) : [R - 3, M.k + 2]];   // (down: the paw before the body, unseen from behind: the bowed head says it)
   }
   const mirror = (d) => { const o = new Uint8ClampedArray(d.length); for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) o.set(d.subarray(ix(x, y), ix(x, y) + 4), ix(CELL - 1 - x, y)); return o; };
   // one pose of a standing frame d (facing: 0 down, 1 up, 2 right, 3 left) -> the frame; its paw's place kept in PAW[aim][facing]

@@ -37,6 +37,19 @@ function drawEntity(p, sx, sy, S, t, now) {
   drawBody(p, sx, sy, S, t, now);
   if (parts.length > a || puffs.length > b) { const up = liftOf(p); for (let i = a; i < parts.length; i++) parts[i].lift = up; for (let i = b; i < puffs.length; i++) puffs[i].lift = up; }
 }
+// Aiming, you turn to the selected cell (the owner: "player should face block direction"): east of you, you face east. Only
+// the drawn facing: what the keys act on is the tile you face (p.fx, p.fy, keyboard.js facingTile), and it is not turned.
+// A cell in your own column keeps the facing; diagonal, the longer side wins, a tie keeps it. A turn holds 150 ms: the
+// cursor going back and forth between two columns does not flicker you. -> [fx, fy]
+function lookAt(p, c, now) {
+  const s = myPos(), cur = p.lookD && now - (p.lookT || 0) < 400 ? p.lookD : [p.fx || 0, p.fx ? 0 : p.fy || 0];
+  p.lookT = now; p.lookD = cur;
+  if (!c || !s || (c.x === s.x && c.y === s.y)) return cur;
+  const dx = c.x - s.x, dy = c.y - s.y, ax = Math.abs(dx), ay = Math.abs(dy);
+  const want = ax > ay ? [Math.sign(dx), 0] : ay > ax ? [0, Math.sign(dy)] : cur[0] === Math.sign(dx) && !cur[1] || cur[1] === Math.sign(dy) && !cur[0] ? cur : [Math.sign(dx), 0];
+  if ((want[0] !== cur[0] || want[1] !== cur[1]) && now - (p.turnT || 0) >= 150) { p.lookD = want; p.turnT = now; }
+  return p.lookD;
+}
 function drawBody(p, sx, sy, S, t, now) {
   const e = p.e, z = zoom;
   let x = Math.round(sx(p.x));
@@ -48,7 +61,7 @@ function drawBody(p, sx, sy, S, t, now) {
   if (cl) { x += Math.round(cl.dx * S); y += Math.round(cl.dy * S - cl.lift * z); }
   if (j && e.kind !== "agent") { jumpShadow(j, x, y, S, z, ANIMALS[e.kind] && ANIMALS[e.kind].fw === 32 ? 8 : 5); y -= Math.round(j.body * z); }
   if (e.kind === "agent") {
-    const mine = me && e.id === myId;
+    const mine = me && e.id === myId; p.look = null;   // (the facing drawn while you aim: lookAt)
     if (e.eats && !p.eatSince) p.eatSince = now;
     if (!e.eats) p.eatSince = 0;
     // what they are doing: you, as your own screen has it; the others, as the server says. Eating is done with the
@@ -137,7 +150,7 @@ function drawBody(p, sx, sy, S, t, now) {
         frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
         // standing with a target: your face and paw at it, up, ahead or down (aim_art.js; the cell: target.js). Kept a moment when it goes: no flicker
         const a = mine && !action && !j && !cl && typeof Target !== "undefined" ? Target.aim : null; if (a) { p.aimK = a; p.aimT = now; }
-        const k = a || (mine && !action && !j && !cl && now - (p.aimT || 0) < 150 ? p.aimK : null); if (k) { anim = "aim"; frame = AimArt.COL[k]; }
+        const k = a || (mine && !action && !j && !cl && now - (p.aimT || 0) < 150 ? p.aimK : null); if (k) { anim = "aim"; frame = AimArt.COL[k]; p.look = lookAt(p, a ? Target.sel : null, now); }
       }
     }
     if (j && j.pose && ANIM[anim] <= ANIM.run) { anim = "jump"; frame = JPOSE[j.pose]; }   // a hop: crouch, push off, tuck, over the top, reach down, land, settle (jump_art.js)
@@ -174,10 +187,10 @@ function drawBody(p, sx, sy, S, t, now) {
     // the weapon of a cut or a thrust: in front of the body, behind it when they face away
     const arm = () => blow && ctx.drawImage(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, 48, 48, cellX, cellY, 48 * z, 48 * z);
     const hand = (ANIM[anim] <= ANIM.run || anim === "jump" || anim === "aim") && !blow && tool !== "eat" && tool !== "sleep" && !(cl && cl.on) ? Held.art(mine ? selected : e.held) : null;   // what is in the paw (held.js)
-    if (p.fy < 0) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy); }
+    if (DIR_ROW(p) === 1) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy); }
     ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
     wearFx("front", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);
-    if (p.fy >= 0) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy); }
+    if (DIR_ROW(p) !== 1) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy); }
     if (tool === "eat" && action.item && p.fy >= 0) {   // the food, half size and crisp, held up to the mouth
       const pose = eatPose(k), food = biteIcon(action.item, pose.bites);
       if (food) {

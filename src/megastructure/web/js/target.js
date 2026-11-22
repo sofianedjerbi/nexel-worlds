@@ -114,7 +114,12 @@ const Target = (() => {
         const sq = [G[b * (S + 1) + a], G[b * (S + 1) + a + 1], G[(b + 1) * (S + 1) + a + 1], G[(b + 1) * (S + 1) + a]]; if (!sq[0] || !sq[1] || !sq[2] || !sq[3]) continue;
         fill(sq, v, inside || (P.behind && P.behind(on(w, (a + .5) / S, (b + .5) / S, 0), on(w, (a + .5) / S, (b + .5) / S, 1), on(w, (a + .5) / S, (b + .5) / S, 2))) ? 1 : 0);
       } }
-    if (!inside && !flat && !out.f.some((v) => v)) return pxOf(P, c, full, true);   // (what it shows of itself is edge-on, not a px wide: the block in front of your legs, east of you in a tunnel, had no box at all: seen through, as one inside the land)
+    // (what it shows of itself is edge-on, or a sliver: the block in front of your legs, east of you in a tunnel, had no box at all; in a 1-wide
+    // shaft seen from above the cell east of your feet showed its south face, 3 px tall: a flat orange bar beside you. Under a quarter of the
+    // block it is: the whole block, seen through, as one inside the land)
+    if (!inside && !flat) { let n = 0; for (let o = 0; o < out.f.length; o++) if (out.f[o] && !out.hid[o]) n++;
+      if (!n) return pxOf(P, c, full, true);
+      if (n < 64) { const W = pxOf(P, c, full, true); let m = 0; if (W) for (let o = 0; o < W.f.length; o++) if (W.f[o]) m++; if (n * 4 < m) return W; } }
     return out;
   }
   // its outline (the owner: "can you improve the selection hint?": the hatch over an ink wash hid the block, and a row of ink lay under it, on the grass):
@@ -138,14 +143,15 @@ const Target = (() => {
   }
   // One cell, as the box it is. -> what was drawn of it (tests)
   function box(P, c, K) {
-    const {x, y, z} = c, h = c.h || 1, z0 = z - h, col = c.ok === false ? RED : c.kind === "break" ? TAKE : CREAM;
+    const {x, y, z} = c, h = c.h || 1, z0 = z - h, col = c.ok === false && !c.far ? RED : c.kind === "break" ? TAKE : CREAM;   // (far: can't, not wrong: cream dotted)
     const full = (dx, dy, dz) => { for (let k = dz > 0 ? z + 1 : dz < 0 ? z0 : z0 + 1; k <= (dz > 0 ? z + 1 : dz < 0 ? z0 : z); k++) if (!solidAt(x + dx, y + dy, k)) return false; return true; };
     const M = K ? (K.M === undefined ? (K.M = pxOf(P, c, full)) : K.M) : pxOf(P, c, full); if (!M) return {x, y, z, kind: c.kind, held: "", seen: {}};   // (K: what is kept of this cell, `kept`)
     const o = outline(P, M, col, c.over ? .3 : c.ok === false ? .16 : c.kind === "break" ? .14 : c.flat ? .18 : .08, !!c.far);   // (over: drawn over your own sprite, which shows through it)
     // nothing under it: a dotted line from its foot down to the ground there, and its foot's place on that ground
     // (over you: you are what is under it; its shadow lay checkered on your body)
     if (!c.flat && !c.over && !full(0, 0, -1)) { const g0 = settleAt(x, y, z0); if (g0 < z0) { line(P, [x + .5, y + .5, z0], [x + .5, y + .5, g0], col, true, c); face(P, [[0, 0], [1, 0], [1, 1], [0, 1]].map(([i, j]) => [x + i, y + j, g0]), INK, .5, CHECK); } }   // (its foot's place: a shadow of the cell, one px in two)
-    return {x, y, z, kind: c.kind, held: "", seen: M.seen, line: o.line, dots: o.dots, far: !!c.far};
+    if (M.area === undefined) M.area = M.f.reduce((a, v) => a + (v ? 1 : 0), 0);   // (its px on the screen, tests)
+    return {x, y, z, kind: c.kind, held: "", seen: M.seen, line: o.line, dots: o.dots, far: !!c.far, area: M.area};
   }
   // X's block, under your feet: NOT drawn (the owner, 2026-11-21: "remove that weird ugly arrow under my character, that is always active"); the corner's "Dig down X" says it. feet() is kept unused for now
   const DOWN = ["..###..", "..#o#..", "..#o#..", "###o###", "#ooooo#", ".#ooo#.", "..#o#..", "...#..."];
@@ -193,7 +199,10 @@ const Target = (() => {
       const r = K ? (K.r === undefined ? (K.r = boxRect(Q, c)) : K.r) : boxRect(Q, c);
       if (c.mine) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, mine: true, px, u: P.u}); continue; }
       if (c.way) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, way: true, px, u: P.u}); continue; }   // (wayshow.js draws that block)
-      if (c === sel && !c.mine && !c.way) { if (own && api.aim !== "down") api.late = {Q, c: {...c, over: true}, K, r, px}; else after.push([Q, c, K, r, px]); continue; }   // (yours: no cut, no skip)
+      // (a block to put where you stand, your body's cell or your head's: it cannot go, you are in it. Not an error: cream dotted, "can't" (it was red, the
+      // first thing seen in a shaft); red is for a place that is wrong)
+      if (c === sel && !c.mine && !c.way) { const you = own && c.kind === "place" && c.ok === false && c.z - myZ(me0.x, me0.y) <= 2 ? {far: true, item: null} : {};
+        if (own && api.aim !== "down") api.late = {Q, c: {...c, over: true, ...you}, K, r, px}; else after.push([Q, c, K, r, px]); continue; }   // (yours: no cut, no skip)
       if (!Build.on && inB(r) > .4) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, under: true, px, u: P.u}); continue; }
       if (c.kind === "place" && c.item && !c.drawn) BuildGhost.block(g, Q.at, Q.u, c.x, c.y, c.z, c.item, .6, c.ok === false, Q.behind);
       api.drew.push({...box(Q, c, K), key: c.key, px, u: P.u, r});
