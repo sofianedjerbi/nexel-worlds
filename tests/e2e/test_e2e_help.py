@@ -31,6 +31,17 @@ def test_the_help_is_a_window_of_short_pages(game):
     assert not game.errors
 
 
+def test_a_row_that_names_a_key_in_its_words_names_your_own(game):
+    """"Left click: X there": with Break on K and Use on U, the words say K and U, as the keys' caps do."""
+    game.js("bindKey('alt', 'k'); bindKey('use', 'u')")
+    game.press("h")
+    game.page.click("#help .tab[data-i='2']")
+    words = game.js("[...document.querySelectorAll('#help .row .what')].map((w) => w.textContent)")
+    assert "K there, or walk" in words and "U there" in words, words
+    assert not any(w.startswith(("X ", "E ")) for w in words), words
+    assert not game.errors
+
+
 def test_the_first_screen_says_something_different_each_time(game):
     """Under the name, one of our own lines, drawn at random when the page opens (js/splash.js)."""
     assert game.js("SPLASH.length") >= 20 and game.js("SPLASH.includes($('splash').textContent)")

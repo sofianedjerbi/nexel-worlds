@@ -76,7 +76,7 @@ body.touch #joinbox #join, body.touch #joinbox #sendcode, body.touch #joinbox #l
 @media (max-height: 520px) and (orientation: landscape) {
   body.touch #joinbox { --L:calc(2 * var(--u3)); }
   body.touch #joinbox .logo { left:max(5vw, env(safe-area-inset-left)); right:auto; top:8vh; text-align:left; }
-  body.touch #joinbox .say { left:max(5vw, env(safe-area-inset-left)); right:auto; top:calc(8vh + 26 * var(--L)); max-width:42vw; text-align:left; }
+  body.touch #joinbox .say { left:max(5vw, env(safe-area-inset-left)); right:auto; top:calc(8vh + 26 * var(--L)); max-width:none; white-space:nowrap; text-align:left; }   /* (one line: splash.js draws one that fits beside the window) */
   body.touch #joinbox .menu { left:auto; right:max(4vw, env(safe-area-inset-right)); top:50%; bottom:auto; transform:translateY(-50%); }
   body.touch #joinbox #titleme { width:calc(24 * var(--q)); height:calc(26 * var(--q)); }
 }
