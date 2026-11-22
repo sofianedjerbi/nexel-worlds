@@ -42,8 +42,9 @@ def test_a_phone_plays_on_the_one_script_and_keeps_it(browser, bundled):
             page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0", timeout=30000)
         except Exception:
             raise AssertionError(f"the land did not come: {errors} asked {asked} scripts {page.evaluate('[...document.scripts].map((s) => s.getAttribute(`src`)).filter(Boolean).slice(0, 3)')}") from None
+        # (the one script: read by the page, its bytes counted for the wait's bar, run as parts from what was read: asked for once, no tag of its own)
         scripts = page.evaluate("[...document.scripts].map((s) => s.getAttribute('src')).filter(Boolean)")
-        assert len(scripts) == 1 and scripts[0].startswith("js/game."), scripts
+        assert len(scripts) == 4 and all(s.startswith("blob:") for s in scripts) and sum(n.startswith("game.") for n in asked) == 1, (scripts, asked)
         assert page.evaluate("document.querySelectorAll('link[rel=stylesheet]').length") == 0
         assert not [n for n in asked if n.endswith(".png") and n not in ("panel.png", "slot.png", "slot_sel.png", "cursor.png", "cursor_point.png")], asked   # (the sheets came in the pack)
         assert sum(n.startswith("pack.") for n in asked) == 1 and len(asked) < 25, asked

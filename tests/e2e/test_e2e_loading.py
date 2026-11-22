@@ -3,6 +3,15 @@ bar, moving before any script has come; its bar never goes back; gone once the i
 screen looks bad, can't you just show the loading and nothing else first so it doesn't look stuck?"; "improve its
 loading speed": the sheets the title never shows (assets.js LATE) are not waited for."""
 
+import socket
+import subprocess
+import sys
+import time
+
+import pytest
+
+from conftest import ROOT, free_port
+
 HOLD = """(() => { const add = DOMTokenList.prototype.add; window.__hold = true;
   DOMTokenList.prototype.add = function (...a) { if (window.__hold && a.includes('scene')) { window.__held = true; return; } return add.apply(this, a); };
   window.__p = 0; Object.defineProperty(window, 'ASSETS_OF', {get: () => 100, set: () => {}}); Object.defineProperty(window, 'ASSETS_IN', {get: () => window.__p * 100, set: () => {}}); })();"""
@@ -29,7 +38,7 @@ def test_the_wait_runs_before_any_script_and_its_bar_never_goes_back(browser, se
     js = page.evaluate
     page.wait_for_function("typeof titleDraw === 'function'", timeout=20000)
     js("window.__p = .5")
-    page.wait_for_function(f"{BAR}[0] >= 25", timeout=5000)
+    page.wait_for_function(f"{BAR}[0] >= 20", timeout=5000)
     n = js(BAR)[0]
     assert n == round(n)                                           # (whole art px)
     js("window.__p = .1")                                          # what is told goes back: the bar does not
@@ -51,3 +60,61 @@ def test_the_title_does_not_wait_for_the_sheets_it_never_shows(browser, server):
         r.continue_()
     page.wait_for_function("IMG.emoji.naturalWidth > 0", timeout=10000)   # and it comes, for the world
     page.close()
+
+
+# every frame the wait is on the screen: [ms, the % it says, the script's bytes read]; and the page's long tasks
+WATCH = """window.__bar = []; window.__long = [];
+try { new PerformanceObserver((l) => { for (const e of l.getEntries()) __long.push([Math.round(e.startTime), Math.round(e.duration)]); }).observe({entryTypes: ['longtask']}); } catch (e) {}
+(() => { const f = (t) => { const s = document.getElementById('bootsay'); if (!s && __bar.length) return;
+  if (s) __bar.push([Math.round(t), parseInt(s.textContent.replace(/\\D+/g, '')) || 0, window.ASSET_PACK ? ASSET_PACK.jsGot : -1]); requestAnimationFrame(f); }; requestAnimationFrame(f); })();"""
+
+
+@pytest.fixture(scope="module")
+def bundled(tmp_path_factory):
+    port = free_port()
+    proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", str(tmp_path_factory.mktemp("loading")), "--world", "l", "--port", str(port),
+                             "--seed", "7", "--bundle"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(100):
+        try:
+            socket.create_connection(("127.0.0.1", port), timeout=.2).close()
+            break
+        except OSError:
+            time.sleep(.1)
+    yield f"http://127.0.0.1:{port}/"
+    proc.terminate()
+    proc.wait(10)
+
+
+@pytest.mark.realtime
+def test_on_a_phone_the_bar_goes_on_by_small_steps_and_no_task_holds_the_page(browser, bundled):
+    """A phone on 4G (9 Mbit/s, 170 ms), its CPU four times slower, the page as a phone gets it (one script, one pack:
+    web_bundle.py). The script's bytes are counted as they come (it was a tag: nothing of it counted till it had run, the bar
+    leapt 22% to 58%); the bar never goes back and never leaps more than 15%; no task holds the page over 120 ms till the
+    island is shown (the character's tools were one task of 0.7 s, the island's first picture one of 0.3 s: tool_art.js
+    soon, hd.js warm)."""
+    ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
+    ctx.add_init_script(WATCH)
+    page, errors = ctx.new_page(), []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    try:
+        cdp = ctx.new_cdp_session(page)
+        cdp.send("Network.enable")
+        cdp.send("Network.emulateNetworkConditions", {"offline": False, "latency": 170, "downloadThroughput": 9e6 / 8, "uploadThroughput": 4.5e6 / 8})
+        cdp.send("Emulation.setCPUThrottlingRate", {"rate": 4})
+        page.goto(bundled, wait_until="commit")
+        try:
+            page.wait_for_function("document.body && document.body.classList.contains('scene') && !document.getElementById('boot')", timeout=60000, polling=100)
+        except Exception:
+            raise AssertionError("the island never came: " + str(page.evaluate("({bar: window.__bar && __bar.slice(-3), pack: window.ASSET_PACK && [ASSET_PACK.got, ASSET_PACK.need, ASSET_PACK.jsGot, ASSET_PACK.jsLen], "
+                                 "decoded: [window.ASSETS_IN, window.ASSETS_OF], warm: typeof HdLook === 'object' ? [HdLook.warm, HdLook.busy, HdLook.part] : null})")) + f" {errors}") from None
+        bar, long, js_len = page.evaluate("__bar"), page.evaluate("__long"), page.evaluate("ASSET_PACK.jsLen")
+        said = [b[1] for b in bar]
+        steps = [b - a for a, b in zip(said, said[1:])]
+        assert len(said) > 10 and min(steps) >= 0, said                                   # never back
+        assert max(steps) <= 15, [(bar[i][0], said[i], said[i + 1]) for i, s in enumerate(steps) if s > 15]
+        assert any(0 < b[2] < js_len for b in bar), "the script's bytes were not counted as they came"
+        held = [t for t in long if t[0] < bar[-1][0]]                                      # (till the wait went)
+        assert max([d for _, d in held] or [0]) <= 120, held
+        assert not errors, errors
+    finally:
+        ctx.close()

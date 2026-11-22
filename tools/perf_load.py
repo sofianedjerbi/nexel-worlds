@@ -32,7 +32,10 @@ try { new PerformanceObserver((l) => { for (const e of l.getEntries()) __perf.lo
 (() => { const m = __perf.m, at = (k, ok) => { try { if (!(k in m) && ok()) m[k] = Math.round(performance.now()); } catch (e) {} };
   const see = () => {
     at("wait", () => !!document.getElementById("boot"));            // (the wait on the screen: index.html #boot)
+    at("js_bytes", () => ASSET_PACK.jsGot >= ASSET_PACK.jsLen);      // (the demo's script read, web_bundle.py)
+    at("title_bytes", () => ASSET_PACK.got >= ASSET_PACK.need);       // (the pictures the first screen waits for)
     at("scripts", () => typeof titleDraw === "function");
+    at("decoded", () => window.ASSETS_OF && ASSETS_IN >= ASSETS_OF);
     at("island", () => blocks.size > 0);
     at("ready", () => document.body.classList.contains("scene"));      // (the first screen whole: the island painted, the wait gone)
     at("usable", () => typeof titleDraw === "function" && spec && spec.readyState === 1 && !document.body.classList.contains("booting"));
@@ -40,7 +43,15 @@ try { new PerformanceObserver((l) => { for (const e of l.getEntries()) __perf.lo
     at("world", () => meObs !== null && !!myPos() && HdLook.on && HdLook.faces > 500 && HdLook.catSeen() > .8);
   };
   setInterval(see, 50); })();
+// the wait's bar, every frame it is on the screen: [ms, % said] (index.html #boot)
+__perf.bar = []; (() => { const f = (t) => { const s = document.getElementById("bootsay"); if (!s && __perf.bar.length) return;
+  if (s) __perf.bar.push([Math.round(t), parseInt(s.textContent.replace(/\\D+/g, "")) || 0]); requestAnimationFrame(f); }; requestAnimationFrame(f); })();
 """
+# the bar, read: the biggest step up from one frame to the next, the longest it said the same while the page waited, steps back
+BAR = """(() => { const b = __perf.bar; let jump = 0, still = 0, back = 0, from = 0;
+  for (let i = 1; i < b.length; i++) { jump = Math.max(jump, b[i][1] - b[i - 1][1]); back += b[i][1] < b[i - 1][1];
+    if (b[i][1] !== b[from][1]) from = i; else if (b[i][1] < 100) still = Math.max(still, b[i][0] - b[from][0]); }
+  return {frames: b.length, jump, still_ms: still, back, said: b.filter((x, i) => !i || x[1] !== b[i - 1][1]).map((x) => x[1] + "@" + x[0]).join(" ")}; })()"""
 FRAMES = """(ms) => new Promise((ok) => { const gaps = [], t0 = performance.now(); let last = t0;
   const f = (t) => { gaps.push(t - last); last = t; if (t - t0 < ms) requestAnimationFrame(f); else { gaps.sort((a, b) => a - b);
     const q = (p) => +gaps[Math.min(gaps.length - 1, Math.floor(gaps.length * p))].toFixed(1);
@@ -51,8 +62,9 @@ FRAMES = """(ms) => new Promise((ok) => { const gaps = [], t0 = performance.now(
 def visit(page, url, a, cdp):
     t0 = time.time()
     page.goto(url, wait_until="commit", timeout=120000)
-    page.wait_for_function("__perf.m.usable", timeout=125000, polling=100)
-    out = {"marks": dict(page.evaluate("__perf.m")), "worker": page.evaluate("window.bootTook || null")}
+    page.wait_for_function(f"__perf.m.{a.until}", timeout=125000, polling=100)
+    page.wait_for_function("!document.getElementById('bootsay')", timeout=10000, polling=100)
+    out = {"bar": page.evaluate(BAR),"marks": dict(page.evaluate("__perf.m")), "worker": page.evaluate("window.bootTook || null")}
     if a.join:
         page.fill("#name", "perf")
         t = page.evaluate("performance.now()")
@@ -62,7 +74,8 @@ def visit(page, url, a, cdp):
         out["marks"].update(m)
         out["play_to_in"], out["play_to_world"] = round(m["in"] - t), round(m["world"] - t)
     long = page.evaluate("__perf.long")
-    out["long"] = {"n": len(long), "total": sum(d for _, d in long), "top": sorted(long, key=lambda x: -x[1])[:6]}
+    ready = out["marks"].get("ready", 1e9)
+    out["long"] = {"to_ready": max([d for t, d in long if t <= ready] or [0]), "n": len(long), "total": sum(d for _, d in long), "top": sorted(long, key=lambda x: -x[1])[:6]}
     out["heap_mb"] = round(cdp.send("Runtime.getHeapUsage")["usedSize"] / 1e6, 1)
     out["wall_s"] = round(time.time() - t0, 1)
     return out
@@ -110,6 +123,9 @@ def main():
     p.add_argument("--dist", default=str(ROOT / "dist"))
     p.add_argument("--pyodide", default=None)
     p.add_argument("--bundle", action="store_true", help="local: the server with one script (MEGASTRUCTURE_BUNDLE=1)")
+    p.add_argument("--port", type=int, default=PORT)
+    p.add_argument("--until", default="usable", choices=["ready", "usable"], help="ready: the first screen whole (no Python needed)")
+    p.add_argument("--desk", action="store_true", help="a desk's 1440x900 window, not a phone")
     p.add_argument("--no-sw", action="store_true")
     p.add_argument("--stale", action="store_true", help="demo: the warm visit is a day later (the site's files are asked for again: 304s)")
     a = p.parse_args()
@@ -118,20 +134,20 @@ def main():
     from playwright.sync_api import sync_playwright
     proc = httpd = None
     if a.what == "demo":
-        httpd = serve(a.dist, PORT, a.line, a.pyodide, 0 if a.stale else 600)
+        httpd = serve(a.dist, a.port, a.line, a.pyodide, 0 if a.stale else 600)
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
     else:
         saves = tempfile.mkdtemp(prefix="perf_saves")
-        proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", saves, "--world", "perf", "--port", str(PORT), "--seed", "12"],
+        proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", saves, "--world", "perf", "--port", str(a.port), "--seed", "12"],
                                 cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT / "src"), "MEGASTRUCTURE_BUNDLE": "1" if a.bundle else ""},
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(1.5)
-    url, res = f"http://127.0.0.1:{PORT}/", {"what": a.what, "line": a.line, "cpu": a.cpu}
+    url, res = f"http://127.0.0.1:{a.port}/", {"what": a.what, "line": a.line, "cpu": a.cpu}
     pw = sync_playwright().start()
     browser = pw.chromium.launch(channel="chrome", headless=True)
     try:
-        ctx = browser.new_context(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True, device_scale_factor=3,
-                                  service_workers="block" if a.no_sw else "allow")
+        screen = dict(viewport={"width": 1440, "height": 900}) if a.desk else dict(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True, device_scale_factor=3)
+        ctx = browser.new_context(**screen, service_workers="block" if a.no_sw else "allow")
         ctx.add_init_script(WATCH)
         if a.line != "none":                                 # (what a phone on such a line says of it: the demo starts its world by it, js/local.js)
             ctx.add_init_script("Object.defineProperty(navigator, \"connection\", {value: {downlink: %s, effectiveType: \"%s\", saveData: false}});" % ((1.6, "3g") if a.line == "fast3g" else (9, "4g")))
