@@ -23,12 +23,13 @@ const Held = (() => {
     m.set(k, t); return t;
   }
   const lift = (sheet, sx, sy) => (sheet ? top(sheet, sx, sy) - top(sheet, 0, sy) : 0);
-  // (an aim's pose, aim_art.js: in the paw where the pose holds it, its middle there.) A tool (hold_art.js) is held by its
-  // grip, the hand over it: `name` is what `c` is the picture of
+  // (an aim's pose, aim_art.js: in the paw where the pose holds it, its middle there; a jump's: the paw's own row moved, jump_art.js.)
+  // A tool (hold_art.js) is held by its grip, the hand over it: `name` is what `c` is the picture of
   function draw(c, p, cellX, cellY, z, sheet, sx, sy, name) { const aim = sy >= ANIM.aim * 48 && sy < (ANIM.aim + 4) * 48 && Object.keys(AimArt.COL)[sx / 48], A = aim && AimArt.PAW[aim], t = A && A[DIR_ROW(p)];
-    const dy = t ? 0 : lift(sheet, sx, sy), tool = name && sheet && HoldArt.art(name, DIR_ROW(p), t ? aim : "rest", sheet, t);
+    const [ax, ay] = t ? [t[0] - 3, t[1] - 3] : at(p), J = sy >= ANIM.jump * 48 && sy < (ANIM.jump + 4) * 48, dy = t ? 0 : J ? JumpArt.shift(DIR_ROW(p), sx / 48, ay + 3) : lift(sheet, sx, sy);
+    const tool = name && sheet && HoldArt.art(name, DIR_ROW(p), t ? aim : "rest", sheet, t);
     if (tool) return ctx.drawImage(tool, cellX, cellY + dy * z, 48 * z, 48 * z);
-    const [ax, ay] = t ? [t[0] - 3, t[1] - 3] : at(p); ctx.drawImage(c, cellX + ax * z, cellY + (ay + dy) * z, c.width * z, c.height * z); }
+    ctx.drawImage(c, cellX + ax * z, cellY + (ay + dy) * z, c.width * z, c.height * z); }
   let sent;
   // yours, to the server when it changes (and again whenever the server has another: a new connection)
   function sync(s) { const want = selected || null; if (s && (s.held || null) !== want && sent !== want + "@" + (s.held || "")) { sent = want + "@" + (s.held || ""); rpc("hold", {item: want}); } }
