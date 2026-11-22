@@ -75,14 +75,12 @@ QUICK = {
 
 
 def pytest_collection_modifyitems(config, items):
-    again = config.pluginmanager.hasplugin("rerunfailures")
+    # (no second try: "all tests should pass first try. a test that needs many tries to pass is a regression OR should be fixed", 2026-11-23)
     for item in items:                                    # everything in this folder is end-to-end
         if "e2e" in item.path.parts:
             item.add_marker(pytest.mark.e2e)
             if QUICK.get(item.path.name[len("test_e2e_"):-3]) == getattr(item, "originalname", item.name):
                 item.add_marker(pytest.mark.quick)
-            if again:                                     # (a browser on a busy machine: a test that fails is tried once more,
-                item.add_marker(pytest.mark.flaky(reruns=1))   #  a new player on a cleared meadow: and it is said, tests/conftest.py)
 
 
 def pace_of(item) -> float:
