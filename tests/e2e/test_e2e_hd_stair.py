@@ -91,7 +91,7 @@ def test_a_shaft_and_its_way_out_are_one_view(browser, server):
         g.rpc("dev_col", tiles=[[x + i, y]], col=[-6 + i])                       # the stair cut out of it, open to the sky
     g.rpc("dev_teleport", x=x, y=y, z=-6)
     g.arrive()
-    g.wait("HdLook.cam.pitch > 67.9 && HdLook.win.n === 0 && !HdLook.busy", timeout=8000)      # (under the open sky no window: from above the shaft is seen as it is)
+    g.wait("HdLook.cam.pitch > 67.9 && HdLook.win.a === 1 && !HdLook.busy", timeout=8000)      # (its south wall hides you whole: the x-ray window, as under a roof, hd_level.js hides)
     for i, steep in ((2, True), (4, True), (5, True)):                           # levels -4, -2, -1: walls beside you as tall as you or more (a level is your height)
         g.rpc("dev_teleport", x=x + i, y=y, z=-6 + i)
         g.arrive()

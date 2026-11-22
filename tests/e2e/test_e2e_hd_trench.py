@@ -44,10 +44,13 @@ def test_a_stair_s_treads_are_warm_steps_lighter_at_the_top_and_the_floor_is_a_g
     calm(g)
     x, y = stair(g)
     at(g, x + 5, y, -5)
+    g.js("HdLook.nowin = true")                                                  # (the treads' own paint: five down the trench's south wall hides you, and the x-ray window opens, hd_level.js hides)
+    g.wait("HdLook.win.a === 0")
     g.frames(3)
     treads = {i: g.js(EDGE, [x + i, y, -i]) for i in (2, 3, 4)}
+    g.js("HdLook.nowin = false")
     at(g, x + 7, y, -7)
-    treads.update({i: g.js(TILE, [x + i, y, -i]) for i in (7, 8)})     # 2 to 4 under the open sky (their north edge: no window under the sky, the trench's own south wall hides the rest), 7 and 8 under the land, from in there
+    treads.update({i: g.js(TILE, [x + i, y, -i]) for i in (7, 8)})     # 2 to 4 under the open sky (their north edge: the trench's own south wall hides the rest), 7 and 8 under the land, from in there
     assert all(warm(c) for c in treads.values()), treads                         # steps you can walk: warm earth, the open ones too (they were (106, 90, 85): grey)
     assert lum(treads[2]) > lum(treads[3]) > lum(treads[4]) and lum(treads[2]) > lum(treads[4]) * 1.1 and lum(treads[7]) > lum(treads[8]), treads    # the top ones lighter: down is read
     assert g.js("HdLook.raw()") == 0
