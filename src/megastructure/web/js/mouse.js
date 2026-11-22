@@ -21,7 +21,8 @@ function rayHit(mx, my) {
   if (!rayHi || rayHi.x !== s.x || rayHi.y !== s.y || performance.now() - rayHi.t > 500) { let hi = z0, lo = z0; for (let y = s.y - 40; y <= s.y + 24; y++) for (let x = s.x - 24; x <= s.x + 24; x++) { const t = topAt(x, y); hi = Math.max(hi, t); lo = Math.min(lo, t); } rayHi = {x: s.x, y: s.y, t: performance.now(), hi, lo}; }
   const on = (z, g) => { let [x, y] = g; for (let i = 0; i < 12; i++) { const a = S(x, y, z), b = S(x + .01, y, z), c = S(x, y + .01, z); if (!a || !b || !c) return null; const ex = a[0] - mx, ey = a[1] - my; if (Math.abs(ex) + Math.abs(ey) < .02) return [x, y, z];
     const j11 = (b[0] - a[0]) / .01, j21 = (b[1] - a[1]) / .01, j12 = (c[0] - a[0]) / .01, j22 = (c[1] - a[1]) / .01, d = j11 * j22 - j12 * j21; if (!d) return null; x -= (j22 * ex - j12 * ey) / d; y -= (j11 * ey - j21 * ex) / d; } return null; };
-  const solid = (x, y, top) => solidAt(x, y, top) && !((w) => w && top > w[1])(win(x, y));   // (a cell whose top is `top`; over the x-ray window's ceiling the land is not drawn: not pointed at)
+  // (a cell whose top is `top`, of the land or built, or what stands in it as boxes (a wall, a door, a fence: hd_things.js `is`): 2; over the x-ray window's ceiling the land is not drawn: not pointed at)
+  const solid = (x, y, top) => ((w) => w && top > w[1])(win(x, y)) ? 0 : solidAt(x, y, top) ? 1 : HdThings.is(Floors.thingAt(x, y, top - 1) || "-", x, y) && solidAt(x, y, top - 1) ? 2 : 0;
   const FACE = [["W", "E"], ["N", "S"], ["T", "T"]];
   let g = [s.x + .5, s.y + .5], A = null;
   for (let z = rayHi.hi + 1; z >= Math.max(rayHi.lo - 2, z0 - 64); z -= .5) {
@@ -29,14 +30,14 @@ function rayHit(mx, my) {
     if (A) {   // the cells this piece of the ray goes through, in order
       const d = [0, 1, 2].map((i) => B[i] - A[i]), c = A.map(Math.floor), st = d.map(Math.sign), tD = d.map((v) => (v ? 1 / Math.abs(v) : Infinity)), tM = [0, 1, 2].map((i) => (d[i] ? (st[i] > 0 ? c[i] + 1 - A[i] : A[i] - c[i]) * tD[i] : Infinity));
       for (let n = 0; n < 64; n++) { const i = tM[0] <= tM[1] && tM[0] <= tM[2] ? 0 : tM[1] <= tM[2] ? 1 : 2; if (tM[i] > 1) break; c[i] += st[i]; tM[i] += tD[i];
-        if (solid(c[0], c[1], c[2] + 1)) return {x: c[0], y: c[1], z: c[2] + 1, face: FACE[i][st[i] > 0 ? 0 : 1]}; }
+        const k = solid(c[0], c[1], c[2] + 1); if (k) return {x: c[0], y: c[1], z: c[2] + 2 - k, cz: c[2] + 1, face: FACE[i][st[i] > 0 ? 0 : 1], thing: k === 2}; }   // (a thing: z the level it stands on, as the keys' cursor has it; cz: the cell's top)
     } else if (solid(Math.floor(B[0]), Math.floor(B[1]), Math.floor(B[2]) + 1)) return null;   // (the ray begins inside land: no answer here)
     A = B;
   }
   return null;
 }
 function tileAtScreen(mx, my) {                        // -> {x, y, fy: how far down the tile, 0 to 1}
-  if (HdLook.on && Build.on && Build.S.plane === null && Build.S.deep === null) { const h = rayHit(mx, my); if (h) return {x: h.x, y: h.y, fy: .5, z: h.z, face: h.face !== "T", side: h.face}; }   // (build mode: the block under the pointer, its top or a side)
+  if (HdLook.on && Build.on && Build.S.plane === null && Build.S.deep === null) { const h = rayHit(mx, my); if (h) return {x: h.x, y: h.y, fy: .5, z: h.z, cz: h.cz, face: h.face !== "T", side: h.face}; }   // (build mode: the block under the pointer, its top or a side)
   if (HdLook.on) { const q = HdLook.pick(mx, my, Build.on ? (x, y) => Build.level({x, y}) : null); if (q) return q; }   // (the HD camera: the top or the front under the pointer, hd.js; build mode lifted or sunk by E, Q: at the cursor's height)
   const S = TS(), [ox, oy] = screenOrigin(S), x = Math.floor((mx - ox) / S), at = (y, up) => Curve.y(oy + y * S, up), row = (f) => Math.floor((f - oy) / S);
   // The column's tiles from the nearest that could be drawn there to the furthest (a level is drawn higher or lower:

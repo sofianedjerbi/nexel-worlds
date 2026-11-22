@@ -42,13 +42,17 @@ const Build = (() => {
   const planned = (x, y, z) => { const j = S.plans.get(x + "," + y + "," + z); return !!j && !j.take && j.up && (BLOCK(j.item) || LAND_BLOCKS.has(j.item)) && j.state !== "bad"; };     // a block that is only planned yet
   // A block of the land (earth, stone) for the cell (x, y, z): why it cannot go there, or nothing (as the server's put_land: empty, something solid beside it; or a block planned there)
   const landFits = (x, y, z, soon = planned) => { const s = myPos(); return solidAt(x, y, z) ? "Something is there" : s && s.x === x && s.y === y && z > myZ(x, y) && z <= myZ(x, y) + 2 ? "You stand there"
-    : [[0, 0, -1], [0, 0, 1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])].some(([i, j, k]) => solidAt(x + i, y + j, z + k) || soon(x + i, y + j, z + k)) ? "" : "Nothing holds it"; };     // (a few words: the ghost says it, red where it cannot go: buildghost.js. It was a red line across the screen: "Nothing holds it: put it against a block")
+    : ((N) => N.some(([i, j, k]) => solidAt(x + i, y + j, z + k) || soon(x + i, y + j, z + k)) && N.some(([i, j, k]) => !solidAt(x + i, y + j, z + k)))([[0, 0, -1], [0, 0, 1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])]) ? "" : "Nothing holds it"; };   // (held: something beside it, or planned there; reached: air beside it)     // (a few words: the ghost says it, red where it cannot go: buildghost.js. It was a red line across the screen: "Nothing holds it: put it against a block")
   const piece = () => (selected && meObs && meObs.self.inventory[selected] && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed") ? selected : null);
   const todo = () => [...S.plans.values()].filter((j) => j.state !== "bad");
 
   // What planning the piece in hand at p would be: the game's own answer for that tile (intent.js), as a ghost,
-  // said in a few words (they are written beside the bar: a long line ran under it)
-  function hint(p) {
+  // said in a few words (they are written beside the bar: a long line ran under it). Where nothing holds it (nothing beside
+  // it, built or planned; stairs with nothing higher beside them): far, its box dotted (target.js), nothing said, Space does
+  // nothing: the dotted box means one thing, out of reach yet, as for X (the owner: "show, don't tell"; it said in red "Nothing holds it")
+  const UNHELD = new Set(["Nothing holds it", "Needs a wall under it", "Stairs go up to something higher beside them", "Needs something taller behind"]);
+  function hint(p) { const h = says(p); return h.ok === false && UNHELD.has(h.text) ? {...h, text: "", far: true} : h; }
+  function says(p) {
     const it = piece();
     if (!it) return {text: selected ? "Pick a block to place" : "Pick a piece", key: "1-9", ok: selected ? undefined : false};      // (a pickaxe in hand: you came to break. It said "Not a building piece" in red, the cursor red)
     if (FOOT[PLACEABLE_BLOCK[it]]) return {text: "Put by hand: leave with B", ok: false, ghost: it};
@@ -58,11 +62,12 @@ const Build = (() => {
     if (it === "stairs" || it === "ladder") {          // (a flight, a ladder: as they will be, climbing.js)
       if (S.plans.has(key(p, L))) return {text: "Planned", ok: false, ghost: it};
       const say = Climb.intent(p, false) || {text: "Nothing can go there", ok: false};
-      return {...say, z: L};
+      return {...say, z: say.ok === false && UNHELD.has(say.text) ? L + 1 : L};      // (nothing to lean on: the cell its first step would fill, dotted)
     }
     if (LAND_BLOCKS.has(it) && FLOORS) {              // earth, stone: the cell on top of what the cursor is on; the cursor in the air: the cell it is in ("why cant i place block in that mode also ??")
-      const z = S.hold === " " && S.row !== undefined ? S.row : BuildGhost.cell(p, on ? L + 1 : L, planned), why = landFits(p.x, p.y, z);     // (on the one you planned there: the next one on top, no height key. A row, Space held: at the height of its first, so a roof is a row begun on a wall's top)
-      return why ? {text: why, ok: false, ghost: it, z} : {text: `Place ${label(it)}`, ok: true, ghost: it, z};
+      const F = p.side && p.side !== "T" ? DIRV[p.side] : null, q = F ? {x: p.x + F[0], y: p.y + F[1]} : p, at = F ? {at: q} : {};    // (the mouse on a block's side: the cell beside that face, Minecraft's way, mouse.js rayHit; keys: the cell on the cursor)
+      const z = S.hold === " " && S.row !== undefined ? S.row : BuildGhost.cell(q, F ? p.cz ?? L : p.side ? (p.cz ?? L) + 1 : on ? L + 1 : L, planned), why = landFits(q.x, q.y, z);     // (on the one you planned there: the next one on top, no height key. A row, Space held: at the height of its first, so a roof is a row begun on a wall's top)
+      return why ? {text: why, ok: false, ghost: it, z, ...at} : {text: `Place ${label(it)}`, ok: true, ghost: it, z, ...at};
     }
     if (BLOCK(it) && (FLOORS || it === "roof") && !(it === "plank" && on && !c && t && FILLS.plank[t[1]] && GROUND.has(t[0]))) {     // a block, for a cell
       const z = !on ? L : it === "roof" ? L + Floors.STOREY : L + 1, why = S.plans.has(key(p, z)) ? "Planned" : Floors.fits(p.x, p.y, z, planned);
@@ -97,10 +102,11 @@ const Build = (() => {
     return null;
   }
   function plan(p) {
-    const it = hint(p), z = it.z !== undefined ? it.z : level(p);
+    const it = hint(p), z = it.z !== undefined ? it.z : level(p), q = it.at || p;
+    if (it.far) return;                               // (out of reach yet: its box is dotted; nothing is said)
     if (!it.ghost || it.ok === false) return S.hold ? null : toast(it.text, true);
     if (BLOCK(selected) && S.hold && S.row !== undefined && S.row !== z) return;     // (a row of blocks is at one height: over a floor already laid it does not pile them up)
-    S.row = z; S.plans.set(key(p, z), {x: p.x, y: p.y, z, item: selected, up: it.z !== undefined && !it.draw, ground: it.ghostGround || null, swap: !!it.swap, steps: it.steps || null, state: "todo"});
+    S.row = z; S.plans.set(key(q, z), {x: q.x, y: q.y, z, item: selected, up: it.z !== undefined && !it.draw, ground: it.ghostGround || null, swap: !!it.swap, steps: it.steps || null, state: "todo"});
     sfx("pick"); work();
   }
   function take(p) {                                  // a plan back; or, of what is built there, a plan to take it down
@@ -241,7 +247,7 @@ const Build = (() => {
   }
   addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if (k === S.hold) S.hold = null; if (KEYDIR[k] === S.dir) held(null); });
   addEventListener("blur", () => { S.hold = null; held(null); });
-  function point(p) { if (S.on && tile(p.x, p.y)) { S.at = {x: p.x, y: p.y}; if (p.z !== undefined && p.z !== ride(S.at)) S.at.z = p.z; } }      // (the mouse: the cursor is where it points, the block under it (z, when not the ground nearest you there: it follows the land as it is dug and built), or at the cursor's height: mouse.js)
+  function point(p) { if (S.on && tile(p.x, p.y)) { S.at = {x: p.x, y: p.y}; if (p.z !== undefined && p.z !== ride(S.at)) S.at.z = p.z; if (p.side) Object.assign(S.at, {side: p.side, cz: p.cz}); } }      // (the mouse: the cursor is where it points, the block under it (z, when not the ground nearest you there: it follows the land as it is dug and built), or at the cursor's height: mouse.js)
   function click(p, alt) { point(p); S.row = undefined; if (alt) take(S.at); else plan(S.at); }
 
   // Once a frame (render.js): a plan that could not be done is shown red a while, then goes; out of the mode when you are gone.
@@ -261,7 +267,7 @@ const Build = (() => {
   function rows() {
     const it = hint(S.at), n = todo().length, hit = taking(S.at), s = myPos(), up = s ? Keyhole.rel(level() - myZ(s.x, s.y)) : 0, sign = (v) => (v > 0 ? "+" : "") + v;
     const out = [[capOf("build"), up ? `BUILD · ${sign(up)} · leave` : "BUILD MODE · leave", "head"]];
-    out.push([it.key || "Space", it.text, it.ok === false && !it.key ? "bad" : ""]);
+    if (!it.far) out.push([it.key || "Space", it.text, it.ok === false && !it.key ? "bad" : ""]);
     out.push(["Q E", "A layer down, up"]);
     if (hit && !hit.shut) out.push(["X", hit.plan ? "Take the plan back" : hit.dig ? "Break" : hit.verb || `Break ${hit.what}`]);   // (out of reach yet: no row, its box is dotted)
     if (n) out.push(["Esc", `Drop the ${n} plan${n > 1 ? "s" : ""}`]);

@@ -10,7 +10,7 @@
 //   - orange: a key takes that block ("break": X, R or a pickaxe's Space), the block itself, not air.
 //   - Space does something to that block ("use": till it, lay a floor in it, a thing put on it): cream, its top;
 //   - DOTTED means one thing: out of reach yet (build mode: a block in the ground with no air beside it nor a dig planned
-//     beside it); reachable is a whole line. Behind land a box is not drawn, unless all of it is: then its whole line, seen through;
+//     beside it; a block to place that nothing holds yet, built or planned beside or under it); reachable is a whole line. Behind land a box is not drawn, unless all of it is: then its whole line, seen through;
 //   - a cell nothing stands under: a dotted line down to the ground under it and its shadow there, one px in two;
 // `cells()` is the one answer to "which cell": what is drawn is what the key sends (tests: the drawn cell is the
 // cell that changes). X's block under you: its own mark, round your feet (`feet`). `target(key)`: the cell of Space ("use"), X ("alt") or R ("up").
@@ -26,8 +26,9 @@ const Target = (() => {
     if (Build.on) {
       const p = Build.S.at, it = Build.hint(p), hit = Build.taking(p), L = Build.level();
       if (hit && !hit.plan) add("alt", "break", p.x, p.y, hit.dig || hit.up ? hit.z : hit.z + 1, hit.shut ? {far: true} : hit.dig || hit.up ? {} : {h: 1, thing: true});   // (a thing that stands: a block high, hd_things.js. far: out of reach yet, no air beside it nor a dig planned beside it (build.js `open`, the rule the work goes by): its box dotted)
-      if (it.ghost && it.z !== undefined && !it.steps && it.ghost !== "ladder") add("use", solidAt(p.x, p.y, it.z) ? "use" : "place", p.x, p.y, it.z, {ok: it.ok !== false, item: LAND_BLOCKS.has(it.ghost) ? it.ghost : null, drawn: LAND_BLOCKS.has(it.ghost)});
-      else add("use", solidAt(p.x, p.y, L) ? "use" : "place", p.x, p.y, L, {ok: it.ok !== false, flat: !!it.ghost && solidAt(p.x, p.y, L)});
+      const q = it.at || p, far = it.far ? {far: true, ok: true} : {ok: it.ok !== false};      // (q: the cell beside the face the mouse is on, build.js; far: nothing holds it yet: dotted, no ghost in it)
+      if (it.ghost && it.z !== undefined && !it.steps && it.ghost !== "ladder") add("use", solidAt(q.x, q.y, it.z) ? "use" : "place", q.x, q.y, it.z, {item: LAND_BLOCKS.has(it.ghost) && !it.far ? it.ghost : null, drawn: LAND_BLOCKS.has(it.ghost), ...far});
+      else add("use", solidAt(p.x, p.y, L) ? "use" : "place", p.x, p.y, L, {flat: !!it.ghost && solidAt(p.x, p.y, L), ...far});
       return out;
     }
     // (the keys act whether the way out is shown or not: what each would take is drawn; the way's own block is drawn by wayshow.js: one mark. keyboard.js `useFacing`, digup.js `route`)
