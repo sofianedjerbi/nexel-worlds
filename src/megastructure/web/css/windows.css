@@ -84,6 +84,7 @@
     color:var(--ink); font-size:calc(9 * var(--q)); line-height:calc(9 * var(--q)); background:#e8cfa6; box-shadow:inset var(--q) var(--q) 0 #fbf0d6, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #c49a6c, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a, 0 calc(4 * var(--q)) 0 rgba(60,40,30,.22); }
   body.playing.tab #who { display:block; } body.touch #who { top:calc(64px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); }
   #who canvas { display:block; width:calc(16 * var(--q)); height:calc(16 * var(--q)); image-rendering:pixelated; }
+  #who canvas.crown { flex:none; width:calc(9 * var(--q)); height:calc(7 * var(--q)); margin-left:calc(-2 * var(--q)); }
   #who .cell { flex:none; width:calc(18 * var(--q)); height:calc(18 * var(--q)); padding:var(--q); background:#cfad84; box-shadow:inset var(--q) var(--q) 0 #9a6f55, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #f8edd4; }
   #who .whead { display:flex; align-items:center; gap:calc(5 * var(--q)); height:calc(18 * var(--q)); margin:0 var(--q); } #whoday { flex:1; font-weight:normal; } #whohour { padding-right:calc(2 * var(--q)); }
   #whosky { background:#f1dfb8 !important; } #whosky[data-night="1"] { background:#5d5f8f !important; box-shadow:inset var(--q) var(--q) 0 #45476e, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #8d8fb8 !important; }

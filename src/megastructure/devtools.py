@@ -80,6 +80,10 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
             sim.world.chunk(x >> 5, y >> 5).cols[(y & 31) * 32 + (x & 31)] = col
             sim.set_tile(x, y, cause="dev")
         return {}
+    if op == "dev_admin" and getattr(sim, "admins", None):    # you are an admin (the tests' /op: admin.py)
+        if not agent.bot:
+            sim.admins.op(agent.name)
+        return {"admin": sim.admins.is_admin(agent)}
     if op == "dev_give":
         for k, n in dict(msg.get("items") or {}).items():
             agent.add(str(k), int(n))
