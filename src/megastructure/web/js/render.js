@@ -23,7 +23,8 @@ function frame(now) {
     // most of a tile behind, sliding into place while it pawed. "it glitches a few pixels... when doing key moves")
     const amble = p.e && AMBLE[p.e.kind] ? Math.max(p.e.scared ? 1 / FLEE_STRIDE : AMBLE[p.e.kind], p.pace || 0, p.e.kind === "tusker" && p.e.act ? 8 : 0) : 0;
     const pace = Climb.paceOf(p) || (p.running || (p.e && p.e.run) ? 10 : amble || 5);      // (up or down a ladder: rung by rung, climbing.js)
-    const step = (d > 1.5 ? d * 8 : pace * 1.05) * dt;
+    const jp = d > 0 && d <= 1.5 ? jumpPace(p, p.tx - (Math.abs(dx) > 1e-3 ? Math.sign(dx) : 0), p.ty - (Math.abs(dy) > 1e-3 ? Math.sign(dy) : 0), p.tx, p.ty) : Infinity;   // (up or down a step: as long as its jump takes, jump.js; it was squeezed into a step's time)
+    const step = (d > 1.5 ? d * 8 : Math.min(pace, jp) * 1.05) * dt;
     if (d <= step) { p.x = p.tx; p.y = p.ty; }
     else if (d > 1.5) { p.x += dx / d * step; p.y += dy / d * step; }    // far behind (lag, teleport): straight there
     else if (Math.abs(dx) > 1e-3 && Math.abs(dy) > 1e-3) {              // on the grid, one axis at a time: line up first

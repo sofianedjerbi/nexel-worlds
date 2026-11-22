@@ -17,7 +17,7 @@ const SwingArt = (() => {
   const SIDE = {at: [-125, -95, -20, 28, 36, 36, 22, 10], streak: [null, null, [-120, -20, 2.6], [-90, 28, 2.6], [-30, 36, 1.3], null, null, null]};
   // The spear: how far it is pushed out along the way faced, and how long the streak behind its point is.
   const THRUST = {out: [-3, -5, 2, 6, 6, 5, 2, 0], streak: [0, 0, 6, 9, 4, 0, 0, 0]};
-  const STEP = {sword: [-1, -1, 1, 2, 2, 2, 1, 0], spear: [-1, -1, 1, 3, 3, 2, 1, 0]};   // the body's step into the blow, in px
+  const STEP = {sword: [0, -1, 1, 2, 2, 2, 1, 0], spear: [0, -1, 1, 3, 3, 2, 1, 0]};   // the body's step into the blow, in px (none on frame 0: the weapon as held)
   const REACH = 6, SWORD = 11.5;                           // the hand's distance from the middle; the sword, hand to tip
   const rad = (a) => a * Math.PI / 180;
   const inside = (pts, x, y) => {                          // (a convex shape, its corners in order)
@@ -29,7 +29,10 @@ const SwingArt = (() => {
   const box = (x0, x1, y0, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 
   // One frame as 48 x 48 RGBA. `row`: 0 down, 1 up, 2 right, 3 left. `hand`: its outline, shade and fur colours.
-  function frame(kind, row, f, hand) {
+  // `at`: [grip x, grip y, angle] to hold it there instead (the picture facing right for the left): held, hold_art.js. Frame 0
+  // is where it is held at rest, so the blow starts from the paw
+  function frame(kind, row, f, hand, at) {
+    if (!at && f === 0 && typeof HoldArt !== "undefined") at = HoldArt.rest(kind, row);
     const d = new Uint8ClampedArray(CELL * CELL * 4), flip = row === 3, phi = FACE[flip ? 2 : row];
     let gx, gy, ang, shapes, streak = () => false;
     if (kind === "sword") {
@@ -56,6 +59,7 @@ const SwingArt = (() => {
       if (n) shapes.push([[[tip - 5.5, -1.6], [tip - 5.5, 1.6], [tip - 5.5 - n, 0]], C.streak]);      // (over the shaft, thinning back from the point)
       shapes.push([box(-7, tip - 5, -.6, .6), C.wood]);
     }
+    if (at) { [gx, gy, ang] = at; streak = () => false; if (kind === "spear") shapes = shapes.filter(([, c]) => c !== C.streak); }
     const ux = Math.cos(ang), uy = Math.sin(ang), PAL = Object.values(C);
     for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) {
       const votes = new Array(PAL.length).fill(0); let n = 0;
@@ -101,5 +105,5 @@ const SwingArt = (() => {
     }
     return sheets.get(key);
   }
-  return {frame, sheetFor, STEP, KINDS: ["sword", "spear"]};
+  return {frame, sheetFor, handOf, STEP, KINDS: ["sword", "spear"]};
 })();

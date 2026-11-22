@@ -1,0 +1,112 @@
+"""The jump, frame by frame ("make the jumping animation smoother and better"; "the Space jump should be as high as 1
+block and more"): a hop a block and more high, a step's jump as high over the step, the body never leaping a px more
+than its speed from a frame to the next, no pose flashing, a staircase at one beat (jump.js)."""
+
+import pytest
+from test_e2e_jump import ORDER
+
+pytestmark = pytest.mark.e2e
+
+
+# every frame drawn: [ms, your x, your body's height over the line the eye follows (art px, as drawn), its pose, in the air]
+BODY = """() => { window.__bd = []; window.__bdOn = true; const f = () => { const p = ents.get('agent' + myId), now = performance.now(), j = p && jumping(p, now);
+  if (p) __bd.push([now, +p.x.toFixed(3), j ? Math.round(j.body) : 0, j && j.pose || '', !!(j && j.tuck)]); if (__bdOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+def body_over(game, act):
+    game.rest()
+    game.js(BODY)
+    act()
+    rec = game.js("(() => { __bdOn = false; return __bd; })()")
+    game.rest()
+    return rec
+
+
+def smooth(rec):
+    """No jump of the body from a frame to the next: at most 3.5 art px in a 60th of a second (a jump's speed as it
+    leaves the ground and lands), a px on a quicker frame; no pose shown and gone back from (a flash)."""
+    for a, b in zip(rec, rec[1:]):
+        assert abs(b[2] - a[2]) <= max(1, -(-3.5 * (b[0] - a[0]) // 16.67)), (a, b)
+    runs = [r[3] for r, q in zip(rec, [None] + rec) if q is None or r[3] != q[3]]
+    assert not [i for i in range(1, len(runs) - 1) if runs[i - 1] == runs[i + 1] and runs[i]], runs
+
+
+@pytest.mark.realtime
+def test_the_hop_goes_a_block_up_and_comes_down_smoothly(game):
+    """"The Space jump should be as high as 1 block and more ... right now it looks like a weird 1/10th block
+    animation": the hop on the level went 6 art px up in 0.28 s. Now its top is over a block (16 art px), it is in
+    the air 0.35 to 0.5 s, its height changes a little each frame (a thrown thing's), the poses one after the other."""
+    game.clear_area(6)
+    rec = body_over(game, lambda: (game.press("Space", 0), game.sleep(800)))
+    air = [r for r in rec if r[4]]
+    assert air and max(r[2] for r in rec) >= 18, max(r[2] for r in rec)
+    assert 350 <= air[-1][0] - air[0][0] <= 500, air[-1][0] - air[0][0]
+    smooth(rec)
+    seen = [r[3] for r, q in zip(rec, [None] + rec) if r[3] and (q is None or r[3] != q[3])]
+    assert seen[0] == "crouch" and seen[-1] == "settle" and [ORDER.index(a) for a in seen] == sorted(ORDER.index(a) for a in seen), seen
+    assert not game.errors, game.errors
+
+
+@pytest.mark.realtime
+def test_auto_jump_up_a_staircase_is_smooth_and_keeps_its_rhythm(game):
+    """Four steps up, walking: every step a jump as high (its top 4 art px over the step it lands on), the body never
+    jumping a px more than its speed, no pose flashing, and a jump every step at the same beat (it was the same beat,
+    but each 4 px up the screen in a frame and down 3 a frame in the top's pose)."""
+    game.clear_area(8)
+    game.stamp(2, -2, ["." * 10] * 5, levels=["1234444444"] * 5)
+    x, _ = game.pos()
+    rec = body_over(game, lambda: game.hold(["d"], 2000))
+    assert game.server()["z"] == 4, game.server()
+    smooth(rec)
+    offs = [r[0] for r, q in zip(rec, [None] + rec) if r[3] == "takeoff" and (q is None or q[3] != "takeoff")]
+    assert len(offs) == 4, offs
+    beats = [b - a for a, b in zip(offs, offs[1:])]
+    assert max(beats) - min(beats) <= 25 and min(beats) >= 300, beats       # (the time a step's jump takes: jump.js jumpMs)
+    tops = [max(r[2] for r in rec if a <= r[0] < a + 300) for a in offs]
+    assert min(tops) >= 8, tops                                             # (over the line the eye follows: 20 over the floor it left, the line 8 up half way)
+    assert not game.errors, game.errors
+
+
+# every frame, each creature near you: [ms, id, x, y, the level it is drawn at, its body over that (art px, as drawn)]
+MOBS = """() => { window.__mb = []; window.__mbOn = true; const f = () => { const now = performance.now();
+  for (const q of ents.values()) if (q.e && q.e.kind === 'chicken') { const z = HdLook.drawnAt(q), j = jumping(q, now); if (z !== null) __mb.push([now, q.e.id, q.x, q.y, z, j ? Math.round(j.body) : 0]); }
+  if (__mbOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+@pytest.mark.realtime
+def test_a_creature_hops_up_and_down_a_step_without_a_teleport(game):
+    """"JUMPING for player and mobs is bad and looks like a teleportation": the HD look put another body at the level
+    of the server (a level up as its step began) or of the tile it was nearest, its arc over that: up a step a hen went
+    a level up at once. Now a hen penned on two tiles, one a step up, goes up and down it on the line between them: its
+    drawn height never moves more than a few art px from a frame to the next."""
+    game.clear_area(8)
+    game.stamp(-2, 2, ["." * 4] * 3, levels=["9999", "9019", "9999"])
+    game.rpc("dev_creatures", clear=12, kind="chicken", dx=-1, dy=3)
+    game.js(MOBS)
+    game.wait("__mb.some((r) => r[4] > 0 && r[4] < 1) && __mb.some((r) => r[4] === 1) && __mb.some((r) => r[4] === 0)", 40000)   # (between the two, on each)
+    game.sleep(1500)
+    rec = game.js("(() => { __mbOn = false; return __mb; })()")
+    h = [(r[0], r[4] * 16 + r[5]) for r in rec]
+    assert max(v for _, v in h) - min(v for _, v in h) >= 16, h[:5]                    # (it went up the step)
+    for (t0, a), (t1, b) in zip(h, h[1:]):
+        assert abs(b - a) <= max(2, -(-4 * (t1 - t0) // 16.67)), ((t0, a), (t1, b))
+    assert not game.errors, game.errors
+
+
+LIT = """() => { window.__lt = []; window.__ltOn = true; const f = () => { const p = ents.get('agent' + myId), j = p && jumping(p, performance.now());
+  __lt.push([!!j, HdLook.youLit]); if (__ltOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+@pytest.mark.realtime
+def test_your_lantern_stays_lit_up_and_down_steps_at_night(game):
+    """"The player has a light around him, when going up and down this light disappears the time of the up/down
+    animation": between two levels the tile's top was over the drawn body, the lantern cut to a window there was none of."""
+    game.clear_area(8)
+    game.stamp(2, -2, ["." * 10] * 5, levels=["1234444444"] * 5)
+    game.hour(.9); game.rest()
+    game.js(LIT)
+    game.hold(["d"], 2000); game.hold(["a"], 2000)
+    rec = game.js("(() => { __ltOn = false; return __lt; })()")
+    assert any(j for j, _ in rec), "no step jumped"
+    assert all(l is not False for _, l in rec), [i for i, (_, l) in enumerate(rec) if l is False][:20]
+    assert not game.errors, game.errors

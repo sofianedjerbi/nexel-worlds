@@ -1,5 +1,5 @@
 // What a player holds is in their paw: the bar's selected slot (yours: `selected`; the others': the server's `held`, sent
-// by `hold` when your selection changes). A block as a tiny cube (cube_icons.js), anything else its icon made 8 px
+// by `hold` when your selection changes). A block as a tiny cube (cube_icons.js), a tool gripped (hold_art.js), anything else its icon made 8 px
 // (characters.js biteIcon: crisp, whole px). Drawn at the paw of the facing the body has, in front of it, behind it when
 // they face away. Not while a tool swings (the sheet's swing draws the tool), they eat (the food is at the mouth), sleep,
 // climb rungs or sail.
@@ -23,9 +23,13 @@ const Held = (() => {
     m.set(k, t); return t;
   }
   const lift = (sheet, sx, sy) => (sheet ? top(sheet, sx, sy) - top(sheet, 0, sy) : 0);
-  // (an aim's pose, aim_art.js: in the paw where the pose holds it, its middle there)
-  function draw(c, p, cellX, cellY, z, sheet, sx, sy) { const A = sy >= ANIM.aim * 48 && sy < (ANIM.aim + 4) * 48 && AimArt.PAW[Object.keys(AimArt.COL)[sx / 48]], t = A && A[DIR_ROW(p)];
-    const [ax, ay] = t ? [t[0] - 3, t[1] - 3] : at(p), dy = t ? 0 : lift(sheet, sx, sy); ctx.drawImage(c, cellX + ax * z, cellY + (ay + dy) * z, c.width * z, c.height * z); }
+  // (an aim's pose, aim_art.js: in the paw where the pose holds it, its middle there; a jump's: the paw's own row moved, jump_art.js.)
+  // A tool (hold_art.js) is held by its grip, the hand over it: `name` is what `c` is the picture of
+  function draw(c, p, cellX, cellY, z, sheet, sx, sy, name) { const aim = sy >= ANIM.aim * 48 && sy < (ANIM.aim + 4) * 48 && Object.keys(AimArt.COL)[sx / 48], A = aim && AimArt.PAW[aim], t = A && A[DIR_ROW(p)];
+    const [ax, ay] = t ? [t[0] - 3, t[1] - 3] : at(p), J = sy >= ANIM.jump * 48 && sy < (ANIM.jump + 4) * 48, dy = t ? 0 : J ? JumpArt.shift(DIR_ROW(p), sx / 48, ay + 3) : lift(sheet, sx, sy);
+    const tool = name && sheet && HoldArt.art(name, DIR_ROW(p), t ? aim : "rest", sheet, t);
+    if (tool) return ctx.drawImage(tool, cellX, cellY + dy * z, 48 * z, 48 * z);
+    ctx.drawImage(c, cellX + ax * z, cellY + (ay + dy) * z, c.width * z, c.height * z); }
   let sent;
   // yours, to the server when it changes (and again whenever the server has another: a new connection)
   function sync(s) { const want = selected || null; if (s && (s.held || null) !== want && sent !== want + "@" + (s.held || "")) { sent = want + "@" + (s.held || ""); rpc("hold", {item: want}); } }

@@ -141,7 +141,7 @@ class Movement:
             x, y = self.target(a, args, flat=True)
         else:
             x = y = None
-        self.emit("jump", a.x, a.y, name=a.name)
+        self.emit("jump", a.x, a.y, name=a.name, step=x is not None)   # (step: up onto a step, its own arc as it goes; not a hop where it stands first: client state.js)
         if x is None:
             return {"hopped": True}
         came = getattr(self, "passed", None) if getattr(self, "passing", None) is a else None

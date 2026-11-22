@@ -74,6 +74,7 @@ def walk_into_a_step_then_jump(game, x, y):
     assert not game.errors, game.errors
 
 
+ORDER = ["crouch", "takeoff", "rise", "apex", "fall", "touch", "land", "settle"]
 ARC = """() => { window.__arc = []; window.__arcOn = true; const f = () => { const p = ents.get('agent' + myId), j = p && jumpOf(p);
   if (j) __arc.push([+p.x.toFixed(3), +j.body.toFixed(2), j.squash, j.pose]); if (__arcOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
@@ -85,7 +86,7 @@ def test_the_jump_is_a_crouch_an_arc_over_the_step_and_a_landing(game):
     step_east(game)
     x, y = game.pos()
     game.js(ARC)
-    game.hold(["d"], 600)
+    game.hold(["d"], 800)
     rec = game.js("(() => { __arcOn = false; return __arc; })()")
     game.rest()
     assert game.server()["z"] == 1
@@ -97,9 +98,8 @@ def test_the_jump_is_a_crouch_an_arc_over_the_step_and_a_landing(game):
     assert all(b >= a for a, b in zip(air[:top], air[1:top + 1])) and all(b <= a for a, b in zip(air[top:], air[top + 1:])), air
     poses = [pose for px, _, _, pose in rec if x + 1 < px < x + 2]
     seen = [a for a, b in zip(poses, [None] + poses) if a != b]               # each pose once, in the order shown
-    order = ["crouch", "takeoff", "rise", "apex", "fall", "land", "settle"]
-    assert seen[0] == "crouch" and seen[-1] in ("land", "settle") and "takeoff" in seen and "apex" in seen, seen
-    assert [order.index(a) for a in seen] == sorted(order.index(a) for a in seen), seen      # (never back to a pose it has left)
+    assert seen[0] == "crouch" and seen[-1] in ("touch", "land", "settle") and "takeoff" in seen and "apex" in seen and "fall" in seen, seen
+    assert [ORDER.index(a) for a in seen] == sorted(ORDER.index(a) for a in seen), seen      # (never back to a pose it has left)
     assert not game.errors, game.errors
 
 
@@ -217,7 +217,7 @@ def test_the_camera_follows_the_ground_through_a_hop_and_a_step_jump(game):
     _, hop = camera_over(game, None, 400)
     assert len(hop) > 5 and len({round(r[6], 2) for r in hop}) == 1 and len({r[4] for r in hop}) == 1, hop[:3]   # (the land and the pitch stand still)
     step_east(game)
-    x, rec = camera_over(game, ["d"], 600)
+    x, rec = camera_over(game, ["d"], 800)
     assert game.server()["z"] == 1 and len(rec) > 10, game.server()
     assert all(abs(r[1] - r[2]) < .01 for r in rec), [r[:4] for r in rec if abs(r[1] - r[2]) >= .01]             # the eye's level: yours (no lag, no drift after)
     land = [r[6] for r in rec]
@@ -237,7 +237,7 @@ def test_a_step_jump_by_a_cliffs_foot_keeps_the_camera_and_the_window_steady(gam
     step_east(game)
     game.stamp(-6, 3, ["." * 16] * 3, levels=["3" * 16] * 3)
     game.stamp(-6, 1, ["." * 8] * 2, levels=["3" * 8] * 2)
-    x, rec = camera_over(game, ["d"], 600)
+    x, rec = camera_over(game, ["d"], 800)
     assert game.server()["z"] == 1 and len(rec) > 10, game.server()
     assert all(abs(r[1] - r[2]) < .01 for r in rec), [r[:4] for r in rec if abs(r[1] - r[2]) >= .01]
     for k in (4, 5):                                                                    # the pitch, the window
@@ -272,11 +272,11 @@ def test_the_land_moves_by_whole_art_px_never_back_and_your_feet_stay_put(game):
     px on a phone) at every step. Now: walking flat and hopping the land does not move up or down at all; up a step it goes
     whole art px, one way, a px a frame at the most (on a frame of 1/60 s); your feet keep their px."""
     _, flat = drawn_over(game, lambda: game.hold(["d"], 500))
-    _, hop = drawn_over(game, lambda: (game.press("Space", 0), game.sleep(350)))
+    _, hop = drawn_over(game, lambda: (game.press("Space", 0), game.sleep(600)))
     for r in (flat, hop):
         assert len(r) > 5 and max(v[2] for v in r) - min(v[2] for v in r) < .01 and len({v[3] for v in r}) == 1, r[:4]   # (zero, on flat ground and through a hop)
     step_east(game)
-    x, r = drawn_over(game, lambda: game.hold(["d"], 600))
+    x, r = drawn_over(game, lambda: game.hold(["d"], 800))
     assert game.server()["z"] == 1 and len(r) > 10, game.server()
     d = [(b[2] - a[2], max(1, round((b[0] - a[0]) * .06))) for a, b in zip(r, r[1:])]
     moves = [v for v, _ in d if abs(v) > .01]
@@ -286,3 +286,4 @@ def test_the_land_moves_by_whole_art_px_never_back_and_your_feet_stay_put(game):
     feet = [v[3] for v in r]
     assert max(feet) - min(feet) <= 1, feet
     assert not game.errors, game.errors
+
