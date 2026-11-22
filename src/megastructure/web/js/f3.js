@@ -21,10 +21,11 @@ const F3 = (() => {
     on = !!v; localStorage.setItem("megastructure-f3", on ? "1" : "0");
     for (const k of ["perf", "coords"]) localStorage.removeItem("megastructure-" + k);   // (the two old switches: one now)
     if (!on) GpuTime.stop();
-    document.body.classList.toggle("f3", on); if (el) el.style.display = on ? "" : "none"; S.gaps = []; S.js = []; S.last = S.at = 0; painted = 0;
+    const playing = typeof me !== "undefined" && !!me; document.body.classList.toggle("f3", on && playing); if (el) el.style.display = on && playing ? "" : "none"; S.gaps = []; S.js = []; S.last = S.at = 0; painted = 0;
   }
   function sample(now, ms, land = 0) {
     if (!on) return;
+    if (typeof me === "undefined" || !me) { if (el && el.style.display !== "none") { el.style.display = "none"; document.body.classList.remove("f3"); } return; }   // (the home screen: no debug screen over it, only in the game: "why does the F3 menu appear in the homescreen?")
     if (now === S.now) { S.js[S.js.length - 1] = Math.max(S.js[S.js.length - 1], ms); }      // (the classic frame inside the HD look's: one frame)
     else { if (S.last) S.gaps.push(now - S.last); S.last = S.now = now; S.js.push(ms); S.land += land; S.n++; }
     GpuTime.frame(now);                                                    // (the GPU's clock: one query a frame, gpu_time.js)

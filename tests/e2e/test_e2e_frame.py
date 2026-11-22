@@ -39,7 +39,9 @@ def test_what_is_kept_from_frame_to_frame_is_what_would_be_worked_out_now(game):
 def test_standing_still_makes_little_memory(game):
     """With trees behind a hill in view the page made a megabyte of memory a frame for the collector to take back
     (60 MB a second: an array and a pair made for every tile asked about, the same edges and hints worked out again
-    for each tree, each frame); standing in the live world as a phone, 12 to 23 MB a second. A ninth of that here."""
+    for each tree, each frame); standing in the live world as a phone, 12 to 23 MB a second. A ninth of that here.
+    (With the HD look it was 340 to 440 KB a frame again: a new vertex buffer and small arrays for each sprite, the
+    selection box's px, the marks' recorded calls, all made again each frame. Kept and written over now: 120-130 KB.)"""
     cdp = game.page.context.new_cdp_session(game.page)
     game.stamp(-6, -8, ["T" * 13, "T" * 13] + ["." * 13] * 3, levels=["0" * 13] * 2 + ["3" * 13] * 3)   # trees behind a hill: cut at its edge, each frame
     game.wait(DRAWN, 8000); game.sleep(1200)
@@ -58,4 +60,4 @@ def test_standing_still_makes_little_memory(game):
     top = sorted(by.items(), key=lambda kv: -kv[1])[:6]
     print("memory made a frame: %.0f KB over %d frames" % (a_frame / 1000, frames), top)
     game.clear_area(14)
-    assert frames > 30 and a_frame < 300_000, (round(a_frame), frames, top)
+    assert frames > 30 and a_frame < 200_000, (round(a_frame), frames, top)

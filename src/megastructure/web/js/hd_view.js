@@ -13,14 +13,23 @@ const HdView = (() => {
   const Z = () => zoom * DPR, PAINT = new Set(["fillRect", "clearRect", "strokeRect", "fillText", "strokeText", "drawImage", "fill", "stroke", "putImageData"]), ids = new WeakMap(), strs = new Map(); let nid = 0;
   const sink = () => one || (one = document.createElement("canvas").getContext("2d"));   // (a canvas of one px: what the classic frame still paints goes there)
   // a 2D context that notes what is asked of it: a number for all of it (hash), and the calls themselves. dry: nothing is painted (what sets a state is passed on: a text is measured as it will be drawn); play() paints them
+  const call = (t, k, n, a, b, c, d, e, f, g, h, i) => { const m = t[k];   // (t's method k with its first n args: no array made)
+    switch (n) { case 0: return m.call(t); case 1: return m.call(t, a); case 2: return m.call(t, a, b); case 3: return m.call(t, a, b, c); case 4: return m.call(t, a, b, c, d); case 5: return m.call(t, a, b, c, d, e);
+      case 6: return m.call(t, a, b, c, d, e, f); case 7: return m.call(t, a, b, c, d, e, f, g); case 8: return m.call(t, a, b, c, d, e, f, g, h); default: return m.call(t, a, b, c, d, e, f, g, h, i); } };
   function recorder(real, dry) {
-    const ops = [], fns = {}; let h = 0;
+    const ops = [], fns = {}; let h = 0, on = 0;   // (ops: one flat list, kept and written over (on: how much of it is this frame's): a call [its args + 1, name, args...], a set [0, name, value]. It was an array of args a call, and a name made a set, each frame: 4 MB in 3 s)
     const mix = (v) => { h = Math.imul(h ^ v, 16777619) | 0; }, str = (s) => { let n = strs.get(s); if (n === undefined) { if (strs.size > 4000) strs.clear(); n = 0; for (let i = 0; i < s.length; i++) n = Math.imul(n ^ s.charCodeAt(i), 16777619) | 0; strs.set(s, n); } mix(n); };   // (a string's own number, kept: a colour, a font, a call's name were hashed a char at a time, each of them each frame)
     const val = (a) => { if (typeof a === "number") mix((a * 64) | 0); else if (typeof a === "string") str(a); else if (a && typeof a === "object") { let id = ids.get(a); if (!id) ids.set(a, id = ++nid); mix(id); mix(a._v || a.naturalWidth || a.width || 0); } else mix(a ? 1 : 2); };
     const proxy = new Proxy(real, {
-      get(t, k) { const v = t[k]; if (typeof v !== "function") return v; return fns[k] || (fns[k] = (...a) => { str(k); for (const x of a) val(x); if (dry) ops.push(k, a); if (!dry || !PAINT.has(k)) return t[k].apply(t, a); }); },
-      set(t, k, v) { str(k); val(v); if (dry) ops.push("=" + k, v); if (k !== "font" || t[k] !== v) t[k] = v; return true; }});   // (a font set again to itself was parsed again: each name and bubble, each frame)
-    return {proxy, reset() { ops.length = 0; h = 0; }, get hash() { return h; }, get ops() { return ops; }, play() { for (let i = 0; i < ops.length; i += 2) { const k = ops[i]; if (k[0] === "=") real[k.slice(1)] = ops[i + 1]; else real[k].apply(real, ops[i + 1]); } }};
+      get(t, k) { const v = t[k]; if (typeof v !== "function") return v; const paints = PAINT.has(k);
+        return fns[k] || (fns[k] = function (a0, a1, a2, a3, a4, a5, a6, a7, a8) { const n = Math.min(9, arguments.length); str(k);   // (a canvas call takes 9 at the most: drawImage)
+          if (n > 0) val(a0); if (n > 1) val(a1); if (n > 2) val(a2); if (n > 3) val(a3); if (n > 4) val(a4); if (n > 5) val(a5); if (n > 6) val(a6); if (n > 7) val(a7); if (n > 8) val(a8);
+          if (dry) { ops[on++] = n + 1; ops[on++] = k; if (n > 0) ops[on++] = a0; if (n > 1) ops[on++] = a1; if (n > 2) ops[on++] = a2; if (n > 3) ops[on++] = a3; if (n > 4) ops[on++] = a4; if (n > 5) ops[on++] = a5; if (n > 6) ops[on++] = a6; if (n > 7) ops[on++] = a7; if (n > 8) ops[on++] = a8; }
+          if (!dry || !paints) return call(t, k, n, a0, a1, a2, a3, a4, a5, a6, a7, a8); }); },
+      set(t, k, v) { str(k); val(v); if (dry) { ops[on++] = 0; ops[on++] = k; ops[on++] = v; } if (k !== "font" || t[k] !== v) t[k] = v; return true; }});   // (a font set again to itself was parsed again: each name and bubble, each frame)
+    return {proxy, reset() { ops.fill(undefined, 0, on); on = 0; h = 0; }, get hash() { return h; },
+      get ops() { const l = []; for (let i = 0; i < on;) { const n = ops[i++], k = ops[i++]; if (!n) l.push("=" + k, ops[i++]); else { l.push(k, ops.slice(i, i + n - 1)); i += n - 1; } } return l; },   // (as it was: name, args; "=name", value: dump)
+      play() { for (let i = 0; i < on;) { const n = ops[i++], k = ops[i++]; if (!n) real[k] = ops[i++]; else { call(real, k, n - 1, ops[i], ops[i + 1], ops[i + 2], ops[i + 3], ops[i + 4], ops[i + 5], ops[i + 6], ops[i + 7], ops[i + 8]); i += n - 1; } } }};
   }
   // what is written over the picture, on the game's canvas: fn paints it with `ctx`. It is asked each frame, painted only when it is not what is there (and four times a second whatever)
   let rec = null;

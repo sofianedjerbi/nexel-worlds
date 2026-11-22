@@ -22,8 +22,8 @@ function tile(x, y) {
   const i = (y - b.by * B) * B + (x - b.bx * B);
   return [b.comb[i], b.gnd[i]];
 }
-const combAt = (x, y) => { const t = tile(x, y); return t ? t[0] : null; };
-const gndAt = (x, y) => { const t = tile(x, y); return t ? t[1] : null; };
+const combAt = (x, y) => { const b = blockOf(x, y); return b ? b.comb[(y - b.by * B) * B + (x - b.bx * B)] : null; };   // (no pair made: asked thousands of times a frame)
+const gndAt = (x, y) => { const b = blockOf(x, y); return b ? b.gnd[(y - b.by * B) * B + (x - b.bx * B)] : null; };
 const dirtyTiles = [];                 // tiles to redraw (x, y), processed within a per-frame budget
 function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }
 // picked plants: full -> bare (fruit flies to the picker); bare -> full when it grows back

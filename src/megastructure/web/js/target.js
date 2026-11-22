@@ -103,33 +103,38 @@ const Target = (() => {
         for (let k = 0; k < q.length; k++) { const A = q[k], B = q[(k + 1) % q.length]; if ((A[1] <= yc) === (B[1] <= yc)) continue; const xi = A[0] + (B[0] - A[0]) * (yc - A[1]) / (B[1] - A[1]); l = Math.min(l, xi); r = Math.max(r, xi); }
         for (let i = Math.ceil(l / u - .5); (i + .5) * u < r; i++) { const o = (j - j0) * n + i - i0; if (o >= 0 && o < n * m) { out.f[o] = v; out.hid[o] = hd; } } } };
     // (behind land: looked at on a 4 x 4 grid of each face, its middles: what of it is behind the land in front is that land's)
-    const lerp = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t), on = (w, s, t) => lerp(lerp(w[0], w[1], s), lerp(w[3], w[2], s), t);
-    for (const [v, w] of fs) for (let a = 0; a < S; a++) for (let b = 0; b < S; b++) {
-      const sq = [[a, b], [a + 1, b], [a + 1, b + 1], [a, b + 1]].map(([s, t]) => P.at(...on(w, s / S, t / S))); if (sq.some((p) => !p)) continue;
-      fill(sq, v, inside || (P.behind && P.behind(...on(w, (a + .5) / S, (b + .5) / S))) ? 1 : 0);
-    }
+    // (the grid's corners put through the camera once each, (S + 1)^2 of them: it was four a square, each a few small arrays, every frame the eye moved)
+    const on = (w, s, t, k) => { const l1 = w[0][k] + (w[1][k] - w[0][k]) * s, l2 = w[3][k] + (w[2][k] - w[3][k]) * s; return l1 + (l2 - l1) * t; };
+    for (const [v, w] of fs) { const G = [];
+      for (let t = 0; t <= S; t++) for (let s = 0; s <= S; s++) G.push(P.at(on(w, s / S, t / S, 0), on(w, s / S, t / S, 1), on(w, s / S, t / S, 2)));
+      for (let a = 0; a < S; a++) for (let b = 0; b < S; b++) {
+        const sq = [G[b * (S + 1) + a], G[b * (S + 1) + a + 1], G[(b + 1) * (S + 1) + a + 1], G[(b + 1) * (S + 1) + a]]; if (!sq[0] || !sq[1] || !sq[2] || !sq[3]) continue;
+        fill(sq, v, inside || (P.behind && P.behind(on(w, (a + .5) / S, (b + .5) / S, 0), on(w, (a + .5) / S, (b + .5) / S, 1), on(w, (a + .5) / S, (b + .5) / S, 2))) ? 1 : 0);
+      } }
     return out;
   }
   // its outline (the owner: "can you improve the selection hint?": the hatch over an ink wash hid the block, and a row of ink lay under it, on the grass):
   // the px of its silhouette (a px of it beside one that is not) and the seam (the top's last row over its front or side) in colour, a line of ink
   // inside them, its faces its own paint with the colour faintly over them. Behind land: one px in two of the line, or none (drop: its top shows)
   function outline(P, M, col, tint, drop) {
-    const {i0, j0, n, m, f, hid} = M, g = P.g, u = P.u, F = (i, j) => (i < 0 || j < 0 || i >= n || j >= m ? 0 : f[j * n + i]), line = [], ink = [], face = [], seen = [];
-    if (drop && hid.every((v, o) => v || !f[o])) drop = false;   // (all of it behind land: one px in two of it, not nothing)
-    const edge = (i, j) => { const v = F(i, j); return !!v && (!F(i - 1, j) || !F(i + 1, j) || !F(i, j - 1) || !F(i, j + 1) || (v === 1 && F(i, j + 1) === 2)); };
-    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const o = j * n + i; if (!f[o]) continue; const X = (i0 + i) * u, Y = (j0 + j) * u, h = hid[o];
-      if (edge(i, j)) { if (!h) line.push(X, Y); else if (!drop && !((i + j) & 1)) seen.push(X, Y); }
-      else if (!h) (edge(i - 1, j) || edge(i + 1, j) || edge(i, j - 1) || edge(i, j + 1) ? ink : face).push(X, Y);
-    }
-    const put = (l, cl, al) => { g.globalAlpha = al; g.fillStyle = cl; for (let k = 0; k < l.length; k += 2) g.fillRect(l[k], l[k + 1], u, u); };
+    const g = P.g, u = P.u; let L = M.ol;   // (its px lists, kept on M (kept itself while nothing it is made from changes, `kept`): they were worked out again each frame)
+    if (!L || L.drop !== drop || L.u !== u) { const {i0, j0, n, m, f, hid} = M, F = (i, j) => (i < 0 || j < 0 || i >= n || j >= m ? 0 : f[j * n + i]), line = [], ink = [], face = [], seen = [], d0 = drop;
+      if (drop && hid.every((v, o) => v || !f[o])) drop = false;   // (all of it behind land: one px in two of it, not nothing)
+      const edge = (i, j) => { const v = F(i, j); return !!v && (!F(i - 1, j) || !F(i + 1, j) || !F(i, j - 1) || !F(i, j + 1) || (v === 1 && F(i, j + 1) === 2)); };
+      for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const o = j * n + i; if (!f[o]) continue; const X = (i0 + i) * u, Y = (j0 + j) * u, h = hid[o];
+        if (edge(i, j)) { if (!h) line.push(X, Y); else if (!drop && !((i + j) & 1)) seen.push(X, Y); }
+        else if (!h) (edge(i - 1, j) || edge(i + 1, j) || edge(i, j - 1) || edge(i, j + 1) ? ink : face).push(X, Y);
+      }
+      L = M.ol = {drop: d0, u, line, ink, face, seen}; }
+    const {line, ink, face, seen} = L, put = (l, cl, al) => { g.globalAlpha = al; g.fillStyle = cl; for (let k = 0; k < l.length; k += 2) g.fillRect(l[k], l[k + 1], u, u); };
     put(face, col, tint); put(ink, col, tint); put(ink, INK, .45); put(line, col, 1); put(seen, col, .6); g.globalAlpha = 1;
     return {line: line.length / 2, seen: seen.length / 2};
   }
   // One cell, as the box it is. -> what was drawn of it (tests)
-  function box(P, c) {
+  function box(P, c, K) {
     const {x, y, z} = c, h = c.h || 1, z0 = z - h, col = c.ok === false ? RED : c.kind === "break" ? TAKE : CREAM;
     const full = (dx, dy, dz) => { for (let k = dz > 0 ? z + 1 : dz < 0 ? z0 : z0 + 1; k <= (dz > 0 ? z + 1 : dz < 0 ? z0 : z); k++) if (!solidAt(x + dx, y + dy, k)) return false; return true; };
-    const M = pxOf(P, c, full); if (!M) return {x, y, z, kind: c.kind, held: "", seen: {}};
+    const M = K ? (K.M === undefined ? (K.M = pxOf(P, c, full)) : K.M) : pxOf(P, c, full); if (!M) return {x, y, z, kind: c.kind, held: "", seen: {}};   // (K: what is kept of this cell, `kept`)
     const o = outline(P, M, col, c.ok === false ? .16 : c.kind === "break" ? .14 : c.flat ? .18 : .08, c.kind === "break" && !!M.seen.T);
     // nothing under it: a dotted line from its foot down to the ground there, and its foot's place on that ground
     if (!c.flat && !full(0, 0, -1)) { const g0 = settleAt(x, y, z0); if (g0 < z0) { line(P, [x + .5, y + .5, z0], [x + .5, y + .5, g0], col, true, c); face(P, [[0, 0], [1, 0], [1, 1], [0, 1]].map(([i, j]) => [x + i, y + j, g0]), INK, .5, CHECK); } }   // (its foot's place: a shadow of the cell, one px in two)
@@ -144,6 +149,16 @@ const Target = (() => {
     g.restore();
     if (E) DOWN.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== ".") { g.fillStyle = ch === "#" ? INK : TAKE; g.fillRect(R(P, E[0]) + (west ? i - 9 : i + 2) * u, R(P, E[1]) + (j - 5) * u, u, u); } }));
   }
+  // a cell's box on the screen (its eight corners'), or null
+  const boxRect = (Q, c) => { const q = [0, 1].flatMap((i) => [0, 1].flatMap((j) => [0, 1].map((k) => Q.at(c.x + i, c.y + j, c.z - k)))).filter((v) => v), xs = q.map((v) => v[0]), ys = q.map((v) => v[1]);
+    return q.length ? {x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys)} : null; };
+  // WHAT IS KEPT OF A CELL's box from frame to frame (its px, its outline's px, its place and box on the screen), while nothing it is made from changes: where the land is drawn (view: HdLook.art, the
+  // camera's numbers), the land and what is built (landVer, Floors.ver), behind-land on or off, the cell itself. It was all worked out again each frame: 5 MB in 3 s standing still for the collector
+  const keep = new Map();
+  function kept(view, behind, c) {
+    const k = view + "|" + landVer + "|" + Floors.ver + "|" + (behind ? 1 : 0) + "|" + c.kind + "|" + c.x + "," + c.y + "," + c.z + "," + (c.h || 1) + (c.flat ? "f" : "") + (c.ok === false ? "n" : "");
+    let K = keep.get(k); if (!K) { if (keep.size > 24) keep.clear(); keep.set(k, K = {}); } return K;
+  }
   // a rect (the canvas's units) lies on a box drawn, or on the way's block (your own name is not written there: characters.js)
   api.over = (x, y, w, h) => [...api.drew.map((d) => d.r), typeof WayShow !== "undefined" && WayShow.block].some((r) => r && x < r.x + r.w && r.x < x + w && y < r.y + r.h && r.y < y + h);
   // once a frame, in the marks pass: g, what a painter of marks needs (HdLook.art()), opts: {thing: what is aimed at stands (its own brackets), shown(x, y): a tile's level as the picture has it}
@@ -155,14 +170,13 @@ const Target = (() => {
     const inB = (r) => (B && r ? Math.max(0, Math.min(r.x + r.w, B.x + B.w) - Math.max(r.x, B.x)) * Math.max(0, Math.min(r.y + r.h, B.y + B.h) - Math.max(r.y, B.y)) / Math.max(1e-6, Math.min(r.w * r.h, B.w * B.h)) : 0);
     g.save(); if (B) { g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); g.rect(B.x, B.y, B.w, B.h); g.clip("evenodd"); }
     for (const c of cells().sort((a, b) => a.y - b.y || (a.kind === "break") - (b.kind === "break") || a.z - b.z)) {
-      const W = art.wall && art.wall(c.x, c.y, c.z), Q = W ? {...P, at: W, behind: null} : P, px = Q.at(c.x, c.y, c.z);   // (a cell in the wall between the eye and you: drawn as its face folded into the opening, seen: hd_level.js wallAt)
-      const q = [0, 1].flatMap((i) => [0, 1].flatMap((j) => [0, 1].map((k) => Q.at(c.x + i, c.y + j, c.z - k)))).filter((v) => v), xs = q.map((v) => v[0]), ys = q.map((v) => v[1]);
-      const r = q.length ? {x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys)} : null;
+      const W = art.wall && art.wall(c.x, c.y, c.z), Q = W ? {...P, at: W, behind: null} : P, K = W || !art.view ? null : kept(art.view, !!P.behind, c), px = K ? K.px || (K.px = Q.at(c.x, c.y, c.z)) : Q.at(c.x, c.y, c.z);   // (a cell in the wall between the eye and you: drawn as its face folded into the opening, seen: hd_level.js wallAt)
+      const r = K ? (K.r === undefined ? (K.r = boxRect(Q, c)) : K.r) : boxRect(Q, c);
       if (c.mine) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, mine: true, px, u: P.u}); continue; }
       if (c.way) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, way: true, px, u: P.u}); continue; }   // (wayshow.js draws that block)
       if (!Build.on && inB(r) > .4) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, under: true, px, u: P.u}); continue; }
       if (c.kind === "place" && c.item && !c.drawn) BuildGhost.block(g, Q.at, Q.u, c.x, c.y, c.z, c.item, .6, c.ok === false, Q.behind);
-      api.drew.push({...box(Q, c), key: c.key, px, u: P.u, r});
+      api.drew.push({...box(Q, c, K), key: c.key, px, u: P.u, r});
     }
     g.restore();
   };
