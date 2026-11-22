@@ -31,7 +31,7 @@ const Build = (() => {
   const S = {on: false, at: null, plane: null, deep: null, plans: new Map(), hold: null, working: false, dir: null, timer: 0, pan: {x: 0, y: 0}};
   const now = () => performance.now(), UPMOST = 9, DEEPEST = 12, LOWEST = LOW;   // (how far over your own height the cursor goes: three floors; under it, layers; the deepest ground there is: the top of the bottom cell, sim/underground.py)
   // The cursor's height: the plane it was lifted to, or the ground at its tile nearest your own height
-  const ride = (p) => { const s = myPos(); return settleNear(p.x, p.y, s ? myZ(s.x, s.y) : topAt(p.x, p.y)); };
+  const ride = (p) => { if (p.z !== undefined && solidAt(p.x, p.y, p.z)) return p.z; const s = myPos(); return settleNear(p.x, p.y, s ? myZ(s.x, s.y) : topAt(p.x, p.y)); };   // (p.z: the block the pointer is on, mouse.js rayHit: a side of a cliff, a ledge under an overhang)
   const under = (p, t) => (solidAt(p.x, p.y, t) ? t : settleAt(p.x, p.y, t));      // (sunk to t: in the ground there, or on what is under it)
   const level = (p = S.at) => (S.plane !== null ? S.plane : !p ? 0 : S.deep !== null ? under(p, S.deep) : ride(p));
   const buried = (p, L) => landSolid(p.x, p.y, L) && landSolid(p.x, p.y, L + 1);  // (a block in the ground, land over it: X digs it, the one whose top is at L. Not the air under a room's roof: X said "plan the step before it first" there)
@@ -241,7 +241,7 @@ const Build = (() => {
   }
   addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if (k === S.hold) S.hold = null; if (KEYDIR[k] === S.dir) held(null); });
   addEventListener("blur", () => { S.hold = null; held(null); });
-  function point(p) { if (S.on && tile(p.x, p.y)) S.at = {x: p.x, y: p.y}; }      // (the mouse: the cursor is where it points, at the cursor's height: mouse.js)
+  function point(p) { if (S.on && tile(p.x, p.y)) { S.at = {x: p.x, y: p.y}; if (p.z !== undefined && p.z !== ride(S.at)) S.at.z = p.z; } }      // (the mouse: the cursor is where it points, the block under it (z, when not the ground nearest you there: it follows the land as it is dug and built), or at the cursor's height: mouse.js)
   function click(p, alt) { point(p); S.row = undefined; if (alt) take(S.at); else plan(S.at); }
 
   // Once a frame (render.js): a plan that could not be done is shown red a while, then goes; out of the mode when you are gone.
