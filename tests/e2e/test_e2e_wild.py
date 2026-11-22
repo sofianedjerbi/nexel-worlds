@@ -150,7 +150,7 @@ def test_a_blow_is_said_in_hearts_whoever_takes_it(game):
     game.sleep(400)
     game.hold_item(None)
     game.face(1, 0)
-    game.press("e", 500)
+    game.press("x", 500)
     hp = game.js(f"[...ents.values()].find((p) => p.e && p.e.id === {cow}).e.hp")
     last = game.js("floats.filter((f) => f.heart).map((f) => f.text).pop()")
     assert hp == 5 and last == "-0.5", (hp, last)             # six half hearts, one gone

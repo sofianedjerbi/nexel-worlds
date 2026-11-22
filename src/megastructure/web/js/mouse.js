@@ -11,8 +11,33 @@ function aimLift(x, y) {
   if (Build.on && (Build.S.plane !== null || Build.S.deep !== null)) return shOf(Build.S.plane !== null ? Build.S.plane : Build.S.deep) * zoom;
   return FLOORS && myAt && Floors.any(x, y) ? shOf(settleNear(x, y, myAt.z)) * zoom : liftAt(x, y);
 }
+// THE BLOCK UNDER THE POINTER (build mode, the cursor riding the land): the pointer's ray through the cubes as the HD camera draws them, the first solid cell it meets -> {x, y, z: its top, face: "T" its top, "S", "W", "E", "N"}, or null.
+// The ray: the place on the screen's px at each height (HdLook.screenOf solved for x, y at that height), from over the highest land in view down, a straight piece every half level, cell by cell along it
+// (Amanatides-Woo). (It was each tile's top at the cursor's riding height, nearest row first, no side faces: on terraces the pointer on a block's side picked a block two tiles off, or nothing)
+let rayHi = null;
+function rayHit(mx, my) {
+  const s = myPos(); if (!s || !HdLook.on || !HdLook.screenOf(s.x, s.y, 0)) return null;
+  const S = HdLook.screenOf, z0 = myZ(s.x, s.y), win = (x, y) => (HdLook.win && HdLook.win.n && HdLook.win.a > 0 ? HdLook.winAt(x, y) : null);
+  if (!rayHi || rayHi.x !== s.x || rayHi.y !== s.y || performance.now() - rayHi.t > 500) { let hi = z0, lo = z0; for (let y = s.y - 40; y <= s.y + 24; y++) for (let x = s.x - 24; x <= s.x + 24; x++) { const t = topAt(x, y); hi = Math.max(hi, t); lo = Math.min(lo, t); } rayHi = {x: s.x, y: s.y, t: performance.now(), hi, lo}; }
+  const on = (z, g) => { let [x, y] = g; for (let i = 0; i < 12; i++) { const a = S(x, y, z), b = S(x + .01, y, z), c = S(x, y + .01, z); if (!a || !b || !c) return null; const ex = a[0] - mx, ey = a[1] - my; if (Math.abs(ex) + Math.abs(ey) < .02) return [x, y, z];
+    const j11 = (b[0] - a[0]) / .01, j21 = (b[1] - a[1]) / .01, j12 = (c[0] - a[0]) / .01, j22 = (c[1] - a[1]) / .01, d = j11 * j22 - j12 * j21; if (!d) return null; x -= (j22 * ex - j12 * ey) / d; y -= (j11 * ey - j21 * ex) / d; } return null; };
+  const solid = (x, y, top) => solidAt(x, y, top) && !((w) => w && top > w[1])(win(x, y));   // (a cell whose top is `top`; over the x-ray window's ceiling the land is not drawn: not pointed at)
+  const FACE = [["W", "E"], ["N", "S"], ["T", "T"]];
+  let g = [s.x + .5, s.y + .5], A = null;
+  for (let z = rayHi.hi + 1; z >= Math.max(rayHi.lo - 2, z0 - 64); z -= .5) {
+    const B = on(z, g); if (!B) { A = null; continue; } g = [B[0], B[1]];
+    if (A) {   // the cells this piece of the ray goes through, in order
+      const d = [0, 1, 2].map((i) => B[i] - A[i]), c = A.map(Math.floor), st = d.map(Math.sign), tD = d.map((v) => (v ? 1 / Math.abs(v) : Infinity)), tM = [0, 1, 2].map((i) => (d[i] ? (st[i] > 0 ? c[i] + 1 - A[i] : A[i] - c[i]) * tD[i] : Infinity));
+      for (let n = 0; n < 64; n++) { const i = tM[0] <= tM[1] && tM[0] <= tM[2] ? 0 : tM[1] <= tM[2] ? 1 : 2; if (tM[i] > 1) break; c[i] += st[i]; tM[i] += tD[i];
+        if (solid(c[0], c[1], c[2] + 1)) return {x: c[0], y: c[1], z: c[2] + 1, face: FACE[i][st[i] > 0 ? 0 : 1]}; }
+    } else if (solid(Math.floor(B[0]), Math.floor(B[1]), Math.floor(B[2]) + 1)) return null;   // (the ray begins inside land: no answer here)
+    A = B;
+  }
+  return null;
+}
 function tileAtScreen(mx, my) {                        // -> {x, y, fy: how far down the tile, 0 to 1}
-  if (HdLook.on) { const q = HdLook.pick(mx, my, Build.on ? (x, y) => Build.level({x, y}) : null); if (q) return q; }   // (the HD camera: the top or the front under the pointer, hd.js; build mode: at the cursor's height)
+  if (HdLook.on && Build.on && Build.S.plane === null && Build.S.deep === null) { const h = rayHit(mx, my); if (h) return {x: h.x, y: h.y, fy: .5, z: h.z, face: h.face !== "T", side: h.face}; }   // (build mode: the block under the pointer, its top or a side)
+  if (HdLook.on) { const q = HdLook.pick(mx, my, Build.on ? (x, y) => Build.level({x, y}) : null); if (q) return q; }   // (the HD camera: the top or the front under the pointer, hd.js; build mode lifted or sunk by E, Q: at the cursor's height)
   const S = TS(), [ox, oy] = screenOrigin(S), x = Math.floor((mx - ox) / S), at = (y, up) => Curve.y(oy + y * S, up), row = (f) => Math.floor((f - oy) / S);
   // The column's tiles from the nearest that could be drawn there to the furthest (a level is drawn higher or lower:
   // relief.js; a row far north nearer the horizon: curve.js): the first whose top is under the pointer, or whose
@@ -49,7 +74,13 @@ cv.addEventListener("mousemove", (e) => {
   if (!t) { tip.style.display = "none"; return; }
   let text;
   if (me && Build.on) Build.point(p);
-  if (me) { const it = Build.on ? Build.hint(p) : intent(aimAt(p, e.shiftKey), e.shiftKey); text = it ? it.text : ""; tip.className = it && it.ok === false ? "bad" : ""; cv.classList.toggle("act", !!(it && !it.walk && !it.info && it.ok !== false)); }
+  if (me && Build.on) { const it = Build.hint(p); text = it ? it.text : ""; tip.className = it && it.ok === false ? "bad" : ""; cv.classList.toggle("act", !!(it && !it.walk && !it.info && it.ok !== false)); }
+  else if (me) {      // a left click breaks (X's verb), a right click uses (E's): each line its button's (intent.js clickIntent)
+    const L = clickIntent(p, "break").it, R = clickIntent(p, "use").it, does = (it) => !!it && !it.walk && !it.info, said = (it) => does(it) || (!!it && it.ok === false);
+    const r = said(R) && (!L || R.text !== L.text) ? R : null;
+    text = [said(L) ? L.text : "", r ? `Right click: ${r.text}` : ""].filter(Boolean).join("\n");
+    const top = said(L) ? L : r; tip.className = top && top.ok === false ? "bad" : ""; cv.classList.toggle("act", does(L) || does(R));
+  }
   else {
     const here = entityAt(p);
     text = here ? (here.e.name || here.e.kind) : GROUND.has(t[0]) ? label(CH[t[1]]) : label(CH[t[0]]);
@@ -60,5 +91,5 @@ cv.addEventListener("mousemove", (e) => {
 });
 cv.addEventListener("mouseleave", () => { mouse.in = false; $("hover").style.display = "none"; });
 cv.addEventListener("mousedown", (e) => { if (e.button === 0) drag = {x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false}; });
-cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.moved && me) { const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, e.shiftKey); else clickTile(q, e.shiftKey); } drag = null; });
-cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (!me) return; const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, true); else clickTile(q, false); });
+cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.moved && me) { const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, e.shiftKey); else clickTile(q, "break"); } drag = null; });      // (the left button: X's verb; open ground: walk there)
+cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (!me) return; const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, true); else clickTile(q, "use"); });      // (the right one: E's)

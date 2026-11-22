@@ -23,7 +23,7 @@ def test_eating_takes_three_bites_and_stops_when_full(game):
 
 @pytest.mark.realtime
 def test_eating_your_hands_are_full(game):
-    """While you eat you can walk, nothing else: E on a tree beside you (the hands emptied: E with bread in hand eats) asks for nothing and shows no swing, F
+    """While you eat you can walk, nothing else: X on a tree beside you asks for nothing and shows no swing, F
     picks nothing up, and the tree stands; once it is eaten the same keys work. (A player chopped and punched with
     the food at his mouth, and the meal stopped for it.)"""
     game.clear_area(6)
@@ -38,7 +38,7 @@ def test_eating_your_hands_are_full(game):
     game.press("e", 0)
     game.wait("myAside && myAside.tool === 'eat'")
     game.js("selectItem(null)")
-    game.press("e", 150)
+    game.press("x", 150)
     game.press("f", 150)
     assert game.js("eating()") and game.js("__asked") == ["eat"]                     # nothing asked for but the meal
     assert game.js("!ents.get('agent' + myId).swing && !myAction")                   # no punch shown
@@ -48,7 +48,7 @@ def test_eating_your_hands_are_full(game):
     assert game.server()["hunger"] == 8 + 10                                        # ...and the meal was not stopped for any of it
     game.press("f", 400)
     assert game.inv("stone") == 1                                                    # eaten: the hands are free
-    game.press("e", 200)
+    game.press("x", 200)
     assert game.js("__asked") == ["eat", "dig", "pick_up", "dig"] and not game.errors   # (the first dig: the one asked past the page)
 
 
@@ -97,7 +97,7 @@ def test_hit_a_chicken_while_walking_and_it_runs(game):
     x0, y0 = game.pos()
     game.page.keyboard.down("d")
     game.sleep(150)
-    game.press("e", 0)                                       # E on the hen: a punch, and no stopping
+    game.press("x", 0)                                       # X on the hen: a punch, and no stopping
     game.sleep(250)
     still_walking = game.js("walking !== null")
     game.page.keyboard.up("d")
@@ -120,7 +120,7 @@ def test_killing_leaves_a_poof_and_drops(game):
     hen = game.spawn("chicken", 1, 0, still=10 ** 6)
     game.sleep(400)
     game.face(1, 0)
-    game.press("e", 300)
+    game.press("x", 300)
     game.sleep(200)
     assert game.js(f"!ents.has('chicken{hen}')") and game.js("puffs.length + dying.length > 0")
     game.sleep(800)
@@ -171,7 +171,7 @@ def test_mining_ore_sends_orbs_and_fills_the_bar(game):
     game.stamp(1, 0, ["*"])
     game.hold_item("pickaxe")
     game.face(1, 0)
-    game.press("e", 0)
+    game.press("x", 0)
     game.wait("orbs.length > 0", 6000)                        # orbs burst out of the rock...
     game.wait("orbs.length === 0", 6000)                      # ...and fly into you
     game.sleep(800)
@@ -231,7 +231,7 @@ def test_who_stands_far_over_you_is_not_on_your_tile(game):
     game.spawn("chicken", 1, 0, still=600)
     game.wait(f"[...ents.values()].some((o) => o.e && o.e.kind === 'chicken' && o.tx === {x + 1} && o.ty === {y} && o.e.z === 9)", 8000)
     game.face(1, 0)
-    assert game.js(f"[!!entityAt({{x: {x + 1}, y: {y}}}), JSON.stringify(facingIntent(false) || {{}}).includes('hicken')]") == [False, False]
+    assert game.js(f"[!!entityAt({{x: {x + 1}, y: {y}}}), JSON.stringify(facingIntent(true) || {{}}).includes('hicken')]") == [False, False]
     game.stamp(1, 0, ["."], levels=["2"])                     # two layers: within reach, it is there
     game.wait(f"[...ents.values()].some((o) => o.e && o.e.kind === 'chicken' && o.e.z === 2)", 8000)
     assert game.js(f"!!entityAt({{x: {x + 1}, y: {y}}})") is True
@@ -240,7 +240,7 @@ def test_who_stands_far_over_you_is_not_on_your_tile(game):
 
 def test_e_eats_what_you_hold_unless_what_you_face_takes_it(game):
     """No eat key: food in hand, E eats it, facing a tree all the same (the corner says "E Eat bread", nothing you
-    face is marked for it); facing a cow with a carrot in hand, E feeds it; empty hands, E chops the tree."""
+    face is marked for it); facing a cow with a carrot in hand, E feeds it; X chops the tree."""
     game.clear_area(6)
     x, y = game.pos()
     game.stamp(1, 0, ["T"])
@@ -249,7 +249,7 @@ def test_e_eats_what_you_hold_unless_what_you_face_takes_it(game):
     game.face(1, 0)
     game.hold_item("bread")
     game.wait("$('actions').innerText.replace(/\\s+/g, ' ').includes('E Eat bread')", 3000)
-    assert game.actions().startswith("E | Eat bread | X") and game.js("Target.cells().every((c) => c.key !== 'use')"), game.actions()   # (X's row: what X does to the tree, as ever)
+    assert "E | Eat bread" in game.actions() and "Chop tree" in game.actions() and game.js("Target.cells().every((c) => c.key !== 'use')"), game.actions()   # (X's row: what X does to the tree, as ever)
     game.press("e", 0)
     game.wait("myAside && myAside.tool === 'eat'", 3000)
     game.wait("!eating()", 4000)
@@ -262,5 +262,5 @@ def test_e_eats_what_you_hold_unless_what_you_face_takes_it(game):
     assert game.inv("carrot") == 0
     game.hold_item(None)
     game.face(1, 0)
-    game.wait("facingNow(false) && facingNow(false).it.text.startsWith('Chop tree')", 3000)
+    game.wait("facingNow(true) && facingNow(true).it.text.startsWith('Chop tree')", 3000)
     assert not game.errors

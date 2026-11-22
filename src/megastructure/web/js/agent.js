@@ -18,7 +18,7 @@ function joinGame(name) {
     $("help").style.display = localStorage.getItem("megastructure-help") === "on" ? "block" : "none";
     $("mode").textContent = "playing as " + me;
     toast(TOUCH ? `**Welcome, ${me}.**\nYou wake up in a meadow.`
-      : `**Welcome, ${me}.**\nYou wake up in a meadow.\n\`W\` \`A\` \`S\` \`D\` walk · \`${capOf("jump")}\` jump\n\`${capOf("use")}\` use · \`Enter\` talk\n\`G\` goals · \`H\` help`, false, 16000, true);      // (said once as you arrive: kept in the chat)
+      : `**Welcome, ${me}.**\nYou wake up in a meadow.\n\`W\` \`A\` \`S\` \`D\` walk · \`${capOf("jump")}\` jump\n\`${capOf("use")}\` use · \`${capOf("alt")}\` break · \`Enter\` talk\n\`G\` goals · \`H\` help`, false, 16000, true);      // (said once as you arrive: kept in the chat)
     refresh();
   };
   agentWs.onmessage = (m) => {

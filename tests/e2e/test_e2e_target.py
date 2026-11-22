@@ -105,7 +105,7 @@ def test_playing_by_keys_the_drawn_cell_is_the_cell_that_changes(browser, server
 
 
 def test_in_a_cave_space_r_and_build_x_take_the_cells_drawn(browser, server):
-    """In a tunnel facing its end, a pickaxe in hand: Space takes the cell at your body, R the one at your head,
+    """In a tunnel facing its end, a pickaxe in hand: X takes the cell at your body, R the one at your head,
     build mode's X the one its box is on: each drawn as a box before, each the one that goes."""
     game = hd(browser, server)
     game.give(pickaxe=1, dirt=2)
@@ -117,10 +117,10 @@ def test_in_a_cave_space_r_and_build_x_take_the_cells_drawn(browser, server):
     game.js("(() => { WayShow.mine && WayShow.mine(); return 1; })()")
     game.frames(3)
     cells = {c["key"]: c for c in game.js("Target.cells()")}
-    if "use" in cells:
-        assert cells["use"]["z"] == game.js("myZ(myPos().x, myPos().y)") + 1
-        u = cells["use"]
-        assert changed(game, "e", x, y) == [(u["x"], u["y"], u["z"])]
+    if "alt" in cells:
+        assert cells["alt"]["z"] == game.js("myZ(myPos().x, myPos().y)") + 1
+        u = cells["alt"]
+        assert changed(game, "x", x, y) == [(u["x"], u["y"], u["z"])]
     up = game.js("Target.target('up')")
     if up:
         assert changed(game, "r", x, y) == [(up["x"], up["y"], up["z"])]
@@ -175,7 +175,7 @@ def test_the_first_frame_after_arriving_has_its_boxes(browser, server):
     assert not game.errors
 
 
-@pytest.mark.parametrize("s,item,keys", [("cave", "pickaxe", "re"), ("room", "dirt", "e"), ("room", "pickaxe", "x")])
+@pytest.mark.parametrize("s,item,keys", [("cave", "pickaxe", "rx"), ("room", "dirt", "e"), ("room", "pickaxe", "x")])
 def test_with_the_way_out_shown_each_key_has_its_mark_and_takes_that_cell(browser, server, s, item, keys):
     """A tunnel's end, a dug room: the way out of the ground is shown, and what Space, R and X would take is drawn all
     the same (it was only the guide: "what does Space hit?"), each the cell that changes."""

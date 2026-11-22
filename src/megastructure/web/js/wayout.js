@@ -9,8 +9,8 @@
 // The moves are the game's (sim/bodies.py lands, sim/underground.py): a step level, up one (a jump: its key is shown on it, wayshow.js) with room over both
 // heads, down however far (a fall over 3 hurts: very dear), a ladder (the game's step). And with a pickaxe:
 //   cut a step ("up": R): the cell over your head, the cell in front at your head's height, then the hop;
-//   dig on ("use": Space): the cell in front at your body's height, then the step in;
-//   dig down ("alt": X): the cell you stand on.
+//   dig on ("use"): the cell in front at your body's height, then the step in;
+//   dig down ("alt"): the cell you stand on. (The names of the moves: both are X's, the break key's: wayshow.js `press`.)
 // A step costs 1, a block 30: so first WITHOUT digging (a real way out, however long, within reach: you are not
 // trapped), and only if there is none the way with the fewest blocks to break, then the shortest. Trapped is geometry:
 // no way out on foot AND the places you reach on foot are all inside your reach: a gorge's river that goes on past it

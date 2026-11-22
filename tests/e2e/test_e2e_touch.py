@@ -36,8 +36,8 @@ def test_play_with_thumbs(browser, server):
         g.touch("touchEnd")
         g.sleep(500)
         assert g.pos() == (x0 + 2, y0) and g.server()["x"] == x0 + 2
-        assert "Chop" in g.js("$('tA').innerText")                            # the button says what it will do
-        a = g.js("(() => { const r = $('tA').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
+        assert "Chop" in g.js("$('tB').innerText")                            # B (break) says what it will do
+        a = g.js("(() => { const r = $('tB').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
         g.touch("touchStart", *a)                                             # held: chops on
         g.wait("(meObs.self.inventory.wood || 0) > 0", 15000)
         g.touch("touchEnd")
@@ -88,7 +88,7 @@ def test_out_of_your_own_shaft_with_the_thumbs(browser, server):
         for depth in (1, 2, 3, 4):
             g.act("dig_down", **{"with": "pickaxe"})                  # (the shaft, dug from on it: the button digs the block you face)
             g.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
-        assert g.server()["z"] == -4 and g.js("facingNow(false).it.text") == "Dig into the wall"      # (not on the button while the way out is shown: its own button alone, wayshow.js)
+        assert g.server()["z"] == -4 and g.js("facingNow(true).it.text") == "Dig into the wall"      # (not on the button while the way out is shown: its own button alone, wayshow.js)
         g.js("selectItem('ladder')")
         g.wait("$('tA').innerText.includes('Place ladder')", 3000)
         tap("tA")

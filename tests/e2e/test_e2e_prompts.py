@@ -32,7 +32,7 @@ def test_what_you_face_has_its_key_beside_it(game):
     game.press("ArrowRight", 400)
     game.wait("$('prompts').innerText.includes('Chop tree')", 3000)
     side = game.js(PART, "side")
-    assert side[4].startswith("E") and "Chop tree" not in game.js("$('actions').innerText")
+    assert side[4].startswith("X") and "Chop tree" not in game.js("$('actions').innerText")
     assert not game.errors
 
 
@@ -67,7 +67,7 @@ def test_only_what_your_hand_gets_to_is_offered(game):
     game.clear_area(8)
     x, y = game.pos()
     game.press("ArrowDown", 300)
-    for dx, dy, lv, said in ((-1, 0, "6", "X | Dig the wall"), (0, 1, "f", "")):
+    for dx, dy, lv, said in ((-1, 0, "6", "XDig into the hill"), (0, 1, "f", "")):
         game.stamp(dx, dy, ["f"], levels=[lv])
         game.face(dx, dy)
         game.sleep(400)

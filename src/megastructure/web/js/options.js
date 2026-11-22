@@ -71,9 +71,9 @@ const particles = (n) => (opt("particles") === "none" ? 0 : opt("particles") ===
 // The keys that can be changed: action -> [its usual key (as keyboard.js SHORTCUTS names it), what it is called].
 // Walking (WASD, the arrows), the bar's numbers, Shift, Tab, Enter and Esc stay what they are, and so do the keys of
 // the windows (the book's, the inventory's, build mode's).
-// (WASD walk, Space jumps, E uses what you face: a PC game's usual keys. E eats or wears what you hold too, there is
+// (WASD walk, Space jumps, E uses what you face, X breaks it: a PC game's usual keys. E eats or wears what you hold too, there is
 // no eat key: keyboard.js facingNow. Every key round WASD has its action, and Shift sprints)
-const KEY_ACTIONS = {use: ["e", "Use, eat or wear"], alt: ["x", "Other use"], jump: [" ", "Jump"], pick: ["f", "Pick up"], next: ["q", "Next thing in hand"],
+const KEY_ACTIONS = {use: ["e", "Use: open, place, eat"], alt: ["x", "Break: mine, chop, hit"], jump: [" ", "Jump"], pick: ["f", "Pick up"], next: ["q", "Next thing in hand"],
   hands: ["`", "Empty your hands"], craft: ["c", "Craft"], bag: ["i", "Inventory"], build: ["z", "Build mode"], up: ["r", "Dig up"], talk: ["t", "Talk"], mute: ["m", "Sound on or off"]};
 const KEY_FIXED = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "shift", "tab", "enter", "escape", "control", "alt", "meta", "capslock",
   "h", "?", "g", "v", "f3", "/", "+", "=", "-", "_", ..."0123456789"]);

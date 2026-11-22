@@ -30,7 +30,7 @@ def test_every_file_loads_and_each_action_plays_its_own_sound(game):
     cow = game.spawn("cow", 1, 0, still=30)           # hit a cow: the blow, and the cow answers
     game.face(1, 0)
     game.hold_item(None)
-    game.press("e", 900)
+    game.press("x", 900)
     assert {"hit", "moo"} <= played(game), sorted(played(game))
     assert cow
 
