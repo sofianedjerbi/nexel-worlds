@@ -45,6 +45,9 @@ const HdLook = (() => {
   // where a tile's thing stands: the game has it on the tile's lowest ground. What grows under the sky (a tree, a bush, a flower, a crop) over a room dug under it: on the land's top, where it grew; while the x-ray window is on that tile it is not drawn (after)
   // (flowers stood on a cave's floor, a tree in a tunnel)
   const standAt = (c, x, y) => ("TFUtbvHf;\"w".includes(c) ? Math.max(topAt(x, y), floorAt(x, y)) : floorAt(x, y));
+  // the level of a body that moves, on the tile it is DRAWN on (x, y): the server's height is its next tile's from the moment the step begins (e.z), the page slides it there from the one it left.
+  // Off a hill's foot it was put at the meadow's level half a tile inside the hill (not drawn: under solid land), up onto one it hung over the meadow. Its height there, or the tile's own top for one on the land's top
+  const zOn = (q, x, y) => { const a = q.zAt, w = q.zWas; if (a && a.x === x && a.y === y) return a.z; if (w && w.x === x && w.y === y) return w.z; return a && a.z === topAt(a.x, a.y) ? topAt(x, y) : q.e.z; };
   const solidAt = (c, z) => { for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   // a bank's top: the pack's shore tile has a white line of foam along the water's edge, where the classic picture's water laps. Here the water lies a level under the bank:
   // the line stood up on the rim, a bright white line along a pond. Its white px take the earth px next inward.
@@ -242,9 +245,10 @@ const HdLook = (() => {
       list.push({canvas: c, fx: 12, fy: 14 + Math.round(Math.sin(now / 1000 * 2.4 + ix * 1.3 + iy) + 1), still: true, d: true, pile: true, x: ix + .5, y: iy + .7, z: floorAt(ix, iy)});   // (it hovers, as in the classic picture: 0 to 2 px, a whole px at a time)
     }
     const wmB = winMap(), wr = wmB.size ? winRect() : null;   // UNDER A ROOF nobody up on the land over you is seen: over the window, or over the land round it (in the window's box on the screen); only who is in your space (like Minecraft: no mob through the ceiling)
-    for (const q of ents.values()) if (q.x !== undefined && Math.abs(q.x - p.x) < 16 && Math.abs(q.y - p.y) < 12) {
+    // (who is drawn: as far east, west and south as the land is (rx, south); north to the bend's top, past which the land is behind the curve. It was 16 across and 12 south: at zoom 2 the screen shows 22 tiles each way, 18 south, and a hen ran out of being at 16, on the screen)
+    for (const q of ents.values()) if (q.x !== undefined && Math.abs(q.x - p.x) <= rx && q.y - p.y > -12 && q.y - p.y <= south) {
       if (fill && warm < 2) continue; if (fill && !sprs.has(q) && nw && performance.now() > until) { left = true; continue; } if (fill && !sprs.has(q)) nw++;   // (the first screen's people: after what stands, 8 ms of new ones a frame)
-      const qx = Math.round(q.x), qy = Math.round(q.y), z = q === p ? Lf : FLOORS && Floors.any(qx, qy) ? Floors.standOf(q, qx, qy) : q.e && typeof q.e.z === "number" && !H0.water(qx, qy) ? q.e.z : Math.max(topAt(qx, qy), wet(qx, qy));   // (on a built floor: at its height; in a cave: at the level the server has them. They were put on the land's top: a friend in your room stood on the grass over it)
+      const qx = Math.round(q.x), qy = Math.round(q.y), z = q === p ? Lf : FLOORS && Floors.any(qx, qy) ? Floors.standOf(q, qx, qy) : q.e && typeof q.e.z === "number" && !H0.water(qx, qy) ? zOn(q, qx, qy) : Math.max(topAt(qx, qy), wet(qx, qy));   // (on a built floor: at its height; in a cave: at the level the server has them. They were put on the land's top: a friend in your room stood on the grass over it)
       if (q !== p && z < topAt(qx, qy)) { const c = H0.column(qx, qy), b = winMap().get(qx + "," + qy); let over = false; for (let zz = z + 1; zz <= topAt(qx, qy) && !over; zz++) over = solidAt(c, zz); if (over && !(b && z >= b[0] - 1 && z <= b[1])) continue; }
       if (q !== p && wmB.size) { const b = wmB.get(qx + "," + qy), a = !b && eng.at(q.x + .5, q.y + .5, z); if (!(b ? z >= b[0] - 1 && z <= b[1] : Math.abs(z - L) <= 1) && (b || (a && wr && a[0] + 6 > wr[0] && a[0] - 6 < wr[2] && a[1] > wr[1] && a[1] - 14 < wr[3]))) continue; }   // (not in your space: on the window's tile at another level, or its body in the window's box: hidden, its name with it. It was drawn, the ground under its feet kept one px in two: a hen over your head read as in the cave with you)   // (under land the window is not on: not seen, nor their name)
       const s = ent(q, now, z);

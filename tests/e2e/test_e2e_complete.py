@@ -15,8 +15,8 @@ def test_a_command_is_built_with_tab_and_the_arrows(game):
     page = game.page
     game.give(wood=3, berries=2)
     page.keyboard.press("/")
-    game.wait("!!tools && $('sayhelp').children.length === 2")          # (asked of the server once, when the line opens)
-    assert game.js(ROWS) == ["coords", "perf"]
+    game.wait("!!tools && !!serverCmds && $('sayhelp').children.length === 4")          # (asked of the server once, when the line opens)
+    assert game.js(ROWS) == ["coords", "perf", "help", "list"]       # (the page's, then the server's a player may use: commands.js)
     assert game.js("$('sayhelp').querySelector('.on b').textContent") == "coords"
     page.keyboard.type("nam")
     assert game.js(ROWS) == []
@@ -24,7 +24,7 @@ def test_a_command_is_built_with_tab_and_the_arrows(game):
     assert game.js(ROWS) == ["name"]
     page.keyboard.press("Tab")
     assert game.js(LINE) == "/name " and game.js(ROWS) == ["target=", "text="]
-    for typed, rows in (("/st", []), ("/ste", []), ("/step", ["step"]), ("/di", []), ("/dig", ["dig"])):   # a bot's: only when written in full
+    for typed, rows in (("/st", ["list"]), ("/ste", []), ("/step", ["step"]), ("/di", []), ("/dig", ["dig"])):   # a bot's: only when written in full
         page.fill("#say", typed)
         assert game.js(ROWS) == rows, typed
     page.keyboard.press("Tab")
@@ -63,7 +63,7 @@ def test_what_an_argument_can_be(game):
     cow = game.rpc("dev_creatures", kind="cow", dx=2, dy=0, still=600)["spawned"]
     game.sleep(600)
     page.keyboard.press("/")
-    game.wait("!!tools && $('sayhelp').children.length === 2")
+    game.wait("!!tools && !!serverCmds && $('sayhelp').children.length === 4")
     for line, want in (("/eat item=", ["berries", "bread"]), ("/drop item=w", ["wood"]), ("/craft recipe=plank", ["plank"]),
                        ("/unwear slot=", ["head", "top", "pants", "shoes", "effect"]), ("/step dir=N run=", ["true"]),
                        ("/sign", []), ("/read_sign", ["read_sign"]), ("/eat", ["eat"]), ("/ea", []), ("/say text=\"dig dir=", [])):
@@ -159,7 +159,7 @@ def test_the_arrows_bring_back_what_you_sent(game):
     assert game.js(OPEN) is True
     page.keyboard.press("Escape")
     page.keyboard.press("/")                                   # from a "/": the commands only; Down is the list's
-    game.wait("$('sayhelp').children.length === 2")
+    game.wait("!!serverCmds && $('sayhelp').children.length === 4")
     page.keyboard.press("ArrowDown")
     assert game.js(LINE) == "/" and game.js("$('sayhelp').querySelector('.on b').textContent") == "perf"
     page.keyboard.press("ArrowUp")

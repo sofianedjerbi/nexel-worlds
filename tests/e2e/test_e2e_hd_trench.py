@@ -162,3 +162,25 @@ def test_on_grey_stone_the_hole_has_a_darker_lip_and_on_a_meadow_a_light_one(bro
     assert lum(lip) < lum(ground) * .8 and lum(far) > lum(ground) * .93, out     # stone: its own px a good step darker along the hole's near edge, then the stone as it is
     lip, far, ground = out["meadow"]
     assert lum(lip) > lum(ground) + 12 and lum(far) < lum(ground) + 12, out      # a meadow: the lit lip, as it was
+
+
+# the mean light (r + g + b) of each screen row across a box of the land, west to east from x0 to x1, its rows from
+# the plane's y0 to y1 at height z, two art px past each end (a rim's rows)
+ROWS = """([x0, x1, y0, y1, z]) => { const k = devicePixelRatio, a = HdLook.screenOf(x0, y0, z), b = HdLook.screenOf(x1, y1, z), r0 = Math.round(a[1] * k) - 2 * zoom * k, r1 = Math.round(b[1] * k) + 2 * zoom * k, w = Math.round((b[0] - a[0]) * k);
+  const d = HdLook.read(Math.round(a[0] * k), r0, w, r1 - r0).data, o = []; for (let j = 0; j < r1 - r0; j++) { let s = 0; for (let i = 0; i < w; i++) { const p = (j * w + i) * 4; s += d[p] + d[p + 1] + d[p + 2]; } o.push(Math.round(s / w)); } return o; }"""
+
+
+def test_a_stair_dug_seven_deep_seen_from_beside_it_has_no_dark_line_across_it(browser, server):
+    """The owner's stair (caves world, x -4..2, y -11): one tile wide, dug east from one level down to seven, seen from the
+    meadow two tiles north. A drop of three or more had a cliff's dark rim, two px, on every top round it: a dark line
+    under its far rim, one over its near rim and one down its end, from where it got three deep: "weird borders across
+    that hole". A hole's edges keep the hole's lip: no row across its deep part darker than the wall's paint is."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    g.stamp(-6, -3, ["." * 15] * 9, levels=["8" * 15] * 3 + ["8" * 3 + "7654321" + "8" * 5] + ["8" * 15] * 5)
+    g.rest()
+    g.rpc("dev_teleport", x=x, y=y - 2); g.arrive(); g.rest()
+    rows = g.js(ROWS, [x - .8, x + 3.8, y, y + 1, 8])                            # the stair's deep part: 3 deep at x - 1, 7 at x + 3
+    wall = sorted(rows)[len(rows) // 2]
+    assert min(rows) > wall * .7, (wall, rows)                                   # (the cliff's rim: a row at ~.55 of the wall's light, two of them under the far rim)
