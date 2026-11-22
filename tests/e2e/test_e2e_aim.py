@@ -94,3 +94,85 @@ def test_standing_you_aim_at_the_selected_cell_and_stand_again_without_one(game)
     game.clear_area(6)
     game.js("selectItem(null)")
     game.wait("(() => { const p = ents.get('agent' + myId); return p && Target.aim === null && p.fi < 4 * 8; })()", 3000)
+
+
+def well(game):
+    """the owner's case: a 1-wide shaft four deep, open to the south (seen from above: its walls' faces edge-on)"""
+    game.clear_area(6)
+    game.stamp(-2, -2, ["....."] * 4, levels=["44444", "44044", "44044", "00000"])
+    game.give(dirt=8)
+    game.hold_item("dirt")
+    game.face(0, 1)
+    game.press("z")
+    game.wait("Build.on", 3000)
+    return game.js("myZ(myPos().x, myPos().y)")
+
+
+def at2(game, dx, dy, lv, h):
+    game.js(f"(() => {{ const s = myPos(); Build.S.at = {{x: s.x + {dx}, y: s.y + {dy}}}; Build.S.plane = {h + lv + 1}; Build.S.deep = null; return 1; }})()")
+
+
+LOOK = "(() => { const p = ents.get('agent' + myId); return p && [DIR_ROW(p), p.fx, p.fy]; })()"
+
+
+def test_you_turn_to_the_selected_cell_and_the_keys_keep_their_facing(game):
+    """The owner: "player should face block direction". The cursor east of you: you face east, west: west, north: away,
+    south: us; your own column keeps the facing. Only the drawn facing: the tile the keys act on (p.fx, p.fy) is not turned."""
+    h = well(game)
+    for dx, dy, row in ((1, 0, 2), (-1, 0, 3), (0, -1, 1), (0, 1, 0), (1, 0, 2), (0, 0, 2)):
+        game.frames(10)                                              # (a turn holds 150 ms: no flicker)
+        at2(game, dx, dy, 0, h)
+        ok = f"(() => {{ const p = ents.get('agent' + myId); return p && DIR_ROW(p) === {row} && p.fi === (ANIM.aim + {row}) * 8 + AimArt.COL[Target.aim]; }})()"
+        game.wait(ok, 3000)
+        assert game.js(LOOK)[1:] == [0, 1], (dx, dy)                 # the keys' facing: south, as it was
+    game.press("z")
+    game.wait("!Build.on", 3000)
+    game.wait("(() => { const p = ents.get('agent' + myId); return p && DIR_ROW(p) === 0; })()", 3000)   # (out of build mode: the keys' tile, south, and you face it)
+
+
+def test_the_cell_beside_you_in_the_wall_has_its_whole_box(game):
+    """Seen from above in a 1-wide shaft, the cell east of your feet shows only its south face, 3 px tall: its box was a flat
+    orange bar beside you. Now the whole block, seen through (its top and its face): as big as the cell south of you."""
+    h = well(game)
+    sizes = {}
+    for dx, dy in ((1, 0), (-1, 0), (0, 1)):
+        at2(game, dx, dy, 0, h)
+        game.frames(3)
+        d = game.js("Target.drew.filter((d) => d.sel).map((d) => ({area: d.area || 0, line: d.line || 0}))")
+        assert len(d) == 1, (dx, dy, d)
+        sizes[(dx, dy)] = (d[0]["area"], d[0]["line"])
+    for k in (0, 1):                                                 # its px, and its outline's (34 px before: a bar)
+        assert sizes[(1, 0)][k] >= .7 * sizes[(0, 1)][k] > 0 and sizes[(-1, 0)][k] >= .7 * sizes[(0, 1)][k], sizes
+    game.press("z")
+
+
+RED = """([c]) => { const P = HdLook.art(), B = P && P.body, k = devicePixelRatio; if (!B) return null;
+  const d = HdLook.read(Math.round(B.x * k) - 8, Math.round(B.y * k) - 8, Math.round(B.w * k) + 16, Math.round(B.h * k) + 16).data; let n = 0;
+  for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 232) + Math.abs(d[i + 1] - 85) + Math.abs(d[i + 2] - 74) < 40) n++; return n; }"""
+
+
+def test_no_red_box_over_you_where_you_merely_stand(game):
+    """A block can't go into your body's cell or your head's: you are in it. Not an error: its box is cream dotted (can't),
+    never red, at your feet and at your head."""
+    h = well(game)
+    for lv in (0, 1):
+        at2(game, 0, 0, lv, h)
+        game.frames(3)
+        d = game.js("Target.drew.filter((d) => d.over).map((d) => ({far: d.far, dots: d.dots || 0, line: d.line || 0}))")
+        assert len(d) == 1 and d[0]["far"] and d[0]["dots"] > 0 and d[0]["line"] == 0, (lv, d)
+        assert game.js(RED, [""]) < 4, lv
+    game.press("z")
+
+
+LEGS = """(() => { const c = document.createElement('canvas'); c.width = 48; c.height = 48; const g = c.getContext('2d', {willReadFrequently: true});
+  const low = (col, row) => { g.clearRect(0, 0, 48, 48); g.drawImage(IMG.character, col * 48, row * 48, 48, 48, 0, 0, 48, 48); const d = g.getImageData(0, 0, 48, 48).data;
+    let b = -1; for (let i = 3; i < d.length; i += 4) if (d[i]) b = Math.floor(i / 4 / 48); let n = 0, x0 = 48, x1 = -1;
+    for (let y = b - 1; y <= b; y++) for (let x = 0; x < 48; x++) if (d[(y * 48 + x) * 4 + 3]) { n++; x0 = Math.min(x0, x); x1 = Math.max(x1, x); } return [n, x1 - x0]; };
+  const out = []; for (let f = 0; f < 4; f++) out.push([low(0, f), low(AimArt.COL.down, ANIM.aim + f)]); return out; })()"""
+
+
+def test_looking_down_has_no_third_leg(game):
+    """The down pose's paw is before the chest (bent down), not at the feet: its feet's rows are no wider than the
+    standing frame's (an arm to the feet read as a third leg facing us, a crumpled body side on)."""
+    for f, (stand, down) in enumerate(game.js(LEGS)):
+        assert down[1] <= stand[1] and down[0] <= stand[0] + 2, (f, stand, down)
