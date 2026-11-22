@@ -1,6 +1,6 @@
 """The x-ray window's shape and its cut edges in the HD look (vox_style_glsl.js PORT and the window's section, vox_style_land.js):
-the window is your WHOLE space, a cave's every branch as far as the screen goes (a separate cave stays under the stone), its edge
-fading back in a dither; under the open sky no dark arc at its top (a gorge's far cliff); a pit's floor shaded by its own walls, no
+the window is your WHOLE space, a cave's every branch as far as the screen goes (a separate cave stays under the stone), its sides
+in whole art px, no checker (HdLook.edge "B": the kept land's last 3 px over your space in solid steps of opacity); under the open sky no dark arc at its top (a gorge's far cliff); a pit's floor shaded by its own walls, no
 flat squares of corner shade; down a passage a level floor has no band across it, a step up shows its riser, a step down its lip."""
 
 from test_e2e_hd_sun import hd
@@ -13,6 +13,10 @@ CHANGED = """async ([x0, y0, x1, y1]) => { const k = devicePixelRatio, X0 = Math
   for (let y = 0; y < H; y++) { let r = ""; for (let x = 0; x < W; x++) { const i = 4 * (y * W + x); r += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30 ? "1" : "0"; } rows.push(r); }
   return rows; }"""
 SCR = "(([x, y, z]) => HdLook.screenOf(x, y, z))"
+# the picture in the look `e` (HdLook.edge), a colour an art px, rows of the box of CSS px [x0, y0, x1, y1] an art px apart
+ROWS = """async ([e, x0, y0, x1, y1]) => { HdLook.edge = e; const frame = () => new Promise(requestAnimationFrame); for (let i = 0; i < 4; i++) await frame();
+  const k = devicePixelRatio, z = zoom, out = []; for (let y = Math.round(y0 / z) * z + z / 2; y < y1; y += z) { const r = []; for (let x = Math.round(x0 / z) * z + z / 2; x < x1; x += z) r.push([...HdLook.read(Math.round(x * k), Math.round(y * k), 1, 1).data.slice(0, 3)]); out.push(r); }
+  HdLook.edge = "B"; for (let i = 0; i < 3; i++) await frame(); return out; }"""
 calm = lambda g: [g.hour(.3, still=True)] + [g.js(f"setOpt('{o}', 0)") for o in ("clouds", "rays", "shimmer")]
 far = lambda a, b: sum(abs(p - q) for p, q in zip(a, b))
 lum = lambda c: .3 * c[0] + .59 * c[1] + .11 * c[2]
@@ -33,7 +37,8 @@ APART = {(dx, dy) for dx in (-9, -8) for dy in (2, 3)}
 def test_the_window_opens_the_whole_cave_you_are_in_and_not_another(browser, server):
     """The owner in a cave under a stone plateau, the porthole round him: "the whole point of x-ray is to unlock the whole view
     of a cave entirely, not a little circle. I'm blind in that cave!" Every floor of the cave you are in, its branches and its
-    room, is seen where the screen shows it; a cave no way joins stays under the stone; the edge fades back in a dither."""
+    room, is seen where the screen shows it; a cave no way joins stays under the stone; its sides are cut in whole art px, no checker
+    (owner: "that x-ray you did created awful borders": a 4x4 dither down every side)."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -60,11 +65,19 @@ def test_the_window_opens_the_whole_cave_you_are_in_and_not_another(browser, ser
     assert len(seen) >= 30, seen                                             # (most of the cave is on the screen)
     assert not shut, (shut, stone)                                            # every floor of it is seen, in the window (it was a circle 4 tiles round you: the branches under the stone)
     assert not opened, (opened, stone)                                        # the other cave: no window on it, the plateau's top over it
-    # the edge: across the corridor's west end (its floor at dx -8), the px the window changes thin out over a few px, dithered (its near, south edge is the land's lip, a line)
-    a, b = g.js(SCR, [x - 9.5, y - 2, 0]), g.js(SCR, [x - 6, y - 1.2, 0])
-    ch = g.js(CHANGED, [a[0], a[1], b[0], b[1]])
-    frac = [sum(r[i] == "1" for r in ch) / len(ch) for i in range(len(ch[0]))]
-    assert max(frac) > .9 and any(.15 < f < .85 for f in frac), frac
+    # the side: across the corridor's west end (its floor at dx -8), art px by art px, in each look
+    a, b = g.js(SCR, [x - 10, y - 2, 0]), g.js(SCR, [x - 6, y - 1.4, 0])
+    rows = {e: g.js(ROWS, [e, a[0], a[1], b[0], b[1]]) for e in ("B", "C", "A")}
+    for e, rs in rows.items():
+        bad = [(j, i) for j, r in enumerate(rs) for i in range(len(r) - 3)
+               if far(r[i], r[i + 2]) < 12 and far(r[i + 1], r[i + 3]) < 12 and far(r[i], r[i + 1]) > 40]
+        assert not bad, (e, bad[:5], [r[max(0, bad[0][1] - 3):bad[0][1] + 6] for r in rs] if bad else None)        # no checker: no px alternating with another along a row (the dither did, a px each)
+    diff = [[i for i in range(len(rb)) if far(rb[i], rc[i]) > 30] for rb, rc in zip(rows["B"], rows["C"])]
+    first = [(j, [i for n, i in enumerate(d) if i - d[0] == n]) for j, d in enumerate(diff) if d]                     # (the first run of px B changes, from the kept land in: the fade; the floor's foot shade further in is each look's own)
+    assert len(first) >= len(diff) // 2 and all(1 <= len(f) <= 4 for _, f in first), diff     # B: the kept land comes back over 3 px or so, side by side (solid steps of opacity), crisp in C
+    stone = rows["C"][0][4]
+    assert all(far(rows["B"][j][f[0] - 1], stone) < 40 for j, f in first), (stone, first)   # (the fade starts where the kept stone is)
+    assert g.js("HdLook.edge") == "B"
 
 
 # the owner's gorge (doben8, caves -11,-40): cliffs 12 high, a river in two depths and a cliff's corner in it

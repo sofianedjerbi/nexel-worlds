@@ -168,8 +168,8 @@ const VoxStyle = (() => {
       // what this frame is made of, before anything is sent: the ghosts and the moving shadows (view.ghosts: [[x, y, box]...], made each frame), the sprites, every number the painter takes
       const gh = GW[lastG === GW[0] ? 1 : 0], sd = DW[lastD === DW[0] ? 1 : 0]; gh.n = sd.n = 0; for (const g of v.ghosts || []) land.model(g[0], g[1], g[2], g[2].shade ? sd : gh);   // (into the writer the last frame drawn is not in: GW, DW)
       const mef = (v.sprites || []).find((s) => s.top), mf = mef && project(m, mef.x, mef.y, mef.z), mp = mf && [(mf[0] * .5 + .5) * RW, (.5 - mf[1] * .5) * RH], disc = mp ? [mp[0], RH - mp[1] + 1, 12] : [0, 0, 0];   // (the disc round you: what covers you is seen through there only)
-      // (the window's soft edge (vox_style_glsl.js PORT): view.port: {ramp: its px, cell: the dither's px}, for a look tried)
-      const po = v.port || {}, pw = [0, 0, 1, po.ramp || 4], pq = [2, po.cell || 1];
+      // (the window's cut sides (vox_style_glsl.js PORT): view.edge "A" crisp, a brown line and a shade; "B" the kept land fading in steps; "C" a shade on your floor)
+      const pw = [{A: 1, B: 2, C: 3}[v.edge] || 2, 0, 1, 0];
       const wup = !!(W && W.canvas && W.canvas.width && wet && (!wat || (W.ver !== undefined ? W.ver !== wat[5] : Math.abs((v.t || 0) - wat[4]) > .1 || !v.t)));   // (the water's picture: when the host made a new one (ver), ten times a second; with no water in the land, never)
       const wv = W && W.canvas && W.canvas.width && wet ? (wup ? [W.x, W.y, W.canvas.width, W.canvas.height] : wat.slice(0, 4)) : [0, 0, 0, 0];
       const own = (v.own || []).filter((b) => (v.sky || !b[4]) && !winL.some((t) => t[0] === b[0] && t[1] === b[1] && t[2] <= b[2] && t[3] > b[2])), winA = (own.length ? winL.concat(own) : winL).filter((t) => v.sky || !t[4]);   // (a tile of your space under the open sky only while land hides you there (v.sky, hd_level.js hides): the shaft you stepped out of had its south wall cut away, its floor drawn where it projects, south of its rim: "a drawer")   // (view.own: boxes that are yours whatever the last land's search found: your tile, where you came from: the window is on you the frame land covers you, not when the search is done)
@@ -184,7 +184,7 @@ const VoxStyle = (() => {
       const bd = NOBODY;   // (nobody: a body on the land over the window is not drawn at all now, hd.js; it was drawn with the ground under its feet kept one px in two)
       const un = UB[lastU === UB[0] ? 1 : 0]; ub = un.f; uq = 0;   // (every number the painter takes, into the buffer the last frame drawn is not in)
       uP(RW); uP(RH); uA(bd); uA(m); uA(eye); uA(lamp); uP(v.bend || 0); uA(L.fogc); uP(L.lr); uP(L.day); uP(L.amb); uP(L.fog[0]); uP(L.fog[1]); uP(L.rim); uP(L.wa ?? .62); uP(v.dep || 0); uP(L.sun ?? 1);
-      uA(L.wtint || Z20); uA(wv); uA(disc); uA(pw); uA(pq); uA(clip); uA(L.clear); uP(L.ca ?? 1); uP(sver); uA(sorg); uP(wxr); uP(W_.ver); uA(sectAt); uP(rimz); uP(v.hole || 0); uP(cpx); uP(v.behind || 0);
+      uA(L.wtint || Z20); uA(wv); uA(disc); uA(pw); uA(clip); uA(L.clear); uP(L.ca ?? 1); uP(sver); uA(sorg); uP(wxr); uP(W_.ver); uA(sectAt); uP(rimz); uP(v.hole || 0); uP(cpx); uP(v.behind || 0);
       if (hr) { uP(1); uA(hr.wash); uA(hr.tint || NOTINT); uP(hr.lit ? (hr.lit._v === undefined ? NaN : hr.lit._v) : -1); } else uP(0); un.n = uq;
       const gSame = sameW(gh, lastG), dSame = sameW(sd, lastD);
       why = again ? "land" : sized ? "size" : stale || dirty.length ? "paints" : S.un ? "pictures" : wup ? "water" : !gSame ? "ghosts" : !dSame ? "shadows" : !sameN(S.d, S.n, lastS, lastSn) ? "sprites" : !sameW(un, lastU) ? "view " + firstOff(un, lastU) : "";   // (why this frame is drawn again; "": it is the last one)
@@ -205,10 +205,11 @@ const VoxStyle = (() => {
       gl.uniformMatrix4fv(u("m"), false, m); gl.uniform1i(u("t"), 0); gl.uniform1i(u("wt"), 2); gl.uniform1i(u("gw"), 3); gl.uniform1i(u("mk"), 4); gl.uniform1f(u("xr"), wxr); gl.uniform3fv(u("sc"), (v.sect || SECT)[0]); gl.uniform4fv(u("sp"), sectAt); gl.uniform1f(u("rf"), cfg.rock ? cfg.rock.from : 1e9); gl.uniform3fv(u("go"), sorg); gl.uniform3fv(u("lamp"), [lamp[0], lamp[1] + .6, lamp[2]]); gl.uniform3fv(u("eye"), eye);   // ("gw", not "st": the sprites' names are kept under "s" + name)
       gl.uniform3fv(u("em"), mean); gl.uniform3fv(u("ctr"), lamp); gl.uniform1f(u("bend"), v.bend || 0); gl.uniform3fv(u("fogc"), L.fogc); gl.uniform4fv(u("cl"), clip);
       { const f1 = (n, x) => gl.uniform1f(u(n), x); f1("lr", L.lr); f1("day", L.day); f1("amb", L.amb); f1("fn", L.fog[0]); f1("ff", L.fog[1]); f1("rim", L.rim); f1("wa", L.wa ?? .62); f1("dep", v.dep || 0); f1("rd", 0); f1("sun", L.sun ?? 1); f1("shp", 0); f1("cd", cdv); f1("rz", rimz); f1("ho", v.hole || 0); f1("cp", cpx); f1("bh", v.behind || 0); }
-      gl.uniform4fv(u("wtn[0]"), L.wtint || Z20); gl.uniform4fv(u("wv"), wv); gl.uniform3fv(u("mc"), disc); gl.uniform3fv(u("bd[0]"), bd); gl.uniform4fv(u("pw"), pw); gl.uniform2fv(u("pq"), pq);
-      gl.useProgram(sp); gl.uniform1i(us("t"), 1); gl.uniform1i(us("mk"), 4); gl.uniform2f(us("nf"), .5, 200); gl.uniform3fv(us("mc"), disc); gl.uniform4fv(us("pw"), pw); gl.uniform2fv(us("pq"), pq); gl.useProgram(pr);
+      gl.uniform4fv(u("wtn[0]"), L.wtint || Z20); gl.uniform4fv(u("wv"), wv); gl.uniform3fv(u("mc"), disc); gl.uniform3fv(u("bd[0]"), bd); gl.uniform4fv(u("pw"), pw); gl.uniform1f(u("bp"), 0);
+      gl.useProgram(sp); gl.uniform1i(us("t"), 1); gl.uniform1i(us("mk"), 4); gl.uniform2f(us("nf"), .5, 200); gl.uniform3fv(us("mc"), disc); gl.uniform4fv(us("pw"), pw); gl.useProgram(pr);
       const go = (b, from, n) => { if (n > 0) { gl.bindVertexArray(b.vao); gl.drawArrays(gl.TRIANGLES, from, n); calls++; } };
       go(bufs.land, 0, cnt.main + cnt.model + cnt.far + cnt.ghost);   // (the land, what stands in it as boxes, the far land, the ghosts: one list)
+      if (wxr > 0 && pw[0] === 2) { gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); gl.uniform1f(u("bp"), 1); go(bufs.land, 0, cnt.main + cnt.model); gl.uniform1f(u("bp"), 0); gl.depthMask(true); gl.disable(gl.BLEND); }   // (B: the kept land's last px along a cut's side, over your space, in steps of opacity)
       gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
       // the shadows: each px of the land shaded once, however many lie on it (a stencil): first all their full px, then their soft rims where no full one lies
       gl.enable(gl.STENCIL_TEST); gl.stencilFunc(gl.NOTEQUAL, 1, 1); gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
