@@ -57,6 +57,11 @@ class Agent:
     events: list = field(default_factory=list, repr=False)
     online: bool = False
 
+    @property
+    def bot(self) -> bool:
+        """An AI player: any persona but "human" (a person's page says "human"; none given counts as a person)."""
+        return bool(self.persona) and self.persona != "human"
+
     def to_json(self) -> dict:
         return {k: getattr(self, k) for k in
                 ("id", "name", "x", "y", "z", "persona", "hp", "hunger", "inventory", "deaths", "stats", "spawn", "sailing", "can", "xp", "worn", "race", "sat", "tired")}

@@ -6,7 +6,7 @@
 //   ring  the recording times a slow wave (ring modulation): the classic film robot's buzz
 //   comb  the recording through a very short echo fed back on itself, tuned to the speaker: a steady metal hum
 //   tin   each syllable said as quick grains, as if read off a tape, out of a small tin box
-// Not used by the game yet (design/enemies/site/robots.html plays them); babble.js would call robotSay for an AI player.
+// The game uses ROBOT_KIND for every AI player (babble.js, for a line the server marks `bot`); design/enemies/site/robots.html plays all four.
 
 const ROBOT = {
   chip: {steps: 2, hold: 5800, bits: 5, shoutBits: 4, level: 1, shout: 1},     // whole tones; Hz it is held at; bits
@@ -14,6 +14,7 @@ const ROBOT = {
   comb: {steps: 0, hum: 150, feed: .8, shoutFeed: .84, level: .9, shout: .8},   // Hz of the hum by voice 0; feedback
   tin: {steps: 2, grain: .022, gap: .03, box: [[1700, 6, 9], [3100, 8, 6]], level: 1.3, shout: .74},   // s; s; Hz, Q, dB
 };
+const ROBOT_KIND = "chip";                                   // the AI players' voice in the game (the owner's pick)
 const ROBOT_ASK = [2, 4, 7];                                // a question: its last three syllables a step up each
 let robotCurve = null;
 const robotHeld = new Map();                                // (the chip voice's recordings, made once a recording and depth)
