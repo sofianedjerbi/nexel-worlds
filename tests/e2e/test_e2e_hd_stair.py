@@ -145,7 +145,7 @@ def test_depth_is_told_inside_the_window(browser, server):
         rows = next((i for i, c in enumerate(col) if c[1] > c[0] + 8), len(col))                     # up to the first green px: the meadow
         tones = [lum(c) for c in col[:rows]]
         bands = 1 + sum(1 for a, b in zip(tones, tones[1:]) if abs(a - b) > 2)                       # the strata: flat tones, one a level
-        spots = [[cx + 4.4, y - 1.5 + j * .7, 0] for j in range(5)] + [[cx - 3.4, y - 1.5 + j * .7, 0] for j in range(5)]     # the meadow a little east and west of the hole's edges
+        spots = [[cx + 5.4, y - 1.5 + j * .7, 0] for j in range(5)] + [[cx - 4.4, y - 1.5 + j * .7, 0] for j in range(5)]     # the meadow east and west of the hole, past the porthole round you (in it the meadow is cut)
         out = [g.js(PX, p) for p in spots]
         g.js("HdLook.nowin = true")
         g.wait("HdLook.win.a === 0", timeout=4000)
@@ -158,7 +158,7 @@ def test_depth_is_told_inside_the_window(browser, server):
     assert seen[4][1] > seen[4][0] * .93, seen[4]                   # shallow: one light
     # the section over the north wall is as tall as the ground over the ceiling is from this eye (3 px a level at the steep pitch): 1 level over the room 4 deep, 11 over the one 14 deep: two pictures at a glance
     # (it was 8 to 20 rows whatever the depth: 14 deep read 2 or 3 deep); in strata, a tone a level, darker level by level down: levels can be counted
-    assert strata[4][0] <= 6 and strata[14][0] >= 26 and strata[14][1] >= 8, strata
+    assert strata[4][0] <= 6 and strata[14][0] >= 16 and strata[14][1] >= 8, strata          # (14 deep: 33 rows, cut at the porthole round you: 18 of them in sight)
     assert strata[14][2][1] < strata[14][2][strata[14][0] - 3] * .7, strata[14]
     for d in (4, 14):
         assert all(abs(p - q) <= 6 for a, b in zip(seen[d][3], seen[d][4]) for p, q in zip(a, b)), seen[d][3:5]                    # the grass beside the hole is the meadow's own px, not a step darker (a shade outside the rim read as a block standing on the grass)
