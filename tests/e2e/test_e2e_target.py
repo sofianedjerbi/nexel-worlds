@@ -133,8 +133,9 @@ def test_in_a_cave_space_r_and_build_x_take_the_cells_drawn(browser, server):
     assert not game.errors
 
 
-def test_a_cell_in_the_air_is_red_with_its_shadow_on_the_ground(browser, server):
-    """E twice over the meadow: nothing holds it: red, and under it on the ground its shadow, one px in two."""
+def test_a_cell_in_the_air_is_dotted_with_its_shadow_on_the_ground(browser, server):
+    """E twice over the meadow: nothing holds it: dotted (not red: dotted is "not yet", one meaning with digging), and
+    under it on the ground its shadow, one px in two."""
     game = hd(browser, server)
     game.give(dirt=2)
     stage(game, "meadow")
@@ -145,8 +146,9 @@ def test_a_cell_in_the_air_is_red_with_its_shadow_on_the_ground(browser, server)
     game.press("e", 100)
     game.frames(3)
     t = game.js("Target.target('use')")
-    assert t["ok"] is False and t["z"] == 3, t
-    assert game.js(NEAR, [t["x"], t["y"], t["z"], [232, 85, 74]])
+    d = game.js("Target.drew.find((c) => c.key === 'use')")
+    assert t["z"] == 3 and d["far"] and d["dots"] > 0 and d["line"] == 0, (t, d)
+    assert game.js(NEAR, [t["x"], t["y"], t["z"], [255, 248, 232]])
     assert not game.errors
 
 

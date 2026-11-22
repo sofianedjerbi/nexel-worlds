@@ -68,7 +68,7 @@ def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
     game.press("b")
     for k in ["ArrowRight"] * 2 + ["ArrowUp"] * 6:             # the cursor in the open: no roof hangs in the air
         game.press(k, 110)
-    assert game.js("Build.hint(Build.S.at).ok") is False and "wall" in game.js("Build.hint(Build.S.at).text")
+    assert game.js("Build.hint(Build.S.at).ok") is False and game.js("Build.hint(Build.S.at).far") and game.js("Build.hint(Build.S.at).text") == ""   # (nothing holds it: dotted, nothing said)
     game.press("ArrowDown", 110)
     game.press("ArrowDown", 110)                               # on the north wall: a row of four
     kb.down("Space")

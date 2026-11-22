@@ -60,8 +60,8 @@ def test_e_goes_up_one_level_and_the_ghost_says_where_in_a_few_words(game):
     game.press("e", 100)
     game.frames(2)
     h, d = game.js("Build.hint(Build.S.at)"), game.js("BuildGhost.drew")
-    assert h["z"] == 3 and h["ok"] is False and len(h["text"].split()) <= 3 and ":" not in h["text"], h         # one level up: in the air over it, nothing beside it
-    assert d["z"] == 3 and d["ok"] is False, d                                                                  # the ghost is there, red
+    assert h["z"] == 3 and h["far"] is True and h["text"] == "", h         # one level up: in the air over it, nothing beside it: nothing said
+    assert d.get("z") is None, d                                            # no ghost: its box dotted alone (test_e2e_build_face.py)
     assert game.js("Build.rows()")[0][1] == "BUILD · +1 · leave"
     game.press("q", 100)
     assert game.js("Build.hint(Build.S.at).z") == 2 and game.js("Build.hint(Build.S.at).ok")
@@ -120,8 +120,13 @@ def test_in_the_hd_look_the_ghost_is_the_block_in_its_own_paint_and_red_where_it
     assert soil[0] > soil[1] > soil[2] and soil[0] - soil[2] > 40, soil                             # earth over the grass: warm (the grass is green: g over r)
     g.press("e", 100)
     g.frames(3)
-    d, red = g.js("BuildGhost.drew"), g.js(GHOST_PX)
-    assert d["ok"] is False and d["z"] == 2 and red[0] - red[1] > 30 and red[0] - soil[0] >= -40, (d, red, soil)
+    d = g.js("BuildGhost.drew")
+    assert d.get("z") is None and g.js("Build.hint(Build.S.at).far"), d       # in the air, nothing beside it: no ghost, a dotted box
+    g.js(f"(() => {{ Build.S.at = {{x: {x}, y: {y}}}; Build.S.plane = Build.S.deep = null; return 1; }})()")    # on your own tile: red where it cannot go (you stand there)
+    g.frames(3)
+    d = g.js("BuildGhost.drew")
+    assert d["ok"] is False and d["z"] == 1, d                               # (its px: your body is over them)
+    g.js(f"(() => {{ Build.S.at = {{x: {x + 1}, y: {y}}}; return 1; }})()")
     g.press("q", 100)
     g.hold_item("stone_block")
     g.frames(3)

@@ -108,7 +108,7 @@ def test_in_build_mode_space_puts_the_block_at_the_cursor_and_x_takes_it(game):
     game.wait(f"landSolid({x + 1}, {y - 1}, 2) && !landSolid({x + 1}, {y - 1}, 1) && Build.S.plans.size === 0 && !myAction", 12000)
     game.js("Build.S.plane = 3")                                  # in the open air over it: on top of the block there, still a place
     game.press("ArrowUp", 100)
-    assert game.js("Build.hint(Build.S.at).ok") is False and "holds" in game.js("Build.hint(Build.S.at).text")      # nothing beside that cell
+    assert game.js("Build.hint(Build.S.at).far") is True and game.js("Build.hint(Build.S.at).text") == ""      # nothing beside that cell: dotted, nothing said
     game.press("ArrowDown", 100); game.press("ArrowDown", 100)    # back onto the wall
     game.js("Build.S.plane = null")
     game.press("x", 100)
