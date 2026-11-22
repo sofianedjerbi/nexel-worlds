@@ -57,5 +57,36 @@ def test_the_block_in_hand_is_at_the_paw_whichever_way_you_face_and_the_others_s
         else:
             assert r["n"] >= r["solid"] * .8, (face, r)                              # in front of it: all of it
     game.wait("ents.get('agent' + myId).e.held === 'dirt'")                            # the server has it, and sends it to who watches
-    game.hold_item("bread") if game.inv("bread") else game.js("(() => { selected = null; $('hotbar').dataset.sig = ''; drawHotbar(meObs.self.inventory); return 1; })()")
+    game.hold_item("bread") if game.inv("bread") else game.js("(() => { selectItem(null); return 1; })()")
     game.wait("!ents.get('agent' + myId).e.held", 4000)
+
+
+def test_the_hand_is_a_slot_even_an_empty_one(game):
+    """Like Minecraft: always one slot in hand, drawn so even when it is empty ("always keep an item selected in the
+    inventory, even empty hands"); what runs out leaves the slot in hand and the hands empty, the server told; Q goes
+    round all ten; ` the first empty one; the slot is kept for the next visit."""
+    game.give(wood=1, bread=1)
+    game.js("selectItem('wood')")
+    empty = game.js("slots.slice(0, 10).lastIndexOf(null)")
+    game.press(str((empty + 1) % 10), 100)                                       # its number key
+    assert game.js("[handSlot, selected]") == [empty, None]
+    assert game.js("[...document.querySelectorAll('#hotbar .slot')].findIndex((e) => e.classList.contains('sel'))") == empty
+    assert game.js("document.querySelectorAll('#hotbar .slot.sel').length") == 1 and not game.js("document.querySelector('#hotbar .slot.sel canvas')")
+    game.js("selectItem('bread')")
+    b = game.js("handSlot")
+    game.wait("ents.get('agent' + myId).e.held === 'bread'")
+    game.act("drop", item="bread", n=1)
+    game.wait("!meObs.self.inventory.bread")
+    game.frames(2)
+    assert game.js("[handSlot, selected]") == [b, None]                       # gone: the slot stays, the hands are empty
+    game.wait("!ents.get('agent' + myId).e.held", 4000)                         # (and the others see empty paws)
+    game.give(stone=1)
+    assert game.js("[handSlot, selected, slots[handSlot]]") == [b, None, None]  # a new thing: another free slot, not the hand
+    for _ in range(10):
+        game.press("q", 60)
+    assert game.js("handSlot") == b                                             # round all ten, empty ones too
+    game.press("`", 100)
+    assert game.js("selected") is None and game.js("slots[handSlot]") is None
+    game.js("selectSlot(3)")
+    assert game.js("localStorage.getItem('megastructure-hand')") == "3"
+    assert not game.errors

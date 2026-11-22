@@ -28,9 +28,8 @@ const bagPages = () => Math.max(1, Math.ceil((slots.reduce((m, n, i) => n ? i + 
 function toggleBag() {
   const b = $("bag"), on = b.style.display !== "block"; sfx(on ? "open" : "close"); b.style.display = on ? "block" : "none";
   bagMove = null;
-  if (on) {                                          // it opens on what you hold, or where you left the cursor
-    const held = selected ? slots.indexOf(selected) : -1;
-    if (held >= 0 && held < BAR) bagAt = {zone: "bar", i: held};
+  if (on) {                                          // it opens on the slot in hand
+    bagAt = {zone: "bar", i: handSlot};
     bagDraw(true);
   }
 }
@@ -44,10 +43,7 @@ function bagHold() {
   const name = bagItem(bagAt); if (!name) return;
   if (bagAt.zone === "wear") return void act("unwear", {slot: BAG.wear[bagAt.i]});
   const from = bagIndex(bagAt);
-  if (from >= BAR) {                                 // from the pack: onto the bar, where what you hold is, or its first empty cell, or its last
-    const held = selected ? slots.indexOf(selected) : -1, free = slots.slice(0, BAR).indexOf(null);
-    bagSwap(from, held >= 0 && held < BAR ? held : free >= 0 ? free : BAR - 1);
-  }
+  if (from >= BAR) bagSwap(from, handSlot);          // from the pack: into the slot in hand
   selectItem(name); toggleBag();
 }
 const bagUses = (name, worn) => worn ? "Take off" : FOODS.includes(name) ? "Eat" : WEAR[name] ? "Wear" : "";
@@ -68,7 +64,7 @@ function bagCell(at, name, n) {
   const idx = at.zone === "wear" ? -1 : bagIndex(at);
   if (!name && at.zone === "wear") { d.appendChild(iconCanvas(BAG.ghost[BAG.wear[at.i]])); d.classList.add("ghost"); d.title = "Nothing worn here"; }
   if (at.zone === bagAt.zone && at.i === bagAt.i) d.classList.add("cur");
-  if (name && name === selected && at.zone !== "wear") d.classList.add("held");
+  if (at.zone === "bar" && at.i === handSlot) d.classList.add("held");      // (the slot in hand, an empty one too)
   if (bagMove != null && idx === bagMove) d.classList.add("moving");
   if (at.zone === "bar") d.insertAdjacentHTML("beforeend", `<i class="k">${(at.i + 1) % 10}</i>`);
   d.dataset.zone = at.zone; d.dataset.i = at.i;
@@ -87,7 +83,7 @@ function drawBag() { bagDraw(false); }
 function bagDraw(now) {
   const el = $("bag"); if (!meObs || el.style.display !== "block") return;
   const inv = meObs.self.inventory, worn = bagWorn(), pages = bagPages(); bagPage = Math.min(bagPage, pages - 1);
-  const sig = JSON.stringify([inv, worn, slots, selected, bagAt, bagMove, bagPage, meObs.self.can]);
+  const sig = JSON.stringify([inv, worn, slots, handSlot, bagAt, bagMove, bagPage, meObs.self.can]);
   if (!now && el.dataset.sig === sig) return; el.dataset.sig = sig;
   $("bagwear").replaceChildren(...BAG.wear.map((slot, i) => bagCell({zone: "wear", i}, worn[slot] || null, 1)));
   $("bagpack").replaceChildren(...[...Array(PACK)].map((_, i) => { const n = slots[BAR + bagPage * PACK + i] || null; return bagCell({zone: "pack", i}, n, inv[n]); }));

@@ -55,7 +55,7 @@ def test_upright_the_inventorys_label_is_on_no_cell(browser, server):
         tap(g, "#tBag")
         g.wait("$('bag').style.display === 'block'", 2000)
         g.sleep(300)
-        tap(g, "#bagbar .cell")
+        tap(g, "#bagbar .cell[draggable=true]")                      # (a cell with a thing: the first, the hand, is kept empty)
         g.wait("$('bagnote').innerText.includes('Axe') || $('bagnote').innerText.includes('Wood')", 2000)
         note, bag = g.js(BOX, "#bagnote"), g.js(BOX, "#bag")
         cells = g.js("[...document.querySelectorAll('#bag .cell, #bag .bkey')].filter((e) => e.offsetWidth).map((e) => { const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; })")

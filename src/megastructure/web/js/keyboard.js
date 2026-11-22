@@ -1,9 +1,9 @@
 // Keyboard: the whole game is playable without a mouse.
 //   WASD / arrows walk (Shift sprints), Space jumps, Alt+direction turns on the spot, E does the main action on the
 //   tile you face (or eats, wears what you hold: facingNow) and X the alternative one (milk, take down, till).
-//   1-9 / Q pick what's in your hand, 0 empties it. (The keys are the settings': options.js KEY_ACTIONS.)
-//   C crafting and I inventory are navigated with the arrows, Enter uses, Esc closes. 1-9 and 0: the ten slots of
-//   your bar (an empty one: empty hands), ` empty hands.
+//   The hand is a slot of the bar, always one, like Minecraft: 1-9 and 0 pick it (an empty one: empty hands), Q and
+//   the wheel over the bar the next one, ` the first empty one. (The keys are the settings': options.js KEY_ACTIONS.)
+//   C crafting and I inventory are navigated with the arrows, Enter uses, Esc closes.
 //   While the recipe book is open the keys are its own (craft.js): none of them acts on the world behind it (X took
 //   down what you faced, a number changed what you hold), but for the ones in BOOK_KEYS. One of the book and the
 //   inventory is open at a time. What a key does there is written on it (a cap on the button, `kbd`) while you
@@ -195,19 +195,29 @@ function turn(dir) {
   const p = ents.get("agent" + myId); if (!p) return;
   [p.fx, p.fy] = DIRV[dir];
 }
-function selectItem(name) {
-  if (name !== selected) sfx("pick");
-  selected = name; $("hotbar").dataset.sig = "";
-  if (meObs) drawHotbar(meObs.self.inventory);
+function selectSlot(i) {                         // the bar's slot i in hand (ui.js handSync: what is in it, or empty hands)
+  const was = selected; handSlot = ((i % BAR) + BAR) % BAR; localStorage.setItem("megastructure-hand", handSlot);
+  handWant = null; handSync();
+  if (selected !== was) sfx("pick");
+  $("hotbar").dataset.sig = ""; if (meObs) drawHotbar(meObs.self.inventory);
 }
-function cycleHand(step) {                       // Q: the next item of the hotbar in hand (then empty hands)
+function selectItem(name) {                      // a thing in hand: the slot it is in; null: empty hands (the first empty slot)
+  const inv = meObs ? meObs.self.inventory : {};
+  if (meObs) slotOrder(inv);
+  if (!name) { const free = slots.slice(0, BAR).indexOf(null); if (free >= 0) selectSlot(free); return; }      // (none empty: nothing)
+  const i = slots.indexOf(name);
+  if (i < 0 || !inv[name]) { handWant = name; return; }      // (not come yet: taken in hand when it comes)
+  const was = selected; handTo(i); handWant = null; handSync();
+  if (selected !== was) sfx("pick");
+  $("hotbar").dataset.sig = ""; drawHotbar(inv);
+}
+function cycleHand(step) {                       // Q (and the wheel over the bar): the next slot, empty ones too, round
   if (!meObs) return;
-  const order = slotOrder(meObs.self.inventory).slice(0, BAR), have = order.filter(Boolean);
-  if (!have.length) return;
-  const i = have.indexOf(selected), j = i + step;
-  selectItem(j < 0 ? have[have.length - 1] : j >= have.length ? null : have[j]);
+  selectSlot(handSlot + step);
   if (selected) toast(`In hand: **${label(selected)}**`);      // (empty hands: the hotbar shows it, no line in the chat: "no need to write a chat message for empty hands")
 }
+let barWheel = 0;                                // (counted in distance: a mouse notch a slot, a trackpad swipe a few)
+$("hotbar").addEventListener("wheel", (e) => { e.preventDefault(); barWheel += e.deltaY; if (Math.abs(barWheel) >= 50) { cycleHand(Math.sign(barWheel)); barWheel = 0; } }, {passive: false});
 const BOOK_KEYS = new Set(["c", "i", "m", "h", "?", "g", "f3", "t", "/", "+", "=", "-"]);   // what still does its usual thing with the recipe book open
 let capAt = null;
 addEventListener("mousemove", (e) => {
@@ -262,9 +272,7 @@ addEventListener("keydown", (e) => {
     if (!e.repeat) { keys.delete(k); keys.add(k); syncWalk(); }
     return;
   }
-  if (/^[0-9]$/.test(k) && meObs) {                 // a slot of your bar (0: the tenth); an empty one, or the one in hand again: empty hands
-    const n = slots[(+k + 9) % 10]; selectItem(n && selected !== n ? n : null); return;
-  }
+  if (/^[0-9]$/.test(k) && meObs) { selectSlot((+k + 9) % 10); return; }      // a slot of your bar (0: the tenth), an empty one too
   if (k === "tab") { e.preventDefault(); if (!e.repeat) { drawWho(); document.body.classList.add("tab"); } return; }   // held: the day, you, who is awake (style.css)
   const fn = SHORTCUTS[u];
   if (fn) { e.preventDefault(); if (!e.repeat || HELD.has(u) || (u === " " && walking && !autoJump())) fn(e); }      // (Space held while walking: a jump each step, auto-jump off; on, a hop: walk.js)

@@ -18,10 +18,11 @@ def test_the_recipe_book_is_done_without_a_mouse(game):
     game.press("c", 400)
     assert game.js(OPEN) == "craft" and game.js("document.body.classList.contains('bykeys')")
     assert game.js(CAPS) == ["Q", "E", "F", "Enter", "Shift"]                    # under the bookmarks, on the switch, on the two buttons
+    hand = game.js("[handSlot, selected]")
     game.press("x", 400)
-    game.press("1", 150)
+    game.press("2", 150)
     game.press("`", 150)
-    assert game.inv("flower") == 0 and game.js("selected") is None and "hands" not in game.toast()   # nothing happened behind the book (` says "Empty hands")
+    assert game.inv("flower") == 0 and game.js("[handSlot, selected]") == hand and "hands" not in game.toast()   # nothing happened behind the book (` says "Empty hands")
     game.press("f", 250)                                                         # the switch
     assert game.js("craftOnly") is True and game.js("$('craftonly').classList.contains('on')") and game.js(LIST) == game.js(LIT) != []
     game.press("f", 250)
