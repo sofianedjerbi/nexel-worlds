@@ -32,10 +32,10 @@ def test_a_box_is_never_drawn_over_your_body(browser, server):
     assert not g.errors
 
 
-def test_in_a_shaft_six_deep_the_marks_are_lifted_with_you(browser, server):
-    """Shaft six deep, seen from above: you are drawn lifted to the rim's line (hd_level.js lift); every box of yours is
-    the cell's own box with that same lift at your feet's level, none at the rim (raise): R's step box lay faint on the
-    grass south-west of the hole, a level-and-a-half below your feet on the screen."""
+def test_in_a_shaft_six_deep_the_marks_are_where_their_cells_are(browser, server):
+    """Shaft six deep, seen from above: its south wall hides you, the x-ray window is on you (hd_level.js hides); you are
+    drawn at your level, and every box of yours is the cell's own box where it is, in the window with you. (You were
+    lifted to the rim's line and the boxes with you: hd_level.js lift, raise; at a cliff's foot that drew you on its top.)"""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -46,15 +46,12 @@ def test_in_a_shaft_six_deep_the_marks_are_lifted_with_you(browser, server):
     g.hold_item("pickaxe")
     g.frames(3)
     L, _, _, lift, rim = g.js("HdLook.level")
-    assert L == -6 and rim == 0 and lift > 2, (L, lift, rim)
+    assert L == -6 and rim == 0 and lift == 0 and g.js("HdLook.win.a") == 1, (L, lift, rim)
     drew = g.js("Target.drew.filter((d) => d.px).map((d) => ({x: d.x, y: d.y, z: d.z, px: d.px}))")
     assert drew, "a box is drawn"
     for d in drew:
-        want = g.js("([x, y, z]) => HdLook.screenOf(x, y, z)", [d["x"], d["y"], d["z"] + lift * min(1, max(0, (rim - d["z"]) / (rim - L)))])
+        want = g.js("([x, y, z]) => HdLook.screenOf(x, y, z)", [d["x"], d["y"], d["z"]])
         assert abs(want[0] - d["px"][0]) < .01 and abs(want[1] - d["px"][1]) < .01, (d, want)
-    rim_line = g.js(f"HdLook.screenOf({x + 3}, {y + 1}, 0)")[1]
-    mids = [g.js("([x, y, z]) => HdLook.markOf(x, y, z)", [d["x"] + .5, d["y"] + .5, d["z"]])[1] for d in drew]
-    assert all(t <= rim_line + g.js("zoom") for t in mids), (mids, rim_line)          # (a box's top is where your feet are, at the rim's line: it lay a tile down the grass)
     tidy(g, x, y)
 
 
@@ -74,7 +71,7 @@ def test_in_a_shaft_three_deep_a_box_in_the_south_wall_is_inside_the_opening(bro
     g.face(0, 1)
     g.frames(3)
     L, _, _, lift, rim = g.js("HdLook.level")
-    assert L == -3 and rim == 0 and 0 < lift < 1, (L, lift, rim)
+    assert L == -3 and rim == 0 and lift == 0, (L, lift, rim)
     nw, se = g.js(f"HdLook.screenOf({x + 3}, {y}, 0)"), g.js(f"HdLook.screenOf({x + 4}, {y + 1}, 0)")
     boxes = g.js("Target.drew.filter((d) => d.r && d.y > %d).map((d) => d.r).concat(WayShow.block && WayShow.cur.next.y > %d ? [WayShow.block] : [])" % (y, y))
     assert boxes, "a box in the south wall is drawn"
@@ -97,7 +94,7 @@ def test_a_room_five_by_four_four_deep_is_seen_from_above_with_you_inside_it(bro
         assert s["pitch"] == STEEP and s["n"] == 0, s
         nw, se, u = g.js(f"HdLook.screenOf({x + 2}, {y + 2}, 0)"), g.js(f"HdLook.screenOf({x + 7}, {y + 6}, 0)"), g.js("zoom")
         seen, out = g.js("(b) => HdLook.catSeen(b)", [nw[0] - u, nw[1] - u, se[0] + u, se[1] + u])
-        assert seen > .8 and out == 0, (ty - y, seen, out)
+        assert (seen > .8 and out == 0) if ty == y + 3 else (seen > .7 and out <= 8), (ty - y, seen, out)     # (on its south row its rim, three over your feet, hides your feet, as the land is: you were lifted out of it, hd_level.js lift, gone)
     tidy(g, x, y)
 
 
@@ -151,7 +148,7 @@ def test_behind_a_slab_you_are_whole(browser, server):
     try:
         go(g, x, y)
         g.wait("HdLook.catSeen() > .9", timeout=4000)                      # (it was .41)
-        assert g.js("HdLook.cam.pitch") > 36.1 and g.js("HdLook.win.n") == 0
+        assert g.js("HdLook.cam.pitch") > 36.1
     finally:
         g.rpc("dev_col", tiles=slab, col=[0])
         tidy(g, x, y)

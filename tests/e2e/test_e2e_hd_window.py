@@ -81,23 +81,57 @@ LUM = """([x, y, z]) => { const a = HdLook.screenOf(x, y, z), k = devicePixelRat
   for (let i = 0; i < d.length; i += 4) s += .3 * d[i] + .59 * d[i + 1] + .11 * d[i + 2]; return s / (d.length / 4); }"""
 
 
-def test_swimming_at_the_foot_of_a_deep_river_s_bank_its_far_wall_is_stone_and_your_head_is_whole(browser, server):
-    """(A player fell 12 into a river five wide between stone cliffs and swam at its south bank: "no x-ray, black boxes".)
-    The bank beside you is 12 over the water: the hole's walls were darkened by its depth as a shaft's are (vox_style_glsl.js
-    ho): the far wall, whole in sight, black under its first level within six tiles of you, a black stepped slab. And you
-    were lifted as a walker is, your waterline under the rim: the rim cut your head at the eyes. The floor of this hole is
-    seen (hd_level.js shut): its walls are as they are; a swimmer is lifted to its waterline (hd_level.js lift)."""
-    g = hd(browser, server)
+def gorge(g):
+    """A river five wide at 0 between stone cliffs 12 high (C), you in its south row against the south cliff (the owner's
+    doben0, caves -20,-38). -> (x, y): you"""
     x, y = g.pos()
     rows = ["." * 31] * 8 + ["~" * 31] * 5 + ["." * 31] * 8
     g.stamp(-15, -12, rows, levels=["C" * 31] * 8 + ["0" * 31] * 5 + ["C" * 31] * 8)
     g.rest()
+    return x, y
+
+
+def test_swimming_at_the_foot_of_a_deep_river_s_bank_its_far_wall_is_stone(browser, server):
+    """(A player fell 12 into a river five wide between stone cliffs and swam at its south bank: "no x-ray, black boxes".)
+    The hole's walls were darkened by its depth as a shaft's are (vox_style_glsl.js ho): the far wall, whole in sight, black
+    under its first level within six tiles of you, a black stepped slab. The floor of this hole is seen (hd_level.js shut)."""
+    g = hd(browser, server)
+    x, y = gorge(g)
     g.rpc("dev_teleport", x=x, y=y)
-    g.wait("HdLook.cam.pitch === HdLook.steep && !HdLook.busy && HdLook.level[3] > 0", timeout=8000)
+    g.wait("HdLook.cam.pitch === HdLook.steep && !HdLook.busy && HdLook.win.a === 1", timeout=8000)
     g.rest()
     face = [g.js(LUM, [x + dx + .5, y - 4, 3]) for dx in (-3, -1, 1)]     # the north bank's face over the river, 48 px up (a level is 16 px: 6 was off the screen's top), a few tiles from you
     assert min(face) > 50, face                                           # (grey stone: it was 2, black)
-    assert g.js("HdLook.catSeen()") > .7, g.js("HdLook.level")            # (your head over the rim: it was .48, ears and eyes)
+
+
+# where your body is drawn (CSS px), where your place is (your tile at your level), the window, how much of you is seen
+FOOT = """(() => { const e = ents.get('agent' + myId), a = HdLook.screenOf(e.x + .5, e.y + .5, HdLook.level[0]);
+  return {b: HdLook.art().body, a, lv: HdLook.level, win: [HdLook.win.n, HdLook.win.a], mine: HdLook.winAt(Math.round(e.x), Math.round(e.y)), seen: HdLook.catSeen()}; })()"""
+
+
+def test_at_the_foot_of_a_cliff_in_a_gorge_the_x_ray_shows_you_at_your_own_level(browser, server):
+    """The owner, his bunny in a river against the cliff south of it, 12 high: "It should trigger x-ray. Instead the game
+    acts like he's above." Under the open sky you were LIFTED (hd_level.js lift): drawn 11 levels up, on the cliff's top
+    edge. Land between the eye and you that hides you, a roof or a cliff, opens the x-ray window on your space at your
+    level (hd_level.js hides): swimming, and on a dry ledge one tile wide at the cliff's foot alike."""
+    g = hd(browser, server)
+    x, y = gorge(g)
+    for ledge in (False, True):
+        if ledge:
+            g.stamp(0, 0, ["."], levels=["0"])                           # (a dry tile at the cliff's foot, the river north of it)
+            g.rest()
+        g.rpc("dev_teleport", x=x, y=y)
+        try:
+            g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)          # (it was 0: no window under the open sky)
+        except Exception:
+            raise AssertionError(g.js("(() => { const e = ents.get('agent' + myId), tx = Math.round(e.x), ty = Math.round(e.y), L = HdLook.level[0]; return [myAt, e.x, e.y, L, HdLook.cam.pitch, HdLook.win.n, HdLook.win.a, HdLevel.under(tx, ty, L), HdLevel.over(tx, ty, L, eyeRise(HdLook.steep)), [-1, 0, 1, 2].map((d) => Voxels.host.column(tx, ty + d)), HdLook.force]; })()"))
+        g.rest()
+        s = g.js(FOOT)
+        assert s["lv"][0] == 0 and s["lv"][3] == 0, s                     # at your level, not lifted (it was 11.1: the cliff's rim)
+        assert s["mine"] and s["mine"][0] == 0, s                         # your own tile is in the window, at its own level
+        b, a = s["b"], s["a"]
+        assert b and b["y"] < a[1] < b["y"] + b["h"] + 16, s               # your body stands on your place as the eye sees it (it was 11 levels up the screen)
+        assert s["seen"] > .7, s
 
 
 def test_what_grows_on_the_meadow_over_your_room_is_not_on_its_floor(browser, server):
