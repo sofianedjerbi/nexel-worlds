@@ -5,6 +5,7 @@
 // their own, from their name. A space or a comma is a breath, a question rises at its end. A shout (SHOUT) is a
 // yell: higher, each syllable held longer and falling as it goes, pushed until it breaks up a little (a strained
 // voice), with more of its bite, and an echo off the land after it. All of a line is put on the audio clock at once, so it keeps time whatever the frames do.
+// An AI player (robot: the server marks its lines `bot`) says it the same way in its robot voice (robot_voice.js, ROBOT_KIND).
 // (It was one "say" sound a line, and none for what you said yourself.)
 
 const BABBLE = {letter: .045, every: 2, piece: .085, most: 2.7, vowel: {a: 0, e: 2, i: 4, o: -2, u: -3, y: 3}};   // s a letter; letters a syllable; s of a recording; s of talk at most; semitones
@@ -15,7 +16,7 @@ const SHOUT = {up: 5, piece: .15, fall: 3, push: 2.2, bite: [2400, 5], level: 1,
 const shouted = (line) => (line.match(/\p{L}/gu) || []).length >= 3 && line === line.toUpperCase() && line !== line.toLowerCase();
 let strain = null;                                           // (the breaking curve: a soft clip)
 function voiceOf(name) { let h = 0; for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 9 - 4; }   // semitones from the recording: a third down to a third up
-function babble(name, text, x, y, shout) {
+function babble(name, text, x, y, shout, robot) {
   if (muted) return 0;
   const m = sounds.manifest;
   if (!m) { if (audio) loadSounds(); return 0; }      // (audio.js: not before the first key or tap)
@@ -35,6 +36,7 @@ function babble(name, text, x, y, shout) {
     const a = ac(), t0 = a.currentTime + .02, base = voiceOf(name) + (shout ? SHOUT.up : 0), letters = [...String(text).toLowerCase()];
     const out = a.createGain(), p = a.createStereoPanner(), asks = /\?\s*$/.test(text);
     out.gain.value = vol * (SOUND.mix[s.category] ?? 1) * soundShare(s.category) * (shout ? SHOUT.level : .85); p.pan.value = pan; p.connect(soundOut);
+    if (robot) return robotSay(a, p, bufs, name, text, shout, ROBOT_KIND, t0, vol * (SOUND.mix[s.category] ?? 1) * soundShare(s.category));
     if (shout) {                                             // pushed through the curve, its bite brought up, and an echo after it
       if (!strain) { strain = new Float32Array(1024); for (let i = 0; i < 1024; i++) strain[i] = Math.tanh((i / 511.5 - 1) * SHOUT.push) / Math.tanh(SHOUT.push); }
       const hard = a.createWaveShaper(), bite = a.createBiquadFilter(), late = a.createDelay(1), back = a.createGain();

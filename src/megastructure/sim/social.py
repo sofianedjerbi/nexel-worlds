@@ -19,7 +19,7 @@ class Social:
         yield from self.wait(a, 0.1)
         self.stats["chat"] += 1
         a.bump("said")
-        self.emit("say", a.x, a.y, radius=SAY_R, **{"from": a.name}, text=text)
+        self.emit("say", a.x, a.y, radius=SAY_R, **{"from": a.name}, text=text, **({"bot": True} if a.bot else {}))   # (bot: the client says it in the robot voice)
         return {}
 
     def _tool_shout(self, a, args):
@@ -27,7 +27,7 @@ class Social:
         yield from self.wait(a, 0.1)
         self.stats["chat"] += 1
         a.bump("said")
-        self.emit("shout", a.x, a.y, radius=SHOUT_R, **{"from": a.name}, text=text)
+        self.emit("shout", a.x, a.y, radius=SHOUT_R, **{"from": a.name}, text=text, **({"bot": True} if a.bot else {}))   # (bot: the client says it in the robot voice)
         return {}
 
     def _tool_write_sign(self, a, args):

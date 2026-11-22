@@ -31,6 +31,22 @@ def test_give_and_chat_events(world):
     ev = sim.observe(b)["events"]
     assert any(e["type"] == "say" and e["text"] == "trade?" and e["from"] == "Ash" for e in ev)
 
+def test_an_ai_players_lines_say_it_is_one(world):
+    """The client says an AI player's lines in its robot voice (babble.js): its say and shout events carry `bot`;
+    a person's (persona "human", or none) do not."""
+    sim, a = world
+    r = sim.login("Rusty", "tok3", "a quiet builder")
+    h = sim.login("Pat", "tok4", "human")
+    for p in (r, h):
+        p.x, p.y = a.x + 1, a.y
+    sim.observe(a)
+    for p in (r, h, a):
+        run(sim, p, "say", {"text": f"hi from {p.name}"})
+        run(sim, p, "shout", {"text": f"HEY FROM {p.name}"})
+    ev = [e for e in sim.observe(a)["events"] if e["type"] in ("say", "shout")]
+    assert {(e["type"], e["from"], e.get("bot")) for e in ev} == {(t, n, True if n == "Rusty" else None)
+                                                                  for t in ("say", "shout") for n in ("Rusty", "Pat", "Ash")}
+
 def test_mailbox_post_and_open(world):
     sim, a = world
     a.add("mailbox", 1)

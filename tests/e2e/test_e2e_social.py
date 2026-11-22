@@ -193,6 +193,38 @@ def test_a_line_is_said_in_a_run_of_syllables_as_it_is_written(game, friend):
     assert game.js("babble('x', 'not a sound when muted', undefined, undefined, false)") == 0 and game.js("window.__said") == []
 
 
+@needs_sounds
+def test_an_ai_player_talks_in_the_chip_voice_a_person_babbles(game, friend):
+    """"The chip voice is very good": an AI player (persona not "human") says and shouts in the robot voice
+    (robot_voice.js robotSay, kind "chip"); a person keeps the babble."""
+    game.wait("sounds.manifest && sounds.manifest.sounds.say.files.every((f) => sounds.buffers.get(f) instanceof AudioBuffer)", 60000)
+    game.js("""(() => { const ws = new WebSocket(`ws://${location.host}/agent`); window.rusty = ws;
+      ws.onmessage = (m) => { const r = JSON.parse(m.data); (window.rustyDone = window.rustyDone || []).push(r.id); if (r.agent) window.rustyAt = [r.agent.x, r.agent.y]; };
+      ws.onopen = () => ws.send(JSON.stringify({id: 1, op: "hello", name: "Rusty", token: "t", persona: "a quiet builder"})); })()""")
+    game.wait("window.rustyAt", timeout=8000)
+    x, y = game.js("rustyAt")
+    game.rpc("dev_teleport", x=x + 1, y=y)
+    friend.rpc("dev_teleport", x=x + 2, y=y)
+    game.wait("[...ents.values()].some((q) => q.e && q.e.name === 'Rusty')", timeout=8000)
+    game.press("ArrowLeft", 60)                                         # (a key: the page's sound is awake)
+    game.js("""(() => { window.__talk = []; const b = babble, r = robotSay;
+      babble = function (name, text, x, y, shout, robot) { const n = b.apply(this, arguments); window.__talk.push(["babble", name, !!robot, shout, n]); return n; };
+      robotSay = function (a, d, bufs, name, text, shout, kind) { window.__talk.push(["robot", name, kind, shout]); return r.apply(this, arguments); };
+      return 1; })()""")
+    game.js("""rusty.send(JSON.stringify({id: 2, op: "act", tool: "say", args: {text: "hello there friend"}}))""")
+    game.wait("rustyDone.includes(2)", 5000)                         # (one at a time: a new act replaces the one under way)
+    game.js("""rusty.send(JSON.stringify({id: 3, op: "act", tool: "shout", args: {text: "GET AWAY FROM MY HOUSE"}}))""")
+    friend.act("say", text="hello robot")
+    game.wait("window.__talk.filter((t) => t[0] === 'babble').length >= 3", 8000)
+    talk = game.js("window.__talk")
+    rusty = [t for t in talk if t[1] == "Rusty"]
+    assert [t[:4] for t in rusty] == [["robot", "Rusty", "chip", False], ["babble", "Rusty", True, False],     # said (robotSay inside babble)
+                                      ["robot", "Rusty", "chip", True], ["babble", "Rusty", True, True]], talk   # and shouted
+    assert all(t[-1] > 0 for t in rusty if t[0] == "babble"), talk                 # out loud: syllables on the clock
+    pat = [t for t in talk if t[1] == friend.name]
+    assert pat and all(t[0] == "babble" and t[2] is False for t in pat), talk     # a person: the babble only
+
+
 def test_a_goal_done_goes_out_and_only_the_new_one_comes_in(game):
     """"the item sliding animation on goals... looks buggy (low fps)": every row was made again at each change, so all
     three slid in again, in four jumps. The rows that stay are the same ones, only the new goal comes in, and nothing
