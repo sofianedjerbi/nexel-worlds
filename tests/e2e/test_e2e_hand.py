@@ -116,3 +116,56 @@ def test_the_hand_is_a_slot_even_an_empty_one(game):
     game.js("selectSlot(3)")
     assert game.js("localStorage.getItem('megastructure-hand')") == "3"
     assert not game.errors
+
+
+# Your body drawn standing (or at frame 0 of a swing: `act`) with `item` in hand, as PAW: -> the px of the tool and the
+# hand on it (what differs from the body with nothing in hand: [x, y, colour, on the body]), the body's colours, its middle
+TOOL = """([item, face, act]) => { const p = ents.get('agent' + myId); p.fx = face[0]; p.fy = face[1]; p.moved = -1e9; p.swing = null; Target.aim = null; p.aimT = 0;
+  const T = 16, w = 64, h = 96, base = h - 24, now = 140 * (8 * 9000 - (p.e.id * 3) % 8) + 1;   // (the idle breathing at its frame 0, the body a swing starts from)
+  const sx = (x) => w / 2 - T / 2 + (x - p.x) * T, sy = Object.assign((y) => base + (y - p.y) * T, {up: (y) => base + (y - p.y) * T, apart: true});
+  const shot = (sel, a) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    const keep = ctx, kz = zoom, ks = selected; ctx = g; zoom = 1; selected = sel; myAction = a; try { drawEntity(p, sx, sy, T, now / 1000, now); } finally { ctx = keep; zoom = kz; selected = ks; myAction = null; }
+    return g.getImageData(0, 0, w, h).data; };
+  const a = shot(null, null), b = shot(item, act ? {tool: act, with: item, t0: now, at: [Math.round(p.x) + face[0], Math.round(p.y) + face[1]]} : null), body = new Set(), px = [];
+  for (let i = 0; i < a.length; i += 4) if (a[i + 3] > 128) body.add(a[i] + ',' + a[i + 1] + ',' + a[i + 2]);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const o = (y * w + x) * 4; if (Math.abs(a[o] - b[o]) + Math.abs(a[o + 1] - b[o + 1]) + Math.abs(a[o + 2] - b[o + 2]) + Math.abs(a[o + 3] - b[o + 3]) > 30 && b[o + 3] > 128) px.push([x, y, b[o] + ',' + b[o + 1] + ',' + b[o + 2], a[o + 3] > 128]); }
+  const cell = Math.round(sx(p.x)) - 16, top = Math.round(sy(p.y)) - 18;
+  return {px, body: [...body], mid: [cell + 23.5, top + 26], hand: SwingArt.handOf(wornReady(agentTint(me), p.e.worn, p.e.race, p.e.bot)).map((c) => c.join(','))}; }"""
+SWING = {"axe": "dig", "pickaxe": "dig", "hoe": "dig", "watering_can": "water", "sword": "attack", "spear": "attack"}
+
+
+def test_a_tool_in_hand_is_gripped_the_hand_over_its_handle_and_a_swing_starts_where_it_is_held(game):
+    """The owner: "when handling tools it should look like the player is really holding it, like the sword". A tool was
+    its icon pasted at the paw. Now the hand (the swing's hand, in the person's colours) is drawn over its handle, the
+    tool out of it; facing away it is behind the body; and the swing's first frame has the tool where it was held (the
+    hand moves 2 art px at most; where the swing's hand is hidden, its tool starts at the hand held): no jump when you
+    strike (hold_art.js)."""
+    game.wait("wornReady(agentTint(me), ents.get('agent' + myId).e.worn, ents.get('agent' + myId).e.race, ents.get('agent' + myId).e.bot)")
+
+    def hand(r):                                                                    # the middle of the hand's outline off the body, on the tool
+        tool = [(x, y) for x, y, c, _ in r["px"] if c not in r["body"]]
+        ring = [(x, y) for x, y, c, on in r["px"] if c == r["hand"][0] and not on and any(abs(x - u) <= 2 and abs(y - v) <= 2 for u, v in tool)]
+        return (sum(x for x, _ in ring) / len(ring), sum(y for _, y in ring) / len(ring)) if len(ring) >= 3 else None
+    jumps = []
+    for item in ("sword", "axe", "pickaxe", "hoe", "spear", "torch", "watering_can"):
+        for face in ([0, 1], [1, 0], [-1, 0], [0, -1]):
+            r = game.js(TOOL, [item, face, None])
+            tool = [(x, y) for x, y, c, _ in r["px"] if c not in r["body"]]
+            assert len(tool) >= 4, (item, face, len(tool))                          # the tool is there
+            ring = [(x, y) for x, y, c, _ in r["px"] if c == r["hand"][0]]
+            if face != [0, -1] and item != "watering_can":                         # (the can: the sheet's own, held as the sheet holds it)
+                assert len(ring) >= 4, (item, face, len(ring))                     # the hand (half its ring of outline at least: the rest may be on the body's)
+                hx, hy = sum(x for x, _ in ring) / len(ring), sum(y for _, y in ring) / len(ring)
+                assert any(abs(x - hx) <= 3 and abs(y - hy) <= 3 for x, y in tool), (item, face)   # ...on the handle: the tool comes out of it
+            if face == [0, -1]:
+                assert sum(1 for *_, on in r["px"] if on) <= len(r["px"]) * .5, (item, face)   # facing away: behind the body
+            if item in SWING:
+                s = game.js(TOOL, [item, face, SWING[item]])
+                h, k = hand(r), hand(s)
+                if h and k:
+                    jumps.append((item, face, max(abs(h[0] - k[0]), abs(h[1] - k[1]))))
+                elif h:                                                            # (the swing's hand hidden behind the body)
+                    start = [max(abs(x - h[0]), abs(y - h[1])) for x, y, c, _ in s["px"] if c not in s["body"]]
+                    jumps.append((item, face, min(start, default=2) - 2))       # (its tool from where the hand held it; none: hidden too)
+    assert all(j[2] <= 2 for j in jumps), [j for j in jumps if j[2] > 2]
+    assert not game.errors
