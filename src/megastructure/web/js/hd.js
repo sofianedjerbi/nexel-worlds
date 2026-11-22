@@ -7,7 +7,7 @@
 // billboards of their own sprites (objectSprite), px for px; furniture, walls, fences, built floors and roofs: small 3D
 // pieces in the land (hd_things.js), a built house open over your head; you and the others: drawEntity at zoom 1.
 const HdLook = (() => {
-  const GROW = .25, EASE = .4, HOLD = 300, CAP = 20, R = 24, PART = .25;
+  const GROW = .25, EASE = .4, HOLD = 300, CAP = 20, R = 24, PART = .25, FAR = 64, EDGE = 32;   // (FAR, EDGE: how far a body may be, tiles; how far off the picture its feet may be and it is drawn, art px)
   // STEEP: the steepest the eye ever looks down (degrees): in a hole, a room, a cave, a shaft, behind a mountain. 58: the land's walls stand as walls and you see what you build on; what hides you is cut (the x-ray, hd_level.js hides / veils), not looked over. (It was 78.6, nearly straight down: "the camera's inclination makes it hard to build")
   const STEEP = 58;
   // NARROW: a hole deeper than this many times its width across (north to south) is a shaft: its walls darken with its depth (hd_level.js shut). (It was the eye's own climb, 4.95 at 78.6: from 58 a gorge 6 wide and 13 deep was a shaft, its far cliff black)
@@ -244,10 +244,12 @@ const HdLook = (() => {
       list.push({canvas: c, fx: 12, fy: 14 + Math.round(Math.sin(now / 1000 * 2.4 + ix * 1.3 + iy) + 1), still: true, d: true, pile: true, x: ix + .5, y: iy + .7, z: floorAt(ix, iy)});   // (it hovers, as in the classic picture: 0 to 2 px, a whole px at a time)
     }
     const wmB = winMap(), wr = wmB.size ? winRect() : null;   // UNDER A ROOF nobody up on the land over you is seen: over the window, or over the land round it (in the window's box on the screen); only who is in your space (like Minecraft: no mob through the ceiling)
-    // (who is drawn: as far east, west and south as the land is (rx, south); north to the bend's top, past which the land is behind the curve. It was 16 across and 12 south: at zoom 2 the screen shows 22 tiles each way, 18 south, and a hen ran out of being at 16, on the screen)
-    for (const q of ents.values()) if (q.x !== undefined && Math.abs(q.x - p.x) <= rx && q.y - p.y > -12 && q.y - p.y <= south) {
+    // (who is drawn: whoever's feet are on the picture, or EDGE art px off it (in view a step before it comes in), where it stands as the land is drawn: the bend sinks both alike, so past the horizon the land in front
+    //  hides it as it hides its land. It was a box: 16 across, then the land's; 12 rows north whatever the screen: on a hill's side 26 rows off, on a phone held upright 17, a mob went out of being in view)
+    for (const q of ents.values()) if (q.x !== undefined && Math.abs(q.x - p.x) <= FAR && q.y - p.y >= -FAR && q.y - p.y <= south + 8) {
       if (fill && warm < 2) continue; if (fill && !sprs.has(q) && nw && performance.now() > until) { left = true; continue; } if (fill && !sprs.has(q)) nw++;   // (the first screen's people: after what stands, 8 ms of new ones a frame)
       const qx = Math.round(q.x), qy = Math.round(q.y), z = q === p ? Lf : FLOORS && Floors.any(qx, qy) ? Floors.standOf(q, qx, qy) : q.e && typeof q.e.z === "number" && !H0.water(qx, qy) ? zOn(q, qx, qy) : Math.max(topAt(qx, qy), wet(qx, qy));   // (on a built floor: at its height; in a cave: at the level the server has them. They were put on the land's top: a friend in your room stood on the grass over it)
+      if (q !== p && seen) { const a = eng.at(q.x + .5, q.y + .5, z); if (!a || a[0] < -EDGE || a[0] > w + EDGE || a[1] < -EDGE || a[1] > h + 2 * EDGE) continue; }
       if (q !== p && z < topAt(qx, qy)) { const c = H0.column(qx, qy), b = winMap().get(qx + "," + qy); let over = false; for (let zz = z + 1; zz <= topAt(qx, qy) && !over; zz++) over = solidAt(c, zz); if (over && !(b && z >= b[0] - 1 && z <= b[1])) continue; }
       if (q !== p && wmB.size) { const b = wmB.get(qx + "," + qy), a = !b && eng.at(q.x + .5, q.y + .5, z); if (!(b ? z >= b[0] - 1 && z <= b[1] : Math.abs(z - L) <= 1) && (b || (a && wr && a[0] + 6 > wr[0] && a[0] - 6 < wr[2] && a[1] > wr[1] && a[1] - 14 < wr[3]))) continue; }   // (not in your space: on the window's tile at another level, or its body in the window's box: hidden, its name with it. It was drawn, the ground under its feet kept one px in two: a hen over your head read as in the cave with you)   // (under land the window is not on: not seen, nor their name)
       const s = ent(q, now, z);
@@ -274,7 +276,7 @@ const HdLook = (() => {
       water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y, ver: Voxels.wver} : null, dep, own, rim: HdLevel.rim(tx, ty, L), hole: tilt * HdEase.of("shut", !p.free && HdLevel.shut(tx, ty, L, NARROW)), sky: bare, behind: p.free || cov0 ? 0 : HdEase.of("behind", HdLevel.over(tx, ty, L, kS) >= 1), win: api.nowin ? 0 : 1, edge: api.edge, sprites: list, way: WayShow.land(), ghosts: pieces(list), hour: hour(w, h, list, 0)});
     if (!pic) { noGL = true; return; }
     seen = {tx, ty, L, rim: HdLevel.rim(tx, ty, L), top: tilt > .5 && !cov0, ks: eyeRise(cam.pitch), k: 1, me: list.find((q) => q.top), list, at: [snap(p.x + .5), snap(p.y + .5), Lf]}; horizon(tx, ty, L + dep); hl = Math.max(8, eyeLine([snap(p.x + .5), snap(p.y + .5), Math.round(camL * 16) / 16 + .5], w, h) + 2);   // (the horizon is the surface's, however deep you are)   // (at: where the eye looks: you, to a px of the land: your own name is written from there)
-    api.faces = eng.faces; api.models = eng.models;
+    api.faces = eng.faces; api.models = eng.models; reachOf(tx, ty, w, h, now);
     if (fill) { const w0 = warm; warm += w0 === 0 || !left ? 1 : 0; if (w0 === 0) { api.ms = performance.now() - t0; return; } }
     // the land's picture over the backdrop on the world's own canvas, at the art's own size (hd_view.js): put together only when one of them is new; under a roof the sky stays as a band over the earth's far edge
     api.held = held; if (held) { api.ms = performance.now() - t0; return; }   // (the last picture stays: see `held`)
@@ -282,6 +284,13 @@ const HdLook = (() => {
     wrote = HdView.words(() => written(p, now, true), now);
     api.ms = performance.now() - t0;
   }
+  // REACH: the tiles of land the picture shows, [x0, y0, x1, y1] (a column in two, from the south: a top over all the nearer ones' and on the picture), every half second. The server tells of who is there (state.js)
+  let reachT = -1e9; api.reach = null;
+  function reachOf(tx, ty, w, h, now) { if (now - reachT < 500) return; reachT = now; let x0 = tx, y0 = ty, x1 = tx, y1 = ty, d0 = 0;
+    for (let ya = -1e9, z0 = topAt(tx, ty); d0 < 40; d0++) { const a = eng.at(tx + .5, ty + d0 + .5, z0); if (!a || a[1] <= ya || ya > h) break; ya = a[1]; }   // (south as far as the rows go down the picture: past the eye they come back up)
+    for (let dx = -FAR; dx <= FAR; dx += 2) { let sky = 1e9; for (let dy = d0; dy >= -FAR; dy--) { const c = Voxels.host.column(tx + dx, ty + dy); if (!c || !c.length) continue; const a = eng.at(tx + dx + .5, ty + dy + .5, c[c.length - 1]); if (!a || a[1] >= sky) continue; sky = a[1];
+      if (a[0] >= 0 && a[0] <= w && a[1] >= 0 && a[1] <= h) { x0 = Math.min(x0, tx + dx); x1 = Math.max(x1, tx + dx); y0 = Math.min(y0, ty + dy); y1 = Math.max(y1, ty + dy); } } }
+    api.reach = [x0 - 1, y0, x1 + 1, y1]; }
   // the px a tile's boxes take on the screen (hd_things.js: a wall, a fence, a door): {x, y, w, h}, or null
   function boxed(x, y, lo) {   // (lo: only the boxes of the storey that starts at that height, px: the aim's corners went round a wall, the wall over it and the roof: two pairs of brackets a storey apart)
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
