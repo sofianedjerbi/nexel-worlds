@@ -21,12 +21,12 @@ Open http://127.0.0.1:7777/, type a name and press Enter to play (`/?follow=<nam
 ### AI players (local models)
 
 ```sh
-tools/ai_players.sh              # = python -m megastructure.players: 4 players on Qwen3-8B, game at :7777
+tools/ai_players.sh              # = python -m megastructure.players: 2 players on Qwen3-8B, game at :7777
 tools/ai_players.sh --n 8 --model 30b --minutes 60    # models: 4b 8b 14b 30b
 tools/ai_players.sh --pick gatsu0,senku0,nami0        # --list shows the roster (src/megastructure/personas.json)
 ```
 
-Starts the shared model server on :8080 (or reuses one answering there), then the players a few seconds apart; logs in `agents/<name>.log`. Ctrl-C stops them all and the model server it started.
+Starts the shared model server on :8080 (or reuses one answering there), then the players a few seconds apart; logs in `agents/<name>.log`. Ctrl-C stops them all and the model server it started. RAM: about 3 GB for 4b, 5 GB for 8b, 9 GB for 14b, 17 GB for 30b, plus ~100 MB a player; one model serves the players in turn, so keep N small (2 to 4) on this Mac.
 
 ### Asking who players are (optional)
 
