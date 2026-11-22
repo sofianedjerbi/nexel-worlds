@@ -13,9 +13,19 @@ const Held = (() => {
   // the 8 x 8 picture's top left in the 48 x 48 cell, per DIR_ROW (down, up, right, left): the right paw, low at the side
   const AT = [[14, 22], [26, 21], [26, 22], [16, 22]], N = 7;
   const at = (p) => AT[DIR_ROW(p)];
-  function draw(c, p, cellX, cellY, z) { const [ax, ay] = at(p); ctx.drawImage(c, cellX + ax * z, cellY + ay * z, c.width * z, c.height * z); }
+  // The body's own bob in a frame of the sheet (sx, sy: its 48 x 48 cell): how many art px its top is lower than in the
+  // row's first frame. The paw goes with it (the item stood still while the body walked up and down under it)
+  const tops = new WeakMap();
+  function top(sheet, sx, sy) {
+    let m = tops.get(sheet); if (!m) tops.set(sheet, m = new Map()); const k = sx + "," + sy; if (m.has(k)) return m.get(k);
+    let t = 0; try { const g = document.createElement("canvas").getContext("2d", {willReadFrequently: true}); g.canvas.width = g.canvas.height = 48; g.drawImage(sheet, sx, sy, 48, 48, 0, 0, 48, 48);
+      const d = g.getImageData(0, 0, 48, 48).data; t = 48; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) { t = Math.floor(i / 4 / 48); break; } } catch (e) { t = 0; }
+    m.set(k, t); return t;
+  }
+  const lift = (sheet, sx, sy) => (sheet ? top(sheet, sx, sy) - top(sheet, 0, sy) : 0);
+  function draw(c, p, cellX, cellY, z, sheet, sx, sy) { const [ax, ay] = at(p), dy = lift(sheet, sx, sy); ctx.drawImage(c, cellX + ax * z, cellY + (ay + dy) * z, c.width * z, c.height * z); }
   let sent;
   // yours, to the server when it changes (and again whenever the server has another: a new connection)
   function sync(s) { const want = selected || null; if (s && (s.held || null) !== want && sent !== want + "@" + (s.held || "")) { sent = want + "@" + (s.held || ""); rpc("hold", {item: want}); } }
-  return {art, draw, at, sync};
+  return {art, draw, at, lift, sync};
 })();

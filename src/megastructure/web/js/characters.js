@@ -169,10 +169,10 @@ function drawBody(p, sx, sy, S, t, now) {
     // the weapon of a cut or a thrust: in front of the body, behind it when they face away
     const arm = () => blow && ctx.drawImage(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, 48, 48, cellX, cellY, 48 * z, 48 * z);
     const hand = (ANIM[anim] <= ANIM.run || anim === "jump") && !blow && tool !== "eat" && tool !== "sleep" && !(cl && cl.on) ? Held.art(mine ? selected : e.held) : null;   // what is in the paw (held.js)
-    if (p.fy < 0) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z); }
+    if (p.fy < 0) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy); }
     ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
     wearFx("front", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);
-    if (p.fy >= 0) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z); }
+    if (p.fy >= 0) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy); }
     if (tool === "eat" && action.item && p.fy >= 0) {   // the food, half size and crisp, held up to the mouth
       const pose = eatPose(k), food = biteIcon(action.item, pose.bites);
       if (food) {

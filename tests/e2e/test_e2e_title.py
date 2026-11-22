@@ -70,6 +70,10 @@ def test_the_first_screen_fits_a_phone(browser, server):
             assert logo[3] <= say[1] + 2 and say[3] <= menu[1], r           # the name, the line, the window: one under the other
         else:
             assert logo[2] <= menu[0] and say[2] <= menu[0] and logo[3] <= say[1] + 2, r    # the name and its line beside the window, not behind it
+            one = "(() => { const s = $('splash'); return s.getBoundingClientRect().height <= parseFloat(getComputedStyle(s).lineHeight) + 1 && s.getBoundingClientRect().right <= document.querySelector('#joinbox .menu').getBoundingClientRect().left; })()"
+            assert page.evaluate(one), r                                     # one line: "Eating while swimming is art." wrapped under the rest
+            page.evaluate("$('splash').textContent = SPLASH.reduce((a, b) => b.length > a.length ? b : a); dispatchEvent(new Event('resize'))")
+            assert page.evaluate(one), page.evaluate("$('splash').textContent")   # (the longest gives its place to one that fits)
         assert join[3] - join[1] >= 48 and join[0] <= menu[0] + 14 and join[2] >= menu[2] - 14, r     # Wake up: across the window, a thumb high
         assert sound[3] - sound[1] >= 44 and opts[3] - opts[1] >= 44 and sound[1] == opts[1] and sound[2] <= opts[0] and sound[1] >= join[3], r   # the others: two abreast, under Wake up
         assert page.evaluate("getComputedStyle($('join')).backgroundColor") == "rgb(255, 241, 168)"       # (lit, whatever row the keys would be on)

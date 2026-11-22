@@ -7,7 +7,7 @@ const HELP = [
   ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Space"], "Jump: up a step"], [["Alt"], "Turn without walking"], [["G"], "Goals: show or hide"]]],
   ["See", [[["+", "−"], "Zoom (or the wheel)"], [["V"], "What is built over you"]]],
   ["Do", [[["E"], "Use: open, harvest, eat"], [["X"], "Break: mine, chop, hit"], [["F"], "Pick up"],
-    [["Left click"], "X there, or walk"], [["Right click"], "E there"]]],
+    [["Left click"], "{alt} there, or walk"], [["Right click"], "{use} there"]]],
   ["Carry", [[["1-9", "Q"], "Slot in hand"], [["`"], "Empty your hands"], [["E"], "Place what you hold"],
     [["I"], "Inventory"], [["C"], "Craft"]]],
   ["Build", [[["Z"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],
@@ -20,10 +20,11 @@ let helpPage = 0;
 const helpOpen = () => $("help").style.display === "block";
 function drawHelp() {
   const mine = HELP[helpPage][0] !== "Build";            // (build mode's keys are its own; the others as the settings have them: options.js)
+  const said = (what) => what.replace(/\{(\w+)\}/g, (m, a) => capOf(a));      // (a row that names a key in its words, "X there": the player's own key, as its cap says)
   const keys = (ks) => ks.map((k) => `<kbd>${mine && HELP_ACT[k] ? capOf(HELP_ACT[k]) : k}</kbd>`).join("");
   $("help").innerHTML = `<div class="hh"><b>Help</b><span><kbd>H</kbd>close</span></div>`
     + `<div class="tabs">${HELP.map(([name], i) => `<div class="tab${i === helpPage ? " on" : ""}" data-i="${i}">${name}</div>`).join("")}</div>`
-    + `<div class="well">${HELP[helpPage][1].map(([ks, what]) => `<div class="row"><div class="keys">${keys(ks)}</div><div class="what">${what}</div></div>`).join("")}</div>`
+    + `<div class="well">${HELP[helpPage][1].map(([ks, what]) => `<div class="row"><div class="keys">${keys(ks)}</div><div class="what">${said(what)}</div></div>`).join("")}</div>`
     + `<div class="hf"><kbd>←</kbd><kbd>→</kbd>turn the page</div>`;
 }
 function turnHelp(to) { helpPage = (to + HELP.length) % HELP.length; drawHelp(); sfx("pick"); }

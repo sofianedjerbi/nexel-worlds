@@ -6,12 +6,12 @@ from test_e2e_touch import touch_game
 
 CELLS = "(id) => [...$(id).children].map((c) => { const n = c.querySelector('span'); return c.title && !c.classList.contains('ghost') ? c.title.toLowerCase().replace(/ /g, '_') + (n ? ':' + n.textContent : '') : null; }).filter(Boolean)"
 NEEDS = "[...document.querySelectorAll('#craftdetail .cneed')].map((e) => [e.querySelector('span').textContent, e.querySelector('b').textContent, e.classList.contains('miss')])"
-# a block's icon: the pack's cube (cube_icons.js), every px of it drawn as CubeIcon made it from the land's own paint,
+# a block's icon: the pack's cube (cube_icons.js), every px of it drawn as CubeIcon made it (at its cell size, in the middle of 16) from the land's own paint,
 # its top (lit) and its front (the land's side) told apart. -> how many colours the top and the front have in common, or -1
-SAME = """(name) => { const b = iconCanvas(name).getContext('2d').getImageData(0, 0, 16, 16).data, a = CubeIcon.px(name, 16).data, top = new Set(), front = new Set();
+SAME = """(name) => { const b = iconCanvas(name).getContext('2d').getImageData(0, 0, 16, 16).data, im = CubeIcon.px(name, CubeIcon.CELL), [mx, my] = CubeIcon.mid(im, 16), a = (() => { const g = document.createElement('canvas').getContext('2d'); g.canvas.width = g.canvas.height = 16; g.putImageData(im, mx, my); return g.getImageData(0, 0, 16, 16).data; })(), top = new Set(), front = new Set();
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return -1;
   for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const o = (y * 16 + x) * 4; if (b[o + 3] !== 255) continue; const k = b[o] << 16 | b[o + 1] << 8 | b[o + 2];
-    if (y >= 2 && y <= 4 && x >= 5 && x <= 10) top.add(k); else if (y >= 8 && y <= 13 && x >= 2 && x <= 8) front.add(k); }
+    if (y >= 3 && y <= 4 && x >= 5 && x <= 9) top.add(k); else if (y >= 7 && y <= 12 && x >= 3 && x <= 8) front.add(k); }
   return top.size && front.size ? [...top].filter((k) => front.has(k)).length : -1; }"""
 HAS = "(n) => (meObs.self.inventory[n] || 0)"
 

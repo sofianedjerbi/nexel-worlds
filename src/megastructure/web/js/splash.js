@@ -35,5 +35,16 @@ const SPLASH = [
 ];
 (() => {                                                    // (a phone has no Tab to hold)
   const el = document.getElementById("splash"), all = SPLASH.filter((t) => !/\bTab\b/.test(t) || !document.body.classList.contains("touch"));
-  if (el) el.textContent = all[Math.floor(Math.random() * all.length)];
+  if (!el) return;
+  el.textContent = all[Math.floor(Math.random() * all.length)];
+  // A phone on its side: the line is one line (title.css), beside the window, not behind it: one that does not fit
+  // there gives its place to one that does (it wrapped to two, "Eating while swimming is art." under the rest)
+  const fits = () => { const m = document.querySelector("#joinbox .menu"), r = el.getBoundingClientRect(); return !m || r.right <= m.getBoundingClientRect().left - 8; };
+  const fit = () => {
+    if (getComputedStyle(el).whiteSpace !== "nowrap" || !el.offsetWidth || fits()) return;
+    const was = el.textContent, ok = all.filter((t) => { el.textContent = t; return fits(); });
+    el.textContent = ok.length ? ok[Math.floor(Math.random() * ok.length)] : was;
+  };
+  fit(); addEventListener("resize", fit); if (document.fonts) document.fonts.ready.then(fit);
+  new MutationObserver(fit).observe(el, {childList: true, characterData: true, subtree: true});      // (a line put there later: fitted too)
 })();

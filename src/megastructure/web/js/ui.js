@@ -63,7 +63,7 @@ function bare(c) {
 function iconCanvas(name) {
   const c = document.createElement("canvas"); c.width = 16; c.height = 16; const g = c.getContext("2d", {willReadFrequently: BARE.has(name)});
   const ic = ICONS[name];
-  if (CubeIcon.is(name)) { const im = CubeIcon.px(name, 16); if (im) { g.putImageData(im, 0, 0); return c; } }      // a block: a cube (cube_icons.js)
+  if (CubeIcon.is(name)) { const im = CubeIcon.px(name, CubeIcon.CELL); if (im) { const [x, y] = CubeIcon.mid(im, 16); g.putImageData(im, x, y); return c; } }      // a block: a cube made at the size the other things sit at in a cell, in its middle (cube_icons.js)
   if (!ic && WEAR[name]) return wearIcon(name);          // clothes and armor draw their own (wear_items.js)
   if (!ic) { g.fillStyle = "#8a6a55"; g.fillRect(4, 4, 8, 8); return c; }
   if (ic[0] === "gen") { g.drawImage(IMG.gen, GEN[ic[1]] * 16, 0, 16, 16, 0, 0, 16, 16); return BARE.has(name) ? bare(c) : c; }

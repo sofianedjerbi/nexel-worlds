@@ -9,9 +9,12 @@ LIGHT = """([name, regions]) => { const d = fullIcon(name).getContext('2d').getI
 def test_a_block_in_the_pack_is_a_cube_lit_on_top_and_shaded_on_its_right(game):
     """Earth, stone, planks, path: three faces, each its own tone: the top lightest, the right side darkest; inked round."""
     for name in ("dirt", "stone_block", "plank", "path"):
-        top, front, right = game.js(LIGHT, [name, [[3, 2, 9, 4], [2, 8, 8, 13], [11, 6, 13, 10]]])
+        top, front, right = game.js(LIGHT, [name, [[5, 3, 9, 4], [3, 7, 8, 12], [11, 6, 12, 9]]])
         assert top > front > right > 0, (name, top, front, right)
-        assert game.js("(n) => { const d = fullIcon(n).getContext('2d').getImageData(0, 0, 16, 16).data; return [d[(8 * 16) * 4], d[(8 * 16) * 4 + 1], d[(8 * 16) * 4 + 2]]; }", name) == [117, 76, 96]   # (its west edge: the ink)
+        assert game.js("(n) => { const d = fullIcon(n).getContext('2d').getImageData(0, 0, 16, 16).data; return [d[(8 * 16 + 2) * 4], d[(8 * 16 + 2) * 4 + 1], d[(8 * 16 + 2) * 4 + 2]]; }", name) == [117, 76, 96]   # (its west edge: the ink)
+    # as big as the other things in a 16 px cell (a 15 px block filled the pack's cell where a log is 12): 12 px, in the middle
+    box = "(n) => { const d = fullIcon(n).getContext('2d').getImageData(0, 0, 16, 16).data; let b = [99, 99, -1, -1]; for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (d[(y * 16 + x) * 4 + 3] > 128) b = [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)]; return b; }"
+    assert game.js(box, "dirt") == [2, 2, 13, 13]
     assert game.js("CubeIcon.is('bread') || CubeIcon.is('axe')") is False
 
 
@@ -59,6 +62,29 @@ def test_the_block_in_hand_is_at_the_paw_whichever_way_you_face_and_the_others_s
     game.wait("ents.get('agent' + myId).e.held === 'dirt'")                            # the server has it, and sends it to who watches
     game.hold_item("bread") if game.inv("bread") else game.js("(() => { selectItem(null); return 1; })()")
     game.wait("!ents.get('agent' + myId).e.held", 4000)
+
+
+# Your body walking south, drawn at each of the walk's 8 frames (as PAW), without and with a block in hand: -> [[the body's top, the block's top]] a frame
+WALK = """() => { const p = ents.get('agent' + myId); p.fx = 0; p.fy = 1; myAction = null; const T = 16, w = 64, h = 96, base = h - 24, run = sprinting();
+  const sx = (x) => w / 2 - T / 2 + (x - p.x) * T, sy = Object.assign((y) => base + (y - p.y) * T, {up: (y) => base + (y - p.y) * T, apart: true});
+  const shot = (sel, now) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    const keep = ctx, kz = zoom, ks = selected; ctx = g; zoom = 1; selected = sel; p.walking = true; p.moved = now; try { drawEntity(p, sx, sy, T, now / 1000, now); } finally { ctx = keep; zoom = kz; selected = ks; p.walking = false; }
+    return g.getImageData(0, 0, w, h).data; };
+  const out = []; for (let f = 0; f < 8; f++) { const now = (1000 + f) * 85 + 40, a = shot(null, now), b = shot('dirt', now); let bt = 1e9, it = 1e9;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const o = (y * w + x) * 4; if (a[o + 3] > 128) bt = Math.min(bt, y); if (Math.abs(a[o] - b[o]) + Math.abs(a[o + 1] - b[o + 1]) + Math.abs(a[o + 2] - b[o + 2]) + Math.abs(a[o + 3] - b[o + 3]) > 30) it = Math.min(it, y); }
+    out.push([bt, it]); } return out; }"""
+
+
+def test_the_block_in_hand_goes_up_and_down_with_the_body_as_it_walks(game):
+    """The walk's frames lift the body a px and set it down; the block in the paw stood still under it, sliding up and
+    down the fur. It goes with the body: a frame's lift is the block's, whole art px."""
+    game.give(dirt=3)
+    game.hold_item("dirt")
+    game.wait("wornReady(agentTint(me), ents.get('agent' + myId).e.worn, ents.get('agent' + myId).e.race, ents.get('agent' + myId).e.bot)")
+    r = game.js(WALK)
+    assert len({b for b, _ in r}) > 1, r                                                # (the walk bobs: else there is nothing to follow)
+    assert len({i - b for b, i in r}) == 1, r                                           # the block keeps its place on the body
+    assert not game.errors
 
 
 def test_the_hand_is_a_slot_even_an_empty_one(game):

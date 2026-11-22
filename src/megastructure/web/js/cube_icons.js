@@ -3,7 +3,7 @@
 // put in inventory.") The paint is the land's: earth and stone as the build ghost has them (buildghost.js paintOf:
 // the land's top, voxpaint.js `front` for the sides), planks as a built block of them (floors.js `cell`: the pack's
 // house floor, its wall planks for the sides), a path its cobbles laid on bare earth. Made at load, at the size asked
-// (16 the full icon, 11 the slot's and the ground's, 8 in the hand), whole px, never a texture scaled: each px of a
+// (13 in a 16 px cell: ui.js iconCanvas; 11 the slot's and the ground's, 8 in the hand), whole px, never a texture scaled: each px of a
 // face takes the px of the paint under it.
 const CubeIcon = (() => {
   const CUBES = new Set(["dirt", "stone_block", "plank", "path"]), INK = 0xff604c75 >>> 0;   // (Structures.INK, #754c60)
@@ -65,5 +65,12 @@ const CubeIcon = (() => {
     made.set(key, out); return out;
   }
   function canvas(name, W) { const im = px(name, W); if (!im) return null; const c = document.createElement("canvas"); c.width = c.height = W; c.getContext("2d").putImageData(im, 0, 0); return c; }
-  return {is: (n) => CUBES.has(n), px, canvas, style: "box"};
+  // Where a cube's px go in a cell of W, its px in the middle: (it was made at 16, a 15 px block that filled the pack's cell, where a log or a loaf is
+  // 12 or 13 px of a 16 px icon: the blocks stood out as tiles. Made at CELL, 12 px: as big as the others, and never scaled)
+  function mid(im, W) {
+    const d = new Uint32Array(im.data.buffer); let b = [1e9, 1e9, -1, -1];
+    for (let y = 0; y < im.height; y++) for (let x = 0; x < im.width; x++) if (d[y * im.width + x] >>> 24) b = [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)];
+    return b[2] < 0 ? [0, 0] : [((W - (b[2] - b[0] + 1)) >> 1) - b[0], ((W - (b[3] - b[1] + 1)) >> 1) - b[1]];
+  }
+  return {is: (n) => CUBES.has(n), px, canvas, mid, style: "box", CELL: 13};
 })();
