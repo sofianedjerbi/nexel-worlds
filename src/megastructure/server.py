@@ -16,9 +16,11 @@ from pathlib import Path
 from websockets.asyncio.server import serve
 from websockets.exceptions import ConnectionClosed
 
+from .admin import Admins
 from .cells import HIGH, LOW
 from .devtools import dev_op
 from .gate import Gate
+from .limits import LIMITS, RateLimiter
 from .sim import DAY_TICKS, TICK_HZ, TOOL_SPECS, ActionError, Simulation
 from .sim.constants import FOOD_MAX, HP_MAX, EAT_PACE, SPRINT_FOOD, SWIM_PACE
 from .tiles import FOOD, RECIPES
@@ -27,8 +29,6 @@ from .web_static import serve_http, set_bundle, web_stamp
 
 log = logging.getLogger("megastructure")
 PROTOCOL = 1
-# Actions are already paced by game time (one in flight per agent), so these only stop floods.
-LIMITS = {"act": (900, 60.0), "observe": (900, 60.0), "say": (20, 60.0), "shout": (3, 60.0)}
 FLUSH_EVERY = 10 * TICK_HZ  # ticks (10 s)
 
 
@@ -37,23 +37,8 @@ def rss_mb() -> float:
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6
 
 
-class RateLimiter:
-    def __init__(self):
-        self.hits = collections.defaultdict(collections.deque)
-
-    def allow(self, key: str) -> bool:
-        n, window = LIMITS[key]
-        q, now = self.hits[key], time.monotonic()
-        while q and now - q[0] > window:
-            q.popleft()
-        if len(q) >= n:
-            return False
-        q.append(now)
-        return True
-
-
 class GameServer(Views):
-    def __init__(self, world_dir: Path, seed: int | None = None, dev: bool = False, accounts: str = ""):
+    def __init__(self, world_dir: Path, seed: int | None = None, dev: bool = False, accounts: str = "", admins=()):
         self.dev = dev  # enables dev_give (QA only; never on a public server)
         world_dir.mkdir(parents=True, exist_ok=True)
         self.gate = Gate(accounts, world_dir) if accounts else None   # a world that asks who you are (gate.py)
@@ -69,6 +54,7 @@ class GameServer(Views):
         self.tick_ms = collections.deque(maxlen=250)
         self.started = time.time()
         self.stopping = asyncio.Event()
+        self.admin = Admins(self, world_dir, admins)      # (an operator, out of the world: the server's /commands, admin.py)
 
     # ---------------------------------------------------------------- tick
     async def tick_loop(self):
@@ -160,7 +146,7 @@ class GameServer(Views):
                     account = await asyncio.to_thread(self.gate.account, str(msg.get("ticket", "")), ws.request.headers.get("Host", ""))
                     out = {"who": True, "name": self.sim.agents[self.sim.owners[account]].name if account in self.sim.owners else None}
                 elif op == "agents":
-                    out = {"agents": [dict(a.to_json(), online=a.online) for a in self.sim.agents.values()]}
+                    out = {"agents": [dict(a.to_json(), online=a.online, **({"admin": True} if self.admin.is_admin(a) else {})) for a in self.sim.agents.values()]}
                 else:
                     out = {"error": "unknown op"}
                 await ws.send(json.dumps({"type": "reply", "id": msg.get("id"), **out}))
@@ -211,6 +197,8 @@ class GameServer(Views):
                         if refused >= 10:                      # (nobody honest is turned away ten times)
                             break
                         continue
+                    if self.admin.refuse(agent):                   # a banned name (admin.py)
+                        reply(mid, False, error="banned", detail="You are banned from this world"); break  # noqa: E702
                     old = self.conns.get(agent.id)
                     if old is not None and old is not ws:
                         await old.close(4000, "logged in elsewhere")
@@ -246,6 +234,8 @@ class GameServer(Views):
                     agent.held = str(msg["item"])[:40] if msg.get("item") else None; reply(mid, held=agent.held)  # noqa: E702
                 elif op.startswith("dev_") and self.dev and not account:  # QA tools, only with --dev, never for who came by ticket
                     reply(mid, **dev_op(self.sim, agent, op, msg))
+                elif op in ("cmd", "cmds") and limits.allow("act"):     # the chat line's /commands (admin.py)
+                    reply(mid, **(self.admin.run(agent, str(msg.get("line", ""))) if op == "cmd" else self.admin.cmds(agent)))
                 elif op == "tools":
                     reply(mid, tools=TOOL_SPECS)
                 elif op == "recipes":
@@ -288,11 +278,12 @@ def main():
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--dev", action="store_true", help="enable dev_give for automated QA")
     p.add_argument("--accounts", default="", help="ask who players are: the account service, e.g. http://127.0.0.1:7780")
+    p.add_argument("--admin", action="append", default=[], help="NAME is an admin (repeatable; also saves/<world>/admins.txt, /op)")
     p.add_argument("--bundle", action="store_true", help="send the client as few files (web_bundle.py): for a phone or a far player")
     args = p.parse_args()
     set_bundle(args.bundle)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    gs = GameServer(Path(args.saves) / args.world, seed=args.seed, dev=args.dev, accounts=args.accounts)
+    gs = GameServer(Path(args.saves) / args.world, seed=args.seed, dev=args.dev, accounts=args.accounts, admins=args.admin)
     asyncio.run(gs.run(args.host, args.port))
 
 

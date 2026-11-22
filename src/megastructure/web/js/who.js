@@ -19,6 +19,13 @@ function skyIcon(night) {
   SKY[night ? "moon" : "sun"].forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== ".") { g.fillStyle = SKY.col[ch]; g.fillRect(x, y, 1, 1); } }));
   return c;
 }
+// An admin's crown by the name (admin.py: the server's operators; nothing else shows it), 9 x 7, in the sun's golds
+const CROWN = ["b...b...b", "bb.bob.bb", "byboyoyby", "byyyyyyyb", "bywyoywyb", "byyyyyyyb", "bbbbbbbbb"];
+function crownIcon() {
+  const c = document.createElement("canvas"); c.width = 9; c.height = 7; c.className = "crown"; c.title = "admin"; const g = c.getContext("2d");
+  CROWN.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== ".") { g.fillStyle = ch === "b" ? "#6b4a3a" : SKY.col[ch]; g.fillRect(x, y, 1, 1); } }));
+  return c;
+}
 function portrait(a) {                               // head and shoulders, hat and all, from their own sheet's first frame
   const c = document.createElement("canvas"); c.width = c.height = 16; const g = c.getContext("2d");
   try { g.drawImage(wornSheet(agentTint(a.name), a.worn, a.race, a.bot), 16, 12, 16, 16, 0, 0, 16, 16); } catch (e) { /* sheets still loading */ }
@@ -42,7 +49,9 @@ function drawWho() {
     const d = document.createElement("div"); d.className = "line" + (a.name === me ? " cur" : "");
     const cell = document.createElement("div"); cell.className = "cell"; cell.appendChild(portrait(a));
     d.appendChild(cell);
-    d.insertAdjacentHTML("beforeend", `<span class="n">${esc(a.name)}</span>${a.name === me ? '<span class="tag">you</span>' : ""}<span class="lv">Lv ${levelOf(a.xp || 0)[0]}</span>`);
+    d.insertAdjacentHTML("beforeend", `<span class="n">${esc(a.name)}</span>`);
+    if (a.admin) d.appendChild(crownIcon());
+    d.insertAdjacentHTML("beforeend", `${a.name === me ? '<span class="tag">you</span>' : ""}<span class="lv">Lv ${levelOf(a.xp || 0)[0]}</span>`);
     return d;
   }));
   const s = meObs && meObs.self, more = up.length - rows;
