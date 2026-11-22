@@ -85,7 +85,13 @@ const ToolArt = (() => {
   }
 
   // The sheet with the new rows under it: a canvas that stands in for the image (same width, taller).
-  function extend(img) {
+  function extend(img) { const g = steps(img); let r; do r = g.next(); while (!r.done); return r.value; }
+  // The same, a few frames at a time (assets.js, as the page loads): 8 ms of it, then the page's other work and a frame of the
+  // wait (index.html #boot). It was one task of 0.7 s on a phone's CPU (x4): the bar stood still, the page did not answer.
+  // (the next piece as the next task, by a message: a chain of setTimeout(0) waits 4 ms each from the fifth on, idle)
+  const soon = (img) => new Promise((ok) => { const g = steps(img), ch = new MessageChannel(), run = () => { const t = performance.now(); for (;;) { const r = g.next(); if (r.done) { ch.port1.close(); return ok(r.value); } if (performance.now() - t > 12) return ch.port2.postMessage(0); } };
+    ch.port1.onmessage = run; run(); });
+  function* steps(img) {
     const W = img.width, H = img.height, c = document.createElement("canvas");
     c.width = W; c.height = H + KINDS.length * 4 * CELL;
     const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -95,16 +101,17 @@ const ToolArt = (() => {
     const axe = document.createElement("canvas"); axe.width = W; axe.height = 4 * CELL;
     const ag = axe.getContext("2d", {willReadFrequently: true}); ag.drawImage(img, 0, AXE_ROW * CELL, W, 4 * CELL, 0, 0, W, 4 * CELL);
     const src = ag.getImageData(0, 0, W, 4 * CELL).data;
-    KINDS.forEach((kind, n) => {
+    for (const [n, kind] of KINDS.entries()) {
       for (let r = 0; r < 4; r++) for (let col = 0; col < W / CELL; col++) {
         const f = new ImageData(CELL, CELL);
         for (let y = 0; y < CELL; y++) f.data.set(src.subarray(((r * CELL + y) * W + col * CELL) * 4, ((r * CELL + y) * W + (col + 1) * CELL) * 4), y * CELL * 4);
         redraw(f.data, kind);
         g.putImageData(f, col * CELL, H + (n * 4 + r) * CELL);
+        yield;                                             // (a frame of a tool done: soon() may stop here)
       }
-    });
+    }
     c.complete = true; c.src = img.src;                    // (what the code asks of the image it replaces)
     return c;
   }
-  return {extend, KINDS, redraw};
+  return {extend, soon, KINDS, redraw};
 })();

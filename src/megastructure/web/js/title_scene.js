@@ -99,7 +99,7 @@ const TitleScene = (() => {
     arrivingNow = true;                                      // (a land that is coming: shown whole, once it is all there)
     // The HD look (hd.js) draws it, as it draws the world: its eye looks at the middle of the view, at the meadow's level, as it looks at you on the surface
     // (the first screen was the flat picture: the look of the game came only once you had woken up)
-    const eye = {x: 0, y: 0, z: levelAt(cam.x, Math.round(OY + S.C.centre[1])) || 0, free: true}; HdLook.eye = () => { eye.x = cam.x; eye.y = cam.y; eye.rush = !S.shown; return eye; };   // (rush: nothing shows yet: the land is made 12 ms a frame)
+    const eye = {x: 0, y: 0, z: levelAt(cam.x, Math.round(OY + S.C.centre[1])) || 0, free: true}; HdLook.eye = () => { eye.x = cam.x; eye.y = cam.y; eye.rush = !S.shown; return eye; };   // (rush: nothing shows yet: the land is made 24 ms a frame, the first picture over a few frames, hd.js warm)
     ears = () => ({x: cam.x, y: cam.y});                     // its sounds are heard from the middle of the view, under the music (audio.js)
     S.herd = [...herd("chicken", 3, 9101, S.C.pen, 14), ...herd("chick", 1, 9111, S.C.pen, 9), ...herd("cow", 2, 9121, S.C.meadow, 26)];
     S.people = TitleCast.wake(S);

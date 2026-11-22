@@ -41,13 +41,13 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     # the world starts to come with the page, before its scripts have (its start and the styles are in the page itself)
     page.wait_for_function("typeof bootLocal === 'function' && document.body.classList.contains('booting')", timeout=5000)
     assert page.evaluate("[document.querySelectorAll('link[rel=stylesheet]').length, !!document.querySelector('script[src*=\"local.js\"]')]") == [0, False]
-    page.wait_for_function("blocks.size > 0", timeout=90000)       # Pyodide comes from the CDN on first load
+    page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0", timeout=90000)       # Pyodide comes from the CDN on first load
     page.wait_for_function("!document.body.classList.contains('booting')", timeout=90000)
     assert "sfx.json" not in asked[:asked.index("py.zip")], "the sounds were asked for before the world had come"
     # the client is one script and one pack of pictures, each under its own mark (web_bundle.py): a page loaded again
     # after a publish is the new build at once; and the strip at the foot of Wake up went all the way
-    names = page.evaluate("[...document.scripts].map((s) => s.getAttribute('src')).filter(Boolean)")
-    assert len(names) == 1 and re.fullmatch(r"js/game\.\w{10}\.js\?v=\w+", names[0]), names
+    names = [n for n in asked if n.startswith("game.")]          # (read by the page itself as it comes, web_bundle.py: no tag of its own)
+    assert len(names) == 1 and re.fullmatch(r"game\.\w{10}\.js", names[0]) and page.evaluate("ASSET_PACK.game").startswith("js/game."), names
     assert not [n for n in asked if n.endswith(".png")] and sum(n.startswith("pack.") for n in asked) == 1, asked
     assert page.evaluate("(() => { const j = document.getElementById('join'); return parseFloat(j.style.getPropertyValue('--boot-w')) >= j.clientWidth - 8 && bootTook.world > 0; })()")
     page.fill("#name", "visitor")
@@ -58,7 +58,7 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     assert page.evaluate("rpc('ping').then(r => r.tick)") >= tick + 8      # the world ticks at 10 Hz in the tab
     page.evaluate("saveWorld()")                                    # what the 15 s autosave does
     page.reload()
-    page.wait_for_function("blocks.size > 0", timeout=90000)
+    page.wait_for_function("typeof blocks !== 'undefined' && blocks.size > 0", timeout=90000)
     page.wait_for_function("agents.some((a) => a.name === 'visitor')", timeout=5000)   # saved, asleep
     # the next visit needs no line: the service worker has the page, its script and pictures, Python and the game
     page.wait_for_function("window.swReady === true", timeout=60000)

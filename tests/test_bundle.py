@@ -41,12 +41,26 @@ def test_the_one_script_is_every_script_smaller_and_node_reads_it():
         assert line in js, n
 
 
+def test_the_one_script_is_cut_at_files_starts_into_parts_of_about_the_same_size():
+    """Each part is run as a script of its own, a task of its own: the page answers between them (index.html's wait moves).
+    A part begins where a file does: the files share the page's scope as the plain ones do in development."""
+    page = (WEB / "index.html").read_text()
+    starts = []
+    js = web_bundle.script(WEB, page, starts=starts).encode()
+    cut = web_bundle.cuts(starts, len(js))
+    assert len(cut) == 3 and all(c in starts for c in cut) and cut == sorted(cut)
+    sizes = [b - a for a, b in zip([0] + cut, cut + [len(js)])]
+    assert max(sizes) < len(js) / 2, sizes
+    assert all(js[c - 2:c] == b";\n" for c in cut)           # (between two files)
+
+
 def test_the_page_names_one_script_and_the_pack_holds_each_picture_as_its_file():
     page, files = web_bundle.packed(WEB)
     (js_name, js), (pack_name, pack) = files.items()
-    assert page.count("<script src=") == 1 and f'<script src="{js_name}">' in page and '<link rel="stylesheet"' not in page
+    # (the one script is read by the page itself, its bytes counted for the wait's bar, and run where its tag was: no tag of it)
+    assert page.count("<script src=") == 0 and f'"game":"{js_name}"' in page and '<link rel="stylesheet"' not in page
     assert js_name.startswith("js/game.") and pack_name.startswith("assets/pack.") and web_bundle.mark(js) in js_name and web_bundle.mark(pack) in pack_name
-    assert page.index("window.ASSET_PACK") < page.index("</head>") < page.index(js_name)
+    assert page.index("window.ASSET_PACK") < page.index("</head>") < page.index('<div id="joinbox"') < page.index("ASSET_PACK.run()") < page.index("</body>")
     _, table, need = web_bundle.pack(WEB)
     assert len(table) > 60 and "gen.txt" in table
     late = web_bundle.late(WEB)                 # (the sheets the first screen never shows: after all the others, past what it waits for)
@@ -76,8 +90,8 @@ def test_the_server_sends_text_packed_and_says_not_modified(monkeypatch):
     monkeypatch.setattr(web_static, "BUNDLE", [True])
     page = web_static.serve_http(None, Ask("/", **{"Accept-Encoding": "gzip"}), accounts="http://a")
     body = gzip.decompress(page.body).decode()
-    assert body.count("<script src=") == 1 and '<body data-accounts="http://a">' in body and page.headers["Cache-Control"] == "no-cache"
-    name = web_bundle.SCRIPT.pattern and body.split('<script src="')[1].split('"')[0]
+    assert body.count("<script src=") == 0 and body.count("ASSET_PACK.run()") == 1 and '<body data-accounts="http://a">' in body and page.headers["Cache-Control"] == "no-cache"
+    name = body.split('"game":"')[1].split('"')[0]
     js = web_static.serve_http(None, Ask("/" + name, **{"Accept-Encoding": "gzip"}))
     assert js.status_code == 200 and "immutable" in js.headers["Cache-Control"] and b"function joinGame" in gzip.decompress(js.body)
     pack = web_static.serve_http(None, Ask("/" + body.split('"url":"')[1].split('"')[0]))

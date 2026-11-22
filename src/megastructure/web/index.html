@@ -48,21 +48,28 @@
 <div id="boot"><div class="run"><div class="cat"><i></i></div><div class="ground"><i></i></div></div><div class="bar"><div><b id="bootfill"></b></div></div><div class="say" id="bootsay">Loading...</div></div>
 <script>
 // How much of the first screen has come, honestly and never back: the bytes of the game's script and of the pictures the
-// title needs (the demo's pack streams them: web_bundle.py, ASSET_PACK.need), the pictures decoded (assets.js), the island
-// begun and made (title_scene.js). Gone when the island is painted, or when there is no title to wait for.
+// title needs, both read as they come (the demo's pack and script: web_bundle.py, ASSET_PACK.need, .jsGot), the pictures
+// decoded (assets.js), the island's land made and its first picture (hd.js part). Gone when the island is painted, or when
+// there is no title to wait for. Each stage's share is about its share of a phone's wait; the bar goes a third of the way
+// to where it is told each tenth of a second (2% at least): a stage that ends at once is a few steps, never one leap.
+// (The script was a tag: no byte of it was counted till it had run, and the bar leapt from 22% to 58%; then it stood at 99%
+// for the island's 0.8 s.)
 (() => {
   const el = document.getElementById("boot"), fill = document.getElementById("bootfill"), say = document.getElementById("bootsay");
-  let shown = 0, cols = -1, watched = false;
+  let shown = 0, cols = -1, watched = false, movedAt = performance.now();
   const part = () => {
-    const P = window.ASSET_PACK, of = window.ASSETS_OF || 0, dec = of ? (window.ASSETS_IN || 0) / of : 0, ran = typeof titleDraw === "function";
-    const island = typeof TitleScene === "object" && TitleScene.on ? (typeof blocks === "object" && blocks.size ? 1 : .5) : 0;
-    if (P && P.need) return .7 * (Math.min(P.got || 0, P.need) + (ran ? P.js : 0)) / (P.need + P.js) + .2 * dec + .1 * island;
-    return .85 * dec + .1 * island;
+    const P = window.ASSET_PACK, of = window.ASSETS_OF || 0, dec = of ? (window.ASSETS_IN || 0) / of : 0;
+    const island = typeof TitleScene === "object" && TitleScene.on ? .1 + .9 * Math.min(1, typeof HdLook === "object" && HdLook.part || 0) : 0;
+    if (P && P.need) return .6 * (Math.min(P.got || 0, P.need) + (P.jsLen ? Math.min(1, (P.jsGot || 0) / P.jsLen) : 0) * P.js) / (P.need + P.js) + .15 * dec + .25 * island;
+    return .7 * dec + .3 * island;
   };
   const draw = () => {
-    shown = Math.max(shown, Math.min(1, part()));
+    const want = Math.min(1, part()), t = performance.now(), was = Math.floor(shown * 100); if (want > shown) shown = Math.min(want, shown + Math.max(.02, (want - shown) / 3));
+    else if (t - movedAt > 300 && shown < Math.min(.97, want + .03)) shown = (was + 1) / 100;      // (nothing new for 0.3 s, the first bytes still on their way: a per cent on, never 3 ahead of what is known)
+    if (Math.floor(shown * 100) !== was) movedAt = t;
     const n = Math.floor(shown * 62);
-    if (n !== cols) { cols = n; fill.style.width = `calc(${n} * var(--bootpx))`; say.textContent = "Loading... " + Math.floor(shown * 100) + "%"; }
+    if (n !== cols) { cols = n; fill.style.width = `calc(${n} * var(--bootpx))`; }
+    const said = "Loading... " + Math.floor(shown * 100) + "%"; if (say.textContent !== said) say.textContent = said;
     if (!watched && typeof ready === "object" && ready.catch) { watched = true; ready.catch(end); }      // (the pictures could not come: the page as it is, not a wait for ever)
   };
   const tick = setInterval(draw, 100);

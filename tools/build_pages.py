@@ -107,7 +107,7 @@ def offline(out: Path, v: str):
     else:
         python.append(address + "python_stdlib.zip")
     page = (out / "index.html").read_text()
-    files = ["./"] + re.findall(r'<script src="(js/game\.[^"]+)"', page) + re.findall(r'"url":"(assets/pack\.[^"]+)"', page) + [f"js/local_worker.js?v={v}", f"py.zip?v={v}"]
+    files = ["./"] + re.findall(r'"game":"(js/game\.[^"]+)"', page) + re.findall(r'"url":"(assets/pack\.[^"]+)"', page) + [f"js/local_worker.js?v={v}", f"py.zip?v={v}"]
     assert len(files) == 5, files
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip() or "nogit"
     sw = (out / "sw.js").read_text()
