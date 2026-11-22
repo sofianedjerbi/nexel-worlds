@@ -90,7 +90,8 @@ const HdLook = (() => {
     const lk = [base, dark.toFixed(3), lamps, api.builds].join(), out = {wash: [wash[0], wash[1], wash[2], wash[3] * (1 - el)], lit}; if (lk === lit._k) return out; lit._k = lk; lit._v = (lit._v || 0) + 1;   // (the same lamps at the same places: the picture there is this frame's: not painted, not sent again)
     const q = lit.getContext("2d"); q.globalAlpha = 1; q.globalCompositeOperation = "source-over"; q.fillStyle = `rgb(${tint.map((v) => Math.round(v + (255 - v) * lift)).join()})`; q.fillRect(0, 0, w, h);
     if (dark > .2) { q.globalCompositeOperation = "lighter"; const k = (dark - .2) / .8;
-      for (const s of list) if (s.lamp) { const a = eng.at(s.x, s.y, s.z), cl = topAt(Math.floor(s.x), Math.floor(s.y)) > s.z; if (!a) continue; if (cl) { q.save(); winPath(q, Math.floor(s.x), Math.floor(s.y)); q.clip(); }   // (a light under the land, your lantern, a fire in your room, lights what the window shows, not the grass over it: a campfire 14 levels down lit a ring on the meadow)
+      for (const s of list) if (s.lamp) { const a = eng.at(s.x, s.y, s.z), cl = topAt(Math.floor(s.x), Math.floor(s.y)) > (s.zs ?? s.z); if (s.top) api.youLit = !cl || !!winMap().size;   // (zs: the ground's level. A step up or down drew you between two levels: the tile's top over that, your lantern was cut to a window there was none of: gone the time of the step)
+      if (!a) continue; if (cl) { q.save(); winPath(q, Math.floor(s.x), Math.floor(s.y)); q.clip(); }   // (a light under the land, your lantern, a fire in your room, lights what the window shows, not the grass over it: a campfire 14 levels down lit a ring on the meadow)
         lamp(q, a[0], a[1] - 8, s.lamp > 1 ? 64 : 42, s.lamp > 1 ? "rgb(255,176,96)" : "rgb(255,222,170)", (s.lamp > 1 ? 1.15 : .45) * k, [0, 0]); if (cl) q.restore(); } }
     q.globalAlpha = 1; return out;
   }

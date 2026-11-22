@@ -91,3 +91,22 @@ def test_a_creature_hops_up_and_down_a_step_without_a_teleport(game):
     for (t0, a), (t1, b) in zip(h, h[1:]):
         assert abs(b - a) <= max(2, -(-4 * (t1 - t0) // 16.67)), ((t0, a), (t1, b))
     assert not game.errors, game.errors
+
+
+LIT = """() => { window.__lt = []; window.__ltOn = true; const f = () => { const p = ents.get('agent' + myId), j = p && jumping(p, performance.now());
+  __lt.push([!!j, HdLook.youLit]); if (__ltOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+@pytest.mark.realtime
+def test_your_lantern_stays_lit_up_and_down_steps_at_night(game):
+    """"The player has a light around him, when going up and down this light disappears the time of the up/down
+    animation": between two levels the tile's top was over the drawn body, the lantern cut to a window there was none of."""
+    game.clear_area(8)
+    game.stamp(2, -2, ["." * 10] * 5, levels=["1234444444"] * 5)
+    game.hour(.9); game.rest()
+    game.js(LIT)
+    game.hold(["d"], 2000); game.hold(["a"], 2000)
+    rec = game.js("(() => { __ltOn = false; return __lt; })()")
+    assert any(j for j, _ in rec), "no step jumped"
+    assert all(l is not False for _, l in rec), [i for i, (_, l) in enumerate(rec) if l is False][:20]
+    assert not game.errors, game.errors
