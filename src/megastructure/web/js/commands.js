@@ -8,17 +8,19 @@ let serverCmds = null;                               // {cmds: [{name, usage, de
 function askCmds() {
   if (!me) return;
   rpc("cmds", {}).then((r) => {
-    if (!r.ok || !r.cmds) return;
+    if (!r.ok || !r.cmds || (serverCmds && JSON.stringify(serverCmds.cmds) === JSON.stringify(r.cmds))) return;   // (the same: the list being walked is left as it is)
     serverCmds = r;
     if ($("chatbox").classList.contains("open") && $("say").value.startsWith("/")) suggest();
   });
 }
 // The line sent to the server, if it is one of its commands (true), or left to be an action (false)
-function serverCommand(line, word) {
+// (not known yet, the line sent before the list came: the server says if it is one, or `orElse` makes it an action)
+function serverCommand(line, word, orElse) {
   const w = String(word || "").toLowerCase();
-  if (!serverCmds || !serverCmds.all.includes(w) || (line.includes("=") && tools && w in tools)) return false;
+  if ((serverCmds && !serverCmds.all.includes(w)) || (line.includes("=") && (!tools || w in tools))) return false;
   rpc("cmd", {line}).then((r) => {
-    if (r.text) chatLine(r.text, r.ok ? "note sys" : "note bad");
+    if (r.unknown) orElse();
+    else if (r.text) chatLine(r.text, r.ok ? "note sys" : "note bad");
     else if (!r.ok) chatLine(r.detail || r.error || "No answer", "note bad");
     if (r.ok && (w === "op" || w === "deop")) askCmds();
   });
