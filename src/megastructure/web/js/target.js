@@ -9,6 +9,8 @@
 //   - Space puts a block there ("place"): cream; the block itself in it at 60 % (buildghost.js); red where it cannot go;
 //   - orange: a key takes that block ("break": X, R or a pickaxe's Space), the block itself, not air.
 //   - Space does something to that block ("use": till it, lay a floor in it, a thing put on it): cream, its top;
+//   - DOTTED means one thing: out of reach yet (build mode: a block in the ground with no air beside it nor a dig planned
+//     beside it); reachable is a whole line. Behind land a box is not drawn, unless all of it is: then its whole line, seen through;
 //   - a cell nothing stands under: a dotted line down to the ground under it and its shadow there, one px in two;
 // `cells()` is the one answer to "which cell": what is drawn is what the key sends (tests: the drawn cell is the
 // cell that changes). X's block under you: its own mark, round your feet (`feet`). `target(key)`: the cell of Space ("use"), X ("alt") or R ("up").
@@ -23,7 +25,7 @@ const Target = (() => {
     const add = (key, kind, x, y, z, more) => { if (!out.some((c) => c.x === x && c.y === y && c.z === z && c.kind === "break")) out.push({key, kind, x, y, z, h: 1, ok: true, ...more}); };
     if (Build.on) {
       const p = Build.S.at, it = Build.hint(p), hit = Build.taking(p), L = Build.level();
-      if (hit && !hit.plan && !hit.shut) add("alt", "break", p.x, p.y, hit.dig || hit.up ? hit.z : hit.z + 1, hit.dig || hit.up ? {} : {h: 1, thing: true});   // (a thing that stands: a block high, hd_things.js)
+      if (hit && !hit.plan) add("alt", "break", p.x, p.y, hit.dig || hit.up ? hit.z : hit.z + 1, hit.shut ? {far: true} : hit.dig || hit.up ? {} : {h: 1, thing: true});   // (a thing that stands: a block high, hd_things.js. far: out of reach yet, no air beside it nor a dig planned beside it (build.js `open`, the rule the work goes by): its box dotted)
       if (it.ghost && it.z !== undefined && !it.steps && it.ghost !== "ladder") add("use", solidAt(p.x, p.y, it.z) ? "use" : "place", p.x, p.y, it.z, {ok: it.ok !== false, item: LAND_BLOCKS.has(it.ghost) ? it.ghost : null, drawn: LAND_BLOCKS.has(it.ghost)});
       else add("use", solidAt(p.x, p.y, L) ? "use" : "place", p.x, p.y, L, {ok: it.ok !== false, flat: !!it.ghost && solidAt(p.x, p.y, L)});
       return out;
@@ -111,34 +113,37 @@ const Target = (() => {
         const sq = [G[b * (S + 1) + a], G[b * (S + 1) + a + 1], G[(b + 1) * (S + 1) + a + 1], G[(b + 1) * (S + 1) + a]]; if (!sq[0] || !sq[1] || !sq[2] || !sq[3]) continue;
         fill(sq, v, inside || (P.behind && P.behind(on(w, (a + .5) / S, (b + .5) / S, 0), on(w, (a + .5) / S, (b + .5) / S, 1), on(w, (a + .5) / S, (b + .5) / S, 2))) ? 1 : 0);
       } }
+    if (!inside && !flat && !out.f.some((v) => v)) return pxOf(P, c, full, true);   // (what it shows of itself is edge-on, not a px wide: the block in front of your legs, east of you in a tunnel, had no box at all: seen through, as one inside the land)
     return out;
   }
   // its outline (the owner: "can you improve the selection hint?": the hatch over an ink wash hid the block, and a row of ink lay under it, on the grass):
   // the px of its silhouette (a px of it beside one that is not) and the seam (the top's last row over its front or side) in colour, a line of ink
-  // inside them, its faces its own paint with the colour faintly over them. Behind land: one px in two of the line, or none (drop: its top shows)
-  function outline(P, M, col, tint, drop) {
+  // inside them, its faces its own paint with the colour faintly over them. Behind land: not drawn there; all of it behind land: all of it, seen through.
+  // far (out of reach yet): its silhouette one px in two, nothing inside: the one meaning of a dotted box (the owner: "dotted only for unreachable blocks")
+  function outline(P, M, col, tint, far) {
     const g = P.g, u = P.u; let L = M.ol;   // (its px lists, kept on M (kept itself while nothing it is made from changes, `kept`): they were worked out again each frame)
-    if (!L || L.drop !== drop || L.u !== u) { const {i0, j0, n, m, f, hid} = M, F = (i, j) => (i < 0 || j < 0 || i >= n || j >= m ? 0 : f[j * n + i]), line = [], ink = [], face = [], seen = [], d0 = drop;
-      if (drop && hid.every((v, o) => v || !f[o])) drop = false;   // (all of it behind land: one px in two of it, not nothing)
+    if (!L || L.far !== far || L.u !== u) { const {i0, j0, n, m, f} = M, F = (i, j) => (i < 0 || j < 0 || i >= n || j >= m ? 0 : f[j * n + i]), line = [], ink = [], face = [], dots = [];
+      const hid = M.hid.every((v, o) => v || !f[o]) ? new Uint8Array(n * m) : M.hid;   // (all of it behind land: seen through, whole)
       const edge = (i, j) => { const v = F(i, j); return !!v && (!F(i - 1, j) || !F(i + 1, j) || !F(i, j - 1) || !F(i, j + 1) || (v === 1 && F(i, j + 1) === 2)); };
       for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const o = j * n + i; if (!f[o]) continue; const X = (i0 + i) * u, Y = (j0 + j) * u, h = hid[o];
-        if (edge(i, j)) { if (!h) line.push(X, Y); else if (!drop && !((i + j) & 1)) seen.push(X, Y); }
+        if (far) { if (edge(i, j) && !((i0 + i + j0 + j) & 1)) dots.push(X, Y); continue; }
+        if (edge(i, j)) { if (!h) line.push(X, Y); }
         else if (!h) (edge(i - 1, j) || edge(i + 1, j) || edge(i, j - 1) || edge(i, j + 1) ? ink : face).push(X, Y);
       }
-      L = M.ol = {drop: d0, u, line, ink, face, seen}; }
-    const {line, ink, face, seen} = L, put = (l, cl, al) => { g.globalAlpha = al; g.fillStyle = cl; for (let k = 0; k < l.length; k += 2) g.fillRect(l[k], l[k + 1], u, u); };
-    put(face, col, tint); put(ink, col, tint); put(ink, INK, .45); put(line, col, 1); put(seen, col, .6); g.globalAlpha = 1;
-    return {line: line.length / 2, seen: seen.length / 2};
+      L = M.ol = {far, u, line, ink, face, dots}; }
+    const {line, ink, face, dots} = L, put = (l, cl, al) => { g.globalAlpha = al; g.fillStyle = cl; for (let k = 0; k < l.length; k += 2) g.fillRect(l[k], l[k + 1], u, u); };
+    put(face, col, tint); put(ink, col, tint); put(ink, INK, .45); put(line, col, 1); put(dots, col, 1); g.globalAlpha = 1;
+    return {line: line.length / 2, dots: dots.length / 2};
   }
   // One cell, as the box it is. -> what was drawn of it (tests)
   function box(P, c, K) {
     const {x, y, z} = c, h = c.h || 1, z0 = z - h, col = c.ok === false ? RED : c.kind === "break" ? TAKE : CREAM;
     const full = (dx, dy, dz) => { for (let k = dz > 0 ? z + 1 : dz < 0 ? z0 : z0 + 1; k <= (dz > 0 ? z + 1 : dz < 0 ? z0 : z); k++) if (!solidAt(x + dx, y + dy, k)) return false; return true; };
     const M = K ? (K.M === undefined ? (K.M = pxOf(P, c, full)) : K.M) : pxOf(P, c, full); if (!M) return {x, y, z, kind: c.kind, held: "", seen: {}};   // (K: what is kept of this cell, `kept`)
-    const o = outline(P, M, col, c.ok === false ? .16 : c.kind === "break" ? .14 : c.flat ? .18 : .08, c.kind === "break" && !!M.seen.T);
+    const o = outline(P, M, col, c.ok === false ? .16 : c.kind === "break" ? .14 : c.flat ? .18 : .08, !!c.far);
     // nothing under it: a dotted line from its foot down to the ground there, and its foot's place on that ground
     if (!c.flat && !full(0, 0, -1)) { const g0 = settleAt(x, y, z0); if (g0 < z0) { line(P, [x + .5, y + .5, z0], [x + .5, y + .5, g0], col, true, c); face(P, [[0, 0], [1, 0], [1, 1], [0, 1]].map(([i, j]) => [x + i, y + j, g0]), INK, .5, CHECK); } }   // (its foot's place: a shadow of the cell, one px in two)
-    return {x, y, z, kind: c.kind, held: "", seen: M.seen, line: o.line};
+    return {x, y, z, kind: c.kind, held: "", seen: M.seen, line: o.line, dots: o.dots, far: !!c.far};
   }
   // X's block, under your feet: NOT drawn (the owner, 2026-11-21: "remove that weird ugly arrow under my character, that is always active"); the corner's "Dig down X" says it. feet() is kept unused for now
   const DOWN = ["..###..", "..#o#..", "..#o#..", "###o###", "#ooooo#", ".#ooo#.", "..#o#..", "...#..."];
@@ -156,7 +161,7 @@ const Target = (() => {
   // camera's numbers), the land and what is built (landVer, Floors.ver), behind-land on or off, the cell itself. It was all worked out again each frame: 5 MB in 3 s standing still for the collector
   const keep = new Map();
   function kept(view, behind, c) {
-    const k = view + "|" + landVer + "|" + Floors.ver + "|" + (behind ? 1 : 0) + "|" + c.kind + "|" + c.x + "," + c.y + "," + c.z + "," + (c.h || 1) + (c.flat ? "f" : "") + (c.ok === false ? "n" : "");
+    const k = view + "|" + landVer + "|" + Floors.ver + "|" + (behind ? 1 : 0) + "|" + c.kind + "|" + c.x + "," + c.y + "," + c.z + "," + (c.h || 1) + (c.flat ? "f" : "") + (c.ok === false ? "n" : "") + (c.far ? "d" : "");
     let K = keep.get(k); if (!K) { if (keep.size > 24) keep.clear(); keep.set(k, K = {}); } return K;
   }
   // a rect (the canvas's units) lies on a box drawn, or on the way's block (your own name is not written there: characters.js)

@@ -11,7 +11,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     said beside the cursor and in the corner. There the cursor is on a block, and X digs that block, no other, where
     air is beside it; what is over it stays ("like minecraft ... this enforce me to dig huge columns": it dug every
     layer over the cursor; then two blocks at once from the lower one: "why am i unable to break block at my eye
-    level ? why do i need to target the one down to dig both at once ?"). Where no air is beside it, it says so."""
+    level ? why do i need to target the one down to dig both at once ?"). Where no air is beside it, its box is dotted and X does nothing."""
     game.clear_area(8)
     game.give(pickaxe=1)
     x, y = game.pos()
@@ -22,7 +22,7 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     for depth in (1, 2, 3):
         game.press("q", 120)
         assert game.js("Build.level()") == -depth and rows()["Z"][0] == f"BUILD · -{depth} · leave"
-    assert rows()["X"] == ["Plan the step before it first", "bad"]      # (three down, beside you: shut in)
+    assert "X" not in rows()                                  # (three down, beside you: shut in. No words: its box is dotted, test_e2e_reach.py)
     game.press("x")
     assert game.js("Build.S.plans.size") == 0
     game.press("b")
@@ -64,7 +64,7 @@ def test_blocks_are_planned_ahead_each_where_the_one_before_it_will_have_made_ro
         game.press("x", 120); sizes.append(game.js("Build.S.plans.size"))
     assert sizes == [1, 2, 3]
     game.press("ArrowDown", 120); game.press("ArrowDown", 120)  # two tiles on from the last: nothing planned beside it
-    assert rows()["X"] == ["Plan the step before it first", "bad"]
+    assert "X" not in rows()                                  # (its box dotted, nothing said: test_e2e_reach.py)
     game.press("x", 120)
     assert game.js("Build.S.plans.size") == 3
     game.js("(() => { Build.S.working = false; Build.toggle(false); Build.toggle(true); return 1; })()")   # the work goes on

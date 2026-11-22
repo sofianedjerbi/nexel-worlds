@@ -34,7 +34,7 @@ const Build = (() => {
   const ride = (p) => { if (p.z !== undefined && solidAt(p.x, p.y, p.z)) return p.z; const s = myPos(); return settleNear(p.x, p.y, s ? myZ(s.x, s.y) : topAt(p.x, p.y)); };   // (p.z: the block the pointer is on, mouse.js rayHit: a side of a cliff, a ledge under an overhang)
   const under = (p, t) => (solidAt(p.x, p.y, t) ? t : settleAt(p.x, p.y, t));      // (sunk to t: in the ground there, or on what is under it)
   const level = (p = S.at) => (S.plane !== null ? S.plane : !p ? 0 : S.deep !== null ? under(p, S.deep) : ride(p));
-  const buried = (p, L) => landSolid(p.x, p.y, L) && landSolid(p.x, p.y, L + 1);  // (a block in the ground, land over it: X digs it, the one whose top is at L. Not the air under a room's roof: X said "plan the step before it first" there)
+  const buried = (p, L) => landSolid(p.x, p.y, L) && landSolid(p.x, p.y, L + 1);  // (a block in the ground, land over it: X digs it, the one whose top is at L. Not the air under a room's roof)
   const digs = (x, y, z) => { const j = S.plans.get(x + "," + y + "," + z); return !!j && !!j.dig && j.state !== "bad"; }, open = (x, y, z, soon) => landSolid(x, y, z) && [[0, 0, 1], [0, 0, -1], ...Object.values(DIRV).map(([dx, dy]) => [dx, dy, 0])].some(([dx, dy, dz]) => !solidAt(x + dx, y + dy, z + dz) || (soon && digs(x + dx, y + dy, z + dz)));   // (air beside it: it can be dug, sim/underground.py; soon: or will be, once what is planned beside it is dug)
   const onIt = (p, L) => solidAt(p.x, p.y, L) && !solidAt(p.x, p.y, L + 1);        // the cursor is on something there (not in the air, not inside it)
   const key = (p, z = level(p)) => p.x + "," + p.y + "," + z;
@@ -107,7 +107,7 @@ const Build = (() => {
     const hit = taking(p);
     if (!hit) return S.hold ? null : toast("Nothing built there", true);
     if (hit.plan) { S.plans.delete(key(p, hit.z)); return; }
-    if (hit.shut) return S.hold ? null : toast("No air beside it: plan the step before it first", true);
+    if (hit.shut) return;                             // (out of reach yet: its box is dotted, target.js; nothing is said: the owner wanted it "clear to the user without adding a ... hint")
     S.plans.set(key(p, hit.z), {x: p.x, y: p.y, z: hit.z, take: true, up: !!hit.up, dig: !!hit.dig, tunnel: !!hit.tunnel, state: "todo"});   // (tunnel: a block in the ground, dug from beside it: what is over it stays)
     sfx("pick"); work();
   }
@@ -150,7 +150,7 @@ const Build = (() => {
     if (!j.take && !(meObs.self.inventory[j.item] > 0)) return `No ${label(j.item)} left`;
     const at = myPos(); if (j.dig && !j.up && at && at.x === j.x && at.y === j.y && myZ(at.x, at.y) === j.z) { const r = await act("dig_down", meObs.self.inventory.pickaxe ? {with: "pickaxe"} : {}, true); return r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done"; }   // (the block you stand on: from on it, you come down with it)
     for (let i = 0; j.tunnel && !j.tried && i < 24 && !open(j.x, j.y, j.z); i++) await new Promise((done) => setTimeout(done, 25));   // (the hole dug before it may be on your screen a moment after it is dug)
-    if (j.tunnel && !open(j.x, j.y, j.z)) return "No air beside it: the step before it was not dug";     // (what was to open it is gone: it could not be done)
+    if (j.tunnel && !open(j.x, j.y, j.z)) return "It could not be reached";     // (what was to open it is gone: it could not be done)
     const here = () => { const s = myPos(); return {...s, z: myZ(s.x, s.y)}; };
     // from (q, h): within the game's reach of it, height counted; and not where it goes (a block in your body, a wall on your feet)
     const ok = (q, h) => (q.x - j.x) ** 2 + (q.y - j.y) ** 2 + ((j.z - h) * LAYER) ** 2 <= (USE_R + .5) ** 2
@@ -263,7 +263,7 @@ const Build = (() => {
     const out = [[capOf("build"), up ? `BUILD · ${sign(up)} · leave` : "BUILD MODE · leave", "head"]];
     out.push([it.key || "Space", it.text, it.ok === false && !it.key ? "bad" : ""]);
     out.push(["Q E", "A layer down, up"]);
-    if (hit) out.push(["X", hit.plan ? "Take the plan back" : hit.shut ? "Plan the step before it first" : hit.dig ? "Break" : hit.verb || `Break ${hit.what}`, ...(hit.shut ? ["bad"] : [])]);
+    if (hit && !hit.shut) out.push(["X", hit.plan ? "Take the plan back" : hit.dig ? "Break" : hit.verb || `Break ${hit.what}`]);   // (out of reach yet: no row, its box is dotted)
     if (n) out.push(["Esc", `Drop the ${n} plan${n > 1 ? "s" : ""}`]);
     return out;
   }
