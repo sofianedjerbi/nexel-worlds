@@ -90,3 +90,40 @@ def test_sprinting_along_the_way_its_key_moves_with_you_never_a_jump(browser, se
     assert not g.errors
     if ctx:
         ctx.close()
+
+
+# each frame: where you are, the finder busy, the way's first step and its blocks, what is shown (a block's key or a step's way), and
+# whether the cell [x, y, z] is land (the tunnel's end)
+FIRST = """([x, y, z]) => { window.__first = []; const rec = () => { const p = myPos(), r = WayShow.res, c = WayShow.cur;
+  window.__first.push([p.x, p.y, !!WayShow.busy, r && r.path ? (r.path[1] || {}).d || null : null, r ? r.blocks : -1, c ? (c.now ? c.now.key : c.path[1].d) : null, solidAt(x, y, z)]); };
+  const f0 = frame; frame = function (now) { f0(now); rec(); }; return 1; }"""
+
+
+@pytest.mark.parametrize("sprint", [False, True])
+def test_in_a_tunnel_open_at_its_end_the_way_out_is_along_it_from_the_first_frame(browser, server, sprint):
+    """"In a tunnel whose open end leads out it offered a dig way (cut a stair south, dig the wall west) until you had
+    run a tile or two": a way with blocks to break, found while the tunnel's end was shut, was kept while you stood on
+    it (WayShow keeps a way that still holds), after the end was opened too. A way on foot always wins over one dug: a
+    tunnel six long under a hill of four, its east end shut by a block, you at its west end, shown a way to dig (the
+    hill west of you is one block thick); the end's block gone: from that frame the way goes east with no block to
+    break, and so it is shown, standing and while you sprint."""
+    g = hd(browser, server)
+    g.js("setOpt('names', true); setOpt('hints', true)")
+    g.clear_area(20)
+    x, y = g.pos()
+    rows, roofs = ["." * 20] * 3, ["0" * 20, "0" + "4" * 6 + "0" * 13, "0" * 20]
+    g.stamp(-1, -1, rows, levels=["4" * 8 + "0" * 12, "4" + "0" * 6 + "4" + "0" * 12, "4" * 8 + "0" * 12], roofs=roofs)
+    g.rpc("dev_teleport", x=x, y=y, z=0)
+    g.arrive()
+    g.wait("WayShow.cur && !WayShow.busy && WayShow.res.blocks > 0", 8000)        # (shut: a way to dig)
+    assert g.js("WayShow.res.path[1].d") == "W"                                   # (the way to dig shown: the hill's end west of you is thinner)
+    g.js(FIRST, [x + 6, y, 1])
+    g.stamp(6, 0, ["."], levels=["0"], roofs=["0"])                              # (the end's block, gone)
+    if sprint:
+        g.hold(["Shift", "ArrowRight"], 700)
+    else:
+        g.frames(6)
+    rec = [r for r in g.js("window.__first") if not r[6] and r[1] == y and x <= r[0] <= x + 5]      # (from the frame the end is open, in the tunnel)
+    assert len(rec) >= 3, rec
+    assert all(r[3] == "E" and r[4] == 0 and r[5] == "E" for r in rec), [r for r in rec if r[3] != "E" or r[4] or r[5] != "E"]            # (the way: east, along the tunnel, nothing to break; and so it is shown)
+    assert not g.errors

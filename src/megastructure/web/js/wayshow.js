@@ -43,7 +43,8 @@ const WayShow = (() => {
     }
     const k = pk + "," + landVer + "," + Floors.ver;
     if (k !== genKey) { genKey = k; const i = res && res.path ? res.path.findIndex((p) => p.x === s.x && p.y === s.y && p.z === h) : -1, rest = i >= 0 ? res.path.slice(i) : null;
-      if (rest && WayOut.holds(W, rest)) { res = {...res, path: rest, sky: res.sky - i}; gen = null; }      // (a step along the way shown, a block of it broken: it is the way still. Found again when you leave it or the land breaks it)
+      if (rest && WayOut.holds(W, rest)) { res = {...res, path: rest, sky: res.sky - i}; gen = null;      // (a step along the way shown, a block of it broken: it is the way still. Found again when you leave it or the land breaks it)
+        if (rest.some((p) => p.digs.some((c) => solidAt(c.x, c.y, c.z)))) { gen = WayOut.find(W, {x: s.x, y: s.y, z: h}, {d: heading, sky: !roof, keep: res}); api.runs++; } }      // (...unless a way on foot is there now: looked for first, it wins. The tunnel's end opened beside you, "dig the wall west" stayed until you had run off it)
       else { gen = WayOut.find(W, {x: s.x, y: s.y, z: h}, {d: heading, sky: !roof}); api.runs++; } }
     if (gen) { const t0 = performance.now(); let r; do r = gen.next(); while (!r.done && performance.now() - t0 < SLICE); api.ms = performance.now() - t0; if (r.done) { gen = null; res = r.value; api.n = res.n; } }
     cur = null;

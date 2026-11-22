@@ -29,9 +29,10 @@ def test_a_small_icon_is_made_of_its_icons_own_colours_by_whole_pixels(game):
 # every item icon in the HUD and its slot's frame: screen pixels to an art pixel, and whether anything scales it
 HUD = """() => { const d = devicePixelRatio, out = {};
   const px = (sel, art) => [...document.querySelectorAll(sel)].filter((e) => e.offsetWidth).map((e) => { const r = e.getBoundingClientRect(); return [r.width * d / art, r.height * d / art]; }).flat();
-  out.icons = px('#hotbar .slot canvas', 11);
+  out.icons = px('#hotbar .slot:not(.sel) canvas', 11); out.selicon = px('#hotbar .slot.sel canvas', 11);   // (the slot in hand: 34 art px, lifted, its icon maybe a screen px bigger an art px: ui.js)
   out.art = [...new Set([...document.querySelectorAll('#hotbar .slot canvas')].map((c) => c.width + 'x' + c.height))].join();
-  out.frames = px('#hotbar .slot', 30);
+  out.frames = px('#hotbar .slot:not(.sel)', 30); out.selframe = px('#hotbar .slot.sel', 34);
+  const sel = document.querySelector('#hotbar .slot.sel'); out.lift = sel ? parseFloat(getComputedStyle(sel).transform.split(',')[5]) * d : 0;
   out.bag = [...px('#bag canvas', 16), ...px('#bag .cell', 18), parseFloat(getComputedStyle($('bag')).fontSize) * d / 9];           // (the inventory: the same, at its own)
   out.card = [...px('#goals .gi', 11), ...px('#goals .gc', 13), parseFloat(getComputedStyle($('goals')).fontSize) * d / 6];         // (the goals' card)
   out.big = [...px('#craft canvas', 16), ...px('#craft .cell', 18), parseFloat(getComputedStyle($('craft')).fontSize) * d / 9];   // (the recipe book: icons, cells and the font, at its one pixel)
@@ -61,11 +62,13 @@ def test_an_item_in_the_hud_is_whole_screen_pixels_and_the_lands_own(browser, se
         g.sleep(900)                                             # (a phone fits its HUD every fifth of a second)
         m = g.js(HUD)
         whole = lambda v: abs(v - round(v)) < .02 and round(v) >= 1          # noqa: E731
-        assert len(m["icons"]) >= 16 and len(m["frames"]) >= 20 and len(m["big"]) >= 30 and len(m["bag"]) > 100 and len(m0["card"]) >= 12
-        assert all(whole(v) for v in m["icons"] + m["frames"] + m["big"] + m["vitals"] + m["bag"] + m0["card"]), (m, m0["card"])
+        assert len(m["icons"]) >= 14 and len(m["frames"]) >= 18 and len(m["selicon"]) in (0, 2) and len(m["selframe"]) == 2 and m["lift"] < 0 and len(m["big"]) >= 30 and len(m["bag"]) > 100 and len(m0["card"]) >= 12
+        assert all(whole(v) for v in m["icons"] + m["frames"] + m["selicon"] + m["selframe"] + [-m["lift"]] + m["big"] + m["vitals"] + m["bag"] + m0["card"]), (m, m0["card"])
         assert len({round(v) for v in m["bag"]}) == 1 and len({round(v) for v in m0["card"]}) == 1          # (each in one pixel size)
         item, frame = {round(v) for v in m["icons"]}, {round(v) for v in m["frames"]}
         assert len(item) == 1 and len(frame) == 1 and m["art"] == "11x11", m
+        assert {round(v) for v in m["selframe"]} == frame and {round(v) for v in m["selicon"]} <= {max(item), max(item) + 1}, m   # (the slot in hand: the same frame pixel, 2 art px more each side; its icon no smaller)
+        assert max(m["selicon"], default=0) * 11 <= max(frame) * 24, m                                          # (...in its frame's hole)
         assert item == {land} if land else max(item) * 11 <= max(frame) * 17.6, (item, frame)   # (no more than the frame's hole takes)
         assert len({round(v) for v in m["big"]}) == 1 and (not land or {round(v) for v in m["big"]} == {land + (1 if touch else 0)})   # (one pixel: the land's)
         assert m["moved"] == "none,none,none" and m["fits"], m
@@ -112,6 +115,6 @@ def test_the_tools_have_no_white_edge(game):
         assert white == 0 and solid >= 20, tool
     assert game.js(count, "wood")[0] > 20
     game.give(axe=1)
-    slot = game.js("""(() => { const c = [...document.querySelectorAll('#hud .slot canvas')][0], d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let white = 0;
-      for (let o = 0; o < d.length; o += 4) if (d[o + 3] >= 128 && Math.min(d[o], d[o + 1], d[o + 2]) > 225) white++; return [slots[0], white]; })()""")
-    assert slot == ["axe", 0]
+    slot = game.js("""(() => { const i = slots.indexOf('axe'), c = i >= 0 && [...document.querySelectorAll('#hotbar .slot')][i].querySelector('canvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let white = 0;
+      for (let o = 0; o < d.length; o += 4) if (d[o + 3] >= 128 && Math.min(d[o], d[o + 1], d[o + 2]) > 225) white++; return [slots[i], white]; })()""")
+    assert slot == ["axe", 0]                    # (in whichever slot it landed: the empty hand's is kept for last, ui.js)

@@ -78,6 +78,7 @@ const WayOut = (() => {
     if (out(W, s.x, s.y, s.z)) return {out: true, trapped: false, path: null, blocks: 0, n: 0};
     const a = yield* run(W, s, false, o.walk || 3000, 0, 0, o.d);
     let g = a.goal, n = a.n; const trapped = !g && !a.capped && !a.edge;      // (it was "fewer than 150 places under the sky": a closed canyon was no trap, a long river's was one when narrow)
+    if (!g && o.keep) return o.keep;      // (o.keep: a way with blocks to break that still holds (wayshow.js): kept, unless there is now one on foot: the tunnel's end opened beside you)
     if (!g && (trapped || !o.sky)) { const b = yield* run(W, s, true, o.dig || 6000, 0, 0, o.d); g = b.goal; n += b.n;      // (o.sky: under the open sky only a trap's way is shown: no dig search for the rest)
       if (!g && b.capped) { const tops = []; for (let j = -9; j <= 9; j += 3) for (let i = -9; i <= 9; i += 3) tops.push(W.top(s.x + i, s.y + j));      // (the level to climb to: where half the land round you is no more than three higher: `out`. It was the lowest top within reach: in a gorge, its own floor: no pull, no way)
         const zt = tops.sort((p, q) => q - p)[24] - 3;
