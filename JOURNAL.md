@@ -4181,3 +4181,15 @@ Two more rounds of the loop (an agent that changes nothing looks, others fix, I 
 - wayshow.js: a key pressed between two frames uses the way from where you stand now (R out of your own shaft dug 3 over your feet).
 - voxpaint.js: natural stone sides are a cliff; laid stone blocks keep courses.
 - Crisp sides: lens pass removed, whole art px rows, flat bend facets, no void after teleport, darker hole floors, stone cuts in stone.
+
+## Iteration 238: cubes, jump, verbs, x-ray of the whole space, phone (batch, 2026-11-21/22)
+Hypothesis: the owner's "half-block confusion", "unclear selection", "blind in that cave" and "slow on phone" come from rules and painters left over from the flat look, not from missing features.
+Change (each merged with its own e2e test that failed before):
+- One block = one player: levels drawn as full cubes (16 art px); camera steepens over land south (HdLevel.clear), pinned to whole art px (no 1 px jitter on steps).
+- Jump: no auto step-up, then auto-jump by default (setting), drawn jump poses (jump_art.js); keys remapped: Space jump, E use (and eat what you hold), X break (left click), right click use; F3 only in the game.
+- Hotbar: cube icons for blocks, the hand is always a slot (Minecraft), held item in the paw (server `hold`), dark frames, the selected one light.
+- Selection: boxes on the land's own px grid (no px outside the cube), solid when reachable, dotted only when not (build mode, no "plan the step" text); mouse ray picks the block under the pointer at any pitch.
+- X-ray: one rule (`hides`/`veils`): land that covers any px of your space on screen is cut — roof, cliff, bank, back corners; the window is your whole connected space; edge = 3 px solid opacity steps (no checker); sun shadows world-true.
+- Phone/demo: half-float lines fixed (highp), land kept up while sprinting, lost GL context recovered, full-screen loader first, title ~25% sooner, memory churn 393 → 128 KB/frame standing.
+Measured: unit 665 pass; quick e2e set green; live server restarted twice (jump, held item) on backed-up saves.
+Next: shade inside the open-sky cut, shaft passage band, build-mode placing reach + side faces, way-out key at sprint start, loader bar jump.
