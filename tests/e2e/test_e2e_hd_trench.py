@@ -49,10 +49,13 @@ def test_a_stair_s_treads_are_warm_steps_lighter_at_the_top_and_the_floor_is_a_g
     g.frames(3)
     treads = {i: g.js(EDGE, [x + i, y, -i]) for i in (2, 3, 4)}
     g.js("HdLook.nowin = false")
-    at(g, x + 7, y, -7)
-    treads.update({i: g.js(TILE, [x + i, y, -i]) for i in (7, 8)})     # 2 to 4 under the open sky (their north edge: the trench's own south wall hides the rest), 7 and 8 under the land, from in there
+    at(g, x + 9, y, -9)
+    treads.update({i: spot(g, x + i + .5, y + .5, -i) for i in (7, 8)})     # 2 to 4 under the open sky (their north edge: the trench's own south wall hides the rest), 7 and 8 under the land, from in there
     assert all(warm(c) for c in treads.values()), treads                         # steps you can walk: warm earth, the open ones too (they were (106, 90, 85): grey)
-    assert lum(treads[2]) > lum(treads[3]) > lum(treads[4]) and lum(treads[2]) > lum(treads[4]) * 1.1 and lum(treads[7]) > lum(treads[8]), treads    # the top ones lighter: down is read
+    # the top ones lighter: down is read. (Tread 4 is a tile from you, in your lantern's pool, which a hole's floor under the
+    # sky keeps (vox_style_glsl.js): not compared. 7 and 8 are read from two treads down, not standing on 7: your own
+    # sprite and shadow on its tile made it (149, 135, 115), not warm, one run in two.)
+    assert lum(treads[2]) > lum(treads[3]) * 1.05 and lum(treads[7]) > lum(treads[8]), treads
     assert g.js("HdLook.raw()") == 0
     # the passage at its foot, one tile wide, 14 deep, a roof three over its floor: the section over its north wall is the ground's true height in strata, the floor wider than its own wall
     at(g, x + 17, y, -14)

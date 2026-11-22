@@ -17,7 +17,8 @@ from pages import Pages
 ROOT = Path(__file__).parents[2]
 # The sounds are built files, not in git (tools/build_audio.py; the demo's test builds them): a new worktree has none.
 # A test that waits for them says so at once (one waited a minute for them, twice).
-needs_sounds = pytest.mark.skipif(not (ROOT / "src" / "megastructure" / "web" / "audio" / "sfx.json").exists(),
+SOUNDS = (ROOT / "src" / "megastructure" / "web" / "audio" / "sfx.json").exists()
+needs_sounds = pytest.mark.skipif(not SOUNDS,
                                   reason="no sounds built: uv run python tools/build_audio.py")
 
 

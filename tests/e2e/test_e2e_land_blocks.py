@@ -6,12 +6,13 @@ from test_e2e_touch import touch_game
 
 CELLS = "(id) => [...$(id).children].map((c) => { const n = c.querySelector('span'); return c.title && !c.classList.contains('ghost') ? c.title.toLowerCase().replace(/ /g, '_') + (n ? ':' + n.textContent : '') : null; }).filter(Boolean)"
 NEEDS = "[...document.querySelectorAll('#craftdetail .cneed')].map((e) => [e.querySelector('span').textContent, e.querySelector('b').textContent, e.classList.contains('miss')])"
-# a block's icon: 14 x 14 px of its sheet where the plateau's south edge runs straight (the top, the lip, the wall),
-# every px the sheet's own, all of them drawn. -> how many colours the top half and the bottom half have in common, or -1
-SAME = """([name, sheet]) => { const c = document.createElement('canvas'); c.width = c.height = 14; const g = c.getContext('2d'); g.drawImage(IMG[sheet], 16, 32, 14, 14, 0, 0, 14, 14);
-  const a = g.getImageData(0, 0, 14, 14).data, ic = iconCanvas(name), b = ic.getContext('2d').getImageData(1, 1, 14, 14).data, top = new Set(), wall = new Set();
-  for (let i = 0; i < a.length; i += 4) { if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || b[i + 3] !== 255) return -1; (i < 14 * 4 * 7 ? top : i >= 14 * 4 * 10 ? wall : new Set()).add(a[i] << 16 | a[i + 1] << 8 | a[i + 2]); }
-  return [...top].filter((k) => wall.has(k)).length; }"""
+# a block's icon: the pack's cube (cube_icons.js), every px of it drawn as CubeIcon made it from the land's own paint,
+# its top (lit) and its front (the land's side) told apart. -> how many colours the top and the front have in common, or -1
+SAME = """(name) => { const b = iconCanvas(name).getContext('2d').getImageData(0, 0, 16, 16).data, a = CubeIcon.px(name, 16).data, top = new Set(), front = new Set();
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return -1;
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const o = (y * 16 + x) * 4; if (b[o + 3] !== 255) continue; const k = b[o] << 16 | b[o + 1] << 8 | b[o + 2];
+    if (y >= 2 && y <= 4 && x >= 5 && x <= 10) top.add(k); else if (y >= 8 && y <= 13 && x >= 2 && x <= 8) front.add(k); }
+  return top.size && front.size ? [...top].filter((k) => front.has(k)).length : -1; }"""
 HAS = "(n) => (meObs.self.inventory[n] || 0)"
 
 
@@ -35,7 +36,7 @@ def test_dug_land_is_a_block_in_the_pack_and_stones_are_made_of_it(game):
     game.press("i", 400)
     cells = game.js(CELLS, "bagbar") + game.js(CELLS, "bagpack")
     assert {"stone_block", "dirt", "stone"} <= set(cells)                # (one of a thing: no number on it)
-    assert game.js(SAME, ["stone_block", "hill3"]) == 0 and game.js(SAME, ["dirt", "hill1"]) == 0     # drawn as blocks, from the tileset: a top and a wall of other colours
+    assert game.js(SAME, "stone_block") == 0 and game.js(SAME, "dirt") == 0     # drawn as blocks, of the land's paint: a top and a wall of other colours
     assert game.js("BLURB.stone_block && label('stone_block')") == "stone block"
     shot(game, "bag_desktop")
     game.press("Escape", 200)

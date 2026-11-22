@@ -18,7 +18,7 @@
 const WayShow = (() => {
   const OUT = ["....##....", "...#oo#...", "..#oooo#..", ".#oooooo#.", "#oooooooo#", "####oo####", "...#oo#...", "...#oo#...", "...####..."];      // (the arrow up over the way's end, art px: ink round cream)
   const STILL = 2000, SLICE = 1.5, INK = "#5b3f36", DX = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
-  let gen = null, genKey = "", res = null, posKey = "", stoodAt = 0, cur = null, cap = null, capKey = "", capAt = 0, capSize = [0, 0], capSide = "", fno = 0, landOf = null, landKey = "", lit = null, heading = null, led = false, follow = false, off = false;
+  let gen = null, genKey = "", res = null, posKey = "", stoodAt = 0, cur = null, cap = null, capKey = "", capAt = 0, capSize = [0, 0], capSide = "", youMoved = [0, 0], ftWas = null, fno = 0, landOf = null, landKey = "", lit = null, heading = null, led = false, follow = false, off = false;
   const api = {ms: 0, n: 0, runs: 0, get res() { return res; }, get cur() { return fresh(); }, get busy() { return !!gen; }, get led() { return led; }};
   const W = {solid: (x, y, z) => solidAt(x, y, z), top: (x, y) => topAt(x, y), land: (x, y, z) => z > LOW + 2 && landSolid(x, y, z) && !Floors.built(x, y, z),
     step: (h, x, y, fx, fy) => landAt(h, x, y, fx, fy), ladder: (x, y, z, qx, qy, z2) => Climb.onLadder(x, y, z, qx, qy, z2),
@@ -96,10 +96,11 @@ const WayShow = (() => {
   function pin(r, html, pref, not, u) {
     if (!cap) { cap = document.createElement("div"); cap.id = "waycap"; document.body.appendChild(cap); }
     if (html !== capKey) { capKey = html; cap.innerHTML = html; cap.style.display = "block"; capSize = [cap.offsetWidth, cap.offsetHeight]; capSide = ""; }
-    const S = (v) => Math.round(v / u) * u, rx = S(r.x), ry = S(r.y), [w, h] = capSize, G = 6, you = [...(Prompts.keep || []), ...(not ? [not] : [])], keys = Target.drew.map((d) => d.r).filter((v) => v);
+    const S = (v) => Math.round(v / u) * u, rx = S(r.x), ry = S(r.y), [w, h] = capSize, G = 6, you = [...(Prompts.keep || []).map((k) => ({...k, x: k.x + youMoved[0], y: k.y + youMoved[1]})), ...(not ? [not] : [])], keys = Target.drew.map((d) => d.r).filter((v) => v);
     const my = ry + Math.round(r.h / 2 - h / 2), mx = rx + Math.round(r.w / 2 - w / 2), at = {right: [rx + Math.round(r.w) + G, my], left: [rx - G - w, my], over: [mx, ry - G - h], under: [mx, ry + Math.round(r.h) + G]};
-    const on = (l) => ([x, y]) => l.some((k) => x < k.x + k.w && k.x < x + w && y < k.y + k.h && k.y < y + h), off = ([x, y]) => x < 4 || y < 4 || x + w > innerWidth - 4 || y + h > innerHeight - 4, onYou = on(you), onKey = on(keys);
-    const side = pref.includes(capSide) && !off(at[capSide]) && !onYou(at[capSide]) ? capSide : pref.find((k) => !off(at[k]) && !onYou(at[k]) && !onKey(at[k])) || pref.find((k) => !off(at[k]) && !onYou(at[k])) || pref[0];
+    const on = (l, t = 0) => ([x, y]) => l.some((k) => x < k.x + k.w - t && k.x + t < x + w && y < k.y + k.h - t && k.y + t < y + h), off = ([x, y]) => x < 4 || y < 4 || x + w > innerWidth - 4 || y + h > innerHeight - 4, onYou = on(you), onKey = on(keys);
+    // (the side kept until it is on you by more than your step's bob, 2 art px: a cap flush under your name went over the tile and back for one frame each step at a sprint)
+    const side = pref.includes(capSide) && !off(at[capSide]) && !on(you, 2 * u)(at[capSide]) ? capSide : pref.find((k) => !off(at[k]) && !onYou(at[k]) && !onKey(at[k])) || pref.find((k) => !off(at[k]) && !onYou(at[k])) || pref[0];
     const p = at[capSide = side];
     cap.style.transform = `translate(${Math.round(p[0])}px, ${Math.round(p[1])}px)`; capAt = fno;
   }
@@ -114,13 +115,16 @@ const WayShow = (() => {
   }
   // The picture of it, on g: at(x, y, z) -> where a point of the world is on g, u: an art px there, css: g's units -> css px
   function paint(g, at, u, now, css, wall) {
-    api.block = null; api.hidden = 0; if (!cur) return; const t = now / 1000, me0 = myPos(), R = (v) => Math.round(v / u) * u, beat = Math.floor(t * 3) % 2, solid = (c) => solidAt(c.x, c.y, c.z);
+    api.block = null; api.hidden = 0; if (!cur) { ftWas = null; return; } const t = now / 1000, me0 = myPos(), R = (v) => Math.round(v / u) * u, beat = Math.floor(t * 3) % 2, solid = (c) => solidAt(c.x, c.y, c.z);
     const rect = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(R(x), R(y), w * u, h * u); };
     const line = (a, b, col, dash, ph) => { const n = Math.max(1, Math.round(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) / u)); for (let i = 0; i <= n; i++) { g.fillStyle = !dash || (((i + ph) % 4) + 4) % 4 < 2 ? col : INK; g.fillRect(R(a[0] + (b[0] - a[0]) * i / n), R(a[1] + (b[1] - a[1]) * i / n), u, u); } };      // (dash: two px of the colour, two of ink: seen on any ground)
     const fill = (q0, col) => { const q = q0[3][1] < q0[0][1] ? [q0[3], q0[2], q0[1], q0[0]] : q0; g.fillStyle = col; for (let y = R(q[0][1]); y < q[3][1]; y += u) { const k = (y - q[0][1]) / ((q[3][1] - q[0][1]) || 1), l = R(q[0][0] + (q[3][0] - q[0][0]) * k), r = R(q[1][0] + (q[2][0] - q[1][0]) * k); g.fillRect(l, y, r - l, u); } };
     const inq = (q, a, b) => { const l = [q[0][0] + (q[3][0] - q[0][0]) * b, q[0][1] + (q[3][1] - q[0][1]) * b], r = [q[1][0] + (q[2][0] - q[1][0]) * b, q[1][1] + (q[2][1] - q[1][1]) * b]; return [l[0] + (r[0] - l[0]) * a, l[1] + (r[1] - l[1]) * a]; };
     // (nothing of it is drawn on YOU: the block over your head, the one south of you lie on you in the picture: you stand in front of them, whole)
     const pe = ents.get("agent" + myId), ft = pe && at(pe.x + .5, pe.y + .5, myZ(me0.x, me0.y)), hid = hider(); let nh = 0;
+    // (you and your name on the screen (Prompts.keep) are the last frame's: they are drawn after this (hd.js). Moved on by as much as you have
+    // since: at a sprint 8 px a frame, a tile after a slow frame, and the cap took your old place for yours and went to another side)
+    youMoved = ft && ftWas ? [(ft[0] - ftWas[0]) * css, (ft[1] - ftWas[1]) * css] : [0, 0]; ftWas = ft;
     g.save(); if (ft) { g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); g.rect(R(ft[0]) - 8 * u, R(ft[1]) - 21 * u, 16 * u, 23 * u); g.clip("evenodd"); }
     // where you walk: a dot a tile and one between (down a drop: one a level, on its wall), a light running along them; a pip a block of that step still to break
     const P = cur.path, pts = [], k0 = P.findIndex((p, i) => i && p.digs.some(solid)), far = k0 > 1 ? k0 : 1e9;      // (you walk first: what comes after the first block is faint)

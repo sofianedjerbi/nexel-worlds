@@ -1,7 +1,7 @@
 """Two people: chat, giving, mail; a spectator watching; boats."""
 
 import pytest
-from conftest import open_game
+from conftest import needs_sounds, open_game
 
 
 @pytest.fixture
@@ -163,6 +163,7 @@ SAID = """() => { window.__said = []; const P = AudioBufferSourceNode.prototype,
   P.start = function (when, off, dur) { if (say.has(this.buffer)) window.__said.push([when, dur, this.playbackRate.value]); return o.apply(this, arguments); }; return say.size; }"""
 
 
+@needs_sounds
 def test_a_line_is_said_in_a_run_of_syllables_as_it_is_written(game, friend):
     """Speech was one sound a line (and none for your own). It is a run of short pieces of the recorded "say" voices,
     about one for every two letters, each at its letter's pitch and the speaker's own, on the audio clock, while the

@@ -2,6 +2,7 @@
 
 import pytest
 import os
+from conftest import needs_sounds
 
 SHOT = os.environ.get("WILD_SHOTS")
 
@@ -46,6 +47,7 @@ def test_a_page_older_than_the_servers_code_reloads_itself(game):
         game.js("spec.onmessage({data: JSON.stringify({type: 'hello', web: webStamp + 1})})")
 
 
+@needs_sounds
 def test_swimming_sounds_like_swimming_not_like_walking(game):
     game.clear_area(8)
     s = game.server()
