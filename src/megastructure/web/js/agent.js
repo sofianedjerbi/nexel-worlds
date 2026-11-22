@@ -14,7 +14,7 @@ function joinGame(name) {
     if (!r.ok) { toast(r.error === "bad_token" ? `“${name}” is already someone else. Pick another name.` : (r.detail || r.error), true); agentWs.close(); return; }
     me = r.agent.name; myId = r.agent.id; follow = null; localStorage.setItem("megastructure-name", me);
     camT.x = cam.x = r.agent.x; camT.y = cam.y = r.agent.y;
-    $("joinbox").style.display = "none"; $("hud").style.display = "flex"; document.body.classList.add("playing");
+    $("joinbox").style.display = "none"; $("hud").style.display = "flex"; document.body.classList.add("playing"); if (typeof zoomForTitle === "function") zoomForTitle(false);   // (your own zoom level back: zoom.js)
     $("help").style.display = localStorage.getItem("megastructure-help") === "on" ? "block" : "none";
     $("mode").textContent = "playing as " + me;
     toast(TOUCH ? `**Welcome, ${me}.**\nYou wake up in a meadow.`
