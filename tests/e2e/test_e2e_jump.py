@@ -183,3 +183,66 @@ def test_the_way_out_shows_the_jump_key_on_its_step(game):
     game.press("Space", 0)
     game.wait(f"meObs.self.x === {x + 3} && meObs.self.z === 1", 4000)
     assert not game.errors, game.errors
+
+
+# every frame: [your x, the eye's level, yours on the line between the two tiles, how much you are lifted, the eye's pitch, how open the window is,
+# a fixed tile of the land on the screen (y, art px), your feet on the screen (y, art px, no arc)]
+CAM = """([ox, oy]) => { window.__cam = []; window.__camOn = true; const f = () => { const p = ents.get('agent' + myId), lv = HdLook.level, a = HdLook.art();
+  if (p && a && lv[1] !== null) { const o = HdLook.screenOf(ox + .5, oy + .5, 0), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2] + lv[3]);
+    __cam.push([p.x, lv[1], lv[2], lv[3], HdLook.cam.pitch, HdLook.win.a, o[1] / a.u, b[1] / a.u]); } if (__camOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+def camera_over(game, keys, ms):
+    x, y = game.pos()
+    game.rest()
+    game.js(CAM, [x, y])
+    if keys:
+        game.hold(keys, ms)
+    else:
+        game.press("Space", 0)
+        game.sleep(ms)
+    game.sleep(300)
+    rec = game.js("(() => { __camOn = false; return __cam; })()")
+    game.rest()
+    return x, rec
+
+
+@pytest.mark.realtime
+def test_the_camera_follows_the_ground_through_a_hop_and_a_step_jump(game):
+    """"When jumping the camera goes crazy": the eye's level went after yours eased over 100 ms, so up a step it was a third of
+    a level behind as you landed and the land slid on 200 ms after (your body went 5 art px up the screen and back); half way
+    over by a cliff's foot your lift was the next tile's, half a level in one frame. Now: a hop moves nothing but your body; up a
+    step the eye's level is yours, frame for frame, the land moves one way and stops when you land, your feet stay put on the
+    screen, the pitch and the window do not stir."""
+    _, hop = camera_over(game, None, 400)
+    assert len(hop) > 5 and len({round(r[6], 2) for r in hop}) == 1 and len({r[4] for r in hop}) == 1, hop[:3]   # (the land and the pitch stand still)
+    step_east(game)
+    x, rec = camera_over(game, ["d"], 600)
+    assert game.server()["z"] == 1 and len(rec) > 10, game.server()
+    assert all(abs(r[1] - r[2]) < .01 for r in rec), [r[:4] for r in rec if abs(r[1] - r[2]) >= .01]             # the eye's level: yours (no lag, no drift after)
+    land = [r[6] for r in rec]
+    d = [b - a for a, b in zip(land, land[1:]) if abs(b - a) > .01]
+    assert d and all(v > 0 for v in d), d                                               # the land goes down the screen, one way
+    after = [r[6] for r in rec if r[0] >= x + 2]
+    assert max(after) - min(after) < .01, after                                         # and stands still once you have landed
+    feet = [r[7] for r in rec]
+    assert max(feet) - min(feet) <= 1.5, feet                                           # your feet within an art px or so on the screen (it was 5 up and back)
+    assert len({r[4] for r in rec}) == 1 and len({r[5] for r in rec}) == 1, [(r[4], r[5]) for r in rec]   # pitch and window: unmoved
+    assert not game.errors, game.errors
+
+
+@pytest.mark.realtime
+def test_a_step_jump_by_a_cliffs_foot_lifts_you_on_a_line_not_at_half_way(game):
+    """A terrace three up south of you, a step east: the land round you is a hole's (the eye from above) and you are drawn lifted
+    to its rim. Your drawn height goes on the line between the two tiles' (it was the lift of the tile under your middle: half a
+    level down in one frame, mid-air)."""
+    step_east(game)
+    game.stamp(-6, 3, ["." * 16] * 3, levels=["3" * 16] * 3)
+    game.stamp(-6, 1, ["." * 8] * 2, levels=["3" * 8] * 2)
+    x, rec = camera_over(game, ["d"], 600)
+    assert game.server()["z"] == 1 and any(r[3] > .2 for r in rec), [r[:6] for r in rec[::4]]            # (lifted where you started)
+    z = [(r[0], r[2] + r[3]) for r in rec if x + 1 <= r[0] <= x + 2]
+    assert len(z) > 3, z
+    jumps = [(a, b) for a, b in zip(z, z[1:]) if abs(b[1] - a[1]) > 1.2 * abs(b[0] - a[0]) + .02]
+    assert not jumps, jumps
+    assert not game.errors, game.errors
