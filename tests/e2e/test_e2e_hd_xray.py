@@ -148,3 +148,34 @@ def test_down_a_passage_a_level_floor_has_no_band_a_step_up_its_riser_a_step_dow
     down = [lum(g.js(PX, [x + 4.5, y - 3 + .01 + i * .015, 0])) for i in range(5)]
     near, low = lum(g.js(PX, [x + 4.5, y - 3 + .2, 0])), lum(g.js(PX, [x + 4.5, y - 4.5, -1]))
     assert max(down) > near * 1.15 and max(down) > low * 1.3, (down, near, low)   # a step down: the near floor's edge, lit, over the lower floor, darker (its lip was one row of paint: left out at this pitch)
+
+
+def test_a_strip_under_a_plateau_is_open_to_its_back_corners(browser, server):
+    """doben1 on a strip of meadow at the foot of a stone plateau south of him: the window showed his strip through the plateau, but
+    the plateau's top-left corner block still stood over the strip's west end ("x-ray should also apply to left/right back corners"):
+    a corner leans over the floor beside it as the eye sees it, and only land straight south counted. No px of the plateau (cobble,
+    its sides) over any px of the strip's floor, from one end past its corners to the other."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    rows = ["." * 21] * 4 + ["." * 6 + "_" * 9 + "." * 6] * 6
+    g.stamp(-10, -3, rows, levels=[r.replace(".", "0").replace("_", "8") for r in rows])
+    g.rpc("dev_teleport", x=x, y=y, z=0)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
+    quiet(g)
+    W, H = g.js("[innerWidth, innerHeight]")
+    bad = []
+    for dy in (0, -1):
+        for dx in range(-8, 9):
+            if dx == 0:
+                continue                                                      # (your own body stands there)
+            for i in range(4):
+                for j in range(4):
+                    p = [x + dx + .15 + .23 * i, y + dy + .15 + .23 * j, 0]
+                    a = g.js(SCR, p)
+                    if not (8 < a[0] < W - 8 and 8 < a[1] < H - 60):
+                        continue
+                    c = g.js(PX, p)
+                    if max(c) - min(c) < 35 or c[0] > c[1] + 15:                  # (grey cobble, its brown and grey sides; grass and its flowers are neither)
+                        bad.append(((dx, dy), i, j, c))
+    assert not bad, (len(bad), bad[:8])                                       # the strip is grass edge to edge: nothing of the plateau's corners over it

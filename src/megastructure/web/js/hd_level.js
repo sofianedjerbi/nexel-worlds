@@ -47,8 +47,11 @@ const HdLevel = (() => {
   // veils(x, y, L, at) -> land south of (x, y) hides ANY of its floor at L, AS DRAWN (at(x, y, z): the picture's px of a place, hd.js eng.at: the eye's own perspective and the bend): the north edge of a top over
   // L + 1 is higher on the screen than the floor's south edge. Such a tile of your space is in the window (hd.js host.sunk). (It was hides, whole, by the eye's mean climb: a tile the cliff's top covered
   // in part stayed out, and that part of the cliff's top stood in the window, its dark rim over the river: "an outline floating in the water", the river shown again past it)
-  function veils(x, y, L, at) { const s = at(x + .5, y + 1, L); if (!s) return false;
-    for (let d = 1; d <= 20; d++) { const t = topAt(x, y + d); if (t > L + 1 && !matAt(x, y + d)) { const q = at(x + .5, y + d, t); if (q && q[1] < s[1] - .5) return true; } } return false; }
+  // ANY land south of the floor, the columns beside its own too (the back corners south-west and south-east: a plateau's corner leans over the floor beside it as the eye sees it): its top's box on the
+  // screen over the floor's box. (It was straight south alone: the plateau's top-left corner block stood over the west end of doben1's strip, "x-ray should also apply to left/right back corners")
+  const box = (at, x, y, z) => { let b = null; for (const [i, j] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const p = at(x + i, y + j, z); if (!p) return null; b = b ? [Math.min(b[0], p[0]), Math.min(b[1], p[1]), Math.max(b[2], p[0]), Math.max(b[3], p[1])] : [p[0], p[1], p[0], p[1]]; } return b; };
+  function veils(x, y, L, at) { const f = box(at, x, y, L); if (!f) return false;
+    for (let d = 1; d <= 20; d++) for (let i = -2; i <= 2; i++) { const t = topAt(x + i, y + d); if (t > L + 1 && !matAt(x + i, y + d)) { const q = box(at, x + i, y + d, t); if (q && q[1] < f[3] - .5 && q[2] > f[0] + .5 && q[0] < f[2] - .5) return true; } } return false; }
   // shut(tx, ty, L, k) -> the floor of your hole is HIDDEN from the eye: the open ground through your tile from north to south (tiles under L + 1: lower than your head), times k (levels the eye's line climbs a tile), is less than
   // the hole's depth under its rim. Only then do its walls tell its depth by going dark (vox_style_glsl.js ho): a shaft, a pit one or two wide across. A gorge five wide whose floor and far wall are seen
   // kept that dark too: its north wall black under its first level within six tiles of you, a black stepped slab, whenever you stood at its south bank (the rim, from the tiles beside you, 12 there)
