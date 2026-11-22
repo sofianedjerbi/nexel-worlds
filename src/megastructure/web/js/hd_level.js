@@ -50,8 +50,12 @@ const HdLevel = (() => {
   // ANY land south of the floor, the columns beside its own too (the back corners south-west and south-east: a plateau's corner leans over the floor beside it as the eye sees it): its top's box on the
   // screen over the floor's box. (It was straight south alone: the plateau's top-left corner block stood over the west end of doben1's strip, "x-ray should also apply to left/right back corners")
   const box = (at, x, y, z) => { let b = null; for (const [i, j] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const p = at(x + i, y + j, z); if (!p) return null; b = b ? [Math.min(b[0], p[0]), Math.min(b[1], p[1]), Math.max(b[2], p[0]), Math.max(b[3], p[1])] : [p[0], p[1], p[0], p[1]]; } return b; };
-  function veils(x, y, L, at) { const f = box(at, x, y, L); if (!f) return false;
-    for (let d = 1; d <= 20; d++) for (let i = -2; i <= 2; i++) { const t = topAt(x + i, y + d); if (t > L + 1 && !matAt(x + i, y + d)) { const q = box(at, x + i, y + d, t); if (q && q[1] < f[3] - .5 && q[2] > f[0] + .5 && q[0] < f[2] - .5) return true; } } return false; }
+  // The columns asked: two each way, and on the side away from the eye's middle as far as a top that tall LEANS as the eye sees it (lw: tiles a level, sideways; the eye's perspective: a cliff
+  // 13 high ten tiles west of you leans three tiles further west. It was two tiles each way: the gorge's south bank, its corner three tiles east of the river it hid, stood in the window: a half-faded grey block in the river)
+  function veils(x, y, L, at) { const f = box(at, x, y, L), a = at(x, y, L), b = at(x, y, L + 1), c = at(x + 1, y, L); if (!f || !b || !c) return false;
+    const lw = (b[0] - a[0]) / Math.max(1e-6, c[0] - a[0]);   // (< 0: tops lean west here, the columns east of the floor lean onto it)
+    for (let d = 1; d <= 20; d++) for (let i = -12; i <= 12; i++) { if (Math.abs(i) > 2 && (i * lw > 0 || Math.abs(i) > 2 + Math.abs(lw) * (topAt(x + i, y + d) - L))) continue;
+      const t = topAt(x + i, y + d); if (t > L + 1 && !matAt(x + i, y + d)) { const q = box(at, x + i, y + d, t); if (q && q[1] < f[3] - .5 && q[2] > f[0] + .5 && q[0] < f[2] - .5) return true; } } return false; }
   // shut(tx, ty, L, k) -> the floor of your hole is HIDDEN from the eye: the open ground through your tile from north to south (tiles under L + 1: lower than your head), times k (levels the eye's line climbs a tile), is less than
   // the hole's depth under its rim. Only then do its walls tell its depth by going dark (vox_style_glsl.js ho): a shaft, a pit one or two wide across. A gorge five wide whose floor and far wall are seen
   // kept that dark too: its north wall black under its first level within six tiles of you, a black stepped slab, whenever you stood at its south bank (the rim, from the tiles beside you, 12 there)

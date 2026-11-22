@@ -3,7 +3,7 @@ the window is your WHOLE space, a cave's every branch as far as the screen goes 
 in whole art px, no checker (HdLook.edge "B": the kept land's last 3 px over your space in solid steps of opacity); under the open sky no dark arc at its top (a gorge's far cliff); a pit's floor shaded by its own walls, no
 flat squares of corner shade; down a passage a level floor has no band across it, a step up shows its riser, a step down its lip."""
 
-from test_e2e_hd_sun import hd
+from test_e2e_hd_sun import LIGHT, hd
 from test_e2e_hd_window import PX
 
 # the picture with the window and without it (HdLook.nowin): which px it changes, in the box of CSS px [x0, y0, x1, y1] -> rows of 0/1
@@ -179,3 +179,79 @@ def test_a_strip_under_a_plateau_is_open_to_its_back_corners(browser, server):
                     if max(c) - min(c) < 35 or c[0] > c[1] + 15:                  # (grey cobble, its brown and grey sides; grass and its flowers are neither)
                         bad.append(((dx, dy), i, j, c))
     assert not bad, (len(bad), bad[:8])                                       # the strip is grass edge to edge: nothing of the plateau's corners over it
+
+
+def test_under_the_open_sky_the_opened_strip_keeps_the_cut_land_s_sun_shade(browser, server):
+    """doben1 on his strip of meadow between a cliff 12 high north of it and a plateau south of it, the morning sun: the meadow in
+    the cliff's shade, the strip the window opens lit, a bright band. The shadow is the world's, the cut is only for the eye: the
+    strip in the window is as dark as the meadow beside it, out of the window."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    rows = ["." * 21] * 10 + ["." * 6 + "_" * 9 + "." * 6] * 6
+    g.stamp(-10, -9, rows, levels=["C" * 21] * 4 + [r.replace(".", "0").replace("_", "8") for r in rows[4:]])
+    g.rpc("dev_teleport", x=x, y=y, z=0)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
+    quiet(g)
+    strip, meadow = [x + 2, y - 1], [x + 2, y - 3]
+    assert g.js(f"HdLook.winAt({strip[0]}, {strip[1]})") and not g.js(f"HdLook.winAt({meadow[0]}, {meadow[1]})")
+    out = []
+    for much in (100, 0):
+        g.js(f"setOpt('shadows', {much})")
+        g.rest()
+        out.append([g.js(LIGHT, [*strip, 0]), g.js(LIGHT, [*meadow, 0])])
+    g.js("setOpt('shadows', 100)")
+    (s1, m1), (s0, m0) = out
+    assert m1 < m0 * .9, out                                                 # (the meadow is in the plateau's shade)
+    assert abs(s1 / s0 - m1 / m0) < .04, out                                 # the strip as shaded as the meadow (it was lit: no shade in the window)
+
+
+def test_a_shaft_at_a_passage_s_end_is_a_level_floor_not_a_band(browser, server):
+    """doben1's cave: a passage north from his corridor ends in a shaft open to the sky, its floor level with the passage's. It was a
+    dark band across the way (a mouth's shade laid on it, the hole's step of shade): "up or down?". Up the passage into the shaft
+    no row is much darker than the passage: a level floor reads level."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    lv = {(dx, -1): "0" for dx in range(-6, 7)} | {(0, dy): "0" for dy in range(-5, -1)}
+    rows = ["".join("-" if (dx, dy) in lv else "." for dx in range(-8, 9)) for dy in range(-7, 2)]
+    covered = lambda dx, dy: (dx, dy) in lv and dy > -5                     # (the shaft: (0, -5), open to the sky, land north, east, west of it)
+    g.stamp(-8, -7, ["." * 17] * 9, levels=["4" * 17] * 9)
+    g.stamp(-8, -7, rows, levels=["".join(lv.get((dx, dy), "4") for dx in range(-8, 9)) for dy in range(-7, 2)],
+            roofs=["".join("4" if covered(dx, dy) else "0" for dx in range(-8, 9)) for dy in range(-7, 2)],
+            heads=["".join("2" if covered(dx, dy) else "0" for dx in range(-8, 9)) for dy in range(-7, 2)])
+    g.rpc("dev_teleport", x=x, y=y - 1, z=0)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    quiet(g)
+    way = [lum(g.js(PX, [x + .5, y - 1.1 - i * .05, 0])) for i in range(72)]    # (up the passage's middle, y - 1.1 to y - 4, then the shaft's floor to y - 4.65, short of its north wall's foot)
+    passage, shaft = way[:56], way[62:]
+    med = sorted(passage)[len(passage) // 2]
+    assert min(shaft) > med * .85, f"{med} {' '.join(str(round(v)) for v in way)}"                    # the shaft's floor as light as the passage (it was a dark band)
+
+
+def test_in_a_gorge_a_bank_s_corner_far_east_of_the_river_is_cut(browser, server):
+    """doben8 in the gorge: the south bank's corner, 13 levels over the river, stood in the window at its west edge, a half-faded
+    grey block in the water. From the eye the bank's top leans west, three tiles past the river tiles beside it: it hides them and
+    is cut. No px of the bank's grey top on the river's floor, as far west as the screen goes."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    lv = ["C" * 25] * 3 + ["a" * 25] * 2 + ["a" * 7 + "K" * 18] + ["K" * 25] * 3   # (the river at dy -1 and 0, west to dx -6 at dy 1; the south bank 20 high, its corner at dx -5)
+    g.stamp(-12, -4, ["." * 25] * 9, levels=lv)
+    g.stamp(-12, -4, ["".join("~" if c == "a" else "." for c in r) for r in lv], levels=lv)
+    g.rpc("dev_teleport", x=x, y=y - 1)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
+    quiet(g)
+    W, H = g.js("[innerWidth, innerHeight]")
+    bad = []
+    for dy in (-1, 0):
+        for dx in range(-12, 0):
+            for i in range(3):
+                p = [x + dx + .2 + .3 * i, y + dy + .5, -1]
+                a = g.js(SCR, p)
+                if not (8 < a[0] < W - 8 and 8 < a[1] < H - 60):
+                    continue
+                c = g.js(PX, p)
+                if c[2] < c[0] + 8:                                           # (the bank's stone, grey or pale; the river and its shallows are blue, blue-green)
+                    bad.append(((dx, dy), i, c))
+    assert not bad, (len(bad), bad[:8])
