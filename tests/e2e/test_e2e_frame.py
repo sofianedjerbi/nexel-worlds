@@ -8,7 +8,7 @@ DRAWN = "dirtyTiles.length === 0"
 # what is kept against the same worked out now: the hint for the tile you face -> [how many differ, how many asked]
 KEPT = """() => { const say = (f) => (f ? JSON.stringify([f.p, f.it.text, f.it.ok, !!f.it.info]) : 'null'); let bad = 0, n = 0;
   for (const alt of [false, true]) { n++; if (say(facingIntent(alt)) !== say(facingNow(alt))) bad++; }
-  return [bad, n, say(facingNow(false))]; }"""
+  return [bad, n, say(facingNow(true))]; }"""
 
 def test_what_is_kept_from_frame_to_frame_is_what_would_be_worked_out_now(game):
     """The hint for the tile you face was worked out three times a frame. It is kept until what it is worked out

@@ -125,8 +125,9 @@ const Floors = (() => {
     if (it && PLACEABLE_BLOCK[it] && c[0] === "stairs") return {text: "Not on a step", ghost: it, ok: false, z};
     if (it && PLACEABLE_BLOCK[it]) return on ? {text: "Something is there", ghost: it, ok: false, z} : UP.has(PLACEABLE_BLOCK[it]) ? place(z, `Place ${label(it)}`) : {text: "It needs the ground", ghost: it, ok: false, z};
     if (on === "B" && !shift) return {text: "Sleep", near: 1, z, run: (d) => act("sleep", {dir: d})};
+    if (on && !shift) return {text: label(CH[on]), info: true, quiet: true, z};      // (shift: X's verb, intent.js: E takes nothing down)
     if (on) { const tool = TOOL_FOR[on], w = inHand(); return {text: (HARVEST[on] || "Take down " + label(CH[on])) + (tool && w !== tool ? " (slow)" : ""), near: 1, z, run: (d) => act("dig", {dir: d, z, ...(w ? {with: w} : {})})}; }
-    if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", near: 1, z, run: (d) => act("dig", {dir: d, z})};
+    if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", near: 1, z, ground: true, run: (d) => act("dig", {dir: d, z})};
     return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y, z})};
   }
   return {STOREY, K, UP, any: (x, y) => !!colOf(x, y), get, set, load, cells, built, thingAt, fits, standOf, rise, alpha, cell, intent, get ver() { return ver; }};

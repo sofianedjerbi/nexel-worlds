@@ -6,8 +6,8 @@
 const HELP = [
   ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Space"], "Jump: up a step"], [["Alt"], "Turn without walking"], [["G"], "Goals: show or hide"]]],
   ["See", [[["+", "−"], "Zoom (or the wheel)"], [["V"], "What is built over you"]]],
-  ["Do", [[["E"], "Use what you face"], [["X"], "Other use: milk, till"], [["F"], "Pick up"], [["E"], "Food in hand: eat it"],
-    [["Click"], "E there. Shift: X"]]],
+  ["Do", [[["E"], "Use: open, harvest, eat"], [["X"], "Break: mine, chop, hit"], [["F"], "Pick up"],
+    [["Left click"], "X there, or walk"], [["Right click"], "E there"]]],
   ["Carry", [[["1-9", "Q"], "Slot in hand"], [["`"], "Empty your hands"], [["E"], "Place what you hold"],
     [["I"], "Inventory"], [["C"], "Craft"]]],
   ["Build", [[["Z"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],

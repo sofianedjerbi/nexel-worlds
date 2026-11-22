@@ -31,18 +31,23 @@ const Target = (() => {
     // (the keys act whether the way out is shown or not: what each would take is drawn; the way's own block is drawn by wayshow.js: one mark. keyboard.js `useFacing`, digup.js `route`)
     const keys = byKeys(), h = myZ(s.x, s.y), way = keys ? WayShow.offer() : null, wc = WayShow.cur, nx = wc && wc.next, now = wc && wc.now;
     const ways = (x, y, z) => !!nx && nx.x === x && nx.y === y && nx.z === z;
-    const a = keys ? facedOnly(facingIntent(false)) : aimedTile(), it = a && a.it, p = a && a.p, alt = keys ? facingIntent(true) : null, up = keys ? DigUp.aim() : null;
-    if (way && way.key === "alt") add("alt", "break", s.x, s.y, h, {mine: true});      // the way out's X: the block you stand on
+    const at = !keys && mouse.in ? tileAtScreen(mouse.x, mouse.y) : null;      // (the mouse: E's box on what a right click uses, X's on what a left click breaks)
+    const a = keys ? facedOnly(facingIntent(false)) : at && clickIntent(at, "use"), it = a && a.it, p = a && a.p, up = keys ? DigUp.aim() : null;
+    const x0 = keys ? facingIntent(true) : at && clickIntent(at, "break"), alt = x0 && !x0.it.info && !x0.it.walk && x0.it.ok !== false && !x0.it.gather ? x0 : null;
+    if (way && way.key === "alt" && now && now.down) add("alt", "break", s.x, s.y, h, {mine: true});      // the way out's X: the block you stand on
     if (up) add("up", "break", up.x, up.y, up.z, {way: ways(up.x, up.y, up.z)});                                   // R: the block it cuts
-    if (way && way.key === "use" && now) add("use", "break", now.x, now.y, now.z, {way: ways(now.x, now.y, now.z)});
-    else if (it && p && tile(p.x, p.y) && !it.info && !it.walk) {
+    if (way && way.key === "alt" && now && !now.down) add("alt", "break", now.x, now.y, now.z, {way: ways(now.x, now.y, now.z)});      // the way out's X: the wall in front
+    if (it && p && tile(p.x, p.y) && !it.info && !it.walk) {
       const wetFill = !!it.ghostGround && wet(gndAt(p.x, p.y) || "");
-      if (it.cell !== undefined) add("use", "break", p.x, p.y, it.cell);                                // a pickaxe into a wall: the cell at your body
-      else if (wetFill) add("use", "use", p.x, p.y, topAt(p.x, p.y) - WaterBed.would(p.x, p.y, it.ghostGround), {ok: it.ok !== false, flat: true});   // (earth into water: the tile's water gets shallower: the mark lies where its bed will be, seen through the water; the face when no bed is seen)
+      if (wetFill) add("use", "use", p.x, p.y, topAt(p.x, p.y) - WaterBed.would(p.x, p.y, it.ghostGround), {ok: it.ok !== false, flat: true});   // (earth into water: the tile's water gets shallower: the mark lies where its bed will be, seen through the water; the face when no bed is seen)
       else if (LAND_BLOCKS.has(it.ghost)) add("use", "place", p.x, p.y, it.z !== undefined ? it.z : topAt(p.x, p.y) + 1, {ok: it.ok !== false, item: it.ghost});
       else if (!api.opts.thing && !it.ent && !it.steps) add("use", "use", p.x, p.y, it.z !== undefined ? it.z : api.opts.shown ? api.opts.shown(p.x, p.y) : settleNear(p.x, p.y, h), {ok: it.ok !== false, flat: true});
     }
-    if (!(way && way.key === "alt") && alt && alt.it.cell !== undefined) add("alt", "break", alt.p.x, alt.p.y, alt.it.cell);   // X: the block you face, its box (keyboard.js digAhead); after Space's: the same wall cell is one box, Space's
+    if (!(way && way.key === "alt") && alt && alt.it.cell !== undefined) add("alt", "break", alt.p.x, alt.p.y, alt.it.cell);   // X: the block you face, its box (keyboard.js digAhead)
+    else if (!(way && way.key === "alt") && alt && !alt.it.ent && !alt.it.self) {      // X: the thing it takes apart (a rock, a tree, a chest, a wall), the block it stands in; a path: its own block
+      const z = alt.it.z !== undefined ? alt.it.z : alt.it.at !== undefined ? alt.it.at : floorAt(alt.p.x, alt.p.y);
+      add("alt", "break", alt.p.x, alt.p.y, alt.it.ground ? z : z + 1, alt.it.ground ? {} : {thing: true});
+    }
     return out;
   }
   api.cells = cells;

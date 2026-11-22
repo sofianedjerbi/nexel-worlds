@@ -83,7 +83,7 @@ def test_tilling_needs_a_hoe(game):
     """Without a hoe nothing is tilled; and X does not answer "Needs a hoe" in red: X digs the tile down, by hand too."""
     x, y = game.pos()
     game.face(1, 0)
-    assert "Needs a hoe" in game.js("intent(facingTile(), true).text")       # (asked of that tile alone)
+    assert "hoe" not in game.js("intent(facingTile(), true).text")           # (asked of that tile alone: tilling is E's, with a hoe)
     assert game.js("facingNow(true).it.text") == "Dig down"
     game.press("x", 100)
     game.wait(f"topAt({x + 1}, {y}) === -1 && !myAction", 20000)

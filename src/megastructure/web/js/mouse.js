@@ -49,7 +49,13 @@ cv.addEventListener("mousemove", (e) => {
   if (!t) { tip.style.display = "none"; return; }
   let text;
   if (me && Build.on) Build.point(p);
-  if (me) { const it = Build.on ? Build.hint(p) : intent(aimAt(p, e.shiftKey), e.shiftKey); text = it ? it.text : ""; tip.className = it && it.ok === false ? "bad" : ""; cv.classList.toggle("act", !!(it && !it.walk && !it.info && it.ok !== false)); }
+  if (me && Build.on) { const it = Build.hint(p); text = it ? it.text : ""; tip.className = it && it.ok === false ? "bad" : ""; cv.classList.toggle("act", !!(it && !it.walk && !it.info && it.ok !== false)); }
+  else if (me) {      // a left click breaks (X's verb), a right click uses (E's): each line its button's (intent.js clickIntent)
+    const L = clickIntent(p, "break").it, R = clickIntent(p, "use").it, does = (it) => !!it && !it.walk && !it.info, said = (it) => does(it) || (!!it && it.ok === false);
+    const r = said(R) && (!L || R.text !== L.text) ? R : null;
+    text = [said(L) ? L.text : "", r ? `Right click: ${r.text}` : ""].filter(Boolean).join("\n");
+    const top = said(L) ? L : r; tip.className = top && top.ok === false ? "bad" : ""; cv.classList.toggle("act", does(L) || does(R));
+  }
   else {
     const here = entityAt(p);
     text = here ? (here.e.name || here.e.kind) : GROUND.has(t[0]) ? label(CH[t[1]]) : label(CH[t[0]]);
@@ -60,5 +66,5 @@ cv.addEventListener("mousemove", (e) => {
 });
 cv.addEventListener("mouseleave", () => { mouse.in = false; $("hover").style.display = "none"; });
 cv.addEventListener("mousedown", (e) => { if (e.button === 0) drag = {x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false}; });
-cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.moved && me) { const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, e.shiftKey); else clickTile(q, e.shiftKey); } drag = null; });
-cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (!me) return; const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, true); else clickTile(q, false); });
+cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.moved && me) { const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, e.shiftKey); else clickTile(q, "break"); } drag = null; });      // (the left button: X's verb; open ground: walk there)
+cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (!me) return; const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, true); else clickTile(q, "use"); });      // (the right one: E's)

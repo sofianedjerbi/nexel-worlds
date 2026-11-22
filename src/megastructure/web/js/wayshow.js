@@ -56,7 +56,9 @@ const WayShow = (() => {
   // The way from where you stand (s, h), the rest of the one found: a step along it, until the new one is found; null: you are not on it
   function from(s, h) {
     const i = res.path.findIndex((p) => p.x === s.x && p.y === s.y && p.z === h); if (i < 0 || i >= res.path.length - 1) return null;
-    const path = res.path.slice(i), solid = (c) => solidAt(c.x, c.y, c.z), digs = path.flatMap((p) => p.digs).filter(solid), first = path[1].digs.filter(solid)[0] || null;
+    // (the finder's moves to the keys that break them: dig on and dig down are both X's, the break key's: "why do I break rocks with E?")
+    const press = (c) => (c.key === "use" ? {...c, key: "alt", on: true} : c.key === "alt" ? {...c, down: true} : c);
+    const path = res.path.slice(i), solid = (c) => solidAt(c.x, c.y, c.z), digs = path.flatMap((p) => p.digs).filter(solid).map(press), first = path[1].digs.filter(solid).map(press)[0] || null;
     return {path, digs, next: digs[0] || null, now: first, sky: res.sky - i, trapped: res.trapped};
   }
   // The way shown, as it is from where you stand NOW: a key pressed between two frames (you came down a level, the land changed) acted on the last frame's way: out of your own shaft, R dug
@@ -69,7 +71,7 @@ const WayShow = (() => {
   // The way's own key, for the corner, a phone's buttons and the press itself: null: no way is shown (the keys of what
   // you face are yours); {}: the next move is a step (no key); {key, text}: the next block's (keyboard.js, digup.js)
   api.offer = () => { const n = fresh() && cur.now, s = myPos(), moved = !!s && s.x + "," + s.y + "," + myZ(s.x, s.y) !== posKey;      // (moved: since the last frame: the way from here is not looked for yet)
-    return n ? {key: n.key, text: n.key === "use" ? "Dig on" : n.key === "alt" ? "Dig down" : n.x === s.x && n.y === s.y ? "Dig up" : "Dig a step"} : cur && hops() ? {key: "jump", text: "Jump"} : cur || ((led || follow) && (gen || moved)) ? {} : null; };
+    return n ? {key: n.key, text: n.on ? "Dig on" : n.down ? "Dig down" : n.x === s.x && n.y === s.y ? "Dig up" : "Dig a step"} : cur && hops() ? {key: "jump", text: "Jump"} : cur || ((led || follow) && (gen || moved)) ? {} : null; };
   // The next move is up a step: the jump key's (walk.js jumpKey: walking into it stops you)
   const hops = () => !!cur && !cur.now && cur.path.length > 1 && !cur.path[1].down && cur.path[1].z === cur.path[0].z + 1;
   // A key of your own pressed in a cave you can walk out of: you are at work here: the way is put away until you have walked and stood again

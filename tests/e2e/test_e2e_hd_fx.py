@@ -37,12 +37,12 @@ def test_a_tree_falls_and_ore_sends_orbs(game):
     game.hold_item("axe")
     game.stamp(1, 0, ["T"])
     game.face(1, 0)
-    game.press("e", 0)
+    game.press("x", 0)
     game.wait("HdFx.last.falls > 0", 8000)                        # the felling, drawn
     game.hold_item("pickaxe")
     game.stamp(0, 1, ["*"])
     game.face(0, 1)
-    game.press("e", 0)
+    game.press("x", 0)
     game.wait("HdFx.last.orbs > 0", 6000)
 
 
