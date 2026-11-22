@@ -44,6 +44,11 @@ const HdLevel = (() => {
   // hides(tx, ty, L, k, px) -> the land south of you over the eye's line (k: its climb a tile) hides all of you that shows (a body is a level; px: art px of it under your feet's line, a swimmer's sink): the x-ray window (hd.js).
   // ONE answer for any wall between the eye and you under the open sky: a shaft's south wall, a gorge's bank, a cliff over a river. (You were LIFTED to the rim south of you instead: in a river at a cliff 12 high, drawn on its top edge)
   const hides = (tx, ty, L, k, px = 0) => over(tx, ty, L, k) >= 1 - px / 16;
+  // veils(x, y, L, at) -> land south of (x, y) hides ANY of its floor at L, AS DRAWN (at(x, y, z): the picture's px of a place, hd.js eng.at: the eye's own perspective and the bend): the north edge of a top over
+  // L + 1 is higher on the screen than the floor's south edge. Such a tile of your space is in the window (hd.js host.sunk). (It was hides, whole, by the eye's mean climb: a tile the cliff's top covered
+  // in part stayed out, and that part of the cliff's top stood in the window, its dark rim over the river: "an outline floating in the water", the river shown again past it)
+  function veils(x, y, L, at) { const s = at(x + .5, y + 1, L); if (!s) return false;
+    for (let d = 1; d <= 20; d++) { const t = topAt(x, y + d); if (t > L + 1 && !matAt(x, y + d)) { const q = at(x + .5, y + d, t); if (q && q[1] < s[1] - .5) return true; } } return false; }
   // shut(tx, ty, L, k) -> the floor of your hole is HIDDEN from the eye: the open ground through your tile from north to south (tiles under L + 1: lower than your head), times k (levels the eye's line climbs a tile), is less than
   // the hole's depth under its rim. Only then do its walls tell its depth by going dark (vox_style_glsl.js ho): a shaft, a pit one or two wide across. A gorge five wide whose floor and far wall are seen
   // kept that dark too: its north wall black under its first level within six tiles of you, a black stepped slab, whenever you stood at its south bank (the rim, from the tiles beside you, 12 there)
@@ -80,5 +85,5 @@ const HdLevel = (() => {
     const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); for (let i = 0; i < r.l.length; i += 3) g.rect((x0 + r.l[i]) * zs, (y0 + r.l[i + 1]) * zs, r.l[i + 2] * zs, zs); g.clip("evenodd");
   }
   const body = (me, a, zs) => { const r = me && a && runsOf(me.canvas); if (!r || !r.b) return null; const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; return {x: (x0 + r.b[0]) * zs, y: (y0 + r.b[1]) * zs, w: (r.b[2] - r.b[0]) * zs, h: (r.b[3] - r.b[1]) * zs}; };
-  return {of, steep, own, rim, over, under, clear, hides, shut, wall, wallAt, cut, body, get shows() { return sv; }};
+  return {of, steep, own, rim, over, under, clear, hides, veils, shut, wall, wallAt, cut, body, get shows() { return sv; }};
 })();

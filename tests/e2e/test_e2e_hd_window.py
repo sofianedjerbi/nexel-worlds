@@ -134,6 +134,33 @@ def test_at_the_foot_of_a_cliff_in_a_gorge_the_x_ray_shows_you_at_your_own_level
         assert s["seen"] > .7, s
 
 
+def test_in_a_gorge_the_river_is_one_water_through_the_window_no_strip_of_the_cliff_s_top_over_it(browser, server):
+    """The owner, x-ray in the gorge: the river a patchwork, "a dark outline floating in the water". Only the tiles the
+    cliff hid WHOLE were in the window (and in a diamond four steps round you): the cliff's top over a tile it hid in part
+    stayed, a strip of it with its dark rim across the river, the river seen again past it. Now any tile it hides at all
+    is (hd_level.js veils), in a square round you: from you north to the far bank, along every column near you, water
+    alone, each px of it as the river's px are (one depth: one tone, give or take its waves)."""
+    g = hd(browser, server)
+    g.hour(.3, still=True)
+    for o in ("clouds", "rays", "shimmer"):
+        g.js(f"setOpt('{o}', 0)")
+    x, y = gorge(g)
+    g.rpc("dev_teleport", x=x, y=y)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
+    g.js("(() => { WayShow.paint = () => {}; Target.off = true; return 1; })()")
+    g.rest()
+    lum = lambda c: .3 * c[0] + .59 * c[1] + .11 * c[2]
+    cols = {}
+    for dx in (-4, -2, 2, 4):                                              # (not your own column: you stand in it)
+        cols[dx] = [g.js(PX, [x + dx + .5, y + .5 - i * .1, 0]) for i in range(44)]   # your row to the river's north row, a px every tenth of a tile
+    for dx, scan in cols.items():
+        land = "".join("L" if c[2] - c[0] < 15 else "w" for c in scan)   # (water is blue over red; the cliff's stone and its dark rim are not: a strip of them, three px or more)
+        assert "LLL" not in land, (dx, land, sorted((t[0] - x, t[1] - y) for t in g.js("HdLook.win.tiles")))   # (before: wwww...LLLLLLLLLLLLLLLLwwww at -4: the cliff's top across the river)
+    # the river runs west to east, its depth by row: at each row every column is one tone, its waves' glints aside (a px in ten at most): no slab of it in another
+    off = [(i, dx) for i in range(44) for dx, scan in cols.items() if abs(lum(scan[i]) - sorted(lum(s[i]) for s in cols.values())[1]) > 25]
+    assert len(off) <= 17, off
+
+
 def test_what_grows_on_the_meadow_over_your_room_is_not_on_its_floor(browser, server):
     g = hd(browser, server)
     x, y = room(g, flowers=True)
