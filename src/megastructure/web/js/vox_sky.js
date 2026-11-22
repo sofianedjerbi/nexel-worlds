@@ -45,14 +45,14 @@ void main() {
   if (up < m2) c = mix(uNear, uLow, .18);
   o = vec4(c, 1.);
 }`;
-  let prog = null, quad = null, bad = false;
+  let prog = null, quad = null, bad = false, gen = 0;
   // Drawn over the whole picture, behind everything (the caller has cleared it): w, h px of the picture, pw px of
   // the canvas across, k px of the picture a px of the paint
   function draw(sky, w, h, pw, k) {
     const gl = VoxGL.gl;
     if (bad || !gl) return;
-    if (!prog) {
-      try { prog = VoxGL.program(VS, FS); } catch (e) { bad = true; console.error(e); return; }
+    if (!prog || gen !== VoxGL.gen) {   // (a new context, the old one lost: made again in it)
+      gen = VoxGL.gen; try { prog = VoxGL.program(VS, FS); } catch (e) { bad = true; console.error(e); return; }
       quad = {vao: gl.createVertexArray(), buf: gl.createBuffer()};
       gl.bindVertexArray(quad.vao); gl.bindBuffer(gl.ARRAY_BUFFER, quad.buf);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW);

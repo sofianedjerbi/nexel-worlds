@@ -138,3 +138,72 @@ def test_nobody_s_words_or_name_are_drawn_under_the_name_of_the_game_its_line_or
         logo = page.evaluate("(() => { const b = TitleScene.boxes[0]; return [TitleScene.hides(b.x + 10, b.y + 10, 40, 20), TitleScene.hides(-500, -500, 10, 10)]; })()")
         assert logo == [True, False] and not errors, errors
         page.close()
+
+
+def test_over_a_terrace_the_islands_eye_cuts_no_hole_in_the_hill(browser, server):
+    """The owner's picture: a flat black tile beside a tree on a terrace of the first screen, a lit strip at its foot.
+    The island's eye is nobody (hd.js: a free eye, its level the meadow's); over a terrace the search for "your space"
+    found it under the land and the x-ray window opened there: the window's dark back and its lit near edge. A free
+    eye has no space of its own and no window, wherever the view goes."""
+    page, errors = open_page(browser, server)
+    page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene') && HdLook.live && !HdLook.busy", timeout=15000)
+    at = page.evaluate("""(() => { const S = TitleScene.S, [x0, y0, x1, y1] = S.C.view; clearInterval(S.timer); for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (levelAt(S.ox + x, S.oy + y) >= 2) {
+      cam.x = camT.x = S.ox + x; cam.y = camT.y = S.oy + y; window.__b = HdLook.builds; return [x, y, levelAt(S.ox + x, S.oy + y), HdLook.eye().z]; } return null; })()""")
+    assert at and at[2] > at[3] + 1, at                              # (the eye's level under the terrace's top)
+    page.wait_for_function("HdLook.builds > window.__b && !HdLook.busy", timeout=10000)
+    page.wait_for_function("(window.__f = (window.__f || 0) + 1) > 8", polling="raf")     # (the window eases open over frames)
+    assert page.evaluate("[HdLook.win.n, HdLook.win.a]") == [0, 0], at
+    page.close()
+    assert not errors, errors
+
+
+# the share of the land's picture that has land drawn on it
+LAND = """(() => { const c = HdView.pic, g = document.createElement('canvas').getContext('2d'); g.canvas.width = c.width; g.canvas.height = c.height; g.drawImage(c, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n / (c.width * c.height); })()"""
+
+
+def test_a_lost_gpu_context_gives_the_land_back(browser, server):
+    """"Sometimes the map disappears": a phone takes a page's WebGL contexts back (its tab put away, its GPU's memory
+    wanted). The land's own and the sky's were never asked for again: the land gone for good, the sky and the names
+    left. Both are made again: the land comes back whole, every face with its paint."""
+    page, errors = open_page(browser, server)
+    page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene') && HdLook.live && !HdLook.busy", timeout=15000)
+    assert page.evaluate(LAND) > .5
+    page.evaluate("[HdView.pic.getContext('webgl2'), VoxGL.gl].forEach((g) => g.getExtension('WEBGL_lose_context').loseContext())")
+    page.wait_for_function(f"HdLook.live && !HdView.pic.getContext('webgl2').isContextLost() && VoxGL.gl && !VoxGL.gl.isContextLost() && {LAND} > .5 && HdLook.raw() === 0", timeout=5000)
+    page.close()
+    assert not errors, errors
+
+# Mira, held where the test puts her, shouts; the view put by hand: [view's x, view's y] from her, her place on the island (or where she is)
+SHOUT = """async ([dx, dy, at]) => { const S = TitleScene.S, m = S.people[0];
+  if (at) { m.x = at[0]; m.y = at[1]; } m.hold = 1e6; TitleScene.step(); S.eye = m; S.till = S.tick + 1e6;
+  cam.x = camT.x = S.ox + m.x + dx; cam.y = camT.y = S.oy + m.y + dy; bubbles.length = 0; S.say(m, 'DINNER AT SUNDOWN!', true);
+  window.__f = 0; await new Promise((r) => { const f = () => (++window.__f > 12 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+  const b = bubbles.find((q) => q.name === 'Mira'); return b && b.at ? [b.at[0], b.at[1], b.w, b.h] : null; }"""
+
+
+def test_a_bubble_shows_only_while_its_speaker_is_seen(browser, server):
+    """"Dialogue also shows even off-screen": "DINNER AT SUNDOWN!" hung at the screen's edge over nobody, Mira past
+    it; or over the house's roof, Mira behind it. A bubble is drawn only while its speaker is on the screen (a margin
+    in) and seen, and then whole on the screen."""
+    for w, h in ((1440, 900), (390, 844)):
+        page = browser.new_page(viewport={"width": w, "height": h})
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.goto(server)
+        page.wait_for_function("typeof TitleScene !== 'undefined' && TitleScene.on && document.body.classList.contains('scene')", timeout=15000)
+        page.evaluate("(() => { TitleScene.stop(); $('joinbox').style.display = ''; TitleScene.start(5); clearInterval(TitleScene.S.timer); for (let i = 0; i < 40; i++) TitleScene.step(); $('splash').textContent = 'Hi.'; })()")
+        page.wait_for_function("!arrivingNow && HdLook.live", timeout=15000)
+        half = page.evaluate("innerWidth / (16 * zoom) / 2")         # (half the screen, in tiles)
+        seen = page.evaluate(SHOUT, [0, 1, [41, 30]])                  # in the middle of the screen, in the open, south of the house: said
+        assert seen and 0 <= seen[0] and seen[0] + seen[2] <= w and 0 <= seen[1] and seen[1] + seen[3] <= h, (w, seen)
+        for dx in (-(half + .3), half + .3):                            # just past the screen's right edge, its left: not said
+            assert page.evaluate(SHOUT, [dx, 1, None]) is None, (w, dx)
+        below = page.evaluate("""async () => { const S = TitleScene.S, m = S.people[0], x = S.ox + m.x + .5, y = S.oy + m.y + 1, frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          for (let i = 0; i < 4; i++) { await frame(); const a = HdLook.screenOf(x, y, 0), b = HdLook.screenOf(x, y + 1, 0); cam.y = camT.y = cam.y - (innerHeight + 16 * zoom - a[1]) / (b[1] - a[1]); }
+          return cam.y - (S.oy + m.y); }""")                          # (her feet a tile under its foot edge, her head in it: the tilted view, its rows are not 16 px)
+        assert page.evaluate(SHOUT, [0, below, None]) is None, (w, below)     # past its foot edge: not said
+        assert page.evaluate(SHOUT, [0, 4, [43, 21]]) is None, w          # behind the house (against its back wall, under its roof as the eye sees it), on the screen: not said
+        assert page.evaluate("HdLook.hidden(TitleScene.S.ox + 43.5, TitleScene.S.oy + 21.5, 0) && !HdLook.hidden(TitleScene.S.ox + 41.5, TitleScene.S.oy + 30.5, 0)")
+        assert not errors, errors
+        page.close()

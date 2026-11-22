@@ -48,7 +48,18 @@ body.touch #joinbox kbd { display:none; }
   #joinbox .say { left:4vw; right:4vw; max-width:none; top:calc(5vh + 26 * var(--L)); text-align:center; }
   #joinbox .menu { left:50%; right:auto; top:auto; bottom:5vh; transform:translateX(-50%); width:min(calc(150 * var(--q)), 94vw); }
 }
-body.touch #titlehelp { display:none; }                     /* (the help is a list of keys: a phone has none) */
+/* A desk (home audit, 1440x900): the window was a third of the screen's height, its letters 18 px, and what you came
+   for, Wake up, a lit line like the others. On a big screen its pixel is 3 px; Wake up is a button across it, lit
+   while it is the row the keys are on (as it is at first), raised otherwise. */
+@media (min-width: 1200px) and (min-height: 760px) { body:not(.touch) #joinbox { --q:3px; } }
+body:not(.touch) #joinbox #join { height:calc(24 * var(--q)); justify-content:center; gap:calc(6 * var(--q)); margin:var(--q) 0 calc(2 * var(--q)); background:#d9bd90;
+  box-shadow:inset var(--q) var(--q) 0 #f8edd4, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #b8946a, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+body:not(.touch) #joinbox #join.on { background:#fff1a8;
+  box-shadow:inset var(--q) var(--q) 0 #fffaf0, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 #e0b84e, calc(-1 * var(--q)) 0 #6b4a3a, var(--q) 0 #6b4a3a, 0 calc(-1 * var(--q)) #6b4a3a, 0 var(--q) #6b4a3a; }
+/* a phone: the line under the name is a tip, not a heading: the menu's size (it was half again as big as Wake up, two lines of a dark band over the island) */
+@media (max-width: 860px) { #joinbox .say { font-size:calc(6 * var(--u3)); line-height:calc(8 * var(--u3)); top:calc(5vh + 25 * var(--L)); } }
+@media (max-height: 520px) and (orientation: landscape) { body.touch #joinbox .say { font-size:calc(6 * var(--u3)); line-height:calc(8 * var(--u3)); } }
+body.touch #titlehelp { display:none; }                    /* (the help is a list of keys: a phone has none) */
 #raceslot { min-height:calc(30 * var(--q)); }               /* (its place is kept while the five are still to be drawn) */
 /* A phone (body.touch: said by the page itself, before its first picture; a desk's screen has none of this). The
    list is for a thumb: what you came for, Wake up, is a button across the window, always lit; the others are
@@ -76,14 +87,6 @@ body.booting #joinbox #join { position:relative; overflow:hidden; }
 body.booting #joinbox #join::before { content:""; position:absolute; left:0; right:0; bottom:0; height:calc(2 * var(--q)); background:#6b4a3a; }
 body.booting #joinbox #join::after { content:""; position:absolute; left:0; bottom:0; width:var(--boot-w, 0px); height:calc(2 * var(--q)); background:#e0b84e; }
 
-/* The island behind the first screen: its still picture first (index.html puts it; it comes in softly), then the
-   island itself over it, once all of it is painted (title_scene.js says so: body.scene), not a block at a time. */
-#poster { position:fixed; z-index:0; max-width:none; image-rendering:pixelated; pointer-events:none; opacity:0; transition:opacity .35s ease-out; }
-#poster.in { opacity:1; }
-/* the wait for the island (js/loading.js): the cat walking the meadow as the game comes, above the window; gone once the island is painted */
-#loading { position:fixed; z-index:3; image-rendering:pixelated; pointer-events:none; opacity:0; transition:opacity .3s ease-out; filter:drop-shadow(0 4px 0 rgba(60,40,30,.25)); }
-#loading.in { opacity:1; }
-#loading.out { opacity:0; }
-body:not(.title) #poster, body.scene #poster { visibility:hidden; transition:visibility 0s .8s; }
-canvas#c, canvas#hd { transition:opacity .7s ease-out; }
+/* The island behind the first screen: hidden until all of it is painted (title_scene.js says so: body.scene), not a
+   block at a time; the wait (index.html #boot) is over it until then, and fades to it. */
 body.title:not(.scene) canvas#c, body.title:not(.scene) canvas#hd { opacity:0; }

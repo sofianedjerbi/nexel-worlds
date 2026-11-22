@@ -43,15 +43,22 @@ const VoxStyle = (() => {
       S.slots.set(key, s); const at = (s / SL | 0) * C * AW + (s % SL) * C; paint(S.px, at, AW); { const q = S.px[at + 7 * AW + 7]; if ((q >>> 24) > 127) for (let i = 0; i < 3; i++) mean[i] += ((q >> 8 * i & 255) / 255 - mean[i]) * .03; } if (!mk) dirty.push(s); else B.add.push(s); return s;   // (a new paint is sent alone: the whole sheet, a million px, was sent again for each)
     }
     const land = VoxStyleLand.create(host, cfg, {SL, C, slot, unslot(k) { A.slots.delete(k); if (B) B.slots.delete(k); }, use(l) { for (const v of l) used.add(v); }, get mk() { return mk; }, start(ag) { fromNone = wipe || ag; wipe = false; if (fromNone) wipes++; B = null; spill = false; used = new Set(); return fromNone; }, spill: () => spill});
+    // A LOST CONTEXT (a phone's tab put away, its GPU's memory wanted, the GPU reset): a new canvas and context, made the next frame (then once a second till one is given), everything sent again
+    // from what is kept here (the faces' lists, the paints' px): the land comes back as it was. It was the land gone for good, the sky and the names left ("sometimes the map disappears")
+    let was = false, tried = 0;
     function start() {
-      if (gl) return true;
-      el = document.createElement("canvas"); gl = el.getContext("webgl2", {antialias: false, depth: true, stencil: true, preserveDrawingBuffer: true}); if (!gl) return false;
+      if (gl) return true; if (was && performance.now() - tried < 1000) return false;
+      const c = document.createElement("canvas"), g = c.getContext("webgl2", {antialias: false, depth: true, stencil: true, preserveDrawingBuffer: true}); if (!g) { tried = performance.now(); return false; }
+      c.addEventListener("webglcontextlost", (e) => { e.preventDefault(); if (gl === g) { gl = null; was = true; tried = 0; } }); el = c; gl = g;
+      const keep = was ? {land: bufs.land.stat, shade: bufs.shade.stat, water: bufs.water.stat} : null; for (const k in U) delete U[k];
       const prog = (vs, fs, names) => { const p = gl.createProgram(); for (const [ty, s] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) { const sh = gl.createShader(ty); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); gl.attachShader(p, sh); } names.forEach((n, i) => gl.bindAttribLocation(p, i, n)); gl.linkProgram(p); return p; };
       pr = prog(VS, FS, ["p", "uv", "a", "e"]); sp = prog(SV, SF, ["p", "uv", "s", "k"]); W_ = VoxStyleWin.create(gl); [tex, wtx, htx, ltx, atx, stx] = [0, 0, 0, 0, 0, 0].map(() => gl.createTexture());
       // a list of faces on the GPU: what was made (stat) and after it room for what changes by the frame (its tail)
       for (const k of ["land", "shade", "water", "spr"]) { const b = bufs[k] = {buf: gl.createBuffer(), vao: gl.createVertexArray(), n: 0, cap: 0, stat: new Float32Array(0)}; gl.bindVertexArray(b.vao); gl.bindBuffer(gl.ARRAY_BUFFER, b.buf);
         (k === "spr" ? [[3, 0], [2, 12], [1, 20], [2, 24]] : [[3, 0], [2, 12], [4, 20], [1, 36]]).forEach(([sz, off], i) => { gl.enableVertexAttribArray(i); gl.vertexAttribPointer(i, sz, gl.FLOAT, false, (k === "spr" ? SV6 : N) * 4, off); }); }
       gl.bindVertexArray(null); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, atx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SW, SW, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); near(); gl.activeTexture(gl.TEXTURE0);
+      if (keep) { fill(bufs.land, keep.land, far); fill(bufs.shade, keep.shade, new Float32Array(0)); fill(bufs.water, keep.water, new Float32Array(0)); cnt.ghost = cnt.shade2 = 0;
+        stale = true; again = true; wat = null; sKey = ""; sBusy = true; wKey = ""; lastU = lastS = lastG = lastD = null; shelf.x = shelf.y = shelf.h = 0; shelf.ep++; }
       return true;
     }
     const near = () => { for (const [a, b] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, a, b); };
@@ -133,7 +140,7 @@ const VoxStyle = (() => {
       gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, stx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, D, D, 0, gl.RGBA, gl.UNSIGNED_BYTE, px); near(); gl.activeTexture(gl.TEXTURE0);
     }
     function draw(v) {
-      if (!start()) return null; light(v.t || 0, v.way || null);
+      if (!start()) return was ? el : null; light(v.t || 0, v.way || null);
       const t0 = performance.now(), L = v.light, RW = v.w, RH = v.h, W = v.water, hr = v.hour, sized = el.width !== RW || el.height !== RH;
       if (sized) { el.width = RW; el.height = RH; }
       const {m, eye} = matrix(v); lastM = m; lastB = [v.bend || 0, v.at[1]]; const lamp = gp(...v.at);

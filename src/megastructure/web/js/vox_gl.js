@@ -7,14 +7,16 @@
 // This file: the canvas the GPU draws on and the few things every part needs of WebGL 2. One context, made the
 // first time it is asked for. If the machine has none, or loses it, `ok` says no.
 const VoxGL = (() => {
-  let el = null, gl = null, bad = false;
+  // (lost: a new one is asked for the next time, then once a second till one is given; `gen` goes up with each new one: what was made in the old one is made again. A lost one was
+  //  never asked again: `ok` no, the land's look off for good on a phone that had put its tab away)
+  let el = null, gl = null, bad = false, was = false, tried = 0, gen = 0;
   function start() {
-    if (gl || bad) return gl;
-    el = document.createElement("canvas");
-    try { gl = el.getContext("webgl2", {alpha: false, antialias: false, depth: true, stencil: true}); } catch (e) { gl = null; }
-    if (!gl) { bad = true; el = null; return null; }
-    el.addEventListener("webglcontextlost", (e) => { e.preventDefault(); bad = true; gl = null; });
-    return gl;
+    if (gl || bad) return gl; if (was && performance.now() - tried < 1000) return null;
+    const c = document.createElement("canvas"); let g = null;
+    try { g = c.getContext("webgl2", {alpha: false, antialias: false, depth: true, stencil: true}); } catch (e) { g = null; }
+    if (!g) { if (was) tried = performance.now(); else bad = true; return null; }
+    c.addEventListener("webglcontextlost", (e) => { e.preventDefault(); if (gl === g) { gl = null; was = true; tried = 0; } });
+    el = c; gl = g; gen++; return gl;
   }
   // A program: its uniforms by name, its attributes' places
   function program(vs, fs) {
@@ -40,5 +42,5 @@ const VoxGL = (() => {
     return t;
   }
   function fit(w, h) { if (el && (el.width !== w || el.height !== h)) { el.width = w; el.height = h; } }      // the canvas, that many px
-  return {start, program, texture, fit, get gl() { return gl; }, get el() { return el; }, get ok() { return !bad; }};
+  return {start, program, texture, fit, get gl() { return gl; }, get el() { return el; }, get gen() { return gen; }, get ok() { return !bad; }};
 })();

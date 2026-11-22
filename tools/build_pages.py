@@ -43,10 +43,6 @@ def build(out: Path):
     line, mark = '<script src="js/splash.js"></script>\n', '<div id="help"></div>'      # (the line under the name: chosen as the page is read, not swapped a second later)
     assert page.count(line) == 1 and page.count(mark) == 1, "index.html no longer has its splash line or its help"
     page = page.replace(line, "").replace(mark, "<script>\n" + (out / "js" / "splash.js").read_text() + "</script>\n" + mark)
-    line = '<script src="js/loading.js"></script>\n'           # (the wait's cat: in the page, run as it is read, not in the script it waits for)
-    assert page.count(line) == 1, "index.html no longer has its loading scene"
-    page = page.replace(line, "<script>\n" + (out / "js" / "loading.js").read_text() + "</script>\n")
-    (out / "js" / "loading.js").unlink()
     names = web_bundle.SCRIPT.findall(page)
     page, files = web_bundle.packed(out, page)               # one script, one pack of pictures, the styles in the page
     for name, body in files.items():
@@ -55,12 +51,18 @@ def build(out: Path):
         (out / "js" / n).unlink()
     # (the five small pictures the styles name, 0.2 to 0.4 KB each: in the page, not five more requests)
     page = re.sub(r"url\((assets/[\w.]+\.png)\)", lambda m: "url(data:image/png;base64," + base64.b64encode((out / m.group(1)).read_bytes()).decode() + ")", page)
-    small = '"assets/title_hd_s.webp"'                  # (a phone's still picture of the island: in the page too, 45 KB: there with the first picture.
-    assert page.count(small) == 1, "index.html no longer names its small poster"     #  Asked for, it came at 0.85 s behind seventy scripts and showed at 1.6 s)
-    page = page.replace(small, '"data:image/webp;base64,' + base64.b64encode((out / "assets" / "title_hd_s.webp").read_bytes()).decode() + '"')
     font, ask = "url(assets/sprout-pixel.ttf)", '<link rel="preload" href="assets/sprout-pixel.ttf" as="font" type="font/ttf" crossorigin>\n'   # (and the game's letters, 17 KB: the first picture had its window and no word in it)
     assert page.count(font) == 1 and page.count(ask) == 1, "index.html no longer names its font"
     page = page.replace(font, "url(data:font/ttf;base64," + base64.b64encode((out / "assets" / "sprout-pixel.ttf").read_bytes()).decode() + ")").replace(ask, "")
+    # (the wait first of all: the game's styles, 120 KB with their pictures and letters, after it in the page, not before it in the head:
+    #  the first picture is the wait as soon as the page's first bytes are in; nothing it covers is drawn before its style has come)
+    head, rest = page.split("</head>", 1)
+    styles = re.findall(r"<style>\n(?!/\* THE WAIT).*?</style>\n", head, re.S)
+    end = rest.index("</script>\n", rest.index('<div id="boot">')) + len("</script>\n")
+    assert len(styles) >= 5 and end > 0, "the page's styles or its wait changed"
+    for s in styles:
+        head = head.replace(s, "", 1)
+    page = head + "</head>" + rest[:end] + "".join(styles) + rest[end:]
     (out / "index.html").write_text(page.replace("</head>", '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>\n</head>', 1))
     with zipfile.ZipFile(out / "py.zip", "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted(PKG.rglob("*.py")):
@@ -131,7 +133,7 @@ def stamp(out: Path) -> str:
         if (out / page).exists():
             text = (out / page).read_text()
             (out / page).write_text(re.sub(r'((?:src|href|poster)=")((?:js|css)/[^"?#]+|[^"/:?#]+\.(?:mp4|jpg|png|gif))"', rf'\1\2?v={v}"', text))
-    for name, old in (("index.html", '"js/local_worker.js"'), ("index.html", '"assets/title_hd.webp"'), ("js/local_worker.js", '"../py.zip"')):
+    for name, old in (("index.html", '"js/local_worker.js"'), ("js/local_worker.js", '"../py.zip"')):
         text = (out / name).read_text()
         assert old in text, f"{name} no longer names {old}"
         (out / name).write_text(text.replace(old, old[:-1] + f'?v={v}"'))

@@ -7,20 +7,25 @@ const IMG = {};
 const ANIMAL_SHEETS = ["chicken_brown", "chicken_red", "chicken_blue", "chicken_green", "cow_light", "cow_pink", "cow_purple", "cow_green",
   "chick", "chick_brown", "chick_red", "chick_blue", "chick_green", "calf", "calf_light", "calf_pink", "calf_purple", "calf_green"];
 const ASSETS = [...ANIMAL_SHEETS, "thin_fall", "stump_thin", "fruit_bare", "barn", "well", "coop", "blanket", "basket", "mailbox", "boats", "deep_mask", "house_walls", "house_roof", "gates", "bridge", "furniture", "tilled_wet", "tree_apple", "tree_pear", "tree_peach", "tree_orange", "water_objects", "emoji", "hearts", "sliders", "hill1", "hill2", "hill3", "tree_anim", "tree_fall", "water", "water_deep", "soil", "grass", "tilled", "ash", "stone", "hedge", "cobble", "planks", "fences", "chest",
-  "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen", "tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling"];
+  "door", "trees", "nature", "workbench", "signs", "crops", "items", "character", "chicken", "cow", "gen", "tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling", "slot"];
+// the sheets the first screen never shows (the wild ones, the emotes: 0.2 MB of the pack's 0.5): last in the pack (web_bundle.py),
+// and the title does not wait for them; a body drawn before its sheet has come is drawn again when it has (hd_view.js recorder: the width)
+const LATE = ["emoji", "tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling"];
 let GEN = {};
 // A build that sends the pictures as one file (web_bundle.py: the online demo, a server started with --bundle) says so
 // in the page: ASSET_PACK = {url, files: {name: [where, how long]}, blob: the file, coming}. One request, not seventy; each picture's bytes are
 // its file's. If the pack does not come, the files are asked for one by one, as in development.
-const SHEET_PACK = window.ASSET_PACK ? ASSET_PACK.blob : Promise.resolve(null);       // (asked for by the page itself, before this script had come)
-const fromPack = (name, type) => SHEET_PACK.then((b) => { const at = b && ASSET_PACK.files[name]; return at ? b.slice(at[0], at[0] + at[1], type) : null; });
+// Each picture as soon as its own bytes are in (ASSET_PACK.upto: the pack is read as it comes), not once all of it is.
+const fromPack = (name, type) => { const P = window.ASSET_PACK, at = P && P.files[name]; if (!at) return Promise.resolve(null);
+  return (P.upto ? P.upto(at[0] + at[1]) : P.blob).then((b) => b ? b.slice(at[0], at[0] + at[1], type) : null); };
 function loadImg(n) {   // decoded up front: a sheet decoded lazily on first draw stalls that frame (~100 ms)
-  window.ASSETS_OF = (window.ASSETS_OF || 0) + 1;                   // (how many have come: the wait's cat, loading.js)
-  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => { window.ASSETS_IN = (window.ASSETS_IN || 0) + 1; if (n === "character") IMG[n] = JumpArt.extend(ToolArt.extend(i)); res(i); }); i.onerror = rej;
+  const late = LATE.includes(n);
+  if (!late) window.ASSETS_OF = (window.ASSETS_OF || 0) + 1;         // (how many the first screen waits for, how many have come: the wait's bar, index.html #boot)
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => { if (!late) window.ASSETS_IN = (window.ASSETS_IN || 0) + 1; if (n === "character") IMG[n] = JumpArt.extend(ToolArt.extend(i)); res(i); }); i.onerror = rej;
     if (window.ASSET_PACK) fromPack(n + ".png", "image/png").then((b) => { i.src = b ? URL.createObjectURL(b) : `assets/${n}.png`; }); else i.src = `assets/${n}.png`;
     if (n !== "character") IMG[n] = i; });       // (the character sheet is only there once the rows of its other tools and of the jump are under it: tool_art.js, jump_art.js)
 }
-const ready = Promise.all([...ASSETS.map(loadImg),
+const ready = Promise.all([...ASSETS.map((n) => { const p = loadImg(n); return LATE.includes(n) ? (p.catch(() => {}), null) : p; }),
   fromPack("gen.txt", "text/plain").then((b) => b ? b.text() : fetch("assets/gen.txt").then((r) => r.text())).then((t) => t.trim().split("\n").forEach((n, i) => GEN[n] = i)),
   document.fonts.load("18px SproutPixel")]);
 

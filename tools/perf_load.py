@@ -31,10 +31,10 @@ window.__perf = {long: [], m: {}, frames: null};
 try { new PerformanceObserver((l) => { for (const e of l.getEntries()) __perf.long.push([Math.round(e.startTime), Math.round(e.duration)]); }).observe({entryTypes: ["longtask"]}); } catch (e) {}
 (() => { const m = __perf.m, at = (k, ok) => { try { if (!(k in m) && ok()) m[k] = Math.round(performance.now()); } catch (e) {} };
   const see = () => {
-    at("poster", () => !!document.querySelector("#poster.in"));
-    at("title", () => { const j = document.getElementById("joinbox"); return j && j.getBoundingClientRect().height > 50 && document.fonts.check("18px SproutPixel") && !!document.querySelector("#poster.in"); });
+    at("wait", () => !!document.getElementById("boot"));            // (the wait on the screen: index.html #boot)
     at("scripts", () => typeof titleDraw === "function");
     at("island", () => blocks.size > 0);
+    at("ready", () => document.body.classList.contains("scene"));      // (the first screen whole: the island painted, the wait gone)
     at("usable", () => typeof titleDraw === "function" && spec && spec.readyState === 1 && !document.body.classList.contains("booting"));
     at("in", () => meObs !== null);
     at("world", () => meObs !== null && !!myPos() && HdLook.on && HdLook.faces > 500 && HdLook.catSeen() > .8);

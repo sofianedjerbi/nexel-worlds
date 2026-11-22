@@ -41,7 +41,6 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     # the world starts to come with the page, before its scripts have (its start and the styles are in the page itself)
     page.wait_for_function("typeof bootLocal === 'function' && document.body.classList.contains('booting')", timeout=5000)
     assert page.evaluate("[document.querySelectorAll('link[rel=stylesheet]').length, !!document.querySelector('script[src*=\"local.js\"]')]") == [0, False]
-    page.wait_for_function("!!document.querySelector('#poster.in') && document.getElementById('poster').currentSrc.includes('?v=')", timeout=10000)   # the island's still picture: there, with the build's mark
     page.wait_for_function("blocks.size > 0", timeout=90000)       # Pyodide comes from the CDN on first load
     page.wait_for_function("!document.body.classList.contains('booting')", timeout=90000)
     assert "sfx.json" not in asked[:asked.index("py.zip")], "the sounds were asked for before the world had come"
@@ -73,12 +72,12 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     ctx.set_offline(False)
     ctx.close()
     assert not errors, errors
-    phone = browser.new_context(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True)       # a phone: its picture of the island is in the page itself
+    phone = browser.new_context(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True)       # a phone: the wait is in the page itself
     page = phone.new_page()
     page.route("**/js/*.js*", lambda r: r.abort())             # (no script has come yet)
     page.goto(site, wait_until="domcontentloaded")
-    page.wait_for_function("!!document.querySelector('#poster.in') && document.getElementById('poster').currentSrc.startsWith('data:image/webp') && document.getElementById('poster').naturalWidth === 480", timeout=5000)
-    assert page.evaluate("document.fonts.check('18px SproutPixel') && !performance.getEntriesByType('resource').some((e) => /sprout-pixel/.test(e.name))")   # (and its letters)
+    page.wait_for_function("document.fonts.check('18px SproutPixel') && document.getAnimations().filter((a) => a.playState === 'running' && a.effect.target.closest('#boot')).length === 2", timeout=5000)   # (the cat runs with no script)
+    assert page.evaluate("!performance.getEntriesByType('resource').some((e) => /sprout-pixel|\\.webp/.test(e.name))")   # (its letters in the page too)
     phone.close()
 
 
