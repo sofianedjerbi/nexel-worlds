@@ -130,19 +130,32 @@ def test_you_turn_to_the_selected_cell_and_the_keys_keep_their_facing(game):
     game.wait("(() => { const p = ents.get('agent' + myId); return p && DIR_ROW(p) === 0; })()", 3000)   # (out of build mode: the keys' tile, south, and you face it)
 
 
+FRONT = """([dx, dy, z]) => { const s = myPos(), A = HdLook.art(), x = s.x + dx, y = s.y + dy, u = A.u;
+  const a = A.at(x, y + 1, z), b = A.at(x + 1, y + 1, z), c = A.at(x, y + 1, z - 1);   // (its south face's corners: its front on the screen, in art px)
+  return {sel: Target.drew.filter((d) => d.sel).map((d) => ({area: d.area || 0, line: d.line || 0})),
+    rows: Math.round((c[1] - a[1]) / u), cols: Math.round((b[0] - a[0]) / u)}; }"""
+
+
 def test_the_cell_beside_you_in_the_wall_has_its_whole_box(game):
     """Seen from above in a 1-wide shaft, the cell east of your feet shows only its south face, 3 px tall: its box was a flat
-    orange bar beside you. Now the whole block, seen through (its top and its face): as big as the cell south of you."""
+    orange bar beside you. Never a sliver: under a quarter of its block it is the whole block, seen through (target.js pxOf).
+    Since the eye looks down at most 58 degrees (hd.js STEEP, 5064cee) that south face is a block's whole front, 8 art px tall,
+    as tall as the front of the cell south of you: the box is that face, whole (its top is under the wall's next block, not
+    seen). So it is measured against its own face on the screen, not against the cell south of you (top and front: 368 px to
+    146; it asked for 70 % of that, right only while the face was a sliver and the box became the whole block)."""
     h = well(game)
     sizes = {}
     for dx, dy in ((1, 0), (-1, 0), (0, 1)):
         at2(game, dx, dy, 0, h)
         game.frames(3)
-        d = game.js("Target.drew.filter((d) => d.sel).map((d) => ({area: d.area || 0, line: d.line || 0}))")
-        assert len(d) == 1, (dx, dy, d)
-        sizes[(dx, dy)] = (d[0]["area"], d[0]["line"])
-    for k in (0, 1):                                                 # its px, and its outline's (34 px before: a bar)
-        assert sizes[(1, 0)][k] >= .7 * sizes[(0, 1)][k] > 0 and sizes[(-1, 0)][k] >= .7 * sizes[(0, 1)][k], sizes
+        d = game.js(FRONT, [dx, dy, h + 1])
+        assert len(d["sel"]) == 1, (dx, dy, d)
+        sizes[(dx, dy)] = (d["sel"][0]["area"], d["sel"][0]["line"], d["rows"], d["cols"])
+    _, _, rows, cols = sizes[(0, 1)]
+    assert rows >= 6, sizes                                          # (a front, not a 3 px bar)
+    for side in ((1, 0), (-1, 0)):
+        a, line, r, c = sizes[side]
+        assert r == rows and a >= .9 * rows * cols and line >= 2 * (rows + cols) - 4, sizes   # its whole front, outlined all round
     game.press("z")
 
 
