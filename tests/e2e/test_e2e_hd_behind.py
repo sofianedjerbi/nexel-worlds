@@ -50,7 +50,7 @@ def test_on_a_small_hill_and_behind_it_no_window_opens_and_behind_it_you_show_th
     assert on["n"] == 0 and on["a"] == 0 and on["pitch"] < 36.1 and on["seen"] > .9, on
     assert green(g.js(AT_, [x + 5.5, y + 2.5, 4])), "the hill's top is its own grass"
     behind = go(g, x + 4, y)                                               # one tile north of it: behind it, not under it
-    assert behind["n"] == 0 and behind["a"] == 0 and behind["pitch"] > 36.1, behind     # (land over your head south of you: the eye looks down over it, hd_level.js clear)
+    assert behind["pitch"] > 36.1, behind                                  # (land over your head south of you: the eye looks down over it, hd_level.js clear; hidden even so: the window, hd_level.js hides)
     assert behind["seen"] > .9, behind                                     # whole (it was one px in two of you in the disc's own px: a checker cat, audit A8 B5)
     front = go(g, x + 4, y + 5)
     assert front["n"] == 0 and front["seen"] > .9, front
@@ -85,7 +85,7 @@ def test_in_a_hole_the_eye_looks_from_above_and_its_floor_lies_inside_its_rim(br
     x, y = g.pos()
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in (-1, 0, 1) for i in (3, 4, 5)], col=[-4])     # a pit 3 x 3, four deep
     g.rest()
-    for at in ((x + 4, y), (x + 4, y + 1)):                                # its middle; its south row, behind its south wall
+    for at in ((x + 4, y),):                                               # its middle (on its south row its south wall hides you: the x-ray window, test_e2e_hd_window.py)
         s = go(g, *at, -4, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
         g.js("(() => { WayShow.paint = () => {}; return 1; })()"); g.frames(3)
         assert s["pitch"] == STEEP and s["n"] == 0, s
@@ -113,6 +113,7 @@ def test_a_deep_shaft_is_darker_than_a_shallow_one(browser, server):
     g.rest()
     LUM = """([x, y]) => { const a = HdLook.screenOf(x + .5, y, 0), b = HdLook.screenOf(x + .5, y + 1, 0), k = cv.width / innerWidth; let s = 0, n = 0;
       for (let v = Math.ceil(a[1] * k) + 2; v < Math.floor(b[1] * k) - 2; v++) for (let dx = -16; dx <= 16; dx += 2) { const d = HdLook.read(Math.round(a[0] * k + dx), v, 1, 1).data; if (d[0] > 185 || d[2] > d[1] + 8) continue; s += .3 * d[0] + .59 * d[1] + .11 * d[2]; n++; } return [s / n, n]; }"""
+    g.js("HdLook.nowin = true")                                            # (the walls' own dark: shafts 6 and 12 hide you and are seen through the window)
     out = {}
     for d, tx in ((3, x + 3), (6, x + 7), (12, x + 11)):
         s = go(g, tx, y, -d, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
@@ -122,26 +123,19 @@ def test_a_deep_shaft_is_darker_than_a_shallow_one(browser, server):
     tidy(g, x, y)
 
 
-def test_in_a_shaft_six_deep_no_px_of_your_body_lies_outside_the_hole_s_opening(browser, server):
-    """(After the eye came to look from above: "a ghost on the grass".) No pitch below 90 puts a deep 1x1 floor inside its
-    rim: your body, behind the south rim, was drawn one px in two on the meadow just south of the hole. In a hole seen from
-    above you are drawn no deeper than the eye sees past the rim south of you (hd_level.js `lift`): your feet on that rim's
-    line, whole, every px of you that shows inside the hole's opening on the screen. The floor is not moved (no drawer)."""
+def test_in_a_shaft_six_deep_you_are_seen_through_the_x_ray_at_your_level(browser, server):
+    """(After the eye came to look from above: "a ghost on the grass"; then you were LIFTED to the rim's line, hd_level.js
+    lift: at a cliff's foot in a river that drew you on the cliff's top: "acts like he's above".) No pitch below 90 puts a
+    deep 1x1 floor inside its rim: its south wall hides you whole, and the x-ray window opens on your space as under a
+    roof (hd_level.js hides): you at your own level, whole, your tile in the window."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
     g.rpc("dev_col", tiles=[[x + 3, y]], col=[-6])
     g.rest()
-    s = go(g, x + 3, y, -6, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
-    assert s["pitch"] == STEEP and s["n"] == 0, s
-    nw, se = g.js(f"HdLook.screenOf({x + 3}, {y}, 0)"), g.js(f"HdLook.screenOf({x + 4}, {y + 1}, 0)")
-    u = g.js("zoom")
-    seen, out = g.js("(b) => HdLook.catSeen(b)", [nw[0] - u, nw[1] - u, se[0] + u, se[1] + u])
-    assert seen > .6 and out == 0, (seen, out, nw, se)                     # (it was .44 seen, a checker of you under the rim)
-    south = [g.js(AT_, [x + 3 + i, y + 1.35, 0]) for i in (.3, .5, .7)]
-    assert all(green(c) for c in south), south                             # the meadow south of the rim: grass, nothing of you
-    floor = g.js(f"HdLook.screenOf({x + 3.5}, {y + .5}, -6)")
-    assert floor[1] > se[1], (floor, se)                                   # the floor itself is where it is: past the rim (hidden), not drawn inside it
+    s = go(g, x + 3, y, -6, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep && HdLook.win.a === 1")
+    assert s["seen"] > .9, s
+    assert g.js(f"HdLook.winAt({x + 3}, {y})")[0] == -6 and g.js("HdLook.level")[3] == 0
     tidy(g, x, y)
 
 
@@ -285,7 +279,7 @@ def test_behind_a_cliff_the_eye_looks_down_over_it_and_you_are_whole(browser, se
         s = go(g, x + 6, y - 2)
         g.wait("HdLook.catSeen() > .9", timeout=4000)                      # (the disc opens over 120 ms)
         s = g.js(STATE)
-        assert s["n"] == 0 and s["pitch"] > 60 and s["seen"] > .9, s        # no window; all of you, from above
+        assert s["pitch"] > 60 and s["seen"] > .9, s                        # all of you, from above
         assert g.js(GROUND, [x + 6, y - 2]) > .5                           # the meadow at your feet, seen as it is (through the disc it was a checker: .15)
         s = go(g, x + 6, y + 5)
         assert s["seen"] > .95 and s["pitch"] < 36.1, s                    # in front of it: whole, the surface's pitch
