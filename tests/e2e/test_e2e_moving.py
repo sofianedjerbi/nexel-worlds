@@ -210,7 +210,8 @@ def test_higher_ground_is_drawn_higher_and_clicks_find_it(game):
 
 def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
     """Up or down a layer: a crouch on the ground it leaves, one arc from there to the ground it lands on, clear of the
-    edge, a landing; your shadow on the ground under you, and no slower than a step. (Seen frame by frame it hung:
+    edge, a landing; your shadow on the ground under you, and as long as a jump that high takes (now a block and more:
+    "the Space jump should be as high as 1 block and more", the walk waiting for it: a third of a second, not a fifth). (Seen frame by frame it hung:
     the step took half as long again, the body near the top of its arc for most of it, legs going; and it ended with
     a 2 px snap. Then "Jump looks unnatural": it left the ground the instant the step began, stiff.)"""
     game.clear_area(6)
@@ -222,7 +223,8 @@ def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
       return {{feet: j.body + {f} * {L}, shadow: j.ground + {f} * {L}, squash: j.squash}}; }})()""")
     for to in (x + 1, x):
         way = [at(f / 50, to) for f in range(1, 50)]
-        assert abs(way[0]["feet"]) < 1e-6 and abs(way[-1]["feet"] - L) < 1e-6 and way[0]["squash"] and way[-1]["squash"]   # on the ground at both ends, squashed: a crouch, a landing
+        off, land = (way[0], way[-1]) if to > x else (way[-1], way[0])
+        assert abs(off["feet"] - (0 if to > x else L)) < 1e-6 and off["squash"] and abs(land["feet"] - (L if to > x else 0)) < 1.5   # on the ground as it sets off, crouched; a px or so from it as it lands (the landing's squash: after it, by the clock)
         assert max(abs(b["feet"] - a["feet"]) for a, b in zip(way, way[1:])) < L / 8          # one smooth arc: no snap anywhere
         assert all(abs(q["shadow"]) < 1e-6 for q in way[:24]) and all(abs(q["shadow"] - L) < 1e-6 for q in way[25:])
         assert all(q["feet"] >= L - 1e-6 for q in way[24:])                                        # over the higher ground: never inside it
@@ -234,5 +236,5 @@ def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
     rec = game.recording()
     game.sleep(500)
     gone = rec[-1][1] - rec[0][1]
-    assert gone > 3.1, gone                                   # (5 tiles a second for 0.7 s; slowed for the hop it was under 3)
+    assert gone > 2.5, gone                                   # (5 tiles a second for 0.7 s, the step a third of a second: its jump's time, jump.js jumpMs)
     assert game.pos() == (game.server()["x"], game.server()["y"])

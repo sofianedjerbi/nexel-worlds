@@ -196,7 +196,7 @@ function onEvent(e) {
     if (WILD[String(e.attacker).slice(2)]) sfx("punch", e.x, e.y);
     burst(tx, ty, "hit", 6, {dy: -.4}); sfx("hit", tx, ty); if (e.target === me) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + hearts(e.damage), heart: true, color: "#ff8a7a", t});      // (in hearts, whoever is hit)
   }
-  if (e.type === "jump" && e.name !== me) {           // somebody hops (on the level: jump.js HOP; up a step, its own hop shows)
+  if (e.type === "jump" && e.name !== me && !e.step) {   // somebody hops (on the level: jump.js HOP; up a step, its own arc shows as it goes: a hop where it stood first, then the step's, was one jump drawn as two)
     const q = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === e.name);
     if (q) q.hop = performance.now();
   }

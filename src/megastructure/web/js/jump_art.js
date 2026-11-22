@@ -61,7 +61,7 @@ const JumpArt = (() => {
     return out;
   }
   // One pose of a standing frame d (its facing: 0 down, 1 up, 2 right, 3 left) -> a new frame, its feet on the same row
-  function pose(d, name, facing) {
+  function pose(d, name, facing, moved) {
     const M = measure(d), {rows, top, bottom, k} = M;
     if (top < 0 || k < 0) return d.slice();
     const mid = k + 3, low = bottom - 2, feet = bottom - 1, side = facing >= 2;
@@ -69,18 +69,23 @@ const JumpArt = (() => {
     const drop = {crouch: [mid], rise: [bottom], apex: [bottom], land: [mid, low], settle: [mid]}[name] || [];
     const twice = {takeoff: [mid], fall: [feet]}[name] || [];
     const ears = name === "apex" || name === "fall";
-    let list = [];
+    let list = [], from = [];                 // (from: the standing frame's row each row is)
     for (let y = top; y <= bottom; y++) {
       if (drop.includes(y)) continue;
-      if (ears && y === top + 1) list.push(earRow(rows[y]));
-      list.push(tuck && y === feet ? closed(rows[y]) : rows[y]);
-      if (twice.includes(y)) list.push(rows[y]);
+      if (ears && y === top + 1) { list.push(earRow(rows[y])); from.push(-1); }
+      list.push(tuck && y === feet ? closed(rows[y]) : rows[y]); from.push(y);
+      if (twice.includes(y)) { list.push(rows[y]); from.push(-1); }
     }
     if (name === "land" && !side) { const n = list.length; list[n - 2] = splay(list[n - 2], M.cx, true); list[n - 1] = splay(list[n - 1], M.cx, false); }
     const out = new Uint8ClampedArray(CELL * CELL * 4), y0 = bottom + 1 - list.length;
     list.forEach((r, i) => { if (y0 + i >= 0) out.set(r, (y0 + i) * CELL * 4); });
+    if (moved) { const m = new Int8Array(CELL); for (let y = 0; y < CELL; y++) { let i = from.indexOf(y), b = y; while (i < 0 && b > top) i = from.indexOf(--b); m[y] = i < 0 ? 0 : y0 + i - b; } moved.push(m); }
     return out;
   }
+  // How many rows a row of the standing frame is moved by in each pose (SHIFT[facing][column][row]): what is held in the
+  // paw goes with the paw (held.js; it went by the frame's top, measured from the crouch: a px off in every pose, two in the fall)
+  const SHIFT = [];
+  const shift = (facing, col, y) => { const f = SHIFT[facing], m = f && f[col]; return m ? m[Math.max(0, Math.min(CELL - 1, y))] : 0; };
   // The sheet with the jump's four rows under it (the standing frame in the last column: every frame is a body)
   function extend(img) {
     const W = img.width, H = img.height, c = document.createElement("canvas");
@@ -89,12 +94,14 @@ const JumpArt = (() => {
     const rd = document.createElement("canvas"); rd.width = CELL; rd.height = 4 * CELL;
     const rg = rd.getContext("2d", {willReadFrequently: true}); rg.drawImage(img, 0, 0, CELL, 4 * CELL, 0, 0, CELL, 4 * CELL);   // (the idle rows' first column)
     const src = rg.getImageData(0, 0, CELL, 4 * CELL).data;
+    const first = !SHIFT.length;              // (the cat's own sheet, the first made: every race's rows are its rows)
     for (let r = 0; r < 4; r++) {
-      const d = src.slice(r * CELL * CELL * 4, (r + 1) * CELL * CELL * 4);
-      for (let col = 0; col < W / CELL; col++) g.putImageData(new ImageData(col < POSES.length ? pose(d, POSES[col], r) : d.slice(), CELL, CELL), col * CELL, H + r * CELL);
+      const d = src.slice(r * CELL * CELL * 4, (r + 1) * CELL * CELL * 4), moved = first ? [] : null;
+      for (let col = 0; col < W / CELL; col++) g.putImageData(new ImageData(col < POSES.length ? pose(d, POSES[col], r, moved) : d.slice(), CELL, CELL), col * CELL, H + r * CELL);
+      if (first) SHIFT.push(moved);
     }
     c.complete = true; c.src = img.src;
     return c;
   }
-  return {extend, POSES, pose};
+  return {extend, POSES, pose, shift};
 })();
