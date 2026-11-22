@@ -141,9 +141,10 @@ const Target = (() => {
     const {x, y, z} = c, h = c.h || 1, z0 = z - h, col = c.ok === false ? RED : c.kind === "break" ? TAKE : CREAM;
     const full = (dx, dy, dz) => { for (let k = dz > 0 ? z + 1 : dz < 0 ? z0 : z0 + 1; k <= (dz > 0 ? z + 1 : dz < 0 ? z0 : z); k++) if (!solidAt(x + dx, y + dy, k)) return false; return true; };
     const M = K ? (K.M === undefined ? (K.M = pxOf(P, c, full)) : K.M) : pxOf(P, c, full); if (!M) return {x, y, z, kind: c.kind, held: "", seen: {}};   // (K: what is kept of this cell, `kept`)
-    const o = outline(P, M, col, c.ok === false ? .16 : c.kind === "break" ? .14 : c.flat ? .18 : .08, !!c.far);
+    const o = outline(P, M, col, c.over ? .3 : c.ok === false ? .16 : c.kind === "break" ? .14 : c.flat ? .18 : .08, !!c.far);   // (over: drawn over your own sprite, which shows through it)
     // nothing under it: a dotted line from its foot down to the ground there, and its foot's place on that ground
-    if (!c.flat && !full(0, 0, -1)) { const g0 = settleAt(x, y, z0); if (g0 < z0) { line(P, [x + .5, y + .5, z0], [x + .5, y + .5, g0], col, true, c); face(P, [[0, 0], [1, 0], [1, 1], [0, 1]].map(([i, j]) => [x + i, y + j, g0]), INK, .5, CHECK); } }   // (its foot's place: a shadow of the cell, one px in two)
+    // (over you: you are what is under it; its shadow lay checkered on your body)
+    if (!c.flat && !c.over && !full(0, 0, -1)) { const g0 = settleAt(x, y, z0); if (g0 < z0) { line(P, [x + .5, y + .5, z0], [x + .5, y + .5, g0], col, true, c); face(P, [[0, 0], [1, 0], [1, 1], [0, 1]].map(([i, j]) => [x + i, y + j, g0]), INK, .5, CHECK); } }   // (its foot's place: a shadow of the cell, one px in two)
     return {x, y, z, kind: c.kind, held: "", seen: M.seen, line: o.line, dots: o.dots, far: !!c.far};
   }
   // X's block, under your feet: NOT drawn (the owner, 2026-11-21: "remove that weird ugly arrow under my character, that is always active"); the corner's "Dig down X" says it. feet() is kept unused for now
@@ -168,23 +169,37 @@ const Target = (() => {
   // a rect (the canvas's units) lies on a box drawn, or on the way's block (your own name is not written there: characters.js)
   api.over = (x, y, w, h) => [...api.drew.map((d) => d.r), typeof WayShow !== "undefined" && WayShow.block].some((r) => r && x < r.x + r.w && r.x < x + w && y < r.y + r.h && r.y < y + h);
   // once a frame, in the marks pass: g, what a painter of marks needs (HdLook.art()), opts: {thing: what is aimed at stands (its own brackets), shown(x, y): a tile's level as the picture has it}
+  // THE SELECTED CELL (the one the key in focus acts on: build mode the cursor's, else E's when it puts a block, else X's, else E's): its box always whole
+  // ("which level am I interacting with?": a box at your body's cell or over your head was cut out of your sprite, or not drawn). At your body or over it:
+  // drawn over you, your sprite seen through it (top()); under you: a box under your feet, your sprite in front of it whole. And your body aims at it (aim_art.js)
+  // (an empty paw: E's only, what it would use: X's ground before you is always there, and you looked down at the grass wherever you stood)
+  const pick = (cs) => (Build.on ? cs.find((c) => c.z === Build.level()) || cs.find((c) => c.key === "use") || cs.find((c) => c.key === "alt")
+    : cs.find((c) => c.key === "use" && c.kind === "place") || (typeof selected !== "undefined" && selected ? cs.find((c) => c.key === "alt") : null) || cs.find((c) => c.key === "use")) || null;
+  // -> "up" | "ahead" | "down" | null: the selected cell against your body's cell (one over your floor)
+  function aimOf(c) { const s = c && myPos(); if (!s) return null; const lv = c.z - (myZ(s.x, s.y) + 1); return lv > 0 ? "up" : lv < 0 ? "down" : "ahead"; }
+  api.aim = null; api.sel = null; api.late = null;
+  api.top = (g) => { const L = api.late; api.late = null; if (!L) return; api.drew.push({...box(L.Q, L.c, L.K), key: L.c.key, px: L.px, u: L.Q.u, r: L.r, over: true}); };
   api.paint = (g, art, opts = {}) => {
-    api.opts = opts; api.drew = [];
+    api.opts = opts; api.drew = []; api.late = null; api.sel = null; api.aim = null;
     if (!art || api.off) return;   // (off: tests that count a ghost's own px)
     const s = myPos(), open = HdLook.win && HdLook.win.n && HdLook.win.a > 0, P = {g, u: art.u, at: art.at, behind: open ? null : art.behind, ex: s ? s.x + .5 : 0}, B = art.body;
     // (your sprite's box: nothing of a box is drawn in it, and out of build mode a box that shares much of it (40 % of the smaller of the two) is not drawn at all: the cell north of you, under your head from above, was a square round your head)
     const inB = (r) => (B && r ? Math.max(0, Math.min(r.x + r.w, B.x + B.w) - Math.max(r.x, B.x)) * Math.max(0, Math.min(r.y + r.h, B.y + B.h) - Math.max(r.y, B.y)) / Math.max(1e-6, Math.min(r.w * r.h, B.w * B.h)) : 0);
+    const all = cells(), sel = pick(all), me0 = myPos(), own = !!sel && !!me0 && sel.x === me0.x && sel.y === me0.y, after = [];
+    api.sel = sel; api.aim = aimOf(sel);
     g.save(); if (B) { g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); g.rect(B.x, B.y, B.w, B.h); g.clip("evenodd"); }
-    for (const c of cells().sort((a, b) => a.y - b.y || (a.kind === "break") - (b.kind === "break") || a.z - b.z)) {
+    for (const c of all.sort((a, b) => a.y - b.y || (a.kind === "break") - (b.kind === "break") || a.z - b.z)) {
       const W = art.wall && art.wall(c.x, c.y, c.z), Q = W ? {...P, at: W, behind: null} : P, K = W || !art.view ? null : kept(art.view, !!P.behind, c), px = K ? K.px || (K.px = Q.at(c.x, c.y, c.z)) : Q.at(c.x, c.y, c.z);   // (a cell in the wall between the eye and you: drawn as its face folded into the opening, seen: hd_level.js wallAt)
       const r = K ? (K.r === undefined ? (K.r = boxRect(Q, c)) : K.r) : boxRect(Q, c);
       if (c.mine) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, mine: true, px, u: P.u}); continue; }
       if (c.way) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, way: true, px, u: P.u}); continue; }   // (wayshow.js draws that block)
+      if (c === sel && !c.mine && !c.way) { if (own && api.aim !== "down") api.late = {Q, c: {...c, over: true}, K, r, px}; else after.push([Q, c, K, r, px]); continue; }   // (yours: no cut, no skip)
       if (!Build.on && inB(r) > .4) { api.drew.push({x: c.x, y: c.y, z: c.z, kind: c.kind, key: c.key, under: true, px, u: P.u}); continue; }
       if (c.kind === "place" && c.item && !c.drawn) BuildGhost.block(g, Q.at, Q.u, c.x, c.y, c.z, c.item, .6, c.ok === false, Q.behind);
       api.drew.push({...box(Q, c, K), key: c.key, px, u: P.u, r});
     }
     g.restore();
+    for (const [Q, c, K, r, px] of after) { if (c.kind === "place" && c.item && !c.drawn) BuildGhost.block(g, Q.at, Q.u, c.x, c.y, c.z, c.item, .6, c.ok === false, Q.behind); api.drew.push({...box(Q, c, K), key: c.key, px, u: P.u, r, sel: true}); }
   };
   return api;
 })();

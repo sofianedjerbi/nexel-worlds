@@ -133,7 +133,12 @@ function drawBody(p, sx, sy, S, t, now) {
           if (running) kickDust(p); else burst(p.x, p.y + .35 - UP, "dust", 2, {up: .6, spread: 1.2, g: 2, life: .35});   // (effects.js)
           if (mine) sfx(Floors.rise(p) ? "tock" : STEP[gndAt(Math.round(p.x), Math.round(p.y))] || "step");      // (on a built block: planks under your feet)
         }
-      } else frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
+      } else {
+        frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing
+        // standing with a target: your face and paw at it, up, ahead or down (aim_art.js; the cell: target.js). Kept a moment when it goes: no flicker
+        const a = mine && !action && !j && !cl && typeof Target !== "undefined" ? Target.aim : null; if (a) { p.aimK = a; p.aimT = now; }
+        const k = a || (mine && !action && !j && !cl && now - (p.aimT || 0) < 150 ? p.aimK : null); if (k) { anim = "aim"; frame = AimArt.COL[k]; }
+      }
     }
     if (j && j.pose && ANIM[anim] <= ANIM.run) { anim = "jump"; frame = JPOSE[j.pose]; }   // a hop: crouch, push off, tuck, over the top, reach down, land, settle (jump_art.js)
     if (j && j.air && ANIM[anim] <= ANIM.run) { anim = "run"; frame = Math.floor(now / FALL.flail) % 2 ? 2 : 6; }   // falling: its legs going
@@ -164,11 +169,11 @@ function drawBody(p, sx, sy, S, t, now) {
     const sxx = frame * 48, syy = (ANIM[anim] + DIR_ROW(p)) * 48;
     const fl = flashes.get("agent" + e.id), hitK = fl ? (now - fl) / 1000 : 9;
     const kb = hitK < .15 ? Math.round((1 - hitK / .15) * 2) * z : 0;
-    const cellX = x - 16 * z - p.fx * (kb - lunge), cellY = y - 18 * z - bob - p.fy * (kb - lunge), fi = syy / 48 * 8 + frame;
+    const cellX = x - 16 * z - p.fx * (kb - lunge), cellY = y - 18 * z - bob - p.fy * (kb - lunge), fi = syy / 48 * 8 + frame; p.fi = fi;   // (fi: the frame drawn, tests)
     wearFx("back", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);      // a charm's effect (wear_items.js)
     // the weapon of a cut or a thrust: in front of the body, behind it when they face away
     const arm = () => blow && ctx.drawImage(SwingArt.sheetFor(blow[0], sheetImg), blow[1] * 48, DIR_ROW(p) * 48, 48, 48, cellX, cellY, 48 * z, 48 * z);
-    const hand = (ANIM[anim] <= ANIM.run || anim === "jump") && !blow && tool !== "eat" && tool !== "sleep" && !(cl && cl.on) ? Held.art(mine ? selected : e.held) : null;   // what is in the paw (held.js)
+    const hand = (ANIM[anim] <= ANIM.run || anim === "jump" || anim === "aim") && !blow && tool !== "eat" && tool !== "sleep" && !(cl && cl.on) ? Held.art(mine ? selected : e.held) : null;   // what is in the paw (held.js)
     if (p.fy < 0) { arm(); if (hand) Held.draw(hand, p, cellX, cellY, z, sheetImg, sxx, syy); }
     ctx.drawImage(sheetImg, sxx, syy, 48, 48, cellX, cellY, 48 * z, 48 * z);   // feet at frame y 32
     wearFx("front", e, sheetImg, fi, cellX, cellY, z, now, moving, [-p.fx, -p.fy]);

@@ -130,7 +130,7 @@ const HdLook = (() => {
       Target.paint(ctx, api.art(), {thing, shown});   // (a cell of the land, what Space, X and R act on: boxes in the land, target.js; what stands keeps its brackets)
       WayShow.paint(ctx, api.markOf, px, now, 1, api.art().wall); Prompts.show(r, WayShow.rows(faceRows)); api.aim = r;   // (the way out of the ground, shown: wayshow.js)
     }
-    if (!words) { ctx.restore(); return; }
+    if (!words) { ctx.restore(); Target.top(ctx); return; }   // (the selected cell at your body or over it: drawn over you, out of the cut: target.js)
     const ny = (y) => fy(y) - Math.max(0, 12 - 3 * zoom), nsy = Object.assign(ny, {up: ny, out: ny});   // (a name: higher where an art px is small, a phone's 2 px: the letters are 18 px whatever the zoom, and seen from behind a body's ears were in its name)
     for (const s of seen.list) if (s.q && s.q.e && (s.q.e.kind === "agent" || s.q.e.name) && (s.top || !api.hidden(s.q.x + .5, s.q.y + .5, s.z))) drawNameplate(s.q, sx, nsy, S);   // (not over a roof its body is behind)
     for (const s of seen.list) if (s.q && s.q.e && (ANIMALS[s.q.e.kind] || !bubbles.some((b) => b.name === s.q.e.name))) drawEmote(s.q, sx, sy, S);

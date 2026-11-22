@@ -21,7 +21,7 @@ const fromPack = (name, type) => { const P = window.ASSET_PACK, at = P && P.file
 function loadImg(n) {   // decoded up front: a sheet decoded lazily on first draw stalls that frame (~100 ms)
   const late = LATE.includes(n);
   if (!late) window.ASSETS_OF = (window.ASSETS_OF || 0) + 1;         // (how many the first screen waits for, how many have come: the wait's bar, index.html #boot)
-  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => n === "character" ? ToolArt.soon(i).then((c) => { IMG[n] = JumpArt.extend(c); }) : null).then(() => { if (!late) window.ASSETS_IN = (window.ASSETS_IN || 0) + 1; res(i); }); i.onerror = rej;   // (the character's tools: made a few ms at a time, tool_art.js soon)
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => i.decode().catch(() => {}).then(() => n === "character" ? ToolArt.soon(i).then((c) => { IMG[n] = AimArt.extend(JumpArt.extend(c)); }) : null).then(() => { if (!late) window.ASSETS_IN = (window.ASSETS_IN || 0) + 1; res(i); }); i.onerror = rej;   // (the character's tools: made a few ms at a time, tool_art.js soon)
     if (window.ASSET_PACK) fromPack(n + ".png", "image/png").then((b) => { i.src = b ? URL.createObjectURL(b) : `assets/${n}.png`; }); else i.src = `assets/${n}.png`;
     if (n !== "character") IMG[n] = i; });       // (the character sheet is only there once the rows of its other tools and of the jump are under it: tool_art.js, jump_art.js)
 }

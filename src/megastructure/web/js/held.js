@@ -23,7 +23,9 @@ const Held = (() => {
     m.set(k, t); return t;
   }
   const lift = (sheet, sx, sy) => (sheet ? top(sheet, sx, sy) - top(sheet, 0, sy) : 0);
-  function draw(c, p, cellX, cellY, z, sheet, sx, sy) { const [ax, ay] = at(p), dy = lift(sheet, sx, sy); ctx.drawImage(c, cellX + ax * z, cellY + (ay + dy) * z, c.width * z, c.height * z); }
+  // (an aim's pose, aim_art.js: in the paw where the pose holds it, its middle there)
+  function draw(c, p, cellX, cellY, z, sheet, sx, sy) { const A = sy >= ANIM.aim * 48 && sy < (ANIM.aim + 4) * 48 && AimArt.PAW[Object.keys(AimArt.COL)[sx / 48]], t = A && A[DIR_ROW(p)];
+    const [ax, ay] = t ? [t[0] - 3, t[1] - 3] : at(p), dy = t ? 0 : lift(sheet, sx, sy); ctx.drawImage(c, cellX + ax * z, cellY + (ay + dy) * z, c.width * z, c.height * z); }
   let sent;
   // yours, to the server when it changes (and again whenever the server has another: a new connection)
   function sync(s) { const want = selected || null; if (s && (s.held || null) !== want && sent !== want + "@" + (s.held || "")) { sent = want + "@" + (s.held || ""); rpc("hold", {item: want}); } }

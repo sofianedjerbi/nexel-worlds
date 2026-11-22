@@ -119,7 +119,7 @@ def test_the_jump_has_a_pose_drawn_for_each_part_in_every_facing(game):
     off a row taller, the landing two shorter, every pose standing on the same row as the cat; no colour the cat has
     not, nothing half seen (never scaled). (It was the run's stride in the air and the frame drawn a row lower.)"""
     h, rows = game.js(POSES)
-    assert h == 40 * 48 and game.js("ANIM.jump") == 36 and game.js("JPOSE.settle") == 6
+    assert h == 44 * 48 and game.js("ANIM.jump") == 36 and game.js("JPOSE.settle") == 6
     for facing, row in enumerate(rows):
         stand = row[7][0]
         tall = {pose: row[i][0] - stand for i, pose in enumerate(["crouch", "takeoff", "rise", "apex", "fall", "land", "settle"])}

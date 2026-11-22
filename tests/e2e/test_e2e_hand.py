@@ -32,7 +32,7 @@ def test_the_slot_in_hand_is_bigger_and_says_its_name(game):
 
 # Your body drawn as the HD look draws it (hd.js ent: zoom 1, a 64 px wide canvas), without and with a block in hand:
 # -> {box: [x0, y0, x1, y1] of the px that differ, body: the same of what is drawn without, cell: its 48 px cell's left, at: Held.at}
-PAW = """(face) => { const p = ents.get('agent' + myId); p.fx = face[0]; p.fy = face[1]; p.moved = -1e9; myAction = null;
+PAW = """(face) => { const p = ents.get('agent' + myId); p.fx = face[0]; p.fy = face[1]; p.moved = -1e9; myAction = null; Target.aim = null; p.aimT = 0;   // (standing, aiming at nothing: test_e2e_aim.py has the aim's paw)
   const T = 16, w = 64, h = 96, base = h - 24, now = performance.now();
   const sx = (x) => w / 2 - T / 2 + (x - p.x) * T, sy = Object.assign((y) => base + (y - p.y) * T, {up: (y) => base + (y - p.y) * T, apart: true});
   const shot = (sel) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
