@@ -110,7 +110,7 @@ def test_in_a_room_four_deep_the_marks_are_inside_its_opening_and_none_on_you(br
     g.rpc("dev_col", tiles=[[x + 2 + i, y + 2 + j] for j in range(4) for i in range(5)], col=[-4])
     g.rest()
     go(g, x + 4, y + 4, -4, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
-    g.stamp(0, -1, ["r"], levels=["d"])                                                      # (a rug north of you: Space uses it, a box)
+    g.stamp(0, -1, ["r"], levels=["d"])                                                      # (a rug north of you: X rolls it up, a box)
     g.rest()
     g.wait("WayShow.cur && WayShow.cur.next && WayShow.block", timeout=8000)
     nw, se, u = g.js(f"HdLook.screenOf({x + 2}, {y + 2}, 0)"), g.js(f"HdLook.screenOf({x + 7}, {y + 6}, 0)"), g.js("zoom")
@@ -132,7 +132,7 @@ def test_in_a_room_four_deep_the_marks_are_inside_its_opening_and_none_on_you(br
         b = g.js("WayShow.block")
         assert not (b["x"] < body["x"] + body["w"] and body["x"] < b["x"] + b["w"] and b["y"] < body["y"] + body["h"] and body["y"] < b["y"] + b["h"]), (b, body)
         if f == (0, -1):
-            assert g.js(f"Target.drew.some((d) => d.under && d.y === {y + 3})"), g.js("Target.drew")   # (facing north: the box under your head is not drawn)
+            assert g.js(f"Target.drew.some((d) => d.y === {y + 3})"), g.js("Target.drew")   # (facing north: the rug's box, put away or drawn clear of your head: the assert above)
     tidy(g, x, y)
 
 

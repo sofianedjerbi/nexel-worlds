@@ -92,7 +92,7 @@
   #help { right:10px; bottom:10px; display:none; max-width:300px; color:var(--ink2); font-size:18px; }
   #help b { color:var(--ink); font-weight:normal; }
   #hover.bad { color:var(--warn); }
-  #hover { position:fixed; pointer-events:none; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; display:none; z-index:5; }
+  #hover { position:fixed; pointer-events:none; background:var(--paper); border:2px solid var(--ink); padding:2px 7px; display:none; z-index:5; white-space:pre; }
   .slot.kfocus { outline:3px solid #6aa66f; outline-offset:1px; }
 
   /* ---- HUD: hearts and food on the hotbar ---- */

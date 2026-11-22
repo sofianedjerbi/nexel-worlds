@@ -48,8 +48,8 @@ def test_the_recipe_book_is_done_without_a_mouse(game):
     game.press("d", 200)
     assert game.js("craftTab") == "Tools" and "F" in game.js(CAPS)
     game.press("Escape", 200)
-    game.press("x", 500)
-    assert game.js(OPEN) == "" and game.inv("flower") == 1                       # shut, X is the game's again
+    game.press("e", 500)
+    assert game.js(OPEN) == "" and game.inv("flower") == 1                       # shut, E is the game's again
 
 
 def test_no_key_caps_on_a_phone(browser, server):

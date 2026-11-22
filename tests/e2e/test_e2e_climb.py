@@ -106,7 +106,7 @@ def test_out_of_your_own_shaft_by_keys(game):
         game.act("dig_down", **{"with": "pickaxe"})
         game.wait(f"myAt && myAt.z === {-depth} && !myAction", 8000)
         assert game.server()["z"] == -depth
-    assert game.js("facingNow(false).it.text") == "Dig into the wall" and "Dig into" not in game.actions()      # (a hole in a meadow: no hill. Not written while the way out is shown: its key alone, wayshow.js)
+    assert game.js("facingNow(true).it.text") == "Dig into the wall" and "Dig into" not in game.actions()      # (a hole in a meadow: no hill. Not written while the way out is shown: its key alone, wayshow.js)
     game.press(game.js(SLOT, "ladder"))
     for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
         game.face(dx, dy)
@@ -147,7 +147,7 @@ def test_out_of_your_own_shaft_with_a_pickaxe_alone(game):
     while z < 0:
         if (X, z) == (x + 1, -3):                              # on the first step, the land over you: the tree north, on top of the wall
             game.face(0, -1)
-            game.wait("facingNow(false) && facingNow(false).it.text === 'Dig on'", 3000)   # (what Space would do there; while the way out is shown its own key alone is written: wayshow.js)
+            game.wait("facingNow(true) && facingNow(true).it.text === 'Dig on'", 3000)   # (what X would do there; while the way out is shown its own key alone is written: wayshow.js)
             assert "Chop" not in game.actions(), game.actions()
             game.face(1, 0)
         aim = game.js(AIM)

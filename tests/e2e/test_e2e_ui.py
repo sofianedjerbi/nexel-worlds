@@ -207,7 +207,7 @@ def test_actions_make_their_sounds(game):
     game.face(-1, 0)
     game.give(axe=1)
     game.hold_item("axe")
-    game.press("e", 0)
+    game.press("x", 0)
     game.wait(f"combAt({game.pos()[0] - 1}, {game.pos()[1]}) === 't'", 8000)
     game.sleep(800)
     heard = set(game.js("__snd"))

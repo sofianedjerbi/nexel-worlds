@@ -27,14 +27,14 @@ const DigUp = (() => {
   // took the first one's turn: in the river at a cliff's foot, where the server is slow to come, Space dug nothing.)
   let going = false;
   const send = (tool, args) => { going = true; act(tool, args).finally(() => { going = false; }); };
-  // The way's next block, by its key ("up" R, "use" Space, "alt" X) -> true: the press was the way's (done, or waiting for your hands)
+  // The way's next block, by its key ("up" R; "alt" X: dig on, or dig down where you stand) -> true: the press was the way's (done, or waiting for your hands)
   function route(key) {
     const c = WayShow.cur, n = c && c.now;
     if (!n || n.key !== key || Build.on || !meObs) return false;
     if (walking || myAction || pendingAct || going) return true;
     const tool = meObs.self.inventory.pickaxe ? {with: "pickaxe"} : {};
     if (n.d) turn(n.d);
-    send(key === "alt" ? "dig_down" : "dig", key === "alt" ? tool : {x: n.x, y: n.y, z: n.z, ...tool});
+    send(n.down ? "dig_down" : "dig", n.down ? tool : {x: n.x, y: n.y, z: n.z, ...tool});
     return true;
   }
   function run() {

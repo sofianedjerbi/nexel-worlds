@@ -36,11 +36,11 @@ def test_space_never_stops_you(game):
     game.sleep(300)
     assert moving and game.inv("flower") == 1
     x0, _ = game.pos()
-    game.page.keyboard.down("e")                             # E by the tree: chopping waits, you walk on
+    game.page.keyboard.down("x")                             # X by the tree: chopping waits, you walk on
     game.sleep(500)
     x1, _ = game.pos()
     moving = game.js("walking !== null")
-    game.page.keyboard.up("e")
+    game.page.keyboard.up("x")
     game.page.keyboard.up("d")
     assert moving and x1 >= x0 + 2 and game.server()["x"] >= x0 + 2
 
@@ -64,11 +64,11 @@ def test_chop_by_hand_and_with_an_axe(game):
     game.face(1, 0)
     assert "Chop tree (slow)" in game.actions()                # (a verb and a thing: "interaction sentences are wayyyy too long")
     t0 = time.time()
-    game.press("e", 0)
+    game.press("x", 0)
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === 't'", 8000)
     by_hand = time.time() - t0
     assert game.inv("wood") == 3
-    game.press("e", 0)                                   # the stump: one more wood
+    game.press("x", 0)                                   # the stump: one more wood
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === '.'", 8000)
     assert game.inv("wood") == 4
     game.give(axe=1)
@@ -76,7 +76,7 @@ def test_chop_by_hand_and_with_an_axe(game):
     game.stamp(1, 0, ["T"])
     assert "Chop tree" in game.actions() and "(slow)" not in game.actions()
     t0 = time.time()
-    game.press("e", 0)
+    game.press("x", 0)
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === 't'", 8000)
     assert time.time() - t0 < by_hand / 2
 
@@ -84,12 +84,12 @@ def test_chop_by_hand_and_with_an_axe(game):
 def test_rocks_and_ore(game):
     game.stamp(1, 0, ["*"])
     game.face(1, 0)
-    assert "pickaxe" in game.actions() or "pickaxe" in game.js("intent(facingTile(), false).text")
-    game.press("e", 400)
+    assert "pickaxe" in game.actions() or "pickaxe" in game.js("intent(facingTile(), true).text")
+    game.press("x", 400)
     assert game.tile(1, 0) == "*"                            # ore can't be mined without a pickaxe in hand
     game.give(pickaxe=1)
     game.hold_item("pickaxe")
-    game.press("e", 0)
+    game.press("x", 0)
     game.wait(f"combAt({game.pos()[0] + 1}, {game.pos()[1]}) === '.'", 8000)
     assert game.inv("ore") == 1 and game.inv("stone") >= 1
 
