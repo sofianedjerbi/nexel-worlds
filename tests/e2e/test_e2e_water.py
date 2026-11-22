@@ -59,7 +59,7 @@ def test_a_river_just_made_in_a_gorge_shows_its_water_round_you_in_the_hd_look(b
     g.js("([x, y]) => { for (let j = y - 2; j <= y + 2; j++) for (let i = x - 12; i <= x + 12; i++) Voxels.host.column(i, j); const f0 = WaterBed.flush; window.__hold = () => { WaterBed.flush = f0; return 1; }; WaterBed.flush = () => {}; WayShow.paint = () => {}; return 1; }", [x, y])
     g.stamp(-11, -11, ["." * 23] * 10 + ["(" * 23] * 3 + ["." * 23] * 10, levels=["9" * 23] * 10 + ["2" * 23] * 3 + ["6" * 23] * 10)
     g.rpc("dev_teleport", x=x, y=y)
-    g.wait("HdLook.cam.pitch > 67.9 && !HdLook.busy && HdLook.level[0] === 2 && !dirtyTiles.length", 8000)      # (the tiles all drawn: the land made of them)
+    g.wait("HdLook.cam.pitch > HdLook.steep - .1 && !HdLook.busy && HdLook.level[0] === 2 && !dirtyTiles.length", 8000)      # (the tiles all drawn: the land made of them)
     g.frames(3)
     g.wait("!HdLook.busy && !dirtyTiles.length", 8000)
     held = g.js(face, [x, y, TILE])

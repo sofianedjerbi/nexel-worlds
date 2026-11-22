@@ -35,7 +35,7 @@ def test_walking_a_stair_and_dropping_into_the_room_at_its_foot_the_window_stays
     g.rpc("dev_time", phase=.3)
     x, y, z = stair(g)
     g.rpc("dev_teleport", x=x - 4, y=y, z=z - 4)
-    g.wait("HdLook.win.a === 1 && HdLook.win.n > 10 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    g.wait("HdLook.win.a === 1 && HdLook.win.n > 10 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     settled(g)
     box = [x - 16, x + 2, y - 6, y + 9]
     cut0 = g.js(CUT, box)
@@ -57,7 +57,7 @@ def test_walking_a_stair_and_dropping_into_the_room_at_its_foot_the_window_stays
     assert g.js(f"HdLook.spaceAt({x - 6}, {y})") == [z - 6, 3]
     assert g.js(f"HdLook.spaceAt({x - 10}, {y})") == [z - 10, 1]
     # no frame of the walk flashes: the px that jump stay near the scroll's own share, the mean light moves in small steps
-    steady = [(b, a) for a, b in zip(r, r[1:]) if a[2] > 67.9 and b[2] > 67.9]
+    steady = [(b, a) for a, b in zip(r, r[1:]) if a[2] > 57.9 and b[2] > 57.9]
     assert len(steady) > 40, len(steady)
     shares = sorted(b[1] for b, a in steady)
     scroll = shares[len(shares) * 9 // 10]
