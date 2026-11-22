@@ -3,10 +3,10 @@ ONE answer to "where are you and your marks drawn": a mark is drawn with you (li
 above), never over your body; any dug space, a room five wide too, is seen from above with you inside its opening; behind
 land the disc round you is opened and you are in it whole (it was a checker cat for as long as you stood there)."""
 
-from test_e2e_hd_behind import calm, go, tidy
+from test_e2e_hd_behind import STATE, calm, go, tidy
 from test_e2e_hd_sun import hd
 
-STEEP = 78.6        # the eye's pitch from above (hd.js api.steep: 68 when a level was 8 px; tan 78.6 = 2 tan 68)
+STEEP = 58          # the eye's pitch from above (hd.js STEEP: 78.6 till the x-ray cut what hides you, 68 when a level was 8 px)
 
 
 def test_a_box_is_never_drawn_over_your_body(browser, server):
@@ -72,7 +72,8 @@ def test_in_a_shaft_three_deep_a_box_in_the_south_wall_is_inside_the_opening(bro
     g.frames(3)
     L, _, _, lift, rim = g.js("HdLook.level")
     assert L == -3 and rim == 0 and lift == 0, (L, lift, rim)
-    nw, se = g.js(f"HdLook.screenOf({x + 3}, {y}, 0)"), g.js(f"HdLook.screenOf({x + 4}, {y + 1}, 0)")
+    assert g.js("HdLook.win.a") == 1                                       # (from 58 degrees its south wall hides you: cut, hd.js PART; the boxes in it are drawn where their cells are, in the cut)
+    nw, se = g.js(f"HdLook.screenOf({x + 3}, {y}, 0)"), g.js(f"HdLook.screenOf({x + 4}, {y + 2}, -3)")
     boxes = g.js("Target.drew.filter((d) => d.r && d.y > %d).map((d) => d.r).concat(WayShow.block && WayShow.cur.next.y > %d ? [WayShow.block] : [])" % (y, y))
     assert boxes, "a box in the south wall is drawn"
     u = g.js("zoom")
@@ -91,8 +92,8 @@ def test_a_room_five_by_four_four_deep_is_seen_from_above_with_you_inside_it(bro
     g.rest()
     for ty in (y + 3, y + 5):                                              # (its middle, its south row)
         s = go(g, x + 4, ty, -3, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
-        assert s["pitch"] == STEEP and s["n"] == 0, s
-        nw, se, u = g.js(f"HdLook.screenOf({x + 2}, {y + 2}, 0)"), g.js(f"HdLook.screenOf({x + 7}, {y + 6}, 0)"), g.js("zoom")
+        assert s["pitch"] == STEEP and s["seen"] > .9, s                     # (from 58 degrees the south wall hides you: cut, hd.js PART)
+        nw, se, u = g.js(f"HdLook.screenOf({x + 2}, {y + 2}, 0)"), g.js(f"HdLook.screenOf({x + 7}, {y + 6}, -3)"), g.js("zoom")
         seen, out = g.js("(b) => HdLook.catSeen(b)", [nw[0] - u, nw[1] - u, se[0] + u, se[1] + u])
         assert (seen > .8 and out == 0) if ty == y + 3 else (seen > .7 and out <= 8), (ty - y, seen, out)     # (on its south row its rim, three over your feet, hides your feet, as the land is: you were lifted out of it, hd_level.js lift, gone)
     tidy(g, x, y)
@@ -113,7 +114,7 @@ def test_in_a_room_four_deep_the_marks_are_inside_its_opening_and_none_on_you(br
     g.stamp(0, -1, ["r"], levels=["d"])                                                      # (a rug north of you: X rolls it up, a box)
     g.rest()
     g.wait("WayShow.cur && WayShow.cur.next && WayShow.block", timeout=8000)
-    nw, se, u = g.js(f"HdLook.screenOf({x + 2}, {y + 2}, 0)"), g.js(f"HdLook.screenOf({x + 7}, {y + 6}, 0)"), g.js("zoom")
+    nw, se, u = g.js(f"HdLook.screenOf({x + 2}, {y + 2}, 0)"), g.js(f"HdLook.screenOf({x + 7}, {y + 7}, -4)"), g.js("zoom")     # (the room as the eye sees it, its south wall cut: down to its floor's south edge, the wall's row in)
     nxt, blk = g.js("WayShow.cur.next"), g.js("WayShow.block")
     assert nxt["y"] > y + 4, nxt                                                              # (in the south wall)
     assert nw[1] - u <= blk["y"] and blk["y"] + blk["h"] <= se[1] + u and nw[0] - u <= blk["x"] and blk["x"] + blk["w"] <= se[0] + u, (blk, nw, se)
@@ -151,4 +152,27 @@ def test_behind_a_slab_you_are_whole(browser, server):
         assert g.js("HdLook.cam.pitch") > 36.1
     finally:
         g.rpc("dev_col", tiles=slab, col=[0])
+        tidy(g, x, y)
+
+
+def test_in_a_room_the_eye_looks_down_no_steeper_than_steep_and_what_hides_you_is_cut(browser, server):
+    """The owner: "the camera's inclination makes it hard to build" (78.6 degrees, nearly straight down, in every hole). The eye
+    now looks down no steeper than hd.js STEEP, and land between it and you is cut (the x-ray) as soon as it hides a quarter of
+    you (hd.js PART). In a room 4 deep, at 64 degrees, its south wall hid half of you: no window, you a checker of one px in two,
+    the floor at your feet under the wall. At STEEP and at 64 alike: the window open, all of you seen."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    g.stamp(-3, -2, ["BnnnLh", "nnnrnn", "nnnnnn", "KnnnnC"], levels=["dddddd"] * 4)        # a room 4 deep, 6 x 4, you on its third row
+    try:
+        s = go(g, x, y, -4, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep && HdLook.win.a === 1")
+        assert s["pitch"] == STEEP and s["seen"] > .95 and s["n"] > 0, s
+        g.js("HdLook.steep = 64")
+        g.wait("HdLook.cam.pitch === 64 && !HdLook.busy", timeout=6000)
+        g.sleep(700)
+        g.rest()
+        s = g.js(STATE)
+        assert s["a"] == 1 and s["n"] > 0 and s["seen"] > .95, s
+    finally:
+        g.js(f"HdLook.steep = {STEEP}")
         tidy(g, x, y)

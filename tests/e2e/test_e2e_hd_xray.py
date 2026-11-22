@@ -42,12 +42,12 @@ def test_the_window_opens_the_whole_cave_you_are_in_and_not_another(browser, ser
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
-    rows = ["".join("-" if (dx, dy) in CAVE | APART else "." for dx in range(-10, 11)) for dy in range(-7, 5)]
-    g.stamp(-10, -7, ["." * 21] * 12, levels=["5" * 21] * 12)
+    rows = ["".join("-" if (dx, dy) in CAVE | APART else "." for dx in range(-10, 11)) for dy in range(-7, 9)]     # (the plateau 4 rows past the other cave: from 58 degrees its south face stood where that cave's floor projects)
+    g.stamp(-10, -7, ["." * 21] * 16, levels=["5" * 21] * 16)
     g.stamp(-10, -7, rows, levels=[r.replace("-", "0").replace(".", "5") for r in rows], roofs=[r.replace("-", "5").replace(".", "0") for r in rows],
             heads=[r.replace("-", "2").replace(".", "0") for r in rows])
     g.rpc("dev_teleport", x=x, y=y - 2, z=0)
-    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     quiet(g)
     W, H = g.js("[innerWidth, innerHeight]")
     stone = g.js(PX, [x - 1.5, y + 2.5, 5])                                 # (the plateau's top, far from the caves)
@@ -115,7 +115,7 @@ def test_a_pit_s_floor_is_shaded_by_its_walls_not_in_tile_squares(browser, serve
     x, y = g.pos()
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in (-1, 0, 1) for i in (-1, 0, 1)], col=[-2])
     g.rpc("dev_teleport", x=x, y=y, z=-2)
-    g.wait("!HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    g.wait("!HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     quiet(g)
     mid = [lum(g.js(PX, p)) for p in ([x - .45, y - .45, -2], [x + .5, y - .45, -2], [x + 1.45, y - .45, -2], [x - .45, y + .5, -2])]
     assert max(mid) / min(mid) < 1.05, mid                                   # 9 px from any wall, in a corner tile and an edge one: one light (it was a step a tile)
@@ -137,7 +137,7 @@ def test_down_a_passage_a_level_floor_has_no_band_a_step_up_its_riser_a_step_dow
     g.stamp(-8, -7, rows, levels=["".join(lv.get((dx, dy), "5") for dx in range(-8, 9)) for dy in range(-7, 2)],
             roofs=[r.replace("-", "5").replace(".", "0") for r in rows], heads=[r.replace("-", "2").replace(".", "0") for r in rows])
     g.rpc("dev_teleport", x=x, y=y - 1, z=0)
-    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     quiet(g)
     col = lambda dx, z: [g.js(PX, [x + dx + .5, y - 1 + .5 - i * .05, z]) for i in range(70)]
     level = [lum(c) for c in col(-4, 0)]
@@ -193,7 +193,7 @@ def test_under_the_open_sky_the_opened_strip_keeps_the_cut_land_s_sun_shade(brow
     g.rpc("dev_teleport", x=x, y=y, z=0)
     g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
     quiet(g)
-    strip, meadow = [x + 2, y - 1], [x + 2, y - 3]
+    strip, meadow = [x + 2, y - 1], [x - 9, y - 1]                          # (the strip's own row, west past what the plateau hides from 58 degrees: in the cliff's shade, out of the window)
     assert g.js(f"HdLook.winAt({strip[0]}, {strip[1]})") and not g.js(f"HdLook.winAt({meadow[0]}, {meadow[1]})")
     out = []
     for much in (100, 0):
@@ -221,7 +221,7 @@ def test_a_shaft_at_a_passage_s_end_is_a_level_floor_not_a_band(browser, server)
             roofs=["".join("4" if covered(dx, dy) else "0" for dx in range(-8, 9)) for dy in range(-7, 2)],
             heads=["".join("2" if covered(dx, dy) else "0" for dx in range(-8, 9)) for dy in range(-7, 2)])
     g.rpc("dev_teleport", x=x, y=y - 1, z=0)
-    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     quiet(g)
     way = [lum(g.js(PX, [x + .5, y - 1.1 - i * .05, 0])) for i in range(72)]    # (up the passage's middle, y - 1.1 to y - 4, then the shaft's floor to y - 4.65, short of its north wall's foot)
     passage, shaft = way[:56], way[62:]

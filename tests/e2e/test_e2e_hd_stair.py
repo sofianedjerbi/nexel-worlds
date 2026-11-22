@@ -66,14 +66,14 @@ def test_down_a_covered_stair_the_window_is_open_on_every_frame_and_your_body_is
     part = [i for i, v in enumerate(r) if v[2] and v[7] < 1]
     assert len(part) <= 4, (len(part), part[:8])                                 # (where the search for your space was late: half its px that frame, all of them within three more; it was all in one frame: a pop)
     assert all(v[5] == v[6] for v in r), [(v[0], v[5], v[6]) for v in r if v[5] != v[6]][:6]    # drawn at the level the game has you at, never on the grass over it
-    steps = [(round(a[0], 2), round(b[4] - a[4], 1)) for a, b in zip(r, r[1:]) if abs(b[4] - a[4]) > 7]
-    assert not steps, steps[:8]                                                  # your body does not jump on the screen (it went 16 px at each tile's middle, and 100 at the roof; a level is 16 px now: a frame's way down a step is up to 6)
-    assert turns(r) == 0 and r[0][1] < 37 and r[-1][1] > 67.9, (turns(r), r[0][1], r[-1][1])    # one tilt, on the way down
+    steps = [(round(a[0], 2), round(b[4] - a[4], 1)) for a, b in zip(r, r[1:]) if abs(b[4] - a[4]) > 9]
+    assert not steps, steps[:8]                                                  # your body does not jump on the screen (it went 16 px at each tile's middle, and 100 at the roof; a level is 16 px now: a frame's way down a step is up to 6; from 58 degrees a level is 8.5 px on the screen, not 3: under the roof one frame's step was 7.6)
+    assert turns(r) == 0 and r[0][1] < 37 and r[-1][1] > 57.9, (turns(r), r[0][1], r[-1][1])    # one tilt, on the way down
     # and back up: one tilt back, near the top
     r = walk(g, "ArrowLeft", f"myPos().x <= {x}", jump=True)
     assert not [v for v in r if v[2] and not v[3]] and turns(r) == 0
     g.wait("HdLook.cam.pitch < 36.1", timeout=4000)                               # (back to the surface's: the last step, a level under the land round it, is seen from above too: the tilt eases after it)
-    back = next(v[0] for v in r if v[1] < 67.9)
+    back = next(v[0] for v in r if v[1] < 57.9)
     assert back < x + 2.6, back - x                                              # the eye stays over the stair until its last steps
 
 
@@ -91,11 +91,11 @@ def test_a_shaft_and_its_way_out_are_one_view(browser, server):
         g.rpc("dev_col", tiles=[[x + i, y]], col=[-6 + i])                       # the stair cut out of it, open to the sky
     g.rpc("dev_teleport", x=x, y=y, z=-6)
     g.arrive()
-    g.wait("HdLook.cam.pitch > 67.9 && HdLook.win.a === 1 && !HdLook.busy", timeout=8000)      # (its south wall hides you whole: the x-ray window, as under a roof, hd_level.js hides)
+    g.wait("HdLook.cam.pitch > HdLook.steep - .1 && HdLook.win.a === 1 && !HdLook.busy", timeout=8000)      # (its south wall hides you whole: the x-ray window, as under a roof, hd_level.js hides)
     for i, steep in ((2, True), (4, True), (5, True)):                           # levels -4, -2, -1: walls beside you as tall as you or more (a level is your height)
         g.rpc("dev_teleport", x=x + i, y=y, z=-6 + i)
         g.arrive()
-        g.wait(f"HdLook.cam.pitch {'> 67.9' if steep else '< 36.1'}", timeout=8000)
+        g.wait(f"HdLook.cam.pitch {'> 57.9' if steep else '< 36.1'}", timeout=8000)
     g.stamp(3, -4, ["...", "...", "..."], levels=["555", "555", "555"])          # a block of land five high, on the meadow: stand at its foot, south of it, then west
     g.rest()
     for dx, dy in ((4, -1), (2, -3)):
@@ -109,7 +109,7 @@ def deep_room(g, x, y, depth):
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[-depth, -depth + 3, 0])
     g.rpc("dev_teleport", x=x, y=y, z=-depth)
     g.arrive()
-    g.wait(f"HdLook.win.a === 1 && HdLook.win.n >= 35 && !HdLook.busy && HdLook.cam.pitch > 67.9 && HdLook.level[1] === {-depth}", timeout=8000)     # (the eye come down to you: read before, the px were other places)
+    g.wait(f"HdLook.win.a === 1 && HdLook.win.n >= 35 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1 && HdLook.level[1] === {-depth}", timeout=8000)     # (the eye come down to you: read before, the px were other places)
     g.js("(() => { WayShow.paint = () => {}; return 1; })()")
     g.rest()
 
@@ -131,6 +131,7 @@ def test_depth_is_told_inside_the_window(browser, server):
     for o in ("clouds", "rays", "shimmer"):
         g.js(f"setOpt('{o}', 0)")
     g.js("Target.off = true")                                        # (the keys' boxes lie on the floor read here: target.js)
+    g.page.set_viewport_size({"width": 960, "height": 1080})         # (from 58 degrees 11 levels of section are 93 art px: over the wall of a 540 px screen there were 34)
     x, y = g.pos()
     g.stamp(-9, -9, ["." * 34] * 19)
     g.rest()
@@ -141,7 +142,7 @@ def test_depth_is_told_inside_the_window(browser, server):
         near, far = spot(g, cx + 1.5, y + .5, -depth), spot(g, cx - 2.5, y + 1.5, -depth)      # the floor beside you; the floor 3.5 tiles off, away from the walls' feet
         # the section over the north edge: rows of earth counted up from the wall's top, in the room's middle column
         top = g.js(f"HdLook.screenOf({cx + .5}, {y - 2}, {-depth + 3})")
-        col = g.js("([px, py]) => { const k = devicePixelRatio, o = []; for (let j = 0; j < 56; j++) o.push([...HdLook.read(Math.round(px * k), Math.round((py - (j + .5) * zoom) * k), 1, 1).data.slice(0, 3)]); return o; }", top)
+        col = g.js("([px, py]) => { const k = devicePixelRatio, o = []; for (let j = 0; j < 120 && py - (j + .5) * zoom > 0; j++) o.push([...HdLook.read(Math.round(px * k), Math.round((py - (j + .5) * zoom) * k), 1, 1).data.slice(0, 3)]); return o; }", top)
         rows = next((i for i, c in enumerate(col) if c[1] > c[0] + 8), len(col))                     # up to the first green px: the meadow
         tones = [lum(c) for c in col[:rows]]
         bands = 1 + sum(1 for a, b in zip(tones, tones[1:]) if abs(a - b) > 2)                       # the strata: flat tones, one a level
@@ -152,14 +153,14 @@ def test_depth_is_told_inside_the_window(browser, server):
         g.frames(2)
         open_ = [g.js(PX, p) for p in spots]                                                          # the same px with the window shut
         g.js("HdLook.nowin = false")
-        strata[depth] = (rows, bands, tones)
+        strata[depth] = (rows, bands, tones, len(col))                                               # (len(col): the rows up to the screen's top: from 58 degrees 11 levels are 93 art px, more than a small screen has over the wall)
         seen[depth] = (lum(near), lum(far), rows, out, open_, g.js('[HdLook.level, myPos(), HdLook.win.n, HdLook.cam.pitch, clock.phase]'), near, far)
     assert seen[14][1] < seen[14][0] * .9, seen[14]                 # deep: the floor away from you is dimmer than the floor round you
     assert seen[4][1] > seen[4][0] * .93, seen[4]                   # shallow: one light
-    # the section over the north wall is as tall as the ground over the ceiling is from this eye (3 px a level at the steep pitch): 1 level over the room 4 deep, 11 over the one 14 deep: two pictures at a glance
+    # the section over the north wall is as tall as the ground over the ceiling is from this eye (8.5 px a level from 58 degrees, hd.js STEEP; 48 px at most, vox_style_glsl.js): 1 level over the room 4 deep, 11 over the one 14 deep: two pictures at a glance
     # (it was 8 to 20 rows whatever the depth: 14 deep read 2 or 3 deep); in strata, a tone a level, darker level by level down: levels can be counted
-    assert strata[4][0] <= 6 and strata[14][0] >= 26 and strata[14][1] >= 8, strata
-    assert strata[14][2][1] < strata[14][2][strata[14][0] - 3] * .7, strata[14]
+    assert strata[4][0] <= 10 and strata[14][0] >= min(30, strata[14][3] - 4) and strata[14][1] >= max(3, strata[14][0] // 10), strata
+    assert strata[14][2][1] < strata[14][2][strata[14][0] - 3] * .9, strata[14]   # (darker down; from 58 the 48 px show the top 5 levels of 11: .83, it was under .7)
     for d in (4, 14):
         assert all(abs(p - q) <= 6 for a, b in zip(seen[d][3], seen[d][4]) for p, q in zip(a, b)), seen[d][3:5]                    # the grass beside the hole is the meadow's own px, not a step darker (a shade outside the rim read as a block standing on the grass)
 

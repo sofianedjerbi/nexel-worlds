@@ -31,7 +31,7 @@ def room(g, flowers=False):
 
 def inside(g, x, y):
     g.rpc("dev_teleport", x=x, y=y, z=1)
-    g.wait("HdLook.win.a === 1 && HdLook.win.n >= 21 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    g.wait("HdLook.win.a === 1 && HdLook.win.n >= 21 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     g.js("(() => { WayShow.paint = () => {}; Target.off = true; return 1; })()")       # (the way out's marks and the keys' boxes are painted over these px)
     g.rest()
 
@@ -47,13 +47,13 @@ def test_the_window_has_no_shade_outside_it_a_lit_lip_at_its_near_edge_and_its_s
     meadow = g.js(PX, [x + .5, y + 4.5, 4])
     assert meadow[1] > meadow[0] + 10, meadow                              # (grass)
     # south of the room (its south wall's plane is y + 2): from the hole's edge out onto the meadow, a px every 50th of a tile
-    scan = [g.js(PX, [x + .5, y + 2 + i * .02, 4]) for i in range(50)]
+    scan = [g.js(PX, [x + .5, y + 2 + i * .02, 4]) for i in range(120)]     # (2.4 tiles: from 58 degrees the room's floor 3 under the meadow shows 1.9 tiles south of the wall's plane)
     k = next(i for i, c in enumerate(scan) if c[1] > c[0])                 # (before it: the room, seen in the hole)
     south = scan[k:]
     assert len(south) >= 10 and all(c[1] > c[0] and lum(c) > lum(meadow) * .93 for c in south), scan    # outside the hole the meadow is the meadow: no shade round the rim (a shade outside it read as a block standing on the grass; before that a checker of dark px in a black line)
     assert lum(south[0]) > lum(meadow) + 12 and lum(south[-1]) < lum(meadow) + 12, (south[0], south[-1], meadow)      # the hole's near edge: the land's lip, lit; then the grass as it is
     # over the window's top edge (the north wall's plane is y - 1): the section
-    north = [g.js(PX, [x + .5, y - 1.5 + i * .02, 4]) for i in range(40)]
+    north = [g.js(PX, [x + .5, y - 1.5 + i * .02, 4]) for i in range(60)]     # (to y - .3: from 58 degrees the section stands lower on the screen, under the north wall's plane)
     earth = [c for c in north if c[0] > c[1] > c[2] and c[0] - c[2] > 30]
     grey = [c for c in north if max(c) - min(c) < 16 and 70 < c[0] < 150]
     assert len(earth) >= 6 and not grey, north                             # earth's own px, a few rows of them; no flat grey band
@@ -68,12 +68,13 @@ def test_in_a_river_between_cliffs_the_hole_is_whole(browser, server):
     g.stamp(-15, -11, rows, levels=["9" * 31] * 10 + ["2" * 31] * 3 + ["6" * 31] * 10)
     g.rest()
     g.rpc("dev_teleport", x=x, y=y)
-    g.wait("HdLook.cam.pitch === HdLook.steep && !HdLook.busy", timeout=8000)
+    g.wait("HdLook.cam.pitch === HdLook.steep && !HdLook.busy && HdLook.win.a === 1", timeout=8000)
     g.rest()
-    # four levels under the land round you: the eye looks from above, and under the open sky nothing is cut: the gorge is
-    # seen as it is, its south bank in front of its water (no box of the window on the banks nor on the river: it was a
-    # strip of boxes along the river, then the river's floor laid south of the bank)
-    assert g.js("HdLook.win.n") == 0 and g.js("HdLook.catSeen()") > .1
+    # four levels under the land round you: the eye looks from above (STEEP, 58), and the south bank that hides you is cut: the
+    # window on the river, you whole; no box of it on the banks (it was a strip of boxes along the river, then the river's floor
+    # laid south of the bank; at 78.6 nothing was cut)
+    assert g.js("HdLook.win.a") == 1 and g.js("HdLook.catSeen()") > .7     # (swimming: your feet under the water's face)
+    assert g.js(f"HdLook.winAt({x}, {y})") and not any(g.js(f"HdLook.winAt({x + i}, {y + j})") for i in (-2, 0, 2) for j in (-3, 3))
 
 
 # the mean light of the px round a place of the world (a 9 x 9 px square)
@@ -180,7 +181,7 @@ def test_the_aim_on_a_cave_s_wall_is_on_the_cell_you_hit(browser, server):
     x, y = room(g)
     g.give(pickaxe=1)
     g.rpc("dev_teleport", x=x - 3, y=y, z=1)                               # the room's west end
-    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     g.hold_item("pickaxe")
     AIM = "HdLook.aim && aimedTile() && aimedTile().it && aimedTile().it.cell === 2"
     g.hold(["ArrowLeft"], 250)                                             # (the way out, shown after two seconds standing, is put away when you turn to a wall: the test below; this one failed with it shown: {aim: None, way: 9})
