@@ -33,6 +33,7 @@ function screenOrigin(S = TS()) {
 let cam = {x: 0, y: 0}, camT = {x: 0, y: 0};
 let follow = null, me = null, myId = null, meObs = null, agents = [], metrics = {}, recipes = {}, clock = {night: false, phase: .3};
 let selected = null, progress = null, foodValue = {};   // foodValue: food points each food gives (from the server)
+let handSlot = Math.min(9, Math.max(0, Math.floor(+localStorage.getItem("megastructure-hand")) || 0));   // the bar's slot in hand, always one (an empty one too): `selected` is what is in it (ui.js handSync)
 // Health and food: how much is full, and the food it takes to sprint. The server says so when it greets (20, 20 and 6:
 // half hearts and half pieces, as the sandbox classic has them); one from before that says nothing: 0 to 100.
 let HP_MAX = 100, FOOD_MAX = 100, SPRINT_FOOD = -1, SWIM_SPRINT = false, SWIM_PACE = 1, EAT_PACE = 1;      // (SWIM_SPRINT: this server sprints in the water too; SWIM_PACE, EAT_PACE: how many times longer a tile takes there, and while eating)

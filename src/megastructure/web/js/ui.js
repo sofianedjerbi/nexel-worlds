@@ -118,32 +118,45 @@ function hudFit() {
 hudFit(); addEventListener("resize", hudFit);
 new ResizeObserver(() => document.documentElement.style.setProperty("--hudh", $("hud").offsetHeight + "px")).observe($("hud"));   // (the bag sits on it)
 let slots = JSON.parse(localStorage.getItem("megastructure-slots") || "[]");
-function slotOrder(inv) {               // items keep their slot; new items take the first free one
-  slots = slots.map((n) => (n && inv[n] ? n : null));
-  for (const n of Object.keys(inv)) if (!slots.includes(n)) { const i = slots.indexOf(null); if (i >= 0) slots[i] = n; else slots.push(n); }
+function slotOrder(inv) {               // items keep their slot; new items take the first free one, the empty hand's last
+  slots = slots.map((n) => (n && inv[n] ? n : null));         // (a flower picked with empty hands stays out of them: E picks the next one, not plants it)
   while (slots.length < BAR) slots.push(null);
+  const free = () => { const i = slots.findIndex((n, j) => !n && j !== handSlot); return i >= 0 ? i : slots.indexOf(null); };
+  for (const n of Object.keys(inv)) if (!slots.includes(n)) { const i = free(); if (i >= 0) slots[i] = n; else slots.push(n); }
   localStorage.setItem("megastructure-slots", JSON.stringify(slots));
   return slots;
 }
+// The hand is a slot of the bar, like Minecraft ("always keep an item selected in the inventory, even empty hands"): what
+// is in it is in your paw; it runs out, the slot stays and the hands are empty; a new thing landing in it is held.
+let handWant = null;                    // a name asked for before it is in the bag (selectItem): taken in hand when it comes
+function handSync(inv = meObs ? meObs.self.inventory : {}) {
+  if (handWant && inv[handWant]) { slotOrder(inv); const i = slots.indexOf(handWant); handWant = null; handTo(i); }
+  const n = slots[handSlot]; selected = n && inv[n] ? n : null; return selected;
+}
+function handTo(i) {                    // the slot holding a thing: in hand (from the pack: swapped into the slot in hand)
+  if (i >= BAR) { [slots[i], slots[handSlot]] = [slots[handSlot], slots[i]]; localStorage.setItem("megastructure-slots", JSON.stringify(slots)); }
+  else if (i >= 0) handSlot = i;
+  localStorage.setItem("megastructure-hand", handSlot);
+}
 function drawHotbar(inv) {
   const el = $("hotbar");
-  if (selected && !inv[selected]) selected = null;
   const order = slotOrder(inv).slice(0, BAR);
+  handSync(inv);
   const extra = Object.keys(inv).filter((n) => !order.includes(n));
   const can = meObs ? meObs.self.can ?? CAN_SIZE : CAN_SIZE;
   if (meObs) Held.sync(meObs.self);                  // (in your paw for the others too: held.js)
   if (selected !== hotWas) { if (hotWas !== undefined && selected) heldName(selected); hotWas = selected; }
-  const sig = JSON.stringify(inv) + order.join() + selected + can; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
+  const sig = JSON.stringify(inv) + order.join() + handSlot + can; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
   el.innerHTML = "";
   order.forEach((name, i) => {
-    const d = document.createElement("div"); d.className = "slot" + (name && name === selected ? " sel" : "");
+    const d = document.createElement("div"); d.className = "slot" + (i === handSlot ? " sel" : "");
+    d.onclick = () => selectSlot(i);                 // (any slot, an empty one too; the one in hand again: it stays in hand)
     if (name) {
       d.appendChild(slotIcon(name));
       const how = WEAR[name] ? ` · ${capOf("use")} to wear` : FOODS.includes(name) ? ` · ${capOf("use")} to eat, or feed animals` : name === "watering_can" ? ` · ${can}/${CAN_SIZE} water · click a crop; refill at a well or water`
         : (PLACEABLE_BLOCK[name] || FILLS[name] || name === "seed") ? " · select, click the ground to place" : name === "name_tag" ? " · select, use it on an animal to name it" : "";
       d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name) + how)}</span>`);
       if (name === "watering_can") d.insertAdjacentHTML("beforeend", `<span class="lvl"><i style="width:${Math.round(can / CAN_SIZE * 100)}%"></i></span>`);
-      d.onclick = () => { selected = selected === name ? null : name; el.dataset.sig = ""; drawHotbar(meObs.self.inventory); };
       d.ondblclick = () => useSelected(name);
     }
     d.insertAdjacentHTML("beforeend", `<span class="k">${(i + 1) % 10}</span>`);

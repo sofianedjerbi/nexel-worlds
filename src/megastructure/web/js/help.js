@@ -8,7 +8,7 @@ const HELP = [
   ["See", [[["+", "−"], "Zoom (or the wheel)"], [["V"], "What is built over you"]]],
   ["Do", [[["E"], "Use what you face"], [["X"], "Other use: milk, till"], [["F"], "Pick up"], [["E"], "Food in hand: eat it"],
     [["Click"], "E there. Shift: X"]]],
-  ["Carry", [[["1-9", "Q"], "Take in hand"], [["`"], "Empty your hands"], [["E"], "Place what you hold"],
+  ["Carry", [[["1-9", "Q"], "Slot in hand"], [["`"], "Empty your hands"], [["E"], "Place what you hold"],
     [["I"], "Inventory"], [["C"], "Craft"]]],
   ["Build", [[["Z"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],
     [["Q", "E"], "Cursor a layer down, up"]]],
