@@ -125,3 +125,46 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
         assert got[0] > 60 and max(got) - min(got) <= 4, (got[0], min(got), max(got))
     finally:
         g.page.close()
+
+
+# the light (r + g + b) of the screen px below a two-tile block's foot, across its middle, row by row from 2 px under the foot
+ROWS = """([bx, by, n]) => { const k = devicePixelRatio, a = HdLook.screenOf(bx + .25, by + 1, 0), b = HdLook.screenOf(bx + 1.75, by + 1, 0);
+  const x0 = Math.round(a[0] * k), x1 = Math.round(b[0] * k), y0 = Math.round(a[1] * k) + 2, d = HdLook.read(x0, y0, x1 - x0, n).data, w = x1 - x0, out = [];
+  for (let j = 0; j < n; j++) { const r = []; for (let i = 0; i < w; i++) { const q = (j * w + i) * 4, s = d[q] + d[q + 1] + d[q + 2]; r.push(s); } out.push(r); } return out; }"""
+
+
+def test_a_shadow_is_cast_in_the_world_and_the_eye_alone_foreshortens_it(browser, server):
+    """A stone block 6 high at noon (the sun straight north: its shadow straight south). Seen from 36 degrees and from
+    78.6 (inside a ring of land a level high: the eye's view from above), its shadow ends on the screen where the
+    world's shadow (6 levels times the sun's way) ends as the eye projects it, within a few px, and it is one shape,
+    no gap at a tile's edge. (It was stretched by 1 / .6 for the 36-degree eye: from 78.6 a cliff's shadow lay 1.6x as
+    long on the screen, in flat slabs.)"""
+    g = hd(browser, server)
+    try:
+        R = 7
+        lv = ["".join("6" if (i, j) in ((-1, -5), (0, -5)) else "1" if max(abs(i), abs(j)) >= 6 else "0" for i in range(-R, R + 1)) for j in range(-R, R + 1)]
+        g.stamp(-R, -R, ["." * (2 * R + 1)] * (2 * R + 1), levels=lv)
+        g.hour(.375, still=True)
+        x, y = g.pos()
+        bx, by = x - 1, y - 5
+        for pitch in (36, 78.6):
+            g.js(f"HdLook.steep = {pitch}")
+            g.wait(f"Math.abs(HdLook.cam.pitch - {pitch}) < .05", 8000)
+            ky = g.js("Math.round(SunLand.hour().ky * 8) / 8")                 # (the sun's way in the world: ground px a px of height)
+            want = g.js("([bx, by, L]) => { const k = devicePixelRatio; return (HdLook.screenOf(bx + 1, by + 1 + L, 0)[1] - HdLook.screenOf(bx + 1, by + 1, 0)[1]) * k; }", [bx, by, 6 * ky])
+            n = int(want * 1.8) + 20
+            shots = []
+            for much in (100, 0):
+                g.js(f"setOpt('shadows', {much})")
+                g.rest()
+                shots.append(g.js(ROWS, [bx, by, n]))
+            g.js("setOpt('shadows', 100)")
+            mask = [[on < off - 12 for on, off in zip(ro, rf)] for ro, rf in zip(*shots)]
+            rows = [sum(r) / len(r) for r in mask]
+            # (its length: the rows more than half in shadow from the foot on (2 px under it), to the first that is not: past it lies your own)
+            got = next((j for j, f in enumerate(rows) if f <= .5), len(rows)) + 2
+            assert abs(got - want) <= 4 * g.js("devicePixelRatio") + 2, (pitch, got, want, ky, " ".join(f"{f:.1f}" for f in rows))
+            # (one shape: every row from the foot to its end mostly in shadow: no lit row across it at a tile's edge)
+            assert all(f > .8 for f in rows[: max(0, got - 6)]), (pitch, " ".join(f"{f:.1f}" for f in rows))
+    finally:
+        g.page.close()
