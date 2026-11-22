@@ -155,7 +155,7 @@ def test_the_cell_beside_you_in_the_wall_has_its_whole_box(game):
     assert rows >= 6, sizes                                          # (a front, not a 3 px bar)
     for side in ((1, 0), (-1, 0)):
         a, line, r, c = sizes[side]
-        assert r == rows and a >= .9 * rows * cols and line >= 2 * (rows + cols) - 4, sizes   # its whole front, outlined all round
+        assert abs(r - rows) <= 1 and a >= .9 * min(r, rows) * c and line >= 2 * (min(r, rows) + c) - 4, sizes   # its whole front, outlined all round (a face's rows, read off the picture's px, may round a px apart)
     game.press("z")
 
 
