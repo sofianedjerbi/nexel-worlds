@@ -157,6 +157,8 @@ class Action:
         self.seen_events: list = []
 
     def finish(self, result: dict, sim: "Simulation"):
+        if self.result is not None:                  # (already ended: interrupted while it ran, it comes back once more)
+            return
         a = self.agent
         inv0, hp0, hu0, x0, y0 = self.snapshot
         inv = {}

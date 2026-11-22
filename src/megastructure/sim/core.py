@@ -210,7 +210,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             act = getattr(a, slot)
             if act is not None:
                 setattr(a, slot, None)
-                act.gen.close()
+                if not act.gen.gi_running: act.gen.close()   # (dying of a fall in your own step: that step runs; let go of, not closed from inside itself)
                 act.finish({"ok": False, "status": "interrupted", "error": "interrupted", "detail": why}, self)
         if not way:
             self.via_drop(a)
