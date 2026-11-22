@@ -193,7 +193,7 @@ const HdLook = (() => {
       chunkKey: (x0, y0, n) => { let c = built.get(x0 + "," + y0); if (!c || c[0] !== Floors.ver) { let f = ""; for (let y = y0; y < y0 + n && !f; y++) for (let x = x0; x < x0 + n; x++) if (Floors.any(x, y)) { f = "f"; break; } if (built.size > 2000) built.clear(); built.set(x0 + "," + y0, c = [Floors.ver, f]); } const fl = c[1];   // (what stands in a chunk hangs on the hour, what is built, open doors; where you are only if something is built in it: a roof over your head is open. And on the blocks of the world that have come, its own and the ones beside it)
         return (fl ? keyNear : keyFar) + fl + [[0, 0], [-1, 0], [n, 0], [0, -1], [0, n]].map(([i, j]) => (blockOf(x0 + i, y0 + j) ? 1 : 0)).join(""); }}), cfg);   // (what is built and put down: small 3D pieces, hd_things.js)
     if (eng.lost) { eng.forget(); key = ""; }   // (a tile that changed: drawTile, below: its chunk alone is made again. It was the whole land, and all its paints, at every change)
-    keyNear = HdThings.key(); keyFar = HdThings.key(false); const rx = Math.min(R, Math.ceil(w / 32 * 1.4) + 3), k = [tx, ty, L, st, bare, keyNear, eng.stamp, rx, south].join();
+    keyNear = HdThings.key(); keyFar = HdThings.key(false); const rx = Math.min(R, Math.ceil(w / 32 * 1.4) + 3), k = [tx, ty, L, st, bare, keyNear, eng.stamp, rx, south].join(); api.reach = [tx - rx, ty - R, tx + rx, ty + Math.min(R, south + 1)];   // (reach: the tiles of the land drawn round the eye: the water's picture covers its water, voxels.js still)
     // (A FREE EYE, the first screen's island, nobody there: no space of its own, no x-ray window. Its level is the meadow's; over a terrace the search found "your space under the land": a hole in the hill, the window's dark back, a black tile beside a tree)
     const wg = cov ? CAP : 0; if (wg !== wantG) { wantG = wg; since = now; }   // (since: when land came over you or left; api.lag: ms from then to the land made with your space's window, or with none)
     if (k !== key && !gen) { gen = eng.steps(tx, ty, L, {r: R, rx, rs: south + 1, deep: 20, sea: 1, win: p.free ? null : st ? {reach: 24} : {reach: 7, walk: true}}); key = k; genG = st; hurry = st !== shownG; api.build = 0; api.builds++; genAt = come(tx, ty) ? [tx, ty] : null; genC = [tx, ty]; }   // (one land at a time: the next is made when this one is done)
@@ -273,7 +273,7 @@ const HdLook = (() => {
     if (warmOn && warm >= 3 && gen) { api.ms = performance.now() - t0; return; }   // (the first screen's island, all made but its land, under the wait: nothing to draw, the land made 24 ms a frame)
     let pic = eng.draw({w, h, cam, at: [p.x + .5, p.y + .5, camL + .5], pin, bend: api.bend, t: now / 1000, light,
       water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y, ver: Voxels.wver} : null, dep, own, rim: HdLevel.rim(tx, ty, L), hole: tilt * HdEase.of("shut", !p.free && HdLevel.shut(tx, ty, L, NARROW)), sky: bare, behind: p.free || cov0 ? 0 : HdEase.of("behind", HdLevel.over(tx, ty, L, kS) >= 1), win: api.nowin ? 0 : 1, edge: api.edge, sprites: list, way: WayShow.land(), ghosts: pieces(list), hour: hour(w, h, list, 0)});
-    if (!pic) { noGL = true; return; }
+    if (!pic) { if (pic === null) noGL = true; else api.lost = true; api.ms = performance.now() - t0; return; }   // (false: the land's context lost, none given yet: the last picture stays, see `lost`)
     seen = {tx, ty, L, rim: HdLevel.rim(tx, ty, L), top: tilt > .5 && !cov0, ks: eyeRise(cam.pitch), k: 1, me: list.find((q) => q.top), list, at: [snap(p.x + .5), snap(p.y + .5), Lf]}; horizon(tx, ty, L + dep); hl = Math.max(8, eyeLine([snap(p.x + .5), snap(p.y + .5), Math.round(camL * 16) / 16 + .5], w, h) + 2);   // (the horizon is the surface's, however deep you are)   // (at: where the eye looks: you, to a px of the land: your own name is written from there)
     api.faces = eng.faces; api.models = eng.models;
     if (fill) { const w0 = warm; warm += w0 === 0 || !left ? 1 : 0; if (w0 === 0) { api.ms = performance.now() - t0; return; } }
@@ -343,9 +343,12 @@ const HdLook = (() => {
   api.read = (...a) => HdView.read(...a); api.bodies = () => (seen ? seen.list.filter((s) => s.q && !s.top).map((s) => [s.q.e.kind, s.z]) : []); api.bare = () => (eng && seen ? eng.bare(Math.max(0, Math.ceil(hy) + 2)) : 0); api.raw = () => (eng ? eng.raw() : 0); api.fades = () => (seen ? seen.list.filter((s) => s.fade !== undefined).map((s) => [s.tx, s.ty, s.fade]) : []); api.blank = () => eng && eng.blank(); Object.defineProperty(api, "units", {get: () => eng && eng.units}); Object.defineProperty(api, "why", {get: () => eng && eng.why}); Object.defineProperty(api, "wrote", {get: () => wrote}); Object.defineProperty(api, "made", {get: () => (eng ? eng.made : 0)}); Object.defineProperty(api, "work", {get: () => (eng ? eng.work : null)});   // (units: the longest step of each kind of the land's making; why: why the last frame was drawn again; made: chunks made by the last land)   // (px under the horizon where no land is drawn)
   // a frame: with this look live (WebGL 2, and you or an eye in the world), the game's frame (render.js) draws to a canvas of one px (who walks, the land coming in), then this look's picture
   { const f0 = frame; frame = function (now) {
-    const t0 = performance.now(), keep = ctx; api.live = api.on && !noGL && Voxels.engine.ready() && !!(api.eye || ents.get("agent" + myId)); api.drew = wrote = false; slice1 = 0;
-    if (api.live) ctx = HdView.sink(); try { f0(now); } finally { ctx = keep; }
-    if (api.live) after(); else HdView.hide();
+    const t0 = performance.now(), keep = ctx, on = api.on && !noGL && !!(api.eye || ents.get("agent" + myId)); api.live = on && Voxels.engine.ready(); api.drew = wrote = false; slice1 = 0;
+    // LOST: the GPU took a context back (the sky's: VoxGL; the land's: vox_style.js) and gives no new one yet (asked again once a second): the last picture stays on the screen as it was.
+    // (It was hidden, or the land drawn from its dead canvas: the whole world gone, the page's dark behind it, until the GPU gave one: "the whole world sometimes disappears")
+    api.lost = on && !api.live && !!HdView.el && HdView.el.style.display === "block";
+    if (api.live || api.lost) ctx = HdView.sink(); try { f0(now); } finally { ctx = keep; }
+    if (api.live) after(); else if (!api.lost) HdView.hide();
     HdView.perf(now, performance.now() - t0, api.drew, eng ? eng.calls : 0, slice1, wrote);
   };
     const d0 = drawTile; drawTile = function (x, y, to = null) { d0(x, y, to); if (!to && eng) eng.touch(x, y); };

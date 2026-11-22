@@ -4,7 +4,6 @@
 // of the land is ready to be shown (made), its sea made a little a frame (work), and the water's picture (still).
 const Voxels = (() => {
   const one = new Map();
-  let off = null;
   const host = {
     column: (x, y) => (blockOf(x, y) ? WaterBed.column(x, y) : null),      // (clear water, waterbed.js: a water tile's is its bed)
     waterTop: (x, y) => topAt(x, y),                            // (a hole that filled, a pool up on a hill: its face at its own height)
@@ -36,13 +35,18 @@ const Voxels = (() => {
     WaterBed.flush(engine.touch);
     for (const b of coming) if (b.px && b.seaAt !== b.ver) { for (const _ of waterSteps(b)); b.seaAt = b.ver; if (performance.now() >= until) return; }
   }
-  // The water's picture (water.js, on its own canvas) the HD look lays on its water, made ten times a second -> api.wver goes up with each
+  // The water's picture (water.js, on its own canvas) the HD look lays on its water, made ten times a second -> api.wver goes up with each.
+  // Over the land the HD look draws (hd.js reach: tiles x0, y0, x1, y1), not the flat view's rectangle (vis: before the look's first frame)
   let wAt = 0;
-  function still(vis, ox, oy, t) {
+  function still(vis, t) {
     if (!engine.ready()) return;
     const now = performance.now(); if (now - wAt < 100 && api.wver) return; wAt = now;
-    const keep = ctx; off = off || document.createElement("canvas").getContext("2d");
-    ctx = off; try { drawWater(vis.filter(made), ox, oy, t); } finally { ctx = keep; } api.wver++;
+    const r = HdLook.reach, [x0, y0, x1, y1] = r || [vis.map((b) => b.bx * B), vis.map((b) => b.by * B), vis.map((b) => b.bx * B + B - 1), vis.map((b) => b.by * B + B - 1)].map((l, i) => (i < 2 ? Math.min : Math.max)(...l));
+    const near = [];
+    if (r) { for (let by = Math.floor(y0 / B); by <= Math.floor(y1 / B); by++) for (let bx = Math.floor(x0 / B); bx <= Math.floor(x1 / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b && made(b)) near.push(b); } }
+    else near.push(...vis.filter(made));
+    if (!near.length) { waterView = null; api.wver++; return; }
+    drawWater(near, [x0 * 16, y0 * 16, (x1 - x0 + 1) * 16, (y1 - y0 + 1) * 16], t); api.wver++;
   }
   const api = {made, work, still, engine, host, wver: 0};      // (host: the HD look's, hd.js)
   return api;

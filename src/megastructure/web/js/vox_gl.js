@@ -11,6 +11,7 @@ const VoxGL = (() => {
   //  never asked again: `ok` no, the land's look off for good on a phone that had put its tab away)
   let el = null, gl = null, bad = false, was = false, tried = 0, gen = 0;
   function start() {
+    if (gl && gl.isContextLost()) { gl = null; was = true; tried = 0; }   // (lost before its event came)
     if (gl || bad) return gl; if (was && performance.now() - tried < 1000) return null;
     const c = document.createElement("canvas"); let g = null;
     try { g = c.getContext("webgl2", {alpha: false, antialias: false, depth: true, stencil: true}); } catch (e) { g = null; }

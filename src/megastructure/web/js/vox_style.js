@@ -52,6 +52,7 @@ const VoxStyle = (() => {
     // from what is kept here (the faces' lists, the paints' px): the land comes back as it was. It was the land gone for good, the sky and the names left ("sometimes the map disappears")
     let was = false, tried = 0;
     function start() {
+      if (gl && gl.isContextLost()) { gl = null; was = true; tried = 0; }   // (lost before its event came: not a frame drawn on a dead canvas)
       if (gl) return true; if (was && performance.now() - tried < 1000) return false;
       const c = document.createElement("canvas"), g = c.getContext("webgl2", {antialias: false, depth: true, stencil: true, preserveDrawingBuffer: true}); if (!g) { tried = performance.now(); return false; }
       c.addEventListener("webglcontextlost", (e) => { e.preventDefault(); if (gl === g) { gl = null; was = true; tried = 0; } }); el = c; gl = g;
@@ -161,7 +162,7 @@ const VoxStyle = (() => {
       gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, stx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, D, D, 0, gl.RGBA, gl.UNSIGNED_BYTE, px); near(); gl.activeTexture(gl.TEXTURE0);
     }
     function draw(v) {
-      if (!start()) return was ? el : null; light(v.t || 0, v.way || null);
+      if (!start()) return was ? false : null; light(v.t || 0, v.way || null);   // (false: lost, none given yet: the host keeps its last picture, hd.js lost; null: no WebGL 2 at all)
       const t0 = performance.now(), L = v.light, RW = v.w, RH = v.h, W = v.water, hr = v.hour, sized = el.width !== RW || el.height !== RH;
       if (sized) { el.width = RW; el.height = RH; }
       const {m, eye} = matrix(v); if (!sameN(m, 16, lastM, 16) || lastB[0] !== (v.bend || 0) || lastB[1] !== v.at[1]) mver++; lastM = m; lastB = [v.bend || 0, v.at[1]]; const lamp = gp(...v.at);   // (mver: goes up when where a place is drawn (at) changes: marks drawn from it are kept till then)

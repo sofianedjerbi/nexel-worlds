@@ -135,34 +135,37 @@ function* waterSteps(b) {
   b.water = {un, land, canvas: c, bed, any, foam, glints, rows, box: box.map((v, i) => (v + (i > 1)) * 16)};
 }
 // All of it is art pixels (the patterns slide by whole ones), so it is put together small, a pixel an art pixel, on a
-// canvas the size of the view (and only where a block has water), then blown up onto the screen in one go: painting
-// each layer at the screen's size was seven screens of paint a frame wherever a block in view held a puddle.
+// canvas of its own (waterCv) the HD look lays on its water (vox_style_glsl.js): over the land that look draws (rect:
+// art px x, y, w, h; hd.js reach), cut to where there is water. (It was the flat view's rectangle: the tilted eye sees
+// further north and south, and past its edge the GPU stretched the picture's last row: thin vertical lines in the water)
 let waterCv = null, waterView = null;                             // (waterView: where waterCv's corner is, in art px, this frame; null: no water in view)
-function drawWater(vis, ox, oy, t) {
+function drawWater(vis, rect, t) {
   waterView = null;
   if (!causticPat) { causticPat = causticPattern(); wavePat = wavePattern(); }
-  const more = Math.ceil(Curve.over() / zoom);                    // (the curved world shows a little further north: curve.js)
-  const vx = Math.floor(-ox / zoom) - 1, vy = Math.floor(-oy / zoom) - 1 - more, vw = Math.ceil(W / zoom) + 3, vh = Math.ceil(H / zoom) + 3 + more;   // the view, in art px
-  let g = null, ux0 = 1e9, uy0 = 1e9, ux1 = -1e9, uy1 = -1e9;       // (and the part of it with water in it)
+  const [vx, vy, vw, vh] = rect;
+  let g = null, ux0 = 1e9, uy0 = 1e9, ux1 = -1e9, uy1 = -1e9;       // (the part of it with water in it: the canvas)
   const drift = (pat, dx, dy, alpha, x, y, w, h) => {               // a tiling pattern, slid by whole pixels
     if (!opt("shimmer")) return;                                   // (the settings' Water shimmer)
     const mx = ((Math.round(dx) % 64) + 64) % 64, my = ((Math.round(dy) % 64) + 64) % 64;
     g.globalAlpha = alpha;
     g.save(); g.translate(mx, my); g.fillStyle = pat; g.fillRect(x - mx, y - my, w, h); g.restore();
   };
+  const wet = [];
   for (const b of vis) {
-    const w = b.water, n = B * 16, X = b.bx * n, Y = b.by * n, st = WATER.strip;
+    const w = b.water, n = B * 16, X = b.bx * n, Y = b.by * n;
     if (!w || !w.any) continue;
     const x0 = Math.max(X + w.box[0], vx), y0 = Math.max(Y + w.box[1], vy), x1 = Math.min(X + w.box[2], vx + vw), y1 = Math.min(Y + w.box[3], vy + vh);
-    if (x1 <= x0 || y1 <= y0) continue;                             // (its water isn't in view)
-    if (!g) {
-      if (!waterCv) waterCv = document.createElement("canvas");
-      if (waterCv.width !== vw || waterCv.height !== vh) { waterCv.width = vw; waterCv.height = vh; }
-      g = waterCv.getContext("2d");
-      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.clearRect(0, 0, vw, vh);
-      g.translate(-vx, -vy); g.imageSmoothingEnabled = false;
-    }
-    ux0 = Math.min(ux0, x0); uy0 = Math.min(uy0, y0); ux1 = Math.max(ux1, x1); uy1 = Math.max(uy1, y1);
+    if (x1 > x0 && y1 > y0) { wet.push([b, x0, y0, x1, y1]); ux0 = Math.min(ux0, x0); uy0 = Math.min(uy0, y0); ux1 = Math.max(ux1, x1); uy1 = Math.max(uy1, y1); }   // (else its water isn't in view)
+  }
+  if (!wet.length) return;
+  const cw = Math.ceil((ux1 - ux0) / 64) * 64, ch = Math.ceil((uy1 - uy0) / 64) * 64;   // (in steps of 64 px: not a new canvas at each step of the view)
+  if (!waterCv) waterCv = document.createElement("canvas");
+  if (waterCv.width !== cw || waterCv.height !== ch) { waterCv.width = cw; waterCv.height = ch; }
+  g = waterCv.getContext("2d");
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.clearRect(0, 0, cw, ch);
+  g.translate(-ux0, -uy0); g.imageSmoothingEnabled = false;
+  for (const [b, x0, y0, x1, y1] of wet) {
+    const w = b.water, n = B * 16, X = b.bx * n, Y = b.by * n, st = WATER.strip;
     const bw = x1 - x0, bh = y1 - y0;
     g.save(); g.beginPath(); g.rect(x0, y0, bw, bh); g.clip();
     // the bottom, in strips that slide: refraction (clear water, waterbed.js: the engine draws the bed, the tint and the foam; here only the waves and the glints)
@@ -200,8 +203,5 @@ function drawWater(vis, ox, oy, t) {
     }
     g.restore();
   }
-  if (!g) return;
-  waterView = {x: vx, y: vy};
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(waterCv, ux0 - vx, uy0 - vy, ux1 - ux0, uy1 - uy0, ox + ux0 * zoom, oy + uy0 * zoom, (ux1 - ux0) * zoom, (uy1 - uy0) * zoom);
+  waterView = {x: ux0, y: uy0};
 }
