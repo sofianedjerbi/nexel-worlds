@@ -25,6 +25,15 @@
   .arrow { font-size:28px; color:var(--gold); padding:0 4px 40px; }
   ul { margin:8px 0 0; padding-left:20px; } li { margin:4px 0; }
   code { color:var(--on); }
+  .voice { display:grid; grid-template-columns:170px 1fr; gap:6px 14px; align-items:start; padding:10px 0; border-top:var(--q) solid var(--lo); }
+  .voice:first-of-type { border-top:0; }
+  .voice b { color:var(--on); font-size:18px; display:block; } .voice small { color:var(--soft); font-size:13px; display:block; line-height:1.35; }
+  .plays { display:flex; flex-wrap:wrap; gap:8px; }
+  .who { color:var(--soft); font-size:13px; width:100%; margin-top:2px; }
+  button.play { font:inherit; font-size:14px; color:var(--ink); background:var(--hi); border:0; padding:5px 10px; cursor:pointer;
+    box-shadow:inset var(--q) var(--q) 0 #6a6290, inset calc(-1 * var(--q)) calc(-1 * var(--q)) 0 var(--lo), 0 0 0 var(--q) var(--edge); }
+  button.play:hover { background:#5a5280; } button.play.on { background:var(--gold); color:var(--edge); }
+  .tri { display:inline-block; width:0; height:0; border-left:9px solid currentColor; border-top:6px solid transparent; border-bottom:6px solid transparent; margin-right:7px; vertical-align:-1px; }
 </style>
 </head>
 <body>
@@ -42,11 +51,17 @@
     </ul>
   </div>
   <div id="list"></div>
+  <div class="box" id="voices">
+    <h2>Voices</h2>
+    <div class="what">A robot talks with the same recorded syllables as a person, on the same beat, each in a voice of its own from its name; only the sound is made a machine's. Pick one: it goes into the game as it is here (<code>web/js/robot_voice.js</code>).</div>
+    <div id="voicerows"></div>
+  </div>
   <div class="box">
     <h2>In the game</h2>
     <ul>
       <li>An AI player is drawn as the robot of its race, in the world and in the list of who is here. People are drawn as before.</li>
       <li>An AI player's race comes from its name, so they are not all the same.</li>
+      <li>An AI player talks in the robot voice chosen above; people keep their babble.</li>
     </ul>
   </div>
 </main>
@@ -89,5 +104,9 @@ const cell = (label, night, ...canvases) => { const d = document.createElement("
   requestAnimationFrame(tick);
 })();
 </script>
+<script src="voices.js"></script>
+<script src="web/js/babble.js"></script>
+<script src="web/js/robot_voice.js"></script>
+<script>voiceRows();</script>
 </body>
 </html>
