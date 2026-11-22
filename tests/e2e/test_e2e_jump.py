@@ -246,3 +246,43 @@ def test_a_step_jump_by_a_cliffs_foot_keeps_the_camera_and_the_window_steady(gam
     feet = [r[7] for r in rec if r[4] == rec[0][4]]                                    # (while the pitch is as it was: the tilt after, back to the open sky's pitch once on the step, moves them as a pitch does)
     assert max(feet) - min(feet) <= 1.5, feet
     assert not game.errors, game.errors
+
+
+# after each frame drawn: [ms, your x, the drawn y of a fixed place of the land by you (art px), your feet's (art px, rounded as the sprite is)]
+DRAWN = """([ox, oy, oz]) => { window.__px = []; window.__pxOn = true; if (!window.__pxHook) { window.__pxHook = true; const show = HdView.show;
+  HdView.show = (...A) => { const r = show(...A); if (window.__pxOn) { const p = ents.get('agent' + myId), lv = HdLook.level, a = HdLook.art(); if (p && a) {
+    const o = HdLook.screenOf(ox + .5, oy + .5, oz), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2]); __px.push([performance.now(), p.x, o[1] / a.u, Math.round(b[1] / a.u)]); } } return r; }; } return 1; }"""
+
+
+def drawn_over(game, act):
+    x, y = game.pos()
+    game.rest()
+    game.js(DRAWN, [x, y, game.server()["z"]])
+    act()
+    game.sleep(300)
+    rec = game.js("(() => { __pxOn = false; return __px; })()")
+    game.rest()
+    return x, rec
+
+
+@pytest.mark.realtime
+def test_the_land_moves_by_whole_art_px_never_back_and_your_feet_stay_put(game):
+    """"It is still jumping vertically by a few pixels": the eye's place was rounded to 1/16 tile and 1/16 level, so up a step
+    the land went 1.6 px a frame, drawn 1 or 2 px on, and your body (rounded to a px as every sprite) a px up and down (3 screen
+    px on a phone) at every step. Now: walking flat and hopping the land does not move up or down at all; up a step it goes
+    whole art px, one way, a px a frame at the most (on a frame of 1/60 s); your feet keep their px."""
+    _, flat = drawn_over(game, lambda: game.hold(["d"], 500))
+    _, hop = drawn_over(game, lambda: (game.press("Space", 0), game.sleep(350)))
+    for r in (flat, hop):
+        assert len(r) > 5 and max(v[2] for v in r) - min(v[2] for v in r) < .01 and len({v[3] for v in r}) == 1, r[:4]   # (zero, on flat ground and through a hop)
+    step_east(game)
+    x, r = drawn_over(game, lambda: game.hold(["d"], 600))
+    assert game.server()["z"] == 1 and len(r) > 10, game.server()
+    d = [(b[2] - a[2], max(1, round((b[0] - a[0]) * .06))) for a, b in zip(r, r[1:])]
+    moves = [v for v, _ in d if abs(v) > .01]
+    assert len(moves) >= 4 and all(abs(v - round(v)) < .02 for v in moves), moves               # whole art px
+    assert all(v > 0 for v in moves), moves                                                      # one way
+    assert all(abs(v) <= cap + .02 for v, cap in d), d                                           # a px a frame at the most
+    feet = [v[3] for v in r]
+    assert max(feet) - min(feet) <= 1, feet
+    assert not game.errors, game.errors

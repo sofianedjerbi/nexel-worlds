@@ -89,7 +89,10 @@ const VoxStyle = (() => {
       }
       const t = Math.tan(c.fov * Math.PI / 360), d = RH / (32 * t), eye = at.map((a, i) => a + dir[i] * d), n = .5, f = 200;
       const P = new Float32Array(16); P[0] = 1 / t / (RW / RH); P[5] = 1 / t; P[10] = (f + n) / (n - f); P[11] = -1; P[14] = 2 * f * n / (n - f);
-      return {m: mul(P, look(eye, at)), eye};
+      const m = mul(P, look(eye, at)); if (!v.pin) return {m, eye};
+      // (v.pin(pr) -> [dx, dy]: px to move the whole picture by, land and sprites alike, pr(x, y, z): a place's px as drawn without it. The caller puts the land on whole px with it)
+      const [dx, dy] = v.pin((x, y, z) => { const q = gp(x, y, z), w = m[3] * q[0] + m[7] * q[1] + m[11] * q[2] + m[15]; return [((m[0] * q[0] + m[4] * q[1] + m[8] * q[2] + m[12]) / w * .5 + .5) * RW, (.5 - (m[1] * q[0] + m[5] * q[1] + m[9] * q[2] + m[13]) / w * .5) * RH]; });
+      const kx = 2 * dx / RW, ky = 2 * dy / RH; for (const i of [0, 4, 8, 12]) { m[i] += kx * m[i + 3]; m[i + 1] -= ky * m[i + 3]; } return {m, eye};
     }
     const project = (m, x, y, z) => { const dn = Math.max(0, lastB[1] - 1 - y), p = gp(x, y, z - lastB[0] * VoxStyleGLSL.sink(dn) / H),   // (sunk with the bend north of you, as the shader sinks the land: what stands there stood in the air past the bend, and the aim was off)
       w = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15]; return [(m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12]) / w, (m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13]) / w, (m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14]) / w]; };   // (the same sums, no arrays made: a few hundred a frame)
