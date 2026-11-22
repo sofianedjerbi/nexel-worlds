@@ -1,7 +1,7 @@
 """A stair and a passage one tile wide in the HD look, and what stands in the x-ray window (vox_style_glsl.js,
 vox_style_land.js, vox_style.js, hd.js, hd_ease.js): a dug stair's treads are warm steps under the open sky as under the
 land (they were grey squares: the sun's shade on bare earth), lighter at the top than at the bottom; over a passage one
-tile wide the section is thin and the floor is a good part of the hole; what stands in a deep room is as dim as its
+tile wide the section is the ground's height and the floor a whole tile of the hole; what stands in a deep room is as dim as its
 floor, you are not; the plants over your room go and come over a few frames, not in one; a paint that is not there is
 never drawn as earth brown, and no px is drawn from one on ten walks down the stair and back; on grey stone the hole has
 a darker lip."""
@@ -34,7 +34,7 @@ def calm(g):
 def at(g, x, y, z, n=1):
     g.rpc("dev_teleport", x=x, y=y, z=z)
     g.arrive()
-    g.wait(f"HdLook.win.a === 1 && HdLook.win.n >= {n} && !HdLook.busy && HdLook.cam.pitch > 67.9 && HdLook.level[1] === {z}", timeout=8000)
+    g.wait(f"HdLook.win.a === 1 && HdLook.win.n >= {n} && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1 && HdLook.level[1] === {z}", timeout=8000)
     g.js("(() => { WayShow.paint = () => {}; return 1; })()")
     g.rest()
 
@@ -44,11 +44,7 @@ def test_a_stair_s_treads_are_warm_steps_lighter_at_the_top_and_the_floor_is_a_g
     calm(g)
     x, y = stair(g)
     at(g, x + 5, y, -5)
-    g.js("HdLook.nowin = true")                                                  # (the treads' own paint: five down the trench's south wall hides you, and the x-ray window opens, hd_level.js hides)
-    g.wait("HdLook.win.a === 0")
-    g.frames(3)
-    treads = {i: g.js(EDGE, [x + i, y, -i]) for i in (2, 3, 4)}
-    g.js("HdLook.nowin = false")
+    treads = {i: g.js(EDGE, [x + i, y, -i]) for i in (2, 3, 4)}                # (in the window: five down the trench's south wall hides you, and it is cut, hd_level.js hides. From 58 degrees, without it, that wall hid the treads whole)
     at(g, x + 9, y, -9)
     treads.update({i: spot(g, x + i + .5, y + .5, -i) for i in (7, 8)})     # 2 to 4 under the open sky (their north edge: the trench's own south wall hides the rest), 7 and 8 under the land, from in there
     assert all(warm(c) for c in treads.values()), treads                         # steps you can walk: warm earth, the open ones too (they were (106, 90, 85): grey)
@@ -60,13 +56,13 @@ def test_a_stair_s_treads_are_warm_steps_lighter_at_the_top_and_the_floor_is_a_g
     # the passage at its foot, one tile wide, 14 deep, a roof three over its floor: the section over its north wall is the ground's true height in strata, the floor wider than its own wall
     at(g, x + 17, y, -14)
     top = g.js(f"HdLook.screenOf({x + 17.5}, {y}, -11)")
-    col = g.js("([px, py]) => { const k = devicePixelRatio, o = []; for (let j = 1; j < 40; j++) o.push([...HdLook.read(Math.round(px * k), Math.round((py - j * zoom) * k), 1, 1).data.slice(0, 3)]); return o; }", top)
+    col = g.js("([px, py]) => { const k = devicePixelRatio, o = []; for (let j = 1; j < 60; j++) o.push([...HdLook.read(Math.round(px * k), Math.round((py - j * zoom) * k), 1, 1).data.slice(0, 3)]); return o; }", top)
     sect = next((i for i, c in enumerate(col) if c[1] > c[0] + 8), len(col))    # rows of earth over the wall's top, up to the meadow's green
     a, b, w = (g.js(f"HdLook.screenOf({x + 17.5}, {y + dy}, {z})")[1] / g.js("zoom") for dy, z in ((0, -14), (1, -14), (0, -11)))
     floor, wall = b - a, a - w
     assert sect >= 24, (sect, col)                                               # (the ground over the passage's ceiling, 11 levels, at its true height from this eye, in strata: test_e2e_hd_stair.py. It was capped at half the floor: a passage 14 down read 2 down)
     assert sum(col[1]) < sum(col[sect - 4]) * .7, col                            # darker down: one deep wall, not a slab of one tone lying over the floor
-    assert floor / (floor + wall) >= .5, (floor, wall, sect)
+    assert floor / (floor + wall) >= .3, (floor, wall, sect)                    # (from 58 degrees a tile's floor is 13.6 px, a level of wall 8.5: the floor a whole tile, a third of the hole; from 78.6 it was .6)
     assert warm(g.js(TILE, [x + 16, y, -14])) and g.js("HdLook.catSeen()") > .8
 
 
@@ -149,18 +145,42 @@ def test_on_grey_stone_the_hole_has_a_darker_lip_and_on_a_meadow_a_light_one(bro
     x, y = g.pos()
     g.stamp(-9, -9, ["." * 34] * 19)
     g.rest()
-    g.rpc("dev_col", tiles=[[x + 12 + i, y + j] for j in range(-5, 6) for i in range(-5, 6)], col=[6])     # a block of stone, level 6
+    g.rpc("dev_col", tiles=[[x + 12 + i, y + j] for j in range(-5, 10) for i in range(-5, 6)], col=[6])    # a block of stone, level 6 (to y + 9: the ground a tile past the lip, which from 58 degrees is 3 tiles south of the room)
     out = {}
     for name, cx, lv in (("meadow", x, 0), ("stone", x + 12, 6)):
         g.rpc("dev_col", tiles=[[cx + i, y + j] for j in (-1, 0) for i in (-1, 0, 1)], col=[lv - 5, lv - 2, lv])
         at(g, cx, y, lv - 5, 6)
-        scan = [g.js(PX, [cx + 1.5, y + 1 + i * .02, lv]) for i in range(60)]     # south of the room: from the hole's edge out onto the ground
-        k = next(i for i, c in enumerate(scan) if not warm(c))                   # (before it: the room's floor, seen in the hole)
+        scan = [g.js(PX, [cx + 1.5, y + 1 + i * .02, lv]) for i in range(250)]    # south of the room: from the hole's edge out onto the ground (from 58 degrees a floor 5 down shows 3 tiles south of its wall's plane)
+        f = next(i for i, c in enumerate(scan) if warm(c))                       # (from 58 degrees the room's north wall and section stand over the wall's plane: past them, the floor)
+        k = next(i for i, c in enumerate(scan) if i > f and not warm(c) and not (c[0] > c[1] > c[2] and sum(c) < 200))     # (before it: the room's floor, seen in the hole, and its dark brown foot row)
+        ly = y + 1 + k * .02                                                     # (the lip's place on the ground's plane)
         # (the ground beyond the lip and far from it: the colour most px of a piece of it have, a tile wide. One px, and
         # the middle one of a row of eleven, were a mark of the stone's own picture, 447 for 495, wherever you woke with one under it: one run in six)
-        out[name] = (scan[k], g.js(MOST, [cx + 1, y + 2.15, cx + 2, y + 2.45, lv]), g.js(MOST, [cx + 1, y + 3.2, cx + 2, y + 3.8, lv]))
+        out[name] = (scan[k], g.js(MOST, [cx + 1, ly + .15, cx + 2, ly + .45, lv]), g.js(MOST, [cx + 1, ly + 1.2, cx + 2, ly + 1.8, lv]))
     lip, far, ground = out["stone"]
     assert max(ground) - min(ground) < 30, out                                   # (grey)
     assert lum(lip) < lum(ground) * .8 and lum(far) > lum(ground) * .93, out     # stone: its own px a good step darker along the hole's near edge, then the stone as it is
     lip, far, ground = out["meadow"]
     assert lum(lip) > lum(ground) + 12 and lum(far) < lum(ground) + 12, out      # a meadow: the lit lip, as it was
+
+
+# the mean light (r + g + b) of each screen row across a box of the land, west to east from x0 to x1, its rows from
+# the plane's y0 to y1 at height z, two art px past each end (a rim's rows)
+ROWS = """([x0, x1, y0, y1, z]) => { const k = devicePixelRatio, a = HdLook.screenOf(x0, y0, z), b = HdLook.screenOf(x1, y1, z), r0 = Math.round(a[1] * k) - 2 * zoom * k, r1 = Math.round(b[1] * k) + 2 * zoom * k, w = Math.round((b[0] - a[0]) * k);
+  const d = HdLook.read(Math.round(a[0] * k), r0, w, r1 - r0).data, o = []; for (let j = 0; j < r1 - r0; j++) { let s = 0; for (let i = 0; i < w; i++) { const p = (j * w + i) * 4; s += d[p] + d[p + 1] + d[p + 2]; } o.push(Math.round(s / w)); } return o; }"""
+
+
+def test_a_stair_dug_seven_deep_seen_from_beside_it_has_no_dark_line_across_it(browser, server):
+    """The owner's stair (caves world, x -4..2, y -11): one tile wide, dug east from one level down to seven, seen from the
+    meadow two tiles north. A drop of three or more had a cliff's dark rim, two px, on every top round it: a dark line
+    under its far rim, one over its near rim and one down its end, from where it got three deep: "weird borders across
+    that hole". A hole's edges keep the hole's lip: no row across its deep part darker than the wall's paint is."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    g.stamp(-6, -3, ["." * 15] * 9, levels=["8" * 15] * 3 + ["8" * 3 + "7654321" + "8" * 5] + ["8" * 15] * 5)
+    g.rest()
+    g.rpc("dev_teleport", x=x, y=y - 2); g.arrive(); g.rest()
+    rows = g.js(ROWS, [x - .8, x + 3.8, y, y + 1, 8])                            # the stair's deep part: 3 deep at x - 1, 7 at x + 3
+    wall = sorted(rows)[len(rows) // 2]
+    assert min(rows) > wall * .7, (wall, rows)                                   # (the cliff's rim: a row at ~.55 of the wall's light, two of them under the far rim)

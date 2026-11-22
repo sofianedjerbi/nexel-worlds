@@ -29,12 +29,13 @@ async function sayBuffers() {
   }));
   return recorded;
 }
-// One line into context `a` from its time 0: the person through babble() itself, a robot through robotSay().
+// One line into context `a` from its time 0: the person through babble() itself, the game's robot voice (ROBOT_KIND)
+// through babble() too, as an AI player's line in the game, the other robots through robotSay().
 function speak(a, kind, name, text) {
   const shout = shouted(text), was = [audio, soundOut];
   audio = a; soundOut = a.destination;
   try {
-    if (kind === "person") return babble(name, text, undefined, undefined, shout);
+    if (kind === "person" || kind === ROBOT_KIND) return babble(name, text, undefined, undefined, shout, kind === ROBOT_KIND);
     return robotSay(a, a.destination, recorded, name, text, shout, kind, a.currentTime + .02);
   } finally { [audio, soundOut] = was; }
 }

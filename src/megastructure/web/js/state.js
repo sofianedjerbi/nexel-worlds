@@ -94,8 +94,10 @@ function viewRect(margin) {
 setInterval(() => {
   if (!spec || spec.readyState !== 1 || (typeof TitleScene !== "undefined" && TitleScene.on)) return;     // (the first screen's island is the page's own: title_scene.js)
   const [x, y, w, h0] = viewRect(6), h = h0 + 6;   // (+6 rows south: high ground there is drawn up into view, with what's on it)
-  const key = [Math.round(x / 4), Math.round(y / 4), w, h].join();
-  if (key !== lastWatch) { lastWatch = key; sendSpec({op: "watch", x, y, w, h}); }
+  { // who is there is told of as far as the HD look shows land (HdLook.reach: a hill 26 rows north, past the top-down screen's rows), 4 tiles more: in before it is in view
+    const r = typeof HdLook !== "undefined" && HdLook.live && HdLook.reach, ex = r ? Math.min(x, r[0] - 4) : x, ey = r ? Math.min(y, r[1] - 4) : y;
+    const ew = (r ? Math.max(x + w, r[2] + 5) : x + w) - ex, eh = (r ? Math.max(y + h, r[3] + 5) : y + h) - ey, key = [Math.round(ex / 4), Math.round(ey / 4), ew, eh].join();
+    if (key !== lastWatch) { lastWatch = key; sendSpec({op: "watch", x: ex, y: ey, w: ew, h: eh}); } }
   const now = performance.now();
   for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++)
     for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) {
@@ -235,7 +237,7 @@ function onEvent(e) {
   if (e.type === "picnic") { emote(e.name, "love"); burst(e.x, e.y, "food", 6, {dy: -.6, g: 3}); }
   if (e.type === "mail" && e.to === me && e.from !== me) sfx("mail");
   if (e.type === "shout" && e.from !== me) sfx("shout", e.x, e.y, 30);
-  if (e.type === "say" || e.type === "shout") babble(e.from, e.text, e.x, e.y, e.type === "shout");      // (babble.js: a run of syllables, yours too)
+  if (e.type === "say" || e.type === "shout") babble(e.from, e.text, e.x, e.y, e.type === "shout", e.bot);      // (babble.js: a run of syllables, yours too; an AI player's in its robot voice)
   if (e.type === "give" && e.to === me) sfx("give");
   if ((e.type === "join" || e.type === "leave") && e.name !== me) sfx(e.type);
   if (e.type === "sign") sfx("write", e.x, e.y);

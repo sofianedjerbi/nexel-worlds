@@ -11,15 +11,23 @@
 //   - the level you chose is kept for the next visit.
 const ZOOM = {min: 2, max: 6, ms: 140, to: zoom, busy: false, acc: 0, at: 0, stepped: 0, hide: 0, el: null};
 const zoomLeast = () => (me ? ZOOM.min : 1);
-{ const z = +localStorage.getItem("megastructure-zoom"); if (z >= 1 && z <= ZOOM.max && z === Math.round(z)) zoom = z; }
+{ const z = +localStorage.getItem("megastructure-zoom"); if (z >= 1 && z <= ZOOM.max && z === Math.round(z)) ZOOM.saved = z; }
+// The home screen has its own view, the island at the first level, never zoomed ("do not allow zooming out/in in the
+// homescreen, it breaks the view"); the level you chose comes back as you wake up (title.js titleDraw calls this).
+function zoomForTitle(open) {
+  const q = +new URLSearchParams(location.search).get("zoom"), base = q >= 1 ? q : Math.min(innerWidth, innerHeight) < 520 ? 2 : 3;   // (a phone's first level is 2: touch.js)
+  const want = open ? base : (ZOOM.saved || base);
+  if (zoom !== want && !ZOOM.busy) { zoom = ZOOM.to = want; }
+}
 
 function zoomBy(d) {
+  if (typeof titleOpen === "function" && titleOpen()) return;      // (the home screen is not zoomed)
   if (!ZOOM.busy) ZOOM.to = zoom;
   const to = Math.max(Math.min(zoomLeast(), ZOOM.to), Math.min(ZOOM.max, ZOOM.to + d));    // (a view already under the least is left where it is)
   zoomSign(to, to === ZOOM.to);
   if (to === ZOOM.to) return;
   ZOOM.to = to;
-  localStorage.setItem("megastructure-zoom", to);
+  localStorage.setItem("megastructure-zoom", to); ZOOM.saved = to;
   if (!ZOOM.busy) zoomLeg();
 }
 // One level at a time. The canvas is never shown smaller than the window (its edges would show): going in, the picture

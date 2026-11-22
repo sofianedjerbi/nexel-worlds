@@ -8,7 +8,7 @@ import pytest
 from conftest import Game, new_name
 from test_e2e_hd_sun import LIGHT, hd, settled
 
-STEEP = 78.6        # the eye's pitch from above (hd.js api.steep: 68 when a level was 8 px; tan 78.6 = 2 tan 68)
+STEEP = 58          # the eye's pitch from above (hd.js STEEP: 78.6 till the x-ray cut what hides you, 68 when a level was 8 px)
 
 # the picture now, kept under a name; two of them: the share of px that differ, the share that differ outside a box (px), the differing px's own box
 # (outside the box by more than a step of rounding: the window's soft light ends a little beyond its rim, and where the meadow's own light
@@ -118,7 +118,7 @@ def test_a_tunnel_one_level_under_the_meadow_opens_a_small_trench_not_the_whole_
 def test_in_a_trench_two_deep_under_the_open_sky_the_floor_you_stand_on_is_seen_and_pointed_at(browser, server):
     """(the owner in the open trench at their cave's mouth, at the surface's pitch: "perspective is just bugged. i should have xray here": the trench's south wall hid the floor, the cat stood as if on the meadow.
     Then a window cut the south wall away and the floor was drawn south of the rim: "a drawer pulled out onto the grass".) Two levels under the land round you the eye looks from above:
-    the floor shows inside the trench's rim, as it is (no window under the open sky), and what you see there is what a click picks."""
+    the floor shows as it is (from 58 degrees the south wall that hides you is cut), and what you see there is what a click picks."""
     g = hd(browser, server)
     g.js("setOpt('clouds', 0); setOpt('rays', 0); setOpt('shimmer', 0); Target.off = true")   # (the boxes of what the keys act on lie on the floor read here, from the first frame: target.js)
     g.hour(.3, still=True)
@@ -129,9 +129,9 @@ def test_in_a_trench_two_deep_under_the_open_sky_the_floor_you_stand_on_is_seen_
     g.rpc("dev_col", tiles=[[x + i, y] for i in range(-3, 4)], col=[z - 2])     # a trench one tile wide, two levels deep, open to the sky
     g.settle(f"topAt({x}, {y}) === {z - 2}")
     g.rpc("dev_teleport", x=x, y=y, z=z - 2)
-    g.wait("HdLook.cam.pitch === HdLook.steep && !HdLook.busy", timeout=4000)
+    g.wait("HdLook.cam.pitch === HdLook.steep && !HdLook.busy && HdLook.win.a === 1", timeout=4000)
     g.rest()
-    assert g.js("HdLook.win.n") == 0 and g.js("HdLook.level[0]") == z - 2
+    assert g.js("HdLook.level[0]") == z - 2 and g.js("HdLook.catSeen()") > .9      # (from 58 degrees its south wall hides a part of you: cut, the window on the trench, hd.js PART)
     green = lambda c: c[1] > c[0] + 15 and c[1] > c[2] + 40
     seen = [g.js(AT_, [x + dx + .5, y + .25, z - 2]) for dx in (-1, 1)]
     assert not any(green(c) for c in seen), seen                      # (the floor beside you, its north part: its own px, inside the rim)
@@ -139,7 +139,7 @@ def test_in_a_trench_two_deep_under_the_open_sky_the_floor_you_stand_on_is_seen_
         p = g.js(f"(() => {{ const a = HdLook.screenOf({x + dx + .5}, {y + .25}, {z - 2}), q = HdLook.pick(a[0], a[1]); return q && [q.x, q.y]; }})()")
         assert p == [x + dx, y], (dx, p)
     assert g.js("HdLook.catSeen()") > .3
-    for dx, dy in [(-7, 0), (7, 0), (5, -3), (-5, 5), (-1, 1), (1, 1)]:   # (the meadow round the trench, just south of its rim too: no floor hangs there)
+    for dx, dy in [(-7, 0), (7, 0), (5, -3), (-5, 5), (-1, 3), (1, 3)]:   # (the meadow round the trench, past the cut south of it too: no floor hangs there. From 58 the cut wall shows the floor down to 1.3 tiles past the rim)
         c = g.js(AT_, [x + dx + .5, y + dy + .4, z]); assert c[1] >= c[0], (dx, dy, c)
 
 
@@ -195,16 +195,16 @@ def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at
             g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-12, 13) for i in range(-14, 15)], col=[z]); g.rest()
             z = g.js(f"topAt({x}, {y})")
             base = g.js("HdLook.cam.pitch")
-            g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[z - 24, z - 21, z])   # a room 7 x 5 under 21 levels of land
-            g.settle(f"surfacesAt({x + 3}, {y + 2})[0] === {z - 24}")
-            g.rpc("dev_teleport", x=x, y=y, z=z - 24)
-            g.wait((WIN % 35) + " && HdLook.cam.pitch > 67.5", timeout=5000)
+            g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[z - 18, z - 15, z])   # a room 7 x 5 under 15 levels of land (24 deep was past the eye: from 58 degrees on a phone held sideways the eye, 26 tiles off, is 22 levels over you: deeper, it is inside the land, the screen backdrop. At 78.6 that was 25)
+            g.settle(f"surfacesAt({x + 3}, {y + 2})[0] === {z - 18}")
+            g.rpc("dev_teleport", x=x, y=y, z=z - 18)
+            g.wait((WIN % 35) + " && HdLook.cam.pitch > HdLook.steep - .1", timeout=5000)
             g.spawn("chicken", 1, 0, still=300)
             g.wait("HdLook.bodies().length > 0", timeout=4000)
             g.sleep(500)
             assert base < 53 and g.js("HdLook.cam.pitch") == STEEP, (w, h, base)
             assert g.js("HdLook.bare()") == 0, (w, h, g.js("HdLook.bare()"))          # (no px of the backdrop under the horizon: it was a flat blue hole a quarter of a phone held sideways)
-            assert [b for b in g.js("HdLook.bodies()") if b[0] != "agent"] == [["chicken", z - 24]], g.js("HdLook.bodies()")   # (not another test's player up on the land: it failed beside any test that stands near; it was drawn up on the grass)
+            assert [b for b in g.js("HdLook.bodies()") if b[0] != "agent"] == [["chicken", z - 18]], g.js("HdLook.bodies()")   # (not another test's player up on the land: it failed beside any test that stands near; it was drawn up on the grass)
             assert g.js("HdLook.catSeen()") > .8
             g.wait("!HdLook.busy && HdLook.u === 1")
             g.sleep(300)

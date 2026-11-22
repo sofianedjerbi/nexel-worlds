@@ -30,7 +30,7 @@ class Sessions:
             aid = max(self.agents, default=0) + 1
             x, y = self.find_spawn(aid)
             a = Agent(aid, name, x, y, persona=persona[:200])
-            if persona and persona != "human":             # the AI players are not all cats: each name has its own race
+            if a.bot:             # the AI players are not all cats: each name has its own race
                 a.race = RACES[zlib.crc32(name.encode()) % len(RACES)]
             self.agents[aid] = a
             self.by_name[name] = a

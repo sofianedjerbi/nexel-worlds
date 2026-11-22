@@ -12,7 +12,7 @@ LOGGED = "(() => { const l = window.__fr; window.__fr = null; return l.filter((r
 
 def test_in_and_out_of_a_tunnel_under_a_hill_the_eye_and_your_body_do_not_jump(browser, server):
     """("When I go under a mountain the sprite stays up and glitches.") A hill eight high south of a meadow, a tunnel
-    into it from the meadow. Walking south into it the eye was over the hill (78 degrees, hd_level.js clear); under its
+    into it from the meadow. Walking south into it the eye was over the hill (78 degrees then, 58 now: hd.js STEEP, hd_level.js clear); under its
     roof the surface's pitch went to 36 while the tilt from above had just begun: the eye fell to 49 and came back to 78,
     the land swinging. Walking out north, the eye's tilt held 300 ms after the roof: you were drawn lifted onto the
     hill's face as in a hole (hd_level.js lift), 57 px up, then dropped back. Now: the pitch goes one way, your body
@@ -31,8 +31,9 @@ def test_in_and_out_of_a_tunnel_under_a_hill_the_eye_and_your_body_do_not_jump(b
         g.sleep(700)
         fr = g.js(LOGGED)
         p = [r[0] for r in fr]
-        k = next(i for i, v in enumerate(p) if v > 70)                     # (over the hill: the eye looks down over it)
-        assert min(p[k:]) > 70, [round(v) for v in p]                      # never back to the surface's on the way in (it was 49)
+        top = g.js("HdLook.steep") - 1                                     # (the steepest the eye looks down, hd.js STEEP: 58; it was 78)
+        k = next(i for i, v in enumerate(p) if v > top)                    # (over the hill: the eye looks down over it)
+        assert min(p[k:]) > top, [round(v) for v in p]                     # never back to the surface's on the way in (it was 49)
         go(g, x, y + 5, 0)                                                 # in the tunnel
         g.js(LOG)
         g.hold(["w"], 1000)                                                # out
@@ -61,7 +62,7 @@ def test_in_a_hill_s_tunnel_the_hill_s_face_outside_is_stone_not_black(browser, 
     g.rpc("dev_col", tiles=[[x, y + j] for j in range(-9, -1)], col=[0, 2, 8])
     g.rest()
     try:
-        go(g, x, y - 4, 0, "HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 78")    # in the tunnel, 3 tiles in
+        go(g, x, y - 4, 0, "HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1")    # in the tunnel, 3 tiles in
         face = [[x + i + .5, y - 1, z + .5] for i in (-4, -3, -2, 2, 3, 4) for z in range(0, 7)]   # the hill's face over the meadow, beside the mouth
         lum = [g.js(LUM, p) for p in face]
         black = [p for p, v in zip(face, lum) if v < 20]

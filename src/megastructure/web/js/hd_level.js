@@ -43,7 +43,7 @@ const HdLevel = (() => {
   const rim = (tx, ty, L) => Math.max(L, topAt(tx, ty), topAt(tx + 1, ty), topAt(tx - 1, ty), topAt(tx, ty - 1), topAt(tx, ty + 1));   // (the level of the land round your hole: its rim)
   // hides(tx, ty, L, k, px) -> the land south of you over the eye's line (k: its climb a tile) hides all of you that shows (a body is a level; px: art px of it under your feet's line, a swimmer's sink): the x-ray window (hd.js).
   // ONE answer for any wall between the eye and you under the open sky: a shaft's south wall, a gorge's bank, a cliff over a river. (You were LIFTED to the rim south of you instead: in a river at a cliff 12 high, drawn on its top edge)
-  const hides = (tx, ty, L, k, px = 0) => over(tx, ty, L, k) >= 1 - px / 16;
+  const hides = (tx, ty, L, k, px = 0, part = 1) => over(tx, ty, L, k) >= part - px / 16;   // (part: how much of you hidden is enough: all of you, or a quarter where the eye looks down no steeper, hd.js PART)
   // veils(x, y, L, at) -> land south of (x, y) hides ANY of its floor at L, AS DRAWN (at(x, y, z): the picture's px of a place, hd.js eng.at: the eye's own perspective and the bend): the north edge of a top over
   // L + 1 is higher on the screen than the floor's south edge. Such a tile of your space is in the window (hd.js host.sunk). (It was hides, whole, by the eye's mean climb: a tile the cliff's top covered
   // in part stayed out, and that part of the cliff's top stood in the window, its dark rim over the river: "an outline floating in the water", the river shown again past it)
@@ -56,7 +56,7 @@ const HdLevel = (() => {
     const lw = (b[0] - a[0]) / Math.max(1e-6, c[0] - a[0]);   // (< 0: tops lean west here, the columns east of the floor lean onto it)
     for (let d = 1; d <= 20; d++) for (let i = -12; i <= 12; i++) { if (Math.abs(i) > 2 && (i * lw > 0 || Math.abs(i) > 2 + Math.abs(lw) * (topAt(x + i, y + d) - L))) continue;
       const t = topAt(x + i, y + d); if (t > L + 1 && !matAt(x + i, y + d)) { const q = box(at, x + i, y + d, t); if (q && q[1] < f[3] - .5 && q[2] > f[0] + .5 && q[0] < f[2] - .5) return true; } } return false; }
-  // shut(tx, ty, L, k) -> the floor of your hole is HIDDEN from the eye: the open ground through your tile from north to south (tiles under L + 1: lower than your head), times k (levels the eye's line climbs a tile), is less than
+  // shut(tx, ty, L, k) -> the floor of your hole is HIDDEN from the eye: the open ground through your tile from north to south (tiles under L + 1: lower than your head), times k (hd.js NARROW: 5, as the eye's line climbed a tile from 78.6 degrees), is less than
   // the hole's depth under its rim. Only then do its walls tell its depth by going dark (vox_style_glsl.js ho): a shaft, a pit one or two wide across. A gorge five wide whose floor and far wall are seen
   // kept that dark too: its north wall black under its first level within six tiles of you, a black stepped slab, whenever you stood at its south bank (the rim, from the tiles beside you, 12 there)
   // An OPEN hole only: under a roof (a tunnel, a cave) the window tells the depth inside, and the dark fell on whatever wall stood within six tiles of you: walking a tunnel

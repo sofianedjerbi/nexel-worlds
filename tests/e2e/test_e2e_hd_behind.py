@@ -10,7 +10,7 @@ land does not light the meadow; under a roof who stands on the land over you is 
 from test_e2e_hd_land import AT_
 from test_e2e_hd_sun import hd
 
-STEEP = 78.6        # the eye's pitch from above (hd.js api.steep: 68 when a level was 8 px; tan 78.6 = 2 tan 68)
+STEEP = 58          # the eye's pitch from above (hd.js STEEP: 78.6 till the x-ray cut what hides you, 68 when a level was 8 px)
 
 green = lambda c: c[1] > c[0] + 15 and c[1] > c[2] + 40
 STATE = "(() => ({n: HdLook.win.n, a: HdLook.win.a, pitch: HdLook.cam.pitch, seen: HdLook.catSeen()}))()"
@@ -75,35 +75,34 @@ def test_behind_a_wall_you_built_your_body_is_behind_it_not_on_it(browser, serve
     tidy(g, x, y)
 
 
-def test_in_a_hole_the_eye_looks_from_above_and_its_floor_lies_inside_its_rim(browser, server):
+def test_in_a_hole_the_eye_looks_from_above_its_floor_inside_its_rim_and_the_wall_that_hides_you_cut(browser, server):
     """(The fourth audit's "a drawer pulled out onto the grass": the x-ray window cut the hole's south wall away and its floor was
-    drawn where it projects, south of the rim, on the meadow; a veil of the meadow over it did not help.) In any hole two deep
-    or more the eye looks from above (STEEP) and no window opens under the open sky: the hole's own south wall hides what is behind
-    it, so every px of the floor that shows lies inside the rim, and the meadow just south of the rim is grass."""
+    drawn where it projects, south of the rim, on the meadow.) In any hole two deep or more the eye looks from above (STEEP).
+    Since STEEP is 58 (it was 78.6: "hard to build"), a pit 4 deep's south wall hides a part of you: it is cut (hd.js PART),
+    the window on the pit alone: you whole, the floor drawn where it is, the meadow round the pit grass."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in (-1, 0, 1) for i in (3, 4, 5)], col=[-4])     # a pit 3 x 3, four deep
     g.rest()
-    for at in ((x + 4, y),):                                               # its middle (on its south row its south wall hides you: the x-ray window, test_e2e_hd_window.py)
-        s = go(g, *at, -4, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
+    for at in ((x + 4, y),):                                               # its middle
+        s = go(g, *at, -4, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep && HdLook.win.a === 1")
         g.js("(() => { WayShow.paint = () => {}; return 1; })()"); g.frames(3)
-        assert s["pitch"] == STEEP and s["n"] == 0, s
-        assert s["seen"] > .1, s                                           # you: whole, or one px in two where the south wall is in front
-        south = [g.js(AT_, [x + i + .5, y + 2.35, 0]) for i in (3, 4, 5)]  # the meadow a third of a tile south of the rim: no floor hangs there
-        assert all(c[1] >= c[0] for c in south), (at, south)               # (grass, a flower's px too: never the floor's brown)
-        inside = [g.js(AT_, [x + i + .5, y - .5, -4]) for i in (3, 4, 5)]  # the floor's north row: drawn, inside the rim
-        rim = [g.js("([x, y, z]) => HdLook.screenOf(x, y, z)[1]", [x + 4.5, v, 0]) for v in (y - 1, y + 2)]
-        fl = g.js("([x, y, z]) => HdLook.screenOf(x, y, z)[1]", [x + 4.5, y - .5, -4])
-        assert rim[0] < fl < rim[1] and not any(green(c) for c in inside), (rim, fl, inside)
+        assert s["pitch"] == STEEP and s["seen"] > .9, s
+        assert all(g.js(f"HdLook.winAt({i}, {j})") for i in (x + 3, x + 4, x + 5) for j in (y, y + 1))      # the floor that wall hid: in the window
+        assert not any(g.js(f"HdLook.winAt({i}, {j})") for i in (x + 2, x + 6) for j in (y, y + 2)), "the meadow round the pit is not in the window"
+        far = [g.js(AT_, [x + i + .5, y + 5.5, 0]) for i in (3, 4, 5)]     # the meadow well south of it: grass
+        assert all(c[1] >= c[0] for c in far), far
+        inside = [g.js(AT_, [x + i + .5, y - .5, -4]) for i in (3, 4, 5)]  # the floor's north row: drawn where it is (from 58 degrees a floor 4 down shows past the south rim's line: in the window, the wall cut)
+        assert not any(green(c) for c in inside), inside
     tidy(g, x, y)
 
 
 def test_a_deep_shaft_is_darker_than_a_shallow_one(browser, server):
-    """Shaft 3 and shaft 6 were the same picture (a cat in a brown box). From above, the wall strata of the north wall fill
-    more of the opening the deeper it is (3 px a level), and the walls of a hole are darker the deeper the hole is (vox_style_glsl.js:
-    2 deep light brown, 6 near black, 12 black): the opening of shaft 6 is much darker than shaft 3's, shaft 12's darker still.
-    (You stand in the openings, drawn at the rim's line: your own px, cream and purple, are not counted.)"""
+    """Shaft 3 and shaft 6 were the same picture (a cat in a brown box). The walls of a hole are darker the deeper the hole
+    is (vox_style_glsl.js: 2 deep light brown, 6 near black, 12 black), and from STEEP (58) the north wall stands tall over
+    you: the deeper the shaft, the longer the dark over you (its wall, seen through the cut of the south wall when that hides
+    you). Counted: the dark rows of the column over the shaft, from its south rim up 8 tiles (your own px are light)."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -111,15 +110,14 @@ def test_a_deep_shaft_is_darker_than_a_shallow_one(browser, server):
     g.rpc("dev_col", tiles=[[x + 7, y]], col=[-6])
     g.rpc("dev_col", tiles=[[x + 11, y]], col=[-12])
     g.rest()
-    LUM = """([x, y]) => { const a = HdLook.screenOf(x + .5, y, 0), b = HdLook.screenOf(x + .5, y + 1, 0), k = cv.width / innerWidth; let s = 0, n = 0;
-      for (let v = Math.ceil(a[1] * k) + 2; v < Math.floor(b[1] * k) - 2; v++) for (let dx = -16; dx <= 16; dx += 2) { const d = HdLook.read(Math.round(a[0] * k + dx), v, 1, 1).data; if (d[0] > 185 || d[2] > d[1] + 8) continue; s += .3 * d[0] + .59 * d[1] + .11 * d[2]; n++; } return [s / n, n]; }"""
-    g.js("HdLook.nowin = true")                                            # (the walls' own dark: shafts 6 and 12 hide you and are seen through the window)
+    DARK = """([x, y]) => { const a = HdLook.screenOf(x + .5, y - 8, 0), b = HdLook.screenOf(x + .5, y + 1, 0), k = cv.width / innerWidth; let n = 0;
+      for (let v = Math.ceil(a[1] * k); v < Math.floor(b[1] * k); v++) { let s = 0; for (const dx of [-3, 0, 3]) { const d = HdLook.read(Math.round(a[0] * k + dx), v, 1, 1).data; s += .3 * d[0] + .59 * d[1] + .11 * d[2]; } if (s / 3 < 45) n++; } return n / k; }"""
     out = {}
     for d, tx in ((3, x + 3), (6, x + 7), (12, x + 11)):
         s = go(g, tx, y, -d, "!HdLook.busy && HdLook.cam.pitch === HdLook.steep")
         assert s["pitch"] == STEEP, s
-        out[d] = g.js(LUM, [tx, y])
-    assert out[6][1] >= 6 and out[6][0] < out[3][0] - 25 and out[12][0] < out[6][0], out     # (it was 68 against 85: one picture)
+        out[d] = g.js(DARK, [tx, y])
+    assert out[6] > out[3] + 12 and out[12] > out[6] + 12, out             # (art px of dark: it was one picture, 68 against 85 of light)
     tidy(g, x, y)
 
 
@@ -196,7 +194,7 @@ def test_a_fire_under_the_land_does_not_light_the_meadow(browser, server):
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[-14, -11, 0])
     g.give(campfire=1)
     g.rest()
-    west = lambda: go(g, x - 3, y, -14, "HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.9")     # the room's west end: your own lantern does not reach its east end
+    west = lambda: go(g, x - 3, y, -14, "HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1")     # the room's west end: your own lantern does not reach its east end
     g.hour(.9, still=True)
     west()
     lum = lambda c: c[0] + c[1] + c[2]
@@ -228,7 +226,7 @@ def test_under_a_roof_a_hen_on_the_land_over_you_is_not_drawn_a_hen_in_your_room
     up = g.spawn("chicken", 0, -1, still=60000)                            # on the meadow (level 0), before the room is dug under it
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-2, 3) for i in range(-3, 4)], col=[-4, -2, 0])
     g.rest()
-    go(g, x, y, -4, "HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.9")
+    go(g, x, y, -4, "HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1")
     down = g.spawn("chicken", 2, 0, still=60000)                           # at your level: in the room
     g.wait(f"ents.has('chicken{up}') && HdLook.bodies().some((b) => b[0] === 'chicken' && b[1] === -4)", timeout=8000)
     g.rest()
@@ -279,10 +277,9 @@ def test_behind_a_cliff_the_eye_looks_down_over_it_and_you_are_whole(browser, se
         s = go(g, x + 6, y - 2)
         g.wait("HdLook.catSeen() > .9", timeout=4000)                      # (the disc opens over 120 ms)
         s = g.js(STATE)
-        assert s["pitch"] > 60 and s["seen"] > .9, s                        # all of you, from above
+        assert 50 < s["pitch"] <= STEEP and s["seen"] > .9, s              # all of you, from above as far as STEEP; what still hides you cut
         assert g.js(GROUND, [x + 6, y - 2]) > .5                           # the meadow at your feet, seen as it is (through the disc it was a checker: .15)
         s = go(g, x + 6, y + 5)
         assert s["seen"] > .95 and s["pitch"] < 36.1, s                    # in front of it: whole, the surface's pitch
     finally:
         g.rpc("dev_col", tiles=hill, col=[0])
-

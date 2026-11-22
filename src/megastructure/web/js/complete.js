@@ -15,6 +15,7 @@ const LOCAL = {coords: "the debug screen (F3): where you are", perf: "the debug 
 const comp = {items: [], note: "", at: 0, from: 0, to: 0};
 
 function askTools() {
+  askCmds();                                         // (the server's commands, each time: commands.js)
   if (tools || !me) return;
   // (listed again when they come, if a command is being typed: not in plain talk, where a list of names asked for with Tab was wiped by it)
   rpc("tools", {}).then((r) => { if (r.ok && r.tools) { tools = r.tools; if ($("chatbox").classList.contains("open") && $("say").value.startsWith("/")) suggest(); } });
@@ -58,10 +59,12 @@ function completions(text, caret, asked) {
   if ((head.match(/"/g) || []).length % 2) return null;   // (in a quoted text: yours to write)
   if (from === 0) {                                   // the command itself: a player's, or a bot's written in full
     const typed = word.slice(1).toLowerCase();
-    const all = [...Object.entries(tools || {}).filter(([n]) => n === typed).map(([n, t]) => [n, t.desc, Object.keys(t.args).length]), ...Object.entries(LOCAL).map(([n, d]) => [n, d, 0])];
+    const mine = serverCmds ? serverCmds.cmds.map((c) => [c.name, c.desc, c.args.length]) : [];      // (the server's that you may use: commands.js)
+    const all = [...Object.entries(tools || {}).filter(([n]) => n === typed && !mineCmd(n)).map(([n, t]) => [n, t.desc, Object.keys(t.args).length]), ...Object.entries(LOCAL).map(([n, d]) => [n, d, 0]), ...mine];
     return {from: 1, items: matching(all.map(([n, hint, args]) => ({put: n + (args ? " " : ""), show: n, hint})), word.slice(1))};
   }
   const cmd = head.slice(1).split(/\s+/)[0].toLowerCase(), spec = tools && tools[cmd], eq = word.indexOf("=");
+  const own = cmdCompletions(head, word, from); if (own) return own;     // (one of the server's: its words, commands.js)
   if (!spec) return null;
   if (eq < 0) {                                       // one of its arguments, not given yet
     const given = new Set((text.match(/(?:^|\s)([\w]+)=/g) || []).map((g) => g.trim().slice(0, -1)));

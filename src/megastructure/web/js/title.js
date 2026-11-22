@@ -17,6 +17,7 @@ function titleDraw() {
   $("logoutv").textContent = ACCOUNT.email;
   $("join").firstElementChild.textContent = document.body.classList.contains("booting") && agentWs && agentWs.readyState === 0 ? "Waking the world…" : "Wake up";   // (the demo's world is still coming, local.js: you are in as soon as it has)
   document.body.classList.toggle("title", titleOpen());
+  if (typeof zoomForTitle === "function") zoomForTitle(titleOpen());
 }
 function titleStep() {                                       // the step the account is at: its field, its first row
   const step = accountStep(), moved = step !== TITLE.step || !TITLE.begun;      // (the page itself says "me" from its first picture: index.html)

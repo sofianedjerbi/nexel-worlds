@@ -6,7 +6,7 @@ tilts over some 400 ms, never in a few frames."""
 import pytest
 from test_e2e_hd_sun import hd, settled
 
-STEEP = 78.6        # the eye's pitch from above (hd.js api.steep: 68 when a level was 8 px; tan 78.6 = 2 tan 68)
+STEEP = 58          # the eye's pitch from above (hd.js STEEP: 78.6 till the x-ray cut what hides you, 68 when a level was 8 px)
 
 # a tile's top as it is on the screen: [mean r, g, b, px warm (red well over blue), px cold (blue not under red)] of the px inside its four corners' box
 TOP = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => HdLook.screenOf(x + a, y + b, z)), k = devicePixelRatio;
@@ -26,7 +26,7 @@ def pocket(g):
     g.rpc("dev_col", tiles=[[x + 1, y], [x + 2, y], [x + 3, y]], col=[z - 11, z - 9, z])
     g.sleep(800)
     g.rpc("dev_teleport", x=x, y=y, z=z - 14)
-    g.wait("HdLook.win.a === 1 && HdLook.win.n >= 7 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=6000)
+    g.wait("HdLook.win.a === 1 && HdLook.win.n >= 7 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=6000)
     settled(g)
     return x, y, z
 
@@ -48,7 +48,7 @@ def test_in_a_pocket_under_a_higher_floor_that_floor_is_drawn_cold_and_the_one_o
     assert sum(other[:3]) > 150, other                                # ... and not black: it is seen
     # the floor over the passage (the tile west of yours): one px in two of it, cold, the warm floor under it showing through
     over = g.js(TOP, [x - 1, y, z - 11])
-    assert over[3] > 20 and over[4] > 20 and .2 < over[3] / over[4] < 3, over   # (both there: its cold px, and through it the warm wall and floor of your passage; its north px are under the window's section band, grey: more cold than warm; 14 deep the wall is darker now, fewer of its px count as warm: .2, was .3)
+    assert over[3] > 20 and over[4] > 20 and .2 < over[3] / over[4] < 5, over   # (from 58 degrees more of the warm wall shows through it: 3.5; both there: its cold px, and through it the warm wall and floor of your passage; its north px are under the window's section band, grey: more cold than warm; 14 deep the wall is darker now, fewer of its px count as warm: .2, was .3)
     assert g.js("HdLook.catSeen()") > .8
 
 
