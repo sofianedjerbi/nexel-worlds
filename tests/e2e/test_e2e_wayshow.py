@@ -36,10 +36,12 @@ def test_behind_a_ridge_the_way_is_faint_and_through_the_window_it_is_whole(brow
     assert not g.errors
 
 
-# each frame after the way's own painting: the key cap's place, and yours as your body is drawn (css px), an art px
-REC = """(() => { window.__rec = []; const f = WayShow.paint; WayShow.paint = function (...a) { f.apply(this, a); const e = document.getElementById('waycap'), p = ents.get('agent' + myId);
+# each frame after the way's own painting: the key cap's place, and yours as your body is drawn (css px), an art px, your tile, the cap's words. The
+# first two frames once you are off are slow (110 ms: a tile walked between two frames, as a phone's or a loaded machine's)
+REC = """(() => { window.__rec = []; const f = WayShow.paint; WayShow.paint = function (...a) { const r = window.__rec, l = r[r.length - 1]; if (l && (l[3] !== r[0][3] || l[4] !== r[0][4]) && (window.__slow = (window.__slow || 0) + 1) <= 2) { const t = performance.now(); while (performance.now() - t < 110); }
+  f.apply(this, a); const e = document.getElementById('waycap'), p = ents.get('agent' + myId);
   const m = /translate\\(([-\\d.]+)px, ([-\\d.]+)px\\)/.exec(e ? e.style.transform : ''), me = HdLook.screenOf(p.x + .5, p.y + .5, HdLook.level[2]);
-  if (e && e.style.display === 'block' && m && me) window.__rec.push([+m[1] - me[0], +m[2] - me[1], a[2], p.x, p.y]); }; return 1; })()"""
+  if (e && e.style.display === 'block' && m && me) window.__rec.push([+m[1] - me[0], +m[2] - me[1], a[2], p.x, p.y, e.innerHTML]); }; return 1; })()"""
 
 
 def tunnel(g, north):
@@ -64,7 +66,8 @@ def test_sprinting_along_the_way_its_key_moves_with_you_never_a_jump(browser, se
     next tile of the way, a tile on at each step (it ran back to you and leapt a tile ahead, ten times a second), and
     over and under that tile took turns as the keys' boxes came and went: 21 to 30 art px a frame. Now it is beside the
     tile a step ahead of you as you are drawn, its side kept: from one frame to the next it moves with you, within
-    an art px."""
+    an art px, slow frames at its start too (the cap was placed against your body and name as the last frame drew them: it sat 30 px off, then leapt). A new
+    way found as you set off (the one shown went west, through a block) is a new cap, its arrow turned: not a jump of the cap."""
     ctx = None
     if screen == "phone":
         ctx, g = phone(browser, server)
@@ -78,8 +81,8 @@ def test_sprinting_along_the_way_its_key_moves_with_you_never_a_jump(browser, se
     rec = g.js("window.__rec")
     moved = abs(rec[-1][3] - rec[0][3]) + abs(rec[-1][4] - rec[0][4]) if rec else 0
     assert len(rec) > 20 and moved >= 8, (len(rec), moved)                 # (frames enough, and a sprint: tiles run)
-    jump = max(max(abs(a[0] - b[0]), abs(a[1] - b[1])) / a[2] for a, b in zip(rec, rec[1:]))
-    assert jump <= 1, jump
+    jump = max([max(abs(a[0] - b[0]), abs(a[1] - b[1])) / a[2] for a, b in zip(rec, rec[1:]) if a[5] == b[5]] or [0])
+    assert jump <= 1, (jump, [[round(v[0] / v[2]), round(v[1] / v[2])] for v in rec[:16]])
     assert not g.errors
     if ctx:
         ctx.close()
