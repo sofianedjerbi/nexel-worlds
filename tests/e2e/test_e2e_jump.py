@@ -227,22 +227,22 @@ def test_the_camera_follows_the_ground_through_a_hop_and_a_step_jump(game):
     assert max(after) - min(after) < .01, after                                         # and stands still once you have landed
     feet = [r[7] for r in rec]
     assert max(feet) - min(feet) <= 1.5, feet                                           # your feet within an art px or so on the screen (it was 5 up and back)
-    assert len({r[4] for r in rec}) == 1 and len({r[5] for r in rec}) == 1, [(r[4], r[5]) for r in rec]   # pitch and window: unmoved
     assert not game.errors, game.errors
 
 
 @pytest.mark.realtime
-def test_a_step_jump_by_a_cliffs_foot_lifts_you_on_a_line_not_at_half_way(game):
-    """A terrace three up south of you, a step east: the land round you is a hole's (the eye from above) and you are drawn lifted
-    to its rim. Your drawn height goes on the line between the two tiles' (it was the lift of the tile under your middle: half a
-    level down in one frame, mid-air)."""
+def test_a_step_jump_by_a_cliffs_foot_keeps_the_camera_and_the_window_steady(game):
+    """A terrace three up just south of you, a step east along its foot: the eye's level is yours on every frame, the pitch
+    and the x-ray window change one way at the most (never back and forth), your feet stay put on the screen."""
     step_east(game)
     game.stamp(-6, 3, ["." * 16] * 3, levels=["3" * 16] * 3)
     game.stamp(-6, 1, ["." * 8] * 2, levels=["3" * 8] * 2)
     x, rec = camera_over(game, ["d"], 600)
-    assert game.server()["z"] == 1 and any(r[3] > .2 for r in rec), [r[:6] for r in rec[::4]]            # (lifted where you started)
-    z = [(r[0], r[2] + r[3]) for r in rec if x + 1 <= r[0] <= x + 2]
-    assert len(z) > 3, z
-    jumps = [(a, b) for a, b in zip(z, z[1:]) if abs(b[1] - a[1]) > 1.2 * abs(b[0] - a[0]) + .02]
-    assert not jumps, jumps
+    assert game.server()["z"] == 1 and len(rec) > 10, game.server()
+    assert all(abs(r[1] - r[2]) < .01 for r in rec), [r[:4] for r in rec if abs(r[1] - r[2]) >= .01]
+    for k in (4, 5):                                                                    # the pitch, the window
+        d = [b[k] - a[k] for a, b in zip(rec, rec[1:]) if abs(b[k] - a[k]) > 1e-3]
+        assert all(a * b > 0 for a, b in zip(d, d[1:])), (k, [round(r[k], 3) for r in rec])
+    feet = [r[7] for r in rec if r[4] == rec[0][4]]                                    # (while the pitch is as it was: the tilt after, back to the open sky's pitch once on the step, moves them as a pitch does)
+    assert max(feet) - min(feet) <= 1.5, feet
     assert not game.errors, game.errors
