@@ -76,7 +76,7 @@ def test_the_demo_plays_and_remembers_the_world(browser, site):
     page = phone.new_page()
     page.route("**/js/*.js*", lambda r: r.abort())             # (no script has come yet)
     page.goto(site, wait_until="domcontentloaded")
-    page.wait_for_function("document.fonts.check('18px SproutPixel') && document.getAnimations().filter((a) => a.playState === 'running' && a.effect.target.closest('#boot')).length === 2", timeout=5000)   # (the cat runs with no script)
+    page.wait_for_function("document.fonts.check('18px SproutPixel') && document.getAnimations().filter((a) => a.playState === 'running' && a.effect.target.closest('#boot')).length >= 6", timeout=5000)   # (the cat runs, the land goes by, with no script)
     assert page.evaluate("!performance.getEntriesByType('resource').some((e) => /sprout-pixel|\\.webp/.test(e.name))")   # (its letters in the page too)
     phone.close()
 
