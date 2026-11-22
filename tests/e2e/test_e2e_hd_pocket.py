@@ -42,7 +42,7 @@ def test_in_a_pocket_under_a_higher_floor_that_floor_is_drawn_cold_and_the_one_o
     # the floor's. Read before they came the test passed, after them it failed: it is the floors that are measured, so the marks are not painted)
     g.js("(() => { WayShow.paint = () => {}; return 1; })()")
     g.frames(3)
-    mine, other = g.js(TOP, [x - 3, y, z - 14]), g.js(TOP, [x + 1, y, z - 11])
+    mine, other = g.js(TOP, [x - 3, y, z - 14]), g.js(TOP.replace(") + 4", ") + 13").replace(") - 4", ") - 13"), [x + 1, y, z - 11])   # (the other's middle: along the window's edge the land over it comes back in a dither, its grass px)
     assert mine[0] > mine[2] + 40, mine                               # your own floor: warm
     assert other[2] >= other[0] - 6 and other[3] == 0, other          # the other: no warm px at all
     assert sum(other[:3]) > 150, other                                # ... and not black: it is seen

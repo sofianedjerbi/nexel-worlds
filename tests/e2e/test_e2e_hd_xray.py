@@ -1,0 +1,137 @@
+"""The x-ray window's shape and its cut edges in the HD look (vox_style_glsl.js PORT and the window's section, vox_style_land.js):
+the window is your WHOLE space, a cave's every branch as far as the screen goes (a separate cave stays under the stone), its edge
+fading back in a dither; under the open sky no dark arc at its top (a gorge's far cliff); a pit's floor shaded by its own walls, no
+flat squares of corner shade; down a passage a level floor has no band across it, a step up shows its riser, a step down its lip."""
+
+from test_e2e_hd_sun import hd
+from test_e2e_hd_window import PX
+
+# the picture with the window and without it (HdLook.nowin): which px it changes, in the box of CSS px [x0, y0, x1, y1] -> rows of 0/1
+CHANGED = """async ([x0, y0, x1, y1]) => { const k = devicePixelRatio, X0 = Math.round(x0 * k), Y0 = Math.round(y0 * k), W = Math.round((x1 - x0) * k), H = Math.round((y1 - y0) * k), frame = () => new Promise(requestAnimationFrame);
+  const shot = async (off) => { HdLook.nowin = off; for (let i = 0; i < 90 && HdLook.win.a !== (off ? 0 : 1); i++) await frame(); for (let i = 0; i < 4; i++) await frame(); return HdLook.read(X0, Y0, W, H).data; };
+  const a = await shot(true), b = await shot(false), rows = [];
+  for (let y = 0; y < H; y++) { let r = ""; for (let x = 0; x < W; x++) { const i = 4 * (y * W + x); r += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30 ? "1" : "0"; } rows.push(r); }
+  return rows; }"""
+SCR = "(([x, y, z]) => HdLook.screenOf(x, y, z))"
+calm = lambda g: [g.hour(.3, still=True)] + [g.js(f"setOpt('{o}', 0)") for o in ("clouds", "rays", "shimmer")]
+far = lambda a, b: sum(abs(p - q) for p, q in zip(a, b))
+lum = lambda c: .3 * c[0] + .59 * c[1] + .11 * c[2]
+
+
+def quiet(g):
+    g.js("(() => { WayShow.paint = () => {}; Target.off = true; return 1; })()")
+    g.rest()
+
+
+# a plateau of stone 5 high; in it, floors at 0 under two cells of air: a corridor west to east, a branch north, two south, a room
+# north-east, and a separate cave south-west no way joins (dx, dy from where you were)
+CAVE = {(dx, -2) for dx in range(-8, 9)} | {(0, dy) for dy in range(-6, -2)} | {(dx, dy) for dx in (-5, 5) for dy in range(-1, 3)} | \
+       {(dx, dy) for dx in range(6, 10) for dy in range(-6, -3)} | {(8, -3)}
+APART = {(dx, dy) for dx in (-9, -8) for dy in (2, 3)}
+
+
+def test_the_window_opens_the_whole_cave_you_are_in_and_not_another(browser, server):
+    """The owner in a cave under a stone plateau, the porthole round him: "the whole point of x-ray is to unlock the whole view
+    of a cave entirely, not a little circle. I'm blind in that cave!" Every floor of the cave you are in, its branches and its
+    room, is seen where the screen shows it; a cave no way joins stays under the stone; the edge fades back in a dither."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    rows = ["".join("-" if (dx, dy) in CAVE | APART else "." for dx in range(-10, 11)) for dy in range(-7, 5)]
+    g.stamp(-10, -7, ["." * 21] * 12, levels=["5" * 21] * 12)
+    g.stamp(-10, -7, rows, levels=[r.replace("-", "0").replace(".", "5") for r in rows], roofs=[r.replace("-", "5").replace(".", "0") for r in rows],
+            heads=[r.replace("-", "2").replace(".", "0") for r in rows])
+    g.rpc("dev_teleport", x=x, y=y - 2, z=0)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    quiet(g)
+    W, H = g.js("[innerWidth, innerHeight]")
+    stone = g.js(PX, [x - 1.5, y + 2.5, 5])                                 # (the plateau's top, far from the caves)
+    on = lambda p: 8 < p[0] < W - 8 and 8 < p[1] < H - 60
+    shut, opened = [], []
+    for dx, dy in sorted(CAVE | APART):
+        if not on(g.js(SCR, [x + dx + .5, y + dy + .5, 0])):
+            continue
+        c, w = g.js(PX, [x + dx + .5, y + dy + .5, 0]), g.js(f"HdLook.winAt({x + dx}, {y + dy})")
+        if (dx, dy) in APART and (w is not None or far(c, stone) > 40):
+            opened.append(((dx, dy), c, w))
+        elif (dx, dy) in CAVE and (w is None or far(c, stone) <= 40):
+            shut.append(((dx, dy), c, w))
+    seen = [t for t in CAVE if on(g.js(SCR, [x + t[0] + .5, y + t[1] + .5, 0]))]
+    assert len(seen) >= 30, seen                                             # (most of the cave is on the screen)
+    assert not shut, (shut, stone)                                            # every floor of it is seen, in the window (it was a circle 4 tiles round you: the branches under the stone)
+    assert not opened, (opened, stone)                                        # the other cave: no window on it, the plateau's top over it
+    # the edge: across the corridor's west end (its floor at dx -8), the px the window changes thin out over a few px, dithered (its near, south edge is the land's lip, a line)
+    a, b = g.js(SCR, [x - 9.5, y - 2, 0]), g.js(SCR, [x - 6, y - 1.2, 0])
+    ch = g.js(CHANGED, [a[0], a[1], b[0], b[1]])
+    frac = [sum(r[i] == "1" for r in ch) / len(ch) for i in range(len(ch[0]))]
+    assert max(frac) > .9 and any(.15 < f < .85 for f in frac), frac
+
+
+# the owner's gorge (doben8, caves -11,-40): cliffs 12 high, a river in two depths and a cliff's corner in it
+GORGE = ["C" * 19] * 2 + ["C" * 10 + "b" * 9, "C" + "a" * 10 + "b" * 8, "a" * 2 + "b" * 17, "b" * 19, "b" * 6 + "a" * 13, "a" * 7 + "C" * 12] + ["C" * 19] * 5
+
+
+def test_in_a_gorge_the_window_has_no_dark_arc_at_its_top(browser, server):
+    """doben8 in the gorge: a dark brown arc at the window's top: the section over its boxes' north edge (a roof's depth band) laid on
+    the far cliff's face, which hides nothing, and that face's foot darkened as a hole's wall. Under the open sky neither is drawn."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    g.stamp(-9, -6, ["." * 19] * 13, levels=GORGE)
+    g.stamp(-9, -6, ["".join("." if c == "C" else "~" for c in r) for r in GORGE], levels=GORGE)
+    g.rpc("dev_teleport", x=x, y=y)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
+    quiet(g)
+    a, b = g.js(SCR, [x - 3, y - 4, 0]), g.js(SCR, [x + 3, y + .5, 0])     # (the window's upper half: the river to the far cliff's foot, and over it as far as the window goes)
+    ch = g.js(CHANGED, [a[0], 0, b[0], b[1]])
+    k = g.js("devicePixelRatio")
+    d = g.js(f"Array.from(HdLook.read({round(a[0] * k)}, 0, {round((b[0] - a[0]) * k)}, {round(b[1] * k)}).data)")
+    W = round((b[0] - a[0]) * k)
+    px = [d[4 * (r * W + c):4 * (r * W + c) + 3] for r, row in enumerate(ch) for c, v in enumerate(row) if v == "1" and 4 * (r * W + c) + 3 <= len(d)]
+    brown = [c for c in px if c[0] > c[2] + 25 and c[0] > c[1] and lum(c) < 110]
+    black = [c for c in px if lum(c) < 40]
+    assert len(brown) < 20 and len(black) < 40, (len(brown), len(black), brown[:5], black[:5])
+
+
+def test_a_pit_s_floor_is_shaded_by_its_walls_not_in_tile_squares(browser, server):
+    """A pit 3 x 3, 2 deep, shadows off: its corners and its north edge were flat darker squares (the corners' shade of each tile,
+    in steps). Away from the walls its floor is one light; along a wall's foot it is darker."""
+    g = hd(browser, server)
+    calm(g)
+    g.js("setOpt('shadows', 0)")
+    x, y = g.pos()
+    g.rpc("dev_col", tiles=[[x + i, y + j] for j in (-1, 0, 1) for i in (-1, 0, 1)], col=[-2])
+    g.rpc("dev_teleport", x=x, y=y, z=-2)
+    g.wait("!HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    quiet(g)
+    mid = [lum(g.js(PX, p)) for p in ([x - .45, y - .45, -2], [x + .5, y - .45, -2], [x + 1.45, y - .45, -2], [x - .45, y + .5, -2])]
+    assert max(mid) / min(mid) < 1.05, mid                                   # 9 px from any wall, in a corner tile and an edge one: one light (it was a step a tile)
+    foot = lum(g.js(PX, [x + .5, y - 1 + .04, -2]))
+    assert foot < mid[1] * .9, (foot, mid)                                   # at the north wall's foot: its shade
+
+
+def test_down_a_passage_a_level_floor_has_no_band_a_step_up_its_riser_a_step_down_its_lip(browser, server):
+    """doben1: "see the line in the path in front of me? I am unable to tell whether it goes up or down." Three passages north
+    from your corridor: one level, one a level up, one a level down."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    lv = {(dx, -1): "0" for dx in range(-6, 7)}
+    for dy in range(-6, -1):
+        lv[(-4, dy)], lv[(0, dy)], lv[(4, dy)] = "0", "0" if dy > -4 else "1", "0" if dy > -4 else "a"
+    rows = ["".join("-" if (dx, dy) in lv else "." for dx in range(-8, 9)) for dy in range(-7, 2)]
+    g.stamp(-8, -7, ["." * 17] * 9, levels=["5" * 17] * 9)
+    g.stamp(-8, -7, rows, levels=["".join(lv.get((dx, dy), "5") for dx in range(-8, 9)) for dy in range(-7, 2)],
+            roofs=[r.replace("-", "5").replace(".", "0") for r in rows], heads=[r.replace("-", "2").replace(".", "0") for r in rows])
+    g.rpc("dev_teleport", x=x, y=y - 1, z=0)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > 67.5", timeout=8000)
+    quiet(g)
+    col = lambda dx, z: [g.js(PX, [x + dx + .5, y - 1 + .5 - i * .05, z]) for i in range(70)]
+    level = [lum(c) for c in col(-4, 0)]
+    med = sorted(level)[len(level) // 2]
+    assert min(level) > med * .8, (med, level)                                # level: no band across it
+    up = col(0, 0)[30:54]                                                     # (the step's edge is at y - 3.5 .. y - 4: its riser over the lower floor)
+    assert any(far(c, up[0]) > 40 for c in up), up                            # a step up: its riser, another tone than the floor
+    down = [lum(g.js(PX, [x + 4.5, y - 3 + .01 + i * .015, 0])) for i in range(5)]
+    near, low = lum(g.js(PX, [x + 4.5, y - 3 + .2, 0])), lum(g.js(PX, [x + 4.5, y - 4.5, -1]))
+    assert max(down) > near * 1.15 and max(down) > low * 1.3, (down, near, low)   # a step down: the near floor's edge, lit, over the lower floor, darker (its lip was one row of paint: left out at this pitch)
