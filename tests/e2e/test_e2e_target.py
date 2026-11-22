@@ -52,7 +52,7 @@ def changed(g, key, x, y):
 @pytest.mark.quick
 @pytest.mark.parametrize("s", ["meadow", "block", "wall", "ledge"])
 def test_build_mode_the_box_is_the_cell_space_and_x_change(browser, server, s):
-    """Build mode, earth in hand: Space's cell is drawn cream, X's orange and hatched, each at its own height (its
+    """Build mode, earth in hand: Space's cell is drawn cream, X's orange, each at its own height (its
     top's corner on the screen is the box's colour), and each is the cell that changes."""
     game = hd(browser, server)
     game.give(dirt=6)
@@ -67,7 +67,7 @@ def test_build_mode_the_box_is_the_cell_space_and_x_change(browser, server, s):
     drew = {d["key"]: d for d in game.js("Target.drew")}
     assert set(drew) == {"use", "alt"}
     assert all(game.js(NEAR, [put["x"] + i, put["y"], put["z"], CREAM]) for i in (0, 1)), put          # (Space's box: its top's far corners)
-    assert game.js(ON_TOP, [take["x"], take["y"], take["z"], TAKE]) > 20, take                             # (X's: its top hatched, drawn over the ghost on it)
+    assert game.js(ON_TOP, [take["x"], take["y"], take["z"], TAKE]) > 20, take                             # (X's: its top outlined, drawn over the ghost on it)
     assert changed(game, " ", x, y) == [(put["x"], put["y"], put["z"])]
     game.press("z")
     game.wait("!Build.on", 3000)
@@ -244,7 +244,7 @@ def test_build_mode_at_a_wall_x_box_lays_nothing_on_the_next_tiles_top(browser, 
       const X = Math.round(a[0] * k - u), Y = Math.round(a[1] * k + 2 * u), d = HdLook.read(X, Y, Math.round((b[0] - a[0]) * k + 2 * u), Math.max(1, Math.round((b[1] - a[1]) * k - 3 * u))).data; let n = 0;
       for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - c[0]) + Math.abs(d[i + 1] - c[1]) + Math.abs(d[i + 2] - c[2]) < 40) n++; return n; }""", [t["x"], t["y"] + 1, t["z"], TAKE])
     assert n == 0, n
-    assert game.js(ON_TOP, [t["x"], t["y"], t["z"], TAKE]) > 20                     # (its own top: hatched, as ever)
+    assert game.js(ON_TOP, [t["x"], t["y"], t["z"], TAKE]) > 20                     # (its own top: outlined, as ever)
     assert not game.errors
 
 

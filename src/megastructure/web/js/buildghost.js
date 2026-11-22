@@ -30,11 +30,14 @@ const BuildGhost = (() => {
   // the block in the cell whose top is z, on g: at(x, y, z) -> its place there, u: an art px there
   function block(g, at, u, x, y, z, item, a, red, behind) {
     const px = paintOf(item), q = px && quads(at, x, y, z - 1, z); if (!q) return false;
-    const R = (v) => Math.round(v / u) * u;
-    const face = (c, rows, row0) => { const y0 = R(c[0][1]), y1 = R(c[3][1]);
-      for (let Y = y0; Y < y1; Y += u) { const k = (Y - y0) / (y1 - y0), hid = !!behind && (row0 ? behind(x + .5, y + .999, z - k) : behind(x + .5, y + k, z)), l = R(c[0][0] + (c[3][0] - c[0][0]) * k), r = R(c[1][0] + (c[2][0] - c[1][0]) * k), j = row0 + Math.min(rows - 1, Math.floor(k * rows));
+    // a face, px by px: an art px is the face's when its middle is in it (the land's own rule, and the box's: target.js pxOf); a px of it lay outside the block
+    const face = (c, rows, row0) => { const ys = c.map((p) => p[1]), top = (c[0][1] + c[1][1]) / 2, bot = (c[2][1] + c[3][1]) / 2;
+      for (let J = Math.ceil(Math.min(...ys) / u - .5); (J + .5) * u < Math.max(...ys); J++) { const Y = J * u, yc = Y + u / 2; let l = 1e9, r = -1e9;
+        for (let n = 0; n < 4; n++) { const A = c[n], B = c[(n + 1) % 4]; if ((A[1] <= yc) === (B[1] <= yc)) continue; const xi = A[0] + (B[0] - A[0]) * (yc - A[1]) / (B[1] - A[1]); l = Math.min(l, xi); r = Math.max(r, xi); }
+        if (!(r > l)) continue;
+        const k = Math.max(0, Math.min(.999, (yc - top) / (bot - top))), hid = !!behind && (row0 ? behind(x + .5, y + .999, z - k) : behind(x + .5, y + k, z)), j = row0 + Math.floor(k * rows);
         g.globalAlpha = hid ? a * .6 : a;
-        for (let X = l; X < r; X += u) { if (hid && ((Math.round(X / u) >> 1) + (Math.round(Y / u) >> 1)) % 2) continue; const v = px[j * 16 + Math.min(15, Math.floor((X - l) / (r - l) * 16))], c3 = [v & 255, (v >> 8) & 255, (v >> 16) & 255].map((w, i) => (red ? (w + RED[i]) >> 1 : w));
+        for (let I = Math.ceil(l / u - .5); (I + .5) * u < r; I++) { const X = I * u; if (hid && ((I >> 1) + (J >> 1)) % 2) continue; const v = px[j * 16 + Math.max(0, Math.min(15, Math.floor((X + u / 2 - l) / (r - l) * 16)))], c3 = [v & 255, (v >> 8) & 255, (v >> 16) & 255].map((w, i) => (red ? (w + RED[i]) >> 1 : w));
           g.fillStyle = `rgb(${c3.join()})`; g.fillRect(X, Y, u, u); } } };
     face(q.T, 16, 0); face(q.F, RELIEF_STEP, 16); g.globalAlpha = 1;
     return true;

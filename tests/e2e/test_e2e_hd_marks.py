@@ -26,7 +26,7 @@ def test_a_box_is_never_drawn_over_your_body(browser, server):
     drew = g.js("Target.drew.map((d) => [d.key, d.kind, d.r ? 1 : 0])")
     assert ["alt", "break", 1] in drew, drew
     seen = g.js("HdLook.catSeen()")
-    assert seen > .9, (seen, drew)                                         # (it was under the box's hatch)
+    assert seen > .9, (seen, drew)                                         # (it was under the box's hatch, when boxes were hatched)
     g.press("z")
     g.wait("!Build.on", 3000)
     assert not g.errors

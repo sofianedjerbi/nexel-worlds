@@ -59,6 +59,7 @@ QUICK = {
     "sound": "test_the_first_screen_has_its_own_piece_that_comes_in_slowly_and_recedes_in_the_world",
     "swim": "test_a_page_older_than_the_servers_code_reloads_itself",
     "tall": "test_high_over_the_land_the_sky_is_behind_you",
+    "target_px": "test_a_box_lies_on_its_block_its_line_on_every_edge_px_and_none_outside",
     "title": "test_wake_up_says_the_world_is_still_coming",
     "title_scene": "test_the_islands_people_choose_what_they_do",
     "touch": "test_play_with_thumbs",
