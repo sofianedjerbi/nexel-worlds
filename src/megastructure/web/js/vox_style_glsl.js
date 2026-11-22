@@ -15,6 +15,12 @@ const VoxStyleGLSL = (() => {
   // THE BEND (the curved world: the land north of the eye's point sinks away to a horizon; vox_style.js project and vox_style_win.js sink it the same): a few FLAT FACETS, 4 tiles each, on the old
   // curve (dn squared at every fourth tile, straight between; the first 4 tiles as ever: a facet there sank the land at your feet 4 times as much). It was dn squared at every corner: a straight block 12 tiles deep rolled over it as a smooth arc, its ends round loaves ("melted")
   const SINK = "float sink(float dn) { float k = floor(dn / 4.); return dn < 4. ? dn * dn : 16. * (k * k + (2. * k + 1.) * (dn / 4. - k)); }", sink = (dn) => { const k = Math.floor(dn / 4); return dn < 4 ? dn * dn : 16 * (k * k + (2 * k + 1) * (dn / 4 - k)); };
+  // THE PORTHOLE (PORT, in the land's, the sprites' and the backdrop's painters): the x-ray window is a round hole on the SCREEN, centred on your body (pw: its centre and radius in px of the picture, and the
+  // width of its soft edge; pq: x 2 a circle, 4 a rounded square; y: a dither cell, px). port(f) -> how open it is at px f, 0..1; bay4(f): a 4x4 ordered dither's step there, 0..1: the cut fades back in
+  // over the edge in whole art px. (It was the window's boxes whole, tiles: a 5 x 5 square of them seen at the steep pitch was a flat band, its edges hard steps)
+  const PORT = "uniform vec4 pw; uniform vec2 pq; const float B4[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.); " +
+    "float port(vec2 f) { if (pw.z <= 0.) return 0.; vec2 d = abs(f - pw.xy); float r = pq.x > 2.5 ? sqrt(sqrt(d.x * d.x * d.x * d.x + d.y * d.y * d.y * d.y)) : length(d); return clamp((pw.z - r) / pw.w, 0., 1.); } " +
+    "float bay4(vec2 f) { ivec2 p = ivec2(floor(f / pq.y)) & 3; return (B4[p.y * 4 + p.x] + .5) / 16.; }";
   const VS = `#version 300 es
   in vec3 p; in vec2 uv; in vec4 a; in float e; uniform mat4 m; uniform vec3 ctr, go; uniform float bend; uniform sampler2D gw; out vec2 vu; out vec4 va, vs; out float ve; out vec3 wp; out highp float vw;
   ${SINK}
@@ -24,6 +30,7 @@ const VoxStyleGLSL = (() => {
   precision highp float; in vec2 vu; in vec4 va, vs; in float ve; in highp vec3 wp; in highp float vw; uniform sampler2D t, wt, mk; uniform vec3 lamp, eye, fogc, mc;
   uniform vec4 cl, wv, wtn[5]; uniform float wa, dep, lr, day, amb, fn, ff, rim, rd, sun, shp, cd, xr; uniform vec3 sc, bd[4]; uniform vec4 sp; uniform float rf, rz, ho, cp, bh; uniform vec3 em; out vec4 o;
   ${LVC}
+  ${PORT}
   // STRATA: a wall of your hole by its level under the land round it (rz): each level one flat tone, a step darker than the one over it (to .3), every second one a little darker still: levels can be counted, deep is dark
   float strat(float lv) { return max(.3, .92 - .08 * max(0., rz - lv)) * (mod(floor(lv + .5) + 1024., 2.) < .5 ? 1. : .9); }
   float bit(float v, float k) { return mod(floor(v / k), 2.); }
@@ -39,18 +46,22 @@ const VoxStyleGLSL = (() => {
     float kind = va.z, ck = mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.); vec2 lu = mod(vu, 16.);
     if (!(abs(kind - 7.) < .5) && !(kind > 2.5 && kind < 3.5 && ve > 8.5) && !(kind > 8.5 && kind < 9.5) && (wp.x < cl.x + .001 || wp.x > cl.y - .001 || wp.z < cl.z + .001 || wp.z > cl.w + .001)) discard;   // (cl: the columns and rows of the land asked for: the lists are whole chunks of 8 x 8 tiles (vox_style_land.js), what is outside is left out here; not the far patches, not a ghost)
     float wn = 0., sj = 0., vl = 0.; highp float di = 0.;   // (the window: wn 0 this px is the land's as ever, 2 a floor over your head, 3 the section (sj: its row, counted up from the window's top edge), 11 its top line; sj -1: a px seen through the window, -2: the lip along its near edge, -3: a px beside its west or east edge)
-    if (xr > 0. && !(kind > 8.5 && kind < 9.5)) { ivec2 P = ivec2(gl_FragCoord.xy), M = textureSize(mk, 0) - 1; vec4 k4 = texelFetch(mk, P, 0); highp float dz = k4.b * 255. + k4.a * 255. / 256.;
+    float cu = xr * port(gl_FragCoord.xy), b4 = bay4(gl_FragCoord.xy);   // (cu: how open the porthole is at this px, 0 outside it)
+    if (cu > 0. && !(kind > 8.5 && kind < 9.5)) { ivec2 P = ivec2(gl_FragCoord.xy), M = textureSize(mk, 0) - 1; vec4 k4 = texelFetch(mk, P, 0); highp float dz = k4.b * 255. + k4.a * 255. / 256.;
       di = k4.r * 255. + k4.g * 255. / 256.; float bay = ck * .5 + mod(floor(gl_FragCoord.x / 2.), 2.) * .25 + .125, up = mod(va.w + 1280. - vs.g * 255., 256.); bool thing = kind > 7.5 && kind < 8.5, ob = false; { vec3 tl = vec3(floor(wp.x - lu.x / 16. + .5), floor(wp.z - lu.y / 16. + .5), va.w); for (int n = 0; n < 4; n++) if (bd[n] == tl) ob = true; }   // (ob: somebody stands on this top, over your window: the ground under their feet stays as veil: they are up there, not in your room)
       if (dz > 0. && vw > dz && ((abs(kind - 7.) < .5) || (kind > 2.5 && kind < 3.5 && ve > 8.5))) discard;   // (the far land and sea past the box: under the ground from here, the rock between has no faces: it showed through the rim as sky-blue px)
       // (a wall's face that lies in a box's own side, the back of your south wall: with what is in front; a top the eye's line only grazes at a box's edge, a floor, the water of a gorge: left)
       if (di > 0. && vw < di + (kind < .5 ? .06 : -.02)) { if (kind > .5 && kind < 1.5 && va.y < .5 && vs.r > 0. && up > .5 && up < 8.5) wn = 2.;
-        else if (ob && kind > .5 && kind < 1.5 && va.y > .5) { if (ck > .5) vl = 1.; else if (xr > bay) discard; }   // (ob: the ground under somebody standing on the land over your window stays, one px in two: they are up there, not in your room)
-        else if (xr * (thing ? .5 : 1.) > bay) discard; }
-      else if (dz > 0. && vw < dz - .05 && !thing && xr > bay - .5 * ck) {
+        else if (ob && kind > .5 && kind < 1.5 && va.y > .5) { if (ck > .5) vl = 1.; else if (cu > b4) discard; }   // (ob: the ground under somebody standing on the land over your window stays, one px in two: they are up there, not in your room)
+        else if (cu * (thing ? .5 : 1.) > b4) discard; }
+      else if (dz > 0. && vw < dz - .05 && !thing && cu > b4) {
         int j = 0; if (di == 0.) for (int n = 1; n <= 48; n++) if (j == 0 && texelFetch(mk, max(P - ivec2(0, n), ivec2(0)), 0).rg != vec2(0.)) j = n;
         if (j > 0) wn = texelFetch(mk, min(P + ivec2(0, 1), M), 0).ba == vec2(0.) ? 11. : 3.; sj = float(j);
         if (j == 0) { wn = .25; if (di == 0. && (texelFetch(mk, min(P + ivec2(0, 1), M), 0).rg != vec2(0.) || texelFetch(mk, min(P + ivec2(0, 2), M), 0).rg != vec2(0.))) sj = -2.; else if (di == 0. && (texelFetch(mk, min(P + ivec2(1, 0), M), 0).rg != vec2(0.) || texelFetch(mk, max(P - ivec2(1, 0), ivec2(0)), 0).rg != vec2(0.))) sj = -3.; } }
       if (di > 0. && vw >= di - .02) sj = -1.; }   // (sj -1: a px seen through the window: of your space)
+    // IN THE PORTHOLE, land over your head (more than a level and a half over your feet) that is not of your space (a meadow over your room, a cliff's top between the eye and you, the bank south of your feet)
+    // is CUT: drawn as its section (the wall paint of its ground, in strata), one rule under a roof and under the sky; nearer your space than the boxes it was left out above; the section over a box's north edge (wn 3, its grass line 11: the depth) stays. Its px fade back in over the edge
+    if (cu > b4 && wn < 1.5 && !(sj < -.5 && sj > -1.5) && wp.y > lamp.y - .6 + H && kind < 1.5) wn = 12.;
     if (bh > 0. && kind < 1.5 && ck < 1. && wp.z >= lamp.z + .3 && wp.y > lamp.y - .3 && gl_FragCoord.y > mc.y + 1. && distance(gl_FragCoord.xy, mc.xy + vec2(0., 8.)) < (mc.z + 2.) * bh) discard;   // (BEHIND LAND taller than you (bh: the host's, eased): the same disc as in a roof or a tree: the land in front of you keeps one px in two there, you and the ground at your feet show in the others. You were a faint checker on a cliff's face and saw nothing round you. Not under your feet's line: there the land in front has nothing behind it but its own inside)
     bool cov = kind > 7.5 && kind < 8.5 && wp.z >= lamp.z + .3 && wp.y >= lamp.y - .55 && distance(gl_FragCoord.xy, mc.xy + vec2(0., 8.)) < mc.z + 2.;   // (a model's face south of you and over your feet, in the disc round your body)
     if (rd > .5 ? !cov || ck < 1. : cov) discard;   // (what covers you has a hole round you: you and what is behind it are drawn whole there, then (rd) one px in two of it again, 2x2: a checker disc on a roof, a wall, as on a tree (SF). It was the checker laid over you alone: you read as standing on the roof)
@@ -63,6 +74,7 @@ const VoxStyleGLSL = (() => {
     // under the land's top (a face the sky does not reach: a cave's wall, a shaft's): the day's light at the land's top, level by level down to your lantern's at your floor; never dark
     float up = clamp((va.w - (lamp.y - .6) / H) / 14., 0., 1.); vec3 pit = mix(vec3(1.14, 1., .82), vec3(max(day * .95, amb)), max(up, 1. - clamp(dep, 0., 1.)));   // (dep: levels of land over you. Under the open sky, a gorge's floor, no lantern: a wall is the block's own material in the day's light. It was warm there too: grey stone cut brown, an earth wall in a stone mountain)
     if (wn > .5) { if (wn > 1.5 && wn < 2.5) { if (ck < 1.) discard; col = cold(c.rgb) * 1.12; if (lu.x < 1. || lu.y < 1. || lu.x > 15. || lu.y > 15.) col = vec3(.84, .9, 1.); }   // a floor over your head: cold, one px in two, its tiles edged pale: you are under it
+      else if (wn > 11.5) col = texelFetch(t, ivec2(va.w >= rf ? sp.zw : sp.xy) + ivec2(int(mod(floor(wp.x * 16.), 16.)), int(mod(floor((kind < .5 ? -wp.y : wp.z) * 16.), LV) + LV0)), 0).rgb * strat(floor(wp.y / H + .01)) * .62;   // (the cut: its ground's wall paint, a tone a level)
       else if (wn > 10.5) col = c.rgb * max(day * va.y, amb) * .8;
       else { ivec2 P = ivec2(gl_FragCoord.xy), M = textureSize(mk, 0) - 1; int jt = 0; for (int n = 1; n <= 48; n++) if (jt == 0 && texelFetch(mk, min(P + ivec2(0, n), M), 0).ba == vec2(0.)) jt = n; if (jt == 0) jt = 48;   // (jt: rows down from the surface's line: cp of them a level)
         col = texelFetch(t, ivec2(va.w >= rf ? sp.zw : sp.xy) + ivec2(int(mod(floor(wp.x * 16.), 16.)), int(mod(floor(float(jt) * LV / cp), LV) + LV0)), 0).rgb * strat(rz - floor((float(jt) - 1.) / cp)); } o = vec4(col, 1.); return; }   // the section: the ground's own wall paint in strata, from the surface's line down to your ceiling: one wall with the one under it; the land's own top px (grass, snow) as its first line
@@ -114,10 +126,10 @@ const VoxStyleGLSL = (() => {
   const SV = `#version 300 es
   in vec3 p; in vec2 uv, k; in float s; out vec2 vu, vk; out float sil; void main() { gl_Position = vec4(p, 1.); vu = uv; sil = s; vk = k; }`;
   const SF = `#version 300 es
-  precision highp float; in vec2 vu, vk; in float sil; uniform sampler2D t, mk; uniform vec3 mc; uniform float xr, hid; uniform vec2 nf; out vec4 o; void main() { vec4 c = texture(t, vu); if (c.a < .5) discard;
-    if (hid > .5) { if (hid > 1.5 && texelFetch(mk, ivec2(gl_FragCoord.xy), 0).rg != vec2(0.)) { o = c; return; } if (mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) > .5) discard; o = vec4(c.rgb * .82, c.a); return; }   // (hid: the part of you land hides (vox_style.js): one px in two, 2x2, dimmer: you are BEHIND it; 2: the window is open: inside it you are whole, over its veil)
+  precision highp float; in vec2 vu, vk; in float sil; uniform sampler2D t, mk; uniform vec3 mc; uniform float xr, hid; uniform vec2 nf; out vec4 o; ${PORT} void main() { vec4 c = texture(t, vu); if (c.a < .5) discard;
+    if (hid > .5) { if (hid > 1.5 && (texelFetch(mk, ivec2(gl_FragCoord.xy), 0).rg != vec2(0.) || port(gl_FragCoord.xy) > bay4(gl_FragCoord.xy))) { o = c; return; } if (mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) > .5) discard; o = vec4(c.rgb * .82, c.a); return; }   // (hid: the part of you land hides (vox_style.js): one px in two, 2x2, dimmer: you are BEHIND it; 2: the window is open: inside it you are whole, over its veil)
     { float cx = mod(floor(gl_FragCoord.x / 2.), 2.), cy = mod(floor(gl_FragCoord.y / 2.), 2.); if (vk.y < mod(cx + cy, 2.) * .5 + cx * .25 + .125) discard; }   // (vk.y: how much of it is there: what the window takes away or gives back goes and comes in four steps of a 2x2 dither; vk.x: as dim as the floor it stands on)
-    if (xr > 0.) { vec4 k4 = texelFetch(mk, ivec2(gl_FragCoord.xy), 0); highp float di = k4.r * 255. + k4.g * 255. / 256., z = gl_FragCoord.z * 2. - 1., w = 2. * nf.x * nf.y / (nf.x + nf.y - z * (nf.y - nf.x)); if (di > 0. && w < di + .06 && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard; }   // (WIN: what stands between the eye and your space: one px in two)
+    if (xr * port(gl_FragCoord.xy) > bay4(gl_FragCoord.xy)) { vec4 k4 = texelFetch(mk, ivec2(gl_FragCoord.xy), 0); highp float di = k4.r * 255. + k4.g * 255. / 256., z = gl_FragCoord.z * 2. - 1., w = 2. * nf.x * nf.y / (nf.x + nf.y - z * (nf.y - nf.x)); if (di > 0. && w < di + .06 && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard; }   // (WIN: what stands between the eye and your space: one px in two)
     float dm = distance(gl_FragCoord.xy, mc.xy + vec2(0., 8.)); if (sil > 1.5 && dm < mc.z + 2. && mod(floor(gl_FragCoord.x / 2.) + floor(gl_FragCoord.y / 2.), 2.) < 1.) discard; o = sil > .5 && sil < 1.5 ? vec4(.95, .8, .55, .4) : sil > 2.5 ? vec4(mix(c.rgb, vec3(1., .97, .8), .45), 1.) : vec4(c.rgb * vk.x, c.a); }`;   // (sil 3: a ghost: what would be put, pale)   // (sil 2: what stands in front of you: one px in two of it, 2x2, in a disc round you (mc): you are seen through it and it keeps its shape. It was a whole hole: a tree's crown was gone, a stub at your feet)
-  return {AW, H, LV, SINK, sink, VS, FS, SV, SF};
+  return {AW, H, LV, SINK, sink, PORT, VS, FS, SV, SF};
 })();

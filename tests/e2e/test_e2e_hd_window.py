@@ -1,6 +1,6 @@
 """The x-ray window's manners in the HD look (vox_style_glsl.js, vox_style_win.js, vox_style_land.js, vox_style.js, hd.js):
-nothing is shaded outside it (its depth is told inside: test_e2e_hd_stair.py), its near edge is the land's lit lip, and the section over its top edge is the ground's
-own earth, not a grey bar; in a river between cliffs the hole is whole (no sliver of the south bank left in it, no path
+the window is a round porthole on the screen round you (its edge dithered); in it the land over your head is cut (its section: the ground's own earth, not a grey bar), outside it nothing is shaded or cut (depth: test_e2e_hd_stair.py);
+in a river between cliffs the hole is whole (no sliver of the south bank left in it, no path
 of the way's boxes through the bank); what grows on the meadow over your room does not stand on its floor; the aim on a
 wall is on the cell you hit, at your level, and turning to a wall puts the shown way out away; a block of stone or earth put down is drawn as what it is."""
 
@@ -36,7 +36,7 @@ def inside(g, x, y):
     g.rest()
 
 
-def test_the_window_has_no_shade_outside_it_a_lit_lip_at_its_near_edge_and_its_section_is_earth(browser, server):
+def test_in_the_porthole_the_meadow_over_your_room_is_cut_to_earth_and_outside_it_is_as_it_is(browser, server):
     g = hd(browser, server)
     g.hour(.3, still=True)
     for o in ("clouds", "rays", "shimmer"):
@@ -46,12 +46,13 @@ def test_the_window_has_no_shade_outside_it_a_lit_lip_at_its_near_edge_and_its_s
     lum = lambda c: c[0] + c[1] + c[2]
     meadow = g.js(PX, [x + .5, y + 4.5, 4])
     assert meadow[1] > meadow[0] + 10, meadow                              # (grass)
-    # south of the room (its south wall's plane is y + 2): from the hole's edge out onto the meadow, a px every 50th of a tile
-    scan = [g.js(PX, [x + .5, y + 2 + i * .02, 4]) for i in range(50)]
-    k = next(i for i, c in enumerate(scan) if c[1] > c[0])                 # (before it: the room, seen in the hole)
-    south = scan[k:]
-    assert len(south) >= 10 and all(c[1] > c[0] and lum(c) > lum(meadow) * .93 for c in south), scan    # outside the hole the meadow is the meadow: no shade round the rim (a shade outside it read as a block standing on the grass; before that a checker of dark px in a black line)
-    assert lum(south[0]) > lum(meadow) + 12 and lum(south[-1]) < lum(meadow) + 12, (south[0], south[-1], meadow)      # the hole's near edge: the land's lip, lit; then the grass as it is
+    # south of the room (its south wall's plane is y + 2): from the hole's edge out onto the meadow, a px every 10th of a tile: in the porthole round you the meadow
+    # is cut (its section: earth), past its soft edge the meadow as it is
+    scan = [g.js(PX, [x + .5, y + 2 + i * .1, 4]) for i in range(32)]   # (to near the picture's foot)
+    k = next(i for i, c in enumerate(scan) if c[1] > c[0])                 # (before it: the room, then the cut)
+    south = scan[k + 3:]                                                   # (past the dithered edge)
+    assert k >= 10 and all(c[0] > c[1] for c in scan[2:k]), scan           # the cut: earth, down below your feet (it was the grass at once: the window ended at the room's wall)
+    assert len(south) >= 6 and all(c[1] > c[0] and lum(c) > lum(meadow) * .93 for c in south), (k, [c for c in south if not (c[1] > c[0] and lum(c) > lum(meadow) * .93)], meadow)    # outside the porthole the meadow is the meadow: no shade round it
     # over the window's top edge (the north wall's plane is y - 1): the section
     north = [g.js(PX, [x + .5, y - 1.5 + i * .02, 4]) for i in range(40)]
     earth = [c for c in north if c[0] > c[1] > c[2] and c[0] - c[2] > 30]
@@ -151,13 +152,13 @@ def test_in_a_gorge_the_river_is_one_water_through_the_window_no_strip_of_the_cl
     g.rest()
     lum = lambda c: .3 * c[0] + .59 * c[1] + .11 * c[2]
     cols = {}
-    for dx in (-4, -2, 2, 4):                                              # (not your own column: you stand in it)
-        cols[dx] = [g.js(PX, [x + dx + .5, y + .5 - i * .1, 0]) for i in range(44)]   # your row to the river's north row, a px every tenth of a tile
+    for dx in (-2, -1, 1, 2):                                              # (not your own column: you stand in it) (in the porthole round you: past it the land is whole)
+        cols[dx] = [g.js(PX, [x + dx + .5, y + .5 - i * .1, 0]) for i in range(36)]   # your row to near the river's north row, a px every tenth of a tile
     for dx, scan in cols.items():
         land = "".join("L" if c[2] - c[0] < 15 else "w" for c in scan)   # (water is blue over red; the cliff's stone and its dark rim are not: a strip of them, three px or more)
         assert "LLL" not in land, (dx, land, sorted((t[0] - x, t[1] - y) for t in g.js("HdLook.win.tiles")))   # (before: wwww...LLLLLLLLLLLLLLLLwwww at -4: the cliff's top across the river)
     # the river runs west to east, its depth by row: at each row every column is one tone, its waves' glints aside (a px in ten at most): no slab of it in another
-    off = [(i, dx) for i in range(44) for dx, scan in cols.items() if abs(lum(scan[i]) - sorted(lum(s[i]) for s in cols.values())[1]) > 25]
+    off = [(i, dx) for i in range(36) for dx, scan in cols.items() if abs(lum(scan[i]) - sorted(lum(s[i]) for s in cols.values())[1]) > 25]
     assert len(off) <= 17, off
 
 
@@ -243,3 +244,43 @@ def test_a_block_put_down_is_drawn_as_what_it_is(browser, server):
     side = [g.js(PX, [x - 2 + .5, y - 1, 3.5]), g.js(PX, [x + 2 + .5, y - 1, 3.5])]
     assert max(side[0]) - min(side[0]) < 30, side                                           # the stone block's front: grey
     assert side[1][0] > side[1][2] + 30, side                                               # the earth block's: brown
+
+
+# THE PORTHOLE: the px of the picture the window changes (with it, against with it shut: HdLook.nowin): their box (device px), and the share of them
+# in the ring of its soft edge (its outer 4 art px) and in the disc inside that ring, south of its middle
+OPENED = """async (s) => { const W = cv.width, H = cv.height, frame = () => new Promise(requestAnimationFrame);
+  const shot = async (off) => { HdLook.nowin = off; for (let i = 0; i < 90 && HdLook.win.a !== (off ? 0 : 1); i++) await frame(); for (let i = 0; i < 4; i++) await frame(); return HdLook.read(0, 0, W, H).data; };
+  const a = await shot(true), b = await shot(false), on = new Uint8Array(W * H), cs = new Uint32Array(W), rs = new Uint32Array(H);
+  for (let i = 0; i < W * H; i++) if (Math.abs(a[4 * i] - b[4 * i]) + Math.abs(a[4 * i + 1] - b[4 * i + 1]) + Math.abs(a[4 * i + 2] - b[4 * i + 2]) > 30) { on[i] = 1; cs[i % W]++; rs[(i / W) | 0]++; }
+  const lo = (c) => c.findIndex((n) => n >= 4 * s), hi = (c) => c.length - 1 - [...c].reverse().findIndex((n) => n >= 4 * s), x0 = lo(cs), x1 = hi(cs), y0 = lo(rs), y1 = hi(rs);   // (a column or a row with a few px changed: a glint on the water is not the window)
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, R = (x1 - x0) / 2, ring = [0, 0], disc = [0, 0];
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const d = Math.hypot(x - cx, y - cy), k = d > R - 4 * s + 1 && d < R - 1 ? ring : d < R - 6 * s && y > cy ? disc : null; if (k) { k[0] += on[y * W + x]; k[1]++; } }
+  return {w: x1 - x0 + 1, h: y1 - y0 + 1, ring: ring[0] / Math.max(1, ring[1]), disc: disc[0] / Math.max(1, disc[1]), seen: HdLook.catSeen()}; }"""
+
+
+def test_the_x_ray_window_is_a_round_porthole_on_you_with_a_soft_edge(browser, server):
+    """The owner at doben8's spot (a river against a 12-high cliff): "x-ray width and height do not match; also there should
+    be an alpha gradient". The window was its tiles, a square 5 round you: at the steep pitch a wide flat band, hard-edged,
+    the cliff's top still at your feet. Now a circle on the screen round your body (vox_style_glsl.js PORT): as tall as
+    wide, in a gorge and in a room; south of you as far as north (the bank's top below your feet is cut: its section);
+    its edge fades back in px by px (dithered); you whole in it."""
+    g = hd(browser, server)
+    g.hour(.3, still=True)
+    for o in ("clouds", "rays", "shimmer"):
+        g.js(f"setOpt('{o}', 0)")
+    s = g.js("zoom * devicePixelRatio")
+    x, y = gorge(g)
+    g.rpc("dev_teleport", x=x, y=y)
+    g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
+    g.js("(() => { WayShow.paint = () => {}; Target.off = true; return 1; })()")
+    g.rest()
+    got = {"gorge": g.js(OPENED, s)}
+    x, y = room(g)
+    inside(g, x, y)
+    got["room"] = g.js(OPENED, s)
+    for k, o in got.items():
+        assert .8 <= o["w"] / o["h"] <= 1.25, (k, o)                       # as tall as wide on the screen (the gorge's was a band: 5 tiles wide, 1 to 3 tall)
+        assert o["w"] >= 80 * s, (k, o)                                    # (and round you, not a speck: 128 art px across here)
+        assert .15 < o["ring"] < .85, (k, o)                               # its edge: some px cut, some not (a dither), not a hard line
+        assert o["disc"] > .7, (k, o)                                      # inside it, south of your middle too, it is opened (the cliff's top at your feet was not; your own row of the river is seen either way)
+    assert got["gorge"]["seen"] > .7 and got["room"]["seen"] > .95, got     # you whole (in the river your feet are under its face)
