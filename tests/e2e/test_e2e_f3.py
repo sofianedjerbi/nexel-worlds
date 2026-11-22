@@ -68,3 +68,16 @@ def test_it_says_what_the_gpu_takes_a_frame_by_its_own_clock_or_n_a(game):
         assert not game.errors
     finally:
         game.js("F3.set(false)")
+
+
+def test_on_the_home_screen_it_is_not_shown_even_when_left_on(browser, server):
+    """"why does the F3 menu appear in the homescreen?": left on from the game (saved), it waits for the game; the home
+    screen is never covered by it."""
+    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    page.goto(server)
+    page.evaluate("localStorage.setItem('megastructure-f3', '1')")
+    page.reload()
+    page.wait_for_function("document.body.classList.contains('scene')", timeout=20000)
+    page.wait_for_timeout(800)
+    assert page.evaluate(TEXT) == "" and not page.evaluate("document.body.classList.contains('f3')")
+    page.close()
