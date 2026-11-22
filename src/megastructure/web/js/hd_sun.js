@@ -16,7 +16,7 @@ const HdSun = (() => {
   let H = {on: false, night: false, kx: 0, ky: 0, sun: 0}, sid = "";
   function hour() {
     const h = SunLand.hour(), want = !!opt("shadows") && !!opt("depth");
-    H = {on: want && h.alpha > .02, night: want && h.dark > .35, kx: Math.round(h.kx * 8) / 8, ky: Math.round(h.ky / .6 * 8) / 8, sun: Math.min(1, h.alpha / SunLand.SHADE.alpha)};   // (ky: the ground is seen from 36 degrees: as long on the screen as the classic picture's)
+    H = {on: want && h.alpha > .02, night: want && h.dark > .35, kx: Math.round(h.kx * 8) / 8, ky: Math.round(h.ky * 8) / 8, sun: Math.min(1, h.alpha / SunLand.SHADE.alpha)};   // (kx, ky: the sun's way in the world, ground px a px of height; the eye's projection alone foreshortens it. It was ky / .6, made for the 36-degree eye: from 78.6 degrees a cliff's shadow lay 1.6x as long on the screen)
     return H;
   }
   const key = () => { hour(); return H.on ? H.kx + "," + H.ky : H.night ? "n" + fireAt.length : "-"; };
@@ -75,14 +75,15 @@ const HdSun = (() => {
   // The land's own shadow: a cliff, a terrace, a hill throws the hour's shadow on the land under it (the classic picture had it). For a tile's surface, px by px: is some
   // column towards the sun, two levels or more over it, between the px and the sun? (a px h px under a top is in its shadow when the px, moved h back along the sun's
   // way, is on that top's tile.) The same tone and the same soft rim as the things' shadows, on tops only (never a wedge on a wall's face); kept until the land or the sun moves on.
-  const lands = new Map(), tops = new Map(); let lkey = null;
-  const topOf = (x, y) => { const k = x + "," + y; let t = tops.get(k); if (t === undefined) { const c = Voxels.host.column(x, y); t = c && c.length ? c[c.length - 1] : null; tops.set(k, t); } return t; };
+  const lands = new Map(), tops = new Map(), TALL = 192; let lkey = null;   // (TALL: the height in px a column's shadow is counted to: 12 levels, the gorge's cliff whole. It was 6: a taller cliff's shadow stopped short, cut straight)
+  const topOf = (x, y) => { const k = (x + 32768) * 65536 + y + 32768; let t = tops.get(k); if (t === undefined) { const c = Voxels.host.column(x, y); t = c && c.length ? c[c.length - 1] : null; tops.set(k, t); } return t; };
   function land(out, x, y) {
     if (!H.on) return; const lk = lkey; if (!lk || lk[0] !== landVer || lk[1] !== Floors.ver || lk[2] !== H.kx || lk[3] !== H.ky || lk[4] !== HdThings.sheet.id || lands.size > 8000) { lands.clear(); tops.clear(); lkey = [landVer, Floors.ver, H.kx, H.ky, HdThings.sheet.id]; }   // (what it hangs on, looked at: a string was made of it for every tile asked)
     const s = surface(x, y); if (!s) return; const k = x + "," + y + "," + s.z; let ch = lands.get(k);
     // (the columns asked: a column further each way than the shadows reach: the px just outside the tile are asked too, for the rim: without them each tile's shadow had a rim of its own, light lines between tiles)
-    if (ch === undefined) { ch = null; const src = [], sg = H.kx < 0 ? 1 : -1, nx = Math.ceil(96 * Math.abs(H.kx) / 16), ny = Math.ceil(96 * H.ky / 16);
-      for (let j = -1; j <= ny + 1; j++) for (let i = -1; i <= nx + 1; i++) { if (!i && !j) continue; const T = topOf(x + sg * i, y - j); if (T !== null && (T - s.z) * UP >= 16) src.push([sg * i * 16, -j * 16, Math.min(96, (T - s.z) * UP)]); }
+    if (ch === undefined) { ch = null; const src = [], sg = H.kx < 0 ? 1 : -1, nx = Math.ceil(TALL * Math.abs(H.kx) / 16), ny = Math.ceil(TALL * H.ky / 16);
+      for (let j = -1; j <= ny + 1; j++) for (let i = -1; i <= nx + 1; i++) { if (!i && !j) continue; const T = topOf(x + sg * i, y - j); if (T === null || (T - s.z) * UP < 16) continue; const h = Math.min(TALL, (T - s.z) * UP);
+        if ((i - 1) * 16 <= h * Math.abs(H.kx) + 1 && (j - 1) * 16 <= h * H.ky + 1) src.push([sg * i * 16, -j * 16, h]); }   // (a column whose shadow does not reach this tile is not asked of every px: as many as 12 levels counted made the land's shadows 2.4x as slow)
       if (src.length) { const kx = H.kx, ky = H.ky, ns = src.length, sx = new Float32Array(ns), sy = new Float32Array(ns), sh = new Float32Array(ns); src.forEach((q, i) => { sx[i] = q[0]; sy[i] = q[1]; sh[i] = q[2]; });
         // (is a ground px in the shadow of one of the columns: the stretch of the sun's ray over that column's tile, across and along, within its height. In plain numbers: it made two lists and sorted them for every px of every column: most of the script's time when land came in)
         const dark = (gx, gy) => { gx += .5; gy += .5; for (let i = 0; i < ns; i++) { let p0, p1, q0, q1;
