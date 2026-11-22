@@ -158,8 +158,8 @@ def test_a_strip_under_a_plateau_is_open_to_its_back_corners(browser, server):
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
-    rows = ["." * 21] * 4 + ["." * 6 + "_" * 9 + "." * 6] * 6
-    g.stamp(-10, -3, rows, levels=[r.replace(".", "0").replace("_", "8") for r in rows])
+    rows = ["." * 21] * 6 + ["." * 6 + "_" * 9 + "." * 6] * 6                   # (his strip as it is: the cliff north of it too. A meadow open to the north is no strip: only your few
+    g.stamp(-10, -5, rows, levels=["C" * 21] * 2 + [r.replace(".", "0").replace("_", "8") for r in rows[2:]])   #  tiles are opened there, test_e2e_hd_behind.py, the mountain's foot)
     g.rpc("dev_teleport", x=x, y=y, z=0)
     g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)
     quiet(g)
@@ -179,6 +179,7 @@ def test_a_strip_under_a_plateau_is_open_to_its_back_corners(browser, server):
                     if max(c) - min(c) < 35 or c[0] > c[1] + 15:                  # (grey cobble, its brown and grey sides; grass and its flowers are neither)
                         bad.append(((dx, dy), i, j, c))
     assert not bad, (len(bad), bad[:8])                                       # the strip is grass edge to edge: nothing of the plateau's corners over it
+    g.stamp(-10, -5, ["." * 21] * 12, levels=["0" * 21] * 12)                     # (the meadow again: the cliff left standing shaded the next test's cave)
 
 
 def test_under_the_open_sky_the_opened_strip_keeps_the_cut_land_s_sun_shade(browser, server):

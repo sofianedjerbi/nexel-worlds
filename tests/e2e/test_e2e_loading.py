@@ -15,8 +15,8 @@ from conftest import ROOT, free_port
 HOLD = """(() => { const add = DOMTokenList.prototype.add; window.__hold = true;
   DOMTokenList.prototype.add = function (...a) { if (window.__hold && a.includes('scene')) { window.__held = true; return; } return add.apply(this, a); };
   window.__p = 0; Object.defineProperty(window, 'ASSETS_OF', {get: () => 100, set: () => {}}); Object.defineProperty(window, 'ASSETS_IN', {get: () => window.__p * 100, set: () => {}}); })();"""
-# the bar's fill in art px, and the art px in screen px
-BAR = "(() => { const b = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bootpx')); return [document.getElementById('bootfill').getBoundingClientRect().width / b, b * devicePixelRatio]; })()"
+# the bar's fill in art px (what shows of it: it slides in from the left of its track), and the art px in screen px
+BAR = "(() => { const b = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bootpx')), f = document.getElementById('bootfill'); return [(f.getBoundingClientRect().right - f.parentElement.getBoundingClientRect().left) / b, b * devicePixelRatio]; })()"
 RUNNING = "document.getAnimations().filter((a) => a.playState === 'running' && a.effect.target.closest('#boot')).length"
 
 
@@ -25,12 +25,12 @@ def test_the_wait_runs_before_any_script_and_its_bar_never_goes_back(browser, se
     held = []
     page.route("**/js/*.js*", lambda r: held.append(r))           # (no script of the game's has come)
     page.goto(server, wait_until="commit")
-    page.wait_for_function(f"!!document.getElementById('boot') && {RUNNING} === 2", timeout=10000)      # the cat runs, the meadow under it goes by
+    page.wait_for_function(f"!!document.getElementById('boot') && {RUNNING} >= 6", timeout=10000)      # the cat runs; the meadow, the hills, the clouds go by; the bar's glint, the line under it
     js = page.evaluate
     assert js("[!!document.getElementById('poster'), !!document.getElementById('loading')]") == [False, False]   # the still picture and the old strip: gone
     assert js("[[2, 2], [innerWidth - 3, innerHeight - 3], [innerWidth / 2, innerHeight / 2]].every(([x, y]) => document.elementFromPoint(x, y).closest('#boot'))")   # it alone is seen
     n, px = js(BAR)
-    assert n == 0 and px == round(px) and px >= 6, (n, px)        # a whole number of screen px an art px, big enough on a phone
+    assert abs(n) < .01 and px == round(px) and px >= 6, (n, px)        # a whole number of screen px an art px, big enough on a phone
     page.close()
     page = browser.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
     page.add_init_script(HOLD)
@@ -39,11 +39,12 @@ def test_the_wait_runs_before_any_script_and_its_bar_never_goes_back(browser, se
     page.wait_for_function("typeof titleDraw === 'function'", timeout=20000)
     js("window.__p = .5")
     page.wait_for_function(f"{BAR}[0] >= 20", timeout=5000)
+    page.wait_for_timeout(150)                                     # (its slide in: 90 ms)
     n = js(BAR)[0]
-    assert n == round(n)                                           # (whole art px)
+    assert abs(n - round(n)) < .01, n                              # (whole art px)
     js("window.__p = .1")                                          # what is told goes back: the bar does not
     page.wait_for_timeout(300)
-    assert js(BAR)[0] >= n
+    assert js(BAR)[0] >= n - .01
     js("window.__hold = false; document.body.classList.add('scene')")
     page.wait_for_function("!document.getElementById('boot')", timeout=5000)    # the island painted: the wait is gone
     page.close()
@@ -60,6 +61,27 @@ def test_the_title_does_not_wait_for_the_sheets_it_never_shows(browser, server):
         r.continue_()
     page.wait_for_function("IMG.emoji.naturalWidth > 0", timeout=10000)   # and it comes, for the world
     page.close()
+
+
+def test_the_wait_moves_with_no_script_at_all(browser, server):
+    """CSS alone: no script of the page's runs (not even its own few lines), and the wait still moves, by the compositor's
+    own steps (two pictures 0.3 s apart are not the same), in the page's ink, its frame there from the first picture."""
+    ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=3, is_mobile=True, has_touch=True, java_script_enabled=False)
+    page = ctx.new_page()
+    try:
+        page.goto(server, wait_until="domcontentloaded")
+        page.wait_for_selector("#boot .win", state="visible", timeout=10000)
+        box = page.locator("#boot .win").bounding_box()
+        assert box and box["width"] > 100, box
+        page.wait_for_timeout(400)                                  # (past its fade in)
+        a = page.screenshot(clip=box)
+        page.wait_for_timeout(300)
+        b = page.screenshot(clip=box)
+        assert a != b, "the wait stood still with no script"
+        corner = page.screenshot(clip={"x": 2, "y": 2, "width": 4, "height": 4})
+        assert corner == page.screenshot(clip={"x": 380, "y": 830, "width": 4, "height": 4})   # (the ink all round it)
+    finally:
+        ctx.close()
 
 
 # every frame the wait is on the screen: [ms, the % it says, the script's bytes read]; and the page's long tasks

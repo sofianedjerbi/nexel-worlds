@@ -44,6 +44,7 @@ QUICK = {
     "hand": "test_the_slot_in_hand_is_bigger_and_says_its_name",
     "hd": "test_two_walls_side_by_side_touch_and_a_bridge_is_drawn",
     "hd_behind": "test_on_a_small_hill_and_behind_it_no_window_opens_and_behind_it_you_show_through",
+    "hd_vanish": "test_at_a_mountain_s_foot_the_window_is_your_few_tiles_not_the_meadow_behind_it_and_it_does_not_flicker",
     "hd_land": "test_under_a_roof_an_open_pit_shows_a_bright_floor_and_the_meadow_stays",
     "hd_phone": "test_the_land_is_the_size_the_zoom_says_and_fills_a_screen_held_upright",
     "help": "test_the_help_is_a_window_of_short_pages",
