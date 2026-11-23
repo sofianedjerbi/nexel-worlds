@@ -129,7 +129,7 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
             g.wait(done, timeout=20000)
             g.page.keyboard.up(key)
     n, raw = g.js("(() => { __on = false; return [__n, __raw]; })()")
-    assert n > 300 and raw == 0, (n, raw)                                        # every frame read: no px of the land from an empty paint
+    assert n > 300 and raw == 0, (n, raw, g.js("HdLook.work"))                                        # every frame read: no px of the land from an empty paint
     # and were the shown land's paints lost (they cannot be now: a full sheet no longer wipes them): the counter sees it, and the land is its mean colour, not one earth brown
     g.rest()
     spot = [x - 4.5, y + 2.5, 0]

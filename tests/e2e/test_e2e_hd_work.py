@@ -55,7 +55,7 @@ def test_walking_back_the_far_land_is_not_made_again(browser, server):
     g.page.keyboard.up("ArrowLeft")
     g.rest()
     f2 = g.js("HdLook.work.fars")
-    assert f1 - f0 > 200 and f2 - f1 < (f1 - f0) / 3, (f0, f1, f2)   # (the way back: its patches were made on the way there)
+    assert f1 - f0 > 200 and f2 - f1 < (f1 - f0) / 3, (f0, f1, f2, g.js("HdLook.work"), g.js("[blocks.size, HdLook.far]"))   # (the way back: its patches were made on the way there)
 
 
 def test_a_persons_sheet_is_made_between_frames(browser, server):
