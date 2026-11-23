@@ -32,7 +32,13 @@ def test_walking_past_a_tall_mountain_the_sky_does_not_move(browser, server):
     g.rpc("dev_creatures", clear=60)
     x, y = g.pos()
     z0 = g.js(f"topAt({x}, {y})")
-    g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-34, 8) for i in range(-60, 61)], col=[z0])
+    # (all the land the sky's line looks at made one meadow: the lowest land ahead (hd.js lowAhead) is read 6 to 64 tiles
+    #  north of you, 24 east and west. Only 34 north were laid out, by dev_col, which leaves what stands: a pond, a pit
+    #  another test dug, out there lowered the line a px as you walked, every run after the x-ray tests; and a tree at
+    #  (x + 23, y) stopped the walk west, two runs in eight; and the eye looks down more steeply over land south of you
+    #  taller than you (hd.js clear, out to 24 rows): another test's plateau south of the walk tilted it, the line with it)
+    g.stamp(-60, -72, ["." * 121] * 106)
+    g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-72, 34) for i in range(-60, 61)], col=[z0])
     ridge(g, x, y - 18, z0)
     g.rest()
     flat = g.js("HdLook.sky(0).line / zoom")
