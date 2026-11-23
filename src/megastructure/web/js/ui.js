@@ -171,8 +171,16 @@ function drawHotbar(inv) {
 // The slot in hand: two art px bigger each side, lifted, its frame lit (the pack's frame with its middle drawn longer, its
 // wood lighter: whole px, nothing scaled; --slotsel), its icon a screen px bigger an art px if that fits (--i2, hudFit).
 // Its name shows over the bar a moment when it changes ("the selected item in inventory isn't clear").
+// The game's short notes show in the same spot ("'you're full' messages etc they could show up above the chat beautifully
+// like item"): one spot, one timer, the newest shown (a name, a note) replaces what was there and is never cut short by
+// the older one's timer. A note stays longer than a name; a no is warm red (the buzz too, toast).
 let hotWas, nameTimer;
-function heldName(n) { const e = $("heldname"); e.textContent = label(n); e.classList.add("on"); clearTimeout(nameTimer); nameTimer = setTimeout(() => e.classList.remove("on"), 1400); }
+const NAME_MS = 1400, BAR_NOTE_MS = 2500;
+function overBar(html, cls, ms) {
+  const e = $("heldname"); e.innerHTML = html; e.className = "on" + (cls ? " " + cls : ""); e.dataset.t = Date.now();
+  clearTimeout(nameTimer); nameTimer = setTimeout(() => e.classList.remove("on"), ms);
+}
+function heldName(n) { overBar(esc(label(n)), "", NAME_MS); }
 ready.then(() => { const im = IMG.slot; if (!im) return; (() => {   // (the frame from the pack: the demo asks for no picture on its own, web_bundle.py)
   const c = document.createElement("canvas"); c.width = c.height = 34; const g = c.getContext("2d"), cut = [[0, 15, 0, 15], [15, 1, 15, 4], [16, 14, 19, 15]];
   for (const [sx, sw, dx, dw] of cut) for (const [sy, sh, dy, dh] of cut) g.drawImage(im, sx, sy, sw, sh, dx, dy, dw, dh);
@@ -272,14 +280,16 @@ function banner(title, text) {
 }
 let toastTimer;
 // What the game has to tell you: something could not be done, a hint, a word about what just happened.
-// "all errors messages and shit show up on top of screen.. can't you just show them beautifully in the chat ?": while
-// you play it is a line of the chat (a small mark before it: green for a word, red for a no), which fades like the
-// others and is kept in the history; the sign at the top is only for the first screen, where there is no chat.
+// "all errors messages and shit show up on top of screen..": while you play the sign at the top is not shown (it is
+// only for the first screen). A short note (no key in it: "You're full", "Too far: get closer.") shows over the bar
+// where an item's name shows, a moment (overBar; not kept in the chat any more). The dressed welcome (a key in it, said
+// to the chat on purpose: chat=true) is still a line of the chat (a small mark before it), which fades like the others.
 // (The sign's text is still set, unseen: the tests and the first screen read it.)
-const NOTE_MS = 6000;                                  // a note shows a little less long than what someone said
+const NOTE_MS = 6000;                                  // a note in the chat shows a little less long than what someone said
 // (a guide, a message with a key in it, shows and goes: it is not kept in the chat. The keys are beside what they do)
 function toast(msg, bad, stay = NOTE_MS, chat = !msg.includes("`")) {             // (msg may be dressed: **bold**, a new line, `K` a key; main.js rich. stay: ms it shows)
-  if (me && chat && typeof chatLine === "function") { chatLine(msg, bad ? "note bad" : "note sys"); $("chatlog").lastElementChild.dataset.t = Date.now() - (chatKeep() * 1000 - Math.min(stay, chatSmall() ? chatKeep() * 1000 : stay)); }
+  if (me && chat && !msg.includes("`") && typeof rich === "function") overBar(rich(msg), bad ? "note bad" : "note", BAR_NOTE_MS);
+  else if (me && chat && typeof chatLine === "function") { chatLine(msg, bad ? "note bad" : "note sys"); $("chatlog").lastElementChild.dataset.t = Date.now() - (chatKeep() * 1000 - Math.min(stay, chatSmall() ? chatKeep() * 1000 : stay)); }
   if (bad) sfx("buzz"); $("toastt").textContent = typeof plain === "function" ? plain(msg) : msg; const t = $("toast"); t.style.display = "block"; $("toastt").style.color = bad ? "var(--warn)" : "var(--ink)"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3200); }
 
 

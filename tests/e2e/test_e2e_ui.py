@@ -253,20 +253,40 @@ def test_the_crafting_list_is_not_made_again_while_it_is_shut(game):
     assert "workbench" in game.js(LIT)
 
 
-def test_what_the_game_says_is_a_line_of_the_chat_not_a_sign_at_the_top(game):
-    """"all errors messages and shit show up on top of screen.. can't you just show them beautifully in the chat ?":
-    while you play, a word from the game is a marked line of the chat (red for a no), the same one twice is counted,
-    and the sign at the top is not shown."""
-    game.js("(() => { toast('In hand: **Dirt**'); toast('In hand: **Dirt**'); toast('Too far: get closer.', true); return 1; })()")
-    lines = game.js("[...$('chatlog').children].map((d) => [d.className, d.textContent])")
-    assert ["note sys", "In hand: Dirt ×2"] in lines and lines[-1] == ["note bad", "Too far: get closer."], lines
-    assert game.js("getComputedStyle($('toast')).display") == "none" and game.toast() == "Too far: get closer."
-    assert game.js("getComputedStyle($('chatlog').lastElementChild, '::before').width") == "6px"      # its mark
+def test_what_the_game_says_shows_over_the_bar_not_in_the_chat_nor_at_the_top(game):
+    """"'you're full' messages etc they could show up above the chat beautifully like item": while you play, a short
+    word from the game shows a moment where the name of what you take in hand shows (red for a no, with its buzz), the
+    newest in place of the last, never cut short by the older one's timer; it is not a line of the chat, and the sign at
+    the top is not shown. The dressed welcome (a key in it, said to the chat) is still a line of the chat."""
     n = game.js("$('chatlog').children.length")
+    game.js("(() => { window.__sfx = []; const o = sfx; sfx = function (k, ...r) { __sfx.push(k); return o(k, ...r); }; toast('You are full.'); return 1; })()")
+    over = "[$('heldname').className, $('heldname').textContent]"
+    assert game.js(over) == ["on note", "You are full."] and "buzz" not in game.js("__sfx")
+    game.js("(() => { toast('Too far: get closer.', true); return 1; })()")              # the newest in its place, red, buzzing
+    assert game.js(over) == ["on note bad", "Too far: get closer."] and "buzz" in game.js("__sfx")
+    assert game.js("getComputedStyle($('heldname')).color") == "rgb(255, 176, 160)"     # (the game's warm red for a no, as the chat's)
+    assert game.js("$('chatlog').children.length") == n                                  # not in the chat
+    assert game.js("getComputedStyle($('toast')).display") == "none" and game.toast() == "Too far: get closer."
+    b = game.js("(() => { const h = $('heldname').getBoundingClientRect(), s = $('hotbar').getBoundingClientRect(); return [h.bottom <= s.top + 1, Math.abs((h.left + h.right) / 2 - (s.left + s.right) / 2) < 2]; })()")
+    assert b == [True, True], b                                                         # over the bar, in its middle
+    game.give(dirt=1, bread=1)
+    game.hold_item("dirt"); game.hold_item("bread")                                      # a newer event: an item's name in its place
+    game.wait("$('heldname').textContent === label('bread') && $('heldname').className === 'on'")
+    game.js("(() => { toast('You are full.'); return 1; })()")
+    t0 = game.js("+$('heldname').dataset.t")
+    game.sleep(1600)                                                                    # longer than a name (1.4 s): the name's timer cut nothing
+    assert game.js("$('heldname').classList.contains('on')") and game.js(over)[1] == "You are full."
+    game.js("(() => { toast('You are full.'); return 1; })()")                          # the same again: shown again from the start
+    assert game.js("+$('heldname').dataset.t") > t0
+    game.sleep(1600)                                                                    # (3.2 s since the first: it began again)
+    assert game.js("$('heldname').classList.contains('on')")
+    game.wait("!$('heldname').classList.contains('on')", 3000)                          # then it goes
     game.js("(() => { toast('What hides you: **Cut away** `V`'); return 1; })()")                 # a guide (a key in it) shows and goes:
     assert game.js("$('chatlog').children.length") == n and "Cut away" in game.toast()               # not kept in the chat (prompts.js)
+    assert "Cut away" not in game.js("$('heldname').textContent")
     game.js("(() => { toast('In hand: **wood**\\nSecond line `M`', false, NOTE_MS, true); return 1; })()")   # dressed: bold, a new line, a key (the welcome)
     last = "$('chatlog').lastElementChild"
+    assert game.js(last + ".className") == "note sys" and game.js("getComputedStyle($('chatlog').lastElementChild, '::before').width") == "6px"      # a line of the chat, its mark
     assert game.js(last + ".querySelector('b').textContent") == "wood" and game.js(last + ".querySelector('kbd').textContent") == "M" and game.js(last + ".querySelectorAll('br').length") == 1
     assert game.toast() == "In hand: wood Second line M"                                               # (plain where it is read as text)
     game.sleep(6800)

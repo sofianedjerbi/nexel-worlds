@@ -45,5 +45,4 @@ def test_an_animal_is_named_with_a_name_tag(game):
     game.wait("[...ents.values()].some((p) => p.e && p.e.kind === 'cow' && p.e.name === 'Daisy')", 6000)
     game.sleep(900)
     assert game.inv("name_tag") == 0 and cow                   # the tag stays on her
-    lines = game.js("[...$('chatlog').children].map((d) => d.textContent)")
-    assert any("Its name is Daisy" in ln for ln in lines), lines
+    assert "Its name is Daisy" in game.js("$('heldname').textContent")      # (said over the bar: ui.js toast)

@@ -61,6 +61,9 @@
   #heldname { position:absolute; left:50%; bottom:100%; transform:translateX(-50%); margin-bottom:4px; white-space:nowrap; font-size:18px; line-height:18px; color:#fff8e8;
     text-shadow:var(--rim); opacity:0; transition:opacity .25s; pointer-events:none; }   /* (the name of what you took in hand, a moment) */
   #heldname.on { opacity:1; transition:none; }
+  #heldname.note { white-space:normal; width:max-content; max-width:min(560px, 86vw); text-align:center; line-height:22px; }   /* (a word from the game, ui.js toast: same spot, same letters) */
+  #heldname.bad { color:#ffb0a0; } #heldname b { color:#fff8e8; } #heldname.bad b { color:#ffe3da; }
+  body.touch #heldname.note { left:0; transform:none; text-align:left; max-width:calc(100vw - 230px); }   /* (a phone: from the bar's left end, clear of the A and B buttons over its right end) */
   .slot canvas { width:calc(11 * var(--i)); height:calc(11 * var(--i)); flex:none; image-rendering:pixelated; }
   .slot .c { position:absolute; right:-6px; bottom:-8px; font-size:18px; line-height:18px; color:#fff8e8; text-shadow:var(--rim); }
   .slot .lvl { position:absolute; left:8px; right:8px; bottom:5px; height:4px; background:#5b4038; border-radius:2px; overflow:hidden; }
