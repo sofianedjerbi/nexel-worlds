@@ -53,10 +53,8 @@ const Climb = (() => {
   // the way to the top, y: its place in the frame's order}
   const OVER = .8;                                    // (the part of the step spent on the rungs; the rest is the step over)
   function climbOf(p) {
-    const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
-    if ((ax === bx && ay === by) || !FLOORS) return null;
-    const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by);
-    if (Math.abs(la - lb) < 2 || !onLadder(ax, ay, la, bx, by, lb)) return null;
+    const [ax, ay, bx, by, la, lb] = Floors.between(p);
+    if (ax === bx && ay === by || !FLOORS || Math.abs(la - lb) < 2 || !onLadder(ax, ay, la, bx, by, lb)) return null;
     const footA = la < lb, u = footA ? (ax === bx ? p.y - ay : p.x - ax) : (ax === bx ? by - p.y : bx - p.x);
     const lo = Math.min(la, lb), hi = Math.max(la, lb), on = u <= OVER;
     const pos = on ? 0 : (u - OVER) / (1 - OVER), h = on ? lo + (hi - lo) * u / OVER : hi;
@@ -87,8 +85,8 @@ const Climb = (() => {
   function down(x, y, dx, dy, top) {
     const out = [];
     for (let t = top - 1; ; t--, x += dx, y += dy) {
-      const under = surfacesAt(x, y).filter((v) => v < t), g = under.length ? Math.max(...under) : null;
-      if (g === null || t <= g) return out.length ? out : "The ground there is as high";
+      const g = settleAt(x, y, t - 1);                     // (none under t: the lowest, not under it)
+      if (t <= g) return out.length ? out : "The ground there is as high";
       for (let c = g + 1; c <= t + 2; c++) if (solidAt(x, y, c)) return "No room: leave the floor open over them";
       const cell = Floors.get(x, y, g), what = cell ? cell[1] : g === floorAt(x, y) ? combAt(x, y) : "";
       const me_ = myPos();

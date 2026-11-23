@@ -56,10 +56,8 @@ const mineWalking = (p) => !!(p.e && p.e.kind === "agent" && p.e.id === myId && 
 // -> null on the level, or {body, ground: art px over the straight line (its feet, its shadow), squash, tuck: in the air, pose, d: px up, key: the step}
 function jumpOf(p) {
   if (p.leapAt && Leap.landedOn(p) !== null) return null;                         // (come down from a jump through the air, off a tile's middle: on that tile, leap.js)
-  const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
-  if (ax === bx && ay === by) return null;
-  const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by);
-  if (la === lb || Climb.onLadder(ax, ay, la, bx, by, lb)) return null;          // (up or down a ladder: a straight climb)
+  const [ax, ay, bx, by, la, lb] = Floors.between(p);
+  if ((ax === bx && ay === by) || la === lb || Climb.onLadder(ax, ay, la, bx, by, lb)) return null;          // (up or down a ladder: a straight climb)
   const f = ax === bx ? p.y - ay : p.x - ax, d = (lb - la) * RELIEF_STEP;        // how far across; px from the first to the second
   const fwd = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0;        // from the first to the second?
   const g = fwd ? f : 1 - f, D = fwd ? d : -d, line = D * g, key = ax + "," + ay + "," + bx + "," + by;   // the way it goes: how far along, px up by, the straight line
@@ -97,8 +95,7 @@ function fallOf(p, now) {
   //  wall, 0.45 of a tile off the middle, going back to it read as stepping off the wall's top into the hole: a fall from
   //  the rim, the body up 60 px in a frame and down again)
   if (p.e && p.e.kind === "agent" && p.e.id === myId && (Leap.on() || Leap.gliding())) { p.fall = null; return null; }
-  const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y), ramp = liftOf(p) / zoom;
-  const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by), between = (ax !== bx || ay !== by) && la !== lb;
+  const [ax, ay, bx, by, la, lb] = Floors.between(p), ramp = liftOf(p) / zoom, between = (ax !== bx || ay !== by) && la !== lb;
   const fwd = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0, down = between && fwd === la > lb;   // going to the lower one?
   const f = ax === bx ? p.y - ay : p.x - ax, u = la > lb ? f : 1 - f;         // how far from the higher tile's middle to the lower one's
   let F = p.fall;
@@ -235,10 +232,8 @@ function jumpPace(p, fx, fy, nx, ny) {
 // another player was a level lower than the line until half way, then a level higher at once, its arc on top: a
 // jump drawn as a teleport). 0 elsewhere (the level, a ladder, a fall: their own ways)
 function lineLift(p) {
-  const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
-  if (ax === bx && ay === by) return 0;
-  const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by);
-  if (la === lb || Math.abs(la - lb) >= FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb)) return 0;
+  const [ax, ay, bx, by, la, lb] = Floors.between(p);
+  if ((ax === bx && ay === by) || la === lb || Math.abs(la - lb) >= FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb)) return 0;
   const f = ax === bx ? p.y - ay : p.x - ax;
   return (la + (lb - la) * f) - (f < .5 ? la : lb);
 }

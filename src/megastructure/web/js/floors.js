@@ -38,7 +38,7 @@ const Floors = (() => {
   // (planned: blocks that are only planned yet, which hold the ones planned beside them: build.js)
   function fits(x, y, z, planned = () => false) {
     if (solidAt(x, y, z)) return "A block is there";
-    const under = Math.max(...surfacesAt(x, y).filter((s) => s < z)), on = thingAt(x, y, under), t = tile(x, y);
+    const under = settleAt(x, y, z - 1), on = thingAt(x, y, under), t = tile(x, y);
     if (under === z - 1) return on && !GROUND.has(on) ? "Something is in the way" : !get(x, y, under) && t && wet(t[1]) ? "Not on water: a bridge first" : null;
     if (z - under < STOREY) return "Too low over the floor";
     if (z - under === STOREY && Structures.WALLS.includes(on || "-")) return null;
@@ -55,6 +55,8 @@ const Floors = (() => {
     const z = at && Math.abs(at.x - x) + Math.abs(at.y - y) === 1 ? landAt(at.z, x, y, at.x, at.y) : null;
     return z !== null ? z : at ? settleNear(x, y, at.z) : standAt(x, y);
   }
+  // a body between two tiles: [ax, ay, bx, by, and their grounds for it] (jump.js, climbing.js, relief.js: once, here)
+  const between = (p) => { const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y); return [ax, ay, bx, by, standOf(p, ax, ay), standOf(p, bx, by)]; };
   const rise = (p) => { const x = Math.round(p.x), y = Math.round(p.y); return FLOORS && colOf(x, y) ? standOf(p, x, y) - standAt(x, y) : 0; };   // how far over the land it stands
 
   // What is over your head: with a block over you, the lowest one over your height on your tile or the next (on the
@@ -130,5 +132,5 @@ const Floors = (() => {
     if (shift) return {text: c[0] === "roof" ? "Take the roof block" : c[0] === "stairs" ? "Take up the step" : "Take up the planks", near: 1, z, ground: true, run: (d) => act("dig", {dir: d, z})};
     return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y, z})};
   }
-  return {STOREY, K, UP, any: (x, y) => !!colOf(x, y), get, set, load, cells, built, thingAt, fits, standOf, rise, alpha, cell, intent, get ver() { return ver; }};
+  return {STOREY, K, UP, any: (x, y) => !!colOf(x, y), get, set, load, cells, built, thingAt, fits, standOf, between, rise, alpha, cell, intent, get ver() { return ver; }};
 })();

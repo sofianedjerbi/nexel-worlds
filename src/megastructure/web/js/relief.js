@@ -32,8 +32,7 @@ const liftAt = (x, y) => (shOf(standAt(x, y)) + Models.up(x, y)) * zoom;      //
 function liftOf(p) {
   const lz = p.leapAt ? Leap.landedOn(p) : null;
   if (lz !== null) return (shOf(lz) + Models.up(Math.round(p.x), Math.round(p.y))) * zoom;   // (come down from a jump off a tile's middle: on it, leap.js)
-  const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
-  const f = ax === bx ? p.y - ay : p.x - ax, a = (shOf(Floors.standOf(p, ax, ay)) + Models.up(ax, ay)) * zoom, b = (shOf(Floors.standOf(p, bx, by)) + Models.up(bx, by)) * zoom;
+  const [ax, ay, bx, by, la, lb] = Floors.between(p), f = ax === bx ? p.y - ay : p.x - ax, a = (shOf(la) + Models.up(ax, ay)) * zoom, b = (shOf(lb) + Models.up(bx, by)) * zoom;
   return a + (b - a) * f;
 }
 
