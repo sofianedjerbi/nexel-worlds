@@ -23,7 +23,7 @@ def test_flowers_around_and_under_you(game):
     assert game.tile(0, 0) == "." and game.inv("flower") == 1
     game.press("e", 500)                                 # then the diagonal one
     assert game.tile(1, 1) == "." and game.inv("flower") == 2
-    assert game.actions() == "X | Dig down"                  # nothing left to pick here (X by hand digs down, as anywhere)
+    assert game.actions() == game.js("capOf('alt')") + " | Dig down"   # nothing left to pick here (the break key by hand digs down, as anywhere: the key over A since 24dae98, Q on this QWERTY, not X)
 
 
 def test_space_never_stops_you(game):
