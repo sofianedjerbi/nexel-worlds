@@ -43,14 +43,16 @@ def sides(g, x, y):
 def test_a_cast_shadow_lies_on_the_suns_far_side_by_day_and_is_absent_at_night(browser, server):
     """A stone wall of one tile on a flat meadow. In the morning the sun is in the east: the tile west of the wall is
     darker with the shadows on than with them off, the tile east of it is not. In the evening the other way round.
-    At night neither."""
+    At night neither. (The two pictures of a side, shadows on then off, are two frames with the land made again between
+    them: the hour is held still for them (hour(still=True)). At dawn the light grows by the second: on a busy machine
+    the second picture was lighter all over, and both sides were "shaded", west .89 and east .82.)"""
     g = hd(browser, server)
     try:
         x, y = g.pos()
         g.stamp(0, -3, ["%"])
         wx, wy = x, y - 3
         for phase, shaded in ((.1, "west"), (.62, "east"), (.9, None)):
-            g.hour(phase)
+            g.hour(phase, still=True)
             g.wait(f"Math.abs((clock.phase || 0) - {phase}) < .02")
             settled(g)
             west, east = sides(g, wx, wy)
