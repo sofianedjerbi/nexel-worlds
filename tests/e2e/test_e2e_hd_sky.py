@@ -1,6 +1,7 @@
 """The HD look's sky (hd.js `eyeLine`, hd_view.js `skyOf`): fixed to the eye. Its horizon is where level ground at the
-eye's own level meets it (or the lowest land ahead, if lower: from a hill top): the pitch and the screen, and how high the
-eye is over that land. Land, however tall, covers it; it never moves with the land in front of you.
+eye's own level meets it: the pitch and the screen alone. Land, however tall, covers it; it never moves with the land in
+front of you, nor with how high you are. From a hill top the land ahead, lower, ends under it: that is the sky's EDGE
+(the far hills stand on it, the sky goes on down to them: vox_sky.js), not the sky moved down.
 (The owner: "if a big mountain is behind the player, the skybox bumps up in an unnatural way": the sky came down to the
 lowest of the land's skylines north of you, eased: walking to a ridge the whole sky, sun, clouds and far hills, slid up
 58 art px, a px or two a frame, and down again walking along it.)"""
@@ -54,13 +55,62 @@ def test_walking_past_a_tall_mountain_the_sky_does_not_move(browser, server):
         steps = [(abs(b[0] - a[0]), a, b) for a, b in zip(rec, rec[1:]) if a[1] == b[1]]     # (frames with the same pitch)
         assert len(steps) > 30 and max(s[0] for s in steps) < 1, (key, max(steps))
         assert {r[0] for r in rec} == {flat}, (key, sorted({r[0] for r in rec}), flat)    # (the meadow's, before the ridge was there)
-    # a hill top: the land round it is lower, and drops away past the bend lower on the screen: the sky's line comes
-    # down to where that land meets it (hd.js lowAhead). It stayed where ground at your level would meet it, and the
-    # band between was the backdrop's flat colours ("that blue mass behind": test_e2e_hd_horizon.py)
+    # a hill top: the land round it is lower, and drops away past the bend lower on the screen: the sky's EDGE comes
+    # down to where that land meets it (hd.js lowAhead), the far hills on it. The sky's line stays the eye's. (The edge
+    # stayed where ground at your level would meet the sky, and the band between was the backdrop's flat colours, "that
+    # blue mass behind": test_e2e_hd_horizon.py; then the whole sky came down with it, 9 art px a level climbed)
     g.rpc("dev_col", tiles=[[x + 20 + i, y + 2 + j] for j in range(-2, 3) for i in range(-2, 3)], col=[z0 + 12])
     g.rpc("dev_teleport", x=x + 20, y=y + 2, z=z0 + 12); g.arrive(); g.rest()
-    g.wait(f"HdLook.low === {z0} && Math.abs(HdLook.sky(0).line / zoom - HdLook.line[1] - 2) < 1", 5000)   # (eased down as the eye goes up)
-    assert g.js("HdLook.sky(0).line / zoom") > flat
+    g.wait(f"HdLook.low === {z0} && Math.abs(HdLook.sky(0).edge / zoom - HdLook.line[1] - 2) < 1", 5000)   # (eased down as the eye goes up)
+    assert g.js("HdLook.sky(0).edge / zoom") > flat + 20
+    assert g.js("HdLook.sky(0).line / zoom") == flat
+
+
+# each frame: the sky's line, the sun's height on the screen (vox_sky.js: the line less its share of the line), the
+# edge, the pitch, how far north you are (art px; y)
+CALM = """() => { window.__sk = []; window.__on = true; const f = () => { const s = HdLook.sky(0), l = s.line / zoom;
+  __sk.push([l, l - Math.floor(Math.max(l, 8) * s.at[1]), s.edge / zoom, HdLook.cam.pitch, myPos().y]); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+@pytest.mark.realtime
+def test_sprinting_over_a_hill_of_steps_the_sky_stays_put(browser, server):
+    """"the skybox moves wildly when the player travels": up a hill of steps 6 levels high and down again, at a sprint,
+    the whole sky (its bands, the sun, the clouds) came down 9 art px a level climbed and up again: 55 px in 3 s (the
+    eye's height over the land ahead, hd.js). A real sky does not move as you walk: under the open sky, the pitch
+    the same all the way, the sky's line moves 1 art px a frame at the most and 4 in all, the sun with it (the bend
+    counts a share of a height as distance, vox_curve.js lean: the eye's own horizon rises half a px a level climbed;
+    the line is on whole px); the land's edge comes down from the top as it should."""
+    g = Game(browser.new_page(viewport={"width": 1440, "height": 900}), server)
+    g.join(new_name("calm"), 3)
+    g.js("setOpt('names', false); setOpt('hints', false)")
+    g.rpc("dev_creatures", clear=80)
+    # (a meadow 81 wide out to 100 tiles north: the lowest land ahead is read 64 north and 24 east and west. On it, 10
+    #  tiles north, steps a level each 2 tiles up to 6, 4 tiles of top, and down again; past them a mountain 30 high
+    #  to the east of the way)
+    def lev(t, i):
+        if 40 <= t <= 64 and 5 <= i <= 25:
+            return max(0, 30 - 2 * max(abs(i - 15), abs(t - 52)))
+        return max(0, min(6, (t - 10) // 2 + 1, 6 - (t - 26) // 2)) if 10 <= t < 38 else 0
+    ch = lambda v: str(v) if v < 10 else chr(55 + v)
+    g.stamp(-40, -100, ["." * 81] * 100, ["".join(ch(lev(t, i)) for i in range(-40, 41)) for t in range(100, 0, -1)])
+    g.stamp(-40, 0, ["." * 81] * 30)                    # (and 30 south: the eye looks 24 rows south for land over you, hd.js clear)
+    g.rest()
+    # (the eye settled to the open sky's pitch first: woken by another test's land, it was still tilting back from 54 degrees, one run in eight)
+    g.wait("HdLook.cam.pitch === HdLook.cam.want && HdLook.cam.want === HdLook.cam.base && !HdLook.hid", 5000)
+    g.js(CALM)
+    g.hold(["Shift", "ArrowUp"], 6000)
+    g.rest()
+    rec = g.js("(() => { __on = false; return __sk; })()")
+    y0 = rec[0][4]
+    assert y0 - rec[-1][4] >= 45, (y0, rec[-1])                                      # (over the hill and past the mountain)
+    pitch = [r[3] for r in rec]
+    assert max(pitch) - min(pitch) < .5, (min(pitch), max(pitch))                   # (under the open sky all the way)
+    line, sun, edge = ([r[i] for r in rec] for i in range(3))
+    steps = max(abs(b - a) for a, b in zip(line, line[1:]))
+    assert steps <= 1 and max(line) - min(line) <= 4, (steps, min(line), max(line))
+    assert max(sun) - min(sun) <= 4, (min(sun), max(sun))
+    assert max(edge) > min(line) + 20 and all(e >= l for e, l in zip(edge, line)), (max(edge), min(line))   # (on the top the land ahead ends lower: the edge, not the sky)
+    assert not g.errors, g.errors
 
 
 PITCH = """() => { window.__pt = []; window.__on = true; const f = () => { const p = ents.get('agent' + myId); __pt.push([+HdLook.cam.pitch.toFixed(2), +p.x.toFixed(2), +p.y.toFixed(2)]);

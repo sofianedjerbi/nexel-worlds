@@ -2,14 +2,15 @@
 horizon glitch"): on a mountain top the sky's line was where ground at YOUR level would meet the sky past the bend;
 the land round, lower, drops away past the bend lower on the screen, and between the two lay the backdrop
 (hd_view.js show): the far land's flat colour, the sea's flat blue in whole columns, a 2 x 2 checker at their ends.
-The line is now where the lowest land ahead meets the sky (hd.js eyeLine, lowAhead), and the far land the HD look
-draws is asked of the server too (state.js: HdLook.far), not only the top-down screen's blocks."""
+The sky's edge is now where the lowest land ahead meets the sky (hd.js eyeLine, lowAhead; the sky's own line stays the
+eye's, its lowest colour going on down to the edge), and the far land the HD look draws is asked of the server too
+(state.js: HdLook.far), not only the top-down screen's blocks."""
 
-# below the sky's line, on the world's canvas (art px): px of the backdrop's own two colours, 8 x 8 cells of one
+# below the sky's edge, on the world's canvas (art px): px of the backdrop's own two colours, 8 x 8 cells of one
 # colour, and columns of a 2 x 2 checker (more than 16 px of one column)
 LOOK = """() => { const el = HdView.el, c = document.createElement('canvas'); c.width = el.width; c.height = el.height; const g = c.getContext('2d'); g.drawImage(el, 0, 0);
   const W = el.width, H = el.height, d = g.getImageData(0, 0, W, H).data, px = (x, y) => { const i = (y * W + x) * 4; return d[i] << 16 | d[i + 1] << 8 | d[i + 2]; };
-  const line = Math.max(0, Math.round(HdLook.sky(0).line / zoom)), bk = new Set((HdView.backdrop || []).map((q) => q[0] << 16 | q[1] << 8 | q[2]));
+  const line = Math.max(0, Math.round(HdLook.sky(0).edge / zoom)), bk = new Set((HdView.backdrop || []).map((q) => q[0] << 16 | q[1] << 8 | q[2]));
   let back = 0, flat = 0, cells = 0; const checker = [];
   for (let y = line; y < H; y++) for (let x = 0; x < W; x++) if (bk.has(px(x, y))) back++;
   for (let y = line; y + 8 <= H; y += 8) for (let x = 0; x + 8 <= W; x += 8) { cells++; const v = px(x, y); let one = true; for (let j = 0; j < 8 && one; j++) for (let i = 0; i < 8; i++) if (px(x + i, y + j) !== v) { one = false; break; } if (one) flat++; }

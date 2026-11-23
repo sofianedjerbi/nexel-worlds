@@ -52,15 +52,15 @@ const HdView = (() => {
     if (el.style.display !== "block") { el.style.display = "block"; lastKey = ""; wordsKey = null; }
   }
   function hide() { if (el && el.style.display !== "none") { el.style.display = "none"; wordsKey = null; } }
-  // the game's sky with the hour's light the game lays over its frame: made w x h px, when it is not the one there. Under its line (where the land ends higher than the eye's
-  // horizon: a hill top, a roof) the far land's own colour, as vox_sky.js has it: the sky stays where it is, the gap is land far off (it was the air's pale haze, or the sky moved down to the land)
-  function skyOf(w, h, line, sky) {
+  // the game's sky with the hour's light the game lays over its frame: made w x h px, when it is not the one there. line: the sky's (the eye's horizon); edge: where the land ends,
+  // under it from a hill top: the far hills on it, the sky's lowest colour down to it, under it the far land's own colour, as vox_sky.js has it (it was the air's pale haze, or the whole sky moved down to the land)
+  function skyOf(w, h, line, sky, edge = line) {
     const ph = clock.phase || 0, ws = washAt(ph), lf = opt("night") / 100 * .6, light = lightAt(ph).map((v) => Math.round(v + (255 - v) * lf)), step = sky.stars > 0 ? .1 : .5, tq = Math.floor(sky.t / step);   // (clouds drift a px in 2.5 s: twice a second; stars twinkle: ten times)
-    const c8 = (q) => q.map((v) => Math.round(v * 255)), k = [w, h, line, W, zoom, tq, Math.floor(sky.shift), Math.floor(sky.shift * .6), Math.floor(sky.shift * .3), c8(sky.top), c8(sky.low), c8(sky.cloud), c8(sky.far), c8(sky.near), c8(sky.orb), sky.at.map((v) => Math.round(v * 500)), Math.round(sky.stars * 50), ws.map((v) => Math.round(v * 100) / 100), light].join();
+    const c8 = (q) => q.map((v) => Math.round(v * 255)), k = [w, h, line, edge, W, zoom, tq, Math.floor(sky.shift), Math.floor(sky.shift * .6), Math.floor(sky.shift * .3), c8(sky.top), c8(sky.low), c8(sky.cloud), c8(sky.far), c8(sky.near), c8(sky.orb), sky.at.map((v) => Math.round(v * 500)), Math.round(sky.stars * 50), ws.map((v) => Math.round(v * 100) / 100), light].join();
     if (k === skyKey) return; const gl = VoxGL.gl; if (!gl) return; skyKey = k; skyVer++;
     sk = sk || document.createElement("canvas").getContext("2d"); if (sk.canvas.width !== w || sk.canvas.height !== h) { sk.canvas.width = w; sk.canvas.height = h; }
     VoxGL.fit(w, h); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h); gl.disable(gl.BLEND);
-    VoxSky.draw(Object.assign({}, sky, {line, t: tq * step}), W / zoom, h, W / zoom, 1);   // (a px of it a px of the paint: as the picture the screen's size had them, zoom x density px each)
+    VoxSky.draw(Object.assign({}, sky, {line, edge, t: tq * step}), W / zoom, h, W / zoom, 1);   // (a px of it a px of the paint: as the picture the screen's size had them, zoom x density px each)
     sk.globalAlpha = 1; sk.globalCompositeOperation = "source-over"; sk.imageSmoothingEnabled = false; sk.drawImage(VoxGL.el, 0, 0);
     sk.globalAlpha = ws[3]; sk.fillStyle = `rgb(${ws.slice(0, 3).join()})`; sk.fillRect(0, 0, w, h); sk.globalAlpha = 1; sk.globalCompositeOperation = "multiply"; sk.fillStyle = `rgb(${light.join()})`; sk.fillRect(0, 0, w, h); sk.globalCompositeOperation = "source-over";
   }
@@ -72,9 +72,9 @@ const HdView = (() => {
   // you see; the sky's rows), the land's picture over it. Only when one of them is new.
   //   o: {w, h, pic, fresh: the land's picture was drawn again, sky, runs: [[x0, x1]...] the sea's columns, marks}
   function show(o) {
-    const {w, h} = o, line = o.sky ? Math.round(o.sky.line / zoom) : 0, low = o.sky ? o.sky.low : [.62, .78, .86]; fit(w, h);
-    if (line > 0) skyOf(w, h, line, o.sky);
-    const key = [line > 0 ? skyVer : 0, line, low.map((v) => Math.round(v * 255)), o.runs, o.marks, zoom].join("|");
+    const {w, h} = o, line0 = o.sky ? Math.round(o.sky.line / zoom) : 0, line = o.sky ? Math.max(line0, Math.round((o.sky.edge || 0) / zoom)) : 0, low = o.sky ? o.sky.low : [.62, .78, .86]; fit(w, h);   // (line: the land's edge, the sky's own line or under it: hd.js api.sky)
+    if (line0 > 0) skyOf(w, h, line0, o.sky, line);
+    const key = [line0 > 0 ? skyVer : 0, line, low.map((v) => Math.round(v * 255)), o.runs, o.marks, zoom].join("|");
     if (!o.fresh && key === lastKey) return false; lastKey = key;
     const tint = (c, a) => `rgb(${low.map((v, i) => Math.round((v * (1 - a) + c[i] * a) * 255)).join()})`; bk = [[.8, .84, .8, .45], [.36, .64, .8, .65]].map((c) => low.map((v, i) => Math.round((v * (1 - c[3]) + c[i] * c[3]) * 255)));   // (bk: the backdrop's two colours, the air's and the sea's: where no land is drawn; tests count them)
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.imageSmoothingEnabled = false; g.fillStyle = tint([.8, .84, .8], .45); g.fillRect(0, 0, w, h);
