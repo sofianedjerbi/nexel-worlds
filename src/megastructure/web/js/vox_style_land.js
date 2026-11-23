@@ -87,6 +87,12 @@ const VoxStyleLand = (() => {
     // the far land's patches a changed tile reaches (what they read: the tiles round them, a tile's paint by its rock five tiles off) are made again; a patch is 8 tiles at most
     const farForget = () => { for (const [x0, y0, x1, y1] of farDirty) for (let by = Math.floor((y0 - 16) / CH); by <= Math.floor((y1 + 7) / CH); by++) for (let bx = Math.floor((x0 - 16) / CH); bx <= Math.floor((x1 + 7) / CH); bx++) { const m = farOf.get(bx + "," + by); if (m) { farN -= m.size; farOf.delete(bx + "," + by); } } farDirty.length = 0; };
     const farClear = () => { farOf.clear(); farDirty.length = 0; farN = 0; };
+    // THE SHEET FULL (vox_style.js evict): the far patches of the land being made name their paints' places (farBox: where its
+    // patches lie): kept, as its chunks' are, and only the patches that name a place given away go. (It was every far patch let go
+    // at once and made again: walking 8 tiles and back the sheet filled twice, and the way back made 1063 patches again of 1218)
+    let farBox = null;
+    const farKeep = () => { if (!farBox) return; const [a, b, c, d] = farBox; for (const [bk, m] of farOf) { const [bx, by] = bk.split(",").map(Number); if (bx >= a && bx <= c && by >= b && by <= d) for (const f of m.values()) P.use(f[2]); } };
+    const farFree = (kept) => { for (const [bk, m] of farOf) { for (const [fk, f] of m) if (f[2].some((v) => !kept(v))) { m.delete(fk); farN--; } if (!m.size) farOf.delete(bk); } };
     // (each face's corners: the three cells beside a corner that darken it, worked out once: they were made again as small arrays for every corner of every face)
     const AOV = FACES.map((F) => F.q.map((q) => { const ax = F.n.map((a) => (a ? 0 : 1)), d = [q[0] * 2 - 1, q[1] * 2 - 1, q[2] * 2 - 1].map((v, j) => v * ax[j]);
       const t = [0, 1, 2].filter((j) => ax[j]), a = [0, 0, 0], b = [0, 0, 0]; a[t[0]] = d[t[0]]; b[t[1]] = d[t[1]]; return [a, b, [a[0] + b[0], a[1] + b[1], a[2] + b[2]]]; })), AOK = [1, .84, .72, .62], TRI = [0, 1, 2, 0, 2, 3], vq = new Float64Array(40);
@@ -103,7 +109,7 @@ const VoxStyleLand = (() => {
     // YOUR SPACE AND THE WINDOW ON IT (o.win: {reach, walk: on the surface, for a cave's mouth or a hole beside you: where you can walk and drop to, not the floors you came down from}). The land is made WHOLE, always: under the land you are seen through a window, a mask the painter makes from a few boxes
     // (vox_style_win.js), not through a hole cut in these faces: no chunk hangs on where you are. Here only the boxes are found: the tiles walked to from yours (reach steps), each from its floor to its ceiling.
     function* steps(cx, cy, L, o) {
-      const cols = new Map(), r = o.r, deep = o.deep, pt = o.win || null, fresh = new Map(); let made = 0;
+      const cols = new Map(), r = o.r, deep = o.deep, pt = o.win || null, fresh = new Map(); let made = 0; farBox = [Math.floor((cx - r - 48) / CH), Math.floor((cy - r - 48) / CH), Math.floor((cx + r + 48) / CH), Math.floor((cy + r + 48) / CH)];
       const col = (x, y) => { const k = x * 1048576 + y; let c = cols.get(k); if (c === undefined) { c = host.column(x, y); cols.set(k, c); } return c; };   // (a number for a key: a string was made for each of the land's many looks)
       const inBox = (x, y) => Math.abs(x - cx) <= r && Math.abs(y - cy) <= r;
       const D = 2 * r + 1, NO = -32768, BIG = 32767, DIR = [[1, 0], [-1, 0], [0, 1], [0, -1]], at = (x, y) => (inBox(x, y) ? (y - cy + r) * D + x - cx + r : -1);
@@ -242,7 +248,7 @@ const VoxStyleLand = (() => {
         return {parts, clip: [X0, X1 + 1, Y0, Y1 + 1], wet, made, space: pt ? {x: cx - r, y: cy - r, D, lvl: reachA, cls: clsA} : null, win};
       } finally { making = false; }
     }
-    return {steps, touch, touchBox, wet, model, clear() { store.clear(); farClear(); }, evicted() { for (const k of [...store.keys()]) if (!wantK || !wantK.has(k)) store.delete(k); farClear(); },   // (paints given again: what was made with them and is not of this land goes)
+    return {steps, touch, touchBox, wet, model, clear() { store.clear(); farClear(); }, farKeep, evicted(kept) { for (const k of [...store.keys()]) if (!wantK || !wantK.has(k)) store.delete(k); if (kept) farFree(kept); else farClear(); },   // (paints given again: what was made with them and is not of this land goes)
       get stamp() { return stamp; }, get fars() { return fars; }, get part() { return partOf ? partN / partOf : 0; }};   // (fars: far patches made, all told: tests)
   }
   return {create, N, CH};

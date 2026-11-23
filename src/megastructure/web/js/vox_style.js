@@ -35,7 +35,7 @@ const VoxStyle = (() => {
     // (FULL while a land is made: the places of the paints that land does not use (used: the ones it asked for and the ones of the chunks it keeps) are given again, theirs first wiped; the chunks
     // and far patches made with them are let go (land.evicted). It was all of them wiped and the whole land made again from none, every second or so walking: 4096 places, a land some 2000)
     let wipes = 0, A = {slots: new Map(), px: new Uint32Array(AW * AW), n: 0, free: []}, B = null, spare = new Uint32Array(AW * AW), fromNone = false, used = new Set();
-    function evict() { for (const [k, v] of B.slots) if (!used.has(v)) B.slots.delete(k); B.free = []; for (let i = SL * SL - 1; i >= 0; i--) if (!used.has(i)) B.free.push(i); B.full = true; land.evicted(); }
+    function evict() { land.farKeep(); for (const [k, v] of B.slots) if (!used.has(v)) B.slots.delete(k); B.free = []; for (let i = SL * SL - 1; i >= 0; i--) if (!used.has(i)) B.free.push(i); B.full = true; land.evicted((v) => used.has(v)); }   // (the far patches of this land kept with their places: vox_style_land.js farKeep)
     function slot(key, paint) {
       if (mk && !B) { const s0 = fromNone ? undefined : A.slots.get(key); if (s0 !== undefined) { used.add(s0); return s0; }
         if (fromNone) { spare.fill(0); B = {slots: new Map(), px: spare, add: [], full: true, n: 0, free: []}; } else { spare.set(A.px); B = {slots: new Map(A.slots), px: spare, add: [], full: false, n: A.n, free: A.free.slice()}; } }
