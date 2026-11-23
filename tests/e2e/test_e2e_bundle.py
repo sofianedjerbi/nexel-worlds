@@ -52,7 +52,10 @@ def test_a_phone_plays_on_the_one_script_and_keeps_it(browser, bundled):
         page.fill("#name", new_name("packed"))                      # (a name of this try's own: at its second try "packed" was "already someone else", and it waited 30 s for a player who never got in)
         page.touchscreen.tap(*page.evaluate("(() => { const r = document.getElementById('join').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()"))
         # (a new player wakes somewhere else every run: behind a tree, in a pond: seven tenths of the cat seen, for good: it waited 30 s for the rest and passed at its second try, elsewhere. A meadow first, as every other test has)
-        page.wait_for_function("meObs !== null && !!myPos()", timeout=30000)
+        try:
+            page.wait_for_function("meObs !== null && !!myPos()", timeout=30000)
+        except Exception:
+            raise AssertionError("tapped Join, not in: " + str(page.evaluate("({obs: meObs !== null, join: document.getElementById('joinbox').style.display, said: (document.getElementById('joinerr') || {}).textContent, toast: document.getElementById('toast').textContent, name: document.getElementById('name').value, ws: typeof agentWs === 'undefined' ? null : agentWs && agentWs.readyState, scene: typeof TitleScene === 'undefined' ? null : TitleScene.on, btn: (() => { const b = document.getElementById('join'); const r = b.getBoundingClientRect(); return [r.x, r.y, r.width, r.height, getComputedStyle(b).display, document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2).id]; })()})")) + f" {errors}") from None
         page.evaluate("(async () => { const p = myPos(); await rpc('dev_creatures', {clear: 40}); await rpc('dev_stamp', {x: p.x - 8, y: p.y - 8, rows: Array(17).fill('.'.repeat(17)), levels: [], roofs: [], heads: []}); return 1; })()")
         try:
             page.wait_for_function("meObs !== null && !!myPos() && HdLook.on && HdLook.faces > 500 && HdLook.catSeen() > .8", timeout=30000)
