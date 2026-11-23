@@ -1,14 +1,14 @@
 """The interface: the bar and the inventory by keys, crafting cards, zoom, help, debug, hints, and that actions make sounds."""
 
 
-def test_hotbar_keys_and_q_cycle_what_is_in_hand(game):
+def test_hotbar_keys_and_tab_cycle_what_is_in_hand(game):
     game.give(wood=1, stone=1, fiber=1)
     order = game.js("slotOrder(meObs.self.inventory).slice(0, 10)")
     game.press("1", 100)
     assert game.js("selected") == order[0]
     game.press("1", 100)
     assert game.js("[handSlot, selected]") == [0, order[0]]                     # the one in hand again: it stays
-    game.press("q", 100)
+    game.press("Tab", 100)
     assert game.js("selected") == order[1]
     game.press("0", 100)
     assert game.js("[handSlot, selected]") == [9, order[9]]
