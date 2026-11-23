@@ -21,6 +21,8 @@ class Bodies:
     def height(self, b) -> int:
         """The height `b` stands at: the ground here at or under where it was (the lowest ground, if none is: where a
         body that has never moved starts)."""
+        if getattr(b, "flying", None) is not None:          # (in the air: the height it left from, leaping.py)
+            return b.flying
         s = self.world.surfaces(b.x, b.y)
         b.z = max((z for z in s if z <= b.z), default=s[0])
         return b.z

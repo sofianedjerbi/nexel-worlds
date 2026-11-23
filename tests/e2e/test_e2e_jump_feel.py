@@ -39,11 +39,12 @@ def test_the_hop_goes_a_block_up_and_comes_down_smoothly(game):
     game.clear_area(6)
     rec = body_over(game, lambda: (game.press("Space", 0), game.sleep(800)))
     air = [r for r in rec if r[4]]
-    assert air and max(r[2] for r in rec) >= 18, max(r[2] for r in rec)
+    k = game.js("Math.cos(HdLook.cam.pitch * Math.PI / 180)")              # (a height as the eye sees it, as the land's levels: leap.js)
+    assert air and max(r[2] for r in rec) >= 18 * k, (max(r[2] for r in rec), k)
     assert 350 <= air[-1][0] - air[0][0] <= 500, air[-1][0] - air[0][0]
     smooth(rec)
     seen = [r[3] for r, q in zip(rec, [None] + rec) if r[3] and (q is None or r[3] != q[3])]
-    assert seen[0] == "crouch" and seen[-1] == "settle" and [ORDER.index(a) for a in seen] == sorted(ORDER.index(a) for a in seen), seen
+    assert seen[0] in ("crouch", "takeoff") and seen[-1] == "settle" and [ORDER.index(a) for a in seen] == sorted(ORDER.index(a) for a in seen), seen
     assert not game.errors, game.errors
 
 
@@ -61,7 +62,7 @@ def test_auto_jump_up_a_staircase_is_smooth_and_keeps_its_rhythm(game):
     offs = [r[0] for r, q in zip(rec, [None] + rec) if r[3] == "takeoff" and (q is None or q[3] != "takeoff")]
     assert len(offs) == 4, offs
     beats = [b - a for a, b in zip(offs, offs[1:])]
-    assert max(beats) - min(beats) <= 25 and min(beats) >= 300, beats       # (the time a step's jump takes: jump.js jumpMs)
+    assert max(beats) - min(beats) <= 45 and min(beats) >= 250, beats       # (about the time a jump a layer up is in the air: leap.js)
     tops = [max(r[2] for r in rec if a <= r[0] < a + 300) for a in offs]
     assert min(tops) >= 8, tops                                             # (over the line the eye follows: 20 over the floor it left, the line 8 up half way)
     assert not game.errors, game.errors

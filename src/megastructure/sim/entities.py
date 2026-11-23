@@ -51,7 +51,10 @@ class Agent:
     aside: "Action | None" = field(default=None, repr=False)   # what the hands are doing meanwhile (constants.ASIDE: eating): it runs beside `action`
     ready: int = field(default=0, repr=False)   # first tick the next stride may start (movement cooldown)
     via: list = field(default_factory=list, repr=False)   # (x, y, n): tiles a player's screen has already walked to, to make in order (Movement.follow)
-    via_done: int = field(default=0, repr=False)   # the number of the last of them reached (or given up)
+    via_done: int = field(default=0, repr=False)
+    flying: int | None = field(default=None, repr=False)   # in the air (leaping.py): the height it left from, kept until it lands
+    flying_n: int = field(default=0, repr=False)          # ...the tiles of its flight made so far, and the tick of the last
+    flying_at: int = field(default=0, repr=False)   # the number of the last of them reached (or given up)
     spring: dict = field(default_factory=dict, repr=False)   # (x, y) -> until tick: the steps they jumped for (Movement._tool_jump)
     swing_ready: int = field(default=0, repr=False)   # first tick the next attack may land
     events: list = field(default_factory=list, repr=False)

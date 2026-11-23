@@ -20,6 +20,7 @@ DIR_ARG = {"dir": "N|E|S|W"}
 TOOL_SPECS = {
     "step": {"args": {**DIR_ARG, "run": "bool (optional, sprint: 2x speed)"}, "desc": "move one tile on the level or down (a step one layer up stops you: jump)"},
     "jump": {"args": {"dir": "N|E|S|W (optional)"}, "desc": "jump up onto the step one layer higher that way (the cell over it, and over your head, must be empty); with no dir or on the level, a hop where you stand"},
+    "leap": {"args": {"path": "[[x, y], ...]", "land": "int", "n": "int"}, "desc": "(a player's screen) the tiles a jump through the air went over and the height it landed at"},
     "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped (a step up blocks it: jump)"},
     "stop": {"args": {}, "desc": "stop the current action"},   # (a player's screen also says walk's `from`, stop's `at`: Movement.follow)
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)", "z": "int (optional): a height there, a floor built over a room"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},

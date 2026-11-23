@@ -259,10 +259,10 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             finally:
                 self.passing = None
             a.action = walk                           # it needs time: stop walking, then carry on with it
-            self.interrupt(a, f"replaced by {tool}", way=tool == "jump")      # (a jump makes the way the screen walked first)
+            self.interrupt(a, f"replaced by {tool}", way=tool in ("jump", "leap"))      # (a jump makes the way the screen walked first)
             a.action = act
             return act
-        self.interrupt(a, f"replaced by {tool}", way=tool in ("walk", "stop", "jump"), hands=tool not in MEANWHILE)
+        self.interrupt(a, f"replaced by {tool}", way=tool in ("walk", "stop", "jump", "leap"), hands=tool not in MEANWHILE)
         a.action = act
         return act
 

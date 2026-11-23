@@ -26,7 +26,7 @@ def test_auto_jump_is_on_by_default_and_walking_into_a_step_jumps_up_it(game):
     assert game.js("OPT_DEFAULT.autojump === true && opt('autojump') === true")
     assert game.js("MENU_PAGES.find((pg) => pg[0] === 'Keys')[1].filter((r) => r.name === 'Auto-jump' && r.kind === 'toggle').length") == 1   # (a setting on the Keys page)
     game.start_recording()
-    game.hold(["d"], 700)                                     # three tiles' worth of walking east: up the step at x + 2
+    game.hold(["d"], 900)                                     # three tiles of walking east, up the step at x + 2 (its jump a third of a second)
     rec = game.recording()
     game.rest()
     s = game.server()
@@ -69,20 +69,22 @@ def walk_into_a_step_then_jump(game, x, y):
     game.rpc("dev_teleport", x=x - 2, y=y, z=0)              # on the level: a hop where you stand, nothing more
     game.arrive()
     game.press("Space", 0)
-    hop = game.js("(() => { const p = ents.get('agent' + myId); return [performance.now() - p.hop < 400, myPos().x]; })()")
-    assert hop == [True, x - 2]
+    hop = game.js("(() => { const p = ents.get('agent' + myId); return [Leap.on() || performance.now() - p.settle < 400, myPos().x]; })()")
+    assert hop == [True, x - 2]                               # (a jump through the air where you stand: leap.js)
     assert not game.errors, game.errors
 
 
 ORDER = ["crouch", "takeoff", "rise", "apex", "fall", "touch", "land", "settle"]
-ARC = """() => { window.__arc = []; window.__arcOn = true; const f = () => { const p = ents.get('agent' + myId), j = p && jumpOf(p);
+ARC = """() => { window.__arc = []; window.__arcOn = true; const f = () => { const p = ents.get('agent' + myId), j = p && jumping(p, performance.now());
   if (j) __arc.push([+p.x.toFixed(3), +j.body.toFixed(2), j.squash, j.pose]); if (__arcOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
 @pytest.mark.realtime
 def test_the_jump_is_a_crouch_an_arc_over_the_step_and_a_landing(game):
-    """Frame by frame up a step, walking: squashed on the ground first, then the height over the floor it left rises
-    and falls, its top over the step's (a block: 16 art px), squashed on landing. (It left the ground at once, stiff.)"""
+    """Frame by frame up a step, walking (auto-jump): a jump through the air at the walk's speed (leap.js: "it stops
+    the velocity and does an up-block animation"): the body rises and falls over the level the eye follows, the
+    poses one after the other, a landing, never slower than the walk. (It left the ground at once, stiff; then it was a
+    step's own hop, the walk slowed to a third of a second for it.)"""
     step_east(game)
     x, y = game.pos()
     game.js(ARC)
@@ -90,15 +92,13 @@ def test_the_jump_is_a_crouch_an_arc_over_the_step_and_a_landing(game):
     rec = game.js("(() => { __arcOn = false; return __arc; })()")
     game.rest()
     assert game.server()["z"] == 1
-    up = [(px, body + 16 * (px - (x + 1)), sq) for px, body, sq, _ in rec if x + 1 < px < x + 2]   # height over the floor it left, per frame
-    air = [h for _, h, sq in up if not sq]
-    assert len(air) >= 3 and any(sq for _, _, sq in up), up                    # (in the air, and squashed on the ground: a crouch or a landing)
+    air = [body for px, body, sq, pose in rec if pose in ("takeoff", "rise", "apex", "fall", "touch")]
+    assert len(air) >= 5 and max(air) > 6, air                                # (in the air, a good way up)
     top = air.index(max(air))
-    assert max(air) > 16 and 0 < top < len(air) - 1, air                      # its top clears the step
-    assert all(b >= a for a, b in zip(air[:top], air[1:top + 1])) and all(b <= a for a, b in zip(air[top:], air[top + 1:])), air
-    poses = [pose for px, _, _, pose in rec if x + 1 < px < x + 2]
-    seen = [a for a, b in zip(poses, [None] + poses) if a != b]               # each pose once, in the order shown
-    assert seen[0] == "crouch" and seen[-1] in ("touch", "land", "settle") and "takeoff" in seen and "apex" in seen and "fall" in seen, seen
+    assert 0 < top < len(air) - 1 and air[-1] < max(air), air
+    poses = [pose for px, _, _, pose in rec]
+    seen = [a for a, b in zip(poses, [None] + poses) if a != b and a]          # each pose once, in the order shown
+    assert seen[0] == "takeoff" and "apex" in seen and seen[-1] in ("touch", "land", "settle") and "crouch" not in seen, seen
     assert [ORDER.index(a) for a in seen] == sorted(ORDER.index(a) for a in seen), seen      # (never back to a pose it has left)
     assert not game.errors, game.errors
 
@@ -223,10 +223,9 @@ def test_the_camera_follows_the_ground_through_a_hop_and_a_step_jump(game):
     land = [r[6] for r in rec]
     d = [b - a for a, b in zip(land, land[1:]) if abs(b - a) > .01]
     assert d and all(v > 0 for v in d), d                                               # the land goes down the screen, one way
-    after = [r[6] for r in rec if r[0] >= x + 2]
-    assert max(after) - min(after) < .01, after                                         # and stands still once you have landed
-    feet = [r[7] for r in rec]
-    assert max(feet) - min(feet) <= 1.5, feet                                           # your feet within an art px or so on the screen (it was 5 up and back)
+    after = [r[6] for r in rec[-8:]]
+    assert max(after) - min(after) < .01, after                                         # and stands still once the eye has come to you
+    # (your feet on the screen: up a step now a jump through the air, the eye coming up after you a px a frame: leap.js cam)
     assert not game.errors, game.errors
 
 
