@@ -146,11 +146,13 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
     }
     if (it === "hoe" && !hasBlock && (g === "." || g === ","))                  // the hoe in hand: Space/click tills
       return {text: "Till soil", near: 1, run: (d) => act("dig", {dir: d, with: "hoe"})};
-    if (it === "watering_can" && (c === "Y" || (wet(g) && GROUND.has(c))))
+    if (it === "watering_can" && (c === "Y" || (wet(g) && GROUND.has(c)) || Flow.col(p.x, p.y)))
       return {text: `Fill can (${meObs ? meObs.self.can ?? CAN_SIZE : "?"}/${CAN_SIZE})`, near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
     if (it === "watering_can" && (c === ";" || c === '"') && meObs && meObs.self.can === 0) return {text: "The can is empty", ok: false};
     if (it === "watering_can" && (c === ";" || c === '"')) return g === "u" ? {text: "Already watered", ok: false}
       : {text: "Water crop", near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
+    if (it === "watering_can" && !hasBlock && WALKABLE_GROUND.has(g) && !isMe)       // a full can poured out on open ground: water that runs (sim/waters.py)
+      return meObs && (meObs.self.can ?? CAN_SIZE) >= CAN_SIZE ? {text: "Pour water", near: 1, run: (d) => act("water", {dir: d, with: "watering_can", pour: true})} : {text: "Pouring takes a full can", ok: false};
   }
   const sailing = !!(meObs && meObs.self.sailing);
   if (c === "V" && !brk && !sailing) return {text: "Board the boat", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
