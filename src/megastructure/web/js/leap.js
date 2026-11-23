@@ -98,8 +98,12 @@ const Leap = (() => {
   // Down on the ground at `z`: the world is told the way you went; the walk goes on if a way is held
   function land(p, now, z) {
     const path = L.path.filter((t, i, a) => !i || t[0] !== a[i - 1][0] || t[1] !== a[i - 1][1]), run = L.run, z0 = L.z0;
-    const h = held(), past = h && (p.x - p.tx) * h[0] + (p.y - p.ty) * h[1] >= 0 && Math.abs((p.x - p.tx) * h[1]) + Math.abs((p.y - p.ty) * h[0]) < .01;
+    const h = held(), past = h && (p.x - p.tx) * h[0] + (p.y - p.ty) * h[1] >= 0 && Math.abs((p.x - p.tx) * h[1]) + Math.abs((p.y - p.ty) * h[0]) < .01 && fits(p.tx + h[0], p.ty + h[1], z);   // (and room on the way held: down by a wide hole's far wall, on into the wall was a step up four levels drawn as its arc, the body 20 px up and down)
     L = null; p.settle = now;
+    // (the eye's way left to go, from this frame on: the body drawn on the ground is lifted by it (lift) from the frame
+    //  you land. It was set at the eye's next look (cam): the landing frame drew you with none, 20 px up from the arc's
+    //  last frame, a hole's floor four down under an eye two levels behind, then down again)
+    if (C !== null && air) { off = z - C; air = false; }
     // (where you came down on the tile, off its middle: you go to it, at the walk's pace, before the walk goes on. On
     // the way you are on that tile and its height: between it and the one before, the step's own arc drew you a
     // second time, and half a level low. Past its middle the way you go, the walk goes on from there)

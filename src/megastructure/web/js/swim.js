@@ -9,6 +9,9 @@
 const SWIM = {sink: 5, line: 27, stroke: 260, tread: 700, wakeEvery: 110, wakeLife: 1400, dashStroke: 130, dashEvery: 45, dashLife: 2100};   // art px; sheet row of the waterline; ms
 function swimsAt(p, e) {
   if (e.sail) return false;
+  // (you in the air, a jump's arc (leap.js) over the water: not in it. The tile under you is water, and you were drawn
+  // swimming there, sunk to the face, while your name flew the arc over it: "teleported into the water")
+  if (e.kind === "agent" && e.id === myId && Leap.on()) return false;
   const t = tile(Math.round(p.x), Math.round(p.y));
   return t ? (wet(t[1]) && t[0] !== "V") || !!(e.swim && Flow.col(Math.round(p.x), Math.round(p.y))) : !!e.swim;   // (or in water that runs, deep enough: the server says, flow.js)
 }

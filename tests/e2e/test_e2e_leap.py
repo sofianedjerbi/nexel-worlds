@@ -57,7 +57,7 @@ def test_sprinting_down_six_steps_is_smooth_and_never_put_back(game):
     smooth(rec)
     assert game.server()["z"] == 0 and game.pos()[0] >= x + 8, game.server()
     agree(game)
-    assert not [r for r in rec if r[4] in ("rise", "apex")], "no jump up off a step down"
+    assert not [r for r in rec if r[4] in ("rise", "apex")], ("no jump up off a step down", [(i, r) for i, r in enumerate(rec) if r[4] in ("rise", "apex")][:6], game.js("[autoJump(), sprinting()]"))
     assert not game.errors, game.errors
 
 

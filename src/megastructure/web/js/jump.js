@@ -90,6 +90,13 @@ function falling(p, now) {
   return p.fallNow;
 }
 function fallOf(p, now) {
+  // (you in a jump's arc (leap.js): the arc is your height, the ground under it whatever it is. A fall begun under the
+  //  arc, over a hole three deep, drew you at the fall's height, the name at it too, while the arc went on: you went
+  //  down into the hole, then up the fall's own curve again as the jump ended: "only the nametag jumps")
+  //  (and down from it, on your way to the middle of the tile you came down on (leap.js leapAt): come down by a hole's far
+  //  wall, 0.45 of a tile off the middle, going back to it read as stepping off the wall's top into the hole: a fall from
+  //  the rim, the body up 60 px in a frame and down again)
+  if (p.e && p.e.kind === "agent" && p.e.id === myId && (Leap.on() || Leap.gliding())) { p.fall = null; return null; }
   const ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y), ramp = liftOf(p) / zoom;
   const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by), between = (ax !== bx || ay !== by) && la !== lb;
   const fwd = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0, down = between && fwd === la > lb;   // going to the lower one?
@@ -97,6 +104,11 @@ function fallOf(p, now) {
   let F = p.fall;
   if (!F) {
     if (!down || Math.abs(la - lb) < FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb)) return null;
+    // (a fall is from the higher tile: already down at the lower one's level (yours, myAt; another's, the world's), going
+    //  back to its middle from beside a wall is no fall. Come down by a wide hole's far wall, the body went up to the
+    //  rim in a frame and fell again: "jumping above a biiiig hole ... only the nametag jumps")
+    const zNow = p.e && p.e.kind === "agent" && p.e.id === myId ? myAt && myAt.z : p.e && p.e.z;
+    if (typeof zNow === "number" && zNow <= Math.min(la, lb)) return null;
     F = p.fall = {top: Math.max(la, lb) * RELIEF_STEP, land: Math.min(la, lb) * RELIEF_STEP, t0: 0};
   }
   if (F.done) {                                           // down before the step was over: on the ground, to the end of it
@@ -127,7 +139,9 @@ function overBody(p, S) {
 }
 // The jump key on the level: a hop on the spot (walk.js jumpKey; others: their `jump` event, state.js) -> null, or as jumpOf
 function hopOf(p, now) {
-  if (!(now - p.hop < HOP.ms) || jumpOf(p)) return null;
+  // (swimming there is nothing to push off: no hop, the body and its name as they are. The name hopped, the body,
+  //  drawn swimming, did not: "jumping IN water ... only the nametag jumps")
+  if (!(now - p.hop < HOP.ms) || jumpOf(p) || (p.e && swimsAt(p, p.e))) return null;
   const [h, pose, air] = jumpAt(HOPJ, now - p.hop, 0);
   return {body: Math.round(h), ground: 0, air: false, squash: !air, tuck: air, pose};
 }

@@ -164,3 +164,57 @@ def test_jump_pressed_falling_into_a_hole_does_not_play_its_hop_once_down(game):
     assert after and max(v[0] for v in after) <= 3 and not {v[1] for v in after} & {"takeoff", "rise", "apex", "fall"}, r[down - 3:down + 12]
     assert game.server()["z"] == -3, game.server()
     assert not game.errors, game.errors
+
+
+# every frame: [in the air (leap.js), drawn swimming, your body's top on the screen (art px), its height as drawn, your name's lift (art px)]
+AIR = """() => { window.__ar = []; window.__arOn = true; const f = () => { const p = ents.get('agent' + myId), now = performance.now(), j = jumping(p, now), a = HdLook.art(), b = a && a.body;
+  __ar.push([Leap.on(), swimsAt(p, p.e), b ? Math.round(b.y / a.u) : null, j ? Math.round(j.body) : 0, -Math.round(overBody(p, TS())[1] / zoom)]); if (__arOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+@pytest.mark.realtime
+@pytest.mark.parametrize("over", ["hole", "water"])
+def test_sprint_jumping_over_a_wide_hole_or_water_the_body_flies_the_arc(game, over):
+    """"jumping above a biiiig hole still creates the exact same error as jumping above the water": "only the nametag
+    jumps, and ... I get teleported into it". Over water you were drawn swimming under the arc (swim.js swimsAt: the tile
+    under you); over a hole four deep a fall began under the arc (jump.js fallOf) and the name went with it; come down by
+    the hole's far wall, the walk went on into the wall, drawn as a step four up (an arc, 20 px up and down). Sprinting
+    off the edge with Space, over a hole 5 wide and 4 deep or water 3 wide: the body flies the arc and comes down where it
+    ends (in the hole; on the far bank), never drawn swimming in the air, never more than 8 art px from a frame to the next."""
+    game.clear_area(12)
+    x, y = game.pos()
+    if over == "hole":
+        game.rpc("dev_col", tiles=[[x + t, y + k] for t in range(3, 8) for k in range(-2, 3)], col=[-4])
+    else:
+        game.stamp(3, -2, ["~~~"] * 5)
+    game.rest()
+    game.js(AIR)
+    game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
+    game.wait(f"ents.get('agent' + myId).x >= {x + 1.6}", 4000)
+    game.page.keyboard.press("Space")
+    game.wait("Leap.on()", 2000)
+    game.wait("!Leap.on()", 4000)
+    game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
+    game.sleep(700)
+    r = game.js("(() => { __arOn = false; return __ar; })()")
+    assert any(v[0] for v in r) and not [v for v in r if v[0] and v[1]], [v for v in r if v[0] and v[1]][:4]       # (in the air: never swimming)
+    ys = [v[2] for v in r if v[2] is not None]
+    jolts = [(i, a, b) for i, (a, b) in enumerate(zip(ys, ys[1:])) if abs(b - a) > 8]
+    assert not jolts, jolts[:4]
+    assert game.server()["z"] == (-4 if over == "hole" else 0), game.server()
+    assert not game.errors, game.errors
+
+
+@pytest.mark.realtime
+def test_space_while_swimming_moves_neither_the_body_nor_its_name(game):
+    """"jumping IN water ... only the nametag jumps": Space while swimming hopped (jump.js hopOf), the name with it, while the
+    body was drawn swimming. Swimming there is nothing to push off: no hop, the body and its name where they are."""
+    game.clear_area(8)
+    game.stamp(-2, -2, ["=" * 5] * 5)
+    game.rest()
+    game.wait("swimsAt(ents.get('agent' + myId), ents.get('agent' + myId).e)", 4000)
+    game.js(AIR)
+    game.page.keyboard.press("Space")
+    game.sleep(700)
+    r = game.js("(() => { __arOn = false; return __ar; })()")
+    assert all(v[1] for v in r) and max(abs(v[3]) for v in r) == 0 and max(abs(v[4]) for v in r) == 0, r[:12]
+    assert not game.errors, game.errors
