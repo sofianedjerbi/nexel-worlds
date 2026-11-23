@@ -214,3 +214,17 @@ def test_an_old_save_keeps_its_water_as_sources_and_its_dug_holes_flood(tmp_path
     steps(sim, 3)
     assert sim.water.lv(rx + 1, y, 0) == FALL
     sim.close()
+
+
+def test_a_cleared_meadow_has_no_water_left_running_or_poured(world):
+    """dev_creatures clear (the browser tests' clear_area): the water within reach goes, and what was due there: a
+    can's puddle one test left swam a later test's player in the shared world."""
+    from megastructure.devtools import dev_op
+    sim, a = world
+    sim.water.pour(a.x + 3, a.y, 1)
+    steps(sim, 10)
+    sim.water.due.add((a.x + 2, a.y, 1))
+    dev_op(sim, a, "dev_creatures", {"clear": 12})
+    assert not sim.water.at and not any(abs(c[0] - a.x) <= 12 for c in sim.water.due)
+    steps(sim, 5)
+    assert not sim.water.at

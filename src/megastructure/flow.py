@@ -200,6 +200,14 @@ class Water:
             self._put(x, y, z, None)
             self.poke(x, y, z)
 
+    def clear_near(self, x: int, y: int, r: int):
+        """All the water within r tiles of (x, y) gone, and what was due there (dev tools: a test's cleared meadow).
+        What ran on from it past r dries."""
+        for tx, ty in [p for p in self.at if max(abs(p[0] - x), abs(p[1] - y)) <= r]:
+            self.clear(tx, ty)
+        for cells in (self.due, self.parked):
+            cells -= {c for c in cells if max(abs(c[0] - x), abs(c[1] - y)) <= r}
+
     def pour(self, x: int, y: int, z: int):
         """A source where a player poured it (a can)."""
         self._put(x, y, z, (SOURCE, NOHEAD, 0))
