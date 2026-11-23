@@ -55,7 +55,7 @@ def test_the_title_does_not_wait_for_the_sheets_it_never_shows(browser, server):
     held = []
     page.route("**/assets/emoji.png*", lambda r: held.append(r))  # (the emotes' 119 KB: not come)
     page.goto(server, wait_until="commit")                        # (the page's load event waits for every picture asked for)
-    page.wait_for_function("document.body.classList.contains('scene') && !document.getElementById('boot')", timeout=30000)
+    page.wait_for_function("document.body && document.body.classList.contains('scene') && !document.getElementById('boot')", timeout=30000)   # (no body yet while the wait's stylesheet comes)
     assert held and page.evaluate("!IMG.emoji.naturalWidth")
     for r in held:
         r.continue_()
@@ -177,3 +177,17 @@ def test_on_a_phone_the_bar_goes_on_by_small_steps_and_no_task_holds_the_page(br
         assert not errors, errors
     finally:
         ctx.close()
+
+
+def test_an_island_that_never_comes_does_not_hold_the_wait_for_ever(browser, server):
+    """"still stuck at 76% in homescreen": the pictures in, the island never drawn (a GPU stuck after a hang): after
+    8 s with nothing new, the wait goes and the page is shown as it is."""
+    page = browser.new_page(viewport={"width": 1280, "height": 800})
+    page.add_init_script(HOLD)
+    page.goto(server)
+    page.wait_for_function("typeof titleDraw === 'function'", timeout=20000)
+    page.evaluate("window.__p = 1; if (typeof HdLook === 'object') Object.defineProperty(HdLook, 'part', {get: () => .1, set: () => {}, configurable: true})")   # (the island stands still)
+    t0 = time.monotonic()
+    page.wait_for_function("!document.getElementById('boot')", timeout=15000)
+    assert time.monotonic() - t0 < 12 and not page.evaluate("document.body.classList.contains('scene')")   # (gone with no island: the give-up, not the island's end)
+    page.close()
