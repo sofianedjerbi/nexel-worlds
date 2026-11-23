@@ -34,7 +34,7 @@ const Leap = (() => {
     const [x, y] = tileOf(p.x, p.y), run = !!(walking && walking.run && sprinting()), w = walking && p.walking ? DIRV[walking.dir] : null;
     const sp = walking && p.walking ? (run ? 10 : 5) : 0;
     if (walking) {                                         // the walk ends where you leave the ground: the world comes to that tile first
-      const args = {at: mark(x, y)}; if (walking.run) args.run = true;
+      const args = {at: mark(x, y)}; if (walking.run) args.run = true; if (autoJump()) args.jump = true;   // (the way there may go up a step, sprung, as walk.js's stop says: without it the world did not take the step up off a stair's foot, refused every flight after it, and the screen was put back 5 tiles)
       walking = null; p.walking = false; pred = {x, y, until: now + 2000};
       rpc("act", {tool: "stop", args});
     }
