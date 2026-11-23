@@ -118,19 +118,25 @@ def test_the_hand_is_a_slot_even_an_empty_one(game):
     assert not game.errors
 
 
-# Your body drawn standing (or at frame 0 of a swing: `act`) with `item` in hand, as PAW: -> the px of the tool and the
-# hand on it (what differs from the body with nothing in hand: [x, y, colour, on the body]), the body's colours, its middle
+# Your body drawn standing (or at frame 0 of a swing: `act`; or "aim:up" ... aiming; "walk:3" at that frame of the walk)
+# with `item` in hand, as PAW: -> the px of the tool and the hand on it (what differs from the body with nothing in hand:
+# [x, y, colour, on the body]), the body's colours, its middle, the top of the body
 TOOL = """([item, face, act]) => { const p = ents.get('agent' + myId); p.fx = face[0]; p.fy = face[1]; p.moved = -1e9; p.swing = null; Target.aim = null; p.aimT = 0;
-  const T = 16, w = 64, h = 96, base = h - 24, now = 140 * (8 * 9000 - (p.e.id * 3) % 8) + 1;   // (the idle breathing at its frame 0, the body a swing starts from)
+  const mode = act && act.includes(':') ? act.split(':') : null; if (mode) act = null;
+  const now = mode && mode[0] === 'walk' ? 85 * (8 * 9000 + +mode[1]) + 1 : 140 * (8 * 9000 - (p.e.id * 3) % 8) + 1;   // (the idle breathing at its frame 0, the body a swing starts from; the walk at its frame)
+  if (mode && mode[0] === 'walk') { p.moved = now; p.running = false; }
+  p.lookD = null; p.lookT = -1e9; p.turnT = -1e9;   // (an aim turns you to what you aim at: here to the way faced)
+  const T = 16, w = 64, h = 96, base = h - 24, pose = () => { if (mode && mode[0] === 'aim') { p.aimK = mode[1]; p.aimT = now; } };
   const sx = (x) => w / 2 - T / 2 + (x - p.x) * T, sy = Object.assign((y) => base + (y - p.y) * T, {up: (y) => base + (y - p.y) * T, apart: true});
   const shot = (sel, a) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
-    const keep = ctx, kz = zoom, ks = selected; ctx = g; zoom = 1; selected = sel; myAction = a; try { drawEntity(p, sx, sy, T, now / 1000, now); } finally { ctx = keep; zoom = kz; selected = ks; myAction = null; }
+    const keep = ctx, kz = zoom, ks = selected; ctx = g; zoom = 1; selected = sel; myAction = a; pose(); try { drawEntity(p, sx, sy, T, now / 1000, now); } finally { ctx = keep; zoom = kz; selected = ks; myAction = null; }
     return g.getImageData(0, 0, w, h).data; };
   const a = shot(null, null), b = shot(item, act ? {tool: act, with: item, t0: now, at: [Math.round(p.x) + face[0], Math.round(p.y) + face[1]]} : null), body = new Set(), px = [];
   for (let i = 0; i < a.length; i += 4) if (a[i + 3] > 128) body.add(a[i] + ',' + a[i + 1] + ',' + a[i + 2]);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const o = (y * w + x) * 4; if (Math.abs(a[o] - b[o]) + Math.abs(a[o + 1] - b[o + 1]) + Math.abs(a[o + 2] - b[o + 2]) + Math.abs(a[o + 3] - b[o + 3]) > 30 && b[o + 3] > 128) px.push([x, y, b[o] + ',' + b[o + 1] + ',' + b[o + 2], a[o + 3] > 128]); }
-  const cell = Math.round(sx(p.x)) - 16, top = Math.round(sy(p.y)) - 18;
-  return {px, body: [...body], mid: [cell + 23.5, top + 26], hand: SwingArt.handOf(wornReady(agentTint(me), p.e.worn, p.e.race, p.e.bot)).map((c) => c.join(','))}; }"""
+  const cell = Math.round(sx(p.x)) - 16, top = Math.round(sy(p.y)) - 18; let btop = h; for (let i = 3; i < a.length; i += 4) if (a[i] > 128) { btop = Math.floor(i / 4 / w); break; }
+  p.aimT = 0; p.moved = -1e9;
+  return {px, btop, body: [...body], mid: [cell + 23.5, top + 26], hand: SwingArt.handOf(wornReady(agentTint(me), p.e.worn, p.e.race, p.e.bot)).map((c) => c.join(','))}; }"""
 SWING = {"axe": "dig", "pickaxe": "dig", "hoe": "dig", "watering_can": "water", "sword": "attack", "spear": "attack"}
 
 
@@ -168,4 +174,33 @@ def test_a_tool_in_hand_is_gripped_the_hand_over_its_handle_and_a_swing_starts_w
                     start = [max(abs(x - h[0]), abs(y - h[1])) for x, y, c, _ in s["px"] if c not in s["body"]]
                     jumps.append((item, face, min(start, default=2) - 2))       # (its tool from where the hand held it; none: hidden too)
     assert all(j[2] <= 2 for j in jumps), [j for j in jumps if j[2] > 2]
+    assert not game.errors
+
+
+def test_a_sword_and_a_spear_have_one_pose_standing_aiming_and_walking_and_sway_with_the_steps(game):
+    """The owner, of the sword held up beside the head: "does not look natural at all". Standing, you aim at the tile
+    before you, so it pointed at the ground; walking it flipped up. Now one pose, held at the hip (hold_art.js LOW): the
+    hand stays where it is, a px at the most, whether you stand or aim up, ahead or down, and on the walk it goes with the
+    body (its bob) while the blade sways: not one rigid picture."""
+    game.wait("wornReady(agentTint(me), ents.get('agent' + myId).e.worn, ents.get('agent' + myId).e.race, ents.get('agent' + myId).e.bot)")
+
+    def hand(r):
+        tool = [(x, y) for x, y, c, _ in r["px"] if c not in r["body"]]
+        ring = [(x, y) for x, y, c, on in r["px"] if c == r["hand"][0] and any(abs(x - u) <= 2 and abs(y - v) <= 2 for u, v in tool)]
+        return (sum(x for x, _ in ring) / len(ring), sum(y for _, y in ring) / len(ring) - r["btop"]) if len(ring) >= 3 else None
+    for item in ("sword", "spear"):
+        for face in ([0, 1], [1, 0], [-1, 0]):
+            stand = game.js(TOOL, [item, face, None])
+            h0 = hand(stand)
+            assert h0, (item, face)
+            for aim in ("up", "ahead", "down"):
+                h = hand(game.js(TOOL, [item, face, "aim:" + aim]))
+                assert h and abs(h[0] - h0[0]) <= 1 and abs(h[1] - h0[1]) <= 1.5, (item, face, aim, h0, h)   # the body aims, the weapon does not
+            looks = set()
+            for f in range(8):
+                r = game.js(TOOL, [item, face, f"walk:{f}"])
+                h = hand(r)
+                assert h and abs(h[0] - h0[0]) <= 2 and abs(h[1] - h0[1]) <= 2, (item, face, f, h0, h)   # at the hip, with the body (its px of sway)
+                looks.add(frozenset((x, y - r["btop"]) for x, y, c, _ in r["px"] if c not in r["body"]))
+            assert len(looks) >= 2, (item, face)                                    # it sways with the steps
     assert not game.errors

@@ -9,6 +9,11 @@
 //   up / ahead / down   (an aim, aim_art.js) the grip in the pose's paw, the tool raised, held out, lowered
 // A torch keeps its flame up; a watering can hangs from its handle. One picture per tool, facing, pose and hand colours,
 // made the first time it is drawn: a 48 x 48 cell laid over the body's.
+// A sword and a spear (LOW) have ONE pose, standing, aiming and walking alike (the owner, of the sword held up beside the
+// head: "does not look natural at all"; it pointed at the ground whenever you stood, for you always aim at the tile
+// before you, and flipped up when you walked). The sword: the hand at the hip, the blade down and out, forward side on
+// (how small pixel games carry one: Hyper Light Drifter, Secret of Mana); the spear: upright as a staff. At each step
+// of the walk (or the run) the blade sways a few degrees and the hand a px. The body aims; the weapon does not.
 
 const HoldArt = (() => {
   const CELL = 48, SS = 4, KINDS = ["axe", "pickaxe", "hoe", "sword", "spear", "torch", "watering_can"];
@@ -18,6 +23,12 @@ const HoldArt = (() => {
   // the paw's grip when the tool has no swing of the sheet's (a sword's, a spear's, a torch's): at the side of the belly
   const PAW = [[18, 28], [30, 28], [27, 27]];
   const ROW = {axe: "axe", pickaxe: "pickaxe", hoe: "hoe", watering_can: "water"};
+  // LOW: [grip x, grip y, angle, sway in degrees at the walk's swing, the hand's px of it] facing [down, up, right]
+  const LOW = {sword: [[18.5, 28.5, 150, 8, 0], [29.5, 28.5, 30, -8, 0], [26.5, 28.5, 35, 10, 1]],
+    spear: [[18.5, 28.5, -95, 4, 0], [29.5, 28.5, -85, -4, 0], [26.5, 28.5, -80, 5, 1]]};
+  // the walk's swing at frame f of its 8 (-1: standing): -1 .. 1
+  const swing = (f) => f < 0 ? 0 : Math.round(Math.sin(f / 8 * 2 * Math.PI) * 4) / 4;
+  function low(kind, row, f) { const [x, y, a, sa, sx] = LOW[kind][R(row)], w = swing(f); return [x + Math.round(w * sx), y, rad(a + w * sa)]; }
   const CLAMP = 1, rad = (a) => a * Math.PI / 180, R = (row) => row === 3 ? 2 : row;
 
   // where the swing of `kind` starts (frame 0 of its rows of the cat's sheet): the end of the handle nearest the body,
@@ -47,11 +58,13 @@ const HoldArt = (() => {
   }
   // the rest pose of `kind` facing `row`: [grip x, grip y (the middle of its px), angle] in the picture facing right for the left
   function rest(kind, row) {
+    if (LOW[kind]) return low(kind, row, -1);
     // (the swing's start, up to 2 px nearer the body: the hand held out at arm's length looked thrown, not held)
     const s = swingStarts()[kind], p = PAW[R(row)], at = s && s[row] ? s[row].at.map((v, i) => v + Math.max(-CLAMP, Math.min(CLAMP, p[i] - v))) : p;
     return [at[0] + .5, at[1] + .5, rad((kind === "torch" ? UPRIGHT : ANG).rest[R(row)])];
   }
-  function place(kind, row, pose, paw) {
+  function place(kind, row, pose, paw, step = -1) {
+    if (LOW[kind]) return low(kind, row, step);
     if (pose === "rest" || !paw) return rest(kind, row);
     const x = row === 3 ? CELL - 1 - paw[0] : paw[0];
     return [x + .5, paw[1] + .5, rad((kind === "torch" ? UPRIGHT : ANG)[pose][R(row)])];
@@ -104,8 +117,8 @@ const HoldArt = (() => {
   const mirror = (d) => { const o = new Uint8ClampedArray(d.length); for (let y = 0; y < CELL; y++) for (let x = 0; x < CELL; x++) o.set(d.subarray((y * CELL + x) * 4, (y * CELL + x) * 4 + 4), (y * CELL + CELL - 1 - x) * 4); return o; };
 
   // one tool held: 48 x 48 RGBA, the way it is faced (row: 0 down, 1 up, 2 right, 3 left)
-  function frame(kind, row, pose, paw, h) {
-    const [gx, gy, a] = place(kind, row, pose, paw);
+  function frame(kind, row, pose, paw, h, step = -1) {
+    const [gx, gy, a] = place(kind, row, pose, paw, step);
     if (SwingArt.KINDS.includes(kind)) return SwingArt.frame(kind, row, 0, h, [gx, gy, a]);
     const d = new Uint8ClampedArray(CELL * CELL * 4);
     if (kind === "watering_can") {                         // the sheet's own can as its watering starts, the hand on its handle
@@ -119,16 +132,18 @@ const HoldArt = (() => {
     return row === 3 ? mirror(d) : d;
   }
   const made = new Map();
-  // the picture of `kind` held by someone drawn from `sheet` (`paw`: an aim pose's paw), or null when it is not a tool
-  function art(kind, row, pose, sheet, paw) {
+  // the picture of `kind` held by someone drawn from `sheet` (`paw`: an aim pose's paw; `step`: the walk's frame, -1
+  // standing), or null when it is not a tool. A LOW weapon has one pose: the aim is not its
+  function art(kind, row, pose, sheet, paw, step = -1) {
     if (!KINDS.includes(kind)) return null;
-    const h = SwingArt.handOf(sheet), key = [kind, row, pose, paw, h].join();
+    if (LOW[kind]) { pose = "rest"; paw = null; step = swing(step) ? step % 8 : -1; }
+    const h = SwingArt.handOf(sheet), key = [kind, row, pose, paw, LOW[kind] ? swing(step) : 0, h].join();
     if (!made.has(key)) {
       const c = document.createElement("canvas"); c.width = c.height = CELL;
-      try { c.getContext("2d").putImageData(new ImageData(frame(kind, row, pose, paw, h), CELL, CELL), 0, 0); } catch (e) { return null; }
+      try { c.getContext("2d").putImageData(new ImageData(frame(kind, row, pose, paw, h, step), CELL, CELL), 0, 0); } catch (e) { return null; }
       made.set(key, c);
     }
     return made.get(key);
   }
-  return {KINDS, art, frame, rest, place, swingStarts};
+  return {KINDS, LOW: Object.keys(LOW), art, frame, rest, place, swingStarts};
 })();
