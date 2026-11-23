@@ -173,8 +173,7 @@ class Movement(Leaping):
             raise ActionError("bad_args", "dir must be one of N, E, S, W")
         dx, dy = DIRS[d]
         steps, fall = yield from self.follow(a, args)            # (first, the way your screen has already walked: `from`)
-        if fall:
-            return {"steps": steps, "stopped": "fell", **fall}
+        # (a fall on that way, the screen's before this walk, hurts, and the walk goes on: test_leaping.py)
         j = True if args.get("jump") else None                   # (auto-jump: a player's screen walks up every step it comes to)
         # (a player's held key, `push`, against a step a jump would take: it goes on pushing, as in Minecraft, and the
         # jump key's spring takes the step at once: a walk that ended there had the world a stride behind the screen)

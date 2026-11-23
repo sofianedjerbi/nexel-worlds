@@ -23,9 +23,17 @@ class Bodies:
         body that has never moved starts)."""
         if getattr(b, "flying", None) is not None:          # (in the air: the height it left from, leaping.py)
             return b.flying
-        s = self.world.surfaces(b.x, b.y)
-        b.z = max((z for z in s if z <= b.z), default=s[0])
+        b.z = self.ground_under(b.x, b.y, b.z)
         return b.z
+
+    def ground_under(self, x: int, y: int, z: int) -> int:
+        """The ground a body at height z comes down on: the highest at or under z (else the lowest). web/js/cells.js settleAt."""
+        s = self.world.surfaces(x, y)
+        return max((g for g in s if g <= z), default=s[0])
+
+    def ground_near(self, x: int, y: int, z: int) -> int:
+        """The ground here nearest height z (in reach of someone at z). web/js/cells.js settleNear."""
+        return min(self.world.surfaces(x, y), key=lambda s: abs(s - z))
 
     def in_cave(self, b) -> bool:
         """Land over its head (not a floor or a roof somebody built: storeys.py)."""
@@ -55,7 +63,7 @@ class Bodies:
         if w.solid(x, y, h + 1):                         # a step: a jump, with room over it and over your own head to make it
             land = h + 1 if jump and not w.solid(x, y, h + 2) and not w.solid(x0, y0, h + 2) else None
         else:                                            # in at your height, down onto the ground there (a fall)
-            land = max(z for z in w.surfaces(x, y) if z <= h)
+            land = self.ground_under(x, y, h)
         if climbs and self.thing(x0, y0, h) == "ladder" and (land is None or not self.open_at(x, y, land)):
             up = self.climb_to(h, x0, y0, x, y)
             if up is not None:
@@ -89,7 +97,7 @@ class Bodies:
         given: its ground nearest your own)."""
         h = self.height(a)
         if z is None:
-            z = min(self.world.surfaces(x, y), key=lambda s: abs(s - h))
+            z = self.ground_near(x, y, h)
         return (x - a.x) ** 2 + (y - a.y) ** 2 + ((z - h) * LAYER) ** 2 <= (r + .5) ** 2
 
     def land_between(self, a, x: int, y: int, z: int) -> bool:

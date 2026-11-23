@@ -254,3 +254,35 @@ def test_on_the_lower_step_behind_a_higher_one_your_legs_are_behind_it(game):
     game.frames(3)
     assert game.js("HdLook.hid") == 1
     assert not game.errors, game.errors
+
+
+# every frame: [your y, the way you face (y), in the air]
+FACE = """() => { window.__fc = []; window.__fcOn = true; const f = () => { const p = ents.get('agent' + myId); __fc.push([p.y, p.fy, Leap.on()]); if (__fcOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+@pytest.mark.realtime
+def test_sprint_jumping_down_off_a_high_step_you_go_on_south_never_put_back(game):
+    """"sprinting [down the north mountain] my character ends up getting into the floor and glitching, facing the north
+    direction": off a step 9 high a sprint jump came down 9 lower and the walk went on; the world, making the flight
+    first, ended that walk where the landing hurt (sim/movement.py walk), a tile behind; the page was put back on it,
+    turned north by the step back. Sprinting south off the edge with Space: never facing north, never a step back, and
+    the world has you where the screen does."""
+    game.clear_area(12)
+    game.stamp(-2, 0, ["." * 5] * 10, levels=["99999"] * 2 + ["00000"] * 8)
+    x, y = game.pos()
+    game.rpc("dev_teleport", x=x, y=y, z=9); game.arrive(); game.face(0, 1); game.rest()
+    game.js(FACE)
+    game.page.keyboard.down("Shift"); game.page.keyboard.down("s")
+    game.wait(f"ents.get('agent' + myId).y >= {y + .8}", 4000)
+    game.page.keyboard.press("Space")
+    game.wait("Leap.on()", 2000)
+    game.wait("!Leap.on()", 4000)
+    game.sleep(700)
+    game.page.keyboard.up("s"); game.page.keyboard.up("Shift")
+    game.sleep(500)
+    r = game.js("(() => { __fcOn = false; return __fc; })()")
+    assert not [i for i, v in enumerate(r) if v[1] == -1], [v for v in r if v[1] == -1][:4]
+    assert not [(a[0], b[0]) for a, b in zip(r, r[1:]) if b[0] < a[0] - .05], [(a[0], b[0]) for a, b in zip(r, r[1:]) if b[0] < a[0] - .05][:4]
+    game.wait("myPos().x === meObs.self.x && myPos().y === meObs.self.y", 4000)
+    agree(game)
+    assert game.pos()[1] >= y + 5 and not game.errors, (game.pos(), y, game.errors)

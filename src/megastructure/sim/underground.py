@@ -102,7 +102,7 @@ class Underground:
         self.tire(a, "dig")
         got = self.take_land(a, x, y, z)
         a.bump("dug")
-        return {"got": {got: 1}, "cell": [x, y, z], "level": max(s for s in self.world.surfaces(x, y) if s < z) if any(s < z for s in self.world.surfaces(x, y)) else z - 1}
+        return {"got": {got: 1}, "cell": [x, y, z], "level": self.ground_under(x, y, z - 1)}
 
     def _diggable_down(self, a: Agent) -> bool:
         g, b = self.world.get(a.x, a.y)

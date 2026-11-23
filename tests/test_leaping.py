@@ -88,3 +88,23 @@ def test_a_flight_never_told_its_end_comes_down_where_it_is(world):
 def test_the_arc_is_the_screens():
     """The same weight and top as the screen's (web/js/jump.js JUMP: 950 art px/s2, 20 art px, 16 a level)."""
     assert abs(LEAP_TOP - 1.25) < 1e-9 and abs(airtime(0) - .41) < .01 and airtime(1) < airtime(0) < airtime(-1)
+
+
+def test_a_walk_said_after_a_flight_down_a_long_way_goes_on_past_where_it_landed(world):
+    """"sprinting [down the mountain] my character ends up getting into the floor and glitching, facing the north
+    direction (while I was sprinting south)": the screen jumped from 9 levels up, came down 9 lower (a fall that hurts)
+    and walked on. The walk made the flight first (the way the screen had gone) and ended where its landing hurt, as a
+    walk ends at a fall of its own: the world stopped a tile behind the screen, which was put back on it, turned round by
+    that step back. That walk was said after the landing: it goes on from there (the fall still hurts)."""
+    sim, a = world
+    x, y = a.x, a.y
+    for dx in range(-2, 12):
+        for dy in (-1, 0, 1):
+            sim.world.set(x + dx, y + dy, level=9 if dx == 0 else 0)
+    a.z = 9
+    sim.submit(a, "leap", {"path": [[x + 1, y], [x + 2, y], [x + 3, y]], "land": 0, "n": 1, "run": True})
+    sim.step()
+    sim.submit(a, "walk", {"dir": "E", "run": True})
+    for _ in range(14):
+        sim.step()
+    assert a.hp < 20 and a.x >= x + 5 and sim.height(a) == 0, (a.hp, a.x - x, sim.height(a))

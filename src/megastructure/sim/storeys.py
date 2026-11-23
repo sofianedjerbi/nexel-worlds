@@ -86,7 +86,7 @@ class Storeys:
                 raise ActionError("bad_args", "z must be an integer")
             return z
         h = self.height(a)
-        return min(self.world.surfaces(x, y), key=lambda s: abs(s - h))
+        return self.ground_near(x, y, h)
 
     def bodies_on(self, x, y) -> list:
         return [b for b in (*self.agents.values(), *self.creatures.values())
@@ -99,7 +99,7 @@ class Storeys:
             return "nothing is built that high"
         if w.solid(x, y, z):
             return "there is a block there already"
-        under = max(s for s in w.surfaces(x, y) if s < z)
+        under = self.ground_under(x, y, z - 1)
         if under == z - 1:                               # on a block: it stacks
             if under == w.level(x, y) and GROUNDS[w.get(x, y)[0]].liquid and self.floors.get(x, y, under) is None:
                 return "nothing stands on water: lay a bridge first"

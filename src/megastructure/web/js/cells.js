@@ -52,7 +52,7 @@ function landAt(h, x, y, fx, fy, jump = true) {       // (fx, fy: the tile you s
   const stair = (sx, sy, sz) => { const c = FLOORS && sx !== undefined ? Floors.get(sx, sy, sz) : null; return !!c && c[0] === "stairs"; };
   jump = jump || stair(x, y, h + 1) || stair(fx, fy, h);      // (stairs are walked up: onto a step of them, or off the top one)
   if (solidAt(x, y, h + 1)) z = !jump || solidAt(x, y, h + 2) || (fx !== undefined && solidAt(fx, fy, h + 2)) ? null : h + 1;
-  else while (!solidAt(x, y, z)) z--;
+  else z = settleAt(x, y, h);                           // (in at your height, down on the ground under you: the one rule, settleAt)
   if (fx !== undefined && FLOORS && Floors.thingAt(fx, fy, h) === "l" && (z === null || !Climb.openAt(x, y, z))) {   // (on a ladder, into a wall: up it, climbing.js)
     const up = Climb.climb(h, fx, fy, x, y);
     if (up !== null) return up;

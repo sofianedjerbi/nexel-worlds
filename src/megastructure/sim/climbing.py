@@ -114,9 +114,8 @@ class Climbing:
         """Down from `top`, a step a tile in (dx, dy): the steps, or why they can't be."""
         out, t = [], top - 1
         while True:
-            under = [s for s in self.world.surfaces(x, y) if s < t]
-            g = max(under, default=None)
-            if g is None or t <= g:
+            g = self.ground_under(x, y, t - 1)              # (none under t: the lowest, not under it)
+            if t <= g:
                 return out or "the ground there is as high"
             if any(self.world.solid(x, y, c) for c in range(g + 1, t + 3)):
                 return "no room for the stairs there (leave the floor open over them)"
