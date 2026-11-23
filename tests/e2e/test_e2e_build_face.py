@@ -2,7 +2,9 @@
 (the ground, a block, or a block planned under or beside it) and dotted when nothing does yet; dotted, nothing is said
 and Space does nothing (it said in red "Nothing holds it"). By mouse, the block goes on the face pointed at: on a
 block's west side, west of it (Minecraft's way), its ghost with its side showing; walls are pointed at as the boxes
-they are (the ray went through them to the ground behind)."""
+they are (the ray went through them to the ground behind).
+(The tests that Space says nothing put the welcome away first: it shows 3.2 s of the page's time after waking, and on
+the tests' fast clock a quick set-up was still in it: "nothing said" read the welcome, one run in a few.)"""
 
 import pytest
 
@@ -37,6 +39,7 @@ def test_a_block_nothing_holds_is_dotted_and_silent_and_whole_once_a_block_is_pl
     assert game.js(PLACE) == [x + 1, y, 2, True, False, True]           # dotted
     assert not [r for r in game.js("Build.rows()") if r[0] == "Space"] and "Nothing holds" not in game.actions()
     assert game.js("BuildGhost.drew.z") is None                          # no ghost in it: its dotted box alone
+    game.js("$('toast').style.display = 'none'")                        # (the welcome is up 3.2 s of the page's time from waking: a quick set-up read it)
     game.press(" ", 120)
     assert game.js("Build.S.plans.size") == 0 and game.toast() == ""    # Space on it: nothing
     game.press("q", 100)
@@ -61,6 +64,7 @@ def test_stairs_with_nothing_higher_beside_them_are_dotted_and_silent(game):
     assert h["far"] is True and h["text"] == "", h
     d = game.js(PLACE)
     assert d == [x + 1, y, 1, True, False, True], (d, h)                 # the cell its first step would fill: dotted
+    game.js("$('toast').style.display = 'none'")                        # (the welcome, still up: as above)
     game.press(" ", 120)
     assert game.js("Build.S.plans.size") == 0 and game.toast() == ""
     assert not game.errors
