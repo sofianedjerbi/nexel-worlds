@@ -154,6 +154,7 @@
     background:#f7e7c6; border:2px solid var(--ink); border-bottom-width:4px; border-radius:4px; text-shadow:none; }
   #actions div.bad { color:#ffb0a0; }
   #actions div.head { color:#fff1a8; }   /* (build mode's name, over its keys: build.js) */
+  #actions.lift { bottom:calc(var(--hudh, 90px) + 22px); }   /* (no room beside the bar, a small window: over it, not under its slots: ui.js) */
   /* ---- the keys beside what they act on: the build cursor, what you face (prompts.js) ---- */
   #prompts { position:fixed; left:0; top:0; z-index:3; pointer-events:none; color:#fff8e8; font-size:18px; line-height:26px;
     text-shadow:0 0 2px var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }

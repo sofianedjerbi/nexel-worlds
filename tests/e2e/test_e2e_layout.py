@@ -85,3 +85,23 @@ def test_the_caps_say_each_key_as_this_keyboard_types_it(game):
         game.js(KEY, ["keyup", code, key])
     assert game.js("[capOf('alt'), capOf('build'), ['w', 'a', 's', 'd'].map(keyCap).join('')]") == ["Q", "Z", "WASD"]
     assert not game.errors
+
+
+# the corner's words and the bar: [shown, does a line of the corner cross the HUD's box, the corner's bottom, the HUD's top]
+CORNER = """() => { const a = $('actions'), b = $('hud').getBoundingClientRect(), r = [...a.children].map((c) => c.getBoundingClientRect());
+  return [a.style.display !== 'none' && r.length > 0, r.some((c) => c.right > b.left && c.left < b.right && c.bottom > b.top && c.top < b.bottom), Math.round(Math.max(...r.map((c) => c.bottom))), Math.round(b.top)]; }"""
+
+
+def test_the_corner_s_keys_are_never_under_the_bar_in_a_small_window(game):
+    """In a window 800 px wide the bar reached the corner, and "Dig down Q" was under its last slots ("own Q" showed):
+    where the bar leaves no room beside it, the corner's words stand over it. In a wide window they stay in the corner."""
+    game.press("d", wait=100)                                      # (played by keys: the corner says them)
+    for w, h in ((800, 600), (1024, 700), (1440, 900)):
+        game.page.set_viewport_size({"width": w, "height": h})
+        game.wait("$('actions').style.display !== 'none' && $('actions').children.length > 0")
+        game.frames(3)
+        shown, crosses, bottom, top = game.js(CORNER)
+        assert shown and not crosses, (w, h, bottom, top, game.js("$('actions').innerText"))
+        if w == 1440:
+            assert bottom > top, (bottom, top)                     # (room beside the bar: the words down in the corner)
+    assert not game.errors

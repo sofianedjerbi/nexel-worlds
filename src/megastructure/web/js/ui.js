@@ -117,6 +117,10 @@ function hudFit() {
 }
 hudFit(); addEventListener("resize", hudFit);
 new ResizeObserver(() => document.documentElement.style.setProperty("--hudh", $("hud").offsetHeight + "px")).observe($("hud"));   // (the bag sits on it)
+// The corner's keys (keyboard.js updateActions) stand over the bar where it leaves them no room beside it: in a window 800
+// px wide "Dig down Q" was under its last slots. (Across, the corner and the bar are where they are whatever its height.)
+{ const clear = () => { const a = $("actions"), r = a.getBoundingClientRect(), b = $("hud").getBoundingClientRect(); a.classList.toggle("lift", r.width > 0 && b.width > 0 && r.left < b.right + 8 && r.right > b.left); };
+  const ro = new ResizeObserver(clear); ro.observe($("actions")); ro.observe($("hud")); addEventListener("resize", clear); }
 let slots = JSON.parse(localStorage.getItem("megastructure-slots") || "[]");
 function slotOrder(inv) {               // items keep their slot; new items take the first free one, the empty hand's last
   slots = slots.map((n) => (n && inv[n] ? n : null));         // (a flower picked with empty hands stays out of them: E picks the next one, not plants it)
