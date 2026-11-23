@@ -11,7 +11,7 @@ const HELP = [
   ["Do", [[["{use}"], "Use: open, harvest, eat"], [["{alt}", "X"], "Break: mine, chop, hit"], [["{pick}"], "Pick up"],
     [["Left click"], "{alt} there, or walk"], [["Right click"], "{use} there"]]],
   ["Carry", [[["1-9", "{next}"], "Slot in hand"], [["{hands}"], "Empty your hands"], [["{use}"], "Place what you hold"],
-    [["{bag}"], "Inventory"], [["{craft}"], "Craft"]]],
+    [["{drop}"], "Drop one. Shift: all"], [["{bag}", "{craft}"], "Inventory, craft"]]],
   ["Build", [[["{build}", "B"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],
     [["~keyq", "E"], "Cursor a layer down, up"]]],
   ["Talk", [[["Enter"], "Talk"], [["ABC"], "Shout: IN CAPITALS"], [["Tab"], "Hold: who is awake"],

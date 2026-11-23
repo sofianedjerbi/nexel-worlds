@@ -240,6 +240,7 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   r: () => DigUp.run(),
   " ": () => jumpKey(),                              // (walk.js: up onto the step in front, or a hop)
   f: () => act("pick_up", {}),
+  keyy: (ev) => dropHeld(!!(ev && ev.shiftKey)),     // (drop: by place, options.js)
   tab: (ev) => cycleHand(ev && ev.shiftKey ? -1 : 1),
   "`": () => { selectItem(null); },
   c: () => { $("bag").style.display = "none"; toggleCraft(); },

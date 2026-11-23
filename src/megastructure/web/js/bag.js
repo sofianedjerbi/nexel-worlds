@@ -15,6 +15,8 @@
 // or takes it off; X picks it up to move it, and X again puts it down where the cursor is (the two change places);
 // a number sends it to that cell of the bar; Esc closes. With a mouse: a click moves the cursor, a double click
 // takes in hand, the buttons do as they say, and a thing is dragged from one cell to another.
+// Drop ("add the ability to drop items"): Y lets go of one of the thing the cursor is on, Shift Y of all of it; its word
+// (a tap, on a phone) and a cell dragged out of the window drop the whole stack. It lies in front of you (F takes it back).
 
 const BAG = {cols: 10, rows: 3, wear: ["head", "top", "pants", "shoes", "effect"],
   ghost: {head: "straw_hat", top: "linen_shirt", pants: "linen_shorts", shoes: "leather_boots", effect: "sparkle_charm"}};
@@ -59,6 +61,22 @@ function bagCarry() {                                // X: pick up what the curs
   else { const to = bagIndex(bagAt); if (to !== bagMove) bagSwap(bagMove, to); bagMove = null; }
   bagDraw(true);
 }
+// Drop (Y): one of what is in hand onto the ground in front of you (under you where you could not step: the server
+// says); with Shift, all of it. It stays there (sim/progress.py): walk onto it and F takes it back.
+const facingName = () => { const p = ents.get("agent" + myId); return p ? Object.keys(DIRV).find((k) => DIRV[k][0] === p.fx && DIRV[k][1] === p.fy) : undefined; };
+function dropItem(item, n) { act("drop", {item, n, dir: facingName()}); }
+function dropHeld(all) {
+  const inv = meObs ? meObs.self.inventory : {}, n = selected ? inv[selected] || 0 : 0;
+  if (!n) return toast("Nothing in hand to drop.", true);
+  dropItem(selected, all ? n : 1);
+}
+function bagDrop(idx, all = true) {                 // the thing in that cell of the bar or the pack onto the ground in front of you
+  const name = slots[idx], n = name && meObs ? meObs.self.inventory[name] || 0 : 0;
+  if (n) dropItem(name, all ? n : 1);
+}
+let bagDragged = null;                               // (the cell being dragged: let go of out of the window, it is dropped)
+addEventListener("dragover", (e) => { if (bagDragged != null && !e.target.closest("#bag")) e.preventDefault(); });
+addEventListener("drop", (e) => { if (bagDragged == null || e.target.closest("#bag")) return; e.preventDefault(); const i = bagDragged; bagDragged = null; bagDrop(i); });
 function bagCell(at, name, n) {
   const d = name ? craftCell(name, n > 1 ? n : null) : Object.assign(document.createElement("div"), {className: "cell"});
   const idx = at.zone === "wear" ? -1 : bagIndex(at);
@@ -72,7 +90,8 @@ function bagCell(at, name, n) {
   d.ondblclick = () => { bagAt = at; bagHold(); };
   if (at.zone !== "wear") {                          // dragged from one cell to another: they change places
     d.draggable = !!name;
-    d.ondragstart = (e) => { e.dataTransfer.setData("text/plain", String(idx)); };
+    d.ondragstart = (e) => { e.dataTransfer.setData("text/plain", String(idx)); bagDragged = idx; };
+    d.ondragend = () => { bagDragged = null; };
     d.ondragover = (e) => e.preventDefault();
     d.ondrop = (e) => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain"); bagAt = at; bagMove = null; if (from !== idx) bagSwap(from, idx); else bagDraw(true); };
   }
@@ -107,6 +126,7 @@ function bagDraw(now) {
     key("E", isWorn || !use ? "use" : use.toLowerCase(), bagUse, !use || isWorn);
     key("X", "move", bagCarry, !name || isWorn);
     key("1-0", "to bar", null, !name || isWorn);
+    key(capOf("drop"), "drop", () => bagDrop(bagIndex(bagAt)), !name || isWorn);
     key("Esc", "close", toggleBag);
   }
 }
@@ -121,6 +141,7 @@ function bagKey(k, e) {
   } else if (k === "enter" || k === " ") { if (e.repeat) return true; if (bagMove != null) return bagCarry(), true; bagHold(); return true; }
   else if (k === "e") { if (!e.repeat) bagUse(); return true; }
   else if (k === "x") { if (!e.repeat) bagCarry(); return true; }
+  else if (k === keyOf("drop")) { if (!e.repeat && bagAt.zone !== "wear") bagDrop(bagIndex(bagAt), e.shiftKey); return true; }
   else if (/^[0-9]$/.test(k)) { if (bagAt.zone !== "wear" && bagItem(bagAt)) { const to = (+k + 9) % 10; if (to !== bagIndex(bagAt)) bagSwap(bagIndex(bagAt), to); bagMove = null; } }
   else if (k === "pagedown" || k === "pageup") bagPage = Math.max(0, Math.min(bagPages() - 1, bagPage + (k === "pagedown" ? 1 : -1)));
   else if (k === "escape" && bagMove != null) bagMove = null;            // (the first Esc lets go of what is carried; the next closes)

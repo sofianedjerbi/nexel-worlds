@@ -39,7 +39,8 @@ const HdFx = (() => {
     for (const l of loot) { const s = (now - l.t0) / 1000; if (s < 0) continue; let h = 0, dk = 1, since = 1;   // a drop hopping out to its place in the pile (loot.js drawLoot), then two bounces; the pile shows once all of its tile's have landed (hd.js)
       if (s < l.flight) { h = -(l.vy * s + LOOT_G * s * s / 2); dk = s / l.flight; } else { let u = s - l.flight, m = 0; while (m < LOOT_HOPS.length && u > LOOT_HOPS[m]) u -= LOOT_HOPS[m++]; if (m < LOOT_HOPS.length) { h = LOOT_G * LOOT_HOPS[m] / 2 * u - LOOT_G * u * u / 2; since = u; } }
       const dip = s > l.flight && since < .05 ? 1 : 0;   // (a px into the ground as it touches down)
-      put({canvas: ghostIcon(l.name), fx: 5, fy: 11 - Math.round(l.dy * dk) + Math.max(0, Math.round(h * 16)) - dip, x: l.x + .5 + Math.round(l.dx * dk) / 16, y: l.y + .7, z: ground(l.x, l.y), pile: true}); n++; }   // (pile: its shadow on the ground under it, hd.js pieces)
+      const [ox, oy] = lootFrom(l, dk);   // (let go of in front of you: from you to its place, loot.js)
+      put({canvas: ghostIcon(l.name), fx: 5, fy: 11 - Math.round(l.dy * dk) + Math.max(0, Math.round(h * 16)) - dip, x: l.x + ox + .5 + Math.round(l.dx * dk) / 16, y: l.y + oy + .7, z: ground(l.x, l.y), pile: true}); n++; }   // (pile: its shadow on the ground under it, hd.js pieces)
     last.loot = n; n = 0;
     for (const o of orbs) { if (o.age < 0) continue; const w = Math.max(0, Math.min(1, (o.age - o.homing) / .2)), by = o.y + (UP + .15) * w;   // (homing: to your middle, the flat picture's y up by UP: here over your feet)
       put({canvas: orb(o.big, Math.sin(o.age * 14 + o.seed) > 0), fx: o.big ? 3 : 2, fy: (o.big ? 4 : 3) + Math.round(o.h * 8 + Math.max(0, by - o.y) * 16), x: o.x, y: by, z: ground(o.x, by)}); n++; }

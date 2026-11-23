@@ -38,6 +38,10 @@ class Progress:
         """Every other tick: piles next to someone (or under them) that have lain long enough fly into their bag."""
         if self.tick % 2 or not self.items:
             return
+        for pos, aid in list(self.item_left.items()):       # what someone dropped is theirs to leave: it comes back to
+            a = self.agents.get(aid)                         # them by itself once they have stepped away and come back
+            if pos not in self.items or a is None or not a.online or not self.near(a, *pos, MAGNET_R):
+                del self.item_left[pos]
         for aid in sorted(self.agents):
             a = self.agents[aid]
             if not a.online or a.hp <= 0:
@@ -46,8 +50,8 @@ class Progress:
                 for dx in range(-MAGNET_R, MAGNET_R + 1):
                     pos = (a.x + dx, a.y + dy)
                     pile = self.items.get(pos)
-                    if not pile or self.tick - self.item_since.get(pos, 0) < MAGNET_DELAY or not self.near(a, *pos, MAGNET_R):
-                        continue                             # (not there, just dropped, or out of reach: up on a ledge, down a drop)
+                    if not pile or self.tick - self.item_since.get(pos, 0) < MAGNET_DELAY or not self.near(a, *pos, MAGNET_R) or self.item_left.get(pos) == aid:
+                        continue                             # (not there, just dropped, out of reach: up on a ledge, down a drop; or let go of by them, there)
                     got = dict(pile)
                     for k, n in got.items():
                         a.add(k, n)

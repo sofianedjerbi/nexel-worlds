@@ -48,14 +48,16 @@ function smallPx(name) {
   return out;
 }
 
-function dropLoot(x, y, items, now) {
+// (ox, oy: the tile it comes from, from its own: a thing let go of in front of you hops from you to there)
+function dropLoot(x, y, items, now, ox = 0, oy = 0) {
   const names = Object.keys(items || {}).filter((n) => items[n] > 0);
   names.slice(0, 3).forEach((name, i, all) => {
     const [dx, dy] = pileAt(i, all.length);                        // the same place the pile draws it
     const flight = .42 + Math.random() * .08;
-    loot.push({x, y, name, dx, dy, t0: now + 90 + i * 70, flight, vy: -LOOT_G * flight / 2});
+    loot.push({x, y, name, dx, dy, ox, oy, t0: now + 90 + i * 70, flight, vy: -LOOT_G * flight / 2});
   });
 }
+const lootFrom = (l, k) => [(l.ox || 0) * (1 - k), (l.oy || 0) * (1 - k)];     // (tiles off its place, k of the hop done)
 
 const lootAt = (x, y) => loot.some((l) => l.x === x && l.y === y);   // (still hopping in there: the pile waits, hd.js)
 const LOOT_HOPS = [.16, .08];                 // after the hop out: two smaller bounces in place, this long
@@ -81,7 +83,7 @@ function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list
       while (n < LOOT_HOPS.length && t > LOOT_HOPS[n]) t -= LOOT_HOPS[n++];
       if (n < LOOT_HOPS.length) { h = LOOT_G * LOOT_HOPS[n] / 2 * t - LOOT_G * t * t / 2; since = t; }
     }
-    const cx = sx(l.x) + S / 2 + Math.round(l.dx * dxk) * z, ground = sy(l.y, l.x) + S / 2 + Math.round(l.dy * dxk) * z;
+    const [fx, fy] = lootFrom(l, dxk), cx = sx(l.x + fx) + S / 2 + Math.round(l.dx * dxk) * z, ground = sy(l.y + fy, l.x + fx) + S / 2 + Math.round(l.dy * dxk) * z;
     const dip = s > l.flight && since < .05 ? 1 : 0;                // a pixel lower just as it touches down, its last row in
                                                                     //  the ground (only then: it ends at rest, as the pile shows)
     list.push({y: l.y - .01 + i * 1e-4, x: l.x, fx: () => {         // (in the pile's order: the last in front)

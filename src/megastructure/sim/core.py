@@ -71,6 +71,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         self.ticking: set[tuple[int, int]] = set()        # chunks where creatures live this tick (spawning.py)
         self.screens = lambda: ()                         # the rectangles (x, y, w, h) the screens watch now: the server says (spawning.py: in_sight)
         self.item_since: dict[tuple[int, int], int] = {}   # when each pile last grew (the magnet waits a moment)
+        self.item_left: dict[tuple[int, int], int] = {}    # a pile its dropper let go of: not drawn back to them while they stay by it (progress.py)
         self.items: dict[tuple[int, int], dict] = {
             (x, y): json.loads(j) for x, y, j in store.db.execute("SELECT x, y, json FROM ground_items")}
         self.dirty_items: set = set()

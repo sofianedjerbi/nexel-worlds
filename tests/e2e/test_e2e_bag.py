@@ -83,7 +83,7 @@ def test_the_inventory_is_played_with_keys_alone(game):
     assert game.js("slots[2]") == bar0 and game.js("$('bag').style.display") == "block"
     where = game.js("(() => { const i = slots.indexOf('bread'); return i < 10 ? ['bar', i] : ['pack', i - 10]; })()")
     game.js(f"(() => {{ bagAt = {{zone: {where[0]!r}, i: {where[1]}}}; bagDraw(true); }})()")
-    assert game.js(LABEL)[0] == "Bread x2" and game.js(KEYS) == ["Enterhold", "Eeat", "Xmove", "1-0to bar", "Escclose"]
+    assert game.js(LABEL)[0] == "Bread x2" and game.js(KEYS) == ["Enterhold", "Eeat", "Xmove", "1-0to bar", "Ydrop", "Escclose"]
     game.press("e", 1500)                                                        # eaten: one less, the window stays
     assert game.inv("bread") == 1 and game.server()["hunger"] == 18 and game.js("$('bag').style.display") == "block"
     where = game.js("(() => { const i = slots.indexOf('straw_hat'); return i < 10 ? ['bar', i] : ['pack', i - 10]; })()")

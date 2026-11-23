@@ -76,19 +76,20 @@ const particles = (n) => (opt("particles") === "none" ? 0 : opt("particles") ===
 // Break and build mode are by their place (keyq, keyz: the top-left and bottom-left letters, whatever they type: A and W
 // on AZERTY); X still breaks and B still builds (keyboard.js SHORTCUTS); Tab the next thing in hand.
 const KEY_ACTIONS = {use: ["e", "Use: open, place, eat"], alt: ["keyq", "Break: mine, chop, hit"], jump: [" ", "Jump"], pick: ["f", "Pick up"], next: ["tab", "Next thing in hand"],
-  hands: ["`", "Empty your hands"], craft: ["c", "Craft"], bag: ["i", "Inventory"], build: ["keyz", "Build mode"], up: ["r", "Dig up"], talk: ["t", "Talk"], mute: ["m", "Sound on or off"]};
+  hands: ["`", "Empty your hands"], drop: ["keyy", "Drop one (Shift: all)"], craft: ["c", "Craft"], bag: ["i", "Inventory"], build: ["keyz", "Build mode"], up: ["r", "Dig up"], talk: ["t", "Talk"], mute: ["m", "Sound on or off"]};
+// (Drop: the free key nearest the left hand, beside T and G, by its place: a German keyboard's Y and Z change places)
 const KEY_FIXED = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "shift", "enter", "escape", "control", "alt", "meta", "capslock",
   "h", "?", "g", "v", "f3", "/", "+", "=", "-", "_", ..."0123456789"]);
-const bindable = (k) => typeof k === "string" && !KEY_FIXED.has(k) && (k.length === 1 || /^f\d+$/.test(k) || ["keyq", "keyz", "tab"].includes(k));
+const bindable = (k) => typeof k === "string" && !KEY_FIXED.has(k) && (k.length === 1 || /^f\d+$/.test(k) || ["keyq", "keyz", "keyy", "tab"].includes(k));
 const keyOf = (action) => opt("keys")[action] || KEY_ACTIONS[action][0];
 // A key pressed -> its name for the game. Walking is by place (an AZERTY's Z Q S D are a QWERTY's W A S D: they walk,
 // and are no letter's shortcut: the q there cycled the hand, the z opened build mode); so are keyq and keyz, the bar's
 // numbers (an AZERTY types & é " ' without Shift) and ` (² there). The rest: the letter typed. (No code: a phone's pad.)
 const KEY_CODE = {KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d", ArrowUp: "arrowup", ArrowDown: "arrowdown", ArrowLeft: "arrowleft", ArrowRight: "arrowright",
-  KeyQ: "keyq", KeyZ: "keyz", Backquote: "`", ...Object.fromEntries([..."0123456789"].map((n) => ["Digit" + n, n]))};
+  KeyQ: "keyq", KeyZ: "keyz", KeyY: "keyy", Backquote: "`", ...Object.fromEntries([..."0123456789"].map((n) => ["Digit" + n, n]))};
 // What the keys by place type on this keyboard, to write them on caps: the browser's map (Chrome), else learnt as they
 // are pressed (walking west typed q: an AZERTY, so its KeyQ types a), else a QWERTY's
-const LAYOUT = {KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d", KeyQ: "q", KeyZ: "z", Backquote: "`"}, LAYOUT_SEEN = new Set();
+const LAYOUT = {KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d", KeyQ: "q", KeyZ: "z", KeyY: "y", Backquote: "`"}, LAYOUT_SEEN = new Set();
 if (navigator.keyboard && navigator.keyboard.getLayoutMap) navigator.keyboard.getLayoutMap().then((m) => { for (const c of Object.keys(LAYOUT)) if (m.get(c)) { LAYOUT[c] = m.get(c); LAYOUT_SEEN.add(c); } }).catch(() => {});
 function keyId(e) {
   const c = e.code || "";
@@ -119,7 +120,8 @@ function bindKey(action, k) {
 // two actions share a key. The eat key is dropped (E uses, and eats). Given again to what it made: the same.
 function keysAgain(own) {
   const now = Object.fromEntries(Object.entries(KEY_ACTIONS).map(([a, [k]]) => [a, k]));
-  for (const [a, k] of Object.entries(own || {})) {
+  for (let [a, k] of Object.entries(own || {})) {
+    if (k === "y") k = "keyy";                                  // (Y is by its place now: a Y given before is that key)
     if (!(a in now) || !bindable(k)) continue;
     const other = Object.keys(now).find((b) => b !== a && now[b] === k);
     if (other) now[other] = now[a];
@@ -130,6 +132,6 @@ function keysAgain(own) {
 { const k = keysAgain(OPT.v.keys); if (JSON.stringify(k) !== JSON.stringify(OPT.v.keys)) { OPT.v.keys = k; optSave(); } }
 // How a key is written on a cap: keyCap("x") -> "X"; of an action: capOf("jump") -> "Space"; a key by place as this
 // keyboard types it: keyCap("keyq") -> "A" on AZERTY, "Q" on QWERTY
-const CAP_CODE = {w: "KeyW", a: "KeyA", s: "KeyS", d: "KeyD", keyq: "KeyQ", keyz: "KeyZ", "`": "Backquote"};
+const CAP_CODE = {w: "KeyW", a: "KeyA", s: "KeyS", d: "KeyD", keyq: "KeyQ", keyz: "KeyZ", keyy: "KeyY", "`": "Backquote"};
 const keyCap = (k) => (CAP_CODE[k] ? LAYOUT[CAP_CODE[k]].toUpperCase() : k === " " ? "Space" : k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1));
 const capOf = (action) => keyCap(keyOf(action));

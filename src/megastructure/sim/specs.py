@@ -45,7 +45,7 @@ TOOL_SPECS = {
                       "With z, plank or roof is a block in that cell (on the block under it: a step; or a storey over a wall; or beside a block), and a wall, door, bed... stands on the block built at that height"},
     "unroof": {"args": {**DIR_ARG}, "desc": "take the block built over that tile (a roof, a floor) back into your pack"},
     "pick_up": {"args": {"item": "str (optional)"}, "desc": "pick up items on your tile"},
-    "drop": {"args": {"item": "str", "n": "int"}, "desc": "drop items on your tile"},
+    "drop": {"args": {"item": "str", "n": "int", "dir": "N|E|S|W (optional)"}, "desc": "drop items on your tile; with dir, on the tile that way if you could walk there"},
     "craft": {"args": {"recipe": "str", "n": "int (optional)"}, "desc": "craft from the recipe book (materials into things; and a block into its material: stone = 1 stone_block)"},
     "attack": {"args": {"target": "entity id", "with": "weapon (optional, e.g. sword, spear, axe; default fists)"},
                "desc": "hit an agent or creature within reach (3 tiles, 4 with a spear in hand; a circle round you, and height counts: a layer is half a tile, so not up a cliff or down one)"},

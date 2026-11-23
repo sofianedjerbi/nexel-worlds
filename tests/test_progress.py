@@ -46,6 +46,28 @@ def test_items_next_to_you_come_to_you_after_a_moment(world):
     assert a.count("wood") == 0 and (a.x + 3, a.y) in sim.items
 
 
+def test_what_you_drop_stays_down_until_you_step_away_and_back(world):
+    """A drop came straight back by the magnet (1.2 s): now it lies there for F, or for anyone else."""
+    sim, a = world
+    a.add("stone", 3)
+    run(sim, a, "drop", {"item": "stone", "n": 2})
+    for _ in range(MAGNET_DELAY + sec(2)):
+        sim.step()
+    assert a.count("stone") == 1 and sim.items[(a.x, a.y)] == {"stone": 2}
+    run(sim, a, "pick_up", {})
+    assert a.count("stone") == 3 and (a.x, a.y) not in sim.items
+    run(sim, a, "drop", {"item": "stone", "n": 1})
+    at, a.x = (a.x, a.y), a.x + 4                            # away...
+    sim.step(); sim.step()
+    a.x = at[0]                                              # ...and back: it comes to you as any pile does
+    for _ in range(MAGNET_DELAY + 4):
+        sim.step()
+    assert a.count("stone") == 3 and at not in sim.items
+    if sim.can_go(a, a.x + 1, a.y):                          # with dir: on the tile in front, if you could step there
+        run(sim, a, "drop", {"item": "stone", "n": 1, "dir": "E"})
+        assert sim.items[(a.x + 1, a.y)] == {"stone": 1} and (a.x, a.y) not in sim.items
+
+
 def test_every_thing_that_can_be_made_has_a_line_about_it():
     """The recipe book says a word about each thing (web/js/blurbs.js): one for every recipe, no two alike, short enough
     for its two lines."""

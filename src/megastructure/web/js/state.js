@@ -254,6 +254,7 @@ function onEvent(e) {
   if (e.type === "hatch") { burst(e.x, e.y, "spark", 8, {dy: -.3, g: 4}); sfx("hatch", e.x, e.y); }
   if (e.type === "born") { burst(e.x, e.y, "food", 8, {dy: -.5, g: 3}); sfx("love", e.x, e.y); }
   if (e.type === "craft") { burst(e.x, e.y, "spark", 10, {dy: -.6, g: 4}); sfx("craft", e.x, e.y); }
+  if (e.type === "drop") dropLoot(e.x, e.y, e.items, performance.now(), e.ox, e.oy);      // (let go of: it hops from the hands down to where it lies, loot.js)
   if (["xp", "pick_up", "drop", "chest", "milk", "love", "lay", "fill", "picnic", "trough"].includes(e.type)) return;
   if (e.type === "attack") return;                     // hits show on screen; the chat only tells of deaths
   let text;

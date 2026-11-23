@@ -43,8 +43,13 @@ class Items:
         yield from self.wait(a, 0.1)
         n = min(n, a.count(item))
         a.add(item, -n)
-        self.add_items(a.x, a.y, {item: n})
-        self.emit("drop", a.x, a.y, name=a.name, items={item: n})
+        x, y = a.x, a.y                                    # on your tile; or, given `dir`, on the one in front if you could
+        d = T.DIRS.get(str(args.get("dir") or "").upper())  # walk there (a person lets go of it before their feet: seen)
+        if d and self.can_go(a, a.x + d[0], a.y + d[1]):
+            x, y = a.x + d[0], a.y + d[1]
+        self.add_items(x, y, {item: n})
+        self.item_left[(x, y)] = a.id                      # (it stays down: the magnet does not hand it straight back, progress.py)
+        self.emit("drop", x, y, name=a.name, items={item: n}, ox=a.x - x, oy=a.y - y)   # (ox, oy: where it was let go of, from where it lies)
         return {}
 
     def _tool_give(self, a, args):
