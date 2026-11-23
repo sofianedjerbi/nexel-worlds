@@ -5,6 +5,14 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.4 (2026-11-23)
+
+### Bug Fixes
+
+- **web**: A dug cut is drawn by the land's own face rules, one art px
+  ([`6641a98`](https://github.com/sofianedjerbi/nexel-worlds/commit/6641a986dde5e3e054a2bce2ae7e34baf5a49a4b))
+
+
 ## v0.1.3 (2026-11-23)
 
 ### Bug Fixes
