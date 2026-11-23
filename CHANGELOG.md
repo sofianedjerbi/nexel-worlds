@@ -5,6 +5,14 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.6 (2026-11-23)
+
+### Bug Fixes
+
+- **sim**: A walk said after a flight's hard landing goes on; one rule for the ground under a body
+  ([`62f61c0`](https://github.com/sofianedjerbi/nexel-worlds/commit/62f61c0a7aead3ff28a1f3656a3217fa7260118a))
+
+
 ## v0.1.5 (2026-11-23)
 
 ### Bug Fixes
