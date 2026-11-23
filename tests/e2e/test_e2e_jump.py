@@ -29,8 +29,11 @@ def test_auto_jump_is_on_by_default_and_walking_into_a_step_jumps_up_it(game):
     game.hold(["d"], 900)                                     # three tiles of walking east, up the step at x + 2 (its jump a third of a second)
     rec = game.recording()
     game.rest()
+    # (and the world come to the tile you stop on: let go, the page has you on it at once (walk.js pred), the world a tick
+    #  or two on. Read before that, it was a tile behind on a busy machine: "(4, 1, (5, 22))". Not there in 3 s: the assert says so)
+    game.settle("pred === null", timeout=3000)
     s = game.server()
-    assert s["x"] >= x + 3 and s["z"] == 1 and game.pos()[0] == s["x"], (s["x"], s["z"], game.pos())
+    assert s["x"] >= x + 3 and s["z"] == 1 and game.pos()[0] == s["x"], (s["x"], s["z"], game.pos(), game.js("[pred, trail.slice()]"))
     xs = [r[1] for r in rec if r[1] < x + 2.5]                # (up to past the step: never back, never a stop)
     assert all(b >= a - 1e-6 for a, b in zip(xs, xs[1:])), xs
     assert not game.errors, game.errors

@@ -14,6 +14,8 @@ WATCH = """(() => { if (window.__land) return 1; const L = window.__land = {fram
 # The land at rest: all of it on the screen come, nothing of it left to draw or to make, you and the eye where you are going (it glides there for a second after a
 # teleport), and `n` frames drawn since the last piece of the land was, nothing fading in or out
 # (the land left behind: away.a, the same for `n` frames);
+# the HD look's eye tipped to the pitch it is going to (it tilts over 400 ms into a trench, by a terrace, out of a hole: a record begun
+# half way through the tilt went on one way and then back: "back and forth", two tests, one run in eight on a busy machine);
 # the HD look's eye come to your level (it rises to you over some frames, hd.js: a px read on the way is another px: a cliff's rim was read 187 or 254 by how far it had come);
 # and a tick heard from the server since (who is where, what lies on the ground, a door: they come with the tick, 0.1 s)
 # (frames, not ms: a busy machine draws fewer in a second, and the land is made a little a frame)
@@ -27,8 +29,8 @@ REST = """([n, ms]) => new Promise((ok) => { const L = window.__land, f0 = L.fra
   const quarter = () => Math.floor(performance.now() / 250); let q0 = quarter(), at0 = L.at, crossed = !hd;
   const look = () => { if (hd) { if (HdLook.busy || L.at !== at0) { L.at = at0 = L.frame; q0 = quarter(); crossed = false; } else if (!crossed && quarter() !== q0) { crossed = true; L.at = at0 = L.frame; } }
     const since = L.frame - Math.max(L.at, f0), v = fades(); calm = v.every((a, i) => Math.abs(a - was[i]) < .002) ? calm + 1 : 0; was = v;
-    if (since >= n && crossed && calm >= n && here() && (clock !== c0 || performance.now() - t0 > 1000) && dirtyTiles.length === 0 && !arrivingNow && Math.abs(cam.x - camT.x) < .004 && Math.abs(cam.y - camT.y) < .004 && !(hd && (HdLook.busy || Voxels.wver === w0 || (HdLook.level[0] !== null && HdLook.level[1] !== HdLook.level[0])))) ok(null);     // (the HD look makes its water ten times a second: once more since)
-    else if (performance.now() - t0 > ms) ok([L.frame - f0, L.frame - L.at, dirtyTiles.length, arrivingNow, cam.x - camT.x, cam.y - camT.y, calm, here()]);
+    if (since >= n && crossed && calm >= n && here() && (clock !== c0 || performance.now() - t0 > 1000) && dirtyTiles.length === 0 && !arrivingNow && Math.abs(cam.x - camT.x) < .004 && Math.abs(cam.y - camT.y) < .004 && !(hd && (HdLook.busy || Voxels.wver === w0 || (HdLook.level[0] !== null && HdLook.level[1] !== HdLook.level[0]) || Math.abs(HdLook.cam.pitch - HdLook.cam.want) > .01))) ok(null);     // (the HD look makes its water ten times a second: once more since)
+    else if (performance.now() - t0 > ms) ok([L.frame - f0, L.frame - L.at, dirtyTiles.length, arrivingNow, cam.x - camT.x, cam.y - camT.y, calm, here(), hd && [HdLook.cam.pitch, HdLook.cam.want]]);
     else requestAnimationFrame(look); }; look(); })"""
 # Nothing asked of the server and not yet answered, nothing being done, you standing where you are going, no
 # panel still sliding: a key's doing is done. (A blinking mark that never ends is not waited for.)
