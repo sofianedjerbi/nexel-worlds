@@ -36,12 +36,12 @@ const Voxels = (() => {
     for (const b of coming) if (b.px && b.seaAt !== b.ver) { for (const _ of waterSteps(b)); b.seaAt = b.ver; if (performance.now() >= until) return; }
   }
   // The water's picture (water.js, on its own canvas) the HD look lays on its water, made ten times a second -> api.wver goes up with each.
-  // Over the land the HD look draws (hd.js reach: tiles x0, y0, x1, y1), not the flat view's rectangle (vis: before the look's first frame)
+  // Over the land the HD look draws (hd.js box: tiles x0, y0, x1, y1), not the flat view's rectangle (vis: before the look's first frame)
   let wAt = 0;
   function still(vis, t) {
     if (!engine.ready()) return;
     const now = performance.now(); if (now - wAt < 100 && api.wver) return; wAt = now;
-    const r = HdLook.reach, [x0, y0, x1, y1] = r || [vis.map((b) => b.bx * B), vis.map((b) => b.by * B), vis.map((b) => b.bx * B + B - 1), vis.map((b) => b.by * B + B - 1)].map((l, i) => (i < 2 ? Math.min : Math.max)(...l));
+    const r = HdLook.box, [x0, y0, x1, y1] = r || [vis.map((b) => b.bx * B), vis.map((b) => b.by * B), vis.map((b) => b.bx * B + B - 1), vis.map((b) => b.by * B + B - 1)].map((l, i) => (i < 2 ? Math.min : Math.max)(...l));
     const near = [];
     if (r) { for (let by = Math.floor(y0 / B); by <= Math.floor(y1 / B); by++) for (let bx = Math.floor(x0 / B); bx <= Math.floor(x1 / B); bx++) { const b = blocks.get(bkey(bx, by)); if (b && made(b)) near.push(b); } }
     else near.push(...vis.filter(made));

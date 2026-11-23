@@ -50,6 +50,13 @@ class Views:
     def items_in(self, x, y, w, h) -> list:
         return [[ix, iy, pile] for (ix, iy), pile in self.sim.items.items() if pile and x <= ix < x + w and y <= iy < y + h]
 
+    def far_ready(self, x, y, w, h) -> bool:
+        """The far land a page's HD look draws to its horizon (state.js: `far`): its chunks are brought in off the tick
+        (world.prefetch: from disk, or made on a thread) and the page asks again. Made at once, 30 ms a chunk, they
+        stalled the ticks: a player on a mountain walked in jerks."""
+        world, cs = self.sim.world, 32
+        return all([world.prefetch(cx, cy) for cy in range(y // cs, (y + h - 1) // cs + 1) for cx in range(x // cs, (x + w - 1) // cs + 1)])
+
     def region(self, x, y, w, h) -> dict:
         w, h = min(int(w), 256), min(int(h), 256)
         world = self.sim.world

@@ -136,7 +136,7 @@ function* waterSteps(b) {
 }
 // All of it is art pixels (the patterns slide by whole ones), so it is put together small, a pixel an art pixel, on a
 // canvas of its own (waterCv) the HD look lays on its water (vox_style_glsl.js): over the land that look draws (rect:
-// art px x, y, w, h; hd.js reach), cut to where there is water. (It was the flat view's rectangle: the tilted eye sees
+// art px x, y, w, h; hd.js box), cut to where there is water. (It was the flat view's rectangle: the tilted eye sees
 // further north and south, and past its edge the GPU stretched the picture's last row: thin vertical lines in the water)
 let waterCv = null, waterView = null;                             // (waterView: where waterCv's corner is, in art px, this frame; null: no water in view)
 function drawWater(vis, rect, t) {

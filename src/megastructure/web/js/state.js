@@ -105,8 +105,14 @@ setInterval(() => {
       const stale = b && now - b.at > 30000;
       if ((!b || stale) && !(requested.get(k) > now - 3000)) { requested.set(k, now); if (b) b.at = now; sendSpec({op: "region", x: bx * B, y: by * B, w: B, h: B}); }
     }
+  // THE FAR LAND the HD look draws to its horizon (HdLook.far: its patches, 40 tiles past its box): asked for too, nearest first, four blocks a tenth of a second. (It was the top-down
+  // screen's blocks only: past them the far land was not known, drawn as a flat sea, and the sky's line over a gap of the backdrop's flat colours: "a flat blue mass", seen from a mountain)
+  const f = typeof HdLook !== "undefined" && HdLook.live && HdLook.far, fb = f && [f[0], f[1], f[2], f[3]].map((v) => Math.floor(v / B));
+  if (fb) { const cx = Math.floor(cam.x / B), cy = Math.floor(cam.y / B), far = [];
+    for (let by = fb[1]; by <= fb[3]; by++) for (let bx = fb[0]; bx <= fb[2]; bx++) { const k = bkey(bx, by), b = blocks.get(k); if ((!b || now - b.at > 30000) && !(requested.get(k) > now - 3000)) far.push([Math.abs(bx - cx) + Math.abs(by - cy), bx, by]); }
+    for (const [, bx, by] of far.sort((a, b) => a[0] - b[0]).slice(0, 4)) { const k = bkey(bx, by), b = blocks.get(k); requested.set(k, now); if (b) b.at = now; sendSpec({op: "region", x: bx * B, y: by * B, w: B, h: B, far: true}); } }   // (far: land not made yet is made off the server's tick, and asked for again 3 s on: views.py far_ready)
   // land left well behind is forgotten, with its pictures (it comes again if you go back): a long walk kept it all
-  const bx0 = Math.floor(x / B) - 1, bx1 = Math.floor((x + w) / B) + 1, by0 = Math.floor(y / B) - 1, by1 = Math.floor((y + h) / B) + 1;
+  const bx0 = Math.min(Math.floor(x / B) - 1, fb ? fb[0] : 1e9), bx1 = Math.max(Math.floor((x + w) / B) + 1, fb ? fb[2] : -1e9), by0 = Math.min(Math.floor(y / B) - 1, fb ? fb[1] : 1e9), by1 = Math.max(Math.floor((y + h) / B) + 1, fb ? fb[3] : -1e9);
   for (const [k, b] of blocks) if (b.bx < bx0 || b.bx > bx1 || b.by < by0 || b.by > by1) blocks.delete(k);
 }, 100);
 setInterval(() => { sendSpec({op: "agents"}); sendSpec({op: "metrics"}); }, 1500);

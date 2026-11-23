@@ -136,7 +136,8 @@ class GameServer(Views):
                     self.spectators[q] = (int(msg["x"]), int(msg["y"]), min(int(msg["w"]), 200), min(int(msg["h"]), 200))
                     continue
                 if op == "region":
-                    out = self.region(int(msg["x"]), int(msg["y"]), msg.get("w", 64), msg.get("h", 48))
+                    a = (int(msg["x"]), int(msg["y"]), int(msg.get("w", 64)), int(msg.get("h", 48)))
+                    out = {"later": True, "x": a[0], "y": a[1]} if msg.get("far") and not self.far_ready(*a) else self.region(*a)   # (views.py far_ready)
                 elif op == "metrics":
                     out = self.metrics()
                 elif op == "recipes":
