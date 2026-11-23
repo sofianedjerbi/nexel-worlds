@@ -10,12 +10,12 @@ const Voxels = (() => {
     water: (x, y) => { const g = gndAt(x, y) || "."; return wet(g) || g === ":"; },      // (under a bridge too: its deck is a model over it)
     flow: Flow.col,                                             // (water that runs, in the land's cells: flow.js)
     models: Models.at, modelSheet: Models.sheet,                 // (models.js: what stands in the land as boxes)
-    // (maskOf.plain: as if land as high lay all round it, so it has no rim and no cut corner; peek: the height
-    // it is drawn at, cells.js. Then its lip, where the land beside it is lower: voxpaint.js. Water: what floats)
+    // (a plain top of its ground at its height (peek: the height it is drawn at, cells.js), then its rim and lip by its cells,
+    // where the land beside it is lower: voxpaint.js. Water: what floats)
     paintTop(x, y, z, px, at, stride) {
       const g0 = gndAt(x, y) || ".", sea = wet(g0) || g0 === ":"; if (sea && WaterBed.on && z < topAt(x, y)) return WaterBed.paintBed(x, y, z, px, at, stride);
-      const was = peek; maskOf.plain = true; peek = one; one.set(x + "," + y, sea ? 0 : VoxPaint.level(x, y, z));      // (what floats on water: painted as at level 0, whatever its own)
-      try { drawTile0(x, y, {px, o: at, w: stride}); } finally { maskOf.plain = false; peek = was; one.clear(); }
+      const was = peek; peek = one; one.set(x + "," + y, sea ? 0 : VoxPaint.level(x, y, z));      // (what floats on water: painted as at level 0, whatever its own)
+      try { drawTile0(x, y, {px, o: at, w: stride}); } finally { peek = was; one.clear(); }
       if (!wet(gndAt(x, y) || ".")) VoxPaint.rim(x, y, z, px, at, stride);
     },
     built: (x, y) => matAt(x, y) === "s",                       // (a stone block put there: its sides laid courses; the land's own stone a cliff, voxpaint.js)

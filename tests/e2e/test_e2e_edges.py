@@ -103,15 +103,15 @@ def test_tilled_soil_is_furrows_not_a_line_round_a_patch(game):
     """The pack's tilled soil is a patch with a line round it, 10 px inside its outer tiles; on bare soil of its own
     colour only the line showed, a box floating inside the field ("see the weird line in the field?"). At sea level
     a tilled tile is furrows over the whole of it (web/js/furrows.js): a darker line every 4 px, the same on a
-    field's rim as in its middle, and no line down the tile. Up on a hill, on grass, the patch is kept."""
+    field's rim as in its middle, and no line down the tile. The same up on a hill (tiles.js MARKS: what is laid on
+    the ground looks the same at any height; it was the patch there: two fields by their height)."""
     x, y = game.pos()
-    game.stamp(3, -8, FIELD, levels=["0" * 5] * 5); game.rest()
-    rim, mid = game.js(DARK, [x + 4, y - 6]), game.js(DARK, [x + 5, y - 6])                # the field's west side, its middle
-    for t in (rim, mid):
-        # furrows across; nothing down it (the patch's edge was 16 in a column; the soil's own specks under it are a few)
-        assert all(t["rows"][r] >= 8 for r in (3, 7, 11, 15)) and max(t["cols"]) <= 10, t
-    game.stamp(3, -8, FIELD, levels=["2" * 5] * 5); game.rest()
-    assert max(game.js(DARK, [x + 4, y - 6])["cols"]) >= 12                                # on a hill: the patch's own edge
+    for lv in "02":
+        game.stamp(3, -8, FIELD, levels=[lv * 5] * 5); game.rest()
+        rim, mid = game.js(DARK, [x + 4, y - 6]), game.js(DARK, [x + 5, y - 6])            # the field's west side, its middle
+        for t in (rim, mid):
+            # furrows across; nothing down it (the patch's edge was 16 in a column; the soil's own specks under it are a few)
+            assert all(t["rows"][r] >= 8 for r in (3, 7, 11, 15)) and max(t["cols"]) <= 10, (lv, t)
     game.stamp(3, -8, ["." * 5] * 5, levels=["0" * 5] * 5)
 
 

@@ -5,9 +5,9 @@ import pytest
 
 COBBLES = ["..........", ".________.", ".___.._...", ".._..._...", ".._.._____", ".._......_", ".._......_", ".........."]
 # every stone of the tiles from (x, y), w by h of them: the px of each (joined by a side), as [wide, high, how many]
-STONES = """([x0, y0, w, h]) => { const c = document.createElement('canvas'); c.width = w * 16; c.height = h * 16; const g = c.getContext('2d', {willReadFrequently: true});
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) drawTile(x0 + x, y0 + y, {g, ox: x * 16, oy: y * 16});
-  const d = g.getImageData(0, 0, c.width, c.height).data, W = c.width, H = c.height, grey = (i, r, gg, b) => d[i * 4] === r && d[i * 4 + 1] === gg && d[i * 4 + 2] === b;
+STONES = """([x0, y0, w, h]) => { const W = w * 16, H = h * 16, px = new Uint32Array(W * H);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) drawTile(x0 + x, y0 + y, {px, o: y * 16 * W + x * 16, w: W});
+  const d = new Uint8Array(px.buffer), grey = (i, r, gg, b) => d[i * 4] === r && d[i * 4 + 1] === gg && d[i * 4 + 2] === b;
   const stone = (i) => grey(i, 157, 168, 154) || grey(i, 129, 139, 131), seen = new Uint8Array(W * H), out = [];
   for (let i = 0; i < W * H; i++) { if (seen[i] || !stone(i)) continue;
     let n = 0, x1 = W, x2 = -1, y1 = H, y2 = -1; const q = [i]; seen[i] = 1;

@@ -105,11 +105,11 @@ const WaterBed = (() => {
     if (!pad) { const c = document.createElement("canvas"); c.width = c.height = 16; pad = c.getContext("2d", {willReadFrequently: true}); }
     const d = topAt(x, y) - z; G(x, y).sh[gi] = d;
     bedTile(pad, x, y, Math.max(1, Math.min(4, d)), 0, 0, () => 0, () => false);
-    const img = pad.getImageData(0, 0, 16, 16).data, data = new Uint32Array(img.buffer), hd = hash(x, y, 41);
-    // what floats on it (tiles.js: shore water's pads, reeds and rocks) shades the bed: its own shape, a px east, baked
+    const img = pad.getImageData(0, 0, 16, 16).data, data = new Uint32Array(img.buffer), f = floatAt(x, y);
+    // what floats on it (tiles.js floatAt: shore water's pads, reeds and rocks) shades the bed: its own shape, a px east, baked
     // (the bed is drawn a level's px down the picture for each level it lies deep: so is the shade)
-    if (gndAt(x, y) === "~" && hd < .09 && (hd < .015 || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isLand(gndAt(x + dx, y + dy))))) {
-      const on = floats ? floats[Math.floor(hash(x, y, 42) * 7)] : null;      // (read once, view: a block of land is made drawing on no canvas)
+    if (f >= 0) {
+      const on = floats ? floats[f] : null;      // (read once, view: a block of land is made drawing on no canvas)
       if (on) for (let j = 0; j < 16; j++) for (let i = 0; i < 15; i++) if (on[j * 16 + i]) { const q = (j * 16 + i + 1) * 4; img[q] *= .74; img[q + 1] *= .8; img[q + 2] *= .86; }
     }
     for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[at + j * stride + i] = data[j * 16 + i] | 0xff000000;
@@ -160,7 +160,7 @@ const WaterBed = (() => {
     if (!on) return null;
     if (!floats && IMG.water_objects && IMG.water_objects.complete && IMG.water_objects.naturalWidth) {
       const c = document.createElement("canvas"); c.width = 16 * 12; c.height = 16; const g = c.getContext("2d", {willReadFrequently: true}); g.drawImage(IMG.water_objects, 0, 0, 16 * 12, 16, 0, 0, 16 * 12, 16);
-      const d = g.getImageData(0, 0, 16 * 12, 16).data; floats = [8, 9, 10, 11, 6, 7, 0].map((n) => Uint8Array.from({length: 256}, (_, k) => (d[((k >> 4) * 16 * 12 + n * 16 + (k & 15)) * 4 + 3] > 127 ? 1 : 0)));
+      const d = g.getImageData(0, 0, 16 * 12, 16).data; floats = FLOATS.map((n) => Uint8Array.from({length: 256}, (_, k) => (d[((k >> 4) * 16 * 12 + n * 16 + (k & 15)) * 4 + 3] > 127 ? 1 : 0)));
     }
     if (!tint) { const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)), deepest = WATER.tint[4], sand = hex(WATER.sand[4]);
       tint = new Float32Array([...TINT.map(([r, g, b, a]) => [r / 255, g / 255, b / 255, a]),

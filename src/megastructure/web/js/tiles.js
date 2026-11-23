@@ -101,13 +101,16 @@ function hash(x, y, s = 0) {
   let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(s, 2246822519)) >>> 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
-function drawBlobLayer(g, sheet, x, y, pred, ox, oy, decor) {
+// ONE RULE FOR A SURFACE'S CELL: a ground laid on a tile is a cell of its sheet picked by which of the eight tiles round it are of
+// the same ground (maskOf, blobCell: its rims and corners); a tile wholly in it, now and then (decor: how often) one of the sheet's
+// speckled cells instead of the plain one (plainCell; a floor under the land too, hd.js)
+function plainCell(sheet, x, y, decor) {
+  if (!decor || hash(x, y, 3) >= decor) { const [cx, cy] = blobCell(255); return [cx * 16, cy * 16]; }
+  return [Math.floor((decor > .3 && sheet !== IMG.grass ? hash(x, y, 4) ** 3 : hash(x, y, 4)) * (sheet === IMG.grass ? 6 : 5)) * 16, (5 + (hash(x, y, 5) < .5 ? 0 : 1)) * 16];      // (stone, earth: mostly their fine specks, the first three; their big pale blobs seldom)
+}
+function drawBlobLayer(g, sheet, x, y, pred, decor) {
   const m = maskOf(x, y, pred), [cx, cy] = blobCell(m);
-  let sx = cx * 16, sy = cy * 16;
-  if (decor && reduce(m) === 255 && hash(x, y, 3) < decor) {       // plain interior: sprinkle decor variants
-    sx = Math.floor((decor > .3 && sheet !== IMG.grass ? hash(x, y, 4) ** 3 : hash(x, y, 4)) * (sheet === IMG.grass ? 6 : 5)) * 16; sy = (5 + (hash(x, y, 5) < .5 ? 0 : 1)) * 16;      // (stone: mostly its fine specks, the first three; its big pale blobs seldom)
-  }
-  g.drawImage(sheet, sx, sy, 16, 16, ox, oy, 16, 16);
+  g.drawImage(sheet, ...(reduce(m) === 255 ? plainCell(sheet, x, y, decor) : [cx * 16, cy * 16]));
 }
 // The land is painted in the page, a px a number, and handed to the GPU whole, once (a block's ground: relief.js).
 // Painted through canvases a piece at a time, a phone's GPU got it wrong where a desktop's did not.
@@ -150,67 +153,52 @@ function layCell(to, o, W, sheet, sx, sy, solid) {
 // is solid all over: on a plateau twelve layers high, the one that shows and not the thirteen under it.
 const LAID = {n: 0, img: [], at: [], drawImage(img, sx, sy) { this.img[this.n] = img; this.at[this.n++] = sy * 4096 + sx; }};
 let landVer = 0;                                    // (goes up whenever a tile of the land is drawn again: what was worked out from the land is out of date)
-function drawTile(x, y, to = null) {                 // (to: where it is painted: a canvas {g, ox, oy}, or px {px, o, w}; none: the tile changed)
+function drawTile(x, y, to = null) {                 // (to: the px it is painted into, {px, o, w}: the HD look's top of it, voxels.js; none: the tile changed)
   const b = blockOf(x, y);
   if (!b || !(to || b.px)) return;
   if (!to) { b.ver = (b.ver || 0) + 1; landVer++; return; }   // (the HD look paints its own tops (to): what was worked out from the tile is out of date)
-  const lx = x - b.bx * B, ly = y - b.by * B, i = ly * B + lx, ox = to.ox, oy = to.oy;
-  const c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y), up = (cc, gg, tx, ty) => maskOf.plain || levelAt(tx, ty) >= k,      /* (maskOf.plain, voxels.js: a block's top is painted as if land as high lay all round it: no rim of its level, no cut corner; its ground, grass on sand, keeps its own edges) */ dug = lv < 0 && !wet(gr);
-  let k = lv;
+  const i = (y - b.by * B) * B + (x - b.bx * B), c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y), dug = lv < 0 && !wet(gr);
   g.n = 0;
-  // relief: each level lays its hill sheet (grass, darker grass, then stone) over the tiles at least that high; the
-  // sheets' edge tiles carry the cliff face, so a plateau shows its south cliff and a soft rim round the rest
-  // (looked at from the top level down: under one that is solid all over, nothing is laid)
-  for (; k >= 1; k--) { drawBlobLayer(g, hillSheet(k), x, y, up, ox, oy, k < 3 ? .25 : k < 5 ? .1 : .45); if (cellSolid(g.img[g.n - 1], g.at[g.n - 1] % 4096, g.at[g.n - 1] >> 12)) break; }
+  // a tile up on the land: its level's hill sheet, a plain top (its rim is the land's, by its cells: voxpaint.js rim). Its ground and
+  // what is laid on it by the one rule (drawBlobLayer): soil, the grass over it, then paths, fields, floors, ash, a hedge
+  let k = lv;
+  for (; k >= 1; k--) { drawBlobLayer(g, hillSheet(k), x, y, () => true, k < 3 ? .25 : k < 5 ? .1 : .45); if (cellSolid(g.img[g.n - 1], g.at[g.n - 1] % 4096, g.at[g.n - 1] >> 12)) break; }
   const hills = g.n, covered = k >= 1;
-  if (!covered) {                                    // (water tiles stay clear: water.js draws the sea under the land)
-    if (gr === ":") Bridge.lay(g, x, y, ox, oy);      // (bridge.js: planks across the way it runs, posts at its ends)
-    if (isLand(gr)) {                                // (a bridge that runs onto this land: no shore between them)
-      drawBlobLayer(g, dug ? dugSheet("soil", -lv) : IMG.soil, x, y, (_, gg, tx, ty) => isLand(gg) || Bridge.rests(x, y, tx, ty), ox, oy, .15);
-      if (!dug && (gr === "." || gr === "_" || gr === "n")) drawBlobLayer(g, IMG.grass, x, y, (_, gg, tx, ty) => gg === "." || gg === "_" || gg === "n" || Bridge.rests(x, y, tx, ty), ox, oy, gr === "." ? .3 : 0);
-      groundMarks(g, x, y, gr, ox, oy);
-    }
-    // (round a hole, at sea level: the hill sheet's edge alone, the regular border of raised ground, so every side
-    // of it shows. Under sea level the land is dug: cut square a layer a step, no rim of its own: relief.js)
-    let low = lv;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) low = Math.min(low, levelAt(x + dx, y + dy));
-    k = 0;
-    if (lv >= 0 && low < 0) drawBlobLayer(g, edgeSheet("hill1"), x, y, up, ox, oy, 0);
+  if (!covered && gr === ":") Bridge.lay(g, x, y);      // (bridge.js: planks across the way it runs, posts at its ends)
+  if (!covered && isLand(gr)) {                       // (a bridge that runs onto this land: no shore between them)
+    drawBlobLayer(g, dug ? dugSheet("soil", -lv) : IMG.soil, x, y, (_, gg, tx, ty) => isLand(gg) || Bridge.rests(x, y, tx, ty), .15);
+    if (!dug && (gr === "." || gr === "_" || gr === "n")) drawBlobLayer(g, IMG.grass, x, y, (_, gg, tx, ty) => gg === "." || gg === "_" || gg === "n" || Bridge.rests(x, y, tx, ty), gr === "." ? .3 : 0);
   }
   const base = g.n;
-  if (lv && isLand(gr)) groundMarks(g, x, y, gr, ox, oy, lv > 0);   // paths, tilled soil, floors up on the hill
-  if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", ox, oy, 0);
-  const hd = hash(x, y, 41);
-  if (gr === "~" && hd < .09) {                      // shore water: lily pads, reeds, little rocks
-    const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isLand(gndAt(x + dx, y + dy)));
-    if (shore || hd < .015) {
-      const pick = Math.floor(hash(x, y, 42) * 7), col = [8, 9, 10, 11, 6, 7, 0][pick];
-      g.drawImage(IMG.water_objects, col * 16, 0, 16, 16, ox, oy, 16, 16);
-    }
-  }
-  // in the order they lie: the ground and what is laid on it, the hill's levels from the lowest (they were noted
-  // from the top down), then what is on top of the hill. From the last one that hides all under it.
+  if (isLand(gr)) groundMarks(g, x, y, gr);
+  if (c === "H") drawBlobLayer(g, IMG.hedge, x, y, (cc) => cc === "H", 0);
+  const f = floatAt(x, y); if (f >= 0) g.drawImage(IMG.water_objects, FLOATS[f] * 16, 0);
+  // in the order they lie: the ground, the hill's levels from the lowest (they were noted from the top down), then what is laid
+  // on top. From the last one that hides all under it.
   const order = [];
   for (let j = hills; j < base; j++) order.push(j);
   for (let j = hills - 1; j >= 0; j--) order.push(j);
   for (let j = base; j < g.n; j++) order.push(j);
   let first = order.length - 1;
   while (first >= 0 && !cellSolid(g.img[order[first]], g.at[order[first]] % 4096, g.at[order[first]] >> 12)) first--;
-  const at = (q) => [g.img[order[q]], g.at[order[q]] % 4096, g.at[order[q]] >> 12];
-  if (to && to.g) { for (let q = Math.max(0, first); q < order.length; q++) { const [img, sx, sy] = at(q); to.g.drawImage(img, sx, sy, 16, 16, ox, oy, 16, 16); } return; }
-  const px = to.px, W = to.w, o = to.o;
+  const at = (q) => [g.img[order[q]], g.at[order[q]] % 4096, g.at[order[q]] >> 12], px = to.px, W = to.w, o = to.o;
   if (first < 0) for (let j = 0; j < 16; j++) px.fill(0, o + j * W, o + j * W + 16);   // (nothing solid all over it: what was there must go first)
   for (let q = Math.max(0, first); q < order.length; q++) layCell(px, o, W, ...at(q), q === first);
-  dugFoot(px, o, W, x, y, lv);
 }
-// what's laid on the ground: tilled soil (wet or not), floors, ash, cobble
-// (tilled soil: furrows over the whole tile, furrows.js; up on a hill, on its grass, the pack's patch)
-function groundMarks(g, x, y, gr, ox, oy, high = false) {
-  if (gr === "o" || gr === "u") { if (high) drawBlobLayer(g, IMG.tilled, x, y, (_, gg) => gg === "o" || gg === "u", ox, oy, 0); else g.drawImage(...Furrows.cell(x, y), 16, 16, ox, oy, 16, 16); }
-  if (gr === "u") drawBlobLayer(g, IMG.tilled_wet, x, y, (_, gg) => gg === "u", ox, oy, 0);
-  if (gr === "n") g.drawImage(IMG.house_walls, 16, 16, 16, 16, ox, oy, 16, 16);          // (a floor: the pack's house floor, solid all over. It was the bridge's planks, see-through at their edges: grass in stripes)
-  if (gr === "'") drawBlobLayer(g, IMG.ash, x, y, (_, gg) => gg === "'", ox, oy, 0);
-  if (gr === "_") g.drawImage(...Pave.cell(x, y), 16, 16, ox, oy, 16, 16);          // (pavement.js: stones laid in rows, none cut at a tile's edge)
+// What floats on shore water (lily pads, reeds, little rocks): which of FLOATS (water_objects' cells), or -1. One answer for the top's paint and the bed's shade under it (waterbed.js)
+const FLOATS = [8, 9, 10, 11, 6, 7, 0];
+function floatAt(x, y) {
+  const h = hash(x, y, 41); if (gndAt(x, y) !== "~" || h >= .09) return -1;
+  return h < .015 || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isLand(gndAt(x + dx, y + dy))) ? Math.floor(hash(x, y, 42) * 7) : -1;
+}
+// What is laid on the ground, the same at any height: a layer each, a sheet laid by the one rule (on: the grounds that are of it), or a
+// cell picked by its place (cell: paths, pavement.js; furrows, furrows.js: made to run on from tile to tile). Tilled soil: soil to its
+// edges, its furrows (it was the pack's patch, a line 10 px inside its outer tiles, up on a hill, and furrows on the meadow: two fields by their height)
+const SOIL = {cell: (x, y) => [IMG.soil, ...plainCell(IMG.soil, x, y, 0)]}, FURROWS = {cell: (x, y) => Furrows.cell(x, y)};
+const MARKS = {o: [SOIL, FURROWS], u: [SOIL, FURROWS, {sheet: "tilled_wet", on: "u"}],
+  "'": [{sheet: "ash", on: "'"}], n: [{cell: () => [IMG.house_walls, 16, 16]}], _: [{cell: (x, y) => Pave.cell(x, y)}]};   // (n: a floor, the pack's house floor, solid all over)
+function groundMarks(g, x, y, gr) {
+  for (const m of MARKS[gr] || []) if (m.cell) g.drawImage(...m.cell(x, y)); else drawBlobLayer(g, IMG[m.sheet], x, y, (_, gg) => m.on.includes(gg), 0);
 }
 
 // Dug ground (the land is never under sea level but where it was dug): earth, not grass, a shade darker a layer
@@ -232,21 +220,6 @@ function dugSheet(name, d) {
   g.putImageData(im, 0, 0); c.dug = wall ? d + 1 : 0;
   return (dugSheets[name + d] = c);
 }
-// Beside a dug floor (south, east, west; the corners south), the px of a tile at sea level or over it that are out
-// of its shape there (its own grass, past the cliff's foot or its side) show at the top of the hole's wall: a green
-// line. They are that wall's earth (the floor's own, a tile a shade along a stair: a dashed line). A dug tile has
-// none: its shape is all of it
-function dugFoot(px, o, W, x, y, lv) {
-  if (lv < 0 || maskOf.plain) return;
-  let a = null, v = 0;
-  for (const [dx, dy, at] of [[0, 1, (q, r) => [q, 15 - r]], [1, 0, (q, r) => [15 - r, q]], [-1, 0, (q, r) => [r, q]], [1, 1, (q, r) => [15 - (q & 7), 15 - r]], [-1, 1, (q, r) => [q & 7, 15 - r]]]) {
-    if (levelAt(x + dx, y + dy) >= 0 || wet(gndAt(x + dx, y + dy) || "~")) continue;
-    if (!a) { const c = colsOf(hillSheet(0)).bands[1]; a = cellAlpha(hillSheet(0), ...blobCell(maskOf(x, y, (cc, gg, tx, ty) => levelAt(tx, ty) >= 0))); v = (255 << 24 | c[2] << 16 | c[1] << 8 | c[0]) >>> 0; }
-    for (let q = 0; q < (dx && dy ? 8 : 16); q++) {    // (q: along that side, a corner's half; r: in from it, to the shape)
-      for (let r = 0; r < 16 && !a[at(q, r)[1] * 16 + at(q, r)[0]]; r++) { const [i, j] = at(q, r); px[o + j * W + i] = v; }
-    }
-  }
-}
 // Level k's sheet: grass (1-2), darker grass (3-4), stone above; each layer up a touch brighter, so terraces of the
 // same sheet still read as steps. At sea level and under: a hole's walls, earth
 // (stone: a top a step darker each level under 12, .825 of the sheet's own at 5: light enough that the lowest top is far lighter than a wall; its wall: one tone,
@@ -264,22 +237,6 @@ function hillSheet(k) {
   for (let i = 0; i < px.length; i += 4) for (let j = 0; j < 3; j++) px[i + j] = Math.min(255, px[i + j] * (rock ? ROCK_TONE.wall[j] : j === 2 && f < 1 ? f ** .85 : f));
   g.putImageData(d, 0, 0);
   return hillSheets[k] = c;
-}
-// A hill sheet with its top cleared: only its edges, rims and cliff faces (for holes, and the rock round caves)
-// (the rock's own, underground: "rock", the stone sheet's edges a good deal darker, so a cave's rim reads as rock,
-// not as a pale frame on the dark)
-const EDGE_TOP = {hill1: [192, 212, 112], hill3: [193, 200, 185], rock: [193, 200, 185]}, edgeSheets = {};
-function edgeSheet(name) {
-  if (edgeSheets[name]) return edgeSheets[name];
-  const img = IMG[name === "rock" ? "hill3" : name], c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
-  const g = c.getContext("2d"); g.drawImage(img, 0, 0);
-  const d = g.getImageData(0, 0, c.width, c.height), px = d.data, [r, gg, b] = EDGE_TOP[name];
-  for (let i = 0; i < px.length; i += 4) {
-    if (Math.abs(px[i] - r) + Math.abs(px[i + 1] - gg) + Math.abs(px[i + 2] - b) < 30) px[i + 3] = 0;
-    else if (name === "rock") { px[i] *= .52; px[i + 1] *= .5; px[i + 2] *= .5; }
-  }
-  g.putImageData(d, 0, 0);
-  return edgeSheets[name] = c;
 }
 // A block come in: none of it is painted (the HD look paints the tops it shows: hd.js, voxels.js), the block is there at once
 // (its tiles' bookkeeping: voxels.js, hd.js wrap this)

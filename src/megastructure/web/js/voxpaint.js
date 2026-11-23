@@ -93,11 +93,7 @@ const VoxPaint = (() => {
   }
   function shape(x, y, z) {
     if (z < 0) return 0;                                        // (dug: cut square)
-    let m = 0;
-    for (let k = 0; k < 24; k += 3) {                             // (not lower: land not come yet, a solid cell, the water beside a shore)
-      const nx = x + AROUND[k], ny = y + AROUND[k + 1];
-      if (!blockOf(nx, ny) || (z <= 0 && wet(gndAt(nx, ny) || ".")) || (colHas(colAt(nx, ny), z) && !(z > 0 && topAt(nx, ny) === z && wet(gndAt(nx, ny) || ".")))) m |= AROUND[k + 2];      // (water up on a hill, its face at this top's height: lower, the top has its rim along it: a bank)
-    }
+    let m = maskOf(x, y, (_, g, nx, ny) => (z <= 0 && wet(g)) || (colHas(colAt(nx, ny), z) && !(z > 0 && topAt(nx, ny) === z && wet(g))));   // (the one mask rule, tiles.js: not lower: land not come yet, a solid cell, the water beside a shore; water up on a hill, its face at this top's height: lower, the top has its rim along it: a bank)
     if (reduce(m) === 255) return 0;
     if (!(reduce(m) & 240) && m & N_ && !(m & S_) && topAt(x, y - 1) === z + 1 && topAt(x, y + 1) === z - 1) m |= 256;      // (a step of a stair one tile wide going up north: flat-fronted)
     const zz = level(x, y, z), sheet = sheetOf(zz), [cx, cy] = blobCell(m & 255), q = quarters(m, m & 256), key = (zz <= 2 ? 0 : zz <= 4 ? 1 : 2) * 4096 + (q.slim ? 2048 + reduce(m & 255) + (m & 256) : cy * 64 + cx);      // (the three sheets: tiles.js hillSheet)
