@@ -7,7 +7,7 @@ that glow; steps dug in stone drawn as earth).
 - Nothing blurs the picture: the land's picture is put on the screen as it is (hd_view.js: the lens's soft far rows
   and its bloom made every rim and far wall a smear on a desktop).
 - After a teleport no frame shows the land unpainted (hd.js `held`: the last picture stays until the land is made).
-- A floor sunk in the land is darker than the ground round it, at night too (it glowed lavender).
+- A floor sunk in the land is shaded darker than the ground round it along its walls, at night too (it glowed lavender).
 - A trench cut in a stone mass is stone (voxpaint.js `cut`)."""
 
 import math
@@ -110,9 +110,11 @@ def test_a_pit_floor_is_darker_than_the_meadow_by_day_and_by_night(browser, serv
         floor = g.js(LUMS, [int(ax) + 1, int(bx) - 1, int(ay) + 1, int(by) - 1])
         (gx, gy), (hx, hy) = g.js(ART, [x + 2, y - 5, 0]), g.js(ART, [x + 6, y - 2, 0])
         grass = g.js(LUMS, [int(gx), int(hx), int(gy), int(hy)])
-        out.append((phase, round(floor[int(len(floor) * .8)]), round(grass[len(grass) // 2]), len(floor)))
-    # the floor's light px (its 80th) a step under the meadow's middle one, by day and by night (it was .83 of it: pale dug earth, lavender at night)
-    assert all(n > 20 and f < .75 * m for _, f, m, n in out), out
+        out.append((phase, round(floor[len(floor) // 10]), round(floor[len(floor) * 9 // 10]), round(grass[len(grass) // 2]), len(floor)))
+    # the floor reads as down in the land by the land's ordinary shade, the one every top has at a wall's foot and in a corner (vox_style_land.js
+    # AO): along its walls it is a good step under the meadow, and it is shaded, not one flat tone (a hole's floor its own flat step darker was
+    # a rule of its own, gone: the floor's paint is pale dug earth, its middle as light as the meadow by day)
+    assert all(n > 20 and lo < .8 * m and hi > 1.1 * lo for _, lo, hi, m, n in out), out
 
 
 def test_a_trench_cut_in_stone_is_stone(browser, server):
