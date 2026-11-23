@@ -135,9 +135,9 @@ const HdThings = (() => {
   }
   // ---- built blocks (floors.js): a floor's planks, a step, a roof's shingles. The game's own picture of the block: its 16 rows the top, the rows under them its face
   // inside a house, the land's own rule (your space, vox_style_land.js): what is built over YOUR ROOM is not drawn (the roofed tiles walked to from yours on your level; a wall, a door stop it),
-  // nor what is over the tiles right beside it and south of it (the eye's side); the north wall, its storeys and the roof over it stand whole: the room's back. (It was all that is over your head, the house a low tray.) Build mode: the game's rule, over the cursor's level
+  // nor what is over the tiles right beside it and south of it (the eye's side); the north wall, its storeys and the roof over it stand whole: the room's back. (Round your body: hd_level.js place. It was the tile your walk went to, and key() the one you were on) (It was all that is over your head, the house a low tray.) Build mode: the game's rule, over the cursor's level.
   let roomK = "", room0 = null, roomZ = 0, roomS = 0;
-  function roomNow() { const p = myPos(); if (!p) return null; const L = myZ(p.x, p.y), k = [p.x, p.y, L, Floors.ver, landVer].join(); if (k === roomK) return room0; roomK = k; room0 = null; roomZ = L; roomS = -1e9;
+  function roomNow() { const P = HdLevel.place; if (!P || P.free) return null; const p = {x: P.tx, y: P.ty}, L = P.L, k = [p.x, p.y, L, Floors.ver, landVer].join(); if (k === roomK) return room0; roomK = k; room0 = null; roomZ = L; roomS = -1e9;
     const over = (x, y) => { const c = Floors.cells(x, y); if (c) for (const z of c.keys()) if (z > L) return true; return false; }; if (!over(p.x, p.y)) return null;
     const seen = new Set([p.x + "," + p.y]), q = [[p.x, p.y, 0]];
     for (let n = 0; n < q.length && q.length < 120; n++) { const [x, y, d] = q[n]; if (d < 10) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy, k2 = X + "," + Y; if (seen.has(k2) || !over(X, Y) || [0, 1, 2, 3].some((dz) => Structures.WALLS.includes(Floors.thingAt(X, Y, L - dz) || "-"))) continue; seen.add(k2); q.push([X, Y, d + 1]); } }
@@ -205,6 +205,6 @@ const HdThings = (() => {
   }
   function loose(x, y) { const cells = Floors.cells(x, y), out = []; if (cells) for (const [z, [, ch]] of cells) if (ch && !is(ch) && !hid(x, y, z)) out.push([ch, z]); return out; }
   // what the pieces hang on beside the land: what is built, where you are under it, the build cursor's level, who stands by a door
-  function key(near = true) { const s = near && myAt; let d = ""; if (doorsAt.size > 300) doorsAt.clear(); for (const [x, y] of doorsAt.values()) if ("+g".includes(combAt(x, y) || "-") && doorOpen(x, y)) d += x + "," + y + ";"; return [Floors.ver, s ? [s.x, s.y, s.z] : "", Build.on ? Build.level() : "", sheet.id, d, HdSun.key(), HdLook.cam.pitch].join("|"); }
+  function key(near = true) { const P = near && HdLevel.place, s = P && !P.free && {x: P.tx, y: P.ty, z: P.L}; let d = ""; if (doorsAt.size > 300) doorsAt.clear(); for (const [x, y] of doorsAt.values()) if ("+g".includes(combAt(x, y) || "-") && doorOpen(x, y)) d += x + "," + y + ";"; return [Floors.ver, s ? [s.x, s.y, s.z] : "", Build.on ? Build.level() : "", sheet.id, d, HdSun.key(), HdLook.cam.pitch].join("|"); }
   return {at, is, loose, key, painted, ghost, pieced, card, shadow, foot, plans, CARD, sheet, room, pix, pitch};
 })();

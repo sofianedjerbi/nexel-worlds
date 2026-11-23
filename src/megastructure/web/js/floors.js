@@ -62,7 +62,7 @@ const Floors = (() => {
   // What is over your head: with a block over you, the lowest one over your height on your tile or the next (on the
   // steps, the floor you are climbing to), and every tile that goes on from yours with a block that high or higher
   function mine() {
-    const s = myAt, key = s ? [s.x, s.y, s.z, ver].join() : "";
+    const P = HdLevel.place, s = P && !P.free ? {x: P.tx, y: P.ty, z: P.L} : null, key = s ? [s.x, s.y, s.z, ver].join() : "";   // (where your body is: hd_level.js place)
     if (key === over.key) return over;
     const zs = (x, y) => { const c = colOf(x, y); return c ? [...c.keys()] : []; }, tiles = new Set();
     let z = 99;
