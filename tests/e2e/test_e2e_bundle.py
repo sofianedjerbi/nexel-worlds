@@ -49,6 +49,9 @@ def test_a_phone_plays_on_the_one_script_and_keeps_it(browser, bundled):
         assert not [n for n in asked if n.endswith(".png") and n not in ("panel.png", "slot.png", "slot_sel.png", "cursor.png", "cursor_point.png")], asked   # (the sheets came in the pack)
         assert sum(n.startswith("pack.") for n in asked) == 1 and len(asked) < 25, asked
         assert page.evaluate("Object.keys(IMG).length > 60 && IMG.grass.naturalWidth === 176 && Object.keys(GEN).length > 5")
+        # (Join is tapped once the wait is gone (index.html #boot: over everything till the island is painted): tapped as the
+        #  land came, the tap fell on the wait's own picture, and nobody joined; the page said: join shown, no socket, under the tap an element that is not the button)
+        page.wait_for_function("document.body.classList.contains('scene') && !document.getElementById('boot')", timeout=30000)
         page.fill("#name", new_name("packed"))                      # (a name of this try's own: at its second try "packed" was "already someone else", and it waited 30 s for a player who never got in)
         page.touchscreen.tap(*page.evaluate("(() => { const r = document.getElementById('join').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()"))
         # (a new player wakes somewhere else every run: behind a tree, in a pond: seven tenths of the cat seen, for good: it waited 30 s for the rest and passed at its second try, elsewhere. A meadow first, as every other test has)
