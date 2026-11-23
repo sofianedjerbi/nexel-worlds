@@ -3,15 +3,17 @@
 player glitches and at the end teleports", "drawn above the cave"). The jump key is a jump through the air
 (web/js/leap.js, sim/leaping.py); a step down is a drop at the walk's pace; the world agrees at every landing."""
 
+import math
+
 import pytest
 
 pytestmark = pytest.mark.e2e
 
-# every frame drawn: [ms, x, y, body over the level drawn from (art px), pose, the level drawn from, the world's x, its z, feet on the screen (art px), a fixed place of the land (art px), your level, the land's top there]
+# every frame drawn: [ms, x, y, body over the level drawn from (art px), pose, the level drawn from, the world's x, its z, feet on the screen (art px), a fixed place of the land (art px), your level, the land's top there, the eye's pitch]
 FRAMES = """([ox, oy, oz]) => { window.__fr = []; window.__frOn = true; if (!window.__frHook) { window.__frHook = true; const show = HdView.show;
   HdView.show = (...A) => { const r = show(...A); if (window.__frOn) { const p = ents.get('agent' + myId), lv = HdLook.level, a = HdLook.art(); if (p && a) {
     const now = lastT, j = jumping(p, now), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2]), o = HdLook.screenOf(window.__o[0] + .5, window.__o[1] + .5, window.__o[2]);
-    __fr.push([now, p.x, p.y, j ? Math.round(j.body) : 0, j && j.pose || '', lv[2], p.e.x, p.e.z, Math.round(b[1] / a.u) - (j ? Math.round(j.body) : 0), o[1] / a.u, myAt ? myAt.z : null, topAt(Math.round(p.x), Math.round(p.y))]); } } return r; }; }
+    __fr.push([now, p.x, p.y, j ? Math.round(j.body) : 0, j && j.pose || '', lv[2], p.e.x, p.e.z, Math.round(b[1] / a.u) - (j ? Math.round(j.body) : 0), o[1] / a.u, myAt ? myAt.z : null, topAt(Math.round(p.x), Math.round(p.y)), HdLook.cam.pitch]); } } return r; }; }
   window.__o = [ox, oy, oz]; return 1; }"""
 
 
@@ -68,10 +70,10 @@ def test_down_a_stair_cut_into_a_hill_you_are_drawn_in_the_cut(game):
     game.stamp(-6, -2, ["." * 16] * 5, levels=["4" * 16, "4" * 16, lv, "4" * 16, "4" * 16], roofs=["0" * 16, "0" * 16, "0" * 12 + "4444", "0" * 16, "0" * 16])
     game.rpc("dev_teleport", x=game.pos()[0], y=game.pos()[1], z=4); game.arrive(); game.face(1, 0)
     x, _ = game.pos()
-    k = game.js("Math.cos(HdLook.cam.pitch * Math.PI / 180)") * 16              # (art px a level is drawn, as the eye sees it)
     for keys, ms in ((["d"], 1400), (["Shift", "a"], 800), (["Shift", "d"], 900)):
         rec = frames(game, lambda: game.hold(keys, ms), z0=4)
         for r in rec:
+            k = math.cos(r[12] * math.pi / 180) * 16                           # (art px a level is drawn, as the eye sees it, that frame: the eye tilts under the roof)
             i, at = r[1] - (x - 6), r[5] + r[3] / k                            # (the level your feet are drawn at: the eye's, and your body over it)
             lo, hi = int(lv[max(0, min(15, int(i // 1)))]), int(lv[max(0, min(15, -int(-i // 1)))])
             assert min(lo, hi) - .2 <= at <= max(lo, hi) + 1.35, ("drawn off the stair", r, lo, hi, at)   # (up to a jump's top over it, never on the hill)
