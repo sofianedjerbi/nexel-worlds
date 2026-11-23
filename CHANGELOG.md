@@ -5,6 +5,23 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.3 (2026-11-23)
+
+### Bug Fixes
+
+- **web**: A chat bubble sits on the land's pixel grid, no 1 px wobble while walking
+  ([`89eb861`](https://github.com/sofianedjerbi/nexel-worlds/commit/89eb8615369162bbf1599ff576baa43fae8eae89))
+
+- **web**: Land on screen is asked for at once, not 3 s after a far ask (missing world)
+  ([`9cdccef`](https://github.com/sofianedjerbi/nexel-worlds/commit/9cdccef366cc49c167d50a88d336e014439ca3b3))
+
+- **web**: One whole-pixel scale at fractional screen density; overlays snapped to it
+  ([`53110a7`](https://github.com/sofianedjerbi/nexel-worlds/commit/53110a7a2db77e0fed2617f339c4006733c88427))
+
+- **web**: Your own name and bubble follow your drawn sprite, no wobble
+  ([`fae2045`](https://github.com/sofianedjerbi/nexel-worlds/commit/fae2045658d64f6e1573646a3efd27b74615ba1b))
+
+
 ## v0.1.2 (2026-11-23)
 
 ### Bug Fixes
