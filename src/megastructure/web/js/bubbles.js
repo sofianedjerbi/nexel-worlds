@@ -78,7 +78,8 @@ function drawBubbles(sx, sy, S, t) {
       b.up = b.up === undefined || b.up < up ? up : Math.max(up, b.up - Math.max(q, (b.up - up) * dt * BUBBLE.fall));
       up += b.h + BUBBLE.gap;
     }
-    const o = overBody(p, S), tx = snap(sx(p.x) + S / 2 + o[0]), foot = snap(bodyY(p, sy) + o[1] - (p.e.hp < HP_MAX ? 9 * zoom + 4 : 4 * zoom)) - 3 * q,     // (the tail's point: over the head, or over the health bar)
+    const o = overBody(p, S), tx = onArt(sx(p.x) + S / 2 + o[0]), foot = onArt(bodyY(p, sy) + o[1] - (p.e.hp < HP_MAX ? 9 * zoom + 4 : 4 * zoom)) - 3 * q,     // (the tail's point: over the head, or over the health bar)
+      // (ON THE LAND'S PIXEL, as the body it is over (state.js onArt): it went by the bubble's own 2 px, the body by the land's (3 at zoom 3): walking, the bubble went 1 px off the head and back each step, "blurry")
       w = Math.max(...mine.map((b) => b.w));
     const top = foot - Math.max(...mine.map((b) => b.up + b.h)) - 11 * q, mid = bodyY(p, sy) + o[1] + S / 2;     // (with the name's tab; mid: the middle of the body)
     // Said only by someone on the screen, a margin in from its edges ("dialogue shows even off-screen": a bubble was
@@ -91,7 +92,7 @@ function drawBubbles(sx, sy, S, t) {
   piles.sort((a, b) => b.y - a.y);                           // the nearest to the bottom of the screen keep their place
   const placed = [];
   for (const pile of piles) {
-    const x0 = (b) => Math.max(4, Math.min(W - 4 - b.w, snap(pile.tx - b.w / 2)));
+    const x0 = (b) => Math.max(4, Math.min(W - 4 - b.w, pile.tx - onArt(b.w / 2)));   // (the tail's point less half the bubble on the land's pixel: it goes as the body does, px for px)
     for (let n = 0; n < 8; n++) {                            // raised over any pile it would cover
       const l = Math.min(...pile.mine.map(x0)), hit = placed.find((o) => l < o.r + 4 && l + pile.w > o.l - 4 && pile.top < o.b + 4 && pile.foot + 3 * q > o.t - 4);
       if (!hit) break;

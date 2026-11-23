@@ -24,6 +24,12 @@ function slowFrame(dt, settled) {
 }
 let zoom = 3;
 const TS = () => P * zoom;
+// THE LAND'S PIXEL ON THE SCREEN: an art px is a whole number of the screen's own px (devicePixelRatio's): zoom x density, rounded where that is not whole. At a density of 1.25 or
+// 1.75 (a laptop's, a page zoomed in the browser) a zoom of 3 was 3.75 px: art px 3 and 4 px wide in turn, the land shimmering as it went by, and what is written over it
+// (names, bubbles, hearts) put at fractions of a px: soft, and another px each step. artPx: CSS px an art px (the land's canvas is shown at that, hd_view.js); onArt: a place
+// put on that pixel. What is written over a body is put there by its place on the land's pixel plus fixed offsets: it goes with the body px for px.
+const artPx = () => { const d = window.devicePixelRatio || 1; return Math.max(1, Math.round(zoom * d)) / d; };
+const onArt = (v) => { const u = artPx(); return Math.round(v / u) * u; };
 // Screen position of world tile (0, 0). The screen centre and the camera are rounded separately, so whatever sits at
 // the camera (you) lands on the same pixel every frame; rounding them together made you wobble 1 px against the
 // scrolling ground at odd window sizes, which read as stutter when sprinting.
