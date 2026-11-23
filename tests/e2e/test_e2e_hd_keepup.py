@@ -51,7 +51,10 @@ def test_a_step_makes_only_the_far_patches_at_the_edges(browser, server):
 
 
 def test_a_walks_poses_are_read_once(browser, server):
+    """(Once your dressed sheet is made (wear.js: between frames, a bear's in 300 to 500 turns; till then you are not
+    drawn): on a busy page it came during the forty frames counted, and every pose was new there, 9 to 28 reads)"""
     g = hd(browser, server)
+    g.wait("(() => { const e = ents.get('agent' + myId).e; return !!wornReady(agentTint(e.name), e.worn, e.race, e.bot); })()", 15000)
     g.page.keyboard.down("ArrowRight")
     try:
         g.wait(f"myPos().x >= {g.pos()[0] + 6}", timeout=12000)         # (every pose of the walk seen once)
