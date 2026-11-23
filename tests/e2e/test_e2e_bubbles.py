@@ -60,6 +60,37 @@ def test_bubbles_are_pixels_pile_up_and_come_down(game):
     assert not game.errors
 
 
+# the names written in the next frame, and where: [[name, x, y]...]
+NAMES = """() => new Promise((ok) => { const f = outlined, got = []; outlined = (text, x, y, c) => { got.push([text, x, y]); return f(text, x, y, c); };
+  requestAnimationFrame(() => requestAnimationFrame(() => { outlined = f; ok(got); })); })"""
+
+
+def test_a_name_under_someone_s_bubble_is_not_written_a_few_letters_past_its_edge(game, browser, server):
+    """The first screen: Tobi's bubble over Nell's name, "Tobi ell", the end of her name past its tab. A name under
+    another's bubble is not written (it is again when the bubble goes)."""
+    from conftest import open_game
+    game.clear_area(6)
+    other = open_game(browser, server)
+    x, y = game.pos()
+    other.rpc("dev_teleport", x=x, y=y - 1)
+    name = other.name
+    game.wait(f"[...ents.values()].some((p) => p.e && p.e.name === {name!r} && p.x === {x} && p.y === {y - 1})", 8000)
+    game.rest()
+    seen = [n for n in game.js(NAMES) if n[0] == name]
+    assert seen, game.js(NAMES)                                                   # written, nobody speaking
+    _, nx, ny = seen[0]
+    game.js(f"({SAY})('I found a cave full of iron past the river, bring a pickaxe and some torches', 4)")
+    game.wait("bubbles.some((b) => b.at)")
+    b = game.js(MINE)[0]
+    w = len(name) * 6
+    assert nx - w < b["x"] + b["w"] and nx + w > b["x"] and ny - 18 < b["y"] + b["h"] and ny + 6 > b["y"], (b, nx, ny)   # (it is under the bubble)
+    assert not [n for n in game.js(NAMES) if n[0] == name]
+    game.js("bubbles.length = 0")
+    game.frames(2)
+    assert [n for n in game.js(NAMES) if n[0] == name]                            # the bubble gone: written again
+    assert not game.errors and not other.errors
+
+
 @needs_sounds
 @pytest.mark.realtime
 def test_what_is_typed_in_capitals_is_shouted(game):

@@ -57,8 +57,12 @@ function bubbleTab(name, x, y, mine) {
   ctx.fillStyle = mine ? "#fff1a8" : BUBBLE.paper; ctx.fillText(name, x + 6 * q, y - 2 * q);
 }
 const speaking = (name) => bubbles.some((b) => b.name === name && b.at);     // (their name is on their bubbles)
-let bubbleT = 0;
+let bubbleT = 0, bubbleBoxes = [];
+// Is a box of the screen under a bubble drawn last frame (with its name's tab)? Another's name there is not written: it was
+// written under the bubble, a few letters of it showing past its edge ("Tobi" over "Nell": "Tobi ell"). (characters.js)
+const underBubble = (x, y, w, h) => bubbleBoxes.some((o) => x < o.r && x + w > o.l && y < o.b && y + h > o.t);
 function drawBubbles(sx, sy, S, t) {
+  bubbleBoxes = [];
   if (!opt("bubbles")) { bubbles = []; bubbleT = t; return; }
   const dt = Math.min(.1, Math.max(0, t - bubbleT)), q = BUBBLE.q, snap = (v) => Math.round(v / q) * q; bubbleT = t;
   ctx.font = "18px SproutPixel"; ctx.textAlign = "left";
@@ -98,6 +102,7 @@ function drawBubbles(sx, sy, S, t) {
     const l0 = Math.min(...pile.mine.map(x0)), l = Math.min(l0, pile.tx - S / 2), r = Math.max(l0 + pile.w, pile.tx + S / 2);
     if (pile.top < 4 || (typeof TitleScene !== "undefined" && TitleScene.hides(l, pile.top, r - l, pile.mid - pile.top))) { for (const b of pile.mine) b.at = b.up = undefined; continue; }
     placed.push({l: Math.min(...pile.mine.map(x0)), r: Math.min(...pile.mine.map(x0)) + pile.w, t: pile.top, b: pile.foot + 3 * q});
+    { const o = placed[placed.length - 1]; bubbleBoxes.push({l: o.l, r: Math.max(o.r, o.l + ctx.measureText(pile.name).width + 10 * q), t: o.t, b: o.b}); }   // (the tab can be wider than a short bubble)
     pile.mine.forEach((b, n) => {
       const since = t - b.t, jolt = b.shout && since < .5 ? (Math.floor(since * 30) % 2 ? q : -q) : 0;      // (a shout: its bubble shakes as it lands)
       const x = x0(b) + jolt, y = pile.foot - snap(b.up) - b.h;
