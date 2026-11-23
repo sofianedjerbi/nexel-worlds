@@ -48,10 +48,10 @@ def test_every_button_of_the_menu_the_inventory_and_the_top_is_a_finger_wide(bro
                 g.touch("touchMove", x, y - i * 14); g.sleep(30)
             g.touch("touchEnd"); g.sleep(300)
             assert g.js("document.querySelector('#menu .well').scrollTop") > 40 and g.js("JSON.stringify(pageRows(1).map((r) => r.get()))") == was
-            g.js("(() => { document.querySelector('#menu .row[data-i=\"5\"]').scrollIntoView({block: 'center'}); return 1; })()"); g.sleep(100)
-            g.page.touchscreen.tap(*g.js(MID, "#menu .row[data-i='5'] .sw")); g.sleep(200)
+            g.js("(() => { document.querySelector('#menu .row[data-i=\"6\"]').scrollIntoView({block: 'center'}); return 1; })()"); g.sleep(100)
+            g.page.touchscreen.tap(*g.js(MID, "#menu .row[data-i='6'] .sw")); g.sleep(200)
             assert g.js("opt('depth')") is False
-            g.page.touchscreen.tap(*g.js(MID, "#menu .row[data-i='5'] .sw")); g.sleep(200)
+            g.page.touchscreen.tap(*g.js(MID, "#menu .row[data-i='6'] .sw")); g.sleep(200)
             assert g.js("opt('depth')") is True
             g.js("closeMenu()")
             g.give(wood=3, berries=2); g.js("toggleBag()"); g.sleep(300)

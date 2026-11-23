@@ -27,6 +27,7 @@ const MENU_PAGES = [
     choice("Sharpness", "sharp", [["auto", "Auto"], ["full", "Full"], ["light", "Light"]]),
     slider("Light at night", "night", {hear: null}),
     choice("Particles", "particles", [["all", "All"], ["fewer", "Fewer"], ["none", "None"]]),
+    choice("View distance", "view", [["near", "Near"], ["normal", "Normal"], ["far", "Far"], ["veryfar", "Very far"]]),
     choice("Curved world", "curve", [["off", "Off"], ["near", "Near"], ["far", "Far"]]), toggle("Depth", "depth"), toggle("Clear water", "clearwater"), toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
     ...[["Shadows", "shadows"], ["Shadow length", "shadowlen"]].map(([name, key]) => slider(name, key, {max: 200, step: 20, hear: null})),
     choice("What is built over you", "above", VIEWS.map((v) => [v.key, v.name]))]],

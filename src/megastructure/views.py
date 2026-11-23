@@ -9,7 +9,8 @@ from .sim.hearing import LAND, hears
 from .sim.wild import WILD
 from .tiles import BLOCKS, DIRS, GROUNDS, B
 
-QUEUE_MAX = 2000        # messages a spectator may have waiting: past that, new ones are dropped (Views._broadcast)
+FAR_VIEW = 160          # tiles past what a page watches that it may ask the far land of (server.py `region` far: the HD look's horizon, hd.js viewOf)
+QUEUE_MAX = 2000       # messages a spectator may have waiting: past that, new ones are dropped (Views._broadcast)
 
 
 class Views:
@@ -51,6 +52,15 @@ class Views:
 
     def items_in(self, x, y, w, h) -> list:
         return [[ix, iy, pile] for (ix, iy), pile in self.sim.items.items() if pile and x <= ix < x + w and y <= iy < y + h]
+
+    @staticmethod
+    def far_near(watch, x, y, w, h) -> bool:
+        """Is a far region within FAR_VIEW tiles of the rectangle the page watches (its screen and the land its HD look shows,
+        state.js `watch`)? A page that has said nothing yet is given nothing far."""
+        if not watch or w > 64 or h > 64:
+            return False
+        wx, wy, ww, wh = watch
+        return max(wx - (x + w), x - (wx + ww), wy - (y + h), y - (wy + wh)) <= FAR_VIEW
 
     def far_ready(self, x, y, w, h) -> bool:
         """The far land a page's HD look draws to its horizon (state.js: `far`): its chunks are brought in off the tick

@@ -103,7 +103,8 @@ setInterval(() => {
   if (!spec || spec.readyState !== 1 || (typeof TitleScene !== "undefined" && TitleScene.on)) return;     // (the first screen's island is the page's own: title_scene.js)
   const [x, y, w, h0] = viewRect(6), h = h0 + 6;   // (+6 rows south: high ground there is drawn up into view, with what's on it)
   { // who is there is told of as far as the HD look shows land (HdLook.reach: a hill 26 rows north, past the top-down screen's rows), 4 tiles more: in before it is in view
-    const r = typeof HdLook !== "undefined" && HdLook.live && HdLook.reach, ex = r ? Math.min(x, r[0] - 4) : x, ey = r ? Math.min(y, r[1] - 4) : y;
+    const r0 = typeof HdLook !== "undefined" && HdLook.live && HdLook.reach, r = r0 && r0[0] < x + w && r0[2] > x && r0[1] < y + h && r0[3] > y ? r0 : null, ex =   // (a reach of another place, before a teleport, is not joined to this one: the server cut the two to 200 tiles, this place outside: no far land for it, views.py far_near)
+      r ? Math.min(x, r[0] - 4) : x, ey = r ? Math.min(y, r[1] - 4) : y;
     const ew = (r ? Math.max(x + w, r[2] + 5) : x + w) - ex, eh = (r ? Math.max(y + h, r[3] + 5) : y + h) - ey, key = [Math.round(ex / 4), Math.round(ey / 4), ew, eh].join();
     if (key !== lastWatch) { lastWatch = key; sendSpec({op: "watch", x: ex, y: ey, w: ew, h: eh}); } }
   const now = performance.now();

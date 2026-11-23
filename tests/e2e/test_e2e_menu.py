@@ -65,6 +65,12 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
     assert game.js("(() => { parts.length = 0; puffs.length = 0; burst(0, 0, 'hit', 6); debris(0, 0, null, 5, {dust: true}); smoke(0, 0, 8); return parts.length + puffs.length; })()") == 0
     game.press("ArrowLeft")                                     # fewer
     assert game.js("(() => { parts.length = 0; burst(0, 0, 'hit', 6); return parts.length; })()") == 2
+    at_row(game, "View distance"); game.press("ArrowRight")    # normal -> far: the horizon 25 tiles off (hd.js viewOf)
+    game.frames(2)
+    assert game.js("[opt('view'), HdLook.view.D, document.querySelector('#menu .row.on .pick span').textContent]") == ["far", 25, "Far"]
+    game.press("ArrowLeft"); game.press("ArrowLeft")           # near
+    game.frames(2)
+    assert game.js("[opt('view'), HdLook.view.D]") == ["near", 9]
     for name, key in (("Water shimmer", "shimmer"), ("Shake on a hard fall", "shake"), ("Smooth zoom", "glide"), ("Hearts and gains over heads", "floats")):
         at_row(game, name); game.press("Enter")
         assert game.js(f"opt('{key}')") is False
