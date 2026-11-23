@@ -40,7 +40,7 @@ let HP_MAX = 100, FOOD_MAX = 100, SPRINT_FOOD = -1, SWIM_SPRINT = false, SWIM_PA
 const hearts = (hp) => Math.round(hp / (HP_MAX / 10) * 10) / 10;      // a blow, on a person or a creature, is said in hearts: "-0.5", "-1.5"
 const ents = new Map();
 let bubbles = [], floats = [];
-const requested = new Map();
+const requested = new Map();   // a block asked for -> when (ms); asked as FAR land, minus when: a far ask does not keep the land you come to from being asked for (state.js below)
 const wsBase = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 // the demo build has no server: the game runs in the page (local.js) behind the same socket interface
 const openSocket = (path) => typeof LocalSocket !== "undefined" ? new LocalSocket(path) : new WebSocket(wsBase + path);
@@ -109,8 +109,11 @@ setInterval(() => {
   // screen's blocks only: past them the far land was not known, drawn as a flat sea, and the sky's line over a gap of the backdrop's flat colours: "a flat blue mass", seen from a mountain)
   const f = typeof HdLook !== "undefined" && HdLook.live && HdLook.far, fb = f && [f[0], f[1], f[2], f[3]].map((v) => Math.floor(v / B));
   if (fb) { const cx = Math.floor(cam.x / B), cy = Math.floor(cam.y / B), far = [];
-    for (let by = fb[1]; by <= fb[3]; by++) for (let bx = fb[0]; bx <= fb[2]; bx++) { const k = bkey(bx, by), b = blocks.get(k); if ((!b || now - b.at > 30000) && !(requested.get(k) > now - 3000)) far.push([Math.abs(bx - cx) + Math.abs(by - cy), bx, by]); }
-    for (const [, bx, by] of far.sort((a, b) => a[0] - b[0]).slice(0, 4)) { const k = bkey(bx, by), b = blocks.get(k); requested.set(k, now); if (b) b.at = now; sendSpec({op: "region", x: bx * B, y: by * B, w: B, h: B, far: true}); } }   // (far: land not made yet is made off the server's tick, and asked for again 3 s on: views.py far_ready)
+    for (let by = fb[1]; by <= fb[3]; by++) for (let bx = fb[0]; bx <= fb[2]; bx++) { const k = bkey(bx, by), b = blocks.get(k); if ((!b || now - b.at > 30000) && !(Math.abs(requested.get(k)) > now - 3000)) far.push([Math.abs(bx - cx) + Math.abs(by - cy), bx, by]); }
+    for (const [, bx, by] of far.sort((a, b) => a[0] - b[0]).slice(0, 4)) { const k = bkey(bx, by), b = blocks.get(k); requested.set(k, -now); if (b) b.at = now; sendSpec({op: "region", x: bx * B, y: by * B, w: B, h: B, far: true}); } }   // (far: land not made yet is made off the server's tick, and asked for again 3 s on: views.py far_ready)
+  // (A FAR ASK IS NOT A NEAR ONE: its time is kept as minus itself, and the land on the screen above asks for its block again at once. Land not made yet is answered "later" to a far ask
+  //  (nothing comes), and the block then waited the 3 s for the land on the screen too: sprinting toward new land, or zooming out, a block-wide strip of the screen's side was the backdrop's
+  //  flat colours for up to 3 s, growing as you ran in: "part of the world disappears", 5400 px of a 600 x 400 picture, test_e2e_holes.py)
   // land left well behind is forgotten, with its pictures (it comes again if you go back): a long walk kept it all
   const bx0 = Math.min(Math.floor(x / B) - 1, fb ? fb[0] : 1e9), bx1 = Math.max(Math.floor((x + w) / B) + 1, fb ? fb[2] : -1e9), by0 = Math.min(Math.floor(y / B) - 1, fb ? fb[1] : 1e9), by1 = Math.max(Math.floor((y + h) / B) + 1, fb ? fb[3] : -1e9);
   for (const [k, b] of blocks) if (b.bx < bx0 || b.bx > bx1 || b.by < by0 || b.by > by1) blocks.delete(k);
