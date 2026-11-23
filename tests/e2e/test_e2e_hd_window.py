@@ -37,6 +37,8 @@ def inside(g, x, y):
 
 
 def test_the_window_has_no_shade_outside_it_a_lit_lip_at_its_near_edge_and_its_section_is_earth(browser, server):
+    """(Read down a column two tiles east of you: down the column through your middle your own body lay over the meadow south
+    of the hole on the screen, lavender and yellow px, four runs in five.)"""
     g = hd(browser, server)
     g.hour(.3, still=True)
     for o in ("clouds", "rays", "shimmer"):
@@ -44,16 +46,16 @@ def test_the_window_has_no_shade_outside_it_a_lit_lip_at_its_near_edge_and_its_s
     x, y = room(g)
     inside(g, x, y)
     lum = lambda c: c[0] + c[1] + c[2]
-    meadow = g.js(PX, [x + .5, y + 4.5, 4])
+    meadow = g.js(PX, [x + 2.5, y + 4.5, 4])
     assert meadow[1] > meadow[0] + 10, meadow                              # (grass)
     # south of the room (its south wall's plane is y + 2): from the hole's edge out onto the meadow, a px every 50th of a tile
-    scan = [g.js(PX, [x + .5, y + 2 + i * .02, 4]) for i in range(120)]     # (2.4 tiles: from 58 degrees the room's floor 3 under the meadow shows 1.9 tiles south of the wall's plane)
+    scan = [g.js(PX, [x + 2.5, y + 2 + i * .02, 4]) for i in range(120)]     # (2.4 tiles: from 58 degrees the room's floor 3 under the meadow shows 1.9 tiles south of the wall's plane)
     k = next(i for i, c in enumerate(scan) if c[1] > c[0])                 # (before it: the room, seen in the hole)
     south = scan[k:]
     assert len(south) >= 10 and all(c[1] > c[0] and lum(c) > lum(meadow) * .93 for c in south), scan    # outside the hole the meadow is the meadow: no shade round the rim (a shade outside it read as a block standing on the grass; before that a checker of dark px in a black line)
     assert lum(south[0]) > lum(meadow) + 12 and lum(south[-1]) < lum(meadow) + 12, (south[0], south[-1], meadow)      # the hole's near edge: the land's lip, lit; then the grass as it is
     # over the window's top edge (the north wall's plane is y - 1): the section
-    north = [g.js(PX, [x + .5, y - 1.5 + i * .02, 4]) for i in range(60)]     # (to y - .3: from 58 degrees the section stands lower on the screen, under the north wall's plane)
+    north = [g.js(PX, [x + 2.5, y - 1.5 + i * .02, 4]) for i in range(60)]     # (to y - .3: from 58 degrees the section stands lower on the screen, under the north wall's plane)
     earth = [c for c in north if c[0] > c[1] > c[2] and c[0] - c[2] > 30]
     grey = [c for c in north if max(c) - min(c) < 16 and 70 < c[0] < 150]
     assert len(earth) >= 6 and not grey, north                             # earth's own px, a few rows of them; no flat grey band
