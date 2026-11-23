@@ -28,7 +28,7 @@ class Persistence:
         self.store.set_meta("tick", self.tick)
         self.store.set_meta("fires", [[list(k), v] for k, v in self.fires.items()])
         self.store.set_meta("timers", [[x, y, t, k] for (x, y), (t, k) in self.timers.items()])
-        self.store.set_meta("pits", [list(p) for p in self.pits])
+        self.water.flush()
         self.world.flush()
         if self.event_log:
             self.event_log.flush()

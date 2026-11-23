@@ -20,6 +20,7 @@ DIR_ARG = {"dir": "N|E|S|W"}
 TOOL_SPECS = {
     "step": {"args": {**DIR_ARG, "run": "bool (optional, sprint: 2x speed)"}, "desc": "move one tile on the level or down (a step one layer up stops you: jump)"},
     "jump": {"args": {"dir": "N|E|S|W (optional)"}, "desc": "jump up onto the step one layer higher that way (the cell over it, and over your head, must be empty); with no dir or on the level, a hop where you stand"},
+    "leap": {"args": {"path": "[[x, y], ...]", "land": "int", "n": "int"}, "desc": "(a player's screen) the tiles a jump through the air went over and the height it landed at"},
     "walk": {"args": {**DIR_ARG, "run": "bool (optional)"}, "desc": "keep walking in a direction until blocked or stopped (a step up blocks it: jump)"},
     "stop": {"args": {}, "desc": "stop the current action"},   # (a player's screen also says walk's `from`, stop's `at`: Movement.follow)
     "move_to": {"args": {"x": "int", "y": "int", "run": "bool (optional)", "z": "int (optional): a height there, a floor built over a room"}, "desc": "walk to absolute tile (pathfinding, <=64 tiles)"},
@@ -59,8 +60,8 @@ TOOL_SPECS = {
     "look_far": {"args": DIR_ARG, "desc": "coarse view of the next 48 tiles in a direction"},
     "ignite": {"args": {**DIR_ARG, "with": "torch (optional if a campfire is near)"},
                "desc": "set an adjacent flammable tile on fire (a torch in hand, used up, or a campfire within 2 tiles)"},
-    "water": {"args": {**DIR_ARG, "with": "watering_can"},
-              "desc": "water a growing crop with the can in hand: grows twice as fast; aim at a well or water to refill"},
+    "water": {"args": {**DIR_ARG, "with": "watering_can", "pour": "true: pour a full can out on open ground (water that runs)"},
+              "desc": "water a growing crop with the can in hand: grows twice as fast; aim at a well or water to refill (poured water is taken back up)"},
     "milk": {"args": {"target": "cow id"}, "desc": "milk an adjacent cow (every 2 minutes)"},
     "feed": {"args": {"target": "animal id", "item": "food"}, "desc": "feed an adjacent animal; fed chickens lay eggs"},
     "name": {"args": {"target": "animal id", "text": "str"}, "desc": "name an animal within 2 tiles with a name tag you carry (used up; craft: 1 plank, 1 fiber): a named animal is yours, it never goes away (wild ones over the limit around a player do, out of sight)"},

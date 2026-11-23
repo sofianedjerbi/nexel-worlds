@@ -16,12 +16,19 @@ const HdLevel = (() => {
   const col = (x, y) => Voxels.host.column(x, y), topAt = (x, y) => { const c = col(x, y); return c && c.length ? c[c.length - 1] : 0; };
   const solid = (c, z) => { if (!c) return false; for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   let trail = [];
-  function of(p, now) {
+  // (yours: the level you are drawn from goes a px a frame at the most through a jump and after it: leap.js cam)
+  function of(p, now) { const r = of0(p, now); return p.e && p.e.kind === "agent" && p.e.id === myId ? [r[0], Leap.cam(r[1], now)] : r; }
+  function of0(p, now) {
     const H0 = Voxels.host, rx = Math.round(p.x), ry = Math.round(p.y), near = typeof myAt !== "undefined" && myAt && Math.abs(myAt.x - rx) + Math.abs(myAt.y - ry) <= 2;
     const at = (x, y) => { const t = topAt(x, y), s = near ? Floors.standOf(p, x, y) : t; return s >= t && H0.water && H0.water(x, y) && H0.waterTop ? Math.max(s, H0.waterTop(x, y)) : s; };   // (in water: at its face)
     const cl = Climb.climbOf(p); if (cl) return [Math.floor(cl.h), cl.h];   // (on a ladder's rungs: as high as you have climbed)
+    const lp = p.e && p.e.id === myId && p.e.kind === "agent" ? Leap.level() : null; if (lp) return lp;   // (in the air: drawn from the level you left, the ground under you yours: leap.js)
+    const lz = p.leapAt ? Leap.landedOn(p) : null; if (lz !== null) return [lz, lz];   // (come down from a jump off a tile's middle: on that tile)
     const L = at(rx, ry), ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y); if ((ax === bx && ay === by) || falling(p, now)) return [L, L];
-    const la = at(ax, ay), lb = at(bx, by), f = ax === bx ? p.y - ay : p.x - ax; return [L, Math.abs(la - lb) >= FALL.from ? L : la + (lb - la) * f];   // (a fall: the eye and the body have their own way down, hd.js)
+    const la = at(ax, ay), lb = at(bx, by), f = ax === bx ? p.y - ay : p.x - ax;
+    const fw = mineWalking(p) && DIRV[walking.dir][0] + DIRV[walking.dir][1] > 0;
+    if (mineWalking(p) && (fw ? lb > la && Leap.leapable(ax, ay, la, bx, by) : la > lb && Leap.leapable(bx, by, lb, ax, ay))) return [L, Math.min(la, lb)];   // (yours, walking up to a step: your own level until you jump up it, leap.js)
+    return [L, Math.abs(la - lb) >= FALL.from ? L : la + (lb - la) * f];   // (a fall: the eye and the body have their own way down, hd.js)
   }
   function over(x, y, L, k, n = 20) { let m = 0; for (let d = 1; d <= n; d++) { const c = col(x, y + d), e = L + (d - .5) * k; if (!c || !c.length || matAt(x, y + d)) continue; for (let i = 0; i < c.length; i += 2) if (c[i] > e && (i ? c[i - 1] : -1e9) < e + k) m = Math.max(m, i && c[i - 1] > e ? 99 : c[i] - e); } return m > 0 && topAt(x, y) > L ? 99 : m; }
   const under = (x, y, L) => topAt(x, y) > L;

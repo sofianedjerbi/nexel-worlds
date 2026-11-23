@@ -224,11 +224,15 @@ def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
     for to in (x + 1, x):
         way = [at(f / 50, to) for f in range(1, 50)]
         off, land = (way[0], way[-1]) if to > x else (way[-1], way[0])
-        assert abs(off["feet"] - (0 if to > x else L)) < 1e-6 and off["squash"] and abs(land["feet"] - (L if to > x else 0)) < 1.5   # on the ground as it sets off, crouched; a px or so from it as it lands (the landing's squash: after it, by the clock)
+        up = to > x
+        assert abs(off["feet"] - (0 if up else L)) < 1e-6 and off["squash"] == up and abs(land["feet"] - (L if up else 0)) < 1.5   # on the ground as it sets off (up: crouched); a px or so from it as it lands (the landing's squash: after it, by the clock)
         assert max(abs(b["feet"] - a["feet"]) for a, b in zip(way, way[1:])) < L / 8          # one smooth arc: no snap anywhere
         assert all(abs(q["shadow"]) < 1e-6 for q in way[:24]) and all(abs(q["shadow"] - L) < 1e-6 for q in way[25:])
-        assert all(q["feet"] >= L - 1e-6 for q in way[24:])                                        # over the higher ground: never inside it
-        assert max(q["feet"] for q in way) > L + 1                                          # clear of the edge
+        assert all(q["feet"] >= L - (1e-6 if up else 2) for q in way[24:])                         # over the higher ground: never inside it (down: under two px)
+        if up:
+            assert max(q["feet"] for q in way) > L + 1                                      # clear of the edge
+        else:                                                                               # down: no jump, a drop off the edge
+            assert max(q["feet"] for q in way) <= L + 1e-6 and all(b["feet"] >= a["feet"] - 1e-6 for a, b in zip(way, way[1:]))
     assert game.js(f"jumpOf({{x: {x} - .5, y: {y}, tx: {x} - 1, ty: {y}, fx: -1, fy: 0}})") is None   # on the level: no hop
     game.start_recording()                                    # and it takes the time of a step: up the step (Space as you set off) and on, at walking pace
     game.page.keyboard.down("d"); game.page.keyboard.press("Space")

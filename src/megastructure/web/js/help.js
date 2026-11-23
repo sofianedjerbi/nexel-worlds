@@ -3,25 +3,26 @@
 // on each, a row a key drawn as a key and a few words on one line. Left and Right (or a click on a tab) turn the page; H or
 // Esc shuts it. Its looks are css/help.css.
 
+// A key in a row: "{use}" the player's own key for the action (options.js capOf), "~keyq" a key by place as this keyboard
+// types it (keyCap: ZQSD on an AZERTY), else as written (build mode's keys are its own: X, E)
 const HELP = [
-  ["Move", [[["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint: hold it"], [["Space"], "Jump: up a step"], [["Alt"], "Turn without walking"], [["G"], "Goals: show or hide"]]],
+  ["Move", [[["~w", "~a", "~s", "~d"], "Walk"], [["Shift"], "Sprint: hold it"], [["{jump}"], "Jump: up a step"], [["Alt"], "Turn without walking"], [["G"], "Goals: show or hide"]]],
   ["See", [[["+", "−"], "Zoom (or the wheel)"], [["V"], "What is built over you"]]],
-  ["Do", [[["E"], "Use: open, harvest, eat"], [["X"], "Break: mine, chop, hit"], [["F"], "Pick up"],
+  ["Do", [[["{use}"], "Use: open, harvest, eat"], [["{alt}", "X"], "Break: mine, chop, hit"], [["{pick}"], "Pick up"],
     [["Left click"], "{alt} there, or walk"], [["Right click"], "{use} there"]]],
-  ["Carry", [[["1-9", "Q"], "Slot in hand"], [["`"], "Empty your hands"], [["E"], "Place what you hold"],
-    [["I"], "Inventory"], [["C"], "Craft"]]],
-  ["Build", [[["Z"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],
-    [["Q", "E"], "Cursor a layer down, up"]]],
+  ["Carry", [[["1-9", "{next}"], "Slot in hand"], [["{hands}"], "Empty your hands"], [["{use}"], "Place what you hold"],
+    [["{bag}"], "Inventory"], [["{craft}"], "Craft"]]],
+  ["Build", [[["{build}", "B"], "Build mode: in and out"], [["←", "→"], "Move the cursor, not you"], [["Space"], "Plan a piece. Held: row"], [["X"], "Break, take down, dig"],
+    [["~keyq", "E"], "Cursor a layer down, up"]]],
   ["Talk", [[["Enter"], "Talk"], [["ABC"], "Shout: IN CAPITALS"], [["Tab"], "Hold: who is awake"],
-    [["M"], "Sound on or off"], [["Esc"], "Menu and settings"]]],
+    [["{mute}"], "Sound on or off"], [["Esc"], "Menu and settings"]]],
 ];
-const HELP_ACT = {E: "use", X: "alt", Space: "jump", F: "pick", Q: "next", "`": "hands", I: "bag", C: "craft", Z: "build", M: "mute"};
 let helpPage = 0;
 const helpOpen = () => $("help").style.display === "block";
 function drawHelp() {
-  const mine = HELP[helpPage][0] !== "Build";            // (build mode's keys are its own; the others as the settings have them: options.js)
   const said = (what) => what.replace(/\{(\w+)\}/g, (m, a) => capOf(a));      // (a row that names a key in its words, "X there": the player's own key, as its cap says)
-  const keys = (ks) => ks.map((k) => `<kbd>${mine && HELP_ACT[k] ? capOf(HELP_ACT[k]) : k}</kbd>`).join("");
+  const cap = (k) => (k[0] === "{" ? said(k) : k[0] === "~" ? keyCap(k.slice(1)) : k);
+  const keys = (ks) => [...new Set(ks.map(cap))].map((k) => `<kbd>${k}</kbd>`).join("");      // (Break given X: one X)
   $("help").innerHTML = `<div class="hh"><b>Help</b><span><kbd>H</kbd>close</span></div>`
     + `<div class="tabs">${HELP.map(([name], i) => `<div class="tab${i === helpPage ? " on" : ""}" data-i="${i}">${name}</div>`).join("")}</div>`
     + `<div class="well">${HELP[helpPage][1].map(([ks, what]) => `<div class="row"><div class="keys">${keys(ks)}</div><div class="what">${said(what)}</div></div>`).join("")}</div>`

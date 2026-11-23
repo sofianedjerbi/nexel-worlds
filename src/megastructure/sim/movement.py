@@ -2,11 +2,12 @@
 
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS, B
+from .leaping import Leaping
 from .constants import CLIMB_S, EAT_PACE, FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRING_S, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
 
-class Movement:
+class Movement(Leaping):
     """Simulation mixin: walking, pathfinding and sailing: strides, steps, walks and move_to."""
 
     # ============================================================== tools
@@ -25,8 +26,8 @@ class Movement:
         return ground.walkable and not block.solid
 
     def swimming(self, a: Agent) -> bool:
-        """In the water without a boat (not on something built over it)."""
-        return not a.sailing and GROUNDS[self.world.get(a.x, a.y)[0]].liquid and self.floors.get(a.x, a.y, self.height(a)) is None
+        """In the water without a boat (not on something built over it), or in running water deep enough (waters.py)."""
+        return not a.sailing and (GROUNDS[self.world.get(a.x, a.y)[0]].liquid and self.floors.get(a.x, a.y, self.height(a)) is None or self.wading(a))
 
     def can_go(self, a: Agent, x: int, y: int, jump: bool | None = None) -> bool:
         """From where `a` stands to the neighbouring (x, y): it isn't a wall, and where they'd land can be entered.
@@ -216,6 +217,7 @@ class Movement:
             a.via.append((tile[0], tile[1], tile[2] if len(tile) == 3 else a.via_done))
 
     def via_drop(self, a: Agent):
+        a.flying = None                                          # (a flight given up: down on the ground where it is)
         if a.via:
             a.via_done = a.via[-1][2]
             a.via.clear()
@@ -225,6 +227,12 @@ class Movement:
         far, or behind a wall: the way is given up (the screen then comes back to where the world has you)."""
         steps, j = 0, True if args.get("jump") else None         # (`jump`: the screen walks up steps by itself: auto-jump)
         while a.via:
+            if len(a.via[0]) > 3:                                # a jump through the air (leaping.py): made, or given up
+                n, fall = yield from self.fly(a)
+                steps += n
+                if fall:
+                    return steps, fall
+                continue
             x, y, n = a.via[0]
             dx, dy = x - a.x, y - a.y
             if not dx and not dy:

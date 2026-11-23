@@ -51,6 +51,7 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
         if "clear" in msg:                       # ...and what lies on the ground there: a pile one test left was drawn,
             for at in [p for p in sim.items if max(abs(p[0] - agent.x), abs(p[1] - agent.y)) <= r]:   # and counted, in
                 del sim.items[at]                # the next one's, whenever its player woke near it
+            sim.water.clear_near(agent.x, agent.y, r)     # (and water one left running, poured: flow.py. A can's puddle swam a later test's player)
         spawned = None
         if msg.get("kind") in CREATURES:
             c = Creature(sim.next_creature, msg["kind"], agent.x + int(msg.get("dx", 1)), agent.y + int(msg.get("dy", 0)),

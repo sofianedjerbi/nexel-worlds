@@ -36,7 +36,10 @@ function stepAhead() {
 function jumpKey() {
   const p = ents.get("agent" + myId); if (!p || !me || !meObs || Build.on) return;
   const s = stepAhead(), now = performance.now();
-  if (jumpGoing) return;                         // (a jump on its way: J pressed again does not cut it short, as a new action would)
+  if (jumpGoing || Leap.on()) return;            // (a jump on its way: J pressed again does not cut it short, as a new action would)
+  if (Leap.gliding()) { p.jumpNext = true; return; }   // (just down off a tile's middle, going to it: the jump once there, leap.js after)
+  const low = s && !walking;                     // (standing, facing a step: up onto it, as before: a tunnel or a shaft has no room for a jump through the air)
+  if (Leap.can(p) && !low) { Leap.start(p, now, null); return; }   // a real jump (leap.js)
   if (!s) { if (now - p.hop < HOP.ms) return; p.hop = now; rpc("act", {tool: "jump", args: {}}); return; }      // (nothing to jump onto: a hop on the spot; in the air, Space again does not start it over)
   for (const [k, t] of spring) if (t < now) spring.delete(k);
   spring.set(s.x + "," + s.y, now + 3000);
@@ -48,6 +51,7 @@ let jumpGoing = false;
 
 // Held keys (or the stick): one message when the direction or sprint changes, one when you let go.
 function syncWalk() {
+  if (Leap.on() || Leap.gliding()) return;       // (in the air: the keys steer, leap.js; the walk goes on when you land)
   const k = [...keys].reverse().find((k) => KEYDIR[k]);
   const want = k && me ? {dir: KEYDIR[k], run: sprinting()} : null;
   if (want && walking && want.dir === walking.dir && want.run === walking.run) return;
@@ -119,9 +123,9 @@ const onWater = (x, y, p) => { const t = tile(x, y); return (!SWIM_SPRINT && !!t
 
 // A frame of your walk (render.js). A turn first finishes the tile you were walking into, in a straight line, then
 // turns: no diagonal slide. Each step as the server paces it, in its 0.1 s ticks: a stride of 1 tick (sprinting) or
-// 2 (walking), twice that in the water. Up a layer the server takes a tick more (SLOPE_UP: hard going); you go
-// over a step as fast as its jump takes (a third of a second: jump.js jumpPace), the world close behind. It catches up when
-// you stop, and on a long climb you slow down smoothly, by how far ahead of it you are (LEAD).
+// 2 (walking), twice that in the water. Up a layer the server takes a tick more (SLOPE_UP: hard going); you jump up
+// it through the air without slowing (leap.js: "it stops the velocity and does an up-block animation"), down one you
+// drop at the walk's pace (jump.js). It catches up when you stop, and on a long climb you slow down smoothly, by how far ahead of it you are (LEAD).
 function walkOn(p, dt, now) {
   const [wx, wy] = DIRV[walking.dir], s = wx || wy, side = wx ? "y" : "x", along = wx ? "x" : "y", lead = leadOf(p, now);
   let t = dt * (lead < -1 ? 1.25 : lead <= LEAD[0] ? 1 : Math.max(0, (LEAD[1] - lead) / (LEAD[1] - LEAD[0])));   // the time you walk in
@@ -135,8 +139,9 @@ function walkOn(p, dt, now) {
     p[side] = walking.lane; walking.at = null;
     const a0 = s > 0 ? Math.floor(p[along] + 1e-6) : Math.ceil(p[along] - 1e-6);      // the tile you're leaving, and the next
     const fx = wx ? a0 : walking.lane, fy = wx ? walking.lane : a0, nx = fx + wx, ny = fy + wy;
+    if (autoJump() && Leap.due(p, walking)) { Leap.start(p, now, null); Leap.frame(p, t, now); return; }   // a step ahead: a jump through the air, at the walk's speed (leap.js), this frame's time in it
     if (!walkable(nx, ny, fx, fy)) { p[along] -= s * Math.min((p[along] - a0) * s, 10 * t); p.tx = fx; p.ty = fy; break; }   // a wall: you stay
-    const v = Climb.pace(fx, fy, myZ(fx, fy), nx, ny) || Math.min(speedAt(fx, fy, p), jumpPace(p, fx, fy, nx, ny));      // (up or down a ladder: rung by rung, climbing.js; up or down a step: the time its jump takes, jump.js)
+    const v = Climb.pace(fx, fy, myZ(fx, fy), nx, ny) || speedAt(fx, fy, p);      // (up or down a ladder: rung by rung, climbing.js)
     const go = Math.min((a0 + s - p[along]) * s, v * t);
     p[along] += s * go; t -= go / v; p.tx = nx; p.ty = ny; p.moved = now;
   }

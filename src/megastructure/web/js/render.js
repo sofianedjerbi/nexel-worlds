@@ -14,6 +14,7 @@ function frame(now) {
   const dt = Math.max(0, Math.min(.1, (now - lastT) / 1000)); lastT = now;   // (never back in time: a frame stamped before the last one moved every body standing still by 0/0, for good)
   const t = now / 1000;
   for (const p of ents.values()) {
+    if (p.e && p.e.kind === "agent" && p.e.id === myId && Leap.on()) { Leap.frame(p, dt, now); continue; }   // you in the air (leap.js)
     if (p.e && p.e.kind === "agent" && p.e.id === myId && walking && p.walking) { walkOn(p, dt, now); continue; }   // your own walk (walk.js)
     const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
     // people walk 5 tiles/s (10 sprinting); animals amble, so each of their steps takes most of the pause between them
@@ -23,10 +24,11 @@ function frame(now) {
     // most of a tile behind, sliding into place while it pawed. "it glitches a few pixels... when doing key moves")
     const amble = p.e && AMBLE[p.e.kind] ? Math.max(p.e.scared ? 1 / FLEE_STRIDE : AMBLE[p.e.kind], p.pace || 0, p.e.kind === "tusker" && p.e.act ? 8 : 0) : 0;
     const pace = Climb.paceOf(p) || (p.running || (p.e && p.e.run) ? 10 : amble || 5);      // (up or down a ladder: rung by rung, climbing.js)
-    const jp = d > 0 && d <= 1.5 ? jumpPace(p, p.tx - (Math.abs(dx) > 1e-3 ? Math.sign(dx) : 0), p.ty - (Math.abs(dy) > 1e-3 ? Math.sign(dy) : 0), p.tx, p.ty) : Infinity;   // (up or down a step: as long as its jump takes, jump.js; it was squeezed into a step's time)
-    const step = (d > 1.5 ? d * 8 : Math.min(pace, jp) * 1.05) * dt;
-    if (d <= step) { p.x = p.tx; p.y = p.ty; }
-    else if (d > 1.5) { p.x += dx / d * step; p.y += dy / d * step; }    // far behind (lag, teleport): straight there
+    const jp = d > 0 && d <= 1.5 && !p.leapAt ? jumpPace(p, p.tx - (Math.abs(dx) > 1e-3 ? Math.sign(dx) : 0), p.ty - (Math.abs(dy) > 1e-3 ? Math.sign(dy) : 0), p.tx, p.ty) : Infinity;   // (up or down a step: as long as its jump takes, jump.js; it was squeezed into a step's time)
+    const far = d > (p.e && p.e.kind === "agent" && p.e.id === myId ? LEAD[1] + 2 : 1.5);   // (you, a few tiles behind where the world has you as your walk ends: walked there, a little quicker. It was 8 tiles a second: at the foot of the cave stairs, a teleport)
+    const step = (far ? d * 8 : Math.min(pace, jp) * (d > 1.5 ? 1.3 : 1.05)) * dt;
+    if (d <= step) { p.x = p.tx; p.y = p.ty; if (p.leapAt) Leap.after(p); }
+    else if (far) { p.x += dx / d * step; p.y += dy / d * step; }    // far behind (lag, teleport): straight there
     else if (Math.abs(dx) > 1e-3 && Math.abs(dy) > 1e-3) {              // on the grid, one axis at a time: line up first
       if (Math.abs(dx) < Math.abs(dy)) p.x += Math.sign(dx) * Math.min(step, Math.abs(dx)); else p.y += Math.sign(dy) * Math.min(step, Math.abs(dy));
     } else { p.x += dx / d * step; p.y += dy / d * step; }

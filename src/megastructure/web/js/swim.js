@@ -10,7 +10,7 @@ const SWIM = {sink: 5, line: 27, stroke: 260, tread: 700, wakeEvery: 110, wakeLi
 function swimsAt(p, e) {
   if (e.sail) return false;
   const t = tile(Math.round(p.x), Math.round(p.y));
-  return t ? wet(t[1]) && t[0] !== "V" : !!e.swim;
+  return t ? (wet(t[1]) && t[0] !== "V") || !!(e.swim && Flow.col(Math.round(p.x), Math.round(p.y))) : !!e.swim;   // (or in water that runs, deep enough: the server says, flow.js)
 }
 // The wake someone left: each mark two flecks of foam drifting apart and fading, in its own time. Drawn for a swimmer
 // and for someone who has just come out (characters.js): the marks behind them were all gone at once at the shore.

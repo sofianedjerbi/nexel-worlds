@@ -3,6 +3,7 @@
 
 // Your tile and the height you stand at, kept as the server keeps it (Movement.landing), once a frame
 function trackMe() {
+  if (Leap.on()) return;                                     // (in the air: leap.js keeps them)
   const me = ents.get("agent" + myId);
   if (me) {
     const x = Math.round(me.x), y = Math.round(me.y);        // (where you're seen, which runs ahead of the server's tile)
