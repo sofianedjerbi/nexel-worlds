@@ -73,15 +73,26 @@ def test_two_walls_side_by_side_touch_and_a_bridge_is_drawn(browser, server):
 
 def test_the_build_cursor_is_on_the_tile_you_point_at(browser, server):
     """Build mode stays in the HD look (it went back to the classic picture): the cursor is the tile under the pointer
-    as this camera draws it, on a raised step too, and its mark is drawn round that tile on the screen."""
+    as this camera draws it, on a raised step too, and its mark is drawn round that tile on the screen.
+    (In build mode the view goes half way to the cursor (Build.pan): the tile under a pointer moved once is another
+    tile when the view has moved. The pointer is put on the tile again till the view is still, then it is read: a
+    sleep of 400 ms read it while the view was going, two tiles off, one run in a few.)"""
     g = hd(browser, server)
     try:
         x, y = g.pos()
         g.stamp(3, -2, ["..."] * 2, levels=["222"] * 2); g.rest()
-        g.page.keyboard.press("b"); g.sleep(400)
+        g.page.keyboard.press("b")
+        g.wait("Build.on", 3000)
         for dx, dy, z in [(-2, 1, 0), (4, -2, 2), (1, -3, 0)]:
-            p = g.js("([x, y, z]) => HdLook.screenOf(x + .5, y + .5, z)", [x + dx, y + dy, z])
-            g.page.mouse.move(p[0], p[1]); g.sleep(400)
+            at = "([x, y, z]) => HdLook.screenOf(x + .5, y + .5, z)"
+            for _ in range(40):
+                p = g.js(at, [x + dx, y + dy, z])
+                g.page.mouse.move(p[0], p[1])
+                g.frames(2)
+                q = g.js(at, [x + dx, y + dy, z])
+                if abs(q[0] - p[0]) + abs(q[1] - p[1]) < .5:
+                    break
+            g.frames(2)
             on, at, r = g.js("[HdLook.on && Build.on, Build.S.at, Build.S.rect]")
             assert on and (at["x"], at["y"]) == (x + dx, y + dy), (dx, dy, at)
             assert r["x"] - 2 <= p[0] <= r["x"] + r["w"] + 2 and r["y"] - 2 <= p[1] <= r["y"] + r["h"] + 2, (p, r)
