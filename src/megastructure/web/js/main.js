@@ -79,6 +79,7 @@ $("goalhelp").onclick = () => $("helpbtn").click();
 $("join").onclick = () => { const n = $("name").value.trim(); if (n) joinGame(n); };
 $("brand").onclick = () => { if (!me) $("joinbox").style.display = "block"; };
 $("name").value = localStorage.getItem("megastructure-name") || "";
+{ let fresh = true; const n = $("name"); n.addEventListener("focus", () => { fresh = true; setTimeout(() => n.select(), 0); }); n.addEventListener("mouseup", (e) => { if (fresh) { e.preventDefault(); n.select(); } fresh = false; }); n.addEventListener("input", () => { fresh = false; }); }   // (the last name, whole: what you type replaces it ("qastepqastep": it was added to); it has the focus as the page opens, so the first click takes it whole too)
 const qs = new URLSearchParams(location.search);
 if (qs.get("follow")) { follow = qs.get("follow"); $("joinbox").style.display = "none"; }
 if (qs.get("zoom")) zoom = +qs.get("zoom");
