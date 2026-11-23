@@ -31,15 +31,20 @@ const VoxStyleGLSL = (() => {
     "bool sect(ivec2 P, int r) { ivec2 M = textureSize(mk, 0) - 1; for (int k = -1; k <= 1; k += 2) { ivec2 q = clamp(P + ivec2(k * r, 0), ivec2(0), M); if (texelFetch(mk, q, 0).rg != vec2(0.)) continue; for (int n = 1; n <= 48; n++) if (texelFetch(mk, max(q - ivec2(0, n), ivec2(0)), 0).rg != vec2(0.)) return true; } return false; } " +
     "float side(vec2 f) { ivec2 P = ivec2(f), M = textureSize(mk, 0) - 1; if (texelFetch(mk, P, 0).rg == vec2(0.)) return 0.; for (int r = 1; r <= 4; r++) if (texelFetch(mk, clamp(P + ivec2(r, 0), ivec2(0), M), 0).rg == vec2(0.) || texelFetch(mk, clamp(P - ivec2(r, 0), ivec2(0), M), 0).rg == vec2(0.)) return float(r); return 9.; }";
   const VS = `#version 300 es
-  in vec3 p; in vec2 uv; in vec4 a; in float e; uniform mat4 m; uniform vec3 ctr, go; uniform float bend; uniform sampler2D gw; out vec2 vu; out vec4 va, vs; out float ve; out vec3 wp; out highp float vw;
+  in vec3 p; in vec2 uv; in vec4 a; in float e; uniform mat4 m; uniform vec3 ctr, go; uniform float bend; uniform sampler2D gw; out vec2 vu; out vec4 va, vs; out float ve; out vec3 wp; out highp float vw; flat out highp float vo;
   ${SINK}
-  void main() { vec3 q = p; float dn = max(0., ctr.z - 1. - q.z); q.y -= bend * sink(dn); gl_Position = m * vec4(q, 1.); vw = gl_Position.w; vu = uv; va = a; ve = e; wp = p; vs = vec4(0.);
+  void main() { vec3 q = p; float dn = max(0., ctr.z - 1. - q.z); q.y -= bend * sink(dn); gl_Position = m * vec4(q, 1.); vw = gl_Position.w; vu = uv; vo = uv.y; va = a; ve = e; wp = p; vs = vec4(0.);
     if (a.z > .5 && a.z < 1.5) { vec2 tl = floor(p.xz - step(8., mod(uv, 16.)) + .5) - go.xy; if (tl.x >= 0. && tl.y >= 0. && tl.x < go.z && tl.y < go.z) vs = texelFetch(gw, ivec2(tl), 0); } }`;   // (vs: the light of your space on this tile (vox_style.js `light`), for a floor under the land: its tile is its corner less where in its paint that corner is)
   const FS = `#version 300 es
-  precision highp float; in vec2 vu; in vec4 va, vs; in float ve; in highp vec3 wp; in highp float vw; uniform sampler2D t, wt, mk; uniform vec3 lamp, eye, fogc, mc;
+  precision highp float; in vec2 vu; in vec4 va, vs; in float ve; in highp vec3 wp; in highp float vw; flat in highp float vo; uniform sampler2D t, wt, mk; uniform vec3 lamp, eye, fogc, mc;
   uniform vec4 cl, wv, wtn[5]; uniform float wa, dep, lr, day, amb, fn, ff, rim, rd, sun, shp, cd, xr; uniform vec3 sc, bd[4]; uniform vec4 sp; uniform float rf, rz, ho, cp, bh, bp; uniform vec3 em; out vec4 o;
   ${LVC}
   ${PORT}
+  // (a place of the land on the screen, in px, bent as the painter bends it (VS); is a px in a quad's four corners on the screen: water beside water, waterFaces)
+  uniform mat4 m; uniform vec3 ctr; uniform float bend; uniform vec2 vpx; ${SINK}
+  vec2 scr(vec3 q) { q.y -= bend * sink(max(0., ctr.z - 1. - q.z)); vec4 c = m * vec4(q, 1.); return (c.xy / c.w * .5 + .5) * vpx; }
+  float cr(vec2 a, vec2 b) { return a.x * b.y - a.y * b.x; }
+  bool inq(vec2 p, vec2 a, vec2 b, vec2 c, vec2 d) { float s1 = cr(b - a, p - a), s2 = cr(c - b, p - b), s3 = cr(d - c, p - c), s4 = cr(a - d, p - d); return (s1 >= 0. && s2 >= 0. && s3 >= 0. && s4 >= 0.) || (s1 <= 0. && s2 <= 0. && s3 <= 0. && s4 <= 0.); }
   // STRATA: a wall of your hole by its level under the land round it (rz): each level one flat tone, a step darker than the one over it (to .3), every second one a little darker still: levels can be counted, deep is dark
   float strat(float lv) { return max(.3, .92 - .08 * max(0., rz - lv)) * (mod(floor(lv + .5) + 1024., 2.) < .5 ? 1. : .9); }
   float bit(float v, float k) { return mod(floor(v / k), 2.); }
@@ -110,7 +115,12 @@ const VoxStyleGLSL = (() => {
       float ax = clamp(1. - min(dE, dW) / 7., 0., 1.), ay = clamp(1. - min(dS, dN) / 7., 0., 1.), a = max(ax, ay) + .5 * min(ax, ay); ivec2 b2 = ivec2(q) & 1;
       float nr = floor(clamp(2.5 - distance(wp.xz, lamp.xz), 0., 1.) * 3. + .5) / 3.; col *= mix(.7 + .3 * nr, 1., snk ? sw : 0.) * (1. - .1 * min(3., floor(a * 3. + .5))); }   // (a sunk floor of your space, lit as one under the land, is not the step darker: a shaft's floor at a passage's end was, a step that is not there; its walls' feet keep their shade) (a floor in a hole under the sky (vox_style_land.js 262144: a pit's, a trench's, a shaft's): its walls take some of the sky from it, a step darker than the ground round it, by day and by night, less by you, in its own steps out to 2.5 tiles (it was cut at 1.5 tiles from you: an arc of steps; then it was the lantern's whole pool, and by day a pit five tiles off was as light as the meadow, .88 of it; with no corner shade per tile .78 left it at .8: .7); and the foot of each of its walls in shade, 7 px out, in three solid steps (a 2x2 dither once: a checker; the corners' shade, per tile, was nested flat squares). Its pale dug earth was lighter than the grass: at night the holes glowed lavender)
     if (kind > 2.5 && kind < 3.5) {                              // water: the game's own picture of it over a tint (the picture is the clear water, its bed showing: only a little of it over the sea tint)
-      vec2 w = (vec2(wp.x, wp.z) * 16. - wv.xy) / wv.zw; vec4 wc = wv.z > 0. && w == clamp(w, 0., 1.) ? texture(wt, w) : vec4(0.);   // (past the picture's edge: none of it. Clamped, its edge row was stretched over the far water: thin vertical lines)
+      if (vu.x > .5 && (vu.x < 1.5 ? eye.z < wp.z : vu.x < 2.5 ? eye.x < wp.x : eye.x > wp.x)) discard;   // (a side of the water (vox_style_land.js waterFaces: vu.x 1 south, 2 east, 3 west) turned from the eye: it lay over its own top, two tints)
+      if (vu.x < .5 && vo > .5) { float q = floor(vo + .5); vec2 tl = floor(wp.xz);   // (a top whose near part is seen through higher water beside it, south, east, west, south-east or south-west (vo, its uv's v: by how much, eighths, 5 and 4 bits each): the px that water's own top covers on the screen (its corners put where the painter puts them) are that water's, left out here)
+        for (int i = 0; i < 5; i++) { float s = i == 0 ? mod(q, 32.) : i == 1 ? mod(floor(q / 32.), 32.) : i == 2 ? mod(floor(q / 1024.), 32.) : i == 3 ? mod(floor(q / 32768.), 16.) : floor(q / 524288.); if (s < .5) continue;   // (south, east, west, south-east, south-west)
+          vec2 nq = tl + (i == 0 ? vec2(0., 1.) : i == 1 ? vec2(1., 0.) : i == 2 ? vec2(-1., 0.) : i == 3 ? vec2(1., 1.) : vec2(-1., 1.)); float h = wp.y + s / 8. * H;
+          if (inq(gl_FragCoord.xy, scr(vec3(nq.x, h, nq.y)), scr(vec3(nq.x + 1., h, nq.y)), scr(vec3(nq.x + 1., h, nq.y + 1.)), scr(vec3(nq.x, h, nq.y + 1.)))) discard; } }
+      vec2 w = (vec2(wp.x, wp.z) * 16. - wv.xy) / wv.zw; vec4 wc = vu.x < .5 && wv.z > 0. && w == clamp(w, 0., 1.) ? texture(wt, w) : vec4(0.);   // (past the picture's edge: none of it. Clamped, its edge row was stretched over the far water: thin vertical lines. A side has none: the picture is of the face, a side took one row of it down its height)
       vec3 sea = vec3(.36, .64, .8) * max(l, .6);
       col = mix(sea, wc.rgb, wc.a * .3);
       if (wtn[4].a > .5) { vec4 tn = wtn[int(clamp(ve, 0., 4.))]; col = mix(tn.rgb * max(l, .6), wc.rgb, wc.a * .45); o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), max(tn.a, wc.a * .45)); return; }   // (light.wtint: clear water: a tint and how much of it for water 0..4 levels deep (ve), the bed showing through; the game's picture of the water, its waves and glints, over it)
