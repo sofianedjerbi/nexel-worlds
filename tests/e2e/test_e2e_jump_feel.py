@@ -135,3 +135,32 @@ def test_off_a_pillar_the_land_still_goes_up_a_step_by_whole_px(game, how, up):
     moves = [b[2] - a[2] for a, b in zip(r, r[1:]) if abs(b[2] - a[2]) > .01]
     assert len(moves) >= 4 and all(abs(v - round(v)) < .02 and v > 0 for v in moves), [(i, round(v, 3)) for i, v in enumerate(moves) if not (abs(v - round(v)) < .02 and v > 0)]
     assert not game.errors, game.errors
+
+
+# every frame: [your body's height over the ground as drawn (art px), its pose, in a fall (in the air)]
+FALLREC = """() => { window.__fr = []; window.__frOn = true; const f = () => { const p = ents.get('agent' + myId), now = performance.now(), j = jumping(p, now), fl = falling(p, now);
+  __fr.push([j ? Math.round(j.body) : 0, j && j.pose || '', !!(fl && fl.air)]); if (__frOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+@pytest.mark.realtime
+def test_jump_pressed_falling_into_a_hole_does_not_play_its_hop_once_down(game):
+    """"when i jump above a hole it glitches the player animation": walked off the edge of a hole three deep, Space
+    pressed on the way down. The fall is drawn first (it is what the body does); its hop on the spot waited under it and
+    played what was left of its arc once you were down: the body all but down, then 18 px up in a frame ("apex") and down
+    again. A hop asked for in the air is no hop: once down, the body stays down (a heavy landing's bounce aside)."""
+    game.clear_area(8)
+    x, y = game.pos()
+    game.rpc("dev_col", tiles=[[x + 1, y + j] for j in range(-2, 3)], col=[-3])
+    game.rest()
+    game.js(FALLREC)
+    game.page.keyboard.down("d")
+    game.wait("(() => { const f = falling(ents.get('agent' + myId), performance.now()); return !!(f && f.air); })()", 4000)
+    game.page.keyboard.press("Space")
+    game.page.keyboard.up("d")
+    game.sleep(900)
+    r = game.js("(() => { __frOn = false; return __fr; })()")
+    down = max(i for i, v in enumerate(r) if v[2]) + 1                                 # (the first frame on the ground again)
+    after = r[down:]
+    assert after and max(v[0] for v in after) <= 3 and not {v[1] for v in after} & {"takeoff", "rise", "apex", "fall"}, r[down - 3:down + 12]
+    assert game.server()["z"] == -3, game.server()
+    assert not game.errors, game.errors

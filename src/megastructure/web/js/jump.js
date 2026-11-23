@@ -170,7 +170,9 @@ function jumping(p, now = performance.now()) {
 }
 function jumping0(p, now) {
   const fall = falling(p, now);
-  if (fall) return fall;
+  // (a hop asked for in a fall, or at the edge as it began, is no hop: it waited under the fall and played what was left
+  //  of its arc once you were down, the body 18 px up in a frame and down again: "when i jump above a hole it glitches")
+  if (fall) { if (fall.air && now - p.hop < HOP.ms) p.hop = -1e9; return fall; }
   if (now - p.bounce < FALL.bounce[1] * 1000 && !jumpOf(p)) {                 // a heavy landing: up a little off the ground, and down
     const k = (now - p.bounce) / 1000 / FALL.bounce[1];
     return {body: Math.sin(k * Math.PI) * FALL.bounce[0], ground: 0, air: false};
