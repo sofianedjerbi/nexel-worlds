@@ -365,8 +365,11 @@ const HdLook = (() => {
     // LOST: the GPU took a context back (the sky's: VoxGL; the land's: vox_style.js) and gives no new one yet (asked again once a second): the last picture stays on the screen as it was.
     // (It was hidden, or the land drawn from its dead canvas: the whole world gone, the page's dark behind it, until the GPU gave one: "the whole world sometimes disappears")
     api.lost = on && !api.live && !!HdView.el && HdView.el.style.display === "block";
-    if (api.live || api.lost) ctx = HdView.sink(); try { f0(now); } finally { ctx = keep; }
-    if (api.live) after(); else if (!api.lost) HdView.hide();
+    // WAKING UP: in the world, the world not yet having sent you (its next tick, 0.1 to 0.3 s): the last picture (the first screen's island) stays, as when lost.
+    // (The look had nobody to look at: it hid its picture, and the page's dark brown was the world under the bar and the welcome: "the world black after joining")
+    api.wait = !on && !!me && myId !== null && !ents.get("agent" + myId) && !!HdView.el && HdView.el.style.display === "block";
+    if (api.live || api.lost || api.wait) ctx = HdView.sink(); try { f0(now); } finally { ctx = keep; }
+    if (api.live) after(); else if (!api.lost && !api.wait) HdView.hide();
     HdView.perf(now, performance.now() - t0, api.drew, eng ? eng.calls : 0, slice1, wrote);
   };
     const d0 = drawTile; drawTile = function (x, y, to = null) { d0(x, y, to); if (!to && eng) eng.touch(x, y); };

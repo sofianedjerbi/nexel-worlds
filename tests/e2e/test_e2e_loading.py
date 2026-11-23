@@ -191,3 +191,25 @@ def test_an_island_that_never_comes_does_not_hold_the_wait_for_ever(browser, ser
     page.wait_for_function("!document.getElementById('boot')", timeout=15000)
     assert time.monotonic() - t0 < 12 and not page.evaluate("document.body.classList.contains('scene')")   # (gone with no island: the give-up, not the island's end)
     page.close()
+
+
+# every frame from the press of Enter: [the world's picture shown, the HD look live, you on the page], until your world is drawn
+WOKE = """() => { window.__wk = []; const f = () => { const p = typeof myId !== 'undefined' && myId !== null && ents.get('agent' + myId);
+  __wk.push([!!HdView.el && HdView.el.style.display === 'block', HdLook.live, !!p]); if (!(p && HdLook.live && HdLook.drew) && __wk.length < 600) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+def test_waking_up_the_island_stays_on_the_screen_until_your_land_is_drawn(browser, server):
+    """"the world black after joining" (the phone; the desk now and then): Wake up pressed, the island went and the page's
+    dark brown came with the bar, the hearts and the welcome, a fifth of a second or more: until the world sent you, the
+    HD look had nobody to look at and hid its picture. Now the island's last picture stays until then: no frame between
+    the first screen and your world without a picture of the world."""
+    page = browser.new_page(viewport={"width": 1280, "height": 800})
+    page.goto(server)
+    page.wait_for_function("typeof ready !== 'undefined' && HdLook.live && !document.getElementById('boot')", timeout=30000)
+    page.fill("#name", f"wake{int(time.time() * 1000) % 100000}")
+    page.evaluate(WOKE)
+    page.keyboard.press("Enter")
+    page.wait_for_function("(() => { const p = myId !== null && ents.get('agent' + myId); return !!p && HdLook.live && HdLook.drew; })()", timeout=20000)
+    rec = page.evaluate("window.__wk")
+    assert all(r[0] for r in rec), ([i for i, r in enumerate(rec) if not r[0]][:10], len(rec))
+    page.close()

@@ -100,7 +100,7 @@ function frame(now) {
   // picture it had. Held for HOLD_MS at the most once some of the land there is ready; after that, what has come.
   const lacking = !!me && (!hereBlock || !worldReady), late = lacking && goodAt > 0 && now - goodAt >= HOLD_MS && (now - goodAt >= 4 * HOLD_MS || vis.some((b) => onScreen(b) && Voxels.made(b)));      // (...and while none of it has come at all, four times as long: a busy machine)
   if (!lacking) goodAt = now; else if (!late && goodAt > 0) { slowFrame(dt, false); return; }
-  if (!HdLook.live && !HdLook.lost && me) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }   // (no picture of the world: WebGL 2 missing, or not ready yet)
+  if (!HdLook.live && !HdLook.lost && !HdLook.wait && me) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }   // (no picture of the world: WebGL 2 missing, or not ready yet)
   slowFrame(dt, worldReady);
   // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
   occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
