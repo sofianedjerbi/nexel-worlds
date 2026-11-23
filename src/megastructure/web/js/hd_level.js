@@ -24,10 +24,10 @@ const HdLevel = (() => {
   function of0(p, now) {
     const H0 = Voxels.host, rx = Math.round(p.x), ry = Math.round(p.y), near = typeof myAt !== "undefined" && myAt && Math.abs(myAt.x - rx) + Math.abs(myAt.y - ry) <= 2;
     const at = (x, y) => { const t = topAt(x, y), s = near ? Floors.standOf(p, x, y) : t; return s >= t && H0.water && H0.water(x, y) && H0.waterTop ? Math.max(s, H0.waterTop(x, y)) : s; };   // (in water: at its face)
-    const cl = Climb.climbOf(p); if (cl) return [Math.floor(cl.h), cl.h];   // (on a ladder's rungs: as high as you have climbed)
+    const pl = BodyPlace.of(p), cl = pl.climb; if (cl) return [Math.floor(cl.h), cl.h];   // (on a ladder's rungs: as high as you have climbed)
     const lp = p.e && p.e.id === myId && p.e.kind === "agent" ? Leap.level() : null; if (lp) return lp;   // (in the air: drawn from the level you left, the ground under you yours: leap.js)
     const lz = p.leapAt ? Leap.landedOn(p) : null; if (lz !== null) return [lz, lz];   // (come down from a jump off a tile's middle: on that tile)
-    const L = at(rx, ry), ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y); if ((ax === bx && ay === by) || falling(p, now)) return [L, L];
+    const L = at(rx, ry), ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y); if ((ax === bx && ay === by) || pl.fall) return [L, L];
     const la = at(ax, ay), lb = at(bx, by), f = ax === bx ? p.y - ay : p.x - ax;
     const fw = mineWalking(p) && DIRV[walking.dir][0] + DIRV[walking.dir][1] > 0;
     if (mineWalking(p) && (fw ? lb > la && Leap.leapable(ax, ay, la, bx, by) : la > lb && Leap.leapable(bx, by, lb, ax, ay))) return [L, Math.min(la, lb)];   // (yours, walking up to a step: your own level until you jump up it, leap.js)

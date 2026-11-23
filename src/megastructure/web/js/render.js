@@ -41,10 +41,9 @@ function frame(now) {
     if (HdLook.eye && HdLook.eye.watch) HdLook.eye = null;      // (in the world now: the eye is on you)
     const p = ents.get("agent" + myId);
     if (p) {                                         // (you are drawn lifted on high ground: centre that; falling: you, not the ground you left; jump.js)
-      const fall = falling(p, now);
       const pan = Build.pan(dt);                      // (build mode: half way to the cursor)
-      const cl = Climb.climbOf(p);                    // (on a ladder: where the body is drawn, climbing.js)
-      cam.x = camT.x = p.x + pan.x + (cl ? cl.dx : 0); cam.lift = liftOf(p) / zoom + (cl ? cl.lift : 0) + (fall ? fall.body : 0) + fallShake(now); cam.y = camT.y = p.y + pan.y + (cl ? cl.dy : 0) - cam.lift / P;
+      const pl = BodyPlace.of(p);                     // (on a ladder, in a fall: where the body is drawn, body_place.js)
+      cam.x = camT.x = p.x + pan.x + pl.dx; cam.lift = liftOf(p) / zoom + pl.eye + fallShake(now); cam.y = camT.y = p.y + pan.y + pl.dy - cam.lift / P;
       // (the land drawn where you are drawn, found: a tile within APART layers' rows of you, in your column or two each
       // side, whose top is there, or the wall between two; none: you are away from it, state.js. Under it if the land
       // round your tile is over you, else over it; high: far over the land beside you, a tower's top, a pillar's)

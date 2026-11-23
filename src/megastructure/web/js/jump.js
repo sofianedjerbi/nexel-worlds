@@ -126,14 +126,6 @@ function fallOf(p, now) {
   if (mine) fallWind(Math.min(1, FALL.g * t / 600));       // (louder and higher with its speed)
   return {body: h - ramp, ground: F.land - ramp, air: true};
 }
-// What is drawn over a body (its name, its health, what it says, its marks) goes where the body is drawn: up a ladder
-// (climbing.js), in a hop, in a fall. -> screen px to move it by from sx(p.x), bodyY. (It followed falls only: on a
-// ladder the name stayed on the straight line, a tile and more from the climber; in a hop it stood still: a hop a
-// block high went through it. By whole art px, as the body is drawn: it was a screen px off it, up and down)
-function overBody(p, S) {
-  const cl = Climb.climbOf(p), j = p.fall && p.fallNow ? p.fallNow : Leap.body(p) || jumpOf(p) || hopOf(p, performance.now());
-  return [cl ? cl.dx * S : 0, (cl ? cl.dy * S - cl.lift * zoom : 0) - (j ? Math.round(j.body) * zoom : 0)];
-}
 // The jump key on the level: a hop on the spot (walk.js jumpKey; others: their `jump` event, state.js) -> null, or as jumpOf
 function hopOf(p, now) {
   // (swimming there is nothing to push off: no hop, the body and its name as they are. The name hopped, the body,

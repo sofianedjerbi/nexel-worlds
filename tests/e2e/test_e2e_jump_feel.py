@@ -168,7 +168,7 @@ def test_jump_pressed_falling_into_a_hole_does_not_play_its_hop_once_down(game):
 
 # every frame: [in the air (leap.js), drawn swimming, your body's top on the screen (art px), its height as drawn, your name's lift (art px)]
 AIR = """() => { window.__ar = []; window.__arOn = true; const f = () => { const p = ents.get('agent' + myId), now = performance.now(), j = jumping(p, now), a = HdLook.art(), b = a && a.body;
-  __ar.push([Leap.on(), swimsAt(p, p.e), b ? Math.round(b.y / a.u) : null, j ? Math.round(j.body) : 0, -Math.round(overBody(p, TS())[1] / zoom)]); if (__arOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+  __ar.push([Leap.on(), swimsAt(p, p.e), b ? Math.round(b.y / a.u) : null, j ? Math.round(j.body) : 0, BodyPlace.of(p).up]); if (__arOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
 
 
 @pytest.mark.realtime
@@ -218,3 +218,57 @@ def test_space_while_swimming_moves_neither_the_body_nor_its_name(game):
     r = game.js("(() => { __arOn = false; return __ar; })()")
     assert all(v[1] for v in r) and max(abs(v[3]) for v in r) == 0 and max(abs(v[4]) for v in r) == 0, r[:12]
     assert not game.errors, game.errors
+
+
+# every frame: [where your name is written (art px down the screen), your drawn body's top (art px), jump shadows drawn]
+NAMED = """() => { window.__nm = []; window.__nmOn = true; const sh = jumpShadow, ol = outlined; let shadows = 0, ny = null;
+  jumpShadow = (...a) => { shadows++; return sh(...a); }; outlined = (t, x, y, c) => { if (t === me) ny = y; return ol(t, x, y, c); };
+  const f = () => { const a = HdLook.art(), b = a && a.body; if (b && ny !== null) __nm.push([Math.round(ny / a.u), Math.round(b.y / a.u), shadows]); shadows = 0;
+    if (__nmOn) requestAnimationFrame(f); else { jumpShadow = sh; outlined = ol; } }; requestAnimationFrame(f); return 1; }"""
+
+
+@pytest.mark.realtime
+def test_space_in_a_boat_moves_neither_the_boat_nor_your_name(game):
+    """The audit's P-E: in a boat the jump key's hop ran (not swimming, no jump through the air): the name rose 20 px
+    and a jump's shadow was drawn, the boat and the sailor did not move. A body in a boat is in a boat (body_place.js:
+    one mode for all that draws it): its name stays, no shadow."""
+    game.clear_area(8)
+    game.stamp(1, -6, ["~~~~~~"] * 6)
+    game.give(boat=1)
+    game.rpc("dev_teleport", x=game.pos()[0] + 1, y=game.pos()[1]); game.arrive()
+    game.hold_item("boat"); game.face(0, -1)
+    game.press("e", 800)
+    x, y = game.pos()
+    game.js(f"act('move_to', {{x: {x}, y: {y - 1}}})")
+    game.wait("meObs.self.sailing && ents.get('agent' + myId).e.sail", 5000)
+    game.rest()
+    game.js(NAMED)
+    game.frames(3)
+    game.page.keyboard.press("Space")
+    game.sleep(600)
+    r = game.js("(() => { __nmOn = false; return __nm; })()")
+    assert len(r) > 10 and len({v[0] for v in r}) == 1 and sum(v[2] for v in r) == 0, (sorted({v[0] for v in r}), sum(v[2] for v in r))
+    assert not game.errors, game.errors
+
+
+@pytest.mark.realtime
+def test_after_a_jump_down_three_levels_your_name_stays_over_your_head(game):
+    """The audit's P-A: come down 2+ levels lower, the body is drawn lifted while the eye catches up (leap.js lift); the
+    name and the bars had their own sum (jump.js overBody) without it, and sat 30 px and more off the head for a third
+    of a second. They read the body's place: the name the same few px over the drawn body, every frame."""
+    game.clear_area(10)
+    x, y = game.pos()
+    game.stamp(-1, -2, ["." * 9] * 5, levels=["333000000"] * 5)
+    game.rpc("dev_teleport", x=x, y=y, z=3); game.arrive(); game.rest()
+    game.js(NAMED)
+    game.page.keyboard.down("Shift"); game.page.keyboard.down("d")
+    game.sleep(60)
+    game.page.keyboard.press("Space")
+    game.wait("Leap.on()", 2000)
+    game.wait("!Leap.on()", 4000)
+    game.page.keyboard.up("d"); game.page.keyboard.up("Shift")
+    game.sleep(600)
+    r = game.js("(() => { __nmOn = false; return __nm; })()")
+    gaps = [v[1] - v[0] for v in r]
+    assert len(r) > 20 and max(gaps) - min(gaps) <= 6, (min(gaps), max(gaps), gaps[:60])
+    assert game.server()["z"] == 0 and not game.errors, (game.server(), game.errors)

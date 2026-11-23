@@ -1,0 +1,33 @@
+// BODY PLACE: where a body is this frame, worked out once, read by all that draws it or stands over it: the camera
+// (render.js), its picture (characters.js drawBody), its name, bubble, emote, health and progress bars, its shadow, the
+// HD look's level and list (hd_level.js, hd.js), the light and the x-ray (Cover).
+// It was nobody's: each reader asked jumping(), falling(), climbOf(), swimsAt() itself, in its own order (the body:
+// fall, bounce, hop, step; its name: fall, leap, step, hop, no bounce, no landing's lift; the swimmer: after the hop's
+// bob). So the name hopped over a boat that did not, over a swimmer who did not, and sat off the head while the eye
+// caught up after a jump down a few levels.
+//
+// BodyPlace.of(p) -> {tx, ty: its tile; z: its feet's height, levels, as drawn; ground: the ground under it, levels (its
+//   shadow, its dust); mode: one of "boat", "swim", "climb", "fall", "jump", "walk"; air: feet off the ground; pose: the
+//   jump's pose or null; fx, fy: the way it faces; dx, dy: tiles aside (a ladder's lean);
+//   up: art px its picture and all over it are drawn over the straight line between its two tiles (relief.js liftOf);
+//   eye: art px the camera follows over that line (a climb, a fall: not a hop's arc);
+//   jump, fall, climb: the mode's own numbers, for its picture (jump.js, climbing.js)}
+// One record a body a frame (the frame's time: render.js lastT): asked again in the frame, the same record.
+const BodyPlace = (() => {
+  function make(p, now) {
+    const e = p.e || {}, tx = Math.round(p.x), ty = Math.round(p.y), boat = !!e.sail;
+    // (the mode, in ONE order. In a boat nothing else: no hop, no fall. Swimming, unless still in the air over the water.
+    // On a ladder's rungs. Then the air: a fall, a jump (through the air, on the spot, up a step). Else on the ground)
+    const j0 = boat ? null : jumping(p, now), fall = boat ? null : falling(p, now);
+    const swim = !boat && !!p.e && swimsAt(p, e) && !(j0 && j0.air), climb = boat || swim ? null : Climb.climbOf(p), jump = swim ? null : j0;
+    const air = !!jump && !!(jump.air || jump.tuck);
+    const mode = boat ? "boat" : swim ? "swim" : climb ? "climb" : fall && fall.air ? "fall" : jump && (jump.leap || jump.tuck || jump.pose) ? "jump" : "walk";
+    const up = (climb ? climb.lift : 0) + (jump ? Math.round(jump.body) : 0), line = liftOf(p) / zoom;
+    return {at: now, tx, ty, mode, air, pose: jump && jump.pose || null, fx: p.fx || 0, fy: p.fy || 0, dx: climb ? climb.dx : 0, dy: climb ? climb.dy : 0,
+      up, eye: (climb ? climb.lift : 0) + (fall ? fall.body : 0), z: climb ? climb.h : (line + up) / RELIEF_STEP, ground: (line + (jump ? jump.ground : 0)) / RELIEF_STEP, jump, fall, climb};
+  }
+  const of = (p) => (p.place && p.place.at === lastT ? p.place : (p.place = make(p, lastT)));
+  // screen px to move what is over a body by, from sx(p.x), bodyY(p): by whole art px, as the body is drawn
+  const over = (p, S) => { const b = of(p); return [b.dx * S, b.dy * S - b.up * zoom]; };
+  return {of, over};
+})();
