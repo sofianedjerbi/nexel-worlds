@@ -30,14 +30,24 @@ def test_land_comes_in_whole_and_its_paints_are_never_wiped(browser, server):
     assert g.js("HdLook.work.wipes") == before["wipes"]            # (the land never made again from none for want of places)
 
 
+# every block of the far land the HD look draws (HdLook.far, state.js) has come
+FAR = "(() => { const f = HdLook.far; if (!f) return true; for (let by = Math.floor(f[1] / B); by <= Math.floor(f[3] / B); by++) for (let bx = Math.floor(f[0] / B); bx <= Math.floor(f[2] / B); bx++) if (!blocks.has(bkey(bx, by))) return false; return true; })()"
+
+
 @pytest.mark.realtime
 def test_walking_back_the_far_land_is_not_made_again(browser, server):
+    """(Counted once the far land asked for has come (FAR): its blocks come four a tenth of a second (state.js, since
+    9c681e2), and one that came while you walked back made its patches again, rightly, they were drawn from nothing:
+    653 against 1131, one run in three.)"""
     g = hd(browser, server)
     x, y = g.pos()
+    g.wait(FAR, 15000)
+    g.rest()
     f0 = g.js("HdLook.work.fars")
     g.page.keyboard.down("ArrowRight")
     g.wait(f"myPos().x >= {x + 8}", timeout=8000)
     g.page.keyboard.up("ArrowRight")
+    g.wait(FAR, 15000)
     g.rest()
     f1 = g.js("HdLook.work.fars")
     g.page.keyboard.down("ArrowLeft")
