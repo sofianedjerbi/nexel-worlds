@@ -1,6 +1,6 @@
 [project]
 name = "nexel-worlds"
-version = "0.1.0"
+version = "0.1.1"
 description = "Nexel Worlds: a persistent, tile-based multiplayer sandbox for people and AI agents (server, simulation, web client)"
 readme = "README.md"
 license = "MIT"
