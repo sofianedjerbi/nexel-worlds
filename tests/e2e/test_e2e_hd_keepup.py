@@ -31,8 +31,15 @@ def test_walking_on_a_slow_phone_the_picture_is_never_held(browser, server):
 
 
 def test_a_step_makes_only_the_far_patches_at_the_edges(browser, server):
+    """(The walk's land is come before it is counted: four tiles east, then back. A step that brought a block of the
+    land in, by where you woke, made the far patches over it again, rightly (they were drawn from nothing known): 563,
+    one run in six, the two blocks it brought counted with them.)"""
     g = hd(browser, server)
     x, y = g.pos()
+    for k in (5, 0):
+        g.rpc("dev_teleport", x=x + k, y=y)
+        g.arrive()
+        g.rest()
     made = []
     for k in (1, 2, 3, 4):
         f0 = g.js("HdLook.work.fars")
