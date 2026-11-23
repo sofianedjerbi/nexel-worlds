@@ -177,7 +177,7 @@ const VoxPaint = (() => {
   }
   function front(z, v, px, at, stride, built) {
     const [L, M, D] = bands(z).map(rgb), n = RELIEF_STEP, h = (i, j, s) => hash(i + v * 16, j + z * 8, s), m = mottle(z), stone = wallOf(z) === STONE, put = (i, j, c) => { if (i >= 0 && i < 16 && j >= 0 && j < n) px[at + j * stride + i] = c; };
-    const sh = Array.from({length: n >> 1}, (_, k) => (h(k, 0, 64) * 16) | 0), row = (i, j) => m.rows[(j >> 1) & 1][(i + sh[(j >> 1) % sh.length]) & 15];   // (a shift for every pair of rows of the level: no pattern repeats down a cube's 16)
+    const sh = Array.from({length: n >> 1}, (_, k) => (h(k, 0, 64) * 16) | 0), row = (i, j) => m.rows[j & 1][(i + sh[(j >> 1) % sh.length]) & 15];   // (a shift for every pair of rows of the level: no pattern repeats down a cube's 16)
     for (let j = 0; j < n; j++) for (let i = 0; i < 16; i++) {      // the body: the pack's two rows, a pair of rows from its own place across, a blob a few px wide
       let c = row(i, j);
       if (j === n - 1) c = D; else if (j === n - 2 && h(i >> 1, 0, 61) < .3) c = D;      // the seam at a level's foot (levels are counted), it swells, two px wide

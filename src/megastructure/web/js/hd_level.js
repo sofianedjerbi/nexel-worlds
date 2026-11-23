@@ -67,12 +67,6 @@ const HdLevel = (() => {
     const lw = (b[0] - a[0]) / Math.max(1e-6, c[0] - a[0]);   // (< 0: tops lean west here, the columns east of the floor lean onto it)
     for (let d = 1; d <= 20; d++) for (let i = -12; i <= 12; i++) { if (Math.abs(i) > 2 && (i * lw > 0 || Math.abs(i) > 2 + Math.abs(lw) * (topAt(x + i, y + d) - L))) continue;
       const t = topAt(x + i, y + d); if (t > L + 1 && !matAt(x + i, y + d)) { const q = box(at, x + i, y + d, t); if (q && q[1] < f[3] - .5 && q[2] > f[0] + .5 && q[0] < f[2] - .5) return true; } } return false; }
-  // shut(tx, ty, L, k) -> the floor of your hole is HIDDEN from the eye: the open ground through your tile from north to south (tiles under L + 1: lower than your head), times k (hd.js NARROW: 5, as the eye's line climbed a tile from 78.6 degrees), is less than
-  // the hole's depth under its rim. Only then do its walls tell its depth by going dark (vox_style_glsl.js ho): a shaft, a pit one or two wide across. A gorge five wide whose floor and far wall are seen
-  // kept that dark too: its north wall black under its first level within six tiles of you, a black stepped slab, whenever you stood at its south bank (the rim, from the tiles beside you, 12 there)
-  // An OPEN hole only: under a roof (a tunnel, a cave) the window tells the depth inside, and the dark fell on whatever wall stood within six tiles of you: walking a tunnel
-  // into a hill, the hill's own face over the meadow outside went black under its first level, a black stepped slab round the mouth (as by a river beside its cliffs)
-  function shut(tx, ty, L, k) { const d = rim(tx, ty, L) - L; if (d <= 0 || under(tx, ty, L)) return false; let w = 1; for (const s of [-1, 1]) for (let j = 1; j <= 12 && topAt(tx, ty + s * j) < L + 1; j++) w++; return w * k < d; }
   // THE WALL BETWEEN THE EYE AND YOU: wall(x, y, z, s) -> the face a cell (z: its top) of the land south of you is drawn on, or null (drawn where it is). Seen from above (s.top: the eye looks down
   // into your hole, room or shaft;), a cell over your feet in the land south of you is in a wall whose face turned to you faces away from the eye: its own place projects onto
   // the grass south of the rim (a shaft 3 deep: R's "Dig a step" box lay outside the hole; a room 4 deep: the way's block and its key on the meadow: seen from above).
@@ -103,5 +97,5 @@ const HdLevel = (() => {
     const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); for (let i = 0; i < r.l.length; i += 3) g.rect((x0 + r.l[i]) * zs, (y0 + r.l[i + 1]) * zs, r.l[i + 2] * zs, zs); g.clip("evenodd");
   }
   const body = (me, a, zs) => { const r = me && a && runsOf(me.canvas); if (!r || !r.b) return null; const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; return {x: (x0 + r.b[0]) * zs, y: (y0 + r.b[1]) * zs, w: (r.b[2] - r.b[0]) * zs, h: (r.b[3] - r.b[1]) * zs}; };
-  return {of, steep, own, rim, over, under, clear, hides, veils, shut, wall, wallAt, cut, body, get shows() { return sv; }};
+  return {of, steep, own, rim, over, under, clear, hides, veils, wall, wallAt, cut, body, get shows() { return sv; }};
 })();
