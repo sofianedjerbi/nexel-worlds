@@ -188,3 +188,27 @@ def test_a_shadow_is_cast_in_the_world_and_the_eye_alone_foreshortens_it(browser
             assert all(f > .8 for f in rows[: max(0, got - 6)]), (pitch, " ".join(f"{f:.1f}" for f in rows))
     finally:
         g.page.close()
+
+
+def test_by_day_no_halo_lies_round_you(browser, server):
+    """"When it's luminous, remove the halo around the player: it's ugly, especially in daylight." By day (the clock's
+    day: noon, a sunset, a dawn, the sky already rose and the land lit by it) the ground 2 to 5 tiles from you is the
+    colour of the ground 9 tiles off: no pool of lamp light round you. (Your lamp was drawn once the hour's light was a
+    fifth down: from the sunset on, a yellow disc of rings on a meadow still in daylight.) North and south of you: the
+    low sun's shadow of you lies east or west."""
+    from test_e2e_hd_stair import MOST
+    g = hd(browser, server)
+    try:
+        x, y = g.pos()
+        near = [(0, 2), (0, 3), (0, -2), (0, -3), (1, 4), (-1, 5)]
+        for phase in (.375, .72, .02):
+            g.hour(phase, still=True)
+            g.wait(f"Math.abs((clock.phase || 0) - {phase}) < .02 && !clock.night")
+            settled(g)
+            far = [g.js(MOST, [x + 9, y + j, x + 10, y + j + 1, 0]) for j in (-1, 1)]
+            assert max(abs(a - b) for a, b in zip(*far)) <= 3, (phase, far)               # (the far ground: one colour)
+            for dx, dy in near:
+                c = g.js(MOST, [x + dx, y + dy, x + dx + 1, y + dy + 1, 0])
+                assert max(abs(a - b) for a, b in zip(c, far[0])) <= 3, (phase, (dx, dy), c, far[0])
+    finally:
+        g.page.close()

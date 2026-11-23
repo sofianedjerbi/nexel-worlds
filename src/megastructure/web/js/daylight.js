@@ -54,13 +54,14 @@ function checker(color) {                            // a pattern of one px in t
 }
 // One light on the small picture: discs of whole px, one inside the other, each adding its step of the colour (times
 // a); outside each, an edge two px wide of the same, one px in two
-function lamp(g, cx, cy, r, color, a, shift) {
+// steps: how much each ring adds, from the middle out (LIGHT.steps: rings you see; many small ones: a light with no edge)
+function lamp(g, cx, cy, r, color, a, shift, steps = LIGHT.steps) {
   cx = Math.round(cx); cy = Math.round(cy);
   const pat = g.createPattern(checker(color), "repeat"); pat.setTransform(new DOMMatrix([1, 0, 0, 1, shift[0], shift[1]]));
-  const n = LIGHT.steps.length;
+  const n = steps.length;
   for (let k = n; k >= 1; k--) {
     const rk = Math.round(r * k / n), ro = rk + LIGHT.edge;
-    g.globalAlpha = Math.min(1, a * LIGHT.steps[k - 1]);
+    g.globalAlpha = Math.min(1, a * steps[k - 1]);
     for (let dy = -ro; dy <= ro; dy++) {
       const ho = Math.floor(Math.sqrt(ro * ro - dy * dy)), hi = Math.abs(dy) <= rk ? Math.floor(Math.sqrt(rk * rk - dy * dy)) : -1;
       g.fillStyle = pat;

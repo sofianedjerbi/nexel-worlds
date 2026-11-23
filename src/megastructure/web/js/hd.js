@@ -81,6 +81,7 @@ const HdLook = (() => {
   // the hour's light on the land: the game's own (daylight.js: its tint, its wash, a lamp on each of you and each fire, in whole steps), put where this camera
   // puts them; under a roof (el) none of it. (It was the shader's `day` alone: the night's land as bright as noon under a night sky.) -> {wash, lit: the light's picture}
   // for the land's own painter to lay over what it draws (vox_style.js `hour`), or nothing at plain day
+  const SOFT = Array(24).fill(.01);   // (a lantern under the sky: 24 rings of a hundredth each: none is seen, the light fades out)
   function hour(w, h, list, el) {
     const ph = clock.phase || 0, tint = lightAt(ph).map((v) => v + (255 - v) * el), wash = washAt(ph), dark = Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36);
     if (wash[3] * (1 - el) <= .004 && dark <= .01) return null;
@@ -89,10 +90,12 @@ const HdLook = (() => {
     const base = tint.map((v) => Math.round(v + (255 - v) * lift)), lamps = []; for (const s of list) if (s.lamp) { const a = eng.at(s.x, s.y, s.z); if (a) lamps.push(Math.round(a[0] * 4), Math.round(a[1] * 4), s.lamp); }
     const lk = [base, dark.toFixed(3), lamps, api.builds].join(), out = {wash: [wash[0], wash[1], wash[2], wash[3] * (1 - el)], lit}; if (lk === lit._k) return out; lit._k = lk; lit._v = (lit._v || 0) + 1;   // (the same lamps at the same places: the picture there is this frame's: not painted, not sent again)
     const q = lit.getContext("2d"); q.globalAlpha = 1; q.globalCompositeOperation = "source-over"; q.fillStyle = `rgb(${tint.map((v) => Math.round(v + (255 - v) * lift)).join()})`; q.fillRect(0, 0, w, h);
-    if (dark > .2) { q.globalCompositeOperation = "lighter"; const k = (dark - .2) / .8;
+    if (dark > .2) { q.globalCompositeOperation = "lighter"; const k = (dark - .2) / .8, open = Math.max(0, Math.min(1, (dark - .45) / .55)) * (1 - opt("night") / 100);
       for (const s of list) if (s.lamp) { const a = eng.at(s.x, s.y, s.z), cl = topAt(Math.floor(s.x), Math.floor(s.y)) > (s.zs ?? s.z); if (s.top) api.youLit = !cl || !!winMap().size;   // (zs: the ground's level. A step up or down drew you between two levels: the tile's top over that, your lantern was cut to a window there was none of: gone the time of the step)
       if (!a) continue; if (cl) { q.save(); winPath(q, Math.floor(s.x), Math.floor(s.y)); q.clip(); }   // (a light under the land, your lantern, a fire in your room, lights what the window shows, not the grass over it: a campfire 14 levels down lit a ring on the meadow)
-        lamp(q, a[0], a[1] - 8, s.lamp > 1 ? 64 : 42, s.lamp > 1 ? "rgb(255,176,96)" : "rgb(255,222,170)", (s.lamp > 1 ? 1.15 : .45) * k, [0, 0]); if (cl) q.restore(); } }
+        if (s.lamp > 1 || cl) lamp(q, a[0], a[1] - 8, s.lamp > 1 ? 64 : 42, s.lamp > 1 ? "rgb(255,176,96)" : "rgb(255,222,170)", (s.lamp > 1 ? 1.15 : .45) * k, [0, 0]);
+        else if (open > 0) lamp(q, a[0], a[1] - 8, 72, "rgb(255,232,200)", open, [0, 0], SOFT);   // (a lantern under the sky: only once the night is in (dark .45: the sun down), less with "Light at night", in 24 steps of a hundredth: the land by you a little lighter, no ring, no disc. It was rings from a fifth of dark on: a yellow halo on a meadow still in the sunset's light)
+        if (cl) q.restore(); } }
     q.globalAlpha = 1; return out;
   }
   // the px of the picture the window shows round (tx, ty): each of its tiles' floor, and the walls north and beside it up to its ceiling: a path on q
