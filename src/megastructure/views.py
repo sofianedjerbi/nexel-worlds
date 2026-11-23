@@ -70,7 +70,8 @@ class Views:
         mats = {str((j - y) * w + i - x): m for (i, j) in self.sim.placed.at if x <= i < x + w and y <= j < y + h and (m := self.sim.placed.mat(i, j, col_runs(raw[(j - y) * w + i - x])))}   # (the block put on a tile's top: landblocks.py)
         # what is built over the land (sim/storeys.py): [tile's index, height, kind, the char of what stands on it]
         floors = [[(j - y) * w + i - x, z, kind, BLOCKS[B[thing]].char] for i, j, z, kind, thing in self.sim.floors.within(x, y, w, h)]
-        return {**({"cols": cols} if cols else {}), **({"mats": mats} if mats else {}), **({"floors": floors} if floors else {}), "sea": SEA, "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
+        water = [[(j - y) * w + i - x, z, v] for i, j, z, v in self.sim.water.within(x, y, w, h)]       # (water that runs, and what was poured: [tile's index, height, level], flow.py)
+        return {**({"cols": cols} if cols else {}), **({"mats": mats} if mats else {}), **({"floors": floors} if floors else {}), **({"water": water} if water else {}), "sea": SEA, "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
                 "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}
 
     # ----------------------------------------------------------- what they are sent, as it happens

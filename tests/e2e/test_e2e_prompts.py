@@ -32,7 +32,7 @@ def test_what_you_face_has_its_key_beside_it(game):
     game.press("ArrowRight", 400)
     game.wait("$('prompts').innerText.includes('Chop tree')", 3000)
     side = game.js(PART, "side")
-    assert side[4].startswith("X") and "Chop tree" not in game.js("$('actions').innerText")
+    assert side[4].startswith(game.js("capOf('alt')")) and "Chop tree" not in game.js("$('actions').innerText")
     assert not game.errors
 
 
@@ -67,11 +67,11 @@ def test_only_what_your_hand_gets_to_is_offered(game):
     game.clear_area(8)
     x, y = game.pos()
     game.press("ArrowDown", 300)
-    for dx, dy, lv, said in ((-1, 0, "6", "XDig into the hill"), (0, 1, "f", "")):
+    for dx, dy, lv, said in ((-1, 0, "6", "Dig into the hill"), (0, 1, "f", "")):
         game.stamp(dx, dy, ["f"], levels=[lv])
         game.face(dx, dy)
         game.sleep(400)
-        assert game.actions() == said, (lv, game.actions())      # (X digs the block you face: the pillar's at your feet; nothing of a floor six down, nor of the flower)
+        assert game.actions() == (said and game.js("capOf('alt')") + said), (lv, game.actions())      # (X digs the block you face: the pillar's at your feet; nothing of a floor six down, nor of the flower)
         game.js("$('toast').style.display = 'none'")
         game.press("e", 300)
         assert game.toast() == "" and game.inv("flower") == 0

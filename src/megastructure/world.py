@@ -93,7 +93,7 @@ class World:
             (x, y): json.loads(j) for x, y, j in store.db.execute("SELECT x, y, json FROM tile_meta")
         }
         self.dirty_meta: set[tuple[int, int]] = set()
-        self._gen, self._pending = None, {}             # background world generation (prefetch)
+        self._gen, self._pending, self.water = None, {}, None   # background world generation (prefetch); water: flow.py, told of each change
         self.fresh: list[tuple[int, int]] = []         # chunks generated (not loaded) since the simulation last looked
 
     # ---- chunk management -------------------------------------------------
@@ -239,6 +239,7 @@ class World:
             i = (y & 31) * CHUNK + (x & 31)
             c.cols[i] = c.cols[i] | 1 << (z - LOW) if solid else c.cols[i] & ~(1 << (z - LOW))
             c.dirty = True
+            self.water and self.water.cell_changed(x, y, z, solid)
 
     def rim(self, x: int, y: int) -> bool:
         """On a hill's rim (a lower tile next to it, diagonals too), where its edge is drawn: nothing is built or
@@ -282,10 +283,10 @@ class World:
                 del self.meta[(x, y)]
                 self.dirty_meta.add((x, y))
         c.dirty = True
+        self.water and self.water.tile_changed(x, y)
 
     def passable(self, x: int, y: int) -> bool:
-        g, b = self.get(x, y)
-        return GROUNDS[g].walkable and not BLOCKS[b].solid
+        return GROUNDS[(gb := self.get(x, y))[0]].walkable and not BLOCKS[gb[1]].solid
 
     def set_meta(self, x, y, data: dict | None):
         if data:
@@ -295,5 +296,4 @@ class World:
         self.dirty_meta.add((x, y))
 
     def char(self, x, y) -> str:
-        g, b = self.get(x, y)
-        return BLOCKS[b].char if b else GROUNDS[g].char
+        return BLOCKS[gb[1]].char if (gb := self.get(x, y))[1] else GROUNDS[gb[0]].char

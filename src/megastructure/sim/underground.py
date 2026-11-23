@@ -112,7 +112,7 @@ class Underground:
     def _tool_dig_down(self, a: Agent, args):
         pick = self.held(a, args) == "pickaxe"             # (by hand too, slower: "i should be able to break this block by putting myself in top of it then digging under my feets")
         x, y = a.x, a.y
-        if self.swimming(a):                                # the bottom under you, from the surface
+        if self.swimming(a) and GROUNDS[self.world.get(x, y)[0]].liquid:     # the bottom under you, from the surface
             if not pick:
                 raise ActionError("need_tool", "digging the bottom needs a pickaxe in hand (with: pickaxe)"
                                   + ("" if a.count("pickaxe") else "; craft one at a workbench"))

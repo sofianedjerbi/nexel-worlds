@@ -21,7 +21,7 @@ def test_e_does_not_mine_a_rock_x_does(game):
     game.stamp(1, 0, ["M"])
     game.face(1, 0)
     x, y = game.pos()
-    assert rows(game) == ["X Mine rock (slow)"], rows(game)                     # (E has nothing to do with a rock: no row)
+    assert rows(game) == [game.js("capOf('alt')") + " Mine rock (slow)"], rows(game)                     # (E has nothing to do with a rock: no row)
     game.js("$('toast').style.display = 'none'")
     for _ in range(3):
         game.press("e", 400)
@@ -37,7 +37,7 @@ def test_e_opens_a_chest_x_takes_it_apart(game):
     game.stamp(1, 0, ["C"])
     game.face(1, 0)
     x, y = game.pos()
-    assert rows(game) == ["E Open chest", "X Break chest open (slow)"], rows(game)
+    assert rows(game) == ["E Open chest", game.js("capOf('alt')") + " Break chest open (slow)"], rows(game)
     game.press("e", 400)
     assert game.tile(1, 0) == "C"                                            # E opened it: it stands
     game.page.keyboard.down("x")

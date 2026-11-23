@@ -8,6 +8,7 @@ const Voxels = (() => {
     column: (x, y) => (blockOf(x, y) ? WaterBed.column(x, y) : null),      // (clear water, waterbed.js: a water tile's is its bed)
     waterTop: (x, y) => topAt(x, y),                            // (a hole that filled, a pool up on a hill: its face at its own height)
     water: (x, y) => { const g = gndAt(x, y) || "."; return wet(g) || g === ":"; },      // (under a bridge too: its deck is a model over it)
+    flow: Flow.col,                                             // (water that runs, in the land's cells: flow.js)
     models: Models.at, modelSheet: Models.sheet,                 // (models.js: what stands in the land as boxes)
     // (maskOf.plain: as if land as high lay all round it, so it has no rim and no cut corner; peek: the height
     // it is drawn at, cells.js. Then its lip, where the land beside it is lower: voxpaint.js. Water: what floats)

@@ -369,6 +369,7 @@ const HdLook = (() => {
     HdView.perf(now, performance.now() - t0, api.drew, eng ? eng.calls : 0, slice1, wrote);
   };
     const d0 = drawTile; drawTile = function (x, y, to = null) { d0(x, y, to); if (!to && eng) eng.touch(x, y); };
+    api.wet = (x, y) => { if (eng) eng.wet(x, y); };   // (water that ran there: its chunk alone made again, flow.js)
     const a0 = arriveBlock; arriveBlock = function (b) { a0(b); if (eng) eng.touchBox(b.bx * B, b.by * B, b.bx * B + B - 1, b.by * B + B - 1); }; }   // (a block come in at once: every tile of it as drawn again, tiles.js)   // (a tile of the land drawn again: its chunk of this land is made again, its paints painted again)
   return api;
 })();
