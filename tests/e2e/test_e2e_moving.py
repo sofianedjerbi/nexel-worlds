@@ -243,3 +243,23 @@ def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
     gone = rec[-1][1] - rec[0][1]
     assert gone > 2.5, gone                                   # (5 tiles a second for 0.7 s, the step a third of a second: its jump's time, jump.js jumpMs)
     assert game.pos() == (game.server()["x"], game.server()["y"])
+
+
+def test_moved_far_just_as_you_stop_walking_you_are_drawn_where_the_world_has_you(game):
+    """Let go of a walk and be moved far away at once (a teleport; waking again after a death): the page kept you where
+    you stopped, for good, and walked you from there, the world's tiles under you twenty tiles off. Letting go leaves
+    a guess of the tile you stop on (walk.js pred) until the world is there; the world's ticks tell of what is round the
+    screen only, so where you stopped it never was again, and the guess, never dropped, kept the page from taking the
+    place the world gave (agent.js refresh)."""
+    x, y = game.pos()
+    game.page.keyboard.down("d")
+    game.wait("walking !== null && ents.get('agent' + myId).walking")
+    game.sleep(150)
+    # (the key let go and the world moving you, in one go: the next tick already has you far from here)
+    game.js("""([x, y]) => { window.dispatchEvent(new KeyboardEvent('keyup', {key: 'd', code: 'KeyD'})); rpc('dev_teleport', {x, y}); return 1; }""", [x + 200, y + 200])
+    game.page.keyboard.up("d")
+    s = game.server()
+    assert (s["x"], s["y"]) == (x + 200, y + 200), s
+    game.wait(f"(() => {{ const p = myPos(); return p.x === {x + 200} && p.y === {y + 200}; }})()", 8000)
+    game.arrive()
+    assert game.pos() == (x + 200, y + 200)

@@ -48,6 +48,9 @@ async function refresh() {
   if (!r.ok) return;
   meObs = r.obs; const s = meObs.self;
   const p = ents.get("agent" + myId);                          // far from where the server has you (another level,
+  // (the tile you stopped on, its time gone: no longer a guess. It is dropped as a tick has you (walk.js myTick), but moved
+  // far as you let go, no tick had you again (they tell of what is round the screen): it stayed, and you with it, for good)
+  if (pred && performance.now() > pred.until) { pred = null; trail.length = 0; }
   if (p && !pred && !(walking && p.walking) && Math.abs(p.tx - s.x) + Math.abs(p.ty - s.y) > 4) {   // a teleport): be there
     p.x = p.tx = s.x; p.y = p.ty = s.y; cam.x = camT.x = s.x; cam.y = camT.y = s.y;
   }
