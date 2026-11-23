@@ -55,6 +55,7 @@ function setTile(x, y, comb, gnd, who = null, col = null, mat = null) {    // (c
   b.comb[i] = comb; b.gnd[i] = gnd;
   b.objs.delete(i); if (isObject(comb)) b.objs.set(i, comb);
   touch(x, y);
+  landVer++;      // (the land is new from now, not from when its tile is drawn again in a frame to come: the way out (wayshow.js) kept, for that frame, the way found while a tunnel's end was shut)
 }
 function onRegion(d) {
   if (d.w !== B || d.h !== B || d.x % B || d.y % B) return;
