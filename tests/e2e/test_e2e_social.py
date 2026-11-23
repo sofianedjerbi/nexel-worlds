@@ -98,8 +98,9 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     a cell and a box; G puts it away again, H is the help); a goal done while it is away is said in the line of news. No title panel, no list of who
     is awake. Held, Tab shows one window in the top right corner (who.js), drawn as the recipe book is: the sun or the moon, the day and the
     hour, the day as a bar in the sky's colours with a mark at the hour, then a line for each one awake with their picture, their name and
-    their level, you first and lit; at the foot where you are and how many are awake. It is there at once (the goals
-    were on Tab for a day and slid in again at each press, which looked like lag) and goes when the key is let go.
+    their level, you first and lit; at the foot where you are and how many are awake. It comes, whole, once Tab has been
+    held a moment (a tap of Tab is the next thing in hand; the goals were on Tab for a day and slid in again at each press,
+    which looked like lag) and goes when the key is let go.
     Someone only watching keeps the title and the list: they pick who to follow."""
     box = "(id) => { const r = $(id).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] : null; }"
     assert game.js(box, "goals") is None and game.js("$('goalhint').textContent") == "Ggoals0/12" and game.js(box, "goalhint")[0] <= 14     # away; the tab, early in the game
@@ -123,6 +124,7 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     assert game.js("$('help').style.display") != "block" and game.js(box, "goals") == goals
     game.wait(f"agents.filter((a) => a.online).length >= 2 && agents.some((a) => a.name === {friend.name!r})", 10000)   # (the list is asked for now and then)
     game.page.keyboard.down("Tab")
+    game.wait("document.body.classList.contains('tab')", 3000)       # (held: Tab is first the next thing in hand, the window comes after 350 ms of it held: keyboard.js tabDown, since 24dae98)
     shown = game.js("""() => new Promise((ok) => requestAnimationFrame(() => { const w = $('who'), r = w.getBoundingClientRect(), q = parseFloat(getComputedStyle(w).getPropertyValue('--q'));     // the frame after the key (its pixel: a size under the recipe book's)
       const ink = (c) => { const d = c.getContext('2d').getImageData(0, 0, 16, 16).data; let n = 0; for (let o = 3; o < d.length; o += 4) if (d[o]) n++; return n; };
       ok({top: r.top, right: r.right, wide: Math.round(r.width / q), px: [q, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--q'))], moving: w.getAnimations({subtree: true}).length, day: $('whoday').textContent, hour: $('whohour').textContent,

@@ -24,7 +24,7 @@ def test_the_days_bar_is_bands_and_checkers_in_big_cells(game):
     It is the sky's colours hour by hour as a pixel picture: 68 by 3 cells, each two px of the window's, flat bands of
     few colours, and a checker of the two where two bands meet."""
     game.page.keyboard.down("Tab")
-    game.sleep(200)
+    game.wait("document.body.classList.contains('tab')", 3000)       # (held: Tab is first the next thing in hand; the window comes after 350 ms of it held, keyboard.js tabDown: a sleep of 200 read the bar not drawn yet, 300 x 150)
     bar = game.js("""(() => { const c = $('whoband'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, px = (x, y) => [d[(y * c.width + x) * 4], d[(y * c.width + x) * 4 + 1], d[(y * c.width + x) * 4 + 2]];
       const cols = [...Array(c.width)].map((_, x) => px(x, 0).join()), all = new Set(), checks = [...Array(c.width - 1)].filter((_, x) => px(x, 0).join() === px(x + 1, 1).join() && px(x, 1).join() === px(x + 1, 0).join() && px(x, 0).join() !== px(x, 1).join()).length;
       for (let x = 0; x < c.width; x++) for (let y = 0; y < c.height; y++) all.add(px(x, y).join());
