@@ -11,7 +11,10 @@
 // What stands in the window (SF): as dim as its floor (vk.x), and what the window takes away goes in four steps of a 2x2 dither (vk.y). A paint that is not there: the land's mean colour (em), its px marked (raw).
 const VoxStyleGLSL = (() => {
   // A LEVEL IS A CUBE: H tiles high (1: as tall as a tile is wide, the player's height), LV rows of paint a level (a side's slot is all of it: rows 16 - LV to 15)
-  const AW = 1024, H = 1, LV = 16, LVC = `const float H = ${H.toFixed(1)}, LV = ${LV.toFixed(1)}, LV0 = ${(16 - LV).toFixed(1)};`;
+  // (AW: the paints' sheet, px a side: 64 x 64 paints of 16 px on a phone, 128 x 128 on a screen of more than a million CSS px: sprinting up
+  //  a hill on a desk (1920 x 1080 as on 1800 x 1042 at 2) the land asked for more than 4096 paints, the sheet was emptied and made again
+  //  over and over, and faces were drawn with places given to other paints: grass tops as stone, stone fronts as grass)
+  const AW = typeof screen === "object" && screen.width * screen.height > 1e6 ? 2048 : 1024, H = 1, LV = 16, LVC = `const float H = ${H.toFixed(1)}, LV = ${LV.toFixed(1)}, LV0 = ${(16 - LV).toFixed(1)};`;
   // THE BEND (the curved world: the land north of the eye's point sinks away to a horizon; vox_style.js project and vox_style_win.js sink it the same): a few FLAT FACETS, 4 tiles each, on the old
   // curve (dn squared at every fourth tile, straight between; the first 4 tiles as ever: a facet there sank the land at your feet 4 times as much). It was dn squared at every corner: a straight block 12 tiles deep rolled over it as a smooth arc, its ends round loaves ("melted")
   const SINK = "float sink(float dn) { float k = floor(dn / 4.); return dn < 4. ? dn * dn : 16. * (k * k + (2. * k + 1.) * (dn / 4. - k)); }", sink = (dn) => { const k = Math.floor(dn / 4); return dn < 4 ? dn * dn : 16 * (k * k + (2 * k + 1) * (dn / 4 - k)); };
