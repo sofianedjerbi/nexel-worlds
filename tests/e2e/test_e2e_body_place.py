@@ -1,4 +1,4 @@
-"""Where your body is (hd_level.js `place`): one record a frame, from the cells and your body's place and height, that
+"""Where your body is (hd_level.js `place`) and the land over it (`cover`): one record each a frame, from the cells and your body's place and height, that
 the light, the dark, the x-ray window and the veil over built floors all read. Climbing a ladder is being at a height
 between two levels on the ladder's tile: it changes nothing that standing there would not. (Half way up a ladder the
 window opened and the earth's light came on: the picture took the tile you were rounded to, the cliff's, with you
@@ -12,7 +12,7 @@ from test_e2e_hd_sun import LIGHT, hd
 
 TMP = "/Users/sdjerbi/.claude/jobs/fa29ccbd/tmp"
 # every frame: [your y, x, how open the window is (this file's count), the painter's, behind land (hid), the record's roof, its dep, your lantern lit (night), then the light of each tile asked (null: off the picture)]
-REC = """(tiles) => { window.__r = []; window.__on = true; const light = """ + LIGHT + """, f = () => { const e = ents.get('agent' + myId), P = HdLevel.place, H = innerHeight - 20;
+REC = """(tiles) => { window.__r = []; window.__on = true; const light = """ + LIGHT + """, f = () => { const e = ents.get('agent' + myId), P = HdLevel.cover, H = innerHeight - 20;
   if (e && P) __r.push([+e.y.toFixed(3), +e.x.toFixed(3), +HdLook.u.toFixed(2), +HdLook.win.a.toFixed(2), HdLook.hid, P.roof ? 1 : 0, P.dep, HdLook.youLit === false ? 0 : 1,
     ...tiles.map(([x, y, z]) => { const a = HdLook.screenOf(x + .5, y + .5, z); return a && a[1] > 20 && a[1] < H && a[0] > 20 && a[0] < innerWidth - 20 ? Math.round(light([x, y, z])) : null; })]);
   if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""

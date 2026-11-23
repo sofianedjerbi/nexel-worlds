@@ -1,6 +1,8 @@
 // The HD look (hd.js): WHERE YOU ARE, as its picture has it. Three answers, each from the land's own shape and the height the game keeps for you (caves.js `myAt`, as the server does):
-//   track(p, now) -> HdLevel.place, YOUR BODY'S PLACE, made once a frame (hd.js after) and read by all that asks where you are (the light and your lantern, the x-ray window: hd.js; your room: hd_things.js; the veil over floors: floors.js; your footsteps: characters.js):
-//     {x, y: your body (BodyPlace.of: on a ladder's rungs, over its foot: dx, dy), tx, ty: its column, L, Lf: its level (of), top, dep: land over L, roof: any (there, and only there, is the x-ray window), rim}. A ladder is a height in it. (Each asked on its own, from the tile you were rounded to: half way up a ladder that was the cliff's, "under a roof": the window opened)
+//   track(p, now), once a frame (hd.js after) -> HdLevel.place: where YOUR BODY is, {tx, ty: the column it is drawn in (BodyPlace.of: on a ladder's rungs, over its foot: dx, dy), L, Lf: its level (of)},
+//     and HdLevel.cover = cover(place): THE LAND OVER IT, from the cells alone {top, dep: levels of land over L, roof: any (there, and only there, is the x-ray window), rim}. All that asks where you are and what is over you
+//     reads these two: the light and your lantern, the x-ray window (hd.js), your room (hd_things.js), the veil over floors (floors.js), your footsteps (characters.js). A ladder is a height in it. (Each asked on its own,
+//     from the tile you were rounded to: half way up a ladder that was the cliff's, "under a roof": the window opened)
 //   of(p, now, cl) -> [L, Lf]: the level you stand at (your tile's), and the same between two tiles: on the straight line between their heights (the game's own line, relief.js liftOf: a hop is an arc over it).
 //   over(x, y, L, k) -> LEVELS OF LAND OVER THE EYE'S LINE to the feet of somebody on (x, y) at L (k: levels the line climbs a tile south, relief.js eyeRise): 0: seen through the open air (or a cave's mouth);
 //     .5: half a body hidden; 1 or more: all of it (a level is a body's height) (99: the line runs into a ceiling, or into anything when a roof is over the feet: nothing of a body shows). A block somebody put (a wall you built) is not land. EVERY question of "does land hide this" is asked here (they were three: hd.js `hidden`, the land search's own, the tilt's walls).
@@ -8,17 +10,18 @@
 //     land round you: ten of sixteen ways out from you (straight lines, 6 tiles long) run into land a level over L. A room of any width up to twelve, a gorge, a shaft alike; a wall or two beside you on the surface is not "round you".
 //     (It was "no tile of your floor shows from the side": a pit you fell into stayed side-on, a 3-wide stair tipped at its floor only. The land's shape, not a clock: hd.js holds 300 ms.)
 //   hides(tx, ty, L, k, px) -> land under the open sky between the eye and you hides you whole: the x-ray window opens on your space as under a roof (hd.js). (It was `lift`: you drawn up at the rim south of you)
-//   own(place, cov) -> the boxes of the x-ray window that are yours whatever the search for your space has found yet: your tile, floor to ceiling, and the covered tiles you just came from (vox_style.js adds the ones its window lacks)
+//   own(place, roof, cov) -> the boxes of the x-ray window that are yours whatever the search for your space has found yet: your tile, floor to ceiling, and the covered tiles you just came from (vox_style.js adds the ones its window lacks)
 const HdLevel = (() => {
   const col = (x, y) => Voxels.host.column(x, y), topAt = (x, y) => { const c = col(x, y); return c && c.length ? c[c.length - 1] : 0; };
   const solid = (c, z) => { if (!c) return false; for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
-  let trail = [], place = null;
+  let trail = [], place = null, cov = null;
   // (yours: the level you are drawn from goes a px a frame at the most through a jump and after it: leap.js cam. In the air, the level the view takes you at is where your feet are, to the nearest level,
   // not the ground under you: sprint-jumping south up a hill the step ahead, a level over the ground you left, stood between the eye and that ground: the eye tilted up as if under the land. Your shadow keeps the ground: leap.js level)
   function track(p, now) {   // (p.free: the first screen's eye, nobody's body)
-    const b = !p.free && BodyPlace.of(p), x = p.x + (b ? b.dx : 0), y = p.y + (b ? b.dy : 0), [L, Lf] = p.free ? [p.z, p.z] : of(p, now), tx = Math.round(x), ty = Math.round(y), top = p.free ? p.z : topAt(tx, ty);
-    return (place = {x, y, tx, ty, L, Lf, top, dep: Math.max(0, top - L), roof: top > L, rim: rim(tx, ty, L), free: !!p.free});
+    const b = !p.free && BodyPlace.of(p), [L, Lf] = p.free ? [p.z, p.z] : of(p, now);
+    place = {tx: Math.round(p.x + (b ? b.dx : 0)), ty: Math.round(p.y + (b ? b.dy : 0)), L, Lf, free: !!p.free}; cov = p.free ? {top: L, dep: 0, roof: false, rim: rim(place.tx, place.ty, L)} : cover(place); return place;
   }
+  function cover({tx, ty, L}) { const top = topAt(tx, ty); return {top, dep: Math.max(0, top - L), roof: top > L, rim: rim(tx, ty, L)}; }
   function of(p, now) { const r = of0(p, now); if (!(p.e && p.e.kind === "agent" && p.e.id === myId)) return r; const a = Leap.state; return [a ? Math.max(r[0], Math.floor(a.z + .5)) : r[0], Leap.cam(r[1], now)]; }
   function of0(p, now) {
     const H0 = Voxels.host, rx = Math.round(p.x), ry = Math.round(p.y), near = typeof myAt !== "undefined" && myAt && Math.abs(myAt.x - rx) + Math.abs(myAt.y - ry) <= 2;
@@ -43,7 +46,7 @@ const HdLevel = (() => {
     const key = [tx, ty, L, ver].join(); if (key !== sk) { sk = key; sv = 0; for (const r of RAYS) if (r.some(([i, j]) => !matAt(tx + i, ty + j) && topAt(tx + i, ty + j) >= L + 1)) sv++; }
     return sv >= 10;
   }
-  function own({tx, ty, L, roof}, cov) {
+  function own({tx, ty, L}, roof, cov) {
     if (!cov) { trail = []; return trail; }
     const c = col(tx, ty); let hi = L + 1; if (roof) while (hi < L + 6 && !solid(c, hi + 1)) hi++;
     const b = roof ? [tx, ty, L, hi] : [tx, ty, L, L + 1, 1], l = trail[trail.length - 1]; if (l && l[0] === tx && l[1] === ty && l[2] === L) return trail;
@@ -95,5 +98,5 @@ const HdLevel = (() => {
     const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); for (let i = 0; i < r.l.length; i += 3) g.rect((x0 + r.l[i]) * zs, (y0 + r.l[i + 1]) * zs, r.l[i + 2] * zs, zs); g.clip("evenodd");
   }
   const body = (me, a, zs) => { const r = me && a && runsOf(me.canvas); if (!r || !r.b) return null; const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; return {x: (x0 + r.b[0]) * zs, y: (y0 + r.b[1]) * zs, w: (r.b[2] - r.b[0]) * zs, h: (r.b[3] - r.b[1]) * zs}; };
-  return {track, steep, own, over, clear, hides, veils, wall, wallAt, cut, body, get place() { return place; }, get shows() { return sv; }};
+  return {track, steep, own, over, clear, hides, veils, wall, wallAt, cut, body, get place() { return place; }, get cover() { return cov; }, coverOf: cover, get shows() { return sv; }};
 })();

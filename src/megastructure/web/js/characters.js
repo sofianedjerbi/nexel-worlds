@@ -143,7 +143,7 @@ function drawBody(p, sx, sy, S, t, now) {
         if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms) && !swimsAt(p, e) && !j) {     // (a swimmer has no footsteps: swim.js; nor has a hop)
           p.lastStep = Math.floor(now / ms);
           if (running) kickDust(p); else burst(p.x, p.y + .35 - UP, "dust", 2, {up: .6, spread: 1.2, g: 2, life: .35});   // (effects.js)
-          { const P = HdLevel.place; if (mine && P) sfx(P.L > P.top ? "tock" : STEP[gndAt(P.tx, P.ty)] || "step"); }      // (over the land: planks under your feet, or a ladder's rungs. Where your body is: hd_level.js place)
+          { const P = HdLevel.place, C = HdLevel.cover; if (mine && P) sfx(P.L > C.top ? "tock" : STEP[gndAt(P.tx, P.ty)] || "step"); }      // (over the land: planks under your feet, or a ladder's rungs. Where your body is: hd_level.js place)
         }
       } else {
         frame = Math.floor(now / 140 + e.id * 3) % 8;   // idle: the sheet's 8-frame breathing

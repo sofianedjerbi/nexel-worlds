@@ -133,7 +133,7 @@ def test_at_the_foot_of_a_cliff_in_a_gorge_the_x_ray_shows_you_at_your_own_level
         try:
             g.wait("HdLook.win.a === 1 && !HdLook.busy", timeout=8000)          # (it was 0: no window under the open sky)
         except Exception:
-            raise AssertionError(g.js("(() => { const e = ents.get('agent' + myId), tx = Math.round(e.x), ty = Math.round(e.y), L = HdLook.level[0]; return [myAt, e.x, e.y, L, HdLook.cam.pitch, HdLook.win.n, HdLook.win.a, HdLevel.place.roof, HdLevel.over(tx, ty, L, eyeRise(HdLook.steep)), [-1, 0, 1, 2].map((d) => Voxels.host.column(tx, ty + d)), HdLook.force]; })()"))
+            raise AssertionError(g.js("(() => { const e = ents.get('agent' + myId), tx = Math.round(e.x), ty = Math.round(e.y), L = HdLook.level[0]; return [myAt, e.x, e.y, L, HdLook.cam.pitch, HdLook.win.n, HdLook.win.a, HdLevel.cover.roof, HdLevel.over(tx, ty, L, eyeRise(HdLook.steep)), [-1, 0, 1, 2].map((d) => Voxels.host.column(tx, ty + d)), HdLook.force]; })()"))
         g.rest()
         s = g.js(FOOT)
         assert s["lv"][0] == 0 and s["lv"][3] == 0, s                     # at your level, not lifted (it was 11.1: the cliff's rim)
