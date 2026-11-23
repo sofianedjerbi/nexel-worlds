@@ -9,7 +9,7 @@ import random
 from dataclasses import fields
 from pathlib import Path
 
-from ..tiles import BLOCKS, DEPTH, DIRS
+from ..tiles import BLOCKS, DIRS
 from ..world import Store, World
 from .animals import Animals
 from .bodies import Bodies
@@ -35,6 +35,7 @@ from .spawning import Spawning
 from .storeys import Storeys
 from .underground import Underground
 from .wear import Wear
+from .waters import Waters
 from .wild import Wild
 from .needs import Needs
 from .observe import Observation
@@ -44,7 +45,7 @@ from .social import Social
 from .specs import TOOL_SPECS
 
 
-class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Underground, Building, Storeys, Climbing, Items, Combat, Animals, Wild, Wear, Needs, Social, Environment, Observation):
+class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Underground, Building, Storeys, Climbing, Items, Combat, Animals, Wild, Wear, Needs, Social, Environment, Waters, Observation):
     """The world and everyone in it, advanced one tick at a time. Each mixin owns one domain."""
 
     ENCLOSE = ("wood_wall", "stone_wall", "door", "gate")   # what closes a room (shelter)
@@ -79,10 +80,10 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         self.next_creature = max(self.creatures, default=CREATURE_ID0) + 1
         self._thin_herds()
         self.open_floors(store)                            # (storeys.py: the blocks built over the ground; once, the old roofs)
+        self.open_water(store)                             # (waters.py: water that flows; once, an old save's water made sources)
         self.thin_wild(store)                              # (spawning.py: once, when a world meets the rarer-mobs rules)
         self.fires: dict[tuple, int] = {tuple(k): v for k, v in store.get_meta("fires", [])}
         self.timers: dict[tuple, list] = {(x, y): [t, kind] for x, y, t, kind in store.get_meta("timers", [])}
-        self.pits: set = {tuple(p) for p in store.get_meta("pits", [])}
         for pos, pile in list(self.items.items()):   # eggs from old worlds that will never hatch: gone
             if set(pile) == {"egg"} and self.timers.get(pos, [0, ""])[1] != "hatch":
                 del self.items[pos]
@@ -131,16 +132,11 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
 
     def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None, level=None, roof=None, head=None):
         if level is not None or roof is not None or head is not None:
-            self.raze(x, y)                                # (the land laid out anew: what was built over it goes)
+            self.raze(x, y)                                # (the land laid out anew: what was built over it goes, and the water on it)
+            self.water.clear(x, y)
         self.world.set(x, y, ground=ground, block=block, level=level, roof=roof, head=head)
         self.stats["tiles_changed"] += 1
         g, b = self.world.ground(x, y), self.world.block(x, y)
-        if g == "tilled":
-            self.pits.add((x, y))
-        if g in DEPTH:
-            for dx, dy in DIRS.values():
-                if self.world.ground(x + dx, y + dy) == "tilled":
-                    self.pits.add((x + dx, y + dy))
         info = {"x": x, "y": y, "ground": g, "block": b}
         if by is not None and by.action is not None:
             by.action.tiles.append(info)

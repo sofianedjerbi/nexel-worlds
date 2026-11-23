@@ -74,7 +74,7 @@ function drawRecipes() {
     b.appendChild(iconCanvas(ic)); b.onclick = () => craftTurn({tab: title});
     tabs.appendChild(b);
   }
-  tabs.insertAdjacentHTML("beforeend", `<div class="ckeys"><kbd>Q</kbd><kbd>E</kbd></div>`);
+  tabs.insertAdjacentHTML("beforeend", `<div class="ckeys"><kbd>${keyCap("keyq")}</kbd><kbd>E</kbd></div>`);
   $("craftonly").className = "b " + (craftOnly ? "on" : "paper");
   el.innerHTML = v.shown.length ? "" : `<div class="cnone">${craftFind ? "Nothing called “" + esc(craftFind) + "”" + (craftOnly ? " that you can make." : ".") : craftOnly ? "Nothing in " + esc(craftTab) + " can be made yet." : "Nothing here."}</div>`;
   for (const name of v.shown) {                             // the list: a name, lit if it can be made
@@ -138,8 +138,8 @@ function drawCraftDetail() {
 function craftKey(k, e) {
   const v = craftView(), kinds = v.groups.map(([t]) => t), ki = kinds.indexOf(craftTab), i = v.shown.indexOf(craftFocus);
   const dir = KEYDIR[k];
-  if (k === "tab" || k === "q" || k === "e" || dir === "W" || dir === "E") {       // the kinds
-    const back = k === "q" || dir === "W" || (k === "tab" && e.shiftKey);
+  if (k === "tab" || k === "keyq" || k === "q" || k === "e" || dir === "W" || dir === "E") {       // the kinds
+    const back = k === "keyq" || k === "q" || dir === "W" || (k === "tab" && e.shiftKey);
     craftTurn({tab: kinds[(ki + (back ? kinds.length - 1 : 1)) % kinds.length]});
   } else if (dir === "S") { if (i < v.shown.length - 1) focusRecipe(v.shown[i + 1]); else if (craftPage < v.pages - 1) craftTurn({page: craftPage + 1}); }
   else if (dir === "N") { if (i > 0) focusRecipe(v.shown[i - 1]); else if (craftPage > 0) craftTurn({page: craftPage - 1, last: true}); }

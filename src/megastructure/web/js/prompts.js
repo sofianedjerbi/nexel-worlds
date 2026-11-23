@@ -38,7 +38,7 @@ const Prompts = (() => {
   function build() {
     const r = Build.S.rect, ways = Build.ways();
     BuildGhost.paint();      // (a block of the land in hand: its ghost where it will go, what X will take: buildghost.js)
-    show(r, Build.rows().filter(([k]) => ![capOf("build"), "B", "Esc", "Q E"].includes(k)), ways.up ? ["E", "Up"] : null, ways.down ? ["Q", "Down"] : null);
+    show(r, Build.rows().filter(([k]) => ![capOf("build"), "B", "Esc", Build.LAYER_CAP()].includes(k)), ways.up ? ["E", "Up"] : null, ways.down ? [keyCap("keyq"), "Down"] : null);
   }
   return {show, build, set keep(v) { keep = v; }, get keep() { return keep; }};
 })();

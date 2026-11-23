@@ -1,8 +1,8 @@
-"""The world on its own: fire, growth timers, flooding and regrowth."""
+"""The world on its own: fire, growth timers, water and regrowth."""
 
 from .. import tiles as T
 from ..gen import gen_tile
-from ..tiles import BLOCKS, DEPTH, DIRS, GROUNDS
+from ..tiles import BLOCKS, DIRS, GROUNDS
 from .constants import TICK_HZ, sec
 from .entities import CREATURES, ActionError, Creature
 
@@ -58,19 +58,7 @@ class Environment:
                         for i in range(w):
                             if self.world.ground(x + i, y - j) == "ash":
                                 self.timers[(x + i, y - j)] = [self.tick + sec(240), "regrass"]   # the scar heals
-        if self.pits and self.tick % sec(1) == 0:
-            for pos in sorted(self.pits):
-                x, y = pos
-                if self.world.ground(x, y) != "tilled":
-                    self.pits.discard(pos)
-                    continue
-                near = {self.world.ground(x + dx, y + dy) for dx, dy in DIRS.values()}
-                if not near & set(DEPTH):
-                    self.pits.discard(pos)
-                elif self.rng.random() < 0.25 and self.entity_at(x, y) is None:
-                    # a hole dug next to water floods
-                    self.pits.discard(pos)
-                    self.set_tile(x, y, ground="water", cause="flood")
+        self.step_water()                                  # (waters.py: four steps a second)
         if self.timers and self.tick % sec(2) == 0:
             for pos in sorted(self.timers):
                 due, kind = self.timers[pos]

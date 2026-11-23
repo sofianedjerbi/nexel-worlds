@@ -1,13 +1,13 @@
 // Building, as a plan and then the work. Placing was one tile at a time, the one you faced: to raise a wall you
 // walked a step, turned, pressed, and again, and walled yourself in. Now you plan first and your character builds:
-//   Z          build mode, and out of it (B too, its first key: "'b' key is a bad choice. switching takes time from
+//   Z          build mode, and out of it (by place: W on an AZERTY; B too, its first key: "'b' key is a bad choice. switching takes time from
 //              WASD": Z is under A, the hand stays; every other key round WASD was taken, and a held Ctrl or Alt is
 //              the browser's: Ctrl W shuts the page). What is in your hand is the piece: the bar's numbers.
 //   arrows     move the cursor, a tile at a time (it is not you who walks: the view goes with the cursor)
 //   Space      plan the piece here. Held while you move: a row. A door on a wall, a gate on a fence: in its place
 //   X          break what is at the cursor: a plan back; a thing, a tree, a rock, a wall, a step, a floor: down; bare
 //              ground: a hole, a layer deeper each time (a pickaxe digs faster); in the ground: that block. Held: a row
-//   Q E        the cursor a layer down, and up (also PgDn, PgUp)
+//   Q E        the cursor a layer down, and up (also PgDn, PgUp); Q by place: the key over A (A on an AZERTY)
 //   Esc        drop every plan (with none: out of the mode)
 // The cursor has a height. It starts on the block in front of you, at your own height ("show the most pertinent block first: in front of the player, direction where he's facing at his exact level"): a wall there, the block in front of your eyes ("default block to dig should be the one at player eye-level": it was the one in front of your legs; that one gone, of your legs); else the ground there (it rode the top of the land over the wall, a mountain's seventeen
 // layers up, and Q brought it down a layer a press). It rides the ground nearest your own (the floor you stand on); E lifts it a storey, into the air over a room or onto the floor above, and there it stays as it moves, until Q brings it down. Below your
@@ -242,10 +242,10 @@ const Build = (() => {
     if (k === "escape") { if (!e.repeat) { if (todo().length) drop(); else toggle(false); } return true; }
     if (KEYDIR[k]) { if (!e.repeat) held(KEYDIR[k]); return true; }
     if (k === " " || k === "x") { if (!e.repeat) { S.hold = k; S.row = undefined; if (k === " ") plan(S.at); else take(S.at); } return true; }
-    if (k === "e" || k === "q" || k === "pageup" || k === "pagedown") { if (!e.repeat) lift(k === "e" || k === "pageup" ? 1 : -1); return true; }
+    if (k === "e" || k === "keyq" || k === "q" || k === "pageup" || k === "pagedown") { if (!e.repeat) lift(k === "e" || k === "pageup" ? 1 : -1); return true; }
     return false;
   }
-  addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if (k === S.hold) S.hold = null; if (KEYDIR[k] === S.dir) held(null); });
+  addEventListener("keyup", (e) => { const k = keyId(e); if (k === S.hold) S.hold = null; if (KEYDIR[k] === S.dir) held(null); });
   addEventListener("blur", () => { S.hold = null; held(null); });
   function point(p) { if (S.on && tile(p.x, p.y)) { S.at = {x: p.x, y: p.y}; if (p.z !== undefined && p.z !== ride(S.at)) S.at.z = p.z; if (p.side) Object.assign(S.at, {side: p.side, cz: p.cz}); } }      // (the mouse: the cursor is where it points, the block under it (z, when not the ground nearest you there: it follows the land as it is dug and built), or at the cursor's height: mouse.js)
   function click(p, alt) { point(p); S.row = undefined; if (alt) take(S.at); else plan(S.at); }
@@ -264,15 +264,16 @@ const Build = (() => {
   }
   // What the keys do just now, for the corner of the screen (keyboard.js): the mode's name first, then each key
   // that does something here, in a few words
+  const LAYER_CAP = () => keyCap("keyq") + " E";      // (the key over A, as this keyboard types it, and E)
   function rows() {
     const it = hint(S.at), n = todo().length, hit = taking(S.at), s = myPos(), up = s ? Keyhole.rel(level() - myZ(s.x, s.y)) : 0, sign = (v) => (v > 0 ? "+" : "") + v;
     const out = [[capOf("build"), up ? `BUILD · ${sign(up)} · leave` : "BUILD MODE · leave", "head"]];
     if (!it.far) out.push([it.key || "Space", it.text, it.ok === false && !it.key ? "bad" : ""]);
-    out.push(["Q E", "A layer down, up"]);
+    out.push([LAYER_CAP(), "A layer down, up"]);
     if (hit && !hit.shut) out.push(["X", hit.plan ? "Take the plan back" : hit.dig ? "Break" : hit.verb || `Break ${hit.what}`]);   // (out of reach yet: no row, its box is dotted)
     if (n) out.push(["Esc", `Drop the ${n} plan${n > 1 ? "s" : ""}`]);
     return out;
   }
   const waiting = () => (!S.on && todo().length ? todo().length : 0);        // plans left on the ground, out of the mode
-  return {S, toggle, onKey, ways: () => { const L = level(), all = S.at && myPos() ? stops(S.at) : []; return {up: all.some((z) => z > L), down: all.some((z) => z < L)}; }, click, point, tick, pan, rows, hint, taking, waiting, level, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
+  return {S, LAYER_CAP, toggle, onKey, ways: () => { const L = level(), all = S.at && myPos() ? stops(S.at) : []; return {up: all.some((z) => z > L), down: all.some((z) => z < L)}; }, click, point, tick, pan, rows, hint, taking, waiting, level, get on() { return S.on; }, aim: () => { const it = hint(S.at); return {p: S.at, it: it.ghost || it.z !== undefined ? it : {...it, z: level()}}; }};
 })();

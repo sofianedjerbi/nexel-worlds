@@ -26,8 +26,8 @@ class Movement(Leaping):
         return ground.walkable and not block.solid
 
     def swimming(self, a: Agent) -> bool:
-        """In the water without a boat (not on something built over it)."""
-        return not a.sailing and GROUNDS[self.world.get(a.x, a.y)[0]].liquid and self.floors.get(a.x, a.y, self.height(a)) is None
+        """In the water without a boat (not on something built over it), or in running water deep enough (waters.py)."""
+        return not a.sailing and (GROUNDS[self.world.get(a.x, a.y)[0]].liquid and self.floors.get(a.x, a.y, self.height(a)) is None or self.wading(a))
 
     def can_go(self, a: Agent, x: int, y: int, jump: bool | None = None) -> bool:
         """From where `a` stands to the neighbouring (x, y): it isn't a wall, and where they'd land can be entered.

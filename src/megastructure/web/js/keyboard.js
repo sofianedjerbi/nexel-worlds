@@ -1,16 +1,11 @@
-// Keyboard: the whole game is playable without a mouse.
-//   WASD / arrows walk (Shift sprints), Space jumps, Alt+direction turns on the spot. Two verbs, as in Minecraft
-//   (intent.js): E uses what you face (open, talk, place, plant, feed, harvest; or eats, wears what you hold:
-//   facingNow), X breaks it (mine, chop, dig, take down, hit).
-//   The hand is a slot of the bar, always one, like Minecraft: 1-9 and 0 pick it (an empty one: empty hands), Q and
-//   the wheel over the bar the next one, ` the first empty one. (The keys are the settings': options.js KEY_ACTIONS.)
-//   C crafting and I inventory are navigated with the arrows, Enter uses, Esc closes.
-//   While the recipe book is open the keys are its own (craft.js): none of them acts on the world behind it (X took
-//   down what you faced, a number changed what you hold), but for the ones in BOOK_KEYS. One of the book and the
-//   inventory is open at a time. What a key does there is written on it (a cap on the button, `kbd`) while you
-//   play by keys (body.bykeys), and put away when the mouse moves.
-//   Z: build mode (build.js): the arrows move a cursor, Space plans the piece in hand, your character builds (its
-//   keys are its own: Space plans, X takes, Q E a layer; none of them walks you or jumps).
+// Keyboard: the whole game is playable without a mouse. Keys by place where it matters (options.js keyId: an AZERTY's ZQSD walk).
+//   WASD / arrows walk (Shift sprints), Space jumps, Alt+direction turns on the spot. Two verbs, as in Minecraft (intent.js): E uses
+//   what you face (open, talk, place, plant, feed, harvest; or eats, wears what you hold: facingNow), the key over A (A on an AZERTY), or X, breaks it.
+//   The hand is a slot of the bar, always one, like Minecraft: 1-9 and 0 pick it (an empty one: empty hands), Tab and the wheel over
+//   the bar the next one (Tab held: who is awake), ` the first empty one. (The keys are the settings': options.js KEY_ACTIONS.)
+//   C crafting and I inventory: the arrows, Enter uses, Esc closes; their keys are their own (craft.js, bag.js) but BOOK_KEYS, none
+//   acts on the world behind; one open at a time; each key's cap on its button (`kbd`) while you play by keys (body.bykeys).
+//   Z (the key under A, by place) or B: build mode (build.js): the arrows move a cursor, Space plans, your character builds (keys its own).
 
 const KEYDIR = {w: "N", arrowup: "N", s: "S", arrowdown: "S", a: "W", arrowleft: "W", d: "E", arrowright: "E"};
 const CODEDIR = {KeyW: "N", ArrowUp: "N", KeyS: "S", ArrowDown: "S", KeyA: "W", ArrowLeft: "W", KeyD: "E", ArrowRight: "E"};
@@ -221,7 +216,7 @@ function selectItem(name) {                      // a thing in hand: the slot it
   if (selected !== was) sfx("pick");
   $("hotbar").dataset.sig = ""; drawHotbar(inv);
 }
-function cycleHand(step) {                       // Q (and the wheel over the bar): the next slot, empty ones too, round
+function cycleHand(step) {                       // Tab (and the wheel over the bar): the next slot, empty ones too, round
   if (!meObs) return;
   selectSlot(handSlot + step);
   if (selected) toast(`In hand: **${label(selected)}**`);      // (empty hands: the hotbar shows it, no line in the chat: "no need to write a chat message for empty hands")
@@ -239,22 +234,21 @@ function closePanels() {
   drawGoals();
 }
 
-const HELD = new Set(["e", "x", "r"]);       // held down, these go on (a row of hits, of digs); the others act once a press
+const HELD = new Set(["e", "keyq", "x", "r"]);       // held down, these go on (a row of hits, of digs); the others act once a press
 const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   e: (ev) => useFacing(false, ev && ev.repeat),      // (food, clothes in hand: eaten, worn: facingNow)
-  x: () => useFacing(true),
+  keyq: () => useFacing(true), x: () => useFacing(true),       // (break: the key over A, by place; X too)
   r: () => DigUp.run(),
   " ": () => jumpKey(),                              // (walk.js: up onto the step in front, or a hop)
   f: () => act("pick_up", {}),
-  q: () => cycleHand(1),
+  tab: (ev) => cycleHand(ev && ev.shiftKey ? -1 : 1),
   "`": () => { selectItem(null); },
   c: () => { $("bag").style.display = "none"; toggleCraft(); },
   i: () => { if (isOpen("craft")) toggleCraft(); toggleBag(); },
   m: () => { setMuted(!muted); toast(`Sound **${muted ? "off" : "on"}** \`${capOf("mute")}\``); },
   h: () => $("helpbtn").click(), "?": () => $("helpbtn").click(),
   g: () => toggleGoals(),                            // (goals.js: the goals' card, or away again)
-  z: () => Build.toggle(),                           // (build.js: plan with a cursor, your character builds)
-  b: () => Build.toggle(),                           // (its first key, still)
+  keyz: () => Build.toggle(), b: () => Build.toggle(),       // (build.js: plan with a cursor, your character builds. keyz: the key under A, by place)
   v: () => nextView(),                               // (options.js: how what hides you is shown, the next way)
   f3: () => F3.toggle(),                             // (f3.js: the debug screen)
   t: () => openChat(),
@@ -265,7 +259,7 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
 addEventListener("keydown", (e) => {
   if (document.activeElement === $("name")) { if (e.key === "Enter") $("join").click(); return; }
   if (document.activeElement === $("say") || document.activeElement === $("letter") || !me) return;
-  const k = e.key.toLowerCase();
+  const k = keyId(e);                                 // (options.js: by place for walking, break, build, the numbers)
   if (k === "shift") { keys.add("shift"); if (Build.on) return; if (opt("sprint") === "hold") runKey = true; else if (!e.repeat) runKey = !runKey; syncWalk(); return; }      // (the settings' Sprint; in build mode your character walks by itself)
   inputMode = "keys"; document.body.classList.add("bykeys");
   if (k === " ") e.preventDefault();                   // (whatever it does: no scroll, no focused button pressed)
@@ -283,18 +277,24 @@ addEventListener("keydown", (e) => {
     return;
   }
   if (/^[0-9]$/.test(k) && meObs) { selectSlot((+k + 9) % 10); return; }      // a slot of your bar (0: the tenth), an empty one too
-  if (k === "tab") { e.preventDefault(); if (!e.repeat) { drawWho(); document.body.classList.add("tab"); } return; }   // held: the day, you, who is awake (style.css)
+  if (k === "tab") { e.preventDefault(); if (!e.repeat) tabDown(u, e); return; }
   const fn = SHORTCUTS[u];
   if (fn) { e.preventDefault(); if (!e.repeat || HELD.has(u) || (u === " " && walking && !autoJump())) fn(e); }      // (Space held while walking: a jump each step, auto-jump off; on, a hop: walk.js)
 });
+// Tab: the next thing in hand at once; held, the day, you, who is awake (who.js, style.css), and the hand as it was
+let tabWho = null; function tabDown(u, e) {
+  const was = handSlot, who = () => { drawWho(); document.body.classList.add("tab"); };
+  if (u !== "tab") return SHORTCUTS[u] ? SHORTCUTS[u](e) : who();      // (Tab given to another action, or none)
+  SHORTCUTS.tab(e); clearTimeout(tabWho); tabWho = setTimeout(() => { tabWho = null; if (meObs && handSlot !== was) selectSlot(was); who(); }, 350);
+}
 addEventListener("keyup", (e) => {
-  const k = e.key.toLowerCase();
+  const k = keyId(e);
   if (k === " " && me && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) e.preventDefault();      // (Space is the jump: it presses no button that has the focus, scrolls nothing)
   keys.delete(k);
   if (k === "shift") { keys.delete("shift"); if (opt("sprint") === "hold") runKey = false; }
-  if (k === "tab") document.body.classList.remove("tab");
+  if (k === "tab") { clearTimeout(tabWho); document.body.classList.remove("tab"); }
   syncWalk();
 });
-addEventListener("blur", () => { runKey = false; keys.clear(); document.body.classList.remove("tab"); syncWalk(); });
+addEventListener("blur", () => { clearTimeout(tabWho); runKey = false; keys.clear(); document.body.classList.remove("tab"); syncWalk(); });
 $("goalhide").onclick = $("goalhint").onclick = () => toggleGoals();
 $("goals").onclick = (e) => { if (me && !e.target.closest(".gf")) { drawWho(); document.body.classList.toggle("tab"); } };   // (a phone has no Tab: a tap on the goals; who.js)

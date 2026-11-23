@@ -104,7 +104,7 @@ window.addEventListener("keydown", (e) => {                 // (before every oth
   e.stopImmediatePropagation();
   if (e.metaKey || e.ctrlKey) return;
   e.preventDefault();
-  const k = e.key.toLowerCase(), n = menuRows().length;
+  const k = keyId(e), n = menuRows().length;                  // (options.js: walking, break, build by place: an AZERTY's Z walks, refused)
   if (MENU.grab) {                                          // a key is being chosen
     if (["shift", "control", "alt", "meta"].includes(k)) return;
     const action = MENU.grab; MENU.grab = null;

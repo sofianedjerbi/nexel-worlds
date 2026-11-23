@@ -50,6 +50,13 @@ class Views:
     def items_in(self, x, y, w, h) -> list:
         return [[ix, iy, pile] for (ix, iy), pile in self.sim.items.items() if pile and x <= ix < x + w and y <= iy < y + h]
 
+    def far_ready(self, x, y, w, h) -> bool:
+        """The far land a page's HD look draws to its horizon (state.js: `far`): its chunks are brought in off the tick
+        (world.prefetch: from disk, or made on a thread) and the page asks again. Made at once, 30 ms a chunk, they
+        stalled the ticks: a player on a mountain walked in jerks."""
+        world, cs = self.sim.world, 32
+        return all([world.prefetch(cx, cy) for cy in range(y // cs, (y + h - 1) // cs + 1) for cx in range(x // cs, (x + w - 1) // cs + 1)])
+
     def region(self, x, y, w, h) -> dict:
         w, h = min(int(w), 256), min(int(h), 256)
         world = self.sim.world
@@ -63,7 +70,8 @@ class Views:
         mats = {str((j - y) * w + i - x): m for (i, j) in self.sim.placed.at if x <= i < x + w and y <= j < y + h and (m := self.sim.placed.mat(i, j, col_runs(raw[(j - y) * w + i - x])))}   # (the block put on a tile's top: landblocks.py)
         # what is built over the land (sim/storeys.py): [tile's index, height, kind, the char of what stands on it]
         floors = [[(j - y) * w + i - x, z, kind, BLOCKS[B[thing]].char] for i, j, z, kind, thing in self.sim.floors.within(x, y, w, h)]
-        return {**({"cols": cols} if cols else {}), **({"mats": mats} if mats else {}), **({"floors": floors} if floors else {}), "sea": SEA, "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
+        water = [[(j - y) * w + i - x, z, v] for i, j, z, v in self.sim.water.within(x, y, w, h)]       # (water that runs, and what was poured: [tile's index, height, level], flow.py)
+        return {**({"cols": cols} if cols else {}), **({"mats": mats} if mats else {}), **({"floors": floors} if floors else {}), **({"water": water} if water else {}), "sea": SEA, "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
                 "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}
 
     # ----------------------------------------------------------- what they are sent, as it happens

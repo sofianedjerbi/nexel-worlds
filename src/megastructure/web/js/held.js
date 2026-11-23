@@ -27,7 +27,9 @@ const Held = (() => {
   // A tool (hold_art.js) is held by its grip, the hand over it: `name` is what `c` is the picture of
   function draw(c, p, cellX, cellY, z, sheet, sx, sy, name) { const aim = sy >= ANIM.aim * 48 && sy < (ANIM.aim + 4) * 48 && Object.keys(AimArt.COL)[sx / 48], A = aim && AimArt.PAW[aim], t = A && A[DIR_ROW(p)];
     const [ax, ay] = t ? [t[0] - 3, t[1] - 3] : at(p), J = sy >= ANIM.jump * 48 && sy < (ANIM.jump + 4) * 48, dy = t ? 0 : J ? JumpArt.shift(DIR_ROW(p), sx / 48, ay + 3) : lift(sheet, sx, sy);
-    const tool = name && sheet && HoldArt.art(name, DIR_ROW(p), t ? aim : "rest", sheet, t);
+    // (a sword, a spear: one pose, at the hip; it sways with the walk's (the run's) frame: hold_art.js LOW)
+    const step = sy >= ANIM.walk * 48 && sy < (ANIM.run + 4) * 48 ? sx / 48 : -1;
+    const tool = name && sheet && HoldArt.art(name, DIR_ROW(p), t ? aim : "rest", sheet, t, step);
     if (tool) return ctx.drawImage(tool, cellX, cellY + dy * z, 48 * z, 48 * z);
     ctx.drawImage(c, cellX + ax * z, cellY + (ay + dy) * z, c.width * z, c.height * z); }
   let sent;

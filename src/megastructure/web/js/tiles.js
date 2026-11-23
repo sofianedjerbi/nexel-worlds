@@ -71,11 +71,11 @@ function onRegion(d) {
       if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && colSame(c, colAt(bx * B + i % B, by * B + (i / B | 0)))) continue;
       setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, c, (d.mats && d.mats[i]) || "");
     }
-    Floors.load(old, d);
+    Floors.load(old, d); Flow.load(old, d);
     old.at = performance.now(); return;
   }
   const b = {bx, by, comb, gnd, lv, col, mat: d.mats || null, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
-  Floors.load(b, d);                                 // (what is built over its land: floors.js)
+  Floors.load(b, d); Flow.load(b, d);               // (what is built over its land: floors.js; water that runs: flow.js)
   comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
   blocks.set(k, b);
   // neighbours' edge tiles depend on this block for autotiling

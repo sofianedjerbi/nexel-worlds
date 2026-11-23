@@ -48,6 +48,8 @@ class Observation:
                         ch = self.world.char(*self.resolve(x, y))
                     if (x, y) in self.items and self.world.block(x, y) == "none":
                         ch = "$"
+                    elif (x, y) in self.water.at and self.world.block(x, y) == "none":
+                        ch = "~"                # (water that runs, in a hole or on the ground: flow.py)
                 used.add(ch)
                 row.append(ch)
             grid.append("".join(row))
