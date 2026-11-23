@@ -61,7 +61,10 @@ def test_a_stair_s_treads_are_warm_steps_lighter_at_the_top_and_the_floor_is_a_g
     a, b, w = (g.js(f"HdLook.screenOf({x + 17.5}, {y + dy}, {z})")[1] / g.js("zoom") for dy, z in ((0, -14), (1, -14), (0, -11)))
     floor, wall = b - a, a - w
     assert sect >= 24, (sect, col)                                               # (the ground over the passage's ceiling, 11 levels, at its true height from this eye, in strata: test_e2e_hd_stair.py. It was capped at half the floor: a passage 14 down read 2 down)
-    assert sum(col[1]) < sum(col[sect - 4]) * .7, col                            # darker down: one deep wall, not a slab of one tone lying over the floor
+    # darker down: one deep wall, not a slab of one tone lying over the floor. (Four rows at each end, not one px each: a
+    # level's seam is a row a quarter darker, and the top's one px falling on a seam or not was .71 against .7, one run in five)
+    deep, high = sum(map(sum, col[1:5])), sum(map(sum, col[sect - 7:sect - 3]))
+    assert deep < high * .7, (deep, high, col)
     assert floor / (floor + wall) >= .3, (floor, wall, sect)                    # (from 58 degrees a tile's floor is 13.6 px, a level of wall 8.5: the floor a whole tile, a third of the hole; from 78.6 it was .6)
     assert warm(g.js(TILE, [x + 16, y, -14])) and g.js("HdLook.catSeen()") > .8
 
