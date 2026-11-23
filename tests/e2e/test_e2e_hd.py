@@ -10,6 +10,9 @@ def hd(browser, server):
     g.js("setOpt('names', false); setOpt('hints', false)")
     g.rpc("dev_creatures", clear=60)
     g.clear_area(12)
+    # (the meadow at level 0, as these tests point at it and read it: a player waking where another test had left its land
+    #  (the x-ray tests' plateau at 5) read the px of level 0 under the ground, every run after them)
+    g.stamp(-12, -12, ["." * 25] * 25, levels=["0" * 25] * 25)
     g.rest()
     return g
 
