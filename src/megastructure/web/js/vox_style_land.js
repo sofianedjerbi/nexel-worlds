@@ -73,6 +73,17 @@ const VoxStyleLand = (() => {
       for (let by = Math.floor((y0 - 6) / CH); by <= Math.floor((y1 + 6) / CH); by++) for (let bx = Math.floor((x0 - 6) / CH); bx <= Math.floor((x1 + 6) / CH); bx++) { const k = bx + "," + by; store.delete(k); if (making) late.add(k); }
       stamp++; farDirty.push([x0, y0, x1, y1]);
     }
+    // water that ran into a tile (flow.js): its chunk alone is made again (its faces hang on nothing round it)
+    function wet(x, y) { const k = ck(x, y); store.delete(k); if (making) late.add(k); stamp++; }
+    // WATER THAT RUNS (flow.js): in a cell z at level v (1 to 8) its face is at z - 1 + v / 8 (a cell with water over it: none, it is full), so shallow water lies lower;
+    // its tint by how deep it is (e: a film of 1 or 2 hardly tinted, else the wet cells down from it, 4 at most); and a south side where it stands higher than what is in front of it
+    // (a waterfall's face, a pool's edge seen from the south: the eye looks north). Drawn as the sea's face is, the water's own kind (3)
+    const wq = (dst, q, lv, e) => { for (const t of TRI) { const p = q[t]; emit(dst, p[0], p[2] * H, p[1], 0, 0, 1, 1, 3, lv, e); } };
+    function flowFaces(dst, x, y, fw, solidAt) { let n = 0;
+      for (const [z, v] of fw) { const full = fw.has(z + 1), top = z - 1 + (full ? 1 : v / 8); let d = 0; while (fw.has(z - d)) d++; const e = !full && v <= 2 ? 0 : Math.min(4, d);
+        if (!full) { wq(dst, [[x, y, top], [x + 1, y, top], [x + 1, y + 1, top], [x, y + 1, top]], z, e); n++; }
+        if (!solidAt(x, y + 1, z)) { const s = host.flow(x, y + 1), sv = s ? s.get(z) || 0 : 0, st = sv ? z - 1 + (s.has(z + 1) ? 1 : sv / 8) : z - 1; if (st < top - .01) { wq(dst, [[x, y + 1, top], [x + 1, y + 1, top], [x + 1, y + 1, st], [x, y + 1, st]], z, e); n++; } } }
+      return n; }
     // the far land's patches a changed tile reaches (what they read: the tiles round them, a tile's paint by its rock five tiles off) are made again; a patch is 8 tiles at most
     const farForget = () => { for (const [x0, y0, x1, y1] of farDirty) for (let by = Math.floor((y0 - 16) / CH); by <= Math.floor((y1 + 7) / CH); by++) for (let bx = Math.floor((x0 - 16) / CH); bx <= Math.floor((x1 + 7) / CH); bx++) { const m = farOf.get(bx + "," + by); if (m) { farN -= m.size; farOf.delete(bx + "," + by); } } farDirty.length = 0; };
     const farClear = () => { farOf.clear(); farDirty.length = 0; farN = 0; };
@@ -182,6 +193,7 @@ const VoxStyleLand = (() => {
             if (!solidIn(x, y, z)) { if (wt && z === wz + 1) { quad(out.water, x, y, z - 2, FACES[0], 1, 1, 3, z, Math.max(0, wz - c[c.length - 1]), 0, null, true); wet++; } continue; }   // (e: how deep the water is here, levels)
             faces(x, y, z, out.main);
           }
+          { const fw = host.flow && host.flow(x, y); if (fw) wet += flowFaces(out.water, x, y, fw, solidIn); }   // (water that runs: flow.js)
         }
         const ch = {mk: host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "", lo, low, L, wet}; for (const k of KINDS) ch[k] = new Float32Array(out[k]); return ch;
       }
@@ -230,7 +242,7 @@ const VoxStyleLand = (() => {
         return {parts, clip: [X0, X1 + 1, Y0, Y1 + 1], wet, made, space: pt ? {x: cx - r, y: cy - r, D, lvl: reachA, cls: clsA} : null, win};
       } finally { making = false; }
     }
-    return {steps, touch, touchBox, model, clear() { store.clear(); farClear(); }, evicted() { for (const k of [...store.keys()]) if (!wantK || !wantK.has(k)) store.delete(k); farClear(); },   // (paints given again: what was made with them and is not of this land goes)
+    return {steps, touch, touchBox, wet, model, clear() { store.clear(); farClear(); }, evicted() { for (const k of [...store.keys()]) if (!wantK || !wantK.has(k)) store.delete(k); farClear(); },   // (paints given again: what was made with them and is not of this land goes)
       get stamp() { return stamp; }, get fars() { return fars; }, get part() { return partOf ? partN / partOf : 0; }};   // (fars: far patches made, all told: tests)
   }
   return {create, N, CH};

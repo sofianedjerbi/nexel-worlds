@@ -173,6 +173,7 @@ function onEvent(e) {
     if (e.cause === "dig") sfx("snap", e.x, e.y); else sfxPlaced(CH[e.thing] || "", "floor", e.x, e.y);
     return;
   }
+  if (e.type === "water") { Flow.set(e.cells); return; }        // (water that runs, a step of it: flow.js)
   if (e.type === "roof") { Floors.set(e.x, e.y, floorAt(e.x, e.y) + Floors.STOREY, e.on ? "roof" : null); sfx(e.on ? "plant" : "rustle", e.x, e.y); return; }     // (a server from before blocks)
   if (e.type === "say" || e.type === "shout") { const em = emoteFor(e.text); if (em) setTimeout(() => emote(e.from, em), 2500); }
   if (e.type === "give") { emote(e.to, "love"); emote(e.from, "happy"); }

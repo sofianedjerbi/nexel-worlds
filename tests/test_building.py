@@ -46,18 +46,22 @@ def test_station_required(world):
 
 def test_fill_breach_and_flood(world):
     sim, a = world
-    # coolant to the north-north; dig the tile between -> it floods
+    # water to the north-north; dig the cell between -> the water runs into it (flow.py), a level under the river
     sim.world.set(a.x, a.y - 2, ground="water")
-    a.add("hoe", 1)
-    assert run(sim, a, "dig", {"dir": "N", "with": "hoe"})["ok"]
-    for _ in range(400):
+    a.add("pickaxe", 1)
+    assert run(sim, a, "dig", {"dir": "N", "z": 0, "with": "pickaxe"})["ok"]
+    for _ in range(40):
         sim.step()
-        if sim.world.ground(a.x, a.y - 1) == "water":
+        if sim.water.lv(a.x, a.y - 1, 0):
             break
-    assert sim.world.ground(a.x, a.y - 1) == "water"
+    assert sim.water.lv(a.x, a.y - 1, 0) == 7
+    got = next(k for k in ("dirt", "stone_block") if a.count(k))
+    assert run(sim, a, "place", {"dir": "N", "item": got})["ok"]          # put back: the water there is gone
+    assert sim.world.level(a.x, a.y - 1) == 0 and not sim.water.lv(a.x, a.y - 1, 0)
     a.add("dirt", 1)
-    assert run(sim, a, "place", {"dir": "N", "item": "dirt"})["ok"]
-    assert sim.world.ground(a.x, a.y - 1) == "dirt"
+    assert run(sim, a, "place", {"x": a.x, "y": a.y - 2, "item": "dirt"})["ok"]     # and the river's own tile filled
+    assert sim.world.ground(a.x, a.y - 2) == "dirt"
+
 
 def test_placement_rules_are_one_item_one_result(world):
     sim, a = world

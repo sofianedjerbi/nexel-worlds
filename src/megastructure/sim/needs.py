@@ -109,6 +109,16 @@ class Needs:
             a.can = CAN_SIZE
             self.emit("fill", x, y, name=a.name)
             return {"can": a.can}
+        if self.water.column(x, y):                           # running or poured water (waters.py): a poured source is taken back up
+            yield from self.wait(a, 0.6)
+            z = self.poured_at(x, y)
+            if z is not None:
+                self.water.take(x, y, z)
+            a.can = CAN_SIZE
+            self.emit("fill", x, y, name=a.name)
+            return {"can": a.can}
+        if args.get("pour"):                                  # a full can poured out: a source of water there (waters.py)
+            return (yield from self.pour(a, x, y))
         if a.can <= 0:
             raise ActionError("empty", "your watering can is empty: fill it at a well or any water")
         if self.world.block(x, y) not in ("sprout", "crop") or self.world.ground(x, y) not in ("tilled", "wet_tilled"):
@@ -123,3 +133,17 @@ class Needs:
         a.can -= 1
         a.bump("watered")
         return {"can": a.can}
+
+    def pour(self, a, x, y):
+        if a.can < CAN_SIZE:
+            raise ActionError("empty", "pouring takes a full can: fill it at a well or any water")
+        if self.pour_spot(x, y) is None:
+            raise ActionError("bad_target", "pour it on open ground (not into water, a wall or a block)")
+        yield from self.wait(a, 0.6)
+        z = self.pour_spot(x, y)
+        if z is None:
+            raise ActionError("changed", "something changed there")
+        self.water.pour(x, y, z)
+        a.can = 0
+        self.emit("pour", x, y, name=a.name)
+        return {"can": a.can, "cell": [x, y, z]}
