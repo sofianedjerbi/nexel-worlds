@@ -28,7 +28,10 @@ def test_150_tiles_from_where_you_woke_the_land_is_drawn_in_its_own_colours(brow
     for dx, dy in ((150, 0), (-150, 150)):
         g.rpc("dev_teleport", x=x + dx, y=y + dy)
         g.arrive()
-        g.clear_area(12)                                             # the same flat meadow as where you woke
+        # the same flat meadow as where you woke, out to 30 tiles: the world's own hills 13 tiles south of a far place stood
+        # in front of the meadow beside you (the eye looks down on you over them: pitch 40.7) and their grey stone was read
+        # as its colour, [149, 160, 126] for [193, 213, 113], one run in eight by where the test took you
+        g.clear_area(30)
         g.rpc("dev_teleport", x=x + dx, y=y + dy)
         g.arrive()
         fx, fy = g.pos()
