@@ -57,7 +57,7 @@ def test_the_window_opens_the_whole_cave_you_are_in_and_not_another(browser, ser
         if not on(g.js(SCR, [x + dx + .5, y + dy + .5, 0])):
             continue
         c, w = g.js(PX, [x + dx + .5, y + dy + .5, 0]), g.js(f"HdLook.winAt({x + dx}, {y + dy})")
-        if (dx, dy) in APART and (w is not None or far(c, stone) > 40):
+        if (dx, dy) in APART and (w is not None or not (max(c) - min(c) < 20 and lum(c) > 50)):     # (opened: in the window, or not stone's grey. It was within 40 of one px of the top's stone: the plateau's top has its darker px, [142, 150, 143] against [159, 165, 157])
             opened.append(((dx, dy), c, w))
         elif (dx, dy) in CAVE and (w is None or far(c, stone) <= 40):
             shut.append(((dx, dy), c, w))
@@ -232,7 +232,10 @@ def test_a_shaft_at_a_passage_s_end_is_a_level_floor_not_a_band(browser, server)
     g.rpc("dev_teleport", x=x, y=y - 1, z=0)
     g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     quiet(g)
-    way = [lum(g.js(PX, [x + .5, y - 1.1 - i * .05, 0])) for i in range(72)]    # (up the passage's middle, y - 1.1 to y - 4, then the shaft's floor to y - 4.65, short of its north wall's foot)
+    # (up the passage's middle, y - 1.1 to y - 4, then the shaft's floor to y - 4.55, short of its north wall's foot: that wall's
+    #  foot shade (vox_style_glsl.js, 7 px out in three steps) ends 5.8 px out, at y - 4.64, and the last px read at y - 4.65 was
+    #  in it or not by a part of a px, by where you woke: 140 against 173, one run in five)
+    way = [lum(g.js(PX, [x + .5, y - 1.1 - i * .05, 0])) for i in range(70)]
     passage, shaft = way[:56], way[62:]
     med = sorted(passage)[len(passage) // 2]
     assert min(shaft) > med * .85, f"{med} {' '.join(str(round(v)) for v in way)}"                    # the shaft's floor as light as the passage (it was a dark band)
