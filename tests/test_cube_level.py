@@ -12,7 +12,7 @@ JS = Path(__file__).parent.parent / "src" / "megastructure" / "web" / "js"
 def test_a_level_is_drawn_as_tall_as_a_tile_everywhere():
     step = int(re.search(r"^const RELIEF_STEP = (\d+);", (JS / "relief.js").read_text(), re.M).group(1))
     glsl = (JS / "vox_style_glsl.js").read_text()
-    h, lv = re.search(r"const AW = 1024, H = ([\d.]+), LV = (\d+),", glsl).groups()
+    h, lv = re.search(r"const AW = [^,]*\? 2048 : 1024, H = ([\d.]+), LV = (\d+),", glsl).groups()   # (AW: the sheet's px, by the screen's size)
     assert step == 16 and float(h) * 16 == step and int(lv) == step
     for f in ("vox_style.js", "vox_style_land.js", "vox_style_win.js"):
         assert re.search(r"const H = VoxStyleGLSL\.H\b", (JS / f).read_text()), f          # (one H, not a .5 of its own)

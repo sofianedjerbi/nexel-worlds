@@ -3,17 +3,23 @@ your few tiles, not the meadow the mountain hides behind it, and walking along a
 
 import random
 
+import pytest
+
 from test_e2e_hd_behind import calm, go
 from test_e2e_hd_sun import hd
 from test_e2e_hd_xray import CHANGED
 
 
+@pytest.mark.realtime
 def test_at_a_mountain_s_foot_the_window_is_your_few_tiles_not_the_meadow_behind_it_and_it_does_not_flicker(browser, server):
     """Owner: "sometimes when moving the whole world disappears, like the camera goes behind the mountain x-raying
     everything". At a mountain's north foot every meadow tile behind it is hidden by it; the window ran through all of
     them (412 tiles, half the screen cut: the mountain gone). Only a hollow (land on two facing sides: a trench, a
     gorge, a strip under a cliff) carries your space on under the open sky (vox_style_land.js hollow). And walking along
-    a ragged ridge, a column hiding a fifth of you (under PART) shut the window to your tile for a frame: it holds 300 ms."""
+    a ragged ridge, a column hiding a fifth of you (under PART) shut the window to your tile for a frame: it holds 300 ms.
+    (At the game's own pace: every frame of a walk is looked at. On the tests' clock a land takes four times as much of
+    the game's time to make (260 ms, four frames, the window the last land's meanwhile) and you walked two tiles on from
+    the window: 15 of its tiles more than 5 from you, two runs in ten; at the game's pace, 10 runs in 10.)"""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
