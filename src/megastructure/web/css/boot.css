@@ -1,10 +1,11 @@
 /* THE WAIT (#boot): the first thing on the screen, and nothing else, until the island is painted (title_scene.js: body.scene);
-   then it fades and the title is under it. All of it is in the page, its pictures too (2.6 KB: the cat's run, the meadow,
-   the hills, the clouds, the sun, the panel's edge): it moves from the first picture, before any file has come, and with no
+   then it fades and the title is under it. All of it is in the page, its pictures too (the meadow, the hills, the clouds,
+   the sun; but the cat's run and the panel's edge are the Sprout Lands art, not in git: assets/boot_cat.png and
+   assets/panel.png, made by tools/install_assets.py): it moves from the first picture, before any file has come, and with no
    script. Whole art px (--bootpx, said below; the frame's and the chip's --bootu, half of it, the windows' 3 px on a desk); every move is a transform or an opacity in whole art px steps (the compositor's), so the
    cat runs on while the page's thread is busy making the game. The owner: "the loading screen looks bad, can't you just
    show the loading and nothing else first so it doesn't look stuck?"; "make it prettier, and smoother". */
-:root { --bootpx:4px; --bootf:3px; --bootu:2px; --bootpanel:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=); }      /* (the windows' panel.png: the frame and the chip) */
+:root { --bootpx:4px; --bootf:3px; --bootu:2px; --bootpanel:url(../assets/panel.png); }      /* (the windows' panel.png: the frame and the chip) */
 #boot { position:fixed; inset:0; z-index:2147483000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:calc(4 * var(--bootpx)); background:#2b2320; transition:opacity .5s ease-out; }
 #boot.done { opacity:0; pointer-events:none; }
 #boot > * { animation:bootin .24s steps(3) backwards; }
@@ -21,7 +22,7 @@
 #boot .near { top:calc(18 * var(--bootpx)); height:calc(9 * var(--bootpx)); }
 #boot .near i { --tw:calc(48 * var(--bootpx)); --m:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAJCAYAAAB0d6/iAAAAe0lEQVR42mNgGOKAkV4WLTmU/B9dLMZuLuOg9gCyo6/c/4ohr6PITbFnGGkVYksOJf/H5mhcQEeRmyxPMFI7xGBmkOJ4dPNJ8QgjNUOMVDOIMZtQSmCkVohRy/HoZuNLCTF2cxkZKxZG/KeGZdR0PCn2MlHDoIFwPMxeALtNUiKXuUp8AAAAAElFTkSuQmCC); background-image:var(--m); background-size:var(--tw) 100%; animation:bootlay 3.07s steps(48) infinite; }
 #boot .win > .cat { left:calc(24 * var(--bootpx)); top:calc(10 * var(--bootpx)); width:calc(16 * var(--bootpx)); height:calc(18 * var(--bootpx)); z-index:1; }
-#boot .cat i { width:calc(128 * var(--bootpx)); --m:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=); --ms:100% 100%; background:var(--m) 0 0 / 100% 100% no-repeat; animation:bootstep .64s steps(8) infinite; }
+#boot .cat i { width:calc(128 * var(--bootpx)); --m:url(../assets/boot_cat.png); --ms:100% 100%; background:var(--m) 0 0 / 100% 100% no-repeat; animation:bootstep .64s steps(8) infinite; }
 #boot .ground { bottom:0; height:calc(5 * var(--bootpx)); }
 #boot .ground i { --tw:calc(16 * var(--bootpx)); --m:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAFCAYAAABM6GxJAAAAR0lEQVR42mM8cKXgPwMFgOXllzcMDAwMDM9efGaQkuDFqgibHEyMCSYgJcHL8OzFZ6wGYJODGciETRBmAzFyLLhsxWYINjkA2L8jXCzX210AAAAASUVORK5CYII=); background-image:var(--m); background-size:var(--tw) 100%; animation:bootlay .64s steps(16) infinite; }
 #boot .ground { z-index:2; } #boot .win > .cat { z-index:3; }

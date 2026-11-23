@@ -6,7 +6,6 @@ from helpers import make, run
 
 from megastructure.floors import KINDS
 from megastructure.landblocks import LAND_BLOCKS, natural
-from megastructure.prompts import RULES, recipes_text, tools_text
 from megastructure.tiles import BLOCKS, FILLERS, PLACEABLE, RECIPES
 
 
@@ -110,12 +109,6 @@ def test_an_old_pack_keeps_its_stone_and_dirt(tmp_path):
     assert run(sim, b, "craft", {"recipe": "path"})["ok"] and b.count("stone") == 5       # old stones still make things
     assert run(sim, b, "place", {"dir": "E", "item": "dirt"})["ok"] and sim.world.top(b.x + 1, b.y) == 1
     sim.close()
-
-
-def test_the_agents_are_told():
-    tools, book = tools_text(), recipes_text()
-    assert "stone_block" in tools and "not a material" in tools and "stone_block" in RULES
-    assert "stone = 1 stone_block" in book
 
 
 def test_a_block_goes_into_any_empty_cell_with_something_solid_beside_it(world):

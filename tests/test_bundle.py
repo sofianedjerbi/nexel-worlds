@@ -11,12 +11,14 @@ from pathlib import Path
 
 import pytest
 
-from megastructure import web_bundle, web_static
+from megastructure import art, web_bundle, web_static
 
 ROOT = Path(__file__).parent.parent
 WEB = ROOT / "src" / "megastructure" / "web"
 sys.path.insert(0, str(ROOT / "tools"))
 import build_stdlib  # noqa: E402
+
+needs_art = pytest.mark.skipif(not art.installed(), reason="the Sprout Lands art is not installed (tools/install_assets.py, README 'Art')")
 
 
 def test_notes_and_indents_go_and_strings_templates_and_regular_expressions_stay():
@@ -54,6 +56,7 @@ def test_the_one_script_is_cut_at_files_starts_into_parts_of_about_the_same_size
     assert all(js[c - 2:c] == b";\n" for c in cut)           # (between two files)
 
 
+@needs_art
 def test_the_page_names_one_script_and_the_pack_holds_each_picture_as_its_file():
     page, files = web_bundle.packed(WEB)
     (js_name, js), (pack_name, pack) = files.items()
@@ -75,6 +78,7 @@ class Ask:
         self.path, self.headers = path, types.SimpleNamespace(get=lambda k, d="": {k.lower(): v for k, v in headers.items()}.get(k.lower(), d))
 
 
+@needs_art
 def test_the_server_sends_text_packed_and_says_not_modified(monkeypatch):
     plain = web_static.serve_http(None, Ask("/js/state.js"))
     assert plain.status_code == 200 and "Content-Encoding" not in plain.headers and plain.body == (WEB / "js" / "state.js").read_bytes()

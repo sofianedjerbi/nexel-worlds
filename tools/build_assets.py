@@ -1,9 +1,11 @@
 """Build the web client's art from the Sprout Lands packs (by Cup Nooble) plus generated extras.
 
-    uv run --with pillow python tools/build_assets.py ~/Downloads
+    python tools/install_assets.py <sprites zip> <ui zip>     (the usual way: checks what it wrote)
+    python tools/build_assets.py ~/Downloads                  (the two zips, by their own names, in a folder)
 
-Only the sheets the game uses are copied into src/megastructure/web/assets/ (the license forbids
-redistributing the pack itself). Extra tiles in the same palette are generated here.
+Only the sheets the game uses are copied into src/megastructure/web/assets/. They are not in git: the license
+forbids redistributing the pack, even modified (megastructure/art.py lists them; .gitignore ignores them).
+Extra tiles in the same palette are generated here.
 """
 
 import io
@@ -108,12 +110,12 @@ def recolor(img: Image.Image, fn) -> Image.Image:
 P["x"] = (0, 0, 0, 70)  # soft shadow
 
 
-def build(downloads: Path):
-    OUT.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(downloads / SPRITES) as zs, zipfile.ZipFile(downloads / UI) as zu:
+def build(sprites: Path, ui_zip: Path, out: Path = OUT):
+    out.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(sprites) as zs, zipfile.ZipFile(ui_zip) as zu:
         for suffix, name in COPY.items():
             z = zu if suffix.startswith(("UI Sprites", "fonts", "emojis")) else zs
-            (OUT / name).write_bytes(read_member(z, suffix))
+            (out / name).write_bytes(read_member(z, suffix))
         tilled = Image.open(io.BytesIO(read_member(zs, "Tilesets/ground tiles/Old tiles/Tilled_Dirt_v2.png")))
         water = Image.open(io.BytesIO(read_member(zs, "Tilesets/ground tiles/Water.png")))
         ui = Image.open(io.BytesIO(read_member(zu, "UI Sprites/ALL UI ASSETS on one sheet.png"))).convert("RGBA")
@@ -124,16 +126,16 @@ def build(downloads: Path):
     def ashen(r, g, b):
         lum = (r * 0.3 + g * 0.59 + b * 0.11)
         return (int(lum * 0.45 + r * 0.12), int(lum * 0.43 + g * 0.1), int(lum * 0.45 + b * 0.1))
-    with zipfile.ZipFile(downloads / SPRITES) as zs3:
+    with zipfile.ZipFile(sprites) as zs3:
         layers = Image.open(io.BytesIO(read_member(zs3, "Tilesets/ground tiles/New tiles/Grass_Tile_Layers.png"))).convert("RGBA")
     def charred(r, g, b):  # green → warm charcoal, keeping the light/dark structure
         v = (r + g + b) / 3
         return (int(v * 0.42 + 18), int(v * 0.36 + 14), int(v * 0.33 + 12))
-    recolor(layers, charred).save(OUT / "ash.png")
-    recolor(water, lambda r, g, b: (int(r * 0.62), int(g * 0.74), int(b * 0.86))).save(OUT / "water_deep.png")
-    recolor(tilled.copy(), lambda r, g, b: (int(r * 0.72), int(g * 0.62), int(b * 0.55))).save(OUT / "tilled_wet.png")
+    recolor(layers, charred).save(out / "ash.png")
+    recolor(water, lambda r, g, b: (int(r * 0.62), int(g * 0.74), int(b * 0.86))).save(out / "water_deep.png")
+    recolor(tilled.copy(), lambda r, g, b: (int(r * 0.72), int(g * 0.62), int(b * 0.55))).save(out / "tilled_wet.png")
     # deep water: the grass layer's rounded blob shapes as a translucent dark-blue overlay
-    with zipfile.ZipFile(downloads / SPRITES) as zs2:
+    with zipfile.ZipFile(sprites) as zs2:
         grass = Image.open(io.BytesIO(read_member(zs2, "Tilesets/ground tiles/New tiles/Grass_Tile_Layers.png"))).convert("RGBA")
     deep = Image.new("RGBA", grass.size)
     gp, dp = grass.load(), deep.load()
@@ -141,42 +143,42 @@ def build(downloads: Path):
         for x in range(grass.width):
             if gp[x, y][3] > 128:
                 dp[x, y] = (18, 52, 92, 80)
-    deep.save(OUT / "deep_mask.png")
+    deep.save(out / "deep_mask.png")
     # UI pieces used as CSS 9-slices
-    paw.resize((32, 32), Image.NEAREST).save(OUT / "cursor.png")
-    point.resize((32, 32), Image.NEAREST).save(OUT / "cursor_point.png")
-    ui.crop((11, 59, 37, 87)).save(OUT / "panel.png")
-    ui.crop((345, 9, 375, 39)).save(OUT / "slot.png")
-    ui.crop((345, 57, 375, 87)).save(OUT / "slot_sel.png")
+    paw.resize((32, 32), Image.NEAREST).save(out / "cursor.png")
+    point.resize((32, 32), Image.NEAREST).save(out / "cursor_point.png")
+    ui.crop((11, 59, 37, 87)).save(out / "panel.png")
+    ui.crop((345, 9, 375, 39)).save(out / "slot.png")
+    ui.crop((345, 57, 375, 87)).save(out / "slot_sel.png")
+    # the loading screen's running cat (css/boot.css .cat): eight frames of the character's run, 16x18 each
+    with zipfile.ZipFile(sprites) as zs4:
+        hero = Image.open(io.BytesIO(read_member(zs4, "Characters/Premium Charakter Spritesheet.png"))).convert("RGBA")
+    run = Image.new("RGBA", (16 * 8, 18))
+    for k in range(8):
+        run.alpha_composite(hero.crop((16 + 48 * k, 494, 32 + 48 * k, 512)), (16 * k, 0))
+    run.save(out / "boot_cat.png")
 
     # picked fruit trees: each sheet's last fruit-drop frame (row 3, frame 11) is the bare tree with the fruit on
     # the ground beside it; keep only the tree (the largest opaque shape) so the bare tree is the same tree
     bare = Image.new("RGBA", (48 * 4, 48))
     for i, fruit in enumerate(["tree_apple", "tree_pear", "tree_peach", "tree_orange"]):
-        frame = Image.open(OUT / f"{fruit}.png").convert("RGBA").crop((11 * 48, 3 * 48, 12 * 48, 4 * 48))
+        frame = Image.open(out / f"{fruit}.png").convert("RGBA").crop((11 * 48, 3 * 48, 12 * 48, 4 * 48))
         bare.alpha_composite(largest_shape(frame), (48 * i, 0))
-    bare.save(OUT / "fruit_bare.png")
+    bare.save(out / "fruit_bare.png")
 
-    thin_fall_sheet(OUT).save(OUT / "thin_fall.png")
-    thin_stump(OUT).save(OUT / "stump_thin.png")
+    thin_fall_sheet(out).save(out / "thin_fall.png")
+    thin_stump(out).save(out / "stump_thin.png")
 
     names = list(GEN)
     sheet = Image.new("RGBA", (16 * len(names), 16))
     for i, n in enumerate(names):
         sheet.alpha_composite(art(GEN[n], P), (16 * i, 0))
-    sheet.save(OUT / "gen.png")
-    (OUT / "gen.txt").write_text("\n".join(names) + "\n")
+    sheet.save(out / "gen.png")
+    (out / "gen.txt").write_text("\n".join(names) + "\n")
 
-    (OUT / "CREDITS.md").write_text(
-        "# Art credits\n\n"
-        "Assets - From: **Sprout Lands** (Sprites pack and UI pack, premium) - By: **Cup Nooble**\n"
-        "https://cupnooble.itch.io/\n\n"
-        "License summary: modification allowed; use in commercial and non-commercial projects allowed;\n"
-        "the asset pack itself may not be redistributed or resold, even modified; no NFTs or AI training;\n"
-        "credit required. Only the sheets this game uses are included here.\n\n"
-        "`gen.png`, `ash.png`, `water_deep.png` and `fruit_bare.png` are extra tiles made for this game from the pack.\n")
-    print("wrote", sorted(p.name for p in OUT.iterdir()))
+    print("wrote", sorted(p.name for p in out.iterdir()))
 
 
 if __name__ == "__main__":
-    build(Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else Path.home() / "Downloads")
+    folder = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else Path.home() / "Downloads"
+    build(folder / SPRITES, folder / UI)

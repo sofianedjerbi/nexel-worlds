@@ -1,19 +1,31 @@
 [project]
-name = "megastructure"
+name = "nexel-worlds"
 version = "0.1.0"
-description = "Add your description here"
+description = "Nexel Worlds: a persistent, tile-based multiplayer sandbox for people and AI agents (server, simulation, web client)"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.14"
 dependencies = [
     "cryptography>=50.0.2",
-    "httpx>=0.28.1",
-    "mlx-lm>=0.32.2",
     "websockets>=17.4",
 ]
+
+[project.optional-dependencies]
+# tools/install_assets.py (the art) and the other picture tools
+art = ["pillow>=11"]
+# tools/build_audio.py (the sound effects) and music/
+audio = ["numpy>=2", "soundfile>=0.14.0"]
+
+[project.urls]
+Repository = "https://github.com/sofianedjerbi/nexel-worlds"
 
 [build-system]
 requires = ["uv_build>=0.11.18,<0.12.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "megastructure"          # the game's first name: the package keeps it
 
 [dependency-groups]
 dev = [

@@ -16,6 +16,7 @@ from pathlib import Path
 from websockets.asyncio.server import serve
 from websockets.exceptions import ConnectionClosed
 
+from . import art
 from .admin import Admins
 from .cells import HIGH, LOW
 from .devtools import dev_op
@@ -282,8 +283,12 @@ def main():
     p.add_argument("--admin", action="append", default=[], help="NAME is an admin (repeatable; also saves/<world>/admins.txt, /op)")
     p.add_argument("--bundle", action="store_true", help="send the client as few files (web_bundle.py): for a phone or a far player")
     args = p.parse_args()
-    set_bundle(args.bundle)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    if not art.installed():                  # (the agent API works without it; the browser page shows no land)
+        log.warning("%s Missing: %d files.", art.HOW, len(art.missing()))
+        if args.bundle:
+            raise SystemExit("--bundle packs the art: " + art.HOW)
+    set_bundle(args.bundle)
     gs = GameServer(Path(args.saves) / args.world, seed=args.seed, dev=args.dev, accounts=args.accounts, admins=args.admin)
     asyncio.run(gs.run(args.host, args.port))
 
