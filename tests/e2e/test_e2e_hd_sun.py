@@ -2,16 +2,34 @@
 night; a roof is two pitched faces; and while the land is made again after a change, a shadow keeps its own px."""
 
 
+import game as game_module
+import home
 from conftest import Game, new_name
 
 
 
 def hd(browser, server):
+    """A player on the HD tests' place (home.py: flat dry land, the same for every test), the meadow laid out round it:
+    every run of a test on the same land. (It played where the player woke, by chance: the world's hills and the
+    meadow's patches there were read with what the test laid out, one run in eight.) What tests before it on this
+    worker's world laid out near the place is laid out again as meadow too (game.py BUILT): it leaves nothing; and
+    only that, not 30 tiles round each time (+15 % on five HD files at -n 2)."""
     g = Game(browser.new_page(viewport={"width": 960, "height": 540}), server)
     g.join(new_name(), 3)
     g.js("setOpt('names', false); setOpt('hints', false)")
+    x, y = home.PLACE
+    g.rpc("dev_teleport", x=x, y=y)
+    g.arrive()
+    near = [b for b in game_module.BUILT if b[2] >= x - 60 and b[0] <= x + 60 and b[3] >= y - 60 and b[1] <= y + 60]
+    game_module.BUILT.clear()
+    for x0, y0, x1, y1 in near:
+        if not (x0 >= x - 12 and x1 <= x + 12 and y0 >= y - 12 and y1 <= y + 12):      # (inside the square laid out below anyway)
+            g.js("(a) => rpc('dev_stamp', a)", {"x": x0, "y": y0, "rows": ["." * (x1 - x0 + 1)] * (y1 - y0 + 1), "levels": [], "roofs": [], "heads": []})
     g.rpc("dev_creatures", clear=60)
     g.clear_area(12)
+    game_module.BUILT.clear()                                # (the square: laid out by every HD test anyway)
+    g.rpc("dev_teleport", x=x, y=y)
+    g.arrive()
     g.rest()                                                 # (the land made and shown: it slept 1.2 s)
     return g
 
@@ -124,7 +142,7 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
         g.wait("window.__sh.length >= 150", 15000)
         got = g.js("window.__sh")
         assert g.js("HdLook.builds > window.__b0 && window.__busy > 0"), f"the land was not made again over frames: builds before, now, frames it was being made, its version: {g.js('[window.__b0, HdLook.builds, window.__busy, landVer]')}"
-        assert got[0] > 60 and max(got) - min(got) <= 4, (got[0], min(got), max(got))
+        assert got[0] > 60 and max(got) - min(got) <= 4, (got[0], min(got), max(got), got, g.js("[window.__busy, HdLook.builds, window.__b0]"))   # (all of it: which frame lost it)
     finally:
         g.page.close()
 

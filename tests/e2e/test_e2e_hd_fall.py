@@ -29,8 +29,11 @@ def test_the_edge_over_a_drop_that_hurts_has_a_dark_rim_and_a_step_has_none(brow
     g.stamp(-2, -1, ["."], levels=["8"])                                # a step of one level down, west of the terrace
     g.rest()
     mid = g.js(PX, [x + 1.5, y - .5, 9])
-    east, north = g.js(PX, [x + 1.97, y - .5, 9]), g.js(PX, [x + 1.5, y - .97, 9])
-    step = g.js(PX, [x - .97, y - .5, 9])
+    # (a tile's edge is a px of the screen's on the screen's way down only where the picture's pin puts it: .97 of a tile
+    #  in, the north rim was read one px past the edge, on the meadow far below, by where the pin lay (hd.js pin: since it
+    #  is made at your feet's level). The rim is a px and a half wide there: read .93 in, inside it wherever the pin is)
+    east, north = g.js(PX, [x + 1.93, y - .5, 9]), g.js(PX, [x + 1.5, y - .93, 9])
+    step = g.js(PX, [x - .93, y - .5, 9])
     assert east < mid * .5 and north < mid * .5, (mid, east, north)     # the cliff's rim: dark
     assert step > mid * .7 and east < step * .65, (mid, step, east)     # the step's edge: the cap's own outline, no more (374 of 484; the rim 187)
 

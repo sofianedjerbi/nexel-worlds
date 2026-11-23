@@ -17,6 +17,9 @@ from waits import MADE, QUIET, Waits
 
 SERVER_LOG = None        # the test server's log (conftest.py)
 _names = itertools.count(1)
+# what the tests on this worker's world laid out (dev_stamp, dev_col): [x0, y0, x1, y1] boxes, for the next HD test to lay
+# its place out again over them (test_e2e_hd_sun.py hd)
+BUILT = []
 
 
 def new_name(prefix="e2e") -> str:
@@ -104,6 +107,11 @@ class Game(Waits):
         return self.page.evaluate(expr, arg) if arg is not None else self.page.evaluate(expr)
 
     def rpc(self, op, **kw):
+        if op == "dev_stamp" and kw.get("rows"):
+            BUILT.append([kw["x"], kw["y"], kw["x"] + max(map(len, kw["rows"])) - 1, kw["y"] + len(kw["rows"]) - 1])
+        elif op == "dev_col" and kw.get("tiles"):
+            t = kw["tiles"]
+            BUILT.append([min(a for a, _ in t), min(b for _, b in t), max(a for a, _ in t), max(b for _, b in t)])
         return self.js(f"(a) => rpc({json.dumps(op)}, a)", kw)
 
     def wait(self, expr, timeout=5000):
