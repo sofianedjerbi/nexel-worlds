@@ -27,7 +27,16 @@ def window_off(g, off=True):
     """The same frame with no x-ray window (hd.js nowin), or with it again: what the land is with nothing looked through."""
     g.js(f"(() => {{ HdLook.nowin = {'true' if off else 'false'}; return 1; }})()")
     g.wait(f"HdLook.win.a === {0 if off else 1}")
+    made(g)
+
+
+def made(g):
+    """The land at rest out to its horizon: rest() knows the flat screen's rectangle, and the HD look draws more (README
+    rule 12). (The first of two pictures compared was taken with the far meadow not all made: .24 to .42 % of its px
+    other than in the next picture, and the next, one run in three, as if the window had changed them.)"""
     g.rest()
+    g.wait("!HdLook.busy && HdLook.bare() === 0", 15000)
+    g.frames(3)
 
 
 AT_ = """([x, y, z]) => { const p = HdLook.screenOf(x, y, z), k = cv.width / innerWidth;
@@ -80,6 +89,7 @@ def test_under_a_roof_an_xray_window_shows_your_floor_and_every_px_outside_it_is
     assert c[0] > c[2] + 40 and sum(c) > 300, c                       # (your floor is seen: warm, bright)
     # the same frame with no window: the land is whole (what is over your floor there is the meadow). The two pictures differ only where the window is: the room as the eye has it and its rim;
     # everywhere else every px is the same px (it was a crater: two thirds of the screen cut rock in terraces)
+    made(g)
     g.js(SNAP, "win")
     window_off(g)
     g.js(SNAP, "whole")
