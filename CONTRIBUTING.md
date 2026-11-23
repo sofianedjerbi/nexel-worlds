@@ -37,3 +37,67 @@ Preview what the next release would be: `uvx --from python-semantic-release sema
 --ignore=tests/e2e`, Python 3.14), prettier on the web client, commit messages. `security.yml` (pull
 requests, main, weekly): CodeQL, uv audit, gitleaks, bandit. Not blocking for now: ruff format, prettier,
 the ruff rules listed in `ignore` in pyproject.toml, and bandit.
+
+## Working on the code
+
+This repository is the game: the authoritative server and simulation, world generation, the browser client, the
+agent API (JSON over a websocket), and the game's tools and tests. The AI players are in
+[nexel-agent](https://github.com/sofianedjerbi/nexel-agent).
+
+`DESIGN.md` is the design (tick, chunks, the agent API), `JOURNAL.md` the development log, `CLAUDE.md` the original
+brief.
+
+### Setup
+
+Python 3.14.
+
+```sh
+python -m venv .venv && . .venv/bin/activate      # or: uv venv && uv pip install -e .
+pip install -e ".[art]"
+python tools/install_assets.py <the two zips>     # once: the art (README, "Art")
+python tools/build_audio.py                       # once: the sound effects (pip install -e ".[audio]"; music/PROCESS.md)
+nexel-worlds                                      # world in saves/default, http://127.0.0.1:7777/
+python -m megastructure.cli --name me              # a terminal client
+```
+
+Open http://127.0.0.1:7777/, type a name and press Enter to play (`/?follow=<name>` follows a player without
+playing). With uv: `uv sync` then the same commands under `uv run`.
+
+### The art
+
+`tools/install_assets.py` copies the sheets the game uses into `src/megastructure/web/assets/` and makes the tiles
+derived from them (`tools/build_assets.py`). They are git-ignored there (`.gitignore`; the list is
+`src/megastructure/art.py`), so they can't be committed by mistake. Don't zip up and share that folder.
+
+The pictures that are in the repository were drawn for this game (the enemy sheets, `design/enemies/`), made by its
+code (the `sprout-pixel.ttf` font, `tools/build_font.py`) or are screenshots of it (`title_*.webp`, `tools/pages/`).
+Credits: `src/megastructure/web/assets/CREDITS.md`. Music samples are fetched, not committed
+(`music/fetch_samples.py`).
+
+### Programs that play (the agent API)
+
+A program joins at `ws://127.0.0.1:7777/agent` and gets observations and tools as JSON (`DESIGN.md`, "Agent API";
+`src/megastructure/client.py` is a small async client). Programs on this machine use the world's key:
+`MEGASTRUCTURE_AGENT_KEY=$(cat saves/default/agent.key)`. Scripted bots and the language-model players are in
+[nexel-agent](https://github.com/sofianedjerbi/nexel-agent).
+
+### Asking who players are (optional)
+
+A world can ask for an email login: a six-digit code by mail, then a signed ticket the world checks. It never sees
+the email.
+
+```sh
+brew install mailpit && mailpit                                    # catches the mail: inbox at http://127.0.0.1:8025
+python -m megastructure.account --origin http://127.0.0.1:7777      # the account service, on :7780, data in accounts/
+nexel-worlds --accounts http://127.0.0.1:7780
+```
+
+### Tests
+
+```sh
+pip install pytest pytest-asyncio pytest-xdist pytest-rerunfailures playwright   # or: uv sync (the dev group)
+pytest -q                     # the unit suite (in parallel: -n 6 by default, `-n 2` on a busy machine)
+pytest -m e2e                 # plays the game in Chrome (Playwright; needs the art): minutes
+```
+
+Without the art the unit suite passes; the tests that read the sheets are skipped and say why.

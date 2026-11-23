@@ -11,6 +11,10 @@ dependencies = [
     "websockets>=17.4",
 ]
 
+
+[project.scripts]
+nexel-worlds = "megastructure.server:main"
+
 [project.optional-dependencies]
 # tools/install_assets.py (the art) and the other picture tools
 art = ["pillow>=11"]
