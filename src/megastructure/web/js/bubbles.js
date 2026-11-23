@@ -31,7 +31,7 @@ function bubbleShape(b, q = bubbleQ()) {
     rows[BUBBLE.lines - 1] = s.trimEnd() + "…";
   }
   const even = (v) => Math.ceil(v / q) * q;
-  b.q = q; b.rows = rows; b.w = Math.max(even(Math.max(...rows.map((r) => ctx.measureText(r).width))) + 2 * BUBBLE.padX * q, even(ctx.measureText(b.name).width) + 12 * q);   // (no narrower than the name's tab on it)
+  b.q = q; b.rows = rows; b.w = Math.max(even(Math.max(...rows.map((r) => ctx.measureText(r).width))) + 2 * BUBBLE.padX * q, 16 * q);   // (as wide as its words; no narrower than its tail needs. It was as wide as the name's tab: a short line in a mostly empty box)
   b.h = (rows.length * BUBBLE.pitch + 2 * BUBBLE.padY - 2) * q;
   b.life = Math.max(BUBBLE.life, b.text.length * BABBLE.letter + BUBBLE.after);     // (long enough to be written, then read)
   return b;
@@ -54,8 +54,9 @@ function bubbleBox(b, x, y, tx) {
   }
 }
 // The speaker's name: a dark tab standing on the top left of the pile's highest bubble.
-function bubbleTab(name, x, y, mine, q) {
+function bubbleTab(name, x, y, mine, q, bw) {
   const w = Math.ceil(ctx.measureText(name).width / q) * q + 6 * q, h = 11 * q;
+  if (w + 6 * q > bw) x += Math.round((bw - w - 6 * q) / 2 / q) * q;     // (wider than a short bubble: centred over it)
   ctx.fillStyle = BUBBLE.ink; ctx.fillRect(x + 3 * q, y - h, w, h); ctx.fillRect(x + 2 * q, y - h + q, w + 2 * q, h - q);
   ctx.fillStyle = mine ? "#fff1a8" : BUBBLE.paper; ctx.fillText(name, x + 6 * q, y - 2 * q);
 }
@@ -118,7 +119,7 @@ function drawBubbles(sx, sy, S, t) {
       // comes down to. They were a font pixel higher: 2 px over, 6 under, and a line of capitals looked hung from the top)
       b.rows.forEach((row, i) => { if (left > 0) ctx.fillText(row.slice(0, left), x + BUBBLE.padX * q, y + (BUBBLE.padY + 7 + i * BUBBLE.pitch) * q); left -= row.length + 1; });
       b.at = [x, y];                                          // (where it was drawn: for the tests)
-      if (n === pile.mine.length - 1) { ctx.globalAlpha = pile.mine.length > 1 ? 1 : ctx.globalAlpha; bubbleTab(pile.name, x, y, me && pile.name === me, q); }
+      if (n === pile.mine.length - 1) { ctx.globalAlpha = pile.mine.length > 1 ? 1 : ctx.globalAlpha; bubbleTab(pile.name, x, y, me && pile.name === me, q, b.w); }
     });
   }
   ctx.globalAlpha = 1; ctx.textAlign = "start";
