@@ -5,6 +5,14 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.2 (2026-11-23)
+
+### Bug Fixes
+
+- **web**: A jump's arc carries you over water and wide holes
+  ([`6974c9f`](https://github.com/sofianedjerbi/nexel-worlds/commit/6974c9f3c6ba81da7c257e637a32849a68726588))
+
+
 ## v0.1.1 (2026-11-23)
 
 ### Bug Fixes
