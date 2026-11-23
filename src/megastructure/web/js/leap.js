@@ -113,7 +113,8 @@ const Leap = (() => {
     } else rpc("act", {tool: "jump", args: {}});
     if (past) { p.tx += h[0]; p.ty += h[1]; syncWalk(); }   // (on into the next tile, as the walk is: the tile behind you read as a step down to it)
   }
-  // You on the tile you came down on, on your way to its middle: its height (else null). (jump.js jumpOf, relief.js liftOf, hd_level.js)
+  // You on the tile you came down on, on your way to its middle: its height (else null; and off it, put elsewhere by the
+  // world, no longer: a teleport there left you gliding for good, the walk never started again). (jump.js jumpOf, relief.js liftOf, hd_level.js)
   function landedOn(p) {
     const a = p.leapAt;
     if (!a) return null;
@@ -158,5 +159,5 @@ const Leap = (() => {
   const lift = (p) => (off && p.e && p.e.kind === "agent" && p.e.id === myId ? off * RELIEF_STEP * Math.cos(HdLook.cam.pitch * Math.PI / 180) : 0);
   // hd_level.js: the level you stand at (the ground under you) and the one you are drawn from (the one you left)
   const level = () => (L ? [settleAt(L.tx, L.ty, L.z + 1e-6), L.z0] : null);
-  return {leapable, can, due, start, frame, body, level, landedOn, after, cam, lift, on: () => !!L, gliding: () => { const p = ents.get("agent" + myId); return !!(p && p.leapAt); }, get state() { return L; }};
+  return {leapable, can, due, start, frame, body, level, landedOn, after, cam, lift, on: () => !!L, gliding: () => { const p = ents.get("agent" + myId); return !!(p && p.leapAt && landedOn(p) !== null); }, get state() { return L; }};
 })();

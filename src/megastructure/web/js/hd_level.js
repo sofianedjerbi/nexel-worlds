@@ -17,7 +17,10 @@ const HdLevel = (() => {
   const solid = (c, z) => { if (!c) return false; for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   let trail = [];
   // (yours: the level you are drawn from goes a px a frame at the most through a jump and after it: leap.js cam)
-  function of(p, now) { const r = of0(p, now); return p.e && p.e.kind === "agent" && p.e.id === myId ? [r[0], Leap.cam(r[1], now)] : r; }
+  // (in the air, the level the view takes you at is where your feet are, to the nearest level, not the ground under
+  // you: sprint-jumping south up a hill the step ahead, a level over the ground you left, stood between the eye and
+  // that ground: the eye tilted up as if under the land. Your shadow keeps the ground: leap.js level)
+  function of(p, now) { const r = of0(p, now); if (!(p.e && p.e.kind === "agent" && p.e.id === myId)) return r; const a = Leap.state; return [a ? Math.max(r[0], Math.floor(a.z + .5)) : r[0], Leap.cam(r[1], now)]; }
   function of0(p, now) {
     const H0 = Voxels.host, rx = Math.round(p.x), ry = Math.round(p.y), near = typeof myAt !== "undefined" && myAt && Math.abs(myAt.x - rx) + Math.abs(myAt.y - ry) <= 2;
     const at = (x, y) => { const t = topAt(x, y), s = near ? Floors.standOf(p, x, y) : t; return s >= t && H0.water && H0.water(x, y) && H0.waterTop ? Math.max(s, H0.waterTop(x, y)) : s; };   // (in water: at its face)

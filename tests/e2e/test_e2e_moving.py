@@ -195,6 +195,7 @@ def test_hop_down_off_a_hill_edge(game):
 @pytest.mark.realtime
 def test_higher_ground_is_drawn_higher_and_clicks_find_it(game):
     # a terrace three layers up just north of you: drawn three blocks higher (relief.js, RELIEF_STEP art px a layer), you on it too
+    game.clear_area(30)                                        # (the land round you the meadow: a ridge another test left 15 to 20 tiles north of you (hd_sky) was drawn where the click landed)
     game.stamp(-2, -4, ["....."] * 3, levels=["33333"] * 3)
     x, y = game.pos()
     z, L = game.js("zoom"), game.js("RELIEF_STEP")

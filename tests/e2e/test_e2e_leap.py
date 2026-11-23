@@ -199,3 +199,56 @@ def test_up_a_stair_under_a_roof_with_the_jump_key_never_on_the_land_over_it(gam
     smooth(rec, 5)
     agree(game)
     assert not game.errors, game.errors
+
+
+# every frame: [the eye's pitch, how open the x-ray window is, your x, your y]
+VIEW = """() => { window.__vw = []; window.__vwOn = true; const f = () => { const p = ents.get('agent' + myId);
+  if (p) __vw.push([HdLook.cam.pitch, HdLook.win.a, p.x, p.y]); if (__vwOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; }"""
+
+
+@pytest.mark.realtime
+@pytest.mark.parametrize("way", ["S", "N", "E", "W"])
+def test_sprint_jumping_up_a_hill_under_the_open_sky_keeps_the_open_view(game, way):
+    """"when sprinting and jumping south blocks up (hills) the blocks cause the camera to trigger the underground
+    angle": in the air the view took your level as the ground under you, the step ahead higher than it (in front of
+    the eye, going south): under the land. Up five steps of a hill, three tiles each, sprinting (each a jump through
+    the air), any way: the eye keeps the open sky's pitch and the x-ray never opens."""
+    game.clear_area(10)
+    dx, dy = {"S": (0, 1), "N": (0, -1), "E": (1, 0), "W": (-1, 0)}[way]
+    n, w = 28, 5                                                              # (tiles along the way, across it)
+    lv = ["0" if t < 2 else str(min(5, (t + 1) // 3)) for t in range(n)]     # (five steps up, three tiles each, then the top)
+    if dx:
+        rows = ["".join(lv if dx > 0 else lv[::-1])] * w
+        game.stamp(1 if dx > 0 else -n, -2, ["." * n] * w, levels=rows)
+    else:
+        rows = [c * w for c in (lv if dy > 0 else lv[::-1])]
+        game.stamp(-2, 1 if dy > 0 else -n, ["." * w] * n, levels=rows)
+    game.rest()
+    pitch = game.js("HdLook.cam.pitch")
+    game.js(VIEW)
+    key = {"S": "s", "N": "w", "E": "d", "W": "a"}[way]
+    game.hold(["Shift", key], 2400)
+    game.rest()
+    rec = game.js("(() => { __vwOn = false; return __vw; })()")
+    assert game.server()["z"] == 5, game.server()
+    assert max(abs(r[0] - pitch) for r in rec) < .5, (pitch, [r for r in rec if abs(r[0] - pitch) >= .5][:4])
+    assert max(r[1] for r in rec) == 0, [r for r in rec if r[1] > 0][:4]
+    assert not game.errors, game.errors
+
+
+
+def test_on_the_lower_step_behind_a_higher_one_your_legs_are_behind_it(game):
+    """"on stone steps ... it looks like I am above the border but I am under": standing on a step just north of one a
+    level higher, the higher step is between the eye and your legs: they are hidden by it (its edge at your waist),
+    not drawn over it one px in two (HdLook.hid 0: the picture's pass of you behind land is not made). Behind land
+    higher than that, a wall a level and more over the eye's line to your feet: you still show through it."""
+    game.clear_area(8)
+    game.stamp(-4, -4, ["." * 9] * 9, levels=["1" * 9] * 4 + ["2" * 9] * 5)
+    x, y = game.pos()
+    game.rpc("dev_teleport", x=x, y=y - 1, z=1); game.arrive(); game.face(0, 1); game.rest()
+    game.frames(3)
+    assert game.js("HdLook.hid") == 0
+    game.stamp(-4, 1, ["." * 9] * 4, levels=["4" * 9] * 4)                      # (a wall three levels up just south of you)
+    game.frames(3)
+    assert game.js("HdLook.hid") == 1
+    assert not game.errors, game.errors
