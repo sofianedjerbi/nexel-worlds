@@ -8,8 +8,8 @@ it, a tile a stride (the screen goes no faster): while it lasts the body keeps t
 (Bodies.height), every tile is checked to be next to the one before and reachable by the arc (room for two cells
 over a ground no higher than its top), the landing to be a ground of the tile it is on under the top, and there are
 no more than LEAP_TILES. Then it comes down there (a fall that hurts, as a step off a ledge does). A flight that does
-not hold, or whose end is not said in LEAP_WAIT, is given up: down on the ground where it is, and the screen comes
-back to where the world has you (walk.js). (It was said only once the screen had landed: the world a whole jump
+not hold, or whose end is not said in LEAP_WAIT, is given up: down on the ground where it is, its tiles dropped, the
+way walked after it made from there. (It was said only once the screen had landed: the world a whole jump
 behind, the walk slowing down to wait for it at every step of a run of them.)"""
 
 import math
@@ -86,5 +86,7 @@ class Leaping:
             a.flying_n += 1
             a.flying_at = self.tick
             steps += 1
-        self.via_drop(a)                                   # (given up: down where it is)
+        while a.via and len(a.via[0]) > 3:                 # (given up: down where it is, the flight's tiles dropped; the way walked
+            a.via.pop(0)                                   # after it is made from there, if it can be: all of it dropped, the screen
+        a.flying = None                                    # was put back on the world, tiles behind)
         return steps, {}

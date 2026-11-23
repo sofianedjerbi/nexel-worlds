@@ -3,15 +3,17 @@
 player glitches and at the end teleports", "drawn above the cave"). The jump key is a jump through the air
 (web/js/leap.js, sim/leaping.py); a step down is a drop at the walk's pace; the world agrees at every landing."""
 
+import math
+
 import pytest
 
 pytestmark = pytest.mark.e2e
 
-# every frame drawn: [ms, x, y, body over the level drawn from (art px), pose, the level drawn from, the world's x, its z, feet on the screen (art px), a fixed place of the land (art px)]
+# every frame drawn: [ms, x, y, body over the level drawn from (art px), pose, the level drawn from, the world's x, its z, feet on the screen (art px), a fixed place of the land (art px), your level, the land's top there, the eye's pitch]
 FRAMES = """([ox, oy, oz]) => { window.__fr = []; window.__frOn = true; if (!window.__frHook) { window.__frHook = true; const show = HdView.show;
   HdView.show = (...A) => { const r = show(...A); if (window.__frOn) { const p = ents.get('agent' + myId), lv = HdLook.level, a = HdLook.art(); if (p && a) {
     const now = lastT, j = jumping(p, now), b = HdLook.screenOf(p.x + .5, p.y + .5, lv[2]), o = HdLook.screenOf(window.__o[0] + .5, window.__o[1] + .5, window.__o[2]);
-    __fr.push([now, p.x, p.y, j ? Math.round(j.body) : 0, j && j.pose || '', lv[2], p.e.x, p.e.z, Math.round(b[1] / a.u) - (j ? Math.round(j.body) : 0), o[1] / a.u]); } } return r; }; }
+    __fr.push([now, p.x, p.y, j ? Math.round(j.body) : 0, j && j.pose || '', lv[2], p.e.x, p.e.z, Math.round(b[1] / a.u) - (j ? Math.round(j.body) : 0), o[1] / a.u, myAt ? myAt.z : null, topAt(Math.round(p.x), Math.round(p.y)), HdLook.cam.pitch]); } } return r; }; }
   window.__o = [ox, oy, oz]; return 1; }"""
 
 
@@ -68,10 +70,10 @@ def test_down_a_stair_cut_into_a_hill_you_are_drawn_in_the_cut(game):
     game.stamp(-6, -2, ["." * 16] * 5, levels=["4" * 16, "4" * 16, lv, "4" * 16, "4" * 16], roofs=["0" * 16, "0" * 16, "0" * 12 + "4444", "0" * 16, "0" * 16])
     game.rpc("dev_teleport", x=game.pos()[0], y=game.pos()[1], z=4); game.arrive(); game.face(1, 0)
     x, _ = game.pos()
-    k = game.js("Math.cos(HdLook.cam.pitch * Math.PI / 180)") * 16              # (art px a level is drawn, as the eye sees it)
     for keys, ms in ((["d"], 1400), (["Shift", "a"], 800), (["Shift", "d"], 900)):
         rec = frames(game, lambda: game.hold(keys, ms), z0=4)
         for r in rec:
+            k = math.cos(r[12] * math.pi / 180) * 16                           # (art px a level is drawn, as the eye sees it, that frame: the eye tilts under the roof)
             i, at = r[1] - (x - 6), r[5] + r[3] / k                            # (the level your feet are drawn at: the eye's, and your body over it)
             lo, hi = int(lv[max(0, min(15, int(i // 1)))]), int(lv[max(0, min(15, -int(-i // 1)))])
             assert min(lo, hi) - .2 <= at <= max(lo, hi) + 1.35, ("drawn off the stair", r, lo, hi, at)   # (up to a jump's top over it, never on the hill)
@@ -162,5 +164,36 @@ def test_sprinting_over_steps_up_and_down_keeps_its_speed(game):
         assert v >= 8, ("slowed", round(v, 1), a[:5], b[:5])
     assert "crouch" not in {r[4] for r in rec} and "rise" in {r[4] for r in rec}
     smooth(rec)
+    agree(game)
+    assert not game.errors, game.errors
+
+
+@pytest.mark.realtime
+def test_up_a_stair_under_a_roof_with_the_jump_key_never_on_the_land_over_it(game):
+    """Up a stair cut under the land, three cells high, the jump key pressed at every step (as the HD stair test
+    does): no jump through the air there (no room for its top), so you are never taken for on the land over the
+    stair, never put back where the world has you (nothing moves more than its speed in a frame), and the world
+    ends where you are. (It jumped into the roof: your level read as the land's top for a dozen frames, the eye tilted
+    up and back, and once you were put back 8 tiles.)"""
+    game.clear_area(10)
+    x, y = game.pos()
+    for i in range(1, 7):
+        game.rpc("dev_col", tiles=[[x + i, y]], col=[-i, -i + 3, 0])
+    game.rest()
+    game.rpc("dev_teleport", x=x + 6, y=y, z=-6); game.arrive(); game.face(-1, 0)
+
+    def go():
+        game.page.keyboard.down("a")
+        for _ in range(80):
+            if game.js(f"myPos().x <= {x}"):
+                break
+            game.page.keyboard.press("Space")
+            game.page.wait_for_timeout(100)
+        game.page.keyboard.up("a")
+    rec = frames(game, go, z0=-6)
+    assert game.pos()[0] <= x and game.server()["z"] == 0, (game.pos(), game.server())
+    under = [r for r in rec if r[11] > r[10] + 2]                      # (land over you)
+    assert under and all(r[10] < 0 for r in under), [r[:2] + r[10:] for r in under if r[10] >= 0][:4]
+    smooth(rec, 5)
     agree(game)
     assert not game.errors, game.errors

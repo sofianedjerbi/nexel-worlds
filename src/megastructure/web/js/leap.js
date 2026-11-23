@@ -24,8 +24,10 @@ const Leap = (() => {
   const held = () => { const k = [...keys].reverse().find((k) => KEYDIR[k]); return k ? DIRV[KEYDIR[k]] : null; };
   // May you jump from where you are? (in the water, in a boat, on a ladder, falling, building: the old ways)
   function can(p) {
-    const [x, y] = tileOf(p.x, p.y), t = tile(x, y);
-    return !!p && !Build.on && !(p.e && p.e.sail) && !(t && wet(t[1])) && !Climb.climbOf(p) && !p.fall && !eating();
+    const [x, y] = tileOf(p.x, p.y), t = tile(x, y), h = myZ(x, y);
+    // (room over your head for the jump's top: under a roof, in a tunnel or a cave's stair, the old way. A jump there
+    // hit the roof, its tiles not the world's: you were drawn on the land over it and put back where the world had you)
+    return !!p && !Build.on && !(p.e && p.e.sail) && !(t && wet(t[1])) && !Climb.climbOf(p) && !p.fall && !eating() && !solidAt(x, y, h + 3) && !solidAt(x, y, h + 4);
   }
   // Off the ground, with the walk's speed
   function start(p, now) {
@@ -136,14 +138,20 @@ const Leap = (() => {
   // most (CAM), in the air towards the ground under you, and after it to the level you would be drawn from; then it is
   // that again. (Up a step the land went down 16 px in a frame as you came down on it, the eye easing after it.) off:
   // how far that is from it, levels (jump.js jumping adds it to your body)
-  let C = null, Ct = 0, off = 0;
+  let C = null, Ct = 0, off = 0, air = false;
   const CAM = 60 / RELIEF_STEP;
   function cam(natural, now) {
     if (C === null) { off = 0; return natural; }
-    const dt = Math.min(.1, Math.max(0, (now - Ct) / 1000)), goal = L ? settleAt(L.tx, L.ty, L.z + 1e-6) : natural;
-    Ct = now; C += Math.max(-CAM * dt, Math.min(CAM * dt, goal - C));
-    if (!L && Math.abs(goal - C) < 1e-3) { C = null; off = 0; return natural; }
-    off = L ? 0 : natural - C;
+    const dt = Math.min(.1, Math.max(0, (now - Ct) / 1000)), step = CAM * dt;
+    Ct = now;
+    if (L) { const goal = settleAt(L.tx, L.ty, L.z + 1e-6); C += Math.max(-step, Math.min(step, goal - C)); off = 0; air = true; return C; }
+    // (on the ground: what is left between the two goes, a px a frame, while the eye goes with you as it does: it
+    // chased you at a px a frame, and running down a flight of steps after a jump you ran away from it, 5 px a frame
+    // down the screen)
+    if (air) { off = natural - C; air = false; }          // (just down: from then on only the difference left goes)
+    off -= Math.sign(off) * Math.min(Math.abs(off), step);
+    if (Math.abs(off) < 1e-3) { C = null; off = 0; return natural; }
+    C = natural - off;
     return C;
   }
   // jump.js jumping: you on the ground, drawn from that level: lifted by the difference (art px as the eye sees them)
