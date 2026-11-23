@@ -36,8 +36,9 @@ const HdLevel = (() => {
   function over(x, y, L, k, n = 20) { let m = 0; for (let d = 1; d <= n; d++) { const c = col(x, y + d), e = L + (d - .5) * k; if (!c || !c.length || matAt(x, y + d)) continue; for (let i = 0; i < c.length; i += 2) if (c[i] > e && (i ? c[i - 1] : -1e9) < e + k) m = Math.max(m, i && c[i - 1] > e ? 99 : c[i] - e); } return m > 0 && topAt(x, y) > L ? 99 : m; }
   const under = (x, y, L) => topAt(x, y) > L;
   // clear(tx, ty, L, n) -> the pitch (degrees) at which the eye's line to your feet passes over the land of the n tiles south of you, counting land as it rises over your head (a tile a level over it
-  //   counts whole, one at your head's height not at all, between in proportion: no jump in the pitch as you walk; .4 a level over your feet's line: your feet and their shadow, not the land's lip on them); 0: none over your head
-  function clear(tx, ty, L, n) { let m = 0; for (let d = 1; d <= n; d++) { const t = topAt(tx, ty + d) - L, w = Math.max(0, Math.min(1, t - 1)); if (w > 0 && !matAt(tx, ty + d)) m = Math.max(m, w * (t + .4) / (d - .5)); } return m ? Math.atan(m * RELIEF_STEP / 16) * 180 / Math.PI : 0; }
+  //   counts whole, one at your head's height not at all, between in proportion: no jump in the pitch as you walk; a quarter of a level under your feet's line: a step's edge two levels up and two tiles and a half behind you, on a hill of steps
+  //   two tiles deep, is over your feet's lowest px only, and counted it tilted the eye seven degrees at every step down, "the pitch nods 36 -> 43 -> 36". It was .4 over); 0: none over your head
+  function clear(tx, ty, L, n) { let m = 0; for (let d = 1; d <= n; d++) { const t = topAt(tx, ty + d) - L, w = Math.max(0, Math.min(1, t - 1)); if (w > 0 && !matAt(tx, ty + d)) m = Math.max(m, w * (t - .25) / (d - .5)); } return m ? Math.atan(m * RELIEF_STEP / 16) * 180 / Math.PI : 0; }
   let sk = "", sv = 0;
   const RAYS = Array.from({length: 16}, (_, a) => Array.from({length: 6}, (__, d) => [Math.round(Math.cos(a * Math.PI / 8) * (d + 1)), Math.round(Math.sin(a * Math.PI / 8) * (d + 1))]));
   function steep(tx, ty, L, ver) {   // (sv: how many of the 16 ways out of here run into land two levels over your feet within 6 tiles. It was a ring two tiles away: a room five wide stayed side-on, you a ghost on the grass south of it)

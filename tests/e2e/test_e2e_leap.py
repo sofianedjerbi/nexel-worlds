@@ -213,7 +213,9 @@ def test_sprint_jumping_up_a_hill_under_the_open_sky_keeps_the_open_view(game, w
     angle": in the air the view took your level as the ground under you, the step ahead higher than it (in front of
     the eye, going south): under the land. Up five steps of a hill, three tiles each, sprinting (each a jump through
     the air), any way: the eye keeps the open sky's pitch and the x-ray never opens."""
-    game.clear_area(10)
+    # (the meadow all round the way, out past its end: past ten tiles the world's own hills beside the strip shut you in
+    #  (hd_level.js steep: land a level over you in ten ways of sixteen), and the eye tilted as it should, one run in six)
+    game.clear_area(30)
     dx, dy = {"S": (0, 1), "N": (0, -1), "E": (1, 0), "W": (-1, 0)}[way]
     n, w = 28, 5                                                              # (tiles along the way, across it)
     lv = ["0" if t < 2 else str(min(5, (t + 1) // 3)) for t in range(n)]     # (five steps up, three tiles each, then the top)
