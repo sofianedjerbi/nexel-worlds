@@ -218,8 +218,7 @@ function selectItem(name) {                      // a thing in hand: the slot it
 }
 function cycleHand(step) {                       // Tab (and the wheel over the bar): the next slot, empty ones too, round
   if (!meObs) return;
-  selectSlot(handSlot + step);
-  if (selected) toast(`In hand: **${label(selected)}**`);      // (empty hands: the hotbar shows it, no line in the chat: "no need to write a chat message for empty hands")
+  selectSlot(handSlot + step);      // (no line in the chat: the name over the bar says what is in hand: "no need to broadcast what the player have in hand in the chat")
 }
 let barWheel = 0;                                // (counted in distance: a mouse notch a slot, a trackpad swipe a few)
 $("hotbar").addEventListener("wheel", (e) => { e.preventDefault(); barWheel += e.deltaY; if (Math.abs(barWheel) >= 50) { cycleHand(Math.sign(barWheel)); barWheel = 0; } }, {passive: false});
