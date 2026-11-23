@@ -111,7 +111,8 @@ def test_in_a_gorge_the_window_has_no_dark_arc_at_its_top(browser, server):
 
 def test_a_pit_s_floor_is_shaded_by_its_walls_not_in_tile_squares(browser, server):
     """A pit 3 x 3, 2 deep, shadows off: its corners and its north edge were flat darker squares (the corners' shade of each tile,
-    in steps). Away from the walls its floor is one light; along a wall's foot it is darker."""
+    in steps). The floor's shade is the land's own corner shade, the one every top has (vox_style_land.js AO): it runs on across
+    a tile's edge, no step there; along a wall's foot it is darker than in the middle."""
     g = hd(browser, server)
     calm(g)
     g.js("setOpt('shadows', 0)")
@@ -120,10 +121,13 @@ def test_a_pit_s_floor_is_shaded_by_its_walls_not_in_tile_squares(browser, serve
     g.rpc("dev_teleport", x=x, y=y, z=-2)
     g.wait("!HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     quiet(g)
-    mid = [lum(g.js(PX, p)) for p in ([x - .45, y - .45, -2], [x + .5, y - .45, -2], [x + 1.45, y - .45, -2], [x - .45, y + .5, -2])]
-    assert max(mid) / min(mid) < 1.05, mid                                   # 9 px from any wall, in a corner tile and an edge one: one light (it was a step a tile)
+    for row, n in ((1.5, 56), (-.45, 19)):                                    # (across the south row, west to east past two tiles' edges; the north one to past its first, short of your body)
+        r = [lum(g.js(PX, [x - .9 + i * .05, y + row, -2])) for i in range(n)]
+        jumps = [abs(b - a) / max(a, b) for a, b in zip(r, r[1:])]
+        assert max(jumps) < .1, f"{row} {max(jumps):.2f} {[round(v) for v in r]}"   # no step at a tile's edge: no squares
+    mid = lum(g.js(PX, [x + .5, y + .5, -2]))
     foot = lum(g.js(PX, [x + .5, y - 1 + .04, -2]))
-    assert foot < mid[1] * .9, (foot, mid)                                   # at the north wall's foot: its shade
+    assert foot < mid * .9, (foot, mid)                                       # at the north wall's foot: its shade
 
 
 def test_down_a_passage_a_level_floor_has_no_band_a_step_up_its_riser_a_step_down_its_lip(browser, server):
@@ -238,7 +242,8 @@ def test_a_shaft_at_a_passage_s_end_is_a_level_floor_not_a_band(browser, server)
     way = [lum(g.js(PX, [x + .5, y - 1.1 - i * .05, 0])) for i in range(70)]
     passage, shaft = way[:56], way[62:]
     med = sorted(passage)[len(passage) // 2]
-    assert min(shaft) > med * .85, f"{med} {' '.join(str(round(v)) for v in way)}"                    # the shaft's floor as light as the passage (it was a dark band)
+    assert min(shaft) > med * .7 and max(shaft) - min(shaft) < .05 * med, f"{med} {' '.join(str(round(v)) for v in way)}"   # no band: one tone across the shaft's floor, lit by your lantern as the passage is (it was 51 against 173, darkest at the passage's end: the walls' corner shade, the sun's, a mouth's).
+    # (.7: the shaft's floor is its own tile's paint under the sky, the passage's the soil under the land: a little darker, the same light)
 
 
 def test_in_a_gorge_a_bank_s_corner_far_east_of_the_river_is_cut(browser, server):

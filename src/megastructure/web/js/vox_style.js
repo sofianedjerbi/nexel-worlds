@@ -187,7 +187,7 @@ const VoxStyle = (() => {
       const bd = NOBODY;   // (nobody: a body on the land over the window is not drawn at all now, hd.js; it was drawn with the ground under its feet kept one px in two)
       const un = UB[lastU === UB[0] ? 1 : 0]; ub = un.f; uq = 0;   // (every number the painter takes, into the buffer the last frame drawn is not in)
       uP(RW); uP(RH); uA(bd); uA(m); uA(eye); uA(lamp); uP(v.bend || 0); uA(L.fogc); uP(L.lr); uP(L.day); uP(L.amb); uP(L.fog[0]); uP(L.fog[1]); uP(L.rim); uP(L.wa ?? .62); uP(v.dep || 0); uP(L.sun ?? 1);
-      uA(L.wtint || Z20); uA(wv); uA(disc); uA(pw); uA(clip); uA(L.clear); uP(L.ca ?? 1); uP(sver); uA(sorg); uP(wxr); uP(W_.ver); uA(sectAt); uP(rimz); uP(cpx); uP(v.behind || 0);
+      uA(L.wtint || Z20); uA(wv); uA(disc); uA(pw); uA(clip); uA(L.clear); uP(L.ca ?? 1); uP(sver); uA(sorg); uP(wxr); uP(W_.ver); uA(sectAt); uP(rimz); uP(cpx); uP(v.behind || 0); uP(v.under || 0);
       if (hr) { uP(1); uA(hr.wash); uA(hr.tint || NOTINT); uP(hr.lit ? (hr.lit._v === undefined ? NaN : hr.lit._v) : -1); } else uP(0); un.n = uq;
       const gSame = sameW(gh, lastG), dSame = sameW(sd, lastD);
       why = again ? "land" : sized ? "size" : stale || dirty.length ? "paints" : S.un ? "pictures" : wup ? "water" : !gSame ? "ghosts" : !dSame ? "shadows" : !sameN(S.d, S.n, lastS, lastSn) ? "sprites" : !sameW(un, lastU) ? "view " + firstOff(un, lastU) : "";   // (why this frame is drawn again; "": it is the last one)
@@ -207,7 +207,7 @@ const VoxStyle = (() => {
       gl.useProgram(pr); const u = (n) => U[n] || (U[n] = gl.getUniformLocation(pr, n)), us = (n) => U["s" + n] || (U["s" + n] = gl.getUniformLocation(sp, n));
       gl.uniformMatrix4fv(u("m"), false, m); gl.uniform1i(u("t"), 0); gl.uniform1i(u("wt"), 2); gl.uniform1i(u("gw"), 3); gl.uniform1i(u("mk"), 4); gl.uniform1f(u("xr"), wxr); gl.uniform3fv(u("sc"), (v.sect || SECT)[0]); gl.uniform4fv(u("sp"), sectAt); gl.uniform1f(u("rf"), cfg.rock ? cfg.rock.from : 1e9); gl.uniform3fv(u("go"), sorg); gl.uniform3fv(u("lamp"), [lamp[0], lamp[1] + .6, lamp[2]]); gl.uniform3fv(u("eye"), eye);   // ("gw", not "st": the sprites' names are kept under "s" + name)
       gl.uniform3fv(u("em"), mean); gl.uniform3fv(u("ctr"), lamp); gl.uniform1f(u("bend"), v.bend || 0); gl.uniform2f(u("vpx"), RW, RH); gl.uniform3fv(u("fogc"), L.fogc); gl.uniform4fv(u("cl"), clip);
-      { const f1 = (n, x) => gl.uniform1f(u(n), x); f1("lr", L.lr); f1("day", L.day); f1("amb", L.amb); f1("fn", L.fog[0]); f1("ff", L.fog[1]); f1("rim", L.rim); f1("wa", L.wa ?? .62); f1("dep", v.dep || 0); f1("rd", 0); f1("sun", L.sun ?? 1); f1("shp", 0); f1("cd", cdv); f1("rz", rimz); f1("cp", cpx); f1("bh", v.behind || 0); }
+      { const f1 = (n, x) => gl.uniform1f(u(n), x); f1("lr", L.lr); f1("day", L.day); f1("amb", L.amb); f1("fn", L.fog[0]); f1("ff", L.fog[1]); f1("rim", L.rim); f1("wa", L.wa ?? .62); f1("dep", v.dep || 0); f1("rd", 0); f1("sun", L.sun ?? 1); f1("shp", 0); f1("cd", cdv); f1("rz", rimz); f1("cp", cpx); f1("bh", v.behind || 0); f1("ud", v.under || 0); }
       gl.uniform4fv(u("wtn[0]"), L.wtint || Z20); gl.uniform4fv(u("wv"), wv); gl.uniform3fv(u("mc"), disc); gl.uniform3fv(u("bd[0]"), bd); gl.uniform4fv(u("pw"), pw); gl.uniform1f(u("bp"), 0);
       gl.useProgram(sp); gl.uniform1i(us("t"), 1); gl.uniform1i(us("mk"), 4); gl.uniform2f(us("nf"), .5, 200); gl.uniform3fv(us("mc"), disc); gl.uniform4fv(us("pw"), pw); gl.useProgram(pr);
       const go = (b, from, n) => { if (n > 0) { gl.bindVertexArray(b.vao); gl.drawArrays(gl.TRIANGLES, from, n); calls++; } };
