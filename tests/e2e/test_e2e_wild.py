@@ -74,7 +74,9 @@ def test_a_creature_comes_up_a_step_as_you_do(game):
     game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     boar = game.spawn("tusker", 4, 0)                            # (it sees four tiles)
     game.wait(f"[...ents.values()].some((q) => q.e && q.e.id === {boar} && q.e.z === 1)", 6000)   # it charged, up the step
-    assert game.js(f"(() => {{ const q = ents.get('tusker{boar}'); return liftOf(q) > 0; }})()")        # ...and is drawn up there
+    # ...and is drawn up there (from the next frames: the server's z comes with a tick, the body is drawn by the frame
+    # after it; read at the very instant the tick came, it was not drawn yet, at a load of 8)
+    game.wait(f"(() => {{ const q = ents.get('tusker{boar}'); return !!q && liftOf(q) > 0; }})()", 2000)
     game.sleep(600)
     assert game.server()["hp"] < 20
     assert not game.errors
