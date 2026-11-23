@@ -116,3 +116,26 @@ def test_what_is_typed_in_capitals_is_shouted(game):
         assert len(said) >= 3 and (max(said) > .1) is shout, said               # a shout's syllables are held longer (as long as the recording lasts)
     assert game.js("window.__shaped") == 1                                      # only the shout went through the breaking curve
     assert not game.errors
+
+
+def test_two_people_on_one_row_at_two_heights_each_has_its_name_over_its_own_head(game, browser, server):
+    """The audit's prediction: the HD look found a body's place on the screen by its row alone (hd.js written, who):
+    two people on the same row, one on a pillar three levels up, had their names at the same height, the first one's.
+    Each name is over its own body: the one on the pillar some 100 px higher on the screen. Either of the two up."""
+    from conftest import open_game
+    game.clear_area(8)
+    other = open_game(browser, server)
+    x, y = game.pos()
+    game.stamp(2, 0, ["."], levels=["3"])
+    other.rpc("dev_teleport", x=x + 2, y=y, z=3)
+    for up, low, ux in ((other, game, x + 2), (game, other, x)):
+        game.wait(f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x === {x + 2 if up is other else x - 2} && p.y === {y})", 8000)
+        game.rest()
+        names = {n[0]: n[2] for n in game.js(NAMES)}
+        assert up.name in names and low.name in names, names
+        assert names[up.name] < names[low.name] - 60, (up.name, names)
+        if up is other:                                                          # (and the other way round: you on a pillar, they on the meadow)
+            game.stamp(0, 0, ["."], levels=["3"])
+            game.rpc("dev_teleport", x=x, y=y, z=3); game.arrive()
+            other.rpc("dev_teleport", x=x - 2, y=y, z=0)
+    assert not game.errors and not other.errors
