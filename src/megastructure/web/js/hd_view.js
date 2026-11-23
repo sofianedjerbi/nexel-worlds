@@ -10,7 +10,7 @@
 // piece of land made, draw calls, how many frames were drawn at all, the pictures' sizes. (It had a box of its own.)
 const HdView = (() => {
   let el = null, g = null, sk = null, skyKey = "", skyVer = 0, one = null, lastKey = "", wordsKey = null, wordsAt = 0, tmp = null;
-  const Z = () => zoom * DPR, PAINT = new Set(["fillRect", "clearRect", "strokeRect", "fillText", "strokeText", "drawImage", "fill", "stroke", "putImageData"]), ids = new WeakMap(), strs = new Map(); let nid = 0;
+  const Z = () => artPx() * DPR, PAINT = new Set(["fillRect", "clearRect", "strokeRect", "fillText", "strokeText", "drawImage", "fill", "stroke", "putImageData"]), ids = new WeakMap(), strs = new Map(); let nid = 0;
   const sink = () => one || (one = document.createElement("canvas").getContext("2d"));   // (a canvas of one px: what the classic frame still paints goes there)
   // a 2D context that notes what is asked of it: a number for all of it (hash), and the calls themselves. dry: nothing is painted (what sets a state is passed on: a text is measured as it will be drawn); play() paints them
   const call = (t, k, n, a, b, c, d, e, f, g, h, i) => { const m = t[k];   // (t's method k with its first n args: no array made)
@@ -39,16 +39,17 @@ const HdView = (() => {
     const k = rec.hash + "|" + cv.width + "x" + cv.height; if (k === wordsKey && now - wordsAt < 250) return false;
     wordsKey = k; wordsAt = now; real.setTransform(1, 0, 0, 1, 0, 0); real.globalAlpha = 1; real.clearRect(0, 0, cv.width, cv.height); real.setTransform(DPR, 0, 0, DPR, 0, 0); real.imageSmoothingEnabled = false; rec.play(); return true;
   }
-  // what is pointed at and planned, in whole art px: on the world's canvas, over the land: fn paints it with `ctx` in the game's own px (zoom of them an art px) -> a number for all of it; show() paints it when it puts the picture together
+  // what is pointed at and planned, in whole art px: on the world's canvas, over the land: fn paints it with `ctx` in the game's own px (artPx() of them an art px) -> a number for all of it; show() paints it when it puts the picture together
   let recM = null;
   function marks(fn) {
-    if (!g) return 0; recM = recM || recorder(g, true); recM.reset(); const keep = ctx; g.setTransform(1 / zoom, 0, 0, 1 / zoom, 0, 0);
+    if (!g) return 0; recM = recM || recorder(g, true); recM.reset(); const keep = ctx, u = artPx(); g.setTransform(1 / u, 0, 0, 1 / u, 0, 0);
     ctx = recM.proxy; try { fn(); } finally { ctx = keep; g.setTransform(1, 0, 0, 1, 0, 0); } return recM.hash;
   }
   function fit(w, h) {
     if (!el) { el = document.createElement("canvas"); el.id = "hd"; cv.before(el); g = el.getContext("2d"); }
     if (el.width !== w || el.height !== h) { el.width = w; el.height = h; lastKey = ""; }
-    const sw = w * zoom + "px", sh = h * zoom + "px"; if (el.style.width !== sw || el.style.height !== sh) { el.style.width = sw; el.style.height = sh; el.style.transformOrigin = W / 2 + "px " + H / 2 + "px"; }
+    const u = artPx(), sw = w * u + "px", sh = h * u + "px";   // (an art px a whole number of the screen's px: state.js artPx)
+    if (el.style.width !== sw || el.style.height !== sh) { el.style.width = sw; el.style.height = sh; el.style.transformOrigin = W / 2 + "px " + H / 2 + "px"; }
     if (el.style.display !== "block") { el.style.display = "block"; lastKey = ""; wordsKey = null; }
   }
   function hide() { if (el && el.style.display !== "none") { el.style.display = "none"; wordsKey = null; } }
@@ -60,7 +61,7 @@ const HdView = (() => {
     if (k === skyKey) return; const gl = VoxGL.gl; if (!gl) return; skyKey = k; skyVer++;
     sk = sk || document.createElement("canvas").getContext("2d"); if (sk.canvas.width !== w || sk.canvas.height !== h) { sk.canvas.width = w; sk.canvas.height = h; }
     VoxGL.fit(w, h); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h); gl.disable(gl.BLEND);
-    VoxSky.draw(Object.assign({}, sky, {line, edge, t: tq * step}), W / zoom, h, W / zoom, 1);   // (a px of it a px of the paint: as the picture the screen's size had them, zoom x density px each)
+    VoxSky.draw(Object.assign({}, sky, {line, edge, t: tq * step}), W / artPx(), h, W / artPx(), 1);   // (a px of it a px of the paint: as the picture the screen's size had them, zoom x density px each)
     sk.globalAlpha = 1; sk.globalCompositeOperation = "source-over"; sk.imageSmoothingEnabled = false; sk.drawImage(VoxGL.el, 0, 0);
     sk.globalAlpha = ws[3]; sk.fillStyle = `rgb(${ws.slice(0, 3).join()})`; sk.fillRect(0, 0, w, h); sk.globalAlpha = 1; sk.globalCompositeOperation = "multiply"; sk.fillStyle = `rgb(${light.join()})`; sk.fillRect(0, 0, w, h); sk.globalCompositeOperation = "source-over";
   }
@@ -81,7 +82,7 @@ const HdView = (() => {
     if (line > 0 && sk) g.drawImage(sk.canvas, 0, 0);
     g.fillStyle = tint([.36, .64, .8], .65); for (const [run, px] of o.runs) { g.fillRect(run, line, px - run, h - line); for (const ex of [run - 8, px]) { g.save(); g.translate(ex, 0); g.fillStyle = checker(g.fillStyle); g.fillRect(0, line, 8, h - line); g.restore(); } }   // (under the sky's line only: the sky over the sea is the sky)   // (its two ends: a 2x2 checker, 8 px: one fill of a pattern; it was 400 small ones)
     g.drawImage(o.pic, 0, 0); pic = o.pic;   // (the land's picture as it is: nothing over it but the marks)
-    if (recM && o.marks) { g.setTransform(1 / zoom, 0, 0, 1 / zoom, 0, 0); recM.play(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; }
+    if (recM && o.marks) { const u = artPx(); g.setTransform(1 / u, 0, 0, 1 / u, 0, 0); recM.play(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; }
     return true;
   }
   // what the screen shows there, px of the game's canvas (x, y, w, h): the world's canvas made as big, the game's canvas over it (tests; hd.js catSeen)

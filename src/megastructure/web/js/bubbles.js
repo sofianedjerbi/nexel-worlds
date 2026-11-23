@@ -6,12 +6,15 @@
 // points at the head itself and the name is a small dark tab on the top of the pile, as the label of a speech box.
 // state.js adds to `bubbles`; render.js calls drawBubbles last, over everything.
 
-const BUBBLE = {q: 2, life: 7, after: 3.5, most: 3, wide: 400, lines: 7, pitch: 20, padX: 8, padY: 6, gap: 2, fall: 12, fade: .25,
+const BUBBLE = {q: 2, life: 7, after: 3.5, most: 3, wide: 400, lines: 7, pitch: 10, padX: 4, padY: 3, gap: 1, fall: 12, fade: .25,
   ink: "#5b3f36", paper: "#fff6e2", shout: "#ffe3a3", foot: "#ecd7b0", footShout: "#f2c877", shade: "rgba(60,40,30,.25)", edge: 16};
+// THE BUBBLE'S PIXEL (q, its letters' own: the 18 px font's is 2 CSS px) is a whole number of the screen's px: 2 x density, rounded (a density of 1.25: 3 px, the letters 21.6 CSS px).
+// Everything of a bubble is a number of them (pitch, padX, padY, gap: in q). At 1.25 its 2 CSS px were 2.5 px of the screen: its edges and letters soft, and another raster each place it was drawn at
+const bubbleQ = () => { const d = window.devicePixelRatio || 1; return Math.max(1, Math.round(BUBBLE.q * d)) / d; };
 
 // The line as the rows it is written in (at most BUBBLE.lines, the last ending in … if there was more), and its size.
-function bubbleShape(b) {
-  if (b.rows) return b;
+function bubbleShape(b, q = bubbleQ()) {
+  if (b.rows && b.q === q) return b;
   const words = b.text.trim().split(/\s+/), rows = [""];
   const fits = (s) => ctx.measureText(s).width <= BUBBLE.wide;
   for (let w of words) {
@@ -27,15 +30,15 @@ function bubbleShape(b) {
     while (s && !fits(s + "…")) s = s.slice(0, -1);
     rows[BUBBLE.lines - 1] = s.trimEnd() + "…";
   }
-  const q = BUBBLE.q, even = (v) => Math.ceil(v / q) * q;
-  b.rows = rows; b.w = Math.max(even(Math.max(...rows.map((r) => ctx.measureText(r).width))) + 2 * BUBBLE.padX, even(ctx.measureText(b.name).width) + 12 * q);   // (no narrower than the name's tab on it)
-  b.h = rows.length * BUBBLE.pitch + 2 * BUBBLE.padY - 4;
+  const even = (v) => Math.ceil(v / q) * q;
+  b.q = q; b.rows = rows; b.w = Math.max(even(Math.max(...rows.map((r) => ctx.measureText(r).width))) + 2 * BUBBLE.padX * q, even(ctx.measureText(b.name).width) + 12 * q);   // (no narrower than the name's tab on it)
+  b.h = (rows.length * BUBBLE.pitch + 2 * BUBBLE.padY - 2) * q;
   b.life = Math.max(BUBBLE.life, b.text.length * BABBLE.letter + BUBBLE.after);     // (long enough to be written, then read)
   return b;
 }
 // One bubble: its box at (x, y), its tail's middle at tx if it has one.
 function bubbleBox(b, x, y, tx) {
-  const q = BUBBLE.q, {w, h} = b, r = (c, X, Y, W_, H_) => { ctx.fillStyle = c; ctx.fillRect(X, Y, W_, H_); };
+  const q = b.q, {w, h} = b, r = (c, X, Y, W_, H_) => { ctx.fillStyle = c; ctx.fillRect(X, Y, W_, H_); };
   const paper = b.shout ? BUBBLE.shout : BUBBLE.paper;
   r(BUBBLE.shade, x + q, y + h, w - 2 * q, q);
   r(BUBBLE.ink, x + q, y, w - 2 * q, h); r(BUBBLE.ink, x, y + q, w, h - 2 * q);
@@ -51,8 +54,8 @@ function bubbleBox(b, x, y, tx) {
   }
 }
 // The speaker's name: a dark tab standing on the top left of the pile's highest bubble.
-function bubbleTab(name, x, y, mine) {
-  const q = BUBBLE.q, w = Math.ceil(ctx.measureText(name).width / q) * q + 6 * q, h = 11 * q;
+function bubbleTab(name, x, y, mine, q) {
+  const w = Math.ceil(ctx.measureText(name).width / q) * q + 6 * q, h = 11 * q;
   ctx.fillStyle = BUBBLE.ink; ctx.fillRect(x + 3 * q, y - h, w, h); ctx.fillRect(x + 2 * q, y - h + q, w + 2 * q, h - q);
   ctx.fillStyle = mine ? "#fff1a8" : BUBBLE.paper; ctx.fillText(name, x + 6 * q, y - 2 * q);
 }
@@ -64,9 +67,9 @@ const underBubble = (x, y, w, h) => bubbleBoxes.some((o) => x < o.r && x + w > o
 function drawBubbles(sx, sy, S, t) {
   bubbleBoxes = [];
   if (!opt("bubbles")) { bubbles = []; bubbleT = t; return; }
-  const dt = Math.min(.1, Math.max(0, t - bubbleT)), q = BUBBLE.q, snap = (v) => Math.round(v / q) * q; bubbleT = t;
-  ctx.font = "18px SproutPixel"; ctx.textAlign = "left";
-  bubbles = bubbles.filter((b) => t - b.t < bubbleShape(b).life);
+  const dt = Math.min(.1, Math.max(0, t - bubbleT)), q = bubbleQ(), snap = (v) => Math.round(v / q) * q; bubbleT = t;
+  ctx.font = 9 * q + "px SproutPixel"; ctx.textAlign = "left";
+  bubbles = bubbles.filter((b) => t - b.t < bubbleShape(b, q).life);
   const by = new Map();                                      // each speaker's, oldest first
   for (const b of bubbles) { if (!by.has(b.name)) by.set(b.name, []); by.get(b.name).push(b); }
   const piles = [];
@@ -76,7 +79,7 @@ function drawBubbles(sx, sy, S, t) {
     let up = 0;
     for (const b of mine) {                                  // where each rests, as px above the lowest's foot; it comes down to it
       b.up = b.up === undefined || b.up < up ? up : Math.max(up, b.up - Math.max(q, (b.up - up) * dt * BUBBLE.fall));
-      up += b.h + BUBBLE.gap;
+      up += b.h + BUBBLE.gap * q;
     }
     const o = overBody(p, S), tx = onArt(sx(p.x) + S / 2 + o[0]), foot = onArt(bodyY(p, sy) + o[1] - (p.e.hp < HP_MAX ? 9 * zoom + 4 : 4 * zoom)) - 3 * q,     // (the tail's point: over the head, or over the health bar)
       // (ON THE LAND'S PIXEL, as the body it is over (state.js onArt): it went by the bubble's own 2 px, the body by the land's (3 at zoom 3): walking, the bubble went 1 px off the head and back each step, "blurry")
@@ -113,9 +116,9 @@ function drawBubbles(sx, sy, S, t) {
       let left = written(b.text, since).length;              // written out as it is said (babble.js), row after row
       // (the letters in the middle of the paper: 4 px over a capital, 4 under it to the foot's shade, where a g or a y
       // comes down to. They were a font pixel higher: 2 px over, 6 under, and a line of capitals looked hung from the top)
-      b.rows.forEach((row, i) => { if (left > 0) ctx.fillText(row.slice(0, left), x + BUBBLE.padX, y + BUBBLE.padY + 14 + i * BUBBLE.pitch); left -= row.length + 1; });
+      b.rows.forEach((row, i) => { if (left > 0) ctx.fillText(row.slice(0, left), x + BUBBLE.padX * q, y + (BUBBLE.padY + 7 + i * BUBBLE.pitch) * q); left -= row.length + 1; });
       b.at = [x, y];                                          // (where it was drawn: for the tests)
-      if (n === pile.mine.length - 1) { ctx.globalAlpha = pile.mine.length > 1 ? 1 : ctx.globalAlpha; bubbleTab(pile.name, x, y, me && pile.name === me); }
+      if (n === pile.mine.length - 1) { ctx.globalAlpha = pile.mine.length > 1 ? 1 : ctx.globalAlpha; bubbleTab(pile.name, x, y, me && pile.name === me, q); }
     });
   }
   ctx.globalAlpha = 1; ctx.textAlign = "start";

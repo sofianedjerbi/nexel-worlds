@@ -58,11 +58,11 @@ const HdFx = (() => {
   // what is said over heads, in the words pass (hd.js written: on the game's canvas with the names): over whom it is about, rising and fading
   function words(seen, at) {
     const c = ctx;
-    last.floats = []; if (!seen || !floats.length) return; const t = performance.now() / 1000, u = zoom, S = TS();
+    last.floats = []; if (!seen || !floats.length) return; const t = performance.now() / 1000, u = artPx(), S = TS();
     c.textAlign = "center"; c.font = "18px SproutPixel";
     for (const f of floats) { const k = t - f.t; if (k < 0 || k >= 1.4) continue;
       const s = seen.list.find((v) => v.q && v.q.tx === f.x && v.q.ty === f.y), a = s ? at(s.x, s.y, s.z) : at(f.x + .5, f.y + .5, ground(f.x, f.y)); if (!a) continue;
-      const x = Math.round(a[0] / u) * u - (f.heart ? 9 : 0), y = Math.round((a[1] - 22 * u - (s && s.q.e && s.q.e.kind === "agent" ? 22 : 0) - k * S * .7) / u) * u;   // (over the head, a whole art px; over a person's name)
+      const x = Math.round(a[0] / u) * u - (f.heart ? onArt(9) : 0), y = Math.round((a[1] - 22 * zoom - (s && s.q.e && s.q.e.kind === "agent" ? 22 : 0) - k * S * .7) / u) * u;   // (over the head, a whole art px; over a person's name)
       c.globalAlpha = 1 - k / 1.4; outlined(f.text, x, y, f.color); last.floats.push([f.text, x, y]);
       if (f.heart) { const hx = x + Math.ceil(c.measureText(f.text).width / 2) + 4, hy = y - 13; HEART.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== ".") { c.fillStyle = ch === "o" ? "#5b3f36" : ch === "w" ? "#ffd9d0" : "#e8554a"; c.fillRect(hx + i * 2, hy + j * 2, 2, 2); } })); } }
     c.globalAlpha = 1; c.textAlign = "start";
