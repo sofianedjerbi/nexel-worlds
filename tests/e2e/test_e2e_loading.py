@@ -84,6 +84,43 @@ def test_the_wait_moves_with_no_script_at_all(browser, server):
         ctx.close()
 
 
+SKY = """async (b64) => { const im = new Image(); im.src = 'data:image/png;base64,' + b64; await im.decode();
+  const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d'); x.drawImage(im, 0, 0); return [...x.getImageData(0, 0, 1, 1).data].slice(0, 3); }"""
+AT = "(t) => { for (const a of document.getAnimations()) { a.pause(); a.currentTime = t; } }"
+hexrgb = lambda h: [int(h[i:i + 2], 16) for i in (1, 3, 5)]
+
+
+def test_the_wait_has_a_day_and_holds_still_at_dusk_when_asked_for_less_motion(browser, server):
+    """The owner: "can you add a nice daylight cycle into loading screen?" The window's sky (its top band, an art px in from
+    the corner: no star, sun, moon or cloud there) is the day's blue at 1 s, the night's (daylight.js) at 8 s, by CSS
+    alone; asked for less motion, it is the dusk's and stays so, whatever time it is."""
+    import base64
+    for reduce, want in ((False, None), (True, "#8f6bb2")):
+        page = browser.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=3, is_mobile=True, has_touch=True, reduced_motion="reduce" if reduce else "no-preference")
+        try:
+            page.route("**/js/*.js*", lambda r: None)                  # (no script of the game's comes: the wait stays)
+            page.goto(server, wait_until="commit")
+            page.wait_for_selector("#boot .win", state="visible", timeout=10000)
+            page.wait_for_timeout(400)
+            b = page.locator("#boot .win").bounding_box()
+            px = page.evaluate("parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bootpx'))")
+            clip = {"x": b["x"] + 2.5 * px, "y": b["y"] + 1.5 * px, "width": 1, "height": 1}
+            def sky(t):
+                page.evaluate(AT, t)
+                page.wait_for_timeout(100)
+                return page.evaluate(SKY, base64.b64encode(page.screenshot(clip=clip)).decode())
+            near = lambda a, h: all(abs(u - v) <= 3 for u, v in zip(a, hexrgb(h)))
+            day, night = sky(1000), sky(8000)
+            if not reduce:
+                assert near(day, "#549aed") and near(night, "#32356b"), (day, night)
+                assert page.evaluate("document.getAnimations().filter((a) => a.effect.target.matches('#boot .sky.night')).length") == 1
+            else:
+                assert near(day, want) and near(night, want), (day, night)    # a still dusk
+                assert page.evaluate("document.getAnimations().filter((a) => a.effect.target.closest('#boot .win') && !a.effect.target.closest('.cloud, .far, .near, .cat, .ground')).length") == 0
+        finally:
+            page.close()
+
+
 # every frame the wait is on the screen: [ms, the % it says, the script's bytes read]; and the page's long tasks
 WATCH = """window.__bar = []; window.__long = [];
 try { new PerformanceObserver((l) => { for (const e of l.getEntries()) __long.push([Math.round(e.startTime), Math.round(e.duration)]); }).observe({entryTypes: ['longtask']}); } catch (e) {}
