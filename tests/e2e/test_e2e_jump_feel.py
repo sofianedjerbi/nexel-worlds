@@ -3,7 +3,7 @@ block and more"): a hop a block and more high, a step's jump as high over the st
 than its speed from a frame to the next, no pose flashing, a staircase at one beat (jump.js)."""
 
 import pytest
-from test_e2e_jump import ORDER
+from test_e2e_jump import ORDER, drawn_over, step_east
 
 pytestmark = pytest.mark.e2e
 
@@ -110,4 +110,28 @@ def test_your_lantern_stays_lit_up_and_down_steps_at_night(game):
     rec = game.js("(() => { __ltOn = false; return __lt; })()")
     assert any(j for j, _ in rec), "no step jumped"
     assert all(l is not False for _, l in rec), [i for i, (_, l) in enumerate(rec) if l is False][:20]
+    assert not game.errors, game.errors
+
+
+@pytest.mark.realtime
+@pytest.mark.parametrize("how, up", [("woken", 3), ("dropped", 3), ("dropped", 1)])
+def test_off_a_pillar_the_land_still_goes_up_a_step_by_whole_px(game, how, up):
+    """test_e2e_jump's camera test failed one run in eight, the land by you going 0.965 px a frame up a step, then -0.035:
+    the place of the land the picture is pinned to (hd.js pin) stood a level from your feet, nearer the eye, and as the
+    eye rose it went a little more than the land by you: a swim of the whole picture. It was made at the eye's level,
+    which glides a px a frame after a teleport (woken on a pillar and back on the meadow), and kept through a drop (on
+    the pillar, then its ground taken away: a player woken on a hill a level up, then the test's meadow laid under
+    them). Up the step east after either: the land by you goes whole px, one way."""
+    step_east(game)
+    x, y = game.pos()
+    game.stamp(0, -1, ["."], levels=[str(up)])
+    game.rpc("dev_teleport", x=x, y=y - 1, z=up); game.arrive()
+    if how == "woken":
+        game.rpc("dev_teleport", x=x, y=y, z=0); game.arrive()
+    else:
+        game.stamp(0, 0, ["."], levels=["0"]); game.rest()                # (the ground under you taken away)
+    _, r = drawn_over(game, lambda: game.hold(["d"], 800))
+    assert game.server()["z"] == 1 and len(r) > 10, game.server()
+    moves = [b[2] - a[2] for a, b in zip(r, r[1:]) if abs(b[2] - a[2]) > .01]
+    assert len(moves) >= 4 and all(abs(v - round(v)) < .02 and v > 0 for v in moves), [(i, round(v, 3)) for i, v in enumerate(moves) if not (abs(v - round(v)) < .02 and v > 0)]
     assert not game.errors, game.errors
