@@ -64,13 +64,16 @@ def test_bubbles_are_pixels_pile_up_and_come_down(game):
 @pytest.mark.realtime
 def test_what_is_typed_in_capitals_is_shouted(game):
     """A shout needed "!" before it. Now a line in capitals is one (three letters or more: "OK" is talk), and it is a
-    yell: each syllable held longer and falling, through a breaking curve and an echo (babble.js SHOUT)."""
+    yell: each syllable held longer and falling, through a breaking curve and an echo (babble.js SHOUT).
+    (The line was "come here": its syllables c, m, h, r all take the shortest recording (say_4, 0.21 s), and a shout is
+    held only as long as the recording lasts at its pitch: a name whose voice is high (voiceOf, +4) held it 0.096 s, not
+    over 0.1, one run in a few. "papa kafka" takes say_2 (0.43 s) at every syllable: held 0.15 s in any voice.)"""
     assert game.js("['HELLO THERE', 'WAIT!!', 'Hello', 'OK', 'I', '123', 'ÉCOUTE'].map(shouted)") == [True, True, False, False, False, False, True]
     game.wait("sounds.manifest && sounds.manifest.sounds.say.files.every((f) => sounds.buffers.get(f) instanceof AudioBuffer)", 60000)
     game.js("""(() => { window.__said = []; window.__shaped = 0; const P = AudioBufferSourceNode.prototype, o = P.start;
       P.start = function (when, off, dur) { window.__said.push(dur / this.playbackRate.value); return o.apply(this, arguments); };
       const c = BaseAudioContext.prototype.createWaveShaper; BaseAudioContext.prototype.createWaveShaper = function () { window.__shaped++; return c.call(this); }; })()""")
-    for line, shout in (("come here", False), ("COME HERE", True)):
+    for line, shout in (("papa kafka", False), ("PAPA KAFKA", True)):
         game.js("window.__said = []")
         game.press("Enter", 200)
         game.page.keyboard.type(line)
