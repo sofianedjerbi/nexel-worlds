@@ -76,11 +76,11 @@ const VoxStyleLand = (() => {
     // water that ran into a tile (flow.js): its chunk alone is made again (its faces hang on nothing round it)
     function wet(x, y) { const k = ck(x, y); store.delete(k); if (making) late.add(k); stamp++; }
     // WATER THAT RUNS (flow.js): in a cell z at level v (1 to 8) its face is at z - 1 + v / 8 (a cell with water over it: none, it is full), so shallow water lies lower;
-    // its tint by how deep it is (e: a film of 1 or 2 hardly tinted, else the wet cells down from it, 4 at most); and a south side where it stands higher than what is in front of it
+    // its tint by how deep it is (e: a film of 1 or 2 hardly tinted, else the wet cells down from it, 2 at most: a pond's, as the river beside it); and a south side where it stands higher than what is in front of it
     // (a waterfall's face, a pool's edge seen from the south: the eye looks north). Drawn as the sea's face is, the water's own kind (3)
     const wq = (dst, q, lv, e) => { for (const t of TRI) { const p = q[t]; emit(dst, p[0], p[2] * H, p[1], 0, 0, 1, 1, 3, lv, e); } };
     function flowFaces(dst, x, y, fw, solidAt) { let n = 0;
-      for (const [z, v] of fw) { const full = fw.has(z + 1), top = z - 1 + (full ? 1 : v / 8); let d = 0; while (fw.has(z - d)) d++; const e = !full && v <= 2 ? 0 : Math.min(4, d);
+      for (const [z, v] of fw) { const full = fw.has(z + 1), top = z - 1 + (full ? 1 : v / 8); let d = 0; while (fw.has(z - d)) d++; const e = !full && v <= 2 ? 0 : Math.min(2, d);
         if (!full) { wq(dst, [[x, y, top], [x + 1, y, top], [x + 1, y + 1, top], [x, y + 1, top]], z, e); n++; }
         if (!solidAt(x, y + 1, z)) { const s = host.flow(x, y + 1), sv = s ? s.get(z) || 0 : 0, st = sv ? z - 1 + (s.has(z + 1) ? 1 : sv / 8) : z - 1; if (st < top - .01) { wq(dst, [[x, y + 1, top], [x + 1, y + 1, top], [x + 1, y + 1, st], [x, y + 1, st]], z, e); n++; } } }
       return n; }

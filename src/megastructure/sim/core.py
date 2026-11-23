@@ -132,7 +132,8 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
 
     def set_tile(self, x, y, ground=None, block=None, by: Agent | None = None, cause=None, level=None, roof=None, head=None):
         if level is not None or roof is not None or head is not None:
-            self.raze(x, y)                                # (the land laid out anew: what was built over it goes)
+            self.raze(x, y)                                # (the land laid out anew: what was built over it goes, and the water on it)
+            self.water.clear(x, y)
         self.world.set(x, y, ground=ground, block=block, level=level, roof=roof, head=head)
         self.stats["tiles_changed"] += 1
         g, b = self.world.ground(x, y), self.world.block(x, y)

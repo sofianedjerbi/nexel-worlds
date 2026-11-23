@@ -194,6 +194,12 @@ class Water:
             if col and BLOCKS[self.world.get(x, y)[1]].solid and col.get(lv + 1):
                 self._put(x, y, lv + 1, None)            # (a wall put in it)
 
+    def clear(self, x: int, y: int):
+        """All the water of the tile gone (its land laid out anew: dev tools); what ran from it dries."""
+        for z in list(self.at.get((x, y), ())):
+            self._put(x, y, z, None)
+            self.poke(x, y, z)
+
     def pour(self, x: int, y: int, z: int):
         """A source where a player poured it (a can)."""
         self._put(x, y, z, (SOURCE, NOHEAD, 0))
