@@ -195,6 +195,9 @@ CAM = """([ox, oy]) => { window.__cam = []; window.__camOn = true; const f = () 
 def camera_over(game, keys, ms):
     x, y = game.pos()
     game.rest()
+    # (and the eye's tilt done: by a terrace three up the eye tips down to the pitch from above over 400 ms; recorded half
+    #  way, the pitch went on up to 58 and then down again off the step, "back and forth", one run in eight on a busy machine)
+    game.wait("Math.abs(HdLook.cam.pitch - HdLook.cam.want) < .01", 3000)
     game.js(CAM, [x, y])
     if keys:
         game.hold(keys, ms)

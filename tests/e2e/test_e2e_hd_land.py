@@ -6,8 +6,12 @@ and who is in the room with you is drawn at the room's level."""
 
 import pytest
 from conftest import Game, new_name
+from test_e2e_hd_stair import MOST
 from test_e2e_hd_sun import LIGHT, hd, settled
 
+# meadow green: its light patches too (210,224,119: 224 is not over 210 + 15; it was read "not green" wherever you woke by one,
+# on main too), and its dark ones (164,194,99)
+MEADOW = lambda c: c[1] >= c[0] + 10 and c[1] > c[2] + 40   # noqa: E731
 STEEP = 58          # the eye's pitch from above (hd.js STEEP: 78.6 till the x-ray cut what hides you, 68 when a level was 8 px)
 
 # the picture now, kept under a name; two of them: the share of px that differ, the share that differ outside a box (px), the differing px's own box
@@ -94,7 +98,7 @@ def test_under_a_roof_an_xray_window_shows_your_floor_and_every_px_outside_it_is
     window_off(g)
     g.js(SNAP, "whole")
     c = g.js(AT_, [x + 2.5, y + 1.5, z - 14])
-    assert c[1] > c[0] + 15 and c[1] > c[2] + 40, c                   # (no window: meadow green over your floor)
+    assert MEADOW(c), c                                               # (no window: meadow green over your floor)
     window_off(g, False)
     room = g.js(BOX, [[[x + i, y + j, z - 14 + k] for i in (-3, 4) for j in (-2, 3) for k in (0, 3)] + [[x + i, y - 2, z] for i in (-3, 4)], 64])   # (the room as the eye has it, its north wall up to the surface's line (the section, at the ground's true height), and its rim of half a tile, with a little room for the lens)
     d = g.js(DIFF, ["win", "whole", room])
@@ -118,8 +122,8 @@ def test_a_tunnel_one_level_under_the_meadow_opens_a_small_trench_not_the_whole_
         assert g.js("HdLook.win.n") < 20, g.js("HdLook.win.n")          # (the window's tiles: the tunnel)
         assert g.js("HdLook.catSeen()") > .8
         for dx, dy in [(-7, 0), (7, 0), (0, -2), (0, 5), (5, 4)]:
-            c = g.js(AT_, [x + dx + .5, y + dy + .5, z])
-            assert c[1] > c[0] + 15 and c[1] > c[2] + 40, (dx, dy, c)     # (meadow green)
+            c = g.js(MOST, [x + dx + .2, y + dy + .2, x + dx + .8, y + dy + .8, z])   # (the colour most px of the tile's middle have: one px is a tuft)
+            assert MEADOW(c), (dx, dy, c)
             assert g.js(f"HdLook.winAt({x + dx}, {y + dy})") is None
     finally:
         g.page.close()
