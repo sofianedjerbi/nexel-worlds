@@ -1,0 +1,9 @@
+# gitleaks (CI: .github/workflows/security.yml): the default rules, less two false positives.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "music/: a track named \"keys\" (the instrument) with its sample path, not an API key"
+targetRules = ["generic-api-key"]
+regexTarget = "line"
+regexes = ['''\("keys", "[A-Za-z]+/Keys/''']

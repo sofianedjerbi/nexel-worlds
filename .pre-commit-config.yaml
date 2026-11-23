@@ -1,0 +1,16 @@
+# Optional for contributors:  uvx pre-commit install   (installs the pre-commit and commit-msg hooks)
+# ruff check as CI runs it; the commit message checked against Conventional Commits.
+# ruff format runs only on demand (`uvx pre-commit run ruff-format --hook-stage manual`) until the format pass.
+default_install_hook_types: [pre-commit, commit-msg]
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.6
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+        stages: [manual]
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.5.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]

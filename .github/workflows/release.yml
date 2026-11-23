@@ -1,0 +1,54 @@
+# Tag to release: a tag vX.Y.Z (pushed by semantic-release.yml, or by hand) gets its sdist and wheel,
+# built with `uv build`, attached to its GitHub Release. Not published to PyPI.
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_call:
+    inputs:
+      tag:
+        description: The tag to build, vX.Y.Z
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag to build, vX.Y.Z
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: uv build, attach to the release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          python-version: "3.14"
+      - name: The tag is the project's version
+        run: test "v$(uv version --short)" = "$TAG"
+      - run: uv build
+      - name: Attach dist/ to the release
+        run: |
+          # semantic-release makes the release right after it pushes the tag: give it a moment
+          for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do gh release view "$TAG" > /dev/null 2>&1 && break; sleep 10; done
+          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes
+          gh release upload "$TAG" dist/* --clobber
+          ls dist >> "$GITHUB_STEP_SUMMARY"

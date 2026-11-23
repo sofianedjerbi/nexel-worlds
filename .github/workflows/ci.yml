@@ -1,0 +1,96 @@
+# Lint, tests and commit messages, on every pull request and every push to main.
+# Not blocking yet (continue-on-error, see the step names): ruff format, the ruff rules today's code breaks
+# (the `ignore` list in pyproject.toml), prettier on the web client. Drop the flag once the format pass is in.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUFF: ruff@0.17.6
+  PRETTIER: prettier@3.10.1
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0
+      - name: ruff check (blocking; the rules in pyproject.toml)
+        run: uvx "$RUFF" check --output-format github .
+      - name: ruff check, all the families' rules (not blocking; the debt)
+        continue-on-error: true
+        run: |
+          # --select on the command line re-enables the rules pyproject.toml ignores (keep it the same list)
+          uvx "$RUFF" check --select E,W,F,B,UP,SIM,I,C4,RUF,PIE,ASYNC --statistics . | tee ruff-debt.txt
+          echo "ruff debt: $(tail -n 1 ruff-debt.txt)" >> "$GITHUB_STEP_SUMMARY"
+      - name: ruff format --check (not blocking until the format pass)
+        continue-on-error: true
+        run: |
+          uvx "$RUFF" format --check . > ruff-format.txt || { echo "ruff format: $(tail -n 1 ruff-format.txt)" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+
+  web:
+    name: Lint (prettier, web client)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: prettier --check (not blocking until the format pass)
+        continue-on-error: true
+        run: |
+          npx --yes "$PRETTIER" --check "src/megastructure/web/**/*.{js,mjs,css,html}" > prettier.txt 2>&1 \
+            || { echo "prettier: $(tail -n 1 prettier.txt)" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+
+  tests:
+    name: Tests (Python 3.14)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      # tests/e2e plays the game in Chrome and needs the art pack (not public): not in CI
+      - run: uv run pytest tests -q --ignore=tests/e2e
+
+  commits:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install --no-save --no-package-lock @commitlint/cli@21 @commitlint/config-conventional@21
+      - name: commitlint (the pull request's commits, or the pushed range)
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            npx commitlint --from "$BASE" --to "$HEAD" --verbose
+          elif git cat-file -e "$BEFORE^{commit}" 2>/dev/null && git merge-base --is-ancestor "$BEFORE" "$AFTER"; then
+            npx commitlint --from "$BEFORE" --to "$AFTER" --verbose
+          else
+            # a new branch or a force-push: no old head to start from, the last commit only
+            npx commitlint --last --verbose
+          fi

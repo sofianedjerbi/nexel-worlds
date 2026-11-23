@@ -43,3 +43,51 @@ asyncio_default_fixture_loop_scope = "function"
 markers = ["e2e: plays the game in Chrome against a fresh server", "quick: one short e2e test a file, a minute in all (tests/e2e/README.md)",
            "realtime: an e2e test that measures the machine's own time: not on the tests' fast clock (tests/e2e/clock.py)"]
 addopts = "-m 'not e2e' -n 6"
+
+# ---------------------------------------------------------------- lint (CI: .github/workflows/ci.yml)
+# Blocking: these rule families, less the rules today's code breaks (the `ignore` list is the debt:
+# drop a rule from it once the code passes it). The format check is not blocking until the format pass.
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+extend-exclude = ["music"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "B", "UP", "SIM", "I", "C4", "RUF", "PIE", "ASYNC"]
+ignore = [
+    "ASYNC110", "B007", "B017", "B023", "B904", "B905", "C401", "C408", "C416", "C419", "C420",
+    "E401", "E402", "E501", "E701", "E702", "E731", "E741", "F401", "F541", "F821", "F841", "I001",
+    "PIE808", "RUF001", "RUF002", "RUF005", "RUF006", "RUF007", "RUF012", "RUF015", "RUF017", "RUF021",
+    "RUF022", "RUF023", "RUF034", "RUF046", "RUF057", "RUF059", "RUF100", "SIM105", "SIM114", "SIM115",
+    "SIM300", "UP031", "UP033", "UP037", "W291",
+]
+
+# ---------------------------------------------------------------- releases (python-semantic-release)
+# On every push to main, .github/workflows/semantic-release.yml reads the Conventional Commits since the
+# last tag vX.Y.Z, bumps project.version here (and uv.lock), writes CHANGELOG.md, tags and makes the
+# GitHub Release; .github/workflows/release.yml then builds the sdist and wheel onto it.
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+tag_format = "v{version}"
+commit_parser = "conventional"
+commit_message = "chore(release): v{version}"
+major_on_zero = false
+allow_zero_version = true
+build_command = "uv lock && git add uv.lock"
+assets = ["uv.lock"]
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.changelog]
+mode = "update"
+insertion_flag = "<!-- version list -->"
+exclude_commit_patterns = ['''^chore\(release\)''', '''^Merge ''']
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+
+[tool.semantic_release.remote]
+type = "github"
+token = { env = "GH_TOKEN" }
