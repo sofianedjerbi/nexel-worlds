@@ -67,6 +67,7 @@ cv.addEventListener("wheel", (e) => {
 addEventListener("keydown", (e) => {
   const el = document.activeElement;
   if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || (el && /^(INPUT|TEXTAREA)$/.test(el.tagName))) return;   // (Ctrl or Cmd with + is the browser's own zoom)
+  if (/^Digit/.test(e.code)) return;      // (the bar's numbers, by place: an AZERTY's 6 types -, its 8 _; there the two keys right of 0 zoom)
   const d = e.key === "+" || e.key === "=" ? 1 : e.key === "-" || e.key === "_" ? -1 : {Equal: 1, NumpadAdd: 1, Minus: -1, NumpadSubtract: -1}[e.code] || 0;
   if (d) { e.preventDefault(); zoomBy(d); }
 });

@@ -89,7 +89,7 @@ def test_the_block_in_hand_goes_up_and_down_with_the_body_as_it_walks(game):
 
 def test_the_hand_is_a_slot_even_an_empty_one(game):
     """Like Minecraft: always one slot in hand, drawn so even when it is empty ("always keep an item selected in the
-    inventory, even empty hands"); what runs out leaves the slot in hand and the hands empty, the server told; Q goes
+    inventory, even empty hands"); what runs out leaves the slot in hand and the hands empty, the server told; Tab goes
     round all ten; ` the first empty one; the slot is kept for the next visit."""
     game.give(wood=1, bread=1)
     game.js("selectItem('wood')")
@@ -109,7 +109,7 @@ def test_the_hand_is_a_slot_even_an_empty_one(game):
     game.give(stone=1)
     assert game.js("[handSlot, selected, slots[handSlot]]") == [b, None, None]  # a new thing: another free slot, not the hand
     for _ in range(10):
-        game.press("q", 60)
+        game.press("Tab", 60)
     assert game.js("handSlot") == b                                             # round all ten, empty ones too
     game.press("`", 100)
     assert game.js("selected") is None and game.js("slots[handSlot]") is None

@@ -48,6 +48,7 @@ QUICK = {
     "hd_land": "test_under_a_roof_an_open_pit_shows_a_bright_floor_and_the_meadow_stays",
     "hd_phone": "test_the_land_is_the_size_the_zoom_says_and_fills_a_screen_held_upright",
     "help": "test_the_help_is_a_window_of_short_pages",
+    "layout": "test_the_key_over_a_breaks_on_any_layout_and_x_too",
     "living": "test_who_stands_far_over_you_is_not_on_your_tile",
     "menu": "test_the_volumes_act_at_once_and_are_kept",
     "models": "test_a_bridges_last_planks_step_down_to_the_bank",
@@ -65,7 +66,7 @@ QUICK = {
     "title": "test_wake_up_says_the_world_is_still_coming",
     "title_scene": "test_the_islands_people_choose_what_they_do",
     "touch": "test_play_with_thumbs",
-    "ui": "test_hotbar_keys_and_q_cycle_what_is_in_hand",
+    "ui": "test_hotbar_keys_and_tab_cycle_what_is_in_hand",
     "views": "test_v_goes_through_the_views_and_the_picture_page_has_them",
     "water": "test_a_pillar_and_an_islet_standing_in_a_pond_do_not_change_the_bed_round_them",
     "wild": "test_a_named_animal_carries_its_name",
@@ -75,14 +76,12 @@ QUICK = {
 
 
 def pytest_collection_modifyitems(config, items):
-    again = config.pluginmanager.hasplugin("rerunfailures")
+    # (no second try: "all tests should pass first try. a test that needs many tries to pass is a regression OR should be fixed", 2026-11-23)
     for item in items:                                    # everything in this folder is end-to-end
         if "e2e" in item.path.parts:
             item.add_marker(pytest.mark.e2e)
             if QUICK.get(item.path.name[len("test_e2e_"):-3]) == getattr(item, "originalname", item.name):
                 item.add_marker(pytest.mark.quick)
-            if again:                                     # (a browser on a busy machine: a test that fails is tried once more,
-                item.add_marker(pytest.mark.flaky(reruns=1))   #  a new player on a cleared meadow: and it is said, tests/conftest.py)
 
 
 def pace_of(item) -> float:
