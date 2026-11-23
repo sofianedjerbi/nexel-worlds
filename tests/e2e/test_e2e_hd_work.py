@@ -6,8 +6,12 @@ is never wiped (vox_style.js evict); a person's sheet is made between frames (we
 import pytest
 from test_e2e_hd_sun import hd
 
-DRAWN = """(() => { window.__d = 0; window.__a = 0; const d0 = drawTile, a0 = arriveBlock; drawTile = function (x, y, to) { if (!to) __d++; return d0.apply(this, arguments); };
-  arriveBlock = function () { __a++; return a0.apply(this, arguments); }; return 1; })()"""
+# (__n: blocks come in, of the screen's and of the far land the HD look draws to its horizon (state.js HdLook.far, since
+#  9c681e2): each puts its neighbours' edge tiles to be drawn again, and the far ones never arrive (arriveBlock is the
+#  screen's): counted by arrivals, 243 a block, two runs in three)
+DRAWN = """(() => { window.__d = 0; window.__a = 0; window.__n = 0; const d0 = drawTile, a0 = arriveBlock, r0 = onRegion; drawTile = function (x, y, to) { if (!to) __d++; return d0.apply(this, arguments); };
+  arriveBlock = function () { __a++; return a0.apply(this, arguments); };
+  onRegion = function (d) { if (d.w === B && !blocks.has(bkey(d.x / B, d.y / B))) __n++; return r0.apply(this, arguments); }; return 1; })()"""
 
 
 @pytest.mark.realtime
@@ -20,9 +24,9 @@ def test_land_comes_in_whole_and_its_paints_are_never_wiped(browser, server):
         g.rpc("dev_teleport", x=x + 70 * k, y=y)
         g.arrive()
         g.rest()
-    n = g.js("__a")
+    n, came = g.js("[__a, __n]")
     assert g.js("[...blocks.values()].every((b) => !b.drawn || b.px.length === 0)")          # (no block painted for the classic picture)
-    assert n >= 5 and g.js("__d") <= 160 * n, (g.js("__d"), n)     # (blocks come in; only the edge tiles beside each are drawn again: before, 1024 a block)
+    assert n >= 5 and g.js("__d") <= 160 * came, (g.js("__d"), n, came)     # (blocks come in; only the edge tiles beside each are drawn again: before, 1024 a block)
     assert g.js("HdLook.work.wipes") == before["wipes"]            # (the land never made again from none for want of places)
 
 
