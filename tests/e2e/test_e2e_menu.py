@@ -112,8 +112,11 @@ def test_a_key_can_be_changed_and_the_game_follows(game):
     game.wait("groundItems.length > 0")
     game.sleep(300)
     assert "K" in game.js("$('actions').textContent")           # the hint names the new key
-    game.press("f"); game.sleep(400); assert game.inv("plank") == 0
-    game.press("k"); game.wait("meObs.self.inventory.plank === 1")
+    # (what F and K do is told by what they send, not by the bag: a plank dropped beside you comes to it by itself after
+    #  1.2 s of the game's (sim/progress.py MAGNET_DELAY), and on a busy machine it had come before F was pressed)
+    game.js("(() => { const a = act; window.__acts = []; act = function (tool, ...r) { __acts.push(tool); return a.call(this, tool, ...r); }; return 1; })()")
+    game.press("f"); game.sleep(400); assert "pick_up" not in game.js("__acts")
+    game.press("k"); game.wait("__acts.includes('pick_up') && meObs.self.inventory.plank === 1")
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter")      # the settings open on the page you left
     assert game.js(ROW) == "Sprint"
     game.press("ArrowRight")                                    # Shift once
