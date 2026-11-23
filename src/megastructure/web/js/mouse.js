@@ -24,9 +24,16 @@ function rayHit(mx, my) {
   // (a cell whose top is `top`, of the land or built, or what stands in it as boxes (a wall, a door, a fence: hd_things.js `is`): 2; over the x-ray window's ceiling the land is not drawn: not pointed at)
   const solid = (x, y, top) => ((w) => w && top > w[1])(win(x, y)) ? 0 : solidAt(x, y, top) ? 1 : HdThings.is(Floors.thingAt(x, y, top - 1) || "-", x, y) && solidAt(x, y, top - 1) ? 2 : 0;
   const FACE = [["W", "E"], ["N", "S"], ["T", "T"]];
-  let g = [s.x + .5, s.y + .5], A = null;
-  for (let z = rayHi.hi + 1; z >= Math.max(rayHi.lo - 2, z0 - 64); z -= .5) {
-    const B = on(z, g); if (!B) { A = null; continue; } g = [B[0], B[1]];
+  // THE RAY'S POINTS, a level's half apart, from its highest down: followed from your own level up and down, each from the one
+  // before. (It was followed from its top down, begun where you stand: on a curved world (HdLook.bend) a level meets the screen's
+  // point a second time far past the bend, where the land drops away, and begun 20 levels up, over a tall hill near you, it found
+  // that far one and went down it: the cursor was 30 tiles north of the tile pointed at, on the land there)
+  const zl = Math.max(rayHi.lo - 2, z0 - 64), zm = Math.round(z0 * 2) / 2, pts = [], walk = (z, step, end, g) => { for (; step > 0 ? z <= end : z >= end; z += step) { const r = on(z, g); if (!r || Math.hypot(r[0] - g[0], r[1] - g[1]) > 3) return; (step > 0 ? pts.unshift(r) : pts.push(r)); g = [r[0], r[1]]; } };
+  const m = on(zm, [s.x + .5, s.y + .5]); if (m) { pts.push(m); walk(zm + .5, .5, rayHi.hi + 1, [m[0], m[1]]); walk(zm - .5, -.5, zl, [m[0], m[1]]); }
+  else { let g = [s.x + .5, s.y + .5]; for (let z = rayHi.hi + 1; z >= zl; z -= .5) { const r = on(z, g); pts.push(r); if (r) g = [r[0], r[1]]; } }
+  let A = null;
+  for (const B of pts) {
+    if (!B) { A = null; continue; }
     if (A) {   // the cells this piece of the ray goes through, in order
       const d = [0, 1, 2].map((i) => B[i] - A[i]), c = A.map(Math.floor), st = d.map(Math.sign), tD = d.map((v) => (v ? 1 / Math.abs(v) : Infinity)), tM = [0, 1, 2].map((i) => (d[i] ? (st[i] > 0 ? c[i] + 1 - A[i] : A[i] - c[i]) * tD[i] : Infinity));
       for (let n = 0; n < 64; n++) { const i = tM[0] <= tM[1] && tM[0] <= tM[2] ? 0 : tM[1] <= tM[2] ? 1 : 2; if (tM[i] > 1) break; c[i] += st[i]; tM[i] += tD[i];
