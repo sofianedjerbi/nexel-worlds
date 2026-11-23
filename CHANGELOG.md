@@ -5,6 +5,14 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.5 (2026-11-23)
+
+### Bug Fixes
+
+- **web**: A chat bubble is as wide as its words; the name's tab is centred over a short one
+  ([`55b9f06`](https://github.com/sofianedjerbi/nexel-worlds/commit/55b9f06ca8173bdea9c9f206ad1b692fb3bda15e))
+
+
 ## v0.1.4 (2026-11-23)
 
 ### Bug Fixes
