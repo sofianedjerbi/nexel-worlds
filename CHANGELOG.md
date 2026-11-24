@@ -5,6 +5,57 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.2.1 (2026-11-24)
+
+### Bug Fixes
+
+- **web**: The pointer on a hill's or a cliff's side is on that tile; every px of the land is on one
+  ([`a38bb1f`](https://github.com/sofianedjerbi/nexel-worlds/commit/a38bb1f34fbc28cf943e7e3e8982c95c6f7ff42b))
+
+- **web**: The pointer on the sky is on no tile; the classic picture's way back from the screen is
+  gone
+  ([`57f6f32`](https://github.com/sofianedjerbi/nexel-worlds/commit/57f6f323562d9105bdc0ff249383768b843073ba))
+
+- **web**: The pointer's pick looks through the land the look has made (HdLook.box), not 24 tiles
+  each way
+  ([`f3eedba`](https://github.com/sofianedjerbi/nexel-worlds/commit/f3eedba13750ddd99f7f55665e6d29610b88a3cd))
+
+- **web**: What is written over a body is put in the land's own pixel, not in zoom px (a screen at
+  125 %)
+  ([`731c5fc`](https://github.com/sofianedjerbi/nexel-worlds/commit/731c5fc7fcfef55558f9385e122bc2488e5c673c))
+
+- **web**: You show through what stands in front of you only where it covers you on the screen
+  ([`bcde809`](https://github.com/sofianedjerbi/nexel-worlds/commit/bcde8093efbe9a5332cd813175c5de767a2d9b85))
+
+### Refactoring
+
+- **web**: One View puts a place of the world on the screen; what is written over a body asks for
+  that body's place
+  ([`2c042c9`](https://github.com/sofianedjerbi/nexel-worlds/commit/2c042c920d3f4d6b06184cf239ca32b23ad3f7a0))
+
+- **web**: Swimming and the boat are read from the place (phase B, 4)
+  ([`76e9781`](https://github.com/sofianedjerbi/nexel-worlds/commit/76e9781a4237d3344aae0dd0b6ea1305e194eac1))
+
+- **web**: The draw offsets are DRAW_AT, not FOOT (footprints' name); the cover test in its own file
+  ([`16ea55f`](https://github.com/sofianedjerbi/nexel-worlds/commit/16ea55fcc94e9f70ab98a934f2a12a5504e76a9a))
+
+- **web**: Where a drawn thing's foot is in its tile, in one table (HdLevel.FOOT)
+  ([`e7a727b`](https://github.com/sofianedjerbi/nexel-worlds/commit/e7a727b102582750e4377ac686c3066efd6762cd))
+
+- **web): one rounding to the land's pixel (onArt**: The marks', the way's and the floats' own are
+  gone
+  ([`3050876`](https://github.com/sofianedjerbi/nexel-worlds/commit/305087677ff2f8de30732facbfadfaf52595286b))
+
+### Testing
+
+- **e2e**: The pointer's sweep at Far and at Very far zoomed out: every top of the made land on the
+  picture answers
+  ([`c1d07af`](https://github.com/sofianedjerbi/nexel-worlds/commit/c1d07af6e8427f47fcb12e995aac5b579fa76a34))
+
+- **e2e**: The stair under a roof asks the world once no step is in flight
+  ([`6bc7c29`](https://github.com/sofianedjerbi/nexel-worlds/commit/6bc7c29f5be807eb9a7e6ea07d9e16dc33282bb5))
+
+
 ## v0.2.0 (2026-11-24)
 
 ### Bug Fixes
