@@ -22,8 +22,12 @@ from art import mirror  # noqa: E402
 SITE = HERE / "site"
 ASSETS = HERE.parent.parent / "src" / "nexel_worlds" / "web" / "assets"
 ORDER = ["mossback", "sporeling", "sporecap", "hopper", "burrow"]      # on the page: the boss, its brood and the three kept mobs (older designs stay in roster/, off it)
+CREATURES = ["hob", "grumblestump", "gustling", "snapbloom"]   # the ally, the night, the rare day (burr, nightfleece, moonsnail, glintbeetle: off it)
+PAGES = [(SITE, "enemies.json", ORDER), (SITE, "creatures.js", CREATURES)]     # (folder, its data file, who is on it)
+# The pages themselves are drafts in ~/nexel/local/design/ (index.html, creatures.html): they read these files through
+# <base href="../../nexel-worlds/design/enemies/site/">.
 DIRS = ["down", "up", "left", "right"]
-IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
+IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "hob", "mossback", "sporeling"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)
 SHADOW = (80, 64, 134, 46)        # the cow's and chicken's shadow colour, a touch stronger for the lighter page grass
 FOOT = 2                       # empty pixels under the sprite in its cell
 
@@ -88,32 +92,38 @@ def preview(key, out, k=6):
     print(out, img.size)
 
 
-def references():
-    """The game's own sheets, copied beside the page so it can animate the player, cow and chicken for comparison."""
-    (SITE / "game").mkdir(exist_ok=True)
-    for name in ("character", "cow", "chicken"):
-        shutil.copyfile(ASSETS / f"{name}.png", SITE / "game" / f"{name}.png")
+def references(out):
+    """The game's own sheets, copied beside a page: the player, cow and chicken to compare with, and the ground and
+    plants a scene is built from."""
+    (out / "game").mkdir(exist_ok=True)
+    for name in ("character", "cow", "chicken", "grass", "trees", "nature", "fences"):
+        shutil.copyfile(ASSETS / f"{name}.png", out / "game" / f"{name}.png")
 
 
 def build():
-    (SITE / "sheets").mkdir(parents=True, exist_ok=True)
-    meta = []
-    for key in ORDER:
-        e = load(key)
-        img, anims, ms = sheet(e)
-        img.save(SITE / "sheets" / f"{key}.png")
-        box = img.getbbox()
-        meta.append({k: v for k, v in e.items() if k not in ("pal", "dirs")} | {
-            "sheet": f"sheets/{key}.png", "anims": anims, "ms": ms, "palette": [v for v in e["pal"].values() if len(v) == 6],
-            "frames": img.width // e["cell"][0], "tall": box[3] - box[1]})
-    (SITE / "enemies.json").write_text(json.dumps(meta, indent=1))
-    references()
-    for old in (SITE / "sheets").glob("*.png"):               # sheets of mobs no longer on the page
-        if old.stem not in ORDER:
-            old.unlink()
+    for out, page, keys in PAGES:
+        (out / "sheets").mkdir(parents=True, exist_ok=True)
+        meta = []
+        for key in keys:
+            e = load(key)
+            img, anims, ms = sheet(e)
+            img.save(out / "sheets" / f"{key}.png")
+            box = img.getbbox()
+            meta.append({k: v for k, v in e.items() if k not in ("pal", "dirs")} | {
+                "sheet": f"sheets/{key}.png", "anims": anims, "ms": ms, "palette": [v for v in e["pal"].values() if len(v) == 6],
+                "frames": img.width // e["cell"][0], "tall": box[3] - box[1]})
+        data = json.dumps(meta, indent=1)
+        if page.endswith(".js"):                              # a script, not JSON: a page opened from file:// cannot fetch()
+            data = f"window.{page[:-3].upper()} = {data};\n"   # a file, but it can load a script
+        (out / page).write_text(data)
+        references(out)
+        keep = {k for o, _, ks in PAGES if o == out for k in ks}
+        for old in (out / "sheets").glob("*.png"):            # sheets of creatures no longer on a page here (only
+            if old.stem not in keep and (HERE / "roster" / f"{old.stem}.py").exists():   # creature sheets: never other files)
+                old.unlink()
+        print(f"{out.relative_to(HERE.parent.parent)}/{page}: {len(meta)} creatures, {sum(m['frames'] * 4 for m in meta)} frames")
     for key in IN_GAME:                                       # the ones the game uses: their sheets go straight to its assets
         sheet(load(key))[0].save(ASSETS / f"{key}.png")
-    print(f"{len(meta)} enemies, {sum(m['frames'] * 4 for m in meta)} frames -> {SITE}")
 
 
 if __name__ == "__main__":
