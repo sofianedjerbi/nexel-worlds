@@ -23,7 +23,7 @@ from .gate import Gate
 from .limits import LIMITS, RateLimiter
 from .rules import rules_table
 from .sim import DAY_TICKS, TICK_HZ, TOOL_SPECS, ActionError, Simulation
-from .tiles import FOOD, RECIPES
+from .tiles import RECIPES
 from .views import Views
 from .web_static import serve_http, set_bundle, web_stamp
 
@@ -145,9 +145,6 @@ class GameServer(Views):
                     out = {"later": True, "x": a[0], "y": a[1]} if msg.get("far") and not self.far_ready(*a) else self.region(*a)   # (views.py far_ready)
                 elif op == "metrics":
                     out = self.metrics()
-                elif op == "recipes":
-                    out = {"recipes": {k: {"inputs": r.inputs, "output": r.output, "station": r.station}
-                                       for k, r in RECIPES.items()}, "food": FOOD}
                 elif op == "who" and self.gate:                # the name this account already plays here, if any
                     account = await asyncio.to_thread(self.gate.account, str(msg.get("ticket", "")), ws.request.headers.get("Host", ""))
                     out = {"who": True, "name": self.sim.agents[self.sim.owners[account]].name if account in self.sim.owners else None}

@@ -1,5 +1,6 @@
 """What an agent perceives: the observation dict of the agent API."""
 
+from .. import tiles as T
 from .constants import VIEW_R
 
 
@@ -79,6 +80,8 @@ class Observation:
                      "inventory": dict(sorted(a.inventory.items())), "wearing": dict(a.worn), "armor": self.armor(a), "race": a.race, "swimming": self.swimming(a), "deaths": a.deaths, **({"held": a.held} if a.held else {}),
                      "action": a.action.tool if a.action else a.aside.tool if a.aside else None,
                      "spawn": a.spawn, "sailing": a.sailing, "can": a.can, "xp": a.xp, "level": level_of(a.xp)[0], "in_cave": self.in_cave(a), "z": self.height(a),
+                     # what you can make now: the stations within reach, and how many times your bag allows each recipe (tiles.py can_craft)
+                     "stations": self.stations(a), "craftable": {k: n for k, r in T.RECIPES.items() if (n := T.can_craft(r, a.inventory)["n"])},
                      "standing_on": here_g if here_b == "none" else f"{here_g}+{here_b}",
                      "sheltered": self.sheltered(a.x, a.y)},
             "grid": grid,

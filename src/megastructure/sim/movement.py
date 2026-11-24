@@ -74,15 +74,7 @@ class Movement(Leaping):
 
     def arrive(self, a: Agent):
         """Called after every move: walking over items picks them up."""
-        pile = self.items.get((a.x, a.y))
-        if not pile:
-            return
-        got = dict(pile)
-        for k, n in got.items():
-            a.add(k, n)
-        del self.items[(a.x, a.y)]
-        self.dirty_items.add((a.x, a.y))
-        self.emit("pick_up", a.x, a.y, name=a.name, items=got)
+        self.take_pile(a, (a.x, a.y))
 
     def stride(self, a: Agent, args) -> float:
         """Seconds per tile: walking 0.2, sprinting (`run: true`) 0.1, sailing 0.15. In the water, from the tile you

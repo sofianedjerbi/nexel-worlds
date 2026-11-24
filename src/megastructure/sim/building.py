@@ -218,22 +218,25 @@ class Building:
         a.bump("placed")
         return {"at": list(anchor), "tiles": [list(t) for t in tiles]}
 
+    def stations(self, a) -> list:
+        """The stations (a workbench, a fire) within reach of `a` (Bodies.near_block)."""
+        return [s for s in T.STATIONS if self.near_block(a, s)]
+
     def _tool_craft(self, a, args):
         name = str(args.get("recipe", args.get("item", "")))
         r = RECIPES.get(name)
         if r is None:
             raise ActionError("unknown_recipe", f"recipes: {', '.join(RECIPES)}")
         n = min(self._n(args), 20)
-        if r.station and not self.near_block(a, r.station):
-            raise ActionError("need_station", f"{name} must be crafted within 2 tiles of a {r.station}")
-        missing = {k: v * n - a.count(k) for k, v in r.inputs.items() if a.count(k) < v * n}
-        if missing:
-            raise ActionError("missing_items", f"need {missing} more for {n}x {name}")
+        def check():
+            can = T.can_craft(r, a.inventory, self.stations(a), n)
+            if can["station"]:
+                raise ActionError("need_station", f"{name} must be crafted within {T.REACH['station']} tiles of a {r.station}")
+            if can["missing"]:
+                raise ActionError("missing_items", f"need {can['missing']} more for {n}x {name}")
+        check()
         yield from self.wait(a, r.ticks / 10 * n)
-        if r.station and not self.near_block(a, r.station):
-            raise ActionError("need_station", f"the {r.station} is gone")
-        if any(a.count(k) < v * n for k, v in r.inputs.items()):
-            raise ActionError("missing_items", "inputs changed while crafting")
+        check()                                             # (again, once the time it takes has passed)
         for k, v in r.inputs.items():
             a.add(k, -v * n)
         for k, v in r.output.items():

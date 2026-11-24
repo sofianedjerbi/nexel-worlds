@@ -109,3 +109,27 @@ def test_a_creature_does_not_leave_the_same_thing_every_time(world):
     sim.listeners.append(lambda e: e["type"] == "creature_died" and seen.append(e["drops"]))
     sim.kill_creature(hen, a)
     assert seen == [{"meat": 1, "egg": 1, "heart_charm": 1}] == [sim.items[(a.x + 3, a.y)]]
+
+
+def test_a_pile_is_taken_one_way_and_what_you_can_make_is_said_once(world):
+    """Items.take_pile (walked over, drawn in, picked up) and tiles.can_craft (the craft, and what you are told)."""
+    from megastructure.tiles import RECIPES, can_craft
+    sim, a = world
+    a.add("stone", 2)
+    if sim.can_go(a, a.x + 1, a.y):
+        run(sim, a, "drop", {"item": "stone", "n": 1, "dir": "E"})
+        run(sim, a, "step", {"dir": "E"})                    # onto what you let go of: it stays down (it came straight back)
+        assert a.count("stone") == 1 and sim.items[(a.x, a.y)] == {"stone": 1}
+        assert run(sim, a, "pick_up", {"item": "wood"})["error"] == "nothing_here" and run(sim, a, "pick_up", {})["got"] == {"stone": 1}
+    sim.add_items(a.x, a.y - 1, {"wood": 5})
+    run(sim, a, "step", {"dir": "N"})                        # somebody else's, or the land's: walked over, taken
+    assert a.count("wood") == 5 and (a.x, a.y) not in sim.items
+    axe = RECIPES["axe"]
+    assert can_craft(axe, {"wood": 5, "stone": 2, "fiber": 1}) == {"ok": False, "n": 1, "missing": {}, "station": "workbench"}
+    assert can_craft(axe, {"wood": 5, "stone": 2}, ["workbench"], 2) == {"ok": False, "n": 0, "missing": {"stone": 2, "fiber": 2}, "station": None}
+    me = sim.observe(a)["self"]
+    assert me["stations"] == [] and me["craftable"]["plank"] == 5 and "axe" not in me["craftable"]
+    sim.world.set(a.x + 1, a.y, block="workbench")
+    a.add("fiber", 1)
+    assert sim.observe(a)["self"]["stations"] == ["workbench"] and sim.observe(a)["self"]["craftable"]["axe"] == 1
+    assert run(sim, a, "craft", {"recipe": "axe", "n": 2})["error"] == "missing_items" and run(sim, a, "craft", {"recipe": "axe"})["made"] == {"axe": 1}

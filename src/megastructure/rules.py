@@ -63,6 +63,7 @@ def rules_table() -> dict:
         "reach": T.REACH, "long": T.LONG, "wide": {k: v["wide"] for k, v in CREATURES.items() if "wide" in v}, "layer": C.LAYER,
         "leap": {"g": LEAP_G, "top": LEAP_TOP}, "fall_safe": C.FALL_SAFE, "bite_high": BITE_HIGH,
         "level": list(LEVEL),
+        "recipes": {k: {"inputs": r.inputs, "output": r.output, "station": r.station} for k, r in T.RECIPES.items()},
     }
 
 

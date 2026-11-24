@@ -12,8 +12,8 @@ JS = FILE.parent
 SOURCES = {f.name: f.read_text() for f in sorted(JS.glob("*.js")) if f.name != FILE.name}
 # the tables the client typed for itself, before: none may be given a value of its own again (vocab.js fills the
 # ones it keeps from the server's table; an empty one to fill is all that may be written)
-TABLES = ["CH", "CHAR", "GROUND", "SOLID", "WALKABLE_GROUND", "DEPTH_OF", "FOOT", "FILLS", "PLACEABLE_BLOCK", "TOOL_FOR", "WEAPON_DMG", "INSTANT_DIG", "FEEDS", "FOODS", "LAND_BLOCKS", "ASIDE", "MEANWHILE", "WEAR", "CROPS", "foodValue"]
-NUMBERS = ["CAN_SIZE", "FLEE_STRIDE", "BITE_HIGH", "SPRING_S", "CLIMB_S", "STOREY", "SEA", "LOW", "HIGH"]
+TABLES = ["recipes", "CH", "CHAR", "GROUND", "SOLID", "WALKABLE_GROUND", "DEPTH_OF", "FOOT", "FILLS", "PLACEABLE_BLOCK", "TOOL_FOR", "WEAPON_DMG", "INSTANT_DIG", "FEEDS", "FOODS", "LAND_BLOCKS", "ASIDE", "MEANWHILE", "WEAR", "CROPS", "foodValue"]
+NUMBERS = ["USE_R", "LAYER", "CAN_SIZE", "FLEE_STRIDE", "BITE_HIGH", "SPRING_S", "CLIMB_S", "STOREY", "SEA", "LOW", "HIGH"]
 
 
 def hello(tmp_path) -> dict:

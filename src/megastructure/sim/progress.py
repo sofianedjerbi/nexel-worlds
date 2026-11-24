@@ -52,12 +52,5 @@ class Progress:
                 for dx in range(-MAGNET_R, MAGNET_R + 1):
                     pos = (a.x + dx, a.y + dy)
                     pile = self.items.get(pos)
-                    if not pile or self.tick - self.item_since.get(pos, 0) < MAGNET_DELAY or not self.near(a, *pos, MAGNET_R) or self.item_left.get(pos) == aid:
-                        continue                             # (not there, just dropped, out of reach: up on a ledge, down a drop; or let go of by them, there)
-                    got = dict(pile)
-                    for k, n in got.items():
-                        a.add(k, n)
-                    del self.items[pos]
-                    self.item_since.pop(pos, None)
-                    self.dirty_items.add(pos)
-                    self.emit("pick_up", *pos, name=a.name, items=got, magnet=True)
+                    if pile and self.tick - self.item_since.get(pos, 0) >= MAGNET_DELAY and self.near(a, *pos, MAGNET_R):
+                        self.take_pile(a, pos, magnet=True)  # (not just dropped, nor out of reach: up on a ledge, down a drop; nor let go of by them, there: Items.take_pile)

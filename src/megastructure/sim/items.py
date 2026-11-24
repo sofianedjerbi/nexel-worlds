@@ -17,23 +17,28 @@ class Items:
 
     def _tool_pick_up(self, a, args):
         yield from self.wait(a, 0.1)
-        pile = self.items.get((a.x, a.y))
-        if not pile:
-            raise ActionError("nothing_here", "no items on your tile")
-        want = args.get("item")
-        got = {}
-        for k in list(pile):
-            if want and k != want:
-                continue
-            got[k] = pile.pop(k)
-            a.add(k, got[k])
-        if not pile:
-            del self.items[(a.x, a.y)]
-        self.dirty_items.add((a.x, a.y))
+        got = self.take_pile(a, (a.x, a.y), args.get("item"), asked=True)
         if not got:
-            raise ActionError("nothing_here", f"no {want} on your tile")
-        self.emit("pick_up", a.x, a.y, name=a.name, items=got)
+            raise ActionError("nothing_here", f"no {args.get('item') or 'items'} on your tile")
         return {"got": got}
+
+    def take_pile(self, a, pos, want=None, asked=False, **how) -> dict:
+        """Put what lies at `pos` into `a`'s bag (all of it, or only `want`): the one way a pile is taken, walked
+        over (Movement.arrive), drawn in (Progress.attract_items) or picked up. What `a` let go of there stays down
+        unless `asked` for (it was only the magnet that left it: stepping onto your drop took it straight back)."""
+        pile = self.items.get(pos)
+        if not pile or (not asked and self.item_left.get(pos) == a.id):
+            return {}
+        got = {k: pile.pop(k) for k in list(pile) if not want or k == want}
+        for k, n in got.items():
+            a.add(k, n)
+        if not pile:
+            del self.items[pos]
+            self.item_since.pop(pos, None)
+        if got:
+            self.dirty_items.add(pos)
+            self.emit("pick_up", *pos, name=a.name, items=got, **how)
+        return got
 
     def _tool_drop(self, a, args):
         item, n = str(args.get("item", "")), self._n(args)

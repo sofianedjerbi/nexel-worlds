@@ -3,7 +3,7 @@
 // from its first frame (rules.js, written from it) and which the server says again when it greets (state.js: hello).
 
 "use strict";
-const CH = {}, CHAR = {}, DEPTH_OF = {}, FOOT = {}, TOOL_FOR = {}, FILLS = {}, PLACEABLE_BLOCK = {};
+const CH = {}, CHAR = {}, DEPTH_OF = {}, FOOT = {}, TOOL_FOR = {}, FILLS = {}, PLACEABLE_BLOCK = {}, recipes = {};
 const GROUND = new Set(), SOLID = new Set(), WALKABLE_GROUND = new Set(), LAND_BLOCKS = new Set(), FOODS = [], FEEDS = [];
 function refill(to, from) {               // the same table, with what the server says now
   if (to instanceof Set) { to.clear(); for (const v of from) to.add(v); }
@@ -13,7 +13,7 @@ function refill(to, from) {               // the same table, with what the serve
 function setRules(r) {
   if (r !== RULES) refill(RULES, r);
   const T = r.tiles, of = (k) => Object.fromEntries(Object.keys(T).filter((c) => T[c][k]).map((c) => [c, T[c][k]]));
-  for (const [to, from] of [[CH, of("name")], [DEPTH_OF, of("depth")], [FOOT, of("foot")], [TOOL_FOR, of("tool")], [FILLS, r.fills], [PLACEABLE_BLOCK, r.place],
+  for (const [to, from] of [[CH, of("name")], [DEPTH_OF, of("depth")], [FOOT, of("foot")], [TOOL_FOR, of("tool")], [FILLS, r.fills], [PLACEABLE_BLOCK, r.place], [recipes, r.recipes],
     [GROUND, Object.keys(of("ground"))], [SOLID, Object.keys(of("solid"))], [WALKABLE_GROUND, Object.keys(of("walk"))], [LAND_BLOCKS, r.land_blocks],
     [FOODS, Object.keys(r.food)], [FEEDS, Object.keys(r.feed)], [CHAR, Object.fromEntries(Object.entries(of("name")).map(([c, n]) => [n, c]))]]) refill(to, from);
 }

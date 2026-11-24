@@ -261,6 +261,18 @@ RECIPES = {
 }
 
 
+STATIONS = sorted({r.station for r in RECIPES.values() if r.station})
+
+
+def can_craft(r: Recipe, inv: dict, stations=(), n: int = 1) -> dict:
+    """Can `n` of it be made, with this bag and these stations within reach? The one answer (the world's craft, what
+    it tells each player of themselves, a screen's craft book). -> n: how many times the bag allows; missing: what is
+    short for the `n` asked; station: the station it wants and has not; ok."""
+    missing = {k: v * n - inv.get(k, 0) for k, v in r.inputs.items() if inv.get(k, 0) < v * n}
+    station = r.station if r.station and r.station not in stations else None
+    return {"ok": not missing and not station, "n": min(inv.get(k, 0) // v for k, v in r.inputs.items()), "missing": missing, "station": station}
+
+
 # Water has a bottom: how many layers under the surface it lies. You swim on top whatever the depth; digging the
 # bottom takes it a layer down, dirt brings it back up (FILLERS). Nothing flows: water stays where it is.
 DEPTH = {"water": 1, "mid_water": 2, "deep_water": 3, "abyss": 4}

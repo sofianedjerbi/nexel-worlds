@@ -37,7 +37,7 @@ function screenOrigin(S = TS()) {
   return [Math.round(W / 2 - S / 2) - Math.round(cam.x * S), Math.round(H / 2 - S / 2) - Math.round(cam.y * S)];
 }
 let cam = {x: 0, y: 0}, camT = {x: 0, y: 0};
-let follow = null, me = null, myId = null, meObs = null, agents = [], metrics = {}, recipes = {}, clock = {night: false, phase: .3};
+let follow = null, me = null, myId = null, meObs = null, agents = [], metrics = {}, clock = {night: false, phase: .3};
 let selected = null, progress = null;
 let handSlot = Math.min(9, Math.max(0, Math.floor(+localStorage.getItem("megastructure-hand")) || 0));   // the bar's slot in hand, always one (an empty one too): `selected` is what is in it (ui.js handSync)
 // Health and food: how much is full, and the food it takes to sprint. The server says so when it greets (20, 20 and 6:
@@ -57,7 +57,7 @@ const fmt = (o) => Object.entries(o || {}).map(([k, v]) => `${v} ${label(k)}`).j
 let spec, sid = 0, lastWatch = "", webStamp = 0;
 function connectSpec() {
   spec = openSocket("/spectate");
-  spec.onopen = () => { lastWatch = ""; requested.clear(); sendSpec({op: "recipes"}); sendSpec({op: "agents"}); sendSpec({op: "me", id: myId}); };   // (me: who plays on this screen, for what it is sent: it hears what you hear)
+  spec.onopen = () => { lastWatch = ""; requested.clear(); sendSpec({op: "agents"}); if (myId !== null) sendSpec({op: "me", id: myId}); };   // (me: who plays on this screen, for what it is sent: it hears what you hear)
   spec.onmessage = (m) => {
     const d = JSON.parse(m.data);
     if (d.type === "hello") {                     // back after the server restarted with newer code: this page is stale (it would draw the new world wrong)
@@ -72,7 +72,6 @@ function connectSpec() {
     else if (d.type === "reply") {
       if (d.rows) onRegion(d);
       else if (d.agents) { agents = d.agents; drawAgents(); if (document.body.classList.contains("tab")) drawWho(); }
-      else if (d.recipes) { recipes = d.recipes; drawRecipes(); }
       else if (d.tick_ms_p50 !== undefined) { metrics = d; }      // (the debug screen reads them: panels.js)
       else if (d.who) accountNamed(d.name);                  // (account.js)
     }

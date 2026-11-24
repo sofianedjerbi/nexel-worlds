@@ -28,16 +28,15 @@ function craftGroups() {
   const other = Object.keys(recipes).filter((n) => !listed.has(n));
   return [...RECIPE_GROUPS, ...(other.length ? [["Other", "chest", other]] : [])].map(([t, ic, n]) => [t, ic, n.filter((r) => recipes[r])]);
 }
-// Can it be made here and now: {have: all materials, near: at its station, n: how many times}
+// Can it be made here and now: {have: all materials, near: at its station, n: how many times}. The world's own answer
+// (tiles.py can_craft), as it tells you of yourself: the stations within your reach, and how many of each your bag allows.
 function craftState(name) {
-  const rc = recipes[name], inv = meObs ? meObs.self.inventory : {};
-  const st = rc.station, near = !st || (meObs && meObs.grid.some((row, j) => [...row].some((ch, i) => Math.abs(i - 10) <= 2 && Math.abs(j - 10) <= 2 && CH[ch] === st)));
-  const n = Math.min(...Object.entries(rc.inputs).map(([k, v]) => Math.floor((inv[k] || 0) / v)));
-  return {have: n >= 1, near, n, inv};
+  const s = meObs ? meObs.self : {inventory: {}, craftable: {}, stations: []}, st = recipes[name].station, n = s.craftable[name] || 0;
+  return {have: n >= 1, near: !st || s.stations.includes(st), n, inv: s.inventory};
 }
 function craftWhy(name) {
   const s = craftState(name), st = recipes[name].station;
-  return !s.have ? "Missing materials" : s.near ? "Enter or the button to make it" : `Go within 2 tiles of a ${label(st)} to make it`;
+  return !s.have ? "Missing materials" : s.near ? "Enter or the button to make it" : `Go within ${reach("station")} tiles of a ${label(st)} to make it`;
 }
 const craftOk = (name) => { const s = craftState(name); return s.have && s.near; };
 const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
