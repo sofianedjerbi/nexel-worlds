@@ -24,9 +24,10 @@
 // behind the roll is cut along the grass of the ground before it, tufts up to `tuft` art px tall, and is not drawn
 // at all once under `short` art px of it are left.
 const CURVE = {from: .55, horizon: .86, floor: .5, lean: .3, foot: 13 / 16, fade: .5, depth: 1.5, tuft: 2, short: 6};
-const CURVE_SKY = {      // each: by day, at dusk and dawn, at night
-  top: [[.33, .6, .93], [.27, .3, .58], [.05, .07, .19]], low: [[.78, .9, .98], [.99, .68, .42], [.17, .21, .44]],
-  cloud: [[1, 1, 1], [1, .82, .72], [.3, .34, .56]], far: [[.5, .62, .78], [.52, .36, .5], [.1, .13, .3]], near: [[.4, .6, .5], [.5, .36, .34], [.08, .13, .22]],
+const CURVE_SKY = {      // each: by day, at dusk and dawn, at night (vox_sky.js: sun, moon and stars)
+  top: [[.28, .52, .9], [.2, .22, .52], [.03, .04, .14]], mid: [[.48, .7, .95], [.56, .42, .68], [.06, .08, .24]], low: [[.8, .9, .98], [.96, .66, .52], [.14, .17, .38]],
+  glow: [[.8, .9, .98], [.96, .66, .52], [.26, .28, .52]], cloud: [[1, 1, 1], [.98, .82, .76], [.18, .2, .38]], rim: [[1, 1, 1], [1, .9, .7], [.5, .54, .78]],
+  shade: [[.82, .88, .96], [.7, .52, .64], [.12, .14, .3]], far: [[.5, .62, .78], [.52, .36, .5], [.1, .13, .3]], near: [[.4, .6, .5], [.5, .36, .34], [.08, .13, .22]],
   sun: [1, .95, .7], moon: [.92, .94, 1],
 };
 const Curve = (() => {
@@ -86,7 +87,8 @@ const Curve = (() => {
     const col = (q) => q.map((v, i) => Math.min(1, v / tint[i])), pick = (q) => col(q[0].map((v, i) => { const d = v + (q[1][i] - v) * dusk; return d + (q[2][i] - d) * night; }));
     const line = c.line, band = Math.max(8, line / zoom);
     return {line, t, shift: ((myId !== null && ents.get("agent" + myId)) || cam).x * P * .12,   // (where you are, not the camera: on a ladder and with the build cursor the clouds slid sideways with it)
-      top: pick(CURVE_SKY.top), low: pick(CURVE_SKY.low), cloud: pick(CURVE_SKY.cloud), far: pick(CURVE_SKY.far), near: pick(CURVE_SKY.near),
+      ...Object.fromEntries(["top", "mid", "low", "glow", "cloud", "rim", "shade", "far", "near"].map((k) => [k, pick(CURVE_SKY[k])])),
+      dusk: dusk * (1 - night), day, moon: ((Math.floor((clock.tick || 0) / RULES.day_ticks) % 8) + .5) / 8,   // (the moon's phase from the day's count, 8 days a round)
       orb: col(day ? CURVE_SKY.sun : CURVE_SKY.moon), at: [.88 - .76 * way, -.14 + .92 * Math.sin(way * Math.PI), Math.min(day ? 5.5 : 4.5, band * .2)], stars: night, audit};
   }
   return {frame, sy, sky, get on() { return !!c; }, get bent() { return bent(); }, get c() { return c; }, get line() { return c ? c.line : 0; },

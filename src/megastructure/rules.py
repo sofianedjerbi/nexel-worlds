@@ -58,7 +58,7 @@ def rules_table() -> dict:
         "hp_max": C.HP_MAX, "food_max": C.FOOD_MAX, "sprint_food": C.SPRINT_FOOD, "can_size": C.CAN_SIZE,
         "pace": C.PACE, "swim_pace": C.SWIM_PACE, "eat_pace": C.EAT_PACE, "flee_stride": C.FLEE_STRIDE, "spring_s": C.SPRING_S,
         "aside": list(C.ASIDE), "meanwhile": list(C.MEANWHILE),
-        "low": LOW, "high": HIGH, "sea": SEA, "storey": STOREY,
+        "low": LOW, "high": HIGH, "sea": SEA, "storey": STOREY, "day_ticks": C.DAY_TICKS,
         "climb": {"max": CLIMB, "rise": list(RISE), "s": C.CLIMB_S},
         "reach": T.REACH, "long": T.LONG, "wide": {k: v["wide"] for k, v in CREATURES.items() if "wide" in v}, "layer": C.LAYER,
         "leap": {"g": LEAP_G, "top": LEAP_TOP}, "fall_safe": C.FALL_SAFE, "bite_high": BITE_HIGH,
