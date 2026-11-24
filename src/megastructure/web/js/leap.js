@@ -136,9 +136,8 @@ const Leap = (() => {
     const ground = settleAt(L.tx, L.ty, L.z + 1e-6), v0 = V0();
     const now1 = L.t < .03 ? "takeoff" : L.vz < 0 && L.z - ground < .12 ? "touch" : L.vz > .4 * v0 ? "rise" : L.vz < -.3 * v0 ? "fall" : "apex";
     const pose = ORDER[L.pi = Math.max(L.pi || 0, ORDER.indexOf(now1))];   // (one after the other, never back: a touch over the start of a step, then its edge, flashed)
-    const k = Math.cos(HdLook.cam.pitch * Math.PI / 180);    // (a height as the eye sees it, as the land's levels are: a level up drawn 16 px up landed a few px off it)
     const c = C === null ? L.z0 : C;
-    return {body: (L.z - c) * k, ground: (ground - c) * k, air: false, squash: false, tuck: true, pose, leap: true};
+    return {body: L.z - c, ground: ground - c, air: false, squash: false, tuck: true, pose, leap: true, seen: seen()};
   }
   // The level you are drawn from (hd_level.js): from the jump on, it goes towards where you are a px a frame at the
   // most (CAM), in the air towards the ground under you, and after it to the level you would be drawn from; then it is
@@ -161,8 +160,11 @@ const Leap = (() => {
     return C;
   }
   // jump.js jumping: you on the ground, drawn from that level: lifted by the difference (levels as the eye sees them)
-  const lift = (p) => (off && p.e && p.e.kind === "agent" && p.e.id === myId ? off * Math.cos(HdLook.cam.pitch * Math.PI / 180) : 0);
+  const lift = (p) => (off && p.e && p.e.kind === "agent" && p.e.id === myId ? off : 0);
+  // how the eye sees a height of yours drawn from its own level (C), as the land's levels: its pitch's cosine (a level up drawn 16 px up landed a few px off it).
+  // The picture's (BodyPlace's px), not the height's: in the height, your place's z said 1 level at a hop's top, the table's 1.25 (RULES.leap.top) seen from 36 degrees
+  const seen = () => Math.cos(HdLook.cam.pitch * Math.PI / 180);
   // hd_level.js: the level you stand at (the ground under you) and the one you are drawn from (the one you left)
   const level = () => (L ? [settleAt(L.tx, L.ty, L.z + 1e-6), L.z0] : null);
-  return {leapable, can, due, start, frame, body, level, landedOn, after, cam, lift, on: () => !!L, landing: (p) => !!(BodyPlace.peek(p) || {}).leapAt, gliding: () => { const p = ents.get("agent" + myId); return !!(p && landedOn(p) !== null); }, get state() { return L; }};
+  return {leapable, can, due, start, frame, body, level, landedOn, after, cam, lift, seen, on: () => !!L, landing: (p) => !!(BodyPlace.peek(p) || {}).leapAt, gliding: () => { const p = ents.get("agent" + myId); return !!(p && landedOn(p) !== null); }, get state() { return L; }};
 })();

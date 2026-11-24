@@ -53,8 +53,7 @@ function jumpAt(J, ms, lineV) {
 }
 
 const mineWalking = (p) => !!(p.e && p.e.kind === "agent" && p.e.id === myId && walking && p.walking);
-// -> null on the level, or {body, ground: levels over the straight line (its feet, its shadow), squash, tuck: in the air, pose, d: levels up, key: the step}
-// (the jump's solvers all say levels; BodyPlace makes the picture's px of them, once)
+// -> null on the level, or {body, ground: levels over the straight line (its feet, its shadow), squash, tuck: in the air, pose, d: levels up, key: the step} (all the jump's solvers say levels; BodyPlace makes the px)
 function jumpOf(p) {
   if (Leap.landedOn(p) !== null) return null;                                        // (come down from a jump through the air, off a tile's middle: on that tile, leap.js)
   const [ax, ay, bx, by, la, lb] = Floors.between(p);
@@ -161,11 +160,9 @@ function fallShake(now) {
 
 // Called as a body is drawn: dust as it leaves the ground, dust and a sound as it lands. -> its hop (or its fall), or null
 function jumpNow(p, now, st, fall) {
-  const lp = Leap.body(p, now);
-  if (lp) return lp;                                                            // (you in the air: leap.js)
-  const lift = Leap.lift(p);
-  if (lift) { const j = jumping0(p, now, st, fall) || {body: 0, ground: 0, air: false, squash: false, tuck: false, pose: null}; return {...j, body: j.body + lift, ground: j.ground + lift}; }   // (just down from a jump: drawn from the level the eye is coming to)
-  return jumping0(p, now, st, fall);
+  const lp = Leap.body(p, now); if (lp) return lp;                              // (you in the air: leap.js)
+  const lift = Leap.lift(p), j = jumping0(p, now, st, fall) || (lift ? {body: 0, ground: 0, air: false, squash: false, tuck: false, pose: null} : null);
+  return lift ? {...j, body: j.body + lift, ground: j.ground + lift, seen: Leap.seen()} : j;   // (just down from a jump: drawn from the level the eye is coming to)
 }
 function jumping0(p, now, st, fall) {
   // (a hop asked for in a fall, or at the edge as it began, is no hop: it waited under the fall and played what was left
