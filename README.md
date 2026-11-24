@@ -8,4 +8,4 @@
   <a href="https://sofianedjerbi.github.io/nexel-website/devlog/"><b>Devlog</b></a>
 </p>
 
-<p align="center"><sub>Run it: <code>uv run nexel-worlds</code> · Art: <a href="https://cupnooble.itch.io/">Sprout Lands</a> by Cup Nooble, bought and installed separately (not in this repo) · <a href="CONTRIBUTING.md">Contributing</a> · MIT</sub></p>
+<p align="center"><sub>Run it: <code>uv run nexel-worlds</code> · Art: <a href="https://cupnooble.itch.io/">Sprout Lands</a> by Cup Nooble (in the repo under its own license, see <a href="src/nexel_worlds/web/assets/CREDITS.md">credits</a>) · <a href="CONTRIBUTING.md">Contributing</a> · MIT</sub></p>

@@ -56,7 +56,6 @@ Python 3.14.
 ```sh
 python -m venv .venv && . .venv/bin/activate      # or: uv venv && uv pip install -e .
 pip install -e ".[art]"
-python tools/install_assets.py <the two zips>     # once: the art (README, "Art")
 python tools/build_audio.py                       # once: the sound effects (pip install -e ".[audio]"; music/PROCESS.md)
 nexel-worlds                                      # world in saves/default, http://127.0.0.1:7777/
 python -m nexel_worlds.cli --name me              # a terminal client
@@ -67,11 +66,12 @@ playing). With uv: `uv sync` then the same commands under `uv run`.
 
 ### The art
 
-`tools/install_assets.py` copies the sheets the game uses into `src/nexel_worlds/web/assets/` and makes the tiles
-derived from them (`tools/build_assets.py`). They are git-ignored there (`.gitignore`; the list is
-`src/nexel_worlds/art.py`), so they can't be committed by mistake. Don't zip up and share that folder.
+The Sprout Lands sheets the game uses, and the tiles made from them, are committed in `src/nexel_worlds/web/assets/`
+(the list is `src/nexel_worlds/art.py`), under Cup Nooble's license, not MIT (`CREDITS.md` there). To update them
+after a pack update: `python tools/install_assets.py <the two zips>` (`tools/build_assets.py`). Never commit the
+packs themselves (the zips are git-ignored), and don't zip up and share that folder as an asset pack.
 
-The pictures that are in the repository were drawn for this game (the enemy sheets, `design/enemies/`), made by its
+The other pictures were drawn for this game (the enemy sheets, `design/enemies/`), made by its
 code (the `sprout-pixel.ttf` font, `tools/build_font.py`) or are screenshots of it (`title_*.webp`, `tools/pages/`).
 Credits: `src/nexel_worlds/web/assets/CREDITS.md`. Music samples are fetched, not committed
 (`music/fetch_samples.py`).

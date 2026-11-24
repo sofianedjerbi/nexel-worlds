@@ -1,6 +1,6 @@
 /* THE WAIT (#boot): the first thing on the screen, and nothing else, until the island is painted (title_scene.js: body.scene);
    then it fades and the title is under it. All of it is in the page, its pictures too (the meadow, the hills, the clouds,
-   the sun; but the cat's run and the panel's edge are the Sprout Lands art, not in git: assets/boot_cat.png and
+   the sun; but the cat's run and the panel's edge are the Sprout Lands art: assets/boot_cat.png and
    assets/panel.png, made by tools/install_assets.py): it moves from the first picture, before any file has come, and with no
    script. Whole art px (--bootpx, said below; the frame's and the chip's --bootu, half of it, the windows' 3 px on a desk); every move is a transform or an opacity in whole art px steps (the compositor's), so the
    cat runs on while the page's thread is busy making the game. The owner: "the loading screen looks bad, can't you just

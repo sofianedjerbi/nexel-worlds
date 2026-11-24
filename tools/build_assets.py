@@ -3,8 +3,8 @@
     python tools/install_assets.py <sprites zip> <ui zip>     (the usual way: checks what it wrote)
     python tools/build_assets.py ~/Downloads                  (the two zips, by their own names, in a folder)
 
-Only the sheets the game uses are copied into src/nexel_worlds/web/assets/. They are not in git: the license
-forbids redistributing the pack, even modified (nexel_worlds/art.py lists them; .gitignore ignores them).
+Only the sheets the game uses are copied into src/nexel_worlds/web/assets/. They are committed there under
+Cup Nooble's license (nexel_worlds/art.py lists them; web/assets/CREDITS.md); the packs themselves never are.
 Extra tiles in the same palette are generated here.
 """
 

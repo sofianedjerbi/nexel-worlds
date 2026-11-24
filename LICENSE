@@ -21,13 +21,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ---------------------------------------------------------------------------
-Art: NOT included, NOT covered by this license.
+Art: included, NOT covered by this license.
 
-The game is drawn with the premium "Sprout Lands" asset packs (Sprites and UI)
-by Cup Nooble (https://cupnooble.itch.io/). Their license allows using them in
-games but forbids redistributing the packs, even modified, so they are not in
-this repository and this MIT license does not apply to them. Buy the packs and
-install them with tools/install_assets.py (see README.md, "Art").
+Some or all of the game's art is made by Cup Nooble: the premium "Sprout Lands"
+asset packs (Sprites and UI), https://cupnooble.itch.io/. The sheets the game
+uses, and the tiles made from them, are in src/nexel_worlds/web/assets/ under
+Cup Nooble's license, not this MIT license. Its terms are in
+src/nexel_worlds/web/assets/CREDITS.md. In short: you may use them as part of
+this game; you may not redistribute or resell the asset pack itself, even
+modified; no NFTs or AI training; credit Cup Nooble.
 
 The pictures that are in this repository (the enemy sheets drawn for this game,
 the title pictures and other screenshots of the game, the sprout-pixel font made

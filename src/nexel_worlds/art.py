@@ -1,11 +1,9 @@
-"""The game's art that is not in this repository: the sheets of the premium "Sprout Lands" packs by Cup Nooble
-(https://cupnooble.itch.io/), and the tiles made from them. Their license lets a game use them but forbids
-redistributing the packs, even modified, so each player installs them from their own copy:
+"""The game's Sprout Lands art: the sheets of the premium packs by Cup Nooble (https://cupnooble.itch.io/) that the game
+uses, and the tiles made from them. They are committed in web/assets/ beside the game's own pictures, under Cup
+Nooble's license (web/assets/CREDITS.md). After a pack update, copy them again from the zips:
 
     python tools/install_assets.py "Sprout Lands - Sprites - premium pack.zip" "Sprout Lands - UI Pack - Premium pack.zip"
-
-They go into web/assets/ beside the game's own pictures (enemy sheets, title pictures, the font), and are git-ignored
-there (.gitignore, from this list)."""
+"""
 
 from pathlib import Path
 
@@ -41,6 +39,5 @@ def installed(assets: Path = ASSETS) -> bool:
     return not missing(assets)
 
 
-HOW = ("the Sprout Lands art is not installed (it is not in this repository: its license forbids redistributing it). "
-       "Buy the Sprites and UI premium packs at https://cupnooble.itch.io/ and run "
-       "`python tools/install_assets.py <the two zips>` (README.md, 'Art').")
+HOW = ("the Sprout Lands art is missing from src/nexel_worlds/web/assets/ (it is in git: `git checkout -- src/nexel_worlds/web/assets`, "
+       "or `python tools/install_assets.py <the two zips>` from the Sprites and UI premium packs, https://cupnooble.itch.io/).")

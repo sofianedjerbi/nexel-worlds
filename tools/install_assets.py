@@ -1,4 +1,4 @@
-"""Install the Sprout Lands art (not in this repository: its license forbids redistributing it).
+"""Copy the Sprout Lands art again from the packs, after a pack update (the result is committed; never the zips).
 
 Buy the two premium packs by Cup Nooble at https://cupnooble.itch.io/ (Sprout Lands - Sprites, and Sprout Lands -
 UI Pack), then:
@@ -6,7 +6,7 @@ UI Pack), then:
     python tools/install_assets.py "Sprout Lands - Sprites - premium pack.zip" "Sprout Lands - UI Pack - Premium pack.zip"
     python tools/install_assets.py ~/Downloads          # or a folder holding both zips
 
-Copies the sheets the game uses into src/nexel_worlds/web/assets/ (git-ignored there) and makes the tiles derived
+Copies the sheets the game uses into src/nexel_worlds/web/assets/ and makes the tiles derived
 from them (tools/build_assets.py). Needs Pillow (`pip install pillow`). Leaves the zips untouched; run it again after
 updating the packs.
 """
