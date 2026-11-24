@@ -6,7 +6,7 @@
 // bob). So the name hopped over a boat that did not, over a swimmer who did not, and sat off the head while the eye
 // caught up after a jump down a few levels.
 //
-// BodyPlace.of(p) -> {tx, ty: its tile; z: its feet's height, levels, as drawn; ground: the ground under it, levels (its
+// BodyPlace.of(p) -> {tx, ty: the tile it is drawn on (on a ladder's rungs the ladder's, not the cliff's it nears); z: its feet's height, levels, as drawn; ground: the ground under it, levels (its
 //   shadow, its dust); mode: one of "boat", "swim", "climb", "fall", "jump", "walk"; air: feet off the ground; pose: the
 //   jump's pose or null; fx, fy: the way it faces; dx, dy: tiles aside (a ladder's lean);
 //   up: art px its picture and all over it are drawn over the straight line between its two tiles (relief.js liftOf);
@@ -15,7 +15,7 @@
 // One record a body a frame (the frame's time: render.js lastT): asked again in the frame, the same record.
 const BodyPlace = (() => {
   function make(p, now) {
-    const e = p.e || {}, tx = Math.round(p.x), ty = Math.round(p.y), boat = !!e.sail;
+    const e = p.e || {}, boat = !!e.sail;
     // (the mode, in ONE order. In a boat nothing else: no hop, no fall. Swimming, unless still in the air over the water.
     // On a ladder's rungs. Then the air: a fall, a jump (through the air, on the spot, up a step). Else on the ground)
     const j0 = boat ? null : jumping(p, now), fall = boat ? null : falling(p, now);
@@ -24,7 +24,8 @@ const BodyPlace = (() => {
     if (climb && climb.on) face(p, climb.fx, climb.fy);       // (on the rungs: to the ladder)
     const mode = boat ? "boat" : swim ? "swim" : climb ? "climb" : fall && fall.air ? "fall" : jump && (jump.leap || jump.tuck || jump.pose) ? "jump" : "walk";
     const up = (climb ? climb.lift : 0) + (jump ? Math.round(jump.body) : 0), line = liftOf(p) / zoom;
-    return {at: now, tx, ty, mode, air, pose: jump && jump.pose || null, fx: p.fx || 0, fy: p.fy || 0, dx: climb ? climb.dx : 0, dy: climb ? climb.dy : 0,
+    const dx = climb ? climb.dx : 0, dy = climb ? climb.dy : 0;
+    return {at: now, tx: Math.round(p.x + dx), ty: Math.round(p.y + dy), mode, air, pose: jump && jump.pose || null, fx: p.fx || 0, fy: p.fy || 0, dx, dy,
       up, eye: (climb ? climb.lift : 0) + (fall ? fall.body : 0), z: climb ? climb.h : (line + up) / RELIEF_STEP, ground: (line + (jump ? jump.ground : 0)) / RELIEF_STEP, jump, fall, climb};
   }
   // THE WAY A BODY FACES: one writer, called by what turns it: a key (keyboard.js turn), the walk and its wall (walk.js),

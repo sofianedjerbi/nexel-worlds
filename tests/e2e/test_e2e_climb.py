@@ -65,7 +65,7 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     # up it: rung by rung on the ladder's own tile, facing it, for about a second (six layers), and only then over the
     # edge (it was a slide from foot to top in a fifth of a second, the ladder drawn over the body)
     game.js("""() => { window.__seen = []; const t0 = performance.now();
-      const f = () => { const p = ents.get('agent' + myId), c = Climb.climbOf(p); if (c) __seen.push([Math.round(performance.now() - t0), c.on, +c.dx.toFixed(2), +c.dy.toFixed(2), p.fy, ]);
+      const f = () => { const p = ents.get('agent' + myId), c = Climb.climbOf(p); if (c) __seen.push([Math.round(performance.now() - t0), c.on, +c.dx.toFixed(2), +c.dy.toFixed(2), p.fy, BodyPlace.of(p).tx, BodyPlace.of(p).ty]);
         if (performance.now() - t0 < 1600) requestAnimationFrame(f); }; requestAnimationFrame(f); }""")
     game.hold(["ArrowUp"], 90)
     game.sleep(1700)
@@ -73,6 +73,9 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     on = [c for c in seen if c[1]]
     assert on and on[-1][0] - on[0][0] >= 500, seen[:3]        # on the rungs for half a second and more
     assert all(c[2] == 0 for c in on) and all(c[4] == -1 for c in on)      # on the ladder's own tile, facing it
+    # (and the body's place says the tile it is drawn on, the ladder's, for the whole climb: it said the tile it was nearest,
+    #  the cliff's from half way up: what lights and covers a body read the cliff's top for it)
+    assert {(c[5], c[6]) for c in on} == {(x, y - 2)}, sorted({(c[5], c[6]) for c in on})
     assert any(c[3] > .4 for c in on)                          # (held back over its foot while it rises: the straight line had it half way up the cliff)
     s = game.server()
     assert (s["x"], s["y"], s["z"]) == (x, y - 3, 6)           # up it, onto the cliff

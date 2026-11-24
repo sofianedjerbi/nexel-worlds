@@ -16,7 +16,7 @@ const HdLevel = (() => {
   // not the ground under you: sprint-jumping south up a hill the step ahead, a level over the ground you left, stood between the eye and that ground: the eye tilted up as if under the land. Your shadow keeps the ground: leap.js level)
   function track(p, now) {   // (p.free: the first screen's eye, nobody's body)
     const b = !p.free && BodyPlace.of(p), [L, Lf] = p.free ? [p.z, p.z] : of(p, now);
-    place = {tx: Math.round(p.x + (b ? b.dx : 0)), ty: Math.round(p.y + (b ? b.dy : 0)), L, Lf, free: !!p.free}; cov = p.free ? {top: L, dep: 0, roof: false, rim: rim(place.tx, place.ty, L)} : cover(place); return place;
+    place = {tx: b ? b.tx : Math.round(p.x), ty: b ? b.ty : Math.round(p.y), L, Lf, free: !!p.free}; cov = p.free ? {top: L, dep: 0, roof: false, rim: rim(place.tx, place.ty, L)} : cover(place); return place;
   }
   function cover({tx, ty, L}) { const top = topAt(tx, ty); return {top, dep: Math.max(0, top - L), roof: top > L, rim: rim(tx, ty, L)}; }
   function of(p, now) { const r = of0(p, now); if (!(p.e && p.e.kind === "agent" && p.e.id === myId)) return r; const a = Leap.state; return [a ? Math.max(r[0], Math.floor(a.z + .5)) : r[0], Leap.cam(r[1], now)]; }
