@@ -20,10 +20,10 @@ const HdFx = (() => {
   function add(list, p, now, dt) {
     const t = now / 1000, near = (x, y) => Math.abs(x - p.x) < 26 && y > p.y - 26 && y < p.y + 26, put = (s) => { if (near(s.x, s.y)) list.push(Object.assign({d: true, still: true}, s)); };
     let n = 0;
-    for (const q of parts) { if (q.age < 0 || q.age > q.life) continue; const base = q.floor !== undefined ? q.floor : (q.by === undefined ? (q.by = q.y + HdLevel.FOOT.chip[1]) : q.by), [, a] = opaque(q.c);   // (a chip: its floor; a spark or a puff of dust: where it came out, a little over the ground)
+    for (const q of parts) { if (q.age < 0 || q.age > q.life) continue; const base = q.floor !== undefined ? q.floor : (q.by === undefined ? (q.by = q.y + HdLevel.DRAW_AT.chip[1]) : q.by), [, a] = opaque(q.c);   // (a chip: its floor; a spark or a puff of dust: where it came out, a little over the ground)
       put({canvas: dot(q.c, q.s), fx: 0, fy: q.s + Math.round(Math.max(0, base - q.y) * 16), x: q.x, y: base, z: ground(q.x, base), fade: Math.min(1, 3.3 * (1 - q.age / q.life)) * a}); n++; }
     last.parts = n; n = 0;
-    for (const q of puffs) { if (q.age < 0 || q.age > q.life) continue; const k = q.age / q.life, r = Math.max(1, Math.round(q.r + q.grow * k)), base = q.by === undefined ? (q.by = q.y + HdLevel.FOOT.puff[1]) : q.by;
+    for (const q of puffs) { if (q.age < 0 || q.age > q.life) continue; const k = q.age / q.life, r = Math.max(1, Math.round(q.r + q.grow * k)), base = q.by === undefined ? (q.by = q.y + HdLevel.DRAW_AT.puff[1]) : q.by;
       put({canvas: puff(r), fx: r, fy: r + Math.round(Math.max(0, base - q.y) * 16), x: q.x, y: base, z: ground(q.x, base), fade: (1 - k) * .85}); n++; }
     last.puffs = n; n = 0;
     for (const f of falls) { const k = (now - f.t0) / 1000, fr = Math.floor(k * 14), img = f.thin ? IMG.thin_fall : IMG.tree_fall; if (fr < 0 || fr >= 12 || !ok(img)) continue; const [bx, by] = brink(f.x, f.y);   // (the pack's felling sheet: its trunk at x 32 to 48 of a frame, mirrored about it to fall the other way)
