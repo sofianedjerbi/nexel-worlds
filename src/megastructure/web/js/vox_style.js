@@ -240,7 +240,7 @@ const VoxStyle = (() => {
       gl.bindVertexArray(null); cost = performance.now() - t0;
       return el;
     }
-    return {build, steps, touch: land.touch, touchBox: land.touchBox, wet: land.wet, get water() { return cnt.water; }, draw, forget() { wipe = true; land.clear(); }, get lost() { const l = lost; lost = false; return l; }, get cost() { return cost; }, get win() { return {n: W_ ? W_.n : 0, a: wxr, tiles: W_ ? W_.tiles : []}; },   // (the x-ray window: its boxes [x, y, lo, hi], how open it is 0..1)
+    return {build, steps, start, touch: land.touch, touchBox: land.touchBox, wet: land.wet, get water() { return cnt.water; }, draw, forget() { wipe = true; land.clear(); }, get lost() { const l = lost; lost = false; return l; }, get cost() { return cost; }, get win() { return {n: W_ ? W_.n : 0, a: wxr, tiles: W_ ? W_.tiles : []}; },   // (the x-ray window: its boxes [x, y, lo, hi], how open it is 0..1)
       spaceAt(x, y) { const sp = space, i = sp ? x - sp.x : -1, j = sp ? y - sp.y : -1; return sp && i >= 0 && j >= 0 && i < sp.D && j < sp.D && sp.cls[j * sp.D + i] && sp.lvl[j * sp.D + i] !== -32768 ? [sp.lvl[j * sp.D + i], sp.cls[j * sp.D + i]] : null; },   // (tests: a tile of your space: [its floor's level, 1 walked to | 2 dropped to | 3 dropped from])
       get stamp() { return land.stamp; }, get work() { return {wipes, spills, overs, fars: land.fars}; }, get part() { return land.part; },   // (work: lands made again from none, far patches made: tests)
       get made() { return made; }, get fresh() { return fresh; }, get calls() { return calls; }, get why() { return why; }, units,

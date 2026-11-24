@@ -31,7 +31,11 @@ const Voxels = (() => {
   function work(coming, until) {
     if (dirtyTiles.length || !engine.ready()) return;
     WaterBed.flush(engine.touch);
-    for (const b of coming) if (b.px && b.seaAt !== b.ver) { for (const _ of waterSteps(b)); b.seaAt = b.ver; if (performance.now() >= until) return; }
+    for (const b of coming) if (b.px && b.seaAt !== b.ver) {   // (a block's sea a step at a time, kept from one frame to the next: it was made whole in one go, a fifth of a phone's 0.1 s frame for a block)
+      if (!b.sea || b.sea.ver !== b.ver) b.sea = {ver: b.ver, steps: waterSteps(b)};
+      for (;;) { if (b.sea.steps.next().done) { b.seaAt = b.sea.ver; b.sea = null; break; } if (performance.now() >= until) return; }
+      if (performance.now() >= until) return;
+    }
   }
   // The water's picture (water.js, on its own canvas) the HD look lays on its water, made ten times a second -> api.wver goes up with each.
   // Over the land the HD look draws (hd.js box: tiles x0, y0, x1, y1), not the flat view's rectangle (vis: before the look's first frame)

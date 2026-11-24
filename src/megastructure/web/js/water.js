@@ -130,7 +130,8 @@ function* waterSteps(b) {
   const K = new Int16Array(n), F = new Float32Array(n); for (let v = 0; v < n; v++) { const t = (v - 8) / 16 + 1; K[v] = Math.floor(t); F[v] = Math.round((t - K[v]) * 4) / 4; }   // (an art px -> the tile whose middle is west or north of it, and how far on to the next: quarters)
   for (let j = 0; j < n; j++) { const ky = K[j], fy = F[j];
     for (let i = 0; i < n; i++) { const kx = K[i], fx = F[i], a = (ky * m2 + kx) * 4, o = (j * n + i) * 4;
-      for (let q = 0; q < 4; q++) D[o + q] = Math.round((tn[a + q] * (1 - fx) + tn[a + 4 + q] * fx) * (1 - fy) + (tn[a + m2 * 4 + q] * (1 - fx) + tn[a + m2 * 4 + 4 + q] * fx) * fy); } }
+      for (let q = 0; q < 4; q++) D[o + q] = Math.round((tn[a + q] * (1 - fx) + tn[a + 4 + q] * fx) * (1 - fy) + (tn[a + m2 * 4 + q] * (1 - fx) + tn[a + m2 * 4 + 4 + q] * fx) * fy); }
+    if ((j & 15) === 15) yield; }                                  // (a step every 16 rows of px: the block's tint in one go was a fifth of a phone's 0.1 s frame, its first, not yet compiled, a quarter)
   g.putImageData(img, 0, 0);
   b.water = {un, land, canvas: c, bed, any, foam, glints, rows, box: box.map((v, i) => (v + (i > 1)) * 16)};
 }
