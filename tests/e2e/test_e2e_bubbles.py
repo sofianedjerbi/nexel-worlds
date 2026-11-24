@@ -141,6 +141,14 @@ def test_two_people_on_one_row_at_two_heights_each_has_its_name_over_its_own_hea
     assert not game.errors and not other.errors
 
 
+# your name as it is written, frame by frame through a jump (Space): [its y, your body's place's y (View.of), BodyPlace's lift]
+JUMPED = """() => new Promise((ok) => { const f = outlined, got = []; let n = 0;
+  outlined = (text, x, y, c) => { if (text === me) { const p = ents.get('agent' + myId), v = View.of(p); got.push([y, v && v[1], BodyPlace.of(p).up]); } return f(text, x, y, c); };
+  const key = (type) => dispatchEvent(new KeyboardEvent(type, {key: ' ', code: 'Space', bubbles: true, cancelable: true}));
+  const tick = () => { n++; if (n === 4) key('keydown'); if (n === 6) key('keyup'); if (n > 50) { outlined = f; ok(got); } else requestAnimationFrame(tick); };
+  requestAnimationFrame(tick); })"""
+
+
 def test_at_a_screen_density_of_one_and_a_quarter_your_name_is_over_your_own_head(browser, server):
     """A laptop at 125 %: an art px of the land is 3.2 CSS px at zoom 3 (state.js artPx), not 3. Your name is written
     over the middle of your body, on the land's pixel, as far over your head as on a plain screen (what is written over
@@ -161,6 +169,12 @@ def test_at_a_screen_density_of_one_and_a_quarter_your_name_is_over_your_own_hea
             assert name and body, (dsf, name, body)
             _, nx, ny = name[0]
             got[dsf] = (u, nx - (body["x"] + body["w"] / 2), foot[1] - ny, nx / u)
+            # and in a jump: the name goes up with the body, by its lift in the land's pixel (it was zoom px: at 125 % a px
+            # an art px short of it, 3 at a jump's top)
+            jump = [r for r in g.js(JUMPED) if r[1] is not None]
+            stand = [foot - y for y, foot, up in jump if up == 0]
+            assert stand and max(r[2] for r in jump) >= 12, (dsf, jump)
+            assert all(abs((foot - y - stand[0]) / u - up) < .6 for y, foot, up in jump), (dsf, stand[0], u, jump)
             assert not g.errors
         finally:
             ctx.close()

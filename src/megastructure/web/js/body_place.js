@@ -55,7 +55,8 @@ const BodyPlace = (() => {
     if (tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == tid); if (q) { const fx = Math.sign(q.x - p.x); face(p, fx, fx ? 0 : Math.sign(q.y - p.y)); } }
   }
   const of = (p) => (p.place && p.place.at === lastT ? p.place : (p.place = make(p, lastT)));
-  // screen px to move what is over a body by, from sx(p.x), bodyY(p): by whole art px, as the body is drawn
-  const over = (p, S) => { const b = of(p); return [b.dx * S, b.dy * S - b.up * zoom]; };
+  // screen px to move what is over a body by, from sx(p.x), bodyY(p): by whole art px, as the body is drawn (its lift in
+  // the land's own pixel, state.js artPx, as every offset over a body is: at a screen density of 1.25 it is not zoom)
+  const over = (p, S) => { const b = of(p); return [b.dx * S, b.dy * S - b.up * artPx()]; };
   return {of, over, face, faceAction, state, peek};
 })();
