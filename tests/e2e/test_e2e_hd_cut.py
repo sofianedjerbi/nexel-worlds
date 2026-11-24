@@ -75,3 +75,24 @@ def test_a_trench_dug_through_a_hill_of_steps_is_drawn_as_the_hill_is(browser, s
         f, t = g.js(FACE, [x + 3, y - 3, 1]), g.js(FACE, [x + 1, y - 3, 1])
         assert all(abs(a - b) < .08 * b for a, b in zip(f, t)), (where, f, t)
     assert not g.errors
+
+
+def test_a_cut_does_not_change_the_stone_of_the_tiles_beside_it(browser, server):
+    """A thin terrace of stone, five tiles by three, six high; a cut through its middle down to level 2. The tiles
+    beside the cut are untouched: their fronts are the same px after as before. (Stone was a mass: with the cut no
+    3 x 3 of high tiles was left, and the whole terrace turned earth: lighter boxes beside the cut.)"""
+    g = hd(browser, server)
+    g.hour(.3, still=True)
+    g.js("setOpt('shadows', 0)")
+    x, y = g.pos()
+    g.stamp(-2, -6, ["." * 5] * 3, levels=["6" * 5] * 3)
+    g.rest()
+    read = lambda: [g.js(FACE, [x + dx, y - 4, z]) for dx in (-2, -1, 1, 2) for z in (6, 3)]
+    was = read()
+    assert all(max(c) - min(c) < 30 for c in was), was                            # (grey: stone to its foot)
+    g.rpc("dev_col", tiles=[[x, y - 6 + j] for j in range(3)], col=[2])
+    g.rest()
+    if SHOT:
+        g.page.screenshot(path=os.path.join(SHOT, "thin_terrace_cut.png"))
+    assert read() == was
+    assert not g.errors

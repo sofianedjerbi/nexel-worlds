@@ -28,31 +28,11 @@ const VoxPaint = (() => {
   const browns = (sheet) => { const d = sheetData(sheet), [cx, cy] = blobCell(N_ | E_ | W_ | NE | NW), set = new Set(); for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { const v = d.px[(cy * 16 + j) * d.w + cx * 16 + i]; if (v >>> 24 === 255 && (v & 255) > (v >>> 8 & 255)) set.add(v); }
     return [...set].sort((a, b) => (a & 255) - (b & 255)); };
   const earths = new Map(), earth = (z) => { if (!(z > EARTH && z < 5)) return null; let m = earths.get(z); if (!m) { const to = browns(hillSheet(EARTH)); m = new Map(browns(hillSheet(z)).map((v, i) => [v, to[Math.min(i, to.length - 1)]])); earths.set(z, m); } return m; };
-  // Stone is a mass, not a height: a block is stone where its top is at level 5 or over AND its tile is in a 3 x 3 of tiles all that high (`core`: a mountain, a plateau, a terrace
-  // along one), or joined to one by three tiles as high at the most (a mountain's tip, the end of a cliff that runs on a slant, a stair up its flank). A stair that climbs past level 4
-  // on its own, a pillar, a wall one or two tiles thick stay earth to their top, grass on it: a staircase's fifth step was a grey column, two objects.
-  // rocky: is the tile's high block stone; level: the level whose paint the block with its top at z has there (4: the highest earth). The engine: host.rock, voxels.js
-  let seen = -1; const mass = new Map(), cores = new Map(), REACH = 3;
-  function core(x, y) {
-    const k = x + "," + y; let r = cores.get(k); if (r !== undefined) return r;
-    r = false; for (let oy = -2; oy <= 0 && !r; oy++) for (let ox = -2; ox <= 0 && !r; ox++) { r = true; for (let j = 0; j < 3 && r; j++) for (let i = 0; i < 3 && r; i++) r = topAt(x + ox + i, y + oy + j) > 4; }
-    cores.set(k, r); return r;
-  }
-  // CUT IN STONE: a tile lower than 5 in a stone mass (its stone on two facing sides, a cut at most three tiles wide: a trench, a stair dug in a mountain, a gorge through one; or on all four within four
-  // tiles: a pit) is that stone at any height (2): its floor, its steps, its walls: a cut shows the rock it is cut in. It was earth by its height: brown steps and a tan floor inside a grey stone hill
-  const cut = (x, y) => { const s = [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dy]) => { for (let d = 1; d <= 4; d++) if (topAt(x + dx * d, y + dy * d) > 4) return rocky(x + dx * d, y + dy * d) ? d : 9; return 9; });
-    return s[0] + s[2] <= 4 || s[1] + s[3] <= 4 || Math.max(...s) <= 4; };
-  function rocky(x, y) {
-    const m = matAt(x, y); if (m) return m === "s" ? 2 : false;   // (a block put there: stone at any height (2), earth on a mountain: what was put, not what the height says)
-    if (seen !== landVer) { mass.clear(); cores.clear(); seen = landVer; }
-    const k = x + "," + y; let r = mass.get(k); if (r !== undefined) return r;
-    if (topAt(x, y) < 5) { r = cut(x, y) ? 2 : false; mass.set(k, r); return r; }
-    r = core(x, y);
-    for (let at = [x, y], d = 0, met = new Set([k]); !r && d < REACH; d++) { const next = [];
-      for (let i = 0; i < at.length && !r; i += 2) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = at[i] + dx, ny = at[i + 1] + dy, nk = nx + "," + ny; if (met.has(nk) || topAt(nx, ny) < 5) continue; met.add(nk); if (core(nx, ny)) { r = true; break; } next.push(nx, ny); }
-      at = next; }
-    mass.set(k, r); return r;
-  }
+  // STONE OR EARTH IS THE COLUMN'S OWN: a tile's block is stone where its top is at level 5 or over, or where a stone block was put (2: at any height); a block of earth put there is
+  // earth at any height. Nothing round it is asked. (It was a mass: a 3 x 3 of tiles as high, or three tiles from one, and a low tile "cut in stone" by the stone four tiles round it:
+  // a trench dug through a terrace took the stone from the untouched tiles beside it, lighter earth boxes along the cut, and a paint made before the land five tiles off had come was kept wrong)
+  // rocky: is the tile's block stone; level: the level whose paint the block with its top at z has there (4: the highest earth). The engine: host.rock, voxels.js
+  const rocky = (x, y) => { const m = matAt(x, y); return m ? (m === "s" ? 2 : false) : topAt(x, y) > 4; };
   const level = (x, y, z) => (z < 5 && rocky(x, y) === 2 ? 5 + (z + 512) % 4 : z > 4 && !rocky(x, y) ? 4 : z);   // (a stone block put low: the stone level the engine gives its sides, vox_mesh.js rock)
   const ids = new Map(), cells = [null];                        // a shape: [what of it is drawn, its sheet, the sheet's cell (cx, cy) each quarter of it is: NW, NE, SW, SE]; 0: the whole square
   // A narrow top (a tile in no 2 x 2 of land as high: a pillar, a wall one tile wide, its ends, an L, a T, a plus, a ring): the

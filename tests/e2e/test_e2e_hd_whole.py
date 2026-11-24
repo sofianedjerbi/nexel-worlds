@@ -8,7 +8,7 @@ that glow; steps dug in stone drawn as earth).
   and its bloom made every rim and far wall a smear on a desktop).
 - After a teleport no frame shows the land unpainted (hd.js `held`: the last picture stays until the land is made).
 - A floor sunk in the land is shaded darker than the ground round it along its walls, at night too (it glowed lavender).
-- A trench cut in a stone mass is stone (voxpaint.js `cut`)."""
+- A trench cut in stone: its walls stone to their foot, its floor the land of its own height (voxpaint.js `rocky`: a column's own)."""
 
 import math
 
@@ -117,18 +117,18 @@ def test_a_pit_floor_is_darker_than_the_meadow_by_day_and_by_night(browser, serv
     assert all(n > 20 and lo < .8 * m and hi > 1.1 * lo for _, lo, hi, m, n in out), out
 
 
-def test_a_trench_cut_in_stone_is_stone(browser, server):
+def test_a_trench_cut_in_stone_has_stone_walls_to_their_foot_and_a_floor_of_its_own_height(browser, server):
+    """Stone or earth is a column's own (voxpaint.js rocky: its top at 5 or over): the walls of a trench cut in stone are the
+    untouched columns beside it, stone down to the trench's floor; its floor, at 3, is what land at 3 is anywhere. (The floor
+    was "cut in stone" by the stone four tiles round it: a rule for a cut, and the same rule turned thin terraces earth.)"""
     g = hd(browser, server)
     x, y = scene(g)
     g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-9, -3) for i in range(-4, 5) if abs(i) > 1], col=[8])   # stone eight high, 9 x 6, a trench 3 wide through it north to south
-    g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-9, -3) for i in (-1, 0, 1)], col=[3])                   # its floor at 3: under stone's 5, cut in stone
+    g.rpc("dev_col", tiles=[[x + i, y + j] for j in range(-9, -3) for i in (-1, 0, 1)], col=[3])                   # its floor at 3
     made(g)
-    assert g.js(f"VoxPaint.rocky({x}, {y - 6})") == 2
-    (ax, ay), (bx, by) = g.js(ART, [x - 1, y - 6, 3]), g.js(ART, [x + 2, y - 4, 3])
-    px = g.js("""([x0, x1, y0, y1]) => { const d = HdView.el.getContext('2d').getImageData(x0, y0, x1 - x0, y1 - y0).data, n = new Map(); for (let i = 0; i < d.length; i += 4) { const c = d[i] + ',' + d[i + 1] + ',' + d[i + 2]; n.set(c, (n.get(c) || 0) + 1); }
-      return [...n].sort((p, q) => q[1] - p[1]).slice(0, 3).map((p) => p[0]); }""", [int(ax) + 2, int(bx) - 2, int(ay) + 1, int(by) - 1])
-    r, gg, b = map(int, px[0].split(","))
-    assert abs(r - gg) < 25 and b - r > -12, px                     # stone's grey, not earth's brown (r over b by 40 and more)
+    assert g.js(f"[VoxPaint.rocky({x}, {y - 6}), VoxPaint.rocky({x - 2}, {y - 6}), VoxPaint.rocky({x + 2}, {y - 6})]") == [False, True, True]
+    # the wall's cell at the floor's height, a level over it: the stone's paint (the engine: one rock from rim to foot)
+    assert g.js(f"VoxMesh.rock({{rock: {{from: 5, lo: -512, n: 4}}}}, 8, 4, VoxPaint.rocky({x - 2}, {y - 6}))") >= 5
 
 
 @pytest.mark.quick

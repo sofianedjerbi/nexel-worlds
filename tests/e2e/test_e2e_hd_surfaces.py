@@ -68,3 +68,56 @@ def test_every_surface_is_one_rule_at_any_height_painted_whole_at_one_art_px(bro
             g.rest()
             g.page.screenshot(path=os.path.join(SHOT, "surf_" + name + ".png"))
     assert not g.errors
+
+
+# the land's picture, kept (window.__p[name]), from under the sky's line down (the sky's clouds drift: not the land's);
+# and how many of its px are not the kept one's
+KEEP = """(n) => { (window.__p = window.__p || {})[n] = HdLook.read(0, Math.round(cv.height * .42), cv.width, Math.round(cv.height * .58)).data; return 1; }"""
+OFF = """(n) => { const a = window.__p[n], b = HdLook.read(0, Math.round(cv.height * .42), cv.width, Math.round(cv.height * .58)).data; let k = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) k++; return k; }"""
+# blocks of the land taken from the page and kept from being asked for again; the land made from none without them
+DROP = """(ks) => { for (const k of ks) { blocks.delete(k); requested.set(k, 1e15); } HdLook.forget(); return 1; }"""
+
+
+def test_the_land_is_the_same_px_whatever_order_its_blocks_came_in(browser, server):
+    """A top's paint and a face's look are its column and the columns beside it, nothing further and nothing of when:
+    the land round a corner of four blocks, a stone plateau across it, is made with three of them not come, then they
+    come (asked of the server, the game's own way in) in one order, then in the other: each time the picture is the
+    first one's, px for px. (Stone was decided by the land five tiles off: a paint made before that land had come was
+    kept: earth for stone until the tile changed.)"""
+    g = hd(browser, server)
+    g.hour(.3, still=True)
+    for o in ("clouds", "rays", "shimmer", "shadows"):
+        g.js(f"setOpt('{o}', 0)")
+    x, y = g.pos()
+    X, Y = round(x / 32) * 32, round(y / 32) * 32                                 # the nearest corner of four blocks
+    g.rpc("dev_teleport", x=X - 3, y=Y + 3, z=0)
+    g.arrive()
+    g.clear_area(12)
+    # stone, level 6, across the corner north of you and down its east side: two tiles of it in the north-west block, the rest in the others
+    g.stamp(1, -11, ["." * 14] * 12, levels=["6" * 14] * 8 + ["0" * 9 + "6" * 5] * 4)
+    g.rest()
+    g.js("(() => { HdLook.landOnly = true; return 1; })()")                       # (the land alone: nothing that stands or walks)
+    g.rest()
+    g.js(KEEP, "all")
+    if SHOT:
+        g.page.screenshot(path=os.path.join(SHOT, "order_0.png"))
+    bx, by = X // 32, Y // 32
+
+    def made():                                                                    # (the land made with what is there: rest() waits for all of the screen's land to have come)
+        g.frames(3)
+        g.wait("!HdLook.busy && dirtyTiles.length === 0", timeout=15000)
+        g.frames(3)
+    others = [f"{bx},{by - 1}", f"{bx - 1},{by - 1}", f"{bx},{by}"]              # north-east, north-west, south-east of the corner (yours: south-west)
+    for order in (others, others[::-1]):
+        g.js(DROP, others)
+        made()
+        assert g.js(OFF, "all") > 1000                                              # (without them the picture is another)
+        for k in order:
+            g.js("(k) => { requested.delete(k); return 1; }", k)
+            g.wait(f"blocks.get('{k}') && blocks.get('{k}').drawn", timeout=15000)
+            made()
+        g.rest()
+        if SHOT:
+            g.page.screenshot(path=os.path.join(SHOT, f"order_{order[0]}.png"))
+        assert g.js(OFF, "all") == 0, (order, g.js(OFF, "all"))
+    assert not g.errors
