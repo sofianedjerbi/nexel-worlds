@@ -414,10 +414,12 @@ PHYSICAL = {"Footsteps", "Work", "Breaking", "Building", "Fights", "World", "Ani
 SIZES = [1.0, 0.93, 1.06, 0.97, 1.03, 0.9]
 
 
-def sfx(name, cat, when, variants=1, loud=0.5, kind=None, tuned=False, change="reworked"):
+def sfx(name, cat, when, variants=1, loud=0.5, kind=None, tuned=False, change="reworked", seed=None):
+    """seed: the name its random source is drawn from, when that is not its own (a sound picked by ear among drafts
+    keeps the draft's seed, so the game's is the very one that was heard)."""
     def deco(fn):
         S[name] = fn
-        META[name] = {"cat": cat, "when": when, "variants": variants, "loud": loud, "change": change,
+        META[name] = {"cat": cat, "when": when, "variants": variants, "loud": loud, "change": change, "seed": seed or name,
                       "kind": kind or ("hall" if tuned or cat in ("Progress", "Interface") else "out"),
                       "vary": cat in PHYSICAL and not tuned}
         return fn
@@ -1334,6 +1336,245 @@ def _(c):
     return y + 0.3 * texture(c, n, 3000, 9000, 4, 30, 0.3) * np.exp(-t / 0.05)
 
 
+# ================================================================== creatures: each one's own warning, blow and cry
+# Picked by ear on the local creatures page (2026-11-25), out of three candidates a move. Each is reproduced sample-exactly:
+# its own seed (`seed`: the candidate it was) and its own level, one variant.
+
+def env(n, a, d, sustain=0.0):
+    """Attack a seconds, then decay with time constant d (an optional floor)."""
+    t = tt(n)
+    return np.clip(t / max(a, 1e-4), 0, 1) * (sustain + (1 - sustain) * np.exp(-np.clip(t - a, 0, None) / d))
+
+
+def swirl(n, f0, f1, depth=0.6):
+    """Amplitude going round and round, faster and faster (a whirl)."""
+    rate = np.geomspace(f0, f1, n)
+    return 1 - depth * (0.5 + 0.5 * np.sin(2 * np.pi * np.cumsum(rate) / SR))
+
+
+def snort(c, n, at, dur, lo=350, hi=2200, amp=1.0):
+    """A blast of air through a snout: noise through nasal bands, a hard start, quick end."""
+    k = N(dur)
+    blast = (0.7 * norm(fft_filter(c.noise(k), bp(lo, hi))) + 0.5 * norm(fft_filter(c.noise(k), bp(lo * 0.5, lo * 1.4)))) * env(k, 0.008, dur / 3)
+    y = np.zeros(n)
+    return place(y, amp * blast, at)
+
+
+def throat(c, n, f0, forms, bw=120, rough=0.0, harm=40):
+    """voice() with an optional growl (the pitch pulses grouped in pairs: a rough old throat)."""
+    y = norm(voice(n, f0, lambda t: forms, bw, harm, c))
+    if rough:
+        y *= 1 - rough * (0.5 + 0.5 * np.sin(np.pi * np.cumsum(f0) / SR))
+    return y
+
+
+def debris(c, n, at, rate=700, freq=1800, tau=0.18):
+    t = tt(n)
+    late = np.clip((t - at) / 0.02, 0, 1) * np.exp(-np.clip(t - at, 0, None) / tau)
+    return phism(c, n, late, rate, freq, 0.0015)
+
+
+@sfx("tusker_warn", "Creatures", "warning: it paws and snorts: a hoof scraping the earth twice, then one snort", 1, 0.38, seed="tusker_warn_B", change="new")
+def _(c):
+    n = N(0.8)
+    y = np.zeros(n)
+    for at in (0.0, 0.22):
+        k = N(0.14)
+        scrape = phism(c, k, env(k, 0.01, 0.05), 900, 1300, 0.002) + 0.7 * strike(c, k, "dirt", size=1.2, hard=0.8)
+        place(y, scrape, at)
+    return y + snort(c, n, 0.46, 0.2, amp=0.9)
+
+
+@sfx("tusker_ram", "Creatures", "the charge lands: it rams you: four quick hoof beats close in, then the hit", 1, 0.48, seed="tusker_ram_B", change="new")
+def _(c):
+    n = N(0.6)
+    y = np.zeros(n)
+    for k, at in enumerate((0.0, 0.07, 0.14, 0.21)):
+        place(y, (0.35 + 0.1 * k) * strike(c, N(0.08), "dirt", size=0.9, hard=1.3), at)
+    place(y, strike(c, N(0.35), "body", size=1.5, hard=1.3), 0.28)
+    return y
+
+
+@sfx("tusker_hurt", "Creatures", "it is hit: two clipped grunts, offended more than hurt", 1, 0.36, seed="tusker_hurt_B", change="new")
+def _(c):
+    n = N(0.45)
+    y = np.zeros(n)
+    for at, f in ((0.0, 170), (0.2, 150)):
+        g = N(0.14)
+        place(y, throat(c, g, f * (1 - 0.2 * tt(g) / 0.14), [(450, 1.0), (1250, 0.5)], 160, rough=0.5) * env(g, 0.01, 0.05), at)
+    return y
+
+
+@sfx("pincer_warn", "Creatures", "warning: the big claw goes up: shell on shell, three quick clicks", 1, 0.3, seed="pincer_warn_A", change="new")
+def _(c):
+    n = N(0.4)
+    y = np.zeros(n)
+    for at in (0.0, 0.09, 0.15):
+        place(y, strike(c, N(0.06), "ceramic", size=0.45, hard=2.2, damp=1.5), at)
+    return y
+
+
+@sfx("pincer_snap", "Creatures", "the snap: one hard chitin clack", 1, 0.42, seed="pincer_snap_A", change="new")
+def _(c):
+    n = N(0.25)
+    return strike(c, n, "ceramic", size=0.55, hard=2.4) + 0.4 * _crack(c, n, 4, 0.006)
+
+
+@sfx("pincer_hurt", "Creatures", "it is hit: a tiny high squeak", 1, 0.3, seed="pincer_hurt_B", change="new")
+def _(c):
+    n = N(0.18)
+    return throat(c, n, 1400 - 500 * tt(n) / 0.18, [(2200, 1.0), (4200, 0.3)], 500, harm=8) * env(n, 0.01, 0.05)
+
+
+@sfx("strawman_warn", "Creatures", "warning: its arms come up: dry straw crushed: a rustle with brittle snaps in it", 1, 0.34, seed="strawman_warn_A", change="new")
+def _(c):
+    n = N(0.5)
+    x = tt(n) / 0.5
+    sw = np.sin(np.pi * x) ** 0.8
+    return 0.8 * texture(c, n, 1800, 9000, 6, 30, 0.3) * sw + 0.7 * phism(c, n, sw, 600, 3500, 0.001)
+
+
+@sfx("strawman_swipe", "Creatures", "the swipe: the swipe throws a puff of hay", 1, 0.42, seed="strawman_swipe_C", change="new")
+def _(c):
+    n = N(0.45)
+    t = tt(n)
+    return sweep(c, n, 1500, 700, 0.6) * env(n, 0.01, 0.08) + 0.8 * phism(c, n, env(n, 0.01, 0.12), 900, 3000, 0.0012) + 0.4 * texture(c, n, 2000, 8000, 4, 25, 0.3) * np.exp(-t / 0.1)
+
+
+@sfx("strawman_hurt", "Creatures", "it is hit: a blow into straw: a soft thud and bits flying", 1, 0.32, seed="strawman_hurt_A", change="new")
+def _(c):
+    n = N(0.35)
+    return strike(c, n, "body", size=0.8, hard=0.7) + 0.6 * debris(c, n, 0.01, 800, 3200, 0.1)
+
+
+@sfx("wyrm_warn", "Creatures", "warning: it rears up out of the water: water heaving and pouring off it, rising", 1, 0.38, seed="wyrm_warn_A", change="new")
+def _(c):
+    n = N(0.6)
+    x = tt(n) / 0.6
+    y = texture(c, n, 300, 4000, 8, 15, 0.9) * x ** 0.7 * np.clip((1 - x) / 0.15, 0, 1)
+    return y + 0.5 * bubbles(c, np.zeros(n), 30, 1.5, 6, 0.55, amp=(0.1, 0.3), start=0.05)
+
+
+@sfx("wyrm_lunge", "Creatures", "the lunge: it crashes through the water and bites", 1, 0.48, seed="wyrm_lunge_A", change="new")
+def _(c):
+    n = N(0.6)
+    y = _splash(c, n, 1.4)
+    return place(y, 0.8 * _chomp(c, N(0.12), 0.6, 12), 0.04)
+
+
+@sfx("wyrm_hurt", "Creatures", "it is hit: it thrashes in the water", 1, 0.36, seed="wyrm_hurt_C", change="new")
+def _(c):
+    n = N(0.45)
+    return _splash(c, n, 0.9) + 0.5 * _splash(c, n, 0.6)
+
+
+@sfx("gustling_spin", "Creatures", "warning: it draws up and spins: a breathy whistle sliding up, like wind in a gap", 1, 0.34, seed="gustling_spin_C", change="new")
+def _(c):
+    n = N(0.6)
+    x = tt(n) / 0.6
+    centre = 700 * 2 ** (2 * x)
+    tone = np.zeros(n)
+    noise = c.noise(n)
+    for lo, hi in zip(np.geomspace(400, 6000, 25), np.geomspace(400, 6000, 25)[1:]):
+        band = fft_filter(noise, bp(lo, hi, 3))
+        tone += band * np.exp(-((np.log(np.sqrt(lo * hi)) - np.log(centre)) / 0.08) ** 2)
+    return norm(tone) * np.clip(x / 0.15, 0, 1) + 0.3 * sweep(c, n, 400, 2000, 0.6) * x
+
+
+@sfx("gustling_snatch", "Creatures", "the snatch: your thing is gone: a little pop as it takes it, then a whoosh off", 1, 0.36, seed="gustling_snatch_A", change="new")
+def _(c):
+    n = N(0.45)
+    y = 0.6 * strike(c, N(0.08), "body", size=0.4, hard=1.5)
+    y = np.concatenate([y, np.zeros(n - len(y))])
+    w = N(0.35)
+    return place(y, sweep(c, w, 2200, 500, 0.5) * env(w, 0.02, 0.12), 0.05)
+
+
+@sfx("gustling_scatter", "Creatures", "hit while it spins: it blows apart: the whistle falls and fades as it comes undone", 1, 0.34, seed="gustling_scatter_B", change="new")
+def _(c):
+    n = N(0.6)
+    x = tt(n) / 0.6
+    y = sweep(c, n, 2600, 300, 0.25, curve=x ** 0.6) * (1 - x) ** 1.5
+    puff = norm(S["poof"](c))                                   # (the game's own poof, softly, under it)
+    m = min(n, len(puff))
+    y[:m] += 0.3 * puff[:m]
+    return y
+
+
+@sfx("grumblestump_warn", "Creatures", "warning: its arms go up: old wood straining, and a low voice inside it", 1, 0.4, seed="grumblestump_warn_A", change="new")
+def _(c):
+    n = N(0.8)
+    x = tt(n) / 0.8
+    creak = stickslip(c, n, 40 + 45 * x, [240, 560, 1150], 12) * np.sin(np.pi * x) ** 0.6
+    groan = throat(c, n, 58 + 10 * x, [(200, 1.0), (450, 0.5)], 100, rough=0.5) * np.sin(np.pi * x) ** 0.8
+    return creak + 0.5 * groan
+
+
+@sfx("grumblestump_slam", "Creatures", "the slam: the ring of cracks: a heavy log hits the ground, earth thrown up", 1, 0.55, seed="grumblestump_slam_A", change="new")
+def _(c):
+    n = N(0.9)
+    y = strike(c, n, "wood", size=2.4, hard=0.9) + strike(c, n, "dirt", size=2.4, hard=0.8)
+    y += 0.8 * norm(fft_filter(c.noise(n), bp(40, 110))) * env_exp(n, 0.18, 0.004)
+    return y + 0.45 * debris(c, n, 0.04, 700, 1800, 0.22)
+
+
+@sfx("grumblestump_hurt", "Creatures", "it is hit: a blow on a trunk, and a short groan", 1, 0.38, seed="grumblestump_hurt_A", change="new")
+def _(c):
+    n = N(0.5)
+    y = strike(c, n, "wood", size=1.5, hard=1.3)
+    g = N(0.35)
+    return place(y, 0.45 * throat(c, g, 70 - 12 * tt(g) / 0.35, [(220, 1.0), (500, 0.5)], 100, rough=0.5) * env(g, 0.02, 0.12), 0.04)
+
+
+@sfx("snapbloom_warn", "Creatures", "warning: it rears back, mouth open: leaves rustle as it rears, a little hiss", 1, 0.3, seed="snapbloom_warn_A", change="new")
+def _(c):
+    n = N(0.6)
+    x = tt(n) / 0.6
+    return texture(c, n, 1800, 8000, 5, 25, 0.3) * np.sin(np.pi * x) ** 0.7 + 0.5 * norm(fft_filter(c.noise(n), bp(3500, 9000))) * np.clip((x - 0.4) / 0.2, 0, 1) * np.clip((1 - x) / 0.1, 0, 1)
+
+
+@sfx("snapbloom_bite", "Creatures", "the bite: the bite, then its petals flutter back open", 1, 0.42, seed="snapbloom_bite_C", change="new")
+def _(c):
+    n = N(0.5)
+    y = np.zeros(n)
+    place(y, _chomp(c, N(0.18), 0.7, 22), 0)
+    return place(y, 0.5 * texture(c, N(0.25), 1500, 6000, 5, 40, 0.4) * env(N(0.25), 0.02, 0.08), 0.15)
+
+
+@sfx("snapbloom_hurt", "Creatures", "it is hit: a sigh, wilting", 1, 0.28, seed="snapbloom_hurt_C", change="new")
+def _(c):
+    n = N(0.45)
+    return sweep(c, n, 2600, 700, 0.5) * env(n, 0.02, 0.15)
+
+
+@sfx("hob_lit", "Creatures", "it is set down and catches: kindling pops twice, a soft roar settles in", 1, 0.38, seed="hob_lit_B", change="new")
+def _(c):
+    n = N(0.9)
+    t = tt(n)
+    roar = texture(c, n, 200, 2500, 8, 12, 0.8) * np.clip(t / 0.25, 0, 1) * np.exp(-np.clip(t - 0.3, 0, None) / 0.3)
+    y = 0.7 * roar
+    for at in (0.0, 0.27):
+        place(y, _crack(c, N(0.05), 3, 0.004) * 0.8, at)
+    return y
+
+
+@sfx("hob_warn", "Creatures", "warning: it hunches, the fire draws in: air sucked into the firebox, rising, the flame going quiet", 1, 0.3, seed="hob_warn_A", change="new")
+def _(c):
+    n = N(0.55)
+    x = tt(n) / 0.55
+    return sweep(c, n, 300, 1800, 0.5, curve=x) * (0.45 + 0.55 * x) ** 1.3 * np.clip((1 - x) / 0.05, 0, 1)   # (heard at once: a game sound starts with its move)
+
+
+@sfx("hob_burst", "Creatures", "the burst: its firebox blazes: a whoomp of flame, sparks flying out", 1, 0.52, seed="hob_burst_A", change="new")
+def _(c):
+    n = N(1.0)
+    t = tt(n)
+    whoomp = norm(fft_filter(c.noise(n), lambda f: lp(900, 2)(f) * hp(60, 2)(f))) * env(n, 0.015, 0.25)
+    roar = texture(c, n, 200, 3000, 8, 15, 0.9) * env(n, 0.03, 0.35)
+    sparks = phism(c, n, np.clip(t / 0.02, 0, 1) * np.exp(-t / 0.35), 500, 4500, 0.0008)
+    return whoomp + 0.6 * roar + 0.5 * sparks
+
+
 # ------------------------------------------------------------------ render all
 
 
@@ -1357,7 +1598,7 @@ def loudness(st):
 def render(name, v):
     """One finished variant of one sound: stereo float array at SR, levelled and ready to write."""
     m = META[name]
-    raw = S[name](Ctx(name, v))
+    raw = S[name](Ctx(m["seed"], v))
     if m["vary"]:
         raw = resize(raw, SIZES[v % len(SIZES)])
     st = finish(raw, m["kind"])

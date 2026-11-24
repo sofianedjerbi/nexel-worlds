@@ -30,18 +30,38 @@ const WILD = {
   mossback: {cw: 80, ch: 64, hp: 60, sleep: [0, 8, 320], idle: [8, 8, 240], walk: [16, 8, 120], stomp: [24, 7, [160, 300, 220, 80, 180, 220, 200]], snap: [31, 7, [180, 200, 200, 70, 260, 140, 180]], shake: [38, 11, [180, 150, 150, 90, 90, 90, 90, 100, 110, 180, 200]], once: ["stomp", "snap", "shake"]},
   sporeling: {cw: 24, ch: 24, idle: [0, 8, 240], walk: [8, 8, 75], land: [16, 6, [80, 80, 160, 120, 90, 140]], puff: [22, 6, [150, 150, 90, 130, 150, 140]], once: ["land", "puff"]},
 };
+// Each creature's own sounds (music/sfx.py, "Creatures", picked by ear): its warning, its blow when it lands, its cry
+// when it is hit. `slams`: its blow is the slam itself (one sound for the ring, however many it hits: wildEvent).
+const CRY = {
+  tusker: {warn: "tusker_warn", blow: "tusker_ram", hurt: "tusker_hurt"},
+  pincer: {warn: "pincer_warn", blow: "pincer_snap", hurt: "pincer_hurt"},
+  strawman: {warn: "strawman_warn", blow: "strawman_swipe", hurt: "strawman_hurt"},
+  wyrm: {warn: "wyrm_warn", blow: "wyrm_lunge", hurt: "wyrm_hurt"},
+  gustling: {warn: "gustling_spin"},
+  grumblestump: {warn: "grumblestump_warn", slams: true, hurt: "grumblestump_hurt"},
+  snapbloom: {warn: "snapbloom_warn", blow: "snapbloom_bite", hurt: "snapbloom_hurt"},
+  hob: {warn: "hob_warn"}, wisp: {warn: "gloom"}, mossback: {warn: "boss_groan"},
+};
+// A blow lands (an "attack" event, `attacker` "a tusker" when it is a wild one): the creature's own sound in place of a
+// punch and a thump; a creature that is hit cries its own cry in place of the thump.
+function wildBlow(e, tgt, tx, ty) {
+  const foe = CRY[String(e.attacker).slice(2)] || {}, cry = tgt && CRY[tgt.e.kind] ? CRY[tgt.e.kind].hurt : null;
+  if (foe.blow) sfx(foe.blow, e.x, e.y);
+  else if (!foe.slams) { if (WILD[String(e.attacker).slice(2)]) sfx("punch", e.x, e.y); sfx(cry || "hit", tx, ty); }
+}
 // The moves of the wild ones and the hob, as the server tells them (sim/wild.py, gust.py, stump.py, hob.py): dust,
 // sparks, a sound, and a flash on whom they touched.
 function wildEvent(e) {
-  if (e.type === "slam") { burst(e.x, e.y, "dust", 22, {up: 1.2, spread: 5, g: 3}); sfx("thud", e.x, e.y); }        // a grumblestump's arms come down: a ring of dust
+  if (e.type === "slam") { burst(e.x, e.y, "dust", 22, {up: 1.2, spread: 5, g: 3}); sfx("grumblestump_slam", e.x, e.y); }        // a grumblestump's arms come down: a ring of dust
   if (e.type === "flare") {                                                            // a hob's firebox bursts: a blaze of sparks, it and what it burnt lit up
     burst(e.x, e.y, "spark", 34, {up: 4, spread: 6, g: 4, life: .7}); burst(e.x, e.y, "rage", 10, {up: 2.5, spread: 3, g: 6});
-    sfx("crackle", e.x, e.y); sfx("whoosh", e.x, e.y);
+    sfx("hob_burst", e.x, e.y);
     const now = performance.now(); flashes.set("hob" + e.id, now); for (const [k, id] of e.burnt || []) flashes.set(k + id, now);
+    for (const k of new Set((e.burnt || []).map(([k]) => k))) if (CRY[k] && CRY[k].hurt) sfx(CRY[k].hurt, e.x, e.y);   // what it burnt cries out
   }
-  if (e.type === "hob_lit") { burst(e.x, e.y, "spark", 14, {up: 2, spread: 2, g: 5}); sfx("place_fire", e.x, e.y); }   // set down: it catches
-  if (e.type === "snatch") { burst(e.x, e.y, "dust", 10, {up: 2.5, spread: 3, g: 2}); sfx("pick", e.x, e.y); }        // a gustling took what was in a hand
-  if (e.type === "scatter") { burst(e.x, e.y, "dust", 14, {up: 1.5, spread: 4, g: 1}); sfx("poof", e.x, e.y); }        // hit while it spun up: it blows apart
+  if (e.type === "hob_lit") { burst(e.x, e.y, "spark", 14, {up: 2, spread: 2, g: 5}); sfx("hob_lit", e.x, e.y); }   // set down: it catches
+  if (e.type === "snatch") { burst(e.x, e.y, "dust", 10, {up: 2.5, spread: 3, g: 2}); sfx("gustling_snatch", e.x, e.y); }        // a gustling took what was in a hand
+  if (e.type === "scatter") { burst(e.x, e.y, "dust", 14, {up: 1.5, spread: 4, g: 1}); sfx("gustling_scatter", e.x, e.y); }        // hit while it spun up: it blows apart
 }
 function wildFrame([col, n, ms], t, loop) {
   if (!Array.isArray(ms)) return col + (loop ? Math.floor(t / ms) % n : Math.min(n - 1, Math.floor(t / ms)));

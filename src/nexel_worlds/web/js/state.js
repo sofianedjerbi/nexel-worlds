@@ -221,8 +221,8 @@ function onEvent(e) {
       debris(tgt.x, tgt.y - .2, [animalSheet(tgt.e.kind, tgt.e.id), 0, 0, fw, fw], 6, {});
       sfx(tgt.e.kind === "chicken" || tgt.e.kind === "chick" ? "squawk" : animalVoice(tgt.e.kind), tx, ty);
     }
-    if (WILD[String(e.attacker).slice(2)]) sfx("punch", e.x, e.y);
-    burst(tx, ty, "hit", 6, {dy: -.4}); sfx("hit", tx, ty); if (e.target === me) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + hearts(e.damage), heart: true, color: "#ff8a7a", t});      // (in hearts, whoever is hit)
+    wildBlow(e, tgt, tx, ty);                                                               // (whose sound: world_decor.js CRY)
+    burst(tx, ty, "hit", 6, {dy: -.4}); if (e.target === me) sfx("hurt"); floats.push({x: tx, y: ty, text: "-" + hearts(e.damage), heart: true, color: "#ff8a7a", t});      // (in hearts, whoever is hit)
   }
   if (e.type === "jump" && e.name !== me && !e.step) {   // somebody hops (on the level: jump.js HOP; up a step, its own arc shows as it goes: a hop where it stood first, then the step's, was one jump drawn as two)
     const q = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === e.name);
@@ -244,7 +244,7 @@ function onEvent(e) {
     sfx("poof", e.x, e.y);
   }
   if (e.type === "death") { smoke(e.x, e.y, 10); sfx("poof", e.x, e.y); dropLoot(e.x, e.y, e.dropped, performance.now()); }
-  const warn = e.type === "windup" && {tusker: "rustle", pincer: "click", strawman: "creak", wisp: "gloom", wyrm: "water", gustling: "whoosh", grumblestump: "creak", snapbloom: "rustle", hob: "crackle", mossback: "boss_groan"}[e.kind];
+  const warn = e.type === "windup" && (CRY[e.kind] || {}).warn;
   if (warn) sfx(warn, e.x, e.y);                       // a wild creature warns (the wisp's call is a sigh)
   if (e.type === "boss") bossEvent(e);                 // (boss.js)
   if (e.type === "wear") sfx("rustle", e.x, e.y);      // someone puts something on, or takes it off
