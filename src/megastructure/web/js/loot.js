@@ -74,25 +74,3 @@ function stepLoot(now) {
   }
   for (const l of loot) if (!l.landed && (now - l.t0) / 1000 >= l.flight) { l.landed = true; sfx("loot", l.x, l.y); }
 }
-function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list, like everything on the ground
-  const z = zoom;
-  loot.forEach((l, i) => {
-    const s = (now - l.t0) / 1000;
-    if (s < 0) return;
-    let h = 0, dxk = 1, since = 1;                                  // (at rest, waiting for the others)
-    if (s < l.flight) { h = -(l.vy * s + LOOT_G * s * s / 2); dxk = s / l.flight; }   // the hop from the middle of the tile out to its place
-    else {
-      let t = s - l.flight, n = 0;
-      while (n < LOOT_HOPS.length && t > LOOT_HOPS[n]) t -= LOOT_HOPS[n++];
-      if (n < LOOT_HOPS.length) { h = LOOT_G * LOOT_HOPS[n] / 2 * t - LOOT_G * t * t / 2; since = t; }
-    }
-    const [fx, fy] = lootFrom(l, dxk), cx = sx(l.x + fx) + S / 2 + Math.round(l.dx * dxk) * z, ground = sy(l.y + fy, l.x + fx) + S / 2 + Math.round(l.dy * dxk) * z;
-    const dip = s > l.flight && since < .05 ? 1 : 0;                // a pixel lower just as it touches down, its last row in
-                                                                    //  the ground (only then: it ends at rest, as the pile shows)
-    list.push({y: l.y - .01 + i * 1e-4, x: l.x, fx: () => {         // (in the pile's order: the last in front)
-      ctx.fillStyle = "rgba(60,40,30,.25)";
-      pixelOval(cx, ground + 5 * z, Math.max(1, 4 - h * 4), 1.5, 0, .5);
-      ctx.drawImage(ghostIcon(l.name), 0, 0, DROP, DROP - dip, Math.round(cx - DROP * z / 2), Math.round(ground - DROP * z / 2 - h * S) + dip * z, DROP * z, (DROP - dip) * z);
-    }});
-  });
-}

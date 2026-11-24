@@ -110,12 +110,6 @@ function update(now) {
   // what moves on by itself: drops hopping out (their sound as they land), orbs flying to you, poofs, dust, plucked flowers: their state goes on
   // here, a step each (loot.js, xp.js, effects.js); the HD look draws them (hd_fx.js)
   stepLoot(now); stepOrbs(dt); stepEffects(dt, performance.now());
-  // NO PICTURE OF THE WORLD (WebGL 2 missing, or not ready yet): the page's dark, and the classic picture's painters of what moves, all that is left of it
-  if (!HdLook.live && !HdLook.lost && !HdLook.wait && me) {
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.imageSmoothingEnabled = false; ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H);
-    const sx = (x) => ox + x * S, sy = Curve.sy(oy, S), none = [];
-    drawLoot(sx, sy, S, now, none); drawOrbs(sx, sy, S, none); drawDying(sx, sy, S, t, now); drawEffects(sx, sy, S); drawPuffs(sx, sy); drawPlucks(sx, sy, S, now);
-  }
   drawXp();
   foodPreview();
   swingDoors(t);

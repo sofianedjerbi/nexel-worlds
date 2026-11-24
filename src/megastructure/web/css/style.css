@@ -81,6 +81,7 @@
   #banner { left:50%; top:24%; transform:translateX(-50%); display:none; text-align:center; width:min(520px, 90vw); z-index:5; }
   #banner .t { font-size:36px; line-height:40px; color:var(--warn); margin-bottom:6px; }
   #toast { left:50%; top:10px; transform:translateX(-50%); display:none; max-width:70vw; }
+  #nogl { left:50%; top:40%; transform:translate(-50%, -50%); display:none; max-width:80vw; z-index:2147483600; font-size:22px; text-align:center; }   /* (no picture of the world can be made: hd.js begin) */
   /* the zoom's sign (zoom.js): − ▪▪▪▫▫ +, in the HUD's pixels, there while you zoom and a moment after; in the middle, just over the hearts */
   #zoomer { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); display:flex; align-items:center; gap:calc(2 * var(--q)); padding:calc(2 * var(--q)) calc(3 * var(--q));
     background:#f7e7c6; color:var(--ink); border:var(--q) solid var(--ink); border-bottom-width:calc(2 * var(--q)); opacity:0; pointer-events:none; transition:opacity .25s steps(3); z-index:6; }

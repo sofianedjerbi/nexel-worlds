@@ -108,27 +108,6 @@ function picked(x, y, old, by, now) {
     flyers.push({x: x + dx, y: y + ground, ix, iy, by, drop: {top: y + top, t0: start, fall}, t0: start + fall + BOUNCE_MS + REST_MS});
   });
 }
-function drawFlyers(sx, sy, S, now) {
-  const z = zoom;
-  for (const f of flyers) {
-    const k = (now - f.t0) / FLY_MS;
-    const who = f.by && [...ents.values()].find((q) => q.e && q.e.name === f.by);
-    let x = f.x, y = f.y, gone = false;
-    if (k < 0 && !f.drop) continue;
-    if (k < 0) {                                    // falling from the tree, then one small bounce, then resting
-      const tf = (now - f.drop.t0) / 1000;
-      if (tf < 0) continue;
-      if (tf * 1000 < f.drop.fall) y = f.drop.top + .5 * FRUIT_G * tf * tf;
-      else { const b = (tf * 1000 - f.drop.fall) / BOUNCE_MS; if (b < 1) y = f.y - Math.sin(b * Math.PI) * .14; }
-    } else if (who) {                                 // arc into the picker's hands, fading as it is caught (never smaller: its pixels are the land's)
-      const tx = who.x + .5, ty = who.y + .1 - UP, e = k * k * (3 - 2 * k);
-      x = f.x + (tx - f.x) * e; y = f.y + (ty - f.y) * e - Math.sin(k * Math.PI) * 1.1;
-    } else { y -= k * .8; gone = true; }             // (nobody to catch it: it rises and fades)
-    ctx.globalAlpha = gone ? 1 - k : k > .7 ? (1 - k) / .3 : 1;
-    ctx.drawImage(IMG.trees, f.ix, f.iy, 16, 16, Math.round(sx(x) - 8 * z), Math.round(sy(y, x) - 8 * z), 16 * z, 16 * z);
-  }
-  ctx.globalAlpha = 1;
-}
 // Breaking anything (a bush, a rock, a fence, a table...): its sprite falls apart into 2x2 clumps of its own pixels
 // that drift out a little, land, bounce and fade.
 const clumpCache = new Map();
@@ -161,26 +140,6 @@ function plucked(x, y, spr, who, now) {
   plucks.push({x, y, spr, by: who, t0: now});
   debris(x, y, null, 4, {kind: "o"});            // a little soil comes up with it (the rustle is the tile's sound)
 }
-function drawPlucks(sx, sy, S, now) {
-  const z = zoom;
-  for (const f of plucks) {
-    const ms = now - f.t0, [img, a, b, w, h, dx, dy] = f.spr;
-    let ox = 0, oy = 0, sc = 1, stretch = 1, alpha = 1;
-    if (ms < TUG_MS) { const k = ms / TUG_MS; oy = -Math.sin(k * Math.PI / 2) * .25; stretch = 1 + Math.sin(k * Math.PI) * .18; }
-    else {
-      const k = (ms - TUG_MS) / PLUCK_MS, e = k * k * (3 - 2 * k);
-      const who = f.by && [...ents.values()].find((q) => q.e && q.e.name === f.by);
-      if (who) { ox = (who.x - f.x) * e; oy = -.25 + (who.y - .3 - f.y + .25) * e - Math.sin(k * Math.PI) * .8; sc = 1 - k * .55; }
-      else { oy = -.25 - k * .6; alpha = 1 - k; }
-      if (k > .8) alpha = Math.min(alpha, (1 - k) / .2);
-    }
-    const ww = w * z * sc, hh = h * z * sc * stretch;
-    const cx = sx(f.x + ox) + (dx + w / 2) * z, by = sy(f.y + oy, f.x + ox) + (dy + h) * z;   // anchored at its base
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(img, a, b, w, h, Math.round(cx - ww / 2), Math.round(by - hh), Math.round(ww), Math.round(hh));
-  }
-  ctx.globalAlpha = 1;
-}
 // Dying: the creature's own sprite flashes white, lifts a little and fades inside a puff of smoke.
 const dying = [], puffs = [];
 const DIE_MS = 480;
@@ -193,14 +152,6 @@ function smoke(x, y, n, size = 1) {   // size 1: a creature's poof; smaller for 
   for (let i = 0; i < n; i++) puffs.push({x: x + .5 + (Math.random() - .5) * .7, y: y + .35 + (Math.random() - .5) * .35,
     vx: (Math.random() - .5) * .7, vy: -.35 - Math.random() * .45, r: (1.5 + Math.random() * 1.5) * size, grow: (4 + Math.random() * 4) * size,
     life: .65 + Math.random() * .45, age: -i * .025});
-}
-function drawDying(sx, sy, S, t, now) {
-  for (const d of dying) {
-    const k = (now - d.t0) / DIE_MS; d.p.y = d.y0 - k * .35;
-    ctx.save(); ctx.globalAlpha = 1 - k * k; ctx.filter = k < .3 ? "brightness(2.4) saturate(.4)" : "brightness(1.4)";
-    drawEntity(d.p, sx, sy, S, t, now);
-    ctx.restore();
-  }
 }
 // A round shape in the land's own pixels: each art pixel whose middle is inside is filled whole, in the fill style
 // set. Smoke, shadows and glows were plain smooth circles among pixel art. gx, gy: where on the screen (rounded to a
@@ -218,16 +169,6 @@ function pixelOval(gx, gy, rx, ry, mx = 0, my = mx, ring = false) {
     if (i1 > a1) ctx.fillRect(gx + (a1 + 1) * z, gy + j * z, (i1 - a1) * z, z);
   }
 }
-function drawPuffs(sx, sy) {
-  const z = zoom;
-  for (const p of puffs) {
-    if (p.age < 0) continue;
-    const k = p.age / p.life, r = p.r + p.grow * k;     // (art px)
-    const cx = sx(p.x), cy = syUp(sy, p.y, liftFrom(p)), a = (1 - k) * .85;
-    ctx.fillStyle = `rgba(246,240,228,${a})`; pixelOval(cx, cy, r, r);
-    if (r >= 2) { ctx.fillStyle = `rgba(150,128,116,${a * .6})`; pixelOval(cx, cy, r, r, 0, 0, true); }    // its edge, one art pixel
-  }
-}
 // WHAT MOVES ON BY ITSELF GOES ON, once a frame (render.js): chips and sparks fall and bounce, smoke rises, a fruit lands (its sound), what is over goes. Nothing is drawn here:
 // the HD look draws them from these lists (hd_fx.js). (Each list was moved on inside the classic picture's painter of it, which the frame still ran, into a canvas of one px, for that)
 const keepIf = (l, ok) => { let n = 0; for (const v of l) if (ok(v)) l[n++] = v; l.length = n; };
@@ -238,25 +179,4 @@ function stepEffects(dt, now) {
   keepIf(parts, (p) => { p.age += dt; if (p.age > p.life) return false; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
     if (p.floor !== undefined && p.y > p.floor) { p.y = p.floor; p.vx *= .5; p.vy = Math.abs(p.vy) > 1.2 ? -p.vy * .3 : 0; if (!p.vy) { p.g = 0; p.vx *= .6; } }   // (debris lands: a small bounce, then it rests and fades)
     return true; });
-}
-function drawEffects(sx, sy, S) {
-  const z = zoom;
-  for (const p of parts) {
-    ctx.globalAlpha = Math.min(1, 3.3 * (1 - p.age / p.life));
-    ctx.fillStyle = p.c;
-    ctx.fillRect(Math.round(sx(p.x)), Math.round(syUp(sy, p.y, liftFrom(p))), p.s * z, p.s * z);
-  }
-  ctx.globalAlpha = 1;
-  const now = performance.now();
-  drawFlyers(sx, sy, S, now);
-  for (const f of falls) {     // the pack's tree-felling animation, then fade
-    const k = (now - f.t0) / 1000, fr = Math.floor(k * 14);
-    ctx.globalAlpha = fr >= 9 ? 1 - (fr - 9) / 3 : 1;
-    // the sheet falls to the left with the trunk at frame x 32-48; mirrored about the trunk when it should fall right
-    const [bx, by] = brink(f.x, f.y), x0 = sx(f.x) + bx * z;      // (where the tree stood: back from a drop, sprites.js)
-    if (f.side > 0) { ctx.save(); ctx.translate(x0 + 8 * z, 0); ctx.scale(-1, 1); ctx.translate(-(x0 + 8 * z), 0); }
-    ctx.drawImage(f.thin ? IMG.thin_fall : IMG.tree_fall, fr * 64, 0, 64, 48, x0 - 32 * z, sy(f.y, f.x) + (by - 28) * z, 64 * z, 48 * z);
-    if (f.side > 0) ctx.restore();
-    ctx.globalAlpha = 1;
-  }
 }

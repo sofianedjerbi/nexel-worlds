@@ -270,6 +270,8 @@ const HdLook = (() => {
     // WAKING UP: in the world, the world not yet having sent you (its next tick, 0.1 to 0.3 s): the last picture (the first screen's island) stays, as when lost.
     // (The look had nobody to look at: it hid its picture, and the page's dark brown was the world under the bar and the welcome: "the world black after joining")
     api.wait = !on && !!me && myId !== null && !ents.get("agent" + myId) && !!HdView.el && HdView.el.style.display === "block";
+    // NO PICTURE CAN BE MADE (WebGL 2 missing: none given at all): said, in a panel (index.html #nogl). (It was the page's dark, and the classic picture's chips and smoke on it: all that was left of that picture)
+    const none = api.on && !api.live && !api.lost && !api.wait && (noGL || !Voxels.engine.ready()); if (none !== api.none) { api.none = none; $("nogl").style.display = none ? "block" : "none"; if (none && $("boot")) $("boot").style.display = "none"; }   // (...and the wait for the first picture is over: none comes)
   };
   api.end = (now, t0) => { if (api.live) after(); else if (!api.lost && !api.wait) HdView.hide(); HdView.perf(now, performance.now() - t0, api.drew, eng ? eng.calls : 0, slice1, wrote); };
   api.touch = (x, y) => { if (eng) eng.touch(x, y); };   // (a tile of the land drawn again: its chunk of this land is made again, its paints painted again)
