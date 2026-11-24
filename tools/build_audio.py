@@ -96,7 +96,8 @@ def write_wav(path: Path, st: np.ndarray, rate: int):
 TRACKS = {"slow_tide": "morning", "side_street_day": "day", "far_shore_day": "day", "bright_dream": "day",
           "side_street_night": "night", "far_shore_night_c": "night", "old_mossback": "boss",
           "high_tide": "menu"}                     # the first screen's (music/slowtide.py writes it, already mastered)
-SOURCE = {"high_tide": "menu_tide_high", "slow_tide": "menu_slow_tide"}   # (Slow tide too: slowtide.py masters it)
+SOURCE = {"high_tide": "menu_tide_high", "slow_tide": "menu_tide_full"}   # (both masters of slowtide.py: its "high" and its "full",
+                                                                          #  the 80-a-minute take first written as menu_slow_tide)
 def final(name):
     """The piece's finished file: the corrected one (music/refit.py; "i agree with the corrections on existing songs")
     where there is one, else the mastered one."""

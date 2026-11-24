@@ -2,12 +2,13 @@
 
 The user, after three sets of instruments I had built myself without being able to hear them: "I want that music to be
 generated from python scripts, or whatever language or library that fits... people do sounds with programming... use
-tools". Surge XT (GPL-3, `brew install --cask surge-xt`) comes with about 3000 sounds made by sound designers; this
+tools". Surge XT (GPL-3, `brew install --cask surge-xt`; on Linux its .deb) comes with about 3000 sounds made by sound designers; this
 module only sends them notes.
 
     uv run --no-project --python 3.11 --with dawdreamer --with numpy python music/surge.py probe "Keys/EP 1" ...
 """
 from pathlib import Path
+import os
 import struct
 import sys
 import tempfile
@@ -15,8 +16,11 @@ import tempfile
 import numpy as np
 
 SR = 48000
-PLUGIN = "/Library/Audio/Plug-Ins/VST3/Surge XT.vst3"
-DATA = Path("/Library/Application Support/Surge XT")
+# where Surge XT is: macOS (the cask), then Linux (the .deb: a CI runner), or SURGE_PLUGIN / SURGE_DATA
+_PLUGINS = ["/Library/Audio/Plug-Ins/VST3/Surge XT.vst3", "/usr/lib/vst3/Surge XT.vst3", "/usr/local/lib/vst3/Surge XT.vst3"]
+_DATAS = ["/Library/Application Support/Surge XT", "/usr/share/surge-xt", "/usr/local/share/surge-xt"]
+PLUGIN = os.environ.get("SURGE_PLUGIN") or next((p for p in _PLUGINS if Path(p).exists()), _PLUGINS[0])
+DATA = Path(os.environ.get("SURGE_DATA") or next((p for p in _DATAS if Path(p).exists()), _DATAS[0]))
 TABLE = ".ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+"
 _engine, _count = None, 0
 
