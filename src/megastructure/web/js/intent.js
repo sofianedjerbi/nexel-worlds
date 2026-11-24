@@ -23,7 +23,6 @@ function entityAt(p) {                        // (who stands there, near your ow
   const s = myPos(), h = s ? myZ(s.x, s.y) : null, others = [...ents.values()].filter((q) => q.e && !(q.e.kind === "agent" && q.e.id === myId) && (h === null || Math.abs(standsAt(q) - h) <= RULES.bite_high));
   return others.find((q) => q.tx === p.x && q.ty === p.y) || others.find((q) => Math.round(q.x) === p.x && Math.round(q.y) === p.y);
 }
-const reachOf = (weapon) => (weapon === "spear" ? 3 : 2);   // tiles.py REACH, less the tile the server allows for your lead (reaches, below: a circle, height counted)
 // What the pointer means at a tile. A tree's crown hangs over the tiles above its trunk (a round tree's almost two
 // tiles, a thin one's one): pointing there means the tree, unless you hold something meant for that ground tile.
 const TALL = "TFU";
@@ -68,13 +67,13 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
   if (ent) {
     const who = ent.e.name || ent.e.kind, w = inHand(), weapon = w && RULES.weapons[w] ? w : null;
     if (ent.e.kind !== "agent" && selected === "name_tag" && !brk)       // a name tag in hand: its name (ask.js)
-      return {ent, text: ent.e.name ? `Rename ${ent.e.name}` : `Name the ${label(ent.e.kind)}`, near: USE_R, diag: true, run: () => nameAnimal(ent.e)};
+      return {ent, text: ent.e.name ? `Rename ${ent.e.name}` : `Name the ${label(ent.e.kind)}`, reach: "animal", diag: true, run: () => nameAnimal(ent.e)};
     if (ANIMALS[ent.e.kind] && selected && FEEDS.includes(selected) && !brk)
-      return {ent, text: `Feed ${label(ent.e.kind)}`, near: USE_R, diag: true, uses: true, run: () => act("feed", {target: ent.e.id, item: selected})};
+      return {ent, text: `Feed ${label(ent.e.kind)}`, reach: "animal", diag: true, uses: true, run: () => act("feed", {target: ent.e.id, item: selected})};
     if (ent.e.kind === "agent" && selected && !weapon && !brk)
-      return {ent, text: `Give to ${ent.e.name}`, near: 2, uses: "faced", run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})};
+      return {ent, text: `Give to ${ent.e.name}`, reach: "give", uses: "faced", run: (d) => act("give", {target: ent.e.id, item: selected, n: 1})};
     if (!brk) {                                        // E: the peaceful thing
-      if (ent.e.kind === "cow") return {ent, text: "Milk cow", near: USE_R, diag: true, run: () => act("milk", {target: ent.e.id})};
+      if (ent.e.kind === "cow") return {ent, text: "Milk cow", reach: "animal", diag: true, run: () => act("milk", {target: ent.e.id})};
       if (ent.e.kind === "agent") return {ent, text: `${ent.e.name}: hold a thing to give it`, info: true};
       return {ent, text: {chicken: "Chicken: feed it for eggs", chick: "A chick", calf: "A calf",
         tusker: "A tusker: it charges, step aside", pincer: "A pincer: it snaps up close",
@@ -82,7 +81,7 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
         wyrm: "A wyrm: stay out of its line",
         mossback: "Old Mossback: hit the neck", sporeling: "A sporeling: one hit"}[ent.e.kind] || who, info: true};
     }
-    return {ent, text: weapon ? `Attack ${who}` : `Punch ${who}`, near: reachOf(weapon), diag: true, attack: true,      // X hits (a left click)
+    return {ent, text: weapon ? `Attack ${who}` : `Punch ${who}`, reach: "melee", diag: true, attack: true,      // X hits (a left click)
       run: () => act("attack", weapon ? {target: ent.e.id, with: weapon} : {target: ent.e.id})};
   }
   const up = Climb.intent(p, brk) || Floors.intent(p, brk);     // (stairs, a ladder; a block in hand, or a built block under what you aim at: climbing.js, floors.js)
@@ -97,9 +96,9 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
     if (placeable(it) && rimAt(p.x, p.y)) return {text: "Nothing stays on the edge of a hill", ghost: it, ok: false};
     // containers first: clicking a chest, basket or trough with anything selected puts it in (`uses`: what you hold
     // goes there, so E does not eat it: keyboard.js facingNow; `uses` "faced": only the one you face)
-    if (c === "e" && it !== "torch") return FEEDS.includes(it) ? {text: "Fill trough", near: 1, uses: true, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
+    if (c === "e" && it !== "torch") return FEEDS.includes(it) ? {text: "Fill trough", uses: true, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
                                                      : {text: "Troughs take hay, grain or greens", ok: false};
-    if ((c === "C" || c === "q") && it !== "torch") return {text: `Store in ${c === "q" ? "basket" : "chest"}`, near: 1, uses: "faced", run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
+    if ((c === "C" || c === "q") && it !== "torch") return {text: `Store in ${c === "q" ? "basket" : "chest"}`, uses: "faced", run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})};
     const free = !hasBlock && WALKABLE_GROUND.has(g);
     if (FOOT[block]) {
       const f = footprint(block, p.x, p.y, s.x, s.y);
@@ -109,53 +108,53 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
       const near = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({x: p.x + dx, y: p.y + dy}))
         .filter((q) => !f.tiles.some((r) => r.x === q.x && r.y === q.y));
       return {text: bad.length ? (bad.some((q) => q.x === s.x && q.y === s.y) ? "Step aside first" : bad.some((q) => entityAt(q)) ? "Something is in the way" : `Needs a clear ${FOOT[block].join("×")} spot`) : `Place ${label(it)}`,
-        ghost: it, ok: !bad.length, bad, foot: f.tiles, anchor: {x: f.ax, y: f.ay}, from: near, near: 1, run: (d) => act("place", {dir: d, item: it})};
+        ghost: it, ok: !bad.length, bad, foot: f.tiles, anchor: {x: f.ax, y: f.ay}, from: near, run: (d) => act("place", {dir: d, item: it})};
     }
-    if (block === "V") return !hasBlock && wet(g) ? {text: "Launch boat", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
+    if (block === "V") return !hasBlock && wet(g) ? {text: "Launch boat", ghost: it, ok: true, run: (d) => act("place", {dir: d, item: it})}
                                                      : {text: "Boats go on shallow water", ghost: it, ok: false};
-    if (block) return free ? {text: `Place ${label(it === "hay" ? "hay_bale" : it)}`, ghost: it, ok: true, near: 1,
+    if (block) return free ? {text: `Place ${label(it === "hay" ? "hay_bale" : it)}`, ghost: it, ok: true,
                               run: (d) => (it === "sign" || it === "flag" ? placeWritten(d, it) : act("place", {dir: d, item: it}))}      // (a sign is written as it goes up: ask.js)
                            : {text: `Can't place ${label(it)} here`, ghost: it, ok: false};
     if (RULES.sown[it]) {
-      if (!hasBlock && RULES.sown[it].includes(g)) return {text: "Plant seed", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
+      if (!hasBlock && RULES.sown[it].includes(g)) return {text: "Plant seed", ghost: it, ok: true, run: (d) => act("place", {dir: d, item: it})};
       return {text: "Seeds need tilled soil", ghost: it, ok: false};
     }
     if (FILLS[it]) {
       const res = !hasBlock && FILLS[it][g];
-      return res ? {text: FILL_TEXT[res], ghost: it, ghostGround: res, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})}
+      return res ? {text: FILL_TEXT[res], ghost: it, ghostGround: res, ok: true, run: (d) => act("place", {dir: d, item: it})}
                  : {text: FILL_HELP[it], ghost: it, ghostGround: Object.values(FILLS[it])[0], ok: false};
     }
     if (it === "torch") {
-      return tileOf(GROUND.has(c) ? g : c).burns ? {text: "Set on fire", ok: true, near: 1, run: (d) => act("ignite", {dir: d, with: "torch"})}
+      return tileOf(GROUND.has(c) ? g : c).burns ? {text: "Set on fire", ok: true, run: (d) => act("ignite", {dir: d, with: "torch"})}
                       : {text: "That won't burn", ok: false};
     }
     if (it === "hoe" && !hasBlock && (g === "." || g === ","))                  // the hoe in hand: Space/click tills
-      return {text: "Till soil", near: 1, run: (d) => act("dig", {dir: d, with: "hoe"})};
+      return {text: "Till soil", run: (d) => act("dig", {dir: d, with: "hoe"})};
     if (it === "watering_can" && (c === "Y" || (wet(g) && GROUND.has(c)) || Flow.col(p.x, p.y)))
-      return {text: `Fill can (${meObs ? meObs.self.can ?? RULES.can_size : "?"}/${RULES.can_size})`, near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
+      return {text: `Fill can (${meObs ? meObs.self.can ?? RULES.can_size : "?"}/${RULES.can_size})`, run: (d) => act("water", {dir: d, with: "watering_can"})};
     if (it === "watering_can" && (c === ";" || c === '"') && meObs && meObs.self.can === 0) return {text: "The can is empty", ok: false};
     if (it === "watering_can" && (c === ";" || c === '"')) return g === "u" ? {text: "Already watered", ok: false}
-      : {text: "Water crop", near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
+      : {text: "Water crop", run: (d) => act("water", {dir: d, with: "watering_can"})};
     if (it === "watering_can" && !hasBlock && WALKABLE_GROUND.has(g) && !isMe)       // a full can poured out on open ground: water that runs (sim/waters.py)
-      return meObs && (meObs.self.can ?? RULES.can_size) >= RULES.can_size ? {text: "Pour water", near: 1, run: (d) => act("water", {dir: d, with: "watering_can", pour: true})} : {text: "Pouring takes a full can", ok: false};
+      return meObs && (meObs.self.can ?? RULES.can_size) >= RULES.can_size ? {text: "Pour water", run: (d) => act("water", {dir: d, with: "watering_can", pour: true})} : {text: "Pouring takes a full can", ok: false};
   }
   const sailing = !!(meObs && meObs.self.sailing);
   if (c === "V" && !brk && !sailing) return {text: "Board the boat", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && wet(g)) return {text: "Sail here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
-  if (!hasBlock && wet(g) && inHand() === "pickaxe" && brk && g !== ")") return {text: "Dig deeper", near: 1, run: (d) => act("dig", {dir: d, with: "pickaxe"})};
+  if (!hasBlock && wet(g) && inHand() === "pickaxe" && brk && g !== ")") return {text: "Dig deeper", run: (d) => act("dig", {dir: d, with: "pickaxe"})};
   if (!sailing && !hasBlock && wet(g) && !placingItem()) return {text: "Swim here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (sailing && !hasBlock && WALKABLE_GROUND.has(g)) return {text: "Go ashore", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
   if (hasBlock) {
-    if ((c === "C" || c === "q") && !brk) return {text: c === "q" ? "Open basket" : "Open chest", near: 1, run: (d) => act("take", {dir: d})};
+    if ((c === "C" || c === "q") && !brk) return {text: c === "q" ? "Open basket" : "Open chest", run: (d) => act("take", {dir: d})};
     if (c === "e" && !brk) return {text: troughAt.has(p.x + "," + p.y) ? "Trough: feeds animals nearby" : "Empty trough: fill it with hay",
-      near: 1, run: (d) => act("take", {dir: d})};
+      run: (d) => act("take", {dir: d})};
     if (c === "Y" && !brk) return {text: "Well: fills watering cans", info: true};
     if (c === "J" && !brk) return {text: "Coop: hens lay here", info: true};
     if (c === "m" && !brk) return {text: "Picnic blanket: food fills you more", info: true};
-    if ((c === "?" || c === "!") && !brk) return {text: "Read", near: 1, run: (d) => act("read_sign", {dir: d})};
-    if (c === "X" && !brk) return {text: mailAt.has(p.x + "," + p.y) ? "Read mail" : "Mailbox", near: 1, run: () => openMailPanel(actTarget)};
-    if (c === "B" && !brk) return {text: "Sleep", near: 1, run: (d) => act("sleep", {dir: d})};
-    if ((c === "&" || c === "^") && !brk) return {text: c === "&" ? "Craft" : "Cook", near: 2, run: () => openCraft()};
+    if ((c === "?" || c === "!") && !brk) return {text: "Read", run: (d) => act("read_sign", {dir: d})};
+    if (c === "X" && !brk) return {text: mailAt.has(p.x + "," + p.y) ? "Read mail" : "Mailbox", run: () => openMailPanel(actTarget)};
+    if (c === "B" && !brk) return {text: "Sleep", run: (d) => act("sleep", {dir: d})};
+    if ((c === "&" || c === "^") && !brk) return {text: c === "&" ? "Craft" : "Cook", run: () => openCraft()};
     const crop = cropSpecies(p.x, p.y);
     const text = c === "w" ? `Harvest ${crop}` : c === '"' ? `Uproot ${crop}` : c === ";" ? `Uproot ${crop} sprout` : HARVEST[c] || label(CH[c]);
     if (brk === GATHER.includes(c)) return {text: label(CH[c]), info: true, quiet: true};      // (E takes nothing apart; what is picked is E's, not X's)
@@ -163,29 +162,28 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
     const needs = tileOf(c).needs, Name = label(CH[c]).replace(/^./, (l) => l.toUpperCase());      // (what cannot be dug by hand at all: ore)
     if (needs && w !== needs) return {text: meObs && meObs.self.inventory[needs] ? `${Name}: hold your ${needs}` : `${Name}: needs a ${needs}`, ok: false};
     const how = tool && w !== tool ? " (slow)" : "";
-    return {text: text + how, near: 1, gather: !brk, run: (d) => act("dig", w ? {dir: d, with: w} : {dir: d})};
+    return {text: text + how, gather: !brk, run: (d) => act("dig", w ? {dir: d, with: w} : {dir: d})};
   }
   if (wet(g)) return {text: label(CH[g]), info: true};
   if (brk) {
     const takeUp = {_: "Take up the path", n: "Take up the floor", ":": "Take up the bridge"}[g];
-    if (takeUp) return {text: takeUp, near: 1, ground: true, run: (d) => act("dig", {dir: d})};      // (ground: a click there walks, clickTile; X takes it up)
+    if (takeUp) return {text: takeUp, ground: true, run: (d) => act("dig", {dir: d})};      // (ground: a click there walks, clickTile; X takes it up)
   }
   return {text: "Walk here", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
 }
 // walk next to the target (closest free side) if needed, then act facing it
-// Do it, right here: no walking to the target (getting close is up to you). Tile actions reach USE_R tiles, fights
-// the weapon's reach. The exact tile goes to the server, so it also works while you are walking or running.
-const USE_R = 2;   // tiles.py USE_R
+// Do it, right here: no walking to the target (getting close is up to you). How far each kind of thing is reached: reach(),
+// below. The exact tile goes to the server, so it also works while you are walking or running.
+const reach = (kind, weapon, who) => RULES.reach[kind] + (RULES.long[weapon] || 0) + (RULES.wide[who] || 0);   // the world's table (tiles.py REACH; it accepts a tile more: your lead)
 const SWING_MS = 420;
 let lastSwing = 0;
 // What you can reach: a circle round you, as the crow flies (r tiles, and the half tile to the far tile's edge), and
 // height is distance too, a layer half a tile: up a cliff or down one is out of reach, however near on the map (the
 // server's rule: sim/movement.py near). z: the height of what is there (someone's own; a tile's: its ground nearest
 // your own height); flat: height left out.
-const LAYER = .5;
 function reaches(x, y, r, z, flat) {
   const s = myPos(); if (!s) return false;
-  const h = myZ(s.x, s.y), dz = flat ? 0 : ((z === undefined ? settleNear(x, y, h) : z) - h) * LAYER;
+  const h = myZ(s.x, s.y), dz = flat ? 0 : ((z === undefined ? settleNear(x, y, h) : z) - h) * RULES.layer;
   return (x - s.x) ** 2 + (y - s.y) ** 2 + dz * dz <= (r + .5) ** 2;
 }
 // What stands at height z on p is behind the land for you at s: higher, your own tile is shut over your head on the way
@@ -201,9 +199,9 @@ const standsAt = (o) => (o.e && o.e.z !== undefined ? o.e.z : floorAt(o.tx, o.ty
 function inReach(p, it, flat = it.flat) {                       // (it.flat: a wall you dig into is at your own height, whatever is on top of it)
   const s = myPos(); if (!s) return false;
   const tiles = it.foot && !it.from ? it.foot : [p];            // a structure: any of its tiles will do
-  const reach = it.attack ? it.near : USE_R, z = it.ent ? standsAt(it.ent) : it.z !== undefined ? it.z : it.at;
+  const r = reach(it.reach || "use", it.attack && inHand(), it.ent && it.ent.e.kind), z = it.ent ? standsAt(it.ent) : it.z !== undefined ? it.z : it.at;
   if (!flat && !it.ent && it.z === undefined && it.at !== undefined && !it.ghost && landBetween(s, p, it.at)) return false;   // (a tree from a tunnel four layers under it)
-  return tiles.some((q) => reaches(q.x, q.y, reach, z, flat))
+  return tiles.some((q) => reaches(q.x, q.y, r, z, flat))
     && !(it.foot && it.from && it.foot.some((q) => q.x === s.x && q.y === s.y));   // not standing in a new structure's spot
 }
 const TOO_HIGH = "Out of reach: too high up, or too far down.";

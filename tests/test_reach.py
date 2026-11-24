@@ -63,3 +63,25 @@ def test_a_bite_reaches_no_higher_than_your_hand(world):
     for _ in range(sec(4)):
         sim.step()
     assert a.hp == hp and crab.id in sim.creatures
+
+
+def test_every_reach_is_the_one_tables(world):
+    """tiles.py REACH (and a tile more, a walking player's lead): a hand to an animal, a blow, a station."""
+    from megastructure.tiles import LEAD, LONG, REACH
+    sim, a = world
+    cow = put(sim, "cow", a.x + REACH["animal"] + LEAD, a.y)
+    a.add("wheat", 2)
+    assert run(sim, a, "feed", {"target": cow.id, "item": "wheat"})["ok"]                  # (it was 2, with no lead: it failed now and then on the walk)
+    cow.x += 1
+    assert run(sim, a, "feed", {"target": cow.id, "item": "wheat"})["error"] == "out_of_range"
+    sim.creatures.clear()
+    moss = put(sim, "mossback", a.x + REACH["melee"] + LEAD + CREATURES["mossback"]["wide"], a.y)   # a wide creature is nearer by its width
+    assert sim.within(a, "melee", moss.x, a.y, who="mossback") and not sim.within(a, "melee", moss.x + 1, a.y, who="mossback")
+    assert sim.within(a, "melee", moss.x + LONG["spear"], a.y, weapon="spear", who="mossback")
+    sim.world.set(a.x + 2, a.y + 1, block="workbench")
+    assert sim.near_block(a, "workbench")
+    sim.world.set(a.x + 2, a.y + 1, block="none")
+    sim.world.set(a.x + 2, a.y + 2, block="workbench")                                     # the corner of what was a square: out, as for all else
+    assert not sim.near_block(a, "workbench")
+    sim.world.set(a.x + 1, a.y, level=-30, block="workbench")                              # beside you, thirty layers down: height is distance
+    assert not sim.near_block(a, "workbench")

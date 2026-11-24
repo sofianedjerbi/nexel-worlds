@@ -10,9 +10,9 @@ Who may go where is each kind's own business (people: Movement, with water, boat
 Animals, which take no door and no fall that would hurt them); where they end up, and how far they reach, is here."""
 
 from ..gen import LOW
-from ..tiles import BLOCKS, DIRS, GROUNDS, B
-from .constants import FALL_SAFE, LAYER, TARGET_R
-from .entities import ActionError
+from ..tiles import BLOCKS, DIRS, GROUNDS, LEAD, LONG, REACH, B
+from .constants import FALL_SAFE, LAYER
+from .entities import CREATURES, ActionError
 
 
 class Bodies:
@@ -126,14 +126,25 @@ class Bodies:
             return any(self.world.solid(a.x, a.y, c) for c in range(h + 2, z + 2))
         return (x, y) != (a.x, a.y) and any(self.world.solid(x, y, c) for c in range(z + 1, h + 2))
 
-    def reach(self, a, x: int, y: int, r: float = TARGET_R, z: int | None = None):
-        if not self.near(a, x, y, r, z):
-            raise ActionError("out_of_range", f"({x},{y}) is out of reach: {r} tiles round you, height counted "
+    def within(self, a, kind: str, x: int, y: int, z: int | None = None, weapon: str | None = None, who: str | None = None) -> bool:
+        """Does `a` reach (x, y) for this kind of thing (tiles.py REACH)? The one answer for every action: the table's
+        tiles, a tile more for a walking player's lead, a long weapon's more, a wide creature's (`who`: its kind) width."""
+        return self.near(a, x, y, REACH[kind] + LEAD + LONG.get(weapon, 0) + CREATURES.get(who, {}).get("wide", 0), z)
+
+    def near_block(self, a, block: str) -> bool:
+        """A workbench, a fire: one within reach (tiles.py REACH station; height counted, as for all that is reached)."""
+        r = REACH["station"]
+        return any(self.world.block(x, y) == block and self.near(a, x, y, r, self.world.level(x, y))
+                   for y in range(a.y - r, a.y + r + 1) for x in range(a.x - r, a.x + r + 1))
+
+    def reach(self, a, x: int, y: int, z: int | None = None, kind: str = "use"):
+        if not self.within(a, kind, x, y, z):
+            raise ActionError("out_of_range", f"({x},{y}) is out of reach: {REACH[kind] + LEAD} tiles round you, height counted "
                                               "(a layer is half a tile)")
 
     def target(self, a, args, flat=False) -> tuple[int, int]:
         """The tile an action is aimed at: `dir` (the adjacent tile that way), or an absolute `x`, `y`. Within reach
-        (Movement.near: TARGET_R round you, a walking player's client being up to a tile ahead of the server; height
+        (within: tiles.py REACH and a tile more, a walking player's client being up to a tile ahead of the server; height
         counted, unless `flat`: a step, a wall you face)."""
         if "x" in args and "y" in args and args.get("dir") is None:
             try:

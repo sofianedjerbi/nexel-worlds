@@ -132,7 +132,7 @@ CREATURES = {
     "strawman": {"hp": 10, "drops": (("hay", 1, 1, 2), ("straw_hat", .1, 1, 1)), "char": "S", "damage": 2},
     "wisp": {"hp": 1, "drops": (), "char": "i"},
     "wyrm": {"hp": 12, "drops": (("meat", 1, 2, 4), ("frost_charm", .1, 1, 1)), "char": "E", "damage": 3.5},
-    "mossback": {"hp": 60, "drops": (("shell_plate", 1, 5, 5), ("meat", 1, 6, 6), ("fruit", 1, 4, 4), ("mushroom", 1, 3, 3)), "char": "G", "damage": 4.5, "snap": 5.5},   # the first boss (boss.py)
+    "mossback": {"hp": 60, "drops": (("shell_plate", 1, 5, 5), ("meat", 1, 6, 6), ("fruit", 1, 4, 4), ("mushroom", 1, 3, 3)), "char": "G", "damage": 4.5, "snap": 5.5, "wide": 1},   # (wide: a tile each side of its own)   # the first boss (boss.py)
     "sporeling": {"hp": 1, "drops": (("mushroom", .05, 1, 1),), "char": "s", "damage": 0.5},
 }
 

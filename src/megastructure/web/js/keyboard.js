@@ -72,9 +72,9 @@ function facingAny(alt) {
     if (entityAt(q)) return {p: q, it: {text: "Something is in the way", ok: false, ghost: selected}};
     return it ? {p: q, it: it.ok === false || inReach(q, it) ? it : {...it, ok: false, text: TOO_HIGH}} : null;
   }
-  const reach = reachOf(inHand()), dist = (o) => Math.abs(o.tx - s.x) + Math.abs(o.ty - s.y);
+  const dist = (o) => Math.abs(o.tx - s.x) + Math.abs(o.ty - s.y);
   const near = [...ents.values()]                // (within reach: a circle, height counted: intent.js reaches)
-    .filter((o) => o.e && !(o.e.kind === "agent" && o.e.id === myId) && reaches(o.tx, o.ty, reach, standsAt(o)))
+    .filter((o) => o.e && !(o.e.kind === "agent" && o.e.id === myId) && reaches(o.tx, o.ty, reach("melee", inHand(), o.e && o.e.kind), standsAt(o)))
     .sort((a, b) => dist(a) - dist(b));
   const hit = (o) => { const p = {x: o.tx, y: o.ty}, it = intent(p, true); return useful(it) && it.attack ? {p, it} : null; };
   if (alt && foe && performance.now() < foe.until) {      // (X hits: E hits nobody, intent.js)
@@ -93,10 +93,10 @@ function facingAny(alt) {
   // into a wall was a pickaxe's E: E digs nothing now, "why do I break rocks with E?")
   for (const o of near) { const p = {x: o.tx, y: o.ty}, it = intent(p, alt); if (useful(it) && inReach(p, it)) return {p, it}; }      // (a creature within reach before the ground: X hits the hen you pass, it did not dig)
   if (alt) { const d = digAhead(q, hs, s); if (d) return d; }
-  // then anything within reach (USE_R): nearest first, in front of you before behind
+  // then anything within reach: nearest first, in front of you before behind
   const p0 = ents.get("agent" + myId), ring = [];
-  for (let dy = -USE_R; dy <= USE_R; dy++) for (let dx = -USE_R; dx <= USE_R; dx++) {
-    if ((!dx && !dy) || !reaches(s.x + dx, s.y + dy, USE_R)) continue;
+  for (let R = reach("use"), dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+    if ((!dx && !dy) || !reaches(s.x + dx, s.y + dy, R)) continue;
     ring.push({x: s.x + dx, y: s.y + dy, d: Math.max(Math.abs(dx), Math.abs(dy)) + Math.abs(dx) * .01 + Math.abs(dy) * .01 - (dx * p0.fx + dy * p0.fy) * .1});
   }
   ring.sort((a, b) => a.d - b.d);
@@ -112,7 +112,7 @@ function digAhead(q, hs, s) {
   if (z < hs - 2 || entityAt(q) || (top && !elsewhere && !(g && GROUND.has(g) && !":n".includes(g) && !wet(g)))) return null;
   const pick = inHand() === "pickaxe";      // (its name: in a hole there is no hill; under the land the tunnel goes on)
   const text = !wall ? "Dig down" : s && topAt(s.x, s.y) > hs ? "Dig on" : s && inHole(s, q, hs) ? "Dig into the wall" : "Dig into the hill";
-  return {p: q, it: {text, flat: true, near: 1, cell: z, low: !wall, run: () => act("dig", {dir: dirTo(q), z, ...(pick ? {with: "pickaxe"} : {})})}};
+  return {p: q, it: {text, flat: true, cell: z, low: !wall, run: () => act("dig", {dir: dirTo(q), z, ...(pick ? {with: "pickaxe"} : {})})}};
 }
 // You stand in a hole: land at your body's height behind you too, or on both sides (a pit, a trench: not a hill's foot)
 function inHole(s, q, h) {

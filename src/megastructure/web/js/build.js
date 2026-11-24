@@ -157,13 +157,13 @@ const Build = (() => {
     if (j.tunnel && !open(j.x, j.y, j.z)) return "It could not be reached";     // (what was to open it is gone: it could not be done)
     const here = () => { const s = myPos(); return {...s, z: myZ(s.x, s.y)}; };
     // from (q, h): within the game's reach of it, height counted; and not where it goes (a block in your body, a wall on your feet)
-    const ok = (q, h) => (q.x - j.x) ** 2 + (q.y - j.y) ** 2 + ((j.z - h) * LAYER) ** 2 <= (USE_R + .5) ** 2
+    const ok = (q, h) => (q.x - j.x) ** 2 + (q.y - j.y) ** 2 + ((j.z - h) * RULES.layer) ** 2 <= (reach("use") + .5) ** 2
       && !(q.x === j.x && q.y === j.y && (j.up ? j.z - h >= 0 && j.z - h <= 2 : true))
       && !(j.steps || []).some(([x, y]) => x === q.x && y === q.y)             // (not where a flight of stairs goes)
       && (!j.tunnel || (Math.abs(q.x - j.x) + Math.abs(q.y - j.y) === 1 && j.z >= h && j.z <= h + 2));      // (a tunnel: from beside it, feet to head)
     if (!ok(here(), here().z) || (solid(j) && !wayOut(here(), j))) {
       const s = here(), spots = [];                    // (beside it for choice, on your own floor for choice)
-      for (let dy = -USE_R; dy <= USE_R; dy++) for (let dx = -USE_R; dx <= USE_R; dx++) for (const h of surfacesAt(j.x + dx, j.y + dy)) {
+      for (let R = reach("use"), dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) for (const h of surfacesAt(j.x + dx, j.y + dy)) {
         const q = {x: j.x + dx, y: j.y + dy, z: h, far: Math.abs(dx) + Math.abs(dy) > 1 ? 3 : 0};
         if (stand(q.x, q.y, h) && ok(q, h) && !entityAt(q)) spots.push(q);
       }

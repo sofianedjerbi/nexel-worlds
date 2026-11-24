@@ -190,9 +190,13 @@ FEED = {**{k: 1 for k in FOOD if k not in ("egg", "meat", "cooked_meat", "milk")
 # (They were 5 to 30 on a scale of the creatures' own, shown as "-5" over a cow.)
 WEAPONS = {"sword": 6, "spear": 4, "axe": 3, "pickaxe": 2}
 FIST_DAMAGE = 1
-# Reach is a circle round you with height counted (sim Movement.near): so many tiles, a layer of height half a tile
-REACH = {None: 3, "spear": 4}   # melee reach: fists and most weapons 3, a spear 4 (a player's screen keeps a tile less: its lead)
-USE_R = 2                       # within which you can dig, pick, place and use things
+# What a body reaches, in tiles: a circle round it with height counted, a layer half a tile (sim/bodies.py near; on a
+# screen: web/js/intent.js reaches). The one table, for the world's checks and a screen's offers (rules.py). use: dig,
+# pick, place, use a thing; melee: a blow (a LONG weapon reaches further, and a wide creature is nearer by its width:
+# sim/entities.py); station: a workbench or a fire to craft at; magnet: what lies on the ground comes to you.
+REACH = {"use": 2, "melee": 2, "give": 2, "animal": 2, "station": 2, "magnet": 1}
+LONG = {"spear": 1}
+LEAD = 1    # what you do is accepted this much further than a screen offers it: a walking player's screen is up to a tile ahead of the world
 # Digging time: a block's hardness (tenths of a second) is the time with its tool in hand; without it, wooden
 # things (axe) take 4x as long and stone things (pickaxe) 6x. Soft things (no tool) are quick by hand.
 BY_HAND = {"axe": 4, "pickaxe": 6}

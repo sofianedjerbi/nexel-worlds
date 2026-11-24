@@ -125,8 +125,7 @@ class Animals:
         t = self._find_target(args.get("target"))
         if not isinstance(t, Creature) or (kind and t.kind != kind):
             raise ActionError("bad_target", f"that is not a {kind or 'creature'}")
-        if not self.near(a, t.x, t.y, T.USE_R, self.height(t)):
-            raise ActionError("out_of_range", f"get within {T.USE_R} tiles of it")
+        self.reach(a, t.x, t.y, self.height(t), "animal")
         return t
 
     def _tool_milk(self, a, args):

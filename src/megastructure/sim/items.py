@@ -58,10 +58,9 @@ class Items:
         item, n = str(args.get("item", "")), self._n(args)
         if a.count(item) < n:
             raise ActionError("missing_item", f"you have {a.count(item)} {item}")
-        if not self.near(a, t.x, t.y, 2, self.height(t)):
-            raise ActionError("out_of_range", "target must be within 2 tiles")
+        self.reach(a, t.x, t.y, self.height(t), "give")
         yield from self.wait(a, 0.2)
-        if a.count(item) < n or not self.near(a, t.x, t.y, 2, self.height(t)):
+        if a.count(item) < n or not self.within(a, "give", t.x, t.y, self.height(t)):
             raise ActionError("failed", "conditions changed")
         a.add(item, -n)
         t.add(item, n)

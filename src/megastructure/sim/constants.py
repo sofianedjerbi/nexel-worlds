@@ -42,7 +42,6 @@ EVENT_QUEUE = 60
 
 MAX_TEXT = 200
 
-TARGET_R = 3         # actions aimed at x, y: tiles.USE_R plus one, to absorb a walking client's lead
 LAYER = 0.5          # a layer of height is half a tile: in what you can reach, height is distance too (Movement.near)
 ASIDE = ("eat",)     # done with the hands: whatever the feet are doing goes on (Agent.aside)
 MOVES = ("walk", "move_to", "step", "stop", "leap")   # movement (stop: walking to where the player's screen stopped): quick actions happen alongside it instead of stopping it

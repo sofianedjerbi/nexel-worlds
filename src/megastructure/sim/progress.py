@@ -1,5 +1,6 @@
 """Experience and the item magnet: what you earn by working, and loot that comes to you."""
 
+from ..tiles import REACH
 from .constants import sec
 from .entities import Agent
 
@@ -8,7 +9,7 @@ from .entities import Agent
 XP_DIG = {"ore": 4}
 XP_KILL = {"chicken": 2, "calf": 1, "cow": 4, "tusker": 8, "pincer": 3, "strawman": 10, "wyrm": 20, "mossback": 100, "sporeling": 1}
 XP_CRAFT = 1
-MAGNET_R = 1                 # items within this reach (Movement.near: a circle, height counted) come to you...
+MAGNET_R = REACH["magnet"]   # items within this reach (Movement.near: a circle, height counted) come to you...
 LEVEL = (7, 3)               # the experience the first level takes, and how much more each one after it
 MAGNET_DELAY = sec(1.2)      # ...once they've been on the ground this long (time to land, or to walk off a drop)
 

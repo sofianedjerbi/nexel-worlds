@@ -18,6 +18,7 @@ from .floors import KINDS
 from .landblocks import LAND_BLOCKS
 from .sim import constants as C
 from .sim.climbing import CLIMB, RISE
+from .sim.entities import CREATURES
 from .sim.leaping import LEAP_G, LEAP_TOP
 from .sim.progress import LEVEL
 from .sim.storeys import RESTS_ON, STOREY, UPSTAIRS
@@ -59,6 +60,7 @@ def rules_table() -> dict:
         "aside": list(C.ASIDE), "meanwhile": list(C.MEANWHILE),
         "low": LOW, "high": HIGH, "sea": SEA, "storey": STOREY,
         "climb": {"max": CLIMB, "rise": list(RISE), "s": C.CLIMB_S},
+        "reach": T.REACH, "long": T.LONG, "wide": {k: v["wide"] for k, v in CREATURES.items() if "wide" in v}, "layer": C.LAYER,
         "leap": {"g": LEAP_G, "top": LEAP_TOP}, "fall_safe": C.FALL_SAFE, "bite_high": BITE_HIGH,
         "level": list(LEVEL),
     }

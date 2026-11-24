@@ -24,7 +24,7 @@ from .constants import (
     MOVES,
     sec,
 )
-from .entities import Action, ActionError, Agent, Creature, failure
+from .entities import CREATURES, Action, ActionError, Agent, Creature, failure
 from .environment import Environment
 from .hearing import hears
 from .items import Items
@@ -161,13 +161,9 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             if a.online and a.hp > 0 and (a.x, a.y) == (x, y):
                 return a
         for c in self.creatures.values():
-            if (c.x, c.y) == (x, y) or (c.kind == "mossback" and c.y == y and abs(c.x - x) <= 1):     # it is three tiles wide
+            if c.y == y and abs(c.x - x) <= CREATURES[c.kind].get("wide", 0):     # (the boss is three tiles wide)
                 return c
         return None
-
-    def near_block(self, a: Agent, block: str, r: int = 2) -> bool:
-        return any(self.world.block(a.x + dx, a.y + dy) == block
-                   for dy in range(-r, r + 1) for dx in range(-r, r + 1))
 
     def sheltered(self, x, y) -> bool:
         """Inside a room: the area around (x, y) is closed off by walls/doors/gates within 160 tiles
