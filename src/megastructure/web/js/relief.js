@@ -21,7 +21,7 @@ const STAND = 3, UP = STAND / 16;
 // height is part of where a thing is (curve.js: render.js's sy says it, sy.up)
 const syUp = (sy, y, lift) => (sy.up ? sy.up(y, lift) : sy(y) - lift);
 // a body's place on the screen (the top of its tile, lifted with the ground it stands on, and STAND). Over the HD look's picture: the body's own place as drawn (sx.of, sy.of: hd.js written, view.js View.of)
-const bodyX = (p, sx) => (sx.of ? sx.of(p) : sx(p.x)), bodyY = (p, sy) => (sy.of ? sy.of(p) : syUp(sy, p.y, liftOf(p))) - STAND * zoom;
+const bodyX = (p, sx) => (sx.of ? sx.of(p) : sx(p.x)), bodyY = (p, sy) => (sy.of ? sy.of(p) - STAND * artPx() : syUp(sy, p.y, liftOf(p)) - STAND * zoom);   // (over the picture: in the land's own pixel, artPx: at a screen density of 1.25 it is 3.2 px where zoom says 3, and a name sat 5 px low)
 
 // Something flying off from a spot (a puff, a spark, debris): it keeps the height of where it started, however it
 // drifts (it doesn't step up and down with the tiles it passes over)

@@ -62,7 +62,7 @@ const HdFx = (() => {
     c.textAlign = "center"; c.font = "18px SproutPixel";
     for (const f of floats) { const k = t - f.t; if (k < 0 || k >= 1.4) continue;
       const s = seen.list.find((v) => v.q && v.q.tx === f.x && v.q.ty === f.y), a = s ? at(s.x, s.y, s.z) : at(f.x + .5, f.y + .5, ground(f.x, f.y)); if (!a) continue;
-      const x = onArt(a[0]) - (f.heart ? onArt(9) : 0), y = onArt(a[1] - 22 * zoom - (s && s.q.e && s.q.e.kind === "agent" ? 22 : 0) - k * S * .7);   // (over the head, a whole art px; over a person's name)
+      const x = onArt(a[0]) - (f.heart ? onArt(9) : 0), y = onArt(a[1] - 22 * artPx() - (s && s.q.e && s.q.e.kind === "agent" ? 22 : 0) - k * S * .7);   // (over the head, a whole art px; over a person's name)
       c.globalAlpha = 1 - k / 1.4; outlined(f.text, x, y, f.color); last.floats.push([f.text, x, y]);
       if (f.heart) { const hx = x + Math.ceil(c.measureText(f.text).width / 2) + 4, hy = y - 13; HEART.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== ".") { c.fillStyle = ch === "o" ? "#5b3f36" : ch === "w" ? "#ffd9d0" : "#e8554a"; c.fillRect(hx + i * 2, hy + j * 2, 2, 2); } })); } }
     c.globalAlpha = 1; c.textAlign = "start";

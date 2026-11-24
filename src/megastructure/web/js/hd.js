@@ -99,7 +99,7 @@ const HdLook = (() => {
   function written(p, now, words) {
     if (p.free && !words) return;
     // (a body's place: View.of, by the body itself; one the frame did not draw (who speaks from past the picture's edge): where the camera has its tile's top. `sx.of`, `sy.of`: relief.js bodyX, bodyY)
-    const S = TS(), F = (seen.me && View.of(seen.me.q)) || View.at(seen.at[0], seen.at[1], seen.at[2]).map(View.snap), place = (q) => View.of(q) || (View.at(q.x + .5, q.y + .5, topAt(Math.round(q.x), Math.round(q.y))) || F).map(View.snap);
+    const S = 16 * View.u, F = (seen.me && View.of(seen.me.q)) || View.at(seen.at[0], seen.at[1], seen.at[2]).map(View.snap), place = (q) => View.of(q) || (View.at(q.x + .5, q.y + .5, topAt(Math.round(q.x), Math.round(q.y))) || F).map(View.snap);
     const sx = Object.assign((x) => F[0] - S / 2 + (x - p.x) * 16 * View.u, {of: (q) => place(q)[0] - S / 2}), fy = (y) => F[1] - S / 2 + (y - p.y) * 16 * View.u, sy = Object.assign(fy, {up: fy, out: fy, of: (q) => place(q)[1] - S / 2});
     const px = View.u, t = now / 1000, snap = View.snap, quad = (x, y, z) => [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => api.markOf(x + a, y + b, z));
     // (all of it in whole art px) corners: a quad's four corners, a third of each side; fill: a tile's face, row by row; ghost: a thing's own sprite where it would stand; rectOf: the px its picture takes

@@ -139,3 +139,35 @@ def test_two_people_on_one_row_at_two_heights_each_has_its_name_over_its_own_hea
             game.rpc("dev_teleport", x=x, y=y, z=3); game.arrive()
             other.rpc("dev_teleport", x=x - 2, y=y, z=0)
     assert not game.errors and not other.errors
+
+
+def test_at_a_screen_density_of_one_and_a_quarter_your_name_is_over_your_own_head(browser, server):
+    """A laptop at 125 %: an art px of the land is 3.2 CSS px at zoom 3 (state.js artPx), not 3. Your name is written
+    over the middle of your body, on the land's pixel, as far over your head as on a plain screen (what is written over
+    a body is put from the body's own place, view.js View.of; its offsets were counted in zoom px, 16 x 3 a tile where
+    the picture's tile is 16 x 3.2)."""
+    from conftest import Game, new_name
+    got = {}
+    for dsf in (1, 1.25):
+        ctx = browser.new_context(viewport={"width": 960, "height": 540}, device_scale_factor=dsf)
+        try:
+            g = Game(ctx.new_page(), server)
+            g.join(new_name("dn"), 3)
+            g.rpc("dev_creatures", clear=40)
+            g.clear_area(8)
+            g.rest()
+            u, body, foot = g.js("artPx()"), g.js("HdLook.art().body"), g.js("View.of(ents.get('agent' + myId))")
+            name = [n for n in g.js(NAMES) if n[0] == g.name]
+            assert name and body, (dsf, name, body)
+            _, nx, ny = name[0]
+            got[dsf] = (u, nx - (body["x"] + body["w"] / 2), foot[1] - ny, nx / u)
+            assert not g.errors
+        finally:
+            ctx.close()
+    assert abs(got[1][0] - 3) < 1e-6 and abs(got[1.25][0] - 3.2) < 1e-6, got
+    for dsf, (u, off, gap, cell) in got.items():
+        assert abs(off) <= u + .01, (dsf, got)                                # over the middle of your body, an art px at the most
+        assert abs(cell - round(cell)) < .02, (dsf, got)                      # on the land's pixel
+    # as far over your feet on both screens, in the land's own pixel: 20 art px (half a tile, where a body stands in it, its head) and the letters' own
+    # few px: 4 CSS px further at 3.2 px a pixel than at 3. (It was the same CSS px on both, counted in zoom: the name 4 px into the head at 125 %)
+    assert 2.4 <= got[1.25][2] - got[1][2] <= 5.6, got

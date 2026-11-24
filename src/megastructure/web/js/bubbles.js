@@ -82,7 +82,7 @@ function drawBubbles(sx, sy, S, t) {
       b.up = b.up === undefined || b.up < up ? up : Math.max(up, b.up - Math.max(q, (b.up - up) * dt * BUBBLE.fall));
       up += b.h + BUBBLE.gap * q;
     }
-    const o = BodyPlace.over(p, S), tx = onArt(bodyX(p, sx) + S / 2 + o[0]), foot = onArt(bodyY(p, sy) + o[1] - (p.e.hp < HP_MAX ? 9 * zoom + 4 : 4 * zoom)) - 3 * q,     // (the tail's point: over the head, or over the health bar)
+    const o = BodyPlace.over(p, S), tx = onArt(bodyX(p, sx) + S / 2 + o[0]), foot = onArt(bodyY(p, sy) + o[1] - (p.e.hp < HP_MAX ? 9 * artPx() + 4 : 4 * artPx())) - 3 * q,     // (the tail's point: over the head, or over the health bar)
       // (ON THE LAND'S PIXEL, as the body it is over (state.js onArt): it went by the bubble's own 2 px, the body by the land's (3 at zoom 3): walking, the bubble went 1 px off the head and back each step, "blurry")
       w = Math.max(...mine.map((b) => b.w));
     const top = foot - Math.max(...mine.map((b) => b.up + b.h)) - 11 * q, mid = bodyY(p, sy) + o[1] + S / 2;     // (with the name's tab; mid: the middle of the body)

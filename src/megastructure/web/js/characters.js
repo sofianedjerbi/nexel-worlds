@@ -218,7 +218,7 @@ function drawBody(p, sx, sy, S, t, now) {
   }
 }
 function drawNameplate(p, sx, sy, S) {
-  const e = p.e, o = BodyPlace.over(p, S), x = onArt(bodyX(p, sx) + S / 2 + o[0]); let y = onArt(bodyY(p, sy) + o[1] - 9 * zoom);   // (on the land's pixel, as the body: state.js onArt)
+  const e = p.e, o = BodyPlace.over(p, S), x = onArt(bodyX(p, sx) + S / 2 + o[0]); let y = onArt(bodyY(p, sy) + o[1] - 9 * artPx());   // (on the land's pixel, as the body: state.js onArt)
   { const r = e.kind === "agent" && e.id === myId && typeof HdLook !== "undefined" && HdLook.live && !Build.on && HdLook.aim, nw = e.name.length * 6; if (r && x - nw < r.x + r.w && r.x < x + nw && y - 18 < r.y + r.h && r.y < y + 6) y = onArt(r.y - 8); }   // (your name over the brackets of what you aim at, not in them: a bush north of you, its brackets and your name were one jumble on your head)
   if (e.kind === "agent" && e.id === myId) { const nw = opt("names") ? e.name.length * 5.5 + 2 : 0, top = y + 9 * zoom - Math.max(0, 12 - 3 * zoom);   // (you and your name, two boxes: no key's row is written there, prompts.js)
     Prompts.keep = [{x: x - S / 2, y: top, w: S, h: S + Math.max(0, 12 - 3 * zoom) + 2 * zoom}, {x: x - nw, y: y - 18, w: 2 * nw, h: 24}]; }
