@@ -5,6 +5,63 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.12 (2026-11-24)
+
+### Bug Fixes
+
+- A column's material is the world's word, kept through digging; a cut in stone is stone
+  ([`44eb916`](https://github.com/sofianedjerbi/nexel-worlds/commit/44eb916412950d73025d6e2ec91cac85a428d2c4))
+
+- **web**: Stone or earth is a column's own; a cut never recolours the tiles beside it
+  ([`2e9efd9`](https://github.com/sofianedjerbi/nexel-worlds/commit/2e9efd98068bb2874317c40866eb70c443adcd2e))
+
+- **web**: Stone under level 5 has stone's lowest top at any depth
+  ([`2f8fc79`](https://github.com/sofianedjerbi/nexel-worlds/commit/2f8fc7903c0ef89791955de91ff412c8f8316244))
+
+- **web**: The water's tint goes from a depth to the next in whole steps of 4 art px
+  ([`5aaf50e`](https://github.com/sofianedjerbi/nexel-worlds/commit/5aaf50e876cd26d4a21c08ff2a7599318f3d2f78))
+
+### Refactoring
+
+- **web**: A bridge has one paint, its model's
+  ([`527c7b2`](https://github.com/sofianedjerbi/nexel-worlds/commit/527c7b2c71f64fb352795d30ec4f0993bdedc47a))
+
+- **web**: A built box's faces are lit as the land's faces that way
+  ([`57139b6`](https://github.com/sofianedjerbi/nexel-worlds/commit/57139b6dcdf023576a7239bd1443e10bd48cf9b1))
+
+- **web**: A wall's look is data the land's painter lays; drawWall is gone
+  ([`ab04ad2`](https://github.com/sofianedjerbi/nexel-worlds/commit/ab04ad2cac48d1167bd8588d715c4e114cd39b1e))
+
+- **web**: Cobbles join by the one mask rule
+  ([`09fd0b6`](https://github.com/sofianedjerbi/nexel-worlds/commit/09fd0b6e93230bccba91f5a0a721b1ea2fe1c838))
+
+- **web**: One rule for a surface's paint; what is laid on the ground is data
+  ([`bc1aea1`](https://github.com/sofianedjerbi/nexel-worlds/commit/bc1aea101eead6b38345d7f18a58a65b06b2b1a4))
+
+- **web**: Planks and roofs are px the land's painter lays, not a 2D canvas read back
+  ([`1301335`](https://github.com/sofianedjerbi/nexel-worlds/commit/1301335928f97ef795c7ca48621c48c5e4d97450))
+
+- **web**: Under sea level one tone by depth on the land's own paints, no dug sheets
+  ([`6915b0e`](https://github.com/sofianedjerbi/nexel-worlds/commit/6915b0ed4c7caf3d6c2a7340e560ce1a91831442))
+
+### Testing
+
+- **e2e**: A body's place pinned frame by frame for each way it moves (phase A of the solvers' move)
+  ([`e5732e7`](https://github.com/sofianedjerbi/nexel-worlds/commit/e5732e733f49f83d619cb1b1f408c2d3c7cd45a1))
+
+- **web**: Drop the pit-floor-darker test, a rule e9aab4f removed; hd water read with room
+  ([`979867c`](https://github.com/sofianedjerbi/nexel-worlds/commit/979867cd26b486ba5ee5f381b9d861fa43c2c4df))
+
+- **web**: Hd_burst's light step has room for walls under sea level 3 % lighter
+  ([`aef5290`](https://github.com/sofianedjerbi/nexel-worlds/commit/aef52908403cd3b6218dd864dc318db101a8587d))
+
+- **web**: Hd_sheet compares the land alone (HdLook.landOnly), not a tree's sway
+  ([`f7032cc`](https://github.com/sofianedjerbi/nexel-worlds/commit/f7032cc8afd76029e22aa31a89cc0228cec4848d))
+
+- **web**: Hd_sun's shadow test says the frames round the one that lost it
+  ([`28979df`](https://github.com/sofianedjerbi/nexel-worlds/commit/28979df038a36884b826cfe6e74ab31de9f5d1fd))
+
+
 ## v0.1.11 (2026-11-24)
 
 ### Bug Fixes
