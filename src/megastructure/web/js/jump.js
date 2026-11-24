@@ -81,24 +81,21 @@ function jumpOf(p) {
 const FALL = {from: RULES.fall_safe, g: 1000, flail: 70, heavy: 4, shake: [3.5, .32], bounce: [3, .17]};   // layers; art px/s2; ms a frame; layers from which it lands heavily; px and s of the shake, of the bounce
 let fallQuake = null;                 // {t0, amp}: the ground shaking under you (render.js: fallShake)
 
-// -> null, or the fall of p now: {body, ground: art px over the straight line (relief.js liftOf), air}. (Asked once
-// a frame by the camera and once by the drawing: worked out once.)
-function falling(p, now) {
-  if (p.fallAt !== now) { p.fallAt = now; p.fallNow = fallOf(p, now); }
-  return p.fallNow;
-}
-function fallOf(p, now) {
+// The fall of p now -> null, or {z: its feet, ground: where it lands (levels), air}. BodyPlace asks, once a frame, with
+// the body's state (st.fall: {top, land: levels, t0, done}); anyone else reads the place (falling, jumping: below).
+const falling = (p) => BodyPlace.of(p).fall, jumping = (p) => BodyPlace.of(p).jump;
+function fallOf(p, now, st = BodyPlace.state(p)) {
   // (you in a jump's arc (leap.js): the arc is your height, the ground under it whatever it is. A fall begun under the
   //  arc, over a hole three deep, drew you at the fall's height, the name at it too, while the arc went on: you went
   //  down into the hole, then up the fall's own curve again as the jump ended: "only the nametag jumps")
   //  (and down from it, on your way to the middle of the tile you came down on (leap.js leapAt): come down by a hole's far
   //  wall, 0.45 of a tile off the middle, going back to it read as stepping off the wall's top into the hole: a fall from
   //  the rim, the body up 60 px in a frame and down again)
-  if (p.e && p.e.kind === "agent" && p.e.id === myId && (Leap.on() || Leap.gliding())) { p.fall = null; return null; }
-  const [ax, ay, bx, by, la, lb] = Floors.between(p), ramp = liftOf(p) / zoom, between = (ax !== bx || ay !== by) && la !== lb;
+  if (p.e && p.e.kind === "agent" && p.e.id === myId && (Leap.on() || Leap.gliding())) { st.fall = null; return null; }
+  const [ax, ay, bx, by, la, lb] = Floors.between(p), between = (ax !== bx || ay !== by) && la !== lb;
   const fwd = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0, down = between && fwd === la > lb;   // going to the lower one?
   const f = ax === bx ? p.y - ay : p.x - ax, u = la > lb ? f : 1 - f;         // how far from the higher tile's middle to the lower one's
-  let F = p.fall;
+  let F = st.fall;
   if (!F) {
     if (!down || Math.abs(la - lb) < FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb)) return null;
     // (a fall is from the higher tile: already down at the lower one's level (yours, myAt; another's, the world's), going
@@ -106,25 +103,25 @@ function fallOf(p, now) {
     //  rim in a frame and fell again: "jumping above a biiiig hole ... only the nametag jumps")
     const zNow = p.e && p.e.kind === "agent" && p.e.id === myId ? myAt && myAt.z : p.e && p.e.z;
     if (typeof zNow === "number" && zNow <= Math.min(la, lb)) return null;
-    F = p.fall = {top: Math.max(la, lb) * RELIEF_STEP, land: Math.min(la, lb) * RELIEF_STEP, t0: 0};
+    F = st.fall = {top: Math.max(la, lb), land: Math.min(la, lb), t0: 0};
   }
   if (F.done) {                                           // down before the step was over: on the ground, to the end of it
-    if (!between) { p.fall = null; return null; }
-    return {body: F.land - ramp, ground: F.land - ramp, air: false};
+    if (!between) { st.fall = null; return null; }
+    return {z: F.land, ground: F.land, air: false};
   }
   if (!F.t0) {                                            // to the edge, on the ground it leaves
-    if (!down) { p.fall = null; return null; }            // (turned back)
-    if (u < .5) return {body: F.top - ramp, ground: F.top - ramp, air: false};
+    if (!down) { st.fall = null; return null; }            // (turned back)
+    if (u < .5) return {z: F.top, ground: F.top, air: false};
     F.t0 = now;
   }
-  const t = (now - F.t0) / 1000, h = F.top - .5 * FALL.g * t * t, mine = p.e && p.e.kind === "agent" && p.e.id === myId;
+  const t = (now - F.t0) / 1000, h = F.top - .5 * FALL.g / RELIEF_STEP * t * t, mine = p.e && p.e.kind === "agent" && p.e.id === myId;
   if (h <= F.land || t > 3) {
-    landed(p, (F.top - F.land) / RELIEF_STEP, now, mine);
-    p.fall = between ? {...F, done: true} : null;
-    return p.fall ? {body: F.land - ramp, ground: F.land - ramp, air: false} : null;
+    landed(p, F.top - F.land, now, mine, st);
+    st.fall = between ? {...F, done: true} : null;
+    return st.fall ? {z: F.land, ground: F.land, air: false} : null;
   }
   if (mine) fallWind(Math.min(1, FALL.g * t / 600));       // (louder and higher with its speed)
-  return {body: h - ramp, ground: F.land - ramp, air: true};
+  return {z: h, ground: F.land, air: true};
 }
 // The jump key on the level: a hop on the spot (walk.js jumpKey; others: their `jump` event, state.js) -> null, or as jumpOf
 function hopOf(p, now) {
@@ -133,21 +130,21 @@ function hopOf(p, now) {
   return {body: Math.round(h), ground: 0, air: false, squash: !air, tuck: air, pose};
 }
 // It lands, `layers` further down
-function landed(p, layers, now, mine) {
-  const tx = Math.round(p.x), ty = Math.round(p.y), heavy = layers >= FALL.heavy, hurt = p.fallHurt;
+function landed(p, layers, now, mine, st) {
+  const tx = Math.round(p.x), ty = Math.round(p.y), heavy = layers >= FALL.heavy, hurt = st.hurt;
   if (mine) fallWind(-1);
   for (const side of [-1, 1]) for (let i = 0; i < 3 + Math.min(6, layers); i++)       // dust, thrown out low to both sides
     parts.push({x: p.x + .5 + side * .2, y: p.y + .85 - UP, vx: side * (1.5 + Math.random() * (2 + layers * .25)), vy: -.4 - Math.random() * 1.2,
       g: 5, life: .35 + Math.random() * .3, age: 0, c: PCOL.dust[i % PCOL.dust.length], s: Math.random() < .4 ? 2 : 1});
   smoke(p.x, p.y + .35 - UP, heavy ? 7 : 4, heavy ? .6 : .4);
   sfx(heavy ? "fallthud" : "thud", tx, ty);
-  if (heavy || hurt) p.bounce = now;
+  if (heavy || hurt) st.bounce = now;
   if (hurt) fallHurts(p, now, mine);
 }
 // What a fall cost, shown where it lands (state.js keeps it from the server's `fall` event until then)
 function fallHurts(p, now, mine) {
-  const n = p.fallHurt; if (!n) return;
-  p.fallHurt = 0;
+  const st = BodyPlace.state(p), n = st.hurt; if (!n) return;
+  st.hurt = 0;
   flashes.set(p.e.kind + p.e.id, now);
   floats.push({x: Math.round(p.x), y: Math.round(p.y), text: "-" + hearts(n), heart: true, color: "#ff8a7a", t: now / 1000});
   if (mine) { sfx("hurt"); fallQuake = {t0: now, amp: FALL.shake[0] + Math.min(3, hearts(n))}; }
@@ -162,20 +159,19 @@ function fallShake(now) {
 }
 
 // Called as a body is drawn: dust as it leaves the ground, dust and a sound as it lands. -> its hop (or its fall), or null
-function jumping(p, now = performance.now()) {
+function jumpNow(p, now, st, fall) {
   const lp = Leap.body(p, now);
   if (lp) return lp;                                                            // (you in the air: leap.js)
   const lift = Leap.lift(p);
-  if (lift) { const j = jumping0(p, now) || {body: 0, ground: 0, air: false, squash: false, tuck: false, pose: null}; return {...j, body: j.body + lift, ground: j.ground + lift}; }   // (just down from a jump: drawn from the level the eye is coming to)
-  return jumping0(p, now);
+  if (lift) { const j = jumping0(p, now, st, fall) || {body: 0, ground: 0, air: false, squash: false, tuck: false, pose: null}; return {...j, body: j.body + lift, ground: j.ground + lift}; }   // (just down from a jump: drawn from the level the eye is coming to)
+  return jumping0(p, now, st, fall);
 }
-function jumping0(p, now) {
-  const fall = falling(p, now);
+function jumping0(p, now, st, fall) {
   // (a hop asked for in a fall, or at the edge as it began, is no hop: it waited under the fall and played what was left
   //  of its arc once you were down, the body 18 px up in a frame and down again: "when i jump above a hole it glitches")
   if (fall) { if (fall.air && now - p.hop < HOP.ms) p.hop = -1e9; return fall; }
-  if (now - p.bounce < FALL.bounce[1] * 1000 && !jumpOf(p)) {                 // a heavy landing: up a little off the ground, and down
-    const k = (now - p.bounce) / 1000 / FALL.bounce[1];
+  if (now - st.bounce < FALL.bounce[1] * 1000 && !jumpOf(p)) {                 // a heavy landing: up a little off the ground, and down
+    const k = (now - st.bounce) / 1000 / FALL.bounce[1];
     return {body: Math.sin(k * Math.PI) * FALL.bounce[0], ground: 0, air: false};
   }
   const hop = hopOf(p, now);

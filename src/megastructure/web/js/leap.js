@@ -27,7 +27,7 @@ const Leap = (() => {
     const [x, y] = tileOf(p.x, p.y), t = tile(x, y), h = myZ(x, y);
     // (room over your head for the jump's top: under a roof, in a tunnel or a cave's stair, the old way. A jump there
     // hit the roof, its tiles not the world's: you were drawn on the land over it and put back where the world had you)
-    return !!p && !Build.on && !(p.e && p.e.sail) && !(t && wet(t[1])) && !Climb.climbOf(p) && !p.fall && !eating() && !solidAt(x, y, h + 3) && !solidAt(x, y, h + 4);
+    return !!p && !Build.on && !(p.e && p.e.sail) && !(t && wet(t[1])) && !Climb.climbOf(p) && !BodyPlace.state(p).fall && !eating() && !solidAt(x, y, h + 3) && !solidAt(x, y, h + 4);
   }
   // Off the ground, with the walk's speed
   function start(p, now) {

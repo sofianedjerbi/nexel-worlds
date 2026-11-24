@@ -13,7 +13,7 @@ def test_a_fall_takes_the_time_of_a_fall_and_lands_in_dust(game):
     game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
     x, y = game.pos()
     game.js("""(() => { window.__f = []; const o = fallOf;
-      fallOf = (p, now) => { const r = o(p, now); if (p === ents.get('agent' + myId)) __f.push([now, r ? (r.air ? 1 : 0) : -1, r ? r.body + liftOf(p) / zoom : 0, parts.length, wind ? 1 : 0, cam.y]); return r; }; return 1; })()""")
+      fallOf = (p, now, st) => { const r = o(p, now, st); if (p === ents.get('agent' + myId)) __f.push([now, r ? (r.air ? 1 : 0) : -1, r ? r.z * RELIEF_STEP : 0, parts.length, wind ? 1 : 0, cam.y]); return r; }; return 1; })()""")
     step, g = game.js("[RELIEF_STEP, FALL.g]")
     T = (2 * 8 * step / g) ** .5 * 1000                                                          # ms in the air from eight layers (a level is a cube: 16 art px, 0.51 s)
     game.hold(["d"], 450)

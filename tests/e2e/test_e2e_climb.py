@@ -82,7 +82,7 @@ def test_a_ladder_is_climbed_and_come_down_without_a_fall(game):
     assert game.js("myAt.z") == 6
     assert step(game, "ArrowDown") == (x, y - 2, 0)            # and down it
     game.sleep(400)
-    assert game.server()["hp"] == hp and game.js("ents.get('agent' + myId).fall") in (None, False) and not game.errors
+    assert game.server()["hp"] == hp and game.js("BodyPlace.state(ents.get('agent' + myId)).fall") in (None, False) and not game.errors
     # up a ladder at the cliff's side
     game.rpc("dev_stamp", x=x - 3, y=y - 3, rows=["l"])
     game.rpc("dev_teleport", x=x - 3, y=y - 3, z=0); game.arrive()
