@@ -208,7 +208,7 @@ def gen_tile(seed: int, x: int, y: int, level: int = 0) -> tuple[int, int]:
     return ground, B["none"]
 
 
-def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, array]:
+def gen_chunk(seed: int, cx: int, cy: int) -> tuple[bytearray, bytearray, list]:
     """Ground, blocks and columns (the cells, solid or empty) of one chunk."""
     steps = gen_chunk_steps(seed, cx, cy)
     try:
