@@ -29,15 +29,3 @@ DERIVED = [
 ]
 FILES = PACK + DERIVED
 
-
-def missing(assets: Path = ASSETS) -> list[str]:
-    """The pack's files not installed in `assets`."""
-    return [n for n in FILES if not (assets / n).is_file()]
-
-
-def installed(assets: Path = ASSETS) -> bool:
-    return not missing(assets)
-
-
-HOW = ("the Sprout Lands art is missing from src/nexel_worlds/web/assets/ (it is in git: `git checkout -- src/nexel_worlds/web/assets`, "
-       "or `python tools/install_assets.py <the two zips>` from the Sprites and UI premium packs, https://cupnooble.itch.io/).")

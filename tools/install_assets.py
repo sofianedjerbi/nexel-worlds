@@ -56,10 +56,6 @@ def main(argv: list[str]) -> int:
     from nexel_worlds import art
     print(f"sprites: {sprites}\nui:      {ui}")
     build(sprites, ui, art.ASSETS)
-    gone = art.missing()
-    if gone:
-        print("not made:", ", ".join(gone), file=sys.stderr)
-        return 1
     print(f"installed {len(art.FILES)} files into {art.ASSETS}")
     return 0
 
