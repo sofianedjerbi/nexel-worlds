@@ -20,14 +20,14 @@ const HdFx = (() => {
   function add(list, p, now, dt) {
     const t = now / 1000, near = (x, y) => Math.abs(x - p.x) < 26 && y > p.y - 26 && y < p.y + 26, put = (s) => { if (near(s.x, s.y)) list.push(Object.assign({d: true, still: true}, s)); };
     let n = 0;
-    for (const q of parts) { if (q.age < 0 || q.age > q.life) continue; const base = q.floor !== undefined ? q.floor : (q.by === undefined ? (q.by = q.y + .45) : q.by), [, a] = opaque(q.c);   // (a chip: its floor; a spark or a puff of dust: where it came out, a little over the ground)
+    for (const q of parts) { if (q.age < 0 || q.age > q.life) continue; const base = q.floor !== undefined ? q.floor : (q.by === undefined ? (q.by = q.y + HdLevel.FOOT.chip[1]) : q.by), [, a] = opaque(q.c);   // (a chip: its floor; a spark or a puff of dust: where it came out, a little over the ground)
       put({canvas: dot(q.c, q.s), fx: 0, fy: q.s + Math.round(Math.max(0, base - q.y) * 16), x: q.x, y: base, z: ground(q.x, base), fade: Math.min(1, 3.3 * (1 - q.age / q.life)) * a}); n++; }
     last.parts = n; n = 0;
-    for (const q of puffs) { if (q.age < 0 || q.age > q.life) continue; const k = q.age / q.life, r = Math.max(1, Math.round(q.r + q.grow * k)), base = q.by === undefined ? (q.by = q.y + .3) : q.by;
+    for (const q of puffs) { if (q.age < 0 || q.age > q.life) continue; const k = q.age / q.life, r = Math.max(1, Math.round(q.r + q.grow * k)), base = q.by === undefined ? (q.by = q.y + HdLevel.FOOT.puff[1]) : q.by;
       put({canvas: puff(r), fx: r, fy: r + Math.round(Math.max(0, base - q.y) * 16), x: q.x, y: base, z: ground(q.x, base), fade: (1 - k) * .85}); n++; }
     last.puffs = n; n = 0;
     for (const f of falls) { const k = (now - f.t0) / 1000, fr = Math.floor(k * 14), img = f.thin ? IMG.thin_fall : IMG.tree_fall; if (fr < 0 || fr >= 12 || !ok(img)) continue; const [bx, by] = brink(f.x, f.y);   // (the pack's felling sheet: its trunk at x 32 to 48 of a frame, mirrored about it to fall the other way)
-      put({canvas: cell(img, fr * 64, 0, 64, 48, f.side > 0), fx: f.side > 0 ? 24 - bx : 40 - bx, fy: 44 - by, x: f.x + .5, y: f.y + 1, z: Math.max(top(f.x, f.y), ground(f.x, f.y)), fade: fr >= 9 ? 1 - (fr - 9) / 3 : 1}); n++; }
+      put({canvas: cell(img, fr * 64, 0, 64, 48, f.side > 0), fx: f.side > 0 ? 24 - bx : 40 - bx, fy: 44 - by, x: f.x + .5, y: HdLevel.foot("stood", f.x, f.y)[1], z: Math.max(top(f.x, f.y), ground(f.x, f.y)), fade: fr >= 9 ? 1 - (fr - 9) / 3 : 1}); n++; }
     last.falls = n; n = 0;
     for (const f of flyers) { const k = (now - f.t0) / FLY_MS; if (k >= 1 || (k < 0 && !f.drop) || !ok(IMG.trees)) continue; let y = f.y, x = f.x, a = 1;   // (fruit off a tree, berries off a bush: effects.js drawFlyers)
       if (k < 0) { const tf = (now - f.drop.t0) / 1000; if (tf < 0) continue; if (tf * 1000 < f.drop.fall) y = f.drop.top + .5 * FRUIT_G * tf * tf; }
@@ -35,12 +35,12 @@ const HdFx = (() => {
       put({canvas: cell(IMG.trees, f.ix, f.iy, 16, 16), fx: 8, fy: 8 + Math.round(Math.max(0, f.y - y) * 16), x, y: f.y, z: ground(x, f.y), fade: a}); }
     for (const f of plucks) { const ms = now - f.t0, [img, a0, b0, w, h, dx, dy] = f.spr; if (ms > TUG_MS + PLUCK_MS || !ok(img)) continue; let ox = 0, oy = 0, a = 1;   // (a plant pulled up: effects.js drawPlucks; never smaller: it fades as it is caught)
       if (ms < TUG_MS) oy = -Math.sin(ms / TUG_MS * Math.PI / 2) * .25; else { const k = (ms - TUG_MS) / PLUCK_MS, e = k * k * (3 - 2 * k), who = f.by && [...ents.values()].find((q) => q.e && q.e.name === f.by); if (who) { ox = (who.x - f.x) * e; oy = -.25 + (who.y - .3 - f.y + .25) * e - Math.sin(k * Math.PI) * .8; } else { oy = -.25 - k * .6; a = 1 - k; } if (k > .8) a = Math.min(a, (1 - k) / .2); }
-      put({canvas: cell(img, a0, b0, w, h), fx: 8 - dx, fy: 16 - dy + Math.round(Math.max(0, -oy) * 16), x: f.x + ox + .5, y: f.y + 1, z: ground(f.x + ox, f.y), fade: a}); }
+      put({canvas: cell(img, a0, b0, w, h), fx: 8 - dx, fy: 16 - dy + Math.round(Math.max(0, -oy) * 16), x: f.x + ox + .5, y: HdLevel.foot("stood", f.x, f.y)[1], z: ground(f.x + ox, f.y), fade: a}); }
     for (const l of loot) { const s = (now - l.t0) / 1000; if (s < 0) continue; let h = 0, dk = 1, since = 1;   // a drop hopping out to its place in the pile (loot.js drawLoot), then two bounces; the pile shows once all of its tile's have landed (hd.js)
       if (s < l.flight) { h = -(l.vy * s + LOOT_G * s * s / 2); dk = s / l.flight; } else { let u = s - l.flight, m = 0; while (m < LOOT_HOPS.length && u > LOOT_HOPS[m]) u -= LOOT_HOPS[m++]; if (m < LOOT_HOPS.length) { h = LOOT_G * LOOT_HOPS[m] / 2 * u - LOOT_G * u * u / 2; since = u; } }
       const dip = s > l.flight && since < .05 ? 1 : 0;   // (a px into the ground as it touches down)
       const [ox, oy] = lootFrom(l, dk);   // (let go of in front of you: from you to its place, loot.js)
-      put({canvas: ghostIcon(l.name), fx: 5, fy: 11 - Math.round(l.dy * dk) + Math.max(0, Math.round(h * 16)) - dip, x: l.x + ox + .5 + Math.round(l.dx * dk) / 16, y: l.y + oy + .7, z: ground(l.x, l.y), pile: true}); n++; }   // (pile: its shadow on the ground under it, hd.js pieces)
+      put({canvas: ghostIcon(l.name), fx: 5, fy: 11 - Math.round(l.dy * dk) + Math.max(0, Math.round(h * 16)) - dip, x: l.x + ox + .5 + Math.round(l.dx * dk) / 16, y: HdLevel.foot("pile", l.x, l.y + oy)[1], z: ground(l.x, l.y), pile: true}); n++; }   // (pile: its shadow on the ground under it, hd.js pieces)
     last.loot = n; n = 0;
     for (const o of orbs) { if (o.age < 0) continue; const w = Math.max(0, Math.min(1, (o.age - o.homing) / .2)), by = o.y + (UP + .15) * w;   // (homing: to your middle, the flat picture's y up by UP: here over your feet)
       put({canvas: orb(o.big, Math.sin(o.age * 14 + o.seed) > 0), fx: o.big ? 3 : 2, fy: (o.big ? 4 : 3) + Math.round(o.h * 8 + Math.max(0, by - o.y) * 16), x: o.x, y: by, z: ground(o.x, by)}); n++; }

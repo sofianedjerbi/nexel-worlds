@@ -9,6 +9,12 @@
 //   hides(tx, ty, L, k, px) -> land under the open sky between the eye and you hides you whole: the x-ray window opens on your space as under a roof (hd.js). (It was `lift`: you drawn up at the rim south of you)
 //   own(place, roof, cov) -> the boxes of the x-ray window that are yours whatever the search for your space has found yet: your tile, floor to ceiling, and the covered tiles you just came from (vox_style.js adds the ones its window lacks)
 const HdLevel = (() => {
+  // WHERE IN ITS TILE A DRAWN THING'S FOOT IS, tiles from the tile's corner [east, south]: its place in the picture, and so what it stands in front of (the frame's one order: hd.js byY, north to south,
+  // and the land's depth). ONE table for all that is drawn in the land. (Each was a number typed where the thing was put in the frame's list: .5, .7, .42, .08, .12, .9, .45, .3, 1.)
+  //   body: its tile's middle; shade, pileShade: the shadow under a body, under a pile; pile: what lies on the ground; ladder: by what it leans on (north, south, beside);
+  //   stood: what stands at its tile's south edge (a falling tree, a plucked plant, a flame); chip, puff: a little over the ground where they came out
+  const FOOT = {body: [.5, .5], shade: [0, .42], pileShade: [0, .08], pile: [.5, .7], ladderN: [.5, .12], ladderS: [.5, .9], ladder: [.5, .5], stood: [.5, 1], chip: [0, .45], puff: [0, .3]};
+  const foot = (kind, x, y) => [x + FOOT[kind][0], y + FOOT[kind][1]];
   const col = (x, y) => Voxels.host.column(x, y), topAt = (x, y) => { const c = col(x, y); return c && c.length ? c[c.length - 1] : 0; };
   const solid = (c, z) => { if (!c) return false; for (let i = 0; i < c.length; i += 2) if (z <= c[i]) return i === 0 || z > c[i - 1]; return false; };
   let trail = [], place = null, cov = null;
@@ -95,5 +101,5 @@ const HdLevel = (() => {
     for (let d = 1; d <= 8; d++) if (standing(x0, y0 + d) > z + (y0 + d - y) * k) return true;
     return false;
   }
-  return {track, own, over, hides, behind, veils, wall, wallAt, cut, body, get place() { return place; }, get cover() { return cov; }, coverOf: cover};
+  return {track, foot, FOOT, own, over, hides, behind, veils, wall, wallAt, cut, body, get place() { return place; }, get cover() { return cov; }, coverOf: cover};
 })();
