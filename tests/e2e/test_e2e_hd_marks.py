@@ -208,6 +208,11 @@ FACES = """([x, y]) => { const out = [], S = HdLook.screenOf; for (let j = -8; j
   add('top', X + .5, Y + .5, t); if (topAt(X, Y + 1) < t) add('south', X + .5, Y + 1, t - .5); if (topAt(X + 1, Y) < t) add('east', X + 1, Y + .5, t - .5); if (topAt(X - 1, Y) < t) add('west', X, Y + .5, t - .5); } return out; }"""
 
 
+# the made land (HdLook.box) and, of each of its tiles whose top's middle is on the picture and two px tall or more: [x, y, mx, my, is a tile under that point]
+BOXTOPS = """(() => { const B = HdLook.box, S = HdLook.screenOf, out = []; for (let y = B[1]; y <= B[3]; y++) for (let x = B[0]; x <= B[2]; x++) { const t = topAt(x, y), a = S(x + .5, y + .5, t), n = S(x + .5, y, t), f = S(x + .5, y + 1, t);
+  if (a && n && f && f[1] - n[1] >= 2 && a[0] > 8 && a[0] < innerWidth - 8 && a[1] > 8 && a[1] < innerHeight - 110) out.push([x, y, Math.round(a[0]), Math.round(a[1]), !!tileAtScreen(a[0], a[1])]); } return [B, out]; })()"""
+
+
 def test_every_px_of_the_land_is_on_a_tile_and_the_sky_on_none(browser, server):
     """A hill, a cliff, a pit and steps round you. The pointer anywhere on the land, a top, a front, a side turned east
     or west, is on a tile, and that tile's drawn box holds the pointer; on the clear sky it is on none. (The HD camera
@@ -237,4 +242,17 @@ def test_every_px_of_the_land_is_on_a_tile_and_the_sky_on_none(browser, server):
     assert not [f for f in faces if f[5] is None], [f for f in faces if f[5] is None][:8]                               # every top and every side shown: a tile
     sides = [f for f in faces if (f[0] == "east" and f[1] < -1) or (f[0] == "west" and f[1] > 1)]                       # (the sides turned to the picture's middle: the others are behind their own land)
     assert len(sides) >= 6 and sum(1 for f in sides if f[5] == [x + f[1], y + f[2]]) >= .7 * len(sides), sides[:8]     # a side shown is its own tile's (a few are behind land nearer the eye)
+    # FAR and VERY FAR (the view setting, and zoomed out): the land made is HdLook.box, wider and deeper: the top of every tile of it that is on the picture (two px
+    # tall or more) answers. (The pick looked 24 tiles each way whatever was made: past that a click on land you see did nothing. At zoom 3 on this screen no top
+    # past 21 tiles is two px tall, at any setting: zoomed out at Very far they are, to 38.)
+    try:
+        for view, z, past in (("far", 3, 0), ("veryfar", 1, 20)):
+            g.js(f"(() => {{ setOpt('view', '{view}'); zoom = ZOOM.to = {z}; return 1; }})()")
+            g.rest(); g.frames(3)
+            box, tops = g.js(BOXTOPS)
+            far = [t for t in tops if max(abs(t[0] - x), abs(t[1] - y)) > 24]
+            assert y - box[1] > 24 and len(tops) > 400 and len(far) >= past, (view, z, len(tops), len(far), box)       # (the land made goes more than 24 tiles north of you)
+            assert not [t for t in tops if not t[4]], (view, z, box, [t for t in tops if not t[4]][:8])
+    finally:
+        g.js("(() => { setOpt('view', 'normal'); zoom = ZOOM.to = 3; return 1; })()")
     assert not g.errors
