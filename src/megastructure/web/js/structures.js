@@ -42,18 +42,17 @@ const Structures = (() => {
   // picture and then only drawn off screen to read two colours back out of it; the front's place in the pack was written twice.)
   const abgr = (h) => (0xff000000 | parseInt(h.slice(5, 7), 16) << 16 | parseInt(h.slice(3, 5), 16) << 8 | parseInt(h.slice(1, 3), 16)) >>> 0;
   const look = (c) => (c === "%" ? {ink: abgr(STONE[0]), cap: abgr(STONE[1]), front: [IMG.gen, genCell("stone_wall")[0], genCell("stone_wall")[1] + 2]} : {ink: abgr(INK), cap: abgr(CAP), front: [IMG.house_walls, 56, 4]});
-  // One roof block's top, at (px, top) on the screen: the middle of the sheet's roof, its edges laid over it where
-  // the roof ends. up, down: how many roof blocks go on north and south of it; w, e: one beside it
-  function drawRoof(px, top, S, up, down, w, e) {
-    const z = zoom, row = up + down >= 2 && up === Math.floor((up + down) / 2) ? 2 : up % 2 ? 3 : 1;      // (the ridge half way down its run)
-    const piece = (r, y0, h, at) => {
-      ctx.drawImage(IMG.house_roof, 16, r * 16 + y0, 16, h, px, at, S, h * z);
-      if (!w) ctx.drawImage(IMG.house_roof, 0, r * 16 + y0, 16, h, px - 11 * z, at, S, h * z);
-      if (!e) ctx.drawImage(IMG.house_roof, 32, r * 16 + y0, 16, h, px + 11 * z, at, S, h * z);
-    };
-    piece(row, 0, 16, top);
-    if (!up) piece(0, 9, 7, top - 7 * z);
-    if (!down) piece(4, 0, 7, top + 16 * z);
+  // One roof block's top, as px (16 wide, 30 high: 7 rows over its tile, its 16, 7 under): the middle of the pack's roof, its edges laid over
+  // it where the roof ends. up, down: how many roof blocks go on north and south of it; w, e: one beside it. (It was painted on a 2D canvas
+  // at the zoom, drawRoof, and read back.)
+  function roofPx(up, down, w, e) {
+    const d = sheetData(IMG.house_roof), px = new Uint32Array(16 * 30), row = up + down >= 2 && up === Math.floor((up + down) / 2) ? 2 : up % 2 ? 3 : 1;      // (the ridge half way down its run)
+    const lay = (sx, sy, h, at, dx) => { for (let k = 0; k < h; k++) for (let i = 0; i < 16; i++) { const X = i + dx, v = d.px[(sy + k) * d.w + sx + i]; if (X >= 0 && X < 16 && v >>> 24 > 127) px[(at + k) * 16 + X] = v; } };
+    const piece = (r, y0, h, at) => { lay(16, r * 16 + y0, h, at, 0); if (!w) lay(0, r * 16 + y0, h, at, -11); if (!e) lay(32, r * 16 + y0, h, at, 11); };
+    piece(row, 0, 16, 7);
+    if (!up) piece(0, 9, 7, 0);
+    if (!down) piece(4, 0, 7, 23);
+    return {px, w: 16, h: 30, key: "roof" + [up, down, w, e]};
   }
-  return {WALLS, INK, look, drawRoof, sideDoor, doorFrame};
+  return {WALLS, INK, look, roofPx, sideDoor, doorFrame};
 })();

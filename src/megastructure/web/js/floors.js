@@ -79,34 +79,9 @@ const Floors = (() => {
   // (cut away: none of it)
   const hides = (x, y, z) => (mine().tiles.has(x + "," + y) && z >= over.z ? THIN : Build.on && z > Build.level() ? FAINT : 0);
   const alpha = (x, y, z) => { const h = hides(x, y, z); return !h ? 1 : opt("above") === "faded" || opt("above") === "circle" ? h : 0; };
-  // One block: its top (unless a block is on it), its south face (unless one goes on south of it)
-  function cell(kind, x, y, z, sx, sy, S, a) {
-    const q = zoom, px = sx(x), top = syUp(sy, y, shOf(z) * q), same = (dx, dy) => { const c = get(x + dx, y + dy, z); return !!c && c[0] === kind; };
-    const r = (col, X, Y, W_, H_) => { ctx.fillStyle = col; ctx.fillRect(px + X * q, top + Y * q, W_ * q, H_ * q); };
-    ctx.globalAlpha = a;
-    if (kind === "stairs") { ctx.globalAlpha = 1; return Climb.drawStep(x, y, z, px, top, a); }   // (a step of a flight: climbing.js)
-    if (kind === "roof") {
-      let up = 0, down = 0;
-      while (up < 14 && same(0, -up - 1)) up++;
-      while (down < 14 && same(0, down + 1)) down++;
-      Structures.drawRoof(px, top, S, up, down, same(-1, 0), same(1, 0));
-    } else {
-      const ink = Structures.INK;
-      if (!get(x, y, z + 1)) {
-        ctx.drawImage(IMG.house_walls, 16, 16, 16, 16, px, top, S, S);
-        if (!get(x, y - 1, z)) r(ink, 0, 0, 16, 1);
-        if (!get(x - 1, y, z)) r(ink, 0, 0, 1, 16);
-        if (!get(x + 1, y, z)) r(ink, 15, 0, 1, 16);
-      }
-      if (!get(x, y + 1, z)) {                        // its face: a layer high, planks, the pack's ink under them
-        const n = RELIEF_STEP; for (let j = 0; j < n - 1; j += 7) { const h = Math.min(7, n - 1 - j); ctx.drawImage(IMG.house_walls, 56, 9, 16, h, px, top + (16 + j) * q, S, h * q); }   // (a level's rows of planks: a cube's face, two courses)
-        r(ink, 0, 15 + n, 16, 1); r(ink, 0, 16, 16, 1);
-        if (!get(x - 1, y, z)) r(ink, 0, 16, 1, n);
-        if (!get(x + 1, y, z)) r(ink, 15, 16, 1, n);
-      }
-    }
-    ctx.globalAlpha = 1;
-  }
+  // A step of a flight, painted (climbing.js: its own picture). Planks and a roof are data the land's painter lays: hd_things.js block
+  // (they were painted here on a 2D canvas at the zoom and read back)
+  function cell(kind, x, y, z, sx, sy, S, a) { return Climb.drawStep(x, y, z, sx(x), syUp(sy, y, shOf(z) * zoom), a); }
   // What a click or a key means with a block in hand, or on a tile whose ground at your height is a built block
   // (intent.js asks first): said in a few words, with what does it. Nothing: the ground's own (intent.js goes on)
   function intent(p, shift) {

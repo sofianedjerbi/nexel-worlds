@@ -146,7 +146,7 @@ const HdThings = (() => {
     if (kind === "roof") {                                  // shingles: a real roof, two pitched faces: up from its north edge to the ridge (the pack's ridge row: half way down its run), down from it to the eave; the eave its front, the gable its sides
       const {up, down, yr, hat} = pitch(x, y, z), w = same(-1, 0), e = same(1, 0);
       const rz = (z - 1) * UP + 7; cast(out, x, y, 0, [-1, -1, 17, 17], 0, rz - floorAt(x, y) * UP + hat(up + .5), true);   // (rz: the shingles' foot line: 7 px over its cell's floor, the walls' top: a roof lies on them, never hangs over a gap)
-      const P = shotOf("roof" + [up, down, w, e], 16, 30, () => Structures.drawRoof(0, 7, 16, up, down, w, e)), E = pix(IMG.house_roof, 16, 64, 16, 7);
+      const P = Structures.roofPx(up, down, w, e), E = pix(IMG.house_roof, 16, 64, 16, 7);
       const eave = room("eave", 16, 7, (put) => { for (let j = 0; j < 7; j++) for (let i = 0; i < 16; i++) put(i, j, E.px[j * 16 + i]); }), S = {px: sheet.px, w: SW, key: "eaveS"};
       for (const [y0, y1] of up === Math.floor(yr) ? [[0, 8], [8, 16]] : [[0, 16]]) { const d = y1 - y0, last = y1 === 16;
         push(out, {x: 0, y: y0, z: rz - 7, w: 16, d, h: 7, tilt: [hat(up + y0 / 16), hat(up + y1 / 16)], k: up + y0 / 16 < yr ? .7 : 1, top: cut(P, 0, 16, 7 + y0, 7 + y1), front: last && !down ? eave : null,
@@ -163,9 +163,14 @@ const HdThings = (() => {
       return;
     }
     cast(out, x, y, 0, [-1, -1, 17, 17], 0, (z - floorAt(x, y)) * UP, true);
-    const P = shotOf(stairs ? "st" + [x, y, z, Floors.ver, landVer] : "cell" + kind + bits, 16, FH, () => Floors.cell(kind, x, y, z, () => 0, () => shOf(z), 16, 1));
-    const tone = P.px[(16 + UP / 2) * 16 + 7] || P.px[8 * 16 + 7] || 0xff5d6290;
-    push(out, {x: 0, y: 0, z: (z - 1) * UP, w: 16, d: 16, h: UP, top: g(0, 0, 1) ? null : cut(P, 0, 16, 0, 16), front: g(0, 1) ? null : cut(P, 0, 16, 16, FH), west: g(-1, 0) ? null : flat(tone, 16, UP, tone), east: g(1, 0) ? null : flat(tone, 16, UP, tone)});
+    if (stairs) { const P = shotOf("st" + [x, y, z, Floors.ver, landVer], 16, FH, () => Floors.cell(kind, x, y, z, () => 0, () => shOf(z), 16, 1)), tone = P.px[(16 + UP / 2) * 16 + 7] || P.px[8 * 16 + 7] || 0xff5d6290;   // (a step under a block: its own picture)
+      push(out, {x: 0, y: 0, z: (z - 1) * UP, w: 16, d: 16, h: UP, top: null, front: g(0, 1) ? null : cut(P, 0, 16, 16, FH), west: g(-1, 0) ? null : flat(tone, 16, UP, tone), east: g(1, 0) ? null : flat(tone, 16, UP, tone)}); return; }
+    // planks: the pack's house floor on top, its line along the edges where no block goes on (north, west, east); its face a level of the pack's planks, 7 rows a course, a line over and under them
+    const T = pix(IMG.house_walls, 16, 16, 16, 16), F = pix(IMG.house_walls, 56, 9, 16, 7), ink = Structures.look("W").ink, [n, w, e] = [g(0, -1), g(-1, 0), g(1, 0)], ends = (i) => (!w && i === 0) || (!e && i === 15);
+    const top = room("plankT" + bits, 16, 16, (put) => { for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) put(i, j, (!n && j === 0) || ends(i) ? ink : T.px[j * 16 + i]); });
+    const front = room("plankF" + bits, 16, UP, (put) => { for (let j = 0; j < UP; j++) for (let i = 0; i < 16; i++) put(i, j, j === 0 || j === UP - 1 || ends(i) ? ink : F.px[(j % 7) * 16 + i]); });
+    const tone = F.px[((UP / 2) % 7) * 16 + 7];
+    push(out, {x: 0, y: 0, z: (z - 1) * UP, w: 16, d: 16, h: UP, top: g(0, 0, 1) ? null : top, front: g(0, 1) ? null : front, west: w ? null : flat(tone, 16, UP, tone), east: e ? null : flat(tone, 16, UP, tone)});
   }
   const is = (c, x, y) => "W%+#rm".includes(c) || (c === "g" && x !== undefined && gateSide(x, y));
   function stand(out, c, x, y, zl) {     // what stands at level zl of the tile
