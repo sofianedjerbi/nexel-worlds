@@ -90,4 +90,3 @@ function stand(x, y, z, swims) {
   const c = z === undefined || !FLOORS ? null : Floors.get(x, y, z);
   return c ? !SOLID.has(c[1]) : (z !== undefined && z !== floorAt(x, y)) || standOn(tile(x, y), swims);
 }
-const plainWalk = (x, y) => stand(x, y);        // (climbing.js asks by this name)

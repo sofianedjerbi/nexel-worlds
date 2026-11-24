@@ -14,8 +14,7 @@ const Climb = (() => {
   // Someone could stand at height z on (x, y)
   function openAt(x, y, z) {
     if (!surfacesAt(x, y).includes(z) || solidAt(x, y, z + 2)) return false;
-    const c = Floors.get(x, y, z);
-    return c ? !SOLID.has(c[1]) : z !== floorAt(x, y) || plainWalk(x, y);
+    return stand(x, y, z, false);                       // (the one rule, cells.js; not in water: the world lets nobody stand there)
   }
   // From a ladder at height h on (x0, y0), into (x, y): where you come out, or null
   function climb(h, x0, y0, x, y) {
@@ -90,7 +89,7 @@ const Climb = (() => {
       for (let c = g + 1; c <= t + 2; c++) if (solidAt(x, y, c)) return "No room: leave the floor open over them";
       const cell = Floors.get(x, y, g), what = cell ? cell[1] : g === floorAt(x, y) ? combAt(x, y) : "";
       const me_ = myPos();
-      if ((what && !GROUND.has(what) && what !== "f") || (!cell && !plainWalk(x, y)) || entityAt({x, y}) || (me_ && me_.x === x && me_.y === y)) return "Something is in the way";
+      if ((what && !GROUND.has(what) && what !== "f") || (!cell && !stand(x, y)) || entityAt({x, y}) || (me_ && me_.x === x && me_.y === y)) return "Something is in the way";
       out.push([x, y, g, t]);
       if (t - g <= 1) return out;
       if (out.length >= RISE[1]) return "Too far down";
@@ -170,20 +169,20 @@ const Climb = (() => {
       const f = flight(p.x, p.y), have = meObs ? meObs.self.inventory.stairs || 0 : 0;
       if (!Array.isArray(f)) return {text: f.why, ghost: it, ok: false};
       const ok = have >= f.length;
-      return {text: ok ? `Build stairs (${f.length} step${f.length > 1 ? "s" : ""})` : `The flight takes ${f.length} stairs`, ghost: it, ok, near: 1, steps: f,
+      return {text: ok ? `Build stairs (${f.length} step${f.length > 1 ? "s" : ""})` : `The flight takes ${f.length} stairs`, ghost: it, ok, steps: f,
         draw: (sx, sy, S) => ghostFlight(f, sx, sy, S, ok), run: (d) => act("place", {dir: d, item: it})};
     }
     const h = own(p, s);
     if (h !== null) {                                   // (the wall you face: the ladder on your own tile, against it)
       const b = FLOORS ? Floors.get(s.x, s.y, h) : null, was = b ? b[1] : h === groundAt(s.x, s.y) && !wet(gndAt(s.x, s.y)) ? combAt(s.x, s.y) : "-", ok = !was || GROUND.has(was) || was === "f";
       if (was === "l") return {text: "", info: true, none: true, own: {x: s.x, y: s.y}};      // (your ladder is there already: nothing to put, nothing to say)
-      return {text: ok ? "Place ladder" : "Something is in the way", ghost: it, ok, near: 1, z: h, flat: true, own: {x: s.x, y: s.y},
+      return {text: ok ? "Place ladder" : "Something is in the way", ghost: it, ok, z: h, flat: true, own: {x: s.x, y: s.y},
         draw: (sx, sy, S) => drawLadder(s.x, s.y, h, sx, sy, S, .6), run: () => act("place", {dir: dirTo(p), item: it})};
     }
     const z = settleNear(p.x, p.y, myZ(s.x, s.y)), c = FLOORS ? Floors.get(p.x, p.y, z) : null, on = c ? c[1] : z === groundAt(p.x, p.y) ? combAt(p.x, p.y) : "";
     if ((on && !GROUND.has(on) && on !== "f") || !openAt(p.x, p.y, z)) return {text: "Something is in the way", ghost: it, ok: false, z};
     if (!FLOORS || !lean(p.x, p.y, z)) return {text: "Needs something taller behind", ghost: it, ok: false, z};
-    return {text: "Place ladder", ghost: it, ok: true, near: 1, z, draw: (sx, sy, S) => drawLadder(p.x, p.y, z, sx, sy, S, .6), run: (d) => act("place", {dir: d, item: it, z})};
+    return {text: "Place ladder", ghost: it, ok: true, z, draw: (sx, sy, S) => drawLadder(p.x, p.y, z, sx, sy, S, .6), run: (d) => act("place", {dir: d, item: it, z})};
   }
   function ghostFlight(f, sx, sy, S, ok) {
     for (const [x, y, g, t] of f) for (let z = g + 1; z <= t; z++) Floors.cell("stairs", x, y, z, sx, sy, S, .55);
