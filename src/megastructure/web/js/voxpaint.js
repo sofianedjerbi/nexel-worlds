@@ -30,7 +30,7 @@ const VoxPaint = (() => {
   // earth, lighter boxes along it; then its own floor, a brown face in a grey hill.)
   // rocky: is the tile's block stone; level: the level whose paint the block with its top at z has there (4: the highest earth). The engine: host.rock, voxels.js
   const rocky = (x, y) => { const m = matAt(x, y); return m ? (m === "s" ? 2 : false) : rockAt(x, y) ? 2 : false; };
-  const level = (x, y, z) => (z < 5 && rocky(x, y) === 2 ? 5 + (z + 512) % 4 : z > 4 && !rocky(x, y) ? 4 : z);   // (a stone block put low: the stone level the engine gives its sides, vox_mesh.js rock)
+  const level = (x, y, z) => (z < 5 && rocky(x, y) === 2 ? 5 : z > 4 && !rocky(x, y) ? 4 : z);   // (stone under 5, a cut's floor in a stone hill: stone's lowest level, its darkest top, at any depth. It was 5 to 8 in turn by its height: a floor a level down was three tones lighter than the one over it)
   const ids = new Map(), cells = [null];                        // a shape: [what of it is drawn, its sheet, the sheet's cell (cx, cy) each quarter of it is: NW, NE, SW, SE]; 0: the whole square
   // A narrow top (a tile in no 2 x 2 of land as high: a pillar, a wall one tile wide, its ends, an L, a T, a plus, a ring): the
   // sheet's own cell for it is all rim (a pillar's top was a button, a ridge a hedge, a plus a muddle: the sheet's rim is 7 px a

@@ -140,9 +140,9 @@ def test_down_a_passage_a_level_floor_has_no_band_a_step_up_its_riser_a_step_dow
     for dy in range(-6, -1):
         lv[(-4, dy)], lv[(0, dy)], lv[(4, dy)] = "0", "0" if dy > -4 else "1", "0" if dy > -4 else "a"
     rows = ["".join("-" if (dx, dy) in lv else "." for dx in range(-8, 9)) for dy in range(-7, 2)]
-    g.stamp(-8, -7, ["." * 17] * 9, levels=["5" * 17] * 9)
-    g.stamp(-8, -7, rows, levels=["".join(lv.get((dx, dy), "5") for dx in range(-8, 9)) for dy in range(-7, 2)],
-            roofs=[r.replace("-", "5").replace(".", "0") for r in rows], heads=[r.replace("-", "2").replace(".", "0") for r in rows])
+    g.stamp(-8, -7, ["." * 17] * 9, levels=["4" * 17] * 9)                              # (an earth hill, four high: in a stone one, five and over, the floors are stone: too pale for a lit lip, test_e2e_hd_trench.py)
+    g.stamp(-8, -7, rows, levels=["".join(lv.get((dx, dy), "4") for dx in range(-8, 9)) for dy in range(-7, 2)],
+            roofs=[r.replace("-", "4").replace(".", "0") for r in rows], heads=[r.replace("-", "2").replace(".", "0") for r in rows])
     g.rpc("dev_teleport", x=x, y=y - 1, z=0)
     g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     quiet(g)
