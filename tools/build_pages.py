@@ -68,12 +68,7 @@ def build(out: Path):
         for f in sorted(PKG.rglob("*.py")):
             if "__pycache__" not in f.parts:
                 z.write(f, Path("nexel_worlds") / f.relative_to(PKG))
-    for f in (ROOT / "tools" / "pages").iterdir():           # the showcase page (what's new) and its clips (tools/film_*.py)
-        shutil.copy(f, out / f.name)
-    page = (out / "index.html").read_text()
-    box = '<button class="item" id="titlehelp">'      # (the first screen's menu: one row more online, before Help)
-    assert page.count(box) == 1, "the join box changed"
-    (out / "index.html").write_text(page.replace(box, '<a class="item" href="showcase.html"><span>What\'s new</span></a>\n    ' + box))
+    shutil.copy(ROOT / "tools" / "pages" / "sw.js", out / "sw.js")   # the service worker (offline() fills it in)
     v = stamp(out)
     if os.environ.get("DEMO_PYODIDE"):                       # (a copy of Pyodide somewhere else than the CDN: tools/perf_load.py measures with one)
         w = out / "js" / "local_worker.js"
@@ -125,7 +120,7 @@ def stamp(out: Path) -> str:
         if f.is_file() and f.suffix in (".js", ".css", ".zip", ".html", ".mp4", ".jpg", ".png", ".gif", ".json"):
             mark.update(f.relative_to(out).as_posix().encode() + f.read_bytes())
     v = mark.hexdigest()[:10]
-    for page in ("index.html", "showcase.html"):
+    for page in ("index.html",):
         if (out / page).exists():
             text = (out / page).read_text()
             (out / page).write_text(re.sub(r'((?:src|href|poster)=")((?:js|css)/[^"?#]+|[^"/:?#]+\.(?:mp4|jpg|png|gif))"', rf'\1\2?v={v}"', text))
