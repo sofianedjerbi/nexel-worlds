@@ -34,7 +34,7 @@ def hill(g):
     x, y = g.pos()
     g.stamp(-6, -14, ["." * 13] * 14, levels=[str(v) * 13 for v in TERR] + ["0" * 13] * 2)
     for j, v in enumerate(TERR):
-        g.rpc("dev_col", tiles=[[x + 3, y - 14 + j]], col=[v - 1])
+        g.rpc("dev_col", tiles=[[x + 3, y - 14 + j]], col=[v - 1], dug=True)
     g.rest()
     return x, y
 
@@ -77,22 +77,29 @@ def test_a_trench_dug_through_a_hill_of_steps_is_drawn_as_the_hill_is(browser, s
     assert not g.errors
 
 
-def test_a_cut_does_not_change_the_stone_of_the_tiles_beside_it(browser, server):
-    """A thin terrace of stone, five tiles by three, six high; a cut through its middle down to level 2. The tiles
-    beside the cut are untouched: their fronts are the same px after as before. (Stone was a mass: with the cut no
-    3 x 3 of high tiles was left, and the whole terrace turned earth: lighter boxes beside the cut.)"""
+def test_a_cut_in_stone_is_stone_and_changes_nothing_beside_it(browser, server):
+    """A thin terrace of stone, five tiles by three, six high; a cut through its middle down to level 2. A column's
+    material is the world's word, kept through digging (chunks.py rock): the tiles beside the cut are the same px
+    after as before, and the cut's own face is stone, as an earth hill's cut is earth. (Stone was guessed from the
+    heights now: the cut turned the whole terrace earth, lighter boxes beside it; then only its own column, a brown
+    face in a grey hill.)"""
     g = hd(browser, server)
     g.hour(.3, still=True)
     g.js("setOpt('shadows', 0)")
     x, y = g.pos()
     g.stamp(-2, -6, ["." * 5] * 3, levels=["6" * 5] * 3)
+    g.stamp(4, -6, ["." * 5] * 3, levels=["4" * 5] * 3)                           # and one of earth, four high, beside it
     g.rest()
     read = lambda: [g.js(FACE, [x + dx, y - 4, z]) for dx in (-2, -1, 1, 2) for z in (6, 3)]
+    grey, brown = lambda c: max(c) - min(c) < 30, lambda c: c[0] > c[2] + 35
     was = read()
-    assert all(max(c) - min(c) < 30 for c in was), was                            # (grey: stone to its foot)
-    g.rpc("dev_col", tiles=[[x, y - 6 + j] for j in range(3)], col=[2])
+    assert all(grey(c) for c in was), was                                          # (stone to its foot)
+    g.rpc("dev_col", tiles=[[x, y - 6 + j] for j in range(3)] + [[x + 6, y - 6 + j] for j in range(3)], col=[2], dug=True)
     g.rest()
     if SHOT:
         g.page.screenshot(path=os.path.join(SHOT, "thin_terrace_cut.png"))
     assert read() == was
+    cut, earth = [g.js(FACE, [x, y - 4, z]) for z in (2, 1)], [g.js(FACE, [x + 6, y - 4, z]) for z in (2, 1)]
+    assert all(grey(c) for c in cut) and all(brown(c) for c in earth), (cut, earth)
+    assert g.js(f"[VoxPaint.rocky({x}, {y - 4}), VoxPaint.rocky({x + 6}, {y - 4})]") == [2, False]
     assert not g.errors

@@ -71,6 +71,7 @@ const standAt = (x, y) => topAt(x, y);   // ...and what's on the tile (the HD lo
 // on a tile lies (under a roof: in the hollow, seen through or not)
 const groundAt = floorAt;
 // the block somebody put on the tile's top (landblocks.py): "s" stone, "d" earth; "": none, the land is what its height says
+const rockAt = (x, y) => { const b = blockOf(x, y); return !!(b && b.rock && b.rock[(y - b.by * B) * B + (x - b.bx * B)]); };   // is the tile's column stone (the world's own word: tiles.js putMat)
 const matAt = (x, y) => { const b = blockOf(x, y); return (b && b.mat && b.mat[(y - b.by * B) * B + (x - b.bx * B)]) || ""; };
 
 let myAt = null, myWas = null;             // your tile and the height you stand at (caves.js keeps it, as the server does); and the tile before

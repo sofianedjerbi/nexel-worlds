@@ -69,7 +69,8 @@ class Views:
         raw = [self.sim.land_col(i, j) for j in range(y, y + h) for i in range(x, x + w)]
         levels = ["".join(chr(SEA + col_floor(v)) for v in raw[j * w:(j + 1) * w]) for j in range(h)]
         cols = {str(i): col_runs(v) for i, v in enumerate(raw) if v & (v + 1)}
-        mats = {str((j - y) * w + i - x): m for (i, j) in self.sim.placed.at if x <= i < x + w and y <= j < y + h and (m := self.sim.placed.mat(i, j, col_runs(raw[(j - y) * w + i - x])))}   # (the block put on a tile's top: landblocks.py)
+        # a tile's material, where it is not plain earth: the block put on its top ("s", "d": landblocks.py), else "r": its column is stone (chunks.py rock)
+        mats = {str((j - y) * w + i - x): m for j in range(y, y + h) for i in range(x, x + w) if (m := self.sim.mat(i, j, col_runs(raw[(j - y) * w + i - x])))}
         # what is built over the land (sim/storeys.py): [tile's index, height, kind, the char of what stands on it]
         floors = [[(j - y) * w + i - x, z, kind, BLOCKS[B[thing]].char] for i, j, z, kind, thing in self.sim.floors.within(x, y, w, h)]
         water = [[(j - y) * w + i - x, z, v] for i, j, z, v in self.sim.water.within(x, y, w, h)]       # (water that runs, and what was poured: [tile's index, height, level], flow.py)

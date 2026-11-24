@@ -128,6 +128,11 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
             fn(ev)
         return ev
 
+    def mat(self, x, y, runs) -> str:
+        """What a screen is told a tile is made of: the block put on its top ("s" stone, "d" earth: landblocks.py), else "r"
+        where its column is stone (chunks.py), else "": earth."""
+        return self.placed.mat(x, y, runs) or ("r" if self.world.rock(x, y) else "")
+
     def set_cell(self, x, y, z, solid: bool, by: Agent | None = None, cause=None):
         """Fill or empty one cell of the land (digging, building up)."""
         self.world.set_cell(x, y, z, solid)
@@ -143,7 +148,7 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         info = {"x": x, "y": y, "ground": g, "block": b}
         if by is not None and by.action is not None:
             by.action.tiles.append(info)
-        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause, col=(runs := self.land_runs(x, y)), mat=self.placed.mat(x, y, runs))
+        self.emit("tile", x, y, ground=g, block=b, by=by.name if by else None, cause=cause, col=(runs := self.land_runs(x, y)), mat=self.mat(x, y, runs))
 
     def add_items(self, x, y, items: dict):
         if not items:
