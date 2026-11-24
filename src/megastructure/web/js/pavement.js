@@ -48,8 +48,8 @@ const Pave = (() => {
   }
   // The cell of the sheet for the cobbled tile (x, y): [sheet, sx, sy]
   function cell(x, y) {
-    const lv = levelAt(x, y), joins = (dx) => gndAt(x + dx, y) === "_" && levelAt(x + dx, y) === lv;
-    return [sheet || (sheet = make()), (((joins(-1) ? 1 : 0) + (joins(1) ? 2 : 0)) * N + (x & N - 1)) * T, (y & N - 1) * T];
+    const lv = levelAt(x, y), m = maskOf(x, y, (_, g, tx, ty) => g === "_" && levelAt(tx, ty) === lv);   // (the one mask rule, tiles.js: which tiles round it are of this ground; its stones cross only west and east)
+    return [sheet || (sheet = make()), (((m & W_ ? 1 : 0) + (m & E_ ? 2 : 0)) * N + (x & N - 1)) * T, (y & N - 1) * T];
   }
   return {cell};
 })();
