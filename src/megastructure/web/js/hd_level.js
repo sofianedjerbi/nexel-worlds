@@ -85,5 +85,15 @@ const HdLevel = (() => {
     const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5); for (let i = 0; i < r.l.length; i += 3) g.rect((x0 + r.l[i]) * zs, (y0 + r.l[i + 1]) * zs, r.l[i + 2] * zs, zs); g.clip("evenodd");
   }
   const body = (me, a, zs) => { const r = me && a && runsOf(me.canvas); if (!r || !r.b) return null; const x0 = Math.round(a[0] / zs) - me.fx, y0 = Math.round(a[1] / zs) - me.fy; return {x: (x0 + r.b[0]) * zs, y: (y0 + r.b[1]) * zs, w: (r.b[2] - r.b[0]) * zs, h: (r.b[3] - r.b[1]) * zs}; };
-  return {track, own, over, hides, veils, wall, wallAt, cut, body, get place() { return place; }, get cover() { return cov; }, coverOf: cover};
+  // behind(x, y, Z0, k) -> is a body on (x, y) at level Z0 hidden to its head by what stands south of it, as the eye sees it: the land, and what is built (a house's walls and roof, HdThings' boxes, levels over the tile's floor)?
+  // (bubbles.js: what someone says is not hung over a roof they are behind. Heights kept half a second: a tile's boxes are not made again each frame)
+  const tall = new Map(); let tallAt = 0;
+  const standing = (x, y) => { const key = x + "," + y; let t = tall.get(key); if (t === undefined) { t = topAt(x, y); for (const b of HdThings.at(x, y) || []) t = Math.max(t, floorAt(x, y) + (b.z + (b.h || 0)) / RELIEF_STEP); tall.set(key, t); } return t; };
+  function behind(x, y, Z0, k) {   // (k: levels the eye's line climbs a tile)
+    if (performance.now() - tallAt > 500) { tall.clear(); tallAt = performance.now(); }
+    const z = Z0 + 1, x0 = Math.floor(x), y0 = Math.floor(y);
+    for (let d = 1; d <= 8; d++) if (standing(x0, y0 + d) > z + (y0 + d - y) * k) return true;
+    return false;
+  }
+  return {track, own, over, hides, behind, veils, wall, wallAt, cut, body, get place() { return place; }, get cover() { return cov; }, coverOf: cover};
 })();

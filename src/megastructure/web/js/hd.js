@@ -7,13 +7,13 @@
 // billboards of their own sprites (objectSprite), px for px; furniture, walls, fences, built floors and roofs: small 3D
 // pieces in the land (hd_things.js), a built house open over your head; you and the others: drawEntity at zoom 1.
 const HdLook = (() => {
-  const GROW = .25, EASE = .4, HOLD = 300, CAP = 20, R = 24, SEA_L = 1, PART = .25, MOST = .75, FAR = 64, EDGE = 32;   // (FAR, EDGE: how far a body may be, tiles; how far off the picture its feet may be and it is drawn, art px)
+  const GROW = .25, HOLD = 300, CAP = 20, R = 24, SEA_L = 1, PART = .25, MOST = .75, FAR = 64, EDGE = 32;   // (FAR, EDGE: how far a body may be, tiles; how far off the picture its feet may be and it is drawn, art px)
   // STEEP: the steepest the eye ever looks down (degrees): in a hole, a room, a cave, a shaft, behind a mountain. 58: the land's walls stand as walls and you see what you build on; what hides you is cut (the x-ray, hd_level.js hides / veils), not looked over. (It was 78.6, nearly straight down: "the camera's inclination makes it hard to build")
   const STEEP = 58;
   const cfg = {levels: [-9, 12], variants: 4, up: RELIEF_STEP, rock: {from: 5, lo: -512, n: 4}};
   const cam = {kind: "persp", pitch: 36, fov: 26};
   const api = {eye: null, get on() { return !!this.eye || (!!me && myId !== null); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen || (warmOn && warm < 3); }, get warm() { return warm; }, get part() { return (eng ? gen ? eng.part : 1 : 0) * .8 + (warm + 1) / 20; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: STEEP, nowin: false, edge: "B", force: null, cam, bend: .03, faces: 0, builds: 0, n: 0};
-  let hidAt = -1e9, bareAt = false, camL = null, pitN = null, stage = 0, tilt = 0, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), lit = null, hl = 0, he = 0, hy = 0, since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, camV = 0, lastLf = null, anc = null, ancG = null, genAt = null, landAt = null, held = false, heldAt = 0, wasAt = null, jump = true, genC = null, shownC = null, spent = 0, warm = -1, warmOn = false;
+  let hidAt = -1e9, bareAt = false, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, anc = null, ancG = null, genAt = null, landAt = null, held = false, heldAt = 0, wasAt = null, jump = true, genC = null, shownC = null, spent = 0, warm = -1, warmOn = false;
   const sprs = new Map(), lads = new Map(), things = new Map(), piles = new Map(), built = new Map(), stoodOf = new Map();
   // (an insertion sort on each one's y read once into YK: the list comes mostly in order. Array sort asked a.y - b.y a thousand times a frame, each a new number made for the collector)
   let YK = new Float64Array(512); const byY = (l) => { const n = l.length; if (YK.length < n) YK = new Float64Array(n * 2); for (let i = 0; i < n; i++) YK[i] = l[i].y;
@@ -76,31 +76,6 @@ const HdLook = (() => {
       if (sea && run === null) run = px; if (!sea && run !== null) { runsOf.push([run, px]); run = null; } }
     return runsOf;
   }
-  // the hour's light on the land: the game's own (daylight.js Light: its tint, its wash, a lamp on each of you and each fire, in whole steps), put where this camera
-  // puts them. (It was the shader's `day` alone: the night's land as bright as noon under a night sky.) -> {wash, lit: the light's picture}
-  // for the land's own painter to lay over what it draws (vox_style.js `hour`), or nothing at plain day
-  const SOFT = Array(24).fill(.01);   // (a lantern under the sky: 24 rings of a hundredth each: none is seen, the light fades out)
-  function hour(w, h, list) {
-    const H = Light.now(), {wash, dark} = H;   // (the hour's light: daylight.js Light)
-    if (wash[3] <= .004 && dark <= .01) return null;
-    if (!H.lamps) return {wash, tint: H.lit};   // (no lamp shows: one colour, a px of it: it was a picture the screen's size sent to the GPU every frame of a morning)
-    lit = lit || document.createElement("canvas"); if (lit.width !== w || lit.height !== h) { lit.width = w; lit.height = h; lit._k = ""; }
-    const lamps = []; for (const s of list) if (s.lamp) { const a = eng.at(s.x, s.y, s.z); if (a) lamps.push(Math.round(a[0] * 4), Math.round(a[1] * 4), s.lamp); }
-    const lk = [H.lit, dark.toFixed(3), lamps, api.builds].join(), out = {wash, lit}; if (lk === lit._k) return out; lit._k = lk; lit._v = (lit._v || 0) + 1;   // (the same lamps at the same places: the picture there is this frame's: not painted, not sent again)
-    const q = lit.getContext("2d"); q.globalAlpha = 1; q.globalCompositeOperation = "source-over"; q.fillStyle = `rgb(${H.lit.join()})`; q.fillRect(0, 0, w, h); q.globalCompositeOperation = "lighter";
-    for (const s of list) if (s.lamp) { const a = eng.at(s.x, s.y, s.z), cl = s.top ? HdLevel.cover.roof : topAt(Math.floor(s.x), Math.floor(s.y)) > (s.zs ?? s.z); if (s.top) api.youLit = !cl || !!winMap().size;   // (zs: the ground's level. A step up or down drew you between two levels: the tile's top over that, your lantern was cut to a window there was none of: gone the time of the step)
-      if (!a) continue; if (cl) { q.save(); winPath(q, Math.floor(s.x), Math.floor(s.y)); q.clip(); }   // (a light under the land, your lantern, a fire in your room, lights what the window shows, not the grass over it: a campfire 14 levels down lit a ring on the meadow)
-      if (s.lamp > 1 || cl) lamp(q, a[0], a[1] - 8, s.lamp > 1 ? 64 : 42, s.lamp > 1 ? "rgb(255,176,96)" : "rgb(255,222,170)", (s.lamp > 1 ? 1.15 : .45) * H.k, [0, 0]);
-      else if (H.open > 0) lamp(q, a[0], a[1] - 8, 72, "rgb(255,232,200)", H.open, [0, 0], SOFT);   // (a lantern under the sky: only once the night is in (the sun down), less with "Light at night", in 24 steps of a hundredth: the land by you a little lighter, no ring, no disc. It was rings from a fifth of dark on: a yellow halo on a meadow still in the sunset's light)
-      if (cl) q.restore(); }
-    q.globalAlpha = 1; return out;
-  }
-  // the px of the picture the window shows round (tx, ty): each of its tiles' floor, and the walls north and beside it up to its ceiling: a path on q
-  function winPath(q, tx, ty) {
-    q.beginPath(); const quad = (l) => { const a = l.map((v) => eng.at(...v)); let ar = 0; for (let i = 0; i < 4; i++) ar += a[i][0] * a[(i + 1) % 4][1] - a[(i + 1) % 4][0] * a[i][1]; if (ar < 0) a.reverse(); q.moveTo(...a[0]); for (let i = 1; i < 4; i++) q.lineTo(...a[i]); q.closePath(); };
-    for (const [x, y, lo, hi] of eng.win.tiles) if (Math.abs(x - tx) <= 9 && Math.abs(y - ty) <= 9) { quad([[x, y, lo], [x + 1, y, lo], [x + 1, y + 1, lo], [x, y + 1, lo]]);
-      for (const e of [[[x, y], [x + 1, y]], [[x, y], [x, y + 1]], [[x + 1, y], [x + 1, y + 1]]]) quad([[...e[0], lo], [...e[1], lo], [...e[1], hi], [...e[0], hi]]); }
-  }
   // what is written and pointed at, over the picture, by the game's own painters (names, a health bar, an emote, what is said, a progress bar): they were
   // drawn at the classic picture's places, under this one. Their sx, sy: someone's own place as this camera has it (found by its x, its y), else measured from you.
   // (two parts. marks: what is pointed at and planned (corners, ghosts, the build cursor), all in whole art px: on the world's own canvas with the land (hd_view.js marks): they move with every step you take,
@@ -153,25 +128,7 @@ const HdLook = (() => {
     const a = Build.on ? Build.aim() : aimedTile(), it = a && a.it; if (a && a.p && it && it.ghost && it.ok !== false && !it.info && !it.walk) add(it.ghost, a.p.x, a.p.y, it.z !== undefined && !it.draw ? it.z : undefined, it.steps);
     return out;
   }
-  // the game's sky with its horizon where ground at the eye's own level meets it, at the top of its bend (it was the classic picture's horizon, higher: a wide empty band
-  // between the sky and the land, a third of a phone held upright). Fixed to the eye: its pitch and the screen, nothing of the land (eyeLine). edge: where the land ahead really
-  // ends, at or under the line (he, below): the far hills stand on it and the sky goes on down to them (vox_sky.js)
-  api.sky = (t) => { const s = Curve.sky(t); return api.on && hl ? Object.assign({}, s, {line: Math.round(hl) * zoom, edge: Math.round(Math.max(hl, he)) * zoom}) : s; };
-  let hKey = "", hRaw = 1e9;   // (the skyline is looked for when you change tile, level or tilt: it was 45 points of the land put through the camera every frame, .3 ms of a sprint's frame on a phone)
-  function horizon(tx, ty, L) { const hk = [tx, ty, L, cam.pitch.toFixed(1), Math.round(camL * 8), eng.stamp, api.builds, !!gen].join(); let y = hRaw; if (hk !== hKey) { hKey = hk; y = -1e9; for (let dx = -18; dx <= 18; dx += 9) { let m = 1e9; for (let dn = 6; dn <= 22; dn += 2) { const c = Voxels.host.column(tx + dx, ty - dn), a = eng.at(tx + dx + .5, ty - dn, c && c.length ? c[c.length - 1] : L); if (a) m = Math.min(m, a[1]); } if (m < 1e8) y = Math.max(y, m); } if (y < -1e8) y = 1e9; hRaw = y; } hy = y < 1e8 ? y : -1e9; }   // (hy: the land's own skyline north of you, five columns across: where the far rows are a little soft, and what bare() counts under)
-  // the sky's line: where level ground at the eye's level (at: the eye's point, as drawn) is highest on the screen, past the bend. It moves only with the pitch (and the screen's size): a real sky
-  // does not move with the land in front of it. It came down to the lowest of the land's skylines north of you, eased: past a mountain the whole sky (sun, clouds, far hills) slid up
-  // its side and down again, 58 art px walking 12 tiles to it.
-  // ...with ground as low as the LOWEST LAND AHEAD, if it is lower than the eye's own (low: the level of the far land and sea north of you, as far as the far patches go, the sea's where the land is not known; past it the
-  // patches stop: the line is at the farthest of them at the most). From a mountain the far land drops away past the bend, lower on the screen than ground at the eye's level would: the line was over a
-  // gap the land could never fill, the backdrop's flat colours in it (the far land's green, the sea's blue in columns, a checker at their ends): "a flat blue mass" between the land and the far hills
-  // ...and that is the EDGE (he, api.sky's edge), not the sky's line: the sky's line stays the eye's, the pitch's alone (hl). It was the sky's line: climbing a hill of steps 6 levels the
-  // whole sky, sun and clouds came down 55 art px with the land ahead's own horizon, 9 a level, and up again down the other side. Now the far hills stand on the edge, the sky goes on down to them
-  let lowKey = "", lowL = 1; const eyeC = {k: "", y: 0}, edgeC = {k: "", y: 0};
-  function eyeLine(at, w, h, low, C) { const lv = Math.min(at[2] - .5, low), k = [cam.pitch.toFixed(2), cam.fov, api.bend, w, h, Math.round(lv * 16), Math.round(at[2] * 16)].join(); if (k !== C.k) { let m = 1e9; for (let dn = 1; dn <= R + 40; dn++) { const a = eng.at(at[0], at[1] - dn, lv); if (a && isFinite(a[1])) m = Math.min(m, a[1]); } C.k = k; C.y = m < 1e8 ? m : 0; } return C.y; }
-  function lowAhead(tx, ty) { const H0 = Voxels.host, k = [tx >> 2, ty >> 2, eng.stamp].join(); if (k === lowKey) return lowL; lowKey = k; let m = 1e9;   // (every 4 tiles, as you go 4: some 200 columns)
-    for (let dy = 6; dy <= R + 40; dy += 4) for (let dx = -R; dx <= R; dx += 4) { const x = tx + dx, y = ty - dy, c = H0.column(x, y); m = Math.min(m, !c ? SEA_L : H0.water(x, y) ? H0.waterTop(x, y) : c.length ? c[c.length - 1] : SEA_L); }
-    return api.low = lowL = m; }   // (a dug pit there: the line a little lower, more sky behind the land, never a gap)
+  const H = {cam, api, R, SEA_L, topAt: (x, y) => topAt(x, y), winMap: () => winMap(), get eng() { return eng; }, get making() { return !!gen; }, get seen() { return seen; }, get south() { return south; }, get cv() { return cv; }, Z: () => Z()}, eye = HdEye(H), lamps = HdLamps(H), boxed = HdPick(H).boxed;   // (the eye: hd_eye.js; the lamps: hd_lamps.js; the pointer: hd_pick.js)
   function after() {
     const now = performance.now(), dt = Math.min(.1, (now - last) / 1000); last = now; api.n++;   // (n: this look's frames: who it drew in the last one, ent)
     const p = api.eye ? api.eye() : ents.get("agent" + myId); if (!p) return;   // (api.eye: the first screen, title_scene.js: nobody is you: the eye looks at a place {x, y, z, free}: its level, the surface's pitch, no window, nothing aimed at)
@@ -182,14 +139,11 @@ const HdLook = (() => {
     const b0 = 36 + 16 * Math.max(0, Math.min(1, h / w - 1)); south = Math.min(R, Math.ceil(h / 32 / Math.sin(b0 * Math.PI / 180)) + 3 + Math.ceil(dep * .9));   // (deep under the land its top south of you is nearer the eye: more rows of it show)
     // HIDDEN: a roof over you, or land south of you over the eye's line to you, most of you (MOST: a hole a level deep hides .64 of you, its rim over your legs: no tilt; once hidden, a quarter of you: PART), from the surface's pitch, the open ground's eye (hd_level.js hides; asked from the pitch the eye has, the eye tilted up and you showed, it came down and you hid): the x-ray window, one view for a tunnel, a room, a shaft, a gorge, a cliff's foot.
     // (Under the open sky you were LIFTED instead (hd_level.js lift, gone): drawn as high as the rim south of you: at the foot of a cliff 12 high, in a river, on the cliff's top edge: "acts like he's above")
-    const bare = !p.free && api.force === null && !roof && (HdLevel.hides(tx, ty, L, eyeRise(b0), p.e && swimsAt(p, p.e) ? SWIM.sink : 0, stage ? PART : MOST) ? (hidAt = now, true) : bareAt && now - hidAt < HOLD);
+    const bare = !p.free && api.force === null && !roof && (HdLevel.hides(tx, ty, L, eyeRise(b0), p.e && swimsAt(p, p.e) ? SWIM.sink : 0, eye.above ? PART : MOST) ? (hidAt = now, true) : bareAt && now - hidAt < HOLD);
     // (hidAt: hidden stays hidden for the window's hold, 300 ms after the land last hid you: walking along a hill's foot a column a fifth of you high, past PART, shut the window to your tile for a frame or two and opened it again: a flicker)
     // (PART: where the eye looks down no steeper (in a hole, or land south of you taller than the eye can look over), land over a quarter of you is enough: cut, not half of you one px in two. At 64 degrees a room 4 deep hid half of you, no window, the floor at your feet under its south wall)
     bareAt = bare; const cov0 = p.free ? false : api.force !== null ? api.force > 0 : roof || bare, cov = cov0 || (api.force === null && now - covAt < HOLD);
-    // THE EYE, from the cover alone, one easing: the surface's pitch (b0) out in the open whatever the land's shape round you; from above (STEEP) while land covers or hides you (cov: back 300 ms
-    // after it last did). It tilts over 400 ms, slow at both ends, the window opening with it. (It was four probes: land south over your head row by row (clear), 16 rays "shut in" (steep), the roof, hides:
-    // crossing a dip one level deep the eye tilted to 58 and back within a second, the mountain south of you sliding up the screen and down: doben00, "like the mountain is moving")
-    stage = cov ? 1 : 0; const base = b0, want = base + (api.steep - base) * stage, kS = eyeRise(want); tilt = pitN === null ? stage : Math.max(0, Math.min(1, tilt + (stage ? 1 : -1) * Math.min(dt, .034) / EASE)); pitN = base + (api.steep - base) * tilt * tilt * (3 - 2 * tilt); cam.pitch = pitN; cam.base = base; cam.want = want;
+    const kS = eye.pitch(cov, b0, dt);   // (the eye's pitch, from the cover alone: hd_eye.js)
     const own = HdLevel.own(P, roof, cov0);   // (the window's boxes that are yours before your space is found: your tile and the covered ones you came from)
     if (cov0) covAt = now;   // (the window shuts 300 ms after the land last hid you, with the eye's tilt)
     grow = cov ? Math.min(CAP, grow + dt / GROW * CAP) : Math.max(0, grow - dt / GROW * CAP); api.u = grow / CAP; const st = cov ? CAP : 0;   // (u: how open the window is as this file counts it; the painter eases its own, vox_style.js)
@@ -215,13 +169,7 @@ const HdLook = (() => {
     // this one); 0 its first picture with nothing on it (the painter's start), not shown, the land not made on; 1 the land made on, what stands made, 8 ms of new things a frame; 2 the people, 8 ms of new ones a frame; 3 whole. The island is not shown before (busy): no frame of it half made is seen
     warmOn = !!p.rush; if (warmOn && warm < 0) { warm = 0; api.ms = performance.now() - t0; return; }
     const fill = warmOn && warm < 3, until = warm < 1 ? 0 : performance.now() + 8; let left = false, nw = 0;   // (nw: new ones made this frame: one at least)
-    // the eye's level follows yours: a step over some 150 ms; a FALL: the eye stays while your body is in the air (the land steady, the body coming down it; at most 9 levels over where you will land), then comes
-    // down to you slow at both ends (a spring, critically damped, its exact answer for any frame's length: .4 s for 12 levels. Stepped a frame at a time it ran away when a frame took over 83 ms: a slow phone). (Over 8 levels it went there in one frame: off the gorge's rim more than half the picture changed at once, your body in the top quarter of it)
-    { const fl = BodyPlace.of(p).fall, air = fl && fl.air, far = camL !== null && Math.abs(Lf - camL); if (air) camV = 0;
-      if (camL === null || far > 40) { camL = Lf; camV = 0; } else if (air) camL = Math.max(Math.min(camL, L + 9), camL - 40 * dt); else if (far > 3 || camV) { const e = camL - Lf, a = camV + 12 * e, q = Math.exp(-12 * dt); camL = Lf + (e + a * dt) * q; camV = (camV - 12 * a * dt) * q; if (Math.abs(Lf - camL) < .07 && Math.abs(camV) < 1) { camL = Lf; camV = 0; } }
-      else { const d = lastLf === null || fl ? 0 : Lf - lastLf; if (Math.abs(d) < .5) camL += d; const e = Lf - camL; camL = Math.abs(e) < .01 ? Lf : camL + e * (1 - Math.exp(-dt / .1)); }
-      lastLf = Lf; }   // (a step, a hop up or down one: the eye goes with Lf as it goes, frame for frame (the arc moves only the body); only a sudden change of it (a block put under you) is eased. It eased all of it over 100 ms: the eye a third of a level behind you as you landed, the land still sliding 200 ms after, your body bobbing on the screen at every step)   // (Lf: your level between two tiles, on the line between their heights: down a stair the eye goes down a slope, not a step a tile)
-    const list = [];
+    const camL = eye.level(p, L, Lf, dt), list = [];   // (the eye's level follows yours: hd_eye.js)
     const stood = (c, x, y, z, gh, m) => {      // a thing that stands: furniture as its card (hd_things.js: px for px, its top leaning with where it is on the screen), the rest a billboard
       if (c === "l") { const k = [x, y, z, landVer, Floors.ver].join(), ln = Climb.lean(x, y, z); let lc = lads.get(k); if (!lc) { if (lads.size > 60) lads.clear(); const LH = Math.ceil((shOf(ln ? ln.top - z : 2) + 48) / 16) * 16, R0 = LH - 32, a = HdThings.painted(48, LH, () => Climb.drawLadder(x, y, z, (X) => 16 + (X - x) * 16, (Y) => R0 + (Y - y) * 16 + shOf(z), 16, 1)); lc = document.createElement("canvas"); lc.width = 48; lc.height = LH;
         const q = lc.getContext("2d"); q.drawImage(a, 0, 0, 48, R0 - 10, 0, 12, 48, R0 - 10); q.drawImage(a, 0, R0 + 2, 48, LH - R0 - 2, 0, R0 + 2, 48, LH - R0 - 2); lads.set(k, lc); }   // (the game's picture of it runs 12 px on, a tile's depth in the classic picture: here it stood over the rim. Three rungs taken out of its middle; its canvas as tall as the wall it leans on: a deep shaft's ladder was cut at 128 px)   // (a ladder: a standing face of the land, a px of it a px of the land's own fronts: as tall as the wall it leans on at any pitch. Upright px for px it stood three tiles over the rim of a shaft)
@@ -278,10 +226,9 @@ const HdLook = (() => {
       anc[3] = oy; anc[4] = cam.pitch; return [Math.round(o[0] - fx) - o[0], oy - o[1]]; };
     if (warmOn && warm >= 3 && gen) { api.ms = performance.now() - t0; return; }   // (the first screen's island, all made but its land, under the wait: nothing to draw, the land made 24 ms a frame)
     let pic = eng.draw({w, h, cam, at: [p.x + .5, p.y + .5, camL + .5], pin, bend: api.bend, t: now / 1000, light,
-      water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y, ver: Voxels.wver} : null, dep, own, rim: C.rim, under: HdEase.of("under", roof), sky: bare, behind: p.free || cov0 ? 0 : HdEase.of("behind", HdLevel.over(tx, ty, L, kS) >= 1), hid: (api.hid = p.free || cov0 || HdLevel.over(tx, ty, L, kS) >= 1 || list.some((s) => s.tx !== undefined && !s.lie && s.ty > ty && s.ty <= ty + 2 && Math.abs(s.tx - tx) <= 1) ? 1 : 0), win: api.nowin ? 0 : 1, edge: api.edge, sprites: list, way: WayShow.land(), ghosts: pieces(list), hour: hour(w, h, list)});   // (hid 0: the land in front hides no more than your legs (a step a level up just south of you): it is in front of them, the step's edge over you at your waist, not one px in two of you over it: "it looks like I am above the border but I am under". Higher, or covered, or a thing standing just south of you (a tree, a wall, a pillar: what stands is not land, and from Jump 8 you were drawn whole over the tree in front of you): you show through it)
+      water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y, ver: Voxels.wver} : null, dep, own, rim: C.rim, under: HdEase.of("under", roof), sky: bare, behind: p.free || cov0 ? 0 : HdEase.of("behind", HdLevel.over(tx, ty, L, kS) >= 1), hid: (api.hid = p.free || cov0 || HdLevel.over(tx, ty, L, kS) >= 1 || list.some((s) => s.tx !== undefined && !s.lie && s.ty > ty && s.ty <= ty + 2 && Math.abs(s.tx - tx) <= 1) ? 1 : 0), win: api.nowin ? 0 : 1, edge: api.edge, sprites: list, way: WayShow.land(), ghosts: pieces(list), hour: lamps.hour(w, h, list)});   // (hid 0: the land in front hides no more than your legs (a step a level up just south of you): it is in front of them, the step's edge over you at your waist, not one px in two of you over it: "it looks like I am above the border but I am under". Higher, or covered, or a thing standing just south of you (a tree, a wall, a pillar: what stands is not land, and from Jump 8 you were drawn whole over the tree in front of you): you show through it)
     if (!pic) { if (pic === null) noGL = true; else api.lost = true; api.ms = performance.now() - t0; return; }   // (false: the land's context lost, none given yet: the last picture stays, see `lost`)
-    seen = {tx, ty, L, rim: C.rim, top: tilt > .5 && !cov0, ks: eyeRise(cam.pitch), k: zoom / artPx(), me: list.find((q) => q.top), list, at: [snap(p.x + .5), snap(p.y + .5), Lf]}; horizon(tx, ty, L + dep); { const at = [snap(p.x + .5), snap(p.y + .5), Math.round(camL * 16) / 16 + .5], ease = (v, t) => !v || Math.abs(t - v) < .5 ? t : v + (t - v) * (1 - Math.exp(-dt / .25)), lw = lowAhead(tx, ty), te = Math.max(8, eyeLine(at, w, h, lw, edgeC) + 2);
-      hl = ease(hl, Math.max(8, eyeLine(at, w, h, 1e9, eyeC) + 2)); he = ease(he, te); api.line = [Math.min(at[2] - .5, lw), te - 2]; }   // (eased: the pitch's tilt, a quarter of a second; the edge, climbing, goes down with you, never in a jump)   // (the horizon is the surface's, however deep you are)   // (at: where the eye looks: you, to a px of the land: your own name is written from there)
+    seen = {tx, ty, L, rim: C.rim, top: eye.tilt > .5 && !cov0, ks: eyeRise(cam.pitch), k: zoom / artPx(), me: list.find((q) => q.top), list, at: [snap(p.x + .5), snap(p.y + .5), Lf]}; eye.lines(tx, ty, L + dep, [snap(p.x + .5), snap(p.y + .5), Math.round(camL * 16) / 16 + .5], w, h, dt);   // (eased: the pitch's tilt, a quarter of a second; the edge, climbing, goes down with you, never in a jump)   // (the horizon is the surface's, however deep you are)   // (at: where the eye looks: you, to a px of the land: your own name is written from there)
     api.faces = eng.faces; api.models = eng.models; reachOf(tx, ty, w, h, now);
     if (fill) { const w0 = warm; warm += w0 === 0 || !left ? 1 : 0; if (w0 === 0) { api.ms = performance.now() - t0; return; } }
     // the land's picture over the backdrop on the world's own canvas, at the art's own size (hd_view.js): put together only when one of them is new; under a roof the sky stays as a band over the earth's far edge
@@ -297,14 +244,8 @@ const HdLook = (() => {
     for (let dx = -FAR; dx <= FAR; dx += 2) { let sky = 1e9; for (let dy = d0; dy >= -FAR; dy--) { const c = Voxels.host.column(tx + dx, ty + dy); if (!c || !c.length) continue; const a = eng.at(tx + dx + .5, ty + dy + .5, c[c.length - 1]); if (!a || a[1] >= sky) continue; sky = a[1];
       if (a[0] >= 0 && a[0] <= w && a[1] >= 0 && a[1] <= h) { x0 = Math.min(x0, tx + dx); x1 = Math.max(x1, tx + dx); y0 = Math.min(y0, ty + dy); y1 = Math.max(y1, ty + dy); } } }
     api.reach = [x0 - 1, y0, x1 + 1, y1]; }
-  // the px a tile's boxes take on the screen (hd_things.js: a wall, a fence, a door): {x, y, w, h}, or null
-  function boxed(x, y, lo) {   // (lo: only the boxes of the storey that starts at that height, px: the aim's corners went round a wall, the wall over it and the roof: two pairs of brackets a storey apart)
-    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-    for (const b of HdThings.at(x, y) || []) if (!b.shade && (lo === undefined || (b.z < lo + 20 && b.z + b.h > lo - 2))) for (let n = 0; n < 8; n++) { const p = api.screenOf(x + (b.x + (n & 1) * b.w) / 16, y + (b.y + (n >> 1 & 1) * b.d) / 16, (b.z + (n >> 2) * b.h) / RELIEF_STEP); if (p) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); } }
-    return x1 > x0 ? {x: x0, y: y0, w: x1 - x0, h: y1 - y0} : null;
-  }
   // what is under the pointer (client px): the nearest top drawn there, as the land shows it (in the x-ray window: your space's floors, the land over them is not drawn)
-  Object.defineProperty(api, "level", {get: () => [seen ? seen.L : null, camL, seen ? seen.at[2] : null, 0, seen ? seen.rim : null]});   // (tests: your level as the picture has it, the eye's, yours between two tiles, how much you are lifted in a hole and its rim)
+  Object.defineProperty(api, "level", {get: () => [seen ? seen.L : null, eye.camL, seen ? seen.at[2] : null, 0, seen ? seen.rim : null]});   // (tests: your level as the picture has it, the eye's, yours between two tiles, how much you are lifted in a hole and its rim)
   api.forget = () => { if (eng) { eng.forget(); key = ""; } };   // (tests: the land and its paints wiped, as when the paints ran out (eng.lost), at once: while a land is being made too)
   api.spaceAt = (x, y) => (eng ? eng.spaceAt(x, y) : null); api.winAt = (x, y) => winMap().get(x + "," + y) || null;   // (tests: a tile of your space, vox_style.js; a tile of the window: [floor, ceiling])
   let wmV = -1, wm = new Map(); const winMap = () => { const w = eng ? eng.win : null; if (!w || !w.n || w.a <= 0) { if (wm.size) wm = new Map(); wmV = -1; return wm; } if (w.tiles !== wmV) { wmV = w.tiles; wm = new Map(); for (const [x, y, lo, hi] of w.tiles) { const k = x + "," + y, o = wm.get(k); wm.set(k, o ? [Math.min(o[0], lo), Math.max(o[1], hi)] : [lo, hi]); } } return wm; };   // (the window's tiles now: "x,y" -> [floor, ceiling])
@@ -316,46 +257,10 @@ const HdLook = (() => {
   api.drawnAt = (q) => { const s = seen && seen.list.find((o) => o.q === q); return s ? s.z : null; };   // (the level a body is drawn at: tests)
   api.art = () => (seen ? {u: zoom / seen.k, view: eng.mver + "|" + zoom / seen.k + "|" + cam.pitch, at: api.markOf, behind: (x, y, Z0) => { const z = Z0, k = eyeRise(cam.pitch), y0 = Math.floor(y); for (let d = 1; d <= 8; d++) if (topAt(Math.floor(x), y0 + d) > z + (y0 + d - y) * k) return true; return false; }, wall: (x, y, z) => { const f = HdLevel.wall(x, y, z, seen); return f ? (X, Y, Z) => api.screenOf(...HdLevel.wallAt(X, Y, Z, seen, f)) : null; },
     body: seen.me ? HdLevel.body(seen.me, api.screenOf(seen.me.x, seen.me.y, seen.me.z), zoom / seen.k) : null} : null);   // (wall: a cell in the wall between the eye and you -> where its places are drawn, hd_level.js wallAt; body: your sprite's box)
-  // is a body on (x, y) at level Z0 hidden to its head by what stands south of it, as the eye sees it: the land, and what is built (a house's walls and roof, HdThings' boxes, levels over the tile's floor)?
-  // (bubbles.js: what someone says is not hung over a roof they are behind. Heights kept half a second: a tile's boxes are not made again each frame)
-  const tall = new Map(); let tallAt = 0;
-  const standing = (x, y) => { const key = x + "," + y; let t = tall.get(key); if (t === undefined) { t = topAt(x, y); for (const b of HdThings.at(x, y) || []) t = Math.max(t, floorAt(x, y) + (b.z + (b.h || 0)) / RELIEF_STEP); tall.set(key, t); } return t; };
-  api.hidden = (x, y, Z0) => {
-    if (!seen || !eng) return false;
-    if (performance.now() - tallAt > 500) { tall.clear(); tallAt = performance.now(); }
-    const z = Z0 + 1, k = eyeRise(cam.pitch), x0 = Math.floor(x), y0 = Math.floor(y);
-    for (let d = 1; d <= 8; d++) if (standing(x0, y0 + d) > z + (y0 + d - y) * k) return true;
-    return false;
-  };
+  api.hidden = (x, y, Z0) => !!seen && !!eng && HdLevel.behind(x, y, Z0, eyeRise(cam.pitch));   // (a body hidden to its head by what stands south of it: hd_level.js)
   api.screenOf = (x, y, z) => { if (!eng || !seen) return null; const a = eng.at(x, y, z); return a && [a[0] * zoom / seen.k, a[1] * zoom / seen.k]; };
-  // -> the tile under the pointer: what the window shows first (your space's floors, the fronts of the walls north of them: the land over them is not drawn, so it is not pointed at); then from the south (the nearest) north, the first whose south front or whose top is under it (a front: face, down: levels under its top, as mouse.js). zf: its height, if not the land's as shown (build mode)
-  api.pick = (mx, my, zf) => {
-    if (!eng || !seen) return null;
-    const inq = (P, q) => { let s = 0; for (let i = 0; i < 4; i++) { const a = q[i], b = q[(i + 1) % 4], c = (b[0] - a[0]) * (P[1] - a[1]) - (b[1] - a[1]) * (P[0] - a[0]); if (c && s && Math.sign(c) !== s) return false; if (c) s = Math.sign(c); } return true; };
-    const wmp = winMap(), flr = (x, y) => { const b = wmp.get(x + "," + y), t = topAt(x, y); return b ? Math.min(t, b[0]) : t; }, zo = (x, y) => (zf ? zf(x, y) : Models.up(x, y) ? liftAt(x, y) / zoom / RELIEF_STEP : flr(x, y)), part = (q) => Math.max(0, Math.min(.999, (my - Math.min(q[0][1], q[1][1])) / Math.max(1, Math.max(q[2][1], q[3][1]) - Math.min(q[0][1], q[1][1]))));
-    if (!zf && wmp.size) for (const [x, y, lo, hi] of eng.win.tiles.slice().sort((a, b) => b[1] - a[1])) { const q = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]].map(([a, b]) => api.screenOf(a, b, lo)); if (q.every((v) => v) && inq([mx, my], q)) return {x, y, fy: part(q)};
-      if (!wmp.has(x + "," + (y - 1)) && topAt(x, y - 1) > lo) { const f = [[x, y, Math.min(hi, topAt(x, y - 1))], [x + 1, y, Math.min(hi, topAt(x, y - 1))], [x + 1, y, lo], [x, y, lo]].map((v) => api.screenOf(...v)); if (f.every((v) => v) && inq([mx, my], f)) return {x, y: y - 1, fy: .999, face: true, down: Math.floor(part(f) * (Math.min(hi, topAt(x, y - 1)) - lo))}; } }
-    for (let y = seen.ty + south; y >= seen.ty - R; y--) for (let x = seen.tx - R; x <= seen.tx + R; x++) {
-      if (!zf) { const c0 = combAt(x, y), pb = c0 && "W%+#g".includes(c0) && HdThings.is(c0, x, y) ? boxed(x, y) : null; if (pb && mx >= pb.x && mx <= pb.x + pb.w && my >= pb.y && my <= pb.y + pb.h) return {x, y, fy: .5}; }   // (a wall, a fence: what stands as boxes is pointed at where it is drawn: the pointer on a wall's front named the ground behind it)
-      const z = zo(x, y), zs = zf ? z : zo(x, y + 1);
-      if (zs < z) { const q = [[x, y + 1, z], [x + 1, y + 1, z], [x + 1, y + 1, zs], [x, y + 1, zs]].map((v) => api.screenOf(...v)); if (q.every((v) => v) && inq([mx, my], q)) return {x, y, fy: .999, face: true, down: Math.floor(part(q) * (z - zs))}; }
-      const q = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]].map(([a, b]) => api.screenOf(a, b, z));
-      if (q.every((v) => v) && inq([mx, my], q)) return {x, y, fy: part(q)};
-    }
-    return null;
-  };
-  // how much of you is seen (tests): the share of your own drawn px that are on the screen as they are drawn; box [x0, y0, x1, y1] (CSS px): -> [that share, how many of them are seen outside the box]
-  api.catSeen = (box) => {
-    const s = seen && seen.me; if (!s || !eng) return 0; const a = eng.at(s.x, s.y, s.z); if (!a) return 0;
-    const sg = s.canvas.getContext("2d").getImageData(0, 0, s.canvas.width, s.canvas.height).data, g = HdView.read(0, 0, cv.width, cv.height).data;
-    let n = 0, ok = 0, out = 0; const B = box && box.map((v) => v * cv.width / innerWidth);
-    for (let j = 0; j < s.canvas.height; j++) for (let i = 0; i < s.canvas.width; i++) { const o = (j * s.canvas.width + i) * 4; if (sg[o + 3] < 128) continue; n++;
-      const X = Math.floor((Math.round(a[0]) - s.fx + i + .5) * Z()), Y = Math.floor((Math.round(a[1]) - s.fy + j + .5) * Z()), p = (Y * cv.width + X) * 4;
-      if (X >= 0 && Y >= 0 && X < cv.width && Y < cv.height && Math.abs(g[p] - sg[o]) + Math.abs(g[p + 1] - sg[o + 1]) + Math.abs(g[p + 2] - sg[o + 2]) < 60) { ok++; if (B && (X < B[0] || X > B[2] || Y < B[1] || Y > B[3])) out++; } }
-    return box ? [n ? ok / n : 0, out] : n ? ok / n : 0;
-  };
   api.stands = () => (seen ? seen.list.filter((s) => s.tx !== undefined && !s.q).map((s) => [s.tx, s.ty, s.z]) : []);   // (tests: what stands, drawn this frame: [its tile, the level it stands at])
-  api.read = (...a) => HdView.read(...a); api.bodies = () => (seen ? seen.list.filter((s) => s.q && !s.top).map((s) => [s.q.e.kind, s.z]) : []); api.bare = () => (eng && seen ? eng.bare(Math.max(0, Math.ceil(hy) + 2)) : 0); api.raw = () => (eng ? eng.raw() : 0); api.fades = () => (seen ? seen.list.filter((s) => s.fade !== undefined).map((s) => [s.tx, s.ty, s.fade]) : []); api.blank = () => eng && eng.blank(); Object.defineProperty(api, "units", {get: () => eng && eng.units}); Object.defineProperty(api, "why", {get: () => eng && eng.why}); Object.defineProperty(api, "wrote", {get: () => wrote}); Object.defineProperty(api, "made", {get: () => (eng ? eng.made : 0)}); Object.defineProperty(api, "work", {get: () => (eng ? eng.work : null)});   // (units: the longest step of each kind of the land's making; why: why the last frame was drawn again; made: chunks made by the last land)   // (px under the horizon where no land is drawn)
+  api.read = (...a) => HdView.read(...a); api.bodies = () => (seen ? seen.list.filter((s) => s.q && !s.top).map((s) => [s.q.e.kind, s.z]) : []); api.bare = () => (eng && seen ? eng.bare(Math.max(0, Math.ceil(eye.hy) + 2)) : 0); api.raw = () => (eng ? eng.raw() : 0); api.fades = () => (seen ? seen.list.filter((s) => s.fade !== undefined).map((s) => [s.tx, s.ty, s.fade]) : []); api.blank = () => eng && eng.blank(); Object.defineProperty(api, "units", {get: () => eng && eng.units}); Object.defineProperty(api, "why", {get: () => eng && eng.why}); Object.defineProperty(api, "wrote", {get: () => wrote}); Object.defineProperty(api, "made", {get: () => (eng ? eng.made : 0)}); Object.defineProperty(api, "work", {get: () => (eng ? eng.work : null)});   // (units: the longest step of each kind of the land's making; why: why the last frame was drawn again; made: chunks made by the last land)   // (px under the horizon where no land is drawn)
   // a frame: with this look live (WebGL 2, and you or an eye in the world), the game's frame (render.js) draws to a canvas of one px (who walks, the land coming in), then this look's picture
   { const f0 = frame; frame = function (now) {
     const t0 = performance.now(), keep = ctx, on = api.on && !noGL && !!(api.eye || ents.get("agent" + myId)); api.live = on && Voxels.engine.ready(); api.drew = wrote = false; slice1 = 0;
