@@ -93,6 +93,9 @@ const sendSpec = (o) => spec && spec.readyState === 1 && spec.send(JSON.stringif
 // t: when it was worked out (not this moment's: nobody plays, the first screen: the camera alone says where)
 const away = {on: false, a: 0, y: 0, shift: 0, sky: false, high: false, t: -1e9};
 function viewRect(margin) {
+  // (THE HD LOOK'S LAND IS THE VIEW: the land it makes tile by tile (HdLook.box, hd.js viewOf: the screen and the view distance), not the flat picture's rows. They were two extents: the box reaches
+  //  farther north, and its north rows were asked for only as far land, 3 to 6 s late on new land)
+  const hb = typeof HdLook !== "undefined" && HdLook.live && HdLook.box; if (hb) return [hb[0] - margin, hb[1] - margin, hb[2] - hb[0] + 1 + 2 * margin, hb[3] - hb[1] + 1 + 2 * margin];
   const more = typeof Curve === "undefined" ? 0 : Math.min(40, Math.ceil(Curve.over() / TS()));      // (the curved world shows further north: curve.js)
   const w = Math.ceil(W / TS()) + margin * 2, h = Math.ceil(H / TS()) + margin * 2 + more, x = Math.floor(cam.x - w / 2), y = Math.floor(cam.y - (h - more) / 2) - more;
   if (!me || performance.now() - away.t > 250) return [x, y, w, h];

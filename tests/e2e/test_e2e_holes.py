@@ -14,8 +14,8 @@ from game import Game, new_name
 
 pytestmark = pytest.mark.realtime                 # (it times how long a block is missing, in ms of the page's own clock)
 
-# each drawn frame, the blocks of the land box not there (of its part the page asks for as land on the screen, viewRect: the box's north
-# rows past it are far land only, a question of how far the land goes, not this one): how long each has been missing (worst: the longest, the hole on the
+# each drawn frame, the blocks of the land box not there (all of it: the box is what the page asks for as land on the screen, viewRect; its north
+# rows were far land only): how long each has been missing (worst: the longest, the hole on the
 # screen: the server's making of new land is in it, a second on a busy machine), and how long each has been missing with no
 # ask for it as land on the screen out (unasked: the page's own share; it was the 3 s a far ask kept it from being asked for)
 HUNT = """() => { const fresh = !window.__holes, H = window.__holes = {frames: 0, worst: 0, unasked: 0, at: null, since: new Map(), un: new Map(), near: window.__holes ? window.__holes.near : new Map()}; if (!fresh) return 1;
