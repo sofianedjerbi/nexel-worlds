@@ -48,7 +48,7 @@ const HdFx = (() => {
       put({canvas: ghostIcon(m.name), fx: 5, fy: 6 + Math.round(lift * 16), x, y: gy, z: ground(x, gy), fade: k > .7 ? (1 - k) / .3 : 1}); n++; }
     last.orbs = n; n = 0;
     for (const f of fireAt) { if (!near(f.x, f.y) || !ok(IMG.gen)) continue; const tall = "TF".includes(combAt(f.x, f.y) || ""), z = Math.max(top(f.x, f.y), ground(f.x, f.y));   // flames over whatever burns, taller over a tree (the generated two-frame flame, world_decor's drawFire)
-      const fl = (tt, dx, up, ax, ay) => put({canvas: cell(IMG.gen, ...genCell(Math.floor(tt * 8 + ax * 3 + ay) % 2 ? "fire1" : "fire0"), 16, 16), fx: 8, fy: 19 + up, x: f.x + .5 + dx, y: f.y + 1, z, lamp: up ? 0 : 2, d: false});   // (d: false: as near as a body's head, never under the posts of the fence it burns)
+      const fl = (tt, dx, up, ax, ay) => put({canvas: cell(IMG.gen, ...genCell(Math.floor(tt * 8 + ax * 3 + ay) % 2 ? "fire1" : "fire0"), 16, 16), fx: 8, fy: 19 + up, x: f.x + .5 + dx, y: f.y + 1, z, lamp: up ? 0 : Light.lamp("fire"), d: false});   // (d: false: as near as a body's head, never under the posts of the fence it burns)
       fl(t, 0, 0, f.x, f.y); if (tall) { fl(t + 1, -.3, 14, f.x + 7, f.y); fl(t + 2, .3, 22, f.x, f.y + 5); }
       if (Math.random() < dt * 6) parts.push({x: f.x + .2 + Math.random() * .6, y: f.y - (tall ? 1.6 : .3), vx: (Math.random() - .5) * .4, vy: -1.2, g: -.5, life: 1.2, age: 0, c: Math.random() < .5 ? "#6b6f73" : "#ffb454", s: 1, by: f.y + .9}); n++; }   // (smoke and sparks going up)
     last.fire = n;

@@ -16,7 +16,7 @@ const HdSun = (() => {
   let H = {on: false, night: false, kx: 0, ky: 0, sun: 0}, sid = "";
   function hour() {
     const h = SunLand.hour(), want = !!opt("shadows") && !!opt("depth");
-    H = {on: want && h.alpha > .02, night: want && h.dark > .35, kx: Math.round(h.kx * 8) / 8, ky: Math.round(h.ky * 8) / 8, sun: Math.min(1, h.alpha / SunLand.SHADE.alpha)};   // (kx, ky: the sun's way in the world, ground px a px of height; the eye's projection alone foreshortens it. It was ky / .6, made for the 36-degree eye: from 78.6 degrees a cliff's shadow lay 1.6x as long on the screen)
+    H = {on: want && h.alpha > .02, night: want && Light.now().night, kx: Math.round(h.kx * 8) / 8, ky: Math.round(h.ky * 8) / 8, sun: Math.min(1, h.alpha / SunLand.SHADE.alpha)};   // (kx, ky: the sun's way in the world, ground px a px of height; the eye's projection alone foreshortens it. It was ky / .6, made for the 36-degree eye: from 78.6 degrees a cliff's shadow lay 1.6x as long on the screen)
     return H;
   }
   const key = () => { hour(); return H.on ? H.kx + "," + H.ky : H.night ? "n" + fireAt.length : "-"; };

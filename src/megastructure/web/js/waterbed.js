@@ -166,7 +166,7 @@ const WaterBed = (() => {
       tint = new Float32Array([...TINT.map(([r, g, b, a]) => [r / 255, g / 255, b / 255, a]),
         [...deepest.slice(0, 3).map((v, i) => (v * deepest[3] + sand[i] * (1 - deepest[3])) / 255), 1], [...hex(WATER.sand[0]).map((v) => v / 255), BAND],
         ...WATER.sand.map((h) => [...hex(h).map((v) => v / 255), 1])].flat()); }
-    const l = lightAt((((clock.phase || 0) % 1) + 1) % 1), night = Math.max(0, Math.min(1, (1 - (.3 * l[0] + .59 * l[1] + .11 * l[2]) / 255) / .36));
+    const night = Light.now().dark;
     return {t, tint, bend: opt("shimmer") ? 1.4 : 0, light: opt("shimmer") ? 1 : 0, far: [5, 16, .8], night, dark: [.38, .58, .54], foam: .55, foamAt: 1, shade: [.7, .8, .92], shadow: .16};
   }
   // A swimmer's body under the surface (swim.js): its px of the sheet, tinted as the water over it is and fainter the deeper the water

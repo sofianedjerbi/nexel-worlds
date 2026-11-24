@@ -120,6 +120,7 @@ def test_into_a_dug_room_and_a_tunnel_mouth_the_window_opens_once_and_shuts_once
         go(g, k_in, done_in)
         shot(g, f"{name}-in")
         go(g, k_out, done_out, jump)
+        g.wait("HdLook.win.a === 0", 3000)                                            # (the window shuts 300 ms after the land last hid you, then fades)
         r = g.js(STOP)
         shot(g, f"{name}-out")
         dump(name, r)

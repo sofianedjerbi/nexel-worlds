@@ -56,7 +56,7 @@ const HdView = (() => {
   // the game's sky with the hour's light the game lays over its frame: made w x h px, when it is not the one there. line: the sky's (the eye's horizon); edge: where the land ends,
   // under it from a hill top: the far hills on it, the sky's lowest colour down to it, under it the far land's own colour, as vox_sky.js has it (it was the air's pale haze, or the whole sky moved down to the land)
   function skyOf(w, h, line, sky, edge = line) {
-    const ph = clock.phase || 0, ws = washAt(ph), lf = opt("night") / 100 * .6, light = lightAt(ph).map((v) => Math.round(v + (255 - v) * lf)), step = sky.stars > 0 ? .1 : .5, tq = Math.floor(sky.t / step);   // (clouds drift a px in 2.5 s: twice a second; stars twinkle: ten times)
+    const {wash: ws, lit: light} = Light.now(), step = sky.stars > 0 ? .1 : .5, tq = Math.floor(sky.t / step);   // (clouds drift a px in 2.5 s: twice a second; stars twinkle: ten times)
     const c8 = (q) => q.map((v) => Math.round(v * 255)), k = [w, h, line, edge, W, zoom, tq, Math.floor(sky.shift), Math.floor(sky.shift * .6), Math.floor(sky.shift * .3), c8(sky.top), c8(sky.low), c8(sky.cloud), c8(sky.far), c8(sky.near), c8(sky.orb), sky.at.map((v) => Math.round(v * 500)), Math.round(sky.stars * 50), ws.map((v) => Math.round(v * 100) / 100), light].join();
     if (k === skyKey) return; const gl = VoxGL.gl; if (!gl) return; skyKey = k; skyVer++;
     sk = sk || document.createElement("canvas").getContext("2d"); if (sk.canvas.width !== w || sk.canvas.height !== h) { sk.canvas.width = w; sk.canvas.height = h; }

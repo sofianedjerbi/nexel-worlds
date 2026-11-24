@@ -9,7 +9,7 @@ const SunLand = (() => {
   function hour() {
     const phase = (((clock.phase || 0) % 1) + 1) % 1, day = phase < .75;
     const a = day ? phase / .75 : (phase - .75) / .25;                               // the sun's way across (at night: the moon's)
-    const tint = lightAt(phase), dark = Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36);
+    const {dark} = Light.now();
     const much = opt("shadows") / 100, long = opt("shadowlen") / 100;                 // (the settings: how dark, how long)
     return {dark, much, long, alpha: Math.min(.9, (SHADE.alpha + (SHADE.night - SHADE.alpha) * dark) * much), kx: (2 * a - 1) * SHADE.reach * long, ky: SHADE.fall * long};
   }

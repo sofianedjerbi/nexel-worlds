@@ -82,7 +82,7 @@ const Curve = (() => {
     const p = (((clock.phase || 0) % 1) + 1) % 1, day = p < .75, way = day ? p / .75 : (p - .75) / .25;
     const night = p < .5 ? 1 - smooth((p + .035) / .07) : Math.min(smooth((p - .72) / .08), 1 - smooth((p - .965) / .07));
     const dusk = p < .3 ? 1 - smooth((p - .035) / .125) : smooth((p - .56) / .14);
-    const lift = opt("night") / 100 * .6, tint = lightAt(p).map((v) => (v + (255 - v) * lift) / 255);
+    const tint = Light.now().lit.map((v) => v / 255);
     const col = (q) => q.map((v, i) => Math.min(1, v / tint[i])), pick = (q) => col(q[0].map((v, i) => { const d = v + (q[1][i] - v) * dusk; return d + (q[2][i] - d) * night; }));
     const line = c.line, band = Math.max(8, line / zoom);
     return {line, t, shift: cam.x * P * .12, top: pick(CURVE_SKY.top), low: pick(CURVE_SKY.low), cloud: pick(CURVE_SKY.cloud), far: pick(CURVE_SKY.far), near: pick(CURVE_SKY.near),
