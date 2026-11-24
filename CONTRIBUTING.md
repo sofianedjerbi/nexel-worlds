@@ -21,7 +21,9 @@ Optional hooks (ruff, and the message check at commit time): `uvx pre-commit ins
 
 Nobody bumps a version by hand.
 
-1. A push to main runs `.github/workflows/semantic-release.yml`. python-semantic-release reads the commits
+1. Nothing releases on a push to main. To release, tag the commit `release` and push the tag
+   (`git tag -f release && git push -f origin release`), or run the workflow from the Actions tab. That runs
+   `.github/workflows/semantic-release.yml` on that commit (it must be main's newest), then deletes the `release` tag. python-semantic-release reads the commits
    since the last tag `vX.Y.Z`: a `feat` makes the next minor, a `fix` or `perf` the next patch (while the
    version is 0.x; `major_on_zero = false`). Other types make no release.
 2. When there is one, it sets `project.version` in pyproject.toml (and uv.lock), adds it to CHANGELOG.md,
