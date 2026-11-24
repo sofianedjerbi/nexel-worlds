@@ -5,6 +5,25 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.8 (2026-11-24)
+
+### Bug Fixes
+
+- **web**: The eye's pitch comes from the cover alone; walking through a dip no longer tilts it and
+  back
+  ([`fd5cbda`](https://github.com/sofianedjerbi/nexel-worlds/commit/fd5cbda073f439036d4b8ff4526e3b2882b8c3fb))
+
+### Code Style
+
+- **tests**: Plain open mode in the rules test
+  ([`23dd74b`](https://github.com/sofianedjerbi/nexel-worlds/commit/23dd74ba808180e90ee7526115723251b39c41ac))
+
+### Refactoring
+
+- **rules**: One rules table on the server, sent in hello; the client types no rule table again
+  ([`7226a2c`](https://github.com/sofianedjerbi/nexel-worlds/commit/7226a2c616df60088983f341dab4087e5023047e))
+
+
 ## v0.1.7 (2026-11-24)
 
 ### Bug Fixes
