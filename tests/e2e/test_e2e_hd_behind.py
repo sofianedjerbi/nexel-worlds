@@ -304,6 +304,10 @@ def test_behind_a_mountain_its_caves_stay_shut(browser, server):
         go(g, x, y)                                                        # behind it, at the mouth
         cut = [t for t in cave + hill if g.js(CUT, t) is not None]
         assert not cut, cut                                                # nothing of the mountain cut: its cave shut
+        far = [t[:2] for t in g.js("HdLook.win.tiles") if t[:2] in cave and abs(t[0] - x) + abs(t[1] - y) > 2]
+        assert not far, far                                                # nor seen through: the window has the two tiles you step into, no more
+        go(g, x - 3, y)
+        assert not [t for t in g.js("HdLook.win.tiles") if t[:2] in cave]   # three tiles off its mouth: none of it
         go(g, x, y + 4, 0, "HdLook.win.a === 1 && !HdLook.busy")           # in the cave
         assert g.js(CUT, [x, y + 5]) is not None                           # under it: the cut is on
     finally:
