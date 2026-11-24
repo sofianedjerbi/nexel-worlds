@@ -6,11 +6,10 @@
 //     this, by the body itself. (They asked "whose column is this x, whose row this y" of the frame's list: two bodies
 //     in one row at two heights shared a height; a body the list had not: 16 x zoom px a tile where a tile is
 //     16 x artPx.)
-//   View.set(at, u, list): the frame's camera (art px), pixel, and what it drew
+//   View.set(at, list): the frame's camera (art px) and what it drew
 const View = (() => {
-  let cam = null, u = 1, list = [];
-  const at = (x, y, z) => { const a = cam && cam(x, y, z); return a ? [a[0] * u, a[1] * u] : null; };
-  const snap = (v) => Math.round(v / u) * u;
-  function of(q) { const s = list.find((c) => c.q === q), a = s && at(s.x, s.y, s.z); return a ? [snap(a[0]), snap(a[1]) + (s.fo || 0) * u] : null; }
-  return {at, snap, of, set(c, px, l) { cam = c; u = px; list = l; }, get u() { return u; }};
+  let cam = null, list = [];
+  const at = (x, y, z) => { const a = cam && cam(x, y, z), u = artPx(); return a ? [a[0] * u, a[1] * u] : null; }, snap = onArt;   // (state.js: the land's pixel, the one rounding to it)
+  function of(q) { const s = list.find((c) => c.q === q), a = s && at(s.x, s.y, s.z); return a ? [snap(a[0]), snap(a[1]) + (s.fo || 0) * artPx()] : null; }
+  return {at, snap, of, set(c, l) { cam = c; list = l; }, get u() { return artPx(); }};
 })();

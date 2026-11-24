@@ -57,7 +57,7 @@ const Target = (() => {
   api.target = (key = "use") => { const c = cells().find((q) => q.key === key); return c ? {x: c.x, y: c.y, z: c.z, kind: c.kind, ok: c.ok} : null; };
 
   // ---- the painter: P = {g, u: an art px, at(x, y, z) -> px, behind(x, y, z), ex: the eye's x}
-  const R = (P, v) => Math.round(v / P.u) * P.u;
+  const R = (P, v) => onArt(v);   // (on the land's pixel: state.js)
   // a line between two places of the land, a px of paint at a time; hid: one px in two, fainter (behind a face, in the ground, behind land)
   function line(P, a, b, col, hid, c) {
     const A = P.at(...a), B = P.at(...b); if (!A || !B) return;
