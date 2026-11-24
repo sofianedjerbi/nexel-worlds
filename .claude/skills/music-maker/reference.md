@@ -37,6 +37,13 @@ main menu"). Door: `gate` = one wooden knock, `door_close` = a lower, fuller kno
 - 2026-11-15/16 door: pulse train "weird noise", latch "a clic that does not sound like a door", gliding creak "an
   old person moaning"; "just like other sound effect, create it. do a showcase html page in local"; "go with one knock".
 
+- 2026-11-25 creatures: each wild creature's warning, blow and cry, three candidates a move on
+  `~/nexel/local/music/creatures.html` (played on the creature's own animation, synced to its strike frame); picked
+  by ear in one pass: snorts and paw scrapes for the tusker, chitin clicks and a sharp clack for the pincer, straw
+  for the strawman, water for the wyrm, an airy whistle for the gustling, wood groan and wood-on-earth for the
+  grumblestump, leaves and a chomp for the snapbloom, logs popping and a fireball for the hob. In `sfx.py` with
+  their draft's seed (`seed=`), sample-exact.
+
 ## Sound-design lessons (SFX)
 - Sine pings read as water; debris is tiny noise bursts. Stone = a crowd of very short modes, never a few.
 - Deep slow band swells (texture depth > 0.6) gurgle or creak: only for water and fire.
