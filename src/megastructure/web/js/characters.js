@@ -137,7 +137,7 @@ function drawBody(p, sx, sy, S, t, now) {
         anim = running ? "run" : "walk";
         const ms = running ? 60 : 85;                 // 8-frame cycles
         frame = Math.floor(now / ms) % 8;
-        if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms) && !swimsAt(p, e) && !j) {     // (a swimmer has no footsteps: swim.js; nor has a hop)
+        if (frame % 4 === 0 && p.lastStep !== Math.floor(now / ms) && pl.mode !== "swim" && !j) {     // (a swimmer has no footsteps: swim.js; nor has a hop)
           p.lastStep = Math.floor(now / ms);
           if (running) kickDust(p); else burst(p.x, p.y + .35 - UP, "dust", 2, {up: .6, spread: 1.2, g: 2, life: .35});   // (effects.js)
           { const P = HdLevel.place, C = HdLevel.cover; if (mine && P) sfx(P.L > C.top ? "tock" : STEP[gndAt(P.tx, P.ty)] || "step"); }      // (over the land: planks under your feet, or a ladder's rungs. Where your body is: hd_level.js place)
@@ -162,9 +162,9 @@ function drawBody(p, sx, sy, S, t, now) {
       }
     }
     if (pl.mode === "swim") { drawSwimmer(p, e, sheetImg, x, y, z, now, sx, sy); return; }      // (swim.js; still in the air of a fall over water: not swimming yet: the swimmer lay on the water at once, its name still coming down from the rim)
-    p.swam = false;
+    BodyPlace.state(p).swam = false;
     drawWake(p, now, sx, sy, z);                      // (just out of the water: their wake fades where it lies)
-    if (e.sail) {                                     // in a boat: the hull, a wake when moving, and the sailor sitting in it
+    if (pl.mode === "boat") {                        // in a boat: the hull, a wake when moving, and the sailor sitting in it
       y += STAND * z;                                 // (the boat is where a moored one is drawn: in the middle of its water)
       const movingB = now - p.moved < 300 || Math.abs(p.x - p.tx) + Math.abs(p.y - p.ty) > .05;
       const bf = movingB ? Math.floor(now / 140) % 3 : Math.floor(now / 600) % 2, brow = movingB ? 64 : 32;

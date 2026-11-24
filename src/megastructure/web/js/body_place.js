@@ -17,9 +17,10 @@
 const BodyPlace = (() => {
   // A body's own state of its moves, one record a body, BodyPlace's (not fields on the body): fall: a fall begun
   // {top, land: levels, t0, done}; hurt: what a fall cost, shown where it lands; bounce: when a heavy landing was;
-  // hop: when a hop on the spot began (0: none), hopUp, hopDown: the hop whose dust was thrown, leaving and landing
+  // hop: when a hop on the spot began (0: none), hopUp, hopDown: the hop whose dust was thrown, leaving and landing;
+  // swam: in the water at the last frame drawn (its splash going in, its wake coming out: swim.js)
   const states = new WeakMap();
-  const state = (p) => { let s = states.get(p); if (!s) states.set(p, s = {fall: null, hurt: 0, bounce: -1e9, hop: 0, hopUp: 0, hopDown: 0}); return s; };
+  const state = (p) => { let s = states.get(p); if (!s) states.set(p, s = {fall: null, hurt: 0, bounce: -1e9, hop: 0, hopUp: 0, hopDown: 0, swam: false}); return s; };
   function make(p, now) {
     const e = p.e || {}, boat = !!e.sail;
     // (the mode, in ONE order. In a boat nothing else: no hop, no fall. Swimming, unless still in the air over the water.

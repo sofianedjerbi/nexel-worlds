@@ -71,8 +71,9 @@ function drawSwimmer(p, e, sheet, x, y, z, now, sx, sy) {
   const stroke = Math.floor((now + e.id * 97) / (dash ? SWIM.dashStroke : moving ? SWIM.stroke : SWIM.tread));
   const bob = (moving ? stroke % 2 : Math.round(Math.sin(now / 450 + e.id) * .5 + .5)) * z;      // one pixel, with each stroke
   p.running = dash;
-  if (!p.swam) {                                             // going in: a splash
-    p.swam = true; p.wake = p.wake || [];                   // (the marks of the last swim, if any are left, stay)
+  const st = BodyPlace.state(p);
+  if (!st.swam) {                                             // going in: a splash
+    st.swam = true; p.wake = p.wake || [];                   // (the marks of the last swim, if any are left, stay)
     burst(p.x, p.y + .3 - UP, "water", 10, {up: 2.6, spread: 3, g: 7, life: .5});
     sfx("water", Math.round(p.x), Math.round(p.y));          // one splash going in; after that only the strokes are heard
   }
