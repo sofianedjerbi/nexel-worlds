@@ -202,10 +202,11 @@ def test_by_day_no_halo_lies_round_you(browser, server):
     try:
         x, y = g.pos()
         near = [(0, 2), (0, 3), (0, -2), (0, -3), (1, 4), (-1, 5)]
-        for phase in (.375, .72, .02):
+        for phase in (.375, .72, .745, .005, .02):                                         # (.745, .005: the day's last and first minutes, the hour's light well down: the lantern was lit there, from .45 of dark)
             g.hour(phase, still=True)
             g.wait(f"Math.abs((clock.phase || 0) - {phase}) < .02 && !clock.night")
             settled(g)
+            assert g.js("Light.now().open") == 0, phase                                      # (daylight.js Light: your lantern under the sky is none by day)
             far = [g.js(MOST, [x + 9, y + j, x + 10, y + j + 1, 0]) for j in (-1, 1)]
             assert max(abs(a - b) for a, b in zip(*far)) <= 3, (phase, far)               # (the far ground: one colour)
             for dx, dy in near:

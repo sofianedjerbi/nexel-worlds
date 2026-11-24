@@ -73,17 +73,20 @@ function lamp(g, cx, cy, r, color, a, shift, steps = LIGHT.steps) {
 }
 // THE HOUR'S LIGHT, ONE SOURCE: what the land (hd.js hour), the sky (curve.js, hd_view.js), the water (waterbed.js) and the shadows (sunland.js, hd_sun.js) take, and the lamps'
 // table. (`dark` was typed four times, the "Light at night" lift five, the lamps' thresholds lived in one painter.)
-//   Light.now() -> {tint, wash, dark: 0 day .. 1 the night's deepest, lift: the setting's, lit: tint lifted, lamps: the lamps are lit (LAMPS), k: how much (0..1), night: the sun casts no
-//     shadow, a fire does (NIGHT), open: your lantern under the sky (from OPEN, the sun down), 0..1}
+//   Light.now() -> {tint, wash, dark: 0 day .. 1 the night's deepest, lift: the setting's, lit: tint lifted, lamps: the fires are lit (from LAMPS of dark on: they glow from the sunset), k: how much (0..1),
+//     open: your lantern under the sky, 0..1: none by day (the clock's: the owner, "remove the halo around the player, especially in daylight"), from the day's last dark (DUSK, read off the
+//     row above at the hour the night begins) up to the night's deepest, one line. (It was from .45 of dark: a pool of light round you in the day's last minutes; and a third number, .35, for
+//     "a fire casts the shadows", that nothing hung on: the sun's shadow fades with dark by itself, sunland.js)}
 //   Light.lamp(what, roof) -> a lamp's strength: a fire 2; a person 1, under the land 2 (roof: hd_level.js cover: your lantern is the light there); else 0
 const Light = (() => {
-  const LAMPS = .2, NIGHT = .35, OPEN = .45, FIRE = new Set(["^", "x", "fire"]);
+  const LAMPS = .2, NIGHT_AT = .75, FIRE = new Set(["^", "x", "fire"]);
+  const darkOf = (t) => Math.max(0, Math.min(1, (1 - (.3 * t[0] + .59 * t[1] + .11 * t[2]) / 255) / .36)), DUSK = darkOf(lightAt(NIGHT_AT));
   let key = "", v = null;
   function now() {
     const phase = (((clock.phase || 0) % 1) + 1) % 1, n = opt("night"), k = phase + "," + n; if (k === key) return v; key = k;
-    const tint = lightAt(phase), dark = Math.max(0, Math.min(1, (1 - (.3 * tint[0] + .59 * tint[1] + .11 * tint[2]) / 255) / .36)), lift = n / 100 * .6;
+    const tint = lightAt(phase), dark = darkOf(tint), lift = n / 100 * .6;
     return (v = {tint, wash: washAt(phase), dark, lift, lit: tint.map((c) => Math.round(c + (255 - c) * lift)), lamps: dark > LAMPS, k: Math.max(0, (dark - LAMPS) / (1 - LAMPS)),
-      night: dark > NIGHT, open: Math.max(0, Math.min(1, (dark - OPEN) / (1 - OPEN))) * (1 - n / 100)});
+      open: Math.max(0, (dark - DUSK) / (1 - DUSK)) * (1 - n / 100)});
   }
   const lamp = (what, roof) => (what === "person" ? (roof ? 2 : 1) : FIRE.has(what) ? 2 : 0);
   return {now, lamp};
