@@ -66,7 +66,8 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
     at_row(game, "View distance"); game.press("ArrowRight")    # 13 -> 17 tiles: the horizon that far (hd.js viewOf), in 4s (the bend's facets)
     game.frames(2)
     assert game.js("[opt('view'), HdLook.view.D, document.querySelector('#menu .row.on .val').textContent]") == [17, 17, "17"]
-    game.press("ArrowLeft"); game.press("ArrowLeft"); game.press("ArrowLeft")      # 9 at the least
+    for _ in range(3):
+        game.press("ArrowLeft")                                 # 9 at the least
     game.frames(2)
     assert game.js("[opt('view'), HdLook.view.D]") == [9, 9]
     for name, key in (("Water shimmer", "shimmer"), ("Shake on a hard fall", "shake"), ("Smooth zoom", "glide"), ("Hearts and gains over heads", "floats")):

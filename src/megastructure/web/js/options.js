@@ -15,7 +15,7 @@ const OPT_DEFAULT = {
   shake: true,            // the ground shakes when a fall hurts
   glide: true,            // a zoom level glides into the next
   shimmer: true,          // the water's moving light and small waves
-  view: 13,               // how far you see, in tiles: where level ground meets the sky (hd.js viewOf), VIEW_MIN to VIEW_MAX in 4s (the bend's facets); a sixteenth of the picture stays sky: zoomed in, less far
+  view: 13,               // how far you see, in tiles (13: the old Normal on a desk): where level ground meets the sky (hd.js viewOf), VIEW_MIN to VIEW_MAX in 4s (the bend's facets); a sixteenth of the picture stays sky: zoomed in, less far
   curve: true,            // the ground bends away to the horizon, with a sky over it (curve.js, hd.js viewOf); off: flat, the land to the picture's top
   floats: true,           // hearts lost, things gained, written over heads
   clearwater: true,       // the water is seen through, to its bed (waterbed.js, vox_water.js); off: the water as one painted face
@@ -73,7 +73,7 @@ const KEY_ACTIONS = {use: ["e", "Use: open, place, eat"], alt: ["keyq", "Break: 
   hands: ["`", "Empty your hands"], drop: ["keyy", "Drop one (Shift: all)"], craft: ["c", "Craft"], bag: ["i", "Inventory"], build: ["keyz", "Build mode"], up: ["r", "Dig up"], talk: ["t", "Talk"], mute: ["m", "Sound on or off"]};
 // (Drop: the free key nearest the left hand, beside T and G, by its place: a German keyboard's Y and Z change places)
 const KEY_FIXED = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "shift", "enter", "escape", "control", "alt", "meta", "capslock",
-  "h", "?", "g", "f3", "/", "+", "=", "-", "_", ..."0123456789"]);
+  "h", "?", "g", "v", "f3", "/", "+", "=", "-", "_", ..."0123456789"]);
 const bindable = (k) => typeof k === "string" && !KEY_FIXED.has(k) && (k.length === 1 || /^f\d+$/.test(k) || ["keyq", "keyz", "keyy", "tab"].includes(k));
 const keyOf = (action) => opt("keys")[action] || KEY_ACTIONS[action][0];
 // A key pressed -> its name for the game. Walking is by place (an AZERTY's Z Q S D are a QWERTY's W A S D: they walk,

@@ -80,7 +80,7 @@ def test_each_view_distance_puts_the_horizon_that_far_at_any_zoom_and_its_land_c
     for z, l in seen.items():
         assert l == sorted(l) and (z != 2 or len(set(l)) >= 4), (z, l)          # (each farther; zoomed in on this short picture the far ones meet the sixteenth of sky)
     g.wait("(() => { const f = HdLook.far; for (let by = Math.floor(f[1] / B); by <= Math.floor(f[3] / B); by++) for (let bx = Math.floor(f[0] / B); bx <= Math.floor(f[2] / B); bx++) if (!blocks.has(bkey(bx, by))) return false; return true; })()", 30000)
-    g.js("setOpt('view', 13); zoom = ZOOM.to = 3")
+    g.js("setOpt('view', OPT_DEFAULT.view); zoom = ZOOM.to = 3")
 
 
 def test_nothing_past_the_drawn_land_is_seen_at_any_zoom_or_view_distance(browser, server):
@@ -110,4 +110,4 @@ def test_nothing_past_the_drawn_land_is_seen_at_any_zoom_or_view_distance(browse
             ctx.close()
     finally:
         g.stamp(-40, -22, ["." * 81] * 20)
-        g.js("setOpt('view', 13); zoom = ZOOM.to = 3")
+        g.js("setOpt('view', OPT_DEFAULT.view); zoom = ZOOM.to = 3")

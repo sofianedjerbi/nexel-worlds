@@ -33,7 +33,9 @@ def test_the_land_is_the_size_the_zoom_says_and_fills_a_screen_held_upright(brow
         me = g.js("([x, y]) => HdLook.screenOf(x + .5, y + .5, 0)", [x, y])
         assert abs(me[0] - 195) < 2 and 380 < me[1] < 470, me          # you: in the middle
         assert g.js("HdLook.catSeen()") > .8                           # and drawn there, px for px
+        g.js("setOpt('view', 17)"); g.rest()                           # (the old Normal on a phone: 17 tiles; the default, 13, is the desk's, more sky here)
         assert g.js("HdLook.sky(0).line") < .3 * 844                   # the sky: under three tenths of the screen (it was two fifths)
+        g.js("setOpt('view', OPT_DEFAULT.view)")
         g.stamp(0, 10, ["%"]); g.rest()                           # a wall ten rows south of you, near the bottom: drawn (nothing was past six rows)
         foot = g.js("([x, y]) => HdLook.screenOf(x + .5, y + 11, 0)", [x, y])
         assert 600 < foot[1] < 844, foot

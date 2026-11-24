@@ -254,5 +254,5 @@ def test_every_px_of_the_land_is_on_a_tile_and_the_sky_on_none(browser, server):
             assert y - box[1] > 24 and len(tops) > 400 and len(far) >= past, (view, z, len(tops), len(far), box)       # (the land made goes more than 24 tiles north of you)
             assert not [t for t in tops if not t[4]], (view, z, box, [t for t in tops if not t[4]][:8])
     finally:
-        g.js("(() => { setOpt('view', 13); zoom = ZOOM.to = 3; return 1; })()")
+        g.js("(() => { setOpt('view', OPT_DEFAULT.view); zoom = ZOOM.to = 3; return 1; })()")
     assert not g.errors
