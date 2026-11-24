@@ -28,6 +28,7 @@ SET = [  # file in, name out, title, role, where it plays
     ("piece_shore_night_c", "far_shore_night_c", "Far shore, night C", "night", "random moments at night (pick C or D)"),
     ("piece_shore_night_d", "far_shore_night_d", "Far shore, night D", "night", "random moments at night (pick C or D)"),
     ("piece_mossback2", "old_mossback", "Old Mossback", "boss", "the boss fight, looped"),
+    ("bright_dream", "bright_dream", "Bright A: Dream", "day", "random moments in the day"),   # (music/bright.py renders it)
 ]
 # One loudness for all ("db should be normalized"). -16 was heard as "louder than all the other sounds on my pc": it is
 # a level for music listened to, not for music behind a game (games sit at -18 to -24 LUFS), and louder than most of

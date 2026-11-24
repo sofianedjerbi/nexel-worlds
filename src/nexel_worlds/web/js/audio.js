@@ -16,9 +16,11 @@ const SOUND = {
   firstMoment: [8, 20],   // seconds after the sound starts before the first piece
   gap: [50, 140],     // seconds of silence between two pieces (a random time in this range)
   afterFight: [20, 40],   // seconds after a fight before a piece may play again
-  passes: {day: 6, night: 4},   // how many times a piece loops before it ends: about 3:30 by day, 3:50 at night
-                      // ("feel free to make it loop for 3-4 min"); the loop joins are exact, nothing is heard there
-  arrive: {day: 10, night: 14, boss: 2.5, menu: 6},   // seconds a piece takes to come in: from quiet and muffled (as if from far) to full.
+  length: {morning: 190, day: 210, night: 230},   // seconds a piece plays, looping as many whole times as come nearest
+                      // (at least once): about 3:30 by day, 3:50 at night ("feel free to make it loop for 3-4 min"); the
+                      // loop joins are exact, nothing is heard there. Morning's Slow tide (3:12) plays once
+  morning: .25,       // the day's first part (clock.phase from sunrise) is the morning: its own pieces (`play.morning`)
+  arrive: {morning: 10, day: 10, night: 14, boss: 2.5, menu: 6},   // seconds a piece takes to come in: from quiet and muffled (as if from far) to full.
                       // Long on purpose: "make the transition long enough to not be noticed by the player"
   ending: 12,         // seconds over which a piece recedes at its end (quieter and more muffled), and the boss's after a fight
   turn: [6, 12],      // seconds of silence when the hour turned during a piece (dusk, dawn): it closes on its chord, then the new hour's
@@ -91,7 +93,7 @@ async function warmSounds() {
 }
 
 // The music. By day and by night a piece plays now and then, with silence between (a moment): one of the pieces the
-// manifest lists for the hour (`play.day`, `play.night`), never the one before, played through `passes` times, fading
+// manifest lists for the hour (`play.morning`, `play.day`, `play.night`), never the one before, looped for about `length`, fading
 // on its last chord. While a fight is on, the boss's piece loops instead, and a moment in progress gives way.
 // A piece is streamed: the build cuts it into parts of a few seconds, lossless (tools/build_audio.py), played one after
 // the other to the sample, each fetched a little before its turn and let go once played. A part carries a little of its
@@ -161,7 +163,7 @@ function halt(tr, after) {                                 // stop it, `after` s
 // A moment: is it time for a piece, and which. (Called every second, and whenever something changes.)
 function moments() {
   const m = sounds.manifest;
-  const hour = typeof clock !== "undefined" && clock.night ? "night" : "day";
+  const hour = typeof clock === "undefined" ? "day" : clock.night ? "night" : (((clock.phase || 0) % 1) + 1) % 1 < SOUND.morning && m && m.play && (m.play.morning || []).length ? "morning" : "day";
   // Night falls (or day breaks) on a piece of the other hour: it is not cut, it plays this pass to its end and closes
   // there on its last chord, receding; after a short silence the new hour's piece comes in from far.
   if (music.on && music.hour && music.hour !== hour && !music.turned) { music.turned = true; music.left = Math.min(music.left, 1); }
@@ -170,7 +172,7 @@ function moments() {
   const list = all.length > 1 ? all.filter((k) => k !== moment.last[hour]) : all;
   if (!list.length) return;
   music.key = moment.last[hour] = list[Math.floor(Math.random() * list.length)];
-  music.left = SOUND.passes[hour] || 1; music.hour = hour; music.turned = false;
+  music.left = Math.max(1, Math.round(SOUND.length[hour] / m.tracks[music.key].seconds)); music.hour = hour; music.turned = false;
   moment.next = Infinity;
   stream(music, () => { moment.next = performance.now() + (music.turned ? between(SOUND.turn) : between(SOUND.gap) * ({often: .35, rarely: 2.5}[opt("often")] || 1)); });
   swell(music, SOUND.music, SOUND.arrive[hour]);
