@@ -108,7 +108,7 @@ player, never in the file. Relative loudness lives in `SOUND` (music .64), not i
 ## Showcase (how the owner listens)
 `uv run python -m http.server 8099 -d music/site`, then http://127.0.0.1:8099/ (music + SFX, "by object" panel),
 `/menu.html` (menu candidates), `/door.html`. Update the existing page in place, numbered candidates, old against new
-where it applies; never a new page per round. The online demo page is `tools/pages/music.html` (`tools/publish_demo.sh`).
+where it applies; never a new page per round. There is no online music page: listening pages stay local.
 
 ## Pitfalls seen
 - `music/site/audio/` is git-ignored: the approved takes (`piece_*`, `final_*`, `fixed_*`, `keep_*`, `menu_tide_high`)

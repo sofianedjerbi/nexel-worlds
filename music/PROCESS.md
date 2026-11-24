@@ -165,7 +165,7 @@ slowly and a clipper on top. Three pianos refused in a row: stop making pianos.
 
 The user asked for other day musics as suggestions, published with the demo. `music/day.py` holds four (Market Morning,
 Slow Afternoon, Overcast, Picnic): same band and rules as Meadow Road, each one two-bar idea said, answered, said again
-and closed. None is in the game. The demo build makes `music.html` from the rendered tracks (AAC, `tools/build_pages.py`).
+and closed. None is in the game. They are heard on the local music page only (the demo's `music.html` is gone: drafts stay local).
 
 ## 2026-11-13: one lead per track, and a measured audit
 

@@ -70,14 +70,10 @@ def build(out: Path):
                 z.write(f, Path("nexel_worlds") / f.relative_to(PKG))
     for f in (ROOT / "tools" / "pages").iterdir():           # the showcase page (what's new) and its clips (tools/film_*.py)
         shutil.copy(f, out / f.name)
-    # (a design shown online: the sky over a curved world, design/enemies/horizon_capture.py makes its pictures)
-    shutil.copy(ROOT / "design" / "enemies" / "site" / "horizon.html", out / "horizon.html")
-    shutil.copytree(ROOT / "design" / "enemies" / "site" / "horizon", out / "horizon")
     page = (out / "index.html").read_text()
     box = '<button class="item" id="titlehelp">'      # (the first screen's menu: one row more online, before Help)
     assert page.count(box) == 1, "the join box changed"
     (out / "index.html").write_text(page.replace(box, '<a class="item" href="showcase.html"><span>What\'s new</span></a>\n    ' + box))
-    music_page(out)
     v = stamp(out)
     if os.environ.get("DEMO_PYODIDE"):                       # (a copy of Pyodide somewhere else than the CDN: tools/perf_load.py measures with one)
         w = out / "js" / "local_worker.js"
@@ -129,7 +125,7 @@ def stamp(out: Path) -> str:
         if f.is_file() and f.suffix in (".js", ".css", ".zip", ".html", ".mp4", ".jpg", ".png", ".gif", ".json"):
             mark.update(f.relative_to(out).as_posix().encode() + f.read_bytes())
     v = mark.hexdigest()[:10]
-    for page in ("index.html", "showcase.html", "music.html"):
+    for page in ("index.html", "showcase.html"):
         if (out / page).exists():
             text = (out / page).read_text()
             (out / page).write_text(re.sub(r'((?:src|href|poster)=")((?:js|css)/[^"?#]+|[^"/:?#]+\.(?:mp4|jpg|png|gif))"', rf'\1\2?v={v}"', text))
@@ -138,25 +134,6 @@ def stamp(out: Path) -> str:
         assert old in text, f"{name} no longer names {old}"
         (out / name).write_text(text.replace(old, old[:-1] + f'?v={v}"'))
     return v
-
-
-def music_page(out: Path):
-    """music.html (tools/pages) plays the rendered tracks of music/site/audio, compressed to AAC (afconvert, macOS):
-    the day theme, night, boss, the day suggestions (music/day.py), and the audit (music/quality.py)."""
-    src = ROOT / "music" / "site" / "audio"
-    wavs = [src / f"{n}.wav" for n in ("master", "night", "boss")] + sorted(src.glob("day_*.wav"))
-    if not shutil.which("afconvert") or not (src / "days.json").exists() or not (src / "quality.json").exists() or not all(w.exists() for w in wavs):
-        (out / "music.html").unlink()
-        return print("no music page: render the music first (music/render_all.py, then music/quality.py)")
-    (out / "music").mkdir()
-    wavs += sorted(src.glob("dir_*.wav")) + sorted(src.glob("bright_*.wav")) + sorted(src.glob("piece_*.wav")) + sorted(src.glob("final_*.wav"))      # directions.py, bright.py, pieces.py, master.py
-    for name in ("directions.json", "bright.json", "pieces.json", "final.json"):
-        if (src / name).exists():
-            shutil.copy(src / name, out / "music" / name)
-    for name in ("days.json", "quality.json"):
-        shutil.copy(src / name, out / "music" / name)
-    for w in wavs:
-        subprocess.run(["afconvert", "-f", "m4af", "-d", "aac", "-b", "128000", str(w), str(out / "music" / (w.stem + ".m4a"))], check=True)
 
 
 if __name__ == "__main__":
