@@ -3,7 +3,7 @@ on it: Tobi builds a little wooden hut, wall by wall, and takes it down again wi
 him, talk it over in speech bubbles. The view drifts gently along; the logo is laid over it: the emblem (web/assets/emblem.png,
 tools/build_emblem.py) beside the wordmark (assets/banner_logo.png), both at the wordmark's own 5 px a pixel.
 The scene is played exactly once a loop and the island is otherwise held still (its hour, its crops, its animals, the
-others), so that the GIF loops with no seam.
+others), so that the GIF loops with no seam. One of its frames is the repo's social preview (assets/social_preview.png).
 
     uv run --with pillow python tools/build_banner.py      (a minute; after the island, its art or its people change)
 
@@ -26,6 +26,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT, LOGO = ROOT / "assets" / "banner.gif", ROOT / "assets" / "banner_logo.png"
+SOCIAL = ROOT / "assets" / "social_preview.png"    # the repo's social preview (GitHub: Settings > Social preview)
 EMBLEM = ROOT / "src" / "nexel_worlds" / "web" / "assets" / "emblem.png"
 WORD, UNIT, GAP = (220, 199, 355, 45), 5, 20      # where the wordmark lies in banner_logo.png (x, y, w, h); its px; emblem to word
 W, H, MS, LOOP = 800, 320, 50, 100          # 20 frames a second; the scene: 100 of the island's ticks (10 s)
@@ -179,6 +180,11 @@ def build():
     out = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]
     out[0].save(OUT, save_all=True, append_images=out[1:], duration=MS, loop=0, optimize=True, disposal=1)
     print(f"{OUT.name}: {W} x {H}, {FRAMES} frames, {OUT.stat().st_size // 1024} KB")
+    # the social preview: one moment of the scene (frame 84: the hut up, Nell asking who it's for, Tobi's "Done!", no
+    # bubble cut or half written), its middle 640 x 320 round the logo, each pixel 2 x 2: GitHub's 1280 x 640, crisp
+    still = frames[84].crop(((W - 640) // 2, 0, (W + 640) // 2, H))
+    still.resize((1280, 640), Image.NEAREST).save(SOCIAL)
+    print(f"{SOCIAL.name}: 1280 x 640")
 
 
 if __name__ == "__main__":
