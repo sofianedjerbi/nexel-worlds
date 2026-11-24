@@ -5,6 +5,32 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.10 (2026-11-24)
+
+### Bug Fixes
+
+- **web**: A body's place says the tile it is drawn on; on a ladder that is the ladder's for the
+  whole climb
+  ([`b4260c9`](https://github.com/sofianedjerbi/nexel-worlds/commit/b4260c9687d15e3697d410ef36ca2a1b72583c45))
+
+- **web**: The place's line keeps to the nearer tile across a fall's drop or a ladder
+  ([`232f696`](https://github.com/sofianedjerbi/nexel-worlds/commit/232f696c526e93af9737a6dcb6aaf7c3767793b5))
+
+- **web**: Two people on one row at two heights each have their name over their own head
+  ([`bf4d46f`](https://github.com/sofianedjerbi/nexel-worlds/commit/bf4d46f8c0aee23afe655babfdd7bf8f4e30dd7c))
+
+### Refactoring
+
+- **web**: Climbing.js stands by the one rule (cells.js stand); its three leftovers go
+  ([`6728a33`](https://github.com/sofianedjerbi/nexel-worlds/commit/6728a338bd2c2ed05799a2005717d82d86c7ad5e))
+
+- **web**: One writer for the way a body faces; drawing a body turns nothing
+  ([`8688526`](https://github.com/sofianedjerbi/nexel-worlds/commit/8688526f75860f453de336ac90e01477c519635e))
+
+- **web**: The straight line's level is the place's (line); jump.js lineLift goes
+  ([`4b7ce3d`](https://github.com/sofianedjerbi/nexel-worlds/commit/4b7ce3d9231589cd8fef590c01aa33ba5a93bc43))
+
+
 ## v0.1.9 (2026-11-24)
 
 ### Bug Fixes
