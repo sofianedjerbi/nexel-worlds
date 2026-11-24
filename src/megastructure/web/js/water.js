@@ -123,15 +123,15 @@ function* waterSteps(b) {
     }
     if ((ly & 3) === 3) yield;                                     // (a step every four rows of tiles)
   }
-  const s = document.createElement("canvas"); s.width = s.height = B + 2;   // the water over it: one pixel a tile, blown up smooth
-  const sg = s.getContext("2d"), img = sg.createImageData(B + 2, B + 2);
-  for (let j = 0; j < B + 2; j++) for (let i = 0; i < B + 2; i++) {
-    const u = under(x0 + i - 1, y0 + j - 1), [r, gg, bb, a] = WATER.tint[u < 0 ? 0 : u];
-    img.data.set([r, gg, bb, Math.round(255 * a)], (j * (B + 2) + i) * 4);
-  }
-  sg.putImageData(img, 0, 0);
-  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
-  g.drawImage(s, .5, .5, B + 1, B + 1, -8, -8, n + 16, n + 16);
+  // the water over it: a tint a tile by its depth, going from one tile's to the next's in STEPS of 4 art px (four tones across a tile, whole px each: it was
+  // one px a tile blown up smooth by the canvas, every px its own tone: the one soft ramp in a picture of whole px)
+  const m2 = B + 2, tn = new Float32Array(m2 * m2 * 4), img = g.createImageData(n, n), D = img.data;
+  for (let j = 0; j < m2; j++) for (let i = 0; i < m2; i++) { const u = under(x0 + i - 1, y0 + j - 1), t = WATER.tint[u < 0 ? 0 : u]; tn.set([t[0], t[1], t[2], 255 * t[3]], (j * m2 + i) * 4); }
+  const K = new Int16Array(n), F = new Float32Array(n); for (let v = 0; v < n; v++) { const t = (v - 8) / 16 + 1; K[v] = Math.floor(t); F[v] = Math.round((t - K[v]) * 4) / 4; }   // (an art px -> the tile whose middle is west or north of it, and how far on to the next: quarters)
+  for (let j = 0; j < n; j++) { const ky = K[j], fy = F[j];
+    for (let i = 0; i < n; i++) { const kx = K[i], fx = F[i], a = (ky * m2 + kx) * 4, o = (j * n + i) * 4;
+      for (let q = 0; q < 4; q++) D[o + q] = Math.round((tn[a + q] * (1 - fx) + tn[a + 4 + q] * fx) * (1 - fy) + (tn[a + m2 * 4 + q] * (1 - fx) + tn[a + m2 * 4 + 4 + q] * fx) * fy); } }
+  g.putImageData(img, 0, 0);
   b.water = {un, land, canvas: c, bed, any, foam, glints, rows, box: box.map((v, i) => (v + (i > 1)) * 16)};
 }
 // All of it is art pixels (the patterns slide by whole ones), so it is put together small, a pixel an art pixel, on a
