@@ -5,6 +5,35 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.13 (2026-11-24)
+
+### Bug Fixes
+
+- **web**: A creature killed flashes white, lifts and fades in the HD look
+  ([`0733155`](https://github.com/sofianedjerbi/nexel-worlds/commit/0733155dd3e0dd2b19034131b6510bbeeff8714e))
+
+### Refactoring
+
+- **web**: A frame's parts are called by name in one place; nothing wraps frame, drawTile or
+  arriveBlock at load
+  ([`6e2892f`](https://github.com/sofianedjerbi/nexel-worlds/commit/6e2892f9d56cb6f8903d94816f652d96a7f5d127))
+
+- **web**: One place points the painters' canvas and pixel elsewhere (drawOn)
+  ([`2110d5f`](https://github.com/sofianedjerbi/nexel-worlds/commit/2110d5fd0d8e9dffdbff68d9434f705b022c00f7))
+
+- **web**: The classic picture's last painters are gone; without WebGL 2 a panel says so
+  ([`4fde3d4`](https://github.com/sofianedjerbi/nexel-worlds/commit/4fde3d4e7a75053c5d33825488e73f0d2ae5ce2e))
+
+- **web**: What moves on by itself has its own step a frame; the classic painters no longer run
+  under the HD look
+  ([`958a291`](https://github.com/sofianedjerbi/nexel-worlds/commit/958a2913eae20e01ac14cb18995c98715c743dee))
+
+### Testing
+
+- **e2e**: What a frame costs the script with things in the air, twelve creatures round you
+  ([`56a19aa`](https://github.com/sofianedjerbi/nexel-worlds/commit/56a19aa8903fdafabdb3298302e045e86c95178a))
+
+
 ## v0.1.12 (2026-11-24)
 
 ### Bug Fixes
