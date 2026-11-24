@@ -5,6 +5,55 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.9 (2026-11-24)
+
+### Bug Fixes
+
+- **web**: No lantern halo in the day's last and first minutes; the lantern comes on from the
+  night's start, one line
+  ([`5d1cba4`](https://github.com/sofianedjerbi/nexel-worlds/commit/5d1cba4f578f0933aaf3bda1a219962e3be80915))
+
+- **web**: While the eye tilts the sky's line goes with it; the clouds drift with you, not with the
+  camera
+  ([`c91f8b1`](https://github.com/sofianedjerbi/nexel-worlds/commit/c91f8b1860d6b2b8633d844728f6363fc00392ed))
+
+### Refactoring
+
+- **sim**: One can_craft() and one take_pile(); the craft book asks the world
+  ([`59c94ed`](https://github.com/sofianedjerbi/nexel-worlds/commit/59c94ed07b081a1c43ade42df85745a6d82dc37c))
+
+- **sim**: One hears(listener, event) for agents and screens, one RANGE table
+  ([`243ebc4`](https://github.com/sofianedjerbi/nexel-worlds/commit/243ebc4299894905fb4ad8106f0216c4f78e0a93))
+
+- **sim**: One REACH table for the world's checks and a screen's offers
+  ([`698c66d`](https://github.com/sofianedjerbi/nexel-worlds/commit/698c66dfc8446283190f33e539dbbeb4015c9822))
+
+- **sim**: One stand() a side answers "can a body be there"
+  ([`1401064`](https://github.com/sofianedjerbi/nexel-worlds/commit/14010644fdfe638942bf74ede2278cad8f6c9be1))
+
+- **web**: Hd.js split along its records: the eye (hd_eye.js), the lamps (hd_lamps.js), the pointer
+  (hd_pick.js)
+  ([`b8b4892`](https://github.com/sofianedjerbi/nexel-worlds/commit/b8b489243edcc6cd8b91c16d5f6e08854af18bb3))
+
+- **web**: The hour's light from one source (Light.now) and the lamps from one table (Light.lamp)
+  ([`3f096af`](https://github.com/sofianedjerbi/nexel-worlds/commit/3f096afbdd823a7773796fdf4601600399ae5007))
+
+### Testing
+
+- **e2e**: The aim tests take the eye's pitch as the cover gives it (a nook, a dip a level deep: the
+  surface's)
+  ([`e60ef21`](https://github.com/sofianedjerbi/nexel-worlds/commit/e60ef216ffc0b926bd74a5103af7f83043537bc6))
+
+- **e2e**: The cliff reach test reads the shared reach table
+  ([`950ad60`](https://github.com/sofianedjerbi/nexel-worlds/commit/950ad609a035761a1cfe9f44183013e948564723))
+
+- **e2e**: The fall test reads the camera a frame on, not from a second ask in the same frame
+  ([`8e54669`](https://github.com/sofianedjerbi/nexel-worlds/commit/8e5466943aa51e76cfc4f94c15ba1a101f41e30c))
+
+- **e2e**: Three waits that gave up without a word wait on their condition and say the state
+  ([`ab6db4f`](https://github.com/sofianedjerbi/nexel-worlds/commit/ab6db4fda1b9a0934c87f9929ffbd6eaa3c37b0e))
+
+
 ## v0.1.8 (2026-11-24)
 
 ### Bug Fixes
