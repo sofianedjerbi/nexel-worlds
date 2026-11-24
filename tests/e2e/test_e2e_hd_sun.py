@@ -130,9 +130,9 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
             g.rpc("dev_teleport", x=x + dx, y=y + dy, z=0)
             settled(g)
         g.js("""(() => { const p = myPos(), a = HdLook.screenOf(p.x + .5, p.y + .92, topAt(p.x, p.y)), k = devicePixelRatio, X = Math.round(a[0] * k), Y = Math.round(a[1] * k);
-          const mid = HdLook.read(X, Y, 1, 1).data; window.__sh = []; window.__b0 = HdLook.builds; window.__busy = 0;
+          const mid = HdLook.read(X, Y, 1, 1).data; window.__sh = []; window.__st = []; window.__b0 = HdLook.builds; window.__busy = 0;
           const f = () => { const d = HdLook.read(X - 24 * k, Y - 9 * k, 48 * k, 18 * k).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - mid[0]) + Math.abs(d[i + 1] - mid[1]) + Math.abs(d[i + 2] - mid[2]) < 12) n++;
-            window.__sh.push(n); if (HdLook.busy) window.__busy++; if (window.__sh.length < 150) requestAnimationFrame(f); };
+            window.__sh.push(n); window.__st.push([n, HdLook.why, HdLook.busy ? 1 : 0, HdLook.builds, HdThings.sheet.id, [...HdLook.read(X, Y, 1, 1).data.slice(0, 3)].join(), JSON.stringify(HdLook.work)]); if (HdLook.busy) window.__busy++; if (window.__sh.length < 150) requestAnimationFrame(f); };
           requestAnimationFrame(f); return 1; })()""")
         g.sleep(150)
         # (rocks, away from you, along a row 25 tiles long: the land's version changes, in more than one of its chunks. It was
@@ -142,7 +142,10 @@ def test_a_shadow_keeps_its_px_while_the_land_is_made_again(browser, server):
         g.wait("window.__sh.length >= 150", 15000)
         got = g.js("window.__sh")
         assert g.js("HdLook.builds > window.__b0 && window.__busy > 0"), f"the land was not made again over frames: builds before, now, frames it was being made, its version: {g.js('[window.__b0, HdLook.builds, window.__busy, landVer]')}"
-        assert got[0] > 60 and max(got) - min(got) <= 4, (got[0], min(got), max(got), got, g.js("[window.__busy, HdLook.builds, window.__b0]"))   # (all of it: which frame lost it)
+        # (the frames round the one that lost it, each [its px, why the frame was drawn, land being made, lands made, the things' sheet, the px under you, the paints' work]:
+        #  it reads 0 px on one frame one run in twenty on a machine loaded past 15, never in 70 runs under that: the state is said so that the next one tells)
+        k = min(range(len(got)), key=lambda q: got[q])
+        assert got[0] > 60 and max(got) - min(got) <= 4, (got[0], min(got), max(got), k, g.js("window.__st")[max(0, k - 3):k + 4], g.js("[window.__busy, HdLook.builds, window.__b0]"))   # (all of it: which frame lost it)
     finally:
         g.page.close()
 
