@@ -16,12 +16,12 @@ def test_in_a_room_the_land_over_you_is_not_drawn_nor_what_grows_on_it_and_out_o
     mine = lambda: [s for s in g.js("HdLook.stands()") if s[:2] in over]
     assert len(mine()) == 4                                                       # on the meadow: all there
     inside(g, x, y)
-    # the meadow is a level over your head: the cut reaches a tile round you and three south (hd: as far as the land over you is deep); the room's ends, the window as ever
-    for t in ([x - 1, y - 1], [x + 1, y + 1]):                                    # over the room, near you: drawn down to your head at most
+    # the cut is your space (the whole room) and the tile of land round it, at your head; just south, down to your floor
+    for t in over:                                                                # over the room (floor 1): the land is there, drawn down to your head at most
         assert g.js(f"topAt({t[0]}, {t[1]})") == 4 and g.js(CUT, t) <= 3, (t, g.js(CUT, t))
     assert g.js(CUT, [x, y + 2]) == 1                                             # the meadow just south: down to your floor, it would hide you
-    assert g.js(CUT, [x, y + 3]) == 3                                             # further south: at your head
-    for t in ([x, y - 3], [x, y + 5], [x + 9, y]):                                # north, far south, past the room: drawn whole (no crater)
+    assert g.js(CUT, [x, y - 2]) == 3 and g.js(CUT, [x - 4, y]) == 3              # the tile round the room: at your head, its walls two levels high
+    for t in ([x, y - 3], [x, y + 3], [x + 6, y], [x + 9, y]):                    # past that: drawn whole (no crater)
         assert g.js(CUT, t) is None, t
     assert not mine()                                                             # what grows on the land not drawn: not drawn
     assert g.js("HdLook.level")[1] == 1 and g.js("HdLook.cam.pitch") > g.js("HdLook.steep") - .1   # (the eye knows you are under the land)

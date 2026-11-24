@@ -10,7 +10,6 @@
 //     made: chunks made, space: your space's floors and classes a tile, win: [[x, y, lo, hi]...] the boxes of the x-ray window (vox_style_win.js)}), touch(x, y), clear()}
 //   P (the paints, vox_style.js): {SL, C, slot(key, paint) -> its place, unslot(key), start(again), spill() -> did they run out}
 const VoxStyleLand = (() => {
-  const CUT = {r: 5, s: 11};   // (the land's cut under it: tiles round you, and south of you)
   const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"];
   const gp = (x, y, z) => [x, z * H, y];
   const FACES = [
@@ -187,19 +186,18 @@ const VoxStyleLand = (() => {
       if (pt && !pt.walk) { const own = new Set(win.map((t) => t[0] + "," + t[1])); let fr = win.slice();
         for (let d = 0; d < 3 && fr.length; d++) { const nx = []; for (const [x, y, lo, hi] of fr) for (const [dx, dy] of DIR) { const X = x + dx, Y = y + dy, k = X + "," + Y, c = own.has(k) || !inBox(X, Y) ? null : real(X, Y); if (!c) continue;
           for (let j = 0; j + 2 < c.length; j += 2) if (c[j] >= lo - 4 && c[j] <= hi + 6) { own.add(k); const t = [X, Y, c[j], Math.min(c[j] + 6, c[j + 1])]; win.push(t); nx.push(t); break; } } fr = nx; } }
-      // THE CUT (the owner's pick, the mockup page: "under the land, the real blocks round you"): covered by the land, its cells over your head are not drawn
-      // CUT.r tiles round you and CUT.s south of you (the eye looks from the south): every wall round you a block of its own earth or stone, two levels high
+      // THE CUT (the owner's pick, the mockup page: "under the land, the real blocks round you"; "the whole cave should show up to the player, not a small
+      // radius"): covered by the land, it is not drawn over YOUR SPACE (the window's boxes: every floor you can walk or drop to, the whole cave, 24 tiles
+      // out) and the tile of land round each, at that floor's head: every wall of your cave a block of its own earth or stone, two levels high
       // NOTHING HIDDEN IS SHOWN (the owner: "x-ray should not allow to see ores in wall"): the cut shows the land's cells as land, earth or stone, never
       // what is in them; what stands on the land cut is not drawn (hd.js cutOff): an ore over your tunnel is not seen from under it. Ore in a wall, when the
       // land has it, is seen where a face of it opens onto your space, not on the cut
       // ...and south of your space the eye's line to its floor's near edge (58 degrees down, a level half a tile: k tiles out, 3.2 (k - 1) levels over it):
       // nothing between the eye and you, nor your floors (a wall two levels high a tile south of you hid you)
       const cutAt = (x, y, h) => { if (topOf(x, y) <= h) return; const k = x * 1048576 + y, was = cutH.get(k); if (was === undefined || h < was) cutH.set(k, h); };
-      // (as far round you as the land over your head is deep: under a level of earth a trench, not the meadow round you; deep under the land, CUT.r and CUT.s)
-      const deepO = topOf(cx, cy) - (L + 2), cr = Math.min(CUT.r, deepO), cs = Math.min(CUT.s, 2 * deepO + 1);
-      if (pt && !pt.walk && deepO > 0) {
-        for (let y = cy - cr; y <= cy + cs; y++) for (let x = cx - cr; x <= cx + cr; x++) cutAt(x, y, L + 2);
-        for (const [x, y, lo] of win) for (let k = 1; k <= 4; k++) cutAt(x, y + k, lo + Math.floor(3.2 * (k - 1)));
+      if (pt && !pt.walk) for (const [x, y, lo] of win) {
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cutAt(x + dx, y + dy, lo + 2);
+        for (let k = 1; k <= 4; k++) cutAt(x, y + k, lo + Math.floor(3.2 * (k - 1)));
       }
       if (cutH.size) for (const [x, y, lo] of win) { const kk = x * 1048576 + y, h = cutH.get(kk); if (h < lo) cutH.set(kk, lo); }
       // (nothing hidden is shown: outside your space the cut never opens air. A column with air under the cut (a cave no way joins, a room not yours) keeps a
