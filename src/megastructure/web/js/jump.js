@@ -124,9 +124,9 @@ function fallOf(p, now, st = BodyPlace.state(p)) {
   return {z: h, ground: F.land, air: true};
 }
 // The jump key on the level: a hop on the spot (walk.js jumpKey; others: their `jump` event, state.js) -> null, or as jumpOf
-function hopOf(p, now) {
-  if (!(now - p.hop < HOP.ms) || jumpOf(p) || (p.e && swimsAt(p, p.e))) return null;   // (swimming: nothing to push off: no hop, no dust)
-  const [h, pose, air] = jumpAt(HOPJ, now - p.hop, 0);
+function hopOf(p, now, st) {
+  if (!(now - st.hop < HOP.ms) || jumpOf(p) || (p.e && swimsAt(p, p.e))) return null;   // (swimming: nothing to push off: no hop, no dust)
+  const [h, pose, air] = jumpAt(HOPJ, now - st.hop, 0);
   return {body: Math.round(h), ground: 0, air: false, squash: !air, tuck: air, pose};
 }
 // It lands, `layers` further down
@@ -169,14 +169,14 @@ function jumpNow(p, now, st, fall) {
 function jumping0(p, now, st, fall) {
   // (a hop asked for in a fall, or at the edge as it began, is no hop: it waited under the fall and played what was left
   //  of its arc once you were down, the body 18 px up in a frame and down again: "when i jump above a hole it glitches")
-  if (fall) { if (fall.air && now - p.hop < HOP.ms) p.hop = -1e9; return fall; }
+  if (fall) { if (fall.air && now - st.hop < HOP.ms) st.hop = -1e9; return fall; }
   if (now - st.bounce < FALL.bounce[1] * 1000 && !jumpOf(p)) {                 // a heavy landing: up a little off the ground, and down
     const k = (now - st.bounce) / 1000 / FALL.bounce[1];
     return {body: Math.sin(k * Math.PI) * FALL.bounce[0], ground: 0, air: false};
   }
-  const hop = hopOf(p, now);
-  if (hop) { if (hop.tuck && p.hopUp !== p.hop) { p.hopUp = p.hop; jumpDust(p, 3, .8); } return hop; }
-  if (p.hop && p.hopDown !== p.hop && now - p.hop >= HOP.ms) { p.hopDown = p.hop; if (now - p.hop < HOP.ms + 200) { p.settle = p.hop + HOP.ms; jumpDust(p, 3, 1); } }   // (down: the squash, by the clock)
+  const hop = hopOf(p, now, st);
+  if (hop) { if (hop.tuck && st.hopUp !== st.hop) { st.hopUp = st.hop; jumpDust(p, 3, .8); } return hop; }
+  if (st.hop && st.hopDown !== st.hop && now - st.hop >= HOP.ms) { st.hopDown = st.hop; if (now - st.hop < HOP.ms + 200) { p.settle = st.hop + HOP.ms; jumpDust(p, 3, 1); } }   // (down: the squash, by the clock)
   const j = jumpOf(p), tx = Math.round(p.x), ty = Math.round(p.y);
   if (p.jair !== undefined && !(j && j.tuck && j.key === p.jair)) {           // down: its feet touch (the step's last frames, or the next step's crouch up a staircase, or off it)
     const down = p.jd < 0;

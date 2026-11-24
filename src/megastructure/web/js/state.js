@@ -219,7 +219,7 @@ function onEvent(e) {
   }
   if (e.type === "jump" && e.name !== me && !e.step) {   // somebody hops (on the level: jump.js HOP; up a step, its own arc shows as it goes: a hop where it stood first, then the step's, was one jump drawn as two)
     const q = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === e.name);
-    if (q) q.hop = performance.now();
+    if (q) BodyPlace.state(q).hop = performance.now();
   }
   if (e.type === "fall") {                          // a fall that hurt: shown as they land (jump.js), or now if they are not seen falling
     const q = [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === e.name);

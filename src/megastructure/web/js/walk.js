@@ -40,7 +40,7 @@ function jumpKey() {
   if (Leap.gliding()) { p.jumpNext = true; return; }   // (just down off a tile's middle, going to it: the jump once there, leap.js after)
   const low = s && !walking;                     // (standing, facing a step: up onto it, as before: a tunnel or a shaft has no room for a jump through the air)
   if (Leap.can(p) && !low) { Leap.start(p, now, null); return; }   // a real jump (leap.js)
-  if (!s) { if (now - p.hop < HOP.ms) return; p.hop = now; rpc("act", {tool: "jump", args: {}}); return; }      // (nothing to jump onto: a hop on the spot; in the air, Space again does not start it over)
+  if (!s) { const st = BodyPlace.state(p); if (now - st.hop < HOP.ms) return; st.hop = now; rpc("act", {tool: "jump", args: {}}); return; }      // (nothing to jump onto: a hop on the spot; in the air, Space again does not start it over)
   for (const [k, t] of spring) if (t < now) spring.delete(k);
   spring.set(s.x + "," + s.y, now + RULES.spring_s * 1000);
   if (s.way) turn(s.d);
