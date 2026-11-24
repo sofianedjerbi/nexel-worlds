@@ -5,6 +5,36 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.7 (2026-11-24)
+
+### Bug Fixes
+
+- **web**: One body-place record a frame; a ladder climb no longer opens the window or lights the
+  lantern
+  ([`4dbad12`](https://github.com/sofianedjerbi/nexel-worlds/commit/4dbad12b7280995dab290287dd7256a6c62dc6b4))
+
+- **web**: Under the land your lantern lights every floor of your space; no mouth shade on a walled
+  floor
+  ([`924cc5c`](https://github.com/sofianedjerbi/nexel-worlds/commit/924cc5c6057857ae251b70a262cc2591b06a6479))
+
+### Refactoring
+
+- **web**: BodyPlace, one record of where a body is a frame; its picture, name, camera and the HD
+  look read it
+  ([`0313a23`](https://github.com/sofianedjerbi/nexel-worlds/commit/0313a2316c8e813a46f6a3ab08b846e05ffeb434))
+
+- **web**: The land over your body is its own record (HdLevel.cover), apart from where the body is
+  ([`6b09790`](https://github.com/sofianedjerbi/nexel-worlds/commit/6b097906ff9516fec47cd217e82a2b6276cea15f))
+
+- **web**: The two tiles a body is between are worked out once (Floors.between)
+  ([`fa7d471`](https://github.com/sofianedjerbi/nexel-worlds/commit/fa7d4715bafcac68ff683e94df43c0ad22e57c8e))
+
+### Testing
+
+- **e2e**: A pit's floor is shaded darker along its walls by the land's own corner shade
+  ([`3178c02`](https://github.com/sofianedjerbi/nexel-worlds/commit/3178c02db6ffd61430f18c53d2b4eae4f173102c))
+
+
 ## v0.1.6 (2026-11-23)
 
 ### Bug Fixes
