@@ -37,7 +37,7 @@ function rayHit(mx, my) {
   }
   return null;
 }
-// THE TILE UNDER THE POINTER -> {x, y, fy: how far down the tile, 0 to 1}, or null: none (the sky, past the land the picture shows): the HD camera's own answer, the one way back
+// THE TILE UNDER THE POINTER -> {x, y, fy: how far down the tile, 0 to 1}, or null: none (the sky): the HD camera's own answer for every px of the land, its tops, its fronts and its sides, the one way back
 // from the screen to the world. (Where it had none the classic flat picture's maths answered: a click on the sky was a walk to some tile far north.)
 function tileAtScreen(mx, my) {
   if (HdLook.on && Build.on && Build.S.plane === null && Build.S.deep === null) { const h = rayHit(mx, my); if (h) return {x: h.x, y: h.y, fy: .5, z: h.z, cz: h.cz, face: h.face !== "T", side: h.face}; }   // (build mode: the block under the pointer, its top or a side)

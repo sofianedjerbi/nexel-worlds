@@ -201,10 +201,13 @@ def test_higher_ground_is_drawn_higher_and_clicks_find_it(game):
     z, L = game.js("zoom"), game.js("RELIEF_STEP")
     assert game.js(f"liftAt({x}, {y - 3})") == 3 * L * z and game.js(f"liftAt({x}, {y})") == 0
     # a click on where the terrace's tile is drawn finds that tile, not the one under it on the screen
-    S, ox, oy = game.js("TS()"), *game.js("screenOrigin()")
-    mx, my = ox + x * S + S / 2, game.js(f"Curve.y({oy} + ({y} - 2 + .5) * {S}, {3 * L} * zoom)")      # (where the game draws that tile's middle, three layers up)
+    # (where the picture has that tile's middle, three layers up: the HD camera's place of it, view.js. It was where the classic flat picture
+    #  would have drawn it, screenOrigin and Curve.y: a point of the sky in this picture, which the classic maths, asked last, answered for)
+    mx, my = game.js(f"HdLook.screenOf({x} + .5, {y} - 2 + .5, 3)")
     at = game.js(f"tileAtScreen({mx}, {my})")
-    assert (at["x"], at["y"]) == (x, y - 2) and abs(at["fy"] - .5) < .1       # (fy: how far down the tile)
+    assert at and (at["x"], at["y"]) == (x, y - 2) and abs(at["fy"] - .5) < .1, at       # (fy: how far down the tile)
+    px = game.js(f"[...HdLook.read(Math.round({mx} * devicePixelRatio), Math.round(96 * devicePixelRatio), 1, 1).data]")
+    assert px[2] > px[1] > px[0] and game.js(f"tileAtScreen({mx}, 96)") is None, px      # ...and a point of the sky over it is no tile
     game.js(f"ents.get('agent' + myId).y = {y - 3}")             # someone up there is lifted with it
     assert game.js("liftOf(ents.get('agent' + myId))") == 3 * L * z
 

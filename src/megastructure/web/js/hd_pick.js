@@ -21,6 +21,10 @@ const HdPick = (K) => {
       if (zs < z) { const q = [[x, y + 1, z], [x + 1, y + 1, z], [x + 1, y + 1, zs], [x, y + 1, zs]].map((v) => api.screenOf(...v)); if (q.every((v) => v) && inq([mx, my], q)) return {x, y, fy: .999, face: true, down: Math.floor(part(q) * (z - zs))}; }
       const q = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]].map(([a, b]) => api.screenOf(a, b, z));
       if (q.every((v) => v) && inq([mx, my], q)) return {x, y, fy: part(q)};
+      // ITS SIDES, where the land beside it is lower and the side is turned to the eye (a top leans away from the picture's middle: its west side shows right of it, its east side left). The pointer on a hill's
+      // or a cliff's side was on no tile: the classic picture's maths, asked last, named some tile for it
+      if (!zf) for (const [X, dx] of [[x, -1], [x + 1, 1]]) { const zn = zo(x + dx, y); if (zn >= z) continue; const f = [[X, y, z], [X, y + 1, z], [X, y + 1, zn], [X, y, zn]].map((v) => api.screenOf(...v));
+        if (f.every((v) => v) && (f[1][0] - f[2][0]) * dx < 0 && inq([mx, my], f)) return {x, y, fy: .5}; }
     }
     return null;
   };

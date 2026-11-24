@@ -193,3 +193,48 @@ def test_a_click_on_the_sky_is_no_walk(browser, server):
     assert g.pos() == (x, y) and g.js("!walking") and not g.errors
     q = g.js(f"(() => {{ const a = HdLook.screenOf({x + 2.5}, {y + 1.5}, 0); return tileAtScreen(a[0], a[1]); }})()")
     assert q and (q["x"], q["y"]) == (x + 2, y + 1), q             # (and the land under the pointer is that tile)
+
+
+# a grid of screen points (CSS px), each: [mx, my, its px is clear sky (blue over green over red), the tile under it or null, does that tile's drawn box (its top down to the lowest land beside it) hold the point]
+SWEEP = """([x0, y0, x1, y1, step]) => { const k = devicePixelRatio, out = [], S = HdLook.screenOf;
+  for (let my = y0; my <= y1; my += step) for (let mx = x0; mx <= x1; mx += step) { const d = HdLook.read(Math.round(mx * k), Math.round(my * k), 1, 1).data, sky = d[2] > d[1] + 12 && d[1] > d[0] + 12, q = tileAtScreen(mx, my); let ok = null;
+    if (q) { const t = topAt(q.x, q.y), lo = Math.min(t, topAt(q.x, q.y + 1), topAt(q.x + 1, q.y), topAt(q.x - 1, q.y)) - 1, pts = [];
+      for (const z of [t, lo]) for (const [a, b] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { const p = S(q.x + a, q.y + b, z); if (p) pts.push(p); }
+      ok = pts.length === 8 && mx >= Math.min(...pts.map((p) => p[0])) - 2 && mx <= Math.max(...pts.map((p) => p[0])) + 2 && my >= Math.min(...pts.map((p) => p[1])) - 2 && my <= Math.max(...pts.map((p) => p[1])) + 2; }
+    out.push([mx, my, sky, q && [q.x, q.y], ok]); } return out; }"""
+# the middle of every top, and of every side turned south, east or west, of the land round (x, y) as the picture has it: [which, dx, dy, mx, my, the tile under that point or null]
+FACES = """([x, y]) => { const out = [], S = HdLook.screenOf; for (let j = -8; j <= 6; j++) for (let i = -11; i <= 11; i++) { const X = x + i, Y = y + j, t = topAt(X, Y);
+  const add = (k, px, py, pz) => { const a = S(px, py, pz); if (a && a[0] > 8 && a[0] < innerWidth - 8 && a[1] > 8 && a[1] < innerHeight - 110) { const q = tileAtScreen(a[0], a[1]); out.push([k, i, j, a[0], a[1], q && [q.x, q.y]]); } };
+  add('top', X + .5, Y + .5, t); if (topAt(X, Y + 1) < t) add('south', X + .5, Y + 1, t - .5); if (topAt(X + 1, Y) < t) add('east', X + 1, Y + .5, t - .5); if (topAt(X - 1, Y) < t) add('west', X, Y + .5, t - .5); } return out; }"""
+
+
+def test_every_px_of_the_land_is_on_a_tile_and_the_sky_on_none(browser, server):
+    """A hill, a cliff, a pit and steps round you. The pointer anywhere on the land, a top, a front, a side turned east
+    or west, is on a tile, and that tile's drawn box holds the pointer; on the clear sky it is on none. (The HD camera
+    had no answer on a hill's or a cliff's side, and the classic flat picture's maths, asked last, named a tile for
+    those and for the sky alike.)"""
+    from test_e2e_hd_sun import hd
+    g = hd(browser, server)
+    g.hour(.3, still=True)
+    g.clear_area(30)
+    x, y = g.pos()
+    g.stamp(-9, -8, ["....."] * 4, levels=["33333"] * 4)                 # a hill three high, north-west
+    g.stamp(4, -9, ["......"] * 3, levels=["777777"] * 3)                # a cliff seven high, north-east
+    g.stamp(-6, 2, ["..."] * 3, levels=["bbb"] * 3)                      # a pit two deep, south-west
+    g.stamp(3, 2, ["...."] * 2, levels=["1111", "2222"])                 # steps up, south-east
+    g.rest(); g.frames(3)
+    g.page.mouse.move(5, 5)
+    edge = g.js("HdLook.sky(0).edge")
+    r = g.js(SWEEP, [12, 12, 948, 430, 24])
+    assert not [p for p in r if p[3] is not None and not p[4]], [p for p in r if p[3] is not None and not p[4]][:8]     # a tile named: its box holds the point
+    under = [p for p in r if p[1] > edge + 4]
+    assert len(under) > 150 and not [p for p in under if p[3] is None], [p for p in under if p[3] is None][:8]         # under the land's edge all is land: a tile each
+    sky = [p for p in r if p[2] and p[1] < edge - 4]
+    assert len(sky) > 30 and sum(1 for p in sky if p[3] is not None) <= 2, [p for p in sky if p[3] is not None][:8]     # the clear sky: none (a point on a cliff's very edge aside)
+    faces = g.js(FACES, [x, y])
+    kinds = {k: sum(1 for f in faces if f[0] == k) for k in ("top", "south", "east", "west")}
+    assert kinds["top"] > 200 and kinds["south"] >= 8 and kinds["east"] >= 6 and kinds["west"] >= 6, kinds
+    assert not [f for f in faces if f[5] is None], [f for f in faces if f[5] is None][:8]                               # every top and every side shown: a tile
+    sides = [f for f in faces if (f[0] == "east" and f[1] < -1) or (f[0] == "west" and f[1] > 1)]                       # (the sides turned to the picture's middle: the others are behind their own land)
+    assert len(sides) >= 6 and sum(1 for f in sides if f[5] == [x + f[1], y + f[2]]) >= .7 * len(sides), sides[:8]     # a side shown is its own tile's (a few are behind land nearer the eye)
+    assert not g.errors
