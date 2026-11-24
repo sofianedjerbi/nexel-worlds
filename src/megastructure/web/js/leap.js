@@ -137,7 +137,7 @@ const Leap = (() => {
     const now1 = L.t < .03 ? "takeoff" : L.vz < 0 && L.z - ground < .12 ? "touch" : L.vz > .4 * v0 ? "rise" : L.vz < -.3 * v0 ? "fall" : "apex";
     const pose = ORDER[L.pi = Math.max(L.pi || 0, ORDER.indexOf(now1))];   // (one after the other, never back: a touch over the start of a step, then its edge, flashed)
     const c = C === null ? L.z0 : C;
-    return {body: L.z - c, ground: ground - c, air: false, squash: false, tuck: true, pose, leap: true, seen: seen()};
+    return {body: L.z - c, ground: ground - c, air: false, squash: false, tuck: true, pose, leap: true};
   }
   // The level you are drawn from (hd_level.js): from the jump on, it goes towards where you are a px a frame at the
   // most (CAM), in the air towards the ground under you, and after it to the level you would be drawn from; then it is

@@ -162,7 +162,7 @@ function fallShake(now) {
 function jumpNow(p, now, st, fall) {
   const lp = Leap.body(p, now); if (lp) return lp;                              // (you in the air: leap.js)
   const lift = Leap.lift(p), j = jumping0(p, now, st, fall) || (lift ? {body: 0, ground: 0, air: false, squash: false, tuck: false, pose: null} : null);
-  return lift ? {...j, body: j.body + lift, ground: j.ground + lift, seen: Leap.seen()} : j;   // (just down from a jump: drawn from the level the eye is coming to)
+  return lift ? {...j, body: j.body + lift, ground: j.ground + lift} : j;   // (just down from a jump: drawn from the level the eye is coming to)
 }
 function jumping0(p, now, st, fall) {
   // (a hop asked for in a fall, or at the edge as it began, is no hop: it waited under the fall and played what was left
