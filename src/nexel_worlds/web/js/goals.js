@@ -19,15 +19,15 @@ const GOALS = [
   ["Go sailing", "boat", (inv, d) => d.sailed],
   ["Put up a mailbox", "mailbox", (inv, d) => d.placedMail],
 ];
-function markGoal(key) { if (!me) return; const d = goalState(); d[key] = true; localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d)); }
-function goalState() { return JSON.parse(localStorage.getItem("megastructure-goals-" + me) || "{}"); }
+function markGoal(key) { if (!me) return; const d = goalState(); d[key] = true; localStorage.setItem("nexel-goals-" + me, JSON.stringify(d)); }
+function goalState() { return JSON.parse(localStorage.getItem("nexel-goals-" + me) || "{}"); }
 // The next three goals, each with its item's icon. One just done stays a moment, ticked, with a chime, then the
 // next slides in; the header counts how many are done.
 const EARLY = 4;
-let goalsShown = [], goalsDoneAt = {}, goalsOff = localStorage.getItem("megastructure-goals-off") !== "0";      // (away, unless you asked for it)
+let goalsShown = [], goalsDoneAt = {}, goalsOff = localStorage.getItem("nexel-goals-off") !== "0";      // (away, unless you asked for it)
 function toggleGoals() {                             // G: the card, or away again
   if (!me) return;
-  goalsOff = !goalsOff; localStorage.setItem("megastructure-goals-off", goalsOff ? "1" : "0");
+  goalsOff = !goalsOff; localStorage.setItem("nexel-goals-off", goalsOff ? "1" : "0");
   sfx(goalsOff ? "close" : "open");
   drawGoals();
 }
@@ -40,7 +40,7 @@ function drawGoals() {
   GOALS.forEach(([, , f], i) => {
     if (f(inv, d) && !d["g" + i]) { d["g" + i] = true; if (goalsShown.includes(i)) { goalsDoneAt[i] = now; sfx("chime"); if (goalsOff) toast("Goal done: **" + GOALS[i][0] + "**"); } }
   });
-  localStorage.setItem("megastructure-goals-" + me, JSON.stringify(d));
+  localStorage.setItem("nexel-goals-" + me, JSON.stringify(d));
   const lingering = goalsShown.filter((i) => goalsDoneAt[i] && now - goalsDoneAt[i] < 1600);
   const open = GOALS.map((_, i) => i).filter((i) => !d["g" + i] && !lingering.includes(i));
   goalsShown = [...lingering, ...open].slice(0, 3).sort((a, b) => a - b);      // (in the list's order: the one just done stays where it was)

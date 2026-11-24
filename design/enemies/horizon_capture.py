@@ -197,7 +197,7 @@ def main():
     def url(seed):
         if seed not in servers:
             k = socket.socket(); k.bind(("127.0.0.1", 0)); port = k.getsockname()[1]; k.close()
-            servers[seed] = (subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", tempfile.mkdtemp(), "--world", "horizon", "--port", str(port), "--seed", str(seed), "--dev"],
+            servers[seed] = (subprocess.Popen([sys.executable, "-m", "nexel_worlds.server", "--saves", tempfile.mkdtemp(), "--world", "horizon", "--port", str(port), "--seed", str(seed), "--dev"],
                                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL), port)
             time.sleep(4)
         return f"http://127.0.0.1:{servers[seed][1]}"

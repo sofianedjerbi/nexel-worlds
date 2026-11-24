@@ -9,7 +9,7 @@ Printed: the e2e test files to run (and the unit test files), one a line. The ma
   test_e2e_hd*.py; and the unit tests naming the file (a vox_* file: those naming vox_, test_vox_layer.py);
 - a .css file: the ui, menu, title and phone tests; web/index.html: those and the e2e tests naming an id it has changed (not
   read: all of the ui set);
-- a python file of the game (src/megastructure/**.py, not web/): the unit tests that name its module, all of them if
+- a python file of the game (src/nexel_worlds/**.py, not web/): the unit tests that name its module, all of them if
   none does, and the server-facing e2e (tests naming the module, test_e2e_world.py, test_e2e_edits.py);
 - a test file: itself; a helper of tests/e2e (game.py, waits.py, conftest.py...): the quick set only (below).
 --run: the e2e files with `pytest -m e2e -n 3`, then the quick set (`-m "e2e and quick"`), then the unit files, each
@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-JS = "src/megastructure/web/js/"
+JS = "src/nexel_worlds/web/js/"
 E2E = "tests/e2e/"
 UI_SET = ("test_e2e_ui.py", "test_e2e_menu.py", "test_e2e_title.py", "test_e2e_title_scene.py", "test_e2e_phone.py",
           "test_e2e_phone_taps.py", "test_e2e_hd_phone.py", "test_e2e_touch.py", "test_e2e_help.py")
@@ -103,12 +103,12 @@ def affected(changed, root: Path = ROOT, why=None):
                     if Path(t).name.startswith("test_e2e_hd"):
                         add(e2e, t, f"{name}: the HD look")
             continue
-        if name.endswith(".css") or (f.startswith("src/megastructure/web/") and name.endswith(".html")):
+        if name.endswith(".css") or (f.startswith("src/nexel_worlds/web/") and name.endswith(".html")):
             for t in E:
                 if Path(t).name in UI_SET:
                     add(e2e, t, f"{name}: the screen's layout")
             continue
-        if f.startswith("src/megastructure/") and name.endswith(".py") and "/web/" not in f:
+        if f.startswith("src/nexel_worlds/") and name.endswith(".py") and "/web/" not in f:
             mod = p.stem
             hit = [t for t, text in U.items() if re.search(r"(?<!\w)" + re.escape(mod) + r"(?!\w)", text)]
             for t in hit or U:
@@ -128,7 +128,7 @@ def git_changed(root: Path = ROOT) -> list[str]:
 
 
 def pytest(args):
-    py = str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv").exists() else str(Path.home() / "megastructure/.venv/bin/python")
+    py = str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv").exists() else str(Path.home() / "nexel_worlds/.venv/bin/python")
     cmd = [py, "-m", "pytest", *args]
     print("$", " ".join(cmd[1:]), flush=True)
     with open("/dev/null") as nul:

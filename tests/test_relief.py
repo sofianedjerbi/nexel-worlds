@@ -4,8 +4,8 @@
 import zlib
 
 from helpers import run
-from megastructure.gen import CHUNK, PEAK, col_cave, col_floor, col_solid, col_surfaces, col_top, gen_chunk
-from megastructure.world import Chunk
+from nexel_worlds.gen import CHUNK, PEAK, col_cave, col_floor, col_solid, col_surfaces, col_top, gen_chunk
+from nexel_worlds.world import Chunk
 
 
 def plateau(sim, a, h=1):
@@ -83,7 +83,7 @@ def test_nothing_is_built_on_a_hills_rim(world):
 
 
 def test_nothing_generates_on_a_rim():
-    from megastructure.gen import gen_cave, gen_level
+    from nexel_worlds.gen import gen_cave, gen_level
     for cx in range(4, 9):
         for cy in range(-3, 3):
             _, block, lv = gen_chunk(7, cx, cy)
@@ -94,7 +94,7 @@ def test_nothing_generates_on_a_rim():
 
 
 def test_the_land_has_biomes_mountains_rivers_and_caves():
-    from megastructure.gen import biome, gen_cave, gen_level, river
+    from nexel_worlds.gen import biome, gen_cave, gen_level, river
     kinds, caves, rivers, top = set(), 0, 0, 0
     for y in range(-400, 400, 6):
         for x in range(-400, 400, 6):

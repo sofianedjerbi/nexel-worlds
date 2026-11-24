@@ -6,8 +6,8 @@ from pathlib import Path
 from helpers import run
 from test_wild import put
 
-from megastructure.sim import CREATURES
-from megastructure.tiles import ARMOR, RECIPES, WEAR
+from nexel_worlds.sim import CREATURES
+from nexel_worlds.tiles import ARMOR, RECIPES, WEAR
 
 
 def test_wearing_takes_it_from_the_bag_and_swaps_what_was_there(world):
@@ -48,7 +48,7 @@ def test_death_drops_what_you_wore_and_the_save_keeps_what_you_wear(world):
 
 def test_every_piece_has_a_recipe_and_the_client_draws_exactly_the_same_pieces():
     assert set(WEAR) <= set(RECIPES) and set(ARMOR) <= set(WEAR) and len(WEAR) == 43
-    js = (Path(__file__).parent.parent / "src/megastructure/web/js/wear.js").read_text()
+    js = (Path(__file__).parent.parent / "src/nexel_worlds/web/js/wear.js").read_text()
     table = re.search(r"const LOOK = \{(.*?)\n\};", js, re.S).group(1)      # (a look for each piece; its slot is the world's: rules.py)
     assert set(re.findall(r'(\w+): "\w+"', table)) == set(WEAR)
     assert ("shell_plate", 1, 5, 5) in CREATURES["mossback"]["drops"]      # enough for the whole mossback set, every time

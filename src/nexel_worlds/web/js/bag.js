@@ -38,7 +38,7 @@ function toggleBag() {
 function bagSwap(a, b) {                             // two cells of the bar or the pack change places
   while (slots.length <= Math.max(a, b)) slots.push(null);
   [slots[a], slots[b]] = [slots[b], slots[a]];
-  localStorage.setItem("megastructure-slots", JSON.stringify(slots)); sfx("ui");
+  localStorage.setItem("nexel-slots", JSON.stringify(slots)); sfx("ui");
   $("hotbar").dataset.sig = ""; drawHotbar(meObs.self.inventory);
 }
 function bagHold() {

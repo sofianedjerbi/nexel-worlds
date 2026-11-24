@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-WEB = Path(__file__).parent.parent / "src" / "megastructure" / "web"
+WEB = Path(__file__).parent.parent / "src" / "nexel_worlds" / "web"
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
 

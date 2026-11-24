@@ -2,9 +2,9 @@
 
 from test_wild import put
 
-from megastructure import tiles as T
-from megastructure.sim import CREATURES, sec
-from megastructure.sim.boss import ATTACKS, EXPOSED, SHELL, SPORE_LIFE
+from nexel_worlds import tiles as T
+from nexel_worlds.sim import CREATURES, sec
+from nexel_worlds.sim.boss import ATTACKS, EXPOSED, SHELL, SPORE_LIFE
 
 
 def run(sim, seconds):

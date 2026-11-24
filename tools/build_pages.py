@@ -3,7 +3,7 @@
     uv run python tools/build_pages.py [out_dir]      (default: dist/)
 
 The page has js/local.js in it, which boots the real server inside the tab. For a phone's line the client is sent as
-few files (src/megastructure/web_bundle.py: one script, the pictures in one pack, the styles in the page), Python's own
+few files (src/nexel_worlds/web_bundle.py: one script, the pictures in one pack, the styles in the page), Python's own
 library without what the game never opens (tools/build_stdlib.py), and a service worker keeps all of it for the next
 visit (tools/pages/sw.js, marked with the commit and the build's content). tools/perf_load.py measures the result.
 """
@@ -21,8 +21,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(ROOT / "src"), str(ROOT / "tools")]      # (this copy's own code, not an installed one)
 import build_stdlib  # noqa: E402
-from megastructure import web_bundle  # noqa: E402
-PKG = ROOT / "src" / "megastructure"
+from nexel_worlds import web_bundle  # noqa: E402
+PKG = ROOT / "src" / "nexel_worlds"
 WEB = PKG / "web"
 
 
@@ -67,7 +67,7 @@ def build(out: Path):
     with zipfile.ZipFile(out / "py.zip", "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted(PKG.rglob("*.py")):
             if "__pycache__" not in f.parts:
-                z.write(f, Path("megastructure") / f.relative_to(PKG))
+                z.write(f, Path("nexel_worlds") / f.relative_to(PKG))
     for f in (ROOT / "tools" / "pages").iterdir():           # the showcase page (what's new) and its clips (tools/film_*.py)
         shutil.copy(f, out / f.name)
     # (a design shown online: the sky over a curved world, design/enemies/horizon_capture.py makes its pictures)

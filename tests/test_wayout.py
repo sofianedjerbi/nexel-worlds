@@ -11,9 +11,9 @@ import pytest
 from helpers import run
 from test_dig_out import out, pocket
 
-from megastructure.gen import HIGH, LOW
+from nexel_worlds.gen import HIGH, LOW
 
-JS = Path(__file__).parent.parent / "src" / "megastructure" / "web" / "js" / "wayout.js"
+JS = Path(__file__).parent.parent / "src" / "nexel_worlds" / "web" / "js" / "wayout.js"
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node is not installed")
 

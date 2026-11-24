@@ -131,7 +131,7 @@ try { new PerformanceObserver((l) => { for (const e of l.getEntries()) __long.pu
 @pytest.fixture(scope="module")
 def bundled(tmp_path_factory):
     port = free_port()
-    proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", str(tmp_path_factory.mktemp("loading")), "--world", "l", "--port", str(port),
+    proc = subprocess.Popen([sys.executable, "-m", "nexel_worlds.server", "--saves", str(tmp_path_factory.mktemp("loading")), "--world", "l", "--port", str(port),
                              "--seed", "7", "--bundle"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(100):
         try:

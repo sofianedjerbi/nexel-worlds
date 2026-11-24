@@ -2,8 +2,8 @@
 
 from helpers import clear, run
 
-from megastructure.sim import CREATURES, DAY_TICKS, Creature, sec
-from megastructure.sim.spawning import HOME_R, PASSIVE, PASSIVE_CAP
+from nexel_worlds.sim import CREATURES, DAY_TICKS, Creature, sec
+from nexel_worlds.sim.spawning import HOME_R, PASSIVE, PASSIVE_CAP
 
 
 def put(sim, kind, x, y, **kw):
@@ -182,13 +182,13 @@ def test_the_client_table_matches_the_sheets():
     import struct
     from pathlib import Path
     root = Path(__file__).parent.parent
-    js = (root / "src/megastructure/web/js/world_decor.js").read_text()
+    js = (root / "src/nexel_worlds/web/js/world_decor.js").read_text()
     design = {e["key"]: e for e in json.loads((root / "design/enemies/site/enemies.json").read_text())}
     for kind in ("tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling"):
         line = re.search(rf"^  {kind}: {{(.*)}},$", js, re.M).group(1)
         cw, ch = (int(re.search(rf"{k}: (\d+)", line).group(1)) for k in ("cw", "ch"))
         spans = [(int(a), int(b)) for a, b in re.findall(r"[a-z]+: \[(\d+), (\d+), ", line)]
-        png = (root / f"src/megastructure/web/assets/{kind}.png").read_bytes()
+        png = (root / f"src/nexel_worlds/web/assets/{kind}.png").read_bytes()
         w, h = struct.unpack(">II", png[16:24])
         assert (w, h) == (max(a + b for a, b in spans) * cw, 4 * ch), kind
         if kind in design:                                             # (the ones still on the design page)
@@ -200,7 +200,7 @@ def test_a_tusker_that_is_hit_goes_for_whoever_hit_it(world):
     """Hit, a tusker went on as before: one charge, three seconds' rest, whoever was nearest. Now it is angry for
     twelve seconds: at the one who hit it, from further than it sees; it lines itself up with them, paws the ground
     half as long, shakes off a tree in half the time and charges again at once."""
-    from megastructure.sim.wild import ANGRY, TUSKER_ANGRY, TUSKER_SEES
+    from nexel_worlds.sim.wild import ANGRY, TUSKER_ANGRY, TUSKER_SEES
     sim, a = world
     clear(sim, a, r=12)
     a.hp, a.hunger = 20, 17
@@ -236,7 +236,7 @@ def test_a_tusker_that_is_hit_goes_for_whoever_hit_it(world):
 
 
 def test_a_calm_tusker_is_as_it_was(world):
-    from megastructure.sim.wild import TUSKER_REST
+    from nexel_worlds.sim.wild import TUSKER_REST
     sim, a = world
     clear(sim, a, r=12)
     boar = put(sim, "tusker", a.x + 6, a.y + 3)                    # past what it sees: it does not come

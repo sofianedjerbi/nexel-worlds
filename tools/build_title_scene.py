@@ -11,11 +11,11 @@ import math
 import tempfile
 from pathlib import Path
 
-from megastructure.server import GameServer
-from megastructure.tiles import BLOCKS, GROUNDS
+from nexel_worlds.server import GameServer
+from nexel_worlds.tiles import BLOCKS, GROUNDS
 
 W, H = 96, 64
-OUT = Path(__file__).parent.parent / "src" / "megastructure" / "web" / "js" / "title_map.js"
+OUT = Path(__file__).parent.parent / "src" / "nexel_worlds" / "web" / "js" / "title_map.js"
 
 
 # Where its people stand for what was put there by hand, the way they face, and the tile they look at: [x, y, way, tx, ty]

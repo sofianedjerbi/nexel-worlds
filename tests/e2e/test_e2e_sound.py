@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-AUDIO = Path(__file__).parents[2] / "src" / "megastructure" / "web" / "audio" / "sfx.json"
+AUDIO = Path(__file__).parents[2] / "src" / "nexel_worlds" / "web" / "audio" / "sfx.json"
 pytestmark = pytest.mark.skipif(not AUDIO.exists(), reason="no sounds built: uv run python tools/build_audio.py")
 
 ALL_LOADED = """sounds.manifest && Object.values(sounds.manifest.sounds).flatMap((s) => s.files)
@@ -160,7 +160,7 @@ def test_the_first_screen_has_its_own_piece_that_comes_in_slowly_and_recedes_in_
     page = browser.new_page(viewport={"width": 1200, "height": 800})
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
-    page.add_init_script("localStorage.setItem('megastructure-muted', '0')")
+    page.add_init_script("localStorage.setItem('nexel-muted', '0')")
     page.goto(server)
     page.wait_for_function("typeof ready !== 'undefined' && typeof titleOpen === 'function' && titleOpen()")
     js = page.evaluate

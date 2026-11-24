@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
-JS = ROOT / "src" / "megastructure" / "web" / "js"
+JS = ROOT / "src" / "nexel_worlds" / "web" / "js"
 
 spec = importlib.util.spec_from_file_location("build_audio", ROOT / "tools" / "build_audio.py")
 build_audio = importlib.util.module_from_spec(spec)
@@ -70,7 +70,7 @@ def test_event_names_used_as_sounds_exist():
 
 def test_every_placeable_thing_and_ground_has_a_sound():
     blocks, grounds = build_audio.place_maps(NAMES)            # raises SystemExit with the missing item otherwise
-    from megastructure import tiles as T
+    from nexel_worlds import tiles as T
     assert set(blocks) == set(T.PLACEABLE.values())
     assert grounds and set(blocks.values()) | set(grounds.values()) <= NAMES
 
@@ -91,7 +91,7 @@ def test_resampling_keeps_length_and_level():
 
 
 def test_static_server_serves_audio():
-    from megastructure import web_static
+    from nexel_worlds import web_static
     assert "audio" in web_static.STATIC and web_static.CONTENT_TYPES[".wav"] == "audio/wav"
     assert web_static.CONTENT_TYPES[".flac"] == "audio/flac"   # (the music's pieces)
     assert web_static.CONTENT_TYPES[".webp"] == "image/webp"   # (the first screen's still picture of its island)

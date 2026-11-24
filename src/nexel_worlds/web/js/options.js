@@ -35,7 +35,7 @@ const VIEW_MIN = 9, VIEW_MAX = 65, VIEW_STEP = 4;
 // what a setting was kept as before, and what it is now (the view distance was Near, Normal, Far, Very far; the curved world Off, Near, Far)
 const OPT_WAS = {view: {near: 9, normal: 13, far: 25, veryfar: 37}, curve: {off: false, near: true, far: true}};
 const OPT = {v: {...OPT_DEFAULT}};
-try { Object.assign(OPT.v, JSON.parse(localStorage.getItem("megastructure-options") || "{}")); } catch (e) { /* unreadable: the defaults */ }
+try { Object.assign(OPT.v, JSON.parse(localStorage.getItem("nexel-options") || "{}")); } catch (e) { /* unreadable: the defaults */ }
 for (const [k, was] of Object.entries(OPT_WAS)) if (Object.prototype.hasOwnProperty.call(was, OPT.v[k])) OPT.v[k] = was[OPT.v[k]];
 for (const k of Object.keys(OPT.v)) if (!(k in OPT_DEFAULT) || typeof OPT.v[k] !== typeof OPT_DEFAULT[k]) { if (k in OPT_DEFAULT) OPT.v[k] = OPT_DEFAULT[k]; else delete OPT.v[k]; }
 const opt = (k) => OPT.v[k];
@@ -46,7 +46,7 @@ function setOpt(k, v) {
 }
 function optSave() {
   const changed = Object.fromEntries(Object.entries(OPT.v).filter(([key, val]) => JSON.stringify(val) !== JSON.stringify(OPT_DEFAULT[key])));
-  localStorage.setItem("megastructure-options", JSON.stringify(changed));
+  localStorage.setItem("nexel-options", JSON.stringify(changed));
 }
 // What a setting changes at once (the rest is read where it is used).
 function optApply(k) {

@@ -225,7 +225,7 @@ def test_coords_and_perf_are_typed_in_the_chat_line(game):
     assert game.js(text) == ""
     say("/coords")
     game.wait(text + f".includes('XYZ {x}.00 / {y}.00 / 0')")
-    assert game.js("localStorage.getItem('megastructure-f3')") == "1"
+    assert game.js("localStorage.getItem('nexel-f3')") == "1"
     say("/coords")
     assert game.js(text) == ""
     say("/perf")                                               # what the frames cost

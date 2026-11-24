@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ASSETS = ROOT / "src" / "megastructure" / "web" / "assets"
+ASSETS = ROOT / "src" / "nexel_worlds" / "web" / "assets"
 SIZES = {"title_hd.webp": (864, 480), "title_hd_s.webp": (480, 480)}     # (art px: a desk's screen to 2592 x 1440; a phone's, either way up)
 BUILT = "document.body.classList.contains('scene') && HdLook.live && HdLook.builds > 0 && !HdLook.busy && !dirtyTiles.length"      # (the HD look has made its land: hd.js)
 SHOT = """async () => { const S = TitleScene.S; clearInterval(S.timer);
@@ -43,7 +43,7 @@ def build():
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]
     work = tempfile.mkdtemp()
-    server = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", work, "--world", "poster", "--port", str(port), "--seed", "7"],
+    server = subprocess.Popen([sys.executable, "-m", "nexel_worlds.server", "--saves", work, "--world", "poster", "--port", str(port), "--seed", "7"],
                               cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT / "src")}, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     try:
         for _ in range(100):

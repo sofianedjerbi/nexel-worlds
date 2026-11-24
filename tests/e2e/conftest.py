@@ -17,7 +17,7 @@ from pages import Pages
 ROOT = Path(__file__).parents[2]
 # The sounds are built files, not in git (tools/build_audio.py; the demo's test builds them): a new worktree has none.
 # A test that waits for them says so at once (one waited a minute for them, twice).
-SOUNDS = (ROOT / "src" / "megastructure" / "web" / "audio" / "sfx.json").exists()
+SOUNDS = (ROOT / "src" / "nexel_worlds" / "web" / "audio" / "sfx.json").exists()
 needs_sounds = pytest.mark.skipif(not SOUNDS,
                                   reason="no sounds built: uv run python tools/build_audio.py")
 
@@ -104,7 +104,7 @@ def server(tmp_path_factory):
     port, saves = free_port(), tmp_path_factory.mktemp("saves")
     import game as game_module
     game_module.SERVER_LOG = saves / "server.log"         # (what the server says is kept: a player who does not get in reads it)
-    proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", str(saves), "--world", "e2e",
+    proc = subprocess.Popen([sys.executable, "-m", "nexel_worlds.server", "--saves", str(saves), "--world", "e2e",
                              "--port", str(port), "--seed", "7", "--dev"], cwd=ROOT,
                             stdout=subprocess.DEVNULL, stderr=open(game_module.SERVER_LOG, "w"))
     for _ in range(100):

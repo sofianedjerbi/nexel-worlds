@@ -5,7 +5,7 @@ from helpers import clear, run, sim_ripen_ticks
 
 def test_animals_spawn_and_seeds_grow(world):
     sim, a = world
-    from megastructure.sim.spawning import PASSIVE_EVERY
+    from nexel_worlds.sim.spawning import PASSIVE_EVERY
     clear(sim, a, r=30)
     for _ in range(PASSIVE_EVERY * 12):                      # animals are rare: a herd turns up now and then, not at once
         sim.step()
@@ -24,7 +24,7 @@ def test_animals_spawn_and_seeds_grow(world):
 
 def test_chickens_lay_cows_give_milk_and_beds_set_spawn(world):
     sim, a = world
-    from megastructure.sim import Creature, sec
+    from nexel_worlds.sim import Creature, sec
     hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y, 10); sim.next_creature += 1
     cow = Creature(sim.next_creature, "cow", a.x, a.y + 1, 30); sim.next_creature += 1
     sim.creatures.update({hen.id: hen, cow.id: cow})
@@ -44,7 +44,7 @@ def test_chickens_lay_cows_give_milk_and_beds_set_spawn(world):
 
 def test_eggs_hatch_and_chicks_grow_up(world):
     sim, a = world
-    from megastructure.sim import sec
+    from nexel_worlds.sim import sec
     sim.add_items(a.x + 3, a.y, {"egg": 1})
     sim.timers[(a.x + 3, a.y)] = [sim.tick + sec(1), "hatch"]
     for _ in range(sec(3)):
@@ -57,7 +57,7 @@ def test_eggs_hatch_and_chicks_grow_up(world):
 
 def test_doors_and_gates_stop_creatures(world):
     sim, a = world
-    from megastructure.sim import Creature
+    from nexel_worlds.sim import Creature
     hen = Creature(sim.next_creature, "chicken", a.x + 2, a.y, 10); sim.next_creature += 1
     sim.creatures[hen.id] = hen
     sim.world.set(a.x + 3, a.y, block="gate")
@@ -66,7 +66,7 @@ def test_doors_and_gates_stop_creatures(world):
 
 def test_chickens_lay_into_the_coop(world):
     sim, a = world
-    from megastructure.sim import Creature
+    from nexel_worlds.sim import Creature
     a.add("coop", 1)
     run(sim, a, "place", {"dir": "N", "item": "coop"})
     hen = Creature(sim.next_creature, "chicken", a.x + 3, a.y + 2, 10); sim.next_creature += 1
@@ -77,7 +77,7 @@ def test_chickens_lay_into_the_coop(world):
 
 def test_crowded_eggs_rot_and_old_herds_thin(world, tmp_path):
     sim, a = world
-    from megastructure.sim import CROWD_N, Creature, sec
+    from nexel_worlds.sim import CROWD_N, Creature, sec
     for i in range(CROWD_N):
         hen = Creature(sim.next_creature, "chicken", a.x + 2 + i % 3, a.y + i // 3, 10, cooldown=10**6)
         sim.next_creature += 1
@@ -96,7 +96,7 @@ def test_crowded_eggs_rot_and_old_herds_thin(world, tmp_path):
 
 def test_trough_feeds_animals_and_hay_lasts(world):
     sim, a = world
-    from megastructure.sim import Creature, sec
+    from nexel_worlds.sim import Creature, sec
     a.add("trough", 1); a.add("hay", 1); a.add("wood", 1)
     run(sim, a, "place", {"dir": "E", "item": "trough"})
     assert run(sim, a, "store", {"dir": "E", "item": "wood", "n": 1})["error"] == "bad_item"
@@ -113,7 +113,7 @@ def test_trough_feeds_animals_and_hay_lasts(world):
 
 def test_hit_animals_run_away(world):
     sim, a = world
-    from megastructure.sim import Creature, sec
+    from nexel_worlds.sim import Creature, sec
     hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y, 10); sim.next_creature += 1
     sim.creatures[hen.id] = hen
     assert run(sim, a, "attack", {"target": hen.id})["ok"]
@@ -124,9 +124,9 @@ def test_hit_animals_run_away(world):
 
 def test_new_land_comes_with_herds_and_only_land_near_players_lives(world, monkeypatch):
     sim, a = world
-    from megastructure.gen import CHUNK
-    from megastructure.sim import sec, spawning
-    from megastructure.sim.spawning import SIM_R
+    from nexel_worlds.gen import CHUNK
+    from nexel_worlds.sim import sec, spawning
+    from nexel_worlds.sim.spawning import SIM_R
     monkeypatch.setattr(spawning, "CHUNK_HERD", 0.5)         # (herds are rare: make them common enough to find in a dozen chunks)
     before = len(sim.creatures)
     for i in range(12):                                      # explore: a row of new chunks far away
@@ -144,7 +144,7 @@ def test_new_land_comes_with_herds_and_only_land_near_players_lives(world, monke
 
 def test_animals_eat_what_grows_not_eggs_or_meat(world):
     sim, a = world
-    from megastructure.sim import Creature
+    from nexel_worlds.sim import Creature
     hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y, 10, cooldown=10**6); sim.next_creature += 1
     sim.creatures[hen.id] = hen
     for food in ("egg", "meat", "cooked_meat", "milk"):

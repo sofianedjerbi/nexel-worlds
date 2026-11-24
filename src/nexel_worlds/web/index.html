@@ -9,6 +9,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="css/boot.css">
 <script>
+// (the game was first called Megastructure: what a player kept under its old keys (name, characters, options, login) is moved to the new ones, once)
+(() => { for (const st of [localStorage, sessionStorage]) { try { for (const k of Object.keys(st)) if (k.startsWith("megastructure-")) { const nk = "nexel-" + k.slice(14); if (st.getItem(nk) === null) st.setItem(nk, st.getItem(k)); st.removeItem(k); } } catch (e) { /* storage off */ } } })();
+</script>
+<script>
 // the wait's art px: a whole number of screen px, as big as a phone held upright or a desk lets it be
 (() => { const d = devicePixelRatio || 1, st = document.documentElement.style, fit = () => {
   const n = Math.max(2, Math.min(Math.floor(innerWidth * d * .75 / 70), Math.floor(innerHeight * d * .55 / 70), Math.round(6 * d)));

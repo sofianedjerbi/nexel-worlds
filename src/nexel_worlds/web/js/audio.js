@@ -39,7 +39,7 @@ const SOUND = {
   loaders: 4,         // parallel downloads while warming the cache after the first gesture
 };
 
-let audio = null, soundOut = null, musicOut = null, muted = localStorage.getItem("megastructure-muted") === "1";
+let audio = null, soundOut = null, musicOut = null, muted = localStorage.getItem("nexel-muted") === "1";
 const sounds = {manifest: null, loading: null, buffers: new Map(), lastVariant: {}, lastAt: {}, voices: 0, warned: new Set()};
 
 const awake = () => !!audio && audio.state === "running";      // (a browser holds the sound until the page is touched, and says so in its console for each one started before: none is)
@@ -211,7 +211,7 @@ function bossMusic(on) {
 // M: everything off or on. A piece that was playing fades out; sound back on, the next one comes after a few seconds.
 function setMuted(on) {
   muted = on;
-  localStorage.setItem("megastructure-muted", on ? "1" : "0");
+  localStorage.setItem("nexel-muted", on ? "1" : "0");
   if (on) tune(.3); else { ac(); (sounds.loading || loadSounds()).then(() => tune(.3)); }
 }
 

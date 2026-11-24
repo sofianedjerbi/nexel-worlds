@@ -215,8 +215,8 @@ def worker(group, screen, out, only):
         return 0
     port, saves = free_port(), tempfile.mkdtemp(prefix="lookcheck_saves_")
     assert port != 7777
-    proc = subprocess.Popen([str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv").exists() else os.path.expanduser("~/megastructure/.venv/bin/python"),
-                             "-m", "megastructure.server", "--saves", saves, "--world", "look", "--port", str(port), "--seed", "12", "--dev"],
+    proc = subprocess.Popen([str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv").exists() else os.path.expanduser("~/nexel/nexel-worlds/.venv/bin/python"),
+                             "-m", "nexel_worlds.server", "--saves", saves, "--world", "look", "--port", str(port), "--seed", "12", "--dev"],
                             env=dict(os.environ, PYTHONPATH=str(ROOT / "src")), cwd=str(ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def dog():

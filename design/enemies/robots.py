@@ -24,7 +24,7 @@ TINTS = {"cream": "#f3f2c0", "rose": "#f0a6b4", "sky": "#9cc8ee"}     # three pe
 
 def main():
     s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
-    proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", tempfile.mkdtemp(), "--world", "robots", "--port", str(port), "--seed", "7"],
+    proc = subprocess.Popen([sys.executable, "-m", "nexel_worlds.server", "--saves", tempfile.mkdtemp(), "--world", "robots", "--port", str(port), "--seed", "7"],
                             cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         time.sleep(4)

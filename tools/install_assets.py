@@ -6,7 +6,7 @@ UI Pack), then:
     python tools/install_assets.py "Sprout Lands - Sprites - premium pack.zip" "Sprout Lands - UI Pack - Premium pack.zip"
     python tools/install_assets.py ~/Downloads          # or a folder holding both zips
 
-Copies the sheets the game uses into src/megastructure/web/assets/ (git-ignored there) and makes the tiles derived
+Copies the sheets the game uses into src/nexel_worlds/web/assets/ (git-ignored there) and makes the tiles derived
 from them (tools/build_assets.py). Needs Pillow (`pip install pillow`). Leaves the zips untouched; run it again after
 updating the packs.
 """
@@ -53,7 +53,7 @@ def main(argv: list[str]) -> int:
     sprites, ui = find_zips(argv)
     from build_assets import build
 
-    from megastructure import art
+    from nexel_worlds import art
     print(f"sprites: {sprites}\nui:      {ui}")
     build(sprites, ui, art.ASSETS)
     gone = art.missing()

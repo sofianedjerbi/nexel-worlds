@@ -5,7 +5,7 @@ their own stair's treads, is rebuilt here from the columns of their world."""
 import pytest
 from helpers import run
 
-from megastructure.gen import LOW
+from nexel_worlds.gen import LOW
 
 # The owner's world round (-26, -3), as saved: each column's runs (gen.col_runs: solid up to the first height, empty
 # up to the next, solid...), rows y = -6..-2, columns x = -31..-22. The hill over it (its last run, 4 to 9) is cut
@@ -43,7 +43,7 @@ def out(s, a):
 
 def climb(s, a, d, tool=True, limit=80):
     """Cut steps up, one way: the cell over your head, the cell in front at your head's height, a step. -> actions"""
-    from megastructure.tiles import DIRS
+    from nexel_worlds.tiles import DIRS
     n, args = 0, {"with": "pickaxe"} if tool else {}
     while s.height(a) < 0 and n < limit:
         h, fx, fy = s.height(a), a.x + DIRS[d][0], a.y + DIRS[d][1]
@@ -137,7 +137,7 @@ def test_out_of_a_one_tile_shaft_six_deep_with_a_pickaxe_or_bare_hands_and_no_la
 
 
 def test_the_cell_over_your_head_is_not_dug_from_under_someone_nor_where_there_is_none(world):
-    from megastructure.sim import Creature
+    from nexel_worlds.sim import Creature
     s, a = world
     x, y = a.x, a.y
     a.add("pickaxe")

@@ -7,7 +7,7 @@
     POST /forget  {session}               the account and its email are deleted
     GET  /key                          -> {key}              the public key worlds check tickets with
 
-    uv run python -m megastructure.account --origin http://127.0.0.1:7777      (mail goes to Mailpit: 127.0.0.1:1025)
+    uv run python -m nexel_worlds.account --origin http://127.0.0.1:7777      (mail goes to Mailpit: 127.0.0.1:1025)
 """
 
 import collections
@@ -21,7 +21,7 @@ from . import tickets
 from .mail import Mailer
 from .store import Accounts, clean_email
 
-log = logging.getLogger("megastructure.account")
+log = logging.getLogger("nexel_worlds.account")
 # What one email, and one address, may ask for in an hour. Guessing a code is already five tries per code
 # (store.py); these stop asking for code after code, and flooding someone's inbox.
 LIMITS = {"code/email": (5, 3600), "code/ip": (20, 3600), "login/ip": (30, 3600), "ticket/ip": (600, 3600)}

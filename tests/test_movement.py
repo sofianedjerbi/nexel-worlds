@@ -82,7 +82,7 @@ def test_quick_actions_happen_on_the_move(world):
 
 def test_hitting_while_walking(world):
     sim, a = world
-    from megastructure.sim import Creature
+    from nexel_worlds.sim import Creature
     walk = sim.submit(a, "walk", {"dir": "E"})
     sim.step()
     hen = Creature(sim.next_creature, "chicken", a.x + 1, a.y - 1, 10); sim.next_creature += 1

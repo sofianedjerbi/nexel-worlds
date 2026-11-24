@@ -5,8 +5,8 @@ from pathlib import Path
 
 from helpers import clear, make, run
 
-from megastructure.flow import BUDGET, FALL, FULL, MAXD, NOHEAD, SOURCE
-from megastructure.sim.constants import CAN_SIZE
+from nexel_worlds.flow import BUDGET, FALL, FULL, MAXD, NOHEAD, SOURCE
+from nexel_worlds.sim.constants import CAN_SIZE
 
 
 def steps(sim, n):
@@ -219,7 +219,7 @@ def test_an_old_save_keeps_its_water_as_sources_and_its_dug_holes_flood(tmp_path
 def test_a_cleared_meadow_has_no_water_left_running_or_poured(world):
     """dev_creatures clear (the browser tests' clear_area): the water within reach goes, and what was due there: a
     can's puddle one test left swam a later test's player in the shared world."""
-    from megastructure.devtools import dev_op
+    from nexel_worlds.devtools import dev_op
     sim, a = world
     sim.water.pour(a.x + 3, a.y, 1)
     steps(sim, 10)

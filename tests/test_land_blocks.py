@@ -4,9 +4,9 @@
 import pytest
 from helpers import make, run
 
-from megastructure.floors import KINDS
-from megastructure.landblocks import LAND_BLOCKS
-from megastructure.tiles import BLOCKS, FILLERS, PLACEABLE, RECIPES
+from nexel_worlds.floors import KINDS
+from nexel_worlds.landblocks import LAND_BLOCKS
+from nexel_worlds.tiles import BLOCKS, FILLERS, PLACEABLE, RECIPES
 
 
 def flat(sim, a, level, r=4):
@@ -144,7 +144,7 @@ def test_a_block_goes_into_any_empty_cell_with_something_solid_beside_it(world):
 def test_a_put_block_is_told_to_the_screens_as_what_it_is(world):
     """A stone block on a meadow was drawn as earth with a grass top (the picture knew the land by its height alone):
     the tile's event and its region say what was put on its top; dug again, nothing."""
-    from megastructure.views import Views
+    from nexel_worlds.views import Views
 
     class Screen(Views):
         def __init__(self, sim):

@@ -52,7 +52,7 @@ def trim(full: Path, out: Path) -> tuple[int, int]:
 
 def full() -> Path | None:
     """Pyodide's whole python_stdlib.zip, of the version the demo's worker names: kept in .cache/, fetched once."""
-    address = re.search(r'const PYODIDE = "(https://[^"]+)"', (ROOT / "src" / "megastructure" / "web" / "js" / "local_worker.js").read_text()).group(1)
+    address = re.search(r'const PYODIDE = "(https://[^"]+)"', (ROOT / "src" / "nexel_worlds" / "web" / "js" / "local_worker.js").read_text()).group(1)
     f = ROOT / ".cache" / "pyodide" / re.sub(r"\W+", "_", address) / "python_stdlib.zip"
     if not f.exists():
         try:

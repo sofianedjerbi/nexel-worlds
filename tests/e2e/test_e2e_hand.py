@@ -114,7 +114,7 @@ def test_the_hand_is_a_slot_even_an_empty_one(game):
     game.press("`", 100)
     assert game.js("selected") is None and game.js("slots[handSlot]") is None
     game.js("selectSlot(3)")
-    assert game.js("localStorage.getItem('megastructure-hand')") == "3"
+    assert game.js("localStorage.getItem('nexel-hand')") == "3"
     assert not game.errors
 
 

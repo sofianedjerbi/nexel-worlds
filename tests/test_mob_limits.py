@@ -5,8 +5,8 @@ import json
 from helpers import clear, run
 from test_wild import put
 
-from megastructure.sim import Creature, sec
-from megastructure.sim.spawning import CAP_R, LIMITS, PASSIVE, SPAWN_MIN
+from nexel_worlds.sim import Creature, sec
+from nexel_worlds.sim.spawning import CAP_R, LIMITS, PASSIVE, SPAWN_MIN
 
 ANIMALS = dict(LIMITS)[PASSIVE]
 

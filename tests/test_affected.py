@@ -22,36 +22,36 @@ def test_the_globals_a_script_makes():
 
 
 def test_a_js_change_asks_for_the_tests_that_use_its_globals_not_those_that_only_say_the_word(tmp_path):
-    r = repo(tmp_path, {"src/megastructure/web/js/wayshow.js": "const WayShow = {};\nfunction wayTrail() {}\n",
+    r = repo(tmp_path, {"src/nexel_worlds/web/js/wayshow.js": "const WayShow = {};\nfunction wayTrail() {}\n",
                         "tests/e2e/test_e2e_way.py": 'def test_a(g):\n    g.wait("WayShow.cur")\n',
                         "tests/e2e/test_e2e_doc.py": '"""WayShow is drawn by wayshow"""\ndef test_b(g):\n    pass  # WayShow\n',
                         "tests/e2e/test_e2e_file.py": 'def test_c(g):\n    """x"""\n    p = "web/js/wayshow.js"\n',
                         "tests/e2e/test_e2e_call.py": 'def test_d(game):\n    game.js("1")\n'})
-    e2e, unit, quick = A.affected(["src/megastructure/web/js/wayshow.js"], r)
+    e2e, unit, quick = A.affected(["src/nexel_worlds/web/js/wayshow.js"], r)
     assert e2e == ["tests/e2e/test_e2e_file.py", "tests/e2e/test_e2e_way.py"] and unit == [] and not quick
-    r2 = repo(tmp_path, {"src/megastructure/web/js/game.js": "const gameThing = 1;\n"})
-    assert A.affected(["src/megastructure/web/js/game.js"], r2)[0] == []          # (game.js("..."): the test's method, not the file)
+    r2 = repo(tmp_path, {"src/nexel_worlds/web/js/game.js": "const gameThing = 1;\n"})
+    assert A.affected(["src/nexel_worlds/web/js/game.js"], r2)[0] == []          # (game.js("..."): the test's method, not the file)
 
 
 def test_the_hd_look_css_python_and_test_files_fall_back_to_their_sets(tmp_path):
-    r = repo(tmp_path, {"src/megastructure/web/js/vox_water.js": "const VoxWater = {};\n",
+    r = repo(tmp_path, {"src/nexel_worlds/web/js/vox_water.js": "const VoxWater = {};\n",
                         "tests/e2e/test_e2e_hd_sky.py": "def test_a(g): pass\n", "tests/e2e/test_e2e_menu.py": "def test_m(g): pass\n",
                         "tests/e2e/test_e2e_world.py": "def test_w(g): pass\n", "tests/e2e/test_e2e_dig.py": "def test_d(g): g.rpc('x')  # building\n",
-                        "tests/test_vox_layer.py": "F = 'vox_engine.js'\n", "tests/test_building.py": "from megastructure import building\n",
+                        "tests/test_vox_layer.py": "F = 'vox_engine.js'\n", "tests/test_building.py": "from nexel_worlds import building\n",
                         "tests/test_other.py": "def test_o(): pass\n"})
-    e2e, unit, _ = A.affected(["src/megastructure/web/js/vox_water.js"], r)
+    e2e, unit, _ = A.affected(["src/nexel_worlds/web/js/vox_water.js"], r)
     assert e2e == ["tests/e2e/test_e2e_hd_sky.py"] and unit == ["tests/test_vox_layer.py"]
-    assert A.affected(["src/megastructure/web/css/menu.css"], r)[0] == ["tests/e2e/test_e2e_menu.py"]
-    e2e, unit, _ = A.affected(["src/megastructure/building.py"], r)
+    assert A.affected(["src/nexel_worlds/web/css/menu.css"], r)[0] == ["tests/e2e/test_e2e_menu.py"]
+    e2e, unit, _ = A.affected(["src/nexel_worlds/building.py"], r)
     assert e2e == ["tests/e2e/test_e2e_world.py"] and unit == ["tests/test_building.py"]
-    assert A.affected(["src/megastructure/nowhere.py"], r)[1] == ["tests/test_building.py", "tests/test_other.py", "tests/test_vox_layer.py"]   # (no unit test names it: all)
+    assert A.affected(["src/nexel_worlds/nowhere.py"], r)[1] == ["tests/test_building.py", "tests/test_other.py", "tests/test_vox_layer.py"]   # (no unit test names it: all)
     assert A.affected(["tests/e2e/test_e2e_menu.py", "tests/e2e/game.py"], r) == (["tests/e2e/test_e2e_menu.py"], [], True)
 
 
 def test_on_the_real_repo_known_files_ask_for_their_tests():
-    e2e = A.affected(["src/megastructure/web/js/wayshow.js"], ROOT)[0]
+    e2e = A.affected(["src/nexel_worlds/web/js/wayshow.js"], ROOT)[0]
     assert "tests/e2e/test_e2e_wayshow.py" in e2e and "tests/e2e/test_e2e_sound.py" not in e2e
-    e2e = A.affected(["src/megastructure/web/js/hd_sun.js"], ROOT)[0]
+    e2e = A.affected(["src/nexel_worlds/web/js/hd_sun.js"], ROOT)[0]
     assert "tests/e2e/test_e2e_hd_sun.py" in e2e and all(Path(t).name.startswith("test_e2e_hd") for t in e2e if "hd" in t)
-    e2e, unit, _ = A.affected(["src/megastructure/devtools.py"], ROOT)
+    e2e, unit, _ = A.affected(["src/nexel_worlds/devtools.py"], ROOT)
     assert "tests/test_devtools.py" in unit and "tests/e2e/test_e2e_world.py" in e2e

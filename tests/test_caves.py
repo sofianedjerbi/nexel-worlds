@@ -1,8 +1,8 @@
 """Generated caves (cavegen.py): rooms and straight passages level in the rock, shut in all round, with one way out
 onto dry ground through a notch."""
 
-from megastructure import cavegen
-from megastructure.gen import _dry, _hash, _land, col_surfaces, gen_cave, gen_chunk
+from nexel_worlds import cavegen
+from nexel_worlds.gen import _dry, _hash, _land, col_surfaces, gen_cave, gen_chunk
 
 SEED = 12
 
@@ -46,8 +46,8 @@ def test_a_cave_is_empty_cells_in_the_generated_land():
 
 def test_the_showcase_is_built_and_newcomers_start_beside_it(tmp_path):
     """showcase.py: the demo's world. Every kind of entry is there, walkable from the field, and you start by it."""
-    from megastructure import showcase
-    from megastructure.sim import Simulation
+    from nexel_worlds import showcase
+    from nexel_worlds.sim import Simulation
 
     sim = Simulation(tmp_path / "w.sqlite", seed=SEED)
     showcase.build(sim)
@@ -67,9 +67,9 @@ def test_land_is_made_a_row_at_a_time_where_there_are_no_threads(tmp_path, monke
     land as made in one go."""
     import time
 
-    from megastructure import world as world_mod
-    from megastructure.gen import gen_chunk
-    from megastructure.sim import Simulation
+    from nexel_worlds import world as world_mod
+    from nexel_worlds.gen import gen_chunk
+    from nexel_worlds.sim import Simulation
 
     monkeypatch.setattr(world_mod, "THREADS", False)
     sim = Simulation(tmp_path / "w.sqlite", seed=SEED)
@@ -92,8 +92,8 @@ def test_what_a_tick_says_leaves_before_land_is_made_and_the_loop_turns_meanwhil
     import asyncio
     import time
 
-    from megastructure import world as world_mod
-    from megastructure.server import GameServer
+    from nexel_worlds import world as world_mod
+    from nexel_worlds.server import GameServer
 
     monkeypatch.setattr(world_mod, "THREADS", False)
     gs = GameServer(tmp_path / "w", seed=SEED)

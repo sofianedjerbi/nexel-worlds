@@ -4,9 +4,9 @@ import asyncio
 import json
 import re
 
-from megastructure import tiles as T
-from megastructure.rules import FILE, rules_js, rules_table
-from megastructure.server import GameServer
+from nexel_worlds import tiles as T
+from nexel_worlds.rules import FILE, rules_js, rules_table
+from nexel_worlds.server import GameServer
 
 JS = FILE.parent
 SOURCES = {f.name: f.read_text() for f in sorted(JS.glob("*.js")) if f.name != FILE.name}
@@ -37,7 +37,7 @@ def hello(tmp_path) -> dict:
 def test_the_hello_says_the_table_and_the_page_has_the_same_one(tmp_path):
     table = json.loads(json.dumps(rules_table()))
     assert hello(tmp_path)["rules"] == table
-    assert FILE.read_text() == rules_js(), "web/js/rules.js is not rules.py's table: uv run python -m megastructure.rules"
+    assert FILE.read_text() == rules_js(), "web/js/rules.js is not rules.py's table: uv run python -m nexel_worlds.rules"
     assert json.loads(FILE.read_text().split("const RULES = ", 1)[1].rstrip(";\n")) == table
 
 

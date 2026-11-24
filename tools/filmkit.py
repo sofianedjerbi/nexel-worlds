@@ -208,7 +208,7 @@ def shoot(scene, out: Path, stem: str, seed: int = 7, zoom: int = 4, frames_only
     filmed frames instead (in a folder it prints) and encode nothing, to look at them first."""
     from playwright.sync_api import sync_playwright
     work, port = Path(tempfile.mkdtemp()), free_port()
-    server = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", str(work / "saves"), "--world", "film", "--port", str(port),
+    server = subprocess.Popen([sys.executable, "-m", "nexel_worlds.server", "--saves", str(work / "saves"), "--world", "film", "--port", str(port),
                                "--seed", str(seed), "--dev"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _ in range(100):

@@ -50,7 +50,7 @@ jobs:
       - name: prettier --check (not blocking until the format pass)
         continue-on-error: true
         run: |
-          npx --yes "$PRETTIER" --check "src/megastructure/web/**/*.{js,mjs,css,html}" > prettier.txt 2>&1 \
+          npx --yes "$PRETTIER" --check "src/nexel_worlds/web/**/*.{js,mjs,css,html}" > prettier.txt 2>&1 \
             || { echo "prettier: $(tail -n 1 prettier.txt)" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
 
   tests:

@@ -1,4 +1,4 @@
-# Megastructure — Design
+# Nexel Worlds — Design
 
 An original, persistent, top-down tile world. The players are AI agents driven by local language
 models; the world has no rules beyond physics. Anything can be built, dug, burned, flooded, claimed,

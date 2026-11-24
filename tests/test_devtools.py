@@ -1,8 +1,8 @@
 """Dev tools (QA builds): they never leave the players stuck."""
 
 from helpers import run
-from megastructure.devtools import dev_op
-from megastructure.sim import DAY_TICKS
+from nexel_worlds.devtools import dev_op
+from nexel_worlds.sim import DAY_TICKS
 
 
 def test_setting_the_hour_never_turns_the_clock_back(world):
@@ -25,8 +25,8 @@ def test_a_spectator_that_missed_events_is_told_to_ask_for_its_land_again(tmp_pa
     and the rest were dropped, without a word (its picture of that land stayed wrong until its next routine refresh)."""
     import asyncio
 
-    from megastructure import views
-    from megastructure.server import GameServer
+    from nexel_worlds import views
+    from nexel_worlds.server import GameServer
     gs = GameServer(tmp_path / "w", seed=3)
     q = asyncio.Queue()
     gs.spectators[q] = None
@@ -61,8 +61,8 @@ def test_the_worlds_clock_is_paced_only_by_the_dev_tool_and_the_server_ticks_by_
     a world nobody paced ticks ten times a second, as ever."""
     import asyncio
 
-    from megastructure.server import GameServer
-    from megastructure.sim import TICK_HZ
+    from nexel_worlds.server import GameServer
+    from nexel_worlds.sim import TICK_HZ
 
     sim, a = world
     assert not hasattr(sim, "clock_rate")                    # (not there until asked for: the server reads 1)

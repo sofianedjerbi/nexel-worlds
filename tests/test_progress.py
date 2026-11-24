@@ -1,9 +1,9 @@
 """Experience (mining ore, crafting, hunting) and the item magnet."""
 
 from helpers import run
-from megastructure.sim import Creature
-from megastructure.sim.constants import sec
-from megastructure.sim.progress import MAGNET_DELAY, level_of
+from nexel_worlds.sim import Creature
+from nexel_worlds.sim.constants import sec
+from nexel_worlds.sim.progress import MAGNET_DELAY, level_of
 
 
 def test_levels_get_longer():
@@ -74,8 +74,8 @@ def test_every_thing_that_can_be_made_has_a_line_about_it():
     import re
     from pathlib import Path
 
-    from megastructure.tiles import RECIPES
-    text = (Path(__file__).parent.parent / "src/megastructure/web/js/blurbs.js").read_text()
+    from nexel_worlds.tiles import RECIPES
+    text = (Path(__file__).parent.parent / "src/nexel_worlds/web/js/blurbs.js").read_text()
     blurbs = dict(re.findall(r'^  (\w+): "((?:[^"\\]|\\.)*)",$', text, re.M))
     found = {"wood", "stone", "fiber", "ore", "dirt", "stone_block", "seed", "berries", "fruit", "mushroom", "egg", "milk", "meat", "wheat", "pumpkin", "cauliflower", "lettuce",
              "eggplant", "carrot", "flower", "shell_plate"}          # what is not made has its line too (the inventory shows it)
@@ -89,8 +89,8 @@ def test_a_creature_does_not_leave_the_same_thing_every_time(world):
     something rare; the boss's drops are sure."""
     import random
 
-    from megastructure.sim import CREATURES
-    from megastructure.sim.entities import roll_drops
+    from nexel_worlds.sim import CREATURES
+    from nexel_worlds.sim.entities import roll_drops
     sim, a = world
     rng, n = random.Random(3), 2000
     got = [roll_drops("chicken", rng) for _ in range(n)]
@@ -113,7 +113,7 @@ def test_a_creature_does_not_leave_the_same_thing_every_time(world):
 
 def test_a_pile_is_taken_one_way_and_what_you_can_make_is_said_once(world):
     """Items.take_pile (walked over, drawn in, picked up) and tiles.can_craft (the craft, and what you are told)."""
-    from megastructure.tiles import RECIPES, can_craft
+    from nexel_worlds.tiles import RECIPES, can_craft
     sim, a = world
     a.add("stone", 2)
     if sim.can_go(a, a.x + 1, a.y):

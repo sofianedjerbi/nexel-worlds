@@ -10,7 +10,7 @@ with the world's own generator; the test lays the meadow out 12 tiles round it a
 on this worker's world laid out near it (game.py BUILT), so what they built there is gone; and a test stands on the same tile in every run, its patches and tufts the same: it passes every time or
 fails every time. (One place, not one a test: the first trip to a place makes its land, 2 to 4 s.)"""
 
-from megastructure import gen
+from nexel_worlds import gen
 
 SEED = 7                   # the tests' world (conftest.py server)
 FLAT = 40                  # tiles round the place that are dry land at level 0 or 1

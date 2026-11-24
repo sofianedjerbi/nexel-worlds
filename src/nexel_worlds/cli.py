@@ -1,6 +1,6 @@
 """Interactive terminal client.
 
-    uv run python -m megastructure.cli --name Me --token secret
+    uv run python -m nexel_worlds.cli --name Me --token secret
 
 Commands: `o` (observe), `<tool> key=value ...` (e.g. `dig dir=N`, `move_to x=3 y=-4`,
 `say text="hello there"`), shorthand `n/e/s/w` to step, `tools`, `recipes`, `q`.

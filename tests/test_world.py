@@ -3,7 +3,7 @@
 import pytest
 from helpers import clear, make
 
-from megastructure.world import Chunk
+from nexel_worlds.world import Chunk
 
 
 def test_chunk_pack_roundtrip():
@@ -72,8 +72,8 @@ def test_observe_shape(world):
 
 def test_spread_bushes_are_tidied_on_load(world):
     sim, a = world
-    from megastructure.gen import gen_tile
-    from megastructure.tiles import B
+    from nexel_worlds.gen import gen_tile
+    from nexel_worlds.tiles import B
     x, y = next((x, a.y) for x in range(a.x, a.x + 200) if gen_tile(sim.world.seed, x, a.y)[1] != B["berry_bush"])
     sim.world.set(x, y, block="berry_bush")
     sim.world.flush()
@@ -91,8 +91,8 @@ def test_interrupt(world):
 
 def test_land_is_generated_off_the_tick_then_installed(tmp_path):
     import time
-    from megastructure.world import Store, World
-    from megastructure.world import GEN_TICKS
+    from nexel_worlds.world import Store, World
+    from nexel_worlds.world import GEN_TICKS
     w = World(Store(tmp_path / "w.sqlite"), seed=3)
     assert w.prefetch(9, 9) is False                         # started in the background...
     time.sleep(.2)

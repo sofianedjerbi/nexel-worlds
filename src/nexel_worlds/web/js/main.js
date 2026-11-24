@@ -29,7 +29,7 @@ setInterval(() => { for (const d of $("chatlog").children) d.classList.toggle("o
 // from a "/", only the commands come back. It is kept from one visit to the next (the last SAID_KEEP lines).
 // The arrows stay the list's (complete.js) while a list of several is being walked: a line with something typed.
 const SAID_KEEP = 50;
-let said = JSON.parse(localStorage.getItem("megastructure-said") || "[]"), saidAt = null, saidDraft = "";
+let said = JSON.parse(localStorage.getItem("nexel-said") || "[]"), saidAt = null, saidDraft = "";
 function saidKey(e) {
   if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return false;
   const i = $("say"), up = e.key === "ArrowUp";
@@ -48,7 +48,7 @@ function saidKey(e) {
 }
 function saidAdd(line) {
   said = [...said.filter((l) => l !== line), line].slice(-SAID_KEEP);      // (said twice: once, at its latest place)
-  localStorage.setItem("megastructure-said", JSON.stringify(said));
+  localStorage.setItem("nexel-said", JSON.stringify(said));
 }
 $("say").addEventListener("input", () => { saidAt = null; });
 function openChat(prefix = "") { saidAt = null; $("chatbox").classList.remove("peek"); $("chatbox").classList.add("open"); const i = $("say"); i.value = prefix; i.focus(); $("chatlog").scrollTop = 1e9; askTools(); suggest(); }   // (complete.js)
@@ -74,11 +74,11 @@ $("letter").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key 
 $("craftclose").onclick = () => { sfx("close"); $("craft").style.display = "none"; drawGoals(); };
 $("say").addEventListener("blur", closeChat);
 function toggleCraft() { const c = $("craft"), open = c.style.display !== "block"; sfx(open ? "open" : "close"); c.style.display = open ? "block" : "none"; if (open) craftOpened(); drawGoals(); }   // (C; on a phone, its button at the top)
-$("helpbtn").onclick = () => { const h = $("help"); const on = h.style.display !== "block"; h.style.display = on ? "block" : "none"; localStorage.setItem("megastructure-help", on ? "on" : "off"); };
+$("helpbtn").onclick = () => { const h = $("help"); const on = h.style.display !== "block"; h.style.display = on ? "block" : "none"; localStorage.setItem("nexel-help", on ? "on" : "off"); };
 $("goalhelp").onclick = () => $("helpbtn").click();
 $("join").onclick = () => { const n = $("name").value.trim(); if (n) joinGame(n); };
 $("brand").onclick = () => { if (!me) $("joinbox").style.display = "block"; };
-$("name").value = localStorage.getItem("megastructure-name") || "";
+$("name").value = localStorage.getItem("nexel-name") || "";
 { let fresh = true; const n = $("name"); n.addEventListener("focus", () => { fresh = true; setTimeout(() => n.select(), 0); }); n.addEventListener("mouseup", (e) => { if (fresh) { e.preventDefault(); n.select(); } fresh = false; }); n.addEventListener("input", () => { fresh = false; }); }   // (the last name, whole: what you type replaces it ("qastepqastep": it was added to); it has the focus as the page opens, so the first click takes it whole too)
 const qs = new URLSearchParams(location.search);
 if (qs.get("follow")) { follow = qs.get("follow"); $("joinbox").style.display = "none"; }

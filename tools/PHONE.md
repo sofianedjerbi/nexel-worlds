@@ -4,9 +4,9 @@ Two ways: a phone simulated on this Mac (`tools/phone_sim.py`), and the real pho
 
 ## On this Mac
 
-    PYTHONPATH=src ~/megastructure/.venv/bin/python tools/phone_sim.py --preset mid
-    PYTHONPATH=src ~/megastructure/.venv/bin/python tools/phone_sim.py --preset low --gpu soft --profile stair
-    PYTHONPATH=src ~/megastructure/.venv/bin/python tools/phone_sim.py --bench --preset mid      (the calibration only)
+    PYTHONPATH=src ~/nexel/nexel-worlds/.venv/bin/python tools/phone_sim.py --preset mid
+    PYTHONPATH=src ~/nexel/nexel-worlds/.venv/bin/python tools/phone_sim.py --preset low --gpu soft --profile stair
+    PYTHONPATH=src ~/nexel/nexel-worlds/.venv/bin/python tools/phone_sim.py --bench --preset mid      (the calibration only)
 
 - It starts its own server (a free port, a new world, never 7777) and one headless Chrome held like a phone: 390x844,
   3 device px a px (1170x2532, a phone's real px: its GPU is slowed by the px it fills), touch.
@@ -48,9 +48,9 @@ In the game itself: F3 (or `?perf=1`) shows the same per frame: fps, frame and s
 1. On the phone: Settings, About phone, tap "Build number" seven times. Then Settings, Developer options: USB debugging on.
 2. Cable to the Mac; on the phone, allow this computer. `adb devices` lists it.
 3. Open Chrome on the phone (any page).
-4. `PYTHONPATH=src ~/megastructure/.venv/bin/python tools/phone_sim.py --device android --bench` prints the phone's
+4. `PYTHONPATH=src ~/nexel/nexel-worlds/.venv/bin/python tools/phone_sim.py --device android --bench` prints the phone's
    own BENCH ms: written into `REF` (mid or low), the simulation matches that phone.
-5. `PYTHONPATH=src ~/megastructure/.venv/bin/python tools/phone_sim.py --device android` plays the same scenarios on
+5. `PYTHONPATH=src ~/nexel/nexel-worlds/.venv/bin/python tools/phone_sim.py --device android` plays the same scenarios on
    the phone (`adb forward` reaches its Chrome, `adb reverse` lets it reach the server on the Mac), no slowing.
 6. By hand: on the Mac, Chrome at `chrome://inspect#devices`, "Port forwarding" 7777 to localhost:7777; on the
    phone open `localhost:7777/?perf=1`; on the Mac, "inspect", the Performance panel: record while playing.

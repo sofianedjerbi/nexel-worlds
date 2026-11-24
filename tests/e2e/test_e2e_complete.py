@@ -172,7 +172,7 @@ def test_the_arrows_bring_back_what_you_sent(game):
     page.keyboard.press("ArrowDown")
     assert game.js(LINE) == "/dig dir=" and game.js("$('sayhelp').querySelector('.on b').textContent") == "E"
     page.keyboard.press("Escape")
-    assert game.js("JSON.parse(localStorage.getItem('megastructure-said'))") == ["hello", "how are you", "/coords"]
+    assert game.js("JSON.parse(localStorage.getItem('nexel-said'))") == ["hello", "how are you", "/coords"]
     page.reload()                                              # kept between visits
     page.wait_for_function("typeof ready !== 'undefined'")
     assert game.js("said") == ["hello", "how are you", "/coords"]

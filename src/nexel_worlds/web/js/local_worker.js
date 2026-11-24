@@ -46,7 +46,7 @@ async function boot() {
   await sync(true);
   at("saves");
   py.runPython("import sys; sys.path.insert(0, '/lib/game')");
-  game = py.pyimport("megastructure.browser");
+  game = py.pyimport("nexel_worlds.browser");
   stage = .93; progress(); at("game");
   game.start(SAVES);
   stage = 1; progress(); at("world");

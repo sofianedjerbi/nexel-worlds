@@ -3,9 +3,9 @@ a high hill is stone at every height; lower land is EARTH cells of earth under i
 top and rock underneath"). Kept through digging and building, saved, read by one rule (world.py made_of) for what a
 dig gives and what a screen is told ("r"; "~" and the stone cell where the screen cannot tell it from the top)."""
 
-from megastructure.chunks import EARTH, FORMAT, HIGH, Chunk
-from megastructure.gen import CHUNK, col_runs, col_solid
-from megastructure.views import Views
+from nexel_worlds.chunks import EARTH, FORMAT, HIGH, Chunk
+from nexel_worlds.gen import CHUNK, col_runs, col_solid
+from nexel_worlds.views import Views
 
 
 def test_a_chunks_stone_is_set_by_its_tops_when_made_and_is_saved():
@@ -31,7 +31,7 @@ def test_a_save_from_before_keeps_its_stone_hills_and_takes_the_rest_from_the_ge
 def test_a_hill_is_earth_to_its_foot_a_stone_hill_stone_all_down_and_both_are_kept(world):
     """No land laid out shows stone: a hill's stone starts under the lowest ground round it. Kept through digging and
     building; a screen is told each tile's stone cell (views.py stones, a tile event's mat)."""
-    from megastructure.cells import SEA
+    from nexel_worlds.cells import SEA
     sim, a = world
     x, y = a.x + 3, a.y
     w = sim.world

@@ -120,13 +120,13 @@ new ResizeObserver(() => document.documentElement.style.setProperty("--hudh", $(
 // px wide "Dig down Q" was under its last slots. (Across, the corner and the bar are where they are whatever its height.)
 { const clear = () => { const a = $("actions"), r = a.getBoundingClientRect(), b = $("hud").getBoundingClientRect(); a.classList.toggle("lift", r.width > 0 && b.width > 0 && r.left < b.right + 8 && r.right > b.left); };
   const ro = new ResizeObserver(clear); ro.observe($("actions")); ro.observe($("hud")); addEventListener("resize", clear); }
-let slots = JSON.parse(localStorage.getItem("megastructure-slots") || "[]");
+let slots = JSON.parse(localStorage.getItem("nexel-slots") || "[]");
 function slotOrder(inv) {               // items keep their slot; new items take the first free one, the empty hand's last
   slots = slots.map((n) => (n && inv[n] ? n : null));         // (a flower picked with empty hands stays out of them: E picks the next one, not plants it)
   while (slots.length < BAR) slots.push(null);
   const free = () => { const i = slots.findIndex((n, j) => !n && j !== handSlot); return i >= 0 ? i : slots.indexOf(null); };
   for (const n of Object.keys(inv)) if (!slots.includes(n)) { const i = free(); if (i >= 0) slots[i] = n; else slots.push(n); }
-  localStorage.setItem("megastructure-slots", JSON.stringify(slots));
+  localStorage.setItem("nexel-slots", JSON.stringify(slots));
   return slots;
 }
 // The hand is a slot of the bar, like Minecraft ("always keep an item selected in the inventory, even empty hands"): what
@@ -137,9 +137,9 @@ function handSync(inv = meObs ? meObs.self.inventory : {}) {
   const n = slots[handSlot]; selected = n && inv[n] ? n : null; return selected;
 }
 function handTo(i) {                    // the slot holding a thing: in hand (from the pack: swapped into the slot in hand)
-  if (i >= BAR) { [slots[i], slots[handSlot]] = [slots[handSlot], slots[i]]; localStorage.setItem("megastructure-slots", JSON.stringify(slots)); }
+  if (i >= BAR) { [slots[i], slots[handSlot]] = [slots[handSlot], slots[i]]; localStorage.setItem("nexel-slots", JSON.stringify(slots)); }
   else if (i >= 0) handSlot = i;
-  localStorage.setItem("megastructure-hand", handSlot);
+  localStorage.setItem("nexel-hand", handSlot);
 }
 function drawHotbar(inv) {
   const el = $("hotbar");

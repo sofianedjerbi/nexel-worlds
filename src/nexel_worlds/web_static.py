@@ -2,7 +2,7 @@
 
 Text goes out gzipped to a browser that takes it, and every file has a mark (ETag): asked for again unchanged, the
 answer is "not modified" and no body (a page loaded again sent its hundred scripts whole, 1.3 MB, every time).
-Started with `--bundle` (or MEGASTRUCTURE_BUNDLE=1) the server sends the client as few files (web_bundle.py): one
+Started with `--bundle` (or NEXEL_BUNDLE=1) the server sends the client as few files (web_bundle.py): one
 script, the styles in the page, the pictures in one pack, each kept by the browser for good under its own name.
 For a phone or a far player; development and the tests keep the plain files."""
 
@@ -16,7 +16,7 @@ from websockets.datastructures import Headers
 from websockets.http11 import Response
 
 WEB = Path(__file__).parent / "web"
-BUNDLE = [os.environ.get("MEGASTRUCTURE_BUNDLE") == "1"]
+BUNDLE = [os.environ.get("NEXEL_BUNDLE") == "1"]
 FOR_GOOD = "public, max-age=31536000, immutable"
 _packed, _built = {}, {}           # (path, changed) -> (mark, gzip body or None);  the client's stamp -> (page, files)
 

@@ -1,6 +1,6 @@
 """Player races: chosen at login, kept, sent to who watches; the AI players are not all cats."""
 
-from megastructure.tiles import RACES
+from nexel_worlds.tiles import RACES
 
 
 def test_a_race_is_chosen_at_login_kept_and_can_be_changed(world):
@@ -23,13 +23,13 @@ def test_the_ai_players_come_in_every_race(world):
 def test_the_client_knows_the_same_races():
     import re
     from pathlib import Path
-    js = (Path(__file__).parent.parent / "src/megastructure/web/js/races.js").read_text()
+    js = (Path(__file__).parent.parent / "src/nexel_worlds/web/js/races.js").read_text()
     assert tuple(re.findall(r'\{key: "(\w+)", name:', js)) == RACES
 
 
 def test_who_watches_is_told_which_players_are_ai(world):
     sim, a = world
-    from megastructure.views import Views
+    from nexel_worlds.views import Views
     sim.login("Rusty", "t", "a quiet builder")
     sim.login("Bryn", "tok2", "human", "bunny")
     views = Views(); views.sim = sim

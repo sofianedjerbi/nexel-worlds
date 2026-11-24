@@ -16,7 +16,7 @@ def test_a_wheel_notch_is_one_level_and_a_trackpad_swipe_is_not_a_dozen(game):
         page.wait_for_timeout(8)
     game.sleep(500)
     assert game.js("zoom") == z, game.js("zoom")
-    assert game.js("localStorage.getItem('megastructure-zoom')") == str(z)      # kept for the next visit
+    assert game.js("localStorage.getItem('nexel-zoom')") == str(z)      # kept for the next visit
 
 
 def test_a_level_glides_and_the_sign_shows_where_you_are_and_where_it_stops(game):

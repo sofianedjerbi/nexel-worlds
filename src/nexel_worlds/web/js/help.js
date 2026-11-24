@@ -38,4 +38,4 @@ window.addEventListener("keydown", (e) => {               // (before the game's 
   if (d) turnHelp(helpPage + d); else if (e.key === "Escape") toggleHelp(); else return;
   e.preventDefault(); e.stopImmediatePropagation();
 }, true);
-localStorage.removeItem("megastructure-help");            // (it used to open by itself at each join: a window in the middle does not)
+localStorage.removeItem("nexel-help");            // (it used to open by itself at each join: a window in the middle does not)

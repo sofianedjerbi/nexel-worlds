@@ -18,7 +18,7 @@ def test_fire_spreads_and_burns_out(world):
 
 def test_fruit_tree_regrows_fruit(world):
     sim, a = world
-    from megastructure.sim import sec
+    from nexel_worlds.sim import sec
     sim.world.set(a.x + 1, a.y, block="fruit_tree")
     r = run(sim, a, "dig", {"dir": "E"})
     assert r["changed"]["inventory"] == {"fruit": 3} and sim.world.block(a.x + 1, a.y) == "bare_fruit_tree"
@@ -28,7 +28,7 @@ def test_fruit_tree_regrows_fruit(world):
 
 def test_picked_bush_stays_and_grows_berries_back(world):
     sim, a = world
-    from megastructure.sim import sec
+    from nexel_worlds.sim import sec
     sim.world.set(a.x + 1, a.y, block="berry_bush")
     r = run(sim, a, "dig", {"dir": "E"})
     assert r["changed"]["inventory"] == {"berries": 2, "seed": 1} and sim.world.block(a.x + 1, a.y) == "bare_bush"
@@ -41,8 +41,8 @@ def test_picked_bush_stays_and_grows_berries_back(world):
 
 def test_crop_species_watering_and_harvest(world):
     sim, a = world
-    from megastructure.sim import sec
-    from megastructure.tiles import crop_species
+    from nexel_worlds.sim import sec
+    from nexel_worlds.tiles import crop_species
     a.add("seed", 1)
     a.add("watering_can", 1)
     a.add("hoe", 1)
@@ -60,7 +60,7 @@ def test_crop_species_watering_and_harvest(world):
 
 def test_ash_grows_back_into_grass(world):
     sim, a = world
-    from megastructure.sim import sec
+    from nexel_worlds.sim import sec
     sim.world.set(a.x + 1, a.y, ground="grass")
     assert sim.ignite(a.x + 1, a.y)
     for _ in range(sec(16)):

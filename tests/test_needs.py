@@ -3,8 +3,8 @@
 import pytest
 from helpers import make, run
 
-from megastructure.sim import CREATURES, sec
-from megastructure.sim.constants import FOOD_MAX, HP_MAX, SPRINT_FOOD, TIRES
+from nexel_worlds.sim import CREATURES, sec
+from nexel_worlds.sim.constants import FOOD_MAX, HP_MAX, SPRINT_FOOD, TIRES
 
 
 def test_food_does_not_go_down_by_itself_and_walking_uses_little(world):

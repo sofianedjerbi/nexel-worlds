@@ -3,9 +3,9 @@
 import pytest
 from helpers import run
 
-from megastructure.gen import gen_tile
-from megastructure.sim.constants import SPRINT_FOOD, TIRES
-from megastructure.tiles import DEPTH, GROUNDS
+from nexel_worlds.gen import gen_tile
+from nexel_worlds.sim.constants import SPRINT_FOOD, TIRES
+from nexel_worlds.tiles import DEPTH, GROUNDS
 
 
 def pond(sim, a, kinds):

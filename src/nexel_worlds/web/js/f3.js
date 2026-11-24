@@ -12,14 +12,14 @@
 // columns one under the other, on the left.
 
 const F3 = (() => {
-  const q = new URLSearchParams(location.search), was = (k) => localStorage.getItem("megastructure-" + k) === "1";
+  const q = new URLSearchParams(location.search), was = (k) => localStorage.getItem("nexel-" + k) === "1";
   const RANK = {you: 0, server: 1, frames: 0, look: 1, machine: 2};      // (the order the sections are read in, whatever order their files came in)
   const parts = [], S = {gaps: [], js: [], land: 0, n: 0, last: 0, at: 0, cost: 0, now: -1};
   let on = q.get("perf") === "1" || q.get("debug") === "1" || was("f3") || was("perf") || was("coords"), el = null, painted = 0;
   function add(name, fn, side = "game") { const i = parts.findIndex((p) => p.name === name); if (i >= 0) parts.splice(i, 1); parts.push({name, fn, side}); }
   function set(v) {
-    on = !!v; localStorage.setItem("megastructure-f3", on ? "1" : "0");
-    for (const k of ["perf", "coords"]) localStorage.removeItem("megastructure-" + k);   // (the two old switches: one now)
+    on = !!v; localStorage.setItem("nexel-f3", on ? "1" : "0");
+    for (const k of ["perf", "coords"]) localStorage.removeItem("nexel-" + k);   // (the two old switches: one now)
     if (!on) GpuTime.stop();
     const playing = typeof me !== "undefined" && !!me; document.body.classList.toggle("f3", on && playing); if (el) el.style.display = on && playing ? "" : "none"; S.gaps = []; S.js = []; S.last = S.at = 0; painted = 0;
   }

@@ -1,2 +1,2 @@
 def hello() -> str:
-    return "Hello from megastructure!"
+    return "Hello from nexel_worlds!"

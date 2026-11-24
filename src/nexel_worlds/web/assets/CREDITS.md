@@ -8,7 +8,7 @@ the asset pack itself may not be redistributed or resold, even modified; no NFTs
 credit required.
 
 **Not in this repository.** Install your own copy: `python tools/install_assets.py <the two zips>`
-(README.md, "Art"). It copies the sheets this game uses here (`megastructure/art.py` lists them,
+(README.md, "Art"). It copies the sheets this game uses here (`nexel_worlds/art.py` lists them,
 `.gitignore` keeps them out of git) and makes the tiles derived from them: `gen.png`, `ash.png`,
 `water_deep.png`, `tilled_wet.png`, `deep_mask.png`, `fruit_bare.png`, `thin_fall.png`, `stump_thin.png`,
 the cropped UI pieces (`panel.png`, `slot.png`, `slot_sel.png`, `cursor.png`, `cursor_point.png`) and the

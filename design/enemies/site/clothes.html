@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Megastructure · clothes and armor</title>
+<title>Nexel Worlds · clothes and armor</title>
 <style>
   :root { --ink:#5b3f36; --ink2:#8a6a55; --paper:#fff6e2; --paper2:#f3dfba; --line:#c9a27a; }
   * { box-sizing:border-box; }
@@ -339,7 +339,7 @@ function rebuild() {
   document.querySelectorAll("[data-bag]").forEach((c) => drawIcon(c, c.dataset.bag, pick(c.dataset.bag)));
   $("setup").innerHTML = PARTS.map(([key, title]) => `<b>${title}:</b> ${pick(key).name}`).join(" &nbsp;·&nbsp; ");
   const code = PARTS.map(([key]) => outfit[key]).join(",");
-  localStorage.setItem("megastructure-outfit", code);
+  localStorage.setItem("nexel-outfit", code);
   history.replaceState(null, "", "#" + code);
   document.querySelectorAll(".opt").forEach((b) => b.classList.toggle("on", outfit[b.dataset.part] === b.dataset.id));
 }
@@ -443,7 +443,7 @@ img.onload = () => {
   base.getContext("2d").drawImage(img, 0, 0);
   baseData = base.getContext("2d").getImageData(0, 0, base.width, base.height);
   for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) analysis.push(analyse(base.getContext("2d").getImageData(c * CELL, r * CELL, CELL, CELL).data, r));
-  const code = (location.hash.slice(1) || localStorage.getItem("megastructure-outfit") || "").split(",");
+  const code = (location.hash.slice(1) || localStorage.getItem("nexel-outfit") || "").split(",");
   PARTS.forEach(([key, , , list], i) => { if (list.some((o) => o.id === code[i])) outfit[key] = code[i]; });
   build(); rebuild(); requestAnimationFrame(draw);
 };

@@ -12,7 +12,7 @@ from pathlib import Path
 from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 
-OUT = Path(__file__).resolve().parent.parent / "src" / "megastructure" / "web" / "assets" / "sprout-pixel.ttf"
+OUT = Path(__file__).resolve().parent.parent / "src" / "nexel_worlds" / "web" / "assets" / "sprout-pixel.ttf"
 PX = 100
 
 # '#' = ink. Rows not given are blank. Lowercase and descender glyphs use all 9 rows.

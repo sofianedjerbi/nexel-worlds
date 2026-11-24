@@ -13,7 +13,7 @@ dependencies = [
 
 
 [project.scripts]
-nexel-worlds = "megastructure.server:main"
+nexel-worlds = "nexel_worlds.server:main"
 
 [project.optional-dependencies]
 # tools/install_assets.py (the art) and the other picture tools
@@ -29,7 +29,7 @@ requires = ["uv_build>=0.11.18,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-module-name = "megastructure"          # the game's first name: the package keeps it
+module-name = "nexel_worlds"
 
 [dependency-groups]
 dev = [

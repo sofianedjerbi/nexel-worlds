@@ -33,7 +33,7 @@ const MENU_PAGES = [
     toggle("Speech bubbles", "bubbles"), toggle("Names over heads", "names"),
     choice("A chat line stays", "chat", [[5, "5 seconds"], [10, "10 seconds"], [30, "30 seconds"], [600, "10 minutes"]]),
     toggle("Key hints", "hints"), toggle("Mouse tips", "tips"),
-    toggle("Goals card", {get: () => !goalsOff, set: (v) => { goalsOff = !v; localStorage.setItem("megastructure-goals-off", v ? "0" : "1"); drawGoals(); }, def: false}),
+    toggle("Goals card", {get: () => !goalsOff, set: (v) => { goalsOff = !v; localStorage.setItem("nexel-goals-off", v ? "0" : "1"); drawGoals(); }, def: false}),
     f3Row()]],
   ["Keys", [
     choice("Sprint", "sprint", [["hold", "Hold Shift"], ["toggle", "Shift once"]]), toggle("Auto-jump", "autojump"),

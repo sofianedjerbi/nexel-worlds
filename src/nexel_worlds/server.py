@@ -1,6 +1,6 @@
 """Authoritative game server: fixed-rate tick loop + WebSocket Agent API.
 
-    uv run python -m megastructure.server --world default --port 7777
+    uv run python -m nexel_worlds.server --world default --port 7777
 """
 
 import argparse
@@ -27,7 +27,7 @@ from .tiles import RECIPES
 from .views import Views
 from .web_static import serve_http, set_bundle, web_stamp
 
-log = logging.getLogger("megastructure")
+log = logging.getLogger("nexel_worlds")
 PROTOCOL = 1
 RULES_TABLE = rules_table()
 FLUSH_EVERY = 10 * TICK_HZ  # ticks (10 s)
@@ -263,7 +263,7 @@ class GameServer(Views):
         ticker = asyncio.create_task(self.tick_loop())
         async with serve(self.handler, host, port, max_size=2**20,
                          process_request=lambda c, r: serve_http(c, r, self.gate and self.gate.url)) as server:
-            log.info("megastructure listening on ws://%s:%d (seed %d, tick %d) - open http://%s:%d/ to watch",
+            log.info("nexel_worlds listening on ws://%s:%d (seed %d, tick %d) - open http://%s:%d/ to watch",
                      host, port, self.sim.seed, self.sim.tick, host, port)
             await self.stopping.wait()
             log.info("shutting down")

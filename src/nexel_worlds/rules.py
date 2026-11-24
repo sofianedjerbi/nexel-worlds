@@ -4,7 +4,7 @@ A screen offers what the world will accept ("Fill with dirt", "(slow)", "That wo
 it needs the world's tables. They were typed again in the client, about thirty of them, and four had drifted. Now
 `rules_table()` is the only place they are put together, and it goes two ways from here:
   - in the spectator's `hello` (server.py; the demo in a tab runs this same server: browser.py);
-  - written out as web/js/rules.js (`uv run python -m megastructure.rules`), because the first screen draws its island
+  - written out as web/js/rules.js (`uv run python -m nexel_worlds.rules`), because the first screen draws its island
     before any server has answered (in the demo, seconds before Python has even come). A test keeps that file equal
     to this table (tests/test_rules.py), and no table may be typed in the client again.
 The client fills its own tables from it (web/js/vocab.js setRules)."""
@@ -70,7 +70,7 @@ def rules_table() -> dict:
 
 
 def rules_js() -> str:
-    return ("// The world's rules, as the server has them. Written by `uv run python -m megastructure.rules` from rules.py: do not\n"
+    return ("// The world's rules, as the server has them. Written by `uv run python -m nexel_worlds.rules` from rules.py: do not\n"
             "// edit it by hand (tests/test_rules.py keeps it equal). The server's hello says the same table again (vocab.js).\n"
             "const RULES = " + json.dumps(rules_table(), separators=(",", ":"), sort_keys=True) + ";\n")
 

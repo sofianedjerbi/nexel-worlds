@@ -6,12 +6,12 @@ import time
 
 import pytest
 
-from megastructure.account import tickets
-from megastructure.account.mail import Mailer
-from megastructure.account.service import LIMITS, Service
-from megastructure.account.store import CODE_S, CODE_TRIES, SESSION_S, Accounts, clean_email
-from megastructure.gate import Gate
-from megastructure.sim import ActionError
+from nexel_worlds.account import tickets
+from nexel_worlds.account.mail import Mailer
+from nexel_worlds.account.service import LIMITS, Service
+from nexel_worlds.account.store import CODE_S, CODE_TRIES, SESSION_S, Accounts, clean_email
+from nexel_worlds.gate import Gate
+from nexel_worlds.sim import ActionError
 
 
 class Post:

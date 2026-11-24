@@ -80,7 +80,7 @@ rewards and UI on the soundtrack's felt piano and synth pluck. Files are stereo.
 
 ## Sounds in the game (2026-11-11)
 
-`uv run python tools/build_audio.py` renders `music/sfx.py` into `src/megastructure/web/audio/` (32 kHz stereo WAV + `sfx.json`; not committed).
+`uv run python tools/build_audio.py` renders `music/sfx.py` into `src/nexel_worlds/web/audio/` (32 kHz stereo WAV + `sfx.json`; not committed).
 The client (`web/js/audio.js`) loads the manifest on the first gesture, warms every file in the background, and plays samples with distance
 volume, left/right pan, variant rotation, light pitch spread on physical sounds, per-sound throttles and a limiter. One table (`SOUND`) holds the mix.
 `music/sfx_map.json` decides what each placed block or ground sounds like; the build fails if an item has none.

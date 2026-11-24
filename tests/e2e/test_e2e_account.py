@@ -11,7 +11,7 @@ from http.server import ThreadingHTTPServer
 import pytest
 from conftest import ROOT, free_port
 
-from megastructure.account.service import Service
+from nexel_worlds.account.service import Service
 
 
 class Post:
@@ -30,7 +30,7 @@ def door(tmp_path_factory):
     service = Service(folder / "accounts", Post(), [url])
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), service.handler())
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", str(folder / "saves"), "--world", "door", "--port", str(port),
+    proc = subprocess.Popen([sys.executable, "-m", "nexel_worlds.server", "--saves", str(folder / "saves"), "--world", "door", "--port", str(port),
                              "--seed", "7", "--dev", "--accounts", f"http://127.0.0.1:{httpd.server_address[1]}"], cwd=ROOT,
                             stdout=subprocess.DEVNULL, stderr=open(folder / "server.log", "w"))
     for _ in range(100):
@@ -84,7 +84,7 @@ def test_you_log_in_with_a_code_mailed_to_you(browser, door):
     page.keyboard.press("Enter")
     page.wait_for_function("me === 'Milo' && meObs", timeout=25000)
     assert (js("rpc('dev_give', {item: 'wood', n: 1})").get("error")) == "unknown_op"             # (the QA tools are not for who came by ticket)
-    assert js(HELLO, {"name": "Milo", "token": js("localStorage.getItem('megastructure-token-Milo')")})["error"] == "login_needed"   # Milo is the account's now
+    assert js(HELLO, {"name": "Milo", "token": js("localStorage.getItem('nexel-token-Milo')")})["error"] == "login_needed"   # Milo is the account's now
 
     page.reload()                                                                                 # back: still logged in, and Milo is not asked again
     page.wait_for_function("typeof ready !== 'undefined' && ACCOUNT.named === 'Milo'")
@@ -96,7 +96,7 @@ def test_you_log_in_with_a_code_mailed_to_you(browser, door):
     page.wait_for_function("typeof ready !== 'undefined' && ACCOUNT.named === 'Milo'")
     page.click("#logout")                                                                         # log out: nobody again, and the session is dead
     page.wait_for_function("TITLE.step === 'mail'")
-    assert js("localStorage.getItem('megastructure-session')") is None and js("$('email').value") == "Milo@Example.com"
+    assert js("localStorage.getItem('nexel-session')") is None and js("$('email').value") == "Milo@Example.com"
     assert not service.accounts.db.execute("SELECT 1 FROM sessions").fetchall()
     assert not errors, errors
     ctx.close()

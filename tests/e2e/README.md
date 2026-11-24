@@ -14,7 +14,7 @@ as fast (`clock.py`), every page shut when its test is over (`pages.py`).
 - `-m e2e` is needed (the default run leaves these out). `PYTHONPATH=src` in a worktree, or the venv plays the live game's code.
 - An agent runs **the files it touched and `quick`**, at `-n 2`, five files at the most, one run at a time; never the
   whole folder (several agents doing that froze the machine).
-- The sounds are built files (`tools/build_audio.py` -> `src/megastructure/web/audio/`, not in git). A new worktree
+- The sounds are built files (`tools/build_audio.py` -> `src/nexel_worlds/web/audio/`, not in git). A new worktree
   has none: the tests that need them skip (they waited a minute for them) until they are built; the demo's test
   builds them the first time it runs.
 - **What to run for a change**: `tools/affected.py` prints the e2e (and unit) test files your changes ask for (git's

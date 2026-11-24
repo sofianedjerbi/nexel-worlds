@@ -201,7 +201,7 @@ function turn(dir) {
   BodyPlace.face(p, ...DIRV[dir]);
 }
 function selectSlot(i) {                         // the bar's slot i in hand (ui.js handSync: what is in it, or empty hands)
-  const was = selected; handSlot = ((i % BAR) + BAR) % BAR; localStorage.setItem("megastructure-hand", handSlot);
+  const was = selected; handSlot = ((i % BAR) + BAR) % BAR; localStorage.setItem("nexel-hand", handSlot);
   handWant = null; handSync();
   if (selected !== was) sfx("pick");
   $("hotbar").dataset.sig = ""; if (meObs) drawHotbar(meObs.self.inventory);

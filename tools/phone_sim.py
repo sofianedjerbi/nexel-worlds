@@ -1,8 +1,8 @@
 """A phone on this Mac: the game played by touch in a phone's Chrome, every frame measured (tools/PHONE.md says more).
 
-    PYTHONPATH=src ~/megastructure/.venv/bin/python tools/phone_sim.py --preset mid [--gpu soft] [--line 4g]
+    PYTHONPATH=src ~/nexel/nexel-worlds/.venv/bin/python tools/phone_sim.py --preset mid [--gpu soft] [--line 4g]
         [--only stand,walk,sprint,stair,swim,title] [--secs 5] [--profile sprint] [--out p1_mid] [--saves DIR]
-    PYTHONPATH=src ~/megastructure/.venv/bin/python tools/phone_sim.py --device android [--bench]
+    PYTHONPATH=src ~/nexel/nexel-worlds/.venv/bin/python tools/phone_sim.py --device android [--bench]
 
 Its own server (a free port, a new world under --saves, seed 7, dev tools), one headless Chrome: 390x844 CSS px, 3
 device px a px (1170x2532: a phone's GPU is bound by the px it fills), touch, the CPU slowed by a rate CALIBRATED on
@@ -51,7 +51,7 @@ def free_port():
 
 
 def server(saves, port):
-    proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", saves, "--world", "sim", "--port", str(port), "--seed", "7", "--dev"],
+    proc = subprocess.Popen([sys.executable, "-m", "nexel_worlds.server", "--saves", saves, "--world", "sim", "--port", str(port), "--seed", "7", "--dev"],
                             cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT / "src")}, stdout=subprocess.DEVNULL, stderr=open(Path(saves) / "server.log", "w"))
     for _ in range(100):
         try:

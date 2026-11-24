@@ -5,13 +5,13 @@ import json
 
 import pytest
 
-from megastructure.sim import DAY_TICKS
-from megastructure.sim.constants import FOOD_MAX, HP_MAX
+from nexel_worlds.sim import DAY_TICKS
+from nexel_worlds.sim.constants import FOOD_MAX, HP_MAX
 
 
 @pytest.fixture
 def gs(tmp_path):
-    from megastructure.server import GameServer
+    from nexel_worlds.server import GameServer
     s = GameServer(tmp_path / "w", seed=3, admins=["Boss"])
     yield s
     s.sim.close()
@@ -45,7 +45,7 @@ def test_an_ai_player_can_never_be_an_admin(gs, tmp_path):
 
 
 def test_op_and_deop_are_kept_across_a_restart(tmp_path):
-    from megastructure.server import GameServer
+    from nexel_worlds.server import GameServer
     (tmp_path / "w").mkdir()
     (tmp_path / "w" / "admins.txt").write_text("# admins\nFileAdmin\n")
     gs = GameServer(tmp_path / "w", seed=3, admins=["Boss"])

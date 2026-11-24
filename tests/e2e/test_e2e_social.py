@@ -105,7 +105,7 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     box = "(id) => { const r = $(id).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] : null; }"
     assert game.js(box, "goals") is None and game.js("$('goalhint').textContent") == "Ggoals0/12" and game.js(box, "goalhint")[0] <= 14     # away; the tab, early in the game
     game.press("g", 200)                                                           # G: the card (and the tab goes)
-    assert game.js(box, "goalhint") is None and game.js("localStorage.getItem('megastructure-goals-off')") == "0"
+    assert game.js(box, "goalhint") is None and game.js("localStorage.getItem('nexel-goals-off')") == "0"
     goals = game.js(box, "goals")
     assert goals and goals[0] <= 14 and goals[1] <= 14 and game.js(box, "brand") is None and game.js(box, "side") is None and game.js(box, "who") is None
     assert len(game.js("[...document.querySelectorAll('.goal')].map((g) => g.innerText)")) == 3 and game.js("$('goalhide').textContent + ' ' + $('goalhelp').textContent") == "Ghide Hhelp"
@@ -149,7 +149,7 @@ def test_the_goals_stay_and_tab_shows_the_day_who_you_are_and_who_is_awake(game,
     game.sleep(600)
     assert "Goal done" not in game.toast() and game.js("document.querySelectorAll('.goal.done').length") == 1 and game.js("$('goalcount').textContent") == "1/12"
     game.press("g", 200)                                                           # away again: the tab is back, with how many are done
-    assert game.js(box, "goals") is None and game.js("$('goalhint').textContent") == "Ggoals1/12" and game.js("localStorage.getItem('megastructure-goals-off')") == "1"
+    assert game.js(box, "goals") is None and game.js("$('goalhint').textContent") == "Ggoals1/12" and game.js("localStorage.getItem('nexel-goals-off')") == "1"
     game.give(berries=1)                                                           # a goal done while the card is away: said in the line of news
     game.sleep(900)
     assert game.toast() == "Goal done: Pick berries"

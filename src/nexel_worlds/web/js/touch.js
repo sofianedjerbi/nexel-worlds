@@ -74,7 +74,7 @@ function tapButton(e, fn) {
 
 if (TOUCH) {
   document.body.classList.add("touch"); hudTall = .26;       // (the HUD: a quarter of the height at most, ui.js)
-  if (Math.min(innerWidth, innerHeight) < 520 && !new URLSearchParams(location.search).get("zoom") && !localStorage.getItem("megastructure-zoom")) zoom = 2;
+  if (Math.min(innerWidth, innerHeight) < 520 && !new URLSearchParams(location.search).get("zoom") && !localStorage.getItem("nexel-zoom")) zoom = 2;
   const {btns} = touchUI(), pad = $("pad"), base = $("stickbase"), knob = $("stickknob");
 
   // Two fingers on the world pinch. One of them often lands on the stick's side (it is the left of the screen, most of

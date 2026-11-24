@@ -209,7 +209,7 @@ def test_typing_a_name_replaces_the_last_one(browser, server):
     """"qastepqastep": the box keeps the last name typed, and typing into it added to it. On focus the whole name is
     taken, so what you type replaces it."""
     page = browser.new_page(viewport={"width": 1280, "height": 800})
-    page.add_init_script("localStorage.setItem('megastructure-name', 'oldname')")
+    page.add_init_script("localStorage.setItem('nexel-name', 'oldname')")
     page.goto(server)
     page.wait_for_function("document.getElementById('name') && document.getElementById('name').value === 'oldname'", timeout=20000)
     page.click("#name")

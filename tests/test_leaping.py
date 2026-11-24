@@ -3,7 +3,7 @@ where it landed; the world checks them against the same arc and makes them, in t
 side, up onto a step; a flight the arc cannot make is given up."""
 
 from helpers import run
-from megastructure.sim.leaping import LEAP_TOP, airtime
+from nexel_worlds.sim.leaping import LEAP_TOP, airtime
 
 
 def gap(sim, a, width=2):

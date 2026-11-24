@@ -41,7 +41,7 @@ def test_the_volumes_act_at_once_and_are_kept(game):
         game.press("ArrowLeft", 40)
     assert game.js("[opt('master'), opt('music'), opt('steps'), soundShare('Footsteps'), soundShare('Work')]") == [80, 90, 50, .5, 1]
     assert game.js("audio && [Math.round(soundOut.gain.value * 100), Math.round(musicOut.gain.value * 100)]") == [64, 72]      # (.8 of SOUND.master; .8 x .9)
-    assert game.js("JSON.parse(localStorage.getItem('megastructure-options'))") == {"master": 80, "music": 90, "steps": 50}
+    assert game.js("JSON.parse(localStorage.getItem('nexel-options'))") == {"master": 80, "music": 90, "steps": 50}
     assert game.js("document.querySelectorAll('#menu .row.own').length") == 3
     box = game.page.locator("#menu .row.on .bar").bounding_box()                    # a bar is dragged with the mouse
     game.page.mouse.click(box["x"] + box["width"] * .8, box["y"] + 3)
@@ -49,7 +49,7 @@ def test_the_volumes_act_at_once_and_are_kept(game):
     at_row(game, "Sound"); game.press("Enter")
     assert game.js("muted") is True
     game.press("r")                                             # this page as it came
-    assert game.js("[opt('master'), opt('music'), opt('steps'), muted, localStorage.getItem('megastructure-options')]") == [100, 100, 100, False, "{}"]
+    assert game.js("[opt('master'), opt('music'), opt('steps'), muted, localStorage.getItem('nexel-options')]") == [100, 100, 100, False, "{}"]
 
 
 def test_the_picture_and_screen_settings_do_what_they_say(game):
@@ -84,9 +84,9 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
     at_row(game, "A chat line stays"); game.press("ArrowRight")
     assert game.js("opt('chat')") == 30
     at_row(game, "Goals card"); game.press("Enter")
-    assert game.js("[goalsOff, localStorage.getItem('megastructure-goals-off')]") == [False, "0"]
+    assert game.js("[goalsOff, localStorage.getItem('nexel-goals-off')]") == [False, "0"]
     at_row(game, "Debug screen (F3)"); game.press("Enter")
-    assert game.js("[F3.on, localStorage.getItem('megastructure-f3')]") == [True, "1"]
+    assert game.js("[F3.on, localStorage.getItem('nexel-f3')]") == [True, "1"]
     game.press("Escape"); game.press("Escape")
     game.act("say", text="hello there")
     game.sleep(700)
@@ -102,7 +102,7 @@ def test_a_view_distance_kept_by_its_old_name_is_its_number(browser, server):
     from conftest import Game
     g = Game(browser.new_page(), server).load(3)
     for was, now in (("near", 9), ("normal", 13), ("far", 25), ("veryfar", 37)):
-        g.js(f"localStorage.setItem('megastructure-options', JSON.stringify({{view: '{was}'}}))")
+        g.js(f"localStorage.setItem('nexel-options', JSON.stringify({{view: '{was}'}}))")
         g.page.reload()
         g.page.wait_for_function("typeof opt === 'function'")
         assert g.js("opt('view')") == now, was

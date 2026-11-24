@@ -5,7 +5,7 @@ import json
 from helpers import run
 from test_wild import put
 
-from megastructure.sim import CREATURES, Creature, sec
+from nexel_worlds.sim import CREATURES, Creature, sec
 
 
 def test_a_creature_jumps_up_a_layer_and_comes_down_as_a_person_does(world):

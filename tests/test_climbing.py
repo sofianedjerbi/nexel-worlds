@@ -29,7 +29,7 @@ def test_only_people_climb_and_a_ladder_needs_its_tile_open(world):
     x, y = a.x, a.y
     s.world.set(x, y - 2, level=6)
     s.world.set(x, y - 1, block="ladder")
-    from megastructure.sim import Creature
+    from nexel_worlds.sim import Creature
     hen = Creature(99, "chicken", x, y - 1, 4, z=0)
     assert s.landing(hen, x, y - 2) is None                    # a hen on the ladder: the cliff is a wall
     s.world.set_cell(x, y - 1, 4, True)                         # something over the ladder: no way up through it
@@ -103,7 +103,7 @@ def test_a_hole_is_dug_beside_you_a_layer_at_a_time(world):
     s.world.set(x - 1, y, block="rock")
     assert run(s, a, "dig", {"dir": "W", "z": 0, "with": "pickaxe"})["ok"] and s.world.block(x - 1, y) == "none"   # a thing on it: the thing first
     assert s.world.surfaces(x - 1, y) == [0]
-    from megastructure.sim import Creature
+    from nexel_worlds.sim import Creature
     s.creatures[99] = Creature(99, "chicken", x, y + 1, 4, z=0)
     assert run(s, a, "dig", {"dir": "S", "z": 0, "with": "pickaxe"})["error"] == "occupied"
 
@@ -116,7 +116,7 @@ import pytest
 def test_a_ladder_facing_a_wall_goes_on_your_own_tile_and_takes_you_out(world, d, deep):
     """At the bottom of your own one-tile shaft, a ladder in hand: facing any of the four walls it is put where you
     stand, against that wall, and walking into the wall climbs out onto its top."""
-    from megastructure.tiles import DIRS
+    from nexel_worlds.tiles import DIRS
     s, a = world
     x, y = a.x, a.y
     s.world.set(x, y, level=-deep)

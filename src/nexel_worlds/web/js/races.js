@@ -247,7 +247,7 @@ const raceSheet = Races.raceSheet;
 // browser and sent with your name (agent.js).
 // The first time, each race's picture is made in a turn of its own: a race's whole sheet is made for it, four of them
 // in one go held a phone's first screen still for 0.4 s (the keys and the island's first frames waited behind it).
-let myRace = localStorage.getItem("megastructure-race") || "cat", racePickSeen = false;
+let myRace = localStorage.getItem("nexel-race") || "cat", racePickSeen = false;
 function drawRacePick() {
   const row = $("racepick");
   if (!IMG.character || !IMG.character.complete || !IMG.character.width) return setTimeout(drawRacePick, 150);
@@ -265,5 +265,5 @@ function drawRacePick() {
     row.appendChild(b);
   }
 }
-function pickRace(key) { myRace = key; localStorage.setItem("megastructure-race", myRace); drawRacePick(); }
+function pickRace(key) { myRace = key; localStorage.setItem("nexel-race", myRace); drawRacePick(); }
 (() => { const row = document.createElement("div"); row.id = "racepick"; $("raceslot").appendChild(row); drawRacePick(); })();

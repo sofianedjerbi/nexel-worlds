@@ -3,8 +3,8 @@
 // is apart from the world: the world only ever gets a ticket saying "this account may enter", never your email.
 // The first screen shows one step at a time (title.js): your email, then the code, then who you are.
 
-const ACCOUNT = {url: document.body.dataset.accounts || "", session: localStorage.getItem("megastructure-session") || "",
-  email: localStorage.getItem("megastructure-email") || "", named: null, busy: false};
+const ACCOUNT = {url: document.body.dataset.accounts || "", session: localStorage.getItem("nexel-session") || "",
+  email: localStorage.getItem("nexel-email") || "", named: null, busy: false};
 const ACCOUNT_SAYS = {bad_email: "That does not look like an email.", too_many: "Too many tries. Wait a little, then ask again.",
   mail_down: "The mail could not be sent. Try again in a moment.", bad_code: "That is not the code. Look at the mail again, or start over.",
   offline: "The account service does not answer.", no_session: "You were logged out. Log in again."};
@@ -30,12 +30,12 @@ async function accountLogin() {                               // step two: the c
   const r = await accountAsk("/login", {email: ACCOUNT.email, code}); ACCOUNT.busy = false;
   if (!r.ok) { $("code").value = ""; return accountNeed("code", r.error); }
   ACCOUNT.session = r.session; ACCOUNT.sent = false;
-  localStorage.setItem("megastructure-session", r.session); localStorage.setItem("megastructure-email", ACCOUNT.email);
+  localStorage.setItem("nexel-session", r.session); localStorage.setItem("nexel-email", ACCOUNT.email);
   titleStep(); accountWho();
 }
 function accountOver() { ACCOUNT.sent = false; titleStep(); }  // back to the email: another one, or a new code
 function accountDrop() {                                      // this browser is nobody again
-  ACCOUNT.session = ""; ACCOUNT.sent = false; ACCOUNT.named = null; localStorage.removeItem("megastructure-session");
+  ACCOUNT.session = ""; ACCOUNT.sent = false; ACCOUNT.named = null; localStorage.removeItem("nexel-session");
   $("name").readOnly = false; titleStep();
 }
 function accountOut() { accountAsk("/logout", {session: ACCOUNT.session}); accountDrop(); }

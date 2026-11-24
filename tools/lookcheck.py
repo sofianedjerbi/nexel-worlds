@@ -50,7 +50,7 @@ NOISE = .1        # % of px under which a scene is not framed red: a key cap (DO
 
 
 def run_workers(out, only, jobs):
-    py = str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv").exists() else str(Path.home() / "megastructure/.venv/bin/python")
+    py = str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv").exists() else str(Path.home() / "nexel_worlds/.venv/bin/python")
     todo = [(gr, sc) for gr in GROUPS for sc in SCREENS if any(v[0] == gr and (not only or n in only) for n, v in SCENES.items())]
     todo.sort(key=lambda t: -sum(1 for v in SCENES.values() if v[0] == t[0]))       # (the long groups first)
     running, fails = [], []

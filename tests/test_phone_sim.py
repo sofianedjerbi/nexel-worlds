@@ -63,7 +63,7 @@ console.log(JSON.stringify(out));
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed")
 def test_the_gpus_ms_are_one_frame_each_summed_over_canvases_and_a_jump_is_dropped():
-    r = subprocess.run([NODE, "-e", GL, str(ROOT / "src/megastructure/web/js/gpu_time.js")], capture_output=True, text=True)
+    r = subprocess.run([NODE, "-e", GL, str(ROOT / "src/nexel_worlds/web/js/gpu_time.js")], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     first, second, ok, n, last = json.loads(r.stdout)
     assert first == [7, 11] and second == [4] and ok and n == 2, (first, second)       # (frame 2: 3+4, frame 3: 5+6; the jumped one gone)
@@ -78,6 +78,6 @@ GpuTime.frame(1); GpuTime.frame(2); console.log(JSON.stringify([GpuTime.ok, GpuT
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed")
 def test_no_timer_no_numbers():
-    r = subprocess.run([NODE, "-e", NO_TIMER, str(ROOT / "src/megastructure/web/js/gpu_time.js")], capture_output=True, text=True)
+    r = subprocess.run([NODE, "-e", NO_TIMER, str(ROOT / "src/nexel_worlds/web/js/gpu_time.js")], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     assert json.loads(r.stdout) == [False, None, []]

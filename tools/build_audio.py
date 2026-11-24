@@ -1,4 +1,4 @@
-"""Render the game's sound effects into the web client: src/megastructure/web/audio/.
+"""Render the game's sound effects into the web client: src/nexel_worlds/web/audio/.
 
     uv run python tools/build_audio.py
 
@@ -25,7 +25,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
 MUSIC = ROOT / "music"
-OUT = ROOT / "src" / "megastructure" / "web" / "audio"
+OUT = ROOT / "src" / "nexel_worlds" / "web" / "audio"
 RATE = 32000          # the sounds are low-passed at 12 kHz, so nothing audible is lost and files are a third smaller
 SEG, PAD = 8.0, 0.05  # a music loop's pieces, seconds: each piece, and how much of its neighbours it carries at both ends
                       # (the browser resamples each piece on its own: with the sound around a join in both pieces, the
@@ -33,7 +33,7 @@ SEG, PAD = 8.0, 0.05  # a music loop's pieces, seconds: each piece, and how much
 
 
 def load_sfx():
-    spec = importlib.util.spec_from_file_location("megastructure_sfx", MUSIC / "sfx.py")
+    spec = importlib.util.spec_from_file_location("nexel_worlds_sfx", MUSIC / "sfx.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -50,7 +50,7 @@ SOUNDS_LIKE = {"ladder": "fence"}     # pieces put down with the sound of anothe
 
 def place_maps(names: set[str]) -> tuple[dict, dict]:
     """(block name -> sound, ground name -> sound), checked against the game's own tables."""
-    from megastructure import tiles as T
+    from nexel_worlds import tiles as T
     table = json.loads((MUSIC / "sfx_map.json").read_text())
     for item, like in SOUNDS_LIKE.items():                   # (a new piece heard as an older one: the map is music's)
         table["place"].setdefault(item, table["place"][like])

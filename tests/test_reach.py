@@ -3,8 +3,8 @@
 from helpers import run
 from test_wild import put
 
-from megastructure.sim import CREATURES, sec
-from megastructure.sim.progress import MAGNET_DELAY
+from nexel_worlds.sim import CREATURES, sec
+from nexel_worlds.sim.progress import MAGNET_DELAY
 
 
 def test_reach_is_a_circle_round_you(world):
@@ -67,7 +67,7 @@ def test_a_bite_reaches_no_higher_than_your_hand(world):
 
 def test_every_reach_is_the_one_tables(world):
     """tiles.py REACH (and a tile more, a walking player's lead): a hand to an animal, a blow, a station."""
-    from megastructure.tiles import LEAD, LONG, REACH
+    from nexel_worlds.tiles import LEAD, LONG, REACH
     sim, a = world
     cow = put(sim, "cow", a.x + REACH["animal"] + LEAD, a.y)
     a.add("wheat", 2)

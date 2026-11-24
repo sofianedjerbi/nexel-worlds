@@ -122,7 +122,7 @@ def main():
     p.add_argument("--walk", type=float, default=0, help="seconds of sprinting in the world (implies --join; 120 at most: the watchdog)")
     p.add_argument("--dist", default=str(ROOT / "dist"))
     p.add_argument("--pyodide", default=None)
-    p.add_argument("--bundle", action="store_true", help="local: the server with one script (MEGASTRUCTURE_BUNDLE=1)")
+    p.add_argument("--bundle", action="store_true", help="local: the server with one script (NEXEL_BUNDLE=1)")
     p.add_argument("--port", type=int, default=PORT)
     p.add_argument("--until", default="usable", choices=["ready", "usable"], help="ready: the first screen whole (no Python needed)")
     p.add_argument("--desk", action="store_true", help="a desk's 1440x900 window, not a phone")
@@ -138,8 +138,8 @@ def main():
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
     else:
         saves = tempfile.mkdtemp(prefix="perf_saves")
-        proc = subprocess.Popen([sys.executable, "-m", "megastructure.server", "--saves", saves, "--world", "perf", "--port", str(a.port), "--seed", "12"],
-                                cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT / "src"), "MEGASTRUCTURE_BUNDLE": "1" if a.bundle else ""},
+        proc = subprocess.Popen([sys.executable, "-m", "nexel_worlds.server", "--saves", saves, "--world", "perf", "--port", str(a.port), "--seed", "12"],
+                                cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT / "src"), "NEXEL_BUNDLE": "1" if a.bundle else ""},
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(1.5)
     url, res = f"http://127.0.0.1:{a.port}/", {"what": a.what, "line": a.line, "cpu": a.cpu}

@@ -7,10 +7,10 @@ import zlib
 from array import array
 
 from helpers import run
-from megastructure.cells import HIGH, LOW, col_cave, col_floor, col_runs, col_solid, col_surfaces, col_top, runs_col
-from megastructure.chunks import FORMAT, Chunk
-from megastructure.gen import CHUNK
-from megastructure.sim import Simulation
+from nexel_worlds.cells import HIGH, LOW, col_cave, col_floor, col_runs, col_solid, col_surfaces, col_top, runs_col
+from nexel_worlds.chunks import FORMAT, Chunk
+from nexel_worlds.gen import CHUNK
+from nexel_worlds.sim import Simulation
 
 
 def test_a_column_goes_from_the_bottom_to_the_top_and_is_said_as_the_heights_where_it_changes():
@@ -88,7 +88,7 @@ def test_the_ground_is_dug_down_to_the_bottom_and_built_up_to_the_top(world):
 
 
 def test_a_tile_event_and_a_region_say_a_column_as_its_heights(world):
-    from megastructure.server import GameServer  # noqa: F401 (the views are the server's)
+    from nexel_worlds.server import GameServer  # noqa: F401 (the views are the server's)
     sim, a = world
     seen = []
     sim.listeners.append(seen.append)

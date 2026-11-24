@@ -20,7 +20,7 @@ def test_f3_opens_and_shuts_it_and_it_says_where_you_are_and_what_a_frame_costs(
         assert words in text, (words, text)
     look = game.js("""(() => { const d = document.querySelector('#f3 .f3c div'), s = getComputedStyle(d); return [s.fontFamily, s.borderRadius, s.backgroundColor, s.textShadow]; })()""")
     assert "SproutPixel" in look[0] and look[1] == "0px" and look[2].startswith("rgba(") and look[3].startswith("rgb("), look   # (the game's font on a see-through strip, a shadow; no rounded box)
-    assert game.js(OLD) == [] and game.js("localStorage.getItem('megastructure-f3')") == "1"
+    assert game.js(OLD) == [] and game.js("localStorage.getItem('nexel-f3')") == "1"
     game.press("F3", 100)
     assert game.js(TEXT) == "" and not game.js("F3.on")
 
@@ -75,7 +75,7 @@ def test_on_the_home_screen_it_is_not_shown_even_when_left_on(browser, server):
     screen is never covered by it."""
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     page.goto(server)
-    page.evaluate("localStorage.setItem('megastructure-f3', '1')")
+    page.evaluate("localStorage.setItem('nexel-f3', '1')")
     page.reload()
     page.wait_for_function("document.body.classList.contains('scene')", timeout=20000)
     page.wait_for_timeout(800)

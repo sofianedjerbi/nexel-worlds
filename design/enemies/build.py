@@ -20,7 +20,7 @@ sys.path.insert(0, str(HERE))
 from art import mirror  # noqa: E402
 
 SITE = HERE / "site"
-ASSETS = HERE.parent.parent / "src" / "megastructure" / "web" / "assets"
+ASSETS = HERE.parent.parent / "src" / "nexel_worlds" / "web" / "assets"
 ORDER = ["mossback", "sporeling", "sporecap", "hopper", "burrow"]      # on the page: the boss, its brood and the three kept mobs (older designs stay in roster/, off it)
 DIRS = ["down", "up", "left", "right"]
 IN_GAME = ["tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling"]     # (their frame columns and timings are also in web/js/world_decor.js WILD)

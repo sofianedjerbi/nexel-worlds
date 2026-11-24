@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from megastructure import art, web_bundle, web_static
+from nexel_worlds import art, web_bundle, web_static
 
 ROOT = Path(__file__).parent.parent
-WEB = ROOT / "src" / "megastructure" / "web"
+WEB = ROOT / "src" / "nexel_worlds" / "web"
 sys.path.insert(0, str(ROOT / "tools"))
 import build_stdlib  # noqa: E402
 

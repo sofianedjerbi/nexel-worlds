@@ -6,7 +6,7 @@ H) and its rows of side paint (LV) say the same; the engine's files take H from 
 import re
 from pathlib import Path
 
-JS = Path(__file__).parent.parent / "src" / "megastructure" / "web" / "js"
+JS = Path(__file__).parent.parent / "src" / "nexel_worlds" / "web" / "js"
 
 
 def test_a_level_is_drawn_as_tall_as_a_tile_everywhere():

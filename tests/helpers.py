@@ -1,6 +1,6 @@
 """Shared helpers for the simulation tests."""
 
-from megastructure.sim import Simulation
+from nexel_worlds.sim import Simulation
 
 
 def make(tmp_path, name="w"):
@@ -29,5 +29,5 @@ def run(sim, a, tool, args=None, limit=500):
 
 def sim_ripen_ticks():
     """Ticks for a sprout to become a ripe crop (two 150 s stages), with a little slack."""
-    from megastructure.sim import sec
+    from nexel_worlds.sim import sec
     return 2 * sec(150) + sec(4)

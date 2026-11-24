@@ -5,8 +5,8 @@ import json
 
 import pytest
 
-from megastructure.server import GameServer
-from megastructure.sim.hearing import RANGE
+from nexel_worlds.server import GameServer
+from nexel_worlds.sim.hearing import RANGE
 
 
 @pytest.fixture

@@ -7,7 +7,7 @@ the note and so was never run: the last one left the land's fog and the lantern 
 import re
 from pathlib import Path
 
-JS = Path(__file__).resolve().parents[1] / "src" / "megastructure" / "web" / "js"
+JS = Path(__file__).resolve().parents[1] / "src" / "nexel_worlds" / "web" / "js"
 NOTE = re.compile(r"""(?<![:"'`\\])//(?!/)(.*)$""")
 CODE = [re.compile(p) for p in (
     r"\bgl\.\w+\(.*\);",                              # a WebGL call
