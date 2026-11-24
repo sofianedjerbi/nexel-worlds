@@ -194,3 +194,13 @@ def test_looking_down_has_no_third_leg(game):
     standing frame's (an arm to the feet read as a third leg facing us, a crumpled body side on)."""
     for f, (stand, down) in enumerate(game.js(LEGS)):
         assert down[1] <= stand[1] and down[0] <= stand[0] + 2, (f, stand, down)
+
+
+def test_a_teleport_off_the_axes_keeps_your_facing_one_of_the_four(game):
+    """A teleport north-east turned you to (1, -1): the tile the keys act on (keyboard.js facingTile) was a corner off,
+    X's orange box on a floor you did not face (test_e2e_hd_pocket.py, one run in five: where you woke before the test's teleport)."""
+    game.face(1, 0)
+    x, y = game.pos()
+    game.rpc("dev_teleport", x=x + 6, y=y - 5)
+    game.arrive()
+    assert game.js("(() => { const p = ents.get('agent' + myId); return [p.fx, p.fy]; })()") == [1, 0]

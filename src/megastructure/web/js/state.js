@@ -154,7 +154,10 @@ function onTick(d) {
     if (p.tx !== e.x || p.ty !== e.y) {
       const dx = Math.sign(e.x - p.tx), dy = Math.sign(e.y - p.ty);
       // animal sheets only walk sideways: going up or down they keep facing the way they last went
-      if (ANIMALS[e.kind]) { if (dx) BodyPlace.face(p, dx, p.fy); } else if (dx || dy) BodyPlace.face(p, dx, dy);
+      // a body faces one of the four ways, never a diagonal: a move along both axes (a corner turned between two ticks) faces the longer one; far (a teleport) it keeps its facing.
+      // (It faced (1, -1) after a teleport north-east: the tile it faced, keyboard.js facingTile, was a corner off, X's orange box on a floor it does not face)
+      const ax = Math.abs(e.x - p.tx), ay = Math.abs(e.y - p.ty);
+      if (ANIMALS[e.kind]) { if (dx) BodyPlace.face(p, dx, p.fy); } else if (dx && dy) { if (ax + ay <= 3) BodyPlace.face(p, ax >= ay ? dx : 0, ax >= ay ? 0 : dy); } else if (dx || dy) BodyPlace.face(p, dx, dy);
       const gap = (now - p.moved) / 1000;               // how fast the world is moving it: tiles a second, over its last two places (render.js)
       p.pace = e.run ? RULES.pace.sprint : gap < 1 ? Math.min(RULES.pace.sprint, Math.hypot(e.x - p.tx, e.y - p.ty) / Math.max(gap, .05)) : 0;
       p.moved = now; p.tx = e.x; p.ty = e.y;
