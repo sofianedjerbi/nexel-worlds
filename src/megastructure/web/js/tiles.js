@@ -28,12 +28,15 @@ const dirtyTiles = [];                 // tiles to redraw (x, y), processed with
 function touch(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) dirtyTiles.push(x + dx, y + dy); }
 // picked plants: full -> bare (fruit flies to the picker); bare -> full when it grows back
 const PICK = {F: "U", b: "v"};
-// What a tile is made of, as the world says it (views.py mats, a tile's `mat`): "s", "d": the block put on its top (matAt); "r": its column is stone
-// (rockAt: for good, whatever is dug of it: chunks.py); "": earth
-function putMat(b, i, m) {
-  if (m === "r") (b.rock || (b.rock = {}))[i] = 1; else if (b.rock) delete b.rock[i];
+// What a tile is made of, as the world says it (views.py mats and stones, a tile event's `mat`, landblocks.py): "s", "d": the block put on its top (matAt);
+// "": none; then "~" and its highest stone cell, the generator's (stoneAt: for good, whatever is dug: chunks.py)
+const NO_STONE = -32768;
+function putMat(b, i, m0) {
+  const [m, z] = String(m0 || "").split("~");
+  if (z !== undefined) (b.stone || (b.stone = new Int16Array(B * B).fill(NO_STONE)))[i] = +z;
   if (m === "s" || m === "d") (b.mat || (b.mat = {}))[i] = m; else if (b.mat) delete b.mat[i];
 }
+const stonesOf = (d, from) => { const s = new Int16Array(B * B); for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) s[j * B + i] = d.stones[j].charCodeAt(i) - from; return s; };
 function setTile(x, y, comb, gnd, who = null, col = null, mat = null) {    // (col: its column of cells, when sent: cells.js; mat: what it is made of, when sent: putMat)
   const bx = Math.floor(x / B), by = Math.floor(y / B), b = blocks.get(bkey(bx, by));
   if (!b) return;
@@ -78,12 +81,12 @@ function onRegion(d) {
       if (old.comb[i] === comb[i] && old.gnd[i] === gnd[i] && colSame(c, colAt(bx * B + i % B, by * B + (i / B | 0)))) continue;
       setTile(bx * B + i % B, by * B + (i / B | 0), comb[i], gnd[i], null, c, (d.mats && d.mats[i]) || "");
     }
+    if (d.stones) old.stone = stonesOf(d, from);
     Floors.load(old, d); Flow.load(old, d);
     old.at = performance.now(); return;
   }
-  const b = {bx, by, comb, gnd, lv, col, mat: null, rock: null, objs: new Map(), drawn: false, canvas: null, at: performance.now()};
+  const b = {bx, by, comb, gnd, lv, col, mat: null, stone: d.stones ? stonesOf(d, from) : null, objs: new Map(), drawn: false, canvas: null, at: performance.now()};   // (no stones: the first screen's island, stoneAt guesses)
   for (const i in d.mats || {}) putMat(b, i, d.mats[i]);
-  if (!d.sea) lv.forEach((c, i) => { if (c.charCodeAt(0) - SEA > 4) putMat(b, i, "r"); });   // (a land that says nothing of its rock, the first screen's island: as it was made, by its heights)
   Floors.load(b, d); Flow.load(b, d);               // (what is built over its land: floors.js; water that runs: flow.js)
   comb.forEach((c, i) => { if (isObject(c)) b.objs.set(i, c); });
   blocks.set(k, b);

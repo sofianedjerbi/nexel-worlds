@@ -3,7 +3,7 @@
 import json
 from types import SimpleNamespace
 
-from .gen import SEA, col_floor, col_runs
+from .gen import HIGH, SEA, col_floor, col_runs
 from .sim.constants import TICK_HZ
 from .sim.hearing import LAND, hears
 from .sim.wild import WILD
@@ -79,12 +79,14 @@ class Views:
         raw = [self.sim.land_col(i, j) for j in range(y, y + h) for i in range(x, x + w)]
         levels = ["".join(chr(SEA + col_floor(v)) for v in raw[j * w:(j + 1) * w]) for j in range(h)]
         cols = {str(i): col_runs(v) for i, v in enumerate(raw) if v & (v + 1)}
-        # a tile's material, where it is not plain earth: the block put on its top ("s", "d": landblocks.py), else "r": its column is stone (chunks.py rock)
-        mats = {str((j - y) * w + i - x): m for j in range(y, y + h) for i in range(x, x + w) if (m := self.sim.mat(i, j, col_runs(raw[(j - y) * w + i - x])))}
+        # what a tile is made of: the block put on its top ("s", "d": landblocks.py), where one was; and every tile's highest stone cell, a
+        # char each, SEA + it, as the levels (world.py made_of: earth over it, stone from it down; HIGH and over: stone at every height)
+        mats = {str((j - y) * w + i - x): m for j in range(y, y + h) for i in range(x, x + w) if (m := self.sim.placed.mat(i, j, col_runs(raw[(j - y) * w + i - x])))}
+        stones = ["".join(chr(SEA + min(HIGH, world.stone(i, j))) for i in range(x, x + w)) for j in range(y, y + h)]
         # what is built over the land (sim/storeys.py): [tile's index, height, kind, the char of what stands on it]
         floors = [[(j - y) * w + i - x, z, kind, BLOCKS[B[thing]].char] for i, j, z, kind, thing in self.sim.floors.within(x, y, w, h)]
         water = [[(j - y) * w + i - x, z, v] for i, j, z, v in self.sim.water.within(x, y, w, h)]       # (water that runs, and what was poured: [tile's index, height, level], flow.py)
-        return {**({"cols": cols} if cols else {}), **({"mats": mats} if mats else {}), **({"floors": floors} if floors else {}), **({"water": water} if water else {}), "sea": SEA, "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
+        return {**({"cols": cols} if cols else {}), **({"mats": mats} if mats else {}), **({"floors": floors} if floors else {}), **({"water": water} if water else {}), "sea": SEA, "x": x, "y": y, "w": w, "h": h, "rows": rows, "ground": ground, "stones": stones, "levels": levels, "entities": self.entities_in(x, y, w, h), "tick": self.sim.tick, "time": self.sim.clock(),
                 "night": self.sim.is_night(), "phase": round(self.sim.time_of_day(), 4)}
 
     # ----------------------------------------------------------- what they are sent, as it happens

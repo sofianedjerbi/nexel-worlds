@@ -24,13 +24,14 @@ const VoxPaint = (() => {
   const browns = (sheet) => { const d = sheetData(sheet), [cx, cy] = blobCell(N_ | E_ | W_ | NE | NW), set = new Set(); for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { const v = d.px[(cy * 16 + j) * d.w + cx * 16 + i]; if (v >>> 24 === 255 && (v & 255) > (v >>> 8 & 255)) set.add(v); }
     return [...set].sort((a, b) => (a & 255) - (b & 255)); };
   const earths = new Map(), earth = (z) => { if (!(z > EARTH && z < 5)) return null; let m = earths.get(z); if (!m) { const to = browns(hillSheet(EARTH)); m = new Map(browns(hillSheet(z)).map((v, i) => [v, to[Math.min(i, to.length - 1)]])); earths.set(z, m); } return m; };
-  // STONE OR EARTH IS THE COLUMN'S, AND THE WORLD SAYS IT (rockAt: chunks.py keeps it a column, from when its land was laid out): stone at any height (2), whatever is dug
-  // of it: a trench cut in a stone hill has stone walls and a stone floor, one in an earth hill earth. A block put on its top is what was put (matAt). Nothing is guessed here.
+  // STONE OR EARTH IS THE CELL'S, AND THE WORLD SAYS IT (stoneAt: chunks.py keeps it, from when its land was laid out): a high hill stone at any height (2), lower land
+  // earth on top and stone under, whatever is dug of it: a trench cut in a stone hill has stone walls and a stone floor, a hole in a meadow comes to stone. A block put
+  // on its top is what was put (matAt). Nothing is guessed here.
   // (It was guessed from the heights now: a mass of tiles 5 high or more, a low tile "cut in stone" by the stone round it; then the column's own top: a cut turned the tiles beside it
   // earth, lighter boxes along it; then its own floor, a brown face in a grey hill.)
-  // rocky: is the tile's block stone; level: the level whose paint the block with its top at z has there (4: the highest earth). The engine: host.rock, voxels.js
-  const rocky = (x, y) => { const m = matAt(x, y); return m ? (m === "s" ? 2 : false) : rockAt(x, y) ? 2 : false; };
-  const level = (x, y, z) => (z < 5 && rocky(x, y) === 2 ? 5 : z > 4 && !rocky(x, y) ? 4 : z);   // (stone under 5, a cut's floor in a stone hill: stone's lowest level, its darkest top, at any depth. It was 5 to 8 in turn by its height: a floor a level down was three tones lighter than the one over it)
+  // rocky: is the tile's cell at z stone (no z: its top); level: the level whose paint the block with its top at z has there (4: the highest earth). The engine: host.rock, voxels.js
+  const rocky = (x, y, z) => { const top = topAt(x, y), m = matAt(x, y); if (z === undefined) z = top; return m && z >= top ? (m === "s" ? 2 : false) : z <= stoneAt(x, y) ? 2 : false; };
+  const level = (x, y, z) => (z < 5 && rocky(x, y, z) === 2 ? 5 : z > 4 && !rocky(x, y, z) ? 4 : z);   // (stone under 5, a cut's floor in a stone hill: stone's lowest level, its darkest top, at any depth. It was 5 to 8 in turn by its height: a floor a level down was three tones lighter than the one over it)
   const ids = new Map(), cells = [null];                        // a shape: [what of it is drawn, its sheet, the sheet's cell (cx, cy) each quarter of it is: NW, NE, SW, SE]; 0: the whole square
   // A narrow top (a tile in no 2 x 2 of land as high: a pillar, a wall one tile wide, its ends, an L, a T, a plus, a ring): the
   // sheet's own cell for it is all rim (a pillar's top was a button, a ridge a hedge, a plus a muddle: the sheet's rim is 7 px a

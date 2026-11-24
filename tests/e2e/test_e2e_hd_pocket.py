@@ -43,7 +43,7 @@ def test_in_a_pocket_under_a_higher_floor_that_floor_is_drawn_cold_and_the_one_o
     g.js("(() => { WayShow.paint = () => {}; return 1; })()")
     g.frames(3)
     mine, other = g.js(TOP, [x - 3, y, z - 14]), g.js(TOP.replace(") + 4", ") + 13").replace(") - 4", ") - 13"), [x + 1, y, z - 11])   # (the other's middle: along the window's edge the land over it comes back in a dither, its grass px)
-    assert mine[0] > mine[2] + 40, mine                               # your own floor: warm
+    assert mine[0] > mine[2] + 25, mine                               # your own floor: warm (14 down it is stone, stone.py: 34 over, earth's 40 and more)
     assert other[2] >= other[0] - 6 and other[3] == 0, other          # the other: no warm px at all
     assert sum(other[:3]) > 150, other                                # ... and not black: it is seen
     # the floor over the passage (the tile west of yours): one px in two of it, cold, the warm floor under it showing through

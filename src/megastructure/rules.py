@@ -14,6 +14,7 @@ from pathlib import Path
 
 from . import tiles as T
 from .cells import HIGH, LOW, SEA
+from .chunks import EARTH, STONE_FROM
 from .floors import KINDS
 from .landblocks import LAND_BLOCKS
 from .sim import constants as C
@@ -59,6 +60,7 @@ def rules_table() -> dict:
         "pace": C.PACE, "swim_pace": C.SWIM_PACE, "eat_pace": C.EAT_PACE, "flee_stride": C.FLEE_STRIDE, "spring_s": C.SPRING_S,
         "aside": list(C.ASIDE), "meanwhile": list(C.MEANWHILE),
         "low": LOW, "high": HIGH, "sea": SEA, "storey": STOREY, "day_ticks": C.DAY_TICKS,
+        "stone": {"from": STONE_FROM, "earth": EARTH},     # (what the land is made of: chunks.py, world.py made_of; web/js cells.js stoneAt)
         "climb": {"max": CLIMB, "rise": list(RISE), "s": C.CLIMB_S},
         "reach": T.REACH, "long": T.LONG, "wide": {k: v["wide"] for k, v in CREATURES.items() if "wide" in v}, "layer": C.LAYER,
         "leap": {"g": LEAP_G, "top": LEAP_TOP}, "fall_safe": C.FALL_SAFE, "bite_high": BITE_HIGH,

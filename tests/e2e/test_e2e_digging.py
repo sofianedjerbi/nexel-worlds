@@ -36,7 +36,8 @@ def test_q_sinks_the_cursor_a_layer_and_x_digs_the_block_it_is_on(game):
     assert game.js("Build.level()") == -2 and rows()["X"][0] == "Break"     # (the cursor is on the one under it now)
     game.press("x")                                           # ...dug too: the room, and the land over it left
     game.wait(f"surfacesAt({x}, {y + 1}).join() === '-3,0' && Build.S.plans.size === 0", 30000)
-    assert game.inv("stone_block") == 2                      # (the blocks themselves: landblocks.py)
+    s = game.js(f"stoneAt({x}, {y + 1})")                     # (the blocks themselves, earth or stone as the land is there: stone.py)
+    assert [game.inv("dirt"), game.inv("stone_block")] == [sum(z > s for z in (-1, -2)), sum(z <= s for z in (-1, -2))]
     game.press("b")
     assert not game.errors
 

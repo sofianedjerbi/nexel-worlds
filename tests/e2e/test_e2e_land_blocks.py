@@ -21,21 +21,21 @@ def shot(g, name):
         g.page.screenshot(path=os.path.join(os.environ["B_SHOTS"], f"b_{name}.png"))
 
 
-def dig_two(g):
-    """The ground east of you, two layers: the meadow's earth, then the stone under it."""
-    for z, item in ((0, "dirt"), (-1, "stone_block")):
+def dig_to_stone(g):
+    """The ground east of you, three layers: the meadow's earth, two cells of it, then the stone under it (stone.py)."""
+    for z, item, n in ((0, "dirt", 1), (-1, "dirt", 2), (-2, "stone_block", 1)):
         r = g.rpc("act", tool="dig", args={"dir": "E", "z": z})
         assert r["ok"], r
-        g.wait(f"({HAS})('{item}') === 1", 20000)
+        g.wait(f"({HAS})('{item}') === {n}", 20000)
 
 
 def test_dug_land_is_a_block_in_the_pack_and_stones_are_made_of_it(game):
     game.give(wood=2, stone=1)
-    dig_two(game)
-    assert game.inv("stone") == 1 and game.inv("stone_block") == 1 and game.inv("dirt") == 1      # the block: not a stone more
+    dig_to_stone(game)
+    assert game.inv("stone") == 1 and game.inv("stone_block") == 1 and game.inv("dirt") == 2      # the block: not a stone more
     game.press("i", 400)
     cells = game.js(CELLS, "bagbar") + game.js(CELLS, "bagpack")
-    assert {"stone_block", "dirt", "stone"} <= set(cells)                # (one of a thing: no number on it)
+    assert {"stone_block", "dirt:2", "stone"} <= set(cells)              # (one of a thing: no number on it; two: its number)
     assert game.js(SAME, "stone_block") == 0 and game.js(SAME, "dirt") == 0     # drawn as blocks, of the land's paint: a top and a wall of other colours
     assert game.js("BLURB.stone_block && label('stone_block')") == "stone block"
     shot(game, "bag_desktop")
@@ -57,7 +57,7 @@ def test_dug_land_is_a_block_in_the_pack_and_stones_are_made_of_it(game):
     game.wait(f"topAt({x - 1}, {y}) === 1 && ({HAS})('stone_block') === 0", 8000)
     assert game.rpc("act", tool="dig", args={"dir": "W", "z": 1})["ok"]
     game.wait(f"({HAS})('stone_block') === 1 && topAt({x - 1}, {y}) === 0", 20000)
-    assert game.inv("dirt") == 1 and not game.errors
+    assert game.inv("dirt") == 2 and not game.errors                   # (the two earth blocks dug before: dig_to_stone)
 
 
 def test_on_a_phone_the_pack_and_the_book_show_the_blocks(browser, server):

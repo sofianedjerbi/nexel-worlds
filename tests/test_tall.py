@@ -36,7 +36,7 @@ def test_a_chunk_saved_with_32_cells_a_tile_is_read_as_it_was(tmp_path):
     c = Chunk.unpack(0, 0, blob)
     assert [col_runs(c.cols[i]) for i in (0, 5, 6, 7)] == [[0], [0, 2, 4], [-8], [15]]
     again = c.pack()
-    assert zlib.decompress(again)[-1] == FORMAT == 6 and Chunk.unpack(0, 0, again).cols == c.cols
+    assert zlib.decompress(again)[-1] == FORMAT == 7 and Chunk.unpack(0, 0, again).cols == c.cols
     deep = Chunk(0, 0, bytearray(n), bytearray(n), [col_cave(-500, 2, 6)] * n)       # (and what the old one could not hold)
     assert Chunk.unpack(0, 0, deep.pack()).cols == deep.cols
 

@@ -129,9 +129,9 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         return ev
 
     def mat(self, x, y, runs) -> str:
-        """What a screen is told a tile is made of: the block put on its top ("s" stone, "d" earth: landblocks.py), else "r"
-        where its column is stone (chunks.py), else "": earth."""
-        return self.placed.mat(x, y, runs) or ("r" if self.world.rock(x, y) else "")
+        """What a tile event tells a screen it is made of: the block put on its top (landblocks.py), "~", its highest
+        stone cell (world.py made_of; web/js tiles.js putMat)."""
+        return f"{self.placed.mat(x, y, runs)}~{self.world.stone(x, y)}"
 
     def set_cell(self, x, y, z, solid: bool, by: Agent | None = None, cause=None):
         """Fill or empty one cell of the land (digging, building up)."""

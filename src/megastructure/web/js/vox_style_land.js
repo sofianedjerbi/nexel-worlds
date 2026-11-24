@@ -58,7 +58,7 @@ const VoxStyleLand = (() => {
     const tones = new Map(), tmp = new Uint32Array(C * C);
     const tone = (lv) => { let v = tones.get(lv); if (v === undefined) { host.paintFront(lv, 0, tmp, 0, C); const n = new Map(); for (let i = 0; i < C * cfg.up; i++) n.set(tmp[i], (n.get(tmp[i]) || 0) + 1); v = [...n].sort((a, b) => b[1] - a[1])[0][0]; tones.set(lv, v); } return v; };
     function topPaint(x, y, z, px, at, st) { host.paintTop(x, y, z, px, at, st); if (!host.paintFront) return; let v = 0;
-      for (let j = 0; j < C; j++) for (let i = 0; i < C; i++) if ((px[at + j * st + i] >>> 24) < 128) px[at + j * st + i] = v || (v = tone(lim(VoxMesh.rock(cfg, z, z, !host.rock || host.rock(x, y))))); }
+      for (let j = 0; j < C; j++) for (let i = 0; i < C; i++) if ((px[at + j * st + i] >>> 24) < 128) px[at + j * st + i] = v || (v = tone(lim(VoxMesh.rock(cfg, z, z, !host.rock || host.rock(x, y, z))))); }
     // a tile's own paints (its top at each height it was asked at): named by its tile, so a tile that changed gets new ones
     const topSlot = (x, y, z, paint, m) => { const k = x + "," + y + "," + z + (m ? "m" + m : ""); return slot(k, (px, at, st) => { const t = x + "," + y; let l = tops.get(t); if (!l) tops.set(t, l = []); if (!l.includes(k)) l.push(k); paint(px, at, st); }); };
     // a tile changed (its ground, its height, what stands as boxes on it): its paints, the paints of the tiles beside it (their rims and lips), and the chunks within six tiles of it (a block is stone by the land three tiles off; a cliff's shadow lies some tiles from it) are no longer good
@@ -186,7 +186,7 @@ const VoxStyleLand = (() => {
       const solidIn = (x, y, z) => { const c = col(x, y); if (!inBox(x, y)) return solidC(c, z); if (z <= L - deep) return true; return solidC(c, z); };
       // (a mouth that opens onto a floor walled on two facing sides or on three (a pit's, a trench's): the top over it has no shade: a stair dug west from a 1x2 pit left a dark smudge on the terrace over it, "shadow shouldn't appear here")
       const walled = (x, y, z) => { const wl = DIR.map(([dx, dy]) => +solidIn(x + dx, y + dy, z + 1)); return (wl[0] && wl[1]) || (wl[2] && wl[3]) || wl[0] + wl[1] + wl[2] + wl[3] >= 3; };
-      const front = (x, y, z, top, two) => { const lv = lim(VoxMesh.rock(cfg, top, z, !host.rock || host.rock(x, y))), v = VoxMesh.pick(x, y, z, cfg.variants), b = host.built && host.built(x, y) ? 1 : 0; return slot((two ? "F" : "f") + lv + "," + v + (b ? "b" : ""), (px, at, st) => { host.paintFront(lv, v, px, at + (C - cfg.up) * st, st, b); if (two) host.paintFront(lv, v, px, at, st, b); }); };   // (two: its rows twice: a tile's whole top)
+      const front = (x, y, z, top, two) => { const lv = lim(VoxMesh.rock(cfg, top, z, !host.rock || host.rock(x, y, z))), v = VoxMesh.pick(x, y, z, cfg.variants), b = host.built && host.built(x, y) ? 1 : 0; return slot((two ? "F" : "f") + lv + "," + v + (b ? "b" : ""), (px, at, st) => { host.paintFront(lv, v, px, at + (C - cfg.up) * st, st, b); if (two) host.paintFront(lv, v, px, at, st, b); }); };   // (two: its rows twice: a tile's whole top)
       const rx = Math.min(r, o.rx || r), X0 = cx - rx, X1 = cx + rx, Y0 = cy - r, Y1 = cy + Math.min(r, o.rs || r);
       const good = (ch, bx, by) => !!ch && ch.mk === (host.chunkKey ? host.chunkKey(bx * CH, by * CH, CH) : "") && (ch.low ? ch.L === L : ch.lo - 1 > L - deep);
       function* chunk(bx, by) {
@@ -206,7 +206,7 @@ const VoxStyleLand = (() => {
                 if (!sky) [[0, -1, 8192], [1, 0, 16384], [-1, 0, 65536]].forEach(([dx, dy, b]) => { if (hop(x, y, x + dx, y + dy, z)) e |= b; });   // (the foot of a step UP you can take under a roof, north, east, west: a dark line there (the riser's foot): with the lit lip of the tread over it a step is a step)
               }   // (ONE floor rule under the land: every floor of your space the same warm light, a room's or a stair's (they were two, by how many tiles lay on one level: a floor changed its light as you walked); 64: a floor under the land that is NOT of your space, you cannot walk to it: bare rock, no light, no lip; 128: one you can only drop to: dimmer)
             } else { s = front(x, y, z, top); if (!sky && !solidC(c, z + 1) && hop(nx, ny, x, y, z - 1)) e |= 16; else if (sky && nc && top - nc[nc.length - 1] >= 3) e |= 64 * Math.min(3, (top - z) >> 1); }   // (64, 128: the face of a drop of three or more: darker every two levels down, three steps)   // (the riser of a step you can take: light, the tread's own tone; any other face is a wall)
-            if (cfg.rock && VoxMesh.rock(cfg, top, top, !host.rock || host.rock(x, y)) >= cfg.rock.from) e += 8388608;   // (its ground is stone, as its walls are painted: the x-ray's cut shows it so, vox_style_glsl.js cut)
+            if (cfg.rock && VoxMesh.rock(cfg, top, top, !host.rock || host.rock(x, y, top)) >= cfg.rock.from) e += 8388608;   // (its ground is stone, as its walls are painted: the x-ray's cut shows it so, vox_style_glsl.js cut)
             quad(dst, x, y, z - 1, F, F.k, sky, kind, z, e, s, solidIn, f === 0);
           }
         };

@@ -69,7 +69,7 @@ class Underground:
     def take_land(self, a: Agent, x: int, y: int, z: int, cause: str = "dig") -> str:
         """The cell of the land goes into the pack as the block it is (earth, stone: landblocks.py), to be put back
         as it was; stones are made of a stone block (the recipe `stone`). -> the item."""
-        got = self.placed.take(x, y, z)
+        got = self.placed.take(x, y, z) or self.world.made_of(x, y, z)
         a.add(got)
         self.set_cell(x, y, z, False, by=a, cause=cause)
         return got

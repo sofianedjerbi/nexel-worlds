@@ -7,7 +7,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .chunks import STONE_FROM, Chunk, rock_of
+from .chunks import Chunk
+from .stone import Stone
 from .gen import CHUNK, HIGH, LOW, col_cave, col_floor, col_surfaces, col_top, gen_chunk, gen_chunk_steps, gen_level, gen_tile
 from .tiles import BLOCKS, GROUNDS, B, G
 
@@ -78,7 +79,7 @@ class Store:
         self.db.close()
 
 
-class World:
+class World(Stone):
     def __init__(self, store: Store, seed: int | None = None):
         self.store = store
         stored = store.get_meta("seed")
@@ -103,11 +104,8 @@ class World:
             c = self.store.load_chunk(cx, cy)
             if c is not None:
                 self._tidy(c)
-                if c.guessed:                           # (a save from before the land kept its rock: a column dug low was stone if the generator made it high)
-                    for i, r in enumerate(c.rock):
-                        if not r and gen_level(self.seed, cx * CHUNK + i % CHUNK, cy * CHUNK + i // CHUNK) >= STONE_FROM:
-                            c.rock[i] = 1
-                    c.guessed, c.dirty = False, True
+                if c.guessed:                           # (a save from before the land kept its stone: as the generator laid it out)
+                    c.lay_stone(lambda x, y: gen_level(self.seed, x, y), unknown_only=True)
                 self.chunks[(cx, cy)] = c
             else:
                 pending = self._pending.pop((cx, cy), None)   # (being generated in the background: take it now)
@@ -117,7 +115,7 @@ class World:
 
     def _install(self, cx, cy, g, b, cols) -> Chunk:
         c = Chunk(cx, cy, g, b, cols)
-        c.dirty = True
+        self.lay(c, lambda x, y: gen_level(self.seed, x, y))     # (its stone, the generator's: stone.py)
         self.chunks[(cx, cy)] = c
         self.fresh.append((cx, cy))                     # new land: the simulation may put animals on it
         return c
@@ -211,10 +209,6 @@ class World:
         """The tile's column of cells, a bit each from the bottom, set where solid (gen.col_solid...)."""
         return self.chunk(x >> 5, y >> 5).cols[(y & 31) * CHUNK + (x & 31)]
 
-    def rock(self, x: int, y: int) -> bool:
-        """Is the tile's column stone (chunks.py: for good, from when it was laid out)."""
-        return bool(self.chunk(x >> 5, y >> 5).rock[(y & 31) * CHUNK + (x & 31)])
-
     def level(self, x: int, y: int) -> int:
         """Height of the lowest ground here (a cave's floor, under a hill): 0 at sea level, below in dug pits, up to
         12 in the mountains."""
@@ -272,12 +266,11 @@ class World:
         c = self.chunk(x >> 5, y >> 5)
         i = (y & 31) * CHUNK + (x & 31)
         if level is not None or roof is not None or head is not None:
-            # (a shorthand for laying land out: solid up to `level`; with `roof`, the land goes that much higher over
-            # a cave on that floor, `head` cells high: two by default, one under a roof of two)
+            # (laying land out: solid up to `level`; `roof`: that much higher over a cave on that floor, `head` cells high: 2, or 1 under a roof of 2)
             f = col_floor(c.cols[i]) if level is None else level
             r = col_top(c.cols[i]) - col_floor(c.cols[i]) if roof is None else roof
             c.cols[i] = col_cave(f, head or (2 if r >= 3 else 1), f + r)
-            c.rock[i] = rock_of(c.cols[i])              # (laid out anew: its rock is what it is laid out as)
+            self.relay(x, y)
         if ground is not None:
             c.ground[i] = G[ground]
         if block is not None:

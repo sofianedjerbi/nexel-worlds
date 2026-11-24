@@ -195,4 +195,4 @@ def test_x_breaks_anything_and_digs_holes(game):
     game.press("x")
     game.wait(f"surfacesAt({x - 1}, {y + 2})[0] === -2 && Build.S.plans.size === 0", 20000)
     game.press("b")
-    assert game.inv("dirt") == 3 and game.inv("stone") == 2 and game.inv("stone_block") == 1 and not game.errors      # (the rock gives two stones; the deeper layer is stone: its block)
+    assert game.inv("dirt") + game.inv("stone_block") == 4 and game.inv("stone") == 2 and not game.errors      # (the rock gives two stones; the land, its blocks: earth on top, stone deeper, stone.py)

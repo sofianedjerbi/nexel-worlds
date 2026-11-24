@@ -1,18 +1,12 @@
 """The land's blocks as things you carry. A cell of the land dug out is a block in your pack: earth (`dirt`) or stone
 (`stone_block`), and put down again it is the land again. ("breaked blocks should stay blocks in inventory: not items.
 blocks -> item should be a craft": digging gave `stone`, the material, which nothing could put back.)
-The land keeps no material of its own: a cell is stone or earth by its height (natural). So a block put where the
-land would be the other kind is remembered here, in its own table of the save, until it is dug again: what you put
-down is what you get back. Every block put down is kept, also where the land would be that kind anyway: the picture
+The land's own material is its column's (world.py made_of: earth on top, stone under). A block put down is
+remembered here, in its own table of the save, until it is dug again: what you put down is what you get back. Every block put down is kept, also where the land would be that kind anyway: the picture
 draws a put block as what it is (`mat`: stone as stone on a meadow, earth as bare earth: a hut of stone blocks was
-drawn as an earth hut with a grass top), and the picture's own idea of the land is not this file's `natural`."""
+drawn as an earth hut with a grass top)."""
 
 LAND_BLOCKS = ("dirt", "stone_block")
-
-
-def natural(z: int) -> str:
-    """What the land is made of at height z where nobody put a block: earth at the meadow's two layers, stone over and under."""
-    return "stone_block" if z > 1 or z < 0 else "dirt"
 
 
 class Placed:
@@ -23,9 +17,9 @@ class Placed:
         for x, y, z, kind in self.db.execute("SELECT x, y, z, kind FROM placed"):
             self.at.setdefault((x, y), {})[z] = kind
 
-    def kind(self, x: int, y: int, z: int) -> str:
-        """The block the cell (x, y, z) of the land is."""
-        return self.at.get((x, y), {}).get(z) or natural(z)
+    def kind(self, x: int, y: int, z: int) -> str | None:
+        """The block put as the cell (x, y, z) of the land; None: nobody put one there (world.py made_of says)."""
+        return self.at.get((x, y), {}).get(z)
 
     def put(self, x: int, y: int, z: int, kind: str):
         """A block of the pack became the cell."""
@@ -34,16 +28,16 @@ class Placed:
         self.db.execute("INSERT OR REPLACE INTO placed VALUES(?,?,?,?)", (x, y, z, kind))
 
     def mat(self, x: int, y: int, runs: list) -> str:
-        """What a screen is told of the tile: the block put on its land's top (runs: the land's column as it is sent,
-        its last height the top): "s" stone, "d" earth, "" none was put: the land as its height says."""
+        """The block put on the tile's top (runs: its column as it is sent, the last height its top): "s" stone, "d" earth,
+        "": none was put, the land is what world.py made_of says."""
         col = self.at.get((x, y))
         return {"stone_block": "s", "dirt": "d"}.get(col.get(runs[-1]), "") if col and runs else ""
 
-    def take(self, x: int, y: int, z: int) -> str:
-        """The cell is dug: the block it was; nothing is kept of it."""
+    def take(self, x: int, y: int, z: int) -> str | None:
+        """The cell is dug: the block put there (None: none was); nothing is kept of it."""
         col = self.at.get((x, y))
         if not col or z not in col:
-            return natural(z)
+            return None
         kind = col.pop(z)
         if not col:
             del self.at[(x, y)]

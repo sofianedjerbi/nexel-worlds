@@ -75,14 +75,13 @@ def dev_op(sim, agent, op: str, msg: dict) -> dict:
         return {"hunger": agent.hunger, "hp": agent.hp}
     if op == "dev_col":                          # land laid out a column at a time, at any depth: `tiles` [[x, y]...], each `col`: the heights where it changes (cells.col_runs); `dug`: as if dug to that: its rock stays what it was (chunks.py)
         from .cells import runs_col
-        from .chunks import rock_of
-        col = runs_col([int(v) for v in msg["col"]])
-        for x, y in [(int(p[0]), int(p[1])) for p in msg.get("tiles") or []]:
+        col, tiles = runs_col([int(v) for v in msg["col"]]), [(int(p[0]), int(p[1])) for p in msg.get("tiles") or []]
+        for x, y in tiles:
             sim.raze(x, y)
-            c, i = sim.world.chunk(x >> 5, y >> 5), (y & 31) * 32 + (x & 31)
-            c.cols[i] = col
+            sim.world.chunk(x >> 5, y >> 5).cols[(y & 31) * 32 + (x & 31)] = col
+        for x, y in tiles:                       # (laid out, all of it: its stone by the land round it; dug: as it was)
             if not msg.get("dug"):
-                c.rock[i] = rock_of(col)
+                sim.world.relay(x, y)
             sim.set_tile(x, y, cause="dev")
         return {}
     if op == "dev_admin" and getattr(sim, "admins", None):    # you are an admin (the tests' /op: admin.py)

@@ -5,7 +5,7 @@ import pytest
 from helpers import make, run
 
 from megastructure.floors import KINDS
-from megastructure.landblocks import LAND_BLOCKS, natural
+from megastructure.landblocks import LAND_BLOCKS
 from megastructure.tiles import BLOCKS, FILLERS, PLACEABLE, RECIPES
 
 
@@ -15,7 +15,7 @@ def flat(sim, a, level, r=4):
             sim.world.set(a.x + dx, a.y + dy, ground="grass", block="none", level=level)
 
 
-@pytest.mark.parametrize("level, item", [(0, "dirt"), (1, "dirt"), (2, "stone_block"), (7, "stone_block"), (-1, "stone_block"), (-9, "stone_block")])
+@pytest.mark.parametrize("level, item", [(0, "dirt"), (1, "dirt"), (2, "dirt"), (7, "stone_block"), (-1, "dirt"), (-9, "dirt")])   # (the top of land laid out low is earth; high, stone)
 def test_a_dug_cell_is_its_block_and_goes_back(world, level, item):
     sim, a = world
     flat(sim, a, level)
@@ -27,14 +27,17 @@ def test_a_dug_cell_is_its_block_and_goes_back(world, level, item):
     assert run(sim, a, "dig", {"dir": "E", "z": level})["got"] == {item: 1} and not sim.placed.at
 
 
-def test_dig_down_and_a_tunnel_give_the_block(world):
+def test_dig_down_and_a_tunnel_give_the_block_the_land_is(world):
+    """What a dig gives is what the land is (world.py made_of): earth and grass on top, stone deeper down."""
     sim, a = world
     flat(sim, a, 3)
-    r = run(sim, a, "dig_down", {})
-    assert r["ok"] and r["got"] == {"stone_block": 1} and a.count("stone_block") == 1 and not a.count("stone")
+    w, x, y = sim.world, a.x, a.y
+    want = ["stone_block" if z <= w.stone(x, y) else "dirt" for z in (3, 2, 1)]
+    got = [run(sim, a, "dig_down", {})["got"] for _ in range(3)]
+    assert want[0] == "dirt" and got == [{k: 1} for k in want] and not a.count("stone")      # (the grass's own cell is never stone)
     a.add("pickaxe")
     r = run(sim, a, "dig", {"dir": "E", "with": "pickaxe"})                # (the wall of the pit: the cell in front)
-    assert r["ok"] and r["got"] == {"stone_block": 1} and a.count("stone_block") == 2 and not a.count("stone")
+    assert r["ok"] and r["got"] == {w.made_of(*r["cell"]): 1}
 
 
 def test_a_block_put_where_the_land_is_the_other_kind_stays_itself(world):
@@ -43,7 +46,7 @@ def test_a_block_put_where_the_land_is_the_other_kind_stays_itself(world):
     a.add("stone_block", 2); a.add("dirt", 3)
     x, y = a.x + 1, a.y
     assert run(sim, a, "place", {"dir": "E", "item": "stone_block"})["ok"] and sim.world.top(x, y) == 1      # stone on the meadow
-    assert sim.placed.kind(x, y, 1) == "stone_block" and natural(1) == "dirt"
+    assert sim.placed.kind(x, y, 1) == "stone_block" and sim.world.made_of(x, y, 1) == "dirt"
     assert sim.store.db.execute("SELECT kind FROM placed WHERE x=? AND y=? AND z=1", (x, y)).fetchone() == ("stone_block",)    # in the save
     assert run(sim, a, "dig", {"dir": "E", "z": 1})["got"] == {"stone_block": 1} and not sim.placed.at
     assert not sim.store.db.execute("SELECT 1 FROM placed").fetchone()
@@ -155,9 +158,10 @@ def test_a_put_block_is_told_to_the_screens_as_what_it_is(world):
     last = lambda: [e for e in a.events if e["type"] == "tile" and (e["dx"], e["dy"]) == (1, 0)][-1]
     assert mats() == {}
     assert run(sim, a, "place", {"dir": "E", "item": "stone_block"})["ok"]
-    assert last()["mat"] == "s" and mats() == {str(2 * 5 + 3): "s"}
+    stone = f"~{sim.world.stone(x, y)}"                                         # (and its stone where the generator laid it)
+    assert last()["mat"] == "s" + stone and mats() == {str(2 * 5 + 3): "s"}
     assert run(sim, a, "place", {"dir": "E", "item": "dirt"})["ok"] and sim.world.top(x, y) == 5        # earth on it: the top is earth now
-    assert last()["mat"] == "d" and mats() == {str(2 * 5 + 3): "d"}
-    assert run(sim, a, "dig", {"dir": "E", "z": 5})["got"] == {"dirt": 1} and last()["mat"] == "s"      # ... and the stone under it again
+    assert last()["mat"] == "d" + stone and mats() == {str(2 * 5 + 3): "d"}
+    assert run(sim, a, "dig", {"dir": "E", "z": 5})["got"] == {"dirt": 1} and last()["mat"] == "s" + stone    # ... and the stone under it again
     assert run(sim, a, "dig", {"dir": "E", "z": 4})["got"] == {"stone_block": 1}
-    assert last()["mat"] == "" and mats() == {} and not sim.placed.at                                   # the meadow as it was
+    assert last()["mat"] == stone and mats() == {} and not sim.placed.at                                # the meadow as it was

@@ -71,7 +71,11 @@ const standAt = (x, y) => topAt(x, y);   // ...and what's on the tile (the HD lo
 // on a tile lies (under a roof: in the hollow, seen through or not)
 const groundAt = floorAt;
 // the block somebody put on the tile's top (landblocks.py): "s" stone, "d" earth; "": none, the land is what its height says
-const rockAt = (x, y) => { const b = blockOf(x, y); return !!(b && b.rock && b.rock[(y - b.by * B) * B + (x - b.bx * B)]); };   // is the tile's column stone (the world's own word: tiles.js putMat)
+// the highest cell of the tile's column that is stone, the world generator's (views.py stones, tiles.js putMat): earth over it, stone from it down
+// (RULES.high: stone at every height). chunks.py, world.py made_of: the one rule, what a dig gives and what is painted. The first screen's island says
+// nothing of it: as the generator would, by its height alone
+const stoneAt = (x, y) => { const b = blockOf(x, y), s = b && b.stone ? b.stone[(y - b.by * B) * B + (x - b.bx * B)] : NO_STONE, t = s === NO_STONE && topAt(x, y);
+  return s !== NO_STONE ? s : t >= RULES.stone.from ? RULES.high : t - RULES.stone.earth; };
 const matAt = (x, y) => { const b = blockOf(x, y); return (b && b.mat && b.mat[(y - b.by * B) * B + (x - b.bx * B)]) || ""; };
 
 let myAt = null, myWas = null;             // your tile and the height you stand at (caves.js keeps it, as the server does); and the tile before
