@@ -17,7 +17,7 @@ const LEAP = {steer: 8, margin: .45};   // air control (tiles/s2 towards the way
 const Leap = (() => {
   let L = null;                            // {t, x, y, z, vx, vy, vz, z0, path, run, tx, ty}: you in the air
   const ORDER = ["takeoff", "rise", "apex", "fall", "touch"];
-  const G = () => JUMP.g / RELIEF_STEP, V0 = () => Math.sqrt(2 * G() * JUMP.top / RELIEF_STEP);   // levels/s2; levels/s up as you leave the ground
+  const G = () => JUMP.g, V0 = () => Math.sqrt(2 * G() * JUMP.top);   // levels/s2; levels/s up as you leave the ground
   const tileOf = (x, y) => [Math.round(x), Math.round(y)];
   // the body (feet at level z, two cells tall) fits on tile (x, y)
   const fits = (x, y, z) => { const c = Math.floor(z + 1e-6); return !solidAt(x, y, c + 1) && !solidAt(x, y, c + 2); };
@@ -99,7 +99,7 @@ const Leap = (() => {
   function land(p, now, z) {
     const path = L.path.filter((t, i, a) => !i || t[0] !== a[i - 1][0] || t[1] !== a[i - 1][1]), run = L.run, z0 = L.z0;
     const h = held(), past = h && (p.x - p.tx) * h[0] + (p.y - p.ty) * h[1] >= 0 && Math.abs((p.x - p.tx) * h[1]) + Math.abs((p.y - p.ty) * h[0]) < .01 && fits(p.tx + h[0], p.ty + h[1], z);   // (and room on the way held: down by a wide hole's far wall, on into the wall was a step up four levels drawn as its arc, the body 20 px up and down)
-    L = null; p.settle = now;
+    L = null; BodyPlace.state(p).settle = now;
     // (the eye's way left to go, from this frame on: the body drawn on the ground is lifted by it (lift) from the frame
     //  you land. It was set at the eye's next look (cam): the landing frame drew you with none, 20 px up from the arc's
     //  last frame, a hole's floor four down under an eye two levels behind, then down again)
@@ -137,7 +137,7 @@ const Leap = (() => {
     const pose = ORDER[L.pi = Math.max(L.pi || 0, ORDER.indexOf(now1))];   // (one after the other, never back: a touch over the start of a step, then its edge, flashed)
     const k = Math.cos(HdLook.cam.pitch * Math.PI / 180);    // (a height as the eye sees it, as the land's levels are: a level up drawn 16 px up landed a few px off it)
     const c = C === null ? L.z0 : C;
-    return {body: (L.z - c) * RELIEF_STEP * k, ground: (ground - c) * RELIEF_STEP * k, air: false, squash: false, tuck: true, pose, leap: true};
+    return {body: (L.z - c) * k, ground: (ground - c) * k, air: false, squash: false, tuck: true, pose, leap: true};
   }
   // The level you are drawn from (hd_level.js): from the jump on, it goes towards where you are a px a frame at the
   // most (CAM), in the air towards the ground under you, and after it to the level you would be drawn from; then it is
@@ -159,8 +159,8 @@ const Leap = (() => {
     C = natural - off;
     return C;
   }
-  // jump.js jumping: you on the ground, drawn from that level: lifted by the difference (art px as the eye sees them)
-  const lift = (p) => (off && p.e && p.e.kind === "agent" && p.e.id === myId ? off * RELIEF_STEP * Math.cos(HdLook.cam.pitch * Math.PI / 180) : 0);
+  // jump.js jumping: you on the ground, drawn from that level: lifted by the difference (levels as the eye sees them)
+  const lift = (p) => (off && p.e && p.e.kind === "agent" && p.e.id === myId ? off * Math.cos(HdLook.cam.pitch * Math.PI / 180) : 0);
   // hd_level.js: the level you stand at (the ground under you) and the one you are drawn from (the one you left)
   const level = () => (L ? [settleAt(L.tx, L.ty, L.z + 1e-6), L.z0] : null);
   return {leapable, can, due, start, frame, body, level, landedOn, after, cam, lift, on: () => !!L, gliding: () => { const p = ents.get("agent" + myId); return !!(p && p.leapAt && landedOn(p) !== null); }, get state() { return L; }};

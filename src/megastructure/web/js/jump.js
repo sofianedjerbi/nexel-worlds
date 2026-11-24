@@ -26,12 +26,12 @@
 // (SETTLE: the squash, then back up), the legs straighten as the feet touch (touch: the standing frame, between the
 // reach and the squash), and on a staircase each step lands (dust, a step's sound).
 
-const JUMP = {g: RULES.leap.g * 16, top: RULES.leap.top * 16, over: 4, crouch: 40, off: 30, touch: 25};   // its weight (art px/s2); a hop's top (art px: a block is 16); a step's, over the higher floor; ms crouched before it; ms of the push off; ms of the feet down before landing
+const JUMP = {g: RULES.leap.g, top: RULES.leap.top, over: .25, crouch: 40, off: 30, touch: 25};   // its weight (levels/s2); a hop's top (levels); a step's, over the higher floor; ms crouched before it; ms of the push off; ms of the feet down before landing
 const SETTLE = {land: 45, ms: 100};                                       // ms from touching the ground: in the squash, then back up to standing (by the clock: the walk goes on meanwhile)
 const STEPDOWN = {from: .35, q: 1.6};                                                // down a step: on the ground until this share of the way, then falling faster and faster to the lower one at its middle
 const JPOSE = {crouch: 0, takeoff: 1, rise: 2, apex: 3, fall: 4, land: 5, settle: 6, touch: 7};   // the column of each pose in the jump's rows (ANIM.jump; 7: the standing frame)
 
-// A jump from 0 to d art px up (its top: art px over where it leaves): -> {v: px/s up as it leaves, air: s in the air, ms: all of it, crouch first}
+// A jump from 0 to d levels up (its top: levels over where it leaves): -> {v: levels/s up as it leaves, air: s in the air, ms: all of it, crouch first}
 function jumpPath(d, top) {
   const v = Math.sqrt(2 * JUMP.g * top), air = v / JUMP.g + Math.sqrt(2 * Math.max(0, top - d) / JUMP.g);
   return {v, air, ms: JUMP.crouch + air * 1000, d};
@@ -39,10 +39,10 @@ function jumpPath(d, top) {
 const STEPJ = new Map();                 // (d -> its path: worked out once)
 const stepPath = (d) => STEPJ.get(d) || STEPJ.set(d, jumpPath(d, Math.max(0, d) + JUMP.over)).get(d);
 const HOPJ = jumpPath(0, JUMP.top), HOP = {ms: HOPJ.ms};
-// ms a jump up (or down) d art px takes (walk.js: you go no faster over it)
+// ms a jump up (or down) d levels takes (walk.js: you go no faster over it)
 const jumpMs = (d) => stepPath(d).ms;
-// At ms from its start (crouching, then in the air): -> [height over where it left (art px), its pose, in the air]. The
-// pose by how fast it goes up the screen: over the line the eye follows (lineV px/s) when it is a step's
+// At ms from its start (crouching, then in the air): -> [height over where it left (levels), its pose, in the air]. The
+// pose by how fast it goes up the screen: over the line the eye follows (lineV levels/s) when it is a step's
 function jumpAt(J, ms, lineV) {
   if (ms < JUMP.crouch) return [0, "crouch", false];
   const t = Math.min(J.air, (ms - JUMP.crouch) / 1000), h = t >= J.air ? J.d : J.v * t - JUMP.g * t * t / 2;
@@ -53,14 +53,15 @@ function jumpAt(J, ms, lineV) {
 }
 
 const mineWalking = (p) => !!(p.e && p.e.kind === "agent" && p.e.id === myId && walking && p.walking);
-// -> null on the level, or {body, ground: art px over the straight line (its feet, its shadow), squash, tuck: in the air, pose, d: px up, key: the step}
+// -> null on the level, or {body, ground: levels over the straight line (its feet, its shadow), squash, tuck: in the air, pose, d: levels up, key: the step}
+// (the jump's solvers all say levels; BodyPlace makes the picture's px of them, once)
 function jumpOf(p) {
   if (p.leapAt && Leap.landedOn(p) !== null) return null;                         // (come down from a jump through the air, off a tile's middle: on that tile, leap.js)
   const [ax, ay, bx, by, la, lb] = Floors.between(p);
   if ((ax === bx && ay === by) || la === lb || Climb.onLadder(ax, ay, la, bx, by, lb)) return null;          // (up or down a ladder: a straight climb)
-  const f = ax === bx ? p.y - ay : p.x - ax, d = (lb - la) * RELIEF_STEP;        // how far across; px from the first to the second
+  const f = ax === bx ? p.y - ay : p.x - ax, d = lb - la;                         // how far across; levels from the first to the second
   const fwd = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0;        // from the first to the second?
-  const g = fwd ? f : 1 - f, D = fwd ? d : -d, line = D * g, key = ax + "," + ay + "," + bx + "," + by;   // the way it goes: how far along, px up by, the straight line
+  const g = fwd ? f : 1 - f, D = fwd ? d : -d, line = D * g, key = ax + "," + ay + "," + bx + "," + by;   // the way it goes: how far along, levels up by, the straight line
   if (D > 0 && mineWalking(p) && (fwd ? Leap.leapable(ax, ay, la, bx, by) : Leap.leapable(bx, by, lb, ax, ay))) return null;   // (yours walking up to a step you jump: on your own level until you do, leap.js due)
   if (D < 0) {                                                                    // down: no jump, a drop off the edge at the walk's pace
     const k = Math.max(0, (g - STEPDOWN.from) / (1 - STEPDOWN.from)), h = D * k ** STEPDOWN.q;
@@ -78,7 +79,7 @@ function jumpOf(p) {
 // `fall` event, more than 3 layers) lands with the tree's thud, the ground shakes, you flash, bounce, and lose
 // what it cost you there, not when you stepped off. (A fall was a hop: one arc at the pace of a step, twelve layers
 // in a fifth of a second, the screen jumping with it, and nothing to say it had hurt.)
-const FALL = {from: RULES.fall_safe, g: 1000, flail: 70, heavy: 4, shake: [3.5, .32], bounce: [3, .17]};   // layers; art px/s2; ms a frame; layers from which it lands heavily; px and s of the shake, of the bounce
+const FALL = {from: RULES.fall_safe, g: 1000, flail: 70, heavy: 4, shake: [3.5, .32], bounce: [3 / 16, .17]};   // layers; art px/s2; ms a frame; layers from which it lands heavily; px and s of the shake; levels and s of the bounce
 let fallQuake = null;                 // {t0, amp}: the ground shaking under you (render.js: fallShake)
 
 // The fall of p now -> null, or {z: its feet, ground: where it lands (levels), air}. BodyPlace asks, once a frame, with
@@ -127,7 +128,7 @@ function fallOf(p, now, st = BodyPlace.state(p)) {
 function hopOf(p, now, st) {
   if (!(now - st.hop < HOP.ms) || jumpOf(p) || (p.e && swimsAt(p, p.e))) return null;   // (swimming: nothing to push off: no hop, no dust)
   const [h, pose, air] = jumpAt(HOPJ, now - st.hop, 0);
-  return {body: Math.round(h), ground: 0, air: false, squash: !air, tuck: air, pose};
+  return {body: h, ground: 0, air: false, squash: !air, tuck: air, pose};
 }
 // It lands, `layers` further down
 function landed(p, layers, now, mine, st) {
@@ -170,22 +171,22 @@ function jumping0(p, now, st, fall) {
   // (a hop asked for in a fall, or at the edge as it began, is no hop: it waited under the fall and played what was left
   //  of its arc once you were down, the body 18 px up in a frame and down again: "when i jump above a hole it glitches")
   if (fall) { if (fall.air && now - st.hop < HOP.ms) st.hop = -1e9; return fall; }
-  if (now - st.bounce < FALL.bounce[1] * 1000 && !jumpOf(p)) {                 // a heavy landing: up a little off the ground, and down
+  if (now - st.bounce < FALL.bounce[1] * 1000 && !jumpOf(p)) {                 // a heavy landing: up a little off the ground, and down (not on a step: its arc)
     const k = (now - st.bounce) / 1000 / FALL.bounce[1];
     return {body: Math.sin(k * Math.PI) * FALL.bounce[0], ground: 0, air: false};
   }
   const hop = hopOf(p, now, st);
   if (hop) { if (hop.tuck && st.hopUp !== st.hop) { st.hopUp = st.hop; jumpDust(p, 3, .8); } return hop; }
-  if (st.hop && st.hopDown !== st.hop && now - st.hop >= HOP.ms) { st.hopDown = st.hop; if (now - st.hop < HOP.ms + 200) { p.settle = st.hop + HOP.ms; jumpDust(p, 3, 1); } }   // (down: the squash, by the clock)
+  if (st.hop && st.hopDown !== st.hop && now - st.hop >= HOP.ms) { st.hopDown = st.hop; if (now - st.hop < HOP.ms + 200) { st.settle = st.hop + HOP.ms; jumpDust(p, 3, 1); } }   // (down: the squash, by the clock)
   const j = jumpOf(p), tx = Math.round(p.x), ty = Math.round(p.y);
-  if (p.jair !== undefined && !(j && j.tuck && j.key === p.jair)) {           // down: its feet touch (the step's last frames, or the next step's crouch up a staircase, or off it)
-    const down = p.jd < 0;
+  if (st.jair !== null && !(j && j.tuck && j.key === st.jair)) {           // down: its feet touch (the step's last frames, or the next step's crouch up a staircase, or off it)
+    const down = st.jd < 0;
     jumpDust(p, 4, down ? 1.3 : 1); sfx(down ? "thud" : "step", tx, ty);
-    p.jair = undefined; p.settle = now;
+    st.jair = null; st.settle = now;
   }
-  if (j && j.tuck && p.jair === undefined) { p.jair = j.key; p.jd = j.d; jumpDust(p, 3, .8); }   // (off the ground: dust where it leaves it, not while it crouches)
-  if (!j && now - p.settle < SETTLE.ms) return {body: 0, ground: 0, air: false, squash: true, tuck: false, pose: now - p.settle < SETTLE.land ? "land" : "settle"};   // (on the ground again: the squash, back up to standing)
-  if (j && !j.pose && now - p.settle < SETTLE.ms) return {...j, pose: now - p.settle < SETTLE.land ? "land" : "settle"};   // (down off a step as you land: the landing's poses go on over the drop, not walk, land, walk)
+  if (j && j.tuck && st.jair === null) { st.jair = j.key; st.jd = j.d; jumpDust(p, 3, .8); }   // (off the ground: dust where it leaves it, not while it crouches)
+  if (!j && now - st.settle < SETTLE.ms) return {body: 0, ground: 0, air: false, squash: true, tuck: false, pose: now - st.settle < SETTLE.land ? "land" : "settle"};   // (on the ground again: the squash, back up to standing)
+  if (j && !j.pose && now - st.settle < SETTLE.ms) return {...j, pose: now - st.settle < SETTLE.land ? "land" : "settle"};   // (down off a step as you land: the landing's poses go on over the drop, not walk, land, walk)
   return j;
 }
 // Dust where the feet leave the ground or come down on it: a few px of the dust's colours thrown out low to both sides
@@ -211,5 +212,5 @@ function jumpShadow(j, x, y, S, z, wide = 5) {
 function jumpPace(p, fx, fy, nx, ny) {
   const la = Floors.standOf(p, fx, fy), lb = Floors.standOf(p, nx, ny);
   if (lb <= la || Climb.onLadder(fx, fy, la, nx, ny, lb)) return Infinity;      // (down: a drop, at the walk's pace. Slowed to a jump's 337 ms a step, a sprint down the cave stairs fell 6 tiles behind the world and was put back on it at once)
-  return 1000 / jumpMs((lb - la) * RELIEF_STEP);
+  return 1000 / jumpMs(lb - la);
 }

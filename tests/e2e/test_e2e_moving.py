@@ -222,9 +222,9 @@ def test_a_hop_is_one_arc_over_the_edge_at_the_pace_of_a_step(game):
     game.stamp(1, -1, ["..."] * 3, levels=["111"] * 3); game.rest()        # ground a layer up, east of you
     x, y = game.pos()
     L = game.js("RELIEF_STEP")                                # (art px a layer: a block)
-    # your feet and your shadow over the lower ground (art px), f of the way across, going east (up) or west (down)
+    # your feet and your shadow over the lower ground (art px; the solver says levels), f of the way across, going east (up) or west (down)
     at = lambda f, to: game.js(f"""(() => {{ const j = jumpOf({{x: {x} + {f}, y: {y}, tx: {to}, ty: {y}, fx: {1 if to > x else -1}, fy: 0}});
-      return {{feet: j.body + {f} * {L}, shadow: j.ground + {f} * {L}, squash: j.squash}}; }})()""")
+      return {{feet: (j.body + {f}) * {L}, shadow: (j.ground + {f}) * {L}, squash: j.squash}}; }})()""")
     for to in (x + 1, x):
         way = [at(f / 50, to) for f in range(1, 50)]
         off, land = (way[0], way[-1]) if to > x else (way[-1], way[0])

@@ -12,28 +12,31 @@
 //   line: the level of the straight line between its two tiles' grounds, where it is on the way (a fall's drop or a ladder between them: the nearer tile's);
 //   up: art px its picture and all over it are drawn over the straight line between its two tiles (relief.js liftOf);
 //   eye: art px the camera follows over that line (a climb, a fall: not a hop's arc);
-//   jump, climb: the mode's own numbers, for its picture (jump.js, climbing.js); fall: {z, ground: levels, air}}
+//   jump: {body, ground: art px over the line (its solver's levels, made px here), pose, key: the step it is on}, climb: the
+//   mode's own numbers, for its picture (jump.js, climbing.js); fall: {z, ground: levels, air}}
 // One record a body a frame (the frame's time: render.js lastT): asked again in the frame, the same record.
 const BodyPlace = (() => {
   // A body's own state of its moves, one record a body, BodyPlace's (not fields on the body): fall: a fall begun
   // {top, land: levels, t0, done}; hurt: what a fall cost, shown where it lands; bounce: when a heavy landing was;
   // hop: when a hop on the spot began (0: none), hopUp, hopDown: the hop whose dust was thrown, leaving and landing;
-  // swam: in the water at the last frame drawn (its splash going in, its wake coming out: swim.js)
+  // swam: in the water at the last frame drawn (its splash going in, its wake coming out: swim.js); jair, jd: the step
+  // whose arc it is in the air of (its key), its levels up; settle: when it last touched down (the landing's poses)
   const states = new WeakMap();
-  const state = (p) => { let s = states.get(p); if (!s) states.set(p, s = {fall: null, hurt: 0, bounce: -1e9, hop: 0, hopUp: 0, hopDown: 0, swam: false}); return s; };
+  const state = (p) => { let s = states.get(p); if (!s) states.set(p, s = {fall: null, hurt: 0, bounce: -1e9, hop: 0, hopUp: 0, hopDown: 0, swam: false, jair: null, jd: 0, settle: -1e9}); return s; };
   function make(p, now) {
     const e = p.e || {}, boat = !!e.sail;
     // (the mode, in ONE order. In a boat nothing else: no hop, no fall. Swimming, unless still in the air over the water.
     // On a ladder's rungs. Then the air: a fall, a jump (through the air, on the spot, up a step). Else on the ground)
-    const st = state(p), line = liftOf(p) / zoom, fall = boat ? null : fallOf(p, now, st);   // (a fall: levels; for its picture, art px over the line)
-    const j0 = boat ? null : jumpNow(p, now, st, fall && {body: fall.z * RELIEF_STEP - line, ground: fall.ground * RELIEF_STEP - line, air: fall.air});
-    const swim = !boat && !!p.e && swimsAt(p, e) && !(j0 && j0.air), climb = boat || swim ? null : Climb.climbOf(p), jump = swim ? null : j0;
+    const st = state(p), line = liftOf(p) / zoom, lv = line / RELIEF_STEP, fall = boat ? null : fallOf(p, now, st);   // (a fall, a jump: levels; over the line)
+    const j0 = boat ? null : jumpNow(p, now, st, fall && {body: fall.z - lv, ground: fall.ground - lv, air: fall.air});
+    const swim = !boat && !!p.e && swimsAt(p, e) && !(j0 && j0.air), climb = boat || swim ? null : Climb.climbOf(p);
+    const jump = swim || !j0 ? null : {...j0, body: Math.round(j0.body * RELIEF_STEP), ground: j0.ground * RELIEF_STEP};   // (its picture's px: by whole art px, as it is drawn)
     const air = !!jump && !!(jump.air || jump.tuck);
     if (climb && climb.on) face(p, climb.fx, climb.fy);       // (on the rungs: to the ladder)
     const mode = boat ? "boat" : swim ? "swim" : climb ? "climb" : fall && fall.air ? "fall" : jump && (jump.leap || jump.tuck || jump.pose) ? "jump" : "walk";
     const dx = climb ? climb.dx : 0, dy = climb ? climb.dy : 0, [ax, ay, bx, by, la, lb] = Floors.between(p), f = ax === bx ? p.y - ay : p.x - ax;
     if (climb) climb.lift = (climb.h - (la + (lb - la) * f)) * RELIEF_STEP;   // (on a ladder: art px over the straight line, for its picture)
-    const up = (climb ? climb.lift : 0) + (jump ? Math.round(jump.body) : 0);
+    const up = (climb ? climb.lift : 0) + (jump ? jump.body : 0);
     return {at: now, tx: Math.round(p.x + dx), ty: Math.round(p.y + dy), mode, air, pose: jump && jump.pose || null, fx: p.fx || 0, fy: p.fy || 0, dx, dy,
       line: Math.abs(la - lb) >= FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb) ? (f < .5 ? la : lb) : la + (lb - la) * f, up, eye: (climb ? climb.lift : 0) + (fall ? fall.z * RELIEF_STEP - line : 0), z: climb ? climb.h : (line + up) / RELIEF_STEP, ground: (line + (jump ? jump.ground : 0)) / RELIEF_STEP, jump, fall, climb};
   }
