@@ -47,14 +47,21 @@
     const want = Math.min(1, part()), t = performance.now(), was = Math.floor(shown * 100); if (want > shown) shown = Math.min(want, shown + Math.max(.02, (want - shown) / 3));
     else if (t - movedAt > 300 && shown < Math.min(.97, want + .03)) shown = (was + 1) / 100;      // (nothing new for 0.3 s, the first bytes still on their way: a per cent on, never 3 ahead of what is known)
     if (Math.floor(shown * 100) !== was) movedAt = t;
-    const n = Math.floor(shown * 62);      // (the fill slides in, an art px at a time, in the tenth of a second till the next look: the compositor's, so a long task does not hold it)
-    if (n !== cols && t >= slid) { fill.style.transition = cols < 0 ? "none" : `transform 90ms steps(${Math.abs(n - cols)})`; slid = cols < 0 ? 0 : t + 100; cols = n; fill.style.transform = `translateX(calc(${n - 62} * var(--bootpx)))`; }   // (a slide starts once the last has ended: started half way, its steps were cut from a half px: the bar stopped 23.5 art px in)
-    const said = "Loading... " + Math.floor(shown * 100) + "%"; if (say.textContent !== said) say.textContent = said;
+    paint(t);
     if (!watched && typeof ready === "object" && ready.catch) { watched = true; ready.catch(end); }      // (the pictures could not come: the page as it is, not a wait for ever)
     if (want > lastWant + .001) { lastWant = want; wantAt = t; } else if (want >= .6 && t - wantAt > 8000) end();   // ("still stuck at 76%": the island never drawn, the GPU stuck: after 8 s of nothing new, the page as it is)
   };
+  const paint = (t) => {
+    const n = Math.floor(shown * 62);      // (the fill slides in, an art px at a time, in the tenth of a second till the next look: the compositor's, so a long task does not hold it)
+    if (n !== cols && t >= slid) { fill.style.transition = cols < 0 ? "none" : `transform 90ms steps(${Math.abs(n - cols)})`; slid = cols < 0 ? 0 : t + 100; cols = n; fill.style.transform = `translateX(calc(${n - 62} * var(--bootpx)))`; }   // (a slide starts once the last has ended: started half way, its steps were cut from a half px: the bar stopped 23.5 art px in)
+    const said = "Loading... " + Math.floor(shown * 100) + "%"; if (say.textContent !== said) say.textContent = said;
+  };
   const tick = setInterval(draw, 100);
-  function end() { if (el.classList.contains("done") || ending) return; ending = true; clearInterval(tick); shown = 1; cols = -1; slid = 0; draw(); el.classList.add("done"); setTimeout(() => el.remove(), 550); }
+  // THE END (the island painted): the bar to 100% a frame at a time, 12% a frame, then it fades. (It went there in one: from where a tenth of a second's
+  // catching up had left it, 84% under a loaded CPU, the island's last land made in the last 0.15 s: a leap of 16%.) A page not shown has no frames: at once
+  function end() { if (el.classList.contains("done") || ending) return; ending = true; clearInterval(tick);
+    const fin = () => { shown = document.hidden ? 1 : Math.min(1, shown + .12); slid = 0; paint(performance.now()); if (shown < 1) return requestAnimationFrame(fin); el.classList.add("done"); setTimeout(() => el.remove(), 550); };
+    fin(); }
   new MutationObserver(() => { const c = document.body.classList; if (c.contains("scene") || !c.contains("title")) end(); }).observe(document.body, {attributes: true, attributeFilter: ["class"]});
 })();
 </script>

@@ -121,11 +121,11 @@ def test_the_wait_has_a_day_and_holds_still_at_dusk_when_asked_for_less_motion(b
             page.close()
 
 
-# every frame the wait is on the screen: [ms, the % it says, the script's bytes read]; and the page's long tasks
+# every frame the wait is on the screen: [ms, the % it says, the script's bytes read, the island's [warm, part %, busy] (hd.js)]; and the page's long tasks
 WATCH = """window.__bar = []; window.__long = [];
 try { new PerformanceObserver((l) => { for (const e of l.getEntries()) __long.push([Math.round(e.startTime), Math.round(e.duration)]); }).observe({entryTypes: ['longtask']}); } catch (e) {}
 (() => { const f = (t) => { const s = document.getElementById('bootsay'); if (!s && __bar.length) return;
-  if (s) __bar.push([Math.round(t), parseInt(s.textContent.replace(/\\D+/g, '')) || 0, window.ASSET_PACK ? ASSET_PACK.jsGot : -1]); requestAnimationFrame(f); }; requestAnimationFrame(f); })();"""
+  if (s) __bar.push([Math.round(t), parseInt(s.textContent.replace(/\\D+/g, '')) || 0, window.ASSET_PACK ? ASSET_PACK.jsGot : -1, typeof HdLook === 'object' ? [HdLook.warm, Math.round(HdLook.part * 100), HdLook.busy] : null]); requestAnimationFrame(f); }; requestAnimationFrame(f); })();"""
 
 
 @pytest.fixture(scope="module")
@@ -170,10 +170,11 @@ def test_on_a_phone_the_bar_goes_on_by_small_steps_and_no_task_holds_the_page(br
         said = [b[1] for b in bar]
         steps = [b - a for a, b in zip(said, said[1:])]
         assert len(said) > 10 and min(steps) >= 0, said                                   # never back
-        assert max(steps) <= 15, [(bar[i][0], said[i], said[i + 1]) for i, s in enumerate(steps) if s > 15]
+        assert max(steps) <= 15, [(bar[i][0], said[i], said[i + 1], bar[max(0, i - 6):i + 2]) for i, s in enumerate(steps) if s > 15]
         assert any(0 < b[2] < js_len for b in bar), "the script's bytes were not counted as they came"
         held = [t for t in long if t[0] < bar[-1][0]]                                      # (till the wait went)
-        assert max([d for _, d in held] or [0]) <= 120, held
+        # (a long task: the frames round it, what the island was making then: hd.js warm -1 the painter made, 0 its start and first picture, 1 what stands, 2 the people, 3 the land)
+        assert max([d for _, d in held] or [0]) <= 120, [(t, d, [b for b in bar if t - 120 <= b[0] <= t + d + 40]) for t, d in held if d > 120]
         assert not errors, errors
     finally:
         ctx.close()
