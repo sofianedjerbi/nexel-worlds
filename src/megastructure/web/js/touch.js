@@ -119,7 +119,7 @@ if (TOUCH) {
     const s = stick; stick = null; pad.classList.remove("on"); setDir(null, false); fingers.delete(e.pointerId); pinch = null;
     // a short touch that pushed nothing: a tap on the tile under it, as anywhere else on the world (the stick's side is
     // the left of the screen: held upright, no tile left of you could be tapped)
-    if (me && e.type === "pointerup" && !s.pinch && !s.went && performance.now() - s.t < 350) { const q = tileAtScreen(s.x, s.y); if (Build.on) Build.click(q, false); else clickTile(q, "tap"); }      // (a tap: what A does there, else what B does: intent.js clickIntent)
+    if (me && e.type === "pointerup" && !s.pinch && !s.went && performance.now() - s.t < 350) { const q = tileAtScreen(s.x, s.y); if (!q) { /* (the sky: nothing) */ } else if (Build.on) Build.click(q, false); else clickTile(q, "tap"); }      // (a tap: what A does there, else what B does: intent.js clickIntent)
   };
   for (const ev of ["pointerup", "pointercancel"]) pad.addEventListener(ev, release);
 

@@ -5,12 +5,6 @@
 // =====================================================================================
 const mouse = {x: 0, y: 0, in: false};
 let drag = null;
-// How far up a tile is drawn, where you point at it: in build mode with the cursor lifted or sunk, at its height;
-// where something is built (floors.js), the floor nearest your own height; otherwise the land
-function aimLift(x, y) {
-  if (Build.on && (Build.S.plane !== null || Build.S.deep !== null)) return shOf(Build.S.plane !== null ? Build.S.plane : Build.S.deep) * zoom;
-  return FLOORS && myAt && Floors.any(x, y) ? shOf(settleNear(x, y, myAt.z)) * zoom : liftAt(x, y);
-}
 // THE BLOCK UNDER THE POINTER (build mode, the cursor riding the land): the pointer's ray through the cubes as the HD camera draws them, the first solid cell it meets -> {x, y, z: its top, face: "T" its top, "S", "W", "E", "N"}, or null.
 // The ray: the place on the screen's px at each height (HdLook.screenOf solved for x, y at that height), from over the highest land in view down, a straight piece every half level, cell by cell along it
 // (Amanatides-Woo). (It was each tile's top at the cursor's riding height, nearest row first, no side faces: on terraces the pointer on a block's side picked a block two tiles off, or nothing)
@@ -43,31 +37,12 @@ function rayHit(mx, my) {
   }
   return null;
 }
-function tileAtScreen(mx, my) {                        // -> {x, y, fy: how far down the tile, 0 to 1}
+// THE TILE UNDER THE POINTER -> {x, y, fy: how far down the tile, 0 to 1}, or null: none (the sky, past the land the picture shows): the HD camera's own answer, the one way back
+// from the screen to the world. (Where it had none the classic flat picture's maths answered: a click on the sky was a walk to some tile far north.)
+function tileAtScreen(mx, my) {
   if (HdLook.on && Build.on && Build.S.plane === null && Build.S.deep === null) { const h = rayHit(mx, my); if (h) return {x: h.x, y: h.y, fy: .5, z: h.z, cz: h.cz, face: h.face !== "T", side: h.face}; }   // (build mode: the block under the pointer, its top or a side)
   if (HdLook.on) { const q = HdLook.pick(mx, my, Build.on ? (x, y) => Build.level({x, y}) : null); if (q) return q; }   // (the HD camera: the top or the front under the pointer, hd.js; build mode lifted or sunk by E, Q: at the cursor's height)
-  const S = TS(), [ox, oy] = screenOrigin(S), x = Math.floor((mx - ox) / S), at = (y, up) => Curve.y(oy + y * S, up), row = (f) => Math.floor((f - oy) / S);
-  // The column's tiles from the nearest that could be drawn there to the furthest (a level is drawn higher or lower:
-  // relief.js; a row far north nearer the horizon: curve.js): the first whose top is under the pointer, or whose
-  // front is, down to the land south of it. (It looked six tiles south and at tops alone: a pit was not undone.)
-  const reach = (APART * RELIEF_STEP / 16 + 1) * S, eye = Curve.c ? Math.abs(Curve.c.ref) : 0;
-  // Who stands in the roll is drawn as big as ever on rows a few px tall: under the pointer, it is who is meant, not
-  // the tile behind its head (the nearest, if two). Near you, where a body is on its own tile, the tile says it.
-  if (Curve.on && !Build.on) {
-    const sy = Curve.sy(oy, S); let who = null;
-    for (const p of ents.values()) if (p.e && !(p.e.kind === "agent" && p.e.id === myId)) {
-      const bx = ox + p.x * S, lift = liftOf(p), by = bodyY(p, sy);
-      if (mx >= bx && mx < bx + S && my >= by && my < by + S && Math.abs(by - (oy + p.y * S - lift - STAND * zoom)) > 1 && !sy.gone(p.y, lift) && (!who || p.y > who.y)) who = p;
-    }
-    if (who) return {x: Math.round(who.x), y: Math.round(who.y), fy: .5};
-  }
-  for (let y = row(Curve.inv(my + reach) + reach + eye), end = row(Curve.inv(my) - reach - eye) - 1; y >= end; y--) {
-    const up = aimLift(x, y), top = at(y, up), foot = at(y + 1, up);
-    if (my >= top && my < foot) return {x, y, fy: (my - top) / (foot - top)};
-    if (my >= foot && my < at(y + 1, aimLift(x, y + 1))) return {x, y, fy: .999, face: true, down: Math.max(0, Math.floor((my - foot) / (RELIEF_STEP * zoom)))};      // (down: which cell of the face, levels under its top)      // (face: its wall's face is what is pointed at: the mark is that block down to its foot, mark.js: its top alone was a box on the far rim of a pit, a tile and a half over the pointer)
-  }
-  const y = row(Curve.inv(my)), top = at(y, 0);
-  return {x, y, fy: Math.max(0, Math.min(.999, (my - top) / Math.max(1, at(y + 1, 0) - top)))};
+  return null;
 }
 cv.addEventListener("mousemove", (e) => {
   if (Math.abs(e.clientX - mouse.x) + Math.abs(e.clientY - mouse.y) > 4) inputMode = "mouse";   // the mouse is back
@@ -75,10 +50,10 @@ cv.addEventListener("mousemove", (e) => {
   if (drag) {
     const dx = (e.clientX - drag.x) / TS(), dy = (e.clientY - drag.y) / TS();
     if (Math.abs(dx) + Math.abs(dy) > .3) drag.moved = true;
-    if (drag.moved && me && Build.on) { const q = tileAtScreen(e.clientX, e.clientY); if (!drag.at || drag.at.x !== q.x || drag.at.y !== q.y) { drag.at = q; Build.click(q, e.shiftKey); } }   // (a row of plans)
+    if (drag.moved && me && Build.on) { const q = tileAtScreen(e.clientX, e.clientY); if (q && (!drag.at || drag.at.x !== q.x || drag.at.y !== q.y)) { drag.at = q; Build.click(q, e.shiftKey); } }   // (a row of plans)
     if (drag.moved && !me) { follow = null; camT.x = cam.x = drag.cx - dx; camT.y = cam.y = drag.cy - dy; }
   }
-  const p = tileAtScreen(e.clientX, e.clientY), t = tile(p.x, p.y), tip = $("hover");
+  const p = tileAtScreen(e.clientX, e.clientY), t = p && tile(p.x, p.y), tip = $("hover");
   if (!t) { tip.style.display = "none"; return; }
   let text;
   if (me && Build.on) Build.point(p);
@@ -99,5 +74,5 @@ cv.addEventListener("mousemove", (e) => {
 });
 cv.addEventListener("mouseleave", () => { mouse.in = false; $("hover").style.display = "none"; });
 cv.addEventListener("mousedown", (e) => { if (e.button === 0) drag = {x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false}; });
-cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.moved && me) { const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, e.shiftKey); else clickTile(q, "break"); } drag = null; });      // (the left button: X's verb; open ground: walk there)
-cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (!me) return; const q = tileAtScreen(e.clientX, e.clientY); if (Build.on) Build.click(q, true); else clickTile(q, "use"); });      // (the right one: E's)
+cv.addEventListener("mouseup", (e) => { if (e.button === 0 && drag && !drag.moved && me) { const q = tileAtScreen(e.clientX, e.clientY); if (!q) { /* (the sky: nothing) */ } else if (Build.on) Build.click(q, e.shiftKey); else clickTile(q, "break"); } drag = null; });      // (the left button: X's verb; open ground: walk there)
+cv.addEventListener("contextmenu", (e) => { e.preventDefault(); if (!me) return; const q = tileAtScreen(e.clientX, e.clientY); if (!q) return; if (Build.on) Build.click(q, true); else clickTile(q, "use"); });      // (the right one: E's)

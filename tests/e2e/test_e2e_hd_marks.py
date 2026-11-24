@@ -176,3 +176,20 @@ def test_in_a_room_the_eye_looks_down_no_steeper_than_steep_and_what_hides_you_i
     finally:
         g.js(f"HdLook.steep = {STEEP}")
         tidy(g, x, y)
+
+
+def test_a_click_on_the_sky_is_no_walk(browser, server):
+    """The pointer on the sky is on no tile (mouse.js tileAtScreen: the HD camera's own answer, or none). Where the
+    camera had none the classic flat picture's maths answered: a click on the sky was a walk to a tile far north."""
+    from test_e2e_hd_sun import hd
+    g = hd(browser, server)
+    x, y = g.pos()
+    assert g.js("HdLook.sky(0).line") > 60                          # (there is sky at the top of the picture)
+    assert g.js("tileAtScreen(480, 20)") is None
+    g.page.mouse.move(480, 20)
+    g.page.mouse.click(480, 20)
+    g.page.mouse.click(480, 20, button="right")
+    g.sleep(700)
+    assert g.pos() == (x, y) and g.js("!walking") and not g.errors
+    q = g.js(f"(() => {{ const a = HdLook.screenOf({x + 2.5}, {y + 1.5}, 0); return tileAtScreen(a[0], a[1]); }})()")
+    assert q and (q["x"], q["y"]) == (x + 2, y + 1), q             # (and the land under the pointer is that tile)

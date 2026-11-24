@@ -137,7 +137,8 @@ function keyAim() {
 }
 // Where the mouse points: what a right click there does (E's verb), else a left click (X's): mouse.js. alt: the left one's alone
 function mouseAim(alt) {
-  const p = tileAtScreen(mouse.x, mouse.y), b = clickIntent(p, "break");
+  const p = tileAtScreen(mouse.x, mouse.y); if (!p) return null;   // (the pointer on the sky)
+  const b = clickIntent(p, "break");
   if (alt) return b;
   const u = clickIntent(p, "use");
   return u.it && !u.it.walk && !u.it.info ? u : b && {...b, brk: true};
