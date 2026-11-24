@@ -138,8 +138,9 @@ def test_in_a_shaft_six_deep_you_are_seen_through_the_x_ray_at_your_level(browse
 
 
 def test_the_eye_tilts_by_one_rule(browser, server):
-    """Your feet a level (your height, a cube) or more under the land round you (ten of sixteen straight ways out, 6 tiles long, run into
-    land a level over your feet: a wall or two beside you is not "round you"): from above; level with it: the surface's pitch. Every hole alike. The table: [where, its level, from above?], in the order walked."""
+    """From above while land covers you or hides most of you from the surface's eye (hd.js: the cover alone; once from above, till a quarter of you
+    shows): a step one level down hides your legs only, the surface's pitch; two down, from above, and back up that step it stays. Every hole alike.
+    (It was its own rule, sixteen rays "shut in": a dip a level deep tilted the eye and back as you walked through it.) The table: [where, its level, from above?], in the order walked."""
     g = hd(browser, server)
     calm(g)
     x, y = g.pos()
@@ -155,7 +156,7 @@ def test_the_eye_tilts_by_one_rule(browser, server):
     col([(x - 9 + i, y - 9 + j) for j in range(6) for i in (-1, 3)] + [(x - 9 + i, y - 10) for i in range(-1, 4)], [5])
     g.rest()
     table = [("meadow", (x, y, 0), False),
-             ("stair 1 wide", (x + 1, y - 5, -1), True), ("stair 1 wide", (x + 2, y - 5, -2), True), ("stair 1 wide", (x + 3, y - 5, -3), True), ("stair 1 wide", (x + 6, y - 5, -6), True),
+             ("stair 1 wide", (x + 1, y - 5, -1), False), ("stair 1 wide", (x + 2, y - 5, -2), True), ("stair 1 wide", (x + 3, y - 5, -3), True), ("stair 1 wide", (x + 6, y - 5, -6), True),
              ("stair 1 wide, back up", (x + 2, y - 5, -2), True), ("stair 1 wide, back up", (x + 1, y - 5, -1), True),      # (its hysteresis is the land's: out a step higher than in)
              ("stair 3 wide", (x + 3, y + 3, -3), True), ("stair 3 wide", (x + 5, y + 3, -5), True), ("stair 3 wide, its floor", (x + 8, y + 3, -6), True),
              ("meadow", (x, y, 0), False), ("pit 3 x 3, 4 deep", (x - 5, y, -4), True), ("pit, its south row", (x - 5, y + 1, -4), True),
@@ -165,9 +166,9 @@ def test_the_eye_tilts_by_one_rule(browser, server):
     got = []
     for name, (tx, ty, tz), steep in table:
         s = go(g, tx, ty, tz)
-        got.append((name, tz, round(s["pitch"]), round(g.js("HdLevel.shows"), 1)))
+        got.append((name, tz, round(s["pitch"])))
     want = [(name, at[2], round(STEEP) if steep else 36) for name, at, steep in table]
-    assert [v[:3] for v in got] == want, got
+    assert got == want, got
     tidy(g, x, y)
 
 
