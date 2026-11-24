@@ -23,7 +23,7 @@ const Keyhole = (() => {
     const p = ents.get("agent" + myId), z = zoom;
     marks = null;
     if (!p || n > 4 || n < (cube ? -1 : 1)) return;
-    const X = Math.round(sx(p.x)), Y = Math.round(bodyY(p, sy)) + (16 - RELIEF_STEP * n) * z, H = RELIEF_STEP * z;
+    const X = Math.round(bodyX(p, sx)), Y = Math.round(bodyY(p, sy)) + (16 - RELIEF_STEP * n) * z, H = RELIEF_STEP * z;
     marks = {n, x: X - 3 * z, y: Y, h: H, drawn: false};      // (no brackets on you: the cursor is a box in the land at its level, target.js)
   }
   return {tag, rel, mark, get marks() { return marks; }};
