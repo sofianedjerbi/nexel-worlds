@@ -5,6 +5,19 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.1.11 (2026-11-24)
+
+### Bug Fixes
+
+- **web**: On a phone a button that comes never moves Build under the thumb
+  ([`47aef50`](https://github.com/sofianedjerbi/nexel-worlds/commit/47aef501d4b60ae5a1ae71e3465b8eac523e6c07))
+
+### Testing
+
+- **e2e**: The running water's darkest px are not read behind your own head
+  ([`da12fe1`](https://github.com/sofianedjerbi/nexel-worlds/commit/da12fe1c4fcf78e6ffa02c2437c808636ae61ef4))
+
+
 ## v0.1.10 (2026-11-24)
 
 ### Bug Fixes
