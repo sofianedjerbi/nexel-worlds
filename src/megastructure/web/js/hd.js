@@ -7,7 +7,7 @@
 // billboards of their own sprites (objectSprite), px for px; furniture, walls, fences, built floors and roofs: small 3D
 // pieces in the land (hd_things.js), a built house open over your head; you and the others: drawEntity at zoom 1.
 const HdLook = (() => {
-  const GROW = .25, HOLD = 300, CAP = 20, SEA_L = 1, PART = .25, MOST = .75, FAR = 64, EDGE = 32;   // (FAR, EDGE: how far a body may be, tiles; how far off the picture its feet may be and it is drawn, art px)
+  const GROW = .25, HOLD = 300, CAP = 20, SEA_L = 1, PART = .25, MOST = .75, EDGE = 32;   // (EDGE: how far off the picture a body's feet may be and it is drawn, art px; how far it may be in tiles: as far as the land is drawn, R + 40, api.far)
   // THE VIEW DISTANCE (options.js `view`, viewOf): where level ground meets the sky, in tiles, at any zoom: the bend (vox_style_glsl.js sink) worked out for it, a sixteenth of the picture sky at the least.
   // Normal: the bend as it always was (.03). R: the land made tile by tile, north and as wide as the picture is at the horizon (zoomed out its sides were the far sea patches: "dark walls")
   const VIEW = {near: 9, normal: null, far: 25, veryfar: 37}, BEND = .03;   // (the bend is facets 4 tiles long: level ground meets the sky at a facet's corner, 1 + 4k tiles)
@@ -215,7 +215,7 @@ const HdLook = (() => {
     const wmB = winMap(), wr = wmB.size ? winRect() : null;   // UNDER A ROOF nobody up on the land over you is seen: over the window, or over the land round it (in the window's box on the screen); only who is in your space (like Minecraft: no mob through the ceiling)
     // (who is drawn: whoever's feet are on the picture, or EDGE art px off it (in view a step before it comes in), where it stands as the land is drawn: the bend sinks both alike, so past the horizon the land in front
     //  hides it as it hides its land. It was a box: 16 across, then the land's; 12 rows north whatever the screen: on a hill's side 26 rows off, on a phone held upright 17, a mob went out of being in view)
-    for (const q of ents.values()) if (q.x !== undefined && Math.abs(q.x - p.x) <= FAR && q.y - p.y >= -FAR && q.y - p.y <= south + 8) {
+    for (const q of ents.values()) if (q.x !== undefined && Math.abs(q.x - p.x) <= R + 40 && q.y - p.y >= -R - 40 && q.y - p.y <= south + 8) {
       if (fill && warm < 2) continue; if (fill && !sprs.has(q) && nw && performance.now() > until) { left = true; continue; } if (fill && !sprs.has(q)) nw++;   // (the first screen's people: after what stands, 8 ms of new ones a frame)
       const qx = Math.round(q.x), qy = Math.round(q.y), z = q === p ? Lf : FLOORS && Floors.any(qx, qy) ? Floors.standOf(q, qx, qy) : q.e && typeof q.e.z === "number" && !H0.water(qx, qy) ? zOn(q, qx, qy) : Math.max(topAt(qx, qy), wet(qx, qy));   // (on a built floor: at its height; in a cave: at the level the server has them. They were put on the land's top: a friend in your room stood on the grass over it)
       if (q !== p && seen) { const a = eng.at(q.x + .5, q.y + .5, z); if (!a || a[0] < -EDGE || a[0] > w + EDGE || a[1] < -EDGE || a[1] > h + 2 * EDGE) continue; }
@@ -261,7 +261,7 @@ const HdLook = (() => {
   let reachT = -1e9; api.reach = null;
   function reachOf(tx, ty, w, h, now) { if (now - reachT < 500) return; reachT = now; let x0 = tx, y0 = ty, x1 = tx, y1 = ty, d0 = 0;
     for (let ya = -1e9, z0 = topAt(tx, ty); d0 < 40; d0++) { const a = eng.at(tx + .5, ty + d0 + .5, z0); if (!a || a[1] <= ya || ya > h) break; ya = a[1]; }   // (south as far as the rows go down the picture: past the eye they come back up)
-    for (let dx = -FAR; dx <= FAR; dx += 2) { let sky = 1e9; for (let dy = d0; dy >= -FAR; dy--) { const c = Voxels.host.column(tx + dx, ty + dy); if (!c || !c.length) continue; const a = eng.at(tx + dx + .5, ty + dy + .5, c[c.length - 1]); if (!a || a[1] >= sky) continue; sky = a[1];
+    for (let dx = -R - 40; dx <= R + 40; dx += 2) { let sky = 1e9; for (let dy = d0; dy >= -R - 40; dy--) { const c = Voxels.host.column(tx + dx, ty + dy); if (!c || !c.length) continue; const a = eng.at(tx + dx + .5, ty + dy + .5, c[c.length - 1]); if (!a || a[1] >= sky) continue; sky = a[1];
       if (a[0] >= 0 && a[0] <= w && a[1] >= 0 && a[1] <= h) { x0 = Math.min(x0, tx + dx); x1 = Math.max(x1, tx + dx); y0 = Math.min(y0, ty + dy); y1 = Math.max(y1, ty + dy); } } }
     api.reach = [x0 - 1, y0, x1 + 1, y1]; }
   // what is under the pointer (client px): the nearest top drawn there, as the land shows it (in the x-ray window: your space's floors, the land over them is not drawn)
