@@ -84,7 +84,7 @@ class Building:
         seconds = block.hardness / 20                       # with the right tool in hand
         if block.tool and tool != block.tool:
             seconds *= T.BY_HAND[block.tool]
-        if block.name in T.PICKED or (not block.tool and block.hardness <= 3):
+        if block.quick:
             seconds = 0                                     # picking and plucking: instant, even on the run
         yield from self.wait(a, seconds)
         if self.world.get(x, y)[1] != b:

@@ -5,10 +5,10 @@
 const orbs = [], magnets = [];
 let xpKnown = null, xpLevelShown = null;   // your experience as last heard; the bar leaves out orbs still flying
 
-// the level curve of sim/progress.py: level 0 needs 7, then 3 more for each level
+// the level curve of sim/progress.py (RULES.level: what level 0 needs, and how much more each level after)
 function levelOf(xp) {
-  let level = 0, need = 7;
-  while (xp >= need) { xp -= need; level++; need = 7 + 3 * level; }
+  let level = 0, [need, more] = RULES.level;
+  while (xp >= need) { xp -= need; level++; need = RULES.level[0] + more * level; }
   return [level, xp, need];
 }
 

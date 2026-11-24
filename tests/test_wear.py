@@ -49,7 +49,6 @@ def test_death_drops_what_you_wore_and_the_save_keeps_what_you_wear(world):
 def test_every_piece_has_a_recipe_and_the_client_draws_exactly_the_same_pieces():
     assert set(WEAR) <= set(RECIPES) and set(ARMOR) <= set(WEAR) and len(WEAR) == 43
     js = (Path(__file__).parent.parent / "src/megastructure/web/js/wear.js").read_text()
-    table = re.search(r"const WEAR = \{(.*?)\n\};", js, re.S).group(1)
-    client = dict(re.findall(r'(\w+): \["(\w+)", ', table))
-    assert client == WEAR
+    table = re.search(r"const LOOK = \{(.*?)\n\};", js, re.S).group(1)      # (a look for each piece; its slot is the world's: rules.py)
+    assert set(re.findall(r'(\w+): "\w+"', table)) == set(WEAR)
     assert ("shell_plate", 1, 5, 5) in CREATURES["mossback"]["drops"]      # enough for the whole mossback set, every time

@@ -9,16 +9,17 @@ XP_DIG = {"ore": 4}
 XP_KILL = {"chicken": 2, "calf": 1, "cow": 4, "tusker": 8, "pincer": 3, "strawman": 10, "wyrm": 20, "mossback": 100, "sporeling": 1}
 XP_CRAFT = 1
 MAGNET_R = 1                 # items within this reach (Movement.near: a circle, height counted) come to you...
+LEVEL = (7, 3)               # the experience the first level takes, and how much more each one after it
 MAGNET_DELAY = sec(1.2)      # ...once they've been on the ground this long (time to land, or to walk off a drop)
 
 
 def level_of(xp: int) -> tuple[int, int, int]:
     """(level, xp into it, xp it takes): each level needs 3 more than the last, from 7."""
-    level, need = 0, 7
+    level, need = 0, LEVEL[0]
     while xp >= need:
         xp -= need
         level += 1
-        need = 7 + 3 * level
+        need = LEVEL[0] + LEVEL[1] * level
     return level, xp, need
 
 

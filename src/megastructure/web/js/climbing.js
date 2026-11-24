@@ -8,7 +8,7 @@
 //   the ground. A step is drawn as a block of planks with its tread: the nose lit where you come up from, the next
 //   riser's shadow at the back.
 const Climb = (() => {
-  const CLIMB = 12, RISE = [2, 7], WAYS = [[0, -1], [1, 0], [0, 1], [-1, 0]];       // (N, E, S, W: the server's order)
+  const CLIMB = RULES.climb.max, RISE = RULES.climb.rise, WAYS = [[0, -1], [1, 0], [0, 1], [-1, 0]];       // (N, E, S, W: the server's order)
   const RAIL = "#90625d", RUNG = "#c49a6c", LIGHT = "#e8cfa6";
   const ladderAt = (x, y, z) => FLOORS && Floors.thingAt(x, y, z) === "l";
   // Someone could stand at height z on (x, y)
@@ -35,7 +35,7 @@ const Climb = (() => {
   const onLadder = (x0, y0, h0, x, y, h) => ladderAt(x0, y0, h0) || ladderAt(x, y, h);
   // A ladder is climbed rung by rung: CLIMB_S a layer (sim/constants.py), the next step waits for it. Your walk
   // crosses a climb at that pace (walk.js), and so is anyone else seen climbing (render.js): tiles a second, or 0
-  const CLIMB_S = .15;
+  const CLIMB_S = RULES.climb.s;
   function pace(fx, fy, h, x, y) {
     const z = landAt(h, x, y, fx, fy);
     return z !== null && Math.abs(z - h) > 1 && onLadder(fx, fy, h, x, y, z) ? 1 / (Math.abs(z - h) * CLIMB_S) : 0;

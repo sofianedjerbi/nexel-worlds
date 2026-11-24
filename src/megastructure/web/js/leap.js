@@ -32,7 +32,7 @@ const Leap = (() => {
   // Off the ground, with the walk's speed
   function start(p, now) {
     const [x, y] = tileOf(p.x, p.y), run = !!(walking && walking.run && sprinting()), w = walking && p.walking ? DIRV[walking.dir] : null;
-    const sp = walking && p.walking ? (run ? 10 : 5) : 0;
+    const sp = walking && p.walking ? RULES.pace[run ? "sprint" : "walk"] : 0;
     if (walking) {                                         // the walk ends where you leave the ground: the world comes to that tile first
       const args = {at: mark(x, y)}; if (walking.run) args.run = true; if (autoJump()) args.jump = true;   // (the way there may go up a step, sprung, as walk.js's stop says: without it the world did not take the step up off a stair's foot, refused every flight after it, and the screen was put back 5 tiles)
       walking = null; p.walking = false; pred = {x, y, until: now + 2000};
@@ -56,7 +56,7 @@ const Leap = (() => {
   function due(p, w) {
     if (!can(p)) return false;
     const [dx, dy] = DIRV[w.dir], s = dx || dy, x = Math.round(p.x), y = Math.round(p.y), h = myZ(x, y), at = dx ? p.x : p.y;
-    const need = (w.run && sprinting() ? 10 : 5) * T1() + .08;
+    const need = RULES.pace[w.run && sprinting() ? "sprint" : "walk"] * T1() + .08;
     for (let k = 1; k <= 2; k++) {
       const nx = x + dx * k, ny = y + dy * k, px = nx - dx, py = ny - dy, d = ((dx ? x : y) + (k - .5) * s - at) * s;   // (d: tiles to the edge before it)
       if (d < 0) continue;
@@ -69,7 +69,7 @@ const Leap = (() => {
   function frame(p, dt, now) {
     if (!L) return;
     L.t += dt;
-    const h = held(), cap = L.run ? 10 : 5;
+    const h = held(), cap = RULES.pace[L.run ? "sprint" : "walk"];
     if (h) {                                               // steering: the way held pulls your speed towards it, a little
       const k = Math.min(1, LEAP.steer * dt / cap);
       L.vx += (h[0] * cap - L.vx) * k; L.vy += (h[1] * cap - L.vy) * k;

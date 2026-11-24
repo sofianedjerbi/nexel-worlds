@@ -32,6 +32,11 @@ class Block:
     needs_tool: str | None = None  # tool required to dig at all
     wall: bool = False  # counts as shelter
 
+    @property
+    def quick(self) -> bool:
+        """Picked or plucked in passing: it takes no time (sim/building.py), and a screen does it on the run."""
+        return self.name in PICKED or (not self.tool and 0 < self.hardness <= 3)
+
 
 GROUNDS = [
     Ground("water", "~", walkable=False, diggable=False, liquid=True),

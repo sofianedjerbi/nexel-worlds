@@ -26,7 +26,7 @@
 // (SETTLE: the squash, then back up), the legs straighten as the feet touch (touch: the standing frame, between the
 // reach and the squash), and on a staircase each step lands (dust, a step's sound).
 
-const JUMP = {g: 950, top: 20, over: 4, crouch: 40, off: 30, touch: 25};   // its weight (art px/s2); a hop's top (art px: a block is 16); a step's, over the higher floor; ms crouched before it; ms of the push off; ms of the feet down before landing
+const JUMP = {g: RULES.leap.g * 16, top: RULES.leap.top * 16, over: 4, crouch: 40, off: 30, touch: 25};   // its weight (art px/s2); a hop's top (art px: a block is 16); a step's, over the higher floor; ms crouched before it; ms of the push off; ms of the feet down before landing
 const SETTLE = {land: 45, ms: 100};                                       // ms from touching the ground: in the squash, then back up to standing (by the clock: the walk goes on meanwhile)
 const STEPDOWN = {from: .35, q: 1.6};                                                // down a step: on the ground until this share of the way, then falling faster and faster to the lower one at its middle
 const JPOSE = {crouch: 0, takeoff: 1, rise: 2, apex: 3, fall: 4, land: 5, settle: 6, touch: 7};   // the column of each pose in the jump's rows (ANIM.jump; 7: the standing frame)
@@ -78,7 +78,7 @@ function jumpOf(p) {
 // `fall` event, more than 3 layers) lands with the tree's thud, the ground shakes, you flash, bounce, and lose
 // what it cost you there, not when you stepped off. (A fall was a hop: one arc at the pace of a step, twelve layers
 // in a fifth of a second, the screen jumping with it, and nothing to say it had hurt.)
-const FALL = {from: 3, g: 1000, flail: 70, heavy: 4, shake: [3.5, .32], bounce: [3, .17]};   // layers; art px/s2; ms a frame; layers from which it lands heavily; px and s of the shake, of the bounce
+const FALL = {from: RULES.fall_safe, g: 1000, flail: 70, heavy: 4, shake: [3.5, .32], bounce: [3, .17]};   // layers; art px/s2; ms a frame; layers from which it lands heavily; px and s of the shake, of the bounce
 let fallQuake = null;                 // {t0, amp}: the ground shaking under you (render.js: fallShake)
 
 // -> null, or the fall of p now: {body, ground: art px over the straight line (relief.js liftOf), air}. (Asked once

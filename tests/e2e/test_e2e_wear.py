@@ -13,7 +13,7 @@ def test_dressing_up(game):
     game.rpc("dev_give", items={n: 1 for n in outfit})
     game.sleep(500)
     drawn = game.js("""(() => { const out = {};            // every wearable has its own icon, not the grey square
-      for (const n of Object.keys(WEAR)) { const d = iconCanvas(n).getContext('2d').getImageData(0, 0, 16, 16).data; let px = 0, grey = 0;
+      for (const n of Object.keys(RULES.wear)) { const d = iconCanvas(n).getContext('2d').getImageData(0, 0, 16, 16).data; let px = 0, grey = 0;
         for (let i = 0; i < d.length; i += 4) if (d[i + 3]) { px++; if (d[i] === 138 && d[i + 1] === 106) grey++; }
         if (px < 12 || grey === px) out[n] = px; }
       return out; })()""")

@@ -94,10 +94,10 @@ const WearItems = (() => {
     return L;
   }
   const LISTS = {head: HEADS, top: TOPS, pants: PANTS, shoes: SHOES, effect: EFFECTS};
-  const look = (name) => LISTS[WEAR[name][0]].find((o) => o.id === WEAR[name][1]);
+  const look = (name) => LISTS[RULES.wear[name]].find((o) => o.id === LOOK[name]);
   const icons = new Map();
   function icon(name) {                         // a fresh 16 x 16 canvas each time (the HUD keeps what it is given)
-    if (!icons.has(name)) icons.set(name, itemIcon(WEAR[name][0], look(name)));
+    if (!icons.has(name)) icons.set(name, itemIcon(RULES.wear[name], look(name)));
     const c = document.createElement("canvas"); c.width = c.height = 16;
     const g = c.getContext("2d");
     for (const [key, col] of icons.get(name)) { g.fillStyle = col; g.fillRect(key % 16, Math.floor(key / 16), 1, 1); }
@@ -107,7 +107,7 @@ const WearItems = (() => {
   const STAGE = 64, OX = 8, OY = 14, stage = document.createElement("canvas");
   stage.width = stage.height = STAGE;
   function fx(phase, e, sheet, idx, x0, y0, z, now, walking, back) {      // (x0, y0): where the player's 48 x 48 cell is drawn
-    const item = e.worn && e.worn.effect, fn = item && WEAR[item] && look(item)[phase];
+    const item = e.worn && e.worn.effect, fn = item && LOOK[item] && look(item)[phase];
     if (!fn) return;
     const s = stage.getContext("2d");
     s.clearRect(0, 0, STAGE, STAGE);
@@ -121,7 +121,7 @@ const WearItems = (() => {
 const wearIcon = WearItems.icon, wearFx = WearItems.fx;
 
 // Crafting: all of it under one bookmark, clothes first, then armor, then charms (craft.js RECIPE_GROUPS).
-const wearOf = (slots, pick = () => true) => Object.keys(WEAR).filter((n) => slots.includes(WEAR[n][0]) && pick(n));
+const wearOf = (slots, pick = () => true) => Object.keys(LOOK).filter((n) => slots.includes(RULES.wear[n]) && pick(n));
 const isArmor = (n) => /^(iron|gold|leather|moss)/.test(n);
 RECIPE_GROUPS.find(([t]) => t === "Wear")[2].push(...wearOf(["head", "top", "pants", "shoes"], (n) => !isArmor(n)), ...wearOf(["head", "top", "pants", "shoes"], isArmor), ...wearOf(["effect"]));
 

@@ -3,7 +3,7 @@
 from ..pathfind import astar
 from ..tiles import BLOCKS, DIRS, GROUNDS, B
 from .leaping import Leaping
-from .constants import CLIMB_S, EAT_PACE, FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRING_S, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
+from .constants import CLIMB_S, EAT_PACE, PACE, FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRING_S, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
 
 
@@ -102,8 +102,8 @@ class Movement(Leaping):
         swim in, twice as long (SWIM_PACE): 0.4 swimming, 0.2 at a sprint. Eating meanwhile, twice as long again
         (EAT_PACE), on land and in the water: 0.8 for a tile swum with your mouth full."""
         if a.sailing:
-            return 0.15
-        return (0.1 if self.sprints(a, args) else 0.2) * (SWIM_PACE if self.swimming(a) else 1) * (EAT_PACE if a.aside is not None else 1)
+            return 1 / PACE["sail"]
+        return 1 / PACE["sprint" if self.sprints(a, args) else "walk"] * (SWIM_PACE if self.swimming(a) else 1) * (EAT_PACE if a.aside is not None else 1)
 
     def sprints(self, a: Agent, args) -> bool:
         """Asked to run, and fed enough for it (three pieces of food or fewer: no sprinting)."""

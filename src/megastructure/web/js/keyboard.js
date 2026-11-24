@@ -20,11 +20,10 @@ function facingTile() {
 }
 // Things done in passing, without stopping: hits, picking flowers, mushrooms, berries, fruit and crops, small
 // decorations (the server makes these instant: no tool and hardness <= 3, or picking), picking up items.
-const INSTANT_DIG = "bFQf;\"w?!rmqyp";
 function isQuick(f) {
   if (f.it.attack || f.it.here) return true;
   const c = combAt(f.p.x, f.p.y);
-  return !placingItem() && !!c && INSTANT_DIG.includes(c);
+  return !placingItem() && !!c && !!tileOf(c).quick;
 }
 const useful = (it) => it && !it.walk && !it.info && it.ok !== false;
 // Who you're fighting: set when you hit someone or someone hits you, so X keeps hitting them, not the tree beside.
@@ -45,7 +44,7 @@ function noteFight(e) {
 // anything next to you, preferring the direction you last walked. Falls back to a hint about the faced tile.
 // Holding something to place (a block, path, planks, dirt, seeds): E puts it on the tile in front of you, and
 // only there (the ghost shows it, green or red). Walk to aim: a tap turns you and moves you a tile.
-const placingItem = () => selected && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed");
+const placingItem = () => selected && placeable(selected);
 // It is asked three times a frame (the corner's rows, the hint beside the tile, the aim): worked out once for a tick
 // of the world, a place, a way faced, a thing in hand and a state of the land, and kept till one of them changes (it
 // made a sixth of the memory the page went through: the collector's work).
@@ -58,12 +57,12 @@ function facingIntent(alt) {
   return out;
 }
 // Food or clothes in hand, E eats or wears them, unless what you face takes that very thing (`uses`: intent.js)
-const eatsInHand = () => { const w = inHand(); return w && (FOODS.includes(w) || WEAR[w]) ? w : null; };
+const eatsInHand = () => { const w = inHand(); return w && (FOODS.includes(w) || RULES.wear[w]) ? w : null; };
 function facingNow(alt) {
   const f = facingAny(alt), w = !alt && eatsInHand(), q = facingTile();
   if (!w || (f && f.it.uses && (f.it.uses !== "faced" || (q && f.p.x === q.x && f.p.y === q.y)))) return f;
   const s = myPos();
-  return s && {p: {x: s.x, y: s.y}, it: {text: `${WEAR[w] ? "Wear" : "Eat"} ${label(w)}`, self: true, run: () => useSelected(w)}};
+  return s && {p: {x: s.x, y: s.y}, it: {text: `${RULES.wear[w] ? "Wear" : "Eat"} ${label(w)}`, self: true, run: () => useSelected(w)}};
 }
 function facingAny(alt) {
   const q = facingTile(), s = myPos(); if (!q || !s) return null;

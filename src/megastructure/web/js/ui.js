@@ -22,7 +22,6 @@ const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in co
 // A block of the land in your pack is drawn as a block, as the game shows one: 14 x 14 px cut from its sheet's own
 // plateau where its south edge runs straight: the top, its lip, the wall under it. No px changed. (A pebble and a
 // speck of soil are materials' pictures: "breaked blocks should stay blocks in inventory: not items".)
-FILLS.stone_block = FILLS.dirt; FILL_HELP.stone_block = "Stone fills holes and shallow water";      // (as earth does: tiles.py FILLERS)
 // An item's picture is 16 x 16 art pixels, and wherever it shows, an art pixel is a whole number of screen pixels:
 // the land's own on the ground (zoom; loot.js), the frames' own in the HUD (--u: hudFit below). A thing bigger than a tile (a
 // boat, a bed, a well) is made smaller by whole pixels, never squeezed: each n x n block becomes one pixel, of the
@@ -64,7 +63,7 @@ function iconCanvas(name) {
   const c = document.createElement("canvas"); c.width = 16; c.height = 16; const g = c.getContext("2d", {willReadFrequently: BARE.has(name)});
   const ic = ICONS[name];
   if (CubeIcon.is(name)) { const im = CubeIcon.px(name, CubeIcon.CELL); if (im) { const [x, y] = CubeIcon.mid(im, 16); g.putImageData(im, x, y); return c; } }      // a block: a cube made at the size the other things sit at in a cell, in its middle (cube_icons.js)
-  if (!ic && WEAR[name]) return wearIcon(name);          // clothes and armor draw their own (wear_items.js)
+  if (!ic && RULES.wear[name]) return wearIcon(name);          // clothes and armor draw their own (wear_items.js)
   if (!ic) { g.fillStyle = "#8a6a55"; g.fillRect(4, 4, 8, 8); return c; }
   if (ic[0] === "gen") { g.drawImage(IMG.gen, GEN[ic[1]] * 16, 0, 16, 16, 0, 0, 16, 16); return BARE.has(name) ? bare(c) : c; }
   const [img, x, y, w = 16, h = 16] = ic;
@@ -147,7 +146,7 @@ function drawHotbar(inv) {
   const order = slotOrder(inv).slice(0, BAR);
   handSync(inv);
   const extra = Object.keys(inv).filter((n) => !order.includes(n));
-  const can = meObs ? meObs.self.can ?? CAN_SIZE : CAN_SIZE;
+  const can = meObs ? meObs.self.can ?? RULES.can_size : RULES.can_size;
   if (meObs) Held.sync(meObs.self);                  // (in your paw for the others too: held.js)
   if (selected !== hotWas) { if (hotWas !== undefined && selected) heldName(selected); hotWas = selected; }
   const sig = JSON.stringify(inv) + order.join() + handSlot + can; if (el.dataset.sig === sig) return; el.dataset.sig = sig;
@@ -157,10 +156,10 @@ function drawHotbar(inv) {
     d.onclick = () => selectSlot(i);                 // (any slot, an empty one too; the one in hand again: it stays in hand)
     if (name) {
       d.appendChild(slotIcon(name));
-      const how = WEAR[name] ? ` · ${capOf("use")} to wear` : FOODS.includes(name) ? ` · ${capOf("use")} to eat, or feed animals` : name === "watering_can" ? ` · ${can}/${CAN_SIZE} water · click a crop; refill at a well or water`
-        : (PLACEABLE_BLOCK[name] || FILLS[name] || name === "seed") ? " · select, click the ground to place" : name === "name_tag" ? " · select, use it on an animal to name it" : "";
+      const how = RULES.wear[name] ? ` · ${capOf("use")} to wear` : FOODS.includes(name) ? ` · ${capOf("use")} to eat, or feed animals` : name === "watering_can" ? ` · ${can}/${RULES.can_size} water · click a crop; refill at a well or water`
+        : placeable(name) ? " · select, click the ground to place" : name === "name_tag" ? " · select, use it on an animal to name it" : "";
       d.insertAdjacentHTML("beforeend", `<span class="c">${inv[name]}</span><span class="tip">${esc(label(name) + how)}</span>`);
-      if (name === "watering_can") d.insertAdjacentHTML("beforeend", `<span class="lvl"><i style="width:${Math.round(can / CAN_SIZE * 100)}%"></i></span>`);
+      if (name === "watering_can") d.insertAdjacentHTML("beforeend", `<span class="lvl"><i style="width:${Math.round(can / RULES.can_size * 100)}%"></i></span>`);
       d.ondblclick = () => useSelected(name);
     }
     d.insertAdjacentHTML("beforeend", `<span class="k">${(i + 1) % 10}</span>`);
@@ -236,7 +235,7 @@ function drawIcons(cv, icon, value, gain = 0) {   // gain: food points to previe
 // Holding food: the apples it would give back blink on the bar (every frame, from render; redrawn only on change).
 function foodPreview() {
   if (!meObs) return;
-  const h = meObs.self.hunger, gain = selected && foodValue[selected] && h < FOOD_MAX ? foodValue[selected] : 0;
+  const h = meObs.self.hunger, gain = selected && RULES.food[selected] && h < FOOD_MAX ? RULES.food[selected] : 0;
   drawIcons($("foods"), "food", h, gain && Math.floor(performance.now() / 450) % 2 === 0 ? gain : 0);
 }
 function drawVitals(s) {
@@ -246,13 +245,10 @@ function drawVitals(s) {
   if (walking && walking.run !== sprinting()) syncWalk();          // (fed again, or not enough any more: the sprint follows)
   $("status").textContent = status; $("status").style.display = status ? "block" : "none";
 }
-// what animals eat: what grows (no eggs, meat or milk), and hay (tiles.FEED)
-const FEEDS = ["pumpkin", "cauliflower", "lettuce", "eggplant", "carrot", "fruit", "berries", "mushroom", "wheat", "bread", "hay"];
-const FOODS = ["pumpkin", "cauliflower", "lettuce", "eggplant", "carrot", "fruit", "berries", "mushroom", "egg", "milk", "meat", "cooked_meat", "wheat", "bread"];
 function useSelected(name = selected) {
   if (!name) return toast("Nothing selected.", true);
   if (FOODS.includes(name)) return act("eat", {item: name});
-  if (WEAR[name]) return act("wear", {item: name});
+  if (RULES.wear[name]) return act("wear", {item: name});
   toast(TOUCH ? `Face a tile and tap the big button to use the ${label(name)}.` : `Face a tile and press ${capOf("use")} (or click it) to use the ${label(name)}.`);
 }
 let mailAtTile = null;   // the mailbox the panel is open on (posting and taking aim at it exactly)

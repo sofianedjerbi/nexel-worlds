@@ -22,8 +22,8 @@ function frame(now) {
     // (an animal that the world moves faster than it ambles, a tusker trotting into line or ending its charge, goes at
     // the world's pace, p.pace, state.js; and one that paws the ground or stands dazed is where it is: it was drawn
     // most of a tile behind, sliding into place while it pawed. "it glitches a few pixels... when doing key moves")
-    const amble = p.e && AMBLE[p.e.kind] ? Math.max(p.e.scared ? 1 / FLEE_STRIDE : AMBLE[p.e.kind], p.pace || 0, p.e.kind === "tusker" && p.e.act ? 8 : 0) : 0;
-    const pace = Climb.paceOf(p) || (p.running || (p.e && p.e.run) ? 10 : amble || 5);      // (up or down a ladder: rung by rung, climbing.js)
+    const amble = p.e && AMBLE[p.e.kind] ? Math.max(p.e.scared ? 1 / RULES.flee_stride : AMBLE[p.e.kind], p.pace || 0, p.e.kind === "tusker" && p.e.act ? 8 : 0) : 0;
+    const pace = Climb.paceOf(p) || (p.running || (p.e && p.e.run) ? RULES.pace.sprint : amble || RULES.pace.walk);      // (up or down a ladder: rung by rung, climbing.js)
     const jp = d > 0 && d <= 1.5 && !p.leapAt ? jumpPace(p, p.tx - (Math.abs(dx) > 1e-3 ? Math.sign(dx) : 0), p.ty - (Math.abs(dy) > 1e-3 ? Math.sign(dy) : 0), p.tx, p.ty) : Infinity;   // (up or down a step: as long as its jump takes, jump.js; it was squeezed into a step's time)
     // (any other body a tile behind or more goes a little quicker, and is put straight there only past 2.5 tiles: the world's
     //  ticks come unevenly (a scared cow's tiles 261 to 333 ms apart for its 300), it fell half a tile behind, and the next tile

@@ -63,11 +63,9 @@ setInterval(refresh, 700);
 let myAction = null, pendingAct = null;   // myAction is set only once the server confirms the action started
 // What your hands do meanwhile (the server's ASIDE: eating): it runs beside walking, which goes on, and has its own
 // two of these, so starting a walk or finishing a step doesn't end the meal on screen
-const ASIDE = ["eat"];
 let myAside = null, pendingAside = null;
 // Eating, your hands are full: you can walk on and talk, nothing else until it is eaten (the server's rule: sim
 // MEANWHILE). Nothing is asked for meanwhile, and no swing is shown (intent.js perform).
-const MEANWHILE = ["walk", "stop", "step", "move_to", "say", "shout", "jump"];
 const eating = () => !!(pendingAside || myAside);
 let actTarget = null;   // the exact tile perform() aims at: sent as x, y instead of a direction
 function facingTo(p) {  // the direction to look when working on p (the bigger axis wins)
@@ -76,14 +74,14 @@ function facingTo(p) {  // the direction to look when working on p (the bigger a
   return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "E" : dx < 0 ? "W" : null) : dy > 0 ? "S" : "N";
 }
 async function act(tool, args, quiet) {
-  if (!me || (eating() && !MEANWHILE.includes(tool))) return null;
+  if (!me || (eating() && !RULES.meanwhile.includes(tool))) return null;
   while (pred && performance.now() < pred.until) await new Promise((ok) => setTimeout(ok, 16));   // the server is still coming to where you stopped: what you do, you do from there
   if (actTarget && "dir" in args) { args = {...args, x: actTarget.x, y: actTarget.y}; delete args.dir; }
   const look = actTarget ? facingTo(actTarget) : args.dir;
   const s0 = myPos(), dv = args.dir && DIRV[args.dir];
   const at = "x" in args && "y" in args && tool !== "move_to" ? [args.x, args.y] : dv && s0 ? [s0.x + dv[0], s0.y + dv[1]] : null;
   actTarget = null;
-  const aside = ASIDE.includes(tool);
+  const aside = RULES.aside.includes(tool);
   // the facing only shows once the server says the action takes time (instant things don't turn you or stop you)
   if (aside) pendingAside = {tool, item: args.item};
   else { busy = true; pendingAct = {tool, dir: look, at, tid: args.target, with: args.with, item: args.item}; }

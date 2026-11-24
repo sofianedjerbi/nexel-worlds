@@ -38,11 +38,11 @@ function screenOrigin(S = TS()) {
 }
 let cam = {x: 0, y: 0}, camT = {x: 0, y: 0};
 let follow = null, me = null, myId = null, meObs = null, agents = [], metrics = {}, recipes = {}, clock = {night: false, phase: .3};
-let selected = null, progress = null, foodValue = {};   // foodValue: food points each food gives (from the server)
+let selected = null, progress = null;
 let handSlot = Math.min(9, Math.max(0, Math.floor(+localStorage.getItem("megastructure-hand")) || 0));   // the bar's slot in hand, always one (an empty one too): `selected` is what is in it (ui.js handSync)
 // Health and food: how much is full, and the food it takes to sprint. The server says so when it greets (20, 20 and 6:
 // half hearts and half pieces, as the sandbox classic has them); one from before that says nothing: 0 to 100.
-let HP_MAX = 100, FOOD_MAX = 100, SPRINT_FOOD = -1, SWIM_SPRINT = false, SWIM_PACE = 1, EAT_PACE = 1;      // (SWIM_SPRINT: this server sprints in the water too; SWIM_PACE, EAT_PACE: how many times longer a tile takes there, and while eating)
+let {hp_max: HP_MAX, food_max: FOOD_MAX, sprint_food: SPRINT_FOOD, swim_pace: SWIM_PACE, eat_pace: EAT_PACE} = RULES, SWIM_SPRINT = false;      // (SWIM_SPRINT: this server sprints in the water too; SWIM_PACE, EAT_PACE: how many times longer a tile takes there, and while eating)
 const hearts = (hp) => Math.round(hp / (HP_MAX / 10) * 10) / 10;      // a blow, on a person or a creature, is said in hearts: "-0.5", "-1.5"
 const ents = new Map();
 let bubbles = [], floats = [];
@@ -63,16 +63,16 @@ function connectSpec() {
     if (d.type === "hello") {                     // back after the server restarted with newer code: this page is stale (it would draw the new world wrong)
       if (webStamp && d.web && d.web !== webStamp) location.reload();
       webStamp = d.web || webStamp;
-      if (d.hp_max) { HP_MAX = d.hp_max; FOOD_MAX = d.food_max; SPRINT_FOOD = d.sprint_food; }
+      if (d.rules) { setRules(d.rules); ({hp_max: HP_MAX, food_max: FOOD_MAX, sprint_food: SPRINT_FOOD, swim_pace: SWIM_PACE, eat_pace: EAT_PACE} = RULES); }   // (the world's rules, said again: vocab.js)
       FLOORS = !!d.floors;                           // (blocks built over the land, stood on: floors.js)
-      SWIM_SPRINT = !!d.swim_sprint; SWIM_PACE = d.swim_pace || 1; EAT_PACE = d.eat_pace || 1;
+      SWIM_SPRINT = !!d.swim_sprint;
     } else if (d.type === "tick") { if (typeof TitleScene === "undefined" || !TitleScene.on) onTick(d); }   // (the first screen's island has its own hour: a world watched before the island began lit it with its own, a frame in two)
     else if (d.type === "event") onEvent(d.ev);
     else if (d.type === "resync") { for (const b of blocks.values()) b.at = -1e9; }   // we missed events (too many at once): ask for our land again
     else if (d.type === "reply") {
       if (d.rows) onRegion(d);
       else if (d.agents) { agents = d.agents; drawAgents(); if (document.body.classList.contains("tab")) drawWho(); }
-      else if (d.recipes) { recipes = d.recipes; foodValue = d.food || {}; drawRecipes(); }
+      else if (d.recipes) { recipes = d.recipes; drawRecipes(); }
       else if (d.tick_ms_p50 !== undefined) { metrics = d; }      // (the debug screen reads them: panels.js)
       else if (d.who) accountNamed(d.name);                  // (account.js)
     }
@@ -150,7 +150,7 @@ function onTick(d) {
       // animal sheets only walk sideways: going up or down they keep facing the way they last went
       if (ANIMALS[e.kind]) { if (dx) p.fx = dx; } else if (dx || dy) { p.fx = dx; p.fy = dy; }
       const gap = (now - p.moved) / 1000;               // how fast the world is moving it: tiles a second, over its last two places (render.js)
-      p.pace = e.run ? 10 : gap < 1 ? Math.min(10, Math.hypot(e.x - p.tx, e.y - p.ty) / Math.max(gap, .05)) : 0;
+      p.pace = e.run ? RULES.pace.sprint : gap < 1 ? Math.min(RULES.pace.sprint, Math.hypot(e.x - p.tx, e.y - p.ty) / Math.max(gap, .05)) : 0;
       p.moved = now; p.tx = e.x; p.ty = e.y;
       if (Math.abs(p.x - e.x) + Math.abs(p.y - e.y) > 4) { p.x = e.x; p.y = e.y; }
     }

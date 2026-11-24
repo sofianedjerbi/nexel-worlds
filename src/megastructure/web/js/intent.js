@@ -17,23 +17,16 @@ function walkable(x, y, fx, fy) {               // (fx, fy): where you come from
 // The words: "interaction sentences are wayyyy too long" (it said "Chop tree (the fruit grows back if you wait) by hand
 // (slow)" beside the key). What you can do is a verb and a thing, three words or so; no reason, no advice, no tool
 // named (it is in your hand). Without the tool a thing wants: "(slow)". Why something cannot be done: one short line.
-const FILLS = {dirt: {o: ",", u: ",", "~": ",", "(": "~", "=": "(", ")": "="}, path: {".": "_", ",": "_", "'": "_"}, plank: {"~": ":", ".": "n", ",": "n", "'": "n"}};
 const FILL_TEXT = {",": "Fill with dirt", "~": "Raise the bottom", "(": "Raise the bottom", "=": "Raise the bottom", _: "Lay path", ":": "Build bridge", n: "Lay floor"};
-const FILL_HELP = {dirt: "Dirt fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
-const PLACEABLE_BLOCK = {mailbox: "X", boat: "V", wood_wall: "W", flower: "f", bed: "B", chair: "h", table: "L", plant: "p", clock: "K", rug: "r", gate: "g", fence: "#", stone_wall: "%", door: "+", campfire: "^", workbench: "&", sign: "?", flag: "!", chest: "C", well: "Y", coop: "J", picnic_blanket: "m", basket: "q", trough: "e", hay: "y"};
-PLACEABLE_BLOCK.roof = "roof"; PLACEABLE_BLOCK.stairs = "stairs"; PLACEABLE_BLOCK.ladder = "l";                       // (in hand a roof is something you place: not a thing on the tile, a block over it: floors.js)
+const FILL_HELP = {dirt: "Dirt fills holes and shallow water", stone_block: "Stone fills holes and shallow water", path: "Paths go on grass or dirt", plank: "Planks: bridge over water, floor on land"};
 const HARVEST = {t: "Dig up stump", U: "Chop tree", v: "Cut bush", e: "Take down trough", y: "Take hay bale", Y: "Take down well", J: "Take down coop", m: "Roll up blanket", q: "Take basket", X: "Take down mailbox", V: "Take boat", W: "Take down wall", l: "Take ladder", f: "Pick flower", B: "Take down bed", h: "Take down chair", L: "Take down table", p: "Take plant",
   K: "Take down clock", r: "Roll up rug", g: "Take down gate", F: "Pick fruit", ";": "Uproot sprout", T: "Chop tree", b: "Pick berries", M: "Mine rock", R: "Mine rock wall", "*": "Mine ore", H: "Cut thicket", Q: "Pick mushroom",
   w: "Harvest wheat", "\"": "Uproot young wheat", "#": "Take down fence", "%": "Take down wall", "+": "Take down door",
   "^": "Take down campfire", "&": "Take down workbench", "?": "Take down sign", "!": "Take down flag", C: "Break chest open", x: "Fire!"};
-// which tool speeds up digging each block (tiles.py Block.tool); ore can only be mined with a pickaxe in hand
-const TOOL_FOR = {t: "axe", U: "axe", T: "axe", M: "pickaxe", "*": "pickaxe", H: "axe", "#": "axe", "%": "pickaxe", "+": "axe", "&": "axe", C: "axe", B: "axe", h: "axe",
-  L: "axe", K: "axe", g: "axe", W: "axe", V: "axe", X: "axe", Y: "pickaxe", J: "axe", e: "axe", l: "axe"};
-const WEAPON_DMG = {sword: 6, spear: 4, axe: 3, pickaxe: 2};      // (half hearts: tiles.py)
 const inHand = () => (selected && meObs && meObs.self.inventory[selected] ? selected : null);   // what's in your hand
 // The creature or person at a tile: where it stands, or where it is drawn right now (moving animals stay clickable).
 function entityAt(p) {                        // (who stands there, near your own height: a tusker on the mountain over your tunnel, twenty layers up, was on your tile: "Punch tusker", "i shouldn't be able to select the tusker here !". As far as a hand or a bite goes: sim/wild.py BITE_HIGH)
-  const s = myPos(), h = s ? myZ(s.x, s.y) : null, others = [...ents.values()].filter((q) => q.e && !(q.e.kind === "agent" && q.e.id === myId) && (h === null || Math.abs(standsAt(q) - h) <= 4));
+  const s = myPos(), h = s ? myZ(s.x, s.y) : null, others = [...ents.values()].filter((q) => q.e && !(q.e.kind === "agent" && q.e.id === myId) && (h === null || Math.abs(standsAt(q) - h) <= RULES.bite_high));
   return others.find((q) => q.tx === p.x && q.ty === p.y) || others.find((q) => Math.round(q.x) === p.x && Math.round(q.y) === p.y);
 }
 const reachOf = (weapon) => (weapon === "spear" ? 3 : 2);   // tiles.py REACH, less the tile the server allows for your lead (reaches, below: a circle, height counted)
@@ -44,7 +37,7 @@ function aimAt(p, brk) {
   if (!GROUND.has(combAt(p.x, p.y)) || entityAt(p)) return p;
   // someone's head and shoulders are drawn over the lower half of the tile above theirs: pointing there means them
   if (p.fy > 1 - (4 + STAND) / 16 && entityAt({x: p.x, y: p.y + 1})) return {x: p.x, y: p.y + 1};
-  const forGround = selected && !brk && (PLACEABLE_BLOCK[selected] || FILLS[selected] || ["seed", "hoe", "watering_can"].includes(selected));
+  const forGround = selected && !brk && (placeable(selected) || ["hoe", "watering_can"].includes(selected));
   if (forGround) return p;
   for (const dy of [1, 2]) {
     const c = combAt(p.x, p.y + dy);
@@ -69,18 +62,17 @@ function intent(p, brk) {
   if (res && !res.ent && res.z === undefined && !res.walk && !res.here) res.at = floorAt(p.x, p.y);   // (what is on a tile lies on its lowest ground: its height, for your reach. It was the tile's ground nearest you: "Pick flower" from a stair 24 layers over the flower)
   return res;
 }
-const CAN_SIZE = 12;
 // Two verbs, as in Minecraft ("Why do I break rocks with E?"): brk (X, a left click) takes apart what it is on: mines,
 // chops, cuts, digs, takes down, uproots, hits. Not brk (E, a right click) uses it: opens, reads, sleeps, crafts,
 // talks, feeds, milks, places, plants, tills, waters, boards. Gathering (a ripe crop, a flower, berries, fruit, a
 // mushroom) is a use: E.
 const GATHER = "bFQfw";
 function intent0(p, brk, t, c, g, flower, ent, s) {
-  const placing = selected && !brk && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed");
+  const placing = selected && !brk && placeable(selected);
   const hasBlock = !GROUND.has(c) && !(flower && placing);   // building over a flower picks it
   const isMe = p.x === s.x && p.y === s.y;
   if (ent) {
-    const who = ent.e.name || ent.e.kind, w = inHand(), weapon = w && WEAPON_DMG[w] ? w : null;
+    const who = ent.e.name || ent.e.kind, w = inHand(), weapon = w && RULES.weapons[w] ? w : null;
     if (ent.e.kind !== "agent" && selected === "name_tag" && !brk)       // a name tag in hand: its name (ask.js)
       return {ent, text: ent.e.name ? `Rename ${ent.e.name}` : `Name the ${label(ent.e.kind)}`, near: USE_R, diag: true, run: () => nameAnimal(ent.e)};
     if (ANIMALS[ent.e.kind] && selected && FEEDS.includes(selected) && !brk)
@@ -103,12 +95,12 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
   if (up) return up;
   // your own tile: something growing under your feet (a flower, a mushroom, a crop) is picked; otherwise pick up items
   const underfoot = isMe && hasBlock && !SOLID.has(c);
-  if (isMe && !underfoot && !(selected && !brk && (PLACEABLE_BLOCK[selected] || FILLS[selected] || selected === "seed")))
+  if (isMe && !underfoot && !placing)
     return {text: "Pick up", run: () => act("pick_up", {}), here: true};
   // placing the selected item
   if (selected && !brk) {
     const it = selected, block = PLACEABLE_BLOCK[it];
-    if ((block || FILLS[it] || it === "seed") && rimAt(p.x, p.y)) return {text: "Nothing stays on the edge of a hill", ghost: it, ok: false};
+    if (placeable(it) && rimAt(p.x, p.y)) return {text: "Nothing stays on the edge of a hill", ghost: it, ok: false};
     // containers first: clicking a chest, basket or trough with anything selected puts it in (`uses`: what you hold
     // goes there, so E does not eat it: keyboard.js facingNow; `uses` "faced": only the one you face)
     if (c === "e" && it !== "torch") return FEEDS.includes(it) ? {text: "Fill trough", near: 1, uses: true, run: (d) => act("store", {dir: d, item: it, n: meObs.self.inventory[it] || 1})}
@@ -130,8 +122,8 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
     if (block) return free ? {text: `Place ${label(it === "hay" ? "hay_bale" : it)}`, ghost: it, ok: true, near: 1,
                               run: (d) => (it === "sign" || it === "flag" ? placeWritten(d, it) : act("place", {dir: d, item: it}))}      // (a sign is written as it goes up: ask.js)
                            : {text: `Can't place ${label(it)} here`, ghost: it, ok: false};
-    if (it === "seed") {
-      if (!hasBlock && (g === "o" || g === "u")) return {text: "Plant seed", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
+    if (RULES.sown[it]) {
+      if (!hasBlock && RULES.sown[it].includes(g)) return {text: "Plant seed", ghost: it, ok: true, near: 1, run: (d) => act("place", {dir: d, item: it})};
       return {text: "Seeds need tilled soil", ghost: it, ok: false};
     }
     if (FILLS[it]) {
@@ -140,19 +132,18 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
                  : {text: FILL_HELP[it], ghost: it, ghostGround: Object.values(FILLS[it])[0], ok: false};
     }
     if (it === "torch") {
-      const burnable = (!GROUND.has(c) && "TFbH#+&?!\";wCBhLrgWVXJmqeyUv".includes(c)) || (GROUND.has(c) && g === ".");
-      return burnable ? {text: "Set on fire", ok: true, near: 1, run: (d) => act("ignite", {dir: d, with: "torch"})}
+      return tileOf(GROUND.has(c) ? g : c).burns ? {text: "Set on fire", ok: true, near: 1, run: (d) => act("ignite", {dir: d, with: "torch"})}
                       : {text: "That won't burn", ok: false};
     }
     if (it === "hoe" && !hasBlock && (g === "." || g === ","))                  // the hoe in hand: Space/click tills
       return {text: "Till soil", near: 1, run: (d) => act("dig", {dir: d, with: "hoe"})};
     if (it === "watering_can" && (c === "Y" || (wet(g) && GROUND.has(c)) || Flow.col(p.x, p.y)))
-      return {text: `Fill can (${meObs ? meObs.self.can ?? CAN_SIZE : "?"}/${CAN_SIZE})`, near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
+      return {text: `Fill can (${meObs ? meObs.self.can ?? RULES.can_size : "?"}/${RULES.can_size})`, near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
     if (it === "watering_can" && (c === ";" || c === '"') && meObs && meObs.self.can === 0) return {text: "The can is empty", ok: false};
     if (it === "watering_can" && (c === ";" || c === '"')) return g === "u" ? {text: "Already watered", ok: false}
       : {text: "Water crop", near: 1, run: (d) => act("water", {dir: d, with: "watering_can"})};
     if (it === "watering_can" && !hasBlock && WALKABLE_GROUND.has(g) && !isMe)       // a full can poured out on open ground: water that runs (sim/waters.py)
-      return meObs && (meObs.self.can ?? CAN_SIZE) >= CAN_SIZE ? {text: "Pour water", near: 1, run: (d) => act("water", {dir: d, with: "watering_can", pour: true})} : {text: "Pouring takes a full can", ok: false};
+      return meObs && (meObs.self.can ?? RULES.can_size) >= RULES.can_size ? {text: "Pour water", near: 1, run: (d) => act("water", {dir: d, with: "watering_can", pour: true})} : {text: "Pouring takes a full can", ok: false};
   }
   const sailing = !!(meObs && meObs.self.sailing);
   if (c === "V" && !brk && !sailing) return {text: "Board the boat", walk: true, run: () => act("move_to", {x: p.x, y: p.y})};
@@ -175,8 +166,8 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
     const text = c === "w" ? `Harvest ${crop}` : c === '"' ? `Uproot ${crop}` : c === ";" ? `Uproot ${crop} sprout` : HARVEST[c] || label(CH[c]);
     if (brk === GATHER.includes(c)) return {text: label(CH[c]), info: true, quiet: true};      // (E takes nothing apart; what is picked is E's, not X's)
     const tool = TOOL_FOR[c], w = inHand();
-    if (c === "*" && w !== "pickaxe")
-      return {text: meObs && meObs.self.inventory.pickaxe ? "Ore: hold your pickaxe" : "Ore: needs a pickaxe", ok: false};
+    const needs = tileOf(c).needs, Name = label(CH[c]).replace(/^./, (l) => l.toUpperCase());      // (what cannot be dug by hand at all: ore)
+    if (needs && w !== needs) return {text: meObs && meObs.self.inventory[needs] ? `${Name}: hold your ${needs}` : `${Name}: needs a ${needs}`, ok: false};
     const how = tool && w !== tool ? " (slow)" : "";
     return {text: text + how, near: 1, gather: !brk, run: (d) => act("dig", w ? {dir: d, with: w} : {dir: d})};
   }

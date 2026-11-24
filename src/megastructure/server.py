@@ -18,18 +18,18 @@ from websockets.exceptions import ConnectionClosed
 
 from . import art
 from .admin import Admins
-from .cells import HIGH, LOW
 from .devtools import dev_op
 from .gate import Gate
 from .limits import LIMITS, RateLimiter
+from .rules import rules_table
 from .sim import DAY_TICKS, TICK_HZ, TOOL_SPECS, ActionError, Simulation
-from .sim.constants import FOOD_MAX, HP_MAX, EAT_PACE, SPRINT_FOOD, SWIM_PACE
 from .tiles import FOOD, RECIPES
 from .views import Views
 from .web_static import serve_http, set_bundle, web_stamp
 
 log = logging.getLogger("megastructure")
 PROTOCOL = 1
+RULES_TABLE = rules_table()
 FLUSH_EVERY = 10 * TICK_HZ  # ticks (10 s)
 
 
@@ -129,7 +129,7 @@ class GameServer(Views):
 
         pumper = asyncio.create_task(pump())
         try:
-            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL, "cells": [LOW, HIGH], "web": web_stamp(), "hp_max": HP_MAX, "food_max": FOOD_MAX, "sprint_food": SPRINT_FOOD, "swim_sprint": True, "floors": True, "swim_pace": SWIM_PACE, "eat_pace": EAT_PACE}))
+            await ws.send(json.dumps({"type": "hello", "tick": self.sim.tick, "protocol": PROTOCOL, "web": web_stamp(), "swim_sprint": True, "floors": True, "rules": RULES_TABLE}))      # (the world's rules, for a screen: rules.py)
             async for raw in ws:
                 msg = json.loads(raw)
                 op = msg.get("op")

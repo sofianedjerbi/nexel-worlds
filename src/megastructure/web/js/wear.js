@@ -1,14 +1,14 @@
 // Clothes and armor (sim/wear.py): how each piece looks on the player. Nothing is redrawn: each frame of the character
 // sheet is read once (where the skull starts, where the collar is, where the feet are) and the pieces are painted there,
-// so they follow every bob, step and swing. Designed in design/enemies/site/clothes.html; a test keeps WEAR equal to tiles.py.
+// so they follow every bob, step and swing. Designed in design/enemies/site/clothes.html; a test keeps LOOK's pieces the world's (tiles.py WEAR).
 
-// item -> [slot, the look it has in the tables below]
-const WEAR = {
-  straw_hat: ["head", "straw"], sporecap_hat: ["head", "sporecap"], wizard_hat: ["head", "wizard"], gold_crown: ["head", "crown"], iron_helmet: ["head", "iron"], mossback_helm: ["head", "shell"], wool_beanie: ["head", "beanie"], flower_crown: ["head", "flowers"], bandana: ["head", "bandana"], sprout: ["head", "sprout"],
-  linen_shirt: ["top", "linen"], red_scarf: ["top", "scarf"], wool_sweater: ["top", "wool"], overalls: ["top", "overalls"], leather_vest: ["top", "leather"], wizard_robe: ["top", "robe"], iron_chestplate: ["top", "iron"], gold_chestplate: ["top", "gold"], mossback_plate: ["top", "moss"],
-  linen_shorts: ["pants", "linen"], denim: ["pants", "denim"], red_trousers: ["pants", "red"], leather_chaps: ["pants", "leather"], robe_skirt: ["pants", "robe"], iron_greaves: ["pants", "iron"], gold_greaves: ["pants", "gold"], moss_kilt: ["pants", "moss"],
-  leather_boots: ["shoes", "leather"], red_sneakers: ["shoes", "red"], rain_boots: ["shoes", "rain"], blue_slippers: ["shoes", "blue"], iron_boots: ["shoes", "iron"], gold_boots: ["shoes", "gold"], moss_slippers: ["shoes", "moss"],
-  sparkle_charm: ["effect", "sparkle"], firefly_charm: ["effect", "fireflies"], leaf_charm: ["effect", "leaves"], heart_charm: ["effect", "hearts"], flame_charm: ["effect", "flame"], frost_charm: ["effect", "frost"], halo_charm: ["effect", "halo"], spore_charm: ["effect", "spores"], flower_charm: ["effect", "flowers"],
+// item -> the look it has in the tables below (its slot is the world's: RULES.wear)
+const LOOK = {
+  straw_hat: "straw", sporecap_hat: "sporecap", wizard_hat: "wizard", gold_crown: "crown", iron_helmet: "iron", mossback_helm: "shell", wool_beanie: "beanie", flower_crown: "flowers", bandana: "bandana", sprout: "sprout",
+  linen_shirt: "linen", red_scarf: "scarf", wool_sweater: "wool", overalls: "overalls", leather_vest: "leather", wizard_robe: "robe", iron_chestplate: "iron", gold_chestplate: "gold", mossback_plate: "moss",
+  linen_shorts: "linen", denim: "denim", red_trousers: "red", leather_chaps: "leather", robe_skirt: "robe", iron_greaves: "iron", gold_greaves: "gold", moss_kilt: "moss",
+  leather_boots: "leather", red_sneakers: "red", rain_boots: "rain", blue_slippers: "blue", iron_boots: "iron", gold_boots: "gold", moss_slippers: "moss",
+  sparkle_charm: "sparkle", firefly_charm: "fireflies", leaf_charm: "leaves", heart_charm: "hearts", flame_charm: "flame", frost_charm: "frost", halo_charm: "halo", spore_charm: "spores", flower_charm: "flowers",
 };
 const WearParts = (() => {
   const rgb0 = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -156,7 +156,7 @@ const WearParts = (() => {
   function made(tint, worn, race = "cat", bot = false, now = true) {      // bot: an AI player, drawn as its race's robot
     if (!worn) { const plain = Races.made(race, tint, bot, now); if (!plain && !pumping) pump(); return plain; }   // (races.js; the cat's is sprites.js characterSheet)
     const o = {head: "none", top: "none", pants: "none", shoes: "none"};
-    for (const [slot, item] of Object.entries(worn)) if (WEAR[item] && slot in o) o[slot] = WEAR[item][1];
+    for (const [slot, item] of Object.entries(worn)) if (LOOK[item] && slot in o) o[slot] = LOOK[item];
     const key = tint + race + (bot ? "bot" : "") + Object.values(o).join();
     if (sheets.has(key)) return sheets.get(key);
     let job = jobs.get(key); if (!job) { jobs.set(key, job = steps(tint, o, race, bot, key)); if (!pumping) pump(); }

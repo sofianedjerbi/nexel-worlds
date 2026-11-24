@@ -18,7 +18,7 @@
 // Drop ("add the ability to drop items"): Y lets go of one of the thing the cursor is on, Shift Y of all of it; its word
 // (a tap, on a phone) and a cell dragged out of the window drop the whole stack. It lies in front of you (F takes it back).
 
-const BAG = {cols: 10, rows: 3, wear: ["head", "top", "pants", "shoes", "effect"],
+const BAG = {cols: 10, rows: 3, get wear() { return RULES.slots; },
   ghost: {head: "straw_hat", top: "linen_shirt", pants: "linen_shorts", shoes: "leather_boots", effect: "sparkle_charm"}};
 const PACK = BAG.cols * BAG.rows;
 let bagAt = {zone: "bar", i: 0}, bagMove = null, bagPage = 0;      // the cursor; the slot of the thing being moved; the pack's page
@@ -48,12 +48,12 @@ function bagHold() {
   if (from >= BAR) bagSwap(from, handSlot);          // from the pack: into the slot in hand
   selectItem(name); toggleBag();
 }
-const bagUses = (name, worn) => worn ? "Take off" : FOODS.includes(name) ? "Eat" : WEAR[name] ? "Wear" : "";
+const bagUses = (name, worn) => worn ? "Take off" : FOODS.includes(name) ? "Eat" : RULES.wear[name] ? "Wear" : "";
 function bagUse() {
   const name = bagItem(bagAt); if (!name) return;
   if (bagAt.zone === "wear") act("unwear", {slot: BAG.wear[bagAt.i]});
   else if (FOODS.includes(name)) act("eat", {item: name});
-  else if (WEAR[name]) act("wear", {item: name});
+  else if (RULES.wear[name]) act("wear", {item: name});
 }
 function bagCarry() {                                // X: pick up what the cursor is on, or put down what is carried
   if (bagAt.zone === "wear") return;

@@ -236,7 +236,6 @@ function drawNameplate(p, sx, sy, S) {
   ctx.textAlign = "start";
 }
 const AMBLE = {chicken: 1.6, chick: 1.4, cow: 1.2, calf: 1.3, tusker: 1.2, pincer: 4, strawman: 1.2, wisp: 3.3, wyrm: 2.5, mossback: .9, sporeling: 2.2};   // tiles per second
-const FLEE_STRIDE = .3;   // a scared animal runs a tile every this many seconds (sim/constants.py FLEE_STRIDE)
 function drawProgress(sx, sy, S) {
   if (!progress || !me) return;
   const p = ents.get("agent" + myId); if (!p) return;

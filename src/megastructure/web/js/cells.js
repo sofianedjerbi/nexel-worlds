@@ -7,7 +7,7 @@
 // should be 512 too".) A block of tiles (tiles.js) keeps a char a tile for its lowest ground (SEA + height) and, for
 // the tiles where that isn't the whole story (a hollow under a hill), their column.
 
-const SEA = 1024, LOW = -512, HIGH = 512, PLAIN = new Map();   // (SEA: a height's char here; who sends land says what it counted from, tiles.js: 64 before)
+const {sea: SEA, low: LOW, high: HIGH} = RULES, PLAIN = new Map();   // (SEA: a height's char here; who sends land says what it counted from, tiles.js: 64 before)
 const APART = 24;                             // layers: further than that from you, up or down, is not of where you are (state.js: away; all the land was within it, before)
 function tileIdx(x, y) { const b = blockOf(x, y); return b ? [b, (y - b.by * B) * B + (x - b.bx * B)] : null; }
 const colSolid = (lv) => PLAIN.get(lv) || PLAIN.set(lv, [lv]).get(lv);            // a plain column: solid up to lv (one list a height, for every tile that is that)

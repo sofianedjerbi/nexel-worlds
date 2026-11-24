@@ -41,7 +41,7 @@ function valuesOf(cmd, key, what) {
   if (what.startsWith("bool")) return [{put: "true", hint: ""}];
   if (key === "recipe") return Object.keys(recipes).map((r) => ({put: r, hint: fmt(recipes[r].inputs)}));
   if ((key === "item" && cmd !== "take") || key === "with")       // what you carry (to eat: what can be eaten)
-    return Object.keys(inv).filter((n) => inv[n] > 0 && (cmd !== "eat" || n in foodValue)).map((n) => ({put: n, hint: "×" + inv[n]}));
+    return Object.keys(inv).filter((n) => inv[n] > 0 && (cmd !== "eat" || n in RULES.food)).map((n) => ({put: n, hint: "×" + inv[n]}));
   if (key === "target") {
     const pick = what.startsWith("agent") ? (e) => e.kind === "agent" : what.startsWith("cow") ? (e) => e.kind === "cow" : what.startsWith("animal") ? (e) => e.kind !== "agent" : () => true;
     return nearby(pick).slice(0, 12).map(([e, d]) => ({put: String(e.id), hint: `${e.name || e.kind}, ${d} ${d === 1 ? "tile" : "tiles"} away`}));
