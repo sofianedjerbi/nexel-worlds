@@ -34,15 +34,15 @@ const HdView = (() => {
   let rec = null;
   function words(fn, now) {
     const real = ctx; rec = rec || recorder(real, true); rec.reset();
-    ctx = rec.proxy; try { real.setTransform(DPR, 0, 0, DPR, 0, 0); fn(); } finally { ctx = real; }
+    real.setTransform(DPR, 0, 0, DPR, 0, 0); drawOn(rec.proxy, zoom, fn);
     const k = rec.hash + "|" + cv.width + "x" + cv.height; if (k === wordsKey && now - wordsAt < 250) return false;
     wordsKey = k; wordsAt = now; real.setTransform(1, 0, 0, 1, 0, 0); real.globalAlpha = 1; real.clearRect(0, 0, cv.width, cv.height); real.setTransform(DPR, 0, 0, DPR, 0, 0); real.imageSmoothingEnabled = false; rec.play(); return true;
   }
   // what is pointed at and planned, in whole art px: on the world's canvas, over the land: fn paints it with `ctx` in the game's own px (artPx() of them an art px) -> a number for all of it; show() paints it when it puts the picture together
   let recM = null;
   function marks(fn) {
-    if (!g) return 0; recM = recM || recorder(g, true); recM.reset(); const keep = ctx, u = artPx(); g.setTransform(1 / u, 0, 0, 1 / u, 0, 0);
-    ctx = recM.proxy; try { fn(); } finally { ctx = keep; g.setTransform(1, 0, 0, 1, 0, 0); } return recM.hash;
+    if (!g) return 0; recM = recM || recorder(g, true); recM.reset(); const u = artPx(); g.setTransform(1 / u, 0, 0, 1 / u, 0, 0);
+    try { drawOn(recM.proxy, zoom, fn); } finally { g.setTransform(1, 0, 0, 1, 0, 0); } return recM.hash;
   }
   function fit(w, h) {
     if (!el) { el = document.createElement("canvas"); el.id = "hd"; cv.before(el); g = el.getContext("2d"); }

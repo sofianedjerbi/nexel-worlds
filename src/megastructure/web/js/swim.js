@@ -60,8 +60,8 @@ function wakePicture(p, now) {
   let c = wakePics.get(p); if (!c) { c = document.createElement("canvas"); wakePics.set(p, c); }
   if (c.width !== L + R || c.height !== T + B) { c.width = L + R; c.height = T + B; }
   const g = c.getContext("2d"); g.clearRect(0, 0, c.width, c.height);
-  const keep = ctx, kz = zoom, sx = (x) => L - 8 + (x - p.x) * 16, sy = (y) => T - 8 + (y - p.y) * 16;      // (as the body's picture has them: the foot 8 px under its tile's top)
-  ctx = g; zoom = 1; try { drawWake(p, now, sx, sy, 1); } finally { ctx = keep; zoom = kz; }
+  const sx = (x) => L - 8 + (x - p.x) * 16, sy = (y) => T - 8 + (y - p.y) * 16;      // (as the body's picture has them: the foot 8 px under its tile's top)
+  drawOn(g, 1, () => drawWake(p, now, sx, sy, 1));
   c._v = (c._v || 0) + 1;
   return {canvas: c, fx: L, fy: T};
 }

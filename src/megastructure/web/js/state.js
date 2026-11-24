@@ -4,7 +4,10 @@
 //  Networking
 // =====================================================================================
 const cv = document.getElementById("c");
-let ctx = cv.getContext("2d");      // (let: sun.js points it at a layer of its own while shadows and reflections are drawn)
+let ctx = cv.getContext("2d");      // (let: drawOn points it elsewhere, and nothing else does)
+// drawOn(g, z, fn): the game's painters called in fn paint on g, an art px z of its px (they read `ctx` and `zoom`). THE ONE PLACE the two are pointed elsewhere, and put back
+// whatever fn does. (Five painters each kept, set and restored them by hand: a body's picture, a wake's, a built piece's, the words', the marks'.)
+function drawOn(g, z, fn) { const keep = ctx, kz = zoom; ctx = g; zoom = z; try { return fn(); } finally { ctx = keep; zoom = kz; } }
 // The canvas is drawn with at most DPR_MAX device px a CSS px: pixel art gains nothing past 2, and a 3x phone
 // screen is nine times the paint of a plain one. A machine that still can't keep up (slowFrame, below) draws at 1.
 let DPR = 1, W = 0, H = 0, DPR_MAX = 2, frameMs = 16, paceFrom = 0;

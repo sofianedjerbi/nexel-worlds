@@ -30,7 +30,7 @@ const HdThings = (() => {
   // one of the game's own painters on a canvas of its own at zoom 1 (as hd.js draws a body)
   function painted(w, h, fn) {
     const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
-    const keep = ctx, kz = zoom; ctx = g; zoom = 1; try { fn(g); } catch (e) { /* (nothing to draw) */ } finally { ctx = keep; zoom = kz; }
+    drawOn(g, 1, () => { try { fn(g); } catch (e) { /* (nothing to draw) */ } });
     return c;
   }
   const shotOf = (key, w, h, fn) => { let p = pixs.get(key); if (!p) { p = pix(painted(w, h, fn), 0, 0, w, h); p.key = key; pixs.set(key, p); } return p; };   // (...and its px, kept under a name)
