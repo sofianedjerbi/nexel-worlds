@@ -9,9 +9,8 @@
 // perf: each frame to the debug screen (f3.js: F3, ?perf=1), and its section about this look: its ms, the longest
 // piece of land made, draw calls, how many frames were drawn at all, the pictures' sizes. (It had a box of its own.)
 const HdView = (() => {
-  let el = null, g = null, sk = null, skyKey = "", skyVer = 0, one = null, lastKey = "", wordsKey = null, wordsAt = 0, tmp = null;
+  let el = null, g = null, sk = null, skyKey = "", skyVer = 0, lastKey = "", wordsKey = null, wordsAt = 0, tmp = null;
   const Z = () => artPx() * DPR, PAINT = new Set(["fillRect", "clearRect", "strokeRect", "fillText", "strokeText", "drawImage", "fill", "stroke", "putImageData"]), ids = new WeakMap(), strs = new Map(); let nid = 0;
-  const sink = () => one || (one = document.createElement("canvas").getContext("2d"));   // (a canvas of one px: what the classic frame still paints goes there)
   // a 2D context that notes what is asked of it: a number for all of it (hash), and the calls themselves. dry: nothing is painted (what sets a state is passed on: a text is measured as it will be drawn); play() paints them
   const call = (t, k, n, a, b, c, d, e, f, g, h, i) => { const m = t[k];   // (t's method k with its first n args: no array made)
     switch (n) { case 0: return m.call(t); case 1: return m.call(t, a); case 2: return m.call(t, a, b); case 3: return m.call(t, a, b, c); case 4: return m.call(t, a, b, c, d); case 5: return m.call(t, a, b, c, d, e);
@@ -105,5 +104,5 @@ const HdView = (() => {
     PF.n = PF.drawn = PF.slice = PF.words = PF.ms = 0;
     return r;
   }, "perf");
-  return {sink, recorder, words, marks, dump: () => (rec ? rec.ops.map((v) => (Array.isArray(v) ? v.map((x) => (typeof x === "object" ? "#" : x)).join() : String(v))).join(" ") : ""), show, hide, read, perf, get el() { return el; }, get backdrop() { return bk; }, get pic() { return pic; }};
+  return {recorder, words, marks, dump: () => (rec ? rec.ops.map((v) => (Array.isArray(v) ? v.map((x) => (typeof x === "object" ? "#" : x)).join() : String(v))).join(" ") : ""), show, hide, read, perf, get el() { return el; }, get backdrop() { return bk; }, get pic() { return pic; }};
 })();

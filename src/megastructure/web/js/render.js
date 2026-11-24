@@ -8,8 +8,15 @@ let lastT = performance.now(), arrivingNow = true;
 const LAND_MS = 3 * (window.__pace || 1), HOLD_MS = 2500;      // (__pace: only in the browser tests, whose pages' clocks run faster, tests/e2e/clock.py: the land's share of a frame is the machine's time, not the game's)
 let goodAt = 0;                // when the land where you are was last all there (a frame drawn whole)
 const WATCH = {x: 0, y: 0, z: 0, free: true};      // (the eye of who watches: render.js, hd.js)
+// A FRAME, its parts in their order, here and nowhere else: the way out's marks (wayshow.js), is there a picture of the world (hd.js begin), the game's own step (update), the HD look's
+// picture of it (hd.js end). (hd.js and wayshow.js each put a function of theirs round `frame` as they loaded, voxels.js and hd.js round drawTile and arriveBlock: what ran, and in what order,
+// hung on the order of the script tags.)
 function frame(now) {
   requestAnimationFrame(frame);
+  const t0 = performance.now();
+  WayShow.frame(); HdLook.begin(); update(now); HdLook.end(now, t0);
+}
+function update(now) {
   const began = performance.now();
   const dt = Math.max(0, Math.min(.1, (now - lastT) / 1000)); lastT = now;   // (never back in time: a frame stamped before the last one moved every body standing still by 0/0, for good)
   const t = now / 1000;
@@ -78,8 +85,10 @@ function frame(now) {
   const [ax, ay, aw, ah] = viewRect(6), rank = (b) => (onScreen(b) ? 0 : vis.includes(b) ? 1 : 2);
   const coming = inRect(ax, ay, aw, ah + 6).sort((a, b) => rank(a) - rank(b));
   const landFrom = performance.now(), landUntil = landFrom + (arrivingNow ? LAND_MS * 4 : coming.some((b) => !Voxels.made(b) && onScreen(b)) ? LAND_MS * 2.5 : LAND_MS);
-  for (const b of coming) if (!b.drawn) arriveBlock(b);      // (a block come in: nothing to paint, the HD look makes its own land: tiles.js)
-  for (let n = 0; dirtyTiles.length && (n++ & 15 || performance.now() < landUntil);) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); }
+  // (a block come in: nothing to paint, the HD look makes its own land (tiles.js): its beds looked at again, one box (waterbed.js), every tile of it as drawn again (hd.js);
+  //  a tile drawn again: the clear water's beds round it, its chunk of the HD look's land)
+  for (const b of coming) if (!b.drawn) { const x0 = b.bx * B, y0 = b.by * B; arriveBlock(b); WaterBed.changed(x0, y0); WaterBed.changed(x0 + B - 1, y0 + B - 1); HdLook.touchBox(x0, y0, x0 + B - 1, y0 + B - 1); }
+  for (let n = 0; dirtyTiles.length && (n++ & 15 || performance.now() < landUntil);) { const yy = dirtyTiles.pop(), xx = dirtyTiles.pop(); drawTile(xx, yy); WaterBed.changed(xx, yy); HdLook.touch(xx, yy); }
   Voxels.work(coming, landUntil);                    // (its beds and its sea: voxels.js)
   const landMs = performance.now() - landFrom;
 

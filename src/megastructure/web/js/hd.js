@@ -261,21 +261,19 @@ const HdLook = (() => {
   api.screenOf = (x, y, z) => { if (!eng || !seen) return null; const a = eng.at(x, y, z); return a && [a[0] * zoom / seen.k, a[1] * zoom / seen.k]; };
   api.stands = () => (seen ? seen.list.filter((s) => s.tx !== undefined && !s.q).map((s) => [s.tx, s.ty, s.z]) : []);   // (tests: what stands, drawn this frame: [its tile, the level it stands at])
   api.read = (...a) => HdView.read(...a); api.bodies = () => (seen ? seen.list.filter((s) => s.q && !s.top).map((s) => [s.q.e.kind, s.z]) : []); api.bare = () => (eng && seen ? eng.bare(Math.max(0, Math.ceil(eye.hy) + 2)) : 0); api.raw = () => (eng ? eng.raw() : 0); api.fades = () => (seen ? seen.list.filter((s) => s.fade !== undefined).map((s) => [s.tx, s.ty, s.fade]) : []); api.blank = () => eng && eng.blank(); Object.defineProperty(api, "units", {get: () => eng && eng.units}); Object.defineProperty(api, "why", {get: () => eng && eng.why}); Object.defineProperty(api, "wrote", {get: () => wrote}); Object.defineProperty(api, "made", {get: () => (eng ? eng.made : 0)}); Object.defineProperty(api, "work", {get: () => (eng ? eng.work : null)});   // (units: the longest step of each kind of the land's making; why: why the last frame was drawn again; made: chunks made by the last land)   // (px under the horizon where no land is drawn)
-  // a frame: with this look live (WebGL 2, and you or an eye in the world), the game's frame (render.js) draws to a canvas of one px (who walks, the land coming in), then this look's picture
-  { const f0 = frame; frame = function (now) {
-    const t0 = performance.now(), keep = ctx, on = api.on && !noGL && !!(api.eye || ents.get("agent" + myId)); api.live = on && Voxels.engine.ready(); api.drew = wrote = false; slice1 = 0;
+  // A FRAME (render.js frame): begin, before the game's own step: is this look live (WebGL 2, and you or an eye in the world); end, after it: this look's picture.
+  api.begin = () => {
+    const on = api.on && !noGL && !!(api.eye || ents.get("agent" + myId)); api.live = on && Voxels.engine.ready(); api.drew = wrote = false; slice1 = 0;
     // LOST: the GPU took a context back (the sky's: VoxGL; the land's: vox_style.js) and gives no new one yet (asked again once a second): the last picture stays on the screen as it was.
     // (It was hidden, or the land drawn from its dead canvas: the whole world gone, the page's dark behind it, until the GPU gave one: "the whole world sometimes disappears")
     api.lost = on && !api.live && !!HdView.el && HdView.el.style.display === "block";
     // WAKING UP: in the world, the world not yet having sent you (its next tick, 0.1 to 0.3 s): the last picture (the first screen's island) stays, as when lost.
     // (The look had nobody to look at: it hid its picture, and the page's dark brown was the world under the bar and the welcome: "the world black after joining")
     api.wait = !on && !!me && myId !== null && !ents.get("agent" + myId) && !!HdView.el && HdView.el.style.display === "block";
-    if (api.live || api.lost || api.wait) ctx = HdView.sink(); try { f0(now); } finally { ctx = keep; }
-    if (api.live) after(); else if (!api.lost && !api.wait) HdView.hide();
-    HdView.perf(now, performance.now() - t0, api.drew, eng ? eng.calls : 0, slice1, wrote);
   };
-    const d0 = drawTile; drawTile = function (x, y, to = null) { d0(x, y, to); if (!to && eng) eng.touch(x, y); };
-    api.wet = (x, y) => { if (eng) eng.wet(x, y); };   // (water that ran there: its chunk alone made again, flow.js)
-    const a0 = arriveBlock; arriveBlock = function (b) { a0(b); if (eng) eng.touchBox(b.bx * B, b.by * B, b.bx * B + B - 1, b.by * B + B - 1); }; }   // (a block come in at once: every tile of it as drawn again, tiles.js)   // (a tile of the land drawn again: its chunk of this land is made again, its paints painted again)
+  api.end = (now, t0) => { if (api.live) after(); else if (!api.lost && !api.wait) HdView.hide(); HdView.perf(now, performance.now() - t0, api.drew, eng ? eng.calls : 0, slice1, wrote); };
+  api.touch = (x, y) => { if (eng) eng.touch(x, y); };   // (a tile of the land drawn again: its chunk of this land is made again, its paints painted again)
+  api.touchBox = (x0, y0, x1, y1) => { if (eng) eng.touchBox(x0, y0, x1, y1); };   // (a block come in at once: every tile of it as drawn again, tiles.js)
+  api.wet = (x, y) => { if (eng) eng.wet(x, y); };   // (water that ran there: its chunk alone made again, flow.js)
   return api;
 })();

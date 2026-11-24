@@ -178,7 +178,6 @@ const WayShow = (() => {
     if (edge) { const [x, y, d] = edge, tri = (n, back, col) => { for (let i = 0; i < n; i++) rect(x - (i + back) * u * d[0] - (d[0] ? 0 : i * u), y - (i + back) * u * d[1] - (d[1] ? 0 : i * u), d[0] ? 1 : 2 * i + 1, d[1] ? 1 : 2 * i + 1, col); };
       tri(7, -1, INK); tri(5, 1, beat ? "#ffffff" : "#fff1a8"); }
   }
-  api.paint = paint; api.tick = tick;
-  { const f0 = frame; frame = function (now) { try { tick(performance.now()); } catch (e) { clear(); } f0(now); }; }
+  api.paint = paint; api.tick = tick; api.frame = () => { try { tick(performance.now()); } catch (e) { clear(); } };   // (once a frame, first: render.js frame)
   return api;
 })();

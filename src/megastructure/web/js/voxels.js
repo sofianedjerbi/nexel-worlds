@@ -25,10 +25,7 @@ const Voxels = (() => {
   // (engine: can the land be drawn at all: WebGL 2, hd.js; forget: clear water turned on or off, waterbed.js)
   const engine = {ready: () => !!VoxGL.start(), forget() {}, touch() {}};
   const made = (b) => !!b.px && !!b.water;      // a block of tiles is ready to be shown: come in (tiles.js arriveBlock), and its sea made (water.js)
-  // (a tile drawn again: the clear water's beds round it are looked at again, waterbed.js)
-  const drawTile0 = drawTile;
-  drawTile = function (x, y, to = null) { drawTile0(x, y, to); if (!to) WaterBed.changed(x, y); };
-  { const a0 = arriveBlock; arriveBlock = function (b) { a0(b); WaterBed.changed(b.bx * B, b.by * B); WaterBed.changed(b.bx * B + B - 1, b.by * B + B - 1); }; }   // (a block come in: its beds, one box)
+  const drawTile0 = drawTile;   // (tiles.js's own, as it is at load: a tile's top painted into the land's px, paintTop)
   // Blocks coming in or changed, within what is left of the frame's time for the land (render.js): each one's sea, made
   // again when its tiles changed (water.js says if there is anything to do), and the clear water's beds round what changed
   function work(coming, until) {
