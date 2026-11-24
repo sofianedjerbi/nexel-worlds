@@ -39,9 +39,12 @@ const HdEye = (H) => {
   function lowAhead(tx, ty) { const H0 = Voxels.host, k = [tx >> 2, ty >> 2, H.eng.stamp].join(); if (k === lowKey) return lowL; lowKey = k; let m = 1e9;   // (every 4 tiles, as you go 4: some 200 columns)
     for (let dy = 6; dy <= H.R + 40; dy += 4) for (let dx = -H.R; dx <= H.R; dx += 4) { const x = tx + dx, y = ty - dy, c = H0.column(x, y); m = Math.min(m, !c ? H.SEA_L : H0.water(x, y) ? H0.waterTop(x, y) : c.length ? c[c.length - 1] : H.SEA_L); }
     return api.low = lowL = m; }   // (a dug pit there: the line a little lower, more sky behind the land, never a gap)
-  function lines(tx, ty, L, at, w, h, dt) {   // (eased: the pitch's tilt, a quarter of a second; the edge, climbing, goes down with you, never in a jump)   // (the horizon is the surface's, however deep you are)
+  // ONE EASING while the eye tilts: its pitch's (above). The sky's line is then where that pitch puts it, this frame: it goes with the land. (It had a quarter second of its own over the pitch's 400 ms:
+  // through a tilt the sky came after the land, and a test that waited for the pitch to rest found the sky still moving.) At rest the line's small steps (the eye's level, a px or three over a hill)
+  // and the land's edge (the far land's level comes in steps) are eased
+  function lines(tx, ty, L, at, w, h, dt) {   // (the horizon is the surface's, however deep you are)
     horizon(tx, ty, L); const ease = (v, t) => !v || Math.abs(t - v) < .5 ? t : v + (t - v) * (1 - Math.exp(-dt / .25)), lw = lowAhead(tx, ty), te = Math.max(8, eyeLine(at, w, h, lw, edgeC) + 2);
-    hl = ease(hl, Math.max(8, eyeLine(at, w, h, 1e9, eyeC) + 2)); he = ease(he, te); api.line = [Math.min(at[2] - .5, lw), te - 2];
+    { const t = Math.max(8, eyeLine(at, w, h, 1e9, eyeC) + 2); hl = tilt > 0 && tilt < 1 ? t : ease(hl, t); } he = ease(he, te); api.line = [Math.min(at[2] - .5, lw), te - 2];
   }
   return {pitch, level, lines, get camL() { return camL; }, get tilt() { return tilt; }, get above() { return !!stage; }, get hy() { return hy; }};
 };

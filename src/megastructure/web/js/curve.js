@@ -85,7 +85,8 @@ const Curve = (() => {
     const tint = Light.now().lit.map((v) => v / 255);
     const col = (q) => q.map((v, i) => Math.min(1, v / tint[i])), pick = (q) => col(q[0].map((v, i) => { const d = v + (q[1][i] - v) * dusk; return d + (q[2][i] - d) * night; }));
     const line = c.line, band = Math.max(8, line / zoom);
-    return {line, t, shift: cam.x * P * .12, top: pick(CURVE_SKY.top), low: pick(CURVE_SKY.low), cloud: pick(CURVE_SKY.cloud), far: pick(CURVE_SKY.far), near: pick(CURVE_SKY.near),
+    return {line, t, shift: ((myId !== null && ents.get("agent" + myId)) || cam).x * P * .12,   // (where you are, not the camera: on a ladder and with the build cursor the clouds slid sideways with it)
+      top: pick(CURVE_SKY.top), low: pick(CURVE_SKY.low), cloud: pick(CURVE_SKY.cloud), far: pick(CURVE_SKY.far), near: pick(CURVE_SKY.near),
       orb: col(day ? CURVE_SKY.sun : CURVE_SKY.moon), at: [.88 - .76 * way, -.14 + .92 * Math.sin(way * Math.PI), Math.min(day ? 5.5 : 4.5, band * .2)], stars: night, audit};
   }
   return {frame, sy, sky, get on() { return !!c; }, get c() { return c; }, get line() { return c ? c.line : 0; },
