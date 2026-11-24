@@ -9,7 +9,7 @@
 // BodyPlace.of(p) -> {tx, ty: the tile it is drawn on (on a ladder's rungs the ladder's, not the cliff's it nears); z: its feet's height, levels, as drawn; ground: the ground under it, levels (its
 //   shadow, its dust); mode: one of "boat", "swim", "climb", "fall", "jump", "walk"; air: feet off the ground; pose: the
 //   jump's pose or null; fx, fy: the way it faces; dx, dy: tiles aside (a ladder's lean);
-//   line: the level of the straight line between its two tiles' grounds, where it is on the way (the HD look's list);
+//   line: the level of the straight line between its two tiles' grounds, where it is on the way (a fall's drop or a ladder between them: the nearer tile's);
 //   up: art px its picture and all over it are drawn over the straight line between its two tiles (relief.js liftOf);
 //   eye: art px the camera follows over that line (a climb, a fall: not a hop's arc);
 //   jump, fall, climb: the mode's own numbers, for its picture (jump.js, climbing.js)}
@@ -27,7 +27,7 @@ const BodyPlace = (() => {
     const up = (climb ? climb.lift : 0) + (jump ? Math.round(jump.body) : 0), line = liftOf(p) / zoom;
     const dx = climb ? climb.dx : 0, dy = climb ? climb.dy : 0, [ax, ay, bx, by, la, lb] = Floors.between(p), f = ax === bx ? p.y - ay : p.x - ax;
     return {at: now, tx: Math.round(p.x + dx), ty: Math.round(p.y + dy), mode, air, pose: jump && jump.pose || null, fx: p.fx || 0, fy: p.fy || 0, dx, dy,
-      line: la + (lb - la) * f, up, eye: (climb ? climb.lift : 0) + (fall ? fall.body : 0), z: climb ? climb.h : (line + up) / RELIEF_STEP, ground: (line + (jump ? jump.ground : 0)) / RELIEF_STEP, jump, fall, climb};
+      line: Math.abs(la - lb) >= FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb) ? (f < .5 ? la : lb) : la + (lb - la) * f, up, eye: (climb ? climb.lift : 0) + (fall ? fall.body : 0), z: climb ? climb.h : (line + up) / RELIEF_STEP, ground: (line + (jump ? jump.ground : 0)) / RELIEF_STEP, jump, fall, climb};
   }
   // THE WAY A BODY FACES: one writer, called by what turns it: a key (keyboard.js turn), the walk and its wall (walk.js),
   // a jump and its steering (leap.js), the world's tick (state.js: its step, what it sets about doing), your own action
