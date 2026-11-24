@@ -64,4 +64,4 @@ def test_walking_a_stair_and_dropping_into_the_room_at_its_foot_the_window_stays
     worst = max(steady, key=lambda v: v[0][1])
     assert worst[0][1] <= max(.12, 2.2 * scroll), (worst[0], scroll)       # (the drop was .24 against a scroll of .07)
     light = max(abs(b[0] - a[0]) for b, a in steady)
-    assert light < 2.2, light                                              # (it was 5.0 in one frame)
+    assert light < 2.4, light                                              # (it was 5.0 in one frame; 2.21 since a wall under sea level is the earth of the levels over it, 3 % lighter: tiles.js deepTone)
