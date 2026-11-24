@@ -99,7 +99,7 @@ const Leap = (() => {
   function land(p, now, z) {
     const path = L.path.filter((t, i, a) => !i || t[0] !== a[i - 1][0] || t[1] !== a[i - 1][1]), run = L.run, z0 = L.z0;
     const h = held(), past = h && (p.x - p.tx) * h[0] + (p.y - p.ty) * h[1] >= 0 && Math.abs((p.x - p.tx) * h[1]) + Math.abs((p.y - p.ty) * h[0]) < .01 && fits(p.tx + h[0], p.ty + h[1], z);   // (and room on the way held: down by a wide hole's far wall, on into the wall was a step up four levels drawn as its arc, the body 20 px up and down)
-    L = null; BodyPlace.state(p).settle = now;
+    const st = BodyPlace.state(p); L = null; st.settle = now;
     // (the eye's way left to go, from this frame on: the body drawn on the ground is lifted by it (lift) from the frame
     //  you land. It was set at the eye's next look (cam): the landing frame drew you with none, 20 px up from the arc's
     //  last frame, a hole's floor four down under an eye two levels behind, then down again)
@@ -107,7 +107,7 @@ const Leap = (() => {
     // (where you came down on the tile, off its middle: you go to it, at the walk's pace, before the walk goes on. On
     // the way you are on that tile and its height: between it and the one before, the step's own arc drew you a
     // second time, and half a level low. Past its middle the way you go, the walk goes on from there)
-    p.leapAt = past ? null : {x: p.tx, y: p.ty, z};
+    st.leapAt = past ? null : {x: p.tx, y: p.ty, z};
     if (myAt) myAt.z = z;
     jumpDust(p, 4, z < z0 ? 1.3 : 1); sfx(z < z0 ? "thud" : "step", p.tx, p.ty);
     if (path.length) {
@@ -120,14 +120,15 @@ const Leap = (() => {
   // You on the tile you came down on, on your way to its middle: its height (else null; and off it, put elsewhere by the
   // world, no longer: a teleport there left you gliding for good, the walk never started again). (jump.js jumpOf, relief.js liftOf, hd_level.js)
   function landedOn(p) {
-    const a = p.leapAt;
+    const st = BodyPlace.peek(p), a = st && st.leapAt;
     if (!a) return null;
-    if (Math.round(p.x) !== a.x || Math.round(p.y) !== a.y || (walking && p.walking)) { p.leapAt = null; return null; }
+    if (Math.round(p.x) !== a.x || Math.round(p.y) !== a.y || (walking && p.walking)) { st.leapAt = null; return null; }
     return a.z;
   }
   // render.js, a frame of yours on the ground: at the middle of the tile you came down on, the walk goes on if a way is held
   function after(p) {
-    if (p.leapAt && Math.abs(p.x - p.leapAt.x) < 1e-3 && Math.abs(p.y - p.leapAt.y) < 1e-3) { p.leapAt = null; if (p.jumpNext) { p.jumpNext = false; jumpKey(); } else if (held()) syncWalk(); }
+    const st = BodyPlace.peek(p), a = st && st.leapAt;
+    if (a && Math.abs(p.x - a.x) < 1e-3 && Math.abs(p.y - a.y) < 1e-3) { st.leapAt = null; if (st.jumpNext) { st.jumpNext = false; jumpKey(); } else if (held()) syncWalk(); }
   }
   // What jump.js jumping() draws for you in the air: as a jump's, its height over the level you left
   function body(p, now) {
@@ -163,5 +164,5 @@ const Leap = (() => {
   const lift = (p) => (off && p.e && p.e.kind === "agent" && p.e.id === myId ? off * Math.cos(HdLook.cam.pitch * Math.PI / 180) : 0);
   // hd_level.js: the level you stand at (the ground under you) and the one you are drawn from (the one you left)
   const level = () => (L ? [settleAt(L.tx, L.ty, L.z + 1e-6), L.z0] : null);
-  return {leapable, can, due, start, frame, body, level, landedOn, after, cam, lift, on: () => !!L, gliding: () => { const p = ents.get("agent" + myId); return !!(p && p.leapAt && landedOn(p) !== null); }, get state() { return L; }};
+  return {leapable, can, due, start, frame, body, level, landedOn, after, cam, lift, on: () => !!L, landing: (p) => !!(BodyPlace.peek(p) || {}).leapAt, gliding: () => { const p = ents.get("agent" + myId); return !!(p && landedOn(p) !== null); }, get state() { return L; }};
 })();

@@ -31,7 +31,7 @@ const liftAt = (x, y) => (shOf(standAt(x, y)) + Models.up(x, y)) * zoom;      //
 // ...and someone between two tiles: in proportion to how far along they are (a body: at its own height, where a
 // floor is built over a room: floors.js)
 function liftOf(p) {
-  const lz = p.leapAt ? Leap.landedOn(p) : null;
+  const lz = Leap.landedOn(p);
   if (lz !== null) return (shOf(lz) + Models.up(Math.round(p.x), Math.round(p.y))) * zoom;   // (come down from a jump off a tile's middle: on it, leap.js)
   const [ax, ay, bx, by, la, lb] = Floors.between(p), f = ax === bx ? p.y - ay : p.x - ax, a = (shOf(la) + Models.up(ax, ay)) * zoom, b = (shOf(lb) + Models.up(bx, by)) * zoom;
   return a + (b - a) * f;

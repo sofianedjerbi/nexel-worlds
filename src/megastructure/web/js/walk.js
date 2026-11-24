@@ -37,7 +37,7 @@ function jumpKey() {
   const p = ents.get("agent" + myId); if (!p || !me || !meObs || Build.on) return;
   const s = stepAhead(), now = performance.now();
   if (jumpGoing || Leap.on()) return;            // (a jump on its way: J pressed again does not cut it short, as a new action would)
-  if (Leap.gliding()) { p.jumpNext = true; return; }   // (just down off a tile's middle, going to it: the jump once there, leap.js after)
+  if (Leap.gliding()) { BodyPlace.state(p).jumpNext = true; return; }   // (just down off a tile's middle, going to it: the jump once there, leap.js after)
   const low = s && !walking;                     // (standing, facing a step: up onto it, as before: a tunnel or a shaft has no room for a jump through the air)
   if (Leap.can(p) && !low) { Leap.start(p, now, null); return; }   // a real jump (leap.js)
   if (!s) { const st = BodyPlace.state(p); if (now - st.hop < HOP.ms) return; st.hop = now; rpc("act", {tool: "jump", args: {}}); return; }      // (nothing to jump onto: a hop on the spot; in the air, Space again does not start it over)

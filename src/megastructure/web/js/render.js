@@ -31,13 +31,13 @@ function update(now) {
     // most of a tile behind, sliding into place while it pawed. "it glitches a few pixels... when doing key moves")
     const amble = p.e && AMBLE[p.e.kind] ? Math.max(p.e.scared ? 1 / RULES.flee_stride : AMBLE[p.e.kind], p.pace || 0, p.e.kind === "tusker" && p.e.act ? 8 : 0) : 0;
     const pace = Climb.paceOf(p) || (p.running || (p.e && p.e.run) ? RULES.pace.sprint : amble || RULES.pace.walk);      // (up or down a ladder: rung by rung, climbing.js)
-    const jp = d > 0 && d <= 1.5 && !p.leapAt ? jumpPace(p, p.tx - (Math.abs(dx) > 1e-3 ? Math.sign(dx) : 0), p.ty - (Math.abs(dy) > 1e-3 ? Math.sign(dy) : 0), p.tx, p.ty) : Infinity;   // (up or down a step: as long as its jump takes, jump.js; it was squeezed into a step's time)
+    const jp = d > 0 && d <= 1.5 && !Leap.landing(p) ? jumpPace(p, p.tx - (Math.abs(dx) > 1e-3 ? Math.sign(dx) : 0), p.ty - (Math.abs(dy) > 1e-3 ? Math.sign(dy) : 0), p.tx, p.ty) : Infinity;   // (up or down a step: as long as its jump takes, jump.js; it was squeezed into a step's time)
     // (any other body a tile behind or more goes a little quicker, and is put straight there only past 2.5 tiles: the world's
     //  ticks come unevenly (a scared cow's tiles 261 to 333 ms apart for its 300), it fell half a tile behind, and the next tile
     //  made it 1.53 off: past 1.5 it went at 8 tiles a second, .8 of a tile in a frame, a snap every few tiles: "it teleported")
     const mine = p.e && p.e.kind === "agent" && p.e.id === myId, far = d > (mine ? LEAD[1] + 2 : 2.5);   // (you, a few tiles behind where the world has you as your walk ends: walked there, a little quicker. It was 8 tiles a second: at the foot of the cave stairs, a teleport)
     const step = (far ? d * 8 : Math.min(pace, jp) * (d > (mine ? 1.5 : 1) ? 1.3 : 1.05)) * dt;
-    if (d <= step) { p.x = p.tx; p.y = p.ty; if (p.leapAt) Leap.after(p); }
+    if (d <= step) { p.x = p.tx; p.y = p.ty; Leap.after(p); }
     else if (far) { p.x += dx / d * step; p.y += dy / d * step; }    // far behind (lag, teleport): straight there
     else if (Math.abs(dx) > 1e-3 && Math.abs(dy) > 1e-3) {              // on the grid, one axis at a time: line up first
       if (Math.abs(dx) < Math.abs(dy)) p.x += Math.sign(dx) * Math.min(step, Math.abs(dx)); else p.y += Math.sign(dy) * Math.min(step, Math.abs(dy));

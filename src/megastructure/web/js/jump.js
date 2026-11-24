@@ -56,7 +56,7 @@ const mineWalking = (p) => !!(p.e && p.e.kind === "agent" && p.e.id === myId && 
 // -> null on the level, or {body, ground: levels over the straight line (its feet, its shadow), squash, tuck: in the air, pose, d: levels up, key: the step}
 // (the jump's solvers all say levels; BodyPlace makes the picture's px of them, once)
 function jumpOf(p) {
-  if (p.leapAt && Leap.landedOn(p) !== null) return null;                         // (come down from a jump through the air, off a tile's middle: on that tile, leap.js)
+  if (Leap.landedOn(p) !== null) return null;                                        // (come down from a jump through the air, off a tile's middle: on that tile, leap.js)
   const [ax, ay, bx, by, la, lb] = Floors.between(p);
   if ((ax === bx && ay === by) || la === lb || Climb.onLadder(ax, ay, la, bx, by, lb)) return null;          // (up or down a ladder: a straight climb)
   const f = ax === bx ? p.y - ay : p.x - ax, d = lb - la;                         // how far across; levels from the first to the second

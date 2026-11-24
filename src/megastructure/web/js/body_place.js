@@ -20,9 +20,12 @@ const BodyPlace = (() => {
   // {top, land: levels, t0, done}; hurt: what a fall cost, shown where it lands; bounce: when a heavy landing was;
   // hop: when a hop on the spot began (0: none), hopUp, hopDown: the hop whose dust was thrown, leaving and landing;
   // swam: in the water at the last frame drawn (its splash going in, its wake coming out: swim.js); jair, jd: the step
-  // whose arc it is in the air of (its key), its levels up; settle: when it last touched down (the landing's poses)
+  // whose arc it is in the air of (its key), its levels up; settle: when it last touched down (the landing's poses);
+  // leapAt: {x, y, z} the tile a jump through the air came down on, off its middle, on its way there; jumpNext: the jump
+  // key pressed on that way (leap.js)
   const states = new WeakMap();
-  const state = (p) => { let s = states.get(p); if (!s) states.set(p, s = {fall: null, hurt: 0, bounce: -1e9, hop: 0, hopUp: 0, hopDown: 0, swam: false, jair: null, jd: 0, settle: -1e9}); return s; };
+  const state = (p) => { let s = states.get(p); if (!s) states.set(p, s = {fall: null, hurt: 0, bounce: -1e9, hop: 0, hopUp: 0, hopDown: 0, swam: false, jair: null, jd: 0, settle: -1e9, leapAt: null, jumpNext: false}); return s; };
+  const peek = (p) => states.get(p) || null;   // (made by no reading: relief.js liftOf asks of any place, a puff's)
   function make(p, now) {
     const e = p.e || {}, boat = !!e.sail;
     // (the mode, in ONE order. In a boat nothing else: no hop, no fall. Swimming, unless still in the air over the water.
@@ -54,5 +57,5 @@ const BodyPlace = (() => {
   const of = (p) => (p.place && p.place.at === lastT ? p.place : (p.place = make(p, lastT)));
   // screen px to move what is over a body by, from sx(p.x), bodyY(p): by whole art px, as the body is drawn
   const over = (p, S) => { const b = of(p); return [b.dx * S, b.dy * S - b.up * zoom]; };
-  return {of, over, face, faceAction, state};
+  return {of, over, face, faceAction, state, peek};
 })();
