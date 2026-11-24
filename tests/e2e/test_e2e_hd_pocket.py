@@ -1,10 +1,9 @@
 """The HD look under ground shows the way (hd.js, vox_style_land.js, vox_style_glsl.js): a floor you cannot walk to from
 where you are (a stair's treads two levels up, the passage past a wall) is drawn where it is, at its own height, cold
-(grey-blue, no warm light); the floor over your head is a see-through checker of it; and going under a roof the eye
-tilts over some 400 ms, never in a few frames."""
+(grey-blue, no warm light); and going under a roof the eye tilts over some 400 ms, never in a few frames. (The land
+over your head is not drawn near you: test_e2e_hd_cutaway.py.)"""
 
-import pytest
-from test_e2e_hd_sun import hd, settled
+from test_e2e_hd_sun import hd
 
 STEEP = 58          # the eye's pitch from above (hd.js STEEP: 78.6 till the x-ray cut what hides you, 68 when a level was 8 px)
 
@@ -14,42 +13,6 @@ TOP = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]
   const d = HdLook.read(x0, y0, x1 - x0, y1 - y0).data, s = [0, 0, 0, 0, 0], n = d.length / 4;
   for (let i = 0; i < d.length; i += 4) { s[0] += d[i] / n; s[1] += d[i + 1] / n; s[2] += d[i + 2] / n; if (d[i] > d[i + 2] + 40) s[3]++; else if (d[i + 2] >= d[i] - 6) s[4]++; }
   return s.map(Math.round); }"""
-
-
-def pocket(g):
-    """A passage 14 down, four tiles long; over its two east tiles a floor three levels up (a slab one level thick),
-    which goes on east: the stair you cannot reach from under it. -> (x, y, z): the passage's east end"""
-    x, y = g.pos()
-    z = g.js(f"topAt({x}, {y})")
-    g.rpc("dev_col", tiles=[[x - 3, y], [x - 2, y]], col=[z - 14, z - 12, z])
-    g.rpc("dev_col", tiles=[[x - 1, y], [x, y]], col=[z - 14, z - 12, z - 11, z - 9, z])
-    g.rpc("dev_col", tiles=[[x + 1, y], [x + 2, y], [x + 3, y]], col=[z - 11, z - 9, z])
-    g.sleep(800)
-    g.rpc("dev_teleport", x=x, y=y, z=z - 14)
-    g.wait("HdLook.win.a === 1 && HdLook.win.n >= 7 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=6000)
-    settled(g)
-    return x, y, z
-
-
-@pytest.mark.realtime
-def test_in_a_pocket_under_a_higher_floor_that_floor_is_drawn_cold_and_the_one_over_you_is_a_checker(browser, server):
-    g = hd(browser, server)
-    g.rpc("dev_time", phase=.3)
-    x, y, z = pocket(g)
-    # the floor past the wall, three levels up: the window is on it too (a hollow beside your space, from its own floor to its own ceiling), and it is drawn cold
-    assert g.js(f"[HdLook.winAt({x - 3}, {y}), HdLook.winAt({x + 1}, {y}), HdLook.winAt({x + 3}, {y})]") == [[z - 14, z - 12], [z - 11, z - 9], [z - 11, z - 9]]
-    # (the way out is marked over these very tiles once it is found, a moment after you are trapped: the block to break under the next tread, cream and orange, its key, dots along the treads: warm px that are not
-    # the floor's. Read before they came the test passed, after them it failed: it is the floors that are measured, so the marks are not painted)
-    g.js("(() => { WayShow.paint = () => {}; return 1; })()")
-    g.frames(3)
-    mine, other = g.js(TOP, [x - 3, y, z - 14]), g.js(TOP.replace(") + 4", ") + 13").replace(") - 4", ") - 13"), [x + 1, y, z - 11])   # (the other's middle: along the window's edge the land over it comes back in a dither, its grass px)
-    assert mine[0] > mine[2] + 25, mine                               # your own floor: warm (14 down it is stone, stone.py: 34 over, earth's 40 and more)
-    assert other[2] >= other[0] - 6 and other[3] == 0, other          # the other: no warm px at all
-    assert sum(other[:3]) > 150, other                                # ... and not black: it is seen
-    # the floor over the passage (the tile west of yours): one px in two of it, cold, the warm floor under it showing through
-    over = g.js(TOP, [x - 1, y, z - 11])
-    assert over[3] > 20 and over[4] > 20 and .2 < over[3] / over[4] < 5, over   # (from 58 degrees more of the warm wall shows through it: 3.5; both there: its cold px, and through it the warm wall and floor of your passage; its north px are under the window's section band, grey: more cold than warm; 14 deep the wall is darker now, fewer of its px count as warm: .2, was .3)
-    assert g.js("HdLook.catSeen()") > .8
 
 
 def test_going_under_a_roof_and_out_the_eye_tilts_over_many_frames(browser, server):

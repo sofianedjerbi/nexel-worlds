@@ -6,10 +6,9 @@ floor, you are not; the plants over your room go and come over a few frames, not
 never drawn as earth brown, and no px is drawn from one on ten walks down the stair and back; on grey stone the hole has
 a darker lip."""
 
-import pytest
-from test_e2e_hd_stair import MOST, deep_room, spot, stair
+from test_e2e_hd_stair import deep_room, spot, stair
 from test_e2e_hd_sun import hd
-from test_e2e_hd_window import PX, inside, room
+from test_e2e_hd_window import PX
 
 # the mean colour of a tile's top as the screen has it (the px inside its four corners' box, two px in): [r, g, b]
 TILE = """([x, y, z]) => { const c = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => HdLook.screenOf(x + a, y + b, z)), k = devicePixelRatio;
@@ -47,19 +46,12 @@ def test_a_stair_s_covered_treads_are_warm_steps_lighter_at_the_top_and_the_floo
     # sprite and shadow on its tile made it (149, 135, 115), not warm, one run in two.)
     assert lum(treads[7]) > lum(treads[8]), treads
     assert g.js("HdLook.raw()") == 0
-    # the passage at its foot, one tile wide, 14 deep, a roof three over its floor: the section over its north wall is the ground's true height in strata, the floor wider than its own wall
+    # the passage at its foot, one tile wide, 14 deep, a roof three over its floor: the land over it is not drawn (hd_cutaway.js), its floor a good part of the hole
     at(g, x + 17, y, -14)
-    top = g.js(f"HdLook.screenOf({x + 17.5}, {y}, -11)")
-    col = g.js("([px, py]) => { const k = devicePixelRatio, o = []; for (let j = 1; j < 60; j++) o.push([...HdLook.read(Math.round(px * k), Math.round((py - j * zoom) * k), 1, 1).data.slice(0, 3)]); return o; }", top)
-    sect = next((i for i, c in enumerate(col) if c[1] > c[0] + 8), len(col))    # rows of earth over the wall's top, up to the meadow's green
     a, b, w = (g.js(f"HdLook.screenOf({x + 17.5}, {y + dy}, {z})")[1] / g.js("zoom") for dy, z in ((0, -14), (1, -14), (0, -11)))
     floor, wall = b - a, a - w
-    assert sect >= 24, (sect, col)                                               # (the ground over the passage's ceiling, 11 levels, at its true height from this eye, in strata: test_e2e_hd_stair.py. It was capped at half the floor: a passage 14 down read 2 down)
-    # darker down: one deep wall, not a slab of one tone lying over the floor. (Four rows at each end, not one px each: a
-    # level's seam is a row a quarter darker, and the top's one px falling on a seam or not was .71 against .7, one run in five)
-    deep, high = sum(map(sum, col[1:5])), sum(map(sum, col[sect - 7:sect - 3]))
-    assert deep < high * .7, (deep, high, col)
-    assert floor / (floor + wall) >= .3, (floor, wall, sect)                    # (from 58 degrees a tile's floor is 13.6 px, a level of wall 8.5: the floor a whole tile, a third of the hole; from 78.6 it was .6)
+    assert g.js(f"HdLook.cut({x + 17}, {y})") == -12
+    assert floor / (floor + wall) >= .3, (floor, wall)                    # (from 58 degrees a tile's floor is 13.6 px, a level of wall 8.5: the floor a whole tile, a third of the hole; from 78.6 it was .6)
     assert warm(g.js(TILE, [x + 16, y, -14])) and g.js("HdLook.catSeen()") > .8
 
 
@@ -82,28 +74,6 @@ def test_what_stands_in_a_deep_room_is_as_dim_as_its_floor_and_you_are_not(brows
     assert f14 < f4 * .9, seen                                                   # (the deep room's far floor is dimmer: test_e2e_hd_stair.py)
     assert m14 < m4 * .9 and m14 > m4 * .6, seen                                 # and so is the chest on it (it glowed: the day's colours on a dim floor); still read
     assert me4 > .8 and me14 > .8, seen                                          # your own body: its own colours in both
-
-
-@pytest.mark.realtime
-def test_the_plants_over_your_room_go_and_come_over_a_few_frames(browser, server):
-    g = hd(browser, server)
-    x, y = room(g, flowers=True)
-    inside(g, x, y)
-    over = [[x - 1, y - 1], [x - 2, y], [x + 2, y], [x + 1, y + 1]]             # (hd_window's flowers: on the meadow, level 4, over the room)
-    mine = lambda l: [s for s in l if s[:2] in over]
-    assert not mine(g.js("HdLook.stands()"))                                     # the window is on them: not drawn
-    rec = """(() => { window.__f = []; window.__on = true; const f = () => { __f.push(HdLook.fades().map((v) => v[2])); if (__on) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
-    for shut, there in ((True, 4), (False, 0)):
-        g.js(rec)
-        g.js(f"HdLook.nowin = {'true' if shut else 'false'}")
-        g.wait(f"HdLook.win.a === {0 if shut else 1}", timeout=4000)
-        g.sleep(500)
-        fr = g.js("(() => { __on = false; return __f; })()")
-        part = [min(f) for f in fr if f]                                         # the frames in which some of them are drawn in part: how much
-        assert len(part) >= 3 and all(0 < v < 1 for v in part), (shut, part)     # over a few frames (120 ms), never in one
-        assert part == sorted(part, reverse=not shut), (shut, part)              # coming: more each frame; going: less
-        assert not fr[-1] and len(mine(g.js("HdLook.stands()"))) == there, (shut, fr[-3:], g.js("HdLook.stands()"))
-    assert not g.errors
 
 
 def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_stair_and_back(browser, server):
@@ -134,28 +104,3 @@ def test_no_px_is_drawn_from_a_paint_that_is_not_there_on_ten_walks_down_the_sta
     assert g.js("HdLook.raw()") > 1000, g.js("HdLook.raw()")
     assert grass[1] > grass[0] and not (lost[0] > lost[1] + 12), (grass, lost)   # (it was (107, 82, 64) whatever the land)
     assert not g.errors
-
-
-def test_on_grey_stone_the_hole_has_a_darker_lip_and_on_a_meadow_a_light_one(browser, server):
-    g = hd(browser, server)
-    calm(g)
-    x, y = g.pos()
-    g.stamp(-9, -9, ["." * 34] * 19)
-    g.rest()
-    g.rpc("dev_col", tiles=[[x + 12 + i, y + j] for j in range(-5, 10) for i in range(-5, 6)], col=[6])    # a block of stone, level 6 (to y + 9: the ground a tile past the lip, which from 58 degrees is 3 tiles south of the room)
-    out = {}
-    for name, cx, lv in (("meadow", x, 0), ("stone", x + 12, 6)):
-        g.rpc("dev_col", tiles=[[cx + i, y + j] for j in (-1, 0) for i in (-1, 0, 1)], col=[lv - 5, lv - 2, lv])
-        at(g, cx, y, lv - 5, 6)
-        scan = [g.js(PX, [cx + 1.5, y + 1 + i * .02, lv]) for i in range(250)]    # south of the room: from the hole's edge out onto the ground (from 58 degrees a floor 5 down shows 3 tiles south of its wall's plane)
-        f = next(i for i, c in enumerate(scan) if warm(c))                       # (from 58 degrees the room's north wall and section stand over the wall's plane: past them, the floor)
-        k = next(i for i, c in enumerate(scan) if i > f and not warm(c) and not (c[0] > c[1] > c[2] and sum(c) < 200))     # (before it: the room's floor, seen in the hole, and its dark brown foot row)
-        ly = y + 1 + k * .02                                                     # (the lip's place on the ground's plane)
-        # (the ground beyond the lip and far from it: the colour most px of a piece of it have, a tile wide. One px, and
-        # the middle one of a row of eleven, were a mark of the stone's own picture, 447 for 495, wherever you woke with one under it: one run in six)
-        out[name] = (scan[k], g.js(MOST, [cx + 1, ly + .15, cx + 2, ly + .45, lv]), g.js(MOST, [cx + 1, ly + 1.2, cx + 2, ly + 1.8, lv]))
-    lip, far, ground = out["stone"]
-    assert max(ground) - min(ground) < 30, out                                   # (grey)
-    assert lum(lip) < lum(ground) * .8 and lum(far) > lum(ground) * .93, out     # stone: its own px a good step darker along the hole's near edge, then the stone as it is
-    lip, far, ground = out["meadow"]
-    assert lum(lip) > lum(ground) + 12 and lum(far) < lum(ground) + 12, out      # a meadow: the lit lip, as it was

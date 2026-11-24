@@ -66,11 +66,11 @@ const HdLook = (() => {
   // a floor under the land (a cave's, a dug room's, a stair's tread): the rock's own paint from the tileset, and its texture: earth (the soil sheet, as dug ground has it), stone where the block is stone, most tiles one of the sheet's
   // speckled ones (its fine specks mostly, its pale blobs seldom). It was the tile's paint as on the surface: a cave under a meadow had a floor of grass, lit warm: flat yellow; dug ground the sheet's plain tile on every tile: one flat colour
   function under(x, y, z, px, at, st) {
-    const g0 = gndAt(x, y), put = topAt(x, y) === z && matAt(x, y) === "d"; if (!put && (topAt(x, y) <= z || (g0 !== "." && g0 !== ","))) return false;   // (put: a block of earth put down: bare earth, no grass on it)
+    const g0 = gndAt(x, y), put = topAt(x, y) === z && matAt(x, y) === "d"; if (!put && (topAt(x, y) <= z || wet(g0))) return false;   // (put: a block of earth put down: bare earth, no grass on it. What grows on the land's top is not under it: the edge of the land's cut was grass)
     const lv = VoxPaint.level(x, y, z), d = sheetData(lv >= 5 ? hillSheet(lv) : IMG.soil), [sx, sy] = plainCell(null, x, y, .8);   // (no darker than three layers down: under a roof the lantern is the light)
     for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[at + j * st + i] = d.px[(sy + j) * d.w + sx + i];
     if (lv < 5) deepen(px, at, st, 16, Math.max(-3, lv), "floor");
-    if (!put) VoxPaint.rim(x, y, z, px, at, st); return true;   // (a put block of earth: the soil to its edges: the cap's own art has grass in its middle)
+    return true;   // (no rim: the hill sheet's edge is grass, and nothing grows under the land, nor on a put block of earth: the soil to its edges. The lip of a drop is the shader's)
   }
   function shore(x, y, z, px, at, st) {
     const H0 = Voxels.host; if (under(x, y, z, px, at, st)) return; H0.paintTop(x, y, z, px, at, st); if (H0.water(x, y)) return;
@@ -200,8 +200,8 @@ const HdLook = (() => {
     const memo = (c, x, y, z) => { const k = c + "," + x + "," + y + "," + z; let o = stoodOf.get(k); if (!o) { if (stoodOf.size > 6000) stoodOf.clear(); stoodOf.set(k, o = {}); } return o; };   // (a thing's last entry, found when what stands is looked for, not each frame)
     const ck = [tx, ty, L, landVer, Floors.ver, api.builds, !!gen, Math.floor(now / 250)].join();   // (what stands: looked for four times a second and when you or the land move, not on 2400 tiles every frame)
     if (ck !== candKey) { candKey = ck; cand = []; for (let y = ty - R; y <= ty + south; y++) for (let x = tx - R; x <= tx + R; x++) {
-      const c = combAt(x, y), up = Floors.any(x, y) ? HdThings.loose(x, y) : null; if (up) for (const [ch, z] of up) cand.push([ch, x, y, z, memo(ch, x, y, z)]);   // (what stands on a built block)
-      if (c && isObject(c) && !HdThings.is(c, x, y)) { const z = standAt(c, x, y); cand.push([c, x, y, z, memo(c, x, y, z)]); }      // (not the boxes of the land: hd_things.js)
+      const c = combAt(x, y), up = Floors.any(x, y) ? HdThings.loose(x, y) : null; if (up) for (const [ch, z] of up) if (!cutOff(x, y, z)) cand.push([ch, x, y, z, memo(ch, x, y, z)]);   // (what stands on a built block)
+      if (c && isObject(c) && !HdThings.is(c, x, y)) { const z = standAt(c, x, y); if (!cutOff(x, y, z)) cand.push([c, x, y, z, memo(c, x, y, z)]); }      // (not the boxes of the land: hd_things.js)
     } }
     { const wmp = winMap(); HdEase.frame(now); for (const [c, x, y, z, m] of cand) { const n0 = list.length, a = z > floorAt(x, y) ? HdEase.of(m.ek || (m.ek = x + "," + y), !wmp.has(m.ek)) : 1; if (a > 0) { if (fill && warm < 2 && !m.it && (warm < 1 || (nw && performance.now() > until))) left = true; else { nw += fill && !m.it ? 1 : 0; stood(c, x, y, z, false, m); } } if (a < 1) for (let i = n0; i < list.length; i++) list[i].fade = a; } }   // (what grows on ground the window leaves out is left out with it: one px in two of a flower hung over your room's floor; it goes and comes over 120 ms, hd_ease.js: a tree over your room was gone in one frame)
     // a ladder that would be put (the aim's, on your own tile in a shaft; build mode's plans): the ladder's own standing face where it will stand, as tall as its wall, pale (it was an upright picture laid over the frame: at 68 degrees two tiles over the shaft's rim, and not where the ladder comes)
@@ -279,6 +279,9 @@ const HdLook = (() => {
   api.drawnAt = (q) => { const s = seen && seen.list.find((o) => o.q === q); return s ? s.z : null; };   // (the level a body is drawn at: tests)
   api.art = () => (seen ? {u: zoom / seen.k, view: eng.mver + "|" + zoom / seen.k + "|" + cam.pitch, at: api.markOf, behind: (x, y, Z0) => { const z = Z0, k = eyeRise(cam.pitch), y0 = Math.floor(y); for (let d = 1; d <= 8; d++) if (topAt(Math.floor(x), y0 + d) > z + (y0 + d - y) * k) return true; return false; }, wall: (x, y, z) => { const f = HdLevel.wall(x, y, z, seen); return f ? (X, Y, Z) => api.screenOf(...HdLevel.wallAt(X, Y, Z, seen, f)) : null; },
     body: seen.me ? HdLevel.body(seen.me, api.screenOf(seen.me.x, seen.me.y, seen.me.z), zoom / seen.k) : null} : null);   // (wall: a cell in the wall between the eye and you -> where its places are drawn, hd_level.js wallAt; body: your sprite's box)
+  // what stands over the land's cut (vox_style_land.js: under the land its cells over you are not drawn): not drawn either
+  const cutOff = (x, y, z) => { const h = eng && eng.cut(x, y); return h !== undefined && z > h; };
+  api.cut = (x, y) => (eng ? eng.cut(x, y) : undefined);   // (tests)
   api.hidden = (x, y, Z0) => !!seen && !!eng && HdLevel.behind(x, y, Z0, eyeRise(cam.pitch));   // (a body hidden to its head by what stands south of it: hd_level.js)
   api.screenOf = (x, y, z) => (eng && seen ? View.at(x, y, z) : null);   // (view.js: the one place a place of the world is put on the screen)
   api.stands = () => (seen ? seen.list.filter((s) => s.tx !== undefined && !s.q).map((s) => [s.tx, s.ty, s.z]) : []);   // (tests: what stands, drawn this frame: [its tile, the level it stands at])

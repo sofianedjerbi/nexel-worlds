@@ -36,7 +36,7 @@ const VoxStyleGLSL = (() => {
     if ((a.z > .5 && a.z < 1.5) || a.z > 9.5) { vec2 tl = floor(p.xz - step(8., mod(uv, 16.)) + .5) - go.xy; if (tl.x >= 0. && tl.y >= 0. && tl.x < go.z && tl.y < go.z) vs = texelFetch(gw, ivec2(tl), 0); } }`;   // (vs: the light of your space on this tile (vox_style.js `light`), for a floor and a shadow on one: its tile is its corner less where in its paint that corner is)
   const FS = `#version 300 es
   precision highp float; in vec2 vu; in vec4 va, vs; in float ve; in highp vec3 wp; in highp float vw; flat in highp float vo; uniform sampler2D t, wt, mk; uniform vec3 lamp, eye, fogc, mc;
-  uniform vec4 cl, wv, wtn[10]; uniform float wa, wu, dep, lr, day, amb, fn, ff, rim, rd, sun, shp, cd, xr; uniform vec3 sc, bd[4]; uniform vec4 sp; uniform float rf, rz, cp, bh, bp, ud; uniform vec3 em; out vec4 o;
+  uniform vec4 cl, wv, wtn[10]; uniform float wa, wu, dep, lr, day, amb, fn, ff, rim, rd, sun, shp, cd, xr; uniform vec3 sc, bd[4]; uniform vec4 sp; uniform float rf, rz, cp, bh, bp, ud, ct; uniform vec3 em; out vec4 o;
   ${LVC}
   ${PORT}
   // (a place of the land on the screen, in px, bent as the painter bends it (VS); is a px in a quad's four corners on the screen: water beside water, waterFaces)
@@ -74,7 +74,7 @@ const VoxStyleGLSL = (() => {
         else if (ob && kind > .5 && kind < 1.5 && va.y > .5) { if (ck > .5) vl = 1.; else if (cu > b4) discard; }   // (ob: the ground under somebody standing on the land over your window stays, one px in two: they are up there, not in your room)
         else if (bp > .5) { if (!thing && !sect(P, int(sd))) fa = sd < 1.5 ? .7 : sd < 2.5 ? .45 : .2; }   // (B: the kept land's last 3 px over your space, 70, 45, 20 %; not where the land kept beside is the section (over the window's top edge: the ground's own wall there): a strip of the grass over your floor, inside the earth's wall)
         else if (cu * (thing ? .5 : 1.) > b4) discard; }
-      else if (dz > 0. && vw < dz - .05 && !thing && xr > b4) {
+      else if (dz > 0. && vw < dz - .05 && !thing && xr > b4 && ct < .5) {   // (ct: the land really cut, vox_style_land.js: no section painted over its walls)
         int j = 0; if (di == 0.) for (int n = 1; n <= 48; n++) if (j == 0 && texelFetch(mk, max(P - ivec2(0, n), ivec2(0)), 0).rg != vec2(0.)) j = n;
         if (j > 0 && dep > .5 && wp.y > lamp.y - .6 + H) wn = texelFetch(mk, min(P + ivec2(0, 1), M), 0).ba == vec2(0.) ? 11. : 3.; sj = float(j);
         if (j == 0) { wn = .25; if (di == 0. && (texelFetch(mk, min(P + ivec2(1, 0), M), 0).rg != vec2(0.) || texelFetch(mk, max(P - ivec2(1, 0), ivec2(0)), 0).rg != vec2(0.))) sj = -3.; else if (di == 0. && (texelFetch(mk, min(P + ivec2(0, 1), M), 0).rg != vec2(0.) || texelFetch(mk, min(P + ivec2(0, 2), M), 0).rg != vec2(0.))) sj = -2.; } }   // (a side's px before the lip's: down a side seen aslant the cut steps a px every few rows, and each step's px took the lip: grey px along the side's line)
@@ -143,7 +143,7 @@ const VoxStyleGLSL = (() => {
     if (sj < -.5 && sj > -1.5 && !(kind < .5 && dep < .5)) { float D = clamp(rz - wp.y / H, 0., 16.);   // (a floor: one under the land, or sunk in it. The plain ground before a tunnel's mouth is neither: seen through the window's first box under the sky it took the hole's shade, counted from the hill's top: a dark line on the grass beside the hill, at the ceiling's height)
       if (kind > .5 && kind < 1.5 && D > .5 && (va.y < .5 || sk > 0.)) {
         float pd = distance(wp.xz, lamp.xz); col *= 1. - .25 * clamp((D - 3.) / 9., 0., 1.) * (pd < 2.5 ? 0. : pd < 4.5 ? .5 : 1.); }
-      else if (kind < .5) col = c.rgb * strat(ceil(wp.y / H - .01)); }
+      else if (kind < .5 && ct < .5) col = c.rgb * strat(ceil(wp.y / H - .01)); }   // (ct: the land really cut: a wall keeps its own light, your lantern's: its stone, not a band of the strata's dark)
     if (vl > .5) col = c.rgb * max(day * va.y, amb);
     if (pw.x > .5 && pw.x < 1.5 && xr > .5 && (sj == 0. || sj < -2.5) && wn < .5 && kind < 1.5 && kept(gl_FragCoord.xy, vw)) col = vec3(.44, .275, .227) * clamp(max(day, amb + (1. - amb) * lan), .8, 1.);   // A: the kept land's last px at a cut's side, the land's brown (112, 70, 58)
     o = vec4(mix(col, fogc, .55 * smoothstep(fn, ff, distance(wp, eye))), bp > .5 ? fa : raw ? .97 : 1.);   // (the haze tints the far land, never more than half: it took it whole to the haze's one colour, the far land's px gone: pale flat slabs)

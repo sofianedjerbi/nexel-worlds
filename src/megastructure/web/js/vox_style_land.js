@@ -10,6 +10,7 @@
 //     made: chunks made, space: your space's floors and classes a tile, win: [[x, y, lo, hi]...] the boxes of the x-ray window (vox_style_win.js)}), touch(x, y), clear()}
 //   P (the paints, vox_style.js): {SL, C, slot(key, paint) -> its place, unslot(key), start(again), spill() -> did they run out}
 const VoxStyleLand = (() => {
+  const CUT = {r: 5, s: 11};   // (the land's cut under it: tiles round you, and south of you)
   const H = VoxStyleGLSL.H, C = 16, N = 10, CH = 8, KINDS = ["main", "model", "shade", "water"];
   const gp = (x, y, z) => [x, z * H, y];
   const FACES = [
@@ -136,20 +137,23 @@ const VoxStyleLand = (() => {
     // (vox_style_win.js), not through a hole cut in these faces: no chunk hangs on where you are. Here only the boxes are found: the tiles walked to from yours (reach steps), each from its floor to its ceiling.
     function* steps(cx, cy, L, o) {
       const cols = new Map(), r = o.r, deep = o.deep, pt = o.win || null, fresh = new Map(); let made = 0; farBox = [Math.floor((cx - r - 48) / CH), Math.floor((cy - r - 48) / CH), Math.floor((cx + r + 48) / CH), Math.floor((cy + r + 48) / CH)];
-      const col = (x, y) => { const k = x * 1048576 + y; let c = cols.get(k); if (c === undefined) { c = host.column(x, y); cols.set(k, c); } return c; };   // (a number for a key: a string was made for each of the land's many looks)
+      const cached = (m, fn) => (x, y) => { const k = x * 1048576 + y; let c = m.get(k); if (c === undefined) { c = fn(x, y); m.set(k, c); } return c; };
+      // real: the land as it is (where you can walk, what covers you, the window, the light); col: as it is drawn, its faces: under the land, the cut (cutH) leaves out
+      // its cells over your space, and south of it those high enough to hide it from the eye (the owner: "underground view should show the real blocks around the player")
+      const cutH = new Map(), real = cached(cols, host.column), col = cached(new Map(), (x, y) => { const c = real(x, y), h = cutH.get(x * 1048576 + y); return c && h !== undefined ? VoxMesh.clip(c, h) : c; });
       const inBox = (x, y) => Math.abs(x - cx) <= r && Math.abs(y - cy) <= r;
       const D = 2 * r + 1, NO = -32768, BIG = 32767, DIR = [[1, 0], [-1, 0], [0, 1], [0, -1]], at = (x, y) => (inBox(x, y) ? (y - cy + r) * D + x - cx + r : -1);
       const reachA = new Int16Array(D * D).fill(NO), farA = new Uint8Array(D * D), nearA = new Uint8Array(D * D), clsA = new Uint8Array(D * D), lowA = new Int16Array(D * D).fill(BIG), reached = [], win = [];
-      const topOf = (x, y) => { const c = col(x, y); return c && c.length ? c[c.length - 1] : NO; };
+      const topOf = (x, y) => { const c = real(x, y); return c && c.length ? c[c.length - 1] : NO; };
       // HOLLOW: a top under the open sky at f with land over it (f + 1) within 12 tiles NORTH of it (land south hides it: host.sunk), or both east and west: a trench, a pit, a gorge's floor, a strip under a cliff.
       // (North and south both, it was first: a strip's ends past the plateau south of it, its corners leaning over them, stayed shut under them)
       // Only such a tile, land hiding it, carries your space on and is a box of the window (the near ones aside). (It was any tile land hid: at a mountain's north foot every meadow tile behind the
       // mountain was "your space", 24 tiles each way: the mountain cut away over half the screen, "the whole world disappears, the camera behind the mountain x-raying everything")
       const hollow = (x, y, f) => { const s = [[0, -1], [0, 1], [-1, 0], [1, 0]].map(([dx, dy]) => { for (let j = 1; j <= 12; j++) if (topOf(x + dx * j, y + dy * j) > f) return 1; return 0; }); return s[0] || (s[2] && s[3]); };
-      const hop = (x0, y0, x1, y1, h) => { const a = col(x0, y0), b = col(x1, y1); return !!a && !!b && solidC(a, h) && !solidC(a, h + 1) && !solidC(a, h + 2) && solidC(b, h + 1) && !solidC(b, h + 2); };   // (the game's own rule: from a floor at h a jump up one level, room over it and over your head)
+      const hop = (x0, y0, x1, y1, h) => { const a = real(x0, y0), b = real(x1, y1); return !!a && !!b && solidC(a, h) && !solidC(a, h + 1) && !solidC(a, h + 2) && solidC(b, h + 1) && !solidC(b, h + 2); };   // (the game's own rule: from a floor at h a jump up one level, room over it and over your head)
       // where a step from (x0, y0) at f0 onto (x, y) lands, by the game's own walk: level, up one (hop), or down any drop with nothing in the way -> the floor's level (as a drop of two or more: + .5: no way back up), or null: a wall
       // (it was any floor within two levels: a stair's treads two levels over a dead end were "your space", lit and lipped as the next step)
-      const floorOf = (x0, y0, x, y, f0) => { const c = col(x, y); if (!c || !c.length) return null; if (host.water && host.water(x, y) && host.waterTop) { const w = host.waterTop(x, y); if (w >= c[c.length - 1]) return Math.abs(w - f0) <= 1 ? w : null; }
+      const floorOf = (x0, y0, x, y, f0) => { const c = real(x, y); if (!c || !c.length) return null; if (host.water && host.water(x, y) && host.waterTop) { const w = host.waterTop(x, y); if (w >= c[c.length - 1]) return Math.abs(w - f0) <= 1 ? w : null; }
         if (solidC(c, f0 + 1)) return hop(x0, y0, x, y, f0) || (host.water && host.water(x0, y0) && !solidC(c, f0 + 2)) ? f0 + 1 : null; for (let dz = 0; dz <= 8; dz++) if (solidC(c, f0 - dz)) return f0 - dz + (dz > 1 ? .5 : 0); return null; };
       // A MOUTH: from the open floor f on (ox, oy) a step by the game's own walk into (mx, my) lands under land (a roof over your head), and on from there, straight in, under land again:
       // a way in. A wall (no step in), a ledge of one tile over the ground (no way on from under it), water: none
@@ -157,12 +161,12 @@ const VoxStyleLand = (() => {
       const mouth = (ox, oy, f, mx, my) => { if (host.water && host.water(ox, oy)) return false; const g = inTo(ox, oy, mx, my, f); return g !== null && inTo(mx, my, 2 * mx - ox, 2 * my - oy, g) !== null; };
       const mouths = (x, y, z) => { let m = 0; for (let d = 0; d < 4; d++) { const X = x + MD[d][0], Y = y + MD[d][1], t = topOf(X, Y); if (t > z + 1 && mouth(x, y, z, X, Y)) m |= 1 << d; else if (d !== 2 && t < z - 1 && !walled(X, Y, t) && mouth(X, Y, t, x, y)) m |= 16 << d; } return m; };   // (this top under the sky: in front of a mouth on side d, or over one that opens on side d; the eye sees a south one's face)
       // from a floor at f0 on (x0, y0): the floors of (x, y) over it (up to 8 levels) from which a step lands on f0: the way you came down by
-      const upsOf = (x0, y0, x, y, f0) => { const c = col(x, y), l = []; if (c) for (let j = 0; j < c.length; j += 2) { const f = c[j]; if (f > f0 && f <= f0 + 8) { const g = floorOf(x, y, x0, y0, f); if (g !== null && Math.floor(g) === f0) l.push(f); } } return l; };
+      const upsOf = (x0, y0, x, y, f0) => { const c = real(x, y), l = []; if (c) for (let j = 0; j < c.length; j += 2) { const f = c[j]; if (f > f0 && f <= f0 + 8) { const g = floorOf(x, y, x0, y0, f); if (g !== null && Math.floor(g) === f0) l.push(f); } } return l; };
       // YOUR SPACE, three passes: 1 where you can WALK, there and back; 2 from there where you can only drop to and on from there; 3 the floors you could have dropped FROM, and on from those (the stair over the room you
       // dropped into). The window is on all three, so a walk along one cave, down its drops, does not change it (it was 1 and 2 alone: the step off a stair into a room was another space, another hole, in one frame:
       // a quarter of the px). Only the LIGHT tells them apart (cls -> the painter's light of the space, vox_style.js: 1 warm, 2 dimmer, 3 cold), and that eases. A tile has ONE level: a floor under the land
       // before one under the sky (the meadow over a room is of your space too, by the stair's mouth: found first it kept the room shut till you were near), else the first found; the flood goes on through its other floors (treads over a passage)
-      if (pt) { let L0 = L; const c0 = col(cx, cy); if (c0 && !(host.water && host.water(cx, cy))) for (let n = 0; n < 8 && !solidC(c0, L0); n++) L0--;   // (in the air, a jump, a fall: your space is the floor's under you. From a level in mid air the flood found another space for the frames of a fall: the picture flashed)
+      if (pt) { let L0 = L; const c0 = real(cx, cy); if (c0 && !(host.water && host.water(cx, cy))) for (let n = 0; n < 8 && !solidC(c0, L0); n++) L0--;   // (in the air, a jump, a fall: your space is the floor's under you. From a level in mid air the flood found another space for the frames of a fall: the picture flashed)
         const i0 = at(cx, cy), lim = pt.reach, nodes = [[cx, cy, L0, 0]], seenN = new Set([i0 * 2048 + L0 + 1024]); reachA[i0] = L0; clsA[i0] = 1; nearA[i0] = 1; reached.push(i0);
         for (const pass of pt.walk ? [1, 2] : [1, 2, 3]) { let fr = nodes.slice();
           for (let d = 1; d <= lim && fr.length; d++) { const nx = []; for (const [x, y, f0, o] of fr) { if (o > 4) continue; for (const [dx, dy] of DIR) { const X = x + dx, Y = y + dy, i = at(X, Y); if (i < 0) continue; const f1 = floorOf(x, y, X, Y, f0), l = pass > 2 ? upsOf(x, y, X, Y, f0) : [];   // (o: steps under the open sky since the last floor under the land: the flood stops five out on a meadow: it ran over the whole surface, 8 ms of one frame, for nothing: only what is under land is looked into)
@@ -174,15 +178,34 @@ const VoxStyleLand = (() => {
       // THE WINDOW'S BOXES: a floor of your space under the land: from it (the lower of two near each other) up to its ceiling, six levels at most; under the open sky (a shaft, a trench, a gorge's floor) only
       // the sunk tiles within four steps of you, each up to the rim of the land beside it: what stands between the eye and you is looked through, the rest of the gorge is as it is;
       // the ones land hides (host.sunk) as far as your space goes (it was a square five tiles round you: the gorge's river was shut past it; four steps was a diamond: its stairs left notches of the cliff's top standing in the river)
-      for (const i of reached) { const x = cx - r + i % D, y = cy - r + (i / D | 0), f = reachA[i], tp = topOf(x, y), c = col(x, y);
+      for (const i of reached) { const x = cx - r + i % D, y = cy - r + (i / D | 0), f = reachA[i], tp = topOf(x, y), c = real(x, y);
         if (pt.walk && (Math.abs(x - cx) + Math.abs(y - cy) > 2 || f < L - 3)) continue;   // (from the surface only what you are about to step into: two tiles off, three levels down at most: a tunnel was opened through its hill's front from four tiles away, a room from the hill over it)
         if (tp > f) { let z = f; while (z < f + 6 && !solidC(c, z + 1)) z++; win.push([x, y, Math.min(f, lowA[i]), Math.max(z, f + 1)]); }
         else if (nearA[i] || (clsA[i] === 1 && !!host.sunk && hollow(x, y, f) && host.sunk(x, y, f))) { let h = f + 1, n = 0; for (const [dx, dy] of DIR) { const t = topOf(x + dx, y + dy); if (t >= f + 2) n++; h = Math.max(h, Math.min(f + 40, t)); } const hid = !!host.sunk && host.sunk(x, y, f); if (hid) win.push([x, y, f, n > 2 ? h : f + 2, 1]); } }   // (host.sunk(x, y, f): the HOST's one answer to "is this tile under the open sky IN the land": land hides it from the eye and stands north of it too: a pit, a trench, a gorge's floor; the ground behind a hill or a wall is not, and is never a box: standing on a small hill its top was opened onto the meadow behind it. Only those: a meadow tile near you no land hides was put in the window too, a tall pale notch north of doben1 on his strip. Walls on three sides or four, a shaft: up to its rim, the window joins its mouth; else two levels: in a gorge the boxes stood as high as its banks, their long edges drawn down the far bank)
       // OTHER SPACES: a hollow beside the window (three tiles out at most, its floor near your floors' heights): the passage past a wall, the treads you cannot reach: the window is on it too. Its floor is not of your space:
       // the painter draws it cold, at its own height: it is seen where the way on is
       if (pt && !pt.walk) { const own = new Set(win.map((t) => t[0] + "," + t[1])); let fr = win.slice();
-        for (let d = 0; d < 3 && fr.length; d++) { const nx = []; for (const [x, y, lo, hi] of fr) for (const [dx, dy] of DIR) { const X = x + dx, Y = y + dy, k = X + "," + Y, c = own.has(k) || !inBox(X, Y) ? null : col(X, Y); if (!c) continue;
+        for (let d = 0; d < 3 && fr.length; d++) { const nx = []; for (const [x, y, lo, hi] of fr) for (const [dx, dy] of DIR) { const X = x + dx, Y = y + dy, k = X + "," + Y, c = own.has(k) || !inBox(X, Y) ? null : real(X, Y); if (!c) continue;
           for (let j = 0; j + 2 < c.length; j += 2) if (c[j] >= lo - 4 && c[j] <= hi + 6) { own.add(k); const t = [X, Y, c[j], Math.min(c[j] + 6, c[j + 1])]; win.push(t); nx.push(t); break; } } fr = nx; } }
+      // THE CUT (the owner's pick, the mockup page: "under the land, the real blocks round you"): covered by the land, its cells over your head are not drawn
+      // CUT.r tiles round you and CUT.s south of you (the eye looks from the south): every wall round you a block of its own earth or stone, two levels high
+      // NOTHING HIDDEN IS SHOWN (the owner: "x-ray should not allow to see ores in wall"): the cut shows the land's cells as land, earth or stone, never
+      // what is in them; what stands on the land cut is not drawn (hd.js cutOff): an ore over your tunnel is not seen from under it. Ore in a wall, when the
+      // land has it, is seen where a face of it opens onto your space, not on the cut
+      // ...and south of your space the eye's line to its floor's near edge (58 degrees down, a level half a tile: k tiles out, 3.2 (k - 1) levels over it):
+      // nothing between the eye and you, nor your floors (a wall two levels high a tile south of you hid you)
+      const cutAt = (x, y, h) => { if (topOf(x, y) <= h) return; const k = x * 1048576 + y, was = cutH.get(k); if (was === undefined || h < was) cutH.set(k, h); };
+      // (as far round you as the land over your head is deep: under a level of earth a trench, not the meadow round you; deep under the land, CUT.r and CUT.s)
+      const deepO = topOf(cx, cy) - (L + 2), cr = Math.min(CUT.r, deepO), cs = Math.min(CUT.s, 2 * deepO + 1);
+      if (pt && !pt.walk && deepO > 0) {
+        for (let y = cy - cr; y <= cy + cs; y++) for (let x = cx - cr; x <= cx + cr; x++) cutAt(x, y, L + 2);
+        for (const [x, y, lo] of win) for (let k = 1; k <= 4; k++) cutAt(x, y + k, lo + Math.floor(3.2 * (k - 1)));
+      }
+      if (cutH.size) for (const [x, y, lo] of win) { const kk = x * 1048576 + y, h = cutH.get(kk); if (h < lo) cutH.set(kk, lo); }
+      // (nothing hidden is shown: outside your space the cut never opens air. A column with air under the cut (a cave no way joins, a room not yours) keeps a
+      // cell of its roof over it: it stays under the land)
+      if (cutH.size) { const own = new Set(win.map((t) => t[0] * 1048576 + t[1])); for (const [kk, h] of cutH) { if (own.has(kk)) continue;
+        const c = real(Math.round(kk / 1048576), kk - Math.round(kk / 1048576) * 1048576); let keep = h; for (let j = 1; j < c.length; j += 2) if (c[j] < c[c.length - 1] && c[j - 1] < keep) keep = Math.max(keep, c[j] + 1); if (keep > h) cutH.set(kk, keep); } }   // (a floor of your space is never cut: a step up south of a lower one stays)
       const solidIn = (x, y, z) => { const c = col(x, y); if (!inBox(x, y)) return solidC(c, z); if (z <= L - deep) return true; return solidC(c, z); };
       // (a mouth that opens onto a floor walled on two facing sides or on three (a pit's, a trench's): the top over it has no shade: a stair dug west from a 1x2 pit left a dark smudge on the terrace over it, "shadow shouldn't appear here")
       const walled = (x, y, z) => { const wl = DIR.map(([dx, dy]) => +solidIn(x + dx, y + dy, z + 1)); return (wl[0] && wl[1]) || (wl[2] && wl[3]) || wl[0] + wl[1] + wl[2] + wl[3] >= 3; };
@@ -192,11 +215,11 @@ const VoxStyleLand = (() => {
       function* chunk(bx, by) {
         const out = {main: [], model: [], shade: [], water: []}; let lo = 1e9, low = false, wet = 0;
         const faces = (x, y, z, dst) => {
-          const c = col(x, y), open = c[c.length - 1], top = VoxMesh.topOf(c, z);
+          const c = real(x, y) || col(x, y), open = c[c.length - 1], top = VoxMesh.topOf(c, z);   // (|| col: the land's block gone since its column was read for this chunk, before a yield)   // (what a face is lit as and painted by: the land as it is; which faces there are: as drawn, solidIn)
           for (let f = 0; f < 6; f++) {
             const F = FACES[f], nx = x + F.n[0], ny = y + F.n[1], nz = z + F.n[2];
             if (f === 1 || solidIn(nx, ny, nz)) continue;
-            const nc = col(nx, ny); let sky = (f === 0 ? z >= open : !nc || z > nc[nc.length - 1]) ? 1 : 0, s, kind = f === 0 ? 1 : 0, e = 0;
+            const nc = real(nx, ny); let sky = (f === 0 ? z >= open : !nc || z > nc[nc.length - 1]) ? 1 : 0, s, kind = f === 0 ? 1 : 0, e = 0;
             if (f === 0) {
               const mo = sky && !walled(x, y, z) ? mouths(x, y, z) : 0; s = topSlot(x, y, z, (px, at, st) => { topPaint(x, y, z, px, at, st); if (mo) mouthShade(px, at, st, mo); }, mo);   // (a mouth's shade is for the open ground before it: a shaft's floor at a passage's end took it, a dark blue band across a level way in the window)
               { [[0, -1, 1], [1, 0, 2], [0, 1, 4], [-1, 0, 8]].forEach(([dx, dy, b]) => { if (!solidIn(x + dx, y + dy, z) && (sky || solidIn(x + dx, y + dy, z - 1))) e |= b; });   // (a lip: under a roof only at a step of one level, one you can take; a drop of two or more has none)
@@ -266,7 +289,7 @@ const VoxStyleLand = (() => {
         for (const ch of list) wet += ch.wet;
         for (const [k, ch] of fresh) if (!late.has(k)) store.set(k, ch);   // (a tile changed in it while it was made: not kept, made again next time)
         if (store.size > 400) { const keep = new Set(want.map(([bx, by]) => bx + "," + by)); for (const k of store.keys()) if (!keep.has(k)) store.delete(k); }
-        return {parts, clip: [X0, X1 + 1, Y0, Y1 + 1], wet, made, space: pt ? {x: cx - r, y: cy - r, D, lvl: reachA, cls: clsA} : null, win};
+        return {parts, clip: [X0, X1 + 1, Y0, Y1 + 1], wet, made, space: pt ? {x: cx - r, y: cy - r, D, lvl: reachA, cls: clsA} : null, win, cut: cutH};
       } finally { making = false; }
     }
     return {steps, touch, touchBox, wet, model, clear() { store.clear(); farClear(); }, farKeep, evicted(kept) { for (const k of [...store.keys()]) if (!wantK || !wantK.has(k)) store.delete(k); if (kept) farFree(kept); else farClear(); },   // (paints given again: what was made with them and is not of this land goes)

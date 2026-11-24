@@ -50,7 +50,7 @@ def test_the_window_opens_the_whole_cave_you_are_in_and_not_another(browser, ser
     g.wait("HdLook.win.a === 1 && !HdLook.busy && HdLook.cam.pitch > HdLook.steep - .1", timeout=8000)
     quiet(g)
     W, H = g.js("[innerWidth, innerHeight]")
-    stone = g.js(PX, [x - 1.5, y + 2.5, 5])                                 # (the plateau's top, far from the caves)
+    stone = g.js(PX, [x - 8.5, y + 2.5, 5])                                 # (the plateau's top, far from the caves and past the land's cut round you)
     on = lambda p: 8 < p[0] < W - 8 and 8 < p[1] < H - 60
     shut, opened = [], []
     for dx, dy in sorted(CAVE | APART):
