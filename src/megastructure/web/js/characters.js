@@ -73,9 +73,6 @@ function drawBody(p, sx, sy, S, t, now) {
     if (e.doing && !p.doingSince) p.doingSince = now;
     if (!e.doing) p.doingSince = 0;
     if (!mine) p.running = !!e.run;
-    // face the action's target
-    if (action && action.dir && DIRV[action.dir]) { [p.fx, p.fy] = DIRV[action.dir]; }
-    if (action && action.tid != null) { const q = [...ents.values()].find((q) => q.e && q.e.id == action.tid); if (q) { p.fx = Math.sign(q.x - p.x); p.fy = p.fx ? 0 : Math.sign(q.y - p.y); } }
     const sheetImg = wornReady(agentTint(e.name), e.worn, e.race, e.bot); if (!sheetImg) return;        // (wear.js: their sheet, dressed; not made yet: they show once it is, made between frames)
     let bob = j ? Math.round(j.body * z) : 0, anim = "idle", frame, lunge = 0, blow = null;
     const tool = action && action.tool, k = action ? (now - action.t0) / 1000 : 0;
@@ -130,7 +127,7 @@ function drawBody(p, sx, sy, S, t, now) {
       bob = Math.round(Math.sin(Math.min(1, k * 5) * Math.PI) * 3) * z;
     }
     if (frame === undefined && cl && cl.on) {         // on the rungs: facing the ladder, hand over hand
-      p.fx = cl.fx; p.fy = cl.fy; anim = "walk"; frame = Math.floor(cl.u * 24) % 8;
+      anim = "walk"; frame = Math.floor(cl.u * 24) % 8;
       if (mine && frame % 4 === 0 && p.lastStep !== Math.floor(cl.u * 6)) { p.lastStep = Math.floor(cl.u * 6); sfx("tock"); }
     }
     if (frame === undefined) {

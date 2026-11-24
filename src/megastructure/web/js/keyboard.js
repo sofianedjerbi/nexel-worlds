@@ -197,7 +197,7 @@ function useFacing(alt, again) {
 }
 function turn(dir) {
   const p = ents.get("agent" + myId); if (!p) return;
-  [p.fx, p.fy] = DIRV[dir];
+  BodyPlace.face(p, ...DIRV[dir]);
 }
 function selectSlot(i) {                         // the bar's slot i in hand (ui.js handSync: what is in it, or empty hands)
   const was = selected; handSlot = ((i % BAR) + BAR) % BAR; localStorage.setItem("megastructure-hand", handSlot);

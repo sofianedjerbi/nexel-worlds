@@ -263,3 +263,21 @@ def test_moved_far_just_as_you_stop_walking_you_are_drawn_where_the_world_has_yo
     game.wait(f"(() => {{ const p = myPos(); return p.x === {x + 200} && p.y === {y + 200}; }})()", 8000)
     game.arrive()
     assert game.pos() == (x + 200, y + 200)
+
+
+def test_drawing_a_body_at_work_does_not_turn_it_back(game):
+    """The way a body faces had nine writers, three of them in its drawing: while an action went on, each frame drawn
+    turned you back to it, whatever a key had turned you to since (and the keys act on the way you face). Chopping a
+    tree south of you, turned east (the turn key's own function): you stay turned east, frame after frame. One writer
+    (body_place.js face), called by what turns a body; the picture reads."""
+    game.clear_area(6)
+    game.stamp(0, 1, ["T"])
+    game.face(0, 1)
+    game.page.keyboard.down("q")
+    game.wait("myAction && myAction.tool === 'dig' && ents.get('agent' + myId).fy === 1", 4000)
+    game.js("turn('E')")
+    game.frames(4)
+    faced = game.js("(() => { const p = ents.get('agent' + myId); return [p.fx, p.fy, !!myAction]; })()")
+    game.page.keyboard.up("q")
+    assert faced == [1, 0, True], faced
+    assert not game.errors, game.errors

@@ -25,7 +25,7 @@ function joinGame(name) {
     const d = JSON.parse(m.data);
     if (d.type === "progress") {
       if (pendingAside && pendingAside.tool === d.tool) myAside = {...pendingAside, t0: performance.now()};
-      else if (pendingAct && pendingAct.tool === d.tool) myAction = {...pendingAct, t0: performance.now()};
+      else if (pendingAct && pendingAct.tool === d.tool) { myAction = {...pendingAct, t0: performance.now()}; const q = ents.get("agent" + myId); if (q) BodyPlace.faceAction(q, myAction.dir, myAction.tid); }
       if (d.ticks / d.tick_hz >= .35) progress = {t0: performance.now(), ms: d.ticks / d.tick_hz * 1000, tool: d.tool};
       return;
     }

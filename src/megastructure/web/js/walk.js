@@ -84,14 +84,14 @@ function syncWalk() {
       const bx = Math.sign(p.x - p.tx), by = Math.sign(p.y - p.ty);
       if (pred && bx === dx && by === dy && trail.length === 1 && srv && (dx ? srv.y : srv.x) === want.lane) { want.at = null; args.cut = true; trail.length = 0; }
     }
-    p.fx = dx; p.fy = dy; p.walking = true; p.running = want.run; p.moved = now;
+    BodyPlace.face(p, dx, dy); p.walking = true; p.running = want.run; p.moved = now;
   }
   myAction = null; pred = null;
   const mine = want, from = p ? p.tx + "," + p.ty : "";
   rpc("act", {tool: "walk", args}).then((r) => {
     if (walking !== mine) return;              // replaced by a newer walk / stop
     walking = null; if (p) p.walking = false;    // it ended (a wall, a fall that hurt): the next tick says where you are
-    if (r.ok && r.result.stopped === "blocked") { const q = ents.get("agent" + myId); if (q) { q.fx = dx; q.fy = dy; if (q.tx + "," + q.ty === from) WayShow.mine(); } }
+    if (r.ok && r.result.stopped === "blocked") { const q = ents.get("agent" + myId); if (q) { BodyPlace.face(q, dx, dy); if (q.tx + "," + q.ty === from) WayShow.mine(); } }
     // (you turned to a wall where you stand: you are at work on it: the shown way out is put away, as at a key of your own. It stayed, and while it is shown nothing you face is offered: standing two seconds in a cave you can walk out of, then facing a wall: no bracket, no key, for good)
   });
 }

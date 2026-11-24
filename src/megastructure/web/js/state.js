@@ -147,12 +147,13 @@ function onTick(d) {
     if (p.tx !== e.x || p.ty !== e.y) {
       const dx = Math.sign(e.x - p.tx), dy = Math.sign(e.y - p.ty);
       // animal sheets only walk sideways: going up or down they keep facing the way they last went
-      if (ANIMALS[e.kind]) { if (dx) p.fx = dx; } else if (dx || dy) { p.fx = dx; p.fy = dy; }
+      if (ANIMALS[e.kind]) { if (dx) BodyPlace.face(p, dx, p.fy); } else if (dx || dy) BodyPlace.face(p, dx, dy);
       const gap = (now - p.moved) / 1000;               // how fast the world is moving it: tiles a second, over its last two places (render.js)
       p.pace = e.run ? RULES.pace.sprint : gap < 1 ? Math.min(RULES.pace.sprint, Math.hypot(e.x - p.tx, e.y - p.ty) / Math.max(gap, .05)) : 0;
       p.moved = now; p.tx = e.x; p.ty = e.y;
       if (Math.abs(p.x - e.x) + Math.abs(p.y - e.y) > 4) { p.x = e.x; p.y = e.y; }
     }
+    if (e.kind === "agent" && e.doing) BodyPlace.faceAction(p, e.dir, e.tid);   // (what it is doing: turned to it, body_place.js)
   }
   for (const [k, p] of ents) if (!seen.has(k)) {
     if (k === "agent" + myId) { refresh(); continue; }       // you're never out of your own view: you just moved far (a level)

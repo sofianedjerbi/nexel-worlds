@@ -40,7 +40,7 @@ const Leap = (() => {
     }
     L = {t: 0, x: p.x, y: p.y, z: myZ(x, y), vx: w ? w[0] * sp : 0, vy: w ? w[1] * sp : 0, vz: V0(), path: [], run, tx: x, ty: y};
     L.z0 = L.z; if (C === null) { C = L.z; Ct = now; }
-    if (w) { p.fx = w[0]; p.fy = w[1]; }
+    if (w) BodyPlace.face(p, w[0], w[1]);
     jumpDust(p, 3, .8);
   }
   // walk.js walkOn, auto-jump: a step a layer up ahead, so near that a jump now, at the walk's speed, just clears its edge
@@ -73,7 +73,7 @@ const Leap = (() => {
     if (h) {                                               // steering: the way held pulls your speed towards it, a little
       const k = Math.min(1, LEAP.steer * dt / cap);
       L.vx += (h[0] * cap - L.vx) * k; L.vy += (h[1] * cap - L.vy) * k;
-      p.fx = h[0]; p.fy = h[1];
+      BodyPlace.face(p, h[0], h[1]);
     }
     const g = G(), z1 = L.z + L.vz * dt - g * dt * dt / 2;
     L.vz -= g * dt;
