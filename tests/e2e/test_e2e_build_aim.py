@@ -1,5 +1,5 @@
 """Build mode by mouse: the cursor is the block under the pointer, and its box is drawn round the pointer, whatever the
-eye's pitch (36 degrees in the open, steeper with land south over your head, up to 58 in a dip) and the land's height."""
+eye's pitch (36 degrees in the open, in a dip a level deep too; 58 from above, where land south of you hides you) and the land's height."""
 
 import json
 
@@ -28,7 +28,7 @@ AIM = r"""async ([dx0, dx1, dy0, dy1, step]) => {
   return {n, bad: bad.slice(0, 6), nbad: bad.length, pitch: HdLook.cam.pitch};
 }"""
 
-# terraces east of you, one level a step, past a flat floor at your own height (land a level over you on more sides is a dip: the eye from above)
+# terraces east of you, one level a step, past a flat floor at your own height (land a level over you on more sides is a dip: the surface's pitch still, hd_eye.js: its rim hides your legs only)
 TERRACE = ["0000000012345"] * 9
 
 
@@ -42,7 +42,7 @@ def test_the_build_cursor_is_the_block_under_the_pointer_and_boxed_there_at_any_
     (hd_level.js `wall`: a cell of the land south of you over your feet was drawn on the wall between the eye and you,
     however far past that wall it was); and on terraces, by a cliff, the pointer on a block's side picked a block two
     tiles off (each tile's top at the cursor's height, no sides). The cursor is the first block the pointer's ray meets
-    (mouse.js rayHit), and its box is round the pointer, at 36 degrees, 54 (land south over your head), 58 (a dip: hd.js STEEP)."""
+    (mouse.js rayHit), and its box is round the pointer, at 36 degrees (in the open and in the dip) and 58 (land south of you hiding you: hd.js STEEP)."""
     view = {"width": 390, "height": 844} if phone else {"width": 1440, "height": 900}
     g = Game(browser.new_page(viewport=view, device_scale_factor=3 if phone else 1), server)
     g.join(new_name(), 3)
@@ -50,7 +50,7 @@ def test_the_build_cursor_is_the_block_under_the_pointer_and_boxed_there_at_any_
     g.rpc("dev_creatures", clear=60)
     g.clear_area(12)
     lv = [[base + int(c) for c in row] for row in (TERRACE if scene == "open" or (scene == "dip" and base < 6) else ["0" * 13] * 9)]
-    if scene == "dip":                      # a plateau a level over you all round (the owner's): the eye looks from above
+    if scene == "dip":                      # a plateau a level over you all round (the owner's)
         lv = [[c + 1 for c in row] for row in lv]
         lv[4][6] = base
     g.stamp(-6, -4, ["." * 13] * 9, levels=["".join(LV[c] for c in r) for r in lv])
@@ -61,7 +61,7 @@ def test_the_build_cursor_is_the_block_under_the_pointer_and_boxed_there_at_any_
     g.wait("Build.on")
     g.rest()
     pitch = g.js("HdLook.cam.pitch")
-    want = {"open": (45, 53) if phone else (35, 37), "cliff": (45, 58.1), "dip": (57.9, 58.1)}[scene]
+    want = {"open": (45, 53) if phone else (35, 37), "cliff": (57.9, 58.1), "dip": (45, 53) if phone else (35, 37)}[scene]
     assert want[0] <= pitch <= want[1], (scene, pitch)
     r = g.js(AIM, [-3, 3, -2, 3, 0.45] if phone else [-4, 4, -2, 3, 0.45])
     assert r["n"] > 50 and r["nbad"] == 0, (scene, json.dumps(r))

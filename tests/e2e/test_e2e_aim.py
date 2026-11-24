@@ -50,7 +50,12 @@ def test_the_selected_box_in_your_own_column_is_drawn_whole_over_you_or_under_yo
         changed = sum(1 for i in range(n) if sum(abs(on[3 * i + j] - off[3 * i + j]) for j in range(3)) > 24)
         col = LINE["bad"] if not s["ok"] else LINE[s["kind"]] if s["kind"] in LINE else LINE["place"]
         line = sum(1 for i in range(n) if sum(abs(on[3 * i + j] - col[j]) for j in range(3)) < 30)
-        assert changed > n * .05, (lv, changed, n)                   # the box is on your sprite's box
+        # the box is on your sprite's box, where the two meet on the screen. (From the surface's pitch, the eye's in this nook open to the south
+        # (hd_eye.js: it looked from above here by the old "shut in" rule), the cell over your head lies on your head only, the one over that on
+        # none of you: `share`, how much of your sprite's box the cell's box covers)
+        share = game.js("(() => { const B = HdLook.art().body, r = Target.drew.find((d) => d.over || d.sel).r, w = Math.min(B.x + B.w, r.x + r.w) - Math.max(B.x, r.x), h = Math.min(B.y + B.h, r.y + r.h) - Math.max(B.y, r.y); return w > 0 && h > 0 ? w * h / (B.w * B.h) : 0; })()")
+        assert lv > 0 or share > .5, (lv, share)
+        assert share == 0 or changed > n * .05 * share, (lv, changed, n, share)
         assert line < n * .5, (lv, line, n)                          # ...and you show through it, not covered by its line
     game.press("z")
 
