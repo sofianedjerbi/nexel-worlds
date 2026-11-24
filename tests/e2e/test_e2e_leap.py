@@ -193,7 +193,10 @@ def test_up_a_stair_under_a_roof_with_the_jump_key_never_on_the_land_over_it(gam
             game.page.wait_for_timeout(100)
         game.page.keyboard.up("a")
     rec = frames(game, go, z0=-6)
-    assert game.pos()[0] <= x and game.server()["z"] == 0, (game.pos(), game.server())
+    # (the last step's answer may still be on its way when the key comes up: one run in six the world was asked
+    # while it had you a tile back, z -1. Wait for the page to have no step in flight, then ask.)
+    game.wait("!pred && !walking && !Leap.on()")
+    assert game.pos()[0] <= x and game.server()["z"] == 0, (game.pos(), game.server(), game.js("({myAt, pred, srv})"))
     under = [r for r in rec if r[11] > r[10] + 2]                      # (land over you)
     assert under and all(r[10] < 0 for r in under), [r[:2] + r[10:] for r in under if r[10] >= 0][:4]
     smooth(rec, 5)
