@@ -33,7 +33,7 @@ const BodyPlace = (() => {
     const st = state(p), line = liftOf(p) / zoom, lv = line / RELIEF_STEP, fall = boat ? null : fallOf(p, now, st);   // (a fall, a jump: levels; over the line)
     const j0 = boat ? null : jumpNow(p, now, st, fall && {body: fall.z - lv, ground: fall.ground - lv, air: fall.air});
     const swim = !boat && !!p.e && swimsAt(p, e) && !(j0 && j0.air), climb = boat || swim ? null : Climb.climbOf(p);
-    const jump = swim || !j0 ? null : {...j0, body: Math.round(j0.body * RELIEF_STEP), ground: j0.ground * RELIEF_STEP};   // (its picture's px: by whole art px, as it is drawn)
+    const jump = swim || !j0 ? null : {...j0, body: Math.round(line + j0.body * RELIEF_STEP) - line, ground: j0.ground * RELIEF_STEP};   // (its picture's px: its feet on a whole art px, as drawn. It was the arc's own px over the line rounded, the line between two tiles' grounds not whole: at a ledge's edge the feet went 5.021, 4.979, 5 levels up, frame to frame)
     const air = !!jump && !!(jump.air || jump.tuck);
     if (climb && climb.on) face(p, climb.fx, climb.fy);       // (on the rungs: to the ladder)
     const mode = boat ? "boat" : swim ? "swim" : climb ? "climb" : fall && fall.air ? "fall" : jump && (jump.leap || jump.tuck || jump.pose) ? "jump" : "walk";
