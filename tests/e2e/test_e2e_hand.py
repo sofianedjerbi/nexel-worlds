@@ -137,22 +137,17 @@ TOOL = """([item, face, act]) => { const p = ents.get('agent' + myId); p.fx = fa
   const cell = Math.round(sx(p.x)) - 16, top = Math.round(sy(p.y)) - 18; let btop = h; for (let i = 3; i < a.length; i += 4) if (a[i] > 128) { btop = Math.floor(i / 4 / w); break; }
   p.aimT = 0; p.moved = -1e9;
   return {px, btop, body: [...body], mid: [cell + 23.5, top + 26], hand: SwingArt.handOf(wornReady(agentTint(me), p.e.worn, p.e.race, p.e.bot)).map((c) => c.join(','))}; }"""
-SWING = {"axe": "dig", "pickaxe": "dig", "hoe": "dig", "watering_can": "water", "sword": "attack", "spear": "attack"}
 
 
-def test_a_tool_in_hand_is_gripped_the_hand_over_its_handle_and_a_swing_starts_where_it_is_held(game):
+def test_a_tool_in_hand_is_gripped_the_hand_over_its_handle_and_the_hand_on_the_body(game):
     """The owner: "when handling tools it should look like the player is really holding it, like the sword". A tool was
     its icon pasted at the paw. Now the hand (the swing's hand, in the person's colours) is drawn over its handle, the
-    tool out of it; facing away it is behind the body; and the swing's first frame has the tool where it was held (the
-    hand moves 2 art px at most; where the swing's hand is hidden, its tool starts at the hand held): no jump when you
-    strike (hold_art.js)."""
+    tool out of it; facing away it is behind the body. ONE GRIP (picked 2026-11-24, "tools not in the paw"): the hand is
+    at the paw, on the body, in every facing; only the tool's angle changes (it was where the swing starts, at arm's
+    length: a ring floating beside the cat). hold_art.js PAW."""
     game.wait("wornReady(agentTint(me), ents.get('agent' + myId).e.worn, ents.get('agent' + myId).e.race, ents.get('agent' + myId).e.bot)")
 
-    def hand(r):                                                                    # the middle of the hand's outline off the body, on the tool
-        tool = [(x, y) for x, y, c, _ in r["px"] if c not in r["body"]]
-        ring = [(x, y) for x, y, c, on in r["px"] if c == r["hand"][0] and not on and any(abs(x - u) <= 2 and abs(y - v) <= 2 for u, v in tool)]
-        return (sum(x for x, _ in ring) / len(ring), sum(y for _, y in ring) / len(ring)) if len(ring) >= 3 else None
-    jumps = []
+    floating = []
     for item in ("sword", "axe", "pickaxe", "hoe", "spear", "torch", "watering_can"):
         for face in ([0, 1], [1, 0], [-1, 0], [0, -1]):
             r = game.js(TOOL, [item, face, None])
@@ -163,17 +158,11 @@ def test_a_tool_in_hand_is_gripped_the_hand_over_its_handle_and_a_swing_starts_w
                 assert len(ring) >= 4, (item, face, len(ring))                     # the hand (half its ring of outline at least: the rest may be on the body's)
                 hx, hy = sum(x for x, _ in ring) / len(ring), sum(y for _, y in ring) / len(ring)
                 assert any(abs(x - hx) <= 3 and abs(y - hy) <= 3 for x, y in tool), (item, face)   # ...on the handle: the tool comes out of it
+                if not any(on for x, y, c, on in r["px"] if c == r["hand"][0]):
+                    floating.append((item, face))                                  # (no px of the hand on the body: it floats beside it)
             if face == [0, -1]:
                 assert sum(1 for *_, on in r["px"] if on) <= len(r["px"]) * .5, (item, face)   # facing away: behind the body
-            if item in SWING:
-                s = game.js(TOOL, [item, face, SWING[item]])
-                h, k = hand(r), hand(s)
-                if h and k:
-                    jumps.append((item, face, max(abs(h[0] - k[0]), abs(h[1] - k[1]))))
-                elif h:                                                            # (the swing's hand hidden behind the body)
-                    start = [max(abs(x - h[0]), abs(y - h[1])) for x, y, c, _ in s["px"] if c not in s["body"]]
-                    jumps.append((item, face, min(start, default=2) - 2))       # (its tool from where the hand held it; none: hidden too)
-    assert all(j[2] <= 2 for j in jumps), [j for j in jumps if j[2] > 2]
+    assert not floating, floating
     assert not game.errors
 
 

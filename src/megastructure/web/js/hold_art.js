@@ -4,8 +4,9 @@
 // angle as the swings draw their tools, never scaled or blurred). A sword and a spear are the attack's own
 // (swing_art.js frame), so the cut starts from where they are held.
 //   rest   (standing, walking, in a jump) the head up: beside you facing us, up and forward side on, over the shoulder
-//          from behind (where it is drawn behind the body: held.js). The grip is where the tool's swing starts
-//          (frame 0 of its row of the sheet), so a swing does not jump: the hand stays and the tool turns
+//          from behind (where it is drawn behind the body: held.js). ONE GRIP: the hand on the body at the paw (PAW, a
+//          point a facing), the tool's angle all that changes ("tools not in the paw": the grip was where the tool's
+//          swing starts, at arm's length, a hand floating beside the cat; picked 2026-11-24)
 //   up / ahead / down   (an aim, aim_art.js) the grip in the pose's paw, the tool raised, held out, lowered
 // A torch keeps its flame up; a watering can hangs from its handle. One picture per tool, facing, pose and hand colours,
 // made the first time it is drawn: a 48 x 48 cell laid over the body's.
@@ -29,7 +30,7 @@ const HoldArt = (() => {
   // the walk's swing at frame f of its 8 (-1: standing): -1 .. 1
   const swing = (f) => f < 0 ? 0 : Math.round(Math.sin(f / 8 * 2 * Math.PI) * 4) / 4;
   function low(kind, row, f) { const [x, y, a, sa, sx] = LOW[kind][R(row)], w = swing(f); return [x + Math.round(w * sx), y, rad(a + w * sa)]; }
-  const CLAMP = 1, rad = (a) => a * Math.PI / 180, R = (row) => row === 3 ? 2 : row;
+  const rad = (a) => a * Math.PI / 180, R = (row) => row === 3 ? 2 : row;
 
   // where the swing of `kind` starts (frame 0 of its rows of the cat's sheet): the end of the handle nearest the body,
   // in the picture facing right for the left (its mirror). Read once.
@@ -59,9 +60,8 @@ const HoldArt = (() => {
   // the rest pose of `kind` facing `row`: [grip x, grip y (the middle of its px), angle] in the picture facing right for the left
   function rest(kind, row) {
     if (LOW[kind]) return low(kind, row, -1);
-    // (the swing's start, up to 2 px nearer the body: the hand held out at arm's length looked thrown, not held)
-    const s = swingStarts()[kind], p = PAW[R(row)], at = s && s[row] ? s[row].at.map((v, i) => v + Math.max(-CLAMP, Math.min(CLAMP, p[i] - v))) : p;
-    return [at[0] + .5, at[1] + .5, rad((kind === "torch" ? UPRIGHT : ANG).rest[R(row)])];
+    const p = PAW[R(row)];
+    return [p[0] + .5, p[1] + .5, rad((kind === "torch" ? UPRIGHT : ANG).rest[R(row)])];
   }
   function place(kind, row, pose, paw, step = -1) {
     if (LOW[kind]) return low(kind, row, step);
