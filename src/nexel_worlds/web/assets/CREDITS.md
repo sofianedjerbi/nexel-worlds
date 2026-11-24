@@ -28,5 +28,5 @@ the cropped UI pieces (`panel.png`, `slot.png`, `slot_sel.png`, `cursor.png`, `c
 loading screen's running cat (`boot_cat.png`).
 
 Drawn for this game and kept here: the enemy sheets (`tusker.png`, `pincer.png`, `strawman.png`, `wisp.png`,
-`wyrm.png`, `mossback.png`, `sporeling.png`, from `design/enemies/`), the font `sprout-pixel.ttf`
+`wyrm.png`, `gustling.png`, `grumblestump.png`, `snapbloom.png`, `hob.png`, `mossback.png`, `sporeling.png`, from `design/enemies/`), the font `sprout-pixel.ttf`
 (`tools/build_font.py`), and the title pictures (`title_*.webp`, screenshots of the game).

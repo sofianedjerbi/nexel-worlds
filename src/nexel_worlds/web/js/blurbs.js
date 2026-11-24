@@ -35,6 +35,7 @@ const BLURB = {
   well: "A hole with water and a roof. Fancy.",
   coop: "A tiny house. The rent is paid in eggs.",
   trough: "A dinner table for those without hands.",
+  hob: "A hearth that walks. It burns what comes for you.",
   hay: "Dry grass, tied up. Cows call it lunch.",
   picnic_blanket: "Food tastes better on it. Nobody knows why.",
   basket: "A bowl that grew up in the countryside.",

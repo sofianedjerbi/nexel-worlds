@@ -1,5 +1,6 @@
 """Wild creatures: the tusker (a boar that charges), the pincer (a shore crab that snaps), the strawman (a scarecrow that
-walks), the wisp (a light that leads you on) and the wyrm (a sea serpent that lunges).
+walks), the wisp (a light that leads you on) and the wyrm (a sea serpent that lunges); the gustling (a little
+whirlwind that snatches what is in your hand) is in gust.py.
 
 Each one warns before it hurts: `mode` goes "windup" for a moment (the client plays the wind-up), then the blow lands
 only if you are still there. The tusker's blow is a charge in a straight line: step aside and it runs past, or into
@@ -7,11 +8,15 @@ a tree, and stands stunned.
 """
 
 from ..tiles import DEPTH, DIRS
-from .constants import sec
+from .constants import cheb, sec, toward
 from .boss import Boss
+from .gust import Gust
+from .hob import Hob
+from .stump import Bloom, Stump
 from .entities import CREATURES
 
-WILD = ("tusker", "pincer", "strawman", "wisp", "wyrm", "mossback", "sporeling")       # (the last two: boss.py)
+WILD = ("tusker", "pincer", "strawman", "wisp", "wyrm", "gustling", "grumblestump", "snapbloom", "mossback", "sporeling",
+        "hob")       # (mossback and sporeling: boss.py; the hob is no enemy, an ally: hob.py)
 TUSKER_SEES, TUSKER_WINDUP, TUSKER_RUN = 4, 0.7, 8        # tiles; seconds pawing the ground; tiles it charges
 TUSKER_STUN, TUSKER_REST = 2.5, 3.0                       # seconds stunned after ramming something; between charges
 # A tusker that is hit is angry for a while (it only went on as before: a charge, a long rest, whoever was nearest).
@@ -35,18 +40,8 @@ BITE_HIGH = 4            # layers: how far up or down a bite reaches (two tiles:
 SEES_HIGH = 4            # layers: who is further over it or under it than that is not seen, nor gone for
 
 
-def cheb(a, c) -> int:
-    return max(abs(a.x - c.x), abs(a.y - c.y))
-
-
-def toward(c, a) -> tuple:
-    """One step along the longer axis from c to a."""
-    dx, dy = a.x - c.x, a.y - c.y
-    return ((dx > 0) - (dx < 0), 0) if abs(dx) >= abs(dy) else (0, (dy > 0) - (dy < 0))
-
-
-class Wild(Boss):
-    """Simulation mixin: how the wild enemies behave (and, from Boss, Old Mossback and its sporelings)."""
+class Wild(Gust, Stump, Bloom, Hob, Boss):
+    """Simulation mixin: how the wild enemies behave (and, from Boss, Old Mossback and its sporelings; and the gustling, the grumblestump, the snapbloom and the hob from theirs)."""
 
     def step_wild(self, c, online):
         getattr(self, "_step_" + c.kind)(c, online)
@@ -70,6 +65,26 @@ class Wild(Boss):
     def wind_up(self, c, direction, seconds):
         c.mode, c.until, c.dir = "windup", self.tick + sec(seconds), direction
         self.emit("windup", c.x, c.y, id=c.id, kind=c.kind, dir=list(direction))
+
+    def flee_from(self, c, a, seconds):
+        """Off, away from `a` (a gustling with what it took, one a hob has burnt), for a while: see run_off."""
+        c.mode, c.until, c.threat = "flee", self.tick + sec(seconds), (a.x, a.y)
+
+    def run_off(self, c, stride) -> bool:
+        """A fleeing creature's step away from its threat, a tile every `stride` seconds; False once it is not fleeing."""
+        if c.mode != "flee":
+            return False
+        if self.tick >= c.until:
+            c.mode = ""
+            return False
+        c.cooldown = sec(stride) - 1
+        tx, ty = c.threat
+        sx, sy = (c.x > tx) - (c.x < tx), (c.y > ty) - (c.y < ty)
+        for step in ((sx, 0), (0, sy), (0, sy or 1), (sx or 1, 0), (0, -(sy or 1)), (-(sx or 1), 0)):
+            if step != (0, 0) and self._creature_move(c, c.x + step[0], c.y + step[1]):
+                c.dir = step
+                break
+        return True
 
     def stroll(self, c, slow, spread, ok=lambda x, y: True):
         c.cooldown = sec(slow) + self.rng.randrange(sec(spread))

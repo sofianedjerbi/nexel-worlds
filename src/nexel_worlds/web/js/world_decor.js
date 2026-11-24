@@ -23,9 +23,26 @@ const WILD = {
   strawman: {cw: 32, ch: 32, idle: [0, 4, [900, 900, 500, 180]], walk: [4, 8, 110], act: [12, 4, [520, 90, 260, 300]]},
   wisp: {cw: 32, ch: 32, idle: [0, 8, 140], walk: [8, 8, 90], act: [16, 6, [220, 300, 90, 160, 160, 160]]},
   wyrm: {cw: 48, ch: 32, idle: [0, 8, 150], walk: [8, 8, 95], act: [16, 4, [480, 90, 240, 280]]},
+  grumblestump: {cw: 40, ch: 44, idle: [0, 8, [400, 300, 260, 300, 400, 300, 260, 300]], walk: [8, 8, 130], act: [16, 8, [180, 260, 200, 200, 80, 160, 200, 260]], sleep: [24, 8, 600]},
+  snapbloom: {cw: 36, ch: 40, idle: [0, 8, 220], walk: [8, 8, 110], act: [16, 11, [160, 180, 220, 150, 150, 70, 110, 140, 140, 140, 200]]},
+  hob: {cw: 32, ch: 42, idle: [0, 8, [260, 220, 220, 260, 300, 260, 140, 260]], walk: [8, 8, 110], act: [16, 7, [260, 320, 80, 140, 180, 220, 260]]},     // (an ally: sim/hob.py)
+  gustling: {cw: 32, ch: 40, idle: [0, 8, 110], walk: [8, 8, 70], act: [16, 11, [170, 130, 100, 100, 100, 80, 160, 160, 130, 130, 160]]},
   mossback: {cw: 80, ch: 64, hp: 60, sleep: [0, 8, 320], idle: [8, 8, 240], walk: [16, 8, 120], stomp: [24, 7, [160, 300, 220, 80, 180, 220, 200]], snap: [31, 7, [180, 200, 200, 70, 260, 140, 180]], shake: [38, 11, [180, 150, 150, 90, 90, 90, 90, 100, 110, 180, 200]], once: ["stomp", "snap", "shake"]},
   sporeling: {cw: 24, ch: 24, idle: [0, 8, 240], walk: [8, 8, 75], land: [16, 6, [80, 80, 160, 120, 90, 140]], puff: [22, 6, [150, 150, 90, 130, 150, 140]], once: ["land", "puff"]},
 };
+// The moves of the wild ones and the hob, as the server tells them (sim/wild.py, gust.py, stump.py, hob.py): dust,
+// sparks, a sound, and a flash on whom they touched.
+function wildEvent(e) {
+  if (e.type === "slam") { burst(e.x, e.y, "dust", 22, {up: 1.2, spread: 5, g: 3}); sfx("thud", e.x, e.y); }        // a grumblestump's arms come down: a ring of dust
+  if (e.type === "flare") {                                                            // a hob's firebox bursts: a blaze of sparks, it and what it burnt lit up
+    burst(e.x, e.y, "spark", 34, {up: 4, spread: 6, g: 4, life: .7}); burst(e.x, e.y, "rage", 10, {up: 2.5, spread: 3, g: 6});
+    sfx("crackle", e.x, e.y); sfx("whoosh", e.x, e.y);
+    const now = performance.now(); flashes.set("hob" + e.id, now); for (const [k, id] of e.burnt || []) flashes.set(k + id, now);
+  }
+  if (e.type === "hob_lit") { burst(e.x, e.y, "spark", 14, {up: 2, spread: 2, g: 5}); sfx("place_fire", e.x, e.y); }   // set down: it catches
+  if (e.type === "snatch") { burst(e.x, e.y, "dust", 10, {up: 2.5, spread: 3, g: 2}); sfx("pick", e.x, e.y); }        // a gustling took what was in a hand
+  if (e.type === "scatter") { burst(e.x, e.y, "dust", 14, {up: 1.5, spread: 4, g: 1}); sfx("poof", e.x, e.y); }        // hit while it spun up: it blows apart
+}
 function wildFrame([col, n, ms], t, loop) {
   if (!Array.isArray(ms)) return col + (loop ? Math.floor(t / ms) % n : Math.min(n - 1, Math.floor(t / ms)));
   const all = ms.reduce((a, b) => a + b, 0);

@@ -257,6 +257,7 @@ RECIPES = {
         Recipe("basket", {"fiber": 3}, {"basket": 1}, 3),
         Recipe("hay", {"wheat": 3}, {"hay": 1}, 3),
         Recipe("trough", {"wood": 4}, {"trough": 1}, 5, "workbench"),
+        Recipe("hob", {"stone": 8, "campfire": 1}, {"hob": 1}, 10, "workbench"),     # a clay dome round a fire: set down, it walks (sim/hob.py)
     ]
 }
 

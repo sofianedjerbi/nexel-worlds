@@ -7,6 +7,17 @@ def sec(seconds: float) -> int:
     """Durations are specified in seconds and converted here, so the tick rate never changes game pace."""
     return max(1, round(seconds * TICK_HZ))
 
+
+def cheb(a, c) -> int:
+    """How far apart two things on the grid are, counting a diagonal step as one."""
+    return max(abs(a.x - c.x), abs(a.y - c.y))
+
+
+def toward(c, a) -> tuple:
+    """One step along the longer axis from c to a."""
+    dx, dy = a.x - c.x, a.y - c.y
+    return ((dx > 0) - (dx < 0), 0) if abs(dx) >= abs(dy) else (0, (dy > 0) - (dy < 0))
+
 DAY_TICKS = sec(1200)  # a 20-minute day
 
 PACE = {"walk": 5, "sprint": 10, "sail": 1 / 0.15}   # tiles a second (Movement.stride; a screen walks at the same: rules.py)

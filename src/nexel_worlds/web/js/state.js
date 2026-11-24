@@ -244,11 +244,12 @@ function onEvent(e) {
     sfx("poof", e.x, e.y);
   }
   if (e.type === "death") { smoke(e.x, e.y, 10); sfx("poof", e.x, e.y); dropLoot(e.x, e.y, e.dropped, performance.now()); }
-  const warn = e.type === "windup" && {tusker: "rustle", pincer: "click", strawman: "creak", wisp: "gloom", wyrm: "water", mossback: "boss_groan"}[e.kind];
+  const warn = e.type === "windup" && {tusker: "rustle", pincer: "click", strawman: "creak", wisp: "gloom", wyrm: "water", gustling: "whoosh", grumblestump: "creak", snapbloom: "rustle", hob: "crackle", mossback: "boss_groan"}[e.kind];
   if (warn) sfx(warn, e.x, e.y);                       // a wild creature warns (the wisp's call is a sigh)
   if (e.type === "boss") bossEvent(e);                 // (boss.js)
   if (e.type === "wear") sfx("rustle", e.x, e.y);      // someone puts something on, or takes it off
   if (e.type === "enrage") { burst(e.x, e.y, "dust", 8, {up: 1.3, spread: 2.6, g: 3}); burst(e.x, e.y, "rage", 12, {up: 4.5, spread: 4.5, g: 9, life: .6, dy: -.3}); sfx("thud", e.x, e.y); flashes.set(e.kind + e.id, performance.now()); }   // a tusker that was hit stamps: it is angry now
+  wildEvent(e);                                                                           // what the wild ones do: world_decor.js
   if (e.type === "bonk") { burst(e.x, e.y, "dust", 8, {up: 1, spread: 2, g: 3}); sfx("thud", e.x, e.y); }          // a tusker rams something
   if (e.type === "xp") spawnOrbs(e);
   if (e.type === "pick_up" && e.magnet) magnetItems(e);

@@ -7,7 +7,7 @@ from .entities import Agent
 # experience for mining ore, crafting and hunting. Taking a block gives none, but for ore (as the sandbox classic has
 # it: it was 2 for a tree, 1 for a rock or a stump, 2 for a ripe crop, 1 or 2 for digging down)
 XP_DIG = {"ore": 4}
-XP_KILL = {"chicken": 2, "calf": 1, "cow": 4, "tusker": 8, "pincer": 3, "strawman": 10, "wyrm": 20, "mossback": 100, "sporeling": 1}
+XP_KILL = {"chicken": 2, "calf": 1, "cow": 4, "tusker": 8, "pincer": 3, "strawman": 10, "wyrm": 20, "gustling": 5, "grumblestump": 10, "snapbloom": 6, "mossback": 100, "sporeling": 1}
 XP_CRAFT = 1
 MAGNET_R = REACH["magnet"]   # items within this reach (Movement.near: a circle, height counted) come to you...
 LEVEL = (7, 3)               # the experience the first level takes, and how much more each one after it
