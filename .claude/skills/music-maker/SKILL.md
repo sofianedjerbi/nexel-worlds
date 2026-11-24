@@ -61,7 +61,7 @@ player, never in the file. Relative loudness lives in `SOUND` (music .64), not i
   `bubble` (Minnaert), knocks = `strike()` with a per-material mode structure; outdoors dry (`space`), rooms only where
   there is one. UI/reward sounds use the music's pluck/key in D major pentatonic.
 - A sound with a strong real-world identity (the door) was refused five times blind: make about six unlike
-  candidates on a local page (`music/doors.py` + `site/door.html` is the pattern) and let the ear pick; the chosen
+  candidates on a local page (`music/doors.py` + `~/nexel/local/music/door.html` is the pattern: drafts live in `~/nexel/local/`, never in the repo) and let the ear pick; the chosen
   file must be reproduced sample-exactly in `sfx.py` (own seed).
 
 ## Composition rules (each one came from a refusal)

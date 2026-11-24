@@ -745,7 +745,7 @@ def _(c):
 # The door. Five made without hearing them were refused, each for its own fault: a slow pulse train ("a weird noise"),
 # a lone latch ("a clic that does not sound like a door"), two knocks ("not a toctoc": it wants an opening and a
 # closing), a swing of noise grains ("still a click"), a gliding note ("an old person moaning"). Then six were put on
-# a page to be chosen by ear (music/doors.py, site/door.html): "go with one knock sound effect". So: one wooden knock
+# a page to be chosen by ear (music/doors.py, local/music/door.html): "go with one knock sound effect". So: one wooden knock
 # each way, the knock of the wood and the board's body under it as one sound: higher to open, lower and fuller to
 # close. (One variant each: these are the two that were heard and chosen.)
 def door_knock(c, size, hard, body):

@@ -1,6 +1,6 @@
 """Five candidates for the first screen's music: "5 music for the start menu with their unique theme. cute and fast".
 
-What the reading says a menu theme is for (sources on the page, site/menu.html): it is the appetizer, it says the
+What the reading says a menu theme is for (sources on the page, local/music/menu.html): it is the appetizer, it says the
 game's mood before anything is played; the tune must be caught in the first seconds; it loops for as long as someone
 stays, so it loops without a seam; it runs a little faster than the music of play; cute and bright is a major key,
 126 to 154 BPM in the title themes measured, short notes, a groove that bounces.

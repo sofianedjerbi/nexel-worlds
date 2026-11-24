@@ -1,5 +1,5 @@
 """Six doors to choose from by ear: each an opening and a closing sound, made as the other effects are (sfx.py's
-strikes, friction and noise), written to site/audio/door_<id>_open.wav and _close.wav for site/door.html.
+strikes, friction and noise), written to site/audio/door_<id>_open.wav and _close.wav for local/music/door.html.
 
 Five doors made without hearing them were refused, each for its own fault: a slow pulse train ("a weird noise"), a
 lone latch ("a clic that does not sound like a door"), two knocks ("not a toctoc"), a swing of noise grains ("still a

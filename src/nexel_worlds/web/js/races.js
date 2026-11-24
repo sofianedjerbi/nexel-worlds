@@ -1,6 +1,6 @@
 // Player races (sim: Agent.race): the cat is the sheet as drawn; the others are the cat's own frames with the head
 // rebuilt (ears off, the top rounded, the race's own ears, eyes, muzzle or bill put on), so every race has every
-// animation. Designed in design/enemies/site/races.html. Clothes are painted on afterwards (wear.js).
+// animation. Designed in local/design/races.html. Clothes are painted on afterwards (wear.js).
 
 const Races = (() => {
   const rgb0 = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -85,7 +85,7 @@ const Races = (() => {
         H.feet();
       }},
   ];
-  // The AI players are robots ("go with tin cat", chosen from eleven on design/enemies/site/robots.html; a dark visor
+  // The AI players are robots ("go with tin cat", chosen from eleven on local/design/robots.html; a dark visor
   // across the face was refused): the race as it is, in steel. The same head, face and dark eyes; grey bolts where
   // the blush was; the ears' lining and the bell lit in the race's own light; the duck keeps its orange bill and feet;
   // the frog's eyes, up in its two bumps where a dark eye is lost in the dark edge, are lit.

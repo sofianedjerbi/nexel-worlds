@@ -1,6 +1,6 @@
 // Clothes and armor (sim/wear.py): how each piece looks on the player. Nothing is redrawn: each frame of the character
 // sheet is read once (where the skull starts, where the collar is, where the feet are) and the pieces are painted there,
-// so they follow every bob, step and swing. Designed in design/enemies/site/clothes.html; a test keeps LOOK's pieces the world's (tiles.py WEAR).
+// so they follow every bob, step and swing. Designed in local/design/clothes.html; a test keeps LOOK's pieces the world's (tiles.py WEAR).
 
 // item -> the look it has in the tables below (its slot is the world's: RULES.wear)
 const LOOK = {

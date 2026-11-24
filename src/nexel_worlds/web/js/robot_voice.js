@@ -6,7 +6,7 @@
 //   ring  the recording times a slow wave (ring modulation): the classic film robot's buzz
 //   comb  the recording through a very short echo fed back on itself, tuned to the speaker: a steady metal hum
 //   tin   each syllable said as quick grains, as if read off a tape, out of a small tin box
-// The game uses ROBOT_KIND for every AI player (babble.js, for a line the server marks `bot`); design/enemies/site/robots.html plays all four.
+// The game uses ROBOT_KIND for every AI player (babble.js, for a line the server marks `bot`); local/design/robots.html plays all four.
 
 const ROBOT = {
   chip: {steps: 2, hold: 5800, bits: 5, shoutBits: 4, level: 1, shout: 1},     // whole tones; Hz it is held at; bits

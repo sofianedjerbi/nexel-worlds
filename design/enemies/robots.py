@@ -1,4 +1,4 @@
-"""The robots' sheets, for design/enemies/site/robots.html: each race and its robot, as the game's own code draws them
+"""The robots' sheets, for local/design/robots.html (~/nexel/local, not in git): each race and its robot, as the game's own code draws them
 (web/js/races.js raceSheet(key, tint, bot)), saved as PNG. Starts a server of its own on a world of its own.
 
     uv run --with pillow python design/enemies/robots.py

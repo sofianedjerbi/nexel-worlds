@@ -1,4 +1,4 @@
-"""What design/enemies/site/horizon.html is made of: a tall, wide frame of the game drawn by the game itself on a
+"""What local/design/horizon.html (~/nexel/local, not in git) is made of: a tall, wide frame of the game drawn by the game itself on a
 server of its own, in two parts, so that the page can bend the ground and leave what stands on it standing:
   ground.png    the land, the water and the shadows, with nothing standing on it
   atlas.png     every thing that stands (trees, rocks, flowers, animals, you), each cut out
@@ -84,7 +84,7 @@ GRAB = """async () => {
   const faces = [], grid = [Math.round(ox + tx0 * S), Math.round(oy + ty0 * S), S];
   return {ground, atlas: atlas.toDataURL("image/png"), levels: map.toDataURL("image/png"), sprites: out, size: [cv.width, cv.height], lv: [...levels].sort((a, b) => b - a), step, grid, tile0: [tx0, ty0], at: [myAt.x, myAt.y, myAt.z]};
 }"""
-# The land as it is in the world, for the page that draws it as blocks (site/voxel.html): for every tile of the same
+# The land as it is in the world, for the page that draws it as blocks (local/design/voxel.html): for every tile of the same
 # grid as the level map, its column of cells (cells.js: the heights where it changes, solid up to the first, empty up
 # to the second...) and, for each height you could stand at, the painting of a plain tile of that ground at that
 # height: the game's own drawTile, asked for a tile with the same ground all round it, so that it has no rim and no

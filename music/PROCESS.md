@@ -1,7 +1,7 @@
 # How the music got here
 
-The game music is rendered by `music/compose.py` (pure numpy) into `music/site/audio/`, and showcased on `music/site/index.html`
-(`uv run python -m http.server 8099 -d music/site`). Sound effects come from `music/sfx.py`, in the same style.
+The game music is rendered by `music/compose.py` (pure numpy) into `music/site/audio/`, and showcased on a local draft page,
+`~/nexel/local/music/index.html` (not in git; from `~/nexel`: `python3 -m http.server 8099`, then http://127.0.0.1:8099/local/music/). Sound effects come from `music/sfx.py`, in the same style.
 
 ## Iterations and what each one taught
 
@@ -417,7 +417,7 @@ unique theme. cute and fast".
   first seconds; it loops for as long as someone stays; one developer ran the menu a little faster than play (120
   against 100); call and answer is what is remembered (Kirkhope on Banjo-Kazooie); bright title themes measured at
   126 to 154 BPM in a major key (Super Mario Party, Donkey Kong, Kirby).
-- `music/menu.py`, page `music/site/menu.html` (http://127.0.0.1:8099/menu.html). The house recipe (rich chords, a lead
+- `music/menu.py`, page `~/nexel/local/music/menu.html` (http://127.0.0.1:8099/local/music/menu.html). The house recipe (rich chords, a lead
   of one bar three times then a cadence, synth sounds, dry), but each candidate is its own theme: key, chord cycle,
   groove, lead bar and sounds. No sound of a kept piece, no pads, no introduction.
   1. Hop in: G major, 132, a bounce (octave bass, off-beat chords). One lead bar fits all seven chords.
