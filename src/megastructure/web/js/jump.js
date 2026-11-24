@@ -128,9 +128,7 @@ function fallOf(p, now) {
 }
 // The jump key on the level: a hop on the spot (walk.js jumpKey; others: their `jump` event, state.js) -> null, or as jumpOf
 function hopOf(p, now) {
-  // (swimming there is nothing to push off: no hop, the body and its name as they are. The name hopped, the body,
-  //  drawn swimming, did not: "jumping IN water ... only the nametag jumps")
-  if (!(now - p.hop < HOP.ms) || jumpOf(p) || (p.e && swimsAt(p, p.e))) return null;
+  if (!(now - p.hop < HOP.ms) || jumpOf(p) || (p.e && swimsAt(p, p.e))) return null;   // (swimming: nothing to push off: no hop, no dust)
   const [h, pose, air] = jumpAt(HOPJ, now - p.hop, 0);
   return {body: Math.round(h), ground: 0, air: false, squash: !air, tuck: air, pose};
 }
@@ -218,14 +216,4 @@ function jumpPace(p, fx, fy, nx, ny) {
   const la = Floors.standOf(p, fx, fy), lb = Floors.standOf(p, nx, ny);
   if (lb <= la || Climb.onLadder(fx, fy, la, nx, ny, lb)) return Infinity;      // (down: a drop, at the walk's pace. Slowed to a jump's 337 ms a step, a sprint down the cave stairs fell 6 tiles behind the world and was put back on it at once)
   return 1000 / jumpMs((lb - la) * RELIEF_STEP);
-}
-// Levels to put a body at over the level of the tile it is nearest, to have it on the straight line between two
-// tiles' heights, up or down a step (the HD look draws the others at their tile's level: up a step a creature or
-// another player was a level lower than the line until half way, then a level higher at once, its arc on top: a
-// jump drawn as a teleport). 0 elsewhere (the level, a ladder, a fall: their own ways)
-function lineLift(p) {
-  const [ax, ay, bx, by, la, lb] = Floors.between(p);
-  if ((ax === bx && ay === by) || la === lb || Math.abs(la - lb) >= FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb)) return 0;
-  const f = ax === bx ? p.y - ay : p.x - ax;
-  return (la + (lb - la) * f) - (f < .5 ? la : lb);
 }
