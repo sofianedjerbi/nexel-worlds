@@ -27,7 +27,7 @@ const MENU_PAGES = [
     choice("Sharpness", "sharp", [["auto", "Auto"], ["full", "Full"], ["light", "Light"]]),
     slider("Light at night", "night", {hear: null}),
     choice("Particles", "particles", [["all", "All"], ["fewer", "Fewer"], ["none", "None"]]),
-    choice("View distance", "view", [["near", "Near"], ["normal", "Normal"], ["far", "Far"], ["veryfar", "Very far"]]),
+    slider("View distance", "view", {min: VIEW_MIN, max: VIEW_MAX, step: VIEW_STEP, unit: "", hear: null}),      // (tiles to the horizon, as a render distance is chunks)
     choice("Curved world", "curve", [["off", "Off"], ["near", "Near"], ["far", "Far"]]), toggle("Depth", "depth"), toggle("Clear water", "clearwater"), toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
     ...[["Shadows", "shadows"], ["Shadow length", "shadowlen"]].map(([name, key]) => slider(name, key, {max: 200, step: 20, hear: null})),
     choice("What is built over you", "above", VIEWS.map((v) => [v.key, v.name]))]],
@@ -88,7 +88,7 @@ function menuChange(i, d, to) {
   if (MENU.view === "main") { if (d === 0) r[2](); else drawMenu(); return; }
   const v = r.get();
   if (r.kind === "slider") {
-    const next = Math.max(lo(r), Math.min(r.max, to !== undefined ? Math.round(to / r.step) * r.step : v + (d || 1) * r.step));
+    const next = Math.max(lo(r), Math.min(r.max, to !== undefined ? lo(r) + Math.round((to - lo(r)) / r.step) * r.step : v + (d || 1) * r.step));
     if (next !== v) { r.set(next); if (r.hear) sfx(HEAR[r.hear] || "pick"); }
   } else if (r.kind === "toggle") { if (d === 0 || (d > 0) !== v) { r.set(!v); sfx("pick"); } }
   else if (r.kind === "choice") { const n = r.list.length, at = Math.max(0, r.list.findIndex(([k]) => k === v)); r.set(r.list[(at + (d || 1) + n) % n][0]); sfx("pick"); }

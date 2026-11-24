@@ -65,12 +65,12 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
     assert game.js("(() => { parts.length = 0; puffs.length = 0; burst(0, 0, 'hit', 6); debris(0, 0, null, 5, {dust: true}); smoke(0, 0, 8); return parts.length + puffs.length; })()") == 0
     game.press("ArrowLeft")                                     # fewer
     assert game.js("(() => { parts.length = 0; burst(0, 0, 'hit', 6); return parts.length; })()") == 2
-    at_row(game, "View distance"); game.press("ArrowRight")    # normal -> far: the horizon 25 tiles off (hd.js viewOf)
+    at_row(game, "View distance"); game.press("ArrowRight")    # 13 -> 17 tiles: the horizon that far (hd.js viewOf), in 4s (the bend's facets)
     game.frames(2)
-    assert game.js("[opt('view'), HdLook.view.D, document.querySelector('#menu .row.on .pick span').textContent]") == ["far", 25, "Far"]
-    game.press("ArrowLeft"); game.press("ArrowLeft")           # near
+    assert game.js("[opt('view'), HdLook.view.D, document.querySelector('#menu .row.on .val').textContent]") == [17, 17, "17"]
+    game.press("ArrowLeft"); game.press("ArrowLeft"); game.press("ArrowLeft")      # 9 at the least
     game.frames(2)
-    assert game.js("[opt('view'), HdLook.view.D]") == ["near", 9]
+    assert game.js("[opt('view'), HdLook.view.D]") == [9, 9]
     for name, key in (("Water shimmer", "shimmer"), ("Shake on a hard fall", "shake"), ("Smooth zoom", "glide"), ("Hearts and gains over heads", "floats")):
         at_row(game, name); game.press("Enter")
         assert game.js(f"opt('{key}')") is False
@@ -95,6 +95,20 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
     game.wait("(() => { const e = document.getElementById('f3'); return e && e.style.display !== 'none' ? e.innerText : ''; })().includes('XYZ ')")
     game.js("for (const k of Object.keys(OPT_DEFAULT)) setOpt(k, OPT_DEFAULT[k]); F3.set(false); localStorage.clear()")
 
+
+
+def test_a_view_distance_kept_by_its_old_name_is_its_number(browser, server):
+    """The view distance was Near, Normal, Far, Very far; it is tiles now. One kept by its old name comes back as its number
+    (9, 13, 25, 37) (options.js OPT_WAS)."""
+    from conftest import Game
+    g = Game(browser.new_page(), server).load(3)
+    for was, now in (("near", 9), ("normal", 13), ("far", 25), ("veryfar", 37)):
+        g.js(f"localStorage.setItem('megastructure-options', JSON.stringify({{view: '{was}'}}))")
+        g.page.reload()
+        g.page.wait_for_function("typeof opt === 'function'")
+        assert g.js("opt('view')") == now, was
+    g.js("localStorage.clear()")
+    g.page.close()
 
 def test_a_key_can_be_changed_and_the_game_follows(game):
     game.press("Escape"); game.press("ArrowDown"); game.press("Enter"); game.press("Tab"); game.press("Tab"); game.press("Tab")

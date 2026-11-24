@@ -42,7 +42,7 @@ def test_150_tiles_from_where_you_woke_the_land_is_drawn_in_its_own_colours(brow
 
 
 # THE VIEW DISTANCE (the Picture page's "View distance", hd.js viewOf): level ground meets the sky that many tiles off
-VIEWS = (("near", 9), ("normal", None), ("far", 25), ("veryfar", 37))      # (Normal: the bend as it was, .03)
+VIEWS = ((9, 9), (13, 13), (25, 25), (37, 37), (65, 65))      # (tiles: the setting is the horizon; 9 and 65 the slider's ends, options.js VIEW_MIN, VIEW_MAX)
 # where level ground at your level meets the sky, as the picture has it: the farthest row north of you drawn higher than every nearer one
 SEEN = """() => { const p = myPos(), L = HdLook.level[1]; let m = 1e9, at = 0;
   for (let dn = 1; dn <= 160; dn++) { const a = HdLook.screenOf(p.x + .5, p.y - dn + .5, L); if (a && a[1] < m) { m = a[1]; if (a[1] >= 0) at = dn; } }
@@ -58,13 +58,13 @@ EDGES = """() => { const el = HdView.el, c = document.createElement('canvas'); c
 
 
 def view(g, v, z):
-    g.js(f"(() => {{ setOpt('view', '{v}'); zoom = ZOOM.to = {z}; return 1; }})()")
+    g.js(f"(() => {{ setOpt('view', {v}); zoom = ZOOM.to = {z}; return 1; }})()")
     g.rest()
 
 
 def test_each_view_distance_puts_the_horizon_that_far_at_any_zoom_and_its_land_comes(browser, server):
-    """Near, Normal, Far, Very far: level ground meets the sky 9, 13 to 17 (the bend as it was), 25, 37 tiles north of you (the bend's facets end
-    there), whatever the zoom; the land is made tile by tile past it, and the far land's blocks the server is asked for all
+    """The view distance in tiles, 9 to 65: level ground meets the sky that many tiles north of you (the bend's facets end
+    there), whatever the zoom, unless a sixteenth of the picture would not stay sky (then as far as that allows); the land is made tile by tile past it, and the far land's blocks the server is asked for all
     come (views.py far_near: it gives far land only near what a page watches). (One bend for all, it was 13 tiles on a desk.)"""
     g = hd(browser, server)
     seen = {}
@@ -74,13 +74,13 @@ def test_each_view_distance_puts_the_horizon_that_far_at_any_zoom_and_its_land_c
             n, capped = g.js("[HdLook.view.n, HdLook.view.capped]")
             assert g.js(SEEN) == n, (v, z, n, g.js(SEEN))
             # (a sixteenth of the picture stays sky: zoomed in, or Very far, a short picture shows less far)
-            assert (d is None and g.js("HdLook.view.b") == .03 and 9 <= n <= 17) or n == d or (capped and 13 <= n < d and g.js("HdLook.sky(0).line / zoom") >= .05 * g.js("cv.height / (zoom * DPR)")), (v, z, n)
+            assert n == d or (capped and 13 <= n < d and g.js("HdLook.sky(0).line / zoom") >= .05 * g.js("cv.height / (zoom * DPR)")), (v, z, n)
             assert g.js("HdLook.box[1]") <= g.pos()[1] - n - 8, (v, z, g.js("HdLook.box"))
             seen.setdefault(z, []).append(n)
     for z, l in seen.items():
-        assert l == sorted(l) and (z != 2 or len(set(l)) == 4), (z, l)          # (each farther; zoomed in on this short picture Far and Very far meet the sixteenth of sky)
+        assert l == sorted(l) and (z != 2 or len(set(l)) >= 4), (z, l)          # (each farther; zoomed in on this short picture the far ones meet the sixteenth of sky)
     g.wait("(() => { const f = HdLook.far; for (let by = Math.floor(f[1] / B); by <= Math.floor(f[3] / B); by++) for (let bx = Math.floor(f[0] / B); bx <= Math.floor(f[2] / B); bx++) if (!blocks.has(bkey(bx, by))) return false; return true; })()", 30000)
-    g.js("setOpt('view', 'normal'); zoom = ZOOM.to = 3")
+    g.js("setOpt('view', 13); zoom = ZOOM.to = 3")
 
 
 def test_nothing_past_the_drawn_land_is_seen_at_any_zoom_or_view_distance(browser, server):
@@ -110,4 +110,4 @@ def test_nothing_past_the_drawn_land_is_seen_at_any_zoom_or_view_distance(browse
             ctx.close()
     finally:
         g.stamp(-40, -22, ["." * 81] * 20)
-        g.js("setOpt('view', 'normal'); zoom = ZOOM.to = 3")
+        g.js("setOpt('view', 13); zoom = ZOOM.to = 3")

@@ -246,13 +246,13 @@ def test_every_px_of_the_land_is_on_a_tile_and_the_sky_on_none(browser, server):
     # tall or more) answers. (The pick looked 24 tiles each way whatever was made: past that a click on land you see did nothing. At zoom 3 on this screen no top
     # past 21 tiles is two px tall, at any setting: zoomed out at Very far they are, to 38.)
     try:
-        for view, z, past in (("far", 3, 0), ("veryfar", 1, 20)):
-            g.js(f"(() => {{ setOpt('view', '{view}'); zoom = ZOOM.to = {z}; return 1; }})()")
+        for view, z, past in ((25, 3, 0), (37, 1, 20)):
+            g.js(f"(() => {{ setOpt('view', {view}); zoom = ZOOM.to = {z}; return 1; }})()")
             g.rest(); g.frames(3)
             box, tops = g.js(BOXTOPS)
             far = [t for t in tops if max(abs(t[0] - x), abs(t[1] - y)) > 24]
             assert y - box[1] > 24 and len(tops) > 400 and len(far) >= past, (view, z, len(tops), len(far), box)       # (the land made goes more than 24 tiles north of you)
             assert not [t for t in tops if not t[4]], (view, z, box, [t for t in tops if not t[4]][:8])
     finally:
-        g.js("(() => { setOpt('view', 'normal'); zoom = ZOOM.to = 3; return 1; })()")
+        g.js("(() => { setOpt('view', 13); zoom = ZOOM.to = 3; return 1; })()")
     assert not g.errors

@@ -17,7 +17,7 @@ const OPT_DEFAULT = {
   shake: true,            // the ground shakes when a fall hurts
   glide: true,            // a zoom level glides into the next
   shimmer: true,          // the water's moving light and small waves
-  view: "normal",        // how far you see: where level ground meets the sky (hd.js VIEW: near 9 tiles, normal as it always was (13 on a desk, 17 on a phone), far 25, very far 37; a sixteenth of the picture stays sky: zoomed in, less far)
+  view: 13,               // how far you see, in tiles: where level ground meets the sky (hd.js viewOf), VIEW_MIN to VIEW_MAX in 4s (the bend's facets); a sixteenth of the picture stays sky: zoomed in, less far
   curve: "far",           // the ground bends away to a horizon, with a sky over it (curve.js): off (the flat picture), near, far
   floats: true,           // hearts lost, things gained, written over heads
   clearwater: true,       // the water is seen through, to its bed (waterbed.js, vox_water.js); off: the water as one painted face
@@ -31,8 +31,14 @@ const OPT_DEFAULT = {
   autojump: true,         // walking into a step with room over it jumps up it by itself (walk.js); off: it stops you, Space jumps
   keys: {},               // action -> key, where it is not the usual one (KEY_ACTIONS)
 };
+// the view distance's range, tiles (the bend's facets are 4 tiles: the horizon is at 1 + 4k): from the old Near to past the old Very far (37); the top
+// as far as a desk and a phone keep a sprint within a frame, and the server gives far land (views.py FAR_VIEW); a short picture keeps a sixteenth of sky first (hd.js viewOf)
+const VIEW_MIN = 9, VIEW_MAX = 65, VIEW_STEP = 4;
+// what a setting was kept as before, and what it is now (the view distance was Near, Normal, Far, Very far)
+const OPT_WAS = {view: {near: 9, normal: 13, far: 25, veryfar: 37}};
 const OPT = {v: {...OPT_DEFAULT}};
 try { Object.assign(OPT.v, JSON.parse(localStorage.getItem("megastructure-options") || "{}")); } catch (e) { /* unreadable: the defaults */ }
+for (const [k, was] of Object.entries(OPT_WAS)) if (Object.prototype.hasOwnProperty.call(was, OPT.v[k])) OPT.v[k] = was[OPT.v[k]];
 for (const k of Object.keys(OPT.v)) if (!(k in OPT_DEFAULT) || typeof OPT.v[k] !== typeof OPT_DEFAULT[k]) { if (k in OPT_DEFAULT) OPT.v[k] = OPT_DEFAULT[k]; else delete OPT.v[k]; }
 const opt = (k) => OPT.v[k];
 function setOpt(k, v) {

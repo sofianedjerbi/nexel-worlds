@@ -8,26 +8,26 @@
 // pieces in the land (hd_things.js), a built house open over your head; you and the others: drawEntity at zoom 1.
 const HdLook = (() => {
   const GROW = .25, HOLD = 300, CAP = 20, SEA_L = 1, PART = .25, MOST = .75, EDGE = 32;   // (EDGE: how far off the picture a body's feet may be and it is drawn, art px; how far it may be in tiles: as far as the land is drawn, R + 40, api.far)
-  // THE VIEW DISTANCE (options.js `view`, viewOf): where level ground meets the sky, in tiles, at any zoom: the bend (vox_style_glsl.js sink) worked out for it, a sixteenth of the picture sky at the least.
-  // Normal: the bend as it always was (.03). R: the land made tile by tile, north and as wide as the picture is at the horizon (zoomed out its sides were the far sea patches: "dark walls")
-  const VIEW = {near: 9, normal: null, far: 25, veryfar: 37}, BEND = .03;   // (the bend is facets 4 tiles long: level ground meets the sky at a facet's corner, 1 + 4k tiles)
+  // THE VIEW DISTANCE (options.js `view`, viewOf): a number of tiles, where level ground meets the sky, at any zoom: the bend (vox_style_glsl.js sink) worked out for it, a sixteenth of the picture sky at the least.
+  // R: the land made tile by tile, north and as wide as the picture is at the horizon (zoomed out its sides were the far sea patches: "dark walls"). HAZE: the bend the haze is measured on (the old Normal's): farther as the horizon is
+  const HAZE = .03;   // (the bend is facets 4 tiles long: level ground meets the sky at a facet's corner, 1 + 4k tiles: the setting goes in 4s from 9)
   let R = 24, vKey = "", vOf = null;
   // STEEP: the steepest the eye ever looks down (degrees): in a hole, a room, a cave, a shaft, behind a mountain. 58: the land's walls stand as walls and you see what you build on; what hides you is cut (the x-ray, hd_level.js hides / veils), not looked over. (It was 78.6, nearly straight down: "the camera's inclination makes it hard to build")
   const STEEP = 58;
   const cfg = {levels: [-9, 12], variants: 4, up: RELIEF_STEP, rock: {from: 5, lo: -512, n: 4}};
   const cam = {kind: "persp", pitch: 36, fov: 26};
-  const api = {eye: null, get on() { return !!this.eye || (!!me && myId !== null); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen || (warmOn && warm < 3); }, get warm() { return warm; }, get part() { return (eng ? gen ? eng.part : 1 : 0) * .8 + (warm + 1) / 20; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: STEEP, nowin: false, landOnly: false, edge: "B", force: null, cam, bend: .03, faces: 0, builds: 0, n: 0};
+  const api = {eye: null, get on() { return !!this.eye || (!!me && myId !== null); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen || (warmOn && warm < 3); }, get warm() { return warm; }, get part() { return (eng ? gen ? eng.part : 1 : 0) * .8 + (warm + 1) / 20; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: STEEP, nowin: false, landOnly: false, edge: "B", force: null, cam, bend: HAZE, faces: 0, builds: 0, n: 0};
   let hidAt = -1e9, bareAt = false, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, anc = null, ancG = null, genAt = null, landAt = null, held = false, heldAt = 0, wasAt = null, jump = true, genC = null, shownC = null, spent = 0, warm = -1, warmOn = false, primed = false;
-  // the view for a picture h art px tall, w wide, the eye at the surface's pitch -> {v, D, n: tiles to the horizon, b: the bend, R, rx, fog: the haze's [from, to] from the eye (Normal's as it was, the others'
-  // as much farther as their horizon)}; worked out when the screen or the setting change
+  // the view for a picture h art px tall, w wide, the eye at the surface's pitch -> {v, D, n: tiles to the horizon, b: the bend, R, rx, fog: the haze's [from, to] from the eye (the old Normal's,
+  // as much farther as the view)}; worked out when the screen or the setting change
   function viewOf(h, w, pitch) {
-    const v = opt("view") in VIEW ? opt("view") : "normal", D = VIEW[v], k = [v, h, w, pitch.toFixed(1), cam.fov].join(); if (k === vKey) return vOf; vKey = k;
+    const D = Math.max(VIEW_MIN, Math.min(VIEW_MAX, Math.round(opt("view")) || VIEW_MIN)), k = [D, h, w, pitch.toFixed(1), cam.fov].join(); if (k === vKey) return vOf; vKey = k;
     const t = Math.tan(cam.fov * Math.PI / 360), d = h / (32 * t), p = pitch * Math.PI / 180, cp = Math.cos(p), sp = Math.sin(p), sink = VoxStyleGLSL.sink;
     const top = (b) => { let m = -1e9, at = 0; for (let n = 1; n <= 400; n++) { const s = b * sink(Math.max(0, n - 1)), u = (n * sp - s * cp) / (d + n * cp + s * sp); if (u > m) { m = u; at = n; } } return [at, m]; };   // (the highest ground on the picture: the horizon)
-    let lo = .0005, hi = .5; if (D) for (let i = 0; i < 30; i++) { const b = Math.sqrt(lo * hi); if (top(b)[0] >= D) lo = b; else hi = b; }
-    let b = D ? lo : BEND; const b1 = b; while (D && top(b)[1] > .88 * t && b < .5) b *= 1.04;
-    const n = top(b)[0], rx = Math.ceil(w / 32 * (1 + n * cp / d)) + 3, s = n / top(BEND)[0], far = (q) => Math.hypot((Math.sqrt(Math.max(0, q * q - d * d * sp * sp)) - d * cp) * s + d * cp, d * sp);
-    vOf = {v, D: D || n, n, b, capped: b > b1, R: Math.max(24, n + 8, rx), rx, fog: [far(d + 4), far(d + 22)]}; return vOf;
+    let lo = .0005, hi = .5; for (let i = 0; i < 30; i++) { const b = Math.sqrt(lo * hi); if (top(b)[0] >= D) lo = b; else hi = b; }
+    let b = lo; const b1 = b; while (top(b)[1] > .88 * t && b < .5) b *= 1.04;
+    const n = top(b)[0], rx = Math.ceil(w / 32 * (1 + n * cp / d)) + 3, s = n / top(HAZE)[0], far = (q) => Math.hypot((Math.sqrt(Math.max(0, q * q - d * d * sp * sp)) - d * cp) * s + d * cp, d * sp);
+    vOf = {v: D, D, n, b, capped: b > b1, R: Math.max(24, n + 8, rx), rx, fog: [far(d + 4), far(d + 22)]}; return vOf;
   }
   const sprs = new WeakMap(), lads = new Map(), things = new Map(), piles = new Map(), built = new Map(), stoodOf = new Map();
   // (an insertion sort on each one's y read once into YK: the list comes mostly in order. Array sort asked a.y - b.y a thousand times a frame, each a new number made for the collector)

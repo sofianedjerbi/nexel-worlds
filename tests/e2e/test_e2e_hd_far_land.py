@@ -40,7 +40,7 @@ def test_after_a_sprint_onto_new_land_all_of_it_comes_and_is_painted(browser, se
             g.page.wait_for_function(BOXED, timeout=1500)
             g.rest()
             assert g.js("HdLook.raw()") == 0 and g.js("HdLook.bare()") == 0, (v, z, g.js("HdLook.raw()"), g.js("HdLook.bare()"), g.js("[HdLook.box, myPos()]"))
-    g.js("setOpt('view', 'normal'); zoom = ZOOM.to = 3")
+    g.js("setOpt('view', 13); zoom = ZOOM.to = 3")
     # (back home, and all the far land there come: the server's one maker of land is not left with a queue of the
     #  far places' land for the next test's (test_e2e_hd_sky's sky line moved as its far land came late))
     g.rpc("dev_teleport", x=x, y=y)
