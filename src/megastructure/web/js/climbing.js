@@ -40,15 +40,14 @@ const Climb = (() => {
     return z !== null && Math.abs(z - h) > 1 && onLadder(fx, fy, h, x, y, z) ? 1 / (Math.abs(z - h) * CLIMB_S) : 0;
   }
   function paceOf(p) {
-    let ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y);
-    if (ax === bx && ay === by) { bx = p.tx; by = p.ty; if (Math.abs(bx - ax) + Math.abs(by - ay) !== 1) return 0; }
-    const la = Floors.standOf(p, ax, ay), lb = Floors.standOf(p, bx, by);
+    let [ax, ay, bx, by, la, lb] = Floors.between(p);
+    if (ax === bx && ay === by) { bx = p.tx; by = p.ty; if (Math.abs(bx - ax) + Math.abs(by - ay) !== 1) return 0; lb = Floors.standOf(p, bx, by); }   // (on a tile's middle: the one it is going to)
     return Math.abs(la - lb) > 1 && onLadder(ax, ay, la, bx, by, lb) ? 1 / (Math.abs(la - lb) * CLIMB_S) : 0;
   }
   // Someone between two tiles on a ladder, as drawn: up its rungs on its own tile first, and only at the top over onto
   // what it leans on (coming down: over the edge first, then down the rungs); facing it all the way. (It was a straight
   // slide from the foot to the top in a fifth of a second, the ladder drawn over the body.) -> null, or {dx, dy: tiles
-  // to move the body by, lift: art px higher, h: the height it is at (layers), on: on the rungs, u: how far up, fx, fy:
+  // to move the body by, h: the height it is at (levels: its picture's px over the line are the place's, body_place.js), on: on the rungs, u: how far up, fx, fy:
   // the way to the top, y: its place in the frame's order}
   const OVER = .8;                                    // (the part of the step spent on the rungs; the rest is the step over)
   function climbOf(p) {
@@ -62,7 +61,7 @@ const Climb = (() => {
     // the edge, on what it steps onto, as anyone standing up there is. It was the top's row alone, and the block it
     // stepped onto, sorted by its height, was drawn over it: under the platform before going over it)
     const y = on ? foot[1] + (lo - standAt(...foot)) * Floors.K + .02 : top[1] + (hi - standAt(...top)) * Floors.K + .02;
-    return {dx: fx * (pos - u), dy: fy * (pos - u), lift: (h - lo - (hi - lo) * u) * RELIEF_STEP, h, on, u, fx, fy, y};
+    return {dx: fx * (pos - u), dy: fy * (pos - u), h, on, u, fx, fy, y};
   }
 
   // The flight of stairs put at (x, y) by you: [[x, y, ground, top], ...], or {why}

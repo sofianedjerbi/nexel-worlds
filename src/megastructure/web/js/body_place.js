@@ -30,8 +30,9 @@ const BodyPlace = (() => {
     const air = !!jump && !!(jump.air || jump.tuck);
     if (climb && climb.on) face(p, climb.fx, climb.fy);       // (on the rungs: to the ladder)
     const mode = boat ? "boat" : swim ? "swim" : climb ? "climb" : fall && fall.air ? "fall" : jump && (jump.leap || jump.tuck || jump.pose) ? "jump" : "walk";
-    const up = (climb ? climb.lift : 0) + (jump ? Math.round(jump.body) : 0);
     const dx = climb ? climb.dx : 0, dy = climb ? climb.dy : 0, [ax, ay, bx, by, la, lb] = Floors.between(p), f = ax === bx ? p.y - ay : p.x - ax;
+    if (climb) climb.lift = (climb.h - (la + (lb - la) * f)) * RELIEF_STEP;   // (on a ladder: art px over the straight line, for its picture)
+    const up = (climb ? climb.lift : 0) + (jump ? Math.round(jump.body) : 0);
     return {at: now, tx: Math.round(p.x + dx), ty: Math.round(p.y + dy), mode, air, pose: jump && jump.pose || null, fx: p.fx || 0, fy: p.fy || 0, dx, dy,
       line: Math.abs(la - lb) >= FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb) ? (f < .5 ? la : lb) : la + (lb - la) * f, up, eye: (climb ? climb.lift : 0) + (fall ? fall.z * RELIEF_STEP - line : 0), z: climb ? climb.h : (line + up) / RELIEF_STEP, ground: (line + (jump ? jump.ground : 0)) / RELIEF_STEP, jump, fall, climb};
   }
