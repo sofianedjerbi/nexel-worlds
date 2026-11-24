@@ -101,5 +101,15 @@ const HdLevel = (() => {
     for (let d = 1; d <= 8; d++) if (standing(x0, y0 + d) > z + (y0 + d - y) * k) return true;
     return false;
   }
-  return {track, foot, FOOT, own, over, hides, behind, veils, wall, wallAt, cut, body, get place() { return place; }, get cover() { return cov; }, coverOf: cover};
+  // covered(list, at) -> something that STANDS south of you (a tree, a bush, a rock: the frame's list, hd.js; at: the camera's art px of a place) covers your body on the screen: its own px' box over
+  // a quarter of your body's or more. Then you show through what is in front of you, one px in two (hd.js hid). (It was "anything standing within two rows south and a column each side": a flower
+  // at your feet made you show through the land in front, a wide crown three tiles off that covered you did not)
+  function covered(list, at) {
+    const me = list.find((s) => s.top), a = me && at(me.x, me.y, me.z), B = a && body(me, [Math.round(a[0]), Math.round(a[1])], 1); if (!B) return false;
+    for (const s of list) { if (s.tx === undefined || s.lie || !(s.y > me.y)) continue; const p = at(s.x, s.y, s.z), r = p && runsOf(s.canvas); if (!r || !r.b) continue;
+      const x0 = Math.round(p[0]) - s.fx + r.b[0], y0 = Math.round(p[1]) - s.fy + r.b[1], w = Math.min(x0 + r.b[2] - r.b[0], B.x + B.w) - Math.max(x0, B.x), h = Math.min(y0 + r.b[3] - r.b[1], B.y + B.h) - Math.max(y0, B.y);
+      if (w > 0 && h > 0 && w * h >= .25 * B.w * B.h) return true; }
+    return false;
+  }
+  return {track, foot, FOOT, own, over, hides, behind, covered, veils, wall, wallAt, cut, body, get place() { return place; }, get cover() { return cov; }, coverOf: cover};
 })();
