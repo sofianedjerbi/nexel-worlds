@@ -19,7 +19,7 @@ const WaterBed = (() => {
   // The tint over a bed, by its depth (0: none; 1 to 3 levels): water.js's own hues, thicker: a pond one level deep is
   // water at every hour, never a pit of pale sand. BAND: the first row of a wall under water, that much of its colour: a shelf's line, not a box's edge
   const TINT = [[176, 236, 226, .08], [104, 204, 208, .52], [70, 174, 204, .66], [44, 132, 188, .8]], BAND = .93;
-  let tint = null, pad = null, legs = null, floats = null;      // (floats: the shapes of what floats, water_objects 8, 9, 10, 11, 6, 7, 0: 16 x 16 bytes each, 1 where it is)
+  let tint = null, wtn = null, pad = null, legs = null, floats = null;      // (floats: the shapes of what floats, water_objects 8, 9, 10, 11, 6, 7, 0: 16 x 16 bytes each, 1 where it is)
   // What is worked out, kept a chunk (B x B tiles) at a time in typed arrays, made as it is first asked for and kept
   // until a tile near it changes (not when other land comes: a sprint into new land threw it all away every block):
   // d the bed's depth, r its depth before smoothing, s is that land a piece that only stands in the water (1) or a bank
@@ -165,9 +165,11 @@ const WaterBed = (() => {
     if (!tint) { const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)), deepest = WATER.tint[4], sand = hex(WATER.sand[4]);
       tint = new Float32Array([...TINT.map(([r, g, b, a]) => [r / 255, g / 255, b / 255, a]),
         [...deepest.slice(0, 3).map((v, i) => (v * deepest[3] + sand[i] * (1 - deepest[3])) / 255), 1], [...hex(WATER.sand[0]).map((v) => v / 255), BAND],
-        ...WATER.sand.map((h) => [...hex(h).map((v) => v / 255), 1])].flat()); }
+        ...WATER.sand.map((h) => [...hex(h).map((v) => v / 255), 1])].flat());
+      // (wtn, the engine's: the tints 0..4 and each one WHOLE: as it looks over its own bed's sand (the deepest is that already): the water where its bed is not drawn, past the bed's horizon)
+      wtn = new Float32Array(40); wtn.set(tint.subarray(0, 20)); for (let k = 0; k < 5; k++) { const a = tint[k * 4 + 3]; for (let i = 0; i < 3; i++) wtn[20 + k * 4 + i] = tint[k * 4 + i] * a + tint[(6 + k) * 4 + i] * (1 - a); wtn[20 + k * 4 + 3] = 1; } }
     const night = Light.now().dark;
-    return {t, tint, bend: opt("shimmer") ? 1.4 : 0, light: opt("shimmer") ? 1 : 0, far: [5, 16, .8], night, dark: [.38, .58, .54], foam: .55, foamAt: 1, shade: [.7, .8, .92], shadow: .16};
+    return {t, tint, wtn, bend: opt("shimmer") ? 1.4 : 0, light: opt("shimmer") ? 1 : 0, far: [5, 16, .8], night, dark: [.38, .58, .54], foam: .55, foamAt: 1, shade: [.7, .8, .92], shadow: .16};
   }
   // A swimmer's body under the surface (swim.js): its px of the sheet, tinted as the water over it is and fainter the deeper the water
   function under(sheet, a, b, w, h, x, y, z, tx, ty) {

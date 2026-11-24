@@ -234,7 +234,7 @@ const HdLook = (() => {
     const snap = (v) => Math.round(v * 16) / 16;
     const sky = typeof Curve !== "undefined" && Curve.on ? api.sky(now / 1000) : null, low = sky ? sky.low : [.62, .78, .86];   // (the sky stays over the far land down to 6 levels; from 10 down none of it, no sun: the dark of the earth)
     const wl = WaterBed.view(Voxels.engine, now / 1000), day = 1;   // (the haze: viewOf)
-    const light = {amb: .8, lr: 8, day, fog: V.fog, fogc: low, clear: [0, 0, 0], ca: 0, sun: HdSun.sun, rim: .25, wa: .92, wtint: wl && wl.tint ? wl.tint.subarray(0, 20) : null};
+    const light = {amb: .8, lr: 8, day, fog: V.fog, fogc: low, clear: [0, 0, 0], ca: 0, sun: HdSun.sun, rim: .25, wa: .92, wtint: wl && wl.wtn ? wl.wtn : null};
     // ON WHOLE ART PX: the eye looks at you as you are (no rounding of where), then the whole picture is moved by under a px so that a place of the land by you (an anchor: kept while you go east or
     // west, and up or down a step) falls on a whole px, and your body (rounded to a px as every sprite is) stays on the same px of the screen. Up or down a step the land goes a whole px a frame at the most
     // (the eye a px or two behind, caught up after). (The eye's place was rounded to 1/16 tile and 1/16 level: the land went a fraction of a px a frame, drawn 0, 1 or 2 px on, and your body a px up and down on a phone)

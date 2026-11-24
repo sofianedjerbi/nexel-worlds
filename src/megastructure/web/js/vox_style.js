@@ -27,7 +27,7 @@ const VoxStyle = (() => {
     let el = null, lastM = null, lastB = [0, 0], gl = null, pr = null, sp = null, tex = null, wtx = null, htx = null, ltx = null, atx = null, stx = null, sver = 0, sorg = [0, 0, 1], sAt = 0, sBusy = false, sWay = null, cdv = 0, cdAt = 0, sPx = null, sOrg = null, space = null, W_ = null, wxr = 0, wAt = 0, wKey = "", sectAt = [0, 0, 0, 0], winL = [], winN = 0, winJ = "", stale = true, cost = 0, spill = false, wipe = false, mk = false, lost = false, wat = null, fresh = true, calls = 0, why = "";
     let wmap = new Map(), wrim = 0, over = false, mean = [.6, .66, .38], clip = [-1e9, 1e9, -1e9, 1e9], wet = 0, far = new Float32Array(0), made = 0, again = true, lastU = null, lastS = null, lastG = null, lastD = null, hk = "", lk = "";
     // (a frame's numbers into kept writers {f, n}, two of each, the one the last frame drawn is not: the ghosts', the moving shadows', the painter's uniforms (ub, uq: the one being written))
-    const wr = (k) => [{f: new Float32Array(k), n: 0}, {f: new Float32Array(k), n: 0}], GW = wr(4096), DW = wr(4096), UB = wr(512), NOBODY = new Float32Array(12).fill(-9999), Z20 = new Float32Array(20), NOTINT = [-1, -1, -1], LP = [null, null];
+    const wr = (k) => [{f: new Float32Array(k), n: 0}, {f: new Float32Array(k), n: 0}], GW = wr(4096), DW = wr(4096), UB = wr(512), NOBODY = new Float32Array(12).fill(-9999), Z40 = new Float32Array(40), NOTINT = [-1, -1, -1], LP = [null, null];
     let ub = UB[0].f, uq = 0, lastSn = 0, mver = 0; const uP = (x) => { ub[uq++] = x; }, uA = (a) => { for (let i = 0; i < a.length; i++) ub[uq++] = a[i]; };
     const dirty = [], row = new Uint32Array(AW * C), glow = new Map(), U = {}, units = {}, cnt ={main: 0, model: 0, far: 0, ghost: 0, shade: 0, shade2: 0, water: 0}, bufs = {};
     // the paints: A the ones the land now drawn was made with (and what is drawn each frame over it: shadows, ghosts), B the ones of a land being made (A's and its new ones; after a wipe from none); B becomes A when that land is done
@@ -187,7 +187,7 @@ const VoxStyle = (() => {
       const bd = NOBODY;   // (nobody: a body on the land over the window is not drawn at all now, hd.js; it was drawn with the ground under its feet kept one px in two)
       const un = UB[lastU === UB[0] ? 1 : 0]; ub = un.f; uq = 0;   // (every number the painter takes, into the buffer the last frame drawn is not in)
       uP(RW); uP(RH); uA(bd); uA(m); uA(eye); uA(lamp); uP(v.bend || 0); uA(L.fogc); uP(L.lr); uP(L.day); uP(L.amb); uP(L.fog[0]); uP(L.fog[1]); uP(L.rim); uP(L.wa ?? .62); uP(v.dep || 0); uP(L.sun ?? 1);
-      uA(L.wtint || Z20); uA(wv); uA(disc); uA(pw); uA(clip); uA(L.clear); uP(L.ca ?? 1); uP(sver); uA(sorg); uP(wxr); uP(W_.ver); uA(sectAt); uP(rimz); uP(cpx); uP(v.behind || 0); uP(v.under || 0);
+      uA(L.wtint || Z40); uA(wv); uA(disc); uA(pw); uA(clip); uA(L.clear); uP(L.ca ?? 1); uP(sver); uA(sorg); uP(wxr); uP(W_.ver); uA(sectAt); uP(rimz); uP(cpx); uP(v.behind || 0); uP(v.under || 0);
       if (hr) { uP(1); uA(hr.wash); uA(hr.tint || NOTINT); uP(hr.lit ? (hr.lit._v === undefined ? NaN : hr.lit._v) : -1); } else uP(0); un.n = uq;
       const gSame = sameW(gh, lastG), dSame = sameW(sd, lastD);
       why = again ? "land" : sized ? "size" : stale || dirty.length ? "paints" : S.un ? "pictures" : wup ? "water" : !gSame ? "ghosts" : !dSame ? "shadows" : !sameN(S.d, S.n, lastS, lastSn) ? "sprites" : !sameW(un, lastU) ? "view " + firstOff(un, lastU) : "";   // (why this frame is drawn again; "": it is the last one)
@@ -208,7 +208,7 @@ const VoxStyle = (() => {
       gl.uniformMatrix4fv(u("m"), false, m); gl.uniform1i(u("t"), 0); gl.uniform1i(u("wt"), 2); gl.uniform1i(u("gw"), 3); gl.uniform1i(u("mk"), 4); gl.uniform1f(u("xr"), wxr); gl.uniform3fv(u("sc"), (v.sect || SECT)[0]); gl.uniform4fv(u("sp"), sectAt); gl.uniform1f(u("rf"), cfg.rock ? cfg.rock.from : 1e9); gl.uniform3fv(u("go"), sorg); gl.uniform3fv(u("lamp"), [lamp[0], lamp[1] + .6, lamp[2]]); gl.uniform3fv(u("eye"), eye);   // ("gw", not "st": the sprites' names are kept under "s" + name)
       gl.uniform3fv(u("em"), mean); gl.uniform3fv(u("ctr"), lamp); gl.uniform1f(u("bend"), v.bend || 0); gl.uniform2f(u("vpx"), RW, RH); gl.uniform3fv(u("fogc"), L.fogc); gl.uniform4fv(u("cl"), clip);
       { const f1 = (n, x) => gl.uniform1f(u(n), x); f1("lr", L.lr); f1("day", L.day); f1("amb", L.amb); f1("fn", L.fog[0]); f1("ff", L.fog[1]); f1("rim", L.rim); f1("wa", L.wa ?? .62); f1("dep", v.dep || 0); f1("rd", 0); f1("sun", L.sun ?? 1); f1("shp", 0); f1("cd", cdv); f1("rz", rimz); f1("cp", cpx); f1("bh", v.behind || 0); f1("ud", v.under || 0); }
-      gl.uniform4fv(u("wtn[0]"), L.wtint || Z20); gl.uniform4fv(u("wv"), wv); gl.uniform3fv(u("mc"), disc); gl.uniform3fv(u("bd[0]"), bd); gl.uniform4fv(u("pw"), pw); gl.uniform1f(u("bp"), 0);
+      gl.uniform4fv(u("wtn[0]"), L.wtint || Z40); gl.uniform4fv(u("wv"), wv); gl.uniform3fv(u("mc"), disc); gl.uniform3fv(u("bd[0]"), bd); gl.uniform4fv(u("pw"), pw); gl.uniform1f(u("bp"), 0);
       gl.useProgram(sp); gl.uniform1i(us("t"), 1); gl.uniform1i(us("mk"), 4); gl.uniform2f(us("nf"), .5, 200); gl.uniform3fv(us("mc"), disc); gl.uniform4fv(us("pw"), pw); gl.useProgram(pr);
       const go = (b, from, n) => { if (n > 0) { gl.bindVertexArray(b.vao); gl.drawArrays(gl.TRIANGLES, from, n); calls++; } };
       go(bufs.land, 0, cnt.main + cnt.model + cnt.far + cnt.ghost);   // (the land, what stands in it as boxes, the far land, the ghosts: one list)
@@ -227,7 +227,9 @@ const VoxStyle = (() => {
         gl.activeTexture(gl.TEXTURE0); gl.useProgram(pr); };
       run(0);
       gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
-      go(bufs.water, 0, cnt.water); gl.depthMask(true); gl.disable(gl.BLEND); run(3);
+      go(bufs.water, 0, cnt.water);
+      gl.blendFuncSeparate(gl.ONE_MINUS_DST_ALPHA, gl.ONE, gl.ONE_MINUS_DST_ALPHA, gl.ONE); gl.uniform1f(u("wu"), 1); go(bufs.water, 0, cnt.water); gl.uniform1f(u("wu"), 0);   // (and under what it left half there: whole where nothing is behind it, vox_style_glsl.js)
+      gl.depthMask(true); gl.disable(gl.BLEND); run(3);
       if (S.me) { run(1); if (cnt.model) { gl.uniform1f(u("rd"), 1); go(bufs.land, cnt.main, cnt.model); gl.uniform1f(u("rd"), 0); } } run(2);   // (rd: what stands as boxes south of you and over your feet, again over you: one px in two, in the disc)
       if (hr) {   // the hour's light, here and not on a canvas of the page's (it was four of them laid on each other every frame, the last cut out by this picture: slow on a phone, and a phone has drawn such chains wrong): a wash of the hour's colour where something is drawn, then all of it times the light's picture (the lamps in it)
         const a = hr.wash[3], quad = (t, sf, df) => { gl.bindTexture(gl.TEXTURE_2D, t); gl.blendFuncSeparate(sf, df, gl.ZERO, gl.ONE); go(bufs.spr, S.quad, 6); }, one = (t, c, k) => { if (k !== t._k) { gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([c[0], c[1], c[2], 255])); near(); t._k = k; } };
