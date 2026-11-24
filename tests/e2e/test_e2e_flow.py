@@ -152,7 +152,13 @@ def test_running_water_is_one_surface_stepping_down_with_no_seam_and_none_on_the
         def dark(dx, dy, z):                                                          # (a tile's darkest px but two, r + g + b)
             px = sorted(sum(p) for p in g.js(TILEPX, [x + dx, y + dy, z]))
             return px[2] if len(px) > 20 else None
-        run = {(dx, dy): dark(dx, dy, face(dx)) for dx in range(-5, 1) for dy in rows}
+        # (not your own column: the tile three north of you lies behind your head as the eye sees it (its box on the screen from y 236 to 256, your
+        #  sprite's from 249 in the idle frames with the ears up): its "darkest px" were your ears' outline, 316, one run in three)
+        run = {(dx, dy): dark(dx, dy, face(dx)) for dx in range(-5, 0) for dy in rows}
+        body = g.js("HdLook.art().body")
+        for dx, dy in run:                                                            # (and none of the tiles read is behind you)
+            c = [g.js("([x, y, z]) => HdLook.screenOf(x, y, z)", [x + dx + i, y + dy + j, face(dx)]) for i, j in ((0, 0), (1, 1))]
+            assert c[1][0] < body["x"] or c[0][0] > body["x"] + body["w"] or c[1][1] < body["y"] - 8, (dx, dy, c, body)
         pond = {(dx, dy): dark(dx, dy, 0) for dx in (5, 6, 7) for dy in (-4, -3, -2)}
         assert run[(-3, -4)] is not None and run[(-2, -3)] is not None and pond[(6, -3)] is not None, (run, pond)   # (the pit and the pond's middle are read)
         assert min(v for v in run.values() if v) >= min(v for v in pond.values() if v), (run, pond)   # (the slab: 316 to 337, the pond 341, see-through 368)
