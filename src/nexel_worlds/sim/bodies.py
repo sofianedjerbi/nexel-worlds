@@ -15,6 +15,19 @@ from .constants import FALL_SAFE, LAYER
 from .entities import CREATURES, ActionError
 
 
+def reach_of(kind: str, weapon: str | None = None, who: str | None = None) -> float:
+    """How far the world accepts this kind of thing (tiles.py REACH), in tiles: the table's, a tile more for a walking
+    player's lead, a long weapon's more, a wide creature's (`who`: its kind) width. Pure: programs that play by the
+    agent API ask it too, so a rule they check before acting is this one."""
+    return REACH[kind] + LEAD + LONG.get(weapon, 0) + CREATURES.get(who, {}).get("wide", 0)
+
+
+def in_reach(dx: float, dy: float, dz: float, r: float) -> bool:
+    """Reach is a circle round you, as the crow flies: r tiles and the half tile to the far tile's edge; dz, the height
+    between you in layers, is distance too, a layer half a tile. Pure (no world): Bodies.near is this on the land."""
+    return dx ** 2 + dy ** 2 + (dz * LAYER) ** 2 <= (r + .5) ** 2
+
+
 class Bodies:
     """Simulation mixin: a body on the land, a person's or a creature's: its height, its steps, its reach."""
 
@@ -115,7 +128,7 @@ class Bodies:
         h = self.height(a)
         if z is None:
             z = self.ground_near(x, y, h)
-        return (x - a.x) ** 2 + (y - a.y) ** 2 + ((z - h) * LAYER) ** 2 <= (r + .5) ** 2
+        return in_reach(x - a.x, y - a.y, z - h, r)
 
     def land_between(self, a, x: int, y: int, z: int) -> bool:
         """What stands at height z on (x, y) is behind the land for `a`: higher than it, its own tile is shut over its
@@ -129,7 +142,7 @@ class Bodies:
     def within(self, a, kind: str, x: int, y: int, z: int | None = None, weapon: str | None = None, who: str | None = None) -> bool:
         """Does `a` reach (x, y) for this kind of thing (tiles.py REACH)? The one answer for every action: the table's
         tiles, a tile more for a walking player's lead, a long weapon's more, a wide creature's (`who`: its kind) width."""
-        return self.near(a, x, y, REACH[kind] + LEAD + LONG.get(weapon, 0) + CREATURES.get(who, {}).get("wide", 0), z)
+        return self.near(a, x, y, reach_of(kind, weapon, who), z)
 
     def near_block(self, a, block: str) -> bool:
         """A workbench, a fire: one within reach (tiles.py REACH station; height counted, as for all that is reached)."""

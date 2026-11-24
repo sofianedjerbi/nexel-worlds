@@ -85,3 +85,13 @@ def test_every_reach_is_the_one_tables(world):
     assert not sim.near_block(a, "workbench")
     sim.world.set(a.x + 1, a.y, level=-30, block="workbench")                              # beside you, thirty layers down: height is distance
     assert not sim.near_block(a, "workbench")
+
+
+def test_reach_rule_is_pure_and_the_world_uses_it():
+    """Programs on the agent API check reach before acting with the world's own rule, not a copy of it."""
+    from nexel_worlds.sim.bodies import in_reach, reach_of
+    from nexel_worlds.tiles import LEAD, LONG, REACH
+    assert reach_of("melee") == REACH["melee"] + LEAD
+    assert reach_of("melee", "spear") == REACH["melee"] + LEAD + LONG["spear"]
+    assert reach_of("melee", who="mossback") == REACH["melee"] + LEAD + 1
+    assert in_reach(3, 0, 0, 2.5) and not in_reach(3, 1, 0, 2.5) and not in_reach(2, 0, 8, 2)
