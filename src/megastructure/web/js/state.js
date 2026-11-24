@@ -12,7 +12,7 @@ function drawOn(g, z, fn) { const keep = ctx, kz = zoom; ctx = g; zoom = z; try 
 // screen is nine times the paint of a plain one. A machine that still can't keep up (slowFrame, below) draws at 1.
 let DPR = 1, W = 0, H = 0, DPR_MAX = 2, frameMs = 16, paceFrom = 0;
 function resize() {
-  DPR = Math.min(window.devicePixelRatio || 1, opt("sharp") === "light" ? 1 : opt("sharp") === "full" ? 2 : DPR_MAX); W = innerWidth; H = innerHeight;      // (the settings' Sharpness)
+  DPR = Math.min(window.devicePixelRatio || 1, DPR_MAX); W = innerWidth; H = innerHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + "px"; cv.style.height = H + "px";
 }
 addEventListener("resize", resize); resize();
@@ -20,7 +20,7 @@ addEventListener("resize", resize); resize();
 // CSS px from then on (a quarter of the paint; the art is as sharp, only the lettering loses a little)
 function slowFrame(dt, settled) {
   const now = performance.now();
-  if (!settled || document.hidden || DPR <= 1 || opt("sharp") !== "auto") { paceFrom = now; return; }   // (loading, in the background: says nothing)
+  if (!settled || document.hidden || DPR <= 1) { paceFrom = now; return; }   // (loading, in the background: says nothing)
   frameMs += (Math.min(dt, .1) * 1000 - frameMs) * .02;
   if (frameMs < 30) paceFrom = now;
   else if (now - paceFrom > 4000) { DPR_MAX = 1; frameMs = 16; resize(); }

@@ -63,8 +63,8 @@ By area, for "the files I touched and their neighbours":
 
 | area | files |
 | --- | --- |
-| land, picture | land, relief, pixels, edits, curve, tall, water, models |
-| hidden, light | views, stacked, daylight |
+| land, picture | land, relief, pixels, edits, curve, tall, water, models, picture_options |
+| hidden, light | stacked, daylight |
 | HD look | hd, hd_land, hd_sun, hd_sky, hd_phone, hd_window, hd_stair, hd_trench, hd_behind, hd_paints |
 | building | build, buildghost, building, floors, digging, climb, edges, wayout, wayshow, target |
 | moving, living | moving, fall, swim, living, gathering, wild, boss, flee, wear, races, monkey |

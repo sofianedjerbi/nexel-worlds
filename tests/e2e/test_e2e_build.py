@@ -55,7 +55,6 @@ def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
     its own. It is a block like the rest (a `roof`, from wood): a storey up, on a wall or beside a block, planned
     with the cursor (with a roof in hand, over what the cursor is on), taken back with X; and whoever stands under
     it sees through all of it."""
-    game.js("setOpt('above', 'faded')")                        # (the view that fades what is over you)
     game.clear_area(8)
     x, y = game.pos()
     game.stamp(2, -3, ["WWWW", "W..W", "WW+W"]); game.rest()               # walls and a door, no roof: nothing draws one by itself
@@ -90,7 +89,7 @@ def test_a_roof_is_laid_a_block_at_a_time_and_seen_through_from_under_it(game):
     assert game.server()["sheltered"] is False
     game.rpc("dev_teleport", x=x + 4, y=y - 2, z=0); game.arrive()            # under it (on the ground: without a height you are set down on top, on the roof)
     assert game.server()["sheltered"] is True and not game.errors
-    assert game.js("([x, y]) => [Floors.alpha(x + 4, y - 2, 3), Floors.alpha(x + 2, y - 3, 3)]", [x, y]) == [.12, .12]  # from under it: seen through, the whole roof
+    assert game.js("([x, y]) => [Floors.alpha(x + 4, y - 2, 3), Floors.alpha(x + 2, y - 3, 3)]", [x, y]) == [0, 0]      # from under it: seen through, the whole roof
     assert game.server()["z"] == 0 and game.js(f"solidAt({x + 4}, {y - 2}, 3) && !solidAt({x + 4}, {y - 2}, 2)")      # a block: it can be stood on
 
 

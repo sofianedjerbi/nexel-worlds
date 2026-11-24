@@ -10,15 +10,13 @@ const OPT_DEFAULT = {
   master: 100, music: 100, steps: 100, work: 100, fights: 100, animals: 100, world: 100, voices: 100, ui: 100,
   often: "normal",        // how long the silences between two pieces of music are: often, normal, rarely
   // picture
-  sharp: "auto",          // device px a CSS px: auto (2, and 1 on a machine that cannot keep up), full (2), light (1)
-  above: "cut",           // what is built over you: cut (away), faded (VIEWS; an old browser's outline is cut, its circle faded: floors.js)
   night: 0,               // how much the night is lit up, 0 (as it is) to 100
   particles: "all",       // all, fewer, none
   shake: true,            // the ground shakes when a fall hurts
   glide: true,            // a zoom level glides into the next
   shimmer: true,          // the water's moving light and small waves
   view: 13,               // how far you see, in tiles: where level ground meets the sky (hd.js viewOf), VIEW_MIN to VIEW_MAX in 4s (the bend's facets); a sixteenth of the picture stays sky: zoomed in, less far
-  curve: "far",           // the ground bends away to a horizon, with a sky over it (curve.js): off (the flat picture), near, far
+  curve: true,            // the ground bends away to the horizon, with a sky over it (curve.js, hd.js viewOf); off: flat, the land to the picture's top
   floats: true,           // hearts lost, things gained, written over heads
   clearwater: true,       // the water is seen through, to its bed (waterbed.js, vox_water.js); off: the water as one painted face
   depth: true,            // the land's depth: the sun's shadows, shade at a wall's foot, higher land lighter (sunland.js, vox_light.js); off: the land as it is painted
@@ -34,8 +32,8 @@ const OPT_DEFAULT = {
 // the view distance's range, tiles (the bend's facets are 4 tiles: the horizon is at 1 + 4k): from the old Near to past the old Very far (37); the top
 // as far as a desk and a phone keep a sprint within a frame, and the server gives far land (views.py FAR_VIEW); a short picture keeps a sixteenth of sky first (hd.js viewOf)
 const VIEW_MIN = 9, VIEW_MAX = 65, VIEW_STEP = 4;
-// what a setting was kept as before, and what it is now (the view distance was Near, Normal, Far, Very far)
-const OPT_WAS = {view: {near: 9, normal: 13, far: 25, veryfar: 37}};
+// what a setting was kept as before, and what it is now (the view distance was Near, Normal, Far, Very far; the curved world Off, Near, Far)
+const OPT_WAS = {view: {near: 9, normal: 13, far: 25, veryfar: 37}, curve: {off: false, near: true, far: true}};
 const OPT = {v: {...OPT_DEFAULT}};
 try { Object.assign(OPT.v, JSON.parse(localStorage.getItem("megastructure-options") || "{}")); } catch (e) { /* unreadable: the defaults */ }
 for (const [k, was] of Object.entries(OPT_WAS)) if (Object.prototype.hasOwnProperty.call(was, OPT.v[k])) OPT.v[k] = was[OPT.v[k]];
@@ -53,21 +51,10 @@ function optSave() {
 // What a setting changes at once (the rest is read where it is used).
 function optApply(k) {
   if (typeof soundLevels === "function") soundLevels();                      // (audio.js: the volumes)
-  if (k === "sharp" && typeof resize === "function") resize();
   document.body.classList.toggle("nohints", !opt("hints"));
   document.body.classList.toggle("notips", !opt("tips"));
 }
 addEventListener("DOMContentLoaded", () => optApply());
-
-// What is built over you, two ways to show it: the floors and the roof of the house you are in (in build mode, all over
-// the cursor's floor: floors.js) cut away, or drawn faint (hd_things.js). (Land over you: the HD look's x-ray window,
-// whatever this says.) V goes from one to the next (keyboard.js); the Picture page has them too.
-const VIEWS = [{key: "cut", name: "Cut away"}, {key: "faded", name: "Faded"}];
-function nextView() {
-  const i = VIEWS.findIndex((v) => v.key === opt("above")), v = VIEWS[(i + 1) % VIEWS.length];
-  setOpt("above", v.key);
-  toast(`What is built over you: **${v.name}** \`V\``);
-}
 
 // The sound families of audio.js (SOUND.mix) under the settings' sliders.
 const SOUND_OPT = {Footsteps: "steps", Work: "work", Breaking: "work", Building: "work", Fights: "fights", Boss: "fights", Animals: "animals",
@@ -86,7 +73,7 @@ const KEY_ACTIONS = {use: ["e", "Use: open, place, eat"], alt: ["keyq", "Break: 
   hands: ["`", "Empty your hands"], drop: ["keyy", "Drop one (Shift: all)"], craft: ["c", "Craft"], bag: ["i", "Inventory"], build: ["keyz", "Build mode"], up: ["r", "Dig up"], talk: ["t", "Talk"], mute: ["m", "Sound on or off"]};
 // (Drop: the free key nearest the left hand, beside T and G, by its place: a German keyboard's Y and Z change places)
 const KEY_FIXED = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "shift", "enter", "escape", "control", "alt", "meta", "capslock",
-  "h", "?", "g", "v", "f3", "/", "+", "=", "-", "_", ..."0123456789"]);
+  "h", "?", "g", "f3", "/", "+", "=", "-", "_", ..."0123456789"]);
 const bindable = (k) => typeof k === "string" && !KEY_FIXED.has(k) && (k.length === 1 || /^f\d+$/.test(k) || ["keyq", "keyz", "keyy", "tab"].includes(k));
 const keyOf = (action) => opt("keys")[action] || KEY_ACTIONS[action][0];
 // A key pressed -> its name for the game. Walking is by place (an AZERTY's Z Q S D are a QWERTY's W A S D: they walk,

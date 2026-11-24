@@ -124,7 +124,6 @@ def test_you_see_the_floor_you_are_on_and_fall_off_its_edge(game):
     """A house of two storeys. From outside all of it is drawn; in the room, what is over your head is seen through,
     the floor above and the roof with it; on the steps still; upstairs, only the roof, and the floor you stand on is
     whole. A bed upstairs is slept in; off the edge of a floor you fall to the ground."""
-    game.js("setOpt('above', 'faded')")                        # (the view that fades what is over you)
     game.clear_area(10)
     x, y = game.pos()
     x0, y0 = x + 2, y - 7
@@ -134,11 +133,11 @@ def test_you_see_the_floor_you_are_on_and_fall_off_its_edge(game):
     go(game, x, y, 0)
     assert alpha(floor, roof, wall) == [1, 1, 1] and game.server()["sheltered"] is False            # from outside
     go(game, x0 + 3, y0 + 2, 0)                                               # in the room
-    assert alpha(floor, roof, wall) == [.12, .12, .12] and game.server()["sheltered"] is True and game.server()["in_cave"] is False
+    assert alpha(floor, roof, wall) == [0, 0, 0] and game.server()["sheltered"] is True and game.server()["in_cave"] is False
     go(game, x0 + 1, y0 + 2, 1)                                               # on the first step: the room still
-    assert alpha(floor, roof) == [.12, .12]
+    assert alpha(floor, roof) == [0, 0]
     go(game, x0 + 2, y0 + 2, 3)                                               # upstairs
-    assert alpha(floor, roof, wall) == [1, .12, 1] and game.js("liftOf(ents.get('agent' + myId)) / zoom") == 48
+    assert alpha(floor, roof, wall) == [1, 0, 1] and game.js("liftOf(ents.get('agent' + myId)) / zoom") == 48
     # others see you up there: the server says your height
     assert game.js("ents.get('agent' + myId).e.z") == 3
     game.hold(["ArrowUp"], 90)                                                                      # a tile north: the bed is to the east

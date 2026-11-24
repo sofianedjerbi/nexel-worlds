@@ -59,8 +59,6 @@ def test_the_picture_and_screen_settings_do_what_they_say(game):
     assert game.js(ROW) == "Zoom"
     game.press("ArrowRight", 500)
     assert game.js("zoom") == 4
-    game.press("ArrowDown"); game.press("ArrowLeft")            # Sharpness: light
-    assert game.js("[opt('sharp'), DPR]") == ["light", 1]
     at_row(game, "Particles"); game.press("ArrowLeft")          # none
     assert game.js("(() => { parts.length = 0; puffs.length = 0; burst(0, 0, 'hit', 6); debris(0, 0, null, 5, {dust: true}); smoke(0, 0, 8); return parts.length + puffs.length; })()") == 0
     game.press("ArrowLeft")                                     # fewer

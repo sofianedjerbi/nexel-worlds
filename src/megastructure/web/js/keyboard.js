@@ -249,7 +249,6 @@ const SHORTCUTS = {        // key -> what it does (when no panel takes the key)
   h: () => $("helpbtn").click(), "?": () => $("helpbtn").click(),
   g: () => toggleGoals(),                            // (goals.js: the goals' card, or away again)
   keyz: () => Build.toggle(), b: () => Build.toggle(),       // (build.js: plan with a cursor, your character builds. keyz: the key under A, by place)
-  v: () => nextView(),                               // (options.js: how what hides you is shown, the next way)
   f3: () => F3.toggle(),                             // (f3.js: the debug screen)
   t: () => openChat(),
   enter: () => openChat(),

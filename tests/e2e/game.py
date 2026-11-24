@@ -54,8 +54,8 @@ class Game(Waits):
 
     # ---- session
     def join(self, name, zoom=4, curve=None):
-        """(curve: the settings' Curved world: None, as the game has it for a player (Far); False: the flat picture,
-        for a test that cannot be about the curved one; "near", "far": that one)"""
+        """(curve: the settings' Curved world: None, as the game has it for a player (on); False: the flat picture,
+        for a test that cannot be about the curved one; True: the curved one)"""
         self.load(zoom, curve)
         self.page.wait_for_function("typeof ready !== 'undefined'")
         self.page.click("#name")

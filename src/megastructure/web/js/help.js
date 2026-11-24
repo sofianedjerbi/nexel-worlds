@@ -7,7 +7,7 @@
 // types it (keyCap: ZQSD on an AZERTY), else as written (build mode's keys are its own: X, E)
 const HELP = [
   ["Move", [[["~w", "~a", "~s", "~d"], "Walk"], [["Shift"], "Sprint: hold it"], [["{jump}"], "Jump: up a step"], [["Alt"], "Turn without walking"], [["G"], "Goals: show or hide"]]],
-  ["See", [[["+", "−"], "Zoom (or the wheel)"], [["V"], "What is built over you"]]],
+  ["See", [[["+", "−"], "Zoom (or the wheel)"]]],
   ["Do", [[["{use}"], "Use: open, harvest, eat"], [["{alt}", "X"], "Break: mine, chop, hit"], [["{pick}"], "Pick up"],
     [["Left click"], "{alt} there, or walk"], [["Right click"], "{use} there"]]],
   ["Carry", [[["1-9", "{next}"], "Slot in hand"], [["{hands}"], "Empty your hands"], [["{use}"], "Place what you hold"],

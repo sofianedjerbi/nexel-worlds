@@ -3,10 +3,9 @@
 // line where the bend starts the screen is exactly the flat one, and aiming is as it was. The maths is the engine's
 // (vox_curve.js: one function for the GPU and for this file); here are the numbers, where the eye is, the `sy`
 // everything that stands is placed with (render.js), and the sky's colours by the hour (vox_sky.js draws it).
-// The settings' "Curved world" (options.js: curve): Off, the flat picture, as ever; Near, a bend that shows the
-// ground the flat screen showed; Far, a roll-off that shows more land, further away. (?curve=0, near or far in the
-// page's address, or Curve.force "off", "near", "far": that for this page whatever the setting, which is left as
-// it is: the browser tests are written on the flat picture.)
+// The settings' "Curved world" (options.js: curve), ONE parameter of the HD look's view (hd.js viewOf): on, the land
+// bends away to the horizon the view distance puts, a sky over it; off, it is flat, the land to the picture's top,
+// no sky. (?curve=0 or 1 in the page's address, or Curve.force "off" / "on": that for this page whatever the setting.)
 //
 // x is as it was, and a height is as tall far off as near. Every point is pushed down the screen by the square
 // of how far it is past the line where the roll starts (vox_curve.js), so level ground goes up to a horizon and
@@ -16,8 +15,7 @@
 // its own ground line: it leaves the picture as a thing behind a hill does, before it lies over what is in front.
 
 // from, horizon: where the roll starts and where level ground's horizon is, as shares of the screen's height from
-// its bottom. Near: the land to seven tiles north of you (1280 x 720, zoom 3), a little less than the flat screen
-// showed; Far: to eight, a little more, under a thinner sky (what is six to nine tiles off is still read). lean: the share of a height over you that counts as distance (vox_curve.js:
+// its bottom (the sky's line before the HD look has its own, hd_eye.js). lean: the share of a height over you that counts as distance (vox_curve.js:
 // what keeps a horizon on a mountain's side). foot: how far down its tile what stands has its feet (13 art px of
 // 16): that spot of the tile is where it is put. fade, depth: a row squeezed under `fade` of a tile takes what
 // stands on it down, `depth` tiles by the time the row is on the horizon. floor: how squeezed a row may get: a tile's
@@ -25,19 +23,21 @@
 // art": the land near the horizon is whole px of its paint, and readable: vox_curve.js). tuft, short: what goes down
 // behind the roll is cut along the grass of the ground before it, tufts up to `tuft` art px tall, and is not drawn
 // at all once under `short` art px of it are left.
-const CURVE = {near: {from: .55, horizon: .8, floor: .5}, far: {from: .55, horizon: .86, floor: .5}, lean: .3, foot: 13 / 16, fade: .5, depth: 1.5, tuft: 2, short: 6};
+const CURVE = {from: .55, horizon: .86, floor: .5, lean: .3, foot: 13 / 16, fade: .5, depth: 1.5, tuft: 2, short: 6};
 const CURVE_SKY = {      // each: by day, at dusk and dawn, at night
   top: [[.33, .6, .93], [.27, .3, .58], [.05, .07, .19]], low: [[.78, .9, .98], [.99, .68, .42], [.17, .21, .44]],
   cloud: [[1, 1, 1], [1, .82, .72], [.3, .34, .56]], far: [[.5, .62, .78], [.52, .36, .5], [.1, .13, .3]], near: [[.4, .6, .5], [.5, .36, .34], [.08, .13, .22]],
   sun: [1, .95, .7], moon: [.92, .94, 1],
 };
 const Curve = (() => {
-  let force = {0: "off", near: "near", far: "far"}[new URLSearchParams(location.search).get("curve")] ?? null;
+  const forced = (v) => (v === null || v === undefined ? null : !(v === "off" || v === "0" || v === false || v === 0));
+  let force = forced(new URLSearchParams(location.search).get("curve"));
+  const bent = () => (force === null ? !!opt("curve") : force);   // (the setting, or the page's own)
   let c = null, audit = false, zs = 1;
   // Once a frame, before anything is placed (render.js): the curve as it is now. (zs: a zoom's glide has just ended:
   // the roll as the magnified picture had it, let back to its own place: zoom.js)
   function frame(ox, oy, S, now) {
-    const m = CURVE[force === null ? opt("curve") : force];
+    const m = bent() ? CURVE : null;
     if (!m || (typeof TitleScene !== "undefined" && TitleScene.on && !HdLook.live)) { c = null; return; }      // (the first screen's island in the classic look is drawn on the very px of its still picture: flat; in the HD look it has its sky)
     const z = zoom, snap = (v) => Math.round(v / z) * z, mid = H / 2;
     if (!ZOOM.busy) zs = Math.abs(zs - 1) < .004 ? 1 : zs + (1 - zs) * .14;
@@ -89,11 +89,11 @@ const Curve = (() => {
       top: pick(CURVE_SKY.top), low: pick(CURVE_SKY.low), cloud: pick(CURVE_SKY.cloud), far: pick(CURVE_SKY.far), near: pick(CURVE_SKY.near),
       orb: col(day ? CURVE_SKY.sun : CURVE_SKY.moon), at: [.88 - .76 * way, -.14 + .92 * Math.sin(way * Math.PI), Math.min(day ? 5.5 : 4.5, band * .2)], stars: night, audit};
   }
-  return {frame, sy, sky, get on() { return !!c; }, get c() { return c; }, get line() { return c ? c.line : 0; },
+  return {frame, sy, sky, get on() { return !!c; }, get bent() { return bent(); }, get c() { return c; }, get line() { return c ? c.line : 0; },
     y: (f, h = 0) => VoxCurve.y(c, f, h), inv: (s) => VoxCurve.inv(c, s),      // (a row and a height on the screen; the place of the flat picture drawn at s)
     // how much further north than the flat screen the rolled one shows before its horizon: px (Far: a little; in a
     // pit the land over you is nearer its horizon still: nothing more)
     over: () => (c ? Math.max(0, Math.ceil(-VoxCurve.edge(c))) + 2 : 0),
     rezoom: (k) => { zs *= k; },                             // (the picture was magnified k times and is now drawn at that size: zoom.js)
-    set audit(v) { audit = v; }, set force(v) { force = v; }};
+    set audit(v) { audit = v; }, set force(v) { force = forced(v); }};
 })();

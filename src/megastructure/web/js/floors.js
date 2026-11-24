@@ -6,13 +6,13 @@
 //   (structures.js), the same block.
 // So a tile can be stood on at more than one height (the room, the floor over it): a body is drawn at its own.
 // What is over your head is seen through, with all that holds to it at that height and all that is higher there: you
-// see the room you are in. In build mode: all that is over the cursor's level. How, the settings say (options.js,
-// VIEWS): not drawn (cut away), or faint (faded).
+// see the room you are in. In build mode: all that is over the cursor's level. It is not drawn (cut away: the HD look,
+// hd_things.js; drawn faint was the classic picture's, gone).
 // A server from before blocks says `roofs`, not `floors`: each of its roof tiles is shown as a roof block a storey
 // over its ground; nobody stands on those (FLOORS false).
 let FLOORS = false;
 const Floors = (() => {
-  const STOREY = RULES.storey, K = .03, THIN = .12, FAINT = .3;
+  const STOREY = RULES.storey, K = .03;
   let ver = 0, over = {key: "-", z: 99, tiles: new Set()};
   const colOf = (x, y) => { const b = blockOf(x, y); return b && b.built ? b.built.get((y - b.by * B) * B + (x - b.bx * B)) : undefined; };   // z -> [kind, the char of what stands on it]
   const get = (x, y, z) => { const c = colOf(x, y); return c ? c.get(z) : undefined; };
@@ -77,8 +77,7 @@ const Floors = (() => {
   }
   // How much of what is at height z of the tile is drawn: over you, or over the cursor's floor, as the view has it
   // (cut away: none of it)
-  const hides = (x, y, z) => (mine().tiles.has(x + "," + y) && z >= over.z ? THIN : Build.on && z > Build.level() ? FAINT : 0);
-  const alpha = (x, y, z) => { const h = hides(x, y, z); return !h ? 1 : opt("above") === "faded" || opt("above") === "circle" ? h : 0; };
+  const alpha = (x, y, z) => ((mine().tiles.has(x + "," + y) && z >= over.z) || (Build.on && z > Build.level()) ? 0 : 1);
   // A step of a flight, painted (climbing.js: its own picture). Planks and a roof are data the land's painter lays: hd_things.js block
   // (they were painted here on a 2D canvas at the zoom and read back)
   function cell(kind, x, y, z, sx, sy, S, a) { return Climb.drawStep(x, y, z, sx(x), syUp(sy, y, shOf(z) * zoom), a); }

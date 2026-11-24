@@ -18,16 +18,17 @@ const HdLook = (() => {
   const cam = {kind: "persp", pitch: 36, fov: 26};
   const api = {eye: null, get on() { return !!this.eye || (!!me && myId !== null); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen || (warmOn && warm < 3); }, get warm() { return warm; }, get part() { return (eng ? gen ? eng.part : 1 : 0) * .8 + (warm + 1) / 20; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: STEEP, nowin: false, landOnly: false, edge: "B", force: null, cam, bend: HAZE, faces: 0, builds: 0, n: 0};
   let hidAt = -1e9, bareAt = false, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, anc = null, ancG = null, genAt = null, landAt = null, held = false, heldAt = 0, wasAt = null, jump = true, genC = null, shownC = null, spent = 0, warm = -1, warmOn = false, primed = false;
-  // the view for a picture h art px tall, w wide, the eye at the surface's pitch -> {v, D, n: tiles to the horizon, b: the bend, R, rx, fog: the haze's [from, to] from the eye (the old Normal's,
-  // as much farther as the view)}; worked out when the screen or the setting change
+  // the view for a picture h art px tall, w wide, the eye at the surface's pitch -> {v, D, n: tiles to the horizon (flat: to the picture's top), b: the bend, R, rx, fog: the haze's [from, to] from the eye
+  // (the old Normal's, as much farther as the view)}; worked out when the screen or the settings change. Two settings, one view: the view distance D, the curved world (curve.js bent: off, b 0, flat)
   function viewOf(h, w, pitch) {
-    const D = Math.max(VIEW_MIN, Math.min(VIEW_MAX, Math.round(opt("view")) || VIEW_MIN)), k = [D, h, w, pitch.toFixed(1), cam.fov].join(); if (k === vKey) return vOf; vKey = k;
+    const D = Math.max(VIEW_MIN, Math.min(VIEW_MAX, Math.round(opt("view")) || VIEW_MIN)), bent = typeof Curve === "undefined" || Curve.bent, k = [D, bent, h, w, pitch.toFixed(1), cam.fov].join(); if (k === vKey) return vOf; vKey = k;
     const t = Math.tan(cam.fov * Math.PI / 360), d = h / (32 * t), p = pitch * Math.PI / 180, cp = Math.cos(p), sp = Math.sin(p), sink = VoxStyleGLSL.sink;
     const top = (b) => { let m = -1e9, at = 0; for (let n = 1; n <= 400; n++) { const s = b * sink(Math.max(0, n - 1)), u = (n * sp - s * cp) / (d + n * cp + s * sp); if (u > m) { m = u; at = n; } } return [at, m]; };   // (the highest ground on the picture: the horizon)
-    let lo = .0005, hi = .5; for (let i = 0; i < 30; i++) { const b = Math.sqrt(lo * hi); if (top(b)[0] >= D) lo = b; else hi = b; }
-    let b = lo; const b1 = b; while (top(b)[1] > .88 * t && b < .5) b *= 1.04;
-    const n = top(b)[0], rx = Math.ceil(w / 32 * (1 + n * cp / d)) + 3, s = n / top(HAZE)[0], far = (q) => Math.hypot((Math.sqrt(Math.max(0, q * q - d * d * sp * sp)) - d * cp) * s + d * cp, d * sp);
-    vOf = {v: D, D, n, b, capped: b > b1, R: Math.max(24, n + 8, rx), rx, fog: [far(d + 4), far(d + 22)]}; return vOf;
+    let b = 0, b1 = 0, n = Math.ceil(t * d / Math.max(.01, sp - t * cp));   // (flat: the row at the picture's top)
+    if (bent) { let lo = .0005, hi = .5; for (let i = 0; i < 30; i++) { const q = Math.sqrt(lo * hi); if (top(q)[0] >= D) lo = q; else hi = q; }
+      b = b1 = lo; while (top(b)[1] > .88 * t && b < .5) b *= 1.04; n = top(b)[0]; }
+    const rx = Math.ceil(w / 32 * (1 + n * cp / d)) + 3, s = (bent ? n : D) / top(HAZE)[0], far = (q) => Math.hypot((Math.sqrt(Math.max(0, q * q - d * d * sp * sp)) - d * cp) * s + d * cp, d * sp);
+    vOf = {v: D + (bent ? "" : "f"), D, n, b, capped: b > b1, R: Math.max(24, n + 8, rx), rx, fog: [far(d + 4), far(d + 22)]}; return vOf;
   }
   const sprs = new WeakMap(), lads = new Map(), things = new Map(), piles = new Map(), built = new Map(), stoodOf = new Map();
   // (an insertion sort on each one's y read once into YK: the list comes mostly in order. Array sort asked a.y - b.y a thousand times a frame, each a new number made for the collector)
@@ -234,15 +235,16 @@ const HdLook = (() => {
     const snap = (v) => Math.round(v * 16) / 16;
     const sky = typeof Curve !== "undefined" && Curve.on ? api.sky(now / 1000) : null, low = sky ? sky.low : [.62, .78, .86];   // (the sky stays over the far land down to 6 levels; from 10 down none of it, no sun: the dark of the earth)
     const wl = WaterBed.view(Voxels.engine, now / 1000), day = 1;   // (the haze: viewOf)
-    const light = {amb: .8, lr: 8, day, fog: V.fog, fogc: low, clear: [0, 0, 0], ca: 0, sun: HdSun.sun, rim: .25, wa: .92, wtint: wl && wl.wtn ? wl.wtn : null};
+    const light = {amb: .8, lr: 8, day, fog: V.fog, fogc: low, clear: [0, 0, 0], ca: 0, sun: HdSun.sun, rim: opt("depth") ? .25 : 0, wa: .92, wtint: wl && wl.wtn ? wl.wtn : null};
     // ON WHOLE ART PX: the eye looks at you as you are (no rounding of where), then the whole picture is moved by under a px so that a place of the land by you (an anchor: kept while you go east or
     // west, and up or down a step) falls on a whole px, and your body (rounded to a px as every sprite is) stays on the same px of the screen. Up or down a step the land goes a whole px a frame at the most
     // (the eye a px or two behind, caught up after). (The eye's place was rounded to 1/16 tile and 1/16 level: the land went a fraction of a px a frame, drawn 0, 1 or 2 px on, and your body a px up and down on a phone)
+    const shake = p.free ? 0 : fallShake(now);   // (a fall that hurt shakes the ground: whole art px, jump.js; the setting's Shake)
     const pin = p.free ? null : (pr) => { const b = pr(p.x + .5, p.y + .5, Lf), fx = b[0] - Math.round(b[0]), fy = b[1] - Math.round(b[1]);
       const g = Leap.on() ? Leap.level()[0] : L, sank = ancG !== null && g !== ancG && !Leap.on() && !Leap.gliding() && p.x === p.tx && p.y === p.ty; ancG = g; if (!anc || anc[1] !== ty || Math.abs(anc[0] - tx) > 12 || Math.abs(anc[2] - camL) > 8 || sank) anc = [tx, ty, g, null, null];   // (at the level of the ground you stand on, as your feet; made again there when the ground under you changes while you stand (dug or laid under you; not a step, walked or jumped: through a step it is kept, and the land goes whole px): it was made at the eye's level, which glides a px a frame after a teleport, and kept through drops of up to 8 levels. Levels from your feet, nearer the eye or farther, the next step up moved the land by you 0.965 px a frame, then -0.035 (a level), 0.93 then -0.07 (two): a swim of the whole picture, "0.965 instead of 1", one run in eight: a player woken on a hill, the test's meadow laid a level under them.)
       const o = pr(anc[0] + .5, anc[1] + .5, anc[2]), want = Math.round(o[1] - fy), cap = Math.max(1, Math.round(dt * 60));
       const oy = anc[3] === null || anc[4] !== cam.pitch || Math.abs(want - anc[3]) > 24 ? want : anc[3] + Math.sign(want - anc[3]) * Math.max(Math.min(cap, Math.abs(want - anc[3])), Math.abs(want - anc[3]) - 2);   // (a tilt, a fall, a jump of the eye: as it is. A sprint up a stair: never more than 2 px behind)
-      anc[3] = oy; anc[4] = cam.pitch; return [Math.round(o[0] - fx) - o[0], oy - o[1]]; };
+      anc[3] = oy; anc[4] = cam.pitch; return [Math.round(o[0] - fx) - o[0], oy - o[1] + shake]; };
     if (warmOn && warm >= 3 && gen) { reachOf(tx, ty, w, h, now); api.ms = performance.now() - t0; return; }   // (the first screen's island, all made but its land, under the wait: nothing to draw, the land made 24 ms a frame)
     let pic = eng.draw({w, h, cam, at: [p.x + .5, p.y + .5, camL + .5], pin, bend: api.bend, t: now / 1000, light,
       water: typeof waterCv !== "undefined" && waterView ? {canvas: waterCv, x: waterView.x, y: waterView.y, ver: Voxels.wver} : null, dep, own, rim: C.rim, under: HdEase.of("under", roof), sky: bare, behind: p.free || cov0 ? 0 : HdEase.of("behind", HdLevel.over(tx, ty, L, kS) >= 1), hid: (api.hid = p.free || cov0 || HdLevel.over(tx, ty, L, kS) >= 1 || HdLevel.covered(list, eng.at) ? 1 : 0), win: api.nowin ? 0 : 1, edge: api.edge, sprites: api.landOnly ? [] : list, way: WayShow.land(), ghosts: api.landOnly ? [] : pieces(list), hour: lamps.hour(w, h, list)});   // (hid 0: the land in front hides no more than your legs (a step a level up just south of you): it is in front of them, the step's edge over you at your waist, not one px in two of you over it: "it looks like I am above the border but I am under". Higher, or covered, or a thing standing just south of you (a tree, a wall, a pillar: what stands is not land, and from Jump 8 you were drawn whole over the tree in front of you): you show through it)

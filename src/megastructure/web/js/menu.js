@@ -7,7 +7,7 @@
 const MENU = {open: false, view: "main", page: 0, at: 0, grab: null, drag: null, said: ""};
 const menuOpen = () => MENU.open;
 // The kinds of row. Each: {name, kind, get(), set(v), def} and what its kind needs.
-const kept = (key) => ({get: () => opt(key), set: (v) => setOpt(key, v), def: OPT_DEFAULT[key]});
+const kept = (key) => ({key, get: () => opt(key), set: (v) => setOpt(key, v), def: OPT_DEFAULT[key]});
 const slider = (name, key, more = {}) => ({name, kind: "slider", min: 0, max: 100, step: 10, unit: "%", hear: key, ...(typeof key === "string" ? kept(key) : {}), ...more});
 const toggle = (name, key, more = {}) => ({name, kind: "toggle", ...(typeof key === "string" ? kept(key) : key), ...more});
 const choice = (name, key, list) => ({name, kind: "choice", list, ...kept(key)});
@@ -24,13 +24,11 @@ const MENU_PAGES = [
     slider("The world", "world"), slider("Voices", "voices"), slider("Menus and clicks", "ui")]],
   ["Picture", [
     slider("Zoom", null, {get: () => (ZOOM.busy ? ZOOM.to : zoom), set: (v) => zoomBy(v - (ZOOM.busy ? ZOOM.to : zoom)), min: () => zoomLeast(), max: ZOOM.max, step: 1, unit: "", def: 3, hear: null}),
-    choice("Sharpness", "sharp", [["auto", "Auto"], ["full", "Full"], ["light", "Light"]]),
     slider("Light at night", "night", {hear: null}),
     choice("Particles", "particles", [["all", "All"], ["fewer", "Fewer"], ["none", "None"]]),
     slider("View distance", "view", {min: VIEW_MIN, max: VIEW_MAX, step: VIEW_STEP, unit: "", hear: null}),      // (tiles to the horizon, as a render distance is chunks)
-    choice("Curved world", "curve", [["off", "Off"], ["near", "Near"], ["far", "Far"]]), toggle("Depth", "depth"), toggle("Clear water", "clearwater"), toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
-    ...[["Shadows", "shadows"], ["Shadow length", "shadowlen"]].map(([name, key]) => slider(name, key, {max: 200, step: 20, hear: null})),
-    choice("What is built over you", "above", VIEWS.map((v) => [v.key, v.name]))]],
+    toggle("Curved world", "curve"), toggle("Depth", "depth"), toggle("Clear water", "clearwater"), toggle("Water shimmer", "shimmer"), toggle("Shake on a hard fall", "shake"), toggle("Smooth zoom", "glide"), toggle("Hearts and gains over heads", "floats"),
+    ...[["Shadows", "shadows"], ["Shadow length", "shadowlen"]].map(([name, key]) => slider(name, key, {max: 200, step: 20, hear: null}))]],
   ["Screen", [
     toggle("Speech bubbles", "bubbles"), toggle("Names over heads", "names"),
     choice("A chat line stays", "chat", [[5, "5 seconds"], [10, "10 seconds"], [30, "30 seconds"], [600, "10 minutes"]]),

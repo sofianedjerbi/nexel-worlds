@@ -176,14 +176,14 @@ function drawWater(vis, rect, t) {
       g.drawImage(w.bed, 16 + x0 - X + dx, 16 + py, bw, st, x0, Y + py, bw, st);
     }
     g.globalCompositeOperation = "lighter";        // light through the surface, on the bottom
-    if (!clear) { drift(causticPat, t * 5, t * 3, WATER.caustics[0], x0, y0, bw, bh); drift(causticPat, -t * 4, t * 6, WATER.caustics[1], x0, y0, bw, bh); }
+    drift(causticPat, t * 5, t * 3, WATER.caustics[0], x0, y0, bw, bh); drift(causticPat, -t * 4, t * 6, WATER.caustics[1], x0, y0, bw, bh);   // (clear water too: the HD look lays this picture on its face; the settings. Water shimmer)
     g.globalCompositeOperation = "source-over";
     g.globalAlpha = 1;
     if (!clear) g.drawImage(w.canvas, x0 - X, y0 - Y, bw, bh, x0, y0, bw, bh);  // the water itself
     drift(wavePat, t * 4, Math.sin(t * .6) * 2, WATER.waves[0], x0, y0, bw, bh);         // the surface
     drift(wavePat, 32 - t * 2.5, 21 + Math.cos(t * .5) * 2, WATER.waves[1], x0, y0, bw, bh);
     g.fillStyle = WATER.foam;
-    for (const [gx, gy, h] of w.glints) {          // glints of sun, each on its own time
+    if (opt("shimmer")) for (const [gx, gy, h] of w.glints) {          // glints of sun, each on its own time (the settings' Water shimmer: its moving light)
       const s = Math.sin(t * 2.2 + h * 40);
       if (s < .86) continue;
       g.globalAlpha = .95;
