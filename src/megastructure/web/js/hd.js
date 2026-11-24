@@ -14,13 +14,13 @@ const HdLook = (() => {
   const cam = {kind: "persp", pitch: 36, fov: 26};
   const api = {eye: null, get on() { return !!this.eye || (!!me && myId !== null); }, u: 0, ms: 0, build: 0, slice: 0, live: false, drew: false, get busy() { return !!gen || (warmOn && warm < 3); }, get warm() { return warm; }, get part() { return (eng ? gen ? eng.part : 1 : 0) * .8 + (warm + 1) / 20; }, get win() { return eng ? eng.win : {n: 0, a: 0, tiles: []}; }, steep: STEEP, nowin: false, landOnly: false, edge: "B", force: null, cam, bend: .03, faces: 0, builds: 0, n: 0};
   let hidAt = -1e9, bareAt = false, covAt = -1e9, grow = 0, wantG = 0, genG = 0, shownG = 0, south = 8, gen = null, seen = null, eng = null, key = "", ver = -1, last = performance.now(), since = 0, hurry = false, cand = null, candKey = "", noGL = false, wrote = false, keyNear = "", keyFar = "", slice1 = 0, anc = null, ancG = null, genAt = null, landAt = null, held = false, heldAt = 0, wasAt = null, jump = true, genC = null, shownC = null, spent = 0, warm = -1, warmOn = false;
-  const sprs = new Map(), lads = new Map(), things = new Map(), piles = new Map(), built = new Map(), stoodOf = new Map();
+  const sprs = new WeakMap(), lads = new Map(), things = new Map(), piles = new Map(), built = new Map(), stoodOf = new Map();
   // (an insertion sort on each one's y read once into YK: the list comes mostly in order. Array sort asked a.y - b.y a thousand times a frame, each a new number made for the collector)
   let YK = new Float64Array(512); const byY = (l) => { const n = l.length; if (YK.length < n) YK = new Float64Array(n * 2); for (let i = 0; i < n; i++) YK[i] = l[i].y;
     for (let i = 1; i < n; i++) { const k = YK[i]; if (!(k < YK[i - 1])) continue; const o = l[i]; let j = i - 1; while (j >= 0 && k < YK[j]) { YK[j + 1] = YK[j]; l[j + 1] = l[j]; j--; } YK[j + 1] = k; l[j + 1] = o; } };
   const Z = () => artPx() * DPR;   // (canvas px an art px: artPx() CSS px, `zoom` where zoom x density is whole (state.js). It was `zoom` canvas px: on a dense screen, a phone's, the land half the size and twice as far as it would show)
   const mix = (a, b, k) => Array.isArray(a) ? a.map((v, i) => v + (b[i] - v) * k) : a + (b - a) * k;
-  function ent(p, now, z) {   // (a person or a creature, drawn by the game at zoom 1: one art px a px; z: the level it is put at)
+  function ent(p, now, z, flash = 0) {   // (a person or a creature, drawn by the game at zoom 1: one art px a px; z: the level it is put at; flash: how white its own px are (a creature dying), 0..1)
     // (a FALL: the game says the body's height over the straight line between the two tiles' grounds (the classic picture's lift). Here a body stands at one tile's level, z: its height over THAT.
     // It was the game's number as it is: walking to a rim 12 high you rose 48 px into the air, then dropped 96 px in one frame as the fall began)
     const T = P, pl = BodyPlace.of(p), j = pl.jump, fl = j && pl.fall, off = fl ? liftOf(p) / zoom - z * RELIEF_STEP : 0, up = j ? Math.max(0, Math.ceil((j.body + off) * (fl ? Math.cos(cam.pitch * Math.PI / 180) : 1))) : 0, fo = fl ? Math.round(j.body) - up : 0, w = T * 4, h = Math.ceil((T * 5 + up) / 32) * 32, base = h - T * 1.5 + fo;   // (a height as this eye sees it: its cosine; taller for a fall: the body and its name stay together)   // (its canvas in steps of 32 rows, the body at its foot: down a stair every hop made it again, and its place in the sprites' sheet)
@@ -29,7 +29,8 @@ const HdLook = (() => {
     const sx = (x) => w / 2 - T / 2 + (x - p.x) * T, sy = Object.assign((y) => base + (y - p.y) * T, {up: (y) => base + (y - p.y) * T, apart: true});   // (apart: a swimmer's wake is not in it: swim.js wakePicture)
     const rc = pc._r || (pc._r = HdView.recorder(g, false)); rc.reset();   // (what was asked of its canvas, as one number: the same as last frame: the same picture: not sent to the GPU again, its shadow not looked for again)
     p._hd = api.n; drawOn(rc.proxy, 1, () => { try { drawEntity(p, sx, sy, T, now / 1000, now); } catch (e) { /* (nothing to draw) */ } });
-    if (rc.hash !== pc._h) { pc._h = rc.hash; pc._v = (pc._v || 0) + 1; }
+    if (flash) { g.globalCompositeOperation = "source-atop"; g.fillStyle = `rgba(255,255,255,${flash})`; g.fillRect(0, 0, w, h); g.globalCompositeOperation = "source-over"; }
+    if (rc.hash + flash !== pc._h) { pc._h = rc.hash + flash; pc._v = (pc._v || 0) + 1; }
     return {canvas: pc, fx: w / 2, fy: Math.round(h - T), fo, air: j ? Math.max(0, j.body - j.ground) : 0};   // (air: art px over the ground under it, in a jump or a fall: its shadow shrinks)
   }
   function thing(spr) {       // (a thing's sprite on a canvas of its own, once: its foot the middle of its tile's bottom)
@@ -210,6 +211,10 @@ const HdLook = (() => {
       const wk = q.wake && q.wake.length && wakePicture(q, now);   // (a swimmer's wake: a picture of its own lying on the water, no shadow)
       if (wk) list.push({canvas: wk.canvas, fx: wk.fx, fy: wk.fy, x: q.x + .5, y: q.y + .5, z, lie: true});
     }
+    // A CREATURE DYING (effects.js dying, state.js: its body as it was when it died): its own picture, white for a moment, lifting a third of a tile and fading inside its puff of smoke. (Only the classic
+    // picture drew it: here the body was gone in one frame, the smoke alone left)
+    for (const d of dying) { const k = Math.max(0, Math.min(1, (now - d.t0) / DIE_MS)), q = d.p, qx = Math.round(q.x), qy = Math.round(d.y0), z = typeof q.e.z === "number" && !H0.water(qx, qy) ? q.e.z : Math.max(topAt(qx, qy), wet(qx, qy)), s = ent(q, now, z, k < .3 ? .8 : .35);
+      list.push({canvas: s.canvas, fx: s.fx, fy: s.fy + Math.round(k * .35 * 16), x: q.x + .5, y: d.y0 + .5, z, d: true, on: true, fade: 1 - k * k, dying: true}); }
     HdFx.add(list, p, now, dt);   // (what moves by itself: chips, smoke, drops, orbs, flames, a tree falling: hd_fx.js)
     byY(list);   // (north to south, as Array sort by y did, its order kept among equals)
     const snap = (v) => Math.round(v * 16) / 16;
