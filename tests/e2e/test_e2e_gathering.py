@@ -144,5 +144,5 @@ def test_what_is_up_a_cliff_is_out_of_reach(game):
     game.press("e", 500)
     assert game.tile(0, -1) != "f" and game.inv("flower") == 1
     x, y = game.pos()
-    assert game.js(f"[reaches({x + 2}, {y + 1}, USE_R), reaches({x + 2}, {y + 2}, USE_R), reaches({x + 1}, {y}, USE_R, myZ({x}, {y}) + 5)]") == [True, False, False]
+    assert game.js(f"[reaches({x + 2}, {y + 1}, reach('use')), reaches({x + 2}, {y + 2}, reach('use')), reaches({x + 1}, {y}, reach('use'), myZ({x}, {y}) + 5)]") == [True, False, False]
     assert not game.errors
