@@ -47,6 +47,8 @@ const VoxStyleGLSL = (() => {
   // view distance and zoom), easing to 0 by 18 tiles, and before the horizon where that is nearer (from six tenths of the way to it; the horizon: where the eye looks along the bent land's face,
   // b dn^2 + 2 b D dn = E: the eye E over the water, D south of where the bend begins). Far, the water takes the sea's one far tint, whole. (The bed is drawn lower on the picture than the face:
   // under the horizon lay a band of water over nothing, the backdrop through it; a last facet made whole was a band with an edge; the depth's tints far off were navy slabs with stepped outlines)
+  // (seen through, or whole: one or the other a px, more of them whole the farther, in four steps of a 2 x 2 dither: no px half there over nothing, which HdLook.raw counts)
+  bool see(float nr) { vec2 q = mod(floor(gl_FragCoord.xy), 2.); return nr > (q.x * 2. + q.y + .5) / 4.; }
   float near() { float dn = max(0., ctr.z - 1. - wp.z), D = max(0., eye.z - ctr.z + 1.), E = max(0., eye.y - wp.y); return 1. - max(smoothstep(8., 18., distance(wp.xz, ctr.xz)), bend > 0. ? smoothstep(.6, .92, dn / (sqrt(D * D + E / bend) - D)) : 0.); }
   bool inq(vec2 p, vec2 a, vec2 b, vec2 c, vec2 d) { float s1 = cr(b - a, p - a), s2 = cr(c - b, p - b), s3 = cr(d - c, p - c), s4 = cr(a - d, p - d); return (s1 >= 0. && s2 >= 0. && s3 >= 0. && s4 >= 0.) || (s1 <= 0. && s2 <= 0. && s3 <= 0. && s4 <= 0.); }
   // STRATA: a wall of your hole by its level under the land round it (rz): each level one flat tone, a step darker than the one over it (to .3), every second one a little darker still: levels can be counted, deep is dark
@@ -115,6 +117,9 @@ const VoxStyleGLSL = (() => {
       if (dr < 2.) col = c.rgb * l * (dr < 1. || dn < 2. ? .5 : .68);   // (a north or south edge: its two px one tone: the eye looks along them, the two are one px of the picture or little more, and which of the two tones it took hung on a fraction of a level of the eye's height: the rim flickered as the eye rose) (the edge over a drop that hurts, three levels or more: a dark rim two px wide all along it, no light lip: a step down has the lip, a cliff has the rim. A fall of 12 looked like the next terrace)
     } else if (kind < .5 && va.y > .5) col *= 1. - .1 * (bit(ve, 64.) + 2. * bit(ve, 128.));   // (and the cliff's face darker every two levels down)
     if (kind > 2.5 && kind < 3.5) {                              // water: the game's own picture of it over a tint (the picture is the clear water, its bed showing: only a little of it over the sea tint)
+      // (water PAST THE HORIZON is not drawn: its face, on the bend's facet there, is turned from the eye. Water writes no depth: sunk under the horizon it came back down the picture OVER the water
+      //  before it, chunk by chunk, in its own distance's haze: lighter bands with stepped edges just under the horizon)
+      if (vu.x < .5 && bend > 0.) { float bn = max(0., ctr.z - 1. - wp.z); if (dot(eye - vec3(wp.x, wp.y - bend * sink(bn), wp.z), vec3(0., 1., -bend * (bn < 4. ? 2. * bn : 4. * (2. * floor(bn / 4.) + 1.)))) < 0.) discard; }
       if (vu.x > .5 && (vu.x < 1.5 ? eye.z < wp.z : vu.x < 2.5 ? eye.x < wp.x : eye.x > wp.x)) discard;   // (a side of the water (vox_style_land.js waterFaces: vu.x 1 south, 2 east, 3 west) turned from the eye: it lay over its own top, two tints)
       if (vu.x < .5 && vo > .5) { float q = floor(vo + .5); vec2 tl = floor(wp.xz);   // (a top whose near part is seen through higher water beside it, south, east, west, south-east or south-west (vo, its uv's v: by how much, eighths, 5 and 4 bits each): the px that water's own top covers on the screen (its corners put where the painter puts them) are that water's, left out here)
         for (int i = 0; i < 5; i++) { float s = i == 0 ? mod(q, 32.) : i == 1 ? mod(floor(q / 32.), 32.) : i == 2 ? mod(floor(q / 1024.), 32.) : i == 3 ? mod(floor(q / 32768.), 16.) : floor(q / 524288.); if (s < .5) continue;   // (south, east, west, south-east, south-west)
@@ -123,9 +128,9 @@ const VoxStyleGLSL = (() => {
       vec2 w = (vec2(wp.x, wp.z) * 16. - wv.xy) / wv.zw; vec4 wc = vu.x < .5 && wv.z > 0. && w == clamp(w, 0., 1.) ? texture(wt, w) : vec4(0.);   // (past the picture's edge: none of it. Clamped, its edge row was stretched over the far water: thin vertical lines. A side has none: the picture is of the face, a side took one row of it down its height)
       vec3 sea = vec3(.36, .64, .8) * max(l, .6);
       col = mix(sea, wc.rgb, wc.a * .3);
-      if (wtn[4].a > .5) { float nr = ve > 8.5 ? 0. : near(); vec4 tn = mix(vec4((wtn[1].rgb + wtn[2].rgb) * .5, 1.), wtn[int(clamp(ve, 0., 4.))], nr);   // (near(); a far patch of the sea (ve 9): far)
+      if (wtn[4].a > .5) { float nr = ve > 8.5 ? 0. : near(); vec4 td = wtn[int(clamp(ve, 0., 4.))], tn = vec4(mix((wtn[1].rgb + wtn[2].rgb) * .5, td.rgb, nr), see(nr) ? td.a : 1.);   // (near(); a far patch of the sea (ve 9): far. Seen through or whole, px by px: see)
        col = mix(tn.rgb * max(l, .6), wc.rgb, wc.a * .45); o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), max(tn.a, wc.a * .45)); return; }   // (light.wtint: clear water: a tint and how much of it for water 0..4 levels deep (ve), the bed showing through; the game's picture of the water, its waves and glints, over it)
-      o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), mix(1., wa, near())); return;   // (the far sea stays blue to the horizon)
+      o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), see(near()) ? wa : 1.); return;   // (the far sea stays blue to the horizon)
     }
     if (abs(kind - 7.) < .5) { highp vec2 b = floor((vu + .5) / 16.) * 16., w16 = floor(wp.xz * 16. + .001), m = mod(w16, 8.), lp; ivec2 ti = ivec2(floor(w16 / 16.)); uint hh = uint(ti.x) * 2654435761u ^ uint(ti.y) * 2246822519u; hh ^= hh >> 15u;
       if ((hh & 1u) != 0u) m.x = 7. - m.x; if ((hh & 2u) != 0u) m.y = 7. - m.y; lp = vec2(float((hh >> 2u) & 1u), float((hh >> 3u) & 1u)) * 8. + m;
