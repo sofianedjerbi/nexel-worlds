@@ -121,3 +121,55 @@ def test_the_land_is_the_same_px_whatever_order_its_blocks_came_in(browser, serv
             g.page.screenshot(path=os.path.join(SHOT, f"order_{order[0]}.png"))
         assert g.js(OFF, "all") == 0, (order, g.js(OFF, "all"))
     assert not g.errors
+
+
+# the mean colour of a level's front paint (its four variants): {z: [r, g, b]} for z 2 down to -10; and the tone the land has for a wall that deep
+FRONTS = """() => { const o = {}; for (let z = 2; z >= -10; z--) { const s = [0, 0, 0]; for (let v = 0; v < 4; v++) { const px = new Uint32Array(256); VoxPaint.front(z, v, px, 0, 16, 0);
+  for (const q of px) { s[0] += q & 255; s[1] += q >>> 8 & 255; s[2] += q >>> 16 & 255; } } o[z] = s.map((c) => c / 1024); } return [o, Object.fromEntries(Object.keys(o).map((z) => [z, deepTone(+z, 'wall')]))]; }"""
+# the mean colour of a tile's ground paint (drawTile)
+GROUND = """([x, y]) => { const px = new Uint32Array(256), s = [0, 0, 0]; drawTile(x, y, {px, o: 0, w: 16}); for (const q of px) { s[0] += q & 255; s[1] += q >>> 8 & 255; s[2] += q >>> 16 & 255; } return s.map((c) => c / 256); }"""
+
+
+def test_under_sea_level_the_land_is_the_same_earth_one_tone_darker_a_level(browser, server):
+    """One continuous tone by depth on the land's own paints (tiles.js deepTone), not a second family of sheets: a wall at
+    sea level is the earth of the levels over it, each level under it that earth times the depth's tone, down to eight;
+    a floor the soil times the floor's tone."""
+    g = hd(browser, server)
+    fronts, tones = g.js(FRONTS)
+    near = lambda a, b, k: all(abs(p - q) <= k * q for p, q in zip(a, b))
+    assert near(fronts["0"], fronts["1"], .03) and near(fronts["1"], fronts["2"], .03), fronts      # no step at sea level: one earth
+    for z in range(-1, -11, -1):
+        want = [c * t for c, t in zip(fronts["0"], tones[str(z)])]
+        assert near(fronts[str(z)], want, .04), (z, fronts[str(z)], want)
+        assert sum(fronts[str(z)]) < sum(fronts[str(z + 1)]) or z < -8, (z, fronts)             # darker each level, to eight down
+    x, y = g.pos()
+    g.stamp(2, -4, [",,,,"], levels=["0abc"])                                         # bare earth at sea level, then 1, 2, 3 under it
+    g.rest()
+    base = g.js(GROUND, [x + 2, y - 4])
+    for d in (1, 2, 3):
+        got, tone = g.js(GROUND, [x + 2 + d, y - 4]), g.js(f"deepTone({-d}, 'floor')")
+        assert near(got, [c * t for c, t in zip(base, tone)], .05), (d, got, base, tone)
+    g.stamp(2, -4, ["...."], levels=["0000"])
+    assert not g.errors
+
+
+# the lengths of the runs of one colour along the rows of a block's water tint (its canvas, a px an art px), the first and the last of a row left out, that are not whole steps of 4
+TINT = """([x, y]) => { const b = tileIdx(x, y)[0], c = b.water.canvas, n = c.width, d = c.getContext('2d').getImageData(0, 0, n, n).data, bad = []; let runs = 0;
+  for (let j = 0; j < n; j++) { let k = 1, first = true; for (let i = 1; i < n; i++) { const a = (j * n + i) * 4; if (d[a] === d[a - 4] && d[a + 1] === d[a - 3] && d[a + 2] === d[a - 2] && d[a + 3] === d[a - 1]) { k++; continue; }
+    if (!first) { runs++; if (k % 4) bad.push(k); } first = false; k = 1; } } return [runs, bad.slice(0, 8)]; }"""
+
+
+def test_water_a_bridge_and_a_wall_have_one_paint_each_in_whole_art_px(browser, server):
+    g = hd(browser, server)
+    x, y = g.pos()
+    px, py = x + 3 - max(0, (x + 3) % 32 + 8 - 32), y - 6 - max(0, (y - 6) % 32 + 4 - 32)   # (a pond inside one block)
+    g.stamp(px - x, py - y, ["~~==))~~", "~~==))~~", "~~:=))~~", "~~==))~~"])       # shallow, deep, abyss: three tints side by side; a bridge tile
+    g.rest()
+    runs, bad = g.js(TINT, [px, py])
+    assert runs > 20 and not bad, (runs, bad)                                        # the water's tint goes from a depth's to the next's in whole steps of 4 art px (it was a smooth ramp)
+    # a bridge: its model's paint alone (nothing laid flat on its tile); a wall: its look is data the land's painter lays, no painter of its own
+    assert g.js(f"(() => {{ drawTile({px + 2}, {py + 2}, {{px: new Uint32Array(256), o: 0, w: 16}}); return [LAID.n, typeof Bridge.lay, typeof Structures.drawWall, Models.at({px + 2}, {py + 2}).length > 0]; }})()") == [0, "undefined", "undefined", True]
+    look = g.js("['W', '%'].map((c) => { const l = Structures.look(c); return [l.ink >>> 24, l.cap >>> 24, l.front[0].width > 0]; })")
+    assert look == [[255, 255, True]] * 2, look
+    g.stamp(px - x, py - y, ["........"] * 4)
+    assert not g.errors

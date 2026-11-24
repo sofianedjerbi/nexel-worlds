@@ -19,7 +19,7 @@ const BuildGhost = (() => {
     if (paints.has(item)) return paints.get(item);
     let px = null;
     try {
-      const stone = item === "stone_block", lv = stone ? 5 : 1, d = sheetData(stone ? hillSheet(lv) : dugSheet("soil", 0)), [bx, by] = blobCell(255), ox = stone ? bx * 16 : 0, oy = stone ? by * 16 : 80;
+      const stone = item === "stone_block", lv = stone ? 5 : 1, d = sheetData(stone ? hillSheet(lv) : IMG.soil), [bx, by] = blobCell(255), ox = stone ? bx * 16 : 0, oy = stone ? by * 16 : 80;
       px = new Uint32Array(16 * (16 + RELIEF_STEP));
       for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[j * 16 + i] = d.px[(oy + j) * d.w + ox + i];
       VoxPaint.front(lv, 0, px, 256, 16, 1);

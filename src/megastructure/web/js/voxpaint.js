@@ -1,16 +1,12 @@
 // The paint of a block's sides (the land as blocks: voxels.js hands these to the engine), all of it read off the
 // level's own hill sheet (colsOf, relief.js: its wall's colours, its side's).
-//   shape, profile: a block's cell has the shape of its sheet's cell for the sides where the land is lower (the
-//     rounded corners and set-in edges of the pack; dug ground is cut square). Its profile: down each px across,
-//     how much of the tile's south end the sheet leaves empty.
+//   shape: a top has the shape of its sheet's cell for the sides where the land is lower (the rounded corners and
+//     set-in edges of the pack; under sea level it is cut square).
 //   rim: a top's lip: that cell of the sheet laid over the plain top. Outside its shape the px is left
 //     see-through (what is behind shows, as round the pack's own hills); under its last px, down to the tile's
 //     end, is the wall the front goes on with: lit along its top, then its body.
 //   front: a south face, a level: the wall's body, a seam along its foot that swells a px here and there as the
 //     sheet's scallops do, a few flecks; four variants a level.
-//   side: a wall that faces west or east shows a thin side (the engine's: a dark line and a px of wall). Its light
-//     and its body are the wall's; the line at a wall's foot: its dark; the shadow at its foot: the pack's
-//     own (the see-through px round a hill sheet's cells), where the sheet has one.
 //   One rock a wall: the pack has a wall for each of its three sheets (grass, levels 1-2: orange earth; dark grass,
 //     3-4: grey-brown earth; stone, 5 and up). A wall four levels high was grey-brown over orange, two palettes down one face.
 //     Earth is one rock here: every wall of levels 1 to 4 has the first sheet's wall (EARTH), and the px of wall in
@@ -23,7 +19,7 @@
 //     strip by its block's top), so stone never meets earth in a staircase along such a cliff.
 const VoxPaint = (() => {
   const rgb = (c) => (255 << 24 | (c[2] | 0) << 16 | (c[1] | 0) << 8 | (c[0] | 0)) >>> 0;
-  const EARTH = 2, STONE = "rock", wallOf = (z) => (z > 4 ? STONE : z > 0 ? EARTH : z), bands = (z) => colsOf(hillSheet(wallOf(z))).bands, sheetOf = (z) => hillSheet(z < 0 ? z : Math.max(1, z));
+  const EARTH = 2, STONE = "rock", wallOf = (z) => (z > 4 ? STONE : EARTH), bands = (z) => colsOf(hillSheet(wallOf(z))).bands, sheetOf = (z) => hillSheet(Math.max(1, z));
   // the px of wall (browns: more red than green) of a sheet whose wall is not EARTH's -> EARTH's, lightest to darkest
   const browns = (sheet) => { const d = sheetData(sheet), [cx, cy] = blobCell(N_ | E_ | W_ | NE | NW), set = new Set(); for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { const v = d.px[(cy * 16 + j) * d.w + cx * 16 + i]; if (v >>> 24 === 255 && (v & 255) > (v >>> 8 & 255)) set.add(v); }
     return [...set].sort((a, b) => (a & 255) - (b & 255)); };
@@ -72,7 +68,7 @@ const VoxPaint = (() => {
     return [a, q];
   }
   function shape(x, y, z) {
-    if (z < 0) return 0;                                        // (dug: cut square)
+    if (z < 0) return 0;                                        // (under sea level: no grass, so no rim of it: cut square)
     let m = maskOf(x, y, (_, g, nx, ny) => (z <= 0 && wet(g)) || (colHas(colAt(nx, ny), z) && !(z > 0 && topAt(nx, ny) === z && wet(g))));   // (the one mask rule, tiles.js: not lower: land not come yet, a solid cell, the water beside a shore; water up on a hill, its face at this top's height: lower, the top has its rim along it: a bank)
     if (reduce(m) === 255) return 0;
     if (!(reduce(m) & 240) && m & N_ && !(m & S_) && topAt(x, y - 1) === z + 1 && topAt(x, y + 1) === z - 1) m |= 256;      // (a step of a stair one tile wide going up north: flat-fronted)
@@ -80,19 +76,7 @@ const VoxPaint = (() => {
     if (!ids.has(key)) { if (cells.length > 255) return 0; ids.set(key, cells.length); cells.push([cap(sheet, m)[0], sheet, q]); }
     return ids.get(key);
   }
-  function profile(id) {
-    const out = new Uint8Array(16), a = id ? cells[id][0] : null;
-    if (a) for (let i = 0; i < 16; i++) { let j = 15; while (j >= 0 && !a[j * 16 + i]) j--; out[i] = 15 - j; }
-    return out;
-  }
-  // ...its crown: [west, east]: the px its first px across from that side leaves empty at its north end (a rounded
-  // corner: the wall's side beside it starts that far down)
-  function crown(id) {
-    const a = id ? cells[id][0] : null, out = [0, 0]; if (!a) return out;
-    for (const k of [0, 1]) for (let n = 0; n < 16; n++) { const i = k ? 15 - n : n; let j = 0; while (j < 16 && !a[j * 16 + i]) j++; if (j < 16) { out[k] = j; break; } }
-    return out;
-  }
-  // ...and its lip: down each px across, how many px from the tile's south end are not the top's ground but the
+  // a shape's lip: down each px across, how many px from the tile's south end are not the top's ground but the
   // wall under it (what the sheet leaves empty, and the sheet's own px there that its plain cell has no colour of)
   const lips = new Map();
   function lip(id) {
@@ -169,16 +153,8 @@ const VoxPaint = (() => {
     } else {      // EARTH: a stratum (a wavy line of the darkest, now and then broken), pebbles (two px of the lightest over two of the darkest)
       for (let k = 0; k < n; k += 8) if (h(k, 1, 65) < .6) { const st = k + 2 + ((h(k, 2, 66) * 3) | 0); for (let i = 0; i < 16; i++) if (h(i >> 2, 3 + k, 67) < .85) put(i, st + (h(i >> 2, 4 + k, 68) < .35 ? 1 : 0), m.dark); }   // (a stratum in each half of a cube, or none, at its own row)
       for (let j = 1; j < n - 3; j++) for (let i = 0; i < 15; i += 2) if (h(i, j, 69) < .07) { put(i + (j & 1), j, L); put(i + (j & 1) + 1, j, L); put(i + (j & 1), j + 1, D); put(i + (j & 1) + 1, j + 1, m.dark); }
+      deepen(px, at, stride, n, z, "wall");   // (under sea level: the same earth, darker the deeper, tiles.js)
     }
   }
-  // (the pack's shadow: the see-through px at the foot of hill1's south edge, as dark as it is there)
-  let ink = null;
-  function shadow() {
-    if (ink) return ink;
-    const d = sheetData(IMG.hill1), [ex, ey] = blobCell(N_ | E_ | W_ | NE | NW);
-    for (let j = 15; j >= 0 && !ink; j--) { const v = d.px[(ey * 16 + j) * d.w + ex * 16 + 8], a = v >>> 24; if (a && a < 255) ink = [v & 255, v >>> 8 & 255, v >>> 16 & 255, a / 255]; }
-    return ink || (ink = [80, 64, 134, .25]);
-  }
-  const side = (z) => { const b = bands(z), s = shadow(); return {band: b[0], body: b[1], foot: b[2], shadow: z > 4 || z <= 0 ? [s[0], s[1], s[2], 0] : s}; };      // (the stone sheet has no shadow px; nor has a hole's wall)
-  return {shape, profile, crown, lip, rim, front, side, shadow, cap, rocky, level};
+  return {shape, rim, front, rocky, level};
 })();

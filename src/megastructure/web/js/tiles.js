@@ -157,17 +157,16 @@ function drawTile(x, y, to = null) {                 // (to: the px it is painte
   const b = blockOf(x, y);
   if (!b || !(to || b.px)) return;
   if (!to) { b.ver = (b.ver || 0) + 1; landVer++; return; }   // (the HD look paints its own tops (to): what was worked out from the tile is out of date)
-  const i = (y - b.by * B) * B + (x - b.bx * B), c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y), dug = lv < 0 && !wet(gr);
+  const i = (y - b.by * B) * B + (x - b.bx * B), c = b.comb[i], gr = b.gnd[i], g = LAID, lv = levelAt(x, y);
   g.n = 0;
   // a tile up on the land: its level's hill sheet, a plain top (its rim is the land's, by its cells: voxpaint.js rim). Its ground and
   // what is laid on it by the one rule (drawBlobLayer): soil, the grass over it, then paths, fields, floors, ash, a hedge
   let k = lv;
   for (; k >= 1; k--) { drawBlobLayer(g, hillSheet(k), x, y, () => true, k < 3 ? .25 : k < 5 ? .1 : .45); if (cellSolid(g.img[g.n - 1], g.at[g.n - 1] % 4096, g.at[g.n - 1] >> 12)) break; }
   const hills = g.n, covered = k >= 1;
-  if (!covered && gr === ":") Bridge.lay(g, x, y);      // (bridge.js: planks across the way it runs, posts at its ends)
   if (!covered && isLand(gr)) {                       // (a bridge that runs onto this land: no shore between them)
-    drawBlobLayer(g, dug ? dugSheet("soil", -lv) : IMG.soil, x, y, (_, gg, tx, ty) => isLand(gg) || Bridge.rests(x, y, tx, ty), .15);
-    if (!dug && (gr === "." || gr === "_" || gr === "n")) drawBlobLayer(g, IMG.grass, x, y, (_, gg, tx, ty) => gg === "." || gg === "_" || gg === "n" || Bridge.rests(x, y, tx, ty), gr === "." ? .3 : 0);
+    drawBlobLayer(g, IMG.soil, x, y, (_, gg, tx, ty) => isLand(gg) || Bridge.rests(x, y, tx, ty), .15);
+    if (lv >= 0 && (gr === "." || gr === "_" || gr === "n")) drawBlobLayer(g, IMG.grass, x, y, (_, gg, tx, ty) => gg === "." || gg === "_" || gg === "n" || Bridge.rests(x, y, tx, ty), gr === "." ? .3 : 0);
   }
   const base = g.n;
   if (isLand(gr)) groundMarks(g, x, y, gr);
@@ -184,6 +183,7 @@ function drawTile(x, y, to = null) {                 // (to: the px it is painte
   const at = (q) => [g.img[order[q]], g.at[order[q]] % 4096, g.at[order[q]] >> 12], px = to.px, W = to.w, o = to.o;
   if (first < 0) for (let j = 0; j < 16; j++) px.fill(0, o + j * W, o + j * W + 16);   // (nothing solid all over it: what was there must go first)
   for (let q = Math.max(0, first); q < order.length; q++) layCell(px, o, W, ...at(q), q === first);
+  if (!wet(gr)) deepen(px, o, W, 16, lv, "floor");
 }
 // What floats on shore water (lily pads, reeds, little rocks): which of FLOATS (water_objects' cells), or -1. One answer for the top's paint and the bed's shade under it (waterbed.js)
 const FLOATS = [8, 9, 10, 11, 6, 7, 0];
@@ -201,32 +201,23 @@ function groundMarks(g, x, y, gr) {
   for (const m of MARKS[gr] || []) if (m.cell) g.drawImage(...m.cell(x, y)); else drawBlobLayer(g, IMG[m.sheet], x, y, (_, gg) => m.on.includes(gg), 0);
 }
 
-// Dug ground (the land is never under sea level but where it was dug): earth, not grass, a shade darker a layer
-// down, and so are a hole's walls (the sheet of a level at sea level or under: relief.js). A hole three deep had a
-// grass floor and grass lips: it looked like a raised table. name: the soil (a floor), hill1 (walls); d: layers down
-const dugSheets = {}, EARTH = [[0xc8, 0x98, 0x6e], [0xb0, 0x7e, 0x5a], [0x8b, 0x5a, 0x40]];
-function dugSheet(name, d) {
-  d = Math.min(d, 8);                                 // (as dark as it gets, eight layers down: one sheet for all that is deeper, down to the bottom)
-  if (dugSheets[name + d]) return dugSheets[name + d];
-  const img = IMG[name], c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
-  const g = c.getContext("2d"); g.drawImage(img, 0, 0);
-  const im = g.getImageData(0, 0, c.width, c.height), px = im.data, wall = name !== "soil";
-  const f = wall ? [Math.max(.45, 1 - .075 * d), Math.max(.38, 1 - .09 * d), Math.max(.3, 1 - .11 * d)] : [Math.max(.62, 1 - .0475 * d), Math.max(.57, 1 - .054 * d), Math.max(.5, 1 - .0625 * d)];      // (deeper: darker, still warm brown; a floor less than a wall: far down they were two browns a fifth apart, and where you walk was not told from what stops you)
-  for (let i = 0; i < px.length; i += 4) {
-    if (!px[i + 3]) continue;
-    if (px[i + 1] > px[i] + 8) { const l = (px[i] + px[i + 1] + px[i + 2]) / 3; [px[i], px[i + 1], px[i + 2]] = EARTH[l > 170 && !wall ? 0 : l > 130 || wall && l > 100 ? 1 : 2]; }   // (green: earth; on a wall no light line)
-    for (let j = 0; j < 3; j++) px[i + j] *= f[j];
-  }
-  g.putImageData(im, 0, 0); c.dug = wall ? d + 1 : 0;
-  return (dugSheets[name + d] = c);
+// UNDER SEA LEVEL the land is the same earth, darker the deeper: ONE tone by depth, laid on the land's own paints (a floor's soil,
+// tiles.js drawTile and hd.js under; a wall's front, voxpaint.js front): 1 at sea level and over, a step a level down to eight
+// levels (as dark as it gets), still warm brown; a floor less than a wall: where you walk is told from what stops you.
+// (It was a second family of sheets, the soil's and the hill's recoloured a copy a level: dugSheet.) No grass grows down there:
+// a hole three deep with a grass floor looked like a raised table.
+const DEEP = {wall: [[.075, .45], [.09, .38], [.11, .3]], floor: [[.0475, .62], [.054, .57], [.0625, .5]]};
+const deepTone = (z, kind) => DEEP[kind].map(([k, lo]) => Math.max(lo, 1 - k * Math.min(8, Math.max(0, -z))));
+function deepen(px, o, W, rows, z, kind) {            // rows of 16 px from o, W a row: their paint at depth z
+  if (z >= 0) return; const [r, g, b] = deepTone(z, kind);
+  for (let j = 0; j < rows; j++) for (let i = o + j * W; i < o + j * W + 16; i++) { const v = px[i]; px[i] = (v & 0xff000000 | ((v >>> 16 & 255) * b) << 16 | ((v >>> 8 & 255) * g) << 8 | (v & 255) * r) >>> 0; }
 }
 // Level k's sheet: grass (1-2), darker grass (3-4), stone above; each layer up a touch brighter, so terraces of the
-// same sheet still read as steps. At sea level and under: a hole's walls, earth
+// same sheet still read as steps
 // (stone: a top a step darker each level under 12, .825 of the sheet's own at 5: light enough that the lowest top is far lighter than a wall; its wall: one tone,
 // darker than the darkest top and cooler, so a top is told from the face under it by value and by hue: with the tops down to .75 and the wall at .88 the low terraces were one grey mass)
 const hillSheets = {}, ROCK_TONE = {step: .025, wall: [.79, .81, .87]};
 function hillSheet(k) {
-  if (k <= 0) return dugSheet("hill1", -k);
   const rock = k === "rock"; if (!rock) k = Math.min(k, 12);      // (the mountains' top: one sheet for all that is built higher) ("rock": stone's wall, voxpaint.js)
   if (hillSheets[k]) return hillSheets[k];
   const img = IMG[k <= 2 ? "hill1" : k <= 4 ? "hill2" : "hill3"], f = k <= 4 ? [1.015, 1.03, 1.04, 1.06][k - 1] : rock ? 0 : 1 - ROCK_TONE.step * (12 - k);      // (the greens an even step lighter a level across the two sheets: level 3 was darker than level 2) (stone: the sheet's own at 12, the mountains' top, and a clear step darker each level down to 5, a touch cooler: never lighter than the sheet (at 12 its top was a blank pale plate, its rim bleached with it), and a terrace is told from the next by its top alone, from where no wall of it is seen. Its walls: one tone, voxpaint.js)

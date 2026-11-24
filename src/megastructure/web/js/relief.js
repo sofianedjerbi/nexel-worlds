@@ -51,8 +51,8 @@ function colsOf(sheet) {
   const side = [0, 1, 2, 3].map((i) => at(wx * 16 + w0 + i, wy * 16 + 8));
   const [nx, ny] = blobCell(S_ | E_ | W_ | SE | SW);
   let n0 = 0; while (n0 < 15 && at(nx * 16 + 8, ny * 16 + n0)[3] < 128) n0++;
-  const dd = Math.min(8, (sheet.dug || 1) - 1) / 8, seam = sheet.dug ? [1 + .1 * dd, .86 - .24 * dd] : [1, 1], out = {bands: [l.map((v, q) => (q < 3 ? Math.min(255, v * seam[0]) : v)), [(d[0] + l[0]) / 2, (d[1] + l[1]) / 2, (d[2] + l[2]) / 2], d.map((v, q) => (q < 3 ? v * seam[1] : v))], side, top: at(ix * 16 + 8, iy * 16 + 8),
-               foot: ink + 1, inset: w0, north: n0};   // (in the tile: where its south face ends, its side edge and its far edge start) (seam: dug earth: the line between two layers is told from them, the more the deeper and darker it is: a wall's layers are counted)
+  const out = {bands: [l, [(d[0] + l[0]) / 2, (d[1] + l[1]) / 2, (d[2] + l[2]) / 2], d], side, top: at(ix * 16 + 8, iy * 16 + 8),
+               foot: ink + 1, inset: w0, north: n0};   // (in the tile: where its south face ends, its side edge and its far edge start)
   sheetCols.set(sheet, out); return out;
 }
 

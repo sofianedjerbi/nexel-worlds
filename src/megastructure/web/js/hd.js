@@ -53,8 +53,9 @@ const HdLook = (() => {
   // speckled ones (its fine specks mostly, its pale blobs seldom). It was the tile's paint as on the surface: a cave under a meadow had a floor of grass, lit warm: flat yellow; dug ground the sheet's plain tile on every tile: one flat colour
   function under(x, y, z, px, at, st) {
     const g0 = gndAt(x, y), put = topAt(x, y) === z && matAt(x, y) === "d"; if (!put && (topAt(x, y) <= z || (g0 !== "." && g0 !== ","))) return false;   // (put: a block of earth put down: bare earth, no grass on it)
-    const lv = VoxPaint.level(x, y, z), d = sheetData(lv >= 5 ? hillSheet(lv) : dugSheet("soil", Math.max(0, Math.min(3, -lv)))), [sx, sy] = plainCell(null, x, y, .8);   // (no darker than three layers down: under a roof the lantern is the light)
+    const lv = VoxPaint.level(x, y, z), d = sheetData(lv >= 5 ? hillSheet(lv) : IMG.soil), [sx, sy] = plainCell(null, x, y, .8);   // (no darker than three layers down: under a roof the lantern is the light)
     for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) px[at + j * st + i] = d.px[(sy + j) * d.w + sx + i];
+    if (lv < 5) deepen(px, at, st, 16, Math.max(-3, lv), "floor");
     if (!put) VoxPaint.rim(x, y, z, px, at, st); return true;   // (a put block of earth: the soil to its edges: the cap's own art has grass in its middle)
   }
   function shore(x, y, z, px, at, st) {
