@@ -195,7 +195,8 @@ const VoxStyleLand = (() => {
       // ...and south of your space the eye's line to its floor's near edge (58 degrees down, a level half a tile: k tiles out, 3.2 (k - 1) levels over it):
       // nothing between the eye and you, nor your floors (a wall two levels high a tile south of you hid you)
       const cutAt = (x, y, h) => { if (topOf(x, y) <= h) return; const k = x * 1048576 + y, was = cutH.get(k); if (was === undefined || h < was) cutH.set(k, h); };
-      if (pt && !pt.walk) for (const [x, y, lo] of win) {
+      // (only UNDER the land: land over your own head. Behind a mountain on the surface its caves stay shut, the owner: "being behind a mountain shouldn't show the caves")
+      if (pt && !pt.walk && topOf(cx, cy) > L + 2) for (const [x, y, lo] of win) {
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cutAt(x + dx, y + dy, lo + 2);
         for (let k = 1; k <= 4; k++) cutAt(x, y + k, lo + Math.floor(3.2 * (k - 1)));
       }

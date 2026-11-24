@@ -10,6 +10,8 @@ land does not light the meadow; under a roof who stands on the land over you is 
 from test_e2e_hd_land import AT_
 from test_e2e_hd_sun import hd
 
+CUT = "([x, y]) => HdLook.cut(x, y) ?? null"
+
 STEEP = 58          # the eye's pitch from above (hd.js STEEP: 78.6 till the x-ray cut what hides you, 68 when a level was 8 px)
 
 green = lambda c: c[1] > c[0] + 15 and c[1] > c[2] + 40
@@ -282,5 +284,27 @@ def test_behind_a_cliff_the_eye_looks_down_over_it_and_you_are_whole(browser, se
         assert g.js(GROUND, [x + 6, y - 2]) > .5                           # the meadow at your feet, seen as it is (through the disc it was a checker: .15)
         s = go(g, x + 6, y + 5)
         assert s["seen"] > .95 and s["pitch"] < 36.1, s                    # in front of it: whole, the surface's pitch
+    finally:
+        g.rpc("dev_col", tiles=hill, col=[0])
+
+
+def test_behind_a_mountain_its_caves_stay_shut(browser, server):
+    """On the surface behind a mountain (the land hides you, none is over your head), a cave in it, its mouth on your
+    side, is not cut open: the land's cut is for being UNDER the land (the owner: "being behind a mountain shouldn't
+    show the caves"). Inside the cave, it opens."""
+    g = hd(browser, server)
+    calm(g)
+    x, y = g.pos()
+    hill = [[x + i, y + j] for j in range(1, 9) for i in range(-4, 5)]
+    cave = [[x, y + j] for j in range(1, 6)] + [[x + i, y + 5] for i in range(-3, 4)]
+    g.rpc("dev_col", tiles=hill, col=[8])                                  # a mountain of stone eight high, south of you ...
+    g.rpc("dev_col", tiles=cave, col=[0, 2, 8])                            # ... a cave in it, its mouth at your feet, a hall across
+    g.rest()
+    try:
+        go(g, x, y)                                                        # behind it, at the mouth
+        cut = [t for t in cave + hill if g.js(CUT, t) is not None]
+        assert not cut, cut                                                # nothing of the mountain cut: its cave shut
+        go(g, x, y + 4, 0, "HdLook.win.a === 1 && !HdLook.busy")           # in the cave
+        assert g.js(CUT, [x, y + 5]) is not None                           # under it: the cut is on
     finally:
         g.rpc("dev_col", tiles=hill, col=[0])
