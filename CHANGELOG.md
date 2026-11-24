@@ -5,6 +5,50 @@ Written by [python-semantic-release](https://python-semantic-release.readthedocs
 
 <!-- version list -->
 
+## v0.2.0 (2026-11-24)
+
+### Bug Fixes
+
+- **web**: Bodies are drawn as far as the land
+  ([`fba426f`](https://github.com/sofianedjerbi/nexel-worlds/commit/fba426f397d83ef95e6632fd1a7826e3fb4883ed))
+
+- **web**: The far sea patches lie at the sea's own face
+  ([`925b012`](https://github.com/sofianedjerbi/nexel-worlds/commit/925b0125fff35ba4c1188a9a47cea07e0a0502e7))
+
+- **web**: The HD look's land box is the one view extent; its north rows are asked for as land on
+  the screen
+  ([`f3666b7`](https://github.com/sofianedjerbi/nexel-worlds/commit/f3666b77a8104992d19321521b3c021c76da67ec))
+
+- **web**: The water's depth tint is one function of distance: whole near you, the sea's one far
+  tint by the horizon
+  ([`3ac1dc9`](https://github.com/sofianedjerbi/nexel-worlds/commit/3ac1dc9ff9ebca575bfc170d1b58fe008034e79f))
+
+- **web**: Water past the horizon is not drawn; the far water goes whole px by px
+  ([`85fb320`](https://github.com/sofianedjerbi/nexel-worlds/commit/85fb320346d3873c316e29fc12178fc4c82c7373))
+
+- **web**: Water seen along its face at the horizon is whole, in the sea's one far tint
+  ([`d781451`](https://github.com/sofianedjerbi/nexel-worlds/commit/d781451f41d849f572d6bf196e6a3892642f573e))
+
+### Features
+
+- **web**: A view distance setting (Near, Normal, Far, Very far); the land made as wide as the
+  picture at the horizon
+  ([`df80242`](https://github.com/sofianedjerbi/nexel-worlds/commit/df80242c069ed16d275b1258c1e85626589f4528))
+
+### Refactoring
+
+- **web**: The fall is BodyPlace's: its state off the body, worked out in levels, asked once a frame
+  (phase B, 1)
+  ([`46770b0`](https://github.com/sofianedjerbi/nexel-worlds/commit/46770b0947eca498714e3bbfdff0b38d8e0effce))
+
+- **web**: The hop's state is BodyPlace's (phase B, 2)
+  ([`5e937f5`](https://github.com/sofianedjerbi/nexel-worlds/commit/5e937f54223e066159b27fcc31c78536f1607be3))
+
+- **web**: The ladder's solver says a height in levels; its picture's px are the place's (phase B,
+  3)
+  ([`8957f62`](https://github.com/sofianedjerbi/nexel-worlds/commit/8957f6212c9295697edc1122fb95589862cc173a))
+
+
 ## v0.1.13 (2026-11-24)
 
 ### Bug Fixes
