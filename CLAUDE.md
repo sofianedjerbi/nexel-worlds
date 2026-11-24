@@ -54,6 +54,8 @@ M5 Emergence: run 6+ hour sessions; document emergent behaviour (towns, wars, sc
 - Tests for the simulation core (tile edits, inventory, combat, persistence round-trip).
 - Watch resources: an orphaned process or model server holding RAM is a bug. Clean exits, caffeinate long
   runs, report CPU/RAM in the dashboard.
+- Drafts, mockups and review pages never go in this repo (no `local/`, `tmp/`, `mockups/` here): they go in
+  `/Users/sdjerbi/nexel/local/` (`../local/` from this repo). See `~/nexel/CLAUDE.md`, "Drafts".
 - Safety: agents only talk to the game server and the local model server, no shell, no internet.
   In-game anarchy is fine; nothing leaves the sandbox. Never commit model weights, world saves or logs
   (keep them in .gitignore'd folders).
