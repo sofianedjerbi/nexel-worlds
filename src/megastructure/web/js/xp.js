@@ -29,10 +29,9 @@ function magnetItems(e) {
 }
 const playerNamed = (name) => [...ents.values()].find((q) => q.e && q.e.kind === "agent" && q.e.name === name);
 
-// Moves the orbs and the loot flying to people, and queues their drawing into the frame's depth-sorted list (`list`),
-// so a tree in front still hides them.
-function drawOrbs(sx, sy, S, dt, list) {
-  const z = zoom;
+// stepOrbs moves the orbs and the loot flying to people, once a frame (render.js): the HD look draws them from the lists (hd_fx.js).
+// drawOrbs: the classic picture's (queued into its depth-sorted list).
+function stepOrbs(dt) {
   for (let i = orbs.length - 1; i >= 0; i--) {
     const o = orbs[i]; o.age += dt;
     if (o.age < 0) continue;
@@ -49,16 +48,25 @@ function drawOrbs(sx, sy, S, dt, list) {
       o.x += dx / d * Math.min(d, sp * dt); o.y += dy / d * Math.min(d, sp * dt); o.h *= .85;
       o.lift += (liftOf(p) - o.lift) * Math.min(1, dt * 12);   // (up or down to the height you're drawn at, smoothly)
     }
-    const cx = Math.round(sx(o.x) / z) * z, cy = Math.round((syUp(sy, o.y, o.lift) - o.h * S * .5) / z) * z;
-    const shape = o.big ? ORB_BIG : ORB, flick = Math.sin(o.age * 14 + o.seed) > 0;
-    list.push({y: o.y - .45, x: o.x, fx: () => drawOrb(cx, cy, shape, flick)});
   }
   for (let i = magnets.length - 1; i >= 0; i--) {           // loot sliding up into someone's hands
     const m = magnets[i]; m.age += dt;
     if (m.age < 0) continue;
     const p = playerNamed(m.who);
-    const k = Math.min(1, m.age / .28);
-    if (!p || k >= 1) { magnets.splice(i, 1); if (p) sfx("collect", p.tx, p.ty); continue; }
+    if (!p || m.age >= .28) { magnets.splice(i, 1); if (p) sfx("collect", p.tx, p.ty); }
+  }
+}
+function drawOrbs(sx, sy, S, list) {
+  const z = zoom;
+  for (const o of orbs) {
+    if (o.age < 0) continue;
+    const cx = Math.round(sx(o.x) / z) * z, cy = Math.round((syUp(sy, o.y, o.lift) - o.h * S * .5) / z) * z;
+    const shape = o.big ? ORB_BIG : ORB, flick = Math.sin(o.age * 14 + o.seed) > 0;
+    list.push({y: o.y - .45, x: o.x, fx: () => drawOrb(cx, cy, shape, flick)});
+  }
+  for (const m of magnets) {
+    const p = playerNamed(m.who), k = Math.min(1, m.age / .28);
+    if (m.age < 0 || !p) continue;
     const e = k * k, x = m.x + (p.x + .5 - m.x) * e, y = m.y + (p.y + .3 - UP - m.y) * e - Math.sin(k * Math.PI) * .35;
     const sz = DROP * z, lift = m.lift + (liftOf(p) - m.lift) * e, a = k > .7 ? (1 - k) / .3 : 1;   // (as it lay, never smaller: it fades as it is caught)
     list.push({y: y - .45, x, fx: () => { ctx.globalAlpha = a; ctx.drawImage(ghostIcon(m.name), Math.round(sx(x) - sz / 2), Math.round(syUp(sy, y, lift) - sz / 2), sz, sz); ctx.globalAlpha = 1; }});

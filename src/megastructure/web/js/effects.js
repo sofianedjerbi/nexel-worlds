@@ -110,9 +110,8 @@ function picked(x, y, old, by, now) {
 }
 function drawFlyers(sx, sy, S, now) {
   const z = zoom;
-  for (let i = flyers.length - 1; i >= 0; i--) {
-    const f = flyers[i], k = (now - f.t0) / FLY_MS;
-    if (k >= 1) { flyers.splice(i, 1); continue; }
+  for (const f of flyers) {
+    const k = (now - f.t0) / FLY_MS;
     const who = f.by && [...ents.values()].find((q) => q.e && q.e.name === f.by);
     let x = f.x, y = f.y, gone = false;
     if (k < 0 && !f.drop) continue;
@@ -121,7 +120,6 @@ function drawFlyers(sx, sy, S, now) {
       if (tf < 0) continue;
       if (tf * 1000 < f.drop.fall) y = f.drop.top + .5 * FRUIT_G * tf * tf;
       else { const b = (tf * 1000 - f.drop.fall) / BOUNCE_MS; if (b < 1) y = f.y - Math.sin(b * Math.PI) * .14; }
-      if (tf * 1000 - f.drop.fall > 0 && !f.landed) { f.landed = true; sfx("plant", f.x, f.y); }
     } else if (who) {                                 // arc into the picker's hands, fading as it is caught (never smaller: its pixels are the land's)
       const tx = who.x + .5, ty = who.y + .1 - UP, e = k * k * (3 - 2 * k);
       x = f.x + (tx - f.x) * e; y = f.y + (ty - f.y) * e - Math.sin(k * Math.PI) * 1.1;
@@ -165,10 +163,8 @@ function plucked(x, y, spr, who, now) {
 }
 function drawPlucks(sx, sy, S, now) {
   const z = zoom;
-  for (let i = plucks.length - 1; i >= 0; i--) {
-    const f = plucks[i], ms = now - f.t0;
-    if (ms > TUG_MS + PLUCK_MS) { plucks.splice(i, 1); continue; }
-    const [img, a, b, w, h, dx, dy] = f.spr;
+  for (const f of plucks) {
+    const ms = now - f.t0, [img, a, b, w, h, dx, dy] = f.spr;
     let ox = 0, oy = 0, sc = 1, stretch = 1, alpha = 1;
     if (ms < TUG_MS) { const k = ms / TUG_MS; oy = -Math.sin(k * Math.PI / 2) * .25; stretch = 1 + Math.sin(k * Math.PI) * .18; }
     else {
@@ -199,10 +195,8 @@ function smoke(x, y, n, size = 1) {   // size 1: a creature's poof; smaller for 
     life: .65 + Math.random() * .45, age: -i * .025});
 }
 function drawDying(sx, sy, S, t, now) {
-  for (let i = dying.length - 1; i >= 0; i--) {
-    const d = dying[i], k = (now - d.t0) / DIE_MS;
-    if (k >= 1) { dying.splice(i, 1); continue; }
-    d.p.y = d.y0 - k * .35;
+  for (const d of dying) {
+    const k = (now - d.t0) / DIE_MS; d.p.y = d.y0 - k * .35;
     ctx.save(); ctx.globalAlpha = 1 - k * k; ctx.filter = k < .3 ? "brightness(2.4) saturate(.4)" : "brightness(1.4)";
     drawEntity(d.p, sx, sy, S, t, now);
     ctx.restore();
@@ -224,30 +218,30 @@ function pixelOval(gx, gy, rx, ry, mx = 0, my = mx, ring = false) {
     if (i1 > a1) ctx.fillRect(gx + (a1 + 1) * z, gy + j * z, (i1 - a1) * z, z);
   }
 }
-function drawPuffs(sx, sy, dt) {
+function drawPuffs(sx, sy) {
   const z = zoom;
-  for (let i = puffs.length - 1; i >= 0; i--) {
-    const p = puffs[i]; p.age += dt;
-    if (p.age > p.life) { puffs.splice(i, 1); continue; }
+  for (const p of puffs) {
     if (p.age < 0) continue;
     const k = p.age / p.life, r = p.r + p.grow * k;     // (art px)
-    p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97;
     const cx = sx(p.x), cy = syUp(sy, p.y, liftFrom(p)), a = (1 - k) * .85;
     ctx.fillStyle = `rgba(246,240,228,${a})`; pixelOval(cx, cy, r, r);
     if (r >= 2) { ctx.fillStyle = `rgba(150,128,116,${a * .6})`; pixelOval(cx, cy, r, r, 0, 0, true); }    // its edge, one art pixel
   }
 }
-function drawEffects(sx, sy, S, dt) {
+// WHAT MOVES ON BY ITSELF GOES ON, once a frame (render.js): chips and sparks fall and bounce, smoke rises, a fruit lands (its sound), what is over goes. Nothing is drawn here:
+// the HD look draws them from these lists (hd_fx.js). (Each list was moved on inside the classic picture's painter of it, which the frame still ran, into a canvas of one px, for that)
+const keepIf = (l, ok) => { let n = 0; for (const v of l) if (ok(v)) l[n++] = v; l.length = n; };
+function stepEffects(dt, now) {
+  keepIf(flyers, (f) => { const tf = f.drop ? now - f.drop.t0 - f.drop.fall : -1; if (now < f.t0 && tf > 0 && !f.landed) { f.landed = true; sfx("plant", f.x, f.y); } return (now - f.t0) / FLY_MS < 1; });
+  keepIf(plucks, (f) => now - f.t0 <= TUG_MS + PLUCK_MS); keepIf(dying, (d) => now - d.t0 < DIE_MS); keepIf(falls, (f) => Math.floor((now - f.t0) / 1000 * 14) < 12);
+  keepIf(puffs, (p) => { p.age += dt; if (p.age > p.life) return false; if (p.age >= 0) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97; } return true; });
+  keepIf(parts, (p) => { p.age += dt; if (p.age > p.life) return false; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.floor !== undefined && p.y > p.floor) { p.y = p.floor; p.vx *= .5; p.vy = Math.abs(p.vy) > 1.2 ? -p.vy * .3 : 0; if (!p.vy) { p.g = 0; p.vx *= .6; } }   // (debris lands: a small bounce, then it rests and fades)
+    return true; });
+}
+function drawEffects(sx, sy, S) {
   const z = zoom;
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const p = parts[i]; p.age += dt;
-    if (p.age > p.life) { parts.splice(i, 1); continue; }
-    p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
-    if (p.floor !== undefined && p.y > p.floor) {   // debris lands: a small bounce, then it rests and fades
-      p.y = p.floor; p.vx *= .5;
-      p.vy = Math.abs(p.vy) > 1.2 ? -p.vy * .3 : 0;
-      if (!p.vy) { p.g = 0; p.vx *= .6; }
-    }
+  for (const p of parts) {
     ctx.globalAlpha = Math.min(1, 3.3 * (1 - p.age / p.life));
     ctx.fillStyle = p.c;
     ctx.fillRect(Math.round(sx(p.x)), Math.round(syUp(sy, p.y, liftFrom(p))), p.s * z, p.s * z);
@@ -255,9 +249,8 @@ function drawEffects(sx, sy, S, dt) {
   ctx.globalAlpha = 1;
   const now = performance.now();
   drawFlyers(sx, sy, S, now);
-  for (let i = falls.length - 1; i >= 0; i--) {     // the pack's tree-felling animation, then fade
-    const f = falls[i], k = (now - f.t0) / 1000, fr = Math.floor(k * 14);
-    if (fr >= 12) { falls.splice(i, 1); continue; }
+  for (const f of falls) {     // the pack's tree-felling animation, then fade
+    const k = (now - f.t0) / 1000, fr = Math.floor(k * 14);
     ctx.globalAlpha = fr >= 9 ? 1 - (fr - 9) / 3 : 1;
     // the sheet falls to the left with the trunk at frame x 32-48; mirrored about the trunk when it should fall right
     const [bx, by] = brink(f.x, f.y), x0 = sx(f.x) + bx * z;      // (where the tree stood: back from a drop, sprites.js)

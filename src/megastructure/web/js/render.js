@@ -84,13 +84,8 @@ function frame(now) {
   const landMs = performance.now() - landFrom;
 
   // The world is drawn by the HD look (hd.js, after this frame, on a canvas of its own): here nothing of it is painted.
-  // While it is live `ctx` is a canvas of one px (hd_view.js sink): what is still drawn below goes nowhere.
-  const S = TS();
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  ctx.imageSmoothingEnabled = false;
-  const [ox, oy] = screenOrigin(S);
+  const S = TS(), [ox, oy] = screenOrigin(S);
   Curve.frame(ox, oy, S, now);                       // (the curved world's line: the HD look's sky, curve.js)
-  const sx = (x) => ox + x * S, sy = Curve.sy(oy, S);
   const hereBlock = blocks.get(bkey(Math.floor(cam.x / B), Math.floor((away.a >= 1 ? away.y : cam.y + away.shift) / B)));
   const allShown = vis.every((b) => !onScreen(b) || Voxels.made(b));
   arrivingNow = (arrivingNow || !hereBlock || !Voxels.made(hereBlock)) && !allShown;   // (from arriving until all of it is ready)
@@ -99,16 +94,19 @@ function frame(now) {
   // picture it had. Held for HOLD_MS at the most once some of the land there is ready; after that, what has come.
   const lacking = !!me && (!hereBlock || !worldReady), late = lacking && goodAt > 0 && now - goodAt >= HOLD_MS && (now - goodAt >= 4 * HOLD_MS || vis.some((b) => onScreen(b) && Voxels.made(b)));      // (...and while none of it has come at all, four times as long: a busy machine)
   if (!lacking) goodAt = now; else if (!late && goodAt > 0) { slowFrame(dt, false); return; }
-  if (!HdLook.live && !HdLook.lost && !HdLook.wait && me) { ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H); }   // (no picture of the world: WebGL 2 missing, or not ready yet)
   slowFrame(dt, worldReady);
   // (where people are: a gate or a door opens for someone beside it. Not for a hen: animals work neither, sim/animals.py)
   occupied = new Set([...ents.values()].filter((p) => p.e && p.e.kind === "agent" && !Floors.rise(p)).map((p) => Math.round(p.x) + "," + Math.round(p.y)));   // (on the land: someone upstairs over a door does not open it)
   Voxels.still(vis, t);                     // (the water's picture the HD look lays on its water, voxels.js)
   // what moves on by itself: drops hopping out (their sound as they land), orbs flying to you, poofs, dust, plucked flowers: their state goes on
-  // here (drawn to the canvas of one px); the HD look draws them (hd_fx.js)
-  const none = [];
-  drawLoot(sx, sy, S, now, none); drawOrbs(sx, sy, S, dt, none);
-  drawDying(sx, sy, S, t, now); drawEffects(sx, sy, S, dt); drawPuffs(sx, sy, dt); drawPlucks(sx, sy, S, now);
+  // here, a step each (loot.js, xp.js, effects.js); the HD look draws them (hd_fx.js)
+  stepLoot(now); stepOrbs(dt); stepEffects(dt, performance.now());
+  // NO PICTURE OF THE WORLD (WebGL 2 missing, or not ready yet): the page's dark, and the classic picture's painters of what moves, all that is left of it
+  if (!HdLook.live && !HdLook.lost && !HdLook.wait && me) {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.imageSmoothingEnabled = false; ctx.fillStyle = "#2b2420"; ctx.fillRect(0, 0, W, H);
+    const sx = (x) => ox + x * S, sy = Curve.sy(oy, S), none = [];
+    drawLoot(sx, sy, S, now, none); drawOrbs(sx, sy, S, none); drawDying(sx, sy, S, t, now); drawEffects(sx, sy, S); drawPuffs(sx, sy); drawPlucks(sx, sy, S, now);
+  }
   drawXp();
   foodPreview();
   swingDoors(t);

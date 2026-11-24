@@ -62,8 +62,8 @@ const lootFrom = (l, k) => [(l.ox || 0) * (1 - k), (l.oy || 0) * (1 - k)];     /
 const lootAt = (x, y) => loot.some((l) => l.x === x && l.y === y);   // (still hopping in there: the pile waits, hd.js)
 const LOOT_HOPS = [.16, .08];                 // after the hop out: two smaller bounces in place, this long
 const lootRests = (l, now) => (now - l.t0) / 1000 >= l.flight + LOOT_HOPS[0] + LOOT_HOPS[1];
-function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list, like everything on the ground
-  const z = zoom;
+// The drops' state goes on, once a frame (render.js); the HD look draws them from `loot` (hd_fx.js)
+function stepLoot(now) {
   // A tile's loot hands over to its pile once all of it has come to rest: taken off here, before any of it is drawn,
   // so nothing shows twice. (Found out one by one while drawing, two that came to rest in the same long frame did.)
   for (let i = loot.length - 1; i >= 0; i--) {
@@ -72,13 +72,16 @@ function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list
     if (!l.landed) sfx("loot", l.x, l.y);
     loot.splice(i, 1);
   }
+  for (const l of loot) if (!l.landed && (now - l.t0) / 1000 >= l.flight) { l.landed = true; sfx("loot", l.x, l.y); }
+}
+function drawLoot(sx, sy, S, now, list) {   // queued into the depth-sorted list, like everything on the ground
+  const z = zoom;
   loot.forEach((l, i) => {
     const s = (now - l.t0) / 1000;
     if (s < 0) return;
     let h = 0, dxk = 1, since = 1;                                  // (at rest, waiting for the others)
     if (s < l.flight) { h = -(l.vy * s + LOOT_G * s * s / 2); dxk = s / l.flight; }   // the hop from the middle of the tile out to its place
     else {
-      if (!l.landed) { l.landed = true; sfx("loot", l.x, l.y); }
       let t = s - l.flight, n = 0;
       while (n < LOOT_HOPS.length && t > LOOT_HOPS[n]) t -= LOOT_HOPS[n++];
       if (n < LOOT_HOPS.length) { h = LOOT_G * LOOT_HOPS[n] / 2 * t - LOOT_G * t * t / 2; since = t; }
