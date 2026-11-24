@@ -133,6 +133,8 @@ class Building:
             raise ActionError("cliff_edge", "nothing stays on the edge of a hill: build further in")
         if not a.count(item):
             raise ActionError("missing_item", f"you have no {item}")
+        if item == "hob":                                  # a hob set down is lit: a creature, and yours (hob.py)
+            return (yield from self._place_hob(a, x, y))
         g, b = self.world.ground(x, y), self.world.block(x, y)
         picked = b == "flower"   # flowers are decoration: building over one picks it for you
         if picked:

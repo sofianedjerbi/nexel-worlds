@@ -81,7 +81,7 @@ function facingAny(alt) {
     const o = ents.get(foe.key), r = o && near.includes(o) && hit(o);
     if (r) return r;
   }
-  if (alt) for (const o of near) if (WILD[o.e.kind] && o.e.kind !== "wisp") { const r = hit(o); if (r) return r; }
+  if (alt) for (const o of near) if (WILD[o.e.kind] && o.e.kind !== "wisp" && o.e.kind !== "hob") { const r = hit(o); if (r) return r; }
   const here = {x: s.x, y: s.y}, under = combAt(s.x, s.y);           // something growing under your feet
   if (!alt && under && !GROUND.has(under) && !SOLID.has(under)) { const it = intent(here, false); if (useful(it)) return {p: here, it}; }
   const faced = intent(q, alt);

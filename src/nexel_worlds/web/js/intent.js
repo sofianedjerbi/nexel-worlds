@@ -78,7 +78,9 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
       return {ent, text: {chicken: "Chicken: feed it for eggs", chick: "A chick", calf: "A calf",
         tusker: "A tusker: it charges, step aside", pincer: "A pincer: it snaps up close",
         strawman: "A strawman: it fears firelight", wisp: "A wisp",
-        wyrm: "A wyrm: stay out of its line",
+        wyrm: "A wyrm: stay out of its line", gustling: "A gustling: it snatches what you hold",
+        grumblestump: "A grumblestump: back off when its arms go up", snapbloom: "A snapbloom: step aside when it rears",
+        hob: "A hob: it keeps wild things off",
         mossback: "Old Mossback: hit the neck", sporeling: "A sporeling: one hit"}[ent.e.kind] || who, info: true};
     }
     return {ent, text: weapon ? `Attack ${who}` : `Punch ${who}`, reach: "melee", diag: true, attack: true,      // X hits (a left click)
@@ -110,6 +112,8 @@ function intent0(p, brk, t, c, g, flower, ent, s) {
       return {text: bad.length ? (bad.some((q) => q.x === s.x && q.y === s.y) ? "Step aside first" : bad.some((q) => entityAt(q)) ? "Something is in the way" : `Needs a clear ${FOOT[block].join("×")} spot`) : `Place ${label(it)}`,
         ghost: it, ok: !bad.length, bad, foot: f.tiles, anchor: {x: f.ax, y: f.ay}, from: near, run: (d) => act("place", {dir: d, item: it})};
     }
+    if (it === "hob") return free ? {text: "Light the hob", ok: true, run: (d) => act("place", {dir: d, item: it})}   // (a creature, not a tile: sim/hob.py)
+                                  : {text: "A hob needs open ground", ok: false};
     if (block === "V") return !hasBlock && wet(g) ? {text: "Launch boat", ghost: it, ok: true, run: (d) => act("place", {dir: d, item: it})}
                                                      : {text: "Boats go on shallow water", ghost: it, ok: false};
     if (block) return free ? {text: `Place ${label(it === "hay" ? "hay_bale" : it)}`, ghost: it, ok: true,

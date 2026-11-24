@@ -66,6 +66,22 @@ def test_the_wisp_and_the_wyrm_are_in_the_game(game):
     assert not game.errors
 
 
+def test_the_gustling_spins_up_and_snatches_what_is_in_your_hand(game):
+    game.clear_area(8)
+    game.rpc("dev_needs", hp=20, hunger=17)                    # (whole, and not healing by itself: 18 and more)
+    game.give(wood=10)
+    game.hold_item("wood")
+    game.spawn("gustling", 1, 0)
+    game.wait("[...ents.values()].some((q) => q.e && q.e.kind === 'gustling' && q.e.act === 'windup')", 4000)
+    shot(game, "gustling_spin")                                # the warning: it draws up thin and spins
+    game.sleep(1300)
+    assert game.inv("wood") == 5                               # we stood there: it took five of what we held
+    e = kind(game, "gustling")
+    assert e and e["act"] == "flee"                            # ...and runs off with it
+    shot(game, "gustling_off")
+    assert game.server()["hp"] == 20 and not game.errors       # it never hurts anyone
+
+
 def test_a_creature_comes_up_a_step_as_you_do(game):
     """Creatures stand on the land as people do (sim/bodies.py): one hops up a layer, the screen shows it at its
     height (they kept to the level they were on: you on a step, a tusker rammed the step)."""

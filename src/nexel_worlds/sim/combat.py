@@ -52,6 +52,8 @@ class Combat:
         a.swing_ready = self.tick + sec(ATTACK_COOLDOWN)
         dmg = T.WEAPONS.get(weapon, T.FIST_DAMAGE)                 # (in half hearts, from a creature or a person alike)
         dmg = self.shell(t, dmg) if isinstance(t, Creature) else self.guarded(t, dmg)     # Old Mossback's shell (boss.py), or armor (wear.py)
+        if isinstance(t, Creature) and t.kind == "gustling":
+            dmg = self.gust_struck(t, a, dmg)                        # spinning up, it scatters; otherwise it runs (wild.py)
         self.tire(a, "attack")
         name = t.name if isinstance(t, Agent) else f"{t.kind}#{t.id}"
         self.emit("attack", a.x, a.y, attacker=a.name, target=name, damage=dmg, weapon=weapon or "fists")
@@ -113,6 +115,8 @@ class Combat:
     def kill_creature(self, c: Creature, by: Agent | None):
         self.creatures.pop(c.id, None)
         drops = roll_drops(c.kind, self.rng, self.luck)      # (not the same thing every time: entities.py)
+        for item, n in c.loot.items():                       # and what it carried (a gustling's snatches: wild.py)
+            drops[item] = drops.get(item, 0) + n
         self.add_items(c.x, c.y, drops)
         if by:
             by.bump(f"killed_{c.kind}")

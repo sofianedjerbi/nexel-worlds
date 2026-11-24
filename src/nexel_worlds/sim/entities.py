@@ -88,7 +88,7 @@ class Agent:
 @dataclass
 class Creature:
     id: int
-    kind: str  # chicken | cow | chick | calf | tusker | pincer | strawman | wisp | wyrm | mossback | sporeling
+    kind: str  # chicken | cow | chick | calf | tusker | pincer | strawman | wisp | wyrm | gustling | grumblestump | snapbloom | mossback | sporeling | hob
     x: int
     y: int
     hp: int
@@ -109,13 +109,16 @@ class Creature:
     awake: int = 0      # Old Mossback: it stays up until this tick
     angry: int = 0      # a tusker that was hit: angry until this tick, at `foe` (wild.py; runtime only)
     foe: int = 0        # ...the id of whoever hit it
+    loot: dict = field(default_factory=dict)   # what a gustling snatched: it falls where it dies (wild.py; runtime only)
+    owner: int = 0      # a hob: the id of whoever set it down (hob.py; saved)
 
     def __post_init__(self):                       # (one saved on the old scale, 30 for a cow: no more than its kind has)
         self.hp = min(self.hp, CREATURES.get(self.kind, {}).get("hp", self.hp))
 
     def to_json(self):
         return {"id": self.id, "kind": self.kind, "x": self.x, "y": self.y, "z": self.z, "hp": self.hp,
-                "milked": self.milked, "love": self.love, "lay": self.lay, "born": self.born, **({"name": self.name} if self.name else {})}
+                "milked": self.milked, "love": self.love, "lay": self.lay, "born": self.born, **({"name": self.name} if self.name else {}),
+                **({"owner": self.owner} if self.owner else {})}
 
 # hp: in half hearts, as a person's (a chicken has one heart, a cow three, a tusker four, Old Mossback thirty: a fifth
 # of what they were on their own old scale, so each takes the same number of blows). damage: what it does to you, in half
@@ -131,6 +134,10 @@ CREATURES = {
     "pincer": {"hp": 3, "drops": (("meat", .5, 1, 1), ("shell_plate", .05, 1, 1)), "char": "I", "damage": 1},
     "strawman": {"hp": 10, "drops": (("hay", 1, 1, 2), ("straw_hat", .1, 1, 1)), "char": "S", "damage": 2},
     "wisp": {"hp": 1, "drops": (), "char": "i"},
+    "gustling": {"hp": 3, "drops": (("seed", .5, 1, 2), ("leaf_charm", .05, 1, 1)), "char": "j"},   # (and what it stole: its `loot`)
+    "grumblestump": {"hp": 14, "drops": (("wood", .9, 2, 4), ("spore_charm", .05, 1, 1)), "char": "N", "damage": 4},
+    "snapbloom": {"hp": 6, "drops": (("seed", .6, 1, 2), ("flower_charm", .05, 1, 1)), "char": "d", "damage": 2},
+    "hob": {"hp": 20, "drops": (("stone", 1, 3, 5), ("flame_charm", .1, 1, 1)), "char": "a"},     # an ally (hob.py)
     "wyrm": {"hp": 12, "drops": (("meat", 1, 2, 4), ("frost_charm", .1, 1, 1)), "char": "E", "damage": 3.5},
     "mossback": {"hp": 60, "drops": (("shell_plate", 1, 5, 5), ("meat", 1, 6, 6), ("fruit", 1, 4, 4), ("mushroom", 1, 3, 3)), "char": "G", "damage": 4.5, "snap": 5.5, "wide": 1},   # (wide: a tile each side of its own)   # the first boss (boss.py)
     "sporeling": {"hp": 1, "drops": (("mushroom", .05, 1, 1),), "char": "s", "damage": 0.5},

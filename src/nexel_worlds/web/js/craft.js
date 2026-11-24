@@ -17,7 +17,7 @@ const RECIPE_GROUPS = [
   ["Basics", "workbench", ["workbench", "campfire", "torch", "rope", "plank", "stone", "path", "boat", "mailbox"]],
   ["Tools", "pickaxe", ["axe", "pickaxe", "hoe", "watering_can", "spear", "sword"]],
   ["Build", "wood_wall", ["wood_wall", "door", "roof", "stairs", "ladder", "fence", "gate", "stone_wall", "sign", "flag", "chest"]],
-  ["Home", "bed", ["bed", "chair", "table", "plant", "clock", "rug", "well", "coop", "trough", "hay", "name_tag", "picnic_blanket", "basket", "cooked_meat", "bread", "ingot"]],
+  ["Home", "bed", ["bed", "chair", "table", "plant", "clock", "rug", "well", "coop", "trough", "hob", "hay", "name_tag", "picnic_blanket", "basket", "cooked_meat", "bread", "ingot"]],
   ["Wear", "straw_hat", []],             // (clothes, armor and charms: wear_items.js)
 ];
 const CRAFT_ROWS = 5, NEED_ROWS = 4, NEED_COLS = 3;

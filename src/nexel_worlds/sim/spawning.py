@@ -6,7 +6,8 @@
 - Animals belong to the land: when a chunk is generated, a meadow may get a herd (persistent; they never despawn),
   about one chunk in twenty. Every PASSIVE_EVERY, a player with fewer than PASSIVE_CAP animals around may get one more.
 - Wild enemies (WILD_SPAWNS): a tusker now and then by day on a meadow, a pincer on a shore; one at a time per player.
-  The strawman, the wisp, the wyrm and Old Mossback (with its sporelings) never spawn by themselves (for now).
+  A gustling or a snapbloom, rarely, by day on open grass; a grumblestump, rarely, at night. The strawman, the wisp, the wyrm and Old Mossback (with its sporelings)
+  never spawn by themselves (for now).
 - Tuskers and pincers despawn when far from everyone (at once past DESPAWN_FAR, by chance past DESPAWN_NEAR).
 - Every spawn is out of sight (SPAWN_MIN tiles from everyone, and on no screen) and inside a ticking chunk; caps are
   per player, counted around that player, so a crowd in one place never starves another.
@@ -34,9 +35,12 @@ HERD = {"chicken": (2, 3), "cow": (1, 2)}
 PACK = (1, 1)                    # wild enemies come alone
 CHUNK_HERD = 0.05                # the chance a newly generated chunk gets a herd (if it has a meadow for it)
 # kind: how often it is tried, how many may be around a player, by day only, how many spots one try looks at
-WILD_SPAWNS = {"tusker": dict(every=sec(120), cap=1, day=True, tries=1), "pincer": dict(every=sec(90), cap=1, day=False, tries=40)}
-ROAMING = ("tusker", "pincer")   # these come and go; the rest stay where they are
-RARE = ("strawman", "wisp", "wyrm", "mossback", "sporeling")   # never counted, never gone
+WILD_SPAWNS = {"tusker": dict(every=sec(120), cap=1, day=True, tries=1), "pincer": dict(every=sec(90), cap=1, day=False, tries=40),
+               "gustling": dict(every=sec(420), cap=1, day=True, tries=1),     # (one try every seven minutes: rare)
+               "snapbloom": dict(every=sec(480), cap=1, day=True, tries=1),
+               "grumblestump": dict(every=sec(300), cap=1, night=True, tries=2)}     # (night: only at night)
+ROAMING = ("tusker", "pincer", "gustling", "snapbloom", "grumblestump")   # these come and go; the rest stay where they are
+RARE = ("strawman", "wisp", "wyrm", "mossback", "sporeling", "hob")   # never counted, never gone (a hob is somebody's)
 LIMITS = ((PASSIVE, 6), (ROAMING, 2))   # the most of these there may be around one player (CAP_R)
 CULL_EVERY, CULL_MAX = sec(1), 20       # how often the ones over a limit go, and how many at most at a time
 EDGE = 2                         # a creature this close to a screen's watched rectangle is taken to be seen
@@ -86,7 +90,7 @@ class Spawning:
                 if self.count_near(a, PASSIVE) < PASSIVE_CAP:
                     self.spawn_pack(self.rng.choice(("chicken", "chicken", "cow")), a)
         for kind, w in WILD_SPAWNS.items():
-            if self.tick % w["every"] == 0 and not (w["day"] and self.is_night()):
+            if self.tick % w["every"] == 0 and not (w.get("day") and self.is_night()) and not (w.get("night") and not self.is_night()):
                 a = online[(self.tick // w["every"]) % len(online)]
                 if self.count_near(a, (kind,)) < w["cap"]:
                     for _ in range(w["tries"]):

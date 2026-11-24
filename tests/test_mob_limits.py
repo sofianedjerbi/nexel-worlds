@@ -6,7 +6,7 @@ from helpers import clear, run
 from test_wild import put
 
 from nexel_worlds.sim import Creature, sec
-from nexel_worlds.sim.spawning import CAP_R, LIMITS, PASSIVE, SPAWN_MIN
+from nexel_worlds.sim.spawning import CAP_R, LIMITS, PASSIVE, ROAMING, SPAWN_MIN
 
 ANIMALS = dict(LIMITS)[PASSIVE]
 
@@ -95,7 +95,7 @@ def test_nothing_goes_on_a_screen_and_a_named_or_a_housed_one_never_goes(world):
         a.hp = 100
     assert daisy.id in sim.creatures and all(c.id in sim.creatures for c in housed + watched)
     assert sum(c.id in sim.creatures for c in wild if c.kind == "chicken") == 0      # (the kept ones are more than the limit)
-    assert sum(c.id in sim.creatures for c in wild if c.kind == "tusker") == dict(LIMITS)[("tusker", "pincer")]
+    assert sum(c.id in sim.creatures for c in wild if c.kind == "tusker") == dict(LIMITS)[ROAMING]
     again = Creature(**json.loads(json.dumps(daisy.to_json())))        # a name is saved with the world
     assert again.name == daisy.name and "name" not in housed[0].to_json()
 

@@ -14,7 +14,7 @@ const ICONS = {   // [sheet, x, y, w, h]: the items sheet has seed packets in co
   meat: ["gen", "meat"], cooked_meat: ["gen", "cooked_meat"], bread: ["gen", "bread"],
   wheat: ["items", 16, 128], pumpkin: ["items", 16, 144], cauliflower: ["items", 16, 48], lettuce: ["items", 16, 112],
   eggplant: ["items", 16, 80], carrot: ["items", 16, 32],
-  flower: ["nature", 16, 48], workbench: ["gen", "workbench"], campfire: ["gen", "campfire0"], chest: ["chest", 16, 16],
+  flower: ["nature", 16, 48], workbench: ["gen", "workbench"], hob: ["hob", 4, 0, 24, 40], campfire: ["gen", "campfire0"], chest: ["chest", 16, 16],
   boat: ["boats", 8, 36, 32, 24], mailbox: ["mailbox", 0, 16, 16, 32], fence: ["fences", 0, 48], gate: ["gates", 0, 0], wood_wall: ["house_walls", 16, 32], roof: ["house_roof", 16, 16], stone_wall: ["gen", "stone_wall"], door: ["door", 80, 0],
   sign: ["signs", 0, 0], flag: ["gen", "flag"], bed: ["furniture", 0, 16, 16, 32], chair: ["furniture", 64, 32],
   table: ["furniture", 48, 48], plant: ["furniture", 48, 0, 16, 32], clock: ["furniture", 96, 48], rug: ["furniture", 0, 80], well: ["well", 0, 0, 32, 32], coop: ["coop", 160, 80, 32, 44], picnic_blanket: ["blanket", 2, 8, 44, 32], basket: ["basket", 0, 0], trough: ["barn", 0, 0], hay: ["barn", 0, 16],
