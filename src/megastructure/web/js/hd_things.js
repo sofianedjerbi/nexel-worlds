@@ -81,21 +81,16 @@ const HdThings = (() => {
   // a rug, a blanket: flat on the ground, its picture the top of a box with no height
   function decal(out, c, x, y, base) { const spr = objectSprite(c, x, y, 0); if (!spr || !spr[0] || !spr[0].width) return; push(out, {x: spr[5] - 1, y: spr[6] - 1, z: base + .5, w: spr[3] + 2, d: spr[4] + 2, h: 0, top: flat(0xff000000, spr[3] + 2, spr[4] + 2, 0xff000000), shade: true}); push(out, {x: spr[5], y: spr[6], z: base + 1, w: spr[3], d: spr[4], h: 0, top: cut(pix(spr[0], spr[1], spr[2], spr[3], spr[4]), 0, spr[3], 0, spr[4])}); }
   // ---- walls, doors: thin, in the middle of their tile (structures.js: the band's 6 px), a top to each. h: its height in px of the land: a BLOCK (UP), as many rows of planks as it is px on the screen; under a built block up to it (a storey). One block of wall is one level: a wall reads as the cube it is
-  const tints = new Map(), L0 = 5, R0 = 11;
-  function tint(c, x, y, at) {   // a wall's ink and its cap's colour: off the game's own picture of it
-    let t = tints.get(c); if (t) return t;
-    const P = pix(painted(16, 16, () => Structures.drawWall(c === "+" ? "W" : c, x, y, () => 0, () => 4, 16, 0, 1, at)), 0, 0, 16, 16), cap = P.px[2 * 16 + 8], ink = [P.px[8], P.px[2 * 16 + 5], P.px[2 * 16]].find((v) => solid(v) && v !== cap);
-    if (!solid(cap) || !ink) return {ink: 0xff604c75, cap: 0xff6c9ac4}; t = {ink, cap}; tints.set(c, t); return t;
-  }
+  const L0 = 5, R0 = 11, tint = (c) => Structures.look(c);   // (a wall's line and its cap's colour: structures.js)
   const flat = (v, w, h, inkv, edges = "") => room("f" + [v, w, h, inkv, edges], w, h, (put) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) put(i, j, (edges.includes("n") && !j) || (edges.includes("s") && j === h - 1) || (edges.includes("w") && !i) || (edges.includes("e") && i === w - 1) ? inkv : v); });
   function planks(c, X, w, h) {   // a wall's front, as structures.js takes it: the pack's planks (stone: its stones), 12 rows; taller: its last rows again over them
-    const stone = c === "%", g = stone ? genCell("stone_wall") : null, P = stone ? pix(IMG.gen, g[0], g[1] + 2, 16, 12) : pix(IMG.house_walls, 56, 4, 16, 12);
+    const stone = c === "%", P = pix(...Structures.look(c).front, 16, 12);
     return room("p" + [stone, X, w, h], w, h, (put) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const v = P.px[((j + 12 - (h % 12)) % 12) * 16 + X + i]; put(i, j, solid(v) ? v : P.px[5 * 16 + 1]); } });   // (the sprite's see-through corners: its line's colour)
   }
   let ghosting = false; const isWall = (x, y, z) => Structures.WALLS.includes(Floors.thingAt(x, y, z) || "-") || (ghosting && plans.has(x + "," + y + "," + z));
   const doorsAt = new Map(), doorOpen = (x, y) => doorsAt.set(x + "," + y, [x, y]) && [[0, 0], [0, -1], [0, 1], [1, 0], [-1, 0]].some(([dx, dy]) => occupied.has((x + dx) + "," + (y + dy)));
   function wall(out, c, x, y, zl, h) {
-    const n = isWall(x, y - 1, zl), s = isWall(x, y + 1, zl), w = isWall(x - 1, y, zl), e = isWall(x + 1, y, zl), T = tint(c, x, y, zl), z = zl * UP;
+    const n = isWall(x, y - 1, zl), s = isWall(x, y + 1, zl), w = isWall(x - 1, y, zl), e = isWall(x + 1, y, zl), T = tint(c), z = zl * UP;
     const rows = (hh) => Math.max(1, Math.round(hh * KF()));
     const part = (x0, x1, y0, y1, hh, ed, front, pc = c) => { cast(out, x, y, zl, [x0 - 1, y0 - 1, x1 + 1, y1 + 1], 0, hh); push(out, {x: x0, y: y0, z, w: x1 - x0, d: y1 - y0, h: hh, fh: rows(hh), top: flat(T.cap, x1 - x0, y1 - y0, T.ink, ed), front: front ? planks(pc, x0, x1 - x0, rows(hh)) : null,
       west: x0 === 0 ? null : flat(planksTone(pc), Math.min(16, y1 - y0), rows(hh), T.ink, "n"), east: x1 === 16 ? null : flat(planksTone(pc), Math.min(16, y1 - y0), rows(hh), T.ink, "n")}); };

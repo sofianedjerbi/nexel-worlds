@@ -36,42 +36,12 @@ const Structures = (() => {
     doors.set(key, o);
     return 5 - Math.round(o * 5);
   }
-  // One wall, on its own tile (UP px over it). a: how much of it is drawn (a plan's ghost is half there)
-  const UP = 4, L = 5, R = 11;                          // how far over its tile it stands; the band's two edges
-  function drawWall(c, x, y, sx, sy, S, now, a = 1, at) {
-    const z = zoom, px = sx(x), py = sy(y, x) - UP * z, n = wall(x, y - 1, at), s = wall(x, y + 1, at), w = wall(x - 1, y, at), e = wall(x + 1, y, at), stone = c === "%";
-    const ink = stone ? STONE[0] : INK, top = stone ? STONE[1] : CAP, x0 = w ? 0 : L, x1 = e ? 16 : R;
-    const r = (col, X, Y, W_, H_) => { ctx.fillStyle = col; ctx.fillRect(px + X * z, py + Y * z, W_ * z, H_ * z); };
-    const planks = (X, W_) => {                         // a wall's front: under its cap, the pack's planks (stone: its stones)
-      if (W_ <= 0) return;
-      if (stone) { const [gx, gy] = genCell("stone_wall"); ctx.drawImage(IMG.gen, gx + X, gy + 2, W_, 12, px + X * z, py + 4 * z, W_ * z, 12 * z); }
-      else ctx.drawImage(IMG.house_walls, 56 + X, 4, W_, 12, px + X * z, py + 4 * z, W_ * z, 12 * z);
-    };
-    const cap = (X0, X1) => { r(top, X0, 1, X1 - X0, 3); r(ink, X0, 0, X1 - X0, 1); };
-    ctx.globalAlpha = a;
-    if (sideDoor(x, y, at)) {                               // seen from above: its posts, its leaf, the doorway's shadow under it
-      [.3, .2, .1].forEach((al, k) => r(`rgba(30,20,28,${al})`, 3 - k, 4, 10 + 2 * k, 8));
-      for (const Y of [0, 12]) { r(ink, L, Y, 6, 4); r(top, L + 1, Y + (Y ? 0 : 1), 4, 3); }
-      if ((a >= 1 ? doorFrame(x, y, at) : 5) >= 3) { r(INK, 6, 4, 4, 8); r("#90625d", 7, 4, 2, 8); r("#e8cfa6", 7, 9, 1, 1); }       // shut: across the way
-      else { r(INK, R, 3, 5, 4); r("#90625d", R, 4, 4, 2); }                                                                   // open: swung back from its post
-    } else if (c === "+") {                             // the pack's door between its posts, a dark doorway behind it
-      r("#4a3530", 3, 1, 10, 14);
-      ctx.drawImage(IMG.door, (a >= 1 ? doorFrame(x, y, at) : 5) * 16, 0, 16, 16, px, py, S, S);
-    } else if (!s) {                                    // nothing south of it: its front, from one side of it to the other
-      planks(x0, x1 - x0); cap(x0, x1);
-      if (!w) r(ink, x0, 0, 1, 16);
-      if (!e) r(ink, x1 - 1, 0, 1, 16);
-      if (n) r(top, L + 1, 0, R - L - 2, 1);           // (a wall comes down onto it: its band runs into this cap, no line across it)
-    } else {                                            // a wall goes on south of it: its top, a band; a wall from a side joins it
-      if (w) planks(0, L);
-      if (e) planks(R, 16 - R);
-      r(ink, L, 0, 1, 16); r(ink, R - 1, 0, 1, 16); r(top, L + 1, 0, R - L - 2, 16);
-      if (w) { cap(0, L + 1); r(top, L, 1, 1, 3); }
-      if (e) { cap(R - 1, 16); r(top, R - 1, 1, 1, 3); }
-      if (!n) r(ink, L, 0, R - L, 1);
-    }
-    ctx.globalAlpha = 1;
-  }
+  // A WALL'S LOOK IS DATA: its line and its cap's colour (a px, as the land's paints are: 0xAABBGGRR), and where its front is in the pack:
+  // 16 x 12 px, the house's planks, the stone wall's stones. The land's own painter lays them (hd_things.js wall: boxes in the land, lit as
+  // the land's faces). (It was a painter of its own here, drawWall: rects and sheet pieces on a 2D canvas at the zoom, kept from the flat
+  // picture and then only drawn off screen to read two colours back out of it; the front's place in the pack was written twice.)
+  const abgr = (h) => (0xff000000 | parseInt(h.slice(5, 7), 16) << 16 | parseInt(h.slice(3, 5), 16) << 8 | parseInt(h.slice(1, 3), 16)) >>> 0;
+  const look = (c) => (c === "%" ? {ink: abgr(STONE[0]), cap: abgr(STONE[1]), front: [IMG.gen, genCell("stone_wall")[0], genCell("stone_wall")[1] + 2]} : {ink: abgr(INK), cap: abgr(CAP), front: [IMG.house_walls, 56, 4]});
   // One roof block's top, at (px, top) on the screen: the middle of the sheet's roof, its edges laid over it where
   // the roof ends. up, down: how many roof blocks go on north and south of it; w, e: one beside it
   function drawRoof(px, top, S, up, down, w, e) {
@@ -85,5 +55,5 @@ const Structures = (() => {
     if (!up) piece(0, 9, 7, top - 7 * z);
     if (!down) piece(4, 0, 7, top + 16 * z);
   }
-  return {WALLS, INK, drawWall, drawRoof, sideDoor, doorFrame};
+  return {WALLS, INK, look, drawRoof, sideDoor, doorFrame};
 })();
