@@ -113,7 +113,7 @@ def handler(root: Path, pyodide: Path | None, line: Line, keep: int = 600):
                 key = (f, st.st_mtime_ns)
                 if key not in packed:
                     packed[key] = gzip.compress(body, 6)
-                raw, body = len(body), packed[key]
+                body = packed[key]
                 head["Content-Encoding"] = "gzip"
                 br = f.with_name(f.name + ".br")
                 wire = br.stat().st_size if cdn and br.exists() else len(body)

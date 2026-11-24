@@ -134,7 +134,7 @@ def scene(ph, name, secs, profile):
             g.page.wait_for_function("typeof titleDraw === 'function' && document.body.classList.contains('scene')", timeout=60000)
             shown, prof = g.js("performance.now()"), profile and (ph.cdp.send("Profiler.stop"), ph.cdp.send("Profiler.start"))   # (the island in: "title"; --profile: its frames alone)
             time.sleep(min(3, secs / 2))                     # (the first screen's own scene, played)
-            ph.title_prof = profile and ph.cdp.send("Profiler.stop")["profile"]; prof = profile and ph.cdp.send("Profiler.start")
+            ph.title_prof = profile and ph.cdp.send("Profiler.stop")["profile"]; profile and ph.cdp.send("Profiler.start")
             woke = g.js("performance.now()")                 # (the long tasks from Wake up on: stats "woke")
             landed = wake(g, f"sim{os.getpid() % 1000}t") or g.js("performance.now()")   # (Wake up to the land drawn round you: "land_s")
             time.sleep(1)

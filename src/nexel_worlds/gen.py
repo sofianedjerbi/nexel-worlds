@@ -29,15 +29,11 @@ def _corner(seed: int, x: int, y: int, salt: int) -> float:
     return _hash(seed, x, y, salt)
 
 
-def _smooth(t: float) -> float:
-    return t * t * (3 - 2 * t)
-
-
 def value_noise(seed: int, x: float, y: float, scale: float, salt: int) -> float:
     fx, fy = x / scale, y / scale
     x0, y0 = math.floor(fx), math.floor(fy)
     tx, ty = fx - x0, fy - y0
-    tx, ty = tx * tx * (3 - 2 * tx), ty * ty * (3 - 2 * ty)        # (_smooth, in line: this runs fifteen times a tile)
+    tx, ty = tx * tx * (3 - 2 * tx), ty * ty * (3 - 2 * ty)        # (smoothstep, in line: this runs fifteen times a tile)
     a = _corner(seed, x0, y0, salt)
     b = _corner(seed, x0 + 1, y0, salt)
     c = _corner(seed, x0, y0 + 1, salt)

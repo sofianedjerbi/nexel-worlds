@@ -1,6 +1,5 @@
 """Sprites derived from the pack's own sheets at build time (bare fruit trees, the thin tree's stump and felling)."""
 
-import math
 from pathlib import Path
 
 from PIL import Image
@@ -111,49 +110,3 @@ def largest_shape(img: Image.Image) -> Image.Image:
     for x, y in best:
         op[x, y] = px[x, y]
     return out
-
-
-def _mark(v, x, y, y0, y1, left, right) -> int:
-    """-1 a shade line on the grass here, +1 a lit lip, 0 nothing."""
-    if v == 2:                                       # two shallow steps: a soft drop with a lit lip, edge to edge
-        if not left + 1 < x < right - 1:
-            return 0
-        for yb in (y0 + 5, y0 + 11):
-            if y == yb:
-                return -1
-            if y == yb - 1:
-                return 1
-        return 0
-    if not left + 3 <= x <= right - 3:
-        return 0
-    if v == 3:                                       # curved: each line bows down in the middle, a rounded rise
-        cy = y - y0 - round(1.5 * (1 - ((x - 15.5) / 12) ** 2))
-        return -1 if cy % 4 == 2 and (x + y // 4) % 7 < 5 else 0
-    if v == 4:                                       # dashes, each with the light catching its upper lip
-        dash = (x + y // 4) % 7 < 5
-        if (y - y0) % 4 == 2 and dash:
-            return -1
-        return 1 if (y - y0) % 4 == 1 and (x + (y + 1) // 4) % 7 < 5 else 0
-    if v == 1:                                       # staggered the other way, a little wider apart
-        return -1 if (y - y0) % 5 == 2 and (x - y // 5 * 2) % 8 < 5 else 0
-    return -1 if (y - y0) % 4 == 2 and (x + y // 4) % 7 < 5 else 0
-
-
-def _mix(a, b, t):
-    return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3)) + (255,)
-
-
-BAYER = [[v / 16 for v in row] for row in ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))]
-
-
-def _ease(t):
-    return t * t * (3 - 2 * t)
-
-
-def _foot(k, x, left, right):
-    """How far the slope has faded into the ground below: from halfway down, eased, and sooner at its sides, so its
-    foot has no edge (no line, no rectangle)."""
-    side = min(x - left, right - x) / 6
-    t = max(0, k - .3 - .25 * (1 - min(1, side))) / .55
-    t = min(1, t)
-    return t * t * (3 - 2 * t)

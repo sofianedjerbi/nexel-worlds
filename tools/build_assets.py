@@ -122,10 +122,6 @@ def build(sprites: Path, ui_zip: Path, out: Path = OUT):
         paw = Image.open(io.BytesIO(read_member(zu, "UI Sprites/Mouse sprites/Catpaw Mouse icon.png"))).convert("RGBA")
         point = Image.open(io.BytesIO(read_member(zu, "UI Sprites/Mouse sprites/Catpaw pointing Mouse icon.png"))).convert("RGBA")
 
-    # burnt ground: the tilled-soil layer, darkened and desaturated toward ash grey
-    def ashen(r, g, b):
-        lum = (r * 0.3 + g * 0.59 + b * 0.11)
-        return (int(lum * 0.45 + r * 0.12), int(lum * 0.43 + g * 0.1), int(lum * 0.45 + b * 0.1))
     with zipfile.ZipFile(sprites) as zs3:
         layers = Image.open(io.BytesIO(read_member(zs3, "Tilesets/ground tiles/New tiles/Grass_Tile_Layers.png"))).convert("RGBA")
     def charred(r, g, b):  # green → warm charcoal, keeping the light/dark structure

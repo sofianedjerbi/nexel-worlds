@@ -13,7 +13,7 @@ from .constants import (
     TROUGH_R,
     sec,
 )
-from .entities import CREATURES, ActionError, Agent, Creature
+from .entities import CREATURES, ActionError, Creature
 from .wild import WILD
 
 

@@ -1,7 +1,7 @@
 // Chat, panel buttons, URL options and start-up.
 
 // Chat, like many sandbox games: recent lines show for a while then fade; Enter opens the history and the input.
-const CHAT_SHOW_MS = 10000, CHAT_KEEP = 100;
+const CHAT_KEEP = 100;
 // What the game itself says may be dressed ("add bold, line return... make them beautiful in the chat"): **bold** for
 // the word that matters, a new line where one is written, `K` for a key drawn as a key. What a player says is never
 // dressed: it is shown as typed.

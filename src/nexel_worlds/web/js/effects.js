@@ -79,7 +79,6 @@ function drawEmote(p, sx, sy, S) {
   ctx.drawImage(IMG.emoji, c * 32, rr * 32, 32, 32, x, y, size, size);
   ctx.globalAlpha = 1;
 }
-function floatText(x, y, text, color) { floats.push({x, y, text, color, t: performance.now() / 1000}); }
 // A felled tree falls over and leaves its stump. Round trees use the pack's 13-frame felling sheet; young thin trees
 // use thin_fall.png, derived from it frame by frame at build time (same wobble, swoosh, landing and leaf burst).
 // Both fall away from whoever chopped them (the sheets fall left; mirrored about the trunk to fall right).

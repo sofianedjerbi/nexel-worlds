@@ -126,7 +126,7 @@ function drawBlobLayer(g, sheet, x, y, pred, decor) {
 // The land is painted in the page, a px a number, and handed to the GPU whole, once (a block's ground: relief.js).
 // Painted through canvases a piece at a time, a phone's GPU got it wrong where a desktop's did not.
 // A sheet's px, read once: a Uint32 a px, its alpha on top.
-const BW = B * 16, sheetPx = new Map();
+const sheetPx = new Map();
 function sheetData(sheet) {
   let m = sheetPx.get(sheet);
   if (!m) {
