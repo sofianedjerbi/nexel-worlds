@@ -26,17 +26,15 @@ const HdLevel = (() => {
   }
   function cover({tx, ty, L}) { const top = topAt(tx, ty); return {top, dep: Math.max(0, top - L), roof: top > L, rim: rim(tx, ty, L)}; }
   function of(p, now) { const r = of0(p, now); if (!(p.e && p.e.kind === "agent" && p.e.id === myId)) return r; const a = Leap.state; return [a ? Math.max(r[0], Math.floor(a.z + .5)) : r[0], Leap.cam(r[1], now)]; }
-  function of0(p, now) {
-    const H0 = Voxels.host, rx = Math.round(p.x), ry = Math.round(p.y), near = typeof myAt !== "undefined" && myAt && Math.abs(myAt.x - rx) + Math.abs(myAt.y - ry) <= 2;
-    const at = (x, y) => { const t = topAt(x, y), s = near ? Floors.standOf(p, x, y) : t; return s >= t && H0.water && H0.water(x, y) && H0.waterTop ? Math.max(s, H0.waterTop(x, y)) : s; };   // (in water: at its face)
+  function of0(p, now) {   // (between two tiles: on the body's own line, BodyPlace.of: body_place.js line)
     const pl = BodyPlace.of(p), cl = pl.climb; if (cl) return [Math.floor(cl.h), cl.h];   // (on a ladder's rungs: as high as you have climbed)
     const lp = p.e && p.e.id === myId && p.e.kind === "agent" ? Leap.level() : null; if (lp) return lp;   // (in the air: drawn from the level you left, the ground under you yours: leap.js)
     const lz = Leap.landedOn(p); if (lz !== null) return [lz, lz];   // (come down from a jump off a tile's middle: on that tile)
-    const L = at(rx, ry), ax = Math.floor(p.x), ay = Math.floor(p.y), bx = Math.ceil(p.x), by = Math.ceil(p.y); if ((ax === bx && ay === by) || pl.fall) return [L, L];
-    const la = at(ax, ay), lb = at(bx, by), f = ax === bx ? p.y - ay : p.x - ax;
-    const fw = mineWalking(p) && DIRV[walking.dir][0] + DIRV[walking.dir][1] > 0;
+    const near = typeof myAt !== "undefined" && myAt && Math.abs(myAt.x - pl.tx) + Math.abs(myAt.y - pl.ty) <= 2, L = near ? Floors.standOf(p, pl.tx, pl.ty) : topAt(pl.tx, pl.ty);
+    if (!near || pl.fall) return [L, L];   // (far from where the game has you, a teleport's first frames: on the land's top; a fall: the eye and the body have their own way down, hd.js)
+    const [ax, ay, bx, by, la, lb] = Floors.between(p), fw = mineWalking(p) && DIRV[walking.dir][0] + DIRV[walking.dir][1] > 0;
     if (mineWalking(p) && (fw ? lb > la && Leap.leapable(ax, ay, la, bx, by) : la > lb && Leap.leapable(bx, by, lb, ax, ay))) return [L, Math.min(la, lb)];   // (yours, walking up to a step: your own level until you jump up it, leap.js)
-    return [L, Math.abs(la - lb) >= FALL.from ? L : la + (lb - la) * f];   // (a fall: the eye and the body have their own way down, hd.js)
+    return [L, pl.line];
   }
   function over(x, y, L, k, n = 20) { let m = 0; for (let d = 1; d <= n; d++) { const c = col(x, y + d), e = L + (d - .5) * k; if (!c || !c.length || matAt(x, y + d)) continue; for (let i = 0; i < c.length; i += 2) if (c[i] > e && (i ? c[i - 1] : -1e9) < e + k) m = Math.max(m, i && c[i - 1] > e ? 99 : c[i] - e); } return m > 0 && topAt(x, y) > L ? 99 : m; }
   function own({tx, ty, L}, roof, cov) {

@@ -48,7 +48,7 @@ const Climb = (() => {
   // what it leans on (coming down: over the edge first, then down the rungs); facing it all the way. (It was a straight
   // slide from the foot to the top in a fifth of a second, the ladder drawn over the body.) -> null, or {dx, dy: tiles
   // to move the body by, h: the height it is at (levels: its picture's px over the line are the place's, body_place.js), on: on the rungs, u: how far up, fx, fy:
-  // the way to the top, y: its place in the frame's order}
+  // the way to the top}
   const OVER = .8;                                    // (the part of the step spent on the rungs; the rest is the step over)
   function climbOf(p) {
     const [ax, ay, bx, by, la, lb] = Floors.between(p);
@@ -56,12 +56,8 @@ const Climb = (() => {
     const footA = la < lb, u = footA ? (ax === bx ? p.y - ay : p.x - ax) : (ax === bx ? by - p.y : bx - p.x);
     const lo = Math.min(la, lb), hi = Math.max(la, lb), on = u <= OVER;
     const pos = on ? 0 : (u - OVER) / (1 - OVER), h = on ? lo + (hi - lo) * u / OVER : hi;
-    const fx = footA ? bx - ax : ax - bx, fy = footA ? by - ay : ay - by, foot = footA ? [ax, ay] : [bx, by], top = [foot[0] + fx, foot[1] + fy];
-    // (its place among the frame's things: on the rungs, in front of the ladder and of what its foot stands on; over
-    // the edge, on what it steps onto, as anyone standing up there is. It was the top's row alone, and the block it
-    // stepped onto, sorted by its height, was drawn over it: under the platform before going over it)
-    const y = on ? foot[1] + (lo - standAt(...foot)) * Floors.K + .02 : top[1] + (hi - standAt(...top)) * Floors.K + .02;
-    return {dx: fx * (pos - u), dy: fy * (pos - u), h, on, u, fx, fy, y};
+    const fx = footA ? bx - ax : ax - bx, fy = footA ? by - ay : ay - by;
+    return {dx: fx * (pos - u), dy: fy * (pos - u), h, on, u, fx, fy};
   }
 
   // The flight of stairs put at (x, y) by you: [[x, y, ground, top], ...], or {why}
