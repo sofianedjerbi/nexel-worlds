@@ -14,8 +14,10 @@ function touchUI() {
   const btns = el("div", "tbtns", "");
   for (const [id, label] of [["tA", "A"], ["tB", "B"]]) el("div", id, `<span class="cap"></span><span class="lbl">${label}</span>`, btns);
   const ctx_ = el("div", "tctx", "");
-  el("div", "tUp", "Up", ctx_); el("div", "tDown", "Down", ctx_); el("div", "tBuild", "Build", ctx_);   // (build mode, build.js: a phone had no way into it, nor a layer up or down)
+  // (the column stands on its foot (style.css #tctx: bottom): what is always there is at the foot, what comes and goes with the land (a step ahead, a hole, a thing on the ground) over it:
+  // a button that comes never moves one that is there under the thumb. Jump, Dig and Pick were under Build: entering build mode by a step, Jump came 180 ms later where Build was, Build 52 px up: "Done" tapped was a jump)
   el("div", "tJump", "Jump", ctx_); el("div", "tDig", "Dig up", ctx_); el("div", "tPick", "Pick up", ctx_);
+  el("div", "tUp", "Up", ctx_); el("div", "tDown", "Down", ctx_); el("div", "tBuild", "Build", ctx_);   // (build mode, build.js: a phone had no way into it, nor a layer up or down)
   const top = el("div", "ttop", "");
   el("div", "tBag", "Items", top); el("div", "tCraft", "Craft", top); el("div", "tTalk", "Talk", top); el("div", "tMenu", "Menu", top);   // (Menu: the settings, leaving: a phone has no Esc, and had no way to them once in the world)
   return {btns, ctx_};
