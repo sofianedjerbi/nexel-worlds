@@ -2,7 +2,7 @@
 
 from .. import tiles as T
 from ..tiles import DIRS
-from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, FOOD_MAX, HP_MAX, SAT_START, SHOUT_R, sec
+from .constants import ATTACK_COOLDOWN, FARM, FLEE_SECONDS, FOOD_MAX, HP_MAX, SAT_START, sec
 from .entities import ActionError, Agent, Creature, roll_drops
 from .progress import XP_KILL
 
@@ -88,7 +88,7 @@ class Combat:
         self.stats["deaths"] += 1
         if by:
             by.bump("kills")
-        self.emit("death", a.x, a.y, radius=SHOUT_R, name=a.name, cause=cause, by=by.name if by else None,
+        self.emit("death", a.x, a.y, name=a.name, cause=cause, by=by.name if by else None,
                   dropped=dropped)
         if a.action or a.aside:
             self.interrupt(a, "you died")

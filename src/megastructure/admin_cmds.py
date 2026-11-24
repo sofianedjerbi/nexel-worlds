@@ -225,7 +225,7 @@ def say(c: Ctx, w):
     text = " ".join(w).strip()[:200]
     if not text:
         raise ValueError
-    c.sim.emit("shout", c.me.x, c.me.y, radius=1 << 20, **{"from": f"[{c.me.name}]"}, text=text)
+    c.sim.emit("shout", c.me.x, c.me.y, everywhere=True, **{"from": f"[{c.me.name}]"}, text=text)
     return "Said to everyone"
 
 

@@ -22,11 +22,11 @@ from .constants import (
     ASIDE,
     MEANWHILE,
     MOVES,
-    VIEW_R,
     sec,
 )
 from .entities import Action, ActionError, Agent, Creature, failure
 from .environment import Environment
+from .hearing import hears
 from .items import Items
 from .movement import Movement
 from .progress import Progress
@@ -109,10 +109,12 @@ class Simulation(Persistence, Sessions, Bodies, Movement, Progress, Spawning, Un
         minutes = int(self.time_of_day() * 24 * 60)
         return f"day {day}, {minutes // 60:02d}:{minutes % 60:02d}" + (" (night)" if self.is_night() else "")
 
-    def emit(self, type_: str, x: int, y: int, radius: int = VIEW_R, **data):
+    def emit(self, type_: str, x: int, y: int, **data):
+        """Something happened at (x, y): told to who perceives it (hearing.py: how far each kind carries), written
+        in the world's log, and passed to the screens (views.py)."""
         ev = {"tick": self.tick, "type": type_, "x": x, "y": y, **data}
         for a in self.agents.values():
-            if a.online and abs(a.x - x) <= radius and abs(a.y - y) <= radius:
+            if a.online and hears(a, ev):
                 rel = dict(ev, dx=x - a.x, dy=y - a.y)
                 del rel["x"], rel["y"]
                 a.events.append(rel)

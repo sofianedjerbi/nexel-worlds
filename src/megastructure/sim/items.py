@@ -1,7 +1,6 @@
 """Carrying things: picking up, dropping, giving, chests/baskets/troughs."""
 
 from .. import tiles as T
-from .constants import SAY_R
 from .entities import ActionError, Agent
 
 
@@ -68,7 +67,7 @@ class Items:
         t.add(item, n)
         self.stats["trades"] += 1
         a.bump("gave")
-        self.emit("give", a.x, a.y, radius=SAY_R, **{"from": a.name}, to=t.name, items={item: n})
+        self.emit("give", a.x, a.y, **{"from": a.name}, to=t.name, items={item: n})
         return {"to": t.name}
 
     def _chest(self, a, args):
@@ -91,7 +90,7 @@ class Items:
         m["items"] = self._merge(m.get("items", {}), {item: n})
         a.add(item, -n)
         self.world.set_meta(x, y, m)
-        self.emit("chest", x, y, radius=4, name=a.name, stored={item: n})
+        self.emit("chest", x, y, name=a.name, stored={item: n})
         return {"chest": m["items"]}
 
     def _tool_take(self, a, args):
@@ -109,7 +108,7 @@ class Items:
             m["items"] = {}
             self.world.set_meta(x, y, m)
             if items:
-                self.emit("chest", x, y, radius=4, name=a.name, took=items)
+                self.emit("chest", x, y, name=a.name, took=items)
             return {"chest": {}, "took": items}
         n = min(self._n(args), items.get(item, 0))
         if n <= 0:
@@ -120,5 +119,5 @@ class Items:
         m["items"] = items
         self.world.set_meta(x, y, m)
         a.add(item, n)
-        self.emit("chest", x, y, radius=4, name=a.name, took={item: n})
+        self.emit("chest", x, y, name=a.name, took={item: n})
         return {"chest": items}

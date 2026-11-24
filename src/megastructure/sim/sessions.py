@@ -5,7 +5,6 @@ import random
 import zlib
 
 from ..tiles import GROUNDS, RACES
-from .constants import SHOUT_R
 from .entities import ActionError, Agent, _hash_token
 
 
@@ -36,13 +35,13 @@ class Sessions:
             self.by_name[name] = a
             self.tokens[aid] = th
             self.store.db.execute("INSERT INTO agents VALUES(?,?,?,?)", (aid, name, th, json.dumps(a.to_json())))
-            self.emit("join", x, y, radius=SHOUT_R, name=name, new=True)
+            self.emit("join", x, y, name=name, new=True)
         elif self.tokens[a.id] != th:
             raise ActionError("bad_token", "name is taken and the token does not match")
         else:
             if persona:
                 a.persona = persona[:200]
-            self.emit("join", a.x, a.y, radius=SHOUT_R, name=name, new=False)
+            self.emit("join", a.x, a.y, name=name, new=False)
         return self._wake(a, race)
 
     def _wake(self, a: Agent, race: str) -> Agent:
@@ -68,14 +67,14 @@ class Sessions:
             self.store.db.execute("INSERT INTO owners VALUES(?,?)", (account, a.id))
             return a
         a = self.agents[aid]
-        self.emit("join", a.x, a.y, radius=SHOUT_R, name=a.name, new=False)
+        self.emit("join", a.x, a.y, name=a.name, new=False)
         return self._wake(a, race)
 
     def logout(self, a: Agent):
         if a.action or a.aside:
             self.interrupt(a, "disconnected")
         a.online = False
-        self.emit("leave", a.x, a.y, radius=SHOUT_R, name=a.name)
+        self.emit("leave", a.x, a.y, name=a.name)
 
     def find_spawn(self, salt: int) -> tuple[int, int]:
         r = random.Random(self.seed * 7919 + salt * 104729 + self.tick)

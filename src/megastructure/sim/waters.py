@@ -68,7 +68,7 @@ class Waters:
         if self.water.sent:
             news = self.water.news()
             self.stats["tiles_changed"] += len(news)
-            self.emit("water", news[0][0], news[0][1], radius=-1, cells=news)     # (for the screens: no agent is told each cell)
+            self.emit("water", news[0][0], news[0][1], cells=news)     # (for the screens: no agent is told each cell)
         if self.water.at and self.tick % PUSH_EVERY == 0:
             self.carry()
 

@@ -1,9 +1,11 @@
 """What spectators are sent about the part of the world they watch."""
 
 import json
+from types import SimpleNamespace
 
 from .gen import SEA, col_floor, col_runs
 from .sim.constants import TICK_HZ
+from .sim.hearing import LAND, hears
 from .sim.wild import WILD
 from .tiles import BLOCKS, DIRS, GROUNDS, B
 
@@ -76,14 +78,23 @@ class Views:
 
     # ----------------------------------------------------------- what they are sent, as it happens
 
+    def listener(self, q, rect):
+        """Who a screen is, for what it perceives (hearing.py): the player on it (the page says who: `me`), where they
+        stand; a screen that only watches, the middle of what it watches."""
+        a = self.sim.agents.get(self.players.get(q))
+        x, y = (a.x, a.y) if a else (rect[0] + rect[2] // 2, rect[1] + rect[3] // 2) if rect else (None, None)
+        return SimpleNamespace(x=x, y=y, z=a and a.z, name=a and a.name, rect=rect)
+
     def _broadcast(self, ev):
-        """Every spectator hears every event. One whose queue is full (thousands of tiles changing at once: a flood)
-        misses some: once it has caught up it is told to ask for its land again (`resync`: push_ticks), so its
-        picture of the world never stays wrong."""
-        if not self.spectators:
-            return
-        msg = json.dumps({"type": "event", "ev": ev})
-        for q in list(self.spectators):
+        """A screen is sent the events it perceives, by the rule an agent hears by (hearing.py), and every change of
+        the land. One whose queue is full (thousands of tiles changing at once: a flood) misses some: once it has
+        caught up it is told to ask for its land again (`resync`: push_ticks), so its picture of the world never
+        stays wrong."""
+        msg = None
+        for q, rect in list(self.spectators.items()):
+            if ev["type"] not in LAND and not hears(self.listener(q, rect), ev):
+                continue
+            msg = msg or json.dumps({"type": "event", "ev": ev})
             if q.qsize() < QUEUE_MAX:
                 q.put_nowait(msg)
             else:

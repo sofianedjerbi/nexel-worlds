@@ -1,7 +1,7 @@
 """Talking and writing: chat, shouts, signs, mail, looking far."""
 
 from ..tiles import DIRS
-from .constants import MAX_TEXT, SAY_R, SHOUT_R, VIEW_R
+from .constants import MAX_TEXT, VIEW_R
 from .entities import ActionError
 
 
@@ -19,7 +19,7 @@ class Social:
         yield from self.wait(a, 0.1)
         self.stats["chat"] += 1
         a.bump("said")
-        self.emit("say", a.x, a.y, radius=SAY_R, **{"from": a.name}, text=text, **({"bot": True} if a.bot else {}))   # (bot: the client says it in the robot voice)
+        self.emit("say", a.x, a.y, z=self.height(a), **{"from": a.name}, text=text, **({"bot": True} if a.bot else {}))   # (bot: the client says it in the robot voice)
         return {}
 
     def _tool_shout(self, a, args):
@@ -27,7 +27,7 @@ class Social:
         yield from self.wait(a, 0.1)
         self.stats["chat"] += 1
         a.bump("said")
-        self.emit("shout", a.x, a.y, radius=SHOUT_R, **{"from": a.name}, text=text, **({"bot": True} if a.bot else {}))   # (bot: the client says it in the robot voice)
+        self.emit("shout", a.x, a.y, z=self.height(a), **{"from": a.name}, text=text, **({"bot": True} if a.bot else {}))   # (bot: the client says it in the robot voice)
         return {}
 
     def _tool_write_sign(self, a, args):
@@ -96,7 +96,7 @@ class Social:
         yield from self.wait(a, 0.5)
         m["letters"] = m.get("letters", []) + [{"from": a.name, "text": text, "tick": self.tick}]
         self.world.set_meta(x, y, m)
-        self.emit("mail", x, y, radius=SHOUT_R, **{"from": a.name}, to=m.get("owner"))
+        self.emit("mail", x, y, **{"from": a.name}, to=m.get("owner"))
         return {"owner": m.get("owner")}
 
     def _tool_open_mail(self, a, args):

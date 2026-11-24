@@ -206,6 +206,6 @@ class Animals:
                         del items[food]
                 self.world.set_meta(x, y, {**m, "items": items, "bites": bites})
                 self._fed(c)
-                self.emit("trough", x, y, id=c.id, kind=c.kind, radius=6)
+                self.emit("trough", x, y, id=c.id, kind=c.kind)
                 return True
         return False

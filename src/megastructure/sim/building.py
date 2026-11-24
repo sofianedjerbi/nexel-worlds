@@ -241,5 +241,5 @@ class Building:
         self.stats["crafts"] += 1
         a.bump("crafted", n)
         self.gain_xp(a, XP_CRAFT * n, a.x, a.y)
-        self.emit("craft", a.x, a.y, radius=4, name=a.name, made={k: v * n for k, v in r.output.items()})
+        self.emit("craft", a.x, a.y, name=a.name, made={k: v * n for k, v in r.output.items()})
         return {"made": {k: v * n for k, v in r.output.items()}}

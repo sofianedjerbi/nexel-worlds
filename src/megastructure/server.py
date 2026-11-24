@@ -49,6 +49,7 @@ class GameServer(Views):
         self.conns: dict[int, object] = {}  # agent id -> connection
         self.notify: dict[int, object] = {}  # agent id -> callable(dict) pushing a message to that agent
         self.spectators: dict = {}  # queue -> watched rect (x, y, w, h) or None
+        self.players: dict = {}     # queue -> the id of who plays on that screen (the page says: `me`), for what it hears (views.py)
         self.behind: set = set()    # spectators that missed events (Views._broadcast)
         self.sim.listeners.append(self._broadcast)
         self.sim.screens = lambda: [r for r in self.spectators.values() if r]   # (nothing comes or goes on a screen: spawning.py)
@@ -136,6 +137,9 @@ class GameServer(Views):
                 if op == "watch":
                     self.spectators[q] = (int(msg["x"]), int(msg["y"]), min(int(msg["w"]), 200), min(int(msg["h"]), 200))
                     continue
+                if op == "me":
+                    self.players[q] = msg.get("id")
+                    continue
                 if op == "region":
                     a = (int(msg["x"]), int(msg["y"]), int(msg.get("w", 64)), int(msg.get("h", 48)))
                     out = {"later": True, "x": a[0], "y": a[1]} if msg.get("far") and not self.far_ready(*a) else self.region(*a)   # (views.py far_ready)
@@ -154,6 +158,7 @@ class GameServer(Views):
                 await ws.send(json.dumps({"type": "reply", "id": msg.get("id"), **out}))
         finally:
             self.spectators.pop(q, None)
+            self.players.pop(q, None)
             pumper.cancel()
 
     async def agent_session(self, ws):

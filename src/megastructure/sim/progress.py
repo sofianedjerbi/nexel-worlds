@@ -33,7 +33,7 @@ class Progress:
         before = level_of(a.xp)[0]
         a.xp += n
         level = level_of(a.xp)[0]
-        self.emit("xp", x, y, radius=8, name=a.name, n=n, level=level, up=level > before)
+        self.emit("xp", x, y, name=a.name, n=n, level=level, up=level > before)
 
     def attract_items(self):
         """Every other tick: piles next to someone (or under them) that have lain long enough fly into their bag."""

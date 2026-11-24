@@ -57,7 +57,7 @@ const fmt = (o) => Object.entries(o || {}).map(([k, v]) => `${v} ${label(k)}`).j
 let spec, sid = 0, lastWatch = "", webStamp = 0;
 function connectSpec() {
   spec = openSocket("/spectate");
-  spec.onopen = () => { lastWatch = ""; requested.clear(); sendSpec({op: "recipes"}); sendSpec({op: "agents"}); };
+  spec.onopen = () => { lastWatch = ""; requested.clear(); sendSpec({op: "recipes"}); sendSpec({op: "agents"}); sendSpec({op: "me", id: myId}); };   // (me: who plays on this screen, for what it is sent: it hears what you hear)
   spec.onmessage = (m) => {
     const d = JSON.parse(m.data);
     if (d.type === "hello") {                     // back after the server restarted with newer code: this page is stale (it would draw the new world wrong)
