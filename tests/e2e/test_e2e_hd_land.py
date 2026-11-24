@@ -197,8 +197,12 @@ def test_deep_in_a_room_the_eye_is_steep_land_fills_the_screen_and_others_are_at
             g.rpc("dev_creatures", clear=60)
             g.rest()
             x, y = g.pos()
-            g.settle("HdLook.bare() === 0", timeout=8000)             # (the land out to the horizon come: more of it than rest() knows of, on a screen this size. It slept 0.8 s)
-            assert g.js("HdLook.bare()") == 0, (w, h, "surface")
+            # (the land out to the horizon come: more of it than rest() knows of, on a screen this size. It slept 0.8 s, then waited 8 s without a
+            # word (settle) and read 48 bare px on a busy machine: now it waits for the land to be made too, and says what it was waiting on)
+            try:
+                g.wait("!HdLook.busy && HdLook.bare() === 0", timeout=25000)
+            except Exception as e:
+                raise AssertionError((w, h, "surface", g.js("({bare: HdLook.bare(), busy: HdLook.busy, part: HdLook.part, far: HdLook.far, blocks: blocks.size, pitch: HdLook.cam.pitch, low: HdLook.low, line: HdLook.line})"))) from e
             z = g.js(f"topAt({x}, {y})")
             # (whole land round you first. The three of this test wake a few tiles from each other, some runs: the room of the one before, at the same depth, was one room with yours, and its pit, cut
             # north of your room, was read as a cut that "stayed" there: 2 runs in 9 alone, the third always at (-16, 17).

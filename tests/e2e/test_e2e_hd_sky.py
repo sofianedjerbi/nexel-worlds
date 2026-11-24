@@ -107,7 +107,7 @@ def test_sprinting_over_a_hill_of_steps_the_sky_stays_put(browser, server):
     assert max(pitch) - min(pitch) < .5, (min(pitch), max(pitch))                   # (under the open sky all the way)
     line, sun, edge = ([r[i] for r in rec] for i in range(3))
     steps = max(abs(b - a) for a, b in zip(line, line[1:]))
-    assert steps <= 1 and max(line) - min(line) <= 4, (steps, min(line), max(line))
+    assert steps <= 1 and max(line) - min(line) <= 4, (steps, min(line), max(line), [(r[0], round(r[3], 1), r[4]) for r in rec[::6]])   # (the state all along: the line, the pitch, your row)
     assert max(sun) - min(sun) <= 4, (min(sun), max(sun))
     assert max(edge) > min(line) + 20 and all(e >= l for e, l in zip(edge, line)), (max(edge), min(line))   # (on the top the land ahead ends lower: the edge, not the sky)
     assert not g.errors, g.errors

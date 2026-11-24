@@ -6,7 +6,12 @@ SLOT = "(n) => String((slots.indexOf(n) + 1) % 10)"           # the key of the b
 def step(game, key):
     game.hold([key], 90)                                       # (a tap: a tile)
     game.sleep(550)
-    game.settle("!walking && !pred")                           # (the world come to where the screen stopped: on a busy machine it had not, after the sleep)
+    # (the walk over AND the world come to where the screen stopped. It was settle(): a wait that gives up without a word after 3 s; on a busy
+    # machine a climb down six layers was not over, and the world's place read was the top's: "(2, -3, 6) != (2, -2, 0)")
+    try:
+        game.wait("!walking && !pred && (() => { const p = ents.get('agent' + myId); return !!p && p.e.x === Math.round(p.x) && p.e.y === Math.round(p.y) && Math.abs(p.x - p.e.x) + Math.abs(p.y - p.e.y) < .01; })()", 10000)
+    except Exception as e:
+        raise AssertionError(game.js("(() => { const p = ents.get('agent' + myId); return {walking: !!walking, pred: !!pred, at: [p.x, p.y], world: [p.e.x, p.e.y, p.e.z], myAt, climb: !!Climb.climbOf(p)}; })()")) from e
     s = game.server()
     return s["x"], s["y"], s["z"]
 
