@@ -6,6 +6,8 @@ from pathlib import Path
 from urllib.parse import quote
 from urllib.request import urlopen, Request
 import json
+import os
+import shutil
 import subprocess
 
 RAW = Path(__file__).with_name("samples") / "raw"
@@ -30,7 +32,10 @@ WANT = {       # our name: (repository, folder)
 
 
 def get(url):
-    return urlopen(Request(url, headers={"User-Agent": "curl/8"}), timeout=120).read()
+    head = {"User-Agent": "curl/8"}
+    if url.startswith("https://api.github.com/") and os.environ.get("GITHUB_TOKEN"):     # (a CI runner's address shares the anonymous limit)
+        head["Authorization"] = "Bearer " + os.environ["GITHUB_TOKEN"]
+    return urlopen(Request(url, headers=head), timeout=120).read()
 
 
 def one(job):
@@ -62,9 +67,12 @@ def main():
     if not any(g.glob("*.wav")):
         g.mkdir(parents=True, exist_ok=True)
         arc = one((GUITAR, RAW / "guitar.7z"))
-        subprocess.run(["bsdtar", "-xf", str(arc), "-C", str(g)], check=True)
+        unpack = ["bsdtar", "-xf", str(arc), "-C", str(g)] if shutil.which("bsdtar") else ["7z", "x", "-y", f"-o{g}", str(arc)]   # (macOS; Linux)
+        subprocess.run(unpack, check=True, stdout=subprocess.DEVNULL)
+        import soundfile                                    # (the audio extra: FLAC to 24-bit WAV, the same on every machine)
         for f in g.rglob("*.flac"):
-            subprocess.run(["afconvert", "-f", "WAVE", "-d", "LEI24", str(f), str(g / (f.stem + ".wav"))], check=True)
+            data, rate = soundfile.read(f, dtype="int32")
+            soundfile.write(g / (f.stem + ".wav"), data, rate, subtype="PCM_24")
     for d in sorted(RAW.iterdir()):
         if d.is_dir():
             print(d.name, len(list(d.glob("*.wav"))))
