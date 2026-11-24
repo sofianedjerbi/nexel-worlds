@@ -43,10 +43,11 @@ const VoxStyleGLSL = (() => {
   uniform mat4 m; uniform vec3 ctr; uniform float bend; uniform vec2 vpx; ${SINK}
   vec2 scr(vec3 q) { q.y -= bend * sink(max(0., ctr.z - 1. - q.z)); vec4 c = m * vec4(q, 1.); return (c.xy / c.w * .5 + .5) * vpx; }
   float cr(vec2 a, vec2 b) { return a.x * b.y - a.y * b.x; }
-  // WATER SEEN ALONG ITS FACE is not seen through, as real water is not. along(): how nearly along the bent land's face (its facet here) the eye looks, 1 from over it, 0 at the horizon: under .1, the last
-  // facet before the horizon, the water is whole. (Its bed is drawn lower on the picture than its face: under the horizon lay a band, 20 to 30 px, of water over nothing, two faces of it, the backdrop
-  // through them: "a darker band in the far sea just below the horizon"; HdLook.raw counted its deeper part. By the smooth slope a pond five tiles off on a small screen went whole too)
-  float along() { float dn = max(0., ctr.z - 1. - wp.z); return dot(normalize(eye - vec3(wp.x, wp.y - bend * sink(dn), wp.z)), normalize(vec3(0., 1., -bend * (dn < 4. ? 2. * dn : 4. * (2. * floor(dn / 4.) + 1.))))); }
+  // WATER FAR OFF shows no depth and is not seen through, as real water looked at along its face: ONE rule, by how far it is. near(): 1 within 8 tiles of you (a pond by you is as ever, at any
+  // view distance and zoom), easing to 0 by 18 tiles, and before the horizon where that is nearer (from six tenths of the way to it; the horizon: where the eye looks along the bent land's face,
+  // b dn^2 + 2 b D dn = E: the eye E over the water, D south of where the bend begins). Far, the water takes the sea's one far tint, whole. (The bed is drawn lower on the picture than the face:
+  // under the horizon lay a band of water over nothing, the backdrop through it; a last facet made whole was a band with an edge; the depth's tints far off were navy slabs with stepped outlines)
+  float near() { float dn = max(0., ctr.z - 1. - wp.z), D = max(0., eye.z - ctr.z + 1.), E = max(0., eye.y - wp.y); return 1. - max(smoothstep(8., 18., distance(wp.xz, ctr.xz)), bend > 0. ? smoothstep(.6, .92, dn / (sqrt(D * D + E / bend) - D)) : 0.); }
   bool inq(vec2 p, vec2 a, vec2 b, vec2 c, vec2 d) { float s1 = cr(b - a, p - a), s2 = cr(c - b, p - b), s3 = cr(d - c, p - c), s4 = cr(a - d, p - d); return (s1 >= 0. && s2 >= 0. && s3 >= 0. && s4 >= 0.) || (s1 <= 0. && s2 <= 0. && s3 <= 0. && s4 <= 0.); }
   // STRATA: a wall of your hole by its level under the land round it (rz): each level one flat tone, a step darker than the one over it (to .3), every second one a little darker still: levels can be counted, deep is dark
   float strat(float lv) { return max(.3, .92 - .08 * max(0., rz - lv)) * (mod(floor(lv + .5) + 1024., 2.) < .5 ? 1. : .9); }
@@ -122,9 +123,9 @@ const VoxStyleGLSL = (() => {
       vec2 w = (vec2(wp.x, wp.z) * 16. - wv.xy) / wv.zw; vec4 wc = vu.x < .5 && wv.z > 0. && w == clamp(w, 0., 1.) ? texture(wt, w) : vec4(0.);   // (past the picture's edge: none of it. Clamped, its edge row was stretched over the far water: thin vertical lines. A side has none: the picture is of the face, a side took one row of it down its height)
       vec3 sea = vec3(.36, .64, .8) * max(l, .6);
       col = mix(sea, wc.rgb, wc.a * .3);
-      if (wtn[4].a > .5) { float far = ve > 8.5 ? 0. : vu.x < .5 ? smoothstep(.03, .1, along()) : 1.; vec4 tn = mix(vec4(wtn[1].rgb, 1.), wtn[int(clamp(ve, 0., 4.))], far);   // (far 0: seen along its face, or a far patch of the sea (ve 9): whole, in the sea's one far tint: no depth shows there)
+      if (wtn[4].a > .5) { float nr = ve > 8.5 ? 0. : near(); vec4 tn = mix(vec4((wtn[1].rgb + wtn[2].rgb) * .5, 1.), wtn[int(clamp(ve, 0., 4.))], nr);   // (near(); a far patch of the sea (ve 9): far)
        col = mix(tn.rgb * max(l, .6), wc.rgb, wc.a * .45); o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), max(tn.a, wc.a * .45)); return; }   // (light.wtint: clear water: a tint and how much of it for water 0..4 levels deep (ve), the bed showing through; the game's picture of the water, its waves and glints, over it)
-      o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), vu.x < .5 ? mix(1., wa, smoothstep(.03, .1, along())) : wa); return;   // (the far sea stays blue to the horizon)
+      o = vec4(mix(col, fogc, smoothstep(fn, ff, distance(wp, eye)) * .4), mix(1., wa, near())); return;   // (the far sea stays blue to the horizon)
     }
     if (abs(kind - 7.) < .5) { highp vec2 b = floor((vu + .5) / 16.) * 16., w16 = floor(wp.xz * 16. + .001), m = mod(w16, 8.), lp; ivec2 ti = ivec2(floor(w16 / 16.)); uint hh = uint(ti.x) * 2654435761u ^ uint(ti.y) * 2246822519u; hh ^= hh >> 15u;
       if ((hh & 1u) != 0u) m.x = 7. - m.x; if ((hh & 2u) != 0u) m.y = 7. - m.y; lp = vec2(float((hh >> 2u) & 1u), float((hh >> 3u) & 1u)) * 8. + m;
