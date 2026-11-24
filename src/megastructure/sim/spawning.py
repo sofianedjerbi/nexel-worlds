@@ -151,7 +151,7 @@ class Spawning:
     def spawn_spot_ok(self, kind: str, x: int, y: int, fresh=False) -> bool:
         if not fresh and not self.loaded_around(x, y):
             return False
-        if not self.world.passable(x, y) or self.entity_at(x, y) is not None or (not fresh and self.sheltered(x, y)):
+        if not self.stand(x, y) or self.entity_at(x, y) is not None or (not fresh and self.sheltered(x, y)):
             return False
         if kind == "pincer":
             return self.shore(x, y)

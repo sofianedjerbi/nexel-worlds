@@ -13,7 +13,7 @@ until the last one is a step up from the ground. Each step is a column of built 
 standing on the ground there; walking up them is a hop a step, as up any ledge. A step costs one `stairs`; taking a
 step back gives it back, the whole column."""
 
-from ..tiles import BLOCKS, DIRS, GROUNDS, B
+from ..tiles import DIRS, GROUNDS
 from .entities import ActionError
 
 LADDER, STAIRS = "ladder", "stairs"
@@ -27,16 +27,7 @@ class Climbing:
     def open_at(self, x, y, z) -> bool:
         """Someone could stand at height z on (x, y): ground or a block there, room for a body over it, nothing in
         the way on it."""
-        w = self.world
-        if z not in w.surfaces(x, y) or w.solid(x, y, z + 2):
-            return False
-        cell = self.floors.get(x, y, z)
-        if cell is not None:
-            return not BLOCKS[B[cell[1]]].solid
-        if z != w.level(x, y):
-            return True
-        g, b = w.get(x, y)
-        return GROUNDS[g].walkable and not BLOCKS[b].solid
+        return z in self.world.surfaces(x, y) and not self.world.solid(x, y, z + 2) and self.stand(x, y, z)
 
     def climb_to(self, h, x0, y0, x, y) -> int | None:
         """From a ladder at height h on (x0, y0), climbing into the tile (x, y): the height you come out at, or None.

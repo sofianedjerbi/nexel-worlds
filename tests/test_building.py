@@ -99,7 +99,7 @@ def test_well_is_two_by_two_and_fills_the_can(world):
     r = run(sim, a, "place", {"dir": "N", "item": "well"})
     assert r["ok"] and r["at"] == [a.x, a.y - 1]
     assert {sim.world.block(a.x + i, a.y - 1 - j) for i in (0, 1) for j in (0, 1)} == {"well", "part"}
-    assert not sim.world.passable(a.x + 1, a.y - 2)
+    assert not sim.stand(a.x + 1, a.y - 2)
     a.add("watering_can", 1)
     a.can = 0
     sim.world.set(a.x, a.y + 1, ground="tilled", block="sprout")
@@ -120,7 +120,7 @@ def test_structure_needs_room_and_you_outside(world):
     assert run(sim, a, "place", {"dir": "N", "item": "picnic_blanket"})["error"] == "occupied"
     sim.world.set(a.x + 1, a.y - 2, block="none")
     assert run(sim, a, "place", {"dir": "N", "item": "picnic_blanket"})["ok"]
-    assert sim.world.block(a.x - 1, a.y - 1) == "picnic_blanket" and sim.world.passable(a.x + 1, a.y - 2)
+    assert sim.world.block(a.x - 1, a.y - 1) == "picnic_blanket" and sim.stand(a.x + 1, a.y - 2)
 
 def test_picnic_and_basket(world):
     sim, a = world

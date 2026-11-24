@@ -71,7 +71,7 @@ class Animals:
         ground under it, in under a hill at its own height), where it is let. Creatures can't work doors or gates
         (houses keep them out, fenced pens keep animals in), don't walk onto someone, and take no fall that would
         hurt them."""
-        if self.world.block(x, y) in ("door", "gate") or not self.world.passable(x, y) or self.entity_at(x, y) is not None:
+        if self.world.block(x, y) in ("door", "gate") or not self.stand(x, y) or self.entity_at(x, y) is not None:
             return False
         if not self.safe_step(c, x, y):
             return False
@@ -117,7 +117,7 @@ class Animals:
                     d = abs(dx) + abs(dy)
                     if best is None or d < best[0]:
                         best = (d, x + dx, y + dy + 1)
-        if best and self.world.passable(best[1], best[2]):
+        if best and self.stand(best[1], best[2]):
             return best[1], best[2]
         return None
 

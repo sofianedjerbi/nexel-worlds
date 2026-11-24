@@ -101,7 +101,7 @@ class Combat:
                      and bed[2] in self.world.surfaces(bed[0] + dx, bed[1] + dy)] or [tuple(bed[:2])]
             a.x, a.y, a.z = *spots[0], bed[2]
         elif bed and self.world.block(*bed[:2]) == "bed":
-            spots = [(bed[0] + dx, bed[1] + dy) for dx, dy in DIRS.values() if self.world.passable(bed[0] + dx, bed[1] + dy)]
+            spots = [(bed[0] + dx, bed[1] + dy) for dx, dy in DIRS.values() if self.stand(bed[0] + dx, bed[1] + dy)]
             a.x, a.y = spots[0] if spots else self.find_spawn(a.id * 31 + a.deaths)
         else:
             a.spawn = None

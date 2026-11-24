@@ -13,7 +13,7 @@ const TitleCast = (() => {
   let I = null, spoke = 0, loud = 0, last = null;    // the island; when someone last spoke to themselves; when the next shout is due, and the last one
   const WAYS = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]}, taken = new Map();      // (a place -> who has it)
   const lv = (x, y) => levelAt(I.ox + x, I.oy + y) || 0, one = (list) => list[I.pick(list.length)];
-  const bare = (x, y) => { const t = I.at(x, y); return !!t && WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]); };
+  const bare = (x, y) => standOn(I.at(x, y), false);
   const afloat = (x, y) => { const t = I.at(x, y); return !!t && wet(t[1]) && GROUND.has(t[0]); };
   const far = (a, b) => Math.abs(a.x - b[0]) + Math.abs(a.y - b[1]);
   const someone = (x, y, but) => I.people.some((o) => o !== but && o.x === x && o.y === y);

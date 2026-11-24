@@ -3,7 +3,6 @@
 import asyncio
 import json
 import re
-from pathlib import Path
 
 from megastructure import tiles as T
 from megastructure.rules import FILE, rules_js, rules_table

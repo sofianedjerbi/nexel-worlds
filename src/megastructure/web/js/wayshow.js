@@ -22,7 +22,7 @@ const WayShow = (() => {
   const api = {ms: 0, n: 0, runs: 0, get res() { return res; }, get cur() { return fresh(); }, get busy() { return !!gen; }, get led() { return led; }};
   const W = {solid: (x, y, z) => solidAt(x, y, z), top: (x, y) => topAt(x, y), land: (x, y, z) => z > LOW + 2 && landSolid(x, y, z) && !Floors.built(x, y, z),
     step: (h, x, y, fx, fy) => landAt(h, x, y, fx, fy), ladder: (x, y, z, qx, qy, z2) => Climb.onLadder(x, y, z, qx, qy, z2),
-    enter: (x, y, z) => { const c = Floors.get(x, y, z); return c && FLOORS ? !SOLID.has(c[1]) : z !== floorAt(x, y) || plainWalk(x, y); },
+    enter: (x, y, z) => stand(x, y, z),
     can: (x, y, h, dx, dy) => topAt(x, y) > h || inHole({x, y}, {x: x + dx, y: y + dy}, h),                 // (where R cuts a step: under the land, in a hole)
     on: (x, y, z, qx, qy) => GROUND.has(combAt(qx, qy)) || floorAt(qx, qy) !== z + 1,                    // (as keyboard.js offers Space's "Dig on")
     down: (x, y) => { const c = combAt(x, y); return !!c && GROUND.has(c) && !":n".includes(c); }};       // (...and X's "Dig down")

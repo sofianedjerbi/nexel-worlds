@@ -3,15 +3,9 @@
 const DIRV = {N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0]};
 function myPos() { const p = ents.get("agent" + myId); return p ? {x: p.tx, y: p.ty} : meObs ? meObs.self : null; }
 function dirTo(p) { const s = myPos(); if (!s) return null; for (const [d, [dx, dy]] of Object.entries(DIRV)) if (s.x + dx === p.x && s.y + dy === p.y) return d; return null; }
-function plainWalk(x, y) {
-  const t = tile(x, y); if (!t) return false;
-  if (wet(t[1])) return t[0] === "V" || !SOLID.has(t[0]);   // water, whatever its depth: you swim on it (swim.js), or sail
-  return WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]);
-}
-function walkable(x, y, fx, fy) {               // (fx, fy): where you come from: a layer up or down at most
-  if (fx === undefined) return plainWalk(x, y);
-  const z = landAt(myZ(fx, fy), x, y, fx, fy, springs(x, y)), c = z === null ? null : Floors.get(x, y, z);     // (on a built block, what stands on it is what counts: floors.js)
-  return z !== null && (c && FLOORS ? !SOLID.has(c[1]) : plainWalk(x, y));
+function walkable(x, y, fx, fy) {               // your step from (fx, fy) onto (x, y): it lands somewhere (cells.js landAt), and you can stand there
+  const z = landAt(myZ(fx, fy), x, y, fx, fy, springs(x, y));
+  return z !== null && stand(x, y, z);
 }
 // ---- what a click does, decided per tile (also shown as the cursor hint) ----------------
 // The words: "interaction sentences are wayyyy too long" (it said "Chop tree (the fruit grows back if you wait) by hand

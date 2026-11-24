@@ -252,12 +252,6 @@ class World:
         lv = self.level(x, y)
         return self.level(x, y + 1) < lv
 
-    def can_step(self, x0: int, y0: int, x1: int, y1: int, hop: bool = False) -> bool:
-        """Between neighbouring tiles: on the level; with `hop` (people), down a layer or a jump up one, as in a
-        world of blocks. Two layers or more is a wall (or a fall nobody takes)."""
-        l0, l1 = self.level(x0, y0), self.level(x1, y1)
-        return l0 == l1 or (hop and abs(l0 - l1) == 1)
-
     def ground(self, x, y) -> str:
         return GROUNDS[self.get(x, y)[0]].name
 
@@ -284,9 +278,6 @@ class World:
                 self.dirty_meta.add((x, y))
         c.dirty = True
         self.water and self.water.tile_changed(x, y)
-
-    def passable(self, x: int, y: int) -> bool:
-        return GROUNDS[(gb := self.get(x, y))[0]].walkable and not BLOCKS[gb[1]].solid
 
     def set_meta(self, x, y, data: dict | None):
         if data:

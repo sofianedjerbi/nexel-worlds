@@ -112,7 +112,7 @@ class Wild(Boss):
                 ahead = (prey.x - c.x) * c.dir[0] + (prey.y - c.y) * c.dir[1]
                 off = (prey.y - c.y) if c.dir[0] else (prey.x - c.x)
                 lane = (0, (off > 0) - (off < 0)) if c.dir[0] else ((off > 0) - (off < 0), 0)
-                if ahead > 0 and off and self.world.passable(x + lane[0], y + lane[1]) and self.world.block(x + lane[0], y + lane[1]) not in ("door", "gate"):
+                if ahead > 0 and off and self.stand(x + lane[0], y + lane[1]) and self.world.block(x + lane[0], y + lane[1]) not in ("door", "gate"):
                     x, y = x + lane[0], y + lane[1]
             hit = next((a for a in online if (a.x, a.y) == (x, y)), None)
             if hit:

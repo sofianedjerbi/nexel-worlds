@@ -146,12 +146,10 @@ const Build = (() => {
     for (let i = 0; i < line.length && i < 400; i++) {
       const c = line[i];
       if (Math.max(Math.abs(c.x - j.x), Math.abs(c.y - j.y)) >= 10) return true;
-      for (const [dx, dy] of Object.values(DIRV)) { const n = {x: c.x + dx, y: c.y + dy}, k = flat(n); if (!seen.has(k) && !shut.has(k) && plainWalk(n.x, n.y)) { seen.add(k); line.push(n); } }
+      for (const [dx, dy] of Object.values(DIRV)) { const n = {x: c.x + dx, y: c.y + dy}, k = flat(n); if (!seen.has(k) && !shut.has(k) && stand(n.x, n.y)) { seen.add(k); line.push(n); } }
     }
     return false;
   }
-  // Somewhere to stand at height h on tile q: on the ground, or on a built block with nothing solid on it
-  const stands = (q, h) => { const c = FLOORS ? Floors.get(q.x, q.y, h) : null; return c ? !SOLID.has(c[1]) : h === groundAt(q.x, q.y) ? plainWalk(q.x, q.y) : surfacesAt(q.x, q.y).includes(h); };   // (a tunnel's floor, under its roof, too)
   async function build(j) {                           // -> why it could not be done (nothing: it is done)
     if (!j.take && !(meObs.self.inventory[j.item] > 0)) return `No ${label(j.item)} left`;
     const at = myPos(); if (j.dig && !j.up && at && at.x === j.x && at.y === j.y && myZ(at.x, at.y) === j.z) { const r = await act("dig_down", meObs.self.inventory.pickaxe ? {with: "pickaxe"} : {}, true); return r && r.ok ? null : (r && (r.detail || r.error)) || "It could not be done"; }   // (the block you stand on: from on it, you come down with it)
@@ -167,7 +165,7 @@ const Build = (() => {
       const s = here(), spots = [];                    // (beside it for choice, on your own floor for choice)
       for (let dy = -USE_R; dy <= USE_R; dy++) for (let dx = -USE_R; dx <= USE_R; dx++) for (const h of surfacesAt(j.x + dx, j.y + dy)) {
         const q = {x: j.x + dx, y: j.y + dy, z: h, far: Math.abs(dx) + Math.abs(dy) > 1 ? 3 : 0};
-        if (stands(q, h) && ok(q, h) && !entityAt(q)) spots.push(q);
+        if (stand(q.x, q.y, h) && ok(q, h) && !entityAt(q)) spots.push(q);
       }
       const cost = (q) => (solid(j) && !wayOut(q, j) ? 200 : 0) + ([...S.plans.values()].some((o) => o.x === q.x && o.y === q.y) ? 60 : 0) + q.far + Math.abs(q.z - s.z) * 2 + Math.abs(q.x - s.x) + Math.abs(q.y - s.y);     // (not walled in, for choice)
       spots.sort((a, b) => cost(a) - cost(b));

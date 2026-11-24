@@ -84,6 +84,6 @@ class Sessions:
         for radius in (3, 8, 24) if home else (24, 48, 96, 192):
             for _ in range(200):
                 x, y = cx + r.randint(-radius, radius), cy + r.randint(-radius, radius)
-                if self.world.passable(x, y) and GROUNDS[self.world.get(x, y)[0]].name in ("dirt", "grass", "bridge"):
+                if self.stand(x, y) and GROUNDS[self.world.get(x, y)[0]].name in ("dirt", "grass", "bridge"):
                     return x, y
         return cx, cy

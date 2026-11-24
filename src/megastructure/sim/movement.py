@@ -1,7 +1,7 @@
 """Walking, pathfinding and sailing: strides, steps, walks and move_to."""
 
 from ..pathfind import astar
-from ..tiles import BLOCKS, DIRS, GROUNDS, B
+from ..tiles import DIRS, GROUNDS
 from .leaping import Leaping
 from .constants import CLIMB_S, EAT_PACE, PACE, FALL_HP, FALL_SAFE, SLOPE_DOWN, SLOPE_UP, SPRING_S, SPRINT_FOOD, SWIM_PACE, VIA_FAR, VIA_MAX, sec
 from .entities import ActionError, Agent
@@ -12,19 +12,6 @@ class Movement(Leaping):
 
     # ============================================================== tools
 
-    def can_enter(self, a: Agent, x: int, y: int, z: int | None = None) -> bool:
-        """Walkers stay on land or swim (on top of the water, whatever its depth); a moored boat can be boarded; sailors
-        move over the water faster and may step ashore. z: the height they would stand at there: on a built block
-        (storeys.py), what stands on that block is what counts, not the ground under it."""
-        cell = self.floors.get(x, y, z) if z is not None else None
-        if cell is not None:
-            return not BLOCKS[B[cell[1]]].solid
-        g, b = self.world.get(x, y)
-        ground, block = GROUNDS[g], BLOCKS[b]
-        if ground.liquid:
-            return a.sailing or block.name == "boat" or not block.solid
-        return ground.walkable and not block.solid
-
     def swimming(self, a: Agent) -> bool:
         """In the water without a boat (not on something built over it), or in running water deep enough (waters.py)."""
         return not a.sailing and (GROUNDS[self.world.get(a.x, a.y)[0]].liquid and self.floors.get(a.x, a.y, self.height(a)) is None or self.wading(a))
@@ -33,11 +20,11 @@ class Movement(Leaping):
         """From where `a` stands to the neighbouring (x, y): it isn't a wall, and where they'd land can be entered.
         (jump: Bodies.landing)"""
         land = self.landing(a, x, y, jump)
-        return land is not None and self.can_enter(a, x, y, land)
+        return land is not None and self.stand(x, y, land, swims=True, sails=a.sailing)
 
     def why_not(self, a: Agent, x: int, y: int, jump: bool | None = None) -> str:
         land = self.landing(a, x, y, jump)
-        if land is None and self.can_enter(a, x, y):
+        if land is None and self.stand(x, y, swims=True, sails=a.sailing):
             h, w = self.height(a), self.world               # (what would make a way of it, said with the cells: an agent reads this)
             d = next((k for k, v in DIRS.items() if v == (x - a.x, y - a.y)), "that way")
             if w.solid(a.x, a.y, h + 2):
@@ -261,7 +248,7 @@ class Movement(Leaping):
         except (KeyError, TypeError, ValueError):
             raise ActionError("bad_args", "move_to needs integer x and y")
         replans = 0
-        ok = lambda x, y, z: self.can_enter(a, x, y, z) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
+        ok = lambda x, y, z: self.stand(x, y, z, swims=True, sails=a.sailing) and (a.sailing or self.world.block(x, y) != "boat" or (x, y) == (gx, gy))
         # the way is worked out with heights (a floor over a room is another place than the room): up a layer at a
         # time, by the steps there are, and never down a fall that hurts (except a single step you ask for: the tile
         # beside you, off an edge). A tile nobody can stand on: to beside it

@@ -97,7 +97,7 @@ def summon(c: Ctx, w):
     for sx, sy in spots:
         if made >= n:
             break
-        if not sim.world.passable(sx, sy):
+        if not sim.stand(sx, sy):
             continue
         cr = Creature(sim.next_creature, kind, sx, sy, CREATURES[kind]["hp"], z=sim.world.surfaces(sx, sy)[-1], born=sim.tick)
         sim.next_creature += 1

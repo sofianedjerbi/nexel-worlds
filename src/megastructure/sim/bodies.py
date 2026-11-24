@@ -10,7 +10,7 @@ Who may go where is each kind's own business (people: Movement, with water, boat
 Animals, which take no door and no fall that would hurt them); where they end up, and how far they reach, is here."""
 
 from ..gen import LOW
-from ..tiles import DIRS
+from ..tiles import BLOCKS, DIRS, GROUNDS, B
 from .constants import FALL_SAFE, LAYER, TARGET_R
 from .entities import ActionError
 
@@ -38,6 +38,23 @@ class Bodies:
     def in_cave(self, b) -> bool:
         """Land over its head (not a floor or a roof somebody built: storeys.py)."""
         return bool(self.land_col(b.x, b.y) >> (self.height(b) - LOW + 1))
+
+    def stand(self, x: int, y: int, z: int | None = None, swims: bool = False, sails: bool = False) -> bool:
+        """Can a body be on (x, y)? The one answer, for a person, a creature, a ladder's top, a way worked out (the
+        screen's is web/js/cells.js stand, from the same table: rules.py). z: the height it would stand at: on a built
+        block (storeys.py), what stands on that block is what counts; on the land over the tile's lowest ground (a
+        hill over a cave), nothing is: what is on a tile lies on its lowest ground. There, the ground must be one to
+        walk on with nothing solid on it; water is for who `swims` (people: on top of it, whatever its depth, or into
+        a moored boat) or `sails`."""
+        cell = self.floors.get(x, y, z) if z is not None else None
+        if cell is not None:
+            return not BLOCKS[B[cell[1]]].solid
+        if z is not None and z != self.world.level(x, y):
+            return True
+        g, b = self.world.get(x, y)
+        if GROUNDS[g].liquid:
+            return sails or (swims and (BLOCKS[b].name == "boat" or not BLOCKS[b].solid))
+        return GROUNDS[g].walkable and not BLOCKS[b].solid
 
     def landing(self, b, x: int, y: int, jump: bool | None = None) -> int | None:
         """The height a step to the neighbouring (x, y) lands at, or None (a wall). Where the cell at your body's height

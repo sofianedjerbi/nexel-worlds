@@ -79,9 +79,9 @@ class Boss:
     def _moss_move(self, c, x, y) -> bool:
         """All three tiles of it must fit."""
         for i in (-1, 0, 1):
-            if not self.world.passable(x + i, y) or self.world.block(x + i, y) in ("door", "gate") or self.entity_at(x + i, y) not in (None, c):
+            if not self.stand(x + i, y) or self.world.block(x + i, y) in ("door", "gate") or self.entity_at(x + i, y) not in (None, c):
                 return False
-        if not self.world.can_step(c.x, c.y, x, y):
+        if self.world.level(c.x, c.y) != self.world.level(x, y):      # (it keeps to its own level)
             return False
         c.x, c.y = x, y
         return True
@@ -112,7 +112,7 @@ class Boss:
         self.emit("boss", c.x, c.y, what="shake", id=c.id)
         brood = sum(1 for o in self.creatures.values() if o.kind == "sporeling" and max(abs(o.x - c.x), abs(o.y - c.y)) <= BROOD_R)
         for x, y in ((c.x - 2, c.y), (c.x + 2, c.y), (c.x, c.y + 1)):      # where they fall in its animation
-            if brood >= BROOD or not self.world.passable(x, y) or self.entity_at(x, y) is not None:
+            if brood >= BROOD or not self.stand(x, y) or self.entity_at(x, y) is not None:
                 continue
             s = Creature(self.next_creature, "sporeling", x, y, CREATURES["sporeling"]["hp"], born=self.tick,
                          mode="land", until=self.tick + sec(0.7))

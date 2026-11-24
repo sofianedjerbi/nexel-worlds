@@ -81,5 +81,13 @@ function rimAt(x, y) {                      // as World.rim: lower ground around
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && floorAt(x + dx, y + dy) < lv) return true;
   return false;
 }
-// for your own steps: from the height you're at on (x0, y0), is the tile beside it not a wall?
-const canStep = (x0, y0, x1, y1) => landAt(myZ(x0, y0), x1, y1, x0, y0) !== null;
+// Can a body be there? The one answer (the server's: sim/bodies.py stand, from the same table). A tile `t` ([what is
+// on it, its ground]): ground to walk on with nothing solid on it; water, for who swims (on top of it, whatever its
+// depth, or into a moored boat). At height z on (x, y): on a built block, what stands on that block is what counts
+// (floors.js); on the land over the tile's lowest ground, nothing is (what is on a tile lies on its lowest ground).
+const standOn = (t, swims = true) => !!t && (wet(t[1]) ? swims && (t[0] === "V" || !SOLID.has(t[0])) : WALKABLE_GROUND.has(t[1]) && !SOLID.has(t[0]));
+function stand(x, y, z, swims) {
+  const c = z === undefined || !FLOORS ? null : Floors.get(x, y, z);
+  return c ? !SOLID.has(c[1]) : (z !== undefined && z !== floorAt(x, y)) || standOn(tile(x, y), swims);
+}
+const plainWalk = (x, y) => stand(x, y);        // (climbing.js asks by this name)

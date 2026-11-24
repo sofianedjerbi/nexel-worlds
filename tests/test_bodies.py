@@ -65,3 +65,18 @@ def test_a_creature_keeps_its_height_when_the_world_is_saved(world):
     old = {k: v for k, v in hen.to_json().items() if k != "z"}                 # one saved before creatures had a height:
     assert sim.height(Creature(**old)) == 0                                    # on the lowest ground, as they all were
     assert "z" in a.to_json()
+
+
+def test_one_answer_to_can_a_body_be_there(world):
+    """Bodies.stand: people, creatures, a ladder's top and the way-finder ask the same thing (they were five rules)."""
+    sim, a = world
+    x, y = a.x + 2, a.y
+    sim.world.set(x, y, block="rock")
+    assert not sim.stand(x, y) and not sim.stand(x, y, 0) and not sim.open_at(x, y, 0)
+    sim.world.set(x, y, level=0, roof=4)                    # a hill over it: the rock is in the cave, the hilltop is free
+    top = sim.world.top(x, y)
+    assert top > 0 and sim.stand(x, y, top) and sim.open_at(x, y, top) and not sim.stand(x, y, 0)
+    sim.world.set(x + 1, y, ground="water")
+    assert not sim.stand(x + 1, y) and sim.stand(x + 1, y, swims=True) and not sim.open_at(x + 1, y, 0)
+    sim.world.set(x + 1, y, block="rock")
+    assert not sim.stand(x + 1, y, swims=True) and sim.stand(x + 1, y, sails=True)
