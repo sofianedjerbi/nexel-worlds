@@ -1,6 +1,7 @@
 """The README's banner (assets/banner.gif): the first screen's island as the game itself draws it, with a scene played
 on it: Tobi builds a little wooden hut, wall by wall, and takes it down again with his axe, while Mira and Nell, beside
-him, talk it over in speech bubbles. The view drifts gently along; the logo (assets/banner_logo.png) is laid over it.
+him, talk it over in speech bubbles. The view drifts gently along; the logo is laid over it: the emblem (web/assets/emblem.png,
+tools/build_emblem.py) beside the wordmark (assets/banner_logo.png), both at the wordmark's own 5 px a pixel.
 The scene is played exactly once a loop and the island is otherwise held still (its hour, its crops, its animals, the
 others), so that the GIF loops with no seam.
 
@@ -25,12 +26,14 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT, LOGO = ROOT / "assets" / "banner.gif", ROOT / "assets" / "banner_logo.png"
+EMBLEM = ROOT / "src" / "nexel_worlds" / "web" / "assets" / "emblem.png"
+WORD, UNIT, GAP = (220, 199, 355, 45), 5, 20      # where the wordmark lies in banner_logo.png (x, y, w, h); its px; emblem to word
 W, H, MS, LOOP = 800, 320, 50, 100          # 20 frames a second; the scene: 100 of the island's ticks (10 s)
 FRAMES = LOOP * 100 // MS                   # (a tick is 100 ms)
 ZOOM = 2                                    # screen px an art px: close enough to see who is who
 VIEW = (43.5, 40), 2                         # the view's middle at the start, in the island's tiles, and how far east it drifts and back
                                             # (the scene in the upper half: the logo lies over the lower)
-LOGO_BOX = (212, 191, 370, 60)              # x, y, w, h in px: where the logo lies (no bubble is drawn half under it)
+LOGO_BOX = (164, 173, 472, 96)              # x, y, w, h in px: where the emblem and wordmark lie (no bubble is drawn half under them)
 SETTLED = "!HdLook.busy && !dirtyTiles.length"
 BUILT = "document.body.classList.contains('scene') && HdLook.live && HdLook.builds > 0 && " + SETTLED
 STAGE = """([LOOP, logo]) => {
@@ -152,8 +155,22 @@ def film() -> list[Image.Image]:
         server.terminate(); shutil.rmtree(work, ignore_errors=True)
 
 
+def lockup() -> Image.Image:
+    """The logo laid over the film: the emblem, then the wordmark, the two centred together on the wordmark's line."""
+    x, y, w, h = WORD
+    coin = Image.open(EMBLEM).convert("RGBA")
+    coin = coin.resize((coin.width * UNIT, coin.height * UNIT), Image.NEAREST)
+    left = (W - (coin.width + GAP + w)) // 2
+    out = Image.new("RGBA", (W, H))
+    out.alpha_composite(Image.open(LOGO).convert("RGBA").crop((x, y, x + w, y + h)), (left + coin.width + GAP, y))
+    out.alpha_composite(coin, (left, y + h // 2 - coin.height // 2))
+    lx, ly, lw, lh = LOGO_BOX
+    assert lx <= left and left + coin.width + GAP + w <= lx + lw and ly <= y + h // 2 - coin.height // 2, "the logo is not inside LOGO_BOX"
+    return out
+
+
 def build():
-    logo = Image.open(LOGO).convert("RGBA")
+    logo = lockup()
     frames = [Image.alpha_composite(f.convert("RGBA"), logo).convert("RGB") for f in film()]
     sample = Image.new("RGB", (W, H * 8))                                          # one palette for all (pixel art has few colours),
     for k in range(8):                                                             # from frames all through the loop (the hut's walls
