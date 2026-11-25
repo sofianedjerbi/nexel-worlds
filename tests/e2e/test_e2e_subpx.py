@@ -19,7 +19,7 @@ DPRS = [1, 2, 1.25, 1.75]
 # on the land's pixel, and how many of the bubble's px on the screen (the game's canvas, from the bubble's corner) are not as
 # in the first frame recorded (a still one): by more than 24 in a channel (the canvas, read each frame, is drawn by the CPU
 # after a while: its letters' soft px then differ by 1)
-REC = """(name) => { window.__pr = []; let ref = null, mine = null; const f0 = frame, o0 = outlined; window.__prOff = () => { frame = f0; outlined = o0; };
+REC = """(name) => { window.__pr = []; let ref = null, mine = null; const f0 = frame, o0 = outlined; window.__prOff = () => { frame = f0; outlined = o0; }; window.__prRef = () => { ref = null; };
   outlined = (text, x, y, c) => { if (text === me) mine = [x, y]; return o0(text, x, y, c); };   // (your own name, where it is written)
   frame = function (now) { mine = null; f0(now); const p = [...ents.values()].find((q) => q.e && q.e.name === name), b = bubbles.find((b) => b.name === name && b.at); if (!p || !b) return;
     const s = HdLook.screenOf(p.x + .5, p.y + .5, HdLook.drawnAt(p) ?? 0); if (!s) return;
@@ -51,19 +51,22 @@ def test_a_bubble_goes_with_its_speaker_px_for_px_and_its_letters_stay_as_they_a
         g.js(f"bubbles.push({{name: {other.name!r}, text: 'nice day for a walk, is it not', t: performance.now() / 1000 - 2}})")   # (written out already; 4 s before it fades)
         g.frames(3)
         g.js(REC, other.name)
-        g.frames(10)
+        g.frames(5)                                   # (a canvas read each frame is drawn by the CPU after the first reads: its
+        g.js("(__prRef(), __pr.splice(0), 1)")        #  letters' soft px are another raster: the still picture is one after that)
+        g.frames(8)
         still = g.js("__pr.splice(0)")
         assert still and not any(f["off"] for f in still), still[:3]
-        for k in ("d", "Shift"):                      # (walk 1 s, then sprint 1.2 s, both of them)
+        far = f"[...ents.values()].some((p) => p.e && p.e.name === {other.name!r} && p.x >= {x + 2} + %d)"
+        for k, tiles in (("d", 5), ("Shift", 12)):    # (walk 5 tiles, then sprint 7 more, both of them: as far, not as long, on a slow machine)
             other.page.keyboard.down(k)
             g.page.keyboard.down(k)
-            g.page.wait_for_timeout(1000 if k == "d" else 1200)
+            g.wait(far % tiles, 30000)
         for k in ("Shift", "d"):
             other.page.keyboard.up(k)
             g.page.keyboard.up(k)
         g.frames(3)
         walk = g.js("(() => { __prOff(); return __pr; })()")
-        assert len(walk) > 40 and walk[-1]["x"] - walk[0]["x"] > 4, (len(walk), walk[0], walk[-1])     # (they walked: frames of it, and tiles)
+        assert len(walk) > 12 and walk[-1]["x"] - walk[0]["x"] > 4, (len(walk), walk[0], walk[-1])     # (they walked: frames of it, and tiles)
         u, q = walk[0]["u"], walk[0]["q"]
         assert whole(u * dpr) and whole(q * dpr), (u, q)                                   # an art px and a bubble's px: whole px of the screen
         for f in walk:

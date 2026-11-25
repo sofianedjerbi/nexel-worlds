@@ -30,14 +30,17 @@ def test_the_camera_centres_on_you_as_drawn(game):
 @pytest.mark.realtime
 def test_running_into_new_ground_never_stalls_a_frame(game):
     """New land is made in steps within a budget (voxels.js work): no frame waits on a whole block (sprinting froze the
-    game for 70-130 ms). (How long a step is: test_e2e_land.py.)"""
-    x, y = game.pos()
+    game for 70-130 ms). (How long a step is: test_e2e_land.py.)
+    A stall is a frame much longer than this machine's own: measured against the frames it draws standing still (on a
+    runner drawing on the CPU every frame is 80-130 ms, on the Mac 17)."""
+    still = game.js("""new Promise((res) => { const f = []; (function step(t) { f.push(t); if (f.length < 40) requestAnimationFrame(step); else res(f); })(performance.now()); })""")
+    usual = sorted(b - a for a, b in zip(still, still[1:]))[len(still) // 2]
     ms = game.js(f"""new Promise((res) => {{
       Voxels.engine.forget(() => false);                       // (the land round you to be made again too, as blocks)
       rpc('dev_teleport', {{x: -10, y: 190}});
       const f = []; (function step(t) {{ f.push(t); if (f.length < 150) requestAnimationFrame(step); else res(f); }})(performance.now()); }})""")
     gaps = sorted(b - a for a, b in zip(ms, ms[1:]))
-    assert gaps[-1] < 60, gaps[-5:]
+    assert gaps[-1] < max(60, 2 * usual + 30), (usual, gaps[-5:])                 # (a whole block made in a frame: 70-130 ms more)
 
 
 def test_a_pit_below_sea_level_is_drawn_like_any_hole(game):
