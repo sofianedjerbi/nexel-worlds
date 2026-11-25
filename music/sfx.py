@@ -1339,26 +1339,26 @@ def _(c):
 
 
 # ================================================================== Nyxwing, the boss of Sugar rush
-# "sounds should be more epic": what a trailer engineer layers under a monster, all synthesised here:
-#   boom()   a sub that falls in pitch (the weight of a hit), with a click on top so a small speaker hears it
-#   braam()  a deep brass-like chord of detuned saws whose filter opens and that saturates (E flat and B flat, the song's)
-#   riser()  noise and a tone sucked in before a hit, ending on it
-#   growl()  three throats a hair apart, a voice an octave under the voice, a rasp, and air
-# and the "sky" space: a three-second diffuse tail, as if heard across a valley. Its song is in E flat at 156 BPM: the
-# tonal parts use E flat pentatonic, and the timed ones last whole beats (BEAT_S) so that each ends where a strike lands.
+# One creature, one palette: "ensure all the sounds effect feels like they belong with each other". Every Nyxwing sound
+# is made of the same few things, and of nothing else:
+#   THROAT   one voice: the same formants, the same rasp, the same chest an octave under. Its pitches are one family:
+#            the snarl and the roar about 110-160 Hz, the scream an octave over the roar, the takeoff climbing between.
+#   CHORD    E flat and B flat (the song's key): every braam, every swell
+#   boom()   the weight of a hit: a sub falling in pitch
+#   riser()  air sucked into a hit
+#   air      noise through moving bands: wings, wind, the spin, fire
+#   nyx()    the same last stage on all: the top rolled off at 6 kHz and the same grit
+#   "sky"    the same space on all: a three-second diffuse tail
+# No bells, no chimes, no pings: those were the odd ones out (a music box beside a monster).
 BEAT_S = 60 / 156
-EB_PENTA = ["Eb", "F", "G", "Bb", "C"]
+CHORD = ("Eb2", "Bb2", "Eb3")
+ROAR_HZ = 112
 
 
-def star_pings(c, n, count, span, level=0.15, octave="6"):
-    """Tiny bright pings in the song's notes: starlight."""
-    y = np.zeros(n)
-    for _ in range(count):
-        f = hz(c.pick(EB_PENTA) + octave) * c.pick([1, 2])
-        g = N(0.3)
-        tg = tt(g)
-        place(y, level * c.u(0.5, 1) * np.sin(2 * np.pi * f * tg) * np.exp(-tg / c.u(0.04, 0.09)) * np.clip(tg / 0.002, 0, 1), c.u(0, span))
-    return y
+def nyx(y):
+    """The last stage every Nyxwing sound goes through: one top, one grit."""
+    y = fft_filter(y, lambda f: 1 / np.sqrt(1 + (f / 6000) ** 4))
+    return np.tanh(1.4 * norm(y)) / np.tanh(1.4)
 
 
 def boom(n, f0=70.0, f1=30.0, tau=0.7, at=0.0):
@@ -1372,7 +1372,7 @@ def boom(n, f0=70.0, f1=30.0, tau=0.7, at=0.0):
     return np.tanh(1.6 * y) / np.tanh(1.6) + 0.15 * norm(click)
 
 
-def braam(n, notes=("Eb2", "Bb2", "Eb3"), attack=0.05, release=0.6, bright=1.0):
+def braam(n, notes=CHORD, attack=0.05, release=0.6, bright=1.0):
     """A deep brass chord: seven detuned saws a note, a filter that opens, saturation."""
     t = tt(n)
     y = np.zeros(n)
@@ -1396,8 +1396,8 @@ def riser(c, n, f0=300, f1=4000):
     return (air + 0.4 * tone) * x ** 3
 
 
-def growl(c, n, f0, mouth, rough=0.6):
-    """A big throat: three voices a hair apart, the voice under the voice (an octave down), a rasp, and air."""
+def nyx_throat(c, n, f0, mouth, rough=0.6):
+    """THE voice: three throats a hair apart, a rasp, a chest an octave under, and air. Every cry of it is this."""
     y = np.zeros(n)
     for det in (0.985, 1.0, 1.017):
         y += norm(voice(n, f0 * det, lambda t: [(240 + 260 * mouth, 1.0), (620 + 500 * mouth, 0.6), (1500 + 900 * mouth, 0.25),
@@ -1405,14 +1405,17 @@ def growl(c, n, f0, mouth, rough=0.6):
     rattle = 1 - rough * (0.5 + 0.5 * np.sin(np.pi * np.cumsum(f0) / SR))
     flutter = 1 + 0.3 * norm(fft_filter(c.noise(n), bp(18, 40)))
     y = norm(y * rattle * flutter)
-    under = norm(voice(n, f0 / 2, lambda t: [(160 + 120 * mouth, 1.0), (420, 0.4)], 90, 40, c))       # a chest the size of a barn
-    return y + 0.6 * under + 0.4 * texture(c, n, 400, 5000, 6, 14, 0.4) * mouth
+    chest = norm(voice(n, f0 / 2, lambda t: [(160 + 120 * mouth, 1.0), (420, 0.4)], 90, 40, c))
+    breath = norm(fft_filter(c.noise(n), bp(35, 110))) * np.clip(mouth, 0, 1)
+    return y + 0.6 * chest + 0.4 * texture(c, n, 400, 5000, 6, 14, 0.4) * mouth + 0.4 * breath
 
 
-def roar_body(c, n, f0, mouth):
-    """The roar itself, its chest and a sub under it: shared by the roar, the far roar and the snarl."""
-    x = np.linspace(0, 1, n)
-    return growl(c, n, f0, mouth, 0.65) + 0.55 * norm(fft_filter(c.noise(n), bp(35, 110))) * np.sin(np.pi * np.clip(x * 1.2, 0, 1))
+def nyx_wings(c, n, at, near=1.0):
+    """One beat of its wings: air pushed down and a thud of weight."""
+    y = np.zeros(n)
+    m = N(0.38)
+    place(y, near * (sweep(c, m, 900, 150, 0.45) * np.sin(np.pi * np.linspace(0, 1, m)) ** 2 + 0.8 * boom(m, 85, 40, 0.09, 0.09)), at)
+    return y
 
 
 @sfx("drake_omen", "Boss", "far off in the night sky, before it is seen: a roar across the valley, the eclipse opening", 1, 0.4, kind="sky", change="new")
@@ -1421,10 +1424,9 @@ def _(c):
     n = N(dur)
     t = tt(n)
     x = t / dur
-    f0 = 95 * (1 + 0.2 * np.sin(np.pi * np.clip(x / 0.4, 0, 1))) * (1 - 0.3 * x)
-    far = fft_filter(roar_body(c, n, f0, np.clip(x / 0.2, 0, 1) * (1 - x)), lp(1400, 2))            # the air takes the highs away
-    swell = braam(n, ("Eb2", "Bb2"), attack=1.4, release=1.2, bright=0.5)
-    return (0.8 * far + 0.6 * swell + 0.5 * boom(n, 50, 28, 1.2)) * np.clip(t / 0.3, 0, 1)
+    f0 = ROAR_HZ * 0.85 * (1 + 0.2 * np.sin(np.pi * np.clip(x / 0.4, 0, 1))) * (1 - 0.3 * x)
+    far = fft_filter(nyx_throat(c, n, f0, np.clip(x / 0.2, 0, 1) * (1 - x), 0.65), lp(1400, 2))       # the air takes the highs away
+    return nyx((0.8 * far + 0.6 * braam(n, CHORD[:2], attack=1.4, release=1.2, bright=0.5) + 0.5 * boom(n, 50, 28, 1.2)) * np.clip(t / 0.3, 0, 1))
 
 
 @sfx("drake_descend", "Boss", "Nyxwing comes down out of the sky: falling wind, wings nearer on each beat, a brass swell sucked into the landing (sixteen beats)", 1, 0.5, kind="sky", change="new")
@@ -1433,18 +1435,11 @@ def _(c):
     n = N(dur)
     t = tt(n)
     x = t / dur
-    wind = sweep(c, n, 2600, 380, 0.55, curve=x ** 1.5) * (0.15 + 0.85 * x ** 1.4)
-    rumble = norm(fft_filter(c.noise(n), bp(35, 110))) * x ** 2
-    y = 0.5 * wind + 0.5 * rumble
+    y = 0.5 * sweep(c, n, 2600, 380, 0.55, curve=x ** 1.5) * (0.15 + 0.85 * x ** 1.4) + 0.5 * norm(fft_filter(c.noise(n), bp(35, 110))) * x ** 2
     for k in range(16):                                                                    # a wing beat on each beat, each nearer
-        m = N(0.36)
-        near = (k / 15) ** 1.4
-        flap = sweep(c, m, 900, 160, 0.45) * np.sin(np.pi * np.linspace(0, 1, m)) ** 2 + 0.8 * near * boom(m, 90, 45, 0.08, 0.1)
-        place(y, (0.1 + 0.8 * near) * flap, k * BEAT_S + 0.04)
-    y += 0.9 * braam(n, ("Eb2", "Bb2", "Eb3"), attack=dur * 0.85, release=0.02, bright=1.0) * x ** 2   # the swell
-    y += 1.1 * riser(c, n, 250, 5000) * np.clip((x - 0.75) / 0.25, 0, 1)                       # and the last beats sucked in
-    y += star_pings(c, n, 16, dur * 0.7, 0.12) * (1 - x)
-    return y * np.clip(t / 0.6, 0, 1)
+        y += nyx_wings(c, n, k * BEAT_S + 0.04, 0.1 + 0.8 * (k / 15) ** 1.4)
+    y += 0.9 * braam(n, CHORD, attack=dur * 0.85, release=0.02) * x ** 2 + 1.1 * riser(c, n, 250, 5000) * np.clip((x - 0.75) / 0.25, 0, 1)
+    return nyx(y * np.clip(t / 0.6, 0, 1))
 
 
 @sfx("drake_roar", "Boss", "Nyxwing roars: when it lands on the drop, and when it blazes below half health", 1, 0.75, kind="sky", change="new")
@@ -1453,36 +1448,37 @@ def _(c):
     n = N(dur)
     t = tt(n)
     x = t / dur
-    f0 = 112 * (1 + 0.28 * np.sin(np.pi * np.clip(x / 0.3, 0, 1))) * (1 - 0.38 * np.clip((x - 0.35) / 0.65, 0, 1))
+    f0 = ROAR_HZ * (1 + 0.28 * np.sin(np.pi * np.clip(x / 0.3, 0, 1))) * (1 - 0.38 * np.clip((x - 0.35) / 0.65, 0, 1))
     mouth = np.clip(x / 0.08, 0, 1) * (1 - 0.55 * np.clip((x - 0.55) / 0.45, 0, 1))
-    roar = roar_body(c, n, f0, mouth) * np.clip(t / 0.02, 0, 1) * np.clip((dur - t) / 0.7, 0, 1) ** 0.8
-    hit = braam(N(1.6), ("Eb2", "Bb2", "Eb3", "G3"), attack=0.01, release=1.3, bright=1.1)
-    y = roar + 0.8 * boom(n, 75, 30, 0.9)
-    place(y, 0.75 * hit, 0)
-    return y + star_pings(c, n, 8, 0.5, 0.08)
+    y = nyx_throat(c, n, f0, mouth, 0.65) * np.clip(t / 0.02, 0, 1) * np.clip((dur - t) / 0.7, 0, 1) ** 0.8 + 0.8 * boom(n, 75, 30, 0.9)
+    place(y, 0.75 * braam(N(1.6), CHORD, attack=0.01, release=1.3, bright=1.1), 0)
+    return nyx(y)
+
+
+@sfx("drake_scream", "Boss", "Nyxwing's mouth opens: a scream, the roar an octave up (every time its jaws open)", 4, 0.5, kind="sky", change="new")
+def _(c):
+    dur = [0.7, 0.85, 0.62, 0.95][c.v % 4]
+    n = N(dur)
+    t = tt(n)
+    x = t / dur
+    top = 2 * ROAR_HZ * [1.0, 0.92, 1.08, 0.97][c.v % 4]                                    # the roar an octave up: the same throat
+    f0 = top * (0.8 + 0.3 * np.sin(np.pi * np.clip(x / 0.35, 0, 1))) * (1 - 0.2 * np.clip((x - 0.5) / 0.5, 0, 1))
+    y = nyx_throat(c, n, f0, np.clip(x / 0.06, 0, 1) * (1 - 0.3 * x), 0.8) * np.clip(t / 0.015, 0, 1) * np.clip((dur - t) / 0.3, 0, 1)
+    return nyx(y + 0.5 * boom(n, 70, 34, 0.25))
 
 
 @sfx("drake_flap", "Boss", "one beat of Nyxwing's wings, on the kick", 4, 0.22, kind="sky", change="new")
 def _(c):
-    n = N(0.42)
-    t = tt(n)
-    air = sweep(c, n, c.u(800, 1000), 140, 0.5) * np.sin(np.pi * np.clip(t / 0.34, 0, 1)) ** 1.5
-    return air + 0.8 * boom(n, 85, 40, 0.09, 0.09)
+    return nyx(nyx_wings(c, N(0.42), 0.0))
 
 
-@sfx("drake_charge", "Boss", "starlight gathers at Nyxwing's jaws (the beat and a half before the breath)", 1, 0.45, kind="sky", change="new")
+@sfx("drake_charge", "Boss", "dark light gathers at Nyxwing's jaws (the beat and a half before the breath)", 1, 0.45, kind="sky", change="new")
 def _(c):
     dur = 1.5 * BEAT_S
     n = N(dur)
-    t = tt(n)
-    x = t / dur
-    rise = np.zeros(n)
-    for k, note in enumerate(["Eb5", "G5", "Bb5", "C6", "Eb6", "G6"]):                     # up the song's notes, a quarter beat each
-        g = N(0.2)
-        tg = tt(g)
-        place(rise, (0.4 + 0.12 * k) * np.sin(2 * np.pi * hz(note) * tg) * np.exp(-tg / 0.08) * np.clip(tg / 0.002, 0, 1), k * BEAT_S / 4)
-    low = growl(c, n, 80 * (1 + 0.3 * x), 0.2 + 0.3 * x, 0.5) * x
-    return 0.4 * rise + 0.45 * low + 0.9 * riser(c, n, 400, 7000) + 0.5 * braam(n, ("Bb2", "Eb3"), attack=dur, release=0.01, bright=0.8)
+    x = tt(n) / dur
+    return nyx(0.5 * nyx_throat(c, n, 0.7 * ROAR_HZ * (1 + 0.3 * x), 0.2 + 0.3 * x, 0.5) * x + riser(c, n, 400, 6000)
+               + 0.6 * braam(n, CHORD[1:], attack=dur, release=0.01, bright=0.8))
 
 
 @sfx("drake_breath", "Boss", "Nyxwing's void breath: a cone of dark fire (two beats)", 1, 0.6, kind="sky", change="new")
@@ -1490,71 +1486,71 @@ def _(c):
     dur = 2 * BEAT_S
     n = N(dur)
     t = tt(n)
-    fire = texture(c, n, 90, 5000, 9, 26, 0.95, tilt=-0.45)
-    y = fire + 0.8 * norm(fft_filter(c.noise(n), bp(35, 120))) + 0.9 * boom(n, 70, 32, 0.5)
-    y += 0.5 * growl(c, n, 70 * np.ones(n), 0.6, 0.7) + star_pings(c, n, 14, dur * 0.8, 0.12)
-    return y * np.clip(t / 0.006, 0, 1) * np.clip((dur - t) / 0.25, 0, 1)
+    y = texture(c, n, 90, 5000, 9, 26, 0.95, tilt=-0.45) + 0.9 * boom(n, 70, 32, 0.5) + 0.5 * nyx_throat(c, n, 0.65 * ROAR_HZ * np.ones(n), 0.6, 0.7)
+    return nyx(y * np.clip(t / 0.006, 0, 1) * np.clip((dur - t) / 0.25, 0, 1))
 
 
-@sfx("drake_star", "Boss", "Nyxwing throws out a ring of stars (one on each of three beats)", 3, 0.45, kind="sky", change="new")
+@sfx("drake_spin", "Boss", "Nyxwing spins in the starfall: its wings cut the air on every eighth note (three beats)", 1, 0.4, kind="sky", change="new")
 def _(c):
-    n = N(0.8)
+    dur = 3 * BEAT_S
+    n = N(dur)
     t = tt(n)
-    pop = sweep(c, n, 500, 6000, 0.5) * np.exp(-t / 0.06) * np.clip(t / 0.002, 0, 1)
-    chord = np.zeros(n)
-    for k, note in enumerate([["Eb6", "G6", "Bb6"], ["F6", "Bb6", "C7"], ["G6", "C7", "Eb7"]][c.v % 3]):
-        chord += np.sin(2 * np.pi * hz(note) * t) * np.exp(-t / (0.16 + 0.04 * k)) * np.clip(t / 0.002, 0, 1)
-    return 0.5 * pop + 0.35 * chord + 0.9 * boom(n, 80, 38, 0.25) + star_pings(c, n, 8, 0.25, 0.15, "7")
+    x = t / dur
+    passes = 0.5 + 0.5 * np.cos(2 * np.pi * t / (BEAT_S / 2))                               # a wing passes on each eighth
+    air = sweep(c, n, 180, 900, 0.5, curve=0.3 + 0.7 * passes ** 2) * (0.25 + 0.75 * passes ** 3)
+    hum = nyx_throat(c, n, 0.55 * ROAR_HZ * np.ones(n), 0.3, 0.6)
+    beat = sum(boom(n, 75, 40, 0.07, k * BEAT_S / 2) for k in range(6)) * 0.35            # its weight on each turn
+    return nyx((air + 0.6 * hum + beat) * np.clip(t / 0.05, 0, 1) * np.clip((dur - t) / 0.2, 0, 1) * (0.8 + 0.2 * x))
+
+
+@sfx("drake_ring", "Boss", "a ring of stars thrown out of the spin (one on each of three beats)", 3, 0.45, kind="sky", change="new")
+def _(c):
+    n = N(0.7)
+    t = tt(n)
+    blast = sweep(c, n, 2400, 300, 0.5, curve=np.clip(t / 0.2, 0, 1)) * np.exp(-t / 0.09) * np.clip(t / 0.002, 0, 1)
+    hit = braam(n, CHORD[[0, 1, 2][c.v % 3]:][:2] if c.v % 3 < 2 else CHORD, attack=0.005, release=0.5, bright=0.6 + 0.2 * (c.v % 3))
+    return nyx(0.7 * blast + 1.1 * boom(n, 80 + 6 * (c.v % 3), 36, 0.3) + 0.45 * hit)
 
 
 @sfx("drake_screech", "Boss", "Nyxwing tears itself off the ground and climbs out of sight (the eclipse begins)", 1, 0.6, kind="sky", change="new")
 def _(c):
-    # "it sounds too... cute": it was a high cry (520-750 Hz, a small throat). Now no voice above 250 Hz: one huge
-    # down-beat of the wings, a roar that climbs as it rises, and the air it drags up, darker as it goes away.
     dur = 1.6
     n = N(dur)
     t = tt(n)
     x = t / dur
-    slam = sweep(c, n, 700, 90, 0.5, curve=np.clip(t / 0.3, 0, 1)) * np.sin(np.pi * np.clip(t / 0.32, 0, 1)) ** 1.5
-    f0 = 78 * (1 + 0.9 * np.clip(x / 0.55, 0, 1) ** 1.3) * (1 - 0.15 * np.clip((x - 0.6) / 0.4, 0, 1))
-    roar = roar_body(c, n, f0, np.clip(x / 0.15, 0, 1) * (1 - 0.6 * x)) * np.clip((dur - t) / 0.6, 0, 1)
+    slam = nyx_wings(c, n, 0.0, 1.3)
+    f0 = 0.7 * ROAR_HZ * (1 + 0.9 * np.clip(x / 0.55, 0, 1) ** 1.3) * (1 - 0.15 * np.clip((x - 0.6) / 0.4, 0, 1))
+    cry = nyx_throat(c, n, f0, np.clip(x / 0.15, 0, 1) * (1 - 0.6 * x), 0.65) * np.clip((dur - t) / 0.6, 0, 1)
     away = sweep(c, n, 200, 2400, 0.5, curve=np.clip((x - 0.1) / 0.6, 0, 1)) * np.sin(np.pi * np.clip((x - 0.1) / 0.9, 0, 1)) ** 1.2
-    y = 0.9 * slam + 1.2 * boom(n, 75, 28, 0.6) + 0.9 * roar + 0.5 * away
-    y = 0.85 * y + 0.4 * braam(n, ("Eb2", "Bb2"), attack=0.02, release=1.2, bright=0.8)
-    return fft_filter(y, lambda f: 1 / np.sqrt(1 + (f / 2600) ** 4))                       # nothing shrill
+    return nyx(0.9 * slam + 1.0 * boom(n, 75, 28, 0.6) + 0.9 * cry + 0.5 * away + 0.4 * braam(n, CHORD[:2], attack=0.02, release=1.2, bright=0.8))
 
 
-@sfx("drake_fall", "Boss", "Nyxwing falls out of the sky on you: a scream of air sucked into the crash (the beat and a half before it)", 1, 0.5, kind="sky", change="new")
+@sfx("drake_fall", "Boss", "Nyxwing falls out of the sky on you: air screaming down into the crash (the beat and a half before it)", 1, 0.5, kind="sky", change="new")
 def _(c):
     dur = 1.5 * BEAT_S
     n = N(dur)
-    t = tt(n)
-    x = t / dur
-    f = 2600 * (1 - 0.78 * x ** 1.2)
-    whistle = sum(np.sin(2 * np.pi * np.cumsum(f * d) / SR) for d in (1, 1.007, 0.5)) * (0.3 + 0.7 * x)
-    return 0.3 * whistle + 0.9 * sweep(c, n, 3400, 300, 0.5, curve=x ** 1.2) * x + riser(c, n, 120, 1500) + 0.4 * braam(n, ("Eb2", "Bb2"), attack=dur, release=0.01, bright=0.7)
+    x = tt(n) / dur
+    return nyx(0.9 * sweep(c, n, 3400, 300, 0.5, curve=x ** 1.2) * x + riser(c, n, 120, 1500) + 0.5 * braam(n, CHORD[:2], attack=dur, release=0.01, bright=0.7))
 
 
 @sfx("drake_crash", "Boss", "Nyxwing lands from the sky on the beat: a blow, a boom, a ring of light", 2, 0.8, kind="sky", change="new")
 def _(c):
     n = N(1.6)
     t = tt(n)
-    y = strike(c, n, "dirt", size=3.4, hard=1.0) + strike(c, n, "body", size=3.2, hard=1.0)
-    y += 1.3 * boom(n, 80, 26, 0.8)
+    y = strike(c, n, "dirt", size=3.4, hard=1.0) + strike(c, n, "body", size=3.2, hard=1.0) + 1.3 * boom(n, 80, 26, 0.8)
     late = np.clip((t - 0.04) / 0.02, 0, 1) * np.exp(-np.clip(t - 0.04, 0, None) / 0.35)
     y += 0.5 * phism(c, n, late, 700, 1800, 0.0015) + 0.3 * phism(c, n, late ** 2, 300, 4200, 0.001)
-    place(y, 0.6 * braam(N(1.0), ("Eb2", "Bb2", "Eb3"), attack=0.005, release=0.8, bright=1.1), 0)
-    return y + star_pings(c, n, 10, 0.4, 0.1)
+    place(y, 0.6 * braam(N(1.0), CHORD, attack=0.005, release=0.8, bright=1.1), 0)
+    return nyx(y)
 
 
 @sfx("drake_whip", "Boss", "Nyxwing's tail sweeps round in a ring", 2, 0.55, kind="sky", change="new")
 def _(c):
     n = N(0.7)
     t = tt(n)
-    swish = sweep(c, n, 180, 4200, 0.5, curve=np.clip(t / 0.25, 0, 1) ** 1.5) * np.sin(np.pi * np.clip(t / 0.3, 0, 1)) ** 2
-    y = 0.8 * swish
+    y = 0.8 * sweep(c, n, 180, 4200, 0.5, curve=np.clip(t / 0.25, 0, 1) ** 1.5) * np.sin(np.pi * np.clip(t / 0.3, 0, 1)) ** 2
     place(y, 0.8 * _crack(c, N(0.08), 6, 0.006), 0.24)
-    return y + 1.0 * boom(n, 90, 34, 0.3, 0.24)
+    return nyx(y + 1.0 * boom(n, 90, 34, 0.3, 0.24))
 
 
 @sfx("drake_hurt", "Boss", "Nyxwing is hit: a short snarl", 3, 0.42, kind="sky", change="new")
@@ -1563,9 +1559,9 @@ def _(c):
     n = N(dur)
     t = tt(n)
     x = t / dur
-    f0 = c.u(140, 165) * (1.1 - 0.3 * x)
-    y = roar_body(c, n, f0, np.clip(x / 0.12, 0, 1) * (1 - 0.4 * x)) * np.clip(t / 0.01, 0, 1) * np.clip((dur - t) / 0.15, 0, 1)
-    return y + 0.6 * boom(n, 70, 35, 0.2)
+    f0 = ROAR_HZ * c.u(1.25, 1.45) * (1.1 - 0.3 * x)
+    y = nyx_throat(c, n, f0, np.clip(x / 0.12, 0, 1) * (1 - 0.4 * x), 0.65) * np.clip(t / 0.01, 0, 1) * np.clip((dur - t) / 0.15, 0, 1)
+    return nyx(y + 0.6 * boom(n, 70, 35, 0.2))
 
 
 # ================================================================== creatures: each one's own warning, blow and cry

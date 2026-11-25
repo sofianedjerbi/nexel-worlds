@@ -542,8 +542,20 @@ def spin(i, **k):
     return squeeze(g, .62) if v % 2 else g
 
 
-def frames(view):
-    F = side if view == "left" else (lambda **k: front(back=view == "up", **k))
+def frames(view, jaws=None):
+    """Every animation in one view. jaws, if given, gets each frame's jaw (0: shut), in order: the game opens its
+    voice on a frame where the jaw opens."""
+    base = side if view == "left" else (lambda **k: front(back=view == "up", **k))
+
+    def F(**k):
+        if jaws is not None:
+            jaws.append(k.get("jaw", 0))
+        return base(**k)
+
+    def turning(i, **k):
+        if jaws is not None:
+            jaws.append(k.get("jaw", 0))
+        return spin(i, **k)
     star = lambda *p: ("stars", p)
     return dict(
         idle=[F(flap=i, alt=10, phase=i * .8, blink=i == 6, fx=(star(*TWINKLE[i % 4]),) if i % 2 == 0 else ()) for i in range(8)],
@@ -558,7 +570,7 @@ def frames(view):
         storm=[F(alt=14, arm=-70 if view != "left" else -110, spread=1.2, glare=True, jaw=2, fx=(star((30, 20), (98, 22)),)),
                F(alt=18, arm=-75 if view != "left" else -115, spread=1.25, glare=True, jaw=3, fx=(star((24, 14), (104, 16), (64, 4)),)),
                F(alt=18, arm=-78 if view != "left" else -118, spread=1.3, glare=True, jaw=3, lit=True, fx=(star((20, 30), (108, 30), (64, 6)),))]
-              + [spin(i + {"down": 0, "left": 2, "up": 4}[view], flap=i % 8, alt=18, jaw=4, glare=True, lit=True, spread=1.2,
+              + [turning(i + {"down": 0, "left": 2, "up": 4}[view], flap=i % 8, alt=18, jaw=4, glare=True, lit=True, spread=1.2,
                       fx=(star((20 + i % 8 * 11, 10 + i * 5 % 20), (110 - i % 8 * 9, 24)),)) for i in range(16)]
               + [F(flap=2, alt=14, jaw=1), F(flap=4, alt=11)],
         dive=[F(alt=10, arm=-100 if view == "left" else -62, rear=3, glare=True),
@@ -602,6 +614,11 @@ def enemy(theme):
     """The drake in one of its looks: the frames are computed with that theme's paint and parts."""
     global TH
     TH = THEMES[theme]
+    jaws = []
+    dirs = {"left": frames("left", jaws)} | {d: frames(d) for d in ("down", "up")}
+    mouth, k = {}, 0
+    for anim, fs in dirs["left"].items():                                # each frame: is its mouth open
+        mouth[anim], k = [j > 0 for j in jaws[k:k + len(fs)]], k + len(fs)
     look, how, drops = TEXT[theme], HOW, "a night scale, a fallen star, the eclipse stone"
     return dict(
         key=TH["key"], name=TH["name"], pal=TH["pal"], role=f"boss to Sugar rush, prototype {list(THEMES).index(theme) + 1}: {TH['proto']}", proto=TH["proto"],
@@ -614,5 +631,5 @@ def enemy(theme):
         behaviour=f"A great dragon, always in the air and always on the beat. {how}",
         stats=dict(hp=600, breath="30, four tiles ahead", storm="10 a bolt, three rings", dive="40 under it, 15 out to five tiles",
                    sweep="25, five tiles round", speed="flies at twice yours", drops=drops),
-        dirs={d: frames(d) for d in ("left", "down", "up")},
+        dirs=dirs, mouth=mouth,
     )
