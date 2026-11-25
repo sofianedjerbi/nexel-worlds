@@ -24,5 +24,5 @@ def test_a_hit_cow_runs_off_without_jumping(game):
     behind = [abs(r[2] - r[0]) + abs(r[3] - r[1]) for r in rec]
     moved = abs(rec[-1][2] - rec[0][2]) + abs(rec[-1][3] - rec[0][3])
     assert moved >= 3, rec[-1]                                 # it did run
-    assert max(speeds) < 10, max(speeds)                        # no frame jumps: it runs a tile every FLEE_STRIDE, 3.3 tiles a second, up to 6 catching up (a snap goes at 20 and more)
+    assert max(speeds) < 20, max(speeds)                        # no frame jumps: it runs a tile every FLEE_STRIDE, 3.3 tiles a second, faster for a frame as the world sets its pace (13); a snap goes at 20 and more (render.js `far`). A step of .35 at 60 frames a second was 21
     assert max(behind) <= 1.2, max(behind)                     # never lagging behind the server

@@ -32,14 +32,15 @@ def swim_until(game, key, done, timeout=8000):
         game.page.keyboard.up(key)
 
 
-TRACK = """(() => { window.__sw = []; window.__swOn = true; const f = (now) => { const p = ents.get('agent' + myId); __sw.push([now, p.x]);
+TRACK = """(() => { window.__sw = []; window.__swOn = true; const f = (now) => { const p = ents.get('agent' + myId); __sw.push([now, p.x, walking && p.walking ? 1 : 0]);
   if (__swOn) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()"""
 
 
 def pace(game):
-    """tiles a second you went, as drawn, by the frames' own time since TRACK, its first 300 ms left out (setting off)"""
+    """tiles a second you went, as drawn, by the frames' own time since TRACK, while the key had you walking (not the
+    glide into place and the stop after it), its first 300 ms left out (setting off)"""
     rec = game.js("(() => { __swOn = false; return __sw; })()")
-    rec = [r for r in rec if r[0] >= rec[0][0] + 300]
+    rec = [r for r in rec if r[2] and r[0] >= rec[0][0] + 300]
     return (rec[-1][1] - rec[0][1]) / (rec[-1][0] - rec[0][0]) * 1000 if len(rec) > 2 and rec[-1][0] > rec[0][0] else None
 
 

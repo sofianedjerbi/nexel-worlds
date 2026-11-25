@@ -83,10 +83,10 @@ def test_you_eat_while_you_walk(game):
             i0 = i
     assert not stops and game.pos()[0] >= x0 + 5, (stops, game.pos()[0] - x0)           # (slower while you chew: EAT_PACE)
     game.rpc("dev_needs", hunger=8)
-    game.press("e", 250)                                                                    # a meal begun standing...
+    game.press("e", 0)                                                                      # a meal begun standing...
+    game.wait("myAside && myAside.tool === 'eat'")
     game.page.keyboard.down("a")
-    game.sleep(500)
-    assert game.js("walking !== null") and game.js("myAside && myAside.tool") == "eat"       # ...goes on as you set off
+    game.wait("walking !== null && !!myAside && myAside.tool === 'eat'", 3000)               # ...goes on as you set off (asked at once: the meal is 0.9 s)
     game.sleep(700)
     game.page.keyboard.up("a")
     game.sleep(500)
