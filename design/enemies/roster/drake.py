@@ -237,18 +237,10 @@ def shade(c, on="wr"):
                 c[y][x] = {"w": "v", "r": "R" if TH["scales"] != "bolts" else "r"}[c[y][x]]
 
 
-def tail(c, base, ang, sway=0., phase=0., n=10, step=4.2, curl=1.0):
-    """The tail: long, tapering, and the prototype's tip at the end (an eclipse, a crescent moon, a black hole)."""
-    pts, (x, y) = [base], base
-    a = ang
-    for i in range(n + 3):
-        a = ang + sway * math.sin(i * .55 + phase) + (.03 - .1 * curl * (i > n)) * i
-        x, y = x + step * math.cos(a), y + step * math.sin(a)
-        pts.append((x, y))
-    seg(c, pts, 5.4, 2.8, "w")
-    pattern(c)
-    shade(c)
-    tip, ox, oy = TH["tip"], x + 2 * math.cos(a), y + 2 * math.sin(a)
+def core(c, ox, oy, a):
+    """The portal core at the end of its tail, in the prototype's kind (an eclipse, a crescent moon, a black hole),
+    centred on (ox, oy), a: the tail's heading. The same drawing is the core it drops when it dies (DROP)."""
+    tip = TH["tip"]
     if tip == "moon":                                                    # a crescent moon: a disc with a bite out of it
         oval(c, ox, oy, 6, 6, "c")
         oval(c, ox + 2.6 * math.cos(a + 1.2), oy + 2.6 * math.sin(a + 1.2), 4.6, 4.6, ".")
@@ -263,6 +255,30 @@ def tail(c, base, ang, sway=0., phase=0., n=10, step=4.2, curl=1.0):
         oval(c, ox, oy, 5, 5, "c")
         oval(c, ox + .6, oy - .6, 3.4, 3.4, "e")
         put(c, ox - 2.6, oy - 2.6, "Y")
+
+
+def drop_icon():
+    """What it leaves where it died: its portal core, as an item, cropped to its outline."""
+    c = canvas()
+    core(c, W / 2, H / 2, -0.6)
+    g = part(c)
+    ys = [y for y, r in enumerate(g) if r.strip(".")]
+    xs = [x for r in g for x, ch in enumerate(r) if ch != "."]
+    return [r[min(xs) - 1:max(xs) + 2] for r in g[min(ys) - 1:max(ys) + 2]]
+
+
+def tail(c, base, ang, sway=0., phase=0., n=10, step=4.2, curl=1.0):
+    """The tail: long, tapering, and the prototype's tip at the end (an eclipse, a crescent moon, a black hole)."""
+    pts, (x, y) = [base], base
+    a = ang
+    for i in range(n + 3):
+        a = ang + sway * math.sin(i * .55 + phase) + (.03 - .1 * curl * (i > n)) * i
+        x, y = x + step * math.cos(a), y + step * math.sin(a)
+        pts.append((x, y))
+    seg(c, pts, 5.4, 2.8, "w")
+    pattern(c)
+    shade(c)
+    core(c, x + 2 * math.cos(a), y + 2 * math.sin(a), a)
     return pts
 
 
@@ -619,7 +635,7 @@ def enemy(theme):
     mouth, k = {}, 0
     for anim, fs in dirs["left"].items():                                # each frame: is its mouth open
         mouth[anim], k = [j > 0 for j in jaws[k:k + len(fs)]], k + len(fs)
-    look, how, drops = TEXT[theme], HOW, "a night scale, a fallen star, the eclipse stone"
+    look, how, drops = TEXT[theme], HOW, "a portal core"
     return dict(
         key=TH["key"], name=TH["name"], pal=TH["pal"], role=f"boss to Sugar rush, prototype {list(THEMES).index(theme) + 1}: {TH['proto']}", proto=TH["proto"],
         cell=(128, 114), move="fly", theme=theme, look=look,
@@ -631,5 +647,6 @@ def enemy(theme):
         behaviour=f"A great dragon, always in the air and always on the beat. {how}",
         stats=dict(hp=600, breath="30, four tiles ahead", storm="10 a bolt, three rings", dive="40 under it, 15 out to five tiles",
                    sweep="25, five tiles round", speed="flies at twice yours", drops=drops),
-        dirs=dirs, mouth=mouth,
+        dirs=dirs, mouth=mouth, drop=dict(name="portal core", icon=drop_icon(),
+                                          about="the core at the end of its tail: a piece of the night it came through"),
     )
