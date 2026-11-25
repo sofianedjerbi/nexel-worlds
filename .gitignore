@@ -50,7 +50,3 @@ src/nexel_worlds/web/assets/font*.ttf
 # long screen recordings for the devlog: kept out of git (large)
 tools/pages/*.mp4
 tools/pages/*.gif
-# local review pages (music, sound and design mockups): kept on disk, never published.
-# The public pages (GitHub Pages) are tools/pages/ and the client in src/nexel_worlds/web/.
-music/site/*.html
-design/enemies/site/*.html
