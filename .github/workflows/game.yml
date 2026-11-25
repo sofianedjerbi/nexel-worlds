@@ -14,9 +14,11 @@ on:
 permissions:
   contents: read
 
+# a build in progress is finished, not cancelled by the next push (a music render is long: pushes minutes apart would
+# never let one end); the newest push waits, any older waiting one is dropped
 concurrency:
   group: game-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
