@@ -1,29 +1,42 @@
-"""Brittlewing: the sugar drake, a boss made for the high-energy track "Sugar rush" (E flat, 156 BPM, a kick on every beat).
+"""The drake: a boss rig for the high-energy track "Sugar rush" (E flat, 156 BPM, a kick on every beat), in three looks
+to choose from (roster/solflare.py, voltwing.py, nyxwing.py): comet (fire), storm (lightning), eclipse (stars).
 
-A dragon made of candy, flying: a candy-cane body and tail (the tail ends in a cane's crook), wings of spun sugar,
-horns of rock-candy crystal, a row of sugared gumdrops down its back, a mint belly. It never touches the ground.
-Everything is timed to the song: a wing beat is one musical beat (385 ms), the idle hover two, each warning a beat
-and a half, and every strike lands on a beat.
-
-Every frame is computed from parts (far wing, tail, body with its gumdrops, neck, head and crystals, legs, near wing),
-the wings from a shoulder angle and three fingers, so the flap is one number per frame.
+A big dragon that never lands. Everything is timed to the song: a wing beat is one musical beat (385 ms), the idle
+hover two, each warning a beat and a half, and every strike lands on a beat.
+Every frame is computed from parts (far wing, tail, body with its back spines, neck, head and horns, legs, near
+wing), the wings from a shoulder angle and three fingers, so the flap is one number per frame. A theme only changes
+the paint (palette, scale pattern, wing membrane), the spines down its back and the tip of its tail.
 Attacks (the warning first, held, then the strike):
-  breath   it rears back and sugar sparks gather at its jaws, then it breathes a cone of pink fire four tiles ahead
-  storm    it climbs and throws its wings wide, then spins and fires rings of sprinkles, one ring on each beat
+  breath   it rears back and sparks gather at its jaws, then it breathes a cone four tiles ahead
+  storm    it climbs and throws its wings wide, then spins and fires rings of bolts, one ring on each beat
   dive     wings straight up, it shoots off the top of the screen, its shadow hunts you, and it crashes down on the beat
-  sweep    the tail coils high over its back, then whips round in a rainbow ribbon
-  rush     (below half health) a roar, every gumdrop lights up: it gets faster and attacks on half beats
+  sweep    the tail coils high over its back, then whips round in a ring
+  rush     (below half health) a roar, its spines blaze: it gets faster and attacks on half beats
 """
 import math
 
 from art import ground, over, part
 
-PAL = {"o": "5a2f4e", "w": "fff3e8", "v": "e9cfd3", "r": "f0607a", "R": "c8455f", "m": "9ee6c8", "M": "6cc3a4",
-       "p": "ffb8d9", "P": "ffe2f0", "n": "e590bd", "b": "d14f7f", "c": "a8dcff", "C": "6fb0ee", "W": "ffffff",
-       "y": "ffe066", "Y": "fffbd0", "e": "3b1f36", "q": "9c2f5a", "t": "ff86ad", "1": "ff6b8b", "2": "ffd166",
-       "3": "7ee0b8", "4": "7fb8ff", "5": "c49bff", "x": "ffffffaa", "g": "ffd16699"}
+THEMES = {
+    "comet": dict(key="solflare", name="Solflare", spines="flame", tip="plume", wing="fire", scales="scales", pal={
+        "o": "5a2418", "w": "f6b84a", "W": "fff0b0", "v": "d9792e", "r": "e0702e", "R": "b5522a", "m": "fff0c8",
+        "M": "f2cf8e", "p": "ff9a3c", "P": "ffe08a", "n": "e0482e", "b": "9a3426", "c": "fff6e0", "C": "e8cf98",
+        "y": "fffbd0", "Y": "ffffff", "e": "5a1a10", "q": "7a1f1f", "t": "ff9a5a", "1": "ff4a2a", "2": "ff9d2e",
+        "3": "ffe066", "4": "fff6d0", "5": "ff6a3a", "x": "fff6d0aa", "g": "ffd16699"}),
+    "storm": dict(key="voltwing", name="Voltwing", spines="fins", tip="blade", wing="veins", scales="bolts", pal={
+        "o": "141833", "w": "3f4f9a", "W": "7f95e8", "v": "2a3570", "r": "6fe3ff", "R": "3aa6df", "m": "a9c0ff",
+        "M": "7a90e0", "p": "2f3a80", "P": "4656b0", "n": "1f2758", "b": "8ff3ff", "c": "e8ffff", "C": "7fe0ff",
+        "y": "fffb9a", "Y": "ffffff", "e": "0e1030", "q": "1a1f45", "t": "6fe3ff", "1": "8ff3ff", "2": "ffffff",
+        "3": "6fe3ff", "4": "fffb9a", "5": "b48cff", "x": "d8fbffaa", "g": "8ff3ff88"}),
+    "eclipse": dict(key="nyxwing", name="Nyxwing", spines="gold", tip="orb", wing="stars", scales="runes", pal={
+        "o": "1a0f2a", "w": "3d2a66", "W": "6a52a0", "v": "2a1c4a", "r": "ffcf5a", "R": "d9a63a", "m": "6b52a8",
+        "M": "4e3a86", "p": "3a2468", "P": "5a3c94", "n": "24163f", "b": "ffcf5a", "c": "ffe08a", "C": "e0a83a",
+        "y": "fff3c0", "Y": "ffffff", "e": "0b0614", "q": "12091f", "t": "c77dff", "1": "ffcf5a", "2": "fff3c0",
+        "3": "c77dff", "4": "7fb8ff", "5": "ff7ac8", "x": "fff3c0aa", "g": "ffcf5a88"}),
+}
+TH = THEMES["comet"]
 W, H = 128, 112
-SPRINKLE = "12345"
+ACCENT = "12345"
 
 
 def canvas():
@@ -71,7 +84,7 @@ def poly(c, pts, ch, on=None):
 
 
 def crystal(c, x, y, ang, n, w=2.6):
-    """A shard of rock candy from (x, y), n long, at angle ang (degrees, 0 = +x, -90 = up): two tones and a glint."""
+    """A shard of crystal from (x, y), n long, at angle ang (degrees, 0 = +x, -90 = up): two tones and a glint."""
     a = math.radians(ang)
     dx, dy, px, py = math.cos(a), math.sin(a), -math.sin(a), math.cos(a)
     tip = (x + dx * n, y + dy * n)
@@ -81,15 +94,23 @@ def crystal(c, x, y, ang, n, w=2.6):
         put(c, x + dx * i + px * .8, y + dy * i + py * .8, "W")
 
 
-def gumdrop(c, x, y, r, col):
-    """A sugared gumdrop: a dome in one of the sprinkle colours, white sugar grains on it."""
-    oval(c, x, y - r * .5, r, r * 1.05, col, on=None)
-    for i, j in ((-.4, -.6), (.3, -1.0), (.5, -.2)):
-        put(c, x + i * r, y - r * .5 + j * r * .7, "W")
+def spine(c, x, y, r, i, lit=False, phase=0.):
+    """One of the spines down its back, in the theme's kind: a tongue of flame, a fin of ice-blue glass, a gold thorn."""
+    kind = TH["spines"]
+    if kind == "flame":
+        n = r * (3 + (.8 if lit else 0)) + 1.8 * math.sin(phase * 2.6 + i * 1.7)
+        a = math.radians(-100 + 8 * math.sin(phase * 1.9 + i))
+        seg(c, [(x, y), (x + n * math.cos(a), y + n * math.sin(a))], r * 1.05, .5, lambda t: "3" if t < .3 else "2" if t < .65 else "1")
+    elif kind == "fins":
+        crystal(c, x, y, -104 + i * 3, r * (2.4 + (.5 if lit else 0)), r * .62)
+    else:
+        crystal(c, x, y, -96 + i * 2, r * (1.9 + (.6 if lit else 0)), r * .5)
+        if lit:
+            put(c, x, y - r * 2.4, "Y")
 
 
 def wing(sx, sy, arm, side=1, far=False, spread=1.0, glint=0):
-    """A wing of spun sugar from the shoulder (sx, sy). arm: the arm's angle in degrees (-90 up, 0 out, 90 down),
+    """A wing from the shoulder (sx, sy). arm: the arm's angle in degrees (-90 up, 0 out, 90 down),
     side=-1 mirrors it. The membrane hangs between three fingers with a scalloped edge."""
     c = canvas()
     a = math.radians(arm)
@@ -106,11 +127,24 @@ def wing(sx, sy, arm, side=1, far=False, spread=1.0, glint=0):
     mx, my = (tips[2][0] + root[0]) / 2, (tips[2][1] + root[1]) / 2
     pts += [(mx + (wx - mx) * .3, my + (wy - my) * .3), root]
     poly(c, pts, "n" if far else "p")
-    if not far:                                                          # the pane by the leading edge is thinner, lighter
-        poly(c, [(sx, sy), (wx, wy), (wx + (tips[0][0] - wx) * .7, wy + (tips[0][1] - wy) * .7),
-                 (wx + (tips[1][0] - wx) * .35, wy + (tips[1][1] - wy) * .35)], "P", on="p")
-        for k, (tx, ty) in enumerate(tips):                              # glints of sugar on the membrane
-            put(c, wx + (tx - wx) * (.45 + .1 * ((k + glint) % 3)), wy + (ty - wy) * (.45 + .1 * ((k + glint) % 3)) + 2, "W", on="pP")
+    if not far:                                                          # light by the wrist, deeper at the edge
+        reach = max(math.dist((wx, wy), t) for t in tips)
+        for y in range(H):
+            for x in range(W):
+                if c[y][x] == "p":
+                    r = math.dist((x + .5, y + .5), (wx, wy)) / reach
+                    c[y][x] = "P" if r < .38 else "n" if r > .82 else "p"
+                    if TH["wing"] == "stars" and (x * 7 + y * 13 + glint) % 23 == 0:
+                        c[y][x] = "W" if (x + y) % 3 else "y"
+        if TH["wing"] == "veins":                                        # lightning cracks through the membrane
+            for k, (tx, ty) in enumerate(tips):
+                for i in range(1, 12):
+                    f = i / 12
+                    put(c, wx + (tx - wx) * f + (1.6 if (i + k + glint) % 2 else -1.6) * (ty - wy) / 30,
+                        wy + (ty - wy) * f - (1.6 if (i + k + glint) % 2 else -1.6) * (tx - wx) / 30, "r", on="pPn")
+        for k, (tx, ty) in enumerate(tips):                              # glints on the membrane
+            if TH["wing"] != "veins":
+                put(c, wx + (tx - wx) * (.5 + .1 * ((k + glint) % 3)), wy + (ty - wy) * (.5 + .1 * ((k + glint) % 3)) + 2, "W", on="pPn")
     seg(c, [(sx, sy), (wx, wy)], 2.4, 1.7, "R" if far else "b")
     for tx, ty in tips:
         seg(c, [(wx, wy), (tx, ty)], 1.2, .55, "R" if far else "b")
@@ -118,33 +152,66 @@ def wing(sx, sy, arm, side=1, far=False, spread=1.0, glint=0):
     return part(c)
 
 
-def stripes(c, x0, x1, on="w", step=9, width=3.2, slope=.8):
-    """Candy-cane stripes, diagonal, across what is already painted `on`."""
+def pattern(c, x0=0, x1=W, on="w"):
+    """The theme's markings over the body: rows of scales, zigzag bolts, scattered gold runes."""
+    kind = TH["scales"]
     for y in range(H):
-        for x in range(int(x0), int(x1)):
-            if 0 <= x < W and c[y][x] in on and (x + y * slope) % step < width:
+        for x in range(max(0, int(x0)), min(W, int(x1))):
+            if c[y][x] not in on:
+                continue
+            if kind == "scales" and y % 3 == 2 and (x + 2 * ((y // 3) % 2)) % 4 in (0, 1):
+                c[y][x] = "r"
+            elif kind == "bolts" and (x + abs(y % 8 - 4)) % 13 == 0:
+                c[y][x] = "r"
+            elif kind == "runes" and ((x * 7 + y * 13) % 41 == 0 or (x * 5 + y * 3) % 53 == 0):
                 c[y][x] = "r"
 
 
+def shade(c, on="wr"):
+    """Light from above: a glint along the top of each column, its lower third in shadow."""
+    for x in range(W):
+        ys = [y for y in range(H) if c[y][x] in on]
+        if len(ys) < 4:
+            continue
+        y0, y1 = ys[0], ys[-1]
+        for y in ys:
+            if y == y0 + 1 and c[y][x] == "w":
+                c[y][x] = "W"
+            elif y > y1 - (y1 - y0) * .34:
+                c[y][x] = {"w": "v", "r": "R" if TH["scales"] != "bolts" else "r"}[c[y][x]]
+
+
 def tail(c, base, ang, sway=0., phase=0., n=10, step=4.2, curl=1.0):
-    """The candy-cane tail: rings of red and white, ending in the cane's crook."""
+    """The tail: long, tapering, and the theme's tip at the end (a plume of flame, a blade of lightning, an eclipse)."""
     pts, (x, y) = [base], base
     a = ang
-    for i in range(n):
-        a = ang + sway * math.sin(i * .55 + phase) + .03 * i
+    for i in range(n + 3):
+        a = ang + sway * math.sin(i * .55 + phase) + (.03 - .1 * curl * (i > n)) * i
         x, y = x + step * math.cos(a), y + step * math.sin(a)
         pts.append((x, y))
-    for i in range(7):                                                   # the crook
-        a -= .62 * curl
-        x, y = x + 2.4 * math.cos(a), y + 2.4 * math.sin(a)
-        pts.append((x, y))
-    seg(c, pts, 5.2, 2.4, lambda t: "r" if int(t * 18) % 2 else "w")
+    seg(c, pts, 5.4, 2.8, "w")
+    pattern(c)
+    shade(c)
+    tip = TH["tip"]
+    if tip == "plume":
+        for k in range(5):
+            b = a + (k - 2) * .32 + .15 * math.sin(phase * 2.3 + k)
+            L = 14 + 3 * math.sin(phase * 3.1 + k * 1.3) - abs(k - 2) * 2.5
+            seg(c, [(x, y), (x + L * math.cos(b), y + L * math.sin(b))], 3.2, .5, lambda t: "3" if t < .3 else "2" if t < .65 else "1")
+    elif tip == "blade":
+        crystal(c, x, y, math.degrees(a), 13, 3.2)
+        for d in (-50, 50):
+            crystal(c, x, y, math.degrees(a) + d, 6, 1.8)
+    else:
+        oval(c, x + 2 * math.cos(a), y + 2 * math.sin(a), 5, 5, "c")
+        oval(c, x + 2 * math.cos(a) + .6, y + 2 * math.sin(a) - .6, 3.4, 3.4, "e")
+        put(c, x + 2 * math.cos(a) - 2.6, y + 2 * math.sin(a) - 2.6, "Y")
     return pts
 
 
 def effects(g, fx, mouth, cx, cy):
     """Marks painted on empty pixels: sparks gathering at the jaws, the first gout of fire, a rainbow ribbon, shards,
-    sparkle stars, a sugar trail."""
+    sparkle stars, a trail of sparks."""
     c = [list(r) for r in g]
     mx, my = mouth
     for kind, k in fx:
@@ -165,16 +232,16 @@ def effects(g, fx, mouth, cx, cy):
                     put(c, x + d * k * -1, yy, "W" if f < .25 else "2" if f < .5 else "1" if i % 3 else "t", on=".")
         if kind == "ribbon":                                             # the tail's sweep, in five bands of colour
             a0, a1 = k
-            for band, col in enumerate(SPRINKLE):
+            for band, col in enumerate(ACCENT):
                 for i in range(160):
                     a = a0 + (a1 - a0) * i / 159
                     put(c, cx + (40 + band) * math.cos(a), cy + 10 + (16 + band * .5) * math.sin(a), col, on=".")
-        if kind == "shards":                                             # candy shards flung from the crash
+        if kind == "shards":                                             # shards flung from the crash
             for i in range(18):
                 a = math.pi + i * math.pi / 17
                 r = 12 + k * 10 + (i % 3) * 4
                 x, y = cx + r * 1.7 * math.cos(a), H - 6 + r * .6 * math.sin(a) - k * 3
-                col = SPRINKLE[i % 5]
+                col = ACCENT[i % 5]
                 poly(c, [(x - 2, y + 1), (x, y - 3), (x + 2, y + 1)], col, on=".")
                 put(c, x, y - 1, "W", on=col)
         if kind == "stars":                                              # four-point sparkle stars
@@ -184,15 +251,15 @@ def effects(g, fx, mouth, cx, cy):
                     put(c, sx + d[0], sy + d[1], "2", on=".")
                 for d in ((2, 0), (-2, 0), (0, 2), (0, -2)):
                     put(c, sx + d[0], sy + d[1], "g", on=".")
-        if kind == "trail":                                              # sugar dust left behind when it flies fast
+        if kind == "trail":                                              # sparks left behind when it flies fast
             for i in range(9):
                 x = cx + 34 + i * 6 + (k * 3) % 6
                 y = cy - 4 + math.sin(i * 1.7 + k) * 9
-                put(c, x, y, SPRINKLE[(i + k) % 5] if i % 2 else "W", on=".")
+                put(c, x, y, ACCENT[(i + k) % 5] if i % 2 else "W", on=".")
     return ["".join(r) for r in c]
 
 
-FLAP_SIDE = [-108, -92, -60, -18, 22, 8, -40, -84]       # one wing beat in eight frames: up, the down-stroke, the lift
+FLAP_SIDE = [-108, -94, -64, -26, 6, -6, -44, -86]       # one wing beat in eight frames: up, the down-stroke, the lift
 FLAP_FRONT = [-58, -46, -24, 4, 26, 16, -12, -40]
 LIFT = [0, -1, -1, 0, 1, 2, 2, 1]                        # the body rises on the down-stroke
 
@@ -200,7 +267,7 @@ LIFT = [0, -1, -1, 0, 1, 2, 2, 1]                        # the body rises on the
 def side(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, spread=1., tail_ang=.25, sway=.12, phase=0.,
          coil=0., lit=False, legs=0, fx=(), arm=None, far_arm=None):
     """Facing left. flap: frame of the wing beat. alt: height (px). rear: head pulled back; lunge: thrown forward.
-    coil: the tail raised over the back (0-1). lit: the gumdrops glow (rush). legs: claws thrust down (0-1)."""
+    coil: the tail raised over the back (0-1). lit: the spines blaze (rush). legs: claws thrust down (0-1)."""
     arm = FLAP_SIDE[flap % 8] if arm is None else arm
     far_arm = arm - 6 if far_arm is None else far_arm
     by = 70 - alt + LIFT[flap % 8]
@@ -212,26 +279,28 @@ def side(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, spread
     else:
         tail(c, (86, by + 2), tail_ang + .3, sway, phase, n=7, step=4)
     g = over(g, part(c))
-    c = canvas()                                                         # the body, a candy cane, a mint belly
+    c = canvas()                                                         # the body, its markings, a pale belly
     oval(c, 66, by, 20, 12, "w")
     oval(c, 52, by - 3, 11, 11, "w")
     oval(c, 84, by + 1, 10, 9, "w")
-    stripes(c, 40, 96)
+    pattern(c, 40, 96)
     for y in range(H):
         for x in range(W):
             if c[y][x] in "wr" and y > by + 4 + (x - 66) ** 2 / 160:
                 c[y][x] = "m" if y < by + 9 else "M"
-    for i in range(6):                                                   # sugared gumdrops down the back
+    shade(c)
+    for i in range(6):                                                   # spines down the back
         x = 50 + i * 7.5
         top = next(y for y in range(H) if c[y][round(x)] != ".")
-        gumdrop(c, x, top + 1.5, 4.4 - abs(i - 2) * .3, ("2" if lit else SPRINKLE[i % 3]) if not lit else SPRINKLE[i % 5])
+        spine(c, x, top + 2, 4.2 - abs(i - 2) * .3, i, lit, phase)
     g = over(g, part(c))
     hx, hy = 28 + rear * 1.0 - lunge * 1.2, by - 30 - rear * .6 + lunge * .9
     c = canvas()                                                         # the neck, in rings
-    seg(c, [(54, by - 6), (46, by - 14), (40 + rear * .4 - lunge * .5, by - 22 + lunge * .3), (hx + 6, hy + 2)], 7, 5.4,
-        lambda t: "r" if int(t * 7) % 2 else "w")
+    seg(c, [(54, by - 6), (46, by - 14), (40 + rear * .4 - lunge * .5, by - 22 + lunge * .3), (hx + 6, hy + 2)], 7, 5.4, "w")
+    pattern(c)
+    shade(c)
     g = over(g, part(c))
-    c = canvas()                                                         # rock-candy horns, behind the head
+    c = canvas()                                                         # horns, behind the head
     for bx, by_, ang, n in ((hx + 2, hy - 6, -80, 17), (hx + 8, hy - 5, -50, 14), (hx + 12, hy - 1, -20, 10)):
         crystal(c, bx, by_, ang, n)
     g = over(g, part(c))
@@ -242,6 +311,10 @@ def side(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, spread
         for x in range(W):
             if c[y][x] == "w" and y >= hy + 4:
                 c[y][x] = "v"
+    for x in range(round(hx - 14), round(hx + 8)):                       # a glint along the top of the head
+        top = next((y for y in range(H) if c[y][x] == "w"), None)
+        if top is not None:
+            c[top + 1][x] = "W"
     for i in range(3):                                                   # pink cheek frills
         poly(c, [(hx + 7, hy + 1 + i * 2), (hx + 15, hy - 1 + i * 3.5), (hx + 9, hy + 3 + i * 2)], "r")
     oval(c, hx - 8, hy + 7.5 + jaw, 10, 2.6, "v")                           # the lower jaw
@@ -259,10 +332,10 @@ def side(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, spread
         for i in range(-2, 3):
             put(c, hx - 1 + i, hy - 1, "v")
     else:
-        oval(c, hx - 1, hy - 1, 3, 2.4, "y")
-        for j in (-2, -1, 0):
+        oval(c, hx - 1, hy - 1, 3.6, 2.8, "y")
+        for j in (-2, -1, 0, 1):
             put(c, hx - 1, hy + j, "e")
-        put(c, hx - 2, hy - 2, "Y")
+        put(c, hx - 3, hy - 2, "Y"); put(c, hx - 2, hy - 2, "Y")
     for i, j in ((-5, -2), (-4, -3), (-3, -3), (-2, -4), (-1, -4), (0, -4), (1, -5), (2, -5)):   # a brow, low in front
         put(c, hx + i, hy + j - (1 if glare else 0), "o")
         if glare:
@@ -297,28 +370,39 @@ def front(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, sprea
     c = canvas()
     oval(c, cx, by, 16, 13, "w")
     if back:
-        oval(c, cx, by - 12, 9, 9, "w")                                  # the neck going away
-        stripes(c, cx - 20, cx + 20)
+        pattern(c, cx - 20, cx + 20)
+        shade(c)
     else:
-        stripes(c, cx - 20, cx + 20)
-        oval(c, cx, by + 3, 8, 9, lambda x, y: "m" if y < by + 7 else "M", on="wr")
-    for i in range(7):                                                   # gumdrops: down the spine from behind, a crown of them in front
+        pattern(c, cx - 20, cx + 20)
+        shade(c)
+        oval(c, cx, by + 3, 8, 9, lambda x, y: "m" if y < by + 7 else "M", on="wrWvR")
+    for i in range(7):                                                   # spines: down the back from behind, a ruff of them in front
         if back:
-            x, y = cx, by - 18 + i * 4.6
-            gumdrop(c, x, y, 3.3 - i * .15, SPRINKLE[i % (5 if lit else 3)])
+            x, y = cx, by - 9 + i * 3.4
+            spine(c, x, y, 3.6 - i * .2, i, lit, phase)
         else:
             a = math.pi + .5 + i * (math.pi - 1) / 6
-            gumdrop(c, cx + 15 * math.cos(a), by - 6 + 9 * math.sin(a), 4, SPRINKLE[i % (5 if lit else 3)])
+            spine(c, cx + 15 * math.cos(a), by - 6 + 9 * math.sin(a), 3.8, i, lit, phase)
     g = over(g, part(c))
     if back:
-        c = canvas()
-        for s in (-1, 1):
-            for bx, ang, n in ((cx + s * 4, -90 + s * 22, 12), (cx + s * 8, -90 + s * 52, 10)):
-                crystal(c, bx, hy - 4, ang, n)
+        c = canvas()                                                     # the neck, rising away from you
+        seg(c, [(cx, by - 8), (cx, hy + 2)], 7, 6, "w")
+        pattern(c)
+        shade(c)
         g = over(g, part(c))
         c = canvas()
-        oval(c, cx, hy, 9.5, 7.5, "w")
-        stripes(c, cx - 12, cx + 12, step=8)
+        for s in (-1, 1):
+            for bx, ang, n in ((cx + s * 5, -90 + s * 22, 17), (cx + s * 9, -90 + s * 52, 14), (cx + s * 11, -90 + s * 80, 9)):
+                crystal(c, bx, hy - 7, ang, n)
+        g = over(g, part(c))
+        c = canvas()                                                     # the back of the head: plain, with its frills
+        oval(c, cx, hy - 3, 11, 8.5, "w")
+        for s in (-1, 1):
+            for i in range(3):
+                poly(c, [(cx + s * 9, hy - 3 + i * 2.5), (cx + s * 16, hy - 5 + i * 3.5), (cx + s * 10, hy - 1 + i * 2.5)], "r")
+        for i in (-1, 0, 1):
+            put(c, cx + i, hy - 9, "r"); put(c, cx + i, hy - 8, "r")
+        shade(c, on="w")
         g = over(g, part(c))
         c = canvas()
         tail(c, (cx, by + 8), 1.4 - coil * 2.8, sway * .6, phase, n=6, step=3.6)
@@ -347,7 +431,7 @@ def front(flap=0, alt=0, rear=0, lunge=0, jaw=0, glare=False, blink=False, sprea
         for s in (-1, 1):                                                # cheek frills
             for i in range(3):
                 poly(c, [(cx + s * 9, hy + i * 2.5), (cx + s * 16, hy - 2 + i * 3.5), (cx + s * 10, hy + 2 + i * 2.5)], "r")
-        for i in (-1, 0, 1):                                             # a stripe of candy on the brow
+        for i in (-1, 0, 1):                                             # a mark on the brow
             put(c, cx + i, hy - 6, "r"); put(c, cx + i, hy - 5, "r")
         if jaw:
             oval(c, cx, hy + 12 + jaw * .4, 5, 1.6 + jaw * .6, "q")
@@ -430,20 +514,43 @@ def frames(view):
 
 TWINKLE = [((18, 30), (104, 50)), ((110, 22), (30, 60)), ((24, 48), (100, 18)), ((114, 40), (14, 22))]
 BEAT = 60000 / 156
-ENEMY = dict(
-    key="brittlewing", name="Brittlewing", pal=PAL, role="boss, to the track Sugar rush", cell=(128, 114), move="fly",
-    ms=dict(idle=[96] * 8, walk=[48] * 8,
-            breath=[192, 192, 193, 96, 96, 96, 96, 96], storm=[192, 192, 193] + [48] * 8 + [96, 96],
-            dive=[192, 192, 193, 96, 96, 96, 96, 96, 96], sweep=[192, 192, 193, 64, 64, 64, 96, 96],
-            rush=[96, 96, 193, 192, 192, 192]),
-    where="the sugar fields of a far island, where the cane grows", when="wakes when the cane is harvested",
-    behaviour="A dragon of candy, always in the air and always moving to the beat of its song. "
-              "<b>Breath</b>: it rears back while sparks gather at its jaws, then breathes pink sugar fire four tiles ahead. "
-              "<b>Storm</b>: it climbs with its wings thrown wide, then spins and fires a ring of sprinkles on every beat: "
-              "find the gaps. <b>Dive</b>: wings straight up, it leaves the screen; its shadow hunts you; it crashes down on "
-              "the beat and flings candy shards. <b>Sweep</b>: the tail coils high, then whips round in a rainbow ribbon. "
-              "Below half health it <b>rushes</b>: every gumdrop lights up and it attacks on half beats.",
-    stats=dict(hp=600, breath="30, four tiles ahead", storm="10 a sprinkle, three rings", dive="40 under it, 15 from the shards",
-               sweep="25, three tiles round", speed="flies at twice yours", drops="a rock-candy crystal, spun sugar, a sweet tooth"),
-    dirs={d: frames(d) for d in ("left", "down", "up")},
-)
+TEXT = {
+    "comet": ("a comet that grew wings: scales of gold, a mane of flame, wings like a sunset",
+              "<b>Flare</b>: sparks gather at its jaws, then a cone of fire four tiles long. <b>Ember storm</b>: it climbs, wings "
+              "wide, and spins out a ring of fireballs on each of three beats. <b>Meteor</b>: it leaves the sky, its shadow hunts "
+              "you, and it lands on the beat in a burst of embers. <b>Comet tail</b>: the burning tail whips round in a ring. "
+              "Below half health, <b>supernova</b>: its mane blazes and it attacks twice as often.",
+              "a sun scale, a comet feather, an ember heart"),
+    "storm": ("a thundercloud with a dragon inside: indigo scales veined with lightning, wings that crackle",
+              "<b>Arc</b>: sparks gather at its jaws, then a crackling beam four tiles long. <b>Static storm</b>: it climbs, "
+              "wings wide, and spins out a ring of sparks on each of three beats. <b>Thunderfall</b>: it vanishes into the "
+              "clouds, its shadow hunts you, and it strikes down on the beat like a bolt. <b>Blade lash</b>: the bladed tail "
+              "whips round in a ring of lightning. Below half health, <b>overcharge</b>: it glows white and attacks twice as often.",
+              "a storm scale, a charged fin, a bottled bolt"),
+    "eclipse": ("a piece of the night sky: violet-black scales with gold runes, wings full of stars, an eclipse on its tail",
+                "<b>Void breath</b>: starlight gathers at its jaws, then a cone of dark fire four tiles long. <b>Starfall</b>: it "
+                "climbs, wings wide, and spins out a ring of stars on each of three beats. <b>Eclipse</b>: it blots out the sky, "
+                "its shadow hunts you, and it falls on the beat in a ring of gold. <b>Orbit</b>: the eclipse on its tail sweeps "
+                "round in a ring. Below half health, <b>totality</b>: its runes blaze and it attacks twice as often.",
+                "a night scale, a fallen star, the eclipse stone"),
+}
+
+
+def enemy(theme):
+    """The drake in one of its looks: the frames are computed with that theme's paint and parts."""
+    global TH
+    TH = THEMES[theme]
+    look, how, drops = TEXT[theme]
+    return dict(
+        key=TH["key"], name=TH["name"], pal=TH["pal"], role=f"boss to Sugar rush, look {list(THEMES).index(theme) + 1}: {theme}",
+        cell=(128, 114), move="fly", theme=theme, look=look,
+        ms=dict(idle=[96] * 8, walk=[48] * 8,
+                breath=[192, 192, 193, 96, 96, 96, 96, 96], storm=[192, 192, 193] + [96] * 8 + [96, 96],
+                dive=[192, 192, 193, 96, 96, 96, 96, 96, 96], sweep=[192, 192, 193, 64, 64, 64, 96, 96],
+                rush=[96, 96, 193, 192, 192, 192]),
+        where="the high plateau of a far island", when="wakes when the song starts",
+        behaviour=f"A great dragon, always in the air and always on the beat. {how}",
+        stats=dict(hp=600, breath="30, four tiles ahead", storm="10 a bolt, three rings", dive="40 under it, 15 out to five tiles",
+                   sweep="25, five tiles round", speed="flies at twice yours", drops=drops),
+        dirs={d: frames(d) for d in ("left", "down", "up")},
+    )
