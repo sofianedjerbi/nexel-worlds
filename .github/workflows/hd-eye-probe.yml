@@ -11,6 +11,10 @@ jobs:
       fail-fast: false
       matrix:
         run: [1, 2, 3, 4]
+        gl: [lavapipe]
+        include:
+          - {run: 5, gl: swiftshader}
+          - {run: 6, gl: swiftshader}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.4.0
@@ -19,14 +23,15 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked
-      - run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends mesa-vulkan-drivers
+      - if: matrix.gl == 'lavapipe'
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends mesa-vulkan-drivers
       - env:
-          E2E_CHROME_ARGS: --use-angle=vulkan --enable-features=Vulkan --ignore-gpu-blocklist
+          E2E_CHROME_ARGS: ${{ matrix.gl == 'lavapipe' && '--use-angle=vulkan --enable-features=Vulkan --ignore-gpu-blocklist' || '' }}
           E2E_SHOTS: ${{ runner.temp }}/shots
         run: uv run pytest -m e2e -n 0 -q -rf tests/e2e/test_e2e_hd_eye.py tests/e2e/test_e2e_hd_xray.py -k "dip or level_floor"
       - if: failure()
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: shots-${{ matrix.run }}
+          name: shots-${{ matrix.gl }}-${{ matrix.run }}
           path: ${{ runner.temp }}/shots
           if-no-files-found: ignore
