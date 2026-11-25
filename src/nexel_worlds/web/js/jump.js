@@ -62,7 +62,7 @@ function jumpOf(p) {
   const fwd = (ax === bx ? p.ty - p.y || p.fy : p.tx - p.x || p.fx) >= 0;        // from the first to the second?
   const g = fwd ? f : 1 - f, D = fwd ? d : -d, line = D * g, key = ax + "," + ay + "," + bx + "," + by;   // the way it goes: how far along, levels up by, the straight line
   if (D > 0 && mineWalking(p) && (fwd ? Leap.leapable(ax, ay, la, bx, by) : Leap.leapable(bx, by, lb, ax, ay))) return null;   // (yours walking up to a step you jump: on your own level until you do, leap.js due)
-  if (D <= -FALL.from && mineWalking(p) && Leap.can(p, true)) return null;   // (yours walking to a ledge: on your own level to its edge, then the jump's fall, leap.js dropDue: drawn as a step down it went 13 px up the screen a frame, then back)
+  if (D <= -FALL.from && mineWalking(p) && Leap.ledge(p, ...DIRV[walking.dir])) return null;   // (yours walking to a ledge: on your own level to its edge, then the jump's fall, leap.js dropDue: drawn as a step down it went 13 px up the screen a frame, then back)
   if (D < 0) {                                                                    // down: no jump, a drop off the edge at the walk's pace
     const k = Math.max(0, (g - STEPDOWN.from) / (1 - STEPDOWN.from)), h = D * k ** STEPDOWN.q;
     return {body: h - line, ground: (g < .5 ? 0 : D) - line, squash: false, tuck: false, pose: null, d: D, key};
@@ -99,7 +99,7 @@ function fallOf(p, now, st = BodyPlace.state(p)) {
   let F = st.fall;
   if (!F) {
     if (!down || Math.abs(la - lb) < FALL.from || Climb.onLadder(ax, ay, la, bx, by, lb)) return null;
-    if (p.e && p.e.kind === "agent" && p.e.id === myId && walking && p.walking && Leap.can(p, true)) return null;   // (yours, walking: on the ground to the edge, and over it the jump's fall, leap.js dropDue. This one began on the tile before the edge, the eye on the ground under it at once: the body 13 px up the screen a frame)
+    if (mineWalking(p) && Leap.ledge(p, ...DIRV[walking.dir])) return null;   // (yours, walking: on the ground to the edge, and over it the jump's fall, leap.js dropDue. This one began on the tile before the edge, the eye on the ground under it at once: the body 13 px up the screen a frame)
     // (a fall is from the higher tile: already down at the lower one's level (yours, myAt; another's, the world's), going
     //  back to its middle from beside a wall is no fall. Come down by a wide hole's far wall, the body went up to the
     //  rim in a frame and fell again: "jumping above a biiiig hole ... only the nametag jumps")

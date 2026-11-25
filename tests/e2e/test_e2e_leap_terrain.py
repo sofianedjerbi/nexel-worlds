@@ -70,7 +70,7 @@ def test_up_a_flight_of_steps_every_jump_clears_the_next_edge(game, run):
 
 
 @pytest.mark.realtime
-@pytest.mark.parametrize("how", ["jump", "walk"])
+@pytest.mark.parametrize("how", ["jump", "walk", "tunnel"])
 def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
     """"weird issues when jumping from high heights": off a ledge six high, running with the jump key or walking off it,
     you come down as a thrown thing does, and on the screen no frame moves your feet or the land by more than 6 art px
@@ -78,7 +78,11 @@ def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
     back; after a jump the eye came down a px a frame, the land scrolling a second after you were down). The world agrees."""
     game.clear_area(14)
     x, y = game.pos()
-    game.rpc("dev_col", tiles=[[x + i, y + j] for i in range(-3, 1) for j in (-1, 0, 1)], col=[6])
+    top = [[x + i, y + j] for i in range(-3, 1) for j in (-1, 0, 1)]
+    if how == "tunnel":                                                 # (walking off it in a tunnel, a roof two over your head: the old fall, the body 32 px down the screen in a frame)
+        game.rpc("dev_col", tiles=top, col=[6, 9, 12]); game.rpc("dev_col", tiles=[[x + i, y + j] for i in range(1, 8) for j in (-1, 0, 1)], col=[0, 9, 12])
+    else:
+        game.rpc("dev_col", tiles=top, col=[6])
     game.rpc("dev_teleport", x=x - 2, y=y, z=6); game.arrive(); game.face(1, 0); game.rest()
     game.js("setOpt('shake', 0)")                                       # (six levels hurt: the hurt's shake is not the jump's)
 
@@ -98,6 +102,30 @@ def test_off_a_high_ledge_the_fall_is_smooth_on_the_screen(game, how):
     assert game.server()["z"] == 0, game.server()
     agree(game)
     assert not game.errors, game.errors
+
+
+@pytest.mark.realtime
+def test_walking_off_a_high_ledge_into_water_the_jump_s_fall_takes_you_down(game):
+    """Off a ledge six high into a pond: the jump's own fall (leap.js ledge), the world with you. It was left to the old
+    fall, which drew nothing (the body 60 px down the screen in a frame), and the world waited at the edge a second for
+    a jump the screen never made."""
+    game.clear_area(14)
+    x, y = game.pos()
+    game.rpc("dev_col", tiles=[[x + i, y + j] for i in range(-3, 1) for j in (-1, 0, 1)], col=[6])
+    game.stamp(1, -1, ["~~~~~"] * 3)
+    game.rpc("dev_teleport", x=x - 2, y=y, z=6); game.arrive(); game.face(1, 0); game.rest()
+    game.js("setOpt('shake', 0)")
+    try:
+        game.js("(() => { window.__lp = 0; const f = () => { if (Leap.on()) __lp++; if (myAt.z > 5.5 || Leap.on()) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()")
+        game.page.keyboard.down("d"); game.wait("myAt.z < .5", 4000); t = game.js("performance.now()")
+        game.page.keyboard.up("d")
+        game.wait("meObs.self.z < .5", 1500)                                # (the world down too, soon after)
+        assert game.js("performance.now()") - t < 1500 and game.js("__lp") > 10
+    finally:
+        game.js("setOpt('shake', 1)")
+    game.rest()
+    agree(game)
+    assert game.server()["swimming"] and not game.errors, game.errors
 
 
 @pytest.mark.realtime
