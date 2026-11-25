@@ -93,9 +93,12 @@ function drawBody(p, sx, sy, S, t, now) {
       if (!held) lunge = Math.round(Math.sin(Math.min(1, frame / 6) * Math.PI) * 3) * z;
       // a sword cuts and a spear is thrust (swing_art.js), where the sheet's swing is a chop: the body stands and steps in
       if (tool === "attack" && SwingArt.KINDS.includes(toolArt(action.with))) { blow = [toolArt(action.with), frame]; anim = "idle"; lunge = SwingArt.STEP[toolArt(action.with)][frame] * z; }
-      const swing = Math.floor(n / 8);
-      if (frame >= 4 && p.lastSwing !== swing) {     // the strike lands: debris and a shake on the target
-        p.lastSwing = swing;
+      // the strike lands (frame 4 of each swing): debris, a shake and its sound on the target. Counted from the action's
+      // start, not from the frames drawn: on a slow device a frame can skip a swing's fourth, and the axe was silent (#47)
+      const strikes = n >= 4 ? Math.floor((n - 4) / 8) + 1 : 0;
+      if (p.struck == null || p.struckAt !== action.t0) { p.struckAt = action.t0; p.struck = 0; }
+      if (strikes > p.struck) {
+        p.struck = strikes;
         if (tool === "dig" && target) {
           const spr = GROUND.has(target) ? null : objectSprite(target, tx, ty, now / 1000);
           debris(tx, ty, spr, GROUND.has(target) ? 5 : 4, {kind: "o", dy: "TFU".includes(target) ? -.5 : 0, dust: "M*%Y".includes(target) || GROUND.has(target)});

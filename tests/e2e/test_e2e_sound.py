@@ -11,6 +11,10 @@ ALL_LOADED = """sounds.manifest && Object.values(sounds.manifest.sounds).flatMap
                 .every((f) => sounds.buffers.get(f) instanceof AudioBuffer)"""
 
 
+BOSS_STATE = """JSON.stringify({fight, muted, awake: awake(), boss: sounds.manifest.play.boss, on: bossTrack.on, nodes: bossTrack.nodes.size,
+  at: bossTrack.at, run: bossTrack.run, music: music.on, ctx: audio && audio.state})"""
+
+
 def played(game) -> set:
     return set(game.js("Object.keys(sounds.lastAt)"))
 
@@ -82,16 +86,19 @@ def test_the_boss_piece_takes_over_during_a_fight_and_hands_back(game):
     game.wait("music.on && music.nodes.size > 0", 30000)
     game.js("(() => { window.realBossMusic = bossMusic; bossMusic = () => {}; })()")     # (boss.js turns it off twice a second: no boss in view)
     game.js("realBossMusic(true)")
-    game.wait("bossTrack.on && bossTrack.nodes.size > 0", 15000)
-    game.sleep(6500)                                           # (the moment takes SOUND.giveWay seconds to recede)
-    assert game.js("bossTrack.key") == game.js("sounds.manifest.play.boss") and game.js("bossTrack.gain.gain.value") > 0.3
-    assert not game.js("music.on") and game.js("music.gain.gain.value") < 0.02                 # the moment gave way
+    try:                                                       # (on GitHub's runners it once never started: say why, #47)
+        game.wait("bossTrack.on && bossTrack.nodes.size > 0", 15000)
+    except Exception:
+        raise AssertionError("the boss piece never started: " + game.js(BOSS_STATE)) from None
+    # the boss's piece comes in and the moment recedes (SOUND.giveWay): waited for, not timed (a slow runner's timers are late)
+    game.wait("bossTrack.gain.gain.value > 0.3 && !music.on && music.gain.gain.value < 0.02", 20000)
+    assert game.js("bossTrack.key") == game.js("sounds.manifest.play.boss")
     game.js("moment.next = 0")
     game.sleep(1500)
     assert not game.js("music.on")                             # no moment starts while the fight is on
     game.js("realBossMusic(false)")
-    game.sleep(500)
-    assert not game.js("bossTrack.on") and game.js("moment.next") > game.js("performance.now()") + 15000    # silence after the fight
+    game.wait("!bossTrack.on", 3000)
+    assert game.js("moment.next") > game.js("performance.now()") + 15000    # silence after the fight
     game.js("bossMusic = realBossMusic")
 
 

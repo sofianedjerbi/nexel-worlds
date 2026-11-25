@@ -17,6 +17,11 @@ HOLD = """(() => { const add = DOMTokenList.prototype.add; window.__hold = true;
   window.__p = 0; Object.defineProperty(window, 'ASSETS_OF', {get: () => 100, set: () => {}}); Object.defineProperty(window, 'ASSETS_IN', {get: () => window.__p * 100, set: () => {}}); })();"""
 # the bar's fill in art px (what shows of it: it slides in from the left of its track), and the art px in screen px
 BAR = "(() => { const b = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bootpx')), f = document.getElementById('bootfill'); return [(f.getBoundingClientRect().right - f.parentElement.getBoundingClientRect().left) / b, b * devicePixelRatio]; })()"
+# A phone's CPU, on any machine: the slow-down was 4x on the Mac, where this loop takes about 85 ms (its best of three).
+# A slower machine gets less: on GitHub's runners 4x on top of their own slower CPU measured the runner, not a phone (#47).
+SPEED = """(() => { let best = 1e9; for (let r = 0; r < 3; r++) { const t = performance.now(); let x = 0;
+  for (let i = 0; i < 2e7; i++) x = (x * 31 + i) | 0; best = Math.min(best, performance.now() - t); } return best; })()"""
+MAC_MS, MAC_RATE = 85, 4
 RUNNING = "document.getAnimations().filter((a) => a.playState === 'running' && a.effect.target.closest('#boot')).length"
 
 
@@ -151,7 +156,7 @@ def test_on_a_phone_the_bar_goes_on_by_small_steps_and_no_task_holds_the_page(br
     leapt 22% to 58%); the bar never goes back and never leaps more than 15%; no task holds the page over 120 ms till the
     island is shown (the character's tools were one task of 0.7 s, the island's first picture one of 0.3 s: tool_art.js
     soon, hd.js warm). On GitHub's slower runners the pack was all in before the bar's first look and a third of the way
-    was 1% to 20% at once: a step is 12% at most."""
+    was 1% to 20% at once: a step is 12% at most. The CPU is slowed to a phone's, measured (SPEED), not 4x whatever runs it."""
     ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=3, is_mobile=True, has_touch=True)
     ctx.add_init_script(WATCH)
     page, errors = ctx.new_page(), []
@@ -160,7 +165,9 @@ def test_on_a_phone_the_bar_goes_on_by_small_steps_and_no_task_holds_the_page(br
         cdp = ctx.new_cdp_session(page)
         cdp.send("Network.enable")
         cdp.send("Network.emulateNetworkConditions", {"offline": False, "latency": 170, "downloadThroughput": 9e6 / 8, "uploadThroughput": 4.5e6 / 8})
-        cdp.send("Emulation.setCPUThrottlingRate", {"rate": 4})
+        ms = page.evaluate(SPEED)                                    # (before the slow-down: this machine's own speed)
+        rate = max(1.0, min(MAC_RATE, MAC_RATE * MAC_MS / ms))
+        cdp.send("Emulation.setCPUThrottlingRate", {"rate": rate})
         page.goto(bundled, wait_until="commit")
         try:
             page.wait_for_function("document.body && document.body.classList.contains('scene') && !document.getElementById('boot')", timeout=60000, polling=100)
@@ -175,7 +182,7 @@ def test_on_a_phone_the_bar_goes_on_by_small_steps_and_no_task_holds_the_page(br
         assert any(0 < b[2] < js_len for b in bar), "the script's bytes were not counted as they came"
         held = [t for t in long if t[0] < bar[-1][0]]                                      # (till the wait went)
         # (a long task: the frames round it, what the island was making then: hd.js warm -1 the painter made, 0 its start and first picture, 1 what stands, 2 the people, 3 the land)
-        assert max([d for _, d in held] or [0]) <= 120, [(t, d, [b for b in bar if t - 120 <= b[0] <= t + d + 40]) for t, d in held if d > 120]
+        assert max([d for _, d in held] or [0]) <= 120, ({"loop_ms": round(ms), "rate": round(rate, 2)}, [(t, d, [b for b in bar if t - 120 <= b[0] <= t + d + 40]) for t, d in held if d > 120])
         assert not errors, errors
     finally:
         ctx.close()
