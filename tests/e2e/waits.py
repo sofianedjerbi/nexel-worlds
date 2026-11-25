@@ -37,6 +37,8 @@ REST = """([n, ms]) => new Promise((ok) => { const L = window.__land, f0 = L.fra
 QUIET = """() => !Object.keys(pending).length && !busy && !pendingAct && !myAction && !progress && !pred && walking === null && !refreshing
   && (() => { const p = ents.get('agent' + myId); return !p || (p.x === p.tx && p.y === p.ty); })()
   && document.getAnimations().every((a) => a.playState !== 'running' || !a.effect || a.effect.getComputedTiming().iterations === Infinity)"""
+# Nothing asked of the server still unanswered (an action is answered when it ends: a walk at its stop)
+ANSWERED = """() => typeof pending === 'undefined' || !Object.keys(pending).length"""
 # Nothing of the land left to make: no tile to draw, every block on the screen made, the HD look not at work
 MADE = """() => typeof dirtyTiles === 'undefined' || !me || (dirtyTiles.length === 0 && !(HdLook.live && HdLook.busy) && (() => {
   const [x, y, w, h] = viewRect(0); for (let by = Math.floor(y / B); by <= Math.floor((y + h) / B); by++) for (let bx = Math.floor(x / B); bx <= Math.floor((x + w) / B); bx++) { const b = blocks.get(bkey(bx, by)); if (!b || !Voxels.made(b)) return false; }

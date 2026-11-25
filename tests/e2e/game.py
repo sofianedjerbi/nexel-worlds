@@ -12,7 +12,7 @@ import warnings
 
 import clock
 from playwright.sync_api import TimeoutError as NotYet
-from waits import MADE, QUIET, Waits
+from waits import ANSWERED, MADE, QUIET, Waits
 
 
 SERVER_LOG = None        # the test server's log (conftest.py)
@@ -123,9 +123,10 @@ class Game(Waits):
         self.page.wait_for_timeout(ms)
         if clock.now != 1 and ms >= 200:
             # (on the tests' clock a sleep is a quarter of itself: the game's time. What it also gave was the machine's
-            # time: land being made, which takes what it takes. Until that is done, then; the whole sleep at the most)
+            # time: land being made, and the server's answers on their way, which take what they take. Until those are
+            # done, then; the whole sleep at the most)
             try:
-                self.page.wait_for_function(MADE, timeout=ms - clock.real(ms))
+                self.page.wait_for_function(f"({MADE})() && ({ANSWERED})()", timeout=ms - clock.real(ms))
             except NotYet:
                 pass
 
@@ -245,6 +246,13 @@ class Game(Waits):
         clock.held(self.page, max(0, ms - (time.time() - t0) * 1000 * clock.now))   # (the game's time to the ms: a tap of 90 ms is a tile, one of 240 is two)
         for k in reversed(keys):
             self.page.keyboard.up(k)
+        # (and the server's answers to what the keys asked: the walk's, its stop's. They take the machine's time, the hold
+        # the game's: at a pace over 1 a short hold was let go before the walk was answered, and what the test read next
+        # was the server half way: a step not finished, a wall not yet met)
+        try:
+            self.page.wait_for_function(ANSWERED, timeout=3000)
+        except NotYet:
+            pass
 
     def start_recording(self):
         """Record our character's on-screen position every frame, until recording() is called."""
