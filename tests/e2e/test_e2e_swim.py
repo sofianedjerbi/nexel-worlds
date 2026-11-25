@@ -129,3 +129,28 @@ def test_a_sprints_wake_thins_out_to_nothing_at_its_end_and_is_not_cut(game):
     tail = b[last - 3: last + 1]
     assert peak > 0 and max(tail) <= .5 * peak and tail[-1] <= .25 * peak, (b, last)   # thinner and thinner to its end: no edge
     assert not game.errors
+
+
+@pytest.mark.realtime
+def test_letting_go_of_the_key_in_the_water_you_swim_on_into_place_not_walk(game):
+    """Let go of the key while swimming, you go on to where the world has you at the swim's pace (2.5 tiles a second),
+    as under the key: the glide into place went at the pace on land, twice as fast ("the swimming animation goes faster
+    when player releases the key, turning into normal walking"). One pace for a person, walking or gliding: walk.js speedAt."""
+    game.clear_area(8)
+    s = game.server()
+    game.rpc("dev_needs", hp=20, hunger=20)
+    game.rpc("dev_stamp", x=s["x"] + 1, y=s["y"] - 4, rows=["(" * 40] * 9)
+    game.sleep(600)
+    game.hold(["d"], 1500)                                     # in, and swimming
+    glide = []
+    for ms in (700, 550, 820, 640):                            # (let go wherever the walk is: a walk that ends on the world's own tile has no glide)
+        game.js("""(() => { window.__sw = []; const f = () => { const p = ents.get('agent' + myId); __sw.push([performance.now(), p.x, walking && p.walking ? 1 : 0]);
+          if (__sw.length < 150) requestAnimationFrame(f); }; requestAnimationFrame(f); return 1; })()""")
+        game.hold(["d"], ms)
+        game.sleep(1300)
+        rec = game.js("__sw")
+        glide += [(b[1] - a[1]) / (b[0] - a[0]) * 1000 for a, b in zip(rec, rec[1:]) if not a[2] and not b[2] and b[0] > a[0] and b[1] != a[1]]
+        if len(glide) >= 5:
+            break
+    assert glide and max(glide) < 2.5 * 1.35, [round(v, 2) for v in glide]                    # (it was 5 to 6.5: the pace on land)
+    assert mine(game, "swimsAt(p, p.e)") and game.server()["swimming"] and not game.errors

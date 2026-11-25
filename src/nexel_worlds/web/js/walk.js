@@ -117,9 +117,12 @@ function leadOf(p, now) {
   return d || off > .01 ? d + Math.abs(al) + off : al;
 }
 // where nobody sprints: in a boat (and, on a server from before the sprint in the water, in the water)
-// tiles a second from the tile (x, y): 5 walking, 10 at a sprint; in the water the server's SWIM_PACE times slower (half),
-// and EAT_PACE times slower while you eat (half again: the two add up)
-const speedAt = (x, y, p) => { const t = tile(x, y); return RULES.pace[walking.run && !onWater(x, y, p) ? "sprint" : "walk"] / (t && wet(t[1]) && !(p.e && p.e.sail) ? SWIM_PACE : 1) / (eating() ? EAT_PACE : 1); };
+// tiles a second a person goes from the tile (x, y): 5 walking, 10 at a sprint (`run`: yours, the walk's; another's, the world's word);
+// in the water the server's SWIM_PACE times slower (half), and EAT_PACE times slower while you eat (half again: the two add up). The one
+// pace of a person, walking under a key held (walkOn) or gliding to where the world has them (render.js): the glide went at the pace
+// on land, a swimmer let go of the key twice as fast into place, others swam at a walk ("the swimming ... goes faster when player releases the key")
+const speedAt = (x, y, p, run = !!(walking && walking.run)) => { const t = tile(x, y), mine = !!p.e && p.e.kind === "agent" && p.e.id === myId;
+  return RULES.pace[run && !onWater(x, y, p) ? "sprint" : "walk"] / (t && wet(t[1]) && !(p.e && p.e.sail) ? SWIM_PACE : 1) / (mine && eating() ? EAT_PACE : 1); };
 const onWater = (x, y, p) => { const t = tile(x, y); return (!SWIM_SPRINT && !!t && wet(t[1])) || !!(p.e && p.e.sail); };
 
 // A frame of your walk (render.js). A turn first finishes the tile you were walking into, in a straight line, then
