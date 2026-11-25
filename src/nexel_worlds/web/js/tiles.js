@@ -37,7 +37,9 @@ function putMat(b, i, m0) {
   if (m === "s" || m === "d") (b.mat || (b.mat = {}))[i] = m; else if (b.mat) delete b.mat[i];
 }
 // The ore that shows in a tile's column (views.py ores, a tile event's `ores`: sim/underground.py shown_ores): {z: item}, where any
-function putOres(b, i, m) { if (m && Object.keys(m).length) (b.ores || (b.ores = {}))[i] = m; else if (b.ores) delete b.ores[i]; }
+function putOres(b, i, m) {   // (a Map by the tile's index, a number in the block: no name sent by the world becomes a property of anything)
+  const k = Number(i); if (!Number.isInteger(k) || k < 0 || k >= B * B) return;
+  if (m && typeof m === "object" && Object.keys(m).length) (b.ores || (b.ores = new Map())).set(k, m); else if (b.ores) b.ores.delete(k); }
 function oresAt(x, y, m) { const b = blockOf(x, y); if (b) putOres(b, (y - b.by * B) * B + (x - b.bx * B), m); }
 const stonesOf = (d, from) => { const s = new Int16Array(B * B); for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) s[j * B + i] = d.stones[j].charCodeAt(i) - from; return s; };
 function setTile(x, y, comb, gnd, who = null, col = null, mat = null) {    // (col: its column of cells, when sent: cells.js; mat: what it is made of, when sent: putMat)

@@ -76,7 +76,7 @@ const groundAt = floorAt;
 // nothing of it: as the generator would, by its height alone
 const stoneAt = (x, y) => { const b = blockOf(x, y), s = b && b.stone ? b.stone[(y - b.by * B) * B + (x - b.bx * B)] : NO_STONE, t = s === NO_STONE && topAt(x, y);
   return s !== NO_STONE ? s : t >= RULES.stone.from ? RULES.high : t - RULES.stone.earth; };
-const oreAt = (x, y, z) => { const b = blockOf(x, y), o = b && b.ores && b.ores[(y - b.by * B) * B + (x - b.bx * B)]; return (o && o[z]) || null; };   // (the ore a cell is, if it shows: tiles.js putOres)
+const oreAt = (x, y, z) => { const b = blockOf(x, y), o = b && b.ores && b.ores.get((y - b.by * B) * B + (x - b.bx * B)); return (o && Object.hasOwn(o, z) && typeof o[z] === "string" && o[z]) || null; };   // (the ore a cell is, if it shows: tiles.js putOres)
 const matAt = (x, y) => { const b = blockOf(x, y); return (b && b.mat && b.mat[(y - b.by * B) * B + (x - b.bx * B)]) || ""; };
 
 let myAt = null, myWas = null;             // your tile and the height you stand at (caves.js keeps it, as the server does); and the tile before
